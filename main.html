@@ -118,9 +118,11 @@ void main(void) {
       opacity: 1.0;
     }
   </style>
-  <script data-main="scripts/entry_point" src="scripts/require.js"></script>
+  <script type="module" src="scripts/entry_point.js"></script>
 </head>
-<body>
+<body onload="init()">
+<img id="iconsheet" style="display:none" src="assets/iconsheet.png"></img>
+<img id="iconsheet16" style="display:none" src="assets/iconsheet16.png"></img>
 <div id="content">
   <canvas id="canvas2d">
   </canvas>

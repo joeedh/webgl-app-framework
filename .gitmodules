@@ -1,0 +1,3 @@
+[submodule "scripts/path.ux"]
+	path = scripts/path.ux
+	url = https://github.com/joeedh/path.ux
