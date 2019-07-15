@@ -1,20 +1,22 @@
 import {DataBlock, DataRef} from './lib_api.js';
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {Graph} from '../graph.js';
+import {Graph, SocketFlags} from './graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
-
-import {Vector3Socket, DependSocket, Matrix4Socket, Vector4Socket} from './graphsockets.js';
+import {Mesh} from './mesh.js';
+import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket} from './graphsockets.js';
 
 export const ObjectFlags = {
   SELECT : 1,
-  HIDE   : 2
+  HIDE   : 2,
+  LOCKED : 4
 };
 
 export class SceneObject extends DataBlock {
   constructor(data=undefined) {
-    this.data = data;
     super();
+    
+    this.data = data;
   }
 
   static nodedef() {return {
@@ -41,8 +43,8 @@ export class SceneObject extends DataBlock {
     }
     
     let loc = this.inputs.loc.getValue();
-    let rot = this.inputs.loc.getValue();
-    let scale = this.inputs.loc.getValue();
+    let rot = this.inputs.rot.getValue();
+    let scale = this.inputs.scale.getValue();
     
     let mat = this.outputs.matrix.getValue();
     
@@ -70,19 +72,30 @@ export class SceneObject extends DataBlock {
   }}
   
   static fromSTRUCT(reader) {
-    let ret = new Scene();
+    let ret = new SceneObject();
     
     reader(ret);
+    ret.afterSTRUCT();
     
     return ret;
   }
   
   dataLink(getblock, getblock_us) {
+    this.data = getblock_us(this.data);
+  }
+  
+  draw(gl, uniforms, program) {
+    uniforms.objectMatrix = this.outputs.matrix.getValue();
+    
+    if (this.data instanceof Mesh) {
+      this.data.draw(gl, uniforms, program);
+    }
   }
 }
-
-DataBlock.register(SceneObject);
 SceneObject.STRUCT = STRUCT.inherit(SceneObject, DataBlock) + `
   data : DataRef | DataRef.fromBlock(obj.data);
 }
 `;
+nstructjs.manager.add_class(SceneObject);
+
+DataBlock.register(SceneObject);

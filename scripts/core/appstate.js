@@ -1,22 +1,26 @@
 "use strict";
 
-import * as toolsys from './path.ux/scripts/simple_toolsys.js';
-import {Context} from './core/context.js';
+import * as toolsys from '../path.ux/scripts/simple_toolsys.js';
+import {Context} from '../core/context.js';
+import {initSimpleController} from '../path.ux/scripts/simple_controller.js';
+
 toolsys.setContextClass(Context);
 
-import {App} from './editors/editor_base.js';
-import {Library} from './core/lib_api.js';
-import {IDGen} from './util/util.js';
-import {Vector3, Vector4, Vector2, Quat, Matrix4} from './util/vectormath.js';
-import {ToolStack, ToolOp, UndoFlags} from './path.ux/scripts/simple_toolsys.js';
-import {getDataAPI} from './data_api/api_define.js';
-import {View3D} from './editors/view3d/view3d.js';
-import {Scene} from './core/scene.js';
-import {BinaryReader, BinaryWriter} from './util/binarylib.js';
-import * as cconst from './core/const.js';
+import {App} from '../editors/editor_base.js';
+import {Library, DataBlock, DataRef} from '../core/lib_api.js';
+import {IDGen} from '../util/util.js';
+import {Vector3, Vector4, Vector2, Quat, Matrix4} from '../util/vectormath.js';
+import {ToolStack, ToolOp, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
+import {getDataAPI} from '../data_api/api_define.js';
+import {View3D} from '../editors/view3d/view3d.js';
+import {Scene} from '../core/scene.js';
+import {BinaryReader, BinaryWriter} from '../util/binarylib.js';
+import * as cconst from '../core/const.js';
 import {AppSettings} from './settings.js';
-
-import './path.ux/scripts/struct.js';
+import {SceneObject} from './sceneobject.js';
+import {Mesh} from './mesh.js';
+import {makeCube} from './mesh_shapes.js';
+import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
 export class FileLoadError extends Error {};
@@ -41,6 +45,15 @@ export class BasicFileOp extends ToolOp {
     
     lib.add(scene);
     lib.getLibrary("scene").active = scene;
+    
+    let mesh = makeCube();
+    lib.add(mesh);
+    
+    let ob = new SceneObject(mesh);
+    
+    lib.add(ob);    
+    scene.add(ob);
+    scene.objects.setSelect(ob, true);
   }
   
   static tooldef() {return {
@@ -63,6 +76,7 @@ export function genDefaultScreen(appstate) {
   sarea.size[1] = appstate.screen.size[1];
   
   appstate.screen.appendChild(sarea);
+  appstate.screen.listen();
   
   sarea.setCSS();
   sarea.area.setCSS();
@@ -141,7 +155,8 @@ export class AppState {
       }
       
       file.string(type);
-      data = [];
+      let data = [];
+
       nstructjs.manager.write_object(data, object);
       
       file.int32(data.length);
@@ -173,8 +188,13 @@ export class AppState {
     
     return file.finish().buffer;
   }
-  
-    
+
+  testFileIO() {
+    let file = this.createFile();
+    this.loadFile(file);
+    window.redraw_viewport();
+  }
+
   loadFile(buf, args={load_screen : true, load_settings : false}) {
     let file = new BinaryReader(buf);
     
@@ -187,7 +207,7 @@ export class AppState {
     let flag = file.uint16();
     
     let len = file.int32();
-    let structs = file.bytes(len);
+    let structs = file.string(len);
     
     let istruct = new nstructjs.STRUCT();
     
@@ -196,27 +216,34 @@ export class AppState {
     let screen;
     let datablocks = [];
     let datalib = undefined;
-    
-    while (!file.at_end) {
+
+    console.log(file);
+
+    while (!file.at_end()) {
       let type = file.string(4);
-      let len = file.uint32();
+      let len = file.int32();
       
       let data = file.bytes(len);
-      
-      if (load_screen && type == BlockTypes.SCREEN) {
+      data = new DataView((new Uint8Array(data)).buffer);
+      console.log("->", type);
+
+      if (args.load_screen && type == BlockTypes.SCREEN) {
         screen = istruct.read_object(data, App);
         
         this.screen.destroy();
         this.screen.remove();
-        this.screen.listen();
-        
-        screen.ctx = this.ctx;
+
         this.screen = screen;
-        
+        this.screen.listen();
+
         document.body.appendChild(screen);
+
+        screen.update();
+        screen.ctx = this.ctx;
       } else if (type == BlockTypes.LIBRARY) {
         datalib = istruct.read_object(data, Library);
-        
+        console.log("Found library");
+
         this.datalib.destroy();
         this.datalib = datalib;
       } else if (type == BlockTypes.DATABLOCK) {
@@ -226,7 +253,9 @@ export class AppState {
         let clsname = file2.string(len);
         
         let cls = DataBlock.getClass(clsname);
-        let block, data2 = file2.bytes(len+4);
+        len = data.byteLength - len - 4;
+        let data2 = file2.bytes(len);
+        let block;
         
         if (cls === undefined) {
           console.warn("Warning, unknown block type", clsname);
@@ -238,7 +267,7 @@ export class AppState {
         
         datablocks.push([clsname, block]);
       } else if (args.load_settings && type == BlockTypes.SETTINGS) {
-        settings = istruct.read_object(data, AppSettings);
+        let settings = istruct.read_object(data, AppSettings);
         
         this.settings.destroy();
         this.settings = settings;
@@ -252,7 +281,12 @@ export class AppState {
         this.screen.update();
       });
     }
-    
+
+    if (datalib === undefined) {
+      throw new Error("failed to load file");
+      return;
+    }
+
     for (let dblock of datablocks) {
       this.datalib.getLibrary(dblock[0]).add(dblock[1]);
     }
@@ -285,7 +319,7 @@ export class AppState {
     
   }
   
-  do_version_post(version, datalib) {
+  do_versions_post(version, datalib) {
   }
   
   createUndoFile() {
@@ -306,6 +340,7 @@ export class AppState {
 };
 
 export function init() {
+  initSimpleController();
   window._appstate = new AppState();
   
   let animreq;

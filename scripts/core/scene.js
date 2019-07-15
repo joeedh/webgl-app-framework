@@ -2,17 +2,156 @@ import {DataBlock, DataRef} from './lib_api.js';
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {Graph} from './graph.js';
+import * as util from '../util/util.js';
+import {ObjectFlags} from './sceneobject.js';
+import {DependSocket} from './graphsockets.js';
 
 export const SceneFlags = {
   SELECT : 1
 };
 
+export class ObjectSet extends util.set {
+  constructor(oblist) {
+    super();
+    this.list = oblist;
+  }
+
+  get editable() {
+    let this2 = this;
+
+    return (function*() {
+      for (let ob of this2) {
+        if (ob.flag & (ObjectFlags.HIDE|ObjectFlags.LOCKED)) {
+          continue;
+        }
+
+        yield ob;
+      }
+    })();
+  }
+}
+
+export class ObjectList extends Array {
+  constructor(list=undefined) {
+    super();
+
+    this.selected = new ObjectSet(this);
+    this.onselect = undefined;
+
+    if (list !== undefined) {
+      for (let ob of list) {
+        super.push(ob);
+      }
+    }
+
+    this.active = this.highlight = undefined;
+  }
+
+  get editable() {
+    let this2 = this;
+
+    return (function*() {
+      for (let ob of this2) {
+        if (ob.flag & (ObjectFlags.HIDE|Object.LOCKED)) {
+          continue;
+        }
+
+        yield ob;
+      }
+    })();
+  }
+
+  get visible() {
+    let this2 = this;
+
+    return (function*() {
+      for (let ob of this2) {
+        if (ob.flag & (ObjectFlags.HIDE)) {
+          continue;
+        }
+
+        yield ob;
+      }
+    })();
+  }
+
+  setSelect(ob, state) {
+    if (!state) {
+      ob.flag &= ~ObjectFlags.SELECT;
+      this.selected.remove(ob);
+    } else {
+      ob.flag |= ObjectFlags.SELECT;
+      this.selected.add(ob);
+    }
+
+    if (!!(ob.flag & ObjectFlags.SELECT) == !!state) {
+      return;
+    }
+
+    //. . .exec callbacks?
+    if (this.onselect) {
+      this.onselect(ob, state);
+    }
+  }
+
+  setActive(ob) {
+    this.active = ob;
+  }
+
+  dataLink(scene, getblock, getblock_us) {
+    this.active = getblock(this.active, scene);
+
+    for (let ob of this.refs) {
+      let ob2 = getblock_us(ob, scene);
+
+      if (ob2 === undefined) {
+        console.warn("Warning: missing SceneObject in scene");
+        continue;
+      }
+
+      super.push(ob2);
+
+      if (ob2.flag & ObjectFlags.SELECT) {
+        this.selected.add(ob2);
+      }
+    }
+
+    delete this.refs;
+  }
+
+  _getDataRefs() {
+    let ret = [];
+
+    for (let ob of this) {
+      ret.push(DataRef.fromBlock(ob));
+    }
+
+    return ret;
+  }
+
+  static fromSTRUCT(reader) {
+    let ret = new ObjectList();
+
+    reader(ret);
+
+    return ret;
+  }
+};
+
+ObjectList.STRUCT = `
+ObjectList {
+  refs    : array(DataRef) | obj._getDataRefs();
+  active  : DataRef |  DataRef.fromBlock(obj.active);
+}
+`;
+nstructjs.manager.add_class(ObjectList);
+
 export class Scene extends DataBlock {
   constructor(objects) {
     super();
     
-    this.objects = [];
-    this.objects.active = undefined;
+    this.objects = new ObjectList();
+    this.objects.onselect = this._onselect.bind(this);
     this.flag = 0;
     
     this.time = 0.0;
@@ -25,9 +164,18 @@ export class Scene extends DataBlock {
     }
   }
   
+  exec() {
+    this.graph.exec();
+  }
+  
   add(ob) {
     this.objects.push(ob);
-    ob.lib_addUser();
+    
+    if (this.objects.active === undefined) {
+      this.objects.active = ob;
+    }
+    
+    ob.lib_addUser(this);
   }
   
   remove(ob) {
@@ -53,31 +201,45 @@ export class Scene extends DataBlock {
     flag     : 0,
     icon     : -1
   }}
-  
+
+  _onselect(obj, state) {
+    if (this.outputs.onSelect.hasEdges) {
+      this.outputs.onSelect.update();
+    }
+  }
+
+  static nodedef() {return {
+    name    : "scene",
+    uiname  : "Scene",
+    flag    : 0,
+    outputs : {
+      onSelect : new DependSocket("Selection Change")
+    }
+  }}
+
   static fromSTRUCT(reader) {
     let ret = new Scene();
     
     reader(ret);
-    
+    ret.afterSTRUCT();
+
+    ret.objects.onselect = ret._onselect.bind(ret);
+
     return ret;
   }
   
   dataLink(getblock, getblock_us) {
-    for (let i=0; i<this.objects.length; i++) {
-      this.objects[i] = getblock_us(this.objects[i]);
-      if (this.objects[i].lib_id == this.active) {
-        this.objects.active = this.objects[i];
-      }
-    }
-    
+    this.objects.dataLink(this, getblock, getblock_us);
+
     delete this.active;
   }
 }
 DataBlock.register(Scene);
 Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
   flag      : int;
-  objects   : array(e, DataRef) | new DataRef(e);
+  objects   : ObjectList;
   active    : int | obj.active !== undefined ? obj.active.lib_id : -1;
   time      : float;
 }
 `;
+nstructjs.manager.add_class(Scene);

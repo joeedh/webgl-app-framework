@@ -1,6 +1,6 @@
 let _graph = undefined;
 
-import {Matrix4, Vector3, Vector4} from '../util/vectormath.js';
+import {Matrix4, Vector2, Vector3, Vector4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
@@ -75,7 +75,7 @@ export class NodeSocketType {
     
     this.node.update();
     sock.node.update();
-    this.node.graph.graph_flagResort();
+    this.node.graph.flagResort();
     
     return this;
   }
@@ -86,7 +86,7 @@ export class NodeSocketType {
     
     this.node.update();
     sock.node.update();
-    this.node.graph.graph_flagResort();
+    this.node.graph.flagResort();
     
     return this;
   }
@@ -116,7 +116,11 @@ export class NodeSocketType {
     b.uiname = this.uiname;
     b.node = this.node;
   }
-  
+
+  get hasEdges() {
+    return this.edges.length > 0;
+  }
+
   update(_exclude=undefined) {
     if (this === _exclude)
       return;
@@ -137,7 +141,7 @@ export class NodeSocketType {
     
     return ret;
   }
-  
+
   static fromSTRUCT(reader) {
     let ret = new this();
     
@@ -148,7 +152,7 @@ export class NodeSocketType {
 }
 
 NodeSocketType.STRUCT = `
-NodeSocketType {
+graph.NodeSocketType {
   id     : int;
   node   : int | obj.node.graph_id;
   edges  : array(e, int) | e.graph_id;
@@ -159,6 +163,26 @@ NodeSocketType {
 `;
 nstructjs.manager.add_class(NodeSocketType);
 
+export class KeyValPair {
+ constructor(key, val) {
+   this.key = key;
+   this.val = val;
+ }
+
+ static fromSTRUCT(reader) {
+   let ret = new KeyValPair();
+   reader(ret);
+   return ret;
+ }
+}
+KeyValPair.STRUCT = `
+graph.KeyValPair {
+  key : string;
+  val : abstract(Object);
+}
+`;
+nstructjs.manager.add_class(KeyValPair);
+
 export class Node {
   constructor(flag=0) {
     let def = this.constructor.nodedef();
@@ -167,6 +191,10 @@ export class Node {
       flag |= def.graph_flag;
     }
 
+    this.graph_ui_pos = new Vector2();
+    this.graph_ui_size = new Vector2([128, 330]);
+    this.graph_ui_flag = 0;
+    
     this.graph_flag = flag | NodeFlags.UPDATE;
     this.graph_id = -1;
     this.graph = undefined;
@@ -300,24 +328,44 @@ export class Node {
     this.graph_flag |= NodeFlags.UPDATE;
     return this;
   }
-  
+
+  afterSTRUCT() {
+    let ins = {};
+    let outs = {};
+
+    for (let pair of this.inputs) {
+      ins[pair.key] = pair.val;
+    }
+
+    for (let pair of this.outputs) {
+      outs[pair.key] = pair.val;
+    }
+
+    this.inputs = ins;
+    this.outputs = outs;
+
+    return this;
+  }
+
   _save_map(map) {
     let ret = [];
     
     for (let k in map) {
-      ret.push(k);
-      ret.push(map[k]);
+      ret.push(new KeyValPair(k, map[k]));
     }
     
     return ret;
   }
 }
 Node.STRUCT = `
-Node {
-  graph_id        : int;
-  graph_flag      : int;
-  inputs    : array(abstract(NodeSocketType)) | obj._save_map(obj.inputs);
-  outputs    : array(abstract(NodeSocketType)) | obj._save_map(obj.outputs);
+graph.Node {
+  graph_id      : int;
+  graph_flag    : int;
+  inputs        : array(graph.KeyValPair) | obj._save_map(obj.inputs);
+  outputs       : array(graph.KeyValPair) | obj._save_map(obj.outputs);
+  graph_ui_pos  : vec2;
+  graph_ui_size : vec2;
+  graph_ui_flag : int;
 }
 `;
 
@@ -549,7 +597,7 @@ export class Graph {
     this.node_idmap[node.graph_id] = node;
     this.nodes.push(node);
     
-    this.graph_flagResort();
+    this.flagResort();
     node.graph_flag |= NodeFlags.UPDATE;
     
     return this;

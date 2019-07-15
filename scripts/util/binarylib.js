@@ -24,13 +24,27 @@ export class BinaryWriter {
     }
   }
   
-  int32(n) {
-    
+  int32(c) {
+    this.data.push(c & 255);
+    this.data.push((c>>8) & 255);
+    this.data.push((c>>16) & 255);
+    this.data.push((c>>24) & 255);
   }
-  
+
+  uint16(c) {
+    this.data.push(c & 255);
+    this.data.push((c>>8) & 255);
+  }
+
   bytes(c) {
-    for (let i=0; i<c.length; i++) {
-      this.data.push(c[i]);
+    if  (typeof c == "string") {
+      for (let i=0; i<c.length; i++) {
+        this.data.push(c.charCodeAt(i));
+      }
+    } else {
+      for (let i=0; i<c.length; i++) {
+        this.data.push(c[i]);
+      }
     }
   }
   
@@ -48,8 +62,12 @@ export class BinaryWriter {
 }
 
 export class BinaryReader {
-  constructor(buffer, endian=Endians.BIG) {
-    this.view = new DataView(buffer);
+  constructor(buffer, endian=Endians.LITTLE) {
+    if (buffer instanceof DataView) {
+      this.view = buffer;
+    } else {
+      this.view = new DataView(buffer);
+    }
     this.endian = endian;
     this.i = 0;
   }
@@ -65,8 +83,8 @@ export class BinaryReader {
   }
   
   float64() {
-    this.i += 4;
-    return this.view.getFloat64(this.i-4, this.endian);
+    this.i += 8;
+    return this.view.getFloat64(this.i-8, this.endian);
   }
   
   float32() {

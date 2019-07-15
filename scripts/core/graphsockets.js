@@ -2,6 +2,8 @@ import {NodeSocketType, NodeFlags, SocketFlags} from './graph.js';
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
+import {Vector2, Vector3, Vector4, Matrix4} from '../util/vectormath.js';
+
 export class Matrix4Socket extends NodeSocketType {
   constructor(uiname, flag) {
     super(uiname, flag);
@@ -58,7 +60,17 @@ export class Matrix4Socket extends NodeSocketType {
   setValue(val) {
     this.value.load(val);
   }
+  static fromSTRUCT(reader) {
+    let ret = new Matrix4Socket();
+    reader(ret);
+    return ret;
+  }
 };
+Matrix4Socket.STRUCT = STRUCT.inherit(Matrix4Socket, NodeSocketType, "graph.Matrix4Socket") + `
+  value : mat4;
+}
+`;
+nstructjs.manager.add_class(Matrix4Socket);
 
 export class DependSocket extends NodeSocketType {
   constructor(uiname, flag) {
@@ -92,7 +104,21 @@ export class DependSocket extends NodeSocketType {
   cmpValue(b) {
     return !!this.value == !!b;
   }
+
+  static fromSTRUCT(reader) {
+    let ret = new DependSocket();
+    
+    reader(ret);
+    ret.value = !!ret.value;
+    
+    return ret;
+  }
 };
+DependSocket.STRUCT = STRUCT.inherit(DependSocket, NodeSocketType, "graph.DependSocket") + `
+  value : int;
+}
+`;
+nstructjs.manager.add_class(DependSocket);
 
 export class Vec3Socket extends NodeSocketType {
   constructor(uiname, flag) {
@@ -127,7 +153,20 @@ export class Vec3Socket extends NodeSocketType {
   cmpValue(b) {
     return this.value.dot(b);
   }
+  static fromSTRUCT(reader) {
+    let ret = new Vec3Socket();
+    
+    reader(ret);
+    ret.value = !!ret.value;
+    
+    return ret;
+  }
 };
+Vec3Socket.STRUCT = STRUCT.inherit(Vec3Socket, NodeSocketType, "graph.Vec3Socket") + `
+  value : vec3;
+}
+`;
+nstructjs.manager.add_class(Vec3Socket);
 
 export class Vec4Socket extends NodeSocketType {
   constructor(uiname, flag) {
@@ -173,7 +212,7 @@ export class Vec4Socket extends NodeSocketType {
     return ret;
   }
 };
-Vec4Socket.STRUCT = STRUCT.inherit(Vec4Socket, NodeSocketType) + `
+Vec4Socket.STRUCT = STRUCT.inherit(Vec4Socket, NodeSocketType, "graph.Vec4Socket") + `
   value : vec4;
 }
 `;
@@ -217,5 +256,15 @@ export class FloatSocket extends NodeSocketType {
   cmpValue(b) {
     return this.value - b;
   }
+  static fromSTRUCT(reader) {
+    let ret = new FloatSocket();
+    reader(ret);
+    return ret;
+  }
 };
+FloatSocket.STRUCT = STRUCT.inherit(FloatSocket, NodeSocketType, "graph.FloatSocket") + `
+  value : float;
+}
+`;
+nstructjs.manager.add_class(FloatSocket);
 

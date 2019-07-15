@@ -38,7 +38,7 @@ export class DataBlock extends Node {
   
   //getblock_us gets a block and adds reference count to it
   dataLink(getblock, getblock_us) {
-    
+
   }
   
   lib_addUser(user) {
@@ -77,6 +77,10 @@ nstructjs.manager.add_class(DataBlock);
 
 export class DataRef {
   constructor(block) {
+    if (block !== undefined) {
+      throw new Error("use DataRef.fromBlock (or get rid that idea altogether");
+    }
+
     this.lib_type = undefined;
     this.lib_id = undefined;
     this.lib_name = undefined;
@@ -85,8 +89,13 @@ export class DataRef {
   
   static fromBlock(block) {
     let ret = new DataRef();
-    
-    ret.lib_type = block.blockDefine().typeName;
+
+    if (block === undefined) {
+      ret.lib_id = -1;
+      return ret;
+    }
+
+    ret.lib_type = block.constructor.blockDefine().typeName;
     ret.lib_id = block.lib_id;
     ret.lib_name = block.name;
     ret.lib_external_ref = block.lib_external_ref;
@@ -109,23 +118,35 @@ DataRef {
 `;
 nstructjs.manager.add_class(DataRef);
 
+//this has to be in global namespace for struct scripts to work
+window.DataRef = DataRef;
+
 export class BlockSet extends Array {
   constructor(type, datalib) {
     super();
     
     this.datalib = datalib;
     this.type = type;
-    this.active = undefined;
+    this.__active = undefined;
     this.idmap = {};
     this.namemap = {};
   }
-  
+
+  get active() {
+    return this.__active;
+  }
+
+  set active(val) {
+    this.__active = val;
+    console.trace("active set", this);
+  }
+
   add(block) {
     return this.push(block);
   }
   
   push(block) {
-    if (block.lib_id >= 0 && (block.id in this.idmap)) {
+    if (block.lib_id >= 0 && (block.lib_id in this.idmap)) {
       console.warn("Block already in dataset");
       return;
     }
@@ -166,14 +187,20 @@ export class BlockSet extends Array {
   }
   
   destroy() {
-    for (let block of this.blocks) {
-      blockk.destroy();
+    for (let block of this) {
+      block.destroy();
     }
   }
   
   dataLink(getblock, getblock_us) {
-    if (ret.active != -1) {
-      ret.active = ret.idmap[ret.active];
+    console.warn("Linking. . .", this.active, this.idmap);
+
+    if (this.active != -1) {
+      this.active = this.idmap[this.active];
+    }
+
+    for (let block of this) {
+      block.dataLink(getblock, getblock_us);
     }
     
     return this;
@@ -183,8 +210,8 @@ export class BlockSet extends Array {
     let ret = new BlockSet();
     
     reader(ret);
-    //blocks are saved/loaded seperately
-    //to allow loading them individually
+
+    return ret;
   }
   
   afterLoad(datalib, type) {
@@ -222,16 +249,28 @@ export class Library {
     if (id_or_dataref instanceof DataRef) {
       id_or_dataref = id_or_dataref.lib_id;
     }
-    
+
     return this.block_idmap[id_or_dataref];
   }
   
   add(block) {
-    return this.getLibrary(block.constructor.blockDefine().typeName).add(block);
+    let typename = block.constructor.blockDefine().typeName;
+    
+    if (!(typename in this.libmap)) {
+      console.log(block);
+      throw new Error("invalid blocktype " + typename);
+    }
+    return this.getLibrary(typename).add(block);
   }
   
   remove(block) {
     return this.getLibrary(block.constructor.blockDefine().typeName).remove(block);
+  }
+  
+  destroy() {
+    for (let lib of this.libs) {
+      lib.destroy();
+    }
   }
   
   getLibrary(typeName) {
@@ -240,12 +279,17 @@ export class Library {
   
   static fromSTRUCT(reader) {
     let ret = new Library();
-    
+
+    ret.libmap = {};
+    ret.libs.length = 0;
+
     reader(ret);
     
-    for (let lib of this.libs.slice(0, this.libs.length)) {
+    for (let lib of ret.libs.slice(0, ret.libs.length)) {
       let type = undefined;
-      
+
+      ret.libmap[lib.type] = lib;
+
       for (let cls of BlockTypes) {
         if (cls.blockDefine().typeName == lib.type) {
           type = cls;
@@ -255,11 +299,11 @@ export class Library {
       if (type === undefined) {
         console.warn("Failed to load library type", lib.type);
         
-        this.libs.remove(lib);
+        ret.libs.remove(lib);
         continue;
       }
       
-      lib.afterLoad(this, type);
+      lib.afterLoad(ret, type);
     }
     
     return ret;

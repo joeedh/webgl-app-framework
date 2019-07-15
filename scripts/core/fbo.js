@@ -1,5 +1,5 @@
 import * as util from '../util/util.js';
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as simplemesh from './simplemesh.js';
 import * as webgl from './webgl.js';
 
@@ -23,7 +23,7 @@ export class FBO {
     
     webgl.Texture.defaultParams(gl, this.texDepth);
     webgl.Texture.defaultParams(gl, this.texColor);
-    
+
     gl.bindTexture(gl.TEXTURE_2D, this.texDepth);
     //let type = gl.depth_texture.UNSIGNED_INT_24_8_WEBGL;
     
@@ -31,6 +31,9 @@ export class FBO {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, this.size[0], this.size[1], 0, gl.DEPTH_COMPONENT, type, null);
     
     gl.bindTexture(gl.TEXTURE_2D, this.texColor);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.size[0], this.size[1], 0, gl.RGBA, gl.FLOAT, null);
     
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
@@ -49,7 +52,11 @@ export class FBO {
     
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
   }
-  
+
+  unbind(gl) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
   destroy() {
     if (this.fbo !== undefined) {
       this.gl.deleteFramebuffer(this.fbo);

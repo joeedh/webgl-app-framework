@@ -76,7 +76,7 @@ export class SetIter {
     this.i   = 0;
     this.ret = {done : false, value : undefined};
   }
-  
+
   [Symbol.iterator]() {
     return this;
   }
@@ -129,7 +129,16 @@ export class set {
       }
     }
   }
-  
+
+  clear() {
+    this.items.length = 0;
+    this.keys = {};
+    this.freelist.length = 0;
+    this.length = 0;
+
+    return this;
+  }
+
   [Symbol.iterator]() {
     return new SetIter(this);
   }
@@ -193,10 +202,12 @@ export class hashtable {
   constructor() {
     this.items = [];
     this._keys = {};
+    this._keyobjs = {};
     this.length = 0;
   }
   
   set(key, val) {
+    let keyobj = key;
     key = key[Symbol.keystr]();
     
     var i;
@@ -204,7 +215,8 @@ export class hashtable {
       i = this.items.length;
       this.items.push(0);
       this._keys[key] = i;
-      
+      this._keyobjs[key] = keyobj;
+
       this.length++;
     } else {
       i = this._keys[key];
@@ -224,12 +236,14 @@ export class hashtable {
     var i = this._keys[key];
     this.items[i] = _hash_null;
     delete this._keys[key];
+    delete this._keyobjs[key];
+
     this.length--;
   }
   
   has(key) {
     key = key[Symbol.keystr]();
-    
+
     return key in this._keys;
   }
   
@@ -246,11 +260,21 @@ export class hashtable {
   add(key, val) {
     return this.set(key, val);
   }
-  
-  keys() {
-    return Object.keys(this._keys);
+
+  get keys() {
+    let this2 = this;
+
+    return (function*() {
+      for (let k in this2._keys) {
+        yield this2._keyobjs[k];
+      }
+    })();
   }
-  
+
+  [Symbol.iterator]() {
+    return this.keys;
+  }
+
   values() {
     var ret = [];
     var len = this.items.length;

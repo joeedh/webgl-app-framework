@@ -78,6 +78,7 @@ export class UVLayerElem extends CustomDataElem {
   static fromSTRUCT(reader) {
     let ret = new UVLayerElem();
     reader(ret);
+
     return ret;
   }
 }
@@ -312,7 +313,7 @@ export class Edge extends Element {
     throw new Error("vertex " + v.eid + " not in edge");
   }
   static fromSTRUCT(reader) {
-    let ret = new Vertex();
+    let ret = new Edge();
     
     reader(ret);
     
@@ -331,7 +332,7 @@ let calc_normal_temps = util.cachering.fromConstructor(Vector3, 32);
 
 export class Loop extends Element {
   constructor() {
-    super(MeshType.LOOP);
+    super(MeshTypes.LOOP);
     
     this.radial_next = this.radial_prev = undefined;
     
@@ -370,6 +371,8 @@ class LoopIter {
   constructor() {
     this.list = undefined;
     this.l = undefined;
+    this.done = false;
+    this.first = undefined;
     
     this.ret = {
       done  : true,
@@ -380,20 +383,27 @@ class LoopIter {
   }
   
   init(list) {
-    this.l = list.l.next;
+    this.done = false;
+    this.first = true;
+    this.list = list;
+    this.l = list.l;
+    return this;
   }
   
   next() {
     let ret = this.ret;
     let l = this.l;
     
-    if (l === this.list.l) {
+    if (l === this.list.l && !this.first) {
       ret.done = true;
       ret.value = undefined;
       
+      this.list.iterstack.cur--;
+      this.done = true;
       return ret;
     }
     
+    this.first = false;
     this.l = l.next;
     
     ret.done = false;
@@ -403,7 +413,12 @@ class LoopIter {
   }
   
   return() {
-    list.iterstack.cur--;
+    console.log("iterator return");
+    
+    if (!this.done) {
+      list.iterstack.cur--;
+      this.done = true;
+    }
   }
 }
 
@@ -428,7 +443,9 @@ export class LoopList extends Array {
     stack.cur++;
 
     if (stack.cur < 0 || stack.cur >= stack.length) {
-      throw new Error("iteration depth was too deep: " + stack.cur);
+      let cur =  stack.cur;
+      stack.cur = 0;
+      throw new Error("iteration depth was too deep: " + cur);
     }
     
     return stack[stack.cur].init(this);
@@ -475,7 +492,7 @@ export class Face extends Element {
   get verts() {
     let this2 = this;
     return (function*() {
-      for (let loop of this.loops) {
+      for (let loop of this2.loops) {
         yield loop.v;
       }
     })();
@@ -512,17 +529,23 @@ export class Face extends Element {
     this.calcCent();
     let c = this.cent;
     
-    for (let i=0; i<this.loops.length; i++) {
-      let v1 = this.loops[i].v, v2 = this.loops[(i+1)%this.loops.length].v;
+    let _i = 0;
+    let l = this.lists[0].l;
+    do {
+      let v1 = l.v, v2 = l.next.v;
       
       t1.load(v1).sub(c);
       t2.load(v2).sub(c);
       
       t1.cross(t2).normalize();
       sum.add(t1);
-    }
-    
-    c.mulScalar(1.0 / this.loops.length);
+      
+      if (_i++ > 100000) {
+        console.warn("infinite loop detected");
+        break;
+      }
+      l = l.next;
+    } while (l !== this.lists[0].l);
     
     sum.normalize();
     this.no.load(sum);
@@ -531,12 +554,14 @@ export class Face extends Element {
   
   calcCent() {
     this.cent.zero();
+    let tot = 0.0;
     
-    for (let l of this.loops) {
+    for (let l of this.lists[0]) {
       this.cent.add(l.v);
+      tot++;
     }
     
-    this.cent.mulScalar(1.0 / this.loops.length);
+    this.cent.mulScalar(1.0 / tot);
     return this.cent;
   }
   
@@ -554,14 +579,44 @@ Face.STRUCT = STRUCT.inherit(Face, Element, "mesh.Face") + `
 `;
 nstructjs.manager.add_class(Face);
 
+export class SelectionSet extends util.set {
+  constructor() {
+    super();
+  }
+  
+  get editable() {
+    let this2 = this;
+    
+    return (function*() {
+      for (let item of this2) {
+        if (!(item.flag & MeshFlags.HIDE)) {
+          yield item;
+        }
+      }
+    })();
+  }
+}
+
 export class ElementList extends Array {
   constructor(type) {
     super();
     
     this.type = type;
-    this.selected = new util.set();
+    this.selected = new SelectionSet();
     this.on_selected = undefined;
     this.highlight = this.active = undefined;
+  }
+  
+  get editable() {
+    let this2 = this;
+    
+    return (function*() {
+      for (let e of this2) {
+        if (!(e.flag & MeshFlags.HIDE)) {
+          yield e;
+        }
+      }
+    })();
   }
   
   toJSON() {
@@ -586,7 +641,7 @@ export class ElementList extends Array {
   
   loadJSON(obj) {
     this.length = 0;
-    this.selected = new util.set();
+    this.selected = new SelectionSet();
     this.active = this.highlight = undefined;
     this.type = obj.type;
     
@@ -700,7 +755,11 @@ nstructjs.manager.add_class(ElementList);
 export class Mesh extends DataBlock {
   constructor() {
     super();
-    
+
+    //used to signal rebuilds of viewport meshes,
+    //current mesh data generation
+    this.updateGen = 0;
+
     this.eidgen = new util.IDGen();
     this.eidmap = {};
     this.recalc = RecalcFlags.RENDER;
@@ -833,7 +892,7 @@ export class Mesh extends DataBlock {
     f.lists.push(list);
     
     for (let v of verts) {
-      let l = this.makeLoop();
+      let l = this._makeLoop();
       
       l.list = list;
       l.v = v;
@@ -1206,57 +1265,69 @@ export class Mesh extends DataBlock {
     
     this.regenRender();
   }
-  
+
+  tessellate() {
+    let ltris = this.ltris = [];
+
+    for (let f of this.faces) {
+      let first = f.lists[0].l;
+      let l = f.lists[0].l.next;
+      let _i = 0;
+
+      do {
+        ltris.push(first);
+        ltris.push(l);
+        ltris.push(l.next);
+
+        if (_i++ > 100000) {
+          console.warn("infinite loop detected!");
+          break;
+        }
+
+        l = l.next;
+      } while (l.next !== f.lists[0].l)
+    }
+  }
+
   genRender(gl) {
     this.recalc &= ~RecalcFlags.RENDER;
-    
+    this.updateGen++;
+
+    this.tessellate();
+    let ltris = this.ltris;
+
     let sm = this.smesh = new simplemesh.SimpleMesh();
-    
+
+    let zero2 = [0, 0];
+    let w = [1, 1, 1, 1];
+
     //triangle fan
-    for (let f of this.faces) {
-      let flat = f.flag & MeshFlags.FLAT;
-      
-      let vs = f.verts;
-      if (vs == 3) {
-        let tri = sm.tri(vs[0], vs[1], vs[2]);
-        
-        if (flat)
-          tri.normals(f.no, f.no, f.no);
-        else
-          tri.normals(vs[0].no, vs[1].no, vs[2].no);
-        
-        tri.uvs(f.uvs[0], f.uvs[1], f.uvs[2]);
-      } else if (vs == 4) {
-        let tri = sm.tri(vs[0], vs[1], vs[2]);
+    for (let i=0; i<ltris.length; i += 3) {
+      let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
 
-        if (flat)
-          tri.normals(f.no, f.no, f.no);
-        else
-          tri.normals(vs[0].no, vs[1].no, vs[2].no);
+      let tri = sm.tri(l1.v, l2.v, l3.v);
+      tri.colors(w, w, w);
 
-        tri.uvs(f.uvs[0], f.uvs[1], f.uvs[2]);
-        
-        tri = sm.tri(vs[0], vs[2], vs[3]);
-        
-        if (flat)
-          tri.normals(f.no, f.no, f.no);
-        else
-          tri.normals(vs[0].no, vs[2].no, vs[3].no);
-        
-        tri.uvs(f.uvs[0], f.uvs[2], f.uvs[3]);
+      if (l1.f.flag & MeshFlags.FLAT) {
+        tri.normals(l1.f.no, l2.f.no, l3.f.no);
       } else {
-        for (let i=1; i<vs.length-1; i++) {
-          let v1 = vs[0], v2 = vs[i],  v3 = vs[i+1];
-          
-          let tri = sm.tri(v1, v2, v3);
-          
-          if (flat)
-            tri.normals(f.no, f.no, f.no);
-          else
-            tri.normals(v1.no, v2.no, v3.no);
-          
-          tri.uvs(f.uvs[0], f.uvs[i], f.uvs[i+1]);
+        tri.normals(l1.v.no, l2.v.no, l3.v.no);
+      }
+
+      let uvidx = -1;
+      let j = 0;
+
+      for (let data of l1.customData) {
+        if (data instanceof UVLayerElem) {
+          uvidx = j;
+          break;
         }
+
+        j++;
+      }
+
+      if (uvidx >= 0) {
+        tri.uvs(l1.data[uvidx].uv, l2.data[uvidx].uv, l3.data[uvidx].uv);
       }
     }
   }
@@ -1272,13 +1343,29 @@ export class Mesh extends DataBlock {
     }
   }
   
-  draw(gl, uniforms) {
+  draw(gl, uniforms, program) {
     if (this.recalc & RecalcFlags.RENDER) {
       console.log("gen render");
       this.genRender(gl);
     }
     
-    this.smesh.draw(gl, this.uniforms);
+    if (program !== undefined) {
+      this.smesh.program = program;
+      this.smesh.island.program = program;
+      program.bind(gl);
+    }
+    
+    let uniforms2 = {};
+    
+    for (let k in this.uniforms) {
+      uniforms2[k] = this.uniforms[k];
+    }
+    
+    for (let k in uniforms) {
+      uniforms2[k] = uniforms[k];
+    }
+    
+    this.smesh.draw(gl, uniforms);
   }
   
   get elements() {
@@ -1341,7 +1428,8 @@ export class Mesh extends DataBlock {
   static fromSTRUCT(reader) {
     let ret = new Mesh();
     reader(ret);
-    
+
+    ret.afterSTRUCT();
     ret.elists = {};
     
     for (let elist of ret._elists) {
@@ -1353,9 +1441,11 @@ export class Mesh extends DataBlock {
     ret.edges = ret.getElemList(MeshTypes.EDGE);
     ret.faces = ret.getElemList(MeshTypes.FACE);
     
-    for (let elist of this.elists) {
-      elists.on_layeradd = this._on_cdlayer_add.bind(this);
-      elists.on_layerremove = this._on_cdlayer_rem.bind(this);
+    for (let k in ret.elists) {
+      let elist = ret.elists[k];
+      
+      elist.on_layeradd = ret._on_cdlayer_add.bind(ret);
+      elist.on_layerremove = ret._on_cdlayer_rem.bind(ret);
     }
     
     ret.regenRender();
@@ -1419,12 +1509,21 @@ export class Mesh extends DataBlock {
     
     return ret;
   }
+  
+  static blockDefine() { return {
+    typeName    : "mesh",
+    defaultName : "Mesh",
+    uiName      : "Mesh",
+    flag        : 0,
+    icon        : -1
+  }}
 };
 
-Mesh.STRUCT = STRUCT.inherit(Mesh, Node, "mesh.Mesh") + `
+Mesh.STRUCT = STRUCT.inherit(Mesh, DataBlock, "mesh.Mesh") + `
   _elists : array(mesh.ElementList) | obj._getArrays;
-  idgen    : IDGen;
+  eidgen    : IDGen;
 }
 `;
 
 nstructjs.manager.add_class(Mesh);
+DataBlock.register(Mesh);

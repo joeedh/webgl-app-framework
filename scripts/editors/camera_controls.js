@@ -1,7 +1,7 @@
 import * as util from '../util/util.js';
 import * as math from '../util/math.js';
 import * as webgl from './webgl.js';
-import {Vector2, Vector3, Vector4, Quad, Matrix4} from '../util/vectormath';
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath';
 
 var Camera = webgl.Camera;
 

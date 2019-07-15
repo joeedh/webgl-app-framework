@@ -48,7 +48,7 @@ export class CustomDataElem {
   }
 }
 CustomDataElem.STRUCT = `
-CustomDataElem {
+mesh.CustomDataElem {
 }
 `;
 nstructjs.manager.add_class(CustomDataElem);

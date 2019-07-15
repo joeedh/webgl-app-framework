@@ -179,6 +179,7 @@ export class ShaderProgram {
     
     this.uniformlocs = {};
     this.attrlocs = {};
+    this.uniform_defaults = {};
     
     this.uniforms = {};
     this.gl = gl;
@@ -377,6 +378,7 @@ export class ShaderProgram {
               break;
           }
         } else if (v instanceof Matrix4) {
+          //console.log("found matrix");
           v.setUniform(gl, loc);
         } else if (typeof v == "number") { 
           gl.uniform1f(loc, v);
@@ -477,9 +479,10 @@ export class DrawMats {
     this.inormalmat = new Matrix4();
   }
   
-  regen_mats(aspect) {
+  regen_mats(aspect=this.aspect) {
     this.aspect = aspect;
     
+    this.rendermat.load(this.persmat).multiply(this.cameramat);
     this.normalmat.load(this.cameramat).makeRotationOnly();
     
     this.icameramat.load(this.cameramat).invert();
@@ -540,7 +543,7 @@ DrawMats {
 `;
 nstructjs.manager.add_class(DrawMats);
 
-//simplest camera
+//simplest  
 export class Camera extends DrawMats {
   constructor() {
     super();
@@ -557,6 +560,20 @@ export class Camera extends DrawMats {
     this.far = 10000.0;
   }
   
+  load(b) {
+    this.fovy = b.fovy;
+    this.aspect = b.aspect;
+    this.pos.load(b.pos);
+    this.target.load(b.target);
+    this.up.load(b.up);
+    this.near = b.near;
+    this.far = b.far;
+    
+    this.regen_mats(this.aspect);
+    
+    return this;
+  }
+  
   copy() {
     let ret = new Camera();
     
@@ -570,7 +587,7 @@ export class Camera extends DrawMats {
     ret.near = this.near;
     ret.far = this.far;
     
-    ret.regen_mats();
+    ret.regen_mats(ret.aspect);
     
     return ret;
   }
@@ -618,14 +635,15 @@ export class Camera extends DrawMats {
     return this;
   }
   
-  regen_mats(aspect) {  
+  regen_mats(aspect=this.aspect) {  
     this.aspect = aspect;
     
     this.persmat.makeIdentity();
     this.persmat.perspective(this.fovy, aspect, this.near, this.far);
     
     this.cameramat.makeIdentity();
-    this.cameramat.lookat(this.pos, this.target, this.up);    //this.cameramat.translate(this.pos[0], this.pos[1], this.pos[2]);
+    this.cameramat.lookat(this.pos, this.target, this.up);
+    this.cameramat.invert();
     
     this.rendermat.load(this.persmat).multiply(this.cameramat);
     //this.rendermat.load(this.cameramat).multiply(this.persmat);

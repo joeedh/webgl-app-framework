@@ -1,4 +1,4 @@
-import * as appstate from './appstate.js';
+import * as appstate from './core/appstate.js';
 
 window.init = () => {
   console.log("init!");
