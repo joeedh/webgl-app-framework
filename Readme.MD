@@ -1,3 +1,4 @@
 A WebGL application framework.
 
-https://joeedh.github.io/webgl-app-framework/index.html
+[You can try it out here](https://joeedh.github.io/webgl-app-framework/index.html)
+
