@@ -85,8 +85,8 @@ export function genDefaultScreen(appstate) {
   sarea.area.setCSS();
 }
 
-export function genDefaultFile(appstate) {
-  if (cconst.APP_KEY_NAME in localStorage) {
+export function genDefaultFile(appstate, dont_load_startup=false) {
+  if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
     let buf = localStorage[cconst.APP_KEY_NAME];
 
     try {
@@ -105,6 +105,8 @@ export function genDefaultFile(appstate) {
   genDefaultScreen(appstate);
   appstate.toolstack.execTool(tool);
 }
+
+window._genDefaultFile = genDefaultFile; //this global is for debugging purposes only
 
 export const BlockTypes = {
   SCREEN     : "scrn",

@@ -219,7 +219,12 @@ export class AppToolStack extends ToolStack {
       return;
     }
 
-    let tctx = new SavedContext(ctx, ctx.datalib);
+    let tctx = ctx;
+
+    if (!(toolop.constructor.tooldef().undoflag & UndoFlags.IS_UNDO_ROOT)) {
+      tctx = new SavedContext(ctx, ctx.datalib);
+    }
+
     toolop.execCtx = tctx;
 
     if (!(toolop.undoflag & UndoFlags.NO_UNDO)) {
