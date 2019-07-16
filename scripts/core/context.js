@@ -99,7 +99,9 @@ export class SavedContext extends ToolContext {
     this._scene = new DataRef();
     this._mesh = new DataRef();
 
-    this._scene.set(ctx.scene);
+    if (ctx.scene !== undefined) {
+      this._scene.set(ctx.scene);
+    }
 
     this.ctx = ctx;
   }
