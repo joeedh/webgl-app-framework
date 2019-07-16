@@ -120,7 +120,12 @@ export class DataRef {
     
     return ret;
   }
-  
+
+  set(ob) {
+    this.lib_id = ob.lib_id;
+    this.lib_name = ob.lib_name;
+  }
+
   static fromSTRUCT(reader) {
     let ret = new DataRef();
     reader(ret);

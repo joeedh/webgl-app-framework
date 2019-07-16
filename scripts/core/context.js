@@ -31,7 +31,11 @@ export class ToolContext {
   get scene() {
     return this.datalib.getLibrary("scene").active;
   }
-  
+
+  save() {
+    //XXX why does this method exist?
+  }
+
   get object() {
     return this.scene.objects.active;
   }
@@ -95,7 +99,14 @@ export class SavedContext extends ToolContext {
     this._scene = new DataRef();
     this._mesh = new DataRef();
 
+    this._scene.set(ctx.scene);
+
     this.ctx = ctx;
+  }
+
+  //might need to get rid of this save function in base
+  save() {
+    this.lock();
   }
 
   lock() {
@@ -104,13 +115,14 @@ export class SavedContext extends ToolContext {
 
   _getblock(key) {
     let key2 = "_" + key;
+
     if (this[key2].lib_id != -1) {
       return this.datalib.get(this[key2]);
     }
 
     if (this.ctx !== undefined) {
       this[key2] = DataRef.fromBlock(this.ctx[key]);
-      return this[key];
+      return this.ctx[key];
     }
   }
 
@@ -185,19 +197,29 @@ SavedContext {
 `;
 nstructjs.manager.add_class(SavedContext);
 
+class ModalContext extends SavedContext {
+  constructor(ctx) {
+    super(ctx, ctx.datalib);
+    this._view3d = ctx.view3d;
+  }
+
+  get view3d() {
+    return this._view3d;
+  }
+}
+
 export class AppToolStack extends ToolStack {
   constructor(ctx) {
     super(ctx);
   }
 
   execTool(toolop, ctx=this.ctx) {
-    let tctx = new SavedContext(ctx, ctx.datalib);
-
     if (!toolop.canRun(ctx)) {
       console.log("toolop.canRun returned false");
       return;
     }
 
+    let tctx = new SavedContext(ctx, ctx.datalib);
     toolop.execCtx = tctx;
 
     if (!(toolop.undoflag & UndoFlags.NO_UNDO)) {
@@ -211,6 +233,8 @@ export class AppToolStack extends ToolStack {
     }
 
     if (toolop.is_modal) {
+      ctx = toolop.modal_ctx = new ModalContext(ctx);
+
       this.modal_running = true;
 
       toolop._on_cancel = (function(toolop) {
@@ -230,8 +254,8 @@ export class AppToolStack extends ToolStack {
       console.log("undo!", this.cur, this.length);
 
       let tool = this[this.cur];
+      tool.undo(tool.execCtx);
 
-      this[this.cur].undo(this.ctx);
       this.cur--;
       this.ctx.save();
     }
@@ -242,10 +266,14 @@ export class AppToolStack extends ToolStack {
       console.log("redo!", this.cur, this.length);
 
       this.cur++;
+      let tool = this[this.cur];
 
-      this[this.cur].undoPre(this.ctx);
-      this[this.cur].exec(this.ctx);
-      this.ctx.save();
+      tool.undoPre(tool.execCtx);
+      tool.exec(tool.execCtx);
+
+      window.redraw_viewport();
+
+      this.ctx.save(); //XXX why does this exist?
     }
   }
 }

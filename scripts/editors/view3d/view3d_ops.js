@@ -22,7 +22,9 @@ export class OrbitTool extends ToolOp {
   }}
   
   on_mousemove(e) {
-    let x = e.pageX, y = e.pageY;
+    let view3d = this.modal_ctx.view3d, camera = view3d.camera;
+    let mpos = view3d.getLocalMouse(e.x, e.y);
+    let x = mpos[0], y = mpos[1];
     
     if (this.first) {
       this.start_camera = this.modal_ctx.view3d.camera.copy();
@@ -43,8 +45,6 @@ export class OrbitTool extends ToolOp {
     dx *= scale;
     dy *= scale;
     
-    let view3d = this.modal_ctx.view3d;
-    let camera = view3d.camera;
     //camera.load(this.start_camera);
     
     camera.pos.sub(camera.target);
@@ -133,8 +133,10 @@ export class PanTool extends ToolOp {
   }}
   
   on_mousemove(e) {
-    let x = e.pageX, y = e.pageY;
-    
+    let view3d = this.modal_ctx.view3d, camera = view3d.camera;
+    let mpos = view3d.getLocalMouse(e.x, e.y);
+    let x = mpos[0], y = mpos[1];
+
     if (this.first) {
       this.start_camera = this.modal_ctx.view3d.camera.copy();
       this.start_mpos[0] = x;
@@ -145,14 +147,15 @@ export class PanTool extends ToolOp {
       return;
     }
     
-    let view3d = this.modal_ctx.view3d, camera = view3d.camera;
     let dx = x - this.last_mpos[0], dy = y - this.last_mpos[1];
     
     this.last_mpos[0] = x;
     this.last_mpos[1] = y;
     
     let p = new Vector3(camera.target);
-    
+
+    console.log(dx, dy);
+
     view3d.project(p);
     p[0] += -dx;
     p[1] += -dy;
@@ -201,8 +204,10 @@ export class ZoomTool extends ToolOp {
   }}
   
   on_mousemove(e) {
-    let x = e.pageX, y = e.pageY;
-    
+    let view3d = this.modal_ctx.view3d, camera = view3d.camera;
+    let mpos = view3d.getLocalMouse(e.x, e.y);
+    let x = mpos[0], y = mpos[1];
+
     if (this.first) {
       this.start_camera = this.modal_ctx.view3d.camera.copy();
       this.start_mpos[0] = x;
@@ -213,7 +218,6 @@ export class ZoomTool extends ToolOp {
       return;
     }
     
-    let view3d = this.modal_ctx.view3d, camera = view3d.camera;
     let dx = x - this.start_mpos[0], dy = y - this.start_mpos[1];
     
     //console.log(l2/l1);

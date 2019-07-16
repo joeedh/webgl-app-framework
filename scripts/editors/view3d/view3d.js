@@ -19,6 +19,47 @@ import {GPUSelectBuffer} from './view3d_select.js';
 let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
 
+let _gl = undefined;
+
+export function getWebGL() {
+  if (!_gl) {
+    initWebGL();
+  }
+  return _gl;
+}
+
+export function initWebGL() {
+  let canvas = document.createElement("canvas");
+  let dpi = UIBase.getDPI();
+  let w, h;
+
+  canvas.setAttribute("id", "webgl");
+  canvas.id = "webgl";
+
+  if (_appstate.screen !== undefined) {
+    w = _appstate.screen.size[0], h = _appstate.screen.size[1];
+  } else {
+    w = h = 512;
+  }
+
+  canvas.width = ~~(w*dpi);
+  canvas.height = ~~(h*dpi);
+
+  canvas.style["left"] = "0px";
+  canvas.style["top"] = "0px";
+  canvas.style["width"] = w + "px";
+  canvas.style["height"] = h + "px";
+  canvas.style["position"] = "absolute";
+  canvas.style["z-index"] = "-2";
+
+  canvas.dpi = dpi;
+
+  document.body.appendChild(canvas);
+  
+  _gl = init_webgl(canvas, {});
+  //_gl.canvas = canvas;
+  loadShaders(_gl);
+}
 //see view3d_shaders.js
 export function loadShader(gl, sdef) {
   let shader = new ShaderProgram(gl, sdef.vertex, sdef.fragment, sdef.attributes);
@@ -41,7 +82,10 @@ export function loadShaders(gl) {
 export class View3D extends Editor {
   constructor() {
     super();
-    
+
+    this.glPos = [0, 0];
+    this.glSize = [512, 512];
+
     this.T = 0.0;
     this.camera = new Camera();
 
@@ -95,8 +139,8 @@ export class View3D extends Editor {
       tmp[2] /= tmp[3];
     }
     
-    tmp[0] = (tmp[0]*0.5 + 0.5) * this.canvas.width;
-    tmp[1] = (1.0-(tmp[1]*0.5+0.5)) * this.canvas.height;
+    tmp[0] = (tmp[0]*0.5 + 0.5) * this.size[0];
+    tmp[1] = (1.0-(tmp[1]*0.5+0.5)) * this.size[1];
     
     for (let i=0; i<co.length; i++) {
       co[i] = tmp[i];
@@ -108,8 +152,8 @@ export class View3D extends Editor {
   unproject(co) {
     let tmp = unproj_temps.next().zero();
     
-    tmp[0] = (co[0]/this.canvas.width)*2.0 - 1.0;
-    tmp[1] = (1.0 - co[1]/this.canvas.height)*2.0 - 1.0;
+    tmp[0] = (co[0]/this.size[0])*2.0 - 1.0;
+    tmp[1] = (1.0 - co[1]/this.size[1])*2.0 - 1.0;
      
     if (co.length > 2) {
       tmp[2] = co[2];
@@ -141,25 +185,21 @@ export class View3D extends Editor {
     let header = this.header;
     header.prop("view3d.selectmode");
     
-    let canvas = this.canvas = document.createElement("canvas");
-    this.shadow.appendChild(canvas);
     this.setCSS();
-    
-    this.gl = init_webgl(this.canvas, {});
-    loadShaders(this.gl);
+
+    this.gl = getWebGL();
+    this.canvas = this.gl.canvas;
     this.grid = this.makeGrid();
 
     let getSubEditorMpos = (e) => {
-      let r = this.canvas.getClientRects()[0];
-      let x = e.pageX - r.x;
-      let y = e.pageY - r.y;
-
-      return [x, y];
+      return this.getLocalMouse(e.clientX, e.clientY);
     }
 
     this.addEventListener("mousemove", (e) => {
       if (this.canvas === undefined)
         return;
+
+      this.push_ctx_active();
 
       let r = getSubEditorMpos(e);
       let x = r[0], y = r[1];
@@ -167,9 +207,13 @@ export class View3D extends Editor {
       for (let ed of this.editors) {
         ed.on_mousemove(this.ctx, x, y);
       }
+
+      this.pop_ctx_active();
     });
 
     this.addEventListener("mousedown", (e) => {
+      this.push_ctx_active();
+
       let docontrols = e.button == 1 || e.altKey;
 
       if (!docontrols && e.button == 0) {
@@ -201,18 +245,34 @@ export class View3D extends Editor {
         this.ctx.state.toolstack.execTool(tool);
         window.redraw_viewport();
       }
+
+      this.pop_ctx_active();
     });
 
     window.redraw_viewport();
   }
 
+  getLocalMouse(x, y) {
+    let r = this.getClientRects()[0];
+    let dpi = UIBase.getDPI();
+
+    x = (x - r.x); // dpi;
+    y = (y - r.y); // dpi;
+
+    return [x, y];
+  }
+
   update() {
     super.update();
+
+    this.push_ctx_active();
 
     if (this._last_selectmode !== this.selectmode) {
       this._last_selectmode = this.selectmode;
       window.redraw_viewport()
     }
+
+    this.pop_ctx_active();
   }
 
   makeGrid() {
@@ -250,25 +310,6 @@ export class View3D extends Editor {
   
   setCSS() {
     super.setCSS();
-    let dpi = UIBase.getDPI();
-    
-    dpi = 1.0; //XXX
-    
-    if (this.canvas === undefined || this.size === undefined) {
-      return;
-    }
-    
-    let w = this.size[0], h = this.size[1];
-    
-    this.canvas.width = ~~(w*dpi);
-    this.canvas.height = ~~(h*dpi);
-    
-    this.canvas.style["left"] = this.pos[0] + "px";
-    this.canvas.style["top"] = this.pos[1] + "px";
-    this.canvas.style["width"] = w + "px";
-    this.canvas.style["height"] = h + "px";
-    this.canvas.style["position"] = "absolute";
-    this.canvas.style["z-index"] = "-2";
   }
   
   on_resize(newsize) {
@@ -308,7 +349,14 @@ export class View3D extends Editor {
     }
     return this.selectbuf;
   }
+
   viewportDraw() {
+    this.push_ctx_active();
+    this.viewportDraw_intern();
+    this.pop_ctx_active();
+  }
+
+  viewportDraw_intern() {
     if (this.ctx === undefined || this.gl === undefined || this.size === undefined) {
       return;
     }
@@ -319,26 +367,37 @@ export class View3D extends Editor {
     scene.exec();
     
     let gl = this.gl;
-    
-    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    let dpi = this.canvas.dpi;//UIBase.getDPI();
+
+    let x = this.pos[0]*dpi, y = this.pos[1]*dpi;
+    let w = this.size[0]*dpi, h = this.size[1]*dpi;
+    //console.log("DPI", dpi);
+
+    this.glPos = new Vector2([~~x, ~~y]);
+    this.glSize = new Vector2([~~w, ~~h]);
+
+    gl.viewport(~~x, ~~y, ~~w, ~~h);
+    gl.scissor(~~x, ~~y, ~~w, ~~h);
+
     gl.clearColor(0.8, 0.8, 1.0, 1.0);
     gl.clearDepth(100000);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     
     gl.disable(gl.BLEND);
     gl.disable(gl.STENCIL_TEST);
-    gl.disable(gl.SCISSOR_TEST);
+
+    gl.enable(gl.SCISSOR_TEST);
 
     gl.enable(gl.DEPTH_TEST);
     gl.depthMask(1);
-    
+
+    //console.log(this.size);
     let aspect = this.size[0] / this.size[1];
-    
+    this.camera.regen_mats(aspect);
+
     //this._testCamera();
     //window.redraw_viewport();
-    
-    this.camera.regen_mats(aspect);
-    
+
     if (this.grid !== undefined) {
       //console.log("drawing grid");
       

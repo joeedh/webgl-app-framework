@@ -131,7 +131,13 @@ export class MeshEditor extends View3D_SubEditorIF {
   }
 
   on_mousemove(ctx, x, y) {
-    let sbuf = this.view3d.getSelectBuffer(ctx);
+    /*
+    if (this.view3d.gl !== undefined) {
+      let sbuf = this.view3d.getSelectBuffer(ctx);
+      let dpi = devicePixelRatio;
+      console.log(sbuf.sampleBlock(ctx, this.view3d.gl, this.view3d, x, y, 2, 2));
+    }
+    //*/
 
     let ret = this.findnearest(ctx, x, y);
 
@@ -474,8 +480,13 @@ export class MeshEditor extends View3D_SubEditorIF {
     x -= limit >> 1;
     y -= limit >> 1;
 
-    let block = sbuf.sampleBlock(ctx, this.view3d.gl, this.view3d, x, y, limit, limit);
-    let order = sbuf.getSearchOrder(limit);
+    let sample = sbuf.sampleBlock(ctx, this.view3d.gl, this.view3d, x, y, limit, limit);
+    if (sample === undefined) {
+      return;
+    }
+
+    let block = sample.data;
+    let order = sample.order;
 
     for (let i of order) {
       let x2 = i % limit, y2 = ~~(i / limit);

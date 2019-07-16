@@ -8,7 +8,6 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SelMask, SelOneToolModes, SelToolModes} from '../editors/view3d/selectmode.js';
 import {DataRefListProperty, DataRefProperty} from "../core/lib_api.js";
 
-
 export class SelectOpBase extends ToolOp {
   constructor() {
     super();
@@ -58,7 +57,9 @@ export class SelectOpBase extends ToolOp {
         }
 
         for (let e of elist) {
-          data.push(e.eid);
+          if (e.flag & MeshFlags.SELECT) {
+            data.push(e.eid);
+          }
         }
       }
     }
@@ -69,12 +70,16 @@ export class SelectOpBase extends ToolOp {
 
   undo(ctx) {
     if (this._undo.activeObject !== undefined) {
-      let ob = this.datalib.get(this._undo.activeObject);
+      let ob = ctx.datalib.get(this._undo.activeObject);
 
-      ctx.scene.setActive(ob);
+      ctx.scene.objects.setActive(ob);
     }
 
     for (let k in this._undo) {
+      if (k === "activeObject") {
+        continue;
+      }
+
       let mesh = ctx.datalib.get(k);
 
       if (mesh === undefined) {

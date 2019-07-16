@@ -391,6 +391,10 @@ export function init() {
     
     animreq = requestAnimationFrame(f);
   }
-  
+
+  window.addEventListener("keydown", (e) => {
+    return _appstate.screen.on_keydown(e);
+  });
+
   _appstate.start();
 }
