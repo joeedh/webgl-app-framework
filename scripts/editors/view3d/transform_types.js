@@ -5,7 +5,7 @@ import {MeshFlags, MeshTypes} from '../../core/mesh.js';
 import {PropModes, TransDataType, TransDataElem} from './transform_base.js';
 import * as util from '../../util/util.js';
 
-export class MeshTransType {
+export class MeshTransType extends TransDataType {
   static genData(ctx, selectmode, propmode, propradius) {
     let mesh = ctx.mesh;
     
@@ -87,6 +87,8 @@ export class MeshTransType {
         td.w = 1.0;
       }
     }
+
+    return tdata;
   }
   
   static applyTransform(ctx, elem, do_prop, matrix) {
@@ -197,3 +199,4 @@ export class MeshTransType {
     ctx.mesh.regenRender();
   }
 }
+TransDataType.register(MeshTransType);

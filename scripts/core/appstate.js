@@ -6,6 +6,8 @@ import {initSimpleController} from '../path.ux/scripts/simple_controller.js';
 
 toolsys.setContextClass(Context);
 
+import {loadWidgetShapes} from '../editors/view3d/widget_shapes.js';
+
 import {App} from '../editors/editor_base.js';
 import {Library, DataBlock, DataRef} from '../core/lib_api.js';
 import {IDGen} from '../util/util.js';
@@ -374,7 +376,9 @@ export class AppState {
 };
 
 export function init() {
+  loadWidgetShapes();
   initSimpleController();
+
   window._appstate = new AppState();
   
   let animreq;

@@ -19,7 +19,8 @@ export const NodeFlags = {
   UPDATE    : 2,
   SORT_TAG  : 4,
   CYCLE_TAG : 8,
-  DISABLED  : 16
+  DISABLED  : 16,
+  ZOMBIE    : 32 //zombie nodes aren't saved (actually they're not *loaded*).
 };
 
 export const GraphFlags = {
@@ -144,9 +145,17 @@ export class NodeSocketType {
 
   static fromSTRUCT(reader) {
     let ret = new this();
-    
+
     reader(ret);
-    
+    ret.flagResort();
+
+    //prune zombie nodes
+    for (let node of ret.nodes) {
+      if (node.flag & NodeFlags.ZOMBIE) {
+        ret.remove(node);
+      }
+    }
+
     return ret;
   }
 }

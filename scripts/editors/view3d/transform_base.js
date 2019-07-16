@@ -19,7 +19,36 @@ export class TransDataElem {
   }
 }
 
+export class TransDataList extends Array {
+  constructor(typeclass, data) {
+    super();
+
+    this.type = typeclass;
+
+    if (data !== undefined) {
+      for (let item of data) {
+        this.push(item);
+      }
+    }
+  }
+}
+
+export class TransformData extends Array {
+  constructor() {
+    super();
+
+    this.center = new Vector3();
+    this.scenter = new Vector2();
+  }
+}
+
+export let TransDataTypes = [];
+
 export class TransDataType {
+  static register(cls) {
+    TransDataTypes.push(cls);
+  }
+
   static calcPropCurve(dis, propmode, propradius) {
     dis /= propradius;
     dis = 1.0 - Math.min(Math.max(dis, 0.0), 1.0);
