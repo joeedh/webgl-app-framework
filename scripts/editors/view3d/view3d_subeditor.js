@@ -44,7 +44,7 @@ export class View3D_SubEditorIF {
 
     }
 
-    clickselect(x, y) {
+    clickselect(e, x, y, selmask) {
       throw new Error("implement me");
     }
     

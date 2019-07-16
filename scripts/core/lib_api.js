@@ -1,6 +1,7 @@
 import '../path.ux/scripts/struct.js';
 import {IDGen} from '../util/util.js';
 import {Node} from './graph.js';
+import {ToolProperty, PropFlags} from '../path.ux/scripts/toolprop.js';
 
 let STRUCT = nstructjs.STRUCT;
 
@@ -35,26 +36,43 @@ export class DataBlock extends Node {
     flag     : 0,
     icon     : -1
   }}
-  
-  //getblock_us gets a block and adds reference count to it
+
+  /**getblock_us gets a block and adds reference count to it
+   * getblock just gets a block and doesn't add a reference to it*/
   dataLink(getblock, getblock_us) {
 
   }
-  
+
+  /**increment reference count*/
   lib_addUser(user) {
     this.lib_users++;
   }
-  
+
+  /**decrement reference count*/
   lib_remUser(user) {
     this.lib_users--;
   }
-  
+
+  /**
+   * subclasses must call this from their own
+   * fromSTRUCT methods.  note that it might be
+   * made automatic in the future (refactor me!)
+   * */
+  afterSTRUCT() {
+    super.afterSTRUCT();
+  }
+
+  /**
+   * subclasses must implement this; here is an example
+   * */
   static fromSTRUCT(reader) {
     let ret = new this();
     reader(ret);
+    ret.afterSTRUCT();
     return ret;
   }
-  
+
+  /**call this to register a subclass*/
   static register(cls) {
     BlockTypes.push(cls);
   }
@@ -297,7 +315,7 @@ export class Library {
       }
       
       if (type === undefined) {
-        console.warn("Failed to load library type", lib.type);
+        console.warn("Failed to load library type", lib.type);3
         
         ret.libs.remove(lib);
         continue;
@@ -317,3 +335,103 @@ Library {
 }
 `;
 nstructjs.manager.add_class(Library);
+
+export class DataRefProperty extends ToolProperty {
+  constructor(type, apiname, uiname, description, flag, icon) {
+    super(undefined, apiname, uiname, description, flag, icon)
+
+    this.blockType = type;
+    this.data = new DataRef();
+  }
+
+  setValue(val) {
+    if (val === undefined || val === -1) {
+      this.data.lib_id = -1;
+      return;
+    }
+
+    if (typeof val == "object" && (val.constructor.blockDefine().typeName !== this.blockType)) {
+      throw new Error("invalid block type " + val.constructor.blockDefine().typeName + "; expected" + this.blockType + ".");
+      this.data.lib_id = val.lib_id;
+      this.data.lib_name = val.lib_name;
+    } else if (typeof val == "number") {
+      console.warn("Warning, DataRefProperty.setValue was fed a number; can't validate it's type")
+      //can't validate in this case
+
+      this.data.lib_id = val;
+      this.data.lib_name = "";
+    } else if (typeof val == "object") {
+      this.data.lib_id = val.lib_id;
+      this.data.lib_name = val.lib_name;
+    } else {
+      console.warn("failed to set DataRefProperty; arguments:", arguments);
+    }
+
+    return this;
+  }
+
+  getValue() {
+    return this.data;
+  }
+
+  copyTo(b) {
+    super.copyTo(b);
+    b.blockType = this.blockType;
+  }
+
+  copy() {
+    let ret = new DataRefProperty();
+    this.copyTo(ret);
+    return ret;
+  }
+}
+ToolProperty.register(DataRefProperty);
+
+export class DataRefListProperty extends ToolProperty {
+  constructor(typeName, apiname, uiname, description, flag, icon) {
+    super(undefined, apiname, uiname, description, flag, icon)
+
+    this.blockType = typeName;
+    this.data = [];
+  }
+
+  setValue(val) {
+    if (val === undefined) {
+      this.data.length = 0;
+      return;
+    }
+
+    this.data.length = 0;
+
+    for (let block of val) {
+      if (block instanceof DataBlock) {
+        block = DataRef.fromBlock(block);
+      } else if (typeof block == "number") {
+        let ref = new DataRef();
+
+        ref.lib_id = block;
+        block = ref;
+      }
+
+      this.data.push(block);
+    }
+
+    return this;
+  }
+
+  getValue() {
+    return this.data;
+  }
+
+  copyTo(b) {
+    super.copyTo(b);
+    b.blockType = this.blockType;
+  }
+
+  copy() {
+    let ret = new DataRefListProperty();
+    this.copyTo(ret);
+    return ret;
+  }
+}
+ToolProperty.register(DataRefListProperty);

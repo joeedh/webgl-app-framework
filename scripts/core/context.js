@@ -1,22 +1,21 @@
+import '../path.ux/scripts/struct.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
 import {getContextArea} from '../editors/editor_base.js';
 import * as util from '../util/util.js';
 import {Mesh} from './mesh.js';
+import {DataRef} from './lib_api.js';
+import {ToolStack, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
 
 export class ToolContext {
   constructor(appstate=_appstate) {
     this._appstate = appstate;
   }
 
-  get view3d() {
-    return getContextArea(View3D);
+  get toolstack() {
+    return this._appstate.toolstack;
   }
-  
-  get nodeEditor() {
-    return getContextArea(NodeEditor);
-  }
-  
+
   get api() {
     return this.state.api;
   }
@@ -77,4 +76,176 @@ export class ToolContext {
  *  unless in modal mode
  */
 export class Context extends ToolContext {
+  get view3d() {
+    return getContextArea(View3D);
+  }
+
+  get nodeEditor() {
+    return getContextArea(NodeEditor);
+  }
+}
+
+export class SavedContext extends ToolContext {
+  constructor(ctx, datalib) {
+    super(ctx.appstate);
+
+    this._object = new DataRef();
+    this._selectedObjects = [];
+    this._selectedMeshObjects = [];
+    this._scene = new DataRef();
+    this._mesh = new DataRef();
+
+    this.ctx = ctx;
+  }
+
+  lock() {
+    this.ctx = undefined;
+  }
+
+  _getblock(key) {
+    let key2 = "_" + key;
+    if (this[key2].lib_id != -1) {
+      return this.datalib.get(this[key2]);
+    }
+
+    if (this.ctx !== undefined) {
+      this[key2] = DataRef.fromBlock(this.ctx[key]);
+      return this[key];
+    }
+  }
+
+  get scene() {
+    return this._getblock("scene");
+  }
+
+  get object() {
+    return this._getblock("object");
+  }
+
+  get mesh() {
+    return this._getblock("mesh");
+  }
+
+  get selectedObjects() {
+    if (this._selectedObjects.length > 0) {
+      let ret = [];
+
+      for (let ob of this._selectedObjects) {
+        ret.push(this.datalib.get(ob));
+      }
+
+      return ret;
+    }
+
+    if (this.ctx === undefined) {
+      return this._selectedObjects;
+    }
+
+    let ret = this._selectedObjects = [];
+
+    for (let ob of this.ctx.selectedObjects) {
+      ret.push(DataRef.fromBlock(ob));
+    }
+
+    return this.selectedObjects;
+  }
+
+  get selectedMeshObjects() {
+    if (this._selectedMeshObjects.length > 0) {
+      let ret = [];
+
+      for (let ob of this._selectedMeshObjects) {
+        ret.push(this.datalib.get(ob));
+      }
+
+      return ret;
+    }
+
+    if (this.ctx === undefined) {
+      return this._selectedMeshObjects;
+    }
+
+    let ret = this._selectedMeshObjects = [];
+
+    for (let ob of this.ctx.selectedMeshObjects) {
+      ret.push(DataRef.fromBlock(ob));
+    }
+
+    return this.selectedMeshObjects;
+  }
+}
+SavedContext.STRUCT = `
+SavedContext {
+  _scene               : DataRef;
+  _mesh                : DataRef;
+  _object              : DataRef;
+  _selectedObjects     : array(DataRef);
+  _selectedMeshObjects : array(DataRef);
+}
+`;
+nstructjs.manager.add_class(SavedContext);
+
+export class AppToolStack extends ToolStack {
+  constructor(ctx) {
+    super(ctx);
+  }
+
+  execTool(toolop, ctx=this.ctx) {
+    let tctx = new SavedContext(ctx, ctx.datalib);
+
+    if (!toolop.canRun(ctx)) {
+      console.log("toolop.canRun returned false");
+      return;
+    }
+
+    toolop.execCtx = tctx;
+
+    if (!(toolop.undoflag & UndoFlags.NO_UNDO)) {
+      this.cur++;
+
+      //truncate
+      this.length = this.cur+1;
+
+      this[this.cur] = toolop;
+      toolop.undoPre(tctx);
+    }
+
+    if (toolop.is_modal) {
+      this.modal_running = true;
+
+      toolop._on_cancel = (function(toolop) {
+        this.pop_i(this.cur);
+        this.cur--;
+      }).bind(this);
+
+      //will handle calling .exec itself
+      toolop.modalStart(ctx);
+    } else {
+      toolop.exec(tctx);
+    }
+  }
+
+  undo() {
+    if (this.cur >= 0 && !(this[this.cur].undoflag & UndoFlags.IS_UNDO_ROOT)) {
+      console.log("undo!", this.cur, this.length);
+
+      let tool = this[this.cur];
+
+      this[this.cur].undo(this.ctx);
+      this.cur--;
+      this.ctx.save();
+    }
+  }
+
+  redo() {
+    if (this.cur >= -1 && this.cur+1 < this.length) {
+      console.log("redo!", this.cur, this.length);
+
+      this.cur++;
+
+      this[this.cur].undoPre(this.ctx);
+      this[this.cur].exec(this.ctx);
+      this.ctx.save();
+    }
+  }
 }

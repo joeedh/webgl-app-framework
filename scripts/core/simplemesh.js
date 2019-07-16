@@ -495,7 +495,7 @@ export class SimpleIsland {
   }
   
   destroy(gl) {
-    this.buffer.destroy();
+    this.buffer.destroy(gl);
     this.regen = true;
   }
   

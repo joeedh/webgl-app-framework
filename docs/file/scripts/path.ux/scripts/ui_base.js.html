@@ -1,0 +1,1745 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../../../">
+  <title data-ice="title">scripts/path.ux/scripts/ui_base.js | path.ux</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  <script src="script/manual.js"></script>
+<meta name="description" content="this is awesome library"><meta property="twitter:card" content="summary"><meta property="twitter:title" content="path.ux"><meta property="twitter:description" content="this is awesome library"></head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+<a style="position:relative; top:3px;" href="https://github.com/joeedh/path.ux.git"><img width="20px" src="./image/github.png"></a></header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#core">core</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/appstate.js~AppState.html">AppState</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/appstate.js~BasicFileOp.html">BasicFileOp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/appstate.js~FileBlock.html">FileBlock</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/appstate.js~FileData.html">FileData</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/appstate.js~FileLoadError.html">FileLoadError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/context.js~AppToolStack.html">AppToolStack</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/context.js~Context.html">Context</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/context.js~SavedContext.html">SavedContext</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/context.js~ToolContext.html">ToolContext</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/customdata.js~CustomData.html">CustomData</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/customdata.js~CustomDataElem.html">CustomDataElem</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/customdata.js~CustomDataLayer.html">CustomDataLayer</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/customdata.js~LayerSet.html">LayerSet</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/fbo.js~FBO.html">FBO</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/fbo.js~FramePipeline.html">FramePipeline</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/fbo.js~FrameStage.html">FrameStage</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/graph.js~Graph.html">Graph</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/graph.js~GraphCycleError.html">GraphCycleError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/graph.js~KeyValPair.html">KeyValPair</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/graph.js~Node.html">Node</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/graph.js~NodeSocketType.html">NodeSocketType</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/graphsockets.js~DependSocket.html">DependSocket</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/graphsockets.js~FloatSocket.html">FloatSocket</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/graphsockets.js~Matrix4Socket.html">Matrix4Socket</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/graphsockets.js~Vec3Socket.html">Vec3Socket</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/graphsockets.js~Vec4Socket.html">Vec4Socket</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~BlockSet.html">BlockSet</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~DataBlock.html">DataBlock</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~DataRef.html">DataRef</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~DataRefListProperty.html">DataRefListProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~DataRefProperty.html">DataRefProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~Library.html">Library</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/mesh.js~Edge.html">Edge</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/mesh.js~Element.html">Element</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/mesh.js~ElementList.html">ElementList</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/mesh.js~Face.html">Face</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/mesh.js~Loop.html">Loop</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/mesh.js~LoopList.html">LoopList</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/mesh.js~Mesh.html">Mesh</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/mesh.js~SelectionSet.html">SelectionSet</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/mesh.js~UVLayerElem.html">UVLayerElem</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/mesh.js~Vertex.html">Vertex</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~ObjectList.html">ObjectList</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~ObjectSet.html">ObjectSet</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~Scene.html">Scene</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/sceneobject.js~SceneObject.html">SceneObject</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/settings.js~AppSettings.html">AppSettings</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~GeoLayer.html">GeoLayer</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~GeoLayerManager.html">GeoLayerManager</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~GeoLayerMeta.html">GeoLayerMeta</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~LineEditor.html">LineEditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~PointEditor.html">PointEditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~QuadEditor.html">QuadEditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~SimpleIsland.html">SimpleIsland</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~SimpleMesh.html">SimpleMesh</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~TriEditor.html">TriEditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~Camera.html">Camera</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~DrawMats.html">DrawMats</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~IntUniform.html">IntUniform</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~RenderBuffer.html">RenderBuffer</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~ShaderProgram.html">ShaderProgram</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~Texture.html">Texture</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-genDefaultFile">genDefaultFile</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-genDefaultScreen">genDefaultScreen</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-init">init</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-test">test</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-makeCube">makeCube</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getShader">getShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-hashShader">hashShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-init_webgl">init_webgl</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockTypes">BlockTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-APP_KEY_NAME">APP_KEY_NAME</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-APP_VERSION">APP_VERSION</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FILE_EXT">FILE_EXT</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FILE_MAGIC">FILE_MAGIC</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-CDElemMap">CDElemMap</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-CDElemTypes">CDElemTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-CDFlags">CDFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-GraphFlags">GraphFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NodeFlags">NodeFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SocketFlags">SocketFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockTypes">BlockTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshFlags">MeshFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshTypes">MeshTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-RecalcFlags">RecalcFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SceneFlags">SceneFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectFlags">ObjectFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-LayerTypes">LayerTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-TypeSizes">TypeSizes</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_view3d">api_define_view3d</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getDataAPI">getDataAPI</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors">editors</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/camera_controls.js~CameraControls.html">CameraControls</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/editor_base.js~App.html">App</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/editor_base.js~Editor.html">Editor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/editor_base.js~HotKey.html">HotKey</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/editor_base.js~KeyMap.html">KeyMap</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getContextArea">getContextArea</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-allareas_stack">allareas_stack</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-node">editors/node</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/node/NodeEditor.js~NodeEditor.html">NodeEditor</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-view3d">editors/view3d</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/transform_base.js~TransDataElem.html">TransDataElem</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/transform_base.js~TransDataType.html">TransDataType</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/transform_types.js~MeshTransType.html">MeshTransType</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/view3d.js~View3D.html">View3D</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/view3d_mesh_editor.js~MeshCache.html">MeshCache</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html">MeshEditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/view3d_object_editor.js~View3D_SubEditorIF.html">View3D_SubEditorIF</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/view3d_ops.js~OrbitTool.html">OrbitTool</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/view3d_ops.js~PanTool.html">PanTool</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/view3d_ops.js~ZoomTool.html">ZoomTool</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/view3d_select.js~GPUSelectBuffer.html">GPUSelectBuffer</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/view3d_subeditor.js~FindnearestRet.html">FindnearestRet</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html">View3D_SubEditorIF</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-loadShader">loadShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-loadShaders">loadShaders</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DrawModes">DrawModes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SelMask">SelMask</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SelOneToolModes">SelOneToolModes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SelToolModes">SelToolModes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PropModes">PropModes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Colors">Colors</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshTools">MeshTools</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-StandardTools">StandardTools</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SubEditors">SubEditors</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BasicLineShader">BasicLineShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BasicLitMesh">BasicLitMesh</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshEditShader">MeshEditShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshIDShader">MeshIDShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PolygonOffset">PolygonOffset</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShaderDef">ShaderDef</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Shaders">Shaders</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-StandardTools">StandardTools</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SubEditors">SubEditors</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#mesh">mesh</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/select_ops.js~SelectOneOp.html">SelectOneOp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/select_ops.js~SelectOpBase.html">SelectOpBase</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#path-ux-scripts">path.ux/scripts</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/FrameManager.js~Screen.html">Screen</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/FrameManager.js~ScreenBorder.html">ScreenBorder</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/FrameManager.js~ScreenVert.html">ScreenVert</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/FrameManager_ops.js~AreaDragTool.html">AreaDragTool</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/FrameManager_ops.js~AreaResizeTool.html">AreaResizeTool</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/FrameManager_ops.js~SplitTool.html">SplitTool</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/FrameManager_ops.js~ToolBase.html">ToolBase</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ScreenArea.js~Area.html">Area</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ScreenArea.js~ScreenArea.html">ScreenArea</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ScreenOverdraw.js~Overdraw.html">Overdraw</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/app.js~AppState.html">AppState</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/app.js~CanvasArea.html">CanvasArea</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/config.js~Config.html">Config</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/controller.js~DataPathError.html">DataPathError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/controller.js~ModelInterface.html">ModelInterface</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/controller.js~ToolOpIface.html">ToolOpIface</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/events.js~EventHandler.html">EventHandler</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/math.js~Mat4Stack.html">Mat4Stack</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/math.js~MinMax.html">MinMax</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/math.js~PlaneOps.html">PlaneOps</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/parseutil.js~PUTLParseError.html">PUTLParseError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/parseutil.js~lexer.html">lexer</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/parseutil.js~parser.html">parser</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/parseutil.js~tokdef.html">tokdef</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/parseutil.js~token.html">token</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/simple_controller.js~DataAPI.html">DataAPI</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/simple_controller.js~DataPath.html">DataPath</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/simple_controller.js~DataStruct.html">DataStruct</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/simple_toolsys.js~ContextExample.html">ContextExample</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/simple_toolsys.js~ToolMacro.html">ToolMacro</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/simple_toolsys.js~ToolOp.html">ToolOp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/simple_toolsys.js~ToolStack.html">ToolStack</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop.js~BoolProperty.html">BoolProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop.js~EnumProperty.html">EnumProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop.js~FlagProperty.html">FlagProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop.js~FloatProperty.html">FloatProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop.js~IntProperty.html">IntProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop.js~NumProperty.html">NumProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop.js~StringProperty.html">StringProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop.js~ToolProperty.html">ToolProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop_abstract.js~EnumProperty.html">EnumProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop_abstract.js~FlagPropertyIF.html">FlagPropertyIF</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop_abstract.js~FloatProperty.html">FloatProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop_abstract.js~IntProperty.html">IntProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop_abstract.js~NumPropertyIF.html">NumPropertyIF</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop_abstract.js~StringPropertyIF.html">StringPropertyIF</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop_abstract.js~ToolPropertyIF.html">ToolPropertyIF</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop_abstract.js~Vec2Property.html">Vec2Property</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop_abstract.js~Vec3Property.html">Vec3Property</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/toolprop_abstract.js~Vec4Property.html">Vec4Property</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui.js~ColumnFrame.html">ColumnFrame</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui.js~Container.html">Container</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui.js~Label.html">Label</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui.js~PanelFrame.html">PanelFrame</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui.js~RowFrame.html">RowFrame</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_base.js~DataPathError.html">DataPathError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_base.js~IconManager.html">IconManager</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_base.js~SimpleContext.html">SimpleContext</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_base.js~UIBase.html">UIBase</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_colorpicker.js~ColorField.html">ColorField</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_colorpicker.js~ColorPicker.html">ColorPicker</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_colorpicker.js~SimpleBox.html">SimpleBox</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_colorpicker2.js~ColorField.html">ColorField</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_colorpicker2.js~ColorPicker.html">ColorPicker</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_colorpicker2.js~HueField.html">HueField</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_colorpicker2.js~SatValField.html">SatValField</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_colorpicker2.js~SimpleBox.html">SimpleBox</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_curvewidget.js~Curve.html">Curve</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_curvewidget.js~CurvePoint.html">CurvePoint</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_curvewidget.js~CurveWidget.html">CurveWidget</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_menu.js~DropBox.html">DropBox</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_menu.js~Menu.html">Menu</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_noteframe.js~Note.html">Note</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_noteframe.js~NoteFrame.html">NoteFrame</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_table.js~TableFrame.html">TableFrame</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_table.js~TableRow.html">TableRow</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_tabs.js~ModalTabMove.html">ModalTabMove</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_tabs.js~TabBar.html">TabBar</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_tabs.js~TabContainer.html">TabContainer</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_tabs.js~TabItem.html">TabItem</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_widgets.js~Button.html">Button</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_widgets.js~Check.html">Check</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_widgets.js~Check1.html">Check1</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_widgets.js~IconButton.html">IconButton</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html">IconCheck</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_widgets.js~NumSlider.html">NumSlider</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_widgets.js~TextBox.html">TextBox</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase.html">ValueButtonBase</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/util.js~FastHash.html">FastHash</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/util.js~HashIter.html">HashIter</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/util.js~IDGen.html">IDGen</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/util.js~ImageReader.html">ImageReader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/util.js~MersenneRandom.html">MersenneRandom</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/util.js~SetIter.html">SetIter</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/util.js~cachering.html">cachering</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/util.js~hashtable.html">hashtable</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/util.js~set.html">set</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/vectormath.js~BaseVector.html">BaseVector</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/vectormath.js~Matrix4.html">Matrix4</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/vectormath.js~Quat.html">Quat</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/vectormath.js~Vector2.html">Vector2</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/vectormath.js~Vector3.html">Vector3</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/path.ux/scripts/vectormath.js~Vector4.html">Vector4</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-registerToolStackGetter">registerToolStackGetter</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-registerToolStackGetter">registerToolStackGetter</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getAreaIntName">getAreaIntName</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-setAreaTypes">setAreaTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-setScreenClass">setScreenClass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-start">start</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-registerTool">registerTool</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-setImplementationClass">setImplementationClass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-copyMouseEvent">copyMouseEvent</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-isModalHead">isModalHead</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-pushModal">pushModal</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getImageData">getImageData</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-loadImageFile">loadImageFile</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-aabb_isect_2d">aabb_isect_2d</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-aabb_isect_line_2d">aabb_isect_line_2d</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-aabb_sphere_isect">aabb_sphere_isect</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-aabb_sphere_isect_2d">aabb_sphere_isect_2d</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-circ_from_line_tan">circ_from_line_tan</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-clip_line_w">clip_line_w</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-closest_point_on_line">closest_point_on_line</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-colinear">colinear</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-convex_quad">convex_quad</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-corner_normal">corner_normal</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-dist_to_line">dist_to_line</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-dist_to_line_2d">dist_to_line_2d</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-expand_line">expand_line</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-expand_rect2d">expand_rect2d</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-gen_circle">gen_circle</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-get_boundary_winding">get_boundary_winding</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-get_rect_lines">get_rect_lines</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-get_rect_points">get_rect_points</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-get_tri_circ">get_tri_circ</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-inrect_2d">inrect_2d</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-isect_ray_plane">isect_ray_plane</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-line_isect">line_isect</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-line_line_cross">line_line_cross</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-line_line_isect">line_line_isect</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-makeCircleMesh">makeCircleMesh</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-mesh_find_tangent">mesh_find_tangent</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-minmax_verts">minmax_verts</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-normal_quad">normal_quad</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-normal_tri">normal_tri</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-point_in_aabb">point_in_aabb</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-point_in_aabb_2d">point_in_aabb_2d</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-point_in_tri">point_in_tri</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-project">project</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-rot2d">rot2d</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-simple_tri_aabb_isect">simple_tri_aabb_isect</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-unproject">unproject</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-winding">winding</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-initSimpleController">initSimpleController</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-registerTool">registerTool</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-copyEvent">copyEvent</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-popModalLight">popModalLight</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-pushModalLight">pushModalLight</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-setContextClass">setContextClass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-buildParser">buildParser</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-initToolPaths">initToolPaths</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-parseToolPath">parseToolPath</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-testToolParser">testToolParser</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-isNumber">isNumber</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-setPropTypes">setPropTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-IsMobile">IsMobile</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-_ensureFont">_ensureFont</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-_getFont">_getFont</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-color2css">color2css</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-css2color">css2color</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-drawRoundBox">drawRoundBox</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-drawText">drawText</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getDefault">getDefault</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-loadUIData">loadUIData</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-makeIconDiv">makeIconDiv</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-measureText">measureText</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-report">report</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-saveUIData">saveUIData</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-setIconMap">setIconMap</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-setTheme">setTheme</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getFieldImage">getFieldImage</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-hsv_to_rgb">hsv_to_rgb</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-inv_sample">inv_sample</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-rgb_to_hsv">rgb_to_hsv</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-sample">sample</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getFieldImage">getFieldImage</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getHueField">getHueField</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-hsv_to_rgb">hsv_to_rgb</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-inv_sample">inv_sample</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-rgb_to_hsv">rgb_to_hsv</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-sample">sample</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-binomial">binomial</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getNoteFrames">getNoteFrames</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-progbarNote">progbarNote</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-sendNote">sendNote</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-atob">atob</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-btoa">btoa</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-color2css">color2css</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-fetch_file">fetch_file</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-merge">merge</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-print_stack">print_stack</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-random">random</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-seed">seed</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-strhash">strhash</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-test_fasthash">test_fasthash</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-time_ms">time_ms</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-AreaTypes">AreaTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-areaclasses">areaclasses</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-config">config</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-APP_VERSION">APP_VERSION</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DataFlags">DataFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DomEventTypes">DomEventTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-keymap">keymap</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-keymap_latin_1">keymap_latin_1</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-modalStack">modalStack</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-reverse_keymap">reverse_keymap</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Icons">Icons</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-COLINEAR">COLINEAR</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-COLINEAR_ISECT">COLINEAR_ISECT</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FEPS">FEPS</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FEPS_DATA">FEPS_DATA</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FLOAT_MAX">FLOAT_MAX</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FLOAT_MIN">FLOAT_MIN</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-LINECROSS">LINECROSS</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Matrix4UI">Matrix4UI</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SQRT2">SQRT2</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Vector4">Vector4</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-feps">feps</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DataTypes">DataTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-tool_classes">tool_classes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-keymap">keymap</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-keymap_latin_1">keymap_latin_1</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-modalstack">modalstack</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-reverse_keymap">reverse_keymap</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ToolClasses">ToolClasses</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ToolFlags">ToolFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-UndoFlags">UndoFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Parser">Parser</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ToolPaths">ToolPaths</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PropFlags">PropFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PropSubTypes">PropSubTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PropTypes">PropTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-customPropertyTypes">customPropertyTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PropFlags">PropFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PropSubTypes">PropSubTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PropTypes">PropTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DataPathError">DataPathError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SimpleContext">SimpleContext</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-EnumProperty">EnumProperty</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ErrorColors">ErrorColors</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-IconSheets">IconSheets</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Icons">Icons</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PackFlags">PackFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-UIFlags">UIFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Vector2">Vector2</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-iconmanager">iconmanager</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-theme">theme</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-CURVE_VERSION">CURVE_VERSION</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-CurveConstructors">CurveConstructors</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-CurveFlags">CurveFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-CurveTypes">CurveTypes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-TangentModes">TangentModes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-noteframes">noteframes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DataPathError">DataPathError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SimpleContext">SimpleContext</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-tab_idgen">tab_idgen</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#util">util</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/binarylib.js~BinaryReader.html">BinaryReader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/binarylib.js~BinaryWriter.html">BinaryWriter</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/parseutil.js~PUTLParseError.html">PUTLParseError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/parseutil.js~lexer.html">lexer</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/parseutil.js~parser.html">parser</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/parseutil.js~tokdef.html">tokdef</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/parseutil.js~token.html">token</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/util.js~IDGen.html">IDGen</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/util.js~MersenneRandom.html">MersenneRandom</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/util.js~SetIter.html">SetIter</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/util.js~cachering.html">cachering</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/util.js~hashtable.html">hashtable</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/util/util.js~set.html">set</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-atob">atob</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-btoa">btoa</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-fetch_file">fetch_file</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-inherit">inherit</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-init_prototype">init_prototype</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-mixin">mixin</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-print_stack">print_stack</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-random">random</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-seed">seed</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-time_ms">time_ms</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Endians">Endians</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-exports">exports</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">scripts/path.ux/scripts/ui_base.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">let _ui_base = undefined;
+
+import * as util from &apos;./util.js&apos;;
+import * as vectormath from &apos;./vectormath.js&apos;;
+import * as toolprop from &apos;./toolprop.js&apos;;
+import * as controller from &apos;./controller.js&apos;;
+import {pushModalLight, popModalLight, copyEvent} from &apos;./simple_events.js&apos;;
+
+let Vector4 = vectormath.Vector4;
+
+export let Icons = {};
+
+/*
+Icons are defined in spritesheets that live in 
+the iconsheet16/32 dom nodes.  Icons are numbered start from
+the upper left sprite tile.
+
+This function sets the mapping between icon numbers and names.
+
+The following icons should be in the icon sheet and in this map:
+
+RESIZE      :
+SMALL_PLUS  :
+TRANSLATE   : for moving things
+UI_EXPAND   : panel open icon
+UI_COLLAPSE : panel close icon
+*/
+export function setIconMap(icons) {
+  for (let k in icons) {
+    Icons[k] = icons[k];
+  }
+}
+
+export function color2css(c, alpha_override) {
+  let r = ~~(c[0]*255);
+  let g = ~~(c[1]*255);
+  let b = ~~(c[2]*255);
+  let a = c.length &lt; 4 ? 1.0 : c[3];
+  
+  a = alpha_override !== undefined ? alpha_override : a;
+  
+  if (c.length == 3 &amp;&amp; alpha_override === undefined) {
+    return `rgb(${r},${g},${b})`;
+  } else {
+    return `rgba(${r},${g},${b}, ${a})`;
+  }
+}
+window.color2css = color2css;
+
+let css2color_rets = util.cachering.fromConstructor(Vector4, 64);
+let cmap = {
+  red : [255, 0, 0, 1],
+  green : [0, 255, 0, 1],
+  blue : [0, 0, 255, 1],
+  yellow : [255, 255, 0, 1],
+  white : [255, 255, 255, 1],
+  black : [0, 0, 0, 1],
+  grey : [127, 127, 127, 1],
+  teal : [0, 255, 255, 1]
+}
+
+export function css2color(color) {
+  let ret = css2color_rets.next();
+  
+  if (color in cmap) {
+    return ret.load(cmap[color]);
+  }
+  
+  color = color.replace(&quot;rgba&quot;, &quot;&quot;).replace(&quot;rgb&quot;, &quot;&quot;).replace(/[\(\)]/g, &quot;&quot;).trim().split(&quot;,&quot;)
+  
+  for (let i=0; i&lt;color.length; i++) {
+    ret[i] = parseFloat(color[i]);
+    if (i &lt; 3) {
+      ret[i] /= 255;
+    }
+  }
+  
+  return ret;
+}
+
+window.css2color = css2color
+
+export const EnumProperty = toolprop.EnumProperty;
+
+export const ErrorColors = {
+  WARNING : &quot;yellow&quot;,
+  ERROR : &quot;red&quot;,
+  OK : &quot;green&quot;
+};
+
+export const theme = {
+  base : {
+    &quot;numslider_width&quot; : 24,
+    &quot;numslider_height&quot; : 24,
+
+    &quot;defaultWidth&quot; : 32,
+    &quot;defaultHeight&quot; : 32,
+
+    &quot;NoteBG&quot; : &quot;rgba(220, 220, 220, 0.0)&quot;,
+    &quot;NoteTextColor&quot; : &quot;rgb(100, 100, 100)&quot;,
+    &quot;TabStrokeStyle1&quot; : &quot;rgba(200, 200, 200, 1.0)&quot;,
+    &quot;TabStrokeStyle2&quot; : &quot;rgba(225, 225, 225, 1.0)&quot;,
+    &quot;TabInactive&quot; : &quot;rgba(150, 150, 150, 1.0)&quot;,
+    &quot;TabHighlight&quot; : &quot;rgba(50, 50, 50, 0.2)&quot;,
+
+    &quot;TabTextFont&quot; : &quot;sans-serif&quot;,
+    &quot;TabTextSize&quot; : 18,
+    &quot;TabTextColor&quot; : &quot;rgba(35, 35, 35, 1.0)&quot;,
+
+    &quot;DefaultPanelBG&quot; : &quot;rgba(155, 155, 155, 1.0)&quot;,
+    &quot;InnerPanelBG&quot; : &quot;rgba(140, 140, 140, 1.0)&quot;,
+
+    &quot;BoxRadius&quot; : 12,
+    &quot;BoxMargin&quot; : 4,
+    &quot;BoxHighlight&quot; : &quot;rgba(155, 220, 255, 1.0)&quot;,
+    &quot;BoxDepressed&quot; : &quot;rgba(130, 130, 130, 1.0)&quot;,
+    &quot;BoxBG&quot; : &quot;rgba(170, 170, 170, 1.0)&quot;,
+    &quot;DisabledBG&quot; : &quot;rgba(110, 110, 110, 1.0)&quot;,
+    &quot;BoxSubBG&quot; : &quot;rgba(175, 175, 175, 1.0)&quot;, //for subpanels
+    &quot;BoxBorder&quot; : &quot;rgba(255, 255, 255, 1.0)&quot;,
+    &quot;MenuBG&quot; : &quot;rgba(250, 250, 250, 1.0)&quot;,
+    &quot;MenuHighlight&quot; : &quot;rgba(155, 220, 255, 1.0)&quot;,
+    &quot;AreaHeaderBG&quot; : &quot;rgba(170, 170, 170, 1.0)&quot;,
+
+    //fonts
+    &quot;DefaultTextFont&quot; : &quot;sans-serif&quot;,
+    &quot;DefaultTextSize&quot; : 14,
+    &quot;DefaultTextColor&quot; : &quot;rgba(35, 35, 35, 1.0)&quot;,
+
+    &quot;LabelTextFont&quot; : &quot;sans-serif&quot;,
+    &quot;LabelTextSize&quot; : 13,
+    &quot;LabelTextColor&quot; : &quot;rgba(75, 75, 75, 1.0)&quot;,
+
+    &quot;HotkeyTextSize&quot;  : 12,
+    &quot;HotkeyTextColor&quot; : &quot;rgba(130, 130, 130, 1.0)&quot;,
+    &quot;HotkeyTextFont&quot;  : &quot;courier&quot;,
+
+    &quot;MenuTextSize&quot;  : 12,
+    &quot;MenuTextColor&quot; : &quot;rgba(25, 25, 25, 1.0)&quot;,
+    &quot;MenuTextFont&quot;  : &quot;sans-serif&quot;
+  },
+
+  button : {
+    &quot;defaultWidth&quot; : 100,
+    &quot;defaultHeight&quot; : 24
+  },
+
+  numslider : {
+    &quot;defaultWidth&quot; : 100,
+    &quot;defaultHeight&quot; : 29
+  },
+
+  colorfield : {
+    fieldsize : 32,
+    defaultWidth : 200,
+    defaultHeight : 200,
+    hueheight : 24,
+    colorBoxHeight : 24,
+    circleSize : 4,
+    DefaultPanelBG : &quot;rgba(170, 170, 170, 1.0)&quot;
+  },
+
+  listbox : {
+    DefaultPanelBG : &quot;rgba(230, 230, 230, 1.0)&quot;,
+    ListHighlight : &quot;rgba(155, 220, 255, 0.5)&quot;,
+    ListActive : &quot;rgba(200, 205, 215, 1.0)&quot;,
+    width : 110,
+    height : 200
+  }
+};
+
+
+export function setTheme(theme2) {
+  //merge theme
+  for (let k in theme2) {
+    let v = theme2[k];
+
+    if (!(k in theme)) {
+      theme[k] = {};
+    }
+
+    for (let k2 in v) {
+      theme[k][k2] = v[k2];
+    }
+  }
+}
+
+let _last_report = util.time_ms();
+export function report(msg) {
+  if (util.time_ms() - _last_report &gt; 350) {
+    console.warn(msg);
+    _last_report = util.time_ms();
+  }
+}
+
+//this function is deprecated
+export function getDefault(key, elem) {
+  if (key in theme.base) {
+    return theme.base[key];
+  } else {
+    throw new Error(&quot;Unknown default&quot;, key);
+  }
+}
+
+//XXX remember to set this properly
+export function IsMobile() {
+  return false;
+};
+
+class _IconManager {
+  constructor(image, tilesize, number_of_horizontal_tiles, drawsize) {
+    this.tilex = number_of_horizontal_tiles;
+    this.tilesize = tilesize;
+    this.drawsize = drawsize;
+
+    this.image = image;
+  }
+  
+  canvasDraw(canvas, g, icon, x=0, y=0) {
+    let tx = icon % this.tilex;
+    let ty = ~~(icon / this.tilex);
+
+    let dpi = UIBase.getDPI();
+    let ts = this.tilesize;
+    let ds = this.drawsize;
+
+    g.drawImage(this.image, tx*ts, ty*ts, ts, ts, x, y, ds*dpi, ds*dpi);
+  }
+
+  setCSS(icon, dom) {
+    dom.style[&quot;background&quot;] = this.getCSS(icon);
+    dom.style[&quot;background-size&quot;] = (this.drawsize*this.tilex) + &quot;px&quot;;
+  }
+
+  //icon is an integer
+  getCSS(icon) {
+    if (icon == -1) { //-1 means no icon
+      return &apos;&apos;;
+    }
+    
+    let ratio = this.drawsize / this.tilesize;
+
+    let x = (-(icon % this.tilex) * this.tilesize) * ratio;
+    let y = (-(~~(icon / this.tilex)) * this.tilesize) * ratio;
+
+    //x = ~~x;
+    //y = ~~y;
+
+    console.log(this.tilesize, this.drawsize, x, y);
+
+    return `url(&quot;${this.image.src}&quot;) ${x}px ${y}px`;
+  }
+}
+
+export class IconManager {
+  constructor(images, sizes, horizontal_tile_count) {
+    this.iconsheets = [];
+    this.tilex = horizontal_tile_count;
+    
+    for (let i=0; i&lt;images.length; i++) {
+      this.iconsheets.push(new _IconManager(images[i], sizes[i], horizontal_tile_count));
+    }
+  }
+
+  reset(horizontal_tile_count) {
+    this.iconsheets.length = 0;
+    this.tilex = horizontal_tile_count;
+  }
+
+  add(image, size, drawsize=size) {
+    this.iconsheets.push(new _IconManager(image, size, this.tilex, drawsize));
+    return this;
+  }
+
+  canvasDraw(canvas, g, icon, x=0, y=0, sheet=0) {
+    sheet = this.iconsheets[sheet];
+    sheet.canvasDraw(canvas, g, icon, x, y);
+  }
+  
+  getTileSize(sheet=0) {
+    return this.iconsheets[sheet].drawsize;
+  }
+
+  getRealSize(sheet=0) {
+    return this.iconsheets[sheet].tilesize;
+  }
+  
+  //icon is an integer
+  getCSS(icon, sheet=0) {
+    return this.iconsheets[sheet].getCSS(icon);
+  }
+
+  setCSS(icon, dom, sheet=0) {
+    return this.iconsheets[sheet].setCSS(icon, dom);
+  }
+}
+
+export let iconmanager = new IconManager([
+  document.getElementById(&quot;iconsheet&quot;),
+  document.getElementById(&quot;iconsheet16&quot;)
+], [32, 16], 16);
+
+//if client code overrides iconsheets, they must follow logical convention
+//that the first one is &quot;small&quot; and the second is &quot;large&quot;
+export let IconSheets = {
+  SMALL : 0,
+  LARGE : 1
+};
+
+export function makeIconDiv(icon, sheet=0) {
+    let size = iconmanager.getRealSize(sheet);
+    let drawsize = iconmanager.getTileSize(sheet);
+
+    let icontest = document.createElement(&quot;div&quot;);
+    
+    icontest.style[&quot;width&quot;] = icontest.style[&quot;min-width&quot;] = drawsize + &quot;px&quot;;
+    icontest.style[&quot;height&quot;] = icontest.style[&quot;min-height&quot;] = drawsize + &quot;px&quot;;
+    
+    icontest.style[&quot;background-color&quot;] = &quot;orange&quot;;
+    
+    icontest.style[&quot;margin&quot;] = &quot;0px&quot;;
+    icontest.style[&quot;padding&quot;] = &quot;0px&quot;;
+
+    iconmanager.setCSS(icon, icontest, sheet);
+
+    return icontest;
+}
+
+let Vector2 = vectormath.Vector2;
+let Matrix4 = vectormath.Matrix4;
+
+export const UIFlags = {
+
+};
+
+export const PackFlags = {
+  INHERIT_WIDTH  : 1,
+  INHERIT_HEIGHT : 2,
+  VERTICAL : 4,
+  USE_ICONS : 8,
+  SMALL_ICON : 16,
+  LARGE_ICON : 32
+};
+ 
+let first = (iter) =&gt; {
+  if (iter === undefined) {
+    return undefined;
+  }
+  
+  if (!(Symbol.iterator in iter)) {
+    for (let item in iter) {
+      return item;
+    }
+    
+    return undefined;
+  }
+  
+  for (let item of iter) {
+    return item;
+  }
+}
+
+
+export class DataPathError extends Error {};
+
+export class SimpleContext {
+  constructor(stateobj, api) {
+    if (api === undefined) {
+      throw new Error(&quot;api cannot be undefined, see controller.js&quot;);
+    }
+    this.state = stateobj;
+    this.api = api;
+  }
+}
+  
+
+let _idgen = 0;
+
+export class UIBase extends HTMLElement {
+  constructor() {
+    super();
+    
+    let tagname = this.constructor.define().tagname;
+    
+    this._id = tagname.replace(/\-/g, &quot;_&quot;) + (_idgen++);
+
+    this.default_overrides = {};
+
+    //getting css to flow down properly can be a pain, so
+    //some packing settings are set as bitflags here,
+    //see PackFlags
+    
+    /*
+    setInterval(() =&gt; {
+      this.update();
+    }, 200);
+    //*/
+
+    this._modaldata = undefined;
+    this.packflag = 0;
+    this._disabled = false;
+    this._disdata = undefined;
+    this.shadow = this.attachShadow({mode : &apos;open&apos;});
+    this._ctx = undefined;
+    
+    this.description = undefined;
+    
+    let style = document.createElement(&quot;style&quot;);
+    style.textContent = `
+    .DefaultText {
+      font: `+_getFont()+`;
+    }
+    `;
+    this.shadow.appendChild(style);
+    this._init_done = false;
+
+    //make default touch handlers that send mouse events
+    let do_touch = (e, type, button) =&gt; {
+      button = button === undefined ? 0 : button;
+      let e2 = copyEvent(e);
+
+      if (e.touches.length == 0) {
+        //hrm, what to do, what to do. . .
+      } else {
+        let t = e.touches[0];
+
+        e2.pageX = t.pageX;
+        e2.pageY = t.pageY;
+        e2.screenX = t.screenX;
+        e2.screenY = t.screenY;
+        e2.clientX = t.clientX;
+        e2.clientY = t.clientY;
+        e2.x = t.x;
+        e2.y = t.y;
+      }
+
+      e2.button = button;
+
+      e2 = new MouseEvent(type, e2);
+
+      e2.stopPropagation = e.stopPropagation.bind(e);
+      e2.preventDefault = e.preventDefault.bind(e);
+
+      this.dispatchEvent(e2);
+    };
+
+    this.addEventListener(&quot;touchstart&quot;, (e) =&gt; {
+      do_touch(e, &quot;mousedown&quot;, 0);
+    }, {passive : false});
+    this.addEventListener(&quot;touchmove&quot;, (e) =&gt; {
+      do_touch(e, &quot;mousemove&quot;);
+    }, {passive : false});
+    this.addEventListener(&quot;touchcancel&quot;, (e) =&gt; {
+      do_touch(e, &quot;mouseup&quot;, 2);
+    }, {passive : false});
+    this.addEventListener(&quot;touchend&quot;, (e) =&gt; {
+      do_touch(e, &quot;mouseup&quot;, 0);
+    }, {passive : false});
+  }
+
+  appendChild(child) {
+    if (child instanceof UIBase) {
+      child.ctx = this.ctx;
+      child.parentWidget =
+        this;
+    }
+
+    return super.appendChild(child);
+  }
+
+    //delayed init
+  init() {
+    
+  }
+  
+  _ondestroy() {
+    if (this.ondestroy !== undefined) {
+      this.ondestroy();
+    }
+  }
+  
+  remove() {
+    super.remove();
+    this._ondestroy();
+  }
+  
+  removeChild(child) {
+    super.removeChild(child);
+    
+    child._ondestroy();
+  }
+
+
+  //used by container nodes
+  _forEachChildren(cb, thisvar) {
+    let rec = (n) =&gt; {
+      if (n instanceof UIBase) {
+        if (thisvar !== undefined) {
+          cb.call(thisvar, n);
+        } else {
+          cb(n);
+        }
+      } else {
+        for (let n2 of n.childNodes) {
+          rec(n2);
+        }
+      }
+    }
+    
+    for (let n of this.childNodes) {
+      rec(n);
+    }
+    for (let n of this.shadow.childNodes) {
+      rec(n);
+    }
+  }
+  
+  _init() {
+    if (this._init_done) {
+      return;
+    }
+    
+    this._init_done = true;
+    this.init();
+  }
+  
+  static setDefault(element) {
+    return element;
+  }
+  
+  getWinWidth() {
+    return window.innerWidth;
+  }
+  
+  getWinHeight() {
+    return window.innerHeight;
+  }
+  
+  //are we exclusively 
+  pickElement(x, y, sx=0, sy=0, nodeclass=undefined) {
+    let rects = this.getClientRects();
+    let ret;
+    
+    if (rects.length == 0)
+      return;
+    
+    this._forEachChildren((n) =&gt; {
+      let ret2 = n.pickElement(x, y, sx, sy, nodeclass); //sx+rects[0].x, sy+rects[0].y);
+      
+      if (ret2 !== undefined) {
+        ret = ret2;
+      }
+    });
+    
+    if (ret === undefined) {
+      if (nodeclass !== undefined &amp;&amp; !(this instanceof nodeclass))
+        return undefined;
+
+      for (let rect of rects) {
+        if (x &gt;= rect.x+sx &amp;&amp; x &lt;=rect.x+sx+rect.width &amp;&amp; 
+            y &gt;= rect.y+sy &amp;&amp; y &lt;=rect.y+sy+rect.height)
+        {
+          return this;
+        }
+      }
+    }
+    
+    return ret;
+  }
+
+  set disabled(val) {
+    if (!!this._disabled == !!val)
+      return;
+
+    if (val &amp;&amp; !this._disdata) {
+      this._disdata = {
+        background : this.background,
+        bgcolor : this.style[&quot;background-color&quot;],
+        DefaultPanelBG : this.default_overrides.DefaultPanelBG,
+        BoxBG : this.default_overrides.BoxBG
+      };
+
+      let bg = this.getDefault(&quot;DisabledBG&quot;);
+
+      this.background = bg;
+      this.default_overrides.DefaultPanelBG = bg;
+      this.default_overrides.BoxBG = bg;
+      this.style[&quot;background-color&quot;] = bg;
+
+      this._disabled = val;
+      this.on_disabled();
+    } else if (!val &amp;&amp; this._disdata) {
+      if (this._disdata.DefaultPanelBG) {
+        this.default_overrides.DefaultPanelBG = this._disdata.DefaultPanelBG;
+      } else {
+        delete this.default_overrides.DefaultPanelBG;
+      }
+
+      if (this.boxBG) {
+        this.default_overrides.BoxBG = this._disdata.BoxBG;
+      } else {
+        delete this.default_overrides.BoxBG;
+      }
+
+      this.background = this._disdata.background;
+      this.style[&quot;background-color&quot;] = this._disdata.bgcolor;
+      this._disdata = undefined;
+
+      this._disabled = val;
+      this.on_enabled();
+    }
+
+    this._disabled = val;
+
+    let rec = (n) =&gt; {
+      if (n instanceof UIBase) {
+        n.disabled = val;
+      }
+
+      for (let c of n.childNodes) {
+        rec(c);
+      }
+
+      if (!n.shadow) return;
+
+      for (let c of n.shadow.childNodes) {
+        rec(c);
+      }
+    };
+
+    rec(this);
+  }
+
+  on_disabled() {
+
+  }
+
+  on_enabled() {
+
+  }
+
+  pushModal(handlers=this) {
+    if (this._modaldata !== undefined){
+      console.warn(&quot;UIBase.prototype.pushModal called when already in modal mode&quot;);
+      //pop modal stack just to be safe
+      popModalLight(this._modaldata);
+      this._modaldata = undefined;
+    }
+
+    this._modaldata = pushModalLight(handlers);
+    return this._modaldata;
+  }
+
+  popModal() {
+    if (this._modaldata === undefined) {
+      console.warn(&quot;Invalid call to UIBase.prototype.popModal&quot;);
+      return;
+    }
+
+    popModalLight(this._modaldata);
+    this._modaldata = undefined;
+  }
+
+  get disabled() {
+    return this._disabled;
+  }
+
+  flash(color, rect_element=this, timems=355) {
+    console.warn(&quot;flash disabled due to bug&quot;);
+    return;
+    
+    console.trace(&quot;flash&quot;);
+    if (typeof color != &quot;object&quot;) {
+        color = css2color(color);
+    }
+    color = new Vector4(color);
+    let csscolor = color2css(color);
+    
+    if (this._flashtimer !== undefined &amp;&amp; this._flashcolor != csscolor) {
+      window.setTimeout(() =&gt; {
+        this.flash(color, rect_element, timems);
+      }, 100);
+      
+      return;
+    } else if (this._flashtimer !== undefined) {
+      return;
+    }
+    
+    let rect = rect_element.getClientRects()[0];
+    if (rect === undefined) {
+      return;
+    }
+    
+    //okay, dom apparently calls onchange() on .remove, so we have
+    //to put the timer code first to avoid loops
+    let timer;
+    
+    this._flashtimer = timer = window.setInterval((e) =&gt; {
+      if (timer === undefined) {
+        return
+      }
+      
+      let a = 1.0 - tick / max;
+      div2.style[&quot;background-color&quot;] = color2css(color, a*a*0.5);
+      
+      if (tick &gt; max) {
+        window.clearInterval(timer);
+        
+        this._flashtimer = undefined;
+        this._flashcolor = undefined;
+        timer = undefined;
+        
+        try {
+          this.remove();
+          div.parentNode.insertBefore(this, div);
+        } catch (error) {
+          console.log(&quot;dom removal error&quot;);
+          div.appendChild(this);
+          return;
+        }
+        
+        //console.log(div.parentNode);
+        div.remove();
+        
+        this.focus();
+      }
+      
+      tick++;
+    }, 20);
+
+    console.log(this.parentNode);
+    
+    let div = document.createElement(&quot;div&quot;);
+    
+    this.parentNode.insertBefore(div, this);
+    
+    try {
+      this.remove();
+    } catch (error) {
+      console.log(&quot;this.remove() failure in UIBase.flash()&quot;);
+    }        
+    
+    div.appendChild(this);
+    
+    let div2 = document.createElement(&quot;div&quot;);
+    
+    div2.style[&quot;pointer-events&quot;] = &quot;transparent&quot;;
+    div2.tabIndex = undefined;
+    div2.style[&quot;z-index&quot;] = &quot;100&quot;;
+    div2.style[&quot;display&quot;] = &quot;float&quot;;
+    div2.style[&quot;position&quot;] = &quot;absolute&quot;;
+    div2.style[&quot;left&quot;] = rect.x + &quot;px&quot;;
+    div2.style[&quot;top&quot;] = rect.y + &quot;px&quot;;
+
+    div2.style[&quot;background-color&quot;] = color2css(color, 0.5);
+    div2.style[&quot;width&quot;] = rect.width + &quot;px&quot;;
+    div2.style[&quot;height&quot;] = rect.height + &quot;px&quot;;
+
+    div.appendChild(div2);
+    this.focus();
+    
+    let tick = 0;
+    let max = ~~(timems/20);
+    
+    this._flashcolor = csscolor;
+  }
+  
+  destory() {
+  }
+  
+  on_resize(newsize) {
+  }
+  
+  get ctx() {
+    return this._ctx;
+  }
+  
+  toJSON() {
+    let ret = {};
+    
+    if (this.hasAttribute(&quot;datapath&quot;)) {
+      ret.datapath = this.getAttribute(&quot;datapath&quot;);
+    }
+    
+    return ret;
+  }
+  
+  loadJSON(obj) {
+    if (!this._init_done) {
+      this._init();
+    }
+  }
+  
+  getPathValue(ctx, path) {
+    try {
+      return ctx.api.getValue(ctx, path);
+    } catch (error) {
+      report(&quot;data path error in ui for&quot; + path);
+      return undefined;
+    }
+  }
+  
+  setPathValue(ctx, path, val) {
+    if (this.hasAttribute(&quot;mass_set_path&quot;)) {
+      ctx.api.massSetProp(ctx, this.getAttribute(&quot;mass_set_path&quot;), val);
+      ctx.api.setValue(ctx, path, val);
+    } else {
+      ctx.api.setValue(ctx, path, val);
+    }
+  }
+  
+  getPathMeta(ctx, path) {
+    return ctx.api.resolvePath(ctx, path).prop;
+  }
+
+  getScreen() {
+    return this.ctx.screen;
+  }
+
+  //not sure I&apos;m happy about this. . .
+  //it adds a method call to the event queue,
+  //but only if that method (for this instance, as differentiated
+  //by ._id) isn&apos;t there already.
+  
+  doOnce(func, timeout=undefined) {
+    if (func._doOnce === undefined) {
+      func._doOnce_reqs = new Set();
+      
+      func._doOnce = (thisvar) =&gt; {
+        if (func._doOnce_reqs.has(thisvar._id)) {
+          return;
+        }
+        
+        func._doOnce_reqs.add(thisvar._id);
+        
+        window.setTimeout(() =&gt; {
+          func._doOnce_reqs.delete(thisvar._id);
+          
+          func.call(thisvar);
+        }, timeout);
+      }
+    }
+    
+    func._doOnce(this);
+  }
+
+  
+  set ctx(c) {
+    this._ctx = c;
+    
+    let rec = (n) =&gt; { 
+      if (n instanceof UIBase) {
+        n.ctx = c;
+      }
+      for (let child of n.childNodes) {
+        rec(child);
+      }
+    }
+    
+    if (this._init_done) {
+      this.update();
+    }
+  }
+  
+  float(x=0, y=0, zindex=undefined) {
+    this.style.position = &quot;absolute&quot;;
+    
+    this.style.left = x + &quot;px&quot;;
+    this.style.top = y + &quot;px&quot;;
+    
+    if (zindex !== undefined) {
+      this.style[&quot;z-index&quot;] = zindex
+    }
+    
+    return this;
+  }
+  
+  _ensureChildrenCtx() {
+    let ctx = this.ctx;
+    if (ctx === undefined) {
+      return;
+    }
+    
+    this._forEachChildren((n) =&gt; {
+      if (n.ctx === undefined) {
+        n.ctx = ctx;
+      }
+      
+      n._ensureChildrenCtx(ctx);
+    });
+  }
+  
+  //called regularly
+  update() {
+    //use dom tooltips
+    if (this.description !== undefined &amp;&amp; this.title != this.description) {
+      this.title = this.description;
+    }
+
+    if (!this._init_done) {
+      this._init();
+    }
+    
+    //this._ensureChildrenCtx();
+  }
+  
+  onadd() {
+    if (!this._init_done) {
+      this._init();
+    }
+  }
+  
+  //scaling ratio for high-resolution displays
+  static getDPI() {
+    let dpi = window.devicePixelRatio;
+    
+    let f = Math.fract(dpi);
+    let steps = 6
+    f = (Math.ceil(f*steps))/steps;
+    
+    //f = Math.ceil(Math.log(dpi) / Math.log(2));
+    //f = Math.pow(2, f);
+    
+    return (Math.floor(dpi) + f)*1.33333333;
+    
+    //try to snap to a reasonable value
+    
+    return dpi;
+  }
+  
+  /**
+   * for saving ui state.
+   * see saveUIData() export
+   *
+   * should fail gracefully.
+   */
+  saveData() {
+    return {
+    };
+  }
+
+  /**
+   * for saving ui state.
+   * see saveUIData() export
+   *
+   * should fail gracefully.
+   *
+   * also, it doesn&apos;t rebuild the object graph,
+   * it patches it; for true serialization use
+   * the toJSON/loadJSON or STRUCT interfaces.
+   */
+  loadData(obj) {
+    return this;
+  }
+  
+  //parent_cls is a string, tagname of element to extend
+  static register(cls) {
+    //if (parent_cls !== undefined) {
+    // customElements.define(cls.define().tagname, cls, {extends : &quot;div&quot;});
+    //} else {
+      customElements.define(cls.define().tagname, cls);
+    //}
+  }
+
+  overrideDefault(key, val) {
+    this.default_overrides[key] = val;
+  }
+
+  getDefault(key) {
+    let p = this;
+
+    while (p) {
+      if (key in p.default_overrides) {
+        return p.default_overrides[key];
+      }
+
+      p = p.parentWidget;
+    }
+
+    return this.getClassDefault(key);
+  }
+
+  getClassDefault(key) {
+    let p = this.constructor, lastp = undefined;
+
+    while (p &amp;&amp; p !== lastp &amp;&amp; p !== UIBase &amp;&amp; p !== Object) {
+      let def = p.define();
+
+      if (def.style &amp;&amp; def.style in theme &amp;&amp; key in theme[def.style]) {
+        return theme[def.style][key];
+      }
+
+      if (!p.prototype || !p.prototype.__proto__)
+        break;
+
+      p = p.prototype.__proto__.constructor;
+    }
+
+    return theme.base[key];
+  }
+
+  getStyle() {
+    let p = this.constructor, lastp = undefined;
+
+    while (p &amp;&amp; p !== lastp &amp;&amp; p !== Object) {
+      let def = p.define();
+
+      if (def.style)
+        return def.style;
+
+      if (!p.prototype || !p.prototype.__proto__)
+        break;
+
+      p = p.prototype.__proto__.constructor;
+    }
+
+    return &quot;default&quot;;
+  }
+
+  /**
+   * Defines core attributes of the class
+   *
+   * @example
+   *
+   * static define() {return {
+   *   tagname : &quot;custom-element-x&quot;,
+   *   style : &quot;[style class in theme]&quot;
+   * }}
+   */
+  static define() {
+    throw new Error(&quot;Missing define() for ux element&quot;);
+  }
+}
+
+//okay, I need to refactor this function, 
+//it needs to take x, y as well as width, height,
+//and be usable for more use cases.
+export function drawRoundBox(elem, canvas, g, width, height, r=undefined, op=&quot;fill&quot;, color=undefined, pad=undefined) {
+    width = width === undefined ? canvas.width : width;
+    height = height === undefined ? canvas.height : height;
+    
+    let dpi = UIBase.getDPI();
+    
+    r = r === undefined ? elem.getDefault(&quot;BoxRadius&quot;) : r;
+    if (pad === undefined) {
+      pad = elem.getDefault(&quot;BoxMargin&quot;) * dpi;
+    }
+    
+    r *= dpi;
+    let r1=r, r2=r;
+    
+    if (r &gt; (height - pad*2)*0.5) {
+      r1 = (height - pad*2)*0.5;
+    }
+    
+    if (r &gt; (width - pad*2)*0.5) {
+      r2 = (width - pad*2)*0.5;
+    }
+    
+    let bg = color;
+    
+    if (bg === undefined &amp;&amp; canvas._background !== undefined) {
+      bg = canvas._background;
+    } else if (bg === undefined) {
+      bg = elem.getDefault(&quot;BoxBG&quot;);
+    }
+    
+    if (op == &quot;fill&quot;) {
+      g.clearRect(0, 0, width, height);
+    }
+    
+    g.fillStyle = bg;
+    //hackish!
+    g.strokeStyle = color === undefined ? elem.getDefault(&quot;BoxBorder&quot;) : color;
+    
+    let w = width, h = height;
+    
+    let th = Math.PI/4;
+    let th2 = Math.PI*0.75;
+    
+    g.beginPath();
+
+    g.moveTo(pad, pad+r1);
+    g.lineTo(pad, h-r1-pad);
+
+    g.quadraticCurveTo(pad, h-pad, pad+r2, h-pad);
+    g.lineTo(w-pad-r2, h-pad);
+    
+    g.quadraticCurveTo(w-pad, h-pad, w-pad, h-pad-r1);
+    g.lineTo(w-pad, pad+r1);
+    
+    g.quadraticCurveTo(w-pad, pad, w-pad-r2, pad);
+    g.lineTo(pad+r2, pad);
+
+    g.quadraticCurveTo(pad, pad, pad, pad+r1);
+    g.closePath();
+    
+    if (op == &quot;fill&quot;) {
+      g.fill();
+      g.stroke();
+    } else {
+      g.stroke();
+    }
+};
+
+//size is optional, defaults to font&apos;s default size
+export function _getFont(size, font=&quot;DefaultText&quot;, do_dpi=true) {
+  let dpi = UIBase.getDPI();
+  
+  if (!do_dpi) {
+    dpi = 1;
+  }
+  
+  if (size !== undefined) {
+    return &quot;&quot;+(size * dpi) + &quot;px &quot; + getDefault(font+&quot;Font&quot;);
+  } else {
+    let size = getDefault(font+&quot;Size&quot;);
+
+    if (size === undefined) {
+      console.warn(&quot;Unknown fontsize for font&quot;, font);
+      size = 14;
+    }
+
+    return &quot;&quot;+size+ &quot;px &quot; + getDefault(font+&quot;Font&quot;);
+  }
+}
+
+export function _ensureFont(canvas, g, size) {
+  let dpi = UIBase.getDPI();
+  
+  if (size !== undefined) {
+    g.font = &quot;&quot;+Math.ceil(size * dpi) + &quot;px sans-serif&quot;;
+  } else if (!canvas.font) {
+    let size = getDefault(&quot;DefaultTextSize&quot;) * dpi;
+
+    let add = &quot;0&quot;; //Math.ceil(Math.fract((0.5 / dpi))*100);
+    
+    //size += 4;
+    g.font = &quot;&quot;+Math.floor(size) + &quot;.&quot; + add + &quot;px sans-serif&quot;;
+  } else {
+    g.font = canvas.font;
+  }
+}
+
+export function measureText(text, canvas, g, size=undefined) {
+  _ensureFont(canvas, g, size);
+  
+  let ret = g.measureText(text);
+  
+  if (size !== undefined) {
+    //clear custom font for next time
+    g.font = undefined;
+  }
+  
+  return ret;
+}
+
+export function drawText(x, y, text, canvas, g, color=undefined, size=undefined) {
+  _ensureFont(canvas, g, size);
+  
+  g.fillStyle = getDefault(&quot;DefaultTextColor&quot;);
+  g.fillText(text, x+0.5, y+0.5);
+  
+  if (size !== undefined) {
+    //clear custom font for next time
+    g.font = undefined;
+  }
+}
+
+let PIDX=0, PSHADOW=1, PTOT=2;
+
+export function saveUIData(node, key) {
+  if (key === undefined) {
+    throw new Error(&quot;ui_base.saveUIData(): key cannot be undefined&quot;);
+  }
+  
+  let paths = [];
+  
+  let rec = (n, path, ni, is_shadow) =&gt; {
+    path = path.slice(0, path.length); //copy path
+    
+    let pi = path.length;
+    for (let i=0; i&lt;PTOT; i++) {
+      path.push(undefined);
+    }
+    
+    path[pi] = ni;
+    path[pi+1] = is_shadow;
+    
+    if (n instanceof UIBase) {
+      let path2 = path.slice(0, path.length);
+      path2.push(n.saveData());
+      
+      if (path2[pi+2]) {
+        paths.push(path2);
+      }
+    }
+    
+    for (let i=0; i&lt;n.childNodes.length; i++) {
+      let n2 = n.childNodes[i];
+      
+      rec(n2, path, i, false);
+    }
+    
+    let shadow = n.shadow;
+    
+    if (!shadow)
+      return;
+    
+    for (let i=0; i&lt;shadow.childNodes.length; i++) {
+      let n2 = shadow.childNodes[i];
+      
+      rec(n2, path, i, true);
+    }
+  }
+  
+  rec(node, [], 0, false);
+  
+  return JSON.stringify({
+    key : key,
+    paths : paths,
+    _ui_version : 1
+  });
+}
+
+export function loadUIData(node, buf) {
+  let obj = JSON.parse(buf);
+  let key = buf.key;
+  
+  for (let path of obj.paths) {
+    let n = node;
+    
+    let data = path[path.length-1];
+    path = path.slice(2, path.length-1); //in case some api doesn&apos;t want me calling .pop()
+    
+    for (let pi=0; pi&lt;path.length; pi += PTOT) {
+      let ni = path[pi], shadow = path[pi+1];
+      
+      let list;
+      
+      if (shadow) {
+        list = n.shadow;
+        
+        if (list) {
+          list = list.childNodes;
+        }
+      } else {
+        list = n.childNodes;
+      }
+      
+      if (list === undefined || list[ni] === undefined) {
+        //console.log(&quot;failed to load a ui data block&quot;, path);
+        n = undefined;
+        break;
+      }
+      
+      n = list[ni];
+    }
+    
+    if (n !== undefined &amp;&amp; n instanceof UIBase) {
+      n._init(); //ensure init&apos;s been called, _init will check if it has
+      n.loadData(data);
+      
+      //console.log(n, path, data);
+    }
+  }
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.1.0)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

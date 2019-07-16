@@ -121,6 +121,12 @@ export class Element {
     
     return this;
   }
+
+  static fromSTRUCT(reader) {
+    let ret = new this();
+    reader(ret);
+    return ret;
+  }
 }
 
 Element.STRUCT = `
@@ -132,6 +138,7 @@ mesh.Element {
   customData  : array(abstract(mesh.CustomDataElem));
 }
 `;
+nstructjs.manager.add_class(Element);
 
 /*
 class VertFaceIter {
@@ -184,16 +191,19 @@ export class Vertex extends Element {
   
   static fromSTRUCT(reader) {
     let ret = new Vertex();
-    
+
     reader(ret);
-    
+    ret.load(ret.co);
+
     return ret;
   }
 }
 util.mixin(Vertex, Vector3);
 
 Vertex.STRUCT = STRUCT.inherit(Vertex, Element, 'mesh.Vertex') + `
-  co      : vec3 | obj;
+  0       : float;
+  1       : float;
+  2       : float;
   no      : vec3 | obj.no;
   edges   : array(e, int) | (e.eid);
 }
@@ -323,7 +333,6 @@ export class Edge extends Element {
 Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
   v1     : int | obj.v1.eid;
   v2     : int | obj.v2.eid;
-  faces  : array(f, int) | f.eid;
 }
 `;
 nstructjs.manager.add_class(Edge);
@@ -362,7 +371,7 @@ Loop.STRUCT = STRUCT.inherit(Loop, Element, "mesh.Loop") + `
   radial_next : int | obj.radial_next.eid;
   radial_prev : int | obj.radial_prev.eid;
   next        : int | obj.next.eid;
-  prev        : int | obj.prev.ied;
+  prev        : int | obj.prev.eid;
 }
 `;
 nstructjs.manager.add_class(Loop);
@@ -455,13 +464,7 @@ export class LoopList extends Array {
     let ret = new LoopList();
     
     reader(ret);
-    
-    for (let eid of ret._loops) {
-      ret.push(eid);
-    }
-    
-    delete ret._loops;
-    
+
     return ret;
   }
   
@@ -476,6 +479,7 @@ mesh.LoopList {
   l : int | obj.l.eid;
 }
 `;
+nstructjs.manager.add_class(LoopList);
 
 export class Face extends Element {
   constructor() {
@@ -572,7 +576,7 @@ export class Face extends Element {
   }
 }
 Face.STRUCT = STRUCT.inherit(Face, Element, "mesh.Face") + `
-  lists : mesh.LoopList;
+  lists : array(mesh.LoopList);
   cent  : vec3;
   no    : vec3;
 }
@@ -606,7 +610,7 @@ export class ElementList extends Array {
     this.on_selected = undefined;
     this.highlight = this.active = undefined;
   }
-  
+
   get editable() {
     let this2 = this;
     
@@ -713,13 +717,17 @@ export class ElementList extends Array {
   
   setSelect(v, state) {
     if (state) {
+      if (!this.selected.has(v)) {
+        this.selected.add(v);
+      }
+
       v.flag |= MeshFlags.SELECT;
-      
-      this.selected.add(v);
     } else {
       v.flag &= ~MeshFlags.SELECT;
-      
-      this.selected.remove(v, true);
+
+      if (this.selected.has(v)) {
+        this.selected.remove(v, true);
+      }
     }
     
     return this;
@@ -732,7 +740,7 @@ export class ElementList extends Array {
     let act = ret.active;
     ret.active = undefined;
     
-    for (let item of ret.array) {
+    for (let item of ret.items) {
       ret.push(item)
       
       if (item.eid == act) {
@@ -745,7 +753,7 @@ export class ElementList extends Array {
 };
 ElementList.STRUCT = `
 mesh.ElementList {
-  items   : array(abstract(Element)) | obj;
+  items   : array(abstract(mesh.Element)) | obj;
   active  : int | obj.active !== undefined ? obj.active.eid : -1;
   type    : int;
 }
@@ -776,7 +784,17 @@ export class Mesh extends DataBlock {
     this.edges = this.getElemList(MeshTypes.EDGE);
     this.faces = this.getElemList(MeshTypes.FACE);
   }
-  
+
+  getElemLists() {
+    let ret = [];
+
+    for (let k in this.elists) {
+      ret.push(this.elists[k]);
+    }
+
+    return ret;
+  }
+
   getElemList(type) {
     if (!(type in this.elists)) {
       this.elists[type] = new ElementList(type);
@@ -1027,10 +1045,15 @@ export class Mesh extends DataBlock {
     
     f.eid = -1;
   }
-  
+
+  setActive(e) {
+    this.getElemList(e.type).active = e;
+  }
+
   selectFlush(selmode) {
     if (selmode & MeshTypes.VERTEX) {
       this.edges.selectNone();
+
       var set_active = this.edges.active === undefined;
       set_active = set_active || !((this.edges.active.v1.flag|this.edges.active.v2.flag) & MeshFlags.SELECT);
       
@@ -1051,6 +1074,22 @@ export class Mesh extends DataBlock {
           if (e.flag & MeshFlags.SELECT) {
             this.verts.setSelect(v, true);
             break;
+          }
+        }
+      }
+    } else if (selmode & MeshTypes.FACE) {
+      this.verts.selectNone();
+      this.edges.selectNone();
+
+      for (let f of this.faces) {
+        if (!(f.flag & MeshFlags.SELECT)) {
+          continue;
+        }
+
+        for (let list of f.lists) {
+          for (let l of list) {
+            this.verts.setSelect(l.v, true);
+            this.edges.setSelect(l.e, true);
           }
         }
       }
@@ -1237,22 +1276,19 @@ export class Mesh extends DataBlock {
   }
   
   setSelect(e, state) {
-    if (e.type == MeshTypes.VERTEX)
-      this.verts.setSelect(e, state);
-    else if (e.type == MeshTypes.EDGE)
-      this.edges.setSelect(e, state);
-    else
-      console.log("bad element", e);
+    this.getElemList(e.type).setSelect(e, state);
   }
   
   selectNone() {
-    this.verts.selectNone();
-    this.edges.selectNone();
+    for (let e of this.getElemLists()) {
+      e.selectNone();
+    }
   }
   
   selectAll() {
-    this.verts.selectAll();
-    this.edges.selectAll();
+    for (let e of this.getElemLists()) {
+      e.selectAll();
+    }
   }
   
   setShadeSmooth(smooth) {
@@ -1505,7 +1541,7 @@ export class Mesh extends DataBlock {
       e.l = eidmap[e.l];
     }
     
-    delete ret._elists;
+    //delete ret._elists;
     
     return ret;
   }
@@ -1520,7 +1556,7 @@ export class Mesh extends DataBlock {
 };
 
 Mesh.STRUCT = STRUCT.inherit(Mesh, DataBlock, "mesh.Mesh") + `
-  _elists : array(mesh.ElementList) | obj._getArrays;
+  _elists : array(mesh.ElementList) | obj._getArrays();
   eidgen    : IDGen;
 }
 `;

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../">
+  <title data-ice="title">Manual | path.ux</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  <script src="script/manual.js"></script>
+<meta name="description" content="this is awesome library"><meta property="twitter:card" content="summary"><meta property="twitter:title" content="path.ux"><meta property="twitter:description" content="this is awesome library"></head>
+<body class="layout-container manual-root" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+<a style="position:relative; top:3px;" href="https://github.com/joeedh/path.ux.git"><img width="20px" src="./image/github.png"></a></header>
+
+<nav class="navigation" data-ice="nav"><div class="manual-toc-root">
+  
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#introduction" data-ice="link">Introduction</a></li>
+<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#data-bindings" data-ice="link">Data Bindings</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/nstructjs.html"><a href="manual/nstructjs.html" data-ice="link">NStructJS</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/nstructjs.html"><a href="manual/nstructjs.html#controller-how-fields-are-saved" data-ice="link">Controller How Fields Are Saved</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/nstructjs.html"><a href="manual/nstructjs.html#versioning" data-ice="link">Versioning</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html" data-ice="link">Tool System</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html#context" data-ice="link">Context</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html#undo" data-ice="link">Undo</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html#tooldef--" data-ice="link">tooldef()</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html#tool-properties" data-ice="link">Tool Properties</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/controller.html"><a href="manual/controller.html" data-ice="link">Object Wrapping Example</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/libblock.html"><a href="manual/libblock.html#database-library" data-ice="link">Database Library</a></li>
+<li data-ice="manualNav" class="indent-h1" data-link="manual/libblock.html"><a href="manual/libblock.html#struct-scripts" data-ice="link">Struct scripts</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    </ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    </ul>
+  </div>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><div class="github-markdown" data-ice="content"><h1 id="introduction">Introduction</h1><p>Path.ux is roughly based on <a href="http://www.blender.org">Blender&apos;s</a> architecture.</p>
+<h1 id="data-bindings">Data Bindings</h1><p><a href="./manual/manual/controller.html">Main page</a></p>
+<p>The Blender 2.5 project refactored the internal architecture into a rough MVC pattern.  The model is the core code, the view is the UI, and the controller is the glue between them.</p>
+<p>The controller is called &quot;RNA&quot; and it uses the concept of object paths. So if you have an object, you could look up type information (and the value of) a property with a simple path, e.g. &quot;object.subobject.some_property&quot;.  Blender uses RNA for its user interface, its python api and its animation system (you can associate object paths with animation curves).</p>
+<p>Internally the controller has a special wrapper API for blender&apos;s c-struct-based pseudo-objects.  This works extremely well as it keeps type information that&apos;s only used by the UI out of the model codebase (e.g. the model might not care that a specific color should be clamped to 0-2 instead of 0-1).  Even better, the object model presented by the controller need not match the internal data structures.</p>
+<p>Since the controller provides type info to the UI a lot of messy boilerplate is avoided, leading to very consise layout code:</p>
+<pre><code><code class="source-code prettyprint">def panel(layout, context):
+    row = layout.row
+    row.prop(context.object, &quot;some_object_property&quot;)
+    row.tool(&quot;mesh.subdivide&quot;)</code>
+</code></pre></div>
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.1.0)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

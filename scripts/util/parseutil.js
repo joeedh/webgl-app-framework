@@ -32,8 +32,7 @@ export class tokdef {
   }
 }
 
-export PUTLParseError
- = class PUTLParseError extends Error
+export class PUTLParseError extends Error
 {
   constructor(msg) {
     super();

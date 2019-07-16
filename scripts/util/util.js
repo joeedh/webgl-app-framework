@@ -1,6 +1,35 @@
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
+//uses hex
+export function btoa(buf) {
+  if (buf instanceof ArrayBuffer) {
+    buf = new Uint8Array(buf);
+  }
+
+  if (typeof buf == "string" || buf instanceof String) {
+    return window.btoa(buf);
+  }
+
+  var ret = "";
+  for (var i=0; i<buf.length; i++) {
+    ret += String.fromCharCode(buf[i]);
+  }
+
+  return btoa(ret);
+};
+
+export function atob(buf) {
+  let data = window.atob(buf);
+  let ret = [];
+
+  for (let i=0; i<data.length; i++) {
+    ret.push(data.charCodeAt(i));
+  }
+
+  return new Uint8Array(ret);
+}
+
 //XXX what is this for?
 var EmptySlot = {};
 

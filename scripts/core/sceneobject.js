@@ -93,6 +93,7 @@ export class SceneObject extends DataBlock {
   }
 }
 SceneObject.STRUCT = STRUCT.inherit(SceneObject, DataBlock) + `
+  flag : int; 
   data : DataRef | DataRef.fromBlock(obj.data);
 }
 `;

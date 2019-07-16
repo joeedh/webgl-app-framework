@@ -1,5 +1,5 @@
 import {View3D_SubEditorIF} from './view3d_subeditor.js';
-import {SelMask} from './selectmode.js';
+import {SelMask, SelOneToolModes, SelToolModes} from './selectmode.js';
 import {Mesh, MeshTypes, MeshFlags} from '../../core/mesh.js';
 import * as util from '../../util/util.js';
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
@@ -7,10 +7,12 @@ import {Shaders} from './view3d_shaders.js'
 import {FindnearestRet} from "./view3d_subeditor.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
 import * as math from '../../util/math.js';
+import {SelectOneOp} from '../../mesh/select_ops.js';
+
 
 //each subeditor should fill in these tools
 export const MeshTools = {
-  SELECTONE         : undefined,
+  SELECTONE         : SelectOneOp,
   TOGGLE_SELECT_ALL : undefined,
   CIRCLE_SELECT     : undefined,
   BOX_SELECT        : undefined,
@@ -77,14 +79,43 @@ export class MeshEditor extends View3D_SubEditorIF {
     uiname   : "Mesh",
     icon     : -1,
     selmask  : SelMask.VERTEX|SelMask.FACE|SelMask.EDGE,
-    stdtools : undefined //see StandardTools
+    stdtools : MeshTools //see StandardTools
   }}
 
-  clickselect(x, y) {
-    throw new Error("implement me");
+  clickselect(evt, x, y, selmask) {
+    let ret = this.findnearest(this.ctx, x, y, selmask);
+
+    if (ret !== undefined) {
+      console.log("click select", ret);
+
+      let ob = ret.object;
+      let mesh = ob.data;
+      let e = ret.data;
+
+      let tool = new SelectOneOp();
+      tool.inputs.object.setValue(ob);
+      tool.inputs.eid.setValue(e.eid);
+      tool.inputs.selmask.setValue(selmask);
+
+      let mode;
+
+      if (evt.shiftKey) {
+        mode = (e.flag & MeshFlags.SELECT) ? SelOneToolModes.SUB : SelOneToolModes.ADD;
+      } else {
+        mode = SelOneToolModes.UNIQUE;
+      }
+
+      tool.inputs.mode.setValue(mode);
+      this.ctx.toolstack.execTool(tool);
+
+      window.redraw_viewport();
+    }
+
   }
 
   clearHighlight(ctx) {
+    window.redraw_viewport();
+
     for (let ob of ctx.selectedMeshObjects) {
       let mesh = ob.data;
 
@@ -92,10 +123,9 @@ export class MeshEditor extends View3D_SubEditorIF {
         let list = mesh.elists[k];
 
         if (list.highlight !== undefined) {
+          list.highlight = undefined;
           window.redraw_viewport();
         }
-
-        list.highlight = undefined;
       }
     }
   }
@@ -147,7 +177,10 @@ export class MeshEditor extends View3D_SubEditorIF {
       mc = new MeshCache(mesh.lib_id);
       this.meshcache.set(mesh.lib_id, mc);
     } else {
-      mc = this.meshcache.get(mesh.lib_id);
+      this.meshcache.get(mesh.lib_id).destroy(gl);
+
+      mc = new MeshCache(mesh.lib_id);
+      this.meshcache.set(mesh.lib_id, mc);
     }
 
     mc.gen = mesh.updateGen;
@@ -210,7 +243,6 @@ export class MeshEditor extends View3D_SubEditorIF {
 
       let tri = fm.tri(l1.v, l2.v, l3.v);
 
-      c = [1, 0, 0, 1];
       tri.colors(c, c, c);
       tri.ids(f.eid, f.eid, f.eid);
     }
@@ -265,7 +297,7 @@ export class MeshEditor extends View3D_SubEditorIF {
     //gl.depthMask(1);
     drawElements(mesh.faces, mc.meshes["faces"], 0.5);
     gl.disable(gl.BLEND);
-    console.log(mc.meshes["faces"]);
+    //console.log(mc.meshes["faces"]);
 
     return true;
   }
@@ -484,7 +516,7 @@ export class MeshEditor extends View3D_SubEditorIF {
         ret.p2d[0] = y + y2;
         ret.p2d[1] = y + y2;
 
-        console.log(ret.data);
+        //console.log(ret.data);
         return ret;
       }
     }

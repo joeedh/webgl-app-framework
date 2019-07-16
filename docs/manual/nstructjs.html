@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../">
+  <title data-ice="title">Manual | path.ux</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  <script src="script/manual.js"></script>
+<meta name="description" content="this is awesome library"><meta property="twitter:card" content="summary"><meta property="twitter:title" content="path.ux"><meta property="twitter:description" content="this is awesome library"></head>
+<body class="layout-container manual-root" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+<a style="position:relative; top:3px;" href="https://github.com/joeedh/path.ux.git"><img width="20px" src="./image/github.png"></a></header>
+
+<nav class="navigation" data-ice="nav"><div class="manual-toc-root">
+  
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#introduction" data-ice="link">Introduction</a></li>
+<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#data-bindings" data-ice="link">Data Bindings</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/nstructjs.html"><a href="manual/nstructjs.html" data-ice="link">NStructJS</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/nstructjs.html"><a href="manual/nstructjs.html#controller-how-fields-are-saved" data-ice="link">Controller How Fields Are Saved</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/nstructjs.html"><a href="manual/nstructjs.html#versioning" data-ice="link">Versioning</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html" data-ice="link">Tool System</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html#context" data-ice="link">Context</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html#undo" data-ice="link">Undo</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html#tooldef--" data-ice="link">tooldef()</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html#tool-properties" data-ice="link">Tool Properties</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/controller.html"><a href="manual/controller.html" data-ice="link">Object Wrapping Example</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/libblock.html"><a href="manual/libblock.html#database-library" data-ice="link">Database Library</a></li>
+<li data-ice="manualNav" class="indent-h1" data-link="manual/libblock.html"><a href="manual/libblock.html#struct-scripts" data-ice="link">Struct scripts</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    </ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    </ul>
+  </div>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><div class="github-markdown" data-ice="content"><h1 id="nstructjs">NStructJS</h1><p>NStructJS is a little library for saving/loading highly structured JS objects as binary data.<br>It is not suited for unstructed data (use JSON for that).<br>NStructJS arose out of the following shortcomings of JSON:</p>
+<ul>
+<li>JSON allocates objects twice.</li>
+<li>JSON is slow compared to what you can get with a structured binary format</li>
+</ul>
+<p>The idea of NStructJS is to attach little scripts to your classes that define that 
+class&apos;s data and how it is saved.  For example:</p>
+<pre><code><code class="source-code prettyprint">class SomeClass {
+  constructor() {
+    this.data1 = 0;
+    this.data2 = [1, 2, 3];
+  }
+
+  //reader &quot;fills in&quot; fields in a newly created object with loaded data
+  static fromSTRUCT(reader) {
+    let ret = new SomeClass();
+
+    reader(ret);
+
+    return ret;
+  }
+}
+SomeClass.STRUCT = `
+my_module.SomeClass {
+  data1 : int;
+  data2 : array;
+}
+nstructjs.manager.add_class(SomeClass);
+`;</code>
+</code></pre><h2 id="controller-how-fields-are-saved">Controller How Fields Are Saved</h2><p>Note that you can specify little code snippets to control how fields are saved.
+For example, if you want to save an integer ID instead of a reference for an 
+object property, you might do this:</p>
+<pre><code><code class="source-code prettyprint">my_module.AnotherClass {
+  someclass : int | obj.someclass !== undefined ? obj.someclass.id : -1;
+}</code>
+</code></pre><p>Here, everything after &apos;|&apos; until &apos;;&apos; defines how someclass is saved.  For various dumb reasons
+&apos;this&apos; is bound to &apos;obj&apos;; as you can see, the basic idea is to check if this.someclass exists,
+if so use this.someclass.id, else use -1.</p>
+<h2 id="versioning">Versioning</h2><p>To a certain extend nstructjs will gracefully handle version changes.  The basic idea is to save a
+copy of your struct scripts with each file, that way each file knows how to load itself.</p>
+<p>For more advanced versioning, see AppState.prototype.do_versions and AppState.prototype.do_versions_post.
+They&apos;re used when the automatic versioning from nstructjs isn&apos;t enough.</p>
+</div>
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.1.0)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

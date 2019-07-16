@@ -149,35 +149,57 @@ export class View3D extends Editor {
     loadShaders(this.gl);
     this.grid = this.makeGrid();
 
+    let getSubEditorMpos = (e) => {
+      let r = this.canvas.getClientRects()[0];
+      let x = e.pageX - r.x;
+      let y = e.pageY - r.y;
+
+      return [x, y];
+    }
+
     this.addEventListener("mousemove", (e) => {
       if (this.canvas === undefined)
         return;
 
-      let r = this.canvas.getClientRects()[0];
-      let x = e.pageX - r.x;
-      let y = e.pageY - r.y;
-      let ctx = this.ctx;
+      let r = getSubEditorMpos(e);
+      let x = r[0], y = r[1];
 
       for (let ed of this.editors) {
-        ed.on_mousemove(ctx, x, y);
+        ed.on_mousemove(this.ctx, x, y);
       }
     });
 
     this.addEventListener("mousedown", (e) => {
       let docontrols = e.button == 1 || e.altKey;
 
+      if (!docontrols && e.button == 0) {
+        let selmask = this.selectmode;
+
+        for (let ed of this.editors) {
+          let r = getSubEditorMpos(e);
+          let x = r[0], y = r[1];
+
+          if (ed.constructor.define().selmask & selmask) {
+            ed.clickselect(e, x, y, selmask);
+          }
+        }
+      }
+
       if (docontrols && !e.shiftKey && !e.ctrlKey) {
         console.log("orbit!");
         let tool = new OrbitTool();
         this.ctx.state.toolstack.execTool(tool);
+        window.redraw_viewport();
       } else if (docontrols && e.shiftKey && !e.ctrlKey) {
         console.log("pan!");
         let tool = new PanTool();
         this.ctx.state.toolstack.execTool(tool);
+        window.redraw_viewport();
       } else if (docontrols && e.ctrlKey && !e.shiftKey) {
         console.log("zoom!");
         let tool = new ZoomTool();
         this.ctx.state.toolstack.execTool(tool);
+        window.redraw_viewport();
       }
     });
 

@@ -1,7 +1,7 @@
 "use strict";
 
 import * as toolsys from '../path.ux/scripts/simple_toolsys.js';
-import {Context} from '../core/context.js';
+import {Context, AppToolStack} from '../core/context.js';
 import {initSimpleController} from '../path.ux/scripts/simple_controller.js';
 
 toolsys.setContextClass(Context);
@@ -9,8 +9,9 @@ toolsys.setContextClass(Context);
 import {App} from '../editors/editor_base.js';
 import {Library, DataBlock, DataRef} from '../core/lib_api.js';
 import {IDGen} from '../util/util.js';
+import * as util from '../util/util.js';
 import {Vector3, Vector4, Vector2, Quat, Matrix4} from '../util/vectormath.js';
-import {ToolStack, ToolOp, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
+import {ToolOp, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
 import {getDataAPI} from '../data_api/api_define.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {Scene} from '../core/scene.js';
@@ -83,6 +84,20 @@ export function genDefaultScreen(appstate) {
 }
 
 export function genDefaultFile(appstate) {
+  if (cconst.APP_KEY_NAME in localStorage) {
+    let buf = localStorage[cconst.APP_KEY_NAME];
+
+    try {
+      buf = util.atob(buf);
+      appstate.loadFile(buf.buffer);
+    } catch (error) {
+      util.print_stack(error);
+      console.warn("Failed to load startup file");
+    }
+
+    return;
+  }
+
   let tool = new BasicFileOp();
   
   genDefaultScreen(appstate);
@@ -115,7 +130,7 @@ export class AppState {
   constructor() {
     this.settings = new AppSettings;
     this.ctx = new Context(this);
-    this.toolstack = new ToolStack(this.ctx);
+    this.toolstack = new AppToolStack(this.ctx);
     this.api = getDataAPI();
     this.screen = undefined;
     this.datalib = new Library();
@@ -195,6 +210,7 @@ export class AppState {
     window.redraw_viewport();
   }
 
+  //expects an ArrayBuffer or a DataView
   loadFile(buf, args={load_screen : true, load_settings : false}) {
     let file = new BinaryReader(buf);
     
@@ -229,17 +245,27 @@ export class AppState {
 
       if (args.load_screen && type == BlockTypes.SCREEN) {
         screen = istruct.read_object(data, App);
-        
-        this.screen.destroy();
-        this.screen.remove();
+
+        if (this.screen !== undefined) {
+          this.screen.destroy();
+          this.screen.remove();
+        }
 
         this.screen = screen;
+        this.screen.ctx = this.ctx;
         this.screen.listen();
+
+        //push active area contexts
+        for (let sarea of this.screen.sareas) {
+          sarea.area.push_ctx_active();
+          sarea.area.pop_ctx_active();
+        }
 
         document.body.appendChild(screen);
 
-        screen.update();
-        screen.ctx = this.ctx;
+        this.screen.update();
+        this.screen.regenBorders();
+        this.screen.setCSS();
       } else if (type == BlockTypes.LIBRARY) {
         datalib = istruct.read_object(data, Library);
         console.log("Found library");
@@ -314,7 +340,15 @@ export class AppState {
     
     this.do_versions_post(version);
   }
-  
+
+  saveStartupFile() {
+    let buf = this.createFile();
+    buf = util.btoa(buf);
+
+    localStorage[cconst.APP_KEY_NAME] = buf;
+    console.log(`saved startup file; ${(buf.length/1024).toFixed(2)}kb`);
+  }
+
   do_versions(version, datalib) {
     
   }
