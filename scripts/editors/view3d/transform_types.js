@@ -8,10 +8,10 @@ import * as util from '../../util/util.js';
 export class MeshTransType extends TransDataType {
   static genData(ctx, selectmode, propmode, propradius) {
     let mesh = ctx.mesh;
-    
+    let tdata = [];
+
     if (propmode != PropModes.NONE) {
       let i = 0;
-      let tdata = [];
       let unset_w = 100000.0;
       
       for (let v of mesh.verts.editable) {
@@ -85,6 +85,8 @@ export class MeshTransType extends TransDataType {
         td.data1 = v;
         td.data2 = new Vector3(v);
         td.w = 1.0;
+
+        tdata.push(td);
       }
     }
 
@@ -159,16 +161,20 @@ export class MeshTransType extends TransDataType {
     
     mesh.regenRender();
   }
-  
-  static getCenter(ctx, elemlist) {
+
+  static getCenter(ctx, selmask) {
     let c = new Vector3();
     let tot = 0.0;
-    
-    for (let td of elemlist) {
-      c.add(td.data2);
-      tot += 1.0;
+
+    for (let ob of ctx.selectedMeshObjects) {
+      let mesh = ob.data;
+
+      for (let v of mesh.verts.selected.editable) {
+        c.add(v);
+        tot++;
+      }
     }
-    
+
     if (tot > 0) {
       c.mulScalar(1.0 / tot);
     }
@@ -176,15 +182,19 @@ export class MeshTransType extends TransDataType {
     return c;
   }
   
-  static calcAABB(ctx, elemlist) {
+  static calcAABB(ctx) {
     let d = 1e17;
     let min = new Vector3([d, d, d]), max = new Vector3([-d, -d, -d]);
     let ok = false;
-    
-    for (let td of elemlist) {
-      min.min(td.data2);
-      max.max(td.data2);
-      ok = true;
+
+    for (let ob in ctx.selectedMeshObjects) {
+      let mesh = ob.data;
+
+      for (let v of mesh.verts.editable()) {
+        min.min(v);
+        max.max(v);
+        ok = true;
+      }
     }
     
     if (!ok) {

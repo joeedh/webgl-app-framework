@@ -9,13 +9,20 @@ import {SelMask} from '../editors/view3d/selectmode.js';
 import {Context} from '../core/context.js';
 
 let api = new DataAPI();
+import {Icons} from '../editors/icon_enum.js';
 
 export function api_define_view3d(pstruct) {
   let vstruct = api.mapStruct(View3D);
   
   pstruct.struct("view3d", "view3d", "Viewport", vstruct);
-  vstruct.enum("selectmode", "selectmode", SelMask, "Selection Mode", "Selection Mode");
-  
+  let def = vstruct.enum("selectmode", "selectmode", SelMask, "Selection Mode", "Selection Mode");
+
+  def.icons({
+    VERTEX : Icons.VERT_MODE,
+    EDGE   : Icons.EDGE_MODE,
+    FACE   : Icons.FACE_MODE,
+    OBJECT : Icons.CIRCLE_SEL
+  });
 }
 
 export function getDataAPI() {

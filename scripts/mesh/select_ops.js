@@ -7,6 +7,7 @@ import * as util from '../util/util.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SelMask, SelOneToolModes, SelToolModes} from '../editors/view3d/selectmode.js';
 import {DataRefListProperty, DataRefProperty} from "../core/lib_api.js";
+import {Icons} from '../editors/icon_enum.js';
 
 export class SelectOpBase extends ToolOp {
   constructor() {
@@ -165,3 +166,91 @@ export class SelectOneOp extends SelectOpBase {
     mesh.regenRender();
   }
 };
+
+export class ToggleSelectAll extends SelectOpBase {
+  constructor() {
+    super();
+  }
+
+  static invoke(ctx, args) {
+    let ret = new ToggleSelectAll();
+    ret.inputs.selmask.setValue(ctx.view3d.selectmode);
+
+    if ("mode" in args) {
+      let mode = args.mode;
+
+      if (typeof mode == "string") {
+        mode = mode.toUpperCase();
+      }
+
+      ret.inputs.mode.setValue(mode)
+    } else {
+      ret.inputs.mode.setValue(SelToolModes.AUTO);
+    }
+
+    return ret;
+  }
+
+  static tooldef() {
+    return {
+      uiname: "Toggle Select All",
+      toolpath: "mesh.toggle_select_all",
+      icon: Icons.TOGGLE_SEL_ALL,
+      description: "toggle select all",
+      inputs: {
+        selmask: new FlagProperty(undefined, SelMask),
+        mode: new EnumProperty(undefined, SelToolModes)
+      }
+    }
+  }
+
+  exec(ctx) {
+    console.log("toggle select all!", this.inputs.mode.getValue(), this.inputs.selmask.getValue())
+    let selmask = this.inputs.selmask.getValue();
+    let mode = this.inputs.mode.getValue();
+
+    if (selmask == SelMask.OBJECT) {
+      throw new Error("implement me!");
+      if (mode == SelToolModes.AUTO) {
+
+      }
+
+      return;
+    }
+
+    for (let ob of ctx.selectedMeshObjects) {
+      let mesh = ob.data;
+
+      let mode2 = mode;
+
+      if (mode == SelToolModes.AUTO) {
+        mode2 = SelToolModes.ADD;
+
+        for (let elist of mesh.getElemLists()) {
+          if (!(elist.type & selmask)) {
+            continue;
+          }
+
+          if (elist.selected.length > 0) {
+            mode2 = SelToolModes.SUB;
+          }
+        }
+      }
+
+      for (let elist of mesh.getElemLists()) {
+        if (!(elist.type & selmask)) {
+          continue;
+        }
+
+        for (let e of elist.editable) {
+          elist.setSelect(e, mode2 == SelToolModes.ADD);
+        }
+      }
+
+      mesh.selectFlush(selmask);
+      mesh.regenRender();
+    }
+  }
+}
+
+ToolOp.register(ToggleSelectAll);

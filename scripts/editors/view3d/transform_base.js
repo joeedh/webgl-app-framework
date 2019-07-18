@@ -75,10 +75,10 @@ export class TransDataType {
   static undo(ctx, undodata) {
   }
   
-  static getCenter(ctx, elemlist) {
+  static getCenter(ctx, selmask) {
   }
   
-  static calcAABB(ctx, elemlist) {
+  static calcAABB(ctx) {
   }
   
   static update(ctx, elemlist) {

@@ -8,17 +8,18 @@ export function makeCube(mesh) {
   mesh = mesh === undefined ? new Mesh() : mesh;
   
   function hashco(v) {
-    return v[0].toFixed(5) + ":" + v[1].toFixed(5) + ":" + v[2].toFixed(5);
+    return v[0].toFixed(2) + ":" + v[1].toFixed(2) + ":" + v[2].toFixed(2);
   }
+
   let map = {};
   
   function getvert(p) {
     let k = hashco(p);
-    if (k in map) {
-      //return map[k];
+
+    if (!(k in map)) {
+      map[k] = mesh.makeVertex(p);
     }
     
-    map[k] = mesh.makeVertex(p);
     return map[k];
   }
   

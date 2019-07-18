@@ -612,6 +612,12 @@ export class Graph {
     return this;
   }
 }
+Graph.STRUCT = `
+graph.Graph {
+  
+}
+`;
+nstructjs.manager.add_class(Graph);
 
 export function test(exec_cycles=true) {
   let ob1, ob2;

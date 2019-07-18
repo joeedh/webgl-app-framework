@@ -242,4 +242,6 @@ Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
   time      : float;
 }
 `;
+//graph     : graph.Graph;
+
 nstructjs.manager.add_class(Scene);

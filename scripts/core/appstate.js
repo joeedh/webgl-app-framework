@@ -29,12 +29,13 @@ let STRUCT = nstructjs.STRUCT;
 export class FileLoadError extends Error {};
 
 //override default undo implementation in Path.ux's toolop class
-ToolOp.prototype.undo_pre = function(ctx) {
-  this._undo = ctx.appstate.createUndoFile();
+ToolOp.prototype.undoPre = function(ctx) {
+  this._undo = ctx.state.createUndoFile();
 }
 
 ToolOp.prototype.undo = function(ctx) {
-  ctx.appstate.loadUndoFile();
+  console.log("loading undo file");
+  ctx.appstate.loadUndoFile(this._undo);
 }
 
 export class BasicFileOp extends ToolOp {
@@ -214,8 +215,15 @@ export class AppState {
     window.redraw_viewport();
   }
 
+  loadUndoFile(buf) {
+    this.loadFile(buf, {
+      load_screen   : false,
+      load_settings : false
+    });
+  }
+
   //expects an ArrayBuffer or a DataView
-  loadFile(buf, args={load_screen : true, load_settings : false}) {
+  loadFile(buf, args={reset_toolstack : true, load_screen : true, load_settings : false}) {
     let file = new BinaryReader(buf);
     
     let s = file.string(4);
@@ -318,7 +326,7 @@ export class AppState {
     }
 
     for (let dblock of datablocks) {
-      this.datalib.getLibrary(dblock[0]).add(dblock[1]);
+      datalib.getLibrary(dblock[0]).add(dblock[1]);
     }
     
     this.do_versions(version);
@@ -343,6 +351,10 @@ export class AppState {
     }
     
     this.do_versions_post(version);
+
+    if (args.reset_toolstack) {
+      this.toolstack.reset(this.ctx);
+    }
   }
 
   saveStartupFile() {

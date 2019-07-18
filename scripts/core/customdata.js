@@ -62,7 +62,15 @@ export class CustomDataLayer {
     this.id = id;
     this.index = 0; //index in flat list of layers in elements
   }
-  
+
+  copy() {
+    let ret = new CustomDataLayer(this.typeName, this.name, this.flag, this.id);
+    ret.index = this.index;
+    ret.elemTypeMask = this.elemTypeMask;
+
+    return ret;
+  }
+
   static fromSTRUCT(CustomDataLayer) {
     let ret = new CustomDataLayer();
     reader(ret);
@@ -95,7 +103,23 @@ export class LayerSet extends Array {
     super.push(layer);
     this.idmap[layer.id] = layer;
   }
-  
+
+  copy() {
+    let ret = new LayerSet(this.typeName);
+
+    for (let layer of this) {
+      let layer2 = layer.copy();
+
+      if (layer === this.active) {
+        ret.active = layer2;
+      }
+
+      ret.add(layer2);
+    }
+
+    return ret;
+  }
+
   static fromSTRUCT(reader) {
     let ret = new LayerSet();
     reader(ret);
@@ -129,7 +153,20 @@ export class CustomData {
     this.on_layerremove = undefined;
     this.idgen = new util.IDGen();
   }
-  
+
+  copy() {
+    let ret = new CustomData();
+
+    for (let list of ret.flatlist) {
+      let list2 = list.copy();
+      ret.layers[list2.typeName] = list2;
+      ret.flatlist.push(list2);
+    }
+
+    ret.idgen = this.idgen.copy();
+    return ret;
+  }
+
   addLayer(cls, name=cls.define().defaultName) {
     let type = cls.define().typeName;
     let layer = new CustomDataLayer(type, name, undefined, this.idgen.next());

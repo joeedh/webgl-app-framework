@@ -1,4 +1,35 @@
 import {Vector2, Vector3} from '../../util/vectormath.js';
+import {KeyMap, HotKey} from "../editor_base.js";
+import {SimpleMesh} from "../../core/simplemesh.js";
+
+export class MeshCache {
+  constructor(meshid) {
+    this.meshid = meshid;
+    this.meshes = {};
+
+    this.gen = undefined; //current generation, we know mesh has changed when mesh.updateGen is not this
+  }
+
+  makeMesh(name, layers) {
+    if (layers === undefined) {
+      throw new Error("layers cannot be undefined");
+    }
+
+    if (!(name in this.meshes)) {
+      this.meshes[name] = new SimpleMesh(layers);
+    }
+
+    return this.meshes[name];
+  }
+
+  destroy(gl) {
+    for (let k in this.meshes) {
+      this.meshes[k].destroy(gl);
+    }
+
+    this.meshes = {};
+  }
+}
 
 //each subeditor should fill in these tools
 export const StandardTools = {
@@ -26,6 +57,7 @@ export class FindnearestRet {
 export class View3D_SubEditorIF {
     constructor(view3d) {
       this.view3d = view3d;
+      this.keymap = new KeyMap();
     }
 
     static register(cls) {
@@ -39,6 +71,9 @@ export class View3D_SubEditorIF {
       selmask  : undefined,
       stdtools : undefined //see StandardTools
     }}
+
+    destroy() {
+    }
 
     findnearest(ctx, x, y) {
 

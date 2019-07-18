@@ -100,7 +100,7 @@ export class DataRef {
     }
 
     this.lib_type = undefined;
-    this.lib_id = undefined;
+    this.lib_id = -1;
     this.lib_name = undefined;
     this.lib_external_ref = undefined;
   }

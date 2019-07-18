@@ -6,6 +6,8 @@ import {UIBase} from '../path.ux/scripts/ui_base.js';
 import * as util from '../util/util.js';
 import {haveModal} from "../path.ux/scripts/simple_events.js";
 
+import {Icons} from './icon_enum.js';
+
 let areastacks = {};
 let arealasts = {};
 
@@ -72,6 +74,7 @@ export class KeyMap extends Array {
       }
 
       if (ok) {
+        console.log("executing hotkey", hk);
         try {
           hk.exec(ctx);
         } catch (error) {
@@ -125,6 +128,10 @@ export class Editor extends Area {
     this.shadow.appendChild(this.container);
   }
 
+  getKeyMaps() {
+    return [this.keymap];
+  }
+
   defineKeyMap() {
     this.keymap = new KeyMap();
 
@@ -172,6 +179,8 @@ export class Editor extends Area {
     this.container.ctx = this.ctx;
     this.makeHeader(this.container);
     this.setCSS();
+
+    this.defineKeyMap();
   }
   
   getScreen() {
@@ -200,13 +209,10 @@ export class App extends Screen {
 
     this.keymap = new KeyMap([
       new HotKey("Z", ["CTRL"], () => {
-        console.log("undo!");
         _appstate.toolstack.undo();
         window.redraw_viewport();
       }),
       new HotKey("Z", ["CTRL", "SHIFT"], () => {
-        console.log("redo!");
-
         _appstate.toolstack.redo();
         window.redraw_viewport();
       }),
@@ -261,7 +267,14 @@ export class App extends Screen {
     let handled = false;
 
     if (this.sareas.active && this.sareas.active.area.keymap) {
-      handled = handled || this.sareas.active.area.keymap.handle(this.ctx, e);
+      let area = this.sareas.active.area;
+      console.log(area.getKeyMaps());
+      for (let keymap of area.getKeyMaps()) {
+        if (keymap.handle(this.ctx, e)) {
+          handled = true;
+          break;
+        }
+      }
     }
 
     handled = handled || this.keymap.handle(this.ctx, e);

@@ -8,7 +8,10 @@ import {FindnearestRet} from "./view3d_subeditor.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
 import * as math from '../../util/math.js';
 import {SelectOneOp} from '../../mesh/select_ops.js';
+import {KeyMap, HotKey} from "../editor_base.js";
+import {keymap} from '../../path.ux/scripts/simple_events.js';
 
+import {MeshCache} from './view3d_subeditor.js';
 
 //each subeditor should fill in these tools
 export const MeshTools = {
@@ -21,34 +24,6 @@ export const MeshTools = {
   DUPLICATE         : undefined
 };
 
-export class MeshCache {
-  constructor(meshid) {
-    this.meshid = meshid;
-    this.meshes = {};
-
-    this.gen = undefined; //current generation, we know mesh has changed when mesh.updateGen is not this
-  }
-
-  makeMesh(name, layers) {
-    if (layers === undefined) {
-      throw new Error("layers cannot be undefined");
-    }
-
-    if (!(name in this.meshes)) {
-      this.meshes[name] = new SimpleMesh(layers);
-    }
-
-    return this.meshes[name];
-  }
-
-  destroy(gl) {
-    for (let k in this.meshes) {
-      this.meshes[k].destroy(gl);
-    }
-
-    this.meshes = {};
-  }
-}
 
 export const Colors = {
   SELECT    : [1.0, 0.8, 0.4, 1.0],
@@ -72,6 +47,8 @@ export class MeshEditor extends View3D_SubEditorIF {
 
     this.drawvisit = new util.set();
     this.meshcache = new util.hashtable();
+
+    this.defineKeyMap();
   }
 
   static define() {return {
@@ -81,6 +58,15 @@ export class MeshEditor extends View3D_SubEditorIF {
     selmask  : SelMask.VERTEX|SelMask.FACE|SelMask.EDGE,
     stdtools : MeshTools //see StandardTools
   }}
+
+  defineKeyMap() {
+    this.keymap = new KeyMap([
+      new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
+      new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')")
+    ]);
+
+    return this.keymap;
+  }
 
   clickselect(evt, x, y, selmask) {
     let ret = this.findnearest(this.ctx, x, y, selmask);
@@ -328,6 +314,17 @@ export class MeshEditor extends View3D_SubEditorIF {
         val.destroy(gl);
       }
     }
+  }
+
+  destroy() {
+    let gl = this.view3d.gl;
+
+    for (let key of this.meshcache) {
+      let val = this.meshcache.get(key);
+      val.destroy(gl);
+    }
+
+    this.meshcache = new util.hashtable();
   }
 
   findnearestVertex(ctx, x, y, limit) {

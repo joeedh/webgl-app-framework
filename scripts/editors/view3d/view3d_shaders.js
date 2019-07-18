@@ -18,7 +18,6 @@ export let BasicLineShader = {
   vertex : `precision mediump float;
   
 uniform mat4 projectionMatrix;
-uniform mat4 normalMatrix;
 
 attribute vec3 position;
 attribute vec2 uv;
@@ -36,7 +35,7 @@ void main() {
 }
 
   `,
-  
+
   fragment : `precision mediump float;
 uniform float alpha;
 
@@ -262,11 +261,103 @@ void main() {
   ]
 };
 
+
+
+export let BasicLineShader2D = {
+  vertex : `precision mediump float;
+  
+attribute vec3 position;
+attribute vec2 uv;
+attribute vec4 color;
+
+uniform vec2 size;
+
+varying vec4 vColor;
+varying vec2 vUv;
+
+void main() {
+  gl_Position = vec4((position.xy/size)*2.0-1.0, position.z, 1.0);
+  vColor = color;
+  vUv = uv;
+}
+
+  `,
+
+  fragment : `precision mediump float;
+uniform float alpha;
+
+varying vec4 vColor;
+varying vec2 vUv;
+
+void main() {
+  gl_FragColor = vColor * vec4(1.0, 1.0, 1.0, alpha);
+}
+  `,
+
+  uniforms : {
+    alpha : 1.0
+  },
+
+  attributes : [
+    "position", "uv", "color"
+  ]
+};
+
+export let WidgetMeshShader = {
+  vertex : `precision mediump float;
+  
+uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
+uniform mat4 normalMatrix;
+
+attribute vec3 position;
+attribute vec3 normal;
+attribute vec2 uv;
+
+uniform vec4 color;
+uniform float pointSize;
+
+${PolygonOffset.pre}
+
+void main() {
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
+  
+  ${PolygonOffset.vertex("p")}
+  
+  gl_Position = p;
+  gl_PointSize = pointSize;
+}
+`,
+  fragment : `precision mediump float;
+uniform vec4 color;
+
+${PolygonOffset.pre}
+
+void main() {
+  ${PolygonOffset.fragment}
+  gl_FragColor = color;
+}
+  `,
+
+  uniforms : {
+    pointSize : 10.0,
+    objectMatrix : new Matrix4(),
+    color : [0, 0, 0, 1]
+  },
+
+  attributes : [
+    "position", "color", "id"
+  ]
+};
+
 export const ShaderDef = {
-  BasicLineShader : BasicLineShader,
-  BasicLitMesh    : BasicLitMesh,
-  MeshEditShader  : MeshEditShader,
-  MeshIDShader    : MeshIDShader
+  BasicLineShader      : BasicLineShader,
+  BasicLineShader2D    : BasicLineShader2D,
+  BasicLitMesh         : BasicLitMesh,
+  MeshEditShader       : MeshEditShader,
+  MeshIDShader         : MeshIDShader,
+  WidgetMeshShader     : WidgetMeshShader
 };
 
 export let Shaders = {

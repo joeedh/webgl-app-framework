@@ -1,11 +1,13 @@
+import {TranslateOp} from './transform_ops.js';
 import {Area} from '../../path.ux/scripts/ScreenArea.js';
+import {PackFlags} from '../../path.ux/scripts/ui_base.js';
 import {Editor} from '../editor_base.js';
 import {Camera, init_webgl, ShaderProgram} from '../../core/webgl.js';
 import {SelMask} from './selectmode.js';
 import '../../path.ux/scripts/struct.js';
 import {DrawModes} from './drawmode.js';
 let STRUCT = nstructjs.STRUCT;
-import {UIBase}  from '../../path.ux/scripts/ui_base.js';
+import {UIBase, color2css, css2color}  from '../../path.ux/scripts/ui_base.js';
 import * as view3d_shaders from './view3d_shaders.js';
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
@@ -15,6 +17,11 @@ import './view3d_mesh_editor.js';
 import {SubEditors} from './view3d_subeditor.js';
 import {Mesh} from '../../core/mesh.js';
 import {GPUSelectBuffer} from './view3d_select.js';
+import {KeyMap, HotKey} from "../editor_base.js";
+import {WidgetManager} from './widgets.js';
+import {MeshCache} from './view3d_subeditor.js';
+import {time_ms} from '../../util/util.js';
+import {calcTransCenter} from './transform_query.js';
 
 let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
@@ -79,9 +86,27 @@ export function loadShaders(gl) {
   }
 }
 
+export class DrawLine {
+  constructor(v1, v2, color=[0,0,0,1]) {
+    let a = color.length > 3 ? color[3] : 1.0;
+
+    this.color = new Vector4(color);
+    this.color[3] = a;
+
+    this.v1 = new Vector3(v1);
+    this.v2 = new Vector3(v2);
+  }
+}
+
 export class View3D extends Editor {
   constructor() {
     super();
+
+    //last widget update time
+    this._last_wutime = 0;
+    this.widgets = new WidgetManager(this);
+
+    this._viewvec_temps = cachering.fromConstructor(Vector3, 32);
 
     this.glPos = [0, 0];
     this.glSize = [512, 512];
@@ -89,10 +114,13 @@ export class View3D extends Editor {
     this.T = 0.0;
     this.camera = new Camera();
 
+    this.start_mpos = new Vector2();
     this.editors = [];
     for (let cls of SubEditors) {
       this.editors.push(new cls(this));
     }
+
+    this.drawlines = [];
 
     this.selectbuf = new GPUSelectBuffer();
 
@@ -114,10 +142,43 @@ export class View3D extends Editor {
     this.drawmode = DrawModes.TEXTURED;
   }
 
+  getKeyMaps() {
+    let ret = [];
+
+    for (let ed of this.editors) {
+      ret.push(ed.keymap);
+    }
+
+    ret.push(this.keymap);
+    return ret;
+  }
+
+  defineKeyMap() {
+    this.keymap = new KeyMap([
+      new HotKey("G", [], "view3d.translate")
+    ]);
+
+
+    return this.keymap;
+  }
+
   get select_transparent() {
     if (!(this.drawmode & (DrawModes.SOLID|DrawModes.TEXTURED)))
       return true;
     return this._select_transparent;
+  }
+
+  getViewVec(localX, localY) {
+    let co = this._viewvec_temps.next();
+
+    co[0] = localX;
+    co[1] = localY;
+    co[2] = -this.camera.near - 0.001;
+
+    this.unproject(co);
+
+    co.sub(this.camera.pos).normalize();
+    return co;
   }
 
   project(co) {
@@ -178,12 +239,14 @@ export class View3D extends Editor {
   init() {
     super.init();
 
+    this.widgets.loadShapes();
+
     for (let ed of this.editors) {
       ed.ctx = this.ctx;
     }
 
     let header = this.header;
-    header.prop("view3d.selectmode");
+    header.prop("view3d.selectmode", PackFlags.USE_ICONS);
     
     this.setCSS();
 
@@ -204,11 +267,38 @@ export class View3D extends Editor {
       let r = getSubEditorMpos(e);
       let x = r[0], y = r[1];
 
-      for (let ed of this.editors) {
-        ed.on_mousemove(this.ctx, x, y);
+      if (this.mdown) {
+        let dis = this.start_mpos.vectorDistance(r);
+        console.log("yay", dis);
+
+        if (dis > 35) {
+          this.mdown = false;
+
+          let tool = new TranslateOp(this.start_mpos);
+          this.ctx.api.execTool(this.ctx, tool);
+        }
+      } else {
+        if (this.widgets.on_mousemove(x, y)) {
+          this.pop_ctx_active();
+          return;
+        }
+
+        for (let ed of this.editors) {
+          ed.on_mousemove(this.ctx, x, y);
+        }
       }
 
       this.pop_ctx_active();
+    });
+
+    this.addEventListener("mouseup", (e) => {
+      let ctx = this.ctx;
+      this.push_ctx_active(ctx);
+
+      if (this.mdown) {
+        this.mdown = false;
+      }
+      this.pop_ctx_active(ctx);
     });
 
     this.addEventListener("mousedown", (e) => {
@@ -219,9 +309,17 @@ export class View3D extends Editor {
       if (!docontrols && e.button == 0) {
         let selmask = this.selectmode;
 
+        let r = getSubEditorMpos(e);
+        let x = r[0], y = r[1];
+
+        if (this.widgets.on_mousedown(x, y)) {
+          this.pop_ctx_active();
+          return;
+        }
+
+        this.mdown = true;
         for (let ed of this.editors) {
-          let r = getSubEditorMpos(e);
-          let x = r[0], y = r[1];
+          this.start_mpos = new Vector2(r);
 
           if (ed.constructor.define().selmask & selmask) {
             ed.clickselect(e, x, y, selmask);
@@ -262,8 +360,67 @@ export class View3D extends Editor {
     return [x, y];
   }
 
+  updateWidgets() {
+    if (this.ctx === undefined)
+      return;
+
+    //XXX simple test
+    let ob = this.ctx.object;
+    let mesh = ob.data;
+    let cent = new Vector3();
+    let co = new Vector3();
+    let tot = 0.0;
+
+    for (let v of mesh.verts.selected.editable) {
+      co.load(v).multVecMatrix(ob.outputs.matrix.getValue());
+      cent.add(co);
+      tot++;
+    }
+
+    cent.mulScalar(1.0 / tot);
+
+    cent = calcTransCenter(this.ctx, this.selectmode);
+
+    let test = this.widgets.test;
+    let mat = new Matrix4();
+
+    mat.translate(cent[0], cent[1], cent[2]);
+    let s1 = JSON.stringify(mat);
+    let s2 = JSON.stringify(test.matrix);
+
+    if (s1 != s2) {
+      test.matrix.load(mat);
+      test.update(this.widgets);
+      window.redraw_viewport();
+    }
+
+    this.widgets.update(this);
+
+    if (test.on_mousedown !== test.constructor.prototype.on_mousedown) {
+      return;
+    }
+
+    test.on_mousedown = (localX, localY) => {
+      let tool = new TranslateOp([localX, localY]);
+      tool.inputs.constraint.setValue([0,0,1]);
+      this.ctx.toolstack.execTool(tool);
+
+      let on_mousemove = tool.on_mousemove;
+
+      tool.on_mousemove = (e) => {
+        this.updateWidgets();
+        return on_mousemove.call(tool, e);
+      }
+    }
+  }
+
   update() {
     super.update();
+
+    if (time_ms() - this._last_wutime > 50) {
+      this.updateWidgets();
+      this._last_wutime = time_ms();
+    }
 
     this.push_ctx_active();
 
@@ -304,7 +461,7 @@ export class View3D extends Editor {
       line.colors(clr, clr);
       line.uvs([-1, -1], [1, 1]);
     }
-    
+
     return mesh;
   }
   
@@ -348,6 +505,18 @@ export class View3D extends Editor {
       }
     }
     return this.selectbuf;
+  }
+
+  destroy() {
+    for (let ed of this.editors) {
+      ed.destroy();
+    }
+
+    this.widgets.destroy();
+  }
+
+  on_area_inactive() {
+    this.destroy();
   }
 
   viewportDraw() {
@@ -413,11 +582,67 @@ export class View3D extends Editor {
 
     this.drawObjects();
 
+    if (this.drawlines.length > 0) {
+      this.drawDrawLines(gl);
+    }
+
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+    this.widgets.draw(this.gl, this);
+
     for (let ed of this.editors) {
       ed.on_drawend(gl);
     }
   }
-  
+
+  drawDrawLines(gl) {
+    let sm = this.drawline_mesh = new SimpleMesh(LayerTypes.LOC|LayerTypes.COLOR|LayerTypes.UV);
+
+    for (let dl of this.drawlines) {
+      let line = sm.line(dl.v1, dl.v2);
+
+      line.uvs([0, 0], [1.0, 1.0]);
+      line.colors(dl.color, dl.color);
+    }
+
+    this.drawline_mesh.program = view3d_shaders.Shaders.BasicLineShader;
+    this.drawline_mesh.uniforms.projectionMatrix = this.camera.rendermat;
+    this.drawline_mesh.uniforms.alpha = 1.0;
+
+    gl.enable(gl.BLEND);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthMask(false);
+
+    this.drawline_mesh.draw(gl);
+    gl.finish();
+    gl.depthMask(true);
+
+    this.drawline_mesh.destroy(gl);
+
+  }
+  makeDrawLine(v1, v2, color=[0,0,0,1]) {
+    if (typeof color == "string") {
+      color = css2color(color);
+    }
+
+    let dl = new DrawLine(v1, v2, color);
+
+    this.drawlines.push(dl);
+    window.redraw_viewport();
+
+    return dl;
+  }
+
+  removeDrawLine(dl) {
+    if (this.drawlines.indexOf(dl) >= 0) {
+      this.drawlines.remove(dl);
+    }
+  }
+
+  resetDrawLines() {
+    this.drawlines.length = 0;
+    window.redraw_viewport();
+  }
+
   drawObjects() {
     let scene = this.ctx.scene, gl = this.gl;
     let program = view3d_shaders.Shaders.BasicLitMesh;
@@ -462,7 +687,7 @@ export class View3D extends Editor {
     
     return ret;
   }
-  
+
   static define() {return {
     tagname : "view3d-editor-x",
     areaname : "view3d",

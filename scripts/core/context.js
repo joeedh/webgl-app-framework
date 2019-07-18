@@ -12,6 +12,10 @@ export class ToolContext {
     this._appstate = appstate;
   }
 
+  get appstate() {
+    return this._appstate;
+  }
+
   get toolstack() {
     return this._appstate.toolstack;
   }
@@ -106,7 +110,7 @@ export class SavedContext extends ToolContext {
     this.ctx = ctx;
   }
 
-  //might need to get rid of this save function in base
+  //might need to get rid of this save function in base class
   save() {
     this.lock();
   }
@@ -208,6 +212,10 @@ class ModalContext extends SavedContext {
   get view3d() {
     return this._view3d;
   }
+
+  get screen() {
+    return this.state.screen;
+  }
 }
 
 export class AppToolStack extends ToolStack {
@@ -228,8 +236,17 @@ export class AppToolStack extends ToolStack {
     }
 
     toolop.execCtx = tctx;
+    let undoflag;
 
-    if (!(toolop.undoflag & UndoFlags.NO_UNDO)) {
+    if (toolop.undoflag === undefined) {
+      let def = toolop.constructor.tooldef();
+      undoflag = def.undoflag !== undefined ? def.undoflag : 0;
+    } else {
+      undoflag = toolop.undoflag !== undefined ? toolop.undoflag : 0;
+    }
+
+    console.log(undoflag, "undoflag");
+    if (!(undoflag & UndoFlags.NO_UNDO)) {
       this.cur++;
 
       //truncate
@@ -252,7 +269,9 @@ export class AppToolStack extends ToolStack {
       //will handle calling .exec itself
       toolop.modalStart(ctx);
     } else {
+      toolop.execPre(tctx);
       toolop.exec(tctx);
+      toolop.execPost(tctx);
     }
   }
 
@@ -261,6 +280,7 @@ export class AppToolStack extends ToolStack {
       console.log("undo!", this.cur, this.length);
 
       let tool = this[this.cur];
+      console.log(tool, tool.undo, "---");
       tool.undo(tool.execCtx);
 
       this.cur--;
@@ -269,14 +289,17 @@ export class AppToolStack extends ToolStack {
   }
 
   redo() {
+    console.log("redo!", this.cur, this.length);
     if (this.cur >= -1 && this.cur+1 < this.length) {
-      console.log("redo!", this.cur, this.length);
+      //console.log("redo!", this.cur, this.length);
 
       this.cur++;
       let tool = this[this.cur];
 
       tool.undoPre(tool.execCtx);
+      tool.execPre(tool.execCtx);
       tool.exec(tool.execCtx);
+      tool.execPost(tool.execCtx);
 
       window.redraw_viewport();
 

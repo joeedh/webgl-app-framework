@@ -13,6 +13,7 @@ import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
 import {CustomDataElem} from './customdata.js';
+import {LayerTypes} from "./simplemesh.js";
 
 export const MeshTypes = {
   VERTEX : 1,
@@ -25,7 +26,10 @@ export const MeshFlags = {
   SELECT     : 1,
   HIDE       : 2,
   FLAT       : 4,
-  ITER_TEMP1 : 8 //temporary flag used by faces-around-edge iterators
+  ITER_TEMP1 : 8, //temporary flag used by faces-around-edge iterators
+  ITER_TEMP2a : 16, //temporary flag used by faces-around-vertex iterators
+  ITER_TEMP2b : 32, //temporary flag used by faces-around-vertex iterators
+  ITER_TEMP2c : 64, //temporary flag used by faces-around-vertex iterators
 };
 
 export const RecalcFlags = {
@@ -176,6 +180,61 @@ export class Vertex extends Element {
       edges : edges,
       no : this.no
     });
+  }
+
+  get faces() {
+    let this2 = this;
+
+    return (function*() {
+      let flag = MeshFlags.ITER_TEMP2a;
+
+      for (let state=0; state<4; state++) {
+        for (let e of this2.edges) {
+          let l = e.l;
+
+          if (l === undefined)
+            continue;
+
+          //do dumb trickery to avoid returning the same face twice
+
+          let _i = 0;
+
+          do {
+            if (_i++ > 10000) {
+              console.warn("infinite loop detected");
+              break;
+            }
+
+            switch (state) {
+              case 0:
+                if (l.f & flag) {
+                  flag = flag << 1;
+                }
+                break;
+              case 1:
+                l.f = l.f & ~flag;
+                break;
+              case 2:
+                if (!(l.f & flag)) {
+                  l.f |= flag;
+                  yield l.f;
+                }
+                break;
+              case 3:
+                l.f &= ~flag;
+                break;
+            }
+
+            l = l.radial_next;
+          } while (l != e.l);
+        }
+
+        if (state == 0 && flag > MeshFlags.ITER_TEMP2c) {
+          //*sigh* just used the first one
+          flag = MeshFlags.ITER_TEMP2a;
+        }
+      }
+    })();
   }
 
   otherEdge(e) {
@@ -1325,14 +1384,14 @@ export class Mesh extends DataBlock {
     }
   }
 
-  genRender(gl) {
+  genRender() {
     this.recalc &= ~RecalcFlags.RENDER;
-    this.updateGen++;
+    this.updateGen = ~~(Math.random()*1024*1024*1024);
 
     this.tessellate();
     let ltris = this.ltris;
 
-    let sm = this.smesh = new simplemesh.SimpleMesh();
+    let sm = this.smesh = new simplemesh.SimpleMesh(LayerTypes.LOC|LayerTypes.NORMAL|LayerTypes.UV);
 
     let zero2 = [0, 0];
     let w = [1, 1, 1, 1];
@@ -1366,6 +1425,8 @@ export class Mesh extends DataBlock {
         tri.uvs(l1.data[uvidx].uv, l2.data[uvidx].uv, l3.data[uvidx].uv);
       }
     }
+
+    return sm;
   }
   
   rescale() {
@@ -1382,7 +1443,7 @@ export class Mesh extends DataBlock {
   draw(gl, uniforms, program) {
     if (this.recalc & RecalcFlags.RENDER) {
       console.log("gen render");
-      this.genRender(gl);
+      this.genRender();
     }
     
     if (program !== undefined) {
@@ -1426,7 +1487,108 @@ export class Mesh extends DataBlock {
     
     return ret;
   }
-  
+
+  copy() {
+    let ret = new Mesh();
+
+    for (let elist of ret.getElemLists()) {
+      if (this.elists[elist.type].customData === undefined) {
+        continue;
+      }
+
+      elist.customData = this.elists[elist.type].customData.copy();
+      elist.customData.on_layeradd = ret._on_cdlayer_add.bind(ret);
+      elist.customData.on_layerremove = ret._on_cdlayer_rem.bind(ret);
+    }
+
+    ret.eidgen = this.eidgen.copy();
+    let eidmap = ret.eidmap;
+
+    for (let v of this.verts) {
+      let v2 = ret.makeVertex(v);
+
+      v2.no.load(v.no);
+
+      v2.flag = v.flag;
+      v2.index = v.index;
+      v2.eid = v.eid;
+
+      eidmap[v2.eid] = v2;
+      ret.verts.push(v);
+    }
+
+    for (let e of this.edges) {
+      let v1 = eidmap[e.v1.eid];
+      let v2 = eidmap[e.v2.eid];
+
+      let e2 = ret.makeEdge(v1, v2);
+
+      e2.eid = e.eid;
+      e2.flag = e.flag;
+      e2.index = e.index;
+
+      eidmap[e2.eid] = e2;
+      ret.edges.push(e2);
+    }
+
+    for (let l of this.loops) {
+      let l2 = new Loop();
+
+      l2.flag = l.flag;
+      l2.eid = l.eid;
+      l2.index = l.index;
+
+      l2.e = eidmap[l.e.eid];
+      l2.v = eidmap[l.v.eid];
+
+      l2.radial_next = l.radial_next;
+      l2.radial_prev = l.radial_prev;
+      l2.next = l.next;
+      l2.prev = l.prev;
+
+      l2.f = l.f.eid;
+
+      eidmap[l2.eid] = l2;
+      ret.loops.push(l2);
+    }
+
+    for (let l2 of ret.loops) {
+      l2.radial_next = eidmap[l2.radial_next.eid];
+      l2.radial_prev = eidmap[l2.radial_prev.eid];
+      l2.next = eidmap[l2.next.eid];
+      l2.prev = eidmap[l2.prev.eid];
+    }
+
+    for (let f of this.faces) {
+      let f2 = new Face();
+
+      f2.lists = [];
+      f2.eid = f.eid;
+      f2.index = f.index;
+      f2.flag = f.flag;
+      f2.cent.load(f.cent);
+      f2.no.load(f.no);
+
+      for (let list of f.lists) {
+        let list2 = new LoopList();
+
+        list2.flag = list.flag;
+        list2.l = eidmap[list.l.eid];
+
+        f2.lists.push(list2);
+      }
+
+      eidmap[f2.eid] = f2;
+      ret.faces.push(f2);
+    }
+
+    for (let l2 of ret.loops) {
+      l2.f = eidmap[l2.f];
+    }
+
+    return ret;
+  }
+
   _on_cdlayer_add(layer, set) {
     let cls = CustomDataElem.getTypeClass(set.typeName);
     let mask = layer.elemTypeMask;

@@ -2,6 +2,77 @@ import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js
 import {ToolOp, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
 import {keymap} from '../../path.ux/scripts/simple_events.js';
 
+/*
+let cssmap = {
+  "red" : [1,0,0,1],
+  "yellow" : [1,1,0,1],
+  "green" : [0,1,0,1],
+  "teal" : [0,1,1,1],
+  "purple" : [1,0,1,1],
+  "orange" : [1,0.55,0.25,1],
+  "brown"  : [0.7, 0.4, 0.3, 1],
+  "white"  : [1.0,1.0,1.0,1.0],
+  "black" : [0,0,0,1],
+  "grey" : [0.7, 0.7, 0.7, 1.0]
+};
+
+function css2rgba(css) {
+  css = css.toLowerCase().trim();
+
+  let rgb = (r, g, b) => {
+    return [r/255, g/255, b/255, 1.0];
+  }
+
+  let rgba = (r, g, b, a) => {
+    let ret = rgb(r, g, b);
+    ret[3] = a;
+    return ret;
+  }
+
+  if (css.match("rgb")) {
+    return eval(css);
+  } else {
+    return cssmap[css];
+  }
+}
+
+window.css2rgba = css2rgba;
+//*/
+
+export class View3DOp extends ToolOp {
+  constructor() {
+    super();
+
+    this.drawlines = [];
+  }
+
+  modalEnd(wasCancelled) {
+    this.resetDrawLines();
+    return super.modalEnd(wasCancelled);
+  }
+
+  addDrawLine(v1, v2, color) {
+    let dl = this.modal_ctx.view3d.makeDrawLine(v1, v2, color);
+    this.drawlines.push(dl);
+    return dl;
+  }
+
+  resetDrawLines() {
+    for (let dl of this.drawlines) {
+      this.modal_ctx.view3d.removeDrawLine(dl);
+    }
+
+    this.drawlines.length = 0;
+  }
+
+  removeDrawLine(dl) {
+    if (this.drawlines.indexOf(dl) >= 0) {
+      this.modal_ctx.view3d.removeDrawLine(dl);
+      this.drawlines.remove(dl);
+    }
+  }
+}
+
 export class OrbitTool extends ToolOp {
   constructor() {
     super();
