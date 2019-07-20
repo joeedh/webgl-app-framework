@@ -1,3 +1,4 @@
+import {ExtrudeRegionsOp} from '../../mesh/mesh_ops.js';
 import {View3D_SubEditorIF} from './view3d_subeditor.js';
 import {SelMask, SelOneToolModes, SelToolModes} from './selectmode.js';
 import {Mesh, MeshTypes, MeshFlags} from '../../core/mesh.js';
@@ -62,7 +63,8 @@ export class MeshEditor extends View3D_SubEditorIF {
   defineKeyMap() {
     this.keymap = new KeyMap([
       new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
-      new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')")
+      new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
+      new HotKey("E", [], "mesh.extrude_regions()")
     ]);
 
     return this.keymap;
@@ -213,11 +215,8 @@ export class MeshEditor extends View3D_SubEditorIF {
     }
 
     let fm = mc.makeMesh("faces", layerTypes);
-    if (mesh.ltris === undefined) {
-      mesh.tessellate();
-    }
 
-    let ltris = mesh.ltris;
+    let ltris = mesh.loopTris;
     let face_unsel = [0.75, 0.75, 0.75, 0.3];
 
     for (let i=0; i<ltris.length; i += 3) {

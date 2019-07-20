@@ -12,16 +12,18 @@ import * as view3d_shaders from './view3d_shaders.js';
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
 import {OrbitTool, PanTool, ZoomTool} from './view3d_ops.js';
-import {cachering} from '../../util/util.js';
+import {cachering, print_stack, time_ms} from '../../util/util.js';
 import './view3d_mesh_editor.js';
 import {SubEditors} from './view3d_subeditor.js';
 import {Mesh} from '../../core/mesh.js';
 import {GPUSelectBuffer} from './view3d_select.js';
 import {KeyMap, HotKey} from "../editor_base.js";
-import {WidgetManager} from './widgets.js';
+import {WidgetManager, WidgetTool, WidgetTools} from './widgets.js';
 import {MeshCache} from './view3d_subeditor.js';
-import {time_ms} from '../../util/util.js';
 import {calcTransCenter} from './transform_query.js';
+import {CallbackNode, NodeFlags} from "../../core/graph.js";
+import {DependSocket} from '../../core/graphsockets.js';
+import {ConstraintSpaces} from './transform_base.js';
 
 let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
@@ -40,6 +42,7 @@ export function initWebGL() {
   let dpi = UIBase.getDPI();
   let w, h;
 
+  canvas.style["opacity"] = "1.0";
   canvas.setAttribute("id", "webgl");
   canvas.id = "webgl";
 
@@ -129,6 +132,7 @@ export class View3D extends Editor {
 
     this._select_transparent = false;
     this._last_selectmode = -1;
+    this.transformSpace = ConstraintSpaces.WORLD;
 
     let n = new Vector3(this.camera.pos).sub(this.camera.target);
     this.camera.up = new Vector3([0, 0, -1]).cross(n).cross(n);
@@ -139,7 +143,36 @@ export class View3D extends Editor {
     this.camera.fovy = 50.0;
     
     this.selectmode = SelMask.OBJECT|SelMask.FACE;
+
+    //this.widgettool is an enum, built from WidgetTool.getToolEnum()
+    this.widgettool = 0; //active widget tool index in WidgetTools
+    this.widget = undefined; //active widget instance
+
     this.drawmode = DrawModes.TEXTURED;
+  }
+
+  onFileLoad(is_active) {
+    if (is_active) {
+      this._graphnode = undefined;
+      this.makeGraphNode();
+    } else {
+      this._graphnode = undefined;
+    }
+  }
+
+  makeGraphNode() {
+    let ctx = this.ctx;
+
+    this._graphnode = CallbackNode.create("view3d", () => {},
+      {
+
+      },
+      {
+        onDrawPre  : new DependSocket("onDrawPre"),
+        onDrawPost : new DependSocket("onDrawPre")
+      });
+
+    this.ctx.graph.add(this._graphnode);
   }
 
   getKeyMaps() {
@@ -239,6 +272,8 @@ export class View3D extends Editor {
   init() {
     super.init();
 
+    this.makeGraphNode();
+
     this.widgets.loadShapes();
 
     for (let ed of this.editors) {
@@ -247,6 +282,7 @@ export class View3D extends Editor {
 
     let header = this.header;
     header.prop("view3d.selectmode", PackFlags.USE_ICONS);
+    header.prop("view3d.active_tool", PackFlags.USE_ICONS);
     
     this.setCSS();
 
@@ -350,6 +386,10 @@ export class View3D extends Editor {
     window.redraw_viewport();
   }
 
+  getTransCenter() {
+    return calcTransCenter(this.ctx, this.selectmode, this.transformSpace);
+  }
+
   getLocalMouse(x, y) {
     let r = this.getClientRects()[0];
     let dpi = UIBase.getDPI();
@@ -361,9 +401,49 @@ export class View3D extends Editor {
   }
 
   updateWidgets() {
+    try {
+      this.push_ctx_active(this.ctx);
+      this.updateWidgets_intern();
+      this.pop_ctx_active(this.ctx);
+    } catch (error) {
+      print_stack(error);
+      console.warn("updateWidgets() failed");
+    }
+  }
+  updateWidgets_intern() {
+    //return;
     if (this.ctx === undefined)
       return;
 
+    let tool = WidgetTools[this.widgettool];
+    if (tool === undefined) {
+      return;
+    }
+
+    let valid = tool.validate(this.ctx);
+
+    if (this.widget !== undefined) {
+      let bad = !(this.widget instanceof tool) || (this.widget.manager !== this.widgets);
+      bad = bad || !valid;
+
+      if (bad) {
+        this.widget.destroy(this.gl);
+        this.widget = undefined;
+      }
+    }
+
+    if (this.widget === undefined && valid) {
+      this.widget = new tool(this.widgets);
+
+      console.log("making widget instance", this.widget);
+
+      this.widget.create(this.ctx, this.widgets);
+    }
+
+    if (this.widget !== undefined) {
+      this.widget.update();
+    }
+    return;
     //XXX simple test
     let ob = this.ctx.object;
     let mesh = ob.data;
@@ -401,14 +481,37 @@ export class View3D extends Editor {
     }
 
     test.on_mousedown = (localX, localY) => {
+      if (this._widget_tempnode === undefined) {
+        let n = this._widget_tempnode = this.widgets.createCallbackNode(0, "widget redraw", () => {
+          this.updateWidgets();
+          console.log("widget recalc update 1");
+        }, {trigger: new DependSocket("trigger")}, {});
+
+        this.ctx.graph.add(n);
+        n.inputs.trigger.connect(this._graphnode.outputs.onDrawPre);
+      }
+
       let tool = new TranslateOp([localX, localY]);
       tool.inputs.constraint.setValue([0,0,1]);
+
       this.ctx.toolstack.execTool(tool);
 
+      if (tool._promise !== undefined) {
+        tool._promise.then((ctx, was_cancelled) => {
+          console.log("tool was finished", this, this._widget_tempnode, ".");
+
+          if (this._widget_tempnode !== undefined) {
+            //this.ctx.graph.remove(this._widget_tempnode);
+            this.widgets.view3d = this;
+            this.widgets.removeCallbackNode(this._widget_tempnode);
+            this._widget_tempnode = undefined;
+          }
+        })
+      }
       let on_mousemove = tool.on_mousemove;
 
       tool.on_mousemove = (e) => {
-        this.updateWidgets();
+        //this.updateWidgets();
         return on_mousemove.call(tool, e);
       }
     }
@@ -521,6 +624,7 @@ export class View3D extends Editor {
 
   viewportDraw() {
     this.push_ctx_active();
+    this.updateWidgets();
     this.viewportDraw_intern();
     this.pop_ctx_active();
   }
@@ -529,11 +633,19 @@ export class View3D extends Editor {
     if (this.ctx === undefined || this.gl === undefined || this.size === undefined) {
       return;
     }
-    
+
+    if (this._graphnode === undefined) {
+      this.makeGraphNode();
+    }
+
+    this._graphnode.outputs.onDrawPre.update();
+    //force graph execution
+    window.updateDataGraph(true);
+
     let scene = this.ctx.scene;
     
     //make sure dependency graph is up to date
-    scene.exec();
+    window.updateDataGraph();
     
     let gl = this.gl;
     let dpi = this.canvas.dpi;//UIBase.getDPI();
@@ -680,7 +792,9 @@ export class View3D extends Editor {
   
   copy() {
     let ret = document.createElement("view3d-editor-x");
-    
+
+    ret.widgettool = this.widgettool;
+    ret._select_transparent = this._select_transparent;
     ret.camera = this.camera.copy();
     ret.selectmode = this.selectmode;
     ret.drawmode = this.drawmode;
@@ -696,10 +810,12 @@ export class View3D extends Editor {
   }}
 };
 View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
-  camera      : Camera;
-  selectmode  : int;
-  drawmode    : int;
+  camera              : Camera;
+  selectmode          : int;
+  transformSpace      : int; 
+  drawmode            : int;
   _select_transparent : int;
+  widgettool          : int;
 }
 `
 Editor.register(View3D);

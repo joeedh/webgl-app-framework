@@ -20,7 +20,12 @@ export const NodeFlags = {
   SORT_TAG  : 4,
   CYCLE_TAG : 8,
   DISABLED  : 16,
-  ZOMBIE    : 32 //zombie nodes aren't saved (actually they're not *loaded*).
+  ZOMBIE    : 32, /** zombie nodes aren't saved (actually they're not *loaded*).*/
+
+  /**proxy nodes are replaced during saving with a lightwieght proxy,
+    that can be replaced with real object on load.  for dealing with
+    nodes that are saved outside of the Graph data structure.*/
+  SAVE_PROXY     : 64
 };
 
 export const GraphFlags = {
@@ -82,8 +87,8 @@ export class NodeSocketType {
   }
   
   disconnect(sock) {
-    this.edges.remove(sock);
-    sock.edges.remove(this);
+    this.edges.remove(sock, true);
+    sock.edges.remove(this, true);
     
     this.node.update();
     sock.node.update();
@@ -127,7 +132,12 @@ export class NodeSocketType {
       return;
     
     this.graph_flag |= NodeFlags.UPDATE;
-    
+
+    //make sure a graph update is queued up
+    //only one update will be queued at a time
+    //via setTimeout
+    window.updateDataGraph();
+
     for (let sock of this.edges) {
       sock.setValue(this.getValue());
       sock.node.update();
@@ -147,14 +157,6 @@ export class NodeSocketType {
     let ret = new this();
 
     reader(ret);
-    ret.flagResort();
-
-    //prune zombie nodes
-    for (let node of ret.nodes) {
-      if (node.flag & NodeFlags.ZOMBIE) {
-        ret.remove(node);
-      }
-    }
 
     return ret;
   }
@@ -380,6 +382,109 @@ graph.Node {
 
 nstructjs.manager.add_class(Node);
 
+/*proxy nodes are stand-ins for nodes that are
+  saved/loaded from outside the Graph data structure
+ */
+export class ProxyNode extends Node {
+  constructor() {
+    super();
+
+    this.className = "";
+  }
+
+  nodedef() {return {
+    inputs  : {},
+    outputs : {},
+    flag    : NodeFlags.SAVE_PROXY
+  }}
+
+  static fromNode(node) {
+    let ret = new ProxyNode();
+
+    ret.graph_id = node.graph_id;
+
+    for (let i=0; i<2; i++) {
+      let socks1 = i ? node.outputs : node.inputs;
+      let socks2 = i ? ret.outputs : ret.inputs;
+
+      for (let k in socks1) {
+        let s1 = socks1[k];
+        let s2 = s1.copy();
+
+        s2.graph_id = s1.graph_id;
+        for (let e of s1.edges) {
+          s2.edges.push(e);
+        }
+
+        socks2[k] = s2;
+        s2.node = ret;
+      }
+    }
+
+    return ret;
+  }
+
+  static fromSTRUCT(reader) {
+    let ret = new ProxyNode();
+    reader(ret);
+    return ret;
+  }
+}
+
+ProxyNode.STRUCT = STRUCT.inherit(ProxyNode, Node, "graph.ProxyNode") + `
+  className : string; 
+}
+`;
+nstructjs.manager.add_class(ProxyNode);
+
+export class CallbackNode extends Node {
+  constructor() {
+    super();
+
+    this.callback = undefined;
+    this.flag |= NodeFlags.ZOMBIE;
+  }
+
+  exec(ctx) {
+    if (this.callback !== undefined) {
+      this.callback(ctx, this);
+    }
+  }
+
+  static nodedef() {return {
+    name     : "callback node",
+    inputs   : {},
+    outputs  : {},
+    flag     : NodeFlags.ZOMBIE
+  }}
+
+  static create(name, callback, inputs={}, outputs={}) {
+    let ret = new CallbackNode();
+
+    ret.name = name;
+    ret.callback = callback;
+
+    ret.inputs = inputs;
+    ret.outputs = outputs;
+
+    for (let k in inputs) {
+      ret.inputs[k].node = this;
+    }
+
+    for (let k in outputs) {
+      ret.outputs[k].node = this;
+    }
+
+    return ret;
+  }
+}
+
+CallbackNode.STRUCT = STRUCT.inherit(CallbackNode, Node, "graph.CallbackNode") + `
+}
+`;
+nstructjs.manager.add_class(CallbackNode);
+
+
 export class Graph {
   constructor() {
     this.nodes = [];
@@ -388,7 +493,7 @@ export class Graph {
     this.max_cycle_steps = 64;
     this.cycle_stop_threshold = 0.0005; //stop cyclic solver when change per socket is less than this
 
-    this.graph_idgen = 0;
+    this.graph_idgen = new util.IDGen();
     this.node_idmap = {};
   }
   
@@ -578,12 +683,33 @@ export class Graph {
       console.warn("Warning, twiced to remove node not in graph (double remove?)", node.graph_id, node);
       return;
     }
-    
+
+    for (let s of node.allsockets) {
+      let _i = 0;
+
+      while (s.edges.length > 0) {
+        s.disconnect(s.edges[0]);
+
+        if (_i++ > 10000) {
+          console.warn("infinite loop detected");
+          break;
+        }
+      }
+    }
+
     delete this.node_idmap[node.graph_id];
     this.nodes.remove(node);
     node.graph_id = -1;
   }
-  
+
+  has(node) {
+    let ok = node !== undefined;
+    ok = ok && node.graph_id !== undefined;
+    ok = ok && node === this.node_idmap[node.graph_id];
+
+    return ok;
+  }
+
   add(node) {
     if (node.graph_id !== -1) {
       console.warn("Warning, tried to add same node twice", node.graph_id, node);
@@ -591,16 +717,18 @@ export class Graph {
     }
     
     node.graph = this;
-    node.graph_id = this.graph_idgen++;
+    node.graph_id = this.graph_idgen.next();
     
     for (let k in node.inputs) {
       let sock = node.inputs[k];
-      sock.graph_id = this.graph_idgen++;
+      sock.node = node;
+      sock.graph_id = this.graph_idgen.next();
     }
     
     for (let k in node.outputs) {
       let sock = node.outputs[k];
-      sock.graph_id = this.graph_idgen++;
+      sock.node = node;
+      sock.graph_id = this.graph_idgen.next();
     }
     
     this.node_idmap[node.graph_id] = node;
@@ -611,10 +739,112 @@ export class Graph {
     
     return this;
   }
+
+  static fromSTRUCT(reader) {
+    let ret = new Graph();
+    reader(ret);
+
+    console.log("NODES", ret.nodes);
+    let idmap = ret.node_idmap;
+
+    for (let n of ret.nodes) {
+      n.afterSTRUCT();
+    }
+
+    for (let n of ret.nodes) {
+      idmap[n.graph_id] = n;
+      n.graph = ret;
+
+      for (let s of n.allsockets) {
+        s.node = n;
+        idmap[s.graph_id] = s;
+      }
+    }
+
+    for (let n of ret.nodes) {
+      for (let s of n.allsockets) {
+        for (let i=0; i<s.edges.length; i++) {
+          s.edges[i] = idmap[s.edges[i]];
+        }
+      }
+    }
+
+    //prune zombie nodes
+    for (let node of ret.nodes) {
+      if (node.flag & NodeFlags.ZOMBIE) {
+        ret.remove(node);
+      }
+    }
+
+    ret.flagResort();
+
+    return ret;
+  }
+
+  //substitute proxy with original node
+  relinkProxyOwner(n) {
+    let ok = n !== undefined && n.graph_id in this.node_idmap;
+    ok = ok && this.node_idmap[n.graph_id] instanceof ProxyNode;
+
+    if (!ok) {
+      console.warn("structural error in Graph: relinkProxyOwner was called in error", n, this);
+      return;
+    }
+
+    let n2 = this.node_idmap[n.graph_id];
+    let idmap = this.node_idmap;
+
+    n.graph = this;
+
+    this.nodes.replace(n2, n);
+
+    idmap[n2.graph_id] = n;
+
+    for (let i=0; i<2; i++) {
+      let socks1 = i ? n.outputs  : n.inputs;
+      let socks2 = i ? n2.outputs : n2.inputs;
+
+      for (let k in socks1) {
+        let s1 = socks1[k];
+        idmap[s1.graph_id] = s1;
+
+        if (!(k in socks2)) {
+          continue;
+        }
+
+        let s2 = socks2[k];
+        for (let e of s2.edges) {
+          s1.edges.push(e);
+          e.edges.replace(s2, s1);
+        }
+
+        s2.copyTo(s1);
+      }
+    }
+
+    this.flagResort();
+    n.update();
+    window.updateDataGraph();
+  }
+
+  _save_nodes() {
+    let ret = [];
+    //replace nodes with proxies, for nodes who request it
+    for (let n of this.nodes) {
+      if (n.graph_flag & NodeFlags.SAVE_PROXY) {
+        n = ProxyNode.fromNode(n);
+      }
+
+      ret.push(n);
+    }
+
+    return ret;
+  }
 }
 Graph.STRUCT = `
 graph.Graph {
-  
+  graph_idgen : IDGen; 
+  nodes       : iter(abstract(graph.Node)) | obj._save_nodes();
 }
 `;
 nstructjs.manager.add_class(Graph);
@@ -659,7 +889,7 @@ export function test(exec_cycles=true) {
       let loc = this.inputs.loc.getValue();
       
       let mat = this.outputs.matrix.getValue();
-      
+
       mat.makeIdentity();
       mat.translate(loc[0], loc[1], loc[2]);
       mat.multiply(pmat);

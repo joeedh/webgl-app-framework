@@ -10,6 +10,7 @@ import {SelMask} from './selectmode.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import {View3DOp} from './view3d_ops.js';
 import {isect_ray_plane} from '../../path.ux/scripts/math.js';
+import {calcTransCenter} from "./transform_query.js";
 
 export class TransformOp extends View3DOp {
   constructor() {
@@ -107,6 +108,13 @@ export class TransformOp extends View3DOp {
     super.modalStart(ctx);
 
     this.tdata = this.genTransData(ctx);
+
+    for (let t of TransDataTypes) {
+      let ret = calcTransCenter(this.modal_ctx, this.inputs.selmask.getValue(), this.modal_ctx.view3d.transformSpace);
+
+      console.log("setting constraint space", ret.spaceMatrix.$matrix);
+      this.inputs.constraint_space.setValue(ret.spaceMatrix);
+    }
   }
 
   applyTransform(ctx, mat) {
@@ -174,10 +182,13 @@ export class TransformOp extends View3DOp {
     this.resetDrawLines();
 
     if (c.dot(c) == 1.0) {
-      let v1 = new Vector3(this.center).addFac(c, -1000.0);
-      let v2 = new Vector3(this.center).addFac(c, 1000.0);
-      let axis = 0;
+      let v1 = new Vector3(c), v2 = new Vector3();
 
+      v1.multVecMatrix(this.inputs.constraint_space.getValue());
+      v2.load(v1).mulScalar(1000.0).add(this.center);
+      v1.mulScalar(-1000.0).add(this.center);
+
+      let axis = 0;
       for (let i=0; i<3; i++) {
         if (c[i] != 0.0) {
           axis = i;
@@ -187,8 +198,8 @@ export class TransformOp extends View3DOp {
 
       this.addDrawLine(v1, v2, axis_colors[axis]);
     } else if (c.dot(c) == 2.0) {
-      let v1 = new Vector3(this.center);
-      let v2 = new Vector3(this.center);
+      let v1 = new Vector3();
+      let v2 = new Vector3();
       let axis = 0;
 
       for (let i=0; i<3; i++) {
@@ -199,10 +210,17 @@ export class TransformOp extends View3DOp {
       }
 
       v1[(axis+1)%3] -= 1000.0; v2[(axis+1)%3] += 1000.0;
+      v1.multVecMatrix(this.inputs.constraint_space.getValue());
+      v2.multVecMatrix(this.inputs.constraint_space.getValue());
+      v1.add(this.center); v2.add(this.center);
+
       this.addDrawLine(v1, v2, axis_colors[(axis+1)%3]);
 
-      v1[(axis+1)%3] += 1000.0; v2[(axis+1)%3] -= 1000.0;
+      v1.zero(); v2.zero();
       v1[(axis+2)%3] -= 1000.0; v2[(axis+2)%3] += 1000.0;
+      v1.multVecMatrix(this.inputs.constraint_space.getValue());
+      v2.multVecMatrix(this.inputs.constraint_space.getValue());
+      v1.add(this.center); v2.add(this.center);
       this.addDrawLine(v1, v2, axis_colors[(axis+2)%3]);
     }
   }
@@ -316,6 +334,8 @@ export class TranslateOp extends TransformOp {
         con[i] = con[i]==0.0;
       }
       con.normalize();
+      con.multVecMatrix(this.inputs.constraint_space.getValue());
+      con.normalize();
 
       let cent2 = new Vector3(this.center);
       view3d.project(cent2);
@@ -334,14 +354,55 @@ export class TranslateOp extends TransformOp {
       }
       //(planeorigin, planenormal, rayorigin, raynormal)
       //isect_ray_plane
-    } else if (con.dot(con) != 3) {
-      off.mul(con);
+    } else if (con.dot(con) != 3.0) { //project to line
+      let axis = 0;
+
+      for (let i=0; i<3; i++) {
+        if (Math.abs(con[i]) > 0.5) {
+          axis = i;
+          break;
+        }
+      }
+
+      let p1 = new Vector3(cent);
+      let p2 = new Vector3(scent);
+
+      view3d.project(p1);
+      view3d.project(p2);
+
+      let n = new Vector3(con);
+
+      let mm = new Matrix4(this.inputs.constraint_space.getValue());
+
+      n.multVecMatrix(mm);
+      n.normalize();
+
+      let worldn = new Vector3(n);
+      let n2 = new Vector3(n);
+
+      n2.load(cent).add(n);
+      n.load(cent);
+
+      view3d.project(n);
+      view3d.project(n2);
+
+      let t = new Vector3();
+      view3d.project(t.load(scent));
+      t.sub(n);
+
+      n.sub(n2).negate().normalize();
+
+      let s = t[0]*n[0] + t[1]*n[1];
+
+      view3d.project(p1.load(cent));
+      p1.addFac(n, s);
+      view3d.unproject(p1);
+      off.load(p1).sub(cent);
+
+      p2.load(cent).addFac(worldn, s);
     }
 
     this.inputs.value.setValue(off);
-
-    //console.log(scent);
-    //console.log(e.x, e.y);
 
     this.exec(ctx);
     this.doUpdates(ctx);
@@ -365,9 +426,9 @@ export class TranslateOp extends TransformOp {
       icmat.invert();
 
       off = new Vector3(off);
-      off.multVecMatrix(cmat);
-      off.mul(this.inputs.constraint.getValue());
       off.multVecMatrix(icmat);
+      //off.mul(this.inputs.constraint.getValue());
+      off.multVecMatrix(cmat);
     }
 
     mat.translate(off[0], off[1], off[2]);

@@ -155,19 +155,14 @@ export class Scene extends DataBlock {
     this.flag = 0;
     
     this.time = 0.0;
-    this.graph = new Graph();
-    
+
     if (objects !== undefined) {
       for (let ob of objects) {
         this.add(ob);
       }
     }
   }
-  
-  exec() {
-    this.graph.exec();
-  }
-  
+
   add(ob) {
     this.objects.push(ob);
     
@@ -242,6 +237,5 @@ Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
   time      : float;
 }
 `;
-//graph     : graph.Graph;
 
 nstructjs.manager.add_class(Scene);

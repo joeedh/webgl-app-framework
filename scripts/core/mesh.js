@@ -1,5 +1,6 @@
 // var _mesh = undefined;
 
+import {NodeFlags} from './graph.js';
 
 import * as simplemesh from './simplemesh.js';
 import * as math from '../util/math.js';
@@ -14,6 +15,9 @@ let STRUCT = nstructjs.STRUCT;
 
 import {CustomDataElem} from './customdata.js';
 import {LayerTypes} from "./simplemesh.js";
+
+export class MeshError extends Error {
+}
 
 export const MeshTypes = {
   VERTEX : 1,
@@ -33,7 +37,8 @@ export const MeshFlags = {
 };
 
 export const RecalcFlags = {
-  RENDER : 1
+  RENDER     : 1,
+  TESSELATE  : 2
 };
 
 export class UVLayerElem extends CustomDataElem {
@@ -207,21 +212,21 @@ export class Vertex extends Element {
 
             switch (state) {
               case 0:
-                if (l.f & flag) {
+                if (l.f.flag & flag) {
                   flag = flag << 1;
                 }
                 break;
               case 1:
-                l.f = l.f & ~flag;
+                l.f.flag = l.f.flag & ~flag;
                 break;
               case 2:
-                if (!(l.f & flag)) {
-                  l.f |= flag;
+                if (!(l.f.flag & flag)) {
+                  l.f.flag |= flag;
                   yield l.f;
                 }
                 break;
               case 3:
-                l.f &= ~flag;
+                l.f.flag &= ~flag;
                 break;
             }
 
@@ -239,7 +244,7 @@ export class Vertex extends Element {
 
   otherEdge(e) {
     if (this.edges.length != 2) {
-      throw new Error ("otherEdge only works on 2-valence vertices");
+      throw new MeshError("otherEdge only works on 2-valence vertices");
     }
 
     if (e === this.edges[0])
@@ -372,14 +377,14 @@ export class Edge extends Element {
   
   otherVertex(v) {
     if (v === undefined)
-      throw new Error("v cannot be undefined in Edge.prototype.otherVertex()");
+      throw new MeshError("v cannot be undefined in Edge.prototype.otherVertex()");
     
     if (v === this.v1)
       return this.v2;
     if (v === this.v2)
       return this.v1;
     
-    throw new Error("vertex " + v.eid + " not in edge");
+    throw new MeshError("vertex " + v.eid + " not in edge");
   }
   static fromSTRUCT(reader) {
     let ret = new Edge();
@@ -409,7 +414,17 @@ export class Loop extends Element {
     this.v = undefined;
     this.list = undefined;
   }
-  
+/*
+  get f() {
+    return this._f;
+  }
+
+  set f(val) {
+    console.warn("loop.f was set", val);
+    this._f = val;
+  }
+//*/
+
   get uv() {
     for (let layer of this.customData) {
       if (layer instanceof UVLayerElem)
@@ -720,7 +735,7 @@ export class ElementList extends Array {
           break;
         default:
           console.log(e);
-          throw new Error("bad element " + e);
+          throw new MeshError("bad element " + e);
       }
       
       e2.loadJSON(e);
@@ -823,13 +838,15 @@ export class Mesh extends DataBlock {
   constructor() {
     super();
 
+    this._ltris = undefined;
+
     //used to signal rebuilds of viewport meshes,
     //current mesh data generation
     this.updateGen = 0;
 
     this.eidgen = new util.IDGen();
     this.eidmap = {};
-    this.recalc = RecalcFlags.RENDER;
+    this.recalc = RecalcFlags.RENDER | RecalcFlags.TESSELATE;
     this.smesh = undefined;
     this.program = undefined;
     this.uniforms = {
@@ -854,6 +871,14 @@ export class Mesh extends DataBlock {
     return ret;
   }
 
+  get loopTris() {
+    if (this._ltris === undefined || (this.recalc & RecalcFlags.TESSELATE)) {
+      this.tessellate();
+    }
+
+    return this._ltris;
+  }
+
   getElemList(type) {
     if (!(type in this.elists)) {
       this.elists[type] = new ElementList(type);
@@ -867,7 +892,7 @@ export class Mesh extends DataBlock {
   static nodedef() {return {
     name   : "mesh",
     uiname : "Mesh",
-    flag   : 0,
+    flag   : NodeFlags.SAVE_PROXY,
     inputs : {}, //can inherit from parent class by wrapping in Node.inherit({})
     outputs : {}
   }}
@@ -951,11 +976,77 @@ export class Mesh extends DataBlock {
   }
   
   _killLoop(loop) {
+    this._radialRemove(loop.e, loop);
+
     this.loops.remove(loop);
     delete this.eidmap[loop.eid];
     loop.eid = -1;
   }
-  
+
+  //new_vmap is an object mapping old vertex eid's to new vertices
+  copyFace(f, new_vmap) {
+    let f2 = new Face();
+
+    this._element_init(f2);
+    this.faces.push(f2);
+
+    this.copyElemData(f2, f);
+
+    for (let list of f.lists) {
+      let list2 = new LoopList();
+      list2.flag = list.flag;
+
+      let l1 = list.l;
+      let l2 = list2.l = this._makeLoop();
+      let _i = 0;
+      let startl = l2;
+
+      do {
+        let prevl2 = l2;
+
+        if (l1 !== list.l) {
+          l2 = this._makeLoop();
+        }
+        this.copyElemData(l2, l1);
+
+        l2.list = list2;
+        l2.v = new_vmap[l1.v.eid];
+
+        if (l2.v === undefined) {
+          throw new MeshError("copyFace's new_vmap parameter didn't have vertex " + l1.v.eid + " for loop " + l1.eid);
+        }
+        l2.f = f2;
+
+        prevl2.next = l2;
+        l2.prev = prevl2;
+
+        if (_i++ > 10000) {
+          console.warn("infinite loop detected");
+          break;
+        }
+        l1 = l1.next;
+      } while (l1 !== list.l);
+
+      l2.next = startl;
+      startl.prev = l2;
+
+      for (let l of list2) {
+        l.e = this.ensureEdge(l.v, l.next.v);
+        l.f = f2;
+
+        this._radialInsert(l.e, l);
+      }
+
+      f2.lists.push(list2);
+    }
+
+    console.log("F2 EID:", f2.eid);
+    console.log("F EID:", f.eid);
+    this.regenTesellation();
+
+    return f2;
+  }
+
   makeFace(verts) {
     if (verts.length < 2) {
       throw new Error("need at least two verts");
@@ -1088,7 +1179,7 @@ export class Mesh extends DataBlock {
   }
   
   killFace(f) {
-    if (e.eid == -1) {
+    if (f.eid == -1) {
       console.trace("Warning: edge", e.eid, "already freed", e);
       return;
     }
@@ -1362,7 +1453,8 @@ export class Mesh extends DataBlock {
   }
 
   tessellate() {
-    let ltris = this.ltris = [];
+    this.recalc &= ~RecalcFlags.TESSELATE;
+    let ltris = this._ltris = [];
 
     for (let f of this.faces) {
       let first = f.lists[0].l;
@@ -1389,7 +1481,7 @@ export class Mesh extends DataBlock {
     this.updateGen = ~~(Math.random()*1024*1024*1024);
 
     this.tessellate();
-    let ltris = this.ltris;
+    let ltris = this._ltris;
 
     let sm = this.smesh = new simplemesh.SimpleMesh(LayerTypes.LOC|LayerTypes.NORMAL|LayerTypes.UV);
 
@@ -1441,6 +1533,10 @@ export class Mesh extends DataBlock {
   }
   
   draw(gl, uniforms, program) {
+    if (this.recalc & RecalcFlags.TESSELATE) {
+      this.tessellate();
+    }
+
     if (this.recalc & RecalcFlags.RENDER) {
       console.log("gen render");
       this.genRender();
@@ -1474,7 +1570,10 @@ export class Mesh extends DataBlock {
       }
     })()
   }
-  
+
+  regenTesellation() {
+    this.recalc |= RecalcFlags.TESSELATE;
+  }
   regenRender() {
     this.recalc |= RecalcFlags.RENDER;
   }
@@ -1486,6 +1585,29 @@ export class Mesh extends DataBlock {
     }
     
     return ret;
+  }
+
+  copyElemData(dst, src) {
+    if (dst.type != src.type) {
+      throw new Error("mismatched between element types in Mesh.prototype.copyElemData()");
+    }
+
+    for (let i=0; i<dst.customData.length; i++) {
+      dst.customData[i].load(src.customData[i]);
+    }
+
+    dst.flag = src.flag;
+
+    switch (dst.type) {
+      case MeshTypes.VERTEX:
+        dst.load(src);
+        dst.no.load(src.no);
+        break
+      case MeshTypes.FACE:
+        dst.cent.load(src.cent);
+        dst.no.load(src.no);
+        break
+    }
   }
 
   copy() {

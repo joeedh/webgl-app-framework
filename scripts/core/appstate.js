@@ -3,6 +3,7 @@
 import * as toolsys from '../path.ux/scripts/simple_toolsys.js';
 import {Context, AppToolStack} from '../core/context.js';
 import {initSimpleController} from '../path.ux/scripts/simple_controller.js';
+import './polyfill.js';
 
 toolsys.setContextClass(Context);
 
@@ -24,6 +25,7 @@ import {SceneObject} from './sceneobject.js';
 import {Mesh} from './mesh.js';
 import {makeCube} from './mesh_shapes.js';
 import '../path.ux/scripts/struct.js';
+import {NodeFlags} from "./graph.js";
 let STRUCT = nstructjs.STRUCT;
 
 export class FileLoadError extends Error {};
@@ -220,6 +222,12 @@ export class AppState {
       load_screen   : false,
       load_settings : false
     });
+
+    for (let sarea of this.screen.sareas) {
+      for (let area of sarea.editors) {
+        area.onFileLoad(area === sarea.area);
+      }
+    }
   }
 
   //expects an ArrayBuffer or a DataView
@@ -326,10 +334,10 @@ export class AppState {
     }
 
     for (let dblock of datablocks) {
-      datalib.getLibrary(dblock[0]).add(dblock[1]);
+      datalib.getLibrary(dblock[0]).add(dblock[1], true);
     }
     
-    this.do_versions(version);
+    this.do_versions(version, datalib);
     
     datalib = this.datalib;
     function getblock(dataref) {
@@ -345,12 +353,13 @@ export class AppState {
       
       return ret;
     }
-    
+
     for (let lib of this.datalib.libs) {
       lib.dataLink(getblock, getblock_us);
     }
-    
-    this.do_versions_post(version);
+    this.datalib.afterSTRUCT();
+
+    this.do_versions_post(version, datalib);
 
     if (args.reset_toolstack) {
       this.toolstack.reset(this.ctx);
@@ -366,7 +375,15 @@ export class AppState {
   }
 
   do_versions(version, datalib) {
-    
+    if (version < 101) {
+      for (let block of datalib.allBlocks) {
+        block.graph_flag |= NodeFlags.SAVE_PROXY;
+
+        if (block.graph_id < 0) {
+          datalib.graph.add(block);
+        }
+      }
+    }
   }
   
   do_versions_post(version, datalib) {
@@ -401,7 +418,6 @@ export function init() {
     
     _appstate.draw();
   }
-  
   window.redraw_all = function() {
     if (animreq !== undefined) {
       return;
@@ -413,6 +429,27 @@ export function init() {
   window.addEventListener("keydown", (e) => {
     return _appstate.screen.on_keydown(e);
   });
+
+
+  let graphreq = undefined;
+  function gf() {
+    graphreq = undefined;
+    _appstate.datalib.graph.exec(_appstate.ctx);
+  }
+
+  window.updateDataGraph = function(force=false) {
+    if (force) {
+      _appstate.datalib.graph.exec(_appstate.ctx);
+      return;
+    }
+
+    if (graphreq !== undefined) {
+      return;
+    }
+
+    graphreq = 1;
+    setTimeout(gf, 1);
+  };
 
   _appstate.start();
 }

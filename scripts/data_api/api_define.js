@@ -1,6 +1,7 @@
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
-
+import '../editors/view3d/widget_tools.js'; //ensure widget tools are all registered
+import {WidgetTool, WidgetFlags} from '../editors/view3d/widgets.js';
 import {DataAPI} from '../path.ux/scripts/simple_controller.js';
 import * as toolprop from '../path.ux/scripts/toolprop.js';
 import {View3D} from '../editors/view3d/view3d.js';
@@ -23,11 +24,18 @@ export function api_define_view3d(pstruct) {
     FACE   : Icons.FACE_MODE,
     OBJECT : Icons.CIRCLE_SEL
   });
+
+  let prop = WidgetTool.getToolEnum();
+  def = vstruct.enum("widgettool", "active_tool", prop.values, "Active Tool", "Currently active tool widget");
+  def.setProp(prop);
 }
 
 export function getDataAPI() {
   let cstruct = api.mapStruct(Context);
   
   api_define_view3d(cstruct);
+
+  api.setRoot(cstruct);
+
   return api;
 }

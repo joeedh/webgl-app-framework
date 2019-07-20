@@ -5,6 +5,11 @@ import {MeshFlags, MeshTypes} from '../../core/mesh.js';
 import {PropModes, TransDataType, TransDataElem} from './transform_base.js';
 import * as util from '../../util/util.js';
 
+import {ConstraintSpaces} from "./transform_base.js";
+let meshGetCenterTemps = util.cachering.fromConstructor(Vector3, 64);
+let meshGetCenterTemps2 = util.cachering.fromConstructor(Vector3, 64);
+let meshGetCenterTempsMats = util.cachering.fromConstructor(Matrix4, 16);
+
 export class MeshTransType extends TransDataType {
   static genData(ctx, selectmode, propmode, propradius) {
     let mesh = ctx.mesh;
@@ -162,16 +167,118 @@ export class MeshTransType extends TransDataType {
     mesh.regenRender();
   }
 
-  static getCenter(ctx, selmask) {
-    let c = new Vector3();
+  static getCenter(ctx, selmask, spacemode, space_matrix_out) {
+    let c = meshGetCenterTemps.next().zero();
     let tot = 0.0;
+
+    let mat = space_matrix_out !== undefined ? space_matrix_out : new Matrix4();
+    let quat = new Quat();
+    let spacetots = 0.0;
 
     for (let ob of ctx.selectedMeshObjects) {
       let mesh = ob.data;
 
+      let obmat = ob.outputs.matrix.getValue();
+
+      if (spacemode == ConstraintSpaces.LOCAL) {
+        //XXX implement me
+      }
+
       for (let v of mesh.verts.selected.editable) {
         c.add(v);
         tot++;
+      }
+
+      for (let f of mesh.faces.selected.editable) {
+        if (1 || spacemode == ConstraintSpaces.NORMAL) {
+          let mat = meshGetCenterTempsMats.next();
+
+          let up = meshGetCenterTemps2.next();
+          let n = meshGetCenterTemps2.next();
+
+          n.load(f.no).normalize();
+
+          //console.log(obmat.$matrix);/
+          n.multVecMatrix(obmat);
+
+          if (n.dot(n) == 0.0 || isNaN(n.dot(n))) {
+            continue; //ignore bad/corrupted normal
+          }
+
+          //if (v.edges.length > 0) {
+          let l = f.lists[0].l;
+          up.load(l.next.v).sub(l.v).normalize();
+          //  up.load(v.edges[0].otherVertex(v)).sub(v).normalize();
+          //} else {
+          //  up.zero();
+
+          if (Math.abs(up.dot(n)) > 0.9 || up.dot(up) < 0.0001) {
+            up.zero();
+
+            if (n[2] > 0.95) {
+              up[1] = 1.0;
+            } else {
+              up[2] = 1.0;
+            }
+          }
+
+
+          let x = meshGetCenterTemps2.next();
+          let y = meshGetCenterTemps2.next();
+
+          x.load(n).cross(up).normalize();
+          y.load(x).cross(n).normalize();
+          //y.negate();
+
+          let mat2 = meshGetCenterTempsMats.next();
+          mat2.makeIdentity();
+          let m = mat2.$matrix;
+
+          m.m11 = x[0];
+          m.m12 = x[1];
+          m.m13 = x[2];
+
+          m.m21 = y[0];
+          m.m22 = y[1];
+          m.m23 = y[2];
+
+          m.m31 = n[0];
+          m.m32 = n[1];
+          m.m33 = n[2];
+          m.m44 = 1.0;
+
+          //mat2.transpose();
+          //mat2.invert();
+          if (space_matrix_out) {
+            space_matrix_out.load(mat2);
+          }
+
+          let quat2 = new Quat();
+          quat2.matrixToQuat(mat2);
+          quat.add(quat2);
+          spacetots++;
+
+          //XXX implement me
+        }
+      }
+    }
+
+    if (isNaN(quat.dot(quat))) {
+      console.warn("NaN error calculating mesh transformation space!");
+    }
+
+    if (space_matrix_out) {
+      //space_matrix_out.makeIdentity();
+    }
+
+    if (spacetots > 0.0 && quat.dot(quat) > 0.0 && !isNaN(quat.dot(quat))) {
+      //quat.mulScalar(1.0 / spacetots);
+      quat.normalize();
+      //console.log("quat", quat);
+
+      if (space_matrix_out) {
+        //quat.toMatrix(space_matrix_out);
+        //console.log(JSON.stringify(space_matrix_out.$matrix));
       }
     }
 
@@ -206,6 +313,7 @@ export class MeshTransType extends TransDataType {
   }
   
   static update(ctx, elemlist) {
+    ctx.mesh.recalcNormals();
     ctx.mesh.regenRender();
   }
 }

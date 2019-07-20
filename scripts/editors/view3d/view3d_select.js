@@ -53,9 +53,10 @@ export class GPUSelectBuffer {
 
   sampleBlock(ctx, gl, view3d, x, y, w=16, h=16) {
     //console.log(x, y, this.pos[0], this.pos[1]);
+    let ret;
 
     try {
-      return this.sampleBlock_intern(ctx, gl, view3d, x, y, w, h);
+      ret = this.sampleBlock_intern(ctx, gl, view3d, x, y, w, h);
     } catch (error) {
       util.print_stack(error);
       console.log("error in sampleBlock");
@@ -63,6 +64,13 @@ export class GPUSelectBuffer {
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       return undefined;
     }
+
+    //XXX try to avoid screen flashing bug
+    gl.finish();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    window.redraw_viewport();
+
+    return ret;
   }
 
   getSearchOrder(n) {

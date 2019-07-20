@@ -16,6 +16,10 @@ export class ToolContext {
     return this._appstate;
   }
 
+  get graph() {
+    return this._appstate.datalib.graph;
+  }
+
   get toolstack() {
     return this._appstate.toolstack;
   }

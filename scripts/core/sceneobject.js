@@ -12,6 +12,8 @@ export const ObjectFlags = {
   LOCKED : 4
 };
 
+let _mattemp = new Matrix4();
+
 export class SceneObject extends DataBlock {
   constructor(data=undefined) {
     super();
@@ -37,9 +39,12 @@ export class SceneObject extends DataBlock {
   }}
   
   exec() {
-    let pmat = this.inputs.matrix.getValue();
+    let pmat;
+
     if (this.inputs.matrix.edges.length > 0) {
       pmat = this.inputs.matrix.edges[0].getValue();
+    } else {
+      pmat = this.inputs.matrix.getValue();
     }
     
     let loc = this.inputs.loc.getValue();
@@ -49,7 +54,18 @@ export class SceneObject extends DataBlock {
     let mat = this.outputs.matrix.getValue();
     
     mat.makeIdentity();
-    
+
+    if (isNaN(loc.dot(loc))) {
+      loc.zero();
+    }
+    if (isNaN(rot.dot(rot))) {
+      rot.zero();
+    }
+    if (isNaN(scale.dot(scale))) {
+      scale[0] = scale[1] = scale[2] = 1.0;
+    }
+
+
     mat.translate(loc[0], loc[1], loc[2]);
     mat.euler_rotate(rot[0], rot[1], rot[2]);
     mat.scale(scale[0], scale[1], scale[2]);

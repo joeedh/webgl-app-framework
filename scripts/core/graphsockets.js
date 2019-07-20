@@ -157,8 +157,7 @@ export class Vec3Socket extends NodeSocketType {
     let ret = new Vec3Socket();
     
     reader(ret);
-    ret.value = !!ret.value;
-    
+
     return ret;
   }
 };

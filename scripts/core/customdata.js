@@ -13,7 +13,12 @@ export let CDElemTypes = [];
 export class CustomDataElem {
   constructor() {
   }
-  
+
+  load(b) {
+    b.copyTo(this);
+    return this;
+  }
+
   copyTo(b) {
     throw new Error("implement me");
   }

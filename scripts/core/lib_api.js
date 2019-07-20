@@ -1,6 +1,6 @@
 import '../path.ux/scripts/struct.js';
 import {IDGen} from '../util/util.js';
-import {Node} from './graph.js';
+import {Node, Graph, NodeFlags, SocketFlags, NodeSocketType} from './graph.js';
 import {ToolProperty, PropFlags} from '../path.ux/scripts/toolprop.js';
 
 let STRUCT = nstructjs.STRUCT;
@@ -8,9 +8,26 @@ let STRUCT = nstructjs.STRUCT;
 export let BlockTypes = [];
 
 export class DataBlock extends Node {
+  //loads contents of obj into this datablock
+  //but doesn't touch the .lib_XXXX properties or .name
+  swapDataBlockContents(obj) {
+    for (let k in obj) {
+      if (k.startsWith("lib_") || k == "name") {
+        continue;
+      }
+
+      this[k] = obj[k];
+    }
+
+    return this;
+  }
+
   constructor() {
     super();
-    
+
+    //make sure we're not saving the whole block inside of Library.graph
+    this.graph_flag |= NodeFlags.SAVE_PROXY;
+
     let def = this.constructor.blockDefine();
     
     this.lib_id = -1;
@@ -40,7 +57,6 @@ export class DataBlock extends Node {
   /**getblock_us gets a block and adds reference count to it
    * getblock just gets a block and doesn't add a reference to it*/
   dataLink(getblock, getblock_us) {
-
   }
 
   /**increment reference count*/
@@ -164,7 +180,11 @@ export class BlockSet extends Array {
     console.trace("active set", this);
   }
 
-  add(block) {
+  add(block, _inside_file_load=false) {
+    if (!_inside_file_load) {
+      this.datalib.graph.add(block);
+    }
+
     return this.push(block);
   }
   
@@ -255,6 +275,9 @@ nstructjs.manager.add_class(BlockSet);
 
 export class Library {
   constructor() {
+    //master graph
+    this.graph = new Graph();
+
     this.libs = [];
     this.libmap = {};
     this.idgen = new IDGen();
@@ -267,7 +290,18 @@ export class Library {
       this.libmap[cls.blockDefine().typeName] =  lib;
     }
   }
-  
+
+  get allBlocks() {
+    let this2 = this;
+    return (function*() {
+      for (let lib of this2.libs) {
+        for (let block of lib) {
+          yield block;
+        }
+      }
+    })();
+  }
+
   get(id_or_dataref) {
     if (id_or_dataref instanceof DataRef) {
       id_or_dataref = id_or_dataref.lib_id;
@@ -299,7 +333,13 @@ export class Library {
   getLibrary(typeName) {
     return this.libmap[typeName];
   }
-  
+
+  afterSTRUCT() {
+    for (let block of this.allBlocks) {
+      this.graph.relinkProxyOwner(block);
+    }
+  }
+
   static fromSTRUCT(reader) {
     let ret = new Library();
 
@@ -337,6 +377,7 @@ Library.STRUCT = `
 Library {
   libs  : array(BlockSet);
   idgen : IDGen;
+  graph : graph.Graph;
 }
 `;
 nstructjs.manager.add_class(Library);
