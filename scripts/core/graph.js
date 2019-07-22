@@ -152,14 +152,6 @@ export class NodeSocketType {
     
     return ret;
   }
-
-  static fromSTRUCT(reader) {
-    let ret = new this();
-
-    reader(ret);
-
-    return ret;
-  }
 }
 
 NodeSocketType.STRUCT = `
@@ -178,12 +170,6 @@ export class KeyValPair {
  constructor(key, val) {
    this.key = key;
    this.val = val;
- }
-
- static fromSTRUCT(reader) {
-   let ret = new KeyValPair();
-   reader(ret);
-   return ret;
  }
 }
 KeyValPair.STRUCT = `
@@ -341,6 +327,11 @@ export class Node {
   }
 
   afterSTRUCT() {
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+
     let ins = {};
     let outs = {};
 
@@ -421,12 +412,6 @@ export class ProxyNode extends Node {
       }
     }
 
-    return ret;
-  }
-
-  static fromSTRUCT(reader) {
-    let ret = new ProxyNode();
-    reader(ret);
     return ret;
   }
 }
@@ -740,20 +725,19 @@ export class Graph {
     return this;
   }
 
-  static fromSTRUCT(reader) {
-    let ret = new Graph();
-    reader(ret);
+  loadSTRUCT(reader) {
+    reader(this);
 
-    console.log("NODES", ret.nodes);
-    let idmap = ret.node_idmap;
+    console.log("NODES", this.nodes);
+    let idmap = this.node_idmap;
 
-    for (let n of ret.nodes) {
+    for (let n of this.nodes) {
       n.afterSTRUCT();
     }
 
-    for (let n of ret.nodes) {
+    for (let n of this.nodes) {
       idmap[n.graph_id] = n;
-      n.graph = ret;
+      n.graph = this;
 
       for (let s of n.allsockets) {
         s.node = n;
@@ -761,7 +745,7 @@ export class Graph {
       }
     }
 
-    for (let n of ret.nodes) {
+    for (let n of this.nodes) {
       for (let s of n.allsockets) {
         for (let i=0; i<s.edges.length; i++) {
           s.edges[i] = idmap[s.edges[i]];
@@ -770,15 +754,15 @@ export class Graph {
     }
 
     //prune zombie nodes
-    for (let node of ret.nodes) {
+    for (let node of this.nodes) {
       if (node.flag & NodeFlags.ZOMBIE) {
-        ret.remove(node);
+        this.remove(node);
       }
     }
 
-    ret.flagResort();
+    this.flagResort();
 
-    return ret;
+    return this;
   }
 
   //substitute proxy with original node

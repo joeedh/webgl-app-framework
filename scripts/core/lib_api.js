@@ -69,23 +69,18 @@ export class DataBlock extends Node {
     this.lib_users--;
   }
 
-  /**
-   * subclasses must call this from their own
-   * fromSTRUCT methods.  note that it might be
-   * made automatic in the future (refactor me!)
-   * */
   afterSTRUCT() {
     super.afterSTRUCT();
   }
 
-  /**
-   * subclasses must implement this; here is an example
-   * */
-  static fromSTRUCT(reader) {
-    let ret = new this();
-    reader(ret);
-    ret.afterSTRUCT();
-    return ret;
+  /**all subclasses must call STRUCT.Super
+    instead of read inside their loadSTRUCTs,
+    that's how afterSTRUCT is invoked*/
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+
+    this.afterSTRUCT();
   }
 
   /**call this to register a subclass*/
@@ -142,10 +137,8 @@ export class DataRef {
     this.lib_name = ob.lib_name;
   }
 
-  static fromSTRUCT(reader) {
-    let ret = new DataRef();
-    reader(ret);
-    return ret;
+  loadSTRUCT(reader) {
+    reader(this);
   }
 }
 DataRef.STRUCT = `
@@ -177,7 +170,7 @@ export class BlockSet extends Array {
 
   set active(val) {
     this.__active = val;
-    console.trace("active set", this);
+    //console.trace("active set", this);
   }
 
   add(block, _inside_file_load=false) {
@@ -199,6 +192,7 @@ export class BlockSet extends Array {
     if (block.lib_id == -1) {
       block.lib_id = this.datalib.idgen.next();
     }
+
     this.datalib.block_idmap[block.lib_id] = block;
     
     this.idmap[block.lib_id] = block;
@@ -240,6 +234,8 @@ export class BlockSet extends Array {
 
     if (this.active != -1) {
       this.active = this.idmap[this.active];
+    } else {
+      this.active = undefined;
     }
 
     for (let block of this) {
@@ -248,15 +244,11 @@ export class BlockSet extends Array {
     
     return this;
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new BlockSet();
-    
-    reader(ret);
 
-    return ret;
+  loadSTRUCT(reader) {
+    reader(this);
   }
-  
+
   afterLoad(datalib, type) {
     this.type = type;
     this.datalib = datalib;
@@ -340,18 +332,16 @@ export class Library {
     }
   }
 
-  static fromSTRUCT(reader) {
-    let ret = new Library();
+  loadSTRUCT(reader) {
+    this.libmap = {};
+    this.libs.length = 0;
 
-    ret.libmap = {};
-    ret.libs.length = 0;
-
-    reader(ret);
+    reader(this);
     
-    for (let lib of ret.libs.slice(0, ret.libs.length)) {
+    for (let lib of this.libs.slice(0, this.libs.length)) {
       let type = undefined;
 
-      ret.libmap[lib.type] = lib;
+      this.libmap[lib.type] = lib;
 
       for (let cls of BlockTypes) {
         if (cls.blockDefine().typeName == lib.type) {
@@ -361,15 +351,13 @@ export class Library {
       
       if (type === undefined) {
         console.warn("Failed to load library type", lib.type);3
-        
-        ret.libs.remove(lib);
+
+        this.libs.remove(lib);
         continue;
       }
       
-      lib.afterLoad(ret, type);
+      lib.afterLoad(this, type);
     }
-    
-    return ret;
   }
 }
 

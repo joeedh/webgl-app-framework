@@ -438,12 +438,6 @@ export class IDGen {
     ret._cur = obj._cur;
     return ret;
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new IDGen();
-    reader(ret);
-    return ret;
-  }
 }
 
 IDGen.STRUCT = `

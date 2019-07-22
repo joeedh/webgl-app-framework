@@ -6,12 +6,6 @@ export class AppSettings {
     this.example = 0;
   }
   
-  static fromSTRUCT(reader) {
-    let ret = new AppSettings();
-    reader(ret);
-    return ret;
-  }
-  
   destroy() {
   }
 }

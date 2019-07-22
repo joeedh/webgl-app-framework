@@ -83,13 +83,6 @@ export class UVLayerElem extends CustomDataElem {
     //elemSize : 3,
     flag     : 0
   }};
-
-  static fromSTRUCT(reader) {
-    let ret = new UVLayerElem();
-    reader(ret);
-
-    return ret;
-  }
 }
 UVLayerElem.STRUCT = STRUCT.inherit(UVLayerElem, CustomDataElem, "mesh.UVLayerElem") + `
   uv : vec2;
@@ -129,12 +122,6 @@ export class Element {
     this.eid = obj.eid;
     
     return this;
-  }
-
-  static fromSTRUCT(reader) {
-    let ret = new this();
-    reader(ret);
-    return ret;
   }
 }
 
@@ -252,14 +239,12 @@ export class Vertex extends Element {
     else if (e === this.edges[1])
       return this.edges[0];
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new Vertex();
 
-    reader(ret);
-    ret.load(ret.co);
+  loadSTRUCT(reader) {
+    reader(this);
 
-    return ret;
+    this.load(this.co);
+    delete this.co;
   }
 }
 util.mixin(Vertex, Vector3);
@@ -386,13 +371,6 @@ export class Edge extends Element {
     
     throw new MeshError("vertex " + v.eid + " not in edge");
   }
-  static fromSTRUCT(reader) {
-    let ret = new Edge();
-    
-    reader(ret);
-    
-    return ret;
-  }
 }
 Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
   v1     : int | obj.v1.eid;
@@ -430,12 +408,6 @@ export class Loop extends Element {
       if (layer instanceof UVLayerElem)
         return layer.uv;
     }
-  }
-  
-  static fromSTRUCT(reader) {
-    let ret = new Loop();
-    reader(ret);
-    return ret;
   }
 }
 Loop.STRUCT = STRUCT.inherit(Loop, Element, "mesh.Loop") + `
@@ -532,14 +504,6 @@ export class LoopList extends Array {
     }
     
     return stack[stack.cur].init(this);
-  }
-  
-  static fromSTRUCT(reader) {
-    let ret = new LoopList();
-    
-    reader(ret);
-
-    return ret;
   }
   
   //used by STRUCT script
@@ -641,12 +605,6 @@ export class Face extends Element {
     
     this.cent.mulScalar(1.0 / tot);
     return this.cent;
-  }
-  
-  static fromSTRUCT(reader) {
-    let ret = new Face();
-    reader(ret);
-    return ret;
   }
 }
 Face.STRUCT = STRUCT.inherit(Face, Element, "mesh.Face") + `
@@ -806,23 +764,20 @@ export class ElementList extends Array {
     
     return this;
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new ElementList();
-    reader(ret);
+
+  loadSTRUCT(reader) {
+    reader(this);
     
-    let act = ret.active;
-    ret.active = undefined;
+    let act = this.active;
+    this.active = undefined;
     
-    for (let item of ret.items) {
-      ret.push(item)
+    for (let item of this.items) {
+      this.push(item)
       
       if (item.eid == act) {
-        ret.active = item;
+        this.active = item;
       }
     }
-    
-    return ret;
   }
 };
 ElementList.STRUCT = `
@@ -1744,50 +1699,51 @@ export class Mesh extends DataBlock {
       }
     }
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new Mesh();
-    reader(ret);
 
-    ret.afterSTRUCT();
-    ret.elists = {};
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+
+    this.elists = {};
     
-    for (let elist of ret._elists) {
-      ret.elists[elist.type] = elist;
+    for (let elist of this._elists) {
+      this.elists[elist.type] = elist;
     }
+
+    delete this._elists;
+
+    this.verts = this.getElemList(MeshTypes.VERTEX);
+    this.loops = this.getElemList(MeshTypes.LOOP);
+    this.edges = this.getElemList(MeshTypes.EDGE);
+    this.faces = this.getElemList(MeshTypes.FACE);
     
-    ret.verts = ret.getElemList(MeshTypes.VERTEX);
-    ret.loops = ret.getElemList(MeshTypes.LOOP);
-    ret.edges = ret.getElemList(MeshTypes.EDGE);
-    ret.faces = ret.getElemList(MeshTypes.FACE);
-    
-    for (let k in ret.elists) {
-      let elist = ret.elists[k];
+    for (let k in this.elists) {
+      let elist = this.elists[k];
       
-      elist.on_layeradd = ret._on_cdlayer_add.bind(ret);
-      elist.on_layerremove = ret._on_cdlayer_rem.bind(ret);
+      elist.on_layeradd = this._on_cdlayer_add.bind(this);
+      elist.on_layerremove = this._on_cdlayer_rem.bind(this);
     }
+
+    this.regenRender();
     
-    ret.regenRender();
+    let eidmap = this.eidmap;
     
-    let eidmap = ret.eidmap;
-    
-    for (let vert of ret.verts) {
+    for (let vert of this.verts) {
       eidmap[vert.eid] = vert;
     }
     
-    for (let edge of ret.edges) {
+    for (let edge of this.edges) {
       eidmap[edge.eid] = edge;
       edge.v1 = eidmap[edge.v1];
       edge.v2 = eidmap[edge.v2];
     }
     
-    for (let l of ret.loops) {
+    for (let l of this.loops) {
       eidmap[l.eid] = l;
     }
     
     
-    for (let face of ret.faces) {
+    for (let face of this.faces) {
       eidmap[face.eid] = face;
       
       for (let list of face.lists) {
@@ -1795,7 +1751,7 @@ export class Mesh extends DataBlock {
       }
     }
     
-    for (let l of ret.loops) {
+    for (let l of this.loops) {
       l.radial_next = eidmap[l.radial_next];
       l.radial_prev = eidmap[l.radial_prev];
       
@@ -1807,7 +1763,7 @@ export class Mesh extends DataBlock {
       l.v = eidmap[l.v];
     }
     
-    for (let f of ret.faces) {
+    for (let f of this.faces) {
       for (let list of f.lists) {
         for (let l of list) {
           l.list = list;
@@ -1815,19 +1771,15 @@ export class Mesh extends DataBlock {
       }
     }
     
-    for (let v of ret.verts) {
+    for (let v of this.verts) {
       for (let i=0; i<v.edges.length; i++) {
         v.edges[i] = eidmap[v.edges[i]];
       }
     }
     
-    for (let e of ret.edges) {
+    for (let e of this.edges) {
       e.l = eidmap[e.l];
     }
-    
-    //delete ret._elists;
-    
-    return ret;
   }
   
   static blockDefine() { return {

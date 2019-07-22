@@ -272,13 +272,6 @@ var MinMax = exports.MinMax = class MinMax {
       }
     }
   }
-
-  static fromSTRUCT(reader) {
-    var ret=new MinMax();
-    reader(ret);
-    return ret;
-  }
-
 };
 
 var winding_yup=exports.winding_yup = function winding(a, b, c) {

@@ -86,16 +86,12 @@ export class SceneObject extends DataBlock {
     flag     : 0,
     icon     : -1
   }}
-  
-  static fromSTRUCT(reader) {
-    let ret = new SceneObject();
-    
-    reader(ret);
-    ret.afterSTRUCT();
-    
-    return ret;
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
   }
-  
+
   dataLink(getblock, getblock_us) {
     this.data = getblock_us(this.data);
   }

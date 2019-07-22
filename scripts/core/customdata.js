@@ -76,10 +76,8 @@ export class CustomDataLayer {
     return ret;
   }
 
-  static fromSTRUCT(CustomDataLayer) {
-    let ret = new CustomDataLayer();
-    reader(ret);
-    return ret;
+  loadSTRUCT(reader) {
+    reader(this);
   }
 }
 
@@ -125,20 +123,17 @@ export class LayerSet extends Array {
     return ret;
   }
 
-  static fromSTRUCT(reader) {
-    let ret = new LayerSet();
-    reader(ret);
+  loadSTRUCT(reader) {
+    reader(this);
     
-    for (let layer of ret._layers) {
-      ret.push(layer);
+    for (let layer of this._layers) {
+      this.push(layer);
     }
     
-    if (ret.active >= 0) {
-      ret.active = ret.idmap[ret.active];
+    if (this.active >= 0) {
+      this.active = this.idmap[this.active];
     }
-    delete ret._layers;
-    
-    return ret;
+    delete this._layers;
   }
 }
 LayerSet.STRUCT = `
@@ -211,25 +206,22 @@ export class CustomData {
     
     return this.layers[typename];
   }
-  
-  static fromSTRUCT(CustomData) {
-    let ret = new CustomData();
-    reader(ret);
+
+  loadSTRUCT(reader) {
+    reader(this);
     
     let idmap = {};
     
-    for (let layer of ret._layers) {
-      ret.layers[layer.typeName] = layer;
+    for (let layer of this._layers) {
+      this.layers[layer.typeName] = layer;
       idmap[layer.id] = layer;
     }
       
-    for (let i=0; i<ret.flatlist.length; i++) {
-      ret.flatlist[i] = idmap[ret.flatlist[i]];
+    for (let i=0; i<this.flatlist.length; i++) {
+      this.flatlist[i] = idmap[this.flatlist[i]];
     }
     
-    delete ret._layers;
-    
-    return ret;
+    delete this._layers;
   }
   
   _getLayers() {

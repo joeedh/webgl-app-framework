@@ -520,13 +520,9 @@ export class DrawMats {
     
     return this;
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new DrawMats();
-    
-    reader(ret);
-    
-    return ret;
+
+  loadSTRUCT(reader) {
+    reader(this);
   }
 }
 DrawMats.STRUCT = `
@@ -650,13 +646,10 @@ export class Camera extends DrawMats {
     
     super.regen_mats(aspect); //will calculate iXXXmat for us
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new Camera();
-    reader(ret);
-    return ret;
+
+  loadSTRUCT(reader) {
+    reader(this);
   }
-  
 }
 
 Camera.STRUCT = STRUCT.inherit(Camera, DrawMats) + `

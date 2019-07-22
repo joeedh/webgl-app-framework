@@ -60,11 +60,6 @@ export class Matrix4Socket extends NodeSocketType {
   setValue(val) {
     this.value.load(val);
   }
-  static fromSTRUCT(reader) {
-    let ret = new Matrix4Socket();
-    reader(ret);
-    return ret;
-  }
 };
 Matrix4Socket.STRUCT = STRUCT.inherit(Matrix4Socket, NodeSocketType, "graph.Matrix4Socket") + `
   value : mat4;
@@ -105,13 +100,10 @@ export class DependSocket extends NodeSocketType {
     return !!this.value == !!b;
   }
 
-  static fromSTRUCT(reader) {
-    let ret = new DependSocket();
-    
-    reader(ret);
-    ret.value = !!ret.value;
-    
-    return ret;
+  loadSTRUCT(reader) {
+    reader(this);
+
+    this.value = !!this.value;
   }
 };
 DependSocket.STRUCT = STRUCT.inherit(DependSocket, NodeSocketType, "graph.DependSocket") + `
@@ -152,13 +144,6 @@ export class Vec3Socket extends NodeSocketType {
   //eh. . .dot product?
   cmpValue(b) {
     return this.value.dot(b);
-  }
-  static fromSTRUCT(reader) {
-    let ret = new Vec3Socket();
-    
-    reader(ret);
-
-    return ret;
   }
 };
 Vec3Socket.STRUCT = STRUCT.inherit(Vec3Socket, NodeSocketType, "graph.Vec3Socket") + `
@@ -204,12 +189,6 @@ export class Vec4Socket extends NodeSocketType {
   cmpValue(b) {
     return this.value.dot(b);
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new Vec4Socket();
-    reader(ret);
-    return ret;
-  }
 };
 Vec4Socket.STRUCT = STRUCT.inherit(Vec4Socket, NodeSocketType, "graph.Vec4Socket") + `
   value : vec4;
@@ -254,11 +233,6 @@ export class FloatSocket extends NodeSocketType {
   //eh. . .dot product?
   cmpValue(b) {
     return this.value - b;
-  }
-  static fromSTRUCT(reader) {
-    let ret = new FloatSocket();
-    reader(ret);
-    return ret;
   }
 };
 FloatSocket.STRUCT = STRUCT.inherit(FloatSocket, NodeSocketType, "graph.FloatSocket") + `

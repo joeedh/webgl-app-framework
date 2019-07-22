@@ -190,11 +190,9 @@ export class Editor extends Area {
   static register(cls) {
     Area.register(cls);
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = document.createElement(this.define().tagname);
-    reader(ret);
-    return ret;
+
+  static newSTRUCT() {
+    return document.createElement(this.define().tagname);
   }
 };
 Editor.STRUCT = STRUCT.inherit(Editor, Area) + `
@@ -294,9 +292,9 @@ export class App extends Screen {
   static define() {return {
     tagname : "webgl-app-x"
   }}
-  
-  static fromSTRUCT(reader) {
-    return super.fromSTRUCT(reader);
+
+  static newSTRUCT() {
+    return document.createElement(this.define().tagname);
   }
 
   setCSS() {

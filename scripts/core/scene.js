@@ -129,12 +129,8 @@ export class ObjectList extends Array {
     return ret;
   }
 
-  static fromSTRUCT(reader) {
-    let ret = new ObjectList();
-
-    reader(ret);
-
-    return ret;
+  loadSTRUCT(reader) {
+    reader(this);
   }
 };
 
@@ -212,15 +208,11 @@ export class Scene extends DataBlock {
     }
   }}
 
-  static fromSTRUCT(reader) {
-    let ret = new Scene();
-    
-    reader(ret);
-    ret.afterSTRUCT();
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
 
-    ret.objects.onselect = ret._onselect.bind(ret);
-
-    return ret;
+    this.objects.onselect = this._onselect.bind(this);
   }
   
   dataLink(getblock, getblock_us) {
