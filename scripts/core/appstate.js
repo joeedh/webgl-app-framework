@@ -106,6 +106,8 @@ export function genDefaultFile(appstate, dont_load_startup=false) {
   let tool = new BasicFileOp();
   
   genDefaultScreen(appstate);
+
+  appstate.datalib = new Library();
   appstate.toolstack.execTool(tool);
 }
 

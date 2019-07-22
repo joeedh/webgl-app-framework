@@ -11,6 +11,7 @@ import * as math from '../../util/math.js';
 import {SelectOneOp} from '../../mesh/select_ops.js';
 import {KeyMap, HotKey} from "../editor_base.js";
 import {keymap} from '../../path.ux/scripts/simple_events.js';
+import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../path.ux/scripts/simple_toolsys.js';
 
 import {MeshCache} from './view3d_subeditor.js';
 
@@ -27,12 +28,13 @@ export const MeshTools = {
 
 
 export const Colors = {
-  SELECT    : [1.0, 0.8, 0.4, 1.0],
-  UNSELECT  : [1.0, 0.2, 0.0, 1.0],
-  ACTIVE    : [0.3, 1.0, 0.3, 1.0],
-  LAST      : [0.0, 0.3, 1.0, 1.0],
-  HIGHLIGHT : [1.0, 1.0, 0.3, 1.0],
-  POINTSIZE : 10,
+  DRAW_DEBUG : [0, 1.0, 0.5, 1.0],
+  SELECT     : [1.0, 0.8, 0.4, 1.0],
+  UNSELECT   : [1.0, 0.2, 0.0, 1.0],
+  ACTIVE     : [0.3, 1.0, 0.3, 1.0],
+  LAST       : [0.0, 0.3, 1.0, 1.0],
+  HIGHLIGHT  : [1.0, 1.0, 0.3, 1.0],
+  POINTSIZE  : 10,
   POLYGON_OFFSET : 1.0
 };
 window._Colors = Colors; //debugging global
@@ -64,7 +66,22 @@ export class MeshEditor extends View3D_SubEditorIF {
     this.keymap = new KeyMap([
       new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
       new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
-      new HotKey("E", [], "mesh.extrude_regions()")
+      new HotKey("E", [], () => {
+        let tool1 = this.ctx.api.createTool(this.ctx, "mesh.extrude_regions()");
+        let tool2 = this.ctx.api.createTool(this.ctx, "view3d.translate()");
+
+        let macro = new ToolMacro();
+        macro.add(tool1);
+        macro.add(tool2);
+
+        macro.connect(tool1, tool2, () => {
+          tool2.inputs.constraint_space.setValue(tool1.outputs.normalSpace.getValue());
+        });
+        tool2.inputs.constraint.setValue([0, 0, 1]);
+
+        this.ctx.toolstack.execTool(macro, this.ctx);
+        //"mesh.extrude_regions()"
+      })
     ]);
 
     return this.keymap;
@@ -118,7 +135,7 @@ export class MeshEditor extends View3D_SubEditorIF {
     }
   }
 
-  on_mousemove(ctx, x, y) {
+  on_mousemove(ctx, x, y, was_touch) {
     /*
     if (this.view3d.gl !== undefined) {
       let sbuf = this.view3d.getSelectBuffer(ctx);
@@ -180,7 +197,9 @@ export class MeshEditor extends View3D_SubEditorIF {
     mc.gen = mesh.updateGen;
 
     function elemColor(e) {
-      if (e.flag & MeshFlags.SELECT) {
+      if (e.flag & MeshFlags.DRAW_DEBUG) {
+        return Colors.DRAW_DEBUG;
+      } else if (e.flag & MeshFlags.SELECT) {
         return Colors.SELECT;
       } else {
         return Colors.UNSELECT;
@@ -286,7 +305,7 @@ export class MeshEditor extends View3D_SubEditorIF {
     //gl.depthMask(0);
     //drawElements(mesh.faces, mc.meshes["faces"], 0.1);
     //gl.depthMask(1);
-    drawElements(mesh.faces, mc.meshes["faces"], 0.5);
+    drawElements(mesh.faces, mc.meshes["faces"], 0.3);
     gl.disable(gl.BLEND);
     //console.log(mc.meshes["faces"]);
 

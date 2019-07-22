@@ -34,6 +34,7 @@ export const MeshFlags = {
   ITER_TEMP2a : 16, //temporary flag used by faces-around-vertex iterators
   ITER_TEMP2b : 32, //temporary flag used by faces-around-vertex iterators
   ITER_TEMP2c : 64, //temporary flag used by faces-around-vertex iterators
+  DRAW_DEBUG  : 128
 };
 
 export const RecalcFlags = {
@@ -266,7 +267,7 @@ export class Edge extends Element {
   constructor() {
     super(MeshTypes.EDGE);
     
-    this.loop = undefined;
+    this.l = undefined;
     this.v1 = this.v2 = undefined;
   }
   
@@ -274,7 +275,7 @@ export class Edge extends Element {
     let this2 = this;
     
     return (function*() {
-      let l = this2.loop;
+      let l = this2.l;
       let i = 0;
       
       do {
@@ -286,7 +287,7 @@ export class Edge extends Element {
         yield l;
         
         l = l.radial_next;
-      } while (l !== this2.loop);
+      } while (l !== this2.l);
     })();
   }
   
@@ -298,7 +299,7 @@ export class Edge extends Element {
     let this2 = this;
     
     return (function*() {
-      let l = this2.loop;
+      let l = this2.l;
       let i = 0;
       
       do {
@@ -308,7 +309,7 @@ export class Edge extends Element {
         
         l.f.flag &= ~MeshFlags.ITER_TEMP1;
         l = l.radial_next;
-      } while (l !== this2.loop);
+      } while (l !== this2.l);
       
       do {
         if (i++ > 10000) {
@@ -323,7 +324,7 @@ export class Edge extends Element {
         l.f.flag |= MeshFlags.ITER_TEMP1;
         
         l = l.radial_next;
-      } while (l !== this2.loop);
+      } while (l !== this2.l);
     })();
   }
   
@@ -371,8 +372,15 @@ export class Edge extends Element {
     
     throw new MeshError("vertex " + v.eid + " not in edge");
   }
+
+  loadSTRUCT(reader) {
+    reader(this);
+
+    this.flag &= MeshFlags.DRAW_DEBUG;
+  }
 }
 Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
+  l      : int | obj.l !== undefined ? obj.l.eid : -1;
   v1     : int | obj.v1.eid;
   v2     : int | obj.v2.eid;
 }
@@ -428,7 +436,8 @@ class LoopIter {
     this.l = undefined;
     this.done = false;
     this.first = undefined;
-    
+    this._i = 0;
+
     this.ret = {
       done  : true,
       value : undefined
@@ -442,13 +451,26 @@ class LoopIter {
     this.first = true;
     this.list = list;
     this.l = list.l;
+    this._i = 0;
+
     return this;
   }
   
   next() {
     let ret = this.ret;
     let l = this.l;
-    
+
+    if (this._i++ > 10000) {
+      ret.done = true;
+      ret.value = undefined;
+
+      console.warn("infinite loop detected in LoopIter");
+
+      this.list.iterstack.cur--;
+      this.done = true;
+      return ret;
+    }
+
     if (l === this.list.l && !this.first) {
       ret.done = true;
       ret.value = undefined;
@@ -979,6 +1001,7 @@ export class Mesh extends DataBlock {
           console.warn("infinite loop detected");
           break;
         }
+
         l1 = l1.next;
       } while (l1 !== list.l);
 
@@ -1024,8 +1047,6 @@ export class Mesh extends DataBlock {
       if (firstl === undefined) {
         firstl = l;
       } else {
-        l.e = this.ensureEdge(prevl.v, l.v);
-        
         l.prev = prevl;
         prevl.next = l;
       }
@@ -1036,21 +1057,12 @@ export class Mesh extends DataBlock {
     list.l = firstl;
     firstl.prev = prevl;
     prevl.next = firstl;
-    firstl.e = this.ensureEdge(prevl.v, firstl.v);
-    
+
     for (let l of list) {
-      if (l.e.l === undefined) {
-        l.e.l = l;
-      } else { //insert into ring list
-        let l2 = l.e.l;
-        
-        l.radial_next = l2.radial_next;
-        l2.radial_next.radial_prev = l;
-        l.radial_prev = l2;
-        l2.radial_next = l;
-      }
+      l.e = this.ensureEdge(l.v, l.next.v);
+      this._radialInsert(l.e, l);
     }
-    
+
     for (let i=0; i<f.verts.length; i++) {
       let v1 = f.verts[i], v2 = f.verts[(i+1) % f.verts.length];
       
@@ -1099,7 +1111,7 @@ export class Mesh extends DataBlock {
       return;
     }
     
-    _i = 0;
+    let _i = 0;
     while (v.edges.length > 0 && _i++ < 10000) {
       this.killEdge(v.edges[0]);
     }
@@ -1282,11 +1294,12 @@ export class Mesh extends DataBlock {
   _radialInsert(e, l) {
     if (e.l === undefined) {
       e.l = l;
+      l.radial_next = l.radial_prev = l;
     } else {
-      l.prev = e.l;
-      l.next = e.l.next;
-      e.l.next.prev = l;
-      e.l.next = l;
+      l.radial_prev = e.l;
+      l.radial_next = e.l.radial_next;
+      e.l.radial_next.radial_prev = l;
+      e.l.radial_next = l;
     }
   }
   
@@ -1493,7 +1506,6 @@ export class Mesh extends DataBlock {
     }
 
     if (this.recalc & RecalcFlags.RENDER) {
-      console.log("gen render");
       this.genRender();
     }
     
@@ -1700,6 +1712,47 @@ export class Mesh extends DataBlock {
     }
   }
 
+  validateMesh() {
+    let fix = false;
+
+    for (let f of this.faces) {
+      for (let list of f.lists) {
+        for (let l of list) {
+          l.list = list;
+
+          let v1 = l.v, v2 = l.next.v;
+          let bad = !(v1 === l.e.v1 && v2 === l.e.v2);
+          bad = bad && !(v2 === l.e.v1 && v1 === l.e.v2);
+
+          if (bad) {
+            console.warn("corrupted mesh data: wrong edge for loop", l.eid, l);
+            l.e = this.ensureEdge(v1, v2);
+            fix = true;
+          }
+        }
+      }
+    }
+
+    if (!fix) {
+      return fix;
+    }
+
+    //fix edge->loop links
+    for (let e of this.edges) {
+      e.l = undefined;
+    }
+
+    for (let f of this.faces) {
+      for (let list of f.lists) {
+        for (let l of list) {
+          this._radialInsert(l.e, l);
+        }
+      }
+    }
+
+    return fix;
+  }
+
   loadSTRUCT(reader) {
     reader(this);
     super.loadSTRUCT(reader);
@@ -1742,7 +1795,10 @@ export class Mesh extends DataBlock {
       eidmap[l.eid] = l;
     }
     
-    
+    for (let e of this.edges) {
+      e.l = eidmap[e.l];
+    }
+
     for (let face of this.faces) {
       eidmap[face.eid] = face;
       
@@ -1761,8 +1817,19 @@ export class Mesh extends DataBlock {
       l.f = eidmap[l.f];
       l.e = eidmap[l.e];
       l.v = eidmap[l.v];
+
+      //detected old corrupted files
+      if (l.e.l === undefined) {
+        l.e.l = l;
+      }
     }
-    
+
+    for (let v of this.verts) {
+      for (let i=0; i<v.edges.length; i++) {
+        v.edges[i] = eidmap[v.edges[i]];
+      }
+    }
+
     for (let f of this.faces) {
       for (let list of f.lists) {
         for (let l of list) {
@@ -1770,16 +1837,8 @@ export class Mesh extends DataBlock {
         }
       }
     }
-    
-    for (let v of this.verts) {
-      for (let i=0; i<v.edges.length; i++) {
-        v.edges[i] = eidmap[v.edges[i]];
-      }
-    }
-    
-    for (let e of this.edges) {
-      e.l = eidmap[e.l];
-    }
+
+    this.validateMesh();
   }
   
   static blockDefine() { return {
@@ -1792,7 +1851,7 @@ export class Mesh extends DataBlock {
 };
 
 Mesh.STRUCT = STRUCT.inherit(Mesh, DataBlock, "mesh.Mesh") + `
-  _elists : array(mesh.ElementList) | obj._getArrays();
+  _elists   : array(mesh.ElementList) | obj._getArrays();
   eidgen    : IDGen;
 }
 `;

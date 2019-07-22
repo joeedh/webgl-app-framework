@@ -74,7 +74,6 @@ export class KeyMap extends Array {
       }
 
       if (ok) {
-        console.log("executing hotkey", hk);
         try {
           hk.exec(ctx);
         } catch (error) {
@@ -144,7 +143,7 @@ export class Editor extends Area {
 
   static setLastArea(area) {
     let tname = area.constructor.define().areaname
-    console.warn("call to setLastArea", area._area_id, tname);
+    //console.warn("call to setLastArea", area._area_id, tname);
     arealasts[tname] = area;
   }
 
@@ -266,7 +265,7 @@ export class App extends Screen {
 
     if (this.sareas.active && this.sareas.active.area.keymap) {
       let area = this.sareas.active.area;
-      console.log(area.getKeyMaps());
+      //console.log(area.getKeyMaps());
       for (let keymap of area.getKeyMaps()) {
         if (keymap.handle(this.ctx, e)) {
           handled = true;

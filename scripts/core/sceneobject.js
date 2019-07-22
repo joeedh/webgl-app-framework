@@ -28,7 +28,7 @@ export class SceneObject extends DataBlock {
       color  : new Vec4Socket("color"),
       loc    : new Vec3Socket("loc"),
       rot    : new Vec3Socket("rot"),
-      scale  : new Vec3Socket("scale")
+      scale  : new Vec3Socket("scale", undefined, [1, 1, 1])
     },
     
     outputs : {

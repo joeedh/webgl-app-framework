@@ -5,10 +5,10 @@ let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Matrix4} from '../util/vectormath.js';
 
 export class Matrix4Socket extends NodeSocketType {
-  constructor(uiname, flag) {
+  constructor(uiname, flag, default_value) {
     super(uiname, flag);
     
-    this.value = new Matrix4();
+    this.value = new Matrix4(default_value);
   }
   
   static nodedef() {return {
@@ -113,10 +113,10 @@ DependSocket.STRUCT = STRUCT.inherit(DependSocket, NodeSocketType, "graph.Depend
 nstructjs.manager.add_class(DependSocket);
 
 export class Vec3Socket extends NodeSocketType {
-  constructor(uiname, flag) {
+  constructor(uiname, flag, default_value) {
     super(uiname, flag);
     
-    this.value = new Vector3();
+    this.value = new Vector3(default_value);
   }
   
   static nodedef() {return {
@@ -153,10 +153,10 @@ Vec3Socket.STRUCT = STRUCT.inherit(Vec3Socket, NodeSocketType, "graph.Vec3Socket
 nstructjs.manager.add_class(Vec3Socket);
 
 export class Vec4Socket extends NodeSocketType {
-  constructor(uiname, flag) {
+  constructor(uiname, flag, default_value) {
     super(uiname, flag);
     
-    this.value = new Vector4();
+    this.value = new Vector4(default_value);
   }
   
   static nodedef() {return {
@@ -197,10 +197,10 @@ Vec4Socket.STRUCT = STRUCT.inherit(Vec4Socket, NodeSocketType, "graph.Vec4Socket
 nstructjs.manager.add_class(Vec4Socket);
 
 export class FloatSocket extends NodeSocketType {
-  constructor(uiname, flag) {
+  constructor(uiname, flag, default_value=0.0) {
     super(uiname, flag);
     
-    this.value = 0.0;
+    this.value = default_value;
   }
   
   static nodedef() {return {

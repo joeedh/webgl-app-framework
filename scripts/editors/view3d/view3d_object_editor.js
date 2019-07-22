@@ -28,11 +28,11 @@ export class View3D_SubEditorIF {
     stdtools : undefined //see StandardTools
   }}
 
-  clickselect(x, y) {
+  clickselect(x, y, was_touch) {
     throw new Error("implement me");
   }
 
-  on_mousemove(x, y) {
+  on_mousemove(x, y, was_touch) {
   }
 
   /*

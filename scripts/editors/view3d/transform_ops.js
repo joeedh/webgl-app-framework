@@ -105,16 +105,20 @@ export class TransformOp extends View3DOp {
   }
 
   modalStart(ctx) {
-    super.modalStart(ctx);
+    let promise = super.modalStart(ctx);
 
     this.tdata = this.genTransData(ctx);
 
     for (let t of TransDataTypes) {
       let ret = calcTransCenter(this.modal_ctx, this.inputs.selmask.getValue(), this.modal_ctx.view3d.transformSpace);
 
-      console.log("setting constraint space", ret.spaceMatrix.$matrix);
-      this.inputs.constraint_space.setValue(ret.spaceMatrix);
+      if (!this.inputs.constraint_space.wasSet) {
+        console.log("setting constraint space", ret.spaceMatrix.$matrix);
+        this.inputs.constraint_space.setValue(ret.spaceMatrix);
+      }
     }
+
+    return promise;
   }
 
   applyTransform(ctx, mat) {
@@ -248,7 +252,7 @@ export class TransformOp extends View3DOp {
         }
 
         this.inputs.constraint.setValue(c);
-        this.exec(this.execCtx);
+        this.exec(this.modal_ctx);
         break;
     }
 

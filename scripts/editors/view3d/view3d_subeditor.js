@@ -79,11 +79,17 @@ export class View3D_SubEditorIF {
 
     }
 
-    clickselect(e, x, y, selmask) {
+    clickselect(e, x, y, selmask, was_touch) {
       throw new Error("implement me");
     }
     
-    on_mousemove(x, y) {
+    on_mousedown(x, y, was_touch) {
+    }
+
+    on_mousemove(x, y, was_touch) {
+    }
+
+    on_mouseup(x, y, was_touch) {
     }
 
     on_drawstart(gl) {

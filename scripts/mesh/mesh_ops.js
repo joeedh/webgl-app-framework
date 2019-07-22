@@ -10,7 +10,7 @@ import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 
-import {Mesh, MeshTypes} from '../core/mesh.js';
+import {Mesh, MeshTypes, MeshFlags} from '../core/mesh.js';
 import {MeshOp} from './mesh_ops_base.js';
 
 export class ExtrudeRegionsOp extends MeshOp {
@@ -35,6 +35,7 @@ export class ExtrudeRegionsOp extends MeshOp {
     let fset = new util.set(mesh.faces.selected.editable);
     let vset = new util.set();
     let eset = new util.set();
+    let boundary = new util.set();
 
     for (let f of fset) {
       for (let list of f.lists) {
@@ -42,6 +43,32 @@ export class ExtrudeRegionsOp extends MeshOp {
           vset.add(l.v);
           eset.add(l.e);
         }
+      }
+    }
+
+    for (let e of eset) {
+      let l = e.l;
+
+      if (l === undefined) {
+        continue;
+      }
+
+      let _i = 0;
+      do {
+        if (!fset.has(l.f)) {
+          boundary.add(e);
+          break;
+        }
+
+        if (_i++ > 10000) {
+          console.log("infinite loop detected");
+          break;
+        }
+        l = l.radial_next;
+      } while (l !== e.l);
+
+      if (_i == 1) {
+        boundary.add(e);
       }
     }
 
@@ -79,7 +106,13 @@ export class ExtrudeRegionsOp extends MeshOp {
       if (f === mesh.faces.active) {
         mesh.setActive(f2);
       }
-      mesh.faces.setSelect(f2);
+
+      mesh.faces.setSelect(f2, true);
+      for (let list2 of f2.lists) {
+        for (let l2 of list2) {
+          mesh.edges.setSelect(l2.e, true);
+        }
+      }
 
       let quadvs = new Array(4);
 
@@ -92,32 +125,47 @@ export class ExtrudeRegionsOp extends MeshOp {
         let _i = 0;
 
         do {
-          quadvs[0] = l1.v;
-          quadvs[1] = l1.next.v;
-          quadvs[2] = l2.next.v;
-          quadvs[3] = l2.v;
+          if (boundary.has(l1.e)) {
+            quadvs[0] = l1.v;
+            quadvs[1] = l1.next.v;
+            quadvs[2] = l2.next.v;
+            quadvs[3] = l2.v;
 
-          let f3 = mesh.makeFace(quadvs);
-          let l = f3.lists[0].l;
+            let f3 = mesh.makeFace(quadvs);
+            let l = f3.lists[0].l;
 
-          mesh.copyElemData(l, l1);
-          mesh.copyElemData(l.next, l1.next);
-          mesh.copyElemData(l.next.next, l2.next);
-          mesh.copyElemData(l.prev, l2);
+            mesh.copyElemData(l, l1);
+            mesh.copyElemData(l.next, l1.next);
+            mesh.copyElemData(l.next.next, l2.next);
+            mesh.copyElemData(l.prev, l2);
+          }
 
           if (_i++ > 100000) {
             console.warn("infinite loop detected");
             break;
           }
+
           l2 = l2.next;
           l1 = l1.next;
         } while (l1 !== list1.l);
       }
+
       mesh.killFace(f);
     }
 
+    for (let e of mesh.edges) {
+      e.flag &= ~MeshFlags.DRAW_DEBUG;
+    }
+
+    for (let e of boundary) {
+      //mesh.edges.setSelect(e, true);
+      e.flag |= MeshFlags.DRAW_DEBUG;
+      //mesh.verts.setSelect(e.v1, true);
+      //mesh.verts.setSelect(e.v2, true);
+    }
+
     for (let e of eset) {
-      if (e.l === undefined) {
+      if (!boundary.has(e) && e.l === undefined) {
         mesh.killEdge(e);
       }
     }

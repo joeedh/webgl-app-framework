@@ -15,6 +15,11 @@ import {SelMask} from './selectmode.js';
 import {WidgetBase, WidgetArrow, WidgetTool, WidgetFlags} from './widgets.js';
 import {TranslateOp} from "./transform_ops.js";
 import {calcTransCenter} from './transform_query.js';
+import {ToolMacro} from "../../path.ux/scripts/simple_toolsys.js";
+
+let update_temps = util.cachering.fromConstructor(Vector3, 64);
+let update_temps4 = util.cachering.fromConstructor(Vector4, 64);
+let update_mats = util.cachering.fromConstructor(Matrix4, 64);
 
 export class TranslateWidget extends WidgetTool {
   constructor(manager) {
@@ -33,7 +38,7 @@ export class TranslateWidget extends WidgetTool {
   static validate(ctx) {
     let selmask = ctx.view3d.selectmode;
 
-    if (selmask == SelMask.OBJET) {
+    if (selmask == SelMask.OBJECT) {
       for (let ob of ctx.scene.objects.selected.editable) {
         return true;
       }
@@ -88,18 +93,6 @@ export class TranslateWidget extends WidgetTool {
   }
 
   startTool(axis, localX, localY) {
-    let view3d = this.view3d;
-
-    if (this._widget_tempnode === undefined) {
-      let n = this._widget_tempnode = this.manager.createCallbackNode(0, "widget redraw", () => {
-        this.update();
-        console.log("widget recalc update 1");
-      }, {trigger: new DependSocket("trigger")}, {});
-
-      this.ctx.graph.add(n);
-      n.inputs.trigger.connect(view3d._graphnode.outputs.onDrawPre);
-    }
-
     let tool = new TranslateOp([localX, localY]);
     let con = new Vector3();
 
@@ -110,21 +103,9 @@ export class TranslateWidget extends WidgetTool {
     } else {
       con[axis] = 1.0;
     }
+
     tool.inputs.constraint.setValue(con);
-
-    this.ctx.toolstack.execTool(tool);
-
-    if (tool._promise !== undefined) {
-      tool._promise.then((ctx, was_cancelled) => {
-        console.log("tool was finished", this, this._widget_tempnode, ".");
-
-        if (this._widget_tempnode !== undefined) {
-          //this.ctx.graph.remove(this._widget_tempnode);
-          this.manager.removeCallbackNode(this._widget_tempnode);
-          this._widget_tempnode = undefined;
-        }
-      })
-    }
+    this.execTool(tool);
   }
 
   update(ctx) {
@@ -152,35 +133,27 @@ export class TranslateWidget extends WidgetTool {
     this.view3d.unproject(co1);
     this.view3d.unproject(co2);
 
-    let ratio = z2/1500.0;
-    //console.log("ratio", 70*ratio, z2)
-    //ratio=0.01;
-
     let mat = new Matrix4(); //XXX get proper matrix space transform
     mat.multiply(ret.spaceMatrix);
-    //console.log(ret.spaceMatrix.$matrix);
-    //mat.translate(0, 0, 1);
 
     let xmat = new Matrix4();
     let ymat = new Matrix4();
 
-    let scale = !isNaN(ratio) ? ratio*80 : 1.0;
-    //console.log("scale", scale);
-
+    let scale = 1.0;
     xmat.euler_rotate(0.0, Math.PI*0.5, 0.0);
-    xmat.translate(0.0, 0.0, scale);
+    x.localMatrix.makeIdentity();
+    x.localMatrix.translate(0.0, 0.0, scale);
     xmat.scale(scale, scale, scale);
 
     ymat.euler_rotate(Math.PI*0.5, 0.0, 0.0);
-    ymat.translate(0.0, 0.0, scale);
+    y.localMatrix.makeIdentity();
+    y.localMatrix.translate(0.0, 0.0, scale);
     ymat.scale(scale, scale, scale);
 
     let zmat = new Matrix4();
-    zmat.translate(0.0, 0.0, scale);
+    z.localMatrix.makeIdentity();
+    z.localMatrix.translate(0.0, 0.0, scale);
     zmat.scale(scale, scale, scale);
-
-    //xmat.preMultiply(mat2);
-    //xmat.multiply(ret.spaceMatrix);
 
     let mat2 = new Matrix4();
     mat2.translate(ret.center[0], ret.center[1], ret.center[2]);
@@ -192,10 +165,6 @@ export class TranslateWidget extends WidgetTool {
     xmat.preMultiply(mat2);
     ymat.preMultiply(mat2);
     zmat.preMultiply(mat2);
-
-    //xmat.preMultiply(mat);
-    //ymat.preMultiply(mat);
-    //zmat.preMultiply(mat);
 
     x.setMatrix(xmat);
     y.setMatrix(ymat);
@@ -213,16 +182,18 @@ export class TranslateWidget extends WidgetTool {
 
     let fac = 0.75;
 
-    //ymat.euler_rotate(0.0, Math.PI*0.5, 0.0);
-    ymat.translate(-fac*scale, 0.0, fac*scale);
+    py.localMatrix.makeIdentity();
+    py.localMatrix.translate(-scale*fac, 0.0, scale*fac);
     ymat.scale(scale, scale, scale);
 
     zmat.euler_rotate(Math.PI*0.5, 0.0, 0.0);
-    zmat.translate(-scale*fac, 0.0, scale*fac);
+    pz.localMatrix.makeIdentity();
+    pz.localMatrix.translate(-scale*fac, 0.0, scale*fac);
     zmat.scale(scale, scale, scale);
 
     xmat.euler_rotate(0.0, 0.0, Math.PI*0.5);
-    xmat.translate(scale*fac, 0.0, scale*fac);
+    px.localMatrix.makeIdentity();
+    px.localMatrix.translate(scale*fac, 0.0, scale*fac);
     xmat.scale(scale, scale, scale);
 
     xmat.preMultiply(mat);
@@ -240,3 +211,121 @@ export class TranslateWidget extends WidgetTool {
 }
 
 WidgetTool.register(TranslateWidget);
+
+export class ExtrudeWidget extends WidgetTool {
+  constructor(manager) {
+    super(manager);
+
+    this.axes = undefined;
+  }
+
+  static define() {return {
+    uiname    : "Extrude",
+    name      : "extrude",
+    icon      : -1,
+    flag      : 0
+  }}
+
+  static validate(ctx) {
+    let selmask = ctx.view3d.selectmode;
+
+    for (let ob of ctx.selectedMeshObjects) {
+      for (let f of ob.data.faces.selected) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  create(ctx, manager) {
+    super.create(ctx, manager);
+
+    console.log("creating widget");
+
+    let arrow = this.arrow = this.getArrow(undefined, "orange");
+
+    arrow.on_mousedown = (localX, localY) => {
+      this.startTool(localX, localY);
+    };
+
+    this.update(ctx);
+  }
+
+  startTool(axis, localX, localY) {
+    let tool1 = this.ctx.api.createTool(this.ctx, "mesh.extrude_regions()");
+    let tool2 = this.ctx.api.createTool(this.ctx, "view3d.translate()");
+
+    let macro = new ToolMacro();
+    macro.add(tool1);
+    macro.add(tool2);
+
+    macro.connect(tool1, tool2, () => {
+      tool2.inputs.constraint_space.setValue(tool1.outputs.normalSpace.getValue());
+    });
+    tool2.inputs.constraint.setValue([0, 0, 1]);
+
+    this.execTool(macro, this.ctx);
+    //"mesh.extrude_regions()"
+
+  }
+
+  update(ctx) {
+    if (ctx === undefined) {
+      ctx = this.ctx;
+    }
+
+    let no = update_temps.next().zero();
+    let no2 = update_temps4.next();
+    let no3 = update_temps.next();
+    let co = update_temps.next().zero();
+    let co2 = update_temps.next().zero();
+    let tot = 0.0;
+
+    for (let ob of ctx.selectedMeshObjects) {
+      let mesh = ob.data;
+      let obmat = ob.outputs.matrix.getValue();
+      no3.zero();
+
+      for (let f of mesh.faces.selected.editable) {
+        co2.load(f.cent).multVecMatrix(obmat);
+
+        no2.load(f.no);
+        no2[3] = 0.0;
+        no2.multVecMatrix(obmat);
+        no3.add(no2);
+
+        co.add(co2);
+        tot += 1.0;
+      }
+
+      no3.normalize();
+      no.add(no3);
+    }
+
+    if (tot == 0.0) {
+      return; //should never happen, see this.validate()
+    }
+
+    co.mulScalar(1.0 / tot);
+    no.normalize();
+    console.log(no, co);
+
+    let mat = update_mats.next();
+    let tmat = update_mats.next();
+
+    mat.makeIdentity();
+    tmat.makeIdentity();
+
+    mat.makeNormalMatrix(no);
+    tmat.translate(co[0], co[1], co[2]);
+    mat.preMultiply(tmat);
+
+    let localmat = this.arrow.localMatrix;
+    localmat.makeIdentity();
+    localmat.translate(0.0, 0.0, 0.5);
+
+    this.arrow.setMatrix(mat);
+  }
+}
+WidgetTool.register(ExtrudeWidget);

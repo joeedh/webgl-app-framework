@@ -50,6 +50,38 @@ export class WidgetTool {
     return ret;
   }
 
+  /**
+   * executes a (usually modal) tool, adding (and removing)
+   * draw callbacks to execute this.update() as appropriate
+   * */
+  execTool(tool) {
+    let view3d = this.view3d;
+
+    if (this._widget_tempnode === undefined) {
+      let n = this._widget_tempnode = this.manager.createCallbackNode(0, "widget redraw", () => {
+        this.update();
+        console.log("widget recalc update 1");
+      }, {trigger: new DependSocket("trigger")}, {});
+
+      this.ctx.graph.add(n);
+      n.inputs.trigger.connect(view3d._graphnode.outputs.onDrawPre);
+    }
+
+    this.ctx.toolstack.execTool(tool);
+
+    if (tool._promise !== undefined) {
+      tool._promise.then((ctx, was_cancelled) => {
+        console.log("tool was finished", this, this._widget_tempnode, ".");
+
+        if (this._widget_tempnode !== undefined) {
+          //this.ctx.graph.remove(this._widget_tempnode);
+          this.manager.removeCallbackNode(this._widget_tempnode);
+          this._widget_tempnode = undefined;
+        }
+      })
+    }
+  }
+
   getPlane(matrix, color) {
     let ret = this.manager.plane(matrix, color);
     this.widgets.push(ret);
@@ -129,6 +161,7 @@ export class WidgetShape {
     this.pos = new Vector3();
     this.rot = new Vector3();
     this.scale = new Vector3();
+    this._drawtemp = new Vector3();
 
     this.destroyed = false;
     this.flag = WidgetFlags.CAN_SELECT;
@@ -138,7 +171,12 @@ export class WidgetShape {
     this.hcolor = new Vector4([0.7, 0.7, 0.7, 0.5]); //highlight color
 
     this.matrix = new Matrix4();
+    this.localMatrix = new Matrix4(); //we need a seperate local matrix for zoom correction to work
+
+    //internal final draw matrix
     this.drawmatrix = new Matrix4();
+    this._tempmat = new Matrix4();
+    this._tempmat2 = new Matrix4();
 
     this.mesh = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV);
 
@@ -179,7 +217,7 @@ export class WidgetShape {
     return b;
   }
 
-  draw(gl, manager, matrix) {
+  draw(gl, manager, matrix, localMatrix) {
     if (this.mesh === undefined) {
       console.warn("missing mesh in WidgetShape.prototype.draw()");
       return;
@@ -191,6 +229,29 @@ export class WidgetShape {
 
     let mat = this.drawmatrix;
     mat.load(this.matrix).multiply(matrix);
+
+    let co = this._drawtemp;
+    co.zero();
+    co.multVecMatrix(mat);
+    let w = co.multVecMatrix(manager.view3d.camera.rendermat);
+
+    let smat = this._tempmat;
+    smat.makeIdentity();
+
+    mat.load(this.matrix);
+
+    let scale = Math.max(w*0.05, 0.1);
+
+    let local = this._tempmat2.load(this.localMatrix);
+    if (localMatrix !== undefined) {
+      local.multiply(localMatrix);
+    }
+
+    smat.scale(scale, scale, scale);
+
+    mat.multiply(matrix);
+    mat.multiply(smat);
+    mat.multiply(local);
 
     this.mesh.uniforms.polygonOffset = 0.0;
     this.mesh.uniforms.projectionMatrix = manager.view3d.camera.rendermat;
@@ -224,10 +285,10 @@ export class WidgetArrow extends WidgetShape {
     this.shapeid = "ARROW";
   }
 
-  draw(gl, manager, matrix) {
+  draw(gl, manager, matrix, localMatrix) {
     this.mesh = manager.shapes[this.shapeid];
 
-    super.draw(gl, manager, matrix);
+    super.draw(gl, manager, matrix, localMatrix);
   }
 
   distToMouse(view3d, x, y) {
@@ -270,10 +331,10 @@ export class WidgetPlane extends WidgetShape {
     this.shapeid = "PLANE";
   }
 
-  draw(gl, manager, matrix) {
+  draw(gl, manager, matrix, localMatrix) {
     this.mesh = manager.shapes[this.shapeid];
 
-    super.draw(gl, manager, matrix);
+    super.draw(gl, manager, matrix, localMatrix);
   }
 
   distToMouse(view3d, x, y) {
@@ -323,6 +384,7 @@ export class WidgetBase {
     this.shape = undefined;
     this.manager = undefined; //is set by WidgetManager
     this.matrix = new Matrix4();
+    this.localMatrix = new Matrix4(); //we need a seperate local matrix for zoom correction to work
     this._tempmatrix = new Matrix4();
   }
 
@@ -365,7 +427,7 @@ export class WidgetBase {
    * @param x view3d-local coordinate x
    * @param y view3d-local coordinate y
    */
-  findNearest(view3d, x, y, limit=35) {
+  findNearest(view3d, x, y, limit=8) {
     let mindis, minret;
 
     if (this.shape !== undefined) {
@@ -376,7 +438,7 @@ export class WidgetBase {
     }
 
     for (let child of this.children) {
-      let dis = child.findNearest(view3d, x, y);
+      let dis = child.findNearest(view3d, x, y, limit);
       if (mindis === undefined || dis < mindis) {
         mindis = dis;
         minret = child;
@@ -443,7 +505,7 @@ export class WidgetBase {
       this.shape.flag &= ~WidgetFlags.HIGHLIGHT;
     }
 
-    this.shape.draw(gl, manager, mat);
+    this.shape.draw(gl, manager, mat, this.localMatrix);
   }
 }
 
@@ -528,8 +590,11 @@ export class WidgetManager {
   }
 
   /**see view3d.getSubEditorMpos for how localX/localY are derived*/
-  on_mousedown(localX, localY) {
-    let w = this.findNearest(localX, localY);
+  on_mousedown(localX, localY, was_touch) {
+    console.log("was touch:", was_touch);
+
+    let limit = was_touch ? 35 : 8;
+    let w = this.findNearest(localX, localY, limit);
     console.log("w", w);
 
     if (w !== undefined) {
@@ -538,12 +603,12 @@ export class WidgetManager {
     }
   }
 
-  findNearest(x, y, limit=55) {
+  findNearest(x, y, limit=8) {
     let mindis = 1e17;
     let minw = undefined;
 
     for (let w of this.widgets) {
-      let ret = w.findNearest(this.view3d, x, y);
+      let ret = w.findNearest(this.view3d, x, y, limit);
 
       if (ret === undefined) {
         continue;

@@ -95,12 +95,12 @@ varying vec3 vNormal;
 varying vec2 vUv;
 
 void main() {
-  vec4 c = vec4(1.0,1.0,1.0,1.0);//vColor;
-  
   float f;
+  vec3 no = normalize(vNormal);
   
-  f = abs(vNormal[1]*0.4 + vNormal[2]*0.6);
-  c.rgb = vec3(f, f, f)*1.5;//*vColor.rgb;
+  f = abs(no[1]*0.333 + no[2]*0.333 + no[0]*0.333);
+  f = f*0.8 + 0.2;
+  vec4 c = vec4(f, f, f, 1.0);
   
   gl_FragColor = c;
 }

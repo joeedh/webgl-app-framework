@@ -24,6 +24,7 @@ import {calcTransCenter} from './transform_query.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
 import {ConstraintSpaces} from './transform_base.js';
+import {eventWasTouch} from '../../path.ux/scripts/simple_events.js';
 
 let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
@@ -295,6 +296,8 @@ export class View3D extends Editor {
     }
 
     this.addEventListener("mousemove", (e) => {
+      let was_touch = eventWasTouch(e);
+
       if (this.canvas === undefined)
         return;
 
@@ -314,13 +317,13 @@ export class View3D extends Editor {
           this.ctx.api.execTool(this.ctx, tool);
         }
       } else {
-        if (this.widgets.on_mousemove(x, y)) {
+        if (this.widgets.on_mousemove(x, y, was_touch)) {
           this.pop_ctx_active();
           return;
         }
 
         for (let ed of this.editors) {
-          ed.on_mousemove(this.ctx, x, y);
+          ed.on_mousemove(this.ctx, x, y, was_touch);
         }
       }
 
@@ -328,6 +331,8 @@ export class View3D extends Editor {
     });
 
     this.addEventListener("mouseup", (e) => {
+      let was_touch = eventWasTouch(e);
+
       let ctx = this.ctx;
       this.push_ctx_active(ctx);
 
@@ -338,6 +343,7 @@ export class View3D extends Editor {
     });
 
     this.addEventListener("mousedown", (e) => {
+      let was_touch = eventWasTouch(e);
       this.push_ctx_active();
 
       let docontrols = e.button == 1 || e.altKey;
@@ -348,7 +354,7 @@ export class View3D extends Editor {
         let r = getSubEditorMpos(e);
         let x = r[0], y = r[1];
 
-        if (this.widgets.on_mousedown(x, y)) {
+        if (this.widgets.on_mousedown(x, y, was_touch)) {
           this.pop_ctx_active();
           return;
         }
@@ -358,7 +364,7 @@ export class View3D extends Editor {
           this.start_mpos = new Vector2(r);
 
           if (ed.constructor.define().selmask & selmask) {
-            ed.clickselect(e, x, y, selmask);
+            ed.clickselect(e, x, y, selmask, was_touch);
           }
         }
       }
@@ -382,6 +388,9 @@ export class View3D extends Editor {
 
       this.pop_ctx_active();
     });
+
+    e.preventDefault();
+    e.stopPropagation();
 
     window.redraw_viewport();
   }

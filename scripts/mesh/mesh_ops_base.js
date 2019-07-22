@@ -55,6 +55,11 @@ export class MeshOp extends View3DOp {
   }
 
   execPost(ctx) {
+    //check for mesh structure errors
+    for (let ob of ctx.selectedMeshObjects) {
+      ob.data.validateMesh();
+    }
+
     window.redraw_viewport();
     window.updateDataGraph();
   }
