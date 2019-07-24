@@ -12,11 +12,11 @@ export class ToolContext {
     this._appstate = appstate;
   }
 
-  get appstate() {
+  get appstate() { /** application state */
     return this._appstate;
   }
 
-  get graph() {
+  get graph() { /** execution graph */
     return this._appstate.datalib.graph;
   }
 
@@ -24,7 +24,7 @@ export class ToolContext {
     return this._appstate.toolstack;
   }
 
-  get api() {
+  get api() { /** get controller api */
     return this.state.api;
   }
   
@@ -32,23 +32,23 @@ export class ToolContext {
     return this._appstate;
   }
   
-  get datalib() {
+  get datalib() { /** get main Library database*/
     return this.state.datalib;
   }
   
-  get scene() {
+  get scene() { /** get active scene */
     return this.datalib.getLibrary("scene").active;
   }
 
-  save() {
+  save() { /** deprecated */
     //XXX why does this method exist?
   }
 
-  get object() {
+  get object() { /** get active object */
     return this.scene.objects.active;
   }
   
-  get mesh() {
+  get mesh() { /** get active mesh, basically ctx.object.data */
     let ob = this.object;
     
     if (ob !== undefined) {
@@ -56,13 +56,14 @@ export class ToolContext {
     }
   }
 
+  /** get all selected (and visible) objects */
   get selectedObjects() {
     return this.scene.objects.selected.editable;
   }
 
   /**returns selected mesh objects,
     ignoring objects that use the same mesh
-    instance (only one will get yield in that case)
+    instance (only one will get yielded in that case)
    */
   get selectedMeshObjects() {
     let this2 = this;
