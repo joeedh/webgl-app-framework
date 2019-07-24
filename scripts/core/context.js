@@ -1,9 +1,9 @@
 import '../path.ux/scripts/struct.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
-import {getContextArea} from '../editors/editor_base.js';
+import {getContextArea, Editor} from '../editors/editor_base.js';
 import * as util from '../util/util.js';
-import {Mesh} from './mesh.js';
+import {Mesh} from '../mesh/mesh.js';
 import {DataRef} from './lib_api.js';
 import {ToolStack, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
 
@@ -94,6 +94,14 @@ export class Context extends ToolContext {
 
   get nodeEditor() {
     return getContextArea(NodeEditor);
+  }
+
+  get area() {
+    return Editor.getActiveArea();
+  }
+
+  get screen() {
+    return this.state.screen;
   }
 }
 
@@ -207,7 +215,7 @@ SavedContext {
 `;
 nstructjs.manager.add_class(SavedContext);
 
-class ModalContext extends SavedContext {
+export class ModalContext extends SavedContext {
   constructor(ctx) {
     super(ctx, ctx.datalib);
     this._view3d = ctx.view3d;
@@ -266,8 +274,10 @@ export class AppToolStack extends ToolStack {
       this.modal_running = true;
 
       toolop._on_cancel = (function(toolop) {
-        this.pop_i(this.cur);
-        this.cur--;
+        if (!(toolop.undoflag & UndoFlags.NO_UNDO)) {
+          this.pop_i(this.cur);
+          this.cur--;
+        }
       }).bind(this);
 
       //will handle calling .exec itself

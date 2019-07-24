@@ -2,7 +2,7 @@ import * as vectormath from './vectormath.js';
 import * as math from './math.js';
 import * as util from './util.js';
 
-import {Mesh} from '../core/mesh.js';
+import {Mesh} from '../mesh/mesh.js';
 
 let Vector3 = vectormath.Vector3;
 

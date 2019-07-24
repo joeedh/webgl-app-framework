@@ -1,6 +1,6 @@
 import {Vector2, Vector3} from '../../util/vectormath.js';
 import {KeyMap, HotKey} from "../editor_base.js";
-import {SimpleMesh} from "../../core/simplemesh.js";
+import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from "../../core/simplemesh.js";
 
 export class MeshCache {
   constructor(meshid) {
@@ -10,6 +10,10 @@ export class MeshCache {
     this.gen = undefined; //current generation, we know mesh has changed when mesh.updateGen is not this
   }
 
+  getMesh(name) {
+    return this.meshes[name];
+  }
+
   makeMesh(name, layers) {
     if (layers === undefined) {
       throw new Error("layers cannot be undefined");
@@ -17,6 +21,18 @@ export class MeshCache {
 
     if (!(name in this.meshes)) {
       this.meshes[name] = new SimpleMesh(layers);
+    }
+
+    return this.meshes[name];
+  }
+
+  makeChunkedMesh(name, layers) {
+    if (layers === undefined) {
+      throw new Error("layers cannot be undefined");
+    }
+
+    if (!(name in this.meshes)) {
+      this.meshes[name] = new ChunkedSimpleMesh(layers);
     }
 
     return this.meshes[name];

@@ -184,7 +184,12 @@ export class CustomData {
     }
     return layer;
   }
-  
+
+  hasLayerType(typename) {
+    let set = this.getLayerSet(typename);
+    return set.length > 0;
+  }
+
   remLayer(layer) {
     let set = this.layers[layer.typeName];
     if (set.active === layer) {

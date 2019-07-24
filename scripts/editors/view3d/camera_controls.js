@@ -1,7 +1,9 @@
-import * as util from '../util/util.js';
-import * as math from '../util/math.js';
+//XXX unused file see view3d_ops.js
+
+import * as util from '../../util/util.js';
+import * as math from '../../util/math.js';
 import * as webgl from './webgl.js';
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath';
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath';
 
 var Camera = webgl.Camera;
 
@@ -140,7 +142,7 @@ export class CameraControls extends EventHandler {
   
   start(domobj) {
     this.start_pos    = new Vector3(_appstate.camera.pos);
-    this.start_target = new Vector3(_appstate.camera.target);
+    this.start_target = new Vector3(_appstate.camera.orbitTarget);
     this.start_up     = new Vector3(_appstate.camera.up);
     this.start_matrix = new Matrix4(_appstate.camera.cameramat);
     this.first = true;

@@ -97,7 +97,6 @@ export class GPUSelectBuffer {
       return w1-w2;
     });
 
-    console.log("RET", ret);
     return ret;
   }
 

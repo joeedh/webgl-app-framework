@@ -11,6 +11,10 @@ import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
 import {css2color} from '../../path.ux/scripts/ui_base.js';
 import * as util from '../../util/util.js';
+import * as math from '../../path.ux/scripts/math.js';
+
+let dist_temps = util.cachering.fromConstructor(Vector3, 512);
+let dist_rets = util.cachering.fromConstructor(Vector2, 512);
 
 export const WidgetFlags = {
   SELECT    : 1,
@@ -44,6 +48,12 @@ export class WidgetTool {
     return ret;
   }
 
+  getSphere(matrix, color) {
+    let ret = this.manager.sphere(matrix, color);
+    this.widgets.push(ret);
+    return ret;
+  }
+
   getChevron(matrix, color) {
     let ret = this.manager.chevron(matrix, color);
     this.widgets.push(ret);
@@ -60,7 +70,6 @@ export class WidgetTool {
     if (this._widget_tempnode === undefined) {
       let n = this._widget_tempnode = this.manager.createCallbackNode(0, "widget redraw", () => {
         this.update();
-        console.log("widget recalc update 1");
       }, {trigger: new DependSocket("trigger")}, {});
 
       this.ctx.graph.add(n);
@@ -158,9 +167,6 @@ export class WidgetTool {
 
 export class WidgetShape {
   constructor(view3d) {
-    this.pos = new Vector3();
-    this.rot = new Vector3();
-    this.scale = new Vector3();
     this._drawtemp = new Vector3();
 
     this.destroyed = false;
@@ -195,6 +201,7 @@ export class WidgetShape {
     this.destroyed = true;
   }
 
+  //returns [distance (in 2d screen space), z (for simple z ordering)]
   distToMouse(view3d, x, y) {
     throw new Error("implement me");
   }
@@ -240,7 +247,7 @@ export class WidgetShape {
 
     mat.load(this.matrix);
 
-    let scale = Math.max(w*0.05, 0.1);
+    let scale = w*0.15; //Math.max(w*0.05, 0.01);
 
     let local = this._tempmat2.load(this.localMatrix);
     if (localMatrix !== undefined) {
@@ -259,9 +266,16 @@ export class WidgetShape {
 
     gl.enable(gl.BLEND);
 
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    gl.blendEquation(gl.FUNC_ADD);
+    //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE);
+    //gl.blendEquation(gl.FUNC_ADD);
 
+    gl.disable(gl.DEPTH_TEST);
+    gl.depthMask(false);
+    this.mesh.draw(gl);
+
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthMask(true);
     this.mesh.draw(gl);
 
 
@@ -293,8 +307,9 @@ export class WidgetArrow extends WidgetShape {
 
   distToMouse(view3d, x, y) {
     //measure scale
-    let scale1 = new Vector3();
-    let scale2 = new Vector3();
+
+    let scale1 = dist_temps.next().zero();
+    let scale2 = dist_temps.next().zero();
 
     scale2[0] = scale2[1] = scale2[2] = 1.0;
     scale2.multVecMatrix(this.drawmatrix);
@@ -302,8 +317,11 @@ export class WidgetArrow extends WidgetShape {
 
     let scale = scale2.vectorDistance(scale1);
 
-    let v1 = new Vector3([0,0,-scale*0.5]);
-    let v2 = new Vector3([0,0,scale*0.5]);
+    let v1 = dist_temps.next().zero();
+    let v2 = dist_temps.next().zero();
+
+    v1[2] = -scale*0.5;
+    v2[2] = scale*0.5;
 
     v1.multVecMatrix(this.drawmatrix);
     v2.multVecMatrix(this.drawmatrix);
@@ -311,9 +329,22 @@ export class WidgetArrow extends WidgetShape {
     view3d.project(v1);
     view3d.project(v2);
 
-    let dis = dist_to_line_2d(new Vector2([x, y]), v1, v2, true);
+    let tout = dist_rets.next().zero();
 
-    return dis;
+    let dis = dist_to_line_2d(new Vector2([x, y]), v1, v2, true, undefined, tout);
+    let t = tout[0];
+
+    let lineco = dist_temps.next();
+    lineco.load(v1).interp(v2, t);
+
+    let ret = dist_rets.next();
+
+    //get distance to fat line by subtracting from dis
+
+    ret[0] = Math.max(dis-15, 0);
+    ret[1] = lineco[2];
+
+    return ret;
   }
 }
 
@@ -321,6 +352,67 @@ export class WidgetBlockArrow extends WidgetArrow {
   constructor() {
     super();
     this.shapeid = "BLOCKARROW";
+  }
+}
+
+export class WidgetSphere extends WidgetShape {
+  constructor(manager) {
+    super();
+
+    this.shapeid = "SPHERE";
+  }
+  draw(gl, manager, matrix, localMatrix) {
+    this.mesh = manager.shapes[this.shapeid];
+
+    super.draw(gl, manager, matrix, localMatrix);
+  }
+
+  distToMouse(view3d, x, y) {
+    let v = new Vector3();
+    //measure scale
+
+    let v1 = dist_temps.next().zero();
+    let v2 = dist_temps.next().zero();
+
+    let mat = this.drawmatrix;
+    let mm = mat.$matrix;
+
+    v1.multVecMatrix(mat);
+
+    let r = 0.5*Math.sqrt(mm.m11*mm.m11 + mm.m12*mm.m12 + mm.m13*mm.m13);
+
+    view3d.project(v1);
+    let z = v1[2];
+    view3d.unproject(v1);
+
+    v2[0] = x;
+    v2[1] = y;
+    v2[2] = z;
+    view3d.unproject(v2);
+
+    //get point on boundary
+    let rco = dist_temps.next().zero();
+    rco.load(v2).sub(v1).normalize().mulScalar(r).add(v1);
+
+    let t1 = dist_temps.next();
+    let t2 = dist_temps.next();
+
+    t1.load(v2).sub(rco);
+    t2.load(v2).sub(v1);
+
+    let sign = t1.dot(t2) < 0.0 ? -1.0 : 1.0;
+
+    view3d.project(v2);
+    view3d.project(rco);
+
+    let dis = v2.vectorDistance(rco);
+
+    let ret = dist_rets.next();
+
+    ret[0] = sign > 0.0 ? dis : 0.0;
+    ret[1] = rco[2];
+
+    return ret;
   }
 }
 
@@ -339,12 +431,15 @@ export class WidgetPlane extends WidgetShape {
 
   distToMouse(view3d, x, y) {
     //measure scale
-    let scale1 = new Vector3();
-    let scale2 = new Vector3();
-    let scale3 = new Vector3();
+    let scale1 = dist_temps.next().zero();
+    let scale2 = dist_temps.next().zero();
+    let scale3 = dist_temps.next().zero();
+
+    let imat = this._tempmat2;
+    imat.load(this.drawmatrix).invert();
 
     scale2[0] = 1.0;
-    scale3[2] = 1.0;
+    scale3[1] = 1.0;
 
     scale1.multVecMatrix(this.drawmatrix);
     scale2.multVecMatrix(this.drawmatrix);
@@ -353,17 +448,40 @@ export class WidgetPlane extends WidgetShape {
     let scalex = scale2.vectorDistance(scale1);
     let scalez = scale3.vectorDistance(scale1);
 
-    let v1 = new Vector3([0,0,0]);
+    let v1 = dist_temps.next().zero();
+    let n = dist_temps.next().zero();
 
     v1.multVecMatrix(this.drawmatrix);
-    view3d.project(v1);
+    let mm = this.drawmatrix.$matrix;
 
-    let dx = Math.abs(x-v1[0])*scalex, dy = Math.abs(y-v1[1])*scalez;
+    n[0] = mm.m31; n[1] = mm.m32; n[2] = mm.m33;
+    n.normalize();
 
-    let dis = Math.max(Math.abs(dx), Math.abs(dy));
-    //console.log(dx, dy, dis, scalex, scalez);
+    let view = view3d.getViewVec(x, y);
 
-    return dis;
+    let ret = math.isect_ray_plane(v1, n, view3d.camera.pos, view);
+    let ret2 = dist_rets.next();
+
+    if (ret) {
+      let zco = dist_temps.next().load(ret);
+      view3d.project(zco);
+
+      ret.multVecMatrix(imat);
+      let dx = Math.abs(ret[0])/scalex, dy = Math.abs(ret[1])/scalez;
+
+      let dis = Math.max(Math.abs(dx), Math.abs(dy));
+      //console.log(dx, dy, dis, scalex, scalez);
+
+      ret2[0] = dis;
+      ret2[1] = zco[2];
+
+      return ret2;
+    } else {
+      ret2[0] = 10000.0;
+      ret2[1] = 0.0;
+
+      return ret2;
+    }
   }
 }
 
@@ -428,19 +546,26 @@ export class WidgetBase {
    * @param y view3d-local coordinate y
    */
   findNearest(view3d, x, y, limit=8) {
-    let mindis, minret;
+    let mindis, minz, minret;
 
     if (this.shape !== undefined) {
-      let dis = this.shape.distToMouse(view3d, x, y);
+      let disz = this.shape.distToMouse(view3d, x, y);
       
-      mindis = dis;
+      mindis = disz[0];
+      minz = disz[1];
       minret = this;
     }
 
     for (let child of this.children) {
-      let dis = child.findNearest(view3d, x, y, limit);
-      if (mindis === undefined || dis < mindis) {
-        mindis = dis;
+      let ret = child.findNearest(view3d, x, y, limit);
+
+      if (ret !== undefined) {
+        //console.log(ret.z)
+      }
+
+      if (mindis === undefined || ret.dis < mindis) {
+        mindis = ret.dis;
+        minz = ret.z;
         minret = child;
       }
     }
@@ -451,7 +576,8 @@ export class WidgetBase {
 
     return {
       data : minret,
-      dis  : mindis
+      dis  : mindis,
+      z    : minz
     };
   }
 
@@ -589,15 +715,23 @@ export class WidgetManager {
     this.ready = true;
   }
 
+  _picklimit(was_touch) {
+    return was_touch ? 35 : 8;
+  }
   /**see view3d.getSubEditorMpos for how localX/localY are derived*/
   on_mousedown(localX, localY, was_touch) {
-    console.log("was touch:", was_touch);
+    console.warn("was touch:", was_touch, "limit:", this._picklimit(was_touch));
 
-    let limit = was_touch ? 35 : 8;
-    let w = this.findNearest(localX, localY, limit);
+    let w = this.findNearest(localX, localY, this._picklimit(was_touch));
     console.log("w", w);
 
     if (w !== undefined) {
+      if (this.widgets.hightlight !== undefined) {
+        this.widgets.hightlight.flag &= ~WidgetFlags.HIGHLIGHT;
+      }
+
+      this.widgets.highlight = w;
+      w.flag |= WidgetFlags.HIGHLIGHT;
       w.on_mousedown(localX, localY);
       return true;
     }
@@ -605,18 +739,21 @@ export class WidgetManager {
 
   findNearest(x, y, limit=8) {
     let mindis = 1e17;
+    let minz = 1e17;
     let minw = undefined;
 
     for (let w of this.widgets) {
       let ret = w.findNearest(this.view3d, x, y, limit);
 
-      if (ret === undefined) {
+      if (ret === undefined || ret.dis > limit) {
         continue;
       }
 
+      //console.log(ret.z);
       let dis = ret.dis;
+      let z = ret.z;
 
-      if ((minw === undefined || dis < mindis) && dis < limit) {
+      if (minw === undefined || (dis < mindis || z < minz)) {
         mindis = dis;
         minw = ret.data;
       }
@@ -625,8 +762,8 @@ export class WidgetManager {
     return minw;
   }
 
-  on_mousemove(localX, localY) {
-    let w = this.findNearest(localX, localY);
+  on_mousemove(localX, localY, was_touch) {
+    let w = this.findNearest(localX, localY, this._picklimit(was_touch));
     
     //console.log(w);
 
@@ -748,6 +885,10 @@ export class WidgetManager {
 
   plane(matrix, color) {
     return this.add(this._newbase(matrix, color, new WidgetPlane(this)));
+  }
+
+  sphere(matrix, color) {
+    return this.add(this._newbase(matrix, color, new WidgetSphere(this)));
   }
 
   blockarrow(matrix, color) {

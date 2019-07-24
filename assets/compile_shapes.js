@@ -8,7 +8,8 @@ let files = {
   PLANE : "plane.obj",
   TORUS : "rotatetorus.obj",
   BLOCKARROW : "scalearrow.obj",
-  CHEVRON : "chevron.obj"
+  CHEVRON : "chevron.obj",
+  SPHERE : "sphere.obj"
 };
 
 let data = '';

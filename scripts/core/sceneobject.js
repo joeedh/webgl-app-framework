@@ -3,7 +3,7 @@ import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {Graph, SocketFlags} from './graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
-import {Mesh} from './mesh.js';
+import {Mesh} from '../mesh/mesh.js';
 import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket} from './graphsockets.js';
 
 export const ObjectFlags = {

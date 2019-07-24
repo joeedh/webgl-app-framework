@@ -37,6 +37,7 @@ function appendvec(a, b, n, defaultval) {
 }
 
 var _ids_arrs = [[0], [0], [0], [0]];
+let zero = new Vector3();
 
 function copyvec(a, b, starti, n, defaultval) {
   if (defaultval == undefined)
@@ -125,9 +126,9 @@ export class QuadEditor {
       this.t2 = new TriEditor();
     }
     
-    bind(mesh, i) {
+    bind(mesh, i, i2) {
       this.t1.bind(mesh, i);
-      this.t2.bind(mesh, i+1);
+      this.t2.bind(mesh, i2);
       
       return this;
     }
@@ -491,7 +492,7 @@ export class SimpleIsland {
     this.tri(v1, v2, v3);
     this.tri(v1, v3, v4);
     
-    return this.quad_editors.next().bind(this, i);
+    return this.quad_editors.next().bind(this, i, i+1);
   }
   
   destroy(gl) {
@@ -764,6 +765,129 @@ export class SimpleMesh {
 
   point(v1) {
     return this.island.point(v1);
+  }
+
+  draw(gl, uniforms, program_override=undefined) {
+    for (var island of this.islands) {
+      island.draw(gl, uniforms, undefined, program_override);
+    }
+  }
+}
+
+export class ChunkedSimpleMesh extends SimpleMesh {
+  constructor(layerflag=LayerTypes.LOC|LayerTypes.NORMAL|LayerTypes.UV, chunksize=128) {
+    super();
+
+    this.layerflag = layerflag;
+
+    this.chunksize = chunksize;
+    this.islands = [];
+    this.uniforms = {};
+
+    this.island = undefined;
+
+    this.quad_editors = util.cachering.fromConstructor(QuadEditor, 32);
+
+    this.freelist = [];
+    this.chunkmap = {};
+    this.idmap = {};
+    this.idgen = 0;
+  }
+
+  get_chunk(id) {
+    if (id in this.chunkmap) {
+      return this.islands[this.chunkmap[id]];
+    }
+
+    if (this.freelist.length > 0) {
+      let id2 = this.freelist.pop();
+      let chunk = this.freelist.pop();
+
+      this.chunkmap[id] = chunk;
+      this.idmap[id] = id2;
+
+      let ch = this.islands[chunk];
+
+      if (ch.tottri < this.chunksize) {
+        ch.tri(zero, zero, zero);
+      }
+
+      return ch;
+    }
+
+    let chunki = this.islands.length;
+    let chunk = this.add_island();
+
+    for (let i=0; i<this.chunksize; i++) {
+      this.freelist.push(chunki);
+      this.freelist.push(this.chunksize - i - 1);
+    }
+
+    return this.get_chunk(id);
+  }
+
+  destroy(gl) {
+    for (var island of this.islands) {
+      island.destroy(gl);
+    }
+  }
+
+  tri(id, v1, v2, v3) {
+    let chunk = this.get_chunk(id);
+    let itri = this.idmap[id];
+
+    let tri_cos = chunk.tri_cos;
+    let i = itri*9;
+
+    if (tri_cos.length < i+9) {
+      chunk.tri(v1, v2, v3);
+    } else {
+      tri_cos[i++] = v1[0]; tri_cos[i++] = v1[1]; tri_cos[i++] = v1[2];
+      tri_cos[i++] = v2[0]; tri_cos[i++] = v2[1]; tri_cos[i++] = v2[2];
+      tri_cos[i++] = v3[0]; tri_cos[i++] = v3[1]; tri_cos[i++] = v3[2];
+    }
+
+    chunk.regen = 1;
+    return chunk.tri_editors.next().bind(chunk, itri);
+  }
+
+  quad(id, v1, v2, v3, v4) {
+    throw new Error("unsupported for chunked meshes");
+  }
+
+  line(id, v1, v2) {
+    let chunk = this.get_chunk(id);
+    let iline = this.idmap[id];
+
+    let line_cos = chunk.line_cos;
+    let i = iline*6;
+
+    if (line_cos.length < i+6) {
+      chunk.line(v1, v2);
+    } else {
+      line_cos[i++] = v1[0]; line_cos[i++] = v1[1]; line_cos[i++] = v1[2];
+      line_cos[i++] = v2[0]; line_cos[i++] = v2[1]; line_cos[i++] = v2[2];
+    }
+
+    chunk.regen = 1;
+    return chunk.line_editors.next().bind(chunk, iline);
+  }
+
+  point(id, v1) {
+    let chunk = this.get_chunk(id);
+    let ipoint = this.idmap[id];
+
+    let point_cos = chunk.point_cos;
+    let i = ipoint*3;
+
+    if (point_cos.length < i+9) {
+      chunk.point(v1);
+    } else {
+      point_cos[i++] = v1[0]; point_cos[i++] = v1[1]; point_cos[i++] = v1[2];
+    }
+
+    chunk.regen = 1;
+    return chunk.point_editors.next().bind(chunk, ipoint);
   }
 
   draw(gl, uniforms, program_override=undefined) {

@@ -627,28 +627,32 @@ var dt2l_v3 = new Vector2();
 var dt2l_v4 = new Vector2();
 var dt2l_v5 = new Vector2();
 
-     var dist_to_line_2d = exports.dist_to_line_2d = 
-function dist_to_line_2d(p, v1, v2, clip) {
+let dist_to_line_2d = exports.dist_to_line_2d = function dist_to_line_2d(p, v1, v2, clip, closest_co_out=undefined) {
   if (clip == undefined) {
-      clip = true;
+    clip = true;
   }
-  
+
   v1 = dt2l_v4.load(v1);
   v2 = dt2l_v5.load(v2);
-  
+
   var n = dt2l_v1;
   var vec = dt2l_v3;
-  
+
   n.load(v2).sub(v1).normalize();
   vec.load(p).sub(v1);
-  
+
   var t = vec.dot(n);
   if (clip) {
     t = Math.min(Math.max(t, 0.0), v1.vectorDistance(v2));
   }
-  
+
   n.mulScalar(t).add(v1);
-  
+
+  if (closest_co_out) {
+    closest_co_out[0] = n[0];
+    closest_co_out[1] = n[1];
+  }
+
   return n.vectorDistance(p);
 }
 

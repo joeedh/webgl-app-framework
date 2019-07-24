@@ -1,9 +1,9 @@
 import {ExtrudeRegionsOp} from '../../mesh/mesh_ops.js';
 import {View3D_SubEditorIF} from './view3d_subeditor.js';
 import {SelMask, SelOneToolModes, SelToolModes} from './selectmode.js';
-import {Mesh, MeshTypes, MeshFlags} from '../../core/mesh.js';
+import {Mesh, MeshTypes, MeshFlags} from '../../mesh/mesh.js';
 import * as util from '../../util/util.js';
-import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
+import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {Shaders} from './view3d_shaders.js'
 import {FindnearestRet} from "./view3d_subeditor.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
@@ -34,10 +34,22 @@ export const Colors = {
   ACTIVE     : [0.3, 1.0, 0.3, 1.0],
   LAST       : [0.0, 0.3, 1.0, 1.0],
   HIGHLIGHT  : [1.0, 1.0, 0.3, 1.0],
-  POINTSIZE  : 10,
-  POLYGON_OFFSET : 1.0
+  POINTSIZE  : 7,
+  POLYGON_OFFSET : 1.0,
+  FACE_UNSEL : [0.75, 0.75, 0.75, 0.3]
 };
 window._Colors = Colors; //debugging global
+
+function elemColor(e) {
+  if (e.flag & MeshFlags.DRAW_DEBUG) {
+    return Colors.DRAW_DEBUG;
+  } else if (e.flag & MeshFlags.SELECT) {
+    return Colors.SELECT;
+  } else {
+    return Colors.UNSELECT;
+  }
+}
+
 
 export class MeshEditor extends View3D_SubEditorIF {
   constructor(view3d) {
@@ -81,7 +93,8 @@ export class MeshEditor extends View3D_SubEditorIF {
 
         this.ctx.toolstack.execTool(macro, this.ctx);
         //"mesh.extrude_regions()"
-      })
+      }),
+      new HotKey("D", [], "mesh.subdivide_smooth()")
     ]);
 
     return this.keymap;
@@ -168,12 +181,88 @@ export class MeshEditor extends View3D_SubEditorIF {
     this.drawvisit.clear();
   }
 
+  resyncMeshCache(gl, object, mesh) {
+    console.log("syncing");
+    let mc = this.meshcache.get(mesh.lib_id);
+
+    let fm = mc.getMesh("faces");
+    let ulist = mesh.lastUpdateList;
+    let eidmap = mesh.eidmap;
+    let ltris = mesh._ltris;
+    mc.partialGen = mesh.partialUpdateGen;
+
+    for (let eid in ulist) {
+      let f = eidmap[eid];
+      if (f === undefined || f.type != MeshTypes.FACE || (f.flag & MeshFlags.HIDE)) {
+        continue;
+      }
+
+      let li = mesh._ltrimap_start[f.eid];
+      let len = mesh._ltrimap_len[f.eid];
+
+      let c = elemColor(f);
+      if (!(f.flag & MeshFlags.SELECT)) {
+        c = Colors.FACE_UNSEL;
+      }
+
+      for (let i=0; i<len; i++) {
+        let idx = li;
+
+        let l1 = ltris[li++];
+        let l2 = ltris[li++];
+        let l3 = ltris[li++];
+
+        let tri = fm.tri(idx, l1.v, l2.v, l3.v);
+        
+        tri.colors(c, c, c);
+        tri.ids(f.eid, f.eid, f.eid);
+      }
+    }
+
+    let em = mc.getMesh("edges");
+    for (let eid in ulist) {
+      let e = eidmap[eid];
+
+      if (e === undefined || e.type != MeshTypes.EDGE || (e.flag & MeshFlags.HIDE)) {
+        continue;
+      }
+
+      let l = em.line(e.eid, e.v1, e.v2);
+
+      let c = elemColor(e);
+
+      l.ids(e.eid, e.eid);
+      l.colors(c, c);
+    }
+
+    let vm = mc.getMesh("verts");
+    for (let eid in ulist) {
+      let v = eidmap[eid];
+
+      if (v === undefined || v.type != MeshTypes.VERTEX || (v.flag & MeshFlags.HIDE)) {
+        continue;
+      }
+
+      if (v.flag & MeshFlags.HIDE)
+        continue;
+
+      let p = vm.point(v.eid, v);
+
+      p.ids(v.eid);
+      p.colors(elemColor(v));
+    }
+  }
+
   getMeshCache(gl, object, mesh) {
     let regen = !this.meshcache.has(mesh.lib_id);
     regen = regen || this.meshcache.get(mesh.lib_id).gen != mesh.updateGen;
 
+    let resync = !regen && (this.meshcache.get(mesh.lib_id).partialGen != mesh.partialUpdateGen);
+
     if (regen) {
       this.rebuildMeshCache(gl, object, mesh);
+    } else if (resync) {
+      this.resyncMeshCache(gl, object, mesh);
     }
 
     return this.meshcache.get(mesh.lib_id);
@@ -196,36 +285,26 @@ export class MeshEditor extends View3D_SubEditorIF {
 
     mc.gen = mesh.updateGen;
 
-    function elemColor(e) {
-      if (e.flag & MeshFlags.DRAW_DEBUG) {
-        return Colors.DRAW_DEBUG;
-      } else if (e.flag & MeshFlags.SELECT) {
-        return Colors.SELECT;
-      } else {
-        return Colors.UNSELECT;
-      }
-    }
-
     let layerTypes = LayerTypes.LOC|LayerTypes.COLOR|LayerTypes.ID;
 
-    let vm = mc.makeMesh("verts", layerTypes);
+    let vm = mc.makeChunkedMesh("verts", layerTypes);
 
     for (let v of mesh.verts) {
       if (v.flag & MeshFlags.HIDE)
         continue;
 
-      let p = vm.point(v);
+      let p = vm.point(v.eid, v);
 
       p.ids(v.eid);
       p.colors(elemColor(v));
     }
 
-    let em = mc.makeMesh("edges", layerTypes);
+    let em = mc.makeChunkedMesh("edges", layerTypes);
     for (let e of mesh.edges) {
       if (e.flag & MeshFlags.HIDE)
         continue;
 
-      let l = em.line(e.v1, e.v2);
+      let l = em.line(e.eid, e.v1, e.v2);
 
       let c = elemColor(e);
 
@@ -233,10 +312,9 @@ export class MeshEditor extends View3D_SubEditorIF {
       l.colors(c, c);
     }
 
-    let fm = mc.makeMesh("faces", layerTypes);
+    let fm = mc.makeChunkedMesh("faces", layerTypes);
 
     let ltris = mesh.loopTris;
-    let face_unsel = [0.75, 0.75, 0.75, 0.3];
 
     for (let i=0; i<ltris.length; i += 3) {
       let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
@@ -248,10 +326,10 @@ export class MeshEditor extends View3D_SubEditorIF {
 
       let c = elemColor(f);
       if (!(f.flag & MeshFlags.SELECT)) {
-        c = face_unsel;
+        c = Colors.FACE_UNSEL;
       }
 
-      let tri = fm.tri(l1.v, l2.v, l3.v);
+      let tri = fm.tri(i, l1.v, l2.v, l3.v);
 
       tri.colors(c, c, c);
       tri.ids(f.eid, f.eid, f.eid);
@@ -305,7 +383,7 @@ export class MeshEditor extends View3D_SubEditorIF {
     //gl.depthMask(0);
     //drawElements(mesh.faces, mc.meshes["faces"], 0.1);
     //gl.depthMask(1);
-    drawElements(mesh.faces, mc.meshes["faces"], 0.3);
+    drawElements(mesh.faces, mc.meshes["faces"], 0.1);
     gl.disable(gl.BLEND);
     //console.log(mc.meshes["faces"]);
 

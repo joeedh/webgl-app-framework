@@ -9,9 +9,11 @@ import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
+import {Icons} from '../editors/icon_enum.js';
 
-import {Mesh, MeshTypes, MeshFlags} from '../core/mesh.js';
+import {Mesh, MeshTypes, MeshFlags} from './mesh.js';
 import {MeshOp} from './mesh_ops_base.js';
+import {subdivide} from '../subsurf/subsurf_mesh.js';
 
 export class ExtrudeRegionsOp extends MeshOp {
   constructor() {
@@ -101,7 +103,6 @@ export class ExtrudeRegionsOp extends MeshOp {
       no.add(f.no);
 
       let f2 = mesh.copyFace(f, vmap);
-      console.log(f2);
 
       if (f === mesh.faces.active) {
         mesh.setActive(f2);
@@ -204,3 +205,29 @@ export class ExtrudeRegionsOp extends MeshOp {
 
 ToolOp.register(ExtrudeRegionsOp);
 
+export class CatmullClarkeSubd extends MeshOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {return {
+    uiname   : "Subdivide Smooth",
+    icon     : Icons.SUBDIVIDE,
+    toolpath : "mesh.subdivide_smooth",
+    undoflag : 0,
+    flag     : 0,
+    inputs   : {},
+  }}
+
+  exec(ctx) {
+    console.log("subdivide smooth!");
+
+    for (let ob of ctx.selectedMeshObjects) {
+      let mesh = ob.data;
+
+      subdivide(mesh, list(mesh.faces.selected.editable));
+      mesh.regenRender();
+    }
+  }
+}
+ToolOp.register(CatmullClarkeSubd);

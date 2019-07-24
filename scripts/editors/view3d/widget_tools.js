@@ -16,10 +16,25 @@ import {WidgetBase, WidgetArrow, WidgetTool, WidgetFlags} from './widgets.js';
 import {TranslateOp} from "./transform_ops.js";
 import {calcTransCenter} from './transform_query.js';
 import {ToolMacro} from "../../path.ux/scripts/simple_toolsys.js";
+import {Icons} from '../icon_enum.js';
 
 let update_temps = util.cachering.fromConstructor(Vector3, 64);
 let update_temps4 = util.cachering.fromConstructor(Vector4, 64);
 let update_mats = util.cachering.fromConstructor(Matrix4, 64);
+
+export class NoneWidget extends WidgetTool {
+  static define() {return {
+    uiname    : "Disable widgets",
+    name      : "none",
+    icon      : -1,
+    flag      : 0
+  }}
+
+  static validate(ctx) {
+    return false;
+  }
+}
+WidgetTool.register(NoneWidget);
 
 export class TranslateWidget extends WidgetTool {
   constructor(manager) {
@@ -31,7 +46,7 @@ export class TranslateWidget extends WidgetTool {
   static define() {return {
     uiname    : "Move",
     name      : "translate",
-    icon      : -1,
+    icon      : Icons.TRANSLATE,
     flag      : 0
   }}
 
@@ -58,6 +73,8 @@ export class TranslateWidget extends WidgetTool {
 
     console.log("creating widget");
 
+    let center = this.center = this.getSphere(undefined, [0.5, 0.5, 0.5, 1.0]);
+
     let px = this.getPlane(undefined, [1, 0, 0, 0.5]); //"rgba(255, 0, 0, 0.8)");
     let py = this.getPlane(undefined, "rgba(0, 255, 0, 0.2)");
     let pz = this.getPlane(undefined, "rgba(0, 0, 255, 0.2)");
@@ -68,6 +85,10 @@ export class TranslateWidget extends WidgetTool {
     let z = this.getArrow(undefined, "blue");
 
     this.axes = [x, y, z];
+
+    center.on_mousedown = (localX, localY) => {
+      this.startTool(-1, localX, localY);
+    };
 
     x.on_mousedown = (localX, localY) => {
       this.startTool(0, localX, localY);
@@ -96,15 +117,18 @@ export class TranslateWidget extends WidgetTool {
     let tool = new TranslateOp([localX, localY]);
     let con = new Vector3();
 
-    if (axis > 2) {
-      axis -= 3;
-      con[(axis+1)%3] = 1.0;
-      con[(axis+2)%3] = 1.0;
-    } else {
-      con[axis] = 1.0;
+    if (axis >= 0) {
+      if (axis > 2) {
+        axis -= 3;
+        con[(axis + 1) % 3] = 1.0;
+        con[(axis + 2) % 3] = 1.0;
+      } else {
+        con[axis] = 1.0;
+      }
+
+      tool.inputs.constraint.setValue(con);
     }
 
-    tool.inputs.constraint.setValue(con);
     this.execTool(tool);
   }
 
@@ -119,6 +143,11 @@ export class TranslateWidget extends WidgetTool {
 
     let ret = this.view3d.getTransCenter();
 
+    let tmat = new Matrix4();
+    let ts = 0.5;
+    tmat.translate(ret.center[0], ret.center[1], ret.center[2]);
+    tmat.scale(ts, ts, ts);
+    this.center.setMatrix(tmat);
 
     let co1 = new Vector3(ret.center);
     let co2 = new Vector3(co1);
@@ -180,21 +209,22 @@ export class TranslateWidget extends WidgetTool {
 
     scale *= 0.6;
 
-    let fac = 0.75;
+    let fac = 1.5;
 
+    xmat.euler_rotate(0.0, Math.PI*0.5, 0.0);
+    px.localMatrix.makeIdentity();
+    px.localMatrix.translate(scale*fac, -scale*fac, 0.0);
+    xmat.scale(scale, scale, scale);
+
+    ymat.euler_rotate(Math.PI*0.5, 0.0, 0.0);
     py.localMatrix.makeIdentity();
-    py.localMatrix.translate(-scale*fac, 0.0, scale*fac);
+    py.localMatrix.translate(-scale*fac, scale*fac, 0.0);
     ymat.scale(scale, scale, scale);
 
-    zmat.euler_rotate(Math.PI*0.5, 0.0, 0.0);
+    zmat.euler_rotate(0.0, 0.0, 0.0);
     pz.localMatrix.makeIdentity();
-    pz.localMatrix.translate(-scale*fac, 0.0, scale*fac);
+    pz.localMatrix.translate(-scale*fac, -scale*fac, 0.0);
     zmat.scale(scale, scale, scale);
-
-    xmat.euler_rotate(0.0, 0.0, Math.PI*0.5);
-    px.localMatrix.makeIdentity();
-    px.localMatrix.translate(scale*fac, 0.0, scale*fac);
-    xmat.scale(scale, scale, scale);
 
     xmat.preMultiply(mat);
     ymat.preMultiply(mat);
@@ -222,7 +252,7 @@ export class ExtrudeWidget extends WidgetTool {
   static define() {return {
     uiname    : "Extrude",
     name      : "extrude",
-    icon      : -1,
+    icon      : Icons.EXTRUDE,
     flag      : 0
   }}
 
@@ -309,7 +339,6 @@ export class ExtrudeWidget extends WidgetTool {
 
     co.mulScalar(1.0 / tot);
     no.normalize();
-    console.log(no, co);
 
     let mat = update_mats.next();
     let tmat = update_mats.next();

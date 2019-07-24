@@ -1,4 +1,4 @@
-import {MeshTypes, MeshFlags, Mesh} from './mesh.js';
+import {MeshTypes, MeshFlags, Mesh} from '../mesh/mesh.js';
 import * as math from '../util/math.js';
 import * as util from '../util/util.js'
 

@@ -1,7 +1,7 @@
 import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
 import {ToolOp, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
 import {keymap} from '../../path.ux/scripts/simple_events.js';
-import {MeshFlags, MeshTypes} from '../../core/mesh.js';
+import {MeshFlags, MeshTypes} from '../../mesh/mesh.js';
 import {PropModes, TransDataType, TransDataElem} from './transform_base.js';
 import * as util from '../../util/util.js';
 
@@ -313,8 +313,61 @@ export class MeshTransType extends TransDataType {
   }
   
   static update(ctx, elemlist) {
-    ctx.mesh.recalcNormals();
-    ctx.mesh.regenRender();
+    let mesh = ctx.mesh;
+
+    if (elemlist !== undefined) {
+      let fset = new util.set();
+      let vset = new util.set();
+
+      for (let e of elemlist) {
+        let v = e.data1;
+        vset.add(v);
+
+        for (let e2 of v.edges) {
+          for (let f of e2.faces) {
+            fset.add(f);
+          }
+        }
+      }
+
+      for (let v of vset) {
+        v.no.zero();
+      }
+
+      for (let f of fset) {
+        f.calcNormal();
+        f.calcCent();
+      }
+
+      for (let v of vset) {
+        for (let f of v.faces) {
+          v.no.add(f.no);
+          mesh.flagElemUpdate(f);
+        }
+
+        for (let e of v.edges) {
+          mesh.flagElemUpdate(e);
+        }
+
+        v.no.normalize();
+        mesh.flagElemUpdate(v);
+      }
+    } else {
+      mesh.recalcNormals();
+
+      for (let item of elemlist) {
+        mesh.flagElemUpdate(item.data1);
+
+        for (let e of item.data1.edges) {
+          mesh.flagElemUpdate(e);
+        }
+
+        for (let f of item.data1.faces) {
+          mesh.flagElemUpdate(f);
+        }
+      }
+    }
+    mesh.regenPartial();
   }
 }
 TransDataType.register(MeshTransType);

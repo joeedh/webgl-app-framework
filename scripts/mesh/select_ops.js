@@ -2,7 +2,7 @@
 
 import {ToolOp, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
 import {IntProperty, EnumProperty, BoolProperty, FloatProperty, FlagProperty} from "../path.ux/scripts/toolprop.js";
-import {Mesh, MeshTypes, MeshFlags} from '../core/mesh.js';
+import {Mesh, MeshTypes, MeshFlags} from './mesh.js';
 import * as util from '../util/util.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SelMask, SelOneToolModes, SelToolModes} from '../editors/view3d/selectmode.js';
@@ -174,7 +174,9 @@ export class ToggleSelectAll extends SelectOpBase {
 
   static invoke(ctx, args) {
     let ret = new ToggleSelectAll();
-    ret.inputs.selmask.setValue(ctx.view3d.selectmode);
+
+    //ret.inputs.selmask.setValue(ctx.view3d.selectmode);
+    ret.inputs.selmask.setValue(SelMask.VERTEX|SelMask.EDGE|SelMask.FACE);
 
     if ("mode" in args) {
       let mode = args.mode;
@@ -236,6 +238,8 @@ export class ToggleSelectAll extends SelectOpBase {
           }
         }
       }
+
+      console.log("mode2", mode2, SelToolModes);
 
       for (let elist of mesh.getElemLists()) {
         if (!(elist.type & selmask)) {

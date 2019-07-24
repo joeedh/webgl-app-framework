@@ -10,7 +10,7 @@ import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 
-import {Mesh, MeshTypes} from '../core/mesh.js';
+import {Mesh, MeshTypes} from './mesh.js';
 import '../path.ux/scripts/struct.js';
 import {View3DOp} from '../editors/view3d/view3d_ops.js';
 

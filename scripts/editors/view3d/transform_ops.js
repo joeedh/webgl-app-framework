@@ -147,6 +147,14 @@ export class TransformOp extends View3DOp {
     this.centfirst = true;
     this.tdata = undefined;
 
+    //make sure selection buffer doesn't get messed up by
+    //partial update, do a full sync to gpu on mouse up
+
+    let ctx = this.modal_ctx;
+    for (let ob of ctx.selectedMeshObjects) {
+      ob.data.regenRender();
+    }
+
     return super.modalEnd(was_canceled);
   }
 

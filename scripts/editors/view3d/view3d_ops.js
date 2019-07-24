@@ -1,6 +1,30 @@
 import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
 import {ToolOp, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
 import {keymap} from '../../path.ux/scripts/simple_events.js';
+import {Icons} from '../icon_enum.js';
+
+export class ViewSelected extends ToolOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {return {
+    uiname   : "View Selected",
+    toolpath : "view3d.view_selected",
+    description : "Recenter View (fixes orbit/rotate problems)",
+    icon     : Icons.VIEW_SELECTED,
+    is_modal : true,
+    undoflag : UndoFlags.NO_UNDO
+  }}
+
+  modalStart(ctx) {
+    super.modalStart(ctx);
+    this.modalEnd(ctx);
+
+    ctx.view3d.viewSelected();
+  }
+}
+ToolOp.register(ViewSelected);
 
 /*
 let cssmap = {

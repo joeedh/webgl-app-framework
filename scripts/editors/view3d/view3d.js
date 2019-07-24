@@ -15,7 +15,7 @@ import {OrbitTool, PanTool, ZoomTool} from './view3d_ops.js';
 import {cachering, print_stack, time_ms} from '../../util/util.js';
 import './view3d_mesh_editor.js';
 import {SubEditors} from './view3d_subeditor.js';
-import {Mesh} from '../../core/mesh.js';
+import {Mesh} from '../../mesh/mesh.js';
 import {GPUSelectBuffer} from './view3d_select.js';
 import {KeyMap, HotKey} from "../editor_base.js";
 import {WidgetManager, WidgetTool, WidgetTools} from './widgets.js';
@@ -25,9 +25,12 @@ import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
 import {ConstraintSpaces} from './transform_base.js';
 import {eventWasTouch} from '../../path.ux/scripts/simple_events.js';
+import {CursorModes, OrbitTargetModes} from './view3d_utils.js';
+import {Icons} from '../icon_enum.js';
 
 let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
+let curtemps = cachering.fromConstructor(Vector3, 32);
 
 let _gl = undefined;
 
@@ -105,6 +108,10 @@ export class DrawLine {
 export class View3D extends Editor {
   constructor() {
     super();
+
+    this.orbitMode = OrbitTargetModes.FIXED;
+    this.cursor3D = new Matrix4();
+    this.cursorMode = CursorModes.TRANSFORM_CENTER;
 
     //last widget update time
     this._last_wutime = 0;
@@ -187,9 +194,30 @@ export class View3D extends Editor {
     return ret;
   }
 
+  viewSelected() {
+    let cent = this.getTransCenter();
+
+    if (cent === undefined) {
+      cent = new Vector3();
+      cent.multVecMatrix(this.cursor3D);
+    } else {
+      cent = cent.center;
+    }
+
+    this.camera.target.load(cent);
+    if (this.camera.pos.vectorDistance(this.camera.target) == 0.0) {
+      this.camera.pos.addScalar(0.5);
+    } else if (this.camera.pos.vectorDistance(this.camera.target) < 0.05) {
+      this.camera.pos.sub(this.camera.target).normalize().mulScalar(0.05).add(this.camera.target);
+    }
+
+    window.redraw_viewport();
+  }
+
   defineKeyMap() {
     this.keymap = new KeyMap([
-      new HotKey("G", [], "view3d.translate")
+      new HotKey("G", [], "view3d.translate"),
+      new HotKey(".", [], "view3d.view_selected()")
     ]);
 
 
@@ -269,7 +297,25 @@ export class View3D extends Editor {
     
     return tmp;
   }
-  
+
+  setCursor(mat) {
+    this.cursor3D.load(mat);
+
+    let p = curtemps.next().zero();
+    p.multVecMatrix(mat);
+
+    if (this.orbitMode == OrbitTargetModes.CURSOR) {
+      let redraw = this.camera.target.vectorDistance(p) > 0.0;
+
+      this.camera.target.load(p);
+
+      if (redraw) {
+        window.redraw_viewport();
+      }
+    }
+    //this.camera.orbitTarget.load(p);
+  }
+
   init() {
     super.init();
 
@@ -284,7 +330,14 @@ export class View3D extends Editor {
     let header = this.header;
     header.prop("view3d.selectmode", PackFlags.USE_ICONS);
     header.prop("view3d.active_tool", PackFlags.USE_ICONS);
-    
+
+    header.tool("view3d.view_selected()", PackFlags.USE_ICONS);
+    header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
+
+    //header.iconbutton(Icons.VIEW_SELECTED, "Recenter View (fixes orbit/rotate problems)", () => {
+    //  this.viewSelected();
+    //});
+
     this.setCSS();
 
     this.gl = getWebGL();
@@ -308,7 +361,6 @@ export class View3D extends Editor {
 
       if (this.mdown) {
         let dis = this.start_mpos.vectorDistance(r);
-        console.log("yay", dis);
 
         if (dis > 35) {
           this.mdown = false;
@@ -345,6 +397,8 @@ export class View3D extends Editor {
     this.addEventListener("mousedown", (e) => {
       let was_touch = eventWasTouch(e);
       this.push_ctx_active();
+
+      this.updateCursor();
 
       let docontrols = e.button == 1 || e.altKey;
 
@@ -387,10 +441,9 @@ export class View3D extends Editor {
       }
 
       this.pop_ctx_active();
+      e.preventDefault();
+      e.stopPropagation();
     });
-
-    e.preventDefault();
-    e.stopPropagation();
 
     window.redraw_viewport();
   }
@@ -409,6 +462,22 @@ export class View3D extends Editor {
     return [x, y];
   }
 
+  updateCursor() {
+    if (this.cursorMode == CursorModes.TRANSFORM_CENTER) {
+      this.cursor3D.makeIdentity();
+
+      let tcent = this.getTransCenter();
+      if (tcent === undefined) {
+        return;
+      }
+
+      tcent = tcent.center;
+      this.cursor3D.translate(tcent[0], tcent[1], tcent[2]);
+
+      this.setCursor(this.cursor3D);
+    }
+  }
+
   updateWidgets() {
     try {
       this.push_ctx_active(this.ctx);
@@ -418,7 +487,10 @@ export class View3D extends Editor {
       print_stack(error);
       console.warn("updateWidgets() failed");
     }
+
+    this.updateCursor();
   }
+
   updateWidgets_intern() {
     //return;
     if (this.ctx === undefined)
@@ -451,78 +523,6 @@ export class View3D extends Editor {
 
     if (this.widget !== undefined) {
       this.widget.update();
-    }
-    return;
-    //XXX simple test
-    let ob = this.ctx.object;
-    let mesh = ob.data;
-    let cent = new Vector3();
-    let co = new Vector3();
-    let tot = 0.0;
-
-    for (let v of mesh.verts.selected.editable) {
-      co.load(v).multVecMatrix(ob.outputs.matrix.getValue());
-      cent.add(co);
-      tot++;
-    }
-
-    cent.mulScalar(1.0 / tot);
-
-    cent = calcTransCenter(this.ctx, this.selectmode);
-
-    let test = this.widgets.test;
-    let mat = new Matrix4();
-
-    mat.translate(cent[0], cent[1], cent[2]);
-    let s1 = JSON.stringify(mat);
-    let s2 = JSON.stringify(test.matrix);
-
-    if (s1 != s2) {
-      test.matrix.load(mat);
-      test.update(this.widgets);
-      window.redraw_viewport();
-    }
-
-    this.widgets.update(this);
-
-    if (test.on_mousedown !== test.constructor.prototype.on_mousedown) {
-      return;
-    }
-
-    test.on_mousedown = (localX, localY) => {
-      if (this._widget_tempnode === undefined) {
-        let n = this._widget_tempnode = this.widgets.createCallbackNode(0, "widget redraw", () => {
-          this.updateWidgets();
-          console.log("widget recalc update 1");
-        }, {trigger: new DependSocket("trigger")}, {});
-
-        this.ctx.graph.add(n);
-        n.inputs.trigger.connect(this._graphnode.outputs.onDrawPre);
-      }
-
-      let tool = new TranslateOp([localX, localY]);
-      tool.inputs.constraint.setValue([0,0,1]);
-
-      this.ctx.toolstack.execTool(tool);
-
-      if (tool._promise !== undefined) {
-        tool._promise.then((ctx, was_cancelled) => {
-          console.log("tool was finished", this, this._widget_tempnode, ".");
-
-          if (this._widget_tempnode !== undefined) {
-            //this.ctx.graph.remove(this._widget_tempnode);
-            this.widgets.view3d = this;
-            this.widgets.removeCallbackNode(this._widget_tempnode);
-            this._widget_tempnode = undefined;
-          }
-        })
-      }
-      let on_mousemove = tool.on_mousemove;
-
-      tool.on_mousemove = (e) => {
-        //this.updateWidgets();
-        return on_mousemove.call(tool, e);
-      }
     }
   }
 
@@ -825,6 +825,9 @@ View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
   drawmode            : int;
   _select_transparent : int;
   widgettool          : int;
+  cursor3D            : mat4;
+  cursorMode          : int;
+  orbitMode           : int;
 }
 `
 Editor.register(View3D);
