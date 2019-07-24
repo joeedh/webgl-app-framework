@@ -1,1 +1,46 @@
-[]
+[
+  {
+    "name": "WidgetBase#findNearest",
+    "filePath": "scripts/editors/view3d/widgets.js",
+    "lines": [
+      {
+        "lineNumber": 541,
+        "line": "  /**note that it's valid for containers\r"
+      },
+      {
+        "lineNumber": 542,
+        "line": "   * to return themselves, *if* they have\r"
+      },
+      {
+        "lineNumber": 543,
+        "line": "   * a shape and aren't purely containers\r"
+      },
+      {
+        "lineNumber": 544,
+        "line": "   * @param x view3d-local coordinate x\r"
+      },
+      {
+        "lineNumber": 545,
+        "line": "   * @param y view3d-local coordinate y\r"
+      },
+      {
+        "lineNumber": 546,
+        "line": "   */\r"
+      },
+      {
+        "lineNumber": 547,
+        "line": "  findNearest(view3d, x, y, limit=8) {\r"
+      }
+    ],
+    "codeParams": [
+      "view3d",
+      "x",
+      "y",
+      "limit"
+    ],
+    "docParams": [
+      "x",
+      "y"
+    ]
+  }
+]

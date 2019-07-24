@@ -12,12 +12,6 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
-    "./scripts/path.ux/scripts/const.js~app_version",
-    "variable/index.html#static-variable-APP_VERSION",
-    "<span>APP_VERSION</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/const.js</span>",
-    "variable"
-  ],
-  [
     "./scripts/editors/editor_base.js~app",
     "class/scripts/editors/editor_base.js~App.html",
     "<span>App</span> <span class=\"search-result-import-path\">./scripts/editors/editor_base.js</span>",
@@ -84,6 +78,12 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/editors/view3d/view3d_shaders.js~basiclineshader2d",
+    "variable/index.html#static-variable-BasicLineShader2D",
+    "<span>BasicLineShader2D</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_shaders.js</span>",
+    "variable"
+  ],
+  [
     "./scripts/editors/view3d/view3d_shaders.js~basiclineshader",
     "variable/index.html#static-variable-BasicLineShader",
     "<span>BasicLineShader</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_shaders.js</span>",
@@ -138,21 +138,21 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/customdata.js~cdelemmap",
+    "./scripts/mesh/customdata.js~cdelemmap",
     "variable/index.html#static-variable-CDElemMap",
-    "<span>CDElemMap</span> <span class=\"search-result-import-path\">./scripts/core/customdata.js</span>",
+    "<span>CDElemMap</span> <span class=\"search-result-import-path\">./scripts/mesh/customdata.js</span>",
     "variable"
   ],
   [
-    "./scripts/core/customdata.js~cdelemtypes",
+    "./scripts/mesh/customdata.js~cdelemtypes",
     "variable/index.html#static-variable-CDElemTypes",
-    "<span>CDElemTypes</span> <span class=\"search-result-import-path\">./scripts/core/customdata.js</span>",
+    "<span>CDElemTypes</span> <span class=\"search-result-import-path\">./scripts/mesh/customdata.js</span>",
     "variable"
   ],
   [
-    "./scripts/core/customdata.js~cdflags",
+    "./scripts/mesh/customdata.js~cdflags",
     "variable/index.html#static-variable-CDFlags",
-    "<span>CDFlags</span> <span class=\"search-result-import-path\">./scripts/core/customdata.js</span>",
+    "<span>CDFlags</span> <span class=\"search-result-import-path\">./scripts/mesh/customdata.js</span>",
     "variable"
   ],
   [
@@ -174,21 +174,33 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
+    "./scripts/core/graph.js~callbacknode",
+    "class/scripts/core/graph.js~CallbackNode.html",
+    "<span>CallbackNode</span> <span class=\"search-result-import-path\">./scripts/core/graph.js</span>",
+    "class"
+  ],
+  [
     "./scripts/core/webgl.js~camera",
     "class/scripts/core/webgl.js~Camera.html",
     "<span>Camera</span> <span class=\"search-result-import-path\">./scripts/core/webgl.js</span>",
     "class"
   ],
   [
-    "./scripts/editors/camera_controls.js~cameracontrols",
-    "class/scripts/editors/camera_controls.js~CameraControls.html",
-    "<span>CameraControls</span> <span class=\"search-result-import-path\">./scripts/editors/camera_controls.js</span>",
+    "./scripts/editors/view3d/camera_controls.js~cameracontrols",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html",
+    "<span>CameraControls</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/camera_controls.js</span>",
     "class"
   ],
   [
     "./scripts/path.ux/scripts/app.js~canvasarea",
     "class/scripts/path.ux/scripts/app.js~CanvasArea.html",
     "<span>CanvasArea</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/app.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/mesh/mesh_ops.js~catmullclarkesubd",
+    "class/scripts/mesh/mesh_ops.js~CatmullClarkeSubd.html",
+    "<span>CatmullClarkeSubd</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_ops.js</span>",
     "class"
   ],
   [
@@ -201,6 +213,12 @@ window.esdocSearchIndex = [
     "./scripts/path.ux/scripts/ui_widgets.js~check",
     "class/scripts/path.ux/scripts/ui_widgets.js~Check.html",
     "<span>Check</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/ui_widgets.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/core/simplemesh.js~chunkedsimplemesh",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html",
+    "<span>ChunkedSimpleMesh</span> <span class=\"search-result-import-path\">./scripts/core/simplemesh.js</span>",
     "class"
   ],
   [
@@ -246,6 +264,12 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/editors/view3d/transform_base.js~constraintspaces",
+    "variable/index.html#static-variable-ConstraintSpaces",
+    "<span>ConstraintSpaces</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/transform_base.js</span>",
+    "variable"
+  ],
+  [
     "./scripts/path.ux/scripts/ui.js~container",
     "class/scripts/path.ux/scripts/ui.js~Container.html",
     "<span>Container</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/ui.js</span>",
@@ -262,6 +286,12 @@ window.esdocSearchIndex = [
     "class/scripts/path.ux/scripts/simple_toolsys.js~ContextExample.html",
     "<span>ContextExample</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/simple_toolsys.js</span>",
     "class"
+  ],
+  [
+    "./scripts/editors/view3d/view3d_utils.js~cursormodes",
+    "variable/index.html#static-variable-CursorModes",
+    "<span>CursorModes</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_utils.js</span>",
+    "variable"
   ],
   [
     "./scripts/path.ux/scripts/ui_curvewidget.js~curve",
@@ -300,22 +330,28 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/customdata.js~customdata",
-    "class/scripts/core/customdata.js~CustomData.html",
-    "<span>CustomData</span> <span class=\"search-result-import-path\">./scripts/core/customdata.js</span>",
+    "./scripts/mesh/customdata.js~customdata",
+    "class/scripts/mesh/customdata.js~CustomData.html",
+    "<span>CustomData</span> <span class=\"search-result-import-path\">./scripts/mesh/customdata.js</span>",
     "class"
   ],
   [
-    "./scripts/core/customdata.js~customdataelem",
-    "class/scripts/core/customdata.js~CustomDataElem.html",
-    "<span>CustomDataElem</span> <span class=\"search-result-import-path\">./scripts/core/customdata.js</span>",
+    "./scripts/mesh/customdata.js~customdataelem",
+    "class/scripts/mesh/customdata.js~CustomDataElem.html",
+    "<span>CustomDataElem</span> <span class=\"search-result-import-path\">./scripts/mesh/customdata.js</span>",
     "class"
   ],
   [
-    "./scripts/core/customdata.js~customdatalayer",
-    "class/scripts/core/customdata.js~CustomDataLayer.html",
-    "<span>CustomDataLayer</span> <span class=\"search-result-import-path\">./scripts/core/customdata.js</span>",
+    "./scripts/mesh/customdata.js~customdatalayer",
+    "class/scripts/mesh/customdata.js~CustomDataLayer.html",
+    "<span>CustomDataLayer</span> <span class=\"search-result-import-path\">./scripts/mesh/customdata.js</span>",
     "class"
+  ],
+  [
+    "./scripts/path.ux/scripts/const.js~debug",
+    "variable/index.html#static-variable-DEBUG",
+    "<span>DEBUG</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/const.js</span>",
+    "variable"
   ],
   [
     "./scripts/path.ux/scripts/simple_controller.js~dataapi",
@@ -408,6 +444,12 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
+    "./scripts/editors/view3d/view3d.js~drawline",
+    "class/scripts/editors/view3d/view3d.js~DrawLine.html",
+    "<span>DrawLine</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d.js</span>",
+    "class"
+  ],
+  [
     "./scripts/core/webgl.js~drawmats",
     "class/scripts/core/webgl.js~DrawMats.html",
     "<span>DrawMats</span> <span class=\"search-result-import-path\">./scripts/core/webgl.js</span>",
@@ -426,9 +468,9 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/mesh.js~edge",
-    "class/scripts/core/mesh.js~Edge.html",
-    "<span>Edge</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "./scripts/mesh/mesh_types.js~edge",
+    "class/scripts/mesh/mesh_types.js~Edge.html",
+    "<span>Edge</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_types.js</span>",
     "class"
   ],
   [
@@ -438,15 +480,15 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/mesh.js~element",
-    "class/scripts/core/mesh.js~Element.html",
-    "<span>Element</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "./scripts/mesh/mesh_types.js~element",
+    "class/scripts/mesh/mesh_types.js~Element.html",
+    "<span>Element</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_types.js</span>",
     "class"
   ],
   [
-    "./scripts/core/mesh.js~elementlist",
-    "class/scripts/core/mesh.js~ElementList.html",
-    "<span>ElementList</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "./scripts/mesh/mesh_element_list.js~elementlist",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html",
+    "<span>ElementList</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_element_list.js</span>",
     "class"
   ],
   [
@@ -483,6 +525,18 @@ window.esdocSearchIndex = [
     "./scripts/path.ux/scripts/events.js~eventhandler",
     "class/scripts/path.ux/scripts/events.js~EventHandler.html",
     "<span>EventHandler</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/events.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/mesh/mesh_ops.js~extruderegionsop",
+    "class/scripts/mesh/mesh_ops.js~ExtrudeRegionsOp.html",
+    "<span>ExtrudeRegionsOp</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_ops.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/widget_tools.js~extrudewidget",
+    "class/scripts/editors/view3d/widget_tools.js~ExtrudeWidget.html",
+    "<span>ExtrudeWidget</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widget_tools.js</span>",
     "class"
   ],
   [
@@ -528,9 +582,9 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
-    "./scripts/core/mesh.js~face",
-    "class/scripts/core/mesh.js~Face.html",
-    "<span>Face</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "./scripts/mesh/mesh_types.js~face",
+    "class/scripts/mesh/mesh_types.js~Face.html",
+    "<span>Face</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_types.js</span>",
     "class"
   ],
   [
@@ -654,9 +708,9 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/editors/editor_base.js~hotkey",
-    "class/scripts/editors/editor_base.js~HotKey.html",
-    "<span>HotKey</span> <span class=\"search-result-import-path\">./scripts/editors/editor_base.js</span>",
+    "./scripts/path.ux/scripts/simple_events.js~hotkey",
+    "class/scripts/path.ux/scripts/simple_events.js~HotKey.html",
+    "<span>HotKey</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/simple_events.js</span>",
     "class"
   ],
   [
@@ -702,6 +756,12 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
+    "./scripts/editors/icon_enum.js~icons",
+    "variable/index.html#static-variable-Icons",
+    "<span>Icons</span> <span class=\"search-result-import-path\">./scripts/editors/icon_enum.js</span>",
+    "variable"
+  ],
+  [
     "./scripts/path.ux/scripts/icon_enum.js~icons",
     "variable/index.html#static-variable-Icons",
     "<span>Icons</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/icon_enum.js</span>",
@@ -744,9 +804,9 @@ window.esdocSearchIndex = [
     "function"
   ],
   [
-    "./scripts/editors/editor_base.js~keymap",
-    "class/scripts/editors/editor_base.js~KeyMap.html",
-    "<span>KeyMap</span> <span class=\"search-result-import-path\">./scripts/editors/editor_base.js</span>",
+    "./scripts/path.ux/scripts/simple_events.js~keymap",
+    "class/scripts/path.ux/scripts/simple_events.js~KeyMap.html",
+    "<span>KeyMap</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/simple_events.js</span>",
     "class"
   ],
   [
@@ -768,9 +828,9 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/customdata.js~layerset",
-    "class/scripts/core/customdata.js~LayerSet.html",
-    "<span>LayerSet</span> <span class=\"search-result-import-path\">./scripts/core/customdata.js</span>",
+    "./scripts/mesh/customdata.js~layerset",
+    "class/scripts/mesh/customdata.js~LayerSet.html",
+    "<span>LayerSet</span> <span class=\"search-result-import-path\">./scripts/mesh/customdata.js</span>",
     "class"
   ],
   [
@@ -792,15 +852,21 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/mesh.js~loop",
-    "class/scripts/core/mesh.js~Loop.html",
-    "<span>Loop</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "./scripts/mesh/mesh_types.js~loop",
+    "class/scripts/mesh/mesh_types.js~Loop.html",
+    "<span>Loop</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_types.js</span>",
     "class"
   ],
   [
-    "./scripts/core/mesh.js~looplist",
-    "class/scripts/core/mesh.js~LoopList.html",
-    "<span>LoopList</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "./scripts/mesh/mesh_types.js~looplist",
+    "class/scripts/mesh/mesh_types.js~LoopList.html",
+    "<span>LoopList</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_types.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/path.ux/scripts/toolprop.js~mat4property",
+    "class/scripts/path.ux/scripts/toolprop.js~Mat4Property.html",
+    "<span>Mat4Property</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/toolprop.js</span>",
     "class"
   ],
   [
@@ -846,15 +912,21 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/mesh.js~mesh",
-    "class/scripts/core/mesh.js~Mesh.html",
-    "<span>Mesh</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "./scripts/mesh/mesh.js~mesh",
+    "class/scripts/mesh/mesh.js~Mesh.html",
+    "<span>Mesh</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh.js</span>",
     "class"
   ],
   [
-    "./scripts/editors/view3d/view3d_mesh_editor.js~meshcache",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshCache.html",
-    "<span>MeshCache</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_mesh_editor.js</span>",
+    "./scripts/editors/view3d/view3d_subeditor.js~meshcache",
+    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html",
+    "<span>MeshCache</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_subeditor.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/view3d_draw.js~meshdrawinterface",
+    "class/scripts/editors/view3d/view3d_draw.js~MeshDrawInterface.html",
+    "<span>MeshDrawInterface</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_draw.js</span>",
     "class"
   ],
   [
@@ -870,9 +942,15 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/mesh.js~meshflags",
+    "./scripts/mesh/mesh_base.js~mesherror",
+    "class/scripts/mesh/mesh_base.js~MeshError.html",
+    "<span>MeshError</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_base.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/mesh/mesh_base.js~meshflags",
     "variable/index.html#static-variable-MeshFlags",
-    "<span>MeshFlags</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "<span>MeshFlags</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_base.js</span>",
     "variable"
   ],
   [
@@ -880,6 +958,12 @@ window.esdocSearchIndex = [
     "variable/index.html#static-variable-MeshIDShader",
     "<span>MeshIDShader</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_shaders.js</span>",
     "variable"
+  ],
+  [
+    "./scripts/mesh/mesh_ops_base.js~meshop",
+    "class/scripts/mesh/mesh_ops_base.js~MeshOp.html",
+    "<span>MeshOp</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_ops_base.js</span>",
+    "class"
   ],
   [
     "./scripts/editors/view3d/view3d_mesh_editor.js~meshtools",
@@ -894,15 +978,21 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/mesh.js~meshtypes",
+    "./scripts/mesh/mesh_base.js~meshtypes",
     "variable/index.html#static-variable-MeshTypes",
-    "<span>MeshTypes</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "<span>MeshTypes</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_base.js</span>",
     "variable"
   ],
   [
     "./scripts/path.ux/scripts/math.js~minmax",
     "class/scripts/path.ux/scripts/math.js~MinMax.html",
     "<span>MinMax</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/math.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/core/context.js~modalcontext",
+    "class/scripts/core/context.js~ModalContext.html",
+    "<span>ModalContext</span> <span class=\"search-result-import-path\">./scripts/core/context.js</span>",
     "class"
   ],
   [
@@ -942,6 +1032,12 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/editors/view3d/widget_tools.js~nonewidget",
+    "class/scripts/editors/view3d/widget_tools.js~NoneWidget.html",
+    "<span>NoneWidget</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widget_tools.js</span>",
+    "class"
+  ],
+  [
     "./scripts/path.ux/scripts/ui_noteframe.js~note",
     "class/scripts/path.ux/scripts/ui_noteframe.js~Note.html",
     "<span>Note</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/ui_noteframe.js</span>",
@@ -972,6 +1068,12 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/mesh/mesh_customdata.js~origindex_none",
+    "variable/index.html#static-variable-ORIGINDEX_NONE",
+    "<span>ORIGINDEX_NONE</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_customdata.js</span>",
+    "variable"
+  ],
+  [
     "./scripts/core/sceneobject.js~objectflags",
     "variable/index.html#static-variable-ObjectFlags",
     "<span>ObjectFlags</span> <span class=\"search-result-import-path\">./scripts/core/sceneobject.js</span>",
@@ -990,9 +1092,27 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/editors/view3d/view3d_utils.js~orbittargetmodes",
+    "variable/index.html#static-variable-OrbitTargetModes",
+    "<span>OrbitTargetModes</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_utils.js</span>",
+    "variable"
+  ],
+  [
     "./scripts/editors/view3d/view3d_ops.js~orbittool",
     "class/scripts/editors/view3d/view3d_ops.js~OrbitTool.html",
     "<span>OrbitTool</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_ops.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/mesh/mesh_customdata.js~origindexelem",
+    "class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html",
+    "<span>OrigIndexElem</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_customdata.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/view3d_draw.js~origref",
+    "class/scripts/editors/view3d/view3d_draw.js~OrigRef.html",
+    "<span>OrigRef</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_draw.js</span>",
     "class"
   ],
   [
@@ -1036,6 +1156,12 @@ window.esdocSearchIndex = [
     "variable/index.html#static-variable-Parser",
     "<span>Parser</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/toolpath.js</span>",
     "variable"
+  ],
+  [
+    "./scripts/subsurf/subsurf_patch.js~patch",
+    "class/scripts/subsurf/subsurf_patch.js~Patch.html",
+    "<span>Patch</span> <span class=\"search-result-import-path\">./scripts/subsurf/subsurf_patch.js</span>",
+    "class"
   ],
   [
     "./scripts/path.ux/scripts/math.js~planeops",
@@ -1098,6 +1224,12 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
+    "./scripts/core/graph.js~proxynode",
+    "class/scripts/core/graph.js~ProxyNode.html",
+    "<span>ProxyNode</span> <span class=\"search-result-import-path\">./scripts/core/graph.js</span>",
+    "class"
+  ],
+  [
     "./scripts/core/simplemesh.js~quadeditor",
     "class/scripts/core/simplemesh.js~QuadEditor.html",
     "<span>QuadEditor</span> <span class=\"search-result-import-path\">./scripts/core/simplemesh.js</span>",
@@ -1110,9 +1242,9 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/mesh.js~recalcflags",
+    "./scripts/mesh/mesh_base.js~recalcflags",
     "variable/index.html#static-variable-RecalcFlags",
-    "<span>RecalcFlags</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "<span>RecalcFlags</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_base.js</span>",
     "variable"
   ],
   [
@@ -1182,6 +1314,12 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/path.ux/scripts/framemanager.js~screenhalfedge",
+    "class/scripts/path.ux/scripts/FrameManager.js~ScreenHalfEdge.html",
+    "<span>ScreenHalfEdge</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/FrameManager.js</span>",
+    "class"
+  ],
+  [
     "./scripts/path.ux/scripts/framemanager.js~screenvert",
     "class/scripts/path.ux/scripts/FrameManager.js~ScreenVert.html",
     "<span>ScreenVert</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/FrameManager.js</span>",
@@ -1218,9 +1356,9 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/mesh.js~selectionset",
-    "class/scripts/core/mesh.js~SelectionSet.html",
-    "<span>SelectionSet</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "./scripts/mesh/mesh_element_list.js~selectionset",
+    "class/scripts/mesh/mesh_element_list.js~SelectionSet.html",
+    "<span>SelectionSet</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_element_list.js</span>",
     "class"
   ],
   [
@@ -1344,6 +1482,18 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
+    "./scripts/subsurf/subsurf_draw.js~subsurfdrawer",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfDrawer.html",
+    "<span>SubsurfDrawer</span> <span class=\"search-result-import-path\">./scripts/subsurf/subsurf_draw.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/subsurf/subsurf_draw.js~subsurfmesh",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html",
+    "<span>SubsurfMesh</span> <span class=\"search-result-import-path\">./scripts/subsurf/subsurf_draw.js</span>",
+    "class"
+  ],
+  [
     "./scripts/path.ux/scripts/ui_tabs.js~tabbar",
     "class/scripts/path.ux/scripts/ui_tabs.js~TabBar.html",
     "<span>TabBar</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/ui_tabs.js</span>",
@@ -1389,6 +1539,12 @@ window.esdocSearchIndex = [
     "./scripts/core/webgl.js~texture",
     "class/scripts/core/webgl.js~Texture.html",
     "<span>Texture</span> <span class=\"search-result-import-path\">./scripts/core/webgl.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/mesh/select_ops.js~toggleselectall",
+    "class/scripts/mesh/select_ops.js~ToggleSelectAll.html",
+    "<span>ToggleSelectAll</span> <span class=\"search-result-import-path\">./scripts/mesh/select_ops.js</span>",
     "class"
   ],
   [
@@ -1464,9 +1620,45 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/editors/view3d/transform_base.js~transdatalist",
+    "class/scripts/editors/view3d/transform_base.js~TransDataList.html",
+    "<span>TransDataList</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/transform_base.js</span>",
+    "class"
+  ],
+  [
     "./scripts/editors/view3d/transform_base.js~transdatatype",
     "class/scripts/editors/view3d/transform_base.js~TransDataType.html",
     "<span>TransDataType</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/transform_base.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/transform_base.js~transdatatypes",
+    "variable/index.html#static-variable-TransDataTypes",
+    "<span>TransDataTypes</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/transform_base.js</span>",
+    "variable"
+  ],
+  [
+    "./scripts/editors/view3d/transform_base.js~transformdata",
+    "class/scripts/editors/view3d/transform_base.js~TransformData.html",
+    "<span>TransformData</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/transform_base.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/transform_ops.js~transformop",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html",
+    "<span>TransformOp</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/transform_ops.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/transform_ops.js~translateop",
+    "class/scripts/editors/view3d/transform_ops.js~TranslateOp.html",
+    "<span>TranslateOp</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/transform_ops.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/widget_tools.js~translatewidget",
+    "class/scripts/editors/view3d/widget_tools.js~TranslateWidget.html",
+    "<span>TranslateWidget</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widget_tools.js</span>",
     "class"
   ],
   [
@@ -1494,9 +1686,9 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
-    "./scripts/core/mesh.js~uvlayerelem",
-    "class/scripts/core/mesh.js~UVLayerElem.html",
-    "<span>UVLayerElem</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "./scripts/mesh/mesh_customdata.js~uvlayerelem",
+    "class/scripts/mesh/mesh_customdata.js~UVLayerElem.html",
+    "<span>UVLayerElem</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_customdata.js</span>",
     "class"
   ],
   [
@@ -1515,6 +1707,12 @@ window.esdocSearchIndex = [
     "./scripts/path.ux/scripts/toolprop_abstract.js~vec2property",
     "class/scripts/path.ux/scripts/toolprop_abstract.js~Vec2Property.html",
     "<span>Vec2Property</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/toolprop_abstract.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/path.ux/scripts/toolprop.js~vec3property",
+    "class/scripts/path.ux/scripts/toolprop.js~Vec3Property.html",
+    "<span>Vec3Property</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/toolprop.js</span>",
     "class"
   ],
   [
@@ -1572,15 +1770,21 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/mesh.js~vertex",
-    "class/scripts/core/mesh.js~Vertex.html",
-    "<span>Vertex</span> <span class=\"search-result-import-path\">./scripts/core/mesh.js</span>",
+    "./scripts/mesh/mesh_types.js~vertex",
+    "class/scripts/mesh/mesh_types.js~Vertex.html",
+    "<span>Vertex</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_types.js</span>",
     "class"
   ],
   [
     "./scripts/editors/view3d/view3d.js~view3d",
     "class/scripts/editors/view3d/view3d.js~View3D.html",
     "<span>View3D</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/view3d_ops.js~view3dop",
+    "class/scripts/editors/view3d/view3d_ops.js~View3DOp.html",
+    "<span>View3DOp</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_ops.js</span>",
     "class"
   ],
   [
@@ -1594,6 +1798,96 @@ window.esdocSearchIndex = [
     "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html",
     "<span>View3D_SubEditorIF</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_subeditor.js</span>",
     "class"
+  ],
+  [
+    "./scripts/editors/view3d/view3d_ops.js~viewselected",
+    "class/scripts/editors/view3d/view3d_ops.js~ViewSelected.html",
+    "<span>ViewSelected</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_ops.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/widgets.js~widgetarrow",
+    "class/scripts/editors/view3d/widgets.js~WidgetArrow.html",
+    "<span>WidgetArrow</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widgets.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/widgets.js~widgetbase",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html",
+    "<span>WidgetBase</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widgets.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/widgets.js~widgetblockarrow",
+    "class/scripts/editors/view3d/widgets.js~WidgetBlockArrow.html",
+    "<span>WidgetBlockArrow</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widgets.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/widgets.js~widgetchevron",
+    "class/scripts/editors/view3d/widgets.js~WidgetChevron.html",
+    "<span>WidgetChevron</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widgets.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/widgets.js~widgetflags",
+    "variable/index.html#static-variable-WidgetFlags",
+    "<span>WidgetFlags</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widgets.js</span>",
+    "variable"
+  ],
+  [
+    "./scripts/editors/view3d/widgets.js~widgetmanager",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html",
+    "<span>WidgetManager</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widgets.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/view3d_shaders.js~widgetmeshshader",
+    "variable/index.html#static-variable-WidgetMeshShader",
+    "<span>WidgetMeshShader</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_shaders.js</span>",
+    "variable"
+  ],
+  [
+    "./scripts/editors/view3d/widget_shapes.js~widgetobjs",
+    "variable/index.html#static-variable-WidgetOBJs",
+    "<span>WidgetOBJs</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widget_shapes.js</span>",
+    "variable"
+  ],
+  [
+    "./scripts/editors/view3d/widgets.js~widgetplane",
+    "class/scripts/editors/view3d/widgets.js~WidgetPlane.html",
+    "<span>WidgetPlane</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widgets.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/widgets.js~widgetshape",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html",
+    "<span>WidgetShape</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widgets.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/widget_shapes.js~widgetshapes",
+    "variable/index.html#static-variable-WidgetShapes",
+    "<span>WidgetShapes</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widget_shapes.js</span>",
+    "variable"
+  ],
+  [
+    "./scripts/editors/view3d/widgets.js~widgetsphere",
+    "class/scripts/editors/view3d/widgets.js~WidgetSphere.html",
+    "<span>WidgetSphere</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widgets.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/widgets.js~widgettool",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html",
+    "<span>WidgetTool</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widgets.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/editors/view3d/widgets.js~widgettools",
+    "variable/index.html#static-variable-WidgetTools",
+    "<span>WidgetTools</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widgets.js</span>",
+    "variable"
   ],
   [
     "./scripts/editors/view3d/view3d_ops.js~zoomtool",
@@ -1611,6 +1905,12 @@ window.esdocSearchIndex = [
     "./scripts/path.ux/scripts/ui_base.js~_getfont",
     "function/index.html#static-function-_getFont",
     "<span>_getFont</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/ui_base.js</span>",
+    "function"
+  ],
+  [
+    "./scripts/path.ux/scripts/math.js~_old_isect_ray_plane",
+    "function/index.html#static-function-_old_isect_ray_plane",
+    "<span>_old_isect_ray_plane</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/math.js</span>",
     "function"
   ],
   [
@@ -1704,6 +2004,18 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/editors/view3d/transform_query.js~calctranscenter",
+    "function/index.html#static-function-calcTransCenter",
+    "<span>calcTransCenter</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/transform_query.js</span>",
+    "function"
+  ],
+  [
+    "./scripts/subsurf/subsurf_patch.js~changesteps",
+    "function/index.html#static-function-changeSteps",
+    "<span>changeSteps</span> <span class=\"search-result-import-path\">./scripts/subsurf/subsurf_patch.js</span>",
+    "function"
+  ],
+  [
     "./scripts/path.ux/scripts/math.js~circ_from_line_tan",
     "function/index.html#static-function-circ_from_line_tan",
     "<span>circ_from_line_tan</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/math.js</span>",
@@ -1782,6 +2094,12 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
+    "./scripts/subsurf/subsurf_patch.js~destroysubsurf",
+    "function/index.html#static-function-destroySubsurf",
+    "<span>destroySubsurf</span> <span class=\"search-result-import-path\">./scripts/subsurf/subsurf_patch.js</span>",
+    "function"
+  ],
+  [
     "./scripts/path.ux/scripts/math.js~dist_to_line",
     "function/index.html#static-function-dist_to_line",
     "<span>dist_to_line</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/math.js</span>",
@@ -1803,6 +2121,12 @@ window.esdocSearchIndex = [
     "./scripts/path.ux/scripts/ui_base.js~drawtext",
     "function/index.html#static-function-drawText",
     "<span>drawText</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/ui_base.js</span>",
+    "function"
+  ],
+  [
+    "./scripts/path.ux/scripts/simple_events.js~eventwastouch",
+    "function/index.html#static-function-eventWasTouch",
+    "<span>eventWasTouch</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/simple_events.js</span>",
     "function"
   ],
   [
@@ -1920,6 +2244,12 @@ window.esdocSearchIndex = [
     "function"
   ],
   [
+    "./scripts/editors/view3d/view3d.js~getwebgl",
+    "function/index.html#static-function-getWebGL",
+    "<span>getWebGL</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d.js</span>",
+    "function"
+  ],
+  [
     "./scripts/path.ux/scripts/math.js~get_boundary_winding",
     "function/index.html#static-function-get_boundary_winding",
     "<span>get_boundary_winding</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/math.js</span>",
@@ -1944,6 +2274,12 @@ window.esdocSearchIndex = [
     "function"
   ],
   [
+    "./scripts/subsurf/subsurf_patch.js~gpusubsurf",
+    "function/index.html#static-function-gpuSubsurf",
+    "<span>gpuSubsurf</span> <span class=\"search-result-import-path\">./scripts/subsurf/subsurf_patch.js</span>",
+    "function"
+  ],
+  [
     "./scripts/core/webgl.js~hashshader",
     "function/index.html#static-function-hashShader",
     "<span>hashShader</span> <span class=\"search-result-import-path\">./scripts/core/webgl.js</span>",
@@ -1962,6 +2298,12 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/path.ux/scripts/simple_events.js~havemodal",
+    "function/index.html#static-function-haveModal",
+    "<span>haveModal</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/simple_events.js</span>",
+    "function"
+  ],
+  [
     "./scripts/path.ux/scripts/ui_colorpicker.js~hsv_to_rgb",
     "function/index.html#static-function-hsv_to_rgb",
     "<span>hsv_to_rgb</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/ui_colorpicker.js</span>",
@@ -1972,6 +2314,12 @@ window.esdocSearchIndex = [
     "function/index.html#static-function-hsv_to_rgb",
     "<span>hsv_to_rgb</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/ui_colorpicker2.js</span>",
     "function"
+  ],
+  [
+    "./scripts/entry_point.js~iconmanager",
+    "variable/index.html#static-variable-iconmanager",
+    "<span>iconmanager</span> <span class=\"search-result-import-path\">./scripts/entry_point.js</span>",
+    "variable"
   ],
   [
     "./scripts/path.ux/scripts/ui_base.js~iconmanager",
@@ -2001,6 +2349,12 @@ window.esdocSearchIndex = [
     "./scripts/path.ux/scripts/toolpath.js~inittoolpaths",
     "function/index.html#static-function-initToolPaths",
     "<span>initToolPaths</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/toolpath.js</span>",
+    "function"
+  ],
+  [
+    "./scripts/editors/view3d/view3d.js~initwebgl",
+    "function/index.html#static-function-initWebGL",
+    "<span>initWebGL</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d.js</span>",
     "function"
   ],
   [
@@ -2130,6 +2484,18 @@ window.esdocSearchIndex = [
     "function"
   ],
   [
+    "./scripts/mesh/mesh_ops_base.js~loadundomesh",
+    "function/index.html#static-function-loadUndoMesh",
+    "<span>loadUndoMesh</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_ops_base.js</span>",
+    "function"
+  ],
+  [
+    "./scripts/editors/view3d/widget_shapes.js~loadwidgetshapes",
+    "function/index.html#static-function-loadWidgetShapes",
+    "<span>loadWidgetShapes</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/widget_shapes.js</span>",
+    "function"
+  ],
+  [
     "./scripts/path.ux/scripts/math.js~makecirclemesh",
     "function/index.html#static-function-makeCircleMesh",
     "<span>makeCircleMesh</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/math.js</span>",
@@ -2226,6 +2592,12 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/path.ux/scripts/simple_controller.js~pathparser",
+    "variable/index.html#static-variable-pathParser",
+    "<span>pathParser</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/simple_controller.js</span>",
+    "variable"
+  ],
+  [
     "./scripts/path.ux/scripts/math.js~point_in_aabb",
     "function/index.html#static-function-point_in_aabb",
     "<span>point_in_aabb</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/math.js</span>",
@@ -2295,6 +2667,12 @@ window.esdocSearchIndex = [
     "./scripts/util/util.js~random",
     "function/index.html#static-function-random",
     "<span>random</span> <span class=\"search-result-import-path\">./scripts/util/util.js</span>",
+    "function"
+  ],
+  [
+    "./scripts/util/objloader.js~readobj",
+    "function/index.html#static-function-readOBJ",
+    "<span>readOBJ</span> <span class=\"search-result-import-path\">./scripts/util/objloader.js</span>",
     "function"
   ],
   [
@@ -2376,6 +2754,12 @@ window.esdocSearchIndex = [
     "function"
   ],
   [
+    "./scripts/mesh/mesh_ops_base.js~saveundomesh",
+    "function/index.html#static-function-saveUndoMesh",
+    "<span>saveUndoMesh</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_ops_base.js</span>",
+    "function"
+  ],
+  [
     "./scripts/path.ux/scripts/util.js~seed",
     "function/index.html#static-function-seed",
     "<span>seed</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/util.js</span>",
@@ -2415,6 +2799,12 @@ window.esdocSearchIndex = [
     "./scripts/path.ux/scripts/simple_toolsys.js~setcontextclass",
     "function/index.html#static-function-setContextClass",
     "<span>setContextClass</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/simple_toolsys.js</span>",
+    "function"
+  ],
+  [
+    "./scripts/path.ux/scripts/ui_base.js~seticonmanager",
+    "function/index.html#static-function-setIconManager",
+    "<span>setIconManager</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/ui_base.js</span>",
     "function"
   ],
   [
@@ -2463,6 +2853,18 @@ window.esdocSearchIndex = [
     "./scripts/path.ux/scripts/util.js~strhash",
     "function/index.html#static-function-strhash",
     "<span>strhash</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/util.js</span>",
+    "function"
+  ],
+  [
+    "./scripts/subsurf/subsurf_mesh.js~subdivide",
+    "function/index.html#static-function-subdivide",
+    "<span>subdivide</span> <span class=\"search-result-import-path\">./scripts/subsurf/subsurf_mesh.js</span>",
+    "function"
+  ],
+  [
+    "./scripts/subsurf/subsurf_patch.js~subsurfrender",
+    "function/index.html#static-function-subsurfRender",
+    "<span>subsurfRender</span> <span class=\"search-result-import-path\">./scripts/subsurf/subsurf_patch.js</span>",
     "function"
   ],
   [
@@ -2910,6 +3312,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/appstate.js~appstate#loadundofile",
+    "class/scripts/core/appstate.js~AppState.html#instance-method-loadUndoFile",
+    "scripts/core/appstate.js~AppState#loadUndoFile",
+    "method"
+  ],
+  [
     "scripts/core/appstate.js~appstate#savestartupfile",
     "class/scripts/core/appstate.js~AppState.html#instance-method-saveStartupFile",
     "scripts/core/appstate.js~AppState#saveStartupFile",
@@ -3060,15 +3468,51 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/context.js~context#area",
+    "class/scripts/core/context.js~Context.html#instance-get-area",
+    "scripts/core/context.js~Context#area",
+    "member"
+  ],
+  [
     "scripts/core/context.js~context#nodeeditor",
     "class/scripts/core/context.js~Context.html#instance-get-nodeEditor",
     "scripts/core/context.js~Context#nodeEditor",
     "member"
   ],
   [
+    "scripts/core/context.js~context#screen",
+    "class/scripts/core/context.js~Context.html#instance-get-screen",
+    "scripts/core/context.js~Context#screen",
+    "member"
+  ],
+  [
     "scripts/core/context.js~context#view3d",
     "class/scripts/core/context.js~Context.html#instance-get-view3d",
     "scripts/core/context.js~Context#view3d",
+    "member"
+  ],
+  [
+    "scripts/core/context.js~modalcontext#_view3d",
+    "class/scripts/core/context.js~ModalContext.html#instance-member-_view3d",
+    "scripts/core/context.js~ModalContext#_view3d",
+    "member"
+  ],
+  [
+    "scripts/core/context.js~modalcontext#constructor",
+    "class/scripts/core/context.js~ModalContext.html#instance-constructor-constructor",
+    "scripts/core/context.js~ModalContext#constructor",
+    "method"
+  ],
+  [
+    "scripts/core/context.js~modalcontext#screen",
+    "class/scripts/core/context.js~ModalContext.html#instance-get-screen",
+    "scripts/core/context.js~ModalContext#screen",
+    "member"
+  ],
+  [
+    "scripts/core/context.js~modalcontext#view3d",
+    "class/scripts/core/context.js~ModalContext.html#instance-get-view3d",
+    "scripts/core/context.js~ModalContext#view3d",
     "member"
   ],
   [
@@ -3144,6 +3588,12 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/core/context.js~savedcontext#save",
+    "class/scripts/core/context.js~SavedContext.html#instance-method-save",
+    "scripts/core/context.js~SavedContext#save",
+    "method"
+  ],
+  [
     "scripts/core/context.js~savedcontext#scene",
     "class/scripts/core/context.js~SavedContext.html#instance-get-scene",
     "scripts/core/context.js~SavedContext#scene",
@@ -3174,6 +3624,12 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/core/context.js~toolcontext#appstate",
+    "class/scripts/core/context.js~ToolContext.html#instance-get-appstate",
+    "scripts/core/context.js~ToolContext#appstate",
+    "member"
+  ],
+  [
     "scripts/core/context.js~toolcontext#constructor",
     "class/scripts/core/context.js~ToolContext.html#instance-constructor-constructor",
     "scripts/core/context.js~ToolContext#constructor",
@@ -3183,6 +3639,12 @@ window.esdocSearchIndex = [
     "scripts/core/context.js~toolcontext#datalib",
     "class/scripts/core/context.js~ToolContext.html#instance-get-datalib",
     "scripts/core/context.js~ToolContext#datalib",
+    "member"
+  ],
+  [
+    "scripts/core/context.js~toolcontext#graph",
+    "class/scripts/core/context.js~ToolContext.html#instance-get-graph",
+    "scripts/core/context.js~ToolContext#graph",
     "member"
   ],
   [
@@ -3196,6 +3658,12 @@ window.esdocSearchIndex = [
     "class/scripts/core/context.js~ToolContext.html#instance-get-object",
     "scripts/core/context.js~ToolContext#object",
     "member"
+  ],
+  [
+    "scripts/core/context.js~toolcontext#save",
+    "class/scripts/core/context.js~ToolContext.html#instance-method-save",
+    "scripts/core/context.js~ToolContext#save",
+    "method"
   ],
   [
     "scripts/core/context.js~toolcontext#scene",
@@ -3226,210 +3694,6 @@ window.esdocSearchIndex = [
     "class/scripts/core/context.js~ToolContext.html#instance-get-toolstack",
     "scripts/core/context.js~ToolContext#toolstack",
     "member"
-  ],
-  [
-    "scripts/core/customdata.js",
-    "file/scripts/core/customdata.js.html",
-    "scripts/core/customdata.js",
-    "file"
-  ],
-  [
-    "scripts/core/customdata.js~customdata#_getlayers",
-    "class/scripts/core/customdata.js~CustomData.html#instance-method-_getLayers",
-    "scripts/core/customdata.js~CustomData#_getLayers",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdata#addlayer",
-    "class/scripts/core/customdata.js~CustomData.html#instance-method-addLayer",
-    "scripts/core/customdata.js~CustomData#addLayer",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdata#constructor",
-    "class/scripts/core/customdata.js~CustomData.html#instance-constructor-constructor",
-    "scripts/core/customdata.js~CustomData#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdata#flatlist",
-    "class/scripts/core/customdata.js~CustomData.html#instance-member-flatlist",
-    "scripts/core/customdata.js~CustomData#flatlist",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~customdata#getlayerset",
-    "class/scripts/core/customdata.js~CustomData.html#instance-method-getLayerSet",
-    "scripts/core/customdata.js~CustomData#getLayerSet",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdata#idgen",
-    "class/scripts/core/customdata.js~CustomData.html#instance-member-idgen",
-    "scripts/core/customdata.js~CustomData#idgen",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~customdata#layers",
-    "class/scripts/core/customdata.js~CustomData.html#instance-member-layers",
-    "scripts/core/customdata.js~CustomData#layers",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~customdata#on_layeradd",
-    "class/scripts/core/customdata.js~CustomData.html#instance-member-on_layeradd",
-    "scripts/core/customdata.js~CustomData#on_layeradd",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~customdata#on_layerremove",
-    "class/scripts/core/customdata.js~CustomData.html#instance-member-on_layerremove",
-    "scripts/core/customdata.js~CustomData#on_layerremove",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~customdata#remlayer",
-    "class/scripts/core/customdata.js~CustomData.html#instance-method-remLayer",
-    "scripts/core/customdata.js~CustomData#remLayer",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdata.fromstruct",
-    "class/scripts/core/customdata.js~CustomData.html#static-method-fromSTRUCT",
-    "scripts/core/customdata.js~CustomData.fromSTRUCT",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdataelem#constructor",
-    "class/scripts/core/customdata.js~CustomDataElem.html#instance-constructor-constructor",
-    "scripts/core/customdata.js~CustomDataElem#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdataelem#copy",
-    "class/scripts/core/customdata.js~CustomDataElem.html#instance-method-copy",
-    "scripts/core/customdata.js~CustomDataElem#copy",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdataelem#copyto",
-    "class/scripts/core/customdata.js~CustomDataElem.html#instance-method-copyTo",
-    "scripts/core/customdata.js~CustomDataElem#copyTo",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdataelem#interp",
-    "class/scripts/core/customdata.js~CustomDataElem.html#instance-method-interp",
-    "scripts/core/customdata.js~CustomDataElem#interp",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdataelem#validate",
-    "class/scripts/core/customdata.js~CustomDataElem.html#instance-method-validate",
-    "scripts/core/customdata.js~CustomDataElem#validate",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdataelem.define",
-    "class/scripts/core/customdata.js~CustomDataElem.html#static-method-define",
-    "scripts/core/customdata.js~CustomDataElem.define",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdataelem.gettypeclass",
-    "class/scripts/core/customdata.js~CustomDataElem.html#static-method-getTypeClass",
-    "scripts/core/customdata.js~CustomDataElem.getTypeClass",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdataelem.register",
-    "class/scripts/core/customdata.js~CustomDataElem.html#static-method-register",
-    "scripts/core/customdata.js~CustomDataElem.register",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdatalayer#constructor",
-    "class/scripts/core/customdata.js~CustomDataLayer.html#instance-constructor-constructor",
-    "scripts/core/customdata.js~CustomDataLayer#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~customdatalayer#elemtypemask",
-    "class/scripts/core/customdata.js~CustomDataLayer.html#instance-member-elemTypeMask",
-    "scripts/core/customdata.js~CustomDataLayer#elemTypeMask",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~customdatalayer#flag",
-    "class/scripts/core/customdata.js~CustomDataLayer.html#instance-member-flag",
-    "scripts/core/customdata.js~CustomDataLayer#flag",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~customdatalayer#id",
-    "class/scripts/core/customdata.js~CustomDataLayer.html#instance-member-id",
-    "scripts/core/customdata.js~CustomDataLayer#id",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~customdatalayer#index",
-    "class/scripts/core/customdata.js~CustomDataLayer.html#instance-member-index",
-    "scripts/core/customdata.js~CustomDataLayer#index",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~customdatalayer#name",
-    "class/scripts/core/customdata.js~CustomDataLayer.html#instance-member-name",
-    "scripts/core/customdata.js~CustomDataLayer#name",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~customdatalayer#typename",
-    "class/scripts/core/customdata.js~CustomDataLayer.html#instance-member-typeName",
-    "scripts/core/customdata.js~CustomDataLayer#typeName",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~customdatalayer.fromstruct",
-    "class/scripts/core/customdata.js~CustomDataLayer.html#static-method-fromSTRUCT",
-    "scripts/core/customdata.js~CustomDataLayer.fromSTRUCT",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~layerset#active",
-    "class/scripts/core/customdata.js~LayerSet.html#instance-member-active",
-    "scripts/core/customdata.js~LayerSet#active",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~layerset#constructor",
-    "class/scripts/core/customdata.js~LayerSet.html#instance-constructor-constructor",
-    "scripts/core/customdata.js~LayerSet#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~layerset#idmap",
-    "class/scripts/core/customdata.js~LayerSet.html#instance-member-idmap",
-    "scripts/core/customdata.js~LayerSet#idmap",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~layerset#push",
-    "class/scripts/core/customdata.js~LayerSet.html#instance-method-push",
-    "scripts/core/customdata.js~LayerSet#push",
-    "method"
-  ],
-  [
-    "scripts/core/customdata.js~layerset#typename",
-    "class/scripts/core/customdata.js~LayerSet.html#instance-member-typeName",
-    "scripts/core/customdata.js~LayerSet#typeName",
-    "member"
-  ],
-  [
-    "scripts/core/customdata.js~layerset.fromstruct",
-    "class/scripts/core/customdata.js~LayerSet.html#static-method-fromSTRUCT",
-    "scripts/core/customdata.js~LayerSet.fromSTRUCT",
-    "method"
   ],
   [
     "scripts/core/fbo.js",
@@ -3588,6 +3852,42 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
+    "scripts/core/graph.js~callbacknode#callback",
+    "class/scripts/core/graph.js~CallbackNode.html#instance-member-callback",
+    "scripts/core/graph.js~CallbackNode#callback",
+    "member"
+  ],
+  [
+    "scripts/core/graph.js~callbacknode#constructor",
+    "class/scripts/core/graph.js~CallbackNode.html#instance-constructor-constructor",
+    "scripts/core/graph.js~CallbackNode#constructor",
+    "method"
+  ],
+  [
+    "scripts/core/graph.js~callbacknode#exec",
+    "class/scripts/core/graph.js~CallbackNode.html#instance-method-exec",
+    "scripts/core/graph.js~CallbackNode#exec",
+    "method"
+  ],
+  [
+    "scripts/core/graph.js~callbacknode#flag",
+    "class/scripts/core/graph.js~CallbackNode.html#instance-member-flag",
+    "scripts/core/graph.js~CallbackNode#flag",
+    "member"
+  ],
+  [
+    "scripts/core/graph.js~callbacknode.create",
+    "class/scripts/core/graph.js~CallbackNode.html#static-method-create",
+    "scripts/core/graph.js~CallbackNode.create",
+    "method"
+  ],
+  [
+    "scripts/core/graph.js~callbacknode.nodedef",
+    "class/scripts/core/graph.js~CallbackNode.html#static-method-nodedef",
+    "scripts/core/graph.js~CallbackNode.nodedef",
+    "method"
+  ],
+  [
     "scripts/core/graph.js~graph#_cyclic_exec",
     "class/scripts/core/graph.js~Graph.html#instance-method-_cyclic_exec",
     "scripts/core/graph.js~Graph#_cyclic_exec",
@@ -3597,6 +3897,12 @@ window.esdocSearchIndex = [
     "scripts/core/graph.js~graph#_cyclic_step",
     "class/scripts/core/graph.js~Graph.html#instance-method-_cyclic_step",
     "scripts/core/graph.js~Graph#_cyclic_step",
+    "method"
+  ],
+  [
+    "scripts/core/graph.js~graph#_save_nodes",
+    "class/scripts/core/graph.js~Graph.html#instance-method-_save_nodes",
+    "scripts/core/graph.js~Graph#_save_nodes",
     "method"
   ],
   [
@@ -3642,6 +3948,18 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/core/graph.js~graph#has",
+    "class/scripts/core/graph.js~Graph.html#instance-method-has",
+    "scripts/core/graph.js~Graph#has",
+    "method"
+  ],
+  [
+    "scripts/core/graph.js~graph#loadstruct",
+    "class/scripts/core/graph.js~Graph.html#instance-method-loadSTRUCT",
+    "scripts/core/graph.js~Graph#loadSTRUCT",
+    "method"
+  ],
+  [
     "scripts/core/graph.js~graph#max_cycle_steps",
     "class/scripts/core/graph.js~Graph.html#instance-member-max_cycle_steps",
     "scripts/core/graph.js~Graph#max_cycle_steps",
@@ -3658,6 +3976,12 @@ window.esdocSearchIndex = [
     "class/scripts/core/graph.js~Graph.html#instance-member-nodes",
     "scripts/core/graph.js~Graph#nodes",
     "member"
+  ],
+  [
+    "scripts/core/graph.js~graph#relinkproxyowner",
+    "class/scripts/core/graph.js~Graph.html#instance-method-relinkProxyOwner",
+    "scripts/core/graph.js~Graph#relinkProxyOwner",
+    "method"
   ],
   [
     "scripts/core/graph.js~graph#remove",
@@ -3700,12 +4024,6 @@ window.esdocSearchIndex = [
     "class/scripts/core/graph.js~KeyValPair.html#instance-member-val",
     "scripts/core/graph.js~KeyValPair#val",
     "member"
-  ],
-  [
-    "scripts/core/graph.js~keyvalpair.fromstruct",
-    "class/scripts/core/graph.js~KeyValPair.html#static-method-fromSTRUCT",
-    "scripts/core/graph.js~KeyValPair.fromSTRUCT",
-    "method"
   ],
   [
     "scripts/core/graph.js~node#_save_map",
@@ -3796,6 +4114,12 @@ window.esdocSearchIndex = [
     "class/scripts/core/graph.js~Node.html#instance-member-inputs",
     "scripts/core/graph.js~Node#inputs",
     "member"
+  ],
+  [
+    "scripts/core/graph.js~node#loadstruct",
+    "class/scripts/core/graph.js~Node.html#instance-method-loadSTRUCT",
+    "scripts/core/graph.js~Node#loadSTRUCT",
+    "method"
   ],
   [
     "scripts/core/graph.js~node#outputs",
@@ -3930,16 +4254,40 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/core/graph.js~nodesockettype.fromstruct",
-    "class/scripts/core/graph.js~NodeSocketType.html#static-method-fromSTRUCT",
-    "scripts/core/graph.js~NodeSocketType.fromSTRUCT",
-    "method"
-  ],
-  [
     "scripts/core/graph.js~nodesockettype.nodedef",
     "class/scripts/core/graph.js~NodeSocketType.html#static-method-nodedef",
     "scripts/core/graph.js~NodeSocketType.nodedef",
     "method"
+  ],
+  [
+    "scripts/core/graph.js~proxynode#classname",
+    "class/scripts/core/graph.js~ProxyNode.html#instance-member-className",
+    "scripts/core/graph.js~ProxyNode#className",
+    "member"
+  ],
+  [
+    "scripts/core/graph.js~proxynode#constructor",
+    "class/scripts/core/graph.js~ProxyNode.html#instance-constructor-constructor",
+    "scripts/core/graph.js~ProxyNode#constructor",
+    "method"
+  ],
+  [
+    "scripts/core/graph.js~proxynode#nodedef",
+    "class/scripts/core/graph.js~ProxyNode.html#instance-method-nodedef",
+    "scripts/core/graph.js~ProxyNode#nodedef",
+    "method"
+  ],
+  [
+    "scripts/core/graph.js~proxynode.fromnode",
+    "class/scripts/core/graph.js~ProxyNode.html#static-method-fromNode",
+    "scripts/core/graph.js~ProxyNode.fromNode",
+    "method"
+  ],
+  [
+    "scripts/core/graph_datapath.js",
+    "file/scripts/core/graph_datapath.js.html",
+    "scripts/core/graph_datapath.js",
+    "file"
   ],
   [
     "scripts/core/graphsockets.js",
@@ -3978,6 +4326,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/graphsockets.js~dependsocket#loadstruct",
+    "class/scripts/core/graphsockets.js~DependSocket.html#instance-method-loadSTRUCT",
+    "scripts/core/graphsockets.js~DependSocket#loadSTRUCT",
+    "method"
+  ],
+  [
     "scripts/core/graphsockets.js~dependsocket#setvalue",
     "class/scripts/core/graphsockets.js~DependSocket.html#instance-method-setValue",
     "scripts/core/graphsockets.js~DependSocket#setValue",
@@ -3988,12 +4342,6 @@ window.esdocSearchIndex = [
     "class/scripts/core/graphsockets.js~DependSocket.html#instance-member-value",
     "scripts/core/graphsockets.js~DependSocket#value",
     "member"
-  ],
-  [
-    "scripts/core/graphsockets.js~dependsocket.fromstruct",
-    "class/scripts/core/graphsockets.js~DependSocket.html#static-method-fromSTRUCT",
-    "scripts/core/graphsockets.js~DependSocket.fromSTRUCT",
-    "method"
   ],
   [
     "scripts/core/graphsockets.js~dependsocket.nodedef",
@@ -4042,12 +4390,6 @@ window.esdocSearchIndex = [
     "class/scripts/core/graphsockets.js~FloatSocket.html#instance-member-value",
     "scripts/core/graphsockets.js~FloatSocket#value",
     "member"
-  ],
-  [
-    "scripts/core/graphsockets.js~floatsocket.fromstruct",
-    "class/scripts/core/graphsockets.js~FloatSocket.html#static-method-fromSTRUCT",
-    "scripts/core/graphsockets.js~FloatSocket.fromSTRUCT",
-    "method"
   ],
   [
     "scripts/core/graphsockets.js~floatsocket.nodedef",
@@ -4110,12 +4452,6 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
-    "scripts/core/graphsockets.js~matrix4socket.fromstruct",
-    "class/scripts/core/graphsockets.js~Matrix4Socket.html#static-method-fromSTRUCT",
-    "scripts/core/graphsockets.js~Matrix4Socket.fromSTRUCT",
-    "method"
-  ],
-  [
     "scripts/core/graphsockets.js~matrix4socket.nodedef",
     "class/scripts/core/graphsockets.js~Matrix4Socket.html#static-method-nodedef",
     "scripts/core/graphsockets.js~Matrix4Socket.nodedef",
@@ -4162,12 +4498,6 @@ window.esdocSearchIndex = [
     "class/scripts/core/graphsockets.js~Vec3Socket.html#instance-member-value",
     "scripts/core/graphsockets.js~Vec3Socket#value",
     "member"
-  ],
-  [
-    "scripts/core/graphsockets.js~vec3socket.fromstruct",
-    "class/scripts/core/graphsockets.js~Vec3Socket.html#static-method-fromSTRUCT",
-    "scripts/core/graphsockets.js~Vec3Socket.fromSTRUCT",
-    "method"
   ],
   [
     "scripts/core/graphsockets.js~vec3socket.nodedef",
@@ -4218,12 +4548,6 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
-    "scripts/core/graphsockets.js~vec4socket.fromstruct",
-    "class/scripts/core/graphsockets.js~Vec4Socket.html#static-method-fromSTRUCT",
-    "scripts/core/graphsockets.js~Vec4Socket.fromSTRUCT",
-    "method"
-  ],
-  [
     "scripts/core/graphsockets.js~vec4socket.nodedef",
     "class/scripts/core/graphsockets.js~Vec4Socket.html#static-method-nodedef",
     "scripts/core/graphsockets.js~Vec4Socket.nodedef",
@@ -4243,13 +4567,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/core/lib_api.js~blockset#active",
-    "class/scripts/core/lib_api.js~BlockSet.html#instance-set-active",
+    "class/scripts/core/lib_api.js~BlockSet.html#instance-get-active",
     "scripts/core/lib_api.js~BlockSet#active",
     "member"
   ],
   [
     "scripts/core/lib_api.js~blockset#active",
-    "class/scripts/core/lib_api.js~BlockSet.html#instance-get-active",
+    "class/scripts/core/lib_api.js~BlockSet.html#instance-set-active",
     "scripts/core/lib_api.js~BlockSet#active",
     "member"
   ],
@@ -4296,6 +4620,12 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/core/lib_api.js~blockset#loadstruct",
+    "class/scripts/core/lib_api.js~BlockSet.html#instance-method-loadSTRUCT",
+    "scripts/core/lib_api.js~BlockSet#loadSTRUCT",
+    "method"
+  ],
+  [
     "scripts/core/lib_api.js~blockset#namemap",
     "class/scripts/core/lib_api.js~BlockSet.html#instance-member-namemap",
     "scripts/core/lib_api.js~BlockSet#namemap",
@@ -4320,16 +4650,16 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
-    "scripts/core/lib_api.js~blockset.fromstruct",
-    "class/scripts/core/lib_api.js~BlockSet.html#static-method-fromSTRUCT",
-    "scripts/core/lib_api.js~BlockSet.fromSTRUCT",
-    "method"
-  ],
-  [
     "scripts/core/lib_api.js~datablock#[symbol.keystr]",
     "class/scripts/core/lib_api.js~DataBlock.html#instance-method-[Symbol.keystr]",
     "scripts/core/lib_api.js~DataBlock#[Symbol.keystr]",
     "method"
+  ],
+  [
+    "scripts/core/lib_api.js~datablock#[k]",
+    "class/scripts/core/lib_api.js~DataBlock.html#instance-member-[k]",
+    "scripts/core/lib_api.js~DataBlock#[k]",
+    "member"
   ],
   [
     "scripts/core/lib_api.js~datablock#afterstruct",
@@ -4354,6 +4684,12 @@ window.esdocSearchIndex = [
     "class/scripts/core/lib_api.js~DataBlock.html#instance-method-destroy",
     "scripts/core/lib_api.js~DataBlock#destroy",
     "method"
+  ],
+  [
+    "scripts/core/lib_api.js~datablock#graph_flag",
+    "class/scripts/core/lib_api.js~DataBlock.html#instance-member-graph_flag",
+    "scripts/core/lib_api.js~DataBlock#graph_flag",
+    "member"
   ],
   [
     "scripts/core/lib_api.js~datablock#lib_adduser",
@@ -4404,21 +4740,27 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/core/lib_api.js~datablock#loadstruct",
+    "class/scripts/core/lib_api.js~DataBlock.html#instance-method-loadSTRUCT",
+    "scripts/core/lib_api.js~DataBlock#loadSTRUCT",
+    "method"
+  ],
+  [
     "scripts/core/lib_api.js~datablock#name",
     "class/scripts/core/lib_api.js~DataBlock.html#instance-member-name",
     "scripts/core/lib_api.js~DataBlock#name",
     "member"
   ],
   [
-    "scripts/core/lib_api.js~datablock.blockdefine",
-    "class/scripts/core/lib_api.js~DataBlock.html#static-method-blockDefine",
-    "scripts/core/lib_api.js~DataBlock.blockDefine",
+    "scripts/core/lib_api.js~datablock#swapdatablockcontents",
+    "class/scripts/core/lib_api.js~DataBlock.html#instance-method-swapDataBlockContents",
+    "scripts/core/lib_api.js~DataBlock#swapDataBlockContents",
     "method"
   ],
   [
-    "scripts/core/lib_api.js~datablock.fromstruct",
-    "class/scripts/core/lib_api.js~DataBlock.html#static-method-fromSTRUCT",
-    "scripts/core/lib_api.js~DataBlock.fromSTRUCT",
+    "scripts/core/lib_api.js~datablock.blockdefine",
+    "class/scripts/core/lib_api.js~DataBlock.html#static-method-blockDefine",
+    "scripts/core/lib_api.js~DataBlock.blockDefine",
     "method"
   ],
   [
@@ -4464,15 +4806,21 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
-    "scripts/core/lib_api.js~dataref.fromblock",
-    "class/scripts/core/lib_api.js~DataRef.html#static-method-fromBlock",
-    "scripts/core/lib_api.js~DataRef.fromBlock",
+    "scripts/core/lib_api.js~dataref#loadstruct",
+    "class/scripts/core/lib_api.js~DataRef.html#instance-method-loadSTRUCT",
+    "scripts/core/lib_api.js~DataRef#loadSTRUCT",
     "method"
   ],
   [
-    "scripts/core/lib_api.js~dataref.fromstruct",
-    "class/scripts/core/lib_api.js~DataRef.html#static-method-fromSTRUCT",
-    "scripts/core/lib_api.js~DataRef.fromSTRUCT",
+    "scripts/core/lib_api.js~dataref#set",
+    "class/scripts/core/lib_api.js~DataRef.html#instance-method-set",
+    "scripts/core/lib_api.js~DataRef#set",
+    "method"
+  ],
+  [
+    "scripts/core/lib_api.js~dataref.fromblock",
+    "class/scripts/core/lib_api.js~DataRef.html#static-method-fromBlock",
+    "scripts/core/lib_api.js~DataRef.fromBlock",
     "method"
   ],
   [
@@ -4566,6 +4914,18 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/lib_api.js~library#afterstruct",
+    "class/scripts/core/lib_api.js~Library.html#instance-method-afterSTRUCT",
+    "scripts/core/lib_api.js~Library#afterSTRUCT",
+    "method"
+  ],
+  [
+    "scripts/core/lib_api.js~library#allblocks",
+    "class/scripts/core/lib_api.js~Library.html#instance-get-allBlocks",
+    "scripts/core/lib_api.js~Library#allBlocks",
+    "member"
+  ],
+  [
     "scripts/core/lib_api.js~library#block_idmap",
     "class/scripts/core/lib_api.js~Library.html#instance-member-block_idmap",
     "scripts/core/lib_api.js~Library#block_idmap",
@@ -4596,6 +4956,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/lib_api.js~library#graph",
+    "class/scripts/core/lib_api.js~Library.html#instance-member-graph",
+    "scripts/core/lib_api.js~Library#graph",
+    "member"
+  ],
+  [
     "scripts/core/lib_api.js~library#idgen",
     "class/scripts/core/lib_api.js~Library.html#instance-member-idgen",
     "scripts/core/lib_api.js~Library#idgen",
@@ -4614,831 +4980,15 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/core/lib_api.js~library#loadstruct",
+    "class/scripts/core/lib_api.js~Library.html#instance-method-loadSTRUCT",
+    "scripts/core/lib_api.js~Library#loadSTRUCT",
+    "method"
+  ],
+  [
     "scripts/core/lib_api.js~library#remove",
     "class/scripts/core/lib_api.js~Library.html#instance-method-remove",
     "scripts/core/lib_api.js~Library#remove",
-    "method"
-  ],
-  [
-    "scripts/core/lib_api.js~library.fromstruct",
-    "class/scripts/core/lib_api.js~Library.html#static-method-fromSTRUCT",
-    "scripts/core/lib_api.js~Library.fromSTRUCT",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js",
-    "file/scripts/core/mesh.js.html",
-    "scripts/core/mesh.js",
-    "file"
-  ],
-  [
-    "scripts/core/mesh.js~edge#constructor",
-    "class/scripts/core/mesh.js~Edge.html#instance-constructor-constructor",
-    "scripts/core/mesh.js~Edge#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~edge#curvature",
-    "class/scripts/core/mesh.js~Edge.html#instance-method-curvature",
-    "scripts/core/mesh.js~Edge#curvature",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~edge#derivative",
-    "class/scripts/core/mesh.js~Edge.html#instance-method-derivative",
-    "scripts/core/mesh.js~Edge#derivative",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~edge#derivative2",
-    "class/scripts/core/mesh.js~Edge.html#instance-method-derivative2",
-    "scripts/core/mesh.js~Edge#derivative2",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~edge#evaluate",
-    "class/scripts/core/mesh.js~Edge.html#instance-method-evaluate",
-    "scripts/core/mesh.js~Edge#evaluate",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~edge#faces",
-    "class/scripts/core/mesh.js~Edge.html#instance-get-faces",
-    "scripts/core/mesh.js~Edge#faces",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~edge#has",
-    "class/scripts/core/mesh.js~Edge.html#instance-method-has",
-    "scripts/core/mesh.js~Edge#has",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~edge#loop",
-    "class/scripts/core/mesh.js~Edge.html#instance-member-loop",
-    "scripts/core/mesh.js~Edge#loop",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~edge#loops",
-    "class/scripts/core/mesh.js~Edge.html#instance-get-loops",
-    "scripts/core/mesh.js~Edge#loops",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~edge#othervertex",
-    "class/scripts/core/mesh.js~Edge.html#instance-method-otherVertex",
-    "scripts/core/mesh.js~Edge#otherVertex",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~edge#v1",
-    "class/scripts/core/mesh.js~Edge.html#instance-member-v1",
-    "scripts/core/mesh.js~Edge#v1",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~edge.fromstruct",
-    "class/scripts/core/mesh.js~Edge.html#static-method-fromSTRUCT",
-    "scripts/core/mesh.js~Edge.fromSTRUCT",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~element#[symbol.keystr]",
-    "class/scripts/core/mesh.js~Element.html#instance-method-[Symbol.keystr]",
-    "scripts/core/mesh.js~Element#[Symbol.keystr]",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~element#constructor",
-    "class/scripts/core/mesh.js~Element.html#instance-constructor-constructor",
-    "scripts/core/mesh.js~Element#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~element#customdata",
-    "class/scripts/core/mesh.js~Element.html#instance-member-customData",
-    "scripts/core/mesh.js~Element#customData",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~element#eid",
-    "class/scripts/core/mesh.js~Element.html#instance-member-eid",
-    "scripts/core/mesh.js~Element#eid",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~element#flag",
-    "class/scripts/core/mesh.js~Element.html#instance-member-flag",
-    "scripts/core/mesh.js~Element#flag",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~element#index",
-    "class/scripts/core/mesh.js~Element.html#instance-member-index",
-    "scripts/core/mesh.js~Element#index",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~element#loadjson",
-    "class/scripts/core/mesh.js~Element.html#instance-method-loadJSON",
-    "scripts/core/mesh.js~Element#loadJSON",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~element#tojson",
-    "class/scripts/core/mesh.js~Element.html#instance-method-toJSON",
-    "scripts/core/mesh.js~Element#toJSON",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~element#type",
-    "class/scripts/core/mesh.js~Element.html#instance-member-type",
-    "scripts/core/mesh.js~Element#type",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~element#valueof",
-    "class/scripts/core/mesh.js~Element.html#instance-method-valueOf",
-    "scripts/core/mesh.js~Element#valueOf",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~element.fromstruct",
-    "class/scripts/core/mesh.js~Element.html#static-method-fromSTRUCT",
-    "scripts/core/mesh.js~Element.fromSTRUCT",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#active",
-    "class/scripts/core/mesh.js~ElementList.html#instance-member-active",
-    "scripts/core/mesh.js~ElementList#active",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#constructor",
-    "class/scripts/core/mesh.js~ElementList.html#instance-constructor-constructor",
-    "scripts/core/mesh.js~ElementList#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#editable",
-    "class/scripts/core/mesh.js~ElementList.html#instance-get-editable",
-    "scripts/core/mesh.js~ElementList#editable",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#highlight",
-    "class/scripts/core/mesh.js~ElementList.html#instance-member-highlight",
-    "scripts/core/mesh.js~ElementList#highlight",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#length",
-    "class/scripts/core/mesh.js~ElementList.html#instance-member-length",
-    "scripts/core/mesh.js~ElementList#length",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#loadjson",
-    "class/scripts/core/mesh.js~ElementList.html#instance-method-loadJSON",
-    "scripts/core/mesh.js~ElementList#loadJSON",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#on_selected",
-    "class/scripts/core/mesh.js~ElementList.html#instance-member-on_selected",
-    "scripts/core/mesh.js~ElementList#on_selected",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#push",
-    "class/scripts/core/mesh.js~ElementList.html#instance-method-push",
-    "scripts/core/mesh.js~ElementList#push",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#remove",
-    "class/scripts/core/mesh.js~ElementList.html#instance-method-remove",
-    "scripts/core/mesh.js~ElementList#remove",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#selectall",
-    "class/scripts/core/mesh.js~ElementList.html#instance-method-selectAll",
-    "scripts/core/mesh.js~ElementList#selectAll",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#selectnone",
-    "class/scripts/core/mesh.js~ElementList.html#instance-method-selectNone",
-    "scripts/core/mesh.js~ElementList#selectNone",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#selected",
-    "class/scripts/core/mesh.js~ElementList.html#instance-member-selected",
-    "scripts/core/mesh.js~ElementList#selected",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#setselect",
-    "class/scripts/core/mesh.js~ElementList.html#instance-method-setSelect",
-    "scripts/core/mesh.js~ElementList#setSelect",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#tojson",
-    "class/scripts/core/mesh.js~ElementList.html#instance-method-toJSON",
-    "scripts/core/mesh.js~ElementList#toJSON",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist#type",
-    "class/scripts/core/mesh.js~ElementList.html#instance-member-type",
-    "scripts/core/mesh.js~ElementList#type",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~elementlist.fromstruct",
-    "class/scripts/core/mesh.js~ElementList.html#static-method-fromSTRUCT",
-    "scripts/core/mesh.js~ElementList.fromSTRUCT",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~face#calccent",
-    "class/scripts/core/mesh.js~Face.html#instance-method-calcCent",
-    "scripts/core/mesh.js~Face#calcCent",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~face#calcnormal",
-    "class/scripts/core/mesh.js~Face.html#instance-method-calcNormal",
-    "scripts/core/mesh.js~Face#calcNormal",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~face#cent",
-    "class/scripts/core/mesh.js~Face.html#instance-member-cent",
-    "scripts/core/mesh.js~Face#cent",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~face#constructor",
-    "class/scripts/core/mesh.js~Face.html#instance-constructor-constructor",
-    "scripts/core/mesh.js~Face#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~face#edges",
-    "class/scripts/core/mesh.js~Face.html#instance-get-edges",
-    "scripts/core/mesh.js~Face#edges",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~face#flag",
-    "class/scripts/core/mesh.js~Face.html#instance-member-flag",
-    "scripts/core/mesh.js~Face#flag",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~face#lists",
-    "class/scripts/core/mesh.js~Face.html#instance-member-lists",
-    "scripts/core/mesh.js~Face#lists",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~face#loops",
-    "class/scripts/core/mesh.js~Face.html#instance-get-loops",
-    "scripts/core/mesh.js~Face#loops",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~face#no",
-    "class/scripts/core/mesh.js~Face.html#instance-member-no",
-    "scripts/core/mesh.js~Face#no",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~face#uvs",
-    "class/scripts/core/mesh.js~Face.html#instance-get-uvs",
-    "scripts/core/mesh.js~Face#uvs",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~face#verts",
-    "class/scripts/core/mesh.js~Face.html#instance-get-verts",
-    "scripts/core/mesh.js~Face#verts",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~face.fromstruct",
-    "class/scripts/core/mesh.js~Face.html#static-method-fromSTRUCT",
-    "scripts/core/mesh.js~Face.fromSTRUCT",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~loop#constructor",
-    "class/scripts/core/mesh.js~Loop.html#instance-constructor-constructor",
-    "scripts/core/mesh.js~Loop#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~loop#e",
-    "class/scripts/core/mesh.js~Loop.html#instance-member-e",
-    "scripts/core/mesh.js~Loop#e",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~loop#f",
-    "class/scripts/core/mesh.js~Loop.html#instance-member-f",
-    "scripts/core/mesh.js~Loop#f",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~loop#list",
-    "class/scripts/core/mesh.js~Loop.html#instance-member-list",
-    "scripts/core/mesh.js~Loop#list",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~loop#radial_next",
-    "class/scripts/core/mesh.js~Loop.html#instance-member-radial_next",
-    "scripts/core/mesh.js~Loop#radial_next",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~loop#uv",
-    "class/scripts/core/mesh.js~Loop.html#instance-get-uv",
-    "scripts/core/mesh.js~Loop#uv",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~loop#v",
-    "class/scripts/core/mesh.js~Loop.html#instance-member-v",
-    "scripts/core/mesh.js~Loop#v",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~loop.fromstruct",
-    "class/scripts/core/mesh.js~Loop.html#static-method-fromSTRUCT",
-    "scripts/core/mesh.js~Loop.fromSTRUCT",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~looplist#[symbol.iterator]",
-    "class/scripts/core/mesh.js~LoopList.html#instance-method-[Symbol.iterator]",
-    "scripts/core/mesh.js~LoopList#[Symbol.iterator]",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~looplist#_loops",
-    "class/scripts/core/mesh.js~LoopList.html#instance-get-_loops",
-    "scripts/core/mesh.js~LoopList#_loops",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~looplist#constructor",
-    "class/scripts/core/mesh.js~LoopList.html#instance-constructor-constructor",
-    "scripts/core/mesh.js~LoopList#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~looplist#flag",
-    "class/scripts/core/mesh.js~LoopList.html#instance-member-flag",
-    "scripts/core/mesh.js~LoopList#flag",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~looplist#iterstack",
-    "class/scripts/core/mesh.js~LoopList.html#instance-member-iterstack",
-    "scripts/core/mesh.js~LoopList#iterstack",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~looplist#l",
-    "class/scripts/core/mesh.js~LoopList.html#instance-member-l",
-    "scripts/core/mesh.js~LoopList#l",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~looplist.fromstruct",
-    "class/scripts/core/mesh.js~LoopList.html#static-method-fromSTRUCT",
-    "scripts/core/mesh.js~LoopList.fromSTRUCT",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#_element_init",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-_element_init",
-    "scripts/core/mesh.js~Mesh#_element_init",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#_getarrays",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-_getArrays",
-    "scripts/core/mesh.js~Mesh#_getArrays",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#_killloop",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-_killLoop",
-    "scripts/core/mesh.js~Mesh#_killLoop",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#_makeloop",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-_makeLoop",
-    "scripts/core/mesh.js~Mesh#_makeLoop",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#_on_cdlayer_add",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-_on_cdlayer_add",
-    "scripts/core/mesh.js~Mesh#_on_cdlayer_add",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#_on_cdlayer_rem",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-_on_cdlayer_rem",
-    "scripts/core/mesh.js~Mesh#_on_cdlayer_rem",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#_radialinsert",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-_radialInsert",
-    "scripts/core/mesh.js~Mesh#_radialInsert",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#_radialremove",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-_radialRemove",
-    "scripts/core/mesh.js~Mesh#_radialRemove",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#_splitedgenoface",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-_splitEdgeNoFace",
-    "scripts/core/mesh.js~Mesh#_splitEdgeNoFace",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#constructor",
-    "class/scripts/core/mesh.js~Mesh.html#instance-constructor-constructor",
-    "scripts/core/mesh.js~Mesh#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#dissolvevertex",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-dissolveVertex",
-    "scripts/core/mesh.js~Mesh#dissolveVertex",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#draw",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-draw",
-    "scripts/core/mesh.js~Mesh#draw",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#edges",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-edges",
-    "scripts/core/mesh.js~Mesh#edges",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#eidgen",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-eidgen",
-    "scripts/core/mesh.js~Mesh#eidgen",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#eidmap",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-eidmap",
-    "scripts/core/mesh.js~Mesh#eidmap",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#elements",
-    "class/scripts/core/mesh.js~Mesh.html#instance-get-elements",
-    "scripts/core/mesh.js~Mesh#elements",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#elists",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-elists",
-    "scripts/core/mesh.js~Mesh#elists",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#ensureedge",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-ensureEdge",
-    "scripts/core/mesh.js~Mesh#ensureEdge",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#faces",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-faces",
-    "scripts/core/mesh.js~Mesh#faces",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#genrender",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-genRender",
-    "scripts/core/mesh.js~Mesh#genRender",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#getedge",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-getEdge",
-    "scripts/core/mesh.js~Mesh#getEdge",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#getelemlist",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-getElemList",
-    "scripts/core/mesh.js~Mesh#getElemList",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#getelemlists",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-getElemLists",
-    "scripts/core/mesh.js~Mesh#getElemLists",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#killedge",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-killEdge",
-    "scripts/core/mesh.js~Mesh#killEdge",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#killface",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-killFace",
-    "scripts/core/mesh.js~Mesh#killFace",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#killvertex",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-killVertex",
-    "scripts/core/mesh.js~Mesh#killVertex",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#loops",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-loops",
-    "scripts/core/mesh.js~Mesh#loops",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#makeedge",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-makeEdge",
-    "scripts/core/mesh.js~Mesh#makeEdge",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#makeface",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-makeFace",
-    "scripts/core/mesh.js~Mesh#makeFace",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#makevertex",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-makeVertex",
-    "scripts/core/mesh.js~Mesh#makeVertex",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#max",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-max",
-    "scripts/core/mesh.js~Mesh#max",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#min",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-min",
-    "scripts/core/mesh.js~Mesh#min",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#minmax",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-minMax",
-    "scripts/core/mesh.js~Mesh#minMax",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#program",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-program",
-    "scripts/core/mesh.js~Mesh#program",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#recalc",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-recalc",
-    "scripts/core/mesh.js~Mesh#recalc",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#recalcnormals",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-recalcNormals",
-    "scripts/core/mesh.js~Mesh#recalcNormals",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#regenrender",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-regenRender",
-    "scripts/core/mesh.js~Mesh#regenRender",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#rescale",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-rescale",
-    "scripts/core/mesh.js~Mesh#rescale",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#selectall",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-selectAll",
-    "scripts/core/mesh.js~Mesh#selectAll",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#selectflush",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-selectFlush",
-    "scripts/core/mesh.js~Mesh#selectFlush",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#selectnone",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-selectNone",
-    "scripts/core/mesh.js~Mesh#selectNone",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#setactive",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-setActive",
-    "scripts/core/mesh.js~Mesh#setActive",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#setselect",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-setSelect",
-    "scripts/core/mesh.js~Mesh#setSelect",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#setshadesmooth",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-setShadeSmooth",
-    "scripts/core/mesh.js~Mesh#setShadeSmooth",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#smesh",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-smesh",
-    "scripts/core/mesh.js~Mesh#smesh",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#splitedge",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-splitEdge",
-    "scripts/core/mesh.js~Mesh#splitEdge",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#tessellate",
-    "class/scripts/core/mesh.js~Mesh.html#instance-method-tessellate",
-    "scripts/core/mesh.js~Mesh#tessellate",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#uniforms",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-uniforms",
-    "scripts/core/mesh.js~Mesh#uniforms",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#updategen",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-updateGen",
-    "scripts/core/mesh.js~Mesh#updateGen",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh#verts",
-    "class/scripts/core/mesh.js~Mesh.html#instance-member-verts",
-    "scripts/core/mesh.js~Mesh#verts",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~mesh.blockdefine",
-    "class/scripts/core/mesh.js~Mesh.html#static-method-blockDefine",
-    "scripts/core/mesh.js~Mesh.blockDefine",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh.fromstruct",
-    "class/scripts/core/mesh.js~Mesh.html#static-method-fromSTRUCT",
-    "scripts/core/mesh.js~Mesh.fromSTRUCT",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~mesh.nodedef",
-    "class/scripts/core/mesh.js~Mesh.html#static-method-nodedef",
-    "scripts/core/mesh.js~Mesh.nodedef",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~selectionset#constructor",
-    "class/scripts/core/mesh.js~SelectionSet.html#instance-constructor-constructor",
-    "scripts/core/mesh.js~SelectionSet#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~selectionset#editable",
-    "class/scripts/core/mesh.js~SelectionSet.html#instance-get-editable",
-    "scripts/core/mesh.js~SelectionSet#editable",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~uvlayerelem#constructor",
-    "class/scripts/core/mesh.js~UVLayerElem.html#instance-constructor-constructor",
-    "scripts/core/mesh.js~UVLayerElem#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~uvlayerelem#copy",
-    "class/scripts/core/mesh.js~UVLayerElem.html#instance-method-copy",
-    "scripts/core/mesh.js~UVLayerElem#copy",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~uvlayerelem#copyto",
-    "class/scripts/core/mesh.js~UVLayerElem.html#instance-method-copyTo",
-    "scripts/core/mesh.js~UVLayerElem#copyTo",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~uvlayerelem#interp",
-    "class/scripts/core/mesh.js~UVLayerElem.html#instance-method-interp",
-    "scripts/core/mesh.js~UVLayerElem#interp",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~uvlayerelem#uv",
-    "class/scripts/core/mesh.js~UVLayerElem.html#instance-member-uv",
-    "scripts/core/mesh.js~UVLayerElem#uv",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~uvlayerelem#validate",
-    "class/scripts/core/mesh.js~UVLayerElem.html#instance-method-validate",
-    "scripts/core/mesh.js~UVLayerElem#validate",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~uvlayerelem.define",
-    "class/scripts/core/mesh.js~UVLayerElem.html#static-method-define",
-    "scripts/core/mesh.js~UVLayerElem.define",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~uvlayerelem.fromstruct",
-    "class/scripts/core/mesh.js~UVLayerElem.html#static-method-fromSTRUCT",
-    "scripts/core/mesh.js~UVLayerElem.fromSTRUCT",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~vertex#constructor",
-    "class/scripts/core/mesh.js~Vertex.html#instance-constructor-constructor",
-    "scripts/core/mesh.js~Vertex#constructor",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~vertex#edges",
-    "class/scripts/core/mesh.js~Vertex.html#instance-member-edges",
-    "scripts/core/mesh.js~Vertex#edges",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~vertex#no",
-    "class/scripts/core/mesh.js~Vertex.html#instance-member-no",
-    "scripts/core/mesh.js~Vertex#no",
-    "member"
-  ],
-  [
-    "scripts/core/mesh.js~vertex#otheredge",
-    "class/scripts/core/mesh.js~Vertex.html#instance-method-otherEdge",
-    "scripts/core/mesh.js~Vertex#otherEdge",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~vertex#tojson",
-    "class/scripts/core/mesh.js~Vertex.html#instance-method-toJSON",
-    "scripts/core/mesh.js~Vertex#toJSON",
-    "method"
-  ],
-  [
-    "scripts/core/mesh.js~vertex.fromstruct",
-    "class/scripts/core/mesh.js~Vertex.html#static-method-fromSTRUCT",
-    "scripts/core/mesh.js~Vertex.fromSTRUCT",
     "method"
   ],
   [
@@ -5490,6 +5040,12 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/core/scene.js~objectlist#loadstruct",
+    "class/scripts/core/scene.js~ObjectList.html#instance-method-loadSTRUCT",
+    "scripts/core/scene.js~ObjectList#loadSTRUCT",
+    "method"
+  ],
+  [
     "scripts/core/scene.js~objectlist#onselect",
     "class/scripts/core/scene.js~ObjectList.html#instance-member-onselect",
     "scripts/core/scene.js~ObjectList#onselect",
@@ -5518,12 +5074,6 @@ window.esdocSearchIndex = [
     "class/scripts/core/scene.js~ObjectList.html#instance-get-visible",
     "scripts/core/scene.js~ObjectList#visible",
     "member"
-  ],
-  [
-    "scripts/core/scene.js~objectlist.fromstruct",
-    "class/scripts/core/scene.js~ObjectList.html#static-method-fromSTRUCT",
-    "scripts/core/scene.js~ObjectList.fromSTRUCT",
-    "method"
   ],
   [
     "scripts/core/scene.js~objectset#constructor",
@@ -5574,22 +5124,16 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/core/scene.js~scene#exec",
-    "class/scripts/core/scene.js~Scene.html#instance-method-exec",
-    "scripts/core/scene.js~Scene#exec",
-    "method"
-  ],
-  [
     "scripts/core/scene.js~scene#flag",
     "class/scripts/core/scene.js~Scene.html#instance-member-flag",
     "scripts/core/scene.js~Scene#flag",
     "member"
   ],
   [
-    "scripts/core/scene.js~scene#graph",
-    "class/scripts/core/scene.js~Scene.html#instance-member-graph",
-    "scripts/core/scene.js~Scene#graph",
-    "member"
+    "scripts/core/scene.js~scene#loadstruct",
+    "class/scripts/core/scene.js~Scene.html#instance-method-loadSTRUCT",
+    "scripts/core/scene.js~Scene#loadSTRUCT",
+    "method"
   ],
   [
     "scripts/core/scene.js~scene#objects",
@@ -5613,12 +5157,6 @@ window.esdocSearchIndex = [
     "scripts/core/scene.js~scene.blockdefine",
     "class/scripts/core/scene.js~Scene.html#static-method-blockDefine",
     "scripts/core/scene.js~Scene.blockDefine",
-    "method"
-  ],
-  [
-    "scripts/core/scene.js~scene.fromstruct",
-    "class/scripts/core/scene.js~Scene.html#static-method-fromSTRUCT",
-    "scripts/core/scene.js~Scene.fromSTRUCT",
     "method"
   ],
   [
@@ -5664,15 +5202,15 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/core/sceneobject.js~sceneobject.blockdefine",
-    "class/scripts/core/sceneobject.js~SceneObject.html#static-method-blockDefine",
-    "scripts/core/sceneobject.js~SceneObject.blockDefine",
+    "scripts/core/sceneobject.js~sceneobject#loadstruct",
+    "class/scripts/core/sceneobject.js~SceneObject.html#instance-method-loadSTRUCT",
+    "scripts/core/sceneobject.js~SceneObject#loadSTRUCT",
     "method"
   ],
   [
-    "scripts/core/sceneobject.js~sceneobject.fromstruct",
-    "class/scripts/core/sceneobject.js~SceneObject.html#static-method-fromSTRUCT",
-    "scripts/core/sceneobject.js~SceneObject.fromSTRUCT",
+    "scripts/core/sceneobject.js~sceneobject.blockdefine",
+    "class/scripts/core/sceneobject.js~SceneObject.html#static-method-blockDefine",
+    "scripts/core/sceneobject.js~SceneObject.blockDefine",
     "method"
   ],
   [
@@ -5706,16 +5244,118 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
-    "scripts/core/settings.js~appsettings.fromstruct",
-    "class/scripts/core/settings.js~AppSettings.html#static-method-fromSTRUCT",
-    "scripts/core/settings.js~AppSettings.fromSTRUCT",
-    "method"
-  ],
-  [
     "scripts/core/simplemesh.js",
     "file/scripts/core/simplemesh.js.html",
     "scripts/core/simplemesh.js",
     "file"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#chunkmap",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-member-chunkmap",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#chunkmap",
+    "member"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#chunksize",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-member-chunksize",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#chunksize",
+    "member"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#constructor",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-constructor-constructor",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#constructor",
+    "method"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#destroy",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-method-destroy",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#destroy",
+    "method"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#draw",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-method-draw",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#draw",
+    "method"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#freelist",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-member-freelist",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#freelist",
+    "member"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#get_chunk",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-method-get_chunk",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#get_chunk",
+    "method"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#idgen",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-member-idgen",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#idgen",
+    "member"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#idmap",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-member-idmap",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#idmap",
+    "member"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#island",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-member-island",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#island",
+    "member"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#islands",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-member-islands",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#islands",
+    "member"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#layerflag",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-member-layerflag",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#layerflag",
+    "member"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#line",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-method-line",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#line",
+    "method"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#point",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-method-point",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#point",
+    "method"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#quad",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-method-quad",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#quad",
+    "method"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#quad_editors",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-member-quad_editors",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#quad_editors",
+    "member"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#tri",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-method-tri",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#tri",
+    "method"
+  ],
+  [
+    "scripts/core/simplemesh.js~chunkedsimplemesh#uniforms",
+    "class/scripts/core/simplemesh.js~ChunkedSimpleMesh.html#instance-member-uniforms",
+    "scripts/core/simplemesh.js~ChunkedSimpleMesh#uniforms",
+    "member"
   ],
   [
     "scripts/core/simplemesh.js~geolayer#[symbol.keystr]",
@@ -6390,9 +6030,21 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/webgl.js~camera#loadstruct",
+    "class/scripts/core/webgl.js~Camera.html#instance-method-loadSTRUCT",
+    "scripts/core/webgl.js~Camera#loadSTRUCT",
+    "method"
+  ],
+  [
     "scripts/core/webgl.js~camera#near",
     "class/scripts/core/webgl.js~Camera.html#instance-member-near",
     "scripts/core/webgl.js~Camera#near",
+    "member"
+  ],
+  [
+    "scripts/core/webgl.js~camera#orbittarget",
+    "class/scripts/core/webgl.js~Camera.html#instance-member-orbitTarget",
+    "scripts/core/webgl.js~Camera#orbitTarget",
     "member"
   ],
   [
@@ -6430,12 +6082,6 @@ window.esdocSearchIndex = [
     "class/scripts/core/webgl.js~Camera.html#instance-member-up",
     "scripts/core/webgl.js~Camera#up",
     "member"
-  ],
-  [
-    "scripts/core/webgl.js~camera.fromstruct",
-    "class/scripts/core/webgl.js~Camera.html#static-method-fromSTRUCT",
-    "scripts/core/webgl.js~Camera.fromSTRUCT",
-    "method"
   ],
   [
     "scripts/core/webgl.js~drawmats#aspect",
@@ -6486,6 +6132,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/webgl.js~drawmats#loadstruct",
+    "class/scripts/core/webgl.js~DrawMats.html#instance-method-loadSTRUCT",
+    "scripts/core/webgl.js~DrawMats#loadSTRUCT",
+    "method"
+  ],
+  [
     "scripts/core/webgl.js~drawmats#normalmat",
     "class/scripts/core/webgl.js~DrawMats.html#instance-member-normalmat",
     "scripts/core/webgl.js~DrawMats#normalmat",
@@ -6513,12 +6165,6 @@ window.esdocSearchIndex = [
     "scripts/core/webgl.js~drawmats#tojson",
     "class/scripts/core/webgl.js~DrawMats.html#instance-method-toJSON",
     "scripts/core/webgl.js~DrawMats#toJSON",
-    "method"
-  ],
-  [
-    "scripts/core/webgl.js~drawmats.fromstruct",
-    "class/scripts/core/webgl.js~DrawMats.html#static-method-fromSTRUCT",
-    "scripts/core/webgl.js~DrawMats.fromSTRUCT",
     "method"
   ],
   [
@@ -6726,153 +6372,51 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
-    "scripts/editors/camera_controls.js",
-    "file/scripts/editors/camera_controls.js.html",
-    "scripts/editors/camera_controls.js",
-    "file"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#_dom",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-member-_dom",
-    "scripts/editors/camera_controls.js~CameraControls#_dom",
-    "member"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#constructor",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-constructor-constructor",
-    "scripts/editors/camera_controls.js~CameraControls#constructor",
-    "method"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#do_rotate",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-method-do_rotate",
-    "scripts/editors/camera_controls.js~CameraControls#do_rotate",
-    "method"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#end",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-method-end",
-    "scripts/editors/camera_controls.js~CameraControls#end",
-    "method"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#first",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-member-first",
-    "scripts/editors/camera_controls.js~CameraControls#first",
-    "member"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#last_mpos",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-member-last_mpos",
-    "scripts/editors/camera_controls.js~CameraControls#last_mpos",
-    "member"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#mode",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-member-mode",
-    "scripts/editors/camera_controls.js~CameraControls#mode",
-    "member"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#mpos",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-member-mpos",
-    "scripts/editors/camera_controls.js~CameraControls#mpos",
-    "member"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#on_keydown",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-method-on_keydown",
-    "scripts/editors/camera_controls.js~CameraControls#on_keydown",
-    "method"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#on_keypress",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-method-on_keypress",
-    "scripts/editors/camera_controls.js~CameraControls#on_keypress",
-    "method"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#on_keyup",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-method-on_keyup",
-    "scripts/editors/camera_controls.js~CameraControls#on_keyup",
-    "method"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#on_mousedown",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-method-on_mousedown",
-    "scripts/editors/camera_controls.js~CameraControls#on_mousedown",
-    "method"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#on_mousemove",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-method-on_mousemove",
-    "scripts/editors/camera_controls.js~CameraControls#on_mousemove",
-    "method"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#on_mouseup",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-method-on_mouseup",
-    "scripts/editors/camera_controls.js~CameraControls#on_mouseup",
-    "method"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#on_mousewheel",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-method-on_mousewheel",
-    "scripts/editors/camera_controls.js~CameraControls#on_mousewheel",
-    "method"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#start",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-method-start",
-    "scripts/editors/camera_controls.js~CameraControls#start",
-    "method"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#start_matrix",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-member-start_matrix",
-    "scripts/editors/camera_controls.js~CameraControls#start_matrix",
-    "member"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#start_mpos",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-member-start_mpos",
-    "scripts/editors/camera_controls.js~CameraControls#start_mpos",
-    "member"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#start_pos",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-member-start_pos",
-    "scripts/editors/camera_controls.js~CameraControls#start_pos",
-    "member"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#start_target",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-member-start_target",
-    "scripts/editors/camera_controls.js~CameraControls#start_target",
-    "member"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#start_up",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-member-start_up",
-    "scripts/editors/camera_controls.js~CameraControls#start_up",
-    "member"
-  ],
-  [
-    "scripts/editors/camera_controls.js~cameracontrols#zoomstep",
-    "class/scripts/editors/camera_controls.js~CameraControls.html#instance-method-zoomstep",
-    "scripts/editors/camera_controls.js~CameraControls#zoomstep",
-    "method"
-  ],
-  [
     "scripts/editors/editor_base.js",
     "file/scripts/editors/editor_base.js.html",
     "scripts/editors/editor_base.js",
     "file"
   ],
   [
+    "scripts/editors/editor_base.js~app#_last_dpi",
+    "class/scripts/editors/editor_base.js~App.html#instance-member-_last_dpi",
+    "scripts/editors/editor_base.js~App#_last_dpi",
+    "member"
+  ],
+  [
+    "scripts/editors/editor_base.js~app#constructor",
+    "class/scripts/editors/editor_base.js~App.html#instance-constructor-constructor",
+    "scripts/editors/editor_base.js~App#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/editor_base.js~app#keymap",
+    "class/scripts/editors/editor_base.js~App.html#instance-member-keymap",
+    "scripts/editors/editor_base.js~App#keymap",
+    "member"
+  ],
+  [
+    "scripts/editors/editor_base.js~app#on_resize",
+    "class/scripts/editors/editor_base.js~App.html#instance-method-on_resize",
+    "scripts/editors/editor_base.js~App#on_resize",
+    "method"
+  ],
+  [
+    "scripts/editors/editor_base.js~app#setcss",
+    "class/scripts/editors/editor_base.js~App.html#instance-method-setCSS",
+    "scripts/editors/editor_base.js~App#setCSS",
+    "method"
+  ],
+  [
     "scripts/editors/editor_base.js~app#update",
     "class/scripts/editors/editor_base.js~App.html#instance-method-update",
     "scripts/editors/editor_base.js~App#update",
+    "method"
+  ],
+  [
+    "scripts/editors/editor_base.js~app#updatedpi",
+    "class/scripts/editors/editor_base.js~App.html#instance-method-updateDPI",
+    "scripts/editors/editor_base.js~App#updateDPI",
     "method"
   ],
   [
@@ -6882,9 +6426,9 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/editors/editor_base.js~app.fromstruct",
-    "class/scripts/editors/editor_base.js~App.html#static-method-fromSTRUCT",
-    "scripts/editors/editor_base.js~App.fromSTRUCT",
+    "scripts/editors/editor_base.js~app.newstruct",
+    "class/scripts/editors/editor_base.js~App.html#static-method-newSTRUCT",
+    "scripts/editors/editor_base.js~App.newSTRUCT",
     "method"
   ],
   [
@@ -6906,6 +6450,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/editor_base.js~editor#getkeymaps",
+    "class/scripts/editors/editor_base.js~Editor.html#instance-method-getKeyMaps",
+    "scripts/editors/editor_base.js~Editor#getKeyMaps",
+    "method"
+  ],
+  [
     "scripts/editors/editor_base.js~editor#getscreen",
     "class/scripts/editors/editor_base.js~Editor.html#instance-method-getScreen",
     "scripts/editors/editor_base.js~Editor#getScreen",
@@ -6924,6 +6474,18 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/editors/editor_base.js~editor#on_area_active",
+    "class/scripts/editors/editor_base.js~Editor.html#instance-method-on_area_active",
+    "scripts/editors/editor_base.js~Editor#on_area_active",
+    "method"
+  ],
+  [
+    "scripts/editors/editor_base.js~editor#on_keydown",
+    "class/scripts/editors/editor_base.js~Editor.html#instance-method-on_keydown",
+    "scripts/editors/editor_base.js~Editor#on_keydown",
+    "method"
+  ],
+  [
     "scripts/editors/editor_base.js~editor#pop_ctx_active",
     "class/scripts/editors/editor_base.js~Editor.html#instance-method-pop_ctx_active",
     "scripts/editors/editor_base.js~Editor#pop_ctx_active",
@@ -6936,9 +6498,15 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/editors/editor_base.js~editor.fromstruct",
-    "class/scripts/editors/editor_base.js~Editor.html#static-method-fromSTRUCT",
-    "scripts/editors/editor_base.js~Editor.fromSTRUCT",
+    "scripts/editors/editor_base.js~editor.getactivearea",
+    "class/scripts/editors/editor_base.js~Editor.html#static-method-getActiveArea",
+    "scripts/editors/editor_base.js~Editor.getActiveArea",
+    "method"
+  ],
+  [
+    "scripts/editors/editor_base.js~editor.newstruct",
+    "class/scripts/editors/editor_base.js~Editor.html#static-method-newSTRUCT",
+    "scripts/editors/editor_base.js~Editor.newSTRUCT",
     "method"
   ],
   [
@@ -6948,58 +6516,16 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/editors/editor_base.js~hotkey#action",
-    "class/scripts/editors/editor_base.js~HotKey.html#instance-member-action",
-    "scripts/editors/editor_base.js~HotKey#action",
-    "member"
-  ],
-  [
-    "scripts/editors/editor_base.js~hotkey#constructor",
-    "class/scripts/editors/editor_base.js~HotKey.html#instance-constructor-constructor",
-    "scripts/editors/editor_base.js~HotKey#constructor",
+    "scripts/editors/editor_base.js~editor.setlastarea",
+    "class/scripts/editors/editor_base.js~Editor.html#static-method-setLastArea",
+    "scripts/editors/editor_base.js~Editor.setLastArea",
     "method"
   ],
   [
-    "scripts/editors/editor_base.js~hotkey#exec",
-    "class/scripts/editors/editor_base.js~HotKey.html#instance-method-exec",
-    "scripts/editors/editor_base.js~HotKey#exec",
-    "method"
-  ],
-  [
-    "scripts/editors/editor_base.js~hotkey#key",
-    "class/scripts/editors/editor_base.js~HotKey.html#instance-member-key",
-    "scripts/editors/editor_base.js~HotKey#key",
-    "member"
-  ],
-  [
-    "scripts/editors/editor_base.js~hotkey#mods",
-    "class/scripts/editors/editor_base.js~HotKey.html#instance-member-mods",
-    "scripts/editors/editor_base.js~HotKey#mods",
-    "member"
-  ],
-  [
-    "scripts/editors/editor_base.js~keymap#add",
-    "class/scripts/editors/editor_base.js~KeyMap.html#instance-method-add",
-    "scripts/editors/editor_base.js~KeyMap#add",
-    "method"
-  ],
-  [
-    "scripts/editors/editor_base.js~keymap#constructor",
-    "class/scripts/editors/editor_base.js~KeyMap.html#instance-constructor-constructor",
-    "scripts/editors/editor_base.js~KeyMap#constructor",
-    "method"
-  ],
-  [
-    "scripts/editors/editor_base.js~keymap#handle",
-    "class/scripts/editors/editor_base.js~KeyMap.html#instance-method-handle",
-    "scripts/editors/editor_base.js~KeyMap#handle",
-    "method"
-  ],
-  [
-    "scripts/editors/editor_base.js~keymap#push",
-    "class/scripts/editors/editor_base.js~KeyMap.html#instance-method-push",
-    "scripts/editors/editor_base.js~KeyMap#push",
-    "method"
+    "scripts/editors/icon_enum.js",
+    "file/scripts/editors/icon_enum.js.html",
+    "scripts/editors/icon_enum.js",
+    "file"
   ],
   [
     "scripts/editors/node/nodeeditor.js",
@@ -7035,6 +6561,144 @@ window.esdocSearchIndex = [
     "scripts/editors/node/nodeeditor.js~nodeeditor.define",
     "class/scripts/editors/node/NodeEditor.js~NodeEditor.html#static-method-define",
     "scripts/editors/node/NodeEditor.js~NodeEditor.define",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js",
+    "file/scripts/editors/view3d/camera_controls.js.html",
+    "scripts/editors/view3d/camera_controls.js",
+    "file"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#_dom",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-member-_dom",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#_dom",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#constructor",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-constructor-constructor",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#do_rotate",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-method-do_rotate",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#do_rotate",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#end",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-method-end",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#end",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#first",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-member-first",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#first",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#last_mpos",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-member-last_mpos",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#last_mpos",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#mode",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-member-mode",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#mode",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#mpos",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-member-mpos",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#mpos",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#on_keydown",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-method-on_keydown",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#on_keydown",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#on_keypress",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-method-on_keypress",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#on_keypress",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#on_keyup",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-method-on_keyup",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#on_keyup",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#on_mousedown",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-method-on_mousedown",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#on_mousedown",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#on_mousemove",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-method-on_mousemove",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#on_mousemove",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#on_mouseup",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-method-on_mouseup",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#on_mouseup",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#on_mousewheel",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-method-on_mousewheel",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#on_mousewheel",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#start",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-method-start",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#start",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#start_matrix",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-member-start_matrix",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#start_matrix",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#start_mpos",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-member-start_mpos",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#start_mpos",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#start_pos",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-member-start_pos",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#start_pos",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#start_target",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-member-start_target",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#start_target",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#start_up",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-member-start_up",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#start_up",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/camera_controls.js~cameracontrols#zoomstep",
+    "class/scripts/editors/view3d/camera_controls.js~CameraControls.html#instance-method-zoomstep",
+    "scripts/editors/view3d/camera_controls.js~CameraControls#zoomstep",
     "method"
   ],
   [
@@ -7092,6 +6756,18 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/editors/view3d/transform_base.js~transdatalist#constructor",
+    "class/scripts/editors/view3d/transform_base.js~TransDataList.html#instance-constructor-constructor",
+    "scripts/editors/view3d/transform_base.js~TransDataList#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_base.js~transdatalist#type",
+    "class/scripts/editors/view3d/transform_base.js~TransDataList.html#instance-member-type",
+    "scripts/editors/view3d/transform_base.js~TransDataList#type",
+    "member"
+  ],
+  [
     "scripts/editors/view3d/transform_base.js~transdatatype.applytransform",
     "class/scripts/editors/view3d/transform_base.js~TransDataType.html#static-method-applyTransform",
     "scripts/editors/view3d/transform_base.js~TransDataType.applyTransform",
@@ -7122,6 +6798,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/view3d/transform_base.js~transdatatype.register",
+    "class/scripts/editors/view3d/transform_base.js~TransDataType.html#static-method-register",
+    "scripts/editors/view3d/transform_base.js~TransDataType.register",
+    "method"
+  ],
+  [
     "scripts/editors/view3d/transform_base.js~transdatatype.undo",
     "class/scripts/editors/view3d/transform_base.js~TransDataType.html#static-method-undo",
     "scripts/editors/view3d/transform_base.js~TransDataType.undo",
@@ -7140,9 +6822,195 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/view3d/transform_base.js~transformdata#center",
+    "class/scripts/editors/view3d/transform_base.js~TransformData.html#instance-member-center",
+    "scripts/editors/view3d/transform_base.js~TransformData#center",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/transform_base.js~transformdata#constructor",
+    "class/scripts/editors/view3d/transform_base.js~TransformData.html#instance-constructor-constructor",
+    "scripts/editors/view3d/transform_base.js~TransformData#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_base.js~transformdata#scenter",
+    "class/scripts/editors/view3d/transform_base.js~TransformData.html#instance-member-scenter",
+    "scripts/editors/view3d/transform_base.js~TransformData#scenter",
+    "member"
+  ],
+  [
     "scripts/editors/view3d/transform_ops.js",
     "file/scripts/editors/view3d/transform_ops.js.html",
     "scripts/editors/view3d/transform_ops.js",
+    "file"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#_undo",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-member-_undo",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#_undo",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#applytransform",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-applyTransform",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#applyTransform",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#calccenter",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-calcCenter",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#calcCenter",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#cancel",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-cancel",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#cancel",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#center",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-member-center",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#center",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#centfirst",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-member-centfirst",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#centfirst",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#constructor",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-constructor-constructor",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#doupdates",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-doUpdates",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#doUpdates",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#execpost",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-execPost",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#execPost",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#execpre",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-execPre",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#execPre",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#finish",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-finish",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#finish",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#gentransdata",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-genTransData",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#genTransData",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#modalend",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-modalEnd",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#modalEnd",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#modalstart",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-modalStart",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#modalStart",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#on_keydown",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-on_keydown",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#on_keydown",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#on_mousemove",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-on_mousemove",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#on_mousemove",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#on_mouseup",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-on_mouseup",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#on_mouseup",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#tdata",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-member-tdata",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#tdata",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#undo",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-undo",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#undo",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop#undopre",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#instance-method-undoPre",
+    "scripts/editors/view3d/transform_ops.js~TransformOp#undoPre",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~transformop.tooldef",
+    "class/scripts/editors/view3d/transform_ops.js~TransformOp.html#static-method-tooldef",
+    "scripts/editors/view3d/transform_ops.js~TransformOp.tooldef",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~translateop#constructor",
+    "class/scripts/editors/view3d/transform_ops.js~TranslateOp.html#instance-constructor-constructor",
+    "scripts/editors/view3d/transform_ops.js~TranslateOp#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~translateop#exec",
+    "class/scripts/editors/view3d/transform_ops.js~TranslateOp.html#instance-method-exec",
+    "scripts/editors/view3d/transform_ops.js~TranslateOp#exec",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~translateop#first",
+    "class/scripts/editors/view3d/transform_ops.js~TranslateOp.html#instance-member-first",
+    "scripts/editors/view3d/transform_ops.js~TranslateOp#first",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~translateop#mpos",
+    "class/scripts/editors/view3d/transform_ops.js~TranslateOp.html#instance-member-mpos",
+    "scripts/editors/view3d/transform_ops.js~TranslateOp#mpos",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~translateop#on_mousemove",
+    "class/scripts/editors/view3d/transform_ops.js~TranslateOp.html#instance-method-on_mousemove",
+    "scripts/editors/view3d/transform_ops.js~TranslateOp#on_mousemove",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_ops.js~translateop.tooldef",
+    "class/scripts/editors/view3d/transform_ops.js~TranslateOp.html#static-method-tooldef",
+    "scripts/editors/view3d/transform_ops.js~TranslateOp.tooldef",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/transform_query.js",
+    "file/scripts/editors/view3d/transform_query.js.html",
+    "scripts/editors/view3d/transform_query.js",
     "file"
   ],
   [
@@ -7200,15 +7068,51 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
+    "scripts/editors/view3d/view3d.js~drawline#color",
+    "class/scripts/editors/view3d/view3d.js~DrawLine.html#instance-member-color",
+    "scripts/editors/view3d/view3d.js~DrawLine#color",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~drawline#constructor",
+    "class/scripts/editors/view3d/view3d.js~DrawLine.html#instance-constructor-constructor",
+    "scripts/editors/view3d/view3d.js~DrawLine#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~drawline#v1",
+    "class/scripts/editors/view3d/view3d.js~DrawLine.html#instance-member-v1",
+    "scripts/editors/view3d/view3d.js~DrawLine#v1",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~drawline#v2",
+    "class/scripts/editors/view3d/view3d.js~DrawLine.html#instance-member-v2",
+    "scripts/editors/view3d/view3d.js~DrawLine#v2",
+    "member"
+  ],
+  [
     "scripts/editors/view3d/view3d.js~view3d#t",
     "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-T",
     "scripts/editors/view3d/view3d.js~View3D#T",
     "member"
   ],
   [
+    "scripts/editors/view3d/view3d.js~view3d#_graphnode",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-_graphnode",
+    "scripts/editors/view3d/view3d.js~View3D#_graphnode",
+    "member"
+  ],
+  [
     "scripts/editors/view3d/view3d.js~view3d#_last_selectmode",
     "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-_last_selectmode",
     "scripts/editors/view3d/view3d.js~View3D#_last_selectmode",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#_last_wutime",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-_last_wutime",
+    "scripts/editors/view3d/view3d.js~View3D#_last_wutime",
     "member"
   ],
   [
@@ -7224,9 +7128,21 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/view3d/view3d.js~view3d#_viewvec_temps",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-_viewvec_temps",
+    "scripts/editors/view3d/view3d.js~View3D#_viewvec_temps",
+    "member"
+  ],
+  [
     "scripts/editors/view3d/view3d.js~view3d#camera",
     "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-camera",
     "scripts/editors/view3d/view3d.js~View3D#camera",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#canvas",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-canvas",
+    "scripts/editors/view3d/view3d.js~View3D#canvas",
     "member"
   ],
   [
@@ -7242,10 +7158,46 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/view3d/view3d.js~view3d#cursor3d",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-cursor3D",
+    "scripts/editors/view3d/view3d.js~View3D#cursor3D",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#cursormode",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-cursorMode",
+    "scripts/editors/view3d/view3d.js~View3D#cursorMode",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#definekeymap",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-defineKeyMap",
+    "scripts/editors/view3d/view3d.js~View3D#defineKeyMap",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#destroy",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-destroy",
+    "scripts/editors/view3d/view3d.js~View3D#destroy",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#drawdrawlines",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-drawDrawLines",
+    "scripts/editors/view3d/view3d.js~View3D#drawDrawLines",
+    "method"
+  ],
+  [
     "scripts/editors/view3d/view3d.js~view3d#drawobjects",
     "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-drawObjects",
     "scripts/editors/view3d/view3d.js~View3D#drawObjects",
     "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#drawlines",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-drawlines",
+    "scripts/editors/view3d/view3d.js~View3D#drawlines",
+    "member"
   ],
   [
     "scripts/editors/view3d/view3d.js~view3d#drawmode",
@@ -7260,15 +7212,51 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/editors/view3d/view3d.js~view3d#getkeymaps",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-getKeyMaps",
+    "scripts/editors/view3d/view3d.js~View3D#getKeyMaps",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#getlocalmouse",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-getLocalMouse",
+    "scripts/editors/view3d/view3d.js~View3D#getLocalMouse",
+    "method"
+  ],
+  [
     "scripts/editors/view3d/view3d.js~view3d#getselectbuffer",
     "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-getSelectBuffer",
     "scripts/editors/view3d/view3d.js~View3D#getSelectBuffer",
     "method"
   ],
   [
+    "scripts/editors/view3d/view3d.js~view3d#gettranscenter",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-getTransCenter",
+    "scripts/editors/view3d/view3d.js~View3D#getTransCenter",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#getviewvec",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-getViewVec",
+    "scripts/editors/view3d/view3d.js~View3D#getViewVec",
+    "method"
+  ],
+  [
     "scripts/editors/view3d/view3d.js~view3d#gl",
     "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-gl",
     "scripts/editors/view3d/view3d.js~View3D#gl",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#glpos",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-glPos",
+    "scripts/editors/view3d/view3d.js~View3D#glPos",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#glsize",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-glSize",
+    "scripts/editors/view3d/view3d.js~View3D#glSize",
     "member"
   ],
   [
@@ -7284,9 +7272,45 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/view3d/view3d.js~view3d#keymap",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-keymap",
+    "scripts/editors/view3d/view3d.js~View3D#keymap",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#makedrawline",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-makeDrawLine",
+    "scripts/editors/view3d/view3d.js~View3D#makeDrawLine",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#makegraphnode",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-makeGraphNode",
+    "scripts/editors/view3d/view3d.js~View3D#makeGraphNode",
+    "method"
+  ],
+  [
     "scripts/editors/view3d/view3d.js~view3d#makegrid",
     "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-makeGrid",
     "scripts/editors/view3d/view3d.js~View3D#makeGrid",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#mdown",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-mdown",
+    "scripts/editors/view3d/view3d.js~View3D#mdown",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#onfileload",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-onFileLoad",
+    "scripts/editors/view3d/view3d.js~View3D#onFileLoad",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#on_area_inactive",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-on_area_inactive",
+    "scripts/editors/view3d/view3d.js~View3D#on_area_inactive",
     "method"
   ],
   [
@@ -7296,9 +7320,27 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/view3d/view3d.js~view3d#orbitmode",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-orbitMode",
+    "scripts/editors/view3d/view3d.js~View3D#orbitMode",
+    "member"
+  ],
+  [
     "scripts/editors/view3d/view3d.js~view3d#project",
     "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-project",
     "scripts/editors/view3d/view3d.js~View3D#project",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#removedrawline",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-removeDrawLine",
+    "scripts/editors/view3d/view3d.js~View3D#removeDrawLine",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#resetdrawlines",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-resetDrawLines",
+    "scripts/editors/view3d/view3d.js~View3D#resetDrawLines",
     "method"
   ],
   [
@@ -7326,6 +7368,24 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/view3d/view3d.js~view3d#setcursor",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-setCursor",
+    "scripts/editors/view3d/view3d.js~View3D#setCursor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#start_mpos",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-start_mpos",
+    "scripts/editors/view3d/view3d.js~View3D#start_mpos",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#transformspace",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-transformSpace",
+    "scripts/editors/view3d/view3d.js~View3D#transformSpace",
+    "member"
+  ],
+  [
     "scripts/editors/view3d/view3d.js~view3d#unproject",
     "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-unproject",
     "scripts/editors/view3d/view3d.js~View3D#unproject",
@@ -7338,10 +7398,58 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/view3d/view3d.js~view3d#updatecursor",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-updateCursor",
+    "scripts/editors/view3d/view3d.js~View3D#updateCursor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#updatewidgets",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-updateWidgets",
+    "scripts/editors/view3d/view3d.js~View3D#updateWidgets",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#updatewidgets_intern",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-updateWidgets_intern",
+    "scripts/editors/view3d/view3d.js~View3D#updateWidgets_intern",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#viewselected",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-viewSelected",
+    "scripts/editors/view3d/view3d.js~View3D#viewSelected",
+    "method"
+  ],
+  [
     "scripts/editors/view3d/view3d.js~view3d#viewportdraw",
     "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-viewportDraw",
     "scripts/editors/view3d/view3d.js~View3D#viewportDraw",
     "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#viewportdraw_intern",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-viewportDraw_intern",
+    "scripts/editors/view3d/view3d.js~View3D#viewportDraw_intern",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#widget",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-widget",
+    "scripts/editors/view3d/view3d.js~View3D#widget",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#widgets",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-widgets",
+    "scripts/editors/view3d/view3d.js~View3D#widgets",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#widgettool",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-widgettool",
+    "scripts/editors/view3d/view3d.js~View3D#widgettool",
+    "member"
   ],
   [
     "scripts/editors/view3d/view3d.js~view3d.define",
@@ -7356,46 +7464,64 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
+    "scripts/editors/view3d/view3d_draw.js~meshdrawinterface#constructor",
+    "class/scripts/editors/view3d/view3d_draw.js~MeshDrawInterface.html#instance-constructor-constructor",
+    "scripts/editors/view3d/view3d_draw.js~MeshDrawInterface#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_draw.js~meshdrawinterface#draw",
+    "class/scripts/editors/view3d/view3d_draw.js~MeshDrawInterface.html#instance-method-draw",
+    "scripts/editors/view3d/view3d_draw.js~MeshDrawInterface#draw",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_draw.js~meshdrawinterface#drawids",
+    "class/scripts/editors/view3d/view3d_draw.js~MeshDrawInterface.html#instance-method-drawIDs",
+    "scripts/editors/view3d/view3d_draw.js~MeshDrawInterface#drawIDs",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_draw.js~meshdrawinterface#origedges",
+    "class/scripts/editors/view3d/view3d_draw.js~MeshDrawInterface.html#instance-get-origEdges",
+    "scripts/editors/view3d/view3d_draw.js~MeshDrawInterface#origEdges",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d_draw.js~meshdrawinterface#origfacecenters",
+    "class/scripts/editors/view3d/view3d_draw.js~MeshDrawInterface.html#instance-get-origFaceCenters",
+    "scripts/editors/view3d/view3d_draw.js~MeshDrawInterface#origFaceCenters",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d_draw.js~meshdrawinterface#origverts",
+    "class/scripts/editors/view3d/view3d_draw.js~MeshDrawInterface.html#instance-get-origVerts",
+    "scripts/editors/view3d/view3d_draw.js~MeshDrawInterface#origVerts",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d_draw.js~origref#constructor",
+    "class/scripts/editors/view3d/view3d_draw.js~OrigRef.html#instance-constructor-constructor",
+    "scripts/editors/view3d/view3d_draw.js~OrigRef#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_draw.js~origref#e",
+    "class/scripts/editors/view3d/view3d_draw.js~OrigRef.html#instance-member-e",
+    "scripts/editors/view3d/view3d_draw.js~OrigRef#e",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d_draw.js~origref#ref",
+    "class/scripts/editors/view3d/view3d_draw.js~OrigRef.html#instance-member-ref",
+    "scripts/editors/view3d/view3d_draw.js~OrigRef#ref",
+    "member"
+  ],
+  [
     "scripts/editors/view3d/view3d_mesh_editor.js",
     "file/scripts/editors/view3d/view3d_mesh_editor.js.html",
     "scripts/editors/view3d/view3d_mesh_editor.js",
     "file"
-  ],
-  [
-    "scripts/editors/view3d/view3d_mesh_editor.js~meshcache#constructor",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshCache.html#instance-constructor-constructor",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshCache#constructor",
-    "method"
-  ],
-  [
-    "scripts/editors/view3d/view3d_mesh_editor.js~meshcache#destroy",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshCache.html#instance-method-destroy",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshCache#destroy",
-    "method"
-  ],
-  [
-    "scripts/editors/view3d/view3d_mesh_editor.js~meshcache#gen",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshCache.html#instance-member-gen",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshCache#gen",
-    "member"
-  ],
-  [
-    "scripts/editors/view3d/view3d_mesh_editor.js~meshcache#makemesh",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshCache.html#instance-method-makeMesh",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshCache#makeMesh",
-    "method"
-  ],
-  [
-    "scripts/editors/view3d/view3d_mesh_editor.js~meshcache#meshes",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshCache.html#instance-member-meshes",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshCache#meshes",
-    "member"
-  ],
-  [
-    "scripts/editors/view3d/view3d_mesh_editor.js~meshcache#meshid",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshCache.html#instance-member-meshid",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshCache#meshid",
-    "member"
   ],
   [
     "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#_findnearest_rets",
@@ -7426,6 +7552,18 @@ window.esdocSearchIndex = [
     "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-member-ctx",
     "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#ctx",
     "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#definekeymap",
+    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-defineKeyMap",
+    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#defineKeyMap",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#destroy",
+    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-destroy",
+    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#destroy",
+    "method"
   ],
   [
     "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#draw",
@@ -7482,6 +7620,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#keymap",
+    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-member-keymap",
+    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#keymap",
+    "member"
+  ],
+  [
     "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#meshcache",
     "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-member-meshcache",
     "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#meshcache",
@@ -7509,6 +7653,12 @@ window.esdocSearchIndex = [
     "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#rebuildmeshcache",
     "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-rebuildMeshCache",
     "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#rebuildMeshCache",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#resyncmeshcache",
+    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-resyncMeshCache",
+    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#resyncMeshCache",
     "method"
   ],
   [
@@ -7698,6 +7848,60 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/view3d/view3d_ops.js~view3dop#adddrawline",
+    "class/scripts/editors/view3d/view3d_ops.js~View3DOp.html#instance-method-addDrawLine",
+    "scripts/editors/view3d/view3d_ops.js~View3DOp#addDrawLine",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_ops.js~view3dop#constructor",
+    "class/scripts/editors/view3d/view3d_ops.js~View3DOp.html#instance-constructor-constructor",
+    "scripts/editors/view3d/view3d_ops.js~View3DOp#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_ops.js~view3dop#drawlines",
+    "class/scripts/editors/view3d/view3d_ops.js~View3DOp.html#instance-member-drawlines",
+    "scripts/editors/view3d/view3d_ops.js~View3DOp#drawlines",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d_ops.js~view3dop#modalend",
+    "class/scripts/editors/view3d/view3d_ops.js~View3DOp.html#instance-method-modalEnd",
+    "scripts/editors/view3d/view3d_ops.js~View3DOp#modalEnd",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_ops.js~view3dop#removedrawline",
+    "class/scripts/editors/view3d/view3d_ops.js~View3DOp.html#instance-method-removeDrawLine",
+    "scripts/editors/view3d/view3d_ops.js~View3DOp#removeDrawLine",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_ops.js~view3dop#resetdrawlines",
+    "class/scripts/editors/view3d/view3d_ops.js~View3DOp.html#instance-method-resetDrawLines",
+    "scripts/editors/view3d/view3d_ops.js~View3DOp#resetDrawLines",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_ops.js~viewselected#constructor",
+    "class/scripts/editors/view3d/view3d_ops.js~ViewSelected.html#instance-constructor-constructor",
+    "scripts/editors/view3d/view3d_ops.js~ViewSelected#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_ops.js~viewselected#modalstart",
+    "class/scripts/editors/view3d/view3d_ops.js~ViewSelected.html#instance-method-modalStart",
+    "scripts/editors/view3d/view3d_ops.js~ViewSelected#modalStart",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_ops.js~viewselected.tooldef",
+    "class/scripts/editors/view3d/view3d_ops.js~ViewSelected.html#static-method-tooldef",
+    "scripts/editors/view3d/view3d_ops.js~ViewSelected.tooldef",
+    "method"
+  ],
+  [
     "scripts/editors/view3d/view3d_ops.js~zoomtool#constructor",
     "class/scripts/editors/view3d/view3d_ops.js~ZoomTool.html#instance-constructor-constructor",
     "scripts/editors/view3d/view3d_ops.js~ZoomTool#constructor",
@@ -7866,6 +8070,54 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/editors/view3d/view3d_subeditor.js~meshcache#constructor",
+    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-constructor-constructor",
+    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_subeditor.js~meshcache#destroy",
+    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-method-destroy",
+    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#destroy",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_subeditor.js~meshcache#gen",
+    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-member-gen",
+    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#gen",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d_subeditor.js~meshcache#getmesh",
+    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-method-getMesh",
+    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#getMesh",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_subeditor.js~meshcache#makechunkedmesh",
+    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-method-makeChunkedMesh",
+    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#makeChunkedMesh",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_subeditor.js~meshcache#makemesh",
+    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-method-makeMesh",
+    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#makeMesh",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_subeditor.js~meshcache#meshes",
+    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-member-meshes",
+    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#meshes",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/view3d_subeditor.js~meshcache#meshid",
+    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-member-meshid",
+    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#meshid",
+    "member"
+  ],
+  [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#clickselect",
     "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-clickselect",
     "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#clickselect",
@@ -7875,6 +8127,12 @@ window.esdocSearchIndex = [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#constructor",
     "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-constructor-constructor",
     "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#destroy",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-destroy",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#destroy",
     "method"
   ],
   [
@@ -7896,6 +8154,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#keymap",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-member-keymap",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#keymap",
+    "member"
+  ],
+  [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_drawend",
     "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-on_drawend",
     "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#on_drawend",
@@ -7908,9 +8172,21 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_mousedown",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-on_mousedown",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#on_mousedown",
+    "method"
+  ],
+  [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_mousemove",
     "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-on_mousemove",
     "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#on_mousemove",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_mouseup",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-on_mouseup",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#on_mouseup",
     "method"
   ],
   [
@@ -7938,10 +8214,820 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
+    "scripts/editors/view3d/widget_shapes.js",
+    "file/scripts/editors/view3d/widget_shapes.js.html",
+    "scripts/editors/view3d/widget_shapes.js",
+    "file"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js",
+    "file/scripts/editors/view3d/widget_tools.js.html",
+    "scripts/editors/view3d/widget_tools.js",
+    "file"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~extrudewidget#axes",
+    "class/scripts/editors/view3d/widget_tools.js~ExtrudeWidget.html#instance-member-axes",
+    "scripts/editors/view3d/widget_tools.js~ExtrudeWidget#axes",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~extrudewidget#constructor",
+    "class/scripts/editors/view3d/widget_tools.js~ExtrudeWidget.html#instance-constructor-constructor",
+    "scripts/editors/view3d/widget_tools.js~ExtrudeWidget#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~extrudewidget#create",
+    "class/scripts/editors/view3d/widget_tools.js~ExtrudeWidget.html#instance-method-create",
+    "scripts/editors/view3d/widget_tools.js~ExtrudeWidget#create",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~extrudewidget#starttool",
+    "class/scripts/editors/view3d/widget_tools.js~ExtrudeWidget.html#instance-method-startTool",
+    "scripts/editors/view3d/widget_tools.js~ExtrudeWidget#startTool",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~extrudewidget#update",
+    "class/scripts/editors/view3d/widget_tools.js~ExtrudeWidget.html#instance-method-update",
+    "scripts/editors/view3d/widget_tools.js~ExtrudeWidget#update",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~extrudewidget.define",
+    "class/scripts/editors/view3d/widget_tools.js~ExtrudeWidget.html#static-method-define",
+    "scripts/editors/view3d/widget_tools.js~ExtrudeWidget.define",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~extrudewidget.validate",
+    "class/scripts/editors/view3d/widget_tools.js~ExtrudeWidget.html#static-method-validate",
+    "scripts/editors/view3d/widget_tools.js~ExtrudeWidget.validate",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~nonewidget.define",
+    "class/scripts/editors/view3d/widget_tools.js~NoneWidget.html#static-method-define",
+    "scripts/editors/view3d/widget_tools.js~NoneWidget.define",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~nonewidget.validate",
+    "class/scripts/editors/view3d/widget_tools.js~NoneWidget.html#static-method-validate",
+    "scripts/editors/view3d/widget_tools.js~NoneWidget.validate",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~translatewidget#axes",
+    "class/scripts/editors/view3d/widget_tools.js~TranslateWidget.html#instance-member-axes",
+    "scripts/editors/view3d/widget_tools.js~TranslateWidget#axes",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~translatewidget#constructor",
+    "class/scripts/editors/view3d/widget_tools.js~TranslateWidget.html#instance-constructor-constructor",
+    "scripts/editors/view3d/widget_tools.js~TranslateWidget#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~translatewidget#create",
+    "class/scripts/editors/view3d/widget_tools.js~TranslateWidget.html#instance-method-create",
+    "scripts/editors/view3d/widget_tools.js~TranslateWidget#create",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~translatewidget#plane_axes",
+    "class/scripts/editors/view3d/widget_tools.js~TranslateWidget.html#instance-member-plane_axes",
+    "scripts/editors/view3d/widget_tools.js~TranslateWidget#plane_axes",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~translatewidget#starttool",
+    "class/scripts/editors/view3d/widget_tools.js~TranslateWidget.html#instance-method-startTool",
+    "scripts/editors/view3d/widget_tools.js~TranslateWidget#startTool",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~translatewidget#update",
+    "class/scripts/editors/view3d/widget_tools.js~TranslateWidget.html#instance-method-update",
+    "scripts/editors/view3d/widget_tools.js~TranslateWidget#update",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~translatewidget.define",
+    "class/scripts/editors/view3d/widget_tools.js~TranslateWidget.html#static-method-define",
+    "scripts/editors/view3d/widget_tools.js~TranslateWidget.define",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widget_tools.js~translatewidget.validate",
+    "class/scripts/editors/view3d/widget_tools.js~TranslateWidget.html#static-method-validate",
+    "scripts/editors/view3d/widget_tools.js~TranslateWidget.validate",
+    "method"
+  ],
+  [
     "scripts/editors/view3d/widgets.js",
     "file/scripts/editors/view3d/widgets.js.html",
     "scripts/editors/view3d/widgets.js",
     "file"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetarrow#constructor",
+    "class/scripts/editors/view3d/widgets.js~WidgetArrow.html#instance-constructor-constructor",
+    "scripts/editors/view3d/widgets.js~WidgetArrow#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetarrow#disttomouse",
+    "class/scripts/editors/view3d/widgets.js~WidgetArrow.html#instance-method-distToMouse",
+    "scripts/editors/view3d/widgets.js~WidgetArrow#distToMouse",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetarrow#draw",
+    "class/scripts/editors/view3d/widgets.js~WidgetArrow.html#instance-method-draw",
+    "scripts/editors/view3d/widgets.js~WidgetArrow#draw",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetarrow#mesh",
+    "class/scripts/editors/view3d/widgets.js~WidgetArrow.html#instance-member-mesh",
+    "scripts/editors/view3d/widgets.js~WidgetArrow#mesh",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetarrow#shapeid",
+    "class/scripts/editors/view3d/widgets.js~WidgetArrow.html#instance-member-shapeid",
+    "scripts/editors/view3d/widgets.js~WidgetArrow#shapeid",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#_tempmatrix",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-member-_tempmatrix",
+    "scripts/editors/view3d/widgets.js~WidgetBase#_tempmatrix",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#children",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-member-children",
+    "scripts/editors/view3d/widgets.js~WidgetBase#children",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#constructor",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-constructor-constructor",
+    "scripts/editors/view3d/widgets.js~WidgetBase#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#destroy",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-method-destroy",
+    "scripts/editors/view3d/widgets.js~WidgetBase#destroy",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#destroyed",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-member-destroyed",
+    "scripts/editors/view3d/widgets.js~WidgetBase#destroyed",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#draw",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-method-draw",
+    "scripts/editors/view3d/widgets.js~WidgetBase#draw",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#findnearest",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-method-findNearest",
+    "scripts/editors/view3d/widgets.js~WidgetBase#findNearest",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#flag",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-member-flag",
+    "scripts/editors/view3d/widgets.js~WidgetBase#flag",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#id",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-member-id",
+    "scripts/editors/view3d/widgets.js~WidgetBase#id",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#isdead",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-get-isDead",
+    "scripts/editors/view3d/widgets.js~WidgetBase#isDead",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#localmatrix",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-member-localMatrix",
+    "scripts/editors/view3d/widgets.js~WidgetBase#localMatrix",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#manager",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-member-manager",
+    "scripts/editors/view3d/widgets.js~WidgetBase#manager",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#matrix",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-member-matrix",
+    "scripts/editors/view3d/widgets.js~WidgetBase#matrix",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#on_keydown",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-method-on_keydown",
+    "scripts/editors/view3d/widgets.js~WidgetBase#on_keydown",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#on_mousedown",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-method-on_mousedown",
+    "scripts/editors/view3d/widgets.js~WidgetBase#on_mousedown",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#on_mousemove",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-method-on_mousemove",
+    "scripts/editors/view3d/widgets.js~WidgetBase#on_mousemove",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#on_mouseup",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-method-on_mouseup",
+    "scripts/editors/view3d/widgets.js~WidgetBase#on_mouseup",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#remove",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-method-remove",
+    "scripts/editors/view3d/widgets.js~WidgetBase#remove",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#setmatrix",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-method-setMatrix",
+    "scripts/editors/view3d/widgets.js~WidgetBase#setMatrix",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#shape",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-member-shape",
+    "scripts/editors/view3d/widgets.js~WidgetBase#shape",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase#update",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#instance-method-update",
+    "scripts/editors/view3d/widgets.js~WidgetBase#update",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase.ctxvalid",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#static-method-ctxValid",
+    "scripts/editors/view3d/widgets.js~WidgetBase.ctxValid",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetbase.wigetdefine",
+    "class/scripts/editors/view3d/widgets.js~WidgetBase.html#static-method-wigetDefine",
+    "scripts/editors/view3d/widgets.js~WidgetBase.wigetDefine",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetblockarrow#constructor",
+    "class/scripts/editors/view3d/widgets.js~WidgetBlockArrow.html#instance-constructor-constructor",
+    "scripts/editors/view3d/widgets.js~WidgetBlockArrow#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetblockarrow#shapeid",
+    "class/scripts/editors/view3d/widgets.js~WidgetBlockArrow.html#instance-member-shapeid",
+    "scripts/editors/view3d/widgets.js~WidgetBlockArrow#shapeid",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetchevron#constructor",
+    "class/scripts/editors/view3d/widgets.js~WidgetChevron.html#instance-constructor-constructor",
+    "scripts/editors/view3d/widgets.js~WidgetChevron#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetchevron#shapeid",
+    "class/scripts/editors/view3d/widgets.js~WidgetChevron.html#instance-member-shapeid",
+    "scripts/editors/view3d/widgets.js~WidgetChevron#shapeid",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#_newbase",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-_newbase",
+    "scripts/editors/view3d/widgets.js~WidgetManager#_newbase",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#_picklimit",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-_picklimit",
+    "scripts/editors/view3d/widgets.js~WidgetManager#_picklimit",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#add",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-add",
+    "scripts/editors/view3d/widgets.js~WidgetManager#add",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#arrow",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-arrow",
+    "scripts/editors/view3d/widgets.js~WidgetManager#arrow",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#blockarrow",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-blockarrow",
+    "scripts/editors/view3d/widgets.js~WidgetManager#blockarrow",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#chevron",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-chevron",
+    "scripts/editors/view3d/widgets.js~WidgetManager#chevron",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#clearnodes",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-clearNodes",
+    "scripts/editors/view3d/widgets.js~WidgetManager#clearNodes",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#constructor",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-constructor-constructor",
+    "scripts/editors/view3d/widgets.js~WidgetManager#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#createcallbacknode",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-createCallbackNode",
+    "scripts/editors/view3d/widgets.js~WidgetManager#createCallbackNode",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#destroy",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-destroy",
+    "scripts/editors/view3d/widgets.js~WidgetManager#destroy",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#draw",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-draw",
+    "scripts/editors/view3d/widgets.js~WidgetManager#draw",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#findnearest",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-findNearest",
+    "scripts/editors/view3d/widgets.js~WidgetManager#findNearest",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#gl",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-member-gl",
+    "scripts/editors/view3d/widgets.js~WidgetManager#gl",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#havecallbacknode",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-haveCallbackNode",
+    "scripts/editors/view3d/widgets.js~WidgetManager#haveCallbackNode",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#idgen",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-member-idgen",
+    "scripts/editors/view3d/widgets.js~WidgetManager#idgen",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#loadshapes",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-loadShapes",
+    "scripts/editors/view3d/widgets.js~WidgetManager#loadShapes",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#nodes",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-member-nodes",
+    "scripts/editors/view3d/widgets.js~WidgetManager#nodes",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#on_mousedown",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-on_mousedown",
+    "scripts/editors/view3d/widgets.js~WidgetManager#on_mousedown",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#on_mousemove",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-on_mousemove",
+    "scripts/editors/view3d/widgets.js~WidgetManager#on_mousemove",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#on_mouseup",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-on_mouseup",
+    "scripts/editors/view3d/widgets.js~WidgetManager#on_mouseup",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#plane",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-plane",
+    "scripts/editors/view3d/widgets.js~WidgetManager#plane",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#ready",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-member-ready",
+    "scripts/editors/view3d/widgets.js~WidgetManager#ready",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#remove",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-remove",
+    "scripts/editors/view3d/widgets.js~WidgetManager#remove",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#removecallbacknode",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-removeCallbackNode",
+    "scripts/editors/view3d/widgets.js~WidgetManager#removeCallbackNode",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#shapes",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-member-shapes",
+    "scripts/editors/view3d/widgets.js~WidgetManager#shapes",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#sphere",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-sphere",
+    "scripts/editors/view3d/widgets.js~WidgetManager#sphere",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#update",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-update",
+    "scripts/editors/view3d/widgets.js~WidgetManager#update",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#updatewidgets",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-method-updateWidgets",
+    "scripts/editors/view3d/widgets.js~WidgetManager#updateWidgets",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#view3d",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-member-view3d",
+    "scripts/editors/view3d/widgets.js~WidgetManager#view3d",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#widget_idmap",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-member-widget_idmap",
+    "scripts/editors/view3d/widgets.js~WidgetManager#widget_idmap",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetmanager#widgets",
+    "class/scripts/editors/view3d/widgets.js~WidgetManager.html#instance-member-widgets",
+    "scripts/editors/view3d/widgets.js~WidgetManager#widgets",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetplane#constructor",
+    "class/scripts/editors/view3d/widgets.js~WidgetPlane.html#instance-constructor-constructor",
+    "scripts/editors/view3d/widgets.js~WidgetPlane#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetplane#disttomouse",
+    "class/scripts/editors/view3d/widgets.js~WidgetPlane.html#instance-method-distToMouse",
+    "scripts/editors/view3d/widgets.js~WidgetPlane#distToMouse",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetplane#draw",
+    "class/scripts/editors/view3d/widgets.js~WidgetPlane.html#instance-method-draw",
+    "scripts/editors/view3d/widgets.js~WidgetPlane#draw",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetplane#mesh",
+    "class/scripts/editors/view3d/widgets.js~WidgetPlane.html#instance-member-mesh",
+    "scripts/editors/view3d/widgets.js~WidgetPlane#mesh",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetplane#shapeid",
+    "class/scripts/editors/view3d/widgets.js~WidgetPlane.html#instance-member-shapeid",
+    "scripts/editors/view3d/widgets.js~WidgetPlane#shapeid",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#_drawtemp",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-_drawtemp",
+    "scripts/editors/view3d/widgets.js~WidgetShape#_drawtemp",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#_tempmat",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-_tempmat",
+    "scripts/editors/view3d/widgets.js~WidgetShape#_tempmat",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#_tempmat2",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-_tempmat2",
+    "scripts/editors/view3d/widgets.js~WidgetShape#_tempmat2",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#color",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-color",
+    "scripts/editors/view3d/widgets.js~WidgetShape#color",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#constructor",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-constructor-constructor",
+    "scripts/editors/view3d/widgets.js~WidgetShape#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#copy",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-method-copy",
+    "scripts/editors/view3d/widgets.js~WidgetShape#copy",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#copyto",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-method-copyTo",
+    "scripts/editors/view3d/widgets.js~WidgetShape#copyTo",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#destroy",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-method-destroy",
+    "scripts/editors/view3d/widgets.js~WidgetShape#destroy",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#destroyed",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-destroyed",
+    "scripts/editors/view3d/widgets.js~WidgetShape#destroyed",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#disttomouse",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-method-distToMouse",
+    "scripts/editors/view3d/widgets.js~WidgetShape#distToMouse",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#draw",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-method-draw",
+    "scripts/editors/view3d/widgets.js~WidgetShape#draw",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#drawmatrix",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-drawmatrix",
+    "scripts/editors/view3d/widgets.js~WidgetShape#drawmatrix",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#flag",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-flag",
+    "scripts/editors/view3d/widgets.js~WidgetShape#flag",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#hcolor",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-hcolor",
+    "scripts/editors/view3d/widgets.js~WidgetShape#hcolor",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#localmatrix",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-localMatrix",
+    "scripts/editors/view3d/widgets.js~WidgetShape#localMatrix",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#matrix",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-matrix",
+    "scripts/editors/view3d/widgets.js~WidgetShape#matrix",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#mesh",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-mesh",
+    "scripts/editors/view3d/widgets.js~WidgetShape#mesh",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#onclick",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-onclick",
+    "scripts/editors/view3d/widgets.js~WidgetShape#onclick",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetshape#owner",
+    "class/scripts/editors/view3d/widgets.js~WidgetShape.html#instance-member-owner",
+    "scripts/editors/view3d/widgets.js~WidgetShape#owner",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetsphere#constructor",
+    "class/scripts/editors/view3d/widgets.js~WidgetSphere.html#instance-constructor-constructor",
+    "scripts/editors/view3d/widgets.js~WidgetSphere#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetsphere#disttomouse",
+    "class/scripts/editors/view3d/widgets.js~WidgetSphere.html#instance-method-distToMouse",
+    "scripts/editors/view3d/widgets.js~WidgetSphere#distToMouse",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetsphere#draw",
+    "class/scripts/editors/view3d/widgets.js~WidgetSphere.html#instance-method-draw",
+    "scripts/editors/view3d/widgets.js~WidgetSphere#draw",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetsphere#mesh",
+    "class/scripts/editors/view3d/widgets.js~WidgetSphere.html#instance-member-mesh",
+    "scripts/editors/view3d/widgets.js~WidgetSphere#mesh",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgetsphere#shapeid",
+    "class/scripts/editors/view3d/widgets.js~WidgetSphere.html#instance-member-shapeid",
+    "scripts/editors/view3d/widgets.js~WidgetSphere#shapeid",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#_widget_tempnode",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-member-_widget_tempnode",
+    "scripts/editors/view3d/widgets.js~WidgetTool#_widget_tempnode",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#constructor",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-constructor-constructor",
+    "scripts/editors/view3d/widgets.js~WidgetTool#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#create",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-method-create",
+    "scripts/editors/view3d/widgets.js~WidgetTool#create",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#ctx",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-member-ctx",
+    "scripts/editors/view3d/widgets.js~WidgetTool#ctx",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#description",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-member-description",
+    "scripts/editors/view3d/widgets.js~WidgetTool#description",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#destroy",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-method-destroy",
+    "scripts/editors/view3d/widgets.js~WidgetTool#destroy",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#destroyed",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-member-destroyed",
+    "scripts/editors/view3d/widgets.js~WidgetTool#destroyed",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#exectool",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-method-execTool",
+    "scripts/editors/view3d/widgets.js~WidgetTool#execTool",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#getarrow",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-method-getArrow",
+    "scripts/editors/view3d/widgets.js~WidgetTool#getArrow",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#getblockarrow",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-method-getBlockArrow",
+    "scripts/editors/view3d/widgets.js~WidgetTool#getBlockArrow",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#getchevron",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-method-getChevron",
+    "scripts/editors/view3d/widgets.js~WidgetTool#getChevron",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#getplane",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-method-getPlane",
+    "scripts/editors/view3d/widgets.js~WidgetTool#getPlane",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#getsphere",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-method-getSphere",
+    "scripts/editors/view3d/widgets.js~WidgetTool#getSphere",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#icon",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-member-icon",
+    "scripts/editors/view3d/widgets.js~WidgetTool#icon",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#manager",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-member-manager",
+    "scripts/editors/view3d/widgets.js~WidgetTool#manager",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#name",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-member-name",
+    "scripts/editors/view3d/widgets.js~WidgetTool#name",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#uiname",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-member-uiname",
+    "scripts/editors/view3d/widgets.js~WidgetTool#uiname",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#update",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-method-update",
+    "scripts/editors/view3d/widgets.js~WidgetTool#update",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#view3d",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-member-view3d",
+    "scripts/editors/view3d/widgets.js~WidgetTool#view3d",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool#widgets",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#instance-member-widgets",
+    "scripts/editors/view3d/widgets.js~WidgetTool#widgets",
+    "member"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool.define",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#static-method-define",
+    "scripts/editors/view3d/widgets.js~WidgetTool.define",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool.gettoolenum",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#static-method-getToolEnum",
+    "scripts/editors/view3d/widgets.js~WidgetTool.getToolEnum",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool.register",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#static-method-register",
+    "scripts/editors/view3d/widgets.js~WidgetTool.register",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/widgets.js~widgettool.validate",
+    "class/scripts/editors/view3d/widgets.js~WidgetTool.html#static-method-validate",
+    "scripts/editors/view3d/widgets.js~WidgetTool.validate",
+    "method"
   ],
   [
     "scripts/entry_point.js",
@@ -7950,10 +9036,1312 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
+    "scripts/mesh/customdata.js",
+    "file/scripts/mesh/customdata.js.html",
+    "scripts/mesh/customdata.js",
+    "file"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#_getlayers",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-method-_getLayers",
+    "scripts/mesh/customdata.js~CustomData#_getLayers",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#addlayer",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-method-addLayer",
+    "scripts/mesh/customdata.js~CustomData#addLayer",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#constructor",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-constructor-constructor",
+    "scripts/mesh/customdata.js~CustomData#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#copy",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-method-copy",
+    "scripts/mesh/customdata.js~CustomData#copy",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#flatlist",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-member-flatlist",
+    "scripts/mesh/customdata.js~CustomData#flatlist",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#getlayerset",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-method-getLayerSet",
+    "scripts/mesh/customdata.js~CustomData#getLayerSet",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#haslayertype",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-method-hasLayerType",
+    "scripts/mesh/customdata.js~CustomData#hasLayerType",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#idgen",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-member-idgen",
+    "scripts/mesh/customdata.js~CustomData#idgen",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#layers",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-member-layers",
+    "scripts/mesh/customdata.js~CustomData#layers",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#loadstruct",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-method-loadSTRUCT",
+    "scripts/mesh/customdata.js~CustomData#loadSTRUCT",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#on_layeradd",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-member-on_layeradd",
+    "scripts/mesh/customdata.js~CustomData#on_layeradd",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#on_layerremove",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-member-on_layerremove",
+    "scripts/mesh/customdata.js~CustomData#on_layerremove",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdata#remlayer",
+    "class/scripts/mesh/customdata.js~CustomData.html#instance-method-remLayer",
+    "scripts/mesh/customdata.js~CustomData#remLayer",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdataelem#constructor",
+    "class/scripts/mesh/customdata.js~CustomDataElem.html#instance-constructor-constructor",
+    "scripts/mesh/customdata.js~CustomDataElem#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdataelem#copy",
+    "class/scripts/mesh/customdata.js~CustomDataElem.html#instance-method-copy",
+    "scripts/mesh/customdata.js~CustomDataElem#copy",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdataelem#copyto",
+    "class/scripts/mesh/customdata.js~CustomDataElem.html#instance-method-copyTo",
+    "scripts/mesh/customdata.js~CustomDataElem#copyTo",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdataelem#interp",
+    "class/scripts/mesh/customdata.js~CustomDataElem.html#instance-method-interp",
+    "scripts/mesh/customdata.js~CustomDataElem#interp",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdataelem#load",
+    "class/scripts/mesh/customdata.js~CustomDataElem.html#instance-method-load",
+    "scripts/mesh/customdata.js~CustomDataElem#load",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdataelem#validate",
+    "class/scripts/mesh/customdata.js~CustomDataElem.html#instance-method-validate",
+    "scripts/mesh/customdata.js~CustomDataElem#validate",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdataelem.define",
+    "class/scripts/mesh/customdata.js~CustomDataElem.html#static-method-define",
+    "scripts/mesh/customdata.js~CustomDataElem.define",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdataelem.gettypeclass",
+    "class/scripts/mesh/customdata.js~CustomDataElem.html#static-method-getTypeClass",
+    "scripts/mesh/customdata.js~CustomDataElem.getTypeClass",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdataelem.register",
+    "class/scripts/mesh/customdata.js~CustomDataElem.html#static-method-register",
+    "scripts/mesh/customdata.js~CustomDataElem.register",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdatalayer#constructor",
+    "class/scripts/mesh/customdata.js~CustomDataLayer.html#instance-constructor-constructor",
+    "scripts/mesh/customdata.js~CustomDataLayer#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdatalayer#copy",
+    "class/scripts/mesh/customdata.js~CustomDataLayer.html#instance-method-copy",
+    "scripts/mesh/customdata.js~CustomDataLayer#copy",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdatalayer#elemtypemask",
+    "class/scripts/mesh/customdata.js~CustomDataLayer.html#instance-member-elemTypeMask",
+    "scripts/mesh/customdata.js~CustomDataLayer#elemTypeMask",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdatalayer#flag",
+    "class/scripts/mesh/customdata.js~CustomDataLayer.html#instance-member-flag",
+    "scripts/mesh/customdata.js~CustomDataLayer#flag",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdatalayer#id",
+    "class/scripts/mesh/customdata.js~CustomDataLayer.html#instance-member-id",
+    "scripts/mesh/customdata.js~CustomDataLayer#id",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdatalayer#index",
+    "class/scripts/mesh/customdata.js~CustomDataLayer.html#instance-member-index",
+    "scripts/mesh/customdata.js~CustomDataLayer#index",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdatalayer#loadstruct",
+    "class/scripts/mesh/customdata.js~CustomDataLayer.html#instance-method-loadSTRUCT",
+    "scripts/mesh/customdata.js~CustomDataLayer#loadSTRUCT",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdatalayer#name",
+    "class/scripts/mesh/customdata.js~CustomDataLayer.html#instance-member-name",
+    "scripts/mesh/customdata.js~CustomDataLayer#name",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~customdatalayer#typename",
+    "class/scripts/mesh/customdata.js~CustomDataLayer.html#instance-member-typeName",
+    "scripts/mesh/customdata.js~CustomDataLayer#typeName",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~layerset#active",
+    "class/scripts/mesh/customdata.js~LayerSet.html#instance-member-active",
+    "scripts/mesh/customdata.js~LayerSet#active",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~layerset#constructor",
+    "class/scripts/mesh/customdata.js~LayerSet.html#instance-constructor-constructor",
+    "scripts/mesh/customdata.js~LayerSet#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~layerset#copy",
+    "class/scripts/mesh/customdata.js~LayerSet.html#instance-method-copy",
+    "scripts/mesh/customdata.js~LayerSet#copy",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~layerset#idmap",
+    "class/scripts/mesh/customdata.js~LayerSet.html#instance-member-idmap",
+    "scripts/mesh/customdata.js~LayerSet#idmap",
+    "member"
+  ],
+  [
+    "scripts/mesh/customdata.js~layerset#loadstruct",
+    "class/scripts/mesh/customdata.js~LayerSet.html#instance-method-loadSTRUCT",
+    "scripts/mesh/customdata.js~LayerSet#loadSTRUCT",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~layerset#push",
+    "class/scripts/mesh/customdata.js~LayerSet.html#instance-method-push",
+    "scripts/mesh/customdata.js~LayerSet#push",
+    "method"
+  ],
+  [
+    "scripts/mesh/customdata.js~layerset#typename",
+    "class/scripts/mesh/customdata.js~LayerSet.html#instance-member-typeName",
+    "scripts/mesh/customdata.js~LayerSet#typeName",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js",
+    "file/scripts/mesh/mesh.js.html",
+    "scripts/mesh/mesh.js",
+    "file"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_element_init",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-_element_init",
+    "scripts/mesh/mesh.js~Mesh#_element_init",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_genrender",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-_genRender",
+    "scripts/mesh/mesh.js~Mesh#_genRender",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_getarrays",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-_getArrays",
+    "scripts/mesh/mesh.js~Mesh#_getArrays",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_killloop",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-_killLoop",
+    "scripts/mesh/mesh.js~Mesh#_killLoop",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_ltrimap_len",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-_ltrimap_len",
+    "scripts/mesh/mesh.js~Mesh#_ltrimap_len",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_ltrimap_start",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-_ltrimap_start",
+    "scripts/mesh/mesh.js~Mesh#_ltrimap_start",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_ltris",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-_ltris",
+    "scripts/mesh/mesh.js~Mesh#_ltris",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_makeloop",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-_makeLoop",
+    "scripts/mesh/mesh.js~Mesh#_makeLoop",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_on_cdlayer_add",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-_on_cdlayer_add",
+    "scripts/mesh/mesh.js~Mesh#_on_cdlayer_add",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_on_cdlayer_rem",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-_on_cdlayer_rem",
+    "scripts/mesh/mesh.js~Mesh#_on_cdlayer_rem",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_radialinsert",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-_radialInsert",
+    "scripts/mesh/mesh.js~Mesh#_radialInsert",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_radialremove",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-_radialRemove",
+    "scripts/mesh/mesh.js~Mesh#_radialRemove",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#_splitedgenoface",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-_splitEdgeNoFace",
+    "scripts/mesh/mesh.js~Mesh#_splitEdgeNoFace",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#constructor",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-constructor-constructor",
+    "scripts/mesh/mesh.js~Mesh#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#copy",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-copy",
+    "scripts/mesh/mesh.js~Mesh#copy",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#copyelemdata",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-copyElemData",
+    "scripts/mesh/mesh.js~Mesh#copyElemData",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#copyface",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-copyFace",
+    "scripts/mesh/mesh.js~Mesh#copyFace",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#dissolvevertex",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-dissolveVertex",
+    "scripts/mesh/mesh.js~Mesh#dissolveVertex",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#draw",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-draw",
+    "scripts/mesh/mesh.js~Mesh#draw",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#edges",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-edges",
+    "scripts/mesh/mesh.js~Mesh#edges",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#eidgen",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-eidgen",
+    "scripts/mesh/mesh.js~Mesh#eidgen",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#eidmap",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-eidmap",
+    "scripts/mesh/mesh.js~Mesh#eidmap",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#elements",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-get-elements",
+    "scripts/mesh/mesh.js~Mesh#elements",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#elists",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-elists",
+    "scripts/mesh/mesh.js~Mesh#elists",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#ensureedge",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-ensureEdge",
+    "scripts/mesh/mesh.js~Mesh#ensureEdge",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#ensureorigindexlayer",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-ensureOrigIndexLayer",
+    "scripts/mesh/mesh.js~Mesh#ensureOrigIndexLayer",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#faces",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-faces",
+    "scripts/mesh/mesh.js~Mesh#faces",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#flagelemupdate",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-flagElemUpdate",
+    "scripts/mesh/mesh.js~Mesh#flagElemUpdate",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#genrender",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-genRender",
+    "scripts/mesh/mesh.js~Mesh#genRender",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#getedge",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-getEdge",
+    "scripts/mesh/mesh.js~Mesh#getEdge",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#getelemlist",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-getElemList",
+    "scripts/mesh/mesh.js~Mesh#getElemList",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#getelemlists",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-getElemLists",
+    "scripts/mesh/mesh.js~Mesh#getElemLists",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#killedge",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-killEdge",
+    "scripts/mesh/mesh.js~Mesh#killEdge",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#killface",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-killFace",
+    "scripts/mesh/mesh.js~Mesh#killFace",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#killvertex",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-killVertex",
+    "scripts/mesh/mesh.js~Mesh#killVertex",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#lastupdatelist",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-lastUpdateList",
+    "scripts/mesh/mesh.js~Mesh#lastUpdateList",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#loadstruct",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-loadSTRUCT",
+    "scripts/mesh/mesh.js~Mesh#loadSTRUCT",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#looptris",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-get-loopTris",
+    "scripts/mesh/mesh.js~Mesh#loopTris",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#loops",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-loops",
+    "scripts/mesh/mesh.js~Mesh#loops",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#makeedge",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-makeEdge",
+    "scripts/mesh/mesh.js~Mesh#makeEdge",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#makeface",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-makeFace",
+    "scripts/mesh/mesh.js~Mesh#makeFace",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#makequad",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-makeQuad",
+    "scripts/mesh/mesh.js~Mesh#makeQuad",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#maketri",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-makeTri",
+    "scripts/mesh/mesh.js~Mesh#makeTri",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#makevertex",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-makeVertex",
+    "scripts/mesh/mesh.js~Mesh#makeVertex",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#max",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-max",
+    "scripts/mesh/mesh.js~Mesh#max",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#min",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-min",
+    "scripts/mesh/mesh.js~Mesh#min",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#minmax",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-minMax",
+    "scripts/mesh/mesh.js~Mesh#minMax",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#partialupdate",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-partialUpdate",
+    "scripts/mesh/mesh.js~Mesh#partialUpdate",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#partialupdategen",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-partialUpdateGen",
+    "scripts/mesh/mesh.js~Mesh#partialUpdateGen",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#program",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-program",
+    "scripts/mesh/mesh.js~Mesh#program",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#recalc",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-recalc",
+    "scripts/mesh/mesh.js~Mesh#recalc",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#recalcnormals",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-recalcNormals",
+    "scripts/mesh/mesh.js~Mesh#recalcNormals",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#regenpartial",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-regenPartial",
+    "scripts/mesh/mesh.js~Mesh#regenPartial",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#regenrender",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-regenRender",
+    "scripts/mesh/mesh.js~Mesh#regenRender",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#regentesellation",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-regenTesellation",
+    "scripts/mesh/mesh.js~Mesh#regenTesellation",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#rescale",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-rescale",
+    "scripts/mesh/mesh.js~Mesh#rescale",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#selectall",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-selectAll",
+    "scripts/mesh/mesh.js~Mesh#selectAll",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#selectflush",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-selectFlush",
+    "scripts/mesh/mesh.js~Mesh#selectFlush",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#selectnone",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-selectNone",
+    "scripts/mesh/mesh.js~Mesh#selectNone",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#setactive",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-setActive",
+    "scripts/mesh/mesh.js~Mesh#setActive",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#setorigindex",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-setOrigIndex",
+    "scripts/mesh/mesh.js~Mesh#setOrigIndex",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#setselect",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-setSelect",
+    "scripts/mesh/mesh.js~Mesh#setSelect",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#setshadesmooth",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-setShadeSmooth",
+    "scripts/mesh/mesh.js~Mesh#setShadeSmooth",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#smesh",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-smesh",
+    "scripts/mesh/mesh.js~Mesh#smesh",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#splitedge",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-splitEdge",
+    "scripts/mesh/mesh.js~Mesh#splitEdge",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#tessellate",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-tessellate",
+    "scripts/mesh/mesh.js~Mesh#tessellate",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#uniforms",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-uniforms",
+    "scripts/mesh/mesh.js~Mesh#uniforms",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#updategen",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-updateGen",
+    "scripts/mesh/mesh.js~Mesh#updateGen",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#updateindices",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-updateIndices",
+    "scripts/mesh/mesh.js~Mesh#updateIndices",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#updatelist",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-updatelist",
+    "scripts/mesh/mesh.js~Mesh#updatelist",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#validatemesh",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-validateMesh",
+    "scripts/mesh/mesh.js~Mesh#validateMesh",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh#verts",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-member-verts",
+    "scripts/mesh/mesh.js~Mesh#verts",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh.blockdefine",
+    "class/scripts/mesh/mesh.js~Mesh.html#static-method-blockDefine",
+    "scripts/mesh/mesh.js~Mesh.blockDefine",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh.js~mesh.nodedef",
+    "class/scripts/mesh/mesh.js~Mesh.html#static-method-nodedef",
+    "scripts/mesh/mesh.js~Mesh.nodedef",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_base.js",
+    "file/scripts/mesh/mesh_base.js.html",
+    "scripts/mesh/mesh_base.js",
+    "file"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js",
+    "file/scripts/mesh/mesh_customdata.js.html",
+    "scripts/mesh/mesh_customdata.js",
+    "file"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~origindexelem#constructor",
+    "class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_customdata.js~OrigIndexElem#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~origindexelem#copy",
+    "class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html#instance-method-copy",
+    "scripts/mesh/mesh_customdata.js~OrigIndexElem#copy",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~origindexelem#copyto",
+    "class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html#instance-method-copyTo",
+    "scripts/mesh/mesh_customdata.js~OrigIndexElem#copyTo",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~origindexelem#i",
+    "class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html#instance-member-i",
+    "scripts/mesh/mesh_customdata.js~OrigIndexElem#i",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~origindexelem#interp",
+    "class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html#instance-method-interp",
+    "scripts/mesh/mesh_customdata.js~OrigIndexElem#interp",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~origindexelem#validate",
+    "class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html#instance-method-validate",
+    "scripts/mesh/mesh_customdata.js~OrigIndexElem#validate",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~origindexelem.define",
+    "class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html#static-method-define",
+    "scripts/mesh/mesh_customdata.js~OrigIndexElem.define",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~uvlayerelem#constructor",
+    "class/scripts/mesh/mesh_customdata.js~UVLayerElem.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_customdata.js~UVLayerElem#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~uvlayerelem#copy",
+    "class/scripts/mesh/mesh_customdata.js~UVLayerElem.html#instance-method-copy",
+    "scripts/mesh/mesh_customdata.js~UVLayerElem#copy",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~uvlayerelem#copyto",
+    "class/scripts/mesh/mesh_customdata.js~UVLayerElem.html#instance-method-copyTo",
+    "scripts/mesh/mesh_customdata.js~UVLayerElem#copyTo",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~uvlayerelem#interp",
+    "class/scripts/mesh/mesh_customdata.js~UVLayerElem.html#instance-method-interp",
+    "scripts/mesh/mesh_customdata.js~UVLayerElem#interp",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~uvlayerelem#uv",
+    "class/scripts/mesh/mesh_customdata.js~UVLayerElem.html#instance-member-uv",
+    "scripts/mesh/mesh_customdata.js~UVLayerElem#uv",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~uvlayerelem#validate",
+    "class/scripts/mesh/mesh_customdata.js~UVLayerElem.html#instance-method-validate",
+    "scripts/mesh/mesh_customdata.js~UVLayerElem#validate",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_customdata.js~uvlayerelem.define",
+    "class/scripts/mesh/mesh_customdata.js~UVLayerElem.html#static-method-define",
+    "scripts/mesh/mesh_customdata.js~UVLayerElem.define",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js",
+    "file/scripts/mesh/mesh_element_list.js.html",
+    "scripts/mesh/mesh_element_list.js",
+    "file"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#active",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-member-active",
+    "scripts/mesh/mesh_element_list.js~ElementList#active",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#constructor",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_element_list.js~ElementList#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#customdatainterp",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-method-customDataInterp",
+    "scripts/mesh/mesh_element_list.js~ElementList#customDataInterp",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#editable",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-get-editable",
+    "scripts/mesh/mesh_element_list.js~ElementList#editable",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#highlight",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-member-highlight",
+    "scripts/mesh/mesh_element_list.js~ElementList#highlight",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#length",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-member-length",
+    "scripts/mesh/mesh_element_list.js~ElementList#length",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#loadjson",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-method-loadJSON",
+    "scripts/mesh/mesh_element_list.js~ElementList#loadJSON",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#loadstruct",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-method-loadSTRUCT",
+    "scripts/mesh/mesh_element_list.js~ElementList#loadSTRUCT",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#on_selected",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-member-on_selected",
+    "scripts/mesh/mesh_element_list.js~ElementList#on_selected",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#push",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-method-push",
+    "scripts/mesh/mesh_element_list.js~ElementList#push",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#remove",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-method-remove",
+    "scripts/mesh/mesh_element_list.js~ElementList#remove",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#selectall",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-method-selectAll",
+    "scripts/mesh/mesh_element_list.js~ElementList#selectAll",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#selectnone",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-method-selectNone",
+    "scripts/mesh/mesh_element_list.js~ElementList#selectNone",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#selected",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-member-selected",
+    "scripts/mesh/mesh_element_list.js~ElementList#selected",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#setselect",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-method-setSelect",
+    "scripts/mesh/mesh_element_list.js~ElementList#setSelect",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#tojson",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-method-toJSON",
+    "scripts/mesh/mesh_element_list.js~ElementList#toJSON",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#type",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-member-type",
+    "scripts/mesh/mesh_element_list.js~ElementList#type",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~elementlist#updateindices",
+    "class/scripts/mesh/mesh_element_list.js~ElementList.html#instance-method-updateIndices",
+    "scripts/mesh/mesh_element_list.js~ElementList#updateIndices",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~selectionset#constructor",
+    "class/scripts/mesh/mesh_element_list.js~SelectionSet.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_element_list.js~SelectionSet#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_element_list.js~selectionset#editable",
+    "class/scripts/mesh/mesh_element_list.js~SelectionSet.html#instance-get-editable",
+    "scripts/mesh/mesh_element_list.js~SelectionSet#editable",
+    "member"
+  ],
+  [
     "scripts/mesh/mesh_ops.js",
     "file/scripts/mesh/mesh_ops.js.html",
     "scripts/mesh/mesh_ops.js",
     "file"
+  ],
+  [
+    "scripts/mesh/mesh_ops.js~catmullclarkesubd#constructor",
+    "class/scripts/mesh/mesh_ops.js~CatmullClarkeSubd.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_ops.js~CatmullClarkeSubd#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_ops.js~catmullclarkesubd#exec",
+    "class/scripts/mesh/mesh_ops.js~CatmullClarkeSubd.html#instance-method-exec",
+    "scripts/mesh/mesh_ops.js~CatmullClarkeSubd#exec",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_ops.js~catmullclarkesubd.tooldef",
+    "class/scripts/mesh/mesh_ops.js~CatmullClarkeSubd.html#static-method-tooldef",
+    "scripts/mesh/mesh_ops.js~CatmullClarkeSubd.tooldef",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_ops.js~extruderegionsop#_exec_intern",
+    "class/scripts/mesh/mesh_ops.js~ExtrudeRegionsOp.html#instance-method-_exec_intern",
+    "scripts/mesh/mesh_ops.js~ExtrudeRegionsOp#_exec_intern",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_ops.js~extruderegionsop#constructor",
+    "class/scripts/mesh/mesh_ops.js~ExtrudeRegionsOp.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_ops.js~ExtrudeRegionsOp#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_ops.js~extruderegionsop#exec",
+    "class/scripts/mesh/mesh_ops.js~ExtrudeRegionsOp.html#instance-method-exec",
+    "scripts/mesh/mesh_ops.js~ExtrudeRegionsOp#exec",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_ops.js~extruderegionsop.tooldef",
+    "class/scripts/mesh/mesh_ops.js~ExtrudeRegionsOp.html#static-method-tooldef",
+    "scripts/mesh/mesh_ops.js~ExtrudeRegionsOp.tooldef",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_ops_base.js",
+    "file/scripts/mesh/mesh_ops_base.js.html",
+    "scripts/mesh/mesh_ops_base.js",
+    "file"
+  ],
+  [
+    "scripts/mesh/mesh_ops_base.js~meshop#execpost",
+    "class/scripts/mesh/mesh_ops_base.js~MeshOp.html#instance-method-execPost",
+    "scripts/mesh/mesh_ops_base.js~MeshOp#execPost",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_ops_base.js~meshop#undo",
+    "class/scripts/mesh/mesh_ops_base.js~MeshOp.html#instance-method-undo",
+    "scripts/mesh/mesh_ops_base.js~MeshOp#undo",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_ops_base.js~meshop#undopre",
+    "class/scripts/mesh/mesh_ops_base.js~MeshOp.html#instance-method-undoPre",
+    "scripts/mesh/mesh_ops_base.js~MeshOp#undoPre",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js",
+    "file/scripts/mesh/mesh_types.js.html",
+    "scripts/mesh/mesh_types.js",
+    "file"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#constructor",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_types.js~Edge#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#curvature",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-method-curvature",
+    "scripts/mesh/mesh_types.js~Edge#curvature",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#derivative",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-method-derivative",
+    "scripts/mesh/mesh_types.js~Edge#derivative",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#derivative2",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-method-derivative2",
+    "scripts/mesh/mesh_types.js~Edge#derivative2",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#evaluate",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-method-evaluate",
+    "scripts/mesh/mesh_types.js~Edge#evaluate",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#faces",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-get-faces",
+    "scripts/mesh/mesh_types.js~Edge#faces",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#flag",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-member-flag",
+    "scripts/mesh/mesh_types.js~Edge#flag",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#has",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-method-has",
+    "scripts/mesh/mesh_types.js~Edge#has",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#l",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-member-l",
+    "scripts/mesh/mesh_types.js~Edge#l",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#loadstruct",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-method-loadSTRUCT",
+    "scripts/mesh/mesh_types.js~Edge#loadSTRUCT",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#loops",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-get-loops",
+    "scripts/mesh/mesh_types.js~Edge#loops",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#othervertex",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-method-otherVertex",
+    "scripts/mesh/mesh_types.js~Edge#otherVertex",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~edge#v1",
+    "class/scripts/mesh/mesh_types.js~Edge.html#instance-member-v1",
+    "scripts/mesh/mesh_types.js~Edge#v1",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~element#[symbol.keystr]",
+    "class/scripts/mesh/mesh_types.js~Element.html#instance-method-[Symbol.keystr]",
+    "scripts/mesh/mesh_types.js~Element#[Symbol.keystr]",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~element#constructor",
+    "class/scripts/mesh/mesh_types.js~Element.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_types.js~Element#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~element#customdata",
+    "class/scripts/mesh/mesh_types.js~Element.html#instance-member-customData",
+    "scripts/mesh/mesh_types.js~Element#customData",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~element#eid",
+    "class/scripts/mesh/mesh_types.js~Element.html#instance-member-eid",
+    "scripts/mesh/mesh_types.js~Element#eid",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~element#flag",
+    "class/scripts/mesh/mesh_types.js~Element.html#instance-member-flag",
+    "scripts/mesh/mesh_types.js~Element#flag",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~element#index",
+    "class/scripts/mesh/mesh_types.js~Element.html#instance-member-index",
+    "scripts/mesh/mesh_types.js~Element#index",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~element#loadjson",
+    "class/scripts/mesh/mesh_types.js~Element.html#instance-method-loadJSON",
+    "scripts/mesh/mesh_types.js~Element#loadJSON",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~element#tojson",
+    "class/scripts/mesh/mesh_types.js~Element.html#instance-method-toJSON",
+    "scripts/mesh/mesh_types.js~Element#toJSON",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~element#type",
+    "class/scripts/mesh/mesh_types.js~Element.html#instance-member-type",
+    "scripts/mesh/mesh_types.js~Element#type",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~element#valueof",
+    "class/scripts/mesh/mesh_types.js~Element.html#instance-method-valueOf",
+    "scripts/mesh/mesh_types.js~Element#valueOf",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~face#calccent",
+    "class/scripts/mesh/mesh_types.js~Face.html#instance-method-calcCent",
+    "scripts/mesh/mesh_types.js~Face#calcCent",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~face#calcnormal",
+    "class/scripts/mesh/mesh_types.js~Face.html#instance-method-calcNormal",
+    "scripts/mesh/mesh_types.js~Face#calcNormal",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~face#cent",
+    "class/scripts/mesh/mesh_types.js~Face.html#instance-member-cent",
+    "scripts/mesh/mesh_types.js~Face#cent",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~face#constructor",
+    "class/scripts/mesh/mesh_types.js~Face.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_types.js~Face#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~face#edges",
+    "class/scripts/mesh/mesh_types.js~Face.html#instance-get-edges",
+    "scripts/mesh/mesh_types.js~Face#edges",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~face#flag",
+    "class/scripts/mesh/mesh_types.js~Face.html#instance-member-flag",
+    "scripts/mesh/mesh_types.js~Face#flag",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~face#lists",
+    "class/scripts/mesh/mesh_types.js~Face.html#instance-member-lists",
+    "scripts/mesh/mesh_types.js~Face#lists",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~face#loops",
+    "class/scripts/mesh/mesh_types.js~Face.html#instance-get-loops",
+    "scripts/mesh/mesh_types.js~Face#loops",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~face#no",
+    "class/scripts/mesh/mesh_types.js~Face.html#instance-member-no",
+    "scripts/mesh/mesh_types.js~Face#no",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~face#uvs",
+    "class/scripts/mesh/mesh_types.js~Face.html#instance-get-uvs",
+    "scripts/mesh/mesh_types.js~Face#uvs",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~face#verts",
+    "class/scripts/mesh/mesh_types.js~Face.html#instance-get-verts",
+    "scripts/mesh/mesh_types.js~Face#verts",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~loop#constructor",
+    "class/scripts/mesh/mesh_types.js~Loop.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_types.js~Loop#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~loop#e",
+    "class/scripts/mesh/mesh_types.js~Loop.html#instance-member-e",
+    "scripts/mesh/mesh_types.js~Loop#e",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~loop#f",
+    "class/scripts/mesh/mesh_types.js~Loop.html#instance-member-f",
+    "scripts/mesh/mesh_types.js~Loop#f",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~loop#list",
+    "class/scripts/mesh/mesh_types.js~Loop.html#instance-member-list",
+    "scripts/mesh/mesh_types.js~Loop#list",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~loop#radial_next",
+    "class/scripts/mesh/mesh_types.js~Loop.html#instance-member-radial_next",
+    "scripts/mesh/mesh_types.js~Loop#radial_next",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~loop#uv",
+    "class/scripts/mesh/mesh_types.js~Loop.html#instance-get-uv",
+    "scripts/mesh/mesh_types.js~Loop#uv",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~loop#v",
+    "class/scripts/mesh/mesh_types.js~Loop.html#instance-member-v",
+    "scripts/mesh/mesh_types.js~Loop#v",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~looplist#[symbol.iterator]",
+    "class/scripts/mesh/mesh_types.js~LoopList.html#instance-method-[Symbol.iterator]",
+    "scripts/mesh/mesh_types.js~LoopList#[Symbol.iterator]",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~looplist#_loops",
+    "class/scripts/mesh/mesh_types.js~LoopList.html#instance-get-_loops",
+    "scripts/mesh/mesh_types.js~LoopList#_loops",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~looplist#constructor",
+    "class/scripts/mesh/mesh_types.js~LoopList.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_types.js~LoopList#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~looplist#flag",
+    "class/scripts/mesh/mesh_types.js~LoopList.html#instance-member-flag",
+    "scripts/mesh/mesh_types.js~LoopList#flag",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~looplist#iterstack",
+    "class/scripts/mesh/mesh_types.js~LoopList.html#instance-member-iterstack",
+    "scripts/mesh/mesh_types.js~LoopList#iterstack",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~looplist#l",
+    "class/scripts/mesh/mesh_types.js~LoopList.html#instance-member-l",
+    "scripts/mesh/mesh_types.js~LoopList#l",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~vertex#constructor",
+    "class/scripts/mesh/mesh_types.js~Vertex.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_types.js~Vertex#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~vertex#edges",
+    "class/scripts/mesh/mesh_types.js~Vertex.html#instance-member-edges",
+    "scripts/mesh/mesh_types.js~Vertex#edges",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~vertex#faces",
+    "class/scripts/mesh/mesh_types.js~Vertex.html#instance-get-faces",
+    "scripts/mesh/mesh_types.js~Vertex#faces",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~vertex#loadstruct",
+    "class/scripts/mesh/mesh_types.js~Vertex.html#instance-method-loadSTRUCT",
+    "scripts/mesh/mesh_types.js~Vertex#loadSTRUCT",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~vertex#no",
+    "class/scripts/mesh/mesh_types.js~Vertex.html#instance-member-no",
+    "scripts/mesh/mesh_types.js~Vertex#no",
+    "member"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~vertex#otheredge",
+    "class/scripts/mesh/mesh_types.js~Vertex.html#instance-method-otherEdge",
+    "scripts/mesh/mesh_types.js~Vertex#otherEdge",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_types.js~vertex#tojson",
+    "class/scripts/mesh/mesh_types.js~Vertex.html#instance-method-toJSON",
+    "scripts/mesh/mesh_types.js~Vertex#toJSON",
+    "method"
   ],
   [
     "scripts/mesh/select_ops.js",
@@ -8007,6 +10395,30 @@ window.esdocSearchIndex = [
     "scripts/mesh/select_ops.js~selectopbase.tooldef",
     "class/scripts/mesh/select_ops.js~SelectOpBase.html#static-method-tooldef",
     "scripts/mesh/select_ops.js~SelectOpBase.tooldef",
+    "method"
+  ],
+  [
+    "scripts/mesh/select_ops.js~toggleselectall#constructor",
+    "class/scripts/mesh/select_ops.js~ToggleSelectAll.html#instance-constructor-constructor",
+    "scripts/mesh/select_ops.js~ToggleSelectAll#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/select_ops.js~toggleselectall#exec",
+    "class/scripts/mesh/select_ops.js~ToggleSelectAll.html#instance-method-exec",
+    "scripts/mesh/select_ops.js~ToggleSelectAll#exec",
+    "method"
+  ],
+  [
+    "scripts/mesh/select_ops.js~toggleselectall.invoke",
+    "class/scripts/mesh/select_ops.js~ToggleSelectAll.html#static-method-invoke",
+    "scripts/mesh/select_ops.js~ToggleSelectAll.invoke",
+    "method"
+  ],
+  [
+    "scripts/mesh/select_ops.js~toggleselectall.tooldef",
+    "class/scripts/mesh/select_ops.js~ToggleSelectAll.html#static-method-tooldef",
+    "scripts/mesh/select_ops.js~ToggleSelectAll.tooldef",
     "method"
   ],
   [
@@ -8070,6 +10482,12 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
+    "scripts/path.ux/scripts/framemanager.js~screen#_aabb",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-member-_aabb",
+    "scripts/path.ux/scripts/FrameManager.js~Screen#_aabb",
+    "member"
+  ],
+  [
     "scripts/path.ux/scripts/framemanager.js~screen#_ctx",
     "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-member-_ctx",
     "scripts/path.ux/scripts/FrameManager.js~Screen#_ctx",
@@ -8097,6 +10515,12 @@ window.esdocSearchIndex = [
     "scripts/path.ux/scripts/framemanager.js~screen#_ondestroy",
     "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-_ondestroy",
     "scripts/path.ux/scripts/FrameManager.js~Screen#_ondestroy",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screen#_recalcaabb",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-_recalcAABB",
+    "scripts/path.ux/scripts/FrameManager.js~Screen#_recalcAABB",
     "method"
   ],
   [
@@ -8142,6 +10566,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/framemanager.js~screen#borders",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-get-borders",
+    "scripts/path.ux/scripts/FrameManager.js~Screen#borders",
+    "member"
+  ],
+  [
     "scripts/path.ux/scripts/framemanager.js~screen#clear",
     "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-clear",
     "scripts/path.ux/scripts/FrameManager.js~Screen#clear",
@@ -8155,13 +10585,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/framemanager.js~screen#ctx",
-    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-set-ctx",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-get-ctx",
     "scripts/path.ux/scripts/FrameManager.js~Screen#ctx",
     "member"
   ],
   [
     "scripts/path.ux/scripts/framemanager.js~screen#ctx",
-    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-get-ctx",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-set-ctx",
     "scripts/path.ux/scripts/FrameManager.js~Screen#ctx",
     "member"
   ],
@@ -8184,6 +10614,18 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/framemanager.js~screen#execkeymap",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-execKeyMap",
+    "scripts/path.ux/scripts/FrameManager.js~Screen#execKeyMap",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screen#gethotkey",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-getHotKey",
+    "scripts/path.ux/scripts/FrameManager.js~Screen#getHotKey",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/framemanager.js~screen#getscreenborder",
     "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-getScreenBorder",
     "scripts/path.ux/scripts/FrameManager.js~Screen#getScreenBorder",
@@ -8199,6 +10641,24 @@ window.esdocSearchIndex = [
     "scripts/path.ux/scripts/framemanager.js~screen#idgen",
     "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-member-idgen",
     "scripts/path.ux/scripts/FrameManager.js~Screen#idgen",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screen#isbordermovable",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-isBorderMovable",
+    "scripts/path.ux/scripts/FrameManager.js~Screen#isBorderMovable",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screen#isborderouter",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-isBorderOuter",
+    "scripts/path.ux/scripts/FrameManager.js~Screen#isBorderOuter",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screen#keymap",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-member-keymap",
+    "scripts/path.ux/scripts/FrameManager.js~Screen#keymap",
     "member"
   ],
   [
@@ -8229,6 +10689,12 @@ window.esdocSearchIndex = [
     "scripts/path.ux/scripts/framemanager.js~screen#loadjson",
     "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-loadJSON",
     "scripts/path.ux/scripts/FrameManager.js~Screen#loadJSON",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screen#loadstruct",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-loadSTRUCT",
+    "scripts/path.ux/scripts/FrameManager.js~Screen#loadSTRUCT",
     "method"
   ],
   [
@@ -8376,6 +10842,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/framemanager.js~screen#uidata",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-member-uidata",
+    "scripts/path.ux/scripts/FrameManager.js~Screen#uidata",
+    "member"
+  ],
+  [
     "scripts/path.ux/scripts/framemanager.js~screen#unlisten",
     "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-unlisten",
     "scripts/path.ux/scripts/FrameManager.js~Screen#unlisten",
@@ -8406,9 +10878,9 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/path.ux/scripts/framemanager.js~screen.fromstruct",
-    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#static-method-fromSTRUCT",
-    "scripts/path.ux/scripts/FrameManager.js~Screen.fromSTRUCT",
+    "scripts/path.ux/scripts/framemanager.js~screen.newstruct",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#static-method-newSTRUCT",
+    "scripts/path.ux/scripts/FrameManager.js~Screen.newSTRUCT",
     "method"
   ],
   [
@@ -8454,6 +10926,12 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/path.ux/scripts/framemanager.js~screenborder#is_outer",
+    "class/scripts/path.ux/scripts/FrameManager.js~ScreenBorder.html#instance-member-is_outer",
+    "scripts/path.ux/scripts/FrameManager.js~ScreenBorder#is_outer",
+    "member"
+  ],
+  [
     "scripts/path.ux/scripts/framemanager.js~screenborder#othervert",
     "class/scripts/path.ux/scripts/FrameManager.js~ScreenBorder.html#instance-method-otherVert",
     "scripts/path.ux/scripts/FrameManager.js~ScreenBorder#otherVert",
@@ -8476,6 +10954,12 @@ window.esdocSearchIndex = [
     "class/scripts/path.ux/scripts/FrameManager.js~ScreenBorder.html#instance-method-setCSS",
     "scripts/path.ux/scripts/FrameManager.js~ScreenBorder#setCSS",
     "method"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screenborder#side",
+    "class/scripts/path.ux/scripts/FrameManager.js~ScreenBorder.html#instance-member-side",
+    "scripts/path.ux/scripts/FrameManager.js~ScreenBorder#side",
+    "member"
   ],
   [
     "scripts/path.ux/scripts/framemanager.js~screenborder#v1",
@@ -8514,6 +10998,30 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/framemanager.js~screenhalfedge#border",
+    "class/scripts/path.ux/scripts/FrameManager.js~ScreenHalfEdge.html#instance-member-border",
+    "scripts/path.ux/scripts/FrameManager.js~ScreenHalfEdge#border",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screenhalfedge#constructor",
+    "class/scripts/path.ux/scripts/FrameManager.js~ScreenHalfEdge.html#instance-constructor-constructor",
+    "scripts/path.ux/scripts/FrameManager.js~ScreenHalfEdge#constructor",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screenhalfedge#v1",
+    "class/scripts/path.ux/scripts/FrameManager.js~ScreenHalfEdge.html#instance-member-v1",
+    "scripts/path.ux/scripts/FrameManager.js~ScreenHalfEdge#v1",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screenhalfedge#v2",
+    "class/scripts/path.ux/scripts/FrameManager.js~ScreenHalfEdge.html#instance-member-v2",
+    "scripts/path.ux/scripts/FrameManager.js~ScreenHalfEdge#v2",
+    "member"
+  ],
+  [
     "scripts/path.ux/scripts/framemanager.js~screenvert#[symbol.keystr]",
     "class/scripts/path.ux/scripts/FrameManager.js~ScreenVert.html#instance-method-[Symbol.keystr]",
     "scripts/path.ux/scripts/FrameManager.js~ScreenVert#[Symbol.keystr]",
@@ -8538,9 +11046,27 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/framemanager.js~screenvert#is_outer",
+    "class/scripts/path.ux/scripts/FrameManager.js~ScreenVert.html#instance-member-is_outer",
+    "scripts/path.ux/scripts/FrameManager.js~ScreenVert#is_outer",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screenvert#loadstruct",
+    "class/scripts/path.ux/scripts/FrameManager.js~ScreenVert.html#instance-method-loadSTRUCT",
+    "scripts/path.ux/scripts/FrameManager.js~ScreenVert#loadSTRUCT",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/framemanager.js~screenvert#sareas",
     "class/scripts/path.ux/scripts/FrameManager.js~ScreenVert.html#instance-member-sareas",
     "scripts/path.ux/scripts/FrameManager.js~ScreenVert#sareas",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screenvert#side",
+    "class/scripts/path.ux/scripts/FrameManager.js~ScreenVert.html#instance-member-side",
+    "scripts/path.ux/scripts/FrameManager.js~ScreenVert#side",
     "member"
   ],
   [
@@ -8922,6 +11448,24 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/screenarea.js~area#getactivearea",
+    "class/scripts/path.ux/scripts/ScreenArea.js~Area.html#instance-method-getActiveArea",
+    "scripts/path.ux/scripts/ScreenArea.js~Area#getActiveArea",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/screenarea.js~area#getbarheight",
+    "class/scripts/path.ux/scripts/ScreenArea.js~Area.html#instance-method-getBarHeight",
+    "scripts/path.ux/scripts/ScreenArea.js~Area#getBarHeight",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/screenarea.js~area#getkeymaps",
+    "class/scripts/path.ux/scripts/ScreenArea.js~Area.html#instance-method-getKeyMaps",
+    "scripts/path.ux/scripts/ScreenArea.js~Area#getKeyMaps",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/screenarea.js~area#getscreen",
     "class/scripts/path.ux/scripts/ScreenArea.js~Area.html#instance-method-getScreen",
     "scripts/path.ux/scripts/ScreenArea.js~Area#getScreen",
@@ -8952,6 +11496,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/screenarea.js~area#loadstruct",
+    "class/scripts/path.ux/scripts/ScreenArea.js~Area.html#instance-method-loadSTRUCT",
+    "scripts/path.ux/scripts/ScreenArea.js~Area#loadSTRUCT",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/screenarea.js~area#makeheader",
     "class/scripts/path.ux/scripts/ScreenArea.js~Area.html#instance-method-makeHeader",
     "scripts/path.ux/scripts/ScreenArea.js~Area#makeHeader",
@@ -8961,6 +11511,18 @@ window.esdocSearchIndex = [
     "scripts/path.ux/scripts/screenarea.js~area#on_area_active",
     "class/scripts/path.ux/scripts/ScreenArea.js~Area.html#instance-method-on_area_active",
     "scripts/path.ux/scripts/ScreenArea.js~Area#on_area_active",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/screenarea.js~area#on_area_blur",
+    "class/scripts/path.ux/scripts/ScreenArea.js~Area.html#instance-method-on_area_blur",
+    "scripts/path.ux/scripts/ScreenArea.js~Area#on_area_blur",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/screenarea.js~area#on_area_focus",
+    "class/scripts/path.ux/scripts/ScreenArea.js~Area.html#instance-method-on_area_focus",
+    "scripts/path.ux/scripts/ScreenArea.js~Area#on_area_focus",
     "method"
   ],
   [
@@ -9042,9 +11604,9 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/path.ux/scripts/screenarea.js~area.fromstruct",
-    "class/scripts/path.ux/scripts/ScreenArea.js~Area.html#static-method-fromSTRUCT",
-    "scripts/path.ux/scripts/ScreenArea.js~Area.fromSTRUCT",
+    "scripts/path.ux/scripts/screenarea.js~area.newstruct",
+    "class/scripts/path.ux/scripts/ScreenArea.js~Area.html#static-method-newSTRUCT",
+    "scripts/path.ux/scripts/ScreenArea.js~Area.newSTRUCT",
     "method"
   ],
   [
@@ -9132,9 +11694,21 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/screenarea.js~screenarea#loadstruct",
+    "class/scripts/path.ux/scripts/ScreenArea.js~ScreenArea.html#instance-method-loadSTRUCT",
+    "scripts/path.ux/scripts/ScreenArea.js~ScreenArea#loadSTRUCT",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/screenarea.js~screenarea#makeborders",
     "class/scripts/path.ux/scripts/ScreenArea.js~ScreenArea.html#instance-method-makeBorders",
     "scripts/path.ux/scripts/ScreenArea.js~ScreenArea#makeBorders",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/screenarea.js~screenarea#on_keydown",
+    "class/scripts/path.ux/scripts/ScreenArea.js~ScreenArea.html#instance-method-on_keydown",
+    "scripts/path.ux/scripts/ScreenArea.js~ScreenArea#on_keydown",
     "method"
   ],
   [
@@ -9186,9 +11760,9 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/path.ux/scripts/screenarea.js~screenarea.fromstruct",
-    "class/scripts/path.ux/scripts/ScreenArea.js~ScreenArea.html#static-method-fromSTRUCT",
-    "scripts/path.ux/scripts/ScreenArea.js~ScreenArea.fromSTRUCT",
+    "scripts/path.ux/scripts/screenarea.js~screenarea.newstruct",
+    "class/scripts/path.ux/scripts/ScreenArea.js~ScreenArea.html#static-method-newSTRUCT",
+    "scripts/path.ux/scripts/ScreenArea.js~ScreenArea.newSTRUCT",
     "method"
   ],
   [
@@ -9612,9 +12186,21 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/controller.js~modelinterface#gettoolpathhotkey",
+    "class/scripts/path.ux/scripts/controller.js~ModelInterface.html#instance-method-getToolPathHotkey",
+    "scripts/path.ux/scripts/controller.js~ModelInterface#getToolPathHotkey",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/controller.js~modelinterface#getvalue",
     "class/scripts/path.ux/scripts/controller.js~ModelInterface.html#instance-method-getValue",
     "scripts/path.ux/scripts/controller.js~ModelInterface#getValue",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/controller.js~modelinterface#masssetprop",
+    "class/scripts/path.ux/scripts/controller.js~ModelInterface.html#instance-method-massSetProp",
+    "scripts/path.ux/scripts/controller.js~ModelInterface#massSetProp",
     "method"
   ],
   [
@@ -10266,6 +12852,18 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/simple_controller.js~dataapi#gettoolpathhotkey",
+    "class/scripts/path.ux/scripts/simple_controller.js~DataAPI.html#instance-method-getToolPathHotkey",
+    "scripts/path.ux/scripts/simple_controller.js~DataAPI#getToolPathHotkey",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_controller.js~dataapi#gettoolpathhotkey_intern",
+    "class/scripts/path.ux/scripts/simple_controller.js~DataAPI.html#instance-method-getToolPathHotkey_intern",
+    "scripts/path.ux/scripts/simple_controller.js~DataAPI#getToolPathHotkey_intern",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/simple_controller.js~dataapi#mapstruct",
     "class/scripts/path.ux/scripts/simple_controller.js~DataAPI.html#instance-method-mapStruct",
     "scripts/path.ux/scripts/simple_controller.js~DataAPI#mapStruct",
@@ -10284,9 +12882,27 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/simple_controller.js~dataapi#resolvepathold2",
+    "class/scripts/path.ux/scripts/simple_controller.js~DataAPI.html#instance-method-resolvePathOld2",
+    "scripts/path.ux/scripts/simple_controller.js~DataAPI#resolvePathOld2",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/simple_controller.js~dataapi#resolvepathold",
     "class/scripts/path.ux/scripts/simple_controller.js~DataAPI.html#instance-method-resolvePathold",
     "scripts/path.ux/scripts/simple_controller.js~DataAPI#resolvePathold",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_controller.js~dataapi#rootcontextstruct",
+    "class/scripts/path.ux/scripts/simple_controller.js~DataAPI.html#instance-member-rootContextStruct",
+    "scripts/path.ux/scripts/simple_controller.js~DataAPI#rootContextStruct",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_controller.js~dataapi#setroot",
+    "class/scripts/path.ux/scripts/simple_controller.js~DataAPI.html#instance-method-setRoot",
+    "scripts/path.ux/scripts/simple_controller.js~DataAPI#setRoot",
     "method"
   ],
   [
@@ -10392,6 +13008,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/simple_controller.js~datapath#setprop",
+    "class/scripts/path.ux/scripts/simple_controller.js~DataPath.html#instance-method-setProp",
+    "scripts/path.ux/scripts/simple_controller.js~DataPath#setProp",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/simple_controller.js~datapath#step",
     "class/scripts/path.ux/scripts/simple_controller.js~DataPath.html#instance-method-step",
     "scripts/path.ux/scripts/simple_controller.js~DataPath#step",
@@ -10486,6 +13108,66 @@ window.esdocSearchIndex = [
     "file/scripts/path.ux/scripts/simple_events.js.html",
     "scripts/path.ux/scripts/simple_events.js",
     "file"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_events.js~hotkey#action",
+    "class/scripts/path.ux/scripts/simple_events.js~HotKey.html#instance-member-action",
+    "scripts/path.ux/scripts/simple_events.js~HotKey#action",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_events.js~hotkey#buildstring",
+    "class/scripts/path.ux/scripts/simple_events.js~HotKey.html#instance-method-buildString",
+    "scripts/path.ux/scripts/simple_events.js~HotKey#buildString",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_events.js~hotkey#constructor",
+    "class/scripts/path.ux/scripts/simple_events.js~HotKey.html#instance-constructor-constructor",
+    "scripts/path.ux/scripts/simple_events.js~HotKey#constructor",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_events.js~hotkey#exec",
+    "class/scripts/path.ux/scripts/simple_events.js~HotKey.html#instance-method-exec",
+    "scripts/path.ux/scripts/simple_events.js~HotKey#exec",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_events.js~hotkey#key",
+    "class/scripts/path.ux/scripts/simple_events.js~HotKey.html#instance-member-key",
+    "scripts/path.ux/scripts/simple_events.js~HotKey#key",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_events.js~hotkey#mods",
+    "class/scripts/path.ux/scripts/simple_events.js~HotKey.html#instance-member-mods",
+    "scripts/path.ux/scripts/simple_events.js~HotKey#mods",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_events.js~keymap#add",
+    "class/scripts/path.ux/scripts/simple_events.js~KeyMap.html#instance-method-add",
+    "scripts/path.ux/scripts/simple_events.js~KeyMap#add",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_events.js~keymap#constructor",
+    "class/scripts/path.ux/scripts/simple_events.js~KeyMap.html#instance-constructor-constructor",
+    "scripts/path.ux/scripts/simple_events.js~KeyMap#constructor",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_events.js~keymap#handle",
+    "class/scripts/path.ux/scripts/simple_events.js~KeyMap.html#instance-method-handle",
+    "scripts/path.ux/scripts/simple_events.js~KeyMap#handle",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_events.js~keymap#push",
+    "class/scripts/path.ux/scripts/simple_events.js~KeyMap.html#instance-method-push",
+    "scripts/path.ux/scripts/simple_events.js~KeyMap#push",
+    "method"
   ],
   [
     "scripts/path.ux/scripts/simple_toolsys.js",
@@ -10656,6 +13338,12 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/path.ux/scripts/simple_toolsys.js~toolop#_overdraw",
+    "class/scripts/path.ux/scripts/simple_toolsys.js~ToolOp.html#instance-member-_overdraw",
+    "scripts/path.ux/scripts/simple_toolsys.js~ToolOp#_overdraw",
+    "member"
+  ],
+  [
     "scripts/path.ux/scripts/simple_toolsys.js~toolop#_promise",
     "class/scripts/path.ux/scripts/simple_toolsys.js~ToolOp.html#instance-member-_promise",
     "scripts/path.ux/scripts/simple_toolsys.js~ToolOp#_promise",
@@ -10716,6 +13404,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/simple_toolsys.js~toolop#execpost",
+    "class/scripts/path.ux/scripts/simple_toolsys.js~ToolOp.html#instance-method-execPost",
+    "scripts/path.ux/scripts/simple_toolsys.js~ToolOp#execPost",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/simple_toolsys.js~toolop#execpre",
     "class/scripts/path.ux/scripts/simple_toolsys.js~ToolOp.html#instance-method-execPre",
     "scripts/path.ux/scripts/simple_toolsys.js~ToolOp#execPre",
@@ -10732,6 +13426,12 @@ window.esdocSearchIndex = [
     "class/scripts/path.ux/scripts/simple_toolsys.js~ToolOp.html#instance-member-flag",
     "scripts/path.ux/scripts/simple_toolsys.js~ToolOp#flag",
     "member"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_toolsys.js~toolop#getoverdraw",
+    "class/scripts/path.ux/scripts/simple_toolsys.js~ToolOp.html#instance-method-getOverdraw",
+    "scripts/path.ux/scripts/simple_toolsys.js~ToolOp#getOverdraw",
+    "method"
   ],
   [
     "scripts/path.ux/scripts/simple_toolsys.js~toolop#inputs",
@@ -10752,6 +13452,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/simple_toolsys.js~toolop#modalrunning",
+    "class/scripts/path.ux/scripts/simple_toolsys.js~ToolOp.html#instance-member-modalRunning",
+    "scripts/path.ux/scripts/simple_toolsys.js~ToolOp#modalRunning",
+    "member"
+  ],
+  [
     "scripts/path.ux/scripts/simple_toolsys.js~toolop#modalstart",
     "class/scripts/path.ux/scripts/simple_toolsys.js~ToolOp.html#instance-method-modalStart",
     "scripts/path.ux/scripts/simple_toolsys.js~ToolOp#modalStart",
@@ -10761,12 +13467,6 @@ window.esdocSearchIndex = [
     "scripts/path.ux/scripts/simple_toolsys.js~toolop#modal_ctx",
     "class/scripts/path.ux/scripts/simple_toolsys.js~ToolOp.html#instance-member-modal_ctx",
     "scripts/path.ux/scripts/simple_toolsys.js~ToolOp#modal_ctx",
-    "member"
-  ],
-  [
-    "scripts/path.ux/scripts/simple_toolsys.js~toolop#modal_running",
-    "class/scripts/path.ux/scripts/simple_toolsys.js~ToolOp.html#instance-member-modal_running",
-    "scripts/path.ux/scripts/simple_toolsys.js~ToolOp#modal_running",
     "member"
   ],
   [
@@ -10866,15 +13566,21 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
-    "scripts/path.ux/scripts/simple_toolsys.js~toolstack#modal_running",
-    "class/scripts/path.ux/scripts/simple_toolsys.js~ToolStack.html#instance-member-modal_running",
-    "scripts/path.ux/scripts/simple_toolsys.js~ToolStack#modal_running",
+    "scripts/path.ux/scripts/simple_toolsys.js~toolstack#modalrunning",
+    "class/scripts/path.ux/scripts/simple_toolsys.js~ToolStack.html#instance-member-modalRunning",
+    "scripts/path.ux/scripts/simple_toolsys.js~ToolStack#modalRunning",
     "member"
   ],
   [
     "scripts/path.ux/scripts/simple_toolsys.js~toolstack#redo",
     "class/scripts/path.ux/scripts/simple_toolsys.js~ToolStack.html#instance-method-redo",
     "scripts/path.ux/scripts/simple_toolsys.js~ToolStack#redo",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/simple_toolsys.js~toolstack#reset",
+    "class/scripts/path.ux/scripts/simple_toolsys.js~ToolStack.html#instance-method-reset",
+    "scripts/path.ux/scripts/simple_toolsys.js~ToolStack#reset",
     "method"
   ],
   [
@@ -11004,9 +13710,27 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/path.ux/scripts/toolprop.js~flagproperty#constructor",
+    "class/scripts/path.ux/scripts/toolprop.js~FlagProperty.html#instance-constructor-constructor",
+    "scripts/path.ux/scripts/toolprop.js~FlagProperty#constructor",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/toolprop.js~flagproperty#copy",
     "class/scripts/path.ux/scripts/toolprop.js~FlagProperty.html#instance-method-copy",
     "scripts/path.ux/scripts/toolprop.js~FlagProperty#copy",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~flagproperty#data",
+    "class/scripts/path.ux/scripts/toolprop.js~FlagProperty.html#instance-member-data",
+    "scripts/path.ux/scripts/toolprop.js~FlagProperty#data",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~flagproperty#setvalue",
+    "class/scripts/path.ux/scripts/toolprop.js~FlagProperty.html#instance-method-setValue",
+    "scripts/path.ux/scripts/toolprop.js~FlagProperty#setValue",
     "method"
   ],
   [
@@ -11115,6 +13839,42 @@ window.esdocSearchIndex = [
     "scripts/path.ux/scripts/toolprop.js~intproperty#tojson",
     "class/scripts/path.ux/scripts/toolprop.js~IntProperty.html#instance-method-toJSON",
     "scripts/path.ux/scripts/toolprop.js~IntProperty#toJSON",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~mat4property#constructor",
+    "class/scripts/path.ux/scripts/toolprop.js~Mat4Property.html#instance-constructor-constructor",
+    "scripts/path.ux/scripts/toolprop.js~Mat4Property#constructor",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~mat4property#copy",
+    "class/scripts/path.ux/scripts/toolprop.js~Mat4Property.html#instance-method-copy",
+    "scripts/path.ux/scripts/toolprop.js~Mat4Property#copy",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~mat4property#copyto",
+    "class/scripts/path.ux/scripts/toolprop.js~Mat4Property.html#instance-method-copyTo",
+    "scripts/path.ux/scripts/toolprop.js~Mat4Property#copyTo",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~mat4property#data",
+    "class/scripts/path.ux/scripts/toolprop.js~Mat4Property.html#instance-member-data",
+    "scripts/path.ux/scripts/toolprop.js~Mat4Property#data",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~mat4property#getvalue",
+    "class/scripts/path.ux/scripts/toolprop.js~Mat4Property.html#instance-method-getValue",
+    "scripts/path.ux/scripts/toolprop.js~Mat4Property#getValue",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~mat4property#setvalue",
+    "class/scripts/path.ux/scripts/toolprop.js~Mat4Property.html#instance-method-setValue",
+    "scripts/path.ux/scripts/toolprop.js~Mat4Property#setValue",
     "method"
   ],
   [
@@ -11310,9 +14070,51 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/path.ux/scripts/toolprop.js~toolproperty#wasset",
+    "class/scripts/path.ux/scripts/toolprop.js~ToolProperty.html#instance-member-wasSet",
+    "scripts/path.ux/scripts/toolprop.js~ToolProperty#wasSet",
+    "member"
+  ],
+  [
     "scripts/path.ux/scripts/toolprop.js~toolproperty.register",
     "class/scripts/path.ux/scripts/toolprop.js~ToolProperty.html#static-method-register",
     "scripts/path.ux/scripts/toolprop.js~ToolProperty.register",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~vec3property#constructor",
+    "class/scripts/path.ux/scripts/toolprop.js~Vec3Property.html#instance-constructor-constructor",
+    "scripts/path.ux/scripts/toolprop.js~Vec3Property#constructor",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~vec3property#copy",
+    "class/scripts/path.ux/scripts/toolprop.js~Vec3Property.html#instance-method-copy",
+    "scripts/path.ux/scripts/toolprop.js~Vec3Property#copy",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~vec3property#copyto",
+    "class/scripts/path.ux/scripts/toolprop.js~Vec3Property.html#instance-method-copyTo",
+    "scripts/path.ux/scripts/toolprop.js~Vec3Property#copyTo",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~vec3property#data",
+    "class/scripts/path.ux/scripts/toolprop.js~Vec3Property.html#instance-member-data",
+    "scripts/path.ux/scripts/toolprop.js~Vec3Property#data",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~vec3property#getvalue",
+    "class/scripts/path.ux/scripts/toolprop.js~Vec3Property.html#instance-method-getValue",
+    "scripts/path.ux/scripts/toolprop.js~Vec3Property#getValue",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/toolprop.js~vec3property#setvalue",
+    "class/scripts/path.ux/scripts/toolprop.js~Vec3Property.html#instance-method-setValue",
+    "scripts/path.ux/scripts/toolprop.js~Vec3Property#setValue",
     "method"
   ],
   [
@@ -12048,6 +14850,12 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/path.ux/scripts/ui_base.js~iconmanager#load",
+    "class/scripts/path.ux/scripts/ui_base.js~IconManager.html#instance-method-load",
+    "scripts/path.ux/scripts/ui_base.js~IconManager#load",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/ui_base.js~iconmanager#reset",
     "class/scripts/path.ux/scripts/ui_base.js~IconManager.html#instance-method-reset",
     "scripts/path.ux/scripts/ui_base.js~IconManager#reset",
@@ -12175,13 +14983,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_base.js~uibase#ctx",
-    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-set-ctx",
+    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-get-ctx",
     "scripts/path.ux/scripts/ui_base.js~UIBase#ctx",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_base.js~uibase#ctx",
-    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-get-ctx",
+    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-set-ctx",
     "scripts/path.ux/scripts/ui_base.js~UIBase#ctx",
     "member"
   ],
@@ -12205,13 +15013,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_base.js~uibase#disabled",
-    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-get-disabled",
+    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-set-disabled",
     "scripts/path.ux/scripts/ui_base.js~UIBase#disabled",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_base.js~uibase#disabled",
-    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-set-disabled",
+    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-get-disabled",
     "scripts/path.ux/scripts/ui_base.js~UIBase#disabled",
     "member"
   ],
@@ -13033,13 +15841,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_curvewidget.js~curve#fastmode",
-    "class/scripts/path.ux/scripts/ui_curvewidget.js~Curve.html#instance-set-fastmode",
+    "class/scripts/path.ux/scripts/ui_curvewidget.js~Curve.html#instance-get-fastmode",
     "scripts/path.ux/scripts/ui_curvewidget.js~Curve#fastmode",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_curvewidget.js~curve#fastmode",
-    "class/scripts/path.ux/scripts/ui_curvewidget.js~Curve.html#instance-get-fastmode",
+    "class/scripts/path.ux/scripts/ui_curvewidget.js~Curve.html#instance-set-fastmode",
     "scripts/path.ux/scripts/ui_curvewidget.js~Curve#fastmode",
     "member"
   ],
@@ -13174,6 +15982,12 @@ window.esdocSearchIndex = [
     "class/scripts/path.ux/scripts/ui_curvewidget.js~CurvePoint.html#instance-member-flag",
     "scripts/path.ux/scripts/ui_curvewidget.js~CurvePoint#flag",
     "member"
+  ],
+  [
+    "scripts/path.ux/scripts/ui_curvewidget.js~curvepoint#loadstruct",
+    "class/scripts/path.ux/scripts/ui_curvewidget.js~CurvePoint.html#instance-method-loadSTRUCT",
+    "scripts/path.ux/scripts/ui_curvewidget.js~CurvePoint#loadSTRUCT",
+    "method"
   ],
   [
     "scripts/path.ux/scripts/ui_curvewidget.js~curvepoint#rco",
@@ -14287,13 +17101,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~check#checked",
-    "class/scripts/path.ux/scripts/ui_widgets.js~Check.html#instance-get-checked",
+    "class/scripts/path.ux/scripts/ui_widgets.js~Check.html#instance-set-checked",
     "scripts/path.ux/scripts/ui_widgets.js~Check#checked",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~check#checked",
-    "class/scripts/path.ux/scripts/ui_widgets.js~Check.html#instance-set-checked",
+    "class/scripts/path.ux/scripts/ui_widgets.js~Check.html#instance-get-checked",
     "scripts/path.ux/scripts/ui_widgets.js~Check#checked",
     "member"
   ],
@@ -14311,13 +17125,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~check#label",
-    "class/scripts/path.ux/scripts/ui_widgets.js~Check.html#instance-set-label",
+    "class/scripts/path.ux/scripts/ui_widgets.js~Check.html#instance-get-label",
     "scripts/path.ux/scripts/ui_widgets.js~Check#label",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~check#label",
-    "class/scripts/path.ux/scripts/ui_widgets.js~Check.html#instance-get-label",
+    "class/scripts/path.ux/scripts/ui_widgets.js~Check.html#instance-set-label",
     "scripts/path.ux/scripts/ui_widgets.js~Check#label",
     "member"
   ],
@@ -14509,13 +17323,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~iconcheck#checked",
-    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-set-checked",
+    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-get-checked",
     "scripts/path.ux/scripts/ui_widgets.js~IconCheck#checked",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~iconcheck#checked",
-    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-get-checked",
+    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-set-checked",
     "scripts/path.ux/scripts/ui_widgets.js~IconCheck#checked",
     "member"
   ],
@@ -14551,12 +17365,6 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~iconcheck#icon",
-    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-get-icon",
-    "scripts/path.ux/scripts/ui_widgets.js~IconCheck#icon",
-    "member"
-  ],
-  [
-    "scripts/path.ux/scripts/ui_widgets.js~iconcheck#icon",
     "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-set-icon",
     "scripts/path.ux/scripts/ui_widgets.js~IconCheck#icon",
     "member"
@@ -14570,6 +17378,12 @@ window.esdocSearchIndex = [
   [
     "scripts/path.ux/scripts/ui_widgets.js~iconcheck#icon",
     "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-set-icon",
+    "scripts/path.ux/scripts/ui_widgets.js~IconCheck#icon",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/ui_widgets.js~iconcheck#icon",
+    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-get-icon",
     "scripts/path.ux/scripts/ui_widgets.js~IconCheck#icon",
     "member"
   ],
@@ -15390,6 +18204,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/vectormath.js~matrix4#loadstruct",
+    "class/scripts/path.ux/scripts/vectormath.js~Matrix4.html#instance-method-loadSTRUCT",
+    "scripts/path.ux/scripts/vectormath.js~Matrix4#loadSTRUCT",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/vectormath.js~matrix4#lookat",
     "class/scripts/path.ux/scripts/vectormath.js~Matrix4.html#instance-method-lookat",
     "scripts/path.ux/scripts/vectormath.js~Matrix4#lookat",
@@ -15399,6 +18219,12 @@ window.esdocSearchIndex = [
     "scripts/path.ux/scripts/vectormath.js~matrix4#makeidentity",
     "class/scripts/path.ux/scripts/vectormath.js~Matrix4.html#instance-method-makeIdentity",
     "scripts/path.ux/scripts/vectormath.js~Matrix4#makeIdentity",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/vectormath.js~matrix4#makenormalmatrix",
+    "class/scripts/path.ux/scripts/vectormath.js~Matrix4.html#instance-method-makeNormalMatrix",
+    "scripts/path.ux/scripts/vectormath.js~Matrix4#makeNormalMatrix",
     "method"
   ],
   [
@@ -15480,12 +18306,6 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/path.ux/scripts/vectormath.js~matrix4.fromstruct",
-    "class/scripts/path.ux/scripts/vectormath.js~Matrix4.html#static-method-fromSTRUCT",
-    "scripts/path.ux/scripts/vectormath.js~Matrix4.fromSTRUCT",
-    "method"
-  ],
-  [
     "scripts/path.ux/scripts/vectormath.js~quat#[0]",
     "class/scripts/path.ux/scripts/vectormath.js~Quat.html#instance-member-[0]",
     "scripts/path.ux/scripts/vectormath.js~Quat#[0]",
@@ -15537,6 +18357,12 @@ window.esdocSearchIndex = [
     "scripts/path.ux/scripts/vectormath.js~quat#iszero",
     "class/scripts/path.ux/scripts/vectormath.js~Quat.html#instance-method-isZero",
     "scripts/path.ux/scripts/vectormath.js~Quat#isZero",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/vectormath.js~quat#loadstruct",
+    "class/scripts/path.ux/scripts/vectormath.js~Quat.html#instance-method-loadSTRUCT",
+    "scripts/path.ux/scripts/vectormath.js~Quat#loadSTRUCT",
     "method"
   ],
   [
@@ -15594,12 +18420,6 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/path.ux/scripts/vectormath.js~quat.fromstruct",
-    "class/scripts/path.ux/scripts/vectormath.js~Quat.html#static-method-fromSTRUCT",
-    "scripts/path.ux/scripts/vectormath.js~Quat.fromSTRUCT",
-    "method"
-  ],
-  [
     "scripts/path.ux/scripts/vectormath.js~vector2#[0]",
     "class/scripts/path.ux/scripts/vectormath.js~Vector2.html#instance-member-[0]",
     "scripts/path.ux/scripts/vectormath.js~Vector2#[0]",
@@ -15609,12 +18429,6 @@ window.esdocSearchIndex = [
     "scripts/path.ux/scripts/vectormath.js~vector2#[1]",
     "class/scripts/path.ux/scripts/vectormath.js~Vector2.html#instance-member-[1]",
     "scripts/path.ux/scripts/vectormath.js~Vector2#[1]",
-    "member"
-  ],
-  [
-    "scripts/path.ux/scripts/vectormath.js~vector2#[2]",
-    "class/scripts/path.ux/scripts/vectormath.js~Vector2.html#instance-member-[2]",
-    "scripts/path.ux/scripts/vectormath.js~Vector2#[2]",
     "member"
   ],
   [
@@ -15648,9 +18462,27 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/vectormath.js~vector2#loadstruct",
+    "class/scripts/path.ux/scripts/vectormath.js~Vector2.html#instance-method-loadSTRUCT",
+    "scripts/path.ux/scripts/vectormath.js~Vector2#loadSTRUCT",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/vectormath.js~vector2#loadxy",
+    "class/scripts/path.ux/scripts/vectormath.js~Vector2.html#instance-method-loadXY",
+    "scripts/path.ux/scripts/vectormath.js~Vector2#loadXY",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/vectormath.js~vector2#mulvecquat",
     "class/scripts/path.ux/scripts/vectormath.js~Vector2.html#instance-method-mulVecQuat",
     "scripts/path.ux/scripts/vectormath.js~Vector2#mulVecQuat",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/vectormath.js~vector2#multvecmatrix",
+    "class/scripts/path.ux/scripts/vectormath.js~Vector2.html#instance-method-multVecMatrix",
+    "scripts/path.ux/scripts/vectormath.js~Vector2#multVecMatrix",
     "method"
   ],
   [
@@ -15663,12 +18495,6 @@ window.esdocSearchIndex = [
     "scripts/path.ux/scripts/vectormath.js~vector2#tojson",
     "class/scripts/path.ux/scripts/vectormath.js~Vector2.html#instance-method-toJSON",
     "scripts/path.ux/scripts/vectormath.js~Vector2#toJSON",
-    "method"
-  ],
-  [
-    "scripts/path.ux/scripts/vectormath.js~vector2.fromstruct",
-    "class/scripts/path.ux/scripts/vectormath.js~Vector2.html#static-method-fromSTRUCT",
-    "scripts/path.ux/scripts/vectormath.js~Vector2.fromSTRUCT",
     "method"
   ],
   [
@@ -15732,6 +18558,18 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/vectormath.js~vector3#loadstruct",
+    "class/scripts/path.ux/scripts/vectormath.js~Vector3.html#instance-method-loadSTRUCT",
+    "scripts/path.ux/scripts/vectormath.js~Vector3#loadSTRUCT",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/vectormath.js~vector3#loadxyz",
+    "class/scripts/path.ux/scripts/vectormath.js~Vector3.html#instance-method-loadXYZ",
+    "scripts/path.ux/scripts/vectormath.js~Vector3#loadXYZ",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/vectormath.js~vector3#multvecmatrix",
     "class/scripts/path.ux/scripts/vectormath.js~Vector3.html#instance-method-multVecMatrix",
     "scripts/path.ux/scripts/vectormath.js~Vector3#multVecMatrix",
@@ -15756,15 +18594,15 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/path.ux/scripts/vectormath.js~vector3#tojson",
-    "class/scripts/path.ux/scripts/vectormath.js~Vector3.html#instance-method-toJSON",
-    "scripts/path.ux/scripts/vectormath.js~Vector3#toJSON",
+    "scripts/path.ux/scripts/vectormath.js~vector3#tocss",
+    "class/scripts/path.ux/scripts/vectormath.js~Vector3.html#instance-method-toCSS",
+    "scripts/path.ux/scripts/vectormath.js~Vector3#toCSS",
     "method"
   ],
   [
-    "scripts/path.ux/scripts/vectormath.js~vector3.fromstruct",
-    "class/scripts/path.ux/scripts/vectormath.js~Vector3.html#static-method-fromSTRUCT",
-    "scripts/path.ux/scripts/vectormath.js~Vector3.fromSTRUCT",
+    "scripts/path.ux/scripts/vectormath.js~vector3#tojson",
+    "class/scripts/path.ux/scripts/vectormath.js~Vector3.html#instance-method-toJSON",
+    "scripts/path.ux/scripts/vectormath.js~Vector3#toJSON",
     "method"
   ],
   [
@@ -15828,6 +18666,24 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/vectormath.js~vector4#loadstruct",
+    "class/scripts/path.ux/scripts/vectormath.js~Vector4.html#instance-method-loadSTRUCT",
+    "scripts/path.ux/scripts/vectormath.js~Vector4#loadSTRUCT",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/vectormath.js~vector4#loadxyz",
+    "class/scripts/path.ux/scripts/vectormath.js~Vector4.html#instance-method-loadXYZ",
+    "scripts/path.ux/scripts/vectormath.js~Vector4#loadXYZ",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/vectormath.js~vector4#loadxyzw",
+    "class/scripts/path.ux/scripts/vectormath.js~Vector4.html#instance-method-loadXYZW",
+    "scripts/path.ux/scripts/vectormath.js~Vector4#loadXYZW",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/vectormath.js~vector4#mulvecquat",
     "class/scripts/path.ux/scripts/vectormath.js~Vector4.html#instance-method-mulVecQuat",
     "scripts/path.ux/scripts/vectormath.js~Vector4#mulVecQuat",
@@ -15846,9 +18702,9 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/path.ux/scripts/vectormath.js~vector4.fromstruct",
-    "class/scripts/path.ux/scripts/vectormath.js~Vector4.html#static-method-fromSTRUCT",
-    "scripts/path.ux/scripts/vectormath.js~Vector4.fromSTRUCT",
+    "scripts/path.ux/scripts/vectormath.js~vector4#tocss",
+    "class/scripts/path.ux/scripts/vectormath.js~Vector4.html#instance-method-toCSS",
+    "scripts/path.ux/scripts/vectormath.js~Vector4#toCSS",
     "method"
   ],
   [
@@ -15856,6 +18712,210 @@ window.esdocSearchIndex = [
     "file/scripts/path.ux/serv.js.html",
     "scripts/path.ux/serv.js",
     "file"
+  ],
+  [
+    "scripts/subsurf/old/draw.js",
+    "file/scripts/subsurf/old/draw.js.html",
+    "scripts/subsurf/old/draw.js",
+    "file"
+  ],
+  [
+    "scripts/subsurf/old/elementarray.js",
+    "file/scripts/subsurf/old/elementarray.js.html",
+    "scripts/subsurf/old/elementarray.js",
+    "file"
+  ],
+  [
+    "scripts/subsurf/old/mesh.js",
+    "file/scripts/subsurf/old/mesh.js.html",
+    "scripts/subsurf/old/mesh.js",
+    "file"
+  ],
+  [
+    "scripts/subsurf/old/patch.js",
+    "file/scripts/subsurf/old/patch.js.html",
+    "scripts/subsurf/old/patch.js",
+    "file"
+  ],
+  [
+    "scripts/subsurf/old/subdiv.js",
+    "file/scripts/subsurf/old/subdiv.js.html",
+    "scripts/subsurf/old/subdiv.js",
+    "file"
+  ],
+  [
+    "scripts/subsurf/old/vectormath.js",
+    "file/scripts/subsurf/old/vectormath.js.html",
+    "scripts/subsurf/old/vectormath.js",
+    "file"
+  ],
+  [
+    "scripts/subsurf/subsurf_base.js",
+    "file/scripts/subsurf/subsurf_base.js.html",
+    "scripts/subsurf/subsurf_base.js",
+    "file"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js",
+    "file/scripts/subsurf/subsurf_draw.js.html",
+    "scripts/subsurf/subsurf_draw.js",
+    "file"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfdrawer#cache",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfDrawer.html#instance-member-cache",
+    "scripts/subsurf/subsurf_draw.js~SubsurfDrawer#cache",
+    "member"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfdrawer#constructor",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfDrawer.html#instance-constructor-constructor",
+    "scripts/subsurf/subsurf_draw.js~SubsurfDrawer#constructor",
+    "method"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfdrawer#draw",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfDrawer.html#instance-method-draw",
+    "scripts/subsurf/subsurf_draw.js~SubsurfDrawer#draw",
+    "method"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfdrawer#get",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfDrawer.html#instance-method-get",
+    "scripts/subsurf/subsurf_draw.js~SubsurfDrawer#get",
+    "method"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#constructor",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-constructor-constructor",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#constructor",
+    "method"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#draw",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-method-draw",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#draw",
+    "method"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#generate",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-method-generate",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#generate",
+    "method"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#mesh_ref",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-member-mesh_ref",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#mesh_ref",
+    "member"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#needsrecalc",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-method-needsRecalc",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#needsRecalc",
+    "method"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#origedges",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-member-origedges",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#origedges",
+    "member"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#origfaces",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-member-origfaces",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#origfaces",
+    "member"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#origverts",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-member-origverts",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#origverts",
+    "member"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#ototedge",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-member-ototedge",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#ototedge",
+    "member"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#ototface",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-member-ototface",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#ototface",
+    "member"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#ototvert",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-member-ototvert",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#ototvert",
+    "member"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#patches",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-member-patches",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#patches",
+    "member"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#smesh",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-member-smesh",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#smesh",
+    "member"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#syncverts",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-method-syncVerts",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#syncVerts",
+    "method"
+  ],
+  [
+    "scripts/subsurf/subsurf_draw.js~subsurfmesh#update",
+    "class/scripts/subsurf/subsurf_draw.js~SubsurfMesh.html#instance-method-update",
+    "scripts/subsurf/subsurf_draw.js~SubsurfMesh#update",
+    "method"
+  ],
+  [
+    "scripts/subsurf/subsurf_mesh.js",
+    "file/scripts/subsurf/subsurf_mesh.js.html",
+    "scripts/subsurf/subsurf_mesh.js",
+    "file"
+  ],
+  [
+    "scripts/subsurf/subsurf_patch.js",
+    "file/scripts/subsurf/subsurf_patch.js.html",
+    "scripts/subsurf/subsurf_patch.js",
+    "file"
+  ],
+  [
+    "scripts/subsurf/subsurf_patch.js~patch#constructor",
+    "class/scripts/subsurf/subsurf_patch.js~Patch.html#instance-constructor-constructor",
+    "scripts/subsurf/subsurf_patch.js~Patch#constructor",
+    "method"
+  ],
+  [
+    "scripts/subsurf/subsurf_patch.js~patch#degree",
+    "class/scripts/subsurf/subsurf_patch.js~Patch.html#instance-member-degree",
+    "scripts/subsurf/subsurf_patch.js~Patch#degree",
+    "member"
+  ],
+  [
+    "scripts/subsurf/subsurf_patch.js~patch#eval",
+    "class/scripts/subsurf/subsurf_patch.js~Patch.html#instance-method-eval",
+    "scripts/subsurf/subsurf_patch.js~Patch#eval",
+    "method"
+  ],
+  [
+    "scripts/subsurf/subsurf_patch.js~patch#points",
+    "class/scripts/subsurf/subsurf_patch.js~Patch.html#instance-member-points",
+    "scripts/subsurf/subsurf_patch.js~Patch#points",
+    "member"
+  ],
+  [
+    "scripts/subsurf/subsurf_patch.js~patch#size",
+    "class/scripts/subsurf/subsurf_patch.js~Patch.html#instance-member-size",
+    "scripts/subsurf/subsurf_patch.js~Patch#size",
+    "member"
   ],
   [
     "scripts/util/binarylib.js",
@@ -16374,6 +19434,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/util/util.js~idgen#copy",
+    "class/scripts/util/util.js~IDGen.html#instance-method-copy",
+    "scripts/util/util.js~IDGen#copy",
+    "method"
+  ],
+  [
     "scripts/util/util.js~idgen#max_cur",
     "class/scripts/util/util.js~IDGen.html#instance-method-max_cur",
     "scripts/util/util.js~IDGen#max_cur",
@@ -16395,12 +19461,6 @@ window.esdocSearchIndex = [
     "scripts/util/util.js~idgen.fromjson",
     "class/scripts/util/util.js~IDGen.html#static-method-fromJSON",
     "scripts/util/util.js~IDGen.fromJSON",
-    "method"
-  ],
-  [
-    "scripts/util/util.js~idgen.fromstruct",
-    "class/scripts/util/util.js~IDGen.html#static-method-fromSTRUCT",
-    "scripts/util/util.js~IDGen.fromSTRUCT",
     "method"
   ],
   [

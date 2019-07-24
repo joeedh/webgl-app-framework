@@ -105,10 +105,10 @@
                   }
                 },
                 "extra": {
-                  "rawValue": 100,
-                  "raw": "100"
+                  "rawValue": 101,
+                  "raw": "101"
                 },
-                "value": 100
+                "value": 101
               }
             }
           ],
@@ -600,7 +600,7 @@
         "binop": null,
         "updateContext": null
       },
-      "value": 100,
+      "value": 101,
       "start": 27,
       "end": 30,
       "loc": {

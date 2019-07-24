@@ -1,28 +1,28 @@
 {
   "type": "File",
   "start": 0,
-  "end": 362,
+  "end": 346,
   "loc": {
     "start": {
       "line": 1,
       "column": 0
     },
     "end": {
-      "line": 22,
+      "line": 21,
       "column": 0
     }
   },
   "program": {
     "type": "Program",
     "start": 0,
-    "end": 362,
+    "end": 346,
     "loc": {
       "start": {
         "line": 1,
         "column": 0
       },
       "end": {
-        "line": 22,
+        "line": 21,
         "column": 0
       }
     },
@@ -108,10 +108,10 @@
             }
           },
           "extra": {
-            "rawValue": "../../core/mesh.js",
-            "raw": "'../../core/mesh.js'"
+            "rawValue": "../../mesh/mesh.js",
+            "raw": "'../../mesh/mesh.js'"
           },
-          "value": "../../core/mesh.js"
+          "value": "../../mesh/mesh.js"
         }
       },
       {
@@ -619,7 +619,7 @@
       {
         "type": "ExportNamedDeclaration",
         "start": 215,
-        "end": 358,
+        "end": 344,
         "loc": {
           "start": {
             "line": 15,
@@ -635,7 +635,7 @@
         "declaration": {
           "type": "VariableDeclaration",
           "start": 222,
-          "end": 358,
+          "end": 344,
           "loc": {
             "start": {
               "line": 15,
@@ -650,7 +650,7 @@
             {
               "type": "VariableDeclarator",
               "start": 228,
-              "end": 357,
+              "end": 343,
               "loc": {
                 "start": {
                   "line": 15,
@@ -681,7 +681,7 @@
               "init": {
                 "type": "ObjectExpression",
                 "start": 238,
-                "end": 357,
+                "end": 343,
                 "loc": {
                   "start": {
                     "line": 15,
@@ -808,9 +808,9 @@
                           "line": 17,
                           "column": 6
                         },
-                        "identifierName": "FACE"
+                        "identifierName": "EDGE"
                       },
-                      "name": "FACE"
+                      "name": "EDGE"
                     },
                     "value": {
                       "type": "MemberExpression",
@@ -856,9 +856,9 @@
                             "line": 17,
                             "column": 25
                           },
-                          "identifierName": "FACE"
+                          "identifierName": "EDGE"
                         },
-                        "name": "FACE"
+                        "name": "EDGE"
                       },
                       "computed": false
                     }
@@ -893,9 +893,9 @@
                           "line": 18,
                           "column": 6
                         },
-                        "identifierName": "EDGE"
+                        "identifierName": "FACE"
                       },
-                      "name": "EDGE"
+                      "name": "FACE"
                     },
                     "value": {
                       "type": "MemberExpression",
@@ -941,9 +941,9 @@
                             "line": 18,
                             "column": 25
                           },
-                          "identifierName": "EDGE"
+                          "identifierName": "FACE"
                         },
-                        "name": "EDGE"
+                        "name": "FACE"
                       },
                       "computed": false
                     }
@@ -951,7 +951,7 @@
                   {
                     "type": "ObjectProperty",
                     "start": 329,
-                    "end": 354,
+                    "end": 340,
                     "loc": {
                       "start": {
                         "line": 19,
@@ -959,7 +959,7 @@
                       },
                       "end": {
                         "line": 19,
-                        "column": 27
+                        "column": 13
                       }
                     },
                     "method": false,
@@ -983,9 +983,9 @@
                       "name": "OBJECT"
                     },
                     "value": {
-                      "type": "MemberExpression",
+                      "type": "NumericLiteral",
                       "start": 338,
-                      "end": 354,
+                      "end": 340,
                       "loc": {
                         "start": {
                           "line": 19,
@@ -993,44 +993,14 @@
                         },
                         "end": {
                           "line": 19,
-                          "column": 27
+                          "column": 13
                         }
                       },
-                      "object": {
-                        "type": "Identifier",
-                        "start": 338,
-                        "end": 347,
-                        "loc": {
-                          "start": {
-                            "line": 19,
-                            "column": 11
-                          },
-                          "end": {
-                            "line": 19,
-                            "column": 20
-                          },
-                          "identifierName": "MeshTypes"
-                        },
-                        "name": "MeshTypes"
+                      "extra": {
+                        "rawValue": 32,
+                        "raw": "32"
                       },
-                      "property": {
-                        "type": "Identifier",
-                        "start": 348,
-                        "end": 354,
-                        "loc": {
-                          "start": {
-                            "line": 19,
-                            "column": 21
-                          },
-                          "end": {
-                            "line": 19,
-                            "column": 27
-                          },
-                          "identifierName": "OBJECT"
-                        },
-                        "name": "OBJECT"
-                      },
-                      "computed": false
+                      "value": 32
                     }
                   }
                 ]
@@ -1190,7 +1160,7 @@
         "binop": null,
         "updateContext": null
       },
-      "value": "../../core/mesh.js",
+      "value": "../../mesh/mesh.js",
       "start": 24,
       "end": 44,
       "loc": {
@@ -2506,7 +2476,7 @@
         "postfix": false,
         "binop": null
       },
-      "value": "FACE",
+      "value": "EDGE",
       "start": 273,
       "end": 277,
       "loc": {
@@ -2610,7 +2580,7 @@
         "postfix": false,
         "binop": null
       },
-      "value": "FACE",
+      "value": "EDGE",
       "start": 292,
       "end": 296,
       "loc": {
@@ -2662,7 +2632,7 @@
         "postfix": false,
         "binop": null
       },
-      "value": "EDGE",
+      "value": "FACE",
       "start": 301,
       "end": 305,
       "loc": {
@@ -2766,7 +2736,7 @@
         "postfix": false,
         "binop": null
       },
-      "value": "EDGE",
+      "value": "FACE",
       "start": 320,
       "end": 324,
       "loc": {
@@ -2860,35 +2830,9 @@
     },
     {
       "type": {
-        "label": "name",
+        "label": "num",
         "beforeExpr": false,
         "startsExpr": true,
-        "rightAssociative": false,
-        "isLoop": false,
-        "isAssign": false,
-        "prefix": false,
-        "postfix": false,
-        "binop": null
-      },
-      "value": "MeshTypes",
-      "start": 338,
-      "end": 347,
-      "loc": {
-        "start": {
-          "line": 19,
-          "column": 11
-        },
-        "end": {
-          "line": 19,
-          "column": 20
-        }
-      }
-    },
-    {
-      "type": {
-        "label": ".",
-        "beforeExpr": false,
-        "startsExpr": false,
         "rightAssociative": false,
         "isLoop": false,
         "isAssign": false,
@@ -2897,42 +2841,17 @@
         "binop": null,
         "updateContext": null
       },
-      "start": 347,
-      "end": 348,
+      "value": 32,
+      "start": 338,
+      "end": 340,
       "loc": {
         "start": {
           "line": 19,
-          "column": 20
+          "column": 11
         },
         "end": {
           "line": 19,
-          "column": 21
-        }
-      }
-    },
-    {
-      "type": {
-        "label": "name",
-        "beforeExpr": false,
-        "startsExpr": true,
-        "rightAssociative": false,
-        "isLoop": false,
-        "isAssign": false,
-        "prefix": false,
-        "postfix": false,
-        "binop": null
-      },
-      "value": "OBJECT",
-      "start": 348,
-      "end": 354,
-      "loc": {
-        "start": {
-          "line": 19,
-          "column": 21
-        },
-        "end": {
-          "line": 19,
-          "column": 27
+          "column": 13
         }
       }
     },
@@ -2948,8 +2867,8 @@
         "postfix": false,
         "binop": null
       },
-      "start": 356,
-      "end": 357,
+      "start": 342,
+      "end": 343,
       "loc": {
         "start": {
           "line": 20,
@@ -2974,8 +2893,8 @@
         "binop": null,
         "updateContext": null
       },
-      "start": 357,
-      "end": 358,
+      "start": 343,
+      "end": 344,
       "loc": {
         "start": {
           "line": 20,
@@ -3000,15 +2919,15 @@
         "binop": null,
         "updateContext": null
       },
-      "start": 362,
-      "end": 362,
+      "start": 346,
+      "end": 346,
       "loc": {
         "start": {
-          "line": 22,
+          "line": 21,
           "column": 0
         },
         "end": {
-          "line": 22,
+          "line": 21,
           "column": 0
         }
       }

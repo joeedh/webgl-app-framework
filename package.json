@@ -3,6 +3,7 @@
     "esdoc": "^1.1.0"
   },
   "dependencies": {
-    "btoa": "^1.2.1"
+    "btoa": "^1.2.1",
+    "esdoc-standard-plugin": "^1.0.0"
   }
 }
