@@ -32,7 +32,9 @@
     <ul class="manual-toc">
       
     <li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#introduction" data-ice="link">Introduction</a></li>
-<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#data-bindings" data-ice="link">Data Bindings</a></li>
+<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#context" data-ice="link">Context</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/architecture.html"><a href="manual/architecture.html#tool-contexts" data-ice="link">Tool Contexts</a></li>
+<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#history" data-ice="link">History</a></li>
 </ul>
   </div>
 <div data-ice="manual">
@@ -99,17 +101,19 @@ It uses path.ux, a UI framework that is also based on Blender.</p>
     
   <div class="manual-card-wrap" data-ice="cards">
       <div class="manual-card">
-        <div data-ice="card"><h1>Data Bindings</h1><p><a href="./manual/manual/controller.html">Main page</a></p><p>The Blender 2.5 project refactored the internal architecture into a rough MVC pattern.  The model is the core code, the view is the UI, and the controller is the glue between them.</p><p>The controller is called &quot;RNA&quot; and it uses the concept of object paths. So if you have an object, you could look up type information (and the value of) a property with a simple path, e.g. &quot;object.subobject.some_property&quot;.  Blender uses RNA for its user interface, its python api and its animation system (you can associate object paths with animation curves).</p><p>Internally the controller has a special wrapper API for blender&apos;s c-struct-based pseudo-objects.  This works extremely well as it keeps type information that&apos;s only used by the UI out of the model codebase (e.g. the model might not care that a specific color should be clamped to 0-2 instead of 0-1).  Even better, the object model presented by the controller need not match the internal data structures.</p><p>Since the controller provides type info to the UI a lot of messy boilerplate is avoided, leading to very consise layout code:</p><pre><code><code class="source-code prettyprint">def panel(layout, context):
+        <div data-ice="card"><h1>History</h1><p>Path.ux is roughly based on <a href="http://www.blender.org">Blender&apos;s</a> architecture.</p><p><a href="./manual/manual/controller.html">Main page</a></p><p>The Blender 2.5 project refactored the internal architecture into a rough MVC pattern.  The model is the core code, the view is the UI, and the controller is the glue between them.</p><p>The controller is called &quot;RNA&quot; and it uses the concept of object paths. So if you have an object, you could look up type information (and the value of) a property with a simple path, e.g. &quot;object.subobject.some_property&quot;.  Blender uses RNA for its user interface, its python api and its animation system (you can associate object paths with animation curves).</p><p>Internally the controller has a special wrapper API for blender&apos;s c-struct-based pseudo-objects.  This works extremely well as it keeps type information that&apos;s only used by the UI out of the model codebase (e.g. the model might not care that a specific color should be clamped to 0-2 instead of 0-1).  Even better, the object model presented by the controller need not match the internal data structures.</p><p>Since the controller provides type info to the UI a lot of messy boilerplate is avoided, leading to very consise layout code:</p><pre><code><code class="source-code prettyprint">def panel(layout, context):
     row = layout.row
     row.prop(context.object, &quot;some_object_property&quot;)
     row.tool(&quot;mesh.subdivide&quot;)</code>
 </code></pre></div>
-        <a data-ice="link" href="manual/architecture.html#data-bindings"></a>
+        <a data-ice="link" href="manual/architecture.html#history"></a>
       </div>
     </div>
 <div class="manual-card-wrap" data-ice="cards">
       <div class="manual-card">
-        <div data-ice="card"><h1>NStructJS</h1><p>NStructJS is a little library for saving/loading highly structured JS objects as binary data.<br>It is not suited for unstructed data (use JSON for that).<br>NStructJS arose out of the following shortcomings of JSON:</p><ul>
+        <div data-ice="card"><h1>NStructJS</h1><p>NStructJS is a little library for saving/loading highly structured JS objects as binary data
+(for more info, see the <a href="https://github.com/joeedh/STRUCT/wiki">official documentation</a> ).
+It is not suited for unstructed data (use JSON for that).<br>NStructJS arose out of the following shortcomings of JSON:</p><ul>
 <li>JSON allocates objects twice.</li>
 <li>JSON is slow compared to what you can get with a structured binary format</li>
 </ul><p>The idea of NStructJS is to attach little scripts to your classes that define that 

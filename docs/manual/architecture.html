@@ -32,7 +32,9 @@
     <ul class="manual-toc">
       
     <li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#introduction" data-ice="link">Introduction</a></li>
-<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#data-bindings" data-ice="link">Data Bindings</a></li>
+<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#context" data-ice="link">Context</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/architecture.html"><a href="manual/architecture.html#tool-contexts" data-ice="link">Tool Contexts</a></li>
+<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#history" data-ice="link">History</a></li>
 </ul>
   </div>
 <div data-ice="manual">
@@ -79,8 +81,85 @@
 </div>
 </nav>
 
-<div class="content" data-ice="content"><div class="github-markdown" data-ice="content"><h1 id="introduction">Introduction</h1><p>Path.ux is roughly based on <a href="http://www.blender.org">Blender&apos;s</a> architecture.</p>
-<h1 id="data-bindings">Data Bindings</h1><p><a href="./manual/manual/controller.html">Main page</a></p>
+<div class="content" data-ice="content"><div class="github-markdown" data-ice="content"><h1 id="introduction">Introduction</h1><p>Path.ux follows a strict model/view/controller paradigm.  The application state
+is the model, path.ux is the (or a) view, and the controller is the means by which
+path.ux queries the model.</p>
+<p>The controller is based on the concept of object paths.<br>For example, you might see code like this:</p>
+<pre><code><code class="source-code prettyprint">function makePanel(layout) {
+  layout.prop(&quot;view3d.selectmode&quot;, PackFlags.USE_ICONS);
+  layout.tool(&quot;view3d.select_all()&quot;, PackFlags.USE_ICONS);
+}</code>
+</code></pre><p>The controller is responsible for telling path.ux what type &quot;view3d.selectmode&quot; is, 
+what its icon is, the current value, etc.  Similarly the controller tells path.ux
+what the tool view3d.select_all() is: it&apos;s icon, if it can run in the current context (more on context later),
+it&apos;s hotkey, etc.</p>
+<p>Path.ux allows different controller implementations (though they must all pass type information via the 
+classes in toolprop.js).  The included implementation can be found in &quot;simple_controller.js&quot;, and the abstract interface
+in &quot;controller.js&quot;.</p>
+<h1 id="context">Context</h1><p>Contexts are bundles of data that tell the UI (and tools, and whatever else needs them) the current application state.</p>
+<p>Path.ux requires the following context abstract class:</p>
+<pre><code><code class="source-code prettyprint">class Context {
+  get screen() {
+    //get current Screen instance, or instance of a subclass of it
+  }
+
+  get area() {
+    //get active area editor
+    return Area.getActiveArea()
+  }
+
+  get state() {
+    //get application state
+  }
+
+  get api() {
+    //returns a subclass of controller.js:ModalInterface
+    //this is the controller
+  }
+
+  get toolstack() {
+    //returns an instance (or subclass instance) of simple_toolsys.js:ToolStack
+  }
+}</code>
+</code></pre><p>To use a ctx class, simply assign an instance of one 
+to .ctx on a Screen instance.  For example:</p>
+<pre><code><code class="source-code prettyprint">let screen = document.createElement(&quot;screen-x&quot;);
+screen.ctx = new Context();</code>
+</code></pre><h2 id="tool-contexts">Tool Contexts</h2><p>It&apos;s encouraged to have a restricted Context struct for the model to use, and have 
+path.ux&apos;s context subclass off of that.  This is so the model doesnt have access to 
+the screen and area properties.  For example:</p>
+<pre><code><code class="source-code prettyprint">class ToolContext {
+  get state() {
+    //get application state
+  }
+
+  get api() {
+    //returns a subclass of controller.js:ModalInterface
+    //this is the controller
+  }
+
+  get toolstack() {
+    //returns an instance (or subclass instance) of simple_toolsys.js:ToolStack
+  }
+
+  get selected_3d_object() {
+    //this is how you would pass things like the current selected object in
+    //CAD apps to tool operators.
+  }
+}
+
+class Context extends ToolContext {
+  get screen() {
+    //get current Screen instance, or instance of a subclass of it
+  }
+
+  get area() {
+    //get active area editor
+    return Area.getActiveArea()
+  }
+}</code>
+</code></pre><h1 id="history">History</h1><p>Path.ux is roughly based on <a href="http://www.blender.org">Blender&apos;s</a> architecture.</p>
+<p><a href="./manual/manual/controller.html">Main page</a></p>
 <p>The Blender 2.5 project refactored the internal architecture into a rough MVC pattern.  The model is the core code, the view is the UI, and the controller is the glue between them.</p>
 <p>The controller is called &quot;RNA&quot; and it uses the concept of object paths. So if you have an object, you could look up type information (and the value of) a property with a simple path, e.g. &quot;object.subobject.some_property&quot;.  Blender uses RNA for its user interface, its python api and its animation system (you can associate object paths with animation curves).</p>
 <p>Internally the controller has a special wrapper API for blender&apos;s c-struct-based pseudo-objects.  This works extremely well as it keeps type information that&apos;s only used by the UI out of the model codebase (e.g. the model might not care that a specific color should be clamped to 0-2 instead of 0-1).  Even better, the object model presented by the controller need not match the internal data structures.</p>
