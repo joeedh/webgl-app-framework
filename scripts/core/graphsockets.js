@@ -7,8 +7,12 @@ import {Vector2, Vector3, Vector4, Matrix4} from '../util/vectormath.js';
 export class Matrix4Socket extends NodeSocketType {
   constructor(uiname, flag, default_value) {
     super(uiname, flag);
-    
+
     this.value = new Matrix4(default_value);
+
+    if (default_value === undefined) {
+      this.value.makeIdentity();
+    }
   }
   
   static nodedef() {return {
@@ -112,6 +116,50 @@ DependSocket.STRUCT = STRUCT.inherit(DependSocket, NodeSocketType, "graph.Depend
 `;
 nstructjs.manager.add_class(DependSocket);
 
+export class Vec2Socket extends NodeSocketType {
+  constructor(uiname, flag, default_value) {
+    super(uiname, flag);
+
+    this.value = new Vector2(default_value);
+  }
+
+  static nodedef() {return {
+    name : "Vec2",
+    uiname : "Vector",
+    color : [0.25, 0.45, 1.0, 1]
+  }}
+
+  copyTo(b) {
+    b.value.load(this.value);
+  }
+
+  diffValue(b) {
+    return this.value.vectorDistance(b);
+  }
+
+  copyValue() {
+    return new Vector2(this.value);
+  }
+
+  getValue() {
+    return this.value;
+  }
+
+  setValue(b) {
+    this.value.load(b);
+  }
+
+  //eh. . .dot product?
+  cmpValue(b) {
+    return this.value.dot(b);
+  }
+};
+Vec2Socket.STRUCT = STRUCT.inherit(Vec2Socket, NodeSocketType, "graph.Vec2Socket") + `
+  value : vec2;
+}
+`;
+nstructjs.manager.add_class(Vec2Socket);
+
 export class Vec3Socket extends NodeSocketType {
   constructor(uiname, flag, default_value) {
     super(uiname, flag);
@@ -124,7 +172,11 @@ export class Vec3Socket extends NodeSocketType {
     uiname : "Vector",
     color : [0.25, 0.45, 1.0, 1]
   }}
-  
+
+  copyTo(b) {
+    b.value.load(this.value);
+  }
+
   diffValue(b) {
     return this.value.vectorDistance(b);
   }
@@ -176,7 +228,11 @@ export class Vec4Socket extends NodeSocketType {
   getValue() {
     return this.value;
   }
-  
+
+  copyTo(b) {
+    b.value.load(this.value);
+  }
+
   setValue(b) {
     if (isNaN(this.value.dot(b))) {
       console.warn(this, b);
@@ -221,6 +277,10 @@ export class FloatSocket extends NodeSocketType {
     return this.value;
   }
   
+  copyTo(b) {
+    b.value = this.value;
+  }
+
   setValue(b) {
     if (isNaN(b)) {
       console.warn(this, b);

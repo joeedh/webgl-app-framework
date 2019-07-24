@@ -7,6 +7,7 @@ import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/simple_toolsys
 import {WidgetShapes} from './widget_shapes.js';
 import {Shaders} from './view3d_shaders.js';
 import {dist_to_line_2d} from '../../path.ux/scripts/math.js';
+import {IsMobile} from '../../path.ux/scripts/ui_base.js'
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
 import {css2color} from '../../path.ux/scripts/ui_base.js';
@@ -247,7 +248,7 @@ export class WidgetShape {
 
     mat.load(this.matrix);
 
-    let scale = w*0.15; //Math.max(w*0.05, 0.01);
+    let scale = IsMobile() ? w*0.15 : w*0.075; //Math.max(w*0.05, 0.01);
 
     let local = this._tempmat2.load(this.localMatrix);
     if (localMatrix !== undefined) {
@@ -377,12 +378,25 @@ export class WidgetSphere extends WidgetShape {
     let mat = this.drawmatrix;
     let mm = mat.$matrix;
 
+    //let imat = new Matrix4();
+    //imat.load(mat);
+    //imat.invert();
+
     v1.multVecMatrix(mat);
 
     let r = 0.5*Math.sqrt(mm.m11*mm.m11 + mm.m12*mm.m12 + mm.m13*mm.m13);
 
     view3d.project(v1);
     let z = v1[2];
+
+    let dd = Math.sqrt((x-v1[0])**2 + (y-v1[1])**2);
+    let rett = dist_rets.next();
+
+    rett[0] = dd;
+    rett[1] = v1[2];
+    //console.log(rett);
+    return rett;
+
     view3d.unproject(v1);
 
     v2[0] = x;
@@ -435,9 +449,6 @@ export class WidgetPlane extends WidgetShape {
     let scale2 = dist_temps.next().zero();
     let scale3 = dist_temps.next().zero();
 
-    let imat = this._tempmat2;
-    imat.load(this.drawmatrix).invert();
-
     scale2[0] = 1.0;
     scale3[1] = 1.0;
 
@@ -445,8 +456,12 @@ export class WidgetPlane extends WidgetShape {
     scale2.multVecMatrix(this.drawmatrix);
     scale3.multVecMatrix(this.drawmatrix);
 
+    view3d.project(scale1);
+    view3d.project(scale2);
+    view3d.project(scale3);
+
     let scalex = scale2.vectorDistance(scale1);
-    let scalez = scale3.vectorDistance(scale1);
+    let scaley = scale3.vectorDistance(scale1);
 
     let v1 = dist_temps.next().zero();
     let n = dist_temps.next().zero();
@@ -466,11 +481,39 @@ export class WidgetPlane extends WidgetShape {
       let zco = dist_temps.next().load(ret);
       view3d.project(zco);
 
+      let imat = this._tempmat2;
+      imat.load(this.drawmatrix).invert();
+
       ret.multVecMatrix(imat);
-      let dx = Math.abs(ret[0])/scalex, dy = Math.abs(ret[1])/scalez;
+
+      let vx = dist_temps.next().load(ret);
+      let vy = dist_temps.next().load(ret);
+
+      let sv1 = dist_temps.next().load(v1);
+      view3d.project(sv1);
+
+      console.log(vx);
+      vx[1] = vy[0] = 0.0;
+      vx[2] = vy[2] = 0.0;
+      vx.multVecMatrix(this.drawmatrix);
+      vy.multVecMatrix(this.drawmatrix);
+
+      view3d.project(vx);
+      view3d.project(vy);
+
+      let dx = vx.vectorDistance(sv1);
+      let dy = vy.vectorDistance(sv1);
+
+      let sn = dist_temps.next().zero();
+
+      dx = Math.max(dx-scalex, 0.0);
+      dy = Math.max(dy-scaley, 0.0);
+
+      //dx -= scalex*0.5;
+      //dy -= scaley*0.5;
 
       let dis = Math.max(Math.abs(dx), Math.abs(dy));
-      //console.log(dx, dy, dis, scalex, scalez);
+      console.log(dx.toFixed(2), dy.toFixed(2), (scalex*0.5).toFixed(2), (scaley*0.5).toFixed(2));
 
       ret2[0] = dis;
       ret2[1] = zco[2];
@@ -753,7 +796,7 @@ export class WidgetManager {
       let dis = ret.dis;
       let z = ret.z;
 
-      if (minw === undefined || (dis < mindis || z < minz)) {
+      if (minw === undefined || (dis < mindis || (dis == mindis && z < minz))) {
         mindis = dis;
         minw = ret.data;
       }

@@ -84,6 +84,13 @@ export class TranslateWidget extends WidgetTool {
     let y = this.getArrow(undefined, "green");
     let z = this.getArrow(undefined, "blue");
 
+    //manager.remove(x);
+    //manager.remove(y);
+    //manager.remove(z);
+    //manager.remove(px);
+    //manager.remove(py);
+    //manager.remove(center);
+
     this.axes = [x, y, z];
 
     center.on_mousedown = (localX, localY) => {
@@ -334,6 +341,7 @@ export class ExtrudeWidget extends WidgetTool {
     }
 
     if (tot == 0.0) {
+      console.warn("error in extrudewidget update");
       return; //should never happen, see this.validate()
     }
 
