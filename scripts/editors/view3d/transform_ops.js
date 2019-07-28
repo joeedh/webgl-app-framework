@@ -450,3 +450,189 @@ export class TranslateOp extends TransformOp {
 }
 
 ToolOp.register(TranslateOp);
+
+
+export class ScaleOp extends TransformOp {
+  constructor(start_mpos) {
+    super();
+
+    this.mpos = new Vector3();
+
+    if (start_mpos !== undefined) {
+      this.mpos.load(start_mpos);
+      this.mpos[2] = 0.0;
+
+      this.first = false;
+    } else {
+      this.first = true;
+    }
+  }
+
+  static tooldef() {return {
+    uiname      : "Scale",
+    description : "Scale tool",
+    toolpath    : "view3d.scale",
+    is_modal    : true,
+    inputs      : ToolOp.inherit({}),
+    icon        : -1
+  }}
+
+  on_mousemove(e) {
+    super.on_mousemove(e);
+
+    let ctx = this.modal_ctx;
+    let view3d = ctx.view3d;
+
+    let cent = this.center;
+    let scent = new Vector3(cent);
+
+    let mpos = view3d.getLocalMouse(e.x, e.y);
+    let x = mpos[0], y = mpos[1];
+
+    if (this.first) {
+      this.mpos[0] = x;
+      this.mpos[1] = y;
+      this.first = false;
+      return;
+    }
+
+    let dx = x - this.mpos[0], dy = y - this.mpos[1];
+
+    view3d.project(scent);
+    scent[0] += dx;
+    scent[1] += dy;
+    view3d.unproject(scent);
+
+    let off = new Vector3(scent).sub(cent);
+    let mat = this.inputs.space.getValue();
+
+    //let imat = new Matrix4(mat);
+    //imat.invert();
+    //off.multVecMatrix(imat);
+
+    let con = this.inputs.constraint.getValue();
+    let is_plane = con.dot(con) != 0.0 && con.dot(con) != 1.0 && con.dot(con) != 3.0;
+
+    if (is_plane) { //are we constraining to a plane?
+      console.log("plane constraint!");
+
+      con = new Vector3(con);
+      for (let i=0; i<con.length; i++) {
+        con[i] = con[i]==0.0;
+      }
+      con.normalize();
+      con.multVecMatrix(this.inputs.constraint_space.getValue());
+      con.normalize();
+
+      let cent2 = new Vector3(this.center);
+      view3d.project(cent2);
+      //cent2.negate();
+
+      let view = view3d.getViewVec(cent2[0]+dx, cent2[1]+dy);
+
+      let isect = isect_ray_plane(this.center, con, view3d.camera.pos, view);
+
+      console.log(mpos, con, isect);
+
+      if (isect !== undefined) {
+        off.load(isect).sub(cent);
+      } else {
+        return;
+      }
+      //(planeorigin, planenormal, rayorigin, raynormal)
+      //isect_ray_plane
+    } else if (con.dot(con) != 3.0) { //project to line
+      let axis = 0;
+
+      for (let i=0; i<3; i++) {
+        if (Math.abs(con[i]) > 0.5) {
+          axis = i;
+          break;
+        }
+      }
+
+      let p1 = new Vector3(cent);
+      let p2 = new Vector3(scent);
+
+      view3d.project(p1);
+      view3d.project(p2);
+
+      let n = new Vector3(con);
+
+      let mm = new Matrix4(this.inputs.constraint_space.getValue());
+
+      n.multVecMatrix(mm);
+      n.normalize();
+
+      let worldn = new Vector3(n);
+      let n2 = new Vector3(n);
+
+      n2.load(cent).add(n);
+      n.load(cent);
+
+      view3d.project(n);
+      view3d.project(n2);
+
+      let t = new Vector3();
+      view3d.project(t.load(scent));
+      t.sub(n);
+
+      n.sub(n2).negate().normalize();
+
+      let s = t[0]*n[0] + t[1]*n[1];
+
+      view3d.project(p1.load(cent));
+      p1.addFac(n, s);
+      view3d.unproject(p1);
+      off.load(p1).sub(cent);
+
+      p2.load(cent).addFac(worldn, s);
+    }
+
+    this.inputs.value.setValue(off);
+
+    this.exec(ctx);
+    this.doUpdates(ctx);
+    window.redraw_viewport();
+  }
+
+  exec(ctx) {
+    if (this.tdata === undefined) {
+      this.genTransData(ctx);
+    }
+
+    let mat = new Matrix4();
+
+    let off = new Vector3(this.inputs.value.getValue());
+    //off.mul(this.inputs.constraint.getValue());
+    let cent = this.center;
+
+    let con = this.inputs.constraint.getValue();
+    mat.translate(cent[0], cent[1], cent[2]);
+
+    if (con.dot(con) != 3.0) {
+      let cmat = this.inputs.constraint_space.getValue();
+      let icmat = new Matrix4(cmat);
+      icmat.invert();
+
+      off = new Vector3(off);
+      off.multVecMatrix(icmat);
+      //off.mul(this.inputs.constraint.getValue());
+      off.multVecMatrix(cmat);
+
+      mat.scale(1.0+off[0], 1.0+off[1], 1.0+off[2]);
+    } else {
+      let l = off.vectorLength();
+      l = (off[0]+off[1]+off[2])/3.0;
+
+      mat.scale(1.0-l, 1.0-l, 1.0-l);
+    }
+    mat.translate(-cent[0], -cent[1], -cent[2]);
+
+    //mat.translate(off[0], off[1], off[2]);
+
+    this.applyTransform(ctx, mat);
+  }
+}
+
+ToolOp.register(ScaleOp);

@@ -1,6 +1,52 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {MeshTypes, MeshFlags} from '../mesh/mesh.js';
+import {PCOS, PEID, PCOLOR, PTOT, PatchData, PatchList} from './subsurf_base.js';
+
+//this assumes that all faces are already quads
+export function createPatches(mesh, faces=mesh.faces) {
+  let patches = new PatchList();
+  let ps = patches.patchdata;
+
+  for (let f of mesh.faces) {
+    let l = f.lists[0].l;
+
+    let pi = ps.length;
+    patches.eidmap[f.eid] = pi;
+
+    for (let i=0; i<PTOT; i++) {
+      ps.push(0.0);
+    }
+
+    let v1 = l.v, v2 = l.next.v,
+        v3 = l.next.next.v, v4 = l.next.next.next.v;
+
+
+    for (let i=0; i<3; i++) {
+      ps[pi+PCOS+i] = v1[i];
+      ps[pi+PCOS+(0*4 + 4)*3+i] = v2[i];
+      ps[pi+PCOS+(4*4 + 4)*3+i] = v3[i];
+      ps[pi+PCOS+(4*4 + 0)*3+i] = v4[i];
+    }
+  }
+
+  let dimen = patches.patchdata.length / 4;
+
+  dimen = Math.ceil(Math.sqrt(dimen));
+  dimen = Math.ceil(Math.log(dimen) / Math.log(2.0));
+  dimen = 1<<dimen;
+
+  patches.texdimen = dimen;
+  let totps = dimen*dimen*4;
+
+  while (ps.length < totps) {
+    ps.push(0.0);
+  }
+
+  patches.patchdata = new Float32Array(patches.patchdata);
+
+  return patches;
+}
 
 export function subdivide(mesh, faces=mesh.faces) {
   let fset = new util.set();
@@ -10,7 +56,7 @@ export function subdivide(mesh, faces=mesh.faces) {
 
   console.log(faces);
   for (let f of faces) {
-    console.log("f", f.eid);
+    //console.log("f", f.eid);
   }
 
   for (let f of faces) {
@@ -67,6 +113,9 @@ export function subdivide(mesh, faces=mesh.faces) {
       tot += wa;
 
       let l = e.l;
+      if (e.l === undefined) {
+        continue;
+      }
 
       do {
         let v3;
@@ -87,7 +136,7 @@ export function subdivide(mesh, faces=mesh.faces) {
   }
 
   for (let e of eset) {
-    console.log("subdividing edge", e.eid);
+    //console.log("subdividing edge", e.eid);
     let ret = mesh.splitEdge(e, 0.5);
 
     let ne = ret[0], nv = ret[1];

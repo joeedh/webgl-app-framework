@@ -3,6 +3,7 @@ import {MeshError, MeshFlags, MeshTypes} from "./mesh_base.js";
 import * as util from "../util/util.js";
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
+import {CustomData} from "./customdata.js";
 
 export class SelectionSet extends util.set {
   constructor() {
@@ -36,6 +37,8 @@ function getArrayTemp(n) {
 export class ElementList extends Array {
   constructor(type) {
     super();
+
+    this.customData = new CustomData();
 
     this.type = type;
     this.selected = new SelectionSet();
@@ -227,6 +230,7 @@ mesh.ElementList {
   active      : int | obj.active !== undefined ? obj.active.eid : -1;
   highlight   : int | obj.highlight !== undefined ? obj.highlight.eid : -1;
   type        : int;
+  customData  : mesh.CustomData; 
 }
 `;
 nstructjs.manager.add_class(ElementList);

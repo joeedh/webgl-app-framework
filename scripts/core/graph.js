@@ -81,7 +81,7 @@ export class NodeSocketType {
     
     this.node.update();
     sock.node.update();
-    this.node.graph.flagResort();
+    this.node.graph_graph.flagResort();
     
     return this;
   }
@@ -92,7 +92,7 @@ export class NodeSocketType {
     
     this.node.update();
     sock.node.update();
-    this.node.graph.flagResort();
+    this.node.graph_graph.flagResort();
     
     return this;
   }
@@ -189,12 +189,12 @@ export class Node {
     }
 
     this.graph_ui_pos = new Vector2();
-    this.graph_ui_size = new Vector2([128, 330]);
+    this.graph_ui_size = new Vector2([128, 200]);
     this.graph_ui_flag = 0;
     
     this.graph_flag = flag | NodeFlags.UPDATE;
     this.graph_id = -1;
-    this.graph = undefined;
+    this.graph_graph = undefined;
     
     let getsocks = (key) => {
       let obj = def[key];
@@ -701,7 +701,7 @@ export class Graph {
       return;
     }
     
-    node.graph = this;
+    node.graph_graph = this;
     node.graph_id = this.graph_idgen.next();
     
     for (let k in node.inputs) {
@@ -737,7 +737,7 @@ export class Graph {
 
     for (let n of this.nodes) {
       idmap[n.graph_id] = n;
-      n.graph = this;
+      n.graph_graph = this;
 
       for (let s of n.allsockets) {
         s.node = n;
@@ -778,7 +778,7 @@ export class Graph {
     let n2 = this.node_idmap[n.graph_id];
     let idmap = this.node_idmap;
 
-    n.graph = this;
+    n.graph_graph = this;
 
     this.nodes.replace(n2, n);
 
@@ -900,7 +900,7 @@ export function test(exec_cycles=true) {
       this.outputs.color.update();
       
       this.mesh.uniforms.objectMatrix = this.outputs.matrix.getValue();
-      //console.log("node exec", this.graph_id, this.graph.sortlist[0].graph_id, this.graph.sortlist[1].graph_id);
+      //console.log("node exec", this.graph_id, this.graph_graph.sortlist[0].graph_id, this.graph_graph .sortlist[1].graph_id);
     }
   }
   

@@ -42,5 +42,6 @@ export let Icons = {
   APPEND_VERTEX  : 38,
   VIEW_SELECTED  : 39,
   EXTRUDE        : 40,
-  SUBDIVIDE      : 41
+  SUBDIVIDE      : 41,
+  SUBSURF        : 42
 };

@@ -6,6 +6,7 @@ export class MeshCache {
   constructor(meshid) {
     this.meshid = meshid;
     this.meshes = {};
+    this.drawer = undefined;
 
     this.gen = undefined; //current generation, we know mesh has changed when mesh.updateGen is not this
   }
@@ -39,6 +40,8 @@ export class MeshCache {
   }
 
   destroy(gl) {
+    this.drawer.destroy(gl);
+
     for (let k in this.meshes) {
       this.meshes[k].destroy(gl);
     }

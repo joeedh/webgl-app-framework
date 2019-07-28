@@ -216,7 +216,9 @@ export class View3D extends Editor {
 
   defineKeyMap() {
     this.keymap = new KeyMap([
-      new HotKey("G", [], "view3d.translate"),
+      new HotKey("G", [], "view3d.translate()"),
+      new HotKey("S", [], "view3d.scale()"),
+      new HotKey("W", [], "mesh.vertex_smooth()"),
       new HotKey(".", [], "view3d.view_selected()")
     ]);
 
@@ -333,6 +335,19 @@ export class View3D extends Editor {
 
     header.tool("view3d.view_selected()", PackFlags.USE_ICONS);
     header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
+
+    header.prop("mesh.flag[SUBSURF]", PackFlags.USE_ICONS);
+
+    header.iconbutton(Icons.UNDO, "Undo", () => {
+      this.ctx.toolstack.undo();
+      window.redraw_viewport();
+    });
+
+    header.iconbutton(Icons.REDO, "Redo", () => {
+      this.ctx.toolstack.redo();
+      window.redraw_viewport();
+    });
+
 
     //header.iconbutton(Icons.VIEW_SELECTED, "Recenter View (fixes orbit/rotate problems)", () => {
     //  this.viewSelected();
@@ -621,10 +636,10 @@ export class View3D extends Editor {
 
   destroy() {
     for (let ed of this.editors) {
-      ed.destroy();
+      ed.destroy(this.gl);
     }
 
-    this.widgets.destroy();
+    this.widgets.destroy(this.gl);
   }
 
   on_area_inactive() {

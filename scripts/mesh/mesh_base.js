@@ -25,6 +25,10 @@ export const MeshFlags = {
   TEMP3         : 1024
 };
 
+export const MeshModifierFlags = {
+  SUBSURF : 1
+};
+
 export const RecalcFlags = {
   RENDER     : 1,
   TESSELATE  : 2,

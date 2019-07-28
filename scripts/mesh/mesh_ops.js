@@ -231,3 +231,70 @@ export class CatmullClarkeSubd extends MeshOp {
   }
 }
 ToolOp.register(CatmullClarkeSubd);
+
+export function vertexSmooth(mesh, verts=mesh.verts.selected.editable, fac=0.5) {
+  let cos = {};
+
+  for (let v of verts) {
+    cos[v.eid] = new Vector3(v);
+  }
+
+  for (let v of verts) {
+    v.zero();
+    let tot = 0.0;
+
+    for (let e of v.edges) {
+      let v2 = e.otherVertex(v);
+
+      v.add(cos[v2.eid]);
+      tot++;
+    }
+
+    if (tot == 0.0) {
+      v.load(cos[v.eid]);
+    } else {
+      v.mulScalar(1.0 / tot);
+      v.interp(cos[v.eid], 1.0-fac);
+    }
+  }
+
+  for (let v of verts) {
+    mesh.flagElemUpdate(v);
+
+    for (let e of v.edges) {
+      mesh.flagElemUpdate(e);
+    }
+
+    for (let f of v.faces) {
+      mesh.flagElemUpdate(f);
+    }
+  }
+
+  mesh.regenPartial();
+}
+
+export class VertexSmooth extends MeshOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {return {
+    uiname   : "Vertex Smooth",
+    icon     : -1,
+    toolpath : "mesh.vertex_smooth",
+    undoflag : 0,
+    flag     : 0,
+    inputs   : {},
+  }}
+
+  exec(ctx) {
+    console.log("subdivide smooth!");
+
+    for (let ob of ctx.selectedMeshObjects) {
+      let mesh = ob.data;
+
+      vertexSmooth(mesh);
+    }
+  }
+}
+ToolOp.register(VertexSmooth);

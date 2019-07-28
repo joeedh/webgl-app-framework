@@ -93,6 +93,16 @@ export class Context extends ToolContext {
     return getContextArea(View3D);
   }
 
+  get material() {
+    let mesh = this.mesh;
+    if (mesh === undefined) return undefined;
+
+    if (mesh.materials.length === 1)
+      return mesh.materials[0];
+    else
+      return mesh.materials.active;
+  }
+
   get nodeEditor() {
     return getContextArea(NodeEditor);
   }
@@ -110,6 +120,7 @@ export class SavedContext extends ToolContext {
   constructor(ctx, datalib) {
     super(ctx.appstate);
 
+    this._material = new DataRef();
     this._object = new DataRef();
     this._selectedObjects = [];
     this._selectedMeshObjects = [];
@@ -143,6 +154,10 @@ export class SavedContext extends ToolContext {
       this[key2] = DataRef.fromBlock(this.ctx[key]);
       return this.ctx[key];
     }
+  }
+
+  get material() {
+    return this._getblock("material");
   }
 
   get scene() {

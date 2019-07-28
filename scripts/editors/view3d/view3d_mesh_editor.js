@@ -1,7 +1,7 @@
 import {ExtrudeRegionsOp} from '../../mesh/mesh_ops.js';
 import {View3D_SubEditorIF} from './view3d_subeditor.js';
 import {SelMask, SelOneToolModes, SelToolModes} from './selectmode.js';
-import {Mesh, MeshTypes, MeshFlags} from '../../mesh/mesh.js';
+import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../mesh/mesh.js';
 import * as util from '../../util/util.js';
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {Shaders} from './view3d_shaders.js'
@@ -12,8 +12,9 @@ import {SelectOneOp} from '../../mesh/select_ops.js';
 import {KeyMap, HotKey} from "../editor_base.js";
 import {keymap} from '../../path.ux/scripts/simple_events.js';
 import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../path.ux/scripts/simple_toolsys.js';
-
+import {BasicMeshDrawer} from './view3d_draw.js';
 import {MeshCache} from './view3d_subeditor.js';
+import {SubsurfDrawer} from '../../subsurf/subsurf_draw.js';
 
 //each subeditor should fill in these tools
 export const MeshTools = {
@@ -26,30 +27,7 @@ export const MeshTools = {
   DUPLICATE         : undefined
 };
 
-
-export const Colors = {
-  DRAW_DEBUG : [0, 1.0, 0.5, 1.0],
-  SELECT     : [1.0, 0.8, 0.4, 1.0],
-  UNSELECT   : [1.0, 0.2, 0.0, 1.0],
-  ACTIVE     : [0.3, 1.0, 0.3, 1.0],
-  LAST       : [0.0, 0.3, 1.0, 1.0],
-  HIGHLIGHT  : [1.0, 1.0, 0.3, 1.0],
-  POINTSIZE  : 7,
-  POLYGON_OFFSET : 1.0,
-  FACE_UNSEL : [0.75, 0.75, 0.75, 0.3]
-};
-window._Colors = Colors; //debugging global
-
-function elemColor(e) {
-  if (e.flag & MeshFlags.DRAW_DEBUG) {
-    return Colors.DRAW_DEBUG;
-  } else if (e.flag & MeshFlags.SELECT) {
-    return Colors.SELECT;
-  } else {
-    return Colors.UNSELECT;
-  }
-}
-
+import {Colors, elemColor} from './view3d_draw.js';
 
 export class MeshEditor extends View3D_SubEditorIF {
   constructor(view3d) {
@@ -185,77 +163,22 @@ export class MeshEditor extends View3D_SubEditorIF {
     console.log("syncing");
     let mc = this.meshcache.get(mesh.lib_id);
 
-    let fm = mc.getMesh("faces");
-    let ulist = mesh.lastUpdateList;
-    let eidmap = mesh.eidmap;
-    let ltris = mesh._ltris;
     mc.partialGen = mesh.partialUpdateGen;
-
-    for (let eid in ulist) {
-      let f = eidmap[eid];
-      if (f === undefined || f.type != MeshTypes.FACE || (f.flag & MeshFlags.HIDE)) {
-        continue;
-      }
-
-      let li = mesh._ltrimap_start[f.eid];
-      let len = mesh._ltrimap_len[f.eid];
-
-      let c = elemColor(f);
-      if (!(f.flag & MeshFlags.SELECT)) {
-        c = Colors.FACE_UNSEL;
-      }
-
-      for (let i=0; i<len; i++) {
-        let idx = li;
-
-        let l1 = ltris[li++];
-        let l2 = ltris[li++];
-        let l3 = ltris[li++];
-
-        let tri = fm.tri(idx, l1.v, l2.v, l3.v);
-        
-        tri.colors(c, c, c);
-        tri.ids(f.eid, f.eid, f.eid);
-      }
-    }
-
-    let em = mc.getMesh("edges");
-    for (let eid in ulist) {
-      let e = eidmap[eid];
-
-      if (e === undefined || e.type != MeshTypes.EDGE || (e.flag & MeshFlags.HIDE)) {
-        continue;
-      }
-
-      let l = em.line(e.eid, e.v1, e.v2);
-
-      let c = elemColor(e);
-
-      l.ids(e.eid, e.eid);
-      l.colors(c, c);
-    }
-
-    let vm = mc.getMesh("verts");
-    for (let eid in ulist) {
-      let v = eidmap[eid];
-
-      if (v === undefined || v.type != MeshTypes.VERTEX || (v.flag & MeshFlags.HIDE)) {
-        continue;
-      }
-
-      if (v.flag & MeshFlags.HIDE)
-        continue;
-
-      let p = vm.point(v.eid, v);
-
-      p.ids(v.eid);
-      p.colors(elemColor(v));
-    }
+    mc.drawer.sync(this.view3d, gl, object);
   }
 
   getMeshCache(gl, object, mesh) {
     let regen = !this.meshcache.has(mesh.lib_id);
     regen = regen || this.meshcache.get(mesh.lib_id).gen != mesh.updateGen;
+
+    if (!regen) {
+      let mc = this.meshcache.get(mesh.lib_id);
+
+      if (!!(mesh.flag & MeshModifierFlags.SUBSURF) != !!(mc.drawer instanceof SubsurfDrawer)) {
+        regen = true;
+        console.log("REGEN");
+      }
+    }
 
     let resync = !regen && (this.meshcache.get(mesh.lib_id).partialGen != mesh.partialUpdateGen);
 
@@ -283,8 +206,15 @@ export class MeshEditor extends View3D_SubEditorIF {
       this.meshcache.set(mesh.lib_id, mc);
     }
 
+    if (mesh.flag & MeshModifierFlags.SUBSURF) {
+      mc.drawer = new SubsurfDrawer(mesh, mc);
+    } else {
+      mc.drawer = new BasicMeshDrawer(mesh, mc);
+    }
+
     mc.gen = mesh.updateGen;
 
+    return;
     let layerTypes = LayerTypes.LOC|LayerTypes.COLOR|LayerTypes.ID;
 
     let vm = mc.makeChunkedMesh("verts", layerTypes);
@@ -345,49 +275,9 @@ export class MeshEditor extends View3D_SubEditorIF {
       return false;
 
     this.drawvisit.add(mesh);
-    mesh.draw(gl, uniforms, program);
 
     let mc = this.getMeshCache(gl, object, mesh);
-    let selmode = this.view3d.selectmode;
-
-    //mc.meshes["verts"];
-    let program2 = Shaders.MeshEditShader;
-    let view3d = this.view3d;
-
-    function drawElements(list, smesh, alpha=1.0) {
-      program2.uniforms.active_id = list.active !== undefined ? list.active.eid : -1;
-      program2.uniforms.highlight_id = list.highlight !== undefined ? list.highlight.eid : -1;
-      program2.uniforms.last_id = list.last !== undefined ? list.last.eid : -1;
-      program2.uniforms.projectionMatrix = view3d.camera.rendermat;
-
-      program2.uniforms.polygonOffset = Colors.POLYGON_OFFSET;
-      uniforms.polygonOffset = Colors.POLYGON_OFFSET;
-      program2.uniforms.active_color = Colors.ACTIVE;
-      program2.uniforms.highlight_color = Colors.HIGHLIGHT;
-      program2.uniforms.last_color = Colors.LAST;
-      program2.uniforms.alpha = alpha;
-      program2.uniforms.pointSize = Colors.POINTSIZE;
-
-      smesh.draw(gl, uniforms, program2);
-    }
-
-    if (selmode & SelMask.VERTEX) {
-      drawElements(mesh.verts, mc.meshes["verts"]);
-    }
-
-    drawElements(mesh.edges, mc.meshes["edges"]);
-
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-    //gl.depthMask(0);
-    //drawElements(mesh.faces, mc.meshes["faces"], 0.1);
-    //gl.depthMask(1);
-    drawElements(mesh.faces, mc.meshes["faces"], 0.1);
-    gl.disable(gl.BLEND);
-    //console.log(mc.meshes["faces"]);
-
-    return true;
+    mc.drawer.draw(this.view3d, gl, object, uniforms, program);
   }
 
   on_drawend(gl) {
@@ -676,42 +566,8 @@ export class MeshEditor extends View3D_SubEditorIF {
       return false;
 
     let mc = this.getMeshCache(gl, object, mesh);
-    let program2 = Shaders.MeshIDShader;
 
-    program2.bind(gl);
-
-    let drawElements = (list, smesh) => {
-      program2.uniforms.object_id = object.lib_id;
-      program2.uniforms.projectionMatrix = this.view3d.camera.rendermat;
-      program2.uniforms.objectMatrix = object.outputs.matrix.getValue();
-      program2.uniforms.pointSize = Colors.POINTSIZE;
-
-      gl.disable(gl.BLEND);
-      gl.disable(gl.DITHER);
-      smesh.draw(gl, uniforms, program2);
-      gl.enable(gl.DITHER);
-    }
-
-    //console.log("drawing ids");
-
-    gl.disable(gl.DITHER);
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthMask(true);
-
-    gl.clearDepth(100000.0);
-    gl.clearColor(0.0, 0.0, 0.0, 0.0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    program2.uniforms.polygonOffset = 0.0;
-    drawElements(mesh.faces, mc.meshes["faces"]);
-
-    program2.uniforms.polygonOffset = Colors.POLYGON_OFFSET;
-    drawElements(mesh.verts, mc.meshes["verts"]);
-    drawElements(mesh.edges, mc.meshes["edges"]);
-
-    gl.finish();
-
-    return false;
+    return mc.drawer.drawIDs(this.view3d, gl, object, uniforms);
   }
 }
 View3D_SubEditorIF.register(MeshEditor);

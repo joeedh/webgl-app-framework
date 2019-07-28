@@ -40,6 +40,8 @@ export class Mesh extends DataBlock {
   constructor() {
     super();
 
+    this.materials = [];
+
     this._ltris = undefined;
     this._ltrimap_start = {}; //maps face eid to first loop index
     this._ltrimap_len = {}; //maps face eid to first loop index
@@ -500,7 +502,7 @@ export class Mesh extends DataBlock {
         continue;
       }
 
-      if (elist.hasLayerType("origindex")) {
+      if (elist.customData.hasLayerType("origindex")) {
         continue;
       }
 
@@ -774,20 +776,34 @@ export class Mesh extends DataBlock {
     }
   }
 
-  genRender() {
+  genRender(gl) {
     try {
-      return this._genRender();
+      return this._genRender(gl);
     } catch (error) {
       util.print_stack(error);
       throw error;
     }
   }
-  _genRender() {
+
+  destroy(gl) {
+    super.destroy();
+
+    if (this.smesh !== undefined) {
+      this.smesh.destroy(gl);
+      this.smesh = undefined;
+    }
+  }
+
+  _genRender(gl) {
     this.recalc &= ~RecalcFlags.RENDER;
     this.updateGen = ~~(Math.random()*1024*1024*1024);
 
     this.tessellate();
     let ltris = this._ltris;
+
+    if (this.smesh !== undefined) {
+      this.smesh.destroy(gl);
+    }
 
     let sm = this.smesh = new ChunkedSimpleMesh(LayerTypes.LOC|LayerTypes.NORMAL|LayerTypes.UV);
 
@@ -845,6 +861,8 @@ export class Mesh extends DataBlock {
   }
 
   partialUpdate(gl) {
+    console.warn("partial update");
+    
     let sm = this.smesh;
     this.recalc &= ~RecalcFlags.PARTIAL;
 
@@ -898,6 +916,14 @@ export class Mesh extends DataBlock {
 
     return sm;
   }
+  
+  checkPartialUpdate(gl) {
+   if (this.recalc & RecalcFlags.PARTIAL) {
+      this.partialUpdate(gl);
+      this.lastUpdateList = this.updatelist;
+      this.updatelist = {};
+    }
+  }
 
   draw(gl, uniforms, program) {
     if (this.recalc & RecalcFlags.TESSELATE) {
@@ -906,16 +932,12 @@ export class Mesh extends DataBlock {
 
     if (this.recalc & RecalcFlags.RENDER) {
       this.recalc &= RecalcFlags.PARTIAL;
-      this.genRender();
+      this.genRender(gl);
       this.lastUpdateList = {};
       this.updatelist = {};
     }
 
-    if (this.recalc & RecalcFlags.PARTIAL) {
-      this.partialUpdate(gl);
-      this.lastUpdateList = this.updatelist;
-      this.updatelist = {};
-    }
+    this.checkPartialUpdate(gl);
 
     if (program !== undefined) {
       this.smesh.program = program;
@@ -1052,6 +1074,14 @@ export class Mesh extends DataBlock {
       ret.loops.push(l2);
     }
 
+    for (let e of this.edges) {
+      let e2 = eidmap[e.eid];
+
+      if (e.l !== undefined) {
+        e2.l = eidmap[e.l.eid];
+      }
+    }
+
     for (let l2 of ret.loops) {
       l2.radial_next = eidmap[l2.radial_next.eid];
       l2.radial_prev = eidmap[l2.radial_prev.eid];
@@ -1063,9 +1093,11 @@ export class Mesh extends DataBlock {
       let f2 = new Face();
 
       f2.lists = [];
+
       f2.eid = f.eid;
       f2.index = f.index;
       f2.flag = f.flag;
+
       f2.cent.load(f.cent);
       f2.no.load(f.no);
 
@@ -1251,7 +1283,13 @@ export class Mesh extends DataBlock {
 
     this.validateMesh();
   }
-  
+
+  dataLink(getblock, getblock_us) {
+    for (let i=0; i<this.materials.length; i++) {
+      this.materials[i] = getblock_us(this.materials[i]);
+    }
+  }
+
   static blockDefine() { return {
     typeName    : "mesh",
     defaultName : "Mesh",
@@ -1264,6 +1302,8 @@ export class Mesh extends DataBlock {
 Mesh.STRUCT = STRUCT.inherit(Mesh, DataBlock, "mesh.Mesh") + `
   _elists   : array(mesh.ElementList) | obj._getArrays();
   eidgen    : IDGen;
+  flag      : int;
+  materials : array(e, DataRef) | DataRef.fromBlock(e);
 }
 `;
 

@@ -1,7 +1,11 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
-import {MeshDrawInterface} from "../editors/view3d/view3d_draw.js";
+import {MeshDrawInterface, OrigRef} from "../editors/view3d/view3d_draw.js";
 import {Mesh, MeshTypes, MeshFlags} from '../mesh/mesh.js';
+import {createPatches} from './subsurf_mesh.js';
+import {Texture} from '../core/webgl.js';
+
+let orig_rets = util.cachering.fromConstructor(OrigRef, 128);
 
 import {subdivide} from './subsurf_mesh.js';
 
@@ -21,17 +25,39 @@ export class SubsurfMesh extends MeshDrawInterface {
     this.origedges = {};
 
     this.patches = undefined;
+    this.partialGen = undefined;
+    this.gen = undefined;
   }
 
-  draw(ctx, view3d, gl, object) {
+  draw(ctx, view3d, gl, object, uniforms, program) {
     this.mesh_ref = object.data.lib_id;
 
-    if (this.needsRecalc()) {
+    if (this.needsRecalc(object.data) || this.smesh === undefined) {
+      this.update(ctx, view3d, gl, object);
+    }
 
+    this.smesh.draw(gl, uniforms, program);
+  }
+
+  destroy(gl) {
+    if (this.patches !== undefined) {
+      this.patches.destroy(gl);
+      this.patches = undefined;
+    }
+
+    if (this.smesh !== undefined) {
+      this.smesh.destroy(gl);
+      this.smesh = undefined;
     }
   }
 
   needsRecalc(mesh) {
+    //console.log(this.partialGen, mesh.partialUpdateGen, this.gen, mesh.updateGen);
+
+    if (mesh.partialUpdateGen !== this.partialGen || this.gen !== mesh.updateGen) {
+      return true;
+    }
+
     if (this.smesh === undefined) {
       return true;
     }
@@ -71,11 +97,13 @@ export class SubsurfMesh extends MeshDrawInterface {
 
   syncVerts(mesh) {
     let smesh = this.smesh;
-
-
+    this.partialGen = mesh.partialUpdateGen;
   }
 
-  generate(mesh) {
+  generate(mesh, gl) {
+    this.partialGen = mesh.partialUpdateGen;
+    this.gen = mesh.updateGen;
+
     this.ototedge = mesh.edges.length;
     this.ototface = mesh.faces.length;
     this.ototvert = mesh.verts.length;
@@ -98,13 +126,26 @@ export class SubsurfMesh extends MeshDrawInterface {
       of[f.eid] = f.index;
     }
 
-    let smesh = mesh.copy();
+    let smesh = this.smesh = mesh.copy();
+
     smesh.setOrigIndex();
 
     subdivide(smesh);
 
-    this.patches = new Float64Array(smesh.faces.length*16*3);
+    smesh.recalcNormals();
+    smesh.regenTesellation();
+    smesh.regenRender();
 
+    if (this.patches !== undefined) {
+      this.patches.destroy(gl);
+    }
+
+    this.patches = createPatches(smesh);
+    let dimen = this.patches.texdimen;
+
+    console.log(dimen, dimen*dimen, this.patches.patchdata.length/4, "ss texture dimen");
+    this.patches.gltex = Texture.load(gl, dimen, dimen, this.patches.patchdata);
+    //this.patches = new Float64Array(smesh.faces.length*16*3);
   }
 
   update(ctx, view3d, gl, object) {
@@ -113,7 +154,7 @@ export class SubsurfMesh extends MeshDrawInterface {
     if (!this.needsRecalc(object.data)) {
       this.syncVerts(object.data);
     } else {
-      this.generate(object.data);
+      this.generate(object.data, gl);
     }
   }
 }
@@ -133,10 +174,36 @@ export class SubsurfDrawer extends MeshDrawInterface {
     return this.cache[object.data.eid];
   }
 
-  draw(view3d, gl, object) {
+  destroy(gl) {
+    for (let k in this.cache) {
+      let sm = this.cache[k];
+
+      sm.destroy(gl);
+    }
+
+    this.cache = {};
+  }
+
+  draw(view3d, gl, object, uniforms, program) {
     let ss = this.get(object);
 
-    ss.update(view3d.ctx, view3d, gl, object);
-    ss.draw(view3d.ctx, view3d, gl, object);
+    let mesh = object.data;
+
+    if (mesh.updateGen != this.updateGen) {
+      this.updateGen = mesh.updateGen;
+      ss.update(view3d.ctx, view3d, gl, object);
+    }
+
+    ss.draw(view3d.ctx, view3d, gl, object, uniforms, program);
+
+    mesh.checkPartialUpdate(gl);
+  }
+
+  drawIDs(view3d, gl, object, uniforms, program) {
+    let ss = this.get(object);
+
+
+    //ss.update(view3d.ctx, view3d, gl, object);
+    //ss.draw(view3d.ctx, view3d, gl, object);
   }
 }

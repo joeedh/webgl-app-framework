@@ -15,6 +15,9 @@ let laststack = [];
 
 export {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
 import {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
+import {Matrix4, Vector2} from "../util/vectormath.js";
+
+export {VelPanFlags, VelPan} from './velpan.js';
 
 let getAreaStack = (cls) => {
   let name = cls.define().areaname;
@@ -100,6 +103,17 @@ export class Editor extends Area {
     //  last_area = ret;
     //}
   }
+
+  /*copy of code in Area clas in ScreenArea.js in path.ux.
+    example of how to define an area.
+
+  static define() {return {
+    tagname  : undefined, // e.g. "areadata-x",
+    areaname : undefined, //api name for area type
+    uiname   : undefined,
+    icon : undefined //icon representing area in MakeHeader's area switching menu. Integer.
+  };}
+  */
 
   on_keydown(e) {
     console.log(e.keyCode);

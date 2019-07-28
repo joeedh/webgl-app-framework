@@ -437,12 +437,20 @@ export class Texture {
     this.texture = texture;
     this.texture_slot = texture_slot;
   }
-  
+
+  destroy(gl) {
+    gl.deleteTexture(this.texture);
+  }
+
   static load(gl, width, height, data) {
     let tex = gl.createTexture();
     
     gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    if (data instanceof Float32Array) {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.FLOAT, data);
+    } else {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    }
     Texture.defaultParams(gl, tex);
     
     return new Texture(0, tex);

@@ -2,10 +2,15 @@ import '../path.ux/scripts/struct.js';
 import {IDGen} from '../util/util.js';
 import {Node, Graph, NodeFlags, SocketFlags, NodeSocketType} from './graph.js';
 import {ToolProperty, PropFlags} from '../path.ux/scripts/toolprop.js';
+import {Check1} from "../path.ux/scripts/ui_widgets.js";
 
 let STRUCT = nstructjs.STRUCT;
 
 export let BlockTypes = [];
+export const BlockFlags = {
+  SELECT : 1,
+  HIDE   : 2
+};
 
 export class DataBlock extends Node {
   //loads contents of obj into this datablock
@@ -280,7 +285,20 @@ export class Library {
       
       this.libs.push(lib);
       this.libmap[cls.blockDefine().typeName] =  lib;
+
+      let tname = cls.blockDefine().typeName;
+      Object.defineProperty(this, tname, {
+        get : function() {
+          return this.libmap[tname];
+        }
+      });
     }
+  }
+
+  setActive(block) {
+    let tname = block.constructor.blockDefine().typeName;
+
+    this.getLibrary(tname).active = block;
   }
 
   get allBlocks() {
@@ -306,6 +324,16 @@ export class Library {
     let typename = block.constructor.blockDefine().typeName;
     
     if (!(typename in this.libmap)) {
+      //see if we're missing a legitimate block type
+      for (let cls of BlockTypes) {
+        if (cls.blockDefine().typeName === typename) {
+          let lib = new BlockSet(cls, this);
+          this.libs.push(lib);
+          this.libmap[typename] = lib;
+
+          return lib.add(block);
+        }
+      }
       console.log(block);
       throw new Error("invalid blocktype " + typename);
     }

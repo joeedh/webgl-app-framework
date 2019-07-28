@@ -351,6 +351,10 @@ void main() {
   ]
 };
 
+export let SubSurfPatchShader = {
+  vertex : `precision mediump float;
+  `
+}
 export const ShaderDef = {
   BasicLineShader      : BasicLineShader,
   BasicLineShader2D    : BasicLineShader2D,

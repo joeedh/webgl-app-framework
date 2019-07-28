@@ -395,7 +395,7 @@ export class WidgetSphere extends WidgetShape {
     rett[0] = dd;
     rett[1] = v1[2];
     //console.log(rett);
-    return rett;
+    //return rett;
 
     view3d.unproject(v1);
 
@@ -423,7 +423,7 @@ export class WidgetSphere extends WidgetShape {
 
     let ret = dist_rets.next();
 
-    ret[0] = sign > 0.0 ? dis : 0.0;
+    ret[0] = sign > 0.0 ? dis : -1; //XXX fixme: why is -1 necassary?
     ret[1] = rco[2];
 
     return ret;
@@ -492,7 +492,7 @@ export class WidgetPlane extends WidgetShape {
       let sv1 = dist_temps.next().load(v1);
       view3d.project(sv1);
 
-      console.log(vx);
+      //console.log(vx);
       vx[1] = vy[0] = 0.0;
       vx[2] = vy[2] = 0.0;
       vx.multVecMatrix(this.drawmatrix);
@@ -513,7 +513,7 @@ export class WidgetPlane extends WidgetShape {
       //dy -= scaley*0.5;
 
       let dis = Math.max(Math.abs(dx), Math.abs(dy));
-      console.log(dx.toFixed(2), dy.toFixed(2), (scalex*0.5).toFixed(2), (scaley*0.5).toFixed(2));
+      //console.log(dx.toFixed(2), dy.toFixed(2), (scalex*0.5).toFixed(2), (scaley*0.5).toFixed(2));
 
       ret2[0] = dis;
       ret2[1] = zco[2];

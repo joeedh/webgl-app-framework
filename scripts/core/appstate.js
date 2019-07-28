@@ -26,6 +26,8 @@ import {Mesh} from '../mesh/mesh.js';
 import {makeCube} from './mesh_shapes.js';
 import '../path.ux/scripts/struct.js';
 import {NodeFlags} from "./graph.js";
+import {ShaderNetwork} from "./material.js";
+
 let STRUCT = nstructjs.STRUCT;
 
 export class FileLoadError extends Error {};
@@ -60,6 +62,10 @@ export class BasicFileOp extends ToolOp {
     lib.add(ob);    
     scene.add(ob);
     scene.objects.setSelect(ob, true);
+
+    let mat = new ShaderNetwork();
+    mesh.materials.push(mat);
+    lib.add(mat);
   }
   
   static tooldef() {return {
@@ -376,6 +382,7 @@ export class AppState {
     console.log(`saved startup file; ${(buf.length/1024).toFixed(2)}kb`);
   }
 
+  /** this is executed before block re-linking has happened*/
   do_versions(version, datalib) {
     if (version < 101) {
       for (let block of datalib.allBlocks) {
@@ -387,8 +394,19 @@ export class AppState {
       }
     }
   }
-  
+
+  /** this is executed after block re-linking has happened*/
   do_versions_post(version, datalib) {
+    if (version < 102) {
+      let mat = new ShaderNetwork();
+
+      datalib.add(mat);
+      datalib.setActive(mat);
+
+      for (let mesh of datalib.getLibrary("mesh")) {
+        mesh.materials.push(mat);
+      }
+    }
   }
   
   createUndoFile() {
