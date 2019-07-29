@@ -2,6 +2,7 @@ import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import '../editors/view3d/widget_tools.js'; //ensure widget tools are all registered
 import {WidgetTool, WidgetFlags} from '../editors/view3d/widgets.js';
+import {Light} from '../core/light.js';
 import {DataAPI, DataPathError} from '../path.ux/scripts/simple_controller.js';
 import {DataBlock, DataRef, Library, BlockSet, BlockFlags} from '../core/lib_api.js'
 import * as toolprop from '../path.ux/scripts/toolprop.js';

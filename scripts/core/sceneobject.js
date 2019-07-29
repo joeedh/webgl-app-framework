@@ -1,5 +1,6 @@
 import {DataBlock, DataRef} from './lib_api.js';
 import '../path.ux/scripts/struct.js';
+import {Light} from './light.js';
 let STRUCT = nstructjs.STRUCT;
 import {Graph, SocketFlags} from './graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
@@ -99,7 +100,7 @@ export class SceneObject extends DataBlock {
   draw(gl, uniforms, program) {
     uniforms.objectMatrix = this.outputs.matrix.getValue();
     
-    if (this.data instanceof Mesh) {
+    if ((this.data instanceof Mesh) || (this.data instanceof Light)) {
       this.data.draw(gl, uniforms, program);
     }
   }

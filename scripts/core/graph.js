@@ -61,6 +61,7 @@ export class NodeSocketType {
       flag |= def.graph_flag;
     }
 
+    this.socketName = undefined;
     this.socketType = undefined;
     this.edges = [];
     this.node = undefined;
@@ -184,6 +185,7 @@ graph.NodeSocketType {
   edges      : array(e, int) | e.graph_id;
   uiname     : string;
   name       : string;
+  socketName : string;
   graph_flag : int;
   socketType : int;
 }
@@ -313,7 +315,8 @@ export class Node {
 
         sock.socketType = i ? SocketTypes.OUTPUT : SocketTypes.INPUT;
         sock.node = this;
-        sock.name = k;
+        sock.name = sock.name !== undefined ? sock.name : k;
+        sock.socketName = k; //sock.socketName always corrosponds to socket key
 
         if (sock.uiname === undefined || sock.uiname === sock.constructor.nodedef().uiname) {
           sock.uiname = k;
@@ -415,11 +418,13 @@ export class Node {
     for (let pair of this.inputs) {
       ins[pair.key] = pair.val;
       pair.val.socketType = SocketTypes.INPUT;
+      pair.val.socketName = pair.key;
     }
 
     for (let pair of this.outputs) {
       outs[pair.key] = pair.val;
       pair.val.socketType = SocketTypes.OUTPUT;
+      pair.val.socketName = pair.key;
     }
 
     this.inputs = ins;

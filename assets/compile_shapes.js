@@ -9,7 +9,8 @@ let files = {
   TORUS : "rotatetorus.obj",
   BLOCKARROW : "scalearrow.obj",
   CHEVRON : "chevron.obj",
-  SPHERE : "sphere.obj"
+  SPHERE : "sphere.obj",
+  LIGHT : "light.obj"
 };
 
 let data = '';

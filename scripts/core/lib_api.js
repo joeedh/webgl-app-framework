@@ -386,6 +386,15 @@ export class Library {
       
       lib.afterLoad(this, type);
     }
+
+    for (let cls of BlockTypes) {
+      let type = cls.blockDefine().typeName;
+
+      if (!(type in this.libmap)) {
+        this.libmap[type] = new BlockSet(cls, this);
+        this.libs.push(this.libmap[type]);
+      }
+    }
   }
 }
 

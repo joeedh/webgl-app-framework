@@ -4,6 +4,9 @@ import {NodeEditor} from '../editors/node/NodeEditor.js';
 import {getContextArea, Editor} from '../editors/editor_base.js';
 import * as util from '../util/util.js';
 import {Mesh} from '../mesh/mesh.js';
+import {Light} from './light.js';
+import {SceneObject} from './sceneobject.js';
+import {Scene} from './scene.js';
 import {DataRef} from './lib_api.js';
 import {ToolStack, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
 
@@ -52,8 +55,30 @@ export class ToolContext {
     let ob = this.object;
     
     if (ob !== undefined) {
-      return ob.data;
+      return ob.data instanceof Mesh ? ob.data : undefined;
     }
+  }
+
+  get light() {
+    let ob = this.object;
+
+    if (ob !== undefined) {
+      return ob.data instanceof Light ? ob.data : undefined;
+    }
+  }
+
+  /* unlike selectedMeshObjects, this returns all light objects
+   * even if they share .data Light instances*/
+  get selectedLightObjects() {
+    let this2 = this;
+
+    return (function*() {
+      for (let ob of this2.scene.objects) {
+        if (ob.data.type instanceof Light) {
+          yield ob.data;
+        }
+      }
+    })();
   }
 
   /** get all selected (and visible) objects */
@@ -124,6 +149,7 @@ export class SavedContext extends ToolContext {
     this._object = new DataRef();
     this._selectedObjects = [];
     this._selectedMeshObjects = [];
+    this._selectedLightObjects = [];
     this._scene = new DataRef();
     this._mesh = new DataRef();
 
@@ -170,6 +196,30 @@ export class SavedContext extends ToolContext {
 
   get mesh() {
     return this._getblock("mesh");
+  }
+
+  get selectedLightObjects() {
+    if (this._selectedLightObjects.length > 0) {
+      let ret = [];
+
+      for (let ob of this._selectedLightObjects) {
+        ret.push(this.datalib.get(ob));
+      }
+
+      return ret;
+    }
+
+    if (this.ctx === undefined) {
+      return this._selectedLightObjects;
+    }
+
+    let ret = this._selectedLightObjects = [];
+
+    for (let ob of this.ctx.selectedLightObjects) {
+      ret.push(DataRef.fromBlock(ob));
+    }
+
+    return this.selectedLightObjects;
   }
 
   get selectedObjects() {

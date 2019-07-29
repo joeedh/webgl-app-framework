@@ -8,8 +8,9 @@ import {Container} from '../path.ux/scripts/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {AbstractGraphClass} from './graph_class.js';
+import {ShaderGenerator} from "./shader_nodes.js";
 
-export {ShaderNetworkClass, ShaderNodeTypes} from './shader_nodes.js';
+export {ShaderNetworkClass, ShaderNodeTypes, ShaderGenerator} from './shader_nodes.js';
 
 export const MaterialFlags = {
   SELECT : 1
@@ -33,6 +34,11 @@ export class ShaderNetwork extends DataBlock {
   dataLink(getblock, getblock_us) {
     super.dataLink(getblock, getblock_us);
     //this.graph.dataLink(getblock, getblock_us);
+  }
+
+  generate() {
+    let gen = new ShaderGenerator();
+    return gen.generate(this.graph);
   }
 
   static blockDefine() {return {
