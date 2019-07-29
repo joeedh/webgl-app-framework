@@ -281,7 +281,7 @@ export class AppState {
     
     istruct.parse_structs(structs);
     
-    let screen;
+    let screen, found_screen;
     let datablocks = [];
     let datalib = undefined;
 
@@ -297,6 +297,7 @@ export class AppState {
 
       if (args.load_screen && type == BlockTypes.SCREEN) {
         screen = istruct.read_object(data, App);
+        found_screen = true;
 
         if (this.screen !== undefined) {
           this.screen.destroy();
@@ -395,6 +396,10 @@ export class AppState {
 
     if (args.reset_toolstack) {
       this.toolstack.reset(this.ctx);
+    }
+
+    if (found_screen) {
+      this.screen.afterSTRUCT();
     }
 
     this._execEditorOnFileLoad();

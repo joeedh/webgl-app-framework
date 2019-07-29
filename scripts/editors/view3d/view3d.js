@@ -171,6 +171,10 @@ export class View3D extends Editor {
   makeGraphNode() {
     let ctx = this.ctx;
 
+    if (this._graphnode !== undefined) {
+      this.ctx.graph.remove(this._graphnode);
+    }
+
     this._graphnode = CallbackNode.create("view3d", () => {},
       {
 
@@ -322,7 +326,6 @@ export class View3D extends Editor {
     super.init();
 
     this.makeGraphNode();
-
     this.widgets.loadShapes();
 
     for (let ed of this.editors) {
@@ -635,6 +638,15 @@ export class View3D extends Editor {
   }
 
   destroy() {
+    try {
+      if (this._graphnode) {
+        this.ctx.graph.remove(this._graphnode);
+        this._graphnode = undefined;
+      }
+    } catch (error) {
+      print_stack(error);
+    }
+
     for (let ed of this.editors) {
       ed.destroy(this.gl);
     }
@@ -644,6 +656,15 @@ export class View3D extends Editor {
 
   on_area_inactive() {
     this.destroy();
+  }
+
+  on_area_active() {
+    super.on_area_active();
+
+    this.makeGraphNode();
+    for (let ed of this.editors) {
+      ed.ctx = this.ctx;
+    }
   }
 
   viewportDraw() {

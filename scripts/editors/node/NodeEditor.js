@@ -557,17 +557,7 @@ export class NodeEditor extends Editor {
     super.init();
 
     //create svg overdraw element
-    this.overdraw = document.createElement("overdraw-x");
-    /*
-    this.overdraw.addEventListener("mousedown", (e) => {
-      console.log("yay", e);
-      this.on_mousedown(e);
-    });
-    this.overdraw.addEventListener("mousemove", (e) => {
-      this.on_mousemove(e);
-    });//*/
-
-    this.overdraw.start(this);
+    this.createOverdraw();
 
     this.last_mpos = new Vector2();
 
@@ -690,8 +680,24 @@ export class NodeEditor extends Editor {
     }
   }
 
+  createOverdraw() {
+    if (this.overdraw !== undefined) {
+      this.overdraw.remove();
+    }
+
+    this.overdraw = document.createElement("overdraw-x");
+    this.overdraw.start(this);
+  }
+
+  on_area_inactive() {
+    this.overdraw.clear();
+    this.overdraw.remove();
+    this.overdraw = undefined;
+  }
+
   on_area_active() {
     super.on_area_active();
+    this.createOverdraw();
 
     this.setCSS();
     this._recalcUI();
