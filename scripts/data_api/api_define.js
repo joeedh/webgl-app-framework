@@ -6,13 +6,17 @@ import {DataAPI, DataPathError} from '../path.ux/scripts/simple_controller.js';
 import {DataBlock, DataRef, Library, BlockSet, BlockFlags} from '../core/lib_api.js'
 import * as toolprop from '../path.ux/scripts/toolprop.js';
 import {View3D} from '../editors/view3d/view3d.js';
+import {Editor, App} from '../editors/editor_base.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
+import {RGBASocket, Vec4Socket, FloatSocket} from "../core/graphsockets.js";
+import {VelPan, VelPanFlags} from '../editors/velpan.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Context} from '../core/context.js';
 import {MeshModifierFlags, MeshFlags} from '../mesh/mesh_base.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Vertex, Edge, Loop, Face} from '../mesh/mesh_types.js';
-import {ShaderNetwork, ShaderNode} from '../core/material.js';
+import {ShaderNetwork} from '../core/material.js';
+import {ShaderNode} from '../core/shader_nodes.js';
 import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph.js';
 
 let api = new DataAPI();
@@ -48,11 +52,26 @@ export function api_define_view3d(api, pstruct) {
   def = vstruct.enum("widgettool", "active_tool", prop.values, "Active Tool", "Currently active tool widget");
   def.setProp(prop);
 }
+
 function api_define_socket(api, cls=NodeSocketType) {
   let nstruct = api.mapStruct(cls, true);
+
   nstruct.flags("graph_flag", "graph_flag", SocketFlags, "Flag", "Flags");
   nstruct.int("graph_id", "graph_id", "Graph ID", "Unique graph ID").read_only();
   nstruct.string("name", "name", "Name", "Name of socket");
+  nstruct.string("uiname", "uiname", "UI Name", "Name of socket");
+
+  return nstruct;
+}
+
+function api_define_rgba_socket(api) {
+  let nstruct = api_define_socket(api, RGBASocket);
+  nstruct.color4("value", "value", "Color", "Color");
+}
+
+function api_define_float_socket(api) {
+  let nstruct = api_define_socket(api, FloatSocket);
+  nstruct.float("value", "value", "value", "value");
 }
 
 function api_define_node(api, cls=Node) {
@@ -231,17 +250,83 @@ function api_define_library(api, parent) {
   api_define_libraryset(api, "shadernetwork", "materials", "Materials", lstruct, ShaderNetwork);
 }
 
+export function api_define_velpan(api, parent) {
+  let vp = api.mapStruct(VelPan);
+
+  vp.vec2("pos", "pos", "Position");
+  vp.vec2("scale", "scale", "Scale");
+  vp.vec2("min", "min", "Boundary Minimum");
+  vp.vec2("max", "max", "Boundary Maximum");
+
+  return vp;
+}
+
 export function api_define_node_editor(api, parent) {
   let nedstruct = api_define_editor(api, NodeEditor);
 
   parent.struct("nodeEditor", "nodeEditor", "Node Editor", nedstruct);
   nedstruct.string("graphPath", "graphPath", "data path to graph that's being edited");
+  nedstruct.struct("velpan", "velpan", "Pan / Zoom", api.getStruct(VelPan));
+}
+
+export function api_define_screen(api, parent) {
+  let st = api.mapStruct(App);
+
+  parent.struct("screen", "screen", "Screen", st);
+
+  st.list("sareas", "editors", [
+    //list should be main App (Screen) instance
+    function get(api, list, key) {
+      return list[key].area;
+    },
+
+    function getKey(api, list, obj) {
+      console.log(arguments);
+      for (let i=0; i<list.length; i++) {
+        if (list[i].area === obj) {
+          return i;
+        }
+      }
+    },
+
+    function getLength(api, list) {
+      return list.length;
+    },
+
+    function getIter(api, list) {
+      return (function *() {
+        for (let sarea of list) {
+          yield sarea.area;
+        }
+      })();
+    },
+
+    function getStruct(api, list, key) {
+      let obj = list[key];
+      if (obj === undefined) return undefined;
+      obj = obj.area;
+
+      let ret = api.getStruct(obj.constructor);
+      ret = ret === undefined ? api.getStruct(Editor) : ret;
+
+      return ret;
+    },
+
+    function getActive(api, list) {
+      return Editor.getActiveArea();
+    }
+  ]);
 }
 
 export function getDataAPI() {
   let cstruct = api.mapStruct(Context);
 
+  api_define_velpan(api);
+
   api_define_socket(api);
+  api_define_rgba_socket(api);
+  api_define_float_socket(api);
+
   api_define_node(api);
   api_define_graph(api);
   api_define_shadernode(api);
@@ -255,6 +340,8 @@ export function getDataAPI() {
   api_define_material(api, cstruct);
 
   api_define_library(api, cstruct);
+  api_define_editor(api, Editor);
+  api_define_screen(api, cstruct);
 
   api.setRoot(cstruct);
 

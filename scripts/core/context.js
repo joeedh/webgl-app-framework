@@ -231,10 +231,23 @@ SavedContext {
 `;
 nstructjs.manager.add_class(SavedContext);
 
+//modal tools have special context structures
+//that save properties that might change inside a
+//modal tool, like current area, etc.
 export class ModalContext extends SavedContext {
   constructor(ctx) {
     super(ctx, ctx.datalib);
     this._view3d = ctx.view3d;
+    this._nodeEditor = ctx.nodeEditor;
+    this._area = ctx.area;
+  }
+
+  get area() {
+    return this._area;
+  }
+
+  get nodeEditor() {
+    return this._nodeEditor;
   }
 
   get view3d() {
@@ -259,19 +272,17 @@ export class AppToolStack extends ToolStack {
 
     let tctx = ctx;
 
-    if (!(toolop.constructor.tooldef().undoflag & UndoFlags.IS_UNDO_ROOT)) {
+    let undoflag = toolop.constructor.tooldef().undoflag;
+    if (toolop.undoflag !== undefined) {
+      undoflag = toolop.undoflag;
+    }
+    undoflag = undoflag === undefined ? 0 : undoflag;
+
+    if (!(undoflag & UndoFlags.IS_UNDO_ROOT) && !(undoflag & UndoFlags.NO_UNDO)) {
       tctx = new SavedContext(ctx, ctx.datalib);
     }
 
     toolop.execCtx = tctx;
-    let undoflag;
-
-    if (toolop.undoflag === undefined) {
-      let def = toolop.constructor.tooldef();
-      undoflag = def.undoflag !== undefined ? def.undoflag : 0;
-    } else {
-      undoflag = toolop.undoflag !== undefined ? toolop.undoflag : 0;
-    }
 
     console.log(undoflag, "undoflag");
     if (!(undoflag & UndoFlags.NO_UNDO)) {

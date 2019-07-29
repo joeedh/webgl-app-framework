@@ -153,7 +153,14 @@ export class AppState {
   
   start() {
     this.ctx = new Context(this);
-    
+
+    window.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+    });
+    window.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
+
     this.screen = document.createElement("webgl-app-x");
     this.screen.ctx = this.ctx;
     this.screen.size[0] = window.innerWidth-45;
@@ -231,11 +238,28 @@ export class AppState {
       load_settings : false
     });
 
-    for (let sarea of this.screen.sareas) {
-      for (let area of sarea.editors) {
-        area.onFileLoad(area === sarea.area);
+    this._execEditorOnFileLoad();
+  }
+
+  /*this is stupid, I have to delay by 350 ms
+  * to avoid race conditions between ui and
+  * appstate*/
+  _execEditorOnFileLoad() {
+    window.setTimeout(() => {
+      for (let sarea of this.screen.sareas) {
+        sarea._init(); //check that _init has been called
+
+        for (let area of sarea.editors) {
+          area._init(); //check that _init has been called
+        }
       }
-    }
+
+      for (let sarea of this.screen.sareas) {
+        for (let area of sarea.editors) {
+          area.onFileLoad(area === sarea.area);
+        }
+      }
+    }, 350);
   }
 
   //expects an ArrayBuffer or a DataView
@@ -372,6 +396,8 @@ export class AppState {
     if (args.reset_toolstack) {
       this.toolstack.reset(this.ctx);
     }
+
+    this._execEditorOnFileLoad();
   }
 
   saveStartupFile() {

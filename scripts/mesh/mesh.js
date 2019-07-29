@@ -788,6 +788,13 @@ export class Mesh extends DataBlock {
   destroy(gl) {
     super.destroy();
 
+    if (gl === undefined) {
+      //we inherit destroy() from DataBlock,
+      //so we might not be called with gl
+      //I guess rely on GC?
+      return;
+    }
+
     if (this.smesh !== undefined) {
       this.smesh.destroy(gl);
       this.smesh = undefined;

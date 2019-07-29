@@ -106,6 +106,7 @@ export class DependSocket extends NodeSocketType {
 
   loadSTRUCT(reader) {
     reader(this);
+    super.loadSTRUCT(reader);
 
     this.value = !!this.value;
   }
@@ -252,6 +253,34 @@ Vec4Socket.STRUCT = STRUCT.inherit(Vec4Socket, NodeSocketType, "graph.Vec4Socket
 `;
 nstructjs.manager.add_class(Vec4Socket);
 
+export class RGBASocket extends Vec4Socket {
+  constructor(uiname, flag, default_value) {
+    super(uiname, flag, default_value);
+
+    this.value[0] = this.value[1] = this.value[2] = 0.5;
+    this.value[3] = 1.0;
+  }
+
+  static nodedef() {return {
+    name : "rgba",
+    uiname : "Color",
+    color : [1.0, 0.7, 0.4, 1]
+  }}
+
+  buildUI(container) {
+    container.button(this.uiname, () => {
+      console.log("edit color, yay");
+
+      let colorpicker = container.ctx.screen.popup(container);
+      colorpicker.colorPicker(container._joinPrefix("value"));
+    });
+  }
+}
+RGBASocket.STRUCT = STRUCT.inherit(RGBASocket, Vec4Socket, 'graph.RGBASocket') + `
+}
+`;
+nstructjs.manager.add_class(RGBASocket);
+
 export class FloatSocket extends NodeSocketType {
   constructor(uiname, flag, default_value=0.0) {
     super(uiname, flag);
@@ -264,7 +293,12 @@ export class FloatSocket extends NodeSocketType {
     uiname : "Value",
     color : [1.25, 0.45, 1.0, 1]
   }}
-  
+
+  buildUI(container) {
+    let ret = container.prop("value");
+    ret.setAttribute("name", this.uiname);
+  }
+
   diffValue(b) {
     return Math.abs(this.value - b);
   }

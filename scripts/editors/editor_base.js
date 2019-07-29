@@ -53,6 +53,10 @@ export class Editor extends Area {
     this.shadow.appendChild(this.container);
   }
 
+  onFileLoad() {
+
+  }
+
   getKeyMaps() {
     return [this.keymap];
   }
@@ -61,6 +65,10 @@ export class Editor extends Area {
     this.keymap = new KeyMap();
 
     return this.keymap;
+  }
+
+  getID() {
+    return this.ctx.screen.sareas.indexOf(this.owning_sarea);
   }
 
   static getActiveArea() {
