@@ -1,12 +1,13 @@
-import {DataBlock, DataRef} from './lib_api.js';
+import {DataBlock, DataRef} from '../core/lib_api.js';
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {Graph, SocketFlags} from './graph.js';
+import {Graph, SocketFlags} from '../core/graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
 import {Mesh} from '../mesh/mesh.js';
-import {Vec3Socket, FloatSocket, DependSocket, Matrix4Socket, Vec4Socket} from './graphsockets.js';
+import {Vec3Socket, FloatSocket, DependSocket, Matrix4Socket, Vec4Socket} from '../core/graphsockets.js';
 import {WidgetShapes} from '../editors/view3d/widget_shapes.js';
 import {Shaders} from '../editors/view3d/view3d_shaders.js';
+import {SceneObjectData} from '../core/sceneobject_base.js';
 
 export const LightFlags = {
   SELECT : 1,
@@ -22,7 +23,7 @@ export const LightTypes = {
   //SPOT      : 16
 };
 
-export class Light extends DataBlock {
+export class Light extends SceneObjectData {
   constructor() {
     super();
 
@@ -48,12 +49,20 @@ export class Light extends DataBlock {
     }
   }}
 
-  draw(gl, uniforms, unused_program) {
-    WidgetShapes.LIGHT.program = Shaders.WidgetMeshShader;
-    WidgetShapes.LIGHT.draw(gl, uniforms);
+  draw(gl, uniforms, program, object) {
+    if (program !== Shaders.MeshIDShader) {
+      program = Shaders.WidgetMeshShader;
+      //program = Shaders.MeshIDShader;
+      program.uniforms.color = object.getEditorColor();
+    }
+
+    program.uniforms.objectMatrix = object.outputs.matrix.getValue();
+    uniforms.objectMatrix = object.outputs.matrix.getValue();
+    WidgetShapes.LIGHT.draw(gl, uniforms, program);
   }
 }
-Light.STRUCT = STRUCT.inherit(Light, DataBlock) + `
+
+Light.STRUCT = STRUCT.inherit(Light, SceneObjectData) + `
   type : int;
 }
 `;

@@ -705,6 +705,13 @@ export class WidgetManager {
     return key in this.nodes;
   }
 
+  hasWidget(cls) {
+    for (let w of this.widgets) {
+      if (w instanceof cls)
+        return w;
+    }
+  }
+
   clearNodes() {
     let graph = this.view3d.ctx.graph;
 
@@ -943,6 +950,11 @@ export class WidgetManager {
 
     for (let widget of this.widgets) {
       widget.update(this);
+
+      widget.manager = this;
+      if (!widget.destroyed && widget.isDead) {
+        widget.remove();
+      }
     }
   }
 }

@@ -43,5 +43,6 @@ export let Icons = {
   VIEW_SELECTED  : 39,
   EXTRUDE        : 40,
   SUBDIVIDE      : 41,
-  SUBSURF        : 42
+  SUBSURF        : 42,
+  LIGHT          : 43
 };

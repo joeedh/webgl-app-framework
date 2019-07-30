@@ -207,6 +207,10 @@ graph.KeyValPair {
 nstructjs.manager.add_class(KeyValPair);
 
 export class Node {
+  static defineAPI(nodeStruct) {
+
+  }
+
   //get final node def with inheritance applied
   static getFinalNodeDef() {
     let def = this.nodedef();

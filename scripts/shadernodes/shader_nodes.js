@@ -1,42 +1,16 @@
-import {DataBlock, DataRef} from './lib_api.js';
-import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags, SocketTypes} from './graph.js';
+import {DataBlock, DataRef} from '../core/lib_api.js';
+import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags, SocketTypes} from '../core/graph.js';
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {DependSocket, Vec2Socket, Vec3Socket, RGBASocket, Vec4Socket, Matrix4Socket, FloatSocket} from "./graphsockets.js";
+import {DependSocket, Vec2Socket, Vec3Socket, RGBASocket, Vec4Socket, Matrix4Socket, FloatSocket} from "../core/graphsockets.js";
 import {UIBase} from '../path.ux/scripts/ui_base.js';
 import {Container} from '../path.ux/scripts/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
-import {AbstractGraphClass} from './graph_class.js';
-import {ShaderFragments} from './shader_lib.js';
+import {AbstractGraphClass} from '../core/graph_class.js';
+import {ShaderFragments, LightGen, DiffuseBRDF} from './shader_lib.js';
 
-export let PointLightCode = {
-  pre : `
-  #if defined(MAXPLIGHT) && MAXPLIGHT > 0
-    struct PointLight {
-      vec3 co;
-      float power;
-      float radius;
-      vec3 color;
-      float distance;
-    }
-    
-    uniform PointLight POINTLIGHTS[MAXPLIGHT];
-  #endif
-  `,
-  getLightVector(co, i) {
-    return `normalize(POINTLIGHTS${i}.co - ${co})`;
-  }
-};
-
-export let ClosureGLSL = `
-struct Closure {
-  vec3 light;
-  vec3 emission;
-  vec3 scatter;
-  float alpha;
-}
-`;
+export {ClosureGLSL, PointLightCode} from './shader_lib.js';
 
 export let ShaderNodeTypes = [];
 
@@ -371,9 +345,7 @@ export class ShaderGenerator {
 
       this.out("{\n");
       node.genCode(this);
-      this.out("\no}\n");
-
-
+      this.out("\n}\n");
     }
 
     let uniforms = '';
@@ -390,6 +362,7 @@ export class ShaderGenerator {
 
     return this;
   }
+
   push(node) {
 
   }
@@ -397,18 +370,23 @@ export class ShaderGenerator {
 
   }
 }
+
 export class ShaderNode extends Node {
   constructor() {
     super();
+  }
+
+  static defineAPI(nodeStruct) {
+
   }
 
   genCode(gen) {
   }
 
   buildUI(container) {
-
   }
 };
+
 ShaderNode.STRUCT = STRUCT.inherit(ShaderNode, Node, 'shader.ShaderNode') + `
 }
 `;
@@ -446,9 +424,18 @@ export class DiffuseNode extends ShaderNode {
   }
 
   genCode(gen) {
+    let brdf = DiffuseBRDF.gen('cl', 'co', 'normal', 'color');
+    let lights = LightGen.generate('cl', 'co', 'normal', 'color', brdf);
+
     gen.out(`
+Closure cl;
+vec3 co = vGlobalCo;
 float roughness = ${gen.getSocketValue(this.inputs.roughness)};
 vec3 normal = ${gen.getSocketValue(this.inputs.normal, ShaderContext.NORMAL)};
+vec4 color = ${gen.getSocketValue(this.inputs.color)};
+
+${lights}
+${gen.getSocketName(this.outputs.surface)} = cl;
     `)
   }
 
@@ -520,3 +507,4 @@ GeometryNode.STRUCT = STRUCT.inherit(GeometryNode, ShaderNode, 'shader.GeometryN
 `;
 nstructjs.manager.add_class(GeometryNode);
 ShaderNetworkClass.register(GeometryNode);
+

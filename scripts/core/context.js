@@ -4,7 +4,7 @@ import {NodeEditor} from '../editors/node/NodeEditor.js';
 import {getContextArea, Editor} from '../editors/editor_base.js';
 import * as util from '../util/util.js';
 import {Mesh} from '../mesh/mesh.js';
-import {Light} from './light.js';
+import {Light} from '../light/light.js';
 import {SceneObject} from './sceneobject.js';
 import {Scene} from './scene.js';
 import {DataRef} from './lib_api.js';
@@ -265,6 +265,10 @@ export class SavedContext extends ToolContext {
 
     for (let ob of this.ctx.selectedMeshObjects) {
       ret.push(DataRef.fromBlock(ob));
+    }
+
+    if (ret.length == 0) {
+      return ret; //avoid infinite recursion if there aren't any results
     }
 
     return this.selectedMeshObjects;

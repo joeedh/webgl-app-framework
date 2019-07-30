@@ -218,9 +218,8 @@ varying float vId;
 ${PolygonOffset.pre}
 
 void main() {
-  //vec4 p = objectMatrix * vec4(position, 1.0);
-  
-  vec4 p = projectionMatrix * vec4(position.xyz, 1.0);
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
   
   ${PolygonOffset.vertex("p")}
   

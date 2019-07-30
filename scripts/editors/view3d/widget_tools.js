@@ -12,7 +12,8 @@ import {DependSocket} from '../../core/graphsockets.js';
 import * as util from '../../util/util.js';
 import {SelMask} from './selectmode.js';
 
-import {WidgetBase, WidgetArrow, WidgetTool, WidgetFlags} from './widgets.js';
+import {View3DFlags} from "./view3d_base.js";
+import {WidgetBase, WidgetSphere, WidgetArrow, WidgetTool, WidgetFlags} from './widgets.js';
 import {TranslateOp, ScaleOp} from "./transform_ops.js";
 import {calcTransCenter} from './transform_query.js';
 import {ToolMacro} from "../../path.ux/scripts/simple_toolsys.js";
@@ -21,6 +22,36 @@ import {Icons} from '../icon_enum.js';
 let update_temps = util.cachering.fromConstructor(Vector3, 64);
 let update_temps4 = util.cachering.fromConstructor(Vector4, 64);
 let update_mats = util.cachering.fromConstructor(Matrix4, 64);
+
+export class WidgetSceneCursor extends WidgetBase {
+  constructor() {
+    super();
+  }
+
+  get isDead() {
+    return !this.manager.view3d._showCursor();
+  }
+
+  static wigetDefine() {return {
+    uiName: "cursor",
+    typeName: "cursor",
+    selMask: undefined,
+    icon: -1
+  }}
+
+  update(manager) {
+    super.update(manager);
+    let view3d = manager.view3d;
+
+    if (this.shape === undefined) {
+      this.shape = new WidgetSphere(manager);
+      this.shape.manager = manager;
+      this.shape.shapeid = "CURSOR";
+    }
+
+    this.matrix.load(view3d.cursor3D);
+  }
+};
 
 export class NoneWidget extends WidgetTool {
   static define() {return {

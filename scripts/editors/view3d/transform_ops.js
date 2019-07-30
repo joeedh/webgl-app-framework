@@ -49,11 +49,11 @@ export class TransformOp extends View3DOp {
 
     for (let type of TransDataTypes) {
       let list = type.genData(ctx, selmask, propmode, propradius);
-      list.type = type;
-
       if (list === undefined || list.length == 0) {
         continue;
       }
+
+      list.type = type;
 
       if (!(list instanceof TransDataList)) {
         list = new TransDataList(type, list);

@@ -1,7 +1,9 @@
 import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
 import {ToolOp, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
 import {keymap} from '../../path.ux/scripts/simple_events.js';
-import {MeshFlags, MeshTypes} from '../../mesh/mesh.js';
+import {MeshFlags, MeshTypes, Mesh} from '../../mesh/mesh.js';
+import {SelMask} from './selectmode.js';
+import {SceneObject, ObjectFlags} from "../../core/sceneobject.js";
 import {PropModes, TransDataType, TransDataElem} from './transform_base.js';
 import * as util from '../../util/util.js';
 
@@ -11,70 +13,76 @@ let meshGetCenterTemps2 = util.cachering.fromConstructor(Vector3, 64);
 let meshGetCenterTempsMats = util.cachering.fromConstructor(Matrix4, 16);
 
 export class MeshTransType extends TransDataType {
+  /**FIXME this only handles the active mesh object, it should
+    iterator over ctx.selectedMeshObjets*/
   static genData(ctx, selectmode, propmode, propradius) {
     let mesh = ctx.mesh;
     let tdata = [];
 
+    if (!mesh || !(selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE))) {
+      return undefined;
+    }
+
     if (propmode != PropModes.NONE) {
       let i = 0;
       let unset_w = 100000.0;
-      
+
       for (let v of mesh.verts.editable) {
         v.index = i;
-        
+
         let td = new TransDataElem();
         td.data1 = v;
         td.data2 = new Vector3(v);
-        
+
         tdata.push(td);
-        
+
         td.w = v.flag & MeshFlags.SELECT ? 0.0 : unset_w;
         i++;
       }
-      
+
       //let visit = new util.set();
       let visit = new Array(tdata.length);
       let limit = 2;
-      
-      for (let i=0; i<visit.length; i++) {
+
+      for (let i = 0; i < visit.length; i++) {
         visit[i] = 0;
       }
-      
+
       let stack = new Array(1024);
       stack.cur = 0;
-      
+
       for (let v of mesh.verts.selected.editable) {
         stack.cur = 0;
         stack[0] = v;
         let startv = v;
-        
+
         while (stack.cur >= 0) {
           let v = stack[stack.cur--];
           let td1 = tdata[v.index];
-          
+
           for (let e of v.edges) {
             let v2 = e.otherVertex(v);
-            
-            if (visit[v2.index]>limit || (v2.flag & MeshFlags.HIDE) || (v2.flag & MeshFlags.SELECT)) {
+
+            if (visit[v2.index] > limit || (v2.flag & MeshFlags.HIDE) || (v2.flag & MeshFlags.SELECT)) {
               continue;
             }
-            
+
             let td2 = tdata[v2.index];
             let dis = td1.w + e.v2.vectorDistance(e.v1);
             td2.w = Math.min(td2.w, dis);
-            
+
             if (td2.w < propradius) {
               stack[stack.cur++] = v2;
             }
           }
-          
-          if (stack.cur >= stack.length-50) {
-            stack.length = ~~(stack.length*1.5);
+
+          if (stack.cur >= stack.length - 50) {
+            stack.length = ~~(stack.length * 1.5);
             console.log("reallocation in proportional edit mode recursion stack", stack.length);
           }
         }
       }
-      
+
       for (let v of mesh.verts.editable) {
         if (v.flag & MeshFlags.SELECT) {
           tdata[v.index].w = 1;
@@ -97,73 +105,73 @@ export class MeshTransType extends TransDataType {
 
     return tdata;
   }
-  
+
   static applyTransform(ctx, elem, do_prop, matrix) {
     let td = elem;
-    
+
     td.data1.load(td.data2).multVecMatrix(matrix);
   }
-  
+
   static undoPre(ctx, elemlist) {
     let cos = {};
     let nos = {};
     let fnos = {};
     let fcos = {};
-    
+
     for (let td of elemlist) {
       let v = td.data1;
-      
+
       for (let f of v.faces) {
-        if (f.eid in fnos) 
+        if (f.eid in fnos)
           continue;
-        
+
         fnos[f.eid] = new Vector3(f.no);
         fcos[f.eid] = new Vector3(f.cent);
       }
-      
+
       cos[v.eid] = new Vector3(v);
       nos[v.eid] = new Vector3(v.no);
     }
-    
+
     return {
-      cos : cos,
-      nos : nos,
-      fnos : fnos,
-      fcos : fcos
+      cos: cos,
+      nos: nos,
+      fnos: fnos,
+      fcos: fcos
     };
   }
-  
+
   static undo(ctx, undodata) {
     let cos = undodata.cos;
     let nos = undodata.nos;
     let fcos = undodata.fcos;
     let fnos = undodata.fnos;
     let mesh = ctx.mesh;
-    
+
     for (let k in cos) {
       let v = mesh.eidmap[k];
-      
+
       if (v === undefined) {
         console.warn("Mesh integrity error in Transform undo");
         continue;
       }
-      
+
       v.load(cos[k]);
       v.no.load(nos[k]);
     }
-    
+
     for (let k in fcos) {
       let f = mesh.eidmap[k];
-      
+
       if (f === undefined) {
         console.warn("Mesh integrity error in Transform undo");
         continue;
       }
-      
+
       f.no.load(fnos[k]);
       f.cent.load(fcos[k]);
     }
-    
+
     mesh.regenRender();
   }
 
@@ -285,10 +293,10 @@ export class MeshTransType extends TransDataType {
     if (tot > 0) {
       c.mulScalar(1.0 / tot);
     }
-    
+
     return c;
   }
-  
+
   static calcAABB(ctx) {
     let d = 1e17;
     let min = new Vector3([d, d, d]), max = new Vector3([-d, -d, -d]);
@@ -303,15 +311,15 @@ export class MeshTransType extends TransDataType {
         ok = true;
       }
     }
-    
+
     if (!ok) {
       min.zero();
       max.zero();
     }
-    
+
     return [min, max];
   }
-  
+
   static update(ctx, elemlist) {
     let mesh = ctx.mesh;
 
@@ -371,3 +379,146 @@ export class MeshTransType extends TransDataType {
   }
 }
 TransDataType.register(MeshTransType);
+
+export class ObjectTransform {
+  constructor(ob) {
+    this.invmatrix = new Matrix4();
+    this.tempmat = new Matrix4();
+    this.matrix = new Matrix4(ob.outputs.matrix.getValue());
+    this.loc = new Vector3(ob.inputs.loc.getValue());
+    this.rot = new Vector3(ob.inputs.rot.getValue());
+    this.scale = new Vector3(ob.inputs.scale.getValue());
+    this.ob = ob;
+  }
+
+  copy() {
+    let ret = new ObjectTransform(this.ob);
+    return ret;
+  }
+}
+
+export class ObjectTransType extends TransDataType {
+  static genData(ctx, selectmode, propmode, propradius) {
+    let ignore_meshes = selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE);
+
+    let tdata = [];
+
+    function get_transform_parent(ob) {
+      if (ob.inputs.matrix.edges.length > 0) {
+        let parent = ob.inputs.matrix.edges[0].node;
+
+        if (parent instanceof SceneObject) {
+          if (parent.flag & ObjectFlags.SELECT && !(parent.flag & (ObjectFlags.HIDE|ObjectFlags.LOCKED))) {
+            return parent;
+          } else {
+            return get_transform_parent(parent);
+          }
+        }
+      }
+
+      return ob;
+    }
+
+    for (let ob of ctx.selectedObjects) {
+      let ok = get_transform_parent(ob) === ob;
+      ok = ok && (ignore_meshes || !(ob.data instanceof Mesh));
+
+      if (!ok) {
+        continue;
+      }
+
+      console.warn("processing transform sceneobject", ob.name, ob);
+
+      let td = new TransDataElem();
+
+      td.data1 = ob;
+      td.data2 = new ObjectTransform(ob);
+      tdata.push(td);
+    }
+
+    return tdata;
+  }
+
+  static applyTransform(ctx, elem, do_prop, matrix) {
+    let mat = elem.data2.tempmat;
+
+    mat.makeIdentity();
+
+    mat.multiply(elem.data2.matrix);
+    mat.multiply(elem.data2.invmatrix);
+    mat.multiply(matrix);
+
+    let ob = elem.data1;
+
+    mat.decompose(ob.inputs.loc.getValue(), ob.inputs.rot.getValue(), ob.inputs.scale.getValue());
+  }
+
+  static undoPre(ctx, elemlist) {
+    let undo = {};
+
+    for (let td of elemlist) {
+      let transform = td.data2.copy();
+      transform.ob = undefined; //kill unwanted reference
+      undo[td.data1.lib_id] = transform;
+    }
+
+    return undo;
+  }
+
+  static undo(ctx, undodata) {
+    for (let k in undodata) {
+      let ob = ctx.datalib.get(k);
+      let transform = undodata[k];
+
+      if (ob === undefined) {
+        console.warn("error in transform", k);
+        continue;
+      }
+
+      ob.inputs.loc.setValue(transform.loc);
+      ob.inputs.rot.setValue(transform.rot);
+      ob.inputs.scale.setValue(transform.scale);
+      ob.outputs.matrix.setValue(transform.matrix);
+
+      ob.update();
+    }
+
+    window.updateDataGraph();
+  }
+
+  static getCenter(ctx, selmask, spacemode, space_matrix_out) {
+    if (space_matrix_out !== undefined) {
+      space_matrix_out.makeIdentity();
+    }
+
+    let cent = new Vector3();
+    let temp = new Vector3();
+    let tot = 0.0;
+
+    for (let ob of ctx.selectedObjects) {
+      temp.zero();
+      temp.multVecMatrix(ob.outputs.matrix.getValue());
+      cent.add(temp);
+      tot++;
+    }
+
+    if (tot > 0) {
+      cent.mulScalar(1.0 / tot);
+    }
+
+    return cent;
+  }
+
+  static calcAABB(ctx) {
+  }
+
+  static update(ctx, elemlist) {
+    for (let td of elemlist) {
+      td.data1.update();
+    }
+
+    window.updateDataGraph();
+    window.redraw_viewport();
+  }
+}
+TransDataType.register(ObjectTransType);

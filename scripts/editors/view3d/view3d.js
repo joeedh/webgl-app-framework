@@ -14,6 +14,7 @@ import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js
 import {OrbitTool, PanTool, ZoomTool} from './view3d_ops.js';
 import {cachering, print_stack, time_ms} from '../../util/util.js';
 import './view3d_mesh_editor.js';
+import {ObjectEditor} from './view3d_object_editor.js';
 import {SubEditors} from './view3d_subeditor.js';
 import {Mesh} from '../../mesh/mesh.js';
 import {GPUSelectBuffer} from './view3d_select.js';
@@ -27,6 +28,8 @@ import {ConstraintSpaces} from './transform_base.js';
 import {eventWasTouch} from '../../path.ux/scripts/simple_events.js';
 import {CursorModes, OrbitTargetModes} from './view3d_utils.js';
 import {Icons} from '../icon_enum.js';
+import {WidgetSceneCursor, NoneWidget} from './widget_tools.js';
+import {View3DFlags} from './view3d_base.js';
 
 let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
@@ -108,6 +111,8 @@ export class DrawLine {
 export class View3D extends Editor {
   constructor() {
     super();
+
+    this.flag = View3DFlags.SHOW_CURSOR;
 
     this.orbitMode = OrbitTargetModes.FIXED;
     this.cursor3D = new Matrix4();
@@ -351,6 +356,7 @@ export class View3D extends Editor {
       window.redraw_viewport();
     });
 
+    header.tool("light.new(position='cursor')", PackFlags.USE_ICONS);
 
     //header.iconbutton(Icons.VIEW_SELECTED, "Recenter View (fixes orbit/rotate problems)", () => {
     //  this.viewSelected();
@@ -509,7 +515,19 @@ export class View3D extends Editor {
     this.updateCursor();
   }
 
+  _showCursor() {
+    let ok = this.flag & View3DFlags.SHOW_CURSOR;
+    ok = ok && (this.widget === undefined || this.widget instanceof NoneWidget);
+
+    return ok;
+  }
+
   updateWidgets_intern() {
+    if (this._showCursor() && !this.widgets.hasWidget(WidgetSceneCursor)) {
+      this.widgets.add(new WidgetSceneCursor());
+      window.redraw_viewport();
+    }
+
     //return;
     if (this.ctx === undefined)
       return;
@@ -542,6 +560,8 @@ export class View3D extends Editor {
     if (this.widget !== undefined) {
       this.widget.update();
     }
+
+    this.widgets.update(this);
   }
 
   update() {
@@ -864,6 +884,7 @@ View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
   cursor3D            : mat4;
   cursorMode          : int;
   orbitMode           : int;
+  flag                : int;
 }
 `
 Editor.register(View3D);

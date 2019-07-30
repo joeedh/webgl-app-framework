@@ -8,9 +8,9 @@ import {Container} from '../path.ux/scripts/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {AbstractGraphClass} from './graph_class.js';
-import {ShaderGenerator} from "./shader_nodes.js";
+import {ShaderGenerator} from "../shadernodes/shader_nodes.js";
 
-export {ShaderNetworkClass, ShaderNodeTypes, ShaderGenerator} from './shader_nodes.js';
+export {ShaderNetworkClass, ShaderNodeTypes, ShaderGenerator} from '../shadernodes/shader_nodes.js';
 
 export const MaterialFlags = {
   SELECT : 1

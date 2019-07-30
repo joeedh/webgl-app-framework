@@ -15,12 +15,28 @@ let STRUCT = nstructjs.STRUCT;
 export let GraphTypes = [];
 export let GraphMap = {};
 
+export function api_define_graphclasses(api) {
+  for (let cls of GraphTypes) {
+    cls.buildAPI(api);
+  }
+}
+
 export class AbstractGraphClass {
   static graphdef() {return {
     typeName      : "",
     uiName        : "",
     graph_flag    : 0,
   }}
+
+  static buildAPI(api) {
+    for (let cls of this.NodeTypes) {
+      let nstruct = api.mapStruct(cls);
+      let basestruct = api.getStruct(Node);
+
+      api.mergeStructs(nstruct, basestruct);
+      cls.defineAPI(nstruct);
+    }
+  }
 
   /** register an abstract graph class, don't subclass this*/
   static registerClass(cls) {

@@ -1,6 +1,6 @@
 import {DataBlock, DataRef} from './lib_api.js';
 import '../path.ux/scripts/struct.js';
-import {Light} from './light.js';
+import {Light} from '../light/light.js';
 let STRUCT = nstructjs.STRUCT;
 import {Graph, SocketFlags} from './graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
@@ -8,18 +8,46 @@ import {Mesh} from '../mesh/mesh.js';
 import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket} from './graphsockets.js';
 
 export const ObjectFlags = {
-  SELECT : 1,
-  HIDE   : 2,
-  LOCKED : 4
+  SELECT    : 1,
+  HIDE      : 2,
+  LOCKED    : 4,
+  HIGHLIGHT : 8,
+  ACTIVE    : 16
 };
 
 let _mattemp = new Matrix4();
+
+function mix(a, b, t) {
+  return new Vector4(a).interp(b, t);
+}
+export let Colors = {
+  0                       : [0.7, 0.7, 0.7, 1.0], //0
+  [ObjectFlags.SELECT]    : [1.0, 0.7, 0.5, 1.0], //1
+  [ObjectFlags.HIGHLIGHT] : [1.0, 0.8, 0.2, 1.0], //8
+  [ObjectFlags.ACTIVE]    : [1.0, 0.5, 0.25, 1.0]
+};
+Colors[ObjectFlags.SELECT | ObjectFlags.HIGHLIGHT]
+  = mix(Colors[ObjectFlags.SELECT], Colors[ObjectFlags.HIGHLIGHT], 0.5);
+Colors[ObjectFlags.SELECT | ObjectFlags.ACTIVE]
+  = mix(Colors[ObjectFlags.SELECT], Colors[ObjectFlags.ACTIVE], 0.5);
+Colors[ObjectFlags.SELECT | ObjectFlags.ACTIVE | ObjectFlags.HIGHLIGHT]
+  = mix(Colors[ObjectFlags.SELECT|ObjectFlags.HIGHLIGHT], Colors[ObjectFlags.ACTIVE|ObjectFlags.SELECT], 0.5);
+
+window._colors = Colors;
+
 
 export class SceneObject extends DataBlock {
   constructor(data=undefined) {
     super();
     
     this.data = data;
+    this.flag = 0;
+  }
+
+  getEditorColor() {
+    let flag = this.flag & (ObjectFlags.SELECT | ObjectFlags.HIGHLIGHT | ObjectFlags.ACTIVE);
+
+    return Colors[flag];
   }
 
   static nodedef() {return {
@@ -99,9 +127,10 @@ export class SceneObject extends DataBlock {
   
   draw(gl, uniforms, program) {
     uniforms.objectMatrix = this.outputs.matrix.getValue();
-    
+    uniforms.object_id = this.lib_id;
+
     if ((this.data instanceof Mesh) || (this.data instanceof Light)) {
-      this.data.draw(gl, uniforms, program);
+      this.data.draw(gl, uniforms, program, this);
     }
   }
 }

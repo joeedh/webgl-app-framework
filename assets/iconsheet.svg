@@ -23,6 +23,10 @@
      id="defs16101">
     <inkscape:path-effect
        effect="spiro"
+       id="path-effect1218"
+       is_visible="true" />
+    <inkscape:path-effect
+       effect="spiro"
        id="path-effect1306"
        is_visible="true" />
     <inkscape:path-effect
@@ -566,8 +570,8 @@
      borderopacity="1.0"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:zoom="8.0756584"
-     inkscape:cx="119.80235"
+     inkscape:zoom="2.0189146"
+     inkscape:cx="384.84286"
      inkscape:cy="428.93899"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
@@ -1392,5 +1396,11 @@
        id="path1157-6-0"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccccc" />
+    <path
+       style="fill:#f1fe05;stroke:#ffffff;stroke-width:2.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;fill-opacity:0.50731707;stroke-miterlimit:4;stroke-dasharray:2.5,2.5;stroke-dashoffset:0"
+       d="m 368.68745,634.93491 c -1.50259,-0.10218 -4.00005,-0.99063 -4.00005,-0.99063 l 0.15385,-7.05825 c 0,0 0.79296,-0.77522 -3.38465,-6.68676 -4.17761,-5.91154 0.0907,-14.44326 8.15394,-14.48798 8.06323,-0.0447 10.96317,9.18705 7.07701,14.61181 -3.88616,5.42476 -3.84619,6.31528 -3.84619,6.31528 v 7.80122 c 0,0 -2.65132,0.59749 -4.15391,0.49531 z"
+       id="path1220"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="zcczzzccz" />
   </g>
 </svg>

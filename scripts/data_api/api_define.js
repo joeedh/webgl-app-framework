@@ -2,14 +2,15 @@ import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import '../editors/view3d/widget_tools.js'; //ensure widget tools are all registered
 import {WidgetTool, WidgetFlags} from '../editors/view3d/widgets.js';
-import {Light} from '../core/light.js';
+import {AddLightOp} from "../light/light_ops.js";
+import {Light} from '../light/light.js';
 import {DataAPI, DataPathError} from '../path.ux/scripts/simple_controller.js';
 import {DataBlock, DataRef, Library, BlockSet, BlockFlags} from '../core/lib_api.js'
 import * as toolprop from '../path.ux/scripts/toolprop.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {Editor, App} from '../editors/editor_base.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
-import {RGBASocket, Vec4Socket, FloatSocket} from "../core/graphsockets.js";
+import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from "../core/graphsockets.js";
 import {VelPan, VelPanFlags} from '../editors/velpan.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Context} from '../core/context.js';
@@ -17,8 +18,11 @@ import {MeshModifierFlags, MeshFlags} from '../mesh/mesh_base.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Vertex, Edge, Loop, Face} from '../mesh/mesh_types.js';
 import {ShaderNetwork} from '../core/material.js';
-import {ShaderNode} from '../core/shader_nodes.js';
+import '../shadernodes/allnodes.js';
+import {ShaderNode} from '../shadernodes/shader_nodes.js';
 import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph.js';
+import {SelectOneOp} from '../sceneobject/selectops.js';
+import {api_define_graphclasses} from '../core/graph_class.js';
 
 let api = new DataAPI();
 import {Icons} from '../editors/icon_enum.js';
@@ -65,6 +69,21 @@ function api_define_socket(api, cls=NodeSocketType) {
   return nstruct;
 }
 
+function api_define_vec2_socket(api) {
+  let nstruct = api_define_socket(api, Vec2Socket);
+  nstruct.vec2("value", "value", "Color", "Color");
+}
+
+function api_define_vec3_socket(api) {
+  let nstruct = api_define_socket(api, Vec3Socket);
+  nstruct.vec3("value", "value", "Color", "Color");
+}
+
+function api_define_vec4_socket(api) {
+  let nstruct = api_define_socket(api, Vec4Socket);
+  nstruct.vec4("value", "value", "Color", "Color");
+}
+
 function api_define_rgba_socket(api) {
   let nstruct = api_define_socket(api, RGBASocket);
   nstruct.color4("value", "value", "Color", "Color");
@@ -106,7 +125,7 @@ function api_define_node(api, cls=Node) {
         let obj = list[inorouts][key];
 
         if (obj === undefined)
-          return undefined;
+          return api.getStruct(NodeSocketType);
 
         let ret = api.getStruct(obj.constructor);
         return ret === undefined ? api.getStruct(NodeSocketType) : ret;
@@ -120,8 +139,8 @@ function api_define_node(api, cls=Node) {
   return nstruct;
 }
 
-function api_define_datablock(api, cls) {
-  let dstruct = api_define_node(api, DataBlock);
+function api_define_datablock(api, cls=DataBlock) {
+  let dstruct = api_define_node(api, cls);
 
   dstruct.int("lib_id", "lib_id", "Lib ID").read_only();
   dstruct.string("name", "name", "name");
@@ -177,18 +196,21 @@ function api_define_graph(api, cls=Graph) {
       let obj = list.node_idmap[key];
 
       if (obj === undefined)
-        return undefined;
+        return api.getStruct(Node);
 
       let ret = api.getStruct(obj.constructor);
       return ret === undefined ? api.getStruct(Node) : ret;
     }
   ]);
+
+  return gstruct;
 }
 
 function api_define_material(api, parent) {
   let mstruct = api_define_datablock(api, ShaderNetwork);
 
   parent.struct("material", "material", "ShaderNetwork", mstruct);
+
   mstruct.struct("graph", "graph", "Shader Graph", api.getStruct(Graph));
 }
 
@@ -232,7 +254,7 @@ function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
       let obj = list.idmap[key];
 
       if (obj === undefined) {
-        return undefined;
+        return api.getStruct(DataBlock);
       }
 
       let ret = api.getStruct(obj.constructor);
@@ -304,7 +326,7 @@ export function api_define_screen(api, parent) {
 
     function getStruct(api, list, key) {
       let obj = list[key];
-      if (obj === undefined) return undefined;
+      if (obj === undefined) return api.getStruct(Editor);
       obj = obj.area;
 
       let ret = api.getStruct(obj.constructor);
@@ -325,12 +347,15 @@ export function getDataAPI() {
   api_define_velpan(api);
 
   api_define_socket(api);
+  api_define_vec2_socket(api);
+  api_define_vec3_socket(api);
+  api_define_vec4_socket(api);
   api_define_rgba_socket(api);
   api_define_float_socket(api);
 
   api_define_node(api);
-  api_define_graph(api);
   api_define_shadernode(api);
+  api_define_graph(api);
 
   api_define_datablock(api, DataBlock);
 
@@ -345,6 +370,8 @@ export function getDataAPI() {
   api_define_screen(api, cstruct);
 
   api.setRoot(cstruct);
+
+  api_define_graphclasses(api);
 
   return api;
 }

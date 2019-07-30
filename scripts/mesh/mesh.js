@@ -9,6 +9,7 @@ import * as util from '../util/util.js'
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {DependSocket} from '../core/graphsockets.js';
 import {DataBlock, DataRef} from '../core/lib_api.js';
+import {SceneObjectData} from '../core/sceneobject_base.js';
 
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
@@ -36,7 +37,7 @@ let _cdtemp2 = new Array(2);
 let _cdwtemp1 = new Array(1);
 let _cdwtemp2 = new Array(2);
 
-export class Mesh extends DataBlock {
+export class Mesh extends SceneObjectData {
   constructor() {
     super();
 
@@ -932,7 +933,7 @@ export class Mesh extends DataBlock {
     }
   }
 
-  draw(gl, uniforms, program) {
+  draw(gl, uniforms, program, object) {
     if (this.recalc & RecalcFlags.TESSELATE) {
       this.tessellate();
     }
@@ -1306,7 +1307,7 @@ export class Mesh extends DataBlock {
   }}
 };
 
-Mesh.STRUCT = STRUCT.inherit(Mesh, DataBlock, "mesh.Mesh") + `
+Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
   _elists   : array(mesh.ElementList) | obj._getArrays();
   eidgen    : IDGen;
   flag      : int;

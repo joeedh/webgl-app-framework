@@ -47,6 +47,12 @@ export class ObjectList extends Array {
     this.active = this.highlight = undefined;
   }
 
+  clearSelection() {
+    for (let ob of this) {
+      this.setSelect(ob, false);
+    }
+  }
+
   get editable() {
     let this2 = this;
 
@@ -94,12 +100,35 @@ export class ObjectList extends Array {
     }
   }
 
+  setHighlight(ob) {
+    if (this.highlight !== undefined) {
+      this.highlight.flag &= ~ObjectFlags.HIGHLIGHT;
+    }
+
+    this.highlight = ob;
+
+    if (ob !== undefined) {
+      ob.flag |= ObjectFlags.HIGHLIGHT;
+    }
+  }
+
   setActive(ob) {
+    if (this.active !== undefined) {
+      this.active.flag &= ~ObjectFlags.ACTIVE;
+    }
+
     this.active = ob;
+    if (ob !== undefined) {
+      ob.flag |= ObjectFlags.ACTIVE;
+    }
   }
 
   dataLink(scene, getblock, getblock_us) {
     this.active = getblock(this.active, scene);
+
+    if (this.highlight !== undefined) {
+      this.highlight = getblock(this.highlight, scene);
+    }
 
     for (let ob of this.refs) {
       let ob2 = getblock_us(ob, scene);
@@ -136,8 +165,9 @@ export class ObjectList extends Array {
 
 ObjectList.STRUCT = `
 ObjectList {
-  refs    : array(DataRef) | obj._getDataRefs();
-  active  : DataRef |  DataRef.fromBlock(obj.active);
+  refs       : array(DataRef) | obj._getDataRefs();
+  active     : DataRef |  DataRef.fromBlock(obj.active);
+  highlight  : DataRef |  DataRef.fromBlock(obj.highlight);
 }
 `;
 nstructjs.manager.add_class(ObjectList);

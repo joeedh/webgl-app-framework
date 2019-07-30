@@ -8,7 +8,7 @@ import {Container} from '../../path.ux/scripts/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
-import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../core/shader_nodes.js';
+import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader_nodes.js';
 import {AbstractGraphClass} from '../../core/graph_class.js';
 import {NodeFlags, SocketFlags, SocketTypes, NodeSocketType} from "../../core/graph.js";
 

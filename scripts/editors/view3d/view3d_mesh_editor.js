@@ -485,7 +485,7 @@ export class MeshEditor extends View3D_SubEditorIF {
       ob = ctx.datalib.get(ob);
 
       if (ob === undefined || ob.data === undefined || !(ob.data instanceof Mesh)) {
-        console.warn("warning, invalid object", id);
+        //console.warn("warning, invalid object", id);
         continue;
       }
 
@@ -493,7 +493,7 @@ export class MeshEditor extends View3D_SubEditorIF {
       let e = mesh.eidmap[idx];
 
       if (e === undefined) {
-        console.warn("warning, invalid eid", idx);
+        //console.warn("warning, invalid eid", idx);
         continue;
       }
 

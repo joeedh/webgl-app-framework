@@ -9,7 +9,7 @@ import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
-import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../core/shader_nodes.js';
+import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader_nodes.js';
 import {AddNodeOp, ConnectNodeOp} from './node_ops.js';
 import {DataPath} from "../../path.ux/scripts/simple_controller.js";
 let projcos = util.cachering.fromConstructor(Vector2, 64);
@@ -58,7 +58,7 @@ export class NodeSocketElem extends RowFrame {
     this.pos = new Vector2();
     this._abspos = new Vector2();
 
-    this._last_dpi = UIBase.getDPI();
+    this._last_dpi = this.getDPI();
   }
 
   click() {
@@ -98,16 +98,19 @@ export class NodeSocketElem extends RowFrame {
     //*/
 
     //let velpan = this.ned.velpan;
-    //let dpi = UIBase.getDPI();
+    //let dpi = this.getDPI();
 
     if (this.type == "output") {
       this.ned.project(p);
 
       let r = this.getClientRects()[0];
+
       if (r !== undefined) {
         p[0] += r.width;
 
-        p[0] -= this.size * 0.5;
+        let dpi = this.getDPI();
+
+        p[0] -= this.size * 0.5;// / dpi;
       }
       this.ned.unproject(p);
     } else {
@@ -150,7 +153,7 @@ export class NodeSocketElem extends RowFrame {
 
       this.overrideDefault("defaultHeight", 20);
       this.overrideDefault("defaultWidth", 70);
-      this.overrideDefault("DefaultTextSize", Math.ceil(21*scale+0.5));
+      //this.overrideDefault("DefaultTextSize", Math.ceil(21*scale+0.5));
 
       this.socket.buildUI(this);
     }
@@ -168,7 +171,7 @@ export class NodeSocketElem extends RowFrame {
 
   _redraw() {
     let g = this.g;
-    let dpi = UIBase.getDPI();
+    let dpi = this.getDPI();
     let size = Math.ceil(this.size * dpi);
 
     this.canvas.width = size;
@@ -177,7 +180,16 @@ export class NodeSocketElem extends RowFrame {
     g.beginPath();
     g.clearRect(0, 0, size, size);
 
+    if (this.socket === undefined) {
+      this.updateSocketRef();
+    }
+
+    if (this.socket === undefined) {
+      console.warn("bad socket", this.getAttribute("datapath"));
+      return;
+    }
     let color = this.socket.constructor.nodedef().color;
+
     color = color === undefined ? "blue" : color;
     if (color instanceof Array) {
       color = color2css(color);
@@ -199,7 +211,7 @@ export class NodeSocketElem extends RowFrame {
   }
 
   updateDPI() {
-    let dpi = UIBase.getDPI();
+    let dpi = this.getDPI();
 
     if (dpi !== this._last_dpi) {
       this._last_dpi = dpi;
@@ -213,7 +225,7 @@ export class NodeSocketElem extends RowFrame {
 
   updatePos() {
     let r = this.getClientRects();
-    let dpi = UIBase.getDPI();
+    let dpi = this.getDPI();
 
     if (r.length === 0) {
       console.warn("failed to update socket position");
@@ -233,7 +245,9 @@ export class NodeSocketElem extends RowFrame {
       //this.style["width"] = r.width + "px";
       let w = this.uinode.size[0];
 
-      this.pos[0] = w - r.width + 0;
+      r.width /= this.ned.velpan.scale[0];
+
+      this.pos[0] = w - r.width + 20/this.ned.velpan.scale[0];
       console.log("update socket lines");
 
       this.ned.doOnce(this.ned._recalcUI);
@@ -261,6 +275,9 @@ export class NodeSocketElem extends RowFrame {
   setCSS() {
     super.setCSS();
 
+    this.ul.style["margin"] = this.ul.style["padding"] = "0px";
+    this.style["margin"] = this.style["padding"] = "0px";
+
     this.style["white-space"] = "nowrap";
     this.ul.style["white-space"] = "nowrap";
 
@@ -278,7 +295,7 @@ export class NodeSocketElem extends RowFrame {
 
     this.float(pos[0], pos[1]);
 
-    let dpi = UIBase.getDPI();
+    let dpi = this.getDPI();
 
     this.canvas.style["width"] = this.size + "px";
     this.canvas.style["height"] = this.size + "px";
@@ -352,6 +369,8 @@ export class NodeUI extends Container {
     //let row = this.row();
     //row.style["width"] = node.graph_ui_size[0] + "px";
 
+    let y = 35;
+
     for (let i=0; i<2; i++) {
       //let row2 = row.col();
 
@@ -359,10 +378,9 @@ export class NodeUI extends Container {
       //  row2.style["padding-left"] = "50px";
       }
 
-      let dpi = UIBase.getDPI();
+      let dpi = this.getDPI();
 
-      let y = 35;
-      let x = i ? 1 : -30;
+      let x = i ? 0 : -20/this.ned.velpan.scale[0];
 
       let socks = i ? node.outputs : node.inputs;
       let key = i ? "outputs" : "inputs";
@@ -372,6 +390,7 @@ export class NodeUI extends Container {
 
         let uisock = document.createElement("node-socket-elem-x");
 
+        uisock.parentWidget = this;
         uisock.type = i ? "output" : "input";
 
         uisock.pos[0] = x;
@@ -404,9 +423,21 @@ export class NodeUI extends Container {
         this.allsockets.push(uisock);
         this.ned.sockets.push(uisock);
 
-        y += uisock.size*2.0 + 2;
+        y += ~~(uisock.size*1.45) + 2;
       }
     }
+
+    let ui = document.createElement("container-x");
+    ui.ctx = this.ctx;
+    ui.dataPrefix = this.getAttribute("datapath") + ".";
+    this.add(ui);
+
+    if (node.buildUI) {
+
+      node.buildUI(ui);
+    }
+    ui.style["position"] = "absolute";
+    ui.style["top"] = ~~((y+10)*this.ned.velpan.scale[1]) + "px";
   }
 
   getNode() {
@@ -479,11 +510,25 @@ export class NodeEditor extends Editor {
   constructor() {
     super();
 
+    this._last_zoom = new Vector2();
+
     this._last_dpi = undefined;
     this._last_update_gen = undefined;
 
     this.velpan = new VelPan();
     this.velpan.onchange = this._on_velpan_change.bind(this);
+
+    this.nodeContainer = document.createElement("container-x");
+    this.nodeContainer.getDPI = () => {
+      return this.getNodeDPI();
+    };
+
+    //this.nodeContainer.getZoom = () => {
+      //return this.velpan.scale[0];
+    //};
+
+    this.shadow.appendChild(this.nodeContainer);
+    this.nodeContainer.parentWidget = this;
 
     this.defineKeyMap();
 
@@ -506,6 +551,10 @@ export class NodeEditor extends Editor {
     this._recalcUI();
   }
 
+  getNodeDPI() {
+    return this.getDPI();
+  }
+
   rebuildAll() {
     return this.switchGraph();
   }
@@ -522,9 +571,22 @@ export class NodeEditor extends Editor {
 
     this.nodes.length = 0;
     this.node_idmap = {};
+    
+    let graph;
+    try {
+      graph = this.ctx.api.getValue(this.ctx, this.graphPath);
+    } catch (error) {
+      if (error instanceof DataPathError) {
+        if (DEBUG.verboseDataPath) {
+          console.warn("Failed to fetch graph at ", this.graphPath);
+        }
 
-    let graph = this.ctx.api.getValue(this.ctx, this.graphPath);
-
+        return;
+      } else {
+        throw error;
+      }
+    }
+    
     console.log("regenerating node editor");
 
     for (let node of graph.nodes) {
@@ -532,12 +594,13 @@ export class NodeEditor extends Editor {
 
       let node2 = document.createElement("nodeui-x");
 
+      node2.parentWidget = this.nodeContainer;
       node2.ned = this;
       node2.ctx = this.ctx;
       node2.setAttribute("datapath", path)
 
       this.nodes.push(node2);
-      this.container.add(node2);
+      this.nodeContainer.add(node2);
     }
 
     this._recalcUI();
@@ -718,7 +781,7 @@ export class NodeEditor extends Editor {
   }
 
   findSocket(localX, localY, limit=25) {
-    limit *= UIBase.getDPI();
+    limit *= this.getNodeDPI();
 
     let pos = new Vector2();
     let mpos = new Vector2([localX, localY]);
@@ -785,7 +848,7 @@ export class NodeEditor extends Editor {
   }
 
   updateDPI() {
-    let dpi = UIBase.getDPI();
+    let dpi = this.getDPI();
 
     if (dpi !== this._last_dpi) {
       this._last_dpi = dpi;
@@ -795,9 +858,17 @@ export class NodeEditor extends Editor {
     }
   }
 
+  updateZoom() {
+    if (this._last_zoom.vectorDistance(this.velpan.scale) > 0.0001) {
+      this._last_zoom.load(this.velpan.scale);
+      this.rebuildAll();
+    }
+  }
+
   update() {
     super.update();
 
+    this.updateZoom();
     this.updateDPI();
 
     this.velpan.update();
@@ -829,7 +900,8 @@ export class NodeEditor extends Editor {
       graph = this.ctx.api.getValue(this.ctx, this.graphPath);
     } catch (error) {
       if (error instanceof DataPathError) {
-        console.warn("bad graph path for node editor:" + this.graphPath);
+        if (DEBUG.verboseDataPath)
+          console.warn("bad graph path for node editor:" + this.graphPath);
         return undefined;
       } else {
         throw error;
@@ -949,8 +1021,7 @@ export class NodeEditor extends Editor {
       return [0, 0];
     }
 
-    let dpi = UIBase.getDPI();
-
+    let dpi = this.getDPI();
     return new Vector2([x - rect.x, y - rect.y]);
   }
 

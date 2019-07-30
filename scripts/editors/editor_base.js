@@ -188,7 +188,7 @@ export class App extends Screen {
 
   setCSS() {
     super.setCSS();
-    let dpi = UIBase.getDPI();
+    let dpi = this.getDPI();
 
     let size = this.size, canvas = document.getElementById("webgl");
 
@@ -222,8 +222,8 @@ export class App extends Screen {
   }
 
   updateDPI() {
-    if (UIBase.getDPI() !== this._last_dpi) {
-      this._last_dpi = UIBase.getDPI();
+    if (this.getDPI() !== this._last_dpi) {
+      this._last_dpi = this.getDPI();
       this.setCSS();
     }
   }
