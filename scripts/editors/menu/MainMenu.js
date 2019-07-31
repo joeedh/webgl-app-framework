@@ -26,6 +26,9 @@ export class MenuBarEditor extends Editor {
     header.menu("File", [
       ["New  ", () => {
         console.log("File new");
+        if (confirm("Make new file?")) {
+          _genDefaultFile(_appstate, false);
+        }
       }],
       ["Save  ", () => {
         console.log("File save");
