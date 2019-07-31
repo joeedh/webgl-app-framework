@@ -235,7 +235,11 @@ export class BlockSet extends Array {
   }
   
   dataLink(getblock, getblock_us) {
-    console.warn("Linking. . .", this.active, this.idmap);
+    let type = this.type.blockDefine().typeName;
+    
+    if (DEBUG.DataLink) {
+      console.warn("Linking " + type + ". . .", this.active, this.idmap);
+    }
 
     if (this.active != -1) {
       this.active = this.idmap[this.active];

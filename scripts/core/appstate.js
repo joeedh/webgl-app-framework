@@ -9,9 +9,10 @@ toolsys.setContextClass(Context);
 
 import {loadWidgetShapes} from '../editors/view3d/widget_shapes.js';
 
-import {App} from '../editors/editor_base.js';
+import {App, ScreenBlock} from '../editors/editor_base.js';
 import {Library, DataBlock, DataRef} from '../core/lib_api.js';
 import {IDGen} from '../util/util.js';
+import {PropsEditor} from "../editors/properties/PropsEditor.js";
 import * as util from '../util/util.js';
 import {Vector3, Vector4, Vector2, Quat, Matrix4} from '../util/vectormath.js';
 import {ToolOp, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
@@ -67,6 +68,12 @@ export class BasicFileOp extends ToolOp {
     let mat = new ShaderNetwork();
     mesh.materials.push(mat);
     lib.add(mat);
+
+    let sblock = new ScreenBlock();
+    sblock.screen = _appstate.screen;
+
+    lib.add(sblock);
+    lib.setActive(sblock);
   }
   
   static tooldef() {return {
@@ -94,6 +101,10 @@ export function genDefaultScreen(appstate) {
   let sarea2 = _appstate.screen.splitArea(sarea, yperc);
 
   sarea.switch_editor(MenuBarEditor);
+
+  let xperc = 270 / _appstate.screen.size[0];
+  let sarea3 = _appstate.screen.splitArea(sarea2, 1.0 - xperc, false);
+  sarea3.switch_editor(PropsEditor);
 
   appstate.screen.listen();
 
@@ -181,7 +192,15 @@ export class AppState {
     this.filename = "unnamed." + cconst.FILE_EXT;
   }
   
-  createFile(args={save_screen : true, load_screen : true}) {
+  createFile(args={save_screen : true, save_settings : false, save_library : true}) {
+    if (args.save_library === undefined) {
+      args.save_library = true;
+    }
+
+    if (args.save_screen === undefined) {
+      args.save_screen = true;
+    }
+
     let file = new BinaryWriter();
     
     file.string(cconst.FILE_MAGIC);
@@ -207,13 +226,25 @@ export class AppState {
       file.bytes(data);
     }
     
-    if (args.save_screen) {
-      writeblock(BlockTypes.SCREEN, this.screen);
+    //if (args.save_screen) {
+    //  writeblock(BlockTypes.SCREEN, this.screen);
+    //}
+
+    if (args.save_settings) {
+      writeblock(BlockTypes.SETTINGS, this.settings);
     }
-    
+
+    if (!args.save_library) {
+      return file.finish().buffer;
+    }
+
     writeblock(BlockTypes.LIBRARY, this.datalib);
-    
+
     for (let lib of this.datalib.libs) {
+      if (!args.save_screen && lib.type.blockDefine().typeName == "screen") {
+        continue;
+      }
+
       for (let block of lib) {
         let typeName = block.constructor.blockDefine().typeName;
         let data = [];
@@ -233,16 +264,23 @@ export class AppState {
     return file.finish().buffer;
   }
 
+  testUndoFileIO() {
+    let file = this.createUndoFile();
+    this.loadUndoFile(file);
+    window.redraw_viewport();
+  }
+
   testFileIO() {
-    let file = this.createFile();
+    let file = this.createFile({save_settings : true});
     this.loadFile(file);
     window.redraw_viewport();
   }
 
   loadUndoFile(buf) {
     this.loadFile(buf, {
-      load_screen   : false,
-      load_settings : false
+      load_screen     : false,
+      load_settings   : false,
+      reset_toolstack : false
     });
 
     this._execEditorOnFileLoad();
@@ -271,6 +309,20 @@ export class AppState {
 
   //expects an ArrayBuffer or a DataView
   loadFile(buf, args={reset_toolstack : true, load_screen : true, load_settings : false}) {
+    let lastscreens = undefined;
+    let lastscreens_active = undefined;
+
+    //if we didn't load a screen, preserve screens from last datalib
+    if (!args.load_screen) {
+      lastscreens = [];
+
+      lastscreens_active = this.datalib.libmap.screen.active;
+
+      for (let sblock of this.datalib.libmap.screen) {
+        lastscreens.push(sblock);
+      }
+    }
+
     let file = new BinaryReader(buf);
     
     let s = file.string(4);
@@ -292,40 +344,19 @@ export class AppState {
     let datablocks = [];
     let datalib = undefined;
 
-    console.log(file);
-
     while (!file.at_end()) {
       let type = file.string(4);
       let len = file.int32();
       
       let data = file.bytes(len);
       data = new DataView((new Uint8Array(data)).buffer);
-      console.log("->", type);
+      console.log("Reading block of type", type);
 
       if (args.load_screen && type == BlockTypes.SCREEN) {
+        console.warn("Old screen block detected");
+
         screen = istruct.read_object(data, App);
         found_screen = true;
-
-        if (this.screen !== undefined) {
-          this.screen.destroy();
-          this.screen.remove();
-        }
-
-        this.screen = screen;
-        this.screen.ctx = this.ctx;
-        this.screen.listen();
-
-        //push active area contexts
-        for (let sarea of this.screen.sareas) {
-          sarea.area.push_ctx_active();
-          sarea.area.pop_ctx_active();
-        }
-
-        document.body.appendChild(screen);
-
-        this.screen.update();
-        this.screen.regenBorders();
-        this.screen.setCSS();
       } else if (type == BlockTypes.LIBRARY) {
         datalib = istruct.read_object(data, Library);
         console.log("Found library");
@@ -342,7 +373,11 @@ export class AppState {
         len = data.byteLength - len - 4;
         let data2 = file2.bytes(len);
         let block;
-        
+
+        if (!args.load_screen && cls.blockDefine().typeName == "screen") {
+          continue;
+        }
+
         if (cls === undefined) {
           console.warn("Warning, unknown block type", clsname);
           
@@ -350,7 +385,12 @@ export class AppState {
         } else {
           block = istruct.read_object(data2, cls);
         }
-        
+
+        if (cls.blockDefine().typeName == "screen") {
+          block.screen._ctx = this.ctx;
+          console.log("SCREEN", block.screen.sareas)
+        }
+
         datablocks.push([clsname, block]);
       } else if (args.load_settings && type == BlockTypes.SETTINGS) {
         let settings = istruct.read_object(data, AppSettings);
@@ -358,14 +398,6 @@ export class AppState {
         this.settings.destroy();
         this.settings = settings;
       }
-    }
-    
-    if (screen !== undefined) {
-      screen.doOnce(() => {
-        this.screen.on_resize([window.innerWidth, window.innerHeight]);
-        this.screen.setCSS();
-        this.screen.update();
-      });
     }
 
     if (datalib === undefined) {
@@ -378,8 +410,8 @@ export class AppState {
     }
     
     this.do_versions(version, datalib);
-    
-    datalib = this.datalib;
+
+    //datalib = this.datalib;
     function getblock(dataref) {
       return datalib.get(dataref);
     }
@@ -400,9 +432,61 @@ export class AppState {
     this.datalib.afterSTRUCT();
 
     this.do_versions_post(version, datalib);
+    
+    if (args.load_screen && screen === undefined) {
+      screen = datalib.libmap.screen.active;
+      if (screen === undefined) { //paranoia check
+        screen = datalib.libmap.screen[0];
+        datalib.libmap.screen.active = screen;
+      }
+
+      screen = screen.screen;
+    }
+
+    if (screen !== undefined) {
+      found_screen = true;
+
+      if (this.screen !== undefined) {
+        this.screen.destroy();
+        this.screen.remove();
+      }
+
+      this.screen = screen;
+      this.screen.ctx = this.ctx;
+      this.screen.listen();
+
+      //push active area contexts
+      for (let sarea of this.screen.sareas) {
+        sarea.area.push_ctx_active();
+        sarea.area.pop_ctx_active();
+      }
+
+      document.body.appendChild(screen);
+
+      this.screen.update();
+      this.screen.regenBorders();
+      this.screen.setCSS();
+
+      screen.doOnce(() => {
+        this.screen.on_resize([window.innerWidth, window.innerHeight]);
+        this.screen.setCSS();
+        this.screen.update();
+      });
+    }
 
     if (args.reset_toolstack) {
       this.toolstack.reset(this.ctx);
+    }
+
+    console.log("-------------------------->", lastscreens);
+
+    if (!args.load_screen) {
+      for (let sblock of lastscreens) {
+        sblock.lib_id = sblock.graph_id = -1; //request new id
+        datalib.add(sblock);
+      }
+
+      datalib.libmap.screen.active = lastscreens_active;
     }
 
     if (found_screen) {
@@ -413,7 +497,7 @@ export class AppState {
   }
 
   saveStartupFile() {
-    let buf = this.createFile();
+    let buf = this.createFile({write_settings : false});
     buf = util.btoa(buf);
 
     localStorage[cconst.APP_KEY_NAME] = buf;
@@ -430,6 +514,15 @@ export class AppState {
           datalib.graph.add(block);
         }
       }
+    }
+
+    if (version < 103) {
+      let sblock = new ScreenBlock();
+      sblock.screen = this.screen;
+
+      datalib.add(sblock);
+      //we're inserting the screen prior to block relinking
+      datalib.getLibrary("screen").active = sblock.lib_id;
     }
   }
 
@@ -449,8 +542,8 @@ export class AppState {
   
   createUndoFile() {
     let args = {
-      save_screen : false,
-      load_screen : false
+      save_screen   : false,
+      load_settings : false
     };
     
     return this.createFile(args);

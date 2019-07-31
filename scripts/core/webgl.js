@@ -251,7 +251,7 @@ export class ShaderProgram {
         return null;
     }
     
-    console.log("created shader", program);
+    //console.log("created shader", program);
 
     this.program = program;
 

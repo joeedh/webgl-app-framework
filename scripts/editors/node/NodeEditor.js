@@ -232,7 +232,7 @@ export class NodeSocketElem extends RowFrame {
     let dpi = this.getDPI();
 
     if (r.length === 0) {
-      console.warn("failed to update socket position");
+      //console.warn("failed to update socket position");
       return;
     }
 
@@ -601,7 +601,9 @@ export class NodeEditor extends Editor {
       node2.parentWidget = this.nodeContainer;
       node2.ned = this;
       node2.ctx = this.ctx;
-      node2.setAttribute("datapath", path)
+      this.nodeContainer.ctx = this.ctx;
+      
+      node2.setAttribute("datapath", path);
 
       this.nodes.push(node2);
       this.nodeContainer.add(node2);

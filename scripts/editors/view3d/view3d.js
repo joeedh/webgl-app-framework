@@ -322,7 +322,6 @@ export class View3D extends Editor {
     super.init();
 
     this.makeGraphNode();
-    this.widgets.loadShapes();
 
     for (let ed of this.editors) {
       ed.ctx = this.ctx;
@@ -361,10 +360,6 @@ export class View3D extends Editor {
     //});
 
     this.setCSS();
-
-    this.gl = getWebGL();
-    this.canvas = this.gl.canvas;
-    this.grid = this.makeGrid();
 
     let getSubEditorMpos = (e) => {
       return this.getLocalMouse(e.clientX, e.clientY);
@@ -468,6 +463,17 @@ export class View3D extends Editor {
     });
 
     window.redraw_viewport();
+  }
+
+  glInit() {
+    if (this.gl !== undefined) {
+      return;
+    }
+
+    this.gl = getWebGL();
+    this.canvas = this.gl.canvas;
+    this.grid = this.makeGrid();
+    this.widgets.loadShapes();
   }
 
   getTransCenter() {
@@ -675,25 +681,39 @@ export class View3D extends Editor {
 
     if (this.renderEngine !== undefined) {
       this.renderEngine.destroy(this.gl);
+      this.renderEngine = undefined;
+    }
+
+    if (this.grid !== undefined) {
+      this.grid.destroy(this.gl);
+      this.grid = undefined;
     }
 
     this.widgets.destroy(this.gl);
+    this.gl = undefined;
   }
 
   on_area_inactive() {
     this.destroy();
+    this.gl = undefined;
   }
 
   on_area_active() {
     super.on_area_active();
 
+    this.glInit();
     this.makeGraphNode();
+
     for (let ed of this.editors) {
       ed.ctx = this.ctx;
     }
   }
 
   viewportDraw() {
+    if (!this.gl) {
+      this.glInit();
+    }
+
     this.push_ctx_active();
     this.updateWidgets();
     this.viewportDraw_intern();
@@ -928,6 +948,7 @@ let f = () => {
   
   for (let sarea of screen.sareas) {
     if (sarea.area instanceof View3D) {
+      sarea.area._init();
       sarea.area.viewportDraw();
     }
   }

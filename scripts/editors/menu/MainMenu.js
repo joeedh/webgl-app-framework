@@ -50,7 +50,7 @@ export class MenuBarEditor extends Editor {
   }
 
   copy() {
-    let ret = document.createElement("property-editor-x");
+    let ret = document.createElement("menu-editor-x");
 
     return ret;
   }

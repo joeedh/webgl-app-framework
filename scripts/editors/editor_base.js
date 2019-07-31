@@ -16,6 +16,7 @@ let laststack = [];
 export {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
 import {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
 import {Matrix4, Vector2} from "../util/vectormath.js";
+import {DataBlock} from '../core/lib_api.js';
 
 export {VelPanFlags, VelPan} from './velpan.js';
 
@@ -244,7 +245,34 @@ export class App extends Screen {
   }
 };
 
-App.STRUCT = STRUCT.inherit(App, Screen) + `
+App.STRUCT = STRUCT.inherit(App, Screen, 'App') + `
 }`;
 UIBase.register(App);
 nstructjs.manager.add_class(App);
+
+export class ScreenBlock extends DataBlock {
+  constructor() {
+    super();
+
+    //this.screen = document.createElement("webgl-app-x");
+  }
+
+  static blockDefine() {return {
+    typeName    : "screen",
+    defaultName : "Screen",
+    uiName      : "Screen",
+    icon        : -1,
+    flag        : 0
+  }}
+
+  loadSTRUCT(reader) {
+    super.loadSTRUCT(reader);
+    reader(this);
+  }
+}
+ScreenBlock.STRUCT = STRUCT.inherit(ScreenBlock, DataBlock) + `
+  screen : App;
+}
+`;
+nstructjs.manager.add_class(ScreenBlock);
+DataBlock.register(ScreenBlock);
