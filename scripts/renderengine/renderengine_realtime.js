@@ -173,6 +173,7 @@ export class RealtimeEngine extends RenderEngine {
       program = Shaders.NormalPassShader;
 
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
+      program.uniforms.objectMatrix = ob.outputs.matrix.getValue();
       ob.draw(gl, uniforms, program);
     }
   }
@@ -251,6 +252,7 @@ export class RealtimeEngine extends RenderEngine {
       }
 
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
+
       ob.draw(gl, uniforms, program);
     }
 

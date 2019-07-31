@@ -279,9 +279,8 @@ varying vec3 vCameraNormal;
 varying vec2 vUv;
 
 void main() {
-  //vec4 p = objectMatrix * vec4(position, 1.0);
-  
-  vec4 p = projectionMatrix * vec4(position.xyz, 1.0);
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
   vec4 n = normalMatrix * vec4(normal, 0.0);
   
   n = normalize(projectionMatrix * objectMatrix * vec4(normal, 0.0));

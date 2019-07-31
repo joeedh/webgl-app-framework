@@ -338,10 +338,8 @@ export class View3D extends Editor {
     header.prop("view3d.selectmode", PackFlags.USE_ICONS);
     header.prop("view3d.active_tool", PackFlags.USE_ICONS);
 
-    header.tool("view3d.view_selected()", PackFlags.USE_ICONS);
     header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
-
-    header.prop("mesh.flag[SUBSURF]", PackFlags.USE_ICONS);
+    header.tool("view3d.view_selected()", PackFlags.USE_ICONS);
 
     header.iconbutton(Icons.UNDO, "Undo", () => {
       this.ctx.toolstack.undo();
@@ -353,6 +351,7 @@ export class View3D extends Editor {
       window.redraw_viewport();
     });
 
+    header.prop("mesh.flag[SUBSURF]", PackFlags.USE_ICONS);
     header.tool("light.new(position='cursor')", PackFlags.USE_ICONS);
 
     //header.iconbutton(Icons.VIEW_SELECTED, "Recenter View (fixes orbit/rotate problems)", () => {
