@@ -22,6 +22,13 @@ export class ShaderNetwork extends DataBlock {
 
     this.flag = 0;
     this.graph = new Graph();
+    this.graph.onFlagResort = this._on_flag_resort.bind(this);
+    this._regen = true;
+  }
+
+  _on_flag_resort() {
+    console.log("material shader resort");
+    this._regen = 1;
   }
 
   static nodedef() {return {
@@ -36,9 +43,17 @@ export class ShaderNetwork extends DataBlock {
     //this.graph.dataLink(getblock, getblock_us);
   }
 
-  generate() {
-    let gen = new ShaderGenerator();
-    return gen.generate(this.graph);
+  generate(scene) {
+    if (scene === undefined) {
+      throw new Error("scene cannot be undefined");
+    }
+    this._regen = false;
+
+    let gen = new ShaderGenerator(scene);
+    gen.generate(this.graph);
+    let shader = gen.genShader();
+
+    return shader;
   }
 
   static blockDefine() {return {
@@ -52,6 +67,8 @@ export class ShaderNetwork extends DataBlock {
   loadSTRUCT(reader) {
     super.loadSTRUCT(reader);
     reader(this);
+
+    this.graph.onFlagResort = this._on_flag_resort.bind(this);
   }
 };
 

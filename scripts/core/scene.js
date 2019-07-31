@@ -5,6 +5,32 @@ import {Graph} from './graph.js';
 import * as util from '../util/util.js';
 import {ObjectFlags} from './sceneobject.js';
 import {DependSocket} from './graphsockets.js';
+import {Light} from '../light/light.js';
+import {Vector3} from '../util/vectormath.js';
+
+export const EnvLightFlags = {
+  USE_AO : 1
+};
+
+export class EnvLight {
+  constructor() {
+    this.color = new Vector3([0.5, 0.8, 1]);
+    this.power = 0.5;
+    this.ao_dist = 5.0;
+    this.ao_fac = 5.0;
+    this.flag = EnvLightFlags.USE_AO;
+  }
+}
+EnvLight.STRUCT = `
+EnvLight {
+  color      : vec3;
+  power      : float;
+  ao_dist    : float;
+  ao_fac     : float;
+  flag       : int;
+}
+`;
+nstructjs.manager.add_class(EnvLight);
 
 export const SceneFlags = {
   SELECT : 1
@@ -79,6 +105,10 @@ export class ObjectList extends Array {
         yield ob;
       }
     })();
+  }
+
+  get renderable() {
+    return this.visible;
   }
 
   setSelect(ob, state) {
@@ -175,7 +205,9 @@ nstructjs.manager.add_class(ObjectList);
 export class Scene extends DataBlock {
   constructor(objects) {
     super();
-    
+
+    this.envlight = new EnvLight();
+
     this.objects = new ObjectList();
     this.objects.onselect = this._onselect.bind(this);
     this.flag = 0;
@@ -187,6 +219,38 @@ export class Scene extends DataBlock {
         this.add(ob);
       }
     }
+  }
+
+  get lights() {
+    let this2 = this;
+
+    let ret = (function*() {
+      for (let ob of this2.objects) {
+        if (ob.data instanceof Light) {
+          yield ob;
+        }
+      }
+    })();
+
+    ret.visible = (function*() {
+      for (let ob of this2.objects) {
+        if (ob.flag & ObjectFlags.HIDE) {
+          continue;
+        }
+
+        if (ob.data instanceof Light) {
+          yield ob;
+        }
+      }
+    })();
+
+    //the the future they'll be a seperate flag for
+    //whether something shows up in renders and shows up
+    //while editing in the viewport.
+    //for now just alias to ret.visible.
+    ret.renderable = ret.visible;
+
+    return ret;
   }
 
   add(ob) {
@@ -257,6 +321,7 @@ Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
   objects   : ObjectList;
   active    : int | obj.active !== undefined ? obj.active.lib_id : -1;
   time      : float;
+  envlight  : EnvLight;
 }
 `;
 

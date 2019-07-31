@@ -181,7 +181,7 @@ export class NodeSocketType {
 NodeSocketType.STRUCT = `
 graph.NodeSocketType {
   graph_id   : int;
-  node       : int | obj.node.graph_id;
+  node       : int | obj.node !== undefined ? obj.node.graph_id : -1;
   edges      : array(e, int) | e.graph_id;
   uiname     : string;
   name       : string;
@@ -281,10 +281,20 @@ export class Node {
           if (p.nodedef === undefined) continue;
           let obj2 = p.nodedef()[key];
           
+          if (obj2 instanceof InheritFlag) {
+            obj2 = obj2.data;
+          }
+          
           if (obj2 !== undefined) {
             for (let k in obj2) {
+              let sock2 = obj2[k];
+
+              if (sock2 instanceof InheritFlag) {
+                sock2 = sock2.data;
+              }
+
               if (!(k in ret)) {
-                ret[k] = obj2[k].copy();
+                ret[k] = sock2.copy();
               }
             }
           }
@@ -423,12 +433,14 @@ export class Node {
       ins[pair.key] = pair.val;
       pair.val.socketType = SocketTypes.INPUT;
       pair.val.socketName = pair.key;
+      pair.val.node = this;
     }
 
     for (let pair of this.outputs) {
       outs[pair.key] = pair.val;
       pair.val.socketType = SocketTypes.OUTPUT;
       pair.val.socketName = pair.key;
+      pair.val.node = this;
     }
 
     this.inputs = ins;
@@ -678,6 +690,8 @@ export class Graph {
       redraw things*/
     this.updateGen = Math.random();
 
+    this.onFlagResort = undefined;
+
     this.nodes = [];
     this.sortlist = [];
     this.graph_flag = 0;
@@ -699,6 +713,10 @@ export class Graph {
   }
 
   flagResort() {
+    if (this.onFlagResort) {
+      this.onFlagResort(this);
+    }
+
     this.graph_flag |= GraphFlags.RESORT;
   }
   

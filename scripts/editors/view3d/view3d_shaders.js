@@ -1,4 +1,5 @@
 import {Matrix4} from '../../util/vectormath.js';
+import {ShaderProgram} from "../../core/webgl.js";
 
 export let PolygonOffset = {
   pre  : `uniform float polygonOffset;`,
@@ -260,6 +261,72 @@ void main() {
   ]
 };
 
+export let NormalPassShader = {
+  vertex : `precision mediump float;
+  
+uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
+uniform mat4 normalMatrix;
+
+attribute vec3 position;
+attribute vec3 normal;
+attribute vec2 uv;
+attribute vec4 color;
+
+varying vec4 vColor;
+varying vec3 vNormal;
+varying vec3 vCameraNormal;
+varying vec2 vUv;
+
+void main() {
+  //vec4 p = objectMatrix * vec4(position, 1.0);
+  
+  vec4 p = projectionMatrix * vec4(position.xyz, 1.0);
+  vec4 n = normalMatrix * vec4(normal, 0.0);
+  
+  n = normalize(projectionMatrix * objectMatrix * vec4(normal, 0.0));
+  
+  gl_Position = p;
+  
+  vUv = uv;
+  vNormal = normal;
+  vCameraNormal = n.xyz;
+  vColor = color;
+}
+
+  `,
+
+  fragment : `precision mediump float;
+uniform float alpha;
+
+varying vec4 vColor;
+varying vec3 vCameraNormal;
+varying vec3 vNormal;
+varying vec2 vUv;
+
+void main() {
+  float f;
+  
+  vec3 no = normalize(vNormal);
+  //flip normal towards camera
+  if (vCameraNormal[2] > 0.0) {
+    no = -no;
+  }
+  
+  gl_FragColor = vec4(no*0.5 + 0.5, 1.0);
+}
+  `,
+
+  uniforms : {
+    alpha : 1.0,
+    objectMatrix : new Matrix4()
+  },
+
+  attributes : [
+    "position", "normal", "uv", "color"
+  ]
+};
+
 
 
 export let BasicLineShader2D = {
@@ -350,6 +417,7 @@ void main() {
   ]
 };
 
+
 export let SubSurfPatchShader = {
   vertex : `precision mediump float;
   `
@@ -360,7 +428,8 @@ export const ShaderDef = {
   BasicLitMesh         : BasicLitMesh,
   MeshEditShader       : MeshEditShader,
   MeshIDShader         : MeshIDShader,
-  WidgetMeshShader     : WidgetMeshShader
+  WidgetMeshShader     : WidgetMeshShader,
+  NormalPassShader     : NormalPassShader
 };
 
 export let Shaders = {
@@ -368,3 +437,16 @@ export let Shaders = {
 
 //global for debugging purposes only
 window._Shaders = Shaders;
+
+//see view3d_shaders.js
+export function loadShader(gl, sdef) {
+  let shader = new ShaderProgram(gl, sdef.vertex, sdef.fragment, sdef.attributes);
+
+  shader.init(gl);
+
+  for (let k in sdef.uniforms) {
+    shader.uniforms[k] = sdef.uniforms[k];
+  }
+
+  return shader;
+}

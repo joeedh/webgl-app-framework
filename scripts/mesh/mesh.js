@@ -60,9 +60,9 @@ export class Mesh extends SceneObjectData {
     this.recalc = RecalcFlags.RENDER | RecalcFlags.TESSELATE;
     this.smesh = undefined;
     this.program = undefined;
-    this.uniforms = {
-      uColor : [1, 1, 1, 1]
-    };
+    //this.uniforms = {
+    //  uColor : [1, 1, 1, 1]
+    //};
     
     this.elists = {};
     
@@ -70,6 +70,10 @@ export class Mesh extends SceneObjectData {
     this.loops = this.getElemList(MeshTypes.LOOP);
     this.edges = this.getElemList(MeshTypes.EDGE);
     this.faces = this.getElemList(MeshTypes.FACE);
+  }
+
+  get uniforms() {
+    throw new Error("no longer supported: Mesh.prototype.uniforms property!");
   }
 
   getElemLists() {
@@ -950,19 +954,9 @@ export class Mesh extends SceneObjectData {
     if (program !== undefined) {
       this.smesh.program = program;
       this.smesh.island.program = program;
+
       program.bind(gl);
     }
-    
-    let uniforms2 = {};
-    
-    for (let k in this.uniforms) {
-      uniforms2[k] = this.uniforms[k];
-    }
-    
-    for (let k in uniforms) {
-      uniforms2[k] = uniforms[k];
-    }
-    
     this.smesh.draw(gl, uniforms);
   }
   

@@ -329,6 +329,8 @@ export class ConnectNodeOp extends NodeGraphOp {
 
     if (!cancelled) {
       this.exec(ctx);
+      ctx.nodeEditor.rebuildAll();
+      window.redraw_viewport();
     }
   }
 

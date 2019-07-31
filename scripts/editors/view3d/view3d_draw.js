@@ -4,6 +4,7 @@ import {Mesh, MeshFlags, MeshTypes} from "../../mesh/mesh.js";
 import {LayerTypes} from "../../core/simplemesh.js";
 import {SelMask} from "./selectmode.js";
 import {Shaders} from "./view3d_shaders.js";
+import {View3DFlags} from './view3d_base.js';
 
 export const Colors = {
   DRAW_DEBUG : [0, 1.0, 0.5, 1.0],
@@ -298,6 +299,10 @@ export class BasicMeshDrawer extends MeshDrawInterface {
   }
 
   draw(view3d, gl, object, uniforms, program) {
+    if (!(view3d.selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE))) {
+      return;
+    }
+
     if (this._regen) {
       this._regen = false;
       this._generate(view3d, gl, object);
@@ -310,7 +315,9 @@ export class BasicMeshDrawer extends MeshDrawInterface {
     let selmode = view3d.selectmode;
     let program2 = Shaders.MeshEditShader;
 
-    mesh.draw(gl, uniforms, program);
+    if (!(view3d.flag & View3DFlags.SHOW_RENDER)) {
+      mesh.draw(gl, uniforms, program);
+    }
 
     function drawElements(list, smesh, alpha=1.0) {
       program2.uniforms.active_id = list.active !== undefined ? list.active.eid : -1;

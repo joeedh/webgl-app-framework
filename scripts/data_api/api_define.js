@@ -4,10 +4,12 @@ import '../editors/view3d/widget_tools.js'; //ensure widget tools are all regist
 import {WidgetTool, WidgetFlags} from '../editors/view3d/widgets.js';
 import {AddLightOp} from "../light/light_ops.js";
 import {Light} from '../light/light.js';
+import {PropsEditor} from "../editors/properties/PropsEditor.js";
 import {DataAPI, DataPathError} from '../path.ux/scripts/simple_controller.js';
 import {DataBlock, DataRef, Library, BlockSet, BlockFlags} from '../core/lib_api.js'
 import * as toolprop from '../path.ux/scripts/toolprop.js';
 import {View3D} from '../editors/view3d/view3d.js';
+import {View3DFlags} from '../editors/view3d/view3d_base.js';
 import {Editor, App} from '../editors/editor_base.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
 import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from "../core/graphsockets.js";
@@ -22,6 +24,7 @@ import '../shadernodes/allnodes.js';
 import {ShaderNode} from '../shadernodes/shader_nodes.js';
 import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph.js';
 import {SelectOneOp} from '../sceneobject/selectops.js';
+import {Scene, EnvLight, EnvLightFlags} from "../core/scene.js";
 import {api_define_graphclasses} from '../core/graph_class.js';
 
 let api = new DataAPI();
@@ -53,9 +56,18 @@ export function api_define_view3d(api, pstruct) {
     OBJECT : Icons.CIRCLE_SEL
   });
 
+  function onchange() {
+    window.redraw_viewport();
+  }
+
   let prop = WidgetTool.getToolEnum();
   def = vstruct.enum("widgettool", "active_tool", prop.values, "Active Tool", "Currently active tool widget");
   def.setProp(prop);
+  def.on("change", onchange);
+
+  vstruct.flags("flag", "flag", View3DFlags).on("change", onchange).icons({
+    SHOW_RENDER : Icons.RENDER
+  });
 }
 
 function api_define_socket(api, cls=NodeSocketType) {
@@ -341,6 +353,29 @@ export function api_define_screen(api, parent) {
   ]);
 }
 
+export function api_define_envlight(api) {
+  let estruct = api.mapStruct(EnvLight);
+
+  let onchange = () => {
+    window.redraw_viewport();
+  }
+
+  estruct.color3("color", "color", "Color", "Ambient light color").on("change", onchange);
+  estruct.float("power", "power", "Power", "Power of ambient light power").on("change", onchange);
+  estruct.flags("flag", "flag", EnvLightFlags, "flag", "Ambient light flags").on("change", onchange);
+  estruct.float("ao_dist", "ao_dist", "Distance").on("change", onchange);
+  estruct.float("ao_fac", "ao_fac", "Factor").on("change", onchange);
+
+  return estruct;
+}
+
+export function api_define_scene(api, pstruct) {
+  let sstruct = api_define_datablock(api, Scene);
+
+  pstruct.struct("scene", "scene", "Scene", sstruct);
+  sstruct.struct("envlight", "envlight", "Ambient Light", api_define_envlight(api));
+}
+
 export function getDataAPI() {
   let cstruct = api.mapStruct(Context);
 
@@ -368,6 +403,7 @@ export function getDataAPI() {
   api_define_library(api, cstruct);
   api_define_editor(api, Editor);
   api_define_screen(api, cstruct);
+  api_define_scene(api, cstruct);
 
   api.setRoot(cstruct);
 

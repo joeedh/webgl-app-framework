@@ -9,6 +9,8 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {AbstractGraphClass} from '../core/graph_class.js';
 import {ShaderFragments, LightGen, DiffuseBRDF} from './shader_lib.js';
+import {Light, LightTypes} from '../light/light.js';
+import {loadShader} from "../editors/view3d/view3d_shaders.js";
 
 export {ClosureGLSL, PointLightCode} from './shader_lib.js';
 
@@ -28,7 +30,7 @@ AbstractGraphClass.registerClass(ShaderNetworkClass);
 export class Closure {
   constructor() {
     this.emission = new Vector3();
-    this.diffuse = new Vector3([1, 0.75, 0.5]);
+    this.light = new Vector3([1, 0.75, 0.5]);
     this.scatter = new Vector3();
     this.normal = new Vector3();
     this.roughness = 0.1;
@@ -37,7 +39,7 @@ export class Closure {
 
   load(b) {
     this.emission.load(b.emission);
-    this.diffuse.load(b.diffuse);
+    this.light.load(b.light);
     this.scatter.load(b.scatter);
     this.normal = new Vector3();
     this.roughness = b.roughness;
@@ -53,7 +55,7 @@ export class Closure {
 Closure.STRUCT = `
 shader.Closure {
   emission   : vec3;
-  diffuse    : vec3;
+  light      : vec3;
   scatter    : vec3;
   normal     : vec3;
   roughness  : float;
@@ -119,7 +121,25 @@ export const ShaderContext = {
 };
 
 export class ShaderGenerator {
-  constructor() {
+  update(gl, scene, graph) {
+    if (this._regen) {
+      this._regen = false;
+
+      this.scene = scene;
+      this.graph = graph;
+
+      let shaderdef = this.generate(graph);
+      this.glshader = shaderdef.compile(gl);
+    }
+  }
+
+  bind(gl, uniforms) {
+    this.glshader.bind(gl, uniforms);
+  }
+
+  constructor(scene) {
+    this._regen = true;
+    this.scene = scene;
     this.paramnames = {};
     this.uniforms = {};
 
@@ -249,39 +269,29 @@ export class ShaderGenerator {
   }
 
   generate(graph) {
+    this.graph = graph;
     graph.sort();
 
     this.vertex = `precision mediump float;
-    uniform matrix projectionMatrix;
-    uniform matrix objectMatrix;
-    uniform int objectID;
-    
-    attribute vec3 position;
-    attribute vec2 uv;
-    attribute vec4 color;
-    attribute vec3 normal;
-    attribute float id;
-    
-    varying vec2 vUv;
-    varying vec4 vColor;
-    varying vec3 vNormal
-    varying float vId;
-    varying vec3 vGlocalCo;
-    varying vec3 vLocalCo;
+    ${ShaderFragments.CLOSUREDEF}
+    ${ShaderFragments.UNIFORMS}
+    ${ShaderFragments.ATTRIBUTES}
+    ${ShaderFragments.VARYINGS}
     
     void main() {
       vec4 p = vec4(position, 1.0);
       
-      p = objectMatrix * projectionMatrix * p;
+      p = projectionMatrix * objectMatrix * p;
+      
       gl_Position = p;
 
       vColor = color;
       vNormal = normal;
       vUv = uv;
-      vId = id;        
+      vId = object_id;        
       
-      vGlobalCo = (objectMatrix * p).xyz;
-      vLocalCo = p.xyz;
+      vGlobalCo = (objectMatrix * vec4(position, 1.0)).xyz;
+      vLocalCo = position;
     }
     `
 
@@ -334,7 +344,7 @@ export class ShaderGenerator {
       for (let k in node.outputs) {
         let sock = node.outputs[k];
         if (sock.edges.length == 0) {
-          continue;
+          //continue;
         }
 
         let type = this.getType(sock);
@@ -348,7 +358,8 @@ export class ShaderGenerator {
       this.out("\n}\n");
     }
 
-    let uniforms = '';
+    let uniforms = ShaderFragments.UNIFORMS;
+
     for (let k in this.uniforms) {
       let sock = this.uniforms[k];
       let type = this.getType(sock);
@@ -357,10 +368,84 @@ export class ShaderGenerator {
 
     }
 
-    this.buf = ShaderFragments.SHADERLIB + "\n" + this.buf;
-    this.buf = uniforms + "\n\n" + this.buf;
+    uniforms += LightGen.pre();
+    let defines = '';
+
+
+    defines += LightGen.genDefines(this.scene);
+
+    for (let light of this.scene.lights.renderable) {
+      switch (light.data.type) {
+        case LightTypes.POINT:
+
+          break;
+      }
+    }
+
+    let varyings = ShaderFragments.VARYINGS;
+
+    let script = `precision mediump float;
+    ${defines}
+    ${ShaderFragments.CLOSUREDEF}
+    ${uniforms}
+    ${varyings}
+    ${ShaderFragments.SHADERLIB}    
+
+    void main() {
+      Closure _mainSurface;
+      
+      _mainSurface.alpha = 1.0;
+      
+      ${this.buf.replace(/SHADER_SURFACE/g, "_mainSurface")}
+      
+      {
+        vec4 color = vec4(_mainSurface.light+_mainSurface.emission, _mainSurface.alpha);  
+        //gl_FragColor = color;
+        gl_FragColor = vec4(color.rgb, 1.0);
+      }
+      
+      //gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    }
+    `
+
+    this.fragment = script;
 
     return this;
+  }
+
+  genShader() {
+    if (this.fragment === undefined) {
+      throw new Error("must called .generate() before .genShader");
+    }
+
+    let ret = {};
+
+    ret.fragment = this.fragment;
+    ret.vertex = this.vertex;
+    ret.uniforms = {};
+    ret.attributes = ['position', 'normal', 'uv', 'color', 'id'];
+
+    ret.setUniforms = (graph, uniforms) => {
+      for (let node of graph.sortlist) {
+        for (let k in node.inputs) {
+          let sock = node.inputs[k];
+
+          if (sock.edges.length === 0) {
+            let name = this.getSocketName(sock);
+
+            uniforms[name] = sock.getValue();
+          }
+        }
+      }
+    };
+
+    ret.setUniforms(this.graph, ret.uniforms);
+
+    ret.compile = function(gl) {
+      return loadShader(gl, this);
+    };
+
+    return ret;
   }
 
   push(node) {
@@ -434,6 +519,9 @@ float roughness = ${gen.getSocketValue(this.inputs.roughness)};
 vec3 normal = ${gen.getSocketValue(this.inputs.normal, ShaderContext.NORMAL)};
 vec4 color = ${gen.getSocketValue(this.inputs.color)};
 
+cl.alpha = color[3];
+cl.diffuse = color.rgb;
+
 ${lights}
 ${gen.getSocketName(this.outputs.surface)} = cl;
     `)
@@ -447,23 +535,14 @@ ${gen.getSocketName(this.outputs.surface)} = cl;
       roughness : new FloatSocket(),
       normal    : new Vec3Socket()
     },
-    outputs    : {
-      surface : new ClosureSocket()
+    outputs   : {
+      surface   : new ClosureSocket()
     }
   }}
 
   loadSTRUCT(reader) {
     reader(this);
     super.loadSTRUCT(reader);
-    /*
-    if (this.inputs.color instanceof Vec4Socket) {
-      let sock = new RGBASocket();
-      this.inputs.color.copyTo(sock);
-      sock.graph_id = this.inputs.color.graph_id;
-      sock.edges = this.inputs.color.edges;
-
-      this.inputs.color = sock;
-    }//*/
   }
 };
 
@@ -482,6 +561,8 @@ export class GeometryNode extends ShaderNode {
   genCode(gen) {
     gen.out(`
       ${gen.getSocketName(this.outputs.position)} = vGlobalCo;
+      ${gen.getSocketName(this.outputs.local)} = vLocalCo;
+      ${gen.getSocketName(this.outputs.normal)} = vNormal;
     `)
   }
   static nodedef() {return {

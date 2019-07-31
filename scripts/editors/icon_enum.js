@@ -44,5 +44,6 @@ export let Icons = {
   EXTRUDE        : 40,
   SUBDIVIDE      : 41,
   SUBSURF        : 42,
-  LIGHT          : 43
+  LIGHT          : 43,
+  RENDER         : 44
 };

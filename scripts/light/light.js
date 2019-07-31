@@ -42,6 +42,8 @@ export class Light extends SceneObjectData {
     inputs : {
       color  : new Vec3Socket("color", undefined, [1, 1, 1]),
       power  : new FloatSocket("power", undefined, 1.0),
+      radius  : new FloatSocket("radius", undefined, 0.5),
+      distance  : new FloatSocket("distance", undefined, 50.0),
       depend : new DependSocket()
     },
     outputs : {

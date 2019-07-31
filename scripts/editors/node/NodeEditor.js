@@ -155,7 +155,11 @@ export class NodeSocketElem extends RowFrame {
       this.overrideDefault("defaultWidth", 70);
       //this.overrideDefault("DefaultTextSize", Math.ceil(21*scale+0.5));
 
-      this.socket.buildUI(this);
+      let onchange = () => {
+        window.redraw_viewport();
+      }
+
+      this.socket.buildUI(this, onchange);
     }
     if (this.type == "output") {
       this.add(this.canvas);
@@ -433,9 +437,9 @@ export class NodeUI extends Container {
     this.add(ui);
 
     if (node.buildUI) {
-
       node.buildUI(ui);
     }
+
     ui.style["position"] = "absolute";
     ui.style["top"] = ~~((y+10)*this.ned.velpan.scale[1]) + "px";
   }
@@ -618,7 +622,7 @@ export class NodeEditor extends Editor {
 
   init() {
     super.init();
-
+    
     //create svg overdraw element
     this.createOverdraw();
 
@@ -744,12 +748,20 @@ export class NodeEditor extends Editor {
   }
 
   createOverdraw() {
+    if (this.parentNode === undefined) {
+      return; //don't make overdraw
+    }
+
     if (this.overdraw !== undefined) {
       this.overdraw.remove();
     }
 
-    this.overdraw = document.createElement("overdraw-x");
-    this.overdraw.start(this);
+    try {
+      this.overdraw = document.createElement("overdraw-x");
+      this.overdraw.start(this);
+    } catch (error) {
+      this.overdraw = undefined;
+    }
   }
 
   on_area_inactive() {

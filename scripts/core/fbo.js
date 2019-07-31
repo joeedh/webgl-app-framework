@@ -2,6 +2,7 @@ import * as util from '../util/util.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as simplemesh from './simplemesh.js';
 import * as webgl from './webgl.js';
+import {Texture} from "./webgl.js";
 
 export class FBO {
   constructor(gl, width=512, height=512) {
@@ -11,26 +12,36 @@ export class FBO {
     this.size = [width, height];
     this.texDepth = undefined;
   }
-  
+
+  copy() {
+    let ret = new FBO();
+
+    ret.size = [this.size[0], this.size[1]];
+    ret.gl = this.gl;
+
+    return ret;
+  }
+
   create(gl) {
     gl = this.gl = gl === undefined ? this.gl : gl;
     
     //console.trace("framebuffer creation");
     
     this.fbo = gl.createFramebuffer();
-    this.texDepth = gl.createTexture();
-    this.texColor = gl.createTexture();
-    
-    webgl.Texture.defaultParams(gl, this.texDepth);
-    webgl.Texture.defaultParams(gl, this.texColor);
+    this.texDepth = new webgl.Texture(undefined, gl.createTexture());
+    this.texColor = new webgl.Texture(undefined, gl.createTexture());
 
-    gl.bindTexture(gl.TEXTURE_2D, this.texDepth);
+
+    webgl.Texture.defaultParams(gl, this.texDepth.texture);
+    webgl.Texture.defaultParams(gl, this.texColor.texture);
+
+    gl.bindTexture(gl.TEXTURE_2D, this.texDepth.texture);
     //let type = gl.depth_texture.UNSIGNED_INT_24_8_WEBGL;
     
     let type = gl.UNSIGNED_INT;
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, this.size[0], this.size[1], 0, gl.DEPTH_COMPONENT, type, null);
     
-    gl.bindTexture(gl.TEXTURE_2D, this.texColor);
+    gl.bindTexture(gl.TEXTURE_2D, this.texColor.texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
@@ -38,8 +49,8 @@ export class FBO {
     
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
     
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.texDepth, 0);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texColor, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.texDepth.texture, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texColor.texture, 0);
   }
   
   bind(gl) {
@@ -60,8 +71,8 @@ export class FBO {
   destroy() {
     if (this.fbo !== undefined) {
       this.gl.deleteFramebuffer(this.fbo);
-      this.gl.deleteTexture(this.texDepth);
-      this.gl.deleteTexture(this.texColor);
+      this.gl.deleteTexture(this.texDepth.texture);
+      this.gl.deleteTexture(this.texColor.texture);
       this.fbo = undefined;
     }
   }
@@ -97,7 +108,7 @@ export class FrameStage extends FBO {
   }
 }
 
-let BlitShader = {
+export let BlitShader = {
   vertex : `
 precision mediump float;
 
@@ -216,10 +227,10 @@ export class FramePipeline {
       stage.update(gl, width, height);
       
       stage.shader.uniforms.rgba = this._texs[0];
-      this._texs[0].texture = laststage.texColor;
+      this._texs[0].texture = laststage.texColor.texture;
       
       stage.shader.uniforms.depth = this._texs[1];
-      this._texs[1].texture = laststage.texDepth;
+      this._texs[1].texture = laststage.texDepth.texture;
       
       stage.shader.uniforms.size = this.size;
 
@@ -246,8 +257,8 @@ export class FramePipeline {
     this.blitshader.uniforms.depth = this._texs[1];
     this.blitshader.uniforms.size = this.size;
     
-    this._texs[0].texture = stage.texColor;
-    this._texs[1].texture = stage.texDepth;
+    this._texs[0].texture = stage.texColor.texture;
+    this._texs[1].texture = stage.texDepth.texture;
     
     this.smesh.draw(gl);
   }

@@ -267,13 +267,19 @@ export class RGBASocket extends Vec4Socket {
     color : [1.0, 0.7, 0.4, 1]
   }}
 
-  buildUI(container) {
-    container.button(this.uiname, () => {
-      console.log("edit color, yay");
+  buildUI(container, onchange) {
+    if (this.edges.length == 0) {
+      container.button(this.uiname, () => {
+        console.log("edit color, yay");
 
-      let colorpicker = container.ctx.screen.popup(container);
-      colorpicker.colorPicker(container._joinPrefix("value"));
-    });
+        let colorpicker = container.ctx.screen.popup(container);
+        let widget = colorpicker.colorPicker(container._joinPrefix("value"));
+
+        widget.onchange = onchange;
+      });
+    } else {
+      container.label(this.uiname);
+    }
   }
 }
 RGBASocket.STRUCT = STRUCT.inherit(RGBASocket, Vec4Socket, 'graph.RGBASocket') + `
@@ -294,9 +300,15 @@ export class FloatSocket extends NodeSocketType {
     color : [1.25, 0.45, 1.0, 1]
   }}
 
-  buildUI(container) {
-    let ret = container.prop("value");
-    ret.setAttribute("name", this.uiname);
+  buildUI(container, onchange) {
+    if (this.edges.length == 0) {
+      let ret = container.prop("value");
+      ret.setAttribute("name", this.uiname);
+
+      ret.onchange = onchange;
+    } else {
+      container.label(this.uiname);
+    }
   }
 
   diffValue(b) {

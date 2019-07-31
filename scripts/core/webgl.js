@@ -191,7 +191,6 @@ export class ShaderProgram {
     
     var vshader = this.vertexSource, fshader = this.fragmentSource;
     
-    
     function loadShader(shaderType, code) {
         var shader = gl.createShader(shaderType);
 
@@ -305,7 +304,12 @@ export class ShaderProgram {
     
     this.uniformlocs = {};
   }
-  
+
+  destroy(gl) {
+    //XXX implement me
+    console.warn("ShaderProgram.prototype.destroy: implement me!");
+  }
+
   uniformloc(name) {
     if (this.uniformlocs[name] == undefined) {
       this.uniformlocs[name] = this.gl.getUniformLocation(this.program, name);
@@ -333,12 +337,18 @@ export class ShaderProgram {
         dst[i] = src[i];
       }
     }
-    
+
+    let slot_i = 0;
     gl.useProgram(this.program);
     this.gl = gl;
     
     for (var i=0; i<2; i++) {
       var us = i ? uniforms : this.uniforms;
+
+      if (uniforms === undefined) {
+        continue;
+      }
+
       for (var k in us) {
         var v = us[k];
         var loc = this.uniformloc(k)
@@ -353,7 +363,13 @@ export class ShaderProgram {
         if (v instanceof IntUniform) {
           gl.uniform1i(loc, v.val);
         } else if (v instanceof Texture) {
-          v.bind(gl, this.uniformloc(k));
+          let slot = v.texture_slot;
+
+          if (slot === undefined) {
+            slot = slot_i++;
+          }
+
+          v.bind(gl, this.uniformloc(k), slot);
         } else if (v instanceof Array) {
           switch (v.length) {
             case 2:
@@ -466,10 +482,10 @@ export class Texture {
     
   }
   
-  bind(gl, uniformloc) {
-    gl.activeTexture(gl.TEXTURE0 + this.texture_slot);
+  bind(gl, uniformloc, slot=this.texture_slot) {
+    gl.activeTexture(gl.TEXTURE0 + slot);
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    gl.uniform1i(uniformloc, this.texture_slot);
+    gl.uniform1i(uniformloc, slot);
   }
 }
 

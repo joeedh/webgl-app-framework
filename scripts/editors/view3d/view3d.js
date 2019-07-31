@@ -1,4 +1,6 @@
 import {TranslateOp} from './transform_ops.js';
+import {RenderEngine} from "../../renderengine/renderengine_base.js";
+import {RealtimeEngine} from "../../renderengine/renderengine_realtime.js";
 import {Area} from '../../path.ux/scripts/ScreenArea.js';
 import {PackFlags} from '../../path.ux/scripts/ui_base.js';
 import {Editor} from '../editor_base.js';
@@ -9,6 +11,7 @@ import {DrawModes} from './drawmode.js';
 let STRUCT = nstructjs.STRUCT;
 import {UIBase, color2css, css2color}  from '../../path.ux/scripts/ui_base.js';
 import * as view3d_shaders from './view3d_shaders.js';
+import {loadShader} from './view3d_shaders.js';
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
 import {OrbitTool, PanTool, ZoomTool} from './view3d_ops.js';
@@ -77,19 +80,6 @@ export function initWebGL() {
   //_gl.canvas = canvas;
   loadShaders(_gl);
 }
-//see view3d_shaders.js
-export function loadShader(gl, sdef) {
-  let shader = new ShaderProgram(gl, sdef.vertex, sdef.fragment, sdef.attributes);
-  
-  shader.init(gl);
-  
-  for (let k in sdef.uniforms) {
-    shader.uniforms[k] = sdef.uniforms[k];
-  }
-  
-  return shader;
-}
-
 export function loadShaders(gl) {
   for (let k in view3d_shaders.ShaderDef) {
     view3d_shaders.Shaders[k] = loadShader(gl, view3d_shaders.ShaderDef[k]);
@@ -111,6 +101,8 @@ export class DrawLine {
 export class View3D extends Editor {
   constructor() {
     super();
+
+    this.renderEngine = undefined;
 
     this.flag = View3DFlags.SHOW_CURSOR;
 
@@ -338,6 +330,13 @@ export class View3D extends Editor {
     }
 
     let header = this.header;
+    let row1 = header.row();
+    let row2 = header.row();
+
+    //row2.label("yay");
+    row2.prop("view3d.flag[SHOW_RENDER]", PackFlags.USE_ICONS);
+
+    header = row1;
     header.prop("view3d.selectmode", PackFlags.USE_ICONS);
     header.prop("view3d.active_tool", PackFlags.USE_ICONS);
 
@@ -580,6 +579,10 @@ export class View3D extends Editor {
     }
 
     this.pop_ctx_active();
+
+    if (this.renderEngine !== undefined) {
+      this.renderEngine.update(this.gl);
+    }
   }
 
   makeGrid() {
@@ -671,6 +674,10 @@ export class View3D extends Editor {
       ed.destroy(this.gl);
     }
 
+    if (this.renderEngine !== undefined) {
+      this.renderEngine.destroy(this.gl);
+    }
+
     this.widgets.destroy(this.gl);
   }
 
@@ -692,6 +699,16 @@ export class View3D extends Editor {
     this.updateWidgets();
     this.viewportDraw_intern();
     this.pop_ctx_active();
+  }
+
+  drawRender() {
+    let gl = this.gl;
+
+    if (this.renderEngine === undefined) {
+      this.renderEngine = new RealtimeEngine(this);
+    }
+
+    this.renderEngine.render(this.camera, this.gl, this.glPos, this.glSize, this.ctx.scene);
   }
 
   viewportDraw_intern() {
@@ -755,6 +772,10 @@ export class View3D extends Editor {
 
     for (let ed of this.editors) {
       ed.on_drawstart(gl);
+    }
+
+    if (this.flag & View3DFlags.SHOW_RENDER) {
+      this.drawRender();
     }
 
     this.drawObjects();
@@ -831,15 +852,20 @@ export class View3D extends Editor {
     };
     
     for (let ob of scene.objects.visible) {
-      if (ob.data === undefined || !(ob.data instanceof Mesh)) {
-        ob.draw(gl, uniforms, program);
-        continue;
-      }
-
-      let ok = false;
-
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
 
+      let draw = !(this.flag & View3DFlags.SHOW_RENDER);
+      draw = draw || !(ob.data instanceof Mesh);
+      draw = draw && !(this.flag & View3DFlags.ONLY_RENDER);
+
+      if (draw) {
+        ob.draw(gl, uniforms, program);
+      }
+
+      if (this.flag & View3DFlags.ONLY_RENDER)
+        continue;
+
+      let ok = false;
       for (let ed of this.editors) {
         //console.log(ed);
         if (ed.draw(gl, uniforms, program, ob, ob.data)) {
