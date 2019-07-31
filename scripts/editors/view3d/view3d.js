@@ -159,7 +159,7 @@ export class View3D extends Editor {
   onFileLoad(is_active) {
     if (is_active) {
       this._graphnode = undefined;
-      this.makeGraphNode();
+      //this.makeGraphNode(); wait for redraw
     } else {
       this._graphnode = undefined;
     }
@@ -169,16 +169,15 @@ export class View3D extends Editor {
     let ctx = this.ctx;
 
     if (this._graphnode !== undefined) {
-      this.ctx.graph.remove(this._graphnode);
+      if (this.ctx.graph.has(this._graphnode)) {
+        this.ctx.graph.remove(this._graphnode);
+      }
     }
 
-    this._graphnode = CallbackNode.create("view3d", () => {},
+    this._graphnode = CallbackNode.create("view3d", () => {}, {},
       {
-
-      },
-      {
-        onDrawPre  : new DependSocket("onDrawPre"),
-        onDrawPost : new DependSocket("onDrawPre")
+        onDrawPre: new DependSocket("onDrawPre"),
+        onDrawPost: new DependSocket("onDrawPre")
       });
 
     this.ctx.graph.add(this._graphnode);

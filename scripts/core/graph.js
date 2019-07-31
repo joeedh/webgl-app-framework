@@ -692,7 +692,7 @@ export class Graph {
 
     this.onFlagResort = undefined;
 
-    this.nodes = [];
+    this.nodes = new GraphNodes(this);
     this.sortlist = [];
     this.graph_flag = 0;
     this.max_cycle_steps = 64;
