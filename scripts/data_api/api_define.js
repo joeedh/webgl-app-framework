@@ -12,6 +12,7 @@ import {View3D} from '../editors/view3d/view3d.js';
 import {View3DFlags} from '../editors/view3d/view3d_base.js';
 import {Editor, App} from '../editors/editor_base.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
+import {MenuBarEditor} from "../editors/menu/MainMenu.js";
 import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from "../core/graphsockets.js";
 import {VelPan, VelPanFlags} from '../editors/velpan.js';
 import {SelMask} from '../editors/view3d/selectmode.js';

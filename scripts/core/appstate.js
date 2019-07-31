@@ -17,6 +17,7 @@ import {Vector3, Vector4, Vector2, Quat, Matrix4} from '../util/vectormath.js';
 import {ToolOp, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
 import {getDataAPI} from '../data_api/api_define.js';
 import {View3D} from '../editors/view3d/view3d.js';
+import {MenuBarEditor} from "../editors/menu/MainMenu.js";
 import {Scene} from '../core/scene.js';
 import {BinaryReader, BinaryWriter} from '../util/binarylib.js';
 import * as cconst from '../core/const.js';
@@ -88,8 +89,14 @@ export function genDefaultScreen(appstate) {
   sarea.size[1] = appstate.screen.size[1];
   
   appstate.screen.appendChild(sarea);
+
+  let yperc = 45 / _appstate.screen.size[1];
+  let sarea2 = _appstate.screen.splitArea(sarea, yperc);
+
+  sarea.switch_editor(MenuBarEditor);
+
   appstate.screen.listen();
-  
+
   sarea.setCSS();
   sarea.area.setCSS();
 }

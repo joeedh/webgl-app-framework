@@ -735,6 +735,10 @@ export class View3D extends Editor {
     let w = this.size[0]*dpi, h = this.size[1]*dpi;
     //console.log("DPI", dpi);
 
+    let screen = this.ctx.screen;
+    let rect = screen.getClientRects();
+    y = rect.height - y;
+
     this.glPos = new Vector2([~~x, ~~y]);
     this.glSize = new Vector2([~~w, ~~h]);
 
