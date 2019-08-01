@@ -219,6 +219,10 @@ export class SavedContext extends ToolContext {
       ret.push(DataRef.fromBlock(ob));
     }
 
+    if (ret.length == 0) {
+      return ret; //avoid infinite recursion if there aren't any results
+    }
+
     return this.selectedLightObjects;
   }
 
@@ -241,6 +245,10 @@ export class SavedContext extends ToolContext {
 
     for (let ob of this.ctx.selectedObjects) {
       ret.push(DataRef.fromBlock(ob));
+    }
+
+    if (ret.length == 0) {
+      return ret; //avoid infinite recursion if there aren't any results
     }
 
     return this.selectedObjects;

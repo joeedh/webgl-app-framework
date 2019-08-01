@@ -50,6 +50,7 @@ export class Editor extends Area {
     super();
     
     this.container = document.createElement("container-x");
+    this.container.parentWidget = this;
 
     this.shadow.appendChild(this.container);
   }
@@ -159,6 +160,8 @@ nstructjs.manager.add_class(Editor);
 export class App extends Screen {
   constructor() {
     super();
+
+    this.useDataPathToolOp = true;
 
     this._last_dpi = undefined;
 

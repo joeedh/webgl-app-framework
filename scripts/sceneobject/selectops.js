@@ -34,7 +34,7 @@ export class SelectOpBase extends ToolOp {
     }
 
     ud.active = scene.objects.active !== undefined ? scene.objects.active.lib_id : -1;
-    ud.highlight = scene.objects.highlight.active !== undefined ? scene.objects.highlight.lib_id : -1;
+    ud.highlight = scene.objects.highlight !== undefined ? scene.objects.highlight.lib_id : -1;
   }
 
   undo(ctx) {
@@ -84,6 +84,24 @@ export class SelectOneOp extends SelectOpBase {
     }
   }}
 
+  static invoke(ctx, args) {
+    let tool = new this();
+
+    if ("mode" in args) {
+      tool.inputs.mode.setValue(args.mode);
+    }
+
+    if ("objectId" in args) {
+      tool.inputs.objectId.setValue(args.objectId);
+    }
+
+    if ("setActive" in args) {
+      tool.inputs.setActive.setValue(args.setActive);
+    }
+
+    return tool;
+  }
+
   exec(ctx) {
     let mode = this.inputs.mode.getValue();
     let scene = ctx.scene;
@@ -92,24 +110,73 @@ export class SelectOneOp extends SelectOpBase {
     ob = ctx.datalib.get(ob);
 
     if (ob === undefined) {
-      console.warn("error in SelectOneOp");
+      console.warn("error in SelectOneOp", ob, this.inputs.objectId.getValue());
       return;
     }
 
+    console.log("mode", mode);
+
     if (mode === SelOneToolModes.UNIQUE) {
-      scene.clearSelection();
-      scene.objects.setSelect(ob);
+      scene.objects.clearSelection();
+      scene.objects.setSelect(ob, true);
 
       if (this.inputs.setActive.getValue()) {
-        scene.object.setActive(ob);
+        scene.objects.setActive(ob);
       }
     } else {
       if (this.inputs.setActive.getValue() && mode == SelOneToolModes.ADD) {
-        scene.object.setActive(ob);
+        scene.objects.setActive(ob);
       }
 
-      scene.objects.setSelect(ob, mode == SelOneToolModes.ADD);
+      scene.objects.setSelect(ob, mode === SelOneToolModes.ADD);
     }
   }
 }
 ToolOp.register(SelectOneOp);
+
+export class ToggleSelectOp extends SelectOpBase {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname: "Toggle Select All (Object)",
+      name: "toggle_select_all",
+      toolpath: "object.toggle_select_all",
+      icon: -1,
+      inputs: {
+        mode: new EnumProperty("AUTO", SelToolModes)
+      }
+  }}
+
+  static invoke(ctx, args) {
+    let tool = new this();
+
+    if ("mode" in args) {
+      tool.inputs.mode.setValue(args.mode);
+    }
+
+    return tool;
+  }
+
+  exec(ctx) {
+    let mode = this.inputs.mode.getValue();
+    let scene = ctx.scene;
+
+    if (mode == SelToolModes.AUTO) {
+      mode = SelToolModes.ADD;
+
+      for (let ob of scene.objects.selected.editable) {
+        mode = SelToolModes.SUB;
+        break;
+      }
+    }
+
+    for (let ob of scene.objects.editable) {
+      scene.objects.setSelect(ob, mode == SelToolModes.ADD);
+    }
+  }
+}
+ToolOp.register(ToggleSelectOp);
+

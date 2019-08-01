@@ -21,6 +21,26 @@ export class TransformOp extends View3DOp {
     this.center = new Vector3();
   }
 
+  static invoke(ctx, args) {
+    let tool = new this();
+
+    if ("selmask" in args) {
+      tool.inputs.selectmode.setValue(args.selmask);
+    } else {
+      tool.inputs.selectmode.setValue(ctx.view3d.selectmode);
+    }
+
+    if ("propmode" in args) {
+      tool.inputs.propmode.setValue(args.propmode);
+    }
+
+    if ("propradius" in args) {
+      tool.inputs.propradius.setValue(args.propradius);
+    }
+
+    return tool;
+  }
+
   static tooldef() {return {
     uiname      : "transform base",
     is_modal    : true,

@@ -19,6 +19,8 @@ export class MeshTransType extends TransDataType {
     let mesh = ctx.mesh;
     let tdata = [];
 
+    console.log("MESH GEN", selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE), selectmode);
+
     if (!mesh || !(selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE))) {
       return undefined;
     }
@@ -400,6 +402,12 @@ export class ObjectTransform {
 export class ObjectTransType extends TransDataType {
   static genData(ctx, selectmode, propmode, propradius) {
     let ignore_meshes = selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE);
+
+    console.log("OBJECT GEN", selectmode & (SelMask.OBJECT), selectmode);
+
+    if (!(selectmode & SelMask.OBJECT)) {
+      return undefined;
+    }
 
     let tdata = [];
 

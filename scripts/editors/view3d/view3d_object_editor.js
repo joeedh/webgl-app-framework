@@ -1,4 +1,5 @@
 import {ExtrudeRegionsOp} from '../../mesh/mesh_ops.js';
+import {ObjectFlags} from '../../core/sceneobject.js';
 import {View3D_SubEditorIF} from './view3d_subeditor.js';
 import {SelMask, SelOneToolModes, SelToolModes} from './selectmode.js';
 import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../mesh/mesh.js';
@@ -57,6 +58,30 @@ export class ObjectEditor extends View3D_SubEditorIF {
   }
 
   clickselect(evt, x, y, selmask) {
+    let ctx = this.view3d.ctx;
+
+    if (!(this.view3d.selectmode & selmask)) {
+      return;
+    }
+
+    console.log("click select!");
+    let ret = this.findnearest(ctx, x, y);
+
+    console.log("ob:", ret);
+
+    if (ret === undefined) {
+      return;
+    }
+
+    let ob = ret.data;
+    let mode = SelOneToolModes.UNIQUE;
+
+    if (evt.shiftKey) {
+      mode = ob.flag & ObjectFlags.SELECT ? SelOneToolModes.SUB : SelOneToolModes.ADD;
+    }
+
+    let cmd = `object.selectone(objectId=${ob.lib_id} setActive=true mode=${mode})`;
+    this.view3d.ctx.api.execTool(this.view3d.ctx, cmd);
   }
 
   clearHighlight(ctx) {

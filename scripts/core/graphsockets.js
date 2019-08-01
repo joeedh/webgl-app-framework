@@ -269,6 +269,8 @@ export class RGBASocket extends Vec4Socket {
 
   buildUI(container, onchange) {
     if (this.edges.length == 0) {
+      container.colorbutton(container._joinPrefix("value"));
+      /*
       container.button(this.uiname, () => {
         console.log("edit color, yay");
 
@@ -276,7 +278,7 @@ export class RGBASocket extends Vec4Socket {
         let widget = colorpicker.colorPicker(container._joinPrefix("value"));
 
         widget.onchange = onchange;
-      });
+      });//*/
     } else {
       container.label(this.uiname);
     }

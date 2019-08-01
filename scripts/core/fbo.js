@@ -212,7 +212,7 @@ export class FramePipeline {
     gl.enable(gl.DEPTH_TEST);
     
     gl.clearDepth(1000000.0);
-    gl.clearColor(0.3, 0.4, 1.0, 0.0);
+    gl.clearColor(0.0, 0.0, 0.0, 0.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
     drawfunc(gl);

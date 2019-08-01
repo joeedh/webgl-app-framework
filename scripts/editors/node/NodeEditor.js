@@ -559,6 +559,33 @@ export class NodeEditor extends Editor {
     return this.getDPI();
   }
 
+  clearGraph() {
+    //*
+    for (let c of this.shadow.childNodes) {
+      if (c instanceof NodeSocketElem) {//(c !== this.header && c !== this.nodeContainer) {
+        c.remove();
+      }
+    }//*/
+
+    if (this.overdraw !== undefined) {
+      this.overdraw.remove();
+      this.createOverdraw();
+    }
+
+    for (let node of this.nodes) {
+      node.remove();
+    }
+    for (let sock of this.sockets) {
+      sock.remove();
+    }
+
+    this.nodes.length = 0;
+    this.node_idmap = {};
+    this.sockets.length = 0;
+
+    this.nodeContainer.clear();
+  }
+
   rebuildAll() {
     return this.switchGraph();
   }
@@ -569,13 +596,8 @@ export class NodeEditor extends Editor {
     this.graphPath = graphpath;
     this._last_graphpath = this.graphPath;
 
-    for (let n of this.nodes) {
-      n.remove();
-    }
+    this.clearGraph();
 
-    this.nodes.length = 0;
-    this.node_idmap = {};
-    
     let graph;
     try {
       graph = this.ctx.api.getValue(this.ctx, this.graphPath);
@@ -591,7 +613,7 @@ export class NodeEditor extends Editor {
       }
     }
     
-    console.log("regenerating node editor");
+    console.warn("regenerating node editor");
 
     for (let node of graph.nodes) {
       let path = this.graphPath + ".nodes[" + node.graph_id + "]";
@@ -770,6 +792,8 @@ export class NodeEditor extends Editor {
     this.overdraw.clear();
     this.overdraw.remove();
     this.overdraw = undefined;
+
+    this.clearGraph();
   }
 
   on_area_active() {
@@ -850,15 +874,6 @@ export class NodeEditor extends Editor {
         sock._redraw();
       }
     }
-  }
-
-  clearGraph() {
-    for (let n of this.nodes) {
-      n.remove();
-    }
-
-    this.nodes.length = 0;
-    this.node_idmap = {};
   }
 
   updateDPI() {
@@ -1075,9 +1090,6 @@ export class NodeEditor extends Editor {
   copy() {
     let ret = document.createElement("node-editor-x");
     
-    ret.camera = this.camera.copy();
-    ret.selectmode = this.selectmode;
-    ret.drawmode = this.drawmode;
     ret.velpan.load(this.velpan);
     ret.graphPath = this.graphPath;
 
@@ -1085,15 +1097,28 @@ export class NodeEditor extends Editor {
   }
 
   _recalcUI() {
+    let totsock = 0;
+
     for (let node of this.nodes) {
       node.setCSS();
 
       for (let sock of node.allsockets) {
         sock.updateSocketRef();
+        totsock++;
       }
     }
 
-    this.overdraw.clear();
+    if (this.overdraw !== undefined) {
+      this.overdraw.clear();
+    }
+
+    //why does this happen? sometimes sockets get duplicated
+    //in weird ways
+    if (totsock !== this.sockets.length) {
+      console.log("Socket length mismatch!");
+      this.rebuildAll();
+      return;
+    }
 
     for (let node of this.nodes) {
       for (let uisock of node.inputs) {
@@ -1120,6 +1145,7 @@ export class NodeEditor extends Editor {
   }
 
   loadSTRUCT(reader) {
+    this.clearGraph();
     reader(this);
 
     this.velpan.onchange = this._on_velpan_change.bind(this);

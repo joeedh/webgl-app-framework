@@ -40,7 +40,7 @@ gl_FragDepthEXT = texture2D(depth, v_Uv)[0];
   renderIntern(rctx) {
     let gl = rctx.gl;
 
-    gl.clearColor(1.0, 1.0, 1.0, 0.0);
+    gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.clearDepth(100000.0);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
