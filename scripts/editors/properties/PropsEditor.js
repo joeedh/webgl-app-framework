@@ -1,5 +1,7 @@
 import {Area} from '../../path.ux/scripts/ScreenArea.js';
 import {Editor, VelPan} from '../editor_base.js';
+import {Light} from "../../light/light.js";
+import {Mesh} from "../../mesh/mesh.js";
 import '../../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {DataPathError} from '../../path.ux/scripts/controller.js';
@@ -28,7 +30,47 @@ export class PropsEditor extends Editor {
     this.buildScene(tabs.tab("Scene"));
 
     tabs.tab("Material");
-    tabs.tab("Object");
+    this.buildObject(tabs.tab("Object"));
+  }
+
+  buildObject(tab) {
+    tab.getContextKey = () => {
+      let ctx = this.ctx;
+
+      let ob = ctx.object;
+      if (ob === undefined) {
+        return "undefined";
+      }
+
+      let key = ob.data.constructor.blockDefine().typeName;
+      return key;
+    };
+
+    tab._update = tab.update;
+    tab.ctxkey = "";
+    tab.update = () => {
+      let key = tab.getContextKey();
+
+      if (key != tab.ctxkey) {
+        console.log("tab transformation");
+        tab.ctxkey = key;
+        tab.clear();
+
+        let ob = this.ctx.object;
+        if (ob === undefined) {
+          tab._update();
+          return;
+        }
+
+        if (ob.data instanceof Light) {
+          tab.prop("light.inputs['power'].value");
+        } else if (ob.data instanceof Mesh) {
+
+        }
+      }
+
+      tab._update();
+    }
   }
 
   buildScene(tab) {

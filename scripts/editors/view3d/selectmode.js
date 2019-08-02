@@ -16,5 +16,6 @@ export const SelMask = {
   VERTEX : MeshTypes.VERTEX,
   EDGE   : MeshTypes.EDGE,
   FACE   : MeshTypes.FACE,
+  MESH   : MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE,
   OBJECT : 32
 };

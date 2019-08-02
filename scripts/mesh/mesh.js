@@ -818,9 +818,17 @@ export class Mesh extends SceneObjectData {
     }
 
     let sm = this.smesh = new ChunkedSimpleMesh(LayerTypes.LOC|LayerTypes.NORMAL|LayerTypes.UV);
+    let wm = this.wmesh = new ChunkedSimpleMesh(LayerTypes.LOC|LayerTypes.NORMAL|LayerTypes.UV);
 
     let zero2 = [0, 0];
     let w = [1, 1, 1, 1];
+
+    for (let e of this.edges) {
+      let line;
+      line = wm.line(e.eid, e.v1, e.v2); line.ids(e.eid, e.eid);
+      //line = wm.line(i, l2.v, l3.v); line.ids(i, i);
+      //line = wm.line(i, l3.v, l1.v); line.ids(i, i);
+    }
 
     //triangle fan
     for (let i=0; i<ltris.length; i += 3) {
@@ -834,6 +842,8 @@ export class Mesh extends SceneObjectData {
       } else {
         tri.normals(l1.v.no, l2.v.no, l3.v.no);
       }
+
+      tri.ids(l1.f.eid, l1.f.eid, l1.f.eid);
 
       let uvidx = -1;
       let j = 0;
@@ -935,6 +945,29 @@ export class Mesh extends SceneObjectData {
       this.lastUpdateList = this.updatelist;
       this.updatelist = {};
     }
+  }
+
+  drawWireframe(gl, uniforms, program, object) {
+    if (this.recalc & RecalcFlags.TESSELATE) {
+      this.tessellate();
+    }
+
+    if (this.recalc & RecalcFlags.RENDER) {
+      this.recalc &= RecalcFlags.PARTIAL;
+      this.genRender(gl);
+      this.lastUpdateList = {};
+      this.updatelist = {};
+    }
+
+    this.checkPartialUpdate(gl);
+    if (program !== undefined) {
+      this.wmesh.program = program;
+      this.wmesh.island.program = program;
+
+      program.bind(gl);
+    }
+
+    this.wmesh.draw(gl, uniforms);
   }
 
   draw(gl, uniforms, program, object) {

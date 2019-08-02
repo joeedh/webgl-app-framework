@@ -281,7 +281,8 @@ export class ShaderGenerator {
     void main() {
       vec4 p = vec4(position, 1.0);
       
-      p = projectionMatrix * objectMatrix * p;
+      p = objectMatrix * vec4(p.xyz, 1.0);
+      p = projectionMatrix * vec4(p.xyz, 1.0);
       
       gl_Position = p;
 
@@ -330,7 +331,7 @@ export class ShaderGenerator {
 
     rec(output);
 
-    console.log(visit);
+    //console.log(visit);
 
     for (let node of graph.sortlist) {
       if (!(node.graph_id in visit)) {
@@ -432,7 +433,6 @@ export class ShaderGenerator {
 
           if (sock.edges.length === 0) {
             let name = this.getSocketName(sock);
-
             uniforms[name] = sock.getValue();
           }
         }

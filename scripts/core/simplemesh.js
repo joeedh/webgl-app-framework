@@ -561,7 +561,8 @@ export class SimpleIsland {
     
     if (layerflag & LayerTypes.ID) {
       li++;
-      
+
+      //console.log(this.tri_ids, "====================", this.tri_cos.length/3, this.tri_ids.size);
       gl.enableVertexAttribArray(li);
       gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.tri_ids);
       gl.vertexAttribPointer(li, this.tri_ids.size, gl.FLOAT, false, 0, 0);
@@ -840,7 +841,8 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     let i = itri*9;
 
     if (tri_cos.length < i+9) {
-      chunk.tri(v1, v2, v3);
+      chunk.regen = 1;
+      return chunk.tri(v1, v2, v3);
     } else {
       tri_cos[i++] = v1[0]; tri_cos[i++] = v1[1]; tri_cos[i++] = v1[2];
       tri_cos[i++] = v2[0]; tri_cos[i++] = v2[1]; tri_cos[i++] = v2[2];

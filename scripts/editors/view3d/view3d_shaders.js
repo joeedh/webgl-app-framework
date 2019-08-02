@@ -19,6 +19,7 @@ export let BasicLineShader = {
   vertex : `precision mediump float;
   
 uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
 
 attribute vec3 position;
 attribute vec2 uv;
@@ -28,7 +29,8 @@ varying vec4 vColor;
 varying vec2 vUv;
 
 void main() {
-  vec4 p = projectionMatrix * vec4(position, 1.0);
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
   
   gl_Position = p;
   vColor = color;
@@ -49,9 +51,64 @@ void main() {
   `,
   
   uniforms : {
-    alpha : 1.0
+    alpha : 1.0,
+    objectMatrix : new Matrix4()
   },
   
+  attributes : [
+    "position", "uv", "color"
+  ]
+};
+
+export let ObjectLineShader = {
+  vertex : `precision mediump float;
+  
+uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
+
+attribute vec3 position;
+attribute vec2 uv;
+attribute vec4 color;
+
+${PolygonOffset.pre}
+
+//varying vec4 vColor;
+varying vec2 vUv;
+uniform vec2 shift;
+
+void main() {
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
+  
+  ${PolygonOffset.vertex("p")}
+  
+  p.xy += shift*p.w;  
+  gl_Position = p;
+  //vColor = color;
+  vUv = uv;
+}
+
+  `,
+
+  fragment : `precision mediump float;
+uniform float alpha;
+
+//varying vec4 vColor;
+varying vec2 vUv;
+uniform vec4 uColor;
+
+void main() {
+  gl_FragColor = uColor * vec4(1.0, 1.0, 1.0, alpha);
+}
+  `,
+
+  uniforms : {
+    alpha : 1.0,
+    uColor : [1, 1, 1, 1],
+    shift : [0, 0],
+    objectMatrix : new Matrix4()
+  },
+
   attributes : [
     "position", "uv", "color"
   ]
@@ -74,9 +131,8 @@ varying vec3 vNormal;
 varying vec2 vUv;
 
 void main() {
-  //vec4 p = objectMatrix * vec4(position, 1.0);
-  
-  vec4 p = projectionMatrix * vec4(position.xyz, 1.0);
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
   vec4 n = normalMatrix * vec4(normal, 0.0);
   
   gl_Position = p;
@@ -144,9 +200,8 @@ varying float vId;
 ${PolygonOffset.pre}
 
 void main() {
-  //vec4 p = objectMatrix * vec4(position, 1.0);
-  
-  vec4 p = projectionMatrix * vec4(position.xyz, 1.0);
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
   
   ${PolygonOffset.vertex("p")}
   
@@ -227,7 +282,7 @@ void main() {
   gl_Position = p;
   gl_PointSize = pointSize;
   
-  vId = id + id_offset;
+  vId = id;// + id_offset;
   
   vec4 c;
   
@@ -424,6 +479,7 @@ export let SubSurfPatchShader = {
 }
 export const ShaderDef = {
   BasicLineShader      : BasicLineShader,
+  ObjectLineShader     : ObjectLineShader,
   BasicLineShader2D    : BasicLineShader2D,
   BasicLitMesh         : BasicLitMesh,
   MeshEditShader       : MeshEditShader,

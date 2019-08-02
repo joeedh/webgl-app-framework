@@ -44,11 +44,19 @@ export function api_define_editor(api, cls) {
 
   return astruct;
 }
+
 export function api_define_view3d(api, pstruct) {
   let vstruct = api_define_editor(api, View3D);
-  
+
+  let SelModes = {
+    VERTEX : SelMask.VERTEX,
+    EDGE   : SelMask.EDGE,
+    FACE   : SelMask.FACE,
+    OBJECT : SelMask.OBJECT
+  };
+
   pstruct.struct("view3d", "view3d", "Viewport", vstruct);
-  let def = vstruct.enum("selectmode", "selectmode", SelMask, "Selection Mode", "Selection Mode");
+  let def = vstruct.enum("selectmode", "selectmode", SelModes, "Selection Mode", "Selection Mode");
 
   def.icons({
     VERTEX : Icons.VERT_MODE,
@@ -370,6 +378,16 @@ export function api_define_envlight(api) {
   return estruct;
 }
 
+export function api_define_light(api, pstruct) {
+  let lstruct = api_define_datablock(api, Light);
+
+  let onchange = () => {
+    window.redraw_viewport();
+  };
+
+  pstruct.struct("light", "light", "Light", lstruct);
+}
+
 export function api_define_scene(api, pstruct) {
   let sstruct = api_define_datablock(api, Scene);
 
@@ -405,6 +423,7 @@ export function getDataAPI() {
   api_define_editor(api, Editor);
   api_define_screen(api, cstruct);
   api_define_scene(api, cstruct);
+  api_define_light(api, cstruct);
 
   api.setRoot(cstruct);
 

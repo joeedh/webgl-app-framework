@@ -468,6 +468,8 @@ export class MeshEditor extends View3D_SubEditorIF {
       return;
     }
 
+    //console.log(sample.data);
+
     let block = sample.data;
     let order = sample.order;
 
@@ -562,6 +564,10 @@ export class MeshEditor extends View3D_SubEditorIF {
   * along with the element id
   * */
   drawIDs(gl, uniforms, object, mesh, id_offset) {
+    if (!(this.view3d.selectmode & SelMask.MESH)) {
+      return;
+    }
+
     if (object.data === undefined || !(object.data instanceof Mesh))
       return false;
 

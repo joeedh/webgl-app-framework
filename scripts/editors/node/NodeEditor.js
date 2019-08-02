@@ -328,8 +328,23 @@ export class NodeUI extends Container {
     this.outputs = [];
     this.allsockets = [];
 
+    this._isHighlight = false;
+
     this.graph_id = undefined;
     this.ned = undefined;
+  }
+
+  get isHighlight() {
+    return this._isHighlight;
+  }
+
+  set isHighlight(val) {
+    this._isHighlight = val;
+    if (val) {
+      this.background = this.getDefault("BoxHighlight");
+    } else {
+      this.background = this.getDefault("BoxSubBG");
+    }
   }
 
   remove() {
@@ -515,6 +530,8 @@ export class NodeEditor extends Editor {
     super();
 
     this._last_zoom = new Vector2();
+    this._last_script = undefined;
+    this._last_compile_test = util.time_ms();
 
     this._last_dpi = undefined;
     this._last_update_gen = undefined;
@@ -541,6 +558,7 @@ export class NodeEditor extends Editor {
     this._last_graphpath = this.graphPath;
 
     this.nodes = [];
+    this.nodes.highlight = undefined;
     this.sockets = [];
     this.sockets.highlight = undefined;
     this.node_idmap = {};
@@ -704,6 +722,7 @@ export class NodeEditor extends Editor {
 
     let p = new Vector2(this.last_mpos);
     this.unproject(p, true);
+
     let sock = this.findSocket(p[0], p[1]);
 
     if (sock !== undefined) {
@@ -712,9 +731,19 @@ export class NodeEditor extends Editor {
     }
 
     let elem = this.pickElement(e.pageX, e.pageY);
+    {
+      let n1 = elem;
+      while (n1.parentWidget) {
+        if (n1 instanceof NodeUI) {
+          elem = n1;
+          break;
+        }
+        n1 = n1.parentWidget;
+      }
+    }
     //let graph = this.get
     if (elem === this || elem === this.container || elem === this.container.dom) {
-      console.log("node editor mouse down", elem);
+      //console.log("node editor mouse down", elem);
 
       let tool = new VelPanPanOp();
 
@@ -757,15 +786,7 @@ export class NodeEditor extends Editor {
     this.setCSS();
 
     try {
-      //happens during file load, when init() hasn't been called yet
-      if (this.overdraw === undefined) {
-        this.doOnce(() => {
-          //this.on_resize(newsize);
-          this.rebuildAll();
-        });
-      } else {
-        this.rebuildAll();
-      }
+      this.doOnce(this.rebuildAll);
     } catch (error) {
       util.print_stack(error);
     }
@@ -859,6 +880,13 @@ export class NodeEditor extends Editor {
 
     this.unproject(mpos, true);
 
+    let actnode = undefined;
+
+    let elem = this.pickElement(e.pageX, e.pageY);
+    if (elem instanceof NodeUI) {
+      actnode = elem;
+    }
+
     //console.log(this.findSocket(mpos[0], mpos[1]));
     let sock = this.findSocket(mpos[0], mpos[1]);
 
@@ -870,8 +898,22 @@ export class NodeEditor extends Editor {
 
       this.sockets.highlight = sock;
       if (sock !== undefined) {
+        actnode = sock.uinode;
+
         sock.isHighlight = true;
         sock._redraw();
+      }
+    }
+
+    if (this.nodes.highlight !== actnode) {
+      if (this.nodes.highlight !== undefined) {
+        this.nodes.highlight.isHighlight = false;
+      }
+
+      this.nodes.highlight = actnode;
+
+      if (actnode !== undefined) {
+        actnode.isHighlight = true;
       }
     }
   }
@@ -894,9 +936,47 @@ export class NodeEditor extends Editor {
     }
   }
 
+  checkCompile() {
+    if (util.time_ms() - this._last_compile_test < 500) {
+      return;
+    }
+
+    let graph = this.fetchGraph();
+    if (graph === undefined) {
+      this._last_compile_test = util.time_ms();
+      return;
+    }
+
+    let key;
+    if (this.graphClass == "shader") {
+      key = "material";
+    }
+
+    if (key === undefined) {
+      this._last_compile_test = util.time_ms();
+      return;
+    }
+
+    let mat = this.ctx.api.getValue(this.ctx, key);
+    if (mat === undefined) return;
+
+    let shader = mat.generate(this.ctx.scene);
+    let script = JSON.stringify(shader);
+
+    if (script !== this._last_script) {
+      console.log("Shader compile update!");
+      this._last_script = script;
+      mat._regen = true;
+      window.redraw_viewport();
+    }
+
+    this._last_compile_test = util.time_ms();
+  }
+
   update() {
     super.update();
 
+    this.checkCompile();
     this.updateZoom();
     this.updateDPI();
 

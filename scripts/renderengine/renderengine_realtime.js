@@ -3,7 +3,7 @@ import {loadShader, Shaders} from '../editors/view3d/view3d_shaders.js';
 import {LightGen} from '../shadernodes/shader_lib.js';
 import {FBO} from '../core/fbo.js';
 import {FBOSocket, RenderContext, RenderGraph, RenderPass} from "./renderpass.js";
-import {BasePass, NormalPass, OutputPass, AOPass, BlurPass} from "./realtime_passes.js";
+import {BasePass, NormalPass, AccumPass, OutputPass, AOPass, BlurPass} from "./realtime_passes.js";
 import {Texture} from '../core/webgl.js';
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
@@ -87,16 +87,13 @@ export class RealtimeEngine extends RenderEngine {
     this.view3d = view3d;
     this.cache = new ShaderCache();
     this.rendergraph = new RenderGraph();
+    this.uSample = 0.0;
 
     let base = this.basePass = new BasePass();
     let nor = this.norPass = new NormalPass();
     let out = this.outPass = new OutputPass();
+    let accumOut = this.accumOutPass = new OutputPass();
     let ao = this.aoPass = new AOPass();
-
-    let blurx = new BlurPass();
-    let blury = new BlurPass();
-
-    this.aoPass = blury;
 
     //let test = new TestPass();
 
@@ -104,22 +101,34 @@ export class RealtimeEngine extends RenderEngine {
     this.rendergraph.add(nor);
     this.rendergraph.add(out);
     this.rendergraph.add(ao);
-    this.rendergraph.add(blurx);
-    this.rendergraph.add(blury);
     this.rendergraph.add(base);
-
-    blury.inputs.axis.setValue(1);
+    this.rendergraph.add(accumOut);
 
     nor.outputs.fbo.connect(ao.inputs.fbo);
 
-    ao.outputs.fbo.connect(blurx.inputs.fbo);
-    blurx.outputs.fbo.connect(blury.inputs.fbo);
-    //blury.outputs.fbo.connect(out.inputs.fbo);
+    if (1) {
+      let blurx = new BlurPass();
+      let blury = new BlurPass();
 
-    blury.outputs.fbo.connect(base.inputs.ao);
+      this.aoPass = blury;
+
+      this.rendergraph.add(blurx);
+      this.rendergraph.add(blury);
+
+      blury.inputs.axis.setValue(1);
+
+      ao.outputs.fbo.connect(blurx.inputs.fbo);
+      blurx.outputs.fbo.connect(blury.inputs.fbo);
+      blury.outputs.fbo.connect(base.inputs.ao);
+    } else {
+      this.aoPass = ao;
+      ao.outputs.fbo.connect(base.inputs.ao);
+    }
+
     nor.outputs.fbo.connect(base.inputs.normal);
 
     base.outputs.fbo.connect(out.inputs.fbo);
+    base.outputs.fbo.connect(accumOut.inputs.fbo);
 
     //pass.outputs.fbo.connect(test.inputs.fbo);
   }
@@ -129,6 +138,8 @@ export class RealtimeEngine extends RenderEngine {
   }
 
   render(camera, gl, viewbox_pos, viewbox_size, scene) {
+    this.uSample++;
+
     this.rendergraph.exec(gl, this, viewbox_size, camera, scene);
 
     let graph = this.rendergraph.graph;
@@ -156,7 +167,8 @@ export class RealtimeEngine extends RenderEngine {
   render_normals(camera, gl, viewbox_pos, viewbox_size, scene) {
     let uniforms = {
       projectionMatrix : camera.rendermat,
-      normalMatrix     : camera.normalmat
+      normalMatrix     : camera.normalmat,
+      uSample          : this.uSample
     };
 
     LightGen.setUniforms(gl, uniforms, scene);
@@ -173,7 +185,7 @@ export class RealtimeEngine extends RenderEngine {
       program = Shaders.NormalPassShader;
 
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
-      program.uniforms.objectMatrix = ob.outputs.matrix.getValue();
+      //program.uniforms.objectMatrix = ob.outputs.matrix.getValue();
       ob.draw(gl, uniforms, program);
     }
   }
@@ -195,7 +207,8 @@ export class RealtimeEngine extends RenderEngine {
       normalMatrix     : camera.normalmat,
       viewportSize     : viewbox_size,
       ambientColor     : scene.envlight.color,
-      ambientPower     : scene.envlight.power
+      ambientPower     : scene.envlight.power,
+      uSample          : this.uSample
     };
 
     console.log("ambient color", scene.envlight.color);

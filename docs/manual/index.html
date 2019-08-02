@@ -71,6 +71,16 @@
 <div data-ice="manual">
     <ul class="manual-toc">
       
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/datagraph.html"><a href="manual/datagraph.html" data-ice="link">Data Graph</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datagraph.html"><a href="manual/datagraph.html#declaration" data-ice="link">Declaration</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datagraph.html"><a href="manual/datagraph.html#cycles" data-ice="link">Cycles</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datagraph.html"><a href="manual/datagraph.html#data-blocks" data-ice="link">Data Blocks</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datagraph.html"><a href="manual/datagraph.html#zombie-nodes" data-ice="link">Zombie Nodes</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
     </ul>
   </div>
 <div data-ice="manual">
@@ -90,6 +100,7 @@ It uses path.ux, a UI framework that is also based on Blender.</p>
 <li><a href="manual/toolsystem.html">Tool System</a></li>
 <li><a href="manual/libblock.html">Database Library</a></li>
 <li><a href="manual/controller.html">Controller</a></li>
+<li><a href="manual/datagraph.html">Data Graph</a></li>
 <li><a href="manual/nstructjs.html">STRUCT</a></li>
 <li><a href="manual/FrameManager.html">FrameManager</a></li>
 </ul>
@@ -285,6 +296,53 @@ SomeDataBlock.STRUCT = STRUCT.inherit(SomeDataBlock, DataBlock, &quot;SomeDataBl
 `</code>
 </code></pre></div>
         <a data-ice="link" href="manual/libblock.html#struct-scripts"></a>
+      </div>
+    </div>
+<div class="manual-card-wrap" data-ice="cards">
+      <div class="manual-card">
+        <div data-ice="card"><h1>Data Graph</h1><p>The data graph is a generic execution graph.  It&apos;s used for (some) event handling,
+scene dependency relationships, shader nodes, the render engine pass compositing system,
+etc.  Each of these use the data graph in a slightly different way.</p><p>The data graph is a DAG solver with optional support for cyclic graphs.</p><h2>Declaration</h2><p>Dag nodes are declared by subclassing from graph.Node.  Each subclass should implementation
+an exec method and the static nodedef method, like so:</p><pre><code><code class="source-code prettyprint">class MyNode extends Node {
+  constructor() {
+    super();
+
+    this.mysetting = 0;
+  }
+
+  static nodedef() {return {
+    uiname : &quot;My Node&quot;,
+    name   : &quot;MyNode&quot;,     //if you want to inherit sockets from parent
+    inputs : Node.inherit({ //class, wrap inputs/outputs in Node.inherit
+      myinput : new FloatSocket()
+    }),
+    outputs : {
+      myoutput : new FloatSocket()
+    }
+  }}
+
+  //ctx is the argument passed to Graph.prototype.exec
+  exec(ctx) {
+    this.outputs.myoutput.setValue(this.inputs.myinput.getValue());
+
+    //note that child nodes aren&apos;t executed unless you call .update() on output sockets
+    //except for shader nodes, which don&apos;t use .exec methods at all
+    this.outputs.myoutput.update();
+  }
+}
+MyNode.struct = STRUCT.inherit(MyNode, Node) + ~
+  mysetting : int;
+}
+`;
+nstructjs.manager.add_class(MyNode);</code>
+</code></pre><h2>Cycles</h2><p>If cycles are enable, the DAG will try to solve the graph until all inputs/outputs stop changing
+in value.  There are various methods in nodeSocketType for this, the most important of which is cmpValue
+and diffValue (which returns a number representing &quot;change&quot; between two instances of a socket).</p><h2>Data Blocks</h2><p>Data blocks inherit from Node.  Unlike normal nodes, they are not saved inside of Graph.nodes;
+instead a special ProxyNode is create on file save, and on load the ProxyNode is swapped with the
+original data block.  This is to allow saving/loading of data blocks individually, without having to
+save/load the entire Graph structure (this is useful for linking different files together, e.g. file A can
+load parts of file B).</p><h2>Zombie Nodes</h2><p>Zombie nodes are created by the UI for event handling; the graph automatically deletes them on file load.</p></div>
+        <a data-ice="link" href="manual/datagraph.html"></a>
       </div>
     </div>
 </div>

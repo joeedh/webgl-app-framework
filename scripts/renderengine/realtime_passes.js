@@ -114,8 +114,13 @@ export class AOPass extends RenderPass {
     inputs : Node.inherit({}),
     outputs : Node.inherit({}),
     shaderPre : `
-const float dist=5.0, factor=5.0, steps=1024.0;
-const int samples=16;
+    
+uniform float dist;
+uniform float factor;
+uniform float steps;
+//const float dist=2.0, factor=2.5, steps=1024.0;
+
+const int samples=24;
 const float seed1=0.23432, seed2=1.2342;
 
 
@@ -137,7 +142,7 @@ float sample_blue(vec2 uv) {
 #endif
 
 float rand1(float seed) {
-  seed += 1.0 + uSample;
+  seed += 1.0 + uSample*sqrt(3.0);
   seed = fract(seed*0.00134234 + seed*0.1234543 + seed*10.23432423 + seed);
   
   seed = 1.0 / (0.00001*seed + 0.00001);
@@ -148,6 +153,7 @@ float nrand1(float seed) {
   return (rand1(seed)*0.5 + rand1(seed+0.5)*0.5);
 }
 float wrand(float x, float y, float seed) {
+  seed += uSample;
 #if 0    
   float b = sample_blue(v_Uv);
   
@@ -159,7 +165,7 @@ float wrand(float x, float y, float seed) {
   return f;
 #endif
   float f = 0.0;
-  float white = rand1((x+11.2342) * (y+13.23432)*0.001);
+  float white = rand1((seed+x+11.2342) * (y-seed+13.23432)*0.001);
   
   f += (rand1(seed + x*y) - f)*0.5;
   f += (white - f)*0.5;
@@ -171,6 +177,7 @@ float wrand(float x, float y, float seed) {
 
 float rand(float x, float y, float seed) {
   //return (wrand(x, y, seed) + wrand(x, y, seed+0.5523) + wrand(x, y, seed+0.8324)) / 3.0;
+  seed += uSample;
   return wrand(x, y, seed);
 }
 
@@ -219,13 +226,10 @@ float rand(float x, float y, float seed) {
     vec4 p3 = unproject(p2);
     //float w = min(length(p3.xyz - p.xyz) / dist, 1.0);
     float w = length(p3.xyz - p.xyz) / dist;
+    
     w = w > 2.0 ? 0.0 : min(w, 1.0);
-    //w = min(w, 1.0);
     
-    //float weight = abs(z - p2.z);
-    //w=1.0;
-    
-    if (p2.z + (1.0+0.01*seed1)*abs(oldz-p2.z) > oldz) {
+    if (c[3]<0.2 || p2.z + (1.0+0.00025*seed1)*abs(oldz-p2.z) > oldz) {
       w = 0.0;
     }
     
@@ -250,6 +254,11 @@ float rand(float x, float y, float seed) {
   }}
 
   renderIntern(rctx) {
+    this.uniforms.factor = rctx.scene.envlight.ao_fac;
+    this.uniforms.dist = rctx.scene.envlight.ao_dist;
+    this.uniforms.steps = 1024;
+
+
     super.renderIntern(rctx, true);
   }
 }
@@ -262,15 +271,18 @@ export class BlurPass extends RenderPass {
   static nodedef() {return {
     uiname : "Blur Pass",
     name   : "blur_pass",
+
     inputs : Node.inherit({
       axis    : new FloatSocket(),
       samples : new FloatSocket(undefined, undefined, 8)
     }),
+
     outputs : Node.inherit({
 
     }),
+
     shaderPre : `
-      
+       
     `,
     shader : `
     
@@ -313,6 +325,35 @@ gl_FragDepthEXT = texture2D(fbo_depth, v_Uv)[0];
     }
 
     this.shaderPre = shaderPre;
+    super.renderIntern(rctx, true);
+  }
+}
+
+export class AccumPass extends RenderPass {
+  constructor() {
+    super();
+  }
+
+  static nodedef() {return {
+    uiname : "Accum Pass",
+    name   : "accum_pass",
+    inputs : Node.inherit({
+      buf : new FBOSocket()
+    }),
+    outputs : Node.inherit({
+
+    }),
+    shader : `
+
+vec4 color1 = texture2D(fbo_rgba, v_Uv);
+vec4 color2 = texture2D(buf_rgba, v_Uv);
+
+gl_FragColor = color1 + color2;
+gl_FragDepthEXT = texture2D(fbo_depth, v_Uv)[0];
+    `
+  }}
+
+  renderIntern(rctx) {
     super.renderIntern(rctx, true);
   }
 }

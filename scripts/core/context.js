@@ -346,7 +346,7 @@ export class AppToolStack extends ToolStack {
 
     toolop.execCtx = tctx;
 
-    console.log(undoflag, "undoflag");
+    //console.log(undoflag, "undoflag");
     if (!(undoflag & UndoFlags.NO_UNDO)) {
       this.cur++;
 

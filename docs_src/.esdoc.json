@@ -26,6 +26,7 @@
           "../scripts/path.ux/docs/docs_src/toolsystem.md",
           "../scripts/path.ux/docs/docs_src/controller.md",
           "libblock.md",
+          "datagraph.md",
           "../scripts/path.ux/docs/docs_src/toolprop.md",
           "../scripts/path.ux/docs/docs_src/tutorial.md"
         ]

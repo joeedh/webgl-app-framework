@@ -314,6 +314,7 @@ export class BasicMeshDrawer extends MeshDrawInterface {
 
     let selmode = view3d.selectmode;
     let program2 = Shaders.MeshEditShader;
+    //let program2 = Shaders.MeshIDShader;
 
     if (!(view3d.flag & View3DFlags.SHOW_RENDER)) {
       mesh.draw(gl, uniforms, program);
@@ -378,19 +379,10 @@ export class BasicMeshDrawer extends MeshDrawInterface {
       gl.disable(gl.DITHER);
       smesh.draw(gl, uniforms, program2);
       gl.enable(gl.DITHER);
-    }
+    };
 
     //console.log("drawing ids");
-
-    gl.disable(gl.DITHER);
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthMask(true);
-
-    gl.clearDepth(100000.0);
-    gl.clearColor(0.0, 0.0, 0.0, 0.0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    program2.uniforms.polygonOffset = 0.0;
+    program2.uniforms.polygonOffset = 0;//Colors.POLYGON_OFFSET;
     drawElements(mesh.faces, mc.meshes["faces"]);
 
     program2.uniforms.polygonOffset = Colors.POLYGON_OFFSET;

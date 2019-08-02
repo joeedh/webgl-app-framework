@@ -133,6 +133,13 @@ export class SceneObject extends DataBlock {
       this.data.draw(gl, uniforms, program, this);
     }
   }
+
+  drawWireframe(gl, uniforms, program) {
+    uniforms.objectMatrix = this.outputs.matrix.getValue();
+    uniforms.object_id = this.lib_id;
+
+    this.data.drawWireframe(gl, uniforms, program, this);
+  }
 }
 SceneObject.STRUCT = STRUCT.inherit(SceneObject, DataBlock) + `
   flag : int; 

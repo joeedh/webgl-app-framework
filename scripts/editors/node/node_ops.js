@@ -284,6 +284,10 @@ export class ConnectNodeOp extends NodeGraphOp {
 
     this.resetDrawLines();
 
+    if (uisock1 === undefined) {
+      return;
+    }
+    
     let p = new Vector2(uisock1.getAbsPos());
     ned.project(p, true);
 

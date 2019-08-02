@@ -49,7 +49,7 @@ export const MathSnippets = {
   [mf.MIN]     : 'min(A)',
   [mf.MAX]     : 'max(A)',
   [mf.FRACT]   : 'fract(A)',
-  [mf.TENT]    : '(fract(A)-0.5)*2.0',
+  [mf.TENT]    : 'abs(fract(A)-0.5)*2.0',
   [mf.COS]     : 'cos(A)',
   [mf.SIN]     : 'sin(A)',
   [mf.TAN]     : 'tan(A)',

@@ -5,17 +5,21 @@ import {SelMask, SelOneToolModes, SelToolModes} from './selectmode.js';
 import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../mesh/mesh.js';
 import * as util from '../../util/util.js';
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../core/simplemesh.js';
-import {Shaders} from './view3d_shaders.js'
+import {BasicLineShader, Shaders} from './view3d_shaders.js'
 import {FindnearestRet} from "./view3d_subeditor.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
 import * as math from '../../util/math.js';
 import {SelectOneOp} from '../../mesh/select_ops.js';
+import {View3DFlags} from "./view3d_base.js";
 import {KeyMap, HotKey} from "../editor_base.js";
 import {keymap} from '../../path.ux/scripts/simple_events.js';
 import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../path.ux/scripts/simple_toolsys.js';
 import {BasicMeshDrawer} from './view3d_draw.js';
 import {MeshCache} from './view3d_subeditor.js';
 import {SubsurfDrawer} from '../../subsurf/subsurf_draw.js';
+import {Light} from "../../light/light.js";
+
+let _shift_temp = [0, 0];
 
 //each subeditor should fill in these tools
 export const ObjectTools = {
@@ -117,7 +121,41 @@ export class ObjectEditor extends View3D_SubEditorIF {
   /*
   * called for all objects;  returns true
   * if an object is valid for this editor (and was drawn)*/
-  draw(gl, uniforms, program, object, mesh) {
+  draw(gl, uniforms, program, object) {
+    if (this.view3d.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
+      return;
+    }
+
+    uniforms.objectMatrix = object.outputs.matrix.getValue();
+    uniforms.object_id = object.lib_id;
+    uniforms.polygonOffset = -5.5;
+    uniforms.shift = _shift_temp;
+    uniforms.uColor = object.getEditorColor();
+
+    program = Shaders.ObjectLineShader;
+
+
+    let mask = gl.getParameter(gl.DEPTH_WRITEMASK);
+    gl.depthMask(false);
+
+    let size = gl.getParameter(gl.VIEWPORT);
+    size = [size[2], size[3]];
+
+    if (1) { //(object.data instanceof Mesh) || (object.data instanceof Light)) {
+      let d = 1;
+      for (let x=-d; x<=d; x++) {
+        for (let y=-d; y<=d; y++) {
+          uniforms.shift[0] = x/size[0]*3.0;
+          uniforms.shift[1] = y/size[1]*3.0;
+          object.drawWireframe(gl, uniforms, program);
+        }
+      }
+      object.drawWireframe(gl, uniforms, program);
+
+    }
+
+    uniforms.shift = undefined;
+    gl.depthMask(mask);
   }
 
   on_drawend(gl) {
@@ -188,6 +226,10 @@ export class ObjectEditor extends View3D_SubEditorIF {
   * along with the element id
   * */
   drawIDs(gl, uniforms, object, mesh, id_offset) {
+    if (this.view3d.selectmode & SelMask.MESH) {
+      return;
+    }
+
     let program = Shaders.MeshIDShader;
 
     object.draw(gl, uniforms, program);

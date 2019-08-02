@@ -25,9 +25,9 @@ export class TransformOp extends View3DOp {
     let tool = new this();
 
     if ("selmask" in args) {
-      tool.inputs.selectmode.setValue(args.selmask);
+      tool.inputs.selmask.setValue(args.selmask);
     } else {
-      tool.inputs.selectmode.setValue(ctx.view3d.selectmode);
+      tool.inputs.selmask.setValue(ctx.view3d.selectmode);
     }
 
     if ("propmode" in args) {

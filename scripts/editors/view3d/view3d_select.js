@@ -30,11 +30,15 @@ export class GPUSelectBuffer {
       objectMatrix : undefined
     };
 
-    gl.clearDepth(10000);
+    gl.clearDepth(1000000);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
     gl.disable(gl.SCISSOR_TEST);
     gl.disable(gl.DITHER);
+
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthMask(true);
 
     gl.viewport(0, 0, ~~this.size[0], ~~this.size[1]);
 

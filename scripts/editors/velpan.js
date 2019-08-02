@@ -14,8 +14,12 @@ export class VelPan {
     /** boundary limits*/
     this.bounds = [new Vector2([-2000, -2000]), new Vector2([2000, 2000])];
 
+    this.decay = 0.995;
     this.pos = new Vector2();
     this.scale = new Vector2([1, 1]);
+    this.vel = new Vector2();
+    this.oldpos = new Vector2();
+
     this.axes = 3;
     this.flag = VelPanFlags.UNIFORM_SCALE;
 
@@ -24,6 +28,9 @@ export class VelPan {
 
     this._last_mat = new Matrix4(this.mat);
     this.onchange = null;
+    this.last_update_time = util.time_ms();
+
+    this.timer = undefined;
   }
 
   copy() {
@@ -56,7 +63,35 @@ export class VelPan {
     return this;
   }
 
-  update(fire_events=true) {
+  startVelocity() {
+    if (this.timer === undefined) {
+      this.last_update_time = util.time_ms();
+      this.timer = window.setInterval(this.doVelocity.bind(this), 30);
+    }
+  }
+
+  doVelocity() {
+    if (this.vel.dot(this.vel) < 0.001) {
+      console.log("removing velpan timer");
+      window.clearInterval(this.timer);
+      this.timer = undefined;
+      return;
+    }
+
+    let dt = util.time_ms() - this.last_update_time;
+    this.pos.addFac(this.vel, dt);
+
+    dt = Math.max(dt, 0.001);
+    this.vel.mulScalar(Math.pow(this.decay, dt));
+
+    this.last_update_time = util.time_ms();
+  }
+
+  update(fire_events=true, do_velocity=true) {
+    if (do_velocity && this.vel.dot(this.vel) > 0.001) {
+      this.startVelocity();
+    }
+
     this.mat.makeIdentity();
     this.mat.scale(this.scale[0], this.scale[1], 1.0);
     this.mat.translate(this.pos[0], this.pos[1], 0.0);
@@ -98,6 +133,7 @@ export class VelPanZoomOp extends ToolOp {
     this.first = true;
     this.last_mpos = new Vector2();
     this.start_mpos = new Vector2();
+
     this._temps = util.cachering.fromConstructor(Vector2, 16);
   }
 
@@ -128,6 +164,7 @@ export class VelPanZoomOp extends ToolOp {
       this.start_mpos.load(mpos);
       this.last_mpos.load(mpos);
       this.first = false;
+      this.start_time = util.time_ms();
 
       return;
     }
@@ -160,6 +197,7 @@ export class VelPanZoomOp extends ToolOp {
     this.exec(this.modal_ctx);
 
     this.last_mpos.load(mpos);
+    this.last_time = util.time_ms();
   }
 
   exec(ctx) {
@@ -186,6 +224,7 @@ export class VelPanPanOp extends ToolOp {
     this.first = true;
     this.last_mpos = new Vector2();
     this.start_mpos = new Vector2();
+    this.start_time = this.last_time = 0;
     this._temps = util.cachering.fromConstructor(Vector2, 16);
   }
 
@@ -222,6 +261,8 @@ export class VelPanPanOp extends ToolOp {
       this.last_mpos.load(mpos);
       this.first = false;
       this.start_pan.load(velpan.pos);
+      this.start_time = util.time_ms();
+      this.last_time = util.time_ms();
 
       return;
     }
@@ -252,8 +293,24 @@ export class VelPanPanOp extends ToolOp {
     }
 
     velpan.pos.add(this.inputs.pan.getValue());
-    velpan.update();
+    velpan.update(undefined, false);
+
+    //velpan.vel.load()
+    let vel = new Vector2(velpan.pos).sub(velpan.oldpos);
+    vel.mulScalar(1.0 / (util.time_ms() - this.last_time));
+
+    let l = vel.vectorLength();
+    l = Math.min(l, 3.0);
+
+    vel.normalize().mulScalar(l);
+
+    //velpan.vel.interp(vel, 0.25);
+    velpan.vel.load(vel);
+    //console.log(vel);
+    velpan.oldpos.load(velpan.pos);
+
     //velpan.scale.mul(this.inputs.scale.getValue());
+    this.last_time = util.time_ms();
   }
 
   on_mouseup(e) {

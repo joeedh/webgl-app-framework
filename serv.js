@@ -16,7 +16,8 @@ let mimemap = {
   ".json" : "text/json",
   ".html" : "text/html",
   ".png" : "image/png",
-  ".jpg" : "image/jpeg"
+  ".jpg" : "image/jpeg",
+  ".css" : "text/css"
 };
 
 let getMime = (p) => {

@@ -75,6 +75,7 @@ export class RenderContext {
   update(gl, size) {
     let width = size[0], height = size[1];
     let drawmats = this.drawmats;
+    this.uSample = this.engine.uSample;
 
     if (this.smesh === undefined || this.size[0] != width || this.size[1] != height) {
       this.size[0] = width;
@@ -168,6 +169,8 @@ export class RenderContext {
 export class RenderPass extends Node {
   constructor() {
     super();
+
+    this.uniforms = {};
   }
 
   getOutput() {
@@ -282,6 +285,11 @@ v_Uv = uv;
 
     program.uniforms.viewMatrix = rctx.drawmats.cameramat;
     program.uniforms.iviewMatrix = rctx.drawmats.icameramat;
+    program.uniforms.uSample = rctx.engine.uSample;
+
+    for (let k in this.uniforms) {
+      program.uniforms[k] = this.uniforms[k];
+    }
 
     for (let k in this.inputs) {
       if (!(this.inputs[k] instanceof FBOSocket)) {
@@ -351,6 +359,7 @@ export class RenderGraph {
     }
 
     let rctx = this.rctx;
+
     rctx.update(gl, size);
 
     this.graph.sort();
