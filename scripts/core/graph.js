@@ -12,6 +12,17 @@ export const SocketTypes = {
   OUTPUT : 1
 };
 
+/**
+ Socket flags
+
+ @example
+ export const SocketFlags = {
+   SELECT           : 1, //for use by ui
+   UPDATE           : 2,
+   MULTI            : 4, //socket can have multiple connections, enabled by default for outputs
+   NO_MULTI_OUTPUTS : 8  //don't flag outputs with MULTI by default
+ };
+ */
 export const SocketFlags = {
   SELECT : 1, //for use by ui
   UPDATE : 2,
@@ -19,13 +30,31 @@ export const SocketFlags = {
   NO_MULTI_OUTPUTS : 8 //don't flag outputs with MULTI by default
 };
 
+/**
+ Node flags
+
+ @example
+ export const NodeFlags = {
+   SELECT    : 1,  // for use by ui
+   UPDATE    : 2,  // node needs execution
+   SORT_TAG  : 4,  // used by internal graph sort
+   CYCLE_TAG : 8,  // used by internal graph sort
+   DISABLED  : 16, // node is disabled
+   ZOMBIE    : 32, // don't save this node, used for UI event handlers and stuff
+
+   //proxy nodes are replaced during saving with a lightwieght proxy,
+   //that can be replaced with real object on load.  for dealing with
+   //nodes that are saved outside of the Graph data structure.
+   SAVE_PROXY     : 64
+ };
+ */
 export const NodeFlags = {
-  SELECT    : 1, //for use by ui
-  UPDATE    : 2,
-  SORT_TAG  : 4,
-  CYCLE_TAG : 8,
-  DISABLED  : 16,
-  ZOMBIE    : 32, /** zombie nodes aren't saved (actually they're not *loaded*).*/
+  SELECT    : 1,  /** for use by ui */
+  UPDATE    : 2,  /** node needs execution */
+  SORT_TAG  : 4,  /** used by internal graph sort */
+  CYCLE_TAG : 8,  /** used by internal graph sort */
+  DISABLED  : 16, /** node is disabled */
+  ZOMBIE    : 32, /** don't save this node, used for UI event handlers and stuff */
 
   /**proxy nodes are replaced during saving with a lightwieght proxy,
     that can be replaced with real object on load.  for dealing with
@@ -33,6 +62,17 @@ export const NodeFlags = {
   SAVE_PROXY     : 64
 };
 
+/**
+ Graph flags
+
+ @example
+ export const GraphFlags = {
+   SELECT : 1, //for use by ui
+   RESORT : 2,
+   CYCLIC_ALLOWED : 4, //graph may have cycles, set by user
+   CYCLIC : 8 //graph has cycles, is set in graph.sort()
+ };
+ */
 export const GraphFlags = {
   SELECT : 1, //for use by ui
   RESORT : 2,
@@ -116,7 +156,20 @@ export class NodeSocketType {
     
     return this;
   }
-  
+
+  /**
+   Callback for defining socket types.
+   Child classes must implement this.
+
+   @example
+   static nodedef() { return {
+      name   : "name",
+      uiname : "uiname",
+      color  : [0.5, 0.5, 0.5, 1.0],
+      flag   : 0 //see SocketFlags
+   }}
+
+   */
   static nodedef() { return {
     name   : "name",
     uiname : "uiname",
@@ -206,12 +259,20 @@ graph.KeyValPair {
 `;
 nstructjs.manager.add_class(KeyValPair);
 
+/**
+ Base class for all nodes
+ It's required to implement the nodedef() static
+ method in child classes.
+ */
 export class Node {
   static defineAPI(nodeStruct) {
 
   }
 
-  //get final node def with inheritance applied
+  /** get final node def with inheritance applied to input/output sockets
+   *
+   * @returns {{} & {name, uiname, flag, inputs, outputs}}
+   */
   static getFinalNodeDef() {
     let def = this.nodedef();
 
@@ -348,7 +409,27 @@ export class Node {
     
     this.icon = -1;
   }
-  
+
+  /**
+   Type information for node, child classes
+   must subtype this.  To inherit sockets,
+   wrap inputs and/or outputs in Node.inherit, see example
+
+   @example
+
+   static nodedef() {return {
+      name   : "name",
+      uiname : "uiname",
+      flag   : 0,  //see NodeFlags
+      inputs : Node.inherit({
+        input1 : new FloatSocket()
+      }), //can inherit from parent class by wrapping in Node.inherit({})
+
+      outputs : {
+        output1 : new FloatSocket()
+      }
+    }}
+   */
   static nodedef() {return {
     name   : "name",
     uiname : "uiname",
@@ -356,7 +437,8 @@ export class Node {
     inputs : {}, //can inherit from parent class by wrapping in Node.inherit({})
     outputs : {}        
   }}
-  
+
+  /** see nodedef static method */
   static inherit(obj) {
     return new InheritFlag(obj);
   }
@@ -403,7 +485,7 @@ export class Node {
     return ret;
   }
   
-  /**state is provided by client code
+  /**state is provided by client code, it's the argument to Graph.prototype.exec()
    *exec should call update on output sockets itself
    *DO NOT call super() unless you want to send an update signal to all
    *output sockets

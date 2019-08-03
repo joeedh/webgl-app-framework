@@ -1,3 +1,10 @@
+/**
+ Graph classes (perhaps 'class' is a bad word choice) are
+ classes of node graphs.  Nodes within the class belong to "categories"
+ and are registered with the class.  Right now the shader node system
+ uses this to keep track of shader node types.
+ */
+
 import {
   GraphCycleError, Graph,
   Node,

@@ -7,6 +7,19 @@ import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket} from './graphsockets.js';
 
+/**
+ Scene object flags
+
+ @example
+
+ export const ObjectFlags = {
+   SELECT    : 1,
+   HIDE      : 2,
+   LOCKED    : 4,
+   HIGHLIGHT : 8,
+   ACTIVE    : 16
+ };
+*/
 export const ObjectFlags = {
   SELECT    : 1,
   HIDE      : 2,
@@ -41,7 +54,7 @@ export class SceneObject extends DataBlock {
     super();
     
     this.data = data;
-    this.flag = 0;
+    this.flag = 0; /** @type {ObjectFlags}*/
   }
 
   getEditorColor() {

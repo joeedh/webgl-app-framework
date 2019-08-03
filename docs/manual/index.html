@@ -64,8 +64,10 @@
 <div data-ice="manual">
     <ul class="manual-toc">
       
-    <li data-ice="manualNav" class="indent-h1" data-link="manual/libblock.html"><a href="manual/libblock.html#database-library" data-ice="link">Database Library</a></li>
-<li data-ice="manualNav" class="indent-h1" data-link="manual/libblock.html"><a href="manual/libblock.html#struct-scripts" data-ice="link">Struct scripts</a></li>
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/datablock.html"><a href="manual/datablock.html" data-ice="link">Database Library</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datablock.html"><a href="manual/datablock.html#rules" data-ice="link">Rules</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datablock.html"><a href="manual/datablock.html#struct-scripts" data-ice="link">Struct scripts</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datablock.html"><a href="manual/datablock.html#linking" data-ice="link">Linking</a></li>
 </ul>
   </div>
 <div data-ice="manual">
@@ -274,11 +276,21 @@ st.float(&quot;opacity&quot;, &quot;opacity&quot;, &quot;Opacity&quot;, &quot;Tr
     </div>
 <div class="manual-card-wrap" data-ice="cards">
       <div class="manual-card">
-        <div data-ice="card"><h1>Struct scripts</h1><p>Datablocks must save references to other datablocks as DataRefs; for example:</p><pre><code><code class="source-code prettyprint">SomeDataBlock.STRUCT = STRUCT.inherit(SomeDataBlock, DataBlock, &quot;SomeDataBlock&quot;) + `
+        <div data-ice="card"><h1>Database Library</h1><p><img src="./manual/image/datablock_illustration.png" alt="Datablock class diagrams"></p><p>The core abstract class is DataBlock (note that not everything subclasses from it).  DataBlocks are 
+inspired by Blender&apos;s library blocks, and work in a similar way.<br>Important types inherit from DataBlock (e.g. meshes, scenes, objects, lights).<br>DataBlocks support (or will anyway) independently loading them from files,
+so a DataBlock in one file can reference a DataBlock in another.  </p><p>In addition, DataBlocks are all graph nodes (they subclass from Node), which complicates things a bit because
+graph.Graph serializes all of its nodes internally while DataBlocks are supposed to
+be independently loadable.  For this reason, Graph has a special Proxy API that saves
+dummy stand-ins inside Graph.nodes during serialization, which can be swapped out for real
+DataBlocks on file load. </p><h2>Rules</h2><p>DataBlocks must follow a number of rules:</p><ul>
+<li>Datablocks must never store references to non-datablocks objects that aren&apos;t &quot;owned&quot; by that datablocks.</li>
+<li>Datablocks may store references to other datablocks, including references from owned subobjects to
+other datablocks, but must go through a few API hoops.</li>
+</ul><p>Datablocks all inherit from graph.Node, and as such can participate in the dependency graph.</p><h2>Struct scripts</h2><p>Datablocks must save references to other datablocks as DataRefs; for example:</p><pre><code><code class="source-code prettyprint">SomeDataBlock.STRUCT = STRUCT.inherit(SomeDataBlock, DataBlock, &quot;SomeDataBlock&quot;) + `
   anotherBlock : DataRef | DataRef.fromBlock(obj.anotherBlock);
 }
 `</code>
-</code></pre><p>Additionally, datablocks must implement the dataLink method to re-link DataRefs at load time.  And they must
+</code></pre><h2>Linking</h2><p>Additionally, datablocks must implement the dataLink method to re-link DataRefs at load time.  And they must
 call the .afterSTRUCT method inside fromSTRUCT (this behavior is inherited from graph.Node and may become automatic
 in the future).  Here&apos;s a complete example:</p><pre><code><code class="source-code prettyprint">class SomeDataBlock extends DataBlock {
   dataLink(getblock, getblock_add_user) {
@@ -295,7 +307,7 @@ SomeDataBlock.STRUCT = STRUCT.inherit(SomeDataBlock, DataBlock, &quot;SomeDataBl
 }
 `</code>
 </code></pre></div>
-        <a data-ice="link" href="manual/libblock.html#struct-scripts"></a>
+        <a data-ice="link" href="manual/datablock.html"></a>
       </div>
     </div>
 <div class="manual-card-wrap" data-ice="cards">
@@ -341,7 +353,9 @@ and diffValue (which returns a number representing &quot;change&quot; between tw
 instead a special ProxyNode is create on file save, and on load the ProxyNode is swapped with the
 original data block.  This is to allow saving/loading of data blocks individually, without having to
 save/load the entire Graph structure (this is useful for linking different files together, e.g. file A can
-load parts of file B).</p><h2>Zombie Nodes</h2><p>Zombie nodes are created by the UI for event handling; the graph automatically deletes them on file load.</p></div>
+load parts of file B).</p><h2>Zombie Nodes</h2><p>Zombie nodes are created by the UI for event handling; the graph automatically deletes them on file load.
+Zombie nodes are created by adding NodeFlags.ZOMBIE to node.graph_flag:</p><pre><code><code class="source-code prettyprint">node.graph_flag |= NodeFlags.ZOMBIE;</code>
+</code></pre></div>
         <a data-ice="link" href="manual/datagraph.html"></a>
       </div>
     </div>

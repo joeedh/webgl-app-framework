@@ -122,6 +122,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-TypeSizes">TypeSizes</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_envlight">api_define_envlight</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_light">api_define_light</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_mesh">api_define_mesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_node_editor">api_define_node_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_scene">api_define_scene</a></span></span></li>
@@ -217,6 +218,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshEditShader">MeshEditShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshIDShader">MeshIDShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NormalPassShader">NormalPassShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectLineShader">ObjectLineShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PolygonOffset">PolygonOffset</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShaderDef">ShaderDef</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Shaders">Shaders</a></span></span></li>
@@ -562,6 +564,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SimpleContext">SimpleContext</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-tab_idgen">tab_idgen</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#renderengine">renderengine</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~AOPass.html">AOPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~AccumPass.html">AccumPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BasePass.html">BasePass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BlurPass.html">BlurPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~NormalPass.html">NormalPass</a></span></span></li>
@@ -640,13 +643,13 @@
 </nav>
 
 <div class="content" data-ice="content"><div class="header-notice">
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {SceneObject} from &apos;<span><a href="file/scripts/core/sceneobject.js.html#lineNumber39">./scripts/core/sceneobject.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {SceneObject} from &apos;<span><a href="file/scripts/core/sceneobject.js.html#lineNumber52">./scripts/core/sceneobject.js</a></span>&apos;</code></pre></div>
   <span data-ice="access">public</span>
   <span data-ice="kind">class</span>
   
   
   
-  <span data-ice="source">| <span><a href="file/scripts/core/sceneobject.js.html#lineNumber39">source</a></span></span>
+  <span data-ice="source">| <span><a href="file/scripts/core/sceneobject.js.html#lineNumber52">source</a></span></span>
 </div>
 
 <div class="self-detail detail">
@@ -914,6 +917,34 @@
           
           
           
+          <span class="code" data-ice="name"><span><a href="class/scripts/core/sceneobject.js~SceneObject.html#instance-method-drawWireframe">drawWireframe</a></span></span><span class="code" data-ice="signature">(gl: <span>*</span>, uniforms: <span>*</span>, program: <span>*</span>)</span>
+        </p>
+      </div>
+      <div>
+        
+        
+        
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+          
+          
+          
           <span class="code" data-ice="name"><span><a href="class/scripts/core/sceneobject.js~SceneObject.html#instance-method-exec">exec</a></span></span><span class="code" data-ice="signature">()</span>
         </p>
       </div>
@@ -1034,13 +1065,14 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="class/scripts/core/graph.js~Node.html#static-method-getFinalNodeDef">getFinalNodeDef</a></span></span><span class="code" data-ice="signature">(): <span>*</span></span>
+          <span class="code" data-ice="name"><span><a href="class/scripts/core/graph.js~Node.html#static-method-getFinalNodeDef">getFinalNodeDef</a></span></span><span class="code" data-ice="signature">(): <span>{</span></span>
         </p>
       </div>
       <div>
         
         
-        
+        <div data-ice="description"><p>get final node def with inheritance applied to input/output sockets</p>
+</div>
       </div>
     </td>
     <td>
@@ -1068,7 +1100,8 @@
       <div>
         
         
-        
+        <div data-ice="description"><p>see nodedef static method</p>
+</div>
       </div>
     </td>
     <td>
@@ -1096,7 +1129,9 @@
       <div>
         
         
-        
+        <div data-ice="description"><p>Type information for node, child classes
+must subtype this.</p>
+</div>
       </div>
     </td>
     <td>
@@ -1488,7 +1523,7 @@
       <div>
         
         
-        <div data-ice="description"><p>state is provided by client code
+        <div data-ice="description"><p>state is provided by client code, it&apos;s the argument to Graph.prototype.exec()
 exec should call update on output sockets itself
 DO NOT call super() unless you want to send an update signal to all
 output sockets</p>
@@ -1605,13 +1640,14 @@ output sockets</p>
           
           
           
-          <span class="code" data-ice="name"><span><a href="class/scripts/core/lib_api.js~DataBlock.html#static-method-blockDefine">blockDefine</a></span></span><span class="code" data-ice="signature">(): {&quot;typeName&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>, &quot;defaultName&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>, &quot;uiName&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>, &quot;flag&quot;: <span>*</span>, &quot;icon&quot;: <span>*</span>}</span>
+          <span class="code" data-ice="name"><span><a href="class/scripts/core/lib_api.js~DataBlock.html#static-method-blockDefine">blockDefine</a></span></span><span class="code" data-ice="signature">(): {typeName: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>, defaultName: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>, uiName: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>, flag: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, icon: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>}</span>
         </p>
       </div>
       <div>
         
         
-        
+        <div data-ice="description"><p>returns type info for a datablock</p>
+</div>
       </div>
     </td>
     <td>
@@ -2178,14 +2214,15 @@ that&apos;s how afterSTRUCT is invoked</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber111">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber124">source</a></span></span>
     </span>
   </h3>
 
   
   
   
-  
+  <div data-ice="description"><p>returns type info for a datablock</p>
+</div>
 
   <div data-ice="override"><h4>Override:</h4><span><a href="class/scripts/core/lib_api.js~DataBlock.html#static-method-blockDefine">DataBlock#blockDefine</a></span></div>
 
@@ -2233,14 +2270,17 @@ that&apos;s how afterSTRUCT is invoked</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber53">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber66">source</a></span></span>
     </span>
   </h3>
 
   
   
   
-  
+  <div data-ice="description"><p>Type information for node, child classes
+must subtype this.  To inherit sockets,
+wrap inputs and/or outputs in Node.inherit, see example</p>
+</div>
 
   <div data-ice="override"><h4>Override:</h4><span><a href="class/scripts/core/graph.js~Node.html#static-method-nodedef">Node#nodedef</a></span></div>
 
@@ -2291,7 +2331,7 @@ that&apos;s how afterSTRUCT is invoked</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber40">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber53">source</a></span></span>
     </span>
   </h3>
 
@@ -2337,7 +2377,7 @@ that&apos;s how afterSTRUCT is invoked</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber43">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber56">source</a></span></span>
     </span>
   </h3>
 
@@ -2380,7 +2420,7 @@ that&apos;s how afterSTRUCT is invoked</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber44">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber57">source</a></span></span>
     </span>
   </h3>
 
@@ -2426,7 +2466,7 @@ that&apos;s how afterSTRUCT is invoked</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber124">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber137">source</a></span></span>
     </span>
   </h3>
 
@@ -2493,7 +2533,78 @@ getblock just gets a block and doesn&apos;t add a reference to it</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber128">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber141">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  
+
+  
+
+  <div data-ice="properties"><div data-ice="properties">
+  <h4 data-ice="title">Params:</h4>
+  <table class="params">
+    <thead>
+    <tr><td>Name</td><td>Type</td><td>Attribute</td><td>Description</td></tr>
+    </thead>
+    <tbody>
+    
+    <tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">gl</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+<tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">uniforms</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+<tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">program</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+</tbody>
+  </table>
+</div>
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-method-drawWireframe">
+    <span class="access" data-ice="access">public</span>
+    
+    
+    
+    
+    
+    <span class="code" data-ice="name">drawWireframe</span><span class="code" data-ice="signature">(gl: <span>*</span>, uniforms: <span>*</span>, program: <span>*</span>)</span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber150">source</a></span></span>
     </span>
   </h3>
 
@@ -2564,14 +2675,14 @@ getblock just gets a block and doesn&apos;t add a reference to it</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber70">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber83">source</a></span></span>
     </span>
   </h3>
 
   
   
   
-  <div data-ice="description"><p>state is provided by client code
+  <div data-ice="description"><p>state is provided by client code, it&apos;s the argument to Graph.prototype.exec()
 exec should call update on output sockets itself
 DO NOT call super() unless you want to send an update signal to all
 output sockets</p>
@@ -2611,7 +2722,7 @@ output sockets</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber47">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber60">source</a></span></span>
     </span>
   </h3>
 
@@ -2666,7 +2777,7 @@ output sockets</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber119">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber132">source</a></span></span>
     </span>
   </h3>
 

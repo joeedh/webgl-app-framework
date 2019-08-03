@@ -122,6 +122,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-TypeSizes">TypeSizes</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_envlight">api_define_envlight</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_light">api_define_light</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_mesh">api_define_mesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_node_editor">api_define_node_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_scene">api_define_scene</a></span></span></li>
@@ -217,6 +218,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshEditShader">MeshEditShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshIDShader">MeshIDShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NormalPassShader">NormalPassShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectLineShader">ObjectLineShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PolygonOffset">PolygonOffset</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShaderDef">ShaderDef</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Shaders">Shaders</a></span></span></li>
@@ -562,6 +564,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SimpleContext">SimpleContext</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-tab_idgen">tab_idgen</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#renderengine">renderengine</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~AOPass.html">AOPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~AccumPass.html">AccumPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BasePass.html">BasePass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BlurPass.html">BlurPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~NormalPass.html">NormalPass</a></span></span></li>
@@ -654,6 +657,17 @@ export const SocketTypes = {
   OUTPUT : 1
 };
 
+/**
+ Socket flags
+
+ @example
+ export const SocketFlags = {
+   SELECT           : 1, //for use by ui
+   UPDATE           : 2,
+   MULTI            : 4, //socket can have multiple connections, enabled by default for outputs
+   NO_MULTI_OUTPUTS : 8  //don&apos;t flag outputs with MULTI by default
+ };
+ */
 export const SocketFlags = {
   SELECT : 1, //for use by ui
   UPDATE : 2,
@@ -661,13 +675,31 @@ export const SocketFlags = {
   NO_MULTI_OUTPUTS : 8 //don&apos;t flag outputs with MULTI by default
 };
 
+/**
+ Node flags
+
+ @example
+ export const NodeFlags = {
+   SELECT    : 1,  // for use by ui
+   UPDATE    : 2,  // node needs execution
+   SORT_TAG  : 4,  // used by internal graph sort
+   CYCLE_TAG : 8,  // used by internal graph sort
+   DISABLED  : 16, // node is disabled
+   ZOMBIE    : 32, // don&apos;t save this node, used for UI event handlers and stuff
+
+   //proxy nodes are replaced during saving with a lightwieght proxy,
+   //that can be replaced with real object on load.  for dealing with
+   //nodes that are saved outside of the Graph data structure.
+   SAVE_PROXY     : 64
+ };
+ */
 export const NodeFlags = {
-  SELECT    : 1, //for use by ui
-  UPDATE    : 2,
-  SORT_TAG  : 4,
-  CYCLE_TAG : 8,
-  DISABLED  : 16,
-  ZOMBIE    : 32, /** zombie nodes aren&apos;t saved (actually they&apos;re not *loaded*).*/
+  SELECT    : 1,  /** for use by ui */
+  UPDATE    : 2,  /** node needs execution */
+  SORT_TAG  : 4,  /** used by internal graph sort */
+  CYCLE_TAG : 8,  /** used by internal graph sort */
+  DISABLED  : 16, /** node is disabled */
+  ZOMBIE    : 32, /** don&apos;t save this node, used for UI event handlers and stuff */
 
   /**proxy nodes are replaced during saving with a lightwieght proxy,
     that can be replaced with real object on load.  for dealing with
@@ -675,6 +707,17 @@ export const NodeFlags = {
   SAVE_PROXY     : 64
 };
 
+/**
+ Graph flags
+
+ @example
+ export const GraphFlags = {
+   SELECT : 1, //for use by ui
+   RESORT : 2,
+   CYCLIC_ALLOWED : 4, //graph may have cycles, set by user
+   CYCLIC : 8 //graph has cycles, is set in graph.sort()
+ };
+ */
 export const GraphFlags = {
   SELECT : 1, //for use by ui
   RESORT : 2,
@@ -758,7 +801,20 @@ export class NodeSocketType {
     
     return this;
   }
-  
+
+  /**
+   Callback for defining socket types.
+   Child classes must implement this.
+
+   @example
+   static nodedef() { return {
+      name   : &quot;name&quot;,
+      uiname : &quot;uiname&quot;,
+      color  : [0.5, 0.5, 0.5, 1.0],
+      flag   : 0 //see SocketFlags
+   }}
+
+   */
   static nodedef() { return {
     name   : &quot;name&quot;,
     uiname : &quot;uiname&quot;,
@@ -848,12 +904,20 @@ graph.KeyValPair {
 `;
 nstructjs.manager.add_class(KeyValPair);
 
+/**
+ Base class for all nodes
+ It&apos;s required to implement the nodedef() static
+ method in child classes.
+ */
 export class Node {
   static defineAPI(nodeStruct) {
 
   }
 
-  //get final node def with inheritance applied
+  /** get final node def with inheritance applied to input/output sockets
+   *
+   * @returns {{} &amp; {name, uiname, flag, inputs, outputs}}
+   */
   static getFinalNodeDef() {
     let def = this.nodedef();
 
@@ -990,7 +1054,27 @@ export class Node {
     
     this.icon = -1;
   }
-  
+
+  /**
+   Type information for node, child classes
+   must subtype this.  To inherit sockets,
+   wrap inputs and/or outputs in Node.inherit, see example
+
+   @example
+
+   static nodedef() {return {
+      name   : &quot;name&quot;,
+      uiname : &quot;uiname&quot;,
+      flag   : 0,  //see NodeFlags
+      inputs : Node.inherit({
+        input1 : new FloatSocket()
+      }), //can inherit from parent class by wrapping in Node.inherit({})
+
+      outputs : {
+        output1 : new FloatSocket()
+      }
+    }}
+   */
   static nodedef() {return {
     name   : &quot;name&quot;,
     uiname : &quot;uiname&quot;,
@@ -998,7 +1082,8 @@ export class Node {
     inputs : {}, //can inherit from parent class by wrapping in Node.inherit({})
     outputs : {}        
   }}
-  
+
+  /** see nodedef static method */
   static inherit(obj) {
     return new InheritFlag(obj);
   }
@@ -1045,7 +1130,7 @@ export class Node {
     return ret;
   }
   
-  /**state is provided by client code
+  /**state is provided by client code, it&apos;s the argument to Graph.prototype.exec()
    *exec should call update on output sockets itself
    *DO NOT call super() unless you want to send an update signal to all
    *output sockets

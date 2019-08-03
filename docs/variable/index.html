@@ -122,6 +122,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-TypeSizes">TypeSizes</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_envlight">api_define_envlight</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_light">api_define_light</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_mesh">api_define_mesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_node_editor">api_define_node_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_scene">api_define_scene</a></span></span></li>
@@ -217,6 +218,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshEditShader">MeshEditShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshIDShader">MeshIDShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NormalPassShader">NormalPassShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectLineShader">ObjectLineShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PolygonOffset">PolygonOffset</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShaderDef">ShaderDef</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Shaders">Shaders</a></span></span></li>
@@ -562,6 +564,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SimpleContext">SimpleContext</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-tab_idgen">tab_idgen</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#renderengine">renderengine</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~AOPass.html">AOPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~AccumPass.html">AccumPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BasePass.html">BasePass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BlurPass.html">BlurPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~NormalPass.html">NormalPass</a></span></span></li>
@@ -1840,7 +1843,8 @@
       <div>
         
         
-        
+        <div data-ice="description"><p>Graph flags</p>
+</div>
       </div>
     </td>
     <td>
@@ -1946,7 +1950,7 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="variable/index.html#static-variable-Icons">Icons</a></span></span><span class="code" data-ice="signature">: {&quot;HFLIP&quot;: <span>*</span>, &quot;TRANSLATE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ROTATE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;HELP_PICKER&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UNDO&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;REDO&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;CIRCLE_SEL&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;BACKSPACE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;LEFT_ARROW&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;RIGHT_ARROW&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UI_EXPAND&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UI_COLLAPSE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FILTER_SEL_OPS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SCROLL_DOWN&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SCROLL_UP&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;NOTE_EXCL&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;TINY_X&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FOLDER&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FILE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SMALL_PLUS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SMALL_MINUS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;MAKE_SEGMENT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;MAKE_POLYGON&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FACE_MODE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;EDGE_MODE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;VERT_MODE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;CURSOR_ARROW&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;TOGGLE_SEL_ALL&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;DELETE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;RESIZE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;Z_UP&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;Z_DOWN&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SPLIT_EDGE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SHOW_ANIMPATHS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UNCHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;CHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ENUM_UNCHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ENUM_CHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;APPEND_VERTEX&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;VIEW_SELECTED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;EXTRUDE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SUBDIVIDE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SUBSURF&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;LIGHT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;RENDER&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>}</span>
+          <span class="code" data-ice="name"><span><a href="variable/index.html#static-variable-Icons">Icons</a></span></span><span class="code" data-ice="signature">: {}</span>
         </p>
       </div>
       <div>
@@ -2002,7 +2006,7 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="variable/index.html#static-variable-Icons">Icons</a></span></span><span class="code" data-ice="signature">: {}</span>
+          <span class="code" data-ice="name"><span><a href="variable/index.html#static-variable-Icons">Icons</a></span></span><span class="code" data-ice="signature">: {&quot;HFLIP&quot;: <span>*</span>, &quot;TRANSLATE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ROTATE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;HELP_PICKER&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UNDO&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;REDO&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;CIRCLE_SEL&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;BACKSPACE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;LEFT_ARROW&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;RIGHT_ARROW&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UI_EXPAND&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UI_COLLAPSE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FILTER_SEL_OPS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SCROLL_DOWN&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SCROLL_UP&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;NOTE_EXCL&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;TINY_X&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FOLDER&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FILE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SMALL_PLUS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SMALL_MINUS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;MAKE_SEGMENT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;MAKE_POLYGON&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FACE_MODE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;EDGE_MODE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;VERT_MODE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;CURSOR_ARROW&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;TOGGLE_SEL_ALL&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;DELETE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;RESIZE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;Z_UP&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;Z_DOWN&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SPLIT_EDGE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SHOW_ANIMPATHS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UNCHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;CHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ENUM_UNCHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ENUM_CHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;APPEND_VERTEX&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;VIEW_SELECTED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;EXTRUDE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SUBDIVIDE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SUBSURF&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;LIGHT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;RENDER&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>}</span>
         </p>
       </div>
       <div>
@@ -2456,7 +2460,8 @@
       <div>
         
         
-        
+        <div data-ice="description"><p>Node flags</p>
+</div>
       </div>
     </td>
     <td>
@@ -2535,6 +2540,35 @@
           
           
           <span class="code" data-ice="name"><span><a href="variable/index.html#static-variable-ObjectFlags">ObjectFlags</a></span></span><span class="code" data-ice="signature">: {&quot;SELECT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;HIDE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;LOCKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;HIGHLIGHT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ACTIVE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>}</span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>Scene object flags</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+          
+          
+          
+          <span class="code" data-ice="name"><span><a href="variable/index.html#static-variable-ObjectLineShader">ObjectLineShader</a></span></span><span class="code" data-ice="signature">: {&quot;vertex&quot;: <span>*</span>, &quot;fragment&quot;: <span>*</span>, &quot;uniforms&quot;: <span>*</span>, &quot;attributes&quot;: <span>*</span>}</span>
         </p>
       </div>
       <div>
@@ -3038,7 +3072,7 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="variable/index.html#static-variable-SelMask">SelMask</a></span></span><span class="code" data-ice="signature">: {&quot;VERTEX&quot;: <span>*</span>, &quot;EDGE&quot;: <span>*</span>, &quot;FACE&quot;: <span>*</span>, &quot;OBJECT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>}</span>
+          <span class="code" data-ice="name"><span><a href="variable/index.html#static-variable-SelMask">SelMask</a></span></span><span class="code" data-ice="signature">: {&quot;VERTEX&quot;: <span>*</span>, &quot;EDGE&quot;: <span>*</span>, &quot;FACE&quot;: <span>*</span>, &quot;MESH&quot;: <span>*</span>, &quot;OBJECT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>}</span>
         </p>
       </div>
       <div>
@@ -3150,7 +3184,7 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="variable/index.html#static-variable-ShaderDef">ShaderDef</a></span></span><span class="code" data-ice="signature">: {&quot;BasicLineShader&quot;: <span>*</span>, &quot;BasicLineShader2D&quot;: <span>*</span>, &quot;BasicLitMesh&quot;: <span>*</span>, &quot;MeshEditShader&quot;: <span>*</span>, &quot;MeshIDShader&quot;: <span>*</span>, &quot;WidgetMeshShader&quot;: <span>*</span>, &quot;NormalPassShader&quot;: <span>*</span>}</span>
+          <span class="code" data-ice="name"><span><a href="variable/index.html#static-variable-ShaderDef">ShaderDef</a></span></span><span class="code" data-ice="signature">: {&quot;BasicLineShader&quot;: <span>*</span>, &quot;ObjectLineShader&quot;: <span>*</span>, &quot;BasicLineShader2D&quot;: <span>*</span>, &quot;BasicLitMesh&quot;: <span>*</span>, &quot;MeshEditShader&quot;: <span>*</span>, &quot;MeshIDShader&quot;: <span>*</span>, &quot;WidgetMeshShader&quot;: <span>*</span>, &quot;NormalPassShader&quot;: <span>*</span>}</span>
         </p>
       </div>
       <div>
@@ -3324,7 +3358,8 @@
       <div>
         
         
-        
+        <div data-ice="description"><p>Socket flags</p>
+</div>
       </div>
     </td>
     <td>
@@ -4783,11 +4818,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber332">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber387">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {BasicLineShader2D} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber332">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {BasicLineShader2D} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber387">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -4826,11 +4861,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber60">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber117">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {BasicLitMesh} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber60">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {BasicLitMesh} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber117">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5342,11 +5377,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber23">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber36">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {Colors} from &apos;<span><a href="file/scripts/core/sceneobject.js.html#lineNumber23">./scripts/core/sceneobject.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {Colors} from &apos;<span><a href="file/scripts/core/sceneobject.js.html#lineNumber36">./scripts/core/sceneobject.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5729,11 +5764,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui.js.html#lineNumber27">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_table.js.html#lineNumber28">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {DataPathError} from &apos;<span><a href="file/scripts/path.ux/scripts/ui.js.html#lineNumber27">./scripts/path.ux/scripts/ui.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {DataPathError} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_table.js.html#lineNumber28">./scripts/path.ux/scripts/ui_table.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5772,11 +5807,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_table.js.html#lineNumber28">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui.js.html#lineNumber27">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {DataPathError} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_table.js.html#lineNumber28">./scripts/path.ux/scripts/ui_table.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {DataPathError} from &apos;<span><a href="file/scripts/path.ux/scripts/ui.js.html#lineNumber27">./scripts/path.ux/scripts/ui.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -6417,14 +6452,15 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/graph.js.html#lineNumber36">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/graph.js.html#lineNumber76">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {GraphFlags} from &apos;<span><a href="file/scripts/core/graph.js.html#lineNumber36">./scripts/core/graph.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {GraphFlags} from &apos;<span><a href="file/scripts/core/graph.js.html#lineNumber76">./scripts/core/graph.js</a></span>&apos;</code></pre></div>
   
   
-  
+  <div data-ice="description"><p>Graph flags</p>
+</div>
 
   
 
@@ -6441,7 +6477,19 @@ WidgetOBJs</p>
 
   
 
-  
+  <div data-ice="example">
+    <h4>Example:</h4>
+    
+  <div class="example-doc" data-ice="exampleDoc">
+      
+      <pre class="prettyprint source-code"><code data-ice="exampleCode">export const GraphFlags = {
+SELECT : 1, //for use by ui
+RESORT : 2,
+CYCLIC_ALLOWED : 4, //graph may have cycles, set by user
+CYCLIC : 8 //graph has cycles, is set in graph.sort()
+};</code></pre>
+    </div>
+</div>
 
   
 
@@ -6460,11 +6508,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/graph_class.js.html#lineNumber16">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/graph_class.js.html#lineNumber23">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {GraphMap} from &apos;<span><a href="file/scripts/core/graph_class.js.html#lineNumber16">./scripts/core/graph_class.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {GraphMap} from &apos;<span><a href="file/scripts/core/graph_class.js.html#lineNumber23">./scripts/core/graph_class.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -6503,11 +6551,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/graph_class.js.html#lineNumber15">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/graph_class.js.html#lineNumber22">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {GraphTypes} from &apos;<span><a href="file/scripts/core/graph_class.js.html#lineNumber15">./scripts/core/graph_class.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {GraphTypes} from &apos;<span><a href="file/scripts/core/graph_class.js.html#lineNumber22">./scripts/core/graph_class.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -6585,15 +6633,15 @@ WidgetOBJs</p>
     
     
     
-    <span class="code" data-ice="name">Icons</span><span class="code" data-ice="signature">: {&quot;HFLIP&quot;: <span>*</span>, &quot;TRANSLATE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ROTATE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;HELP_PICKER&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UNDO&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;REDO&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;CIRCLE_SEL&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;BACKSPACE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;LEFT_ARROW&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;RIGHT_ARROW&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UI_EXPAND&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UI_COLLAPSE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FILTER_SEL_OPS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SCROLL_DOWN&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SCROLL_UP&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;NOTE_EXCL&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;TINY_X&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FOLDER&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FILE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SMALL_PLUS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SMALL_MINUS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;MAKE_SEGMENT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;MAKE_POLYGON&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FACE_MODE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;EDGE_MODE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;VERT_MODE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;CURSOR_ARROW&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;TOGGLE_SEL_ALL&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;DELETE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;RESIZE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;Z_UP&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;Z_DOWN&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SPLIT_EDGE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SHOW_ANIMPATHS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UNCHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;CHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ENUM_UNCHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ENUM_CHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;APPEND_VERTEX&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;VIEW_SELECTED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;EXTRUDE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SUBDIVIDE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SUBSURF&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;LIGHT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;RENDER&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>}</span>
+    <span class="code" data-ice="name">Icons</span><span class="code" data-ice="signature">: {}</span>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/icon_enum.js.html#lineNumber3">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber11">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {Icons} from &apos;<span><a href="file/scripts/editors/icon_enum.js.html#lineNumber3">./scripts/editors/icon_enum.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {Icons} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber11">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -6671,15 +6719,15 @@ WidgetOBJs</p>
     
     
     
-    <span class="code" data-ice="name">Icons</span><span class="code" data-ice="signature">: {}</span>
+    <span class="code" data-ice="name">Icons</span><span class="code" data-ice="signature">: {&quot;HFLIP&quot;: <span>*</span>, &quot;TRANSLATE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ROTATE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;HELP_PICKER&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UNDO&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;REDO&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;CIRCLE_SEL&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;BACKSPACE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;LEFT_ARROW&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;RIGHT_ARROW&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UI_EXPAND&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UI_COLLAPSE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FILTER_SEL_OPS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SCROLL_DOWN&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SCROLL_UP&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;NOTE_EXCL&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;TINY_X&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FOLDER&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FILE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SMALL_PLUS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SMALL_MINUS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;MAKE_SEGMENT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;MAKE_POLYGON&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;FACE_MODE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;EDGE_MODE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;VERT_MODE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;CURSOR_ARROW&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;TOGGLE_SEL_ALL&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;DELETE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;RESIZE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;Z_UP&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;Z_DOWN&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SPLIT_EDGE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SHOW_ANIMPATHS&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;UNCHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;CHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ENUM_UNCHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;ENUM_CHECKED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;APPEND_VERTEX&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;VIEW_SELECTED&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;EXTRUDE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SUBDIVIDE&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;SUBSURF&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;LIGHT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, &quot;RENDER&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>}</span>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber11">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/icon_enum.js.html#lineNumber3">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {Icons} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber11">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {Icons} from &apos;<span><a href="file/scripts/editors/icon_enum.js.html#lineNumber3">./scripts/editors/icon_enum.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -7105,11 +7153,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber120">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber176">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {MeshEditShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber120">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {MeshEditShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber176">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -7191,11 +7239,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber193">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber248">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {MeshIDShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber193">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {MeshIDShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber248">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -7363,14 +7411,15 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/graph.js.html#lineNumber22">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/graph.js.html#lineNumber51">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {NodeFlags} from &apos;<span><a href="file/scripts/core/graph.js.html#lineNumber22">./scripts/core/graph.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {NodeFlags} from &apos;<span><a href="file/scripts/core/graph.js.html#lineNumber51">./scripts/core/graph.js</a></span>&apos;</code></pre></div>
   
   
-  
+  <div data-ice="description"><p>Node flags</p>
+</div>
 
   
 
@@ -7387,7 +7436,26 @@ WidgetOBJs</p>
 
   
 
-  
+  <div data-ice="example">
+    <h4>Example:</h4>
+    
+  <div class="example-doc" data-ice="exampleDoc">
+      
+      <pre class="prettyprint source-code"><code data-ice="exampleCode">export const NodeFlags = {
+SELECT    : 1,  // for use by ui
+UPDATE    : 2,  // node needs execution
+SORT_TAG  : 4,  // used by internal graph sort
+CYCLE_TAG : 8,  // used by internal graph sort
+DISABLED  : 16, // node is disabled
+ZOMBIE    : 32, // don&apos;t save this node, used for UI event handlers and stuff
+
+//proxy nodes are replaced during saving with a lightwieght proxy,
+//that can be replaced with real object on load.  for dealing with
+//nodes that are saved outside of the Graph data structure.
+SAVE_PROXY     : 64
+};</code></pre>
+    </div>
+</div>
 
   
 
@@ -7406,11 +7474,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber264">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber319">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {NormalPassShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber264">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {NormalPassShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber319">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -7492,11 +7560,69 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber10">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/sceneobject.js.html#lineNumber23">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {ObjectFlags} from &apos;<span><a href="file/scripts/core/sceneobject.js.html#lineNumber10">./scripts/core/sceneobject.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {ObjectFlags} from &apos;<span><a href="file/scripts/core/sceneobject.js.html#lineNumber23">./scripts/core/sceneobject.js</a></span>&apos;</code></pre></div>
+  
+  
+  <div data-ice="description"><p>Scene object flags</p>
+</div>
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  <div data-ice="example">
+    <h4>Example:</h4>
+    
+  <div class="example-doc" data-ice="exampleDoc">
+      
+      <pre class="prettyprint source-code"><code data-ice="exampleCode">
+export const ObjectFlags = {
+SELECT    : 1,
+HIDE      : 2,
+LOCKED    : 4,
+HIGHLIGHT : 8,
+ACTIVE    : 16
+};</code></pre>
+    </div>
+</div>
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="static-variable-ObjectLineShader">
+    <span class="access" data-ice="access">public</span>
+    
+    
+    
+    
+    
+    <span class="code" data-ice="name">ObjectLineShader</span><span class="code" data-ice="signature">: {&quot;vertex&quot;: <span>*</span>, &quot;fragment&quot;: <span>*</span>, &quot;uniforms&quot;: <span>*</span>, &quot;attributes&quot;: <span>*</span>}</span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber63">source</a></span></span>
+    </span>
+  </h3>
+
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {ObjectLineShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber63">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -7535,11 +7661,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_object_editor.js.html#lineNumber21">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_object_editor.js.html#lineNumber25">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {ObjectTools} from &apos;<span><a href="file/scripts/editors/view3d/view3d_object_editor.js.html#lineNumber21">./scripts/editors/view3d/view3d_object_editor.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {ObjectTools} from &apos;<span><a href="file/scripts/editors/view3d/view3d_object_editor.js.html#lineNumber25">./scripts/editors/view3d/view3d_object_editor.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -7965,11 +8091,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/toolprop_abstract.js.html#lineNumber22">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/toolprop.js.html#lineNumber43">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {PropSubTypes} from &apos;<span><a href="file/scripts/path.ux/scripts/toolprop_abstract.js.html#lineNumber22">./scripts/path.ux/scripts/toolprop_abstract.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {PropSubTypes} from &apos;<span><a href="file/scripts/path.ux/scripts/toolprop.js.html#lineNumber43">./scripts/path.ux/scripts/toolprop.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -8008,11 +8134,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/toolprop.js.html#lineNumber43">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/toolprop_abstract.js.html#lineNumber22">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {PropSubTypes} from &apos;<span><a href="file/scripts/path.ux/scripts/toolprop.js.html#lineNumber43">./scripts/path.ux/scripts/toolprop.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {PropSubTypes} from &apos;<span><a href="file/scripts/path.ux/scripts/toolprop_abstract.js.html#lineNumber22">./scripts/path.ux/scripts/toolprop_abstract.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -8262,7 +8388,7 @@ WidgetOBJs</p>
     
     
     
-    <span class="code" data-ice="name">SelMask</span><span class="code" data-ice="signature">: {&quot;VERTEX&quot;: <span>*</span>, &quot;EDGE&quot;: <span>*</span>, &quot;FACE&quot;: <span>*</span>, &quot;OBJECT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>}</span>
+    <span class="code" data-ice="name">SelMask</span><span class="code" data-ice="signature">: {&quot;VERTEX&quot;: <span>*</span>, &quot;EDGE&quot;: <span>*</span>, &quot;FACE&quot;: <span>*</span>, &quot;MESH&quot;: <span>*</span>, &quot;OBJECT&quot;: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>}</span>
     <span class="right-info">
       
       
@@ -8434,15 +8560,15 @@ WidgetOBJs</p>
     
     
     
-    <span class="code" data-ice="name">ShaderDef</span><span class="code" data-ice="signature">: {&quot;BasicLineShader&quot;: <span>*</span>, &quot;BasicLineShader2D&quot;: <span>*</span>, &quot;BasicLitMesh&quot;: <span>*</span>, &quot;MeshEditShader&quot;: <span>*</span>, &quot;MeshIDShader&quot;: <span>*</span>, &quot;WidgetMeshShader&quot;: <span>*</span>, &quot;NormalPassShader&quot;: <span>*</span>}</span>
+    <span class="code" data-ice="name">ShaderDef</span><span class="code" data-ice="signature">: {&quot;BasicLineShader&quot;: <span>*</span>, &quot;ObjectLineShader&quot;: <span>*</span>, &quot;BasicLineShader2D&quot;: <span>*</span>, &quot;BasicLitMesh&quot;: <span>*</span>, &quot;MeshEditShader&quot;: <span>*</span>, &quot;MeshIDShader&quot;: <span>*</span>, &quot;WidgetMeshShader&quot;: <span>*</span>, &quot;NormalPassShader&quot;: <span>*</span>}</span>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber425">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber480">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {ShaderDef} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber425">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {ShaderDef} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber480">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -8567,11 +8693,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber435">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber491">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {Shaders} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber435">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {Shaders} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber491">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -8696,14 +8822,15 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/graph.js.html#lineNumber15">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/graph.js.html#lineNumber26">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {SocketFlags} from &apos;<span><a href="file/scripts/core/graph.js.html#lineNumber15">./scripts/core/graph.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {SocketFlags} from &apos;<span><a href="file/scripts/core/graph.js.html#lineNumber26">./scripts/core/graph.js</a></span>&apos;</code></pre></div>
   
   
-  
+  <div data-ice="description"><p>Socket flags</p>
+</div>
 
   
 
@@ -8720,7 +8847,19 @@ WidgetOBJs</p>
 
   
 
-  
+  <div data-ice="example">
+    <h4>Example:</h4>
+    
+  <div class="example-doc" data-ice="exampleDoc">
+      
+      <pre class="prettyprint source-code"><code data-ice="exampleCode">export const SocketFlags = {
+SELECT           : 1, //for use by ui
+UPDATE           : 2,
+MULTI            : 4, //socket can have multiple connections, enabled by default for outputs
+NO_MULTI_OUTPUTS : 8  //don&apos;t flag outputs with MULTI by default
+};</code></pre>
+    </div>
+</div>
 
   
 
@@ -8954,11 +9093,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber421">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber476">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {SubSurfPatchShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber421">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {SubSurfPatchShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber476">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -9556,11 +9695,11 @@ WidgetOBJs</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber372">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber427">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {WidgetMeshShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber372">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {WidgetMeshShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber427">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
   
   
   

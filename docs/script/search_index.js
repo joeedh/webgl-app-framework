@@ -24,6 +24,12 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/renderengine/realtime_passes.js~accumpass",
+    "class/scripts/renderengine/realtime_passes.js~AccumPass.html",
+    "<span>AccumPass</span> <span class=\"search-result-import-path\">./scripts/renderengine/realtime_passes.js</span>",
+    "class"
+  ],
+  [
     "./scripts/light/light_ops.js~addlightop",
     "class/scripts/light/light_ops.js~AddLightOp.html",
     "<span>AddLightOp</span> <span class=\"search-result-import-path\">./scripts/light/light_ops.js</span>",
@@ -1374,6 +1380,12 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
+    "./scripts/editors/view3d/view3d_shaders.js~objectlineshader",
+    "variable/index.html#static-variable-ObjectLineShader",
+    "<span>ObjectLineShader</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_shaders.js</span>",
+    "variable"
+  ],
+  [
     "./scripts/core/scene.js~objectlist",
     "class/scripts/core/scene.js~ObjectList.html",
     "<span>ObjectList</span> <span class=\"search-result-import-path\">./scripts/core/scene.js</span>",
@@ -2547,6 +2559,12 @@ window.esdocSearchIndex = [
     "./scripts/core/graph_class.js~api_define_graphclasses",
     "function/index.html#static-function-api_define_graphclasses",
     "<span>api_define_graphclasses</span> <span class=\"search-result-import-path\">./scripts/core/graph_class.js</span>",
+    "function"
+  ],
+  [
+    "./scripts/data_api/api_define.js~api_define_light",
+    "function/index.html#static-function-api_define_light",
+    "<span>api_define_light</span> <span class=\"search-result-import-path\">./scripts/data_api/api_define.js</span>",
     "function"
   ],
   [
@@ -5587,13 +5605,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/core/lib_api.js~blockset#active",
-    "class/scripts/core/lib_api.js~BlockSet.html#instance-set-active",
+    "class/scripts/core/lib_api.js~BlockSet.html#instance-get-active",
     "scripts/core/lib_api.js~BlockSet#active",
     "member"
   ],
   [
     "scripts/core/lib_api.js~blockset#active",
-    "class/scripts/core/lib_api.js~BlockSet.html#instance-get-active",
+    "class/scripts/core/lib_api.js~BlockSet.html#instance-set-active",
     "scripts/core/lib_api.js~BlockSet#active",
     "member"
   ],
@@ -6357,6 +6375,12 @@ window.esdocSearchIndex = [
     "scripts/core/sceneobject.js~sceneobject#draw",
     "class/scripts/core/sceneobject.js~SceneObject.html#instance-method-draw",
     "scripts/core/sceneobject.js~SceneObject#draw",
+    "method"
+  ],
+  [
+    "scripts/core/sceneobject.js~sceneobject#drawwireframe",
+    "class/scripts/core/sceneobject.js~SceneObject.html#instance-method-drawWireframe",
+    "scripts/core/sceneobject.js~SceneObject#drawWireframe",
     "method"
   ],
   [
@@ -7842,6 +7866,12 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
+    "scripts/editors/node/nodeeditor.js~nodeeditor#_last_compile_test",
+    "class/scripts/editors/node/NodeEditor.js~NodeEditor.html#instance-member-_last_compile_test",
+    "scripts/editors/node/NodeEditor.js~NodeEditor#_last_compile_test",
+    "member"
+  ],
+  [
     "scripts/editors/node/nodeeditor.js~nodeeditor#_last_dpi",
     "class/scripts/editors/node/NodeEditor.js~NodeEditor.html#instance-member-_last_dpi",
     "scripts/editors/node/NodeEditor.js~NodeEditor#_last_dpi",
@@ -7851,6 +7881,12 @@ window.esdocSearchIndex = [
     "scripts/editors/node/nodeeditor.js~nodeeditor#_last_graphpath",
     "class/scripts/editors/node/NodeEditor.js~NodeEditor.html#instance-member-_last_graphpath",
     "scripts/editors/node/NodeEditor.js~NodeEditor#_last_graphpath",
+    "member"
+  ],
+  [
+    "scripts/editors/node/nodeeditor.js~nodeeditor#_last_script",
+    "class/scripts/editors/node/NodeEditor.js~NodeEditor.html#instance-member-_last_script",
+    "scripts/editors/node/NodeEditor.js~NodeEditor#_last_script",
     "member"
   ],
   [
@@ -7875,6 +7911,12 @@ window.esdocSearchIndex = [
     "scripts/editors/node/nodeeditor.js~nodeeditor#_recalcui",
     "class/scripts/editors/node/NodeEditor.js~NodeEditor.html#instance-method-_recalcUI",
     "scripts/editors/node/NodeEditor.js~NodeEditor#_recalcUI",
+    "method"
+  ],
+  [
+    "scripts/editors/node/nodeeditor.js~nodeeditor#checkcompile",
+    "class/scripts/editors/node/NodeEditor.js~NodeEditor.html#instance-method-checkCompile",
+    "scripts/editors/node/NodeEditor.js~NodeEditor#checkCompile",
     "method"
   ],
   [
@@ -8286,6 +8328,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/node/nodeeditor.js~nodeui#_ishighlight",
+    "class/scripts/editors/node/NodeEditor.js~NodeUI.html#instance-member-_isHighlight",
+    "scripts/editors/node/NodeEditor.js~NodeUI#_isHighlight",
+    "member"
+  ],
+  [
     "scripts/editors/node/nodeeditor.js~nodeui#allsockets",
     "class/scripts/editors/node/NodeEditor.js~NodeUI.html#instance-member-allsockets",
     "scripts/editors/node/NodeEditor.js~NodeUI#allsockets",
@@ -8325,6 +8373,18 @@ window.esdocSearchIndex = [
     "scripts/editors/node/nodeeditor.js~nodeui#inputs",
     "class/scripts/editors/node/NodeEditor.js~NodeUI.html#instance-member-inputs",
     "scripts/editors/node/NodeEditor.js~NodeUI#inputs",
+    "member"
+  ],
+  [
+    "scripts/editors/node/nodeeditor.js~nodeui#ishighlight",
+    "class/scripts/editors/node/NodeEditor.js~NodeUI.html#instance-get-isHighlight",
+    "scripts/editors/node/NodeEditor.js~NodeUI#isHighlight",
+    "member"
+  ],
+  [
+    "scripts/editors/node/nodeeditor.js~nodeui#ishighlight",
+    "class/scripts/editors/node/NodeEditor.js~NodeUI.html#instance-set-isHighlight",
+    "scripts/editors/node/NodeEditor.js~NodeUI#isHighlight",
     "member"
   ],
   [
@@ -8650,6 +8710,12 @@ window.esdocSearchIndex = [
     "file/scripts/editors/properties/PropsEditor.js.html",
     "scripts/editors/properties/PropsEditor.js",
     "file"
+  ],
+  [
+    "scripts/editors/properties/propseditor.js~propseditor#buildobject",
+    "class/scripts/editors/properties/PropsEditor.js~PropsEditor.html#instance-method-buildObject",
+    "scripts/editors/properties/PropsEditor.js~PropsEditor#buildObject",
+    "method"
   ],
   [
     "scripts/editors/properties/propseditor.js~propseditor#buildscene",
@@ -12324,6 +12390,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/mesh/mesh.js~mesh#drawwireframe",
+    "class/scripts/mesh/mesh.js~Mesh.html#instance-method-drawWireframe",
+    "scripts/mesh/mesh.js~Mesh#drawWireframe",
+    "method"
+  ],
+  [
     "scripts/mesh/mesh.js~mesh#edges",
     "class/scripts/mesh/mesh.js~Mesh.html#instance-member-edges",
     "scripts/mesh/mesh.js~Mesh#edges",
@@ -13555,13 +13627,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/framemanager.js~screen#ctx",
-    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-get-ctx",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-set-ctx",
     "scripts/path.ux/scripts/FrameManager.js~Screen#ctx",
     "member"
   ],
   [
     "scripts/path.ux/scripts/framemanager.js~screen#ctx",
-    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-set-ctx",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-get-ctx",
     "scripts/path.ux/scripts/FrameManager.js~Screen#ctx",
     "member"
   ],
@@ -18061,13 +18133,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui.js~label#font",
-    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-set-font",
+    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-get-font",
     "scripts/path.ux/scripts/ui.js~Label#font",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui.js~label#font",
-    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-get-font",
+    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-set-font",
     "scripts/path.ux/scripts/ui.js~Label#font",
     "member"
   ],
@@ -18079,13 +18151,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui.js~label#text",
-    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-get-text",
+    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-set-text",
     "scripts/path.ux/scripts/ui.js~Label#text",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui.js~label#text",
-    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-set-text",
+    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-get-text",
     "scripts/path.ux/scripts/ui.js~Label#text",
     "member"
   ],
@@ -18451,13 +18523,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_base.js~uibase#ctx",
-    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-get-ctx",
+    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-set-ctx",
     "scripts/path.ux/scripts/ui_base.js~UIBase#ctx",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_base.js~uibase#ctx",
-    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-set-ctx",
+    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-get-ctx",
     "scripts/path.ux/scripts/ui_base.js~UIBase#ctx",
     "member"
   ],
@@ -18481,13 +18553,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_base.js~uibase#disabled",
-    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-set-disabled",
+    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-get-disabled",
     "scripts/path.ux/scripts/ui_base.js~UIBase#disabled",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_base.js~uibase#disabled",
-    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-get-disabled",
+    "class/scripts/path.ux/scripts/ui_base.js~UIBase.html#instance-set-disabled",
     "scripts/path.ux/scripts/ui_base.js~UIBase#disabled",
     "member"
   ],
@@ -19555,13 +19627,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_curvewidget.js~curvewidget#closed",
-    "class/scripts/path.ux/scripts/ui_curvewidget.js~CurveWidget.html#instance-get-closed",
+    "class/scripts/path.ux/scripts/ui_curvewidget.js~CurveWidget.html#instance-set-closed",
     "scripts/path.ux/scripts/ui_curvewidget.js~CurveWidget#closed",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_curvewidget.js~curvewidget#closed",
-    "class/scripts/path.ux/scripts/ui_curvewidget.js~CurveWidget.html#instance-set-closed",
+    "class/scripts/path.ux/scripts/ui_curvewidget.js~CurveWidget.html#instance-get-closed",
     "scripts/path.ux/scripts/ui_curvewidget.js~CurveWidget#closed",
     "member"
   ],
@@ -20797,13 +20869,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~colorpickerbutton#label",
-    "class/scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton.html#instance-get-label",
+    "class/scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton.html#instance-set-label",
     "scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton#label",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~colorpickerbutton#label",
-    "class/scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton.html#instance-set-label",
+    "class/scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton.html#instance-get-label",
     "scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton#label",
     "member"
   ],
@@ -20989,13 +21061,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~iconcheck#checked",
-    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-set-checked",
+    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-get-checked",
     "scripts/path.ux/scripts/ui_widgets.js~IconCheck#checked",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~iconcheck#checked",
-    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-get-checked",
+    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-set-checked",
     "scripts/path.ux/scripts/ui_widgets.js~IconCheck#checked",
     "member"
   ],
@@ -21037,13 +21109,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~iconcheck#icon",
-    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-set-icon",
+    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-get-icon",
     "scripts/path.ux/scripts/ui_widgets.js~IconCheck#icon",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~iconcheck#icon",
-    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-get-icon",
+    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-set-icon",
     "scripts/path.ux/scripts/ui_widgets.js~IconCheck#icon",
     "member"
   ],
@@ -21253,13 +21325,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~textbox#text",
-    "class/scripts/path.ux/scripts/ui_widgets.js~TextBox.html#instance-get-text",
+    "class/scripts/path.ux/scripts/ui_widgets.js~TextBox.html#instance-set-text",
     "scripts/path.ux/scripts/ui_widgets.js~TextBox#text",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~textbox#text",
-    "class/scripts/path.ux/scripts/ui_widgets.js~TextBox.html#instance-set-text",
+    "class/scripts/path.ux/scripts/ui_widgets.js~TextBox.html#instance-get-text",
     "scripts/path.ux/scripts/ui_widgets.js~TextBox#text",
     "member"
   ],
@@ -21313,13 +21385,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~valuebuttonbase#value",
-    "class/scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase.html#instance-get-value",
+    "class/scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase.html#instance-set-value",
     "scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase#value",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~valuebuttonbase#value",
-    "class/scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase.html#instance-set-value",
+    "class/scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase.html#instance-get-value",
     "scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase#value",
     "member"
   ],
@@ -22404,6 +22476,24 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/renderengine/realtime_passes.js~accumpass#constructor",
+    "class/scripts/renderengine/realtime_passes.js~AccumPass.html#instance-constructor-constructor",
+    "scripts/renderengine/realtime_passes.js~AccumPass#constructor",
+    "method"
+  ],
+  [
+    "scripts/renderengine/realtime_passes.js~accumpass#renderintern",
+    "class/scripts/renderengine/realtime_passes.js~AccumPass.html#instance-method-renderIntern",
+    "scripts/renderengine/realtime_passes.js~AccumPass#renderIntern",
+    "method"
+  ],
+  [
+    "scripts/renderengine/realtime_passes.js~accumpass.nodedef",
+    "class/scripts/renderengine/realtime_passes.js~AccumPass.html#static-method-nodedef",
+    "scripts/renderengine/realtime_passes.js~AccumPass.nodedef",
+    "method"
+  ],
+  [
     "scripts/renderengine/realtime_passes.js~basepass#constructor",
     "class/scripts/renderengine/realtime_passes.js~BasePass.html#instance-constructor-constructor",
     "scripts/renderengine/realtime_passes.js~BasePass#constructor",
@@ -22569,6 +22659,12 @@ window.esdocSearchIndex = [
     "scripts/renderengine/renderengine_realtime.js~realtimeengine#rendergraph",
     "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-member-rendergraph",
     "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#rendergraph",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~realtimeengine#usample",
+    "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-member-uSample",
+    "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#uSample",
     "member"
   ],
   [
@@ -22882,6 +22978,12 @@ window.esdocSearchIndex = [
     "class/scripts/renderengine/renderpass.js~RenderPass.html#instance-method-renderIntern",
     "scripts/renderengine/renderpass.js~RenderPass#renderIntern",
     "method"
+  ],
+  [
+    "scripts/renderengine/renderpass.js~renderpass#uniforms",
+    "class/scripts/renderengine/renderpass.js~RenderPass.html#instance-member-uniforms",
+    "scripts/renderengine/renderpass.js~RenderPass#uniforms",
+    "member"
   ],
   [
     "scripts/renderengine/renderpass.js~renderpass.nodedef",

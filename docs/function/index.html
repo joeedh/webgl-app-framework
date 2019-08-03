@@ -122,6 +122,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-TypeSizes">TypeSizes</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_envlight">api_define_envlight</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_light">api_define_light</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_mesh">api_define_mesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_node_editor">api_define_node_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_scene">api_define_scene</a></span></span></li>
@@ -217,6 +218,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshEditShader">MeshEditShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshIDShader">MeshIDShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NormalPassShader">NormalPassShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectLineShader">ObjectLineShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PolygonOffset">PolygonOffset</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShaderDef">ShaderDef</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Shaders">Shaders</a></span></span></li>
@@ -562,6 +564,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SimpleContext">SimpleContext</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-tab_idgen">tab_idgen</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#renderengine">renderengine</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~AOPass.html">AOPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~AccumPass.html">AccumPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BasePass.html">BasePass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BlurPass.html">BlurPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~NormalPass.html">NormalPass</a></span></span></li>
@@ -855,6 +858,34 @@
           
           
           <span class="code" data-ice="name"><span><a href="function/index.html#static-function-api_define_graphclasses">api_define_graphclasses</a></span></span><span class="code" data-ice="signature">(api: <span>*</span>)</span>
+        </p>
+      </div>
+      <div>
+        
+        
+        
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+          
+          
+          
+          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-api_define_light">api_define_light</a></span></span><span class="code" data-ice="signature">(api: <span>*</span>, pstruct: <span>*</span>)</span>
         </p>
       </div>
       <div>
@@ -1386,7 +1417,7 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-color2css">color2css</a></span></span><span class="code" data-ice="signature">(c: <span>*</span>): <span>*</span></span>
+          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-color2css">color2css</a></span></span><span class="code" data-ice="signature">(c: <span>*</span>, alpha_override: <span>*</span>): <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span></span>
         </p>
       </div>
       <div>
@@ -1414,7 +1445,7 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-color2css">color2css</a></span></span><span class="code" data-ice="signature">(c: <span>*</span>, alpha_override: <span>*</span>): <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span></span>
+          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-color2css">color2css</a></span></span><span class="code" data-ice="signature">(c: <span>*</span>): <span>*</span></span>
         </p>
       </div>
       <div>
@@ -2142,7 +2173,7 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-getFieldImage">getFieldImage</a></span></span><span class="code" data-ice="signature">(size: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
+          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-getFieldImage">getFieldImage</a></span></span><span class="code" data-ice="signature">(fieldsize: <span>*</span>, width: <span>*</span>, height: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
         </p>
       </div>
       <div>
@@ -2170,7 +2201,7 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-getFieldImage">getFieldImage</a></span></span><span class="code" data-ice="signature">(fieldsize: <span>*</span>, width: <span>*</span>, height: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
+          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-getFieldImage">getFieldImage</a></span></span><span class="code" data-ice="signature">(size: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
         </p>
       </div>
       <div>
@@ -5579,11 +5610,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber357">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber365">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_envlight} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber357">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_envlight} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber365">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5650,11 +5681,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/graph_class.js.html#lineNumber18">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/graph_class.js.html#lineNumber25">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_graphclasses} from &apos;<span><a href="file/scripts/core/graph_class.js.html#lineNumber18">./scripts/core/graph_class.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_graphclasses} from &apos;<span><a href="file/scripts/core/graph_class.js.html#lineNumber25">./scripts/core/graph_class.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5698,6 +5729,71 @@
   
 </div>
 <div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="static-function-api_define_light">
+    <span class="access" data-ice="access">public</span>
+    
+    
+    
+    
+    
+    <span class="code" data-ice="name">api_define_light</span><span class="code" data-ice="signature">(api: <span>*</span>, pstruct: <span>*</span>)</span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber381">source</a></span></span>
+    </span>
+  </h3>
+
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_light} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber381">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  
+  
+  
+
+  
+
+  <div data-ice="properties"><div data-ice="properties">
+  <h4 data-ice="title">Params:</h4>
+  <table class="params">
+    <thead>
+    <tr><td>Name</td><td>Type</td><td>Attribute</td><td>Description</td></tr>
+    </thead>
+    <tbody>
+    
+    <tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">api</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+<tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">pstruct</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+</tbody>
+  </table>
+</div>
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
   <h3 data-ice="anchor" id="static-function-api_define_mesh">
     <span class="access" data-ice="access">public</span>
     
@@ -5709,11 +5805,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber164">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber172">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_mesh} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber164">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_mesh} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber172">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5774,11 +5870,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber300">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber308">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_node_editor} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber300">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_node_editor} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber308">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5839,11 +5935,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber373">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber391">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_scene} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber373">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_scene} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber391">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5904,11 +6000,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber308">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber316">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_screen} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber308">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_screen} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber316">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5969,11 +6065,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber289">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber297">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_velpan} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber289">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_velpan} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber297">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -6046,11 +6142,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber47">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber48">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_view3d} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber47">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_view3d} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber48">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -6330,11 +6426,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber8">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/util/util.js.html#lineNumber5">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {btoa} from &apos;<span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber8">./scripts/path.ux/scripts/util.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {btoa} from &apos;<span><a href="file/scripts/util/util.js.html#lineNumber5">./scripts/util/util.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -6401,11 +6497,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/util/util.js.html#lineNumber5">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber8">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {btoa} from &apos;<span><a href="file/scripts/util/util.js.html#lineNumber5">./scripts/util/util.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {btoa} from &apos;<span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber8">./scripts/path.ux/scripts/util.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -7021,77 +7117,6 @@
     
     
     
-    <span class="code" data-ice="name">color2css</span><span class="code" data-ice="signature">(c: <span>*</span>): <span>*</span></span>
-    <span class="right-info">
-      
-      
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber51">source</a></span></span>
-    </span>
-  </h3>
-
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {color2css} from &apos;<span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber51">./scripts/path.ux/scripts/util.js</a></span>&apos;</code></pre></div>
-  
-  
-  
-
-  
-
-  <div data-ice="properties"><div data-ice="properties">
-  <h4 data-ice="title">Params:</h4>
-  <table class="params">
-    <thead>
-    <tr><td>Name</td><td>Type</td><td>Attribute</td><td>Description</td></tr>
-    </thead>
-    <tbody>
-    
-    <tr data-ice="property" data-depth="0">
-      <td data-ice="name" class="code" data-depth="0">c</td>
-      <td data-ice="type" class="code"><span>*</span></td>
-      <td data-ice="appendix"></td>
-      <td data-ice="description"></td>
-    </tr>
-</tbody>
-  </table>
-</div>
-</div>
-
-  <div class="return-params" data-ice="returnParams">
-    <h4>Return:</h4>
-    <table>
-      <tbody>
-        <tr>
-          <td class="return-type code" data-ice="returnType"><span>*</span></td>
-          
-        </tr>
-      </tbody>
-    </table>
-    <div data-ice="returnProperties">
-</div>
-  </div>
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-  
-</div>
-<div class="detail" data-ice="detail">
-  <h3 data-ice="anchor" id="static-function-color2css">
-    <span class="access" data-ice="access">public</span>
-    
-    
-    
-    
-    
     <span class="code" data-ice="name">color2css</span><span class="code" data-ice="signature">(c: <span>*</span>, alpha_override: <span>*</span>): <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span></span>
     <span class="right-info">
       
@@ -7138,6 +7163,77 @@
       <tbody>
         <tr>
           <td class="return-type code" data-ice="returnType"><span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span></td>
+          
+        </tr>
+      </tbody>
+    </table>
+    <div data-ice="returnProperties">
+</div>
+  </div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="static-function-color2css">
+    <span class="access" data-ice="access">public</span>
+    
+    
+    
+    
+    
+    <span class="code" data-ice="name">color2css</span><span class="code" data-ice="signature">(c: <span>*</span>): <span>*</span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber51">source</a></span></span>
+    </span>
+  </h3>
+
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {color2css} from &apos;<span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber51">./scripts/path.ux/scripts/util.js</a></span>&apos;</code></pre></div>
+  
+  
+  
+
+  
+
+  <div data-ice="properties"><div data-ice="properties">
+  <h4 data-ice="title">Params:</h4>
+  <table class="params">
+    <thead>
+    <tr><td>Name</td><td>Type</td><td>Attribute</td><td>Description</td></tr>
+    </thead>
+    <tbody>
+    
+    <tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">c</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+</tbody>
+  </table>
+</div>
+</div>
+
+  <div class="return-params" data-ice="returnParams">
+    <h4>Return:</h4>
+    <table>
+      <tbody>
+        <tr>
+          <td class="return-type code" data-ice="returnType"><span>*</span></td>
           
         </tr>
       </tbody>
@@ -8894,11 +8990,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber380">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber398">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getDataAPI} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber380">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getDataAPI} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber398">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -9077,15 +9173,15 @@
     
     
     
-    <span class="code" data-ice="name">getFieldImage</span><span class="code" data-ice="signature">(size: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
+    <span class="code" data-ice="name">getFieldImage</span><span class="code" data-ice="signature">(fieldsize: <span>*</span>, width: <span>*</span>, height: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber142">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber179">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getFieldImage} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber142">./scripts/path.ux/scripts/ui_colorpicker.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getFieldImage} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber179">./scripts/path.ux/scripts/ui_colorpicker2.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -9101,7 +9197,19 @@
     <tbody>
     
     <tr data-ice="property" data-depth="0">
-      <td data-ice="name" class="code" data-depth="0">size</td>
+      <td data-ice="name" class="code" data-depth="0">fieldsize</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+<tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">width</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+<tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">height</td>
       <td data-ice="type" class="code"><span>*</span></td>
       <td data-ice="appendix"></td>
       <td data-ice="description"></td>
@@ -9154,15 +9262,15 @@
     
     
     
-    <span class="code" data-ice="name">getFieldImage</span><span class="code" data-ice="signature">(fieldsize: <span>*</span>, width: <span>*</span>, height: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
+    <span class="code" data-ice="name">getFieldImage</span><span class="code" data-ice="signature">(size: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber179">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber142">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getFieldImage} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber179">./scripts/path.ux/scripts/ui_colorpicker2.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getFieldImage} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber142">./scripts/path.ux/scripts/ui_colorpicker.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -9178,19 +9286,7 @@
     <tbody>
     
     <tr data-ice="property" data-depth="0">
-      <td data-ice="name" class="code" data-depth="0">fieldsize</td>
-      <td data-ice="type" class="code"><span>*</span></td>
-      <td data-ice="appendix"></td>
-      <td data-ice="description"></td>
-    </tr>
-<tr data-ice="property" data-depth="0">
-      <td data-ice="name" class="code" data-depth="0">width</td>
-      <td data-ice="type" class="code"><span>*</span></td>
-      <td data-ice="appendix"></td>
-      <td data-ice="description"></td>
-    </tr>
-<tr data-ice="property" data-depth="0">
-      <td data-ice="name" class="code" data-depth="0">height</td>
+      <td data-ice="name" class="code" data-depth="0">size</td>
       <td data-ice="type" class="code"><span>*</span></td>
       <td data-ice="appendix"></td>
       <td data-ice="description"></td>
@@ -10127,11 +10223,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber60">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber61">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {hsv_to_rgb} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber60">./scripts/path.ux/scripts/ui_colorpicker.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {hsv_to_rgb} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber61">./scripts/path.ux/scripts/ui_colorpicker2.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -10210,11 +10306,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber61">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber60">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {hsv_to_rgb} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber61">./scripts/path.ux/scripts/ui_colorpicker2.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {hsv_to_rgb} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber60">./scripts/path.ux/scripts/ui_colorpicker.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -11583,11 +11679,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber442">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber498">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {loadShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber442">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {loadShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber498">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -13536,11 +13632,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/util/util.js.html#lineNumber402">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber590">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {random} from &apos;<span><a href="file/scripts/util/util.js.html#lineNumber402">./scripts/util/util.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {random} from &apos;<span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber590">./scripts/path.ux/scripts/util.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -13591,11 +13687,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber590">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/util/util.js.html#lineNumber402">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {random} from &apos;<span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber590">./scripts/path.ux/scripts/util.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {random} from &apos;<span><a href="file/scripts/util/util.js.html#lineNumber402">./scripts/util/util.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -13859,11 +13955,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber28">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager_ops.js.html#lineNumber28">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {registerToolStackGetter} from &apos;<span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber28">./scripts/path.ux/scripts/FrameManager.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {registerToolStackGetter} from &apos;<span><a href="file/scripts/path.ux/scripts/FrameManager_ops.js.html#lineNumber28">./scripts/path.ux/scripts/FrameManager_ops.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -13918,11 +14014,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager_ops.js.html#lineNumber28">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber28">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {registerToolStackGetter} from &apos;<span><a href="file/scripts/path.ux/scripts/FrameManager_ops.js.html#lineNumber28">./scripts/path.ux/scripts/FrameManager_ops.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {registerToolStackGetter} from &apos;<span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber28">./scripts/path.ux/scripts/FrameManager.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -14273,11 +14369,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber130">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber129">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {sample} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber130">./scripts/path.ux/scripts/ui_colorpicker2.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {sample} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber129">./scripts/path.ux/scripts/ui_colorpicker.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -14350,11 +14446,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber129">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber130">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {sample} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber129">./scripts/path.ux/scripts/ui_colorpicker.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {sample} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber130">./scripts/path.ux/scripts/ui_colorpicker2.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -14655,11 +14751,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber594">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/util/util.js.html#lineNumber406">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {seed} from &apos;<span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber594">./scripts/path.ux/scripts/util.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {seed} from &apos;<span><a href="file/scripts/util/util.js.html#lineNumber406">./scripts/util/util.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -14714,11 +14810,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/util/util.js.html#lineNumber406">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber594">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {seed} from &apos;<span><a href="file/scripts/util/util.js.html#lineNumber406">./scripts/util/util.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {seed} from &apos;<span><a href="file/scripts/path.ux/scripts/util.js.html#lineNumber594">./scripts/path.ux/scripts/util.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -15744,11 +15840,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/graph.js.html#lineNumber1083">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/graph.js.html#lineNumber1165">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {test} from &apos;<span><a href="file/scripts/core/graph.js.html#lineNumber1083">./scripts/core/graph.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {test} from &apos;<span><a href="file/scripts/core/graph.js.html#lineNumber1165">./scripts/core/graph.js</a></span>&apos;</code></pre></div>
   
   
   

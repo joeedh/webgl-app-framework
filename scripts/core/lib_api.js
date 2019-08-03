@@ -50,7 +50,20 @@ export class DataBlock extends Node {
   
   destroy() {
   }
-  
+
+  /**
+    returns type info for a datablock
+
+   @returns {{typeName: string, defaultName: string, uiName: string, flag: number, icon: number}}
+   @example
+   static blockDefine() { return {
+      typeName    : "typename",
+      defaultName : "unnamed",
+      uiName      : "uiname",
+      flag        : 0,
+      icon        : -1 //some icon constant in icon_enum.js.Icons
+    }}
+   */
   static blockDefine() { return {
     typeName    : "typename",
     defaultName : "unnamed",
