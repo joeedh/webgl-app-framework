@@ -153,7 +153,7 @@ export class View3D extends Editor {
     this.selectmode = SelMask.VERTEX;
 
     //this.widgettool is an enum, built from WidgetTool.getToolEnum()
-    this.widgettool = 0; //active widget tool index in WidgetTools
+    this.widgettool = 1; //active widget tool index in WidgetTools
     this.widget = undefined; //active widget instance
 
     this.drawmode = DrawModes.TEXTURED;
