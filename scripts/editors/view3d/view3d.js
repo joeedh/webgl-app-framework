@@ -150,7 +150,7 @@ export class View3D extends Editor {
     this.camera.far = 10000.0;
     this.camera.fovy = 50.0;
     
-    this.selectmode = SelMask.OBJECT|SelMask.FACE;
+    this.selectmode = SelMask.VERTEX;
 
     //this.widgettool is an enum, built from WidgetTool.getToolEnum()
     this.widgettool = 0; //active widget tool index in WidgetTools
