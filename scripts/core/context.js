@@ -49,7 +49,8 @@ export class ToolContext {
   }
 
   get object() { /** get active object */
-    return this.scene.objects.active;
+    let scene = this.scene;
+    return scene !== undefined ? scene.objects.active : undefined;
   }
   
   get mesh() { /** get active mesh, basically ctx.object.data */

@@ -85,17 +85,18 @@ export class BasicFileOp extends ToolOp {
 
 export function genDefaultScreen(appstate) {
   appstate.screen.clear();
-  
+  appstate.screen.ctx = appstate.ctx;
+
   let sarea = document.createElement("screenarea-x");
-  
   sarea.ctx = appstate.ctx;
+
+  appstate.screen.appendChild(sarea);
+
   sarea.switch_editor(View3D);
   
   sarea.pos[0] = sarea.pos[1] = 0.0;
   sarea.size[0] = appstate.screen.size[0];
   sarea.size[1] = appstate.screen.size[1];
-  
-  appstate.screen.appendChild(sarea);
 
   let yperc = 65 / _appstate.screen.size[1];
   let sarea2 = _appstate.screen.splitArea(sarea, yperc);
@@ -113,6 +114,7 @@ export function genDefaultScreen(appstate) {
 }
 
 export function genDefaultFile(appstate, dont_load_startup=false) {
+  dont_load_startup=true;
   if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
     let buf = localStorage[cconst.APP_KEY_NAME];
 
