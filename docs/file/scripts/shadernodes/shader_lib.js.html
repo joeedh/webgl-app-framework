@@ -66,6 +66,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~DataRefProperty.html">DataRefProperty</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~Library.html">Library</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/material.js~ShaderNetwork.html">ShaderNetwork</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/material.js~ShadowSettings.html">ShadowSettings</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~EnvLight.html">EnvLight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~ObjectList.html">ObjectList</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~ObjectSet.html">ObjectSet</a></span></span></li>
@@ -85,6 +86,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~SimpleMesh.html">SimpleMesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~TriEditor.html">TriEditor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~Camera.html">Camera</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~CubeTexture.html">CubeTexture</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~DrawMats.html">DrawMats</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~IntUniform.html">IntUniform</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~RenderBuffer.html">RenderBuffer</a></span></span></li>
@@ -98,6 +100,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-makeCube">makeCube</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getShader">getShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-hashShader">hashShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-initDebugGL">initDebugGL</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-init_webgl">init_webgl</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockTypes">BlockTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-APP_KEY_NAME">APP_KEY_NAME</a></span></span></li>
@@ -105,6 +108,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FILE_EXT">FILE_EXT</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FILE_MAGIC">FILE_MAGIC</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlitShader">BlitShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlitShaderGLSL300">BlitShaderGLSL300</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-GraphFlags">GraphFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NodeFlags">NodeFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SocketFlags">SocketFlags</a></span></span></li>
@@ -114,13 +118,16 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockFlags">BlockFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockTypes">BlockTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MaterialFlags">MaterialFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShadowFlags">ShadowFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-EnvLightFlags">EnvLightFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SceneFlags">SceneFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Colors">Colors</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectFlags">ObjectFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-LayerTypes">LayerTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-TypeSizes">TypeSizes</a></span></span></li>
-<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-constmap">constmap</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_debugeditor">api_define_debugeditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_envlight">api_define_envlight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_light">api_define_light</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_mesh">api_define_mesh</a></span></span></li>
@@ -140,6 +147,13 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-allareas_stack">allareas_stack</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Icons">Icons</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-VelPanFlags">VelPanFlags</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-debug">editors/debug</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/debug/DebugEditor.js~DebugEditor.html">DebugEditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/debug/gldebug.js~glDebug.html">glDebug</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DisplayModes">DisplayModes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DepthShader">DepthShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DisplayShader">DisplayShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShaderDef">ShaderDef</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Shaders">Shaders</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-menu">editors/menu</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/menu/MainMenu.js~MenuBarEditor.html">MenuBarEditor</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-node">editors/node</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/node/NodeEditor.js~NodeEditor.html">NodeEditor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/node/NodeEditor.js~NodeSocketElem.html">NodeSocketElem</a></span></span></li>
@@ -217,6 +231,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BasicLitMesh">BasicLitMesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshEditShader">MeshEditShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshIDShader">MeshIDShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshLinearZShader">MeshLinearZShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NormalPassShader">NormalPassShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectLineShader">ObjectLineShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PolygonOffset">PolygonOffset</a></span></span></li>
@@ -242,6 +257,8 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/customdata.js~LayerSet.html">LayerSet</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh.js~Mesh.html">Mesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_base.js~MeshError.html">MeshError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_createops.js~MakePlaneOp.html">MakePlaneOp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_createops.js~MeshCreateOp.html">MeshCreateOp</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html">OrigIndexElem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_customdata.js~UVLayerElem.html">UVLayerElem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_element_list.js~ElementList.html">ElementList</a></span></span></li>
@@ -569,14 +586,19 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BlurPass.html">BlurPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~NormalPass.html">NormalPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~OutputPass.html">OutputPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~PassThruPass.html">PassThruPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_base.js~RenderEngine.html">RenderEngine</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~CubeFace.html">CubeFace</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~CubeMap.html">CubeMap</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html">RealtimeEngine</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~RenderLight.html">RenderLight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~ShaderCache.html">ShaderCache</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~ShaderCacheItem.html">ShaderCacheItem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~FBOSocket.html">FBOSocket</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderContext.html">RenderContext</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderGraph.html">RenderGraph</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderPass.html">RenderPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-CubeMapOrder">CubeMapOrder</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#sceneobject">sceneobject</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~SelectOneOp.html">SelectOneOp</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~SelectOpBase.html">SelectOpBase</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~ToggleSelectOp.html">ToggleSelectOp</a></span></span></li>
@@ -645,6 +667,7 @@
 <div class="content" data-ice="content"><h1 data-ice="title">scripts/shadernodes/shader_lib.js</h1>
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import {Light, LightTypes} from &apos;../light/light.js&apos;;
 import {Vector3, Vector4, Matrix4, Vector2, Quat} from &apos;../util/vectormath.js&apos;;
+import * as util from &apos;../util/util.js&apos;;
 
 export let ClosureGLSL = `
 struct Closure {
@@ -670,8 +693,13 @@ export class LightGen {
     this.defines = args.defines;
   }
 
-  static setUniforms(gl, uniforms, scene) {
+  static setUniforms(gl, uniforms, scene, renderlights=undefined, use_jitter=false, seed=0.0) {
     let p = new Vector3();
+    let r = new Vector3();
+
+    if (use_jitter) {
+      util.seed(seed);
+    }
 
     for (let gen of LightGenerators) {
       let i = 0;
@@ -681,17 +709,53 @@ export class LightGen {
           continue;
         }
 
+        let shadowmap = undefined;
+        let rlight = undefined;
+
+        if (renderlights !== undefined &amp;&amp; light.lib_id in renderlights) {
+          console.log(&quot;Found rlight!&quot;);
+
+          rlight = renderlights[light.lib_id];
+          shadowmap = rlight.shadowmap;
+        }
         let uname = gen.uniformName + `[${i}]`;
         i++;
 
         p.zero();
         p.multVecMatrix(light.outputs.matrix.getValue());
 
+        if (use_jitter) {
+          switch (light.data.type) {
+            case LightTypes.AREA_DISK:
+              //break;
+            case LightTypes.AREA_RECT:
+              //break;
+            case LightTypes.SUN:
+              //break;
+            case LightTypes.POINT:
+            default:
+              r[0] = (util.random()-0.5)*2.0;
+              r[1] = (util.random()-0.5)*2.0;
+              r[2] = (util.random()-0.5)*2.0;
+
+              r.mulScalar(light.data.inputs.radius.getValue());
+              p.add(r);
+
+            break;
+          }
+        }
+
         uniforms[uname + &quot;.co&quot;] = p;
         uniforms[uname + &quot;.power&quot;] = light.data.inputs.power.getValue();
         uniforms[uname + &quot;.radius&quot;] = light.data.inputs.radius.getValue();
         uniforms[uname + &quot;.distance&quot;] = light.data.inputs.distance.getValue();
         uniforms[uname + &quot;.color&quot;] = light.data.inputs.color.getValue();
+
+        if (shadowmap !== undefined) {
+          uniforms[uname + &quot;.shadow&quot;] = shadowmap.getUniformValue();
+          uniforms[uname + &quot;.shadow_near&quot;] = shadowmap.near;
+          uniforms[uname + &quot;.shadow_far&quot;] = shadowmap.far;
+        }
       }
     }
   }
@@ -774,6 +838,9 @@ export let PointLightCode = new LightGen({
       float radius; //soft shadow radius
       vec3 color;
       float distance; //falloff distance
+      samplerCubeShadow shadow;
+      float shadow_near;
+      float shadow_far;
     };
     
     uniform PointLight POINTLIGHTS[MAXPLIGHT];
@@ -793,8 +860,18 @@ export let PointLightCode = new LightGen({
       
       float energy = 1.0 / (1.0 + sqrt(length(lvec)/POINTLIGHTS[li].distance));
       energy *= POINTLIGHTS[li].power;
+     
+      float z = 1.0/length(lvec) - 1.0/POINTLIGHTS[li].shadow_near;
+      z /= 1.0/POINTLIGHTS[li].shadow_far - 1.0/POINTLIGHTS[li].shadow_near;
       
-      CLOSURE.light += f * POINTLIGHTS[li].color * energy;
+      z = length(lvec);
+      
+      vec4 sp = vec4(lvec, z);
+      
+      float shadow = texture(POINTLIGHTS[li].shadow, sp);
+       
+      //CLOSURE.light += f * POINTLIGHTS[li].color * energy * shadow;
+      CLOSURE.light += vec3(shadow, shadow, shadow);
     }
   #endif
   `,
@@ -831,8 +908,17 @@ export let DiffuseBRDF = new BRDFGen(`
 `);
 
 export let ShaderFragments = {
+  ALPHA_HASH : `
+    {
+      vec3 camera = (normalMatrix * vec4(vGlobalCo, 1.0)).xyz;
+      float prob = hash3f(vec3(gl_FragCoord.xy, camera.z*0.01));
+      
+      if (prob &gt; SHADER_SURFACE.alpha) {
+        discard;
+      }
+    }
+  `,
   AMBIENT : ` //inputs: CLOSURE
-    //CLOSURE.light += texture2D(passAO, gl_FragCoord.xy/viewportSize)[0]*ambientColor*ambientPower;
     CLOSURE.light += CLOSURE.diffuse*texture2D(passAO, gl_FragCoord.xy/viewportSize).rgb*ambientColor*ambientPower;
     //CLOSURE.light = ambientColor;
   `,
@@ -855,6 +941,9 @@ uniform sampler2D passAO;
 
 uniform vec3 ambientColor;
 uniform float ambientPower;
+
+uniform float uSample;
+
 `,
   VARYINGS : `
     varying vec2 vUv;
@@ -865,6 +954,30 @@ uniform float ambientPower;
     varying vec3 vLocalCo;
   `,
   SHADERLIB : `
+
+float hash1f(float seed) {
+  seed += uSample;
+  
+  seed = fract(seed*0.25234 + seed*sqrt(11.0));
+  return fract(1.0 / (0.00001 + 0.00001*fract(seed)));
+}
+
+float hash2f(vec2 p) {
+  float seed = p.y*sqrt(3.0) + p.x*sqrt(5.0);
+  //seed += fract(p.x*p.y);
+  
+  return fract(seed+uSample*sqrt(2.0));
+  return hash1f(seed);
+}
+
+float hash3f(vec3 p) {
+  float seed = p.y*sqrt(3.0) + p.x*sqrt(5.0);
+  seed += fract(p.z*sqrt(11.0));
+  //seed += fract(p.x*p.y);
+  
+  return fract(seed+uSample*sqrt(2.0));
+  return hash1f(seed);
+}
 
 Closure vec3toclosure(vec3 c) {
   Closure ret;

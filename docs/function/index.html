@@ -66,6 +66,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~DataRefProperty.html">DataRefProperty</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~Library.html">Library</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/material.js~ShaderNetwork.html">ShaderNetwork</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/material.js~ShadowSettings.html">ShadowSettings</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~EnvLight.html">EnvLight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~ObjectList.html">ObjectList</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~ObjectSet.html">ObjectSet</a></span></span></li>
@@ -85,6 +86,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~SimpleMesh.html">SimpleMesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~TriEditor.html">TriEditor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~Camera.html">Camera</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~CubeTexture.html">CubeTexture</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~DrawMats.html">DrawMats</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~IntUniform.html">IntUniform</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~RenderBuffer.html">RenderBuffer</a></span></span></li>
@@ -98,6 +100,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-makeCube">makeCube</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getShader">getShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-hashShader">hashShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-initDebugGL">initDebugGL</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-init_webgl">init_webgl</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockTypes">BlockTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-APP_KEY_NAME">APP_KEY_NAME</a></span></span></li>
@@ -105,6 +108,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FILE_EXT">FILE_EXT</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FILE_MAGIC">FILE_MAGIC</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlitShader">BlitShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlitShaderGLSL300">BlitShaderGLSL300</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-GraphFlags">GraphFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NodeFlags">NodeFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SocketFlags">SocketFlags</a></span></span></li>
@@ -114,13 +118,16 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockFlags">BlockFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockTypes">BlockTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MaterialFlags">MaterialFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShadowFlags">ShadowFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-EnvLightFlags">EnvLightFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SceneFlags">SceneFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Colors">Colors</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectFlags">ObjectFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-LayerTypes">LayerTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-TypeSizes">TypeSizes</a></span></span></li>
-<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-constmap">constmap</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_debugeditor">api_define_debugeditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_envlight">api_define_envlight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_light">api_define_light</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_mesh">api_define_mesh</a></span></span></li>
@@ -140,6 +147,13 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-allareas_stack">allareas_stack</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Icons">Icons</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-VelPanFlags">VelPanFlags</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-debug">editors/debug</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/debug/DebugEditor.js~DebugEditor.html">DebugEditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/debug/gldebug.js~glDebug.html">glDebug</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DisplayModes">DisplayModes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DepthShader">DepthShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DisplayShader">DisplayShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShaderDef">ShaderDef</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Shaders">Shaders</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-menu">editors/menu</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/menu/MainMenu.js~MenuBarEditor.html">MenuBarEditor</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-node">editors/node</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/node/NodeEditor.js~NodeEditor.html">NodeEditor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/node/NodeEditor.js~NodeSocketElem.html">NodeSocketElem</a></span></span></li>
@@ -217,6 +231,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BasicLitMesh">BasicLitMesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshEditShader">MeshEditShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshIDShader">MeshIDShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshLinearZShader">MeshLinearZShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NormalPassShader">NormalPassShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectLineShader">ObjectLineShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PolygonOffset">PolygonOffset</a></span></span></li>
@@ -242,6 +257,8 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/customdata.js~LayerSet.html">LayerSet</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh.js~Mesh.html">Mesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_base.js~MeshError.html">MeshError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_createops.js~MakePlaneOp.html">MakePlaneOp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_createops.js~MeshCreateOp.html">MeshCreateOp</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html">OrigIndexElem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_customdata.js~UVLayerElem.html">UVLayerElem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_element_list.js~ElementList.html">ElementList</a></span></span></li>
@@ -569,14 +586,19 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BlurPass.html">BlurPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~NormalPass.html">NormalPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~OutputPass.html">OutputPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~PassThruPass.html">PassThruPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_base.js~RenderEngine.html">RenderEngine</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~CubeFace.html">CubeFace</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~CubeMap.html">CubeMap</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html">RealtimeEngine</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~RenderLight.html">RenderLight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~ShaderCache.html">ShaderCache</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~ShaderCacheItem.html">ShaderCacheItem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~FBOSocket.html">FBOSocket</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderContext.html">RenderContext</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderGraph.html">RenderGraph</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderPass.html">RenderPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-CubeMapOrder">CubeMapOrder</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#sceneobject">sceneobject</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~SelectOneOp.html">SelectOneOp</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~SelectOpBase.html">SelectOpBase</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~ToggleSelectOp.html">ToggleSelectOp</a></span></span></li>
@@ -774,6 +796,34 @@
           
           
           <span class="code" data-ice="name"><span><a href="function/index.html#static-function-aabb_sphere_isect_2d">aabb_sphere_isect_2d</a></span></span><span class="code" data-ice="signature">(p: <span>*</span>, r: <span>*</span>, min: <span>*</span>, max: <span>*</span>): <span>*</span></span>
+        </p>
+      </div>
+      <div>
+        
+        
+        
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+          
+          
+          
+          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-api_define_debugeditor">api_define_debugeditor</a></span></span><span class="code" data-ice="signature">(api: <span>*</span>, parent: <span>*</span>)</span>
         </p>
       </div>
       <div>
@@ -1725,13 +1775,16 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-drawRoundBox">drawRoundBox</a></span></span><span class="code" data-ice="signature">(elem: <span>*</span>, canvas: <span>*</span>, g: <span>*</span>, width: <span>*</span>, height: <span>*</span>, r: <span>*</span>, op: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>, color: <span>*</span>, pad: <span>*</span>)</span>
+          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-drawRoundBox">drawRoundBox</a></span></span><span class="code" data-ice="signature">(elem: <span>*</span>, canvas: <span>*</span>, g: <span>*</span>, width: <span>*</span>, height: <span>*</span>, r: <span>*</span>, op: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>, color: <span>*</span>, pad: <span>*</span>, no_clear: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></span>)</span>
         </p>
       </div>
       <div>
         
         
-        
+        <div data-ice="description"><p>okay, I need to refactor this function,
+it needs to take x, y as well as width, height,
+and be usable for more use cases.</p>
+</div>
       </div>
     </td>
     <td>
@@ -2173,7 +2226,7 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-getFieldImage">getFieldImage</a></span></span><span class="code" data-ice="signature">(fieldsize: <span>*</span>, width: <span>*</span>, height: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
+          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-getFieldImage">getFieldImage</a></span></span><span class="code" data-ice="signature">(size: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
         </p>
       </div>
       <div>
@@ -2201,7 +2254,7 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-getFieldImage">getFieldImage</a></span></span><span class="code" data-ice="signature">(size: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
+          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-getFieldImage">getFieldImage</a></span></span><span class="code" data-ice="signature">(fieldsize: <span>*</span>, width: <span>*</span>, height: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
         </p>
       </div>
       <div>
@@ -2650,6 +2703,34 @@
           
           
           <span class="code" data-ice="name"><span><a href="function/index.html#static-function-init">init</a></span></span><span class="code" data-ice="signature">()</span>
+        </p>
+      </div>
+      <div>
+        
+        
+        
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+          
+          
+          
+          <span class="code" data-ice="name"><span><a href="function/index.html#static-function-initDebugGL">initDebugGL</a></span></span><span class="code" data-ice="signature">(gl: <span>*</span>): <span>*</span></span>
         </p>
       </div>
       <div>
@@ -5522,6 +5603,71 @@
   
 </div>
 <div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="static-function-api_define_debugeditor">
+    <span class="access" data-ice="access">public</span>
+    
+    
+    
+    
+    
+    <span class="code" data-ice="name">api_define_debugeditor</span><span class="code" data-ice="signature">(api: <span>*</span>, parent: <span>*</span>)</span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber310">source</a></span></span>
+    </span>
+  </h3>
+
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_debugeditor} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber310">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  
+  
+  
+
+  
+
+  <div data-ice="properties"><div data-ice="properties">
+  <h4 data-ice="title">Params:</h4>
+  <table class="params">
+    <thead>
+    <tr><td>Name</td><td>Type</td><td>Attribute</td><td>Description</td></tr>
+    </thead>
+    <tbody>
+    
+    <tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">api</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+<tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">parent</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+</tbody>
+  </table>
+</div>
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
   <h3 data-ice="anchor" id="static-function-api_define_editor">
     <span class="access" data-ice="access">public</span>
     
@@ -5533,11 +5679,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber34">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber36">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_editor} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber34">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_editor} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber36">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5610,11 +5756,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber365">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber389">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_envlight} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber365">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_envlight} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber389">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5740,11 +5886,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber381">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber405">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_light} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber381">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_light} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber405">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5805,11 +5951,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber172">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber174">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_mesh} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber172">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_mesh} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber174">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5870,11 +6016,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber308">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber332">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_node_editor} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber308">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_node_editor} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber332">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -5935,11 +6081,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber391">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber415">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_scene} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber391">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_scene} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber415">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -6000,11 +6146,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber316">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber340">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_screen} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber316">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_screen} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber340">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -6065,11 +6211,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber297">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber299">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_velpan} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber297">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_velpan} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber299">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -6142,11 +6288,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber48">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber50">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_view3d} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber48">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {api_define_view3d} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber50">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -7984,7 +8130,7 @@
     
     
     
-    <span class="code" data-ice="name">drawRoundBox</span><span class="code" data-ice="signature">(elem: <span>*</span>, canvas: <span>*</span>, g: <span>*</span>, width: <span>*</span>, height: <span>*</span>, r: <span>*</span>, op: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>, color: <span>*</span>, pad: <span>*</span>)</span>
+    <span class="code" data-ice="name">drawRoundBox</span><span class="code" data-ice="signature">(elem: <span>*</span>, canvas: <span>*</span>, g: <span>*</span>, width: <span>*</span>, height: <span>*</span>, r: <span>*</span>, op: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>, color: <span>*</span>, pad: <span>*</span>, no_clear: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></span>)</span>
     <span class="right-info">
       
       
@@ -7995,7 +8141,10 @@
   <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {drawRoundBox} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1259">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
   
   
-  
+  <div data-ice="description"><p>okay, I need to refactor this function,
+it needs to take x, y as well as width, height,
+and be usable for more use cases.</p>
+</div>
 
   
 
@@ -8065,6 +8214,13 @@
 <li>default: undefined</li></ul></td>
       <td data-ice="description"></td>
     </tr>
+<tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">no_clear</td>
+      <td data-ice="type" class="code"><span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></span></td>
+      <td data-ice="appendix"><ul><li>optional</li>
+<li>default: false</li></ul></td>
+      <td data-ice="description"></td>
+    </tr>
 </tbody>
   </table>
 </div>
@@ -8099,11 +8255,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1394">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1397">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {drawText} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1394">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {drawText} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1397">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -8634,11 +8790,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/appstate.js.html#lineNumber115">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/appstate.js.html#lineNumber116">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {genDefaultFile} from &apos;<span><a href="file/scripts/core/appstate.js.html#lineNumber115">./scripts/core/appstate.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {genDefaultFile} from &apos;<span><a href="file/scripts/core/appstate.js.html#lineNumber116">./scripts/core/appstate.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -8990,11 +9146,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber398">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/data_api/api_define.js.html#lineNumber422">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getDataAPI} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber398">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getDataAPI} from &apos;<span><a href="file/scripts/data_api/api_define.js.html#lineNumber422">./scripts/data_api/api_define.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -9173,15 +9329,15 @@
     
     
     
-    <span class="code" data-ice="name">getFieldImage</span><span class="code" data-ice="signature">(fieldsize: <span>*</span>, width: <span>*</span>, height: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
+    <span class="code" data-ice="name">getFieldImage</span><span class="code" data-ice="signature">(size: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber179">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber142">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getFieldImage} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber179">./scripts/path.ux/scripts/ui_colorpicker2.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getFieldImage} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber142">./scripts/path.ux/scripts/ui_colorpicker.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -9197,19 +9353,7 @@
     <tbody>
     
     <tr data-ice="property" data-depth="0">
-      <td data-ice="name" class="code" data-depth="0">fieldsize</td>
-      <td data-ice="type" class="code"><span>*</span></td>
-      <td data-ice="appendix"></td>
-      <td data-ice="description"></td>
-    </tr>
-<tr data-ice="property" data-depth="0">
-      <td data-ice="name" class="code" data-depth="0">width</td>
-      <td data-ice="type" class="code"><span>*</span></td>
-      <td data-ice="appendix"></td>
-      <td data-ice="description"></td>
-    </tr>
-<tr data-ice="property" data-depth="0">
-      <td data-ice="name" class="code" data-depth="0">height</td>
+      <td data-ice="name" class="code" data-depth="0">size</td>
       <td data-ice="type" class="code"><span>*</span></td>
       <td data-ice="appendix"></td>
       <td data-ice="description"></td>
@@ -9262,15 +9406,15 @@
     
     
     
-    <span class="code" data-ice="name">getFieldImage</span><span class="code" data-ice="signature">(size: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
+    <span class="code" data-ice="name">getFieldImage</span><span class="code" data-ice="signature">(fieldsize: <span>*</span>, width: <span>*</span>, height: <span>*</span>, hsva: <span>*</span>): <span>*</span></span>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber142">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber179">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getFieldImage} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber142">./scripts/path.ux/scripts/ui_colorpicker.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getFieldImage} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber179">./scripts/path.ux/scripts/ui_colorpicker2.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -9286,7 +9430,19 @@
     <tbody>
     
     <tr data-ice="property" data-depth="0">
-      <td data-ice="name" class="code" data-depth="0">size</td>
+      <td data-ice="name" class="code" data-depth="0">fieldsize</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+<tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">width</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+<tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">height</td>
       <td data-ice="type" class="code"><span>*</span></td>
       <td data-ice="appendix"></td>
       <td data-ice="description"></td>
@@ -9568,11 +9724,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/webgl.js.html#lineNumber78">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/webgl.js.html#lineNumber140">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getShader} from &apos;<span><a href="file/scripts/core/webgl.js.html#lineNumber78">./scripts/core/webgl.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {getShader} from &apos;<span><a href="file/scripts/core/webgl.js.html#lineNumber140">./scripts/core/webgl.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -10097,11 +10253,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/webgl.js.html#lineNumber52">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/webgl.js.html#lineNumber114">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {hashShader} from &apos;<span><a href="file/scripts/core/webgl.js.html#lineNumber52">./scripts/core/webgl.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {hashShader} from &apos;<span><a href="file/scripts/core/webgl.js.html#lineNumber114">./scripts/core/webgl.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -10472,11 +10628,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/appstate.js.html#lineNumber560">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/appstate.js.html#lineNumber604">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {init} from &apos;<span><a href="file/scripts/core/appstate.js.html#lineNumber560">./scripts/core/appstate.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {init} from &apos;<span><a href="file/scripts/core/appstate.js.html#lineNumber604">./scripts/core/appstate.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -10487,6 +10643,77 @@
 </div>
 
   
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="static-function-initDebugGL">
+    <span class="access" data-ice="access">public</span>
+    
+    
+    
+    
+    
+    <span class="code" data-ice="name">initDebugGL</span><span class="code" data-ice="signature">(gl: <span>*</span>): <span>*</span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/scripts/core/webgl.js.html#lineNumber17">source</a></span></span>
+    </span>
+  </h3>
+
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {initDebugGL} from &apos;<span><a href="file/scripts/core/webgl.js.html#lineNumber17">./scripts/core/webgl.js</a></span>&apos;</code></pre></div>
+  
+  
+  
+
+  
+
+  <div data-ice="properties"><div data-ice="properties">
+  <h4 data-ice="title">Params:</h4>
+  <table class="params">
+    <thead>
+    <tr><td>Name</td><td>Type</td><td>Attribute</td><td>Description</td></tr>
+    </thead>
+    <tbody>
+    
+    <tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">gl</td>
+      <td data-ice="type" class="code"><span>*</span></td>
+      <td data-ice="appendix"></td>
+      <td data-ice="description"></td>
+    </tr>
+</tbody>
+  </table>
+</div>
+</div>
+
+  <div class="return-params" data-ice="returnParams">
+    <h4>Return:</h4>
+    <table>
+      <tbody>
+        <tr>
+          <td class="return-type code" data-ice="returnType"><span>*</span></td>
+          
+        </tr>
+      </tbody>
+    </table>
+    <div data-ice="returnProperties">
+</div>
+  </div>
 
   
 
@@ -10601,11 +10828,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d.js.html#lineNumber50">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d.js.html#lineNumber51">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {initWebGL} from &apos;<span><a href="file/scripts/editors/view3d/view3d.js.html#lineNumber50">./scripts/editors/view3d/view3d.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {initWebGL} from &apos;<span><a href="file/scripts/editors/view3d/view3d.js.html#lineNumber51">./scripts/editors/view3d/view3d.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -10721,11 +10948,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/webgl.js.html#lineNumber15">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/webgl.js.html#lineNumber51">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {init_webgl} from &apos;<span><a href="file/scripts/core/webgl.js.html#lineNumber15">./scripts/core/webgl.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {init_webgl} from &apos;<span><a href="file/scripts/core/webgl.js.html#lineNumber51">./scripts/core/webgl.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -10881,11 +11108,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber120">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber121">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {inv_sample} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber120">./scripts/path.ux/scripts/ui_colorpicker.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {inv_sample} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber121">./scripts/path.ux/scripts/ui_colorpicker2.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -10958,11 +11185,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber121">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber120">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {inv_sample} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber121">./scripts/path.ux/scripts/ui_colorpicker2.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {inv_sample} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber120">./scripts/path.ux/scripts/ui_colorpicker.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -11679,11 +11906,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber498">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber588">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {loadShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber498">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {loadShader} from &apos;<span><a href="file/scripts/editors/view3d/view3d_shaders.js.html#lineNumber588">./scripts/editors/view3d/view3d_shaders.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -11756,11 +11983,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d.js.html#lineNumber83">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/view3d/view3d.js.html#lineNumber85">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {loadShaders} from &apos;<span><a href="file/scripts/editors/view3d/view3d.js.html#lineNumber83">./scripts/editors/view3d/view3d.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {loadShaders} from &apos;<span><a href="file/scripts/editors/view3d/view3d.js.html#lineNumber85">./scripts/editors/view3d/view3d.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -11815,11 +12042,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1462">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1465">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {loadUIData} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1462">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {loadUIData} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1465">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -12232,11 +12459,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1381">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1384">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {measureText} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1381">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {measureText} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1384">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -13955,11 +14182,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager_ops.js.html#lineNumber28">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber28">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {registerToolStackGetter} from &apos;<span><a href="file/scripts/path.ux/scripts/FrameManager_ops.js.html#lineNumber28">./scripts/path.ux/scripts/FrameManager_ops.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {registerToolStackGetter} from &apos;<span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber28">./scripts/path.ux/scripts/FrameManager.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -14014,11 +14241,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber28">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager_ops.js.html#lineNumber28">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {registerToolStackGetter} from &apos;<span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber28">./scripts/path.ux/scripts/FrameManager.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {registerToolStackGetter} from &apos;<span><a href="file/scripts/path.ux/scripts/FrameManager_ops.js.html#lineNumber28">./scripts/path.ux/scripts/FrameManager_ops.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -14132,11 +14359,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber18">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber17">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {rgb_to_hsv} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber18">./scripts/path.ux/scripts/ui_colorpicker2.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {rgb_to_hsv} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber17">./scripts/path.ux/scripts/ui_colorpicker.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -14215,11 +14442,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber17">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber18">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {rgb_to_hsv} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker.js.html#lineNumber17">./scripts/path.ux/scripts/ui_colorpicker.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {rgb_to_hsv} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_colorpicker2.js.html#lineNumber18">./scripts/path.ux/scripts/ui_colorpicker2.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -14603,11 +14830,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1408">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1411">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {saveUIData} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1408">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {saveUIData} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1411">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -15840,11 +16067,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/core/graph.js.html#lineNumber1165">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/core/graph.js.html#lineNumber1193">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {test} from &apos;<span><a href="file/scripts/core/graph.js.html#lineNumber1165">./scripts/core/graph.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {test} from &apos;<span><a href="file/scripts/core/graph.js.html#lineNumber1193">./scripts/core/graph.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -16215,11 +16442,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/mesh/mesh_ops.js.html#lineNumber235">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/mesh/mesh_ops.js.html#lineNumber236">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {vertexSmooth} from &apos;<span><a href="file/scripts/mesh/mesh_ops.js.html#lineNumber235">./scripts/mesh/mesh_ops.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {vertexSmooth} from &apos;<span><a href="file/scripts/mesh/mesh_ops.js.html#lineNumber236">./scripts/mesh/mesh_ops.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -16384,11 +16611,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1364">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1367">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {_ensureFont} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1364">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {_ensureFont} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1367">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -16461,11 +16688,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1335">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1338">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {_getFont} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1335">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {_getFont} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1338">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
   
   
   
@@ -16552,11 +16779,11 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1327">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1330">source</a></span></span>
     </span>
   </h3>
 
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {_getFont_new} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1327">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {_getFont_new} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_base.js.html#lineNumber1330">./scripts/path.ux/scripts/ui_base.js</a></span>&apos;</code></pre></div>
   
   
   

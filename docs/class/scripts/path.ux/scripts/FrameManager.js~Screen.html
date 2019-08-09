@@ -66,6 +66,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~DataRefProperty.html">DataRefProperty</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~Library.html">Library</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/material.js~ShaderNetwork.html">ShaderNetwork</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/material.js~ShadowSettings.html">ShadowSettings</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~EnvLight.html">EnvLight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~ObjectList.html">ObjectList</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~ObjectSet.html">ObjectSet</a></span></span></li>
@@ -85,6 +86,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~SimpleMesh.html">SimpleMesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~TriEditor.html">TriEditor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~Camera.html">Camera</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~CubeTexture.html">CubeTexture</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~DrawMats.html">DrawMats</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~IntUniform.html">IntUniform</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~RenderBuffer.html">RenderBuffer</a></span></span></li>
@@ -98,6 +100,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-makeCube">makeCube</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getShader">getShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-hashShader">hashShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-initDebugGL">initDebugGL</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-init_webgl">init_webgl</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockTypes">BlockTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-APP_KEY_NAME">APP_KEY_NAME</a></span></span></li>
@@ -105,6 +108,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FILE_EXT">FILE_EXT</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FILE_MAGIC">FILE_MAGIC</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlitShader">BlitShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlitShaderGLSL300">BlitShaderGLSL300</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-GraphFlags">GraphFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NodeFlags">NodeFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SocketFlags">SocketFlags</a></span></span></li>
@@ -114,13 +118,16 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockFlags">BlockFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockTypes">BlockTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MaterialFlags">MaterialFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShadowFlags">ShadowFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-EnvLightFlags">EnvLightFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SceneFlags">SceneFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Colors">Colors</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectFlags">ObjectFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-LayerTypes">LayerTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-TypeSizes">TypeSizes</a></span></span></li>
-<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-constmap">constmap</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_debugeditor">api_define_debugeditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_envlight">api_define_envlight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_light">api_define_light</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_mesh">api_define_mesh</a></span></span></li>
@@ -140,6 +147,13 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-allareas_stack">allareas_stack</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Icons">Icons</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-VelPanFlags">VelPanFlags</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-debug">editors/debug</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/debug/DebugEditor.js~DebugEditor.html">DebugEditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/debug/gldebug.js~glDebug.html">glDebug</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DisplayModes">DisplayModes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DepthShader">DepthShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DisplayShader">DisplayShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShaderDef">ShaderDef</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Shaders">Shaders</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-menu">editors/menu</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/menu/MainMenu.js~MenuBarEditor.html">MenuBarEditor</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-node">editors/node</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/node/NodeEditor.js~NodeEditor.html">NodeEditor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/node/NodeEditor.js~NodeSocketElem.html">NodeSocketElem</a></span></span></li>
@@ -217,6 +231,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BasicLitMesh">BasicLitMesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshEditShader">MeshEditShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshIDShader">MeshIDShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshLinearZShader">MeshLinearZShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NormalPassShader">NormalPassShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectLineShader">ObjectLineShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PolygonOffset">PolygonOffset</a></span></span></li>
@@ -242,6 +257,8 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/customdata.js~LayerSet.html">LayerSet</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh.js~Mesh.html">Mesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_base.js~MeshError.html">MeshError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_createops.js~MakePlaneOp.html">MakePlaneOp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_createops.js~MeshCreateOp.html">MeshCreateOp</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html">OrigIndexElem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_customdata.js~UVLayerElem.html">UVLayerElem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_element_list.js~ElementList.html">ElementList</a></span></span></li>
@@ -569,14 +586,19 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BlurPass.html">BlurPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~NormalPass.html">NormalPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~OutputPass.html">OutputPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~PassThruPass.html">PassThruPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_base.js~RenderEngine.html">RenderEngine</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~CubeFace.html">CubeFace</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~CubeMap.html">CubeMap</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html">RealtimeEngine</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~RenderLight.html">RenderLight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~ShaderCache.html">ShaderCache</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~ShaderCacheItem.html">ShaderCacheItem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~FBOSocket.html">FBOSocket</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderContext.html">RenderContext</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderGraph.html">RenderGraph</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderPass.html">RenderPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-CubeMapOrder">CubeMapOrder</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#sceneobject">sceneobject</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~SelectOneOp.html">SelectOneOp</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~SelectOpBase.html">SelectOpBase</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~ToggleSelectOp.html">ToggleSelectOp</a></span></span></li>
@@ -1455,6 +1477,34 @@
           
           
           
+          <span class="code" data-ice="name"><span><a href="class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-copy">copy</a></span></span><span class="code" data-ice="signature">(): <span>*</span></span>
+        </p>
+      </div>
+      <div>
+        
+        
+        
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+          
+          
+          
           <span class="code" data-ice="name"><span><a href="class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-destroy">destroy</a></span></span><span class="code" data-ice="signature">()</span>
         </p>
       </div>
@@ -2128,7 +2178,7 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-remove">remove</a></span></span><span class="code" data-ice="signature">(): <span>*</span></span>
+          <span class="code" data-ice="name"><span><a href="class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-remove">remove</a></span></span><span class="code" data-ice="signature">(trigger_destroy: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></span>): <span>*</span></span>
         </p>
       </div>
       <div>
@@ -2673,7 +2723,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber659">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber704">source</a></span></span>
     </span>
   </h3>
 
@@ -2728,7 +2778,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber585">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber630">source</a></span></span>
     </span>
   </h3>
 
@@ -2806,7 +2856,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1392">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1437">source</a></span></span>
     </span>
   </h3>
 
@@ -2910,7 +2960,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber452">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber492">source</a></span></span>
     </span>
   </h3>
 
@@ -2953,7 +3003,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber720">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber765">source</a></span></span>
     </span>
   </h3>
 
@@ -2996,7 +3046,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber716">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber761">source</a></span></span>
     </span>
   </h3>
 
@@ -3125,7 +3175,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber477">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber522">source</a></span></span>
     </span>
   </h3>
 
@@ -3340,7 +3390,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1419">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1464">source</a></span></span>
     </span>
   </h3>
 
@@ -3557,7 +3607,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber704">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber749">source</a></span></span>
     </span>
   </h3>
 
@@ -3646,7 +3696,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1396">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1441">source</a></span></span>
     </span>
   </h3>
 
@@ -3689,7 +3739,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1238">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1283">source</a></span></span>
     </span>
   </h3>
 
@@ -3760,7 +3810,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1284">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1329">source</a></span></span>
     </span>
   </h3>
 
@@ -3819,7 +3869,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1173">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1218">source</a></span></span>
     </span>
   </h3>
 
@@ -3896,7 +3946,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber539">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber584">source</a></span></span>
     </span>
   </h3>
 
@@ -3928,6 +3978,61 @@
   
 </div>
 <div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-method-copy">
+    <span class="access" data-ice="access">public</span>
+    
+    
+    
+    
+    
+    <span class="code" data-ice="name">copy</span><span class="code" data-ice="signature">(): <span>*</span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber338">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  <div class="return-params" data-ice="returnParams">
+    <h4>Return:</h4>
+    <table>
+      <tbody>
+        <tr>
+          <td class="return-type code" data-ice="returnType"><span>*</span></td>
+          
+        </tr>
+      </tbody>
+    </table>
+    <div data-ice="returnProperties">
+</div>
+  </div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
   <h3 data-ice="anchor" id="instance-method-destroy">
     <span class="access" data-ice="access">public</span>
     
@@ -3939,7 +4044,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber535">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber580">source</a></span></span>
     </span>
   </h3>
 
@@ -3982,7 +4087,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1386">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1431">source</a></span></span>
     </span>
   </h3>
 
@@ -4025,7 +4130,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber663">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber708">source</a></span></span>
     </span>
   </h3>
 
@@ -4068,7 +4173,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber640">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber685">source</a></span></span>
     </span>
   </h3>
 
@@ -4139,7 +4244,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber601">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber646">source</a></span></span>
     </span>
   </h3>
 
@@ -4210,7 +4315,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1115">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1160">source</a></span></span>
     </span>
   </h3>
 
@@ -4299,7 +4404,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1037">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1082">source</a></span></span>
     </span>
   </h3>
 
@@ -4383,7 +4488,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1086">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1131">source</a></span></span>
     </span>
   </h3>
 
@@ -4478,7 +4583,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1057">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1102">source</a></span></span>
     </span>
   </h3>
 
@@ -4567,7 +4672,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber481">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber526">source</a></span></span>
     </span>
   </h3>
 
@@ -4610,7 +4715,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber462">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber502">source</a></span></span>
     </span>
   </h3>
 
@@ -4653,7 +4758,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber847">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber892">source</a></span></span>
     </span>
   </h3>
 
@@ -4696,7 +4801,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber560">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber605">source</a></span></span>
     </span>
   </h3>
 
@@ -4762,7 +4867,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1403">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1448">source</a></span></span>
     </span>
   </h3>
 
@@ -4833,7 +4938,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1469">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1514">source</a></span></span>
     </span>
   </h3>
 
@@ -4892,7 +4997,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1298">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1343">source</a></span></span>
     </span>
   </h3>
 
@@ -4935,7 +5040,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1159">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1204">source</a></span></span>
     </span>
   </h3>
 
@@ -5013,7 +5118,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1304">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1349">source</a></span></span>
     </span>
   </h3>
 
@@ -5084,7 +5189,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1322">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1367">source</a></span></span>
     </span>
   </h3>
 
@@ -5155,7 +5260,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1316">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1361">source</a></span></span>
     </span>
   </h3>
 
@@ -5226,7 +5331,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber984">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1029">source</a></span></span>
     </span>
   </h3>
 
@@ -5285,7 +5390,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber339">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber379">source</a></span></span>
     </span>
   </h3>
 
@@ -5363,7 +5468,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber923">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber968">source</a></span></span>
     </span>
   </h3>
 
@@ -5406,7 +5511,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber918">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber963">source</a></span></span>
     </span>
   </h3>
 
@@ -5445,11 +5550,11 @@
     
     
     
-    <span class="code" data-ice="name">remove</span><span class="code" data-ice="signature">(): <span>*</span></span>
+    <span class="code" data-ice="name">remove</span><span class="code" data-ice="signature">(trigger_destroy: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></span>): <span>*</span></span>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber469">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber509">source</a></span></span>
     </span>
   </h3>
 
@@ -5460,7 +5565,24 @@
 
   
 
-  <div data-ice="properties">
+  <div data-ice="properties"><div data-ice="properties">
+  <h4 data-ice="title">Params:</h4>
+  <table class="params">
+    <thead>
+    <tr><td>Name</td><td>Type</td><td>Attribute</td><td>Description</td></tr>
+    </thead>
+    <tbody>
+    
+    <tr data-ice="property" data-depth="0">
+      <td data-ice="name" class="code" data-depth="0">trigger_destroy</td>
+      <td data-ice="type" class="code"><span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></span></td>
+      <td data-ice="appendix"><ul><li>optional</li>
+<li>default: true</li></ul></td>
+      <td data-ice="description"></td>
+    </tr>
+</tbody>
+  </table>
+</div>
 </div>
 
   <div class="return-params" data-ice="returnParams">
@@ -5504,7 +5626,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1222">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1267">source</a></span></span>
     </span>
   </h3>
 
@@ -5563,7 +5685,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1184">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1229">source</a></span></span>
     </span>
   </h3>
 
@@ -5628,7 +5750,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber466">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber506">source</a></span></span>
     </span>
   </h3>
 
@@ -5671,7 +5793,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1460">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1505">source</a></span></span>
     </span>
   </h3>
 
@@ -5726,7 +5848,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber906">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber951">source</a></span></span>
     </span>
   </h3>
 
@@ -5769,7 +5891,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber947">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber992">source</a></span></span>
     </span>
   </h3>
 
@@ -5812,7 +5934,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber857">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber902">source</a></span></span>
     </span>
   </h3>
 
@@ -5897,7 +6019,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1276">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1321">source</a></span></span>
     </span>
   </h3>
 
@@ -5940,7 +6062,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1425">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1470">source</a></span></span>
     </span>
   </h3>
 
@@ -5995,7 +6117,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber590">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber635">source</a></span></span>
     </span>
   </h3>
 
@@ -6050,7 +6172,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber474">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber519">source</a></span></span>
     </span>
   </h3>
 
@@ -6093,7 +6215,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber669">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber714">source</a></span></span>
     </span>
   </h3>
 
@@ -6136,7 +6258,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber749">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber794">source</a></span></span>
     </span>
   </h3>
 
@@ -6193,7 +6315,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1208">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1253">source</a></span></span>
     </span>
   </h3>
 
@@ -6236,7 +6358,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber491">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber536">source</a></span></span>
     </span>
   </h3>
 
@@ -6279,7 +6401,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber441">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber481">source</a></span></span>
     </span>
   </h3>
 
@@ -6322,7 +6444,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber553">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber598">source</a></span></span>
     </span>
   </h3>
 
@@ -6365,7 +6487,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1214">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/FrameManager.js.html#lineNumber1259">source</a></span></span>
     </span>
   </h3>
 

@@ -162,6 +162,12 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
+    "./scripts/core/fbo.js~blitshaderglsl300",
+    "variable/index.html#static-variable-BlitShaderGLSL300",
+    "<span>BlitShaderGLSL300</span> <span class=\"search-result-import-path\">./scripts/core/fbo.js</span>",
+    "variable"
+  ],
+  [
     "./scripts/core/lib_api.js~blockflags",
     "variable/index.html#static-variable-BlockFlags",
     "<span>BlockFlags</span> <span class=\"search-result-import-path\">./scripts/core/lib_api.js</span>",
@@ -396,6 +402,30 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/renderengine/renderengine_realtime.js~cubeface",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html",
+    "<span>CubeFace</span> <span class=\"search-result-import-path\">./scripts/renderengine/renderengine_realtime.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/renderengine/renderengine_realtime.js~cubemap",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeMap.html",
+    "<span>CubeMap</span> <span class=\"search-result-import-path\">./scripts/renderengine/renderengine_realtime.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/renderengine/renderengine_realtime.js~cubemaporder",
+    "variable/index.html#static-variable-CubeMapOrder",
+    "<span>CubeMapOrder</span> <span class=\"search-result-import-path\">./scripts/renderengine/renderengine_realtime.js</span>",
+    "variable"
+  ],
+  [
+    "./scripts/core/webgl.js~cubetexture",
+    "class/scripts/core/webgl.js~CubeTexture.html",
+    "<span>CubeTexture</span> <span class=\"search-result-import-path\">./scripts/core/webgl.js</span>",
+    "class"
+  ],
+  [
     "./scripts/editors/view3d/view3d_utils.js~cursormodes",
     "variable/index.html#static-variable-CursorModes",
     "<span>CursorModes</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_utils.js</span>",
@@ -558,10 +588,22 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
+    "./scripts/editors/debug/debugeditor.js~debugeditor",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html",
+    "<span>DebugEditor</span> <span class=\"search-result-import-path\">./scripts/editors/debug/DebugEditor.js</span>",
+    "class"
+  ],
+  [
     "./scripts/core/graphsockets.js~dependsocket",
     "class/scripts/core/graphsockets.js~DependSocket.html",
     "<span>DependSocket</span> <span class=\"search-result-import-path\">./scripts/core/graphsockets.js</span>",
     "class"
+  ],
+  [
+    "./scripts/editors/debug/gldebug.js~depthshader",
+    "variable/index.html#static-variable-DepthShader",
+    "<span>DepthShader</span> <span class=\"search-result-import-path\">./scripts/editors/debug/gldebug.js</span>",
+    "variable"
   ],
   [
     "./scripts/shadernodes/shader_lib.js~diffusebrdf",
@@ -574,6 +616,18 @@ window.esdocSearchIndex = [
     "class/scripts/shadernodes/shader_nodes.js~DiffuseNode.html",
     "<span>DiffuseNode</span> <span class=\"search-result-import-path\">./scripts/shadernodes/shader_nodes.js</span>",
     "class"
+  ],
+  [
+    "./scripts/editors/debug/debugeditor_base.js~displaymodes",
+    "variable/index.html#static-variable-DisplayModes",
+    "<span>DisplayModes</span> <span class=\"search-result-import-path\">./scripts/editors/debug/DebugEditor_base.js</span>",
+    "variable"
+  ],
+  [
+    "./scripts/editors/debug/gldebug.js~displayshader",
+    "variable/index.html#static-variable-DisplayShader",
+    "<span>DisplayShader</span> <span class=\"search-result-import-path\">./scripts/editors/debug/gldebug.js</span>",
+    "variable"
   ],
   [
     "./scripts/path.ux/scripts/events.js~domeventtypes",
@@ -1086,6 +1140,12 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/mesh/mesh_createops.js~makeplaneop",
+    "class/scripts/mesh/mesh_createops.js~MakePlaneOp.html",
+    "<span>MakePlaneOp</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_createops.js</span>",
+    "class"
+  ],
+  [
     "./scripts/path.ux/scripts/toolprop.js~mat4property",
     "class/scripts/path.ux/scripts/toolprop.js~Mat4Property.html",
     "<span>Mat4Property</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/toolprop.js</span>",
@@ -1176,6 +1236,12 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/mesh/mesh_createops.js~meshcreateop",
+    "class/scripts/mesh/mesh_createops.js~MeshCreateOp.html",
+    "<span>MeshCreateOp</span> <span class=\"search-result-import-path\">./scripts/mesh/mesh_createops.js</span>",
+    "class"
+  ],
+  [
     "./scripts/editors/view3d/view3d_draw.js~meshdrawinterface",
     "class/scripts/editors/view3d/view3d_draw.js~MeshDrawInterface.html",
     "<span>MeshDrawInterface</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_draw.js</span>",
@@ -1209,6 +1275,12 @@ window.esdocSearchIndex = [
     "./scripts/editors/view3d/view3d_shaders.js~meshidshader",
     "variable/index.html#static-variable-MeshIDShader",
     "<span>MeshIDShader</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_shaders.js</span>",
+    "variable"
+  ],
+  [
+    "./scripts/editors/view3d/view3d_shaders.js~meshlinearzshader",
+    "variable/index.html#static-variable-MeshLinearZShader",
+    "<span>MeshLinearZShader</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_shaders.js</span>",
     "variable"
   ],
   [
@@ -1500,6 +1572,12 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
+    "./scripts/renderengine/realtime_passes.js~passthrupass",
+    "class/scripts/renderengine/realtime_passes.js~PassThruPass.html",
+    "<span>PassThruPass</span> <span class=\"search-result-import-path\">./scripts/renderengine/realtime_passes.js</span>",
+    "class"
+  ],
+  [
     "./scripts/subsurf/subsurf_patch.js~patch",
     "class/scripts/subsurf/subsurf_patch.js~Patch.html",
     "<span>Patch</span> <span class=\"search-result-import-path\">./scripts/subsurf/subsurf_patch.js</span>",
@@ -1653,6 +1731,12 @@ window.esdocSearchIndex = [
     "./scripts/renderengine/renderpass.js~rendergraph",
     "class/scripts/renderengine/renderpass.js~RenderGraph.html",
     "<span>RenderGraph</span> <span class=\"search-result-import-path\">./scripts/renderengine/renderpass.js</span>",
+    "class"
+  ],
+  [
+    "./scripts/renderengine/renderengine_realtime.js~renderlight",
+    "class/scripts/renderengine/renderengine_realtime.js~RenderLight.html",
+    "<span>RenderLight</span> <span class=\"search-result-import-path\">./scripts/renderengine/renderengine_realtime.js</span>",
     "class"
   ],
   [
@@ -1854,6 +1938,12 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
+    "./scripts/editors/debug/gldebug.js~shaderdef",
+    "variable/index.html#static-variable-ShaderDef",
+    "<span>ShaderDef</span> <span class=\"search-result-import-path\">./scripts/editors/debug/gldebug.js</span>",
+    "variable"
+  ],
+  [
     "./scripts/editors/view3d/view3d_shaders.js~shaderdef",
     "variable/index.html#static-variable-ShaderDef",
     "<span>ShaderDef</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_shaders.js</span>",
@@ -1902,10 +1992,28 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "./scripts/editors/debug/gldebug.js~shaders",
+    "variable/index.html#static-variable-Shaders",
+    "<span>Shaders</span> <span class=\"search-result-import-path\">./scripts/editors/debug/gldebug.js</span>",
+    "variable"
+  ],
+  [
     "./scripts/editors/view3d/view3d_shaders.js~shaders",
     "variable/index.html#static-variable-Shaders",
     "<span>Shaders</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_shaders.js</span>",
     "variable"
+  ],
+  [
+    "./scripts/core/material.js~shadowflags",
+    "variable/index.html#static-variable-ShadowFlags",
+    "<span>ShadowFlags</span> <span class=\"search-result-import-path\">./scripts/core/material.js</span>",
+    "variable"
+  ],
+  [
+    "./scripts/core/material.js~shadowsettings",
+    "class/scripts/core/material.js~ShadowSettings.html",
+    "<span>ShadowSettings</span> <span class=\"search-result-import-path\">./scripts/core/material.js</span>",
+    "class"
   ],
   [
     "./scripts/path.ux/scripts/ui_colorpicker.js~simplebox",
@@ -2544,6 +2652,12 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
+    "./scripts/data_api/api_define.js~api_define_debugeditor",
+    "function/index.html#static-function-api_define_debugeditor",
+    "<span>api_define_debugeditor</span> <span class=\"search-result-import-path\">./scripts/data_api/api_define.js</span>",
+    "function"
+  ],
+  [
     "./scripts/data_api/api_define.js~api_define_editor",
     "function/index.html#static-function-api_define_editor",
     "<span>api_define_editor</span> <span class=\"search-result-import-path\">./scripts/data_api/api_define.js</span>",
@@ -2709,6 +2823,12 @@ window.esdocSearchIndex = [
     "./scripts/path.ux/scripts/config.js~config",
     "variable/index.html#static-variable-config",
     "<span>config</span> <span class=\"search-result-import-path\">./scripts/path.ux/scripts/config.js</span>",
+    "variable"
+  ],
+  [
+    "./scripts/core/webgl.js~constmap",
+    "variable/index.html#static-variable-constmap",
+    "<span>constmap</span> <span class=\"search-result-import-path\">./scripts/core/webgl.js</span>",
     "variable"
   ],
   [
@@ -2952,6 +3072,12 @@ window.esdocSearchIndex = [
     "function"
   ],
   [
+    "./scripts/editors/debug/gldebug.js~gldebug",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html",
+    "<span>glDebug</span> <span class=\"search-result-import-path\">./scripts/editors/debug/gldebug.js</span>",
+    "class"
+  ],
+  [
     "./scripts/subsurf/subsurf_patch.js~gpusubsurf",
     "function/index.html#static-function-gpuSubsurf",
     "<span>gpuSubsurf</span> <span class=\"search-result-import-path\">./scripts/subsurf/subsurf_patch.js</span>",
@@ -3015,6 +3141,12 @@ window.esdocSearchIndex = [
     "./scripts/core/appstate.js~init",
     "function/index.html#static-function-init",
     "<span>init</span> <span class=\"search-result-import-path\">./scripts/core/appstate.js</span>",
+    "function"
+  ],
+  [
+    "./scripts/core/webgl.js~initdebuggl",
+    "function/index.html#static-function-initDebugGL",
+    "<span>initDebugGL</span> <span class=\"search-result-import-path\">./scripts/core/webgl.js</span>",
     "function"
   ],
   [
@@ -4050,6 +4182,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/appstate.js~appstate#switchscreen",
+    "class/scripts/core/appstate.js~AppState.html#instance-method-switchScreen",
+    "scripts/core/appstate.js~AppState#switchScreen",
+    "method"
+  ],
+  [
     "scripts/core/appstate.js~appstate#testfileio",
     "class/scripts/core/appstate.js~AppState.html#instance-method-testFileIO",
     "scripts/core/appstate.js~AppState#testFileIO",
@@ -4185,6 +4323,18 @@ window.esdocSearchIndex = [
     "scripts/core/context.js~context#area",
     "class/scripts/core/context.js~Context.html#instance-get-area",
     "scripts/core/context.js~Context#area",
+    "member"
+  ],
+  [
+    "scripts/core/context.js~context#debugeditor",
+    "class/scripts/core/context.js~Context.html#instance-get-debugEditor",
+    "scripts/core/context.js~Context#debugEditor",
+    "member"
+  ],
+  [
+    "scripts/core/context.js~context#gl",
+    "class/scripts/core/context.js~Context.html#instance-get-gl",
+    "scripts/core/context.js~Context#gl",
     "member"
   ],
   [
@@ -4506,10 +4656,22 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/fbo.js~fbo#ctype",
+    "class/scripts/core/fbo.js~FBO.html#instance-member-ctype",
+    "scripts/core/fbo.js~FBO#ctype",
+    "member"
+  ],
+  [
     "scripts/core/fbo.js~fbo#destroy",
     "class/scripts/core/fbo.js~FBO.html#instance-method-destroy",
     "scripts/core/fbo.js~FBO#destroy",
     "method"
+  ],
+  [
+    "scripts/core/fbo.js~fbo#dtype",
+    "class/scripts/core/fbo.js~FBO.html#instance-member-dtype",
+    "scripts/core/fbo.js~FBO#dtype",
+    "member"
   ],
   [
     "scripts/core/fbo.js~fbo#fbo",
@@ -4524,6 +4686,12 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/core/fbo.js~fbo#layer",
+    "class/scripts/core/fbo.js~FBO.html#instance-member-layer",
+    "scripts/core/fbo.js~FBO#layer",
+    "member"
+  ],
+  [
     "scripts/core/fbo.js~fbo#regen",
     "class/scripts/core/fbo.js~FBO.html#instance-member-regen",
     "scripts/core/fbo.js~FBO#regen",
@@ -4533,6 +4701,12 @@ window.esdocSearchIndex = [
     "scripts/core/fbo.js~fbo#size",
     "class/scripts/core/fbo.js~FBO.html#instance-member-size",
     "scripts/core/fbo.js~FBO#size",
+    "member"
+  ],
+  [
+    "scripts/core/fbo.js~fbo#target",
+    "class/scripts/core/fbo.js~FBO.html#instance-member-target",
+    "scripts/core/fbo.js~FBO#target",
     "member"
   ],
   [
@@ -5682,10 +5856,22 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/lib_api.js~blockset#setactive",
+    "class/scripts/core/lib_api.js~BlockSet.html#instance-method-setActive",
+    "scripts/core/lib_api.js~BlockSet#setActive",
+    "method"
+  ],
+  [
     "scripts/core/lib_api.js~blockset#type",
     "class/scripts/core/lib_api.js~BlockSet.html#instance-member-type",
     "scripts/core/lib_api.js~BlockSet#type",
     "member"
+  ],
+  [
+    "scripts/core/lib_api.js~blockset#uniquename",
+    "class/scripts/core/lib_api.js~BlockSet.html#instance-method-uniqueName",
+    "scripts/core/lib_api.js~BlockSet#uniqueName",
+    "method"
   ],
   [
     "scripts/core/lib_api.js~datablock#[symbol.keystr]",
@@ -6090,6 +6276,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/material.js~shadernetwork#shadow",
+    "class/scripts/core/material.js~ShaderNetwork.html#instance-member-shadow",
+    "scripts/core/material.js~ShaderNetwork#shadow",
+    "member"
+  ],
+  [
     "scripts/core/material.js~shadernetwork.blockdefine",
     "class/scripts/core/material.js~ShaderNetwork.html#static-method-blockDefine",
     "scripts/core/material.js~ShaderNetwork.blockDefine",
@@ -6100,6 +6292,24 @@ window.esdocSearchIndex = [
     "class/scripts/core/material.js~ShaderNetwork.html#static-method-nodedef",
     "scripts/core/material.js~ShaderNetwork.nodedef",
     "method"
+  ],
+  [
+    "scripts/core/material.js~shadowsettings#bias",
+    "class/scripts/core/material.js~ShadowSettings.html#instance-member-bias",
+    "scripts/core/material.js~ShadowSettings#bias",
+    "member"
+  ],
+  [
+    "scripts/core/material.js~shadowsettings#constructor",
+    "class/scripts/core/material.js~ShadowSettings.html#instance-constructor-constructor",
+    "scripts/core/material.js~ShadowSettings#constructor",
+    "method"
+  ],
+  [
+    "scripts/core/material.js~shadowsettings#flag",
+    "class/scripts/core/material.js~ShadowSettings.html#instance-member-flag",
+    "scripts/core/material.js~ShadowSettings#flag",
+    "member"
   ],
   [
     "scripts/core/mesh_shapes.js",
@@ -6402,10 +6612,22 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/sceneobject.js~sceneobject#loadmatrixtoinputs",
+    "class/scripts/core/sceneobject.js~SceneObject.html#instance-method-loadMatrixToInputs",
+    "scripts/core/sceneobject.js~SceneObject#loadMatrixToInputs",
+    "method"
+  ],
+  [
     "scripts/core/sceneobject.js~sceneobject#loadstruct",
     "class/scripts/core/sceneobject.js~SceneObject.html#instance-method-loadSTRUCT",
     "scripts/core/sceneobject.js~SceneObject#loadSTRUCT",
     "method"
+  ],
+  [
+    "scripts/core/sceneobject.js~sceneobject#locationworld",
+    "class/scripts/core/sceneobject.js~SceneObject.html#instance-get-locationWorld",
+    "scripts/core/sceneobject.js~SceneObject#locationWorld",
+    "member"
   ],
   [
     "scripts/core/sceneobject.js~sceneobject.blockdefine",
@@ -7332,6 +7554,30 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/core/webgl.js~cubetexture#bind",
+    "class/scripts/core/webgl.js~CubeTexture.html#instance-method-bind",
+    "scripts/core/webgl.js~CubeTexture#bind",
+    "method"
+  ],
+  [
+    "scripts/core/webgl.js~cubetexture#constructor",
+    "class/scripts/core/webgl.js~CubeTexture.html#instance-constructor-constructor",
+    "scripts/core/webgl.js~CubeTexture#constructor",
+    "method"
+  ],
+  [
+    "scripts/core/webgl.js~cubetexture#texture",
+    "class/scripts/core/webgl.js~CubeTexture.html#instance-member-texture",
+    "scripts/core/webgl.js~CubeTexture#texture",
+    "member"
+  ],
+  [
+    "scripts/core/webgl.js~cubetexture#texture_slot",
+    "class/scripts/core/webgl.js~CubeTexture.html#instance-member-texture_slot",
+    "scripts/core/webgl.js~CubeTexture#texture_slot",
+    "member"
+  ],
+  [
     "scripts/core/webgl.js~drawmats#aspect",
     "class/scripts/core/webgl.js~DrawMats.html#instance-member-aspect",
     "scripts/core/webgl.js~DrawMats#aspect",
@@ -7602,6 +7848,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/core/webgl.js~texture#target",
+    "class/scripts/core/webgl.js~Texture.html#instance-member-target",
+    "scripts/core/webgl.js~Texture#target",
+    "member"
+  ],
+  [
     "scripts/core/webgl.js~texture#texture",
     "class/scripts/core/webgl.js~Texture.html#instance-member-texture",
     "scripts/core/webgl.js~Texture#texture",
@@ -7630,6 +7882,222 @@ window.esdocSearchIndex = [
     "file/scripts/data_api/api_define.js.html",
     "scripts/data_api/api_define.js",
     "file"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js",
+    "file/scripts/editors/debug/DebugEditor.js.html",
+    "scripts/editors/debug/DebugEditor.js",
+    "file"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#_ignore_tab_change",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-member-_ignore_tab_change",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#_ignore_tab_change",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#_rect",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-member-_rect",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#_rect",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#_redraw",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-method-_redraw",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#_redraw",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#canvas",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-member-canvas",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#canvas",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#constructor",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-constructor-constructor",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#copy",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-method-copy",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#copy",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#curtex",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-member-curTex",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#curTex",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#definekeymap",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-method-defineKeyMap",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#defineKeyMap",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#displaymode",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-member-displayMode",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#displayMode",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#drawend",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-method-drawEnd",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#drawEnd",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#drawstart",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-method-drawStart",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#drawStart",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#gl",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-member-gl",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#gl",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#glpos",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-member-glPos",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#glPos",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#glsize",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-member-glSize",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#glSize",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#gldebug",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-member-gldebug",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#gldebug",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#init",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-method-init",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#init",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#keymap",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-member-keymap",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#keymap",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#rect",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-method-rect",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#rect",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor#viewportdraw",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#instance-method-viewportDraw",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor#viewportDraw",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/debugeditor.js~debugeditor.define",
+    "class/scripts/editors/debug/DebugEditor.js~DebugEditor.html#static-method-define",
+    "scripts/editors/debug/DebugEditor.js~DebugEditor.define",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/debugeditor_base.js",
+    "file/scripts/editors/debug/DebugEditor_base.js.html",
+    "scripts/editors/debug/DebugEditor_base.js",
+    "file"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js",
+    "file/scripts/editors/debug/gldebug.js.html",
+    "scripts/editors/debug/gldebug.js",
+    "file"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug#_clean_gl",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#instance-member-_clean_gl",
+    "scripts/editors/debug/gldebug.js~glDebug#_clean_gl",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug#constructor",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#instance-constructor-constructor",
+    "scripts/editors/debug/gldebug.js~glDebug#constructor",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug#gl",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#instance-member-gl",
+    "scripts/editors/debug/gldebug.js~glDebug#gl",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug#loadcleangl",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#instance-method-loadCleanGL",
+    "scripts/editors/debug/gldebug.js~glDebug#loadCleanGL",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug#loadshaders",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#instance-method-loadShaders",
+    "scripts/editors/debug/gldebug.js~glDebug#loadShaders",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug#maxtex",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#instance-member-maxTex",
+    "scripts/editors/debug/gldebug.js~glDebug#maxTex",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug#restoregl",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#instance-method-restoreGL",
+    "scripts/editors/debug/gldebug.js~glDebug#restoreGL",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug#savedrawbuffer",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#instance-method-saveDrawBuffer",
+    "scripts/editors/debug/gldebug.js~glDebug#saveDrawBuffer",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug#savedrawbufferfboblit",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#instance-method-saveDrawBufferFBOBlit",
+    "scripts/editors/debug/gldebug.js~glDebug#saveDrawBufferFBOBlit",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug#savegl",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#instance-method-saveGL",
+    "scripts/editors/debug/gldebug.js~glDebug#saveGL",
+    "method"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug#stack",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#instance-member-stack",
+    "scripts/editors/debug/gldebug.js~glDebug#stack",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug#texs",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#instance-member-texs",
+    "scripts/editors/debug/gldebug.js~glDebug#texs",
+    "member"
+  ],
+  [
+    "scripts/editors/debug/gldebug.js~gldebug.getdebug",
+    "class/scripts/editors/debug/gldebug.js~glDebug.html#static-method-getDebug",
+    "scripts/editors/debug/gldebug.js~glDebug.getDebug",
+    "method"
   ],
   [
     "scripts/editors/editor_base.js",
@@ -7806,6 +8274,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/editor_base.js~screenblock#copy",
+    "class/scripts/editors/editor_base.js~ScreenBlock.html#instance-method-copy",
+    "scripts/editors/editor_base.js~ScreenBlock#copy",
+    "method"
+  ],
+  [
     "scripts/editors/editor_base.js~screenblock#loadstruct",
     "class/scripts/editors/editor_base.js~ScreenBlock.html#instance-method-loadSTRUCT",
     "scripts/editors/editor_base.js~ScreenBlock#loadSTRUCT",
@@ -7830,6 +8304,18 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
+    "scripts/editors/menu/mainmenu.js~menubareditor#_ignore_tab_change",
+    "class/scripts/editors/menu/MainMenu.js~MenuBarEditor.html#instance-member-_ignore_tab_change",
+    "scripts/editors/menu/MainMenu.js~MenuBarEditor#_ignore_tab_change",
+    "member"
+  ],
+  [
+    "scripts/editors/menu/mainmenu.js~menubareditor#_on_tab_change",
+    "class/scripts/editors/menu/MainMenu.js~MenuBarEditor.html#instance-method-_on_tab_change",
+    "scripts/editors/menu/MainMenu.js~MenuBarEditor#_on_tab_change",
+    "method"
+  ],
+  [
     "scripts/editors/menu/mainmenu.js~menubareditor#constructor",
     "class/scripts/editors/menu/MainMenu.js~MenuBarEditor.html#instance-constructor-constructor",
     "scripts/editors/menu/MainMenu.js~MenuBarEditor#constructor",
@@ -7848,9 +8334,21 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/menu/mainmenu.js~menubareditor#makescreenswitcher",
+    "class/scripts/editors/menu/MainMenu.js~MenuBarEditor.html#instance-method-makeScreenSwitcher",
+    "scripts/editors/menu/MainMenu.js~MenuBarEditor#makeScreenSwitcher",
+    "method"
+  ],
+  [
     "scripts/editors/menu/mainmenu.js~menubareditor#on_area_active",
     "class/scripts/editors/menu/MainMenu.js~MenuBarEditor.html#instance-method-on_area_active",
     "scripts/editors/menu/MainMenu.js~MenuBarEditor#on_area_active",
+    "method"
+  ],
+  [
+    "scripts/editors/menu/mainmenu.js~menubareditor#rebuildscreenswitcher",
+    "class/scripts/editors/menu/MainMenu.js~MenuBarEditor.html#instance-method-rebuildScreenSwitcher",
+    "scripts/editors/menu/MainMenu.js~MenuBarEditor#rebuildScreenSwitcher",
     "method"
   ],
   [
@@ -7912,6 +8410,12 @@ window.esdocSearchIndex = [
     "class/scripts/editors/node/NodeEditor.js~NodeEditor.html#instance-method-_recalcUI",
     "scripts/editors/node/NodeEditor.js~NodeEditor#_recalcUI",
     "method"
+  ],
+  [
+    "scripts/editors/node/nodeeditor.js~nodeeditor#background",
+    "class/scripts/editors/node/NodeEditor.js~NodeEditor.html#instance-member-background",
+    "scripts/editors/node/NodeEditor.js~NodeEditor#background",
+    "member"
   ],
   [
     "scripts/editors/node/nodeeditor.js~nodeeditor#checkcompile",
@@ -8472,6 +8976,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/editors/node/node_ops.js~connectnodeop#execpre",
+    "class/scripts/editors/node/node_ops.js~ConnectNodeOp.html#instance-method-execPre",
+    "scripts/editors/node/node_ops.js~ConnectNodeOp#execPre",
+    "method"
+  ],
+  [
     "scripts/editors/node/node_ops.js~connectnodeop#first",
     "class/scripts/editors/node/node_ops.js~ConnectNodeOp.html#instance-member-first",
     "scripts/editors/node/node_ops.js~ConnectNodeOp#first",
@@ -8487,6 +8997,12 @@ window.esdocSearchIndex = [
     "scripts/editors/node/node_ops.js~connectnodeop#modalend",
     "class/scripts/editors/node/node_ops.js~ConnectNodeOp.html#instance-method-modalEnd",
     "scripts/editors/node/node_ops.js~ConnectNodeOp#modalEnd",
+    "method"
+  ],
+  [
+    "scripts/editors/node/node_ops.js~connectnodeop#modalstart",
+    "class/scripts/editors/node/node_ops.js~ConnectNodeOp.html#instance-method-modalStart",
+    "scripts/editors/node/node_ops.js~ConnectNodeOp#modalStart",
     "method"
   ],
   [
@@ -9714,6 +10230,12 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/editors/view3d/view3d.js~view3d#_last_render_draw",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-_last_render_draw",
+    "scripts/editors/view3d/view3d.js~View3D#_last_render_draw",
+    "member"
+  ],
+  [
     "scripts/editors/view3d/view3d.js~view3d#_last_selectmode",
     "class/scripts/editors/view3d/view3d.js~View3D.html#instance-member-_last_selectmode",
     "scripts/editors/view3d/view3d.js~View3D#_last_selectmode",
@@ -9987,6 +10509,12 @@ window.esdocSearchIndex = [
     "scripts/editors/view3d/view3d.js~view3d#resetdrawlines",
     "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-resetDrawLines",
     "scripts/editors/view3d/view3d.js~View3D#resetDrawLines",
+    "method"
+  ],
+  [
+    "scripts/editors/view3d/view3d.js~view3d#resetrender",
+    "class/scripts/editors/view3d/view3d.js~View3D.html#instance-method-resetRender",
+    "scripts/editors/view3d/view3d.js~View3D#resetRender",
     "method"
   ],
   [
@@ -12738,6 +13266,60 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
+    "scripts/mesh/mesh_createops.js",
+    "file/scripts/mesh/mesh_createops.js.html",
+    "scripts/mesh/mesh_createops.js",
+    "file"
+  ],
+  [
+    "scripts/mesh/mesh_createops.js~makeplaneop#constructor",
+    "class/scripts/mesh/mesh_createops.js~MakePlaneOp.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_createops.js~MakePlaneOp#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_createops.js~makeplaneop#internalcreate",
+    "class/scripts/mesh/mesh_createops.js~MakePlaneOp.html#instance-method-internalCreate",
+    "scripts/mesh/mesh_createops.js~MakePlaneOp#internalCreate",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_createops.js~makeplaneop.tooldef",
+    "class/scripts/mesh/mesh_createops.js~MakePlaneOp.html#static-method-tooldef",
+    "scripts/mesh/mesh_createops.js~MakePlaneOp.tooldef",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_createops.js~meshcreateop#constructor",
+    "class/scripts/mesh/mesh_createops.js~MeshCreateOp.html#instance-constructor-constructor",
+    "scripts/mesh/mesh_createops.js~MeshCreateOp#constructor",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_createops.js~meshcreateop#exec",
+    "class/scripts/mesh/mesh_createops.js~MeshCreateOp.html#instance-method-exec",
+    "scripts/mesh/mesh_createops.js~MeshCreateOp#exec",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_createops.js~meshcreateop#internalcreate",
+    "class/scripts/mesh/mesh_createops.js~MeshCreateOp.html#instance-method-internalCreate",
+    "scripts/mesh/mesh_createops.js~MeshCreateOp#internalCreate",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_createops.js~meshcreateop.invoke",
+    "class/scripts/mesh/mesh_createops.js~MeshCreateOp.html#static-method-invoke",
+    "scripts/mesh/mesh_createops.js~MeshCreateOp.invoke",
+    "method"
+  ],
+  [
+    "scripts/mesh/mesh_createops.js~meshcreateop.tooldef",
+    "class/scripts/mesh/mesh_createops.js~MeshCreateOp.html#static-method-tooldef",
+    "scripts/mesh/mesh_createops.js~MeshCreateOp.tooldef",
+    "method"
+  ],
+  [
     "scripts/mesh/mesh_customdata.js",
     "file/scripts/mesh/mesh_customdata.js.html",
     "scripts/mesh/mesh_customdata.js",
@@ -13623,6 +14205,12 @@ window.esdocSearchIndex = [
     "scripts/path.ux/scripts/framemanager.js~screen#constructor",
     "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-constructor-constructor",
     "scripts/path.ux/scripts/FrameManager.js~Screen#constructor",
+    "method"
+  ],
+  [
+    "scripts/path.ux/scripts/framemanager.js~screen#copy",
+    "class/scripts/path.ux/scripts/FrameManager.js~Screen.html#instance-method-copy",
+    "scripts/path.ux/scripts/FrameManager.js~Screen#copy",
     "method"
   ],
   [
@@ -18133,13 +18721,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui.js~label#font",
-    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-get-font",
+    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-set-font",
     "scripts/path.ux/scripts/ui.js~Label#font",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui.js~label#font",
-    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-set-font",
+    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-get-font",
     "scripts/path.ux/scripts/ui.js~Label#font",
     "member"
   ],
@@ -18151,13 +18739,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui.js~label#text",
-    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-set-text",
+    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-get-text",
     "scripts/path.ux/scripts/ui.js~Label#text",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui.js~label#text",
-    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-get-text",
+    "class/scripts/path.ux/scripts/ui.js~Label.html#instance-set-text",
     "scripts/path.ux/scripts/ui.js~Label#text",
     "member"
   ],
@@ -18199,13 +18787,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui.js~panelframe#closed",
-    "class/scripts/path.ux/scripts/ui.js~PanelFrame.html#instance-get-closed",
+    "class/scripts/path.ux/scripts/ui.js~PanelFrame.html#instance-set-closed",
     "scripts/path.ux/scripts/ui.js~PanelFrame#closed",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui.js~panelframe#closed",
-    "class/scripts/path.ux/scripts/ui.js~PanelFrame.html#instance-set-closed",
+    "class/scripts/path.ux/scripts/ui.js~PanelFrame.html#instance-get-closed",
     "scripts/path.ux/scripts/ui.js~PanelFrame#closed",
     "member"
   ],
@@ -19423,13 +20011,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_curvewidget.js~curve#fastmode",
-    "class/scripts/path.ux/scripts/ui_curvewidget.js~Curve.html#instance-get-fastmode",
+    "class/scripts/path.ux/scripts/ui_curvewidget.js~Curve.html#instance-set-fastmode",
     "scripts/path.ux/scripts/ui_curvewidget.js~Curve#fastmode",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_curvewidget.js~curve#fastmode",
-    "class/scripts/path.ux/scripts/ui_curvewidget.js~Curve.html#instance-set-fastmode",
+    "class/scripts/path.ux/scripts/ui_curvewidget.js~Curve.html#instance-get-fastmode",
     "scripts/path.ux/scripts/ui_curvewidget.js~Curve#fastmode",
     "member"
   ],
@@ -20418,6 +21006,12 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/path.ux/scripts/ui_tabs.js~tabcontainer#setactive",
+    "class/scripts/path.ux/scripts/ui_tabs.js~TabContainer.html#instance-method-setActive",
+    "scripts/path.ux/scripts/ui_tabs.js~TabContainer#setActive",
+    "method"
+  ],
+  [
     "scripts/path.ux/scripts/ui_tabs.js~tabcontainer#tab",
     "class/scripts/path.ux/scripts/ui_tabs.js~TabContainer.html#instance-method-tab",
     "scripts/path.ux/scripts/ui_tabs.js~TabContainer#tab",
@@ -20737,13 +21331,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~check#label",
-    "class/scripts/path.ux/scripts/ui_widgets.js~Check.html#instance-get-label",
+    "class/scripts/path.ux/scripts/ui_widgets.js~Check.html#instance-set-label",
     "scripts/path.ux/scripts/ui_widgets.js~Check#label",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~check#label",
-    "class/scripts/path.ux/scripts/ui_widgets.js~Check.html#instance-set-label",
+    "class/scripts/path.ux/scripts/ui_widgets.js~Check.html#instance-get-label",
     "scripts/path.ux/scripts/ui_widgets.js~Check#label",
     "member"
   ],
@@ -20838,6 +21432,12 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/path.ux/scripts/ui_widgets.js~colorpickerbutton#disabled",
+    "class/scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton.html#instance-member-disabled",
+    "scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton#disabled",
+    "member"
+  ],
+  [
     "scripts/path.ux/scripts/ui_widgets.js~colorpickerbutton#dom",
     "class/scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton.html#instance-member-dom",
     "scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton#dom",
@@ -20845,13 +21445,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~colorpickerbutton#font",
-    "class/scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton.html#instance-get-font",
+    "class/scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton.html#instance-set-font",
     "scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton#font",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~colorpickerbutton#font",
-    "class/scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton.html#instance-set-font",
+    "class/scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton.html#instance-get-font",
     "scripts/path.ux/scripts/ui_widgets.js~ColorPickerButton#font",
     "member"
   ],
@@ -21103,19 +21703,19 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~iconcheck#icon",
-    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-get-icon",
-    "scripts/path.ux/scripts/ui_widgets.js~IconCheck#icon",
-    "member"
-  ],
-  [
-    "scripts/path.ux/scripts/ui_widgets.js~iconcheck#icon",
-    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-get-icon",
-    "scripts/path.ux/scripts/ui_widgets.js~IconCheck#icon",
-    "member"
-  ],
-  [
-    "scripts/path.ux/scripts/ui_widgets.js~iconcheck#icon",
     "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-set-icon",
+    "scripts/path.ux/scripts/ui_widgets.js~IconCheck#icon",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/ui_widgets.js~iconcheck#icon",
+    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-get-icon",
+    "scripts/path.ux/scripts/ui_widgets.js~IconCheck#icon",
+    "member"
+  ],
+  [
+    "scripts/path.ux/scripts/ui_widgets.js~iconcheck#icon",
+    "class/scripts/path.ux/scripts/ui_widgets.js~IconCheck.html#instance-get-icon",
     "scripts/path.ux/scripts/ui_widgets.js~IconCheck#icon",
     "member"
   ],
@@ -21325,13 +21925,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~textbox#text",
-    "class/scripts/path.ux/scripts/ui_widgets.js~TextBox.html#instance-set-text",
+    "class/scripts/path.ux/scripts/ui_widgets.js~TextBox.html#instance-get-text",
     "scripts/path.ux/scripts/ui_widgets.js~TextBox#text",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~textbox#text",
-    "class/scripts/path.ux/scripts/ui_widgets.js~TextBox.html#instance-get-text",
+    "class/scripts/path.ux/scripts/ui_widgets.js~TextBox.html#instance-set-text",
     "scripts/path.ux/scripts/ui_widgets.js~TextBox#text",
     "member"
   ],
@@ -21385,13 +21985,13 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~valuebuttonbase#value",
-    "class/scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase.html#instance-set-value",
+    "class/scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase.html#instance-get-value",
     "scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase#value",
     "member"
   ],
   [
     "scripts/path.ux/scripts/ui_widgets.js~valuebuttonbase#value",
-    "class/scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase.html#instance-get-value",
+    "class/scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase.html#instance-set-value",
     "scripts/path.ux/scripts/ui_widgets.js~ValueButtonBase#value",
     "member"
   ],
@@ -22572,6 +23172,24 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/renderengine/realtime_passes.js~passthrupass#constructor",
+    "class/scripts/renderengine/realtime_passes.js~PassThruPass.html#instance-constructor-constructor",
+    "scripts/renderengine/realtime_passes.js~PassThruPass#constructor",
+    "method"
+  ],
+  [
+    "scripts/renderengine/realtime_passes.js~passthrupass#renderintern",
+    "class/scripts/renderengine/realtime_passes.js~PassThruPass.html#instance-method-renderIntern",
+    "scripts/renderengine/realtime_passes.js~PassThruPass#renderIntern",
+    "method"
+  ],
+  [
+    "scripts/renderengine/realtime_passes.js~passthrupass.nodedef",
+    "class/scripts/renderengine/realtime_passes.js~PassThruPass.html#static-method-nodedef",
+    "scripts/renderengine/realtime_passes.js~PassThruPass.nodedef",
+    "method"
+  ],
+  [
     "scripts/renderengine/renderengine_base.js",
     "file/scripts/renderengine/renderengine_base.js.html",
     "scripts/renderengine/renderengine_base.js",
@@ -22587,6 +23205,12 @@ window.esdocSearchIndex = [
     "scripts/renderengine/renderengine_base.js~renderengine#render",
     "class/scripts/renderengine/renderengine_base.js~RenderEngine.html#instance-method-render",
     "scripts/renderengine/renderengine_base.js~RenderEngine#render",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_base.js~renderengine#resetrender",
+    "class/scripts/renderengine/renderengine_base.js~RenderEngine.html#instance-method-resetRender",
+    "scripts/renderengine/renderengine_base.js~RenderEngine#resetRender",
     "method"
   ],
   [
@@ -22608,6 +23232,144 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
+    "scripts/renderengine/renderengine_realtime.js~cubeface#cameramatrix",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html#instance-member-cameraMatrix",
+    "scripts/renderengine/renderengine_realtime.js~CubeFace#cameraMatrix",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubeface#constructor",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html#instance-constructor-constructor",
+    "scripts/renderengine/renderengine_realtime.js~CubeFace#constructor",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubeface#cubecolor",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html#instance-member-cubeColor",
+    "scripts/renderengine/renderengine_realtime.js~CubeFace#cubeColor",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubeface#cubedepth",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html#instance-member-cubeDepth",
+    "scripts/renderengine/renderengine_realtime.js~CubeFace#cubeDepth",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubeface#face",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html#instance-member-face",
+    "scripts/renderengine/renderengine_realtime.js~CubeFace#face",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubeface#far",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html#instance-member-far",
+    "scripts/renderengine/renderengine_realtime.js~CubeFace#far",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubeface#fbo",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html#instance-member-fbo",
+    "scripts/renderengine/renderengine_realtime.js~CubeFace#fbo",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubeface#iprojectionmatrix",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html#instance-member-iprojectionMatrix",
+    "scripts/renderengine/renderengine_realtime.js~CubeFace#iprojectionMatrix",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubeface#near",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html#instance-member-near",
+    "scripts/renderengine/renderengine_realtime.js~CubeFace#near",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubeface#projectionmatrix",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html#instance-member-projectionMatrix",
+    "scripts/renderengine/renderengine_realtime.js~CubeFace#projectionMatrix",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubeface#render",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html#instance-method-render",
+    "scripts/renderengine/renderengine_realtime.js~CubeFace#render",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubeface#size",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeFace.html#instance-member-size",
+    "scripts/renderengine/renderengine_realtime.js~CubeFace#size",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubemap#constructor",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeMap.html#instance-constructor-constructor",
+    "scripts/renderengine/renderengine_realtime.js~CubeMap#constructor",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubemap#far",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeMap.html#instance-member-far",
+    "scripts/renderengine/renderengine_realtime.js~CubeMap#far",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubemap#getuniformvalue",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeMap.html#instance-method-getUniformValue",
+    "scripts/renderengine/renderengine_realtime.js~CubeMap#getUniformValue",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubemap#gl",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeMap.html#instance-member-gl",
+    "scripts/renderengine/renderengine_realtime.js~CubeMap#gl",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubemap#gltex",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeMap.html#instance-member-gltex",
+    "scripts/renderengine/renderengine_realtime.js~CubeMap#gltex",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubemap#length",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeMap.html#instance-member-length",
+    "scripts/renderengine/renderengine_realtime.js~CubeMap#length",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubemap#makecubetex",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeMap.html#instance-method-makeCubeTex",
+    "scripts/renderengine/renderengine_realtime.js~CubeMap#makeCubeTex",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubemap#near",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeMap.html#instance-member-near",
+    "scripts/renderengine/renderengine_realtime.js~CubeMap#near",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubemap#size",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeMap.html#instance-member-size",
+    "scripts/renderengine/renderengine_realtime.js~CubeMap#size",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubemap#texcolor",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeMap.html#instance-member-texColor",
+    "scripts/renderengine/renderengine_realtime.js~CubeMap#texColor",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~cubemap#texdepth",
+    "class/scripts/renderengine/renderengine_realtime.js~CubeMap.html#instance-member-texDepth",
+    "scripts/renderengine/renderengine_realtime.js~CubeMap#texDepth",
+    "member"
+  ],
+  [
     "scripts/renderengine/renderengine_realtime.js~realtimeengine#aopass",
     "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-member-aoPass",
     "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#aoPass",
@@ -22617,6 +23379,12 @@ window.esdocSearchIndex = [
     "scripts/renderengine/renderengine_realtime.js~realtimeengine#cache",
     "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-member-cache",
     "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#cache",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~realtimeengine#camera",
+    "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-member-camera",
+    "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#camera",
     "member"
   ],
   [
@@ -22638,9 +23406,51 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
+    "scripts/renderengine/renderengine_realtime.js~realtimeengine#getprojmat",
+    "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-method-getProjMat",
+    "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#getProjMat",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~realtimeengine#gl",
+    "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-member-gl",
+    "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#gl",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~realtimeengine#initlights",
+    "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-method-initLights",
+    "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#initLights",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~realtimeengine#lights",
+    "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-member-lights",
+    "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#lights",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~realtimeengine#projmat",
+    "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-member-projmat",
+    "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#projmat",
+    "member"
+  ],
+  [
     "scripts/renderengine/renderengine_realtime.js~realtimeengine#render",
     "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-method-render",
     "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#render",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~realtimeengine#rendershadowcube",
+    "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-method-renderShadowCube",
+    "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#renderShadowCube",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~realtimeengine#rendershadowmaps",
+    "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-method-renderShadowMaps",
+    "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#renderShadowMaps",
     "method"
   ],
   [
@@ -22662,6 +23472,24 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
+    "scripts/renderengine/renderengine_realtime.js~realtimeengine#resetrender",
+    "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-method-resetRender",
+    "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#resetRender",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~realtimeengine#resetsamples",
+    "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-method-resetSamples",
+    "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#resetSamples",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~realtimeengine#scene",
+    "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-member-scene",
+    "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#scene",
+    "member"
+  ],
+  [
     "scripts/renderengine/renderengine_realtime.js~realtimeengine#usample",
     "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-member-uSample",
     "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#uSample",
@@ -22678,6 +23506,48 @@ window.esdocSearchIndex = [
     "class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html#instance-member-view3d",
     "scripts/renderengine/renderengine_realtime.js~RealtimeEngine#view3d",
     "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~renderlight#calcco",
+    "class/scripts/renderengine/renderengine_realtime.js~RenderLight.html#instance-method-calcCo",
+    "scripts/renderengine/renderengine_realtime.js~RenderLight#calcCo",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~renderlight#co",
+    "class/scripts/renderengine/renderengine_realtime.js~RenderLight.html#instance-member-co",
+    "scripts/renderengine/renderengine_realtime.js~RenderLight#co",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~renderlight#constructor",
+    "class/scripts/renderengine/renderengine_realtime.js~RenderLight.html#instance-constructor-constructor",
+    "scripts/renderengine/renderengine_realtime.js~RenderLight#constructor",
+    "method"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~renderlight#light",
+    "class/scripts/renderengine/renderengine_realtime.js~RenderLight.html#instance-member-light",
+    "scripts/renderengine/renderengine_realtime.js~RenderLight#light",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~renderlight#seed",
+    "class/scripts/renderengine/renderengine_realtime.js~RenderLight.html#instance-member-seed",
+    "scripts/renderengine/renderengine_realtime.js~RenderLight#seed",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~renderlight#shadowmap",
+    "class/scripts/renderengine/renderengine_realtime.js~RenderLight.html#instance-member-shadowmap",
+    "scripts/renderengine/renderengine_realtime.js~RenderLight#shadowmap",
+    "member"
+  ],
+  [
+    "scripts/renderengine/renderengine_realtime.js~renderlight#update",
+    "class/scripts/renderengine/renderengine_realtime.js~RenderLight.html#instance-method-update",
+    "scripts/renderengine/renderengine_realtime.js~RenderLight#update",
+    "method"
   ],
   [
     "scripts/renderengine/renderengine_realtime.js~shadercache#add",

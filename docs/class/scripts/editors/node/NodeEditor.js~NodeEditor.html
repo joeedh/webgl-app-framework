@@ -66,6 +66,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~DataRefProperty.html">DataRefProperty</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~Library.html">Library</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/material.js~ShaderNetwork.html">ShaderNetwork</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/material.js~ShadowSettings.html">ShadowSettings</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~EnvLight.html">EnvLight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~ObjectList.html">ObjectList</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~ObjectSet.html">ObjectSet</a></span></span></li>
@@ -85,6 +86,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~SimpleMesh.html">SimpleMesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~TriEditor.html">TriEditor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~Camera.html">Camera</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~CubeTexture.html">CubeTexture</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~DrawMats.html">DrawMats</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~IntUniform.html">IntUniform</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~RenderBuffer.html">RenderBuffer</a></span></span></li>
@@ -98,6 +100,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-makeCube">makeCube</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getShader">getShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-hashShader">hashShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-initDebugGL">initDebugGL</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-init_webgl">init_webgl</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockTypes">BlockTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-APP_KEY_NAME">APP_KEY_NAME</a></span></span></li>
@@ -105,6 +108,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FILE_EXT">FILE_EXT</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FILE_MAGIC">FILE_MAGIC</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlitShader">BlitShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlitShaderGLSL300">BlitShaderGLSL300</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-GraphFlags">GraphFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NodeFlags">NodeFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SocketFlags">SocketFlags</a></span></span></li>
@@ -114,13 +118,16 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockFlags">BlockFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockTypes">BlockTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MaterialFlags">MaterialFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShadowFlags">ShadowFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-EnvLightFlags">EnvLightFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SceneFlags">SceneFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Colors">Colors</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectFlags">ObjectFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-LayerTypes">LayerTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-TypeSizes">TypeSizes</a></span></span></li>
-<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-constmap">constmap</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_debugeditor">api_define_debugeditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_envlight">api_define_envlight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_light">api_define_light</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_mesh">api_define_mesh</a></span></span></li>
@@ -140,6 +147,13 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-allareas_stack">allareas_stack</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Icons">Icons</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-VelPanFlags">VelPanFlags</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-debug">editors/debug</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/debug/DebugEditor.js~DebugEditor.html">DebugEditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/debug/gldebug.js~glDebug.html">glDebug</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DisplayModes">DisplayModes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DepthShader">DepthShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DisplayShader">DisplayShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShaderDef">ShaderDef</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Shaders">Shaders</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-menu">editors/menu</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/menu/MainMenu.js~MenuBarEditor.html">MenuBarEditor</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-node">editors/node</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/node/NodeEditor.js~NodeEditor.html">NodeEditor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/node/NodeEditor.js~NodeSocketElem.html">NodeSocketElem</a></span></span></li>
@@ -217,6 +231,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BasicLitMesh">BasicLitMesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshEditShader">MeshEditShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshIDShader">MeshIDShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshLinearZShader">MeshLinearZShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NormalPassShader">NormalPassShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectLineShader">ObjectLineShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PolygonOffset">PolygonOffset</a></span></span></li>
@@ -242,6 +257,8 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/customdata.js~LayerSet.html">LayerSet</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh.js~Mesh.html">Mesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_base.js~MeshError.html">MeshError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_createops.js~MakePlaneOp.html">MakePlaneOp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_createops.js~MeshCreateOp.html">MeshCreateOp</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html">OrigIndexElem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_customdata.js~UVLayerElem.html">UVLayerElem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_element_list.js~ElementList.html">ElementList</a></span></span></li>
@@ -569,14 +586,19 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BlurPass.html">BlurPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~NormalPass.html">NormalPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~OutputPass.html">OutputPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~PassThruPass.html">PassThruPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_base.js~RenderEngine.html">RenderEngine</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~CubeFace.html">CubeFace</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~CubeMap.html">CubeMap</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html">RealtimeEngine</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~RenderLight.html">RenderLight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~ShaderCache.html">ShaderCache</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~ShaderCacheItem.html">ShaderCacheItem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~FBOSocket.html">FBOSocket</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderContext.html">RenderContext</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderGraph.html">RenderGraph</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderPass.html">RenderPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-CubeMapOrder">CubeMapOrder</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#sceneobject">sceneobject</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~SelectOneOp.html">SelectOneOp</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~SelectOpBase.html">SelectOpBase</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~ToggleSelectOp.html">ToggleSelectOp</a></span></span></li>
@@ -643,13 +665,13 @@
 </nav>
 
 <div class="content" data-ice="content"><div class="header-notice">
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {NodeEditor} from &apos;<span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber528">./scripts/editors/node/NodeEditor.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {NodeEditor} from &apos;<span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber550">./scripts/editors/node/NodeEditor.js</a></span>&apos;</code></pre></div>
   <span data-ice="access">public</span>
   <span data-ice="kind">class</span>
   
   
   
-  <span data-ice="source">| <span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber528">source</a></span></span>
+  <span data-ice="source">| <span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber550">source</a></span></span>
 </div>
 
 <div class="self-detail detail">
@@ -757,6 +779,34 @@
   <tbody>
   
   <tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+          
+          
+          
+          <span class="code" data-ice="name"><span><a href="class/scripts/editors/node/NodeEditor.js~NodeEditor.html#instance-member-background">background</a></span></span><span class="code" data-ice="signature">: <span>*</span></span>
+        </p>
+      </div>
+      <div>
+        
+        
+        
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
     <td>
       <span class="access" data-ice="access">public</span>
       
@@ -3556,7 +3606,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1234">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1260">source</a></span></span>
     </span>
   </h3>
 
@@ -3614,7 +3664,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber529">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber551">source</a></span></span>
     </span>
   </h3>
 
@@ -3649,6 +3699,49 @@
 <div data-ice="memberDetails"><h2 data-ice="title">Public Members</h2>
 
 <div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-member-background">
+    <span class="access" data-ice="access">public</span>
+    
+    
+    
+    
+    
+    <span class="code" data-ice="name">background</span><span class="code" data-ice="signature">: <span>*</span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber724">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
   <h3 data-ice="anchor" id="instance-get-graph">
     <span class="access" data-ice="access">public</span>
     
@@ -3660,7 +3753,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber655">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber677">source</a></span></span>
     </span>
   </h3>
 
@@ -3703,7 +3796,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber557">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber579">source</a></span></span>
     </span>
   </h3>
 
@@ -3746,7 +3839,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber556">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber578">source</a></span></span>
     </span>
   </h3>
 
@@ -3789,7 +3882,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1087">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1113">source</a></span></span>
     </span>
   </h3>
 
@@ -3832,7 +3925,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber671">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber693">source</a></span></span>
     </span>
   </h3>
 
@@ -3875,7 +3968,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber661">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber683">source</a></span></span>
     </span>
   </h3>
 
@@ -3918,7 +4011,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber542">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber564">source</a></span></span>
     </span>
   </h3>
 
@@ -3961,7 +4054,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber564">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber586">source</a></span></span>
     </span>
   </h3>
 
@@ -4004,7 +4097,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber560">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber582">source</a></span></span>
     </span>
   </h3>
 
@@ -4047,7 +4140,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber805">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber829">source</a></span></span>
     </span>
   </h3>
 
@@ -4090,7 +4183,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber562">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber584">source</a></span></span>
     </span>
   </h3>
 
@@ -4133,7 +4226,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber539">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber561">source</a></span></span>
     </span>
   </h3>
 
@@ -4178,7 +4271,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber534">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber556">source</a></span></span>
     </span>
   </h3>
 
@@ -4221,7 +4314,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber536">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber558">source</a></span></span>
     </span>
   </h3>
 
@@ -4264,7 +4357,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber558">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber580">source</a></span></span>
     </span>
   </h3>
 
@@ -4307,7 +4400,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber533">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber555">source</a></span></span>
     </span>
   </h3>
 
@@ -4350,7 +4443,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber537">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber559">source</a></span></span>
     </span>
   </h3>
 
@@ -4393,7 +4486,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber532">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber554">source</a></span></span>
     </span>
   </h3>
 
@@ -4439,7 +4532,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber939">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber965">source</a></span></span>
     </span>
   </h3>
 
@@ -4482,7 +4575,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber580">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber602">source</a></span></span>
     </span>
   </h3>
 
@@ -4525,7 +4618,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1170">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1196">source</a></span></span>
     </span>
   </h3>
 
@@ -4580,7 +4673,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber795">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber819">source</a></span></span>
     </span>
   </h3>
 
@@ -4623,7 +4716,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1086">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1112">source</a></span></span>
     </span>
   </h3>
 
@@ -4666,7 +4759,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1005">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1031">source</a></span></span>
     </span>
   </h3>
 
@@ -4721,7 +4814,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber842">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber868">source</a></span></span>
     </span>
   </h3>
 
@@ -4805,7 +4898,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1123">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1149">source</a></span></span>
     </span>
   </h3>
 
@@ -4861,7 +4954,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1127">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1153">source</a></span></span>
     </span>
   </h3>
 
@@ -4938,7 +5031,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber576">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber598">source</a></span></span>
     </span>
   </h3>
 
@@ -4993,7 +5086,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber705">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber729">source</a></span></span>
     </span>
   </h3>
 
@@ -5064,7 +5157,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber665">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber687">source</a></span></span>
     </span>
   </h3>
 
@@ -5107,7 +5200,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1227">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1253">source</a></span></span>
     </span>
   </h3>
 
@@ -5166,7 +5259,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1033">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1059">source</a></span></span>
     </span>
   </h3>
 
@@ -5209,7 +5302,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber828">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber854">source</a></span></span>
     </span>
   </h3>
 
@@ -5268,7 +5361,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber820">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber846">source</a></span></span>
     </span>
   </h3>
 
@@ -5312,7 +5405,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber812">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber836">source</a></span></span>
     </span>
   </h3>
 
@@ -5356,7 +5449,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber719">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber743">source</a></span></span>
     </span>
   </h3>
 
@@ -5415,7 +5508,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber878">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber904">source</a></span></span>
     </span>
   </h3>
 
@@ -5474,7 +5567,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber784">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber808">source</a></span></span>
     </span>
   </h3>
 
@@ -5533,7 +5626,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1137">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1163">source</a></span></span>
     </span>
   </h3>
 
@@ -5599,7 +5692,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber607">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber629">source</a></span></span>
     </span>
   </h3>
 
@@ -5654,7 +5747,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1023">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1049">source</a></span></span>
     </span>
   </h3>
 
@@ -5697,7 +5790,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber611">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber633">source</a></span></span>
     </span>
   </h3>
 
@@ -5756,7 +5849,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1153">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1179">source</a></span></span>
     </span>
   </h3>
 
@@ -5822,7 +5915,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber976">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1002">source</a></span></span>
     </span>
   </h3>
 
@@ -5865,7 +5958,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber921">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber947">source</a></span></span>
     </span>
   </h3>
 
@@ -5908,7 +6001,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber932">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber958">source</a></span></span>
     </span>
   </h3>
 
@@ -5953,7 +6046,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber567">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber589">source</a></span></span>
     </span>
   </h3>
 
@@ -5996,7 +6089,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1179">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/editors/node/NodeEditor.js.html#lineNumber1205">source</a></span></span>
     </span>
   </h3>
 

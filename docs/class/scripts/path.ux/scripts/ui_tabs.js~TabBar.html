@@ -66,6 +66,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~DataRefProperty.html">DataRefProperty</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/lib_api.js~Library.html">Library</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/material.js~ShaderNetwork.html">ShaderNetwork</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/material.js~ShadowSettings.html">ShadowSettings</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~EnvLight.html">EnvLight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~ObjectList.html">ObjectList</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/scene.js~ObjectSet.html">ObjectSet</a></span></span></li>
@@ -85,6 +86,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~SimpleMesh.html">SimpleMesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/simplemesh.js~TriEditor.html">TriEditor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~Camera.html">Camera</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~CubeTexture.html">CubeTexture</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~DrawMats.html">DrawMats</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~IntUniform.html">IntUniform</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/core/webgl.js~RenderBuffer.html">RenderBuffer</a></span></span></li>
@@ -98,6 +100,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-makeCube">makeCube</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-getShader">getShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-hashShader">hashShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-initDebugGL">initDebugGL</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-init_webgl">init_webgl</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockTypes">BlockTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-APP_KEY_NAME">APP_KEY_NAME</a></span></span></li>
@@ -105,6 +108,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FILE_EXT">FILE_EXT</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-FILE_MAGIC">FILE_MAGIC</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlitShader">BlitShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlitShaderGLSL300">BlitShaderGLSL300</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-GraphFlags">GraphFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NodeFlags">NodeFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SocketFlags">SocketFlags</a></span></span></li>
@@ -114,13 +118,16 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockFlags">BlockFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BlockTypes">BlockTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MaterialFlags">MaterialFlags</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShadowFlags">ShadowFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-EnvLightFlags">EnvLightFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-SceneFlags">SceneFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Colors">Colors</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectFlags">ObjectFlags</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-LayerTypes">LayerTypes</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-TypeSizes">TypeSizes</a></span></span></li>
-<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-constmap">constmap</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#data-api">data_api</a><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_debugeditor">api_define_debugeditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_editor">api_define_editor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_envlight">api_define_envlight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_light">api_define_light</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-function">F</span><span data-ice="name"><span><a href="function/index.html#static-function-api_define_mesh">api_define_mesh</a></span></span></li>
@@ -140,6 +147,13 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-allareas_stack">allareas_stack</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Icons">Icons</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-VelPanFlags">VelPanFlags</a></span></span></li>
+<li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-debug">editors/debug</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/debug/DebugEditor.js~DebugEditor.html">DebugEditor</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/debug/gldebug.js~glDebug.html">glDebug</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DisplayModes">DisplayModes</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DepthShader">DepthShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-DisplayShader">DisplayShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ShaderDef">ShaderDef</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-Shaders">Shaders</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-menu">editors/menu</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/menu/MainMenu.js~MenuBarEditor.html">MenuBarEditor</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#editors-node">editors/node</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/node/NodeEditor.js~NodeEditor.html">NodeEditor</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/editors/node/NodeEditor.js~NodeSocketElem.html">NodeSocketElem</a></span></span></li>
@@ -217,6 +231,7 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-BasicLitMesh">BasicLitMesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshEditShader">MeshEditShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshIDShader">MeshIDShader</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-MeshLinearZShader">MeshLinearZShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-NormalPassShader">NormalPassShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-ObjectLineShader">ObjectLineShader</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-PolygonOffset">PolygonOffset</a></span></span></li>
@@ -242,6 +257,8 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/customdata.js~LayerSet.html">LayerSet</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh.js~Mesh.html">Mesh</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_base.js~MeshError.html">MeshError</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_createops.js~MakePlaneOp.html">MakePlaneOp</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_createops.js~MeshCreateOp.html">MeshCreateOp</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_customdata.js~OrigIndexElem.html">OrigIndexElem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_customdata.js~UVLayerElem.html">UVLayerElem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/mesh/mesh_element_list.js~ElementList.html">ElementList</a></span></span></li>
@@ -569,14 +586,19 @@
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~BlurPass.html">BlurPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~NormalPass.html">NormalPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~OutputPass.html">OutputPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/realtime_passes.js~PassThruPass.html">PassThruPass</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_base.js~RenderEngine.html">RenderEngine</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~CubeFace.html">CubeFace</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~CubeMap.html">CubeMap</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~RealtimeEngine.html">RealtimeEngine</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~RenderLight.html">RenderLight</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~ShaderCache.html">ShaderCache</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderengine_realtime.js~ShaderCacheItem.html">ShaderCacheItem</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~FBOSocket.html">FBOSocket</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderContext.html">RenderContext</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderGraph.html">RenderGraph</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/renderengine/renderpass.js~RenderPass.html">RenderPass</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-CubeMapOrder">CubeMapOrder</a></span></span></li>
 <li data-ice="doc"><a data-ice="dirPath" class="nav-dir-path" href="identifiers.html#sceneobject">sceneobject</a><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~SelectOneOp.html">SelectOneOp</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~SelectOpBase.html">SelectOpBase</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/scripts/sceneobject/selectops.js~ToggleSelectOp.html">ToggleSelectOp</a></span></span></li>
@@ -643,13 +665,13 @@
 </nav>
 
 <div class="content" data-ice="content"><div class="header-notice">
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {TabBar} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber144">./scripts/path.ux/scripts/ui_tabs.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {TabBar} from &apos;<span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber150">./scripts/path.ux/scripts/ui_tabs.js</a></span>&apos;</code></pre></div>
   <span data-ice="access">public</span>
   <span data-ice="kind">class</span>
   
   
   
-  <span data-ice="source">| <span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber144">source</a></span></span>
+  <span data-ice="source">| <span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber150">source</a></span></span>
 </div>
 
 <div class="self-detail detail">
@@ -1091,7 +1113,7 @@
           
           
           
-          <span class="code" data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_tabs.js~TabBar.html#instance-method-addTab">addTab</a></span></span><span class="code" data-ice="signature">(name: <span>*</span>, id: <span>*</span>, tooltip: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>)</span>
+          <span class="code" data-ice="name"><span><a href="class/scripts/path.ux/scripts/ui_tabs.js~TabBar.html#instance-method-addTab">addTab</a></span></span><span class="code" data-ice="signature">(name: <span>*</span>, id: <span>*</span>, tooltip: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>): <span>*</span></span>
         </p>
       </div>
       <div>
@@ -3273,7 +3295,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber679">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber692">source</a></span></span>
     </span>
   </h3>
 
@@ -3329,7 +3351,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber354">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber364">source</a></span></span>
     </span>
   </h3>
 
@@ -3403,7 +3425,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber145">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber151">source</a></span></span>
     </span>
   </h3>
 
@@ -3449,7 +3471,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber162">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber168">source</a></span></span>
     </span>
   </h3>
 
@@ -3492,7 +3514,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber163">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber169">source</a></span></span>
     </span>
   </h3>
 
@@ -3535,7 +3557,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber174">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber180">source</a></span></span>
     </span>
   </h3>
 
@@ -3578,7 +3600,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber175">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber181">source</a></span></span>
     </span>
   </h3>
 
@@ -3621,7 +3643,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber160">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber166">source</a></span></span>
     </span>
   </h3>
 
@@ -3664,7 +3686,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber151">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber157">source</a></span></span>
     </span>
   </h3>
 
@@ -3707,7 +3729,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber250">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber256">source</a></span></span>
     </span>
   </h3>
 
@@ -3752,7 +3774,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber155">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber161">source</a></span></span>
     </span>
   </h3>
 
@@ -3795,7 +3817,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber171">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber177">source</a></span></span>
     </span>
   </h3>
 
@@ -3838,7 +3860,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber172">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber178">source</a></span></span>
     </span>
   </h3>
 
@@ -3880,11 +3902,11 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     
     
     
-    <span class="code" data-ice="name">addTab</span><span class="code" data-ice="signature">(name: <span>*</span>, id: <span>*</span>, tooltip: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>)</span>
+    <span class="code" data-ice="name">addTab</span><span class="code" data-ice="signature">(name: <span>*</span>, id: <span>*</span>, tooltip: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>): <span>*</span></span>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber373">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber383">source</a></span></span>
     </span>
   </h3>
 
@@ -3927,7 +3949,19 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
 </div>
 </div>
 
-  
+  <div class="return-params" data-ice="returnParams">
+    <h4>Return:</h4>
+    <table>
+      <tbody>
+        <tr>
+          <td class="return-type code" data-ice="returnType"><span>*</span></td>
+          
+        </tr>
+      </tbody>
+    </table>
+    <div data-ice="returnProperties">
+</div>
+  </div>
 
   
 
@@ -3956,7 +3990,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber285">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber295">source</a></span></span>
     </span>
   </h3>
 
@@ -4027,7 +4061,7 @@ toolpath app.datapath_set(path=&quot;&quot; newValueJSON=&quot;&quot;)</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber309">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber319">source</a></span></span>
     </span>
   </h3>
 
@@ -4104,7 +4138,7 @@ the toJSON/loadJSON or STRUCT interfaces.</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber294">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber304">source</a></span></span>
     </span>
   </h3>
 
@@ -4162,7 +4196,7 @@ see saveUIData() export</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber487">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber500">source</a></span></span>
     </span>
   </h3>
 
@@ -4221,7 +4255,7 @@ see saveUIData() export</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber361">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber371">source</a></span></span>
     </span>
   </h3>
 
@@ -4286,7 +4320,7 @@ see saveUIData() export</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber670">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber683">source</a></span></span>
     </span>
   </h3>
 
@@ -4346,7 +4380,7 @@ see saveUIData() export</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber414">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber427">source</a></span></span>
     </span>
   </h3>
 
@@ -4406,7 +4440,7 @@ see saveUIData() export</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber403">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber416">source</a></span></span>
     </span>
   </h3>
 
@@ -4466,7 +4500,7 @@ see saveUIData() export</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber382">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber395">source</a></span></span>
     </span>
   </h3>
 
@@ -4526,7 +4560,7 @@ see saveUIData() export</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber662">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber675">source</a></span></span>
     </span>
   </h3>
 
@@ -4571,7 +4605,7 @@ see saveUIData() export</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber440">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber453">source</a></span></span>
     </span>
   </h3>
 
@@ -4614,7 +4648,7 @@ see saveUIData() export</p>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber499">source</a></span></span>
+      <span data-ice="source"><span><a href="file/scripts/path.ux/scripts/ui_tabs.js.html#lineNumber512">source</a></span></span>
     </span>
   </h3>
 
