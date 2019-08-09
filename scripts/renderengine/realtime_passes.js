@@ -31,18 +31,21 @@ export class BasePass extends RenderPass {
     outputs : Node.inherit({
 
     }),
-    shader : `
-gl_FragColor = texture2D(rgba, v_Uv);
-gl_FragDepthEXT = texture2D(depth, v_Uv)[0];
-    `
+    shader : ``
   }}
 
   renderIntern(rctx) {
     let gl = rctx.gl;
 
+    //gl.clearColor = () => {};
+    //gl.clear = () => {};
+
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
-    gl.clearDepth(100000.0);
+    gl.clearDepth(1000000.0);
+    gl.depthMask(true);
+
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
     gl.enable(gl.DEPTH_TEST);
     gl.disable(gl.BLEND);
 
@@ -68,12 +71,24 @@ export class NormalPass extends RenderPass {
     }),
     shader : `
 gl_FragColor = texture2D(fbo_rgba, v_Uv);
-gl_FragDepthEXT = texture2D(fbo_depth, v_Uv)[0];
+gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
     `
   }}
 
   renderIntern(rctx) {
+    let gl = rctx.gl;
+
     console.log("normal pass exec!");
+
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.clearDepth(1000000.0);
+    gl.depthMask(true);
+
+    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
+    gl.enable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+
     rctx.engine.render_normals(rctx.drawmats, rctx.gl, zero, rctx.size, rctx.scene);
   }
 }
@@ -84,8 +99,8 @@ export class OutputPass extends RenderPass {
   }
 
   static nodedef() {return {
-    uiname : "Test Pass",
-    name   : "test_pass",
+    uiname : "Output Pass",
+    name   : "output_pass",
     inputs : Node.inherit({
 
     }),
@@ -93,13 +108,24 @@ export class OutputPass extends RenderPass {
 
     }),
     shader : `
-gl_FragColor = texture2D(fbo_rgba, v_Uv);
-gl_FragDepthEXT = texture2D(fbo_depth, v_Uv)[0];
+vec4 color = texture2D(fbo_rgba, v_Uv);
+
+//float f = color.r / (1.0 + uSample);
+//gl_FragColor = vec4(f, f, f, 1.0);
+gl_FragColor = vec4(color.rgb / (1.0+uSample), 1.0);
+gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
     `
   }}
 
   renderIntern(rctx) {
-    super.renderIntern(rctx, true);
+    let gl = rctx.gl;
+
+    gl.depthMask(true);
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    super.renderIntern(rctx, false);
   }
 }
 
@@ -153,7 +179,7 @@ float nrand1(float seed) {
   return (rand1(seed)*0.5 + rand1(seed+0.5)*0.5);
 }
 float wrand(float x, float y, float seed) {
-  seed += uSample;
+  seed += fract(uSample*0.01 + uSample*sqrt(2.0));
 #if 0    
   float b = sample_blue(v_Uv);
   
@@ -235,7 +261,7 @@ float rand(float x, float y, float seed) {
     
     f += w;
     
-    seed += 3.0;
+    seed += sqrt(5.0);
     tot += 1.0;
   }
 
@@ -249,17 +275,18 @@ float rand(float x, float y, float seed) {
   
   //gl_FragColor = texture2D(fbo_rgba, v_Uv);
   //gl_FragColor = vec4(texture2D(fbo_rgba, v_Uv).rgb, 1.0);
-  gl_FragDepthEXT = texture2D(fbo_depth, v_Uv)[0];
-    `
+  gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
+  `
   }}
 
   renderIntern(rctx) {
+    let gl = rctx.gl;
+
     this.uniforms.factor = rctx.scene.envlight.ao_fac;
     this.uniforms.dist = rctx.scene.envlight.ao_dist;
-    this.uniforms.steps = 1024;
+    this.uniforms.steps = 10240;
 
-
-    super.renderIntern(rctx, true);
+    super.renderIntern(rctx, false);
   }
 }
 
@@ -308,8 +335,8 @@ export class BlurPass extends RenderPass {
     
     accum /= tot;
     
-gl_FragColor = accum;
-gl_FragDepthEXT = texture2D(fbo_depth, v_Uv)[0];
+    gl_FragColor = accum;
+    gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
     `,
   }}
 
@@ -325,7 +352,7 @@ gl_FragDepthEXT = texture2D(fbo_depth, v_Uv)[0];
     }
 
     this.shaderPre = shaderPre;
-    super.renderIntern(rctx, true);
+    super.renderIntern(rctx, false);
   }
 }
 
@@ -338,22 +365,67 @@ export class AccumPass extends RenderPass {
     uiname : "Accum Pass",
     name   : "accum_pass",
     inputs : Node.inherit({
-      buf : new FBOSocket()
     }),
     outputs : Node.inherit({
-
     }),
+    shaderPre : `
+    uniform sampler2D lastBuf;
+    `,
     shader : `
-
+    
 vec4 color1 = texture2D(fbo_rgba, v_Uv);
-vec4 color2 = texture2D(buf_rgba, v_Uv);
+vec4 color2 = texture2D(lastBuf, v_Uv);
 
-gl_FragColor = color1 + color2;
-gl_FragDepthEXT = texture2D(fbo_depth, v_Uv)[0];
+gl_FragColor = vec4(color1.rgb, 1.0) + vec4(color2.rgb, 1.0)*float(uSample > 0.0);
+gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
     `
   }}
 
   renderIntern(rctx) {
-    super.renderIntern(rctx, true);
+    let gl = rctx.gl;
+
+    //*
+    let buf = rctx.engine.passThru.outputs.fbo.getValue();
+
+    gl.disable(gl.DEPTH_TEST);
+    //gl.depthMask(true);
+
+    gl.disable(gl.BLEND);
+
+    if (buf.texColor) {
+      this.uniforms.lastBuf = buf.texColor;
+    }
+    //*/
+
+    super.renderIntern(rctx, false);
+  }
+}
+
+export class PassThruPass extends RenderPass {
+  constructor() {
+    super();
+  }
+
+  static nodedef() {return {
+    uiname : "Pass Thru Pass",
+    name   : "passthru_pass",
+    inputs : Node.inherit({
+    }),
+    outputs : Node.inherit({
+    }),
+    shader : `
+gl_FragColor = texture2D(fbo_rgba, v_Uv);
+gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
+    `
+  }}
+
+  renderIntern(rctx) {
+    let gl = rctx.gl;
+
+    gl.disable(gl.BLEND);
+    gl.disable(gl.DEPTH_TEST);
+    gl.depthMask(false);
+
+    super.renderIntern(rctx, false);
   }
 }

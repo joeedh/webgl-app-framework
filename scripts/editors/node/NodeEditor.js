@@ -16,7 +16,7 @@ let projcos = util.cachering.fromConstructor(Vector2, 64);
 import {VelPanZoomOp, VelPanPanOp} from '../velpan.js';
 import {SelectOneOp, SelectOpBase} from './node_selectops.js';
 import {SelOneToolModes} from "../view3d/selectmode.js";
-import {NodeFlags, SocketFlags} from '../../core/graph.js';
+import {NodeFlags, SocketFlags, SocketTypes} from '../../core/graph.js';
 import {Overdraw} from '../../path.ux/scripts/ScreenOverdraw.js';
 import {haveModal} from '../../path.ux/scripts/simple_events.js';
 
@@ -64,6 +64,10 @@ export class NodeSocketElem extends RowFrame {
   click() {
     this.updateSocketRef();
 
+    if (haveModal()) {
+      return;
+    }
+
     if (this.socket === undefined) {
       console.warn("socket ui error");
       return;
@@ -74,8 +78,26 @@ export class NodeSocketElem extends RowFrame {
     let node = this.uinode.getNode();
     let sock = this.socket;
 
-    let cmd = `node.connect(useNodeEditorGraph=1 node1_id=${node.graph_id}`;
-    cmd += ` sock1_id=${sock.graph_id})`;
+    if (sock === undefined) {
+      console.warn("Error in node editor ui socket", this, this.uinode);
+      return;
+    }
+
+    let cmd;
+
+    console.log(sock, sock.socketType == SocketTypes.INPUT, sock.edges.length);
+
+    if (sock.socketType === SocketTypes.INPUT && sock.edges.length === 1) {
+      let srcsock = sock.edges[0];
+      let srcnode = srcsock.node;
+
+      cmd = `node.connect(useNodeEditorGraph=1 node1_id=${srcnode.graph_id}`;
+      cmd += ` disconnectSockID=${sock.graph_id}`;
+      cmd += ` sock1_id=${srcsock.graph_id})`;
+    } else {
+      cmd = `node.connect(useNodeEditorGraph=1 node1_id=${node.graph_id}`;
+      cmd += ` sock1_id=${sock.graph_id})`;
+    }
 
     this.ctx.api.execTool(this.ctx, cmd);
   }
@@ -695,10 +717,12 @@ export class NodeEditor extends Editor {
     this.addEventListener("mousedown", this.on_mousedown);
 
     let header = this.header;
-    this.container.background = "orange";
-    this.container.style["background-color"] = "orange";
 
     this.setCSS();
+
+    let bgcolor = "rgb(130, 130, 130)";
+    this.background = bgcolor;
+    this.style["background-color"] = bgcolor;
     //header.prop("NodeEditor.selectmode");
   }
 
@@ -810,9 +834,11 @@ export class NodeEditor extends Editor {
   }
 
   on_area_inactive() {
-    this.overdraw.clear();
-    this.overdraw.remove();
-    this.overdraw = undefined;
+    if (this.overdraw) {
+      this.overdraw.clear();
+      this.overdraw.remove();
+      this.overdraw = undefined;
+    }
 
     this.clearGraph();
   }

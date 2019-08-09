@@ -44,6 +44,7 @@ export function getWebGL() {
   if (!_gl) {
     initWebGL();
   }
+
   return _gl;
 }
 
@@ -80,6 +81,7 @@ export function initWebGL() {
   //_gl.canvas = canvas;
   loadShaders(_gl);
 }
+
 export function loadShaders(gl) {
   for (let k in view3d_shaders.ShaderDef) {
     view3d_shaders.Shaders[k] = loadShader(gl, view3d_shaders.ShaderDef[k]);
@@ -102,6 +104,7 @@ export class View3D extends Editor {
   constructor() {
     super();
 
+    this._last_render_draw = 0;
     this.renderEngine = undefined;
 
     this.flag = View3DFlags.SHOW_CURSOR;
@@ -576,6 +579,12 @@ export class View3D extends Editor {
   update() {
     super.update();
 
+    //TODO have limits for how many samplers to render
+    if (time_ms() - this._last_render_draw > 100) {
+      //window.redraw_viewport();
+      //this._last_render_draw = time_ms();
+    }
+
     if (time_ms() - this._last_wutime > 50) {
       this.updateWidgets();
       this._last_wutime = time_ms();
@@ -634,7 +643,16 @@ export class View3D extends Editor {
   
   on_resize(newsize) {
     super.on_resize(newsize);
-    
+
+    //trigger rebuild of renderEngine, if necassary
+    if (this.renderEngine !== undefined) {
+      let engine = this.renderEngine;
+      this.renderEngine = undefined;
+
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+      engine.destroy(this.gl);
+    }
+
     this.setCSS();
     window.redraw_viewport();
   }
@@ -725,6 +743,12 @@ export class View3D extends Editor {
     this.pop_ctx_active();
   }
 
+  resetRender() {
+    if (this.renderEngine !== undefined) {
+      this.renderEngine.resetRender();
+    }
+  }
+
   drawRender() {
     let gl = this.gl;
 
@@ -771,11 +795,12 @@ export class View3D extends Editor {
     gl.scissor(~~x, ~~y, ~~w, ~~h);
 
     if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
-      gl.clearColor(1.0, 1.0, 1.0, 0.0);
+      gl.clearColor(0.5, 0.5, 0.5, 1.0);
     } else {
       gl.clearColor(0.8, 0.8, 1.0, 1.0);
     }
     //gl.clearColor(1.0, 1.0, 1.0, 0.0);
+
     gl.clearDepth(100000);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     
@@ -785,7 +810,7 @@ export class View3D extends Editor {
     gl.enable(gl.SCISSOR_TEST);
 
     gl.enable(gl.DEPTH_TEST);
-    gl.depthMask(1);
+    gl.depthMask(true);
 
     //console.log(this.size);
     let aspect = this.size[0] / this.size[1];
@@ -927,7 +952,8 @@ export class View3D extends Editor {
   }
 
   static define() {return {
-    tagname : "view3d-editor-x",
+    has3D    : true,
+    tagname  : "view3d-editor-x",
     areaname : "view3d",
     uiname   : "Viewport",
     icon     : -1
@@ -951,23 +977,35 @@ nstructjs.manager.add_class(View3D);
 
 
 let animreq = undefined;
+let resetRender = 0;
 
 let f = () => {
   animreq = undefined;
   let screen = _appstate.screen;
-  
+  let resetrender = resetRender;
+  resetRender = 0;
+
   for (let sarea of screen.sareas) {
-    if (sarea.area instanceof View3D) {
+    let sdef = sarea.area.constructor.define();
+
+    if (sdef.has3D) {
       sarea.area._init();
+
+      if (resetrender && sarea.area instanceof View3D) {
+        sarea.area.resetRender();
+      }
+
       sarea.area.viewportDraw();
     }
   }
-}
+};
 
-window.redraw_viewport = () => {
+window.redraw_viewport = (ResetRender=false) => {
+  resetRender |= ResetRender ? 1 : 0;
+
   if (animreq !== undefined) {
     return;
   }
-  
+
   animreq = requestAnimationFrame(f);
 }

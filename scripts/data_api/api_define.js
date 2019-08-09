@@ -27,6 +27,8 @@ import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph
 import {SelectOneOp} from '../sceneobject/selectops.js';
 import {Scene, EnvLight, EnvLightFlags} from "../core/scene.js";
 import {api_define_graphclasses} from '../core/graph_class.js';
+import {DisplayModes} from '../editors/debug/DebugEditor_base.js';
+import {DebugEditor} from '../editors/debug/DebugEditor.js';
 
 let api = new DataAPI();
 import {Icons} from '../editors/icon_enum.js';
@@ -305,6 +307,28 @@ export function api_define_velpan(api, parent) {
   return vp;
 }
 
+export function api_define_debugeditor(api, parent) {
+  let dedstruct = api_define_editor(api, DebugEditor);
+
+  let redrawDebug = function() {
+    let editor = this.dataref;
+
+    editor._redraw();
+  }
+
+  parent.struct("debugEditor", "debugEditor", "Debug Editor", dedstruct);
+  let edef = dedstruct.enum("displayMode", "displayMode", DisplayModes);
+
+  edef.icons({
+    RAW : Icons.VIEW_RAW,
+    NORMAL : Icons.VIEW_NORMALS,
+    DEPTH : Icons.VIEW_DEPTH,
+    ALPHA : Icons.VIEW_ALPHA
+  });
+
+  edef.on("change", redrawDebug);
+}
+
 export function api_define_node_editor(api, parent) {
   let nedstruct = api_define_editor(api, NodeEditor);
 
@@ -415,6 +439,7 @@ export function getDataAPI() {
 
   api_define_view3d(api, cstruct);
   api_define_node_editor(api, cstruct);
+  api_define_debugeditor(api, cstruct);
 
   api_define_mesh(api, cstruct);
   api_define_material(api, cstruct);

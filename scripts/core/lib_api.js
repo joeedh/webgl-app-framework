@@ -182,6 +182,22 @@ export class BlockSet extends Array {
     this.namemap = {};
   }
 
+  uniqueName(name=this.type.blockDefine().defaultName) {
+    if (!(name in this.namemap)) {
+      return name;
+    }
+
+    let name2 = name;
+
+    let i = 1;
+    while (name2 in this.namemap) {
+      name2 = name + i;
+      i++;
+    }
+
+    return name2;
+  }
+
   get active() {
     return this.__active;
   }
@@ -189,6 +205,10 @@ export class BlockSet extends Array {
   set active(val) {
     this.__active = val;
     //console.trace("active set", this);
+  }
+
+  setActive(val) {
+    this.active = val;
   }
 
   add(block, _inside_file_load=false) {

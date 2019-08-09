@@ -11,6 +11,10 @@ export class RenderEngine {
 
   }
 
+  resetRender() {
+
+  }
+
   render(camera, gl, viewbox_pos, viewbox_size, scene) {
 
   }

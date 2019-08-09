@@ -235,6 +235,10 @@ export class ConnectNodeOp extends NodeGraphOp {
   static invoke(ctx, args) {
     let tool = super.invoke(ctx, args);
 
+    if ("disconnectSockID" in args) {
+      tool.inputs.disconnectSockID.setValue(args.disconnectSockID);
+    }
+
     if ("node1_id" in args) {
       tool.inputs.node1_id.setValue(args.node1_id);
     }
@@ -263,6 +267,11 @@ export class ConnectNodeOp extends NodeGraphOp {
 
       node2_id     : new IntProperty(-1),
       sock2_id     : new IntProperty(-1),
+
+      /*used for "dragging" connections between input sockets
+        which of course requires that old connection be destroyed
+       */
+      disconnectSockID : new IntProperty(-1)
     }),
     is_modal : true
   }}
@@ -327,6 +336,12 @@ export class ConnectNodeOp extends NodeGraphOp {
     }
   }
 
+  modalStart(ctx) {
+    super.modalStart(ctx);
+
+    this.execPre(ctx);
+  }
+
   modalEnd(cancelled) {
     let ctx = this.modal_ctx;
     super.modalEnd(cancelled);
@@ -342,6 +357,17 @@ export class ConnectNodeOp extends NodeGraphOp {
     this.modalEnd(e.button != 0);
   }
 
+  execPre(ctx) {
+    super.execPre(ctx);
+
+    let graph = this.fetchGraph(ctx);
+    let remsock = graph.sock_idmap[this.inputs.disconnectSockID.getValue()];
+
+    if (remsock !== undefined) {
+      remsock.disconnect();
+      graph.signalUI();
+    }
+  }
   exec(ctx) {
     let graph = this.fetchGraph(ctx);
 

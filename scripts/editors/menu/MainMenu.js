@@ -16,6 +16,8 @@ import {NodeEditor} from "../node/NodeEditor.js";
 export class MenuBarEditor extends Editor {
   constructor() {
     super();
+
+    this._ignore_tab_change = false;
   }
 
   init() {
@@ -41,16 +43,87 @@ export class MenuBarEditor extends Editor {
           _appstate.loadFile(filedata);
         });
       }],
-
     ]);
+
+    this.makeScreenSwitcher(this.container);
+  }
+
+  rebuildScreenSwitcher() {
+    if (this.tabs !== undefined) {
+      this.tabs.remove();
+    }
+
+    this.makeScreenSwitcher(this.container);
+  }
+
+  _on_tab_change(tab) {
+    if (this._ignore_tab_change) {
+      return;
+    }
+
+    console.trace("Screen tab change!", tab, this.ctx.datalib.getLibrary("screen").active.lib_id);
+
+    if (tab.id == "maketab") {
+      console.log("new screen!");
+
+      let lib = this.ctx.datalib.getLibrary("screen");
+      let sblock = lib.active;
+
+      if (sblock === undefined) {
+        sblock = lib[0];
+      }
+
+      let sblock2 = sblock.copy();
+      sblock2.name = lib.uniqueName(sblock2.name);
+
+      lib.add(sblock2);
+      lib.setActive(sblock2);
+
+      _appstate.switchScreen(sblock2);
+      //this.rebuildScreenSwitcher();
+    } else {
+      console.log(tab.id);
+      let sblock = this.ctx.datalib.get(tab.id);
+
+      if (sblock !== undefined) {
+        this.ctx.state.switchScreen(sblock);
+      }
+    }
+  }
+
+  makeScreenSwitcher(container) {
+    let tabs = this.tabs = container.tabs();
+
+    tabs.onchange = (tab) => {
+      this._on_tab_change(tab);
+    };
+
+    let lib = this.ctx.datalib.getLibrary("screen");
+
+    this._ignore_tab_change = true;
+
+    for (let sblock of lib) {
+      let screen = sblock.screen;
+
+      let tab = tabs.tab(sblock.name, sblock.lib_id);
+
+      if (sblock === lib.active) {
+        tabs.setActive(tab);
+      }
+    }
+
+    let tab = tabs.tab("+", "maketab");
+    this._ignore_tab_change = false;
   }
 
   on_area_active() {
+    this.rebuildScreenSwitcher();
     this.setCSS();
   }
 
   copy() {
     let ret = document.createElement("menu-editor-x");
+    ret.ctx = this.ctx;
 
     return ret;
   }

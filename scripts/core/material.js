@@ -16,10 +16,30 @@ export const MaterialFlags = {
   SELECT : 1
 };
 
+export const ShadowFlags = {
+  NO_SHADOWS : 1
+};
+
+export class ShadowSettings {
+  constructor() {
+    this.bias = 1.0;
+    this.flag = 0;
+  }
+}
+
+ShadowSettings.STRUCT = `
+ShadowSettings {
+  bias : float;
+  flag : int;
+}
+`;
+nstructjs.manager.add_class(ShadowSettings);
+
 export class ShaderNetwork extends DataBlock {
   constructor() {
     super();
 
+    this.shadow = new ShadowSettings();
     this.flag = 0;
     this.graph = new Graph();
     this.graph.onFlagResort = this._on_flag_resort.bind(this);
@@ -73,8 +93,9 @@ export class ShaderNetwork extends DataBlock {
 };
 
 ShaderNetwork.STRUCT = STRUCT.inherit(ShaderNetwork, DataBlock) + `
-  graph : graph.Graph;
-  flag  : int;
+  graph    : graph.Graph;
+  flag     : int;
+  shadow   : ShadowSettings;
 }
 `;
 DataBlock.register(ShaderNetwork);

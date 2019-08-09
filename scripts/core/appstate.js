@@ -97,7 +97,7 @@ export function genDefaultScreen(appstate) {
   
   appstate.screen.appendChild(sarea);
 
-  let yperc = 45 / _appstate.screen.size[1];
+  let yperc = 65 / _appstate.screen.size[1];
   let sarea2 = _appstate.screen.splitArea(sarea, yperc);
 
   sarea.switch_editor(MenuBarEditor);
@@ -284,6 +284,49 @@ export class AppState {
     });
 
     this._execEditorOnFileLoad();
+  }
+
+  switchScreen(sblock) {
+    let screen2 = sblock.screen;
+
+    if (this.screen === screen2) {
+      return;
+    }
+
+    this.ctx.datalib.setActive(sblock);
+
+    if (screen2 === undefined) {
+      throw new Error("screen2 cannot be undefined");
+    }
+
+    let screen = this.screen;
+    if (screen !== undefined) {
+      for (let sarea of screen.sareas) {
+        sarea.area.on_area_inactive();
+      }
+
+      screen.unlisten();
+      screen.remove(false);
+    }
+
+    this.screen = screen2;
+    screen2.ctx = this.ctx;
+
+    screen2.listen();
+    screen2.regenBorders();
+    screen2.setCSS();
+
+    for (let sarea of screen2.sareas) {
+      sarea.ctx = sarea.area.ctx = this.ctx;
+      sarea.setCSS();
+
+      sarea.area.on_area_active();
+      sarea.area.setCSS();
+
+      console.log("PARENTWIDGET", sarea.parentWidget);
+    }
+
+    document.body.appendChild(screen2);
   }
 
   /*this is stupid, I have to delay by 350 ms

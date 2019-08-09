@@ -136,6 +136,11 @@ export class NodeSocketType {
   }
   
   connect(sock) {
+    if (this.edges.indexOf(sock) >= 0) {
+      console.warn("Already have socket connected");
+      return;
+    }
+
     this.edges.push(sock);
     sock.edges.push(this);
     
@@ -147,6 +152,21 @@ export class NodeSocketType {
   }
   
   disconnect(sock) {
+    if (sock === undefined) {
+      let _i = 0;
+
+      while (this.edges.length > 0) {
+        if (_i++ > 10000) {
+          console.warn("infinite loop detected in graph code");
+          break;
+        }
+
+        this.disconnect(this.edges[0]);
+      }
+
+      return;
+    }
+
     this.edges.remove(sock, true);
     sock.edges.remove(this, true);
     
@@ -228,6 +248,14 @@ export class NodeSocketType {
 
   loadSTRUCT(reader) {
     reader(this);
+    /*
+    let eset = new util.set();
+    for (let id of this.edges) {
+      eset.add(id);
+    }
+
+    this.edges = list(eset);
+    //*/
   }
 }
 

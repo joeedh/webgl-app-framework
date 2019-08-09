@@ -192,7 +192,7 @@ export class OrbitTool extends ToolOp {
     }
     
     camera.pos.add(camera.target);
-    window.redraw_viewport();
+    window.redraw_viewport(true);
   }
   
   on_mouseup(e) {
@@ -262,7 +262,7 @@ export class PanTool extends ToolOp {
     camera.target.add(p);
     camera.regen_mats(camera.aspect);
     
-    window.redraw_viewport();
+    window.redraw_viewport(true);
   }
   
   on_mouseup(e) {
@@ -341,7 +341,7 @@ export class ZoomTool extends ToolOp {
     
     camera.regen_mats(camera.aspect);
     
-    window.redraw_viewport();
+    window.redraw_viewport(true);
   }
   
   on_mouseup(e) {

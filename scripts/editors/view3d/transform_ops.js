@@ -438,7 +438,7 @@ export class TranslateOp extends TransformOp {
 
     this.exec(ctx);
     this.doUpdates(ctx);
-    window.redraw_viewport();
+    window.redraw_viewport(true);
   }
 
   exec(ctx) {

@@ -141,7 +141,7 @@ export class Editor extends Area {
   }
   
   getScreen() {
-    return _appstate.screen;
+    return this.owning_sarea !== undefined && this.owning_sarea.screen !== undefined ? this.owning_sarea.screen : _appstate.screen;
   }
   
   static register(cls) {
@@ -267,6 +267,16 @@ export class ScreenBlock extends DataBlock {
     icon        : -1,
     flag        : 0
   }}
+
+  copy() {
+    let ret = new ScreenBlock();
+
+    ret.screen = this.screen.copy();
+    ret.name = this.name;
+    ret.lib_flag = this.lib_flag;
+
+    return ret;
+  }
 
   loadSTRUCT(reader) {
     super.loadSTRUCT(reader);

@@ -1,5 +1,6 @@
 import {Light, LightTypes} from '../light/light.js';
 import {Vector3, Vector4, Matrix4, Vector2, Quat} from '../util/vectormath.js';
+import * as util from '../util/util.js';
 
 export let ClosureGLSL = `
 struct Closure {
@@ -25,8 +26,13 @@ export class LightGen {
     this.defines = args.defines;
   }
 
-  static setUniforms(gl, uniforms, scene) {
+  static setUniforms(gl, uniforms, scene, renderlights=undefined, use_jitter=false, seed=0.0) {
     let p = new Vector3();
+    let r = new Vector3();
+
+    if (use_jitter) {
+      util.seed(seed);
+    }
 
     for (let gen of LightGenerators) {
       let i = 0;
@@ -36,17 +42,53 @@ export class LightGen {
           continue;
         }
 
+        let shadowmap = undefined;
+        let rlight = undefined;
+
+        if (renderlights !== undefined && light.lib_id in renderlights) {
+          console.log("Found rlight!");
+
+          rlight = renderlights[light.lib_id];
+          shadowmap = rlight.shadowmap;
+        }
         let uname = gen.uniformName + `[${i}]`;
         i++;
 
         p.zero();
         p.multVecMatrix(light.outputs.matrix.getValue());
 
+        if (use_jitter) {
+          switch (light.data.type) {
+            case LightTypes.AREA_DISK:
+              //break;
+            case LightTypes.AREA_RECT:
+              //break;
+            case LightTypes.SUN:
+              //break;
+            case LightTypes.POINT:
+            default:
+              r[0] = (util.random()-0.5)*2.0;
+              r[1] = (util.random()-0.5)*2.0;
+              r[2] = (util.random()-0.5)*2.0;
+
+              r.mulScalar(light.data.inputs.radius.getValue());
+              p.add(r);
+
+            break;
+          }
+        }
+
         uniforms[uname + ".co"] = p;
         uniforms[uname + ".power"] = light.data.inputs.power.getValue();
         uniforms[uname + ".radius"] = light.data.inputs.radius.getValue();
         uniforms[uname + ".distance"] = light.data.inputs.distance.getValue();
         uniforms[uname + ".color"] = light.data.inputs.color.getValue();
+
+        if (shadowmap !== undefined) {
+          uniforms[uname + ".shadow"] = shadowmap.getUniformValue();
+          uniforms[uname + ".shadow_near"] = shadowmap.near;
+          uniforms[uname + ".shadow_far"] = shadowmap.far;
+        }
       }
     }
   }
@@ -129,6 +171,9 @@ export let PointLightCode = new LightGen({
       float radius; //soft shadow radius
       vec3 color;
       float distance; //falloff distance
+      samplerCubeShadow shadow;
+      float shadow_near;
+      float shadow_far;
     };
     
     uniform PointLight POINTLIGHTS[MAXPLIGHT];
@@ -148,8 +193,18 @@ export let PointLightCode = new LightGen({
       
       float energy = 1.0 / (1.0 + sqrt(length(lvec)/POINTLIGHTS[li].distance));
       energy *= POINTLIGHTS[li].power;
+     
+      float z = 1.0/length(lvec) - 1.0/POINTLIGHTS[li].shadow_near;
+      z /= 1.0/POINTLIGHTS[li].shadow_far - 1.0/POINTLIGHTS[li].shadow_near;
       
-      CLOSURE.light += f * POINTLIGHTS[li].color * energy;
+      z = length(lvec);
+      
+      vec4 sp = vec4(lvec, z);
+      
+      float shadow = texture(POINTLIGHTS[li].shadow, sp);
+       
+      //CLOSURE.light += f * POINTLIGHTS[li].color * energy * shadow;
+      CLOSURE.light += vec3(shadow, shadow, shadow);
     }
   #endif
   `,
@@ -186,8 +241,17 @@ export let DiffuseBRDF = new BRDFGen(`
 `);
 
 export let ShaderFragments = {
+  ALPHA_HASH : `
+    {
+      vec3 camera = (normalMatrix * vec4(vGlobalCo, 1.0)).xyz;
+      float prob = hash3f(vec3(gl_FragCoord.xy, camera.z*0.01));
+      
+      if (prob > SHADER_SURFACE.alpha) {
+        discard;
+      }
+    }
+  `,
   AMBIENT : ` //inputs: CLOSURE
-    //CLOSURE.light += texture2D(passAO, gl_FragCoord.xy/viewportSize)[0]*ambientColor*ambientPower;
     CLOSURE.light += CLOSURE.diffuse*texture2D(passAO, gl_FragCoord.xy/viewportSize).rgb*ambientColor*ambientPower;
     //CLOSURE.light = ambientColor;
   `,
@@ -210,6 +274,9 @@ uniform sampler2D passAO;
 
 uniform vec3 ambientColor;
 uniform float ambientPower;
+
+uniform float uSample;
+
 `,
   VARYINGS : `
     varying vec2 vUv;
@@ -220,6 +287,30 @@ uniform float ambientPower;
     varying vec3 vLocalCo;
   `,
   SHADERLIB : `
+
+float hash1f(float seed) {
+  seed += uSample;
+  
+  seed = fract(seed*0.25234 + seed*sqrt(11.0));
+  return fract(1.0 / (0.00001 + 0.00001*fract(seed)));
+}
+
+float hash2f(vec2 p) {
+  float seed = p.y*sqrt(3.0) + p.x*sqrt(5.0);
+  //seed += fract(p.x*p.y);
+  
+  return fract(seed+uSample*sqrt(2.0));
+  return hash1f(seed);
+}
+
+float hash3f(vec3 p) {
+  float seed = p.y*sqrt(3.0) + p.x*sqrt(5.0);
+  seed += fract(p.z*sqrt(11.0));
+  //seed += fract(p.x*p.y);
+  
+  return fract(seed+uSample*sqrt(2.0));
+  return hash1f(seed);
+}
 
 Closure vec3toclosure(vec3 c) {
   Closure ret;

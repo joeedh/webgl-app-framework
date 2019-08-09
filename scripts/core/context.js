@@ -9,6 +9,7 @@ import {SceneObject} from './sceneobject.js';
 import {Scene} from './scene.js';
 import {DataRef} from './lib_api.js';
 import {ToolStack, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
+import {DebugEditor} from "../editors/debug/DebugEditor.js";
 
 export class ToolContext {
   constructor(appstate=_appstate) {
@@ -116,6 +117,14 @@ export class ToolContext {
 export class Context extends ToolContext {
   get view3d() {
     return getContextArea(View3D);
+  }
+
+  get debugEditor() {
+    return getContextArea(DebugEditor);
+  }
+
+  get gl() {
+    return this.view3d.gl;
   }
 
   get material() {

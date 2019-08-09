@@ -316,6 +316,95 @@ void main() {
   ]
 };
 
+export let MeshLinearZShader = {
+  vertex : `#version 300 es
+  
+precision mediump float;
+  
+uniform mat4 projectionMatrix;
+uniform mat4 cameraMatrix;
+
+uniform mat4 objectMatrix;
+uniform mat4 normalMatrix;
+
+in vec3 position;
+//in vec3 normal;
+//in vec2 uv;
+in vec4 color;
+in float id;
+
+uniform float id_offset;
+uniform float object_id;
+uniform float alpha;
+uniform float active_id;
+uniform float highlight_id;
+uniform float last_id;
+uniform vec4 active_color;
+uniform vec4 last_color;
+uniform vec4 highlight_color;
+uniform float pointSize;
+
+out vec4 vColor;
+out float vId;
+out vec3 vLightCo;
+
+void main() {
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
+  
+  vec3 lp = (objectMatrix * vec4(position, 1.0)).xyz;
+  lp = (cameraMatrix * vec4(lp, 1.0)).xyz;
+  
+  vLightCo = lp;
+  
+  gl_Position = p;
+  gl_PointSize = pointSize;
+  
+  vId = id;// + id_offset;
+  
+  vec4 c;
+  
+  c[0] = vId;
+  c[1] = object_id;
+  
+  vColor = c;
+}
+`,
+  fragment : `#version 300 es
+
+precision mediump float;
+
+uniform float id_offset;
+uniform float object_id;
+uniform float near;
+uniform float far;
+
+in vec4 vColor;
+in float vId;
+in vec3 vLightCo;
+
+out vec4 fragColor;
+
+void main() {
+  //fragColor = vec4(vId+1.0, object_id, 0.0, 1.0);
+  fragColor = vec4(0.5, 0.5, 0.5, 1.0);
+  
+  //gl_FragDepth = (vLightCo.z - near) / (far - near);
+  gl_FragDepth = vLightCo.z / far;
+  
+  //gl_FragDepth = gl_FragCoord[2]/gl_FragCoord[3];
+}
+  `,
+
+  uniforms : {
+    objectMatrix : new Matrix4()
+  },
+
+  attributes : [
+    "position", "color", "id"
+  ]
+};
+
 export let NormalPassShader = {
   vertex : `precision mediump float;
   
@@ -485,7 +574,8 @@ export const ShaderDef = {
   MeshEditShader       : MeshEditShader,
   MeshIDShader         : MeshIDShader,
   WidgetMeshShader     : WidgetMeshShader,
-  NormalPassShader     : NormalPassShader
+  NormalPassShader     : NormalPassShader,
+  MeshLinearZShader    : MeshLinearZShader
 };
 
 export let Shaders = {

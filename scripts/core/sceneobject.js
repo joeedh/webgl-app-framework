@@ -6,6 +6,9 @@ import {Graph, SocketFlags} from './graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket} from './graphsockets.js';
+import * as util from '../util/util.js';
+
+let loc_rets = util.cachering.fromConstructor(Vector3, 256);
 
 /**
  Scene object flags
@@ -119,6 +122,28 @@ export class SceneObject extends DataBlock {
 
     this.outputs.matrix.update();
     this.outputs.depend.update();
+  }
+
+  loadMatrixToInputs(mat) {
+    let rot = new Vector3();
+    let loc = new Vector3();
+    let size = new Vector3();
+
+    mat.decompose(loc, rot, size);
+
+    this.inputs.loc.setValue(loc);
+    this.inputs.rot.setValue(rot);
+    this.inputs.size.setValue(size);
+
+    this.update();
+  }
+
+  get locationWorld() {
+    let ret = loc_rets.next().zero();
+
+    ret.multVecMatrix(this.outputs.matrix.getValue());
+
+    return ret;
   }
 
   static blockDefine() { return {

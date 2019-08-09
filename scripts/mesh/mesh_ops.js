@@ -14,6 +14,7 @@ import {Icons} from '../editors/icon_enum.js';
 import {Mesh, MeshTypes, MeshFlags} from './mesh.js';
 import {MeshOp} from './mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
+import './mesh_createops.js';
 
 export class ExtrudeRegionsOp extends MeshOp {
   constructor() {

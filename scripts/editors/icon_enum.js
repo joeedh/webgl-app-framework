@@ -45,5 +45,9 @@ export let Icons = {
   SUBDIVIDE      : 41,
   SUBSURF        : 42,
   LIGHT          : 43,
-  RENDER         : 44
+  RENDER         : 44,
+  VIEW_RAW       : 45,
+  VIEW_NORMALS   : 46,
+  VIEW_DEPTH     : 47,
+  VIEW_ALPHA     : 48
 };

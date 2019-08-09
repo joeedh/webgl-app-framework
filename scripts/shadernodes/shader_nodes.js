@@ -272,7 +272,10 @@ export class ShaderGenerator {
     this.graph = graph;
     graph.sort();
 
-    this.vertex = `precision mediump float;
+    this.vertex = `#version 300 es
+#define attribute in
+#define varying out
+precision highp float;
     ${ShaderFragments.CLOSUREDEF}
     ${ShaderFragments.UNIFORMS}
     ${ShaderFragments.ATTRIBUTES}
@@ -385,13 +388,20 @@ export class ShaderGenerator {
 
     let varyings = ShaderFragments.VARYINGS;
 
-    let script = `precision mediump float;
+    let script = `#version 300 es
+precision highp float;
+precision highp samplerCubeShadow;
+#define varying in
+#define texture2D texture
+
     ${defines}
     ${ShaderFragments.CLOSUREDEF}
     ${uniforms}
     ${varyings}
     ${ShaderFragments.SHADERLIB}    
-
+    
+    out vec4 fragColor;
+    
     void main() {
       Closure _mainSurface;
       
@@ -402,8 +412,11 @@ export class ShaderGenerator {
       {
         vec4 color = vec4(_mainSurface.light+_mainSurface.emission, _mainSurface.alpha);  
         //gl_FragColor = color;
-        gl_FragColor = vec4(color.rgb, 1.0);
+        //gl_FragColor = vec4(color.rgb, 1.0);
+        fragColor = vec4(color.rgb, 1.0);
       }
+      
+      ${ShaderFragments.ALPHA_HASH.replace(/SHADER_SURFACE/g, "_mainSurface")}
       
       //gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
     }
@@ -485,6 +498,7 @@ export class OutputNode extends ShaderNode {
 
   genCode(gen) {
     gen.out(`
+      //SHADER_SURFACE.emission = vec3(hash3f(gl_FragCoord.xyz));
       SHADER_SURFACE = ${gen.getSocketValue(this.inputs.surface)};
     `)
   }
@@ -588,4 +602,3 @@ GeometryNode.STRUCT = STRUCT.inherit(GeometryNode, ShaderNode, 'shader.GeometryN
 `;
 nstructjs.manager.add_class(GeometryNode);
 ShaderNetworkClass.register(GeometryNode);
-

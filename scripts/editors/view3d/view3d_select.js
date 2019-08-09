@@ -17,11 +17,18 @@ export class GPUSelectBuffer {
   }
 
   gen(ctx, gl, view3d) {
+    if (this.fbo !== undefined) {
+      this.fbo.destroy(gl);
+    }
+    this.fbo = new FBO(gl, ~~this.size[0], ~~this.size[1]);
+    /*
     if (this.fbo === undefined) {
       this.fbo = new FBO(gl, ~~this.size[0], ~~this.size[1]);
+
     } else {
       this.fbo.update(gl, ~~this.size[0], ~~this.size[1]);
     }
+    //*/
 
     this.fbo.bind(gl);
 
