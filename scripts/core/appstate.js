@@ -114,7 +114,6 @@ export function genDefaultScreen(appstate) {
 }
 
 export function genDefaultFile(appstate, dont_load_startup=false) {
-  dont_load_startup=true;
   if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
     let buf = localStorage[cconst.APP_KEY_NAME];
 
