@@ -48,6 +48,11 @@ export class MenuBarEditor extends Editor {
     this.makeScreenSwitcher(this.container);
   }
 
+  onFileLoad() {
+    super.onFileLoad();
+    this.rebuildScreenSwitcher();
+  }
+  
   rebuildScreenSwitcher() {
     if (this.tabs !== undefined) {
       this.tabs.remove();
@@ -87,6 +92,8 @@ export class MenuBarEditor extends Editor {
 
       if (sblock !== undefined) {
         this.ctx.state.switchScreen(sblock);
+      } else {
+        console.log("failed to load screen", tab.id, tab);
       }
     }
   }

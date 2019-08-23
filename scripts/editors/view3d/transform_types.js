@@ -181,13 +181,15 @@ export class MeshTransType extends TransDataType {
     let c = meshGetCenterTemps.next().zero();
     let tot = 0.0;
 
-    let mat = space_matrix_out !== undefined ? space_matrix_out : new Matrix4();
+    if (selmask & SelMask.OBJECT) {
+      return new Vector3();
+    }
+
     let quat = new Quat();
     let spacetots = 0.0;
 
     for (let ob of ctx.selectedMeshObjects) {
       let mesh = ob.data;
-
       let obmat = ob.outputs.matrix.getValue();
 
       if (spacemode == ConstraintSpaces.LOCAL) {
@@ -200,7 +202,7 @@ export class MeshTransType extends TransDataType {
       }
 
       for (let f of mesh.faces.selected.editable) {
-        if (1 || spacemode == ConstraintSpaces.NORMAL) {
+        if (spacemode == ConstraintSpaces.NORMAL) {
           let mat = meshGetCenterTempsMats.next();
 
           let up = meshGetCenterTemps2.next();
@@ -212,6 +214,7 @@ export class MeshTransType extends TransDataType {
           n.multVecMatrix(obmat);
 
           if (n.dot(n) == 0.0 || isNaN(n.dot(n))) {
+            console.warn("NaN");
             continue; //ignore bad/corrupted normal
           }
 
@@ -403,6 +406,10 @@ export class ObjectTransType extends TransDataType {
   static genData(ctx, selectmode, propmode, propradius) {
     let ignore_meshes = selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE);
 
+    if (selectmode != SelMask.OBJECT) {
+      return [];
+    }
+
     console.log("OBJECT GEN", ignore_meshes, selectmode & (SelMask.OBJECT), selectmode);
 
     if (!(selectmode & SelMask.OBJECT)) {
@@ -495,6 +502,10 @@ export class ObjectTransType extends TransDataType {
   }
 
   static getCenter(ctx, selmask, spacemode, space_matrix_out) {
+    if (!(selmask & SelMask.OBJECT)) {
+      return new Vector3();
+    }
+
     if (space_matrix_out !== undefined) {
       space_matrix_out.makeIdentity();
     }

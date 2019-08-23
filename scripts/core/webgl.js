@@ -47,8 +47,15 @@ export function initDebugGL(gl) {
 
   return gl;
 }
+
+let _gl = undefined;
+
 //params are passed to canvas.getContext as-is
 export function init_webgl(canvas, params) {
+  if (_gl !== undefined) {
+    return _gl;
+  }
+
   let webgl2 = true;
   let gl;
 
@@ -61,6 +68,7 @@ export function init_webgl(canvas, params) {
     gl.color_buffer_float = gl.getExtension("WEBGL_color_buffer_float");
   }
 
+  _gl = gl;
   gl.haveWebGL2 = webgl2;
 
   for (let k in gl) {//of Object.getOwnPropertyNames(gl)) {

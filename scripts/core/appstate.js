@@ -537,6 +537,11 @@ export class AppState {
       this.screen.afterSTRUCT();
     }
 
+
+    for (let sblock of this.datalib.screen) {
+      sblock.screen.ctx = this.ctx;
+    }
+
     this._execEditorOnFileLoad();
   }
 
