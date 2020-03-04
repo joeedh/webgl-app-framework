@@ -49,5 +49,6 @@ export let Icons = {
   VIEW_RAW       : 45,
   VIEW_NORMALS   : 46,
   VIEW_DEPTH     : 47,
-  VIEW_ALPHA     : 48
+  VIEW_ALPHA     : 48,
+  SCALE_WIDGET   : 49
 };

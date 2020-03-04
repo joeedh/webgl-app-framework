@@ -52,7 +52,7 @@ export class MenuBarEditor extends Editor {
     super.onFileLoad();
     this.rebuildScreenSwitcher();
   }
-  
+
   rebuildScreenSwitcher() {
     if (this.tabs !== undefined) {
       this.tabs.remove();

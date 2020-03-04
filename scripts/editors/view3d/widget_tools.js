@@ -291,7 +291,7 @@ export class ScaleWidget extends WidgetTool {
   static define() {return {
     uiname    : "Scale",
     name      : "scale",
-    icon      : Icons.TRANSLATE,
+    icon      : Icons.SCALE_WIDGET,
     flag      : 0
   }}
 
