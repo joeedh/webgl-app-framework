@@ -337,8 +337,8 @@ export class AppToolStack extends ToolStack {
   }
 
   execTool(toolop, ctx=this.ctx) {
-    if (!toolop.canRun(ctx)) {
-      console.log("toolop.canRun returned false");
+    if (!toolop.constructor.canRun(ctx)) {
+      console.log("toolop.constructor.canRun returned false");
       return;
     }
 

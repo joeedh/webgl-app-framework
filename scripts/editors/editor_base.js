@@ -5,6 +5,7 @@ import {Screen} from '../path.ux/scripts/FrameManager.js';
 import {UIBase} from '../path.ux/scripts/ui_base.js';
 import * as util from '../util/util.js';
 import {haveModal} from "../path.ux/scripts/simple_events.js";
+import {warning} from "../path.ux/scripts/ui_noteframe.js";
 
 import {Icons} from './icon_enum.js';
 
@@ -157,6 +158,61 @@ Editor.STRUCT = STRUCT.inherit(Editor, Area) + `
 `;
 nstructjs.manager.add_class(Editor);
 
+import {ToolClasses, ToolFlags, ToolMacro} from "../path.ux/scripts/simple_toolsys.js";
+import {Menu} from "../path.ux/scripts/ui_menu.js";
+
+function spawnToolSearchMenu(ctx) {
+  let tools = [];
+  let screen = ctx.screen;
+
+  let menu = document.createElement("menu-x");
+
+  for (let cls of ToolClasses) {
+    if ((cls.tooldef().flag & ToolFlags.PRIVATE) || !cls.canRun(ctx)) {
+      continue;
+    }
+
+    let tdef = cls.tooldef();
+    let hotkey = undefined;
+
+    if (tdef.toolpath) {
+      hotkey = screen.getHotKey(tdef.toolpath);
+
+      if (hotkey) {
+        hotkey = hotkey.buildString();
+
+        console.log("hotkey:", hotkey);
+      }
+    }
+
+    menu.addItemExtra(tdef.uiname, tools.length, hotkey);
+    tools.push(cls);
+  }
+
+  menu.setAttribute("title", "Tools");
+
+  document.body.appendChild(menu);
+  menu.startFancy();
+
+  menu.float(screen.mpos[0], screen.mpos[1], 8);
+  menu.style["width"] = "500px";
+
+  menu.onselect = (item) => {
+    console.log(item, "got item");
+
+    let cls = tools[item];
+    let tool = cls.invoke(ctx, {});
+
+    if (tool === undefined) {
+      warning("Tool failed");
+      return;
+    }
+
+    ctx.toolstack.execTool(tool, ctx);
+  }
+  //ui.menu("Tools", [["Test", () => {}]]);
+}
+
 export class App extends Screen {
   constructor() {
     super();
@@ -178,6 +234,11 @@ export class App extends Screen {
         console.log("redo!");
         _appstate.toolstack.redo();
         window.redraw_viewport();
+      }),
+      new HotKey("Space", [], () => {
+        console.log("Space Bar!");
+
+        spawnToolSearchMenu(_appstate.ctx);
       })
     ]);
   }

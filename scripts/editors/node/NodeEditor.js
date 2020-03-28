@@ -464,7 +464,7 @@ export class NodeUI extends Container {
         this.allsockets.push(uisock);
         this.ned.sockets.push(uisock);
 
-        y += ~~(uisock.size*1.45) + 2;
+        y += ~~(uisock.size*1.45) + 8;
       }
     }
 
@@ -478,7 +478,7 @@ export class NodeUI extends Container {
     }
 
     ui.style["position"] = "absolute";
-    ui.style["top"] = ~~((y+10)*this.ned.velpan.scale[1]) + "px";
+    ui.style["top"] = ~~((y+30)*this.ned.velpan.scale[1]) + "px";
   }
 
   getNode() {
@@ -519,6 +519,8 @@ export class NodeUI extends Container {
     for (let sock of this.allsockets) {
       sock.uinode = this;
       sock.setCSS();
+
+      scale[1] += sock.size;
     }
 
     co = new Vector2(co);

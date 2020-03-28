@@ -28,9 +28,13 @@ export class SelectOpBase extends NodeGraphOp {
     inputs: ToolOp.inherit()
   }}
 
-  canRun(ctx) {
-    return this.fetchGraph(ctx) !== undefined;
+  static canRun(ctx) {
+    return ctx.nodeEditor !== undefined;
   }
+
+  //canRun(ctx) {
+  //  return this.fetchGraph(ctx) !== undefined;
+  //}
 
   undoPre(ctx) {
     let graph = this.fetchGraph(ctx);
