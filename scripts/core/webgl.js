@@ -673,6 +673,7 @@ export class Camera extends DrawMats {
     this.fovy = b.fovy;
     this.aspect = b.aspect;
     this.pos.load(b.pos);
+    this.orbitTarget.load(b.orbitTarget);
     this.target.load(b.target);
     this.up.load(b.up);
     this.near = b.near;
@@ -691,6 +692,7 @@ export class Camera extends DrawMats {
     
     ret.pos.load(this.pos);
     ret.target.load(this.target);
+    ret.orbitTarget.load(this.orbitTarget);
     ret.up.load(this.up);
     
     ret.near = this.near;

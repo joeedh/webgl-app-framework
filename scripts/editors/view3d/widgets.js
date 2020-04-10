@@ -21,7 +21,8 @@ export const WidgetFlags = {
   SELECT    : 1,
   //HIDE      : 2,
   HIGHLIGHT : 4,
-  CAN_SELECT : 8
+  CAN_SELECT : 8,
+  IGNORE_EVENTS : 16
 };
 
 export let WidgetTools = [];
@@ -32,7 +33,9 @@ export class WidgetTool {
     this.view3d = manager.view3d;
     this.ctx = this.view3d.ctx;
 
-    let def = this.constructor.define();
+    let def = this.constructor.widgetDefine();
+
+    this.flag = def.flag !== undefined ? def.flag : 0;
 
     this.destroyed = false;
     this.name = def.name;
@@ -104,12 +107,13 @@ export class WidgetTool {
     return ret;
   }
 
-  static define() {return {
+  static widgetDefine() {return {
     name        : "name",
     uiname      : "uiname",
     icon        : -1,
     flag        : 0,
-    description : ""
+    description : "",
+    selectMode  : undefined, //if set, preferred selectmode, see SelModes
   }}
 
   static register(cls) {
@@ -123,7 +127,7 @@ export class WidgetTool {
     let i = 0;
 
     for (let cls of WidgetTools) {
-      let def = cls.define();
+      let def = cls.widgetDefine();
 
       enumdef[def.name] = i;
       icondef[def.name] = def.icon;
@@ -316,13 +320,17 @@ export class WidgetArrow extends WidgetShape {
     scale2.multVecMatrix(this.drawmatrix);
     scale1.multVecMatrix(this.drawmatrix);
 
-    let scale = scale2.vectorDistance(scale1);
+    scale1[0] = this.drawmatrix.$matrix.m11;
+    scale1[1] = this.drawmatrix.$matrix.m12;
+    scale1[2] = this.drawmatrix.$matrix.m13;
+
+    let scale = scale1.vectorLength();//scale2.vectorDistance(scale1);
 
     let v1 = dist_temps.next().zero();
     let v2 = dist_temps.next().zero();
 
-    v1[2] = -scale*0.5;
-    v2[2] = scale*0.5;
+    v1[2] = -scale*0.25;
+    v2[2] = scale*0.25;
 
     v1.multVecMatrix(this.drawmatrix);
     v2.multVecMatrix(this.drawmatrix);
@@ -342,7 +350,7 @@ export class WidgetArrow extends WidgetShape {
 
     //get distance to fat line by subtracting from dis
 
-    ret[0] = Math.max(dis-15, 0);
+    ret[0] = Math.max(dis-5, 0);
     ret[1] = lineco[2];
 
     return ret;
@@ -538,7 +546,9 @@ export class WidgetChevron extends WidgetPlane {
 
 export class WidgetBase {
   constructor() {
-    this.flag = 0;
+    let def = this.constructor.widgetDefine();
+
+    this.flag = def.flag !== 0 ? def.flag : 0;
     this.id = -1;
     this.children = [];
     this.destroyed = false;
@@ -554,11 +564,12 @@ export class WidgetBase {
     return this;
   }
 
-  static wigetDefine() {return {
+  static widgetDefine() {return {
     uiName   : "name",
     typeName : "typeName",
     selMask  : undefined,
-    icon     : -1
+    icon     : -1,
+    flag     : 0, //one of WidgetFlags
   }}
 
   //can this widget run?
@@ -741,6 +752,7 @@ export class WidgetManager {
       this.view3d.ctx.graph.remove(this.nodes[key]);
     }
   }
+
   createCallbackNode(id, name, callback, inputs, outputs) {
     let key = id + ":" + name;
 
@@ -793,6 +805,10 @@ export class WidgetManager {
     let minw = undefined;
 
     for (let w of this.widgets) {
+      if (w.flag & WidgetFlags.IGNORE_EVENTS) {
+        continue;
+      }
+
       let ret = w.findNearest(this.view3d, x, y, limit);
 
       if (ret === undefined || ret.dis > limit) {

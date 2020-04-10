@@ -437,6 +437,10 @@ export class Mesh extends SceneObjectData {
       set_active = set_active || !((this.edges.active.v1.flag|this.edges.active.v2.flag) & MeshFlags.SELECT);
       
       for (var e of this.edges) {
+        if (e.flag & MeshFlags.HIDE) {
+          continue;
+        }
+
         if ((e.v1.flag & MeshFlags.SELECT) && (e.v2.flag & MeshFlags.SELECT)) {
           this.edges.setSelect(e, true);
           
@@ -444,6 +448,23 @@ export class Mesh extends SceneObjectData {
             this.edges.active = e;
           }
         }
+      }
+
+      for (let f of this.faces) {
+        if (f.flag & MeshFlags.HIDE) {
+          continue;
+        }
+
+        let sel = 1;
+
+        for (let e of f.edges) {
+          if (!(e.flag & MeshFlags.SELECT)) {
+            sel = 0;
+            break;
+          }
+        }
+
+        this.faces.setSelect(f, sel);
       }
     } else if (selmode & MeshTypes.EDGE) {
       this.verts.selectNone();

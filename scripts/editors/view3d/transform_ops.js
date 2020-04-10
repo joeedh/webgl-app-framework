@@ -90,8 +90,11 @@ export class TransformOp extends View3DOp {
     let tot = 0.0;
 
     for (let list of this.tdata) {
-      center.add(list.type.getCenter(ctx));
-      tot++;
+      let cent2 = list.type.getCenter(ctx);
+      if (cent2 !== undefined) {
+        center.add(cent2);
+        tot++;
+      }
     }
 
     if (tot > 0) {

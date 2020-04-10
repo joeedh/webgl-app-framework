@@ -32,8 +32,11 @@ export function calcTransCenter(ctx, selmask, transform_space) {
   ret.spaceMatrix.makeIdentity();
 
   for (let type of TransDataTypes) {
-    cent.add(type.getCenter(ctx, selmask, transform_space, ret.spaceMatrix));
-    tot++;
+    let cent2 = type.getCenter(ctx, selmask, transform_space, ret.spaceMatrix);
+    if (cent2 !== undefined) {
+      cent.add(cent2);
+      tot++;
+    }
   }
 
   if (tot > 0.0) {

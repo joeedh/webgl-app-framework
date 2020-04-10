@@ -28,7 +28,7 @@ import {Mesh} from '../mesh/mesh.js';
 import {makeCube} from './mesh_shapes.js';
 import '../path.ux/scripts/struct.js';
 import {NodeFlags} from "./graph.js";
-import {ShaderNetwork} from "./material.js";
+import {ShaderNetwork, makeDefaultShaderNetwork} from "./material.js";
 
 let STRUCT = nstructjs.STRUCT;
 
@@ -65,7 +65,7 @@ export class BasicFileOp extends ToolOp {
     scene.add(ob);
     scene.objects.setSelect(ob, true);
 
-    let mat = new ShaderNetwork();
+    let mat = makeDefaultShaderNetwork(); //new ShaderNetwork();
     mesh.materials.push(mat);
     lib.add(mat);
 
@@ -578,7 +578,7 @@ export class AppState {
   /** this is executed after block re-linking has happened*/
   do_versions_post(version, datalib) {
     if (version < 102) {
-      let mat = new ShaderNetwork();
+      let mat = makeDefaultShaderNetwork(); //new ShaderNetwork();
 
       datalib.add(mat);
       datalib.setActive(mat);

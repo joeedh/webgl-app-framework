@@ -105,8 +105,10 @@ export class MeshEditor extends View3D_SubEditorIF {
       this.ctx.toolstack.execTool(tool);
 
       window.redraw_viewport();
+      return true;
     }
 
+    return undefined;
   }
 
   clearHighlight(ctx) {

@@ -32,10 +32,11 @@ export class WidgetSceneCursor extends WidgetBase {
     return !this.manager.view3d._showCursor();
   }
 
-  static wigetDefine() {return {
+  static widgetDefine() {return {
     uiName: "cursor",
     typeName: "cursor",
     selMask: undefined,
+    flag : WidgetFlags.IGNORE_EVENTS,
     icon: -1
   }}
 
@@ -50,6 +51,7 @@ export class WidgetSceneCursor extends WidgetBase {
     }
 
     this.matrix.load(view3d.cursor3D);
+    this.matrix.scale(0.15, 0.15, 0.15);
   }
 };
 
@@ -74,7 +76,7 @@ export class TranslateWidget extends WidgetTool {
     this.axes = undefined;
   }
 
-  static define() {return {
+  static widgetDefine() {return {
     uiname    : "Move",
     name      : "translate",
     icon      : Icons.TRANSLATE,
@@ -84,15 +86,17 @@ export class TranslateWidget extends WidgetTool {
   static validate(ctx) {
     let selmask = ctx.view3d.selectmode;
 
-    if (selmask == SelMask.OBJECT) {
+    if (selmask & SelMask.OBJECT) {
       for (let ob of ctx.scene.objects.selected.editable) {
         return true;
       }
     }
 
-    for (let ob of ctx.selectedMeshObjects) {
-      for (let v of ob.data.verts.selected) {
-        return true;
+    if (selmask & SelMask.MESH) {
+      for (let ob of ctx.selectedMeshObjects) {
+        for (let v of ob.data.verts.selected) {
+          return true;
+        }
       }
     }
 
@@ -154,6 +158,9 @@ export class TranslateWidget extends WidgetTool {
   startTool(axis, localX, localY) {
     let tool = new TranslateOp([localX, localY]);
     let con = new Vector3();
+    let selmode = this.ctx.view3d.selectmode;
+
+    tool.inputs.selmask.setValue(selmode);
 
     if (axis >= 0) {
       if (axis > 2) {
@@ -206,21 +213,21 @@ export class TranslateWidget extends WidgetTool {
     let xmat = new Matrix4();
     let ymat = new Matrix4();
 
-    let scale = 1.0;
+    let scale = 1.0, scale2 = 1.5;
     xmat.euler_rotate(0.0, Math.PI*0.5, 0.0);
     x.localMatrix.makeIdentity();
     x.localMatrix.translate(0.0, 0.0, scale);
-    xmat.scale(scale, scale, scale);
+    xmat.scale(scale, scale, scale2);
 
     ymat.euler_rotate(Math.PI*0.5, 0.0, 0.0);
     y.localMatrix.makeIdentity();
     y.localMatrix.translate(0.0, 0.0, scale);
-    ymat.scale(scale, scale, scale);
+    ymat.scale(scale, scale, scale2);
 
     let zmat = new Matrix4();
     z.localMatrix.makeIdentity();
     z.localMatrix.translate(0.0, 0.0, scale);
-    zmat.scale(scale, scale, scale);
+    zmat.scale(scale, scale, scale2);
 
     let mat2 = new Matrix4();
     mat2.translate(ret.center[0], ret.center[1], ret.center[2]);
@@ -288,7 +295,7 @@ export class ScaleWidget extends WidgetTool {
     this.axes = undefined;
   }
 
-  static define() {return {
+  static widgetDefine() {return {
     uiname    : "Scale",
     name      : "scale",
     icon      : Icons.SCALE_WIDGET,
@@ -501,11 +508,12 @@ export class ExtrudeWidget extends WidgetTool {
     this.axes = undefined;
   }
 
-  static define() {return {
-    uiname    : "Extrude",
-    name      : "extrude",
-    icon      : Icons.EXTRUDE,
-    flag      : 0
+  static widgetDefine() {return {
+    uiname      : "Extrude",
+    name        : "extrude",
+    icon        : Icons.EXTRUDE,
+    flag        : 0,
+    selectMode  : SelMask.FACE
   }}
 
   static validate(ctx) {

@@ -382,6 +382,7 @@ class LoopIter {
 
       this.list.iterstack.cur--;
       this.done = true;
+
       return ret;
     }
 
@@ -407,9 +408,14 @@ class LoopIter {
     console.log("iterator return");
 
     if (!this.done) {
-      list.iterstack.cur--;
       this.done = true;
+      this.list.iterstack.cur--;
     }
+
+    this.ret.value = undefined;
+    this.ret.done = true;
+
+    return this.ret;
   }
 }
 
@@ -420,7 +426,7 @@ export class LoopList extends Array {
     this.flag = 0;
     this.l = undefined;
 
-    this.iterstack = new Array(4);
+    this.iterstack = new Array(16);
     for (let i=0; i<this.iterstack.length; i++) {
       this.iterstack[i] = new LoopIter();
     }
@@ -483,8 +489,10 @@ export class Face extends Element {
   get edges() {
     let this2 = this;
     return (function*() {
-      for (let loop of this.loops) {
-        yield loop.e;
+      for (let list of this2.lists) {
+        for (let loop of list) {
+          yield loop.e;
+        }
       }
     })();
   }

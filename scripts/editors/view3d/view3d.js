@@ -14,7 +14,7 @@ import * as view3d_shaders from './view3d_shaders.js';
 import {loadShader} from './view3d_shaders.js';
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
-import {OrbitTool, PanTool, ZoomTool} from './view3d_ops.js';
+import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js';
 import {cachering, print_stack, time_ms} from '../../util/util.js';
 import './view3d_mesh_editor.js';
 import {ObjectEditor} from './view3d_object_editor.js';
@@ -153,7 +153,7 @@ export class View3D extends Editor {
     this.selectmode = SelMask.VERTEX;
 
     //this.widgettool is an enum, built from WidgetTool.getToolEnum()
-    this.widgettool = 1; //active widget tool index in WidgetTools
+    this.widgettool = 0; //active widget tool index in WidgetTools
     this.widget = undefined; //active widget instance
 
     this.drawmode = DrawModes.TEXTURED;
@@ -328,6 +328,12 @@ export class View3D extends Editor {
   init() {
     super.init();
 
+    let tools = [
+      "mesh.subdivide_smooth()",
+      "view3d.view_selected()",
+      "mesh.toggle_select_all()"
+    ];
+
     this.makeGraphNode();
 
     for (let ed of this.editors) {
@@ -335,11 +341,13 @@ export class View3D extends Editor {
     }
 
     let header = this.header;
+    header.menu("Tools", tools);
     let row1 = header.row();
     let row2 = header.row();
 
     //row2.label("yay");
     row2.prop("view3d.flag[SHOW_RENDER]", PackFlags.USE_ICONS);
+    row2.prop("view3d.flag[ONLY_RENDER]", PackFlags.USE_ICONS);
 
     header = row1;
     header.prop("view3d.selectmode", PackFlags.USE_ICONS);
@@ -347,6 +355,7 @@ export class View3D extends Editor {
 
     header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
     header.tool("view3d.view_selected()", PackFlags.USE_ICONS);
+    header.tool("mesh.toggle_select_all()", PackFlags.USE_ICONS);
 
     header.iconbutton(Icons.UNDO, "Undo", () => {
       this.ctx.toolstack.undo();
@@ -367,11 +376,21 @@ export class View3D extends Editor {
 
     this.setCSS();
 
+    let uiHasFocus = (e) => {
+      let node = this.getScreen().pickElement(e.pageX, e.pageY);
+
+      return node !== this;
+    };
+
     let getSubEditorMpos = (e) => {
       return this.getLocalMouse(e.clientX, e.clientY);
     }
 
-    this.addEventListener("mousemove", (e) => {
+    let on_mousemove = (e, was_mousemove=true) => {
+      if (uiHasFocus(e)) {
+        return;
+      }
+
       let was_touch = eventWasTouch(e);
 
       if (this.canvas === undefined)
@@ -405,7 +424,9 @@ export class View3D extends Editor {
       }
 
       this.pop_ctx_active();
-    });
+    };
+
+    this.addEventListener("mousemove", on_mousemove);
 
     this.addEventListener("mouseup", (e) => {
       let was_touch = eventWasTouch(e);
@@ -419,13 +440,21 @@ export class View3D extends Editor {
       this.pop_ctx_active(ctx);
     });
 
-    this.addEventListener("mousedown", (e) => {
+    let on_mousedown = (e) => {
+      if (uiHasFocus(e)) {
+        return;
+      }
       let was_touch = eventWasTouch(e);
+
+      if (was_touch) {
+        on_mousemove(e, false);
+      }
+
       this.push_ctx_active();
 
       this.updateCursor();
 
-      let docontrols = e.button == 1 || e.altKey;
+      let docontrols = e.button == 1 || e.button == 2 || e.altKey;
 
       if (!docontrols && e.button == 0) {
         let selmask = this.selectmode;
@@ -438,17 +467,30 @@ export class View3D extends Editor {
           return;
         }
 
+        docontrols = true;
+
         this.mdown = true;
         for (let ed of this.editors) {
           this.start_mpos = new Vector2(r);
 
           if (ed.constructor.define().selmask & selmask) {
-            ed.clickselect(e, x, y, selmask, was_touch);
+            docontrols = docontrols && !ed.clickselect(e, x, y, selmask, was_touch);
           }
         }
       }
 
-      if (docontrols && !e.shiftKey && !e.ctrlKey) {
+      if (docontrols) {
+        this.mdown = false;
+      }
+
+      console.log("touch", eventWasTouch(e), e);
+      if (docontrols && eventWasTouch(e)) {
+        console.log("multitouch view tool");
+
+        let tool = new TouchViewTool();
+        this.ctx.state.toolstack.execTool(tool);
+        window.redraw_viewport();
+      } else if (docontrols && !e.shiftKey && !e.ctrlKey) {
         console.log("orbit!");
         let tool = new OrbitTool();
         this.ctx.state.toolstack.execTool(tool);
@@ -468,7 +510,9 @@ export class View3D extends Editor {
       this.pop_ctx_active();
       e.preventDefault();
       e.stopPropagation();
-    });
+    };
+
+    this.addEventListener("mousedown", on_mousedown);
 
     window.redraw_viewport();
   }
@@ -567,6 +611,20 @@ export class View3D extends Editor {
       console.log("making widget instance", this.widget);
 
       this.widget.create(this.ctx, this.widgets);
+
+      let def = this.widget.constructor.widgetDefine();
+
+      if (def.selectMode !== undefined && this.selectmode != def.selectMode) {
+        this.selectmode = def.selectMode;
+        window.redraw_viewport();
+      }
+    } else if (tool && this.widget === undefined) {
+      let def = tool.widgetDefine();
+
+      if (def.selectMode !== undefined && this.selectmode != def.selectMode) {
+        this.selectmode = def.selectMode;
+        window.redraw_viewport();
+      }
     }
 
     if (this.widget !== undefined) {
@@ -832,7 +890,7 @@ export class View3D extends Editor {
       ed.on_drawstart(gl);
     }
 
-    if (this.flag & View3DFlags.SHOW_RENDER) {
+    if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
       this.drawRender();
     }
 
@@ -926,6 +984,7 @@ export class View3D extends Editor {
       let ok = false;
       for (let ed of this.editors) {
         //console.log(ed);
+
         if (ed.draw(gl, uniforms, program, ob, ob.data)) {
           ok = true;
           break;

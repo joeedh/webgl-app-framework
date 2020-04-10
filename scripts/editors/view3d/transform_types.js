@@ -181,8 +181,8 @@ export class MeshTransType extends TransDataType {
     let c = meshGetCenterTemps.next().zero();
     let tot = 0.0;
 
-    if (selmask & SelMask.OBJECT) {
-      return new Vector3();
+    if (!(selmask & SelMask.MESH)) {
+      return undefined;
     }
 
     let quat = new Quat();
@@ -380,7 +380,10 @@ export class MeshTransType extends TransDataType {
         }
       }
     }
-    mesh.regenPartial();
+
+    mesh.regenTesellation();
+    mesh.regenRender();
+    //mesh.regenPartial();
   }
 }
 TransDataType.register(MeshTransType);
@@ -406,10 +409,6 @@ export class ObjectTransType extends TransDataType {
   static genData(ctx, selectmode, propmode, propradius) {
     let ignore_meshes = selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE);
 
-    if (selectmode != SelMask.OBJECT) {
-      return [];
-    }
-
     console.log("OBJECT GEN", ignore_meshes, selectmode & (SelMask.OBJECT), selectmode);
 
     if (!(selectmode & SelMask.OBJECT)) {
@@ -423,7 +422,7 @@ export class ObjectTransType extends TransDataType {
         let parent = ob.inputs.matrix.edges[0].node;
 
         if (parent instanceof SceneObject) {
-          if (parent.flag & ObjectFlags.SELECT && !(parent.flag & (ObjectFlags.HIDE|ObjectFlags.LOCKED))) {
+          if ((parent.flag & ObjectFlags.SELECT) && !(parent.flag & (ObjectFlags.HIDE|ObjectFlags.LOCKED))) {
             return parent;
           } else {
             return get_transform_parent(parent);
@@ -436,7 +435,7 @@ export class ObjectTransType extends TransDataType {
 
     for (let ob of ctx.selectedObjects) {
       let ok = get_transform_parent(ob) === ob;
-      ok = ok && (ignore_meshes || !(ob.data instanceof Mesh));
+      ok = ok && (!ignore_meshes || !(ob.data instanceof Mesh));
 
       if (!ok) {
         continue;
@@ -503,7 +502,7 @@ export class ObjectTransType extends TransDataType {
 
   static getCenter(ctx, selmask, spacemode, space_matrix_out) {
     if (!(selmask & SelMask.OBJECT)) {
-      return new Vector3();
+      return undefined;
     }
 
     if (space_matrix_out !== undefined) {
@@ -517,7 +516,9 @@ export class ObjectTransType extends TransDataType {
     for (let ob of ctx.selectedObjects) {
       temp.zero();
       temp.multVecMatrix(ob.outputs.matrix.getValue());
+
       cent.add(temp);
+
       tot++;
     }
 

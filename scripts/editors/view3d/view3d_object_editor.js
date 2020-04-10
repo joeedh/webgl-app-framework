@@ -86,6 +86,8 @@ export class ObjectEditor extends View3D_SubEditorIF {
 
     let cmd = `object.selectone(objectId=${ob.lib_id} setActive=true mode=${mode})`;
     this.view3d.ctx.api.execTool(this.view3d.ctx, cmd);
+
+    return true;
   }
 
   clearHighlight(ctx) {

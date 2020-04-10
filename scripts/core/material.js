@@ -8,7 +8,7 @@ import {Container} from '../path.ux/scripts/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {AbstractGraphClass} from './graph_class.js';
-import {ShaderGenerator} from "../shadernodes/shader_nodes.js";
+import {ShaderGenerator, OutputNode, DiffuseNode} from "../shadernodes/shader_nodes.js";
 
 export {ShaderNetworkClass, ShaderNodeTypes, ShaderGenerator} from '../shadernodes/shader_nodes.js';
 
@@ -70,6 +70,7 @@ export class ShaderNetwork extends DataBlock {
     this._regen = false;
 
     let gen = new ShaderGenerator(scene);
+    
     gen.generate(this.graph);
     let shader = gen.genShader();
 
@@ -100,3 +101,21 @@ ShaderNetwork.STRUCT = STRUCT.inherit(ShaderNetwork, DataBlock) + `
 `;
 DataBlock.register(ShaderNetwork);
 nstructjs.manager.add_class(ShaderNetwork);
+
+export function makeDefaultShaderNetwork() {
+  let sn = new ShaderNetwork();
+
+  let out = new OutputNode();
+  sn.graph.add(out);
+
+  let shader = new DiffuseNode();
+  sn.graph.add(shader);
+
+  shader.outputs.surface.connect(out.inputs.surface);
+
+  shader.graph_ui_pos[0] -= 100;
+  out.graph_ui_pos[0] += 300;
+
+  return sn;
+}
+
