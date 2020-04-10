@@ -1,0 +1,37 @@
+{
+  "source": "../scripts",
+  "destination": "../docs",
+  "index": "../docs/index.html",
+  "plugins": [{
+    "name": "esdoc-standard-plugin",
+    "option": {
+      "coverage": {"enable": true},
+      "accessor": {"access": ["public", "protected", "private"], "autoPrivate": true},
+      "undocumentIdentifier": {"enable": true},
+      "unexportedIdentifier": {"enable": false},
+      "typeInference": {"enable": true},
+      "brand": {
+        "title": "path.ux",
+        "description": "this is awesome library",
+        "repository": "https://github.com/joeedh/path.ux.git",
+        "site": "https://github.com/joeedh/path.ux",
+        "author": "Joseph Eagar"
+      },
+      "manual": {
+        "index" : "index.md",
+        "globalIndex" : true,
+        "files": [
+          "../scripts/path.ux/docs/docs_src/architecture.md",
+          "../scripts/path.ux/docs/docs_src/nstructjs.md",
+          "../scripts/path.ux/docs/docs_src/toolsystem.md",
+          "../scripts/path.ux/docs/docs_src/controller.md",
+          "datablock.md",
+          "datagraph.md",
+          "../scripts/path.ux/docs/docs_src/toolprop.md",
+          "../scripts/path.ux/docs/docs_src/tutorial.md"
+        ]
+      }
+    }
+  }]
+}
+

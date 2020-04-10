@@ -416,7 +416,13 @@ export class IDGen {
   next() {
     return this._cur++;
   }
-  
+
+  copy() {
+    let ret = new IDGen();
+    ret._cur = this._cur;
+    return ret;
+  }
+
   max_cur(id) {
     this._cur = Math.max(this._cur, id+1);
   }
@@ -430,12 +436,6 @@ export class IDGen {
   static fromJSON(obj) {
     var ret = new IDGen();
     ret._cur = obj._cur;
-    return ret;
-  }
-  
-  static fromSTRUCT(reader) {
-    let ret = new IDGen();
-    reader(ret);
     return ret;
   }
 }

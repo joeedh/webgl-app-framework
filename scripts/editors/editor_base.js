@@ -4,73 +4,23 @@ import {Area} from '../path.ux/scripts/ScreenArea.js';
 import {Screen} from '../path.ux/scripts/FrameManager.js';
 import {UIBase} from '../path.ux/scripts/ui_base.js';
 import * as util from '../util/util.js';
+import {haveModal} from "../path.ux/scripts/simple_events.js";
+import {warning} from "../path.ux/scripts/ui_noteframe.js";
+
+import {Icons} from './icon_enum.js';
 
 let areastacks = {};
 let arealasts = {};
+let last_area = undefined;
+let laststack = [];
 
-export {keymap} from '../path.ux/scripts/simple_events.js';
-export class HotKey {
-  /**action can be a callback or a toolpath string*/
-  constructor(key, modifiers, action) {
-    this.action = action;
-    this.mods = modifiers;
-    this.key = keymap[key];
-  }
+export {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
+import {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
+import {Matrix4, Vector2} from "../util/vectormath.js";
+import {DataBlock} from '../core/lib_api.js';
 
-  exec(ctx) {
-    if (typeof this.action == "string") {
-      ctx.api.execTool(ctx, this.action);
-    } else {
-      this.action(ctx);
-    }
-  }
-}
+export {VelPanFlags, VelPan} from './velpan.js';
 
-export class KeyMap extends Array {
-  constructor(hotkeys=[]) {
-    for (let hk of hotkeys) {
-      this.add(hk);
-    }
-  }
-
-  handle(ctx, e) {
-    let mods = new util.set();
-    if (e.shiftKey)
-      mods.add("shift");
-    if (e.altKey)
-      mods.add("alt");
-    if (e.ctrlKey) {
-      mods.add("ctrl");
-    }
-    if (e.commandKey) {
-      mods.add("command");
-    }
-
-    for (let hk of this) {
-      let ok = e.keyCode == hk.key;
-      if (!ok) continue;
-
-      for (let m of hk.mods) {
-        if (mods.has(m.lower().trim())) {
-          ok = false;
-          break;
-        }
-      }
-
-      if (ok) {
-        hk.exec(ctx);
-      }
-    }
-  }
-
-  add(hk) {
-    this.push(hk);
-  }
-
-  push(hk) {
-    super.push(hk);
-  }
-}
 let getAreaStack = (cls) => {
   let name = cls.define().areaname;
   
@@ -101,8 +51,17 @@ export class Editor extends Area {
     super();
     
     this.container = document.createElement("container-x");
-    
+    this.container.parentWidget = this;
+
     this.shadow.appendChild(this.container);
+  }
+
+  onFileLoad() {
+
+  }
+
+  getKeyMaps() {
+    return [this.keymap];
   }
 
   defineKeyMap() {
@@ -111,13 +70,37 @@ export class Editor extends Area {
     return this.keymap;
   }
 
+  getID() {
+    return this.ctx.screen.sareas.indexOf(this.owning_sarea);
+  }
+
+  static getActiveArea() {
+    return last_area;
+  }
+
+  on_area_active() {
+    Editor.setLastArea(this);
+  }
+
+  static setLastArea(area) {
+    let tname = area.constructor.define().areaname;
+    //console.warn("call to setLastArea", area._area_id, tname);
+    arealasts[tname] = area;
+    last_area = area;
+  }
+
   push_ctx_active(ctx) {
     let stack = getAreaStack(this.constructor);
-    
-    arealasts[this.constructor.define().areaname] = this;
+
+    let tname = this.constructor.define().areaname;
+    if (arealasts[tname] === undefined) {
+      Editor.setLastArea(this);
+    }
     
     stack.push(this);
     allareas_stack.push(this);
+    //laststack.push(last_area);
+    //last_area = this;
   }
   
   pop_ctx_active(ctx) {
@@ -125,28 +108,49 @@ export class Editor extends Area {
     
     stack.pop();
     allareas_stack.pop();
+
+    //let ret = laststack.pop();
+    //if (ret !== undefined) {
+    //  last_area = ret;
+    //}
   }
-  
+
+  /*copy of code in Area clas in ScreenArea.js in path.ux.
+    example of how to define an area.
+
+  static define() {return {
+    tagname  : undefined, // e.g. "areadata-x",
+    areaname : undefined, //api name for area type
+    uiname   : undefined,
+    icon : undefined //icon representing area in MakeHeader's area switching menu. Integer.
+  };}
+  */
+
+  on_keydown(e) {
+    console.log(e.keyCode);
+
+    Editor.setLastArea(this);
+  }
+
   init() {
     super.init();
-    
+    this.defineKeyMap();
+
     this.container.ctx = this.ctx;
     this.makeHeader(this.container);
     this.setCSS();
   }
   
   getScreen() {
-    return _appstate.screen;
+    return this.owning_sarea !== undefined && this.owning_sarea.screen !== undefined ? this.owning_sarea.screen : _appstate.screen;
   }
   
   static register(cls) {
     Area.register(cls);
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = document.createElement(this.define().tagname);
-    reader(ret);
-    return ret;
+
+  static newSTRUCT() {
+    return document.createElement(this.define().tagname);
   }
 };
 Editor.STRUCT = STRUCT.inherit(Editor, Area) + `
@@ -154,18 +158,145 @@ Editor.STRUCT = STRUCT.inherit(Editor, Area) + `
 `;
 nstructjs.manager.add_class(Editor);
 
+import {ToolClasses, ToolFlags, ToolMacro} from "../path.ux/scripts/simple_toolsys.js";
+import {Menu} from "../path.ux/scripts/ui_menu.js";
+
+function spawnToolSearchMenu(ctx) {
+  let tools = [];
+  let screen = ctx.screen;
+
+  let menu = document.createElement("menu-x");
+
+  for (let cls of ToolClasses) {
+    if ((cls.tooldef().flag & ToolFlags.PRIVATE) || !cls.canRun(ctx)) {
+      continue;
+    }
+
+    let tdef = cls.tooldef();
+    let hotkey = undefined;
+
+    if (tdef.toolpath) {
+      hotkey = screen.getHotKey(tdef.toolpath);
+
+      if (hotkey) {
+        hotkey = hotkey.buildString();
+
+        console.log("hotkey:", hotkey);
+      }
+    }
+
+    menu.addItemExtra(tdef.uiname, tools.length, hotkey);
+    tools.push(cls);
+  }
+
+  menu.setAttribute("title", "Tools");
+
+  document.body.appendChild(menu);
+  menu.startFancy();
+
+  menu.float(screen.mpos[0], screen.mpos[1], 8);
+  menu.style["width"] = "500px";
+
+  menu.onselect = (item) => {
+    console.log(item, "got item");
+
+    let cls = tools[item];
+    let tool = cls.invoke(ctx, {});
+
+    if (tool === undefined) {
+      warning("Tool failed");
+      return;
+    }
+
+    ctx.toolstack.execTool(tool, ctx);
+  }
+  //ui.menu("Tools", [["Test", () => {}]]);
+}
+
 export class App extends Screen {
+  constructor() {
+    super();
+
+    this.useDataPathToolOp = true;
+
+    this._last_dpi = undefined;
+
+    this.keymap = new KeyMap([
+      new HotKey("Z", ["CTRL"], () => {
+        _appstate.toolstack.undo();
+        window.redraw_viewport();
+      }),
+      new HotKey("Z", ["CTRL", "SHIFT"], () => {
+        _appstate.toolstack.redo();
+        window.redraw_viewport();
+      }),
+      new HotKey("Y", ["CTRL"], () => {
+        console.log("redo!");
+        _appstate.toolstack.redo();
+        window.redraw_viewport();
+      }),
+      new HotKey("Space", [], () => {
+        console.log("Space Bar!");
+
+        spawnToolSearchMenu(_appstate.ctx);
+      })
+    ]);
+  }
+
   static define() {return {
     tagname : "webgl-app-x"
   }}
-  
-  static fromSTRUCT(reader) {
-    return super.fromSTRUCT(reader);
+
+  static newSTRUCT() {
+    return document.createElement(this.define().tagname);
   }
-  
+
+  setCSS() {
+    super.setCSS();
+    let dpi = this.getDPI();
+
+    let size = this.size, canvas = document.getElementById("webgl");
+
+    if (!canvas || size === undefined) {
+      return;
+    }
+
+    let w = size[0], h = size[1];
+    let w2 = ~~(w*dpi);
+    let h2 = ~~(h*dpi);
+
+    if (canvas.width == w2 && canvas.height == h2) {
+      return;
+    }
+
+    console.log("resizing canvas");
+    canvas.width = w2;
+    canvas.height = h2;
+
+    canvas.style["width"] = w + "px";
+    canvas.style["height"] = h + "px";
+    canvas.style["position"] = "absolute";
+    canvas.style["z-index"] = "-2";
+
+    canvas.dpi = dpi;
+  }
+
+  on_resize(newsize) {
+    super.on_resize(newsize);
+    this.setCSS();
+  }
+
+  updateDPI() {
+    if (this.getDPI() !== this._last_dpi) {
+      this._last_dpi = this.getDPI();
+      this.setCSS();
+    }
+  }
+
   update() {
     super.update();
-    
+    this.updateDPI();
+
     let w = window.innerWidth;
     let h = window.innerHeight;
     
@@ -178,7 +309,44 @@ export class App extends Screen {
   }
 };
 
-App.STRUCT = STRUCT.inherit(App, Screen) + `
+App.STRUCT = STRUCT.inherit(App, Screen, 'App') + `
 }`;
 UIBase.register(App);
 nstructjs.manager.add_class(App);
+
+export class ScreenBlock extends DataBlock {
+  constructor() {
+    super();
+
+    //this.screen = document.createElement("webgl-app-x");
+  }
+
+  static blockDefine() {return {
+    typeName    : "screen",
+    defaultName : "Screen",
+    uiName      : "Screen",
+    icon        : -1,
+    flag        : 0
+  }}
+
+  copy() {
+    let ret = new ScreenBlock();
+
+    ret.screen = this.screen.copy();
+    ret.name = this.name;
+    ret.lib_flag = this.lib_flag;
+
+    return ret;
+  }
+
+  loadSTRUCT(reader) {
+    super.loadSTRUCT(reader);
+    reader(this);
+  }
+}
+ScreenBlock.STRUCT = STRUCT.inherit(ScreenBlock, DataBlock) + `
+  screen : App;
+}
+`;
+nstructjs.manager.add_class(ScreenBlock);
+DataBlock.register(ScreenBlock);

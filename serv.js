@@ -7,7 +7,7 @@ const fs = require('fs');
 const http = require('http');
 const path = require('path');
 
-const INDEX = "main.html"
+const INDEX = "index.html"
 const SAVEPATH = "data/zelda_mm.json"
 const basedir = process.cwd();
 
@@ -16,7 +16,8 @@ let mimemap = {
   ".json" : "text/json",
   ".html" : "text/html",
   ".png" : "image/png",
-  ".jpg" : "image/jpeg"
+  ".jpg" : "image/jpeg",
+  ".css" : "text/css"
 };
 
 let getMime = (p) => {

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../">
+  <title data-ice="title">Manual | path.ux</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  <script src="script/manual.js"></script>
+<meta name="description" content="this is awesome library"><meta property="twitter:card" content="summary"><meta property="twitter:title" content="path.ux"><meta property="twitter:description" content="this is awesome library"></head>
+<body class="layout-container manual-root" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+<a style="position:relative; top:3px;" href="https://github.com/joeedh/path.ux.git"><img width="20px" src="./image/github.png"></a></header>
+
+<nav class="navigation" data-ice="nav"><div class="manual-toc-root">
+  
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#introduction" data-ice="link">Introduction</a></li>
+<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#context" data-ice="link">Context</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/architecture.html"><a href="manual/architecture.html#tool-contexts" data-ice="link">Tool Contexts</a></li>
+<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#history" data-ice="link">History</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/nstructjs.html"><a href="manual/nstructjs.html" data-ice="link">NStructJS</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/nstructjs.html"><a href="manual/nstructjs.html#controller-how-fields-are-saved" data-ice="link">Controller How Fields Are Saved</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/nstructjs.html"><a href="manual/nstructjs.html#versioning" data-ice="link">Versioning</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html" data-ice="link">Tool System</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html#context" data-ice="link">Context</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html#undo" data-ice="link">Undo</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html#tooldef--" data-ice="link">tooldef()</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/toolsystem.html"><a href="manual/toolsystem.html#tool-properties" data-ice="link">Tool Properties</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/controller.html"><a href="manual/controller.html" data-ice="link">Object Wrapping Example</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/datablock.html"><a href="manual/datablock.html" data-ice="link">Database Library</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datablock.html"><a href="manual/datablock.html#rules" data-ice="link">Rules</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datablock.html"><a href="manual/datablock.html#struct-scripts" data-ice="link">Struct scripts</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datablock.html"><a href="manual/datablock.html#linking" data-ice="link">Linking</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/datagraph.html"><a href="manual/datagraph.html" data-ice="link">Data Graph</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datagraph.html"><a href="manual/datagraph.html#declaration" data-ice="link">Declaration</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datagraph.html"><a href="manual/datagraph.html#cycles" data-ice="link">Cycles</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datagraph.html"><a href="manual/datagraph.html#data-blocks" data-ice="link">Data Blocks</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datagraph.html"><a href="manual/datagraph.html#zombie-nodes" data-ice="link">Zombie Nodes</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    </ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    </ul>
+  </div>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><div class="github-markdown" data-ice="content"><h1 id="data-graph">Data Graph</h1><p>The data graph is a generic execution graph.  It&apos;s used for (some) event handling,
+scene dependency relationships, shader nodes, the render engine pass compositing system,
+etc.  Each of these use the data graph in a slightly different way.</p>
+<p>The data graph is a DAG solver with optional support for cyclic graphs.</p>
+<h2 id="declaration">Declaration</h2><p>Dag nodes are declared by subclassing from graph.Node.  Each subclass should implementation
+an exec method and the static nodedef method, like so:</p>
+<pre><code><code class="source-code prettyprint">class MyNode extends Node {
+  constructor() {
+    super();
+
+    this.mysetting = 0;
+  }
+
+  static nodedef() {return {
+    uiname : &quot;My Node&quot;,
+    name   : &quot;MyNode&quot;,     //if you want to inherit sockets from parent
+    inputs : Node.inherit({ //class, wrap inputs/outputs in Node.inherit
+      myinput : new FloatSocket()
+    }),
+    outputs : {
+      myoutput : new FloatSocket()
+    }
+  }}
+
+  //ctx is the argument passed to Graph.prototype.exec
+  exec(ctx) {
+    this.outputs.myoutput.setValue(this.inputs.myinput.getValue());
+
+    //note that child nodes aren&apos;t executed unless you call .update() on output sockets
+    //except for shader nodes, which don&apos;t use .exec methods at all
+    this.outputs.myoutput.update();
+  }
+}
+MyNode.struct = STRUCT.inherit(MyNode, Node) + ~
+  mysetting : int;
+}
+`;
+nstructjs.manager.add_class(MyNode);</code>
+</code></pre><h2 id="cycles">Cycles</h2><p>If cycles are enable, the DAG will try to solve the graph until all inputs/outputs stop changing
+in value.  There are various methods in nodeSocketType for this, the most important of which is cmpValue
+and diffValue (which returns a number representing &quot;change&quot; between two instances of a socket).</p>
+<h2 id="data-blocks">Data Blocks</h2><p>Data blocks inherit from Node.  Unlike normal nodes, they are not saved inside of Graph.nodes;
+instead a special ProxyNode is create on file save, and on load the ProxyNode is swapped with the
+original data block.  This is to allow saving/loading of data blocks individually, without having to
+save/load the entire Graph structure (this is useful for linking different files together, e.g. file A can
+load parts of file B).</p>
+<h2 id="zombie-nodes">Zombie Nodes</h2><p>Zombie nodes are created by the UI for event handling; the graph automatically deletes them on file load.
+Zombie nodes are created by adding NodeFlags.ZOMBIE to node.graph_flag:</p>
+<pre><code><code class="source-code prettyprint">node.graph_flag |= NodeFlags.ZOMBIE;</code>
+</code></pre></div>
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.1.0)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

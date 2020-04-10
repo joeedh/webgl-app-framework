@@ -2,44 +2,133 @@ import * as util from '../util/util.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as simplemesh from './simplemesh.js';
 import * as webgl from './webgl.js';
+import {Texture} from "./webgl.js";
+
+let DEPTH24_STENCIL8 = 35056;
+let RGBA32F = 34836;
 
 export class FBO {
+  /*
+  To make a cube texture FBO, create an FBO and then
+  manually set .texColor.texture and .texDepth.texture,
+  also set .target to gl.TEXTURE_CUBE_MAP and .layer
+  to the cube map face layer
+  */
   constructor(gl, width=512, height=512) {
+    this.target = gl !== undefined ? gl.TEXTURE_2D : 3553;
+    this.layer = undefined; //used if target is not gl.TEXTURE_2D
+
+    this.ctype = RGBA32F;
+    this.dtype = DEPTH24_STENCIL8;
+
     this.gl = gl;
     this.fbo = undefined;
     this.regen = true;
     this.size = [width, height];
     this.texDepth = undefined;
+    this.texColor = undefined;
   }
-  
+
+  copy() {
+    let ret = new FBO();
+
+    ret.size = [this.size[0], this.size[1]];
+    ret.gl = this.gl;
+
+    return ret;
+  }
+
   create(gl) {
     gl = this.gl = gl === undefined ? this.gl : gl;
-    
+
+    this.size[0] = ~~this.size[0];
+    this.size[1] = ~~this.size[1];
+
     //console.trace("framebuffer creation");
     
     this.fbo = gl.createFramebuffer();
-    this.texDepth = gl.createTexture();
-    this.texColor = gl.createTexture();
-    
-    webgl.Texture.defaultParams(gl, this.texDepth);
-    webgl.Texture.defaultParams(gl, this.texColor);
+    if (!this.texDepth)
+      this.texDepth = new webgl.Texture(undefined, gl.createTexture());
+    if (!this.texColor)
+      this.texColor = new webgl.Texture(undefined, gl.createTexture());
 
-    gl.bindTexture(gl.TEXTURE_2D, this.texDepth);
-    //let type = gl.depth_texture.UNSIGNED_INT_24_8_WEBGL;
-    
-    let type = gl.UNSIGNED_INT;
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, this.size[0], this.size[1], 0, gl.DEPTH_COMPONENT, type, null);
-    
-    gl.bindTexture(gl.TEXTURE_2D, this.texColor);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    let target = this.target;
+    let layer = this.layer;
 
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.size[0], this.size[1], 0, gl.RGBA, gl.FLOAT, null);
-    
+    function texParams(tex) {
+      gl.bindTexture(target, tex);
+
+      gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(target, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+    }
+
+    texParams(this.texDepth.texture);
+    texParams(this.texColor.texture);
+
+    let initTex = (dtype, dtype2, dtype3) => {
+      if (this.target !== gl.TEXTURE_2D)
+        return;
+
+      if (gl.haveWebGL2) {
+        //gl.texStorage2D(gl.TEXTURE_2D, 1, dtype, this.size[0], this.size[1]);
+        gl.texImage2D(this.target, 0, dtype, this.size[0], this.size[1], 0, dtype2, dtype3, null);
+      } else {
+        gl.texImage2D(this.target, 0, dtype, this.size[0], this.size[1], 0, dtype2, dtype3, null);
+      }
+    };
+
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+
+    let dtype = this.dtype;
+    let dtype2 = gl.DEPTH_STENCIL;
+
+    let dtype3 = gl.haveWebGL2 ? gl.UNSIGNED_INT_24_8 : gl.depth_texture.UNSIGNED_INT_24_8_WEBGL;
+
+    gl.bindTexture(this.target, this.texDepth.texture);
+    initTex(dtype, dtype2, dtype3);
+
+    let ctype = this.ctype;
+    let ctype2 = gl.RGBA, ctype3 = gl.FLOAT;
+
+    gl.bindTexture(target, this.texColor.texture);
+    initTex(ctype, ctype2, ctype3);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+
+    if (this.target == gl.TEXTURE_2D) {
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texColor.texture, 0);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.TEXTURE_2D, this.texDepth.texture, 0);
+    } else {
+      let target2 = target;
+
+      if (target == gl.TEXTURE_CUBE_MAP) {
+        target2 = layer;
+      }
+
+      if (DEBUG.fbo) {
+        console.log("TARGET2", target2);
+      }
+      
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, target2, this.texColor.texture, 0);
+      if (target === gl.TEXTURE_2D) {
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, target2, this.texDepth.texture, 0);
+      } else {
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, target2, this.texDepth.texture, 0);
+        //gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, target2, this.texDepth.texture, 0);
+      }
+    }
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+    let errret = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
     
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.texDepth, 0);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texColor, 0);
+    if (DEBUG.fbo) {
+      console.log("FBO STATUS:", errret, webgl.constmap[errret]);
+    }
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
   
   bind(gl) {
@@ -60,13 +149,30 @@ export class FBO {
   destroy() {
     if (this.fbo !== undefined) {
       this.gl.deleteFramebuffer(this.fbo);
-      this.gl.deleteTexture(this.texDepth);
-      this.gl.deleteTexture(this.texColor);
+
+      if (this.target === this.gl.TEXTURE_2D) {
+        this.gl.deleteTexture(this.texDepth.texture);
+        this.gl.deleteTexture(this.texColor.texture);
+      }
+
       this.fbo = undefined;
     }
   }
   
   update(gl, width, height) {
+    width = ~~width;
+    height = ~~height;
+
+    /*
+    function get2(f) {
+      let f2 = Math.ceil(Math.log(f) / Math.log(2.0));
+      return Math.pow(2.0, f2);
+    }
+
+    width = ~~get2(width);
+    height = ~~get2(height);
+    //*/
+
     gl = this.gl = gl === undefined ? this.gl : gl;
     
     if (width !== this.size[0] || height !== this.size[1]) {
@@ -97,7 +203,7 @@ export class FrameStage extends FBO {
   }
 }
 
-let BlitShader = {
+export let BlitShader = {
   vertex : `
 precision mediump float;
 
@@ -134,7 +240,46 @@ gl_FragDepthEXT = texture2D(depth, v_Uv)[0];
   `,
   uniforms : {},
   attributes : ["position", "uv"]
+};
+
+export let BlitShaderGLSL300 = {
+  vertex : `#version 300 es
+precision mediump float;
+
+uniform sampler2D rgba;
+uniform sampler2D depth;
+
+in vec3 position;
+in vec2 uv;
+
+out vec2 v_Uv;
+
+void main(void) {
+gl_Position = vec4(position, 1.0);
+v_Uv = uv;
 }
+    
+  `,
+  fragment : `#version 300 es
+
+precision mediump float;
+
+
+uniform sampler2D rgba;
+uniform sampler2D depth;
+
+in vec2 v_Uv;
+out vec4 fragColor;
+
+void main(void) {
+fragColor = texture(rgba, v_Uv);
+gl_FragDepth = texture(depth, v_Uv)[0];
+}
+
+  `,
+  uniforms : {},
+  attributes : ["position", "uv"]
+};
 
 export class FramePipeline {
   constructor(width=512, height=512) {
@@ -201,7 +346,7 @@ export class FramePipeline {
     gl.enable(gl.DEPTH_TEST);
     
     gl.clearDepth(1000000.0);
-    gl.clearColor(0.3, 0.4, 1.0, 0.0);
+    gl.clearColor(0.0, 0.0, 0.0, 0.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
     drawfunc(gl);
@@ -216,10 +361,10 @@ export class FramePipeline {
       stage.update(gl, width, height);
       
       stage.shader.uniforms.rgba = this._texs[0];
-      this._texs[0].texture = laststage.texColor;
+      this._texs[0].texture = laststage.texColor.texture;
       
       stage.shader.uniforms.depth = this._texs[1];
-      this._texs[1].texture = laststage.texDepth;
+      this._texs[1].texture = laststage.texDepth.texture;
       
       stage.shader.uniforms.size = this.size;
 
@@ -246,8 +391,8 @@ export class FramePipeline {
     this.blitshader.uniforms.depth = this._texs[1];
     this.blitshader.uniforms.size = this.size;
     
-    this._texs[0].texture = stage.texColor;
-    this._texs[1].texture = stage.texDepth;
+    this._texs[0].texture = stage.texColor.texture;
+    this._texs[1].texture = stage.texDepth.texture;
     
     this.smesh.draw(gl);
   }

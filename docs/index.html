@@ -32,7 +32,9 @@
     <ul class="manual-toc">
       
     <li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#introduction" data-ice="link">Introduction</a></li>
-<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#data-bindings" data-ice="link">Data Bindings</a></li>
+<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#context" data-ice="link">Context</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/architecture.html"><a href="manual/architecture.html#tool-contexts" data-ice="link">Tool Contexts</a></li>
+<li data-ice="manualNav" class="indent-h1" data-link="manual/architecture.html"><a href="manual/architecture.html#history" data-ice="link">History</a></li>
 </ul>
   </div>
 <div data-ice="manual">
@@ -62,8 +64,20 @@
 <div data-ice="manual">
     <ul class="manual-toc">
       
-    <li data-ice="manualNav" class="indent-h1" data-link="manual/libblock.html"><a href="manual/libblock.html#database-library" data-ice="link">Database Library</a></li>
-<li data-ice="manualNav" class="indent-h1" data-link="manual/libblock.html"><a href="manual/libblock.html#struct-scripts" data-ice="link">Struct scripts</a></li>
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/datablock.html"><a href="manual/datablock.html" data-ice="link">Database Library</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datablock.html"><a href="manual/datablock.html#rules" data-ice="link">Rules</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datablock.html"><a href="manual/datablock.html#struct-scripts" data-ice="link">Struct scripts</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datablock.html"><a href="manual/datablock.html#linking" data-ice="link">Linking</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/datagraph.html"><a href="manual/datagraph.html" data-ice="link">Data Graph</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datagraph.html"><a href="manual/datagraph.html#declaration" data-ice="link">Declaration</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datagraph.html"><a href="manual/datagraph.html#cycles" data-ice="link">Cycles</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datagraph.html"><a href="manual/datagraph.html#data-blocks" data-ice="link">Data Blocks</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/datagraph.html"><a href="manual/datagraph.html#zombie-nodes" data-ice="link">Zombie Nodes</a></li>
 </ul>
   </div>
 <div data-ice="manual">
@@ -88,6 +102,7 @@ It uses path.ux, a UI framework that is also based on Blender.</p>
 <li><a href="manual/toolsystem.html">Tool System</a></li>
 <li><a href="manual/libblock.html">Database Library</a></li>
 <li><a href="manual/controller.html">Controller</a></li>
+<li><a href="manual/datagraph.html">Data Graph</a></li>
 <li><a href="manual/nstructjs.html">STRUCT</a></li>
 <li><a href="manual/FrameManager.html">FrameManager</a></li>
 </ul>
@@ -99,17 +114,19 @@ It uses path.ux, a UI framework that is also based on Blender.</p>
     
   <div class="manual-card-wrap" data-ice="cards">
       <div class="manual-card">
-        <div data-ice="card"><h1>Data Bindings</h1><p><a href="./manual/manual/controller.html">Main page</a></p><p>The Blender 2.5 project refactored the internal architecture into a rough MVC pattern.  The model is the core code, the view is the UI, and the controller is the glue between them.</p><p>The controller is called &quot;RNA&quot; and it uses the concept of object paths. So if you have an object, you could look up type information (and the value of) a property with a simple path, e.g. &quot;object.subobject.some_property&quot;.  Blender uses RNA for its user interface, its python api and its animation system (you can associate object paths with animation curves).</p><p>Internally the controller has a special wrapper API for blender&apos;s c-struct-based pseudo-objects.  This works extremely well as it keeps type information that&apos;s only used by the UI out of the model codebase (e.g. the model might not care that a specific color should be clamped to 0-2 instead of 0-1).  Even better, the object model presented by the controller need not match the internal data structures.</p><p>Since the controller provides type info to the UI a lot of messy boilerplate is avoided, leading to very consise layout code:</p><pre><code><code class="source-code prettyprint">def panel(layout, context):
+        <div data-ice="card"><h1>History</h1><p>Path.ux is roughly based on <a href="http://www.blender.org">Blender&apos;s</a> architecture.</p><p><a href="./manual/manual/controller.html">Main page</a></p><p>The Blender 2.5 project refactored the internal architecture into a rough MVC pattern.  The model is the core code, the view is the UI, and the controller is the glue between them.</p><p>The controller is called &quot;RNA&quot; and it uses the concept of object paths. So if you have an object, you could look up type information (and the value of) a property with a simple path, e.g. &quot;object.subobject.some_property&quot;.  Blender uses RNA for its user interface, its python api and its animation system (you can associate object paths with animation curves).</p><p>Internally the controller has a special wrapper API for blender&apos;s c-struct-based pseudo-objects.  This works extremely well as it keeps type information that&apos;s only used by the UI out of the model codebase (e.g. the model might not care that a specific color should be clamped to 0-2 instead of 0-1).  Even better, the object model presented by the controller need not match the internal data structures.</p><p>Since the controller provides type info to the UI a lot of messy boilerplate is avoided, leading to very consise layout code:</p><pre><code><code class="source-code prettyprint">def panel(layout, context):
     row = layout.row
     row.prop(context.object, &quot;some_object_property&quot;)
     row.tool(&quot;mesh.subdivide&quot;)</code>
 </code></pre></div>
-        <a data-ice="link" href="manual/architecture.html#data-bindings"></a>
+        <a data-ice="link" href="manual/architecture.html#history"></a>
       </div>
     </div>
 <div class="manual-card-wrap" data-ice="cards">
       <div class="manual-card">
-        <div data-ice="card"><h1>NStructJS</h1><p>NStructJS is a little library for saving/loading highly structured JS objects as binary data.<br>It is not suited for unstructed data (use JSON for that).<br>NStructJS arose out of the following shortcomings of JSON:</p><ul>
+        <div data-ice="card"><h1>NStructJS</h1><p>NStructJS is a little library for saving/loading highly structured JS objects as binary data
+(for more info, see the <a href="https://github.com/joeedh/STRUCT/wiki">official documentation</a> ).
+It is not suited for unstructed data (use JSON for that).<br>NStructJS arose out of the following shortcomings of JSON:</p><ul>
 <li>JSON allocates objects twice.</li>
 <li>JSON is slow compared to what you can get with a structured binary format</li>
 </ul><p>The idea of NStructJS is to attach little scripts to your classes that define that 
@@ -259,11 +276,21 @@ st.float(&quot;opacity&quot;, &quot;opacity&quot;, &quot;Opacity&quot;, &quot;Tr
     </div>
 <div class="manual-card-wrap" data-ice="cards">
       <div class="manual-card">
-        <div data-ice="card"><h1>Struct scripts</h1><p>Datablocks must save references to other datablocks as DataRefs; for example:</p><pre><code><code class="source-code prettyprint">SomeDataBlock.STRUCT = STRUCT.inherit(SomeDataBlock, DataBlock, &quot;SomeDataBlock&quot;) + `
+        <div data-ice="card"><h1>Database Library</h1><p><img src="./manual/image/datablock_illustration.png" alt="Datablock class diagrams"></p><p>The core abstract class is DataBlock (note that not everything subclasses from it).  DataBlocks are 
+inspired by Blender&apos;s library blocks, and work in a similar way.<br>Important types inherit from DataBlock (e.g. meshes, scenes, objects, lights).<br>DataBlocks support (or will anyway) independently loading them from files,
+so a DataBlock in one file can reference a DataBlock in another.  </p><p>In addition, DataBlocks are all graph nodes (they subclass from Node), which complicates things a bit because
+graph.Graph serializes all of its nodes internally while DataBlocks are supposed to
+be independently loadable.  For this reason, Graph has a special Proxy API that saves
+dummy stand-ins inside Graph.nodes during serialization, which can be swapped out for real
+DataBlocks on file load. </p><h2>Rules</h2><p>DataBlocks must follow a number of rules:</p><ul>
+<li>Datablocks must never store references to non-datablocks objects that aren&apos;t &quot;owned&quot; by that datablocks.</li>
+<li>Datablocks may store references to other datablocks, including references from owned subobjects to
+other datablocks, but must go through a few API hoops.</li>
+</ul><p>Datablocks all inherit from graph.Node, and as such can participate in the dependency graph.</p><h2>Struct scripts</h2><p>Datablocks must save references to other datablocks as DataRefs; for example:</p><pre><code><code class="source-code prettyprint">SomeDataBlock.STRUCT = STRUCT.inherit(SomeDataBlock, DataBlock, &quot;SomeDataBlock&quot;) + `
   anotherBlock : DataRef | DataRef.fromBlock(obj.anotherBlock);
 }
 `</code>
-</code></pre><p>Additionally, datablocks must implement the dataLink method to re-link DataRefs at load time.  And they must
+</code></pre><h2>Linking</h2><p>Additionally, datablocks must implement the dataLink method to re-link DataRefs at load time.  And they must
 call the .afterSTRUCT method inside fromSTRUCT (this behavior is inherited from graph.Node and may become automatic
 in the future).  Here&apos;s a complete example:</p><pre><code><code class="source-code prettyprint">class SomeDataBlock extends DataBlock {
   dataLink(getblock, getblock_add_user) {
@@ -280,7 +307,56 @@ SomeDataBlock.STRUCT = STRUCT.inherit(SomeDataBlock, DataBlock, &quot;SomeDataBl
 }
 `</code>
 </code></pre></div>
-        <a data-ice="link" href="manual/libblock.html#struct-scripts"></a>
+        <a data-ice="link" href="manual/datablock.html"></a>
+      </div>
+    </div>
+<div class="manual-card-wrap" data-ice="cards">
+      <div class="manual-card">
+        <div data-ice="card"><h1>Data Graph</h1><p>The data graph is a generic execution graph.  It&apos;s used for (some) event handling,
+scene dependency relationships, shader nodes, the render engine pass compositing system,
+etc.  Each of these use the data graph in a slightly different way.</p><p>The data graph is a DAG solver with optional support for cyclic graphs.</p><h2>Declaration</h2><p>Dag nodes are declared by subclassing from graph.Node.  Each subclass should implementation
+an exec method and the static nodedef method, like so:</p><pre><code><code class="source-code prettyprint">class MyNode extends Node {
+  constructor() {
+    super();
+
+    this.mysetting = 0;
+  }
+
+  static nodedef() {return {
+    uiname : &quot;My Node&quot;,
+    name   : &quot;MyNode&quot;,     //if you want to inherit sockets from parent
+    inputs : Node.inherit({ //class, wrap inputs/outputs in Node.inherit
+      myinput : new FloatSocket()
+    }),
+    outputs : {
+      myoutput : new FloatSocket()
+    }
+  }}
+
+  //ctx is the argument passed to Graph.prototype.exec
+  exec(ctx) {
+    this.outputs.myoutput.setValue(this.inputs.myinput.getValue());
+
+    //note that child nodes aren&apos;t executed unless you call .update() on output sockets
+    //except for shader nodes, which don&apos;t use .exec methods at all
+    this.outputs.myoutput.update();
+  }
+}
+MyNode.struct = STRUCT.inherit(MyNode, Node) + ~
+  mysetting : int;
+}
+`;
+nstructjs.manager.add_class(MyNode);</code>
+</code></pre><h2>Cycles</h2><p>If cycles are enable, the DAG will try to solve the graph until all inputs/outputs stop changing
+in value.  There are various methods in nodeSocketType for this, the most important of which is cmpValue
+and diffValue (which returns a number representing &quot;change&quot; between two instances of a socket).</p><h2>Data Blocks</h2><p>Data blocks inherit from Node.  Unlike normal nodes, they are not saved inside of Graph.nodes;
+instead a special ProxyNode is create on file save, and on load the ProxyNode is swapped with the
+original data block.  This is to allow saving/loading of data blocks individually, without having to
+save/load the entire Graph structure (this is useful for linking different files together, e.g. file A can
+load parts of file B).</p><h2>Zombie Nodes</h2><p>Zombie nodes are created by the UI for event handling; the graph automatically deletes them on file load.
+Zombie nodes are created by adding NodeFlags.ZOMBIE to node.graph_flag:</p><pre><code><code class="source-code prettyprint">node.graph_flag |= NodeFlags.ZOMBIE;</code>
+</code></pre></div>
+        <a data-ice="link" href="manual/datagraph.html"></a>
       </div>
     </div>
 </div>

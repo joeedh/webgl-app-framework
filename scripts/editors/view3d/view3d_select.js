@@ -17,9 +17,18 @@ export class GPUSelectBuffer {
   }
 
   gen(ctx, gl, view3d) {
+    if (this.fbo !== undefined) {
+      this.fbo.destroy(gl);
+    }
+    this.fbo = new FBO(gl, ~~this.size[0], ~~this.size[1]);
+    /*
     if (this.fbo === undefined) {
       this.fbo = new FBO(gl, ~~this.size[0], ~~this.size[1]);
+
+    } else {
+      this.fbo.update(gl, ~~this.size[0], ~~this.size[1]);
     }
+    //*/
 
     this.fbo.bind(gl);
 
@@ -27,6 +36,18 @@ export class GPUSelectBuffer {
       projectionMatrix : view3d.camera.rendermat,
       objectMatrix : undefined
     };
+
+    gl.clearDepth(1000000);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
+    gl.disable(gl.SCISSOR_TEST);
+    gl.disable(gl.DITHER);
+
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthMask(true);
+
+    gl.viewport(0, 0, ~~this.size[0], ~~this.size[1]);
 
     for (let ob of ctx.scene.objects.editable) {
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
@@ -36,12 +57,17 @@ export class GPUSelectBuffer {
       }
     }
 
+    gl.finish();
+
     this.fbo.unbind(gl);
   }
 
   sampleBlock(ctx, gl, view3d, x, y, w=16, h=16) {
+    //console.log(x, y, this.pos[0], this.pos[1]);
+    let ret;
+
     try {
-      return this.sampleBlock_intern(ctx, gl, view3d, x, y, w, h);
+      ret = this.sampleBlock_intern(ctx, gl, view3d, x, y, w, h);
     } catch (error) {
       util.print_stack(error);
       console.log("error in sampleBlock");
@@ -49,6 +75,13 @@ export class GPUSelectBuffer {
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       return undefined;
     }
+
+    //XXX try to avoid screen flashing bug
+    gl.finish();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    window.redraw_viewport();
+
+    return ret;
   }
 
   getSearchOrder(n) {
@@ -75,14 +108,22 @@ export class GPUSelectBuffer {
       return w1-w2;
     });
 
-    console.log("RET", ret);
     return ret;
   }
+
   sampleBlock_intern(ctx, gl, view3d, x, y, w=16, h=16) {
-    if (this.pos.vectorDistance(view3d.pos) != 0.0 ||
-        this.size.vectorDistance(view3d.size) != 0.0) {
-      this.pos.load(view3d.pos);
-      this.size.load(view3d.size);
+    let dpi = gl.canvas.dpi;
+
+    w = ~~(w*dpi + 0.5);
+    h = ~~(h*dpi + 0.5);
+
+    x = ~~(x*dpi + 0.5);
+    y = ~~(y*dpi + 0.5);
+
+    if (this.pos.vectorDistance(view3d.glPos) != 0.0 ||
+        this.size.vectorDistance(view3d.glSize) != 0.0) {
+      this.pos.load(view3d.glPos);
+      this.size.load(view3d.glSize);
 
       this.dirty();
     }
@@ -94,11 +135,15 @@ export class GPUSelectBuffer {
     this.fbo.bind(gl);
 
     let data = new Float32Array(w*h*4);
+
     //gl.readPixels(x, y , w, h, gl.RGBA, gl.FLOAT, data);
     gl.readPixels(x, (~~this.size[1]) - (y + h), w, h, gl.RGBA, gl.FLOAT, data);
 
     this.fbo.unbind(gl);
 
-    return data;
+    return {
+      data  : data,
+      order : this.getSearchOrder(w)
+    };
   }
 };

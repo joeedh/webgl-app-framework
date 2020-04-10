@@ -4,6 +4,9 @@ import * as util from '../util/util.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
+import './const.js';
+
+export const constmap = {};
 
 export class IntUniform {
   constructor(val) {
@@ -11,21 +14,88 @@ export class IntUniform {
   }
 }
 
+export function initDebugGL(gl) {
+  let addfuncs = {};
+
+  let makeDebugFunc = (k, k2) => {
+    return function() {
+      let ret = this[k2].apply(this, arguments);
+
+      let err = this.getError();
+      if (err !== 0) {
+        console.warn("gl."+k+":", constmap[err]);
+      }
+
+      return ret;
+    }
+  };
+
+  for (let k in gl) {
+    let v = gl[k];
+
+    if (k !== "getError" && typeof v === "function") {
+      let k2 = "_" + k;
+
+      addfuncs[k2] = v;
+      gl[k] = makeDebugFunc(k, k2);
+    }
+  }
+
+  for (let k in addfuncs) {
+    gl[k] = addfuncs[k];
+  }
+
+  return gl;
+}
+
+let _gl = undefined;
+
 //params are passed to canvas.getContext as-is
 export function init_webgl(canvas, params) {
-  var gl = canvas.getContext("webgl", params);
-  
-  gl.getExtension("OES_texture_float");
+  if (_gl !== undefined) {
+    return _gl;
+  }
+
+  let webgl2 = true;
+  let gl;
+
+  if (webgl2) {
+    gl = canvas.getContext("webgl2", params);
+    gl.color_buffer_float = gl.getExtension("EXT_color_buffer_float");
+  } else {
+    gl = canvas.getContext("webgl", params);
+    gl.getExtension("EXT_frag_depth");
+    gl.color_buffer_float = gl.getExtension("WEBGL_color_buffer_float");
+  }
+
+  _gl = gl;
+  gl.haveWebGL2 = webgl2;
+
+  for (let k in gl) {//of Object.getOwnPropertyNames(gl)) {
+    let v = gl[k];
+
+    if (typeof v == "number" || typeof v == "string") {
+      constmap[v] = k;
+    }
+  }
+
+  window._constmap = constmap;
+
+  gl.texture_float = gl.getExtension("OES_texture_float");
+  gl.float_blend = gl.getExtension("EXT_float_blend");
   gl.getExtension("OES_standard_derivatives");
   gl.getExtension("ANGLE_instanced_arrays");
   gl.getExtension("WEBGL_lose_context");
-  gl.getExtension("WEBGL_draw_buffers");
+  gl.draw_buffers = gl.getExtension("WEBGL_draw_buffers");
   gl.depth_texture = gl.getExtension("WEBGL_depth_texture");
-  gl.getExtension("EXT_frag_depth");
   //gl.getExtension("WEBGL_debug_shaders");
   
   gl.shadercache = {};
-  
+
+  if (DEBUG.gl) {
+    initDebugGL(gl);
+  }
+
   return gl;
 }
 
@@ -191,7 +261,6 @@ export class ShaderProgram {
     
     var vshader = this.vertexSource, fshader = this.fragmentSource;
     
-    
     function loadShader(shaderType, code) {
         var shader = gl.createShader(shaderType);
 
@@ -252,7 +321,7 @@ export class ShaderProgram {
         return null;
     }
     
-    console.log("created shader", program);
+    //console.log("created shader", program);
 
     this.program = program;
 
@@ -305,7 +374,12 @@ export class ShaderProgram {
     
     this.uniformlocs = {};
   }
-  
+
+  destroy(gl) {
+    //XXX implement me
+    console.warn("ShaderProgram.prototype.destroy: implement me!");
+  }
+
   uniformloc(name) {
     if (this.uniformlocs[name] == undefined) {
       this.uniformlocs[name] = this.gl.getUniformLocation(this.program, name);
@@ -333,12 +407,18 @@ export class ShaderProgram {
         dst[i] = src[i];
       }
     }
-    
+
+    let slot_i = 0;
     gl.useProgram(this.program);
     this.gl = gl;
     
     for (var i=0; i<2; i++) {
       var us = i ? uniforms : this.uniforms;
+
+      if (uniforms === undefined) {
+        continue;
+      }
+
       for (var k in us) {
         var v = us[k];
         var loc = this.uniformloc(k)
@@ -353,7 +433,13 @@ export class ShaderProgram {
         if (v instanceof IntUniform) {
           gl.uniform1i(loc, v.val);
         } else if (v instanceof Texture) {
-          v.bind(gl, this.uniformloc(k));
+          let slot = v.texture_slot;
+
+          if (slot === undefined) {
+            slot = slot_i++;
+          }
+
+          v.bind(gl, this.uniformloc(k), slot);
         } else if (v instanceof Array) {
           switch (v.length) {
             case 2:
@@ -433,35 +519,60 @@ export class RenderBuffer {
 }
 
 export class Texture {
-  constructor(texture_slot, texture) {
+  //3553 is gl.TEXTURE_2D
+  constructor(texture_slot, texture, target=3553) {
     this.texture = texture;
     this.texture_slot = texture_slot;
+    this.target = target;
   }
-  
+
+  destroy(gl) {
+    gl.deleteTexture(this.texture);
+  }
+
   static load(gl, width, height, data) {
     let tex = gl.createTexture();
     
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    gl.bindTexture(this.target, tex);
+    if (data instanceof Float32Array) {
+      gl.texImage2D(this.target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.FLOAT, data);
+    } else {
+      gl.texImage2D(this.target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    }
     Texture.defaultParams(gl, tex);
     
     return new Texture(0, tex);
   }
   
-  static defaultParams(gl, tex) {
-    gl.bindTexture(gl.TEXTURE_2D, tex);
+  static defaultParams(gl, tex, target=gl.TEXTURE_2D) {
+    gl.bindTexture(target, tex);
     
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     
   }
   
-  bind(gl, uniformloc) {
-    gl.activeTexture(gl.TEXTURE0 + this.texture_slot);
-    gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    gl.uniform1i(uniformloc, this.texture_slot);
+  bind(gl, uniformloc, slot=this.texture_slot) {
+    gl.activeTexture(gl.TEXTURE0 + slot);
+    gl.bindTexture(this.target, this.texture);
+    gl.uniform1i(uniformloc, slot);
+  }
+}
+
+export class CubeTexture extends Texture {
+  constructor(texture_slot, texture) {
+    super();
+
+    this.texture = texture;
+    this.texture_slot = texture_slot;
+  }
+
+  bind(gl, uniformloc, slot=this.texture_slot) {
+    gl.activeTexture(gl.TEXTURE0 + slot);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.texture);
+    gl.uniform1i(uniformloc, slot);
   }
 }
 
@@ -520,13 +631,9 @@ export class DrawMats {
     
     return this;
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new DrawMats();
-    
-    reader(ret);
-    
-    return ret;
+
+  loadSTRUCT(reader) {
+    reader(this);
   }
 }
 DrawMats.STRUCT = `
@@ -553,6 +660,8 @@ export class Camera extends DrawMats {
     
     this.pos = new Vector3([0, 0, 5]);
     this.target = new Vector3();
+    this.orbitTarget = new Vector3();
+
     this.up = new Vector3([1, 3, 0]);
     this.up.normalize();
     
@@ -564,6 +673,7 @@ export class Camera extends DrawMats {
     this.fovy = b.fovy;
     this.aspect = b.aspect;
     this.pos.load(b.pos);
+    this.orbitTarget.load(b.orbitTarget);
     this.target.load(b.target);
     this.up.load(b.up);
     this.near = b.near;
@@ -582,6 +692,7 @@ export class Camera extends DrawMats {
     
     ret.pos.load(this.pos);
     ret.target.load(this.target);
+    ret.orbitTarget.load(this.orbitTarget);
     ret.up.load(this.up);
     
     ret.near = this.near;
@@ -650,23 +761,21 @@ export class Camera extends DrawMats {
     
     super.regen_mats(aspect); //will calculate iXXXmat for us
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new Camera();
-    reader(ret);
-    return ret;
+
+  loadSTRUCT(reader) {
+    reader(this);
   }
-  
 }
 
 Camera.STRUCT = STRUCT.inherit(Camera, DrawMats) + `
-  fovy   : float;
-  aspect : float;
-  target : vec3;
-  pos    : vec3;
-  up     : vec3;
-  near   : float;
-  far    : float;
+  fovy         : float;
+  aspect       : float;
+  target       : vec3;
+  orbitTarget  : vec3;
+  pos          : vec3;
+  up           : vec3;
+  near         : float;
+  far          : float;
 }
 `;
 nstructjs.manager.add_class(Camera);

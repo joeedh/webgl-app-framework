@@ -2,6 +2,15 @@ import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js
 import {ToolOp, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
 import {keymap} from '../../path.ux/scripts/simple_events.js';
 
+export const ConstraintSpaces = {
+  WORLD      : 0,
+  LOCAL      : 1,
+  NORMAL     : 2
+  //2-16 are reserved for further global types
+
+  //children will add types here
+};
+
 //proportional edit mode, "magnet tool"
 export const PropModes = {
   NONE   : 0,
@@ -19,7 +28,36 @@ export class TransDataElem {
   }
 }
 
+export class TransDataList extends Array {
+  constructor(typeclass, data) {
+    super();
+
+    this.type = typeclass;
+
+    if (data !== undefined) {
+      for (let item of data) {
+        this.push(item);
+      }
+    }
+  }
+}
+
+export class TransformData extends Array {
+  constructor() {
+    super();
+
+    this.center = new Vector3();
+    this.scenter = new Vector2();
+  }
+}
+
+export let TransDataTypes = [];
+
 export class TransDataType {
+  static register(cls) {
+    TransDataTypes.push(cls);
+  }
+
   static calcPropCurve(dis, propmode, propradius) {
     dis /= propradius;
     dis = 1.0 - Math.min(Math.max(dis, 0.0), 1.0);
@@ -45,11 +83,19 @@ export class TransDataType {
   
   static undo(ctx, undodata) {
   }
-  
-  static getCenter(ctx, elemlist) {
+
+
+  /**
+   * @param ctx                : instance of ToolContext or a derived class
+   * @param selmask            : SelMask
+   * @param spacemode          : ConstraintSpaces
+   * @param space_matrix_out   : Matrix4, optional, matrix to put constraint space in
+   */
+  static getCenter(ctx, selmask, spacemode, space_matrix_out) {
+    
   }
   
-  static calcAABB(ctx, elemlist) {
+  static calcAABB(ctx) {
   }
   
   static update(ctx, elemlist) {

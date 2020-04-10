@@ -1,3 +1,19 @@
+if (Array.prototype.replace === undefined) {
+  Array.prototype.replace = function replace(a, b, fail_error=true) {
+    let i = this.indexOf(a);
+    if (i < 0) {
+      if (fail_error) {
+        throw new Error("object a not in array")
+      } else {
+        console.warn("object not in array:", a);
+        return;
+      }
+    }
+
+    this[i] = b;
+  }
+}
+
 if (Array.prototype.set === undefined) {
     Array.prototype.set = function set(array, src, dst, count) {
         src = src === undefined ? 0 : src;
@@ -33,41 +49,6 @@ if (Array.prototype.reject === undefined) {
     }
 }
 
-if (window.Symbol == undefined) { //eek!
-  var sym_registry = {};
-  
-  window.Symbol = (function() { //a micro module
-    var key_idgen = 1;
-    
-    var Symbol = function(key) {
-      return "$__" + key + "_" + (key_idgen++) + "__$";
-    }
-    
-    Symbol._sym_registry = {};
-    Symbol.for = function(key) {
-      if (!(key in Symbol._sym_registry)) {
-        Symbol._sym_registry[key] = Symbol(key);
-      }
-      
-      return Symbol._sym_registry[key];
-    }
-    
-    Symbol.keyFor = function(sym) {
-      for (var k in Symbol._sym_registry) {
-        if (_sym_registry[k] == sym)
-          return k;
-      }
-    }
-    
-    Symbol.iterator = Symbol.for("iterator");
-    Symbol.keystr = Symbol.for("keystr");
-    
-    return Symbol;
-  })();
-} else {
-  Symbol.keystr = Symbol("keystr");
-}
-
 window.list = function list(iter) {
   var ret = [];
   
@@ -87,7 +68,7 @@ window.list = function list(iter) {
   
   return ret;
 }
-
+/*
 function ArrayIter(array) {
   this.array = array;
   this.i = 0;
@@ -134,10 +115,11 @@ if (Math.tent == undefined) {
   };
 }
 
-/*Override array iterator to not allocate too much*/
+Override array iterator to not allocate too much
 Array.prototype[Symbol.iterator] = function() {
   return new ArrayIter(this);
 }
+*/
 
 if (Array.prototype.clone == undefined) {
   Array.prototype.clone = function() {

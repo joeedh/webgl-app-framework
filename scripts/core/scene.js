@@ -5,6 +5,32 @@ import {Graph} from './graph.js';
 import * as util from '../util/util.js';
 import {ObjectFlags} from './sceneobject.js';
 import {DependSocket} from './graphsockets.js';
+import {Light} from '../light/light.js';
+import {Vector3} from '../util/vectormath.js';
+
+export const EnvLightFlags = {
+  USE_AO : 1
+};
+
+export class EnvLight {
+  constructor() {
+    this.color = new Vector3([0.5, 0.8, 1]);
+    this.power = 0.5;
+    this.ao_dist = 5.0;
+    this.ao_fac = 5.0;
+    this.flag = EnvLightFlags.USE_AO;
+  }
+}
+EnvLight.STRUCT = `
+EnvLight {
+  color      : vec3;
+  power      : float;
+  ao_dist    : float;
+  ao_fac     : float;
+  flag       : int;
+}
+`;
+nstructjs.manager.add_class(EnvLight);
 
 export const SceneFlags = {
   SELECT : 1
@@ -47,6 +73,12 @@ export class ObjectList extends Array {
     this.active = this.highlight = undefined;
   }
 
+  clearSelection() {
+    for (let ob of this) {
+      this.setSelect(ob, false);
+    }
+  }
+
   get editable() {
     let this2 = this;
 
@@ -75,6 +107,10 @@ export class ObjectList extends Array {
     })();
   }
 
+  get renderable() {
+    return this.visible;
+  }
+
   setSelect(ob, state) {
     if (!state) {
       ob.flag &= ~ObjectFlags.SELECT;
@@ -94,12 +130,35 @@ export class ObjectList extends Array {
     }
   }
 
+  setHighlight(ob) {
+    if (this.highlight !== undefined) {
+      this.highlight.flag &= ~ObjectFlags.HIGHLIGHT;
+    }
+
+    this.highlight = ob;
+
+    if (ob !== undefined) {
+      ob.flag |= ObjectFlags.HIGHLIGHT;
+    }
+  }
+
   setActive(ob) {
+    if (this.active !== undefined) {
+      this.active.flag &= ~ObjectFlags.ACTIVE;
+    }
+
     this.active = ob;
+    if (ob !== undefined) {
+      ob.flag |= ObjectFlags.ACTIVE;
+    }
   }
 
   dataLink(scene, getblock, getblock_us) {
     this.active = getblock(this.active, scene);
+
+    if (this.highlight !== undefined) {
+      this.highlight = getblock(this.highlight, scene);
+    }
 
     for (let ob of this.refs) {
       let ob2 = getblock_us(ob, scene);
@@ -129,19 +188,16 @@ export class ObjectList extends Array {
     return ret;
   }
 
-  static fromSTRUCT(reader) {
-    let ret = new ObjectList();
-
-    reader(ret);
-
-    return ret;
+  loadSTRUCT(reader) {
+    reader(this);
   }
 };
 
 ObjectList.STRUCT = `
 ObjectList {
-  refs    : array(DataRef) | obj._getDataRefs();
-  active  : DataRef |  DataRef.fromBlock(obj.active);
+  refs       : array(DataRef) | obj._getDataRefs();
+  active     : DataRef |  DataRef.fromBlock(obj.active);
+  highlight  : DataRef |  DataRef.fromBlock(obj.highlight);
 }
 `;
 nstructjs.manager.add_class(ObjectList);
@@ -149,25 +205,54 @@ nstructjs.manager.add_class(ObjectList);
 export class Scene extends DataBlock {
   constructor(objects) {
     super();
-    
+
+    this.envlight = new EnvLight();
+
     this.objects = new ObjectList();
     this.objects.onselect = this._onselect.bind(this);
     this.flag = 0;
     
     this.time = 0.0;
-    this.graph = new Graph();
-    
+
     if (objects !== undefined) {
       for (let ob of objects) {
         this.add(ob);
       }
     }
   }
-  
-  exec() {
-    this.graph.exec();
+
+  get lights() {
+    let this2 = this;
+
+    let ret = (function*() {
+      for (let ob of this2.objects) {
+        if (ob.data instanceof Light) {
+          yield ob;
+        }
+      }
+    })();
+
+    ret.visible = (function*() {
+      for (let ob of this2.objects) {
+        if (ob.flag & ObjectFlags.HIDE) {
+          continue;
+        }
+
+        if (ob.data instanceof Light) {
+          yield ob;
+        }
+      }
+    })();
+
+    //the the future they'll be a seperate flag for
+    //whether something shows up in renders and shows up
+    //while editing in the viewport.
+    //for now just alias to ret.visible.
+    ret.renderable = ret.visible;
+
+    return ret;
   }
-  
+
   add(ob) {
     this.objects.push(ob);
     
@@ -217,15 +302,11 @@ export class Scene extends DataBlock {
     }
   }}
 
-  static fromSTRUCT(reader) {
-    let ret = new Scene();
-    
-    reader(ret);
-    ret.afterSTRUCT();
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
 
-    ret.objects.onselect = ret._onselect.bind(ret);
-
-    return ret;
+    this.objects.onselect = this._onselect.bind(this);
   }
   
   dataLink(getblock, getblock_us) {
@@ -240,6 +321,8 @@ Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
   objects   : ObjectList;
   active    : int | obj.active !== undefined ? obj.active.lib_id : -1;
   time      : float;
+  envlight  : EnvLight;
 }
 `;
+
 nstructjs.manager.add_class(Scene);

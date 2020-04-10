@@ -5,10 +5,14 @@ let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Matrix4} from '../util/vectormath.js';
 
 export class Matrix4Socket extends NodeSocketType {
-  constructor(uiname, flag) {
+  constructor(uiname, flag, default_value) {
     super(uiname, flag);
-    
-    this.value = new Matrix4();
+
+    this.value = new Matrix4(default_value);
+
+    if (default_value === undefined) {
+      this.value.makeIdentity();
+    }
   }
   
   static nodedef() {return {
@@ -60,11 +64,6 @@ export class Matrix4Socket extends NodeSocketType {
   setValue(val) {
     this.value.load(val);
   }
-  static fromSTRUCT(reader) {
-    let ret = new Matrix4Socket();
-    reader(ret);
-    return ret;
-  }
 };
 Matrix4Socket.STRUCT = STRUCT.inherit(Matrix4Socket, NodeSocketType, "graph.Matrix4Socket") + `
   value : mat4;
@@ -105,13 +104,11 @@ export class DependSocket extends NodeSocketType {
     return !!this.value == !!b;
   }
 
-  static fromSTRUCT(reader) {
-    let ret = new DependSocket();
-    
-    reader(ret);
-    ret.value = !!ret.value;
-    
-    return ret;
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+
+    this.value = !!this.value;
   }
 };
 DependSocket.STRUCT = STRUCT.inherit(DependSocket, NodeSocketType, "graph.DependSocket") + `
@@ -120,11 +117,55 @@ DependSocket.STRUCT = STRUCT.inherit(DependSocket, NodeSocketType, "graph.Depend
 `;
 nstructjs.manager.add_class(DependSocket);
 
+export class Vec2Socket extends NodeSocketType {
+  constructor(uiname, flag, default_value) {
+    super(uiname, flag);
+
+    this.value = new Vector2(default_value);
+  }
+
+  static nodedef() {return {
+    name : "Vec2",
+    uiname : "Vector",
+    color : [0.25, 0.45, 1.0, 1]
+  }}
+
+  copyTo(b) {
+    b.value.load(this.value);
+  }
+
+  diffValue(b) {
+    return this.value.vectorDistance(b);
+  }
+
+  copyValue() {
+    return new Vector2(this.value);
+  }
+
+  getValue() {
+    return this.value;
+  }
+
+  setValue(b) {
+    this.value.load(b);
+  }
+
+  //eh. . .dot product?
+  cmpValue(b) {
+    return this.value.dot(b);
+  }
+};
+Vec2Socket.STRUCT = STRUCT.inherit(Vec2Socket, NodeSocketType, "graph.Vec2Socket") + `
+  value : vec2;
+}
+`;
+nstructjs.manager.add_class(Vec2Socket);
+
 export class Vec3Socket extends NodeSocketType {
-  constructor(uiname, flag) {
+  constructor(uiname, flag, default_value) {
     super(uiname, flag);
     
-    this.value = new Vector3();
+    this.value = new Vector3(default_value);
   }
   
   static nodedef() {return {
@@ -132,7 +173,11 @@ export class Vec3Socket extends NodeSocketType {
     uiname : "Vector",
     color : [0.25, 0.45, 1.0, 1]
   }}
-  
+
+  copyTo(b) {
+    b.value.load(this.value);
+  }
+
   diffValue(b) {
     return this.value.vectorDistance(b);
   }
@@ -153,14 +198,6 @@ export class Vec3Socket extends NodeSocketType {
   cmpValue(b) {
     return this.value.dot(b);
   }
-  static fromSTRUCT(reader) {
-    let ret = new Vec3Socket();
-    
-    reader(ret);
-    ret.value = !!ret.value;
-    
-    return ret;
-  }
 };
 Vec3Socket.STRUCT = STRUCT.inherit(Vec3Socket, NodeSocketType, "graph.Vec3Socket") + `
   value : vec3;
@@ -169,10 +206,10 @@ Vec3Socket.STRUCT = STRUCT.inherit(Vec3Socket, NodeSocketType, "graph.Vec3Socket
 nstructjs.manager.add_class(Vec3Socket);
 
 export class Vec4Socket extends NodeSocketType {
-  constructor(uiname, flag) {
+  constructor(uiname, flag, default_value) {
     super(uiname, flag);
     
-    this.value = new Vector4();
+    this.value = new Vector4(default_value);
   }
   
   static nodedef() {return {
@@ -192,7 +229,11 @@ export class Vec4Socket extends NodeSocketType {
   getValue() {
     return this.value;
   }
-  
+
+  copyTo(b) {
+    b.value.load(this.value);
+  }
+
   setValue(b) {
     if (isNaN(this.value.dot(b))) {
       console.warn(this, b);
@@ -205,12 +246,6 @@ export class Vec4Socket extends NodeSocketType {
   cmpValue(b) {
     return this.value.dot(b);
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new Vec4Socket();
-    reader(ret);
-    return ret;
-  }
 };
 Vec4Socket.STRUCT = STRUCT.inherit(Vec4Socket, NodeSocketType, "graph.Vec4Socket") + `
   value : vec4;
@@ -218,11 +253,47 @@ Vec4Socket.STRUCT = STRUCT.inherit(Vec4Socket, NodeSocketType, "graph.Vec4Socket
 `;
 nstructjs.manager.add_class(Vec4Socket);
 
+export class RGBASocket extends Vec4Socket {
+  constructor(uiname, flag, default_value) {
+    super(uiname, flag, default_value);
+
+    this.value[0] = this.value[1] = this.value[2] = 0.5;
+    this.value[3] = 1.0;
+  }
+
+  static nodedef() {return {
+    name : "rgba",
+    uiname : "Color",
+    color : [1.0, 0.7, 0.4, 1]
+  }}
+
+  buildUI(container, onchange) {
+    if (this.edges.length == 0) {
+      container.colorbutton(container._joinPrefix("value"));
+      /*
+      container.button(this.uiname, () => {
+        console.log("edit color, yay");
+
+        let colorpicker = container.ctx.screen.popup(container);
+        let widget = colorpicker.colorPicker(container._joinPrefix("value"));
+
+        widget.onchange = onchange;
+      });//*/
+    } else {
+      container.label(this.uiname);
+    }
+  }
+}
+RGBASocket.STRUCT = STRUCT.inherit(RGBASocket, Vec4Socket, 'graph.RGBASocket') + `
+}
+`;
+nstructjs.manager.add_class(RGBASocket);
+
 export class FloatSocket extends NodeSocketType {
-  constructor(uiname, flag) {
+  constructor(uiname, flag, default_value=0.0) {
     super(uiname, flag);
     
-    this.value = 0.0;
+    this.value = default_value;
   }
   
   static nodedef() {return {
@@ -230,7 +301,18 @@ export class FloatSocket extends NodeSocketType {
     uiname : "Value",
     color : [1.25, 0.45, 1.0, 1]
   }}
-  
+
+  buildUI(container, onchange) {
+    if (this.edges.length == 0) {
+      let ret = container.prop("value");
+      ret.setAttribute("name", this.uiname);
+
+      ret.onchange = onchange;
+    } else {
+      container.label(this.uiname);
+    }
+  }
+
   diffValue(b) {
     return Math.abs(this.value - b);
   }
@@ -243,6 +325,10 @@ export class FloatSocket extends NodeSocketType {
     return this.value;
   }
   
+  copyTo(b) {
+    b.value = this.value;
+  }
+
   setValue(b) {
     if (isNaN(b)) {
       console.warn(this, b);
@@ -255,11 +341,6 @@ export class FloatSocket extends NodeSocketType {
   //eh. . .dot product?
   cmpValue(b) {
     return this.value - b;
-  }
-  static fromSTRUCT(reader) {
-    let ret = new FloatSocket();
-    reader(ret);
-    return ret;
   }
 };
 FloatSocket.STRUCT = STRUCT.inherit(FloatSocket, NodeSocketType, "graph.FloatSocket") + `

@@ -1,16 +1,38 @@
 import '../path.ux/scripts/struct.js';
 import {IDGen} from '../util/util.js';
-import {Node} from './graph.js';
+import {Node, Graph, NodeFlags, SocketFlags, NodeSocketType} from './graph.js';
 import {ToolProperty, PropFlags} from '../path.ux/scripts/toolprop.js';
+import {Check1} from "../path.ux/scripts/ui_widgets.js";
 
 let STRUCT = nstructjs.STRUCT;
 
 export let BlockTypes = [];
+export const BlockFlags = {
+  SELECT : 1,
+  HIDE   : 2
+};
 
 export class DataBlock extends Node {
+  //loads contents of obj into this datablock
+  //but doesn't touch the .lib_XXXX properties or .name
+  swapDataBlockContents(obj) {
+    for (let k in obj) {
+      if (k.startsWith("lib_") || k == "name") {
+        continue;
+      }
+
+      this[k] = obj[k];
+    }
+
+    return this;
+  }
+
   constructor() {
     super();
-    
+
+    //make sure we're not saving the whole block inside of Library.graph
+    this.graph_flag |= NodeFlags.SAVE_PROXY;
+
     let def = this.constructor.blockDefine();
     
     this.lib_id = -1;
@@ -28,7 +50,20 @@ export class DataBlock extends Node {
   
   destroy() {
   }
-  
+
+  /**
+    returns type info for a datablock
+
+   @returns {{typeName: string, defaultName: string, uiName: string, flag: number, icon: number}}
+   @example
+   static blockDefine() { return {
+      typeName    : "typename",
+      defaultName : "unnamed",
+      uiName      : "uiname",
+      flag        : 0,
+      icon        : -1 //some icon constant in icon_enum.js.Icons
+    }}
+   */
   static blockDefine() { return {
     typeName    : "typename",
     defaultName : "unnamed",
@@ -40,7 +75,6 @@ export class DataBlock extends Node {
   /**getblock_us gets a block and adds reference count to it
    * getblock just gets a block and doesn't add a reference to it*/
   dataLink(getblock, getblock_us) {
-
   }
 
   /**increment reference count*/
@@ -53,23 +87,18 @@ export class DataBlock extends Node {
     this.lib_users--;
   }
 
-  /**
-   * subclasses must call this from their own
-   * fromSTRUCT methods.  note that it might be
-   * made automatic in the future (refactor me!)
-   * */
   afterSTRUCT() {
     super.afterSTRUCT();
   }
 
-  /**
-   * subclasses must implement this; here is an example
-   * */
-  static fromSTRUCT(reader) {
-    let ret = new this();
-    reader(ret);
-    ret.afterSTRUCT();
-    return ret;
+  /**all subclasses must call STRUCT.Super
+    instead of read inside their loadSTRUCTs,
+    that's how afterSTRUCT is invoked*/
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+
+    this.afterSTRUCT();
   }
 
   /**call this to register a subclass*/
@@ -100,7 +129,7 @@ export class DataRef {
     }
 
     this.lib_type = undefined;
-    this.lib_id = undefined;
+    this.lib_id = -1;
     this.lib_name = undefined;
     this.lib_external_ref = undefined;
   }
@@ -120,11 +149,14 @@ export class DataRef {
     
     return ret;
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new DataRef();
-    reader(ret);
-    return ret;
+
+  set(ob) {
+    this.lib_id = ob.lib_id;
+    this.lib_name = ob.lib_name;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
   }
 }
 DataRef.STRUCT = `
@@ -150,16 +182,40 @@ export class BlockSet extends Array {
     this.namemap = {};
   }
 
+  uniqueName(name=this.type.blockDefine().defaultName) {
+    if (!(name in this.namemap)) {
+      return name;
+    }
+
+    let name2 = name;
+
+    let i = 1;
+    while (name2 in this.namemap) {
+      name2 = name + i;
+      i++;
+    }
+
+    return name2;
+  }
+
   get active() {
     return this.__active;
   }
 
   set active(val) {
     this.__active = val;
-    console.trace("active set", this);
+    //console.trace("active set", this);
   }
 
-  add(block) {
+  setActive(val) {
+    this.active = val;
+  }
+
+  add(block, _inside_file_load=false) {
+    if (!_inside_file_load) {
+      this.datalib.graph.add(block);
+    }
+
     return this.push(block);
   }
   
@@ -174,6 +230,7 @@ export class BlockSet extends Array {
     if (block.lib_id == -1) {
       block.lib_id = this.datalib.idgen.next();
     }
+
     this.datalib.block_idmap[block.lib_id] = block;
     
     this.idmap[block.lib_id] = block;
@@ -211,10 +268,16 @@ export class BlockSet extends Array {
   }
   
   dataLink(getblock, getblock_us) {
-    console.warn("Linking. . .", this.active, this.idmap);
+    let type = this.type.blockDefine().typeName;
+    
+    if (DEBUG.DataLink) {
+      console.warn("Linking " + type + ". . .", this.active, this.idmap);
+    }
 
     if (this.active != -1) {
       this.active = this.idmap[this.active];
+    } else {
+      this.active = undefined;
     }
 
     for (let block of this) {
@@ -223,15 +286,11 @@ export class BlockSet extends Array {
     
     return this;
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new BlockSet();
-    
-    reader(ret);
 
-    return ret;
+  loadSTRUCT(reader) {
+    reader(this);
   }
-  
+
   afterLoad(datalib, type) {
     this.type = type;
     this.datalib = datalib;
@@ -250,6 +309,9 @@ nstructjs.manager.add_class(BlockSet);
 
 export class Library {
   constructor() {
+    //master graph
+    this.graph = new Graph();
+
     this.libs = [];
     this.libmap = {};
     this.idgen = new IDGen();
@@ -260,9 +322,33 @@ export class Library {
       
       this.libs.push(lib);
       this.libmap[cls.blockDefine().typeName] =  lib;
+
+      let tname = cls.blockDefine().typeName;
+      Object.defineProperty(this, tname, {
+        get : function() {
+          return this.libmap[tname];
+        }
+      });
     }
   }
-  
+
+  setActive(block) {
+    let tname = block.constructor.blockDefine().typeName;
+
+    this.getLibrary(tname).active = block;
+  }
+
+  get allBlocks() {
+    let this2 = this;
+    return (function*() {
+      for (let lib of this2.libs) {
+        for (let block of lib) {
+          yield block;
+        }
+      }
+    })();
+  }
+
   get(id_or_dataref) {
     if (id_or_dataref instanceof DataRef) {
       id_or_dataref = id_or_dataref.lib_id;
@@ -275,6 +361,16 @@ export class Library {
     let typename = block.constructor.blockDefine().typeName;
     
     if (!(typename in this.libmap)) {
+      //see if we're missing a legitimate block type
+      for (let cls of BlockTypes) {
+        if (cls.blockDefine().typeName === typename) {
+          let lib = new BlockSet(cls, this);
+          this.libs.push(lib);
+          this.libmap[typename] = lib;
+
+          return lib.add(block);
+        }
+      }
       console.log(block);
       throw new Error("invalid blocktype " + typename);
     }
@@ -294,19 +390,23 @@ export class Library {
   getLibrary(typeName) {
     return this.libmap[typeName];
   }
-  
-  static fromSTRUCT(reader) {
-    let ret = new Library();
 
-    ret.libmap = {};
-    ret.libs.length = 0;
+  afterSTRUCT() {
+    for (let block of this.allBlocks) {
+      this.graph.relinkProxyOwner(block);
+    }
+  }
 
-    reader(ret);
+  loadSTRUCT(reader) {
+    this.libmap = {};
+    this.libs.length = 0;
+
+    reader(this);
     
-    for (let lib of ret.libs.slice(0, ret.libs.length)) {
+    for (let lib of this.libs.slice(0, this.libs.length)) {
       let type = undefined;
 
-      ret.libmap[lib.type] = lib;
+      this.libmap[lib.type] = lib;
 
       for (let cls of BlockTypes) {
         if (cls.blockDefine().typeName == lib.type) {
@@ -316,15 +416,22 @@ export class Library {
       
       if (type === undefined) {
         console.warn("Failed to load library type", lib.type);3
-        
-        ret.libs.remove(lib);
+
+        this.libs.remove(lib);
         continue;
       }
       
-      lib.afterLoad(ret, type);
+      lib.afterLoad(this, type);
     }
-    
-    return ret;
+
+    for (let cls of BlockTypes) {
+      let type = cls.blockDefine().typeName;
+
+      if (!(type in this.libmap)) {
+        this.libmap[type] = new BlockSet(cls, this);
+        this.libs.push(this.libmap[type]);
+      }
+    }
   }
 }
 
@@ -332,6 +439,7 @@ Library.STRUCT = `
 Library {
   libs  : array(BlockSet);
   idgen : IDGen;
+  graph : graph.Graph;
 }
 `;
 nstructjs.manager.add_class(Library);

@@ -1,4 +1,4 @@
-import {MeshTypes} from '../../core/mesh.js';
+import {MeshTypes} from '../../mesh/mesh.js';
 
 export const SelToolModes = {
   ADD   : 0,
@@ -14,8 +14,8 @@ export const SelOneToolModes = {
 
 export const SelMask = {
   VERTEX : MeshTypes.VERTEX,
-  FACE   : MeshTypes.FACE,
   EDGE   : MeshTypes.EDGE,
-  OBJECT : MeshTypes.OBJECT
+  FACE   : MeshTypes.FACE,
+  MESH   : MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE,
+  OBJECT : 32
 };
-

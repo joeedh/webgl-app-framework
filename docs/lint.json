@@ -1,1 +1,88 @@
-[]
+[
+  {
+    "name": "WidgetBase#findNearest",
+    "filePath": "scripts/editors/view3d/widgets.js",
+    "lines": [
+      {
+        "lineNumber": 584,
+        "line": "  /**note that it's valid for containers\r"
+      },
+      {
+        "lineNumber": 585,
+        "line": "   * to return themselves, *if* they have\r"
+      },
+      {
+        "lineNumber": 586,
+        "line": "   * a shape and aren't purely containers\r"
+      },
+      {
+        "lineNumber": 587,
+        "line": "   * @param x view3d-local coordinate x\r"
+      },
+      {
+        "lineNumber": 588,
+        "line": "   * @param y view3d-local coordinate y\r"
+      },
+      {
+        "lineNumber": 589,
+        "line": "   */\r"
+      },
+      {
+        "lineNumber": 590,
+        "line": "  findNearest(view3d, x, y, limit=8) {\r"
+      }
+    ],
+    "codeParams": [
+      "view3d",
+      "x",
+      "y",
+      "limit"
+    ],
+    "docParams": [
+      "x",
+      "y"
+    ]
+  },
+  {
+    "name": "DataAPI#resolvePath",
+    "filePath": "scripts/path.ux/scripts/simple_controller.js",
+    "lines": [
+      {
+        "lineNumber": 500,
+        "line": "  /**\r"
+      },
+      {
+        "lineNumber": 501,
+        "line": "    get meta information for a datapath.\r"
+      },
+      {
+        "lineNumber": 502,
+        "line": "\r"
+      },
+      {
+        "lineNumber": 503,
+        "line": "   @param ignoreExistence: don't try to get actual data associated with path,\r"
+      },
+      {
+        "lineNumber": 504,
+        "line": "                           just want meta information\r"
+      },
+      {
+        "lineNumber": 505,
+        "line": "    */\r"
+      },
+      {
+        "lineNumber": 506,
+        "line": "  resolvePath(ctx, inpath, ignoreExistence=false) {\r"
+      }
+    ],
+    "codeParams": [
+      "ctx",
+      "inpath",
+      "ignoreExistence"
+    ],
+    "docParams": [
+      "ignoreExistence:"
+    ]
+  }
+]
