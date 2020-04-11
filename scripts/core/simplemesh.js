@@ -718,9 +718,9 @@ export class SimpleIsland {
       this._draw_points(gl, uniforms, params, program);
     }
 
-    if (gl.getError()) {
-      this.regen = 1;
-    }
+    //if (gl.getError()) {
+    //  this.regen = 1;
+    //}
   }
 }
 

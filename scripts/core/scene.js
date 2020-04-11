@@ -8,6 +8,8 @@ import {DependSocket} from './graphsockets.js';
 import {Light} from '../light/light.js';
 import {Vector3} from '../util/vectormath.js';
 
+import * as THREE from '../extern/three.js';
+
 export const EnvLightFlags = {
   USE_AO : 1
 };
@@ -21,6 +23,7 @@ export class EnvLight {
     this.flag = EnvLightFlags.USE_AO;
   }
 }
+
 EnvLight.STRUCT = `
 EnvLight {
   color      : vec3;

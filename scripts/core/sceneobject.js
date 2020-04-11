@@ -8,6 +8,8 @@ import {Mesh} from '../mesh/mesh.js';
 import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket} from './graphsockets.js';
 import * as util from '../util/util.js';
 
+import * as THREE from '../extern/three.js';
+
 let loc_rets = util.cachering.fromConstructor(Vector3, 256);
 
 /**

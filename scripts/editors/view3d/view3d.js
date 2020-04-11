@@ -38,6 +38,8 @@ let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
 let curtemps = cachering.fromConstructor(Vector3, 32);
 
+import * as THREE from '../../extern/three.js';
+
 let _gl = undefined;
 
 export function getWebGL() {
@@ -46,6 +48,37 @@ export function getWebGL() {
   }
 
   return _gl;
+}
+
+export class ThreeCamera extends THREE.Camera {
+  constructor(camera) {
+    super();
+
+    this.camera = camera;
+  }
+
+  get matrixWorld() {
+    return this.camera.cameramat;
+  }
+
+  get matrixWorldInverse() {
+    return this.camera.icameramat;
+  }
+
+  get projectionMatrix() {
+    return this.camera.persmat;
+  }
+
+  get projectionMatrixInverse() {
+    return this.camera.ipersmat;
+  }
+
+  clone() {
+    let ret = this.clone();
+    ret.camera = this.camera;
+
+    return ret;
+  }
 }
 
 export function initWebGL() {
@@ -78,6 +111,18 @@ export function initWebGL() {
   document.body.appendChild(canvas);
   
   _gl = init_webgl(canvas, {});
+
+  var scene = new THREE.Scene();
+  var renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
+    context: _gl
+  });
+
+  _appstate.three_scene = scene;
+  _appstate.three_render = renderer;
+
+  //renderer.setSize( window.innerWidth, window.innerHeight );
+
   //_gl.canvas = canvas;
   loadShaders(_gl);
 }
@@ -367,7 +412,7 @@ export class View3D extends Editor {
       window.redraw_viewport();
     });
 
-    header.prop("mesh.flag[SUBSURF]", PackFlags.USE_ICONS);
+    //header.prop("mesh.flag[SUBSURF]", PackFlags.USE_ICONS);
     header.tool("light.new(position='cursor')", PackFlags.USE_ICONS);
 
     //header.iconbutton(Icons.VIEW_SELECTED, "Recenter View (fixes orbit/rotate problems)", () => {

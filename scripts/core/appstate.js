@@ -5,6 +5,8 @@ import {Context, AppToolStack} from '../core/context.js';
 import {initSimpleController} from '../path.ux/scripts/simple_controller.js';
 import './polyfill.js';
 
+import * as THREE from '../extern/three.js';
+
 toolsys.setContextClass(Context);
 
 import {loadWidgetShapes} from '../editors/view3d/widget_shapes.js';
@@ -55,19 +57,6 @@ export class BasicFileOp extends ToolOp {
     
     lib.add(scene);
     lib.getLibrary("scene").active = scene;
-    
-    let mesh = makeCube();
-    lib.add(mesh);
-    
-    let ob = new SceneObject(mesh);
-    
-    lib.add(ob);    
-    scene.add(ob);
-    scene.objects.setSelect(ob, true);
-
-    let mat = makeDefaultShaderNetwork(); //new ShaderNetwork();
-    mesh.materials.push(mat);
-    lib.add(mat);
 
     let sblock = new ScreenBlock();
     sblock.screen = _appstate.screen;
@@ -114,7 +103,7 @@ export function genDefaultScreen(appstate) {
 }
 
 export function genDefaultFile(appstate, dont_load_startup=false) {
-  if (0 && cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
+  if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
     let buf = localStorage[cconst.APP_KEY_NAME];
 
     try {
@@ -168,6 +157,9 @@ export class AppState {
     this.api = getDataAPI();
     this.screen = undefined;
     this.datalib = new Library();
+
+    this.three_scene = undefined;
+    this.three_renderer = undefined;
   }
   
   start() {
@@ -577,16 +569,6 @@ export class AppState {
 
   /** this is executed after block re-linking has happened*/
   do_versions_post(version, datalib) {
-    if (version < 102) {
-      let mat = makeDefaultShaderNetwork(); //new ShaderNetwork();
-
-      datalib.add(mat);
-      datalib.setActive(mat);
-
-      for (let mesh of datalib.getLibrary("mesh")) {
-        mesh.materials.push(mat);
-      }
-    }
   }
   
   createUndoFile() {
