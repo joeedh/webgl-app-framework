@@ -1,6 +1,8 @@
 import {Area} from '../../path.ux/scripts/ScreenArea.js';
 import {saveFile, loadFile} from '../../path.ux/scripts/html5_fileapi.js';
 
+import {NoteFrame, Note} from '../../path.ux/scripts/ui_noteframe.js';
+
 import {Editor, VelPan} from '../editor_base.js';
 import '../../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
@@ -17,6 +19,7 @@ export class MenuBarEditor extends Editor {
   constructor() {
     super();
 
+    this._switcher_key = "";
     this._ignore_tab_change = false;
   }
 
@@ -45,6 +48,15 @@ export class MenuBarEditor extends Editor {
       }],
     ]);
 
+    header.menu("Session", [
+      ["Save Defalut File  ", () => {
+        console.log("saving default file");
+        _appstate.saveStartupFile();
+      }]
+    ]);
+
+    header.noteframe();
+
     this.makeScreenSwitcher(this.container);
   }
 
@@ -66,7 +78,7 @@ export class MenuBarEditor extends Editor {
       return;
     }
 
-    console.trace("Screen tab change!", tab, this.ctx.datalib.getLibrary("screen").active.lib_id);
+    console.warn("Screen tab change!", tab, this.ctx.datalib.getLibrary("screen").active.lib_id);
 
     if (tab.id == "maketab") {
       console.log("new screen!");
@@ -98,8 +110,21 @@ export class MenuBarEditor extends Editor {
     }
   }
 
+
+  _makeSwitcherHash() {
+    let ret = "";
+    for (let k of _appstate.datalib.screen) {
+      ret += k + "|";
+    }
+
+    return ret;
+  }
+
   makeScreenSwitcher(container) {
     let tabs = this.tabs = container.tabs();
+
+    this._switcher_key = this._makeSwitcherHash();
+    console.log("rebuilding screen switcher tabs");
 
     tabs.onchange = (tab) => {
       this._on_tab_change(tab);
@@ -128,6 +153,14 @@ export class MenuBarEditor extends Editor {
     this.setCSS();
   }
 
+  update() {
+    super.update();
+
+    let hash = this._makeSwitcherHash();
+    if (hash !== this._switcher_key) {
+      this.rebuildScreenSwitcher();
+    }
+  }
   copy() {
     let ret = document.createElement("menu-editor-x");
     ret.ctx = this.ctx;

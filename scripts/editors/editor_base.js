@@ -49,11 +49,34 @@ export let getContextArea = (cls) => {
 export class Editor extends Area {
   constructor() {
     super();
-    
+
+    this.swapParent = undefined;
     this.container = document.createElement("container-x");
     this.container.parentWidget = this;
 
     this.shadow.appendChild(this.container);
+  }
+
+  swapBack() {
+    let sarea = this.owning_sarea;
+
+    if (this.swapParent) {
+      this.swap(this.swapParent.constructor);
+      this.swapParent = undefined;
+    }
+
+    return sarea.area;
+  }
+
+  swap(editor_cls, storeSwapParent=true) {
+    let sarea = this.owning_sarea;
+
+    sarea.switch_editor(editor_cls);
+    if (storeSwapParent) {
+      sarea.area.swapParent = this;
+    }
+
+    return sarea.area;
   }
 
   onFileLoad() {

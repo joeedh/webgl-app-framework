@@ -726,7 +726,6 @@ export class SimpleIsland {
 
 export class SimpleMesh {
   constructor(layerflag=LayerTypes.LOC|LayerTypes.NORMAL|LayerTypes.UV) {
-    
     this.layerflag = layerflag;
     
     this.islands = [];

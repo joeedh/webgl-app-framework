@@ -5,11 +5,12 @@ import {Context, AppToolStack} from '../core/context.js';
 import {initSimpleController} from '../path.ux/scripts/simple_controller.js';
 import './polyfill.js';
 
-import * as THREE from '../extern/three.js';
-
 toolsys.setContextClass(Context);
 
 import {loadWidgetShapes} from '../editors/view3d/widget_shapes.js';
+import '../editors/resbrowser/resbrowser.js';
+import '../editors/resbrowser/resbrowser_ops.js';
+import '../editors/resbrowser/resbrowser_types.js';
 
 import {App, ScreenBlock} from '../editors/editor_base.js';
 import {Library, DataBlock, DataRef} from '../core/lib_api.js';
@@ -56,13 +57,13 @@ export class BasicFileOp extends ToolOp {
     let lib = ctx.datalib;
     
     lib.add(scene);
-    lib.getLibrary("scene").active = scene;
+    lib.setActive(scene);
 
-    let sblock = new ScreenBlock();
-    sblock.screen = _appstate.screen;
+    let screenblock = new ScreenBlock();
+    screenblock.screen = _appstate.screen;
 
-    lib.add(sblock);
-    lib.setActive(sblock);
+    lib.add(screenblock);
+    lib.setActive(screenblock);
   }
   
   static tooldef() {return {
@@ -102,7 +103,7 @@ export function genDefaultScreen(appstate) {
   sarea.area.setCSS();
 }
 
-export function genDefaultFile(appstate, dont_load_startup=false) {
+export function genDefaultFile(appstate, dont_load_startup=0) {
   if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
     let buf = localStorage[cconst.APP_KEY_NAME];
 
@@ -315,8 +316,6 @@ export class AppState {
 
       sarea.area.on_area_active();
       sarea.area.setCSS();
-
-      console.log("PARENTWIDGET", sarea.parentWidget);
     }
 
     document.body.appendChild(screen2);
@@ -462,10 +461,10 @@ export class AppState {
       return ret;
     }
 
-    for (let lib of this.datalib.libs) {
+    for (let lib of datalib.libs) {
       lib.dataLink(getblock, getblock_us);
     }
-    this.datalib.afterSTRUCT();
+    datalib.afterSTRUCT();
 
     this.do_versions_post(version, datalib);
     
@@ -547,24 +546,6 @@ export class AppState {
 
   /** this is executed before block re-linking has happened*/
   do_versions(version, datalib) {
-    if (version < 101) {
-      for (let block of datalib.allBlocks) {
-        block.graph_flag |= NodeFlags.SAVE_PROXY;
-
-        if (block.graph_id < 0) {
-          datalib.graph.add(block);
-        }
-      }
-    }
-
-    if (version < 103) {
-      let sblock = new ScreenBlock();
-      sblock.screen = this.screen;
-
-      datalib.add(sblock);
-      //we're inserting the screen prior to block relinking
-      datalib.getLibrary("screen").active = sblock.lib_id;
-    }
   }
 
   /** this is executed after block re-linking has happened*/

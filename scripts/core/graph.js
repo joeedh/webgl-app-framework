@@ -1078,27 +1078,36 @@ export class Graph {
 
     this.nodes = new GraphNodes(this, this.nodes);
 
+    /*
     console.log("NODES", this.nodes);
-    let idmap = this.node_idmap;
+    let buf = "NODES\n"
+    for (let n of this.nodes) {
+      buf += "  " + n.graph_name + "|" + n.constructor.name + "\n";
+    }
+    console.log(buf);
+    //*/
+    
+    let node_idmap = this.node_idmap;
+    let sock_idmap = this.sock_idmap;
 
     for (let n of this.nodes) {
       n.afterSTRUCT();
     }
 
     for (let n of this.nodes) {
-      idmap[n.graph_id] = n;
+      node_idmap[n.graph_id] = n;
       n.graph_graph = this;
 
       for (let s of n.allsockets) {
         s.node = n;
-        idmap[s.graph_id] = s;
+        sock_idmap[s.graph_id] = s;
       }
     }
 
     for (let n of this.nodes) {
       for (let s of n.allsockets) {
         for (let i=0; i<s.edges.length; i++) {
-          s.edges[i] = idmap[s.edges[i]];
+          s.edges[i] = sock_idmap[s.edges[i]];
         }
 
         if (s.graph_id == -1) {
@@ -1106,7 +1115,7 @@ export class Graph {
           s.graph_id = this.graph_idgen.next();
         }
 
-        this.sock_idmap[s.graph_id] = s;
+        sock_idmap[s.graph_id] = s;
       }
     }
 
@@ -1127,19 +1136,21 @@ export class Graph {
     let ok = n !== undefined && n.graph_id in this.node_idmap;
     ok = ok && this.node_idmap[n.graph_id] instanceof ProxyNode;
 
+    //console.trace("relinking proxy", n.name);
     if (!ok) {
-      console.warn("structural error in Graph: relinkProxyOwner was called in error", n, this);
+      console.warn("structural error in Graph: relinkProxyOwner was called in error", n, this.node_idmap[n.graph_id], this);
       return;
     }
 
     let n2 = this.node_idmap[n.graph_id];
-    let idmap = this.node_idmap;
+    let node_idmap = this.node_idmap;
+    let sock_idmap = this.sock_idmap;
 
     n.graph_graph = this;
 
     this.nodes.replace(n2, n);
 
-    idmap[n2.graph_id] = n;
+    node_idmap[n2.graph_id] = n;
 
     for (let i=0; i<2; i++) {
       let socks1 = i ? n.outputs  : n.inputs;
@@ -1147,7 +1158,7 @@ export class Graph {
 
       for (let k in socks1) {
         let s1 = socks1[k];
-        idmap[s1.graph_id] = s1;
+        sock_idmap[s1.graph_id] = s1;
 
         if (!(k in socks2)) {
           continue;

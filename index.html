@@ -1,11 +1,24 @@
 <!DOCTYPE html>
-<html>
-<head><title>Test</title>
+<html lang="en">
+
+<head>
   <meta http-equiv="cache-control" content="max-age=0" />
   <meta http-equiv="cache-control" content="no-cache" />
   <meta http-equiv="expires" content="0" />
   <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
   <meta http-equiv="pragma" content="no-cache" />
+
+  <meta charset="utf-8">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Potree Viewer</title>
+
+  <link rel="stylesheet" type="scripts/extern/potree/css" href="../build/potree/potree.css">
+  <link rel="stylesheet" type="scripts/extern/potree/css" href="../libs/jquery-ui/jquery-ui.min.css">
+  <link rel="stylesheet" type="scripts/extern/potree/css" href="../libs/openlayers3/ol.css">
+  <link rel="stylesheet" type="scripts/extern/potree/css" href="../libs/spectrum/spectrum.css">
+  <link rel="stylesheet" type="scripts/extern/potree/css" href="../libs/jstree/themes/mixed/style.css">
 
 <script type="shader" id="simpleshader">
 //VERTEX
@@ -118,6 +131,22 @@ void main(void) {
       opacity: 1.0;
     }
   </style>
+
+  <script src="scripts/extern/potree/libs/jquery/jquery-3.1.1.min.js"></script>
+  <script src="scripts/extern/potree/libs/spectrum/spectrum.js"></script>
+  <script src="scripts/extern/potree/libs/jquery-ui/jquery-ui.min.js"></script>
+  <script src="scripts/extern/potree/libs/three.js/build/three.min.js"></script>
+  <script src="scripts/extern/potree/libs/three.js/extra/lines.js"></script>
+  <script src="scripts/extern/potree/libs/other/BinaryHeap.js"></script>
+  <script src="scripts/extern/potree/libs/tween/tween.min.js"></script>
+  <script src="scripts/extern/potree/libs/d3/d3.js"></script>
+  <script src="scripts/extern/potree/libs/proj4/proj4.js"></script>
+  <script src="scripts/extern/potree/libs/openlayers3/ol.js"></script>
+  <script src="scripts/extern/potree/libs/i18next/i18next.js"></script>
+  <script src="scripts/extern/potree/libs/jstree/jstree.js"></script>
+  <script src="scripts/extern/potree/build/potree/potree.js"></script>
+  <script src="scripts/extern/potree/libs/plasio/js/laslaz.js"></script>
+
   <script type="module" src="scripts/entry_point.js"></script>
 </head>
 <body onload="init()">

@@ -2,6 +2,7 @@ import '../path.ux/scripts/struct.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
 import {getContextArea, Editor} from '../editors/editor_base.js';
+import {ResourceBrowser} from "../editors/resbrowser/resbrowser.js";
 import * as util from '../util/util.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Light} from '../light/light.js';
@@ -118,6 +119,10 @@ export class ToolContext {
 export class Context extends ToolContext {
   get view3d() {
     return getContextArea(View3D);
+  }
+
+  get resbrowser() {
+    return getContextArea(ResourceBrowser);
   }
 
   get debugEditor() {

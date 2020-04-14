@@ -33,12 +33,12 @@ import {CursorModes, OrbitTargetModes} from './view3d_utils.js';
 import {Icons} from '../icon_enum.js';
 import {WidgetSceneCursor, NoneWidget} from './widget_tools.js';
 import {View3DFlags} from './view3d_base.js';
+import {ResourceBrowser} from "../resbrowser/resbrowser.js";
+import {AddPointSetOp} from '../../potree/potree_ops.js';
 
 let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
 let curtemps = cachering.fromConstructor(Vector3, 32);
-
-import * as THREE from '../../extern/three.js';
 
 let _gl = undefined;
 
@@ -50,10 +50,8 @@ export function getWebGL() {
   return _gl;
 }
 
-export class ThreeCamera extends THREE.Camera {
+export class ThreeCamera {
   constructor(camera) {
-    super();
-
     this.camera = camera;
   }
 
@@ -390,6 +388,15 @@ export class View3D extends Editor {
     let row1 = header.row();
     let row2 = header.row();
 
+    row1.button("Add", () => {
+      ResourceBrowser.openResourceBrowser(this, "pointset").then((res) => {
+        let op = new AddPointSetOp();
+        op.inputs.url.setValue(res.url);
+
+        this.ctx.api.execTool(this.ctx, op);
+      });
+
+    });
     //row2.label("yay");
     row2.prop("view3d.flag[SHOW_RENDER]", PackFlags.USE_ICONS);
     row2.prop("view3d.flag[ONLY_RENDER]", PackFlags.USE_ICONS);

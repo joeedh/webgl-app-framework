@@ -14,7 +14,7 @@ import {SceneObjectData} from '../core/sceneobject_base.js';
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
-import * as Potree from '../extern/potree/Potree.js';
+import * as Potree from '../extern/potree/src/Potree.js';
 
 export class PointSet extends SceneObjectData {
   constructor() {
@@ -33,7 +33,7 @@ export class PointSet extends SceneObjectData {
     }
 
     return new Promise((accept, reject) => {
-      Potree.loadPointCloud(this.url, this.name, function(e) {
+      Potree.loadPointCloud(this.url, this.name, (e) => {
         this.data = e.pointcloud;
 
         let material = e.pointcloud.material;

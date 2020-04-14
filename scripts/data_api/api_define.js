@@ -1,4 +1,11 @@
 import '../path.ux/scripts/struct.js';
+import '../potree/potree_resource.js';
+import '../potree/potree_types.js';
+import '../potree/potree_ops.js';
+import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js';
+import {resourceManager} from "../core/resource.js";
+import '../core/image.js';
+
 let STRUCT = nstructjs.STRUCT;
 import '../editors/view3d/widget_tools.js'; //ensure widget tools are all registered
 import {WidgetTool, WidgetFlags} from '../editors/view3d/widgets.js';
@@ -45,6 +52,27 @@ export function api_define_editor(api, cls) {
   });
 
   return astruct;
+}
+
+export function api_define_resbrowser(api, pstruct) {
+  let rstruct = api_define_editor(api, ResourceBrowser);
+
+  let types = resourceManager.makeEnum();
+
+  function rebuild() {
+    let resbrowser = this.dataref;
+
+    if (resbrowser !== undefined) {
+      resbrowser.rebuild();
+    }
+  }
+
+  pstruct.struct("resbrowser", "resbrowser", "Resource Browser", rstruct);
+
+  let prop = rstruct.enum("resourceType", "resourceType", types, "Mode");
+  prop.on("change", rebuild);
+
+  return rstruct;
 }
 
 export function api_define_view3d(api, pstruct) {
@@ -438,6 +466,7 @@ export function getDataAPI() {
   api_define_datablock(api, DataBlock);
 
   api_define_view3d(api, cstruct);
+  api_define_resbrowser(api, cstruct);
   api_define_node_editor(api, cstruct);
   api_define_debugeditor(api, cstruct);
 
