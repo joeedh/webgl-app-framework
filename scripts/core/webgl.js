@@ -579,6 +579,8 @@ export class CubeTexture extends Texture {
 //cameras will derive from this class
 export class DrawMats {
   constructor() {
+    this.isPerspective = true;
+
     this.cameramat = new Matrix4();
     this.persmat = new Matrix4();
     this.rendermat = new Matrix4();
@@ -610,7 +612,8 @@ export class DrawMats {
       persmat    : this.persmat.getAsArray(),
       rendermat  : this.rendermat.getAsArray(),
       normalmat  : this.normalmat.getAsArray(),
-      
+      isPerspective : this.isPerspective,
+
       icameramat : this.icameramat.getAsArray(),
       ipersmat   : this.ipersmat.getAsArray(),
       irendermat : this.irendermat.getAsArray(),
@@ -623,7 +626,8 @@ export class DrawMats {
     this.persmat.load(obj.persmat);
     this.rendermat.load(obj.rendermat);
     this.normalmat.load(obj.normalmat);
-    
+    this.isPerspective = obj.isPerspective;
+
     this.icameramat.load(obj.icameramat);
     this.ipersmat.load(obj.ipersmat);
     this.irendermat.load(obj.irendermat);
@@ -654,10 +658,12 @@ nstructjs.manager.add_class(DrawMats);
 export class Camera extends DrawMats {
   constructor() {
     super();
-    
+
+    this.isPerspective = true;
+
     this.fovy = 35;
     this.aspect = 1.0;
-    
+
     this.pos = new Vector3([0, 0, 5]);
     this.target = new Vector3();
     this.orbitTarget = new Vector3();
@@ -670,6 +676,7 @@ export class Camera extends DrawMats {
   }
   
   load(b) {
+    this.isPerspective = b.isPerspective;
     this.fovy = b.fovy;
     this.aspect = b.aspect;
     this.pos.load(b.pos);
@@ -686,7 +693,8 @@ export class Camera extends DrawMats {
   
   copy() {
     let ret = new Camera();
-    
+
+    ret.isPerspective = this.isPerspective;
     ret.fovy = this.fovy;
     ret.aspect = this.aspect;
     
@@ -776,6 +784,7 @@ Camera.STRUCT = STRUCT.inherit(Camera, DrawMats) + `
   up           : vec3;
   near         : float;
   far          : float;
+  isPerspective : int;
 }
 `;
 nstructjs.manager.add_class(Camera);

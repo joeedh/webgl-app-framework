@@ -10,11 +10,14 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {DependSocket} from '../core/graphsockets.js';
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import {SceneObjectData} from '../core/sceneobject_base.js';
+import {PointSetResource} from './potree_resource.js';
 
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
-import * as Potree from '../extern/potree/src/Potree.js';
+//import * as Potree from '../extern/potree/src/Potree.js';
+import '../extern/potree/build/potree/potree.js';
+import {resourceManager} from "../core/resource.js";
 
 export class PointSet extends SceneObjectData {
   constructor() {
@@ -33,15 +36,19 @@ export class PointSet extends SceneObjectData {
     }
 
     return new Promise((accept, reject) => {
-      Potree.loadPointCloud(this.url, this.name, (e) => {
-        this.data = e.pointcloud;
-
-        let material = e.pointcloud.material;
-        material.uniforms.uShadowColor.value = [0.0, 0, 0];
-
+      this.res = resourceManager.get(this.url, PointSetResource, true);
+      if (this.res.ready) {
         this.ready = true;
+        accept(this);
+        return;
+      }
+
+      this.res.on("load", (e) => {
+        this.ready = true;
+        accept(this);
+        window.redraw_viewport();
       });
-    })
+    });
   }
 
   reload() {
@@ -58,7 +65,7 @@ export class PointSet extends SceneObjectData {
   }
 
   static nodedef() {return {
-    name   : "mesh",
+    name   : "pointset",
     uiname : "PointSet",
     flag   : NodeFlags.SAVE_PROXY,
     inputs : {}, //can inherit from parent class by wrapping in Node.inherit({})
@@ -81,6 +88,8 @@ export class PointSet extends SceneObjectData {
     for (let i=0; i<this.materials.length; i++) {
       this.materials[i] = getblock_us(this.materials[i]);
     }
+
+    this.load();
   }
 
   static blockDefine() { return {

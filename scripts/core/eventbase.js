@@ -4,7 +4,7 @@ export class EventBase {
   }
 
   _getEventList(event) {
-    if (!(event in this.eventcbs)) {
+    if (!(event in this._eventcbs)) {
       this._eventcbs[event] = []
     }
 

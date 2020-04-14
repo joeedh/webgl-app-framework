@@ -13,7 +13,7 @@ import {UIBase, color2css, css2color}  from '../../path.ux/scripts/ui_base.js';
 import * as view3d_shaders from './view3d_shaders.js';
 import {loadShader} from './view3d_shaders.js';
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
-import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
+import {Vector3, Vector2, Vector4, Matrix4, Quat, Matrix4ToTHREE} from '../../util/vectormath.js';
 import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js';
 import {cachering, print_stack, time_ms} from '../../util/util.js';
 import './view3d_mesh_editor.js';
@@ -35,6 +35,11 @@ import {WidgetSceneCursor, NoneWidget} from './widget_tools.js';
 import {View3DFlags} from './view3d_base.js';
 import {ResourceBrowser} from "../resbrowser/resbrowser.js";
 import {AddPointSetOp} from '../../potree/potree_ops.js';
+import {PointSet} from '../../potree/potree_types.js';
+import {ObjectFlags} from '../../core/sceneobject.js';
+//import {Renderer, Scene} from '../../extern/potree/src/Potree.js'
+//import * as Potree from '../../extern/potree/build/potree/potree.js';
+import '../../extern/potree/build/potree/potree.js';
 
 let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
@@ -50,30 +55,63 @@ export function getWebGL() {
   return _gl;
 }
 
-export class ThreeCamera {
+export class ThreeCamera extends THREE.Camera {
   constructor(camera) {
+    super();
+
     this.camera = camera;
   }
 
+  set near(val) {
+    this.camera.near = val;
+    this.camera.regen_mats();
+  }
+
+  get near() {
+    return this.camera.near;
+  }
+
+  set far(val) {
+    this.camera.far = val;
+    this.camera.regen_mats();
+  }
+
+  get far() {
+    return this.camera.far;
+  }
+
+  get fov() {
+    return this.camera.fovy;
+  }
+
+  updateProjectionMatrix() {
+    this.camera.regen_mats();
+    return;
+  }
+
+  get isPerspectiveCamera() {
+    return true;
+  }
+
   get matrixWorld() {
-    return this.camera.cameramat;
+    return Matrix4ToTHREE(this.camera.icameramat);
   }
 
   get matrixWorldInverse() {
-    return this.camera.icameramat;
+    return Matrix4ToTHREE(this.camera.cameramat);
   }
 
   get projectionMatrix() {
-    return this.camera.persmat;
+    return Matrix4ToTHREE(this.camera.persmat);
   }
 
   get projectionMatrixInverse() {
-    return this.camera.ipersmat;
+    return Matrix4ToTHREE(this.camera.ipersmat);
   }
 
   clone() {
-    let ret = this.clone();
-    ret.camera = this.camera;
+    let ret = new ThreeCamera();
+    ret.camera = this.camera.copy();
 
     return ret;
   }
@@ -108,13 +146,34 @@ export function initWebGL() {
 
   document.body.appendChild(canvas);
   
-  _gl = init_webgl(canvas, {});
+  let gl = _gl = init_webgl(canvas, {});
 
   var scene = new THREE.Scene();
   var renderer = new THREE.WebGLRenderer({
     canvas: canvas,
-    context: _gl
+    context: _gl,
+    alpha: true,
+    premultipliedAlpha: false
   });
+  renderer.sortObjects = false;
+
+  gl.getExtension('EXT_frag_depth');
+  gl.getExtension('WEBGL_depth_texture');
+  
+  if (!gl.createVertexArray) {
+    //*
+    let extVAO = gl.getExtension('OES_vertex_array_object');
+
+    if(!extVAO){
+      throw new Error("OES_vertex_array_object extension not supported");
+    }
+
+    gl.createVertexArray = extVAO.createVertexArrayOES.bind(extVAO);
+    gl.bindVertexArray = extVAO.bindVertexArrayOES.bind(extVAO);
+  }
+  //*/
+
+  renderer.autoClear = false;
 
   _appstate.three_scene = scene;
   _appstate.three_render = renderer;
@@ -147,6 +206,7 @@ export class View3D extends Editor {
   constructor() {
     super();
 
+    this._pobj_map = {};
     this._last_render_draw = 0;
     this.renderEngine = undefined;
 
@@ -200,6 +260,7 @@ export class View3D extends Editor {
     this.widget = undefined; //active widget instance
 
     this.drawmode = DrawModes.TEXTURED;
+    this.threeCamera = new ThreeCamera(this.camera);
   }
 
   onFileLoad(is_active) {
@@ -261,6 +322,7 @@ export class View3D extends Editor {
       this.camera.pos.sub(this.camera.target).normalize().mulScalar(0.05).add(this.camera.target);
     }
 
+    this.onCameraChange();
     window.redraw_viewport();
   }
 
@@ -831,11 +893,16 @@ export class View3D extends Editor {
     this.gl = undefined;
   }
 
+  onCameraChange() {
+    this.updatePointClouds();
+  }
+
   on_area_active() {
     super.on_area_active();
 
     this.glInit();
     this.makeGraphNode();
+    this.updatePointClouds();
 
     for (let ed of this.editors) {
       ed.ctx = this.ctx;
@@ -867,6 +934,107 @@ export class View3D extends Editor {
     }
 
     this.renderEngine.render(this.camera, this.gl, this.glPos, this.glSize, this.ctx.scene);
+  }
+
+  drawThreeScene() {
+    this.threeCamera.camera = this.camera;
+
+    let state = this.ctx.state;
+    let scene3 = state.three_scene;
+    let render3 = state.three_render;
+    let scene = this.ctx.scene;
+
+    if (this.pRenderer === undefined) {
+      this.pRenderer = new Potree.Renderer(render3);
+    }
+
+    let children = [];
+    let viewport = [this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1]];
+    let visit = {};
+    let updateVisibility = false;
+
+    for (let ob of scene.objects) {
+      if (ob.flag & ObjectFlags.HIDE) {
+        continue;
+      }
+
+      if (ob.data instanceof PointSet && ob.data.ready) {
+        let pset = ob.data;
+
+        children.push(pset.res.data);
+
+        pset.res.data.material.screenWidth = this.glSize[0];
+        pset.res.data.material.screenHeight = this.glSize[1];
+
+        visit[pset.url] = 1;
+
+        if (!(pset.url in this._pobj_map)) {
+          this._pobj_map[pset.url] = pset.res.data;
+          scene3.add(pset.res.data);
+          updateVisibility = true;
+        }
+      }
+    }
+
+    //console.log("PSETS", children);
+
+    for (let k in this._pobj_map) {
+      if (!(k in visit)) {
+        //XXX implement this in proper method
+        let data = this._pobj_map[k];
+        delete this._pobj_map[k];
+
+        updateVisibility = true;
+        scene3.remove(data);
+      }
+    }
+
+    if (1||children.length > 0 && updateVisibility) {
+      this.updatePointClouds();
+    }
+
+    if (window._test1 === undefined) {
+      window._test1 = 1;
+
+      var geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+      var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+      var cube = new THREE.Mesh( geometry, material );
+
+      //scene3.add( cube );
+    }
+
+    this.camera.near = 0.5;
+    this.camera.regen_mats();
+
+    render3.render(scene3, this.threeCamera);
+
+    if (children.length > 0) {
+      let gl = this.gl;
+
+      gl.disable(gl.DEPTH_TEST);
+      gl.disable(gl.BLEND);
+      
+      //gl.clearDepth(100000);
+      //gl.clear(gl.DEPTH_BUFFER_BIT);
+      
+      this.pRenderer.render({children : children}, this.threeCamera);
+      this.pRenderer.render(scene3, this.threeCamera);
+    }
+  }
+
+  updatePointClouds() {
+    console.log("updating pointcloud visibility");
+
+    let psets = [];
+    let scene = this.ctx.scene;
+
+    for (let ob of scene.objects) {
+      if (ob.data instanceof PointSet && ob.data.ready) {
+        psets.push(ob.data.res.data);
+      }
+    }
+
+    Potree.updatePointClouds(psets, this.threeCamera, this.ctx.state.three_render);
   }
 
   viewportDraw_intern() {
@@ -911,7 +1079,7 @@ export class View3D extends Editor {
     }
     //gl.clearColor(1.0, 1.0, 1.0, 0.0);
 
-    gl.clearDepth(100000);
+    gl.clearDepth(1000000);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     
     gl.disable(gl.BLEND);
@@ -925,6 +1093,9 @@ export class View3D extends Editor {
     //console.log(this.size);
     let aspect = this.size[0] / this.size[1];
     this.camera.regen_mats(aspect);
+
+    //this.drawThreeScene();
+    //return;
 
     //this._testCamera();
     //window.redraw_viewport();
@@ -946,6 +1117,7 @@ export class View3D extends Editor {
       this.drawRender();
     }
 
+    this.drawThreeScene();
     this.drawObjects();
 
     if (this.drawlines.length > 0) {
@@ -1055,11 +1227,17 @@ export class View3D extends Editor {
 
     ret.widgettool = this.widgettool;
     ret._select_transparent = this._select_transparent;
-    ret.camera = this.camera.copy();
+    ret.camera.load(this.camera);
     ret.selectmode = this.selectmode;
     ret.drawmode = this.drawmode;
     
     return ret;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+
+    this.threeCamera.camera = this.camera;
   }
 
   static define() {return {

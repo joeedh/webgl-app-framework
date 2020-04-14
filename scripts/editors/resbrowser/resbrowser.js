@@ -270,6 +270,12 @@ export class ResourceBrowser extends Editor {
     }
   }
 
+  copy() {
+    let ret = document.createElement("resource-browser-x");
+    ret.resourceType = this.resourceType;
+    return ret;
+  }
+
   defineKeyMap() {
     this.keymap = new KeyMap();
 

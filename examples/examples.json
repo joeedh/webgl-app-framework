@@ -2,5 +2,9 @@
   "Takanawa Lion": {
     "url": "/examples/lion_takanawa/cloud.js",
     "thumbnail": null
+  },
+  "Vol": {
+    "url": "/examples/vol_total/cloud.js",
+    "thumbnail": null
   }
 }

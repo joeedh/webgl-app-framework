@@ -389,7 +389,7 @@ export class AppState {
       
       let data = file.bytes(len);
       data = new DataView((new Uint8Array(data)).buffer);
-      console.log("Reading block of type", type);
+      //console.log("Reading block of type", type);
 
       if (args.load_screen && type == BlockTypes.SCREEN) {
         console.warn("Old screen block detected");
@@ -427,7 +427,7 @@ export class AppState {
 
         if (cls.blockDefine().typeName == "screen") {
           block.screen._ctx = this.ctx;
-          console.log("SCREEN", block.screen.sareas)
+          //console.log("SCREEN", block.screen.sareas)
         }
 
         datablocks.push([clsname, block]);

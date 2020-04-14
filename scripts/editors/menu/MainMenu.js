@@ -52,6 +52,10 @@ export class MenuBarEditor extends Editor {
       ["Save Defalut File  ", () => {
         console.log("saving default file");
         _appstate.saveStartupFile();
+      }],
+      ["Clear Defalut File  ", () => {
+        console.log("saving default file");
+        _appstate.clearStartupFile();
       }]
     ]);
 
@@ -124,7 +128,7 @@ export class MenuBarEditor extends Editor {
     let tabs = this.tabs = container.tabs();
 
     this._switcher_key = this._makeSwitcherHash();
-    console.log("rebuilding screen switcher tabs");
+    //console.log("rebuilding screen switcher tabs");
 
     tabs.onchange = (tab) => {
       this._on_tab_change(tab);

@@ -193,6 +193,8 @@ export class OrbitTool extends ToolOp {
     
     camera.pos.add(camera.target);
     window.redraw_viewport(true);
+
+    view3d.onCameraChange();
   }
 
   on_mouseup(e) {
@@ -304,7 +306,10 @@ export class TouchViewTool extends ToolOp {
 
     if (ilen == 1) {
       let t = this.touches[0];
-      this.orbit(t.delta[0], t.delta[1]);
+      
+      if (t !== undefined) {
+        this.orbit(t.delta[0], t.delta[1]);
+      }
 
       //reset touche starts for zoom
       for (let touch of this.touches) {
@@ -336,6 +341,7 @@ export class TouchViewTool extends ToolOp {
     }
 
     window.redraw_viewport(true);
+    view3d.onCameraChange();
   }
 
   zoom(scale) {
@@ -483,8 +489,6 @@ export class PanTool extends ToolOp {
 
     let p = new Vector3(camera.target);
 
-    console.log(dx, dy);
-
     view3d.project(p);
     p[0] += -dx;
     p[1] += -dy;
@@ -497,6 +501,7 @@ export class PanTool extends ToolOp {
     camera.regen_mats(camera.aspect);
     
     window.redraw_viewport(true);
+    view3d.onCameraChange();
   }
   
   on_mouseup(e) {
@@ -576,6 +581,7 @@ export class ZoomTool extends ToolOp {
     camera.regen_mats(camera.aspect);
     
     window.redraw_viewport(true);
+    view3d.onCameraChange();
   }
   
   on_mouseup(e) {

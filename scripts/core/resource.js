@@ -149,7 +149,7 @@ export class ResourceManager {
       throw new Error("unknown resource type for url " + url);
     }
 
-    let res = cls.createFromURL(url);
+    let res = resclass.createFromURL(url);
 
     if (autoload)
       res.load();
