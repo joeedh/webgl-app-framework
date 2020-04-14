@@ -164,6 +164,8 @@ export class AppState {
   }
   
   start() {
+    this.loadSettings();
+
     this.ctx = new Context(this);
 
     window.addEventListener("mousedown", (e) => {
@@ -347,8 +349,10 @@ export class AppState {
     let lastscreens = undefined;
     let lastscreens_active = undefined;
 
+    args.load_library = args.load_library === undefined ? true : args.load_library;
+
     //if we didn't load a screen, preserve screens from last datalib
-    if (!args.load_screen) {
+    if (!args.load_screen && args.load_library) {
       lastscreens = [];
 
       lastscreens_active = this.datalib.libmap.screen.active;
@@ -392,13 +396,13 @@ export class AppState {
 
         screen = istruct.read_object(data, App);
         found_screen = true;
-      } else if (type == BlockTypes.LIBRARY) {
+      } else if (args.load_library && type == BlockTypes.LIBRARY) {
         datalib = istruct.read_object(data, Library);
         console.log("Found library");
 
         this.datalib.destroy();
         this.datalib = datalib;
-      } else if (type == BlockTypes.DATABLOCK) {
+      } else if (args.load_library && type == BlockTypes.DATABLOCK) {
         let file2 = new BinaryReader(data);
         
         let len = file2.int32();
@@ -433,6 +437,11 @@ export class AppState {
         this.settings.destroy();
         this.settings = settings;
       }
+    }
+
+    //just loading settings?
+    if (!args.load_library) {
+      return;
     }
 
     if (datalib === undefined) {
@@ -536,6 +545,11 @@ export class AppState {
     this._execEditorOnFileLoad();
   }
 
+  clearStartupFile() {
+    console.log("clearing startup file");
+    delete localStorage[cconst.APP_KEY_NAME];
+  }
+
   saveStartupFile() {
     let buf = this.createFile({write_settings : false});
     buf = util.btoa(buf);
@@ -551,11 +565,56 @@ export class AppState {
   /** this is executed after block re-linking has happened*/
   do_versions_post(version, datalib) {
   }
-  
+
+  createSettingsFile() {
+    let args = {
+      save_settings : true,
+      save_screen   : false,
+      save_library : false
+    };
+
+    return this.createFile(args);
+  }
+
+  saveSettings() {
+    let file = this.createSettingsFile();
+    file = util.btoa(file);
+
+    localStorage[cconst.APP_KEY_NAME + "_settings"] = file;
+  }
+
+  loadSettings() {
+    try {
+      this.loadSettings_intern();
+    } catch (error) {
+      util.print_stack(error);
+      console.log("Failed to load settings");
+    }
+  }
+
+  loadSettings_intern() {
+    let file = localStorage[cconst.APP_KEY_NAME + "_settings"];
+    if (file === undefined) {
+      return;
+    }
+
+    file = util.atob(file).buffer;
+
+    let args = {
+      load_screen: false,
+      load_settings: true,
+      load_library : false,
+      reset_toolstack: false
+    }
+
+    this.loadFile(file, args);
+    window.redraw_viewport();
+  }
+
   createUndoFile() {
     let args = {
       save_screen   : false,
-      load_settings : false
+      save_settings : false
     };
     
     return this.createFile(args);

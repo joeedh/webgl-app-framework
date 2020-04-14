@@ -1,6 +1,6 @@
 import {ToolOp, ToolFlags} from "../path.ux/scripts/simple_toolsys.js";
 import {StringProperty, IntProperty, EnumProperty,
-        FlagProperty, PropFlags, Vec3Property} from "../path.ux/scripts/toolprop.js";
+        FlagProperty, BoolProperty, PropFlags, Vec3Property} from "../path.ux/scripts/toolprop.js";
 import {PointSet} from './potree_types.js';
 import {SceneObject} from '../core/sceneobject.js';
 
@@ -13,7 +13,8 @@ export class AddPointSetOp extends ToolOp {
     uiname   : "Add Point Set",
     toolpath : "pointset.add",
     inputs : {
-      url : new StringProperty()
+      url : new StringProperty(),
+      select : new BoolProperty(true)
     },
     icon : -1,
     description : "Load a point set"
@@ -36,6 +37,11 @@ export class AddPointSetOp extends ToolOp {
 
     scene.add(ob);
     pset.load();
+
+    if (this.inputs.select.getValue()) {
+      scene.objects.setSelect(ob, true);
+      scene.objects.setActive(ob);
+    }
   }
 }
 

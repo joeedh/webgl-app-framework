@@ -193,7 +193,7 @@ export class View3D extends Editor {
     this.camera.far = 10000.0;
     this.camera.fovy = 50.0;
     
-    this.selectmode = SelMask.VERTEX;
+    this.selectmode = SelMask.OBJECT;
 
     //this.widgettool is an enum, built from WidgetTool.getToolEnum()
     this.widgettool = 0; //active widget tool index in WidgetTools
@@ -402,7 +402,7 @@ export class View3D extends Editor {
     row2.prop("view3d.flag[ONLY_RENDER]", PackFlags.USE_ICONS);
 
     header = row1;
-    header.prop("view3d.selectmode", PackFlags.USE_ICONS);
+    //header.prop("view3d.selectmode", PackFlags.USE_ICONS);
     header.prop("view3d.active_tool", PackFlags.USE_ICONS);
 
     header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
