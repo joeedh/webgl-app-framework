@@ -376,7 +376,7 @@ onmessage = function (event) {
 				if(pointAttribute.initialRange != null){
 					offset = pointAttribute.initialRange[0];
 					scale = 1 / (pointAttribute.initialRange[1] - pointAttribute.initialRange[0]);
-				}else{
+				}else {
 					offset = min;
 					scale = 1 / (max - min);
 				}
