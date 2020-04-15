@@ -27,6 +27,7 @@ export function loadUndoMesh(ctx, data) {
 
   let mesh = nstructjs.manager.read_object(data, Mesh);
 
+  //XXX hackish! getblock[_us] copy/pasted code!
   let getblock = (ref) => {
     return datalib.get(ref);
   }
@@ -41,7 +42,7 @@ export function loadUndoMesh(ctx, data) {
     return ret;
   }
 
-  mesh.dataLink(getblock, getblock_us);
+  mesh.dataLink(getblock, getblock_addUser);
   return mesh;
 }
 

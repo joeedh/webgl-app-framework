@@ -9,7 +9,8 @@ let STRUCT = nstructjs.STRUCT;
 export let BlockTypes = [];
 export const BlockFlags = {
   SELECT : 1,
-  HIDE   : 2
+  HIDE   : 2,
+  FAKE_USER : 4
 };
 
 export class DataBlock extends Node {
@@ -72,9 +73,14 @@ export class DataBlock extends Node {
     icon     : -1
   }}
 
-  /**getblock_us gets a block and adds reference count to it
-   * getblock just gets a block and doesn't add a reference to it*/
-  dataLink(getblock, getblock_us) {
+  /**
+   * @param getblock: gets a block
+   * @param getblock_addUser:  gets a block but increments reference count
+   *
+   * note that the reference counts of all blocks are re-built at file load time,
+   * so make sure to choose between these two functions correctly.
+   */
+  dataLink(getblock, getblock_addUser) {
   }
 
   /**increment reference count*/
@@ -257,17 +263,19 @@ export class BlockSet extends Array {
     if (block === this.active) {
       this.active = undefined;
     }
-    
+
     super.remove(block);
+
+    block.destroy();
   }
-  
+
   destroy() {
     for (let block of this) {
       block.destroy();
     }
   }
   
-  dataLink(getblock, getblock_us) {
+  dataLink(getblock, getblock_addUser) {
     let type = this.type.blockDefine().typeName;
     
     if (DEBUG.DataLink) {
@@ -281,7 +289,7 @@ export class BlockSet extends Array {
     }
 
     for (let block of this) {
-      block.dataLink(getblock, getblock_us);
+      block.dataLink(getblock, getblock_addUser);
     }
     
     return this;
@@ -415,7 +423,7 @@ export class Library {
       }
       
       if (type === undefined) {
-        console.warn("Failed to load library type", lib.type);3
+        console.warn("Failed to load library type", lib.type);
 
         this.libs.remove(lib);
         continue;

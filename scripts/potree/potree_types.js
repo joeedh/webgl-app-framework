@@ -43,6 +43,7 @@ export class PointSet extends SceneObjectData {
     return new Promise((accept, reject) => {
       this.res = resourceManager.get(this.url, PointSetResource, true);
       if (this.res.isReady()) {
+        console.log("READY1");
         this.ready = true;
         accept(this);
 
@@ -55,13 +56,14 @@ export class PointSet extends SceneObjectData {
       }
 
       this.res.on("load", (e) => {
+        console.log("READY2");
         this.ready = true;
         accept(this);
 
         //hackish, I shouldn't have to delay the viewport redraw call here
         window.setTimeout(() => {
           window.redraw_viewport();
-        }, 500);
+        }, 2500);
       });
     });
   }
@@ -140,8 +142,10 @@ export class PointSet extends SceneObjectData {
     ptree.material.depthWrite = mask;
     ptree.material.depthTest = test;
 
+    ptree.updateMaterial(ptree.material, ptree.visibleNodes, view3d.threeCamera, view3d.threeRenderer)
     Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
     ptree.updateMaterial(ptree.material, ptree.visibleNodes, view3d.threeCamera, view3d.threeRenderer)
+    Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
 
     ptree.material.depthWrite = mask;
     ptree.material.depthTest = test;
@@ -154,9 +158,9 @@ export class PointSet extends SceneObjectData {
     ptree.material = startmat;
   }
 
-  dataLink(getblock, getblock_us) {
+  dataLink(getblock, getblock_addUser) {
     for (let i=0; i<this.materials.length; i++) {
-      this.materials[i] = getblock_us(this.materials[i]);
+      this.materials[i] = getblock_addUser(this.materials[i]);
     }
 
     this.load();

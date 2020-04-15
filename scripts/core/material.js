@@ -58,9 +58,9 @@ export class ShaderNetwork extends DataBlock {
     }
   }};
 
-  dataLink(getblock, getblock_us) {
-    super.dataLink(getblock, getblock_us);
-    //this.graph.dataLink(getblock, getblock_us);
+  dataLink(getblock, getblock_addUser) {
+    super.dataLink(getblock, getblock_addUser);
+    //this.graph.dataLink(getblock, getblock_addUser);
   }
 
   generate(scene) {

@@ -13,7 +13,7 @@ import '../editors/resbrowser/resbrowser_ops.js';
 import '../editors/resbrowser/resbrowser_types.js';
 
 import {App, ScreenBlock} from '../editors/editor_base.js';
-import {Library, DataBlock, DataRef} from '../core/lib_api.js';
+import {Library, DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import {IDGen} from '../util/util.js';
 import {PropsEditor} from "../editors/properties/PropsEditor.js";
 import * as util from '../util/util.js';
@@ -456,22 +456,32 @@ export class AppState {
     this.do_versions(version, datalib);
 
     //datalib = this.datalib;
+
     function getblock(dataref) {
       return datalib.get(dataref);
     }
-    
-    function getblock_us(dataref, user) {
-      let ret = getblock(dataref);
+
+    function getblock_addUser(dataref, user) {
+      let addUser = dataref !== undefined && !(dataref instanceof DataBlock);
+
+      let ret = datalib.get(dataref);
       
-      if (ret !== undefined) {
+      if (addUser && ret !== undefined) {
         ret.lib_addUser(user);
       }
       
       return ret;
     }
 
+    //reference counts are re-derived during linking
     for (let lib of datalib.libs) {
-      lib.dataLink(getblock, getblock_us);
+      for (let block of lib) {
+        block.lib_users = (block.lib_flag & BlockFlags.FAKE_USER) ? 1 : 0;
+      }
+    }
+
+    for (let lib of datalib.libs) {
+      lib.dataLink(getblock, getblock_addUser);
     }
     datalib.afterSTRUCT();
 
@@ -521,8 +531,6 @@ export class AppState {
     if (args.reset_toolstack) {
       this.toolstack.reset(this.ctx);
     }
-
-    console.log("-------------------------->", lastscreens);
 
     if (!args.load_screen) {
       for (let sblock of lastscreens) {

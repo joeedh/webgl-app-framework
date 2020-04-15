@@ -1340,9 +1340,9 @@ export class Mesh extends SceneObjectData {
     this.validateMesh();
   }
 
-  dataLink(getblock, getblock_us) {
+  dataLink(getblock, getblock_addUser) {
     for (let i=0; i<this.materials.length; i++) {
-      this.materials[i] = getblock_us(this.materials[i]);
+      this.materials[i] = getblock_addUser(this.materials[i]);
     }
   }
 

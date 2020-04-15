@@ -3,7 +3,7 @@ import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {Graph} from './graph.js';
 import * as util from '../util/util.js';
-import {ObjectFlags} from '../sceneobject/sceneobject.js';
+import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject.js';
 import {DependSocket} from './graphsockets.js';
 import {Light} from '../light/light.js';
 import {Vector3} from '../util/vectormath.js';
@@ -42,6 +42,7 @@ export const SceneFlags = {
 export class ObjectSet extends util.set {
   constructor(oblist) {
     super();
+
     this.list = oblist;
   }
 
@@ -61,10 +62,12 @@ export class ObjectSet extends util.set {
 }
 
 export class ObjectList extends Array {
-  constructor(list=undefined) {
+  constructor(list=undefined, scene) {
     super();
 
-    this.selected = new ObjectSet(this);
+    this.scene = scene;
+
+    this.selected = new ObjectSet(this, scene);
     this.onselect = undefined;
 
     if (list !== undefined) {
@@ -80,6 +83,19 @@ export class ObjectList extends Array {
     for (let ob of this) {
       this.setSelect(ob, false);
     }
+  }
+
+  remove(ob) {
+    ob.lib_remUser(this.scene);
+    return super.remove(ob);
+  }
+
+  push(ob) {
+    if (ob instanceof SceneObject) {
+      ob.lib_addUser(this.scene);
+    }
+
+    return super.push(ob);
   }
 
   get editable() {
@@ -156,7 +172,7 @@ export class ObjectList extends Array {
     }
   }
 
-  dataLink(scene, getblock, getblock_us) {
+  dataLink(scene, getblock, getblock_addUser) {
     this.active = getblock(this.active, scene);
 
     if (this.highlight !== undefined) {
@@ -164,7 +180,7 @@ export class ObjectList extends Array {
     }
 
     for (let ob of this.refs) {
-      let ob2 = getblock_us(ob, scene);
+      let ob2 = getblock_addUser(ob, scene);
 
       if (ob2 === undefined) {
         console.warn("Warning: missing SceneObject in scene");
@@ -211,7 +227,7 @@ export class Scene extends DataBlock {
 
     this.envlight = new EnvLight();
 
-    this.objects = new ObjectList();
+    this.objects = new ObjectList(undefined, this);
     this.objects.onselect = this._onselect.bind(this);
     this.flag = 0;
     
@@ -257,13 +273,11 @@ export class Scene extends DataBlock {
   }
 
   add(ob) {
-    this.objects.push(ob);
+    this.objects.add(ob);
     
     if (this.objects.active === undefined) {
       this.objects.active = ob;
     }
-    
-    ob.lib_addUser(this);
   }
   
   remove(ob) {
@@ -272,7 +286,6 @@ export class Scene extends DataBlock {
       return;
     }
     
-    ob.lib_remUser(ob);
     this.objects.remove(ob);
   }
   
@@ -280,6 +293,9 @@ export class Scene extends DataBlock {
     for (let ob of this.objects) {
       ob.lib_remUser();
     }
+
+    this.objects = new ObjectSet(undefined, this);
+    this.objects.onselect = this._onselect.bind(this);
   }
   
   static blockDefine() { return {
@@ -309,11 +325,19 @@ export class Scene extends DataBlock {
     reader(this);
     super.loadSTRUCT(reader);
 
+    this.objects.scene = this;
     this.objects.onselect = this._onselect.bind(this);
   }
   
-  dataLink(getblock, getblock_us) {
-    this.objects.dataLink(this, getblock, getblock_us);
+  dataLink(getblock, getblock_addUser) {
+    if (this._linked) {
+      console.log("DOUBLE CALL TO dataLink");
+      return;
+    }
+
+    this._linked = true;
+
+    this.objects.dataLink(this, getblock, getblock_addUser);
 
     delete this.active;
   }

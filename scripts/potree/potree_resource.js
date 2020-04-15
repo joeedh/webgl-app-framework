@@ -35,12 +35,10 @@ export class PointSetResource extends ResourceType {
   }
 
   load() {
-    Potree.loadPointCloud(this.url, this.name, (e) => {
-      this.data = e.pointcloud;
-      console.log("Point Cloud", e);
+    let cb = (pcloud) => {
+      this.data = pcloud;
+      console.log("Point Cloud", pcloud);
 
-
-      let pcloud = e.pointcloud;
       let material = pcloud.material;
 
       pcloud.baseMaterial = material;
@@ -69,6 +67,10 @@ export class PointSetResource extends ResourceType {
       this.ready = true;
 
       this.fire("load", this.data);
+    };
+
+    Potree.loadPointCloud(this.url, this.name, (e) => {
+      cb(e.pointcloud);
     });
   }
 

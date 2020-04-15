@@ -993,16 +993,13 @@ export class View3D extends Editor {
   updatePointClouds() {
     console.log("updating pointcloud visibility");
 
-    let psets = [];
     let scene = this.ctx.scene;
 
     for (let ob of scene.objects) {
       if (ob.data instanceof PointSet && ob.data.ready) {
-        psets.push(ob.data.res.data);
+        //
       }
     }
-
-    Potree.updatePointClouds(psets, this.threeCamera, this.ctx.state.three_render);
   }
 
   viewportDraw_intern() {

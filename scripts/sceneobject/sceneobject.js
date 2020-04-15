@@ -68,6 +68,12 @@ export class SceneObject extends DataBlock {
     return Colors[flag];
   }
 
+  destroy() {
+    if (this.data !== undefined) {
+      this.data.lib_remUser(this);
+    }
+  }
+
   static nodedef() {return {
     inputs : {
       depend : new DependSocket("depend", SocketFlags.MULTI),
@@ -161,8 +167,8 @@ export class SceneObject extends DataBlock {
     super.loadSTRUCT(reader);
   }
 
-  dataLink(getblock, getblock_us) {
-    this.data = getblock_us(this.data);
+  dataLink(getblock, getblock_addUser) {
+    this.data = getblock_addUser(this.data);
   }
   
   draw(view3d, gl, uniforms, program) {
