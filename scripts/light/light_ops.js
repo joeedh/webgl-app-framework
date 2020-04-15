@@ -10,7 +10,7 @@ import {DependSocket, Vec3Socket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
-import {SceneObject} from '../core/sceneobject.js';
+import {SceneObject} from '../sceneobject/sceneobject.js';
 
 import {Light, LightTypes, LightFlags} from './light.js';
 

@@ -1,11 +1,11 @@
-import {DataBlock, DataRef} from './lib_api.js';
+import {DataBlock, DataRef} from '../core/lib_api.js';
 import '../path.ux/scripts/struct.js';
 import {Light} from '../light/light.js';
 let STRUCT = nstructjs.STRUCT;
-import {Graph, SocketFlags} from './graph.js';
+import {Graph, SocketFlags} from '../core/graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
 import {Mesh} from '../mesh/mesh.js';
-import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket} from './graphsockets.js';
+import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 
 import * as THREE from '../extern/three.js';
@@ -165,20 +165,18 @@ export class SceneObject extends DataBlock {
     this.data = getblock_us(this.data);
   }
   
-  draw(gl, uniforms, program) {
+  draw(view3d, gl, uniforms, program) {
     uniforms.objectMatrix = this.outputs.matrix.getValue();
     uniforms.object_id = this.lib_id;
 
-    if ((this.data instanceof Mesh) || (this.data instanceof Light)) {
-      this.data.draw(gl, uniforms, program, this);
-    }
+    this.data.draw(view3d, gl, uniforms, program, this);
   }
 
-  drawWireframe(gl, uniforms, program) {
+  drawWireframe(view3d, gl, uniforms, program) {
     uniforms.objectMatrix = this.outputs.matrix.getValue();
     uniforms.object_id = this.lib_id;
 
-    this.data.drawWireframe(gl, uniforms, program, this);
+    this.data.drawWireframe(view3d, gl, uniforms, program, this);
   }
 }
 SceneObject.STRUCT = STRUCT.inherit(SceneObject, DataBlock) + `

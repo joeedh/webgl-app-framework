@@ -32,6 +32,7 @@ import '../shadernodes/allnodes.js';
 import {ShaderNode} from '../shadernodes/shader_nodes.js';
 import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph.js';
 import {SelectOneOp} from '../sceneobject/selectops.js';
+import {DeleteObjectOp} from '../sceneobject/sceneobject_ops.js';
 import {Scene, EnvLight, EnvLightFlags} from "../core/scene.js";
 import {api_define_graphclasses} from '../core/graph_class.js';
 import {DisplayModes} from '../editors/debug/DebugEditor_base.js';

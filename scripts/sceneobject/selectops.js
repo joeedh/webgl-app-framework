@@ -9,7 +9,7 @@ import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import {Icons} from '../editors/icon_enum.js';
-import {SceneObject, ObjectFlags} from '../core/sceneobject.js';
+import {SceneObject, ObjectFlags} from './sceneobject.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
 
 import {SelMask, SelToolModes, SelOneToolModes} from "../editors/view3d/selectmode.js";
@@ -59,8 +59,8 @@ export class SelectOpBase extends ToolOp {
     ud.active = datalib.get(ud.active);
     ud.highlight = datalib.get(ud.highlight);
 
-    scene.setActive(ud.active);
-    scene.setHighlight(ud.highlight);
+    scene.objects.setActive(ud.active);
+    scene.objects.setHighlight(ud.highlight);
 
     window.updateDataGraph();
     window.redraw_all();

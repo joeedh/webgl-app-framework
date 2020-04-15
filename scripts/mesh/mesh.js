@@ -9,7 +9,7 @@ import * as util from '../util/util.js'
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {DependSocket} from '../core/graphsockets.js';
 import {DataBlock, DataRef} from '../core/lib_api.js';
-import {SceneObjectData} from '../core/sceneobject_base.js';
+import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
 
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
@@ -968,7 +968,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  drawWireframe(gl, uniforms, program, object) {
+  drawWireframe(view3d, gl, uniforms, program, object) {
     if (this.recalc & RecalcFlags.TESSELATE) {
       this.tessellate();
     }
@@ -991,7 +991,7 @@ export class Mesh extends SceneObjectData {
     this.wmesh.draw(gl, uniforms);
   }
 
-  draw(gl, uniforms, program, object) {
+  draw(view3d, gl, uniforms, program, object) {
     if (this.recalc & RecalcFlags.TESSELATE) {
       this.tessellate();
     }

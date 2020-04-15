@@ -3,11 +3,11 @@ import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
 export class SceneObjectData extends DataBlock {
-  draw(gl, uniforms, program, object) {
+  draw(view3d, gl, uniforms, program, object) {
     throw new Error("implement me");
   }
 
-  drawWireframe(gl, uniforms, program, object) {
+  drawWireframe(view3d, gl, uniforms, program, object) {
 
   }
 }

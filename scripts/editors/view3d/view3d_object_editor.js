@@ -1,5 +1,5 @@
 import {ExtrudeRegionsOp} from '../../mesh/mesh_ops.js';
-import {ObjectFlags} from '../../core/sceneobject.js';
+import {ObjectFlags} from '../../sceneobject/sceneobject.js';
 import {View3D_SubEditorIF} from './view3d_subeditor.js';
 import {SelMask, SelOneToolModes, SelToolModes} from './selectmode.js';
 import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../mesh/mesh.js';
@@ -55,7 +55,9 @@ export class ObjectEditor extends View3D_SubEditorIF {
   defineKeyMap() {
     this.keymap = new KeyMap([
       new HotKey("A", [], "object.toggle_select_all(mode='AUTO')"),
-      new HotKey("A", ["ALT"], "object.toggle_select_all(mode='SUB')")
+      new HotKey("A", ["ALT"], "object.toggle_select_all(mode='SUB')"),
+      new HotKey("X", [], "object.delete_selected()"),
+      new HotKey("DELETE", [], "object.delete_selected()")
     ]);
 
     return this.keymap;
@@ -143,21 +145,26 @@ export class ObjectEditor extends View3D_SubEditorIF {
     let size = gl.getParameter(gl.VIEWPORT);
     size = [size[2], size[3]];
 
-    if (1) { //(object.data instanceof Mesh) || (object.data instanceof Light)) {
-      let d = 1;
-      for (let x=-d; x<=d; x++) {
-        for (let y=-d; y<=d; y++) {
-          uniforms.shift[0] = x/size[0]*3.0;
-          uniforms.shift[1] = y/size[1]*3.0;
-          object.drawWireframe(gl, uniforms, program);
-        }
-      }
-      object.drawWireframe(gl, uniforms, program);
+    let d = 1;
+    for (let x=-d; x<=d; x++) {
+      for (let y=-d; y<=d; y++) {
+        uniforms.shift[0] = x/size[0]*3.0;
+        uniforms.shift[1] = y/size[1]*3.0;
 
+        this.view3d.threeCamera.pushUniforms(uniforms);
+        object.drawWireframe(this.view3d, gl, uniforms, program);
+        this.view3d.threeCamera.popUniforms();
+      }
     }
 
     uniforms.shift = undefined;
     gl.depthMask(mask);
+
+    this.view3d.threeCamera.pushUniforms(uniforms);
+    object.draw(this.view3d, gl, uniforms, program);
+    this.view3d.threeCamera.popUniforms();
+
+    return true;
   }
 
   on_drawend(gl) {
@@ -234,7 +241,9 @@ export class ObjectEditor extends View3D_SubEditorIF {
 
     let program = Shaders.MeshIDShader;
 
-    object.draw(gl, uniforms, program);
+    this.view3d.threeCamera.pushUniforms(uniforms);
+    object.draw(this.view3d, gl, uniforms, program);
+    this.view3d.threeCamera.popUniforms();
   }
 }
 View3D_SubEditorIF.register(ObjectEditor);

@@ -16,7 +16,7 @@ import {Icons} from '../editors/icon_enum.js';
 import {Mesh, MeshTypes, MeshFlags} from './mesh.js';
 import {MeshOp} from './mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
-import {SceneObject} from "../core/sceneobject.js";
+import {SceneObject} from "../sceneobject/sceneobject.js";
 
 export class MeshCreateOp extends ToolOp {
   constructor() {

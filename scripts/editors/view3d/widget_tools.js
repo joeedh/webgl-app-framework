@@ -618,4 +618,4 @@ export class ExtrudeWidget extends WidgetTool {
     this.arrow.setMatrix(mat);
   }
 }
-WidgetTool.register(ExtrudeWidget);
+//WidgetTool.register(ExtrudeWidget);

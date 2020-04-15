@@ -11,7 +11,56 @@ import * as util from '../util/util.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
 
-import {Mesh, MeshTypes, MeshFlags} from './mesh.js';
-import {MeshOp} from './mesh_ops_base.js';
+import {Mesh, MeshTypes, MeshFlags} from '../mesh/mesh.js';
+import {MeshOp} from '../mesh/mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
 
+export class SceneObjectOp extends ToolOp {
+  execPost(ctx) {
+    super.execPre(ctx);
+    window.redraw_viewport();
+  }
+}
+
+export class DeleteObjectOp extends SceneObjectOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {return {
+    toolpath : "object.delete_selected",
+    name : "delete_selected",
+    uiname : "Delete Selected",
+    description : "Delete all selected objects",
+    inputs : {},
+    outputs : {},
+    icon : -1
+  }}
+
+  exec(ctx) {
+    let scene = ctx.scene;
+
+    let list = [];
+
+    for (let ob of scene.objects.editable) {
+      list.push(ob);
+    }
+
+    for (let ob of list) {
+      scene.remove(ob);
+
+      if (ob.lib_users <= 0) {
+        console.log("Nuking object");
+        let data = ob.data;
+
+        ctx.datalib.remove(ob);
+
+        if (data.lib_users <= 0) {
+          console.log("Nuking object data too");
+          ctx.datalib.remove(data);
+        }
+      }
+    }
+  }
+}
+ToolOp.register(DeleteObjectOp);

@@ -36,7 +36,7 @@ import {View3DFlags} from './view3d_base.js';
 import {ResourceBrowser} from "../resbrowser/resbrowser.js";
 import {AddPointSetOp} from '../../potree/potree_ops.js';
 import {PointSet} from '../../potree/potree_types.js';
-import {ObjectFlags} from '../../core/sceneobject.js';
+import {ObjectFlags} from '../../sceneobject/sceneobject.js';
 //import {Renderer, Scene} from '../../extern/potree/src/Potree.js'
 //import * as Potree from '../../extern/potree/build/potree/potree.js';
 import '../../extern/potree/build/potree/potree.js';
@@ -60,6 +60,21 @@ export class ThreeCamera extends THREE.Camera {
     super();
 
     this.camera = camera;
+    this.uniform_stack = [];
+    this.uniforms = {};
+  }
+
+  //for overriding matrixWorld with uniforms.objectMatrix
+  pushUniforms(uniforms) {
+    this.uniform_stack.push(this.uniforms);
+    this.uniforms = uniforms;
+  }
+
+  popUniforms() {
+    let uniforms = this.uniforms;
+
+    this.uniforms = this.uniform_stack.pop();
+    return uniforms;
   }
 
   set near(val) {
@@ -94,13 +109,34 @@ export class ThreeCamera extends THREE.Camera {
   }
 
   get matrixWorld() {
+    if (this.uniforms.objectMatrix) {
+      let mat = new Matrix4(this.uniforms.objectMatrix);
+      mat.preMultiply(this.camera.cameramat);
+      mat.invert();
+
+      return Matrix4ToTHREE(mat);
+    }
+
+    //if (this.uniforms.)
     return Matrix4ToTHREE(this.camera.icameramat);
   }
 
   get matrixWorldInverse() {
+    if (this.uniforms.objectMatrix) {
+      let mat = new Matrix4(this.uniforms.objectMatrix);
+      mat.preMultiply(this.camera.cameramat);
+
+      return Matrix4ToTHREE(mat);
+    }
+
     return Matrix4ToTHREE(this.camera.cameramat);
   }
 
+  /**
+   * Okay, a bit of nomenclature difference with three.js here.
+   * I like to call the final matrix the projection matrix, while
+   * three.js is calling the perspective matrix the projection matrix.
+   * */
   get projectionMatrix() {
     return Matrix4ToTHREE(this.camera.persmat);
   }
@@ -749,7 +785,9 @@ export class View3D extends Editor {
   }
 
   update() {
+    this.push_ctx_active();
     super.update();
+    this.pop_ctx_active();
 
     //TODO have limits for how many samplers to render
     if (time_ms() - this._last_render_draw > 100) {
@@ -938,6 +976,7 @@ export class View3D extends Editor {
 
   drawThreeScene() {
     this.threeCamera.camera = this.camera;
+    this.threeRenderer = this.ctx.state.three_render;
 
     let state = this.ctx.state;
     let scene3 = state.three_scene;
@@ -948,78 +987,7 @@ export class View3D extends Editor {
       this.pRenderer = new Potree.Renderer(render3);
     }
 
-    let children = [];
-    let viewport = [this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1]];
-    let visit = {};
-    let updateVisibility = false;
-
-    for (let ob of scene.objects) {
-      if (ob.flag & ObjectFlags.HIDE) {
-        continue;
-      }
-
-      if (ob.data instanceof PointSet && ob.data.ready) {
-        let pset = ob.data;
-
-        children.push(pset.res.data);
-
-        pset.res.data.material.screenWidth = this.glSize[0];
-        pset.res.data.material.screenHeight = this.glSize[1];
-
-        visit[pset.url] = 1;
-
-        if (!(pset.url in this._pobj_map)) {
-          this._pobj_map[pset.url] = pset.res.data;
-          scene3.add(pset.res.data);
-          updateVisibility = true;
-        }
-      }
-    }
-
-    //console.log("PSETS", children);
-
-    for (let k in this._pobj_map) {
-      if (!(k in visit)) {
-        //XXX implement this in proper method
-        let data = this._pobj_map[k];
-        delete this._pobj_map[k];
-
-        updateVisibility = true;
-        scene3.remove(data);
-      }
-    }
-
-    if (1||children.length > 0 && updateVisibility) {
-      this.updatePointClouds();
-    }
-
-    if (window._test1 === undefined) {
-      window._test1 = 1;
-
-      var geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-      var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-      var cube = new THREE.Mesh( geometry, material );
-
-      //scene3.add( cube );
-    }
-
-    this.camera.near = 0.5;
-    this.camera.regen_mats();
-
     render3.render(scene3, this.threeCamera);
-
-    if (children.length > 0) {
-      let gl = this.gl;
-
-      gl.disable(gl.DEPTH_TEST);
-      gl.disable(gl.BLEND);
-      
-      //gl.clearDepth(100000);
-      //gl.clear(gl.DEPTH_BUFFER_BIT);
-      
-      this.pRenderer.render({children : children}, this.threeCamera);
-      this.pRenderer.render(scene3, this.threeCamera);
-    }
   }
 
   updatePointClouds() {
@@ -1047,14 +1015,12 @@ export class View3D extends Editor {
     }
 
     this._graphnode.outputs.onDrawPre.update();
+
     //force graph execution
     window.updateDataGraph(true);
 
     let scene = this.ctx.scene;
-    
-    //make sure dependency graph is up to date
-    window.updateDataGraph();
-    
+
     let gl = this.gl;
     let dpi = this.canvas.dpi;//UIBase.getDPI();
 
@@ -1199,7 +1165,9 @@ export class View3D extends Editor {
       draw = draw && !(this.flag & View3DFlags.ONLY_RENDER);
 
       if (draw) {
-        ob.draw(gl, uniforms, program);
+        this.threeCamera.pushUniforms(uniforms);
+        ob.draw(this, gl, uniforms, program);
+        this.threeCamera.popUniforms();
       }
 
       if (this.flag & View3DFlags.ONLY_RENDER)
@@ -1209,15 +1177,19 @@ export class View3D extends Editor {
       for (let ed of this.editors) {
         //console.log(ed);
 
+        this.threeCamera.pushUniforms(uniforms);
         if (ed.draw(gl, uniforms, program, ob, ob.data)) {
           ok = true;
           break;
         }
+        this.threeCamera.popUniforms();
       }
 
       //no editors drew the objects
       if (!ok) {
-      //  ob.draw(gl, uniforms, program);
+        this.threeCamera.pushUniforms(uniforms);
+        ob.draw(this, gl, uniforms, program);
+        this.threeCamera.popUniforms();
       }
     }
   }

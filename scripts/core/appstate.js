@@ -26,7 +26,7 @@ import {Scene} from '../core/scene.js';
 import {BinaryReader, BinaryWriter} from '../util/binarylib.js';
 import * as cconst from '../core/const.js';
 import {AppSettings} from './settings.js';
-import {SceneObject} from './sceneobject.js';
+import {SceneObject} from '../sceneobject/sceneobject.js';
 import {Mesh} from '../mesh/mesh.js';
 import {makeCube} from './mesh_shapes.js';
 import '../path.ux/scripts/struct.js';

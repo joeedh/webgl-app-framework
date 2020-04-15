@@ -6,7 +6,7 @@ import {ResourceBrowser} from "../editors/resbrowser/resbrowser.js";
 import * as util from '../util/util.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Light} from '../light/light.js';
-import {SceneObject} from './sceneobject.js';
+import {SceneObject} from '../sceneobject/sceneobject.js';
 import {Scene} from './scene.js';
 import {DataRef} from './lib_api.js';
 import {ToolStack, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';

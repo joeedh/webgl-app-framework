@@ -3,7 +3,7 @@ import {ToolOp, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
 import {keymap} from '../../path.ux/scripts/simple_events.js';
 import {MeshFlags, MeshTypes, Mesh} from '../../mesh/mesh.js';
 import {SelMask} from './selectmode.js';
-import {SceneObject, ObjectFlags} from "../../core/sceneobject.js";
+import {SceneObject, ObjectFlags} from "../../sceneobject/sceneobject.js";
 import {PropModes, TransDataType, TransDataElem} from './transform_base.js';
 import * as util from '../../util/util.js';
 

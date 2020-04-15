@@ -1,5 +1,7 @@
 import {ResourceType, resourceManager} from "../core/resource.js";
 import '../extern/potree/build/potree/potree.js';
+import {Shaders} from './potree_shaders.js';
+import * as PotreeShaders from "../extern/potree/build/shaders/shaders.js";
 
 export class PointSetResource extends ResourceType {
   constructor(url) {
@@ -37,7 +39,12 @@ export class PointSetResource extends ResourceType {
       this.data = e.pointcloud;
       console.log("Point Cloud", e);
 
-      let material = e.pointcloud.material;
+
+      let pcloud = e.pointcloud;
+      let material = pcloud.material;
+
+      pcloud.baseMaterial = material;
+
       //material.uniforms.uShadowColor.value = [0.0, 0, 0];
       material.size = 1;
       material.useEDL = false;
@@ -45,6 +52,19 @@ export class PointSetResource extends ResourceType {
 
       material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
       material.shape = Potree.PointShape.SQUARE;
+
+      let flat = new Potree.PointCloudMaterial(material);
+
+      pcloud.flatMaterial = flat;
+      flat.size = material.size;
+      flat.recomputeClassification();
+      flat.activeAttributeName = "color";
+      //flat.defines.set("color_type_color", "#define color_type_color");
+      flat.color = new THREE.Color(1.0, 0.5, 0.5);// [1.0, 0.5, 0.5];
+      flat.pointSizeType = material.pointSizeType;
+      flat.shape = material.shape;
+
+      window.flat = flat;
 
       this.ready = true;
 

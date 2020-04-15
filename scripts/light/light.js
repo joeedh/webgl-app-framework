@@ -7,7 +7,7 @@ import {Mesh} from '../mesh/mesh.js';
 import {Vec3Socket, FloatSocket, DependSocket, Matrix4Socket, Vec4Socket} from '../core/graphsockets.js';
 import {WidgetShapes} from '../editors/view3d/widget_shapes.js';
 import {Shaders} from '../editors/view3d/view3d_shaders.js';
-import {SceneObjectData} from '../core/sceneobject_base.js';
+import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
 
 export const LightFlags = {
   SELECT : 1,

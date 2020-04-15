@@ -1,16 +1,19 @@
 // var _mesh = undefined;
 
 import {NodeFlags} from '../core/graph.js';
+import * as view3d_shaders from '../editors/view3d/view3d_shaders.js';
 
 import * as simplemesh from '../core/simplemesh.js';
 import * as math from '../util/math.js';
 import * as util from '../util/util.js'
+import {getFlatMaterial, Shaders} from './potree_shaders.js';
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {DependSocket} from '../core/graphsockets.js';
 import {DataBlock, DataRef} from '../core/lib_api.js';
-import {SceneObjectData} from '../core/sceneobject_base.js';
+import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
 import {PointSetResource} from './potree_resource.js';
+import {ObjectFlags} from "../sceneobject/sceneobject.js";
 
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
@@ -35,18 +38,30 @@ export class PointSet extends SceneObjectData {
       return new Promise((accept, reject) => accept(this));
     }
 
+    this._flatMaterial = getFlatMaterial();
+
     return new Promise((accept, reject) => {
       this.res = resourceManager.get(this.url, PointSetResource, true);
-      if (this.res.ready) {
+      if (this.res.isReady()) {
         this.ready = true;
         accept(this);
+
+        //hackish, I shouldn't have to delay the viewport redraw call here
+        //TODO: rethink window.redraw_viewport?
+        window.setTimeout(() => {
+          window.redraw_viewport();
+        }, 50);
         return;
       }
 
       this.res.on("load", (e) => {
         this.ready = true;
         accept(this);
-        window.redraw_viewport();
+
+        //hackish, I shouldn't have to delay the viewport redraw call here
+        window.setTimeout(() => {
+          window.redraw_viewport();
+        }, 500);
       });
     });
   }
@@ -76,12 +91,67 @@ export class PointSet extends SceneObjectData {
   exec() {
   }
 
-  drawWireframe(gl, uniforms, program, object) {
+  drawWireframe(view3d, gl, uniforms, program, object) {
+    if (!this.ready) {
+      return;
+    }
 
+    let ptree = this.res.data;
+
+    let color = uniforms.uColor;
+    if (color === undefined) {
+      color = object.getEditorColor();
+    }
+    if (color === undefined) {
+      color = [0.5, 0.5, 0.5];
+    }
+
+    ptree.material = ptree.flatMaterial;
+    ptree.material.size = ptree.baseMaterial.size + 1;
+    ptree.material.color = new THREE.Color(color[0], color[1], color[2]);
+
+    this.draw(view3d, gl, uniforms, program, object);
+    ptree.material = ptree.baseMaterial;
   }
 
-  draw(gl, uniforms, program, object) {
+  draw(view3d, gl, uniforms, program, object) {
+    if (!this.ready) {
+      return;
+    }
 
+    let ptree = this.res.data;
+
+    let startmat = ptree.material;
+    if (program === view3d_shaders.Shaders.MeshIDShader) {
+      //console.log("ID draw!", uniforms);
+      ptree.material = ptree.flatMaterial;
+      let id = uniforms.object_id;
+      ptree.material.uniforms.uColor.value = new THREE.Color(id, id, id);
+    }
+
+
+    let mask = gl.getParameter(gl.DEPTH_WRITEMASK);
+    let test = gl.getParameter(gl.DEPTH_TEST);
+
+    ptree.material.screenWidth = view3d.glSize[0];
+    ptree.material.screenHeight = view3d.glSize[1];
+    ptree.material.heightMin = ptree.baseMaterial.heightMin;
+    ptree.material.heightMax = ptree.baseMaterial.heightMax;
+    ptree.material.depthWrite = mask;
+    ptree.material.depthTest = test;
+
+    Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
+    ptree.updateMaterial(ptree.material, ptree.visibleNodes, view3d.threeCamera, view3d.threeRenderer)
+
+    ptree.material.depthWrite = mask;
+    ptree.material.depthTest = test;
+
+    //*/
+    view3d.pRenderer.render({children : [ptree]}, view3d.threeCamera, undefined, {
+      depthTest : test,
+      depthWrite : mask
+    });
+    ptree.material = startmat;
   }
 
   dataLink(getblock, getblock_us) {

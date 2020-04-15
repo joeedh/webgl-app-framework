@@ -3,7 +3,7 @@ import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {Graph} from './graph.js';
 import * as util from '../util/util.js';
-import {ObjectFlags} from './sceneobject.js';
+import {ObjectFlags} from '../sceneobject/sceneobject.js';
 import {DependSocket} from './graphsockets.js';
 import {Light} from '../light/light.js';
 import {Vector3} from '../util/vectormath.js';
