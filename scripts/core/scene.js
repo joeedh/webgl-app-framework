@@ -1,4 +1,4 @@
-import {DataBlock, DataRef} from './lib_api.js';
+import {DataBlock, DataRef, BlockFlags} from './lib_api.js';
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {Graph} from './graph.js';
@@ -273,7 +273,7 @@ export class Scene extends DataBlock {
   }
 
   add(ob) {
-    this.objects.add(ob);
+    this.objects.push(ob);
     
     if (this.objects.active === undefined) {
       this.objects.active = ob;
@@ -302,7 +302,7 @@ export class Scene extends DataBlock {
     typeName    : "scene",
     defaultName : "Scene",
     uiName   : "Scene",
-    flag     : 0,
+    flag     : BlockFlags.FAKE_USER, //always have user count > 0
     icon     : -1
   }}
 

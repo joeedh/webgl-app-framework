@@ -17,7 +17,7 @@ let laststack = [];
 export {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
 import {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
 import {Matrix4, Vector2} from "../util/vectormath.js";
-import {DataBlock} from '../core/lib_api.js';
+import {DataBlock, BlockFlags} from '../core/lib_api.js';
 
 export {VelPanFlags, VelPan} from './velpan.js';
 
@@ -153,6 +153,10 @@ export class Editor extends Area {
     console.log(e.keyCode);
 
     Editor.setLastArea(this);
+  }
+
+  makeHeader(container, add_note_area=false) {
+    return super.makeHeader(container, add_note_area);
   }
 
   init() {
@@ -349,7 +353,7 @@ export class ScreenBlock extends DataBlock {
     defaultName : "Screen",
     uiName      : "Screen",
     icon        : -1,
-    flag        : 0
+    flag        : BlockFlags.FAKE_USER //always have user count > 0
   }}
 
   copy() {

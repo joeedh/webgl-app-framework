@@ -13,3 +13,6 @@ cp -r scripts/extern/potree/build/potree/resources .
 cp -r scripts/extern/potree/build/potree/workers .
 cp -r scripts/extern/potree/build/potree/lazylibs .
 
+mkdir -p libs/ept
+
+cp -r scripts/extern/potree/libs/ept libs

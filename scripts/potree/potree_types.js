@@ -109,7 +109,7 @@ export class PointSet extends SceneObjectData {
     }
 
     ptree.material = ptree.flatMaterial;
-    ptree.material.size = ptree.baseMaterial.size + 1;
+    ptree.material.size = ptree.baseMaterial.size + 3;
     ptree.material.color = new THREE.Color(color[0], color[1], color[2]);
 
     this.draw(view3d, gl, uniforms, program, object);
@@ -142,9 +142,10 @@ export class PointSet extends SceneObjectData {
     ptree.material.depthWrite = mask;
     ptree.material.depthTest = test;
 
-    ptree.updateMaterial(ptree.material, ptree.visibleNodes, view3d.threeCamera, view3d.threeRenderer)
-    Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
-    ptree.updateMaterial(ptree.material, ptree.visibleNodes, view3d.threeCamera, view3d.threeRenderer)
+    ptree.material.pointSizeType = Potree.PointSizeType.FIXED;
+    ptree.material.shape = Potree.PointShape.SQUARE;
+
+    //ptree.updateMaterial(ptree.material, ptree.visibleNodes, view3d.threeCamera, view3d.threeRenderer)
     Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
 
     ptree.material.depthWrite = mask;

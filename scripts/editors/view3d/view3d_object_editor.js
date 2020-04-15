@@ -145,6 +145,7 @@ export class ObjectEditor extends View3D_SubEditorIF {
     let size = gl.getParameter(gl.VIEWPORT);
     size = [size[2], size[3]];
 
+    /*
     let d = 1;
     for (let x=-d; x<=d; x++) {
       for (let y=-d; y<=d; y++) {
@@ -156,6 +157,11 @@ export class ObjectEditor extends View3D_SubEditorIF {
         this.view3d.threeCamera.popUniforms();
       }
     }
+    //*/
+
+    this.view3d.threeCamera.pushUniforms(uniforms);
+    object.drawWireframe(this.view3d, gl, uniforms, program);
+    this.view3d.threeCamera.popUniforms();
 
     uniforms.shift = undefined;
     gl.depthMask(mask);

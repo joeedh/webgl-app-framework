@@ -939,8 +939,10 @@ export class View3D extends Editor {
     super.on_area_active();
 
     this.glInit();
-    this.makeGraphNode();
-    this.updatePointClouds();
+
+    if (this.ctx.scene !== undefined) {
+      this.makeGraphNode();
+    }
 
     for (let ed of this.editors) {
       ed.ctx = this.ctx;
@@ -991,8 +993,7 @@ export class View3D extends Editor {
   }
 
   updatePointClouds() {
-    console.log("updating pointcloud visibility");
-
+    /*
     let scene = this.ctx.scene;
 
     for (let ob of scene.objects) {
@@ -1000,6 +1001,7 @@ export class View3D extends Editor {
         //
       }
     }
+    //*/
   }
 
   viewportDraw_intern() {

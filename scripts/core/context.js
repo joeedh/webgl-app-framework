@@ -11,13 +11,25 @@ import {Scene} from './scene.js';
 import {DataRef} from './lib_api.js';
 import {ToolStack, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
 import {DebugEditor} from "../editors/debug/DebugEditor.js";
+import * as ui_noteframe from '../path.ux/scripts/ui_noteframe.js';
 
 export class ToolContext {
   constructor(appstate=_appstate) {
     this._appstate = appstate;
   }
 
+  warning(message, timeout=1500) {
+    let state = this.state;
+
+    console.warn(message);
+
+    if (state && state.screen) {
+      ui_noteframe.warning(state.screen, message, timeout);
+    }
+  }
+
   get appstate() { /** application state */
+    console.warn("Deprecated read of context.appstate; use context.state instead");
     return this._appstate;
   }
 

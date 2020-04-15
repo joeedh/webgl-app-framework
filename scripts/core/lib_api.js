@@ -43,6 +43,10 @@ export class DataBlock extends Node {
     this.lib_type = def.type;
     this.lib_users= 0;
     this.lib_external_ref = undefined; //presently unused
+
+    if (this.lib_flag & BlockFlags.FAKE_USER) {
+      this.lib_users = 1;
+    }
   }
   
   [Symbol.keystr]() {

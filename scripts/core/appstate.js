@@ -55,7 +55,7 @@ export class BasicFileOp extends ToolOp {
   exec(ctx) {
     let scene = new Scene();
     let lib = ctx.datalib;
-    
+
     lib.add(scene);
     lib.setActive(scene);
 
