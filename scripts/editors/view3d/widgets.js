@@ -727,18 +727,18 @@ export class WidgetTool extends WidgetBase {
   }
 
   remove() {
-    this.manager.remove(this);
+    let manager = this.manager;
+    
+    manager.remove(this);
 
     for (let w of this.widgets) {
-      this.manager.remove(w);
+      manager.remove(w);
     }
 
     this.widgets = [];
 
-    this.manager.remove(this);
-
     if (this._widget_tempnode !== undefined ){
-      this.manager.removeCallbackNode(this._widget_tempnode);
+      manager.removeCallbackNode(this._widget_tempnode);
       this._widget_tempnode = undefined;
     }
 
@@ -970,7 +970,7 @@ export class WidgetManager {
       throw new Error("invalid widget type for " + widget);
     }
 
-    if (widget.id !== -1) {
+    if (widget.id !== -1 && widget.id in this.widget_idmap) {
       console.warn("Warning, tried to add same widget twice");
       return undefined;
     }
@@ -1002,8 +1002,6 @@ export class WidgetManager {
     }
 
     delete this.widget_idmap[widget.id];
-
-    widget.manager = undefined;
 
     this.widgets.remove(widget);
   }

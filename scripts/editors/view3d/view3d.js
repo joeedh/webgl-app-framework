@@ -361,8 +361,8 @@ export class View3D extends Editor {
     }
 
     if (this.toolmode !== undefined) {
-      this.toolmode.destroy();
       this.toolmode.onInactive();
+      this.toolmode.destroy();
       this.toolmode.remove();
     }
 
@@ -722,9 +722,9 @@ export class View3D extends Editor {
       }
       let was_touch = eventWasTouch(e);
 
-      if (was_touch) {
-        on_mousemove(e, false);
-      }
+      //if (was_touch) {
+        //on_mousemove(e, false);
+      //}
 
       let r = this.getLocalMouse(e.clientX, e.clientY); //getSubEditorMpos(e);
       let x = r[0], y = r[1];

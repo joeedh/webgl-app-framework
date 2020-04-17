@@ -63,9 +63,16 @@ export class ObjectEditor extends View3D_ToolMode {
   on_mousedown(e, x, y, was_touch) {
     let ctx = this.view3d.ctx;
 
+    if (e.button == 0 || e.touches.length > 0) {
+      this.start_mpos[0] = x;
+      this.start_mpos[1] = y;
+    }
+
     if (this.manager.widgets.highlight !== undefined) {
       return false;
     }
+
+    this._updateHighlight(...arguments);
 
     console.log("click select!");
     let ret = this.findnearest(ctx, x, y);
@@ -74,11 +81,6 @@ export class ObjectEditor extends View3D_ToolMode {
 
     if (ret === undefined) {
       return;
-    }
-
-    if (e.button == 0) {
-      this.start_mpos[0] = x;
-      this.start_mpos[1] = y;
     }
 
     let ob = ret.data;
@@ -113,7 +115,7 @@ export class ObjectEditor extends View3D_ToolMode {
     let mdown;
 
     if (was_touch) {
-      mdown = !!(e.touches.length > 0);
+      mdown = !!(e.touches !== undefined && e.touches.length > 0);
     } else {
       mdown = e.buttons;
     }
@@ -124,9 +126,13 @@ export class ObjectEditor extends View3D_ToolMode {
       return true;
     }
 
+    /*
+    let's rely on transform widget for click-drag tweaking.
+     
     if (mdown && !e.shiftKey && !e.ctrlKey && !e.altKey) {
       let mpos = new Vector2([x, y]);
       let dis = this.start_mpos.vectorDistance(mpos);
+      console.log(mpos, this.start_mpos);
 
       if (dis > 35) {
         let tool = new TranslateOp(this.start_mpos);
@@ -137,7 +143,13 @@ export class ObjectEditor extends View3D_ToolMode {
         ctx.toolstack.execTool(tool, ctx);
         return true;
       }
-    }
+    }//*/
+
+    this._updateHighlight(...arguments);
+  }
+
+  _updateHighlight(e, x, y, was_touch) {
+    let ctx = this.view3d.ctx;
 
     let ret = this.findnearest(ctx, x, y);
     let scene = ctx.scene;

@@ -22,6 +22,10 @@ export class SelectOpBase extends ToolOp {
   static tooldef() {return {
   }}
 
+  execPre() {
+    window.redraw_viewport();
+  }
+
   undoPre(ctx) {
     let ud = this._undo = {
       flags : {}
