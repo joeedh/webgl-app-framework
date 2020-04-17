@@ -1,6 +1,28 @@
+/*
+
+Toolmode refactor.
+
+The old subeditor system is going to be replaced
+with a more flexible toolmode system.
+
+Logically tool modes handle events and selection.  They
+inherit from WidgetTool to have a unified event system
+for widgets/toolmodes.
+
+TODO:
+* DONE: Refactor findnearest (screen picking) into its own module
+* PARTIALLY DONE: Bundle some standard tools into StandardTools class
+ - With appropriate changes to keymap definitions.
+*  Move pick functionality (findnearest) to static methods in SceneObjectData.
+* Tools modes (editors) should inherent from WidgetTool
+  - Note: not all widget tools must be tool modes
+*/
+
 import {Vector2, Vector3} from '../../util/vectormath.js';
 import {KeyMap, HotKey} from "../editor_base.js";
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from "../../core/simplemesh.js";
+import {WidgetTool, WidgetFlags} from "./widgets.js";
+import {EnumProperty} from "../../path.ux/scripts/toolprop.js";
 
 export class MeshCache {
   constructor(meshid) {
@@ -50,65 +72,85 @@ export class MeshCache {
   }
 }
 
-//each subeditor should fill in these tools
-export const StandardTools = {
-  SELECTONE         : undefined,
-  TOGGLE_SELECT_ALL : undefined,
-  CIRCLE_SELECT     : undefined,
-  BOX_SELECT        : undefined,
-  SELECT_LINKED     : undefined,
-  DELETE            : undefined,
-  DUPLICATE         : undefined
-};
+export let ToolModes = [];
 
-export let SubEditors = [];
+export function makeToolModeEnum() {
+  let map = {};
+  let icons = {};
+  let descr = {};
+  let uinames = {};
+  let i = 0;
 
-export class FindnearestRet {
-  constructor() {
-    this.data = undefined;
-    this.object = undefined;
-    this.p2d = new Vector2();
-    this.p3d = new Vector3();
-    this.dis = undefined;
+  for (let cls of ToolModes) {
+    let def = cls.widgetDefine();
+
+    let key = def.name;
+
+    map[key] = i;
+    icons[key] = def.icon !== undefined ? def.icon : -1;
+    descr[key] = "" + def.description;
+    uinames[key] = "" + def.uiname;
+
+    i++;
   }
+
+  let prop = new EnumProperty(undefined, map, "toolmode", "Tool Mode", "Active tool mode");
+
+  prop.addIcons(icons);
+  prop.addDescriptions(descr);
+  prop.addUINames(uinames);
+
+  return prop;
 }
 
-export class View3D_SubEditorIF {
-    constructor(view3d) {
-      this.view3d = view3d;
+export class View3D_ToolMode extends WidgetTool {
+    constructor(manager) {
+      super(manager);
+
+      this.flag |= WidgetFlags.ALL_EVENTS;
+
+      this.view3d = manager !== undefined ? manager.view3d : undefined;
       this.keymap = new KeyMap();
     }
 
-    static register(cls) {
-      SubEditors.push(cls);
+    getKeyMaps() {
+      return [this.keymap];
     }
 
-    static define() {return {
-      apiname  : "unnamed",
-      uiname   : "unnamed",
-      icon     : -1,
-      selmask  : undefined,
-      stdtools : undefined //see StandardTools
+    static register(cls) {
+      ToolModes.push(cls);
+      WidgetTool.register(cls);
+    }
+
+    static widgetDefine() {return {
+      name        : "name",
+      uiname      : "uiname",
+      icon        : -1,
+      flag        : 0,
+      description : "",
+      selectMode  : undefined, //if set, preferred selectmode, see SelModes
+      stdtools    : undefined, //if set, will override standard tools in inherited keymaps
     }}
+
+
+    onActive() {
+
+    }
+
+    onInactive() {
+
+    }
 
     destroy() {
     }
 
-    findnearest(ctx, x, y) {
-
+    on_mousedown(e, x, y, was_touch) {
     }
 
-    clickselect(e, x, y, selmask, was_touch) {
-      throw new Error("implement me");
-    }
-    
-    on_mousedown(x, y, was_touch) {
+    on_mousemove(e, x, y, was_touch) {
     }
 
-    on_mousemove(x, y, was_touch) {
-    }
-
-    on_mouseup(x, y, was_touch) {
+    on_mouseup(e, x, y, was_touch) {
     }
 
     on_drawstart(gl) {
@@ -120,18 +162,10 @@ export class View3D_SubEditorIF {
 
     /*
     * called for all objects;  returns true
-    * if an object is valid for this editor (and was drawn)*/
-    draw(gl, uniforms, program, object, mesh) {
-      return false;
-    }
-
-    /*
-    * called for all objects;  returns true
-    * if an object is valid for this editor (and was drawn)
-    *
-    * id_offset offsets the ids
-    * */
-    drawIDs(gl, uniforms, program, object, mesh, id_offset) {
+    * if an object if the toolmode drew the object
+    * itself
+    */
+    drawObject(gl, uniforms, program, object, mesh) {
       return false;
     }
 }

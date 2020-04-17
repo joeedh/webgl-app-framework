@@ -21,6 +21,10 @@ export class TransformOp extends View3DOp {
     this.center = new Vector3();
   }
 
+  static canRun(ctx) {
+    return ctx.view3d !== undefined;
+  }
+
   static invoke(ctx, args) {
     let tool = new this();
 
@@ -50,7 +54,7 @@ export class TransformOp extends View3DOp {
       space      : new Mat4Property(),
       constraint : new Vec3Property([1.0,1.0,1.0]), //locked constraint axes
       constraint_space : new Mat4Property(),
-      selmask    : new EnumProperty(undefined, SelMask),
+      selmask    : new IntProperty(),
       propmode   : new EnumProperty(0, PropModes, undefined,
                    "Prop Mode", "Proportional (magnet) mode",
                    PropFlags.SAVE_LAST_VALUE),

@@ -182,7 +182,7 @@ export class MeshTransType extends TransDataType {
     let c = meshGetCenterTemps.next().zero();
     let tot = 0.0;
 
-    if (!(selmask & SelMask.MESH)) {
+    if (!(selmask & SelMask.GEOM)) {
       return undefined;
     }
 
@@ -410,7 +410,7 @@ export class ObjectTransType extends TransDataType {
   static genData(ctx, selectmode, propmode, propradius) {
     let ignore_meshes = selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE);
 
-    console.log("OBJECT GEN", ignore_meshes, selectmode & (SelMask.OBJECT), selectmode);
+    console.warn("OBJECT GEN", selectmode, selectmode & (SelMask.OBJECT));
 
     if (!(selectmode & SelMask.OBJECT)) {
       return undefined;

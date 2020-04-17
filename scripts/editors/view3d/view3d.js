@@ -1,3 +1,6 @@
+import './findnearest/all.js';
+import './view3d_panmode.js';
+import {FindNearest} from './findnearest.js';
 import {TranslateOp} from './transform_ops.js';
 import {RenderEngine} from "../../renderengine/renderengine_base.js";
 import {RealtimeEngine} from "../../renderengine/renderengine_realtime.js";
@@ -18,7 +21,7 @@ import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js';
 import {cachering, print_stack, time_ms} from '../../util/util.js';
 import './view3d_mesh_editor.js';
 import {ObjectEditor} from './view3d_object_editor.js';
-import {SubEditors} from './view3d_subeditor.js';
+import {ToolModes, makeToolModeEnum} from './view3d_subeditor.js';
 import {Mesh} from '../../mesh/mesh.js';
 import {GPUSelectBuffer} from './view3d_select.js';
 import {KeyMap, HotKey} from "../editor_base.js";
@@ -284,10 +287,14 @@ export class View3D extends Editor {
     this.camera = new Camera();
 
     this.start_mpos = new Vector2();
-    this.editors = [];
-    for (let cls of SubEditors) {
-      this.editors.push(new cls(this));
-    }
+
+    this.toolmodes = []; //we cache toolmode instances, these are saved in files too
+    this.toolmode_map = {};
+
+    this.toolmode_i = undefined;
+    this.toolModeProp = makeToolModeEnum();
+
+    this.switchToolMode("object");
 
     this.drawlines = [];
 
@@ -316,6 +323,65 @@ export class View3D extends Editor {
 
     this.drawmode = DrawModes.TEXTURED;
     this.threeCamera = new ThreeCamera(this.camera);
+  }
+
+  get toolmode() {
+    if (this.toolmode_i === undefined)
+      return undefined;
+
+    return this.toolmode_map[this.toolmode_i];
+  }
+
+  switchToolMode(mode) {
+    if (mode === undefined) {
+      throw new Error("switchToolMode: mode cannot be undefined");
+    }
+
+    let i = typeof mode == "number" ? mode : this.toolModeProp.values[mode];
+
+    if (i === undefined) {
+      throw new Error("invalid tool mode " + mode);
+    }
+
+    let cls = ToolModes[i];
+    let ret;
+
+    for (let mode of this.toolmodes) {
+      if (mode.constructor === cls) {
+        ret = mode;
+        break;
+      }
+    }
+
+
+    if (ret === undefined) {
+      ret = new cls(this.widgets);
+      this.toolmodes.push(ret);
+      this.toolmode_map[i] = ret;
+    }
+
+    if (this.toolmode !== undefined) {
+      this.toolmode.destroy();
+      this.toolmode.onInactive();
+      this.widgets.remove(this.toolmode);
+    }
+
+    this.toolmode_i = i;
+    this.widgets.add(ret);
+
+    ret.onActive();
+
+    return ret;
+  }
+
+  get editors() {
+    console.warn("Deprecated access to view3d.editors");
+    return this.toolmodes;
+  }
+
+  set editors(val) {
+    console.warn("Deprecated set of view3d.editors");
+    this.toolmodes = val;
   }
 
   onFileLoad(is_active) {
@@ -348,15 +414,12 @@ export class View3D extends Editor {
   getKeyMaps() {
     let ret = [];
 
-    for (let ed of this.editors) {
-      let selmask = ed.constructor.define().selmask;
-
-      if (this.selectmode & selmask) {
-        ret.push(ed.keymap);
-      }
+    if (this.toolmode !== undefined) {
+      ret = ret.concat(this.toolmode.getKeyMaps());
     }
 
     ret.push(this.keymap);
+
     return ret;
   }
 
@@ -421,7 +484,7 @@ export class View3D extends Editor {
 
     //dis = Math.abs(Math.tan(fov)*dis);
     dis = Math.abs(dis / Math.tan(fov));
-    console.log("DIS", dis);
+    //console.log("DIS", dis);
 
     dis = dis == 0.0 ? 0.005 : dis;
     this.camera.pos.sub(this.camera.target).normalize().mulScalar(dis).add(this.camera.target);
@@ -546,10 +609,6 @@ export class View3D extends Editor {
 
     this.makeGraphNode();
 
-    for (let ed of this.editors) {
-      ed.ctx = this.ctx;
-    }
-
     let header = this.header;
     header.menu("Tools", tools);
     let row1 = header.row();
@@ -570,7 +629,9 @@ export class View3D extends Editor {
 
     header = row1;
     //header.prop("view3d.selectmode", PackFlags.USE_ICONS);
-    header.prop("view3d.active_tool", PackFlags.USE_ICONS);
+    header.prop("view3d.toolmode[pan]", PackFlags.USE_ICONS);
+    header.prop("view3d.toolmode[object]", PackFlags.USE_ICONS);
+    header.prop("view3d.active_tool[translate]", PackFlags.USE_ICONS);
 
     header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
     header.tool("view3d.view_selected()", PackFlags.USE_ICONS);
@@ -617,31 +678,11 @@ export class View3D extends Editor {
 
       this.push_ctx_active();
 
-      let r = getSubEditorMpos(e);
+      let r = this.getLocalMouse(e.x, e.y);
       let x = r[0], y = r[1];
+      //console.log(r, e.y, "bleh");
 
-      if (this.mdown) {
-        let dis = this.start_mpos.vectorDistance(r);
-
-        if (dis > 35) {
-          this.mdown = false;
-
-          let tool = new TranslateOp(this.start_mpos);
-          tool.inputs.selmask.setValue(this.selectmode);
-
-          this.ctx.api.execTool(this.ctx, tool);
-        }
-      } else {
-        if (this.widgets.on_mousemove(x, y, was_touch)) {
-          this.pop_ctx_active();
-          return;
-        }
-
-        for (let ed of this.editors) {
-          ed.on_mousemove(this.ctx, x, y, was_touch);
-        }
-      }
-
+      this.widgets.on_mousemove(e, x, y, was_touch);
       this.pop_ctx_active();
     };
 
@@ -669,6 +710,14 @@ export class View3D extends Editor {
         on_mousemove(e, false);
       }
 
+      let r = this.getLocalMouse(e.clientX, e.clientY); //getSubEditorMpos(e);
+      let x = r[0], y = r[1];
+
+      if (this.widgets.on_mousedown(e, x, y, was_touch)) {
+        this.pop_ctx_active();
+        return;
+      }
+
       this.push_ctx_active();
 
       this.updateCursor();
@@ -678,31 +727,18 @@ export class View3D extends Editor {
       if (!docontrols && e.button == 0) {
         let selmask = this.selectmode;
 
-        let r = getSubEditorMpos(e);
-        let x = r[0], y = r[1];
-
-        if (this.widgets.on_mousedown(x, y, was_touch)) {
-          this.pop_ctx_active();
-          return;
-        }
-
         docontrols = true;
 
         this.mdown = true;
-        for (let ed of this.editors) {
-          this.start_mpos = new Vector2(r);
-
-          if (ed.constructor.define().selmask & selmask) {
-            docontrols = docontrols && !ed.clickselect(e, x, y, selmask, was_touch);
-          }
-        }
       }
+
+      this.start_mpos = new Vector2(r);
 
       if (docontrols) {
         this.mdown = false;
       }
 
-      console.log("touch", eventWasTouch(e), e);
+      //console.log("touch", eventWasTouch(e), e);
       if (docontrols && eventWasTouch(e)) {
         console.log("multitouch view tool");
 
@@ -1161,9 +1197,12 @@ export class View3D extends Editor {
       this.grid.draw(gl);
     }
 
-    for (let ed of this.editors) {
-      ed.on_drawstart(gl);
+    if (this.toolmode) {
+      this.toolmode.on_drawstart(gl);
     }
+    //for (let ed of this.editors) {
+    //  ed.on_drawstart(gl);
+    //}
 
     if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
       this.drawRender();
@@ -1179,8 +1218,8 @@ export class View3D extends Editor {
     gl.clear(gl.DEPTH_BUFFER_BIT);
     this.widgets.draw(this.gl, this);
 
-    for (let ed of this.editors) {
-      ed.on_drawend(gl);
+    if (this.toolmode) {
+      this.toolmode.on_drawend(gl);
     }
   }
 
@@ -1257,11 +1296,9 @@ export class View3D extends Editor {
       }
 
       let ok = false;
-      for (let ed of this.editors) {
-        //console.log(ed);
-
+      if (this.toolmode) {
         this.threeCamera.pushUniforms(uniforms);
-        if (ed.draw(gl, uniforms, program, ob, ob.data)) {
+        if (this.toolmode.drawObject(gl, uniforms, program, ob, ob.data)) {
           ok = true;
           break;
         }
@@ -1292,6 +1329,17 @@ export class View3D extends Editor {
   loadSTRUCT(reader) {
     reader(this);
 
+    for (let mode of this.toolmodes) {
+      mode.setManager(this.widgets);
+      mode.view3d = this;
+
+      let def = mode.constructor.widgetDefine();
+      let i = this.toolModeProp.values[def.name];
+
+      this.toolmode_map[i] = mode;
+    }
+
+    //if (this.wi)
     this.threeCamera.camera = this.camera;
   }
 
@@ -1305,11 +1353,13 @@ export class View3D extends Editor {
 };
 View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
   camera              : Camera;
+  toolmodes           : array(abstract(View3D_ToolMode));
   selectmode          : int;
   transformSpace      : int; 
   drawmode            : int;
   _select_transparent : int;
   widgettool          : int;
+  toolmode_i          : int;
   cursor3D            : mat4;
   cursorMode          : int;
   orbitMode           : int;

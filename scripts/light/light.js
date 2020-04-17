@@ -8,6 +8,7 @@ import {Vec3Socket, FloatSocket, DependSocket, Matrix4Socket, Vec4Socket} from '
 import {Shapes} from '../core/simplemesh_shapes.js';
 import {Shaders} from '../editors/view3d/view3d_shaders.js';
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
+import {SelMask} from '../editors/view3d/selectmode.js';
 
 export const LightFlags = {
   SELECT : 1,
@@ -63,6 +64,25 @@ export class Light extends SceneObjectData {
 
     Shapes.LIGHT.draw(gl, uniforms, program);
   }
+
+  copy() {
+    let ret = new Light();
+    this.copyTo(ret);
+
+    ret.type = this.type;
+
+    return ret;
+  }
+
+  copyAddUsers() {
+    return this.copy();
+  }
+
+  static dataDefine() {return {
+    name       : "Light",
+    selectMask : 0,
+    //tools      :
+  }}
 }
 
 Light.STRUCT = STRUCT.inherit(Light, SceneObjectData) + `
@@ -72,3 +92,4 @@ Light.STRUCT = STRUCT.inherit(Light, SceneObjectData) + `
 
 DataBlock.register(Light);
 nstructjs.manager.add_class(Light);
+SceneObjectData.register(Light);

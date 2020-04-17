@@ -2491,8 +2491,8 @@ window.esdocSearchIndex = [
   ],
   [
     "./scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html",
-    "<span>View3D_SubEditorIF</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_subeditor.js</span>",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html",
+    "<span>View3D_ToolMode</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_subeditor.js</span>",
     "class"
   ],
   [
@@ -11479,92 +11479,92 @@ window.esdocSearchIndex = [
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#clickselect",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-clickselect",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#clickselect",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-clickselect",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#clickselect",
     "method"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#constructor",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-constructor-constructor",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#constructor",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-constructor-constructor",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#constructor",
     "method"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#destroy",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-destroy",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#destroy",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-destroy",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#destroy",
     "method"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#draw",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-draw",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#draw",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-draw",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#draw",
     "method"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#drawids",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-drawIDs",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#drawIDs",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-drawIDs",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#drawIDs",
     "method"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#findnearest",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-findnearest",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#findnearest",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-findnearest",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#findnearest",
     "method"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#keymap",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-member-keymap",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#keymap",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-member-keymap",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#keymap",
     "member"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_drawend",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-on_drawend",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#on_drawend",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-on_drawend",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#on_drawend",
     "method"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_drawstart",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-on_drawstart",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#on_drawstart",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-on_drawstart",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#on_drawstart",
     "method"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_mousedown",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-on_mousedown",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#on_mousedown",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-on_mousedown",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#on_mousedown",
     "method"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_mousemove",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-on_mousemove",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#on_mousemove",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-on_mousemove",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#on_mousemove",
     "method"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_mouseup",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-method-on_mouseup",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#on_mouseup",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-on_mouseup",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#on_mouseup",
     "method"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#view3d",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#instance-member-view3d",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF#view3d",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-member-view3d",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#view3d",
     "member"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif.define",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#static-method-define",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.define",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#static-method-define",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.define",
     "method"
   ],
   [
     "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif.register",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.html#static-method-register",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_SubEditorIF.register",
+    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#static-method-register",
+    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.register",
     "method"
   ],
   [

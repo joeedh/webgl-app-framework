@@ -91,7 +91,7 @@ export class TranslateWidget extends WidgetTool {
       }
     }
 
-    if (selmask & SelMask.MESH) {
+    if (selmask & SelMask.GEOM) {
       for (let ob of ctx.selectedMeshObjects) {
         for (let v of ob.data.verts.selected) {
           return true;

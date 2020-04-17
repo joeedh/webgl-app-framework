@@ -1,6 +1,7 @@
 import {Vector3, Vector2} from '../../util/vectormath.js';
 import {FBO, FrameStage, FramePipeline} from "../../core/fbo.js";
 import {Shaders} from './view3d_shaders.js';
+import {FindNearestTypes} from './findnearest.js';
 import * as util from '../../util/util.js';
 
 let _cache = {};
@@ -52,8 +53,8 @@ export class GPUSelectBuffer {
     for (let ob of ctx.scene.objects.editable) {
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
 
-      for (let ed of view3d.editors) {
-        ed.drawIDs(gl, uniforms, ob, ob.data, 0);
+      for (let fn of FindNearestTypes) {
+        fn.drawIDs(view3d, gl, uniforms, ob, ob.data, 0);
       }
     }
 

@@ -1,11 +1,11 @@
 import {ExtrudeRegionsOp} from '../../mesh/mesh_ops.js';
-import {View3D_SubEditorIF} from './view3d_subeditor.js';
+import {View3D_ToolMode} from './view3d_subeditor.js';
 import {SelMask, SelOneToolModes, SelToolModes} from './selectmode.js';
 import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../mesh/mesh.js';
 import * as util from '../../util/util.js';
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {Shaders} from './view3d_shaders.js'
-import {FindnearestRet} from "./view3d_subeditor.js";
+import {FindNearestRet} from "./findnearest.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
 import * as math from '../../util/math.js';
 import {SelectOneOp} from '../../mesh/select_ops.js';
@@ -29,11 +29,11 @@ export const MeshTools = {
 
 import {Colors, elemColor} from './view3d_draw.js';
 
-export class MeshEditor extends View3D_SubEditorIF {
+export class MeshEditor extends View3D_ToolMode {
   constructor(view3d) {
     super();
 
-    this._findnearest_rets = util.cachering.fromConstructor(FindnearestRet, 64);
+    this._findnearest_rets = util.cachering.fromConstructor(FindNearestRet, 64);
 
     this.ctx = undefined; //is set by owning View3D
     this.view3d = view3d;
@@ -566,7 +566,7 @@ export class MeshEditor extends View3D_SubEditorIF {
   * along with the element id
   * */
   drawIDs(gl, uniforms, object, mesh, id_offset) {
-    if (!(this.view3d.selectmode & SelMask.MESH)) {
+    if (!(this.view3d.selectmode & SelMask.GEOM)) {
       return;
     }
 
@@ -578,4 +578,4 @@ export class MeshEditor extends View3D_SubEditorIF {
     return mc.drawer.drawIDs(this.view3d, gl, object, uniforms);
   }
 }
-View3D_SubEditorIF.register(MeshEditor);
+View3D_ToolMode.register(MeshEditor);

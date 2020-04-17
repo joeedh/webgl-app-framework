@@ -17,6 +17,7 @@ let STRUCT = nstructjs.STRUCT;
 import {CustomDataElem} from './customdata.js';
 import {LayerTypes, ChunkedSimpleMesh, SimpleMesh} from "../core/simplemesh.js";
 
+import {MeshTools} from './mesh_stdtools.js';
 import {MeshError, MeshTypes, MeshFlags, RecalcFlags} from './mesh_base.js';
 export * from "./mesh_base.js";
 export * from "./mesh_types.js";
@@ -26,6 +27,7 @@ export * from "./mesh_element_list.js";
 import {UVLayerElem, OrigIndexElem} from "./mesh_customdata.js";
 import {Element, Vertex, Edge, Loop, LoopList, Face} from "./mesh_types.js";
 import {SelectionSet, ElementList} from "./mesh_element_list.js";
+import {SelMask} from "../editors/view3d/selectmode.js";
 
 let split_temp = new Array(512);
 split_temp.used = 0;
@@ -1090,6 +1092,11 @@ export class Mesh extends SceneObjectData {
   copy() {
     let ret = new Mesh();
 
+    ret.materials = [];
+    for (let mat of this.materials) {
+      ret.materials.push(mat);
+    }
+
     for (let elist of ret.getElemLists()) {
       if (this.elists[elist.type].customData === undefined) {
         continue;
@@ -1374,6 +1381,28 @@ export class Mesh extends SceneObjectData {
     flag        : 0,
     icon        : -1
   }}
+
+  copyAddUsers() {
+    let ret = this.copy();
+
+    this.copyTo(ret);
+
+    for (let mat of ret.materials) {
+      if (mat === undefined) {
+        continue;
+      }
+
+      mat.lib_addUser(ret);
+    }
+
+    return ret;
+  }
+
+  static dataDefine() {return {
+    name       : "Mesh",
+    selectMask : SelMask.MESH,
+    tools      : MeshTools
+  }}
 };
 
 Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
@@ -1386,3 +1415,4 @@ Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
 
 nstructjs.manager.add_class(Mesh);
 DataBlock.register(Mesh);
+SceneObjectData.register(Mesh);

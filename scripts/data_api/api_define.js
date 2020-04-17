@@ -6,6 +6,10 @@ import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js';
 import {resourceManager} from "../core/resource.js";
 import '../core/image.js';
 
+import {makeToolModeEnum} from "../editors/view3d/view3d_subeditor.js";
+
+import '../mesh/mesh_createops.js';
+
 let STRUCT = nstructjs.STRUCT;
 import '../editors/view3d/widget_tools.js'; //ensure widget tools are all registered
 import {WidgetTool, WidgetFlags} from '../editors/view3d/widgets.js';
@@ -102,7 +106,17 @@ export function api_define_view3d(api, pstruct) {
     window.redraw_viewport();
   }
 
-  let prop = WidgetTool.getToolEnum();
+  let prop = makeToolModeEnum();
+  def = vstruct.enum("toolmode_i", "toolmode", prop, "ToolMode", "ToolMode");
+  def.on('change', function(newval, oldval) {
+    let view3d = this.dataref;
+
+    view3d.toolmode_i = oldval;
+    view3d.switchToolMode(newval);
+    window.redraw_viewport();
+  });
+
+  prop = WidgetTool.getToolEnum();
   def = vstruct.enum("widgettool", "active_tool", prop.values, "Active Tool", "Currently active tool widget");
   def.setProp(prop);
   def.on("change", onchange);

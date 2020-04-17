@@ -51,5 +51,6 @@ export let Icons = {
   VIEW_DEPTH     : 47,
   VIEW_ALPHA     : 48,
   SCALE_WIDGET   : 49,
-  FAKE_USER      : 50
+  FAKE_USER      : 50,
+  PAN            : 51
 };

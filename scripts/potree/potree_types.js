@@ -15,6 +15,7 @@ import {DataBlock, DataRef} from '../core/lib_api.js';
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
 import {PointSetResource} from './potree_resource.js';
 import {ObjectFlags} from "../sceneobject/sceneobject.js";
+import {PointSetTools} from './potree_ops.js';
 
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
@@ -23,6 +24,8 @@ let STRUCT = nstructjs.STRUCT;
 import '../extern/potree/build/potree/potree.js';
 import {resourceManager} from "../core/resource.js";
 import {Shapes} from "../core/simplemesh_shapes.js";
+import {SelMask} from "../editors/view3d/selectmode.js";
+
 
 export class PointSet extends SceneObjectData {
   constructor() {
@@ -267,6 +270,38 @@ export class PointSet extends SceneObjectData {
     flag        : 0,
     icon        : -1
   }}
+
+  copy() {
+    let ret = new PointSet();
+
+    this.copyTo(ret);
+
+    ret.url = this.url;
+    ret.res = this.res;
+    ret.ready = this.ready;
+    ret.material = this.material;
+
+    if (!ret.ready) {
+      ret.load();
+    }
+
+    return ret;
+  }
+
+  copyAddUsers() {
+    let ret = this.copy();
+    if (ret.material !== undefined) {
+      ret.material.lib_addUser(ret);
+    }
+
+    return ret;
+  }
+
+  static dataDefine() {return {
+    name       : "Light",
+    selectMask : SelMask.OBJECT,
+    tools      : PointSetTools
+  }}
 };
 
 PointSet.STRUCT = STRUCT.inherit(PointSet, SceneObjectData, "potree.PointSet") + `
@@ -277,3 +312,4 @@ PointSet.STRUCT = STRUCT.inherit(PointSet, SceneObjectData, "potree.PointSet") +
 
 nstructjs.manager.add_class(PointSet);
 DataBlock.register(PointSet);
+SceneObjectData.register(PointSet);

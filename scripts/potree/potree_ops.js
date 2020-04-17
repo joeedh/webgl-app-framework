@@ -4,6 +4,8 @@ import {StringProperty, IntProperty, EnumProperty,
 import {PointSet} from './potree_types.js';
 import {SceneObject} from '../sceneobject/sceneobject.js';
 
+import {StandardTools} from "../sceneobject/stdtools.js";
+
 export class AddPointSetOp extends ToolOp {
   constructor() {
     super();
@@ -46,3 +48,7 @@ export class AddPointSetOp extends ToolOp {
 }
 
 ToolOp.register(AddPointSetOp);
+
+export class PointSetTools extends StandardTools {
+
+}

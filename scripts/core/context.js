@@ -134,6 +134,10 @@ export class Context extends ToolContext {
     return getContextArea(View3D);
   }
 
+  get selectMask() {
+    return this.view3d.selectmode;
+  }
+
   get resbrowser() {
     return getContextArea(ResourceBrowser);
   }
@@ -334,6 +338,7 @@ export class ModalContext extends SavedContext {
   constructor(ctx) {
     super(ctx, ctx.datalib);
     this._view3d = ctx.view3d;
+    this._selectMask = ctx.selectMask;
     this._nodeEditor = ctx.nodeEditor;
     this._area = ctx.area;
   }
@@ -344,6 +349,10 @@ export class ModalContext extends SavedContext {
 
   get nodeEditor() {
     return this._nodeEditor;
+  }
+
+  get selectMask() {
+    return this._selectMask;
   }
 
   get view3d() {

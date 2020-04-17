@@ -1,13 +1,13 @@
+import {FindNearest} from "./findnearest.js";
 import {ExtrudeRegionsOp} from '../../mesh/mesh_ops.js';
 import {ObjectFlags} from '../../sceneobject/sceneobject.js';
-import {View3D_SubEditorIF} from './view3d_subeditor.js';
+import {View3D_ToolMode} from './view3d_subeditor.js';
 import {SelMask, SelOneToolModes, SelToolModes} from './selectmode.js';
 import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../mesh/mesh.js';
 import {PointSet} from '../../potree/potree_types.js';
 import * as util from '../../util/util.js';
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {BasicLineShader, Shaders} from './view3d_shaders.js'
-import {FindnearestRet} from "./view3d_subeditor.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
 import * as math from '../../util/math.js';
 import {SelectOneOp} from '../../mesh/select_ops.js';
@@ -19,25 +19,17 @@ import {BasicMeshDrawer} from './view3d_draw.js';
 import {MeshCache} from './view3d_subeditor.js';
 import {SubsurfDrawer} from '../../subsurf/subsurf_draw.js';
 import {Light} from "../../light/light.js";
+import {TranslateOp} from "./transform_ops.js";
+let STRUCT = nstructjs.STRUCT;
+import {Icons} from '../icon_enum.js';
 
 let _shift_temp = [0, 0];
 
-//each subeditor should fill in these tools
-export const ObjectTools = {
-  SELECTONE         : SelectOneOp,
-  TOGGLE_SELECT_ALL : undefined,
-  CIRCLE_SELECT     : undefined,
-  BOX_SELECT        : undefined,
-  SELECT_LINKED     : undefined,
-  DELETE            : undefined,
-  DUPLICATE         : undefined
-};
-
-export class ObjectEditor extends View3D_SubEditorIF {
+export class ObjectEditor extends View3D_ToolMode {
   constructor(view3d) {
     super();
 
-    this._findnearest_rets = util.cachering.fromConstructor(FindnearestRet, 64);
+    this.start_mpos = new Vector2();
 
     this.ctx = undefined; //is set by owning View3D
     this.view3d = view3d;
@@ -45,12 +37,13 @@ export class ObjectEditor extends View3D_SubEditorIF {
     this.defineKeyMap();
   }
 
-  static define() {return {
-    apiname  : "object",
-    uiname   : "Object",
-    icon     : -1,
-    selmask  : SelMask.OBJECT,
-    stdtools : ObjectTools //see StandardTools
+  static widgetDefine() {return {
+    name        : "object",
+    uiname      : "Object",
+    description : "Select Scene Objects",
+    icon        : Icons.CURSOR_ARROW,
+    flag        : 0,
+    selectMode  : SelMask.OBJECT
   }}
 
   defineKeyMap() {
@@ -64,12 +57,12 @@ export class ObjectEditor extends View3D_SubEditorIF {
     return this.keymap;
   }
 
-  clickselect(evt, x, y, selmask) {
-    let ctx = this.view3d.ctx;
+  clearHighlight(ctx) {
+    ctx.scene.objects.setHighlight(undefined);
+  }
 
-    if (!(this.view3d.selectmode & selmask)) {
-      return;
-    }
+  on_mousedown(e, x, y, was_touch) {
+    let ctx = this.view3d.ctx;
 
     console.log("click select!");
     let ret = this.findnearest(ctx, x, y);
@@ -80,10 +73,15 @@ export class ObjectEditor extends View3D_SubEditorIF {
       return;
     }
 
+    if (e.button == 0) {
+      this.start_mpos[0] = x;
+      this.start_mpos[1] = y;
+    }
+
     let ob = ret.data;
     let mode = SelOneToolModes.UNIQUE;
 
-    if (evt.shiftKey) {
+    if (e.shiftKey) {
       mode = ob.flag & ObjectFlags.SELECT ? SelOneToolModes.SUB : SelOneToolModes.ADD;
     }
 
@@ -93,19 +91,49 @@ export class ObjectEditor extends View3D_SubEditorIF {
     return true;
   }
 
-  clearHighlight(ctx) {
-    ctx.scene.objects.setHighlight(undefined);
+  on_mouseup(e, x, y, was_touch) {
+    if (e.button == 0) {
+      this.start_mpos[0] = x;
+      this.start_mpos[1] = y;
+    }
+
+    return super.on_mouseup(e, x, y, was_touch);
   }
 
-  on_mousemove(ctx, x, y, was_touch) {
-    if (!(ctx.view3d.selectmode & SelMask.OBJECT)) {
-      return;
+  on_mousemove(e, x, y, was_touch) {
+    let ctx = this.view3d.ctx;
+
+    let mdown;
+
+    if (was_touch) {
+      mdown = !!(e.touches.length > 0);
+    } else {
+      mdown = e.buttons;
+    }
+
+    mdown = mdown & 1;
+
+    if (!mdown && super.on_mousemove(e, x, y, was_touch)) {
+      return true;
+    }
+
+    if (mdown) {
+      let mpos = new Vector2([x, y]);
+      let dis = this.start_mpos.vectorDistance(mpos);
+
+      if (dis > 35) {
+        let tool = new TranslateOp(this.start_mpos);
+        tool.inputs.selmask.setValue(ctx.selectMask);
+
+        console.log("selectMask", ctx.selectMask);
+
+        ctx.toolstack.execTool(tool, ctx);
+        return true;
+      }
     }
 
     let ret = this.findnearest(ctx, x, y);
     let scene = ctx.scene;
-
-    //console.log(ret, ret !== undefined ? ret.object.data.name : undefined);
 
     if (ret !== undefined) {
       let ob = ret.object;
@@ -126,7 +154,7 @@ export class ObjectEditor extends View3D_SubEditorIF {
   /*
   * called for all objects;  returns true
   * if an object is valid for this editor (and was drawn)*/
-  draw(gl, uniforms, program, object) {
+  drawObject(gl, uniforms, program, object) {
     if (this.view3d.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
       return;
     }
@@ -184,7 +212,16 @@ export class ObjectEditor extends View3D_SubEditorIF {
   destroy() {
   }
 
-  findnearest(ctx, x, y, selmask, limit=25) {
+  findnearest(ctx, x, y, selmask=SelMask.OBJECT, limit=25) {
+    //let ret = findnearest()
+    let ret = FindNearest(ctx, selmask, new Vector2([x, y]), this.view3d, limit);
+
+    if (ret !== undefined && ret.length > 0) {
+      return ret[0];
+    }
+  }
+
+  findnearestOld(ctx, x, y, selmask, limit=25) {
     let view3d = this.view3d;
     let sbuf = view3d.selectbuf;
 
@@ -236,25 +273,11 @@ export class ObjectEditor extends View3D_SubEditorIF {
       return ret;
     }
   }
-
-  /*
-  * called for all objects;  returns true
-  * if an object is valid for this editor (and was drawn)
-  *
-  * id_offset offsets the ids.  note that I might not need it.
-  * since if I use 16-bit textures I can pack a source object id
-  * along with the element id
-  * */
-  drawIDs(gl, uniforms, object, mesh, id_offset) {
-    if (this.view3d.selectmode & SelMask.MESH) {
-      return;
-    }
-
-    let program = Shaders.MeshIDShader;
-
-    this.view3d.threeCamera.pushUniforms(uniforms);
-    object.draw(this.view3d, gl, uniforms, program);
-    this.view3d.threeCamera.popUniforms();
-  }
 }
-View3D_SubEditorIF.register(ObjectEditor);
+ObjectEditor.STRUCT = STRUCT.inherit(ObjectEditor, View3D_ToolMode) + `
+}`;
+
+nstructjs.manager.add_class(ObjectEditor);
+View3D_ToolMode.register(ObjectEditor);
+
+
