@@ -59,7 +59,7 @@ export class DataBlockBrowser extends Container {
     let ctx = this.ctx;
     let path = this.getAttribute("datapath");
 
-    console.log("Data block browser recalc");
+    console.warn("Data block browser recalc");
 
     this.clear();
 
@@ -144,7 +144,7 @@ export class DataBlockBrowser extends Container {
 
     let rebuild = exists !== this._owner_exists || (!!val) != this._path_exists;
     rebuild = rebuild || this._needs_rebuild;
-    rebuild = rebuild || val !== this._last_mat_name;
+    rebuild = rebuild || name !== this._last_mat_name;
 
     if (rebuild) {
       this._owner_exists = exists;
