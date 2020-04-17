@@ -157,6 +157,19 @@ export class SceneObject extends DataBlock {
     this.update();
   }
 
+  getBoundingBox() {
+    let ret = this.data.getBoundingBox();
+
+    let matrix = this.outputs.matrix.getValue();
+
+    ret = [ret[0].copy(), ret[1].copy()];
+
+    ret[0].multVecMatrix(matrix);
+    ret[1].multVecMatrix(matrix);
+
+    return ret;
+  }
+
   get locationWorld() {
     let ret = loc_rets.next().zero();
 

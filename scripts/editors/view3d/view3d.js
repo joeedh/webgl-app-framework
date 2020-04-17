@@ -24,7 +24,7 @@ import {GPUSelectBuffer} from './view3d_select.js';
 import {KeyMap, HotKey} from "../editor_base.js";
 import {WidgetManager, WidgetTool, WidgetTools} from './widgets.js';
 import {MeshCache} from './view3d_subeditor.js';
-import {calcTransCenter} from './transform_query.js';
+import {calcTransCenter, calcTransAABB} from './transform_query.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
 import {ConstraintSpaces} from './transform_base.js';
@@ -361,22 +361,72 @@ export class View3D extends Editor {
   }
 
   viewSelected() {
-    let cent = this.getTransCenter();
+    //let cent = this.getTransCenter();
+    let cent = new Vector3();
+    let aabb = this.getTransBounds();
+
+    if (aabb[0].vectorDistance(aabb[1]) == 0.0 && aabb[0].dot(aabb[0]) == 0.0) {
+      cent.zero();
+      cent.multVecMatrix(this.cursor3D);
+    } else {
+      cent.load(aabb[0]).interp(aabb[1],  0.5);
+    }
+
+    let dis = 0.001;
+
+    for (let i=0; i<3; i++) {
+      let d = aabb[1][i] - aabb[0][i];
+      dis = Math.max(dis, d);
+    }
+
+    dis *= Math.sqrt(3.0)*1.25;
 
     if (cent === undefined) {
       cent = new Vector3();
       cent.multVecMatrix(this.cursor3D);
-    } else {
-      cent = cent.center;
     }
 
-    this.camera.target.load(cent);
+    let off = new Vector3(cent).sub(this.camera.target);
+
+    this.camera.target.add(off);
+    this.camera.pos.add(off);
+
     if (this.camera.pos.vectorDistance(this.camera.target) == 0.0) {
       this.camera.pos.addScalar(0.5);
-    } else if (this.camera.pos.vectorDistance(this.camera.target) < 0.05) {
-      this.camera.pos.sub(this.camera.target).normalize().mulScalar(0.05).add(this.camera.target);
     }
+    this.camera.regen_mats();
 
+    /*
+    comment: in camera space;
+
+    dx := 0.0;
+    dy := 0.0;
+    dz := 1.0;
+
+    ex := dx*dis + size;
+    ey := dy*dis;
+    ez := dz*dis;
+
+    f1 := atan(ex / ez) - fov;
+
+    solve(f1, dis);
+    */
+
+    let fov = Math.PI * this.camera.fovy / 180;
+
+    let pos = new Vector3(this.camera.pos);
+    let up = new Vector3(this.camera.up);
+    let target = new Vector3(this.camera.target);
+
+
+    //dis = Math.abs(Math.tan(fov)*dis);
+    dis = Math.abs(dis / Math.tan(fov));
+    console.log("DIS", dis);
+
+    dis = dis == 0.0 ? 0.005 : dis;
+    this.camera.pos.sub(this.camera.target).normalize().mulScalar(dis).add(this.camera.target);
+
+    this.camera.regen_mats();
     this.onCameraChange();
     window.redraw_viewport();
   }
@@ -695,6 +745,10 @@ export class View3D extends Editor {
     this.canvas = this.gl.canvas;
     this.grid = this.makeGrid();
     this.widgets.loadShapes();
+  }
+
+  getTransBounds() {
+    return calcTransAABB(this.ctx, this.selectmode);
   }
 
   getTransCenter() {

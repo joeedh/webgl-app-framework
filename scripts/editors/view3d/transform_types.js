@@ -6,6 +6,7 @@ import {SelMask} from './selectmode.js';
 import {SceneObject, ObjectFlags} from "../../sceneobject/sceneobject.js";
 import {PropModes, TransDataType, TransDataElem} from './transform_base.js';
 import * as util from '../../util/util.js';
+import {aabb_union} from '../../util/math.js';
 
 import {ConstraintSpaces} from "./transform_base.js";
 let meshGetCenterTemps = util.cachering.fromConstructor(Vector3, 64);
@@ -302,7 +303,7 @@ export class MeshTransType extends TransDataType {
     return c;
   }
 
-  static calcAABB(ctx) {
+  static calcAABB(ctx, selmask) {
     let d = 1e17;
     let min = new Vector3([d, d, d]), max = new Vector3([-d, -d, -d]);
     let ok = false;
@@ -529,7 +530,24 @@ export class ObjectTransType extends TransDataType {
     return cent;
   }
 
-  static calcAABB(ctx) {
+  static calcAABB(ctx, selmask) {
+    let ret = undefined;
+
+    if (!(selmask & SelMask.OBJECT)) {
+      return undefined;
+    }
+
+    for (let ob of ctx.selectedObjects) {
+      let aabb = ob.getBoundingBox();
+
+      if (ret === undefined) {
+        ret = [aabb[0].copy(), aabb[1].copy()];
+      } else {
+        aabb_union(ret, aabb);
+      }
+    }
+
+    return ret;
   }
 
   static update(ctx, elemlist) {

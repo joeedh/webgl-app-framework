@@ -41,6 +41,18 @@ export class PointSet extends SceneObjectData {
     this.data = undefined;
   }
 
+  getBoundingBox() {
+    if (!this.ready) return;
+
+    let ptree = this.res.data;
+
+    let bbox = ptree.getBoundingBoxWorld();
+    let min = new Vector3().loadTHREE(bbox.min);
+    let max = new Vector3().loadTHREE(bbox.max);
+
+    return [min, max];
+  }
+
   load() {
     if (this.ready) {
       return new Promise((accept, reject) => accept(this));

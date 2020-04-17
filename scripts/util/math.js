@@ -1,6 +1,8 @@
 //handle to module.  never access in code; for debug console use only.
 var _math = undefined;
 
+/*TODO: clean up this module*/
+
 import * as vectormath from './vectormath.js';
 import * as util from './util.js';
 
@@ -11,6 +13,24 @@ var Vector2 = vectormath.Vector2, Vector3 = vectormath.Vector3;
 var Vector4 = vectormath.Vector4, Matrix4 = vectormath.Matrix4;
 
 var set = util.set;
+
+/**
+ * AABB union of a and b.
+ * Result is in a.
+ *
+ * @param a List of two vectors
+ * @param b List of two vectors
+ * @returns a
+ */
+export function aabb_union(a, b) {
+  for (let i=0; i<2; i++) {
+    for (let j=0; j<a[i].length; j++) {
+      a[i][j] = i ? Math.max(a[i][j], b[i][j]) : Math.min(a[i][j], b[i][j]);
+    }
+  }
+
+  return a;
+}
 
 //everything below here was compiled from es6 code  
 //variables starting with $ are function static local vars,

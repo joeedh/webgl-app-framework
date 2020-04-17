@@ -8,6 +8,7 @@ import {IntProperty, FlagProperty, EnumProperty,
   BoolProperty, PropFlags, PropTypes, PropSubTypes
 } from "../../path.ux/scripts/toolprop.js";
 import {SelMask} from './selectmode.js';
+import {aabb_union} from '../../util/math.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import {View3DOp} from './view3d_ops.js';
 import {isect_ray_plane} from '../../path.ux/scripts/math.js';
@@ -24,7 +25,32 @@ let calcTransCenter_rets = new util.cachering(() => {
   }
 }, 512);
 
-export function calcTransCenter(ctx, selmask, transform_space) {
+export function calcTransAABB(ctx, selmode) {
+  let ret = undefined;
+
+  for (let type of TransDataTypes) {
+    let aabb = type.calcAABB(ctx, selmode);
+
+    if (aabb === undefined)
+      continue;
+
+    if (ret !== undefined) {
+      aabb_union(ret, aabb)
+    } else {
+      ret = aabb;
+    }
+  }
+
+  return ret;
+}
+/**
+ *
+ * @param ctx
+ * @param selmask
+ * @param transform_space : integer. Constraint space.  One of transform_base.js:ConstraintSpaces.
+ * @param aabb_out : List of two Vector3s to be filled with min/max of aabb
+ */
+export function calcTransCenter(ctx, selmask, transform_space, aabb_out) {
   let cent = cent_rets.next().zero();
   let tot = 0.0;
 
@@ -44,6 +70,18 @@ export function calcTransCenter(ctx, selmask, transform_space) {
   }
 
   ret.center.load(cent);
+
+  if (aabb_out) {
+    let aabb = calcTransAABB(ctx);
+
+    if (aabb !== undefined) {
+      aabb_out[0].load(aabb[0]);
+      aabb_out[1].load(aabb[1]);
+    } else {
+      aabb_out[0].zero();
+      aabb_out[1].zero();
+    }
+  }
 
   return ret;
 }
