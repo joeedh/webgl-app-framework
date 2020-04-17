@@ -3,6 +3,7 @@
 import {NodeFlags} from '../core/graph.js';
 import * as view3d_shaders from '../editors/view3d/view3d_shaders.js';
 
+import {Material} from '../core/material.js';
 import * as simplemesh from '../core/simplemesh.js';
 import * as math from '../util/math.js';
 import * as util from '../util/util.js'
@@ -21,14 +22,21 @@ let STRUCT = nstructjs.STRUCT;
 //import * as Potree from '../extern/potree/src/Potree.js';
 import '../extern/potree/build/potree/potree.js';
 import {resourceManager} from "../core/resource.js";
+import {Shapes} from "../core/simplemesh_shapes.js";
 
 export class PointSet extends SceneObjectData {
   constructor() {
     super();
 
+
+    this._last_draw_hash = undefined;
+    this._last_cull_time = 0;
+
     this.url = "";
     this.ready = false;
-    this.materials = [];
+
+    this.usesMaterial = true;
+    this.material = undefined;
 
     this.data = undefined;
   }
@@ -94,12 +102,44 @@ export class PointSet extends SceneObjectData {
   }
 
   drawWireframe(view3d, gl, uniforms, program, object) {
+    this.drawOutline(...arguments);
+  }
+
+  drawOutline(view3d, gl, uniforms, program, object) {
     if (!this.ready) {
       return;
     }
 
     let ptree = this.res.data;
 
+    if (program !== Shaders.MeshIDShader) {
+      //program = Shaders.WidgetMeshShader;
+      //program = Shaders.MeshIDShader;
+      program.uniforms.color = object.getEditorColor();
+    }
+
+    let matrix2 = object.outputs.matrix.getValue();
+    let matrix = new Matrix4();
+
+    let bbox = ptree.getBoundingBoxWorld();
+    let min = new Vector3().loadTHREE(bbox.min);
+    let max = new Vector3().loadTHREE(bbox.max);
+    let scale = new Vector3(max).sub(min);
+
+    matrix.translate(min[0], min[1], min[2]);
+    matrix.scale(scale[0], scale[1], scale[2]);
+    matrix.translate(0.5, 0.5, 0.5);
+
+    matrix.preMultiply(matrix2);
+
+    let old = uniforms.objectMatrix;
+    uniforms.objectMatrix = matrix;
+
+    Shapes.CUBE.drawLines(gl, uniforms, program);
+
+    uniforms.objectMatrix = old;
+
+    /*
     let color = uniforms.uColor;
     if (color === undefined) {
       color = object.getEditorColor();
@@ -109,18 +149,30 @@ export class PointSet extends SceneObjectData {
     }
 
     ptree.material = ptree.flatMaterial;
-    ptree.material.size = ptree.baseMaterial.size + 3;
+    ptree.material.size = ptree.baseMaterial.size + 1;
     ptree.material.color = new THREE.Color(color[0], color[1], color[2]);
 
-    this.draw(view3d, gl, uniforms, program, object);
+    this.draw(view3d, gl, uniforms, program, object, true);
     ptree.material = ptree.baseMaterial;
+    //*/
   }
 
-  draw(view3d, gl, uniforms, program, object) {
+  _getMat(view3d) {
+    let mat = this.material;
+
+    if (mat === undefined) {
+      return Material.getDefaultMaterial(view3d.ctx);
+    }
+
+    return mat;
+  }
+
+  draw(view3d, gl, uniforms, program, object, ignore_mat=false) {
     if (!this.ready) {
       return;
     }
 
+    let mat = this._getMat(view3d);
     let ptree = this.res.data;
 
     let startmat = ptree.material;
@@ -142,14 +194,29 @@ export class PointSet extends SceneObjectData {
     ptree.material.depthWrite = mask;
     ptree.material.depthTest = test;
 
-    ptree.material.pointSizeType = Potree.PointSizeType.FIXED;
-    ptree.material.shape = Potree.PointShape.SQUARE;
+    if (!ignore_mat) {
+      ptree.material.pointSizeType = mat.pointSizeType;
+      ptree.material.shape = mat.pointShape;
+      ptree.material.size = mat.pointSize;
+    }
 
-    //ptree.updateMaterial(ptree.material, ptree.visibleNodes, view3d.threeCamera, view3d.threeRenderer)
-    Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
+    if (util.time_ms() - this._last_cull_time > 50) {
+      Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
+      this._last_cull_time = util.time_ms();
+    }
+
+    let hash = mat.calcSettingsHash();
+    if (hash !== this._last_draw_hash) {
+      this._last_draw_hash = hash;
+
+      ptree.updateMaterial(ptree.material, ptree.visibleNodes, view3d.threeCamera, view3d.threeRenderer)
+      ptree.material.recomputeClassification();
+    }
 
     ptree.material.depthWrite = mask;
     ptree.material.depthTest = test;
+
+    //console.warn("PTREE DRAW");
 
     //*/
     view3d.pRenderer.render({children : [ptree]}, view3d.threeCamera, undefined, {
@@ -160,11 +227,25 @@ export class PointSet extends SceneObjectData {
   }
 
   dataLink(getblock, getblock_addUser) {
-    for (let i=0; i<this.materials.length; i++) {
-      this.materials[i] = getblock_addUser(this.materials[i]);
-    }
+    this.material = getblock_addUser(this.material);
 
     this.load();
+  }
+
+  onContextLost(e) {
+    this._last_draw_hash = "";
+    this._last_cull_time = 0;
+
+    if (this.res !== undefined) {
+      let mat = this.res.data.material;
+
+      mat.needsUpdate = true;
+      mat.updateShaderSource();
+
+      mat = this.res.data._flatMaterial;
+      mat.needsUpdate = true;
+      mat.updateShaderSource();
+    }
   }
 
   static blockDefine() { return {
@@ -177,7 +258,7 @@ export class PointSet extends SceneObjectData {
 };
 
 PointSet.STRUCT = STRUCT.inherit(PointSet, SceneObjectData, "potree.PointSet") + `
-  materials : array(e, DataRef) | DataRef.fromBlock(e);
+  material  : DataRef | DataRef.fromBlock(obj.material);
   url       : string;
 }
 `;

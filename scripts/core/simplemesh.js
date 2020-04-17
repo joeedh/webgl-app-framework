@@ -6,6 +6,13 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 var set = util.set;
 var RenderBuffer = webgl.RenderBuffer;
 
+export const PrimitiveTypes = {
+  POINTS : 1,
+  LINES  : 2,
+  TRIS   : 4,
+  ALL    : 1|2|4
+};
+
 export const LayerTypes = {
   LOC    : 1,
   UV     : 2,
@@ -331,7 +338,26 @@ export class GeoLayerManager {
     this.layer_meta = {};
     this.layer_idgen = new util.IDGen();
   }
-  
+
+  copy() {
+    let ret = new GeoLayerManager();
+
+    for (let layer of this.layers) {
+      let layer2 = ret.get(layer.name, layer.type, layer.size, layer.idx);
+
+      let a = layer.data_f32;
+      let b = layer2.data_f32;
+
+      b.length = a.length;
+
+      for (let i=0; i<a.length; i++) {
+        b[i] = a[i];
+      }
+    }
+
+    return ret;
+  }
+
   get_meta(type) {
     if (!(type in this.layer_meta)) {
       this.layer_meta[type] = new GeoLayerMeta(type);
@@ -356,8 +382,8 @@ export class GeoLayerManager {
      
      var layer = new GeoLayer(size, name, type, idx);
      layer.id = this.layer_idgen.next();
-     
-     
+
+
      this.layers.add(layer);
      meta.layers.push(layer);
      
@@ -373,24 +399,10 @@ var _default_id = [-1];
 export class SimpleIsland {
   constructor() {
     var lay = this.layers = new GeoLayerManager();
-    
-    this.tri_cos    = lay.get("tri_cos", LayerTypes.LOC); //array
-    this.tri_normals = lay.get("tri_normals", LayerTypes.NORMAL); //array
-    this.tri_uvs    = lay.get("tri_uvs", LayerTypes.UV); //array
-    this.tri_colors = lay.get("tri_colors", LayerTypes.COLOR); //array
-    this.tri_ids    = lay.get("tri_ids", LayerTypes.ID); //array
-    
-    this.line_cos    = lay.get("line_cos", LayerTypes.LOC); //array
-    this.line_normals = lay.get("line_normals", LayerTypes.NORMAL); //array
-    this.line_uvs    = lay.get("line_uvs", LayerTypes.UV); //array
-    this.line_colors = lay.get("line_colors", LayerTypes.COLOR); //array
-    this.line_ids    = lay.get("line_ids", LayerTypes.ID); //array
 
-    this.point_cos    = lay.get("point_cos", LayerTypes.LOC); //array
-    this.point_normals = lay.get("point_normals", LayerTypes.NORMAL); //array
-    this.point_uvs    = lay.get("point_uvs", LayerTypes.UV); //array
-    this.point_colors = lay.get("point_colors", LayerTypes.COLOR); //array
-    this.point_ids    = lay.get("point_ids", LayerTypes.ID); //array
+    this.primflag = undefined;  //if undefined, will get from this.mesh.primflag
+
+    this.makeBufferAliases();
 
     this.totpoint = 0;
     this.totline = 0;
@@ -412,7 +424,53 @@ export class SimpleIsland {
     this.uniforms = {};
     this._uniforms_temp = {};
   }
-  
+
+  makeBufferAliases() {
+    let lay = this.layers;
+
+    this.tri_cos    = lay.get("tri_cos", LayerTypes.LOC); //array
+    this.tri_normals = lay.get("tri_normals", LayerTypes.NORMAL); //array
+    this.tri_uvs    = lay.get("tri_uvs", LayerTypes.UV); //array
+    this.tri_colors = lay.get("tri_colors", LayerTypes.COLOR); //array
+    this.tri_ids    = lay.get("tri_ids", LayerTypes.ID); //array
+
+    this.line_cos    = lay.get("line_cos", LayerTypes.LOC); //array
+    this.line_normals = lay.get("line_normals", LayerTypes.NORMAL); //array
+    this.line_uvs    = lay.get("line_uvs", LayerTypes.UV); //array
+    this.line_colors = lay.get("line_colors", LayerTypes.COLOR); //array
+    this.line_ids    = lay.get("line_ids", LayerTypes.ID); //array
+
+    this.point_cos    = lay.get("point_cos", LayerTypes.LOC); //array
+    this.point_normals = lay.get("point_normals", LayerTypes.NORMAL); //array
+    this.point_uvs    = lay.get("point_uvs", LayerTypes.UV); //array
+    this.point_colors = lay.get("point_colors", LayerTypes.COLOR); //array
+    this.point_ids    = lay.get("point_ids", LayerTypes.ID); //array
+  }
+
+  copy() {
+    let ret = new SimpleIsland();
+    ret.primflag = this.primflag;
+    ret.layerflag = this.layerflag;
+
+    ret.totline = this.totline;
+    ret.tottri = this.tottri;
+    ret.totpoint = this.totpoint;
+
+    for (let k in this.uniforms) {
+      ret.uniforms[k] = this.uniforms[k];
+    }
+
+    for (let tex of this.textures) {
+      ret.textures.push(tex);
+    }
+
+    ret.program = this.program;
+    ret.layers = this.layers.copy();
+    ret.makeBufferAliases();
+
+    return ret;
+  }
+
   point(v1) {
     let i = this.totpoint;
 
@@ -668,9 +726,14 @@ export class SimpleIsland {
     //console.log(this.totline, this.line_cos);
     gl.drawArrays(gl.LINES, 0, this.totline*2);
   }
-  
+
+  onContextLost(e) {
+    this.regen = 1;
+  }
+
   draw(gl, uniforms, params, program_override=undefined) {
     var program = this.program == undefined ? this.mesh.program : this.program;
+    let primflag = this.primflag === undefined ? this.mesh.primflag : this.primflag;
 
     if (program_override !== undefined) {
       program = program_override;
@@ -706,15 +769,15 @@ export class SimpleIsland {
   
     program.bind(gl, uniforms);
     
-    if (this.tottri) {
+    if (this.tottri && (primflag & PrimitiveTypes.TRIS)) {
       this._draw_tris(gl, uniforms, params, program);
     }
     
-    if (this.totline) {
+    if (this.totline && (primflag & PrimitiveTypes.LINES)) {
       this._draw_lines(gl, uniforms, params, program);
     }
 
-    if (this.totpoint) {
+    if (this.totpoint && (primflag & PrimitiveTypes.POINTS)) {
       this._draw_points(gl, uniforms, params, program);
     }
 
@@ -727,17 +790,42 @@ export class SimpleIsland {
 export class SimpleMesh {
   constructor(layerflag=LayerTypes.LOC|LayerTypes.NORMAL|LayerTypes.UV) {
     this.layerflag = layerflag;
-    
+    this.primflag = PrimitiveTypes.ALL;
+
     this.islands = [];
     this.uniforms = {};
     
     this.add_island();
     this.island = this.islands[0];
   }
-  
+
+  copy() {
+    let ret = new SimpleMesh();
+
+    ret.primflag = this.primflag;
+    ret.layerflag = this.layerflag;
+
+    for (let k in this.uniforms) {
+      ret.uniforms[k] = this.uniforms[k];
+    }
+
+    for (let island of this.islands) {
+      let island2 = island.copy();
+
+      island2.mesh = ret;
+      ret.islands.push(island2);
+
+      if (island === this.island) {
+        ret.island = island2;
+      }
+    }
+
+    return ret;
+  }
+
   add_island() {
     var island = new SimpleIsland();
-    
+
     island.mesh = this;
     this.island = island;
     
@@ -765,6 +853,16 @@ export class SimpleMesh {
 
   point(v1) {
     return this.island.point(v1);
+  }
+
+  drawLines(gl, uniforms, program_override=undefined) {
+    for (let island of this.islands) {
+      let primflag = island.primflag;
+
+      island.primflag = PrimitiveTypes.LINES;
+      island.draw(gl, uniforms, undefined, program_override);
+      island.primflag = primflag;
+    }
   }
 
   draw(gl, uniforms, program_override=undefined) {
@@ -824,6 +922,12 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     }
 
     return this.get_chunk(id);
+  }
+
+  onContextLost(e) {
+    for (var island of this.islands) {
+      island.onContextLost(e);
+    }
   }
 
   destroy(gl) {
@@ -897,3 +1001,13 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     }
   }
 }
+
+export function makeCube() {
+
+};
+
+export function makeSphere() {
+
+}
+
+

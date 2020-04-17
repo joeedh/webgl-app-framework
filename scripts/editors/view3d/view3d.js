@@ -218,6 +218,25 @@ export function initWebGL() {
 
   //_gl.canvas = canvas;
   loadShaders(_gl);
+
+  canvas.addEventListener("webglcontextrestored", (e) => {
+    loadShaders(_gl);
+
+    let datalib = _appstate.ctx.datalib;
+
+    for (let ob of datalib.objects) {
+      ob.onContextLost(e);
+    }
+
+    for (let sarea of _appstate.screen.sareas) {
+      for (let area of sarea.editors) {
+        if (area instanceof View3D) {
+          area.onContextLost(e);
+        }
+      }
+    }
+  }, false);
+
 }
 
 export function loadShaders(gl) {
@@ -1004,6 +1023,18 @@ export class View3D extends Editor {
     //*/
   }
 
+  onContextLost(e) {
+    if (this.drawline_mesh !== undefined) {
+      this.drawline_mesh.onContextLost(e);
+    }
+
+    this.widget.onContextLost(e);
+
+    if (this.grid !== undefined) {
+      this.grid.onContextLost(e);
+    }
+  }
+
   viewportDraw_intern() {
     if (this.ctx === undefined || this.gl === undefined || this.size === undefined) {
       return;
@@ -1058,6 +1089,8 @@ export class View3D extends Editor {
     //console.log(this.size);
     let aspect = this.size[0] / this.size[1];
     this.camera.regen_mats(aspect);
+
+    //console.log("viewport draw start");
 
     //this.drawThreeScene();
     //return;
@@ -1155,22 +1188,19 @@ export class View3D extends Editor {
       projectionMatrix : camera.rendermat,
       normalMatrix     : camera.normalmat
     };
-    
+
+    let only_render = this.flag & (View3DFlags.ONLY_RENDER);
+
     for (let ob of scene.objects.visible) {
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
 
-      let draw = !(this.flag & View3DFlags.SHOW_RENDER);
-      draw = draw || !(ob.data instanceof Mesh);
-      draw = draw && !(this.flag & View3DFlags.ONLY_RENDER);
-
-      if (draw) {
+      if (only_render) {
         this.threeCamera.pushUniforms(uniforms);
         ob.draw(this, gl, uniforms, program);
         this.threeCamera.popUniforms();
-      }
 
-      if (this.flag & View3DFlags.ONLY_RENDER)
         continue;
+      }
 
       let ok = false;
       for (let ed of this.editors) {

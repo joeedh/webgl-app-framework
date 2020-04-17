@@ -44,10 +44,11 @@ export class PointSetResource extends ResourceType {
       pcloud.baseMaterial = material;
 
       //material.uniforms.uShadowColor.value = [0.0, 0, 0];
-      material.size = 1;
+
       material.useEDL = false;
       material.recomputeClassification();
 
+      material.size = 1;
       material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
       material.shape = Potree.PointShape.SQUARE;
 

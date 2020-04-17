@@ -589,9 +589,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:zoom="11.420706"
-     inkscape:cx="77.523346"
-     inkscape:cy="380.73048"
+     inkscape:zoom="4.0378293"
+     inkscape:cx="89.131365"
+     inkscape:cy="398.20474"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -1617,5 +1617,15 @@
         </g>
       </g>
     </g>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none;"
+       x="67.61058"
+       y="666.75891"
+       id="text1258"><tspan
+         sodipodi:role="line"
+         id="tspan1256"
+         x="67.61058"
+         y="666.75891">P</tspan></text>
   </g>
 </svg>

@@ -3,6 +3,7 @@ import {ObjectFlags} from '../../sceneobject/sceneobject.js';
 import {View3D_SubEditorIF} from './view3d_subeditor.js';
 import {SelMask, SelOneToolModes, SelToolModes} from './selectmode.js';
 import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../mesh/mesh.js';
+import {PointSet} from '../../potree/potree_types.js';
 import * as util from '../../util/util.js';
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {BasicLineShader, Shaders} from './view3d_shaders.js'
@@ -138,14 +139,10 @@ export class ObjectEditor extends View3D_SubEditorIF {
 
     program = Shaders.ObjectLineShader;
 
-
-    let mask = gl.getParameter(gl.DEPTH_WRITEMASK);
-    gl.depthMask(false);
-
+    /*
     let size = gl.getParameter(gl.VIEWPORT);
     size = [size[2], size[3]];
 
-    /*
     let d = 1;
     for (let x=-d; x<=d; x++) {
       for (let y=-d; y<=d; y++) {
@@ -153,18 +150,26 @@ export class ObjectEditor extends View3D_SubEditorIF {
         uniforms.shift[1] = y/size[1]*3.0;
 
         this.view3d.threeCamera.pushUniforms(uniforms);
-        object.drawWireframe(this.view3d, gl, uniforms, program);
+        object.drawOutline(this.view3d, gl, uniforms, program);
         this.view3d.threeCamera.popUniforms();
       }
     }
     //*/
 
-    this.view3d.threeCamera.pushUniforms(uniforms);
-    object.drawWireframe(this.view3d, gl, uniforms, program);
-    this.view3d.threeCamera.popUniforms();
+    let draw_outline = object.flag & ObjectFlags.SELECT;
+    draw_outline = draw_outline || object === this.view3d.ctx.scene.objects.highlight;
 
-    uniforms.shift = undefined;
-    gl.depthMask(mask);
+    if (draw_outline) {
+      let mask = gl.getParameter(gl.DEPTH_WRITEMASK);
+      gl.depthMask(false);
+
+      this.view3d.threeCamera.pushUniforms(uniforms);
+      object.drawOutline(this.view3d, gl, uniforms, program);
+      this.view3d.threeCamera.popUniforms();
+
+      //uniforms.shift = undefined;
+      gl.depthMask(mask);
+    }
 
     this.view3d.threeCamera.pushUniforms(uniforms);
     object.draw(this.view3d, gl, uniforms, program);

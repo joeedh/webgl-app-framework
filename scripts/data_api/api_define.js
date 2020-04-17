@@ -27,10 +27,12 @@ import {Context} from '../core/context.js';
 import {MeshModifierFlags, MeshFlags} from '../mesh/mesh_base.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Vertex, Edge, Loop, Face} from '../mesh/mesh_types.js';
-import {ShaderNetwork} from '../core/material.js';
+import {ShaderNetwork} from '../core/shadernetwork.js';
+import {Material} from '../core/material.js';
 import '../shadernodes/allnodes.js';
 import {ShaderNode} from '../shadernodes/shader_nodes.js';
 import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph.js';
+import {SceneObject} from '../sceneobject/sceneobject.js';
 import {SelectOneOp} from '../sceneobject/selectops.js';
 import {DeleteObjectOp} from '../sceneobject/sceneobject_ops.js';
 import {Scene, EnvLight, EnvLightFlags} from "../core/scene.js";
@@ -195,6 +197,32 @@ function api_define_datablock(api, cls=DataBlock) {
   let dstruct = api_define_node(api, cls);
 
   dstruct.int("lib_id", "lib_id", "Lib ID").read_only();
+
+  let def = dstruct.flags("lib_flag", "flag", BlockFlags, "Flag");
+
+  def.icons({
+    FAKE_USER : Icons.FAKE_USER
+  });
+
+  def.on('change', function (newval, oldval) {
+    let owner = this.dataref;
+    console.log("Fake user change", newval, oldval);
+
+    if (newval == oldval) {
+      return;
+    }
+
+    if (newval) {
+      owner.lib_users++;
+    } else {
+      owner.lib_users--;
+    }
+  });
+
+  def.descriptions({
+    FAKE_USER : "Protect against auto delete"
+  });
+
   dstruct.string("name", "name", "name");
 
   return dstruct;
@@ -258,12 +286,38 @@ function api_define_graph(api, cls=Graph) {
   return gstruct;
 }
 
-function api_define_material(api, parent) {
+function api_define_shadernetwork(api, parent) {
   let mstruct = api_define_datablock(api, ShaderNetwork);
 
-  parent.struct("material", "material", "ShaderNetwork", mstruct);
+  parent.struct("shadernetwork", "shadernetwork", "ShaderNetwork", mstruct);
 
   mstruct.struct("graph", "graph", "Shader Graph", api.getStruct(Graph));
+
+  return mstruct;
+}
+
+function api_define_material(api, parent) {
+  let mstruct = api_define_datablock(api, Material);
+
+  let redraw = (e) => {
+    window.redraw_viewport();
+  }
+
+  parent.struct("material", "material", "Material", mstruct);
+
+  mstruct.int("pointSize", "pointSize", "Size", "Point Size").range(1, 25).on('change', redraw);
+  mstruct.enum("pointShape", "pointShape", Potree.PointShape, "Shape", "Point Shape").on('change', redraw);
+  mstruct.enum("pointSizeType", "pointSizeType", Potree.PointSizeType, "Mode").on('change', redraw);
+
+  return mstruct;
+}
+
+function api_define_sceneobject(api, parent) {
+  let ostruct = api_define_datablock(api, Material);
+
+  parent.struct("object", "object", SceneObject, ostruct);
+
+  api_define_material(api, ostruct);
 }
 
 function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
@@ -473,12 +527,15 @@ export function getDataAPI() {
 
   api_define_mesh(api, cstruct);
   api_define_material(api, cstruct);
+  api_define_shadernetwork(api, cstruct);
 
   api_define_library(api, cstruct);
   api_define_editor(api, Editor);
   api_define_screen(api, cstruct);
   api_define_scene(api, cstruct);
   api_define_light(api, cstruct);
+
+  api_define_sceneobject(api, cstruct);
 
   api.setRoot(cstruct);
 

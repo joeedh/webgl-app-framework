@@ -802,9 +802,13 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  genRender(gl) {
+  /**
+   * @param gl: gl context, may be undefined
+   * @param combinedWireframe: add wireframe layer (but unset simplemesh.PrimitiveTypes.LINES in primflag)
+   * */
+  genRender(gl, combinedWireframe) {
     try {
-      return this._genRender(gl);
+      return this._genRender(gl, combinedWireframe);
     } catch (error) {
       util.print_stack(error);
       throw error;
@@ -827,14 +831,14 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  _genRender(gl) {
+  _genRender(gl, combinedWireframe=false) {
     this.recalc &= ~RecalcFlags.RENDER;
     this.updateGen = ~~(Math.random()*1024*1024*1024);
 
     this.tessellate();
     let ltris = this._ltris;
 
-    if (this.smesh !== undefined) {
+    if (gl !== undefined && this.smesh !== undefined) {
       this.smesh.destroy(gl);
     }
 
@@ -844,9 +848,20 @@ export class Mesh extends SceneObjectData {
     let zero2 = [0, 0];
     let w = [1, 1, 1, 1];
 
+    if (combinedWireframe) {
+      sm.primflag = simplemesh.PrimitiveTypes.TRIS;
+    }
+
     for (let e of this.edges) {
       let line;
+
+      if (combinedWireframe) {
+        line = sm.line(e.eid, e.v1, e.v2);
+        line.ids(e.eid, e.eid);
+      }
+
       line = wm.line(e.eid, e.v1, e.v2); line.ids(e.eid, e.eid);
+
       //line = wm.line(i, l2.v, l3.v); line.ids(i, i);
       //line = wm.line(i, l3.v, l1.v); line.ids(i, i);
     }
@@ -989,6 +1004,12 @@ export class Mesh extends SceneObjectData {
     }
 
     this.wmesh.draw(gl, uniforms);
+  }
+
+  onContextLost(e) {
+    if (this.smesh !== undefined) {
+      this.smesh.onContextLost(e);
+    }
   }
 
   draw(view3d, gl, uniforms, program, object) {

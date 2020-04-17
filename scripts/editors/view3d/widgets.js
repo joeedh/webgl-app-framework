@@ -4,7 +4,7 @@ import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
         FlagProperty, ToolProperty, Vec3Property,
         PropFlags, PropTypes, PropSubTypes} from '../../path.ux/scripts/toolprop.js';
 import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
-import {WidgetShapes} from './widget_shapes.js';
+import {Shapes} from '../../core/simplemesh_shapes.js';
 import {Shaders} from './view3d_shaders.js';
 import {dist_to_line_2d} from '../../path.ux/scripts/math.js';
 import {IsMobile} from '../../path.ux/scripts/ui_base.js'
@@ -63,6 +63,7 @@ export class WidgetTool {
     this.widgets.push(ret);
     return ret;
   }
+
 
   /**
    * executes a (usually modal) tool, adding (and removing)
@@ -723,6 +724,10 @@ export class WidgetManager {
     }
   }
 
+  onContextLost(e) {
+    this.loadShapes();
+  }
+
   clearNodes() {
     let graph = this.view3d.ctx.graph;
 
@@ -767,9 +772,8 @@ export class WidgetManager {
   }
 
   loadShapes() {
-    for (let k in WidgetShapes) {
-      let mesh = WidgetShapes[k].copy();
-      let smesh = mesh.genRender();
+    for (let k in Shapes) {
+      let smesh = Shapes[k].copy();
 
       this.shapes[k] = smesh;
     }

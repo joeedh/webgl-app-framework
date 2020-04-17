@@ -1158,9 +1158,9 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/material.js~materialflags",
+    "./scripts/core/shadernetwork.js~materialflags",
     "variable/index.html#static-variable-MaterialFlags",
-    "<span>MaterialFlags</span> <span class=\"search-result-import-path\">./scripts/core/material.js</span>",
+    "<span>MaterialFlags</span> <span class=\"search-result-import-path\">./scripts/core/shadernetwork.js</span>",
     "variable"
   ],
   [
@@ -1962,9 +1962,9 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/core/material.js~shadernetwork",
-    "class/scripts/core/material.js~ShaderNetwork.html",
-    "<span>ShaderNetwork</span> <span class=\"search-result-import-path\">./scripts/core/material.js</span>",
+    "./scripts/core/shadernetwork.js~shadernetwork",
+    "class/scripts/core/shadernetwork.js~ShaderNetwork.html",
+    "<span>ShaderNetwork</span> <span class=\"search-result-import-path\">./scripts/core/shadernetwork.js</span>",
     "class"
   ],
   [
@@ -2004,15 +2004,15 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
-    "./scripts/core/material.js~shadowflags",
+    "./scripts/core/shadernetwork.js~shadowflags",
     "variable/index.html#static-variable-ShadowFlags",
-    "<span>ShadowFlags</span> <span class=\"search-result-import-path\">./scripts/core/material.js</span>",
+    "<span>ShadowFlags</span> <span class=\"search-result-import-path\">./scripts/core/shadernetwork.js</span>",
     "variable"
   ],
   [
-    "./scripts/core/material.js~shadowsettings",
-    "class/scripts/core/material.js~ShadowSettings.html",
-    "<span>ShadowSettings</span> <span class=\"search-result-import-path\">./scripts/core/material.js</span>",
+    "./scripts/core/shadernetwork.js~shadowsettings",
+    "class/scripts/core/shadernetwork.js~ShadowSettings.html",
+    "<span>ShadowSettings</span> <span class=\"search-result-import-path\">./scripts/core/shadernetwork.js</span>",
     "class"
   ],
   [
@@ -6222,93 +6222,93 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "scripts/core/material.js",
-    "file/scripts/core/material.js.html",
-    "scripts/core/material.js",
+    "scripts/core/shadernetwork.js",
+    "file/scripts/core/shadernetwork.js.html",
+    "scripts/core/shadernetwork.js",
     "file"
   ],
   [
-    "scripts/core/material.js~shadernetwork#_on_flag_resort",
-    "class/scripts/core/material.js~ShaderNetwork.html#instance-method-_on_flag_resort",
-    "scripts/core/material.js~ShaderNetwork#_on_flag_resort",
+    "scripts/core/shadernetwork.js~shadernetwork#_on_flag_resort",
+    "class/scripts/core/shadernetwork.js~ShaderNetwork.html#instance-method-_on_flag_resort",
+    "scripts/core/shadernetwork.js~ShaderNetwork#_on_flag_resort",
     "method"
   ],
   [
-    "scripts/core/material.js~shadernetwork#_regen",
-    "class/scripts/core/material.js~ShaderNetwork.html#instance-member-_regen",
-    "scripts/core/material.js~ShaderNetwork#_regen",
+    "scripts/core/shadernetwork.js~shadernetwork#_regen",
+    "class/scripts/core/shadernetwork.js~ShaderNetwork.html#instance-member-_regen",
+    "scripts/core/shadernetwork.js~ShaderNetwork#_regen",
     "member"
   ],
   [
-    "scripts/core/material.js~shadernetwork#constructor",
-    "class/scripts/core/material.js~ShaderNetwork.html#instance-constructor-constructor",
-    "scripts/core/material.js~ShaderNetwork#constructor",
+    "scripts/core/shadernetwork.js~shadernetwork#constructor",
+    "class/scripts/core/shadernetwork.js~ShaderNetwork.html#instance-constructor-constructor",
+    "scripts/core/shadernetwork.js~ShaderNetwork#constructor",
     "method"
   ],
   [
-    "scripts/core/material.js~shadernetwork#datalink",
-    "class/scripts/core/material.js~ShaderNetwork.html#instance-method-dataLink",
-    "scripts/core/material.js~ShaderNetwork#dataLink",
+    "scripts/core/shadernetwork.js~shadernetwork#datalink",
+    "class/scripts/core/shadernetwork.js~ShaderNetwork.html#instance-method-dataLink",
+    "scripts/core/shadernetwork.js~ShaderNetwork#dataLink",
     "method"
   ],
   [
-    "scripts/core/material.js~shadernetwork#flag",
-    "class/scripts/core/material.js~ShaderNetwork.html#instance-member-flag",
-    "scripts/core/material.js~ShaderNetwork#flag",
+    "scripts/core/shadernetwork.js~shadernetwork#flag",
+    "class/scripts/core/shadernetwork.js~ShaderNetwork.html#instance-member-flag",
+    "scripts/core/shadernetwork.js~ShaderNetwork#flag",
     "member"
   ],
   [
-    "scripts/core/material.js~shadernetwork#generate",
-    "class/scripts/core/material.js~ShaderNetwork.html#instance-method-generate",
-    "scripts/core/material.js~ShaderNetwork#generate",
+    "scripts/core/shadernetwork.js~shadernetwork#generate",
+    "class/scripts/core/shadernetwork.js~ShaderNetwork.html#instance-method-generate",
+    "scripts/core/shadernetwork.js~ShaderNetwork#generate",
     "method"
   ],
   [
-    "scripts/core/material.js~shadernetwork#graph",
-    "class/scripts/core/material.js~ShaderNetwork.html#instance-member-graph",
-    "scripts/core/material.js~ShaderNetwork#graph",
+    "scripts/core/shadernetwork.js~shadernetwork#graph",
+    "class/scripts/core/shadernetwork.js~ShaderNetwork.html#instance-member-graph",
+    "scripts/core/shadernetwork.js~ShaderNetwork#graph",
     "member"
   ],
   [
-    "scripts/core/material.js~shadernetwork#loadstruct",
-    "class/scripts/core/material.js~ShaderNetwork.html#instance-method-loadSTRUCT",
-    "scripts/core/material.js~ShaderNetwork#loadSTRUCT",
+    "scripts/core/shadernetwork.js~shadernetwork#loadstruct",
+    "class/scripts/core/shadernetwork.js~ShaderNetwork.html#instance-method-loadSTRUCT",
+    "scripts/core/shadernetwork.js~ShaderNetwork#loadSTRUCT",
     "method"
   ],
   [
-    "scripts/core/material.js~shadernetwork#shadow",
-    "class/scripts/core/material.js~ShaderNetwork.html#instance-member-shadow",
-    "scripts/core/material.js~ShaderNetwork#shadow",
+    "scripts/core/shadernetwork.js~shadernetwork#shadow",
+    "class/scripts/core/shadernetwork.js~ShaderNetwork.html#instance-member-shadow",
+    "scripts/core/shadernetwork.js~ShaderNetwork#shadow",
     "member"
   ],
   [
-    "scripts/core/material.js~shadernetwork.blockdefine",
-    "class/scripts/core/material.js~ShaderNetwork.html#static-method-blockDefine",
-    "scripts/core/material.js~ShaderNetwork.blockDefine",
+    "scripts/core/shadernetwork.js~shadernetwork.blockdefine",
+    "class/scripts/core/shadernetwork.js~ShaderNetwork.html#static-method-blockDefine",
+    "scripts/core/shadernetwork.js~ShaderNetwork.blockDefine",
     "method"
   ],
   [
-    "scripts/core/material.js~shadernetwork.nodedef",
-    "class/scripts/core/material.js~ShaderNetwork.html#static-method-nodedef",
-    "scripts/core/material.js~ShaderNetwork.nodedef",
+    "scripts/core/shadernetwork.js~shadernetwork.nodedef",
+    "class/scripts/core/shadernetwork.js~ShaderNetwork.html#static-method-nodedef",
+    "scripts/core/shadernetwork.js~ShaderNetwork.nodedef",
     "method"
   ],
   [
-    "scripts/core/material.js~shadowsettings#bias",
-    "class/scripts/core/material.js~ShadowSettings.html#instance-member-bias",
-    "scripts/core/material.js~ShadowSettings#bias",
+    "scripts/core/shadernetwork.js~shadowsettings#bias",
+    "class/scripts/core/shadernetwork.js~ShadowSettings.html#instance-member-bias",
+    "scripts/core/shadernetwork.js~ShadowSettings#bias",
     "member"
   ],
   [
-    "scripts/core/material.js~shadowsettings#constructor",
-    "class/scripts/core/material.js~ShadowSettings.html#instance-constructor-constructor",
-    "scripts/core/material.js~ShadowSettings#constructor",
+    "scripts/core/shadernetwork.js~shadowsettings#constructor",
+    "class/scripts/core/shadernetwork.js~ShadowSettings.html#instance-constructor-constructor",
+    "scripts/core/shadernetwork.js~ShadowSettings#constructor",
     "method"
   ],
   [
-    "scripts/core/material.js~shadowsettings#flag",
-    "class/scripts/core/material.js~ShadowSettings.html#instance-member-flag",
-    "scripts/core/material.js~ShadowSettings#flag",
+    "scripts/core/shadernetwork.js~shadowsettings#flag",
+    "class/scripts/core/shadernetwork.js~ShadowSettings.html#instance-member-flag",
+    "scripts/core/shadernetwork.js~ShadowSettings#flag",
     "member"
   ],
   [

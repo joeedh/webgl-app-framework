@@ -1,8 +1,9 @@
 import '../path.ux/scripts/struct.js';
 import {IDGen} from '../util/util.js';
 import {Node, Graph, NodeFlags, SocketFlags, NodeSocketType} from './graph.js';
-import {ToolProperty, PropFlags} from '../path.ux/scripts/toolprop.js';
+import {ToolProperty, PropFlags, EnumProperty} from '../path.ux/scripts/toolprop.js';
 import {Check1} from "../path.ux/scripts/ui_widgets.js";
+import {Icons} from "../editors/icon_enum.js";
 
 let STRUCT = nstructjs.STRUCT;
 
@@ -95,6 +96,15 @@ export class DataBlock extends Node {
   /**decrement reference count*/
   lib_remUser(user) {
     this.lib_users--;
+
+    if (this.lib_users < 0) {
+      console.warn("Warning, a datablock had negative users", this.lib_users, this);
+    }
+
+    if (this.lib_users <= 0 && (this.lib_flag & BlockFlags.FAKE_USER)) {
+      console.log("Warning, somehow fake user was cleared", this);
+      this.lib_users = 1;
+    }
   }
 
   afterSTRUCT() {
@@ -140,7 +150,7 @@ export class DataRef {
 
     this.lib_type = undefined;
     this.lib_id = -1;
-    this.lib_name = undefined;
+    this.name = undefined;
     this.lib_external_ref = undefined;
   }
   
@@ -154,7 +164,7 @@ export class DataRef {
 
     ret.lib_type = block.constructor.blockDefine().typeName;
     ret.lib_id = block.lib_id;
-    ret.lib_name = block.name;
+    ret.name = block.name;
     ret.lib_external_ref = block.lib_external_ref;
     
     return ret;
@@ -162,7 +172,7 @@ export class DataRef {
 
   set(ob) {
     this.lib_id = ob.lib_id;
-    this.lib_name = ob.lib_name;
+    this.name = ob.name;
   }
 
   loadSTRUCT(reader) {
@@ -171,8 +181,8 @@ export class DataRef {
 }
 DataRef.STRUCT = `
 DataRef {
-  lib_id    : int;
-  lib_name : string;
+  lib_id   : int;
+  name     : string;
   lib_type : string;
 }
 `;
@@ -199,7 +209,7 @@ export class BlockSet extends Array {
 
     let name2 = name;
 
-    let i = 1;
+    let i = 2;
     while (name2 in this.namemap) {
       name2 = name + i;
       i++;
@@ -230,6 +240,8 @@ export class BlockSet extends Array {
   }
   
   push(block) {
+    block.name = this.uniqueName(block.name);
+
     if (block.lib_id >= 0 && (block.lib_id in this.idmap)) {
       console.warn("Block already in dataset");
       return;
@@ -246,7 +258,41 @@ export class BlockSet extends Array {
     this.idmap[block.lib_id] = block;
     this.namemap[block.name] = block;
   }
-  
+
+  /**
+   *
+   * @param name_or_id : can be a string with block name, integer with block id, or DataRef instance
+   * @returns boolean
+   */
+  has(name_or_id) {
+    if (typeof name_or_id == "number") {
+      return name_or_id in this.idmap;
+    } else if (typeof name_or_id == "string") {
+      return name_or_id in this.namemap;
+    } else if (name_or_id instanceof DataRef) {
+      return name_or_id.lib_id in this.idmap;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   *
+   * @param name_or_id : can be a string with block name, integer with block id, or DataRef instance
+   * @returns DataBlock
+   */
+  get(name_or_id) {
+    if (typeof name_or_id == "number") {
+      return this.idmap[name_or_id];
+    } else if (typeof name_or_id == "string") {
+      return this.namemap[name_or_id];
+    } else if (name_or_id instanceof DataRef) {
+      return this.idmap[name_or_id.lib_id];
+    } else {
+      throw new Error("invalid value in lib_api.js:BlockSet.get")
+    }
+  }
+
   remove(block) {
     let bad = block === undefined || !(block instanceof DataBlock) || block.lib_id === undefined;
     bad = bad || !(block.lib_id in this.idmap);
@@ -342,6 +388,38 @@ export class Library {
         }
       });
     }
+  }
+
+  //builds enum property of active blocks
+  //for path.ux.  does not include ones that are hidden.
+  getBlockListEnum(blockClass) {
+    let tname = blockClass.blockDefine().typeName;
+    let uiname = blockClass.blockDefine().uiName;
+    let lib = this.libmap[tname];
+
+    let ret = {};
+    let icons = {};
+
+    for (let block of lib) {
+      if (block.lib_flag & BlockFlags.HIDE) {
+        continue;
+      }
+
+      let icon = -1;
+
+      if (block.lib_users <= 0)
+        icon = Icons.DELETE;
+      else if (block.lib_flag & BlockFlags.FAKE_USER)
+        icon = Icons.FAKE_USER;
+
+      ret[block.name] = block.lib_id;
+      icons[block.name] = icon;
+    }
+
+    let prop = new EnumProperty(undefined, ret, tname, uiname + "s", uiname + "s");
+    prop.addIcons(icons);
+
+    return prop;
   }
 
   setActive(block) {
@@ -473,16 +551,16 @@ export class DataRefProperty extends ToolProperty {
     if (typeof val == "object" && (val.constructor.blockDefine().typeName !== this.blockType)) {
       throw new Error("invalid block type " + val.constructor.blockDefine().typeName + "; expected" + this.blockType + ".");
       this.data.lib_id = val.lib_id;
-      this.data.lib_name = val.lib_name;
+      this.data.name = val.name;
     } else if (typeof val == "number") {
       console.warn("Warning, DataRefProperty.setValue was fed a number; can't validate it's type")
       //can't validate in this case
 
       this.data.lib_id = val;
-      this.data.lib_name = "";
+      this.data.name = "";
     } else if (typeof val == "object") {
       this.data.lib_id = val.lib_id;
-      this.data.lib_name = val.lib_name;
+      this.data.name = val.name;
     } else {
       console.warn("failed to set DataRefProperty; arguments:", arguments);
     }

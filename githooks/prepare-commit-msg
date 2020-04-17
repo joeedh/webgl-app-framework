@@ -1,0 +1,9 @@
+#!/bin/bash
+COMMIT_MSG_FILE=$1
+
+git diff --cached -r | sed 's/.*/#\0/' >> $COMMIT_MSG_FILE
+echo "#" >> $COMMIT_MSG_FILE
+echo "#" >> $COMMIT_MSG_FILE
+echo "#" >> $COMMIT_MSG_FILE
+
+

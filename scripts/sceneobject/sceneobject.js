@@ -90,7 +90,18 @@ export class SceneObject extends DataBlock {
       depend : new DependSocket("depend")
     }
   }}
-  
+
+  get material() {
+    return this.data !== undefined && this.data.usesMaterial ? this.data.material : undefined;
+  }
+
+  set material(mat) {
+    if (this.data !== undefined && this.data.usesMaterial) {
+      this.data.material = mat;
+      window.redraw_viewport();
+    }
+  }
+
   exec() {
     let pmat;
 
@@ -183,6 +194,13 @@ export class SceneObject extends DataBlock {
     uniforms.object_id = this.lib_id;
 
     this.data.drawWireframe(view3d, gl, uniforms, program, this);
+  }
+
+  drawOutline(view3d, gl, uniforms, program) {
+    uniforms.objectMatrix = this.outputs.matrix.getValue();
+    uniforms.object_id = this.lib_id;
+
+    this.data.drawOutline(view3d, gl, uniforms, program, this);
   }
 }
 SceneObject.STRUCT = STRUCT.inherit(SceneObject, DataBlock) + `

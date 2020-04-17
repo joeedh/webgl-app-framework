@@ -4,7 +4,6 @@ import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property,
   PropFlags, PropTypes, PropSubTypes} from '../../path.ux/scripts/toolprop.js';
 import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
-import {WidgetShapes} from './widget_shapes.js';
 import {Shaders} from './view3d_shaders.js';
 import {dist_to_line_2d} from '../../path.ux/scripts/math.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";

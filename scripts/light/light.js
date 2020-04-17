@@ -5,7 +5,7 @@ import {Graph, SocketFlags} from '../core/graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Vec3Socket, FloatSocket, DependSocket, Matrix4Socket, Vec4Socket} from '../core/graphsockets.js';
-import {WidgetShapes} from '../editors/view3d/widget_shapes.js';
+import {Shapes} from '../core/simplemesh_shapes.js';
 import {Shaders} from '../editors/view3d/view3d_shaders.js';
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
 
@@ -60,7 +60,8 @@ export class Light extends SceneObjectData {
 
     program.uniforms.objectMatrix = object.outputs.matrix.getValue();
     uniforms.objectMatrix = object.outputs.matrix.getValue();
-    WidgetShapes.LIGHT.draw(gl, uniforms, program);
+
+    Shapes.LIGHT.draw(gl, uniforms, program);
   }
 }
 

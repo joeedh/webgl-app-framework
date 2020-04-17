@@ -3,11 +3,12 @@ let STRUCT = nstructjs.STRUCT;
 import {Area} from '../path.ux/scripts/ScreenArea.js';
 import {Screen} from '../path.ux/scripts/FrameManager.js';
 import {UIBase} from '../path.ux/scripts/ui_base.js';
+import {Container} from '../path.ux/scripts/ui.js';
 import * as util from '../util/util.js';
 import {haveModal} from "../path.ux/scripts/simple_events.js";
 import {warning} from "../path.ux/scripts/ui_noteframe.js";
-
 import {Icons} from './icon_enum.js';
+import {PackFlags} from "../path.ux/scripts/ui_base.js";
 
 let areastacks = {};
 let arealasts = {};
@@ -18,8 +19,169 @@ export {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
 import {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
 import {Matrix4, Vector2} from "../util/vectormath.js";
 import {DataBlock, BlockFlags} from '../core/lib_api.js';
+import {MakeMaterialOp} from '../core/material.js';
 
 export {VelPanFlags, VelPan} from './velpan.js';
+
+/**
+ * Expects a datapath DOM attribute
+ */
+export class DataBlockBrowser extends Container {
+  constructor() {
+    super();
+
+    this.blockClass = undefined;
+    this._owner_exists = false;
+    this._path_exists = false;
+    this._needs_rebuild = true;
+    this._last_mat_name = undefined;
+
+    this.onValidData = undefined;
+  }
+
+  init() {
+    super.init();
+
+    this.rebuild();
+  }
+
+  setCSS() {
+    super.setCSS();
+  }
+
+  flagRebuild() {
+    this._needs_rebuild = true;
+  }
+
+  rebuild() {
+    this._needs_rebuild = false;
+
+    let ctx = this.ctx;
+    let path = this.getAttribute("datapath");
+
+    console.log("Data block browser recalc");
+
+    this.clear();
+
+    if (!this.doesOwnerExist()) {
+      this.label("Nothing selected");
+      return;
+    }
+
+    let col = this.col();
+
+    let val = this.getPathValue(ctx, path);
+    let meta = this.ctx.api.resolvePath(this.ctx, path);
+
+    this._last_mat_name = val === undefined ? undefined : val.name;
+
+    this.label("Block");
+
+    let prop = ctx.datalib.getBlockListEnum(this.blockClass);
+    let dropbox = document.createElement("dropbox-x")
+
+    dropbox.prop = prop;
+    dropbox.setAttribute("name", val !== undefined ? val.name : "");
+
+    //listenum(inpath, name, enummap, defaultval, callback, iconmap, packflag=0) {
+    dropbox.onselect = (id) => {
+      let val = this.getPathValue(ctx, path);
+      let meta = this.ctx.api.resolvePath(this.ctx, path);
+
+      if (val !== undefined && val.lib_id == id) {
+        return;
+      }
+
+      if (val !== undefined) {
+        val.lib_remUser(meta.obj);
+      }
+
+      let block = ctx.datalib.get(id);
+      block.lib_addUser(meta.obj);
+
+      console.log("Assigning block");
+
+      this.setPathValue(ctx, path, block);
+      this.flagRebuild();
+    };
+
+    let update = dropbox.update;
+    dropbox.update = () => {
+      dropbox.prop = ctx.datalib.getBlockListEnum(this.blockClass);
+      update.apply(dropbox, arguments);
+    };
+
+    let row = col.row();
+    row.add(dropbox);
+
+    row.tool(`material.new(dataPathToSet="${path}")`, PackFlags.USE_ICONS);
+    row.tool(`material.unlink(dataPathToUnset="${path}")`, PackFlags.USE_ICONS);
+
+    if (val !== undefined) {
+      row.prop(`${path}.flag[FAKE_USER]`, PackFlags.USE_ICONS);
+
+      if (this.onValidData !== undefined) {
+        this.onValidData(col);
+      }
+    } else {
+
+    }
+  }
+
+  doesOwnerExist() {
+    let path = this.getAttribute("datapath");
+    let meta = this.ctx.api.resolvePath(this.ctx, path);
+
+    return meta.obj !== undefined;
+  }
+
+  update() {
+    let path = this.getAttribute("datapath");
+
+    let exists = this.doesOwnerExist();
+    let val = this.getPathValue(this.ctx, path);
+    let name = val === undefined ? undefined : val.name;
+
+    let rebuild = exists !== this._owner_exists || (!!val) != this._path_exists;
+    rebuild = rebuild || this._needs_rebuild;
+    rebuild = rebuild || val !== this._last_mat_name;
+
+    if (rebuild) {
+      this._owner_exists = exists;
+      this._path_exists = !!val;
+
+      this.rebuild();
+    }
+
+    super.update();
+  }
+
+  static define() {return {
+    tagname : "data-block-browser-x"
+  }}
+}
+UIBase.register(DataBlockBrowser);
+
+/**
+ *
+ * @param container
+ * @param cls
+ * @param path
+ * @param onValidData : callback, gets a container as argument so you can build elements when valid data exists.
+ * @returns {*}
+ */
+export function makeDataBlockBrowser(container, cls, path, onValidData) {
+  let row = container.row();
+  let ret = document.createElement("data-block-browser-x");
+
+  ret.setAttribute("datapath", path);
+  ret.blockClass = cls;
+  ret.onValidData = onValidData;
+
+  row.add(ret);
+
+  return row;
+}
 
 let getAreaStack = (cls) => {
   let name = cls.define().areaname;

@@ -1,7 +1,9 @@
 import {Area} from '../../path.ux/scripts/ScreenArea.js';
-import {Editor, VelPan} from '../editor_base.js';
+import {Editor, VelPan, makeDataBlockBrowser} from '../editor_base.js';
 import {Light} from "../../light/light.js";
 import {Mesh} from "../../mesh/mesh.js";
+import {Material} from "../../core/material.js";
+import {PointSet} from "../../potree/potree_types.js";
 import '../../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {DataPathError} from '../../path.ux/scripts/controller.js';
@@ -29,8 +31,17 @@ export class PropsEditor extends Editor {
     let tabs = col.tabs("left");
     this.buildScene(tabs.tab("Scene"));
 
-    tabs.tab("Material");
+    this.buildMaterial(tabs.tab("Material"));
+
     this.buildObject(tabs.tab("Object"));
+  }
+
+  buildMaterial(tab) {
+    makeDataBlockBrowser(tab, Material, "object.material", (container) => {
+      container.prop("object.material.pointSize");
+      container.prop("object.material.pointSizeType");
+      container.prop("object.material.pointShape");
+    });
   }
 
   buildObject(tab) {

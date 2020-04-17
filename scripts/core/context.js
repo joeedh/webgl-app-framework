@@ -12,6 +12,7 @@ import {DataRef} from './lib_api.js';
 import {ToolStack, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
 import {DebugEditor} from "../editors/debug/DebugEditor.js";
 import * as ui_noteframe from '../path.ux/scripts/ui_noteframe.js';
+import {PointSet} from '../potree/potree_types.js';
 
 export class ToolContext {
   constructor(appstate=_appstate) {
@@ -145,14 +146,20 @@ export class Context extends ToolContext {
     return this.view3d.gl;
   }
 
-  get material() {
-    let mesh = this.mesh;
-    if (mesh === undefined) return undefined;
+  pset() {
+    let obj = this.object;
 
-    if (mesh.materials.length === 1)
-      return mesh.materials[0];
-    else
-      return mesh.materials.active;
+    if (obj !== undefined && obj.data instanceof PointSet) {
+      return pset;
+    }
+  }
+
+  get material() {
+    let pset = this.pset;
+
+    if (pset !== undefined) {
+      return pset.material;
+    }
   }
 
   get nodeEditor() {

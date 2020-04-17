@@ -50,6 +50,109 @@ export function initDebugGL(gl) {
 
 let _gl = undefined;
 
+export function addFastParameterGet(gl) {
+  let map = {
+  };
+
+  gl._getParameter = gl.getParameter;
+  gl._enable = gl.enable;
+  gl._disable = gl.disable;
+  gl._viewport = gl.viewport;
+  gl._scissor = gl.scissor;
+  gl._depthMask = gl.depthMask;
+
+  let validkeys = new Set([gl.DEPTH_TEST, gl.DEPTH_WRITEMASK, gl.SCISSOR_BOX, gl.VIEWPORT]);
+
+  gl.depthMask = function(mask) {
+    if (mask !== map[gl.DEPTH_WRITEMASK]) {
+      map[gl.DEPTH_WRITEMASK] = mask;
+      gl._depthMask(mask);
+    }
+  };
+
+  gl.viewport = function (x, y, w, h) {
+    if (map.VIEWPORT === undefined) {
+      map.VIEWPORT = [x, y, w, h];
+    } else {
+      let box = map.VIEWPORT;
+      box[0] = x;
+      box[1] = y;
+      box[2] = w;
+      box[3] = h;
+    }
+
+    return gl._viewport(x, y, w, h);
+  };
+
+  gl.scissor = function(x, y, w, h) {
+    if (map.SCISSOR_BOX === undefined) {
+      map.SCISSOR_BOX = [x, y, w, h];
+    } else {
+      let box = map.SCISSOR_BOX;
+      box[0] = x;
+      box[1] = y;
+      box[2] = w;
+      box[3] = h;
+    }
+
+    return gl._scissor(x, y, w, h);
+  };
+
+  gl.enable = function(p) {
+    if (p in map && map[p]) {
+      return;
+    }
+
+    map[p] = true;
+    return gl._enable(p);
+  }
+
+  gl.disable = function (p) {
+    if (p in map && !map[p]) {
+      return;
+    }
+
+    map[p] = false;
+    gl._disable(p);
+  }
+
+  gl.getParameter = function(p) {
+    if (p !== undefined && !validkeys.has(p)) {
+      return gl._getParameter(p);
+    }
+
+    if (p in map) {
+      return map[p];
+    }
+
+    map[p] = this._getParameter(p);
+
+    if (map[p] && Array.isArray(map[p])) {
+      let cpy = [];
+      for (let item of map[p]) {
+        cpy.push(item);
+      }
+
+      map[p] = cpy;
+    }
+
+    return map[p];
+  }
+}
+//*/
+
+let shapes = {};
+
+export function drawBox(p, matrix, color, mode) {
+
+}
+
+export function onContextLost(e) {
+  for (let k in shapes) {
+    shapes[k].onContextLost(e);
+  }
+}
+
 //params are passed to canvas.getContext as-is
 export function init_webgl(canvas, params) {
   if (_gl !== undefined) {
@@ -67,6 +170,15 @@ export function init_webgl(canvas, params) {
     gl.getExtension("EXT_frag_depth");
     gl.color_buffer_float = gl.getExtension("WEBGL_color_buffer_float");
   }
+
+  canvas.addEventListener("webglcontextlost", function(event) {
+    event.preventDefault();
+  }, false);
+
+  canvas.addEventListener(
+    "webglcontextrestored", onContextLost, false);
+
+  addFastParameterGet(gl);
 
   _gl = gl;
   gl.haveWebGL2 = webgl2;
@@ -468,7 +580,8 @@ export class ShaderProgram {
           v.setUniform(gl, loc);
         } else if (typeof v == "number") { 
           gl.uniform1f(loc, v);
-        } else {
+        } else if (v !== undefined && v !== null) {
+          console.warn("Invalid uniform", k, v);
           throw new Error("Invalid uniform");
         }
       }

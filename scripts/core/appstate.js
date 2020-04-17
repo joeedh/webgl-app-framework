@@ -7,11 +7,13 @@ import './polyfill.js';
 
 toolsys.setContextClass(Context);
 
-import {loadWidgetShapes} from '../editors/view3d/widget_shapes.js';
+import {loadShapes} from "./simplemesh_shapes.js";
+
 import '../editors/resbrowser/resbrowser.js';
 import '../editors/resbrowser/resbrowser_ops.js';
 import '../editors/resbrowser/resbrowser_types.js';
 
+import {Material} from './material.js';
 import {App, ScreenBlock} from '../editors/editor_base.js';
 import {Library, DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import {IDGen} from '../util/util.js';
@@ -31,7 +33,7 @@ import {Mesh} from '../mesh/mesh.js';
 import {makeCube} from './mesh_shapes.js';
 import '../path.ux/scripts/struct.js';
 import {NodeFlags} from "./graph.js";
-import {ShaderNetwork, makeDefaultShaderNetwork} from "./material.js";
+import {ShaderNetwork, makeDefaultShaderNetwork} from "./shadernetwork.js";
 
 let STRUCT = nstructjs.STRUCT;
 
@@ -64,6 +66,12 @@ export class BasicFileOp extends ToolOp {
 
     lib.add(screenblock);
     lib.setActive(screenblock);
+
+    let mat = new Material();
+    mat.name = "Default";
+    mat.lib_flag |= BlockFlags.HIDE;
+
+    lib.add(mat);
   }
   
   static tooldef() {return {
@@ -458,10 +466,18 @@ export class AppState {
     //datalib = this.datalib;
 
     function getblock(dataref) {
+      if (dataref === undefined) {
+        return undefined;
+      }
+
       return datalib.get(dataref);
     }
 
     function getblock_addUser(dataref, user) {
+      if (dataref === undefined) {
+        return undefined;
+      }
+
       let addUser = dataref !== undefined && !(dataref instanceof DataBlock);
 
       let ret = datalib.get(dataref);
@@ -637,7 +653,7 @@ export class AppState {
 };
 
 export function init() {
-  loadWidgetShapes();
+  loadShapes();
   initSimpleController();
 
   window._appstate = new AppState();
