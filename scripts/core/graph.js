@@ -1120,7 +1120,7 @@ export class Graph {
     }
 
     //prune zombie nodes
-    for (let node of this.nodes) {
+    for (let node of this.nodes.slice(0, this.nodes.length)) {
       if (node.graph_flag & NodeFlags.ZOMBIE) {
         this.remove(node);
       }

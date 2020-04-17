@@ -241,7 +241,7 @@ export class Editor extends Area {
     return sarea.area;
   }
 
-  onFileLoad() {
+  onFileLoad(is_active) {
 
   }
 

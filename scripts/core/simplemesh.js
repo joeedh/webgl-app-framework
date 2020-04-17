@@ -349,9 +349,13 @@ export class GeoLayerManager {
       let b = layer2.data_f32;
 
       b.length = a.length;
+      layer2.length = layer.length;
 
       for (let i=0; i<a.length; i++) {
         b[i] = a[i];
+      }
+      for (let i=0; i<layer.length; i++) {
+        layer2[i] = layer[i];
       }
     }
 
@@ -449,6 +453,7 @@ export class SimpleIsland {
 
   copy() {
     let ret = new SimpleIsland();
+
     ret.primflag = this.primflag;
     ret.layerflag = this.layerflag;
 
@@ -466,6 +471,8 @@ export class SimpleIsland {
 
     ret.program = this.program;
     ret.layers = this.layers.copy();
+    ret.regen = 1;
+
     ret.makeBufferAliases();
 
     return ret;

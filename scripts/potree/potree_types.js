@@ -45,7 +45,7 @@ export class PointSet extends SceneObjectData {
   }
 
   getBoundingBox() {
-    if (!this.ready) return;
+    if (!this.ready) return [new Vector3(), new Vector3()];
 
     let ptree = this.res.data;
 

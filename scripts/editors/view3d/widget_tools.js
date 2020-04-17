@@ -55,15 +55,16 @@ export class WidgetSceneCursor extends WidgetBase {
 };
 
 export class NoneWidget extends WidgetTool {
-  static define() {return {
-    uiname    : "Disable widgets",
-    name      : "none",
-    icon      : -1,
-    flag      : 0
+  static widgetDefine() {return {
+    uiname     : "Disable widgets",
+    name       : "none",
+    icon       : -1,
+    flag       : 0,
+    selectMode : SelMask.GEOM|SelMask.OBJECT
   }}
 
   static validate(ctx) {
-    return false;
+    return true;
   }
 }
 WidgetTool.register(NoneWidget);
@@ -127,27 +128,27 @@ export class TranslateWidget extends WidgetTool {
 
     this.axes = [x, y, z];
 
-    center.on_mousedown = (localX, localY) => {
+    center.on_mousedown = (e, localX, localY) => {
       this.startTool(-1, localX, localY);
     };
 
-    x.on_mousedown = (localX, localY) => {
+    x.on_mousedown = (e, localX, localY) => {
       this.startTool(0, localX, localY);
     };
-    y.on_mousedown = (localX, localY) => {
+    y.on_mousedown = (e, localX, localY) => {
       this.startTool(1, localX, localY);
     };
-    z.on_mousedown = (localX, localY) => {
+    z.on_mousedown = (e, localX, localY) => {
       this.startTool(2, localX, localY);
     };
 
-    px.on_mousedown = (localX, localY) => {
+    px.on_mousedown = (e, localX, localY) => {
       this.startTool(3, localX, localY);
     };
-    py.on_mousedown = (localX, localY) => {
+    py.on_mousedown = (e, localX, localY) => {
       this.startTool(4, localX, localY);
     };
-    pz.on_mousedown = (localX, localY) => {
+    pz.on_mousedown = (e, localX, localY) => {
       this.startTool(5, localX, localY);
     };
 
@@ -185,7 +186,12 @@ export class TranslateWidget extends WidgetTool {
         y = this.axes[1],
         z = this.axes[2];
 
+    //let ret = new Vector3(aabb[0]).interp(aabb[1], 0.5);
+
     let ret = this.view3d.getTransCenter();
+    let aabb = this.view3d.getTransBounds();
+    ret.center = new Vector3(aabb[0]).interp(aabb[1], 0.5);
+    //ret = {center:  ret};
 
     let tmat = new Matrix4();
     let ts = 0.5;
@@ -344,27 +350,27 @@ export class ScaleWidget extends WidgetTool {
 
     this.axes = [x, y, z];
 
-    center.on_mousedown = (localX, localY) => {
+    center.on_mousedown = (e, localX, localY) => {
       this.startTool(-1, localX, localY);
     };
 
-    x.on_mousedown = (localX, localY) => {
+    x.on_mousedown = (e, localX, localY) => {
       this.startTool(0, localX, localY);
     };
-    y.on_mousedown = (localX, localY) => {
+    y.on_mousedown = (e, localX, localY) => {
       this.startTool(1, localX, localY);
     };
-    z.on_mousedown = (localX, localY) => {
+    z.on_mousedown = (e, localX, localY) => {
       this.startTool(2, localX, localY);
     };
 
-    px.on_mousedown = (localX, localY) => {
+    px.on_mousedown = (e, localX, localY) => {
       this.startTool(3, localX, localY);
     };
-    py.on_mousedown = (localX, localY) => {
+    py.on_mousedown = (e, localX, localY) => {
       this.startTool(4, localX, localY);
     };
-    pz.on_mousedown = (localX, localY) => {
+    pz.on_mousedown = (e, localX, localY) => {
       this.startTool(5, localX, localY);
     };
 
@@ -534,7 +540,7 @@ export class ExtrudeWidget extends WidgetTool {
 
     let arrow = this.arrow = this.getArrow(undefined, "orange");
 
-    arrow.on_mousedown = (localX, localY) => {
+    arrow.on_mousedown = (e, localX, localY) => {
       this.startTool(localX, localY);
     };
 

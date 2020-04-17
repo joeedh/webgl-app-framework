@@ -15,6 +15,7 @@ import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../path.ux/scripts/sim
 import {BasicMeshDrawer} from './view3d_draw.js';
 import {MeshCache} from './view3d_subeditor.js';
 import {SubsurfDrawer} from '../../subsurf/subsurf_draw.js';
+let STRUCT = nstructjs.STRUCT;
 
 //each subeditor should fill in these tools
 export const MeshTools = {
@@ -30,13 +31,10 @@ export const MeshTools = {
 import {Colors, elemColor} from './view3d_draw.js';
 
 export class MeshEditor extends View3D_ToolMode {
-  constructor(view3d) {
-    super();
+  constructor(manager) {
+    super(manager);
 
     this._findnearest_rets = util.cachering.fromConstructor(FindNearestRet, 64);
-
-    this.ctx = undefined; //is set by owning View3D
-    this.view3d = view3d;
 
     this.drawvisit = new util.set();
     this.meshcache = new util.hashtable();
@@ -578,4 +576,10 @@ export class MeshEditor extends View3D_ToolMode {
     return mc.drawer.drawIDs(this.view3d, gl, object, uniforms);
   }
 }
+
+MeshEditor.STRUCT = STRUCT.inherit(MeshEditor, View3D_ToolMode) + `
+}
+`;
+nstructjs.manager.add_class(MeshEditor);
+
 View3D_ToolMode.register(MeshEditor);

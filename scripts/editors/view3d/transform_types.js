@@ -20,11 +20,11 @@ export class MeshTransType extends TransDataType {
     let mesh = ctx.mesh;
     let tdata = [];
 
-    console.log("MESH GEN", selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE), selectmode);
-
-    if (!mesh || !(selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE))) {
+    if (!mesh || !(selectmode & SelMask.GEOM)) {
       return undefined;
     }
+
+    console.log("MESH GEN", selectmode & SelMask.GEOM, selectmode);
 
     if (propmode != PropModes.NONE) {
       let i = 0;
@@ -304,6 +304,10 @@ export class MeshTransType extends TransDataType {
   }
 
   static calcAABB(ctx, selmask) {
+    if (!(selmask & SelMask.GEOM)) {
+      return undefined;
+    }
+
     let d = 1e17;
     let min = new Vector3([d, d, d]), max = new Vector3([-d, -d, -d]);
     let ok = false;

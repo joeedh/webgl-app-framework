@@ -26,13 +26,12 @@ import {Icons} from '../icon_enum.js';
 let _shift_temp = [0, 0];
 
 export class ObjectEditor extends View3D_ToolMode {
-  constructor(view3d) {
-    super();
+  constructor(manager) {
+    super(manager);
 
     this.start_mpos = new Vector2();
 
     this.ctx = undefined; //is set by owning View3D
-    this.view3d = view3d;
 
     this.defineKeyMap();
   }
@@ -63,6 +62,10 @@ export class ObjectEditor extends View3D_ToolMode {
 
   on_mousedown(e, x, y, was_touch) {
     let ctx = this.view3d.ctx;
+
+    if (this.manager.widgets.highlight !== undefined) {
+      return false;
+    }
 
     console.log("click select!");
     let ret = this.findnearest(ctx, x, y);
@@ -103,6 +106,10 @@ export class ObjectEditor extends View3D_ToolMode {
   on_mousemove(e, x, y, was_touch) {
     let ctx = this.view3d.ctx;
 
+    if (this.manager.widgets.highlight !== undefined) {
+      return false;
+    }
+
     let mdown;
 
     if (was_touch) {
@@ -117,7 +124,7 @@ export class ObjectEditor extends View3D_ToolMode {
       return true;
     }
 
-    if (mdown) {
+    if (mdown && !e.shiftKey && !e.ctrlKey && !e.altKey) {
       let mpos = new Vector2([x, y]);
       let dis = this.start_mpos.vectorDistance(mpos);
 

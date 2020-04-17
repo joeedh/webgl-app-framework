@@ -39,7 +39,11 @@ export class FindnearestObject extends FindnearestClass {
 
     x -= limit >> 1;
     y -= limit >> 1;
-
+    
+    if (sbuf === undefined) {
+      return undefined;
+    }
+    
     let sample = sbuf.sampleBlock(ctx, view3d.gl, view3d, x, y, limit, limit);
     if (sample === undefined) {
       return;

@@ -136,6 +136,8 @@ export class WidgetShape {
 
     gl.disable(gl.DEPTH_TEST);
     gl.depthMask(false);
+    gl.disable(gl.CULL_FACE);
+
     this.mesh.draw(gl);
 
     gl.enable(gl.DEPTH_TEST);
@@ -441,6 +443,10 @@ export class WidgetBase {
     return false;
   }
 
+  remove() {
+    this.manager.remove(this);
+  }
+
   destroy(gl) {
     if (this.destroyed) {
       return;
@@ -720,6 +726,25 @@ export class WidgetTool extends WidgetBase {
     super.update(this.view3d.manager);
   }
 
+  remove() {
+    this.manager.remove(this);
+
+    for (let w of this.widgets) {
+      this.manager.remove(w);
+    }
+
+    this.widgets = [];
+
+    this.manager.remove(this);
+
+    if (this._widget_tempnode !== undefined ){
+      this.manager.removeCallbackNode(this._widget_tempnode);
+      this._widget_tempnode = undefined;
+    }
+
+    //this.manager.clearNodes();
+  }
+
   destroy(gl) {
     super.destroy(gl);
 
@@ -728,11 +753,8 @@ export class WidgetTool extends WidgetBase {
     }
 
     for (let w of this.widgets) {
-      this.manager.remove(w);
+      w.destroy(gl);
     }
-
-    this.widgets.length = 0;
-    this.manager.clearNodes();
   }
 };
 
@@ -872,7 +894,8 @@ export class WidgetManager {
       this.widgets.highlight = w;
       w.flag |= WidgetFlags.HIGHLIGHT;
 
-      return w.on_mousedown(e, localX, localY);
+      w.on_mousedown(e, localX, localY);
+      return true;
     }
   }
 
@@ -971,10 +994,26 @@ export class WidgetManager {
       widget.destroy(this.view3d.gl);
     }
 
+    if (widget === this.highlight) {
+      this.highlight = undefined;
+    }
+    if (widget === this.active) {
+      this.active = undefined;
+    }
+
+    delete this.widget_idmap[widget.id];
+
     widget.manager = undefined;
 
     this.widgets.remove(widget);
-    widget.id = -1;
+  }
+
+  clear() {
+    let ws = this.widgets.slice(0, this.widgets.length);
+
+    for (let widget of ws) {
+      this.remove(widget);
+    }
   }
 
   destroy(gl) {

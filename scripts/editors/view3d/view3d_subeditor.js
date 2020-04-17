@@ -23,6 +23,10 @@ import {KeyMap, HotKey} from "../editor_base.js";
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from "../../core/simplemesh.js";
 import {WidgetTool, WidgetFlags} from "./widgets.js";
 import {EnumProperty} from "../../path.ux/scripts/toolprop.js";
+import {Icons} from '../icon_enum.js';
+import {SelMask} from "./selectmode.js";
+import '../../path.ux/scripts/struct.js';
+let STRUCT = nstructjs.STRUCT;
 
 export class MeshCache {
   constructor(meshid) {
@@ -161,6 +165,17 @@ export class View3D_ToolMode extends WidgetTool {
     }
 
     /*
+  get view3d() {
+    return this._view3d;
+  }
+
+  set view3d(val) {
+    console.warn("view3d set", val !== undefined ? val.constructor.name : undefined);
+    this._view3d = val;
+  }
+  //*/
+
+    /*
     * called for all objects;  returns true
     * if an object if the toolmode drew the object
     * itself
@@ -169,3 +184,9 @@ export class View3D_ToolMode extends WidgetTool {
       return false;
     }
 }
+View3D_ToolMode.STRUCT = `
+View3D_ToolMode {
+  
+}
+`;
+nstructjs.manager.add_class(View3D_ToolMode);
