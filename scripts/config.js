@@ -16,17 +16,22 @@ export const SITEPREFIX = prefix;
 export function joinPrefix(path) {
     path = path.trim();
 
-    if (path.length == 0 || path[0] !== "/") {
-        path = "/" + path;
-    }
-
     while (path.startsWith("/")) {
         path = path.slice(1, path.length);
+    }
+
+    if (!SITEPREFIX.endsWith("/")) {
+        path = "/" + path;
     }
 
     return SITEPREFIX + path;
 }
 
 export function resolvePath(path) {
-    return location.protocol + "//" + HOST + "/" + joinPrefix(path);
+    path = joinPrefix(path);
+    if (!path.startsWith("/")) {
+        path = "/" + path;
+    }
+    
+    return location.protocol + "//" + HOST + path;
 }
