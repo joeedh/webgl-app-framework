@@ -83,6 +83,7 @@ export class PopupEditor extends Editor {
       let h = ~~(rect.height+0.5);
 
       if (w !== this.size[0] || h !== this.size[1]) {
+        console.log("updating .size");
         this.size[0] = w;
         this.size[1] = h;
 
@@ -93,11 +94,29 @@ export class PopupEditor extends Editor {
     }
   }
 
+  updateHeight() {
+    let rect = this.getClientRects()[0];
+    if (rect !== undefined) {
+      let w = ~~(rect.width+0.5);
+      let h = ~~(rect.height+0.5);
+
+      if (h !== this.size[1]) {
+        console.log("updating .size[1]");
+        this.size[1] = h;
+
+        this.ctx.screen.regenBorders();
+        this.setCSS();
+        this.owning_sarea.setCSS();
+      }
+    }
+  }
   update() {
     super.update();
 
     if (!this.open) {
       this.shrinkToFit();
+    } else {
+      this.updateHeight();
     }
   }
 
@@ -110,13 +129,17 @@ export class PopupEditor extends Editor {
     } else {
       this.container.style["width"] = "auto";
     }
+
+    this.style["height"] = "min-content";
   }
 
   tab(name, icon=-1, description=name) {
     let container = document.createElement("container-x");
-
     container.ctx = this.ctx;
     container.init();
+
+    container.background = this.getDefault("DefaultPanelBG");
+
     container.style["height"] = "min-content";
     container.style["width"] = "100%";
 
@@ -170,6 +193,21 @@ export class PopupEditor extends Editor {
     this.shadow.appendChild(container);
 
     let toolbar = this.toolbar = container.col();
+
+    toolbar.style["margin-left"] = "25px";
+    toolbar.style["margin-right"] = "5px";
+    toolbar.style["padding"] = "15px";
+
+    //toolbar.overrideDefault("BoxBG", "rgba(0, 0, 0, 0.25)");
+    //toolbar.overrideDefault("BoxMargin", 24);
+
+    toolbar.overrideClassDefault("iconbutton", "BoxBG", "rgba(0, 0, 0, 0.25)");
+    toolbar.overrideClassDefault("iconbutton", "BoxRadius", 64);
+    toolbar.overrideClassDefault("iconbutton", "BoxMargin", 10);
+
+    toolbar.overrideClassDefault("iconcheck", "BoxBG", "rgba(0, 0, 0, 0.25)");
+    //toolbar.overrideClassDefault("iconcheck", "BoxRadius", 24);
+    toolbar.overrideClassDefault("iconcheck", "BoxMargin", 10);
 
     container.style["width"] = "auto";
     container.style["height"] = "min-content";

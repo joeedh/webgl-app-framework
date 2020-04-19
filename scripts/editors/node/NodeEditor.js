@@ -175,7 +175,11 @@ export class NodeSocketElem extends RowFrame {
 
       this.overrideDefault("defaultHeight", 20);
       this.overrideDefault("defaultWidth", 70);
-      //this.overrideDefault("DefaultTextSize", Math.ceil(21*scale+0.5));
+      /*
+      let font = this.getDefault("DefaultText").copy();
+      font.size = Math.ceil(21*scale+0.5);
+      this.overrideDefault("DefaultText", font);
+      //*/
 
       let onchange = () => {
         window.redraw_viewport();

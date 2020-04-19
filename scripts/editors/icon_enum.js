@@ -1,5 +1,7 @@
 "use strict";
 
+import {setIconMap} from '../path.ux/scripts/ui_base.js';
+
 export let Icons = {
   HFLIP          : 0,
   TRANSLATE      : 1,
@@ -55,5 +57,8 @@ export let Icons = {
   PAN            : 51,
   MEASURE_ANGLE  : 52,
   OPEN_FILE      : 53,
-  SAVE_FILE      : 54
+  SAVE_FILE      : 54,
+  MATERIAL       : 55,
+  OBJECT         : 56
 };
+setIconMap(Icons);

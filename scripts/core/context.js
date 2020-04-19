@@ -29,6 +29,16 @@ export class ToolContext {
     }
   }
 
+  message(msg, timeout=1500) {
+    let state = this.state;
+
+    console.warn(msg);
+
+    if (state && state.screen) {
+      ui_noteframe.sendNote(state.screen, msg, "green", timeout);
+    }
+  }
+
   get appstate() { /** application state */
     console.warn("Deprecated read of context.appstate; use context.state instead");
     return this._appstate;

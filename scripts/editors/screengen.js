@@ -16,7 +16,9 @@ export function genResBrowserScreen(appstate, ResourceBrowser) {
   sarea.ctx = appstate.ctx;
   sarea.floating = false;
 
-  sarea.pos[0] = sarea.pos[1] = 0.0;
+  sarea.pos[0] = 0.0;
+  sarea.pos[1] = 0.0;
+
   sarea.size[0] = oldscreen.size[0];
   sarea.size[1] = oldscreen.size[1];
 
@@ -59,9 +61,9 @@ export function genDefaultScreen(appstate) {
   let sprop = document.createElement("screenarea-x");
   sprop.floating = true;
   sprop.pos[0] = 0.0;
-  sprop.pos[1] = sarea.pos[1];
+  sprop.pos[1] = sarea.pos[1] + 50;
   sprop.size[0] = 350;
-  sprop.size[1] = sarea.size[1];
+  sprop.size[1] = sarea.size[1] - 50;
   sprop.ctx = _appstate.ctx;
   sprop.switch_editor(PropsEditor);
 

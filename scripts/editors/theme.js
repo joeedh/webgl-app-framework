@@ -6,6 +6,9 @@ export const theme = {
     "oneAxisPadding" : 6,
     "oneAxisMargin" : 6,
 
+    "ScreenBorderOuter" : "rgba(10, 10, 10, 0.1)",
+    "ScreenBorderInner" : "rgba(10, 10, 10, 0.1)",
+
     "numslider_width" : 24,
     "numslider_height" : 24,
 
@@ -13,51 +16,54 @@ export const theme = {
     "defaultHeight" : 32,
 
     "NoteBG" : "rgba(220, 220, 220, 0.0)",
-    "NoteTextColor" : "rgb(100, 100, 100)",
+    "NoteText" : new CSSFont({
+      font  : "sans-serif",
+      size  : 14,
+      color :  "rgba(235, 235, 235, 1.0)",
+      weight : "bold"
+    }),
+
     "TabStrokeStyle1" : "rgba(200, 200, 200, 1.0)",
     "TabStrokeStyle2" : "rgba(225, 225, 225, 1.0)",
     "TabInactive" : "rgba(150, 150, 150, 1.0)",
     "TabHighlight" : "rgba(50, 50, 50, 0.2)",
 
-    "DefaultPanelBG" : "rgba(155, 155, 155, 0.5)",
-    "InnerPanelBG" : "rgba(140, 140, 140, 0.5)",
+    "DefaultPanelBG" : "rgba(100, 100, 155, 0.75)",
+    "InnerPanelBG" : "rgba(95, 95, 75, 0.5)",
 
-    "BoxRadius" : 12,
-    "BoxMargin" : 4,
+    "BoxRadius" : 24,
+    "BoxMargin" : 2,
     "BoxHighlight" : "rgba(155, 220, 255, 0.75)",
-    "BoxDepressed" : "rgba(130, 130, 130, 0.75)",
-    "BoxBG" : "rgba(170, 170, 170, 0.75)",
-    "DisabledBG" : "rgba(110, 110, 110, 0.75)",
-    "BoxSubBG" : "rgba(175, 175, 175, 0.75)",
-    "BoxSub2BG" : "rgba(125, 125, 125, 0.75)", //for panels
-    "BoxBorder" : "rgba(255, 255, 255, 1.0)",
+    "BoxDepressed" : "rgba(55, 55, 55, 0.75)",
+    "BoxBG" : "rgba(100, 100, 100, 0.75)",
+    "DisabledBG" : "rgba(0, 0, 0, 1.0)",
+    "BoxSubBG" : "rgba(55, 55, 55, 0.75)",
+    "BoxSub2BG" : "rgba(25, 25, 25, 0.75)", //for panels
+    "BoxBorder" : "rgba(25, 25, 25, 0.5)",
     "MenuBG" : "rgba(250, 250, 250, 1.0)",
     "MenuHighlight" : "rgba(155, 220, 255, 1.0)",
-    "AreaHeaderBG" : "rgba(170, 170, 170, 1.0)",
+    "AreaHeaderBG" : "rgba(75, 75, 75, 0.5)",
 
     "DefaultTextSize" : 14,
 
+    //fonts
     "DefaultText" : new CSSFont({
       font  : "sans-serif",
       size  : 14,
-      color :  "rgba(35, 35, 35, 1.0)",
+      color :  "rgba(235, 235, 235, 1.0)",
       weight : "bold"
     }),
 
-    //fonts
-    "DefaultTextFont" : "sans-serif",
-    "DefaultTextColor" : "rgba(35, 35, 35, 1.0)",
-
     "TabText" : new CSSFont({
       size     : 18,
-      color    : "rgba(35, 35, 35, 1.0)",
+      color    : "rgba(235, 235, 235, 1.0)",
       font     : "sans-serif",
       //weight   : "bold"
     }),
 
     "LabelText" : new CSSFont({
       size     : 13,
-      color    : "rgba(75, 75, 75, 1.0)",
+      color    : "rgba(245, 245, 245, 1.0)",
       font     : "sans-serif",
       weight   : "bold"
     }),
@@ -82,18 +88,18 @@ export const theme = {
 
     "TitleText" : new CSSFont({
       size     : 16,
-      color    : "rgba(55, 55, 55, 1.0)",
+      color    : "rgba(255, 255, 255, 1.0)",
       font     : "sans-serif",
       weight   : "bold"
     }),
-    "TitleTextSize"   : 16,
-    "TitleTextColor"  : "rgba(255, 255, 255, 1.0)",
-    "TitleTextFont"   : "sans-serif"
   },
 
   button : {
     "defaultWidth" : 100,
     "defaultHeight" : 24
+  },
+
+  iconcheck : {
   },
 
   numslider : {

@@ -981,7 +981,8 @@ export class View3D extends Editor {
       if (i % 8 == 0) d = 0.3;
       else if (i % 4 == 0.0) d = 0.6;
       else if (i % 2 == 0.0) d = 0.7;
-      let clr = [d, d, d, 1.0];
+
+      let clr = [1.0-d, 1.0-d, 1.0-d, 1.0];
       
       let line = mesh.line([-sz, t, 0.0], [sz, t, 0.0]);
       
@@ -1192,11 +1193,11 @@ export class View3D extends Editor {
     gl.viewport(~~x, ~~y, ~~w, ~~h);
     gl.scissor(~~x, ~~y, ~~w, ~~h);
 
-    if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
-      gl.clearColor(0.5, 0.5, 0.5, 1.0);
-    } else {
-      gl.clearColor(0.8, 0.8, 1.0, 1.0);
-    }
+    //if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
+      gl.clearColor(0.15, 0.15, 0.15, 1.0);
+    //} else {
+    //  gl.clearColor(0.8, 0.8, 1.0, 1.0);
+    //}
     //gl.clearColor(1.0, 1.0, 1.0, 0.0);
 
     gl.clearDepth(1000000);

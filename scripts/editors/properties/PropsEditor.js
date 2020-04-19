@@ -5,6 +5,7 @@ import {Mesh} from "../../mesh/mesh.js";
 import {Material} from "../../core/material.js";
 import {PointSet} from "../../potree/potree_types.js";
 import {PopupEditor} from '../popup_editor.js';
+import {Icons} from '../icon_enum.js';
 import '../../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {DataPathError} from '../../path.ux/scripts/controller.js';
@@ -19,14 +20,12 @@ import {NodeEditor} from "../node/NodeEditor.js";
 export class PropsEditor extends PopupEditor   {
   constructor() {
     super();
-
-    this.toolbar = undefined;
   }
 
   init() {
     super.init();
 
-    this.background = this.getDefault("DefaultPanelBG");
+    this.background = "rgba(0,0,0,0)";
 
     let header = this.header;
     let container = this.container;
@@ -35,9 +34,9 @@ export class PropsEditor extends PopupEditor   {
 
     let tabs = this; //col.tabs("left");
 
-    this.buildScene(tabs.tab("Scene"));
-    this.buildMaterial(tabs.tab("Material"));
-    this.buildObject(tabs.tab("Object"));
+    this.buildScene(tabs.tab("Scene", Icons.RENDER));
+    this.buildMaterial(tabs.tab("Material", Icons.MATERIAL));
+    this.buildObject(tabs.tab("Object", Icons.OBJECT));
   }
 
   buildMaterial(tab) {
