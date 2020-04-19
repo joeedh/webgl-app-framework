@@ -11,7 +11,7 @@ export let iconmanager = new IconManager([
   document.getElementById("iconsheet50"),
   document.getElementById("iconsheet64"),
   document.getElementById("iconsheet64"),
-], [16, [24, 16], 32, [40, 32], [50, 32], [64, 32], [64, 64], [80, 64], [128, 64]], 16);
+], [16, [24, 24], 32, [40, 32], [50, 32], [64, 32], [64, 64], [80, 64], [128, 64]], 16);
 
 setIconMap(Icons);
 let _last_dpi = undefined;

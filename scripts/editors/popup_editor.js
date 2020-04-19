@@ -61,7 +61,10 @@ export class PopupEditor extends Editor {
     this.container.add(this.contents);
 
     //this.shadow.appendChild(this.contents);
-    this.size[0] = this.openSize;
+    if (this.owning_sarea !== undefined) {
+      this.size[0] = this.openSize;
+      this.owning_sarea.setCSS();
+    }
 
     this.ctx.screen._internalRegenAll();
     this.ctx.screen.setCSS();
@@ -70,6 +73,10 @@ export class PopupEditor extends Editor {
   }
 
   shrinkToFit() {
+    if (this.owning_sarea === undefined) {
+      return;
+    }
+
     let rect = this.getClientRects()[0];
     if (rect !== undefined) {
       let w = ~~(rect.width+0.5);
@@ -81,6 +88,7 @@ export class PopupEditor extends Editor {
 
         this.ctx.screen.regenBorders();
         this.setCSS();
+        this.owning_sarea.setCSS();
       }
     }
   }

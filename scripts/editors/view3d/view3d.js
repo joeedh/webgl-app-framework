@@ -376,6 +376,9 @@ export class View3D extends Editor {
     console.warn("switchToolMode called");
 
     ret.onActive();
+    ret.ctx = this.ctx;
+
+    this.doOnce(this.rebuildHeader);
 
     return ret;
   }
@@ -617,12 +620,6 @@ export class View3D extends Editor {
   }
 
   rebuildHeader() {
-    let tools = [
-      "view3d.view_selected()",
-      "mesh.toggle_select_all()",
-      "light.new(position='cursor')"
-    ];
-
     if (this.header !== undefined) {
       this.header.remove();
     }
@@ -631,6 +628,7 @@ export class View3D extends Editor {
     this.header = this.container.col();
     this.header.style["width"] = "min-content";
     this.container.style["width"] = "min-content";
+    this.header.style["margin-left"] = "75px";
 
     this.header.useIcons();
 
@@ -639,11 +637,10 @@ export class View3D extends Editor {
     let rows = header.col();
 
     header = rows.row();
-    header.menu("Tools", tools);
     let row1 = header.row();
     let row2 = header.row();
 
-    row1.button("Add", () => {
+    row1.iconbutton(Icons.OPEN_FILE, "Add Pointset", () => {
       ResourceBrowser.openResourceBrowser(this, "pointset").then((res) => {
         let op = new AddPointSetOp();
         op.inputs.url.setValue(res.url);
@@ -652,6 +649,7 @@ export class View3D extends Editor {
       });
 
     });
+
     //row2.label("yay");
     row2.prop("view3d.flag[SHOW_RENDER]");
     row2.prop("view3d.flag[ONLY_RENDER]");
@@ -681,6 +679,10 @@ export class View3D extends Editor {
       this.ctx.toolstack.redo();
       window.redraw_viewport();
     });
+
+    strip = header.strip();
+    strip.prop("view3d.toolmode[pan]");
+    strip.prop("view3d.toolmode[object]");
 
     //header.prop("mesh.flag[SUBSURF]", PackFlags.USE_ICONS);
     //strip.tool("light.new(position='cursor')", PackFlags.USE_ICONS);

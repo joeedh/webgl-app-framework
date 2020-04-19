@@ -51,6 +51,13 @@ export class MenuBarEditor extends Editor {
       }],
     ]);
 
+    let tools = [
+      "view3d.view_selected()",
+      "mesh.toggle_select_all()",
+      "light.new(position='cursor')"
+    ];
+    header.menu("Edit", tools);
+
     header.menu("Session", [
       ["Save Defalut File  ", () => {
         console.log("saving default file");

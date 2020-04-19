@@ -174,7 +174,40 @@ export class AppState {
     this.three_scene = undefined;
     this.three_renderer = undefined;
   }
-  
+
+  unswapScreen() {
+    let screen = this.screen;
+
+    if (screen._swapScreen === undefined) {
+      console.warn("Bad call to appstate.unswapScreen()")
+      return;
+    }
+
+    let screen2 = screen._swapScreen;
+    screen._swapScreen = undefined;
+
+    this.setScreen(screen2)
+  }
+
+  swapScreen(screen) {
+    screen._swapScreen = this.screen;
+    this.setScreen(screen, false);
+  }
+
+  setScreen(screen, trigger_destroy=true) {
+    this.screen.unlisten();
+    this.screen.remove(trigger_destroy);
+
+    this.screen = screen;
+    screen.ctx = this.ctx;
+
+    document.body.appendChild(this.screen);
+
+    screen.listen();
+    screen.setCSS();
+    screen.update();
+  }
+
   start() {
     this.loadSettings();
 

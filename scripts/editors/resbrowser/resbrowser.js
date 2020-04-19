@@ -6,6 +6,7 @@ import * as util from '../../util/util.js';
 import {ResourceType, resourceManager} from '../../core/resource.js';
 import {PointSetResource} from '../../potree/potree_resource.js'
 import {ResourcePageType, ResourcePages} from './resbrowser_types.js';
+import {genResBrowserScreen} from '../screengen.js';
 
 import {Editor} from '../editor_base.js';
 import {KeyMap} from "../../path.ux/scripts/simple_events.js";
@@ -104,11 +105,32 @@ export class ResourceBrowser extends Editor {
     this.icons.active = undefined;
     this.swapCallback = undefined;
     this.swapCancelled = undefined;
+    this._swapEnd = undefined;
     this.cellsize = 128;
   }
 
   static openResourceBrowser(area, resourceType, oncancel) {
     return new Promise((accept, reject) => {
+      let ctx = area.ctx;
+
+      let screen = genResBrowserScreen(ctx.state, ResourceBrowser);
+      ctx.state.swapScreen(screen);
+
+      let resarea = screen.sareas[0].area;
+
+      console.log(resarea);
+      resarea._swapEnd = () => {
+        _appstate.unswapScreen();
+      };
+
+      resarea.swapCallback = accept;
+      resarea.resourceType = resourceType;
+      resarea.needsRebuild = true;
+      resarea.swapCancelled = oncancel;
+    });
+
+    return new Promise((accept, reject) => {
+
       let newarea = area.swap(ResourceBrowser);
 
       newarea.swapCallback = accept;
@@ -133,7 +155,7 @@ export class ResourceBrowser extends Editor {
         return;
       }
 
-      this.swapBack();
+      this.end();
 
       if (this.swapCallback !== undefined) {
         this.swapCallback(res.res);
@@ -141,7 +163,7 @@ export class ResourceBrowser extends Editor {
     });
 
     header.button("Cancel", () => {
-      this.swapBack();
+      this.end();
       if (this.swapCancelled !== undefined) {
         this.swapCancelled();
       }
@@ -149,6 +171,16 @@ export class ResourceBrowser extends Editor {
 
     this.table = this.container.table();
     this.rebuild();
+  }
+
+  end() {
+    console.log(this._swapEnd);
+
+    if (this._swapEnd !== undefined) {
+      this._swapEnd();
+    }
+
+    this._swapEnd = undefined;
   }
 
   makeResIcon() {

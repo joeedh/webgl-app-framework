@@ -78,10 +78,6 @@ export class ObjectEditor extends View3D_ToolMode {
     let strip;
 
     strip = row.strip();
-    strip.prop("view3d.toolmode[pan]");
-    strip.prop("view3d.toolmode[object]");
-
-    strip = row.strip();
     strip.prop("view3d.active_tool[none]");
     strip.prop("view3d.active_tool[translate]");
 

@@ -2,6 +2,30 @@ import {MenuBarEditor} from "./menu/MainMenu.js";
 import {PropsEditor} from "./properties/PropsEditor.js";
 import {View3D} from "./view3d/view3d.js";
 
+export function genResBrowserScreen(appstate, ResourceBrowser) {
+  let screen = document.createElement("webgl-app-x");
+
+  let oldscreen = appstate.screen;
+
+  screen.ctx = appstate.ctx;
+  screen.size[0] = oldscreen.size[0];
+  screen.size[1] = oldscreen.size[1];
+
+  let sarea = document.createElement("screenarea-x");
+
+  sarea.ctx = appstate.ctx;
+  sarea.floating = false;
+
+  sarea.pos[0] = sarea.pos[1] = 0.0;
+  sarea.size[0] = oldscreen.size[0];
+  sarea.size[1] = oldscreen.size[1];
+
+  sarea.switch_editor(ResourceBrowser);
+  screen.appendChild(sarea);
+
+  return screen;
+}
+
 export function genDefaultScreen(appstate) {
   let screen = _appstate.screen;
 
