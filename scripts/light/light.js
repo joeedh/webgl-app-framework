@@ -78,6 +78,12 @@ export class Light extends SceneObjectData {
     return this.copy();
   }
 
+  drawIds(view3d, gl, selectMask, uniforms, object) {
+    let program = Shaders.MeshIDShader;
+
+    this.draw(view3d, gl, uniforms, program, object);
+  }
+
   static dataDefine() {return {
     name       : "Light",
     selectMask : 0,

@@ -751,27 +751,27 @@ export class SimpleIsland {
       this.gen_buffers(gl);
     }
     
-    if (uniforms == undefined) {
-      for (var k in this._uniforms_temp) {
+    if (uniforms === undefined) {
+      for (let k in this._uniforms_temp) {
         delete this._uniforms_temp[k];
       }
       
       uniforms = this._uniforms_temp;
     }
     
-    for (var k in this.uniforms) {
+    for (let k in this.uniforms) {
       if (!(k in uniforms)) {
         uniforms[k] = this.uniforms[k];
       }
     }
     
-    for (var k in this.mesh.uniforms) {
+    for (let k in this.mesh.uniforms) {
       if (!(k in uniforms)) {
         uniforms[k] = this.mesh.uniforms[k];
       }
     }
     
-    if (program == undefined)
+    if (program === undefined)
       program = gl.simple_shader;
   
     program.bind(gl, uniforms);

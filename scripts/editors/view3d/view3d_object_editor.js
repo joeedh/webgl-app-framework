@@ -1,4 +1,4 @@
-import {FindNearest} from "./findnearest.js";
+import {FindNearest, castRay, CastModes} from "./findnearest.js";
 import {ExtrudeRegionsOp} from '../../mesh/mesh_ops.js';
 import {ObjectFlags} from '../../sceneobject/sceneobject.js';
 import {View3D_ToolMode} from './view3d_subeditor.js';
@@ -30,10 +30,21 @@ export class ObjectEditor extends View3D_ToolMode {
     super(manager);
 
     this.start_mpos = new Vector2();
-
     this.ctx = undefined; //is set by owning View3D
 
+    this.test = "yay";
+
     this.defineKeyMap();
+  }
+
+  static defineAPI(api) {
+    let tstruct = super.defineAPI(api);
+
+    return tstruct;
+  }
+
+  updateWidgetTool(view3d, widgettool) {
+    return super.updateWidgetTool(view3d, widgettool);
   }
 
   static widgetDefine() {return {
@@ -126,9 +137,15 @@ export class ObjectEditor extends View3D_ToolMode {
       return true;
     }
 
+    //(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
+    let mpos = new Vector2([x, y]);
+    let ret = castRay(ctx, ctx.selectMask, mpos, this.view3d, CastModes.FRAMEBUFFER);
+
+    console.log("castRay ret:", ret);
+
     /*
     let's rely on transform widget for click-drag tweaking.
-     
+
     if (mdown && !e.shiftKey && !e.ctrlKey && !e.altKey) {
       let mpos = new Vector2([x, y]);
       let dis = this.start_mpos.vectorDistance(mpos);
@@ -208,6 +225,7 @@ export class ObjectEditor extends View3D_ToolMode {
 
     if (draw_outline) {
       let mask = gl.getParameter(gl.DEPTH_WRITEMASK);
+
       gl.depthMask(false);
 
       this.view3d.threeCamera.pushUniforms(uniforms);

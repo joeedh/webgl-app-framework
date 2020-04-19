@@ -286,8 +286,8 @@ void main() {
   
   vec4 c;
   
-  c[0] = vId;
-  c[1] = object_id;
+  c[0] = object_id + 1.0;
+  c[1] = vId;
   
   vColor = c;
 }

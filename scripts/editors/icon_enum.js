@@ -52,5 +52,6 @@ export let Icons = {
   VIEW_ALPHA     : 48,
   SCALE_WIDGET   : 49,
   FAKE_USER      : 50,
-  PAN            : 51
+  PAN            : 51,
+  MEASURE_ANGLE  : 52
 };

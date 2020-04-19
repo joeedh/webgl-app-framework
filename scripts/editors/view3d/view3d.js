@@ -290,6 +290,7 @@ export class View3D extends Editor {
 
     this.toolmodes = []; //we cache toolmode instances, these are saved in files too
     this.toolmode_map = {};
+    this.toolmode_namemap = {};
 
     this.toolmode_i = undefined;
     this.toolModeProp = makeToolModeEnum();
@@ -356,8 +357,11 @@ export class View3D extends Editor {
 
     if (ret === undefined) {
       ret = new cls(this.widgets);
+      let def = cls.widgetDefine();
+
       this.toolmodes.push(ret);
       this.toolmode_map[i] = ret;
+      this.toolmode_namemap[def.define] = ret;
     }
 
     if (this.toolmode !== undefined) {
@@ -612,16 +616,12 @@ export class View3D extends Editor {
     //this.camera.orbitTarget.load(p);
   }
 
-  init() {
-    super.init();
-
+  rebuildHeader() {
     let tools = [
       //"mesh.subdivide_smooth()",
       "view3d.view_selected()",
       "mesh.toggle_select_all()"
     ];
-
-    this.makeGraphNode();
 
     let header = this.header;
     header.menu("Tools", tools);
@@ -642,12 +642,19 @@ export class View3D extends Editor {
     row2.prop("view3d.flag[ONLY_RENDER]", PackFlags.USE_ICONS);
 
     header = row1;
-    //header.prop("view3d.selectmode", PackFlags.USE_ICONS);
-    header.prop("view3d.toolmode[pan]", PackFlags.USE_ICONS);
-    header.prop("view3d.toolmode[object]", PackFlags.USE_ICONS);
 
-    header.prop("view3d.active_tool[none]", PackFlags.USE_ICONS);
-    header.prop("view3d.active_tool[translate]", PackFlags.USE_ICONS);
+    let strip = header.strip();
+
+    strip.packflag = strip.inherit_packflag = 0;
+    strip.background = strip.getDefault("BoxSub2BG");
+
+    //header.prop("view3d.selectmode", PackFlags.USE_ICONS);
+    strip.prop("view3d.toolmode[pan]", PackFlags.USE_ICONS);
+    strip.prop("view3d.toolmode[object]", PackFlags.USE_ICONS);
+
+    strip = header.strip();
+    strip.prop("view3d.active_tool[none]", PackFlags.USE_ICONS);
+    strip.prop("view3d.active_tool[translate]", PackFlags.USE_ICONS);
 
     //header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
     header.tool("view3d.view_selected()", PackFlags.USE_ICONS);
@@ -671,6 +678,14 @@ export class View3D extends Editor {
     //});
 
     this.setCSS();
+
+  }
+
+  init() {
+    super.init();
+
+    this.makeGraphNode();
+    this.rebuildHeader();
 
     let uiHasFocus = (e) => {
       let node = this.getScreen().pickElement(e.pageX, e.pageY);
@@ -1291,6 +1306,7 @@ export class View3D extends Editor {
 
     for (let ob of scene.objects.visible) {
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
+      uniforms.object_id = ob.lib_id;
 
       if (only_render) {
         this.threeCamera.pushUniforms(uniforms);
@@ -1300,22 +1316,21 @@ export class View3D extends Editor {
         continue;
       }
 
-      let ok = false;
       if (this.toolmode) {
         this.threeCamera.pushUniforms(uniforms);
+
         if (this.toolmode.drawObject(gl, uniforms, program, ob, ob.data)) {
-          ok = true;
+          this.threeCamera.popUniforms();
           break;
         }
+
         this.threeCamera.popUniforms();
       }
 
       //no editors drew the objects
-      if (!ok) {
-        this.threeCamera.pushUniforms(uniforms);
-        ob.draw(this, gl, uniforms, program);
-        this.threeCamera.popUniforms();
-      }
+      this.threeCamera.pushUniforms(uniforms);
+      ob.draw(this, gl, uniforms, program);
+      this.threeCamera.popUniforms();
     }
   }
   
@@ -1323,6 +1338,7 @@ export class View3D extends Editor {
     let ret = document.createElement("view3d-editor-x");
 
     ret.widgettool = this.widgettool;
+
     ret._select_transparent = this._select_transparent;
     ret.camera.load(this.camera);
     ret.selectmode = this.selectmode;
@@ -1333,6 +1349,9 @@ export class View3D extends Editor {
 
   loadSTRUCT(reader) {
     this.toolmodes = [];
+    this.toolmode_map = {};
+    this.toolmode_namemap = {};
+
     this.widgets.clear();
 
     reader(this);
@@ -1355,6 +1374,7 @@ export class View3D extends Editor {
       }
 
       this.toolmode_map[i] = mode;
+      this.toolmode_namemap[def.name] = mode;
     }
 
     if (!found) {

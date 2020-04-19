@@ -15,7 +15,7 @@ import {Mesh} from '../mesh/mesh.js';
 import {Node, Graph, NodeSocketType, SocketTypes, SocketFlags, NodeFlags} from '../core/graph.js';
 import {Vec3Socket, Vec4Socket, Matrix4Socket, Vec2Socket, FloatSocket, DependSocket} from "../core/graphsockets.js";
 
-import {FBO, FramePipeline, BlitShader, BlitShaderGLSL300} from '../core/fbo.js';
+import {FBO, FramePipeline, getBlitShaderCode} from '../core/fbo.js';
 import {getWebGL} from "../editors/view3d/view3d.js";
 
 export class FBOSocket extends NodeSocketType {
@@ -88,7 +88,7 @@ export class RenderContext {
 
       console.log("updateing framebuffer pipeline for new width/height");
 
-      let BlitShaderSrc = gl.haveWebGL2 ? BlitShaderGLSL300 : BlitShader;
+      let BlitShaderSrc = getBlitShaderCode(gl);
 
       let lf = LayerTypes;
       this.smesh = new SimpleMesh(lf.LOC | lf.UV);
@@ -97,7 +97,7 @@ export class RenderContext {
       this.smesh.uniforms.size = this.size;
       this.smesh.uniforms.projectionMatrix = drawmats.rendermat;
 
-      let quad = this.smesh.quad([-1,-1,0], [-1,1,0], [1,1,0], [1,-1,0])
+      let quad = this.smesh.quad([-1,-1,0], [-1,1,0], [1,1,0], [1,-1,0]);
       quad.uvs([0,0,0], [0,1,0], [1,1,0], [1,0,0]);
     }
   }

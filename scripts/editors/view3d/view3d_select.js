@@ -11,17 +11,38 @@ export class GPUSelectBuffer {
     this.regen = true;
     this.pos = new Vector2([0, 0]);
     this.size = new Vector2([0, 0]);
+    this.fbo = undefined;
+    this.depth_fbo = undefined;
   }
 
   dirty() {
     this.regen = true;
   }
 
+  destroy(gl) {
+    this.depth_fbo.destroy(gl);
+    this.fbo.destroy(gl);
+  }
+
   gen(ctx, gl, view3d) {
+    this.regen = false;
+
+    if (this.depth_fbo !== undefined) {
+      this.depth_fbo.destroy(gl);
+    }
     if (this.fbo !== undefined) {
       this.fbo.destroy(gl);
     }
+
     this.fbo = new FBO(gl, ~~this.size[0], ~~this.size[1]);
+    this.depth_fbo = new FBO(gl, ~~this.size[0], ~~this.size[1]);
+
+    //make sure depth drawing fbo is all set up for later use
+    this.depth_fbo.bind(gl);
+    this.depth_fbo.unbind(gl);
+  }
+
+  draw(ctx, gl, view3d) {
     /*
     if (this.fbo === undefined) {
       this.fbo = new FBO(gl, ~~this.size[0], ~~this.size[1]);
@@ -63,12 +84,12 @@ export class GPUSelectBuffer {
     this.fbo.unbind(gl);
   }
 
-  sampleBlock(ctx, gl, view3d, x, y, w=16, h=16) {
+  sampleBlock(ctx, gl, view3d, x, y, w=16, h=16, sampleDepth=false) {
     //console.log(x, y, this.pos[0], this.pos[1]);
     let ret;
 
     try {
-      ret = this.sampleBlock_intern(ctx, gl, view3d, x, y, w, h);
+      ret = this.sampleBlock_intern(ctx, gl, view3d, x, y, w, h, sampleDepth);
     } catch (error) {
       util.print_stack(error);
       console.log("error in sampleBlock");
@@ -112,7 +133,7 @@ export class GPUSelectBuffer {
     return ret;
   }
 
-  sampleBlock_intern(ctx, gl, view3d, x, y, w=16, h=16) {
+  sampleBlock_intern(ctx, gl, view3d, x, y, w=16, h=16, sampleDepth=false) {
     let dpi = gl.canvas.dpi;
 
     w = ~~(w*dpi + 0.5);
@@ -133,6 +154,8 @@ export class GPUSelectBuffer {
       this.gen(ctx, gl, view3d);
     }
 
+    this.draw(ctx, gl, view3d);
+
     this.fbo.bind(gl);
 
     let data = new Float32Array(w*h*4);
@@ -141,6 +164,22 @@ export class GPUSelectBuffer {
     gl.readPixels(x, (~~this.size[1]) - (y + h), w, h, gl.RGBA, gl.FLOAT, data);
 
     this.fbo.unbind(gl);
+    if (sampleDepth) {
+      let depthData = new Float32Array(w*h*4);
+
+      this.depth_fbo.bind(gl);
+      this.depth_fbo.texDepth = this.fbo.texDepth;
+
+      this.depth_fbo.drawDepth(gl, this.size[0], this.size[1]);
+      gl.readPixels(x, (~~this.size[1]) - (y + h), w, h, gl.RGBA, gl.FLOAT, depthData);
+      this.depth_fbo.unbind(gl);
+
+      return {
+        data  : data,
+        depthData : depthData,
+        order : this.getSearchOrder(w)
+      };
+    }
 
     return {
       data  : data,

@@ -2,6 +2,8 @@
 
 import {NodeFlags} from '../core/graph.js';
 
+import {Shaders} from '../editors/view3d/view3d_shaders.js';
+
 import * as simplemesh from '../core/simplemesh.js';
 import * as math from '../util/math.js';
 import * as util from '../util/util.js'
@@ -1012,6 +1014,12 @@ export class Mesh extends SceneObjectData {
     if (this.smesh !== undefined) {
       this.smesh.onContextLost(e);
     }
+  }
+
+  drawIds(view3d, gl, selectMask, uniforms, object) {
+    let program = Shaders.MeshIDShader;
+
+    this.draw(view3d, gl, uniforms, program, object);
   }
 
   draw(view3d, gl, uniforms, program, object) {

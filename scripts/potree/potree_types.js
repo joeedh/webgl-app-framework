@@ -182,6 +182,23 @@ export class PointSet extends SceneObjectData {
     return mat;
   }
 
+  drawIds(view3d, gl, selectMask, uniforms, object) {
+    if (!this.ready) {
+      return;
+    }
+
+    let ptree = this.res.data;
+    let startmat = ptree.material;
+
+    //console.log("ID draw!", uniforms);
+    ptree.material = ptree.flatMaterial;
+
+    let id = uniforms.object_id + 1;
+    ptree.material.uniforms.uColor.value = new THREE.Color(id, 0, 0);
+    this.draw(view3d, gl, uniforms, object);
+    ptree.material = startmat;
+  }
+
   draw(view3d, gl, uniforms, program, object, ignore_mat=false) {
     if (!this.ready) {
       return;
@@ -194,8 +211,9 @@ export class PointSet extends SceneObjectData {
     if (program === view3d_shaders.Shaders.MeshIDShader) {
       //console.log("ID draw!", uniforms);
       ptree.material = ptree.flatMaterial;
-      let id = uniforms.object_id;
-      ptree.material.uniforms.uColor.value = new THREE.Color(id, id, id);
+
+      let id = uniforms.object_id + 1;
+      ptree.material.uniforms.uColor.value = new THREE.Color(id, 0, 0);
     }
 
 

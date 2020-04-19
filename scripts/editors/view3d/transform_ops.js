@@ -12,6 +12,14 @@ import {View3DOp} from './view3d_ops.js';
 import {isect_ray_plane} from '../../path.ux/scripts/math.js';
 import {calcTransCenter} from "./transform_query.js";
 
+/*
+Transform refactor:
+
+- Allow passing custom TransDataType classes
+- Allow working on UI data (e.g. non-saved)
+  so widgets can use transform more flexibly.
+
+* */
 export class TransformOp extends View3DOp {
   constructor() {
     super();

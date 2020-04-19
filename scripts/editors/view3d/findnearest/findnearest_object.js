@@ -1,11 +1,12 @@
-import {FindnearestClass} from '../findnearest.js';
+import {CastModes, FindnearestClass} from '../findnearest.js';
 import {SelMask} from '../selectmode.js';
-import {Vector3} from "../../../util/vectormath.js";
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from "../../../util/vectormath.js";
 import {Shaders} from "../view3d_shaders.js";
 import * as util from "../../../util/util.js";
 import {FindNearestRet} from "../findnearest.js";
 
-let _findnearest_rets = util.cachering.fromConstructor(FindNearestRet, 64);
+let _findnearest_rets = util.cachering.fromConstructor(FindNearestRet, 1024);
+let _castray_rets = util.cachering.fromConstructor(FindNearestRet, 1024);
 
 export class FindnearestObject extends FindnearestClass {
   static define() {return {
@@ -22,9 +23,75 @@ export class FindnearestObject extends FindnearestClass {
   static drawIDs(view3d, gl, uniforms, object, mesh) {
     let program = Shaders.MeshIDShader;
 
+    uniforms.objectMatrix = object.outputs.matrix.getValue();
+    uniforms.object_id = object.lib_id;
+
     view3d.threeCamera.pushUniforms(uniforms);
-    object.draw(view3d, gl, uniforms, program);
+    object.drawIds(view3d, gl, view3d.ctx.selectMask, uniforms);
     view3d.threeCamera.popUniforms();
+  }
+
+  static castRay_framebuffer(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
+    let sbuf = view3d.selectbuf;
+    let x = ~~p[0], y = ~~p[1];
+
+    let sample = sbuf.sampleBlock(ctx, view3d.gl, view3d, x, y, 1, 1, true);
+
+    if (sample === undefined) {
+      return;
+    }
+
+    let ret = _castray_rets.next().reset();
+
+    let ob = ~~(sample.data[0] + 0.5) - 1;
+    let depth = sample.depthData[0];
+
+    if (ob < 0 || depth === 1.0 || depth === 0.0)
+      return undefined;
+
+    let co = new Vector4();
+    let size = view3d.glSize;
+
+    let camera = view3d.camera;
+
+    /*
+    comment: linear z
+    f1 := (z - near) / (far - near);
+    solve(f1 - depth, z);
+
+    comment: inverse z;
+
+    f1 := (1/z - 1/near) / (1/far - 1/near);
+    solve(f1 - depth, z);
+    */
+
+    let far = camera.far, near = camera.near;
+
+    depth = -(far*near) / (far*depth - far - near*depth);
+
+    //console.log(sample.data, depth, "|", x, y);
+
+    co[0] = (x / size[0])*2.0 - 1.0;
+    co[1] = (y / size[1])*2.0 - 1.0;
+    co[2] = depth;
+    co[3] = 1.0;
+
+    co.multVecMatrix(view3d.camera.irendermat);
+    if (co[3] !== 0.0) {
+      co.mulScalar(1.0 / co[3]);
+    }
+
+    ret.p2d.load(p);
+    ret.p3d.load(co);
+    ret.dis = depth;
+
+    return [ret];
+  }
+
+  static castRay(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
+    if (mode === CastModes.FRAMEBUFFER) {
+      return this.castRay_framebuffer(...arguments);
+    }
   }
 
   static findnearest(ctx, selmask, mpos, view3d, limit=25) {
@@ -56,13 +123,12 @@ export class FindnearestObject extends FindnearestClass {
       let x2 = i % limit, y2 = ~~(i / limit);
       i *= 4;
 
-      let idx = ~~(block[i] + 0.5), ob = ~~(block[i + 1] + 0.5);
-      idx--;
+      let ob = ~~(block[i] + 0.5) - 1;
+      let idx = ~~(block[i+1] + 0.5) - 1;
 
-      if (idx < 0)
+      if (ob < 0)
         continue;
 
-      let id = ob;
       ob = ctx.datalib.get(ob);
 
       if (ob === undefined || ob.data === undefined) {
@@ -70,9 +136,10 @@ export class FindnearestObject extends FindnearestClass {
         continue;
       }
 
-      let ret = _findnearest_rets.next();
+      let ret = _findnearest_rets.next().reset();
 
-      ret.data = ret.object = ob;
+      ret.data = idx >= 0 ? idx : ob;
+      ret.object = ob;
       ret.p3d = new Vector3();
       ret.p3d.multVecMatrix(ob.outputs.matrix.getValue());
       ret.dis = Math.sqrt(x2 * x2 + y2 * y2);

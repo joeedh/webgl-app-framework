@@ -25,6 +25,7 @@ export class MenuBarEditor extends Editor {
 
   init() {
     super.init();
+    this.background = this.getDefault("DefaultPanelBG");
 
     let header = this.header;
 

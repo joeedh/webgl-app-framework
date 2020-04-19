@@ -23,6 +23,8 @@ export class PropsEditor extends Editor {
   init() {
     super.init();
 
+    this.background = this.getDefault("DefaultPanelBG");
+
     let header = this.header;
     let container = this.container;
 

@@ -55,11 +55,12 @@ window._colors = Colors;
 
 
 export class SceneObject extends DataBlock {
-  constructor(data=undefined) {
+  constructor(data = undefined) {
     super();
-    
+
     this.data = data;
-    this.flag = 0; /** @type {ObjectFlags}*/
+    this.flag = 0;
+    /** @type {ObjectFlags}*/
   }
 
   getEditorColor() {
@@ -74,22 +75,24 @@ export class SceneObject extends DataBlock {
     }
   }
 
-  static nodedef() {return {
-    inputs : {
-      depend : new DependSocket("depend", SocketFlags.MULTI),
-      matrix : new Matrix4Socket("matrix"),
-      color  : new Vec4Socket("color"),
-      loc    : new Vec3Socket("loc"),
-      rot    : new Vec3Socket("rot"),
-      scale  : new Vec3Socket("scale", undefined, [1, 1, 1])
-    },
-    
-    outputs : {
-      color : new Vec4Socket("color"),
-      matrix : new Matrix4Socket("matrix"),
-      depend : new DependSocket("depend")
+  static nodedef() {
+    return {
+      inputs: {
+        depend: new DependSocket("depend", SocketFlags.MULTI),
+        matrix: new Matrix4Socket("matrix"),
+        color: new Vec4Socket("color"),
+        loc: new Vec3Socket("loc"),
+        rot: new Vec3Socket("rot"),
+        scale: new Vec3Socket("scale", undefined, [1, 1, 1])
+      },
+
+      outputs: {
+        color: new Vec4Socket("color"),
+        matrix: new Matrix4Socket("matrix"),
+        depend: new DependSocket("depend")
+      }
     }
-  }}
+  }
 
   get material() {
     return this.data !== undefined && this.data.usesMaterial ? this.data.material : undefined;
@@ -110,13 +113,13 @@ export class SceneObject extends DataBlock {
     } else {
       pmat = this.inputs.matrix.getValue();
     }
-    
+
     let loc = this.inputs.loc.getValue();
     let rot = this.inputs.rot.getValue();
     let scale = this.inputs.scale.getValue();
-    
+
     let mat = this.outputs.matrix.getValue();
-    
+
     mat.makeIdentity();
 
     if (isNaN(loc.dot(loc))) {
@@ -133,9 +136,9 @@ export class SceneObject extends DataBlock {
     mat.translate(loc[0], loc[1], loc[2]);
     mat.euler_rotate(rot[0], rot[1], rot[2]);
     mat.scale(scale[0], scale[1], scale[2]);
-    
+
     mat.multiply(pmat);
-    
+
     this.outputs.matrix.setValue(mat);
     this.outputs.depend.setValue(true);
 
@@ -178,13 +181,15 @@ export class SceneObject extends DataBlock {
     return ret;
   }
 
-  static blockDefine() { return {
-    typeName    : "object",
-    defaultName : "Object",
-    uiName   : "Object",
-    flag     : 0,
-    icon     : -1
-  }}
+  static blockDefine() {
+    return {
+      typeName: "object",
+      defaultName: "Object",
+      uiName: "Object",
+      flag: 0,
+      icon: -1
+    }
+  }
 
   loadSTRUCT(reader) {
     reader(this);
@@ -194,7 +199,7 @@ export class SceneObject extends DataBlock {
   dataLink(getblock, getblock_addUser) {
     this.data = getblock_addUser(this.data);
   }
-  
+
   draw(view3d, gl, uniforms, program) {
     uniforms.objectMatrix = this.outputs.matrix.getValue();
     uniforms.object_id = this.lib_id;
@@ -215,7 +220,15 @@ export class SceneObject extends DataBlock {
 
     this.data.drawOutline(view3d, gl, uniforms, program, this);
   }
+
+  drawIds(view3d, gl, selectMask, uniforms) {
+    uniforms.objectMatrix = this.outputs.matrix.getValue();
+    uniforms.object_id = this.lib_id;
+
+    this.data.drawIds(view3d, gl, selectMask, uniforms, this);
+  }
 }
+
 SceneObject.STRUCT = STRUCT.inherit(SceneObject, DataBlock) + `
   flag : int; 
   data : DataRef | DataRef.fromBlock(obj.data);

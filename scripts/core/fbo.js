@@ -39,6 +39,8 @@ export class FBO {
   }
 
   create(gl) {
+    this.regen = 0;
+
     gl = this.gl = gl === undefined ? this.gl : gl;
 
     this.size[0] = ~~this.size[0];
@@ -135,11 +137,76 @@ export class FBO {
     gl = this.gl = gl === undefined ? this.gl : gl;
     
     if (this.regen) {
-      this.regen = 0;
       this.create();
     }
     
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+  }
+
+  _getQuad(gl, width, height) {
+    width = ~~width;
+    height = ~~height;
+
+    if (this.smesh === undefined || this.size[0] != width || this.size[1] != height) {
+      console.log(this.size, this.smesh);
+      
+      this.size[0] = width;
+      this.size[1] = height;
+
+      console.warn("updating framebuffer pipeline for new width/height", width, height);
+
+
+      let lf = simplemesh.LayerTypes;
+      this.smesh = new simplemesh.SimpleMesh(lf.LOC | lf.UV);
+      this.smesh.program = this.blitshader = webgl.getShader(gl, getBlitShaderCode(gl));
+
+      let quad = this.smesh.quad([-1,-1,0], [-1,1,0], [1,1,0], [1,-1,0]);
+      quad.uvs([0,0,0], [0,1,0], [1,1,0], [1,0,0]);
+    }
+
+    return this.smesh;
+  }
+
+  /**
+   * Draws depth texture to rgba
+   * Does not bind framebuffer.
+   * */
+  drawDepth(gl, width, height) {
+    let quad = this._getQuad(gl, width, height);
+
+    quad.program = this.blitshader;
+
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+    let dither = gl.getParameter(gl.DITHER);
+
+    gl.disable(gl.DITHER);
+
+    quad.draw(gl, {
+      rgba  : this.texDepth,
+      depth : this.texDepth,
+      size : [width, height]
+    });
+
+    if (dither) {
+      gl.enable(gl.DITHER);
+    }
+  }
+
+  /**
+   * Draws texture to screen
+   * Does not bind framebuffer
+   * */
+  drawQuad(gl, width, height, tex=this.texColor) {
+    let quad = this._getQuad(gl, width, height);
+
+    quad.program = this.blitshader;
+    quad.uniforms.rgba = tex;
+
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+
+    this.smesh.draw(gl);
   }
 
   unbind(gl) {
@@ -203,7 +270,7 @@ export class FrameStage extends FBO {
   }
 }
 
-export let BlitShader = {
+export let BlitShaderGLSL200 = {
   vertex : `
 precision mediump float;
 
@@ -317,7 +384,7 @@ export class FramePipeline {
     this.stages.push(stage);
     return stage;
   }
-  
+
   draw(gl, drawfunc, width, height, drawmats) {
     if (this.smesh === undefined || this.size[0] != width || this.size[1] != height) {
       this.size[0] = width;
@@ -327,7 +394,8 @@ export class FramePipeline {
       
       let lf = simplemesh.LayerTypes;
       this.smesh = new simplemesh.SimpleMesh(lf.LOC | lf.UV);
-      this.smesh.program = this.blitshader = webgl.getShader(gl, BlitShader);
+
+      this.smesh.program = this.blitshader = webgl.getShader(gl, getBlitShaderCode(gl));
       this.smesh.uniforms.iprojectionMatrix = drawmats.irendermat;
       this.smesh.uniforms.projectionMatrix = drawmats.rendermat;
       
@@ -397,3 +465,12 @@ export class FramePipeline {
     this.smesh.draw(gl);
   }
 }
+
+export function getBlitShaderCode(gl) {
+  if (gl.haveWebGL2) {
+    return BlitShaderGLSL300;
+  } else {
+    return BlitShaderGLSL200;
+  }
+}
+

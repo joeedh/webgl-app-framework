@@ -593,9 +593,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:zoom="3.6203867"
-     inkscape:cx="132.62568"
-     inkscape:cy="394.34428"
+     inkscape:zoom="2.8284271"
+     inkscape:cx="49.068593"
+     inkscape:cy="425.23067"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -1623,14 +1623,16 @@
     </g>
     <text
        xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none;"
-       x="67.61058"
-       y="666.75891"
-       id="text1258"><tspan
+       style="font-style:normal;font-weight:normal;font-size:32.5669632px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#f4f300;fill-opacity:1;stroke:none;stroke-width:1.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;"
+       x="73.233978"
+       y="625.34149"
+       id="text1258"
+       transform="scale(0.94099828,1.0627012)"><tspan
          sodipodi:role="line"
          id="tspan1256"
-         x="67.61058"
-         y="666.75891">P</tspan></text>
+         x="73.233978"
+         y="625.34149"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';stroke:none;stroke-width:1.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;fill:#f4f300;fill-opacity:1;">P</tspan></text>
     <path
        style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:2.89648962;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="m 108.00775,643.36831 0.15002,9.10057"
@@ -1664,5 +1666,33 @@
        id="path1310"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccccc" />
+    <path
+       style="fill:none;stroke:#ff1900;stroke-width:2.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 134.61545,652.75846 c 0,0 2.82843,-1.06066 6.89429,2.65165 4.06587,3.71231 2.91682,7.51301 2.91682,7.51301"
+       id="path1276"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;stroke:#ff1900;stroke-width:2.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+       d="m 134.43868,641.0912 0.17677,21.56675 h 19.71061"
+       id="path1278"
+       inkscape:connector-curvature="0" />
+    <circle
+       style="opacity:1;fill:#00f300;fill-opacity:1;stroke:#001900;stroke-width:1.49154174;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="path1281"
+       cx="134.92482"
+       cy="641.22382"
+       r="3.3477738" />
+    <circle
+       style="opacity:1;fill:#00f300;fill-opacity:1;stroke:#001900;stroke-width:1.49154174;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="path1281-3"
+       cx="134.43867"
+       cy="662.12762"
+       r="3.3477738" />
+    <circle
+       style="opacity:1;fill:#00f300;fill-opacity:1;stroke:#001900;stroke-width:1.49154174;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="path1281-34"
+       cx="153.88411"
+       cy="662.65796"
+       r="3.3477738" />
   </g>
 </svg>

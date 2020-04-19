@@ -6,7 +6,7 @@ import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js';
 import {resourceManager} from "../core/resource.js";
 import '../core/image.js';
 
-import {makeToolModeEnum} from "../editors/view3d/view3d_subeditor.js";
+import {makeToolModeEnum, ToolModes, View3D_ToolMode} from "../editors/view3d/view3d_subeditor.js";
 
 import '../mesh/mesh_createops.js';
 
@@ -124,6 +124,16 @@ export function api_define_view3d(api, pstruct) {
   vstruct.flags("flag", "flag", View3DFlags).on("change", onchange).icons({
     SHOW_RENDER : Icons.RENDER
   });
+
+
+  let base = View3D_ToolMode.defineAPI(api);
+  vstruct.dynamicStruct("toolmode", "tool", "Active Tool", base);
+
+  //vstruct.dynamicStruct("toolmode_namemap", "toolmodes", "ToolModes");
+
+  for (let cls of ToolModes) {
+    cls.defineAPI(api);
+  }
 }
 
 function api_define_socket(api, cls=NodeSocketType) {

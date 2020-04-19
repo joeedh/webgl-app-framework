@@ -121,8 +121,6 @@ export class ResourceBrowser extends Editor {
   init() {
     super.init();
 
-    this.table = this.container.table();
-
     let header = this.header;
     //this.typeWidget = header.prop("resbrowser.resourceType");
 
@@ -149,6 +147,7 @@ export class ResourceBrowser extends Editor {
       }
     });
 
+    this.table = this.container.table();
     this.rebuild();
   }
 
@@ -292,10 +291,10 @@ export class ResourceBrowser extends Editor {
     let table = this.table;
 
     table.style["background-color"] = "rgba(100, 100, 100, 1.0)";
-    //table.style["background-color"] = "rgba(100, 100, 100, 1.0)";
-    table.style["position"] = "absolute";
-    table.style["width"] = "100%";
-    table.style["height"] = "100%";
+    this.background = "rgba(100, 100, 100, 1.0)";
+    //table.style["position"] = "absolute";
+    //table.style["width"] = "100%";
+    //table.style["height"] = "100%";
   }
 
   static define() {return {

@@ -48,6 +48,17 @@ export class SceneObjectData extends DataBlock {
     ]
   }
 
+  /**draws IDs.  no need for packing,
+   they're drawn into a float framebuffer
+
+   red should be sceneobject id + 1.
+   green should be any sub-id (also + 1) provided by
+   sceneobjectdata, e.g. vertices in a mesh.
+   */
+  drawIds(view3d, gl, selectMask, uniforms, object) {
+
+  }
+
   draw(view3d, gl, uniforms, program, object) {
     throw new Error("implement me");
   }
