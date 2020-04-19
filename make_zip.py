@@ -40,6 +40,8 @@ zf = zipfile.ZipFile(outfile, "w")
 
 for f in sources:
   for path in glob.glob(f, recursive=True):
+    if ".git" in path:
+      continue;
     zf.write(path);
 
 zf.close();

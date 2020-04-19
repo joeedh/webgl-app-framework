@@ -3,7 +3,12 @@ if (prefix.endsWith("/")) {
     prefix = prefix.slice(0, prefix.length-1);
 }
 
+let suffix = "/index.html";
+if (prefix.endsWith(suffix)) {
+    prefix = prefix.slice(0, prefix.length - suffix.length);
+}
 window.__prefix = prefix;
+
 
 export const HOST = location.host;
 export const SITEPREFIX = prefix;
