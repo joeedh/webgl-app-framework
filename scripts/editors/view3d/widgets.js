@@ -683,7 +683,7 @@ export class WidgetTool extends WidgetBase {
     icon        : -1,
     flag        : 0,
     description : "",
-    selectMode  : undefined, //if set, preferred selectmode, see SelModes
+    selectMode  : undefined, //force selectmode to this on widget create
   }}
 
   static register(cls) {

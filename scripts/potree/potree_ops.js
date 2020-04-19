@@ -5,6 +5,7 @@ import {PointSet} from './potree_types.js';
 import {SceneObject} from '../sceneobject/sceneobject.js';
 
 import {StandardTools} from "../sceneobject/stdtools.js";
+import {Material} from "../core/material.js";
 
 export class AddPointSetOp extends ToolOp {
   constructor() {
@@ -26,6 +27,9 @@ export class AddPointSetOp extends ToolOp {
     let url = this.inputs.url.getValue();
     let scene = ctx.scene;
 
+    let mat = new Material();
+    ctx.datalib.add(mat);
+
     let pset = new PointSet();
     ctx.datalib.add(pset);
 
@@ -34,6 +38,8 @@ export class AddPointSetOp extends ToolOp {
 
     ob.name = url;
     ob.data = pset;
+
+    pset.material = mat;
     pset.name = url;
     pset.url = url;
 

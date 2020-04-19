@@ -37,3 +37,5 @@ export const SelMask = {
   POINTSET : (1<<10),
   OBJECT : (1<<8)|(1<<9)|(1<<10), //all types
 };
+
+window._SelMask = SelMask;

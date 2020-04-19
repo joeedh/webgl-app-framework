@@ -319,11 +319,23 @@ export class View3D extends Editor {
     this.selectmode = SelMask.OBJECT;
 
     //this.widgettool is an enum, built from WidgetTool.getToolEnum()
-    this.widgettool = 0; //active widget tool index in WidgetTools
+    let wenum = WidgetTool.getToolEnum();
+    //window._wenum = wenum;
+
+    this.widgettool = wenum.values.translate; //active widget tool index in WidgetTools
     this.widget = undefined; //active widget instance
 
     this.drawmode = DrawModes.TEXTURED;
     this.threeCamera = new ThreeCamera(this.camera);
+  }
+
+  get selectmode() {
+    return this._selectmode;
+  }
+
+  set selectmode(val) {
+    console.warn("setting selectmode", val);
+    this._selectmode = val;
   }
 
   get toolmode() {

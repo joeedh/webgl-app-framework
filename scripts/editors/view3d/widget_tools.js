@@ -59,8 +59,7 @@ export class NoneWidget extends WidgetTool {
     uiname     : "Disable widgets",
     name       : "none",
     icon       : -1,
-    flag       : 0,
-    selectMode : SelMask.GEOM|SelMask.OBJECT
+    flag       : 0
   }}
 
   static validate(ctx) {
@@ -522,6 +521,9 @@ export class ExtrudeWidget extends WidgetTool {
   }}
 
   static validate(ctx) {
+    if (!(ctx.selectmode & SelMask.GEOM))
+      return false;
+
     let selmask = ctx.view3d.selectmode;
 
     for (let ob of ctx.selectedMeshObjects) {

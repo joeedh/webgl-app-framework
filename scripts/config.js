@@ -32,6 +32,6 @@ export function resolvePath(path) {
     if (!path.startsWith("/")) {
         path = "/" + path;
     }
-    
+
     return location.protocol + "//" + HOST + path;
 }
