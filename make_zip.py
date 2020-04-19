@@ -3,7 +3,23 @@ import zipfile, os, os.path, sys, glob
 outfile = "./viewer.zip"
 
 sources = [
-  "./scripts/**"
+  "./scripts/*.js",
+  "./scripts/core/**",
+  "./scripts/mesh/**",
+  "./scripts/editors/**",
+  "./scripts/data_api/**",
+  "./scripts/light/**",
+  "./scripts/sceneobject/**",
+  "./scripts/potree/**",
+  "./scripts/extern/potree/libs/**",
+  "./scripts/renderengine/**",
+  "./scripts/shadernodes/**",
+  "./scripts/util/**",
+  "./scripts/subsurf/**",
+  "./scripts/path.ux/scripts/**",
+  "./scripts/extern/potree/build/**",
+  "./scripts/extern/*.js",
+  "./scripts/extern/cdt-js/**",
   "*.html",
   "*.json",
   "*.js",

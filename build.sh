@@ -27,5 +27,3 @@ echo "Building icon sheets. . ."
 cd assets
 python render_icons.py
 cd ..
-
-python make_zip.py
