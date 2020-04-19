@@ -1,7 +1,0 @@
-let prefix = location.pathname
-if (prefix.endsWith("/")) {
-    prefix = prefix.slice(0, prefix.length-1);
-}
-
-export const HOST = location.host;
-export const SITEPREFIX = prefix;

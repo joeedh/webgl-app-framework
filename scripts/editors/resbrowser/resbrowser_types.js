@@ -1,5 +1,6 @@
 import {ResourceType, resourceManager} from '../../core/resource.js';
 import {PointSetResource} from '../../potree/potree_resource.js'
+import {resolvePath} from "../../config.js";
 
 export class ResourcePageType {
   getResClass() {
@@ -21,7 +22,7 @@ export class PointSetPage extends ResourcePageType {
 
     this.list = [];
     let host = location.host;
-    let url = location.protocol + "//" + location.host + "/examples/examples.json";
+    let url = resolvePath("/examples/examples.json");
 
     fetch(url).then((res) => {
       let body = "";
@@ -32,6 +33,7 @@ export class PointSetPage extends ResourcePageType {
           let v = data[k];
           let res = new PointSetResource(v.url);
 
+          res.url = resolvePath(res.url);
           res.name = k;
 
           if (v.thumbnail) {
