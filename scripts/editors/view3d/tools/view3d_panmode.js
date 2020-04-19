@@ -1,9 +1,9 @@
-import {WidgetFlags, WidgetTool} from "./widgets.js";
-import {ToolModes, View3D_ToolMode} from "./view3d_subeditor.js";
-import {KeyMap} from "../editor_base.js";
-import {Icons} from '../icon_enum.js';
-import {SelMask} from "./selectmode.js";
-import '../../path.ux/scripts/struct.js';
+import {WidgetFlags, WidgetTool} from "../widgets.js";
+import {ToolModes, View3D_ToolMode} from "../view3d_toolmode.js";
+import {KeyMap} from "../../editor_base.js";
+import {Icons} from '../../icon_enum.js';
+import {SelMask} from "../selectmode.js";
+import '../../../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
 export class PanToolMode extends View3D_ToolMode {

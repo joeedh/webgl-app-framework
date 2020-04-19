@@ -50,7 +50,7 @@ export class View3D_ToolMode extends WidgetTool {
     return [this.keymap];
   }
 
-  buildHeader (container) {
+  buildHeader (header, addHeaderRow) {
 
   }
 

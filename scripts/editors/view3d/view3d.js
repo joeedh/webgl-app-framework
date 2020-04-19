@@ -1,5 +1,5 @@
 import './findnearest/all.js';
-import './view3d_panmode.js';
+import './tools/view3d_panmode.js';
 import {FindNearest} from './findnearest.js';
 import {TranslateOp} from './transform_ops.js';
 import {RenderEngine} from "../../renderengine/renderengine_base.js";
@@ -19,14 +19,14 @@ import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {Vector3, Vector2, Vector4, Matrix4, Quat, Matrix4ToTHREE} from '../../util/vectormath.js';
 import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js';
 import {cachering, print_stack, time_ms} from '../../util/util.js';
-import './view3d_mesh_editor.js';
-import {ObjectEditor} from './view3d_object_editor.js';
-import {ToolModes, makeToolModeEnum} from './view3d_subeditor.js';
+import './tools/mesheditor.js';
+import {ObjectEditor} from './tools/selecttool.js';
+import {ToolModes, makeToolModeEnum} from './view3d_toolmode.js';
 import {Mesh} from '../../mesh/mesh.js';
 import {GPUSelectBuffer} from './view3d_select.js';
 import {KeyMap, HotKey} from "../editor_base.js";
 import {WidgetManager, WidgetTool, WidgetTools} from './widgets.js';
-import {MeshCache} from './view3d_subeditor.js';
+import {MeshCache} from './view3d_toolmode.js';
 import {calcTransCenter, calcTransAABB} from './transform_query.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
@@ -618,12 +618,27 @@ export class View3D extends Editor {
 
   rebuildHeader() {
     let tools = [
-      //"mesh.subdivide_smooth()",
       "view3d.view_selected()",
-      "mesh.toggle_select_all()"
+      "mesh.toggle_select_all()",
+      "light.new(position='cursor')"
     ];
 
+    if (this.header !== undefined) {
+      this.header.remove();
+    }
+
+    //this.makeHeader(this.container);
+    this.header = this.container.col();
+    this.header.style["width"] = "min-content";
+    this.container.style["width"] = "min-content";
+
+    this.header.useIcons();
+
     let header = this.header;
+
+    let rows = header.col();
+
+    header = rows.row();
     header.menu("Tools", tools);
     let row1 = header.row();
     let row2 = header.row();
@@ -638,40 +653,37 @@ export class View3D extends Editor {
 
     });
     //row2.label("yay");
-    row2.prop("view3d.flag[SHOW_RENDER]", PackFlags.USE_ICONS);
-    row2.prop("view3d.flag[ONLY_RENDER]", PackFlags.USE_ICONS);
+    row2.prop("view3d.flag[SHOW_RENDER]");
+    row2.prop("view3d.flag[ONLY_RENDER]");
+
+    let makeRow = () => {
+      return rows.row();
+    }
+
+    if (this.toolmode !== undefined) {
+      this.toolmode.buildHeader(header, makeRow);
+    }
 
     header = row1;
 
-    let strip = header.strip();
-
-    strip.packflag = strip.inherit_packflag = 0;
-    strip.background = strip.getDefault("BoxSub2BG");
-
-    //header.prop("view3d.selectmode", PackFlags.USE_ICONS);
-    strip.prop("view3d.toolmode[pan]", PackFlags.USE_ICONS);
-    strip.prop("view3d.toolmode[object]", PackFlags.USE_ICONS);
+    let strip;
 
     strip = header.strip();
-    strip.prop("view3d.active_tool[none]", PackFlags.USE_ICONS);
-    strip.prop("view3d.active_tool[translate]", PackFlags.USE_ICONS);
-
     //header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
-    header.tool("view3d.view_selected()", PackFlags.USE_ICONS);
-    header.tool("mesh.toggle_select_all()", PackFlags.USE_ICONS);
+    strip.tool("view3d.view_selected()", PackFlags.USE_ICONS);
 
-    header.iconbutton(Icons.UNDO, "Undo", () => {
+    strip.iconbutton(Icons.UNDO, "Undo", () => {
       this.ctx.toolstack.undo();
       window.redraw_viewport();
     });
 
-    header.iconbutton(Icons.REDO, "Redo", () => {
+    strip.iconbutton(Icons.REDO, "Redo", () => {
       this.ctx.toolstack.redo();
       window.redraw_viewport();
     });
 
     //header.prop("mesh.flag[SUBSURF]", PackFlags.USE_ICONS);
-    header.tool("light.new(position='cursor')", PackFlags.USE_ICONS);
+    //strip.tool("light.new(position='cursor')", PackFlags.USE_ICONS);
 
     //header.iconbutton(Icons.VIEW_SELECTED, "Recenter View (fixes orbit/rotate problems)", () => {
     //  this.viewSelected();

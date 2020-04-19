@@ -4,6 +4,7 @@ import {Light} from "../../light/light.js";
 import {Mesh} from "../../mesh/mesh.js";
 import {Material} from "../../core/material.js";
 import {PointSet} from "../../potree/potree_types.js";
+import {PopupEditor} from '../popup_editor.js';
 import '../../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {DataPathError} from '../../path.ux/scripts/controller.js';
@@ -15,9 +16,11 @@ import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
 import {NodeEditor} from "../node/NodeEditor.js";
 
-export class PropsEditor extends Editor {
+export class PropsEditor extends PopupEditor   {
   constructor() {
     super();
+
+    this.toolbar = undefined;
   }
 
   init() {
@@ -30,11 +33,10 @@ export class PropsEditor extends Editor {
 
     let col = container.col();
 
-    let tabs = col.tabs("left");
+    let tabs = this; //col.tabs("left");
+
     this.buildScene(tabs.tab("Scene"));
-
     this.buildMaterial(tabs.tab("Material"));
-
     this.buildObject(tabs.tab("Object"));
   }
 

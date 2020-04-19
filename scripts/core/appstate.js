@@ -81,6 +81,10 @@ export class BasicFileOp extends ToolOp {
   }}
 };
 
+export {genDefaultScreen} from '../editors/screengen.js';
+import {genDefaultScreen} from '../editors/screengen.js';
+
+/*
 export function genDefaultScreen(appstate) {
   appstate.screen.clear();
   appstate.screen.ctx = appstate.ctx;
@@ -109,7 +113,7 @@ export function genDefaultScreen(appstate) {
 
   sarea.setCSS();
   sarea.area.setCSS();
-}
+}*/
 
 export function genDefaultFile(appstate, dont_load_startup=0) {
   if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
@@ -673,6 +677,11 @@ export function init() {
   }
 
   window.addEventListener("keydown", (e) => {
+    //prevent reload hotkey, could conflict with redo
+    if (e.keyCode == 82 && e.ctrlKey) {
+      e.preventDefault();
+    }
+
     return _appstate.screen.on_keydown(e);
   });
 

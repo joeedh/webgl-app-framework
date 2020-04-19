@@ -822,9 +822,9 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/editors/view3d/view3d_subeditor.js~findnearestret",
-    "class/scripts/editors/view3d/view3d_subeditor.js~FindnearestRet.html",
-    "<span>FindnearestRet</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_subeditor.js</span>",
+    "./scripts/editors/view3d/view3d_toolmode.js~findnearestret",
+    "class/scripts/editors/view3d/view3d_toolmode.js~FindnearestRet.html",
+    "<span>FindnearestRet</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_toolmode.js</span>",
     "class"
   ],
   [
@@ -1230,9 +1230,9 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/editors/view3d/view3d_subeditor.js~meshcache",
-    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html",
-    "<span>MeshCache</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_subeditor.js</span>",
+    "./scripts/editors/view3d/view3d_toolmode.js~meshcache",
+    "class/scripts/editors/view3d/view3d_toolmode.js~MeshCache.html",
+    "<span>MeshCache</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_toolmode.js</span>",
     "class"
   ],
   [
@@ -1254,9 +1254,9 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
-    "./scripts/editors/view3d/view3d_mesh_editor.js~mesheditor",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html",
-    "<span>MeshEditor</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_mesh_editor.js</span>",
+    "./scripts/editors/view3d/mesheditor.js~mesheditor",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html",
+    "<span>MeshEditor</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/mesheditor.js</span>",
     "class"
   ],
   [
@@ -1296,9 +1296,9 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/editors/view3d/view3d_mesh_editor.js~meshtools",
+    "./scripts/editors/view3d/mesheditor.js~meshtools",
     "variable/index.html#static-variable-MeshTools",
-    "<span>MeshTools</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_mesh_editor.js</span>",
+    "<span>MeshTools</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/mesheditor.js</span>",
     "variable"
   ],
   [
@@ -1440,9 +1440,9 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
-    "./scripts/editors/view3d/view3d_object_editor.js~objecteditor",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html",
-    "<span>ObjectEditor</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_object_editor.js</span>",
+    "./scripts/editors/view3d/selecttool.js~objecteditor",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html",
+    "<span>ObjectEditor</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/selecttool.js</span>",
     "class"
   ],
   [
@@ -1470,9 +1470,9 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/editors/view3d/view3d_object_editor.js~objecttools",
+    "./scripts/editors/view3d/selecttool.js~objecttools",
     "variable/index.html#static-variable-ObjectTools",
-    "<span>ObjectTools</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_object_editor.js</span>",
+    "<span>ObjectTools</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/selecttool.js</span>",
     "variable"
   ],
   [
@@ -2082,9 +2082,9 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
-    "./scripts/editors/view3d/view3d_subeditor.js~standardtools",
+    "./scripts/editors/view3d/view3d_toolmode.js~standardtools",
     "variable/index.html#static-variable-StandardTools",
-    "<span>StandardTools</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_subeditor.js</span>",
+    "<span>StandardTools</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_toolmode.js</span>",
     "variable"
   ],
   [
@@ -2106,9 +2106,9 @@ window.esdocSearchIndex = [
     "variable"
   ],
   [
-    "./scripts/editors/view3d/view3d_subeditor.js~subeditors",
+    "./scripts/editors/view3d/view3d_toolmode.js~subeditors",
     "variable/index.html#static-variable-SubEditors",
-    "<span>SubEditors</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_subeditor.js</span>",
+    "<span>SubEditors</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_toolmode.js</span>",
     "variable"
   ],
   [
@@ -2490,9 +2490,9 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
-    "./scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html",
-    "<span>View3D_ToolMode</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_subeditor.js</span>",
+    "./scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html",
+    "<span>View3D_ToolMode</span> <span class=\"search-result-import-path\">./scripts/editors/view3d/view3d_toolmode.js</span>",
     "class"
   ],
   [
@@ -10824,159 +10824,159 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js",
-    "file/scripts/editors/view3d/view3d_mesh_editor.js.html",
-    "scripts/editors/view3d/view3d_mesh_editor.js",
+    "scripts/editors/view3d/mesheditor.js",
+    "file/scripts/editors/view3d/mesheditor.js.html",
+    "scripts/editors/view3d/mesheditor.js",
     "file"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#_findnearest_rets",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-member-_findnearest_rets",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#_findnearest_rets",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#_findnearest_rets",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-member-_findnearest_rets",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#_findnearest_rets",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#clearhighlight",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-clearHighlight",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#clearHighlight",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#clearhighlight",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-clearHighlight",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#clearHighlight",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#clickselect",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-clickselect",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#clickselect",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#clickselect",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-clickselect",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#clickselect",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#constructor",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-constructor-constructor",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#constructor",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#constructor",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-constructor-constructor",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#constructor",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#ctx",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-member-ctx",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#ctx",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#ctx",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-member-ctx",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#ctx",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#definekeymap",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-defineKeyMap",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#defineKeyMap",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#definekeymap",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-defineKeyMap",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#defineKeyMap",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#destroy",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-destroy",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#destroy",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#destroy",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-destroy",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#destroy",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#draw",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-draw",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#draw",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#draw",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-draw",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#draw",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#drawids",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-drawIDs",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#drawIDs",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#drawids",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-drawIDs",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#drawIDs",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#drawvisit",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-member-drawvisit",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#drawvisit",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#drawvisit",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-member-drawvisit",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#drawvisit",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#findnearest",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-findnearest",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#findnearest",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#findnearest",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-findnearest",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#findnearest",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#findnearestedge",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-findnearestEdge",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#findnearestEdge",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#findnearestedge",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-findnearestEdge",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#findnearestEdge",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#findnearestface",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-findnearestFace",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#findnearestFace",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#findnearestface",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-findnearestFace",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#findnearestFace",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#findnearestsolid",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-findnearestSolid",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#findnearestSolid",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#findnearestsolid",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-findnearestSolid",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#findnearestSolid",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#findnearestvertex",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-findnearestVertex",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#findnearestVertex",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#findnearestvertex",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-findnearestVertex",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#findnearestVertex",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#getmeshcache",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-getMeshCache",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#getMeshCache",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#getmeshcache",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-getMeshCache",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#getMeshCache",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#keymap",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-member-keymap",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#keymap",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#keymap",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-member-keymap",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#keymap",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#meshcache",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-member-meshcache",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#meshcache",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#meshcache",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-member-meshcache",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#meshcache",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#on_drawend",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-on_drawend",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#on_drawend",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#on_drawend",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-on_drawend",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#on_drawend",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#on_drawstart",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-on_drawstart",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#on_drawstart",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#on_drawstart",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-on_drawstart",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#on_drawstart",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#on_mousemove",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-on_mousemove",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#on_mousemove",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#on_mousemove",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-on_mousemove",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#on_mousemove",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#rebuildmeshcache",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-rebuildMeshCache",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#rebuildMeshCache",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#rebuildmeshcache",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-rebuildMeshCache",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#rebuildMeshCache",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#resyncmeshcache",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-method-resyncMeshCache",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#resyncMeshCache",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#resyncmeshcache",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-method-resyncMeshCache",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#resyncMeshCache",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor#view3d",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#instance-member-view3d",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor#view3d",
+    "scripts/editors/view3d/mesheditor.js~mesheditor#view3d",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#instance-member-view3d",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor#view3d",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_mesh_editor.js~mesheditor.define",
-    "class/scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.html#static-method-define",
-    "scripts/editors/view3d/view3d_mesh_editor.js~MeshEditor.define",
+    "scripts/editors/view3d/mesheditor.js~mesheditor.define",
+    "class/scripts/editors/view3d/mesheditor.js~MeshEditor.html#static-method-define",
+    "scripts/editors/view3d/mesheditor.js~MeshEditor.define",
     "method"
   ],
   [
@@ -10986,105 +10986,105 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js",
-    "file/scripts/editors/view3d/view3d_object_editor.js.html",
-    "scripts/editors/view3d/view3d_object_editor.js",
+    "scripts/editors/view3d/selecttool.js",
+    "file/scripts/editors/view3d/selecttool.js.html",
+    "scripts/editors/view3d/selecttool.js",
     "file"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#_findnearest_rets",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-member-_findnearest_rets",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#_findnearest_rets",
+    "scripts/editors/view3d/selecttool.js~objecteditor#_findnearest_rets",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-member-_findnearest_rets",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#_findnearest_rets",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#clearhighlight",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-method-clearHighlight",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#clearHighlight",
+    "scripts/editors/view3d/selecttool.js~objecteditor#clearhighlight",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-method-clearHighlight",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#clearHighlight",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#clickselect",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-method-clickselect",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#clickselect",
+    "scripts/editors/view3d/selecttool.js~objecteditor#clickselect",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-method-clickselect",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#clickselect",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#constructor",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-constructor-constructor",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#constructor",
+    "scripts/editors/view3d/selecttool.js~objecteditor#constructor",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-constructor-constructor",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#constructor",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#ctx",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-member-ctx",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#ctx",
+    "scripts/editors/view3d/selecttool.js~objecteditor#ctx",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-member-ctx",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#ctx",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#definekeymap",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-method-defineKeyMap",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#defineKeyMap",
+    "scripts/editors/view3d/selecttool.js~objecteditor#definekeymap",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-method-defineKeyMap",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#defineKeyMap",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#destroy",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-method-destroy",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#destroy",
+    "scripts/editors/view3d/selecttool.js~objecteditor#destroy",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-method-destroy",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#destroy",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#draw",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-method-draw",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#draw",
+    "scripts/editors/view3d/selecttool.js~objecteditor#draw",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-method-draw",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#draw",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#drawids",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-method-drawIDs",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#drawIDs",
+    "scripts/editors/view3d/selecttool.js~objecteditor#drawids",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-method-drawIDs",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#drawIDs",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#findnearest",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-method-findnearest",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#findnearest",
+    "scripts/editors/view3d/selecttool.js~objecteditor#findnearest",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-method-findnearest",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#findnearest",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#keymap",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-member-keymap",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#keymap",
+    "scripts/editors/view3d/selecttool.js~objecteditor#keymap",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-member-keymap",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#keymap",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#on_drawend",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-method-on_drawend",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#on_drawend",
+    "scripts/editors/view3d/selecttool.js~objecteditor#on_drawend",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-method-on_drawend",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#on_drawend",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#on_drawstart",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-method-on_drawstart",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#on_drawstart",
+    "scripts/editors/view3d/selecttool.js~objecteditor#on_drawstart",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-method-on_drawstart",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#on_drawstart",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#on_mousemove",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-method-on_mousemove",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#on_mousemove",
+    "scripts/editors/view3d/selecttool.js~objecteditor#on_mousemove",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-method-on_mousemove",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#on_mousemove",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor#view3d",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#instance-member-view3d",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor#view3d",
+    "scripts/editors/view3d/selecttool.js~objecteditor#view3d",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#instance-member-view3d",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor#view3d",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_object_editor.js~objecteditor.define",
-    "class/scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.html#static-method-define",
-    "scripts/editors/view3d/view3d_object_editor.js~ObjectEditor.define",
+    "scripts/editors/view3d/selecttool.js~objecteditor.define",
+    "class/scripts/editors/view3d/selecttool.js~ObjectEditor.html#static-method-define",
+    "scripts/editors/view3d/selecttool.js~ObjectEditor.define",
     "method"
   ],
   [
@@ -11382,189 +11382,189 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js",
-    "file/scripts/editors/view3d/view3d_subeditor.js.html",
-    "scripts/editors/view3d/view3d_subeditor.js",
+    "scripts/editors/view3d/view3d_toolmode.js",
+    "file/scripts/editors/view3d/view3d_toolmode.js.html",
+    "scripts/editors/view3d/view3d_toolmode.js",
     "file"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~findnearestret#constructor",
-    "class/scripts/editors/view3d/view3d_subeditor.js~FindnearestRet.html#instance-constructor-constructor",
-    "scripts/editors/view3d/view3d_subeditor.js~FindnearestRet#constructor",
+    "scripts/editors/view3d/view3d_toolmode.js~findnearestret#constructor",
+    "class/scripts/editors/view3d/view3d_toolmode.js~FindnearestRet.html#instance-constructor-constructor",
+    "scripts/editors/view3d/view3d_toolmode.js~FindnearestRet#constructor",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~findnearestret#data",
-    "class/scripts/editors/view3d/view3d_subeditor.js~FindnearestRet.html#instance-member-data",
-    "scripts/editors/view3d/view3d_subeditor.js~FindnearestRet#data",
+    "scripts/editors/view3d/view3d_toolmode.js~findnearestret#data",
+    "class/scripts/editors/view3d/view3d_toolmode.js~FindnearestRet.html#instance-member-data",
+    "scripts/editors/view3d/view3d_toolmode.js~FindnearestRet#data",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~findnearestret#dis",
-    "class/scripts/editors/view3d/view3d_subeditor.js~FindnearestRet.html#instance-member-dis",
-    "scripts/editors/view3d/view3d_subeditor.js~FindnearestRet#dis",
+    "scripts/editors/view3d/view3d_toolmode.js~findnearestret#dis",
+    "class/scripts/editors/view3d/view3d_toolmode.js~FindnearestRet.html#instance-member-dis",
+    "scripts/editors/view3d/view3d_toolmode.js~FindnearestRet#dis",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~findnearestret#object",
-    "class/scripts/editors/view3d/view3d_subeditor.js~FindnearestRet.html#instance-member-object",
-    "scripts/editors/view3d/view3d_subeditor.js~FindnearestRet#object",
+    "scripts/editors/view3d/view3d_toolmode.js~findnearestret#object",
+    "class/scripts/editors/view3d/view3d_toolmode.js~FindnearestRet.html#instance-member-object",
+    "scripts/editors/view3d/view3d_toolmode.js~FindnearestRet#object",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~findnearestret#p2d",
-    "class/scripts/editors/view3d/view3d_subeditor.js~FindnearestRet.html#instance-member-p2d",
-    "scripts/editors/view3d/view3d_subeditor.js~FindnearestRet#p2d",
+    "scripts/editors/view3d/view3d_toolmode.js~findnearestret#p2d",
+    "class/scripts/editors/view3d/view3d_toolmode.js~FindnearestRet.html#instance-member-p2d",
+    "scripts/editors/view3d/view3d_toolmode.js~FindnearestRet#p2d",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~findnearestret#p3d",
-    "class/scripts/editors/view3d/view3d_subeditor.js~FindnearestRet.html#instance-member-p3d",
-    "scripts/editors/view3d/view3d_subeditor.js~FindnearestRet#p3d",
+    "scripts/editors/view3d/view3d_toolmode.js~findnearestret#p3d",
+    "class/scripts/editors/view3d/view3d_toolmode.js~FindnearestRet.html#instance-member-p3d",
+    "scripts/editors/view3d/view3d_toolmode.js~FindnearestRet#p3d",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~meshcache#constructor",
-    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-constructor-constructor",
-    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#constructor",
+    "scripts/editors/view3d/view3d_toolmode.js~meshcache#constructor",
+    "class/scripts/editors/view3d/view3d_toolmode.js~MeshCache.html#instance-constructor-constructor",
+    "scripts/editors/view3d/view3d_toolmode.js~MeshCache#constructor",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~meshcache#destroy",
-    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-method-destroy",
-    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#destroy",
+    "scripts/editors/view3d/view3d_toolmode.js~meshcache#destroy",
+    "class/scripts/editors/view3d/view3d_toolmode.js~MeshCache.html#instance-method-destroy",
+    "scripts/editors/view3d/view3d_toolmode.js~MeshCache#destroy",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~meshcache#drawer",
-    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-member-drawer",
-    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#drawer",
+    "scripts/editors/view3d/view3d_toolmode.js~meshcache#drawer",
+    "class/scripts/editors/view3d/view3d_toolmode.js~MeshCache.html#instance-member-drawer",
+    "scripts/editors/view3d/view3d_toolmode.js~MeshCache#drawer",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~meshcache#gen",
-    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-member-gen",
-    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#gen",
+    "scripts/editors/view3d/view3d_toolmode.js~meshcache#gen",
+    "class/scripts/editors/view3d/view3d_toolmode.js~MeshCache.html#instance-member-gen",
+    "scripts/editors/view3d/view3d_toolmode.js~MeshCache#gen",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~meshcache#getmesh",
-    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-method-getMesh",
-    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#getMesh",
+    "scripts/editors/view3d/view3d_toolmode.js~meshcache#getmesh",
+    "class/scripts/editors/view3d/view3d_toolmode.js~MeshCache.html#instance-method-getMesh",
+    "scripts/editors/view3d/view3d_toolmode.js~MeshCache#getMesh",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~meshcache#makechunkedmesh",
-    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-method-makeChunkedMesh",
-    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#makeChunkedMesh",
+    "scripts/editors/view3d/view3d_toolmode.js~meshcache#makechunkedmesh",
+    "class/scripts/editors/view3d/view3d_toolmode.js~MeshCache.html#instance-method-makeChunkedMesh",
+    "scripts/editors/view3d/view3d_toolmode.js~MeshCache#makeChunkedMesh",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~meshcache#makemesh",
-    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-method-makeMesh",
-    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#makeMesh",
+    "scripts/editors/view3d/view3d_toolmode.js~meshcache#makemesh",
+    "class/scripts/editors/view3d/view3d_toolmode.js~MeshCache.html#instance-method-makeMesh",
+    "scripts/editors/view3d/view3d_toolmode.js~MeshCache#makeMesh",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~meshcache#meshes",
-    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-member-meshes",
-    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#meshes",
+    "scripts/editors/view3d/view3d_toolmode.js~meshcache#meshes",
+    "class/scripts/editors/view3d/view3d_toolmode.js~MeshCache.html#instance-member-meshes",
+    "scripts/editors/view3d/view3d_toolmode.js~MeshCache#meshes",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~meshcache#meshid",
-    "class/scripts/editors/view3d/view3d_subeditor.js~MeshCache.html#instance-member-meshid",
-    "scripts/editors/view3d/view3d_subeditor.js~MeshCache#meshid",
+    "scripts/editors/view3d/view3d_toolmode.js~meshcache#meshid",
+    "class/scripts/editors/view3d/view3d_toolmode.js~MeshCache.html#instance-member-meshid",
+    "scripts/editors/view3d/view3d_toolmode.js~MeshCache#meshid",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#clickselect",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-clickselect",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#clickselect",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#clickselect",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-method-clickselect",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#clickselect",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#constructor",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-constructor-constructor",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#constructor",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#constructor",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-constructor-constructor",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#constructor",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#destroy",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-destroy",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#destroy",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#destroy",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-method-destroy",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#destroy",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#draw",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-draw",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#draw",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#draw",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-method-draw",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#draw",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#drawids",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-drawIDs",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#drawIDs",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#drawids",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-method-drawIDs",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#drawIDs",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#findnearest",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-findnearest",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#findnearest",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#findnearest",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-method-findnearest",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#findnearest",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#keymap",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-member-keymap",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#keymap",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#keymap",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-member-keymap",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#keymap",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_drawend",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-on_drawend",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#on_drawend",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#on_drawend",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-method-on_drawend",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#on_drawend",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_drawstart",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-on_drawstart",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#on_drawstart",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#on_drawstart",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-method-on_drawstart",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#on_drawstart",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_mousedown",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-on_mousedown",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#on_mousedown",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#on_mousedown",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-method-on_mousedown",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#on_mousedown",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_mousemove",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-on_mousemove",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#on_mousemove",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#on_mousemove",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-method-on_mousemove",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#on_mousemove",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#on_mouseup",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-method-on_mouseup",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#on_mouseup",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#on_mouseup",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-method-on_mouseup",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#on_mouseup",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif#view3d",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#instance-member-view3d",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode#view3d",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif#view3d",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#instance-member-view3d",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode#view3d",
     "member"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif.define",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#static-method-define",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.define",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif.define",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#static-method-define",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.define",
     "method"
   ],
   [
-    "scripts/editors/view3d/view3d_subeditor.js~view3d_subeditorif.register",
-    "class/scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.html#static-method-register",
-    "scripts/editors/view3d/view3d_subeditor.js~View3D_ToolMode.register",
+    "scripts/editors/view3d/view3d_toolmode.js~view3d_subeditorif.register",
+    "class/scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.html#static-method-register",
+    "scripts/editors/view3d/view3d_toolmode.js~View3D_ToolMode.register",
     "method"
   ],
   [

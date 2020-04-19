@@ -6,7 +6,7 @@ import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js';
 import {resourceManager} from "../core/resource.js";
 import '../core/image.js';
 
-import {makeToolModeEnum, ToolModes, View3D_ToolMode} from "../editors/view3d/view3d_subeditor.js";
+import {makeToolModeEnum, ToolModes, View3D_ToolMode} from "../editors/view3d/view3d_toolmode.js";
 
 import '../mesh/mesh_createops.js';
 

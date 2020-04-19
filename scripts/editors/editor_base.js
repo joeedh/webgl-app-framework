@@ -1,4 +1,6 @@
 import '../path.ux/scripts/struct.js';
+import './theme.js';
+
 let STRUCT = nstructjs.STRUCT;
 import {Area} from '../path.ux/scripts/ScreenArea.js';
 import {Screen} from '../path.ux/scripts/FrameManager.js';
@@ -131,7 +133,11 @@ export class DataBlockBrowser extends Container {
   doesOwnerExist() {
     let path = this.getAttribute("datapath");
     let meta = this.ctx.api.resolvePath(this.ctx, path);
-
+    
+    if (meta === undefined) {
+      return false;
+    }
+    
     return meta.obj !== undefined;
   }
 
@@ -318,7 +324,14 @@ export class Editor extends Area {
   }
 
   makeHeader(container, add_note_area=false) {
-    return super.makeHeader(container, add_note_area);
+    let row = this.header = container.row();
+
+    row.remove();
+    container._prepend(row);
+
+    row.background = ui_base.getDefault("AreaHeaderBG");
+    //return super.makeHeader(container, add_note_area);
+    return row;
   }
 
   init() {
@@ -349,6 +362,7 @@ nstructjs.manager.add_class(Editor);
 
 import {ToolClasses, ToolFlags, ToolMacro} from "../path.ux/scripts/simple_toolsys.js";
 import {Menu} from "../path.ux/scripts/ui_menu.js";
+import * as ui_base from "../path.ux/scripts/ui_base.js";
 
 function spawnToolSearchMenu(ctx) {
   let tools = [];

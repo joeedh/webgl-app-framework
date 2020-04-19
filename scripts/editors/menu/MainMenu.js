@@ -1,4 +1,4 @@
-import {Area} from '../../path.ux/scripts/ScreenArea.js';
+import {Area, BorderMask} from '../../path.ux/scripts/ScreenArea.js';
 import {saveFile, loadFile} from '../../path.ux/scripts/html5_fileapi.js';
 
 import {NoteFrame, Note} from '../../path.ux/scripts/ui_noteframe.js';
@@ -21,6 +21,8 @@ export class MenuBarEditor extends Editor {
 
     this._switcher_key = "";
     this._ignore_tab_change = false;
+
+    this.borderLock = BorderMask.TOP|BorderMask.BOTTOM;
   }
 
   init() {
@@ -61,13 +63,12 @@ export class MenuBarEditor extends Editor {
     ]);
 
     header.noteframe();
-
-    this.makeScreenSwitcher(this.container);
+    //this.makeScreenSwitcher(this.container);
   }
 
   onFileLoad() {
     super.onFileLoad();
-    this.rebuildScreenSwitcher();
+    //this.rebuildScreenSwitcher();
   }
 
   rebuildScreenSwitcher() {
@@ -75,7 +76,7 @@ export class MenuBarEditor extends Editor {
       this.tabs.remove();
     }
 
-    this.makeScreenSwitcher(this.container);
+    //this.makeScreenSwitcher(this.container);
   }
 
   _on_tab_change(tab) {
@@ -154,17 +155,19 @@ export class MenuBarEditor extends Editor {
   }
 
   on_area_active() {
-    this.rebuildScreenSwitcher();
+    //this.rebuildScreenSwitcher();
     this.setCSS();
   }
 
   update() {
     super.update();
 
+    /*
     let hash = this._makeSwitcherHash();
     if (hash !== this._switcher_key) {
       this.rebuildScreenSwitcher();
     }
+    //*/
   }
   copy() {
     let ret = document.createElement("menu-editor-x");

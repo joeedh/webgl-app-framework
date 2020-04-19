@@ -1,27 +1,27 @@
-import {FindNearest, castRay, CastModes} from "./findnearest.js";
-import {ExtrudeRegionsOp} from '../../mesh/mesh_ops.js';
-import {ObjectFlags} from '../../sceneobject/sceneobject.js';
-import {View3D_ToolMode} from './view3d_subeditor.js';
-import {SelMask, SelOneToolModes, SelToolModes} from './selectmode.js';
-import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../mesh/mesh.js';
-import {PointSet} from '../../potree/potree_types.js';
-import * as util from '../../util/util.js';
-import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../core/simplemesh.js';
-import {BasicLineShader, Shaders} from './view3d_shaders.js'
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
-import * as math from '../../util/math.js';
-import {SelectOneOp} from '../../mesh/select_ops.js';
-import {View3DFlags} from "./view3d_base.js";
-import {KeyMap, HotKey} from "../editor_base.js";
-import {keymap} from '../../path.ux/scripts/simple_events.js';
-import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../path.ux/scripts/simple_toolsys.js';
-import {BasicMeshDrawer} from './view3d_draw.js';
-import {MeshCache} from './view3d_subeditor.js';
-import {SubsurfDrawer} from '../../subsurf/subsurf_draw.js';
-import {Light} from "../../light/light.js";
-import {TranslateOp} from "./transform_ops.js";
+import {FindNearest, castRay, CastModes} from "../findnearest.js";
+import {ExtrudeRegionsOp} from '../../../mesh/mesh_ops.js';
+import {ObjectFlags} from '../../../sceneobject/sceneobject.js';
+import {View3D_ToolMode} from '../view3d_toolmode.js';
+import {SelMask, SelOneToolModes, SelToolModes} from '../selectmode.js';
+import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../../mesh/mesh.js';
+import {PointSet} from '../../../potree/potree_types.js';
+import * as util from '../../../util/util.js';
+import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
+import {BasicLineShader, Shaders} from '../view3d_shaders.js'
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js';
+import * as math from '../../../util/math.js';
+import {SelectOneOp} from '../../../mesh/select_ops.js';
+import {View3DFlags} from "../view3d_base.js";
+import {KeyMap, HotKey} from "../../editor_base.js";
+import {keymap} from '../../../path.ux/scripts/simple_events.js';
+import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../../path.ux/scripts/simple_toolsys.js';
+import {BasicMeshDrawer} from '../view3d_draw.js';
+import {MeshCache} from '../view3d_toolmode.js';
+import {SubsurfDrawer} from '../../../subsurf/subsurf_draw.js';
+import {Light} from "../../../light/light.js";
+import {TranslateOp} from "../transform_ops.js";
 let STRUCT = nstructjs.STRUCT;
-import {Icons} from '../icon_enum.js';
+import {Icons} from '../../icon_enum.js';
 
 let _shift_temp = [0, 0];
 
@@ -69,6 +69,24 @@ export class ObjectEditor extends View3D_ToolMode {
 
   clearHighlight(ctx) {
     ctx.scene.objects.setHighlight(undefined);
+  }
+
+  buildHeader(header, addHeaderRow) {
+    super.buildHeader(header, addHeaderRow);
+
+    let row = header; //addHeaderRow();
+    let strip;
+
+    strip = row.strip();
+    strip.prop("view3d.toolmode[pan]");
+    strip.prop("view3d.toolmode[object]");
+
+    strip = row.strip();
+    strip.prop("view3d.active_tool[none]");
+    strip.prop("view3d.active_tool[translate]");
+
+    strip = row.strip();
+    strip.tool("mesh.toggle_select_all()");
   }
 
   on_mousedown(e, x, y, was_touch) {

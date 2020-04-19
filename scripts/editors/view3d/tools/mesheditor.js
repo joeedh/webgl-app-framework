@@ -1,20 +1,20 @@
-import {ExtrudeRegionsOp} from '../../mesh/mesh_ops.js';
-import {View3D_ToolMode} from './view3d_subeditor.js';
-import {SelMask, SelOneToolModes, SelToolModes} from './selectmode.js';
-import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../mesh/mesh.js';
-import * as util from '../../util/util.js';
-import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../core/simplemesh.js';
-import {Shaders} from './view3d_shaders.js'
-import {FindNearestRet} from "./findnearest.js";
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
-import * as math from '../../util/math.js';
-import {SelectOneOp} from '../../mesh/select_ops.js';
-import {KeyMap, HotKey} from "../editor_base.js";
-import {keymap} from '../../path.ux/scripts/simple_events.js';
-import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../path.ux/scripts/simple_toolsys.js';
-import {BasicMeshDrawer} from './view3d_draw.js';
-import {MeshCache} from './view3d_subeditor.js';
-import {SubsurfDrawer} from '../../subsurf/subsurf_draw.js';
+import {ExtrudeRegionsOp} from '../../../mesh/mesh_ops.js';
+import {View3D_ToolMode} from '../view3d_toolmode.js';
+import {SelMask, SelOneToolModes, SelToolModes} from '../selectmode.js';
+import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../../mesh/mesh.js';
+import * as util from '../../../util/util.js';
+import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
+import {Shaders} from '../view3d_shaders.js'
+import {FindNearestRet} from "../findnearest.js";
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js';
+import * as math from '../../../util/math.js';
+import {SelectOneOp} from '../../../mesh/select_ops.js';
+import {KeyMap, HotKey} from "../../editor_base.js";
+import {keymap} from '../../../path.ux/scripts/simple_events.js';
+import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../../path.ux/scripts/simple_toolsys.js';
+import {BasicMeshDrawer} from '../view3d_draw.js';
+import {MeshCache} from '../view3d_toolmode.js';
+import {SubsurfDrawer} from '../../../subsurf/subsurf_draw.js';
 let STRUCT = nstructjs.STRUCT;
 
 //each subeditor should fill in these tools
@@ -28,7 +28,7 @@ export const MeshTools = {
   DUPLICATE         : undefined
 };
 
-import {Colors, elemColor} from './view3d_draw.js';
+import {Colors, elemColor} from '../view3d_draw.js';
 
 export class MeshEditor extends View3D_ToolMode {
   constructor(manager) {
