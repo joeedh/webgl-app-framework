@@ -15,7 +15,6 @@ sources = [
   "Readme.MD",
   "*.css",
   "./lazylibs/**",
-  "./ept/**",
   "./index.html"
 ]
 
