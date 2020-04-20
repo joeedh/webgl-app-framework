@@ -13,6 +13,7 @@ import {ToolStack, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
 import {DebugEditor} from "../editors/debug/DebugEditor.js";
 import * as ui_noteframe from '../path.ux/scripts/ui_noteframe.js';
 import {PointSet} from '../potree/potree_types.js';
+import {Matrix4} from "../util/vectormath.js";
 
 export class ToolContext {
   constructor(appstate=_appstate) {
@@ -46,6 +47,12 @@ export class ToolContext {
 
   get graph() { /** execution graph */
     return this._appstate.datalib.graph;
+  }
+
+  get toolmode() {
+    let scene = this.scene;
+    
+    return scene !== undefined ? scene.toolmode : undefined;
   }
 
   get toolstack() {
@@ -145,7 +152,7 @@ export class Context extends ToolContext {
   }
 
   get selectMask() {
-    return this.view3d.selectmode;
+    return this.scene.selectMask;
   }
 
   get resbrowser() {
@@ -191,7 +198,7 @@ export class Context extends ToolContext {
 
 export class SavedContext extends ToolContext {
   constructor(ctx, datalib) {
-    super(ctx.appstate);
+    super(ctx.state);
 
     this._material = new DataRef();
     this._object = new DataRef();
@@ -200,12 +207,42 @@ export class SavedContext extends ToolContext {
     this._selectedLightObjects = [];
     this._scene = new DataRef();
     this._mesh = new DataRef();
+    this._cursor3D = new Matrix4();
+
+    if (ctx.view3d !== undefined) {
+      this._cursor3D.load(ctx.view3d.cursor3D);
+    } else if (ctx.scene !== undefined) {
+      this._cursor3D.load(ctx.scene.cursor3D);
+    }
+
+    this._toolmode_name = undefined;
+
+    let toolmode = ctx.toolmode;
+    if (toolmode !== undefined) {
+      this._toolmode_name = toolmode.constructor.widgetDefine().name;
+    }
 
     if (ctx.scene !== undefined) {
       this._scene.set(ctx.scene);
     }
 
+    if (ctx.material !== undefined) {
+      this._material.set(ctx.material);
+    }
+
+    if (ctx.object !== undefined) {
+      this._object.set(ctx.object);
+    }
+
+    if (ctx._mesh !== undefined) {
+      this._mesh.set(ctx.mesh);
+    }
+
     this.ctx = ctx;
+  }
+
+  get cursor3D() {
+    return this._cursor3D;
   }
 
   //might need to get rid of this save function in base class
@@ -240,6 +277,27 @@ export class SavedContext extends ToolContext {
 
   get object() {
     return this._getblock("object");
+  }
+
+  get toolmode() {
+    let ctx = this.ctx;
+
+    if (ctx !== undefined) {
+      let toolmode = ctx.toolmode;
+      if (toolmode !== undefined) {
+        this._toolmode_name = toolmode.constructor.widgetDefine().name;
+      }
+
+      return toolmode;
+    } else {
+      let scene = this.scene;
+
+      if (scene !== undefined && this._toolmode_name !== undefined) {
+        return scene.toolmode_namemap[this._toolmode_name];
+      }
+    }
+
+    return undefined;
   }
 
   get mesh() {

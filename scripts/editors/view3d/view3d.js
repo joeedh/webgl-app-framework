@@ -264,6 +264,8 @@ export class View3D extends Editor {
   constructor() {
     super();
 
+    this._nodes = [];
+
     this._pobj_map = {};
     this._last_render_draw = 0;
     this.renderEngine = undefined;
@@ -271,12 +273,8 @@ export class View3D extends Editor {
     this.flag = View3DFlags.SHOW_CURSOR;
 
     this.orbitMode = OrbitTargetModes.FIXED;
-    this.cursor3D = new Matrix4();
+    this.localCursor3D = new Matrix4();
     this.cursorMode = CursorModes.TRANSFORM_CENTER;
-
-    //last widget update time
-    this._last_wutime = 0;
-    this.widgets = new WidgetManager(this);
 
     this._viewvec_temps = cachering.fromConstructor(Vector3, 32);
 
@@ -287,15 +285,6 @@ export class View3D extends Editor {
     this.camera = new Camera();
 
     this.start_mpos = new Vector2();
-
-    this.toolmodes = []; //we cache toolmode instances, these are saved in files too
-    this.toolmode_map = {};
-    this.toolmode_namemap = {};
-
-    this.toolmode_i = undefined;
-    this.toolModeProp = makeToolModeEnum();
-
-    this.switchToolMode("object");
 
     this.drawlines = [];
 
@@ -315,111 +304,56 @@ export class View3D extends Editor {
     this.camera.near = 0.01;
     this.camera.far = 10000.0;
     this.camera.fovy = 50.0;
-    
-    this.selectmode = SelMask.OBJECT;
-
-    //this.widgettool is an enum, built from WidgetTool.getToolEnum()
-    let wenum = WidgetTool.getToolEnum();
-    //window._wenum = wenum;
-
-    this.widgettool = wenum.values.translate; //active widget tool index in WidgetTools
-    this.widget = undefined; //active widget instance
 
     this.drawmode = DrawModes.TEXTURED;
     this.threeCamera = new ThreeCamera(this.camera);
   }
 
+  get cursor3D() {
+    if (this.flag & View3DFlags.LOCAL_CURSOR) {
+      return this.localCursor3D;
+    }
+
+    if (this.ctx !== undefined && this.ctx.scene !== undefined) {
+      return this.ctx.scene.cursor3D;
+    }
+
+    return this.localCursor3D;
+  }
+
   get selectmode() {
-    return this._selectmode;
+    return this.ctx.selectMask;
   }
 
   set selectmode(val) {
     console.warn("setting selectmode", val);
-    this._selectmode = val;
+    this.ctx.scene.selectMask = val;
   }
 
-  get toolmode() {
-    if (this.toolmode_i === undefined)
-      return undefined;
-
-    return this.toolmode_map[this.toolmode_i];
-  }
-
-  switchToolMode(mode) {
-    if (mode === undefined) {
-      throw new Error("switchToolMode: mode cannot be undefined");
-    }
-
-    let i = typeof mode == "number" ? mode : this.toolModeProp.values[mode];
-
-    if (i === undefined) {
-      throw new Error("invalid tool mode " + mode);
-    }
-
-    let cls = ToolModes[i];
-    let ret;
-
-    for (let mode of this.toolmodes) {
-      if (mode.constructor === cls) {
-        ret = mode;
-        break;
-      }
-    }
-
-
-    if (ret === undefined) {
-      ret = new cls(this.widgets);
-      let def = cls.widgetDefine();
-
-      this.toolmodes.push(ret);
-      this.toolmode_map[i] = ret;
-      this.toolmode_namemap[def.define] = ret;
-    }
-
-    if (this.toolmode !== undefined) {
-      this.toolmode.onInactive();
-      this.toolmode.destroy();
-      this.toolmode.remove();
-    }
-
-    this.toolmode_i = i;
-    this.widgets.add(ret);
-
-    console.warn("switchToolMode called");
-
-    ret.onActive();
-    ret.ctx = this.ctx;
-
-    this.doOnce(this.rebuildHeader);
-
-    return ret;
-  }
-
-  get editors() {
-    console.warn("Deprecated access to view3d.editors");
-    return this.toolmodes;
-  }
-
-  set editors(val) {
-    console.warn("Deprecated set of view3d.editors");
-    this.toolmodes = val;
+  get widgets() {
+    return this.ctx.scene.widgets;
   }
 
   onFileLoad(is_active) {
     window.setTimeout(() => {
-      this.deleteGraphNode();
+      this.deleteGraphNodes();
 
       if (is_active) {
-        this.makeGraphNode();
+        this.makeGraphNodes();
       }
     }, 10);
   }
 
-  makeGraphNode() {
+  makeGraphNodes() {
     let ctx = this.ctx;
+    let scene = ctx.scene;
 
-    if (this._graphnode !== undefined) {
-      this.deleteGraphNode();
+    if (scene === undefined) {
+      return;
+    }
+
+    if (this._nodes.length > 0) {
+      this.deleteGraphNodes();
     }
 
     this._graphnode = CallbackNode.create("view3d", () => {}, {},
@@ -428,27 +362,50 @@ export class View3D extends Editor {
         onDrawPost: new DependSocket("onDrawPre")
       });
 
-    this.ctx.graph.add(this._graphnode);
+    this.addGraphNode(this._graphnode);
+
+    let node = CallbackNode.create("toolmode change", () => {
+      console.log("toolmode change detected");
+      this.rebuildHeader();
+    }, {
+      onToolModeChange : new DependSocket("onToolModeChange")
+    }, {});
+
+    this.addGraphNode(node);
+
+    node.inputs.onToolModeChange.connect(scene.outputs.onToolModeChange);
   }
 
-  deleteGraphNode() {
-    if (this._graphnode !== undefined) {
+  addGraphNode(node) {
+    this._nodes.push(node);
+    this.ctx.graph.add(node);
+  }
+
+  remGraphNode(node) {
+    if (this._nodes.indexOf(node) >= 0) {
+      this._nodes.remove(node);
+      this.ctx.graph.remove(node);
+    }
+  }
+
+  deleteGraphNodes() {
+    for (let node of this._nodes) {
       try {
-        this.ctx.graph.remove(this._graphnode);
-        this._graphnode = undefined;
+        this.ctx.graph.remove(node);
       } catch (error) {
         util.print_stack(error);
         console.log("failed to delete graph node");
-        this._graphnode = undefined;
       }
     }
+
+    this._nodes = [];
   }
 
   getKeyMaps() {
     let ret = [];
 
-    if (this.toolmode !== undefined) {
-      ret = ret.concat(this.toolmode.getKeyMaps());
+    if (this.ctx.toolmode !== undefined) {
+      ret = ret.concat(this.ctx.toolmode.getKeyMaps());
     }
 
     ret.push(this.keymap);
@@ -632,6 +589,11 @@ export class View3D extends Editor {
   }
 
   rebuildHeader() {
+    if (this.ctx === undefined) {
+      this.doOnce(this.rebuildHeader);
+      return;
+    }
+
     if (this.header !== undefined) {
       this.header.remove();
     }
@@ -668,10 +630,14 @@ export class View3D extends Editor {
 
     let makeRow = () => {
       return rows.row();
-    }
+    };
 
-    if (this.toolmode !== undefined) {
-      this.toolmode.buildHeader(header, makeRow);
+    let toolmode = this.ctx.toolmode;
+
+    if (toolmode !== undefined) {
+      toolmode.buildHeader(header, makeRow);
+    } else {
+      this.doOnce(this.rebuildHeader);
     }
 
     header = row1;
@@ -693,8 +659,8 @@ export class View3D extends Editor {
     });
 
     strip = header.strip();
-    strip.prop("view3d.toolmode[pan]");
-    strip.prop("view3d.toolmode[object]");
+    strip.prop("scene.toolmode[pan]");
+    strip.prop("scene.toolmode[object]");
 
     //header.prop("mesh.flag[SUBSURF]", PackFlags.USE_ICONS);
     //strip.tool("light.new(position='cursor')", PackFlags.USE_ICONS);
@@ -710,7 +676,7 @@ export class View3D extends Editor {
   init() {
     super.init();
 
-    this.makeGraphNode();
+    this.makeGraphNodes();
     this.rebuildHeader();
 
     let uiHasFocus = (e) => {
@@ -718,10 +684,6 @@ export class View3D extends Editor {
 
       return node !== this;
     };
-
-    let getSubEditorMpos = (e) => {
-      return this.getLocalMouse(e.clientX, e.clientY);
-    }
 
     let on_mousemove = (e, was_mousemove=true) => {
       if (uiHasFocus(e)) {
@@ -767,7 +729,7 @@ export class View3D extends Editor {
         //on_mousemove(e, false);
       //}
 
-      let r = this.getLocalMouse(e.clientX, e.clientY); //getSubEditorMpos(e);
+      let r = this.getLocalMouse(e.clientX, e.clientY);
       let x = r[0], y = r[1];
 
       if (this.widgets.on_mousedown(e, x, y, was_touch)) {
@@ -782,7 +744,7 @@ export class View3D extends Editor {
       let docontrols = e.button == 1 || e.button == 2 || e.altKey;
 
       if (!docontrols && e.button == 0) {
-        let selmask = this.selectmode;
+        let selmask = this.ctx.selectMask;
 
         docontrols = true;
 
@@ -837,15 +799,14 @@ export class View3D extends Editor {
     this.gl = getWebGL();
     this.canvas = this.gl.canvas;
     this.grid = this.makeGrid();
-    this.widgets.loadShapes();
   }
 
   getTransBounds() {
-    return calcTransAABB(this.ctx, this.selectmode);
+    return calcTransAABB(this.ctx, this.ctx.selectMask);
   }
 
   getTransCenter() {
-    return calcTransCenter(this.ctx, this.selectmode, this.transformSpace);
+    return calcTransCenter(this.ctx, this.ctx.selectMask, this.transformSpace);
   }
 
   getLocalMouse(x, y) {
@@ -856,6 +817,13 @@ export class View3D extends Editor {
     y = (y - r.y); // dpi;
 
     return [x, y];
+  }
+
+  _showCursor() {
+    let ok = this.flag & View3DFlags.SHOW_CURSOR;
+    ok = ok && (this.widget === undefined || this.widget instanceof NoneWidget);
+
+    return ok;
   }
 
   updateCursor() {
@@ -874,81 +842,6 @@ export class View3D extends Editor {
     }
   }
 
-  updateWidgets() {
-    try {
-      this.push_ctx_active(this.ctx);
-      this.updateWidgets_intern();
-      this.pop_ctx_active(this.ctx);
-    } catch (error) {
-      print_stack(error);
-      console.warn("updateWidgets() failed");
-    }
-
-    this.updateCursor();
-  }
-
-  _showCursor() {
-    let ok = this.flag & View3DFlags.SHOW_CURSOR;
-    ok = ok && (this.widget === undefined || this.widget instanceof NoneWidget);
-
-    return ok;
-  }
-
-  updateWidgets_intern() {
-    if (this._showCursor() && !this.widgets.hasWidget(WidgetSceneCursor)) {
-      this.widgets.add(new WidgetSceneCursor());
-      window.redraw_viewport();
-    }
-
-    if (this.ctx === undefined)
-      return;
-
-    let tool = WidgetTools[this.widgettool];
-    if (tool === undefined) {
-      return;
-    }
-
-    let valid = tool.validate(this.ctx);
-
-    if (this.widget !== undefined) {
-      let bad = !(this.widget instanceof tool) || (this.widget.manager !== this.widgets);
-      bad = bad || !valid;
-
-      if (bad) {
-        this.widget.remove();
-        this.widget = undefined;
-      }
-    }
-
-    if (this.widget === undefined && valid) {
-      this.widget = new tool(this.widgets);
-
-      console.log("making widget instance", this.widget);
-
-      this.widget.create(this.ctx, this.widgets);
-
-      let def = this.widget.constructor.widgetDefine();
-
-      if (def.selectMode !== undefined && this.selectmode != def.selectMode) {
-        this.selectmode = def.selectMode;
-        window.redraw_viewport();
-      }
-    } else if (tool && this.widget === undefined) {
-      let def = tool.widgetDefine();
-
-      if (def.selectMode !== undefined && this.selectmode != def.selectMode) {
-        this.selectmode = def.selectMode;
-        window.redraw_viewport();
-      }
-    }
-
-    if (this.widget !== undefined) {
-      this.widget.update();
-    }
-
-    this.widgets.update(this);
-  }
-
   update() {
     //TODO have limits for how many samplers to render
     if (time_ms() - this._last_render_draw > 100) {
@@ -959,13 +852,8 @@ export class View3D extends Editor {
     this.push_ctx_active();
     super.update();
 
-    if (time_ms() - this._last_wutime > 50) {
-      this.updateWidgets();
-      this._last_wutime = time_ms();
-    }
-
-    if (this._last_selectmode !== this.selectmode) {
-      this._last_selectmode = this.selectmode;
+    if (this._last_selectmode !== this.ctx.selectMask) {
+      this._last_selectmode = this.ctx.selectMask;
       window.redraw_viewport()
     }
 
@@ -1062,11 +950,7 @@ export class View3D extends Editor {
   }
 
   destroy() {
-    this.deleteGraphNode();
-
-    for (let ed of this.editors) {
-      ed.destroy(this.gl);
-    }
+    this.deleteGraphNodes();
 
     if (this.renderEngine !== undefined) {
       this.renderEngine.destroy(this.gl);
@@ -1078,11 +962,11 @@ export class View3D extends Editor {
       this.grid = undefined;
     }
 
-    this.widgets.destroy(this.gl);
     this.gl = undefined;
   }
 
   on_area_inactive() {
+    this.deleteGraphNodes();
     this.destroy();
     this.gl = undefined;
   }
@@ -1096,13 +980,7 @@ export class View3D extends Editor {
 
     this.glInit();
 
-    if (this.ctx.scene !== undefined) {
-      this.makeGraphNode();
-    }
-
-    for (let ed of this.editors) {
-      ed.ctx = this.ctx;
-    }
+    this.makeGraphNodes();
   }
 
   viewportDraw() {
@@ -1111,7 +989,6 @@ export class View3D extends Editor {
     }
 
     this.push_ctx_active();
-    this.updateWidgets();
     this.viewportDraw_intern();
     this.pop_ctx_active();
   }
@@ -1178,7 +1055,7 @@ export class View3D extends Editor {
     }
 
     if (this._graphnode === undefined) {
-      this.makeGraphNode();
+      this.makeGraphNodes();
     }
 
     this._graphnode.outputs.onDrawPre.update();
@@ -1244,9 +1121,11 @@ export class View3D extends Editor {
       this.grid.draw(gl);
     }
 
-    if (this.toolmode) {
-      this.toolmode.on_drawstart(gl);
+    if (scene.toolmode) {
+      scene.toolmode.on_drawstart(this, gl);
     }
+
+
     //for (let ed of this.editors) {
     //  ed.on_drawstart(gl);
     //}
@@ -1265,8 +1144,8 @@ export class View3D extends Editor {
     gl.clear(gl.DEPTH_BUFFER_BIT);
     this.widgets.draw(this.gl, this);
 
-    if (this.toolmode) {
-      this.toolmode.on_drawend(gl);
+    if (scene.toolmode) {
+      scene.toolmode.on_drawend(this, gl);
     }
   }
 
@@ -1343,10 +1222,12 @@ export class View3D extends Editor {
         continue;
       }
 
-      if (this.toolmode) {
+      if (scene.toolmode) {
+        scene.toolmode.view3d = this;
+
         this.threeCamera.pushUniforms(uniforms);
 
-        if (this.toolmode.drawObject(gl, uniforms, program, ob, ob.data)) {
+        if (scene.toolmode.drawObject(gl, uniforms, program, ob, ob.data)) {
           this.threeCamera.popUniforms();
           break;
         }
@@ -1368,50 +1249,14 @@ export class View3D extends Editor {
 
     ret._select_transparent = this._select_transparent;
     ret.camera.load(this.camera);
-    ret.selectmode = this.selectmode;
     ret.drawmode = this.drawmode;
+    ret.glInit();
     
     return ret;
   }
 
   loadSTRUCT(reader) {
-    this.toolmodes = [];
-    this.toolmode_map = {};
-    this.toolmode_namemap = {};
-
-    this.widgets.clear();
-
     reader(this);
-
-    let found = 0;
-    this.widgets.view3d = this;
-
-    this.toolmode_i = this.toolModeProp.values[this.toolmode_i];
-
-    for (let mode of this.toolmodes) {
-      mode.setManager(this.widgets);
-      mode.view3d = this;
-
-      let def = mode.constructor.widgetDefine();
-      let i = this.toolModeProp.values[def.name];
-
-      if (i === this.toolmode_i) {
-        this.widgets.add(mode);
-        found = 1;
-      }
-
-      this.toolmode_map[i] = mode;
-      this.toolmode_namemap[def.name] = mode;
-    }
-
-    if (!found) {
-      let i = this.toolmode_i;
-      this.toolmode_i = -1;
-
-      this.switchToolMode(i);
-    }
-
-    //if (this.wi)
     this.threeCamera.camera = this.camera;
   }
 
@@ -1425,14 +1270,9 @@ export class View3D extends Editor {
 };
 View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
   camera              : Camera;
-  toolmodes           : array(abstract(View3D_ToolMode));
-  selectmode          : int;
   transformSpace      : int; 
   drawmode            : int;
   _select_transparent : int;
-  widgettool          : int;
-  toolmode_i          : string | obj.toolModeProp.keys[obj.toolmode_i];
-  cursor3D            : mat4;
   cursorMode          : int;
   orbitMode           : int;
   flag                : int;

@@ -890,7 +890,12 @@ export class Graph {
         let s1 = n.outputs[k];
         
         n.graph_flag |= NodeFlags.CYCLE_TAG;
-        for (let s2 of s1.edges) { 
+        for (let s2 of s1.edges) {
+          if (s2.node === undefined) {
+            console.warn("Dependency graph corruption detected", s1, s2, n);
+            continue;
+          }
+
           let ret = cyclesearch(s2.node);
           if (ret)
             return ret;
@@ -1157,20 +1162,24 @@ export class Graph {
       let socks2 = i ? n2.outputs : n2.inputs;
 
       for (let k in socks1) {
+        console.log("relinking", k, k in socks2);
+
         let s1 = socks1[k];
         sock_idmap[s1.graph_id] = s1;
 
         if (!(k in socks2)) {
+          s1.edges.length = 0;
           continue;
         }
 
         let s2 = socks2[k];
-        for (let e of s2.edges) {
-          s1.edges.push(e);
-          e.edges.replace(s2, s1);
-        }
 
         s2.copyTo(s1);
+        s1.edges = s2.edges;
+
+        for (let e of s1.edges) {
+          e.edges.replace(s2, s1);
+        }
       }
     }
 
@@ -1181,6 +1190,7 @@ export class Graph {
 
   _save_nodes() {
     let ret = [];
+
     //replace nodes with proxies, for nodes who request it
     for (let n of this.nodes) {
       if (n.graph_flag & NodeFlags.SAVE_PROXY) {

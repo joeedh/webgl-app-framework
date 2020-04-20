@@ -39,7 +39,7 @@ export class TransformOp extends View3DOp {
     if ("selmask" in args) {
       tool.inputs.selmask.setValue(args.selmask);
     } else {
-      tool.inputs.selmask.setValue(ctx.view3d.selectmode);
+      tool.inputs.selmask.setValue(ctx.view3d.ctx.selectMask);
     }
 
     if ("propmode" in args) {

@@ -175,7 +175,7 @@ export class ToggleSelectAll extends SelectOpBase {
   static invoke(ctx, args) {
     let ret = new ToggleSelectAll();
 
-    //ret.inputs.selmask.setValue(ctx.view3d.selectmode);
+    //ret.inputs.selmask.setValue(ctx.view3d.ctx.selectMask);
     ret.inputs.selmask.setValue(SelMask.VERTEX|SelMask.EDGE|SelMask.FACE);
 
     if ("mode" in args) {

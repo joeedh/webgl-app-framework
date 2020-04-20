@@ -1,7 +1,7 @@
 import {FindNearest, castRay, CastModes} from "../findnearest.js";
 import {ExtrudeRegionsOp} from '../../../mesh/mesh_ops.js';
 import {ObjectFlags} from '../../../sceneobject/sceneobject.js';
-import {View3D_ToolMode} from '../view3d_toolmode.js';
+import {ToolMode} from '../view3d_toolmode.js';
 import {SelMask, SelOneToolModes, SelToolModes} from '../selectmode.js';
 import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../../mesh/mesh.js';
 import {PointSet} from '../../../potree/potree_types.js';
@@ -25,7 +25,7 @@ import {Icons} from '../../icon_enum.js';
 
 let _shift_temp = [0, 0];
 
-export class ObjectEditor extends View3D_ToolMode {
+export class ObjectEditor extends ToolMode {
   constructor(manager) {
     super(manager);
 
@@ -78,17 +78,17 @@ export class ObjectEditor extends View3D_ToolMode {
     let strip;
 
     strip = row.strip();
-    strip.prop("view3d.active_tool[none]");
-    strip.prop("view3d.active_tool[translate]");
+    strip.prop("scene.active_tool[none]");
+    strip.prop("scene.active_tool[translate]");
 
-    strip = row.strip();
-    strip.tool("mesh.toggle_select_all()");
+    //strip = row.strip();
+    //strip.tool("mesh.toggle_select_all()");
   }
 
   on_mousedown(e, x, y, was_touch) {
-    let ctx = this.view3d.ctx;
+    let ctx = this.ctx;
 
-    if (e.button == 0 || e.touches.length > 0) {
+    if (e.button == 0 || e.touches && e.touches.length > 0) {
       this.start_mpos[0] = x;
       this.start_mpos[1] = y;
     }
@@ -116,7 +116,7 @@ export class ObjectEditor extends View3D_ToolMode {
     }
 
     let cmd = `object.selectone(objectId=${ob.lib_id} setActive=true mode=${mode})`;
-    this.view3d.ctx.api.execTool(this.view3d.ctx, cmd);
+    this.ctx.api.execTool(this.ctx, cmd);
 
     return true;
   }
@@ -131,7 +131,7 @@ export class ObjectEditor extends View3D_ToolMode {
   }
 
   on_mousemove(e, x, y, was_touch) {
-    let ctx = this.view3d.ctx;
+    let ctx = this.ctx;
 
     if (this.manager.widgets.highlight !== undefined) {
       return false;
@@ -180,7 +180,7 @@ export class ObjectEditor extends View3D_ToolMode {
   }
 
   _updateHighlight(e, x, y, was_touch) {
-    let ctx = this.view3d.ctx;
+    let ctx = this.ctx;
 
     let ret = this.findnearest(ctx, x, y);
     let scene = ctx.scene;
@@ -235,7 +235,7 @@ export class ObjectEditor extends View3D_ToolMode {
     //*/
 
     let draw_outline = object.flag & ObjectFlags.SELECT;
-    draw_outline = draw_outline || object === this.view3d.ctx.scene.objects.highlight;
+    draw_outline = draw_outline || object === this.ctx.scene.objects.highlight;
 
     if (draw_outline) {
       let mask = gl.getParameter(gl.DEPTH_WRITEMASK);
@@ -325,10 +325,10 @@ export class ObjectEditor extends View3D_ToolMode {
     }
   }
 }
-ObjectEditor.STRUCT = STRUCT.inherit(ObjectEditor, View3D_ToolMode) + `
+ObjectEditor.STRUCT = STRUCT.inherit(ObjectEditor, ToolMode) + `
 }`;
 
 nstructjs.manager.add_class(ObjectEditor);
-View3D_ToolMode.register(ObjectEditor);
+ToolMode.register(ObjectEditor);
 
 

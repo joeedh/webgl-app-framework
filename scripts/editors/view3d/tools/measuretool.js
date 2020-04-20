@@ -1,12 +1,12 @@
 import {WidgetFlags, WidgetTool} from "../widgets.js";
-import {ToolModes, View3D_ToolMode} from "../view3d_toolmode.js";
+import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
 import '../../../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
-export class MeasureTool extends View3D_ToolMode {
+export class MeasureTool extends ToolMode {
   constructor(manager) {
     super(manager);
 
@@ -50,8 +50,8 @@ export class MeasureTool extends View3D_ToolMode {
   }
 }
 
-MeasureTool.STRUCT = STRUCT.inherit(MeasureTool, View3D_ToolMode) + `
+MeasureTool.STRUCT = STRUCT.inherit(MeasureTool, ToolMode) + `
 }`;
 nstructjs.manager.add_class(MeasureTool);
 
-View3D_ToolMode.register(MeasureTool);
+ToolMode.register(MeasureTool);

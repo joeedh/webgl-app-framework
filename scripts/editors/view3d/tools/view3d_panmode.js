@@ -1,12 +1,12 @@
 import {WidgetFlags, WidgetTool} from "../widgets.js";
-import {ToolModes, View3D_ToolMode} from "../view3d_toolmode.js";
+import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
 import '../../../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
-export class PanToolMode extends View3D_ToolMode {
+export class PanToolMode extends ToolMode {
   constructor(manager) {
     super(manager);
 
@@ -29,6 +29,14 @@ export class PanToolMode extends View3D_ToolMode {
     selectMode  : SelMask.OBJECT|SelMask.GEOM, //if set, preferred selectmode, see SelModes
   }}
 
+  buildHeader(header, addHeaderRow) {
+    super.buildHeader(header, addHeaderRow);
+
+    let strip = header.strip();
+    strip.prop("scene.active_tool[none]");
+    strip.prop("scene.active_tool[translate]");
+  }
+
   onActive() {
 
   }
@@ -50,8 +58,8 @@ export class PanToolMode extends View3D_ToolMode {
   }
 }
 
-PanToolMode.STRUCT = STRUCT.inherit(PanToolMode, View3D_ToolMode) + `
+PanToolMode.STRUCT = STRUCT.inherit(PanToolMode, ToolMode) + `
 }`;
 nstructjs.manager.add_class(PanToolMode);
 
-View3D_ToolMode.register(PanToolMode);
+ToolMode.register(PanToolMode);

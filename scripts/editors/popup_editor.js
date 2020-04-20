@@ -2,6 +2,26 @@ import {Editor} from "./editor_base.js";
 import {UIBase} from "../path.ux/scripts/ui_base.js";
 import {keymap} from '../path.ux/scripts/events.js';
 
+export const PopupTabModes = {
+  BINARY  : 1,
+
+  /**
+   Trinary mode.  Calls a callback on first click,
+   opens popup on second click.
+   */
+  TRINARY : 2
+};
+
+export class PopupButton {
+  constructor(contents, id, mode) {
+    this.cb1 = undefined;
+    this.cb2 = undefined;
+    this.id = id;
+    this.contents = contents;
+    this.mode = mode;
+  }
+}
+
 export class PopupEditor extends Editor {
   constructor() {
     super();

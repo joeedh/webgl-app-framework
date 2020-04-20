@@ -299,7 +299,7 @@ export class BasicMeshDrawer extends MeshDrawInterface {
   }
 
   draw(view3d, gl, object, uniforms, program) {
-    if (!(view3d.selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE))) {
+    if (!(view3d.ctx.selectMask & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE))) {
       return;
     }
 
@@ -312,7 +312,7 @@ export class BasicMeshDrawer extends MeshDrawInterface {
 
     let mesh = object.data;
 
-    let selmode = view3d.selectmode;
+    let selmode = view3d.ctx.selectMask;
     let program2 = Shaders.MeshEditShader;
     //let program2 = Shaders.MeshIDShader;
 

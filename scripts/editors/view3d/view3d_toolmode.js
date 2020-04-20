@@ -1,5 +1,10 @@
 /*
 
+UPDATE:
+To avoid violating model-view-controller design, toolmode and widgets will
+have to be moved to Scene.  That means all 3D viewports will have the same
+widgets.
+
 Toolmode refactor.
 
 The old subeditor system is going to be replaced
@@ -10,11 +15,13 @@ inherit from WidgetTool to have a unified event system
 for widgets/toolmodes.
 
 TODO:
+* DONE: Move toolmodes to Scene class.
+  - Note this means toolmodes will now be shared across View3D instances.
 * DONE: Refactor findnearest (screen picking) into its own module
 * PARTIALLY DONE: Bundle some standard tools into StandardTools class
  - With appropriate changes to keymap definitions.
 *  Move pick functionality (findnearest) to static methods in SceneObjectData.
-* Tools modes (editors) should inherent from WidgetTool
+* DONE Tools modes (editors) should inherent from WidgetTool
   - Note: not all widget tools must be tool modes
 */
 
@@ -30,15 +37,15 @@ import {WidgetSceneCursor} from "./widget_tools.js";
 
 let STRUCT = nstructjs.STRUCT;
 
-export class View3D_ToolMode extends WidgetTool {
+export class ToolMode extends WidgetTool {
   constructor(manager) {
     super(manager);
 
+    this.ctx = manager !== undefined ? manager.ctx : undefined;
     this.flag |= WidgetFlags.ALL_EVENTS;
     this.widgettool = undefined; //integer, index into WidgetTools list
     this._widget = undefined;
 
-    this.view3d = manager !== undefined ? manager.view3d : undefined;
     this.keymap = new KeyMap();
   }
 
@@ -86,9 +93,6 @@ export class View3D_ToolMode extends WidgetTool {
    * @param widgettool : integer, index in WidgetTools list
    */
   updateWidgetTool(view3d, widgettool) {
-    this.ctx = view3d.ctx;
-    this.view3d = view3d;
-
     let manager = view3d.widgets;
 
     if (this.ctx === undefined)
@@ -161,6 +165,10 @@ export class View3D_ToolMode extends WidgetTool {
     }
   }
 
+  onContextLost(e) {
+    return super.onContextLost(e);
+  }
+
   on_mousedown(e, x, y, was_touch) {
   }
 
@@ -170,11 +178,11 @@ export class View3D_ToolMode extends WidgetTool {
   on_mouseup(e, x, y, was_touch) {
   }
 
-  on_drawstart(gl) {
+  on_drawstart(view3d, gl) {
 
   }
 
-  on_drawend(gl) {
+  on_drawend(view3d, gl) {
 
   }
 
@@ -199,12 +207,12 @@ set view3d(val) {
   }
 }
 
-View3D_ToolMode.STRUCT = `
-View3D_ToolMode {
+ToolMode.STRUCT = `
+ToolMode {
   
 }
 `;
-nstructjs.manager.add_class(View3D_ToolMode);
+nstructjs.manager.add_class(ToolMode);
 
 export class MeshCache {
   constructor(meshid) {

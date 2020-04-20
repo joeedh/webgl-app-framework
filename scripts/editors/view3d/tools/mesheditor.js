@@ -1,5 +1,5 @@
 import {ExtrudeRegionsOp} from '../../../mesh/mesh_ops.js';
-import {View3D_ToolMode} from '../view3d_toolmode.js';
+import {ToolMode} from '../view3d_toolmode.js';
 import {SelMask, SelOneToolModes, SelToolModes} from '../selectmode.js';
 import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../../mesh/mesh.js';
 import * as util from '../../../util/util.js';
@@ -30,7 +30,7 @@ export const MeshTools = {
 
 import {Colors, elemColor} from '../view3d_draw.js';
 
-export class MeshEditor extends View3D_ToolMode {
+export class MeshEditor extends ToolMode {
   constructor(manager) {
     super(manager);
 
@@ -520,7 +520,7 @@ export class MeshEditor extends View3D_ToolMode {
 
   findnearest(ctx, x, y, selmask=undefined, limit=75) {
     if (selmask === undefined) {
-      selmask = this.view3d.selectmode;
+      selmask = this.view3d.ctx.selectMask;
     }
 
     if (!this.view3d.select_transparent) {
@@ -564,7 +564,7 @@ export class MeshEditor extends View3D_ToolMode {
   * along with the element id
   * */
   drawIDs(gl, uniforms, object, mesh, id_offset) {
-    if (!(this.view3d.selectmode & SelMask.GEOM)) {
+    if (!(this.view3d.ctx.selectMask & SelMask.GEOM)) {
       return;
     }
 
@@ -577,9 +577,9 @@ export class MeshEditor extends View3D_ToolMode {
   }
 }
 
-MeshEditor.STRUCT = STRUCT.inherit(MeshEditor, View3D_ToolMode) + `
+MeshEditor.STRUCT = STRUCT.inherit(MeshEditor, ToolMode) + `
 }
 `;
 nstructjs.manager.add_class(MeshEditor);
 
-View3D_ToolMode.register(MeshEditor);
+ToolMode.register(MeshEditor);

@@ -28,7 +28,7 @@ export class WidgetSceneCursor extends WidgetBase {
   }
 
   get isDead() {
-    return !this.manager.view3d._showCursor();
+    return !this.manager.ctx.view3d._showCursor();
   }
 
   static widgetDefine() {return {
@@ -41,7 +41,7 @@ export class WidgetSceneCursor extends WidgetBase {
 
   update(manager) {
     super.update(manager);
-    let view3d = manager.view3d;
+    let view3d = manager.ctx.view3d;
 
     if (this.shape === undefined) {
       this.shape = new WidgetSphere(manager);
@@ -83,10 +83,10 @@ export class TranslateWidget extends WidgetTool {
   }}
 
   static validate(ctx) {
-    let selmask = ctx.view3d.selectmode;
+    let selmask = ctx.selectMask;
 
     if (selmask & SelMask.OBJECT) {
-      for (let ob of ctx.scene.objects.selected.editable) {
+      for (let ob of ctx.selectedObjects) {
         return true;
       }
     }
@@ -157,7 +157,7 @@ export class TranslateWidget extends WidgetTool {
   startTool(axis, localX, localY) {
     let tool = new TranslateOp([localX, localY]);
     let con = new Vector3();
-    let selmode = this.ctx.view3d.selectmode;
+    let selmode = this.ctx.view3d.ctx.selectMask;
 
     tool.inputs.selmask.setValue(selmode);
 
@@ -187,8 +187,8 @@ export class TranslateWidget extends WidgetTool {
 
     //let ret = new Vector3(aabb[0]).interp(aabb[1], 0.5);
 
-    let ret = this.view3d.getTransCenter();
-    let aabb = this.view3d.getTransBounds();
+    let ret = this.ctx.view3d.getTransCenter();
+    let aabb = this.ctx.view3d.getTransBounds();
     ret.center = new Vector3(aabb[0]).interp(aabb[1], 0.5);
     //ret = {center:  ret};
 
@@ -201,15 +201,15 @@ export class TranslateWidget extends WidgetTool {
     let co1 = new Vector3(ret.center);
     let co2 = new Vector3(co1);
 
-    this.view3d.project(co1);
-    this.view3d.project(co2);
+    this.ctx.view3d.project(co1);
+    this.ctx.view3d.project(co2);
 
     co1[0] += 1.0;
 
-    let z2 = this.view3d.camera.pos.vectorDistance(this.view3d.camera.target);
+    let z2 = this.ctx.view3d.camera.pos.vectorDistance(this.ctx.view3d.camera.target);
 
-    this.view3d.unproject(co1);
-    this.view3d.unproject(co2);
+    this.ctx.view3d.unproject(co1);
+    this.ctx.view3d.unproject(co2);
 
     let mat = new Matrix4(); //XXX get proper matrix space transform
     mat.multiply(ret.spaceMatrix);
@@ -307,7 +307,7 @@ export class ScaleWidget extends WidgetTool {
   }}
 
   static validate(ctx) {
-    let selmask = ctx.view3d.selectmode;
+    let selmask = ctx.view3d.ctx.selectMask;
 
     if (selmask == SelMask.OBJECT) {
       for (let ob of ctx.scene.objects.selected.editable) {
@@ -404,7 +404,7 @@ export class ScaleWidget extends WidgetTool {
       y = this.axes[1],
       z = this.axes[2];
 
-    let ret = this.view3d.getTransCenter();
+    let ret = this.ctx.view3d.getTransCenter();
 
     let tmat = new Matrix4();
     let ts = 0.5;
@@ -415,15 +415,15 @@ export class ScaleWidget extends WidgetTool {
     let co1 = new Vector3(ret.center);
     let co2 = new Vector3(co1);
 
-    this.view3d.project(co1);
-    this.view3d.project(co2);
+    this.ctx.view3d.project(co1);
+    this.ctx.view3d.project(co2);
 
     co1[0] += 1.0;
 
-    let z2 = this.view3d.camera.pos.vectorDistance(this.view3d.camera.target);
+    let z2 = this.ctx.view3d.camera.pos.vectorDistance(this.ctx.view3d.camera.target);
 
-    this.view3d.unproject(co1);
-    this.view3d.unproject(co2);
+    this.ctx.view3d.unproject(co1);
+    this.ctx.view3d.unproject(co2);
 
     let mat = new Matrix4(); //XXX get proper matrix space transform
     mat.multiply(ret.spaceMatrix);
@@ -524,7 +524,7 @@ export class ExtrudeWidget extends WidgetTool {
     if (!(ctx.selectmode & SelMask.GEOM))
       return false;
 
-    let selmask = ctx.view3d.selectmode;
+    let selmask = ctx.view3d.ctx.selectMask;
 
     for (let ob of ctx.selectedMeshObjects) {
       for (let f of ob.data.faces.selected) {

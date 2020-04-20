@@ -55,8 +55,22 @@ export class WidgetShape {
     }
   }
 
+  onContextLost(e) {
+    if (this.mesh !== undefined) {
+      this.mesh.onContextLost(e);
+    }
+  }
+
   destroy(gl) {
-    if (this.destroyed) {
+    if (this.gl !== undefined && gl !== this.gl) {
+      console.warn("Destroy called with new gl context");
+    } else if (this.gl === undefined && gl !== undefined) {
+      this.gl = gl;
+    }
+
+    gl = this.gl;
+
+    if (gl === undefined) {
       return;
     }
 
@@ -89,6 +103,11 @@ export class WidgetShape {
   }
 
   draw(gl, manager, matrix, localMatrix) {
+    if (this.destroyed) {
+      console.log("Reusing widget shape");
+      this.destroyed = false;
+    }
+
     if (this.mesh === undefined) {
       console.warn("missing mesh in WidgetShape.prototype.draw()");
       return;
@@ -104,7 +123,7 @@ export class WidgetShape {
     let co = this._drawtemp;
     co.zero();
     co.multVecMatrix(mat);
-    let w = co.multVecMatrix(manager.view3d.camera.rendermat);
+    let w = co.multVecMatrix(manager.ctx.view3d.camera.rendermat);
 
     let smat = this._tempmat;
     smat.makeIdentity();
@@ -125,7 +144,7 @@ export class WidgetShape {
     mat.multiply(local);
 
     this.mesh.uniforms.polygonOffset = 0.0;
-    this.mesh.uniforms.projectionMatrix = manager.view3d.camera.rendermat;
+    this.mesh.uniforms.projectionMatrix = manager.ctx.view3d.camera.rendermat;
     this.mesh.uniforms.objectMatrix = mat;
 
     gl.enable(gl.BLEND);
@@ -409,6 +428,7 @@ export class WidgetBase {
   constructor() {
     let def = this.constructor.widgetDefine();
 
+    this.ctx = undefined;
     this.flag = def.flag !== 0 ? def.flag : 0;
     this.id = -1;
     this.children = [];
@@ -435,7 +455,7 @@ export class WidgetBase {
 
   //can this widget run?
   static ctxValid(ctx) {
-    return ctx.view3d.selectmode & this.constructor.widgetDefine().selMask;
+    return ctx.selectMask & this.constructor.widgetDefine().selMask;
   }
 
   get isDead() {
@@ -445,6 +465,12 @@ export class WidgetBase {
 
   remove() {
     this.manager.remove(this);
+  }
+
+  onContextLost(e) {
+    if (this.shape !== undefined) {
+      this.shape.onContextLost(e);
+    }
   }
 
   destroy(gl) {
@@ -514,7 +540,7 @@ export class WidgetBase {
   }
 
   on_mousedown(e, localX, localY) {
-    let child = this.findNearest(this.manager.view3d, localX, localY);
+    let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
 
     if (child !== undefined && child !== this) {
       child.on_mousedown(e, localX, localY);
@@ -527,7 +553,7 @@ export class WidgetBase {
   }
 
   on_mousemove(e, localX, localY) {
-    let child = this.findNearest(this.manager.view3d, localX, localY);
+    let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
 
     if (child !== undefined && child !== this) {
       child.on_mousemove(e, localX, localY);
@@ -540,7 +566,7 @@ export class WidgetBase {
   }
 
   on_mouseup(e, localX, localY) {
-    let child = this.findNearest(this.manager.view3d, localX, localY);
+    let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
 
     if (child !== undefined && child !== this) {
       child.on_mouseup(e, localX, localY);
@@ -590,10 +616,9 @@ export class WidgetTool extends WidgetBase {
 
     if (manager !== undefined) {
       this.manager = manager;
-      this.view3d = manager.view3d;
-      this.ctx = this.view3d.ctx;
+      this.ctx = manager.ctx;
     } else {
-      this.manager = this.view3d = this.ctx = undefined;
+      this.manager = this.ctx = undefined;
     }
 
     let def = this.constructor.widgetDefine();
@@ -611,8 +636,7 @@ export class WidgetTool extends WidgetBase {
 
   setManager(manager) {
     this.manager = manager;
-    this.view3d = manager.view3d;
-    this.ctx = manager.view3d.ctx;
+    this.ctx = manager.ctx;
   }
 
   getArrow(matrix, color) {
@@ -639,7 +663,7 @@ export class WidgetTool extends WidgetBase {
    * draw callbacks to execute this.update() as appropriate
    * */
   execTool(tool) {
-    let view3d = this.view3d;
+    let view3d = this.ctx.view3d;
 
     if (this._widget_tempnode === undefined) {
       let n = this._widget_tempnode = this.manager.createCallbackNode(0, "widget redraw", () => {
@@ -723,7 +747,7 @@ export class WidgetTool extends WidgetBase {
   }
 
   update(ctx) {
-    super.update(this.view3d.manager);
+    super.update(this.manager);
   }
 
   remove() {
@@ -759,12 +783,14 @@ export class WidgetTool extends WidgetBase {
 };
 
 export class WidgetManager {
-  constructor(view3d) {
-    this.view3d = view3d;
+  constructor(ctx) {
+    this._init = false;
     this.widgets = [];
     this.widget_idmap = {};
     this.shapes = {};
     this.idgen = new util.IDGen();
+    this.ctx = ctx;
+    this.gl = undefined;
 
     //execution graph nodes
     this.nodes = {};
@@ -792,12 +818,21 @@ export class WidgetManager {
     }
   }
 
-  onContextLost(e) {
+  glInit(gl) {
+    this.gl = gl;
     this.loadShapes();
   }
 
+  onContextLost(e) {
+    this._init = false;
+
+    for (let w of this.widgets) {
+      w.onContextLost(e);
+    }
+  }
+
   clearNodes() {
-    let graph = this.view3d.ctx.graph;
+    let graph = this.ctx.graph;
 
     for (let k in this.nodes) {
       let n = this.nodes[k];
@@ -822,7 +857,7 @@ export class WidgetManager {
     let key = n._key;
 
     if (this.nodes[key]) {
-      this.view3d.ctx.graph.remove(this.nodes[key]);
+      this.ctx.graph.remove(this.nodes[key]);
     }
   }
 
@@ -830,7 +865,7 @@ export class WidgetManager {
     let key = id + ":" + name;
 
     if (this.nodes[key]) {
-      this.view3d.ctx.graph.remove(this.nodes[key]);
+      this.ctx.graph.remove(this.nodes[key]);
     }
 
     this.nodes[key] = CallbackNode.create(key, callback, inputs, outputs);
@@ -909,7 +944,7 @@ export class WidgetManager {
         continue;
       }
 
-      let ret = w.findNearest(this.view3d, x, y, limit);
+      let ret = w.findNearest(this.ctx.view3d, x, y, limit);
 
       if (ret === undefined || ret.dis > limit) {
         continue;
@@ -975,6 +1010,7 @@ export class WidgetManager {
       return undefined;
     }
 
+    widget.ctx = this.ctx;
     widget.id = this.idgen.next();
     widget.manager = this;
 
@@ -990,8 +1026,8 @@ export class WidgetManager {
       return;
     }
 
-    if (this.view3d !== undefined && this.view3d.gl !== undefined) {
-      widget.destroy(this.view3d.gl);
+    if (this.ctx.view3d !== undefined && this.ctx.view3d.gl !== undefined) {
+      widget.destroy(this.ctx.view3d.gl);
     }
 
     if (widget === this.highlight) {
@@ -1015,7 +1051,7 @@ export class WidgetManager {
   }
 
   destroy(gl) {
-    if (this.view3d !== undefined) {
+    if (this.ctx.view3d !== undefined) {
       this.clearNodes();
     } else {
       //XXX ok just nuke all references in this.nodes
@@ -1026,14 +1062,58 @@ export class WidgetManager {
       let shape = this.shapes[k];
       shape.destroy(gl);
     }
+
+    if (this.gl !== undefined && gl !== this.gl) {
+      console.warn("Destroy called with new gl context");
+    } else if (this.gl === undefined && gl !== undefined) {
+      this.gl = gl;
+    }
+
+    gl = this.gl;
+    let widgets = this.widgets;
+
+    this.widgets = [];
+    this.widget_idmap = {};
+    this.widgets.active = undefined;
+    this.widgets.highlight = undefined;
+
+    if (gl === undefined) {
+      return;
+    }
+
+    for (let w of widgets) {
+      w.ctx = this.ctx;
+      w.manager = this;
+
+      try {
+        w.destroy(gl);
+      } catch (error) {
+        util.print_stack(error);
+        console.warn("Failed to destroy a widget", w);
+      }
+    }
   }
 
   draw(gl, view3d) {
-    this.view3d = view3d;
+    if (!this._init) {
+      this._init = true;
+      this.glInit(gl);
+      this.loadShapes();
+    }
+
     this.gl = gl;
+    let pushctx = view3d !== undefined && view3d !== this.ctx.view3d;
+
+    if (pushctx) {
+      view3d.push_ctx_active();
+    }
 
     for (let widget of this.widgets) {
       widget.draw(gl, this);
+    }
+
+    if (pushctx) {
+      view3d.pop_ctx_active();
     }
   }
 
@@ -1085,8 +1165,6 @@ export class WidgetManager {
   }
 
   update(view3d) {
-    this.view3d = view3d;
-
     for (let widget of this.widgets) {
       widget.update(this);
 

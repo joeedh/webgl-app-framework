@@ -6,7 +6,7 @@ import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js';
 import {resourceManager} from "../core/resource.js";
 import '../core/image.js';
 
-import {makeToolModeEnum, ToolModes, View3D_ToolMode} from "../editors/view3d/view3d_toolmode.js";
+import {makeToolModeEnum, ToolModes, ToolMode} from "../editors/view3d/view3d_toolmode.js";
 
 import '../mesh/mesh_createops.js';
 
@@ -106,34 +106,9 @@ export function api_define_view3d(api, pstruct) {
     window.redraw_viewport();
   }
 
-  let prop = makeToolModeEnum();
-  def = vstruct.enum("toolmode_i", "toolmode", prop, "ToolMode", "ToolMode");
-  def.on('change', function(newval, oldval) {
-    let view3d = this.dataref;
-
-    view3d.toolmode_i = oldval;
-    view3d.switchToolMode(newval);
-    window.redraw_viewport();
-  });
-
-  prop = WidgetTool.getToolEnum();
-  def = vstruct.enum("widgettool", "active_tool", prop.values, "Active Tool", "Currently active tool widget");
-  def.setProp(prop);
-  def.on("change", onchange);
-
   vstruct.flags("flag", "flag", View3DFlags).on("change", onchange).icons({
     SHOW_RENDER : Icons.RENDER
   });
-
-
-  let base = View3D_ToolMode.defineAPI(api);
-  vstruct.dynamicStruct("toolmode", "tool", "Active Tool", base);
-
-  //vstruct.dynamicStruct("toolmode_namemap", "toolmodes", "ToolModes");
-
-  for (let cls of ToolModes) {
-    cls.defineAPI(api);
-  }
 }
 
 function api_define_socket(api, cls=NodeSocketType) {
@@ -523,7 +498,37 @@ export function api_define_scene(api, pstruct) {
   let sstruct = api_define_datablock(api, Scene);
 
   pstruct.struct("scene", "scene", "Scene", sstruct);
+
   sstruct.struct("envlight", "envlight", "Ambient Light", api_define_envlight(api));
+
+  let prop = makeToolModeEnum();
+
+  let def = sstruct.enum("toolmode_i", "toolmode", prop, "ToolMode", "ToolMode");
+  def.on('change', function(newval, oldval) {
+    let scene = this.dataref;
+
+    scene.toolmode_i = oldval;
+    scene.switchToolMode(newval);
+    window.redraw_viewport();
+  });
+
+  let onchange = function(oldval, newval) {
+    window.redraw_viewport();
+  };
+
+  prop = WidgetTool.getToolEnum();
+  def = sstruct.enum("widgettool", "active_tool", prop.values, "Active Tool", "Currently active tool widget");
+  def.setProp(prop);
+  def.on("change", onchange);
+
+  let base = ToolMode.defineAPI(api);
+  sstruct.dynamicStruct("toolmode", "tool", "Active Tool", base);
+
+  //vstruct.dynamicStruct("toolmode_namemap", "toolmodes", "ToolModes");
+
+  for (let cls of ToolModes) {
+    cls.defineAPI(api);
+  }
 }
 
 export function getDataAPI() {

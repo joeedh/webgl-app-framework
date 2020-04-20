@@ -1,14 +1,20 @@
 import {DataBlock, DataRef, BlockFlags} from './lib_api.js';
 import '../path.ux/scripts/struct.js';
+import {ToolModes, makeToolModeEnum} from '../editors/view3d/view3d_toolmode.js';
+import {WidgetManager, WidgetTool, WidgetTools} from "../editors/view3d/widgets.js";
+
 let STRUCT = nstructjs.STRUCT;
 import {Graph} from './graph.js';
 import * as util from '../util/util.js';
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject.js';
 import {DependSocket} from './graphsockets.js';
 import {Light} from '../light/light.js';
-import {Vector3} from '../util/vectormath.js';
+import {Vector3, Matrix4} from '../util/vectormath.js';
 
 import * as THREE from '../extern/three.js';
+import {print_stack} from "../util/util.js";
+import {WidgetSceneCursor} from "../editors/view3d/widget_tools.js";
+import {SelMask} from "../editors/view3d/selectmode.js";
 
 export const EnvLightFlags = {
   USE_AO : 1
@@ -225,6 +231,19 @@ export class Scene extends DataBlock {
   constructor(objects) {
     super();
 
+    this.widgets = new WidgetManager();
+    this.widgets.ctx = _appstate.ctx;
+    this.cursor3D = new Matrix4();
+
+    this.selectMask = SelMask.OBJECT;
+    this.toolmodes = []; //we cache toolmode instances, these are saved in files too
+    this.toolmode_map = {};
+    this.toolmode_namemap = {};
+
+    let wenum = WidgetTool.getToolEnum();
+    this.widgettool = wenum.values.translate; //active widget tool index in WidgetTools
+    this.widget = undefined; //active widget instance
+
     this.envlight = new EnvLight();
 
     this.objects = new ObjectList(undefined, this);
@@ -238,6 +257,17 @@ export class Scene extends DataBlock {
         this.add(ob);
       }
     }
+
+    this.toolModeProp = makeToolModeEnum();
+    this.toolmode_i = this.toolModeProp.values["object"];
+  }
+
+  get toolmode() {
+    if (!(this.toolmode_i in this.toolmode_map)) {
+      this.switchToolMode(this.toolmode_i);
+    }
+
+    return this.toolmode_map[this.toolmode_i];
   }
 
   get lights() {
@@ -279,7 +309,59 @@ export class Scene extends DataBlock {
       this.objects.active = ob;
     }
   }
-  
+
+  switchToolMode(mode) {
+    if (mode === undefined) {
+      throw new Error("switchToolMode: mode cannot be undefined");
+    }
+
+    let i = typeof mode == "number" ? mode : this.toolModeProp.values[mode];
+
+    if (i === undefined) {
+      throw new Error("invalid tool mode " + mode);
+    }
+
+    let cls = ToolModes[i];
+    let ret;
+
+    for (let mode of this.toolmodes) {
+      if (mode.constructor === cls) {
+        ret = mode;
+        break;
+      }
+    }
+
+
+    if (ret === undefined) {
+      ret = new cls(this.widgets);
+
+      let def = cls.widgetDefine();
+
+      this.toolmodes.push(ret);
+      this.toolmode_map[i] = ret;
+      this.toolmode_namemap[def.name] = ret;
+    }
+
+    if (this.toolmode !== undefined) {
+      this.toolmode.onInactive();
+      this.toolmode.destroy();
+      this.toolmode.remove();
+    }
+
+    this.toolmode_i = i;
+    this.widgets.add(ret);
+
+    console.warn("switchToolMode called");
+
+    ret.onActive();
+
+    if (this.outputs.onToolModeChange.hasEdges) {
+      this.outputs.onToolModeChange.update();
+    }
+
+    return ret;
+  }
+
   remove(ob) {
     if (ob === undefined || this.objects.indexOf(ob) < 0) {
       console.log("object not in scene", ob);
@@ -296,6 +378,12 @@ export class Scene extends DataBlock {
 
     this.objects = new ObjectSet(undefined, this);
     this.objects.onselect = this._onselect.bind(this);
+
+    for (let tool of this.toolmodes) {
+      //tool.
+    }
+
+    this.widgets.destroy();
   }
   
   static blockDefine() { return {
@@ -317,19 +405,57 @@ export class Scene extends DataBlock {
     uiname  : "Scene",
     flag    : 0,
     outputs : {
-      onSelect : new DependSocket("Selection Change")
+      onSelect : new DependSocket("Selection Change"),
+      onToolModeChange : new DependSocket("Toolmode Change")
     }
   }}
 
   loadSTRUCT(reader) {
+    //very important these three lines go *before*
+    //call to reader(this)
+    this.toolmodes = [];
+    this.toolmode_map = {};
+    this.toolmode_namemap = {};
+
     reader(this);
     super.loadSTRUCT(reader);
 
     this.objects.scene = this;
     this.objects.onselect = this._onselect.bind(this);
+
+    this.widgets.ctx = _appstate.ctx;
+    this.widgets.clear();
+
+    let found = 0;
+
+    this.toolmode_i = this.toolModeProp.values[this.toolmode_i];
+
+    for (let mode of this.toolmodes) {
+      mode.setManager(this.widgets);
+
+      let def = mode.constructor.widgetDefine();
+      let i = this.toolModeProp.values[def.name];
+
+      if (i === this.toolmode_i) {
+        this.widgets.add(mode);
+        found = 1;
+      }
+
+      this.toolmode_map[i] = mode;
+      this.toolmode_namemap[def.name] = mode;
+    }
+
+    if (!found) {
+      let i = this.toolmode_i;
+      this.toolmode_i = -1;
+
+      this.switchToolMode(i);
+    }
   }
   
   dataLink(getblock, getblock_addUser) {
+    super.dataLink(...arguments);
+
     if (this._linked) {
       console.log("DOUBLE CALL TO dataLink");
       return;
@@ -341,14 +467,92 @@ export class Scene extends DataBlock {
 
     delete this.active;
   }
+
+  updateWidgets() {
+    let ctx = this.widgets.ctx;
+
+    if (ctx === undefined || ctx.scene === undefined) {
+      return;
+    }
+
+    try {
+      this.updateWidgets_intern();
+    } catch (error) {
+      print_stack(error);
+      console.warn("updateWidgets() failed");
+    }
+  }
+
+  updateWidgets_intern() {
+    let ctx = this.widgets.ctx;
+    if (ctx === undefined)
+      return;
+
+    /*
+    if (this._showCursor() && !this.widgets.hasWidget(WidgetSceneCursor)) {
+      this.widgets.add(new WidgetSceneCursor());
+      window.redraw_viewport();
+    }//*/
+
+    let tool = WidgetTools[this.widgettool];
+    if (tool === undefined) {
+      return;
+    }
+
+    let valid = tool.validate(ctx);
+    console.log("valid:", valid, ctx.selectMask);
+
+    if (this.widget !== undefined) {
+      let bad = !(this.widget instanceof tool) || (this.widget.manager !== this.widgets);
+      bad = bad || !valid;
+
+      if (bad) {
+        this.widget.remove();
+        this.widget = undefined;
+      }
+    }
+
+    if (this.widget === undefined && valid) {
+      this.widget = new tool(this.widgets);
+
+      console.log("making widget instance", this.widget);
+
+      this.widget.create(ctx, this.widgets);
+
+      let def = this.widget.constructor.widgetDefine();
+
+      if (def.selectMode !== undefined && this.selectMask != def.selectMode) {
+        this.selectMask = def.selectMode;
+        window.redraw_viewport();
+      }
+    } else if (tool && this.widget === undefined) {
+      let def = tool.widgetDefine();
+
+      if (def.selectMode !== undefined && this.selectMask != def.selectMode) {
+        this.selectMask = def.selectMode;
+        window.redraw_viewport();
+      }
+    }
+
+    if (this.widget !== undefined) {
+      this.widget.update();
+    }
+
+    this.widgets.update(this);
+  }
 }
 DataBlock.register(Scene);
 Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
-  flag      : int;
-  objects   : ObjectList;
-  active    : int | obj.active !== undefined ? obj.active.lib_id : -1;
-  time      : float;
-  envlight  : EnvLight;
+  flag       : int;
+  objects    : ObjectList;
+  active     : int | obj.active !== undefined ? obj.active.lib_id : -1;
+  time       : float;
+  selectMask : int;
+  cursor3D   : mat4;
+  envlight   : EnvLight;
+  toolmode_i : string | obj.toolModeProp.keys[obj.toolmode_i];
+  toolmodes  : array(abstract(ToolMode));
+  widgettool : int;
 }
 `;
 

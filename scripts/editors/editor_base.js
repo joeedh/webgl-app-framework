@@ -363,6 +363,7 @@ nstructjs.manager.add_class(Editor);
 import {ToolClasses, ToolFlags, ToolMacro} from "../path.ux/scripts/simple_toolsys.js";
 import {Menu} from "../path.ux/scripts/ui_menu.js";
 import * as ui_base from "../path.ux/scripts/ui_base.js";
+import {time_ms} from "../util/util.js";
 
 function spawnToolSearchMenu(ctx) {
   let tools = [];
@@ -422,6 +423,10 @@ export class App extends Screen {
 
     this.useDataPathToolOp = true;
 
+    //last widget update time
+    this._last_wutime = 0;
+
+    //last dpi update time
     this._last_dpi = undefined;
 
     this.keymap = new KeyMap([
@@ -496,8 +501,23 @@ export class App extends Screen {
     }
   }
 
+  updateWidgets() {
+    if (time_ms() - this._last_wutime < 50) {
+      return;
+    }
+
+    this._last_wutime = time_ms();
+    let scene = this.ctx.scene;
+
+    if (scene !== undefined) {
+      scene.updateWidgets();
+    }
+  }
+
   update() {
     super.update();
+
+    this.updateWidgets();
     this.updateDPI();
 
     let w = window.innerWidth;
