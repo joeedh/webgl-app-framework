@@ -171,20 +171,21 @@ export class FBO {
    * Draws depth texture to rgba
    * Does not bind framebuffer.
    * */
-  drawDepth(gl, width, height) {
+  drawDepth(gl, width, height, tex) {
     let quad = this._getQuad(gl, width, height);
 
     quad.program = this.blitshader;
 
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.BLEND);
+    gl.disable(gl.CULL_FACE);
     let dither = gl.getParameter(gl.DITHER);
 
     gl.disable(gl.DITHER);
 
     quad.draw(gl, {
-      rgba  : this.texDepth,
-      depth : this.texDepth,
+      rgba  : tex,
+      depth : tex,
       size : [width, height]
     });
 

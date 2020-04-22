@@ -22,6 +22,9 @@ import {Light} from "../../../light/light.js";
 import {TranslateOp} from "../transform_ops.js";
 let STRUCT = nstructjs.STRUCT;
 import {Icons} from '../../icon_enum.js';
+import {WidgetTool} from "../widgets.js";
+import {TranslateWidget} from "../widget_tools.js";
+import {FlagProperty} from "../../../path.ux/scripts/toolprop.js";
 
 let _shift_temp = [0, 0];
 
@@ -31,6 +34,9 @@ export class ObjectEditor extends ToolMode {
 
     this.start_mpos = new Vector2();
     this.ctx = undefined; //is set by owning View3D
+
+    this.transformWidget = 0;
+    this._transformProp = this.constructor.getTransformProp();
 
     this.test = "yay";
 
@@ -53,7 +59,7 @@ export class ObjectEditor extends ToolMode {
     description : "Select Scene Objects",
     icon        : Icons.CURSOR_ARROW,
     flag        : 0,
-    selectMode  : SelMask.OBJECT
+    transWidgets: [TranslateWidget]
   }}
 
   defineKeyMap() {
@@ -71,15 +77,23 @@ export class ObjectEditor extends ToolMode {
     ctx.scene.objects.setHighlight(undefined);
   }
 
-  buildHeader(header, addHeaderRow) {
+  static buildSettings(container) {
+
+    container.useIcons();
+    let strip = container.strip();
+
+    strip.label("Move Tool");
+    strip.prop("scene.tool.transformWidget[translate]");
+  }
+
+  static buildHeader(header, addHeaderRow) {
     super.buildHeader(header, addHeaderRow);
 
     let row = header; //addHeaderRow();
     let strip;
 
     strip = row.strip();
-    strip.prop("scene.active_tool[none]");
-    strip.prop("scene.active_tool[translate]");
+    strip.prop("scene.tool.transformWidget[translate]");
 
     //strip = row.strip();
     //strip.tool("mesh.toggle_select_all()");
@@ -152,10 +166,7 @@ export class ObjectEditor extends ToolMode {
     }
 
     //(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
-    let mpos = new Vector2([x, y]);
-    let ret = castRay(ctx, ctx.selectMask, mpos, this.view3d, CastModes.FRAMEBUFFER);
-
-    console.log("castRay ret:", ret);
+    //let mpos = new Vector2([x, y]);
 
     /*
     let's rely on transform widget for click-drag tweaking.
@@ -258,9 +269,7 @@ export class ObjectEditor extends ToolMode {
   }
 
   on_drawend(gl) {
-  }
-
-  destroy() {
+    super.on_drawend(gl);
   }
 
   findnearest(ctx, x, y, selmask=SelMask.OBJECT, limit=25) {

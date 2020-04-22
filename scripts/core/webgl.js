@@ -643,16 +643,16 @@ export class Texture {
     gl.deleteTexture(this.texture);
   }
 
-  static load(gl, width, height, data) {
+  static load(gl, width, height, data, target = gl.TEXTURE_2D) {
     let tex = gl.createTexture();
     
-    gl.bindTexture(this.target, tex);
+    gl.bindTexture(target, tex);
     if (data instanceof Float32Array) {
-      gl.texImage2D(this.target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.FLOAT, data);
+      gl.texImage2D(target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.FLOAT, data);
     } else {
-      gl.texImage2D(this.target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+      gl.texImage2D(target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
     }
-    Texture.defaultParams(gl, tex);
+    Texture.defaultParams(gl, tex, target);
     
     return new Texture(0, tex);
   }
@@ -784,7 +784,7 @@ export class Camera extends DrawMats {
     this.up = new Vector3([1, 3, 0]);
     this.up.normalize();
     
-    this.near = 0.01;
+    this.near = 0.25;
     this.far = 10000.0;
   }
   
@@ -879,7 +879,7 @@ export class Camera extends DrawMats {
     
     this.rendermat.load(this.persmat).multiply(this.cameramat);
     //this.rendermat.load(this.cameramat).multiply(this.persmat);
-    
+
     super.regen_mats(aspect); //will calculate iXXXmat for us
   }
 

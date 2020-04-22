@@ -52,6 +52,10 @@ export class GPUSelectBuffer {
     }
     //*/
 
+    this.size[0] = ~~view3d.glSize[0];
+    this.size[1] = ~~view3d.glSize[1];
+
+    this.fbo.update(gl, this.size[0], this.size[1]);
     this.fbo.bind(gl);
 
     let uniforms = {
@@ -142,10 +146,12 @@ export class GPUSelectBuffer {
     x = ~~(x*dpi + 0.5);
     y = ~~(y*dpi + 0.5);
 
-    if (this.pos.vectorDistance(view3d.glPos) != 0.0 ||
-        this.size.vectorDistance(view3d.glSize) != 0.0) {
+    let bad = this.size.vectorDistance(view3d.glSize) != 0.0;
+    //bad = bad || this.pos.vectorDistance(view3d.glPos) != 0.0;
+
+    if (bad) {
       this.pos.load(view3d.glPos);
-      this.size.load(view3d.glSize);
+      this.size.load(view3d.glSize).floor();
 
       this.dirty();
     }
@@ -157,22 +163,24 @@ export class GPUSelectBuffer {
     this.draw(ctx, gl, view3d);
 
     this.fbo.bind(gl);
-
     let data = new Float32Array(w*h*4);
 
     //gl.readPixels(x, y , w, h, gl.RGBA, gl.FLOAT, data);
     gl.readPixels(x, (~~this.size[1]) - (y + h), w, h, gl.RGBA, gl.FLOAT, data);
-
     this.fbo.unbind(gl);
+
     if (sampleDepth) {
       let depthData = new Float32Array(w*h*4);
 
+      this.depth_fbo.update(gl, ~~this.size[0], ~~this.size[1]);
       this.depth_fbo.bind(gl);
-      this.depth_fbo.texDepth = this.fbo.texDepth;
 
-      this.depth_fbo.drawDepth(gl, this.size[0], this.size[1]);
+      this.depth_fbo.drawDepth(gl, ~~this.size[0], ~~this.size[1], this.fbo.texDepth);
+      gl.finish();
       gl.readPixels(x, (~~this.size[1]) - (y + h), w, h, gl.RGBA, gl.FLOAT, depthData);
+      gl.finish();
       this.depth_fbo.unbind(gl);
+      gl.finish();
 
       return {
         data  : data,

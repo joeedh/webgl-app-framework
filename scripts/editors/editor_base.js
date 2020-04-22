@@ -329,7 +329,7 @@ export class Editor extends Area {
     row.remove();
     container._prepend(row);
 
-    row.background = ui_base.getDefault("AreaHeaderBG");
+    row.background = this.getDefault("AreaHeaderBG");
     //return super.makeHeader(container, add_note_area);
     return row;
   }
@@ -461,6 +461,10 @@ export class App extends Screen {
 
   setCSS() {
     super.setCSS();
+    this.updateCanvasSize();
+  }
+
+  updateCanvasSize() {
     let dpi = this.getDPI();
 
     let size = this.size, canvas = document.getElementById("webgl");
@@ -473,13 +477,20 @@ export class App extends Screen {
     let w2 = ~~(w*dpi);
     let h2 = ~~(h*dpi);
 
-    if (canvas.width == w2 && canvas.height == h2) {
+    if (canvas.width === w2 && canvas.height === h2) {
       return;
     }
 
     console.log("resizing canvas");
     canvas.width = w2;
     canvas.height = h2;
+
+    let renderer = _appstate.three_render;
+
+    if (renderer) {
+      renderer.setSize(canvas.width, canvas.height);
+      window.redraw_viewport();
+    }
 
     canvas.style["width"] = w + "px";
     canvas.style["height"] = h + "px";
@@ -514,8 +525,45 @@ export class App extends Screen {
     }
   }
 
+  positionMenu() {
+    if (this.ctx === undefined)
+      return;
+
+
+    let menu = this.ctx.menubar;
+    let view3d = this.ctx.view3d;
+
+    if (menu === undefined || view3d === undefined)
+      return;
+
+    let x = Math.floor(menu.pos[0]);
+    let y = Math.floor(menu.pos[0] + menu.size[1]);
+
+    let w = Math.ceil(this.size[0]);
+    let h = Math.ceil(this.size[1] - menu.size[1]);
+
+    let update = view3d.pos[0] !== x || view3d.pos[1] !== y;
+    update = update || view3d.size[0] !== w || view3d.size[1] !== h;
+
+    if (update) {
+      console.log("menu update", x, y, w, h);
+
+      view3d.pos[0] = x;
+      view3d.pos[1] = y;
+      view3d.size[0] = w;
+      view3d.size[1] = h;
+
+      view3d.setCSS();
+      window.redraw_viewport();
+    }
+  }
+
   update() {
     super.update();
+
+    this.positionMenu();
+
+    this.updateCanvasSize();
 
     this.updateWidgets();
     this.updateDPI();
@@ -524,10 +572,10 @@ export class App extends Screen {
     let h = window.innerHeight;
     
     if (w !== this.size[0] || h !== this.size[1]) {
+      this.on_resize([w, h]);
+      
       this.size[0] = w;
       this.size[1] = h;
-      
-      this.on_resize([w, h]);
     }
   }
 };

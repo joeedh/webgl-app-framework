@@ -4,6 +4,7 @@ import {Vector2, Vector3, Vector4, Matrix4, Quat} from "../../../util/vectormath
 import {Shaders} from "../view3d_shaders.js";
 import * as util from "../../../util/util.js";
 import {FindNearestRet} from "../findnearest.js";
+import {PointSet} from "../../../potree/potree_types.js";
 
 let _findnearest_rets = util.cachering.fromConstructor(FindNearestRet, 1024);
 let _castray_rets = util.cachering.fromConstructor(FindNearestRet, 1024);
@@ -32,27 +33,110 @@ export class FindnearestObject extends FindnearestClass {
   }
 
   static castRay_framebuffer(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
+    let gl = view3d.gl;
     let sbuf = view3d.selectbuf;
     let x = ~~p[0], y = ~~p[1];
+    let ret = _castray_rets.next().reset();
+    let size = view3d.glSize;
+
+    let dpi = view3d.gl.canvas.dpi;
+    size = new Vector2(size);
+    size.mulScalar(1.0 / dpi);
+
+    let camera = view3d.camera;
+    let far = camera.far, near = camera.near;
+
+    let co = new Vector4();
+
+    //this might already be in local mouse space
+    //x -= view3d.glPos[0];
+    //y -= view3d.glPos[1];
 
     let sample = sbuf.sampleBlock(ctx, view3d.gl, view3d, x, y, 1, 1, true);
-
     if (sample === undefined) {
       return;
     }
 
-    let ret = _castray_rets.next().reset();
-
     let ob = ~~(sample.data[0] + 0.5) - 1;
     let depth = sample.depthData[0];
+
+    let range = gl.getParameter(gl.DEPTH_RANGE);
+    depth = (depth - range[0]) / (range[1] - range[0]);
 
     if (ob < 0 || depth === 1.0 || depth === 0.0)
       return undefined;
 
-    let co = new Vector4();
-    let size = view3d.glSize;
+    ob = ctx.datalib.get(ob);
 
-    let camera = view3d.camera;
+    if (0) {//ob.data instanceof PointSet && ob.data.ready) {
+      let ptree = ob.data.res.data;
+      console.log("POINTSET", ptree);
+
+      let renderer = _appstate.three_render;
+      let threeCamera = ctx.view3d.threeCamera;
+
+      let uniforms = {
+        objectMatrix : ob.outputs.matrix.getValue(),
+        object_id : ob.lib_id
+      };
+
+      threeCamera.pushUniforms(uniforms);
+
+      sbuf.fbo.update(gl, size[0], size[1]);
+      sbuf.fbo.bind(gl);
+
+      gl.disable(gl.BLEND);
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(true);
+      gl.disable(gl.SCISSOR_TEST);
+      gl.disable(gl.CULL_FACE);
+
+      gl.viewport(0, 0, size[0], size[1]);
+      gl.scissor(0, 0, size[0], size[1]);
+
+      gl.clearColor(0, 0, 0, 1.0);
+      gl.clearDepth(camera.far);
+      gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
+      //renderer.setFramebuffer(sbuf.fbo.fbo);
+      renderer.setViewport(0, 0, size[0], size[1]);
+
+      let viewer = {
+        pRenderer : view3d.pRenderer,
+        renderer  : renderer
+      };
+
+      co[0] = 2.0*x/size[0] - 1.0;
+      co[1] = -(2.0*y/size[1] - 1.0);
+      co[2] = near + 0.01;
+      co[2] = -(co[2] - near) / (far - near);
+      co[2] = co[2]*2.0 - 1.0;
+      //co[2] = -co[2];
+      co[3] = 1.0;
+
+      co.multVecMatrix(camera.irendermat);
+      co.mulScalar(1.0 / co[3]);
+      co = new Vector3(co).normalize();
+
+      console.log(co, view3d.getViewVec(x, y).normalize());
+
+      co = view3d.getViewVec(x, y).normalize();
+
+      let ray = new THREE.Ray(camera.pos.asTHREE(), co.asTHREE());
+
+      //console.log(camera.pos, co);
+
+      let ret = ptree.pick(viewer, threeCamera, ray, {pickWindowSize : 65});
+
+      console.log("RET", ret);
+
+      sbuf.fbo.unbind(gl);
+      sbuf.regen = 1;
+      threeCamera.popUniforms(uniforms);
+      renderer.setFramebuffer(null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+
 
     /*
     comment: linear z
@@ -65,22 +149,30 @@ export class FindnearestObject extends FindnearestClass {
     solve(f1 - depth, z);
     */
 
-    let far = camera.far, near = camera.near;
 
-    depth = -(far*near) / (far*depth - far - near*depth);
-
-    //console.log(sample.data, depth, "|", x, y);
-
-    co[0] = (x / size[0])*2.0 - 1.0;
-    co[1] = (y / size[1])*2.0 - 1.0;
-    co[2] = depth;
+    co[0] = 2.0*x/size[0] - 1.0;
+    co[1] = -(2.0*y/size[1] - 1.0);
+    co[2] = depth*2.0 - 1.0;
     co[3] = 1.0;
 
+    //console.log(" ", co);
     co.multVecMatrix(view3d.camera.irendermat);
-    if (co[3] !== 0.0) {
+    //co.multVecMatrix(view3d.camera.ipersmat);
+
+    if (co[3] !== 0.0 && view3d.camera.rendermat.isPersp) {
       co.mulScalar(1.0 / co[3]);
     }
+    //console.log(":", co);
 
+    depth = co[2];
+    //depth = -(far*near) / (far*depth - near*depth - far);
+    //depth = (depth - near) / (far - near);
+    //console.log(depth2, depth*2.0-1.0);
+    co[2] = depth;
+
+    //co.multVecMatrix(view3d.camera.icameramat);
+
+    ret.object = ob;
     ret.p2d.load(p);
     ret.p3d.load(co);
     ret.dis = depth;

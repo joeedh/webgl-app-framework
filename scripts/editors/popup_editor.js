@@ -1,5 +1,5 @@
 import {Editor} from "./editor_base.js";
-import {UIBase} from "../path.ux/scripts/ui_base.js";
+import {UIBase, theme} from "../path.ux/scripts/ui_base.js";
 import {keymap} from '../path.ux/scripts/events.js';
 
 export const PopupTabModes = {
@@ -13,12 +13,13 @@ export const PopupTabModes = {
 };
 
 export class PopupButton {
-  constructor(contents, id, mode) {
+  constructor(owner, contents, id, mode) {
     this.cb1 = undefined;
     this.cb2 = undefined;
     this.id = id;
     this.contents = contents;
     this.mode = mode;
+    this.owner = owner;
   }
 }
 
@@ -32,7 +33,7 @@ export class PopupEditor extends Editor {
     this.tabs.active = undefined;
     this.tab_idgen = 0;
 
-    this.open = false;
+    this._open = false;
 
     this.openSize = 350;
     this.contents = undefined;
@@ -47,7 +48,7 @@ export class PopupEditor extends Editor {
     if (this.contents !== undefined) {
       this.contents.remove();
       this.contents = undefined;
-      this.open = false;
+      this._open = false;
     }
 
     this.setCSS();
@@ -56,28 +57,85 @@ export class PopupEditor extends Editor {
     return this;
   }
 
+  _colorTabs() {
+    for (let tab of this.tabs) {
+      if (tab === this.tabs.active) {
+        let color = tab.button.getClassDefault("Highlight");
+
+        tab.button.overrideDefault("BoxBG", color);
+        tab.button.update();
+      } else {
+        let color = tab.button.getClassDefault("BoxBG");
+
+        tab.button.overrideDefault("BoxBG", color);
+        tab.button.update();
+      }
+    }
+  }
+
   toggleTab(tab) {
     console.log("toggle tab", tab.name);
 
-    this.lastContents = tab;
+    if (tab.mode === PopupTabModes.TRINARY) {
+      if (tab !== this.tabs.active) {
+        this.tabs.active = tab;
+        this._colorTabs();
+        if (tab.cb1) {
+          tab.cb1();
+        }
 
-    if (this.contents !== undefined) {
-      this.contents.remove();
-      this.openSize = this.size[0];
+        return;
+      } else {
+        if (this._open) {
+          this.close();
+        } else {
+          this.open();
+          if (tab.cb2) {
+            tab.cb2();
+          }
+        }
 
-      if (this.contents === tab) {
-        this.contents = undefined;
-        this.setCSS();
-        this.update();
-        this.open = false;
-        this.ctx.screen._internalRegenAll();
         return;
       }
     }
 
-    this.open = true;
+    this.lastContents = tab.contents;
+
+    if (this._open) {
+      this.openSize = this.size[0];
+    }
+
+    if (this.contents !== undefined) {
+      this.close();
+
+      if (this.tabs.active === tab) {
+        return;
+      }
+    }
+
     this.tabs.active = tab;
-    this.contents = tab;
+
+    console.log("T", tab.contents.children.length, this._open);
+    let ok = tab.contents.children.length > 0;
+
+    if (!ok && this._open) {
+      this.close()
+    } else if (ok) {
+      this.open();
+    }
+
+    this._colorTabs();
+  }
+
+  open() {
+    this._open = true;
+    let tab = this.tabs.active;
+
+    if (tab === undefined) {
+      return;
+    }
+
+    this.contents = tab.contents;
     this.container.add(this.contents);
 
     //this.shadow.appendChild(this.contents);
@@ -90,6 +148,25 @@ export class PopupEditor extends Editor {
     this.ctx.screen.setCSS();
     this.setCSS();
     this.update();
+  }
+
+  close() {
+    if (!this._open) {
+      if (this.contents !== undefined) {
+        this.contents.remove();
+        this.contents = undefined;
+      }
+      return;
+    }
+
+    this._open = false;
+
+    this.contents.remove();
+    this.contents = undefined;
+
+    this.setCSS();
+    this.update();
+    this.ctx.screen._internalRegenAll();
   }
 
   shrinkToFit() {
@@ -133,7 +210,7 @@ export class PopupEditor extends Editor {
   update() {
     super.update();
 
-    if (!this.open) {
+    if (!this._open) {
       this.shrinkToFit();
     } else {
       this.updateHeight();
@@ -153,6 +230,15 @@ export class PopupEditor extends Editor {
     this.style["height"] = "min-content";
   }
 
+  tritab(name, icon=-1, description=name, cb=undefined) {
+    let tab = this.tab(name, icon, description)._tab;
+
+    tab.mode = PopupTabModes.TRINARY;
+    tab.cb1 = cb;
+
+    return tab.contents;
+  }
+
   tab(name, icon=-1, description=name) {
     let container = document.createElement("container-x");
     container.ctx = this.ctx;
@@ -166,20 +252,27 @@ export class PopupEditor extends Editor {
     container._tab_id = this.tab_idgen++;
     container.name = name;
 
-    this.tabs.push(container);
-    this.tab_idmap[container._tab_id] = container;
+    let mode = PopupTabModes.BINARY;
+    let tab = new PopupButton(this, container, container._tab_id, mode);
+
+    this.tabs.push(tab);
+    this.tab_idmap[container._tab_id] = tab;
 
     let id = container._tab_id;
+
     let cb = () => {
       this.toggleTab(this.tab_idmap[id]);
     };
 
     if (icon >= 0) {
-      this.toolbar.iconbutton(icon, description, cb);
+      tab.button = this.toolbar.iconbutton(icon, description, cb);
     } else {
-      let button = this.toolbar.button(name, cb);
-      button.title = description;
+      tab.button = this.toolbar.button(name, cb);
+      tab.button.title = description;
     }
+
+    tab.button.overrideClass("PopupEditorIcon");
+    container._tab = tab;
 
     return container;
   }
@@ -190,7 +283,7 @@ export class PopupEditor extends Editor {
 
     switch (e.keyCode) {
       case keymap["Escape"]:
-        if (this.open) {
+        if (this._open) {
           this.toggleTab(this.tabs.active);
         }
         break;
@@ -220,14 +313,6 @@ export class PopupEditor extends Editor {
 
     //toolbar.overrideDefault("BoxBG", "rgba(0, 0, 0, 0.25)");
     //toolbar.overrideDefault("BoxMargin", 24);
-
-    toolbar.overrideClassDefault("iconbutton", "BoxBG", "rgba(0, 0, 0, 0.25)");
-    toolbar.overrideClassDefault("iconbutton", "BoxRadius", 64);
-    toolbar.overrideClassDefault("iconbutton", "BoxMargin", 10);
-
-    toolbar.overrideClassDefault("iconcheck", "BoxBG", "rgba(0, 0, 0, 0.25)");
-    //toolbar.overrideClassDefault("iconcheck", "BoxRadius", 24);
-    toolbar.overrideClassDefault("iconcheck", "BoxMargin", 10);
 
     container.style["width"] = "auto";
     container.style["height"] = "min-content";

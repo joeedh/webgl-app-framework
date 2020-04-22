@@ -507,12 +507,17 @@ export function api_define_scene(api, pstruct) {
   def.on('change', function(newval, oldval) {
     let scene = this.dataref;
 
+    console.log("toolmode change", oldval, newval);
+
     scene.toolmode_i = oldval;
     scene.switchToolMode(newval);
     window.redraw_viewport();
   });
 
-  let onchange = function(oldval, newval) {
+  let onchange = function(newval, oldval) {
+    let scene = this.dataref;
+
+    scene.updateWidgets();
     window.redraw_viewport();
   };
 
@@ -525,9 +530,19 @@ export function api_define_scene(api, pstruct) {
   sstruct.dynamicStruct("toolmode", "tool", "Active Tool", base);
 
   //vstruct.dynamicStruct("toolmode_namemap", "toolmodes", "ToolModes");
+  let struct2 = sstruct.struct("toolmode_namemap", "tools", "Saved Tool Data");
+  struct2.name = "ToolModes";
 
   for (let cls of ToolModes) {
-    cls.defineAPI(api);
+    let def = cls.widgetDefine();
+
+    let struct3 = cls.defineAPI(api);
+
+    if (struct3 === undefined) {
+      throw new Error("ToolMode.defineAPI cannot return undefined");
+    }
+
+    struct2.struct(def.name, def.name, def.uiname, struct3);
   }
 }
 

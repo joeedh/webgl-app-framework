@@ -240,10 +240,6 @@ export class Scene extends DataBlock {
     this.toolmode_map = {};
     this.toolmode_namemap = {};
 
-    let wenum = WidgetTool.getToolEnum();
-    this.widgettool = wenum.values.translate; //active widget tool index in WidgetTools
-    this.widget = undefined; //active widget instance
-
     this.envlight = new EnvLight();
 
     this.objects = new ObjectList(undefined, this);
@@ -311,6 +307,8 @@ export class Scene extends DataBlock {
   }
 
   switchToolMode(mode) {
+    console.warn("switchToolMode called");
+
     if (mode === undefined) {
       throw new Error("switchToolMode: mode cannot be undefined");
     }
@@ -324,13 +322,20 @@ export class Scene extends DataBlock {
     let cls = ToolModes[i];
     let ret;
 
+    if (this.toolmode !== undefined) {
+      console.log("calling old tool inactive", this.toolmode, this.toolmode.onInactive);
+      this.widgets.remove(this.toolmode);
+      console.log(this.toolmode.widgets);
+
+      this.toolmode.onInactive();
+    }
+
     for (let mode of this.toolmodes) {
       if (mode.constructor === cls) {
         ret = mode;
         break;
       }
     }
-
 
     if (ret === undefined) {
       ret = new cls(this.widgets);
@@ -342,16 +347,8 @@ export class Scene extends DataBlock {
       this.toolmode_namemap[def.name] = ret;
     }
 
-    if (this.toolmode !== undefined) {
-      this.toolmode.onInactive();
-      this.toolmode.destroy();
-      this.toolmode.remove();
-    }
-
     this.toolmode_i = i;
     this.widgets.add(ret);
-
-    console.warn("switchToolMode called");
 
     ret.onActive();
 
@@ -488,57 +485,10 @@ export class Scene extends DataBlock {
     if (ctx === undefined)
       return;
 
-    /*
-    if (this._showCursor() && !this.widgets.hasWidget(WidgetSceneCursor)) {
-      this.widgets.add(new WidgetSceneCursor());
-      window.redraw_viewport();
-    }//*/
-
-    let tool = WidgetTools[this.widgettool];
-    if (tool === undefined) {
-      return;
-    }
-
-    let valid = tool.validate(ctx);
-    console.log("valid:", valid, ctx.selectMask);
-
-    if (this.widget !== undefined) {
-      let bad = !(this.widget instanceof tool) || (this.widget.manager !== this.widgets);
-      bad = bad || !valid;
-
-      if (bad) {
-        this.widget.remove();
-        this.widget = undefined;
-      }
-    }
-
-    if (this.widget === undefined && valid) {
-      this.widget = new tool(this.widgets);
-
-      console.log("making widget instance", this.widget);
-
-      this.widget.create(ctx, this.widgets);
-
-      let def = this.widget.constructor.widgetDefine();
-
-      if (def.selectMode !== undefined && this.selectMask != def.selectMode) {
-        this.selectMask = def.selectMode;
-        window.redraw_viewport();
-      }
-    } else if (tool && this.widget === undefined) {
-      let def = tool.widgetDefine();
-
-      if (def.selectMode !== undefined && this.selectMask != def.selectMode) {
-        this.selectMask = def.selectMode;
-        window.redraw_viewport();
-      }
-    }
-
-    if (this.widget !== undefined) {
-      this.widget.update();
-    }
-
     this.widgets.update(this);
+    if (this.toolmode !== undefined) {
+      this.toolmode.update();
+    }
   }
 }
 DataBlock.register(Scene);
@@ -552,7 +502,6 @@ Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
   envlight   : EnvLight;
   toolmode_i : string | obj.toolModeProp.keys[obj.toolmode_i];
   toolmodes  : array(abstract(ToolMode));
-  widgettool : int;
 }
 `;
 

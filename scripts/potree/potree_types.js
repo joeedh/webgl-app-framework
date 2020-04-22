@@ -1,5 +1,7 @@
 // var _mesh = undefined;
 
+import '../extern/potree_patches.js';
+
 import {NodeFlags} from '../core/graph.js';
 import * as view3d_shaders from '../editors/view3d/view3d_shaders.js';
 
@@ -192,6 +194,9 @@ export class PointSet extends SceneObjectData {
 
     //console.log("ID draw!", uniforms);
     ptree.material = ptree.flatMaterial;
+
+    ptree.material.depthWrite = true;
+    ptree.material.depthTest = true;
 
     let id = uniforms.object_id + 1;
     ptree.material.uniforms.uColor.value = new THREE.Color(id, 0, 0);

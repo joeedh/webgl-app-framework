@@ -543,7 +543,9 @@ export class WidgetBase {
     let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
 
     if (child !== undefined && child !== this) {
-      child.on_mousedown(e, localX, localY);
+      if (child.on_mousedown) {
+        child.on_mousedown(e, localX, localY);
+      }
       return true;
     } else if (child === this) {
       return true;
@@ -714,23 +716,38 @@ export class WidgetTool extends WidgetBase {
     WidgetTools.push(cls);
   }
 
-  static getToolEnum() {
+  static getTool(name) {
+    for (let cls of WidgetTools) {
+      if (cls.widgetDefine().name === name) {
+        return cls;
+      }
+    }
+
+    return undefined;
+  }
+
+  static getToolEnum(classes=WidgetTools, propcls=EnumProperty, is_bitmask=false) {
     let enumdef = {};
     let icondef = {};
     let uinames = {};
     let i = 0;
 
-    for (let cls of WidgetTools) {
+    for (let cls of classes) {
       let def = cls.widgetDefine();
 
-      enumdef[def.name] = i;
+      if (is_bitmask) {
+        enumdef[def.name] = 1<<i;
+      } else {
+        enumdef[def.name] = i;
+      }
+
       icondef[def.name] = def.icon;
       uinames[def.name] = def.uiname;
 
-      i += 1;
+      i++;
     }
 
-    let prop = new EnumProperty(undefined, enumdef, undefined, "Tools", "Tool Widgets");
+    let prop = new propcls(undefined, enumdef, undefined, "Tools", "Tool Widgets");
     prop.ui_value_names = uinames;
     prop.addIcons(icondef);
 
@@ -750,10 +767,8 @@ export class WidgetTool extends WidgetBase {
     super.update(this.manager);
   }
 
-  remove() {
+  onremove() {
     let manager = this.manager;
-    
-    manager.remove(this);
 
     for (let w of this.widgets) {
       manager.remove(w);
@@ -765,8 +780,12 @@ export class WidgetTool extends WidgetBase {
       manager.removeCallbackNode(this._widget_tempnode);
       this._widget_tempnode = undefined;
     }
+  }
 
-    //this.manager.clearNodes();
+  remove() {
+    let manager = this.manager;
+    
+    manager.remove(this);
   }
 
   destroy(gl) {
@@ -819,6 +838,8 @@ export class WidgetManager {
   }
 
   glInit(gl) {
+    console.log("Widget manager gl init");
+
     this.gl = gl;
     this.loadShapes();
   }
@@ -965,11 +986,6 @@ export class WidgetManager {
 
   on_mousemove(e, localX, localY, was_touch) {
     let w = this.findNearest(localX, localY, this._picklimit(was_touch));
-    
-    //console.log(w);
-    if (this._fireAllEventWidgets(e, "on_mousemove", localX, localY, was_touch)) {
-      return true;
-    }
 
     if (this.widgets.highlight !== w) {
       if (this.widgets.highlight !== undefined) {
@@ -982,6 +998,11 @@ export class WidgetManager {
       }
 
       window.redraw_viewport();
+    }
+
+    //console.log(w);
+    if (this._fireAllEventWidgets(e, "on_mousemove", localX, localY, was_touch)) {
+      return true;
     }
 
     if (w !== undefined) {
@@ -1022,8 +1043,12 @@ export class WidgetManager {
 
   remove(widget) {
     if (!(widget.id in this.widget_idmap)) {
-      console.warn("widget not in graph", widget.id, widget);
+      console.warn("widget not in manager", widget.id, widget);
       return;
+    }
+
+    if (widget.onremove) {
+      widget.onremove();
     }
 
     if (this.ctx.view3d !== undefined && this.ctx.view3d.gl !== undefined) {
@@ -1038,8 +1063,9 @@ export class WidgetManager {
     }
 
     delete this.widget_idmap[widget.id];
-
     this.widgets.remove(widget);
+
+    widget.id = -1;
   }
 
   clear() {
@@ -1098,10 +1124,8 @@ export class WidgetManager {
     if (!this._init) {
       this._init = true;
       this.glInit(gl);
-      this.loadShapes();
     }
 
-    this.gl = gl;
     let pushctx = view3d !== undefined && view3d !== this.ctx.view3d;
 
     if (pushctx) {
@@ -1115,10 +1139,6 @@ export class WidgetManager {
     if (pushctx) {
       view3d.pop_ctx_active();
     }
-  }
-
-  updateWidgets() {
-
   }
 
   _newbase(matrix, color, shape) {

@@ -4,6 +4,7 @@ import {KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
 import '../../../path.ux/scripts/struct.js';
+import {TranslateWidget} from "../widget_tools.js";
 let STRUCT = nstructjs.STRUCT;
 
 export class PanToolMode extends ToolMode {
@@ -27,22 +28,17 @@ export class PanToolMode extends ToolMode {
     flag        : 0,
     description : "Pan",
     selectMode  : SelMask.OBJECT|SelMask.GEOM, //if set, preferred selectmode, see SelModes
+    transWidgets: []
   }}
 
-  buildHeader(header, addHeaderRow) {
+  static buildSettings(container) {
+
+  }
+
+  static buildHeader(header, addHeaderRow) {
     super.buildHeader(header, addHeaderRow);
 
-    let strip = header.strip();
-    strip.prop("scene.active_tool[none]");
-    strip.prop("scene.active_tool[translate]");
-  }
-
-  onActive() {
-
-  }
-
-  onInactive() {
-
+    //let strip = header.strip();
   }
 
   destroy() {

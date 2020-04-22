@@ -59,6 +59,10 @@ export let Icons = {
   OPEN_FILE      : 53,
   SAVE_FILE      : 54,
   MATERIAL       : 55,
-  OBJECT         : 56
+  OBJECT         : 56,
+  MEASURE_TOOLS  : 57,
+  CLIP_TOOLS     : 58,
+  VIEWS          : 59,
+  VIEW_TOOLS     : 60
 };
 setIconMap(Icons);

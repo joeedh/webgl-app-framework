@@ -15,6 +15,8 @@ import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
 import {NodeEditor} from "../node/NodeEditor.js";
 
+const menuSize = 48;
+
 export class MenuBarEditor extends Editor {
   constructor() {
     super();
@@ -30,8 +32,9 @@ export class MenuBarEditor extends Editor {
     this.background = this.getDefault("DefaultPanelBG");
 
     let header = this.header;
+    let strip = this._strip = header.strip();
 
-    header.menu("File", [
+    strip.menu("File", [
       ["New  ", () => {
         console.log("File new");
         if (confirm("Make new file?")) {
@@ -56,9 +59,9 @@ export class MenuBarEditor extends Editor {
       "mesh.toggle_select_all()",
       "light.new(position='cursor')"
     ];
-    header.menu("Edit", tools);
+    strip.menu("Edit", tools);
 
-    header.menu("Session", [
+    strip.menu("Session", [
       ["Save Defalut File  ", () => {
         console.log("saving default file");
         _appstate.saveStartupFile();
@@ -69,8 +72,9 @@ export class MenuBarEditor extends Editor {
       }]
     ]);
 
-    header.noteframe();
+    strip.noteframe();
     //this.makeScreenSwitcher(this.container);
+    this.setCSS();
   }
 
   onFileLoad() {
@@ -169,6 +173,15 @@ export class MenuBarEditor extends Editor {
   update() {
     super.update();
 
+    let dpi = UIBase.getDPI();
+    let h = Math.ceil(26); //menuSize);
+
+    if (this.size[1] !== h) {
+      this.size[1] = h;
+      this.setCSS();
+      this.ctx.screen.regenBorders();
+    }
+
     /*
     let hash = this._makeSwitcherHash();
     if (hash !== this._switcher_key) {
@@ -181,6 +194,18 @@ export class MenuBarEditor extends Editor {
     ret.ctx = this.ctx;
 
     return ret;
+  }
+
+  setCSS() {
+    super.setCSS();
+
+    let strip = this._strip;
+    if (strip) {
+      let margin = 45; // UIBase.getDPI();
+
+      margin = ~~margin;
+      //strip.style["margin-left"] = margin + "px";
+    }
   }
 
   static define() {return {

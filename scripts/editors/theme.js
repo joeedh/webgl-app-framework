@@ -44,12 +44,10 @@ export const theme = {
     "MenuHighlight" : "rgba(155, 220, 255, 1.0)",
     "AreaHeaderBG" : "rgba(75, 75, 75, 0.5)",
 
-    "DefaultTextSize" : 14,
-
     //fonts
     "DefaultText" : new CSSFont({
       font  : "sans-serif",
-      size  : 14,
+      size  : 18,
       color :  "rgba(235, 235, 235, 1.0)",
       weight : "bold"
     }),
@@ -134,6 +132,15 @@ export const theme = {
     defaultWidth  : 100,
     defaultHeight : 25,
     defaultFont   : "LabelText"
+  },
+
+  PopupEditorIcon : {
+    BoxBG     : "rgba(0, 0, 0, 0.25)",
+    Highlight : "rgba(200, 200, 200, 0.5)",
+    //BoxHighlight :
+    BoxRadius : 64,
+    BoxMargin : 10,
+    BoxDrawMargin : 0
   }
 };
 

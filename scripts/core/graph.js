@@ -1162,7 +1162,7 @@ export class Graph {
       let socks2 = i ? n2.outputs : n2.inputs;
 
       for (let k in socks1) {
-        console.log("relinking", k, k in socks2);
+        //console.log("relinking", k, k in socks2);
 
         let s1 = socks1[k];
         sock_idmap[s1.graph_id] = s1;

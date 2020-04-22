@@ -1,5 +1,7 @@
+
 import './findnearest/all.js';
-import './tools/view3d_panmode.js';
+import './tools/tools.js';
+import * as textsprite from '../../core/textsprite.js';
 import {FindNearest} from './findnearest.js';
 import {TranslateOp} from './transform_ops.js';
 import {RenderEngine} from "../../renderengine/renderengine_base.js";
@@ -48,7 +50,8 @@ let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
 let curtemps = cachering.fromConstructor(Vector3, 32);
 
-let _gl = undefined;
+//let _gl = undefined;
+window._gl = undefined;
 
 export function getWebGL() {
   if (!_gl) {
@@ -65,6 +68,22 @@ export class ThreeCamera extends THREE.Camera {
     this.camera = camera;
     this.uniform_stack = [];
     this.uniforms = {};
+  }
+
+  set matrixWorld(val) {
+    //do nothing
+  }
+
+  set matrixWorldInverse(val) {
+    //do nothing;
+  }
+
+  set projectionMatrix(val) {
+    //do nothing;
+  }
+
+  set projectionMatrixInverse(val) {
+    //do nothing;
   }
 
   //for overriding matrixWorld with uniforms.objectMatrix
@@ -156,7 +175,14 @@ export class ThreeCamera extends THREE.Camera {
   }
 }
 
+window._getShaderSource = function(shader) {
+  let gl = _appstate.ctx.view3d.gl;
+  return gl.getExtension('WEBGL_debug_shaders').getTranslatedShaderSource(shader);
+};
+
 export function initWebGL() {
+  console.warn("initWebGL called");
+
   let canvas = document.createElement("canvas");
   let dpi = UIBase.getDPI();
   let w, h;
@@ -192,10 +218,13 @@ export function initWebGL() {
     canvas: canvas,
     context: _gl,
     alpha: true,
+    preserveDrawingBuffer : true,
+    logarithmicDepthBuffer : false,
     premultipliedAlpha: false
   });
   renderer.sortObjects = false;
 
+  gl.getExtension("EXT_color_buffer_float");
   gl.getExtension('EXT_frag_depth');
   gl.getExtension('WEBGL_depth_texture');
   
@@ -221,6 +250,7 @@ export function initWebGL() {
 
   //_gl.canvas = canvas;
   loadShaders(_gl);
+  textsprite.defaultFont.update(_gl);
 
   canvas.addEventListener("webglcontextrestored", (e) => {
     loadShaders(_gl);
@@ -238,6 +268,9 @@ export function initWebGL() {
         }
       }
     }
+
+    textsprite.onContextLost(e);
+    textsprite.defaultFont.update(_gl);
   }, false);
 
 }
@@ -626,7 +659,7 @@ export class View3D extends Editor {
 
     //row2.label("yay");
     row2.prop("view3d.flag[SHOW_RENDER]");
-    row2.prop("view3d.flag[ONLY_RENDER]");
+    //row2.prop("view3d.flag[ONLY_RENDER]");
 
     let makeRow = () => {
       return rows.row();
@@ -635,7 +668,7 @@ export class View3D extends Editor {
     let toolmode = this.ctx.toolmode;
 
     if (toolmode !== undefined) {
-      toolmode.buildHeader(header, makeRow);
+      toolmode.constructor.buildHeader(header, makeRow);
     } else {
       this.doOnce(this.rebuildHeader);
     }
@@ -658,9 +691,9 @@ export class View3D extends Editor {
       window.redraw_viewport();
     });
 
-    strip = header.strip();
-    strip.prop("scene.toolmode[pan]");
-    strip.prop("scene.toolmode[object]");
+    //strip = header.strip();
+    //strip.prop("scene.toolmode[pan]");
+    //strip.prop("scene.toolmode[object]");
 
     //header.prop("mesh.flag[SUBSURF]", PackFlags.USE_ICONS);
     //strip.tool("light.new(position='cursor')", PackFlags.USE_ICONS);
@@ -810,11 +843,14 @@ export class View3D extends Editor {
   }
 
   getLocalMouse(x, y) {
-    let r = this.getClientRects()[0];
+    //let r = this.getClientRects()[0];
     let dpi = UIBase.getDPI();
 
-    x = (x - r.x); // dpi;
-    y = (y - r.y); // dpi;
+    x -= this.pos[0];
+    y -= this.pos[1];
+
+    //x = (x - r.x); // dpi;
+    //y = (y - r.y); // dpi;
 
     return [x, y];
   }
@@ -843,6 +879,10 @@ export class View3D extends Editor {
   }
 
   update() {
+    if (this.ctx.scene !== undefined) {
+      this.ctx.scene.updateWidgets();
+    }
+
     //TODO have limits for how many samplers to render
     if (time_ms() - this._last_render_draw > 100) {
       //window.redraw_viewport();
@@ -1013,6 +1053,8 @@ export class View3D extends Editor {
     this.threeCamera.camera = this.camera;
     this.threeRenderer = this.ctx.state.three_render;
 
+    this.threeRenderer.setViewport(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1]);
+
     let state = this.ctx.state;
     let scene3 = state.three_scene;
     let render3 = state.three_render;
@@ -1079,6 +1121,7 @@ export class View3D extends Editor {
     this.glPos = new Vector2([~~x, ~~y]);
     this.glSize = new Vector2([~~w, ~~h]);
 
+    gl.enable(gl.SCISSOR_TEST);
     gl.viewport(~~x, ~~y, ~~w, ~~h);
     gl.scissor(~~x, ~~y, ~~w, ~~h);
 
@@ -1089,13 +1132,11 @@ export class View3D extends Editor {
     //}
     //gl.clearColor(1.0, 1.0, 1.0, 0.0);
 
-    gl.clearDepth(1000000);
+    gl.clearDepth(this.camera.far);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     
     gl.disable(gl.BLEND);
     gl.disable(gl.STENCIL_TEST);
-
-    gl.enable(gl.SCISSOR_TEST);
 
     gl.enable(gl.DEPTH_TEST);
     gl.depthMask(true);
@@ -1122,7 +1163,7 @@ export class View3D extends Editor {
     }
 
     if (scene.toolmode) {
-      scene.toolmode.on_drawstart(this, gl);
+      scene.toolmode.on_drawstart(gl, this);
     }
 
 
@@ -1145,8 +1186,26 @@ export class View3D extends Editor {
     this.widgets.draw(this.gl, this);
 
     if (scene.toolmode) {
-      scene.toolmode.on_drawend(this, gl);
+      scene.toolmode.on_drawend(gl, this);
     }
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.disable(gl.DEPTH_TEST);
+
+    let camera = this.camera;
+
+    textsprite.testDraw(gl, {
+      projectionMatrix : camera.rendermat,
+      normalMatrix     : camera.normalmat,
+      objectMatrix     : new Matrix4(),
+      size             : [this.glSize[0], this.glSize[1]],
+      shift            : [0, 0],
+      polygonOffset    : 0.0,
+      aspect           : this.camera.aspect
+    });
+
+    gl.disable(gl.BLEND);
   }
 
   drawDrawLines(gl) {
@@ -1174,6 +1233,7 @@ export class View3D extends Editor {
     this.drawline_mesh.destroy(gl);
 
   }
+
   makeDrawLine(v1, v2, color=[0,0,0,1]) {
     if (typeof color == "string") {
       color = css2color(color);
@@ -1281,7 +1341,6 @@ View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
 Editor.register(View3D);
 nstructjs.manager.add_class(View3D);
 
-
 let animreq = undefined;
 let resetRender = 0;
 
@@ -1314,4 +1373,4 @@ window.redraw_viewport = (ResetRender=false) => {
   }
 
   animreq = requestAnimationFrame(f);
-}
+};

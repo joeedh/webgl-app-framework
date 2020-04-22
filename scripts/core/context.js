@@ -14,6 +14,7 @@ import {DebugEditor} from "../editors/debug/DebugEditor.js";
 import * as ui_noteframe from '../path.ux/scripts/ui_noteframe.js';
 import {PointSet} from '../potree/potree_types.js';
 import {Matrix4} from "../util/vectormath.js";
+import {MenuBarEditor} from "../editors/menu/MainMenu.js";
 
 export class ToolContext {
   constructor(appstate=_appstate) {
@@ -149,6 +150,10 @@ export class ToolContext {
 export class Context extends ToolContext {
   get view3d() {
     return getContextArea(View3D);
+  }
+
+  get menubar() {
+    return getContextArea(MenuBarEditor);
   }
 
   get selectMask() {

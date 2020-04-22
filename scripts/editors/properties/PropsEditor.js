@@ -5,6 +5,8 @@ import {Mesh} from "../../mesh/mesh.js";
 import {Material} from "../../core/material.js";
 import {PointSet} from "../../potree/potree_types.js";
 import {PopupEditor} from '../popup_editor.js';
+import {ToolModes} from '../view3d/view3d_toolmode.js';
+
 import {Icons} from '../icon_enum.js';
 import '../../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
@@ -34,9 +36,63 @@ export class PropsEditor extends PopupEditor   {
 
     let tabs = this; //col.tabs("left");
 
-    this.buildScene(tabs.tab("Scene", Icons.RENDER));
+    this.buildViews(tabs);
+    this.buildViewTools(tabs);
+
+    this.toolModeTab(tabs, "object", "Select Mode");
+
+    this.buildMeasureTools(tabs);
     this.buildMaterial(tabs.tab("Material", Icons.MATERIAL));
-    this.buildObject(tabs.tab("Object", Icons.OBJECT));
+  }
+
+  buildMeasureTools(tabs) {
+    let tab = tabs.tab("Measure Tools", Icons.MEASURE_TOOLS);
+
+    this.buildToolMode(tab, "measure_angle", "Measure Angles");
+  }
+
+  buildViews(tabs) {
+    let tab = tabs.tab("Views", Icons.VIEWS);
+
+    tab.button("Perspective");
+    tab.button("Orthographic");
+  }
+
+  buildViewTools(tabs) {
+    let tab = tabs.tab("View Tools", Icons.VIEW_TOOLS);
+
+    this.buildToolMode(tab, "pan", "Pan");
+  }
+
+  buildToolMode(container, modename, name=modename) {
+    let path = "scene.toolmode[" + modename + "]";
+
+    let rdef = this.ctx.api.resolvePath(this.ctx, "scene.toolmode");
+    let icon = rdef.prop.iconmap[modename];
+    let descr = rdef.prop.descriptions[modename];
+    let cls = ToolModes[rdef.prop.values[modename]];
+
+    descr = descr === undefined ? name : descr;
+
+    container.iconbutton(icon, descr, () => {
+      this.ctx.api.setValue(this.ctx, "scene.toolmode", modename);
+    });
+  }
+
+  toolModeTab(tabs, modename, name) {
+    let path = "scene.toolmode[" + modename + "]";
+
+    let rdef = this.ctx.api.resolvePath(this.ctx, "scene.toolmode");
+    let icon = rdef.prop.iconmap[modename];
+    let descr = rdef.prop.descriptions[modename];
+    let cls = ToolModes[rdef.prop.values[modename]];
+
+    let container = tabs.tritab(name, icon, descr, () => {
+      console.log("toolmode set");
+      this.ctx.api.setValue(this.ctx, "scene.toolmode", modename);
+    });
+
+    cls.buildSettings(container);
   }
 
   buildMaterial(tab) {
