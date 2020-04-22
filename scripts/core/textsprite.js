@@ -345,7 +345,6 @@ export class SpriteFontSheet {
   }
 
   drawMesh(gl, smesh, uniforms) {
-    return;
     if (!this.glTex) {
       this.makeTex(gl);
     }

@@ -192,7 +192,8 @@ export function initWebGL() {
   canvas.id = "webgl";
 
   if (_appstate.screen !== undefined) {
-    w = _appstate.screen.size[0], h = _appstate.screen.size[1];
+    w = _appstate.screen.size[0];
+    h = _appstate.screen.size[1];
   } else {
     w = h = 512;
   }
@@ -709,16 +710,34 @@ export class View3D extends Editor {
   init() {
     super.init();
 
+    this.overdraw = document.createElement("overdraw-x");
+    this.overdraw.ctx = this.ctx;
+    //this.overdraw.zindex_base = 5;
+
+    this.overdraw.startNode(this, this.ctx.screen);
+    this.overdraw.remove();
+    this.shadow.appendChild(this.overdraw);
+
+    let eventdom = this; //this.overdraw;
+
     this.makeGraphNodes();
     this.rebuildHeader();
 
     let uiHasFocus = (e) => {
       let node = this.getScreen().pickElement(e.pageX, e.pageY);
 
-      return node !== this;
+      return node !== this && node !== this.overdraw;
     };
 
     let on_mousemove = (e, was_mousemove=true) => {
+      /*
+      if (this.overdraw !== undefined) {
+        let r = this.getLocalMouse(e.x, e.y);
+
+        this.overdraw.clear();
+        this.overdraw.text("Test!", r[0], r[1]);
+      }//*/
+
       if (uiHasFocus(e)) {
         return;
       }
@@ -738,9 +757,9 @@ export class View3D extends Editor {
       this.pop_ctx_active();
     };
 
-    this.addEventListener("mousemove", on_mousemove);
+    eventdom.addEventListener("mousemove", on_mousemove);
 
-    this.addEventListener("mouseup", (e) => {
+    eventdom.addEventListener("mouseup", (e) => {
       let was_touch = eventWasTouch(e);
 
       let ctx = this.ctx;
@@ -819,7 +838,7 @@ export class View3D extends Editor {
       e.stopPropagation();
     };
 
-    this.addEventListener("mousedown", on_mousedown);
+    eventdom.addEventListener("mousedown", on_mousedown);
 
     window.redraw_viewport();
   }
@@ -843,14 +862,14 @@ export class View3D extends Editor {
   }
 
   getLocalMouse(x, y) {
-    //let r = this.getClientRects()[0];
+    let r = this.getClientRects()[0];
     let dpi = UIBase.getDPI();
 
-    x -= this.pos[0];
-    y -= this.pos[1];
+    //x -= this.pos[0];
+    //y -= this.pos[1];
 
-    //x = (x - r.x); // dpi;
-    //y = (y - r.y); // dpi;
+    x = (x - r.x); // dpi;
+    y = (y - r.y); // dpi;
 
     return [x, y];
   }
@@ -881,6 +900,12 @@ export class View3D extends Editor {
   update() {
     if (this.ctx.scene !== undefined) {
       this.ctx.scene.updateWidgets();
+    }
+
+    let screen = this.ctx.screen;
+    if (this.pos[1] + this.size[1] > screen.size[1]) {
+      console.log("view3d is too big");
+      screen.on_resize(screen.size);
     }
 
     //TODO have limits for how many samplers to render
@@ -1024,6 +1049,8 @@ export class View3D extends Editor {
   }
 
   viewportDraw() {
+    this.overdraw.clear();
+
     if (!this.gl) {
       this.glInit();
     }
@@ -1195,6 +1222,7 @@ export class View3D extends Editor {
 
     let camera = this.camera;
 
+    /*
     textsprite.testDraw(gl, {
       projectionMatrix : camera.rendermat,
       normalMatrix     : camera.normalmat,
@@ -1204,6 +1232,7 @@ export class View3D extends Editor {
       polygonOffset    : 0.0,
       aspect           : this.camera.aspect
     });
+    //*/
 
     gl.disable(gl.BLEND);
   }
