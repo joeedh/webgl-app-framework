@@ -14,6 +14,87 @@ import {MovableWidget} from '../widget_utils.js';
 import {NodeSocketType} from "../../../core/graph.js";
 import {DataStruct} from '../../../path.ux/scripts/simple_controller.js';
 import {DataPathError} from "../../../path.ux/scripts/simple_controller.js";
+import {ToolOp} from "../../../path.ux/scripts/simple_toolsys.js";
+import {Vec3Property} from "../../../path.ux/scripts/toolprop.js";
+
+export class MeasureOp extends ToolOp {
+  constructor() {
+    super();
+  }
+
+  undoPre(ctx) {
+    let ms = ctx.scene.toolmode_namemap["measure_angle"];
+
+    let points = [];
+    for (let p of ms.points) {
+      points.push(new Vector3(p));
+    }
+
+    this._undo = {
+      points     : points,
+      toolmode_i : ctx.scene.toolmode_i
+    };
+  }
+
+  getToolMode(ctx) {
+    return ctx.scene.toolmode_namemap["measure_angle"];
+  }
+
+  undo(ctx) {
+    let ud = this._undo;
+    if (ctx.scene.toolmode_i !== ud.toolmode_i) {
+      ctx.scene.switchToolMode(ud.toolmode_i);
+    }
+
+    let ms = ctx.scene.toolmode_namemap["measure_angle"];
+    ms.points = [];
+
+    for (let i=0; i<ud.points.length; i++) {
+      ms.points.push(new Vector3(ud.points[i]));
+    }
+
+    ms.updatePointWidgets();
+    window.redraw_viewport();
+  }
+
+  execPost(ctx) {
+    window.redraw_viewport();
+  }
+}
+
+export class AddPointOp extends MeasureOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {return {
+    uiname : "Point Add (Measure)",
+    name : "point_add",
+    toolpath : "measure_angle.add_point",
+    inputs : {
+      p : new Vec3Property()
+    }
+  }}
+
+  static canRun(ctx) {
+    return ctx.scene.toolmode instanceof MeasureAngleTool;
+  }
+
+  exec(ctx) {
+    let ms = this.getToolMode(ctx);
+
+    let p = this.inputs.p.getValue();
+
+    if (ms.points.length < 3) {
+      ms.points.push(new Vector3(p));
+    } else {
+      ms.points = [new Vector3(p)];
+    }
+
+    ms.updatePointWidgets();
+  }
+}
+ToolOp.register(AddPointOp);
 
 export class MeasureAngleTool extends ToolMode {
   constructor(manager) {
@@ -55,6 +136,17 @@ export class MeasureAngleTool extends ToolMode {
       return false;
     }
 
+    if (this.cursor) {
+      let tool = new AddPointOp();
+
+      tool.inputs.p.setValue(this.cursor);
+      this.ctx.toolstack.execTool(tool);
+
+      this.clearWidgets();
+      this.update();
+
+      return true;
+    }
     if (this.cursor && this.points.length < 3) {
       console.log("adding a point", this.points.length+1);
 
@@ -84,24 +176,33 @@ export class MeasureAngleTool extends ToolMode {
     this.pointWidgets = [];
   }
 
-  update() {
-    super.update();
-
+  updatePointWidgets() {
     if (this.ctx === undefined || this.ctx.scene === undefined) {
       return;
     }
 
     let manager = this.ctx.scene.widgets;
 
-    if (this.pointWidgets.length < this.points.length) {
-      for (let i=this.pointWidgets.length; i<this.points.length; i++) {
+    if (this.pointWidgets.length !== this.points.length) {
+      this.clearWidgets();
+
+      for (let i=0; i<this.points.length; i++) {
         let path = "scene.tools.measure_angle.points[" + i + "]";
 
         let widget = new MovableWidget(manager, path);
         this.addWidget(widget);
         this.pointWidgets.push(widget);
+        widget.update(manager);
       }
+
+      window.redraw_viewport();
     }
+  }
+
+  update() {
+    super.update();
+
+    this.updatePointWidgets();
   }
 
   on_mousemove(e, x, y, was_touch) {
