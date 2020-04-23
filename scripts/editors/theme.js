@@ -141,7 +141,12 @@ export const theme = {
     BoxRadius : 64,
     BoxMargin : 10,
     BoxDrawMargin : 0
+  },
+
+  dropbox : {
+    dropTextBG : undefined //if undefined, will use BoxBG
   }
+
 };
 
 setTheme(theme);

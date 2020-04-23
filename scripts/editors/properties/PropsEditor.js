@@ -22,6 +22,8 @@ import {NodeEditor} from "../node/NodeEditor.js";
 export class PropsEditor extends PopupEditor   {
   constructor() {
     super();
+
+    this._needsBuild = 1;
   }
 
   init() {
@@ -32,9 +34,31 @@ export class PropsEditor extends PopupEditor   {
     let header = this.header;
     let container = this.container;
 
-    let col = container.col();
+    //let col = container.col();
 
-    let tabs = this; //col.tabs("left");
+    this.build();
+    this.close();
+  }
+
+  update() {
+    super.update();
+
+    if (this._needsBuild) {
+      this.build();
+    }
+  }
+
+  build() {
+    let tabs = this;
+
+    let bad = this.ctx === undefined || this.ctx.scene === undefined;
+    bad = bad || this.ctx.scene.toolmode === undefined;
+
+    if (bad) {
+      return;
+    }
+
+    this._needsBuild = false;
 
     this.buildViews(tabs);
     this.buildViewTools(tabs);
@@ -68,6 +92,7 @@ export class PropsEditor extends PopupEditor   {
     let path = "scene.toolmode[" + modename + "]";
 
     let rdef = this.ctx.api.resolvePath(this.ctx, "scene.toolmode");
+
     let icon = rdef.prop.iconmap[modename];
     let descr = rdef.prop.descriptions[modename];
     let cls = ToolModes[rdef.prop.values[modename]];

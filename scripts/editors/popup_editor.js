@@ -156,6 +156,9 @@ export class PopupEditor extends Editor {
         this.contents.remove();
         this.contents = undefined;
       }
+
+      this.setCSS();
+      this.ctx.screen._internalRegenAll();
       return;
     }
 

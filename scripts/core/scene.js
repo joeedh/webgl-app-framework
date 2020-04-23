@@ -322,7 +322,7 @@ export class Scene extends DataBlock {
     let cls = ToolModes[i];
     let ret;
 
-    if (this.toolmode !== undefined) {
+    if (this.toolmode_i in this.toolmode_map) {
       console.log("calling old tool inactive", this.toolmode, this.toolmode.onInactive);
       this.widgets.remove(this.toolmode);
       console.log(this.toolmode.widgets);
