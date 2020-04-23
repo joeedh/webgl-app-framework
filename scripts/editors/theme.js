@@ -32,7 +32,7 @@ export const theme = {
     "InnerPanelBG" : "rgba(95, 95, 75, 0.5)",
 
     "BoxRadius" : 24,
-    "BoxMargin" : 2,
+    "BoxMargin" : 10,
     "BoxHighlight" : "rgba(155, 220, 255, 0.75)",
     "BoxDepressed" : "rgba(55, 55, 55, 0.75)",
     "BoxBG" : "rgba(100, 100, 100, 0.75)",

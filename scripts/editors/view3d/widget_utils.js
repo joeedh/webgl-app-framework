@@ -94,6 +94,9 @@ export class TransMovWidget extends TransDataType {
       ctx.api.setValue(ctx, path, co);
     }
 
+    if (ctx.scene !== undefined) {
+      ctx.scene.widgets.update();
+    }
     window.redraw_viewport();
   }
 

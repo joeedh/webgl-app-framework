@@ -59,6 +59,17 @@ export class MeasureAngleTool extends ToolMode {
       return false;
     }
 
+    let mpos = new Vector2([x, y]);
+
+    if (e.altKey || e.shiftKey || e.ctrlKey || e.commandKey) {
+      return;
+    }
+
+    let ret = castRay(ctx, ctx.selectMask, mpos, ctx.view3d, CastModes.FRAMEBUFFER);
+    if (ret === undefined) {
+      this.cursor = undefined;
+    }
+
     if (this.cursor) {
       let tool = new AddPointOp();
 
@@ -68,24 +79,6 @@ export class MeasureAngleTool extends ToolMode {
       this.clearWidgets();
       this.update();
 
-      return true;
-    }
-    if (this.cursor && this.points.length < 3) {
-      console.log("adding a point", this.points.length+1);
-
-      this.points.push(this.cursor.copy());
-      this.update();
-
-      window.redraw_viewport();
-      return true;
-    } else if (this.cursor && this.points.length >= 3) {
-      console.log("adding a point", 1);
-
-      this.clearWidgets();
-      this.points = [this.cursor.copy()];
-      this.update();
-
-      window.redraw_viewport();
       return true;
     }
 
