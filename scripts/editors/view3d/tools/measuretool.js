@@ -34,6 +34,21 @@ export class MeasureAngleTool extends ToolMode {
   }
 
 
+  getViewCenter() {
+    if (this.points.length == 0) {
+      return undefined;
+    }
+
+    let ret = [new Vector3(this.points[0]), new Vector3(this.points[0])];
+
+    for (let p of this.points) {
+      ret[0].min(p);
+      ret[1].max(p);
+    }
+
+    return ret;
+  }
+
   static buildSettings(container) {
 
   }

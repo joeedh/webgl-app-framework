@@ -72,6 +72,8 @@ export class PointSet extends SceneObjectData {
         this.ready = true;
         accept(this);
 
+        window.redraw_viewport();
+
         //hackish, I shouldn't have to delay the viewport redraw call here
         //TODO: rethink window.redraw_viewport?
         window.setTimeout(() => {
@@ -84,6 +86,13 @@ export class PointSet extends SceneObjectData {
         console.log("READY2");
         this.ready = true;
         accept(this);
+
+        //redraw immediately in case loading happens faster
+        window.redraw_viewport(undefined, 4);
+
+        window.setTimeout(() => {
+          window.redraw_viewport();
+        }, 75);
 
         //hackish, I shouldn't have to delay the viewport redraw call here
         window.setTimeout(() => {
@@ -142,6 +151,12 @@ export class PointSet extends SceneObjectData {
     let min = new Vector3().loadTHREE(bbox.min);
     let max = new Vector3().loadTHREE(bbox.max);
     let scale = new Vector3(max).sub(min);
+
+    /*
+    console.log(min);
+    console.log(max);
+    console.log(scale);
+    //*/
 
     matrix.translate(min[0], min[1], min[2]);
     matrix.scale(scale[0], scale[1], scale[2]);

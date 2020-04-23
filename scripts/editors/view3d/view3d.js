@@ -1,3 +1,4 @@
+import * as util from '../../util/util.js';
 
 import './findnearest/all.js';
 import './tools/tools.js';
@@ -359,6 +360,44 @@ export class View3D extends Editor {
     return this.ctx.selectMask;
   }
 
+  updateClipping() {
+    if (this.ctx === undefined || this.ctx.scene === undefined) {
+      return;
+    }
+
+    let min = new Vector3();
+    let max = new Vector3();
+    let first = true;
+
+    for (let ob of this.ctx.scene.objects) {
+      let bbox = ob.getBoundingBox();
+      if (bbox === undefined) {
+        continue;
+      }
+
+      if (first) {
+        min.load(bbox[0]);
+        max.load(bbox[1]);
+      } else {
+        min.min(bbox[0]);
+        max.max(bbox[1]);
+      }
+    }
+
+    max.sub(min);
+
+    let size = Math.max(Math.max(Math.abs(max[0]), Math.abs(max[1])), Math.abs(max[2]));
+    size = Math.max(size, this.camera.pos.vectorDistance(this.camera.target));
+
+    let clipend = Math.max(size*15, 5000);
+    let clipstart = clipend*0.0001 + 0.001;
+
+    console.log(clipstart, clipend);
+
+    this.camera.near = clipstart;
+    this.camera.far = clipend;
+  }
+
   set selectmode(val) {
     console.warn("setting selectmode", val);
     this.ctx.scene.selectMask = val;
@@ -425,7 +464,10 @@ export class View3D extends Editor {
   deleteGraphNodes() {
     for (let node of this._nodes) {
       try {
-        this.ctx.graph.remove(node);
+        let graph = this.ctx.graph;
+        if (graph.has(node)) {
+          graph.remove(node);
+        }
       } catch (error) {
         util.print_stack(error);
         console.log("failed to delete graph node");
@@ -450,9 +492,25 @@ export class View3D extends Editor {
   viewSelected() {
     //let cent = this.getTransCenter();
     let cent = new Vector3();
-    let aabb = this.getTransBounds();
+    let aabb;
 
-    if (aabb[0].vectorDistance(aabb[1]) == 0.0 && aabb[0].dot(aabb[0]) == 0.0) {
+    if (this.ctx.scene !== undefined) {
+      let toolmode = this.ctx.scene.toolmode;
+
+      if (toolmode !== undefined) {
+        aabb = toolmode.getViewCenter();
+      }
+    }
+
+    if (aabb === undefined) {
+      aabb = this.getTransBounds();
+    }
+
+    console.log("v3d aabb ret", aabb[0], aabb[1]);
+
+    let is_point = aabb[0].vectorDistance(aabb[1]) === 0.0;
+
+    if (aabb[0].vectorDistance(aabb[1]) === 0.0 && aabb[0].dot(aabb[0]) === 0.0) {
       cent.zero();
       cent.multVecMatrix(this.cursor3D);
     } else {
@@ -511,7 +569,11 @@ export class View3D extends Editor {
     //console.log("DIS", dis);
 
     dis = dis == 0.0 ? 0.005 : dis;
-    this.camera.pos.sub(this.camera.target).normalize().mulScalar(dis).add(this.camera.target);
+    if (!is_point) {
+      this.camera.pos.sub(this.camera.target).normalize().mulScalar(dis).add(this.camera.target);
+    }
+
+    this.updateClipping();
 
     this.camera.regen_mats();
     this.onCameraChange();
@@ -567,7 +629,9 @@ export class View3D extends Editor {
       tmp[1] /= tmp[3];
       tmp[2] /= tmp[3];
     }
-    
+
+    let w = tmp[3];
+
     tmp[0] = (tmp[0]*0.5 + 0.5) * this.size[0];
     tmp[1] = (1.0-(tmp[1]*0.5+0.5)) * this.size[1];
     
@@ -575,7 +639,7 @@ export class View3D extends Editor {
       co[i] = tmp[i];
     }
     
-    return tmp;
+    return w;
   }
   
   unproject(co) {
@@ -587,10 +651,17 @@ export class View3D extends Editor {
     if (co.length > 2) {
       tmp[2] = co[2];
     }
-    
-    tmp[3] = 1.0;
+
+    if (co.length > 3) {
+      tmp[3] = co[3];
+    } else {
+      tmp[3] = 1.0;
+    }
+
     tmp.multVecMatrix(this.camera.irendermat);
-    
+
+    let w = tmp[3];
+
     if (tmp[3] != 0.0) {
       tmp[0] /= tmp[3];
       tmp[1] /= tmp[3];
@@ -601,7 +672,7 @@ export class View3D extends Editor {
       co[i] = tmp[i];
     }
     
-    return tmp;
+    return w;
   }
 
   setCursor(mat) {
@@ -692,7 +763,11 @@ export class View3D extends Editor {
       window.redraw_viewport();
     });
 
-    //strip = header.strip();
+
+    strip = header.strip();
+    strip.useIcons();
+    strip.prop("view3d.flag[SHOW_GRID]");
+
     //strip.prop("scene.toolmode[pan]");
     //strip.prop("scene.toolmode[object]");
 
@@ -1161,7 +1236,7 @@ export class View3D extends Editor {
     //}
     //gl.clearColor(1.0, 1.0, 1.0, 0.0);
 
-    gl.clearDepth(this.camera.far);
+    gl.clearDepth(this.camera.far+1);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     
     gl.disable(gl.BLEND);
@@ -1182,7 +1257,9 @@ export class View3D extends Editor {
     //this._testCamera();
     //window.redraw_viewport();
 
-    if (this.grid !== undefined) {
+    let drawgrid = this.flag & View3DFlags.SHOW_GRID;
+
+    if (this.grid !== undefined && drawgrid) {
       //console.log("drawing grid");
       
       this.grid.program = view3d_shaders.Shaders.BasicLineShader;
@@ -1318,15 +1395,19 @@ export class View3D extends Editor {
 
         this.threeCamera.pushUniforms(uniforms);
 
+
         if (scene.toolmode.drawObject(gl, uniforms, program, ob, ob.data)) {
           this.threeCamera.popUniforms();
-          break;
+          continue;
         }
 
         this.threeCamera.popUniforms();
       }
 
-      //no editors drew the objects
+      uniforms.objectMatrix = ob.outputs.matrix.getValue();
+      uniforms.object_id = ob.lib_id;
+
+      //did toolmode not draw the object?
       this.threeCamera.pushUniforms(uniforms);
       ob.draw(this, gl, uniforms, program);
       this.threeCamera.popUniforms();
@@ -1374,9 +1455,9 @@ nstructjs.manager.add_class(View3D);
 
 let animreq = undefined;
 let resetRender = 0;
+let drawCount = 1;
 
-let f = () => {
-  animreq = undefined;
+let f2 = () => {
   let screen = _appstate.screen;
   let resetrender = resetRender;
   resetRender = 0;
@@ -1396,8 +1477,17 @@ let f = () => {
   }
 };
 
-window.redraw_viewport = (ResetRender=false) => {
+let f = () => {
+  animreq = undefined;
+
+  for (let i=0; i<drawCount; i++) {
+    f2();
+  }
+};
+
+window.redraw_viewport = (ResetRender=false, DrawCount=1) => {
   resetRender |= ResetRender ? 1 : 0;
+  drawCount = DrawCount;
 
   if (animreq !== undefined) {
     return;

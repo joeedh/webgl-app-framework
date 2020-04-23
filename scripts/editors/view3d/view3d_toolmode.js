@@ -63,6 +63,13 @@ export class ToolMode extends WidgetTool {
     return [this.keymap];
   }
 
+  //returns a bounding box [min, max]
+  //if toolmode has a preferred aabb to
+  //zoom out on, otherwise returns undefined;
+  getViewCenter() {
+    return undefined;
+  }
+
   static buildSettings(container) {
 
   }

@@ -34,7 +34,16 @@ export class PointSetResource extends ResourceType {
     return new PointSetResource(url);
   }
 
+  reload() {
+    this.ready = false;
+    this.load();
+  }
+
   load() {
+    if (this.ready) {
+      return;
+    }
+
     let cb = (pcloud) => {
       this.data = pcloud;
       console.log("Point Cloud", pcloud);

@@ -50,6 +50,14 @@ export class AddPointSetOp extends ToolOp {
       scene.objects.setSelect(ob, true);
       scene.objects.setActive(ob);
     }
+
+    //this technically violates MVC design rules
+    window.setTimeout(() => {
+      if (_appstate.ctx && _appstate.ctx.view3d) {
+        _appstate.ctx.view3d.viewSelected();
+        window.redraw_viewport();
+      }
+    }, 500);
   }
 }
 

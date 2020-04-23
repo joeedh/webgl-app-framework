@@ -29,6 +29,9 @@ export function calcTransAABB(ctx, selmode) {
   let ret = undefined;
 
   for (let type of TransDataTypes) {
+    if (!type.isValid(ctx)) {
+      continue;
+    }
     let aabb = type.calcAABB(ctx, selmode);
 
     if (aabb === undefined)
@@ -37,7 +40,7 @@ export function calcTransAABB(ctx, selmode) {
     if (ret !== undefined) {
       aabb_union(ret, aabb)
     } else {
-      ret = aabb;
+      ret = [new Vector3(aabb[0]), new Vector3(aabb[1])];
     }
   }
 

@@ -54,16 +54,21 @@ export class GPUSelectBuffer {
 
     this.size[0] = ~~view3d.glSize[0];
     this.size[1] = ~~view3d.glSize[1];
+    let camera = view3d.camera;
 
     this.fbo.update(gl, this.size[0], this.size[1]);
     this.fbo.bind(gl);
 
     let uniforms = {
-      projectionMatrix : view3d.camera.rendermat,
-      objectMatrix : undefined
+      projectionMatrix : camera.rendermat,
+      objectMatrix : undefined,
+      near   : camera.near,
+      far    : camera.far,
+      size   : this.size,
+      aspect : camera.aspect
     };
 
-    gl.clearDepth(1000000);
+    gl.clearDepth(view3d.camera.far);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 

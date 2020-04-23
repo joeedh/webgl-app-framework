@@ -92,6 +92,10 @@ export class ObjectList extends Array {
   }
 
   remove(ob) {
+    if (this.selected.has(ob)) {
+      this.selected.remove(ob);
+    }
+
     ob.lib_remUser(this.scene);
     return super.remove(ob);
   }
@@ -367,8 +371,17 @@ export class Scene extends DataBlock {
     
     this.objects.remove(ob);
   }
-  
+
   destroy() {
+    try {
+      this.destroyIntern();
+    } catch (error) {
+      util.print_stack(error);
+      console.log("got error in Scene.prototype.destroy");
+    }
+  }
+
+  destroyIntern() {
     for (let ob of this.objects) {
       ob.lib_remUser();
     }
@@ -380,7 +393,7 @@ export class Scene extends DataBlock {
       //tool.
     }
 
-    this.widgets.destroy();
+    this.widgets.destroy(this.widgets.gl);
   }
   
   static blockDefine() { return {

@@ -559,6 +559,8 @@ export class App extends Screen {
   }
 
   update() {
+    window.updateDataGraph(true);
+
     super.update();
 
     this.positionMenu();

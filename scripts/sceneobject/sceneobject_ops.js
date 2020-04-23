@@ -22,7 +22,7 @@ import {ObjectDataTypes} from './sceneobject_base.js';
 
 export class SceneObjectOp extends ToolOp {
   execPost(ctx) {
-    super.execPre(ctx);
+    super.execPost(ctx);
     window.redraw_viewport();
   }
 }

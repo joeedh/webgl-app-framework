@@ -151,6 +151,11 @@ export class ResourceManager {
 
     let res = resclass.createFromURL(url);
 
+    let list = this.getList(resclass);
+
+    list.push(res);
+    this.url_res_map[url] = res;
+
     if (autoload)
       res.load();
 
@@ -166,3 +171,4 @@ export class ResourceManager {
 }
 
 export const resourceManager = new ResourceManager();
+window._resourceManager = resourceManager;

@@ -45,9 +45,15 @@ ToolOp.prototype.undoPre = function(ctx) {
 }
 
 ToolOp.prototype.undo = function(ctx) {
-  console.log("loading undo file");
+  console.log("loading undo file 1");
   ctx.appstate.loadUndoFile(this._undo);
-}
+
+  window.redraw_viewport();
+};
+
+ToolOp.prototype.execPost = function(ctx) {
+  window.redraw_viewport();
+};
 
 export class BasicFileOp extends ToolOp {
   constructor() {
@@ -726,6 +732,8 @@ export function init() {
   }
 
   window.updateDataGraph = function(force=false) {
+    //console.warn("updateDataGraph called");
+
     if (force) {
       _appstate.datalib.graph.exec(_appstate.ctx);
       return;

@@ -67,7 +67,7 @@ export class ObjectEditor extends ToolMode {
       new HotKey("A", [], "object.toggle_select_all(mode='AUTO')"),
       new HotKey("A", ["ALT"], "object.toggle_select_all(mode='SUB')"),
       new HotKey("X", [], "object.delete_selected()"),
-      new HotKey("DELETE", [], "object.delete_selected()")
+      new HotKey("Delete", [], "object.delete_selected()")
     ]);
 
     return this.keymap;
@@ -112,6 +112,10 @@ export class ObjectEditor extends ToolMode {
     }
 
     this._updateHighlight(...arguments);
+
+    if (e.ctrlKey || e.altKey || e.commandKey) {
+      return;
+    }
 
     console.log("click select!");
     let ret = this.findnearest(ctx, x, y);

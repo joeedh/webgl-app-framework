@@ -34,7 +34,7 @@ export class TransMovWidget extends TransDataType {
   }}
 
   static isValid(ctx, toolop) {
-    return true;
+    return toolop !== undefined && toolop.inputs.datapaths !== undefined;
   }
 
   static genData(ctx, selectMask, propmode, propradius, toolop) {

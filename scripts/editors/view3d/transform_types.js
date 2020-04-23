@@ -533,10 +533,16 @@ export class ObjectTransType extends TransDataType {
     let tot = 0.0;
 
     for (let ob of ctx.selectedObjects) {
-      temp.zero();
-      temp.multVecMatrix(ob.outputs.matrix.getValue());
+      let bbox = ob.getBoundingBox();
 
-      cent.add(temp);
+
+      let co = new Vector3(bbox[0]).interp(bbox[1], 0.5);
+      cent.add(co);
+      
+      //temp.zero();
+      //temp.multVecMatrix(ob.outputs.matrix.getValue());
+
+      //cent.add(temp);
 
       tot++;
     }
@@ -555,6 +561,8 @@ export class ObjectTransType extends TransDataType {
       return undefined;
     }
 
+    //console.log("calculating aabb");
+
     for (let ob of ctx.selectedObjects) {
       let aabb = ob.getBoundingBox();
 
@@ -564,6 +572,8 @@ export class ObjectTransType extends TransDataType {
         aabb_union(ret, aabb);
       }
     }
+
+    //console.log(ret);
 
     return ret;
   }

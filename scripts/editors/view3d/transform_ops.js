@@ -133,6 +133,10 @@ export class TransformOp extends View3DOp {
     let tot = 0.0;
 
     for (let list of this.tdata) {
+      if (!list.type.isValid(ctx, this)) {
+        continue;
+      }
+      
       let cent2 = list.type.getCenter(ctx, list, selmask);
       if (cent2 !== undefined) {
         center.add(cent2);
@@ -183,6 +187,8 @@ export class TransformOp extends View3DOp {
         this.inputs.constraint_space.setValue(ret.spaceMatrix);
       }
     }
+
+    this.center = this.calcCenter(ctx, this.inputs.selmask.getValue());
 
     return promise;
   }
@@ -375,7 +381,7 @@ export class TranslateOp extends TransformOp {
     let view3d = ctx.view3d;
 
     let cent = this.center;
-    let scent = new Vector3(cent);
+    let scent = new Vector4(cent);
 
     let mpos = view3d.getLocalMouse(e.x, e.y);
     let x = mpos[0], y = mpos[1];
@@ -389,10 +395,23 @@ export class TranslateOp extends TransformOp {
 
     let dx = x - this.mpos[0], dy = y - this.mpos[1];
 
-    view3d.project(scent);
-    scent[0] += dx;
-    scent[1] += dy;
-    view3d.unproject(scent);
+    let scent2 = new Vector4(scent);
+
+    scent2[3] = 1.0;
+    let w = view3d.project(scent2);
+
+    console.log(w, this.center);
+
+    scent2[3] = w;
+    scent2[0] += dx;
+    scent2[1] += dy;
+
+    scent2[3] = 1.0;
+    view3d.unproject(scent2);
+
+    scent[3] = 1.0;
+
+    scent.load(scent2);
 
     let off = new Vector3(scent).sub(cent);
     let mat = this.inputs.space.getValue();

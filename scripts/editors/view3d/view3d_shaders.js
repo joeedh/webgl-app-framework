@@ -2,8 +2,10 @@ import {Matrix4} from '../../util/vectormath.js';
 import {ShaderProgram} from "../../core/webgl.js";
 
 export let PolygonOffset = {
-  pre  : `uniform float polygonOffset;`,
-  vertex : (posname) => `
+  pre : '',
+  vertex : (posname) => {return '';},
+  pre1  : `uniform float polygonOffset;`,
+  vertex1 : (posname) => `
   {
     float z = ${posname}[2];
     z -= polygonOffset*0.0001;

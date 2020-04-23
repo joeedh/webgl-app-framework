@@ -107,7 +107,8 @@ export function api_define_view3d(api, pstruct) {
   }
 
   vstruct.flags("flag", "flag", View3DFlags).on("change", onchange).icons({
-    SHOW_RENDER : Icons.RENDER
+    SHOW_RENDER : Icons.RENDER,
+    SHOW_GRID : Icons.SHOW_GRID
   });
 }
 
