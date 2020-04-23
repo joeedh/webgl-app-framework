@@ -149,9 +149,9 @@ export class ToggleSelectOp extends SelectOpBase {
       name: "toggle_select_all",
       toolpath: "object.toggle_select_all",
       icon: -1,
-      inputs: {
+      inputs: ToolOp.inherit({
         mode: new EnumProperty("AUTO", SelToolModes)
-      }
+      })
   }}
 
   static invoke(ctx, args) {

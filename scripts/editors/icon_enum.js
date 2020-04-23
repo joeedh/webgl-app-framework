@@ -66,6 +66,8 @@ export let Icons = {
   VIEW_TOOLS     : 60,
   SHOW_GRID      : 61,
   PERSPECTIVE    : 62,
-  ORTHOGRAPHIC   : 63
+  ORTHOGRAPHIC   : 63,
+  MEASURE_DIST   : 64,
+  RESET          : 65
 };
 setIconMap(Icons);

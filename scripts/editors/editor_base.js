@@ -1,4 +1,9 @@
 import '../path.ux/scripts/struct.js';
+import * as units from '../path.ux/scripts/units.js';
+
+//set base unit for world space data
+units.Unit.baseUnit = "foot";
+
 import './theme.js';
 
 let STRUCT = nstructjs.STRUCT;

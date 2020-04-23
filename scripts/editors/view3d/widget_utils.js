@@ -5,19 +5,20 @@ import {
   FlagProperty, ToolProperty, Vec3Property, ListProperty,
   PropFlags, PropTypes, PropSubTypes, StringSetProperty
 } from '../../path.ux/scripts/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
+import {ToolMacro, ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
 import {Shaders} from './view3d_shaders.js';
 import {dist_to_line_2d} from '../../path.ux/scripts/math.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
 import * as util from '../../util/util.js';
 import {SelMask} from './selectmode.js';
+import {Colors} from "../../sceneobject/sceneobject.js";
+import {ObjectFlags} from "../../sceneobject/sceneobject.js";
 
 import {View3DFlags} from "./view3d_base.js";
 import {WidgetBase, WidgetSphere, WidgetArrow, WidgetTool, WidgetFlags} from './widgets.js';
 import {TranslateOp, ScaleOp, SnapModes} from "./transform_ops.js";
 import {calcTransCenter} from './transform_query.js';
-import {ToolMacro} from "../../path.ux/scripts/simple_toolsys.js";
 import {Icons} from '../icon_enum.js';
 import {DataPathError} from "../../path.ux/scripts/controller.js";
 import {PropModes, TransDataType, TransDataElem, TransDataMap, TransDataTypes} from './transform_base.js';
@@ -50,7 +51,7 @@ export class TransMovWidget extends TransDataType {
     for (let path of toolop.inputs.datapaths) {
       let td = new TransDataElem();
       td.data1 = path;
-      td.data2 = api.getValue(ctx, path);
+      td.data2 = new Vector3(api.getValue(ctx, path));
 
       console.log(path);
       ret.push(td);
@@ -64,7 +65,7 @@ export class TransMovWidget extends TransDataType {
     let co = new Vector3();
 
     co.load(elem.data2).multVecMatrix(matrix);
-    ctx.api.setValue(ctx, elem.data1, co);
+    ctx.api.getValue(ctx, elem.data1).load(co);
 
     if (ctx.scene) {
       ctx.scene.widgets.update();
@@ -91,7 +92,7 @@ export class TransMovWidget extends TransDataType {
 
     for (let i=0; i<paths.length; i++) {
       let path = paths[i], co = cos[i];
-      ctx.api.setValue(ctx, path, co);
+      ctx.api.getValue(ctx, path).load(co);
     }
 
     if (ctx.scene !== undefined) {
@@ -163,22 +164,100 @@ export class MovableWidget extends WidgetBase {
 
     this.onupdate = undefined;
     this.flag |= WidgetFlags.CAN_SELECT;
+    this.tools = {};
+  }
+
+  //selectOne, toggleSelectAll should be toolpath strings
+  addTools(selectOne, toggleSelectAll) {
+    if (selectOne)
+      this.tools.selectOne = selectOne;
+    if (toggleSelectAll)
+      this.tools.toggleSelectAll = toggleSelectAll;
+    return this;
+  }
+
+  get iterWidgets() {
+    let this2 = this;
+
+    return (function*() {
+      for (let w of this2.manager.widgets) {
+        if (w instanceof MovableWidget) {
+          yield w;
+        }
+      }
+    })();
   }
 
   on_mousedown(e, localX, localY, was_touch) {
+    let ctx = this.ctx;
+
     console.log("Movable widget mouse down!");
+
+    let tools = [];
+
+    if (this.tools.selectOne) {
+      let path = this.tools.selectOne;
+      let p = this.getValue();
+
+      let mode;
+      if (e.shiftKey) {
+        mode = p.select ? "SUB" : "ADD";
+      } else {
+        mode = "UNIQUE";
+      }
+
+      path = `${path}(mode='${mode}' path='${this.datapath}')`;
+
+      let toolop = ctx.api.createTool(ctx, path);
+      tools.push(toolop);
+    }
 
     if (e.button == 0 || was_touch) {
       let toolop = new MovWidgetTranslateOp();
 
-      toolop.inputs.datapaths.push(this.datapath);
+      for (let w of this.iterWidgets) {
+        if (w.getSelect()) {
+          toolop.inputs.datapaths.push(w.datapath);
+        }
+      }
+
       toolop.inputs.snapMode.setValue(this.snapMode);
-      this.ctx.toolstack.execTool(toolop);
+      tools.push(toolop);
+    }
+
+    if (tools.length > 1) {
+      let macro = new ToolMacro();
+
+      for (let tool of tools) {
+        macro.add(tool);
+      }
+
+      macro.connect(tools[0], tools[1], (tool1, tool2) => {
+        tool2.inputs.datapaths.clear();
+
+        for (let path of tool1.outputs.selectPaths) {
+          tool2.inputs.datapaths.push(path);
+        }
+      });
+      ctx.toolstack.execTool(macro);
+    } else if (tools.length === 1) {
+      ctx.toolstack.execTool(tools[0]);
     }
   }
 
   static canCall(ctx) {
     return true;
+  }
+
+  getSelect() {
+    try {
+      return this.getValue().select;
+    } catch (error) {
+      util.print_stack(error);
+      console.warn("corrupted MovableWidget with datapath: " + this.datapath);
+
+      return false;
+    }
   }
 
   getValue() {
@@ -224,6 +303,16 @@ export class MovableWidget extends WidgetBase {
       this.bad = true;
       return;
     }
+
+    let sel = co.select;
+    let mask = sel ? ObjectFlags.SELECT : 0;
+    let hmask = ObjectFlags.HIGHLIGHT|mask;
+
+    let color = Colors[mask];
+    let hcolor = Colors[hmask];
+
+    this.shape.color.load(color);
+    this.shape.hcolor.load(hcolor);
 
     this.matrix.translate(co[0], co[1], co[2]);
     this.matrix.scale(scale, scale, scale);

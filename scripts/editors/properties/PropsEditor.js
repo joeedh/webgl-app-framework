@@ -73,6 +73,7 @@ export class PropsEditor extends PopupEditor   {
     let tab = tabs.tab("Measure Tools", Icons.MEASURE_TOOLS);
 
     this.buildToolMode(tab, "measure_angle", "Measure Angles");
+    this.buildToolMode(tab, "measure_dist", "Measure Distance");
   }
 
   buildViews(tabs) {

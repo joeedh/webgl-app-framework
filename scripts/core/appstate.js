@@ -13,6 +13,7 @@ import '../editors/resbrowser/resbrowser.js';
 import '../editors/resbrowser/resbrowser_ops.js';
 import '../editors/resbrowser/resbrowser_types.js';
 
+import {keymap} from "../path.ux/scripts/events.js";
 import {Material} from './material.js';
 import {App, ScreenBlock} from '../editors/editor_base.js';
 import {Library, DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
@@ -717,7 +718,12 @@ export function init() {
 
   window.addEventListener("keydown", (e) => {
     //prevent reload hotkey, could conflict with redo
-    if (e.keyCode == 82 && e.ctrlKey) {
+    if (e.keyCode == keymap["R"] && e.ctrlKey) {
+      e.preventDefault();
+    }
+
+    //also prevent ctrl-A, which is usually select all
+    if (e.keyCode == keymap["A"] && e.ctrlKey) {
       e.preventDefault();
     }
 

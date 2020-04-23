@@ -2,13 +2,13 @@ import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {FindNearest, castRay, CastModes} from "../findnearest.js";
 import {WidgetFlags, WidgetTool} from "../widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
-import {KeyMap} from "../../editor_base.js";
+import {HotKey, KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
 import '../../../path.ux/scripts/struct.js';
+let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../view3d_shaders.js';
-let STRUCT = nstructjs.STRUCT;
 import {MovableWidget} from '../widget_utils.js';
 import {ToolOp} from "../../../path.ux/scripts/simple_toolsys.js";
 import {Vec3Property} from "../../../path.ux/scripts/toolprop.js";
@@ -18,8 +18,46 @@ import {aabb_union} from '../../../util/math.js';
 import {SnapModes} from "../transform_ops.js";
 
 import {AddPointOp, MeasureOp} from "./measuretool_ops.js";
+import {MeasurePoint, MeasureFlags} from "./measuretool_base.js";
 
-export class MeasureAngleTool extends ToolMode {
+if (Math.fract === undefined) {
+  Math.fract = (f) => f - Math.floor(f);
+}
+
+export function buildImperialString(distft) {
+  let miles = ~~(distft / 5280);
+
+  let feet = ~~distft;
+  let inches = Math.fract(distft)*12.0;
+
+  let s = "";
+
+  if (miles !== 0.0) {
+    s += miles + "miles ";
+  }
+
+  if (feet !== 0.0) {
+    s += feet + "ft ";
+  }
+
+  if (inches != 0.0) {
+    let decimals;
+
+    if (miles) {
+      decimals = 1;
+    } else if (feet) {
+      decimals = 2;
+    } else {
+      decimals = 3;
+    }
+
+    s += inches.toFixed(decimals) + "in";
+  }
+
+  return s;
+}
+
+export class MeasureToolBase extends ToolMode {
   constructor(manager) {
     super(manager);
 
@@ -28,29 +66,30 @@ export class MeasureAngleTool extends ToolMode {
     this.cursor = undefined;
 
     this.drawCursor = true;
+    this._isMeasureTool = true;
 
+    this.maxPoints = 3;
     this.points = [];
     this.pointWidgets = [];
   }
 
+  defineKeyMap() {
+    this.keymap = new KeyMap([
+      new HotKey("A", [], "measure.toggle_select_all(mode='AUTO')"),
+      new HotKey("A", ["ALT"], "measure.toggle_select_all(mode='SUB')"),
+      new HotKey("A", ["CTRL"], "measure.toggle_select_all(mode='ADD')"),
+      new HotKey("X", [], "measure.delete_selected()"),
+      new HotKey("Delete", [], "measure.delete_selected()")
+    ]);
 
-  getViewCenter() {
-    if (this.points.length == 0) {
-      return undefined;
-    }
+    return this.keymap;
+  }
 
-    let ret = [new Vector3(this.points[0]), new Vector3(this.points[0])];
-
-    for (let p of this.points) {
-      ret[0].min(p);
-      ret[1].max(p);
-    }
-
-    return ret;
+  static isMeasureTool(instance) {
+    return instance._isMeasureTool;
   }
 
   static buildSettings(container) {
-
   }
 
   static buildHeader(header, addHeaderRow) {
@@ -59,7 +98,18 @@ export class MeasureAngleTool extends ToolMode {
   static defineAPI(api) {
     let tstruct = super.defineAPI(api);
 
-    tstruct.vectorList(3, "points", "points", "Points", "Points");
+    let pstruct = api.mapStruct(MeasurePoint, true);
+
+    let onchange = () => {
+      window.redraw_viewport();
+    }
+
+    pstruct.vec3("", "co", "co", "Coordinates").on('change', onchange);
+    pstruct.flags("flag", "flag", MeasureFlags, "Flags", "Flags").on('change', onchange);
+
+
+    tstruct.arrayList("points", "points", pstruct, "Points", "Points");
+
     return tstruct;
   }
 
@@ -86,7 +136,7 @@ export class MeasureAngleTool extends ToolMode {
     }
 
     if (this.cursor) {
-      let tool = new AddPointOp();
+      let tool = new AddPointOp(this);
 
       tool.inputs.p.setValue(this.cursor);
       this.ctx.toolstack.execTool(tool);
@@ -118,9 +168,12 @@ export class MeasureAngleTool extends ToolMode {
       this.clearWidgets();
 
       for (let i=0; i<this.points.length; i++) {
-        let path = "scene.tools.measure_angle.points[" + i + "]";
+        let tname = this.constructor.widgetDefine().name;
+        let path = `scene.tools.${tname}.points[${i}]`;
 
         let widget = new MovableWidget(manager, path, SnapModes.SURFACE);
+        widget.addTools("measure.selectone", "measure.toggle_select_all");
+
         this.addWidget(widget);
         this.pointWidgets.push(widget);
         widget.update(manager);
@@ -170,7 +223,7 @@ export class MeasureAngleTool extends ToolMode {
 
     //console.log("castRay ret:", ret, mpos);
     if (ret !== undefined) {
-      this.cursor = new Vector3(ret.p3d);
+      this.cursor = new MeasurePoint(ret.p3d);
       window.redraw_viewport();
     } else {
       this.cursor = undefined;
@@ -179,62 +232,7 @@ export class MeasureAngleTool extends ToolMode {
     return ret !== undefined;
   }
 
-  drawAngles() {
-    if (this.points.length !== 3) {
-      return;
-    }
-
-    let texts = [];
-    let cos = [];
-
-    let v1 = new Vector2();
-    let v2 = new Vector2();
-
-    let overdraw = this.ctx.view3d.overdraw;
-    let view3d = this.ctx.view3d;
-
-    function line(a, b) {
-      a = new Vector3(a);
-      b = new Vector3(b);
-
-      view3d.project(a);
-      view3d.project(b);
-
-      return overdraw.line(a, b);
-    }
-
-    let ps = this.points;
-    line(ps[0], ps[1]);
-    line(ps[1], ps[2]);
-    line(ps[2], ps[0]);
-
-    for (let i=0; i<3; i++) {
-      let a = this.points[(i+2)%3];
-      let b = this.points[i];
-      let c = this.points[(i+1)%3];
-
-      v1.load(a).sub(b).normalize();
-      v2.load(c).sub(b).normalize();
-
-      let th = v1.dot(v2);
-      let angle = 180*(Math.acos(th)/Math.PI);
-
-      angle = angle.toFixed(1);
-
-      let co2 = new Vector3(b);
-
-      this.ctx.view3d.project(co2);
-
-      cos.push(co2);
-      texts.push(angle + String.fromCharCode(0x00B0));
-    }
-
-    this.ctx.view3d.overdraw.drawTextBubbles(texts, cos);
-  }
-
   on_drawstart(gl, view3d) {
-    this.drawAngles();
-
     //console.log(this.cursor);
     this.drawCursor = this.manager.widgets.highlight === undefined;
 
@@ -260,19 +258,22 @@ export class MeasureAngleTool extends ToolMode {
     }
   }
 
-  static widgetDefine() {return {
-    name        : "measure_angle",
-    uiname      : "Measure Angle",
-    icon        : Icons.MEASURE_ANGLE,
-    flag        : 0,
-    description : "Measure Angles",
-    transWidgets: []
-  }}
+  loadSTRUCT(reader) {
+    reader(this);
+    if (super.loadSTRUCT) {
+      super.loadSTRUCT(reader);
+    }
+
+    for (let i=0; i<this.points.length; i++) {
+      if (!(this.points[i] instanceof MeasurePoint)) {
+        this.points[i] = new MeasurePoint(this.points[i]);
+      }
+    }
+  }
+
 }
 
-MeasureAngleTool.STRUCT = STRUCT.inherit(MeasureAngleTool, ToolMode) + `
-  points : array(vec3);
+MeasureToolBase.STRUCT = STRUCT.inherit(MeasureToolBase, ToolMode) + `
+  points : array(MeasurePoint);
 }`;
-nstructjs.manager.add_class(MeasureAngleTool);
-
-ToolMode.register(MeasureAngleTool);
+nstructjs.manager.add_class(MeasureToolBase);

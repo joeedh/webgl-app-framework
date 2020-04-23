@@ -1,19 +1,61 @@
-import {Vec3Property} from "../../../path.ux/scripts/toolprop.js";
-import {MeasureAngleTool} from "./measuretool.js";
+import {
+  Vec3Property,
+  StringProperty,
+  EnumProperty,
+  ListProperty,
+  BoolProperty,
+  IntProperty
+} from "../../../path.ux/scripts/toolprop.js";
+//import {MeasureToolBase} from "./measuretool.js";
 import {ToolOp} from "../../../path.ux/scripts/simple_toolsys.js";
 import {Vector3} from "../../../util/vectormath.js";
+import {Icons} from "../../icon_enum.js";
+import {MeasurePoint, MeasureFlags, measureUtils} from './measuretool_base.js';
+import {SelOneToolModes, SelToolModes} from "../selectmode.js";
+import {PropTypes} from "../../../path.ux/scripts/toolprop.js";
 
 export class MeasureOp extends ToolOp {
-  constructor() {
+  constructor(toolmode) {
     super();
+
+    if (toolmode !== undefined) {
+      this.inputs.toolName.setValue(toolmode.constructor.widgetDefine().name);
+    }
+  }
+
+  static invoke(ctx, args) {
+    if (ctx.scene === undefined || ctx.scene.toolmode === undefined) {
+      return undefined;
+    }
+
+    let name = args.toolName;
+    if (!name) {
+      name = ctx.scene.toolmode.constructor.widgetDefine().name;
+    }
+    
+    let ret = new this();
+
+    ret.inputs.toolName.setValue(name);
+    
+    return ret;
+  }
+
+  static tooldef() {return {
+    inputs : {
+      toolName : new StringProperty()
+    }
+  }}
+
+  get toolModeName() {
+    return this.inputs.toolName.getValue();
   }
 
   undoPre(ctx) {
-    let ms = ctx.scene.toolmode_namemap["measure_angle"];
+    let ms = ctx.scene.toolmode_namemap[this.toolModeName];
 
     let points = [];
     for (let p of ms.points) {
-      points.push(new Vector3(p));
+      points.push(new MeasurePoint(p));
     }
 
     this._undo = {
@@ -23,7 +65,7 @@ export class MeasureOp extends ToolOp {
   }
 
   getToolMode(ctx) {
-    return ctx.scene.toolmode_namemap["measure_angle"];
+    return ctx.scene.toolmode_namemap[this.toolModeName];
   }
 
   undo(ctx) {
@@ -32,11 +74,11 @@ export class MeasureOp extends ToolOp {
       ctx.scene.switchToolMode(ud.toolmode_i);
     }
 
-    let ms = ctx.scene.toolmode_namemap["measure_angle"];
+    let ms = ctx.scene.toolmode_namemap[this.toolModeName];
     ms.points = [];
 
     for (let i=0; i<ud.points.length; i++) {
-      ms.points.push(new Vector3(ud.points[i]));
+      ms.points.push(new MeasurePoint(ud.points[i]));
     }
 
     ms.updatePointWidgets();
@@ -48,22 +90,31 @@ export class MeasureOp extends ToolOp {
   }
 }
 
+
 export class AddPointOp extends MeasureOp {
-  constructor() {
-    super();
+  constructor(toolmode) {
+    super(toolmode);
   }
 
   static tooldef() {return {
     uiname : "Point Add (Measure)",
-    name : "point_add",
-    toolpath : "measure_angle.add_point",
-    inputs : {
+    name : "add_point",
+    toolpath : "measure.add_point",
+    inputs : ToolOp.inherit({
       p : new Vec3Property()
-    }
+    })
   }}
 
   static canRun(ctx) {
-    return ctx.scene.toolmode instanceof MeasureAngleTool;
+    let toolmode = ctx.scene.toolmode;
+
+    if (toolmode === undefined) {
+      return false;
+    }
+
+    let def = toolmode.constructor.widgetDefine();
+    return def.name.search("measure") >= 0;
+    //return ctx.scene.toolmode instanceof MeasureToolBase;
   }
 
   exec(ctx) {
@@ -71,13 +122,175 @@ export class AddPointOp extends MeasureOp {
 
     let p = this.inputs.p.getValue();
 
-    if (ms.points.length < 3) {
-      ms.points.push(new Vector3(p));
+    let max = ms.maxPoints;
+    max = max === 0 ? 1e17 : max;
+
+    if (ms.points.length < max) {
+      ms.points.push(new MeasurePoint(p));
     } else {
-      ms.points = [new Vector3(p)];
+      ms.points = [new MeasurePoint(p)];
     }
 
     ms.updatePointWidgets();
   }
 }
 ToolOp.register(AddPointOp);
+
+
+export class ClearPointsOp extends MeasureOp {
+  constructor(toolmode) {
+    super(toolmode);
+  }
+
+  static tooldef() {return {
+    uiname : "Clear Points (Measure)",
+    name : "clear_points",
+    icon : Icons.RESET,
+    toolpath : "measure.clear_points",
+    inputs : ToolOp.inherit({
+    })
+  }}
+
+  static canRun(ctx) {
+    return ctx.scene.toolmode instanceof MeasureToolBase;
+  }
+
+  exec(ctx) {
+    let ms = this.getToolMode(ctx);
+
+    ms.points.length = 0;
+    ms.updatePointWidgets();
+  }
+}
+ToolOp.register(ClearPointsOp);
+
+export class SelectOpBase extends MeasureOp {
+  constructor() {
+    super();
+  }
+  
+  static tooldef() {return {
+    inputs : ToolOp.inherit({})
+  }}
+
+  static invoke(ctx, args) {
+    let ret = super.invoke(ctx, args);
+
+    let mask = PropTypes.ENUM|PropTypes.FLAG;
+    let mask2 = PropTypes.INT|PropTypes.FLOAT;
+
+    for (let arg in args) {
+      let val = args[arg];
+
+      let prop = ret.inputs[arg];
+
+      if (prop === undefined) {
+        throw new Error("invalid argument " + arg);
+      }
+
+      if (val === "true") {
+        val = true;
+      } else if (val === "false") {
+        val = false;
+      } else if (typeof val === "string" && (prop.type & mask)) {
+        val = prop.values[val];
+      } else if (typeof val === "string" && (prop.type & mask2)) {
+        val = parseFloat(val);
+      }
+
+      prop.setValue(val);
+    }
+
+    return ret;
+  }
+}
+
+export class ToggleSelectAllOp extends SelectOpBase {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname: "Toggle Select All (Object)",
+      name: "toggle_select_all",
+      toolpath: "measure.toggle_select_all",
+      icon: -1,
+      inputs: ToolOp.inherit({
+        mode: new EnumProperty("AUTO", SelToolModes)
+      })
+    }}
+
+  exec(ctx) {
+    let mode = this.inputs.mode.getValue();
+    let name = this.inputs.toolName.getValue();
+
+    if (mode === SelToolModes.AUTO) {
+      mode = SelToolModes.ADD;
+
+      for (let p of measureUtils.points(name, ctx)) {
+        if (p.flag & MeasureFlags.SELECT) {
+          mode = SelToolModes.SUB;
+          break;
+        }
+      }
+    }
+
+    for (let p of measureUtils.points(name, ctx)) {
+      measureUtils.setSelect(name, ctx, p, mode === SelToolModes.ADD);
+    }
+
+    measureUtils.update(name, ctx);
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(ToggleSelectAllOp);
+
+export class SelectOneOp extends SelectOpBase {
+  static tooldef() {return {
+    uiname    : "Select One (Measure)",
+    name      : "selectone",
+    toolpath  : "measure.selectone",
+    icon      : -1,
+    inputs    : ToolOp.inherit({
+      mode       : new EnumProperty("UNIQUE", SelOneToolModes),
+      path       : new StringProperty(),
+      setActive  : new BoolProperty(true)
+    }),
+
+    outputs : ToolOp.inherit({
+      selectPaths : new ListProperty(PropTypes.STRING)
+    })
+  }}
+
+  exec(ctx) {
+    let datapath = this.inputs.path.getValue();
+    let p = ctx.api.getValue(ctx, datapath);
+    let mode = this.inputs.mode.getValue();
+    let name = this.inputs.toolName.getValue();
+
+    if (p === undefined) {
+      throw new Error("no point at datapath " + datapath);
+    }
+
+    if (mode === SelOneToolModes.UNIQUE) {
+      for (let p2 of measureUtils.points(name, ctx)) {
+        measureUtils.setSelect(name, ctx, p2, false);
+      }
+
+      measureUtils.setSelect(name, ctx, p, true);
+    } else {
+      measureUtils.setSelect(name, ctx, p, mode === SelOneToolModes.ADD);
+    }
+
+    measureUtils.update(name, ctx);
+
+    this.outputs.selectPaths.clear();
+
+    for (let p of measureUtils.points.selected(name, ctx)) {
+      this.outputs.selectPaths.push(measureUtils.getPath(name, ctx, p));
+    }
+  };
+}
+ToolOp.register(SelectOneOp);

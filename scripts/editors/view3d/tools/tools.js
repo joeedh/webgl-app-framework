@@ -1,4 +1,6 @@
 import './measuretool.js';
+import './measuretool_angle.js';
+import './measuretool_dist.js';
 import './mesheditor.js';
 import './selecttool.js';
 import './view3d_panmode.js';

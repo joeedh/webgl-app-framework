@@ -398,18 +398,13 @@ export class TranslateOp extends TransformOp {
     let scent2 = new Vector4(scent);
 
     scent2[3] = 1.0;
-    let w = view3d.project(scent2);
+    view3d.project(scent2);
 
-    console.log(w, this.center);
-
-    scent2[3] = w;
     scent2[0] += dx;
     scent2[1] += dy;
 
     scent2[3] = 1.0;
     view3d.unproject(scent2);
-
-    scent[3] = 1.0;
 
     scent.load(scent2);
 

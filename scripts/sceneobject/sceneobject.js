@@ -38,6 +38,7 @@ let _mattemp = new Matrix4();
 function mix(a, b, t) {
   return new Vector4(a).interp(b, t);
 }
+
 export let Colors = {
   0                       : [0.7, 0.7, 0.7, 1.0], //0
   [ObjectFlags.SELECT]    : [1.0, 0.7, 0.5, 1.0], //1

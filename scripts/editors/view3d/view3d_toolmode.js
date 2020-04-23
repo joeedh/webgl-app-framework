@@ -53,6 +53,7 @@ export class ToolMode extends WidgetTool {
     this._transProp = this.constructor.getTransformProp();
 
     this.keymap = new KeyMap();
+    this.defineKeyMap();
   }
 
   get typeName() {
@@ -61,6 +62,10 @@ export class ToolMode extends WidgetTool {
 
   getKeyMaps() {
     return [this.keymap];
+  }
+
+  defineKeyMap() {
+    this.keymap = new KeyMap([]);
   }
 
   //returns a bounding box [min, max]
