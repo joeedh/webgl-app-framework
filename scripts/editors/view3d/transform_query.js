@@ -58,7 +58,7 @@ export function calcTransCenter(ctx, selmask, transform_space, aabb_out) {
   ret.spaceMatrix.makeIdentity();
 
   for (let type of TransDataTypes) {
-    let cent2 = type.getCenter(ctx, selmask, transform_space, ret.spaceMatrix);
+    let cent2 = type.getCenter(ctx, [], selmask, transform_space, ret.spaceMatrix);
     if (cent2 !== undefined) {
       cent.add(cent2);
       tot++;

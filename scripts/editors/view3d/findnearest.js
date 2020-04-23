@@ -70,7 +70,7 @@ export function FindNearest(ctx, selectMask, mpos, view3d=undefined, limit=25) {
   return ret;
 }
 
-export function castRay(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
+export function castRay(ctx, selectMask, mpos, view3d, mode=CastModes.FRAMEBUFFER) {
   view3d = view3d === undefined ? ctx.view3d : view3d;
 
   let ret = [];
@@ -79,7 +79,7 @@ export function castRay(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) 
     let def = getDefine(cls);
 
     if (def.selectMask & selectMask) {
-      let ret2 = cls.castRay(ctx, selectMask, p, view3d, mode);
+      let ret2 = cls.castRay(ctx, selectMask, mpos, view3d, mode);
       if (ret2 !== undefined) {
         ret = ret.concat(ret2);
       }

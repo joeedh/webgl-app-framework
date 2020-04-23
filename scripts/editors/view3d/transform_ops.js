@@ -11,6 +11,9 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js
 import {View3DOp} from './view3d_ops.js';
 import {isect_ray_plane} from '../../path.ux/scripts/math.js';
 import {calcTransCenter} from "./transform_query.js";
+import {CastModes, castRay} from './findnearest.js';
+
+import {ListProperty, StringSetProperty} from "../../path.ux/scripts/toolprop.js";
 
 /*
 Transform refactor:
@@ -20,6 +23,12 @@ Transform refactor:
   so widgets can use transform more flexibly.
 
 * */
+
+export const SnapModes = {
+  NONE    : 0,
+  SURFACE : 1 //uses depth buffer
+};
+
 export class TransformOp extends View3DOp {
   constructor() {
     super();
@@ -58,8 +67,10 @@ export class TransformOp extends View3DOp {
     is_modal    : true,
 
     inputs       : {
+      types      : TransDataType.buildTypesProp(["mesh", "object"]),
       value      : new Vec3Property(),
       space      : new Mat4Property(),
+      snapMode   : new EnumProperty(SnapModes.NONE, SnapModes),
       constraint : new Vec3Property([1.0,1.0,1.0]), //locked constraint axes
       constraint_space : new Mat4Property(),
       selmask    : new IntProperty(),
@@ -71,6 +82,26 @@ export class TransformOp extends View3DOp {
     }
   }}
 
+  getTransTypes(ctx) {
+    console.log(list(this.inputs.types.getValue()), this);
+
+    if (this._types !== undefined) {
+      return this._types;
+    }
+
+    this._types = [];
+    for (let type of this.inputs.types.getValue()) {
+      type = TransDataType.getClass(type);
+      
+      if (!type.isValid(ctx, this)) {
+        continue;
+      }
+      this._types.push(type);
+    }
+
+    return this._types;
+  }
+
   genTransData(ctx) {
     let tdata = this.tdata = new TransformData();
     let propmode = this.inputs.propmode.getValue();
@@ -79,8 +110,8 @@ export class TransformOp extends View3DOp {
 
     //console.log("selmask", selmask, "propmode", propmode, "propradius", propradius);
 
-    for (let type of TransDataTypes) {
-      let list = type.genData(ctx, selmask, propmode, propradius);
+    for (let type of this.getTransTypes(ctx)) {
+      let list = type.genData(ctx, selmask, propmode, propradius, this);
       if (list === undefined || list.length == 0) {
         continue;
       }
@@ -102,7 +133,7 @@ export class TransformOp extends View3DOp {
     let tot = 0.0;
 
     for (let list of this.tdata) {
-      let cent2 = list.type.getCenter(ctx);
+      let cent2 = list.type.getCenter(ctx, list, selmask);
       if (cent2 !== undefined) {
         center.add(cent2);
         tot++;
@@ -129,7 +160,7 @@ export class TransformOp extends View3DOp {
   undo(ctx) {
     let udata = this._undo;
     for (let k in udata) {
-      for (let type of TransDataTypes) {
+      for (let type of this.getTransTypes(ctx)) {
         if (type.name === k) {
           type.undo(ctx, udata[k]);
         }
@@ -144,7 +175,7 @@ export class TransformOp extends View3DOp {
 
     this.tdata = this.genTransData(ctx);
 
-    for (let t of TransDataTypes) {
+    for (let t of this.getTransTypes(ctx)) {
       let ret = calcTransCenter(this.modal_ctx, this.inputs.selmask.getValue(), this.modal_ctx.view3d.transformSpace);
 
       if (!this.inputs.constraint_space.wasSet) {
@@ -162,7 +193,7 @@ export class TransformOp extends View3DOp {
 
     for (let list of tdata) {
       for (let td of list) {
-        list.type.applyTransform(ctx, td, do_prop, mat);
+        list.type.applyTransform(ctx, td, do_prop, mat, this);
       }
 
       list.type.update(ctx, list);
@@ -447,6 +478,21 @@ export class TranslateOp extends TransformOp {
       off.load(p1).sub(cent);
 
       p2.load(cent).addFac(worldn, s);
+    }
+
+    let snap = this.inputs.snapMode.getValue();
+    if (snap == SnapModes.SURFACE) {
+      let co = new Vector3(this.center).add(off);
+      let sco = new Vector3(co);
+
+      view3d.project(sco);
+
+      let ret = castRay(ctx, SelMask.OBJECT|SelMask.GEOM, sco, view3d);
+
+      if (ret !== undefined) {
+        co.sub(ret.p3d).negate();
+        off.add(co);
+      }
     }
 
     this.inputs.value.setValue(off);

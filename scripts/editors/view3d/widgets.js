@@ -539,7 +539,7 @@ export class WidgetBase {
     this.manager.remove(this);
   }
 
-  on_mousedown(e, localX, localY) {
+  on_mousedown(e, localX, localY, was_touch) {
     let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
 
     if (child !== undefined && child !== this) {
@@ -567,7 +567,7 @@ export class WidgetBase {
     return false;
   }
 
-  on_mouseup(e, localX, localY) {
+  on_mouseup(e, localX, localY, was_touch) {
     let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
 
     if (child !== undefined && child !== this) {
@@ -935,23 +935,19 @@ export class WidgetManager {
   on_mousedown(e, localX, localY, was_touch) {
     console.warn("was touch:", was_touch, "limit:", this._picklimit(was_touch));
 
+    this.updateHighlight(e, localX, localY, was_touch);
+
     if (this._fireAllEventWidgets(e, "on_mousedown", localX, localY, was_touch)) {
       return true;
     }
 
-    let w = this.findNearest(localX, localY, this._picklimit(was_touch));
-    //console.log("w", w);
+    if (this.widgets.highlight !== undefined) {
+      let flag = this.widgets.highlight.flag;
+      if (!(flag & WidgetFlags.IGNORE_EVENTS)) {
+        this.widgets.highlight.on_mousedown(e, localX, localY, was_touch);
 
-    if (w !== undefined) {
-      if (this.widgets.hightlight !== undefined) {
-        this.widgets.hightlight.flag &= ~WidgetFlags.HIGHLIGHT;
+        return true;
       }
-
-      this.widgets.highlight = w;
-      w.flag |= WidgetFlags.HIGHLIGHT;
-
-      w.on_mousedown(e, localX, localY);
-      return true;
     }
   }
 
@@ -984,7 +980,7 @@ export class WidgetManager {
     return minw;
   }
 
-  on_mousemove(e, localX, localY, was_touch) {
+  updateHighlight(e, localX, localY, was_touch) {
     let w = this.findNearest(localX, localY, this._picklimit(was_touch));
 
     if (this.widgets.highlight !== w) {
@@ -1000,17 +996,23 @@ export class WidgetManager {
       window.redraw_viewport();
     }
 
+    return w !== undefined;
+  }
+
+  on_mousemove(e, localX, localY, was_touch) {
+    let ret = this.updateHighlight(e, localX, localY, was_touch);
+
     //console.log(w);
     if (this._fireAllEventWidgets(e, "on_mousemove", localX, localY, was_touch)) {
       return true;
     }
 
-    if (w !== undefined) {
-      return true;
-    }
+    return ret;
   }
   
-  on_mouseup(e, localX, localY) {
+  on_mouseup(e, localX, localY, was_touch) {
+    this.updateHighlight(e, localX, localY, was_touch);
+
     if (this._fireAllEventWidgets(e, "on_mouseup", localX, localY, was_touch)) {
       return true;
     }

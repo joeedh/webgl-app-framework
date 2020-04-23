@@ -14,6 +14,13 @@ let meshGetCenterTemps2 = util.cachering.fromConstructor(Vector3, 64);
 let meshGetCenterTempsMats = util.cachering.fromConstructor(Matrix4, 16);
 
 export class MeshTransType extends TransDataType {
+  static transformDefine() {return {
+    name   : "mesh",
+    uiname : "Mesh",
+    flag   : 0,
+    icon   : -1
+  }}
+
   /**FIXME this only handles the active mesh object, it should
     iterator over ctx.selectedMeshObjets*/
   static genData(ctx, selectmode, propmode, propradius) {
@@ -109,7 +116,7 @@ export class MeshTransType extends TransDataType {
     return tdata;
   }
 
-  static applyTransform(ctx, elem, do_prop, matrix) {
+  static applyTransform(ctx, elem, do_prop, matrix, toolop) {
     let td = elem;
 
     td.data1.load(td.data2).multVecMatrix(matrix);
@@ -411,6 +418,13 @@ export class ObjectTransform {
 }
 
 export class ObjectTransType extends TransDataType {
+  static transformDefine() {return {
+    name   : "object",
+    uiname : "Object",
+    flag   : 0,
+    icon   : -1
+  }}
+
   static genData(ctx, selectmode, propmode, propradius) {
     let ignore_meshes = selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE);
 
@@ -458,7 +472,7 @@ export class ObjectTransType extends TransDataType {
     return tdata;
   }
 
-  static applyTransform(ctx, elem, do_prop, matrix) {
+  static applyTransform(ctx, elem, do_prop, matrix, toolop) {
     let mat = elem.data2.tempmat;
 
     mat.makeIdentity();
@@ -505,7 +519,7 @@ export class ObjectTransType extends TransDataType {
     window.updateDataGraph();
   }
 
-  static getCenter(ctx, selmask, spacemode, space_matrix_out) {
+  static getCenter(ctx, list, selmask, spacemode, space_matrix_out) {
     if (!(selmask & SelMask.OBJECT)) {
       return undefined;
     }
