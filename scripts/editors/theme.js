@@ -94,7 +94,8 @@ export const theme = {
 
   button : {
     "defaultWidth" : 100,
-    "defaultHeight" : 24
+    "defaultHeight" : 35,
+    "boxMargin" : 10
   },
 
   iconcheck : {

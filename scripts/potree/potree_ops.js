@@ -47,6 +47,7 @@ export class AddPointSetOp extends ToolOp {
     pset.load();
 
     if (this.inputs.select.getValue()) {
+      scene.switchToolMode("object");
       scene.objects.setSelect(ob, true);
       scene.objects.setActive(ob);
     }
@@ -54,7 +55,7 @@ export class AddPointSetOp extends ToolOp {
     //this technically violates MVC design rules
     window.setTimeout(() => {
       if (_appstate.ctx && _appstate.ctx.view3d) {
-        _appstate.ctx.view3d.viewSelected();
+        _appstate.ctx.view3d.viewSelected(ob);
         window.redraw_viewport();
       }
     }, 500);

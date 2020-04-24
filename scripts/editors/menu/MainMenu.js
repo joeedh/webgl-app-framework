@@ -14,6 +14,8 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js
 import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
 import {NodeEditor} from "../node/NodeEditor.js";
+import * as cconst from '../../core/const.js';
+import {AddPointSetOp} from "../../potree/potree_ops.js";
 
 const menuSize = 48;
 
@@ -41,14 +43,53 @@ export class MenuBarEditor extends Editor {
           _genDefaultFile(_appstate, false);
         }
       }],
+      ["Import...", () => {
+        console.warn("Import dialog");
+
+        let screen  =this.ctx.screen;
+        let dialog = this.ctx.screen.popup(screen.mpos[0], screen.mpos[1], false);
+
+        dialog.style["padding"] = "15px";
+        dialog.label("Import");
+
+        let row = dialog.row();
+        row.label("URL:");
+        dialog.urlbox = row.textbox(undefined, "https://");
+
+        dialog.urlbox.disabled = false;
+        window.urlbox = dialog.urlbox;
+
+        row.button("Import", () => {
+          let url = dialog.urlbox.text;
+          url = url.trim();
+
+          /*
+          if (url.toLowerCase().startsWith("http://"))
+            url = url.slice(7, url.length);
+          if (url.toLowerCase().startsWith("https://"))
+            url = url.slice(8, url.length);
+          //*/
+
+          console.log("importing", url);
+          dialog.end();
+
+          let toolop = new AddPointSetOp();
+          toolop.inputs.url.setValue(url);
+          this.ctx.toolstack.execTool(toolop);
+        });
+
+        row.button("Cancel", () => dialog.end());
+
+        console.log("import!");
+      }],
       ["Save  ", () => {
         console.log("File save");
-        saveFile(_appstate.createFile(), undefined, [".w3d"]);
+        saveFile(_appstate.createFile(), "unnamed."+cconst.FILE_EXT, ["."+cconst.FILE_EXT]);
       }],
       ["Load  ", () => {
         console.log("File load");
 
-        loadFile(undefined, [".w3d"]).then((filedata) => {
+        loadFile(undefined, ["."+cconst.FILE_EXT]).then((filedata) => {
           _appstate.loadFile(filedata);
         });
       }],

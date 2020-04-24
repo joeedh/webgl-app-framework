@@ -489,21 +489,25 @@ export class View3D extends Editor {
     return ret;
   }
 
-  viewSelected() {
+  viewSelected(ob=undefined) {
     //let cent = this.getTransCenter();
     let cent = new Vector3();
     let aabb;
 
-    if (this.ctx.scene !== undefined) {
-      let toolmode = this.ctx.scene.toolmode;
+    if (ob === undefined) {
+      if (this.ctx.scene !== undefined) {
+        let toolmode = this.ctx.scene.toolmode;
 
-      if (toolmode !== undefined) {
-        aabb = toolmode.getViewCenter();
+        if (toolmode !== undefined) {
+          aabb = toolmode.getViewCenter();
+        }
       }
-    }
 
-    if (aabb === undefined) {
-      aabb = this.getTransBounds();
+      if (aabb === undefined) {
+        aabb = this.getTransBounds();
+      }
+    } else {
+      aabb = ob.getBoundingBox();
     }
 
     console.log("v3d aabb ret", aabb[0], aabb[1]);

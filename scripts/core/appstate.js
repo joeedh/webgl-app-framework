@@ -13,6 +13,7 @@ import '../editors/resbrowser/resbrowser.js';
 import '../editors/resbrowser/resbrowser_ops.js';
 import '../editors/resbrowser/resbrowser_types.js';
 
+import {checkForTextBox} from "../path.ux/scripts/ui_widgets.js";
 import {keymap} from "../path.ux/scripts/events.js";
 import {Material} from './material.js';
 import {App, ScreenBlock} from '../editors/editor_base.js';
@@ -60,7 +61,7 @@ export class BasicFileOp extends ToolOp {
   constructor() {
     super();
   }
-  
+
   exec(ctx) {
     let scene = new Scene();
     let lib = ctx.datalib;
@@ -80,7 +81,7 @@ export class BasicFileOp extends ToolOp {
 
     lib.add(mat);
   }
-  
+
   static tooldef() {return {
     undoflag    : UndoFlags.IS_UNDO_ROOT | UndoFlags.NO_UNDO,
     uiname      : "File Start",
@@ -138,7 +139,7 @@ export function genDefaultFile(appstate, dont_load_startup=0) {
   }
 
   let tool = new BasicFileOp();
-  
+
   genDefaultScreen(appstate);
 
   appstate.datalib = new Library();
@@ -221,25 +222,36 @@ export class AppState {
     this.ctx = new Context(this);
 
     window.addEventListener("mousedown", (e) => {
-      e.preventDefault();
+      //e.preventDefault();
     });
     window.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
+      console.log(e);
+      let screen = _appstate.screen;
+      if (screen === undefined) {
+        return;
+      }
+
+      let elem = screen.pickElement(e.x, e.y);
+      console.log(elem, elem.tagName, "|");
+
+      if (elem.tagName !== "TEXTBOX-X") {
+        e.preventDefault();
+      }
     });
 
     this.screen = document.createElement("webgl-app-x");
     this.screen.ctx = this.ctx;
     this.screen.size[0] = window.innerWidth-45;
     this.screen.size[1] = window.innerHeight-45;
-    
+
     document.body.appendChild(this.screen);
     this.screen.setCSS();
     this.screen.listen();
-    
+
     genDefaultFile(this);
     this.filename = "unnamed." + cconst.FILE_EXT;
   }
-  
+
   createFile(args={save_screen : true, save_settings : false, save_library : true}) {
     if (args.save_library === undefined) {
       args.save_library = true;
@@ -250,30 +262,30 @@ export class AppState {
     }
 
     let file = new BinaryWriter();
-    
+
     file.string(cconst.FILE_MAGIC);
     file.uint16(cconst.APP_VERSION);
     file.uint16(0); //reserved for file flags (may compression?)
-    
+
     let buf = nstructjs.write_scripts();
-    
+
     file.int32(buf.length);
     file.bytes(buf);
-    
+
     function writeblock(type, object) {
       if (type === undefined || type.length != 4) {
         throw new Error("bad type in writeblock: " + type);
       }
-      
+
       file.string(type);
       let data = [];
 
       nstructjs.manager.write_object(data, object);
-      
+
       file.int32(data.length);
       file.bytes(data);
     }
-    
+
     //if (args.save_screen) {
     //  writeblock(BlockTypes.SCREEN, this.screen);
     //}
@@ -296,19 +308,19 @@ export class AppState {
       for (let block of lib) {
         let typeName = block.constructor.blockDefine().typeName;
         let data = [];
-        
+
         file.string(BlockTypes.DATABLOCK);
-        
+
         nstructjs.manager.write_object(data, block);
         let len = typeName.length + data.length + 4;
-        
+
         file.int32(len);
         file.int32(typeName.length);
         file.string(typeName);
         file.bytes(data);
       }
     }
-    
+
     return file.finish().buffer;
   }
 
@@ -415,22 +427,22 @@ export class AppState {
     }
 
     let file = new BinaryReader(buf);
-    
+
     let s = file.string(4);
     if (s !== cconst.FILE_MAGIC) {
       throw new FileLoadError("Not a valid file");
     }
-    
+
     let version = file.uint16();
     let flag = file.uint16();
-    
+
     let len = file.int32();
     let structs = file.string(len);
-    
+
     let istruct = new nstructjs.STRUCT();
-    
+
     istruct.parse_structs(structs);
-    
+
     let screen, found_screen;
     let datablocks = [];
     let datalib = undefined;
@@ -438,7 +450,7 @@ export class AppState {
     while (!file.at_end()) {
       let type = file.string(4);
       let len = file.int32();
-      
+
       let data = file.bytes(len);
       data = new DataView((new Uint8Array(data)).buffer);
       //console.log("Reading block of type", type);
@@ -456,10 +468,10 @@ export class AppState {
         this.datalib = datalib;
       } else if (args.load_library && type == BlockTypes.DATABLOCK) {
         let file2 = new BinaryReader(data);
-        
+
         let len = file2.int32();
         let clsname = file2.string(len);
-        
+
         let cls = DataBlock.getClass(clsname);
         len = data.byteLength - len - 4;
         let data2 = file2.bytes(len);
@@ -471,7 +483,7 @@ export class AppState {
 
         if (cls === undefined) {
           console.warn("Warning, unknown block type", clsname);
-          
+
           block = istruct.read_object(data2, DataBlock);
         } else {
           block = istruct.read_object(data2, cls);
@@ -485,7 +497,7 @@ export class AppState {
         datablocks.push([clsname, block]);
       } else if (args.load_settings && type == BlockTypes.SETTINGS) {
         let settings = istruct.read_object(data, AppSettings);
-        
+
         this.settings.destroy();
         this.settings = settings;
       }
@@ -504,7 +516,7 @@ export class AppState {
     for (let dblock of datablocks) {
       datalib.getLibrary(dblock[0]).add(dblock[1], true);
     }
-    
+
     this.do_versions(version, datalib);
 
     //datalib = this.datalib;
@@ -525,11 +537,11 @@ export class AppState {
       let addUser = dataref !== undefined && !(dataref instanceof DataBlock);
 
       let ret = datalib.get(dataref);
-      
+
       if (addUser && ret !== undefined) {
         ret.lib_addUser(user);
       }
-      
+
       return ret;
     }
 
@@ -546,7 +558,7 @@ export class AppState {
     datalib.afterSTRUCT();
 
     this.do_versions_post(version, datalib);
-    
+
     if (args.load_screen && screen === undefined) {
       screen = datalib.libmap.screen.active;
       if (screen === undefined) { //paranoia check
@@ -684,14 +696,14 @@ export class AppState {
       save_screen   : false,
       save_settings : false
     };
-    
+
     return this.createFile(args);
   }
-  
+
   destroy() {
     this.screen.unlisten();
   }
-  
+
   draw() {
   }
 };
@@ -701,29 +713,35 @@ export function init() {
   initSimpleController();
 
   window._appstate = new AppState();
-  
+
   let animreq;
   let f = () => {
     animreq = undefined;
-    
+
     _appstate.draw();
   }
   window.redraw_all = function() {
     if (animreq !== undefined) {
       return;
     }
-    
+
     animreq = requestAnimationFrame(f);
   }
 
   window.addEventListener("keydown", (e) => {
+    //console.log("tbox", checkForTextBox(_appstate.screen, mpos[0], mpos[1]), mpos);
+
     //prevent reload hotkey, could conflict with redo
     if (e.keyCode == keymap["R"] && e.ctrlKey) {
       e.preventDefault();
     }
 
-    //also prevent ctrl-A, which is usually select all
-    if (e.keyCode == keymap["A"] && e.ctrlKey) {
+    //also prevent ctrl-A, which is usually select all, unless we're over a textbox that
+    //uses it
+    let mpos = _appstate.screen ? _appstate.screen.mpos : [0, 0];
+    let preventdef = !(_appstate.screen && checkForTextBox(_appstate.screen, mpos[0], mpos[1]));
+    if (preventdef && e.keyCode == keymap["A"] && e.ctrlKey) {
+
       e.preventDefault();
     }
 
