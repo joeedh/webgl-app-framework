@@ -3,6 +3,7 @@ import zipfile, os, os.path, sys, glob
 outfile = "./viewer.zip"
 
 sources = [
+  "./docs/**",
   "./scripts/*.js",
   "./scripts/core/**",
   "./scripts/mesh/**",
