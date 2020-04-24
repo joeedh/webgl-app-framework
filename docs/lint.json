@@ -1,34 +1,164 @@
 [
   {
+    "name": "DataBlock#dataLink",
+    "filePath": "scripts/core/lib_api.js",
+    "lines": [
+      {
+        "lineNumber": 80,
+        "line": "  /**\r"
+      },
+      {
+        "lineNumber": 81,
+        "line": "   * @param getblock: gets a block\r"
+      },
+      {
+        "lineNumber": 82,
+        "line": "   * @param getblock_addUser:  gets a block but increments reference count\r"
+      },
+      {
+        "lineNumber": 83,
+        "line": "   *\r"
+      },
+      {
+        "lineNumber": 84,
+        "line": "   * note that the reference counts of all blocks are re-built at file load time,\r"
+      },
+      {
+        "lineNumber": 85,
+        "line": "   * so make sure to choose between these two functions correctly.\r"
+      },
+      {
+        "lineNumber": 86,
+        "line": "   */\r"
+      },
+      {
+        "lineNumber": 87,
+        "line": "  dataLink(getblock, getblock_addUser) {\r"
+      }
+    ],
+    "codeParams": [
+      "getblock",
+      "getblock_addUser"
+    ],
+    "docParams": [
+      "getblock:",
+      "getblock_addUser:"
+    ]
+  },
+  {
+    "name": "TransDataType.getCenter",
+    "filePath": "scripts/editors/view3d/transform_base.js",
+    "lines": [
+      {
+        "lineNumber": 143,
+        "line": "  /**\r"
+      },
+      {
+        "lineNumber": 144,
+        "line": "   * @param ctx                : instance of ToolContext or a derived class\r"
+      },
+      {
+        "lineNumber": 145,
+        "line": "   * @param selmask            : SelMask\r"
+      },
+      {
+        "lineNumber": 146,
+        "line": "   * @param spacemode          : ConstraintSpaces\r"
+      },
+      {
+        "lineNumber": 147,
+        "line": "   * @param space_matrix_out   : Matrix4, optional, matrix to put constraint space in\r"
+      },
+      {
+        "lineNumber": 148,
+        "line": "   */\r"
+      },
+      {
+        "lineNumber": 149,
+        "line": "  static getCenter(ctx, list, selmask, spacemode, space_matrix_out, toolop) {\r"
+      }
+    ],
+    "codeParams": [
+      "ctx",
+      "list",
+      "selmask",
+      "spacemode",
+      "space_matrix_out",
+      "toolop"
+    ],
+    "docParams": [
+      "ctx",
+      "selmask",
+      "spacemode",
+      "space_matrix_out"
+    ]
+  },
+  {
+    "name": "ToolMode#ensureUniqueWidget",
+    "filePath": "scripts/editors/view3d/view3d_toolmode.js",
+    "lines": [
+      {
+        "lineNumber": 126,
+        "line": "  /**\r"
+      },
+      {
+        "lineNumber": 127,
+        "line": "   * Checks if widgettool has changed, and, if widget is supported by this toolmode,\r"
+      },
+      {
+        "lineNumber": 128,
+        "line": "   * spawns new widget accordingly.\r"
+      },
+      {
+        "lineNumber": 129,
+        "line": "   * @param widgettool : integer, index in WidgetTools list\r"
+      },
+      {
+        "lineNumber": 130,
+        "line": "   */\r"
+      },
+      {
+        "lineNumber": 131,
+        "line": "  ensureUniqueWidget(widgetclass) {\r"
+      }
+    ],
+    "codeParams": [
+      "widgetclass"
+    ],
+    "docParams": [
+      "widgettool"
+    ]
+  },
+  {
     "name": "WidgetBase#findNearest",
     "filePath": "scripts/editors/view3d/widgets.js",
     "lines": [
       {
-        "lineNumber": 584,
+        "lineNumber": 486,
         "line": "  /**note that it's valid for containers\r"
       },
       {
-        "lineNumber": 585,
+        "lineNumber": 487,
         "line": "   * to return themselves, *if* they have\r"
       },
       {
-        "lineNumber": 586,
+        "lineNumber": 488,
         "line": "   * a shape and aren't purely containers\r"
       },
       {
-        "lineNumber": 587,
+        "lineNumber": 489,
         "line": "   * @param x view3d-local coordinate x\r"
       },
       {
-        "lineNumber": 588,
+        "lineNumber": 490,
         "line": "   * @param y view3d-local coordinate y\r"
       },
       {
-        "lineNumber": 589,
+        "lineNumber": 491,
         "line": "   */\r"
       },
       {
-        "lineNumber": 590,
+        "lineNumber": 492,
         "line": "  findNearest(view3d, x, y, limit=8) {\r"
       }
     ],
@@ -44,36 +174,168 @@
     ]
   },
   {
-    "name": "DataAPI#resolvePath",
-    "filePath": "scripts/path.ux/scripts/simple_controller.js",
+    "name": "TransMovWidget.getCenter",
+    "filePath": "scripts/editors/view3d/widget_utils.js",
     "lines": [
       {
-        "lineNumber": 500,
+        "lineNumber": 103,
         "line": "  /**\r"
       },
       {
-        "lineNumber": 501,
-        "line": "    get meta information for a datapath.\r"
+        "lineNumber": 104,
+        "line": "   * @param ctx                : instance of ToolContext or a derived class\r"
       },
       {
-        "lineNumber": 502,
+        "lineNumber": 105,
+        "line": "   * @param selmask            : SelMask\r"
+      },
+      {
+        "lineNumber": 106,
+        "line": "   * @param spacemode          : ConstraintSpaces\r"
+      },
+      {
+        "lineNumber": 107,
+        "line": "   * @param space_matrix_out   : Matrix4, optional, matrix to put constraint space in\r"
+      },
+      {
+        "lineNumber": 108,
+        "line": "   */\r"
+      },
+      {
+        "lineNumber": 109,
+        "line": "  static getCenter(ctx, list, selmask, spacemode, space_matrix_out, toolop) {\r"
+      }
+    ],
+    "codeParams": [
+      "ctx",
+      "list",
+      "selmask",
+      "spacemode",
+      "space_matrix_out",
+      "toolop"
+    ],
+    "docParams": [
+      "ctx",
+      "selmask",
+      "spacemode",
+      "space_matrix_out"
+    ]
+  },
+  {
+    "name": "Mesh#genRender",
+    "filePath": "scripts/mesh/mesh.js",
+    "lines": [
+      {
+        "lineNumber": 808,
+        "line": "  /**\r"
+      },
+      {
+        "lineNumber": 809,
+        "line": "   * @param gl: gl context, may be undefined\r"
+      },
+      {
+        "lineNumber": 810,
+        "line": "   * @param combinedWireframe: add wireframe layer (but unset simplemesh.PrimitiveTypes.LINES in primflag)\r"
+      },
+      {
+        "lineNumber": 811,
+        "line": "   * */\r"
+      },
+      {
+        "lineNumber": 812,
+        "line": "  genRender(gl, combinedWireframe) {\r"
+      }
+    ],
+    "codeParams": [
+      "gl",
+      "combinedWireframe"
+    ],
+    "docParams": [
+      "gl:",
+      "combinedWireframe:"
+    ]
+  },
+  {
+    "name": "DataAPI#mapStruct",
+    "filePath": "scripts/path.ux/scripts/simple_controller.js",
+    "lines": [
+      {
+        "lineNumber": 584,
+        "line": "  /**\r"
+      },
+      {
+        "lineNumber": 585,
+        "line": "   * Look up struct definition for a class.\r"
+      },
+      {
+        "lineNumber": 586,
+        "line": "   *\r"
+      },
+      {
+        "lineNumber": 587,
+        "line": "   * @param cls: the class\r"
+      },
+      {
+        "lineNumber": 588,
+        "line": "   * @param auto_create: If true, automatically create definition if not already existing.\r"
+      },
+      {
+        "lineNumber": 589,
+        "line": "   * @returns {IterableIterator<*>}\r"
+      },
+      {
+        "lineNumber": 590,
+        "line": "   */\r"
+      },
+      {
+        "lineNumber": 591,
         "line": "\r"
       },
       {
-        "lineNumber": 503,
+        "lineNumber": 592,
+        "line": "  mapStruct(cls, auto_create = true) {\r"
+      }
+    ],
+    "codeParams": [
+      "cls",
+      "auto_create"
+    ],
+    "docParams": [
+      "cls:",
+      "auto_create:"
+    ]
+  },
+  {
+    "name": "DataAPI#resolvePath_intern",
+    "filePath": "scripts/path.ux/scripts/simple_controller.js",
+    "lines": [
+      {
+        "lineNumber": 623,
+        "line": "  /**\r"
+      },
+      {
+        "lineNumber": 624,
+        "line": "   get meta information for a datapath.\r"
+      },
+      {
+        "lineNumber": 625,
+        "line": "\r"
+      },
+      {
+        "lineNumber": 626,
         "line": "   @param ignoreExistence: don't try to get actual data associated with path,\r"
       },
       {
-        "lineNumber": 504,
-        "line": "                           just want meta information\r"
+        "lineNumber": 627,
+        "line": "   just want meta information\r"
       },
       {
-        "lineNumber": 505,
-        "line": "    */\r"
+        "lineNumber": 628,
+        "line": "   */\r"
       },
       {
-        "lineNumber": 506,
-        "line": "  resolvePath(ctx, inpath, ignoreExistence=false) {\r"
+        "lineNumber": 629,
+        "line": "  resolvePath_intern(ctx, inpath, ignoreExistence = false) {\r"
       }
     ],
     "codeParams": [
@@ -83,6 +345,84 @@
     ],
     "docParams": [
       "ignoreExistence:"
+    ]
+  },
+  {
+    "name": "Container#wrap",
+    "filePath": "scripts/path.ux/scripts/ui.js",
+    "lines": [
+      {
+        "lineNumber": 169,
+        "line": "  /**\r"
+      },
+      {
+        "lineNumber": 170,
+        "line": "   *\r"
+      },
+      {
+        "lineNumber": 171,
+        "line": "   * @param mode: flexbox wrap mode, can be wrap, nowrap, or wrap-reverse\r"
+      },
+      {
+        "lineNumber": 172,
+        "line": "   * @returns {Container}\r"
+      },
+      {
+        "lineNumber": 173,
+        "line": "   */\r"
+      },
+      {
+        "lineNumber": 174,
+        "line": "  wrap(mode=\"wrap\") {\r"
+      }
+    ],
+    "codeParams": [
+      "mode"
+    ],
+    "docParams": [
+      "mode:"
+    ]
+  },
+  {
+    "name": "buildString",
+    "filePath": "scripts/path.ux/scripts/units.js",
+    "lines": [
+      {
+        "lineNumber": 253,
+        "line": "/**\r"
+      },
+      {
+        "lineNumber": 254,
+        "line": " *\r"
+      },
+      {
+        "lineNumber": 255,
+        "line": " * @param value Note: is not converted to internal unit\r"
+      },
+      {
+        "lineNumber": 256,
+        "line": " * @param unit: Unit to use, should be a string referencing unit type, see unitDefine().name\r"
+      },
+      {
+        "lineNumber": 257,
+        "line": " * @returns {*}\r"
+      },
+      {
+        "lineNumber": 258,
+        "line": " */\r"
+      },
+      {
+        "lineNumber": 259,
+        "line": "export function buildString(value, unit=Unit.baseUnit) {\r"
+      }
+    ],
+    "codeParams": [
+      "value",
+      "unit"
+    ],
+    "docParams": [
+      "value",
+      "unit:"
     ]
   }
 ]

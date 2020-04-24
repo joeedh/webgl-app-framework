@@ -90,6 +90,28 @@
       
     </ul>
   </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    </ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/context.html"><a href="manual/context.html" data-ice="link">Context</a></li>
+</ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    </ul>
+  </div>
+<div data-ice="manual">
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1" data-link="manual/view3d.html"><a href="manual/view3d.html" data-ice="link">3D Viewport</a></li>
+</ul>
+  </div>
 </div>
 </nav>
 
@@ -98,13 +120,16 @@
 It uses path.ux, a UI framework that is also based on Blender.</p>
 <h1 id="architecture">Architecture</h1><ul>
 <li><a href="manual/architecture.html">Overview</a></li>
-<li><a href="manual/toolprop.html">Tool Properties</a></li>
-<li><a href="manual/toolsystem.html">Tool System</a></li>
+<li><a href="manual/context.html">Context</a></li>
+<li><a href="manual/nstructjs.html">STRUCT</a></li>
 <li><a href="manual/libblock.html">Database Library</a></li>
+<li><a href="manual/FrameManager.html">FrameManager</a></li>
+<li><a href="manual/toolsystem.html">Tool System</a></li>
 <li><a href="manual/controller.html">Controller</a></li>
 <li><a href="manual/datagraph.html">Data Graph</a></li>
-<li><a href="manual/nstructjs.html">STRUCT</a></li>
-<li><a href="manual/FrameManager.html">FrameManager</a></li>
+<li><a href="manual/widgets.html">Widgets</a></li>
+<li><a href="manual/toolmode.html">ToolMode</a></li>
+<li><a href="manual/view3d.html">View3D</a></li>
 </ul>
 </div>
 
@@ -357,6 +382,42 @@ load parts of file B).</p><h2>Zombie Nodes</h2><p>Zombie nodes are created by th
 Zombie nodes are created by adding NodeFlags.ZOMBIE to node.graph_flag:</p><pre><code><code class="source-code prettyprint">node.graph_flag |= NodeFlags.ZOMBIE;</code>
 </code></pre></div>
         <a data-ice="link" href="manual/datagraph.html"></a>
+      </div>
+    </div>
+<div class="manual-card-wrap" data-ice="cards">
+      <div class="manual-card">
+        <div data-ice="card"><h1>Context</h1><p>Context is a generic bundle of properties representing 
+the application state.  It&apos;s used mostly by ToolOps,
+and path.ux </p><p>Some important members:</p><ul>
+<li>ctx.scene: Active scene</li>
+<li>ctx.object: Active object, alias for ctx.scene.objects.active</li>
+<li>ctx.view3d: Active view3d, note this isn&apos;t available from within ToolOp.prototype.exec, which gets a special Context stripped of editor aliase (like view3d).                              </li>
+<li>ctx.api: The controller path api (DataAPI), alias to _appstate.api.</li>
+<li>ctx.toolstack: The toolstack, alias to _appstate.toolstack.</li>
+<li>ctx.selectedObjects</li>
+<li>ctx.selectedMeshObjects</li>
+<li>ctx.menubar: The menu bar, also not available to ToolOp.prototype.exec</li>
+<li>ctx.props: The properties window, also not available to ToolOp.prototype.exec</li>
+</ul></div>
+        <a data-ice="link" href="manual/context.html"></a>
+      </div>
+    </div>
+<div class="manual-card-wrap" data-ice="cards">
+      <div class="manual-card">
+        <div data-ice="card"><h1>3D Viewport</h1><p>This is where the fun happens.  The main class is View3D, which is an Editor subclass.
+Any number of 3D viewports are allowed (so long as they don&apos;t overlap).</p><p>Behind the scenes one giant canvas is used, and viewports are drawn using 
+scissor boxes.</p><p>View3D has a few important properties and methods:</p><ul>
+<li>glPos[2]: the viewport box position</li>
+<li>glSize[2]: the viewport box size</li>
+<li>gl: the gl context</li>
+<li>camera: the camera</li>
+<li>getLocalMouse(x, y): Returns mouse coords relative to screen origin, basically (x-view3d.pos[0], y-view3d.pos[1]). </li>
+<li>project(co): Project to 3d space, returns w</li>
+<li>unproject: Project from screen space</li>
+</ul><p>Viewport redraws are queued by window.redraw_viewport().  Only one draw request
+is allowed at a time, so calling redraw_viewport multiple times in a row will
+only draw once.  </p></div>
+        <a data-ice="link" href="manual/view3d.html"></a>
       </div>
     </div>
 </div>
