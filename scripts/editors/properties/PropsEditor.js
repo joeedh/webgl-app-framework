@@ -12,7 +12,7 @@ import '../../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {DataPathError} from '../../path.ux/scripts/controller.js';
 import {KeyMap, HotKey} from '../../path.ux/scripts/simple_events.js';
-import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/ui_base.js';
+import {UIBase, PackFlags, color2css, _getFont, css2color} from '../../path.ux/scripts/ui_base.js';
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';
@@ -24,6 +24,7 @@ export class PropsEditor extends PopupEditor   {
     super();
 
     this._needsBuild = 1;
+    this.inherit_packflag = PackFlags.SIMPLE_NUMSLIDERS;
   }
 
   init() {

@@ -305,7 +305,7 @@ function api_define_material(api, parent) {
 
   parent.struct("material", "material", "Material", mstruct);
 
-  mstruct.int("pointSize", "pointSize", "Size", "Point Size").range(1, 25).on('change', redraw);
+  mstruct.int("pointSize", "pointSize", "Size", "Point Size").range(1, 6).on('change', redraw);
   mstruct.enum("pointShape", "pointShape", Potree.PointShape, "Shape", "Point Shape").on('change', redraw);
   mstruct.enum("pointSizeType", "pointSizeType", Potree.PointSizeType, "Mode").on('change', redraw);
 

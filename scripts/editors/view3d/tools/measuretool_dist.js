@@ -64,24 +64,39 @@ export class MeasureDistTool extends MeasureToolBase {
 
     let ps = this.points;
 
+    let cent = new Vector2();
+    let sum = 0.0;
+    let colors = [];
+
     for (let i=0; i<ps.length-1; i++) {
       let a = ps[i], b = ps[i+1];
 
       let co2 = new Vector3(a).interp(b, 0.5);
       view3d.project(co2);
 
+      cent.add(co2);
+
       let dist = a.vectorDistance(b);
+
       dist = units.convert(dist, units.Unit.baseUnit, "foot");
+      sum += dist;
 
       let s = buildImperialString(dist);
 
       cos.push(co2);
       texts.push(s);
+      colors.push("rgb(150,150,150)");
 
       line(a, b);
     }
 
-    this.ctx.view3d.overdraw.drawTextBubbles(texts, cos);
+    cent.mulScalar(1.0 / (ps.length-1));
+
+    cos.push(cent);
+    texts.push(buildImperialString(sum));
+    colors.push("white");
+
+    this.ctx.view3d.overdraw.drawTextBubbles(texts, cos, colors);
   }
 }
 MeasureDistTool.STRUCT = STRUCT.inherit(MeasureDistTool, MeasureToolBase) + `

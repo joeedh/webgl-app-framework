@@ -1,5 +1,5 @@
 import {Editor} from "./editor_base.js";
-import {UIBase, theme} from "../path.ux/scripts/ui_base.js";
+import {UIBase, theme, PackFlags} from "../path.ux/scripts/ui_base.js";
 import {keymap} from '../path.ux/scripts/events.js';
 
 export const PopupTabModes = {
@@ -27,6 +27,7 @@ export class PopupEditor extends Editor {
   constructor() {
     super();
 
+    this.inherit_packflag = 0;
     this.toolbar = undefined;
     this.tabs = [];
     this.tab_idmap = {};
@@ -236,6 +237,9 @@ export class PopupEditor extends Editor {
   tritab(name, icon=-1, description=name, cb=undefined) {
     let tab = this.tab(name, icon, description)._tab;
 
+    tab.inherit_packflag |= this.inherit_packflag;
+    tab.contents.inherit_packflag |= this.inherit_packflag;
+
     tab.mode = PopupTabModes.TRINARY;
     tab.cb1 = cb;
 
@@ -244,6 +248,7 @@ export class PopupEditor extends Editor {
 
   tab(name, icon=-1, description=name) {
     let container = document.createElement("container-x");
+
     container.ctx = this.ctx;
     container.init();
 
@@ -260,6 +265,8 @@ export class PopupEditor extends Editor {
 
     this.tabs.push(tab);
     this.tab_idmap[container._tab_id] = tab;
+
+    container.inherit_packflag |= this.inherit_packflag;
 
     let id = container._tab_id;
 

@@ -15,6 +15,7 @@ import * as ui_noteframe from '../path.ux/scripts/ui_noteframe.js';
 import {PointSet} from '../potree/potree_types.js';
 import {Matrix4} from "../util/vectormath.js";
 import {MenuBarEditor} from "../editors/menu/MainMenu.js";
+import {PropsEditor} from "../editors/properties/PropsEditor.js";
 
 export class ToolContext {
   constructor(appstate=_appstate) {
@@ -150,6 +151,10 @@ export class ToolContext {
 export class Context extends ToolContext {
   get view3d() {
     return getContextArea(View3D);
+  }
+
+  get propsbar() {
+    return getContextArea(PropsEditor);
   }
 
   get menubar() {

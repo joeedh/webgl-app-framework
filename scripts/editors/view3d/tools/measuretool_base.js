@@ -102,6 +102,8 @@ export class MeasureUtils {
     if (toolmode._isMeasureTool) {
       toolmode.update();
     }
+
+    window.redraw_viewport();
   }
 }
 

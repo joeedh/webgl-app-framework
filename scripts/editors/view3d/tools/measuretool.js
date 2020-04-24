@@ -93,6 +93,11 @@ export class MeasureToolBase extends ToolMode {
   }
 
   static buildHeader(header, addHeaderRow) {
+    let strip = header.strip();
+
+    strip.useIcons();
+    strip.tool("measure.delete_selected");
+    strip.tool("measure.clear_points");
   }
 
   static defineAPI(api) {
@@ -148,6 +153,22 @@ export class MeasureToolBase extends ToolMode {
     }
 
     return false;
+  }
+
+  getViewCenter() {
+    let d = 1e17;
+    let ret;
+
+    for (let p of this.points) {
+      if (ret === undefined) {
+        ret = [new Vector3(p), new Vector3(p)];
+      } else {
+        ret[0].min(p);
+        ret[1].max(p);
+      }
+    }
+
+    return ret;
   }
 
   clearWidgets() {

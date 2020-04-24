@@ -128,6 +128,7 @@ export class DataBlockBrowser extends Container {
       row.prop(`${path}.flag[FAKE_USER]`, PackFlags.USE_ICONS);
 
       if (this.onValidData !== undefined) {
+        col.inherit_packflag = this.inherit_packflag;
         this.onValidData(col);
       }
     } else {
@@ -184,6 +185,8 @@ UIBase.register(DataBlockBrowser);
 export function makeDataBlockBrowser(container, cls, path, onValidData) {
   let row = container.row();
   let ret = document.createElement("data-block-browser-x");
+
+  ret.inherit_packflag = container.inherit_packflag;
 
   ret.setAttribute("datapath", path);
   ret.blockClass = cls;

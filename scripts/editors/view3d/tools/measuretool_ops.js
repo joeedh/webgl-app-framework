@@ -151,10 +151,6 @@ export class ClearPointsOp extends MeasureOp {
     })
   }}
 
-  static canRun(ctx) {
-    return ctx.scene.toolmode instanceof MeasureToolBase;
-  }
-
   exec(ctx) {
     let ms = this.getToolMode(ctx);
 
@@ -168,7 +164,12 @@ export class SelectOpBase extends MeasureOp {
   constructor() {
     super();
   }
-  
+
+  execPost(ctx) {
+    measureUtils.update(this.toolModeName, ctx);
+    window.redraw_viewport();
+  }
+
   static tooldef() {return {
     inputs : ToolOp.inherit({})
   }}
@@ -294,3 +295,34 @@ export class SelectOneOp extends SelectOpBase {
   };
 }
 ToolOp.register(SelectOneOp);
+
+class DeleteSelected extends MeasureOp {
+  constructor(toolmode) {
+    super(toolmode);
+  }
+
+  static tooldef() {return {
+    name     : "delete",
+    uiname   : "Delete Points (Measure)",
+    toolpath : "measure.delete_selected",
+    icon     : Icons.DELETE,
+    inputs   : ToolOp.inherit({})
+  }}
+
+  exec(ctx) {
+    let name = this.toolModeName;
+    let ms = this.getToolMode(ctx);
+
+    let ps = [];
+    for (let p of measureUtils.points.selected(name, ctx)) {
+      ps.push(p);
+    }
+
+    for (let p of ps) {
+      ms.points.remove(p);
+    }
+
+    ms.update(name, ctx);
+  }
+}
+ToolOp.register(DeleteSelected);
