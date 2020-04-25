@@ -8,6 +8,7 @@ export const theme = {
 
     "ScreenBorderOuter" : "rgba(10, 10, 10, 0.1)",
     "ScreenBorderInner" : "rgba(10, 10, 10, 0.1)",
+    "FocusOutline" : "rgba(100, 150, 255, 1.0)",
 
     "numslider_width" : 24,
     "numslider_height" : 24,
@@ -96,6 +97,19 @@ export const theme = {
     "defaultWidth" : 100,
     "defaultHeight" : 35,
     "boxMargin" : 10
+  },
+
+  checkbox : {
+    BoxBG : "rgba(0,0,0,0)",
+    BoxHighlight : "rgba(55, 55, 55, 0.5)",
+    CheckSide : "right",
+
+    "DefaultText" : new CSSFont({
+      font  : "sans-serif",
+      size  : 14,
+      color :  "rgba(235, 235, 235, 1.0)"
+      //weight : "bold"
+    })
   },
 
   iconcheck : {

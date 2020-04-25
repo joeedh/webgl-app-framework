@@ -125,8 +125,8 @@ export class PropsEditor extends PopupEditor   {
   buildMaterial(tab) {
     makeDataBlockBrowser(tab, Material, "object.material", (container) => {
       container.prop("object.material.pointSize");
-      container.prop("object.material.pointSizeType");
-      container.prop("object.material.pointShape");
+      container.checkenum_panel("object.material.pointSizeType", undefined, PackFlags.VERTICAL);
+      container.checkenum_panel("object.material.pointShape", undefined, PackFlags.VERTICAL);
     });
   }
 

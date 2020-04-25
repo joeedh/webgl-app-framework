@@ -730,9 +730,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:zoom="2.56"
-     inkscape:cx="80.094518"
-     inkscape:cy="374.97303"
+     inkscape:zoom="5.12"
+     inkscape:cx="126.18827"
+     inkscape:cy="398.41053"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -2150,5 +2150,11 @@
          x="36.446049"
          y="593.29834"
          style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:Arial;-inkscape-font-specification:'Arial Bold';letter-spacing:-1.03770614px;stroke-width:0.31445643;fill:#ffffff;fill-opacity:1;">RESET</tspan></text>
+    <path
+       style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:1.4972775px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 69.197602,689.39267 9.221146,7.89176 14.15308,-22.88169 -6.200388,-2.29524 -9.165815,16.95932 -4.677961,-4.55863 z"
+       id="path1157-6-7"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="ccccccc" />
   </g>
 </svg>

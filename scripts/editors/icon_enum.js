@@ -68,6 +68,7 @@ export let Icons = {
   PERSPECTIVE    : 62,
   ORTHOGRAPHIC   : 63,
   MEASURE_DIST   : 64,
-  RESET          : 65
+  RESET          : 65,
+  LARGE_CHECK    : 66
 };
 setIconMap(Icons);
