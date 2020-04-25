@@ -11,8 +11,154 @@ export default exports;
 
 var Vector2 = vectormath.Vector2, Vector3 = vectormath.Vector3;
 var Vector4 = vectormath.Vector4, Matrix4 = vectormath.Matrix4;
+var Quat = vectormath.Quat;
 
 var set = util.set;
+
+/*
+on factor;
+off period;
+
+ax := 0;
+ay := 0;
+
+fa := (ax-rx)**2 + (ay-ry)**2;
+fb := (bx-rx)**2 + (by-ry)**2;
+fc := (cx-rx)**2 + (cy-ry)**2;
+
+f1 := fa - fb;
+f2 := fc - fb;
+ff := solve({f1, f2}, {rx, ry});
+
+fx := part(ff, 1, 1, 2);
+fy := part(ff, 1, 2, 2);
+
+on fort;
+fx := part(ff, 1, 1, 2);
+fy := part(ff, 1, 2, 2);
+off fort;
+*/
+
+export function circ_from_point3_2d(a, b, c) {
+  let bx = b[0]-a[0], by = b[1]-a[1];
+  let cx = c[0]-a[0], cy = c[1]-a[1];
+
+  let x = (-(cx**2+cy**2-by*cy)*by+bx**2*cy)/(2*bx*cy-2*by*cx);
+  let y = (-(bx**2+by**2)*cx+(cx**2+cy**2)*bx)/(2*bx*cy-2*by*cx);
+
+  if (isNaN(x) || isNaN(y)) {
+    return undefined;
+  }
+
+  let p = new Vector2([x, y]);
+  p.add(a);
+
+  let r = p.vectorDistance(a);
+
+  return {
+    p : p,
+    r : r
+  }
+}
+
+export function circ_from_point3(a, b, c) {
+  let t1 = new Vector3(a).sub(b);
+  let t2 = new Vector3(c).sub(b);
+  let up = new Vector3(t1).cross(t2).normalize();
+
+  let th = Math.acos(up[2]);
+
+  t1 = up.cross(new Vector3([0, 0, 1])).normalize();
+
+  let quat = new Quat();
+
+  quat.axisAngleToQuat(t1, th);
+  let mat = quat.toMatrix();
+
+  a = new Vector3(a);
+  a.multVecMatrix(mat);
+  b = new Vector3(b);
+  b.multVecMatrix(mat);
+  c = new Vector3(c);
+  c.multVecMatrix(mat);
+
+  //console.log(Math.abs(a[2]-b[2])+Math.abs(a[2]-c[2]) < 0.0001);
+
+  //console.log(a[2], b[2], c[2]);
+
+  let ret = circ_from_point3_2d(a, b, c);
+  if (!ret)
+    return undefined;
+
+  mat.invert();
+
+  ret.p = new Vector3([ret.p[0], ret.p[1], a[2]]);
+  ret.p.multVecMatrix(mat);
+  ret.matrix = mat;
+
+  return ret;
+}
+
+/*
+on factor;
+off period;
+
+ax := 0;
+ay := 0;
+az := 0;
+
+fa := (ax-rx)**2 + (ay-ry)**2 + (az-rz)**2;
+fb := (bx-rx)**2 + (by-ry)**2 + (bz-rz)**2;
+fc := (cx-rx)**2 + (cy-ry)**2 + (cz-rz)**2;
+fd := (dx-rx)**2 + (dy-ry)**2 + (dz-rz)**2;
+
+f1 := fa - fb;
+f2 := fc - fb;
+f3 := fd - fc;
+
+ff := solve({f1, f2, f3}, {rx, ry, rz});
+
+on fort;
+fx := part(ff, 1, 1, 2);
+fy := part(ff, 1, 2, 2);
+fz := part(ff, 1, 3, 2);
+off fort;
+*/
+
+export function circ_from_point4(a, b, c) {
+  let bx = b[0]-a[0], by = b[1]-a[1];
+  let cx = c[0]-a[0], cy = c[1]-a[1];
+  let dx = c[0]-a[0], dy = c[1]-a[1];
+
+  let x = (-(((dy**2+dz**2+dx**2-cz*dz)*cz-((cx**2+cy**2)*dz-(cy*dz-cz
+      *dy)*by))*by+(cy*dz-cz*dy)*bx**2)-((cy*dz-cz*dy)*bz+cx**2*dy+(
+      cy**2+cz**2)*dy-(dy**2+dz**2+dx**2)*cy)*bz)/(2*((cx*dz-cz*dx)*
+      by-(cy*dz-cz*dy)*bx)-2*(cx*dy-cy*dx)*bz);
+
+  let y = (((dy**2+dz**2+dx**2-cz*dz)*cz-((cx**2+cy**2)*dz-(cx*dz-cz*
+     dx)*bx))*bx+(cx*dz-cz*dx)*by**2-((dy**2+dz**2+dx**2)*cx-(cx*dz
+     -cz*dx)*bz-(cy**2+cz**2+cx**2)*dx)*bz)/(2*((cx*dz-cz*dx)*by-(
+     cy*dz-cz*dy)*bx)-2*(cx*dy-cy*dx)*bz);
+
+  let z = (-(((cy**2+cz**2+cx**2)*dx-(dy**2+dz**2+dx**2)*cx)*by+(by**2
+           +bz**2)*(cx*dy-cy*dx))+((cy**2+cz**2+cx**2)*dy-(cx*dy-cy*dx)*
+           bx-(dy**2+dz**2+dx**2)*cy)*bx)/(2*((cx*dz-cz*dx)*by-(cy*dz-cz*
+           dy)*bx)-2*(cx*dy-cy*dx)*bz);
+
+  if (isNaN(x) || isNaN(y) || isNaN(z)) {
+    return undefined;
+  }
+
+  let p = new Vector2([x, y, z]);
+  p.add(a);
+
+  let r = p.vectorDistance(a);
+
+  return {
+    p : p,
+    r : r
+  }
+}
 
 /**
  * AABB union of a and b.
@@ -807,11 +953,12 @@ var closest_point_on_line=exports.closest_point_on_line = function closest_point
   return ret;
 };
 
+
 /*given input line (a,d) and tangent t,
   returns a circle that goes through both
   a and d, whose normalized tangent at a is the same
   as normalized t.
-  
+
   note that t need not be normalized, this function
   does that itself*/
 var _circ_from_line_tan_vs = util.cachering.fromConstructor(Vector3, 32);
@@ -822,18 +969,18 @@ var circ_from_line_tan = exports.circ_from_line_tan = function(a, b, t) {
   var p1 = _circ_from_line_tan_vs.next();
   var t2 = _circ_from_line_tan_vs.next();
   var n1 = _circ_from_line_tan_vs.next();
-  
+
   p1.load(a).sub(b);
   t2.load(t).normalize();
   n1.load(p1).normalize().cross(t2).cross(t2).normalize();
-  
+
   var ax = p1[0], ay = p1[1], az=p1[2], nx = n1[0], ny=n1[1], nz=n1[2];
   var r = -(ax*ax + ay*ay + az*az) / (2*(ax*nx + ay*ny +az*nz));
-  
+
   var ret = _circ_from_line_tan_ret.next();
   ret[0].load(n1).mulScalar(r).add(a)
   ret[1] = r;
-  
+
   return ret;
 }
 
@@ -856,20 +1003,20 @@ var get_tri_circ=exports.get_tri_circ = function get_tri_circ(a, b, c) {
   var e3=_gtc_e3;
   var p1=_gtc_p1;
   var p2=_gtc_p2;
-  
+
   for (var i=0; i<3; i++) {
       e1[i] = b[i]-a[i];
       e2[i] = c[i]-b[i];
       e3[i] = a[i]-c[i];
   }
-  
+
   for (var i=0; i<3; i++) {
       p1[i] = (a[i]+b[i])*0.5;
       p2[i] = (c[i]+b[i])*0.5;
   }
-  
+
   e1.normalize();
-  
+
   v1[0] = -e1[1];
   v1[1] = e1[0];
   v1[2] = e1[2];
@@ -901,11 +1048,11 @@ var get_tri_circ=exports.get_tri_circ = function get_tri_circ(a, b, c) {
     r = e2.sub(cent).vectorLength();
   if (r<feps)
     r = e3.sub(cent).vectorLength();
-  
+
   var ret = _get_tri_circ_ret.next();
   ret[0] = cent;
   ret[1] = r;
-  
+
   return ret;
 };
 

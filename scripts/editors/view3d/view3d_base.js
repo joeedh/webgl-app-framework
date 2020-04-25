@@ -5,3 +5,8 @@ export const View3DFlags = {
   LOCAL_CURSOR  : 8,
   SHOW_GRID     : 16
 };
+
+export const CameraModes = {
+  PERSPECTIVE  : 0,
+  ORTHOGRAPHIC : 1
+};

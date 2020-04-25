@@ -1,5 +1,5 @@
 import {MeasurePoint, MeasureFlags} from "./measuretool_base.js";
-import {MeasureToolBase, buildImperialString} from "./measuretool.js";
+import {MeasureToolBase, buildDistUnitsString} from "./measuretool.js";
 import '../../../path.ux/scripts/struct.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../view3d_shaders.js';
@@ -30,10 +30,10 @@ export class MeasureDistTool extends MeasureToolBase {
     transWidgets: []
   }}
 
-  on_drawstart(gl, view3d) {
+  draw(gl, view3d) {
     this.drawDists();
 
-    super.on_drawstart(gl, view3d);
+    super.draw(gl, view3d);
   }
 
   drawDists() {
@@ -52,15 +52,15 @@ export class MeasureDistTool extends MeasureToolBase {
 
     let overdraw = this.ctx.view3d.overdraw;
 
-    function line(a, b) {
+    let line = (a, b, color=this.lineColor) => {
       a = new Vector3(a);
       b = new Vector3(b);
 
       view3d.project(a);
       view3d.project(b);
 
-      return overdraw.line(a, b);
-    }
+      return overdraw.line(a, b, color);
+    };
 
     let ps = this.points;
 
@@ -81,7 +81,7 @@ export class MeasureDistTool extends MeasureToolBase {
       dist = units.convert(dist, units.Unit.baseUnit, "foot");
       sum += dist;
 
-      let s = buildImperialString(dist);
+      let s = buildDistUnitsString(dist);
 
       cos.push(co2);
       texts.push(s);
@@ -93,7 +93,7 @@ export class MeasureDistTool extends MeasureToolBase {
     cent.mulScalar(1.0 / (ps.length-1));
 
     cos.push(cent);
-    texts.push(buildImperialString(sum));
+    texts.push(buildDistUnitsString(sum));
     colors.push("white");
 
     this.ctx.view3d.overdraw.drawTextBubbles(texts, cos, colors);

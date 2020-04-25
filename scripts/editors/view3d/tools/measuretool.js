@@ -4,6 +4,7 @@ import {WidgetFlags, WidgetTool} from "../widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {HotKey, KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
+import {Unit} from "../../../path.ux/scripts/units.js";
 import {SelMask} from "../selectmode.js";
 import '../../../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
@@ -57,9 +58,19 @@ export function buildImperialString(distft) {
   return s;
 }
 
+export function buildDistUnitsString(dist) {
+  if (Unit.isMetric) {
+    return dist.toFixed(4) + " m";
+  } else {
+    return buildImperialString(dist);
+  }
+}
+
 export class MeasureToolBase extends ToolMode {
   constructor(manager) {
     super(manager);
+
+    this.lineColor = "red";
 
     this.flag |= WidgetFlags.ALL_EVENTS;
     this.view3d = manager !== undefined ? manager.view3d : undefined;
@@ -253,29 +264,32 @@ export class MeasureToolBase extends ToolMode {
     return ret !== undefined;
   }
 
-  on_drawstart(gl, view3d) {
+  drawSphere(gl, view3d, p, scale=0.01) {
+    let cam = this.ctx.view3d.camera;
+    let mat = new Matrix4();
+
+    let co = new Vector4(p);
+    mat.translate(co[0], co[1], co[2]);
+
+    co[3]  = 1.0;
+    co.multVecMatrix(cam.rendermat);
+
+    scale = Math.abs(co[3] * scale);
+    mat.scale(scale, scale, scale);
+
+    Shapes.SPHERE.draw(gl, {
+      projectionMatrix : cam.rendermat,
+      objectMatrix : mat,
+      color : [1, 0.4, 0.2, 1.0],
+    }, Shaders.WidgetMeshShader)
+  }
+
+  draw(gl, view3d) {
     //console.log(this.cursor);
     this.drawCursor = this.manager.widgets.highlight === undefined;
 
     if (this.drawCursor && this.cursor !== undefined) {
-      let cam = this.ctx.view3d.camera;
-      let mat = new Matrix4();
-
-      let co = new Vector4(this.cursor);
-      mat.translate(co[0], co[1], co[2]);
-
-      co[3]  = 1.0;
-      co.multVecMatrix(cam.rendermat);
-
-      let scale = Math.abs(co[3]*0.01);
-
-      mat.scale(scale, scale, scale);
-
-      Shapes.SPHERE.draw(gl, {
-        projectionMatrix : cam.rendermat,
-        objectMatrix : mat,
-        color : [1, 0.4, 0.2, 1.0],
-      }, Shaders.WidgetMeshShader)
+      this.drawSphere(gl, view3d, this.cursor);
     }
   }
 

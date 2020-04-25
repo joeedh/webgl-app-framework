@@ -20,7 +20,7 @@ import {DataAPI, DataPathError} from '../path.ux/scripts/simple_controller.js';
 import {DataBlock, DataRef, Library, BlockSet, BlockFlags} from '../core/lib_api.js'
 import * as toolprop from '../path.ux/scripts/toolprop.js';
 import {View3D} from '../editors/view3d/view3d.js';
-import {View3DFlags} from '../editors/view3d/view3d_base.js';
+import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js';
 import {Editor, App} from '../editors/editor_base.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
 import {MenuBarEditor} from "../editors/menu/MainMenu.js";
@@ -85,6 +85,7 @@ export function api_define_resbrowser(api, pstruct) {
 export function api_define_view3d(api, pstruct) {
   let vstruct = api_define_editor(api, View3D);
 
+
   let SelModes = {
     VERTEX : SelMask.VERTEX,
     EDGE   : SelMask.EDGE,
@@ -106,9 +107,14 @@ export function api_define_view3d(api, pstruct) {
     window.redraw_viewport();
   }
 
-  vstruct.flags("flag", "flag", View3DFlags).on("change", onchange).icons({
+  vstruct.flags("flag", "flag", View3DFlags, "View3D Flags").on("change", onchange).icons({
     SHOW_RENDER : Icons.RENDER,
     SHOW_GRID : Icons.SHOW_GRID
+  });
+
+  vstruct.enum("cameraMode", "cameraMode", CameraModes, "Camera Modes").on("change", onchange).icons({
+    PERSPECTIVE : Icons.PERSPECTIVE,
+    ORTHOGRAPHIC : Icons.ORTHOGRAPHIC
   });
 }
 

@@ -120,10 +120,12 @@ export class WidgetShape {
     let mat = this.drawmatrix;
     mat.load(this.matrix).multiply(matrix);
 
+    let view3d = manager.ctx.view3d;
+    let camera = manager.ctx.view3d.camera;
     let co = this._drawtemp;
     co.zero();
     co.multVecMatrix(mat);
-    let w = co.multVecMatrix(manager.ctx.view3d.camera.rendermat);
+    let w = co.multVecMatrix(camera.rendermat);
 
     let smat = this._tempmat;
     smat.makeIdentity();

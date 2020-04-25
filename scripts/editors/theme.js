@@ -113,6 +113,7 @@ export const theme = {
   },
 
   iconcheck : {
+    BoxDepressed : "rgba(100, 100, 100, 0.5)"
   },
 
   numslider : {

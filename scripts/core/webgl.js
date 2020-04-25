@@ -755,14 +755,15 @@ export class DrawMats {
 }
 DrawMats.STRUCT = `
 DrawMats {
-  cameramat  : mat4;
-  persmat    : mat4;
-  rendermat  : mat4;
-  normalmat  : mat4;
-  icameramat : mat4;
-  ipersmat   : mat4;
-  irendermat : mat4;
-  inormalmat : mat4;
+  cameramat     : mat4;
+  persmat       : mat4;
+  rendermat     : mat4;
+  normalmat     : mat4;
+  icameramat    : mat4;
+  ipersmat      : mat4;
+  irendermat    : mat4;
+  inormalmat    : mat4;
+  isPerspective : int;
 }
 `;
 nstructjs.manager.add_class(DrawMats);
@@ -871,8 +872,19 @@ export class Camera extends DrawMats {
     this.aspect = aspect;
     
     this.persmat.makeIdentity();
-    this.persmat.perspective(this.fovy, aspect, this.near, this.far);
-    
+    if (this.isPerspective) {
+      this.persmat.perspective(this.fovy, aspect, this.near, this.far);
+    } else {
+      this.persmat.isPersp = true;
+      let scale = 1.0 / this.pos.vectorDistance(this.target);
+
+      this.persmat.makeIdentity();
+      this.persmat.orthographic(scale, aspect, this.near, this.far);
+
+      //this.persmat.scale(1, 1, -2.0/zscale, 1.0/scale);
+      //this.persmat.translate(0.0, 0.0, 0.5*zscale - this.near);
+    }
+
     this.cameramat.makeIdentity();
     this.cameramat.lookat(this.pos, this.target, this.up);
     this.cameramat.invert();
@@ -897,7 +909,6 @@ Camera.STRUCT = STRUCT.inherit(Camera, DrawMats) + `
   up           : vec3;
   near         : float;
   far          : float;
-  isPerspective : int;
 }
 `;
 nstructjs.manager.add_class(Camera);

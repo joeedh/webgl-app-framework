@@ -29,10 +29,10 @@ export class MeasureAngleTool extends MeasureToolBase {
     transWidgets: []
   }}
 
-  on_drawstart(gl, view3d) {
+  draw(gl, view3d) {
     this.drawAngles();
 
-    super.on_drawstart(gl, view3d);
+    super.draw(gl, view3d);
   }
 
   drawAngles() {
@@ -49,15 +49,15 @@ export class MeasureAngleTool extends MeasureToolBase {
     let overdraw = this.ctx.view3d.overdraw;
     let view3d = this.ctx.view3d;
 
-    function line(a, b) {
-      a = new MeasurePoint(a);
-      b = new MeasurePoint(b);
+    let line = (a, b, color=this.lineColor) => {
+      a = new Vector3(a);
+      b = new Vector3(b);
 
       view3d.project(a);
       view3d.project(b);
 
-      return overdraw.line(a, b);
-    }
+      return overdraw.line(a, b, color);
+    };
 
     let ps = this.points;
     line(ps[0], ps[1]);

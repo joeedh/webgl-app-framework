@@ -1,7 +1,11 @@
 import * as appstate from './core/appstate.js';
 
+import {setMetric, setBaseUnit} from "./path.ux/scripts/units.js";
 import {Icons} from './editors/icon_enum.js';
 import {setIconMap, setIconManager, IconManager, UIBase} from './path.ux/scripts/ui_base.js';
+
+setBaseUnit("foot");
+setMetric(false);
 
 export let iconmanager = new IconManager([
   document.getElementById("iconsheet16"),

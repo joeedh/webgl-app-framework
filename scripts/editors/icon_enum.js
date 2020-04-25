@@ -69,6 +69,7 @@ export let Icons = {
   ORTHOGRAPHIC   : 63,
   MEASURE_DIST   : 64,
   RESET          : 65,
-  LARGE_CHECK    : 66
+  LARGE_CHECK    : 66,
+  MEASURE_CIRCLE : 67
 };
 setIconMap(Icons);

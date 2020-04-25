@@ -38,7 +38,7 @@ import {eventWasTouch} from '../../path.ux/scripts/simple_events.js';
 import {CursorModes, OrbitTargetModes} from './view3d_utils.js';
 import {Icons} from '../icon_enum.js';
 import {WidgetSceneCursor, NoneWidget} from './widget_tools.js';
-import {View3DFlags} from './view3d_base.js';
+import {View3DFlags, CameraModes} from './view3d_base.js';
 import {ResourceBrowser} from "../resbrowser/resbrowser.js";
 import {AddPointSetOp} from '../../potree/potree_ops.js';
 import {PointSet} from '../../potree/potree_types.js';
@@ -342,6 +342,18 @@ export class View3D extends Editor {
 
     this.drawmode = DrawModes.TEXTURED;
     this.threeCamera = new ThreeCamera(this.camera);
+  }
+
+  get cameraMode() {
+    let cam = this.camera;
+    return cam.isPerspective ? CameraModes.PERSPECTIVE : CameraModes.ORTHOGRAPHIC;
+  }
+
+  set cameraMode(val) {
+    let cam = this.camera;
+
+    cam.isPerspective = val === CameraModes.PERSPECTIVE;
+    cam.regen_mats();
   }
 
   get cursor3D() {
