@@ -91,7 +91,12 @@ export class PropsEditor extends PopupEditor   {
   buildViewTools(tabs) {
     let tab = tabs.tab("View Tools", Icons.VIEW_TOOLS);
 
+    tab.useIcons();
+    
     this.buildToolMode(tab, "pan", "Pan");
+    tab.tool("view3d.view_selected()");
+    tab.tool("view3d.center_at_mouse()");
+
   }
 
   buildToolMode(container, modename, name=modename) {

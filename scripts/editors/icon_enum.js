@@ -42,7 +42,7 @@ export let Icons = {
   ENUM_UNCHECKED : 36,
   ENUM_CHECKED   : 37,
   APPEND_VERTEX  : 38,
-  VIEW_SELECTED  : 39,
+  FIX_VIEW       : 39,
   EXTRUDE        : 40,
   SUBDIVIDE      : 41,
   SUBSURF        : 42,
@@ -70,6 +70,7 @@ export let Icons = {
   MEASURE_DIST   : 64,
   RESET          : 65,
   LARGE_CHECK    : 66,
-  MEASURE_CIRCLE : 67
+  MEASURE_CIRCLE : 67,
+  ZOOM_OUT       : 68
 };
 setIconMap(Icons);

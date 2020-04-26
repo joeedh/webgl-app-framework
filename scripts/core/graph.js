@@ -220,6 +220,11 @@ export class NodeSocketType {
     return this.edges.length > 0;
   }
 
+  immediateUpdate() {
+    this.update();
+    window.updateDataGraph(true);
+  }
+
   update(_exclude=undefined) {
     if (this === _exclude)
       return;

@@ -473,6 +473,10 @@ export class View3D extends Editor {
     }
   }
 
+  getGraphNode() {
+    return this._graphnode;
+  }
+
   deleteGraphNodes() {
     for (let node of this._nodes) {
       try {
@@ -601,7 +605,7 @@ export class View3D extends Editor {
       new HotKey("G", [], "view3d.translate()"),
       new HotKey("S", [], "view3d.scale()"),
       new HotKey("W", [], "mesh.vertex_smooth()"),
-      new HotKey(".", [], "view3d.view_selected()")
+      new HotKey(".", [], "view3d.view_selected()"),
     ]);
 
 
@@ -767,7 +771,8 @@ export class View3D extends Editor {
 
     strip = header.strip();
     //header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
-    strip.tool("view3d.view_selected()", PackFlags.USE_ICONS);
+    //strip.tool("view3d.view_selected()", PackFlags.USE_ICONS);
+    //strip.tool("view3d.center_at_mouse()", PackFlags.USE_ICONS);
 
     strip.iconbutton(Icons.UNDO, "Undo", () => {
       this.ctx.toolstack.undo();
@@ -1220,10 +1225,7 @@ export class View3D extends Editor {
       this.makeGraphNodes();
     }
 
-    this._graphnode.outputs.onDrawPre.update();
-
-    //force graph execution
-    window.updateDataGraph(true);
+    this._graphnode.outputs.onDrawPre.immediateUpdate();
 
     let scene = this.ctx.scene;
 
@@ -1304,6 +1306,12 @@ export class View3D extends Editor {
       this.drawDrawLines(gl);
     }
 
+    gl.depthMask(true);
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.SCISSOR_TEST);
+
+    this._graphnode.outputs.onDrawPost.immediateUpdate();
+
     gl.clear(gl.DEPTH_BUFFER_BIT);
     this.widgets.draw(this.gl, this);
 
@@ -1311,13 +1319,13 @@ export class View3D extends Editor {
       scene.toolmode.on_drawend(gl, this);
     }
 
+    /*
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.disable(gl.DEPTH_TEST);
 
     let camera = this.camera;
 
-    /*
     textsprite.testDraw(gl, {
       projectionMatrix : camera.rendermat,
       normalMatrix     : camera.normalmat,
