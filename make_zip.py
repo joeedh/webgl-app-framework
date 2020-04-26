@@ -31,19 +31,28 @@ sources = [
   "./examples/**",
   "Readme.MD",
   "*.css",
-  "./lazylibs/**",
-  "./index.html"
+  "./lazylibs/**"
 ]
 
 print("Writing " + outfile + "...");
 
-zf = zipfile.ZipFile(outfile, "w")
-
+files = []
 for f in sources:
   for path in glob.glob(f, recursive=True):
     if ".git" in path:
       continue;
-    zf.write(path);
+    files.append(path);
+    
+zf = zipfile.ZipFile(outfile, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=4)
 
+for i, path in enumerate(files):
+  perc = float(i) / float(len(files)) * 100.0
+  perc = "%.2f%%" % perc
+
+  sys.stdout.write(perc + ": " + path[:64] + "\r");
+  sys.stdout.flush()
+
+  zf.write(path)
+  
 zf.close();
 print("done.")
