@@ -28,7 +28,7 @@ export class ToolContext {
     console.warn(message);
 
     if (state && state.screen) {
-      ui_noteframe.warning(state.screen, message, timeout);
+      return ui_noteframe.warning(state.screen, message, timeout);
     }
   }
 
@@ -38,7 +38,16 @@ export class ToolContext {
     console.warn(msg);
 
     if (state && state.screen) {
-      ui_noteframe.sendNote(state.screen, msg, "green", timeout);
+      return ui_noteframe.sendNote(state.screen, msg, "green", timeout);
+    }
+  }
+
+  progbar(msg, perc=0.0, timeout=1500, id=msg) {
+    let state = this.state;
+
+    if (state && state.screen) {
+      //progbarNote(screen, msg, percent, color, timeout) {
+      return ui_noteframe.progbarNote(state.screen, msg, perc, "green", timeout, id);
     }
   }
 

@@ -16,6 +16,7 @@ import {DataRef} from '../../core/lib_api.js';
 import {NodeEditor} from "../node/NodeEditor.js";
 import * as cconst from '../../core/const.js';
 import {AddPointSetOp} from "../../potree/potree_ops.js";
+import {Menu} from "../../path.ux/scripts/ui_menu.js";
 
 const menuSize = 48;
 
@@ -43,6 +44,7 @@ export class MenuBarEditor extends Editor {
           _genDefaultFile(_appstate, false);
         }
       }],
+      Menu.SEP,
       ["Import...", () => {
         console.warn("Import dialog");
 
@@ -82,11 +84,11 @@ export class MenuBarEditor extends Editor {
 
         console.log("import!");
       }],
-      ["Save  ", () => {
+      ["Save Project", () => {
         console.log("File save");
         saveFile(_appstate.createFile(), "unnamed."+cconst.FILE_EXT, ["."+cconst.FILE_EXT]);
       }],
-      ["Load  ", () => {
+      ["Load Project", () => {
         console.log("File load");
 
         loadFile(undefined, ["."+cconst.FILE_EXT]).then((filedata) => {
@@ -97,9 +99,10 @@ export class MenuBarEditor extends Editor {
 
     let tools = [
       "view3d.view_selected()",
-      "mesh.toggle_select_all()",
-      "light.new(position='cursor')"
+      //"light.new(position='cursor')",
+      "pointset.pack()"
     ];
+
     strip.menu("Edit", tools);
 
     strip.menu("Session", [

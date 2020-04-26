@@ -222,8 +222,13 @@ export class AppState {
     this.ctx = new Context(this);
 
     window.addEventListener("mousedown", (e) => {
-      //e.preventDefault();
+      let tbox = checkForTextBox(_appstate.screen, e.pageX, e.pageY);
+
+      if (e.button === 0 && !tbox) {
+        e.preventDefault();
+      }
     });
+
     window.addEventListener("contextmenu", (e) => {
       console.log(e);
       let screen = _appstate.screen;

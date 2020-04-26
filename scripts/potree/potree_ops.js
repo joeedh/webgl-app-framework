@@ -7,6 +7,37 @@ import {SceneObject} from '../sceneobject/sceneobject.js';
 import {StandardTools} from "../sceneobject/stdtools.js";
 import {Material} from "../core/material.js";
 
+export class PackPointSetOp extends ToolOp {
+  constructor() {
+    super();
+  }
+
+  static canRun(ctx) {
+    let ok = ctx.object !== undefined;
+    ok = ok && ctx.object.data instanceof PointSet;
+    ok = ok && !PointSet._packing;
+
+    return ok;
+  }
+
+
+  static tooldef() {return {
+    name     : "pack",
+    uiname   : "Pack Active Pointset",
+    toolpath : "pointset.pack",
+    description : "Pack pointset into project file"
+  }}
+
+  exec(ctx) {
+    let ptree = ctx.object.data;
+
+    if (!ptree._packing) {
+      ptree.pack();
+    }
+  }
+};
+ToolOp.register(PackPointSetOp);
+
 export class AddPointSetOp extends ToolOp {
   constructor() {
     super();

@@ -39,6 +39,35 @@ export class PointSetResource extends ResourceType {
     this.load();
   }
 
+  initMaterials() {
+    let pcloud = this.data;
+    let material = pcloud.material;
+
+    pcloud.baseMaterial = material;
+
+    //material.uniforms.uShadowColor.value = [0.0, 0, 0];
+
+    material.useEDL = false;
+    material.recomputeClassification();
+
+    material.size = 1;
+    material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
+    material.shape = Potree.PointShape.SQUARE;
+
+    let flat = new Potree.PointCloudMaterial(material);
+
+    pcloud.flatMaterial = flat;
+    flat.size = material.size;
+    flat.recomputeClassification();
+    flat.activeAttributeName = "color";
+    //flat.defines.set("color_type_color", "#define color_type_color");
+    flat.color = new THREE.Color(1.0, 0.5, 0.5);// [1.0, 0.5, 0.5];
+    flat.pointSizeType = material.pointSizeType;
+    flat.shape = material.shape;
+
+    window.flat = flat;
+  }
+
   load() {
     if (this.ready) {
       return;
@@ -48,32 +77,7 @@ export class PointSetResource extends ResourceType {
       this.data = pcloud;
       console.log("Point Cloud", pcloud);
 
-      let material = pcloud.material;
-
-      pcloud.baseMaterial = material;
-
-      //material.uniforms.uShadowColor.value = [0.0, 0, 0];
-
-      material.useEDL = false;
-      material.recomputeClassification();
-
-      material.size = 1;
-      material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
-      material.shape = Potree.PointShape.SQUARE;
-
-      let flat = new Potree.PointCloudMaterial(material);
-
-      pcloud.flatMaterial = flat;
-      flat.size = material.size;
-      flat.recomputeClassification();
-      flat.activeAttributeName = "color";
-      //flat.defines.set("color_type_color", "#define color_type_color");
-      flat.color = new THREE.Color(1.0, 0.5, 0.5);// [1.0, 0.5, 0.5];
-      flat.pointSizeType = material.pointSizeType;
-      flat.shape = material.shape;
-
-      window.flat = flat;
-
+      this.initMaterials();
       this.ready = true;
 
       this.fire("load", this.data);

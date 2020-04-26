@@ -1,3 +1,5 @@
+import './extern/three_patches.js';
+
 import * as appstate from './core/appstate.js';
 
 import {setMetric, setBaseUnit} from "./path.ux/scripts/units.js";

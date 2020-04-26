@@ -1,6 +1,7 @@
 // var _mesh = undefined;
 
 import '../extern/potree_patches.js';
+import {packPointCloudReport, unpackPointCloudReport} from "../extern/potree_patches.js";
 
 import {NodeFlags} from '../core/graph.js';
 import * as view3d_shaders from '../editors/view3d/view3d_shaders.js';
@@ -33,13 +34,14 @@ export class PointSet extends SceneObjectData {
   constructor() {
     super();
 
-
     this._last_draw_hash = undefined;
     this._last_cull_time = 0;
 
     this.url = "";
     this.ready = false;
 
+    this.usePackedData = false; //used compressed data in this.packedData
+    this.packedData = [];
     this.usesMaterial = true;
     this.material = undefined;
 
@@ -58,9 +60,60 @@ export class PointSet extends SceneObjectData {
     return [min, max];
   }
 
+  pack() {
+    if (!this.ready) {
+      return;
+    }
+
+    if (this._packing) {
+      return;
+    }
+
+    this._packing = true;
+    packPointCloudReport(this.res.data).then((data) => {
+      console.log("DATA", data);
+
+      this._packing = false;
+      this.packedData = data;
+      this.usePackedData = true;
+
+      this.ready = false;
+      this.loadFromPacked();
+    });
+  }
+
+  loadFromPacked() {
+    this.res = new PointSetResource();
+    let data = this.packedData;
+
+    if (!(data instanceof Uint8Array)) {
+      data = new Uint8Array(data);
+    }
+
+    return new Promise((accept, reject) => {
+      unpackPointCloudReport(data).then((ptree) => {
+        this.res.data = ptree;
+        this.res.initMaterials();
+        this.ready = true;
+
+        accept(ptree);
+
+        window.redraw_viewport();
+
+        window.setTimeout(() => {
+          window.redraw_viewport();
+        }, 400);
+      });
+    });
+  }
+
   load() {
     if (this.ready) {
       return new Promise((accept, reject) => accept(this));
+    }
+
+    if (this.usePackedData) {
+      return this.loadFromPacked();
     }
 
     this._flatMaterial = getFlatMaterial();
@@ -343,8 +396,10 @@ export class PointSet extends SceneObjectData {
 };
 
 PointSet.STRUCT = STRUCT.inherit(PointSet, SceneObjectData, "potree.PointSet") + `
-  material  : DataRef | DataRef.fromBlock(obj.material);
-  url       : string;
+  material      : DataRef | DataRef.fromBlock(obj.material);
+  url           : string;
+  packedData    : array(byte);
+  usePackedData : bool;
 }
 `;
 
