@@ -1,5 +1,5 @@
-import {MeshError, MeshFlags, MeshTypes} from "./mesh_base.js";
-import {Vector3} from "../util/vectormath.js";
+import {MeshError, MeshFlags, MeshTypes, HandleTypes} from "./mesh_base.js";
+import {Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import * as util from "../util/util.js";
 import {UVLayerElem} from "./mesh_customdata.js";
 import '../path.ux/scripts/struct.js';
@@ -69,6 +69,8 @@ export class Vertex extends Element {
       this.load(co);
     }
 
+    this.color = new Vector4([0, 0, 0, 1]);
+
     this.no = new Vector3();
     this.no[2] = 1.0;
     this.edges = [];
@@ -133,10 +135,10 @@ export class Vertex extends Element {
             }
 
             l = l.radial_next;
-          } while (l != e.l);
+          } while (l !== e.l);
         }
 
-        if (state == 0 && flag > MeshFlags.ITER_TEMP2c) {
+        if (state === 0 && flag > MeshFlags.ITER_TEMP2c) {
           //*sigh* just used the first one
           flag = MeshFlags.ITER_TEMP2a;
         }
@@ -157,9 +159,6 @@ export class Vertex extends Element {
 
   loadSTRUCT(reader) {
     reader(this);
-
-    this.load(this.co);
-    delete this.co;
   }
 }
 util.mixin(Vertex, Vector3);
@@ -170,10 +169,50 @@ Vertex.STRUCT = STRUCT.inherit(Vertex, Element, 'mesh.Vertex') + `
   2       : float;
   no      : vec3 | obj.no;
   edges   : array(e, int) | (e.eid);
+  color   : vec4;
 }
 `;
 nstructjs.manager.add_class(Vertex);
 
+export class Handle extends Element {
+  constructor(co) {
+    super(MeshTypes.HANDLE);
+    this.initVector3();
+
+    if (co !== undefined) {
+      this.load(co);
+    }
+
+    this.mode = HandleTypes.AUTO;
+    this.color = new Vector4([0,0,0,1]);
+  }
+
+  get visible() {
+    let hide = this.flag & MeshFlags.HIDE;
+
+    hide = hide || this.mode === HandleTypes.AUTO;
+    hide = hide || this.mode === HandleTypes.STRAIGHT;
+
+    return !hide;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+  }
+}
+util.mixin(Handle, Vector3);
+
+Handle.STRUCT = STRUCT.inherit(Handle, Element, "mesh.Handle") + `
+  0        : float;
+  1        : float;
+  2        : float; 
+  mode     : float;
+  owner    : int | obj.owner !== undefined ? obj.owner.eid : -1;
+  color    : vec4;
+}
+`;
+
+nstructjs.manager.add_class(Handle);
 
 var _evaluate_vs = util.cachering.fromConstructor(Vector3, 64);
 
@@ -183,6 +222,125 @@ export class Edge extends Element {
 
     this.l = undefined;
     this.v1 = this.v2 = undefined;
+    this.h1 = this.h2 = undefined;
+    this._length = undefined;
+  }
+
+  calcScreenLength(view3d) {
+    let steps = 32;
+    let s=0, ds = 1.0 / (steps-1);
+    let lastco = undefined;
+    let sum = 0.0;
+
+    let camera = view3d.camera;
+
+    for (let i=0; i<steps; i++, s += ds) {
+      let co = this.evaluate(s);
+      view3d.project(co);
+
+      if (i > 0) {
+        sum += lastco.vectorDistance(co);
+      }
+
+      lastco = co;
+    }
+
+    this._length = sum;
+    return sum;
+  }
+
+  update() {
+    this.flag |= MeshFlags.UPDATE;
+  }
+
+  _updateLength() {
+    let steps = 32;
+    let s=0, ds = 1.0 / (steps-1);
+    let lastco = undefined;
+    let sum = 0.0;
+
+    for (let i=0; i<steps; i++, s += ds) {
+      let co = this.evaluate(s);
+
+      if (i > 0) {
+        sum += lastco.vectorDistance(co);
+      }
+
+      lastco = co;
+    }
+
+    this._length = sum;
+    return sum;
+  }
+
+  vertex(h) {
+    if (h === this.h1) {
+      return this.v1;
+    } else if (h === this.h2) {
+      return this.v2;
+    } else {
+      throw new Error("invalid handle" + h);
+    }
+  }
+
+  handle(v) {
+    if (v === this.v1) {
+      return this.h1;
+    } else if (v === this.v2) {
+      return this.h2;
+    } else {
+      throw new Error("invalid vertex" + v);
+    }
+  }
+
+  otherHandle(v_or_h) {
+    let h = v_or_h instanceof Vertex ? this.handle(v_or_h) : v_or_h;
+    if (h === this.h1) {
+      return this.h2;
+    } else if (h === this.h2) {
+      return this.h1;
+    } else {
+      throw new Error("invalid handle " + h);
+    }
+  }
+
+  updateHandles() {
+    if (this.h1 === undefined) {
+      return;
+    }
+
+    let dohandle = (h) => {
+      let v = this.vertex(h);
+      //v = this.otherVertex(v);
+
+      if (h.mode === HandleTypes.AUTO && v.edges.length === 2) {
+        let e2 = v.otherEdge(this);
+        let v2 = e2.otherVertex(v);
+
+        h.load(this.otherVertex(v)).sub(v2).mulScalar(1.0/4.0);
+        h.add(v);
+
+      } else if (h.mode === HandleTypes.STRAIGHT) {
+        h.load(v).interp(this.otherVertex(v), 1.0/3.0);
+      }
+    };
+
+    dohandle(this.h1);
+    dohandle(this.h2);
+  }
+
+  get length() {
+    if ((this.v1.flag & MeshFlags.UPDATE) || (this.v2.flag & MeshFlags.UPDATE)) {
+      this.update();
+    }
+
+    if (this.flag & MeshFlags.UPDATE) {
+      this._updateLength();
+      this.updateHandles();
+      this.flag &= ~MeshFlags.UPDATE;
+    }
+
+    return this._length;
   }
 
   get loops() {
@@ -215,7 +373,11 @@ export class Edge extends Element {
     return (function*() {
       let l = this2.l;
       let i = 0;
-
+      
+      if (l === undefined) {
+        return;
+      }
+      
       do {
         if (i++ > 10000) {
           console.warn("infinite loop detected in Edge.prototype.[get faces]()");
@@ -242,8 +404,39 @@ export class Edge extends Element {
     })();
   }
 
-  evaluate(t) {
-    return _evaluate_vs.next().load(this.v1).interp(this.v2, t);
+  evaluate(s) {
+    /*
+    on factor;
+    off period;
+
+    procedure bez(a, b);
+      a + (b - a)*s;
+
+    lin   := bez(k1, k2);
+    quad  := bez(lin, sub(k2=k3, k1=k2, lin));
+    cubic := bez(quad, sub(k3=k4, k2=k3, k1=k2, quad));
+
+    on fort;
+    df(cubc, s, 2);
+    df(cubic, s);
+    cubic;
+    off fort;
+    */
+
+    if (this.h1) {
+      let ret = _evaluate_vs.next().zero();
+
+      for (let i=0; i<3; i++) {
+        let k1 = this.v1[i], k2 = this.h1[i], k3 = this.h2[i], k4 = this.v2[i];
+        ret[i] = -(k1*s**3-3*k1*s**2+3*k1*s-k1-3*k2*s**3+6*k2*s**2-3*k2*s+3*
+                  k3*s**3-3*k3*s**2-k4*s**3);
+
+      }
+
+      return ret;
+    } else {
+      return _evaluate_vs.next().load(this.v1).interp(this.v2, s);
+    }
   }
 
   derivative(t) {
@@ -297,6 +490,8 @@ Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
   l      : int | obj.l !== undefined ? obj.l.eid : -1;
   v1     : int | obj.v1.eid;
   v2     : int | obj.v2.eid;
+  h1     : int | obj.h1 !== undefined ? obj.h1.eid : -1;
+  h2     : int | obj.h2 !== undefined ? obj.h2.eid : -1;
 }
 `;
 nstructjs.manager.add_class(Edge);

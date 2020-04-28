@@ -788,6 +788,7 @@ export class View3D extends Editor {
     strip = header.strip();
     strip.useIcons();
     strip.prop("view3d.flag[SHOW_GRID]");
+    strip.prop("scene.toolmode[curve_test]");
 
     //strip.prop("scene.toolmode[pan]");
     //strip.prop("scene.toolmode[object]");

@@ -385,6 +385,7 @@ export class MeshTransType extends TransDataType {
 
         for (let e of item.data1.edges) {
           mesh.flagElemUpdate(e);
+          e.update();
         }
 
         for (let f of item.data1.faces) {

@@ -840,8 +840,6 @@ export class WidgetManager {
   }
 
   glInit(gl) {
-    console.log("Widget manager gl init");
-
     this.gl = gl;
     this.loadShapes();
   }

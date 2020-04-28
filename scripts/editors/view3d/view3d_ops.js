@@ -5,7 +5,7 @@ import {Icons} from '../icon_enum.js';
 import {SelMask} from "./selectmode.js";
 import {CallbackNode} from "../../core/graph.js";
 import {DependSocket} from "../../core/graphsockets.js";
-import {CastModes, castRay} from "./findnearest.js";
+import {CastModes, castViewRay} from "./findnearest.js";
 import {Shapes} from '../../core/simplemesh_shapes.js';
 import {Shaders} from "./view3d_shaders.js";
 
@@ -139,8 +139,8 @@ export class CenterViewOp extends ToolOp {
     overdraw.clear();
     overdraw.circle([e.x, e.y], 35, "red");
 
-    //castRay(ctx, selectMask, mpos, view3d, mode=CastModes.FRAMEBUFFER) {
-    let ret = castRay(ctx, SelMask.OBJECT|SelMask.GEOM, mpos, view3d, CastModes.FRAMEBUFFER);
+    //castViewRay(ctx, selectMask, mpos, view3d, mode=CastModes.FRAMEBUFFER) {
+    let ret = castViewRay(ctx, SelMask.OBJECT|SelMask.GEOM, mpos, view3d, CastModes.FRAMEBUFFER);
     console.log(ret);
 
     if (ret !== undefined) {

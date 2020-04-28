@@ -11,9 +11,67 @@ import * as util from '../util/util.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
 
-import {MeshFlags, MeshTypes} from './mesh_base.js';
+import {MeshFlags, MeshTypes, MeshFeatures} from './mesh_base.js';
 import {MeshOp} from './mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
+import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
+
+export class ExtrudeOneVertexOp extends MeshOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {return {
+    uiname       : "Extrude Vertex",
+    icon         : Icons.EXTRUDE,
+    toolpath     : "mesh.extrude_one_vertex",
+    description  : "Extrude one vertex",
+    inputs       : ToolOp.inherit({
+      co         : new Vec3Property(),
+      select     : new BoolProperty(true),
+      setActive  : new BoolProperty(true)
+    }),
+    outputs : ToolOp.inherit({
+      vertex : new IntProperty(-1), //output vertex eid
+      edge   : new IntProperty(-1) //output edge eid
+    })
+  }}
+
+  exec(ctx) {
+    let mesh = this.getActiveMesh(ctx);
+
+    if (!(mesh.features & MeshFeatures.MAKE_VERT)) {
+      ctx.error("Mesh doesn't support making new vertices");
+      return;
+    }
+
+    let co = this.inputs.co.getValue();
+    let v = mesh.makeVertex(co);
+
+    let ok = mesh.verts.active !== undefined;
+    ok = ok && (mesh.features & MeshFeatures.MAKE_EDGE);
+    ok = ok && v !== mesh.verts.active; //in case of auto-setting somewhere
+
+    this.outputs.vertex.setValue(v.eid);
+
+    if (ok) {
+      let e = mesh.makeEdge(mesh.verts.active, v);
+      this.outputs.edge.setValue(e.eid);
+    }
+
+    if (this.inputs.select.getValue()) {
+      mesh.setSelect(v, true);
+    }
+
+    if (this.inputs.setActive.getValue()) {
+      mesh.setActive(v);
+    }
+
+    mesh.regenTesellation();
+    mesh.regenRender();
+  }
+}
+ToolOp.register(ExtrudeOneVertexOp);
 
 export class ExtrudeRegionsOp extends MeshOp {
   constructor() {
@@ -26,7 +84,7 @@ export class ExtrudeRegionsOp extends MeshOp {
     toolpath : "mesh.extrude_regions",
     undoflag : 0,
     flag     : 0,
-    inputs   : {},
+    inputs   : ToolOp.inherit({}),
     outputs  : {
       normal : new Vec3Property(),
       normalSpace : new Mat4Property()
@@ -197,8 +255,8 @@ export class ExtrudeRegionsOp extends MeshOp {
   }
 
   exec(ctx) {
-    for (let ob of ctx.selectedMeshObjects) {
-      this._exec_intern(ctx, ob.data);
+    for (let mesh of this.getMeshes(ctx)) {
+      this._exec_intern(ctx, mesh);
     }
   }
 }
@@ -216,15 +274,13 @@ export class CatmullClarkeSubd extends MeshOp {
     toolpath : "mesh.subdivide_smooth",
     undoflag : 0,
     flag     : 0,
-    inputs   : {},
+    inputs   : ToolOp.inherit({}),
   }}
 
   exec(ctx) {
     console.log("subdivide smooth!");
 
-    for (let ob of ctx.selectedMeshObjects) {
-      let mesh = ob.data;
-
+    for (let mesh of this.getMeshes(ctx)) {
       subdivide(mesh, list(mesh.faces.selected.editable));
       mesh.regenRender();
     }
@@ -284,15 +340,13 @@ export class VertexSmooth extends MeshOp {
     toolpath : "mesh.vertex_smooth",
     undoflag : 0,
     flag     : 0,
-    inputs   : {},
+    inputs   : ToolOp.inherit({}),
   }}
 
   exec(ctx) {
     console.log("subdivide smooth!");
 
-    for (let ob of ctx.selectedMeshObjects) {
-      let mesh = ob.data;
-
+    for (let mesh of this.getMeshes(ctx)) {
       vertexSmooth(mesh);
     }
   }

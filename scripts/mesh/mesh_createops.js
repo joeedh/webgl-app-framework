@@ -17,14 +17,15 @@ import {Mesh, MeshTypes, MeshFlags} from './mesh.js';
 import {MeshOp} from './mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
 import {SceneObject} from "../sceneobject/sceneobject.js";
+import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
 
-export class MeshCreateOp extends ToolOp {
+export class MeshCreateOp extends MeshToolBase {
   constructor() {
     super();
   }
 
   static invoke(ctx, args) {
-    let tool = new this();
+    let tool = super.invoke(ctx, args);
 
     if ("makeNewObject" in args) {
       tool.inputs.makeNewObject.setValue(args.makeNewObject);
@@ -43,10 +44,10 @@ export class MeshCreateOp extends ToolOp {
   }
 
   static tooldef() {return {
-    inputs : {
-      makeNewObject     : new BoolProperty(),
+    inputs : ToolOp.inherit({
+      makeNewObject     : new BoolProperty(false),
       transformMatrix   : new Mat4Property()
-    },
+    }),
 
     outputs : {
       newObject : new DataRefProperty()
@@ -61,7 +62,7 @@ export class MeshCreateOp extends ToolOp {
   exec(ctx) {
     let ob, mesh, mat;
     let create = this.inputs.makeNewObject.getValue();
-    create = create || ctx.object === undefined || !(ctx.object.data instanceof Mesh);
+    //create = create || ctx.object === undefined || !(ctx.object.data instanceof Mesh);
 
     if (create) {
       ob = new SceneObject();
@@ -76,8 +77,7 @@ export class MeshCreateOp extends ToolOp {
 
       mat = new Matrix4();
     } else {
-      ob = ctx.object;
-      mesh = ob.data;
+      mesh = this.getMesh(ctx);
 
       mat = new Matrix4(this.inputs.transformMatrix.getValue());
     }

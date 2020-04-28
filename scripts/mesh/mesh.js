@@ -9,7 +9,6 @@ import * as math from '../util/math.js';
 import * as util from '../util/util.js'
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
-import {DependSocket} from '../core/graphsockets.js';
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
 
@@ -20,16 +19,18 @@ import {CustomDataElem} from './customdata.js';
 import {LayerTypes, ChunkedSimpleMesh, SimpleMesh} from "../core/simplemesh.js";
 
 import {MeshTools} from './mesh_stdtools.js';
-import {MeshError, MeshTypes, MeshFlags, RecalcFlags} from './mesh_base.js';
+import {MeshFeatures, MeshFeatureError, MeshError,
+        MeshTypes, MeshFlags, RecalcFlags} from './mesh_base.js';
 export * from "./mesh_base.js";
 export * from "./mesh_types.js";
 export * from "./mesh_customdata.js";
 export * from "./mesh_element_list.js";
 
 import {UVLayerElem, OrigIndexElem} from "./mesh_customdata.js";
-import {Element, Vertex, Edge, Loop, LoopList, Face} from "./mesh_types.js";
+import {Element, Vertex, Edge, Handle, Loop, LoopList, Face} from "./mesh_types.js";
 import {SelectionSet, ElementList} from "./mesh_element_list.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
+import {PrimitiveTypes} from "../core/simplemesh.js";
 
 let split_temp = new Array(512);
 split_temp.used = 0;
@@ -42,14 +43,18 @@ let _cdwtemp1 = new Array(1);
 let _cdwtemp2 = new Array(2);
 
 export class Mesh extends SceneObjectData {
-  constructor() {
+  constructor(features=MeshFeatures.BASIC) {
     super();
+
+    this.features = features;
 
     this.materials = [];
 
     this._ltris = undefined;
     this._ltrimap_start = {}; //maps face eid to first loop index
     this._ltrimap_len = {}; //maps face eid to first loop index
+
+    this._fancyMeshes = {};
 
     this.updatelist = {};
     this.lastUpdateList = {};
@@ -74,6 +79,11 @@ export class Mesh extends SceneObjectData {
     this.loops = this.getElemList(MeshTypes.LOOP);
     this.edges = this.getElemList(MeshTypes.EDGE);
     this.faces = this.getElemList(MeshTypes.FACE);
+    this.handles = this.getElemList(MeshTypes.HANDLE);
+  }
+
+  hasHandles() {
+    return this.features & MeshFeatures.EDGE_HANDLES;
   }
 
   get uniforms() {
@@ -131,6 +141,9 @@ export class Mesh extends SceneObjectData {
   }
   
   makeVertex(co) {
+    if (!(this.features & MeshFeatures.MAKE_VERT))
+      throw new MeshFeatureError("makeVertex not supported");
+
     var v = new Vertex(co);
     
     this._element_init(v);
@@ -157,8 +170,21 @@ export class Mesh extends SceneObjectData {
     
     return e;
   }
-  
+
+  _makeHandle(e) {
+    let h = new Handle();
+    h.owner = e;
+
+    this._element_init(h);
+    this.handles.push(h);
+
+    return h;
+  }
+
   makeEdge(v1, v2) {
+    if (!(this.features & MeshFeatures.MAKE_EDGE))
+      throw new MeshFeatureError("makeEdge not supported");
+
     var e = new Edge();
     
     e.v1 = v1;
@@ -166,10 +192,18 @@ export class Mesh extends SceneObjectData {
     
     v1.edges.push(e);
     v2.edges.push(e);
-    
+
     this._element_init(e);
     this.edges.push(e);
-    
+
+    if (this.features & MeshFeatures.EDGE_HANDLES) {
+      e.h1 = this._makeHandle(e);
+      e.h2 = this._makeHandle(e);
+
+      e.h1.load(e.v1).interp(e.v2, 1.0/3.0);
+      e.h2.load(e.v1).interp(e.v2, 2.0/3.0);
+    }
+
     return e;
   }
   
@@ -177,7 +211,7 @@ export class Mesh extends SceneObjectData {
     this.min = new Vector3();
     this.max = new Vector3();
     
-    if (this.verts.length == 0) {
+    if (this.verts.length === 0) {
       return;
     }
     
@@ -292,6 +326,9 @@ export class Mesh extends SceneObjectData {
   }
 
   makeFace(verts) {
+    if (!(this.features & MeshFeatures.MAKE_FACE))
+      throw new MeshFeatureError("makeFace not supported");
+
     if (verts.length < 2) {
       throw new Error("need at least two verts");
     }
@@ -372,6 +409,9 @@ export class Mesh extends SceneObjectData {
   }
   
   killVertex(v) {
+    if (!(this.features & MeshFeatures.KILL_VERT))
+      throw new MeshFeatureError("killVertex not supported");
+
     if (v.eid === -1) {
       console.trace("Warning: vertex", v.eid, "already freed", v);
       return;
@@ -392,6 +432,9 @@ export class Mesh extends SceneObjectData {
   }
   
   killEdge(e) {
+    if (!(this.features & MeshFeatures.KILL_EDGE))
+      throw new MeshFeatureError("killEdge not supported");
+
     if (e.eid == -1) {
       console.trace("Warning: edge", e.eid, "already freed", e);
       return;
@@ -409,9 +452,20 @@ export class Mesh extends SceneObjectData {
     
     e.v1.edges.remove(e);
     e.v2.edges.remove(e);
+
+    if (e.h1) {
+      this.handles.remove(e.h1);
+    }
+
+    if (e.h2) {
+      this.handles.remove(e.h2);
+    }
   }
   
   killFace(f) {
+    if (!(this.features & MeshFeatures.KILL_FACE))
+      throw new MeshFeatureError("killEdge not supported");
+
     if (f.eid == -1) {
       console.trace("Warning: edge", e.eid, "already freed", e);
       return;
@@ -431,6 +485,16 @@ export class Mesh extends SceneObjectData {
 
   setActive(e) {
     this.getElemList(e.type).active = e;
+  }
+
+  clearHighlight() {
+    for (let list of this.getElemLists()) {
+      list.highlight = undefined;
+    }
+  }
+
+  setHighlight(e) {
+    this.getElemList(e.type).highlight = e;
   }
 
   selectFlush(selmode) {
@@ -577,6 +641,9 @@ export class Mesh extends SceneObjectData {
   }
   
   splitEdge(e, t=0.5) {
+    if (!(this.features & MeshFeatures.SPLIT_EDGE))
+      throw new MeshFeatureError("splitEdge not supported");
+
     let ret = this._splitEdgeNoFace(e, t);
     
     if (e.l === undefined) {
@@ -666,6 +733,9 @@ export class Mesh extends SceneObjectData {
   
   //XXX untested!
   dissolveVertex(v) {
+    if (!(this.features & MeshFeatures.JOIN_EDGE))
+      throw new MeshFeatureError("dissolveVertex not supported");
+
     //handle case of two-valence vert with no surrounding faces
     if (v.edges.length == 2 && v.edges[0].l === undefined && v.edges[1].l === undefined) {
       let v1 = v.edges[0].otherVertex(v);
@@ -806,13 +876,85 @@ export class Mesh extends SceneObjectData {
     }
   }
 
+  genRender_curves(gl, combinedWireframe, view3d,
+                   layers=LayerTypes.LOC|LayerTypes.UV|LayerTypes.ID) {
+    //let smesh
+
+    let sm = new SimpleMesh(layers);
+
+    for (let e of this.edges) {
+      e.update();
+      e.updateHandles();
+    }
+
+    for (let e of this.edges) {
+      if (e.flag & MeshFlags.HIDE) {
+        continue;
+      }
+
+      let len;
+
+      if (view3d !== undefined) {
+        len = e.calcScreenLength(view3d);
+      } else {
+        len = e.length;
+      }
+
+      let steps = Math.max(Math.floor(len / 5), 8);
+      let s = 0, ds = 1.0 / (steps - 1);
+      let lastco = undefined;
+      let black = [0,0,0,1];
+      let color1 = new Vector4();
+      let color2 = new Vector4();
+
+      for (let i=0; i<steps; i++, s += ds) {
+        let co = e.evaluate(s);
+
+        if (i > 0) {
+          let line = sm.line(lastco, co);
+
+          if (layers & LayerTypes.COLOR) {
+            color1.load(e.v1.color).interp(e.v2.color, s);
+            color2.load(e.v1.color).interp(e.v2.color, s+ds);
+            line.colors(color1, color2);
+          }
+
+          if (layers & LayerTypes.UV) {
+            line.uvs([s, s], [s, s]);
+          }
+
+          if (layers & LayerTypes.ID) {
+            line.ids(e.eid, e.eid);
+          }
+        }
+
+        lastco = co;
+      }
+    }
+
+    return sm;
+  }
+
   /**
    * @param gl: gl context, may be undefined
    * @param combinedWireframe: add wireframe layer (but unset simplemesh.PrimitiveTypes.LINES in primflag)
+   * @param view3d: View3D instance, optional, used when drawing edges in curve mode
    * */
-  genRender(gl, combinedWireframe) {
+  genRender(gl, combinedWireframe=false, view3d=undefined) {
+    this.recalc &= ~(RecalcFlags.RENDER|RecalcFlags.PARTIAL);
+    
+    if (this.features & MeshFeatures.EDGE_CURVES_ONLY) {
+      this.smesh = this.genRender_curves(gl, combinedWireframe, view3d);
+      return this.smesh;
+    } else {
+      return this.genRender_full(gl, combinedWireframe, view3d);
+    }
+  }
+
+
+  genRender_full(gl, combinedWireframe) {
     try {
-      return this._genRender(gl, combinedWireframe);
+      return this._genRender_full(gl, combinedWireframe);
     } catch (error) {
       util.print_stack(error);
       throw error;
@@ -835,7 +977,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  _genRender(gl, combinedWireframe=false) {
+  _genRender_full(gl, combinedWireframe=false) {
     this.recalc &= ~RecalcFlags.RENDER;
     this.updateGen = ~~(Math.random()*1024*1024*1024);
 
@@ -923,6 +1065,10 @@ export class Mesh extends SceneObjectData {
   }
 
   partialUpdate(gl) {
+    if (this.features & MeshFeatures.EDGE_CURVES_ONLY) {
+      return;
+    }
+
     console.warn("partial update");
     
     let sm = this.smesh;
@@ -994,7 +1140,7 @@ export class Mesh extends SceneObjectData {
 
     if (this.recalc & RecalcFlags.RENDER) {
       this.recalc &= RecalcFlags.PARTIAL;
-      this.genRender(gl);
+      this.genRender(gl, undefined, view3d);
       this.lastUpdateList = {};
       this.updatelist = {};
     }
@@ -1018,8 +1164,160 @@ export class Mesh extends SceneObjectData {
 
   drawIds(view3d, gl, selectMask, uniforms, object) {
     let program = Shaders.MeshIDShader;
+    uniforms.pointSize = 10;
 
     this.draw(view3d, gl, uniforms, program, object);
+  }
+
+  _genRenderElements(view3d, gl, uniforms) {
+    this.recalc &= ~RecalcFlags.ELEMENTS;
+
+    let selcolor = uniforms.select_color;
+
+    for (let k in this._fancyMeshes) {
+      this._fancyMeshes[k].destroy(gl);
+    }
+
+    let meshes = this._fancyMeshes = {};
+    let sm;
+
+    sm = meshes.verts = new SimpleMesh(LayerTypes.LOC|LayerTypes.UV|LayerTypes.ID|LayerTypes.COLOR);
+    sm.primflag = PrimitiveTypes.POINTS;
+    for (let v of this.verts) {
+      if (v.flag & MeshFlags.HIDE) {
+        continue;
+      }
+      let p = sm.point(v);
+
+      let color = v.flag & MeshFlags.SELECT ? selcolor : v.color;
+
+      p.ids(v.eid);
+      p.colors(color);
+    }
+
+
+    sm = meshes.handles = new SimpleMesh(LayerTypes.LOC|LayerTypes.UV|LayerTypes.ID|LayerTypes.COLOR);
+    sm.primflag = PrimitiveTypes.POINTS;
+    for (let h of this.handles) {
+      if (!h.visible) {
+        continue;
+      }
+      let p = sm.point(h);
+
+      let color = h.flag & MeshFlags.SELECT ? selcolor : h.color;
+
+      p.ids(h.eid);
+      p.colors(color);
+    }
+
+    if (this.features & MeshFeatures.EDGE_CURVES_ONLY) {
+      meshes.edges = this.genRender_curves(gl, false, view3d, LayerTypes.LOC|LayerTypes.UV|LayerTypes.ID|LayerTypes.COLOR);
+      meshes.edges.primflag = PrimitiveTypes.LINES;
+    } else {
+      sm = meshes.edges = new SimpleMesh(LayerTypes.LOC|LayerTypes.UV|LayerTypes.ID|LayerTypes.COLOR);
+      sm.primflag = PrimitiveTypes.LINES;
+
+      for (let e of this.edges) {
+        let line = sm.line(e.v1, e.v2);
+
+        if (e.flag & MeshFlags.SELECT) {
+          line.colors(selcolor, selcolor);
+        } else {
+          line.colors(e.v1.color, e.v2.color);
+        }
+
+        line.ids(e.eid, e.eid);
+        line.uvs([0, 0], [1, 1])
+      }
+    }
+
+    sm = meshes.faces = new SimpleMesh(LayerTypes.LOC|LayerTypes.UV|LayerTypes.ID|LayerTypes.COLOR);
+    sm.primflag = PrimitiveTypes.TRIS;
+
+    let ltris = this._ltris;
+    ltris = ltris === undefined ? [] : ltris;
+
+    for (let i=0; i<ltris.length; i += 3) {
+      let v1 = ltris[i].v;
+      let v2 = ltris[i+1].v;
+      let v3 = ltris[i+2].v;
+      let f = ltris[i].f;
+
+      let tri = sm.tri(v1, v2, v3);
+      tri.ids(f.eid, f.eid, f.eid);
+
+      if (tri.flag & MeshFlags.SELECT) {
+        tri.colors(selcolor, selcolor, selcolor);
+      } else {
+        tri.colors(v1.color, v2.color, v3.color);
+      }
+
+      let uv = ltris[i].uv;
+      if (uv === undefined) {
+        continue;
+      }
+
+      tri.uvs(ltris[i].uv, ltris[i+1].uv, ltris[i+2].uv);
+    }
+  }
+
+  updateHandles() {
+    for (let e of this.edges) {
+      e.updateHandles();
+    }
+  }
+
+  drawElements(view3d, gl, selmask, uniforms, program, object) {
+    if (!uniforms.active_color) {
+      uniforms.active_color = [1.0, 0.8, 0.2, 1.0];
+    }
+    if (!uniforms.highlight_color) {
+      uniforms.highlight_color = [1.0, 0.5, 0.25, 1.0];
+    }
+    if (!uniforms.select_color) {
+      uniforms.select_color = [1.0, 0.7, 0.5, 1.0];
+    }
+
+    if (this.recalc & RecalcFlags.TESSELATE) {
+      this.tessellate();
+    }
+
+    if (this.recalc & RecalcFlags.ELEMENTS) {
+      console.log("_genRenderElements");
+      this._genRenderElements(view3d, gl, uniforms);
+    }
+
+    uniforms = uniforms === undefined ? {} : uniforms;
+    uniforms.alpha = uniforms.alpha === undefined ? 1.0 : uniforms.alpha;
+
+    let meshes = this._fancyMeshes;
+
+    uniforms.pointSize = uniforms.pointSize === undefined ? 10 : uniforms.pointSize;
+
+    uniforms = Object.assign({}, uniforms);
+    uniforms.polygonOffset = uniforms.polygonOffset === undefined ? 0.5 : uniforms.polygonOffset;
+
+    function draw_list(list, key) {
+      uniforms.active_id = list.active !== undefined ? list.active.eid : -1;
+      uniforms.highlight_id = list.highlight !== undefined ? list.highlight.eid : -1;
+
+      meshes[key].draw(gl, uniforms, program);
+    }
+
+    if (selmask & SelMask.VERTEX) {
+      draw_list(this.verts, "verts");
+    }
+    if (selmask & SelMask.HANDLE) {
+      draw_list(this.handles, "handles");
+    }
+    if (selmask & SelMask.EDGE) {
+      uniforms.polygonOffset *= 0.5;
+      draw_list(this.edges, "edges");
+    }
+    if (selmask & SelMask.FACE) {
+      uniforms.polygonOffset *= 0.25;
+      draw_list(this.faces, "faces");
+    }
   }
 
   draw(view3d, gl, uniforms, program, object) {
@@ -1028,23 +1326,30 @@ export class Mesh extends SceneObjectData {
     }
 
     if (this.recalc & RecalcFlags.RENDER) {
-      this.recalc &= RecalcFlags.PARTIAL;
-      this.genRender(gl);
+      this.recalc &= ~RecalcFlags.PARTIAL;
+      this.genRender(gl, undefined, view3d);
       this.lastUpdateList = {};
       this.updatelist = {};
     }
 
     this.checkPartialUpdate(gl);
 
+    if (this.smesh === undefined) {
+      return;
+    }
+
     if (program !== undefined) {
       this.smesh.program = program;
-      this.smesh.island.program = program;
 
       program.bind(gl);
     }
     this.smesh.draw(gl, uniforms);
   }
-  
+
+  swapDataBlockContents(mesh) {
+    return super.swapDataBlockContents(...arguments);
+  }
+
   get elements() {
     var this2 = this;
     
@@ -1056,13 +1361,13 @@ export class Mesh extends SceneObjectData {
   }
 
   regenTesellation() {
-    this.recalc |= RecalcFlags.TESSELATE;
+    this.recalc |= RecalcFlags.TESSELATE|RecalcFlags.ELEMENTS;
   }
   regenRender() {
-    this.recalc |= RecalcFlags.RENDER;
+    this.recalc |= RecalcFlags.RENDER|RecalcFlags.ELEMENTS;
   }
   regenPartial() {
-    this.recalc |= RecalcFlags.PARTIAL;
+    this.recalc |= RecalcFlags.PARTIAL|RecalcFlags.ELEMENTS;
   }
 
   _getArrays() {
@@ -1304,7 +1609,8 @@ export class Mesh extends SceneObjectData {
     this.loops = this.getElemList(MeshTypes.LOOP);
     this.edges = this.getElemList(MeshTypes.EDGE);
     this.faces = this.getElemList(MeshTypes.FACE);
-    
+    this.handles = this.getElemList(MeshTypes.HANDLE);
+
     for (let k in this.elists) {
       let elist = this.elists[k];
       
@@ -1319,13 +1625,24 @@ export class Mesh extends SceneObjectData {
     for (let vert of this.verts) {
       eidmap[vert.eid] = vert;
     }
-    
-    for (let edge of this.edges) {
-      eidmap[edge.eid] = edge;
-      edge.v1 = eidmap[edge.v1];
-      edge.v2 = eidmap[edge.v2];
+
+    for (let h of this.handles) {
+      eidmap[h.eid] = h;
     }
-    
+
+    for (let e of this.edges) {
+      eidmap[e.eid] = e;
+
+      e.v1 = eidmap[e.v1];
+      e.v2 = eidmap[e.v2];
+
+      e.h1 = eidmap[e.h1];
+      e.h2 = eidmap[e.h2];
+    }
+
+    for (let h of this.handles) {
+      h.owner = eidmap[h.owner];
+    }
     for (let l of this.loops) {
       eidmap[l.eid] = l;
     }
@@ -1418,6 +1735,7 @@ Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
   eidgen    : IDGen;
   flag      : int;
   materials : array(e, DataRef) | DataRef.fromBlock(e);
+  features  : int;
 }
 `;
 

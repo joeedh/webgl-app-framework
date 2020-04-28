@@ -32,7 +32,7 @@ export class FindnearestObject extends FindnearestClass {
     view3d.threeCamera.popUniforms();
   }
 
-  static castRay_framebuffer(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
+  static castViewRay_framebuffer(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
     let gl = view3d.gl;
     let sbuf = view3d.selectbuf;
     let x = ~~p[0], y = ~~p[1];
@@ -180,9 +180,9 @@ export class FindnearestObject extends FindnearestClass {
     return [ret];
   }
 
-  static castRay(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
+  static castViewRay(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
     if (mode === CastModes.FRAMEBUFFER) {
-      return this.castRay_framebuffer(...arguments);
+      return this.castViewRay_framebuffer(...arguments);
     }
   }
 

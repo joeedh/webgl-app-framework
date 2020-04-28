@@ -1,5 +1,5 @@
 import {Shapes} from '../../../core/simplemesh_shapes.js';
-import {FindNearest, castRay, CastModes} from "../findnearest.js";
+import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
 import {WidgetFlags, WidgetTool} from "../widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {HotKey, KeyMap} from "../../editor_base.js";
@@ -146,7 +146,7 @@ export class MeasureToolBase extends ToolMode {
       return;
     }
 
-    let ret = castRay(ctx, ctx.selectMask, mpos, ctx.view3d, CastModes.FRAMEBUFFER);
+    let ret = castViewRay(ctx, ctx.selectMask, mpos, ctx.view3d, CastModes.FRAMEBUFFER);
     if (ret === undefined) {
       this.cursor = undefined;
     }
@@ -249,11 +249,11 @@ export class MeasureToolBase extends ToolMode {
     //(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
     let mpos = new Vector2([x, y]);
 
-    let ret = castRay(ctx, ctx.selectMask, mpos, ctx.view3d, CastModes.FRAMEBUFFER);
+    let ret = castViewRay(ctx, ctx.selectMask, mpos, ctx.view3d, CastModes.FRAMEBUFFER);
 
     //console.log(ret !== undefined);
 
-    //console.log("castRay ret:", ret, mpos);
+    //console.log("castViewRay ret:", ret, mpos);
     if (ret !== undefined) {
       this.cursor = new MeasurePoint(ret.p3d);
       window.redraw_viewport();

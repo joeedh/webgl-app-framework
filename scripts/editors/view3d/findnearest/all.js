@@ -2,3 +2,4 @@
 //
 
 import './findnearest_object.js';
+import './findnearest_mesh.js';

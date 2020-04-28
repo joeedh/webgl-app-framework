@@ -499,8 +499,16 @@ export class ShaderProgram {
     
     return this.uniformlocs[name];
   }
-  
+
   attrloc(name) {
+    return this.attrLocation(name);
+  }
+
+  attrLoc(name) {
+    if (!(name in this.attrlocs)) {
+      this.attrlocs[name] = this.gl.getAttribLocation(this.program, name);
+    }
+
     return this.attrlocs[name];
   }
   

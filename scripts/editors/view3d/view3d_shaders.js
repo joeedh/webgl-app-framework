@@ -2,10 +2,10 @@ import {Matrix4} from '../../util/vectormath.js';
 import {ShaderProgram} from "../../core/webgl.js";
 
 export let PolygonOffset = {
-  pre : '',
-  vertex : (posname) => {return '';},
-  pre1  : `uniform float polygonOffset;`,
-  vertex1 : (posname) => `
+  //pre : '',
+  //vertex : (posname) => {return '';},
+  pre  : `uniform float polygonOffset;`,
+  vertex : (posname) => `
   {
     float z = ${posname}[2];
     z -= polygonOffset*0.0001;
@@ -184,7 +184,7 @@ uniform mat4 normalMatrix;
 
 attribute vec3 position;
 //attribute vec3 normal;
-//attribute vec2 uv;
+attribute vec2 uv;
 attribute vec4 color;
 attribute float id;
 
@@ -256,7 +256,7 @@ uniform mat4 normalMatrix;
 
 attribute vec3 position;
 //attribute vec3 normal;
-//attribute vec2 uv;
+attribute vec2 uv;
 attribute vec4 color;
 attribute float id;
 
@@ -284,7 +284,7 @@ void main() {
   gl_Position = p;
   gl_PointSize = pointSize;
   
-  vId = id;// + id_offset;
+  vId = id + 1.0; // + id_offset;
   
   vec4 c;
   
@@ -304,17 +304,18 @@ varying float vId;
 ${PolygonOffset.pre}
 
 void main() {
-  gl_FragColor = vec4(vId+1.0, object_id, 0.0, 1.0);
+  gl_FragColor = vec4(object_id, vId, 0.0, 1.0);
   ${PolygonOffset.fragment}
 }
   `,
 
   uniforms : {
-    objectMatrix : new Matrix4()
+    objectMatrix : new Matrix4(),
+    pointSize : 5
   },
 
   attributes : [
-    "position", "color", "id"
+    "position", "uv", "color", "id"
   ]
 };
 

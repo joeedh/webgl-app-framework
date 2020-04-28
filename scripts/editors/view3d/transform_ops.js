@@ -11,7 +11,7 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js
 import {View3DOp} from './view3d_ops.js';
 import {isect_ray_plane} from '../../path.ux/scripts/math.js';
 import {calcTransCenter} from "./transform_query.js";
-import {CastModes, castRay} from './findnearest.js';
+import {CastModes, castViewRay} from './findnearest.js';
 
 import {ListProperty, StringSetProperty} from "../../path.ux/scripts/toolprop.js";
 
@@ -501,7 +501,7 @@ export class TranslateOp extends TransformOp {
 
       view3d.project(sco);
 
-      let ret = castRay(ctx, SelMask.OBJECT|SelMask.GEOM, sco, view3d);
+      let ret = castViewRay(ctx, SelMask.OBJECT|SelMask.GEOM, sco, view3d);
 
       if (ret !== undefined) {
         co.sub(ret.p3d).negate();

@@ -184,7 +184,6 @@ export class PopupEditor extends Editor {
       let h = ~~(rect.height+0.5);
 
       if (w !== this.size[0] || h !== this.size[1]) {
-        console.log("updating .size");
         this.size[0] = w;
         this.size[1] = h;
 

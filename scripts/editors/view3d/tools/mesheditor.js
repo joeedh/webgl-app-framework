@@ -54,22 +54,6 @@ export class MeshEditor extends ToolMode {
     this.keymap = new KeyMap([
       new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
       new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
-      new HotKey("E", [], () => {
-        let tool1 = this.ctx.api.createTool(this.ctx, "mesh.extrude_regions()");
-        let tool2 = this.ctx.api.createTool(this.ctx, "view3d.translate()");
-
-        let macro = new ToolMacro();
-        macro.add(tool1);
-        macro.add(tool2);
-
-        macro.connect(tool1, tool2, () => {
-          tool2.inputs.constraint_space.setValue(tool1.outputs.normalSpace.getValue());
-        });
-        tool2.inputs.constraint.setValue([0, 0, 1]);
-
-        this.ctx.toolstack.execTool(macro, this.ctx);
-        //"mesh.extrude_regions()"
-      }),
       new HotKey("D", [], "mesh.subdivide_smooth()")
     ]);
 

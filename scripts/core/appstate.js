@@ -13,6 +13,7 @@ import '../editors/resbrowser/resbrowser.js';
 import '../editors/resbrowser/resbrowser_ops.js';
 import '../editors/resbrowser/resbrowser_types.js';
 
+import '../editors/view3d/tools/tools.js';
 import {checkForTextBox} from "../path.ux/scripts/ui_widgets.js";
 import {keymap} from "../path.ux/scripts/events.js";
 import {Material} from './material.js';
@@ -467,7 +468,6 @@ export class AppState {
         found_screen = true;
       } else if (args.load_library && type == BlockTypes.LIBRARY) {
         datalib = istruct.read_object(data, Library);
-        console.log("Found library");
 
         this.datalib.destroy();
         this.datalib = datalib;

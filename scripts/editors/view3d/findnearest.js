@@ -4,7 +4,7 @@ import {Vector2, Vector3} from "../../util/vectormath.js";
 import {SelMask} from "./selectmode.js";
 
 export const CastModes = {
-  FRAMEBUFFER : 0, //castRay p parameter is in screen space (through view3d.getLocalMouse)
+  FRAMEBUFFER : 0, //castViewRay p parameter is in screen space (through view3d.getLocalMouse)
   GEOMETRIC  : 1, //implement me! castRay p parameter is in world space
 };
 
@@ -70,7 +70,7 @@ export function FindNearest(ctx, selectMask, mpos, view3d=undefined, limit=25) {
   return ret;
 }
 
-export function castRay(ctx, selectMask, mpos, view3d, mode=CastModes.FRAMEBUFFER) {
+export function castViewRay(ctx, selectMask, mpos, view3d, mode=CastModes.FRAMEBUFFER) {
   view3d = view3d === undefined ? ctx.view3d : view3d;
 
   let ret = [];
@@ -79,7 +79,7 @@ export function castRay(ctx, selectMask, mpos, view3d, mode=CastModes.FRAMEBUFFE
     let def = getDefine(cls);
 
     if (def.selectMask & selectMask) {
-      let ret2 = cls.castRay(ctx, selectMask, mpos, view3d, mode);
+      let ret2 = cls.castViewRay(ctx, selectMask, mpos, view3d, mode);
       if (ret2 !== undefined) {
         ret = ret.concat(ret2);
       }
@@ -122,7 +122,7 @@ export class FindnearestClass {
    *
    * @return array of 1 or more FindNearestRet instances
    */
-  static castRay(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
+  static castViewRay(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
 
   }
 

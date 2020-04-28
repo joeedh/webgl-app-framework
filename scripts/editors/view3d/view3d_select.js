@@ -1,4 +1,4 @@
-import {Vector3, Vector2} from '../../util/vectormath.js';
+import {Vector3, Vector2, Matrix4} from '../../util/vectormath.js';
 import {FBO, FrameStage, FramePipeline} from "../../core/fbo.js";
 import {Shaders} from './view3d_shaders.js';
 import {FindNearestTypes} from './findnearest.js';
@@ -27,6 +27,9 @@ export class GPUSelectBuffer {
   gen(ctx, gl, view3d) {
     this.regen = false;
 
+    this.size[0] = ~~view3d.glSize[0];
+    this.size[1] = ~~view3d.glSize[1];
+
     if (this.depth_fbo !== undefined) {
       this.depth_fbo.destroy(gl);
     }
@@ -42,7 +45,7 @@ export class GPUSelectBuffer {
     this.depth_fbo.unbind(gl);
   }
 
-  draw(ctx, gl, view3d) {
+  draw(ctx, gl, view3d, selmask=ctx.selectMask) {
     /*
     if (this.fbo === undefined) {
       this.fbo = new FBO(gl, ~~this.size[0], ~~this.size[1]);
@@ -52,11 +55,9 @@ export class GPUSelectBuffer {
     }
     //*/
 
-    this.size[0] = ~~view3d.glSize[0];
-    this.size[1] = ~~view3d.glSize[1];
     let camera = view3d.camera;
 
-    this.fbo.update(gl, this.size[0], this.size[1]);
+    this.fbo.update(gl, ~~this.size[0], ~~this.size[1]);
     this.fbo.bind(gl);
 
     let uniforms = {
@@ -84,8 +85,20 @@ export class GPUSelectBuffer {
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
 
       for (let fn of FindNearestTypes) {
-        fn.drawIDs(view3d, gl, uniforms, ob, ob.data, 0);
+        let def = fn.define();
+
+        //if (fn.selectMask & selmask) {
+          fn.drawIDs(view3d, gl, uniforms, ob, ob.data, 0);
+        //}
       }
+    }
+
+    if (ctx.scene.toolmode) {
+      uniforms.objectMatrix = new Matrix4();
+      uniforms.projectionMatrix = view3d.camera.rendermat;
+      uniforms.object_id = -1;
+
+      ctx.scene.toolmode.drawIDs(view3d, gl, uniforms);
     }
 
     gl.finish();
@@ -93,12 +106,12 @@ export class GPUSelectBuffer {
     this.fbo.unbind(gl);
   }
 
-  sampleBlock(ctx, gl, view3d, x, y, w=16, h=16, sampleDepth=false) {
+  sampleBlock(ctx, gl, view3d, x, y, w=16, h=16, sampleDepth=false, selmask=ctx.selectMask) {
     //console.log(x, y, this.pos[0], this.pos[1]);
     let ret;
 
     try {
-      ret = this.sampleBlock_intern(ctx, gl, view3d, x, y, w, h, sampleDepth);
+      ret = this.sampleBlock_intern(ctx, gl, view3d, x, y, w, h, sampleDepth, selmask);
     } catch (error) {
       util.print_stack(error);
       console.log("error in sampleBlock");
@@ -110,7 +123,7 @@ export class GPUSelectBuffer {
     //XXX try to avoid screen flashing bug
     gl.finish();
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    window.redraw_viewport();
+    //window.redraw_viewport();
 
     return ret;
   }
@@ -142,7 +155,7 @@ export class GPUSelectBuffer {
     return ret;
   }
 
-  sampleBlock_intern(ctx, gl, view3d, x, y, w=16, h=16, sampleDepth=false) {
+  sampleBlock_intern(ctx, gl, view3d, x, y, w=16, h=16, sampleDepth=false, selmask=ctx.selectMask) {
     let dpi = gl.canvas.dpi;
 
     w = ~~(w*dpi + 0.5);
@@ -161,11 +174,13 @@ export class GPUSelectBuffer {
       this.dirty();
     }
 
-    if (this.regen) {
+    let update = ~~view3d.glSize[0] !== this.size[0] || ~~view3d.glSize[1] !== this.size[1];
+
+    if (this.regen || update) {
       this.gen(ctx, gl, view3d);
     }
 
-    this.draw(ctx, gl, view3d);
+    this.draw(ctx, gl, view3d, selmask);
 
     this.fbo.bind(gl);
     let data = new Float32Array(w*h*4);
@@ -173,6 +188,10 @@ export class GPUSelectBuffer {
     //gl.readPixels(x, y , w, h, gl.RGBA, gl.FLOAT, data);
     gl.readPixels(x, (~~this.size[1]) - (y + h), w, h, gl.RGBA, gl.FLOAT, data);
     this.fbo.unbind(gl);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    //this.fbo.drawQuadScaled(gl, this.size[0], this.size[1], this.fbo.texColor, 1.0/15.0);
 
     if (sampleDepth) {
       let depthData = new Float32Array(w*h*4);

@@ -1,6 +1,7 @@
 import './extern/three_patches.js';
 
 import * as appstate from './core/appstate.js';
+import {loadShapes} from './core/simplemesh_shapes.js';
 
 import {setMetric, setBaseUnit} from "./path.ux/scripts/units.js";
 import {Icons} from './editors/icon_enum.js';
@@ -61,6 +62,7 @@ updateIconDPI();
 
 window.init = () => {
   console.log("init!");
+  loadShapes();
   appstate.init();
 
   //shortcut for console use only

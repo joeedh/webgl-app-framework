@@ -484,7 +484,7 @@ export class SimpleIsland {
     let cos = this.point_cos;
     cos.push(v1[0]); cos.push(v1[1]); cos.push(v1[2]);
 
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
+    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
 
     for (i=0; i<1; i++) {
       if (layerflag & LayerTypes.UV)
@@ -508,7 +508,7 @@ export class SimpleIsland {
     cos.push(v1[0]); cos.push(v1[1]); cos.push(v1[2]);
     cos.push(v2[0]); cos.push(v2[1]); cos.push(v2[2]);
 
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
+    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
     
     for (i=0; i<2; i++) {
       if (layerflag & LayerTypes.UV)
@@ -533,7 +533,7 @@ export class SimpleIsland {
     cos.push(v2[0]); cos.push(v2[1]); cos.push(v2[2]);
     cos.push(v3[0]); cos.push(v3[1]); cos.push(v3[2]);
     
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
+    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
     
     for (var i=0; i<3; i++) {
       if (layerflag & LayerTypes.UV)
@@ -566,7 +566,7 @@ export class SimpleIsland {
   }
   
   gen_buffers(gl) {
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
+    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
     
     for (var layer of this.layers) {
       if (!(layer.type & layerflag)) {
@@ -587,57 +587,15 @@ export class SimpleIsland {
   }
   
   _draw_tris(gl, uniforms, params, program) {
-    let li = 0;
-    
-    for (let i=0; i<6; i++) {
-      gl.disableVertexAttribArray(i);
-    }
-    
-    gl.enableVertexAttribArray(li);
-    
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.tri_cos);
-    gl.vertexAttribPointer(li, this.tri_cos.size, gl.FLOAT, false, 0, 0);
-    
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
-    
-    if (layerflag & LayerTypes.NORMAL) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.tri_normals);
-      gl.vertexAttribPointer(li, this.tri_normals.size, gl.FLOAT, true, 0, 0);
-    }
-    
-    if (layerflag & LayerTypes.UV) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.tri_uvs);
-      gl.vertexAttribPointer(li, this.tri_uvs.size, gl.FLOAT, false, 0, 0);
-    } 
-    
-    if (layerflag & LayerTypes.COLOR) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.tri_colors);
-      gl.vertexAttribPointer(li, this.tri_colors.size, gl.FLOAT, false, 0, 0);
-    }
-    
-    if (layerflag & LayerTypes.ID) {
-      li++;
-
-      //console.log(this.tri_ids, "====================", this.tri_cos.length/3, this.tri_ids.size);
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.tri_ids);
-      gl.vertexAttribPointer(li, this.tri_ids.size, gl.FLOAT, false, 0, 0);
-    }
+    this.bindArrays(gl, uniforms, program, "tri");
     
     gl.drawArrays(gl.TRIANGLES, 0, this.tottri*3);
   }
 
-  _draw_points(gl, uniforms, params) {
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
+  bindArrays(gl, uniforms, program, key) {
+    program = program === undefined ? this.program : program;
+    program = program === undefined ? this.mesh.program : program;
+    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
 
     for (let i=0; i<6; i++) {
       gl.disableVertexAttribArray(i);
@@ -646,92 +604,79 @@ export class SimpleIsland {
     let li = 0;
     gl.enableVertexAttribArray(li);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.point_cos);
-    gl.vertexAttribPointer(li, this.point_cos.size, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_cos"]);
+    gl.vertexAttribPointer(li, this[key + "_cos"].size, gl.FLOAT, false, 0, 0);
 
     if (layerflag & LayerTypes.NORMAL) {
-      li++;
+      li = program.attrLoc("normal");
+      if (li > 0) {
+        gl.simpleshader = program;
 
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.point_normals);
-      gl.vertexAttribPointer(li, this.point_normals.size, gl.FLOAT, true, 0, 0);
+        gl.enableVertexAttribArray(li);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_normals"]);
+        gl.vertexAttribPointer(li, this[key + "_normals"].size, gl.FLOAT, true, 0, 0);
+      } else {
+        //console.warn("no normals attribute");
+      }
     }
 
     if (layerflag & LayerTypes.UV) {
-      li++;
+      li = program.attrLoc("uv");
 
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.point_uvs);
-      gl.vertexAttribPointer(li, this.point_uvs.size, gl.FLOAT, false, 0, 0);
+      if (li > 0) {
+        gl.enableVertexAttribArray(li);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_uvs"]);
+        gl.vertexAttribPointer(li, this[key + "_uvs"].size, gl.FLOAT, false, 0, 0);
+      } else {
+        //console.warn("no uv attribute");
+      }
     }
 
     if (layerflag & LayerTypes.COLOR) {
-      li++;
+      li = program.attrLoc("color");
 
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.point_colors);
-      gl.vertexAttribPointer(li, this.point_colors.size, gl.FLOAT, false, 0, 0);
+      if (li > 0) {
+        gl.enableVertexAttribArray(li);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_colors"]);
+        gl.vertexAttribPointer(li, this[key + "_colors"].size, gl.FLOAT, false, 0, 0);
+      } else {
+        //console.warn("no color attribute");
+      }
     }
 
     if (layerflag & LayerTypes.ID) {
-      li++;
+      li = program.attrLoc("id");
 
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.point_ids);
-      gl.vertexAttribPointer(li, this.point_ids.size, gl.FLOAT, false, 0, 0);
+      if (li > 0) {
+        gl.enableVertexAttribArray(li);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_ids"]);
+        gl.vertexAttribPointer(li, this[key + "_ids"].size, gl.FLOAT, false, 0, 0);
+      } else {
+        //console.warn("no id attribute");
+      }
     }
-
-    //console.log(this.totpoint, this.point_cos);
-    gl.drawArrays(gl.POINTS, 0, this.totpoint);
   }
 
-  _draw_lines(gl, uniforms, params) {
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
+  _draw_points(gl, uniforms, params, program) {
+    this.bindArrays(gl, uniforms, program, "point");
 
-    for (let i=0; i<6; i++) {
-      gl.disableVertexAttribArray(i);
+    if (this.totpoint > 0) {
+      //console.log(this.totpoint, this.point_cos);
+      gl.drawArrays(gl.POINTS, 0, this.totpoint);
+    } else {
+      console.log("no geometry");
     }
-    
-    let li = 0;
-    gl.enableVertexAttribArray(li);
-    
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.line_cos);
-    gl.vertexAttribPointer(li, this.line_cos.size, gl.FLOAT, false, 0, 0);
+  }
 
-    if (layerflag & LayerTypes.NORMAL) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.line_normals);
-      gl.vertexAttribPointer(li, this.line_normals.size, gl.FLOAT, true, 0, 0);
-    }
-    
-    if (layerflag & LayerTypes.UV) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.line_uvs);
-      gl.vertexAttribPointer(li, this.line_uvs.size, gl.FLOAT, false, 0, 0);
-    } 
-    
-    if (layerflag & LayerTypes.COLOR) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.line_colors);
-      gl.vertexAttribPointer(li, this.line_colors.size, gl.FLOAT, false, 0, 0);
-    }
-    
-    if (layerflag & LayerTypes.ID) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.line_ids);
-      gl.vertexAttribPointer(li, this.line_ids.size, gl.FLOAT, false, 0, 0);
-    }
+  _draw_lines(gl, uniforms, params, program) {
+    this.bindArrays(gl, uniforms, program, "line");
     
     //console.log(this.totline, this.line_cos);
-    gl.drawArrays(gl.LINES, 0, this.totline*2);
+    if (this.totline > 0) {
+      gl.drawArrays(gl.LINES, 0, this.totline*2);
+    } else {
+      console.log("no geometry");
+    }
   }
 
   onContextLost(e) {

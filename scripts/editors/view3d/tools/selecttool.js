@@ -1,4 +1,4 @@
-import {FindNearest, castRay, CastModes} from "../findnearest.js";
+import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
 import {ExtrudeRegionsOp} from '../../../mesh/mesh_ops.js';
 import {ObjectFlags} from '../../../sceneobject/sceneobject.js';
 import {ToolMode} from '../view3d_toolmode.js';
@@ -117,10 +117,7 @@ export class ObjectEditor extends ToolMode {
       return;
     }
 
-    console.log("click select!");
     let ret = this.findnearest(ctx, x, y);
-
-    console.log("ob:", ret);
 
     if (ret === undefined) {
       return;

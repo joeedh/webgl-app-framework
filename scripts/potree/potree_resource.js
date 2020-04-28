@@ -75,7 +75,6 @@ export class PointSetResource extends ResourceType {
 
     let cb = (pcloud) => {
       this.data = pcloud;
-      console.log("Point Cloud", pcloud);
 
       this.initMaterials();
       this.ready = true;

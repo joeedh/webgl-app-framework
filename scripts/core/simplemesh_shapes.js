@@ -32,5 +32,3 @@ export function loadShapes() {
     Shapes[k] = readOBJ(buf).genRender(undefined, true);
   }
 }
-
-loadShapes();

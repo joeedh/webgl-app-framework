@@ -294,6 +294,12 @@ set view3d(val) {
 }
 //*/
 
+  /**
+   * draw any extra ids the toolmode needs
+   * */
+  drawIDs(view3d, gl, uniforms) {
+  }
+
   /*
   * called for all objects;  returns true
   * if an object if the toolmode drew the object

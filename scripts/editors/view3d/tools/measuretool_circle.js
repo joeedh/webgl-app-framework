@@ -11,7 +11,7 @@ import {KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
 import {Shapes} from '../../../core/simplemesh_shapes.js';
-import {FindNearest, castRay, CastModes} from "../findnearest.js";
+import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
 import {ToolMode} from "../view3d_toolmode.js";
 import * as units from '../../../path.ux/scripts/units.js';
 import {circ_from_point3} from '../../../util/math.js';

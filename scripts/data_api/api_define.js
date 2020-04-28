@@ -319,11 +319,15 @@ function api_define_material(api, parent) {
 }
 
 function api_define_sceneobject(api, parent) {
-  let ostruct = api_define_datablock(api, Material);
+  let ostruct = api_define_datablock(api, SceneObject);
 
   parent.struct("object", "object", SceneObject, ostruct);
 
+  ostruct.dynamicStruct("data", "data", "data");
+
   api_define_material(api, ostruct);
+
+  return ostruct;
 }
 
 function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
@@ -586,9 +590,53 @@ export function getDataAPI() {
   api_define_scene(api, cstruct);
   api_define_light(api, cstruct);
 
-  api_define_sceneobject(api, cstruct);
+  let ostruct = api_define_sceneobject(api, cstruct);
 
+  cstruct.list("", "objects", [
+    function getIter(api, list) {
+      return (function*() {
+        for (let ob of list.datalib.object) {
+          yield ob;
+        }
+      })();
+    },
+    function getLength(api, list) {
+      return list.datalib.object.length;
+    },
+    function get(api, list, key) {
+      return list.datalib.get(key);
+    },
+    function getKey(api, list, obj) {
+      return obj.lib_id;
+    },
+    function getStruct(api, list, key) {
+      return ostruct;
+    }
+  ]);
   api.setRoot(cstruct);
+
+  cstruct.list("", "datablocks", [
+    function getIter(api, list) {
+      return list.datalib.allBlocks;
+    },
+    function getLength(api, list) {
+      let len = 0;
+      for (let block of list.datalib.allBlocks) {
+        len++;
+      }
+      return len;
+    },
+    function get(api, list, key) {
+      return list.datalib.get(key);
+    },
+    function getKey(api, list, obj) {
+      return obj.lib_id;
+    },
+    function getStruct(api, list, key) {
+      console.log(list.datalib.get(key).constructor);
+      return api.mapStruct(list.datalib.get(key).constructor, false);
+    }
+  ]);
 
   api_define_graphclasses(api);
 

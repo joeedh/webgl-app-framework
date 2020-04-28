@@ -186,7 +186,8 @@ export class FBO {
     quad.draw(gl, {
       rgba  : tex,
       depth : tex,
-      size : [width, height]
+      size : [width, height],
+      valueScale : 1.0
     });
 
     if (dither) {
@@ -194,6 +195,18 @@ export class FBO {
     }
   }
 
+  drawQuadScaled(gl, width, height, tex=this.texColor, value_scale=1.0) {
+    let quad = this._getQuad(gl, width, height);
+
+    quad.program = this.blitshader;
+    quad.uniforms.rgba = tex;
+    quad.uniforms.valueScale = value_scale;
+
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+
+    this.smesh.draw(gl);
+  }
   /**
    * Draws texture to screen
    * Does not bind framebuffer
@@ -203,6 +216,7 @@ export class FBO {
 
     quad.program = this.blitshader;
     quad.uniforms.rgba = tex;
+    quad.uniforms.valueScale = 1.0;
 
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.BLEND);
@@ -297,12 +311,14 @@ precision mediump float;
 
 uniform sampler2D rgba;
 uniform sampler2D depth;
+uniform float valueScale;
 
 varying vec2 v_Uv;
 
 void main(void) {
-gl_FragColor = texture2D(rgba, v_Uv);
-gl_FragDepthEXT = texture2D(depth, v_Uv)[0];
+  vec4 color = texture2D(rgba, v_Uv);
+  gl_FragColor = vec4(color.rgb*valueScale, color.a);
+  gl_FragDepthEXT = texture2D(depth, v_Uv)[0];
 }
 
   `,
@@ -335,13 +351,16 @@ precision mediump float;
 
 uniform sampler2D rgba;
 uniform sampler2D depth;
+uniform float valueScale;
 
 in vec2 v_Uv;
 out vec4 fragColor;
 
 void main(void) {
-fragColor = texture(rgba, v_Uv);
-gl_FragDepth = texture(depth, v_Uv)[0];
+  vec4 color = texture(rgba, v_Uv);
+  fragColor = vec4(color.rgb*valueScale, color.a);
+
+  gl_FragDepth = texture(depth, v_Uv)[0];
 }
 
   `,

@@ -1,6 +1,4 @@
 import * as vectormath from './vectormath.js';
-import * as math from './math.js';
-import * as util from './util.js';
 
 import {Mesh} from '../mesh/mesh.js';
 
@@ -19,7 +17,7 @@ export function readOBJ(buf) {
     lines2.push(l);
   }
   lines = lines2;
-
+  
   let me = new Mesh();
   let vert_uvs = [];
   let vert_nos = [];

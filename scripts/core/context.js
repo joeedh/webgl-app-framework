@@ -22,6 +22,84 @@ export class ToolContext {
     this._appstate = appstate;
   }
 
+  /***
+   * Returns a new ctx with key overridden
+   */
+  override(overrides={}) {
+    for (let k in overrides) {
+      let v = overrides[k];
+
+      if (typeof v === "object") {
+        throw new Error("overrides must be function getters that looks up data in real time");
+      }
+    }
+
+    let keys = new Set();
+
+    for (let k in this) {
+      keys.add(k);
+    }
+
+    for (let k in Object.getOwnPropertyDescriptors(this)) {
+      keys.add(k);
+    }
+
+    for (let k in this.__proto__) {
+      keys.add(k);
+    }
+
+    let proto = this;
+
+    while (proto) {
+      for (let k in proto) {
+        keys.add(k);
+      }
+
+      for (let k in Object.getOwnPropertyDescriptors(proto)) {
+        keys.add(k);
+      }
+
+      proto = proto.__proto__;
+    }
+
+    let ret = {};
+
+    ret.error = this.error;
+    ret.warning = this.warning;
+    ret.message = this.message;
+    ret.save = () => {};
+
+    for (let k of keys) {
+      if (!ret[k] && k !== "constructor" && k !== "appstate") {
+        ret[k] = this[k];
+      }
+    }
+
+    function setprop(k) {
+      Object.defineProperty(ret, k, {
+        get : function() {
+          return overrides[k].call(this);
+        }
+      });
+    }
+
+    for (let k in overrides) {
+      setprop(k);
+    }
+
+    return ret;
+  }
+
+  error(message, timeout=1500) {
+    let state = this.state;
+
+    console.warn(message);
+
+    if (state && state.screen) {
+      return ui_noteframe.error(state.screen, message, timeout);
+    }
+  }
+
   warning(message, timeout=1500) {
     let state = this.state;
 
@@ -38,7 +116,7 @@ export class ToolContext {
     console.warn(msg);
 
     if (state && state.screen) {
-      return ui_noteframe.sendNote(state.screen, msg, "green", timeout);
+      return ui_noteframe.message(state.screen, msg, timeout);
     }
   }
 
@@ -84,10 +162,6 @@ export class ToolContext {
   
   get scene() { /** get active scene */
     return this.datalib.getLibrary("scene").active;
-  }
-
-  save() { /** deprecated */
-    //XXX why does this method exist?
   }
 
   get object() { /** get active object */
@@ -216,7 +290,7 @@ export class Context extends ToolContext {
 }
 
 export class SavedContext extends ToolContext {
-  constructor(ctx, datalib) {
+  constructor(ctx, datalib=ctx.state.datalib) {
     super(ctx.state);
 
     this._material = new DataRef();
@@ -267,10 +341,12 @@ export class SavedContext extends ToolContext {
   //might need to get rid of this save function in base class
   save() {
     this.lock();
+    return this;
   }
 
   lock() {
     this.ctx = undefined;
+    return this;
   }
 
   _getblock(key) {
@@ -421,13 +497,86 @@ nstructjs.manager.add_class(SavedContext);
 //modal tools have special context structures
 //that save properties that might change inside a
 //modal tool, like current area, etc.
-export class ModalContext extends SavedContext {
+export class ModalContext {
   constructor(ctx) {
-    super(ctx, ctx.datalib);
+    this.ctx = ctx;
+
     this._view3d = ctx.view3d;
     this._selectMask = ctx.selectMask;
     this._nodeEditor = ctx.nodeEditor;
     this._area = ctx.area;
+  }
+
+  get mesh() {
+    return this.ctx.mesh;
+  }
+
+  get scene() {
+    return this.ctx.scene;
+  }
+
+  get graph() {
+    return this.ctx.graph;
+  }
+
+  get toolmode() {
+    return this.ctx.toolmode;
+  }
+
+  get toolstack() {
+    return this.ctx.toolstack;
+  }
+
+  progbar() {
+    return this.ctx.progbar(...arguments);
+  }
+
+  warning() {
+    return this.ctx.warning(...arguments);
+  }
+
+  error() {
+    return this.ctx.error(...arguments);
+  }
+
+  get selectedLightObjects() {
+    return this.ctx.selectedLightObjects;
+  }
+
+  get cursor3D() {
+    return this.ctx.cursor3D;
+  }
+
+  message() {
+    return this.ctx.message(...arguments);
+  }
+
+  get object() {
+    return this.ctx.object;
+  }
+
+  get selectedObjects() {
+    return this.ctx.selectedObjects;
+  }
+
+  get selectedMeshObjects() {
+    return this.ctx.selectedMeshObjects;
+  }
+
+  get state() {
+    return this.ctx.state;
+  }
+
+  get datalib() {
+    return this.ctx.datalib;
+  }
+
+  get api() {
+    return this.ctx.api;
+  }
+
+  get material() {
+    return this.ctx.material;
   }
 
   get area() {
@@ -470,9 +619,9 @@ export class AppToolStack extends ToolStack {
     }
     undoflag = undoflag === undefined ? 0 : undoflag;
 
-    if (!(undoflag & UndoFlags.IS_UNDO_ROOT) && !(undoflag & UndoFlags.NO_UNDO)) {
-      tctx = new SavedContext(ctx, ctx.datalib);
-    }
+    //if (!(undoflag & UndoFlags.IS_UNDO_ROOT) && !(undoflag & UndoFlags.NO_UNDO)) {
+      //tctx = new SavedContext(ctx, ctx.datalib);
+    //}
 
     toolop.execCtx = tctx;
 
@@ -517,7 +666,6 @@ export class AppToolStack extends ToolStack {
       tool.undo(tool.execCtx);
 
       this.cur--;
-      this.ctx.save();
     }
   }
 
@@ -535,8 +683,6 @@ export class AppToolStack extends ToolStack {
       tool.execPost(tool.execCtx);
 
       window.redraw_viewport();
-
-      this.ctx.save(); //XXX why does this exist?
     }
   }
 }
