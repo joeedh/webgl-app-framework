@@ -52,6 +52,8 @@ export class ExtrudeOneVertexOp extends MeshOp {
     ok = ok && (mesh.features & MeshFeatures.MAKE_EDGE);
     ok = ok && v !== mesh.verts.active; //in case of auto-setting somewhere
 
+    ok = ok && (mesh.verts.active.edges.length < 2 || (mesh.features & MeshFeatures.GREATER_TWO_VALENCE));
+
     this.outputs.vertex.setValue(v.eid);
 
     if (ok) {
