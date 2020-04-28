@@ -1693,6 +1693,21 @@ export class Mesh extends SceneObjectData {
     this.validateMesh();
   }
 
+  getBoundingBox() {
+    let ret = undefined;
+
+    for (let v of this.verts) {
+      if (ret === undefined) {
+        ret = [new Vector3(v), new Vector3(v)]
+      } else {
+        ret[0].min(v);
+        ret[1].max(v);
+      }
+    }
+
+    return ret;
+  }
+
   dataLink(getblock, getblock_addUser) {
     for (let i=0; i<this.materials.length; i++) {
       this.materials[i] = getblock_addUser(this.materials[i]);

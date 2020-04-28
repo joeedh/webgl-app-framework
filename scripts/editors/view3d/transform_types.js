@@ -185,7 +185,7 @@ export class MeshTransType extends TransDataType {
     mesh.regenRender();
   }
 
-  static getCenter(ctx, selmask, spacemode, space_matrix_out) {
+  static getCenter(ctx, list, selmask, spacemode, space_matrix_out) {
     let c = meshGetCenterTemps.next().zero();
     let tot = 0.0;
 
