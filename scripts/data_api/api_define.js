@@ -5,10 +5,13 @@ import '../potree/potree_ops.js';
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js';
 import {resourceManager} from "../core/resource.js";
 import '../core/image.js';
+import {buildCDAPI} from "../mesh/customdata.js";
 
 import {makeToolModeEnum, ToolModes, ToolMode} from "../editors/view3d/view3d_toolmode.js";
 
 import '../mesh/mesh_createops.js';
+
+import {CurveSpline} from "../curve/curve.js";
 
 let STRUCT = nstructjs.STRUCT;
 import '../editors/view3d/widget_tools.js'; //ensure widget tools are all registered
@@ -28,9 +31,9 @@ import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from "../co
 import {VelPan, VelPanFlags} from '../editors/velpan.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Context} from '../core/context.js';
-import {MeshModifierFlags, MeshFlags} from '../mesh/mesh_base.js';
+import {MeshModifierFlags, MeshFlags, MeshTypes, MeshDrawFlags, MeshFeatures} from '../mesh/mesh_base.js';
 import {Mesh} from '../mesh/mesh.js';
-import {Vertex, Edge, Loop, Face} from '../mesh/mesh_types.js';
+import {Vertex, Edge, Element, Loop, Face, Handle} from '../mesh/mesh_types.js';
 import {ShaderNetwork} from '../core/shadernetwork.js';
 import {Material} from '../core/material.js';
 import '../shadernodes/allnodes.js';
@@ -234,6 +237,20 @@ function api_define_datablock(api, cls=DataBlock) {
   return dstruct;
 }
 
+export function api_define_meshelem(api) {
+  let st = api.mapStruct(Element, true);
+
+  st.flags("flag", "flag", MeshFlags);
+  st.flags("type", "type", MeshTypes).read_only();
+  st.int("eid", "id", "ID", "ID").read_only();
+
+  buildCDAPI(api, st);
+}
+
+export function api_define_meshvertex(api) {
+  let st = api.inheritStruct(Vertex, Element);
+}
+
 export function api_define_mesh(api, pstruct) {
   let mstruct = api_define_datablock(api, Mesh);
   pstruct.struct("mesh", "mesh", "Mesh", mstruct);
@@ -246,9 +263,43 @@ export function api_define_mesh(api, pstruct) {
   def.on("change", (e) => {
     window.redraw_viewport();
   });
+
+  api_define_meshelem(api);
+  api_define_meshvertex(api);
+
+  mstruct.list("verts", "verts", [
+    function getIter(api, list) {
+      return list;
+    },
+    function getLength(api, list) {
+      return list.length;
+    },
+    function get(api, list, key) {
+      return list.local_eidmap[key];
+    },
+    function getKey(api, list, obj) {
+      return obj !== undefined ? obj.eid : -1;
+    },
+    function getActive(api, list) {
+      return list.active;
+    },
+    function setActive(api, list, key) {
+      list.active = key !== undefined ? list.local_eidmap[key] : undefined;
+      window.redraw_viewport();
+    },
+    function getStruct(api, list, key) {
+      return api.mapStruct(Vertex, false);
+    }
+  ]);
+
   //MeshModifierFlags
 }
 
+export function api_define_curvespline(api) {
+  let cstruct = api.inheritStruct(CurveSpline, Mesh);
+
+  return cstruct;
+}
 
 function api_define_shadernode(api, cls) {
   let nstruct = api_define_node(api, ShaderNode);
@@ -587,6 +638,7 @@ export function getDataAPI() {
   api_define_library(api, cstruct);
   api_define_editor(api, Editor);
   api_define_screen(api, cstruct);
+  api_define_curvespline(api);
   api_define_scene(api, cstruct);
   api_define_light(api, cstruct);
 

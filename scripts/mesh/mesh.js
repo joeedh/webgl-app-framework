@@ -20,7 +20,7 @@ import {LayerTypes, ChunkedSimpleMesh, SimpleMesh} from "../core/simplemesh.js";
 
 import {MeshTools} from './mesh_stdtools.js';
 import {MeshFeatures, MeshFeatureError, MeshError,
-        MeshTypes, MeshFlags, RecalcFlags} from './mesh_base.js';
+        MeshTypes, MeshFlags, RecalcFlags, MeshDrawFlags} from './mesh_base.js';
 export * from "./mesh_base.js";
 export * from "./mesh_types.js";
 export * from "./mesh_customdata.js";
@@ -63,6 +63,8 @@ export class Mesh extends SceneObjectData {
     //current mesh data generation
     this.updateGen = 0;
     this.partialUpdateGen = 0;
+
+    this.drawflag = 0;
 
     this.eidgen = new util.IDGen();
     this.eidmap = {};
@@ -120,8 +122,8 @@ export class Mesh extends SceneObjectData {
   getElemList(type) {
     if (!(type in this.elists)) {
       this.elists[type] = new ElementList(type);
-      this.elists[type].on_layeradd = this._on_cdlayer_add.bind(this);
-      this.elists[type].on_layerremove = this._on_cdlayer_rem.bind(this);
+      this.elists[type].customData.on_layeradd = this._on_cdlayer_add.bind(this);
+      this.elists[type].customData.on_layerremove = this._on_cdlayer_rem.bind(this);
     }
     
     return this.elists[type];
@@ -136,6 +138,10 @@ export class Mesh extends SceneObjectData {
   }}
     
   _element_init(e) {
+    let list = this.getElemList(e.type);
+
+    list.customData.initElement(e);
+
     e.eid = this.eidgen.next();
     this.eidmap[e.eid] = e;
   }
@@ -408,9 +414,11 @@ export class Mesh extends SceneObjectData {
     }
   }
   
-  killVertex(v) {
-    if (!(this.features & MeshFeatures.KILL_VERT))
-      throw new MeshFeatureError("killVertex not supported");
+  killVertex(v, _nocheck=false) {
+    if (!_nocheck) {
+      if (!(this.features & MeshFeatures.KILL_VERT))
+        throw new MeshFeatureError("killVertex not supported");
+    }
 
     if (v.eid === -1) {
       console.trace("Warning: vertex", v.eid, "already freed", v);
@@ -748,7 +756,7 @@ export class Mesh extends SceneObjectData {
     let faces = new util.set();
     
     if (v.edges.length == 0) {
-      this.killVertex(v);
+      this.killVertex(v, true);
       return;
     }
     
@@ -887,6 +895,8 @@ export class Mesh extends SceneObjectData {
       e.updateHandles();
     }
 
+    let drawnormals = this.drawflag & MeshDrawFlags.SHOW_NORMALS;
+
     for (let e of this.edges) {
       if (e.flag & MeshFlags.HIDE) {
         continue;
@@ -901,26 +911,51 @@ export class Mesh extends SceneObjectData {
       }
 
       let steps = Math.max(Math.floor(len / 5), 8);
-      let s = 0, ds = 1.0 / (steps - 1);
+      let t = 0, dt = 1.0 / (steps - 1);
+      let s = 0, ds = e.length / (steps - 1);
       let lastco = undefined;
       let black = [0,0,0,1];
       let color1 = new Vector4();
       let color2 = new Vector4();
 
-      for (let i=0; i<steps; i++, s += ds) {
-        let co = e.evaluate(s);
+      for (let i=0; i<steps; i++, t += dt, s += ds) {
+        let co = e.arcEvaluate(s);
+
+        if (layers & LayerTypes.COLOR) {
+          color1.load(e.v1.color).interp(e.v2.color, t);
+          color2.load(e.v1.color).interp(e.v2.color, t+dt);
+        }
+
+        if (drawnormals) {
+          let line;
+
+          let n = e.arcNormal(s);
+
+          let co2 = new Vector3(co);
+          co2.addFac(n, e.length*0.05);
+
+          line = sm.line(co, co2);
+          if (layers & LayerTypes.COLOR) {
+            if (e.flag & MeshFlags.CURVE_FLIP) {
+              color1[0] = color1[1] = 1.0;
+              color1[2] = 0.0; color1[3] = 1.0;
+            }
+            line.colors(color1, color1);
+          }
+          if (layers & LayerTypes.ID) {
+            line.ids(e.eid, e.eid);
+          }
+        }
 
         if (i > 0) {
           let line = sm.line(lastco, co);
 
           if (layers & LayerTypes.COLOR) {
-            color1.load(e.v1.color).interp(e.v2.color, s);
-            color2.load(e.v1.color).interp(e.v2.color, s+ds);
             line.colors(color1, color2);
           }
 
           if (layers & LayerTypes.UV) {
-            line.uvs([s, s], [s, s]);
+            line.uvs([t, t], [t, t]);
           }
 
           if (layers & LayerTypes.ID) {
@@ -942,7 +977,7 @@ export class Mesh extends SceneObjectData {
    * */
   genRender(gl, combinedWireframe=false, view3d=undefined) {
     this.recalc &= ~(RecalcFlags.RENDER|RecalcFlags.PARTIAL);
-    
+
     if (this.features & MeshFeatures.EDGE_CURVES_ONLY) {
       this.smesh = this.genRender_curves(gl, combinedWireframe, view3d);
       return this.smesh;
@@ -1403,7 +1438,7 @@ export class Mesh extends SceneObjectData {
   }
 
   copy() {
-    let ret = new Mesh();
+    let ret = new this.constructor();
 
     ret.materials = [];
     for (let mat of this.materials) {
@@ -1552,8 +1587,42 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  validateMesh() {
+  validateMesh(msg_out=[0]) {
     let fix = false;
+
+    let visit = new util.set();
+    let totshell = 0;
+
+    for (let v of this.verts) {
+      if (visit.has(v)) {//} || v.edges.length === 0) {
+        continue;
+      }
+
+      let stack = [v];
+      visit.add(v);
+
+      while (stack.length > 0) {
+        let v2 = stack.pop();
+
+        for (let e of v2.edges) {
+          let v3 = e.otherVertex(v2);
+
+          if (!visit.has(v3)) {
+            stack.push(v3);
+            visit.add(v3);
+          }
+        }
+      }
+
+      totshell++;
+    }
+
+    console.log("totshells:", totshell);
+
+    if (totshell > 1 && (this.features & MeshFeatures.SINGLE_SHELL)) {
+      msg_out[0] = "Can't split up mesh";
+      return false;
+    }
 
     for (let f of this.faces) {
       for (let list of f.lists) {
@@ -1574,7 +1643,7 @@ export class Mesh extends SceneObjectData {
     }
 
     if (!fix) {
-      return fix;
+      return true;
     }
 
     //fix edge->loop links
@@ -1590,7 +1659,7 @@ export class Mesh extends SceneObjectData {
       }
     }
 
-    return fix;
+    return false;
   }
 
   loadSTRUCT(reader) {
@@ -1614,8 +1683,8 @@ export class Mesh extends SceneObjectData {
     for (let k in this.elists) {
       let elist = this.elists[k];
       
-      elist.on_layeradd = this._on_cdlayer_add.bind(this);
-      elist.on_layerremove = this._on_cdlayer_rem.bind(this);
+      elist.customData.on_layeradd = this._on_cdlayer_add.bind(this);
+      elist.customData.on_layerremove = this._on_cdlayer_rem.bind(this);
     }
 
     this.regenRender();
@@ -1688,6 +1757,10 @@ export class Mesh extends SceneObjectData {
           l.list = list;
         }
       }
+    }
+
+    for (let k in this.elists) {
+      this.elists[k].fixCustomData();
     }
 
     this.validateMesh();

@@ -106,11 +106,11 @@ export class MenuBarEditor extends Editor {
     strip.menu("Edit", tools);
 
     strip.menu("Session", [
-      ["Save Defalut File  ", () => {
+      ["Save Default File  ", () => {
         console.log("saving default file");
         _appstate.saveStartupFile();
       }],
-      ["Clear Defalut File  ", () => {
+      ["Clear Default File  ", () => {
         console.log("saving default file");
         _appstate.clearStartupFile();
       }]

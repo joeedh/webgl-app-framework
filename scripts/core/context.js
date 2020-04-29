@@ -603,6 +603,8 @@ export class ModalContext {
 export class AppToolStack extends ToolStack {
   constructor(ctx) {
     super(ctx);
+
+    this._undo_branch = undefined;
   }
 
   execTool(toolop, ctx=this.ctx) {
@@ -629,6 +631,9 @@ export class AppToolStack extends ToolStack {
     if (!(undoflag & UndoFlags.NO_UNDO)) {
       this.cur++;
 
+      //save branch for if tool cancel
+      this._undo_branch = this.slice(this.cur+1, this.length);
+
       //truncate
       this.length = this.cur+1;
 
@@ -654,6 +659,22 @@ export class AppToolStack extends ToolStack {
       toolop.execPre(tctx);
       toolop.exec(tctx);
       toolop.execPost(tctx);
+    }
+  }
+
+  toolCancel(ctx, tool) {
+    if (tool !== this[this.cur]) {
+      console.warn("toolCancel called in error", this, tool);
+      return;
+    }
+
+    this.undo();
+    this.length = this.cur+1;
+
+    if (this._undo_branch !== undefined) {
+      for (let item of this._undo_branch) {
+        this.push(item);
+      }
     }
   }
 

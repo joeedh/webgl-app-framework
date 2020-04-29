@@ -264,6 +264,7 @@ export class MeshToolBase extends ToolMode {
       if (redraw) {
         window.redraw_viewport();
       }
+
       return undefined;
     }
   }
@@ -293,7 +294,10 @@ export class MeshToolBase extends ToolMode {
       return true;
     }
 
-    this.findHighlight(e, x, y);
+    let found = this.findHighlight(e, x, y);
+    if (found) {
+
+    }
   }
 
   findnearest3d(view3d, x, y, selmask) {

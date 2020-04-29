@@ -7,6 +7,10 @@ export const HandleTypes = {
   STRAIGHT : 2
 };
 
+export const MeshDrawFlags = {
+  SHOW_NORMALS : 1
+};
+
 export const MeshFeatures = {
   GREATER_TWO_VALENCE : (1<<1),
   SPLIT_EDGE          : (1<<2),
@@ -22,9 +26,10 @@ export const MeshFeatures = {
   EDGE_HANDLES        : (1<<12),
 
   EDGE_CURVES_ONLY    : (1<<13),
+  SINGLE_SHELL        : (1<<14),
 
-  ALL                 : ((1<<30)-1) & ~(1<<13), //edge_curves_only
-  BASIC               : ((1<<30)-1) & ~((1<<12)|(1<<13)) //everything except handles and edge curves
+  ALL                 : ((1<<30)-1) & ~((1<<13)|(1<<14)), //edge_curves_only
+  BASIC               : ((1<<30)-1) & ~((1<<12)|(1<<13)|(1<<14)) //everything except handles and edge curves
 };
 
 export class MeshError extends Error {
@@ -54,7 +59,8 @@ export const MeshFlags = {
   TEMP1         : 256,
   TEMP2         : 512,
   TEMP3         : 1024,
-  UPDATE        : 2048
+  UPDATE        : 2048,
+  CURVE_FLIP    : 4096 //edge.evaluate goes backwards
 };
 
 export const MeshModifierFlags = {

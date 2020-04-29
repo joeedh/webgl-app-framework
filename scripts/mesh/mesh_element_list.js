@@ -3,7 +3,7 @@ import {MeshError, MeshFlags, MeshTypes} from "./mesh_base.js";
 import * as util from "../util/util.js";
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {CustomData} from "./customdata.js";
+import {CustomData, CustomDataElem} from "./customdata.js";
 
 export class SelectionSet extends util.set {
   constructor() {
@@ -39,11 +39,29 @@ export class ElementList extends Array {
     super();
 
     this.customData = new CustomData();
+    this.local_eidmap = {};
 
     this.type = type;
     this.selected = new SelectionSet();
     this.on_selected = undefined;
     this.highlight = this.active = undefined;
+  }
+
+  swap(a, b) {
+    let i1 = this.indexOf(a);
+    let i2 = this.indexOf(b);
+
+    if (i1 < 0)
+      throw new Error("element not in array " + a);
+    if (i2 < 0)
+      throw new Error("element not in array " + b);
+
+    this[i2] = a;
+    this[i1] = b;
+    return this;
+  }
+  reverse() {
+    return super.reverse();
   }
 
   get editable() {
@@ -128,6 +146,8 @@ export class ElementList extends Array {
       this.selected.add(v);
     }
 
+    this.local_eidmap[v.eid] = v;
+
     return this;
   }
 
@@ -143,6 +163,7 @@ export class ElementList extends Array {
 
     super.remove(v);
 
+    delete this.local_eidmap[v.eid];
     return this;
   }
 
@@ -206,10 +227,11 @@ export class ElementList extends Array {
     for (let item of this.items) {
       this.push(item)
 
+      this.local_eidmap[item.eid] = item;
+
       if (item.eid == act) {
         this.active = item;
       }
-
       if (item.eid == high) {
         this.highlight = item;
       }
@@ -220,6 +242,38 @@ export class ElementList extends Array {
     for (let item of this.items) {
       if (item.flag & MeshFlags.SELECT) {
         this.selected.add(item);
+      }
+    }
+  }
+
+  fixCustomData() {
+    let cd = this.customData;
+
+    for (let e of this) {
+      if (e.customData.length === cd.flatlist.length) {
+        continue;
+      }
+
+      console.warn("Element was missing customdata", e);
+
+      for (let k in cd.layers) {
+        let layerset = cd.layers[k];
+        if (layerset.length === 0) {
+          continue;
+        }
+
+        let count = 0;
+        for (let cdl of e.customData) {
+          if (cdl.typeName == layerset.typeName) {
+            count++;
+          }
+        }
+
+        let typecls = CustomDataElem.getTypeClass(layerset.typeName);
+
+        for (let i = count; i < layerset.length; i++) {
+          e.customData.push(new typecls());
+        }
       }
     }
   }

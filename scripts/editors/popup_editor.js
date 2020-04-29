@@ -234,10 +234,19 @@ export class PopupEditor extends Editor {
   }
 
   tritab(name, icon=-1, description=name, cb=undefined) {
+    for (let tab of this.tabs) {
+      if (tab.name === name) {
+        tab.contents.clear();
+        return tab;
+      }
+    }
+
     let tab = this.tab(name, icon, description)._tab;
 
     tab.inherit_packflag |= this.inherit_packflag;
     tab.contents.inherit_packflag |= this.inherit_packflag;
+    tab.name = name;
+    tab.contents.name = name;
 
     tab.mode = PopupTabModes.TRINARY;
     tab.cb1 = cb;
@@ -246,6 +255,13 @@ export class PopupEditor extends Editor {
   }
 
   tab(name, icon=-1, description=name) {
+    for (let tab of this.tabs) {
+      if (tab.name === name) {
+        tab.contents.clear();
+        return tab;
+      }
+    }
+
     let container = document.createElement("container-x");
 
     container.ctx = this.ctx;
@@ -262,6 +278,7 @@ export class PopupEditor extends Editor {
     let mode = PopupTabModes.BINARY;
     let tab = new PopupButton(this, container, container._tab_id, mode);
 
+    tab.name = name;
     this.tabs.push(tab);
     this.tab_idmap[container._tab_id] = tab;
 

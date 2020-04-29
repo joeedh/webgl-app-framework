@@ -42,6 +42,7 @@ export class ExtrudeOneVertexOp extends MeshOp {
 
     if (!(mesh.features & MeshFeatures.MAKE_VERT)) {
       ctx.error("Mesh doesn't support making new vertices");
+      ctx.toolstack.toolCancel(ctx, this);
       return;
     }
 

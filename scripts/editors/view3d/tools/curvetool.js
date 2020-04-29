@@ -17,9 +17,10 @@ import {SnapModes} from "../transform_ops.js";
 
 import {AddPointOp, MeasureOp} from "./measuretool_ops.js";
 import {MeasurePoint, MeasureFlags} from "./measuretool_base.js";
-import {Mesh} from "../../../mesh/mesh.js";
+import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
         MeshFeatureError} from '../../../mesh/mesh_base.js';
+import {CurveSpline} from "../../../curve/curve.js";
 
 export class CurveToolBase extends MeshToolBase {
   constructor(manager) {
@@ -28,7 +29,7 @@ export class CurveToolBase extends MeshToolBase {
     this._isCurveTool = true;
 
     let path = "scene.tools." + this.constructor.widgetDefine().name;
-    path += ".mesh";
+    path += ".curve";
 
     this._meshPath = path;
     this.selectMask = SelMask.VERTEX|SelMask.HANDLE;
@@ -38,7 +39,8 @@ export class CurveToolBase extends MeshToolBase {
     features |= MeshFeatures.SPLIT_EDGE|MeshFeatures.JOIN_EDGE;
     features |= MeshFeatures.EDGE_HANDLES | MeshFeatures.EDGE_CURVES_ONLY;
 
-    this.mesh = new Mesh(features);
+    this.mesh = new CurveSpline(features);
+    this.drawflag = this.mesh.drawflag = MeshDrawFlags.SHOW_NORMALS;
   }
 
   static widgetDefine() {return {
@@ -67,6 +69,13 @@ export class CurveToolBase extends MeshToolBase {
     return instance._isCurveTool;
   }
 
+  static buildElementSettings(container) {
+    let col = container.col();
+    let path = "scene.tools." + this.widgetDefine().name;
+
+    col.prop(path + ".curve.verts.active.namedLayers['knot'].speed");
+  }
+
   static buildSettings(container) {
   }
 
@@ -76,7 +85,7 @@ export class CurveToolBase extends MeshToolBase {
     strip.useIcons();
 
     let path = "scene.tools." + this.widgetDefine().name;
-    path += ".mesh";
+    path += ".curve";
 
     //strip.tool(`mesh.delete_selected`);
     //strip.tool(`mesh.clear_points`);
@@ -89,9 +98,9 @@ export class CurveToolBase extends MeshToolBase {
   static defineAPI(api) {
     let tstruct = super.defineAPI(api);
 
-    let mstruct = api.mapStruct(Mesh, true);
+    let mstruct = api.mapStruct(CurveSpline, false);
 
-    tstruct.struct("mesh", "mesh", "Mesh", mstruct);
+    tstruct.struct("mesh", "curve", "Curve", mstruct);
 
     let onchange = () => {
       window.redraw_viewport();
@@ -120,6 +129,10 @@ export class CurveToolBase extends MeshToolBase {
     return super.on_mousemove(e, x, y, was_touch);
   }
 
+  reset() {
+    this.mesh = new CurveSpline();
+  }
+
   drawSphere(gl, view3d, p, scale=0.01) {
     let cam = this.ctx.view3d.camera;
     let mat = new Matrix4();
@@ -141,6 +154,7 @@ export class CurveToolBase extends MeshToolBase {
   }
 
   draw(gl, view3d) {
+    this.mesh.drawflag = this.drawflag;
     super.draw(gl, view3d);
   }
 
@@ -154,7 +168,7 @@ export class CurveToolBase extends MeshToolBase {
 }
 
 CurveToolBase.STRUCT = STRUCT.inherit(CurveToolBase, ToolMode) + `
-  mesh : mesh.Mesh;
+  mesh : mesh.CurveSpline;
 }`;
 nstructjs.manager.add_class(CurveToolBase);
 ToolMode.register(CurveToolBase);

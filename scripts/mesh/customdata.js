@@ -1,5 +1,6 @@
 import '../path.ux/scripts/struct.js';
 import * as util from '../util/util.js';
+import {Node} from "../core/graph.js";
 let STRUCT = nstructjs.STRUCT;
 
 export const CDFlags = {
@@ -12,6 +13,12 @@ export let CDElemTypes = [];
 
 export class CustomDataElem {
   constructor() {
+    this.constructor.typeName = this.constructor.define().typeName;
+    this.constructor.prototype.typeName = this.constructor.define().typeName;
+  }
+
+  static apiDefine(api, dstruct) {
+
   }
 
   load(b) {
@@ -44,6 +51,13 @@ export class CustomDataElem {
   }};
   
   static register(cls) {
+    if (!cls.hasOwnProperty("STRUCT")) {
+      throw new Error("You forgot to make a STRUCT script for " + cls.name);
+    }
+    if (!cls.structName) {
+      throw new Error("You forgot to register " + cls.name + " with nstruct.manager.add_class()");
+    }
+
     CDElemTypes.push(cls);
     CDElemMap[cls.define().typeName] = cls;
   }
@@ -57,6 +71,68 @@ mesh.CustomDataElem {
 }
 `;
 nstructjs.manager.add_class(CustomDataElem);
+
+export function buildCDAPI(api, dstruct) {
+  for (let cls of CDElemTypes) {
+    let cstruct = api.mapStruct(cls, true);
+    cls.apiDefine(api, cstruct);
+  }
+
+  dstruct.list("customData", "dataLayers", [
+    function getIter(api, list) {
+      return list;
+    },
+    function getLength(api, list) {
+      return list.length;
+    },
+    function get(api, list, key) {
+      return list[key];
+    },
+    function getKey(api, list, obj) {
+      return list.indexOf(obj);
+    },
+    function getActive(api, list) {
+      return undefined;
+    },
+    function setActive(api, list, key) {
+      return;
+    },
+    function getStruct(api, list, key) {
+      return api.mapStruct(list[key].constructor, false);
+    }
+  ]);
+
+  dstruct.list("customData", "namedLayers", [
+    function getIter(api, list) {
+      return list;
+    },
+    function getLength(api, list) {
+      return list.length;
+    },
+    function get(api, list, key) {
+      if (list === undefined) {
+        return undefined;
+      }
+      for (let i=0; i<list.length; i++) {
+        if (list[i].typeName === key) {
+          return list[i];
+        }
+      }
+    },
+    function getKey(api, list, obj) {
+      return obj.typeName;
+    },
+    function getActive(api, list) {
+      return undefined;
+    },
+    function setActive(api, list, key) {
+      return;
+    },
+    function getStruct(api, list, key) {
+      return api.mapStruct(CustomDataElem.getTypeClass(key), false);
+    }
+  ]);
+}
 
 export class CustomDataLayer {
   constructor(typename, name, flag, id) {
@@ -185,6 +261,15 @@ export class CustomData {
     return layer;
   }
 
+  initElement(e) {
+    e.customData.length = 0;
+
+    for (let layer of this.flatlist) {
+      let cls = CustomDataElem.getTypeClass(layer.typeName);
+      e.customData.push(new cls());
+    }
+  }
+
   hasLayerType(typename) {
     let set = this.getLayerSet(typename);
     return set.length > 0;
@@ -217,9 +302,12 @@ export class CustomData {
     
     let idmap = {};
     
-    for (let layer of this._layers) {
-      this.layers[layer.typeName] = layer;
-      idmap[layer.id] = layer;
+    for (let layerset of this._layers) {
+      this.layers[layerset.typeName] = layerset;
+
+      for (let layer of layerset) {
+        idmap[layer.id] = layer;
+      }
     }
       
     for (let i=0; i<this.flatlist.length; i++) {
@@ -243,7 +331,7 @@ export class CustomData {
 CustomData.STRUCT = `
 mesh.CustomData {
   _layers  : array(mesh.LayerSet) | obj._getLayers();
-  flatlist : array(e, int) | e.id;
+  flatlist : array(layer, int) | layer.id;
   idgen    : IDGen;
 }
 `;

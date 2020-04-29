@@ -44,6 +44,11 @@ export class PropsEditor extends PopupEditor   {
   update() {
     super.update();
 
+    if (this.ctx.scene.toolmode_i !== this._toolmode_i) {
+      this._toolmode_i = this.ctx.scene.toolmode_i;
+      this._needsBuild = true;
+    }
+
     if (this._needsBuild) {
       this.build();
     }
@@ -67,7 +72,22 @@ export class PropsEditor extends PopupEditor   {
     this.toolModeTab(tabs, "object", "Select Mode");
 
     this.buildMeasureTools(tabs);
-    this.buildMaterial(tabs.tab("Material", Icons.MATERIAL));
+
+    this.buildSettingsPanel(tabs);
+  }
+
+  buildSettingsPanel(tabs) {
+    let tab = tabs.tab("Settings", Icons.MATERIAL);
+
+    let panel;
+
+    panel = tab.panel("Materal");
+    this.buildMaterial(panel)
+
+    panel = tab.panel("Elements");
+    if (this.ctx !== undefined && this.ctx.scene.toolmode !== undefined) {
+      this.ctx.scene.toolmode.constructor.buildElementSettings(panel);
+    }
   }
 
   buildMeasureTools(tabs) {
