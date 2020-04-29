@@ -117,6 +117,52 @@ DependSocket.STRUCT = STRUCT.inherit(DependSocket, NodeSocketType, "graph.Depend
 `;
 nstructjs.manager.add_class(DependSocket);
 
+export class IntSocket extends NodeSocketType {
+  constructor(uiname, flag) {
+    super(uiname, flag);
+
+    this.value = 0;
+  }
+
+  static nodedef() {return {
+    name : "int",
+    uiname : "Integer",
+    color : [0.0,0.75,0.25,1]
+  }}
+
+  diffValue(b) {
+    return (this.value - b);
+  }
+
+  copyValue() {
+    return ~~this.value;
+  }
+
+  getValue() {
+    return ~~this.value;
+  }
+
+  setValue(b) {
+    this.value = ~~b;
+  }
+
+  cmpValue(b) {
+    return ~~this.value !== ~~b;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+
+    this.value = !!this.value;
+  }
+};
+IntSocket.STRUCT = STRUCT.inherit(IntSocket, NodeSocketType, "graph.IntSocket") + `
+  value : int;
+}
+`;
+nstructjs.manager.add_class(IntSocket);
+
 export class Vec2Socket extends NodeSocketType {
   constructor(uiname, flag, default_value) {
     super(uiname, flag);

@@ -80,6 +80,12 @@ export class BasicFileOp extends ToolOp {
     lib.add(scene);
     lib.setActive(scene);
 
+    let collection = new Collection();
+    lib.add(collection);
+
+    scene.collection = collection;
+    collection.lib_addUser(scene);
+
     let screenblock = new ScreenBlock();
     screenblock.screen = _appstate.screen;
 
@@ -102,6 +108,7 @@ export class BasicFileOp extends ToolOp {
 
 export {genDefaultScreen} from '../editors/screengen.js';
 import {genDefaultScreen} from '../editors/screengen.js';
+import {Collection} from "../sceneobject/collection.js";
 
 /*
 export function genDefaultScreen(appstate) {
@@ -617,7 +624,7 @@ export class AppState {
 
     if (args.reset_toolstack) {
       this.toolstack.reset(this.ctx);
-      this.toolstack.execTool(this.ctx, new RootFileOp());
+      this.toolstack.execTool(new RootFileOp(), this.ctx);
     }
 
     if (!args.load_screen) {
@@ -660,6 +667,19 @@ export class AppState {
 
   /** this is executed after block re-linking has happened*/
   do_versions_post(version, datalib) {
+    if (version < 0.001) {
+      for (let scene of datalib.scene) {
+        scene.collection = new Collection();
+        this.datalib.add(scene.collection);
+        scene.collection.lib_addUser(scene);
+
+        scene._loading = true;
+        for (let ob of scene.objects) {
+          scene.collection.add(ob);
+        }
+        scene._loading = false;
+      }
+    }
   }
 
   createSettingsFile() {

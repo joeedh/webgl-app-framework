@@ -30,7 +30,8 @@ export const ObjectFlags = {
   HIDE      : 2,
   LOCKED    : 4,
   HIGHLIGHT : 8,
-  ACTIVE    : 16
+  ACTIVE    : 16,
+  INTERNAL  : 32
 };
 
 let _mattemp = new Matrix4();

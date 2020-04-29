@@ -152,6 +152,9 @@ export class CurveSpline extends Mesh {
     this.degree = 3;
     this.knotpad = undefined;
 
+    //owning tool mode, if we're owned by a tool mode
+    this.owningToolMode = "";
+
     this._evaluate_vs = util.cachering.fromConstructor(Vector3, 512);
 
     this._length = 0;
@@ -163,7 +166,18 @@ export class CurveSpline extends Mesh {
     this.regenRender();
   }
 
-  * walk(all_verts=false) {
+  copy() {
+    let ret = super.copy();
+
+    ret.owningToolMode = this.owningToolMode;
+    ret.degree = this.degree;
+    ret.speedLength = this.speedLength;
+    ret._length = this._length;
+
+    return ret;
+  }
+
+  *walk(all_verts=false) {
     if (this.verts.length === 0 || this.verts[0].edges.length === 0) {
       return; //empty mesh
     }
@@ -621,9 +635,10 @@ export class CurveSpline extends Mesh {
 };
 
 CurveSpline.STRUCT = STRUCT.inherit(CurveSpline, Mesh, "mesh.CurveSpline") + `
-  _length     : float;
-  speedLength : float;
-  degree      : int;
+  _length        : float;
+  speedLength    : float;
+  degree         : int;
+  owningToolMode : string;
 }
 `;
 

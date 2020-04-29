@@ -1,4 +1,4 @@
-export const APP_VERSION = 0;
+export const APP_VERSION = 0.001;
 export const APP_KEY_NAME = "potree_viewer";
 export const FILE_EXT = "pproj";
 export const FILE_MAGIC = "POTV";

@@ -81,7 +81,7 @@ export class GPUSelectBuffer {
 
     gl.viewport(0, 0, ~~this.size[0], ~~this.size[1]);
 
-    for (let ob of ctx.scene.objects.editable) {
+    for (let ob of ctx.scene.objects.visible) {
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
 
       for (let fn of FindNearestTypes) {

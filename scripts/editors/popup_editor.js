@@ -237,7 +237,7 @@ export class PopupEditor extends Editor {
     for (let tab of this.tabs) {
       if (tab.name === name) {
         tab.contents.clear();
-        return tab;
+        return tab.contents;
       }
     }
 
@@ -258,7 +258,7 @@ export class PopupEditor extends Editor {
     for (let tab of this.tabs) {
       if (tab.name === name) {
         tab.contents.clear();
-        return tab;
+        return tab.contents;
       }
     }
 

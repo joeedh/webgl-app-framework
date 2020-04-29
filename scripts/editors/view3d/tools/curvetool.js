@@ -21,6 +21,8 @@ import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
         MeshFeatureError} from '../../../mesh/mesh_base.js';
 import {CurveSpline} from "../../../curve/curve.js";
+import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
+
 
 export class CurveToolBase extends MeshToolBase {
   constructor(manager) {
@@ -28,19 +30,18 @@ export class CurveToolBase extends MeshToolBase {
 
     this._isCurveTool = true;
 
+    //internal scene object
+    this.sceneObject = undefined;
+
     let path = "scene.tools." + this.constructor.widgetDefine().name;
     path += ".curve";
 
     this._meshPath = path;
     this.selectMask = SelMask.VERTEX|SelMask.HANDLE;
 
-    let features = MeshFeatures.MAKE_VERT|MeshFeatures.KILL_VERT;
-    features |= MeshFeatures.MAKE_EDGE|MeshFeatures.KILL_EDGE;
-    features |= MeshFeatures.SPLIT_EDGE|MeshFeatures.JOIN_EDGE;
-    features |= MeshFeatures.EDGE_HANDLES | MeshFeatures.EDGE_CURVES_ONLY;
+    this.drawflag = MeshDrawFlags.SHOW_NORMALS;
 
-    this.mesh = new CurveSpline(features);
-    this.drawflag = this.mesh.drawflag = MeshDrawFlags.SHOW_NORMALS;
+    this.curve = undefined; //is created later
   }
 
   static widgetDefine() {return {
@@ -100,7 +101,7 @@ export class CurveToolBase extends MeshToolBase {
 
     let mstruct = api.mapStruct(CurveSpline, false);
 
-    tstruct.struct("mesh", "curve", "Curve", mstruct);
+    tstruct.struct("curve", "curve", "Curve", mstruct);
 
     let onchange = () => {
       window.redraw_viewport();
@@ -113,7 +114,22 @@ export class CurveToolBase extends MeshToolBase {
     return super.on_mousedown(e, x, y, was_touch);
   }
 
+  _getObject() {
+    if (this.sceneObject === undefined) {
+      let key = "toolmode_" + this.constructor.widgetDefine().name;
+
+      let data = this.curve !== undefined ? this.curve : CurveSpline;
+
+      this.sceneObject = this.ctx.scene.getInternalObject(this.ctx, key, data);
+      this.sceneObject.flag |= ObjectFlags.HIDE;
+      this.curve = this.sceneObject.data;
+      this.curve.owningToolMode = this.constructor.widgetDefine().name;
+    }
+  }
+
   update() {
+    this._getObject();
+
     super.update();
   }
 
@@ -127,10 +143,6 @@ export class CurveToolBase extends MeshToolBase {
 
   on_mousemove(e, x, y, was_touch) {
     return super.on_mousemove(e, x, y, was_touch);
-  }
-
-  reset() {
-    this.mesh = new CurveSpline();
   }
 
   drawSphere(gl, view3d, p, scale=0.01) {
@@ -154,8 +166,18 @@ export class CurveToolBase extends MeshToolBase {
   }
 
   draw(gl, view3d) {
-    this.mesh.drawflag = this.drawflag;
-    super.draw(gl, view3d);
+    this._getObject();
+    
+    if (this.curve !== undefined) {
+      this.curve.drawflag = this.drawflag;
+      super.draw(gl, view3d);
+    }
+  }
+
+  dataLink(scene, getblock, getblock_addUser) {
+    super.dataLink(...arguments);
+
+    this.curve = getblock_addUser(this.curve);
   }
 
   loadSTRUCT(reader) {
@@ -163,12 +185,15 @@ export class CurveToolBase extends MeshToolBase {
     if (super.loadSTRUCT) {
       super.loadSTRUCT(reader);
     }
+
+    this.curve.owningToolMode = this.constructor.widgetDefine().name;
   }
 
 }
 
 CurveToolBase.STRUCT = STRUCT.inherit(CurveToolBase, ToolMode) + `
-  mesh : mesh.CurveSpline;
+  curve    : DataRef | DataRef.fromBlock(obj.curve);
+  drawflag : int;
 }`;
 nstructjs.manager.add_class(CurveToolBase);
 ToolMode.register(CurveToolBase);

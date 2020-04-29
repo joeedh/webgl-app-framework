@@ -15,6 +15,8 @@ import * as THREE from '../extern/three.js';
 import {print_stack} from "../util/util.js";
 import {WidgetSceneCursor} from "../editors/view3d/widget_tools.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
+import {Collection} from "../sceneobject/collection.js";
+import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 
 export const EnvLightFlags = {
   USE_AO : 1
@@ -83,6 +85,10 @@ export class ObjectList extends Array {
     }
 
     this.active = this.highlight = undefined;
+  }
+
+  has(ob) {
+    return this.indexOf(ob) >= 0;
   }
 
   clearSelection() {
@@ -185,6 +191,8 @@ export class ObjectList extends Array {
   dataLink(scene, getblock, getblock_addUser) {
     this.active = getblock(this.active, scene);
 
+    this.collection = getblock_addUser(this.collection);
+
     if (this.highlight !== undefined) {
       this.highlight = getblock(this.highlight, scene);
     }
@@ -231,9 +239,15 @@ ObjectList {
 `;
 nstructjs.manager.add_class(ObjectList);
 
+export const SceneRecalcFlags = {
+  OBJECTS : 1 //update flat object list
+};
+
 export class Scene extends DataBlock {
   constructor(objects) {
     super();
+
+    this.collection = undefined;
 
     this.widgets = new WidgetManager();
     this.widgets.ctx = _appstate.ctx;
@@ -245,10 +259,12 @@ export class Scene extends DataBlock {
     this.toolmode_namemap = {};
 
     this.envlight = new EnvLight();
+    this.recalc = 0;
 
     this.objects = new ObjectList(undefined, this);
     this.objects.onselect = this._onselect.bind(this);
     this.flag = 0;
+    this._loading = false;
     
     this.time = 0.0;
 
@@ -268,6 +284,22 @@ export class Scene extends DataBlock {
     }
 
     return this.toolmode_map[this.toolmode_i];
+  }
+
+  get objects() {
+    return this._objects;
+  }
+
+  set objects(ob) {
+    if (this.recalc && !this._loading) {
+      this.updateObjectList();
+    }
+
+    this._objects = ob;
+  }
+
+  regenObjectList() {
+    this.recalc |= SceneRecalcFlags.OBJECTS;
   }
 
   get lights() {
@@ -302,9 +334,110 @@ export class Scene extends DataBlock {
     return ret;
   }
 
+  //get a child collection, or may
+  //a new one if necassary
+  getCollection(ctx, name) {
+    let cl = this.collection.getChild(name);
+
+    let add = cl === undefined;
+
+    //check if it exists in the datalib somewhere
+    cl = cl === undefined ? ctx.datalib.collection.get(name) : cl;
+
+    if (cl === undefined) {
+      cl = new Collection(name);
+      ctx.datalib.add(cl);
+    }
+
+    if (add) {
+      this.collection.add(cl);
+    }
+
+    return cl;
+  }
+
+  getInternalObject(ctx, key, dataclass_or_instance) {
+    let cname = "__internal" + this.name;
+    let name = "__internal" + this.name + "_" + key;
+
+    let cl = this.getCollection(ctx, cname);
+
+    let ob = ctx.datalib.object.get(name);
+
+    if (ob === undefined) {
+      ob = new SceneObject();
+      ob.name = name;
+
+      let data;
+
+      if (dataclass_or_instance instanceof SceneObjectData) {
+        data = dataclass_or_instance;
+      } else {
+        data = new dataclass_or_instance();
+      }
+
+      ctx.datalib.add(ob);
+      ctx.datalib.add(data);
+
+      ob.data = data;
+    }
+    
+    ob.flag |= ObjectFlags.LOCKED|ObjectFlags.INTERNAL;
+
+    if (!cl.has(ob)) {
+      cl.add(ob);
+      this.updateObjectList();
+    }
+
+    return ob;
+  }
+
+  updateObjectList() {
+    this.recalc &= ~SceneRecalcFlags.OBJECTS;
+
+    if (this.collection === undefined) {
+      console.warn("No collection in scene!!!");
+      return;
+    }
+
+    let set = new util.set();
+
+    let rec = (cl) => {
+      for (let ob of cl.objects) {
+        set.add(ob);
+      }
+
+      for (let child of cl.children) {
+        rec(child);
+      }
+    };
+
+    rec(this.collection);
+
+    for (let ob of this.objects) {
+      if (!set.has(ob)) {
+        this.objects.remove(ob);
+      }
+    }
+
+    for (let ob of set) {
+      if (!this.objects.has(ob)) {
+        this.objects.add(ob);
+        ob.lib_addUser(this);
+
+        if (this.objects.active === undefined) {
+          this.objects.active = ob;
+        }
+      }
+    }
+
+    rec(this.collection);
+  }
+
   add(ob) {
     this.objects.push(ob);
-    
+    this.collection.add(ob);
+
     if (this.objects.active === undefined) {
       this.objects.active = ob;
     }
@@ -421,6 +554,8 @@ export class Scene extends DataBlock {
   }}
 
   loadSTRUCT(reader) {
+    this._loading = true;
+
     //very important these three lines go *before*
     //call to reader(this)
     this.toolmodes = [];
@@ -474,8 +609,14 @@ export class Scene extends DataBlock {
     this._linked = true;
 
     this.objects.dataLink(this, getblock, getblock_addUser);
-
     delete this.active;
+
+    this._loading = false;
+    this.regenObjectList();
+
+    for (let tool of this.toolmodes) {
+      tool.dataLink(this, getblock, getblock_addUser);
+    }
   }
 
   updateWidgets() {
@@ -515,6 +656,7 @@ Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
   envlight   : EnvLight;
   toolmode_i : string | obj.toolModeProp.keys[obj.toolmode_i];
   toolmodes  : array(abstract(ToolMode));
+  collection : DataRef | DataRef.fromBlock(obj.collection);
 }
 `;
 

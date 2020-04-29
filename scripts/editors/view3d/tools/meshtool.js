@@ -376,6 +376,11 @@ export class MeshToolBase extends ToolMode {
     let camdist = view3d.camera.pos.vectorDistance(view3d.camera.target);
 
     for (let mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
+      if (mesh === undefined) {
+        console.warn("nonexistent mesh");
+        continue;
+      }
+      
       if (mesh.ownerMatrix !== undefined) {
         uniforms.objectMatrix.load(mesh.ownerMatrix);
       } else {

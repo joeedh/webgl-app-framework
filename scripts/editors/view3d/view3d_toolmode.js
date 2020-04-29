@@ -68,6 +68,7 @@ export class ToolMode extends WidgetTool {
     this.keymap = new KeyMap([]);
   }
 
+
   //returns a bounding box [min, max]
   //if toolmode has a preferred aabb to
   //zoom out on, otherwise returns undefined;
@@ -80,6 +81,10 @@ export class ToolMode extends WidgetTool {
   }
 
   static buildSettings(container) {
+
+  }
+
+  dataLink(scene, getblock, getblock_addUser) {
 
   }
 

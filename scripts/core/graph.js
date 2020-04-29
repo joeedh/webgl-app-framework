@@ -222,7 +222,10 @@ export class NodeSocketType {
 
   immediateUpdate() {
     this.update();
-    window.updateDataGraph(true);
+
+    if (this.edges.length > 0) {
+      window.updateDataGraph(true);
+    }
   }
 
   update(_exclude=undefined) {
