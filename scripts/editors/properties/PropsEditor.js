@@ -296,11 +296,14 @@ export class PropsEditor extends PopupEditor   {
   }
 
   buildMaterial(tab) {
-    makeDataBlockBrowser(tab, Material, "object.material", (container) => {
-      container.prop("object.material.pointSize");
-      container.checkenum_panel("object.material.pointSizeType", undefined, PackFlags.VERTICAL);
-      container.checkenum_panel("object.material.pointShape", undefined, PackFlags.VERTICAL);
-    });
+    //makeDataBlockBrowser(tab, Material, "object.material", (container) => {
+    let container = tab.col();
+    container.style["padding"] = "10px";
+
+    container.prop("object.material.pointSize");
+    container.checkenum_panel("object.material.pointSizeType", undefined, PackFlags.VERTICAL);
+    container.checkenum_panel("object.material.pointShape", undefined, PackFlags.VERTICAL);
+    //});
   }
 
   buildObject(tab) {
