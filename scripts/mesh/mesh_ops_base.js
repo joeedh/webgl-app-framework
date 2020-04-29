@@ -101,7 +101,7 @@ export function loadUndoMesh(ctx, data) {
 export class MeshOp extends View3DOp {
   static tooldef() {return {
     inputs : ToolOp.inherit({
-      meshPaths : new ListProperty(StringProperty, ["mesh", "_all_objects_"])
+      meshPaths : new ListProperty(StringProperty, ["mesh", "_all_objects_"]).private()
     })
   }}
 

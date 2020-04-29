@@ -21,8 +21,8 @@ export class SelectOpBase extends MeshOp {
     icon          : -1,
     description   : "select an element",
     inputs        : ToolOp.inherit({
-      object      : new DataRefProperty("object"),
-      selmask     : new FlagProperty(undefined, SelMask),
+      object      : new DataRefProperty("object").private(),
+      selmask     : new FlagProperty(undefined, SelMask).private(),
       mode        : new EnumProperty(undefined, SelToolModes)
     })
   }}
@@ -128,7 +128,7 @@ export class SelectOneOp extends SelectOpBase {
     inputs        : ToolOp.inherit({
       mode        : new EnumProperty(undefined, SelOneToolModes),
       setActiveObject : new BoolProperty(true),
-      eid         : new IntProperty(-1)
+      eid         : new IntProperty(-1).private()
     })
   }}
 
@@ -196,7 +196,7 @@ export class ToggleSelectAll extends SelectOpBase {
       icon: Icons.TOGGLE_SEL_ALL,
       description: "toggle select all",
       inputs: ToolOp.inherit({
-        selmask: new FlagProperty(undefined, SelMask),
+        selmask: new FlagProperty(undefined, SelMask).private(),
         mode: new EnumProperty(undefined, SelToolModes)
       })
     }

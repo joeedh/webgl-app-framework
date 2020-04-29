@@ -67,13 +67,13 @@ export class TransformOp extends View3DOp {
     is_modal    : true,
 
     inputs       : {
-      types      : TransDataType.buildTypesProp(["mesh", "object"]),
+      types      : TransDataType.buildTypesProp(["mesh", "object"]).private(),
       value      : new Vec3Property(),
       space      : new Mat4Property(),
       snapMode   : new EnumProperty(SnapModes.NONE, SnapModes),
-      constraint : new Vec3Property([1.0,1.0,1.0]), //locked constraint axes
+      constraint : new Vec3Property([1.0,1.0,1.0]).private(), //locked constraint axes
       constraint_space : new Mat4Property(),
-      selmask    : new IntProperty(),
+      selmask    : new IntProperty().private(),
       propmode   : new EnumProperty(0, PropModes, undefined,
                    "Prop Mode", "Proportional (magnet) mode",
                    PropFlags.SAVE_LAST_VALUE),

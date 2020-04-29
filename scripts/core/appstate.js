@@ -58,6 +58,16 @@ ToolOp.prototype.execPost = function(ctx) {
   window.redraw_viewport();
 };
 
+/*root operator for when leading files*/
+export class RootFileOp extends ToolOp {
+  static tooldef() {return {
+    undoflag    : UndoFlags.IS_UNDO_ROOT | UndoFlags.NO_UNDO,
+    uiname      : "File Start",
+    toolpath    : "app.__new_file"
+  }}
+}
+
+/*root operator that build a file*/
 export class BasicFileOp extends ToolOp {
   constructor() {
     super();
@@ -607,6 +617,7 @@ export class AppState {
 
     if (args.reset_toolstack) {
       this.toolstack.reset(this.ctx);
+      this.toolstack.execTool(this.ctx, new RootFileOp());
     }
 
     if (!args.load_screen) {

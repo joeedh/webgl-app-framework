@@ -22,6 +22,11 @@ export class ToolContext {
     this._appstate = appstate;
   }
 
+  //used by UI code
+  get last_tool() {
+    return _appstate._last_tool;
+  }
+
   /***
    * Returns a new ctx with key overridden
    */
@@ -663,6 +668,11 @@ export class AppToolStack extends ToolStack {
   }
 
   toolCancel(ctx, tool) {
+    if (tool._was_redo) {
+      //ignore tool cancel requests on redo
+      return;
+    }
+
     if (tool !== this[this.cur]) {
       console.warn("toolCancel called in error", this, tool);
       return;
@@ -690,6 +700,16 @@ export class AppToolStack extends ToolStack {
     }
   }
 
+  //reruns a tool if it's at the head of the stack
+  rerun(tool) {
+    if (tool === this[this.cur]) {
+      this.undo();
+      this.redo();
+    } else {
+      console.warn("Tool wasn't at head of stack", tool);
+    }
+  }
+
   redo() {
     console.log("redo!", this.cur, this.length);
     if (this.cur >= -1 && this.cur+1 < this.length) {
@@ -697,6 +717,8 @@ export class AppToolStack extends ToolStack {
 
       this.cur++;
       let tool = this[this.cur];
+
+      tool._was_redo = true;
 
       tool.undoPre(tool.execCtx);
       tool.execPre(tool.execCtx);

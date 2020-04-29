@@ -83,7 +83,7 @@ export class SelectOneOp extends SelectOpBase {
     icon      : -1,
     inputs    : {
       mode       : new EnumProperty("UNIQUE", SelOneToolModes),
-      objectId   : new IntProperty(-1),
+      objectId   : new IntProperty(-1).private(),
       setActive  : new BoolProperty(true)
     }
   }}

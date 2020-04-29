@@ -2238,5 +2238,11 @@
        height="13.500513"
        x="172.33563"
        y="682.04584" />
+    <path
+       style="fill:#fcffff;fill-opacity:1;stroke:none;stroke-width:0.95700002;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 193.26388,694.35203 9.34704,-17.19854 -9.32871,-0.91105 c 0,0 6.90741,-4.627 11.32776,-4.77759 5.58082,-0.19013 7.63298,4.47448 17.78923,6.23229 l -4.83527,7.41132 -9.37299,-4.80905 -9.79833,17.25329 z"
+       id="path1413"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cccsccccc" />
   </g>
 </svg>

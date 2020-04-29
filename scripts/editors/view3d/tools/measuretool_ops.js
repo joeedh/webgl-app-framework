@@ -42,7 +42,7 @@ export class MeasureOp extends ToolOp {
 
   static tooldef() {return {
     inputs : {
-      toolName : new StringProperty()
+      toolName : new StringProperty().private()
     }
   }}
 
@@ -256,7 +256,7 @@ export class SelectOneOp extends SelectOpBase {
     icon      : -1,
     inputs    : ToolOp.inherit({
       mode       : new EnumProperty("UNIQUE", SelOneToolModes),
-      path       : new StringProperty(),
+      path       : new StringProperty().private(),
       setActive  : new BoolProperty(true)
     }),
 

@@ -692,5 +692,7 @@ export function getDataAPI() {
 
   api_define_graphclasses(api);
 
+  cstruct.dynamicStruct("last_tool", "last_tool", "Last Tool");
+
   return api;
 }
