@@ -49,6 +49,8 @@ import {DebugEditor} from '../editors/debug/DebugEditor.js';
 
 let api = new DataAPI();
 import {Icons} from '../editors/icon_enum.js';
+import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
+import {PointSet} from "../potree/potree_types.js";
 
 export function api_define_editor(api, cls) {
   let astruct = api.mapStruct(cls);
@@ -353,14 +355,12 @@ function api_define_shadernetwork(api, parent) {
   return mstruct;
 }
 
-function api_define_material(api, parent) {
+function api_define_material(api) {
   let mstruct = api_define_datablock(api, Material);
 
   let redraw = (e) => {
     window.redraw_viewport();
   }
-
-  parent.struct("material", "material", "Material", mstruct);
 
   mstruct.int("pointSize", "pointSize", "Size", "Point Size").range(1, 6).on('change', redraw);
   mstruct.enum("pointShape", "pointShape", Potree.PointShape, "Shape", "Point Shape").on('change', redraw);
@@ -375,10 +375,17 @@ function api_define_sceneobject(api, parent) {
   parent.struct("object", "object", SceneObject, ostruct);
 
   ostruct.dynamicStruct("data", "data", "data");
-
-  api_define_material(api, ostruct);
+  ostruct.struct("material", "material", "Material", api.mapStruct(Material, false));
 
   return ostruct;
+}
+
+function api_define_pointset(api, ctxStruct) {
+  let pstruct = api_define_datablock(api, PointSet);
+
+  pstruct.struct("material", "material", "Material", api.mapStruct(Material, false));
+
+  ctxStruct.struct("pointset", "pointset", "Point Set", pstruct);
 }
 
 function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
@@ -620,6 +627,8 @@ export function getDataAPI() {
   api_define_rgba_socket(api);
   api_define_float_socket(api);
 
+  api_define_material(api, cstruct);
+
   api_define_node(api);
   api_define_shadernode(api);
   api_define_graph(api);
@@ -631,8 +640,8 @@ export function getDataAPI() {
   api_define_node_editor(api, cstruct);
   api_define_debugeditor(api, cstruct);
 
+  api_define_pointset(api, cstruct);
   api_define_mesh(api, cstruct);
-  api_define_material(api, cstruct);
   api_define_shadernetwork(api, cstruct);
 
   api_define_library(api, cstruct);

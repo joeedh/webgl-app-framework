@@ -300,9 +300,9 @@ export class PropsEditor extends PopupEditor   {
     let container = tab.col();
     container.style["padding"] = "10px";
 
-    container.prop("object.material.pointSize");
-    container.checkenum_panel("object.material.pointSizeType", undefined, PackFlags.VERTICAL);
-    container.checkenum_panel("object.material.pointShape", undefined, PackFlags.VERTICAL);
+    container.prop("pointset.material.pointSize");
+    container.checkenum_panel("pointset.material.pointSizeType", undefined, PackFlags.VERTICAL);
+    container.checkenum_panel("pointset.material.pointShape", undefined, PackFlags.VERTICAL);
     //});
   }
 

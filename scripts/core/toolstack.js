@@ -1,5 +1,4 @@
 import {ToolStack, UndoFlags} from "../path.ux/scripts/simple_toolsys.js";
-import {ModalContext} from "./context.js";
 
 export class AppToolStack extends ToolStack {
   constructor(ctx) {
@@ -14,7 +13,7 @@ export class AppToolStack extends ToolStack {
       return;
     }
 
-    let tctx = ctx;
+    let tctx = ctx.toLocked();
 
     let undoflag = toolop.constructor.tooldef().undoflag;
     if (toolop.undoflag !== undefined) {
@@ -43,7 +42,7 @@ export class AppToolStack extends ToolStack {
     }
 
     if (toolop.is_modal) {
-      ctx = toolop.modal_ctx = new ModalContext(ctx.state);
+      ctx = toolop.modal_ctx = ctx;
 
       this.modal_running = true;
 

@@ -92,6 +92,10 @@ export class ToolMode extends WidgetTool {
 
   }
 
+  static getContextOverlayClass() {
+    return undefined;
+  }
+
   static register(cls) {
     ToolModes.push(cls);
     WidgetTool.register(cls);
@@ -234,6 +238,15 @@ export class ToolMode extends WidgetTool {
   update() {
     super.update();
 
+    if (!this.ctx) {
+      return;
+    }
+
+    let cls = this.constructor.getContextOverlayClass();
+    if (cls !== undefined && !this.ctx.hasOverlay(cls)) {
+      this.ctx.pushOverlay(new cls(this.ctx.state, this));
+    }
+
     this.updateTransWidgets();
 
     /*
@@ -264,6 +277,12 @@ export class ToolMode extends WidgetTool {
   }
 
   onInactive() {
+    let cls = this.constructor.getContextOverlayClass();
+
+    if (this.ctx && cls && this.ctx.hasOverlay(cls)) {
+      this.ctx.removeOverlay(this.ctx.getOverlay(cls));
+    }
+
     this.clearWidgets();
   }
 

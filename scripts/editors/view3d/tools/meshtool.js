@@ -39,7 +39,8 @@ export class MeshToolBase extends ToolMode {
     let makeHotKey = (toolstr) => {
       let this2 = this;
       return () => {
-        let ctx = this.buildFakeContext(this.ctx);
+        //let ctx = this.buildFakeContext(this.ctx);
+        let ctx = this.ctx;
         let tool = ctx.api.createTool(ctx, toolstr);
 
         ctx.api.execTool(ctx, tool);
@@ -57,6 +58,7 @@ export class MeshToolBase extends ToolMode {
   }
 
   buildFakeContext(ctx) {
+    return;
     let objs = [];
     let paths = this.getMeshPaths();
 

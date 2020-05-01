@@ -22,7 +22,60 @@ import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
         MeshFeatureError} from '../../../mesh/mesh_base.js';
 import {CurveSpline} from "../../../curve/curve.js";
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
+import {ContextOverlay} from "../../../path.ux/scripts/context.js";
 
+export class CurveToolOverlay extends ContextOverlay {
+  constructor(state, toolmode) {
+    super(state);
+
+    if (toolmode !== undefined) {
+      this._toolclass = toolmode.constructor;
+      this._selectMask = toolmode.selectMask;
+
+      toolmode._getObject();
+      this._ob = DataRef.fromBlock(toolmode.sceneObject);
+    }
+  }
+
+  copy() {
+    let ret = new CurveToolOverlay(this.state);
+
+    ret._toolclass = this._toolclass;
+    ret._ob = this._ob;
+    ret._selectMask = this._selectMask
+
+    return ret;
+  }
+
+  get selectMask() {
+    return this.ctx.toolmode.selectMask;
+    //return this._selectMask;
+  }
+
+  validate() {
+    return this.ctx.scene.toolmode instanceof this._toolclass;
+  }
+
+  get selectedObjects() {
+    return [this.object];
+  }
+
+  get selectedMeshObjects() {
+    return [this.object];
+  }
+
+  get mesh() {
+    let ob = this.ctx.datalib.get(this._ob);
+
+    if (ob !== undefined) {
+      return ob.data;
+    }
+  }
+
+  get object() {
+    return this.ctx.datalib.get(this._ob);
+  }
+}
 
 export class CurveToolBase extends MeshToolBase {
   constructor(manager) {
@@ -48,6 +101,10 @@ export class CurveToolBase extends MeshToolBase {
     flag        : 0,
     description : "curve tester"
   }}
+
+  static getContextOverlayClass() {
+    return CurveToolOverlay;
+  }
 
   /*
   defineKeyMap() {
@@ -141,7 +198,7 @@ export class CurveToolBase extends MeshToolBase {
       let data = this.curve !== undefined ? this.curve : CurveSpline;
 
       this.sceneObject = this.ctx.scene.getInternalObject(this.ctx, key, data);
-      this.sceneObject.flag |= ObjectFlags.HIDE;
+      this.sceneObject.flag |= ObjectFlags.SELECT;
       this.curve = this.sceneObject.data;
       this.curve.owningToolMode = this.constructor.widgetDefine().name;
     }
@@ -157,7 +214,8 @@ export class CurveToolBase extends MeshToolBase {
     /*
     make sure findnearest api gets the right mesh
     */
-    let ctx = this.buildFakeContext(this.ctx);
+    //let ctx = this.buildFakeContext(this.ctx);
+    let ctx = this.ctx;
     return FindNearest(ctx, selmask, new Vector2([x, y]), view3d);
   }
 

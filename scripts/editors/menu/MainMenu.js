@@ -18,7 +18,7 @@ import * as cconst from '../../core/const.js';
 import {AddPointSetOp} from "../../potree/potree_ops.js";
 import {Menu} from "../../path.ux/scripts/ui_menu.js";
 
-const menuSize = 48;
+const menuSize = 42;
 
 export class MenuBarEditor extends Editor {
   constructor() {
@@ -218,12 +218,29 @@ export class MenuBarEditor extends Editor {
     super.update();
 
     let dpi = UIBase.getDPI();
-    let h = Math.ceil(26); //menuSize);
+    let h = Math.ceil(menuSize);
 
     if (this.size[1] !== h) {
+      let screen = this.getScreen();
+
+      for (let sarea of screen.sareas) {
+        if (sarea === this.owning_sarea) {
+          continue;
+        }
+
+        if (Math.abs(sarea.pos[1]-this.pos[1]-this.size[1]) < 5) {
+          sarea.pos[1] = this.pos[1] + h;
+        }
+
+        sarea.on_resize(sarea.size);
+        sarea.setCSS();
+      }
+
       this.size[1] = h;
+
       this.setCSS();
       this.ctx.screen.regenBorders();
+      this.ctx.screen.setCSS();
     }
 
     /*

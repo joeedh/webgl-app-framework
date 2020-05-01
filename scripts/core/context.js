@@ -9,8 +9,7 @@ import {Mesh} from '../mesh/mesh.js';
 import {Light} from '../light/light.js';
 import {SceneObject} from '../sceneobject/sceneobject.js';
 import {Scene} from '../scene/scene.js';
-import {DataRef} from './lib_api.js';
-import {ToolStack, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
+import {DataBlock, DataRef} from './lib_api.js';
 import {DebugEditor} from "../editors/debug/DebugEditor.js";
 import * as ui_noteframe from '../path.ux/scripts/ui_noteframe.js';
 import {PointSet} from '../potree/potree_types.js';
@@ -18,6 +17,10 @@ import {Matrix4} from "../util/vectormath.js";
 import {MenuBarEditor} from "../editors/menu/MainMenu.js";
 import {PropsEditor} from "../editors/properties/PropsEditor.js";
 import {Context, ContextOverlay, ContextFlags} from "./context_base.js";
+import {UIBase} from "../path.ux/scripts/ui_base.js";
+import {Screen} from "../path.ux/scripts/FrameManager.js";
+
+let passthrus = new Set(["datalib", "gl", "graph"]);
 
 export class BaseOverlay extends ContextOverlay {
   constructor(appstate) {
@@ -58,6 +61,13 @@ export class BaseOverlay extends ContextOverlay {
 
   get datalib() {
     return this.state.datalib;
+  }
+
+  toolmode_save() {
+    return this.scene.toolmode_i;
+  }
+  toolmode_load(ctx, data) {
+    return ctx.scene.toolmode_map[data];
   }
 
   get scene() {
@@ -134,6 +144,28 @@ export class BaseOverlay extends ContextOverlay {
       }
     })();
   }
+
+  get pointset() {
+    let obj = this.object;
+
+    if (obj !== undefined && obj.data instanceof PointSet) {
+      return obj.data;
+    }
+
+    for (let obj of this.scene.objects) {
+      if (obj.data !== undefined && obj.data instanceof PointSet) {
+        return obj.data;
+      }
+    }
+  }
+
+  get material() {
+    let ptree = this.pointset;
+
+    if (ptree !== undefined) {
+      return ptree.material;
+    }
+  }
 }
 Context.register(BaseOverlay);
 
@@ -183,22 +215,6 @@ export class ViewOverlay extends ContextOverlay {
     return this.view3d.gl;
   }
 
-  pointset() {
-    let obj = this.object;
-
-    if (obj !== undefined && obj.data instanceof PointSet) {
-      return obj.data;
-    }
-  }
-
-  get material() {
-    let ptree = this.pointset;
-
-    if (ptree !== undefined) {
-      return ptree.material;
-    }
-  }
-
   get nodeEditor() {
     return getContextArea(NodeEditor);
   }
@@ -214,12 +230,95 @@ export class ViewOverlay extends ContextOverlay {
 
 Context.register(ViewOverlay);
 
+class KeyPassThruProp {
+  constructor(key) {
+    this.key = key;
+  }
+}
+
 export class ToolContext extends Context {
   constructor(state) {
-    super();
+    super(state);
   
-    this.state = state;
+    this._state = state;
     this.reset();
+  }
+
+  set state(val) {
+    console.warn("context.state was set");
+    this._state = val;
+  }
+
+  get state() {
+    return this._state;
+  }
+
+  saveProperty(key) {
+    let val = this[key];
+
+    if (passthrus.has(key) || val instanceof UIBase || val instanceof Screen) {
+      return new KeyPassThruProp(key);
+    }
+
+    //console.log("saveProperty called", key);
+    return this.saveProperty_intern(this[key], key);
+  }
+
+  saveProperty_intern(val, owning_key) {
+    if (typeof val !== "object")
+      return val;
+
+    if (typeof val === "function" && !val[Symbol.iterator]) {
+      return val;
+    }
+
+    if (val instanceof DataBlock) {
+      return DataRef.fromBlock(val);
+    }
+
+    let isiter = typeof val === "function" || typeof val === "object";
+    isiter = isiter && val[Symbol.iterator];
+
+    if (isiter) {
+      let ret = [];
+
+      for (let item of val) {
+        ret.push(this.saveProperty_intern(item, owning_key));
+      }
+
+      return ret;
+    }
+
+    console.warn("Warning, unknown data in ToolContext.prototype.savePropertyIntern()", owning_key);
+    return val;
+  }
+
+  loadProperty(ctx, key, data) {
+    console.log("loadProperty called", key, data);
+
+    return this.loadProperty_intern(ctx, data);
+  }
+
+  loadProperty_intern(ctx, data) {
+    if (typeof data !== "object") {
+      return data;
+    }
+
+    if (data instanceof KeyPassThruProp) {
+      return ctx[data.key];
+    } else if (data instanceof DataRef) {
+      return ctx.state.datalib.get(data);
+    } else if (data.constructor === Array) {
+      let ret = new Array(data.length);
+
+      for (let i=0; i<data.length; i++) {
+        ret[i] = this.loadProperty_intern(ctx, data[i]);
+      }
+
+      return ret;
+    } else {
+      return data;
+    }
   }
 
   reset(have_new_file=false) {
@@ -279,6 +378,3 @@ export class ViewContext extends ToolContext {
     this.pushOverlay(new ViewOverlay(this.state));
   }
 }
-
-export class ModalContext extends ViewContext {
-};
