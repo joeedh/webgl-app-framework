@@ -666,7 +666,7 @@ export class WidgetTool extends WidgetBase {
    * executes a (usually modal) tool, adding (and removing)
    * draw callbacks to execute this.update() as appropriate
    * */
-  execTool(tool) {
+  execTool(ctx, tool) {
     let view3d = this.ctx.view3d;
 
     if (this._widget_tempnode === undefined) {
@@ -678,7 +678,7 @@ export class WidgetTool extends WidgetBase {
       n.inputs.trigger.connect(view3d._graphnode.outputs.onDrawPre);
     }
 
-    this.ctx.toolstack.execTool(tool);
+    this.ctx.toolstack.execTool(ctx, tool);
 
     if (tool._promise !== undefined) {
       tool._promise.then((ctx, was_cancelled) => {

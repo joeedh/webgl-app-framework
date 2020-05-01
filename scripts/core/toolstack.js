@@ -7,7 +7,7 @@ export class AppToolStack extends ToolStack {
     this._undo_branch = undefined;
   }
 
-  execTool(toolop, ctx=this.ctx) {
+  execTool(ctx, toolop) {
     if (!toolop.constructor.canRun(ctx)) {
       console.log("toolop.constructor.canRun returned false");
       return;
@@ -27,7 +27,6 @@ export class AppToolStack extends ToolStack {
 
     toolop.execCtx = tctx;
 
-    //console.log(undoflag, "undoflag");
     if (!(undoflag & UndoFlags.NO_UNDO)) {
       this.cur++;
 
@@ -85,10 +84,10 @@ export class AppToolStack extends ToolStack {
 
   undo() {
     if (this.cur >= 0 && !(this[this.cur].undoflag & UndoFlags.IS_UNDO_ROOT)) {
-      console.log("undo!", this.cur, this.length);
+      console.log("undo!");
 
       let tool = this[this.cur];
-      console.log(tool, tool.undo, "---");
+
       tool.undo(tool.execCtx);
 
       this.cur--;
@@ -106,7 +105,8 @@ export class AppToolStack extends ToolStack {
   }
 
   redo() {
-    console.log("redo!", this.cur, this.length);
+    console.log("redo!");
+    
     if (this.cur >= -1 && this.cur+1 < this.length) {
       //console.log("redo!", this.cur, this.length);
 

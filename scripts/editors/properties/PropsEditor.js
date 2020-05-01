@@ -31,10 +31,13 @@ export class LastToolPanel extends ColumnFrame {
     super();
 
     this._tool_id = undefined;
+    this.useDataPathUndo = false;
   }
 
   init() {
     super.init();
+
+    this.useDataPathUndo = false;
     this.rebuild();
   }
 
@@ -171,6 +174,8 @@ export class PropsEditor extends PopupEditor   {
 
   init() {
     super.init();
+
+    this.useDataPathUndo = true;
 
     this.background = "rgba(0,0,0,0)";
 

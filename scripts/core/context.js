@@ -294,8 +294,6 @@ export class ToolContext extends Context {
   }
 
   loadProperty(ctx, key, data) {
-    console.log("loadProperty called", key, data);
-
     return this.loadProperty_intern(ctx, data);
   }
 

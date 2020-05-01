@@ -84,7 +84,7 @@ export class MeshEditor extends ToolMode {
       }
 
       tool.inputs.mode.setValue(mode);
-      this.ctx.toolstack.execTool(tool);
+      this.ctx.toolstack.execTool(this.ctx, tool);
 
       window.redraw_viewport();
       return true;

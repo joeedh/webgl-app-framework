@@ -83,8 +83,6 @@ export class TransformOp extends View3DOp {
   }}
 
   getTransTypes(ctx) {
-    console.log(list(this.inputs.types.getValue()), this);
-
     if (this._types !== undefined) {
       return this._types;
     }

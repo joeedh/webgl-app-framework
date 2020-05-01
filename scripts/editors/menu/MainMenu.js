@@ -1,11 +1,13 @@
 import {Area, BorderMask} from '../../path.ux/scripts/ScreenArea.js';
 import {saveFile, loadFile} from '../../path.ux/scripts/html5_fileapi.js';
+import {Icons} from "../icon_enum.js";
 
 import {NoteFrame, Note} from '../../path.ux/scripts/ui_noteframe.js';
 
 import {Editor, VelPan} from '../editor_base.js';
 import '../../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
+
 import {DataPathError} from '../../path.ux/scripts/controller.js';
 import {KeyMap, HotKey} from '../../path.ux/scripts/simple_events.js';
 import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/ui_base.js';
@@ -20,9 +22,90 @@ import {Menu} from "../../path.ux/scripts/ui_menu.js";
 
 const menuSize = 42;
 
+export class ToolHistoryConsole extends ColumnFrame {
+  constructor() {
+    super();
+
+    this._buf = undefined;
+    this.tooltable = undefined;
+  }
+
+  rebuild() {
+    if (!this.tooltable) {
+      return;
+    }
+
+    let table = this.tooltable;
+    let toolstack = this.ctx.toolstack;
+
+    let lines = [];
+    let count = 5;
+
+    for (let i=toolstack.length-1; i>=toolstack.length-count; i--) {
+      if (i < 0) {
+        break;
+      }
+
+      let l = toolstack[i].genToolString();
+      lines = [l].concat(lines);
+    }
+
+    let buf = lines.join("\n") + toolstack.cur;
+    if (buf !== this._buf) {
+      console.log(buf);
+
+      this._buf = buf;
+
+      table.clear();
+      let i = 0;
+
+      for (let l of lines) {
+        let row = table.row()
+
+        if (i === toolstack.cur) {
+          row.style["background-color"] = "rgb(10, 100, 75, 0.5)";
+        }
+
+        row.label(l);
+        i++;
+      }
+
+      this.setCSS();
+    }
+  }
+
+  init() {
+    this.setCSS();
+
+    this.tooltable = this.table();
+    this.rebuild();
+
+    this.style["background-color"] = "rgba(50, 50, 50, 0.5)";
+  }
+
+  update() {
+    super.update();
+
+    this.rebuild();
+  }
+
+  setCSS() {
+
+    this.style["width"] = "100%"
+    this.style["height"] = "100%"
+  }
+
+  static define() {return {
+    tagname : "tool-console-x"
+  }}
+}
+UIBase.register(ToolHistoryConsole);
+
 export class MenuBarEditor extends Editor {
   constructor() {
     super();
+
+    this.menuSize = menuSize;
 
     this._switcher_key = "";
     this._ignore_tab_change = false;
@@ -36,6 +119,9 @@ export class MenuBarEditor extends Editor {
 
     let header = this.header;
     let strip = this._strip = header.strip();
+
+    this.console = document.createElement("tool-console-x");
+    this.container.add(this.console);
 
     strip.menu("File", [
       ["New  ", () => {
@@ -77,7 +163,7 @@ export class MenuBarEditor extends Editor {
 
           let toolop = new AddPointSetOp();
           toolop.inputs.url.setValue(url);
-          this.ctx.toolstack.execTool(toolop);
+          this.ctx.toolstack.execTool(this.ctx, toolop);
         });
 
         row.button("Cancel", () => dialog.end());
@@ -115,6 +201,14 @@ export class MenuBarEditor extends Editor {
         _appstate.clearStartupFile();
       }]
     ]);
+
+    strip.iconbutton(Icons.CONSOLE, "Show Console", () => {
+      if (this.menuSize !== menuSize) {
+        this.menuSize = menuSize;
+      } else {
+        this.menuSize = 200;
+      }
+    });
 
     strip.noteframe();
     //this.makeScreenSwitcher(this.container);
@@ -218,7 +312,7 @@ export class MenuBarEditor extends Editor {
     super.update();
 
     let dpi = UIBase.getDPI();
-    let h = Math.ceil(menuSize);
+    let h = Math.ceil(this.menuSize);
 
     if (this.size[1] !== h) {
       let screen = this.getScreen();
@@ -278,6 +372,7 @@ export class MenuBarEditor extends Editor {
 }
 
 MenuBarEditor.STRUCT = STRUCT.inherit(MenuBarEditor, Editor) + `
+  menuSize : int;
 }
 `;
 

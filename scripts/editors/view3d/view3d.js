@@ -913,22 +913,22 @@ export class View3D extends Editor {
         console.log("multitouch view tool");
 
         let tool = new TouchViewTool();
-        this.ctx.state.toolstack.execTool(tool);
+        this.ctx.state.toolstack.execTool(this.ctx, tool);
         window.redraw_viewport();
       } else if (docontrols && !e.shiftKey && !e.ctrlKey) {
         console.log("orbit!");
         let tool = new OrbitTool();
-        this.ctx.state.toolstack.execTool(tool);
+        this.ctx.state.toolstack.execTool(this.ctx, tool);
         window.redraw_viewport();
       } else if (docontrols && e.shiftKey && !e.ctrlKey) {
         console.log("pan!");
         let tool = new PanTool();
-        this.ctx.state.toolstack.execTool(tool);
+        this.ctx.state.toolstack.execTool(this.ctx, tool);
         window.redraw_viewport();
       } else if (docontrols && e.ctrlKey && !e.shiftKey) {
         console.log("zoom!");
         let tool = new ZoomTool();
-        this.ctx.state.toolstack.execTool(tool);
+        this.ctx.state.toolstack.execTool(this.ctx, tool);
         window.redraw_viewport();
       }
 

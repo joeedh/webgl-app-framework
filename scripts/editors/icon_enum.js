@@ -73,6 +73,8 @@ export let Icons = {
   MEASURE_CIRCLE : 67,
   ZOOM_OUT       : 68,
   TREE_WIDGET    : 69,
-  LAST_TOOL_PANEL: 70
+  LAST_TOOL_PANEL: 70,
+  PICKER_ICON    : 71,
+  CONSOLE        : 72
 };
 setIconMap(Icons);

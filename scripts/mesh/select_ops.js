@@ -9,6 +9,7 @@ import {SelMask, SelOneToolModes, SelToolModes} from '../editors/view3d/selectmo
 import {DataRefListProperty, DataRefProperty} from "../core/lib_api.js";
 import {Icons} from '../editors/icon_enum.js';
 import {MeshOp} from "./mesh_ops_base.js";
+import {SceneObject} from "../sceneobject/sceneobject.js";
 
 export class SelectOpBase extends MeshOp {
   constructor() {
@@ -90,6 +91,10 @@ export class SelectOpBase extends MeshOp {
       if (mesh === undefined) {
         console.warn("Bad undo data", k);
         continue;
+      }
+
+      if (mesh instanceof SceneObject) {
+        mesh = mesh.data;
       }
 
       mesh.selectNone();

@@ -780,7 +780,7 @@ export class NodeEditor extends Editor {
       let id = this.getID();
       tool.inputs.velpanPath.setValue(`screen.editors[${id}].velpan`);
 
-      this.ctx.toolstack.execTool(tool);
+      this.ctx.toolstack.execTool(this.ctx, tool);
     } else if (elem instanceof NodeUI) {
       let mode = SelOneToolModes.UNIQUE;
       let node = elem.getNode();
@@ -1131,7 +1131,7 @@ export class NodeEditor extends Editor {
         tool.inputs.velpanPath.setValue("nodeEditor.velpan");
         tool.inputs.scale.setValue([scale, scale, scale]);
 
-        this.ctx.toolstack.execTool(tool);
+        this.ctx.toolstack.execTool(this.ctx, tool);
         console.log("zoom in");
       }),
       new HotKey("-", [], () => {
@@ -1144,7 +1144,7 @@ export class NodeEditor extends Editor {
         tool.inputs.velpanPath.setValue("nodeEditor.velpan");
         tool.inputs.scale.setValue([scale, scale, scale]);
 
-        this.ctx.toolstack.execTool(tool);
+        this.ctx.toolstack.execTool(this.ctx, tool);
         console.log("zoom out");
       }),
       new HotKey("A", [], `node.toggle_select_all(useNodeEditorGraph=1 mode='AUTO')`)

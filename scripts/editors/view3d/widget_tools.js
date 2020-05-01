@@ -173,7 +173,7 @@ export class TranslateWidget extends WidgetTool {
       tool.inputs.constraint.setValue(con);
     }
 
-    this.execTool(tool);
+    this.execTool(this.ctx, tool);
   }
 
   update(ctx) {
@@ -392,7 +392,7 @@ export class ScaleWidget extends WidgetTool {
       tool.inputs.constraint.setValue(con);
     }
 
-    this.execTool(tool);
+    this.execTool(this.ctx, tool);
   }
 
   update(ctx) {
@@ -562,7 +562,7 @@ export class ExtrudeWidget extends WidgetTool {
     });
     tool2.inputs.constraint.setValue([0, 0, 1]);
 
-    this.execTool(macro, this.ctx);
+    this.execTool(this.ctx, macro);
     //"mesh.extrude_regions()"
 
   }

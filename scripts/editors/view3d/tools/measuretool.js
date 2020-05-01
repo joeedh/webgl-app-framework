@@ -155,7 +155,7 @@ export class MeasureToolBase extends ToolMode {
       let tool = new AddPointOp(this);
 
       tool.inputs.p.setValue(this.cursor);
-      this.ctx.toolstack.execTool(tool);
+      this.ctx.toolstack.execTool(this.ctx, tool);
 
       this.clearWidgets();
       this.update();

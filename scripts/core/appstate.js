@@ -160,7 +160,7 @@ export function genDefaultFile(appstate, dont_load_startup=0) {
   genDefaultScreen(appstate);
 
   appstate.datalib = new Library();
-  appstate.toolstack.execTool(tool);
+  appstate.toolstack.execTool(appstate.ctx, tool);
 }
 
 window._genDefaultFile = genDefaultFile; //this global is for debugging purposes only
@@ -628,7 +628,7 @@ export class AppState {
 
     if (args.reset_toolstack) {
       this.toolstack.reset(this.ctx);
-      this.toolstack.execTool(new RootFileOp(), this.ctx);
+      this.toolstack.execTool(this.ctx, new RootFileOp());
     }
 
     if (!args.load_screen) {

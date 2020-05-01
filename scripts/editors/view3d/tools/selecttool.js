@@ -183,7 +183,7 @@ export class ObjectEditor extends ToolMode {
 
         console.log("selectMask", ctx.selectMask);
 
-        ctx.toolstack.execTool(tool, ctx);
+        ctx.toolstack.execTool(ctx, tool);
         return true;
       }
     }//*/

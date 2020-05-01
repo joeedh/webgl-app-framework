@@ -31,7 +31,7 @@ export class MeshTransType extends TransDataType {
       return undefined;
     }
 
-    console.log("MESH GEN", selectmode & SelMask.GEOM, selectmode);
+    //console.log("MESH GEN", selectmode & SelMask.GEOM, selectmode);
 
     if (propmode != PropModes.NONE) {
       let i = 0;
@@ -218,7 +218,6 @@ export class MeshTransType extends TransDataType {
 
           n.load(f.no).normalize();
 
-          //console.log(obmat.$matrix);/
           n.multVecMatrix(obmat);
 
           if (n.dot(n) == 0.0 || isNaN(n.dot(n))) {
@@ -562,8 +561,6 @@ export class ObjectTransType extends TransDataType {
       return undefined;
     }
 
-    //console.log("calculating aabb");
-
     for (let ob of ctx.selectedObjects) {
       let aabb = ob.getBoundingBox();
 
@@ -573,8 +570,6 @@ export class ObjectTransType extends TransDataType {
         aabb_union(ret, aabb);
       }
     }
-
-    //console.log(ret);
 
     return ret;
   }

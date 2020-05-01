@@ -161,7 +161,7 @@ export class MeshToolBase extends ToolMode {
         tool.inputs.meshPaths.setValue(this.getMeshPaths());
         tool.inputs.mode.setValue(mode);
 
-        ctx.toolstack.execTool(tool);
+        ctx.toolstack.execTool(this.ctx, tool);
 
         return;
       }
@@ -172,7 +172,7 @@ export class MeshToolBase extends ToolMode {
 
       toolop.inputs.meshPaths.setValue(this.getMeshPaths());
       toolop.inputs.co.setValue(ret.p3d);
-      ctx.toolstack.execTool(toolop);
+      ctx.toolstack.execTool(this.ctx, toolop);
 
       console.log(ret);
       return true;

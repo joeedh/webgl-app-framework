@@ -239,9 +239,9 @@ export class MovableWidget extends WidgetBase {
           tool2.inputs.datapaths.push(path);
         }
       });
-      ctx.toolstack.execTool(macro);
+      ctx.toolstack.execTool(ctx, macro);
     } else if (tools.length === 1) {
-      ctx.toolstack.execTool(tools[0]);
+      ctx.toolstack.execTool(ctx, tools[0]);
     }
   }
 

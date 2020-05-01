@@ -268,6 +268,8 @@ export class PopupEditor extends Editor {
     container._init();
 
     container.background = this.getDefault("DefaultPanelBG");
+    container.parentWidget = this;
+    container.useDataPathUndo = this.useDataPathUndo;
 
     container.style["align-items"] = "start";
     container.style["height"] = "min-content";

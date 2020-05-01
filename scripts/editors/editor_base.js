@@ -226,6 +226,8 @@ export class Editor extends Area {
   constructor() {
     super();
 
+    this.useDataPathUndo = true;
+
     this.swapParent = undefined;
     this.container = document.createElement("container-x");
     this.container.parentWidget = this;
@@ -235,6 +237,8 @@ export class Editor extends Area {
 
   init() {
     super.init();
+
+    this.container.useDataPathUndo = this.useDataPathUndo;
 
     this.style["overflow"] = "hidden";
   }
@@ -426,7 +430,7 @@ function spawnToolSearchMenu(ctx) {
       return;
     }
 
-    ctx.toolstack.execTool(tool, ctx);
+    ctx.toolstack.execTool(ctx, tool);
   }
   //ui.menu("Tools", [["Test", () => {}]]);
 }
@@ -435,7 +439,8 @@ export class App extends Screen {
   constructor() {
     super();
 
-    this.useDataPathToolOp = true;
+    //this.testAllKeyMaps = true;
+    this.useDataPathUndo = true;
 
     //last widget update time
     this._last_wutime = 0;
