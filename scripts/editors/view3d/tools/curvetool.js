@@ -247,7 +247,11 @@ export class CurveToolBase extends MeshToolBase {
     this._getObject();
     
     if (this.curve !== undefined) {
-      this.curve.drawflag = this.drawflag;
+      if (this.curve.drawflag !== this.drawflag) {
+        this.curve.drawflag = this.drawflag;
+        this.curve.regenRender();
+      }
+
       super.draw(gl, view3d);
     }
   }

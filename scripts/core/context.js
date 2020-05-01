@@ -326,45 +326,6 @@ export class ToolContext extends Context {
 
     this.pushOverlay(new BaseOverlay(this.state));
   }
-
-  error(message, timeout=1500) {
-    let state = this.state;
-
-    console.warn(message);
-
-    if (state && state.screen) {
-      return ui_noteframe.error(state.screen, message, timeout);
-    }
-  }
-
-  warning(message, timeout=1500) {
-    let state = this.state;
-
-    console.warn(message);
-
-    if (state && state.screen) {
-      return ui_noteframe.warning(state.screen, message, timeout);
-    }
-  }
-
-  message(msg, timeout=1500) {
-    let state = this.state;
-
-    console.warn(msg);
-
-    if (state && state.screen) {
-      return ui_noteframe.message(state.screen, msg, timeout);
-    }
-  }
-
-  progbar(msg, perc=0.0, timeout=1500, id=msg) {
-    let state = this.state;
-
-    if (state && state.screen) {
-      //progbarNote(screen, msg, percent, color, timeout) {
-      return ui_noteframe.progbarNote(state.screen, msg, perc, "green", timeout, id);
-    }
-  }
 }
 
 export class ViewContext extends ToolContext {

@@ -71,13 +71,17 @@ export function saveUndoMesh(mesh) {
 
   nstructjs.manager.write_object(data, mesh);
 
-  return new DataView(new Uint8Array(data).buffer);
+  return {
+    dview    : new DataView(new Uint8Array(data).buffer),
+    drawflag : mesh.drawflag
+  };
 }
 
 export function loadUndoMesh(ctx, data) {
   let datalib = ctx.datalib;
 
-  let mesh = nstructjs.manager.read_object(data, Mesh);
+  let mesh = nstructjs.manager.read_object(data.dview, Mesh);
+  mesh.drawflag = data.drawflag;
 
   //XXX hackish! getblock[_us] copy/pasted code!
   let getblock = (ref) => {
