@@ -1,10 +1,13 @@
+For a general overview, see [Context](manual/context.html).
+
 # Context
 
 Context is a generic bundle of properties representing 
-the application state.  It's used mostly by ToolOps,
-and path.ux 
+the application state.  It's used mostly by ToolOps
+and path.ux.  See linked path.ux doc page for more 
+details. 
 
-Some important members:
+Some important properties:
 
 * ctx.scene: Active scene
 * ctx.object: Active object, alias for ctx.scene.objects.active

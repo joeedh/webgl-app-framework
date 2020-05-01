@@ -14,7 +14,6 @@ import {Shaders} from '../view3d_shaders.js';
 import {MovableWidget} from '../widget_utils.js';
 import {SnapModes} from "../transform_ops.js";
 import {SelOneToolModes} from "../selectmode.js";
-import {SavedContext} from "../../../core/context.js";
 
 import {SceneObject} from "../../../sceneobject/sceneobject.js";
 import {AddPointOp, MeasureOp} from "./measuretool_ops.js";
@@ -315,12 +314,9 @@ export class MeshToolBase extends ToolMode {
     let camdist = view3d.camera.pos.vectorDistance(view3d.camera.target);
 
     for (let mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
-      if (mesh.ownerMatrix && mesh.object_id !== undefined) {
-        //scene object meshes are drawn elsewhere
-
-        //uniforms.objectMatrix.setMatrix(mesh.ownerMatrix);
-        //uniforms.object_id = mesh.ownerId;
-        continue;
+      if (mesh.ownerMatrix && mesh.ownerId !== undefined) {
+        uniforms.objectMatrix.load(mesh.ownerMatrix);
+        uniforms.object_id = mesh.ownerId;
       } else {
         uniforms.objectMatrix.makeIdentity();
         //selection system needs some sort of object id

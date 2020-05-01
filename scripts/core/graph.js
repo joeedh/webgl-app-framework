@@ -220,6 +220,10 @@ export class NodeSocketType {
     return this.edges.length > 0;
   }
 
+  /*
+  flag the socket as updated and immediately
+  execute the data graph
+  */
   immediateUpdate() {
     this.update();
 
@@ -228,6 +232,10 @@ export class NodeSocketType {
     }
   }
 
+  /*
+  flag the socket as updated and queue
+  the datagraph for execution
+  */
   update(_exclude=undefined) {
     if (this === _exclude)
       return;

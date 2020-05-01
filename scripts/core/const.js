@@ -6,5 +6,6 @@ export const FILE_MAGIC = "POTV";
 window.DEBUG = {
   verboseDataPath : 0, //show verbose data path debug messages
   gl  : 0,
-  fbo : 0
+  fbo : 0,
+  contextSystem : 0
 };

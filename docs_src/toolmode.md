@@ -15,11 +15,7 @@ are stored in ctx.scene.toolmodes and not simply in ctx.scene.widgets
 This is necessary to support undo since the undo system works exclusively with
 the object model.
 
-Note that tool modes still aren't allowed to store direct references to 
-to instances of (subclasses of) DataBlock.  Almost no UX code is allowed to
-do this, aside from Editor and that should probably be removed.  Instead
-use controller paths.
-
 # Measure ToolMode
 
 Measurement toolmodes are subclassed from scripts/editors/view3d/tools/measuretool.js:MeasureToolBase.
+

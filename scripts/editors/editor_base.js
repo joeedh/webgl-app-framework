@@ -233,6 +233,12 @@ export class Editor extends Area {
     this.shadow.appendChild(this.container);
   }
 
+  init() {
+    super.init();
+
+    this.style["overflow"] = "hidden";
+  }
+
   swapBack() {
     let sarea = this.owning_sarea;
 

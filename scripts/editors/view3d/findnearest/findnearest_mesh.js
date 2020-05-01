@@ -6,6 +6,7 @@ import * as util from "../../../util/util.js";
 import {FindNearestRet} from "../findnearest.js";
 import {PointSet} from "../../../potree/potree_types.js";
 import {MeshTypes} from "../../../mesh/mesh_base.js";
+import {Mesh} from "../../../mesh/mesh.js";
 
 let _findnearest_rets = util.cachering.fromConstructor(FindNearestRet, 1024);
 let _castray_rets = util.cachering.fromConstructor(FindNearestRet, 1024);

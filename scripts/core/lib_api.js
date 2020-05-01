@@ -49,7 +49,7 @@ export class DataBlock extends Node {
       this.lib_users = 1;
     }
   }
-  
+
   [Symbol.keystr]() {
     return this.lib_id;
   }
@@ -143,13 +143,13 @@ DataBlock.STRUCT = STRUCT.inherit(DataBlock, Node) + `
 nstructjs.manager.add_class(DataBlock);
 
 export class DataRef {
-  constructor(block) {
-    if (block !== undefined) {
-      throw new Error("use DataRef.fromBlock (or get rid that idea altogether");
+  constructor(lib_id = -1, lib_type = 0) {
+    if (typeof lib_id === "object") {
+      lib_id = lib_id.lib_id;
     }
 
-    this.lib_type = undefined;
-    this.lib_id = -1;
+    this.lib_type = lib_id;
+    this.lib_id = lib_id;
     this.name = undefined;
     this.lib_external_ref = undefined;
   }
@@ -633,3 +633,81 @@ export class DataRefListProperty extends ToolProperty {
   }
 }
 ToolProperty.register(DataRefListProperty);
+
+export class DataRefList extends Array {
+  constructor(iterable) {
+    super();
+
+    this.idmap = {};
+
+    if (iterable !== undefined) {
+      for (let item of iterable) {
+        this.push(item);
+      }
+    }
+  }
+
+  push(item) {
+    if (typeof item === "number") {
+      item = new DataRef(item);
+    } else if (item instanceof DataBlock) {
+      item = new DataRef(item.lib_id, item.lib_type)
+    } else {
+      throw new Error("Non-datablock passed to DataRefList: " + item);
+    }
+
+    if (item.lib_id < 0) {
+      throw new Error("DataBlock hasn't been added to a datalib yet");
+    }
+
+    this.idmap[item.lib_id] = item;
+    super.push(item);
+
+    return this;
+  }
+
+  * blocks(ctx) {
+    for (let ref of this) {
+      yield ctx.datalib.get(ref);
+    }
+  }
+
+  remove(item) {
+    let lib_id;
+
+    if (typeof item === "number") {
+      lib_id = item;
+    } if (item instanceof DataBlock) {
+      lib_id = item.lib_id;
+    } else {
+      throw new Error("Non-datablock passed to DataRefList: " + item);
+    }
+
+    if (!(lib_id in this.idmap)) {
+      throw new Error("Item not in list: " + lib_id);
+    }
+
+    super.remove(this.lib_id[lib_id]);
+    delete this.lib_id[lib_id];
+
+    return this;
+  }
+
+  has(item) {
+    if (item === undefined) {
+      return false;
+    }
+
+    let lib_id;
+
+    if (typeof item === "number") {
+      lib_id = item;
+    } if (item instanceof DataBlock) {
+      lib_id = item.lib_id;
+    } else {
+      throw new Error("Non-datablock passed to DataRefList: " + item);
+    }
+
+    return lib_id in this.idmap;
+  }
+}

@@ -30,11 +30,11 @@ import {MenuBarEditor} from "../editors/menu/MainMenu.js";
 import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from "../core/graphsockets.js";
 import {VelPan, VelPanFlags} from '../editors/velpan.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
-import {Context} from '../core/context.js';
+import {ToolContext} from '../core/context.js';
 import {MeshModifierFlags, MeshFlags, MeshTypes, MeshDrawFlags, MeshFeatures} from '../mesh/mesh_base.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Vertex, Edge, Element, Loop, Face, Handle} from '../mesh/mesh_types.js';
-import {ShaderNetwork} from '../core/shadernetwork.js';
+import {ShaderNetwork} from '../shadernodes/shadernetwork.js';
 import {Material} from '../core/material.js';
 import '../shadernodes/allnodes.js';
 import {ShaderNode} from '../shadernodes/shader_nodes.js';
@@ -42,7 +42,7 @@ import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph
 import {SceneObject} from '../sceneobject/sceneobject.js';
 import {SelectOneOp} from '../sceneobject/selectops.js';
 import {DeleteObjectOp} from '../sceneobject/sceneobject_ops.js';
-import {Scene, EnvLight, EnvLightFlags} from "../core/scene.js";
+import {Scene, EnvLight, EnvLightFlags} from "../scene/scene.js";
 import {api_define_graphclasses} from '../core/graph_class.js';
 import {DisplayModes} from '../editors/debug/DebugEditor_base.js';
 import {DebugEditor} from '../editors/debug/DebugEditor.js';
@@ -609,7 +609,7 @@ export function api_define_scene(api, pstruct) {
 }
 
 export function getDataAPI() {
-  let cstruct = api.mapStruct(Context);
+  let cstruct = api.mapStruct(ToolContext);
 
   api_define_velpan(api);
 

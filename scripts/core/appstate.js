@@ -1,11 +1,10 @@
 "use strict";
 
 import * as toolsys from '../path.ux/scripts/simple_toolsys.js';
-import {Context, AppToolStack} from '../core/context.js';
+import {ViewContext} from './context.js';
+import {AppToolStack} from "./toolstack.js";
 import {initSimpleController} from '../path.ux/scripts/simple_controller.js';
 import './polyfill.js';
-
-toolsys.setContextClass(Context);
 
 import {loadShapes} from "./simplemesh_shapes.js";
 
@@ -27,16 +26,16 @@ import {ToolOp, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
 import {getDataAPI} from '../data_api/api_define.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {MenuBarEditor} from "../editors/menu/MainMenu.js";
-import {Scene} from '../core/scene.js';
+import {Scene} from '../scene/scene.js';
 import {BinaryReader, BinaryWriter} from '../util/binarylib.js';
-import * as cconst from '../core/const.js';
+import * as cconst from './const.js';
 import {AppSettings} from './settings.js';
 import {SceneObject} from '../sceneobject/sceneobject.js';
 import {Mesh} from '../mesh/mesh.js';
 import {makeCube} from './mesh_shapes.js';
 import '../path.ux/scripts/struct.js';
 import {NodeFlags} from "./graph.js";
-import {ShaderNetwork, makeDefaultShaderNetwork} from "./shadernetwork.js";
+import {ShaderNetwork, makeDefaultShaderNetwork} from "../shadernodes/shadernetwork.js";
 
 let STRUCT = nstructjs.STRUCT;
 
@@ -108,7 +107,7 @@ export class BasicFileOp extends ToolOp {
 
 export {genDefaultScreen} from '../editors/screengen.js';
 import {genDefaultScreen} from '../editors/screengen.js';
-import {Collection} from "../sceneobject/collection.js";
+import {Collection} from "../scene/collection.js";
 
 /*
 export function genDefaultScreen(appstate) {
@@ -191,7 +190,7 @@ export class FileData {
 export class AppState {
   constructor() {
     this.settings = new AppSettings;
-    this.ctx = new Context(this);
+    this.ctx = new ViewContext(this);
     this.toolstack = new AppToolStack(this.ctx);
     this.api = getDataAPI();
     this.screen = undefined;
@@ -237,7 +236,7 @@ export class AppState {
   start() {
     this.loadSettings();
 
-    this.ctx = new Context(this);
+    this.ctx = new ViewContext(this);
 
     window.addEventListener("mousedown", (e) => {
       let tbox = checkForTextBox(_appstate.screen, e.pageX, e.pageY);
@@ -437,6 +436,7 @@ export class AppState {
     let lastscreens_active = undefined;
 
     args.load_library = args.load_library === undefined ? true : args.load_library;
+    args.reset_context = args.reset_context === undefined ? args.reset_toolstack : args.reset_context;
 
     //if we didn't load a screen, preserve screens from last datalib
     if (!args.load_screen && args.load_library) {
@@ -620,6 +620,10 @@ export class AppState {
         this.screen.setCSS();
         this.screen.update();
       });
+    }
+
+    if (args.reset_context) {
+      this.ctx.reset(true);
     }
 
     if (args.reset_toolstack) {

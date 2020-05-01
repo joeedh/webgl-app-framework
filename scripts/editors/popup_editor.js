@@ -265,10 +265,11 @@ export class PopupEditor extends Editor {
     let container = document.createElement("container-x");
 
     container.ctx = this.ctx;
-    container.init();
+    container._init();
 
     container.background = this.getDefault("DefaultPanelBG");
 
+    container.style["align-items"] = "start";
     container.style["height"] = "min-content";
     container.style["width"] = "100%";
 
@@ -327,12 +328,13 @@ export class PopupEditor extends Editor {
 
     let container = this.container = document.createElement("rowframe-x");
     container.ctx = this.ctx;
-    container.init();
+    container._init();
     container.parentWidget = this;
     this.shadow.appendChild(container);
 
     let toolbar = this.toolbar = container.col();
 
+    container.style["align-items"] = "start";
     toolbar.style["margin-left"] = "25px";
     toolbar.style["margin-right"] = "5px";
     toolbar.style["padding"] = "15px";

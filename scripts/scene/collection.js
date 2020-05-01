@@ -1,8 +1,8 @@
 let STRUCT = nstructjs.STRUCT;
 import {BlockFlags, DataBlock} from "../core/lib_api.js";
-import {SceneObject} from "./sceneobject.js";
+import {SceneObject} from "../sceneobject/sceneobject.js";
 import {DependSocket, IntSocket} from "../core/graphsockets.js";
-import {Scene} from "../core/scene.js";
+import {Scene} from "./scene.js";
 import * as util from '../util/util.js';
 
 //sceneobjet collection

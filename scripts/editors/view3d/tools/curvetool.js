@@ -33,10 +33,7 @@ export class CurveToolBase extends MeshToolBase {
     //internal scene object
     this.sceneObject = undefined;
 
-    let path = "scene.tools." + this.constructor.widgetDefine().name;
-    path += ".curve";
-
-    this._meshPath = path;
+    this._meshPath = undefined;
     this.selectMask = SelMask.VERTEX|SelMask.HANDLE;
 
     this.drawflag = MeshDrawFlags.SHOW_NORMALS;
@@ -93,6 +90,22 @@ export class CurveToolBase extends MeshToolBase {
   }
 
   getMeshPaths() {
+    if (this._meshPath === undefined) {
+      this._getObject();
+
+      if (this.sceneObject !== undefined) {
+        let ob = this.sceneObject;
+        //set path to parent SceneObject so resolveMesh knows to
+        //set ownerMatrix and ownerId
+        let path = `objects[${ob.lib_id}]`;
+        this._meshPath = path;
+      } else {
+        return [];
+      }
+      //let path = "scene.tools." + this.constructor.widgetDefine().name;
+      //path += ".curve";
+    }
+
     return [this._meshPath];
   }
 
@@ -114,6 +127,13 @@ export class CurveToolBase extends MeshToolBase {
     return super.on_mousedown(e, x, y, was_touch);
   }
 
+  onActive() {
+    super.onActive();
+  }
+
+  onInactive() {
+    super.onInactive();
+  }
   _getObject() {
     if (this.sceneObject === undefined) {
       let key = "toolmode_" + this.constructor.widgetDefine().name;

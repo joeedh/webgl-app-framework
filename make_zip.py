@@ -6,6 +6,8 @@ sources = [
   "./docs/**",
   "./scripts/*.js",
   "./scripts/core/**",
+  "./scripts/scene/**",
+  "./scripts/curve/**",
   "./scripts/mesh/**",
   "./scripts/editors/**",
   "./scripts/data_api/**",

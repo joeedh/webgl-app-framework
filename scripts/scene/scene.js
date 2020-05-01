@@ -1,13 +1,13 @@
-import {DataBlock, DataRef, BlockFlags} from './lib_api.js';
+import {DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import '../path.ux/scripts/struct.js';
 import {ToolModes, makeToolModeEnum} from '../editors/view3d/view3d_toolmode.js';
 import {WidgetManager, WidgetTool, WidgetTools} from "../editors/view3d/widgets.js";
 
 let STRUCT = nstructjs.STRUCT;
-import {Graph} from './graph.js';
+import {Graph} from '../core/graph.js';
 import * as util from '../util/util.js';
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject.js';
-import {DependSocket} from './graphsockets.js';
+import {DependSocket} from '../core/graphsockets.js';
 import {Light} from '../light/light.js';
 import {Vector3, Matrix4} from '../util/vectormath.js';
 
@@ -15,7 +15,7 @@ import * as THREE from '../extern/three.js';
 import {print_stack} from "../util/util.js";
 import {WidgetSceneCursor} from "../editors/view3d/widget_tools.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
-import {Collection} from "../sceneobject/collection.js";
+import {Collection} from "./collection.js";
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 
 export const EnvLightFlags = {
@@ -357,8 +357,8 @@ export class Scene extends DataBlock {
   }
 
   getInternalObject(ctx, key, dataclass_or_instance) {
-    let cname = "__internal" + this.name;
-    let name = "__internal" + this.name + "_" + key;
+    let cname = "[Internal " + this.lib_id + "]";
+    let name = cname + " " + key;
 
     let cl = this.getCollection(ctx, cname);
 
@@ -382,7 +382,7 @@ export class Scene extends DataBlock {
       ob.data = data;
     }
     
-    ob.flag |= ObjectFlags.LOCKED|ObjectFlags.INTERNAL;
+    ob.flag |= ObjectFlags.INTERNAL;
 
     if (!cl.has(ob)) {
       cl.add(ob);
@@ -422,7 +422,7 @@ export class Scene extends DataBlock {
 
     for (let ob of set) {
       if (!this.objects.has(ob)) {
-        this.objects.add(ob);
+        this.objects.push(ob);
         ob.lib_addUser(this);
 
         if (this.objects.active === undefined) {

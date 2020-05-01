@@ -271,7 +271,6 @@ uniform vec4 last_color;
 uniform vec4 highlight_color;
 uniform float pointSize;
 
-varying vec4 vColor;
 varying float vId;
 ${PolygonOffset.pre}
 
@@ -285,13 +284,6 @@ void main() {
   gl_PointSize = pointSize;
   
   vId = id + 1.0; // + id_offset;
-  
-  vec4 c;
-  
-  c[0] = object_id + 1.0;
-  c[1] = vId;
-  
-  vColor = c;
 }
 `,
   fragment : `precision mediump float;
@@ -299,12 +291,11 @@ void main() {
 uniform float id_offset;
 uniform float object_id;
 
-varying vec4 vColor;
 varying float vId;
 ${PolygonOffset.pre}
 
 void main() {
-  gl_FragColor = vec4(object_id, vId, 0.0, 1.0);
+  gl_FragColor = vec4(object_id+1.0, vId, 0.0, 1.0);
   ${PolygonOffset.fragment}
 }
   `,

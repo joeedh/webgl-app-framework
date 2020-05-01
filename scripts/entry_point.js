@@ -71,4 +71,4 @@ window.init = () => {
       return _appstate.ctx;
     }
   })
-}
+};

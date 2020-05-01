@@ -40,8 +40,9 @@
           "datagraph.md",
           "../scripts/path.ux/docs/docs_src/toolprop.md",
           "../scripts/path.ux/docs/docs_src/tutorial.md",
+          "../scripts/path.ux/docs/docs_src/context.md",
           "toolmode.md",
-          "context.md",
+          "mycontext.md",
           "widgets.md",
           "view3d.md"
         ]

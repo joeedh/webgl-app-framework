@@ -1,16 +1,16 @@
-import {DataBlock, DataRef} from './lib_api.js';
-import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags} from './graph.js';
+import {DataBlock, DataRef} from '../core/lib_api.js';
+import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags} from '../core/graph.js';
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {DependSocket, Vec3Socket, Vec4Socket, Matrix4Socket, FloatSocket} from "./graphsockets.js";
+import {DependSocket, Vec3Socket, Vec4Socket, Matrix4Socket, FloatSocket} from "../core/graphsockets.js";
 import {UIBase} from '../path.ux/scripts/ui_base.js';
 import {Container} from '../path.ux/scripts/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
-import {AbstractGraphClass} from './graph_class.js';
-import {ShaderGenerator, OutputNode, DiffuseNode} from "../shadernodes/shader_nodes.js";
+import {AbstractGraphClass} from '../core/graph_class.js';
+import {ShaderGenerator, OutputNode, DiffuseNode} from "./shader_nodes.js";
 
-export {ShaderNetworkClass, ShaderNodeTypes, ShaderGenerator} from '../shadernodes/shader_nodes.js';
+export {ShaderNetworkClass, ShaderNodeTypes, ShaderGenerator} from './shader_nodes.js';
 
 export const MaterialFlags = {
   SELECT : 1
