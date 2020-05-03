@@ -105,7 +105,7 @@ export class ToolMode extends WidgetTool {
     let classes = this.widgetDefine().transWidgets;
     classes = classes === undefined ? [] : classes;
 
-    return WidgetTool.getToolEnum(classes, EnumProperty, false);
+    return WidgetTool.getToolEnum(classes, FlagProperty, true);
   }
 
   static defineAPI(api) {
