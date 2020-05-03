@@ -516,6 +516,7 @@ export class View3D extends Editor {
 
         if (toolmode !== undefined) {
           aabb = toolmode.getViewCenter();
+          aabb = [aabb, aabb.copy()];
         }
       }
 

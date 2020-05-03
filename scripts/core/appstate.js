@@ -48,7 +48,7 @@ ToolOp.prototype.undoPre = function(ctx) {
 
 ToolOp.prototype.undo = function(ctx) {
   console.log("loading undo file 1");
-  ctx.appstate.loadUndoFile(this._undo);
+  ctx.state.loadUndoFile(this._undo);
 
   window.redraw_viewport();
 };

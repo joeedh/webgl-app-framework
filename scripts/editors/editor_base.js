@@ -336,8 +336,6 @@ export class Editor extends Area {
   */
 
   on_keydown(e) {
-    console.log(e.keyCode);
-
     Editor.setLastArea(this);
   }
 

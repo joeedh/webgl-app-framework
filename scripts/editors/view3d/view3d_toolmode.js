@@ -105,7 +105,7 @@ export class ToolMode extends WidgetTool {
     let classes = this.widgetDefine().transWidgets;
     classes = classes === undefined ? [] : classes;
 
-    return WidgetTool.getToolEnum(classes, FlagProperty, true);
+    return WidgetTool.getToolEnum(classes, EnumProperty, false);
   }
 
   static defineAPI(api) {
@@ -118,7 +118,7 @@ export class ToolMode extends WidgetTool {
 
     let prop = this.getTransformProp();
     if (prop !== undefined) {
-      tstruct.flags("transformWidget", "transformWidget", prop, "Transform Widget", "Current transformation widget");
+      tstruct.enum("transformWidget", "transformWidget", prop, "Transform Widget", "Current transformation widget");
     }
 
     return tstruct;

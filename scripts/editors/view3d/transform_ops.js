@@ -240,6 +240,8 @@ export class TransformOp extends View3DOp {
   }
 
   on_mouseup(e) {
+    console.log("mouseup!");
+
     if (e.button != 0) {
       this.cancel();
     } else {

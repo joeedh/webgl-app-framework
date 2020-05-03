@@ -52,8 +52,6 @@ export class ToolHistoryConsole extends ColumnFrame {
 
     let buf = lines.join("\n") + toolstack.cur;
     if (buf !== this._buf) {
-      console.log(buf);
-
       this._buf = buf;
 
       table.clear();
@@ -135,7 +133,7 @@ export class MenuBarEditor extends Editor {
         console.warn("Import dialog");
 
         let screen  =this.ctx.screen;
-        let dialog = this.ctx.screen.popup(screen.mpos[0], screen.mpos[1], false);
+        let dialog = this.ctx.screen.popup(this, screen.mpos[0], screen.mpos[1], false);
 
         dialog.style["padding"] = "15px";
         dialog.label("Import");

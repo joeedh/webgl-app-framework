@@ -169,7 +169,9 @@ export class PropsEditor extends PopupEditor   {
     super();
 
     this._needsBuild = 1;
+
     this.inherit_packflag = PackFlags.SIMPLE_NUMSLIDERS;
+    this.packflag = PackFlags.SIMPLE_NUMSLIDERS;
   }
 
   init() {
@@ -226,6 +228,9 @@ export class PropsEditor extends PopupEditor   {
   }
 
   buildSettingsPanel(tabs) {
+    tabs.packflag |= this.packflag;
+    tabs.inherit_packflag |= this.packflag;
+
     let tab = tabs.tab("Settings", Icons.MATERIAL);
 
     let panel;
@@ -303,6 +308,8 @@ export class PropsEditor extends PopupEditor   {
   buildMaterial(tab) {
     //makeDataBlockBrowser(tab, Material, "object.material", (container) => {
     let container = tab.col();
+    console.log("tabwer", tab.packflag, container.packflag, PackFlags.SIMPLE_NUMSLIDERS);
+
     container.style["padding"] = "10px";
 
     container.prop("pointset.material.pointSize");

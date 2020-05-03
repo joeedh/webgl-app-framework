@@ -243,8 +243,6 @@ export class PopupEditor extends Editor {
 
     let tab = this.tab(name, icon, description)._tab;
 
-    tab.inherit_packflag |= this.inherit_packflag;
-    tab.contents.inherit_packflag |= this.inherit_packflag;
     tab.name = name;
     tab.contents.name = name;
 
@@ -271,6 +269,11 @@ export class PopupEditor extends Editor {
     container.parentWidget = this;
     container.useDataPathUndo = this.useDataPathUndo;
 
+    let packflag = this.packflag | this.inherit_packflag;
+
+    container.packflag |= packflag;
+    container.inherit_packflag |= packflag;
+
     container.style["align-items"] = "start";
     container.style["height"] = "min-content";
     container.style["width"] = "100%";
@@ -281,11 +284,12 @@ export class PopupEditor extends Editor {
     let mode = PopupTabModes.BINARY;
     let tab = new PopupButton(this, container, container._tab_id, mode);
 
+    tab.packflag |= packflag;
+    tab.inherit_packflag = packflag;
+
     tab.name = name;
     this.tabs.push(tab);
     this.tab_idmap[container._tab_id] = tab;
-
-    container.inherit_packflag |= this.inherit_packflag;
 
     let id = container._tab_id;
 

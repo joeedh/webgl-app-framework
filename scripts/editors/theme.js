@@ -88,7 +88,7 @@ export const theme = {
       //weight   : "bold"
     }),
 
-    "TitleText" : new CSSFont({
+    TitleText : new CSSFont({
       size     : 16,
       color    : "rgba(255, 255, 255, 1.0)",
       font     : "sans-serif",
@@ -122,6 +122,20 @@ export const theme = {
   numslider : {
     "defaultWidth" : 100,
     "defaultHeight" : 29
+  },
+
+  numslider_simple : {
+    TitleText : new CSSFont({
+      size     : 14,
+      color    : "rgba(255, 255, 255, 1.0)",
+      font     : "sans-serif",
+      weight   : "bold"
+    }),
+    SlideHeight : 10,
+    DefaultWidth : 135,
+    DefaultHeight : 24,
+    BoxRadius : 5,
+    TextBoxWidth : 45
   },
 
   colorfield : {

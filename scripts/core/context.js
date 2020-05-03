@@ -64,6 +64,8 @@ export class BaseOverlay extends ContextOverlay {
   }
 
   toolmode_save() {
+    if (this.scene === undefined)
+      return 0;
     return this.scene.toolmode_i;
   }
   toolmode_load(ctx, data) {
@@ -101,6 +103,8 @@ export class BaseOverlay extends ContextOverlay {
   }
 
   get selectedObjects() {
+    if (this.scene === undefined) return [];
+    
     return this.scene.objects.selected.editable;
   }
 
@@ -108,6 +112,10 @@ export class BaseOverlay extends ContextOverlay {
    * even if they share .data Light instances*/
   get selectedLightObjects() {
     let this2 = this;
+
+    if (this.scene === undefined) {
+      return [];
+    }
 
     return (function*() {
       for (let ob of this2.scene.objects) {

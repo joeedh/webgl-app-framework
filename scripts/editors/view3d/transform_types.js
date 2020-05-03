@@ -428,7 +428,7 @@ export class ObjectTransType extends TransDataType {
   static genData(ctx, selectmode, propmode, propradius) {
     let ignore_meshes = selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE);
 
-    console.warn("OBJECT GEN", selectmode, selectmode & (SelMask.OBJECT));
+    //console.warn("OBJECT GEN", selectmode, selectmode & (SelMask.OBJECT));
 
     if (!(selectmode & SelMask.OBJECT)) {
       return undefined;

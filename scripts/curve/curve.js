@@ -58,7 +58,7 @@ export class KnotDataLayer extends CustomDataElem {
 
     dstruct.float("knot", "speed", "Speed").on("change", function() {
       window.redraw_viewport();
-    });
+    }).range(0.0, 10.0);
 
     dstruct.float("computedKnot", "computedKnot", "computedKnot").read_only();
   }
