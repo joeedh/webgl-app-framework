@@ -1318,7 +1318,7 @@ export class Mesh extends SceneObjectData {
     }
 
     if (this.recalc & RecalcFlags.ELEMENTS) {
-      console.log("_genRenderElements");
+      //console.log("_genRenderElements");
       this._genRenderElements(view3d, gl, uniforms);
     }
 
@@ -1616,8 +1616,6 @@ export class Mesh extends SceneObjectData {
 
       totshell++;
     }
-
-    console.log("totshells:", totshell);
 
     if (totshell > 1 && (this.features & MeshFeatures.SINGLE_SHELL)) {
       msg_out[0] = "Can't split up mesh";

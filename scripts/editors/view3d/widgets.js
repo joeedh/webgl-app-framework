@@ -933,8 +933,6 @@ export class WidgetManager {
 
   /**see view3d.getSubEditorMpos for how localX/localY are derived*/
   on_mousedown(e, localX, localY, was_touch) {
-    console.warn("was touch:", was_touch, "limit:", this._picklimit(was_touch));
-
     this.updateHighlight(e, localX, localY, was_touch);
 
     if (this._fireAllEventWidgets(e, "on_mousedown", localX, localY, was_touch)) {

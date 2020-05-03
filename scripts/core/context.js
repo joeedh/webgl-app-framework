@@ -20,7 +20,7 @@ import {Context, ContextOverlay, ContextFlags} from "./context_base.js";
 import {UIBase} from "../path.ux/scripts/ui_base.js";
 import {Screen} from "../path.ux/scripts/FrameManager.js";
 
-let passthrus = new Set(["datalib", "gl", "graph"]);
+let passthrus = new Set(["datalib", "gl", "graph", "last_tool", "toolstack", "api"]);
 
 export class BaseOverlay extends ContextOverlay {
   constructor(appstate) {

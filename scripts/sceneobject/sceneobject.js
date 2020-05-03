@@ -165,9 +165,13 @@ export class SceneObject extends DataBlock {
   getBoundingBox() {
     let ret = this.data.getBoundingBox();
 
-    let matrix = this.outputs.matrix.getValue();
+    if (!ret) {
+      ret = [new Vector3(), new Vector3()];
+    } else {
+      ret = [ret[0].copy(), ret[1].copy()];
+    }
 
-    ret = [ret[0].copy(), ret[1].copy()];
+    let matrix = this.outputs.matrix.getValue();
 
     ret[0].multVecMatrix(matrix);
     ret[1].multVecMatrix(matrix);

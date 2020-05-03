@@ -203,8 +203,10 @@ export class MenuBarEditor extends Editor {
     strip.iconbutton(Icons.CONSOLE, "Show Console", () => {
       if (this.menuSize !== menuSize) {
         this.menuSize = menuSize;
+        this.style["overflow"] = "hidden";
       } else {
         this.menuSize = 200;
+        this.style["overflow"] = "scroll";
       }
     });
 
