@@ -57,6 +57,7 @@ ToolOp.prototype.execPost = function(ctx) {
   window.redraw_viewport();
 };
 
+
 /*root operator for when leading files*/
 export class RootFileOp extends ToolOp {
   static tooldef() {return {

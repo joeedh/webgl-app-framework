@@ -1,7 +1,7 @@
 import '../path.ux/scripts/struct.js';
 import {IDGen} from '../util/util.js';
 import {Node, Graph, NodeFlags, SocketFlags, NodeSocketType} from './graph.js';
-import {ToolProperty, PropFlags, EnumProperty} from '../path.ux/scripts/toolprop.js';
+import {ToolProperty, PropTypes, PropFlags, EnumProperty} from '../path.ux/scripts/toolprop.js';
 import {Check1} from "../path.ux/scripts/ui_widgets.js";
 import {Icons} from "../editors/icon_enum.js";
 
@@ -583,11 +583,11 @@ export class DataRefProperty extends ToolProperty {
     return ret;
   }
 }
-ToolProperty.register(DataRefProperty);
+PropTypes.DATAREF = ToolProperty.register(DataRefProperty);
 
 export class DataRefListProperty extends ToolProperty {
   constructor(typeName, apiname, uiname, description, flag, icon) {
-    super(undefined, apiname, uiname, description, flag, icon)
+    super(PropTypes.DATAREFLIST, apiname, uiname, description, flag, icon)
 
     this.blockType = typeName;
     this.data = [];
@@ -632,7 +632,7 @@ export class DataRefListProperty extends ToolProperty {
     return ret;
   }
 }
-ToolProperty.register(DataRefListProperty);
+PropTypes.DATAREFLIST = ToolProperty.register(DataRefListProperty);
 
 export class DataRefList extends Array {
   constructor(iterable) {
