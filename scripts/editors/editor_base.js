@@ -517,8 +517,8 @@ export class App extends Screen {
     canvas.dpi = dpi;
   }
 
-  on_resize(newsize) {
-    super.on_resize(newsize);
+  on_resize(oldsize, newsize) {
+    super.on_resize(oldsize, newsize);
     this.setCSS();
   }
 
@@ -543,9 +543,10 @@ export class App extends Screen {
   }
 
   positionMenu() {
+    return;
+
     if (this.ctx === undefined)
       return;
-
 
     let menu = this.ctx.menubar;
     let view3d = this.ctx.view3d;
@@ -586,17 +587,7 @@ export class App extends Screen {
 
     this.updateWidgets();
     this.updateDPI();
-
-    let w = window.innerWidth;
-    let h = window.innerHeight;
-    
-    if (w !== this.size[0] || h !== this.size[1]) {
-      this.on_resize([w, h]);
-      
-      this.size[0] = w;
-      this.size[1] = h;
-    }
-  }
+ }
 };
 
 App.STRUCT = STRUCT.inherit(App, Screen, 'App') + `

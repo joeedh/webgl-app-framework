@@ -516,7 +516,10 @@ export class View3D extends Editor {
 
         if (toolmode !== undefined) {
           aabb = toolmode.getViewCenter();
-          aabb = [aabb, aabb.copy()];
+
+          if (aabb) {
+            aabb = [aabb, aabb.copy()];
+          }
         }
       }
 
@@ -728,7 +731,7 @@ export class View3D extends Editor {
     this.header = this.container.col();
     this.header.style["width"] = "min-content";
     this.container.style["width"] = "min-content";
-    this.header.style["margin-left"] = "75px";
+    this.header.style["margin-left"] = "175px";
 
     this.header.useIcons();
 
@@ -823,7 +826,8 @@ export class View3D extends Editor {
 
     let uiHasFocus = (e) => {
 
-      let node = this.getScreen().pickElement(e.pageX, e.pageY);
+      let node = this.getScreen().pickElement(e.x, e.y);
+      console.log(node ? node.tagName : node);
 
       //console.log(e.pageX, e.pageY, node);
       return node !== this && node !== this.overdraw;
@@ -1003,9 +1007,10 @@ export class View3D extends Editor {
     }
 
     let screen = this.ctx.screen;
-    if (this.pos[1] + this.size[1] > screen.size[1]) {
-      console.log("view3d is too big");
-      screen.on_resize(screen.size);
+    if (this.pos[1] + this.size[1] > screen.size[1]+4) {
+      console.log("view3d is too big", this.pos[1] + this.size[1], screen.size[1]);
+      this.ctx.screen.snapScreenVerts();
+      this.ctx.screen.regenBorders();
     }
 
     //TODO have limits for how many samplers to render
@@ -1070,7 +1075,7 @@ export class View3D extends Editor {
   on_resize(newsize) {
     super.on_resize(newsize);
 
-    //trigger rebuild of renderEngine, if necassary
+    //trigger rebuild of renderEngine, if necessary
     if (this.renderEngine !== undefined) {
       let engine = this.renderEngine;
       this.renderEngine = undefined;

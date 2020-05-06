@@ -311,6 +311,9 @@ export class MenuBarEditor extends Editor {
   update() {
     super.update();
 
+    this.minSize[1] = this.menuSize;
+    this.maxSize[1] = this.menuSize;
+
     let dpi = UIBase.getDPI();
     let h = Math.ceil(this.menuSize);
 

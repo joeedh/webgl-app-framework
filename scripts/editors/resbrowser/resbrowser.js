@@ -163,7 +163,10 @@ export class ResourceBrowser extends Editor {
     });
 
     header.button("Cancel", () => {
+      console.log("Cancel");
+
       this.end();
+
       if (this.swapCancelled !== undefined) {
         this.swapCancelled();
       }
@@ -284,6 +287,8 @@ export class ResourceBrowser extends Editor {
       this.icons.push(icon);
 
       icon.addEventListener("click", icon_click);
+      icon.addEventListener("mousedown", icon_click);
+      icon.addEventListener("touchstart", icon_click);
 
       i++;
       if (i == cells) {

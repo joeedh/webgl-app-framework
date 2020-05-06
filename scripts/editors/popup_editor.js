@@ -142,11 +142,15 @@ export class PopupEditor extends Editor {
     //this.shadow.appendChild(this.contents);
     if (this.owning_sarea !== undefined) {
       this.size[0] = this.openSize;
+      console.log("openSize", this.openSize);
+
+      this.owning_sarea.loadFromPosSize();
       this.owning_sarea.setCSS();
+
+      this.ctx.screen._internalRegenAll();
+      this.ctx.screen.setCSS();
     }
 
-    this.ctx.screen._internalRegenAll();
-    this.ctx.screen.setCSS();
     this.setCSS();
     this.update();
   }
@@ -183,9 +187,9 @@ export class PopupEditor extends Editor {
       let w = ~~(rect.width+0.5);
       let h = ~~(rect.height+0.5);
 
-      if (w !== this.size[0] || h !== this.size[1]) {
-        this.size[0] = w;
-        this.size[1] = h;
+      if (w !== this.owning_sarea.size[0] || h !== this.owning_sarea.size[1]) {
+        this.owning_sarea.size[0] = w;
+        this.owning_sarea.size[1] = h;
 
         this.ctx.screen.regenBorders();
         this.setCSS();
@@ -202,9 +206,10 @@ export class PopupEditor extends Editor {
 
       if (h !== this.size[1]) {
         console.log("updating .size[1]");
-        this.size[1] = h;
+        this.owning_sarea.size[1] = h;
 
-        this.ctx.screen.regenBorders();
+        this.owning_sarea.loadFromPosSize();
+        //this.ctx.screen.regenBorders();
         this.setCSS();
         this.owning_sarea.setCSS();
       }

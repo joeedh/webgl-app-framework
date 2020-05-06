@@ -208,6 +208,9 @@ export class ViewOverlay extends ContextOverlay {
   }
 
   get selectMask() {
+    if (!this.ctx || !this.ctx.scene)
+      return 0;
+
     return this.ctx.scene.selectMask;
   }
 

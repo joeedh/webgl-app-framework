@@ -14,6 +14,7 @@ import '../editors/resbrowser/resbrowser_types.js';
 
 import '../editors/view3d/tools/tools.js';
 import {checkForTextBox} from "../path.ux/scripts/ui_widgets.js";
+import cconst2 from "../path.ux/scripts/const.js";
 import {keymap} from "../path.ux/scripts/events.js";
 import {Material} from './material.js';
 import {App, ScreenBlock} from '../editors/editor_base.js';
@@ -36,6 +37,8 @@ import {makeCube} from './mesh_shapes.js';
 import '../path.ux/scripts/struct.js';
 import {NodeFlags} from "./graph.js";
 import {ShaderNetwork, makeDefaultShaderNetwork} from "../shadernodes/shadernetwork.js";
+
+cconst2.loadConstants(cconst);
 
 let STRUCT = nstructjs.STRUCT;
 
@@ -617,7 +620,7 @@ export class AppState {
       this.screen.setCSS();
 
       screen.doOnce(() => {
-        this.screen.on_resize([window.innerWidth, window.innerHeight]);
+        this.screen.on_resize(this.screen.size, [window.innerWidth, window.innerHeight]);
         this.screen.setCSS();
         this.screen.update();
       });

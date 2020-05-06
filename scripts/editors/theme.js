@@ -2,6 +2,9 @@ import {CSSFont, setTheme} from "../path.ux/scripts/ui_base.js";
 
 export const theme = {
   base : {
+    mobileTextSizeMultiplier : 1,
+    mobileSizeMultiplier : 1, //does not include text
+
     //used for by icon strips and the like
     "oneAxisPadding" : 6,
     "oneAxisMargin" : 6,
@@ -56,6 +59,14 @@ export const theme = {
       weight : "bold"
     }),
 
+    //fonts
+    "ToolTipText" : new CSSFont({
+      font  : "sans-serif",
+      size  : 18,
+      color :  "rgba(235, 235, 235, 1.0)",
+      weight : "bold"
+    }),
+
     "TabText" : new CSSFont({
       size     : 18,
       color    : "rgba(235, 235, 235, 1.0)",
@@ -81,19 +92,16 @@ export const theme = {
       //weight   : "bold"
     }),
 
-    "MenuText" : new CSSFont({
-      size     : 12,
-      color    : "rgba(25, 25, 25, 1.0)",
-      font     : "sans-serif"
-      //weight   : "bold"
-    }),
-
     TitleText : new CSSFont({
       size     : 16,
       color    : "rgba(255, 255, 255, 1.0)",
       font     : "sans-serif",
       weight   : "bold"
     }),
+  },
+
+  tooltip : {
+    "BoxBG" : "rgb(245, 245, 245, 1.0)"
   },
 
   button : {
@@ -119,12 +127,33 @@ export const theme = {
     BoxDepressed : "rgba(100, 100, 100, 0.5)"
   },
 
+  menu : {
+    MenuText : new CSSFont({
+      size     : 12,
+      color    : "rgba(25, 25, 25, 1.0)",
+      font     : "sans-serif"
+      //weight   : "bold"
+    }),
+
+    MenuSeparator : `
+      width : 100%;
+      height : 2px;
+      padding : 0px;
+      margin : 0px;
+      border : none;
+      background-color : grey; 
+    `,
+
+    MenuBorder : "1px solid grey",
+  },
+
   numslider : {
     "defaultWidth" : 100,
     "defaultHeight" : 29
   },
 
   numslider_simple : {
+    labelOnTop : true,
     TitleText : new CSSFont({
       size     : 14,
       color    : "rgba(255, 255, 255, 1.0)",
