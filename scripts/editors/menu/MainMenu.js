@@ -336,7 +336,10 @@ export class MenuBarEditor extends Editor {
       this.size[1] = h;
 
       this.setCSS();
+      this.ctx.screen.solveAreaConstraints();
+      //this.ctx.screen._internalRegenAll();
       this.ctx.screen.regenBorders();
+      this.ctx.screen.snapScreenVerts();
       this.ctx.screen.setCSS();
     }
 

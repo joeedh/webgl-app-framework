@@ -202,6 +202,7 @@ export function initWebGL() {
   canvas.width = ~~(w*dpi);
   canvas.height = ~~(h*dpi);
 
+  canvas.style["display"] = "float";
   canvas.style["left"] = "0px";
   canvas.style["top"] = "0px";
   canvas.style["width"] = w + "px";
@@ -1239,8 +1240,8 @@ export class View3D extends Editor {
     let gl = this.gl;
     let dpi = this.canvas.dpi;//UIBase.getDPI();
 
-    let x = this.pos[0]*dpi, y = this.pos[1]*dpi;
-    let w = this.size[0]*dpi, h = this.size[1]*dpi;
+    let x = this.owning_sarea.pos[0]*dpi, y = this.owning_sarea.pos[1]*dpi;
+    let w = this.owning_sarea.size[0]*dpi, h = this.owning_sarea.size[1]*dpi;
     //console.log("DPI", dpi);
 
     let screen = this.ctx.screen;
