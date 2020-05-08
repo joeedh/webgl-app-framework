@@ -214,7 +214,13 @@ export function initWebGL() {
 
   document.body.appendChild(canvas);
   
-  let gl = _gl = init_webgl(canvas, {});
+  let gl = _gl = init_webgl(canvas, {
+    antialias : false,
+    alpha     : false,
+    powerPreference : "high-performance",
+    preserveDrawingBuffer : true,
+    stencil : true
+  });
 
   var scene = new THREE.Scene();
   var renderer = new THREE.WebGLRenderer({
@@ -299,6 +305,9 @@ export class DrawLine {
 export class View3D extends Editor {
   constructor() {
     super();
+
+    //current calculated fps
+    this.fps = 60.0;
 
     this._nodes = [];
 
@@ -825,10 +834,32 @@ export class View3D extends Editor {
     this.makeGraphNodes();
     this.rebuildHeader();
 
+    let on_mousewheel = (e) => {
+      console.log("mouse wheel!", e, e.deltaY);
+
+      let df = e.deltaY / 100.0;
+
+      df = Math.min(Math.max(df, -0.5), 0.5);
+      df = 1.0 + df*0.4;
+
+      console.log(df);
+
+      let cam = this.camera;
+
+      let dis = cam.pos.vectorDistance(cam.target);
+      if (df < 1.0 && dis*df < cam.near*5.0) {
+        return;
+      }
+
+      cam.pos.sub(cam.target).mulScalar(df).add(cam.target);
+      window.redraw_viewport();
+    };
+
+    this.addEventListener("wheel", on_mousewheel);
+
     let uiHasFocus = (e) => {
 
       let node = this.getScreen().pickElement(e.x, e.y);
-      console.log(node ? node.tagName : node);
 
       //console.log(e.pageX, e.pageY, node);
       return node !== this && node !== this.overdraw;
@@ -898,9 +929,9 @@ export class View3D extends Editor {
 
       this.updateCursor();
 
-      let docontrols = e.button == 1 || e.button == 2 || e.altKey;
+      let docontrols = e.button === 1 || e.button === 2 || e.altKey;
 
-      if (!docontrols && e.button == 0) {
+      if (!docontrols && e.button === 0) {
         let selmask = this.ctx.selectMask;
 
         docontrols = true;
@@ -1492,7 +1523,13 @@ let drawCount = 1;
 let f2 = () => {
   let screen = _appstate.screen;
   let resetrender = resetRender;
+  let gl = _gl;
+
   resetRender = 0;
+
+  //try to calculate fps rate
+
+  let time = util.time_ms();
 
   for (let sarea of screen.sareas) {
     let sdef = sarea.area.constructor.define();
@@ -1505,6 +1542,30 @@ let f2 = () => {
       }
 
       sarea.area.viewportDraw();
+    }
+  }
+
+  if (!gl) {
+    return;
+  }
+  
+  //wait for gpu
+  gl.finish();
+
+  //be real sure gpu has finished drawing
+  gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.FLOAT, new Float32Array(8*8*4));
+
+  //now get time
+  time = util.time_ms() - time;
+  time = 1000.0 / time;
+
+  for (let sarea of screen.sareas) {
+    let area = sarea.area;
+
+    if (!area) continue;
+
+    if (area instanceof View3D) {
+      area.fps = time;
     }
   }
 };

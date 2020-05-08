@@ -45,7 +45,11 @@ for f in sources:
       continue;
     files.append(path);
     
-zf = zipfile.ZipFile(outfile, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=4)
+try:
+    zf = zipfile.ZipFile(outfile, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=4)
+except:
+    print(zipfile.ZipFile.__doc__)
+    zf = zipfile.ZipFile(outfile, "w", compression=zipfile.ZIP_DEFLATED)
 
 for i, path in enumerate(files):
   perc = float(i) / float(len(files)) * 100.0

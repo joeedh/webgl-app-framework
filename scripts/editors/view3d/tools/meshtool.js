@@ -130,7 +130,7 @@ export class MeshToolBase extends ToolMode {
 
     this.findHighlight(e, x, y);
 
-    if (e.ctrlKey || e.altKey || e.commandKey) {
+    if (e.button === 1 || e.ctrlKey || e.altKey || e.commandKey) {
       return false;
     }
 

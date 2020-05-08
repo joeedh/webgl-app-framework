@@ -796,7 +796,43 @@ export class Camera extends DrawMats {
     this.near = 0.25;
     this.far = 10000.0;
   }
-  
+
+  generateUpdateHash(objectMatrix=undefined) {
+    let mul = 1<<18;
+
+    let ret = 0;
+
+    function add(val) {
+      val = (val * mul) & ((1<<31)-1);
+      ret = (ret ^ val) & ((1<<31)-1);
+    }
+
+    add(this.near);
+    add(this.far);
+    add(this.fovy);
+    add(this.aspect);
+    add(this.isPerspective);
+    add(this.pos[0]);
+    add(this.pos[1]);
+    add(this.pos[2]);
+    add(this.target[0]);
+    add(this.target[1]);
+    add(this.target[2]);
+    add(this.up[0]);
+    add(this.up[1]);
+    add(this.up[2]);
+
+    if (objectMatrix !== undefined) {
+      let m = objectMatrix.$matrix;
+
+      add(m.m11); add(m.m12); add(m.m13);
+      add(m.m21); add(m.m22); add(m.m23);
+      add(m.m31); add(m.m32); add(m.m33);
+    }
+
+    return ret;
+  }
+
   load(b) {
     this.isPerspective = b.isPerspective;
     this.fovy = b.fovy;

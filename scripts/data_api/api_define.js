@@ -18,7 +18,7 @@ import '../editors/view3d/widget_tools.js'; //ensure widget tools are all regist
 import {WidgetTool, WidgetFlags} from '../editors/view3d/widgets.js';
 import {AddLightOp} from "../light/light_ops.js";
 import {Light} from '../light/light.js';
-import {PropsEditor} from "../editors/properties/PropsEditor.js";
+import {SideBarEditor} from "../editors/sidebar/SideBarEditor.js";
 import {DataAPI, DataPathError} from '../path.ux/scripts/simple_controller.js';
 import {DataBlock, DataRef, Library, BlockSet, BlockFlags} from '../core/lib_api.js'
 import * as toolprop from '../path.ux/scripts/toolprop.js';
@@ -365,6 +365,7 @@ function api_define_material(api) {
   mstruct.int("pointSize", "pointSize", "Size", "Point Size").range(1, 6).on('change', redraw);
   mstruct.enum("pointShape", "pointShape", Potree.PointShape, "Shape", "Point Shape").on('change', redraw);
   mstruct.enum("pointSizeType", "pointSizeType", Potree.PointSizeType, "Mode").on('change', redraw);
+  mstruct.float("quality", "quality", "Quality", "Quality").range(0.001, 1.0).on('change', redraw);
 
   return mstruct;
 }

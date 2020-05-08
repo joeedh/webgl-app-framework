@@ -158,7 +158,7 @@ export class PopupEditor extends Editor {
   close() {
     if (!this._open) {
       if (this.contents !== undefined) {
-        this.contents.remove();
+        this.contents.remove(false);
         this.contents = undefined;
       }
 
@@ -236,6 +236,21 @@ export class PopupEditor extends Editor {
     }
 
     this.style["height"] = "min-content";
+  }
+
+  iconbutton(icon, description, cb) {
+    let ret = this.toolbar.iconbutton(icon, description, cb);
+    ret.overrideClass("PopupEditorIcon");
+
+    return ret;
+  }
+
+  button(name, description, cb) {
+    let ret = this.toolbar.button(icon, name, cb);
+    ret.description = description;
+    ret.overrideClass("PopupEditorIcon");
+
+    return ret;
   }
 
   tritab(name, icon=-1, description=name, cb=undefined) {

@@ -111,6 +111,10 @@ export class ObjectEditor extends ToolMode {
       return false;
     }
 
+    if (e.button !== 0) {
+      return false;
+    }
+
     this._updateHighlight(...arguments);
 
     if (e.ctrlKey || e.altKey || e.commandKey) {

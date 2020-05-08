@@ -15,10 +15,11 @@ import * as ui_noteframe from '../path.ux/scripts/ui_noteframe.js';
 import {PointSet} from '../potree/potree_types.js';
 import {Matrix4} from "../util/vectormath.js";
 import {MenuBarEditor} from "../editors/menu/MainMenu.js";
-import {PropsEditor} from "../editors/properties/PropsEditor.js";
+import {SideBarEditor} from "../editors/sidebar/SideBarEditor.js";
 import {Context, ContextOverlay, ContextFlags} from "./context_base.js";
 import {UIBase} from "../path.ux/scripts/ui_base.js";
 import {Screen} from "../path.ux/scripts/FrameManager.js";
+import {PropsEditor} from '../editors/properties/PropsEditor.js';
 
 let passthrus = new Set(["datalib", "gl", "graph", "last_tool", "toolstack", "api"]);
 
@@ -197,6 +198,10 @@ export class ViewOverlay extends ContextOverlay {
 
   get view3d() {
     return getContextArea(View3D);
+  }
+
+  get sidebar() {
+    return getContextArea(SideBarEditor);
   }
 
   get propsbar() {

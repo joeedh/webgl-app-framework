@@ -153,8 +153,23 @@ export class DataRef {
     this.name = undefined;
     this.lib_external_ref = undefined;
   }
+
+  copy() {
+    let ret = new DataRef();
+
+    ret.lib_type = this.lib_type;
+    ret.lib_id = this.lib_id;
+    ret.name = this.name;
+    ret.lib_external_ref = this.lib_external_ref;
+
+    return ret;
+  }
   
   static fromBlock(block) {
+    if (block instanceof DataRef) {
+      return block.copy();
+    }
+
     let ret = new DataRef();
 
     if (block === undefined) {
@@ -162,7 +177,13 @@ export class DataRef {
       return ret;
     }
 
-    ret.lib_type = block.constructor.blockDefine().typeName;
+    if (!block.constructor || !block.constructor.blockDefine) {
+      console.warn("Invalid block in fromBlock: ", block);
+
+    } else {
+      ret.lib_type = block.constructor.blockDefine().typeName;
+    }
+
     ret.lib_id = block.lib_id;
     ret.name = block.name;
     ret.lib_external_ref = block.lib_external_ref;

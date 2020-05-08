@@ -20,7 +20,7 @@ import {Material} from './material.js';
 import {App, ScreenBlock} from '../editors/editor_base.js';
 import {Library, DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import {IDGen} from '../util/util.js';
-import {PropsEditor} from "../editors/properties/PropsEditor.js";
+import {SideBarEditor} from "../editors/sidebar/SideBarEditor.js";
 import * as util from '../util/util.js';
 import {Vector3, Vector4, Vector2, Quat, Matrix4} from '../util/vectormath.js';
 import {ToolOp, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
@@ -112,6 +112,7 @@ export class BasicFileOp extends ToolOp {
 export {genDefaultScreen} from '../editors/screengen.js';
 import {genDefaultScreen} from '../editors/screengen.js';
 import {Collection} from "../scene/collection.js";
+import {PropsEditor} from "../editors/properties/PropsEditor.js";
 
 /*
 export function genDefaultScreen(appstate) {
@@ -136,7 +137,7 @@ export function genDefaultScreen(appstate) {
 
   let xperc = 270 / _appstate.screen.size[0];
   let sarea3 = _appstate.screen.splitArea(sarea2, 1.0 - xperc, false);
-  sarea3.switch_editor(PropsEditor);
+  sarea3.switch_editor(SideBarEditor);
 
   appstate.screen.listen();
 
@@ -583,8 +584,6 @@ export class AppState {
     }
     datalib.afterSTRUCT();
 
-    this.do_versions_post(version, datalib);
-
     if (args.load_screen && screen === undefined) {
       screen = datalib.libmap.screen.active;
       if (screen === undefined) { //paranoia check
@@ -625,6 +624,8 @@ export class AppState {
         this.screen.update();
       });
     }
+
+    this.do_versions_post(version, datalib);
 
     if (args.reset_context) {
       this.ctx.reset(true);
@@ -675,7 +676,7 @@ export class AppState {
 
   /** this is executed after block re-linking has happened*/
   do_versions_post(version, datalib) {
-    if (version < 0.001) {
+    if (version < 1) {
       for (let scene of datalib.scene) {
         scene.collection = new Collection();
         this.datalib.add(scene.collection);
@@ -687,6 +688,19 @@ export class AppState {
         }
         scene._loading = false;
       }
+    }
+
+    if (version < 3) {
+      let screen = this.screen;
+
+      let props = document.createElement("screenarea-x");
+      props.size[0] = 5;
+      props.size[1] = screen.size[1];
+      props.ctx = this.ctx;
+      props._init();
+
+      props.switch_editor(PropsEditor);
+      screen.appendChild(props);
     }
   }
 
@@ -772,7 +786,21 @@ export function init() {
     animreq = requestAnimationFrame(f);
   }
 
+  let lastKey = undefined;
+
   window.addEventListener("keydown", (e) => {
+    if (lastKey === keymap["Escape"] && e.keyCode === keymap["Escape"]) {
+      if (_appstate.ctx && _appstate.ctx.propsbar) {
+        _appstate.ctx.propsbar.close();
+      }
+
+      if (_appstate.ctx && _appstate.ctx.sidebar) {
+        _appstate.ctx.sidebar.close();
+      }
+    }
+    
+    lastKey = e.keyCode;
+
     //console.log("tbox", checkForTextBox(_appstate.screen, mpos[0], mpos[1]), mpos);
 
     //prevent reload hotkey, could conflict with redo
@@ -788,8 +816,6 @@ export function init() {
 
       e.preventDefault();
     }
-
-    return _appstate.screen.on_keydown(e);
   });
 
 

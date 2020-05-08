@@ -1201,7 +1201,10 @@ export class Graph {
 
     this.flagResort();
     n.update();
-    window.updateDataGraph();
+
+    if (window.updateDataGraph) {
+      window.updateDataGraph();
+    }
   }
 
   _save_nodes() {

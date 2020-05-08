@@ -601,6 +601,8 @@ export class Scene extends DataBlock {
   dataLink(getblock, getblock_addUser) {
     super.dataLink(...arguments);
 
+    this.collection = getblock_addUser(this.collection);
+
     if (this._linked) {
       console.log("DOUBLE CALL TO dataLink");
       return;

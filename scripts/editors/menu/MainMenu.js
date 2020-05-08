@@ -20,7 +20,7 @@ import * as cconst from '../../core/const.js';
 import {AddPointSetOp} from "../../potree/potree_ops.js";
 import {Menu} from "../../path.ux/scripts/ui_menu.js";
 
-const menuSize = 42;
+const menuSize = 52;
 
 export class ToolHistoryConsole extends ColumnFrame {
   constructor() {
@@ -39,7 +39,7 @@ export class ToolHistoryConsole extends ColumnFrame {
     let toolstack = this.ctx.toolstack;
 
     let lines = [];
-    let count = 5;
+    let count = 28;
 
     for (let i=toolstack.length-1; i>=toolstack.length-count; i--) {
       if (i < 0) {
@@ -47,6 +47,11 @@ export class ToolHistoryConsole extends ColumnFrame {
       }
 
       let l = toolstack[i].genToolString();
+      l = {
+        line : l,
+        i    : i
+      };
+
       lines = [l].concat(lines);
     }
 
@@ -55,17 +60,29 @@ export class ToolHistoryConsole extends ColumnFrame {
       this._buf = buf;
 
       table.clear();
-      let i = 0;
+
+      let focusrow, lastrow;
 
       for (let l of lines) {
-        let row = table.row()
+        let row = table.row();
 
-        if (i === toolstack.cur) {
+        if (l.i === toolstack.cur) {
+          focusrow = row;
           row.style["background-color"] = "rgb(10, 100, 75, 0.5)";
         }
 
-        row.label(l);
-        i++;
+        row.label(""+(l.i+1));
+        row.label(l.line);
+        lastrow = row;
+      }
+
+      if (!focusrow)
+        focusrow = lastrow;
+
+      window.fp = focusrow;
+
+      if (!this.hidden && focusrow !== undefined) {
+        focusrow.scrollIntoView();
       }
 
       this.setCSS();
@@ -88,9 +105,7 @@ export class ToolHistoryConsole extends ColumnFrame {
   }
 
   setCSS() {
-
-    this.style["width"] = "100%"
-    this.style["height"] = "100%"
+    super.setCSS();
   }
 
   static define() {return {
@@ -120,6 +135,7 @@ export class MenuBarEditor extends Editor {
 
     this.console = document.createElement("tool-console-x");
     this.container.add(this.console);
+    this.console.hidden = true;
 
     strip.menu("File", [
       ["New  ", () => {
@@ -203,10 +219,12 @@ export class MenuBarEditor extends Editor {
     strip.iconbutton(Icons.CONSOLE, "Show Console", () => {
       if (this.menuSize !== menuSize) {
         this.menuSize = menuSize;
-        this.style["overflow"] = "hidden";
+        this.console.hidden = true;
+        this.console.style["overflow"] = "hidden";
       } else {
         this.menuSize = 200;
-        this.style["overflow"] = "scroll";
+        this.console.hidden = false;
+        this.console.style["overflow"] = "scroll";
       }
     });
 
@@ -311,45 +329,17 @@ export class MenuBarEditor extends Editor {
   update() {
     super.update();
 
-    this.minSize[1] = this.menuSize;
-    this.maxSize[1] = this.menuSize;
+    if (this.minSize[1] !== this.menuSize) {
+      this.minSize[1] = this.menuSize;
+      this.maxSize[1] = this.menuSize;
 
-    let dpi = UIBase.getDPI();
-    let h = Math.ceil(this.menuSize);
-
-    if (this.size[1] !== h) {
-      let screen = this.getScreen();
-
-      for (let sarea of screen.sareas) {
-        if (sarea === this.owning_sarea) {
-          continue;
-        }
-
-        if (Math.abs(sarea.pos[1]-this.pos[1]-this.size[1]) < 5) {
-          sarea.pos[1] = this.pos[1] + h;
-        }
-
-        sarea.on_resize(sarea.size);
-        sarea.setCSS();
-      }
-
-      this.size[1] = h;
-
-      this.setCSS();
       this.ctx.screen.solveAreaConstraints();
-      //this.ctx.screen._internalRegenAll();
-      this.ctx.screen.regenBorders();
       this.ctx.screen.snapScreenVerts();
-      this.ctx.screen.setCSS();
+      this.ctx.screen.regenBorders();
+      this.setCSS();
     }
-
-    /*
-    let hash = this._makeSwitcherHash();
-    if (hash !== this._switcher_key) {
-      this.rebuildScreenSwitcher();
-    }
-    //*/
   }
+
   copy() {
     let ret = document.createElement("menu-editor-x");
     ret.ctx = this.ctx;
@@ -358,15 +348,12 @@ export class MenuBarEditor extends Editor {
   }
 
   setCSS() {
-    super.setCSS();
-
-    let strip = this._strip;
-    if (strip) {
-      let margin = 45; // UIBase.getDPI();
-
-      margin = ~~margin;
-      //strip.style["margin-left"] = margin + "px";
+    if (this.console) {
+      this.console.style["width"] = this.size[0] + "px";
+      this.console.style["height"] = (this.size[1] - menuSize) + "px";
     }
+
+    super.setCSS();
   }
 
   static define() {return {
@@ -378,7 +365,6 @@ export class MenuBarEditor extends Editor {
 }
 
 MenuBarEditor.STRUCT = STRUCT.inherit(MenuBarEditor, Editor) + `
-  menuSize : int;
 }
 `;
 

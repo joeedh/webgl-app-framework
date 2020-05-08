@@ -1,4 +1,5 @@
 import {MenuBarEditor} from "./menu/MainMenu.js";
+import {SideBarEditor} from "./sidebar/SideBarEditor.js";
 import {PropsEditor} from "./properties/PropsEditor.js";
 import {View3D} from "./view3d/view3d.js";
 
@@ -58,16 +59,26 @@ export function genDefaultScreen(appstate) {
   smenu.floating = false;
   //*/
 
-  let sprop = document.createElement("screenarea-x");
-  sprop.floating = true;
-  sprop.pos[0] = 0.0;
-  sprop.pos[1] = sarea.pos[1] + 50;
-  sprop.size[0] = 350;
-  sprop.size[1] = sarea.size[1] - 50;
-  sprop.ctx = _appstate.ctx;
-  sprop.switch_editor(PropsEditor);
+  let sidebar = document.createElement("screenarea-x");
+  sidebar.pos[0] = 0.0;
+  sidebar.pos[1] = sarea.pos[1] + 50;
+  sidebar.size[0] = 350;
+  sidebar.size[1] = sarea.size[1] - 50;
+  sidebar.ctx = _appstate.ctx;
+  sidebar.switch_editor(SideBarEditor);
 
-  screen.appendChild(sprop);
+  screen.appendChild(sidebar);
+
+
+  let props = document.createElement("screenarea-x");
+  props.size[0] = 5;
+  props.size[1] = screen.size[1];
+  props.pos[0] = screen.size[0] - props.size[0];
+  props.pos[1] = 0;
+  props.ctx = _appstate.ctx;
+  props.switch_editor(PropsEditor);
+
+  screen.appendChild(props);
 
   screen.listen();
 }

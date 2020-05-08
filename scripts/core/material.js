@@ -117,12 +117,13 @@ export class Material extends DataBlock {
 
     this.flag = 0;
     this.pointSize = 1;
+    this.quality = 1.0;
     this.pointSizeType = Potree.PointSizeType.ADAPTIVE;
     this.pointShape = Potree.PointShape.SQUARE;
   }
 
   calcSettingsHash() {
-    return "" + this.flag + ":" + this.pointSize + ":" + this.pointSizeType + ":" + this.pointShape;
+    return "" + this.flag + ":" + this.pointSize + ":" + this.pointSizeType + ":" + this.pointShape + ":" + this.quality;
   }
   /**
    * Checks if a material name "Default" exists in ctx.datalib and returns it,
@@ -171,6 +172,7 @@ Material.STRUCT = STRUCT.inherit(Material, DataBlock) + `
   pointSize      : int;
   pointSizeType  : int;
   pointShape     : int;
+  quality        : float;
 }`;
 
 DataBlock.register(Material);

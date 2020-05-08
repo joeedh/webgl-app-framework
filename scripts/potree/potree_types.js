@@ -34,7 +34,8 @@ export class PointSet extends SceneObjectData {
   constructor() {
     super();
 
-    this._last_draw_hash = undefined;
+    this._last_material_hash = undefined;
+    this._last_camera_hash = undefined;
     this._last_cull_time = 0;
 
     this.url = "";
@@ -306,29 +307,48 @@ export class PointSet extends SceneObjectData {
       ptree.material.size = mat.pointSize;
     }
 
-    if (util.time_ms() - this._last_cull_time > 50) {
+    let chash = view3d.camera.generateUpdateHash(uniforms.objectMatrix);
+
+    if (chash !== this._last_camera_hash) {//} && (util.time_ms() - this._last_cull_time > 500)) {
+      this._last_camera_hash = chash;
+      //console.log("camera or object matrix update");
       Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
       this._last_cull_time = util.time_ms();
     }
 
     let hash = mat.calcSettingsHash();
-    if (hash !== this._last_draw_hash) {
-      this._last_draw_hash = hash;
+    if (hash !== this._last_material_hash) {
+      this._last_material_hash = hash;
+      console.log("material update");
 
       ptree.updateMaterial(ptree.material, ptree.visibleNodes, view3d.threeCamera, view3d.threeRenderer)
       ptree.material.recomputeClassification();
+
+      let q = mat.quality;
+
+      q = Math.pow(q, 5.0);
+
+      let budget = 1024*8;
+      budget += (1024*32*32 - budget)*q;
+
+      if (budget !== ptree.pointBudget) {
+        ptree.pointBudget = budget;
+
+        Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
+        console.log("pointBudget", ptree.pointBudget);
+      }
     }
 
     ptree.material.depthWrite = mask;
     ptree.material.depthTest = test;
 
-    //console.warn("PTREE DRAW");
-
-    //*/
     view3d.pRenderer.render({children : [ptree]}, view3d.threeCamera, undefined, {
       depthTest : test,
       depthWrite : mask
     });
+
+    //*/
+
     ptree.material = startmat;
   }
 
@@ -339,7 +359,8 @@ export class PointSet extends SceneObjectData {
   }
 
   onContextLost(e) {
-    this._last_draw_hash = "";
+    this._last_material_hash = "";
+    this._last_camera_hash = "";
     this._last_cull_time = 0;
 
     if (this.res !== undefined) {

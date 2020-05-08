@@ -7,7 +7,7 @@ units.Unit.baseUnit = "foot";
 import './theme.js';
 
 let STRUCT = nstructjs.STRUCT;
-import {Area} from '../path.ux/scripts/ScreenArea.js';
+import {Area, ScreenArea} from '../path.ux/scripts/ScreenArea.js';
 import {Screen} from '../path.ux/scripts/FrameManager.js';
 import {UIBase} from '../path.ux/scripts/ui_base.js';
 import {Container} from '../path.ux/scripts/ui.js';
@@ -16,11 +16,6 @@ import {haveModal} from "../path.ux/scripts/simple_events.js";
 import {warning} from "../path.ux/scripts/ui_noteframe.js";
 import {Icons} from './icon_enum.js';
 import {PackFlags} from "../path.ux/scripts/ui_base.js";
-
-let areastacks = {};
-let arealasts = {};
-let last_area = undefined;
-let laststack = [];
 
 export {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
 import {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
@@ -197,29 +192,8 @@ export function makeDataBlockBrowser(container, cls, path, onValidData) {
   return row;
 }
 
-let getAreaStack = (cls) => {
-  let name = cls.define().areaname;
-  
-  if (!(name in areastacks)) {
-    areastacks[name] = [];
-  }
-  
-  return areastacks[name];
-}
-
-export let allareas_stack = [];
-
 export let getContextArea = (cls) => {
-  if (cls === undefined) {
-    return areastacks.length > 0 ? areastacks[areastacks.length-1] : undefined;
-  }
-  
-  let stack = getAreaStack(cls);
-  
-  if (stack.length == 0) 
-    return arealasts[cls.define().areaname];
-  
-  return stack[stack.length-1];
+  return Area.getActiveArea(cls);
 }
 
 export class Editor extends Area {
@@ -265,7 +239,7 @@ export class Editor extends Area {
     return sarea.area;
   }
 
-  onFileLoad(is_active) {
+  onFileLoad(isActive) {
 
   }
 
@@ -283,47 +257,6 @@ export class Editor extends Area {
     return this.ctx.screen.sareas.indexOf(this.owning_sarea);
   }
 
-  static getActiveArea() {
-    return last_area;
-  }
-
-  on_area_active() {
-    Editor.setLastArea(this);
-  }
-
-  static setLastArea(area) {
-    let tname = area.constructor.define().areaname;
-    //console.warn("call to setLastArea", area._area_id, tname);
-    arealasts[tname] = area;
-    last_area = area;
-  }
-
-  push_ctx_active(ctx) {
-    let stack = getAreaStack(this.constructor);
-
-    let tname = this.constructor.define().areaname;
-    if (arealasts[tname] === undefined) {
-      Editor.setLastArea(this);
-    }
-    
-    stack.push(this);
-    allareas_stack.push(this);
-    //laststack.push(last_area);
-    //last_area = this;
-  }
-  
-  pop_ctx_active(ctx) {
-    let stack = getAreaStack(this.constructor);
-    
-    stack.pop();
-    allareas_stack.pop();
-
-    //let ret = laststack.pop();
-    //if (ret !== undefined) {
-    //  last_area = ret;
-    //}
-  }
-
   /*copy of code in Area clas in ScreenArea.js in path.ux.
     example of how to define an area.
 
@@ -332,11 +265,13 @@ export class Editor extends Area {
     areaname : undefined, //api name for area type
     uiname   : undefined,
     icon : undefined //icon representing area in MakeHeader's area switching menu. Integer.
+    flag : see AreaFlags
   };}
   */
 
   on_keydown(e) {
-    Editor.setLastArea(this);
+    this.push_ctx_active();
+    this.pop_ctx_active();
   }
 
   makeHeader(container, add_note_area=false) {
@@ -537,7 +472,7 @@ export class App extends Screen {
     this._last_wutime = time_ms();
     let scene = this.ctx.scene;
 
-    if (scene !== undefined) {
+    if (scene !== undefined && typeof scene === "object") {
       scene.updateWidgets();
     }
   }
