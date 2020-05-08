@@ -133,6 +133,8 @@ export class SideBarEditor extends PopupEditor   {
     tab.tool("view3d.view_selected()");
     tab.tool("view3d.center_at_mouse()");
 
+    tab.prop("scene.toolmode[camera_path]");
+
   }
 
   buildToolMode(container, modename, name=modename) {

@@ -566,3 +566,9 @@ ScreenBlock.STRUCT = STRUCT.inherit(ScreenBlock, DataBlock) + `
 `;
 nstructjs.manager.add_class(ScreenBlock);
 DataBlock.register(ScreenBlock);
+
+window.setInterval(() => {
+  if (_appstate && _appstate.ctx && _appstate.ctx.scene && _appstate.ctx.view3d) {
+    window.redraw_viewport();
+  }
+}, 90);

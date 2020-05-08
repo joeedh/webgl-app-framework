@@ -56,7 +56,7 @@ export class KnotDataLayer extends CustomDataElem {
   static apiDefine(api, dstruct) {
     super.apiDefine(api, dstruct);
 
-    dstruct.float("knot", "speed", "Speed").on("change", function() {
+    dstruct.float("knot", "speed", "Point Speed").on("change", function() {
       window.redraw_viewport();
     }).range(0.0, 10.0);
 

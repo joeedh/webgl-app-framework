@@ -191,6 +191,7 @@ export class CurveToolBase extends MeshToolBase {
   onInactive() {
     super.onInactive();
   }
+
   _getObject() {
     if (this.sceneObject === undefined) {
       let key = "toolmode_" + this.constructor.widgetDefine().name;

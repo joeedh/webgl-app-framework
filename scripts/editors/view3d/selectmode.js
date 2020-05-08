@@ -33,10 +33,11 @@ export const SelMask = {
 
   //save some space for more per-SceneObjectData findnearest modes
 
-  MESH  : (1<<8),
-  LIGHT  : (1<<9),
-  POINTSET : (1<<10),
-  OBJECT : (1<<8)|(1<<9)|(1<<10), //all types
+  MESH       : (1<<8),
+  LIGHT      : (1<<9),
+  POINTSET   : (1<<10),
+  CAMERA     : (1<<11),
+  OBJECT     : (1<<8)|(1<<9)|(1<<10)|(1<<11), //all types
 };
 
 window._SelMask = SelMask;

@@ -19,6 +19,8 @@ export class DrawerEditor extends Editor {
 
     this.closedWidth = 5;
     this._closed = true;
+
+    this.minSize[0] = this.maxSize[0] = this.closedWidth;
   }
 
   pane(name, id=name) {
@@ -89,6 +91,11 @@ export class DrawerEditor extends Editor {
     }
   }
 
+  clear() {
+    this.contents.clear();
+    this.panes = [];
+  }
+
   init() {
     super.init();
 
@@ -110,7 +117,9 @@ export class DrawerEditor extends Editor {
 
     this.minSize[0] = this.minWidth;
     this.maxSize[0] = undefined;
+
     this.size[0] = this.openWidth;
+    this.size[1] = this.ctx.screen.size[1] - this.pos[1];
 
     if (this.owning_sarea) {
       this.owning_sarea.loadFromPosSize();
@@ -148,12 +157,30 @@ export class DrawerEditor extends Editor {
     let screen = this.ctx.screen;
 
     let pos = new Vector2();
+    let size = new Vector2(this.size);
 
     pos[0] = screen.size[0] - this.size[0];
-    pos[1] = 0;
 
-    if (pos.vectorDistance(this.pos) > 1) {
-      console.log("repositioning drawer", this.pos, pos);
+    let menubar = this.ctx.menubar;
+    if (menubar !== undefined) {
+      pos[1] = menubar.pos[1] + menubar.size[1];
+      size[1] = Math.min(size[1], this.ctx.screen.size[1] - pos[1]);
+    } else {
+      pos[1] = 0;
+    }
+
+    if (!this._closed) {
+      let rect = this.contents.getClientRects()[0];
+      if (rect) {
+       size[1] = rect.height;
+      }
+    }
+
+    if (pos.vectorDistance(this.pos) > 1 || size.vectorDistance(this.size) > 1) {
+      console.log("repositioning drawer", this.pos, pos, this.size, size);
+
+      this.size[0] = size[0];
+      this.size[1] = size[1];
 
       this.pos[0] = pos[0];
       this.pos[1] = pos[1];

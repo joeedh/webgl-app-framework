@@ -75,6 +75,7 @@ export let Icons = {
   TREE_WIDGET    : 69,
   LAST_TOOL_PANEL: 70,
   PICKER_ICON    : 71,
-  CONSOLE        : 72
+  CONSOLE        : 72,
+  CAMERA_PATH    : 73
 };
 setIconMap(Icons);

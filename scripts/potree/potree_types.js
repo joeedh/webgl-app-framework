@@ -11,6 +11,7 @@ import * as simplemesh from '../core/simplemesh.js';
 import * as math from '../util/math.js';
 import * as util from '../util/util.js'
 import {getFlatMaterial, Shaders} from './potree_shaders.js';
+import * as cconst from '../core/const.js';
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {DependSocket} from '../core/graphsockets.js';
@@ -29,6 +30,116 @@ import {resourceManager} from "../core/resource.js";
 import {Shapes} from "../core/simplemesh_shapes.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 
+let hashrand = new util.MersenneRandom();
+
+function hashPointSet(ptree, quality, numpoints_out=undefined) {
+  let hash = 0;
+  let mul = (1<<21)-1;
+
+  hashrand.seed(0);
+
+  if (!ptree.pcoGeometry || !ptree.pcoGeometry.root) {
+    return -1;
+  }
+
+  let flati = 0;
+
+  if (numpoints_out)
+    numpoints_out[0] = 0;
+
+  function dohash(val) {
+    let off = hashrand.random()*mul;
+    let  f = ((val+off) * hashrand.random() * mul) & ((1 << 19)-1);
+    hash = hash ^ f;
+  }
+
+  let rec_geometry;
+
+  let rec_scene = (n) => {
+    flati++;
+
+    if (n.geometryNode) {
+      rec_geometry(n.geometryNode, true);
+    }
+
+    dohash(!!n.sceneNode);
+
+    if (!n.sceneNode)
+      return;
+
+    dohash(!!n.geometry);
+    if (n.geometry && n.geometry.attributes) {
+      let i=0;
+
+      for (let k in n.geometry.attributes) {
+        let attr = n.geometry.attributes[k];
+
+        dohash(i);
+        dohash(attr.count);
+        i++;
+      }
+    }
+
+    if (Array.isArray(n.children)) {
+      for (let i=0; i<n.children.length; i++) {
+        if (n.children[i])
+          rec_scene(n.children[i]);
+      }
+    } else {
+      for (let k in n.children) {
+        rec_geometry(n.children[k]);
+      }
+    }
+  };
+
+  rec_geometry = (n, no_children=false) => {
+    flati++;
+
+    if (n.loading === undefined) {
+      n.loading = false;
+    }
+    if (n.loaded === undefined) {
+      n.loaded = false;
+    }
+    if (n.numPoints === undefined) {
+      n.numPoints = 0;
+    }
+
+    if (numpoints_out && n.loaded && !n.loading)
+      numpoints_out[0] += n.numPoints;
+
+    dohash(flati);
+    dohash(n.loading);
+    dohash(!!n.geometry);
+    dohash(n.loaded);
+    dohash(n.numPoints);
+
+    if (no_children) {
+      return;
+    }
+
+    if (Array.isArray(n.children)) {
+      for (let i=0; i<n.children.length; i++) {
+        if (n.children[i])
+          rec_scene(n.children[i]);
+      }
+    } else {
+      for (let k in n.children) {
+        rec_geometry(n.children[k]);
+      }
+    }
+  };
+
+  //if (ptree.root) {
+    rec_scene(ptree.root);
+  //} else {
+    rec_geometry(ptree.pcoGeometry.root);
+  //}
+
+  dohash(quality);
+
+  return hash;
+}
 
 export class PointSet extends SceneObjectData {
   constructor() {
@@ -47,6 +158,10 @@ export class PointSet extends SceneObjectData {
     this.material = undefined;
 
     this.data = undefined;
+  }
+
+  get ptree() {
+    return this.res ? this.res.data : undefined;
   }
 
   getBoundingBox() {
@@ -81,6 +196,15 @@ export class PointSet extends SceneObjectData {
       this.ready = false;
       this.loadFromPacked();
     });
+  }
+
+  hash(numpoints_out=undefined) {
+    if (numpoints_out)
+      numpoints_out[0] = 0;
+
+    let quality = this.material ? this.material.quality : 0.0;
+
+    return this.ptree ? hashPointSet(this.ptree, quality, numpoints_out) : -1;
   }
 
   loadFromPacked() {
@@ -141,17 +265,39 @@ export class PointSet extends SceneObjectData {
         this.ready = true;
         accept(this);
 
+        let ptree = this.res.data;
+
+        function patchDispatchEvent(p) {
+          let _dispatchEvent = p.dispatchEvent;
+          p.dispatchEvent = function (event) {
+            console.warn(event);
+            _dispatchEvent.call(event);
+          };
+        }
+
+        if (cconst.DEBUG.potreeEvents) {
+          patchDispatchEvent(ptree);
+          patchDispatchEvent(ptree.pcoGeometry);
+        }
+
         //redraw immediately in case loading happens faster
         window.redraw_viewport(undefined, 4);
 
-        window.setTimeout(() => {
-          window.redraw_viewport();
-        }, 75);
 
-        //hackish, I shouldn't have to delay the viewport redraw call here
-        window.setTimeout(() => {
-          window.redraw_viewport();
-        }, 2500);
+        let timer = window.setInterval(() => {
+          if (!this.ptree) {
+            window.clearInterval(time);
+          }
+
+          let numpoint_out = [0];
+          let hash = this.hash(numpoint_out);
+
+          if (hash !== -1 && hash !== 0 && numpoint_out[0] > 0) {
+            console.log("detected ptree load");
+            window.clearInterval(timer);
+            window.redraw_viewport;
+          }
+        }, 150);
       });
     });
   }
@@ -309,17 +455,16 @@ export class PointSet extends SceneObjectData {
 
     let chash = view3d.camera.generateUpdateHash(uniforms.objectMatrix);
 
-    if (chash !== this._last_camera_hash) {//} && (util.time_ms() - this._last_cull_time > 500)) {
-      this._last_camera_hash = chash;
-      //console.log("camera or object matrix update");
-      Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
-      this._last_cull_time = util.time_ms();
-    }
+    chash = chash ^ (ptree.material.needsUpdate ? 4234234 : 0);
+    chash = chash ^ this.hash();
 
-    let hash = mat.calcSettingsHash();
+    let hash = mat.calcSettingsHash() ^ chash;
     if (hash !== this._last_material_hash) {
       this._last_material_hash = hash;
-      console.log("material update");
+
+      if (cconst.DEBUG.potreeEvents) {
+        console.log("material update");
+      }
 
       ptree.updateMaterial(ptree.material, ptree.visibleNodes, view3d.threeCamera, view3d.threeRenderer)
       ptree.material.recomputeClassification();
@@ -337,6 +482,19 @@ export class PointSet extends SceneObjectData {
         Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
         console.log("pointBudget", ptree.pointBudget);
       }
+    }
+
+
+    if (chash !== this._last_camera_hash) {//} && (util.time_ms() - this._last_cull_time > 500)) {
+      if (cconst.DEBUG.potreeEvents) {
+        console.log("detected camera or potree update");
+        console.log("%c " + chash, "color: teal");
+      }
+
+      this._last_camera_hash = chash;
+      //console.log("camera or object matrix update");
+      Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
+      this._last_cull_time = util.time_ms();
     }
 
     ptree.material.depthWrite = mask;

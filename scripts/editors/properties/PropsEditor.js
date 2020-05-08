@@ -32,18 +32,36 @@ export class PropsEditor extends DrawerEditor {
 
     this.inherit_packflag = PackFlags.SIMPLE_NUMSLIDERS;
     this.packflag = PackFlags.SIMPLE_NUMSLIDERS;
+
+    this.openWidth = 305;
+    this._last_toolmode_i = undefined;
   }
 
   init() {
     super.init();
 
-    this.openWidth = 305;
+    this.rebuild();
+  }
+
+  rebuild() {
+    let active = this.panes.active !== undefined ? this.panes.active.id : undefined;
+
+    console.warn("rebuilding properties panel");
+
+    this.clear();
 
     this.buildSettingsPanel(this.pane("Material", "MATERIAL"));
     this.showPane("MATERIAL", false);
 
     let pane = this.pane("LAST_TOOL");
     pane.add(document.createElement("last-tool-panel-x"));
+
+    if (active !== undefined) {
+      let open = !this._closed;
+
+      this.close();
+      this.showPane(active, open);
+    }
   }
 
   buildSettingsPanel(pane) {
@@ -53,9 +71,14 @@ export class PropsEditor extends DrawerEditor {
     let panel = pane.panel("Materal");
     this.buildMaterial(panel)
 
-    panel = pane.panel("Elements");
     if (this.ctx !== undefined && this.ctx.scene.toolmode !== undefined) {
+      panel = pane.panel("Geometry");
       this.ctx.scene.toolmode.constructor.buildElementSettings(panel);
+    }
+
+    if (this.ctx !== undefined && this.ctx.scene.toolmode !== undefined) {
+      panel = pane.panel("Tool Settings");
+      this.ctx.scene.toolmode.constructor.buildSettings(panel);
     }
   }
 
@@ -73,7 +96,17 @@ export class PropsEditor extends DrawerEditor {
     //});
   }
 
+  update() {
+    super.update();
 
+    if (!this.ctx || !this.ctx.scene)
+      return;
+
+    if (this._last_toolmode_i !== this.ctx.scene.toolmode_i) {
+      this._last_toolmode_i = this.ctx.scene.toolmode_i;
+      this.rebuild();
+    }
+  }
   static define() {return {
     tagname : "props-editor-x",
     areaname : "PropsEditor",

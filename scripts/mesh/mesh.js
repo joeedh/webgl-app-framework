@@ -1181,14 +1181,16 @@ export class Mesh extends SceneObjectData {
     }
 
     this.checkPartialUpdate(gl);
-    if (program !== undefined) {
+    if (program !== undefined && this.wmesh !== undefined) {
       this.wmesh.program = program;
       this.wmesh.island.program = program;
 
       program.bind(gl);
     }
 
-    this.wmesh.draw(gl, uniforms);
+    if (this.wmesh) {
+      this.wmesh.draw(gl, uniforms);
+    }
   }
 
   onContextLost(e) {

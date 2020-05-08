@@ -12,7 +12,7 @@ let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../view3d_shaders.js';
 import {MovableWidget} from '../widget_utils.js';
-import {SnapModes} from "../transform_ops.js";
+import {SnapModes, TranslateOp} from "../transform_ops.js";
 import {SelOneToolModes} from "../selectmode.js";
 
 import {SceneObject} from "../../../sceneobject/sceneobject.js";
@@ -33,6 +33,9 @@ export class MeshToolBase extends ToolMode {
 
     this.meshPath = "mesh";
     this.selectMask = SelMask.GEOM;
+
+    this.start_mpos = new Vector2();
+    this.last_mpos = new Vector2();
   }
 
   defineKeyMap() {
@@ -128,6 +131,9 @@ export class MeshToolBase extends ToolMode {
   on_mousedown(e, x, y, was_touch) {
     let ctx = this.ctx;
 
+    this.start_mpos[0] = x;
+    this.start_mpos[1] = y;
+
     this.findHighlight(e, x, y);
 
     if (e.button === 1 || e.ctrlKey || e.altKey || e.commandKey) {
@@ -163,9 +169,11 @@ export class MeshToolBase extends ToolMode {
 
         ctx.toolstack.execTool(this.ctx, tool);
 
-        return;
+        return true;
       }
     }
+
+
     let ret = castViewRay(ctx, ctx.selectMask, mpos, ctx.view3d, CastModes.FRAMEBUFFER);
     if (ret !== undefined) {
       let toolop = ctx.api.createTool(ctx, "mesh.extrude_one_vertex()");
@@ -178,7 +186,7 @@ export class MeshToolBase extends ToolMode {
       return true;
     }
 
-    return false;
+    return e.button === 0;// || (e.touches !== undefined && e.touches.length === 0);
   }
 
   getAABB() {
@@ -269,7 +277,11 @@ export class MeshToolBase extends ToolMode {
       return undefined;
     }
   }
+
   on_mousemove(e, x, y, was_touch) {
+    this.last_mpos[0] = x;
+    this.last_mpos[1] = y;
+
     let ctx = this.ctx;
     let view3d = this.ctx.view3d;
 
@@ -283,21 +295,47 @@ export class MeshToolBase extends ToolMode {
 
     let mdown;
 
-    if (was_touch) {
-      mdown = !!(e.touches !== undefined && e.touches.length > 0);
-    } else {
-      mdown = e.buttons;
-    }
-
+    mdown = e.buttons || !!(e.touches !== undefined && e.touches.length > 0);
     mdown = mdown & 1;
 
     if (!mdown && super.on_mousemove(e, x, y, was_touch)) {
       return true;
     }
 
-    let found = this.findHighlight(e, x, y);
-    if (found) {
+    if (mdown) {
+      let dist = this.last_mpos.vectorDistance(this.start_mpos);
+      let ok = false;
 
+      for (let mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
+        for (let v of mesh.verts.selected.editable) {
+          ok = true;
+          break;
+        }
+        for (let h of mesh.handles.selected.editable) {
+          ok = true;
+          break;
+        }
+
+        if (ok) {
+          break;
+        }
+      }
+
+      ok = ok && dist > 4;
+      if (ok) {
+        console.log("translate");
+        let tool = new TranslateOp();
+
+        tool.inputs.selmask.setValue(SelMask.GEOM);
+        this.ctx.toolstack.execTool(this.ctx, tool);
+
+        return true;
+      }
+
+    } else {
+      let found = this.findHighlight(e, x, y);
+
+      return found;
     }
   }
 

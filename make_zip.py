@@ -18,6 +18,7 @@ sources = [
   "./scripts/renderengine/**",
   "./scripts/shadernodes/**",
   "./scripts/util/**",
+  "./scripts/camera/**",
   "./scripts/subsurf/**",
   "./scripts/path.ux/scripts/**",
   "./scripts/extern/potree/build/**",

@@ -253,11 +253,13 @@ export class BlockSet extends Array {
   }
 
   add(block, _inside_file_load=false) {
-    if (!_inside_file_load) {
+    let added = this.push(block);
+
+    if (added && !_inside_file_load) {
       this.datalib.graph.add(block);
     }
 
-    return this.push(block);
+    return added;
   }
   
   push(block) {
@@ -265,7 +267,7 @@ export class BlockSet extends Array {
 
     if (block.lib_id >= 0 && (block.lib_id in this.idmap)) {
       console.warn("Block already in dataset");
-      return;
+      return false;
     }
     
     super.push(block);
@@ -278,6 +280,8 @@ export class BlockSet extends Array {
     
     this.idmap[block.lib_id] = block;
     this.namemap[block.name] = block;
+
+    return true;
   }
 
   /**

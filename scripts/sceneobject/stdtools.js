@@ -1,3 +1,8 @@
+/**
+ *
+ * okay, looks like this part of the toolmode refactor might not happen.
+ *
+ * */
 export const StandardTools1 = {
   SELECTONE         : 1,
   TOGGLE_SELECT_ALL : 2,

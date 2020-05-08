@@ -6,6 +6,8 @@ import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js';
 import {resourceManager} from "../core/resource.js";
 import '../core/image.js';
 import {buildCDAPI} from "../mesh/customdata.js";
+import {CameraData} from "../camera/camera.js";
+import {Camera} from '../core/webgl.js';
 
 import {makeToolModeEnum, ToolModes, ToolMode} from "../editors/view3d/view3d_toolmode.js";
 
@@ -307,6 +309,41 @@ function api_define_shadernode(api, cls) {
   let nstruct = api_define_node(api, ShaderNode);
 
   return nstruct;
+}
+
+export function api_define_camera(api) {
+  let cstruct = api.mapStruct(Camera, true);
+
+  let onchange = function() {
+    window.redraw_viewport();
+  }
+
+  cstruct.bool("isPerspective", "isPerspective", "Perspective or Orthographic").on('change', onchange);
+  cstruct.vec3("pos", "pos", "Position").on('change', onchange);
+  cstruct.vec3("target", "target", "Target").on('change', onchange);
+  cstruct.vec3("up", "up", "Up").on('change', function () {
+    let up = this.dataref;
+
+    console.log("up changed");
+
+    if (up !== undefined) {
+      up.normalize();
+    }
+
+    window.redraw_viewport();
+  })
+
+  cstruct.float("near", "near", "Near Clipping Plane").range(0.00001, 100).on('change', onchange);
+  cstruct.float("far", "far", "Far Clipping Plane").range(0.00001, 100000000).on('change', onchange);
+  cstruct.float("aspect", "aspect", "Aspect").read_only();
+  cstruct.float("fovy", "fov", "Field of View").range(0.01, 110.0).baseUnit("degree").on('change', onchange);
+}
+
+
+export function api_define_cameradata(api) {
+  let mstruct = api_define_datablock(api, CameraData);
+
+  mstruct.struct("camera", "camera", "Camera", api.mapStruct(Camera, false));
 }
 
 function api_define_graph(api, cls=Graph) {
@@ -649,6 +686,8 @@ export function getDataAPI() {
   api_define_editor(api, Editor);
   api_define_screen(api, cstruct);
   api_define_curvespline(api);
+  api_define_camera(api);
+  api_define_cameradata(api);
   api_define_scene(api, cstruct);
   api_define_light(api, cstruct);
 

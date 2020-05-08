@@ -798,7 +798,7 @@ export function init() {
         _appstate.ctx.sidebar.close();
       }
     }
-    
+
     lastKey = e.keyCode;
 
     //console.log("tbox", checkForTextBox(_appstate.screen, mpos[0], mpos[1]), mpos);

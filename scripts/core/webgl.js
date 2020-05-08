@@ -945,14 +945,15 @@ export class Camera extends DrawMats {
 }
 
 Camera.STRUCT = STRUCT.inherit(Camera, DrawMats) + `
-  fovy         : float;
-  aspect       : float;
-  target       : vec3;
-  orbitTarget  : vec3;
-  pos          : vec3;
-  up           : vec3;
-  near         : float;
-  far          : float;
+  fovy          : float;
+  aspect        : float;
+  target        : vec3;
+  orbitTarget   : vec3;
+  pos           : vec3;
+  up            : vec3;
+  near          : float;
+  far           : float;
+  isPerspective : bool;
 }
 `;
 nstructjs.manager.add_class(Camera);
