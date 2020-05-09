@@ -23,6 +23,8 @@ import {PropTypes, PropFlags} from "../../path.ux/scripts/toolprop.js";
 import {UndoFlags} from "../../path.ux/scripts/simple_toolsys.js";
 import {DataPath, DataTypes} from "../../path.ux/scripts/simple_controller.js";
 import {AreaFlags} from "../../path.ux/scripts/ScreenArea.js";
+import * as cconst from "../../core/const.js";
+import {toggleDebugNodePanel} from "../node/NodeEditor_debug.js";
 
 import '../lastToolPanel.js';
 
@@ -92,6 +94,11 @@ export class SideBarEditor extends PopupEditor   {
     this.iconbutton(Icons.MATERIAL, "Point Settings", () => this.callPropsPane("MATERIAL"));
     this.iconbutton(Icons.LAST_TOOL_PANEL, "Last Tool Settings", () => this.callPropsPane("LAST_TOOL"));
 
+    if (cconst.DEBUG.enableDebugGraphPanel) {
+      this.iconbutton(Icons.NODE_EDITOR, "Show Scene Graph", () => {
+        toggleDebugNodePanel(this.ctx.screen);
+      })
+    }
     //let tab = tabs.tab("Last Run Tool", Icons.LAST_TOOL_PANEL);
 
   }

@@ -87,6 +87,8 @@ class InheritFlag {
   }
 };
 
+export let NodeSocketClasses = [];
+
 export class NodeSocketType {
   constructor(uiname=undefined, flag=0) {
     if (uiname === undefined) {
@@ -104,9 +106,21 @@ export class NodeSocketType {
     this.socketName = undefined;
     this.socketType = undefined;
     this.edges = [];
-    this.node = undefined;
+    this._node = undefined;
     this.graph_flag = flag;
     this.graph_id = -1;
+  }
+
+  get node() {
+    return this._node;
+  }
+
+  set node(node) {
+    if (!node) {
+      console.warn("setting node", this.name, this);
+    }
+
+    this._node = node;
   }
 
   /**
@@ -120,6 +134,10 @@ export class NodeSocketType {
    */
   buildUI(container) {
     container.label(this.uiname);
+  }
+
+  static register(cls) {
+    NodeSocketClasses.push(cls);
   }
 
   copyValue() {
@@ -143,11 +161,20 @@ export class NodeSocketType {
 
     this.edges.push(sock);
     sock.edges.push(this);
-    
-    this.node.update();
-    sock.node.update();
-    this.node.graph_graph.flagResort();
-    
+
+    if (!sock.node) {
+      console.warn("graph corruption");
+    } else {
+      sock.node.update();
+    }
+
+    if (!this.node) {
+      console.warn("graph corruption");
+    } else {
+      this.node.update();
+      this.node.graph_graph.flagResort();
+    }
+
     return this;
   }
   
@@ -213,7 +240,7 @@ export class NodeSocketType {
     b.graph_flag = this.graph_flag;
     b.name = this.name;
     b.uiname = this.uiname;
-    b.node = this.node;
+    //b.node = this.node;
   }
 
   get hasEdges() {
@@ -249,7 +276,9 @@ export class NodeSocketType {
 
     for (let sock of this.edges) {
       sock.setValue(this.getValue());
-      sock.node.update();
+
+      if (sock.node)
+        sock.node.update();
     }
     
     return this;
@@ -335,12 +364,21 @@ export class Node {
           if (p.nodedef === undefined) continue;
           let obj2 = p.nodedef()[key];
 
-          if (obj2 !== undefined) {
+          let inherit = obj2 && obj2 instanceof InheritFlag;
+          if (inherit) {
+            obj2 = obj2.data;
+          }
+
+          if (obj2) {
             for (let k in obj2) {
               if (!(k in ret)) {
                 ret[k] = obj2[k];
               }
             }
+          }
+
+          if (!inherit) {
+            break;
           }
 
           p = p.prototype.__proto__.constructor;
@@ -417,7 +455,7 @@ export class Node {
       }
       
       return ret;
-    }
+    };
     
     this.inputs = getsocks("inputs");
     this.outputs = getsocks("outputs");
@@ -483,7 +521,7 @@ export class Node {
   }}
 
   /** see nodedef static method */
-  static inherit(obj) {
+  static inherit(obj={}) {
     return new InheritFlag(obj);
   }
   
@@ -517,6 +555,8 @@ export class Node {
         }
         
         let sock2 = sockets2[k];
+        sock2.node = b;
+
         sock2.setValue(sock1.getValue());
       }
     }
@@ -557,6 +597,7 @@ export class Node {
 
     for (let pair of this.inputs) {
       ins[pair.key] = pair.val;
+
       pair.val.socketType = SocketTypes.INPUT;
       pair.val.socketName = pair.key;
       pair.val.node = this;
@@ -564,6 +605,7 @@ export class Node {
 
     for (let pair of this.outputs) {
       outs[pair.key] = pair.val;
+
       pair.val.socketType = SocketTypes.OUTPUT;
       pair.val.socketName = pair.key;
       pair.val.node = this;
@@ -583,6 +625,7 @@ export class Node {
         //there's a new socket?
         if (!(k in socks1)) {
           socks1[k] = socks2[k].copy();
+          socks1[k].graph_id = -1;
         }
       }
 
@@ -614,9 +657,15 @@ export class Node {
             socks1[k] = s2;
           }
         }
+
+        socks1[k].node = this;
       }
     }
     return this;
+  }
+
+  graphDisplayName() {
+    return this.constructor.name + this.graph_id;
   }
 
   _save_map(map) {
@@ -704,6 +753,10 @@ export class CallbackNode extends Node {
     if (this.callback !== undefined) {
       this.callback(ctx, this);
     }
+  }
+
+  graphDisplayName() {
+    return this.constructor.name + "(" + this.name + ")" + this.graph_id;
   }
 
   static nodedef() {return {
@@ -1120,6 +1173,12 @@ export class Graph {
       n.graph_graph = this;
 
       for (let s of n.allsockets) {
+        if (s.graph_id === -1) {
+          console.warn("Found patched socket from old file; fixing.", s);
+          //old file, didn't have socket
+          s.graph_id = this.graph_idgen.next();
+        }
+
         s.node = n;
         sock_idmap[s.graph_id] = s;
       }
@@ -1129,11 +1188,11 @@ export class Graph {
       for (let s of n.allsockets) {
         for (let i=0; i<s.edges.length; i++) {
           s.edges[i] = sock_idmap[s.edges[i]];
-        }
 
-        if (s.graph_id == -1) {
-          //fix corrupted socket id in old files
-          s.graph_id = this.graph_idgen.next();
+          if (!s.edges[i]) {
+            s.edges.remove(undefined);
+            i--;
+          }
         }
 
         sock_idmap[s.graph_id] = s;
@@ -1191,10 +1250,13 @@ export class Graph {
         let s2 = socks2[k];
 
         s2.copyTo(s1);
+        s1.node = n;
         s1.edges = s2.edges;
 
         for (let e of s1.edges) {
-          e.edges.replace(s2, s1);
+          if (e.edges.indexOf(s1) >= 0) {
+            e.edges.replace(s2, s1);
+          }
         }
       }
     }
@@ -1209,6 +1271,17 @@ export class Graph {
 
   _save_nodes() {
     let ret = [];
+
+    //ensure node socket id sanity
+    for (let n of this.nodes) {
+      for (let s of n.allsockets) {
+        if (s.graph_id < 0) {
+          console.warn("graph corruption", s);
+          s.graph_id = this.graph_idgen.next();
+          this.sock_idmap[s.graph_id] = s;
+        }
+      }
+    }
 
     //replace nodes with proxies, for nodes who request it
     for (let n of this.nodes) {

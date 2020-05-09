@@ -44,6 +44,11 @@ export class PropsEditor extends DrawerEditor {
   }
 
   rebuild() {
+    if (!this.ctx || !this.ctx.scene) {
+      this.doOnce(this.rebuild);
+      return;
+    }
+
     let active = this.panes.active !== undefined ? this.panes.active.id : undefined;
 
     console.warn("rebuilding properties panel");

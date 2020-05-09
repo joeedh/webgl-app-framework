@@ -29,6 +29,10 @@ export class DataBlock extends Node {
     return this;
   }
 
+  graphDisplayName() {
+    return this.name;
+  }
+
   constructor() {
     super();
 
@@ -139,7 +143,8 @@ DataBlock.STRUCT = STRUCT.inherit(DataBlock, Node) + `
   lib_users : int;
   name      : string;
 }
-`
+`;
+
 nstructjs.manager.add_class(DataBlock);
 
 export class DataRef {

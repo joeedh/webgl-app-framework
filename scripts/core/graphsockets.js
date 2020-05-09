@@ -1,6 +1,5 @@
 import {NodeSocketType, NodeFlags, SocketFlags} from './graph.js';
-import '../path.ux/scripts/struct.js';
-let STRUCT = nstructjs.STRUCT;
+import {nstructjs} from '../path.ux/scripts/pathux.js';
 
 import {Vector2, Vector3, Vector4, Matrix4} from '../util/vectormath.js';
 
@@ -18,7 +17,7 @@ export class Matrix4Socket extends NodeSocketType {
   static nodedef() {return {
     name : "mat4",
     uiname : "Matrix",
-    color : [1,,0.5,0.25,1]
+    color : [1,0.5,0.25,1]
   }}
   
   copy() {
@@ -65,11 +64,12 @@ export class Matrix4Socket extends NodeSocketType {
     this.value.load(val);
   }
 };
-Matrix4Socket.STRUCT = STRUCT.inherit(Matrix4Socket, NodeSocketType, "graph.Matrix4Socket") + `
+Matrix4Socket.STRUCT = nstructjs.inherit(Matrix4Socket, NodeSocketType, "graph.Matrix4Socket") + `
   value : mat4;
 }
 `;
-nstructjs.manager.add_class(Matrix4Socket);
+nstructjs.register(Matrix4Socket);
+NodeSocketType.register(Matrix4Socket);
 
 export class DependSocket extends NodeSocketType {
   constructor(uiname, flag) {
@@ -111,11 +111,13 @@ export class DependSocket extends NodeSocketType {
     this.value = !!this.value;
   }
 };
-DependSocket.STRUCT = STRUCT.inherit(DependSocket, NodeSocketType, "graph.DependSocket") + `
+DependSocket.STRUCT = nstructjs.inherit(DependSocket, NodeSocketType, "graph.DependSocket") + `
   value : int;
 }
 `;
-nstructjs.manager.add_class(DependSocket);
+nstructjs.register(DependSocket);
+NodeSocketType.register(DependSocket);
+
 
 export class IntSocket extends NodeSocketType {
   constructor(uiname, flag) {
@@ -157,11 +159,12 @@ export class IntSocket extends NodeSocketType {
     this.value = !!this.value;
   }
 };
-IntSocket.STRUCT = STRUCT.inherit(IntSocket, NodeSocketType, "graph.IntSocket") + `
+IntSocket.STRUCT = nstructjs.inherit(IntSocket, NodeSocketType, "graph.IntSocket") + `
   value : int;
 }
 `;
-nstructjs.manager.add_class(IntSocket);
+nstructjs.register(IntSocket);
+NodeSocketType.register(IntSocket);
 
 export class Vec2Socket extends NodeSocketType {
   constructor(uiname, flag, default_value) {
@@ -201,11 +204,12 @@ export class Vec2Socket extends NodeSocketType {
     return this.value.dot(b);
   }
 };
-Vec2Socket.STRUCT = STRUCT.inherit(Vec2Socket, NodeSocketType, "graph.Vec2Socket") + `
+Vec2Socket.STRUCT = nstructjs.inherit(Vec2Socket, NodeSocketType, "graph.Vec2Socket") + `
   value : vec2;
 }
 `;
-nstructjs.manager.add_class(Vec2Socket);
+nstructjs.register(Vec2Socket);
+NodeSocketType.register(Vec2Socket);
 
 export class Vec3Socket extends NodeSocketType {
   constructor(uiname, flag, default_value) {
@@ -245,11 +249,12 @@ export class Vec3Socket extends NodeSocketType {
     return this.value.dot(b);
   }
 };
-Vec3Socket.STRUCT = STRUCT.inherit(Vec3Socket, NodeSocketType, "graph.Vec3Socket") + `
+Vec3Socket.STRUCT = nstructjs.inherit(Vec3Socket, NodeSocketType, "graph.Vec3Socket") + `
   value : vec3;
 }
 `;
-nstructjs.manager.add_class(Vec3Socket);
+nstructjs.register(Vec3Socket);
+NodeSocketType.register(Vec3Socket);
 
 export class Vec4Socket extends NodeSocketType {
   constructor(uiname, flag, default_value) {
@@ -293,11 +298,12 @@ export class Vec4Socket extends NodeSocketType {
     return this.value.dot(b);
   }
 };
-Vec4Socket.STRUCT = STRUCT.inherit(Vec4Socket, NodeSocketType, "graph.Vec4Socket") + `
+Vec4Socket.STRUCT = nstructjs.inherit(Vec4Socket, NodeSocketType, "graph.Vec4Socket") + `
   value : vec4;
 }
 `;
-nstructjs.manager.add_class(Vec4Socket);
+nstructjs.register(Vec4Socket);
+NodeSocketType.register(Vec4Socket);
 
 export class RGBASocket extends Vec4Socket {
   constructor(uiname, flag, default_value) {
@@ -330,10 +336,11 @@ export class RGBASocket extends Vec4Socket {
     }
   }
 }
-RGBASocket.STRUCT = STRUCT.inherit(RGBASocket, Vec4Socket, 'graph.RGBASocket') + `
+RGBASocket.STRUCT = nstructjs.inherit(RGBASocket, Vec4Socket, 'graph.RGBASocket') + `
 }
 `;
-nstructjs.manager.add_class(RGBASocket);
+nstructjs.register(RGBASocket);
+NodeSocketType.register(RGBASocket);
 
 export class FloatSocket extends NodeSocketType {
   constructor(uiname, flag, default_value=0.0) {
@@ -389,9 +396,9 @@ export class FloatSocket extends NodeSocketType {
     return this.value - b;
   }
 };
-FloatSocket.STRUCT = STRUCT.inherit(FloatSocket, NodeSocketType, "graph.FloatSocket") + `
+FloatSocket.STRUCT = nstructjs.inherit(FloatSocket, NodeSocketType, "graph.FloatSocket") + `
   value : float;
 }
 `;
-nstructjs.manager.add_class(FloatSocket);
-
+nstructjs.register(FloatSocket);
+NodeSocketType.register(FloatSocket);

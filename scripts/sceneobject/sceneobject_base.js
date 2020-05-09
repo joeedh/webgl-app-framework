@@ -3,6 +3,8 @@ import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {Vector3} from '../util/vectormath.js';
 import {StandardTools} from './stdtools.js';
+import {Node} from "../core/graph.js";
+import {DependSocket, Matrix4Socket} from "../core/graphsockets.js";
 
 export const ObjectDataTypes = [];
 
@@ -19,6 +21,19 @@ export class SceneObjectData extends DataBlock {
     selectMask : 0, //valid selection modes for StandardTools, see SelMask
     tools      : StandardTools
   }}
+
+  static nodedef() {return {
+    inputs : Node.inherit({
+      depend : new DependSocket(),
+    }),
+    outputs : Node.inherit({
+      depend : new DependSocket(),
+    })
+  }}
+
+  exec() {
+    this.outputs.depend.update();
+  }
 
   static getTools() {
     let def = this.dataDefine();

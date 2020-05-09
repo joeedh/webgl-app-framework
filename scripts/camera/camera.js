@@ -5,6 +5,8 @@ import {DataBlock} from "../core/lib_api.js";
 import {Camera} from "../core/webgl.js";
 import {StandardTools} from "../sceneobject/stdtools.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
+import {Matrix4Socket} from "../core/graphsockets.js";
+import {Node, NodeFlags} from "../core/graph.js";
 
 export class CameraData extends SceneObjectData {
   constructor() {
@@ -29,6 +31,10 @@ export class CameraData extends SceneObjectData {
 
   }
 
+  exec(state) {
+
+  }
+
   drawWireframe(view3d, gl, uniforms, program, object) {
 
   }
@@ -38,10 +44,11 @@ export class CameraData extends SceneObjectData {
   }
 
   static nodedef() {return {
+    flag   : NodeFlags.SAVE_PROXY,
     name     : "camera",
     uiname   : "Camera",
-    inputs   : {},
-    outputs  : {}
+    inputs   : Node.inherit(),
+    outputs  : Node.inherit()
   }}
 
   static blockDefine() {return {

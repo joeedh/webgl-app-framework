@@ -13,6 +13,7 @@ import {Vector3, Vector4} from "../util/vectormath.js";
 import {LayerTypes, SimpleMesh} from "../core/simplemesh.js";
 let STRUCT = nstructjs.STRUCT;
 import * as util from '../util/util.js';
+import {Node} from '../core/graph.js';
 
 export function basis(ks, t, i, deg) {
   let len = ks.length;
@@ -315,8 +316,8 @@ export class CurveSpline extends Mesh {
     name   : "curve",
     uiname : "Curve",
     flag   : NodeFlags.SAVE_PROXY,
-    inputs : {}, //can inherit from parent class by wrapping in Node.inherit({})
-    outputs : {}
+    inputs : Node.inherit(), //can inherit from parent class by wrapping in Node.inherit({})
+    outputs : Node.inherit()
   }}
 
   static dataDefine() {return {

@@ -6,12 +6,16 @@ export const FILE_MAGIC = "POTV";
 export const autoSizeUpdate = true;
 
 export const DEBUG = {
+  enableDebugGraphPanel : true,
   verboseDataPath : 0, //show verbose data path debug messages
   gl  : 0,
   fbo : 0,
   doOnce : false,
   modalEvents : true,
   potreeEvents : true,
+
+  datapaths : false,
+
   contextSystem : 0,
   screenborders : false,
   allBordersMovable: false,

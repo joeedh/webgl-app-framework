@@ -76,6 +76,7 @@ export let Icons = {
   LAST_TOOL_PANEL: 70,
   PICKER_ICON    : 71,
   CONSOLE        : 72,
-  CAMERA_PATH    : 73
+  CAMERA_PATH    : 73,
+  NODE_EDITOR    : 74
 };
 setIconMap(Icons);

@@ -16,9 +16,10 @@ let projcos = util.cachering.fromConstructor(Vector2, 64);
 import {VelPanZoomOp, VelPanPanOp} from '../velpan.js';
 import {SelectOneOp, SelectOpBase} from './node_selectops.js';
 import {SelOneToolModes} from "../view3d/selectmode.js";
-import {NodeFlags, SocketFlags, SocketTypes} from '../../core/graph.js';
+import {Node, NodeFlags, SocketFlags, SocketTypes} from '../../core/graph.js';
 import {Overdraw} from '../../path.ux/scripts/ScreenOverdraw.js';
 import {haveModal} from '../../path.ux/scripts/simple_events.js';
+import {layoutNode} from '../../core/graph_spatial.js';
 
 export class NodeSocketElem extends RowFrame {
   constructor() {
@@ -305,11 +306,8 @@ export class NodeSocketElem extends RowFrame {
   setCSS() {
     super.setCSS();
 
-    this.ul.style["margin"] = this.ul.style["padding"] = "0px";
     this.style["margin"] = this.style["padding"] = "0px";
-
     this.style["white-space"] = "nowrap";
-    this.ul.style["white-space"] = "nowrap";
 
     if (this.ned === undefined) {
       console.warn("no node editor in setCSS()");
@@ -416,6 +414,12 @@ export class NodeUI extends Container {
 
     let y = 35;
 
+    let layout = layoutNode(node, {
+      socksize : 20/this.ned.velpan.scale[0]
+    });
+
+    this.size.load(layout.size);
+
     for (let i=0; i<2; i++) {
       //let row2 = row.col();
 
@@ -425,9 +429,8 @@ export class NodeUI extends Container {
 
       let dpi = this.getDPI();
 
-      let x = i ? 0 : -20/this.ned.velpan.scale[0];
-
       let socks = i ? node.outputs : node.inputs;
+      let lsocks = i ? layout.outputs : layout.inputs;
       let key = i ? "outputs" : "inputs";
 
       for (let k in socks) {
@@ -438,8 +441,17 @@ export class NodeUI extends Container {
         uisock.parentWidget = this;
         uisock.type = i ? "output" : "input";
 
-        uisock.pos[0] = x;
-        uisock.pos[1] = y;
+        let lsock = lsocks[k];
+
+        uisock.pos[0] = lsock[0];
+        uisock.pos[1] = lsock[1];
+
+        if (!i) {
+          uisock.pos[0] -= -layout.socksize;
+        }
+
+        //uisock.pos[0] = x;
+        //uisock.pos[1] = y;
 
         uisock.ned = this.ned;
         uisock.ctx = this.ctx;
@@ -542,7 +554,7 @@ export class NodeUI extends Container {
     if (node.graph_flag & NodeFlags.SELECT) {
       this.style["border"] = "2px solid grey";
     } else {
-      this.style["border"] = "none";
+      this.style["border"] = "2px solid black";
     }
     this.float(co[0], co[1]);
   }
@@ -661,7 +673,16 @@ export class NodeEditor extends Editor {
     
     console.warn("regenerating node editor");
 
+    let api = this.ctx.api;
+
     for (let node of graph.nodes) {
+      let cls = node.constructor;
+
+      if (!api.hasStruct(cls)) {
+        console.warn("Auto-making data api for " + cls.name);
+        api.inheritStruct(cls, Node);
+      }
+
       let path = this.graphPath + ".nodes[" + node.graph_id + "]";
 
       let node2 = document.createElement("nodeui-x");
@@ -730,6 +751,8 @@ export class NodeEditor extends Editor {
     this.background = bgcolor;
     this.style["background-color"] = bgcolor;
     //header.prop("NodeEditor.selectmode");
+
+    this.doOnce(this.rebuildAll);
   }
 
   getUISocket(sock) {

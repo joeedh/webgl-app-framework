@@ -85,7 +85,7 @@ export class BaseOverlay extends ContextOverlay {
   }
 
   get object() {
-    return this.scene.objects.active;
+    return this.scene ? this.scene.objects.active : undefined;
   }
 
   get mesh() {
@@ -155,6 +155,9 @@ export class BaseOverlay extends ContextOverlay {
   }
 
   get pointset() {
+    if (!this.scene)
+      return undefined;
+
     let obj = this.object;
 
     if (obj !== undefined && obj.data instanceof PointSet) {

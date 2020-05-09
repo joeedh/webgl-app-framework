@@ -107,8 +107,28 @@ export class SceneObject extends DataBlock {
     }
   }
 
+  ensureGraphConnection() {
+    if (!this.data.inputs.depend) {
+      return; //data doesn't have a depend socket
+    }
+
+    for (let s of this.outputs.depend.edges) {
+      if (s.node === this.data) {
+        return true;
+      }
+    }
+
+    console.log("make graph connection");
+
+    this.outputs.depend.connect(this.data.inputs.depend);
+
+    return false;
+  }
+
   exec() {
     let pmat;
+
+    this.ensureGraphConnection();
 
     if (this.inputs.matrix.edges.length > 0) {
       pmat = this.inputs.matrix.edges[0].getValue();

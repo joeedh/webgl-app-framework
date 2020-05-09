@@ -512,8 +512,6 @@ export class App extends Screen {
   }
 
   update() {
-    window.updateDataGraph(true);
-
     super.update();
 
     this.positionMenu();
@@ -524,6 +522,12 @@ export class App extends Screen {
     this.updateDPI();
  }
 };
+
+window.setInterval(() => {
+  if (_appstate && _appstate.ctx && _appstate.screen) {
+    window.updateDataGraph(true);
+  }
+}, 75);
 
 App.STRUCT = STRUCT.inherit(App, Screen, 'App') + `
 }`;

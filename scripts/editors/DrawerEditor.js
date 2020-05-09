@@ -130,6 +130,9 @@ export class DrawerEditor extends Editor {
     if (this.panes.active) {
       this.contents.add(this.panes.active.contents);
     }
+
+    if (this.parentWidget && this.ctx)
+      this.parentWidget.update();
   }
 
   close() {
@@ -146,6 +149,9 @@ export class DrawerEditor extends Editor {
     this.owning_sarea.loadFromPosSize();
 
     this.contents.clear(false);
+
+    if (this.parentWidget && this.ctx)
+      this.parentWidget.update();
   }
 
   update() {

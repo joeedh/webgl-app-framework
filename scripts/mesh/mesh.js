@@ -31,6 +31,7 @@ import {Element, Vertex, Edge, Handle, Loop, LoopList, Face} from "./mesh_types.
 import {SelectionSet, ElementList} from "./mesh_element_list.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {PrimitiveTypes} from "../core/simplemesh.js";
+import {Node} from '../core/graph.js';
 
 let split_temp = new Array(512);
 split_temp.used = 0;
@@ -133,8 +134,8 @@ export class Mesh extends SceneObjectData {
     name   : "mesh",
     uiname : "Mesh",
     flag   : NodeFlags.SAVE_PROXY,
-    inputs : {}, //can inherit from parent class by wrapping in Node.inherit({})
-    outputs : {}
+    inputs : Node.inherit({}),
+    outputs : Node.inherit({})
   }}
     
   _element_init(e) {

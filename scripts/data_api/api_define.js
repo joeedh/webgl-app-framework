@@ -10,6 +10,7 @@ import {CameraData} from "../camera/camera.js";
 import {Camera} from '../core/webgl.js';
 
 import {makeToolModeEnum, ToolModes, ToolMode} from "../editors/view3d/view3d_toolmode.js";
+import {NodeSocketClasses} from "../core/graph.js";
 
 import '../mesh/mesh_createops.js';
 
@@ -382,6 +383,16 @@ function api_define_graph(api, cls=Graph) {
   return gstruct;
 }
 
+function api_define_nodesockets(api) {
+  for (let cls of NodeSocketClasses) {
+    api_define_socket(api, cls);
+  }
+}
+
+function api_define_nodes(api) {
+
+}
+
 function api_define_shadernetwork(api, parent) {
   let mstruct = api_define_datablock(api, ShaderNetwork);
 
@@ -657,6 +668,7 @@ export function getDataAPI() {
   let cstruct = api.mapStruct(ToolContext);
 
   api_define_velpan(api);
+  api_define_nodesockets(api);
 
   api_define_socket(api);
   api_define_vec2_socket(api);
@@ -670,6 +682,8 @@ export function getDataAPI() {
   api_define_node(api);
   api_define_shadernode(api);
   api_define_graph(api);
+
+  cstruct.struct("graph", "graph", "Graph", api.mapStruct(Graph));
 
   api_define_datablock(api, DataBlock);
 
@@ -692,6 +706,8 @@ export function getDataAPI() {
   api_define_light(api, cstruct);
 
   let ostruct = api_define_sceneobject(api, cstruct);
+
+  api_define_nodes(api);
 
   cstruct.list("", "objects", [
     function getIter(api, list) {

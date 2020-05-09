@@ -1,7 +1,7 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {Graph, SocketFlags} from '../core/graph.js';
+import {Graph, NodeFlags, SocketFlags} from '../core/graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Vec3Socket, FloatSocket, DependSocket, Matrix4Socket, Vec4Socket} from '../core/graphsockets.js';
@@ -40,16 +40,15 @@ export class Light extends SceneObjectData {
   }}
 
   static nodedef() {return {
-    inputs : {
+    flag   : NodeFlags.SAVE_PROXY,
+    inputs : Node.inherit({
       color  : new Vec3Socket("color", undefined, [1, 1, 1]),
       power  : new FloatSocket("power", undefined, 1.0),
       radius  : new FloatSocket("radius", undefined, 0.5),
       distance  : new FloatSocket("distance", undefined, 50.0),
       depend : new DependSocket()
-    },
-    outputs : {
-      depend : new DependSocket()
-    }
+    }),
+    outputs : Node.inherit()
   }}
 
   draw(gl, uniforms, program, object) {
