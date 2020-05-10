@@ -21,7 +21,7 @@ export class UVLayerElem extends CustomDataElem {
     return ret;
   }
 
-  interp(dest, ws, datas) {
+  interp(dest, datas, ws) {
     dest.uv.zero();
 
     if (datas.length == 0) {

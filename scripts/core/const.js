@@ -12,9 +12,11 @@ export const DEBUG = {
   fbo : 0,
   doOnce : false,
   modalEvents : true,
-  potreeEvents : true,
+  potreeEvents : false,
 
   datapaths : false,
+
+  screenAreaPosSizeAccesses : false,
 
   contextSystem : 0,
   screenborders : false,

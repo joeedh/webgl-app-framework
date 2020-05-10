@@ -115,13 +115,19 @@ export class MeshOp extends View3DOp {
   }
 
   getMeshes(ctx) {
-    let ret = [];
+    let ret = new util.set();
 
     for (let item of resolveMeshes(ctx, this.inputs.meshPaths)) {
-      ret.push(item);
+      if (item)
+        ret.add(item);
     }
 
-    return ret;
+    let ret2 = [];
+    for (let mesh of ret) {
+      ret2.push(mesh);
+    }
+
+    return ret2;
   }
 
   execPost(ctx) {

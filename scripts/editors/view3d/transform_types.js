@@ -395,6 +395,7 @@ export class MeshTransType extends TransDataType {
 
     mesh.regenTesellation();
     mesh.regenRender();
+    mesh.outputs.depend.update();
     //mesh.regenPartial();
   }
 }

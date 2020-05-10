@@ -76,8 +76,9 @@ export class KnotDataLayer extends CustomDataElem {
     return ret;
   }
 
-  interp(dest, ws, datas) {
+  interp(dest, datas, ws) {
     dest.knot = dest.computedKnot = 0.0;
+
     let sum = 0.0;
 
     for (let i=0; i<datas.length; i++) {
@@ -86,7 +87,7 @@ export class KnotDataLayer extends CustomDataElem {
       sum += ws[i];
     }
 
-    if (sum != 0.0) {
+    if (sum !== 0.0) {
       dest.knot /= sum;
       dest.computedKnot /= sum;
     }
@@ -149,6 +150,7 @@ export class CurveSpline extends Mesh {
 
     super(features);
 
+    this.isClosed = false;
     this.knots = [];
     this.degree = 3;
     this.knotpad = undefined;
@@ -187,9 +189,20 @@ export class CurveSpline extends Mesh {
     let v = this.verts[0];
     let e = v.edges[0];
 
+    let pv;
+    if (v.edges.length > 1) {
+      pv = v.edges[1].otherVertex(v);
+    }
+
     let _i = 0;
     do {
       let ret = WalkRets.next().load(v, e);
+
+      /*
+      if (v === pv && !all_verts) {
+        break;
+      }
+      //*/
 
       yield ret;
 
@@ -219,14 +232,32 @@ export class CurveSpline extends Mesh {
   }
 
   updateKnots() {
+    if (this.verts.length === 0 || this.edges.length === 0.0)
+      return;
+
+    this.sortVerts();
+
     this.knotpad = this.degree;
 
     let t = 0.0;
     let laste, lastv;
 
     this.knots = [];
+    let vs = [];
+    let es = [];
+    let e, v;
+
+    for ({v, e} of this.walk()) {
+      break;
+    }
+
     for (let i=0; i<this.knotpad; i++) {
-      this.knots.push(0.0);
+      let k = 0.0;
+
+      k = getKnot(v).knot;
+      t += e.length * k;
+
+      this.knots.push(k);
     }
 
     for (let {v, e} of this.walk()) {
@@ -237,15 +268,26 @@ export class CurveSpline extends Mesh {
       laste = e;
       lastv = v;
 
+      vs.push(v);
+      es.push(e);
+
       this.knots.push(t);
     }
 
-    if (laste) {
+    if (laste && !this.isClosed) {
       let v2 = laste.otherVertex(lastv);
       getKnot(v2).computedKnot = t;
     }
 
     for (let i=0; i<this.knotpad; i++) {
+      if (this.isClosed) {
+        let i2 = (vs.length + i - 1) % vs.length;
+
+        let k = getKnot(vs[i2]).knot;
+
+        //t += es[i2].length*k;
+      }
+
       this.knots.push(t);
     }
 
@@ -254,6 +296,8 @@ export class CurveSpline extends Mesh {
   }
 
   update() {
+    super.update();
+
     if (this.verts.length === 0 || this.verts[0].edges.length === 0) {
       return; //empty mesh
     }
@@ -286,6 +330,7 @@ export class CurveSpline extends Mesh {
         e.flag &= ~MeshFlags.CURVE_FLIP;
       }
     }
+
     this.updateKnots();
   }
 
@@ -325,6 +370,12 @@ export class CurveSpline extends Mesh {
     selectMask : SelMask.MESH,
     tools      : MeshTools
   }}
+
+  exec() {
+    super.exec(...arguments);
+
+    this.checkUpdate();
+  }
 
   sortVerts() {
     let vs = [];
@@ -369,10 +420,16 @@ export class CurveSpline extends Mesh {
     let sum = 0.0;
 
     for (let i=0; i<ks.length; i++) {
-      let i2 = Math.min(Math.max(i - this.knotpad, 0), vs.length-1);
+      let i2;
+      if (this.isClosed) {
+        i2 = (i - this.knotpad + vs.length) % vs.length;
+      } else {
+        i2 = Math.min(Math.max(i - this.knotpad, 0), vs.length-1);
+      }
+
       let w = basis(ks, s, i, this.degree);
 
-      sum += w*getKnot(vs[i2]).computedKnot;
+      sum += w*ks[i];
     }
 
     return sum * this.length / this.speedLength*0.999;
@@ -396,6 +453,7 @@ export class CurveSpline extends Mesh {
     let lastknot;
     let ds, firstds, lastds;
     let t = 0.0;
+    let i = 0;
 
     for (let {v, e} of this.walk()) {
       let knot = getKnot(v);
@@ -431,6 +489,7 @@ export class CurveSpline extends Mesh {
       lastv = v;
       lastknot = knot2;
       lastds = knotIval;
+      i++;
     }
 
     let p = this._evaluate_vs.next();
@@ -443,8 +502,8 @@ export class CurveSpline extends Mesh {
       }
 
       if (e_out) e_out[0] = laste;
-      if (no_out) no_out.load(laste.arcNormal(s));
       if (dv_out) dv_out.load(laste.arcDerivative(s));
+      if (no_out) no_out.load(laste.arcNormal(s));
       return p.load(laste.arcEvaluate(s));
     } else {
       if (s_out) {
@@ -452,8 +511,8 @@ export class CurveSpline extends Mesh {
         s_out[1] = ds;
       }
       if (e_out) e_out[0] = laste;
-      if (no_out) no_out.load(laste.arcNormal(s));
       if (dv_out) dv_out.load(laste.arcDerivative(s));
+      if (no_out) no_out.load(laste.arcNormal(s));
 
       return laste.arcEvaluate(s);
     }
@@ -598,9 +657,42 @@ export class CurveSpline extends Mesh {
     return sm;
   }
 
+  checkClosed() {
+    let v, e;
+    if (this.verts.length === 0 || this.edges.length === 0) {
+      return;
+    }
+
+    for ({v, e} of this.walk()) {
+      break;
+    }
+
+    let closed = v.edges.length > 1;
+    if (!!closed !== !!this.isClosed) {
+      this.sortVerts();
+
+      if (closed) {
+        for (let e of v.edges) {
+          if (e.otherVertex(v) !== this.verts[1]) {
+            this.killEdge(e);
+            break;
+          }
+        }
+      } else {
+        this.makeEdge(this.verts[0], this.verts[this.verts.length-1]);
+      }
+
+      for (let e of this.edges) {
+        e.update();
+      }
+    }
+  }
+
   checkUpdate() {
+    this.checkClosed();
+
     //let hash = "";
-    let key = 0;
+    let key = this.isClosed;
 
     for (let i=0; i<this.verts.length; i++) {
       let v = this.verts[i];
@@ -640,6 +732,7 @@ CurveSpline.STRUCT = STRUCT.inherit(CurveSpline, Mesh, "mesh.CurveSpline") + `
   speedLength    : float;
   degree         : int;
   owningToolMode : string;
+  isClosed       : bool;
 }
 `;
 

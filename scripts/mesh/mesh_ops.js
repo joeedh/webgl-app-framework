@@ -16,6 +16,39 @@ import {MeshOp} from './mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
 import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
 
+export class DeleteOp extends MeshOp {
+  static tooldef() {return {
+    uiname : "Delete Selected",
+    icon : Icons.TINY_X,
+    toolpath : "mesh.delete_selected",
+    inputs : ToolOp.inherit(),
+    outputs : ToolOp.inherit()
+  }}
+
+  exec(ctx) {
+    console.warn("mesh.delete_selected");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let del = [];
+
+      for (let v of mesh.verts.selected.editable) {
+        del.push(v);
+      }
+
+      for (let v of del) {
+        mesh.killVertex(v);
+      }
+
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.update();
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(DeleteOp);
+
 export class ExtrudeOneVertexOp extends MeshOp {
   constructor() {
     super();
@@ -284,8 +317,40 @@ export class CatmullClarkeSubd extends MeshOp {
     console.log("subdivide smooth!");
 
     for (let mesh of this.getMeshes(ctx)) {
+      console.log("doing mesh", mesh.lib_id);
+
       subdivide(mesh, list(mesh.faces.selected.editable));
       mesh.regenRender();
+
+      let es = new util.set();
+
+      for (let e of mesh.edges.selected.editable) {
+        if (!e.l) {
+          es.add(e);
+        }
+      }
+
+      //handle wire edges
+      let vs = new util.set();
+
+      for (let e of es) {
+        vs.add(e.v1);
+        vs.add(e.v2);
+
+        let ret = mesh.splitEdge(e, 0.5);
+
+        if (ret.length > 0) {
+          vs.add(ret[1]);
+          mesh.setSelect(ret[0], true);
+          mesh.setSelect(ret[1], true);
+        }
+      }
+
+      vertexSmooth(mesh, vs);
+
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.update();
     }
   }
 }
@@ -347,7 +412,7 @@ export class VertexSmooth extends MeshOp {
   }}
 
   exec(ctx) {
-    console.log("subdivide smooth!");
+    console.log("smooth!");
 
     for (let mesh of this.getMeshes(ctx)) {
       vertexSmooth(mesh);

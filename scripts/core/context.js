@@ -2,6 +2,7 @@
 import '../path.ux/scripts/struct.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
+import {NodeViewer} from '../editors/node/NodeEditor_debug.js';
 import {getContextArea, Editor} from '../editors/editor_base.js';
 import {ResourceBrowser} from "../editors/resbrowser/resbrowser.js";
 import * as util from '../util/util.js';
@@ -28,6 +29,14 @@ export class BaseOverlay extends ContextOverlay {
     super(appstate);
   }
 
+  get timeStart() {
+    return this.scene ? this.scene.timeStart : 0;
+  }
+
+  get timeEnd() {
+    return this.scene ? this.scene.timeEnd : 0;
+  }
+
   validate() {
     return true;
   }
@@ -40,6 +49,10 @@ export class BaseOverlay extends ContextOverlay {
 
   copy() {
     return new BaseOverlay(this._state);
+  }
+
+  get playing() {
+    return this.state.playing;
   }
 
   get graph() { /** execution graph */
@@ -238,6 +251,10 @@ export class ViewOverlay extends ContextOverlay {
     return getContextArea(NodeEditor);
   }
 
+  get nodeViewer() {
+    return getContextArea(NodeViewer);
+  }
+
   get area() {
     return Editor.getActiveArea();
   }
@@ -261,6 +278,14 @@ export class ToolContext extends Context {
   
     this._state = state;
     this.reset();
+  }
+
+  play() {
+    this.state.playing = true;
+  }
+
+  stop() {
+    this.state.playing = false;
   }
 
   set state(val) {

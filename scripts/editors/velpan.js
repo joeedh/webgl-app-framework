@@ -126,95 +126,6 @@ VelPan {
 `;
 nstructjs.manager.add_class(VelPan);
 
-export class VelPanZoomOp extends ToolOp {
-  constructor() {
-    super();
-
-    this.first = true;
-    this.last_mpos = new Vector2();
-    this.start_mpos = new Vector2();
-
-    this._temps = util.cachering.fromConstructor(Vector2, 16);
-  }
-
-  static tooldef() {return {
-    uiname      : "Zoom (2d)",
-    description : "zoom 2d window",
-    toolpath    : "velpan.zoom",
-    undoflag    : UndoFlags.NO_UNDO,
-    is_modal    : true,
-    icon        : -1,
-
-    inputs      : {
-      velpanPath : new StringProperty(),
-      scale      : new Vec2Property(new Vector2([1, 1]))
-    }
-  }}
-
-  on_mousemove(e) {
-    let ctx = this.modal_ctx;
-    let path = this.inputs.velpanPath.getValue();
-    let velpan = ctx.api.getValue(ctx, path);
-
-    let mpos = this._temps.next().zero();
-    mpos[0] = e.x;
-    mpos[1] = e.y;
-
-    if (this.first) {
-      this.start_mpos.load(mpos);
-      this.last_mpos.load(mpos);
-      this.first = false;
-      this.start_time = util.time_ms();
-
-      return;
-    }
-
-    let dx = mpos[0] - this.last_mpos[0];
-    let dy = mpos[1] - this.last_mpos[1];
-
-    let scale = this.scale;
-    if (velpan.flag & VelPanFlags.UNIFORM_SCALE) {
-      let f = this.inputs.scale[0];
-
-      f += dx/512;
-
-      f = Math.max(f, 0.01);
-
-      this.inputs.scale.loadXY(f, f);
-    } else {
-      let sx = this.inputs.scale[0];
-      let sy = this.inputs.scale[1];
-
-      sx += dx/512;
-      sy += dy/512;
-
-      sx = Math.max(sx, 0.01);
-      sy = Math.max(sy, 0.01);
-
-      this.inputs.scale.loadXY(f, f);
-    }
-
-    this.exec(this.modal_ctx);
-
-    this.last_mpos.load(mpos);
-    this.last_time = util.time_ms();
-  }
-
-  exec(ctx) {
-    let path = this.inputs.velpanPath.getValue();
-
-    let velpan = ctx.api.getValue(ctx, path);
-    velpan.scale.mul(this.inputs.scale.getValue());
-    
-  }
-
-  on_mouseup(e) {
-    this.modalEnd();
-  }
-}
-
-ToolOp.register(VelPanZoomOp);
-
 
 export class VelPanPanOp extends ToolOp {
   constructor() {
@@ -259,10 +170,11 @@ export class VelPanPanOp extends ToolOp {
     if (this.first) {
       this.start_mpos.load(mpos);
       this.last_mpos.load(mpos);
-      this.first = false;
       this.start_pan.load(velpan.pos);
       this.start_time = util.time_ms();
       this.last_time = util.time_ms();
+
+      this.first = false;
 
       return;
     }
@@ -311,6 +223,10 @@ export class VelPanPanOp extends ToolOp {
 
     //velpan.scale.mul(this.inputs.scale.getValue());
     this.last_time = util.time_ms();
+
+    if (velpan.onchange) {
+      velpan.onchange();
+    }
   }
 
   on_mouseup(e) {

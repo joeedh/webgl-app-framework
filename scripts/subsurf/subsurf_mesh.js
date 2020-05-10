@@ -55,6 +55,7 @@ export function subdivide(mesh, faces=mesh.faces) {
   let splitvs = new util.set();
 
   console.log(faces);
+
   for (let f of faces) {
     //console.log("f", f.eid);
   }

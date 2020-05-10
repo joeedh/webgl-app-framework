@@ -29,6 +29,7 @@ import {View3D} from '../editors/view3d/view3d.js';
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js';
 import {Editor, App} from '../editors/editor_base.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
+import {NodeViewer} from '../editors/node/NodeEditor_debug.js';
 import {MenuBarEditor} from "../editors/menu/MainMenu.js";
 import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from "../core/graphsockets.js";
 import {VelPan, VelPanFlags} from '../editors/velpan.js';
@@ -93,6 +94,8 @@ export function api_define_resbrowser(api, pstruct) {
 export function api_define_view3d(api, pstruct) {
   let vstruct = api_define_editor(api, View3D);
 
+  vstruct.float("subViewPortSize", "subViewPortSize", "View Size").range(1, 2048);
+  vstruct.vec2("subViewPortPos", "subViewPortPos", "View Pos").range(1, 2048);
 
   let SelModes = {
     VERTEX : SelMask.VERTEX,
@@ -303,6 +306,11 @@ export function api_define_mesh(api, pstruct) {
 export function api_define_curvespline(api) {
   let cstruct = api.inheritStruct(CurveSpline, Mesh);
 
+  cstruct.bool("isClosed", "isClosed", "Closed Curve").on("change", function() {
+    this.dataref.checkUpdate();
+    this.dataref.regenRender();
+  });
+
   return cstruct;
 }
 
@@ -334,9 +342,9 @@ export function api_define_camera(api) {
     window.redraw_viewport();
   })
 
-  cstruct.float("near", "near", "Near Clipping Plane").range(0.00001, 100).on('change', onchange);
-  cstruct.float("far", "far", "Far Clipping Plane").range(0.00001, 100000000).on('change', onchange);
-  cstruct.float("aspect", "aspect", "Aspect").read_only();
+  cstruct.float("near", "near", "Near Clipping Plane").range(0.00001, 100).on('change', onchange).rollerSlider();
+  cstruct.float("far", "far", "Far Clipping Plane").range(0.00001, 100000000).on('change', onchange).rollerSlider();
+  cstruct.float("aspect", "aspect", "Aspect").range(0.001, 4.0);
   cstruct.float("fovy", "fov", "Field of View").range(0.01, 110.0).baseUnit("degree").on('change', onchange);
 }
 
@@ -344,7 +352,24 @@ export function api_define_camera(api) {
 export function api_define_cameradata(api) {
   let mstruct = api_define_datablock(api, CameraData);
 
+  let onchange = function () {
+    let camera = this.dataref;
+
+    camera.update();
+  };
+
   mstruct.struct("camera", "camera", "Camera", api.mapStruct(Camera, false));
+  mstruct.struct("finalCamera", "finalCamera", "finalCamera", api.mapStruct(Camera, false));
+  mstruct.float("speed", "speed", "Anim Speed").range(0.00001, 100.0);
+  mstruct.float("height", "height", "Height").range(-100, 100.0).on("change", onchange);
+
+  mstruct.bool("flipped", "flipped", "Flipped").on("change", onchange);
+  mstruct.bool("pathFlipped", "pathFlipped", "Flip Path").on("change", onchange);
+
+  mstruct.float("azimuth", "azimuth", "Azimuth").on("change", onchange).range(-Math.PI, Math.PI).displayUnit("degree").baseUnit("radian");
+
+  mstruct.float("rotate", "rotate", "Rotation").range(-Math.PI, Math.PI).displayUnit("degree").baseUnit("radian");
+
 }
 
 function api_define_graph(api, cls=Graph) {
@@ -537,6 +562,14 @@ export function api_define_node_editor(api, parent) {
   nedstruct.struct("velpan", "velpan", "Pan / Zoom", api.getStruct(VelPan));
 }
 
+export function api_define_node_viewer(api, parent) {
+  let nedstruct = api_define_editor(api, NodeViewer);
+
+  parent.struct("nodeViewer", "nodeViewer", "Node Viewer", nedstruct);
+  nedstruct.string("graphPath", "graphPath", "data path to graph that's being edited");
+  nedstruct.struct("velpan", "velpan", "Pan / Zoom", api.getStruct(VelPan));
+}
+
 export function api_define_screen(api, parent) {
   let st = api.mapStruct(App);
 
@@ -690,6 +723,7 @@ export function getDataAPI() {
   api_define_view3d(api, cstruct);
   api_define_resbrowser(api, cstruct);
   api_define_node_editor(api, cstruct);
+  api_define_node_viewer(api, cstruct);
   api_define_debugeditor(api, cstruct);
 
   api_define_pointset(api, cstruct);

@@ -4,6 +4,7 @@ import {SceneObject} from "../sceneobject/sceneobject.js";
 import {DependSocket, IntSocket} from "../core/graphsockets.js";
 import {Scene} from "./scene.js";
 import * as util from '../util/util.js';
+import * as cconst from '../core/const.js';
 
 //sceneobjet collection
 export const CollectFlags = {
@@ -37,6 +38,33 @@ export class Collection extends DataBlock {
       onChildRem  : new IntSocket()
     }
   }}
+
+  get flatChildren() {
+    let this2 = this;
+
+    return (function*() {
+      let stack = [];
+      let visit = new util.set();
+
+      for (let c of this2.children) {
+        stack.push(c);
+      }
+
+      while (stack.length > 0) {
+        let c = stack.pop();
+
+        yield c;
+
+        visit.add(c);
+
+        for (let c2 of c.children) {
+          if (!(visit.has(c2))) {
+            stack.push(c2);
+          }
+        }
+      }
+    })();
+  }
 
   add(ob_or_collection) {
     if (ob_or_collection instanceof Collection) {

@@ -187,8 +187,6 @@ export class PointSet extends SceneObjectData {
 
     this._packing = true;
     packPointCloudReport(this.res.data).then((data) => {
-      console.log("DATA", data);
-
       this._packing = false;
       this.packedData = data;
       this.usePackedData = true;
@@ -246,7 +244,10 @@ export class PointSet extends SceneObjectData {
     return new Promise((accept, reject) => {
       this.res = resourceManager.get(this.url, PointSetResource, true);
       if (this.res.isReady()) {
-        console.log("READY1");
+        if (cconst.DEBUG.potreeEvents) {
+          console.log("potree READY1");
+        }
+
         this.ready = true;
         accept(this);
 
@@ -261,7 +262,10 @@ export class PointSet extends SceneObjectData {
       }
 
       this.res.on("load", (e) => {
-        console.log("READY2");
+        if (cconst.DEBUG.potreeEvents) {
+          console.log("potree READY2");
+        }
+
         this.ready = true;
         accept(this);
 
@@ -293,7 +297,9 @@ export class PointSet extends SceneObjectData {
           let hash = this.hash(numpoint_out);
 
           if (hash !== -1 && hash !== 0 && numpoint_out[0] > 0) {
-            console.log("detected ptree load");
+            if (cconst.DEBUG.potreeEvents) {
+              console.log("ptree post-load change detected");
+            }
             window.clearInterval(timer);
             window.redraw_viewport;
           }
@@ -453,7 +459,7 @@ export class PointSet extends SceneObjectData {
       ptree.material.size = mat.pointSize;
     }
 
-    let chash = view3d.camera.generateUpdateHash(uniforms.objectMatrix);
+    let chash = view3d.activeCamera.generateUpdateHash(uniforms.objectMatrix);
 
     chash = chash ^ (ptree.material.needsUpdate ? 4234234 : 0);
     chash = chash ^ this.hash();
@@ -480,7 +486,10 @@ export class PointSet extends SceneObjectData {
         ptree.pointBudget = budget;
 
         Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
-        console.log("pointBudget", ptree.pointBudget);
+
+        if (cconst.DEBUG.potreeEvents) {
+          console.log("pointBudget change:", ptree.pointBudget);
+        }
       }
     }
 
@@ -492,7 +501,6 @@ export class PointSet extends SceneObjectData {
       }
 
       this._last_camera_hash = chash;
-      //console.log("camera or object matrix update");
       Potree.updatePointClouds([ptree], view3d.threeCamera, view3d.threeRenderer);
       this._last_cull_time = util.time_ms();
     }

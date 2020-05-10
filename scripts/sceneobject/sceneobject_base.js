@@ -48,6 +48,16 @@ export class SceneObjectData extends DataBlock {
     throw new Error("implement me");
   }
 
+  getOwningObject() {
+    for (let sock of this.inputs.depend.edges) {
+      if (sock.node.constructor.name === "SceneObject" && sock.node.data === this) {
+        return sock.node;
+      }
+    }
+
+    console.warn("orphaned sceneobjectdata?");
+  }
+
   copyAddUsers() {
     return this.copy();
   }

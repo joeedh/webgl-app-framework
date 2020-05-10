@@ -22,7 +22,13 @@ export class DataBlock extends Node {
       if (k.startsWith("lib_") || k == "name") {
         continue;
       }
-
+      if (k.startsWith("graph_")) {
+        continue;
+      }
+      if (k === "inputs" || k === "outputs") {
+        continue;
+      }
+      
       this[k] = obj[k];
     }
 

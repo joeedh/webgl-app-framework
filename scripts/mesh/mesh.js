@@ -641,6 +641,7 @@ export class Mesh extends SceneObjectData {
 
     _cdtemp2[0] = v1;
     _cdtemp2[1] = v2;
+
     _cdwtemp2[0] = 1.0-t;
     _cdwtemp2[1] = t;
 

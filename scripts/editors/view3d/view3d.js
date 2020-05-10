@@ -67,8 +67,18 @@ export class ThreeCamera extends THREE.Camera {
     super();
 
     this.camera = camera;
+    this.camerastack = [camera];
     this.uniform_stack = [];
     this.uniforms = {};
+  }
+
+  pushCamera(camera) {
+    this.camerastack.push(this.camera);
+    this.camera = camera;
+  }
+
+  popCamera() {
+    this.camera = this.camerastack.pop();
   }
 
   set matrixWorld(val) {
@@ -309,6 +319,9 @@ export class View3D extends Editor {
     //current calculated fps
     this.fps = 60.0;
 
+    this.subViewPortSize = 512;
+    this.subViewPortPos = new Vector2();
+
     this._nodes = [];
 
     this._pobj_map = {};
@@ -327,7 +340,7 @@ export class View3D extends Editor {
     this.glSize = [512, 512];
 
     this.T = 0.0;
-    this.camera = new Camera();
+    this.camera = this.activeCamera = new Camera();
 
     this.start_mpos = new Vector2();
 
@@ -355,12 +368,12 @@ export class View3D extends Editor {
   }
 
   get cameraMode() {
-    let cam = this.camera;
+    let cam = this.activeCamera;
     return cam.isPerspective ? CameraModes.PERSPECTIVE : CameraModes.ORTHOGRAPHIC;
   }
 
   set cameraMode(val) {
-    let cam = this.camera;
+    let cam = this.activeCamera;
 
     cam.isPerspective = val === CameraModes.PERSPECTIVE;
     cam.regen_mats();
@@ -637,11 +650,11 @@ export class View3D extends Editor {
 
     co[0] = localX;
     co[1] = localY;
-    co[2] = -this.camera.near - 0.001;
+    co[2] = -this.activeCamera.near - 0.001;
 
     this.unproject(co);
 
-    co.sub(this.camera.pos).normalize();
+    co.sub(this.activeCamera.pos).normalize();
     return co;
   }
 
@@ -656,7 +669,7 @@ export class View3D extends Editor {
     }
     
     tmp[3] = 1.0;
-    tmp.multVecMatrix(this.camera.rendermat);
+    tmp.multVecMatrix(this.activeCamera.rendermat);
     
     if (tmp[3] != 0.0) {
       tmp[0] /= tmp[3];
@@ -692,7 +705,7 @@ export class View3D extends Editor {
       tmp[3] = 1.0;
     }
 
-    tmp.multVecMatrix(this.camera.irendermat);
+    tmp.multVecMatrix(this.activeCamera.irendermat);
 
     let w = tmp[3];
 
@@ -1185,7 +1198,59 @@ export class View3D extends Editor {
     this.makeGraphNodes();
   }
 
+  drawCameraView() {
+    let gl = this.gl;
+
+    let camera = this.ctx.camera;
+
+    if (camera === undefined) {
+      camera = this.camera;
+    }
+
+    gl.enable(gl.SCISSOR_TEST);
+    let pos = new Vector2(this.subViewPortPos);
+    let scale = this.subViewPortSize;
+    let size = new Vector2([scale, scale]);
+
+    size[0] /= camera.aspect;
+
+    //console.log(pos, size, camera.aspect);
+
+    pos.floor();
+    size.floor();
+
+    camera.regen_mats();
+
+    gl.scissor(pos[0], pos[1], size[0], size[1]);
+    gl.clearColor(0, 0, 0, 1.0);
+    gl.clearDepth(camera.far);
+
+    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+    gl.depthMask(true);
+    gl.enable(gl.DEPTH_TEST);
+
+    let scene = this.scene;
+
+    this.threeCamera.pushCamera(camera);
+    try {
+      this.drawObjects(camera);
+    } catch (error) {
+      util.print_stack(error);
+      console.warn("Draw error");
+    }
+
+    this.threeCamera.popCamera(camera);
+  }
+
   viewportDraw() {
+    if (this.flag & View3DFlags.USE_CTX_CAMERA) {
+      this.activeCamera = this.ctx.camera || this.camera;
+      this.threeCamera.camera = this.activeCamera;
+    } else {
+      this.activeCamera = this.camera;
+      this.threeCamera.camera = this.activeCamera;
+    }
+
     this.overdraw.clear();
 
     if (!this.gl) {
@@ -1194,6 +1259,11 @@ export class View3D extends Editor {
 
     this.push_ctx_active();
     this.viewportDraw_intern();
+
+    if (this.flag & View3DFlags.SHOW_CAMERA_VIEW) {
+      this.drawCameraView();
+    }
+
     this.pop_ctx_active();
   }
 
@@ -1210,11 +1280,10 @@ export class View3D extends Editor {
       this.renderEngine = new RealtimeEngine(this);
     }
 
-    this.renderEngine.render(this.camera, this.gl, this.glPos, this.glSize, this.ctx.scene);
+    this.renderEngine.render(this.activeCamera, this.gl, this.glPos, this.glSize, this.ctx.scene);
   }
 
   drawThreeScene() {
-    this.threeCamera.camera = this.camera;
     this.threeRenderer = this.ctx.state.three_render;
 
     this.threeRenderer.setViewport(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1]);
@@ -1293,7 +1362,7 @@ export class View3D extends Editor {
     //}
     //gl.clearColor(1.0, 1.0, 1.0, 0.0);
 
-    gl.clearDepth(this.camera.far+1);
+    gl.clearDepth(this.activeCamera.far+1);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     
     gl.disable(gl.BLEND);
@@ -1304,7 +1373,7 @@ export class View3D extends Editor {
 
     //console.log(this.size);
     let aspect = this.size[0] / this.size[1];
-    this.camera.regen_mats(aspect);
+    this.activeCamera.regen_mats(aspect);
 
     //console.log("viewport draw start");
 
@@ -1321,7 +1390,7 @@ export class View3D extends Editor {
       
       this.grid.program = view3d_shaders.Shaders.BasicLineShader;
       
-      this.grid.uniforms.projectionMatrix = this.camera.rendermat;
+      this.grid.uniforms.projectionMatrix = this.activeCamera.rendermat;
       this.grid.draw(gl);
     }
 
@@ -1390,7 +1459,7 @@ export class View3D extends Editor {
     }
 
     this.drawline_mesh.program = view3d_shaders.Shaders.BasicLineShader;
-    this.drawline_mesh.uniforms.projectionMatrix = this.camera.rendermat;
+    this.drawline_mesh.uniforms.projectionMatrix = this.activeCamera.rendermat;
     this.drawline_mesh.uniforms.alpha = 1.0;
 
     gl.enable(gl.BLEND);
@@ -1429,11 +1498,10 @@ export class View3D extends Editor {
     window.redraw_viewport();
   }
 
-  drawObjects() {
+  drawObjects(camera=this.activeCamera) {
     let scene = this.ctx.scene, gl = this.gl;
     let program = view3d_shaders.Shaders.BasicLitMesh;
-    let camera = this.camera;
-    
+
     let uniforms = {
       projectionMatrix : camera.rendermat,
       normalMatrix     : camera.normalmat
@@ -1492,7 +1560,9 @@ export class View3D extends Editor {
 
   loadSTRUCT(reader) {
     reader(this);
-    this.threeCamera.camera = this.camera;
+
+    this.activeCamera = this.camera;
+    this.threeCamera.camera = this.activeCamera;
   }
 
   static define() {return {
@@ -1511,6 +1581,8 @@ View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
   cursorMode          : int;
   orbitMode           : int;
   flag                : int;
+  subViewPortSize     : float;
+  subViewPortPos      : vec3;
 }
 `
 Editor.register(View3D);
@@ -1553,7 +1625,7 @@ let f2 = () => {
   gl.finish();
 
   //be real sure gpu has finished drawing
-  gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.FLOAT, new Float32Array(8*8*4));
+  gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(8*8*4));
 
   //now get time
   time = util.time_ms() - time;

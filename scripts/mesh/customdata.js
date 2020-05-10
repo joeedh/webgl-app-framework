@@ -34,7 +34,7 @@ export class CustomDataElem {
     throw new Error("implement me");
   }
     
-  interp(dest, ws, datas) {
+  interp(dest, datas, ws) {
   }
   
   validate() {

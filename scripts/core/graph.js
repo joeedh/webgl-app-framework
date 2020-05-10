@@ -111,6 +111,17 @@ export class NodeSocketType {
     this.graph_id = -1;
   }
 
+  has(node_or_socket) {
+    for (let socket of this.edges) {
+      if (socket === node_or_socket)
+        return true;
+      if (socket.node === node_or_socket)
+        return true;
+    }
+
+    return false;
+  }
+
   get node() {
     return this._node;
   }
@@ -157,6 +168,12 @@ export class NodeSocketType {
     if (this.edges.indexOf(sock) >= 0) {
       console.warn("Already have socket connected");
       return;
+    }
+
+    for (let s of this.edges) {
+      if (s.node === sock.node && s.name === sock.name) {
+        console.warn("Possible duplicate socket add", s, sock);
+      }
     }
 
     this.edges.push(sock);
@@ -338,66 +355,6 @@ nstructjs.manager.add_class(KeyValPair);
  method in child classes.
  */
 export class Node {
-  static defineAPI(nodeStruct) {
-
-  }
-
-  /** get final node def with inheritance applied to input/output sockets
-   *
-   * @returns {{} & {name, uiname, flag, inputs, outputs}}
-   */
-  static getFinalNodeDef() {
-    let def = this.nodedef();
-
-    //I'm a little nervous about using Object.create,
-    //dunno if I'm just being paranoid
-    let def2 = Object.assign({}, def);
-
-    let getsocks = (key) => {
-      let obj = def[key];
-      let ret = {};
-
-      if (obj instanceof InheritFlag) {
-        let p = this;
-
-        while (p !== null && p !== undefined && p !== Object && p !== Node) {
-          if (p.nodedef === undefined) continue;
-          let obj2 = p.nodedef()[key];
-
-          let inherit = obj2 && obj2 instanceof InheritFlag;
-          if (inherit) {
-            obj2 = obj2.data;
-          }
-
-          if (obj2) {
-            for (let k in obj2) {
-              if (!(k in ret)) {
-                ret[k] = obj2[k];
-              }
-            }
-          }
-
-          if (!inherit) {
-            break;
-          }
-
-          p = p.prototype.__proto__.constructor;
-        }
-      } else if (obj !== undefined) {
-        for (let k in obj) {
-          ret[k] = obj[k];
-        }
-      }
-
-      return ret;
-    }
-
-    def2.inputs = getsocks("inputs");
-    def2.outputs = getsocks("outputs");
-
-    return def2;
-  }
-
   constructor(flag=0) {
     let def = this.constructor.nodedef();
 
@@ -490,6 +447,66 @@ export class Node {
     }
     
     this.icon = -1;
+  }
+
+  static defineAPI(nodeStruct) {
+
+  }
+
+  /** get final node def with inheritance applied to input/output sockets
+   *
+   * @returns {{} & {name, uiname, flag, inputs, outputs}}
+   */
+  static getFinalNodeDef() {
+    let def = this.nodedef();
+
+    //I'm a little nervous about using Object.create,
+    //dunno if I'm just being paranoid
+    let def2 = Object.assign({}, def);
+
+    let getsocks = (key) => {
+      let obj = def[key];
+      let ret = {};
+
+      if (obj instanceof InheritFlag) {
+        let p = this;
+
+        while (p !== null && p !== undefined && p !== Object && p !== Node) {
+          if (p.nodedef === undefined) continue;
+          let obj2 = p.nodedef()[key];
+
+          let inherit = obj2 && obj2 instanceof InheritFlag;
+          if (inherit) {
+            obj2 = obj2.data;
+          }
+
+          if (obj2) {
+            for (let k in obj2) {
+              if (!(k in ret)) {
+                ret[k] = obj2[k];
+              }
+            }
+          }
+
+          if (!inherit) {
+            break;
+          }
+
+          p = p.prototype.__proto__.constructor;
+        }
+      } else if (obj !== undefined) {
+        for (let k in obj) {
+          ret[k] = obj[k];
+        }
+      }
+
+      return ret;
+    }
+
+    def2.inputs = getsocks("inputs");
+    def2.outputs = getsocks("outputs");
+
+    return def2;
   }
 
   /**
@@ -661,6 +678,7 @@ export class Node {
         socks1[k].node = this;
       }
     }
+
     return this;
   }
 
@@ -1206,6 +1224,24 @@ export class Graph {
       }
     }
 
+    for (let node of this.nodes) {
+      for (let sock of node.allsockets) {
+        for (let i=0; i<sock.edges.length; i++) {
+          let e = sock.edges[i];
+
+          if (typeof e === "number") {
+            e = this.sock_idmap[e];
+          }
+
+          if (!e) {
+            console.warn("pruning dead graph connection", sock);
+            sock.edges.remove(sock.edges[i]);
+            i--;
+          }
+        }
+      }
+    }
+
     this.flagResort();
 
     return this;
@@ -1213,6 +1249,8 @@ export class Graph {
 
   //substitute proxy with original node
   relinkProxyOwner(n) {
+    //console.warn("relinkProxyOwner", n.name);
+
     let ok = n !== undefined && n.graph_id in this.node_idmap;
     ok = ok && this.node_idmap[n.graph_id] instanceof ProxyNode;
 
@@ -1236,28 +1274,13 @@ export class Graph {
       let socks1 = i ? n.outputs  : n.inputs;
       let socks2 = i ? n2.outputs : n2.inputs;
 
-      for (let k in socks1) {
-        //console.log("relinking", k, k in socks2);
-
-        let s1 = socks1[k];
-        sock_idmap[s1.graph_id] = s1;
-
-        if (!(k in socks2)) {
-          s1.edges.length = 0;
-          continue;
+      for (let k in socks2) {
+        if (typeof socks2[k] === "number") {
+          socks2[k] = sock_idmap[socks2[k]];
         }
 
-        let s2 = socks2[k];
-
-        s2.copyTo(s1);
-        s1.node = n;
-        s1.edges = s2.edges;
-
-        for (let e of s1.edges) {
-          if (e.edges.indexOf(s1) >= 0) {
-            e.edges.replace(s2, s1);
-          }
-        }
+        socks1[k] = socks2[k];
+        socks1[k].node = n;
       }
     }
 

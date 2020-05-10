@@ -324,7 +324,7 @@ export class BasicMeshDrawer extends MeshDrawInterface {
       program2.uniforms.active_id = list.active !== undefined ? list.active.eid : -1;
       program2.uniforms.highlight_id = list.highlight !== undefined ? list.highlight.eid : -1;
       program2.uniforms.last_id = list.last !== undefined ? list.last.eid : -1;
-      program2.uniforms.projectionMatrix = view3d.camera.rendermat;
+      program2.uniforms.projectionMatrix = view3d.activeCamera.rendermat;
 
       program2.uniforms.polygonOffset = Colors.POLYGON_OFFSET;
       uniforms.polygonOffset = Colors.POLYGON_OFFSET;
@@ -371,7 +371,7 @@ export class BasicMeshDrawer extends MeshDrawInterface {
 
     let drawElements = (list, smesh) => {
       program2.uniforms.object_id = object.lib_id;
-      program2.uniforms.projectionMatrix = view3d.camera.rendermat;
+      program2.uniforms.projectionMatrix = view3d.activeCamera.rendermat;
       program2.uniforms.objectMatrix = object.outputs.matrix.getValue();
       program2.uniforms.pointSize = Colors.POINTSIZE;
 

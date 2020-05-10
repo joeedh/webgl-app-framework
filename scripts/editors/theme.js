@@ -111,8 +111,9 @@ export const theme = {
   },
 
   checkbox : {
-    BoxBG : "rgba(0,0,0,0)",
-    BoxHighlight : "rgba(55, 55, 55, 0.5)",
+    BoxBG : "rgba(170, 170, 170, 0.75)",
+    BoxDepressed :  "rgba(170, 170, 170, 0.75)",
+    BoxHighlight : "rgba(255, 255, 255, 0.5)",
     CheckSide : "right",
 
     "DefaultText" : new CSSFont({

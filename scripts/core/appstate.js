@@ -203,6 +203,8 @@ export class AppState {
 
     this.three_scene = undefined;
     this.three_renderer = undefined;
+
+    this.playing = false;
   }
 
   unswapScreen() {

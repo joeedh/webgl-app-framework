@@ -55,7 +55,7 @@ export class GPUSelectBuffer {
     }
     //*/
 
-    let camera = view3d.camera;
+    let camera = view3d.activeCamera;
 
     this.fbo.update(gl, ~~this.size[0], ~~this.size[1]);
     this.fbo.bind(gl);
@@ -69,7 +69,7 @@ export class GPUSelectBuffer {
       aspect : camera.aspect
     };
 
-    gl.clearDepth(view3d.camera.far);
+    gl.clearDepth(view3d.activeCamera.far);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 
@@ -95,7 +95,7 @@ export class GPUSelectBuffer {
 
     if (ctx.scene.toolmode) {
       uniforms.objectMatrix = new Matrix4();
-      uniforms.projectionMatrix = view3d.camera.rendermat;
+      uniforms.projectionMatrix = view3d.activeCamera.rendermat;
       uniforms.object_id = -1;
 
       ctx.scene.toolmode.drawIDs(view3d, gl, uniforms);

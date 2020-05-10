@@ -265,7 +265,7 @@ export class MeasureToolBase extends ToolMode {
   }
 
   drawSphere(gl, view3d, p, scale=0.01) {
-    let cam = this.ctx.view3d.camera;
+    let cam = this.ctx.view3d.activeCamera;
     let mat = new Matrix4();
 
     let co = new Vector4(p);

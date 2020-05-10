@@ -54,7 +54,8 @@ export class MeshToolBase extends ToolMode {
       new HotKey("A", [], makeHotKey("mesh.toggle_select_all(mode='AUTO')")),
       new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
       new HotKey("D", [], "mesh.subdivide_smooth()"),
-      new HotKey("G", [], makeHotKey("view3d.translate(selmask=17)"))
+      new HotKey("G", [], makeHotKey("view3d.translate(selmask=17)")),
+      new HotKey("X", [], "mesh.delete_selected()")
     ]);
 
     return this.keymap;
@@ -344,14 +345,14 @@ export class MeshToolBase extends ToolMode {
   }
 
   drawIDs(view3d, gl, uniforms, selmask=SelMask.GEOM) {
-    view3d.camera.regen_mats();
+    view3d.activeCamera.regen_mats();
 
     uniforms = Object.assign({}, uniforms);
 
-    uniforms.projectionMatrix = view3d.camera.rendermat;
+    uniforms.projectionMatrix = view3d.activeCamera.rendermat;
     uniforms.objectMatrix = new Matrix4();
 
-    let camdist = view3d.camera.pos.vectorDistance(view3d.camera.target);
+    let camdist = view3d.activeCamera.pos.vectorDistance(view3d.activeCamera.target);
 
     for (let mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
       if (mesh.ownerMatrix && mesh.ownerId !== undefined) {
@@ -376,7 +377,7 @@ export class MeshToolBase extends ToolMode {
   }
 
   drawSphere(gl, view3d, p, scale=0.01) {
-    let cam = this.ctx.view3d.camera;
+    let cam = this.ctx.view3d.activeCamera;
     let mat = new Matrix4();
 
     let co = new Vector4(p);
@@ -397,7 +398,7 @@ export class MeshToolBase extends ToolMode {
 
   on_drawstart(gl, manager) {
     let view3d = this.ctx.view3d;
-    let cam = this.ctx.view3d.camera;
+    let cam = this.ctx.view3d.activeCamera;
 
     let uniforms = {
       normalMatrix : cam.cameramat,
@@ -409,7 +410,7 @@ export class MeshToolBase extends ToolMode {
       far : cam.far
     };
 
-    let camdist = view3d.camera.pos.vectorDistance(view3d.camera.target);
+    let camdist = view3d.activeCamera.pos.vectorDistance(view3d.activeCamera.target);
 
     for (let mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
       if (mesh === undefined) {

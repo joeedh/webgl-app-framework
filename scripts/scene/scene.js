@@ -7,7 +7,7 @@ let STRUCT = nstructjs.STRUCT;
 import {Graph} from '../core/graph.js';
 import * as util from '../util/util.js';
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject.js';
-import {DependSocket} from '../core/graphsockets.js';
+import {DependSocket, FloatSocket} from '../core/graphsockets.js';
 import {Light} from '../light/light.js';
 import {Vector3, Matrix4} from '../util/vectormath.js';
 
@@ -267,6 +267,10 @@ export class Scene extends DataBlock {
     this._loading = false;
     
     this.time = 0.0;
+    this.fps = 30.0;
+
+    this.timeStart = 0.0; //in seconds
+    this.timeEnd = 10.0; //in seconds
 
     if (objects !== undefined) {
       for (let ob of objects) {
@@ -549,9 +553,31 @@ export class Scene extends DataBlock {
     flag    : 0,
     outputs : {
       onSelect : new DependSocket("Selection Change"),
-      onToolModeChange : new DependSocket("Toolmode Change")
+      onToolModeChange : new DependSocket("Toolmode Change"),
+      onTimeChange : new FloatSocket("Time Change")
     }
   }}
+
+  changeTime(newtime) {
+    let oldtime = this.time;
+
+    console.log("time change!", newtime);
+
+    this.time = newtime;
+    for (let ob of this.objects) {
+      ob.update();
+    }
+
+    if (this.collection) {
+      this.collection.update();
+      for (let c of this.collection.flatChildren) {
+        c.update();
+      }
+    }
+
+    this.outputs.onTimeChange.update();
+    window.updateDataGraph(true);
+  }
 
   loadSTRUCT(reader) {
     this._loading = true;
@@ -659,6 +685,7 @@ Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
   toolmode_i : string | obj.toolModeProp.keys[obj.toolmode_i];
   toolmodes  : array(abstract(ToolMode));
   collection : DataRef | DataRef.fromBlock(obj.collection);
+  fps        : int;
 }
 `;
 

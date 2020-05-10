@@ -190,7 +190,7 @@ export class ElementList extends Array {
         sources2[j++] = e2.customData[i];
       }
 
-      cd.interp(cd, sources, ws);
+      cd.interp(cd, sources2, ws);
     }
   }
 

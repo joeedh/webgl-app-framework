@@ -13,7 +13,7 @@ import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader
 import {AddNodeOp, ConnectNodeOp} from './node_ops.js';
 import {DataPath} from "../../path.ux/scripts/simple_controller.js";
 let projcos = util.cachering.fromConstructor(Vector2, 64);
-import {VelPanZoomOp, VelPanPanOp} from '../velpan.js';
+import {VelPanPanOp} from '../velpan.js';
 import {SelectOneOp, SelectOpBase} from './node_selectops.js';
 import {SelOneToolModes} from "../view3d/selectmode.js";
 import {Node, NodeFlags, SocketFlags, SocketTypes} from '../../core/graph.js';
@@ -1145,30 +1145,12 @@ export class NodeEditor extends Editor {
         this.makeAddNodeMenu();
       }),
       new HotKey("=", [], () => {
-        let tool = new VelPanZoomOp();
-
-        //preempt modal mode
-        tool.is_modal = false;
-        let scale = 1.1;
-
-        tool.inputs.velpanPath.setValue("nodeEditor.velpan");
-        tool.inputs.scale.setValue([scale, scale, scale]);
-
-        this.ctx.toolstack.execTool(this.ctx, tool);
-        console.log("zoom in");
+        this.velpan.scale.mulScalar(1.1);
+        this.rebuildAll();
       }),
       new HotKey("-", [], () => {
-        let tool = new VelPanZoomOp();
-
-        //preempt modal mode
-        tool.is_modal = false;
-        let scale = 0.9;
-
-        tool.inputs.velpanPath.setValue("nodeEditor.velpan");
-        tool.inputs.scale.setValue([scale, scale, scale]);
-
-        this.ctx.toolstack.execTool(this.ctx, tool);
-        console.log("zoom out");
+        this.velpan.scale.mulScalar(0.9);
+        this.rebuildAll();
       }),
       new HotKey("A", [], `node.toggle_select_all(useNodeEditorGraph=1 mode='AUTO')`)
         //"node.add_node(graphPath=\"material.graph\" graphClass=\"shader\" nodeClass=\"DiffuseNode\")")

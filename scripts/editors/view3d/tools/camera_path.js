@@ -10,24 +10,43 @@ import '../../../path.ux/scripts/struct.js';
 import {nstructjs, util} from '../../../path.ux/scripts/pathux.js';
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from "../../../path.ux/scripts/pathux.js";
 
-import {CurveToolBase} from './curvetool.js';
+import {CurveToolBase, CurveToolOverlay} from './curvetool.js';
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
 import {CurveSpline} from "../../../curve/curve.js";
 import {CameraData} from "../../../camera/camera.js";
+import {CameraTypes} from "../../../camera/camera_types.js";
+
+export class CameraPathOverlay extends CurveToolOverlay {
+  get camera() {
+    return this.ctx.toolmode.camera.finalCamera;
+  }
+
+  get timeStart() {
+    return 0;
+  }
+
+  get timeEnd() {
+    let toolmode = this.ctx.toolmode;
+
+    return toolmode.camera.speed * toolmode.curve.length;
+  }
+}
 
 export class CameraPathTool extends CurveToolBase {
   constructor(manager) {
     super(manager);
 
-    this.animationSpeed = 1.0;
     this.cameraObject = undefined;
     this.camera = undefined;
+  }
+
+  static getContextOverlayClass() {
+    return CameraPathOverlay;
   }
 
   static defineAPI(api) {
     let tstruct = super.defineAPI(api);
 
-    tstruct.float("animationSpeed", "animationSpeed", "Anim Speed").range(0.01, 100.0);
     tstruct.struct("camera", "camera", "Camera", api.mapStruct(CameraData));
 
     return tstruct;
@@ -43,8 +62,20 @@ export class CameraPathTool extends CurveToolBase {
 
       this.cameraObject = this.ctx.scene.getInternalObject(this.ctx, key, data);
       this.cameraObject.flag |= ObjectFlags.SELECT;
-    } else if (!this.camera) {
+    }
+
+    if (!this.camera) {
       this.camera = this.cameraObject.data;
+    }
+
+    //check that camera is set up right
+    this.camera.type = CameraTypes.SPLINE_PATH;
+    if (!this.camera.curvespline) {
+      this.camera.curvespline = this.curve;
+      this.curve.lib_addUser(this.camera);
+
+      this.cameraObject.update();
+      this.camera.update();
     }
   }
 
@@ -54,9 +85,34 @@ export class CameraPathTool extends CurveToolBase {
     let path = "scene.tools." + this.widgetDefine().name;
 
     let col = container.col();
-    col.prop(path + ".animationSpeed");
 
+    col.prop(path + ".camera.speed");
     col.prop(path + ".camera.camera.fov");
+    col.prop(path + ".camera.camera.aspect");
+    col.prop(path + ".camera.flipped");
+    col.prop(path + ".camera.rotate");
+    col.prop(path + ".camera.azimuth");
+    col.prop(path + ".camera.pathFlipped");
+    col.prop(path + ".camera.height");
+    col.prop(path + ".camera.camera.near");
+    col.prop(path + ".camera.camera.far");
+
+    col.prop(path + ".curve.isClosed");
+
+    col.useIcons(false);
+    //col.prop("view3d.flag[SHOW_CAMERA_VIEW]");
+    col.check("view3d.flag[USE_CTX_CAMERA]", "View Camera");
+
+    let strip = col.strip();
+
+    strip.button("Play", () => {
+      strip.ctx.play();
+    });
+
+    strip.button("Stop", () => {
+      strip.ctx.stop();
+    });
+
   }
 
   static widgetDefine() {return {
@@ -75,7 +131,6 @@ export class CameraPathTool extends CurveToolBase {
   }
 }
 CameraPathTool.STRUCT = nstructjs.inherit(CameraPathTool, CurveToolBase) + `
-  animationSpeed : float;
   cameraObject   : DataRef | DataRef.fromBlock(obj.cameraObject);
 }`;
 

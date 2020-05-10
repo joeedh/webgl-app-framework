@@ -2,7 +2,7 @@ import {NodeEditor} from "./NodeEditor.js";
 import {layoutNode, sortGraphSpatially, calcGraphAABB} from '../../core/graph_spatial.js';
 import {Editor} from "../editor_base.js";
 import {nstructjs, util} from '../../path.ux/scripts/pathux.js';
-import {VelPan} from "../editor_base.js";
+import {VelPan, VelPanPanOp} from "../velpan.js";
 import {Vector2} from "../../path.ux/scripts/pathux.js";
 import {UIBase, color2css, css2color} from "../../path.ux/scripts/pathux.js";
 import {DataBlock} from "../../core/lib_api.js";
@@ -21,11 +21,13 @@ export class NodeViewer extends Editor {
     this.velpan.pos[1] = 0;
     this.velpan.onchange = this._on_velpan_change.bind(this);
 
+    this._last_scale = new Vector2();
+
     this.canvases = {};
     this.nodes = {};
     this.node_idmap = {};
     this.sockSize = 20;
-    this.extraNodeWidth = 55;
+    this.extraNodeWidth = 155;
 
     this.canvas = document.createElement("canvas");
     this.g = this.canvas.getContext("2d");
@@ -35,6 +37,21 @@ export class NodeViewer extends Editor {
 
   init() {
     super.init();
+
+    this.velpan.onchange = this._on_velpan_change.bind(this);
+
+    this.addEventListener("mousedown", (e) => {
+      this.push_ctx_active();
+
+
+      console.log("node viewer mousedown");
+
+      let toolop = new VelPanPanOp();
+      toolop.inputs.velpanPath.setValue("nodeViewer.velpan");
+      this.ctx.toolstack.execTool(this.ctx, toolop);
+
+      this.pop_ctx_active();
+    });
 
     this.header.button("Arrange", () => {
       let graph = this.getGraph();
@@ -55,7 +72,8 @@ export class NodeViewer extends Editor {
       console.log("wheel in node viewer!");
 
       this.velpan.scale.mulScalar(1.0 - df);
-      this.draw();
+      this.velpan.update();
+      this.rebuild();
     })
   }
 
@@ -105,7 +123,13 @@ export class NodeViewer extends Editor {
   }
 
   _on_velpan_change() {
-    this.rebuild();
+    if (this._last_scale.vectorDistance(this.velpan.scale) > 0.1) {
+      this.rebuild();
+    } else {
+      this.draw();
+    }
+
+    this._last_scale.load(this.velpan.scale);
   }
 
   clear() {
@@ -204,9 +228,26 @@ export class NodeViewer extends Editor {
     return layout;
   }
 
+  updateCanvaSize() {
+    let canvas = this.canvas;
+
+    let size = this.size;
+    let dpi = UIBase.getDPI();
+
+    let w = ~~(size[0]*dpi);
+    let h = ~~(size[1]*dpi);
+
+    canvas.width = w;
+    canvas.height = h;
+    canvas.style["width"] = size[0] + "px";
+    canvas.style["height"] = size[1] + "px";
+  }
+
   draw() {
     let canvas = this.canvas;
     let g = this.g;
+
+    this.updateCanvaSize();
 
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.font = this.getDefault("DefaultText").genCSS();
@@ -235,12 +276,18 @@ export class NodeViewer extends Editor {
     let sz = this.sockSize;
 
     let graph = this.getGraph();
+    let rebuild = false;
 
     for (let k1 in this.nodes) {
       let node = this.nodes[k1];
 
       p.load(node.pos);
       let node2 = graph.node_idmap[node.graph_id];
+
+      if (node2 === undefined) {
+        rebuild = true;
+        continue;
+      }
 
       for (let k in node2.inputs) {
         let sock = node2.inputs[k];
@@ -263,6 +310,12 @@ export class NodeViewer extends Editor {
           g.lineTo(p3[0], p3[1]);
         }
       }
+    }
+
+    if (rebuild) {
+      this.rebuild();
+      this.doOnce(this.draw);
+      return;
     }
 
     g.strokeStyle = "white";
@@ -322,18 +375,12 @@ export class NodeViewer extends Editor {
     this._last_graph_path = this.graphPath;
     console.log("rebuilding node editor");
 
+    this.updateCanvaSize();
+
     let canvas = this.canvas;
     let g = this.g;
     let size = this.size;
     let dpi = UIBase.getDPI();
-
-    let w = ~~(size[0]*dpi);
-    let h = ~~(size[1]*dpi);
-
-    canvas.width = w;
-    canvas.height = h;
-    canvas.style["width"] = size[0] + "px";
-    canvas.style["height"] = size[1] + "px";
 
     let graph = this.ctx.api.getValue(this.ctx, this.graphPath);
     if (this.graphPath === "" || graph === undefined) {
@@ -369,7 +416,7 @@ export class NodeViewer extends Editor {
   }
 
   on_resize() {
-    this.rebuild();
+    this.draw();
   }
 
   update() {
@@ -397,26 +444,29 @@ NodeViewer.STRUCT = nstructjs.inherit(NodeViewer, Editor) + `
 Editor.register(NodeViewer);
 nstructjs.register(NodeViewer);
 
-export function showDebugNodePanel(screen) {
-  let editor = screen._debug_node_editor;
-
-  if (!editor) {
-    for (let sarea of screen.sareas) {
-      if (sarea.area && sarea.area instanceof NodeViewer) {
-        screen._debug_node_editor = editor = sarea;
-        break;
-      }
+export function getNodeViewer(screen) {
+  for (let sarea of screen.sareas) {
+    if (sarea.area && sarea.area instanceof NodeViewer) {
+      return sarea;
     }
   }
+}
+
+export function showDebugNodePanel(screen) {
+  let editor = getNodeViewer(screen);
 
   if (editor) {
     editor.hidden = false;
     screen.regenBorders();
+
+    editor.pos[0] = Math.max(editor.pos[0], 200);
+    editor.loadFromPosSize();
+
+    editor.bringToFront();
     return;
   }
 
   editor = screen.popupArea(NodeViewer);
-  screen._debug_node_editor = editor;
 
   editor.area.velpan.scale.mulScalar(0.5);
 
@@ -424,27 +474,21 @@ export function showDebugNodePanel(screen) {
   editor.area.graphClass = undefined;
 
   //sortGraphSpatially(screen.ctx.graph, {socksize : editor.area.sockSize, steps : 15});
-
-  let remove = editor.remove;
-  editor.remove = () => {
-    screen._debug_node_editor = undefined;
-    remove.apply(this, arguments);
-  }
 }
 
 export function hideDebugNodePanel(screen) {
-  let editor = screen._debug_node_editor;
-  console.log("editor", editor);
+  let editor = getNodeViewer(screen);
 
   if (editor) {
     editor.hidden = true;
+    editor.visible = false;
+
     screen.regenBorders();
   }
 }
 
 export function toggleDebugNodePanel(screen) {
-  let editor = screen._debug_node_editor;
-  console.log("editor", editor);
+  let editor = getNodeViewer(screen);
 
   if (!editor || editor.hidden) {
     showDebugNodePanel(screen);
