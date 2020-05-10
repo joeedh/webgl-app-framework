@@ -95,7 +95,7 @@ export class SideBarEditor extends PopupEditor   {
     this.iconbutton(Icons.LAST_TOOL_PANEL, "Last Tool Settings", () => this.callPropsPane("LAST_TOOL"));
 
     if (cconst.DEBUG.enableDebugGraphPanel) {
-      this.iconbutton(Icons.NODE_EDITOR, "Show Scene Graph", () => {
+      this.iconbutton(Icons.NODE_EDITOR, "(Debug) Show Scene Graph", () => {
         toggleDebugNodePanel(this.ctx.screen);
       })
     }
