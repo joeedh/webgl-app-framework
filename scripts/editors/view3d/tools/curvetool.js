@@ -129,6 +129,7 @@ export class CurveToolBase extends MeshToolBase {
     let path = "scene.tools." + this.widgetDefine().name;
 
     col.prop(path + ".curve.verts.active.namedLayers['knot'].speed");
+    col.prop(path + ".curve.verts.active.namedLayers['knot'].tilt");
   }
 
   static buildSettings(container) {

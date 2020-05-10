@@ -52,6 +52,7 @@ export class KnotDataLayer extends CustomDataElem {
     this.knot = 1.0;
     this.computedKnot = 0.0;
     this.flag = 0.0;
+    this.tilt = 0.0;
   }
 
   static apiDefine(api, dstruct) {
@@ -62,12 +63,16 @@ export class KnotDataLayer extends CustomDataElem {
     }).range(0.0, 10.0);
 
     dstruct.float("computedKnot", "computedKnot", "computedKnot").read_only();
+    dstruct.float("tilt", "tilt", "Point Tilt").range(-Math.PI*2.0, Math.PI*2.0).baseUnit("radian").displayUnit("degree").on('change', () => {
+      window.redraw_viewport();
+    });
   }
 
   copyTo(b) {
     b.knot = this.knot;
     b.computedKnot = this.computedKnot;
     b.flag = this.flag;
+    b.tilt = this.tilt;
   }
 
   copy() {
@@ -77,19 +82,21 @@ export class KnotDataLayer extends CustomDataElem {
   }
 
   interp(dest, datas, ws) {
-    dest.knot = dest.computedKnot = 0.0;
+    dest.knot = dest.computedKnot = dest.tilt = 0.0;
 
     let sum = 0.0;
 
     for (let i=0; i<datas.length; i++) {
       dest.knot += datas[i].knot*ws[i];
       dest.computedKnot += datas[i].computedKnot*ws[i];
+      dest.tilt += datas[i].tilt*ws[i];
       sum += ws[i];
     }
 
     if (sum !== 0.0) {
       dest.knot /= sum;
       dest.computedKnot /= sum;
+      dest.tilt /= sum;
     }
   }
 
@@ -110,6 +117,7 @@ KnotDataLayer.STRUCT = STRUCT.inherit(KnotDataLayer, CustomDataElem, "mesh.KnotD
   knot         : float;
   computedKnot : float;
   flag         : float;
+  tilt         : float;
 }`;
 
 nstructjs.manager.add_class(KnotDataLayer);
@@ -696,10 +704,12 @@ export class CurveSpline extends Mesh {
 
     for (let i=0; i<this.verts.length; i++) {
       let v = this.verts[i];
-      let knot = getKnot(v).knot;
-      let key2 = knot*((1<<24)-1);
+      let knot = getKnot(v);
+      let key2 = knot.knot*((1<<24)-1);
+      let key3 = knot.tilt*((1<<24)-1);
 
       key = key ^ key2;
+      key = key ^ key3;
     }
 
     if (key !== this._last_check_key) {

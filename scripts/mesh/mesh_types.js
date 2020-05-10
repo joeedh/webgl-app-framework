@@ -5,6 +5,10 @@ import {UVLayerElem} from "./mesh_customdata.js";
 import '../path.ux/scripts/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
+let quat_temps = util.cachering.fromConstructor(Quat, 512);
+let mat_temps = util.cachering.fromConstructor(Matrix4, 256);
+let vec3_temps = util.cachering.fromConstructor(Vector3, 1024);
+
 export class Element {
   constructor(type) {
     this.type = type;
@@ -19,6 +23,14 @@ export class Element {
 
   [Symbol.keystr]() {
     return this.eid;
+  }
+
+  findLayer(typeName) {
+    for (let data of this.customData) {
+      if (data.typeName === typeName) {
+        return data;
+      }
+    }
   }
 
   toJSON() {
@@ -561,6 +573,27 @@ export class Edge extends Element {
     }
   }
 
+  twist(t) {
+    if (this.flag & MeshFlags.CURVE_FLIP) {
+      t = 1.0 - t;
+    }
+
+    let k1 = this.v1.findLayer("knot");
+    let k2 = this.v2.findLayer("knot");
+
+    if (k1) {
+      let t1 = k1.tilt;
+      let t2 = k2.tilt;
+      return t1 + (t2 - t1)*t;
+    } else {
+      return 0.0;
+    }
+  }
+
+  arcTwist(s) {
+    return this.twist(s / this.length);
+  }
+
   arcNormal(s) {
     //return this.arcDerivative2(s).normalize();
 
@@ -593,9 +626,26 @@ export class Edge extends Element {
     let up = up1.interp(up2, s / this.length).normalize();
 
     let dv = this.arcDerivative(s);
-    dv.cross(up).normalize();
+    let nor = vec3_temps.next().load(dv);
 
-    return dv;
+    nor.cross(up).normalize();
+
+    let twist = this.arcTwist(s);
+    if (twist !== 0.0) {
+      let q = quat_temps.next();
+      let mat = mat_temps.next();
+
+      mat.makeIdentity();
+
+      q.axisAngleToQuat(dv, twist);
+
+      q.toMatrix(mat);
+
+      nor.multVecMatrix(mat);
+      nor.normalize();
+    }
+
+    return nor;
     return this.arcDerivative2(s).normalize();
   }
 
