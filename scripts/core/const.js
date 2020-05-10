@@ -17,12 +17,16 @@ export const DEBUG = {
   datapaths : false,
 
   screenAreaPosSizeAccesses : false,
+  buttonEvents : false,
+
+  debugUIUpdatePerf : false,
 
   contextSystem : 0,
   screenborders : false,
   allBordersMovable: false,
 
-  areaConstraintSolver: true
+  areaConstraintSolver: false
+
   /*
   customWindowSize : {
     width : 512,

@@ -1,4 +1,5 @@
 import * as util from '../../util/util.js';
+import * as cconst from '../../core/const.js';
 
 import './findnearest/all.js';
 import './tools/tools.js';
@@ -1243,6 +1244,10 @@ export class View3D extends Editor {
   }
 
   viewportDraw() {
+    if (cconst.DEBUG.debugUIUpdatePerf) {
+      return;
+    }
+
     if (this.flag & View3DFlags.USE_CTX_CAMERA) {
       this.activeCamera = this.ctx.camera || this.camera;
       this.threeCamera.camera = this.activeCamera;

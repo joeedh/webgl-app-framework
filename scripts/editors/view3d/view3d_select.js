@@ -3,6 +3,7 @@ import {FBO, FrameStage, FramePipeline} from "../../core/fbo.js";
 import {Shaders} from './view3d_shaders.js';
 import {FindNearestTypes} from './findnearest.js';
 import * as util from '../../util/util.js';
+import * as cconst from '../../core/const.js';
 
 let _cache = {};
 
@@ -46,6 +47,10 @@ export class GPUSelectBuffer {
   }
 
   draw(ctx, gl, view3d, selmask=ctx.selectMask) {
+    if (cconst.DEBUG.debugUIUpdatePerf) {
+      return;
+    }
+
     /*
     if (this.fbo === undefined) {
       this.fbo = new FBO(gl, ~~this.size[0], ~~this.size[1]);
