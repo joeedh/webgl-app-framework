@@ -1,5 +1,5 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {Vector3} from '../util/vectormath.js';
 import {StandardTools} from './stdtools.js';

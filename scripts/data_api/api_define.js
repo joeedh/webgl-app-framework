@@ -1,4 +1,5 @@
-import '../path.ux/scripts/struct.js';
+import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
+
 import '../potree/potree_resource.js';
 import '../potree/potree_types.js';
 import '../potree/potree_ops.js';
@@ -22,9 +23,8 @@ import {WidgetTool, WidgetFlags} from '../editors/view3d/widgets.js';
 import {AddLightOp} from "../light/light_ops.js";
 import {Light} from '../light/light.js';
 import {SideBarEditor} from "../editors/sidebar/SideBarEditor.js";
-import {DataAPI, DataPathError} from '../path.ux/scripts/simple_controller.js';
+import {DataAPI, DataPathError} from '../path.ux/scripts/controller/simple_controller.js';
 import {DataBlock, DataRef, Library, BlockSet, BlockFlags} from '../core/lib_api.js'
-import * as toolprop from '../path.ux/scripts/toolprop.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js';
 import {Editor, App} from '../editors/editor_base.js';

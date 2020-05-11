@@ -1,4 +1,6 @@
+import {nstructjs} from "../path.ux/scripts/pathux.js";
 let STRUCT = nstructjs.STRUCT;
+
 import {BlockFlags, DataBlock} from "../core/lib_api.js";
 import {SceneObject} from "../sceneobject/sceneobject.js";
 import {DependSocket, IntSocket} from "../core/graphsockets.js";

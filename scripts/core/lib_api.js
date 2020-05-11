@@ -1,8 +1,9 @@
-import '../path.ux/scripts/struct.js';
+import {Matrix4, Vector2, Vector3, Vector4, nstructjs, ToolProperty, PropTypes, PropFlags,
+        EnumProperty} from '../path.ux/scripts/pathux.js';
+import * as util from '../util/util.js';
+
 import {IDGen} from '../util/util.js';
 import {Node, Graph, NodeFlags, SocketFlags, NodeSocketType} from './graph.js';
-import {ToolProperty, PropTypes, PropFlags, EnumProperty} from '../path.ux/scripts/toolprop.js';
-import {Check1} from "../path.ux/scripts/ui_widgets.js";
 import {Icons} from "../editors/icon_enum.js";
 
 let STRUCT = nstructjs.STRUCT;

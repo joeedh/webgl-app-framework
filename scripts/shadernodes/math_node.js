@@ -1,12 +1,12 @@
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
 import {ShaderNetworkClass, ShaderNode} from "./shader_nodes.js";
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags, SocketTypes} from '../core/graph.js';
 import {DependSocket, Vec2Socket, Vec3Socket, RGBASocket, Vec4Socket, Matrix4Socket, FloatSocket} from "../core/graphsockets.js";
-import {UIBase} from '../path.ux/scripts/ui_base.js';
-import {Container} from '../path.ux/scripts/ui.js';
+import {UIBase} from '../path.ux/scripts/core/ui_base.js';
+import {Container} from '../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {AbstractGraphClass} from '../core/graph_class.js';

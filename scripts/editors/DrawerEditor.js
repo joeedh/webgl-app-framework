@@ -1,9 +1,9 @@
-import {Area, AreaFlags, ScreenArea} from "../path.ux/scripts/ScreenArea.js";
+import {Area, AreaFlags, ScreenArea} from "../path.ux/scripts/screen/ScreenArea.js";
 import {Editor} from "./editor_base.js";
-import {Vector2} from "../path.ux/scripts/vectormath.js";
+import {Vector2} from "../path.ux/scripts/util/vectormath.js";
 import * as util from '../util/util.js';
-import {UIBase} from "../path.ux/scripts/ui_base.js";
-import * as nstructjs from '../path.ux/scripts/struct.js';
+import {UIBase} from "../path.ux/scripts/core/ui_base.js";
+import * as nstructjs from '../path.ux/scripts/util/struct.js';
 
 export class DrawerEditor extends Editor {
   constructor() {

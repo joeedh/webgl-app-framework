@@ -1,6 +1,6 @@
 "use strict";
 
-import {setIconMap} from '../path.ux/scripts/ui_base.js';
+import {setIconMap} from '../path.ux/scripts/core/ui_base.js';
 
 export let Icons = {
   HFLIP          : 0,

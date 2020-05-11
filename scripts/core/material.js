@@ -1,17 +1,13 @@
 import {DataBlock, DataRef} from './lib_api.js';
 import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags} from './graph.js';
-import '../path.ux/scripts/struct.js';
+import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4, UIBase,
+        PackFlags, Container, ToolOp, IntProperty, StringProperty} from '../path.ux/scripts/pathux.js';
+
 let STRUCT = nstructjs.STRUCT;
 import {DependSocket, Vec3Socket, Vec4Socket, Matrix4Socket, FloatSocket} from "./graphsockets.js";
-import {UIBase} from '../path.ux/scripts/ui_base.js';
-import {Container} from '../path.ux/scripts/ui.js';
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
-import * as util from '../util/util.js';
 import {AbstractGraphClass} from './graph_class.js';
-import {ToolOp} from '../path.ux/scripts/simple_toolsys.js';
 import {Icons} from "../editors/icon_enum.js";
 import '../extern/potree/build/potree/potree.js';
-import {IntProperty, StringProperty} from "../path.ux/scripts/toolprop.js";
 
 export class MakeMaterialOp extends ToolOp {
   constructor() {

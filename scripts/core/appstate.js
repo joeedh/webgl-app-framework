@@ -1,9 +1,12 @@
 "use strict";
 
-import * as toolsys from '../path.ux/scripts/simple_toolsys.js';
+import * as toolsys from '../path.ux/scripts/toolsys/simple_toolsys.js';
 import {ViewContext} from './context.js';
 import {AppToolStack} from "./toolstack.js";
-import {initSimpleController} from '../path.ux/scripts/simple_controller.js';
+
+import {initSimpleController, checkForTextBox, keymap, Vector3, Vector4, Vector2, Quat, Matrix4,
+  ToolOp, UndoFlags, nstructjs} from '../path.ux/scripts/pathux.js';
+
 import './polyfill.js';
 
 import {loadShapes} from "./simplemesh_shapes.js";
@@ -13,17 +16,13 @@ import '../editors/resbrowser/resbrowser_ops.js';
 import '../editors/resbrowser/resbrowser_types.js';
 
 import '../editors/view3d/tools/tools.js';
-import {checkForTextBox} from "../path.ux/scripts/ui_widgets.js";
-import cconst2 from "../path.ux/scripts/const.js";
-import {keymap} from "../path.ux/scripts/events.js";
+import cconst2 from "../path.ux/scripts/config/const.js";
 import {Material} from './material.js';
 import {App, ScreenBlock} from '../editors/editor_base.js';
 import {Library, DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import {IDGen} from '../util/util.js';
 import {SideBarEditor} from "../editors/sidebar/SideBarEditor.js";
 import * as util from '../util/util.js';
-import {Vector3, Vector4, Vector2, Quat, Matrix4} from '../util/vectormath.js';
-import {ToolOp, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
 import {getDataAPI} from '../data_api/api_define.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {MenuBarEditor} from "../editors/menu/MainMenu.js";
@@ -34,7 +33,6 @@ import {AppSettings} from './settings.js';
 import {SceneObject} from '../sceneobject/sceneobject.js';
 import {Mesh} from '../mesh/mesh.js';
 import {makeCube} from './mesh_shapes.js';
-import '../path.ux/scripts/struct.js';
 import {NodeFlags} from "./graph.js";
 import {ShaderNetwork, makeDefaultShaderNetwork} from "../shadernodes/shadernetwork.js";
 

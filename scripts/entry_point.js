@@ -3,9 +3,9 @@ import './extern/three_patches.js';
 import * as appstate from './core/appstate.js';
 import {loadShapes} from './core/simplemesh_shapes.js';
 
-import {setMetric, setBaseUnit} from "./path.ux/scripts/units.js";
+import {setMetric, setBaseUnit} from "./path.ux/scripts/core/units.js";
 import {Icons} from './editors/icon_enum.js';
-import {setIconMap, setIconManager, IconManager, UIBase} from './path.ux/scripts/ui_base.js';
+import {setIconMap, setIconManager, IconManager, UIBase} from './path.ux/scripts/core/ui_base.js';
 
 setBaseUnit("foot");
 setMetric(false);

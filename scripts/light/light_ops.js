@@ -2,9 +2,9 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
-  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
-import {dist_to_line_2d} from '../path.ux/scripts/math.js';
+  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DependSocket, Vec3Socket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';

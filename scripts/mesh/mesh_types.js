@@ -2,7 +2,7 @@ import {MeshError, MeshFlags, MeshTypes, HandleTypes} from "./mesh_base.js";
 import {Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import * as util from "../util/util.js";
 import {UVLayerElem} from "./mesh_customdata.js";
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
 let quat_temps = util.cachering.fromConstructor(Quat, 512);

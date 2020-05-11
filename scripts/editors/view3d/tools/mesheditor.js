@@ -10,8 +10,8 @@ import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath
 import * as math from '../../../util/math.js';
 import {SelectOneOp} from '../../../mesh/select_ops.js';
 import {KeyMap, HotKey} from "../../editor_base.js";
-import {keymap} from '../../../path.ux/scripts/simple_events.js';
-import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../../path.ux/scripts/simple_toolsys.js';
+import {keymap} from '../../../path.ux/scripts/util/simple_events.js';
+import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
 import {BasicMeshDrawer} from '../view3d_draw.js';
 import {MeshCache} from '../view3d_toolmode.js';
 import {SubsurfDrawer} from '../../../subsurf/subsurf_draw.js';

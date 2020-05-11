@@ -1,7 +1,7 @@
 import {CustomDataElem} from "./customdata.js";
 import {Vector2} from "../util/vectormath.js";
 import {MeshTypes} from "./mesh_base.js";
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
 export class UVLayerElem extends CustomDataElem {

@@ -1,4 +1,4 @@
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
 export const HandleTypes = {

@@ -1,4 +1,4 @@
-import {Area} from '../../path.ux/scripts/ScreenArea.js';
+import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor, VelPan, makeDataBlockBrowser} from '../editor_base.js';
 import {Light} from "../../light/light.js";
 import {Mesh} from "../../mesh/mesh.js";
@@ -8,21 +8,10 @@ import {PopupEditor} from '../popup_editor.js';
 import {ToolModes} from '../view3d/view3d_toolmode.js';
 
 import {Icons} from '../icon_enum.js';
-import '../../path.ux/scripts/struct.js';
+import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {DataPathError} from '../../path.ux/scripts/controller.js';
-import {KeyMap, HotKey} from '../../path.ux/scripts/simple_events.js';
-import {UIBase, PackFlags, color2css, _getFont, css2color} from '../../path.ux/scripts/ui_base.js';
-import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/ui.js';
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
-import * as util from '../../util/util.js';
-import {DataRef} from '../../core/lib_api.js';
-import {NodeEditor} from "../node/NodeEditor.js";
-import {PropTypes, PropFlags} from "../../path.ux/scripts/toolprop.js";
-
-import {UndoFlags} from "../../path.ux/scripts/simple_toolsys.js";
-import {DataPath, DataTypes} from "../../path.ux/scripts/simple_controller.js";
-import {AreaFlags} from "../../path.ux/scripts/ScreenArea.js";
+import {UIBase, PackFlags, color2css, _getFont, css2color} from '../../path.ux/scripts/pathux.js';
+import {AreaFlags} from "../../path.ux/scripts/screen/ScreenArea.js";
 import * as cconst from "../../core/const.js";
 import {toggleDebugNodePanel} from "../node/NodeEditor_debug.js";
 
@@ -48,8 +37,6 @@ export class SideBarEditor extends PopupEditor   {
 
     let header = this.header;
     let container = this.container;
-
-    //let col = container.col();
 
     this.build();
     this.close();

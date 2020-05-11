@@ -1,4 +1,4 @@
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 import * as util from '../util/util.js';
 import {Node} from "../core/graph.js";
 let STRUCT = nstructjs.STRUCT;

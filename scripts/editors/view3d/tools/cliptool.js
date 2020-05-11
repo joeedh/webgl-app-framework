@@ -3,7 +3,8 @@ import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
-import '../../../path.ux/scripts/struct.js';
+import {nstructjs} from '../../../path.ux/scripts/pathux.js';
+
 let STRUCT = nstructjs.STRUCT;
 
 export class ClipTool extends ToolMode {

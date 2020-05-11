@@ -4,9 +4,9 @@ import {WidgetFlags, WidgetTool} from "../widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {HotKey, KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
-import {Unit} from "../../../path.ux/scripts/units.js";
+import {Unit} from "../../../path.ux/scripts/core/units.js";
 import {SelMask} from "../selectmode.js";
-import '../../../path.ux/scripts/struct.js';
+import '../../../path.ux/scripts/util/struct.js';
 import {nstructjs, util} from '../../../path.ux/scripts/pathux.js';
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from "../../../path.ux/scripts/pathux.js";
 

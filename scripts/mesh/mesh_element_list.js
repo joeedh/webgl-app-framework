@@ -1,7 +1,7 @@
 import {Edge} from "./mesh_types.js";
 import {MeshError, MeshFlags, MeshTypes} from "./mesh_base.js";
 import * as util from "../util/util.js";
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {CustomData, CustomDataElem} from "./customdata.js";
 

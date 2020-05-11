@@ -4,9 +4,9 @@ import {WidgetFlags, WidgetTool} from "../widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {HotKey, KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
-import {Unit} from "../../../path.ux/scripts/units.js";
+import {Unit} from "../../../path.ux/scripts/core/units.js";
 import {SelMask} from "../selectmode.js";
-import '../../../path.ux/scripts/struct.js';
+import '../../../path.ux/scripts/util/struct.js';
 import {MeshToolBase} from "./meshtool.js";
 
 let STRUCT = nstructjs.STRUCT;
@@ -22,7 +22,7 @@ import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
         MeshFeatureError} from '../../../mesh/mesh_base.js';
 import {CurveSpline} from "../../../curve/curve.js";
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
-import {ContextOverlay} from "../../../path.ux/scripts/context.js";
+import {ContextOverlay} from "../../../path.ux/scripts/controller/context.js";
 
 export class CurveToolOverlay extends ContextOverlay {
   constructor(state, toolmode) {

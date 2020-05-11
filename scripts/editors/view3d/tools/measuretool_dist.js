@@ -1,6 +1,6 @@
 import {MeasurePoint, MeasureFlags} from "./measuretool_base.js";
 import {MeasureToolBase, buildDistUnitsString} from "./measuretool.js";
-import '../../../path.ux/scripts/struct.js';
+import '../../../path.ux/scripts/util/struct.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../view3d_shaders.js';
 let STRUCT = nstructjs.STRUCT;
@@ -12,7 +12,7 @@ import {SelMask} from "../selectmode.js";
 import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
 import {ToolMode} from "../view3d_toolmode.js";
-import * as units from '../../../path.ux/scripts/units.js';
+import * as units from '../../../path.ux/scripts/core/units.js';
 
 export class MeasureDistTool extends MeasureToolBase {
   constructor() {

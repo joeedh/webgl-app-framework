@@ -1,6 +1,5 @@
-import {Vector2, Vector3, Matrix4} from '../util/vectormath.js';
-import * as math from '../path.ux/scripts/math.js';
-import {util, PackNode, PackNodeVertex, graphPack} from '../path.ux/scripts/pathux.js';
+import {Matrix4, Vector2, Vector3, Vector4, util, nstructjs, math,
+        PackNode, PackNodeVertex, graphPack} from '../path.ux/scripts/pathux.js';
 
 export function calcGraphAABB(graph) {
   let found = 0;

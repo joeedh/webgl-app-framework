@@ -4,16 +4,16 @@ import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, ListProperty,
   PropFlags, PropTypes, PropSubTypes, StringProperty, StringSetProperty
-} from '../path.ux/scripts/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
-import {dist_to_line_2d} from '../path.ux/scripts/math.js';
+} from '../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 
 import {Mesh, MeshTypes} from './mesh.js';
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 import {View3DOp} from '../editors/view3d/view3d_ops.js';
 import {SceneObject} from "../sceneobject/sceneobject.js";
 

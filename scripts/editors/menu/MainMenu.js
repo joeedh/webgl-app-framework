@@ -1,24 +1,24 @@
-import {Area, BorderMask} from '../../path.ux/scripts/ScreenArea.js';
-import {saveFile, loadFile} from '../../path.ux/scripts/html5_fileapi.js';
+import {Area, BorderMask} from '../../path.ux/scripts/screen/ScreenArea.js';
+import {saveFile, loadFile} from '../../path.ux/scripts/util/html5_fileapi.js';
 import {Icons} from "../icon_enum.js";
 
-import {NoteFrame, Note} from '../../path.ux/scripts/ui_noteframe.js';
+import {NoteFrame, Note} from '../../path.ux/scripts/widgets/ui_noteframe.js';
 
 import {Editor, VelPan} from '../editor_base.js';
-import '../../path.ux/scripts/struct.js';
+import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
-import {DataPathError} from '../../path.ux/scripts/controller.js';
-import {KeyMap, HotKey} from '../../path.ux/scripts/simple_events.js';
-import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/ui_base.js';
-import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/ui.js';
+import {DataPathError} from '../../path.ux/scripts/controller/controller.js';
+import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
+import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
+import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
 import {NodeEditor} from "../node/NodeEditor.js";
 import * as cconst from '../../core/const.js';
 import {AddPointSetOp} from "../../potree/potree_ops.js";
-import {Menu} from "../../path.ux/scripts/ui_menu.js";
+import {Menu} from "../../path.ux/scripts/widgets/ui_menu.js";
 
 const menuSize = 52;
 

@@ -4,10 +4,10 @@ import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, ListProperty,
   PropFlags, PropTypes, PropSubTypes, StringSetProperty
-} from '../../path.ux/scripts/toolprop.js';
-import {ToolMacro, ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
+} from '../../path.ux/scripts/toolsys/toolprop.js';
+import {ToolMacro, ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
 import {Shaders} from './view3d_shaders.js';
-import {dist_to_line_2d} from '../../path.ux/scripts/math.js';
+import {dist_to_line_2d} from '../../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
 import * as util from '../../util/util.js';
@@ -20,7 +20,7 @@ import {WidgetBase, WidgetSphere, WidgetArrow, WidgetTool, WidgetFlags} from './
 import {TranslateOp, ScaleOp, SnapModes} from "./transform_ops.js";
 import {calcTransCenter} from './transform_query.js';
 import {Icons} from '../icon_enum.js';
-import {DataPathError} from "../../path.ux/scripts/controller.js";
+import {DataPathError} from "../../path.ux/scripts/controller/controller.js";
 import {PropModes, TransDataType, TransDataElem, TransDataMap, TransDataTypes} from './transform_base.js';
 import {ConstraintSpaces} from "./transform_base.js";
 import {aabb_union} from '../../util/math.js';

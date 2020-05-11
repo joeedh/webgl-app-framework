@@ -2,17 +2,17 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
         FlagProperty, ToolProperty, Vec3Property,
-        PropFlags, PropTypes, PropSubTypes} from '../../path.ux/scripts/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
+        PropFlags, PropTypes, PropSubTypes} from '../../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
 import {Shapes} from '../../core/simplemesh_shapes.js';
 import {Shaders} from './view3d_shaders.js';
-import {dist_to_line_2d} from '../../path.ux/scripts/math.js';
-import {IsMobile} from '../../path.ux/scripts/ui_base.js'
+import {dist_to_line_2d} from '../../path.ux/scripts/util/math.js';
+import {IsMobile} from '../../path.ux/scripts/core/ui_base.js'
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
-import {css2color} from '../../path.ux/scripts/ui_base.js';
+import {css2color} from '../../path.ux/scripts/core/ui_base.js';
 import * as util from '../../util/util.js';
-import * as math from '../../path.ux/scripts/math.js';
+import * as math from '../../path.ux/scripts/util/math.js';
 
 let dist_temps = util.cachering.fromConstructor(Vector3, 512);
 let dist_rets = util.cachering.fromConstructor(Vector2, 512);

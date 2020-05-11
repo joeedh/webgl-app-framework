@@ -21,7 +21,7 @@ import {PointSetResource} from './potree_resource.js';
 import {ObjectFlags} from "../sceneobject/sceneobject.js";
 import {PointSetTools} from './potree_ops.js';
 
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
 //import * as Potree from '../extern/potree/src/Potree.js';

@@ -1,6 +1,7 @@
 import {MeasurePoint, MeasureFlags} from "./measuretool_base.js";
 import {MeasureToolBase, buildImperialString, buildDistUnitsString} from "./measuretool.js";
-import '../../../path.ux/scripts/struct.js';
+import '../../../path.ux/scripts/util/struct.js';
+import {nstructjs} from '../../../path.ux/scripts/pathux.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import * as math from '../../../util/math.js';
 import {Shaders} from '../view3d_shaders.js';
@@ -13,7 +14,7 @@ import {SelMask} from "../selectmode.js";
 import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
 import {ToolMode} from "../view3d_toolmode.js";
-import * as units from '../../../path.ux/scripts/units.js';
+import * as units from '../../../path.ux/scripts/core/units.js';
 import {circ_from_point3} from '../../../util/math.js';
 
 export class MeasureCircleTool extends MeasureToolBase {

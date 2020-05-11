@@ -1,5 +1,5 @@
 import {EventBase} from '../core/eventbase.js';
-import {EnumProperty} from "../path.ux/scripts/toolprop.js";
+import {EnumProperty} from "../path.ux/scripts/toolsys/toolprop.js";
 
 /**
 

@@ -1,6 +1,6 @@
-import {ToolOp, ToolFlags} from "../path.ux/scripts/simple_toolsys.js";
+import {ToolOp, ToolFlags} from "../path.ux/scripts/toolsys/simple_toolsys.js";
 import {StringProperty, IntProperty, EnumProperty,
-        FlagProperty, BoolProperty, PropFlags, Vec3Property} from "../path.ux/scripts/toolprop.js";
+        FlagProperty, BoolProperty, PropFlags, Vec3Property} from "../path.ux/scripts/toolsys/toolprop.js";
 import {PointSet} from './potree_types.js';
 import {SceneObject} from '../sceneobject/sceneobject.js';
 

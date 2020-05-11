@@ -2,10 +2,7 @@ if (Math.fract === undefined) {
   Math.fract = (f) => f - Math.floor(f);
 }
 
-export * from '../path.ux/scripts/util.js';
-
-import '../path.ux/scripts/struct.js';
-let STRUCT = nstructjs.STRUCT;
+export * from '../path.ux/scripts/util/util.js';
 
 /*
 compatibility functions

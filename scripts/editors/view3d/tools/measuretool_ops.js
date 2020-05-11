@@ -5,14 +5,14 @@ import {
   ListProperty,
   BoolProperty,
   IntProperty
-} from "../../../path.ux/scripts/toolprop.js";
+} from "../../../path.ux/scripts/toolsys/toolprop.js";
 //import {MeasureToolBase} from "./measuretool.js";
-import {ToolOp} from "../../../path.ux/scripts/simple_toolsys.js";
+import {ToolOp} from "../../../path.ux/scripts/toolsys/simple_toolsys.js";
 import {Vector3} from "../../../util/vectormath.js";
 import {Icons} from "../../icon_enum.js";
 import {MeasurePoint, MeasureFlags, measureUtils} from './measuretool_base.js';
 import {SelOneToolModes, SelToolModes} from "../selectmode.js";
-import {PropTypes} from "../../../path.ux/scripts/toolprop.js";
+import {PropTypes} from "../../../path.ux/scripts/toolsys/toolprop.js";
 
 export class MeasureOp extends ToolOp {
   constructor(toolmode) {

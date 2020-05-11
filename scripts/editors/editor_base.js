@@ -1,5 +1,6 @@
-import '../path.ux/scripts/struct.js';
-import * as units from '../path.ux/scripts/units.js';
+import {nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
+
+import * as units from '../path.ux/scripts/core/units.js';
 
 //set base unit for world space data
 units.Unit.baseUnit = "foot";
@@ -7,21 +8,19 @@ units.Unit.baseUnit = "foot";
 import './theme.js';
 
 let STRUCT = nstructjs.STRUCT;
-import {Area, ScreenArea} from '../path.ux/scripts/ScreenArea.js';
-import {Screen} from '../path.ux/scripts/FrameManager.js';
-import {UIBase} from '../path.ux/scripts/ui_base.js';
-import {Container} from '../path.ux/scripts/ui.js';
+import {Area, ScreenArea} from '../path.ux/scripts/screen/ScreenArea.js';
+import {Screen} from '../path.ux/scripts/screen/FrameManager.js';
+import {UIBase} from '../path.ux/scripts/core/ui_base.js';
+import {Container} from '../path.ux/scripts/core/ui.js';
 import * as util from '../util/util.js';
-import {haveModal} from "../path.ux/scripts/simple_events.js";
-import {warning} from "../path.ux/scripts/ui_noteframe.js";
+import {haveModal} from "../path.ux/scripts/util/simple_events.js";
+import {warning} from "../path.ux/scripts/widgets/ui_noteframe.js";
 import {Icons} from './icon_enum.js';
-import {PackFlags} from "../path.ux/scripts/ui_base.js";
+import {PackFlags} from "../path.ux/scripts/core/ui_base.js";
 
-export {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
-import {keymap, KeyMap, HotKey} from '../path.ux/scripts/simple_events.js';
-import {Matrix4, Vector2} from "../util/vectormath.js";
+export {keymap, KeyMap, HotKey} from '../path.ux/scripts/util/simple_events.js';
+import {keymap, KeyMap, HotKey} from '../path.ux/scripts/util/simple_events.js';
 import {DataBlock, BlockFlags} from '../core/lib_api.js';
-import {MakeMaterialOp} from '../core/material.js';
 
 export {VelPanFlags, VelPan} from './velpan.js';
 
@@ -311,9 +310,9 @@ Editor.STRUCT = STRUCT.inherit(Editor, Area) + `
 `;
 nstructjs.manager.add_class(Editor);
 
-import {ToolClasses, ToolFlags, ToolMacro} from "../path.ux/scripts/simple_toolsys.js";
-import {Menu} from "../path.ux/scripts/ui_menu.js";
-import * as ui_base from "../path.ux/scripts/ui_base.js";
+import {ToolClasses, ToolFlags, ToolMacro} from "../path.ux/scripts/toolsys/simple_toolsys.js";
+import {Menu} from "../path.ux/scripts/widgets/ui_menu.js";
+import * as ui_base from "../path.ux/scripts/core/ui_base.js";
 import {time_ms} from "../util/util.js";
 
 function spawnToolSearchMenu(ctx) {

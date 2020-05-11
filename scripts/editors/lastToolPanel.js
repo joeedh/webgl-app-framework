@@ -1,1 +1,1 @@
-export * from '../path.ux/scripts/ui_lasttool.js';
+export * from '../path.ux/scripts/widgets/ui_lasttool.js';

@@ -1,8 +1,8 @@
 "use strict";
 
-import * as util from '../util/util.js';
+import {util, nstructjs} from '../path.ux/scripts/pathux.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
-import '../path.ux/scripts/struct.js';
+
 let STRUCT = nstructjs.STRUCT;
 import './const.js';
 

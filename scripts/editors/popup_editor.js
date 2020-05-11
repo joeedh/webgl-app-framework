@@ -1,6 +1,6 @@
 import {Editor} from "./editor_base.js";
-import {UIBase, theme, PackFlags} from "../path.ux/scripts/ui_base.js";
-import {keymap} from '../path.ux/scripts/events.js';
+import {UIBase, theme, PackFlags} from "../path.ux/scripts/core/ui_base.js";
+import {keymap} from '../path.ux/scripts/util/events.js';
 
 export const PopupTabModes = {
   BINARY  : 1,

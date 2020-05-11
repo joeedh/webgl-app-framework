@@ -1,7 +1,5 @@
+import {Matrix4, Vector2, Vector3, Vector4, util, nstructjs} from '../path.ux/scripts/pathux.js';
 import {NodeSocketType, NodeFlags, SocketFlags} from './graph.js';
-import {nstructjs} from '../path.ux/scripts/pathux.js';
-
-import {Vector2, Vector3, Vector4, Matrix4} from '../util/vectormath.js';
 
 export class Matrix4Socket extends NodeSocketType {
   constructor(uiname, flag, default_value) {

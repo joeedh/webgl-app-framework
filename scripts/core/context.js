@@ -1,5 +1,5 @@
 //import {ContextOverlay, Context} from "./context2.js";
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js';
@@ -12,14 +12,13 @@ import {SceneObject} from '../sceneobject/sceneobject.js';
 import {Scene} from '../scene/scene.js';
 import {DataBlock, DataRef} from './lib_api.js';
 import {DebugEditor} from "../editors/debug/DebugEditor.js";
-import * as ui_noteframe from '../path.ux/scripts/ui_noteframe.js';
+import * as ui_noteframe from '../path.ux/scripts/widgets/ui_noteframe.js';
 import {PointSet} from '../potree/potree_types.js';
 import {Matrix4} from "../util/vectormath.js";
 import {MenuBarEditor} from "../editors/menu/MainMenu.js";
 import {SideBarEditor} from "../editors/sidebar/SideBarEditor.js";
 import {Context, ContextOverlay, ContextFlags} from "./context_base.js";
-import {UIBase} from "../path.ux/scripts/ui_base.js";
-import {Screen} from "../path.ux/scripts/FrameManager.js";
+import {UIBase, Screen} from '../path.ux/scripts/pathux.js';
 import {PropsEditor} from '../editors/properties/PropsEditor.js';
 
 let passthrus = new Set(["datalib", "gl", "graph", "last_tool", "toolstack", "api"]);

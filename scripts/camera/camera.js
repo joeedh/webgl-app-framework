@@ -1,5 +1,5 @@
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from "../path.ux/scripts/vectormath.js";
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from "../util/vectormath.js";
 import {Shaders} from "../editors/view3d/view3d_shaders.js";
 import {util, cconst, nstructjs} from "../path.ux/scripts/pathux.js";
 import {DataBlock} from "../core/lib_api.js";

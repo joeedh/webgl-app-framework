@@ -1,6 +1,6 @@
 import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
-import {ToolOp, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
-import {eventWasTouch, keymap} from '../../path.ux/scripts/simple_events.js';
+import {ToolOp, UndoFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
+import {eventWasTouch, keymap} from '../../path.ux/scripts/util/simple_events.js';
 import {Icons} from '../icon_enum.js';
 import {SelMask} from "./selectmode.js";
 import {CallbackNode} from "../../core/graph.js";

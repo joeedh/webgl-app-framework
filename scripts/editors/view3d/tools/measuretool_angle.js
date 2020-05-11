@@ -1,6 +1,6 @@
 import {MeasurePoint, MeasureFlags} from "./measuretool_base.js";
 import {MeasureToolBase} from "./measuretool.js";
-import '../../../path.ux/scripts/struct.js';
+import '../../../path.ux/scripts/util/struct.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../view3d_shaders.js';
 let STRUCT = nstructjs.STRUCT;

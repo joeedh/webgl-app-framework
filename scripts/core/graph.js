@@ -1,8 +1,7 @@
 let _graph = undefined;
 
-import {Matrix4, Vector2, Vector3, Vector4} from '../util/vectormath.js';
-import * as util from '../util/util.js';
-import '../path.ux/scripts/struct.js';
+
+import {Matrix4, Vector2, Vector3, Vector4, util, nstructjs} from '../path.ux/scripts/pathux.js';
 let STRUCT = nstructjs.STRUCT;
 
 export class GraphCycleError extends Error {};

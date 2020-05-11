@@ -1,7 +1,7 @@
 import {Matrix4, Vector2} from "../util/vectormath.js";
-import {ToolOp, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
-import {keymap} from '../path.ux/scripts/simple_events.js';
-import {StringProperty, Vec2Property} from '../path.ux/scripts/toolprop.js';
+import {ToolOp, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {keymap} from '../path.ux/scripts/util/simple_events.js';
+import {StringProperty, Vec2Property} from '../path.ux/scripts/toolsys/toolprop.js';
 import {Icons} from './icon_enum.js';
 import * as util from '../util/util.js';
 

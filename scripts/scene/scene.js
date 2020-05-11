@@ -1,5 +1,5 @@
 import {DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 import {ToolModes, makeToolModeEnum} from '../editors/view3d/view3d_toolmode.js';
 import {WidgetManager, WidgetTool, WidgetTools} from "../editors/view3d/widgets.js";
 

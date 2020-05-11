@@ -1,3 +1,5 @@
+import {nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
+
 import {Mesh} from "../mesh/mesh.js";
 import {MeshTypes, MeshFlags, MeshFeatures, MeshFeatureError, MeshDrawFlags, MeshError} from "../mesh/mesh_base.js";
 import {ObjectFlags} from "../sceneobject/sceneobject.js";
@@ -6,10 +8,8 @@ import {NodeFlags} from "../core/graph.js";
 import {DataBlock} from "../core/lib_api.js";
 import {CDElemMap, CDElemTypes, CustomData, CustomDataElem} from "../mesh/customdata.js";
 import {CustomDataLayer} from "../mesh/customdata.js";
-import '../path.ux/scripts/struct.js';
 import {MeshTools} from "../mesh/mesh_stdtools.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
-import {Vector3, Vector4} from "../util/vectormath.js";
 import {LayerTypes, SimpleMesh} from "../core/simplemesh.js";
 let STRUCT = nstructjs.STRUCT;
 import * as util from '../util/util.js';

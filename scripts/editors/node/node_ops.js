@@ -1,10 +1,10 @@
-import {Area} from '../../path.ux/scripts/ScreenArea.js';
+import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor} from '../editor_base.js';
-import '../../path.ux/scripts/struct.js';
+import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {KeyMap, HotKey} from '../../path.ux/scripts/simple_events.js';
-import {UIBase} from '../../path.ux/scripts/ui_base.js';
-import {Container} from '../../path.ux/scripts/ui.js';
+import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
+import {UIBase} from '../../path.ux/scripts/core/ui_base.js';
+import {Container} from '../../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
@@ -12,10 +12,10 @@ import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader
 import {AbstractGraphClass} from '../../core/graph_class.js';
 import {NodeFlags, SocketFlags, SocketTypes, NodeSocketType} from "../../core/graph.js";
 
-import {IntProperty, Vec2Property, StringProperty, PropSubTypes, PropTypes, PropFlags} from '../../path.ux/scripts/toolprop.js';
-import {ToolOp, UndoFlags, ToolFlags} from '../../path.ux/scripts/simple_toolsys.js';
+import {IntProperty, Vec2Property, StringProperty, PropSubTypes, PropTypes, PropFlags} from '../../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, UndoFlags, ToolFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
 import {Icons} from '../icon_enum.js';
-import {DataPathError} from '../../path.ux/scripts/controller.js';
+import {DataPathError} from '../../path.ux/scripts/controller/controller.js';
 
 export class NodeGraphOp extends ToolOp {
   constructor() {

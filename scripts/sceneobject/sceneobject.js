@@ -1,5 +1,5 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 import {Light} from '../light/light.js';
 let STRUCT = nstructjs.STRUCT;
 import {Graph, SocketFlags} from '../core/graph.js';

@@ -13,18 +13,19 @@ import * as math from '../../../util/math.js';
 import {SelectOneOp} from '../../../mesh/select_ops.js';
 import {View3DFlags} from "../view3d_base.js";
 import {KeyMap, HotKey} from "../../editor_base.js";
-import {keymap} from '../../../path.ux/scripts/simple_events.js';
-import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../../path.ux/scripts/simple_toolsys.js';
+import {keymap} from '../../../path.ux/scripts/util/simple_events.js';
+import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
 import {BasicMeshDrawer} from '../view3d_draw.js';
 import {MeshCache} from '../view3d_toolmode.js';
 import {SubsurfDrawer} from '../../../subsurf/subsurf_draw.js';
 import {Light} from "../../../light/light.js";
 import {TranslateOp} from "../transform_ops.js";
+import {nstructjs} from '../../../path.ux/scripts/pathux.js';
 let STRUCT = nstructjs.STRUCT;
 import {Icons} from '../../icon_enum.js';
 import {WidgetTool} from "../widgets.js";
 import {TranslateWidget} from "../widget_tools.js";
-import {FlagProperty} from "../../../path.ux/scripts/toolprop.js";
+import {FlagProperty} from "../../../path.ux/scripts/toolsys/toolprop.js";
 
 let _shift_temp = [0, 0];
 

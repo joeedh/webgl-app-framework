@@ -12,7 +12,7 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
 
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
 import {CustomDataElem} from './customdata.js';

@@ -29,10 +29,10 @@ import {Vector2, Vector3} from '../../util/vectormath.js';
 import {KeyMap, HotKey} from "../editor_base.js";
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from "../../core/simplemesh.js";
 import {WidgetTool, WidgetFlags, WidgetTools} from "./widgets.js";
-import {EnumProperty, FlagProperty} from "../../path.ux/scripts/toolprop.js";
+import {EnumProperty, FlagProperty} from "../../path.ux/scripts/toolsys/toolprop.js";
 import {Icons} from '../icon_enum.js';
 import {SelMask} from "./selectmode.js";
-import '../../path.ux/scripts/struct.js';
+import '../../path.ux/scripts/util/struct.js';
 import {TranslateWidget, WidgetSceneCursor} from "./widget_tools.js";
 
 import '../../core/textsprite.js';

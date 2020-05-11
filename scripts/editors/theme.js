@@ -1,4 +1,4 @@
-import {CSSFont, setTheme} from "../path.ux/scripts/ui_base.js";
+import {CSSFont, setTheme} from "../path.ux/scripts/core/ui_base.js";
 
 export const theme = {
   base : {
