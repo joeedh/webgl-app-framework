@@ -177,6 +177,15 @@ export class CurveSpline extends Mesh {
     this.regenRender();
   }
 
+  getBoundingBox() {
+    let d = 5;
+
+    return [
+      new Vector3([d, d, d]),
+      new Vector3([d, d, d])
+    ]
+  }
+  
   copy() {
     let ret = super.copy();
 

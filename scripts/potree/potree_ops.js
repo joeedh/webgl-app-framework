@@ -67,7 +67,15 @@ export class AddPointSetOp extends ToolOp {
     let ob = new SceneObject();
     ctx.datalib.add(ob);
 
-    ob.name = url;
+    let href = location.href, name = url;
+    if (name.startsWith(href)) {
+      name = name.slice(href.length, name.length).trim();
+    }
+    if (name.length === 0) {
+      name = "PointSet";
+    }
+
+    ob.name = name;
     ob.data = pset;
 
     pset.material = mat;
