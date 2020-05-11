@@ -15,8 +15,6 @@ import {Shaders} from '../view3d_shaders.js';
 import {MovableWidget} from '../widget_utils.js';
 import {SnapModes} from "../transform_ops.js";
 
-import {AddPointOp, MeasureOp} from "./measuretool_ops.js";
-import {MeasurePoint, MeasureFlags} from "./measuretool_base.js";
 import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
         MeshFeatureError} from '../../../mesh/mesh_base.js';
@@ -105,20 +103,6 @@ export class CurveToolBase extends MeshToolBase {
   static getContextOverlayClass() {
     return CurveToolOverlay;
   }
-
-  /*
-  defineKeyMap() {
-    this.keymap = new KeyMap([
-      new HotKey("A", [], "measure.toggle_select_all(mode='AUTO')"),
-      new HotKey("A", ["ALT"], "measure.toggle_select_all(mode='SUB')"),
-      new HotKey("A", ["CTRL"], "measure.toggle_select_all(mode='ADD')"),
-      new HotKey("X", [], "measure.delete_selected()"),
-      new HotKey("Delete", [], "measure.delete_selected()")
-    ]);
-
-    return this.keymap;
-  }
-  //*/
 
   static isCurveTool(instance) {
     return instance._isCurveTool;

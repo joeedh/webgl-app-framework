@@ -1,4 +1,5 @@
 export * from '../path.ux/scripts/util/vectormath.js';
+import "../extern/three.js";
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/util/vectormath.js';
 

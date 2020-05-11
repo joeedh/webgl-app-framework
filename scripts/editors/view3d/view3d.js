@@ -1,3 +1,5 @@
+import "../../extern/three.js";
+
 import * as util from '../../util/util.js';
 import * as cconst from '../../core/const.js';
 
@@ -41,12 +43,7 @@ import {Icons} from '../icon_enum.js';
 import {WidgetSceneCursor, NoneWidget} from './widget_tools.js';
 import {View3DFlags, CameraModes} from './view3d_base.js';
 import {ResourceBrowser} from "../resbrowser/resbrowser.js";
-import {AddPointSetOp} from '../../potree/potree_ops.js';
-import {PointSet} from '../../potree/potree_types.js';
 import {ObjectFlags} from '../../sceneobject/sceneobject.js';
-//import {Renderer, Scene} from '../../extern/potree/src/Potree.js'
-//import * as Potree from '../../extern/potree/build/potree/potree.js';
-import '../../extern/potree/build/potree/potree.js';
 
 let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
@@ -329,7 +326,7 @@ export class View3D extends Editor {
     this._last_render_draw = 0;
     this.renderEngine = undefined;
 
-    this.flag = View3DFlags.SHOW_CURSOR;
+    this.flag = View3DFlags.SHOW_CURSOR|View3DFlags.SHOW_GRID;
 
     this.orbitMode = OrbitTargetModes.FIXED;
     this.localCursor3D = new Matrix4();
@@ -753,6 +750,7 @@ export class View3D extends Editor {
 
     //this.makeHeader(this.container);
     this.header = this.container.col();
+
     this.header.style["width"] = "min-content";
     this.container.style["width"] = "min-content";
     this.header.style["margin-left"] = "175px";
@@ -766,16 +764,6 @@ export class View3D extends Editor {
     header = rows.row();
     let row1 = header.row();
     let row2 = header.row();
-
-    row1.iconbutton(Icons.OPEN_FILE, "Add Pointset", () => {
-      ResourceBrowser.openResourceBrowser(this, "pointset").then((res) => {
-        let op = new AddPointSetOp();
-        op.inputs.url.setValue(res.url);
-
-        this.ctx.api.execTool(this.ctx, op);
-      });
-
-    });
 
     //row2.label("yay");
     row2.prop("view3d.flag[SHOW_RENDER]");
@@ -816,7 +804,6 @@ export class View3D extends Editor {
     strip = header.strip();
     strip.useIcons();
     strip.prop("view3d.flag[SHOW_GRID]");
-    strip.prop("scene.toolmode[curve_test]");
 
     //strip.prop("scene.toolmode[pan]");
     //strip.prop("scene.toolmode[object]");
@@ -872,9 +859,11 @@ export class View3D extends Editor {
     this.addEventListener("wheel", on_mousewheel);
 
     let uiHasFocus = (e) => {
-
       let node = this.getScreen().pickElement(e.x, e.y);
 
+      if (1) {
+        console.log(node ? node.tagName : undefined);
+      }
       //console.log(e.pageX, e.pageY, node);
       return node !== this && node !== this.overdraw;
     };
@@ -1297,10 +1286,6 @@ export class View3D extends Editor {
     let scene3 = state.three_scene;
     let render3 = state.three_render;
     let scene = this.ctx.scene;
-
-    if (this.pRenderer === undefined) {
-      this.pRenderer = new Potree.Renderer(render3);
-    }
 
     render3.render(scene3, this.threeCamera);
   }

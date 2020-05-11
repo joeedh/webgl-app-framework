@@ -4,7 +4,6 @@ import {Icons} from '../icon_enum.js';
 import {warning} from "../../path.ux/scripts/widgets/ui_noteframe.js";
 import * as util from '../../util/util.js';
 import {ResourceType, resourceManager} from '../../core/resource.js';
-import {PointSetResource} from '../../potree/potree_resource.js'
 import {ResourcePageType, ResourcePages} from './resbrowser_types.js';
 import {genResBrowserScreen} from '../screengen.js';
 
@@ -99,7 +98,7 @@ export class ResourceBrowser extends Editor {
   constructor() {
     super();
 
-    this.resourceType = "pointset";
+    this.resourceType = undefined;
     this.needsRebuild = true;
     this.icons = [];
     this.icons.active = undefined;

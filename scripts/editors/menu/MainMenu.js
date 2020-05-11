@@ -17,10 +17,9 @@ import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
 import {NodeEditor} from "../node/NodeEditor.js";
 import * as cconst from '../../core/const.js';
-import {AddPointSetOp} from "../../potree/potree_ops.js";
 import {Menu} from "../../path.ux/scripts/widgets/ui_menu.js";
 
-const menuSize = 52;
+const menuSize = 42;
 
 export class ToolHistoryConsole extends ColumnFrame {
   constructor() {
@@ -145,45 +144,6 @@ export class MenuBarEditor extends Editor {
         }
       }],
       Menu.SEP,
-      ["Import...", () => {
-        console.warn("Import dialog");
-
-        let screen  =this.ctx.screen;
-        let dialog = this.ctx.screen.popup(this, screen.mpos[0], screen.mpos[1], false);
-
-        dialog.style["padding"] = "15px";
-        dialog.label("Import");
-
-        let row = dialog.row();
-        row.label("URL:");
-        dialog.urlbox = row.textbox(undefined, "https://");
-
-        dialog.urlbox.disabled = false;
-        window.urlbox = dialog.urlbox;
-
-        row.button("Import", () => {
-          let url = dialog.urlbox.text;
-          url = url.trim();
-
-          /*
-          if (url.toLowerCase().startsWith("http://"))
-            url = url.slice(7, url.length);
-          if (url.toLowerCase().startsWith("https://"))
-            url = url.slice(8, url.length);
-          //*/
-
-          console.log("importing", url);
-          dialog.end();
-
-          let toolop = new AddPointSetOp();
-          toolop.inputs.url.setValue(url);
-          this.ctx.toolstack.execTool(this.ctx, toolop);
-        });
-
-        row.button("Cancel", () => dialog.end());
-
-        console.log("import!");
-      }],
       ["Save Project", () => {
         console.log("File save");
         saveFile(_appstate.createFile(), "unnamed."+cconst.FILE_EXT, ["."+cconst.FILE_EXT]);
@@ -200,7 +160,6 @@ export class MenuBarEditor extends Editor {
     let tools = [
       "view3d.view_selected()",
       //"light.new(position='cursor')",
-      "pointset.pack()"
     ];
 
     strip.menu("Edit", tools);

@@ -1,8 +1,5 @@
 import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
 
-import '../potree/potree_resource.js';
-import '../potree/potree_types.js';
-import '../potree/potree_ops.js';
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js';
 import {resourceManager} from "../core/resource.js";
 import '../core/image.js';
@@ -13,6 +10,7 @@ import {Camera} from '../core/webgl.js';
 import {makeToolModeEnum, ToolModes, ToolMode} from "../editors/view3d/view3d_toolmode.js";
 import {NodeSocketClasses} from "../core/graph.js";
 
+
 import '../mesh/mesh_createops.js';
 
 import {CurveSpline} from "../curve/curve.js";
@@ -22,7 +20,6 @@ import '../editors/view3d/widget_tools.js'; //ensure widget tools are all regist
 import {WidgetTool, WidgetFlags} from '../editors/view3d/widgets.js';
 import {AddLightOp} from "../light/light_ops.js";
 import {Light} from '../light/light.js';
-import {SideBarEditor} from "../editors/sidebar/SideBarEditor.js";
 import {DataAPI, DataPathError} from '../path.ux/scripts/controller/simple_controller.js';
 import {DataBlock, DataRef, Library, BlockSet, BlockFlags} from '../core/lib_api.js'
 import {View3D} from '../editors/view3d/view3d.js';
@@ -54,7 +51,6 @@ import {DebugEditor} from '../editors/debug/DebugEditor.js';
 let api = new DataAPI();
 import {Icons} from '../editors/icon_enum.js';
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
-import {PointSet} from "../potree/potree_types.js";
 
 export function api_define_editor(api, cls) {
   let astruct = api.mapStruct(cls);
@@ -429,18 +425,7 @@ function api_define_shadernetwork(api, parent) {
 }
 
 function api_define_material(api) {
-  let mstruct = api_define_datablock(api, Material);
-
-  let redraw = (e) => {
-    window.redraw_viewport();
-  }
-
-  mstruct.int("pointSize", "pointSize", "Size", "Point Size").range(1, 6).on('change', redraw);
-  mstruct.enum("pointShape", "pointShape", Potree.PointShape, "Shape", "Point Shape").on('change', redraw);
-  mstruct.enum("pointSizeType", "pointSizeType", Potree.PointSizeType, "Mode").on('change', redraw);
-  mstruct.float("quality", "quality", "Quality", "Quality").range(0.001, 1.0).on('change', redraw);
-
-  return mstruct;
+  api.inheritStruct(Material, ShaderNetwork);
 }
 
 function api_define_sceneobject(api, parent) {
@@ -452,14 +437,6 @@ function api_define_sceneobject(api, parent) {
   ostruct.struct("material", "material", "Material", api.mapStruct(Material, false));
 
   return ostruct;
-}
-
-function api_define_pointset(api, ctxStruct) {
-  let pstruct = api_define_datablock(api, PointSet);
-
-  pstruct.struct("material", "material", "Material", api.mapStruct(Material, false));
-
-  ctxStruct.struct("pointset", "pointset", "Point Set", pstruct);
 }
 
 function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
@@ -710,11 +687,13 @@ export function getDataAPI() {
   api_define_rgba_socket(api);
   api_define_float_socket(api);
 
-  api_define_material(api, cstruct);
-
   api_define_node(api);
   api_define_shadernode(api);
   api_define_graph(api);
+
+  api_define_shadernetwork(api, cstruct);
+  api_define_material(api);
+
 
   cstruct.struct("graph", "graph", "Graph", api.mapStruct(Graph));
 
@@ -726,9 +705,7 @@ export function getDataAPI() {
   api_define_node_viewer(api, cstruct);
   api_define_debugeditor(api, cstruct);
 
-  api_define_pointset(api, cstruct);
   api_define_mesh(api, cstruct);
-  api_define_shadernetwork(api, cstruct);
 
   api_define_library(api, cstruct);
   api_define_editor(api, Editor);

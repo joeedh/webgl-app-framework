@@ -1,6 +1,7 @@
 import {ResourceType, resourceManager} from '../../core/resource.js';
-import {PointSetResource} from '../../potree/potree_resource.js'
 import {resolvePath} from "../../config.js";
+
+export const ResourcePages = [];
 
 export class ResourcePageType {
   getResClass() {
@@ -14,55 +15,18 @@ export class ResourcePageType {
   loadResource(res) {
     return resourceManager.get(res.url, res.constructor);
   }
-}
 
-export class PointSetPage extends ResourcePageType {
-  constructor() {
-    super();
+  static resDefine() {return {
+    name        : "",
+    uiname      : "",
+    description : "",
+    icon        : -1,
+    flag        : 0
+  }}
 
-    this.list = [];
-    let host = location.host;
-    let url = resolvePath("/examples/examples.json");
-
-    fetch(url).then((res) => {
-      let body = "";
-
-      console.log("loaded", res.body);
-      res.json().then((data) => {
-        for (let k in data) {
-          let v = data[k];
-          let res = new PointSetResource(v.url);
-
-          res.url = resolvePath(res.url);
-          res.name = k;
-
-          if (v.thumbnail) {
-            let image = new Image();
-            image.src = v.thumbnail;
-
-            res.thumbnail = image;
-          }
-
-          this.list.push(res);
-        }
-      })
-    });
-    console.log(url);
-  }
-
-  getResClass() {
-    return PointSetResource;
-  }
-  getResources() {
-    return this.list;
-  }
-
-  loadResource(res) {
-    return resourceManager.get(res.url, res.constructor);
+  static register(cls) {
+    ResourcePages.push(cls);
   }
 }
 
-export const ResourcePages = {
-  "pointset" : new PointSetPage(),
-  "image" : undefined
-};
+

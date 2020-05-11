@@ -21,7 +21,6 @@ import {Material} from './material.js';
 import {App, ScreenBlock} from '../editors/editor_base.js';
 import {Library, DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import {IDGen} from '../util/util.js';
-import {SideBarEditor} from "../editors/sidebar/SideBarEditor.js";
 import * as util from '../util/util.js';
 import {getDataAPI} from '../data_api/api_define.js';
 import {View3D} from '../editors/view3d/view3d.js';
@@ -111,37 +110,6 @@ export {genDefaultScreen} from '../editors/screengen.js';
 import {genDefaultScreen} from '../editors/screengen.js';
 import {Collection} from "../scene/collection.js";
 import {PropsEditor} from "../editors/properties/PropsEditor.js";
-
-/*
-export function genDefaultScreen(appstate) {
-  appstate.screen.clear();
-  appstate.screen.ctx = appstate.ctx;
-
-  let sarea = document.createElement("screenarea-x");
-  sarea.ctx = appstate.ctx;
-
-  appstate.screen.appendChild(sarea);
-
-  sarea.switch_editor(View3D);
-  
-  sarea.pos[0] = sarea.pos[1] = 0.0;
-  sarea.size[0] = appstate.screen.size[0];
-  sarea.size[1] = appstate.screen.size[1];
-
-  let yperc = 65 / _appstate.screen.size[1];
-  let sarea2 = _appstate.screen.splitArea(sarea, yperc);
-
-  sarea.switch_editor(MenuBarEditor);
-
-  let xperc = 270 / _appstate.screen.size[0];
-  let sarea3 = _appstate.screen.splitArea(sarea2, 1.0 - xperc, false);
-  sarea3.switch_editor(SideBarEditor);
-
-  appstate.screen.listen();
-
-  sarea.setCSS();
-  sarea.area.setCSS();
-}*/
 
 export function genDefaultFile(appstate, dont_load_startup=0) {
   if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
@@ -789,18 +757,18 @@ export function init() {
   let lastKey = undefined;
 
   window.addEventListener("keydown", (e) => {
-    if (lastKey === keymap["Escape"] && e.keyCode === keymap["Escape"]) {
-      if (_appstate.ctx && _appstate.ctx.propsbar) {
-        _appstate.ctx.propsbar.close();
-      }
-
-      if (_appstate.ctx && _appstate.ctx.sidebar) {
-        _appstate.ctx.sidebar.close();
-      }
-    }
-
     lastKey = e.keyCode;
 
+    console.log(e.keyCode);
+    if (e.keyCode === keymap["C"]) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      let mpos = _appstate.screen.mpos;
+      let elem = _appstate.screen.pickElement(mpos[0], mpos[1]);
+
+      console.log(elem ? elem.tagName : elem, mpos);
+    }
     //console.log("tbox", checkForTextBox(_appstate.screen, mpos[0], mpos[1]), mpos);
 
     //prevent reload hotkey, could conflict with redo

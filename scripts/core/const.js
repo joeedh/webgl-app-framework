@@ -1,7 +1,7 @@
-export const APP_VERSION = 3;
-export const APP_KEY_NAME = "potree_viewer";
-export const FILE_EXT = "pproj";
-export const FILE_MAGIC = "POTV";
+export const APP_VERSION = 0;
+export const APP_KEY_NAME = "webgl-app-framework";
+export const FILE_EXT = "wproj";
+export const FILE_MAGIC = "WPRJ";
 
 export const autoSizeUpdate = true;
 
@@ -13,6 +13,9 @@ export const DEBUG = {
   doOnce : false,
   modalEvents : true,
   potreeEvents : false,
+
+  domEvents : false,
+  domEventAddRemove : false,
 
   datapaths : false,
 

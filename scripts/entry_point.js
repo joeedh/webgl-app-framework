@@ -1,5 +1,3 @@
-import './extern/three_patches.js';
-
 import * as appstate from './core/appstate.js';
 import {loadShapes} from './core/simplemesh_shapes.js';
 

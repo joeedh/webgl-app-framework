@@ -16,8 +16,6 @@ import {SnapModes, TranslateOp} from "../transform_ops.js";
 import {SelOneToolModes} from "../selectmode.js";
 
 import {SceneObject} from "../../../sceneobject/sceneobject.js";
-import {AddPointOp, MeasureOp} from "./measuretool_ops.js";
-import {MeasurePoint, MeasureFlags} from "./measuretool_base.js";
 import {Mesh} from "../../../mesh/mesh.js";
 import {FindnearestMesh} from '../findnearest/findnearest_mesh.js';
 

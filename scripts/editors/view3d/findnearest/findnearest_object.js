@@ -4,7 +4,6 @@ import {Vector2, Vector3, Vector4, Matrix4, Quat} from "../../../util/vectormath
 import {Shaders} from "../view3d_shaders.js";
 import * as util from "../../../util/util.js";
 import {FindNearestRet} from "../findnearest.js";
-import {PointSet} from "../../../potree/potree_types.js";
 import {Mesh} from "../../../mesh/mesh.js";
 
 let _findnearest_rets = util.cachering.fromConstructor(FindNearestRet, 1024);

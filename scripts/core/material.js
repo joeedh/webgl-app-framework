@@ -7,7 +7,7 @@ let STRUCT = nstructjs.STRUCT;
 import {DependSocket, Vec3Socket, Vec4Socket, Matrix4Socket, FloatSocket} from "./graphsockets.js";
 import {AbstractGraphClass} from './graph_class.js';
 import {Icons} from "../editors/icon_enum.js";
-import '../extern/potree/build/potree/potree.js';
+import {ShaderNetwork} from "../shadernodes/shadernetwork.js";
 
 export class MakeMaterialOp extends ToolOp {
   constructor() {
@@ -107,19 +107,15 @@ export class MaterialFlags {
 
 let DefaultMat;
 
-export class Material extends DataBlock {
+export class Material extends ShaderNetwork {
   constructor() {
     super();
 
     this.flag = 0;
-    this.pointSize = 1;
-    this.quality = 1.0;
-    this.pointSizeType = Potree.PointSizeType.ADAPTIVE;
-    this.pointShape = Potree.PointShape.SQUARE;
   }
 
   calcSettingsHash() {
-    return "" + this.flag + ":" + this.pointSize + ":" + this.pointSizeType + ":" + this.pointShape + ":" + this.quality;
+    throw new Error("implement me");
   }
   /**
    * Checks if a material name "Default" exists in ctx.datalib and returns it,
@@ -164,11 +160,6 @@ export class Material extends DataBlock {
 }
 
 Material.STRUCT = STRUCT.inherit(Material, DataBlock) + `
-  flag           : int;
-  pointSize      : int;
-  pointSizeType  : int;
-  pointShape     : int;
-  quality        : float;
 }`;
 
 DataBlock.register(Material);

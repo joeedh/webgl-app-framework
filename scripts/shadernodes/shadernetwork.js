@@ -1,7 +1,8 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags} from '../core/graph.js';
-import '../path.ux/scripts/util/struct.js';
+import {nstructjs} from '../path.ux/scripts/pathux.js';
 let STRUCT = nstructjs.STRUCT;
+
 import {DependSocket, Vec3Socket, Vec4Socket, Matrix4Socket, FloatSocket} from "../core/graphsockets.js";
 import {UIBase} from '../path.ux/scripts/core/ui_base.js';
 import {Container} from '../path.ux/scripts/core/ui.js';
@@ -101,7 +102,7 @@ ShaderNetwork.STRUCT = STRUCT.inherit(ShaderNetwork, DataBlock) + `
 }
 `;
 DataBlock.register(ShaderNetwork);
-nstructjs.manager.add_class(ShaderNetwork);
+nstructjs.register(ShaderNetwork);
 
 export function makeDefaultShaderNetwork() {
   let sn = new ShaderNetwork();

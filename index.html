@@ -12,99 +12,7 @@
   <meta name="description" content="">
   <meta name="author" content="">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Potree Viewer</title>
-
-  <link rel="stylesheet" type="scripts/extern/potree/css" href="../build/potree/potree.css">
-  <link rel="stylesheet" type="scripts/extern/potree/css" href="../libs/jquery-ui/jquery-ui.min.css">
-  <link rel="stylesheet" type="scripts/extern/potree/css" href="../libs/openlayers3/ol.css">
-  <link rel="stylesheet" type="scripts/extern/potree/css" href="../libs/spectrum/spectrum.css">
-  <link rel="stylesheet" type="scripts/extern/potree/css" href="../libs/jstree/themes/mixed/style.css">
-
-<script type="shader" id="simpleshader">
-//VERTEX
-precision highp float;
-
-uniform mat4 projectionMatrix;
-uniform mat4 modelViewMatrix;
-uniform mat4 objectMatrix;
-uniform mat4 normalMatrix;
-uniform float iGlobalTime;
-uniform vec4 uColor;
-
-attribute vec3  position;
-attribute vec3  normal;
-attribute vec2  uv;
-attribute vec4  color;
-attribute float id;
-
-varying vec3 v_Normal;
-varying vec2 v_Uv;
-varying vec4 v_Color;
-varying float v_Id;
-
-void main(void) {
-  vec4 p = vec4(position, 1.0);
-  
-  bool bad = dot(objectMatrix[0], objectMatrix[0]) == 0.0;
-  bad = bad && dot(objectMatrix[1], objectMatrix[1]) == 0.0;
-  bad = bad && dot(objectMatrix[2], objectMatrix[2]) == 0.0;
-  if (!bad) {
-    p = objectMatrix * p;
-  }
-  
-  p = projectionMatrix * p;
-  
-  gl_Position = p;
-  
-  v_Normal = (normalMatrix * vec4(normal, 0.0)).xyz;
-  v_Uv = uv;
-  v_Id = id;
-  v_Color = uColor;
-  //v_Color = color;
-}
-
-//FRAGMENT
-precision highp float;
-
-uniform mat4 projectionMatrix;
-uniform mat4 modelViewMatrix;
-uniform mat4 normalMatrix;
-uniform vec4 uColor;
-uniform float iGlobalTime;
-
-varying vec3 v_Normal;
-varying vec2 v_Uv;
-varying vec4 v_Color;
-varying float v_Id;
-
-float tent(float f) {
-  return 1.0 - abs(fract(f)-0.5)*2.0;
-}
-
-vec3 tent(vec3 p) {
-  return vec3(
-    tent(p[0]),
-    tent(p[1]),
-    tent(p[2])
-  );
-}
-
-void main(void) {
-  float c = 1.0; //fract(v_Uv[0]*10.0);
-  vec3 l = normalize(vec3(0.2, 0.2, 0.8));
-  vec3 n = normalize(v_Normal);
-  
-  //c = max(dot(n, l), 0.0);
-  c = abs(dot(n, l));
-  
-  //float f = 1.0-tent(10.0*v_Uv[0])*tent(10.0*v_Uv[1]);
-  //f = pow(f, 10.0)*0.3+0.7;
-  float f = sin(iGlobalTime*1.0)*0.5 + 0.5;
-  
-  gl_FragColor = uColor * vec4(c, c, c, 1.0);
-}
-</script>
-  
+  <title>Webgl App Framework</title>
   <style>
     body, html {
       margin: 0px;
@@ -132,21 +40,6 @@ void main(void) {
       opacity: 1.0;
     }
   </style>
-
-  <script src="scripts/extern/potree/libs/jquery/jquery-3.1.1.min.js"></script>
-  <script src="scripts/extern/potree/libs/spectrum/spectrum.js"></script>
-  <script src="scripts/extern/potree/libs/jquery-ui/jquery-ui.min.js"></script>
-  <script src="scripts/extern/potree/libs/three.js/build/three.js"></script>
-  <script src="scripts/extern/potree/libs/three.js/extra/lines.js"></script>
-  <script src="scripts/extern/potree/libs/other/BinaryHeap.js"></script>
-  <script src="scripts/extern/potree/libs/tween/tween.min.js"></script>
-  <script src="scripts/extern/potree/libs/d3/d3.js"></script>
-  <script src="scripts/extern/potree/libs/proj4/proj4.js"></script>
-  <script src="scripts/extern/potree/libs/openlayers3/ol.js"></script>
-  <script src="scripts/extern/potree/libs/i18next/i18next.js"></script>
-  <script src="scripts/extern/potree/libs/jstree/jstree.js"></script>
-  <script src="scripts/extern/potree/build/potree/potree.js"></script>
-  <script src="scripts/extern/potree/libs/plasio/js/laslaz.js"></script>
 
   <script type="module" src="scripts/entry_point.js"></script>
 </head>

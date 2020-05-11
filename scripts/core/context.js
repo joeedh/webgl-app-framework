@@ -13,10 +13,8 @@ import {Scene} from '../scene/scene.js';
 import {DataBlock, DataRef} from './lib_api.js';
 import {DebugEditor} from "../editors/debug/DebugEditor.js";
 import * as ui_noteframe from '../path.ux/scripts/widgets/ui_noteframe.js';
-import {PointSet} from '../potree/potree_types.js';
 import {Matrix4} from "../util/vectormath.js";
 import {MenuBarEditor} from "../editors/menu/MainMenu.js";
-import {SideBarEditor} from "../editors/sidebar/SideBarEditor.js";
 import {Context, ContextOverlay, ContextFlags} from "./context_base.js";
 import {UIBase, Screen} from '../path.ux/scripts/pathux.js';
 import {PropsEditor} from '../editors/properties/PropsEditor.js';
@@ -165,31 +163,6 @@ export class BaseOverlay extends ContextOverlay {
       }
     })();
   }
-
-  get pointset() {
-    if (!this.scene)
-      return undefined;
-
-    let obj = this.object;
-
-    if (obj !== undefined && obj.data instanceof PointSet) {
-      return obj.data;
-    }
-
-    for (let obj of this.scene.objects) {
-      if (obj.data !== undefined && obj.data instanceof PointSet) {
-        return obj.data;
-      }
-    }
-  }
-
-  get material() {
-    let ptree = this.pointset;
-
-    if (ptree !== undefined) {
-      return ptree.material;
-    }
-  }
 }
 Context.register(BaseOverlay);
 
@@ -213,10 +186,6 @@ export class ViewOverlay extends ContextOverlay {
 
   get view3d() {
     return getContextArea(View3D);
-  }
-
-  get sidebar() {
-    return getContextArea(SideBarEditor);
   }
 
   get propsbar() {

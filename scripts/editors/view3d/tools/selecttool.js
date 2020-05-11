@@ -4,7 +4,6 @@ import {ObjectFlags} from '../../../sceneobject/sceneobject.js';
 import {ToolMode} from '../view3d_toolmode.js';
 import {SelMask, SelOneToolModes, SelToolModes} from '../selectmode.js';
 import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../../mesh/mesh.js';
-import {PointSet} from '../../../potree/potree_types.js';
 import * as util from '../../../util/util.js';
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
 import {BasicLineShader, Shaders} from '../view3d_shaders.js'
