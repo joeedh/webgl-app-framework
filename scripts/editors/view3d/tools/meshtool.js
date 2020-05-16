@@ -452,4 +452,4 @@ export class MeshToolBase extends ToolMode {
 MeshToolBase.STRUCT = STRUCT.inherit(MeshToolBase, ToolMode) + `
 }`;
 nstructjs.manager.add_class(MeshToolBase);
-ToolMode.register(MeshToolBase);
+//ToolMode.register(MeshToolBase);

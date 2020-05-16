@@ -273,17 +273,6 @@ export class Editor extends Area {
     this.pop_ctx_active();
   }
 
-  makeHeader(container, add_note_area=false) {
-    let row = this.header = container.row();
-
-    row.remove();
-    container._prepend(row);
-
-    row.background = this.getDefault("AreaHeaderBG");
-    //return super.makeHeader(container, add_note_area);
-    return row;
-  }
-
   init() {
     super.init();
     this.defineKeyMap();
@@ -532,7 +521,7 @@ export class App extends Screen {
 };
 
 window.setInterval(() => {
-  if (_appstate && _appstate.ctx && _appstate.screen) {
+  if (window._appstate && _appstate.ctx && _appstate.screen) {
     window.updateDataGraph(true);
   }
 }, 75);
@@ -582,7 +571,7 @@ DataBlock.register(ScreenBlock);
 let last_time = util.time_ms();
 
 window.setInterval(() => {
-  if (_appstate && _appstate.ctx && _appstate.ctx.scene && _appstate.ctx.view3d) {
+  if (window._appstate && _appstate.ctx && _appstate.ctx.scene && _appstate.ctx.view3d) {
     window.redraw_viewport();
 
     if (_appstate.playing) {

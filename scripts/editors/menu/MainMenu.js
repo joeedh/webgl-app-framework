@@ -1,4 +1,4 @@
-import {Area, BorderMask} from '../../path.ux/scripts/screen/ScreenArea.js';
+import {Area, BorderMask, AreaFlags} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {saveFile, loadFile} from '../../path.ux/scripts/util/html5_fileapi.js';
 import {Icons} from "../icon_enum.js";
 
@@ -8,6 +8,7 @@ import {Editor, VelPan} from '../editor_base.js';
 import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
+import "../../mesh/mesh_createops.js";
 import {DataPathError} from '../../path.ux/scripts/controller/controller.js';
 import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
 import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
@@ -164,6 +165,10 @@ export class MenuBarEditor extends Editor {
 
     strip.menu("Edit", tools);
 
+    strip.menu("Add", [
+      "mesh.make_cube()"
+    ]);
+
     strip.menu("Session", [
       ["Save Default File  ", () => {
         console.log("saving default file");
@@ -319,7 +324,8 @@ export class MenuBarEditor extends Editor {
     tagname : "menu-editor-x",
     areaname : "MenuBarEditor",
     uiname   : "Main Menu",
-    icon     : -1
+    icon     : -1,
+    flag     : AreaFlags.HIDDEN|AreaFlags.NO_SWITCHER
   }}
 }
 

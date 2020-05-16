@@ -21,7 +21,7 @@ import {WidgetTool, WidgetFlags} from '../editors/view3d/widgets.js';
 import {AddLightOp} from "../light/light_ops.js";
 import {Light} from '../light/light.js';
 import {DataAPI, DataPathError} from '../path.ux/scripts/controller/simple_controller.js';
-import {DataBlock, DataRef, Library, BlockSet, BlockFlags} from '../core/lib_api.js'
+import {DataBlock, DataRef, Library, BlockTypes, BlockSet, BlockFlags} from '../core/lib_api.js'
 import {View3D} from '../editors/view3d/view3d.js';
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js';
 import {Editor, App} from '../editors/editor_base.js';
@@ -93,22 +93,7 @@ export function api_define_view3d(api, pstruct) {
   vstruct.float("subViewPortSize", "subViewPortSize", "View Size").range(1, 2048);
   vstruct.vec2("subViewPortPos", "subViewPortPos", "View Pos").range(1, 2048);
 
-  let SelModes = {
-    VERTEX : SelMask.VERTEX,
-    EDGE   : SelMask.EDGE,
-    FACE   : SelMask.FACE,
-    OBJECT : SelMask.OBJECT
-  };
-
   pstruct.struct("view3d", "view3d", "Viewport", vstruct);
-  let def = vstruct.enum("selectmode", "selectmode", SelModes, "Selection Mode", "Selection Mode");
-
-  def.icons({
-    VERTEX : Icons.VERT_MODE,
-    EDGE   : Icons.EDGE_MODE,
-    FACE   : Icons.FACE_MODE,
-    OBJECT : Icons.CIRCLE_SEL
-  });
 
   function onchange() {
     window.redraw_viewport();
@@ -495,7 +480,58 @@ function api_define_library(api, parent) {
   let lstruct = api.mapStruct(Library);
 
   parent.struct("datalib", "library", "Library", lstruct);
-  api_define_libraryset(api, "shadernetwork", "materials", "Materials", lstruct, ShaderNetwork);
+
+  for (let cls of BlockTypes) {
+    let def = cls.blockDefine();
+
+    api_define_libraryset(api, def.typeName, def.typeName, def.uiName, lstruct, cls);
+  }
+
+  //let lstruct = api.mapStruct(BlockSet, true);
+  //parent.struct(path, apiname, uiname, lstruct);
+  parent.list("blocks", "blocks", [
+    function get(api, list, key) {
+      return list.get(key);
+    },
+
+    function getIter(api, list) {
+      return list;
+    },
+
+    function getLength(api, list) {
+      let len = 0;
+      for (let list2 of list.libs) {
+        len += list2.length;
+      }
+
+      return len;
+    },
+
+    function getActive(api, list) {
+      return undefined;
+    },
+
+    function setActive(api, list, key) {
+      return undefined;
+    },
+    function getKey(api, list, obj) {
+      return obj.lib_id;
+    },
+    function getStruct(api, list, key) {
+      let obj = list.get(key);
+
+      if (obj === undefined) {
+        return api.getStruct(DataBlock);
+      }
+
+      let ret = api.getStruct(obj.constructor);
+
+      if (ret === undefined) {
+        return api.getStruct(DataBlock);
+      }
+    }
+  ]);
+
 }
 
 export function api_define_velpan(api, parent) {
@@ -769,6 +805,22 @@ export function getDataAPI() {
   api_define_graphclasses(api);
 
   cstruct.dynamicStruct("last_tool", "last_tool", "Last Tool");
+
+  let def = cstruct.flags("selectmode", "selectmode", SelMask, "Selection Mode", "Selection Mode");
+  def.icons({
+    VERTEX : Icons.VERT_MODE,
+    EDGE   : Icons.EDGE_MODE,
+    FACE   : Icons.FACE_MODE,
+    OBJECT : Icons.CIRCLE_SEL
+  });
+
+  def = cstruct.flags("selectmode", "selectmode_enum", SelMask, "Selection Mode", "Selection Mode");
+  def.icons({
+    VERTEX : Icons.VERT_MODE,
+    EDGE   : Icons.EDGE_MODE,
+    FACE   : Icons.FACE_MODE,
+    OBJECT : Icons.CIRCLE_SEL
+  });
 
   return api;
 }

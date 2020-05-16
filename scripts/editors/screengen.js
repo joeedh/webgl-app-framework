@@ -43,7 +43,7 @@ export function genDefaultScreen(appstate) {
   sarea.size[0] = appstate.screen.size[0];
   sarea.size[1] = appstate.screen.size[1];
 
-  sarea.switch_editor(View3D);
+  sarea.switchEditor(View3D);
 
   screen.appendChild(sarea);
   
@@ -52,9 +52,10 @@ export function genDefaultScreen(appstate) {
 
   let sarea2 = screen.splitArea(sarea, t, true);
   
-  smenu.switch_editor(MenuBarEditor);
+  smenu.switchEditor(MenuBarEditor);
 
-  screen.splitArea(sarea2, 0.75, false);
+  let sarea3 = screen.splitArea(sarea2, 0.75, false);
+  sarea3.switchEditor(PropsEditor);
 
   screen.listen();
 }

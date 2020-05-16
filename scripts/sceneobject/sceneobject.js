@@ -177,7 +177,7 @@ export class SceneObject extends DataBlock {
 
     this.inputs.loc.setValue(loc);
     this.inputs.rot.setValue(rot);
-    this.inputs.size.setValue(size);
+    this.inputs.scale.setValue(size);
 
     this.update();
   }

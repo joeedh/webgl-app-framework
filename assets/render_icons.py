@@ -41,6 +41,8 @@ def find_inkscape_win32():
     
   ret = find(inkscape_path, "c:\\Program Files\\Inkscape\\inkscape.exe")
   ret = find(ret, "c:\\Program Files (x86)\\Inkscape\\inkscape.exe")
+  ret = find(inkscape_path, "c:\\Program Files\\Inkscape\\bin\\inkscape.exe")
+  ret = find(ret, "c:\\Program Files (x86)\\Inkscape\\bin\\inkscape.exe")
   
   return ret
   
@@ -112,6 +114,7 @@ oversample_fac = 2
 
 def sharpen_iconsheets(paths):
     print("\nsharpening. . .\n");
+    sys.stdout.flush();
 
     global have_pillow, oversample_fac
 
@@ -131,7 +134,8 @@ def sharpen_iconsheets(paths):
         im = im.resize((im.width//oversample_fac, im.height//oversample_fac), PIL.Image.LANCZOS)
         im = im.filter(filter);
 
-        print(im.width, im.height)
+        print("  sharpened %ix%i" % (im.width, im.height))
+        sys.stdout.flush();
         im.save(f)
 
 sizes = [16, 24, 32, 40, 50, 64, 80, 128]
@@ -172,6 +176,8 @@ def main():
             cmd = [inkscape_path, "-C", "-e"+fname, "-w %i"%dimen, "-h %i"%height, "-z", "--export-area=%i:%i:%i:%i" % (x1,y1,x2,y2), f]
 
         print("- " + gen_cmdstr(cmd))
+        sys.stdout.flush();
+
         subprocess.call(cmd)
 
         paths.append("./" + fname)

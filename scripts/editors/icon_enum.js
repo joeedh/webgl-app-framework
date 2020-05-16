@@ -6,7 +6,7 @@ export let Icons = {
   HFLIP          : 0,
   TRANSLATE      : 1,
   ROTATE         : 2,
-  HELP_PICKER    : 3,
+  HELP           : 3,
   UNDO           : 4,
   REDO           : 5,
   CIRCLE_SEL     : 6,
@@ -55,6 +55,7 @@ export let Icons = {
   SCALE_WIDGET   : 49,
   FAKE_USER      : 50,
   PAN            : 51,
-  LARGE_CHECK    : 52
+  LARGE_CHECK    : 52,
+  MESHTOOL       : 53
 };
 setIconMap(Icons);

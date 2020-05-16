@@ -52,7 +52,7 @@ export class DataBlock extends Node {
     this.name = def.defaultName;
     this.lib_flag = def.flag;
     this.lib_icon = def.icon;
-    this.lib_type = def.type;
+    this.lib_type = def.typeName;
     this.lib_users= 0;
     this.lib_external_ref = undefined; //presently unused
 
@@ -273,7 +273,31 @@ export class BlockSet extends Array {
 
     return added;
   }
-  
+
+  rename(block, name) {
+    if (!block || block.lib_id < 0 || !(block.lib_id in this.idmap) || !name || (""+name).trim().length === 0) {
+      throw new Error("bad call to datalib rename API");
+    }
+
+    name = this.uniqueName(name);
+
+    for (let i=0; i<2; i++) {
+      let map = i ? this.datalib.block_namemap : this.namemap;
+      for (let k in map) {
+        if (map[k] === block) {
+          delete map[k];
+        }
+      }
+    }
+
+    block.name = name;
+
+    this.datalib.block_namemap[name] = block;
+    this.namemap[name] = block;
+
+    return name;
+  }
+
   push(block) {
     block.name = this.uniqueName(block.name);
 
@@ -289,6 +313,7 @@ export class BlockSet extends Array {
     }
 
     this.datalib.block_idmap[block.lib_id] = block;
+    this.datalib.block_namemap[block.name] = block;
     
     this.idmap[block.lib_id] = block;
     this.namemap[block.name] = block;
@@ -319,9 +344,9 @@ export class BlockSet extends Array {
    * @returns DataBlock
    */
   get(name_or_id) {
-    if (typeof name_or_id == "number") {
+    if (typeof name_or_id === "number") {
       return this.idmap[name_or_id];
-    } else if (typeof name_or_id == "string") {
+    } else if (typeof name_or_id === "string") {
       return this.namemap[name_or_id];
     } else if (name_or_id instanceof DataRef) {
       return this.idmap[name_or_id.lib_id];
@@ -338,13 +363,27 @@ export class BlockSet extends Array {
       console.warn("Bad call to lib_api.BlockSet.prototype.remove(); block:", block);
       return;
     }
-    
-    delete this.idmap[block.lib_id];
+
+    /*
     if (block.name in this.namemap) {
       delete this.namemap[block.name];
+    }//*/
+
+    for (let k in this.namemap) {
+      if (this.namemap[k] === block) {
+        delete this.namemap[k];
+      }
     }
-    
+
+    for (let k in this.datalib.block_namemap) {
+      if (this.datalib.block_namemap[k] === block) {
+        delete this.datalib.block_namemap[k];
+      }
+    }
+
+    delete this.idmap[block.lib_id];
     delete this.datalib.block_idmap[block.lib_id];
+
     block.lib_id = -1;
     
     if (block === this.active) {
@@ -352,7 +391,6 @@ export class BlockSet extends Array {
     }
 
     super.remove(block);
-
     block.destroy();
   }
 
@@ -409,9 +447,12 @@ export class Library {
 
     this.libs = [];
     this.libmap = {};
+
     this.idgen = new IDGen();
+
     this.block_idmap = {};
-    
+    this.block_namemap = {};
+
     for (let cls of BlockTypes) {
       let lib = new BlockSet(cls, this);
       
@@ -476,12 +517,14 @@ export class Library {
     })();
   }
 
-  get(id_or_dataref) {
-    if (id_or_dataref instanceof DataRef) {
-      id_or_dataref = id_or_dataref.lib_id;
+  get(id_or_dataref_or_name) {
+    if (id_or_dataref_or_name instanceof DataRef) {
+      id_or_dataref_or_name = id_or_dataref_or_name.lib_id;
+    } else if (typeof id_or_dataref_or_name === "string") {
+      return this.block_namemap[id_or_dataref_or_name];
     }
 
-    return this.block_idmap[id_or_dataref];
+    return this.block_idmap[id_or_dataref_or_name];
   }
   
   add(block) {
@@ -501,6 +544,7 @@ export class Library {
       console.log(block);
       throw new Error("invalid blocktype " + typename);
     }
+
     return this.getLibrary(typename).add(block);
   }
   
@@ -672,10 +716,16 @@ export class DataRefListProperty extends ToolProperty {
 PropTypes.DATAREFLIST = ToolProperty.register(DataRefListProperty);
 
 export class DataRefList extends Array {
-  constructor(iterable) {
+  constructor(iterable, blockTypeName="") {
     super();
 
     this.idmap = {};
+    this.lib_type = blockTypeName;
+
+    //optional active and highlight references
+    //if client code wants them
+    this.active = new DataRef();
+    this.highlight = new DataRef();
 
     if (iterable !== undefined) {
       for (let item of iterable) {
@@ -699,6 +749,33 @@ export class DataRefList extends Array {
 
     this.idmap[item.lib_id] = item;
     super.push(item);
+
+    return this;
+  }
+
+  getActive(ctx) {
+    return ctx.datalib.get(this.active);
+  }
+  getHighlight(ctx) {
+    return ctx.datalib.get(this.active);
+  }
+
+  setActive(ctx, val) {
+    if (val === undefined) {
+      this.active.lib_id = -1;
+    } else {
+      this.active.lib_id = val.lib_id;
+    }
+
+    return this;
+  }
+
+  setHighlight(ctx, val) {
+    if (val === undefined) {
+      this.highlight.lib_id = -1;
+    } else {
+      this.highlight.lib_id = val.lib_id;
+    }
 
     return this;
   }
@@ -747,4 +824,26 @@ export class DataRefList extends Array {
 
     return lib_id in this.idmap;
   }
+
+  loadSTRUCT(reader) {
+    reader(this);
+
+    this.idmap = {};
+
+    for (let ref of this._array) {
+      super.push(ref);
+      this.idmap[ref.lib_id] = ref;
+    }
+
+    delete this._array;
+  }
 }
+DataRefList.STRUCT = `
+DataRefList {
+  _array    : array(DataRef) | obj;
+  active    : DataRef | obj;
+  highlight : DataRef | obj;
+  lib_type  : string;  
+}
+`;
+nstructjs.register(DataRefList);

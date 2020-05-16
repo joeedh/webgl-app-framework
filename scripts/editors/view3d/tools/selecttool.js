@@ -123,11 +123,11 @@ export class ObjectEditor extends ToolMode {
 
     let ret = this.findnearest(ctx, x, y);
 
-    if (ret === undefined) {
+    if (ret === undefined || ret.object === undefined) {
       return;
     }
 
-    let ob = ret.data;
+    let ob = ret.object;
     let mode = SelOneToolModes.UNIQUE;
 
     if (e.shiftKey) {
@@ -283,59 +283,6 @@ export class ObjectEditor extends ToolMode {
 
     if (ret !== undefined && ret.length > 0) {
       return ret[0];
-    }
-  }
-
-  findnearestOld(ctx, x, y, selmask, limit=25) {
-    let view3d = this.view3d;
-    let sbuf = view3d.selectbuf;
-
-    limit = Math.max(~~limit, 1);
-
-    x = ~~x;
-    y = ~~y;
-
-    x -= limit >> 1;
-    y -= limit >> 1;
-
-    let sample = sbuf.sampleBlock(ctx, this.view3d.gl, this.view3d, x, y, limit, limit);
-    if (sample === undefined) {
-      return;
-    }
-
-    let block = sample.data;
-    let order = sample.order;
-
-    for (let i of order) {
-      let x2 = i % limit, y2 = ~~(i / limit);
-      i *= 4;
-
-      let idx = ~~(block[i] + 0.5), ob = ~~(block[i + 1] + 0.5);
-      idx--;
-
-      if (idx < 0)
-        continue;
-
-      let id = ob;
-      ob = ctx.datalib.get(ob);
-
-      if (ob === undefined || ob.data === undefined) {
-        //console.warn("warning, invalid object", id);
-        continue;
-      }
-
-      let ret = this._findnearest_rets.next();
-
-      ret.data = ret.object = ob;
-      ret.p3d = new Vector3();
-      ret.p3d.multVecMatrix(ob.outputs.matrix.getValue());
-      ret.dis = Math.sqrt(x2*x2 + y2*y2);
-
-      let p = new Vector3(ret.p3d);
-      view3d.project(p);
-
-      ret.p2d.load(p);
-      return ret;
     }
   }
 }

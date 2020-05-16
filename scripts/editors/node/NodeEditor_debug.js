@@ -11,7 +11,7 @@ export class NodeViewer extends Editor {
   constructor() {
     super();
 
-    this.graphPath = "";
+    this.graphPath = "graph";
     this.graphClass = "";
 
     this._last_graph_path = undefined;

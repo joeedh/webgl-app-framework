@@ -748,12 +748,12 @@ export class View3D extends Editor {
       this.header.remove();
     }
 
-    //this.makeHeader(this.container);
-    this.header = this.container.col();
+    this.makeHeader(this.container);
+    //this.header = this.container.col();
 
-    this.header.style["width"] = "min-content";
-    this.container.style["width"] = "min-content";
-    this.header.style["margin-left"] = "175px";
+    //this.header.style["width"] = "min-content";
+    //this.container.style["width"] = "min-content";
+    //this.header.style["margin-left"] = "175px";
 
     this.header.useIcons();
 
@@ -786,6 +786,10 @@ export class View3D extends Editor {
     let strip;
 
     strip = header.strip();
+    strip.inherit_packflag |= PackFlags.HIDE_CHECK_MARKS;
+    strip.prop("scene.toolmode[mesh]");
+    strip.prop("scene.toolmode[object]");
+    strip.prop("scene.toolmode[pan]");
     //header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
     //strip.tool("view3d.view_selected()", PackFlags.USE_ICONS);
     //strip.tool("view3d.center_at_mouse()", PackFlags.USE_ICONS);
