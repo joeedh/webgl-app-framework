@@ -43,7 +43,11 @@ export function makeCube(mesh) {
     for (let i=0; i<vs.length; i++) {
       vs[i] = getvert(vs[i]);
     }
-    
+
+    if (sign < 0) {
+      vs.reverse();
+    }
+
     faces.push(mesh.makeFace(vs));
   }
   

@@ -4,7 +4,6 @@ import {Light} from '../light/light.js';
 let STRUCT = nstructjs.STRUCT;
 import {Graph, SocketFlags} from '../core/graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
-import {Mesh} from '../mesh/mesh.js';
 import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 

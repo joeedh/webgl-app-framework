@@ -31,6 +31,7 @@ export class MeshToolBase extends ToolMode {
 
     this.meshPath = "mesh";
     this.selectMask = SelMask.GEOM;
+    this.drawSelectMask = SelMask.EDGE|SelMask.VERTEX|SelMask.HANDLE;
 
     this.start_mpos = new Vector2();
     this.last_mpos = new Vector2();
@@ -165,6 +166,7 @@ export class MeshToolBase extends ToolMode {
         tool.inputs.eid.setValue(elem.eid);
         tool.inputs.meshPaths.setValue(this.getMeshPaths());
         tool.inputs.mode.setValue(mode);
+        tool.inputs.selmask.setValue(this.selectMask);
 
         ctx.toolstack.execTool(this.ctx, tool);
 
@@ -237,11 +239,20 @@ export class MeshToolBase extends ToolMode {
     let view3d = this.ctx.view3d;
 
     let ret = this.findnearest3d(view3d, x, y, this.selectMask);
+    let found = false;
 
     if (ret !== undefined && ret.length > 0) {
-      ret = ret[0];
-      let elem = ret.data;
+      for (let item of ret) {
+        if (item.mesh) {
+          ret = item;
+          found = true;
+          break;
+        }
+      }
+    }
 
+    if (found) {
+      let elem = ret.data;
       let mesh = ret.mesh;
 
       let redraw = mesh.getElemList(elem.type).highlight !== elem;
@@ -266,7 +277,9 @@ export class MeshToolBase extends ToolMode {
           }
         }
 
-        mesh.clearHighlight();
+        if (redraw) {
+          mesh.clearHighlight();
+        }
       }
 
       if (redraw) {
@@ -409,11 +422,17 @@ export class MeshToolBase extends ToolMode {
     };
 
     let camdist = view3d.activeCamera.pos.vectorDistance(view3d.activeCamera.target);
+    let datalib = this.ctx.datalib;
 
     for (let mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
       if (mesh === undefined) {
         console.warn("nonexistent mesh");
         continue;
+      }
+
+      let object;
+      if (mesh.ownerId) {
+        object = datalib.get(mesh.ownerId);
       }
       
       if (mesh.ownerMatrix !== undefined) {
@@ -428,9 +447,9 @@ export class MeshToolBase extends ToolMode {
       gl.depthMask(true);
 
       uniforms.pointSize = 8;
-      uniforms.polygonOffset = 1500 + camdist;
+      uniforms.polygonOffset = 1 + camdist;
 
-      mesh.drawElements(view3d, gl, SelMask.EDGE|SelMask.VERTEX|SelMask.HANDLE, uniforms, program);
+      mesh.drawElements(view3d, gl, this.drawSelectMask, uniforms, program, object, true);
     }
 
     this.drawCursor = this.manager.widgets.highlight === undefined;

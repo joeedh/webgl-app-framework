@@ -32,6 +32,7 @@ import {SelectionSet, ElementList} from "./mesh_element_list.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {PrimitiveTypes} from "../core/simplemesh.js";
 import {Node} from '../core/graph.js';
+import {Colors} from '../sceneobject/sceneobject.js';
 
 let split_temp = new Array(512);
 split_temp.used = 0;
@@ -1212,6 +1213,11 @@ export class Mesh extends SceneObjectData {
     this.recalc &= ~RecalcFlags.ELEMENTS;
 
     let selcolor = uniforms.select_color;
+    let unselcolor = [0.5, 0.5, 1.0, 1.0];
+
+    //if (!selcolor) {
+      selcolor = Colors[1];
+    //}
 
     for (let k in this._fancyMeshes) {
       this._fancyMeshes[k].destroy(gl);
@@ -1285,10 +1291,10 @@ export class Mesh extends SceneObjectData {
       let tri = sm.tri(v1, v2, v3);
       tri.ids(f.eid, f.eid, f.eid);
 
-      if (tri.flag & MeshFlags.SELECT) {
+      if (f.flag & MeshFlags.SELECT) {
         tri.colors(selcolor, selcolor, selcolor);
       } else {
-        tri.colors(v1.color, v2.color, v3.color);
+        tri.colors(unselcolor, unselcolor, unselcolor);
       }
 
       let uv = ltris[i].uv;
@@ -1306,7 +1312,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  drawElements(view3d, gl, selmask, uniforms, program, object) {
+  drawElements(view3d, gl, selmask, uniforms, program, object, drawTransFaces=false) {
     if (!uniforms.active_color) {
       uniforms.active_color = [1.0, 0.8, 0.2, 1.0];
     }
@@ -1326,7 +1332,7 @@ export class Mesh extends SceneObjectData {
       this._genRenderElements(view3d, gl, uniforms);
     }
 
-    uniforms = uniforms === undefined ? {} : uniforms;
+    uniforms = uniforms || {};
     uniforms.alpha = uniforms.alpha === undefined ? 1.0 : uniforms.alpha;
 
     let meshes = this._fancyMeshes;
@@ -1336,9 +1342,15 @@ export class Mesh extends SceneObjectData {
     uniforms = Object.assign({}, uniforms);
     uniforms.polygonOffset = uniforms.polygonOffset === undefined ? 0.5 : uniforms.polygonOffset;
 
-    function draw_list(list, key) {
+    let draw_list = (list, key) => {
       uniforms.active_id = list.active !== undefined ? list.active.eid : -1;
       uniforms.highlight_id = list.highlight !== undefined ? list.highlight.eid : -1;
+
+      if (!meshes[key]) {
+        console.warn("missing mesh element draw data");
+        this.regenElementsDraw();
+        return;
+      }
 
       meshes[key].draw(gl, uniforms, program);
     }
@@ -1353,9 +1365,30 @@ export class Mesh extends SceneObjectData {
       uniforms.polygonOffset *= 0.5;
       draw_list(this.edges, "edges");
     }
+
     if (selmask & SelMask.FACE) {
+      let alpha = uniforms.alpha;
+
+      if (drawTransFaces) {
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        uniforms.alpha = 0.25;
+
+        gl.depthMask(false);
+        gl.disable(gl.DEPTH_TEST);
+      }
+
       uniforms.polygonOffset *= 0.25;
       draw_list(this.faces, "faces");
+
+      if (drawTransFaces) {
+        uniforms.alpha = alpha;
+        gl.disable(gl.BLEND);
+
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthMask(true);
+      }
     }
   }
 
@@ -1404,6 +1437,9 @@ export class Mesh extends SceneObjectData {
   }
   regenRender() {
     this.recalc |= RecalcFlags.RENDER|RecalcFlags.ELEMENTS;
+  }
+  regenElementsDraw() {
+    this.recalce |= RecalcFlags.ELEMENTS;
   }
   regenPartial() {
     this.recalc |= RecalcFlags.PARTIAL|RecalcFlags.ELEMENTS;

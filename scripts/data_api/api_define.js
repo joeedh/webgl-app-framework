@@ -806,7 +806,7 @@ export function getDataAPI() {
 
   cstruct.dynamicStruct("last_tool", "last_tool", "Last Tool");
 
-  let def = cstruct.flags("selectmode", "selectmode", SelMask, "Selection Mode", "Selection Mode");
+  let def = cstruct.flags("selectMask", "selectmode", SelMask, "Selection Mode", "Selection Mode");
   def.icons({
     VERTEX : Icons.VERT_MODE,
     EDGE   : Icons.EDGE_MODE,
@@ -814,12 +814,35 @@ export function getDataAPI() {
     OBJECT : Icons.CIRCLE_SEL
   });
 
-  def = cstruct.flags("selectmode", "selectmode_enum", SelMask, "Selection Mode", "Selection Mode");
+  let sstruct = api.mapStruct(Scene, false);
+
+  def = sstruct.flags("selectMask", "selectMaskEnum", SelMask, "Selection Mode", "Selection Mode");
   def.icons({
     VERTEX : Icons.VERT_MODE,
     EDGE   : Icons.EDGE_MODE,
     FACE   : Icons.FACE_MODE,
     OBJECT : Icons.CIRCLE_SEL
+  });
+  def.on('change', function (newv, oldv) {
+    let owner = this.dataref;
+
+    console.log("OWNER", owner, owner.selectMask);
+    console.log("BLEH", arguments);
+
+    let mask = owner.selectMask;
+    let old = oldv;
+
+    let newf = mask & (~old);
+    console.log("new flag", newf);
+
+    owner.selectMask &= ~(SelMask.VERTEX|SelMask.FACE|SelMask.EDGE);
+    owner.selectMask |= newf;
+
+    for (let ob of owner.objects.selected.editable) {
+      if (ob.data && ob.data instanceof Mesh) {
+        ob.data.regenElementsDraw();
+      }
+    }
   });
 
   return api;

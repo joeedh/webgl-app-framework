@@ -20,7 +20,7 @@ import {NodeEditor} from "../node/NodeEditor.js";
 import * as cconst from '../../core/const.js';
 import {Menu} from "../../path.ux/scripts/widgets/ui_menu.js";
 
-const menuSize = 42;
+const menuSize = 27;
 
 export class ToolHistoryConsole extends ColumnFrame {
   constructor() {
@@ -190,7 +190,7 @@ export class MenuBarEditor extends Editor {
         this.console.hidden = false;
         this.console.style["overflow"] = "scroll";
       }
-    });
+    }).iconsheet = 0;
 
     strip.noteframe();
     //this.makeScreenSwitcher(this.container);

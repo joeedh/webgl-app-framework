@@ -203,6 +203,13 @@ export class ViewOverlay extends ContextOverlay {
     return this.ctx.scene.selectMask;
   }
 
+  set selectMask(val) {
+    if (!this.ctx || !this.ctx.scene)
+      return;
+
+    this.ctx.scene.selectMask = val;
+  }
+
   get resbrowser() {
     return getContextArea(ResourceBrowser);
   }

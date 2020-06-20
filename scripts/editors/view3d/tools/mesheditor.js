@@ -18,7 +18,6 @@ import {SnapModes} from "../transform_ops.js";
 import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
   MeshFeatureError} from '../../../mesh/mesh_base.js';
-import {CurveSpline} from "../../../curve/curve.js";
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
 import {ContextOverlay} from "../../../path.ux/scripts/controller/context.js";
 import {PackFlags} from "../../../path.ux/scripts/core/ui_base.js";
@@ -27,7 +26,8 @@ export class MeshEditor extends MeshToolBase {
   constructor(manager) {
     super(manager);
 
-    this.selectMask = SelMask.VERTEX|SelMask.HANDLE;
+    this.selectMask = SelMask.VERTEX;
+    this.drawSelectMask = this.selectMask;
   }
 
   static widgetDefine() {return {
@@ -52,23 +52,20 @@ export class MeshEditor extends MeshToolBase {
     strip.useIcons();
     strip.inherit_packflag |= PackFlags.HIDE_CHECK_MARKS;
 
-    strip.prop("selectmode_enum[VERTEX]");
+    strip.prop("scene.selectMaskEnum[VERTEX]");
     if (this.haveHandles()) {
 
     }
-    strip.prop("selectmode_enum[EDGE]");
-    strip.prop("selectmode_enum[FACE]");
+    strip.prop("scene.selectMaskEnum[EDGE]");
+    strip.prop("scene.selectMaskEnum[FACE]");
 
-    //strip.tool(`mesh.delete_selected`);
-    //strip.tool(`mesh.clear_points`);
+    strip.tool(`mesh.delete_selected`);
   }
 
-  haveHandles() {
+  static haveHandles() {
     let ctx = this.ctx;
     if (!ctx)
       return;
-
-
   }
 
   getMeshPaths() {
@@ -90,7 +87,7 @@ export class MeshEditor extends MeshToolBase {
         return [];
       }
       //let path = "scene.tools." + this.constructor.widgetDefine().name;
-      //path += ".curve";
+      //path += ".mesh";
     }
 
     return [this._meshPath];
@@ -99,9 +96,9 @@ export class MeshEditor extends MeshToolBase {
   static defineAPI(api) {
     let tstruct = super.defineAPI(api);
 
-    let mstruct = api.mapStruct(CurveSpline, false);
+    let mstruct = api.mapStruct(Mesh, false);
 
-    tstruct.struct("curve", "curve", "Curve", mstruct);
+    tstruct.struct("mesh", "mesh", "Mesh", mstruct);
 
     let onchange = () => {
       window.redraw_viewport();
@@ -126,12 +123,12 @@ export class MeshEditor extends MeshToolBase {
     if (this.sceneObject === undefined) {
       let key = "toolmode_" + this.constructor.widgetDefine().name;
 
-      let data = this.curve !== undefined ? this.curve : CurveSpline;
+      let data = this.mesh !== undefined ? this.mesh : Mesh;
 
       this.sceneObject = this.ctx.scene.getInternalObject(this.ctx, key, data);
       this.sceneObject.flag |= ObjectFlags.SELECT;
-      this.curve = this.sceneObject.data;
-      this.curve.owningToolMode = this.constructor.widgetDefine().name;
+      this.mesh = this.sceneObject.data;
+      this.mesh.owningToolMode = this.constructor.widgetDefine().name;
     }
   }
 
@@ -154,43 +151,31 @@ export class MeshEditor extends MeshToolBase {
     return super.on_mousemove(e, x, y, was_touch);
   }
 
-  drawSphere(gl, view3d, p, scale=0.01) {
-    let cam = this.ctx.view3d.activeCamera;
-    let mat = new Matrix4();
+  on_drawstart(gl, view3d) {
+    if (!this.ctx) return;
 
-    let co = new Vector4(p);
-    mat.translate(co[0], co[1], co[2]);
-
-    co[3]  = 1.0;
-    co.multVecMatrix(cam.rendermat);
-
-    scale = Math.abs(co[3] * scale);
-    mat.scale(scale, scale, scale);
-
-    Shapes.SPHERE.draw(gl, {
-      projectionMatrix : cam.rendermat,
-      objectMatrix : mat,
-      color : [1, 0.4, 0.2, 1.0],
-    }, Shaders.WidgetMeshShader)
-  }
-
-  draw(gl, view3d) {
     this._getObject();
 
-    if (this.curve !== undefined) {
-      if (this.curve.drawflag !== this.drawflag) {
-        this.curve.drawflag = this.drawflag;
-        this.curve.regenRender();
-      }
+    let mask = this.ctx.selectMask;
+    mask = mask | (SelMask.EDGE | SelMask.FACE);
 
-      super.draw(gl, view3d);
+    this.selectMask = this.ctx.selectMask;
+    this.drawSelectMask = mask;
+
+    if (this.mesh !== undefined) {
+      if (this.mesh.drawflag !== this.drawflag) {
+        this.mesh.drawflag = this.drawflag;
+        this.mesh.regenRender();
+      }
     }
+
+    super.on_drawstart(gl, view3d);
   }
 
   dataLink(scene, getblock, getblock_addUser) {
     super.dataLink(...arguments);
 
-    this.curve = getblock_addUser(this.curve);
+    this.mesh = getblock_addUser(this.mesh);
   }
 
   loadSTRUCT(reader) {
@@ -199,13 +184,13 @@ export class MeshEditor extends MeshToolBase {
       super.loadSTRUCT(reader);
     }
 
-    this.curve.owningToolMode = this.constructor.widgetDefine().name;
+    this.mesh.owningToolMode = this.constructor.widgetDefine().name;
   }
 
 }
 
 MeshEditor.STRUCT = STRUCT.inherit(MeshEditor, ToolMode) + `
-  curve    : DataRef | DataRef.fromBlock(obj.curve);
+  mesh    : DataRef | DataRef.fromBlock(obj.mesh);
   drawflag : int;
 }`;
 nstructjs.manager.add_class(MeshEditor);

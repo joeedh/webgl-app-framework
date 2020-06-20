@@ -749,11 +749,6 @@ export class View3D extends Editor {
     }
 
     this.makeHeader(this.container);
-    //this.header = this.container.col();
-
-    //this.header.style["width"] = "min-content";
-    //this.container.style["width"] = "min-content";
-    //this.header.style["margin-left"] = "175px";
 
     this.header.useIcons();
 
@@ -765,7 +760,6 @@ export class View3D extends Editor {
     let row1 = header.row();
     let row2 = header.row();
 
-    //row2.label("yay");
     row2.prop("view3d.flag[SHOW_RENDER]");
     //row2.prop("view3d.flag[ONLY_RENDER]");
 
@@ -1379,6 +1373,10 @@ export class View3D extends Editor {
 
     let drawgrid = this.flag & View3DFlags.SHOW_GRID;
 
+    gl.depthMask(true);
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.SCISSOR_TEST);
+
     if (this.grid !== undefined && drawgrid) {
       //console.log("drawing grid");
       
@@ -1386,10 +1384,6 @@ export class View3D extends Editor {
       
       this.grid.uniforms.projectionMatrix = this.activeCamera.rendermat;
       this.grid.draw(gl);
-    }
-
-    if (scene.toolmode) {
-      scene.toolmode.on_drawstart(gl, this);
     }
 
 
@@ -1404,6 +1398,10 @@ export class View3D extends Editor {
     this.drawThreeScene();
     this.drawObjects();
 
+    if (scene.toolmode) {
+      scene.toolmode.on_drawstart(gl, this);
+    }
+
     if (this.drawlines.length > 0) {
       this.drawDrawLines(gl);
     }
@@ -1411,6 +1409,7 @@ export class View3D extends Editor {
     gl.depthMask(true);
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.SCISSOR_TEST);
+
 
     this._graphnode.outputs.onDrawPost.immediateUpdate();
 
