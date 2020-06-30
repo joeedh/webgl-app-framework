@@ -70,6 +70,9 @@ export class CubeFace {
   render(gl, scene, light) {
     let size = this.size;
 
+    //XXX
+    let view3d = _appstate.ctx.view3d;
+
     this.fbo.update(gl, size[0], size[1]);
     this.fbo.bind(gl);
 
@@ -113,7 +116,7 @@ export class CubeFace {
       uniforms.alpha = 1.0;
       uniforms.polygonOffset = 0.0;
 
-      ob.draw(gl, uniforms, program);
+      ob.draw(view3d, gl, uniforms, program);
     }
 
     window.gldebug_sample();
@@ -529,6 +532,9 @@ export class RealtimeEngine extends RenderEngine {
   }
 
   render_normals(camera, gl, viewbox_pos, viewbox_size, scene) {
+    //XXX
+    let view3d = _appstate.ctx.view3d;
+
     let uniforms = {
       projectionMatrix : this.getProjMat(camera, viewbox_size),
       normalMatrix     : camera.normalmat,
@@ -550,7 +556,7 @@ export class RealtimeEngine extends RenderEngine {
 
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
       //program.uniforms.objectMatrix = ob.outputs.matrix.getValue();
-      ob.draw(gl, uniforms, program);
+      ob.draw(view3d, gl, uniforms, program);
     }
   }
 
@@ -570,6 +576,9 @@ export class RealtimeEngine extends RenderEngine {
   }
 
   render_intern(camera, gl, viewbox_pos, viewbox_size, scene) {
+    //XXX
+    let view3d = _appstate.ctx.view3d;
+
     this.cache.drawStart(gl);
 
     let uniforms = {
@@ -637,7 +646,7 @@ export class RealtimeEngine extends RenderEngine {
 
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
 
-      ob.draw(gl, uniforms, program);
+      ob.draw(view3d, gl, uniforms, program);
     }
 
     this.cache.drawEnd(gl);

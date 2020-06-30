@@ -97,6 +97,36 @@ export class BasicFileOp extends ToolOp {
     mat.lib_flag |= BlockFlags.HIDE;
 
     lib.add(mat);
+
+    //*
+    let mesh = new Mesh();
+    lib.add(mesh);
+
+    makeCube(mesh);
+
+    let sob = new SceneObject();
+    lib.add(sob);
+
+    sob.data = mesh;
+    mesh.lib_addUser(sob);
+
+    scene.add(sob);
+    scene.objects.setSelect(sob, true);
+    scene.objects.setActive(sob);
+
+    sob.graphUpdate();
+    mesh.graphUpdate();
+
+    mesh.regenRender();
+    mesh.regenTesellation();
+    mesh.regenElementsDraw();
+
+    window.updateDataGraph();
+
+    // /*/
+
+    scene.selectMask = SelMask.VERTEX;
+    scene.switchToolMode("mesh");
   }
 
   static tooldef() {return {
@@ -110,6 +140,7 @@ export {genDefaultScreen} from '../editors/screengen.js';
 import {genDefaultScreen} from '../editors/screengen.js';
 import {Collection} from "../scene/collection.js";
 import {PropsEditor} from "../editors/properties/PropsEditor.js";
+import {SelMask} from "../editors/view3d/selectmode.js";
 
 export function genDefaultFile(appstate, dont_load_startup=0) {
   if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {

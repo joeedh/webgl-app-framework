@@ -132,7 +132,7 @@ export class FindnearestMesh extends FindnearestClass {
       let ob = ~~(block[i] + 0.5) - 1;
       let idx = ~~(block[i+1] + 0.5) - 1;
 
-      if (ob < 0 || idx < 0)
+      if (ob < 0 || idx <= 0)
         continue;
 
       //console.log(ob, idx);

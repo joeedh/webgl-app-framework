@@ -142,16 +142,18 @@ export class MeshEditor extends MeshToolBase {
   }
 
   _getObject() {
-    if (this.sceneObject === undefined) {
-      let key = "toolmode_" + this.constructor.widgetDefine().name;
+    let ctx = this.ctx;
 
-      let data = this.mesh !== undefined ? this.mesh : Mesh;
+    if (!ctx || !ctx.object || !(ctx.object.data instanceof Mesh)) {
+      this.sceneObject = undefined;
+      this.mesh = undefined;
 
-      this.sceneObject = this.ctx.scene.getInternalObject(this.ctx, key, data);
-      this.sceneObject.flag |= ObjectFlags.SELECT;
-      this.mesh = this.sceneObject.data;
-      this.mesh.owningToolMode = this.constructor.widgetDefine().name;
+      return;
     }
+
+    this.sceneObject = ctx.object;
+    this.mesh = this.sceneObject.data;
+    this.mesh.owningToolMode = this.constructor.widgetDefine().name;
   }
 
   update() {

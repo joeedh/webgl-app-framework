@@ -8,7 +8,7 @@ export let PolygonOffset = {
   vertex : (posname) => `
   {
     float z = ${posname}[2];
-    z -= polygonOffset*0.0001;
+    z -= polygonOffset*0.00001;
     
     ${posname}[2] = z;
   }

@@ -181,13 +181,13 @@ export class NodeSocketType {
     if (!sock.node) {
       console.warn("graph corruption");
     } else {
-      sock.node.update();
+      sock.node.graphUpdate();
     }
 
     if (!this.node) {
       console.warn("graph corruption");
     } else {
-      this.node.update();
+      this.node.graphUpdate();
       this.node.graph_graph.flagResort();
     }
 
@@ -213,8 +213,8 @@ export class NodeSocketType {
     this.edges.remove(sock, true);
     sock.edges.remove(this, true);
     
-    this.node.update();
-    sock.node.update();
+    this.node.graphUpdate();
+    sock.node.graphUpdate();
     this.node.graph_graph.flagResort();
     
     return this;
@@ -294,7 +294,7 @@ export class NodeSocketType {
       sock.setValue(this.getValue());
 
       if (sock.node)
-        sock.node.update();
+        sock.node.graphUpdate();
     }
     
     return this;
@@ -598,6 +598,14 @@ export class Node {
   }
   
   update() {
+    this.graphUpdate();
+    console.warn("deprecated call to graph.Node.prototype.update(); use graphUpdate instead");
+
+    //this.graph_flag |= NodeFlags.UPDATE;
+    return this;
+  }
+
+  graphUpdate() {
     this.graph_flag |= NodeFlags.UPDATE;
     return this;
   }
@@ -1284,7 +1292,7 @@ export class Graph {
     }
 
     this.flagResort();
-    n.update();
+    n.graphUpdate();
 
     if (window.updateDataGraph) {
       window.updateDataGraph();
@@ -1468,7 +1476,7 @@ export function test(exec_cycles=true) {
     loc[1] = Math.sin(t)*0.95;
     
     ob1.inputs.loc.setValue(loc);
-    ob1.update();
+    ob1.graphUpdate();
     
     graph.max_cycle_steps = 128;
     graph.exec(undefined, !exec_cycles);

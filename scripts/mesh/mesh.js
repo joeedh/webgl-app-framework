@@ -1184,7 +1184,7 @@ export class Mesh extends SceneObjectData {
     }
 
     this.checkPartialUpdate(gl);
-    if (program !== undefined && this.wmesh !== undefined) {
+    if (program !== undefined && this.wmesh !== undefined && this.wmesh.island !== undefined) {
       this.wmesh.program = program;
       this.wmesh.island.program = program;
 
@@ -1415,6 +1415,7 @@ export class Mesh extends SceneObjectData {
 
       program.bind(gl);
     }
+
     this.smesh.draw(gl, uniforms);
   }
 

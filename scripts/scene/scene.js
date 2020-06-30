@@ -364,6 +364,8 @@ export class Scene extends DataBlock {
     let cname = "[Internal " + this.lib_id + "]";
     let name = cname + " " + key;
 
+    console.warn("getInternalObject called");
+
     let cl = this.getCollection(ctx, cname);
 
     let ob = ctx.datalib.object.get(name);
