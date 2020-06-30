@@ -38,6 +38,28 @@ export class MeshEditor extends MeshToolBase {
     description : "Edit vertices/edges/faces"
   }}
 
+  static buildEditMenu() {
+    return [
+      "mesh.delete_selected()",
+      "mesh.toggle_select_all()",
+      "mesh.subdivide_smooth()",
+      "mesh.extrude_regions(transform=true)"
+    ]
+  }
+
+  defineKeyMap() {
+    this.keymap = new KeyMap([
+      new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
+      new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
+      new HotKey("D", [], "mesh.subdivide_smooth()"),
+      new HotKey("G", [], "view3d.translate(selmask=17)"),
+      new HotKey("X", [], "mesh.delete_selected()"),
+      new HotKey("E", [], "mesh.extrude_regions(transform=true)")
+    ]);
+
+    return this.keymap;
+  }
+
   static buildElementSettings(container) {
     super.buildElementSettings(container);
     let path = "scene.tools." + this.widgetDefine().name;

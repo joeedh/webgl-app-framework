@@ -38,22 +38,11 @@ export class MeshToolBase extends ToolMode {
   }
 
   defineKeyMap() {
-    let makeHotKey = (toolstr) => {
-      let this2 = this;
-      return () => {
-        //let ctx = this.buildFakeContext(this.ctx);
-        let ctx = this.ctx;
-        let tool = ctx.api.createTool(ctx, toolstr);
-
-        ctx.api.execTool(ctx, tool);
-      }
-    };
-
     this.keymap = new KeyMap([
-      new HotKey("A", [], makeHotKey("mesh.toggle_select_all(mode='AUTO')")),
+      new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
       new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
       new HotKey("D", [], "mesh.subdivide_smooth()"),
-      new HotKey("G", [], makeHotKey("view3d.translate(selmask=17)")),
+      new HotKey("G", [], "view3d.translate(selmask=17)"),
       new HotKey("X", [], "mesh.delete_selected()")
     ]);
 

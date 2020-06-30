@@ -122,8 +122,33 @@ export class MenuBarEditor extends Editor {
 
     this._switcher_key = "";
     this._ignore_tab_change = false;
+    this._last_toolmode = undefined;
 
     this.borderLock = BorderMask.TOP|BorderMask.BOTTOM;
+  }
+
+  buildEditMenu() {
+    let def = this._editMenuDef;
+
+    def.length = 0;
+    def.push(["Undo", () => {
+      _appstate.toolstack.undo();
+    }, "Ctrl+Z", Icons.UNDO])
+    def.push(["Redo", () => {
+      _appstate.toolstack.undo();
+    }, "Ctrl+Shift+Z", Icons.REDO])
+
+    def.push(Menu.SEP);
+    def.push("view3d.view_selected()");
+
+    if (this.ctx && this.ctx.scene && this.ctx.toolmode) {
+      let toolmode = this.ctx.toolmode;
+      let def2 = toolmode.constructor.buildEditMenu();
+
+      for (let item of def2) {
+        def.push(item);
+      }
+    }
   }
 
   init() {
@@ -158,12 +183,16 @@ export class MenuBarEditor extends Editor {
       }],
     ]);
 
+    this._editMenuDef = [];
+
+    strip.menu("Edit", this._editMenuDef);
+
+    this.buildEditMenu();
+
     let tools = [
       "view3d.view_selected()",
       //"light.new(position='cursor')",
     ];
-
-    strip.menu("Edit", tools);
 
     strip.menu("Add", [
       "mesh.make_cube()"
@@ -292,6 +321,12 @@ export class MenuBarEditor extends Editor {
 
   update() {
     super.update();
+
+    if (this.ctx && this.ctx.toolmode && this.ctx.toolmode.constructor && this.ctx.toolmode.constructor.name !== this._last_toolmode) {
+      console.warn("Rebuilding edit menu");
+      this._last_toolmode = this.ctx.toolmode.constructor.name;
+      this.buildEditMenu();
+    }
 
     if (this.minSize[1] !== this.menuSize) {
       this.minSize[1] = this.menuSize;

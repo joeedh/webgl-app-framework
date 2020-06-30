@@ -3,7 +3,8 @@ import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
   PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolsys/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {ToolOp, ToolMacro, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {TranslateOp} from "../editors/view3d/transform_ops.js";
 import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DependSocket} from '../core/graphsockets.js';
@@ -126,6 +127,29 @@ export class ExtrudeRegionsOp extends MeshOp {
       normalSpace : new Mat4Property()
     }
   }}
+
+  static invoke(ctx, args) {
+    let tool = super.invoke(ctx, args);
+
+    if (args["transform"]) {
+      let macro = new ToolMacro();
+      macro.add(tool);
+
+      let translate = new TranslateOp();
+      translate.inputs.selmask.setValue(SelMask.GEOM);
+      translate.inputs.constraint.setValue([0, 0, 1]);
+
+      macro.add(translate);
+
+      macro.connect(tool, translate, () => {
+        translate.inputs.constraint_space.setValue(tool.outputs.normalSpace.getValue());
+      });
+
+      return macro;
+    }
+
+    return tool;
+  }
 
   _exec_intern(ctx, mesh) {
     let fset = new util.set(mesh.faces.selected.editable);

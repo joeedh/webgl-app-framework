@@ -76,6 +76,10 @@ export class ToolMode extends WidgetTool {
     return undefined;
   }
 
+  static buildEditMenu() {
+    return [];
+  }
+
   static buildElementSettings(container) {
 
   }
