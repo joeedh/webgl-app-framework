@@ -5,6 +5,8 @@ import * as util from './util.js';
 import * as parseutil from './parseutil.js';
 import {BinaryReader} from './binarylib.js';
 import '../extern/jszip/jszip.js';
+import {UVLayerElem, FloatElem, OrigIndexElem, IntElem} from "../mesh/mesh.js";
+import {SceneObject} from "../sceneobject/sceneobject.js";
 
 export class FBXFileError extends Error {
 };
@@ -14,22 +16,183 @@ export class FBXData {
     this.version = version;
     this.root = undefined;
     this.nodes = [];
+    this.geometries = [];
+    this.sceneobjects = [];
+
   }
 
   add(node) {
     this.nodes.push(node);
-    if (node.name === "P") {
-      node.attrs = {};
+  }
 
-      for (let i=0; i<node.props.length; i += 2) {
-        let name = node.props[i].data;
-        let data = node.props[i+1].data;
+  loadGeometry(node) {
+    console.log("Found a geometry", node);
+    let name = node.props[1].data
+    name = name.split('\0')[0];
 
-        node.attrs[name] = data;
-      }
-    } else {
-      node.attrs = {};
+    console.log("NAME", `'${name}'`);
+
+    const lmap = {
+      ByVertex : MeshTypes.VERTEX,
+      ByEdge : MeshTypes.EDGE,
+      ByPolygonVertex : MeshTypes.LOOP,
+      ByPolygon : MeshTypes.FACE,
     }
+    let vs = node.childmap.Vertices.props[0].data;
+
+    let mesh = new Mesh();
+    this.geometries.push(mesh);
+
+    mesh.name = name;
+
+    let vtable = [];
+    let etable = [];
+    let ltable = [];
+    let ftable = [];
+
+    let tables =  {
+      [MeshTypes.VERTEX] : vtable,
+      [MeshTypes.EDGE] : etable,
+      [MeshTypes.LOOP] : ltable,
+      [MeshTypes.FACE] : ftable
+    };
+
+    for (let i=0; i<vs.length; i += 3) {
+      let v = mesh.makeVertex();
+
+      v[0] = vs[i];
+      v[1] = vs[i+1];
+      v[2] = vs[i+2];
+
+      v.index = vtable.length;
+      vtable.push(v);
+    }
+
+    let p = node.childmap.PolygonVertexIndex.props[0].data;
+    let fvs = [];
+
+    console.log("P", node, p);
+
+    for (let i=0; i<p.length; i++) {
+      let idx = p[i];
+
+      let neg = idx < 0;
+
+      if (neg) {
+        idx ^= -1;
+      }
+
+      let v = vtable[idx];
+      if (v === undefined) {
+        console.warn("Missing vertex!", idx);
+        continue;
+      }
+
+      fvs.push(v);
+
+      if (neg) {
+        let f = mesh.makeFace(fvs);
+
+        f.index = ftable.length;
+        ftable.push(f);
+
+        for (let list of f.lists) {
+          for (let loop of list) {
+            loop.index = ltable.length;
+            ltable.push(loop);
+          }
+        }
+
+        fvs = [];
+      }
+    }
+
+    if (node.childmap.Edges) {
+
+      let es = node.childmap.Edges.props[0].data;
+
+      for (let i = 0; i < es.length; i++) {
+        let e = ltable[es[i]].e;
+
+        e.index = etable.length;
+        etable.push(e);
+      }
+    }
+
+    function doCustomData(n, cls, key) {
+      let type = "ByPolygonVertex";
+
+      if (n.childmap.MappingInformationType) {
+        type = n.childmap.MappingInformationType.props[0].data;
+      }
+
+      if (!(type in lmap)) {
+        console.error("Customdata mapping error!");
+        return;
+      }
+
+      type = lmap[type];
+      let elist = mesh.getElemList(type);
+      let table = tables[type];
+
+      let name = n.childmap.Name.props[0].data;
+
+      console.log(n, name);
+      let layer = elist.addCustomDataLayer(cls, ""+name);
+
+      let li = layer.index;
+
+      let ref = "IndexToDirect";
+      if (n.childmap.ReferenceInformationType) {
+        ref = n.childmap.ReferenceInformationType.props[0].data;
+      }
+
+      if (ref === "Index") {
+        ref = "IndexToDirect";
+      }
+
+      if (ref === "IndexToDirect") {
+        let data = n.childmap[key].props[0].data;
+        let refs = n.childmap[key + "Index"].props[0].data;
+
+        for (let i=0; i<refs.length; i++) {
+          let elem = table[i];
+
+          let cd = elem.customData[li];
+
+          if (cls === UVLayerElem) {
+            cd.uv[0] = data[refs[i]*2];
+            cd.uv[1] = data[refs[i]*2+1];
+          } else if (cls === IntElem || cls === FloatElem) {
+            cd.value = data[refs[i]];
+          }
+        }
+      } else if (ref === "Direct") {
+        let data = n.childmap[key].props[0].data;
+        for (let i=0; i<table.length; i++) {
+          let elem = table[i];
+          let cd = elem.customData[li];
+
+          if (cls === UVLayerElem) {
+            cd.uv[0] = data[i*2];
+            cd.uv[1] = data[i*2+1];
+          } else if (cls === IntElem || cls === FloatElem) {
+            cd.value = data[i];
+          }
+        }
+      }
+
+      return layer;
+    }
+
+    for (let n of node.children) {
+      console.log(n.name);
+      if (n.name === "LayerElementUV") {
+        doCustomData(n, UVLayerElem, "UV");
+      }
+    }
+
+    return mesh;
   }
 
   generate(datalib, scene) {
@@ -49,7 +212,47 @@ export class FBXData {
       return undefined;
     }
 
+    let roots = {};
+    roots["root"] = this.root;
+    for (let node of this.nodes) {
+      roots[node.name] = node;
+    }
 
+    console.log("roots", roots);
+
+    if (!roots.Objects) {
+      console.error("FBX error");
+      return;
+    }
+
+    for (let n of roots.Objects.children) {
+      if (n.name === "Geometry") {
+        console.log("Found a geometry", n);
+        let name = n.props[1].data
+        name = name.split('\0')[0];
+
+        console.log("NAME", `'${name}'`);
+
+        let mesh = this.loadGeometry(n);
+
+        datalib.add(mesh);
+
+        let sob = new SceneObject(mesh);
+
+        datalib.add(sob);
+
+        sob.graphUpdate();
+        mesh.graphUpdate();
+
+        scene.add(sob);
+        scene.objects.setSelect(sob, true);
+        scene.objects.setActive(sob, true);
+
+        window.redraw_viewport();
+
+      }
+    }
+    console.log(roots);
 
   }
 }
@@ -146,14 +349,26 @@ export function loadBinaryFBX(data) {
 
   let fdata = new FBXData(version);
 
-  function readNode() {
+  function readNode(parent) {
     let node = {
+      parent : parent,
       endOffset : reader.uint32(),
       numProperties: reader.uint32(),
       propertyListLen : reader.uint32(),
       name : reader.string(reader.uint8()),
       props : [],
-      children : []
+      children : [],
+      childmap : {},
+    }
+
+    if (name.startsWith("Properties")) {
+      if (!node.attrs) {
+        node.attrs = {};
+      }
+
+      if (parent && !parent.attrs) {
+        parent.attrs = {};
+      }
     }
 
     let had_array = false;
@@ -226,20 +441,53 @@ export function loadBinaryFBX(data) {
       node.props.push(prop);
     }
 
+    if (node.name === "P" && parent && parent.name.startsWith("Properties")) {
+      let attrs = parent.attrs;
+
+      if (!attrs) {
+        attrs = parent.attrs = {};
+      }
+
+      let attrs2 = parent.parent ? parent.parent.attrs : {};
+
+      if (parent.parent && !attrs2) {
+        parent.parent.attrs = attrs2 = {};
+      }
+
+      let name = node.props[0].data;
+      let type = node.props[1].data;
+
+      let data;
+      if (node.props.length > 5) {
+        data = [];
+        for (let i=4; i<node.props.length; i++) {
+          data.push(node.props[i].data);
+        }
+
+      } else {
+        data = node.props[4] ? node.props[4].data : undefined;
+      }
+
+      if (name.trim() !== "") {
+        attrs[name] = attrs2[name] = data;
+      }
+    }
+
     //if (had_array) {
     //  console.log("ri", node.name, JSON.stringify(node.props, undefined, 2));
     //}
 
     while (reader.i < node.endOffset) {
-      let child = readNode();
+      let child = readNode(node);
       node.children.push(child);
+      node.childmap[child.name] = child;
     }
 
     return node;
   }
 
   fdata.root = readNode();
-  fdata.nodes.push(fdata.root);
+  fdata.add(fdata.root);
 
   let _max = 10000;
 
@@ -251,7 +499,7 @@ export function loadBinaryFBX(data) {
     }
 
     //console.log("another node", node);
-    fdata.nodes.push(node);
+    fdata.add(node);
   }
 
   function sanitize(n) {
@@ -323,7 +571,8 @@ window._testFBX = function() {
     let dview = new DataView(data);
     let fbx = loadFBX(dview);
 
-    console.log("FBX", JSON.stringify(fbx.nodes, undefined, 2));
-    console.log("result:", fbx.generate());
+    //console.log("FBX", JSON.stringify(fbx.nodes, undefined, 2));
+    console.log("FBX", fbx);
+    console.log("result:", fbx.generate(_appstate.ctx.datalib, _appstate.ctx.scene));
   });
 }

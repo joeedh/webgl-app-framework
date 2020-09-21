@@ -29,7 +29,7 @@ export class MeshToolBase extends ToolMode {
   constructor(manager) {
     super(manager);
 
-    this.meshPath = "mesh";
+    this.meshPath = "object"; //set to scene object so resolveMesh is happy
     this.selectMask = SelMask.GEOM;
     this.drawSelectMask = SelMask.EDGE|SelMask.VERTEX|SelMask.HANDLE;
 

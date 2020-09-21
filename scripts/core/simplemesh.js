@@ -291,12 +291,13 @@ export class GeoLayer extends Array {
   extend(data) {
     var tot = this.size;
     var starti = this.length;
+
+    //okay, V8's optimizer did *not* like calling push in a for loop,
+    //just increment length instead, according to ES spec this is fine
+    //and it's much faster
+    this.length += tot;
     
-    for (var i=0; i<tot; i++) {
-      this.push(0);
-    }
-    
-    if (data != undefined) {
+    if (data !== undefined) {
       this.copy(~~(starti/this.size), data, 1);
     }
     

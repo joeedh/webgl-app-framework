@@ -16,7 +16,7 @@ export class UVLayerElem extends CustomDataElem {
   }
 
   copy() {
-    let ret = new UVLayer();
+    let ret = new UVLayerElem();
     this.copyTo(ret);
     return ret;
   }
@@ -101,3 +101,105 @@ OrigIndexElem.STRUCT = STRUCT.inherit(OrigIndexElem, CustomDataElem, "mesh.OrigI
 
 nstructjs.manager.add_class(OrigIndexElem);
 CustomDataElem.register(OrigIndexElem);
+
+
+export class FloatElem extends CustomDataElem {
+  constructor() {
+    super();
+
+    this.value = new Vector2();
+  }
+
+  copyTo(b) {
+    b.value = this.value;
+  }
+
+  copy() {
+    let ret = new FloatElem();
+    this.copyTo(ret);
+    return ret;
+  }
+
+  interp(dest, datas, ws) {
+    dest.value = 0.0;
+
+    if (datas.length === 0) {
+      return;
+    }
+
+    for (let i=0; i<datas.length; i++) {
+      dest.value += ws[i]*datas[i].value;
+    }
+  }
+
+  validate() {
+    return true;
+  }
+
+  static define() {return {
+    elemTypeMask: MeshTypes.VERTEX|MeshTypes.EDGE|MeshTypes.LOOP|MeshTypes.HANDLE|MeshTypes.FACE,
+    typeName    : "float",
+    uiTypeName  : "Float",
+    defaultName : "Float Layer",
+    //elemSize : 3,
+    flag     : 0
+  }};
+}
+FloatElem.STRUCT = STRUCT.inherit(FloatElem, CustomDataElem, "mesh.FloatElem") + `
+  value : float;
+}
+`;
+nstructjs.manager.add_class(FloatElem);
+CustomDataElem.register(FloatElem);
+
+
+export class IntElem extends CustomDataElem {
+  constructor() {
+    super();
+
+    this.value = 0;
+  }
+
+  copyTo(b) {
+    b.value = ~~this.value;
+  }
+
+  copy() {
+    let ret = new IntElem();
+    this.copyTo(ret);
+    return ret;
+  }
+
+  interp(dest, datas, ws) {
+    dest.value = 0.0;
+
+    if (datas.length === 0) {
+      return;
+    }
+
+    for (let i=0; i<datas.length; i++) {
+      dest.value += ws[i]*datas[i].value;
+    }
+
+    dest.value = ~~(dest.value + 0.5); //round?
+  }
+
+  validate() {
+    return true;
+  }
+
+  static define() {return {
+    elemTypeMask: MeshTypes.VERTEX|MeshTypes.EDGE|MeshTypes.LOOP|MeshTypes.HANDLE|MeshTypes.FACE,
+    typeName    : "int",
+    uiTypeName  : "Int",
+    defaultName : "Int Layer",
+    //elemSize : 3,
+    flag     : 0
+  }};
+}
+IntElem.STRUCT = STRUCT.inherit(IntElem, CustomDataElem, "mesh.IntElem") + `
+  value : int;
+}
+`;
+nstructjs.manager.add_class(IntElem);
+CustomDataElem.register(IntElem);

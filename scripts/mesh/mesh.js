@@ -1078,7 +1078,7 @@ export class Mesh extends SceneObjectData {
       }
 
       if (uvidx >= 0) {
-        tri.uvs(l1.data[uvidx].uv, l2.data[uvidx].uv, l3.data[uvidx].uv);
+        tri.uvs(l1.customData[uvidx].uv, l2.customData[uvidx].uv, l3.customData[uvidx].uv);
       }
     }
 
@@ -1151,7 +1151,7 @@ export class Mesh extends SceneObjectData {
           }
 
           if (uvidx >= 0) {
-            tri.uvs(l1.data[uvidx].uv, l2.data[uvidx].uv, l3.data[uvidx].uv);
+            tri.uvs(l1.customData[uvidx].uv, l2.customData[uvidx].uv, l3.customData[uvidx].uv);
           }
         }
 

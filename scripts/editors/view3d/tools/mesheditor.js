@@ -93,10 +93,11 @@ export class MeshEditor extends MeshToolBase {
   getMeshPaths() {
     let rets = [];
 
-    for (let ob of this.ctx.selectedMeshObjects) {
-      let path  = `library.mesh[${ob.lib_id}]`
-    }
-    if (this._meshPath === undefined) {
+    //for (let ob of this.ctx.selectedMeshObjects) {
+    //  let path  = `library.mesh[${ob.lib_id}]`
+    //}
+
+    if (this.meshPath === undefined) {
       this._getObject();
 
       if (this.sceneObject !== undefined) {
@@ -104,7 +105,7 @@ export class MeshEditor extends MeshToolBase {
         //set path to parent SceneObject so resolveMesh knows to
         //set ownerMatrix and ownerId
         let path = `objects[${ob.lib_id}]`;
-        this._meshPath = path;
+        return [path];
       } else {
         return [];
       }
@@ -112,7 +113,7 @@ export class MeshEditor extends MeshToolBase {
       //path += ".mesh";
     }
 
-    return [this._meshPath];
+    return [this.meshPath];
   }
 
   static defineAPI(api) {
