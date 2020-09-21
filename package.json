@@ -6,6 +6,6 @@
   "dependencies": {
     "btoa": "^1.2.1",
     "esdoc-standard-plugin": "^1.0.0",
-    "jsdoc": "^3.6.4"
+    "jsdoc": "^3.6.6"
   }
 }

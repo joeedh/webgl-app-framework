@@ -3,24 +3,13 @@
 git submodule init
 git submodule update
 
-echo "Updating potree. . ."
-
-cd scripts/extern/potree
 npm update
 
-echo "Building potree. . ."
-
-npm run-script build
-
-cd ../../../
-
-cp -r scripts/extern/potree/build/potree/resources .
-cp -r scripts/extern/potree/build/potree/workers .
-cp -r scripts/extern/potree/build/potree/lazylibs .
-
-mkdir -p libs/ept
-
-cp -r scripts/extern/potree/libs/ept libs
+if [ ! -d "./scripts/renderengine" ]; then
+  echo "checking out renderengine code"
+  git clone https://github.com/joeedh/webgl-app-shadergraph.git scripts/shadernodes
+  git clone https://github.com/joeedh/wegl-app-renderer.git scripts/renderengine
+fi
 
 echo "Building icon sheets. . ."
 
