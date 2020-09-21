@@ -13,7 +13,6 @@ export const DEBUG = {
   fbo : 0,
   doOnce : false,
   modalEvents : true,
-  potreeEvents : false,
 
   domEvents : false,
   domEventAddRemove : false,

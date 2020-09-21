@@ -3,7 +3,6 @@ import zipfile, os, os.path, sys, glob
 outfile = "./viewer.zip"
 
 sources = [
-  "./docs/**",
   "./scripts/*.js",
   "./scripts/core/**",
   "./scripts/scene/**",
@@ -13,28 +12,19 @@ sources = [
   "./scripts/data_api/**",
   "./scripts/light/**",
   "./scripts/sceneobject/**",
-  "./scripts/potree/**",
-  "./scripts/extern/potree/libs/**",
   "./scripts/renderengine/**",
   "./scripts/shadernodes/**",
   "./scripts/util/**",
   "./scripts/camera/**",
   "./scripts/subsurf/**",
   "./scripts/path.ux/scripts/**",
-  "./scripts/extern/potree/build/**",
   "./scripts/extern/*.js",
-  "./scripts/extern/cdt-js/**",
   "*.html",
   "*.json",
   "*.js",
   "./assets/**",
-  "./workers/**",
-  "./resources/**",
-  "./libs/**",
-  "./examples/**",
   "Readme.MD",
   "*.css",
-  "./lazylibs/**"
 ]
 
 print("Writing " + outfile + "...");
