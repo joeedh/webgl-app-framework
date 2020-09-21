@@ -12,6 +12,7 @@ cd _site
 git checkout gh-pages
 rm -rf scripts node_modules assets
 unzip -q ../app.zip
+git add *
 git commit -a -m "update gh-pages"
 cd ../
 rm -rf _site
