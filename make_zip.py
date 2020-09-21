@@ -1,6 +1,6 @@
 import zipfile, os, os.path, sys, glob
 
-outfile = "./viewer.zip"
+outfile = "./app.zip"
 
 sources = [
   "./scripts/*.js",
@@ -18,7 +18,8 @@ sources = [
   "./scripts/camera/**",
   "./scripts/subsurf/**",
   "./scripts/path.ux/scripts/**",
-  "./scripts/extern/*.js",
+  "./scripts/extern/**",
+  "./node_modules/**",
   "*.html",
   "*.json",
   "*.js",
@@ -49,7 +50,11 @@ for i, path in enumerate(files):
   sys.stdout.write(perc + ": " + path[:64] + "\r");
   sys.stdout.flush()
 
-  zf.write(path)
+  try:
+    zf.write(path)
+  except ValueError:
+    sys.stdout.write("Failed to write " + path + "\n");
+    sys.stdout.flush()
   
 zf.close();
 print("done.")
