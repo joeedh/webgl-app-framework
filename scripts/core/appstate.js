@@ -9,6 +9,8 @@ import {initSimpleController, checkForTextBox, keymap, Vector3, Vector4, Vector2
 
 import './polyfill.js';
 
+import '../util/fbxloader.js';
+
 import {loadShapes} from "./simplemesh_shapes.js";
 
 import '../editors/resbrowser/resbrowser.js';

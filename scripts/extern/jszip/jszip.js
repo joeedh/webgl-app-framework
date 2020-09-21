@@ -1064,6 +1064,11 @@ JSZip.loadAsync = function (content, options) {
 };
 
 JSZip.external = require("./external");
+//XXX hackery -- joe eagar
+//export inflate/deflate functions
+JSZip.deflate = require(39).deflate;
+JSZip.inflate = require(40).inflate;
+
 module.exports = JSZip;
 
 },{"./defaults":5,"./external":6,"./load":11,"./object":15,"./support":30}],11:[function(require,module,exports){

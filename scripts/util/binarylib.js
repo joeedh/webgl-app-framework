@@ -62,7 +62,7 @@ export class BinaryWriter {
 }
 
 export class BinaryReader {
-  constructor(buffer, endian=Endians.LITTLE) {
+  constructor(buffer, endian= Endians.LITTLE) {
     if (buffer instanceof DataView) {
       this.view = buffer;
     } else {
@@ -96,7 +96,37 @@ export class BinaryReader {
     this.i += 4;
     return this.view.getInt32(this.i-4, this.endian);
   }
-  
+
+  int64() {
+    let a = this.uint32();
+    let b = this.uint32();
+
+    if (this.endian !== Endians.LITTLE) {
+      let t = a;
+
+      a = b;
+      b = t;
+    }
+
+    let sign = 1;
+
+    //Check if negative.  Let's see if I'm remembering this right. . .
+    if (b & (1<<31)) {
+      //undo twos complement
+      a = a ^ ((1<<31)-1);
+      b = b ^ ((1<<31)-1);
+
+      sign = -1;
+    }
+
+    return (a | (b<<31)) * sign;
+  }
+
+  uint32() {
+    this.i += 4;
+    return this.view.getUint32(this.i-4, this.endian);
+  }
+
   int16() {
     this.i += 2;
     return this.view.getInt16(this.i-2, this.endian);
@@ -110,7 +140,16 @@ export class BinaryReader {
   at_end() {
     return this.i >= this.view.buffer.byteLength;
   }
-  
+
+  get length() {
+    return this.view.buffer.byteLength;
+  }
+
+  skip(n) {
+    this.i += n;
+    return this;
+  }
+
   uint8() {
     this.i += 1;
     return this.view.getUint8(this.i-1, this.endian);
@@ -128,4 +167,14 @@ export class BinaryReader {
     this.i += n;
     return s;
   }
+}
+
+window._binary_lib_test = function(n) {
+  let d = new Uint32Array(2);
+  d[0] = d[1] = (1<<31)-1;
+
+
+  let r = new BinaryReader(d.buffer);
+
+  return r.int64();
 }
