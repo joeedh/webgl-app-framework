@@ -1,4 +1,7 @@
 # Logs
+app.zip
+scripts/renderengine
+scripts/shadernodes
 logs
 *.log
 npm-debug.log*

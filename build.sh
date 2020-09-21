@@ -6,9 +6,7 @@ git submodule update
 npm update
 
 if [ ! -d "./scripts/renderengine" ]; then
-  echo "checking out renderengine code"
-  git clone https://github.com/joeedh/webgl-app-shadergraph.git scripts/shadernodes
-  git clone https://github.com/joeedh/wegl-app-renderer.git scripts/renderengine
+  bash clone_renderengine.sh
 fi
 
 echo "Building icon sheets. . ."
