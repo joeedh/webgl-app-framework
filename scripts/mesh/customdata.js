@@ -26,6 +26,14 @@ export class CustomDataElem {
 
   }
 
+  setValue(b) {
+    throw new Error("implement me");
+  }
+
+  getValue() {
+    throw new Error("implement me");
+  }
+
   load(b) {
     b.copyTo(this);
     return this;
@@ -58,7 +66,7 @@ export class CustomDataElem {
     typeName     : "typeName",
     uiTypeName   : "uiTypeName",
     defaultName  : "defaultName",
-    //elemSize     : 3,
+    valueSize    : undefined,
     flag         : 0
   }};
 
@@ -72,6 +80,10 @@ export class CustomDataElem {
     if (cls.define === CustomDataElem.define) {
       throw new Error("You forgot to add a static define function for " + cls.name);
     }
+
+    //if (cls.define().valueSize === undefined) {
+    //  throw new Error("You forget to add valid valueSize to define() for customdata");
+    //}
 
     CDElemTypes.push(cls);
     CDElemMap[cls.define().typeName] = cls;
@@ -398,6 +410,25 @@ export class CustomData {
     }
 
     return this.layers[typename] && this.layers[typename].length > 0;
+  }
+
+  getLayerIndex(typename_or_cls) {
+    let typename = typename_or_cls;
+
+    if (typeof typename !== "string") {
+      typename = typename.define().typeName;
+    }
+
+    let i = 0;
+    for (let layer of this.flatlist) {
+      if (layer.typeName === typename) {
+        return i;
+      }
+
+      i++;
+    }
+
+    return -1;
   }
 
   remLayer(layer) {

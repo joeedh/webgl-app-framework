@@ -11,6 +11,14 @@ export class UVLayerElem extends CustomDataElem {
     this.uv = new Vector2();
   }
 
+  setValue(uv) {
+    this.uv.load(uv);
+  }
+
+  getValue() {
+    return this.uv;
+  }
+
   copyTo(b) {
     b.uv.load(this.uv);
   }
@@ -24,7 +32,7 @@ export class UVLayerElem extends CustomDataElem {
   interp(dest, datas, ws) {
     dest.uv.zero();
 
-    if (datas.length == 0) {
+    if (datas.length === 0) {
       return;
     }
 
@@ -43,7 +51,7 @@ export class UVLayerElem extends CustomDataElem {
     typeName    : "uv",
     uiTypeName  : "UV",
     defaultName : "UV Layer",
-    //elemSize : 3,
+    valueSize : 2,
     flag     : 0
   }};
 }
@@ -61,6 +69,14 @@ export class OrigIndexElem extends CustomDataElem {
     super();
 
     this.i = ORIGINDEX_NONE;
+  }
+
+  setValue(i) {
+    this.i = i;
+  }
+
+  getValue() {
+    return this.i;
   }
 
   copyTo(b) {
@@ -90,7 +106,7 @@ export class OrigIndexElem extends CustomDataElem {
     typeName    : "origindex",
     uiTypeName  : "Original Index",
     defaultName : "Original Index",
-    //elemSize : 3,
+    valueSize : 1,
     flag     : 0
   }};
 }
@@ -108,6 +124,14 @@ export class FloatElem extends CustomDataElem {
     super();
 
     this.value = new Vector2();
+  }
+
+  setValue(f) {
+    this.value = f;
+  }
+
+  getValue() {
+    return this.value;
   }
 
   copyTo(b) {
@@ -141,7 +165,7 @@ export class FloatElem extends CustomDataElem {
     typeName    : "float",
     uiTypeName  : "Float",
     defaultName : "Float Layer",
-    //elemSize : 3,
+    valueSize : 1,
     flag     : 0
   }};
 }
@@ -158,6 +182,14 @@ export class IntElem extends CustomDataElem {
     super();
 
     this.value = 0;
+  }
+
+  setValue(i) {
+    this.value = ~~i;
+  }
+
+  getValue() {
+    return this.value;
   }
 
   copyTo(b) {
@@ -193,7 +225,7 @@ export class IntElem extends CustomDataElem {
     typeName    : "int",
     uiTypeName  : "Int",
     defaultName : "Int Layer",
-    //elemSize : 3,
+    valueSize : 1,
     flag     : 0
   }};
 }
@@ -203,3 +235,65 @@ IntElem.STRUCT = STRUCT.inherit(IntElem, CustomDataElem, "mesh.IntElem") + `
 `;
 nstructjs.manager.add_class(IntElem);
 CustomDataElem.register(IntElem);
+
+
+export class NormalLayerElem extends CustomDataElem {
+  constructor() {
+    super();
+
+    this.no = new Vector2();
+  }
+
+  setValue(n) {
+    this.no.load(n);
+  }
+
+  getValue(n) {
+    return this.no;
+  }
+
+  copyTo(b) {
+    b.no.load(this.no);
+  }
+
+  copy() {
+    let ret = new NormalLayerElem();
+    this.copyTo(ret);
+    return ret;
+  }
+
+  interp(dest, datas, ws) {
+    dest.no.zero();
+
+    if (datas.length === 0) {
+      return;
+    }
+
+    for (let i=0; i<datas.length; i++) {
+      dest.no[0] += ws[i]*datas[i].no[0];
+      dest.no[1] += ws[i]*datas[i].no[1];
+      dest.no[2] += ws[i]*datas[i].no[2];
+    }
+
+    dest.no.normalize();
+  }
+
+  validate() {
+    return true;
+  }
+
+  static define() {return {
+    elemTypeMask: MeshTypes.LOOP,
+    typeName    : "normal",
+    uiTypeName  : "Normal",
+    defaultName : "Normal Layer",
+    valueSize : 3,
+    flag     : 0
+  }};
+}
+NormalLayerElem.STRUCT = STRUCT.inherit(NormalLayerElem, CustomDataElem, "mesh.NormalLayerElem") + `
+  no : vec3;
+}
+`;
+nstructjs.manager.add_class(NormalLayerElem);
+CustomDataElem.register(NormalLayerElem);

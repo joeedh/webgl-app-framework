@@ -64,6 +64,7 @@ export class ObjectEditor extends ToolMode {
 
   defineKeyMap() {
     this.keymap = new KeyMap([
+      new HotKey("G", [], "view3d.translate(selmask='OBJECT')"),
       new HotKey("A", [], "object.toggle_select_all(mode='AUTO')"),
       new HotKey("A", ["ALT"], "object.toggle_select_all(mode='SUB')"),
       new HotKey("X", [], "object.delete_selected()"),

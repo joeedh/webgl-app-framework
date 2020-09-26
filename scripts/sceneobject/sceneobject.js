@@ -181,6 +181,22 @@ export class SceneObject extends DataBlock {
     this.update();
   }
 
+  copy(addLibUsers=false) {
+    //note that DataBlock.prototype.copy
+    //will have copied datagraph sockets for us, though not their connections
+
+    let ret = super.copy();
+
+    ret.flag = this.flag;
+    ret.data = this.data;
+
+    if (addLibUsers) {
+      ret.data.addLibUsers(ret);
+    }
+
+    return ret;
+  }
+
   getBoundingBox() {
     let ret = this.data.getBoundingBox();
 
@@ -222,7 +238,7 @@ export class SceneObject extends DataBlock {
   }
 
   dataLink(getblock, getblock_addUser) {
-    this.data = getblock_addUser(this.data);
+    this.data = getblock_addUser(this.data, this);
   }
 
   draw(view3d, gl, uniforms, program) {

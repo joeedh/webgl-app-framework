@@ -155,7 +155,7 @@ export class ObjectList extends Array {
       this.selected.add(ob);
     }
 
-    if (!!(ob.flag & ObjectFlags.SELECT) == !!state) {
+    if (!!(ob.flag & ObjectFlags.SELECT) === !!state) {
       return;
     }
 
@@ -191,7 +191,7 @@ export class ObjectList extends Array {
   dataLink(scene, getblock, getblock_addUser) {
     this.active = getblock(this.active, scene);
 
-    this.collection = getblock_addUser(this.collection);
+    this.collection = getblock_addUser(this.collection, this);
 
     if (this.highlight !== undefined) {
       this.highlight = getblock(this.highlight, scene);
@@ -629,7 +629,7 @@ export class Scene extends DataBlock {
   dataLink(getblock, getblock_addUser) {
     super.dataLink(...arguments);
 
-    this.collection = getblock_addUser(this.collection);
+    this.collection = getblock_addUser(this.collection, this);
 
     if (this._linked) {
       console.log("DOUBLE CALL TO dataLink");

@@ -26,7 +26,7 @@ export * from "./mesh_types.js";
 export * from "./mesh_customdata.js";
 export * from "./mesh_element_list.js";
 
-import {UVLayerElem, OrigIndexElem} from "./mesh_customdata.js";
+import {UVLayerElem, OrigIndexElem, NormalLayerElem} from "./mesh_customdata.js";
 import {Element, Vertex, Edge, Handle, Loop, LoopList, Face} from "./mesh_types.js";
 import {SelectionSet, ElementList} from "./mesh_element_list.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
@@ -66,7 +66,7 @@ export class Mesh extends SceneObjectData {
     this.updateGen = 0;
     this.partialUpdateGen = 0;
 
-    this.drawflag = 0;
+    this.drawflag = MeshDrawFlags.USE_LOOP_NORMALS;
 
     this.eidgen = new util.IDGen();
     this.eidmap = {};
@@ -388,12 +388,18 @@ export class Mesh extends SceneObjectData {
     
     return f;
   }
-  
-  recalcNormals() {
+
+  get hasCustomNormals() {
+    let ret = this.loops.customData.hasLayer(NormalLayerElem);
+    return ret || this.verts.customData.hasLayer(NormalLayerElem);
+    return ret;
+  }
+
+  _recalcNormals_intern() {
     for (let f of this.faces) {
       f.calcNormal();
     }
-    
+
     let i = 0;
     let vtots = new Array(this.verts.length);
     for (let v of this.verts) {
@@ -401,19 +407,63 @@ export class Mesh extends SceneObjectData {
       v.no.zero();
       vtots[v.index] = 0;
     }
-    
+
     for (let f of this.faces) {
       for (let v of f.verts) {
         v.no.add(f.no);
         vtots[v.index]++;
       }
     }
-    
+
     for (let v of this.verts) {
       if (vtots[v.index] > 0) {
         v.no.normalize();
       }
     }
+  }
+
+  recalcNormalsCustom() {
+    if (!this.faces.customData.hasLayer(NormalLayerElem)) {
+      for (let f of this.faces) {
+        f.calcNormal();
+      }
+    }
+
+    if (this.verts.customData.hasLayer(NormalLayerElem)) {
+      return;
+    }
+
+    //regenerate vertex normals if normal layer is in loops or faces?
+    let i = 0;
+    let vtots = new Array(this.verts.length);
+    for (let v of this.verts) {
+      v.index = i++;
+      v.no.zero();
+      vtots[v.index] = 0;
+    }
+
+    for (let f of this.faces) {
+      for (let v of f.verts) {
+        v.no.add(f.no);
+        vtots[v.index]++;
+      }
+    }
+
+    for (let v of this.verts) {
+      if (vtots[v.index] > 0) {
+        v.no.normalize();
+      }
+    }
+  }
+
+  recalcNormals() {
+    if (this.hasCustomNormals) {
+      //try not to override custom normals
+      this.recalcNormalsCustom();
+      return;
+    }
+
+    this._recalcNormals_intern();
   }
   
   killVertex(v, _nocheck=false) {
@@ -1050,14 +1100,30 @@ export class Mesh extends SceneObjectData {
       //line = wm.line(i, l3.v, l1.v); line.ids(i, i);
     }
 
-    //triangle fan
+    let useLoopNormals = this.drawflag & MeshDrawFlags.USE_LOOP_NORMALS;
+    useLoopNormals = useLoopNormals && this.loops.customData.hasLayer(NormalLayerElem);
+
+    let nidx = useLoopNormals ? this.loops.customData.getLayerIndex(NormalLayerElem) : -1;
+
     for (let i=0; i<ltris.length; i += 3) {
       let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
 
       let tri = sm.tri(i, l1.v, l2.v, l3.v);
       tri.colors(w, w, w);
 
-      if (l1.f.flag & MeshFlags.FLAT) {
+      let n1, n2, n3;
+
+      if (useLoopNormals) {
+        n1 = l1.customData[nidx].no;
+        n2 = l2.customData[nidx].no;
+        n3 = l3.customData[nidx].no;
+      } else {
+        n1 = l1.v.no;
+        n2 = l2.v.no;
+        n3 = l3.v.no;
+      }
+
+      if (!useLoopNormals && (l1.f.flag & MeshFlags.FLAT)) {
         tri.normals(l1.f.no, l2.f.no, l3.f.no);
       } else {
         tri.normals(l1.v.no, l2.v.no, l3.v.no);
@@ -1347,7 +1413,7 @@ export class Mesh extends SceneObjectData {
       uniforms.highlight_id = list.highlight !== undefined ? list.highlight.eid : -1;
 
       if (!meshes[key]) {
-        console.warn("missing mesh element draw data");
+        console.warn("missing mesh element draw data", key);
         this.regenElementsDraw();
         return;
       }
@@ -1440,7 +1506,7 @@ export class Mesh extends SceneObjectData {
     this.recalc |= RecalcFlags.RENDER|RecalcFlags.ELEMENTS;
   }
   regenElementsDraw() {
-    this.recalce |= RecalcFlags.ELEMENTS;
+    this.recalc |= RecalcFlags.ELEMENTS;
   }
   regenPartial() {
     this.recalc |= RecalcFlags.PARTIAL|RecalcFlags.ELEMENTS;
@@ -1478,12 +1544,16 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  copy() {
-    let ret = new this.constructor();
+  copy(addLibUsers=false) {
+    let ret = super.copy();
 
     ret.materials = [];
     for (let mat of this.materials) {
       ret.materials.push(mat);
+
+      if (addLibUsers) {
+        mat.lib_addUser(this);
+      }
     }
 
     for (let elist of ret.getElemLists()) {
@@ -1822,7 +1892,7 @@ export class Mesh extends SceneObjectData {
 
   dataLink(getblock, getblock_addUser) {
     for (let i=0; i<this.materials.length; i++) {
-      this.materials[i] = getblock_addUser(this.materials[i]);
+      this.materials[i] = getblock_addUser(this.materials[i], this);
     }
   }
 
@@ -1869,3 +1939,23 @@ Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
 nstructjs.manager.add_class(Mesh);
 DataBlock.register(Mesh);
 SceneObjectData.register(Mesh);
+
+window._debug_recalc_all_normals = function(force=false) {
+  let scene = CTX.scene;
+  for (let ob of scene.objects) {
+    if (ob.data instanceof Mesh) {
+      if (force) {
+        ob.data._recalcNormals_intern();
+        ob.data.regenRender();
+      } else {
+        ob.data.recalcNormals();
+        ob.data.regenRender();
+      }
+
+      ob.graphUpdate();
+      ob.data.graphUpdate();
+      window.updateDataGraph();
+      window.redraw_viewport();
+    }
+  }
+}

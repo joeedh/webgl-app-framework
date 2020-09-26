@@ -268,7 +268,7 @@ export class CameraData extends SceneObjectData {
   dataLink(getblock, getblock_addUser) {
     super.dataLink(getblock, getblock_addUser);
 
-    this.curvespline = getblock_addUser(this.curvespline);
+    this.curvespline = getblock_addUser(this.curvespline, this);
   }
 
 }

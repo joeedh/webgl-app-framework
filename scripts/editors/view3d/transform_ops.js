@@ -73,7 +73,8 @@ export class TransformOp extends View3DOp {
       snapMode   : new EnumProperty(SnapModes.NONE, SnapModes),
       constraint : new Vec3Property([1.0,1.0,1.0]).private(), //locked constraint axes
       constraint_space : new Mat4Property().private(),
-      selmask    : new IntProperty().private(),
+      //selmask    : new IntProperty().private(),
+      selmask    : new FlagProperty("GEOM", SelMask),
       propmode   : new EnumProperty(0, PropModes, undefined,
                    "Prop Mode", "Proportional (magnet) mode",
                    PropFlags.SAVE_LAST_VALUE).private(),

@@ -116,4 +116,4 @@ export class SceneObjectData extends DataBlock {
 SceneObjectData.STRUCT = STRUCT.inherit(SceneObjectData, DataBlock) + `
 }
 `;
-nstructjs.manager.add_class(SceneObjectData);
+nstructjs.register(SceneObjectData);

@@ -8,7 +8,8 @@ export const HandleTypes = {
 };
 
 export const MeshDrawFlags = {
-  SHOW_NORMALS : 1
+  SHOW_NORMALS : 1,
+  USE_LOOP_NORMALS : 2 //use loop normals if they have a NormalElemLayer customdata layer
 };
 
 export const MeshFeatures = {

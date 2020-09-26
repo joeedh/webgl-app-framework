@@ -184,7 +184,8 @@ export class CurveToolBase extends MeshToolBase {
       let data = this.curve !== undefined ? this.curve : CurveSpline;
 
       this.sceneObject = this.ctx.scene.getInternalObject(this.ctx, key, data);
-      this.sceneObject.flag |= ObjectFlags.SELECT;
+      this.ctx.scene.setSelect(this.sceneObject, true);
+
       this.curve = this.sceneObject.data;
       this.curve.owningToolMode = this.constructor.widgetDefine().name;
     }
@@ -245,7 +246,7 @@ export class CurveToolBase extends MeshToolBase {
   dataLink(scene, getblock, getblock_addUser) {
     super.dataLink(...arguments);
 
-    this.curve = getblock_addUser(this.curve);
+    this.curve = getblock_addUser(this.curve, this);
   }
 
   loadSTRUCT(reader) {

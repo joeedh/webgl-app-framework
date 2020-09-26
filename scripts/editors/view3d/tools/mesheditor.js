@@ -200,7 +200,7 @@ export class MeshEditor extends MeshToolBase {
   dataLink(scene, getblock, getblock_addUser) {
     super.dataLink(...arguments);
 
-    this.mesh = getblock_addUser(this.mesh);
+    this.mesh = getblock_addUser(this.mesh, this);
   }
 
   loadSTRUCT(reader) {

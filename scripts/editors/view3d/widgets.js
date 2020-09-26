@@ -132,7 +132,7 @@ export class WidgetShape {
 
     mat.load(this.matrix);
 
-    let scale = IsMobile() ? w*0.15 : w*0.075; //Math.max(w*0.05, 0.01);
+    let scale = util.isMobile() ? w*0.15 : w*0.075; //Math.max(w*0.05, 0.01);
 
     let local = this._tempmat2.load(this.localMatrix);
     if (localMatrix !== undefined) {

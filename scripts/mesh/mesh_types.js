@@ -924,7 +924,7 @@ class LoopIter {
   }
 
   return() {
-    console.log("iterator return");
+    //console.log("iterator return");
 
     if (!this.done) {
       this.done = true;

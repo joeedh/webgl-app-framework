@@ -20,7 +20,7 @@ export class DataBlock extends Node {
   //but doesn't touch the .lib_XXXX properties or .name
   swapDataBlockContents(obj) {
     for (let k in obj) {
-      if (k.startsWith("lib_") || k == "name") {
+      if (k.startsWith("lib_") || k === "name") {
         continue;
       }
       if (k.startsWith("graph_")) {
@@ -43,6 +43,8 @@ export class DataBlock extends Node {
   constructor() {
     super();
 
+    this.lib_userData = {}; //json-compatible custom data
+
     //make sure we're not saving the whole block inside of Library.graph
     this.graph_flag |= NodeFlags.SAVE_PROXY;
 
@@ -56,6 +58,9 @@ export class DataBlock extends Node {
     this.lib_users= 0;
     this.lib_external_ref = undefined; //presently unused
 
+    //note that this is regenerated on file load
+    this.lib_userlist = [];
+
     if (this.lib_flag & BlockFlags.FAKE_USER) {
       this.lib_users = 1;
     }
@@ -64,8 +69,49 @@ export class DataBlock extends Node {
   [Symbol.keystr]() {
     return this.lib_id;
   }
-  
+
+  //deep duplicates block, except for references to other data block which aren't copied
+  //(e.g. a sceneobject doesn't duplicate .data)
+  //if addLibUsers is true, references to other datablocks will get lib_addUser called,
+  copy(addLibUsers=false) {
+    let ret = new this.constructor();
+    DataBlock.prototype.copyTo.call(this, ret, false);
+    return ret;
+  }
+
   destroy() {
+  }
+
+  //like swapDataBlockContents but copies a few lib_ and graph_ fields
+  //and also copys over default socket values
+  //
+  //note that like swapDataBlockContents, this is a "shallow" copy
+  copyTo(b, copyContents=true) {
+    if (copyContents) {
+      b.swapDataBlockContents(this);
+    }
+
+    b.graph_flag = this.graph_flag;
+    b.lib_flag = this.lib_flag;
+    b.lib_userData = JSON.parse(JSON.stringify(this.lib_userData));
+    b.lib_external_ref = this.lib_external_ref;
+
+    //load default graph socket values
+    for (let k in this.inputs) {
+      if (!b.inputs[k]) {
+        continue;
+      }
+
+      b.inputs[k].setValue(this.inputs[k].getValue());
+    }
+
+    for (let k in this.outputs) {
+      if (!b.outputs[k]) {
+        continue;
+      }
+
+      b.outputs[k].setValue(this.outputs[k].getValue());
+    }
   }
 
   /**
@@ -99,14 +145,46 @@ export class DataBlock extends Node {
   dataLink(getblock, getblock_addUser) {
   }
 
+  _validate_userlist() {
+    let stop = false;
+    let _i = 0; //infinite loop guard
+
+    while (!stop && _i++ < 10000) {
+      stop = true;
+
+      for (let block of this.lib_users) {
+        if (block.lib_id < 0) {
+          console.log("Dead block in user list");
+          this.lib_users--;
+          this.lib_users.remove(block);
+          stop = false;
+        }
+      }
+    }
+  }
+
+  lib_getUsers() {
+    this._validate_userlist();
+
+    return this.lib_userlist;
+  }
+
   /**increment reference count*/
   lib_addUser(user) {
+    if (user) {
+      this.lib_userlist.push(user);
+    }
+
     this.lib_users++;
   }
 
   /**decrement reference count*/
   lib_remUser(user) {
     this.lib_users--;
+
+    if (user && this.lib_userlist.indexOf(user) >= 0) {
+      this.lib_userlist.remove(user);
+    }
 
     if (this.lib_users < 0) {
       console.warn("Warning, a datablock had negative users", this.lib_users, this);
@@ -145,10 +223,11 @@ export class DataBlock extends Node {
   }
 }
 DataBlock.STRUCT = STRUCT.inherit(DataBlock, Node) + `
-  lib_id    : int;
-  lib_flag  : int;
-  lib_users : int;
-  name      : string;
+  lib_id       : int;
+  lib_flag     : int;
+  lib_users    : int;
+  name         : string;
+  lib_userData : string | JSON.stringify(this.lib_userData);
 }
 `;
 
@@ -264,7 +343,11 @@ export class BlockSet extends Array {
     this.active = val;
   }
 
-  add(block, _inside_file_load=false) {
+  add(block, _inside_file_load=false, force_unique_name=true) {
+    if (force_unique_name) {
+      block.name = this.uniqueName(block.name);
+    }
+
     let added = this.push(block);
 
     if (added && !_inside_file_load) {
@@ -526,8 +609,8 @@ export class Library {
 
     return this.block_idmap[id_or_dataref_or_name];
   }
-  
-  add(block) {
+
+  add(block, force_unique_name=true) {
     let typename = block.constructor.blockDefine().typeName;
     
     if (!(typename in this.libmap)) {
@@ -538,14 +621,13 @@ export class Library {
           this.libs.push(lib);
           this.libmap[typename] = lib;
 
-          return lib.add(block);
+          return lib.add(block, undefined, force_unique_name);
         }
       }
-      console.log(block);
       throw new Error("invalid blocktype " + typename);
     }
 
-    return this.getLibrary(typename).add(block);
+    return this.getLibrary(typename).add(block, undefined, force_unique_name);
   }
   
   remove(block) {
