@@ -51,7 +51,7 @@ export class Light extends SceneObjectData {
     outputs : Node.inherit()
   }}
 
-  draw(gl, uniforms, program, object) {
+  draw(view3d, gl, uniforms, program, object) {
     if (program !== Shaders.MeshIDShader) {
       program = Shaders.WidgetMeshShader;
       //program = Shaders.MeshIDShader;

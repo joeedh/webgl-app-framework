@@ -410,6 +410,8 @@ export class ObjectTransform {
     this.rot = new Vector3(ob.inputs.rot.getValue());
     this.scale = new Vector3(ob.inputs.scale.getValue());
     this.ob = ob;
+
+    this.invmatrix.load(this.matrix).invert();
   }
 
   copy() {
@@ -476,15 +478,28 @@ export class ObjectTransType extends TransDataType {
   static applyTransform(ctx, elem, do_prop, matrix, toolop) {
     let mat = elem.data2.tempmat;
 
-    mat.makeIdentity();
+    mat.load(elem.data2.matrix);
 
-    mat.multiply(elem.data2.matrix);
-    mat.multiply(elem.data2.invmatrix);
-    mat.multiply(matrix);
+    //mat.makeIdentity();
+
+    mat.preMultiply(matrix);
+    //mat.multiply(elem.data2.invmatrix);
 
     let ob = elem.data1;
 
-    mat.decompose(ob.inputs.loc.getValue(), ob.inputs.rot.getValue(), ob.inputs.scale.getValue());
+    let order = ob.inputs.rotOrder.getValue();
+    let r = undefined, s = undefined;
+
+    r = ob.inputs.rot.getValue();
+    s = ob.inputs.scale.getValue();
+
+    console.log("ORDER", order, ob.name, ob.inputs);
+
+    console.log("ROT1", ob.inputs.rot.getValue());
+    mat.decompose(ob.inputs.loc.getValue(), r, s, undefined, undefined, order);
+    console.log("ROT2", ob.inputs.rot.getValue());
+
+    ob.graphUpdate();
   }
 
   static undoPre(ctx, elemlist) {
@@ -501,11 +516,13 @@ export class ObjectTransType extends TransDataType {
 
   static undo(ctx, undodata) {
     for (let k in undodata) {
+      k = parseInt(k);
+
       let ob = ctx.datalib.get(k);
       let transform = undodata[k];
 
       if (ob === undefined) {
-        console.warn("error in transform", k);
+        console.warn("error in transform", k, typeof k);
         continue;
       }
 
@@ -514,7 +531,7 @@ export class ObjectTransType extends TransDataType {
       ob.inputs.scale.setValue(transform.scale);
       ob.outputs.matrix.setValue(transform.matrix);
 
-      ob.update();
+      ob.graphUpdate();
     }
 
     window.updateDataGraph();
@@ -577,7 +594,7 @@ export class ObjectTransType extends TransDataType {
 
   static update(ctx, elemlist) {
     for (let td of elemlist) {
-      td.data1.update();
+      td.data1.graphUpdate();
     }
 
     window.updateDataGraph();

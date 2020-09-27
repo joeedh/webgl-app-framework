@@ -149,7 +149,10 @@ export class ObjectList extends Array {
   setSelect(ob, state) {
     if (!state) {
       ob.flag &= ~ObjectFlags.SELECT;
-      this.selected.remove(ob);
+
+      if (this.selected.has(ob)) {
+        this.selected.remove(ob);
+      }
     } else {
       ob.flag |= ObjectFlags.SELECT;
       this.selected.add(ob);
@@ -573,7 +576,7 @@ export class Scene extends DataBlock {
     if (this.collection) {
       this.collection.update();
       for (let c of this.collection.flatChildren) {
-        c.update();
+        c.graphUpdate();
       }
     }
 

@@ -3,11 +3,12 @@ import '../path.ux/scripts/util/struct.js';
 import {Light} from '../light/light.js';
 let STRUCT = nstructjs.STRUCT;
 import {Graph, SocketFlags} from '../core/graph.js';
-import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
-import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket} from '../core/graphsockets.js';
+import {Matrix4, EulerOrders, Vector3, Vector4, Quat} from '../util/vectormath.js';
+import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket, EnumSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 
 import * as THREE from '../extern/three.js';
+import {Euler} from "../extern/three/three.module.js";
 
 let loc_rets = util.cachering.fromConstructor(Vector3, 256);
 
@@ -32,6 +33,7 @@ export const ObjectFlags = {
   ACTIVE    : 16,
   INTERNAL  : 32
 };
+
 
 let _mattemp = new Matrix4();
 
@@ -76,14 +78,20 @@ export class SceneObject extends DataBlock {
     }
   }
 
+  graphDisplayName() {
+    return this.name + ":" + this.graph_id + ":" + this.lib_id;
+  }
+
   static nodedef() {
     return {
       inputs: {
         depend: new DependSocket("depend", SocketFlags.MULTI),
         matrix: new Matrix4Socket("matrix"),
-        color: new Vec4Socket("color"),
+        color: new Vec4Socket("color", undefined, [0.5, 0.5, 0.5, 1.0]),
         loc: new Vec3Socket("loc"),
         rot: new Vec3Socket("rot"),
+        rotOrder: new EnumSocket("Euler Order", EulerOrders, undefined,
+          EulerOrders.XYZ),
         scale: new Vec3Socket("scale", undefined, [1, 1, 1])
       },
 
@@ -153,10 +161,15 @@ export class SceneObject extends DataBlock {
       scale[0] = scale[1] = scale[2] = 1.0;
     }
 
-
-    mat.translate(loc[0], loc[1], loc[2]);
-    mat.euler_rotate(rot[0], rot[1], rot[2]);
+    mat.euler_rotate_order(rot[0], rot[1], rot[2], this.inputs.rotOrder.getValue());
     mat.scale(scale[0], scale[1], scale[2]);
+
+    let m = mat.$matrix;
+    m.m41 = loc[0];
+    m.m42 = loc[1];
+    m.m43 = loc[2];
+    m.m44 = 1.0;
+    //mat.translate(loc[0], loc[1], loc[2]);
 
     mat.multiply(pmat);
 
@@ -191,7 +204,7 @@ export class SceneObject extends DataBlock {
     ret.data = this.data;
 
     if (addLibUsers) {
-      ret.data.addLibUsers(ret);
+      ret.data.lib_addUser(ret);
     }
 
     return ret;

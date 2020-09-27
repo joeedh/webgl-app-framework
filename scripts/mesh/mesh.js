@@ -1665,20 +1665,6 @@ export class Mesh extends SceneObjectData {
   }
 
   _on_cdlayer_add(layer, set) {
-    let cls = CustomDataElem.getTypeClass(set.typeName);
-    let mask = layer.elemTypeMask;
-    let index = layer.index;
-    
-    for (let k in MeshTypes) {
-      let flag = MeshTypes[k];
-      //let elist = this.getElem
-      if (mask & flag) {
-        let elist = this.getElemList(flag);
-        for (let e of elist) {
-          e.customData.push(new cls());
-        }
-      }
-    }
   }
   
   _on_cdlayer_rem(layer, set) {
@@ -1959,3 +1945,5 @@ window._debug_recalc_all_normals = function(force=false) {
     }
   }
 }
+
+window.Mesh = Mesh

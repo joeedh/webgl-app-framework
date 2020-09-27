@@ -54,11 +54,9 @@ export class FBXData {
   }
 
   loadGeometry(node) {
-    console.log("Found a geometry", node);
+    //console.log("Found a geometry", node);
     let name = node.props[1].data
     name = name.split('\0')[0];
-
-    console.log("NAME", `'${name}'`);
 
     const lmap = {
       ByVertex : MeshTypes.VERTEX,
@@ -96,8 +94,6 @@ export class FBXData {
 
     let p = node.childmap.PolygonVertexIndex.props[0].data;
     let fvs = [];
-
-    console.log("P", node, p);
 
     for (let i=0; i<p.length; i++) {
       let idx = p[i];
@@ -166,7 +162,6 @@ export class FBXData {
 
       let arrtemp = new Array(valuesize);
 
-      console.log(n, name);
       let layer = elist.addCustomDataLayer(cls, ""+name);
 
       let li = layer.index;
@@ -219,7 +214,6 @@ export class FBXData {
     }
 
     for (let n of node.children) {
-      console.log(n.name);
       if (n.name === "LayerElementUV") {
         doCustomData(n, UVLayerElem, "UV");
       } else if (n.name === "LayerElementNormal") {
@@ -230,7 +224,7 @@ export class FBXData {
     return mesh;
   }
 
-  generate(datalib, scene) {
+  finish() {
     let findNode = (n, name) => {
       if (n.name === name) {
         return n;
@@ -253,8 +247,6 @@ export class FBXData {
       roots[node.name] = node;
     }
 
-    console.log("roots", roots);
-
     if (!roots.Objects) {
       console.error("FBX error");
       return;
@@ -274,7 +266,7 @@ export class FBXData {
           ob.lib_userData.fbx.Shading = n.childmap.Shading.props[0].data;
         }
 
-        console.log("Found a scene object", n, ob);
+        //console.log("Found a scene object", n, ob);
 
         let id = n.props[0].data; //n.addr;
         this.sceneobjects.push(id, ob);
@@ -283,6 +275,9 @@ export class FBXData {
           let v = n.attrs[k];
 
           if (k === "Lcl Rotation") {
+            for (let j=0; j<3; j++) {
+              v[j] = (v[j]/180)*Math.PI;
+            }
             ob.inputs.rot.setValue(v);
           } else if (k === "Lcl Translation") {
             ob.inputs.loc.setValue(v);
@@ -304,11 +299,11 @@ export class FBXData {
           }
         }
       } else if (n.name === "Geometry") {
-        console.log("Found a geometry", n);
+        //console.log("Found a geometry", n);
         let name = n.props[1].data
         name = name.split('\0')[0];
 
-        console.log("NAME", `'${name}'`);
+        //console.log("NAME", `'${name}'`);
 
         let mesh = this.loadGeometry(n);
         let id = n.props[0].data; //n.addr;
@@ -335,17 +330,17 @@ export class FBXData {
       }
     }
 
-    console.log(roots);
+    console.log("ROOTS:", roots);
 
     if (!roots.Connections) { //paranoia check
       roots.Connections = {children : []};
     }
 
     for (let conn of roots.Connections.children) {
-      console.log(conn);
+      //console.log(conn);
       if (conn.props.length > 0 && conn.props[0].data === "OO") {
-        console.log(conn.props[1].data, this.idmap[conn.props[1].data])
-        console.log(conn.props[2].data, this.idmap[conn.props[2].data])
+        //console.log(conn.props[1].data, this.idmap[conn.props[1].data])
+        //console.log(conn.props[2].data, this.idmap[conn.props[2].data])
         let a = this.idmap[conn.props[1].data];
         let b = this.idmap[conn.props[2].data];
 
@@ -368,6 +363,7 @@ export class FBXData {
     for (let ob of this.sceneobjects) {
       if (!ob.data) {
         ob.data = new NullObject();
+        this.datablocks.push(ob.data);
       }
     }
 
@@ -376,8 +372,10 @@ export class FBXData {
   }
 
   instance(datalib, scene) {
+    console.log("Datablocks:", this.datablocks);
+
+    //make sure non-scene-object data is in the datalib
     for (let block of this.datablocks) {
-      //no need to add scene objects themselves as orphan data to data lib
       if (block instanceof SceneObject) {
         continue;
       }
@@ -387,15 +385,20 @@ export class FBXData {
       }
     }
 
+    //add copy of scene objects
     for (let ob of this.datablocks) {
-      if (!(block instanceof SceneObject)) {
+      if (!(ob instanceof SceneObject)) {
         continue;
       }
 
-      let ob2 = ob.copy();
+      let ob2 = ob.copy(true);
+      ob2.name = ob.name;
 
-      ob2.data.lib_addUser(ob2);
+      datalib.add(ob2);
       scene.add(ob2);
+
+      ob2.graphUpdate();
+      ob2.data.graphUpdate();
     }
   }
 }
@@ -691,8 +694,10 @@ export function isBinaryFBX(data) {
 
 /** data is a DataView */
 export function loadFBX(data) {
+  let ret;
+
   if (isBinaryFBX(data)) {
-    return loadBinaryFBX(data);
+    ret = loadBinaryFBX(data);
   } else {
     let str = '';
 
@@ -702,8 +707,11 @@ export function loadFBX(data) {
       str += String.fromCharCode(c);
     }
 
-    return loadTextFBX(str);
+    ret = loadTextFBX(str);
   }
+
+  ret.finish();
+  return ret;
 }
 
 window._testFBX = function() {
@@ -717,8 +725,10 @@ window._testFBX = function() {
     let dview = new DataView(data);
     let fbx = loadFBX(dview);
 
+    fbx.instance(CTX.datalib, CTX.scene);
+
     //console.log("FBX", JSON.stringify(fbx.nodes, undefined, 2));
     console.log("FBX", fbx);
-    console.log("result:", fbx.generate(_appstate.ctx.datalib, _appstate.ctx.scene));
+    //console.log("result:", fbx.generate(_appstate.ctx.datalib, _appstate.ctx.scene));
   });
 }

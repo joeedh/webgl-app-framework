@@ -79,7 +79,12 @@ export class DataBlock extends Node {
     return ret;
   }
 
+  //decriments lib_users in blocks in lib_userlist,
+  //but does *not* actually call their .destroy functions
   destroy() {
+    for (let block of this.lib_userlist) {
+      block.lib_users--;
+    }
   }
 
   //like swapDataBlockContents but copies a few lib_ and graph_ fields
@@ -152,7 +157,7 @@ export class DataBlock extends Node {
     while (!stop && _i++ < 10000) {
       stop = true;
 
-      for (let block of this.lib_users) {
+      for (let block of this.lib_userlist) {
         if (block.lib_id < 0) {
           console.log("Dead block in user list");
           this.lib_users--;
@@ -608,6 +613,16 @@ export class Library {
     }
 
     return this.block_idmap[id_or_dataref_or_name];
+  }
+
+  has(block) {
+    if (block === undefined || block === null) {
+      return false;
+    } else if (block instanceof DataBlock) {
+      return block.lib_id >= 0 && block.lib_id in this.block_idmap;
+    } else {
+      return this.get(block) !== undefined;
+    }
   }
 
   add(block, force_unique_name=true) {

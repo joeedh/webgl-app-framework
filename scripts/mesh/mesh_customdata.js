@@ -241,7 +241,7 @@ export class NormalLayerElem extends CustomDataElem {
   constructor() {
     super();
 
-    this.no = new Vector2();
+    this.no = new Vector3();
   }
 
   setValue(n) {

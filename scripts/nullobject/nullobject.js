@@ -4,8 +4,28 @@ import {DataBlock} from "../core/lib_api.js";
 import {NodeFlags} from "../core/graph.js";
 let STRUCT = nstructjs.STRUCT;
 import {SelMask} from "../editors/view3d/selectmode.js";
+import {Shaders} from "../editors/view3d/view3d_shaders.js";
+import {Shapes} from "../core/simplemesh_shapes.js";
+import {Node} from "../core/graph.js";
 
-export class NullObject {
+export class NullObject extends SceneObjectData {
+  constructor() {
+    super();
+  }
+
+  draw(view3d, gl, uniforms, program, object) {
+    if (program !== Shaders.MeshIDShader) {
+      program = Shaders.WidgetMeshShader;
+      //program = Shaders.MeshIDShader;
+      program.uniforms.color = object.getEditorColor();
+    }
+
+    program.uniforms.objectMatrix = object.outputs.matrix.getValue();
+    uniforms.objectMatrix = object.outputs.matrix.getValue();
+
+    Shapes.SPHERE.draw(gl, uniforms, program);
+  }
+
   static blockDefine() {return {
     typeName    : "nullobject",
     defaultName : "Null Object",

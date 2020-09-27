@@ -400,3 +400,84 @@ FloatSocket.STRUCT = nstructjs.inherit(FloatSocket, NodeSocketType, "graph.Float
 `;
 nstructjs.register(FloatSocket);
 NodeSocketType.register(FloatSocket);
+
+export class EnumSocket extends IntSocket {
+  constructor(uiname, items={}, flag, default_value=undefined) {
+    super(uiname, flag);
+
+    this.items = {};
+    this.value = 0;
+
+    if (default_value !== undefined) {
+      this.value = default_value;
+    }
+
+    this.uimap = {};
+    for (let k in this.items) {
+      let k2 = k2.split("-_ ");
+      let uiname = "";
+
+      for (let item of k2) {
+        uiname += k[0].toUpperCase() + k.slice(1, k.length).toLowerCase() + " ";
+      }
+
+      let v = this.items[k];
+      this.uimap[k] = this.items[v] = uiname.trim();
+    }
+  }
+
+  addUiItems(items) {
+    for (let k in items) {
+      this.uimap[k] = items[k];
+    }
+  }
+  static nodedef() {return {
+    name : "int",
+    uiname : "Integer",
+    color : [0.0,0.75,0.25,1]
+  }}
+
+  diffValue(b) {
+    return (this.value - b);
+  }
+
+  copyValue() {
+    return ~~this.value;
+  }
+
+  getValue() {
+    return ~~this.value;
+  }
+
+  setValue(b) {
+    if (b === undefined || b === "") {
+      return;
+    }
+
+    if (typeof b === "string") {
+      if (b in this.items) {
+        b = this.items[b];
+      } else {
+        throw new Error("bad enum item" + b);
+      }
+    }
+
+    this.value = ~~b;
+  }
+
+  cmpValue(b) {
+    return ~~this.value !== ~~b;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+
+    this.value = !!this.value;
+  }
+};
+EnumSocket.STRUCT = nstructjs.inherit(EnumSocket, IntSocket, "graph.EnumSocket") + `
+}
+`;
+nstructjs.register(EnumSocket);
+NodeSocketType.register(EnumSocket);
