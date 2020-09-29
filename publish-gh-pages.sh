@@ -1,7 +1,7 @@
 #!/bin/bash
 
 git commit -a
-if git pull; then
+if git pull; then;
 else
   echo "git pull failed"
   exit 1
