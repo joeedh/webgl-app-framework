@@ -25,6 +25,21 @@ export class MeshCreateOp extends MeshOp {
     super();
   }
 
+  modalStart(ctx) {
+    super.modalStart(ctx);
+    this.modalEnd(false);
+
+    if (ctx.scene && ctx.scene.toolmode) {
+      let toolmode = ctx.scene.toolmode;
+
+      if (!(toolmode instanceof MeshToolBase)) {
+        this.inputs.makeNewObject.setValue(true);
+      }
+    }
+
+    this.exec(ctx);
+  }
+
   static invoke(ctx, args) {
     let tool = super.invoke(ctx, args);
 
@@ -50,6 +65,7 @@ export class MeshCreateOp extends MeshOp {
       transformMatrix   : new Mat4Property()
     }),
 
+    is_modal : true,
     outputs : {
       newObject : new DataRefProperty()
     }
@@ -102,6 +118,7 @@ export class MakePlaneOp extends MeshCreateOp {
   static tooldef() {return {
     toolpath : "mesh.make_plane",
     uiname   : "Make Plane",
+    is_modal : true,
     inputs   : ToolOp.inherit({
       size : new FloatProperty(1.0)
     }),
@@ -147,6 +164,7 @@ export class MakeCubeOp extends MeshCreateOp {
   static tooldef() {return {
     toolpath : "mesh.make_cube",
     uiname   : "Make Cube",
+    is_modal : true,
     inputs   : ToolOp.inherit({
       size : new FloatProperty(1.0)
     }),

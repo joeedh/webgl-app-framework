@@ -38,7 +38,7 @@ import {Vertex, Edge, Element, Loop, Face, Handle} from '../mesh/mesh_types.js';
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js';
 import {Material} from '../core/material.js';
 import '../shadernodes/allnodes.js';
-import {ShaderNode} from '../shadernodes/shader_nodes.js';
+import {OutputNode, ShaderNode} from '../shadernodes/shader_nodes.js';
 import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph.js';
 import {SceneObject} from '../sceneobject/sceneobject.js';
 import {SelectOneOp} from '../sceneobject/selectops.js';
@@ -405,7 +405,46 @@ function api_define_shadernetwork(api, parent) {
 }
 
 function api_define_material(api) {
-  api.inheritStruct(Material, ShaderNetwork);
+  let st = api.inheritStruct(Material, ShaderNetwork);
+
+  function getShaderNode(mat) {
+    let graph = mat.graph;
+    let out;
+
+    for (let node of graph.nodes) {
+      if (node instanceof OutputNode) {
+        out = node;
+        break;
+      }
+    }
+
+    if (!out) {
+      return undefined;
+    }
+
+    for (let e of out.inputs.surface.edges) {
+      return e.node;
+    }
+  }
+
+  let def = st.bool("", "has_shader", "Has Shader", "Has Shader");
+
+  def.customGetSet(function() {
+    return getShaderNode(this.dataref) !== undefined;
+  }, undefined /*function(val) {
+    //do nothing
+  }*/);
+
+  st.dynamicStruct("", "shader", "shader", "Shading Node");
+  //dynamicStruct return a struct, not the owning datapath
+  def = st.pathmap.shader;
+  console.log("DEF", def);
+
+  def.customGetSet(function() {
+    return getShaderNode(this.dataref);
+  }, undefined);
+
+  //api.color4("diffuse")
 }
 
 function api_define_sceneobject(api, parent) {
@@ -645,10 +684,14 @@ export function api_define_envlight(api) {
   }
 
   estruct.color3("color", "color", "Color", "Ambient light color").on("change", onchange);
-  estruct.float("power", "power", "Power", "Power of ambient light power").on("change", onchange);
-  estruct.flags("flag", "flag", EnvLightFlags, "flag", "Ambient light flags").on("change", onchange);
-  estruct.float("ao_dist", "ao_dist", "Distance").on("change", onchange);
-  estruct.float("ao_fac", "ao_fac", "Factor").on("change", onchange);
+  estruct.float("power", "power", "Power", "Power of ambient light power")
+    .on("change", onchange).noUnits();
+  estruct.flags("flag", "flag", EnvLightFlags, "flag", "Ambient light flags")
+    .on("change", onchange);
+  estruct.float("ao_dist", "ao_dist", "Distance")
+    .on("change", onchange).noUnits();
+  estruct.float("ao_fac", "ao_fac", "Factor")
+    .on("change", onchange).noUnits();
 
   return estruct;
 }

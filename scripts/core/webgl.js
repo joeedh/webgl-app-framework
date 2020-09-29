@@ -64,6 +64,8 @@ export function addFastParameterGet(gl) {
   let validkeys = new Set([gl.DEPTH_TEST, gl.DEPTH_WRITEMASK, gl.SCISSOR_BOX, gl.VIEWPORT]);
 
   gl.depthMask = function(mask) {
+    mask = !!mask;
+
     if (mask !== map[gl.DEPTH_WRITEMASK]) {
       map[gl.DEPTH_WRITEMASK] = mask;
       gl._depthMask(mask);
@@ -71,10 +73,10 @@ export function addFastParameterGet(gl) {
   };
 
   gl.viewport = function (x, y, w, h) {
-    if (map.VIEWPORT === undefined) {
-      map.VIEWPORT = [x, y, w, h];
+    if (map[gl.VIEWPORT] === undefined) {
+      map[gl.VIEWPORT] = [x, y, w, h];
     } else {
-      let box = map.VIEWPORT;
+      let box = map[gl.VIEWPORT];
       box[0] = x;
       box[1] = y;
       box[2] = w;
@@ -85,10 +87,10 @@ export function addFastParameterGet(gl) {
   };
 
   gl.scissor = function(x, y, w, h) {
-    if (map.SCISSOR_BOX === undefined) {
-      map.SCISSOR_BOX = [x, y, w, h];
+    if (map[gl.SCISSOR_BOX] === undefined) {
+      map[gl.SCISSOR_BOX] = [x, y, w, h];
     } else {
-      let box = map.SCISSOR_BOX;
+      let box = map[gl.SCISSOR_BOX];
       box[0] = x;
       box[1] = y;
       box[2] = w;
@@ -116,6 +118,7 @@ export function addFastParameterGet(gl) {
     gl._disable(p);
   }
 
+  //*
   gl.getParameter = function(p) {
     if (p !== undefined && !validkeys.has(p)) {
       return gl._getParameter(p);
@@ -137,15 +140,9 @@ export function addFastParameterGet(gl) {
     }
 
     return map[p];
-  }
+  }//*/
 }
 //*/
-
-let shapes = {};
-
-export function drawBox(p, matrix, color, mode) {
-
-}
 
 export function onContextLost(e) {
   for (let k in shapes) {
@@ -154,12 +151,12 @@ export function onContextLost(e) {
 }
 
 //params are passed to canvas.getContext as-is
-export function init_webgl(canvas, params) {
+export function init_webgl(canvas, params={}) {
   if (_gl !== undefined) {
     return _gl;
   }
 
-  let webgl2 = true;
+  let webgl2 = params.webgl2 !== undefined ? params.webgl2 : true;
   let gl;
 
   if (webgl2) {
@@ -178,7 +175,7 @@ export function init_webgl(canvas, params) {
   canvas.addEventListener(
     "webglcontextrestored", onContextLost, false);
 
-  addFastParameterGet(gl);
+  //addFastParameterGet(gl);
 
   _gl = gl;
   gl.haveWebGL2 = webgl2;
@@ -194,11 +191,14 @@ export function init_webgl(canvas, params) {
   window._constmap = constmap;
 
   gl.texture_float = gl.getExtension("OES_texture_float");
+  gl.texture_float = gl.getExtension("OES_texture_float_linear");
   gl.float_blend = gl.getExtension("EXT_float_blend");
   gl.getExtension("OES_standard_derivatives");
   gl.getExtension("ANGLE_instanced_arrays");
   gl.getExtension("WEBGL_lose_context");
   gl.draw_buffers = gl.getExtension("WEBGL_draw_buffers");
+
+
   gl.depth_texture = gl.getExtension("WEBGL_depth_texture");
   //gl.getExtension("WEBGL_debug_shaders");
   
@@ -423,7 +423,13 @@ export class ShaderProgram {
     if (!linked && !gl.isContextLost()) {
         // something went wrong with the link
         var error = gl.getProgramInfoLog (program);
+
+        console.log("\nVERTEX:\n" + format_lines(vshader));
+        console.log("\nFRAGMENT\n:" + format_lines(fshader));
+
         console.log("Error in program linking:"+error);
+
+        gl.deleteProgram(program);
 
         //do nothing
         //gl.deleteProgram(program);
@@ -432,7 +438,7 @@ export class ShaderProgram {
 
         return null;
     }
-    
+
     //console.log("created shader", program);
 
     this.program = program;
@@ -488,8 +494,14 @@ export class ShaderProgram {
   }
 
   destroy(gl) {
+    if (gl && this.program) {
+      gl.deleteProgram(this.program);
+      this.uniforms = {};
+      this.program = undefined;
+    }
+
     //XXX implement me
-    console.warn("ShaderProgram.prototype.destroy: implement me!");
+    //console.warn("ShaderProgram.prototype.destroy: implement me!");
   }
 
   uniformloc(name) {
@@ -519,7 +531,11 @@ export class ShaderProgram {
       this.init(gl);
       
       if (this.rebuild) 
-        return; //failed to initialize
+        return false; //failed to initialize
+    }
+
+    if (!this.program) {
+      return false;
     }
     
     function setv(dst, src, n) {

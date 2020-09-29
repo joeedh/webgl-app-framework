@@ -195,7 +195,8 @@ export class MenuBarEditor extends Editor {
     ];
 
     strip.menu("Add", [
-      "mesh.make_cube()"
+      "mesh.make_cube()",
+      "light.new()",
     ]);
 
     strip.menu("Session", [

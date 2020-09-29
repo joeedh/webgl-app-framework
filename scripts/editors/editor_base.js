@@ -10,7 +10,7 @@ import './theme.js';
 let STRUCT = nstructjs.STRUCT;
 import {Area, ScreenArea} from '../path.ux/scripts/screen/ScreenArea.js';
 import {Screen} from '../path.ux/scripts/screen/FrameManager.js';
-import {UIBase} from '../path.ux/scripts/core/ui_base.js';
+import {UIBase, saveUIData, loadUIData} from '../path.ux/scripts/core/ui_base.js';
 import {Container} from '../path.ux/scripts/core/ui.js';
 import * as util from '../util/util.js';
 import {haveModal} from "../path.ux/scripts/util/simple_events.js";
@@ -303,6 +303,9 @@ import {ToolClasses, ToolFlags, ToolMacro} from "../path.ux/scripts/toolsys/simp
 import {Menu} from "../path.ux/scripts/widgets/ui_menu.js";
 import * as ui_base from "../path.ux/scripts/core/ui_base.js";
 import {time_ms} from "../util/util.js";
+import {MakeMaterialOp} from "../core/material.js";
+import {SocketFlags} from "../core/graph.js";
+import {DependSocket} from "../core/graphsockets.js";
 
 function spawnToolSearchMenu(ctx) {
   let tools = [];
@@ -430,7 +433,6 @@ export class App extends Screen {
       return;
     }
 
-    console.log("resizing canvas");
     canvas.width = w2;
     canvas.height = h2;
 
@@ -595,3 +597,287 @@ window.setInterval(() => {
     last_time = util.time_ms();
   }
 }, 1000.0 / 30.0);
+
+export class MeshMaterialChooser extends Container {
+  constructor() {
+    super();
+
+    this.addButton = undefined;
+    this._last_mesh_key = undefined;
+    this._activeMatCache = [];
+    this._activeMatCacheSize = 5;
+  }
+
+  init() {
+    this.doOnce(this.rebuild);
+  }
+
+  getActive(mesh) {
+    if (!mesh) return 0;
+
+    for (let i=0; i<this._activeMatCache.length; i += 2) {
+      if (this._activeMatCache[i] === mesh.lib_id) {
+        let ret = this._activeMatCache[i+1];
+
+        if (ret >= mesh.materials.length) {
+          ret = this._activeMatCache[i+1] = mesh.materials.length-1;
+        }
+
+        return ret;
+      }
+    }
+
+    this.setActive(mesh, 0);
+    return 0;
+  }
+
+  saveData() {
+    return Object.assign(super.saveData(), {
+      _activeMatCache : this._activeMatCache
+    });
+  }
+
+  loadData(data) {
+    super.loadData(data);
+
+    if (data._activeMatCache) {
+      this._activeMatCache = data._activeMatCache;
+    }
+
+    return this;
+  }
+
+  setActive(mesh, mati) {
+    let idx = -1;
+
+    for (let i=0; i<this._activeMatCache.length; i += 2) {
+      if (this._activeMatCache[i] === mesh.lib_id) {
+        idx = i;
+        break;
+      }
+    }
+
+    if (idx < 0) {
+      if (this._activeMatCache.length >= this._activeMatCacheSize) {
+        this._activeMatCache.pop();
+      }
+      this._activeMatCache = [mesh.lib_id, mati].concat(this._activeMatCache);
+    } else {
+      this._activeMatCache[idx+1] = mati;
+    }
+  }
+
+  rebuild() {
+    let uidata = saveUIData(this, "material chooser");
+
+    this.clear();
+    let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute("datapath"));
+
+    if (!mesh) {
+      return;
+    }
+
+    this.label(mesh.name);
+
+    if (this.onchange) {
+      this.onchange(this.getActive(mesh));
+    }
+
+    if (mesh.materials.length === 0) {
+      this.button("Add Material", () => {
+        let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute("datapath"));
+        let op = new MakeMaterialOp();
+
+        this.ctx.toolstack.execTool(this.ctx, op);
+        let mat = op.outputs.materialID.getValue();
+        mat = this.ctx.datalib.get(mat);
+
+        mesh.materials.push(mat);
+        mat.lib_addUser(mesh);
+
+        if (this.onchange) {
+          this.onchange(mesh.materials.length-1);
+        }
+      });
+
+      return;
+    }
+
+    let box = this.listbox();
+    let i = 0;
+    for (let mat of mesh.materials) {
+      box.addItem(mat.name, i);
+      i++;
+    }
+    box.setActive(box.items[this.getActive(mesh)]);
+
+    box.onchange = (id, item) => {
+      if (this.onchange) {
+        this.onchange(id);
+
+        mesh = this.ctx.api.getValue(this.ctx, this.getAttribute("datapath"));
+        this.setActive(mesh, id);
+      }
+    }
+
+    loadUIData(this, uidata);
+    this.flushUpdate();
+  }
+
+  update() {
+    super.update();
+
+    if (!this.ctx || !this.hasAttribute("datapath")) {
+      return;
+    }
+
+    let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute("datapath"));
+    let key = "";
+
+    if (mesh) {
+      key += mesh.lib_id + ":" + mesh.name + ":" + mesh.materials.length;
+
+      for (let mat of mesh.materials) {
+        key += ":" + mat.lib_id;
+      }
+    }
+
+    if (key !== this._last_mesh_key) {
+      this._last_mesh_key = key;
+      this.doOnce(this.rebuild);
+    }
+  }
+
+  static define() {return {
+    tagname : "mesh-material-chooser-x"
+  }}
+}
+
+UIBase.register(MeshMaterialChooser);
+
+export class MeshMaterialPanel extends Container {
+  constructor() {
+    super();
+  }
+
+  init() {
+    this.chooser = document.createElement("mesh-material-chooser-x");
+    if (this.hasAttribute("datapath")) {
+      this.chooser.setAttribute("datapath", this.getAttribute("datapath"));
+    }
+    this.add(this.chooser);
+
+    this.subpanel = this.col();
+
+    this.chooser.onchange = () => {
+      this.doOnce(this.rebuild);
+    };
+  }
+
+  rebuild() {
+    if (!this.ctx || !this.hasAttribute("datapath")) {
+      console.error("eek!");
+      return;
+    }
+
+    let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute("datapath"));
+
+    console.log("Material panel rebuild");
+
+    let uidata = saveUIData(this.subpanel, "mesh material panel");
+    this.subpanel.clear();
+
+    if (!mesh) {
+      loadUIData(this.subpanel, uidata);
+      return;
+    }
+
+    let mati = this.chooser.getActive(mesh);
+    let datapath = this.getAttribute("datapath");
+    let mat = mesh.materials[mati];
+
+    if (!mat) {
+      loadUIData(this.subpanel, uidata);
+      return;
+    }
+
+    let dataPrefix = this.subpanel.dataPrefix = `${datapath}.materials[${mati}].`;
+
+    console.warn("PREFIX", this.subpanel.dataPrefix, "yay", mesh);
+
+    this.subpanel.prop("has_shader");
+
+    if (this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix+"has_shader")) {
+      let node = this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix+"shader");
+
+      for (let k in node.inputs) {
+        let sock = node.inputs[k];
+        let bad = sock.edges.length > 0;
+        bad = bad || (sock.graph_flag & SocketFlags.PRIVATE);
+        bad = bad || sock instanceof DependSocket;
+
+        if (bad) {
+          continue;
+        }
+
+        let subpath = dataPrefix + `shader.inputs["${k}"].`;
+        this.subpanel.dataPrefix = subpath;
+        this.subpanel.inherit_packflag |= PackFlags.NO_NUMSLIDER_TEXTBOX;
+
+        sock.buildUI(this.subpanel, () => {});
+      }
+
+      this.subpanel.dataPrefix = dataPrefix;
+    }
+
+
+    loadUIData(this.subpanel, uidata);
+  }
+
+  getShadingNode() {
+    if (!this.hasAttribute("datapath")) {
+      return;
+    }
+
+    let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute("datapath"));
+    if (!mesh) {
+      return;
+    }
+
+    let mat = this.chooser.getActive(mesh);
+    return this.ctx.api.getValue(this.ctx, this.getAttribute("datapath") + `.materials[${mat}].shader`);
+  }
+  update() {
+    if (!this.chooser || !this.ctx) {
+      return;
+    }
+
+    super.update();
+
+    let rebuild = false;
+
+    if (this.hasAttribute("datapath")) {
+      if (this.getAttribute("datapath") !== this.chooser.getAttribute("datapath")) {
+        this.chooser.setAttribute("datapath", this.getAttribute("datapath"));
+        rebuild = true;
+      }
+    }
+
+    let node = this.getShadingNode();
+    let name = node ? node.constructor.name : "undefined";
+
+    if (name !== this._lastnode_name) {
+      this._lastnode_name = name;
+      rebuild = true;
+    }
+
+    if (rebuild) {
+      this.doOnce(this.rebuild);
+    }
+  }
+
+  static define() {return {
+    tagname : "mesh-material-panel-x"
+  }}
+}
+UIBase.register(MeshMaterialPanel);

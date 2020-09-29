@@ -92,15 +92,19 @@ export class ResourceManager {
     let ui_value_names = {};
     let icons = {};
 
+    let name = "";
+
     for (let cls of this.classes) {
       let def = cls.resourceDefine();
+
+      name = def.name;
 
       e[def.name] = def.name;
       ui_value_names[def.name] = def.uiName;
       icons[def.name] = (def.icon !== undefined && def.icon !== null) ? def.icon : -1;
     }
 
-    let prop = new EnumProperty("pointset", e);
+    let prop = new EnumProperty(name, e);
     prop.ui_value_names = ui_value_names;
     prop.addIcons(icons);
 

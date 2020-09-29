@@ -35,12 +35,27 @@ export class PropsEditor extends Editor {
     let tab;
 
     tab = this.tabs.tab("Scene");
+    let panel = tab.panel("Render Settings");
+    panel.prop("scene.envlight.color");
+    panel.prop("scene.envlight.power");
+    panel.prop("scene.envlight.flag");
+    panel.prop("scene.envlight.ao_dist");
+    panel.prop("scene.envlight.ao_fac");
+
     tab = this.tabs.tab("Material");
+    this.materialPanel(tab);
+
     tab = this.tabs.tab("Object");
 
     tab = this.tabs.tab("Last Command");
     let last = document.createElement("last-tool-panel-x")
     tab.add(last);
+  }
+
+  materialPanel(tab) {
+    let panel = document.createElement("mesh-material-panel-x");
+    panel.setAttribute("datapath", "mesh");
+    tab.add(panel);
   }
 
   update() {

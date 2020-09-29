@@ -26,7 +26,8 @@ export const SocketFlags = {
   SELECT : 1, //for use by ui
   UPDATE : 2,
   MULTI  : 4, //socket can have multiple connections, enable by default for outputs
-  NO_MULTI_OUTPUTS : 8 //don't flag outputs with MULTI by default
+  NO_MULTI_OUTPUTS : 8, //don't flag outputs with MULTI by default
+  PRIVATE : 16
 };
 
 /**
@@ -1094,7 +1095,6 @@ export class Graph {
   //context is provided by client code
   exec(context, force_single_solve=false) {
     if (this.graph_flag & GraphFlags.RESORT) {
-      console.log("resorting graph");
       this.sort();
     }
     

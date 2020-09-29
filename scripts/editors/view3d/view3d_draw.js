@@ -6,6 +6,8 @@ import {SelMask} from "./selectmode.js";
 import {Shaders} from "../../shaders/shaders.js";
 import {View3DFlags} from './view3d_base.js';
 
+//TODO: get rid of this file
+
 export const Colors = {
   DRAW_DEBUG : [0, 1.0, 0.5, 1.0],
   SELECT     : [1.0, 0.8, 0.4, 1.0],

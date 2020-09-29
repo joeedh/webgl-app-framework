@@ -353,13 +353,13 @@ export class RGBASocket extends Vec4Socket {
 
   buildUI(container, onchange) {
     if (this.edges.length === 0) {
-      container.colorbutton(container._joinPrefix("value"));
+      container.colorbutton("value");
       /*
       container.button(this.uiname, () => {
         console.log("edit color, yay");
 
         let colorpicker = container.ctx.screen.popup(container);
-        let widget = colorpicker.colorPicker(container._joinPrefix("value"));
+        let widget = colorpicker.colorPicker("value");
 
         widget.onchange = onchange;
       });//*/
@@ -382,7 +382,7 @@ export class FloatSocket extends NodeSocketType {
   }
 
   static apiDefine(api, sockstruct) {
-    sockstruct.float('value', 'value', 'value');
+    sockstruct.float('value', 'value', 'value').noUnits();
   }
 
   static nodedef() {return {

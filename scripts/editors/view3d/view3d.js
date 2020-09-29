@@ -241,10 +241,6 @@ export function initWebGL() {
   });
   renderer.sortObjects = false;
 
-  gl.getExtension("EXT_color_buffer_float");
-  gl.getExtension('EXT_frag_depth');
-  gl.getExtension('WEBGL_depth_texture');
-  
   if (!gl.createVertexArray) {
     //*
     let extVAO = gl.getExtension('OES_vertex_array_object');
@@ -313,6 +309,8 @@ export class DrawLine {
 export class View3D extends Editor {
   constructor() {
     super();
+
+    this._last_camera_hash = undefined;
 
     //current calculated fps
     this.fps = 60.0;
@@ -471,7 +469,6 @@ export class View3D extends Editor {
     this.addGraphNode(this._graphnode);
 
     let node = CallbackNode.create("toolmode change", () => {
-      console.log("toolmode change detected");
       this.rebuildHeader();
     }, {
       onToolModeChange : new DependSocket("onToolModeChange")
@@ -814,7 +811,7 @@ export class View3D extends Editor {
     //});
 
     this.setCSS();
-
+    header.flushUpdate();
   }
 
   init() {
@@ -1034,6 +1031,19 @@ export class View3D extends Editor {
     }
   }
 
+  checkCamera() {
+    let cam = this.activeCamera;
+
+    if (cam) {
+      let hash = cam.generateUpdateHash();
+
+      if (hash !== this._last_camera_hash && this.renderEngine) {
+        this._last_camera_hash = hash;
+        this.renderEngine.resetRender();
+      }
+    }
+  }
+
   update() {
     if (this.ctx.scene !== undefined) {
       this.ctx.scene.updateWidgets();
@@ -1045,6 +1055,9 @@ export class View3D extends Editor {
       this.ctx.screen.snapScreenVerts();
       this.ctx.screen.regenBorders();
     }
+
+
+    this.checkCamera();
 
     //TODO have limits for how many samplers to render
     if (time_ms() - this._last_render_draw > 100) {
@@ -1243,6 +1256,7 @@ export class View3D extends Editor {
       this.threeCamera.camera = this.activeCamera;
     }
 
+    this.checkCamera();
     this.overdraw.clear();
 
     if (!this.gl) {
@@ -1265,14 +1279,14 @@ export class View3D extends Editor {
     }
   }
 
-  drawRender() {
+  drawRender(extraDrawCB) {
     let gl = this.gl;
 
     if (this.renderEngine === undefined) {
       this.renderEngine = new RealtimeEngine(this);
     }
 
-    this.renderEngine.render(this.activeCamera, this.gl, this.glPos, this.glSize, this.ctx.scene);
+    this.renderEngine.render(this.activeCamera, this.gl, this.glPos, this.glSize, this.ctx.scene, extraDrawCB);
   }
 
   drawThreeScene() {
@@ -1371,74 +1385,54 @@ export class View3D extends Editor {
     //this._testCamera();
     //window.redraw_viewport();
 
-    let drawgrid = this.flag & View3DFlags.SHOW_GRID;
+    let drawIntern = () => {
+      let drawgrid = this.flag & View3DFlags.SHOW_GRID;
 
-    gl.depthMask(true);
-    gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.SCISSOR_TEST);
+      gl.depthMask(true);
+      gl.enable(gl.DEPTH_TEST);
 
-    if (this.grid !== undefined && drawgrid) {
-      //console.log("drawing grid");
-      
-      this.grid.program = view3d_shaders.Shaders.BasicLineShader;
-      
-      this.grid.uniforms.projectionMatrix = this.activeCamera.rendermat;
-      this.grid.draw(gl);
+      if (this.grid !== undefined && drawgrid) {
+        //console.log("drawing grid");
+
+        this.grid.program = view3d_shaders.Shaders.BasicLineShader;
+
+        this.grid.uniforms.projectionMatrix = this.activeCamera.rendermat;
+        this.grid.draw(gl);
+      }
+
+      this.drawThreeScene();
+      this.drawObjects();
+
+      if (scene.toolmode) {
+        scene.toolmode.on_drawstart(gl, this);
+      }
+
+      if (this.drawlines.length > 0) {
+        this.drawDrawLines(gl);
+      }
+
+      gl.depthMask(true);
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.SCISSOR_TEST);
+
+
+      this._graphnode.outputs.onDrawPost.immediateUpdate();
+
+      gl.clear(gl.DEPTH_BUFFER_BIT);
+      this.widgets.draw(this.gl, this);
+
+      if (scene.toolmode) {
+        scene.toolmode.on_drawend(gl, this);
+      }
+
+      gl.disable(gl.BLEND);
     }
-
-
-    //for (let ed of this.editors) {
-    //  ed.on_drawstart(gl);
-    //}
 
     if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
-      this.drawRender();
+      this.drawRender(drawIntern);
+    } else {
+      drawIntern();
     }
-
-    this.drawThreeScene();
-    this.drawObjects();
-
-    if (scene.toolmode) {
-      scene.toolmode.on_drawstart(gl, this);
-    }
-
-    if (this.drawlines.length > 0) {
-      this.drawDrawLines(gl);
-    }
-
-    gl.depthMask(true);
-    gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.SCISSOR_TEST);
-
-
-    this._graphnode.outputs.onDrawPost.immediateUpdate();
-
-    gl.clear(gl.DEPTH_BUFFER_BIT);
-    this.widgets.draw(this.gl, this);
-
-    if (scene.toolmode) {
-      scene.toolmode.on_drawend(gl, this);
-    }
-
-    /*
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    gl.disable(gl.DEPTH_TEST);
-
-    let camera = this.camera;
-
-    textsprite.testDraw(gl, {
-      projectionMatrix : camera.rendermat,
-      normalMatrix     : camera.normalmat,
-      objectMatrix     : new Matrix4(),
-      size             : [this.glSize[0], this.glSize[1]],
-      shift            : [0, 0],
-      polygonOffset    : 0.0,
-      aspect           : this.camera.aspect
-    });
-    //*/
-
-    gl.disable(gl.BLEND);
   }
 
   drawDrawLines(gl) {
@@ -1507,11 +1501,11 @@ export class View3D extends Editor {
       uniforms.object_id = ob.lib_id;
 
       if (only_render) {
-        this.threeCamera.pushUniforms(uniforms);
-        ob.draw(this, gl, uniforms, program);
-        this.threeCamera.popUniforms();
+        //this.threeCamera.pushUniforms(uniforms);
+        //ob.draw(this, gl, uniforms, program);
+        //this.threeCamera.popUniforms();
 
-        continue;
+        //continue;
       }
 
       if (scene.toolmode) {
@@ -1526,6 +1520,10 @@ export class View3D extends Editor {
         }
 
         this.threeCamera.popUniforms();
+      }
+
+      if (this.flag & View3DFlags.SHOW_RENDER) {
+        continue;
       }
 
       uniforms.objectMatrix = ob.outputs.matrix.getValue();

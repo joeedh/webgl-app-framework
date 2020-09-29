@@ -1,7 +1,7 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {Graph, NodeFlags, SocketFlags} from '../core/graph.js';
+import {Graph, Node, NodeFlags, SocketFlags} from '../core/graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Vec3Socket, FloatSocket, DependSocket, Matrix4Socket, Vec4Socket} from '../core/graphsockets.js';

@@ -441,8 +441,6 @@ export class ElementList {
     this.highlight = undefined;
     this.active = undefined;
 
-    console.warn("ITEMS", this.length, this.items.length, this.items, this.type);
-
     for (let item of this.items) {
       this._push(item)
       this.local_eidmap[item.eid] = item;

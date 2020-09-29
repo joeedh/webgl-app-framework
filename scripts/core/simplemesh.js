@@ -720,7 +720,9 @@ export class SimpleIsland {
     if (program === undefined)
       program = gl.simple_shader;
   
-    program.bind(gl, uniforms);
+    if (!program.bind(gl, uniforms)) {
+      return; //bad shader;
+    }
     
     if (this.tottri && (primflag & PrimitiveTypes.TRIS)) {
       this._draw_tris(gl, uniforms, params, program);
