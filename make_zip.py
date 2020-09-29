@@ -21,7 +21,6 @@ sources = [
   "./scripts/subsurf/**",
   "./scripts/path.ux/scripts/**",
   "./scripts/extern/**",
-  "./node_modules/**",
   "*.html",
   "*.json",
   "*.js",
