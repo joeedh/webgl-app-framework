@@ -6,7 +6,7 @@ import {SelMask, SelOneToolModes, SelToolModes} from '../selectmode.js';
 import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../../mesh/mesh.js';
 import * as util from '../../../util/util.js';
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
-import {BasicLineShader, Shaders} from '../view3d_shaders.js'
+import {BasicLineShader, Shaders} from '../../../shaders/shaders.js'
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js';
 import * as math from '../../../util/math.js';
 import {SelectOneOp} from '../../../mesh/select_ops.js';
@@ -18,7 +18,7 @@ import {BasicMeshDrawer} from '../view3d_draw.js';
 import {MeshCache} from '../view3d_toolmode.js';
 import {SubsurfDrawer} from '../../../subsurf/subsurf_draw.js';
 import {Light} from "../../../light/light.js";
-import {TranslateOp} from "../transform_ops.js";
+import {TranslateOp} from "../transform/transform_ops.js";
 import {nstructjs} from '../../../path.ux/scripts/pathux.js';
 let STRUCT = nstructjs.STRUCT;
 import {Icons} from '../../icon_enum.js';

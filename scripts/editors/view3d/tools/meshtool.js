@@ -10,9 +10,9 @@ import {resolveMeshes} from "../../../mesh/mesh_ops_base.js";
 import '../../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
-import {Shaders} from '../view3d_shaders.js';
+import {Shaders} from '../../../shaders/shaders.js';
 import {MovableWidget} from '../widget_utils.js';
-import {SnapModes, TranslateOp} from "../transform_ops.js";
+import {SnapModes, TranslateOp} from "../transform/transform_ops.js";
 import {SelOneToolModes} from "../selectmode.js";
 
 import {SceneObject} from "../../../sceneobject/sceneobject.js";

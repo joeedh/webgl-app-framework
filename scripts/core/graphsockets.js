@@ -11,7 +11,11 @@ export class Matrix4Socket extends NodeSocketType {
       this.value.makeIdentity();
     }
   }
-  
+
+  static apiDefine(api, sockstruct) {
+    sockstruct.struct("value", "value", "Value", api.mapStruct(Matrix4));
+  }
+
   static nodedef() {return {
     name : "mat4",
     uiname : "Matrix",
@@ -124,6 +128,10 @@ export class IntSocket extends NodeSocketType {
     this.value = 0;
   }
 
+  static apiDefine(api, sockstruct) {
+    sockstruct.int("value", "value", "value");
+  }
+
   static nodedef() {return {
     name : "int",
     uiname : "Integer",
@@ -171,6 +179,10 @@ export class Vec2Socket extends NodeSocketType {
     this.value = new Vector2(default_value);
   }
 
+  static apiDefine(api, sockstruct) {
+    sockstruct.vec2('value', 'value', 'value');
+  }
+
   static nodedef() {return {
     name : "Vec2",
     uiname : "Vector",
@@ -209,13 +221,29 @@ Vec2Socket.STRUCT = nstructjs.inherit(Vec2Socket, NodeSocketType, "graph.Vec2Soc
 nstructjs.register(Vec2Socket);
 NodeSocketType.register(Vec2Socket);
 
-export class Vec3Socket extends NodeSocketType {
+//abstract base class
+export class VecSocket extends NodeSocketType {
+  buildUI(container) {
+    if (this.edges.length === 0) {
+      container.vecpopup("value");
+    } else {
+      container.label(this.uiname);
+    }
+  }
+
+}
+
+export class Vec3Socket extends VecSocket {
   constructor(uiname, flag, default_value) {
     super(uiname, flag);
     
     this.value = new Vector3(default_value);
   }
-  
+
+  static apiDefine(api, sockstruct) {
+    sockstruct.vec3('value', 'value', 'value');
+  }
+
   static nodedef() {return {
     name : "vec3",
     uiname : "Vector",
@@ -266,7 +294,12 @@ export class Vec4Socket extends NodeSocketType {
     uiname : "Vector4",
     color : [0.25, 0.45, 1.0, 1]
   }}
-  
+
+  static apiDefine(api, sockstruct) {
+    sockstruct.vec4('value', 'value', 'value');
+  }
+
+
   diffValue(b) {
     return this.value.vectorDistance(b);
   }
@@ -304,11 +337,8 @@ nstructjs.register(Vec4Socket);
 NodeSocketType.register(Vec4Socket);
 
 export class RGBASocket extends Vec4Socket {
-  constructor(uiname, flag, default_value) {
+  constructor(uiname, flag, default_value=[0.5, 0.5, 0.5, 1.0]) {
     super(uiname, flag, default_value);
-
-    this.value[0] = this.value[1] = this.value[2] = 0.5;
-    this.value[3] = 1.0;
   }
 
   static nodedef() {return {
@@ -317,8 +347,12 @@ export class RGBASocket extends Vec4Socket {
     color : [1.0, 0.7, 0.4, 1]
   }}
 
+  static apiDefine(api, sockstruct) {
+    sockstruct.color4('value', 'value', 'value');
+  }
+
   buildUI(container, onchange) {
-    if (this.edges.length == 0) {
+    if (this.edges.length === 0) {
       container.colorbutton(container._joinPrefix("value"));
       /*
       container.button(this.uiname, () => {
@@ -346,7 +380,11 @@ export class FloatSocket extends NodeSocketType {
     
     this.value = default_value;
   }
-  
+
+  static apiDefine(api, sockstruct) {
+    sockstruct.float('value', 'value', 'value');
+  }
+
   static nodedef() {return {
     name : "float",
     uiname : "Value",
@@ -354,7 +392,7 @@ export class FloatSocket extends NodeSocketType {
   }}
 
   buildUI(container, onchange) {
-    if (this.edges.length == 0) {
+    if (this.edges.length === 0) {
       let ret = container.prop("value");
       ret.setAttribute("name", this.uiname);
 
@@ -424,6 +462,10 @@ export class EnumSocket extends IntSocket {
       let v = this.items[k];
       this.uimap[k] = this.items[v] = uiname.trim();
     }
+  }
+
+  static apiDefine(api, sockstruct) {
+    sockstruct.enum('value', 'value', this.items, 'value').uiNames(this.uimap);
   }
 
   addUiItems(items) {

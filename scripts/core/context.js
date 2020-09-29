@@ -18,6 +18,7 @@ import {MenuBarEditor} from "../editors/menu/MainMenu.js";
 import {Context, ContextOverlay, ContextFlags} from "./context_base.js";
 import {UIBase, Screen} from '../path.ux/scripts/pathux.js';
 import {PropsEditor} from '../editors/properties/PropsEditor.js';
+import {MaterialEditor} from "../editors/node/MaterialEditor.js";
 
 let passthrus = new Set(["datalib", "gl", "graph", "last_tool", "toolstack", "api"]);
 
@@ -46,6 +47,16 @@ export class BaseOverlay extends ContextOverlay {
 
   copy() {
     return new BaseOverlay(this._state);
+  }
+
+  get material() {
+    let ob = this.object;
+
+    if (ob) {
+      if (ob.data instanceof Mesh && ob.data.materials.length > 0) {
+        return ob.data.materials[0];
+      }
+    }
   }
 
   get playing() {
@@ -179,6 +190,19 @@ export class ViewOverlay extends ContextOverlay {
     name : "base",
     flag : ContextFlags.IS_VIEW
   }}
+
+
+  get modalFlag() {
+    return this.state.modalFlags;
+  }
+
+  setModalFlag(f) {
+    this.state.modalFlags |= f;
+  }
+
+  clearModalFlag(f) {
+    this.state.modalFlags &= ~f;
+  }
 
   copy() {
     return new ViewOverlay(this.state);

@@ -1,18 +1,18 @@
-import * as util from '../../util/util.js';
-import {keymap} from '../../path.ux/scripts/util/simple_events.js';
+import * as util from '../../../util/util.js';
+import {keymap} from '../../../path.ux/scripts/util/simple_events.js';
 import {TransDataElem, TransformData, TransDataType, PropModes, TransDataTypes, TransDataList} from "./transform_base.js";
 import {MeshTransType} from "./transform_types.js";
-import {ToolOp, UndoFlags} from "../../path.ux/scripts/toolsys/simple_toolsys.js";
+import {ToolOp, UndoFlags} from "../../../path.ux/scripts/toolsys/simple_toolsys.js";
 import {IntProperty, FlagProperty, EnumProperty,
   Vec3Property, Mat4Property, FloatProperty,
   BoolProperty, PropFlags, PropTypes, PropSubTypes
-} from "../../path.ux/scripts/toolsys/toolprop.js";
-import {SelMask} from './selectmode.js';
-import {aabb_union} from '../../util/math.js';
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
-import {View3DOp} from './view3d_ops.js';
-import {isect_ray_plane} from '../../path.ux/scripts/util/math.js';
-import {cachering} from '../../util/util.js';
+} from "../../../path.ux/scripts/toolsys/toolprop.js";
+import {SelMask} from '../selectmode.js';
+import {aabb_union} from '../../../util/math.js';
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js';
+import {View3DOp} from '../view3d_ops.js';
+import {isect_ray_plane} from '../../../path.ux/scripts/util/math.js';
+import {cachering} from '../../../util/util.js';
 import {ConstraintSpaces} from './transform_base.js';
 
 let cent_rets = cachering.fromConstructor(Vector3, 64);

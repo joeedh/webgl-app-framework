@@ -1,4 +1,4 @@
-import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
+import {Area, contextWrangler} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor, VelPan} from '../editor_base.js';
 import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
@@ -20,6 +20,8 @@ import {Node, NodeFlags, SocketFlags, SocketTypes} from '../../core/graph.js';
 import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw.js';
 import {haveModal} from '../../path.ux/scripts/util/simple_events.js';
 import {layoutNode} from '../../core/graph_spatial.js';
+import {getContextArea} from "../editor_base.js";
+import {ModalFlags} from "../../core/modalflags.js";
 
 export class NodeSocketElem extends RowFrame {
   constructor() {
@@ -28,6 +30,7 @@ export class NodeSocketElem extends RowFrame {
     this.canvas = document.createElement("canvas");
     this.g = this.canvas.getContext("2d");
 
+    this.isOutput = false;
     this.size = 20;
     this.r = 5;
     this.type = undefined; //'input' or 'output'
@@ -49,6 +52,7 @@ export class NodeSocketElem extends RowFrame {
         this.click(e);
       }
     });
+
     this.addEventListener("mousemove", (e) => {
       this.ned.push_ctx_active();
       this.ned.on_mousemove(e);
@@ -103,7 +107,7 @@ export class NodeSocketElem extends RowFrame {
     this.ctx.api.execTool(this.ctx, cmd);
   }
 
-  getAbsPos() {
+  getAbsPos(center_in_circle=false) {
     let p = this._abspos;
 
     p.load(this.pos).add(this.uinode.pos);
@@ -123,24 +127,24 @@ export class NodeSocketElem extends RowFrame {
     //let velpan = this.ned.velpan;
     //let dpi = this.getDPI();
 
-    if (this.type == "output") {
-      this.ned.project(p);
-
-      let r = this.getClientRects()[0];
-
-      if (r !== undefined) {
-        p[0] += r.width;
-
-        let dpi = this.getDPI();
-
-        p[0] -= this.size * 0.5;// / dpi;
-      }
-      this.ned.unproject(p);
+    if (this.type === "output") {
+      p[0] -= this.size;
     } else {
       p[0] += this.size;
     }
 
     p[1] += this.size;
+
+    if (center_in_circle) {
+      let r = this.r;
+
+      p[0] += this.type === "output" ? r : -r;
+      p[1] -= r;
+
+      if (this.type === "input") {
+        p[1] -= r;
+      }
+    }
 
     return p;
   }
@@ -306,6 +310,8 @@ export class NodeSocketElem extends RowFrame {
   setCSS() {
     super.setCSS();
 
+    this.style["position"] = "absolute"
+    this.style["overflow"] = "clip";
     this.style["margin"] = this.style["padding"] = "0px";
     this.style["white-space"] = "nowrap";
 
@@ -321,7 +327,25 @@ export class NodeSocketElem extends RowFrame {
 
     ned.project(pos, false);
 
-    this.float(pos[0], pos[1]);
+    //this.float(pos[0], pos[1]);
+
+    let r = this.getBoundingClientRect();
+    let w = 0;
+
+    if (r) {
+      w = r.width;
+    }
+
+    let yoff = ned.nodeContainer.yoff;
+
+
+    if (this.isOutput) {
+      this.style["left"] = (pos[0]-w) + "px";
+    } else {
+      this.style["left"] = pos[0] + "px";
+
+    }
+    this.style["top"] = (pos[1] - yoff) + "px";
 
     let dpi = this.getDPI();
 
@@ -347,12 +371,14 @@ export class NodeUI extends Container {
 
     this.pos = new Vector2();
     this.size = new Vector2();
+    this.rawpos = new Vector2();
 
     this.inputs = [];
     this.outputs = [];
     this.allsockets = [];
 
     this._isHighlight = false;
+    this._node = undefined;
 
     this.graph_id = undefined;
     this.ned = undefined;
@@ -447,7 +473,10 @@ export class NodeUI extends Container {
         uisock.pos[1] = lsock[1];
 
         if (!i) {
-          uisock.pos[0] -= -layout.socksize;
+          uisock.pos[0] -= layout.socksize;
+        } else {
+          uisock.pos[0] += layout.socksize;
+          uisock.isOutput = true;
         }
 
         //uisock.pos[0] = x;
@@ -460,12 +489,12 @@ export class NodeUI extends Container {
         uisock.setAttribute("datapath", this.getAttribute("datapath") + "."+key+"['" + k + "']");
 
         //row2.add(uisock);
-        this.ned.shadow.appendChild(uisock);
+        this.ned.nodeContainer.appendChild(uisock);
+
         //this.appendChild(uisock);
         //this.ned.container.shadow.appendChild(uisock);
         //_appstate.screen.appendChild(uisock);
 
-        uisock._init();
         uisock.update();
         uisock.setCSS();
 
@@ -498,7 +527,12 @@ export class NodeUI extends Container {
   }
 
   getNode() {
-    return this.ctx.api.getValue(this.ctx, this.getAttribute("datapath"));
+    //let's cache this
+    if (!this._node) {
+      this._node = this.ctx.api.getValue(this.ctx, this.getAttribute("datapath"));
+    }
+
+    return this._node;
   }
 
   setCSS() {
@@ -507,6 +541,8 @@ export class NodeUI extends Container {
     let co = this.pos;
     let scale = this.size;
     let node;
+
+    this.rawpos = new Vector2(co);
 
     if (this.hasAttribute("datapath")) {
       let path = this.getAttribute("datapath");
@@ -526,6 +562,7 @@ export class NodeUI extends Container {
     }
 
     let ned = this.ned;
+    let yoff = ned.nodeContainer.yoff;
 
     if (ned === undefined && this.parentNode !== undefined) {
       this.doOnce(this.setCSS);
@@ -556,9 +593,23 @@ export class NodeUI extends Container {
     } else {
       this.style["border"] = "2px solid black";
     }
-    this.float(co[0], co[1]);
+    this.float(co[0], co[1] - yoff);
   }
 
+  update() {
+    super.update();
+
+    let node = this.getNode();
+    if (!node) {
+      //this.remove();
+      return;
+    }
+
+    if (this.rawpos.vectorDistance(node.graph_ui_pos)) {
+      this.setCSS();
+    }
+
+  }
   static define() {return {
     tagname : "nodeui-x"
   }}
@@ -569,6 +620,8 @@ export class NodeEditor extends Editor {
   constructor() {
     super();
 
+    this.ignoreGraphUpdates = 0;
+
     this._last_zoom = new Vector2();
     this._last_script = undefined;
     this._last_compile_test = util.time_ms();
@@ -577,9 +630,13 @@ export class NodeEditor extends Editor {
     this._last_update_gen = undefined;
 
     this.velpan = new VelPan();
+    this.velpan.scale[0] = this.velpan.scale[1] = 0.8;
     this.velpan.onchange = this._on_velpan_change.bind(this);
 
     this.nodeContainer = document.createElement("container-x");
+    this.nodeContainer.yoff = 0;
+    this.nodeContainer.style["overflow"] = "hidden";
+
     this.nodeContainer.getDPI = () => {
       return this.getNodeDPI();
     };
@@ -587,9 +644,6 @@ export class NodeEditor extends Editor {
     //this.nodeContainer.getZoom = () => {
       //return this.velpan.scale[0];
     //};
-
-    this.shadow.appendChild(this.nodeContainer);
-    this.nodeContainer.parentWidget = this;
 
     this.defineKeyMap();
 
@@ -602,6 +656,16 @@ export class NodeEditor extends Editor {
     this.sockets = [];
     this.sockets.highlight = undefined;
     this.node_idmap = {};
+  }
+
+  //prevent context system from putting different node editor subclasses
+  //in different "active" bins
+  push_ctx_active(dontSetLastRef=false) {
+    contextWrangler.push(NodeEditor, this, !dontSetLastRef);
+  }
+
+  pop_ctx_active(dontSetLastRef=false) {
+    contextWrangler.pop(NodeEditor, this, !dontSetLastRef);
   }
 
   _on_velpan_change() {
@@ -619,7 +683,7 @@ export class NodeEditor extends Editor {
 
   clearGraph() {
     //*
-    for (let c of this.shadow.childNodes) {
+    for (let c of this.nodeContainer.children) {
       if (c instanceof NodeSocketElem) {//(c !== this.header && c !== this.nodeContainer) {
         c.remove();
       }
@@ -644,31 +708,24 @@ export class NodeEditor extends Editor {
     this.nodeContainer.clear();
   }
 
-  rebuildAll() {
-    return this.switchGraph();
+  switchGraph(graphpath=this.graphPath) {
+    this.graphPath = graphpath;
+    this.rebuildAll();
   }
 
-  switchGraph(graphpath=this.graphPath) {
+  rebuildAll() {
+    let graphpath = this.graphPath;
+
     if (this.ctx === undefined) return;
 
-    this.graphPath = graphpath;
     this._last_graphpath = this.graphPath;
 
     this.clearGraph();
 
-    let graph;
-    try {
-      graph = this.ctx.api.getValue(this.ctx, this.graphPath);
-    } catch (error) {
-      if (error instanceof DataPathError) {
-        if (DEBUG.verboseDataPath) {
-          console.warn("Failed to fetch graph at ", this.graphPath);
-        }
+    let graph = this.fetchGraph();
 
-        return;
-      } else {
-        throw error;
-      }
+    if (!graph) {
+      return;
     }
     
     console.warn("regenerating node editor");
@@ -699,6 +756,7 @@ export class NodeEditor extends Editor {
     }
 
     this._recalcUI();
+    this.flushUpdate();
   }
 
   get graph() {
@@ -713,7 +771,32 @@ export class NodeEditor extends Editor {
 
   init() {
     super.init();
-    
+
+    this.addEventListener("mousewheel", (e) => {
+      console.log(e.deltaY);
+      let y = e.deltaY;
+
+      let fac = y / 500.0;
+
+      if (fac < 0.0) {
+        fac = 1.0 + Math.abs(fac)
+      } else {
+        fac = 1.0 - fac;
+      }
+
+      if (isNaN(fac) || fac == 0.0) {
+        console.log("Bad scroll factor", fac);
+        return;
+      }
+
+      this.velpan.scale.mulScalar(fac);
+      this.flushUpdate();
+    });
+
+
+    this.shadow.appendChild(this.nodeContainer);
+    this.nodeContainer.parentWidget = this;
+
     //create svg overdraw element
     this.createOverdraw();
 
@@ -783,19 +866,25 @@ export class NodeEditor extends Editor {
       return;
     }
 
-    let elem = this.pickElement(e.pageX, e.pageY);
-    {
-      let n1 = elem;
-      while (n1.parentWidget) {
-        if (n1 instanceof NodeUI) {
-          elem = n1;
-          break;
-        }
-        n1 = n1.parentWidget;
-      }
+    let elem = this.ctx.screen.pickElement(e.pageX, e.pageY);
+
+    if (!elem) {
+      console.log("elem", elem, e.pageX, e.pageY);
+      return;
     }
+
+    let n1 = elem;
+    while (n1.parentWidget) {
+      if (n1 instanceof NodeUI) {
+        elem = n1;
+        break;
+      }
+      n1 = n1.parentWidget;
+    }
+    console.log("elem", elem, e.pageX, e.pageY);
+
     //let graph = this.get
-    if (elem === this || elem === this.container || elem === this.container.dom) {
+    if (elem === this || elem === this.container || elem === this.nodeContainer || elem === this.container.dom) {
       //console.log("node editor mouse down", elem);
 
       let tool = new VelPanPanOp();
@@ -987,7 +1076,7 @@ export class NodeEditor extends Editor {
   updateZoom() {
     if (this._last_zoom.vectorDistance(this.velpan.scale) > 0.0001) {
       this._last_zoom.load(this.velpan.scale);
-      this.rebuildAll();
+
     }
   }
 
@@ -1031,6 +1120,23 @@ export class NodeEditor extends Editor {
   update() {
     super.update();
 
+    let r = this.header.getBoundingClientRect();
+    //console.log("R", r);
+    if (r) {
+      if (r.height !== this.nodeContainer.yoff) {
+        this.nodeContainer.yoff = r.height;
+        this.nodeContainer.style["position"] = "absolute";
+        this.nodeContainer.style["height"] = (this.size[1] - r.height) + "px";
+        this.nodeContainer.style["width"] = this.size[0] + "px";
+        this.nodeContainer.style["top"] = r.height + "px";
+
+        this.setCSS();
+        for (let node of this.nodes) {
+          node.setCSS();
+        }
+      }
+    }
+
     this.checkCompile();
     this.updateZoom();
     this.updateDPI();
@@ -1051,14 +1157,32 @@ export class NodeEditor extends Editor {
     if (regen) {
       this.rebuildAll();
     } else if (this._last_update_gen !== graph.updateGen) {
-      console.log("node editor got graph update signal");
       this._last_update_gen = graph.updateGen;
-      this._recalcUI();
+
+      let ok = !this.ignoreGraphUpdates;
+      ok = ok && !(this.ctx.modalFlag & ModalFlags.TRANSFORMING);
+
+      if (ok) {
+        console.log("node editor got graph update signal");
+        this._recalcUI();
+      }
     }
+  }
+
+  pushIgnore() {
+    this.ignoreGraphUpdates++;
+  }
+
+  popIgnore() {
+    this.ignoreGraphUpdates = Math.max(this.ignoreGraphUpdates - 1, 0);
   }
 
   fetchGraph() {
     let graph;
+
+    if (this.graphPath.trim() === "") {
+      return undefined;
+    }
 
     try {
       graph = this.ctx.api.getValue(this.ctx, this.graphPath);
@@ -1173,18 +1297,18 @@ export class NodeEditor extends Editor {
 
   project(co, useScreenSpace=false) {
     let p = projcos.next().load(co);
-    p.multVecMatrix(this.velpan.mat);
 
-    for (let i=0; i<2; i++) {
-      co[i] = p[i];
-    }
+    p.multVecMatrix(this.velpan.mat);
 
     if (useScreenSpace) {
       let r = this.getClientRects()[0];
 
-      co[0] += r.x;
-      co[1] += r.y;
+      p[0] += this.pos[0];
+      p[1] += this.pos[1];
     }
+
+    co[0] = p[0];
+    co[1] = p[1];
   }
 
   unproject(co, useScreenSpace=false) {
@@ -1193,15 +1317,14 @@ export class NodeEditor extends Editor {
     if (useScreenSpace) {
       let r = this.getClientRects()[0];
 
-      p[0] -= r.x;
-      p[1] -= r.y;
+      p[0] -= this.pos[0];
+      p[1] -= this.pos[1];
     }
 
     p.multVecMatrix(this.velpan.imat);
 
-    for (let i=0; i<2; i++) {
-      co[i] = p[i];
-    }
+    co[0] = p[0];
+    co[1] = p[1];
   }
 
   copy() {
@@ -1211,6 +1334,44 @@ export class NodeEditor extends Editor {
     ret.graphPath = this.graphPath;
 
     return ret;
+  }
+
+  _recalcLines() {
+    if (!this.overdraw) {
+      if (!this.isDead()) {
+        //wait for initialization
+        this.doOnce(this._recalcLines);
+      }
+
+      return;
+    }
+
+    this.overdraw.clear();
+
+    for (let node of this.nodes) {
+      for (let uisock of node.inputs) {
+        //sock.updateSocketRef();
+        let sock = uisock.socket;
+        let p = uisock.getAbsPos(true);
+        this.project(p);
+
+        for (let sock2 of sock.edges) {
+          let uisock2 = this.getUISocket(sock2);
+
+          if (uisock2 === undefined) {
+            console.warn("could not find uisocket for ", sock2);
+            continue;
+          }
+
+          let p2 = new Vector2(uisock2.getAbsPos(true));
+          this.project(p2);
+
+          if (this.overdraw) {
+            this.overdraw.line(p, p2, "orange");
+          }
+        }
+      }
+    }
   }
 
   _recalcUI() {
@@ -1237,28 +1398,7 @@ export class NodeEditor extends Editor {
       return;
     }
 
-    for (let node of this.nodes) {
-      for (let uisock of node.inputs) {
-        //sock.updateSocketRef();
-        let sock = uisock.socket;
-        let p = uisock.getAbsPos();
-        this.project(p);
-
-        for (let sock2 of sock.edges) {
-          let uisock2 = this.getUISocket(sock2);
-
-          if (uisock2 === undefined) {
-            console.warn("could not find uisocket for ", sock2);
-            continue;
-          }
-
-          let p2 = uisock2.getAbsPos();
-          this.project(p2);
-
-          this.overdraw.line(p, p2, "orange");
-        }
-      }
-    }
+    this._recalcLines();
   }
 
   loadSTRUCT(reader) {
@@ -1281,4 +1421,4 @@ NodeEditor.STRUCT = STRUCT.inherit(NodeEditor, Editor) + `
 }
 `
 Editor.register(NodeEditor);
-nstructjs.manager.add_class(NodeEditor);
+nstructjs.register(NodeEditor);

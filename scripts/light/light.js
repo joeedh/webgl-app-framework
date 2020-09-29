@@ -6,7 +6,7 @@ import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Vec3Socket, FloatSocket, DependSocket, Matrix4Socket, Vec4Socket} from '../core/graphsockets.js';
 import {Shapes} from '../core/simplemesh_shapes.js';
-import {Shaders} from '../editors/view3d/view3d_shaders.js';
+import {Shaders} from '../shaders/shaders.js';
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 

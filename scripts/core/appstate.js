@@ -3,6 +3,7 @@
 import * as toolsys from '../path.ux/scripts/toolsys/simple_toolsys.js';
 import {ViewContext} from './context.js';
 import {AppToolStack} from "./toolstack.js";
+import '../editors/node/MaterialEditor.js';
 
 import {initSimpleController, checkForTextBox, keymap, Vector3, Vector4, Vector2, Quat, Matrix4,
   ToolOp, UndoFlags, nstructjs} from '../path.ux/scripts/pathux.js';
@@ -199,6 +200,8 @@ export class AppState {
     this.api = getDataAPI();
     this.screen = undefined;
     this.datalib = new Library();
+
+    this.modalFlag = 0;
 
     this.three_scene = undefined;
     this.three_renderer = undefined;
@@ -638,6 +641,8 @@ export class AppState {
     }
 
     if (!args.load_screen) {
+      this.modalFlag = 0;
+
       for (let sblock of lastscreens) {
         sblock.lib_id = sblock.graph_id = -1; //request new id
         datalib.add(sblock);

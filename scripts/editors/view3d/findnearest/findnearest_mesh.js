@@ -1,7 +1,7 @@
 import {CastModes, FindnearestClass} from '../findnearest.js';
 import {SelMask} from '../selectmode.js';
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from "../../../util/vectormath.js";
-import {Shaders} from "../view3d_shaders.js";
+import {Shaders} from "../../../shaders/shaders.js";
 import * as util from "../../../util/util.js";
 import {FindNearestRet} from "../findnearest.js";
 import {MeshTypes} from "../../../mesh/mesh_base.js";

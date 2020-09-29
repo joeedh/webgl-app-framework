@@ -5,7 +5,7 @@ import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
         PropFlags, PropTypes, PropSubTypes} from '../../path.ux/scripts/toolsys/toolprop.js';
 import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
 import {Shapes} from '../../core/simplemesh_shapes.js';
-import {Shaders} from './view3d_shaders.js';
+import {Shaders} from '../../shaders/shaders.js';
 import {dist_to_line_2d} from '../../path.ux/scripts/util/math.js';
 import {IsMobile} from '../../path.ux/scripts/core/ui_base.js'
 import {CallbackNode, NodeFlags} from "../../core/graph.js";

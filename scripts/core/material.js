@@ -8,6 +8,7 @@ import {DependSocket, Vec3Socket, Vec4Socket, Matrix4Socket, FloatSocket} from "
 import {AbstractGraphClass} from './graph_class.js';
 import {Icons} from "../editors/icon_enum.js";
 import {ShaderNetwork} from "../shadernodes/shadernetwork.js";
+import {DiffuseNode, GeometryNode, OutputNode} from "../shadernodes/shader_nodes.js";
 
 export class MakeMaterialOp extends ToolOp {
   constructor() {
@@ -46,18 +47,34 @@ export class MakeMaterialOp extends ToolOp {
     ctx.datalib.add(mat);
 
     let path = this.inputs.dataPathToSet.getValue();
-    let val = ctx.api.getValue(ctx, path);
+    if (path) {
+      let val = ctx.api.getValue(ctx, path);
 
-    if (val !== undefined) {
+      if (val !== undefined) {
+        let meta = ctx.api.resolvePath(ctx, path);
+        val.lib_remUser(meta.obj);
+      }
+
+      console.log("PATH", path);
+      ctx.api.setValue(ctx, path, mat);
+
       let meta = ctx.api.resolvePath(ctx, path);
-      val.lib_remUser(meta.obj);
+      mat.lib_addUser(meta.obj);
     }
 
-    console.log("PATH", path);
-    ctx.api.setValue(ctx, path, mat);
+    let diff = new DiffuseNode();
+    let output = new OutputNode();
+    let geom = new GeometryNode();
 
-    let meta = ctx.api.resolvePath(ctx, path);
-    mat.lib_addUser(meta.obj);
+    mat.graph.add(geom);
+    mat.graph.add(diff);
+    mat.graph.add(output);
+
+    geom.graph_ui_pos[0] = -geom.graph_ui_size[0] - 5;
+    output.graph_ui_pos[0] = diff.graph_ui_size[0] + 5;
+
+    geom.outputs.normal.connect(diff.inputs.normal);
+    diff.outputs.surface.connect(output.inputs.surface);
 
     this.outputs.materialID.setValue(mat.lib_id);
   }
@@ -159,7 +176,7 @@ export class Material extends ShaderNetwork {
   }
 }
 
-Material.STRUCT = STRUCT.inherit(Material, DataBlock) + `
+Material.STRUCT = STRUCT.inherit(Material, ShaderNetwork) + `
 }`;
 
 DataBlock.register(Material);

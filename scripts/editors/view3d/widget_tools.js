@@ -4,7 +4,7 @@ import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property,
   PropFlags, PropTypes, PropSubTypes} from '../../path.ux/scripts/toolsys/toolprop.js';
 import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
-import {Shaders} from './view3d_shaders.js';
+import {Shaders} from '../../shaders/shaders.js';
 import {dist_to_line_2d} from '../../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
@@ -13,8 +13,8 @@ import {SelMask} from './selectmode.js';
 
 import {View3DFlags} from "./view3d_base.js";
 import {WidgetBase, WidgetSphere, WidgetArrow, WidgetTool, WidgetFlags} from './widgets.js';
-import {TranslateOp, ScaleOp} from "./transform_ops.js";
-import {calcTransCenter} from './transform_query.js';
+import {TranslateOp, ScaleOp} from "./transform/transform_ops.js";
+import {calcTransCenter} from './transform/transform_query.js';
 import {ToolMacro} from "../../path.ux/scripts/toolsys/simple_toolsys.js";
 import {Icons} from '../icon_enum.js';
 

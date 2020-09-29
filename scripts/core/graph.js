@@ -110,6 +110,10 @@ export class NodeSocketType {
     this.graph_id = -1;
   }
 
+  static apiDefine(api, sockstruct) {
+
+  }
+
   has(node_or_socket) {
     for (let socket of this.edges) {
       if (socket === node_or_socket)
@@ -142,8 +146,19 @@ export class NodeSocketType {
    will have its path evaluated *relative to the node itself*,
    NOT Context as usual.
    */
-  buildUI(container) {
-    container.label(this.uiname);
+  buildUI(container, onchange) {
+    if (this.edges.length === 0) {
+      let ret = container.prop("value");
+
+      if (ret) {
+        ret.setAttribute("name", this.uiname);
+        ret.onchange = onchange;
+      } else {
+        container.label(this.uiname);
+      }
+    } else {
+      container.label(this.uiname);
+    }
   }
 
   static register(cls) {

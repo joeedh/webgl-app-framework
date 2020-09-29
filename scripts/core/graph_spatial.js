@@ -44,7 +44,7 @@ export function layoutNode(node, args={}) {
     ret.size[0] += args.extraWidth;
   }
 
-  let socksize = 35 || args.socksize;
+  let socksize = args.socksize || 35;
 
   ret.socksize = socksize;
 
@@ -58,11 +58,13 @@ export function layoutNode(node, args={}) {
   let minsize = maxsocks*socksize + 15;
   ret.size[1] = Math.max(ret.size[1], minsize);
 
+  let wid = 100;
+
   for (let i=0; i<2; i++) {
     let socks = !i ? node.inputs : node.outputs;
     let def = !i ? ret.inputs : ret.outputs;
 
-    let x = i ? ret.size[0] : 0;
+    let x = i ? ret.size[0]: 0;
     let y = 0;
 
     for (let k in socks) {

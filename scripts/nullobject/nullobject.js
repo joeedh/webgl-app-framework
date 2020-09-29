@@ -4,7 +4,7 @@ import {DataBlock} from "../core/lib_api.js";
 import {NodeFlags} from "../core/graph.js";
 let STRUCT = nstructjs.STRUCT;
 import {SelMask} from "../editors/view3d/selectmode.js";
-import {Shaders} from "../editors/view3d/view3d_shaders.js";
+import {Shaders} from "../shaders/shaders.js";
 import {Shapes} from "../core/simplemesh_shapes.js";
 import {Node} from "../core/graph.js";
 

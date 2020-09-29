@@ -47,6 +47,7 @@ export class VelPan {
     return this.bounds[1];
   }
 
+
   /**
    load settings from another velocity pan instance
    does NOT set this.onchange

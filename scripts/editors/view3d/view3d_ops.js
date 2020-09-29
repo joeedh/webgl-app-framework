@@ -7,7 +7,7 @@ import {CallbackNode} from "../../core/graph.js";
 import {DependSocket} from "../../core/graphsockets.js";
 import {CastModes, castViewRay} from "./findnearest.js";
 import {Shapes} from '../../core/simplemesh_shapes.js';
-import {Shaders} from "./view3d_shaders.js";
+import {Shaders} from "../../shaders/shaders.js";
 
 export class ViewSelected extends ToolOp {
   constructor() {

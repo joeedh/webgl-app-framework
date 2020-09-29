@@ -1,6 +1,6 @@
 import {Vector3, Vector2, Matrix4} from '../../util/vectormath.js';
 import {FBO, FrameStage, FramePipeline} from "../../core/fbo.js";
-import {Shaders} from './view3d_shaders.js';
+import {Shaders} from '../../shaders/shaders.js';
 import {FindNearestTypes} from './findnearest.js';
 import * as util from '../../util/util.js';
 import * as cconst from '../../core/const.js';

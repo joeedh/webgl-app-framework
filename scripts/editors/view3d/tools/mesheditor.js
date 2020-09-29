@@ -11,9 +11,9 @@ import {MeshToolBase} from "./meshtool.js";
 
 let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
-import {Shaders} from '../view3d_shaders.js';
+import {Shaders} from '../../../shaders/shaders.js';
 import {MovableWidget} from '../widget_utils.js';
-import {SnapModes} from "../transform_ops.js";
+import {SnapModes} from "../transform/transform_ops.js";
 
 import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,

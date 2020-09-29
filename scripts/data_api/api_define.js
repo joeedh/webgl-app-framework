@@ -51,6 +51,7 @@ import {DebugEditor} from '../editors/debug/DebugEditor.js';
 let api = new DataAPI();
 import {Icons} from '../editors/icon_enum.js';
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
+import {MaterialEditor} from "../editors/node/MaterialEditor.js";
 
 export function api_define_editor(api, cls) {
   let astruct = api.mapStruct(cls);
@@ -119,31 +120,6 @@ function api_define_socket(api, cls=NodeSocketType) {
   nstruct.string("uiname", "uiname", "UI Name", "Name of socket");
 
   return nstruct;
-}
-
-function api_define_vec2_socket(api) {
-  let nstruct = api_define_socket(api, Vec2Socket);
-  nstruct.vec2("value", "value", "Color", "Color");
-}
-
-function api_define_vec3_socket(api) {
-  let nstruct = api_define_socket(api, Vec3Socket);
-  nstruct.vec3("value", "value", "Color", "Color");
-}
-
-function api_define_vec4_socket(api) {
-  let nstruct = api_define_socket(api, Vec4Socket);
-  nstruct.vec4("value", "value", "Color", "Color");
-}
-
-function api_define_rgba_socket(api) {
-  let nstruct = api_define_socket(api, RGBASocket);
-  nstruct.color4("value", "value", "Color", "Color");
-}
-
-function api_define_float_socket(api) {
-  let nstruct = api_define_socket(api, FloatSocket);
-  nstruct.float("value", "value", "value", "value");
 }
 
 function api_define_node(api, cls=Node) {
@@ -243,6 +219,24 @@ export function api_define_meshvertex(api) {
 export function api_define_mesh(api, pstruct) {
   let mstruct = api_define_datablock(api, Mesh);
   pstruct.struct("mesh", "mesh", "Mesh", mstruct);
+
+  mstruct.list("materials", "materials", [
+    function getIter(api, list) {
+      return list;
+    },
+    function getLength(api, list) {
+      return list.length;
+    },
+    function get(api, list, key) {
+      return list[key];
+    },
+    function getKey(api, list, obj) {
+      return list.indexOf(obj);
+    },
+    function getStruct(api, list, key) {
+      return api.mapStruct(Material);
+    }
+  ]);
 
   let def = mstruct.flags("flag", "flag", MeshModifierFlags, "Modifier Flag", "Mesh modifier flags");
   def.icons({
@@ -391,7 +385,8 @@ function api_define_graph(api, cls=Graph) {
 
 function api_define_nodesockets(api) {
   for (let cls of NodeSocketClasses) {
-    api_define_socket(api, cls);
+    let st = api_define_socket(api, cls);
+    cls.apiDefine(api, st);
   }
 }
 
@@ -429,7 +424,11 @@ function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
   //parent.struct(path, apiname, uiname, lstruct);
   parent.list(path, apiname, [
     function get(api, list, key) {
-      return list.idmap[key];
+      if (typeof key === "number") {
+        return list.idmap[key];
+      } else {
+        return list.namemap[key];
+      }
     },
 
     function getIter(api, list) {
@@ -445,7 +444,7 @@ function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
     },
 
     function setActive(api, list, key) {
-      if (key === undefined || key == -1) {
+      if (key === undefined || key === -1) {
         list.active = undefined;
         return;
       }
@@ -461,7 +460,7 @@ function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
       return obj.lib_id;
     },
     function getStruct(api, list, key) {
-      let obj = list.idmap[key];
+      let obj = typeof key === "string" ? list.namemap[key] : list.idmap[key];
 
       if (obj === undefined) {
         return api.getStruct(DataBlock);
@@ -472,6 +471,8 @@ function api_define_libraryset(api, path, apiname, uiname, parent, cls) {
       if (ret === undefined) {
         return api.getStruct(DataBlock);
       }
+
+      return ret;
     }
   ]);
 }
@@ -573,6 +574,10 @@ export function api_define_node_editor(api, parent) {
   parent.struct("nodeEditor", "nodeEditor", "Node Editor", nedstruct);
   nedstruct.string("graphPath", "graphPath", "data path to graph that's being edited");
   nedstruct.struct("velpan", "velpan", "Pan / Zoom", api.getStruct(VelPan));
+}
+
+export function api_define_mateditor(api) {
+  return api.inheritStruct(MaterialEditor, NodeEditor);
 }
 
 export function api_define_node_viewer(api, parent) {
@@ -710,18 +715,28 @@ export function api_define_scene(api, pstruct) {
   }
 }
 
+export function api_define_matrix4(api) {
+  let st = api.mapStruct(Matrix4, true);
+
+  let data = st.struct("$matrix", "data", "Matrix Data");
+
+  for (let i=1; i<=4; i++) {
+    for (let j=1; j<=4; j++) {
+      let key = "m" + i + j;
+      data.float(key, key, key);
+    }
+  }
+
+  return st;
+}
+
 export function getDataAPI() {
   let cstruct = api.mapStruct(ToolContext);
 
+  api_define_matrix4(api);
+
   api_define_velpan(api);
   api_define_nodesockets(api);
-
-  api_define_socket(api);
-  api_define_vec2_socket(api);
-  api_define_vec3_socket(api);
-  api_define_vec4_socket(api);
-  api_define_rgba_socket(api);
-  api_define_float_socket(api);
 
   api_define_node(api);
   api_define_shadernode(api);
@@ -739,6 +754,7 @@ export function getDataAPI() {
   api_define_resbrowser(api, cstruct);
   api_define_node_editor(api, cstruct);
   api_define_node_viewer(api, cstruct);
+  api_define_mateditor(api);
   api_define_debugeditor(api, cstruct);
 
   api_define_mesh(api, cstruct);
@@ -803,6 +819,8 @@ export function getDataAPI() {
   ]);
 
   api_define_graphclasses(api);
+
+  cstruct.struct("material", "material", "Material", api.mapStruct(Material, false));
 
   cstruct.dynamicStruct("last_tool", "last_tool", "Last Tool");
 

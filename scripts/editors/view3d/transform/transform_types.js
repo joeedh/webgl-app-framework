@@ -1,12 +1,12 @@
-import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
-import {ToolOp, UndoFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
-import {keymap} from '../../path.ux/scripts/util/simple_events.js';
-import {MeshFlags, MeshTypes, Mesh} from '../../mesh/mesh.js';
-import {SelMask} from './selectmode.js';
-import {SceneObject, ObjectFlags} from "../../sceneobject/sceneobject.js";
+import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../../util/vectormath.js';
+import {ToolOp, UndoFlags} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
+import {keymap} from '../../../path.ux/scripts/util/simple_events.js';
+import {MeshFlags, MeshTypes, Mesh} from '../../../mesh/mesh.js';
+import {SelMask} from '../selectmode.js';
+import {SceneObject, ObjectFlags} from "../../../sceneobject/sceneobject.js";
 import {PropModes, TransDataType, TransDataElem} from './transform_base.js';
-import * as util from '../../util/util.js';
-import {aabb_union} from '../../util/math.js';
+import * as util from '../../../util/util.js';
+import {aabb_union} from '../../../util/math.js';
 
 import {ConstraintSpaces} from "./transform_base.js";
 let meshGetCenterTemps = util.cachering.fromConstructor(Vector3, 64);

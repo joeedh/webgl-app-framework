@@ -2,7 +2,7 @@
 
 import {NodeFlags} from '../core/graph.js';
 
-import {Shaders} from '../editors/view3d/view3d_shaders.js';
+import {Shaders} from '../shaders/shaders.js';
 
 import * as simplemesh from '../core/simplemesh.js';
 import * as math from '../util/math.js';

@@ -1,5 +1,5 @@
-import {Matrix4} from '../../util/vectormath.js';
-import {ShaderProgram} from "../../core/webgl.js";
+import {Matrix4} from '../util/vectormath.js';
+import {ShaderProgram} from "../core/webgl.js";
 
 export let PolygonOffset = {
   //pre : '',
@@ -578,7 +578,6 @@ export let Shaders = {
 //global for debugging purposes only
 window._Shaders = Shaders;
 
-//see view3d_shaders.js
 export function loadShader(gl, sdef) {
   let shader = new ShaderProgram(gl, sdef.vertex, sdef.fragment, sdef.attributes);
 
