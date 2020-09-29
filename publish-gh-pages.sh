@@ -1,11 +1,12 @@
 #!/bin/bash
 
 git commit -a
-if [ ! "git pull" ]; then
+if [ $? != 0 ]; then
   echo "git pull failed"
   exit 1
 fi
 
+echo "yay"
 exit 1
 python make_zip.py
 
