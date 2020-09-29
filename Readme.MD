@@ -1,8 +1,7 @@
-A WebGL application framework.
+[Try it out here](https://joeedh.github.io/webgl-app-framework/index.html)
 
-[You can try it out here](https://joeedh.github.io/webgl-app-framework/index.html)
+[Docs](https://joeedh.github.io/webgl-app-framework/docs/index.html)
 
-[Code Documentation](https://joeedh.github.io/webgl-app-framework/docs/index.html)
+# Buildings
 
-[User Manual](https://github.com/joeedh/webgl-app-framework/wiki/User-Documentation)
-
+Run build.sh in bash

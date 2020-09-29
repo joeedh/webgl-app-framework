@@ -1,7 +1,12 @@
 import * as appstate from './core/appstate.js';
+import {loadShapes} from './core/simplemesh_shapes.js';
 
+import {setMetric, setBaseUnit} from "./path.ux/scripts/core/units.js";
 import {Icons} from './editors/icon_enum.js';
-import {setIconMap, setIconManager, IconManager, UIBase} from './path.ux/scripts/ui_base.js';
+import {setIconMap, setIconManager, IconManager, UIBase} from './path.ux/scripts/core/ui_base.js';
+
+setBaseUnit("foot");
+setMetric(false);
 
 export let iconmanager = new IconManager([
   document.getElementById("iconsheet16"),
@@ -11,7 +16,7 @@ export let iconmanager = new IconManager([
   document.getElementById("iconsheet50"),
   document.getElementById("iconsheet64"),
   document.getElementById("iconsheet64"),
-], [16, [24, 16], 32, [40, 32], [50, 32], [64, 32], [64, 64], [80, 64], [128, 64]], 16);
+], [16, [24, 24], 32, [40, 32], [50, 32], [64, 32], [64, 64], [80, 64], [128, 64]], 16);
 
 setIconMap(Icons);
 let _last_dpi = undefined;
@@ -55,5 +60,13 @@ updateIconDPI();
 
 window.init = () => {
   console.log("init!");
+  loadShapes();
   appstate.init();
-}
+
+  //shortcut for console use only
+  Object.defineProperty(window, "CTX", {
+    get : () => {
+      return _appstate.ctx;
+    }
+  })
+};

@@ -1,8 +1,8 @@
 "use strict";
 
-import * as util from '../util/util.js';
+import {util, nstructjs} from '../path.ux/scripts/pathux.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
-import '../path.ux/scripts/struct.js';
+
 let STRUCT = nstructjs.STRUCT;
 import './const.js';
 
@@ -50,13 +50,113 @@ export function initDebugGL(gl) {
 
 let _gl = undefined;
 
+export function addFastParameterGet(gl) {
+  let map = {
+  };
+
+  gl._getParameter = gl.getParameter;
+  gl._enable = gl.enable;
+  gl._disable = gl.disable;
+  gl._viewport = gl.viewport;
+  gl._scissor = gl.scissor;
+  gl._depthMask = gl.depthMask;
+
+  let validkeys = new Set([gl.DEPTH_TEST, gl.DEPTH_WRITEMASK, gl.SCISSOR_BOX, gl.VIEWPORT]);
+
+  gl.depthMask = function(mask) {
+    mask = !!mask;
+
+    if (mask !== map[gl.DEPTH_WRITEMASK]) {
+      map[gl.DEPTH_WRITEMASK] = mask;
+      gl._depthMask(mask);
+    }
+  };
+
+  gl.viewport = function (x, y, w, h) {
+    if (map[gl.VIEWPORT] === undefined) {
+      map[gl.VIEWPORT] = [x, y, w, h];
+    } else {
+      let box = map[gl.VIEWPORT];
+      box[0] = x;
+      box[1] = y;
+      box[2] = w;
+      box[3] = h;
+    }
+
+    return gl._viewport(x, y, w, h);
+  };
+
+  gl.scissor = function(x, y, w, h) {
+    if (map[gl.SCISSOR_BOX] === undefined) {
+      map[gl.SCISSOR_BOX] = [x, y, w, h];
+    } else {
+      let box = map[gl.SCISSOR_BOX];
+      box[0] = x;
+      box[1] = y;
+      box[2] = w;
+      box[3] = h;
+    }
+
+    return gl._scissor(x, y, w, h);
+  };
+
+  gl.enable = function(p) {
+    if (p in map && map[p]) {
+      return;
+    }
+
+    map[p] = true;
+    return gl._enable(p);
+  }
+
+  gl.disable = function (p) {
+    if (p in map && !map[p]) {
+      return;
+    }
+
+    map[p] = false;
+    gl._disable(p);
+  }
+
+  //*
+  gl.getParameter = function(p) {
+    if (p !== undefined && !validkeys.has(p)) {
+      return gl._getParameter(p);
+    }
+
+    if (p in map) {
+      return map[p];
+    }
+
+    map[p] = this._getParameter(p);
+
+    if (map[p] && Array.isArray(map[p])) {
+      let cpy = [];
+      for (let item of map[p]) {
+        cpy.push(item);
+      }
+
+      map[p] = cpy;
+    }
+
+    return map[p];
+  }//*/
+}
+//*/
+
+export function onContextLost(e) {
+  for (let k in shapes) {
+    shapes[k].onContextLost(e);
+  }
+}
+
 //params are passed to canvas.getContext as-is
-export function init_webgl(canvas, params) {
+export function init_webgl(canvas, params={}) {
   if (_gl !== undefined) {
     return _gl;
   }
 
-  let webgl2 = true;
+  let webgl2 = params.webgl2 !== undefined ? params.webgl2 : true;
   let gl;
 
   if (webgl2) {
@@ -67,6 +167,15 @@ export function init_webgl(canvas, params) {
     gl.getExtension("EXT_frag_depth");
     gl.color_buffer_float = gl.getExtension("WEBGL_color_buffer_float");
   }
+
+  canvas.addEventListener("webglcontextlost", function(event) {
+    event.preventDefault();
+  }, false);
+
+  canvas.addEventListener(
+    "webglcontextrestored", onContextLost, false);
+
+  //addFastParameterGet(gl);
 
   _gl = gl;
   gl.haveWebGL2 = webgl2;
@@ -82,11 +191,14 @@ export function init_webgl(canvas, params) {
   window._constmap = constmap;
 
   gl.texture_float = gl.getExtension("OES_texture_float");
+  gl.texture_float = gl.getExtension("OES_texture_float_linear");
   gl.float_blend = gl.getExtension("EXT_float_blend");
   gl.getExtension("OES_standard_derivatives");
   gl.getExtension("ANGLE_instanced_arrays");
   gl.getExtension("WEBGL_lose_context");
   gl.draw_buffers = gl.getExtension("WEBGL_draw_buffers");
+
+
   gl.depth_texture = gl.getExtension("WEBGL_depth_texture");
   //gl.getExtension("WEBGL_debug_shaders");
   
@@ -311,7 +423,13 @@ export class ShaderProgram {
     if (!linked && !gl.isContextLost()) {
         // something went wrong with the link
         var error = gl.getProgramInfoLog (program);
+
+        console.log("\nVERTEX:\n" + format_lines(vshader));
+        console.log("\nFRAGMENT\n:" + format_lines(fshader));
+
         console.log("Error in program linking:"+error);
+
+        gl.deleteProgram(program);
 
         //do nothing
         //gl.deleteProgram(program);
@@ -320,7 +438,7 @@ export class ShaderProgram {
 
         return null;
     }
-    
+
     //console.log("created shader", program);
 
     this.program = program;
@@ -376,8 +494,14 @@ export class ShaderProgram {
   }
 
   destroy(gl) {
+    if (gl && this.program) {
+      gl.deleteProgram(this.program);
+      this.uniforms = {};
+      this.program = undefined;
+    }
+
     //XXX implement me
-    console.warn("ShaderProgram.prototype.destroy: implement me!");
+    //console.warn("ShaderProgram.prototype.destroy: implement me!");
   }
 
   uniformloc(name) {
@@ -387,8 +511,16 @@ export class ShaderProgram {
     
     return this.uniformlocs[name];
   }
-  
+
   attrloc(name) {
+    return this.attrLocation(name);
+  }
+
+  attrLoc(name) {
+    if (!(name in this.attrlocs)) {
+      this.attrlocs[name] = this.gl.getAttribLocation(this.program, name);
+    }
+
     return this.attrlocs[name];
   }
   
@@ -399,7 +531,11 @@ export class ShaderProgram {
       this.init(gl);
       
       if (this.rebuild) 
-        return; //failed to initialize
+        return false; //failed to initialize
+    }
+
+    if (!this.program) {
+      return false;
     }
     
     function setv(dst, src, n) {
@@ -468,7 +604,8 @@ export class ShaderProgram {
           v.setUniform(gl, loc);
         } else if (typeof v == "number") { 
           gl.uniform1f(loc, v);
-        } else {
+        } else if (v !== undefined && v !== null) {
+          console.warn("Invalid uniform", k, v);
           throw new Error("Invalid uniform");
         }
       }
@@ -530,16 +667,16 @@ export class Texture {
     gl.deleteTexture(this.texture);
   }
 
-  static load(gl, width, height, data) {
+  static load(gl, width, height, data, target = gl.TEXTURE_2D) {
     let tex = gl.createTexture();
     
-    gl.bindTexture(this.target, tex);
+    gl.bindTexture(target, tex);
     if (data instanceof Float32Array) {
-      gl.texImage2D(this.target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.FLOAT, data);
+      gl.texImage2D(target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.FLOAT, data);
     } else {
-      gl.texImage2D(this.target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+      gl.texImage2D(target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
     }
-    Texture.defaultParams(gl, tex);
+    Texture.defaultParams(gl, tex, target);
     
     return new Texture(0, tex);
   }
@@ -579,6 +716,8 @@ export class CubeTexture extends Texture {
 //cameras will derive from this class
 export class DrawMats {
   constructor() {
+    this.isPerspective = true;
+
     this.cameramat = new Matrix4();
     this.persmat = new Matrix4();
     this.rendermat = new Matrix4();
@@ -610,7 +749,8 @@ export class DrawMats {
       persmat    : this.persmat.getAsArray(),
       rendermat  : this.rendermat.getAsArray(),
       normalmat  : this.normalmat.getAsArray(),
-      
+      isPerspective : this.isPerspective,
+
       icameramat : this.icameramat.getAsArray(),
       ipersmat   : this.ipersmat.getAsArray(),
       irendermat : this.irendermat.getAsArray(),
@@ -623,7 +763,8 @@ export class DrawMats {
     this.persmat.load(obj.persmat);
     this.rendermat.load(obj.rendermat);
     this.normalmat.load(obj.normalmat);
-    
+    this.isPerspective = obj.isPerspective;
+
     this.icameramat.load(obj.icameramat);
     this.ipersmat.load(obj.ipersmat);
     this.irendermat.load(obj.irendermat);
@@ -638,14 +779,15 @@ export class DrawMats {
 }
 DrawMats.STRUCT = `
 DrawMats {
-  cameramat  : mat4;
-  persmat    : mat4;
-  rendermat  : mat4;
-  normalmat  : mat4;
-  icameramat : mat4;
-  ipersmat   : mat4;
-  irendermat : mat4;
-  inormalmat : mat4;
+  cameramat     : mat4;
+  persmat       : mat4;
+  rendermat     : mat4;
+  normalmat     : mat4;
+  icameramat    : mat4;
+  ipersmat      : mat4;
+  irendermat    : mat4;
+  inormalmat    : mat4;
+  isPerspective : int;
 }
 `;
 nstructjs.manager.add_class(DrawMats);
@@ -654,10 +796,12 @@ nstructjs.manager.add_class(DrawMats);
 export class Camera extends DrawMats {
   constructor() {
     super();
-    
+
+    this.isPerspective = true;
+
     this.fovy = 35;
     this.aspect = 1.0;
-    
+
     this.pos = new Vector3([0, 0, 5]);
     this.target = new Vector3();
     this.orbitTarget = new Vector3();
@@ -665,11 +809,48 @@ export class Camera extends DrawMats {
     this.up = new Vector3([1, 3, 0]);
     this.up.normalize();
     
-    this.near = 0.01;
+    this.near = 0.25;
     this.far = 10000.0;
   }
-  
+
+  generateUpdateHash(objectMatrix=undefined) {
+    let mul = 1<<18;
+
+    let ret = 0;
+
+    function add(val) {
+      val = (val * mul) & ((1<<31)-1);
+      ret = (ret ^ val) & ((1<<31)-1);
+    }
+
+    add(this.near);
+    add(this.far);
+    add(this.fovy);
+    add(this.aspect);
+    add(this.isPerspective);
+    add(this.pos[0]);
+    add(this.pos[1]);
+    add(this.pos[2]);
+    add(this.target[0]);
+    add(this.target[1]);
+    add(this.target[2]);
+    add(this.up[0]);
+    add(this.up[1]);
+    add(this.up[2]);
+
+    if (objectMatrix !== undefined) {
+      let m = objectMatrix.$matrix;
+
+      add(m.m11); add(m.m12); add(m.m13);
+      add(m.m21); add(m.m22); add(m.m23);
+      add(m.m31); add(m.m32); add(m.m33);
+    }
+
+    return ret;
+  }
+
   load(b) {
+    this.isPerspective = b.isPerspective;
     this.fovy = b.fovy;
     this.aspect = b.aspect;
     this.pos.load(b.pos);
@@ -686,7 +867,8 @@ export class Camera extends DrawMats {
   
   copy() {
     let ret = new Camera();
-    
+
+    ret.isPerspective = this.isPerspective;
     ret.fovy = this.fovy;
     ret.aspect = this.aspect;
     
@@ -750,15 +932,26 @@ export class Camera extends DrawMats {
     this.aspect = aspect;
     
     this.persmat.makeIdentity();
-    this.persmat.perspective(this.fovy, aspect, this.near, this.far);
-    
+    if (this.isPerspective) {
+      this.persmat.perspective(this.fovy, aspect, this.near, this.far);
+    } else {
+      this.persmat.isPersp = true;
+      let scale = 1.0 / this.pos.vectorDistance(this.target);
+
+      this.persmat.makeIdentity();
+      this.persmat.orthographic(scale, aspect, this.near, this.far);
+
+      //this.persmat.scale(1, 1, -2.0/zscale, 1.0/scale);
+      //this.persmat.translate(0.0, 0.0, 0.5*zscale - this.near);
+    }
+
     this.cameramat.makeIdentity();
     this.cameramat.lookat(this.pos, this.target, this.up);
     this.cameramat.invert();
     
     this.rendermat.load(this.persmat).multiply(this.cameramat);
     //this.rendermat.load(this.cameramat).multiply(this.persmat);
-    
+
     super.regen_mats(aspect); //will calculate iXXXmat for us
   }
 
@@ -768,14 +961,15 @@ export class Camera extends DrawMats {
 }
 
 Camera.STRUCT = STRUCT.inherit(Camera, DrawMats) + `
-  fovy         : float;
-  aspect       : float;
-  target       : vec3;
-  orbitTarget  : vec3;
-  pos          : vec3;
-  up           : vec3;
-  near         : float;
-  far          : float;
+  fovy          : float;
+  aspect        : float;
+  target        : vec3;
+  orbitTarget   : vec3;
+  pos           : vec3;
+  up            : vec3;
+  near          : float;
+  far           : float;
+  isPerspective : bool;
 }
 `;
 nstructjs.manager.add_class(Camera);

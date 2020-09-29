@@ -1,10 +1,12 @@
 "use strict";
 
+import {setIconMap} from '../path.ux/scripts/core/ui_base.js';
+
 export let Icons = {
   HFLIP          : 0,
   TRANSLATE      : 1,
   ROTATE         : 2,
-  HELP_PICKER    : 3,
+  HELP           : 3,
   UNDO           : 4,
   REDO           : 5,
   CIRCLE_SEL     : 6,
@@ -40,7 +42,7 @@ export let Icons = {
   ENUM_UNCHECKED : 36,
   ENUM_CHECKED   : 37,
   APPEND_VERTEX  : 38,
-  VIEW_SELECTED  : 39,
+  FIX_VIEW       : 39,
   EXTRUDE        : 40,
   SUBDIVIDE      : 41,
   SUBSURF        : 42,
@@ -50,5 +52,10 @@ export let Icons = {
   VIEW_NORMALS   : 46,
   VIEW_DEPTH     : 47,
   VIEW_ALPHA     : 48,
-  SCALE_WIDGET   : 49
+  SCALE_WIDGET   : 49,
+  FAKE_USER      : 50,
+  PAN            : 51,
+  LARGE_CHECK    : 52,
+  MESHTOOL       : 53
 };
+setIconMap(Icons);

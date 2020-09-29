@@ -1,34 +1,44 @@
 "use strict";
 
-import * as toolsys from '../path.ux/scripts/simple_toolsys.js';
-import {Context, AppToolStack} from '../core/context.js';
-import {initSimpleController} from '../path.ux/scripts/simple_controller.js';
+import * as toolsys from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {ViewContext} from './context.js';
+import {AppToolStack} from "./toolstack.js";
+import '../editors/node/MaterialEditor.js';
+
+import {initSimpleController, checkForTextBox, keymap, Vector3, Vector4, Vector2, Quat, Matrix4,
+  ToolOp, UndoFlags, nstructjs} from '../path.ux/scripts/pathux.js';
+
 import './polyfill.js';
 
-toolsys.setContextClass(Context);
+import '../util/fbxloader.js';
 
-import {loadWidgetShapes} from '../editors/view3d/widget_shapes.js';
+import {loadShapes} from "./simplemesh_shapes.js";
 
+import '../editors/resbrowser/resbrowser.js';
+import '../editors/resbrowser/resbrowser_ops.js';
+import '../editors/resbrowser/resbrowser_types.js';
+
+import '../editors/view3d/tools/tools.js';
+import cconst2 from "../path.ux/scripts/config/const.js";
+import {Material} from './material.js';
 import {App, ScreenBlock} from '../editors/editor_base.js';
-import {Library, DataBlock, DataRef} from '../core/lib_api.js';
+import {Library, DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import {IDGen} from '../util/util.js';
-import {PropsEditor} from "../editors/properties/PropsEditor.js";
 import * as util from '../util/util.js';
-import {Vector3, Vector4, Vector2, Quat, Matrix4} from '../util/vectormath.js';
-import {ToolOp, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
 import {getDataAPI} from '../data_api/api_define.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {MenuBarEditor} from "../editors/menu/MainMenu.js";
-import {Scene} from '../core/scene.js';
+import {Scene} from '../scene/scene.js';
 import {BinaryReader, BinaryWriter} from '../util/binarylib.js';
-import * as cconst from '../core/const.js';
+import * as cconst from './const.js';
 import {AppSettings} from './settings.js';
-import {SceneObject} from './sceneobject.js';
+import {SceneObject} from '../sceneobject/sceneobject.js';
 import {Mesh} from '../mesh/mesh.js';
 import {makeCube} from './mesh_shapes.js';
-import '../path.ux/scripts/struct.js';
 import {NodeFlags} from "./graph.js";
-import {ShaderNetwork, makeDefaultShaderNetwork} from "./material.js";
+import {ShaderNetwork, makeDefaultShaderNetwork} from "../shadernodes/shadernetwork.js";
+
+cconst2.loadConstants(cconst);
 
 let STRUCT = nstructjs.STRUCT;
 
@@ -40,42 +50,88 @@ ToolOp.prototype.undoPre = function(ctx) {
 }
 
 ToolOp.prototype.undo = function(ctx) {
-  console.log("loading undo file");
-  ctx.appstate.loadUndoFile(this._undo);
+  console.log("loading undo file 1");
+  ctx.state.loadUndoFile(this._undo);
+
+  window.redraw_viewport();
+};
+
+ToolOp.prototype.execPost = function(ctx) {
+  window.redraw_viewport();
+};
+
+
+/*root operator for when leading files*/
+export class RootFileOp extends ToolOp {
+  static tooldef() {return {
+    undoflag    : UndoFlags.IS_UNDO_ROOT | UndoFlags.NO_UNDO,
+    uiname      : "File Start",
+    toolpath    : "app.__new_file"
+  }}
 }
 
+/*root operator that build a file*/
 export class BasicFileOp extends ToolOp {
   constructor() {
     super();
   }
-  
+
   exec(ctx) {
     let scene = new Scene();
     let lib = ctx.datalib;
-    
-    lib.add(scene);
-    lib.getLibrary("scene").active = scene;
-    
-    let mesh = makeCube();
-    lib.add(mesh);
-    
-    let ob = new SceneObject(mesh);
-    
-    lib.add(ob);    
-    scene.add(ob);
-    scene.objects.setSelect(ob, true);
 
-    let mat = makeDefaultShaderNetwork(); //new ShaderNetwork();
-    mesh.materials.push(mat);
+    lib.add(scene);
+    lib.setActive(scene);
+
+    let collection = new Collection();
+    lib.add(collection);
+
+    scene.collection = collection;
+    collection.lib_addUser(scene);
+
+    let screenblock = new ScreenBlock();
+    screenblock.screen = _appstate.screen;
+
+    lib.add(screenblock);
+    lib.setActive(screenblock);
+
+    let mat = new Material();
+    mat.name = "Default";
+    mat.lib_flag |= BlockFlags.HIDE;
+
     lib.add(mat);
 
-    let sblock = new ScreenBlock();
-    sblock.screen = _appstate.screen;
+    //*
+    let mesh = new Mesh();
+    lib.add(mesh);
 
-    lib.add(sblock);
-    lib.setActive(sblock);
+    makeCube(mesh);
+
+    let sob = new SceneObject();
+    lib.add(sob);
+
+    sob.data = mesh;
+    mesh.lib_addUser(sob);
+
+    scene.add(sob);
+    scene.objects.setSelect(sob, true);
+    scene.objects.setActive(sob);
+
+    sob.graphUpdate();
+    mesh.graphUpdate();
+
+    mesh.regenRender();
+    mesh.regenTesellation();
+    mesh.regenElementsDraw();
+
+    window.updateDataGraph();
+
+    // /*/
+
+    scene.selectMask = SelMask.VERTEX;
+    scene.switchToolMode("mesh");
   }
-  
+
   static tooldef() {return {
     undoflag    : UndoFlags.IS_UNDO_ROOT | UndoFlags.NO_UNDO,
     uiname      : "File Start",
@@ -83,38 +139,14 @@ export class BasicFileOp extends ToolOp {
   }}
 };
 
-export function genDefaultScreen(appstate) {
-  appstate.screen.clear();
-  appstate.screen.ctx = appstate.ctx;
+export {genDefaultScreen} from '../editors/screengen.js';
+import {genDefaultScreen} from '../editors/screengen.js';
+import {Collection} from "../scene/collection.js";
+import {PropsEditor} from "../editors/properties/PropsEditor.js";
+import {SelMask} from "../editors/view3d/selectmode.js";
 
-  let sarea = document.createElement("screenarea-x");
-  sarea.ctx = appstate.ctx;
-
-  appstate.screen.appendChild(sarea);
-
-  sarea.switch_editor(View3D);
-  
-  sarea.pos[0] = sarea.pos[1] = 0.0;
-  sarea.size[0] = appstate.screen.size[0];
-  sarea.size[1] = appstate.screen.size[1];
-
-  let yperc = 65 / _appstate.screen.size[1];
-  let sarea2 = _appstate.screen.splitArea(sarea, yperc);
-
-  sarea.switch_editor(MenuBarEditor);
-
-  let xperc = 270 / _appstate.screen.size[0];
-  let sarea3 = _appstate.screen.splitArea(sarea2, 1.0 - xperc, false);
-  sarea3.switch_editor(PropsEditor);
-
-  appstate.screen.listen();
-
-  sarea.setCSS();
-  sarea.area.setCSS();
-}
-
-export function genDefaultFile(appstate, dont_load_startup=false) {
-  if (0 && cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
+export function genDefaultFile(appstate, dont_load_startup=0) {
+  if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
     let buf = localStorage[cconst.APP_KEY_NAME];
 
     try {
@@ -129,11 +161,11 @@ export function genDefaultFile(appstate, dont_load_startup=false) {
   }
 
   let tool = new BasicFileOp();
-  
+
   genDefaultScreen(appstate);
 
   appstate.datalib = new Library();
-  appstate.toolstack.execTool(tool);
+  appstate.toolstack.execTool(appstate.ctx, tool);
 }
 
 window._genDefaultFile = genDefaultFile; //this global is for debugging purposes only
@@ -163,36 +195,94 @@ export class FileData {
 export class AppState {
   constructor() {
     this.settings = new AppSettings;
-    this.ctx = new Context(this);
+    this.ctx = new ViewContext(this);
     this.toolstack = new AppToolStack(this.ctx);
     this.api = getDataAPI();
     this.screen = undefined;
     this.datalib = new Library();
+
+    this.modalFlag = 0;
+
+    this.three_scene = undefined;
+    this.three_renderer = undefined;
+
+    this.playing = false;
   }
-  
+
+  unswapScreen() {
+    let screen = this.screen;
+
+    if (screen._swapScreen === undefined) {
+      console.warn("Bad call to appstate.unswapScreen()")
+      return;
+    }
+
+    let screen2 = screen._swapScreen;
+    screen._swapScreen = undefined;
+
+    this.setScreen(screen2)
+  }
+
+  swapScreen(screen) {
+    screen._swapScreen = this.screen;
+    this.setScreen(screen, false);
+  }
+
+  setScreen(screen, trigger_destroy=true) {
+    this.screen.unlisten();
+    this.screen.remove(trigger_destroy);
+
+    this.screen = screen;
+    screen.ctx = this.ctx;
+
+    document.body.appendChild(this.screen);
+
+    screen.listen();
+    screen.setCSS();
+    screen.update();
+  }
+
   start() {
-    this.ctx = new Context(this);
+    this.loadSettings();
+
+    this.ctx = new ViewContext(this);
 
     window.addEventListener("mousedown", (e) => {
-      e.preventDefault();
+      let tbox = checkForTextBox(_appstate.screen, e.pageX, e.pageY);
+
+      if (e.button === 0 && !tbox) {
+        e.preventDefault();
+      }
     });
+
     window.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
+      console.log(e);
+      let screen = _appstate.screen;
+      if (screen === undefined) {
+        return;
+      }
+
+      let elem = screen.pickElement(e.x, e.y);
+      console.log(elem, elem.tagName, "|");
+
+      if (elem.tagName !== "TEXTBOX-X") {
+        e.preventDefault();
+      }
     });
 
     this.screen = document.createElement("webgl-app-x");
     this.screen.ctx = this.ctx;
     this.screen.size[0] = window.innerWidth-45;
     this.screen.size[1] = window.innerHeight-45;
-    
+
     document.body.appendChild(this.screen);
     this.screen.setCSS();
     this.screen.listen();
-    
+
     genDefaultFile(this);
     this.filename = "unnamed." + cconst.FILE_EXT;
   }
-  
+
   createFile(args={save_screen : true, save_settings : false, save_library : true}) {
     if (args.save_library === undefined) {
       args.save_library = true;
@@ -203,30 +293,30 @@ export class AppState {
     }
 
     let file = new BinaryWriter();
-    
+
     file.string(cconst.FILE_MAGIC);
     file.uint16(cconst.APP_VERSION);
     file.uint16(0); //reserved for file flags (may compression?)
-    
+
     let buf = nstructjs.write_scripts();
-    
+
     file.int32(buf.length);
     file.bytes(buf);
-    
+
     function writeblock(type, object) {
       if (type === undefined || type.length != 4) {
         throw new Error("bad type in writeblock: " + type);
       }
-      
+
       file.string(type);
       let data = [];
 
       nstructjs.manager.write_object(data, object);
-      
+
       file.int32(data.length);
       file.bytes(data);
     }
-    
+
     //if (args.save_screen) {
     //  writeblock(BlockTypes.SCREEN, this.screen);
     //}
@@ -249,19 +339,19 @@ export class AppState {
       for (let block of lib) {
         let typeName = block.constructor.blockDefine().typeName;
         let data = [];
-        
+
         file.string(BlockTypes.DATABLOCK);
-        
+
         nstructjs.manager.write_object(data, block);
         let len = typeName.length + data.length + 4;
-        
+
         file.int32(len);
         file.int32(typeName.length);
         file.string(typeName);
         file.bytes(data);
       }
     }
-    
+
     return file.finish().buffer;
   }
 
@@ -323,8 +413,6 @@ export class AppState {
 
       sarea.area.on_area_active();
       sarea.area.setCSS();
-
-      console.log("PARENTWIDGET", sarea.parentWidget);
     }
 
     document.body.appendChild(screen2);
@@ -356,8 +444,11 @@ export class AppState {
     let lastscreens = undefined;
     let lastscreens_active = undefined;
 
+    args.load_library = args.load_library === undefined ? true : args.load_library;
+    args.reset_context = args.reset_context === undefined ? args.reset_toolstack : args.reset_context;
+
     //if we didn't load a screen, preserve screens from last datalib
-    if (!args.load_screen) {
+    if (!args.load_screen && args.load_library) {
       lastscreens = [];
 
       lastscreens_active = this.datalib.libmap.screen.active;
@@ -368,22 +459,22 @@ export class AppState {
     }
 
     let file = new BinaryReader(buf);
-    
+
     let s = file.string(4);
     if (s !== cconst.FILE_MAGIC) {
       throw new FileLoadError("Not a valid file");
     }
-    
+
     let version = file.uint16();
     let flag = file.uint16();
-    
+
     let len = file.int32();
     let structs = file.string(len);
-    
+
     let istruct = new nstructjs.STRUCT();
-    
+
     istruct.parse_structs(structs);
-    
+
     let screen, found_screen;
     let datablocks = [];
     let datalib = undefined;
@@ -391,28 +482,27 @@ export class AppState {
     while (!file.at_end()) {
       let type = file.string(4);
       let len = file.int32();
-      
+
       let data = file.bytes(len);
       data = new DataView((new Uint8Array(data)).buffer);
-      console.log("Reading block of type", type);
+      //console.log("Reading block of type", type);
 
       if (args.load_screen && type == BlockTypes.SCREEN) {
         console.warn("Old screen block detected");
 
         screen = istruct.read_object(data, App);
         found_screen = true;
-      } else if (type == BlockTypes.LIBRARY) {
+      } else if (args.load_library && type == BlockTypes.LIBRARY) {
         datalib = istruct.read_object(data, Library);
-        console.log("Found library");
 
         this.datalib.destroy();
         this.datalib = datalib;
-      } else if (type == BlockTypes.DATABLOCK) {
+      } else if (args.load_library && type == BlockTypes.DATABLOCK) {
         let file2 = new BinaryReader(data);
-        
+
         let len = file2.int32();
         let clsname = file2.string(len);
-        
+
         let cls = DataBlock.getClass(clsname);
         len = data.byteLength - len - 4;
         let data2 = file2.bytes(len);
@@ -424,7 +514,7 @@ export class AppState {
 
         if (cls === undefined) {
           console.warn("Warning, unknown block type", clsname);
-          
+
           block = istruct.read_object(data2, DataBlock);
         } else {
           block = istruct.read_object(data2, cls);
@@ -432,16 +522,21 @@ export class AppState {
 
         if (cls.blockDefine().typeName == "screen") {
           block.screen._ctx = this.ctx;
-          console.log("SCREEN", block.screen.sareas)
+          //console.log("SCREEN", block.screen.sareas)
         }
 
         datablocks.push([clsname, block]);
       } else if (args.load_settings && type == BlockTypes.SETTINGS) {
         let settings = istruct.read_object(data, AppSettings);
-        
+
         this.settings.destroy();
         this.settings = settings;
       }
+    }
+
+    //just loading settings?
+    if (!args.load_library) {
+      return;
     }
 
     if (datalib === undefined) {
@@ -452,31 +547,47 @@ export class AppState {
     for (let dblock of datablocks) {
       datalib.getLibrary(dblock[0]).add(dblock[1], true);
     }
-    
+
     this.do_versions(version, datalib);
 
     //datalib = this.datalib;
+
     function getblock(dataref) {
+      if (dataref === undefined) {
+        return undefined;
+      }
+
       return datalib.get(dataref);
     }
-    
-    function getblock_us(dataref, user) {
-      let ret = getblock(dataref);
-      
-      if (ret !== undefined) {
+
+    function getblock_addUser(dataref, user) {
+      if (dataref === undefined) {
+        return undefined;
+      }
+
+      let addUser = dataref !== undefined && !(dataref instanceof DataBlock);
+
+      let ret = datalib.get(dataref);
+
+      if (addUser && ret !== undefined) {
         ret.lib_addUser(user);
       }
-      
+
       return ret;
     }
 
-    for (let lib of this.datalib.libs) {
-      lib.dataLink(getblock, getblock_us);
+    //reference counts are re-derived during linking
+    for (let lib of datalib.libs) {
+      for (let block of lib) {
+        block.lib_users = (block.lib_flag & BlockFlags.FAKE_USER) ? 1 : 0;
+      }
     }
-    this.datalib.afterSTRUCT();
 
-    this.do_versions_post(version, datalib);
-    
+    for (let lib of datalib.libs) {
+      lib.dataLink(getblock, getblock_addUser);
+    }
+    datalib.afterSTRUCT();
+
     if (args.load_screen && screen === undefined) {
       screen = datalib.libmap.screen.active;
       if (screen === undefined) { //paranoia check
@@ -512,19 +623,26 @@ export class AppState {
       this.screen.setCSS();
 
       screen.doOnce(() => {
-        this.screen.on_resize([window.innerWidth, window.innerHeight]);
+        this.screen.on_resize(this.screen.size, [window.innerWidth, window.innerHeight]);
         this.screen.setCSS();
         this.screen.update();
       });
     }
 
-    if (args.reset_toolstack) {
-      this.toolstack.reset(this.ctx);
+    this.do_versions_post(version, datalib);
+
+    if (args.reset_context) {
+      this.ctx.reset(true);
     }
 
-    console.log("-------------------------->", lastscreens);
+    if (args.reset_toolstack) {
+      this.toolstack.reset(this.ctx);
+      this.toolstack.execTool(this.ctx, new RootFileOp());
+    }
 
     if (!args.load_screen) {
+      this.modalFlag = 0;
+
       for (let sblock of lastscreens) {
         sblock.lib_id = sblock.graph_id = -1; //request new id
         datalib.add(sblock);
@@ -545,6 +663,11 @@ export class AppState {
     this._execEditorOnFileLoad();
   }
 
+  clearStartupFile() {
+    console.log("clearing startup file");
+    delete localStorage[cconst.APP_KEY_NAME];
+  }
+
   saveStartupFile() {
     let buf = this.createFile({write_settings : false});
     buf = util.btoa(buf);
@@ -555,79 +678,150 @@ export class AppState {
 
   /** this is executed before block re-linking has happened*/
   do_versions(version, datalib) {
-    if (version < 101) {
-      for (let block of datalib.allBlocks) {
-        block.graph_flag |= NodeFlags.SAVE_PROXY;
-
-        if (block.graph_id < 0) {
-          datalib.graph.add(block);
-        }
-      }
-    }
-
-    if (version < 103) {
-      let sblock = new ScreenBlock();
-      sblock.screen = this.screen;
-
-      datalib.add(sblock);
-      //we're inserting the screen prior to block relinking
-      datalib.getLibrary("screen").active = sblock.lib_id;
-    }
   }
 
   /** this is executed after block re-linking has happened*/
   do_versions_post(version, datalib) {
-    if (version < 102) {
-      let mat = makeDefaultShaderNetwork(); //new ShaderNetwork();
+    if (version < 1) {
+      for (let scene of datalib.scene) {
+        scene.collection = new Collection();
+        this.datalib.add(scene.collection);
+        scene.collection.lib_addUser(scene);
 
-      datalib.add(mat);
-      datalib.setActive(mat);
-
-      for (let mesh of datalib.getLibrary("mesh")) {
-        mesh.materials.push(mat);
+        scene._loading = true;
+        for (let ob of scene.objects) {
+          scene.collection.add(ob);
+        }
+        scene._loading = false;
       }
     }
+
+    if (version < 3) {
+      let screen = this.screen;
+
+      let props = document.createElement("screenarea-x");
+      props.size[0] = 5;
+      props.size[1] = screen.size[1];
+      props.ctx = this.ctx;
+      props._init();
+
+      props.switch_editor(PropsEditor);
+      screen.appendChild(props);
+    }
   }
-  
+
+  createSettingsFile() {
+    let args = {
+      save_settings : true,
+      save_screen   : false,
+      save_library : false
+    };
+
+    return this.createFile(args);
+  }
+
+  saveSettings() {
+    let file = this.createSettingsFile();
+    file = util.btoa(file);
+
+    localStorage[cconst.APP_KEY_NAME + "_settings"] = file;
+  }
+
+  loadSettings() {
+    try {
+      this.loadSettings_intern();
+    } catch (error) {
+      util.print_stack(error);
+      console.log("Failed to load settings");
+    }
+  }
+
+  loadSettings_intern() {
+    let file = localStorage[cconst.APP_KEY_NAME + "_settings"];
+    if (file === undefined) {
+      return;
+    }
+
+    file = util.atob(file).buffer;
+
+    let args = {
+      load_screen: false,
+      load_settings: true,
+      load_library : false,
+      reset_toolstack: false
+    }
+
+    this.loadFile(file, args);
+    window.redraw_viewport();
+  }
+
   createUndoFile() {
     let args = {
       save_screen   : false,
-      load_settings : false
+      save_settings : false
     };
-    
+
     return this.createFile(args);
   }
-  
+
   destroy() {
     this.screen.unlisten();
   }
-  
+
   draw() {
   }
 };
 
 export function init() {
-  loadWidgetShapes();
+  loadShapes();
   initSimpleController();
 
   window._appstate = new AppState();
-  
+
   let animreq;
   let f = () => {
     animreq = undefined;
-    
+
     _appstate.draw();
   }
   window.redraw_all = function() {
     if (animreq !== undefined) {
       return;
     }
-    
+
     animreq = requestAnimationFrame(f);
   }
 
+  let lastKey = undefined;
+
   window.addEventListener("keydown", (e) => {
-    return _appstate.screen.on_keydown(e);
+    lastKey = e.keyCode;
+
+    console.log(e.keyCode);
+    if (e.keyCode === keymap["C"]) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      let mpos = _appstate.screen.mpos;
+      let elem = _appstate.screen.pickElement(mpos[0], mpos[1]);
+
+      console.log(elem ? elem.tagName : elem, mpos);
+    }
+    //console.log("tbox", checkForTextBox(_appstate.screen, mpos[0], mpos[1]), mpos);
+
+    //prevent reload hotkey, could conflict with redo
+    if (e.keyCode == keymap["R"] && e.ctrlKey) {
+      e.preventDefault();
+    }
+
+    //also prevent ctrl-A, which is usually select all, unless we're over a textbox that
+    //uses it
+    let mpos = _appstate.screen ? _appstate.screen.mpos : [0, 0];
+    let preventdef = !(_appstate.screen && checkForTextBox(_appstate.screen, mpos[0], mpos[1]));
+    if (preventdef && e.keyCode == keymap["A"] && e.ctrlKey) {
+
+      e.preventDefault();
+    }
   });
 
 
@@ -638,6 +832,8 @@ export function init() {
   }
 
   window.updateDataGraph = function(force=false) {
+    //console.warn("updateDataGraph called");
+
     if (force) {
       _appstate.datalib.graph.exec(_appstate.ctx);
       return;

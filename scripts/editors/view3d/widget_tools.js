@@ -2,11 +2,10 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property,
-  PropFlags, PropTypes, PropSubTypes} from '../../path.ux/scripts/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
-import {WidgetShapes} from './widget_shapes.js';
-import {Shaders} from './view3d_shaders.js';
-import {dist_to_line_2d} from '../../path.ux/scripts/math.js';
+  PropFlags, PropTypes, PropSubTypes} from '../../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
+import {Shaders} from '../../shaders/shaders.js';
+import {dist_to_line_2d} from '../../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
 import * as util from '../../util/util.js';
@@ -14,9 +13,9 @@ import {SelMask} from './selectmode.js';
 
 import {View3DFlags} from "./view3d_base.js";
 import {WidgetBase, WidgetSphere, WidgetArrow, WidgetTool, WidgetFlags} from './widgets.js';
-import {TranslateOp, ScaleOp} from "./transform_ops.js";
-import {calcTransCenter} from './transform_query.js';
-import {ToolMacro} from "../../path.ux/scripts/simple_toolsys.js";
+import {TranslateOp, ScaleOp} from "./transform/transform_ops.js";
+import {calcTransCenter} from './transform/transform_query.js';
+import {ToolMacro} from "../../path.ux/scripts/toolsys/simple_toolsys.js";
 import {Icons} from '../icon_enum.js';
 
 let update_temps = util.cachering.fromConstructor(Vector3, 64);
@@ -29,7 +28,7 @@ export class WidgetSceneCursor extends WidgetBase {
   }
 
   get isDead() {
-    return !this.manager.view3d._showCursor();
+    return !this.manager.ctx.view3d._showCursor();
   }
 
   static widgetDefine() {return {
@@ -42,7 +41,7 @@ export class WidgetSceneCursor extends WidgetBase {
 
   update(manager) {
     super.update(manager);
-    let view3d = manager.view3d;
+    let view3d = manager.ctx.view3d;
 
     if (this.shape === undefined) {
       this.shape = new WidgetSphere(manager);
@@ -56,15 +55,15 @@ export class WidgetSceneCursor extends WidgetBase {
 };
 
 export class NoneWidget extends WidgetTool {
-  static define() {return {
-    uiname    : "Disable widgets",
-    name      : "none",
-    icon      : -1,
-    flag      : 0
+  static widgetDefine() {return {
+    uiname     : "Disable widgets",
+    name       : "none",
+    icon       : -1,
+    flag       : 0
   }}
 
   static validate(ctx) {
-    return false;
+    return true;
   }
 }
 WidgetTool.register(NoneWidget);
@@ -84,15 +83,15 @@ export class TranslateWidget extends WidgetTool {
   }}
 
   static validate(ctx) {
-    let selmask = ctx.view3d.selectmode;
+    let selmask = ctx.selectMask;
 
     if (selmask & SelMask.OBJECT) {
-      for (let ob of ctx.scene.objects.selected.editable) {
+      for (let ob of ctx.selectedObjects) {
         return true;
       }
     }
 
-    if (selmask & SelMask.MESH) {
+    if (selmask & SelMask.GEOM) {
       for (let ob of ctx.selectedMeshObjects) {
         for (let v of ob.data.verts.selected) {
           return true;
@@ -128,27 +127,27 @@ export class TranslateWidget extends WidgetTool {
 
     this.axes = [x, y, z];
 
-    center.on_mousedown = (localX, localY) => {
+    center.on_mousedown = (e, localX, localY) => {
       this.startTool(-1, localX, localY);
     };
 
-    x.on_mousedown = (localX, localY) => {
+    x.on_mousedown = (e, localX, localY) => {
       this.startTool(0, localX, localY);
     };
-    y.on_mousedown = (localX, localY) => {
+    y.on_mousedown = (e, localX, localY) => {
       this.startTool(1, localX, localY);
     };
-    z.on_mousedown = (localX, localY) => {
+    z.on_mousedown = (e, localX, localY) => {
       this.startTool(2, localX, localY);
     };
 
-    px.on_mousedown = (localX, localY) => {
+    px.on_mousedown = (e, localX, localY) => {
       this.startTool(3, localX, localY);
     };
-    py.on_mousedown = (localX, localY) => {
+    py.on_mousedown = (e, localX, localY) => {
       this.startTool(4, localX, localY);
     };
-    pz.on_mousedown = (localX, localY) => {
+    pz.on_mousedown = (e, localX, localY) => {
       this.startTool(5, localX, localY);
     };
 
@@ -158,7 +157,7 @@ export class TranslateWidget extends WidgetTool {
   startTool(axis, localX, localY) {
     let tool = new TranslateOp([localX, localY]);
     let con = new Vector3();
-    let selmode = this.ctx.view3d.selectmode;
+    let selmode = this.ctx.view3d.ctx.selectMask;
 
     tool.inputs.selmask.setValue(selmode);
 
@@ -174,7 +173,7 @@ export class TranslateWidget extends WidgetTool {
       tool.inputs.constraint.setValue(con);
     }
 
-    this.execTool(tool);
+    this.execTool(this.ctx, tool);
   }
 
   update(ctx) {
@@ -186,7 +185,12 @@ export class TranslateWidget extends WidgetTool {
         y = this.axes[1],
         z = this.axes[2];
 
-    let ret = this.view3d.getTransCenter();
+    //let ret = new Vector3(aabb[0]).interp(aabb[1], 0.5);
+
+    let ret = this.ctx.view3d.getTransCenter();
+    let aabb = this.ctx.view3d.getTransBounds();
+    ret.center = new Vector3(aabb[0]).interp(aabb[1], 0.5);
+    //ret = {center:  ret};
 
     let tmat = new Matrix4();
     let ts = 0.5;
@@ -197,15 +201,15 @@ export class TranslateWidget extends WidgetTool {
     let co1 = new Vector3(ret.center);
     let co2 = new Vector3(co1);
 
-    this.view3d.project(co1);
-    this.view3d.project(co2);
+    this.ctx.view3d.project(co1);
+    this.ctx.view3d.project(co2);
 
     co1[0] += 1.0;
 
-    let z2 = this.view3d.camera.pos.vectorDistance(this.view3d.camera.target);
+    let z2 = this.ctx.view3d.camera.pos.vectorDistance(this.ctx.view3d.camera.target);
 
-    this.view3d.unproject(co1);
-    this.view3d.unproject(co2);
+    this.ctx.view3d.unproject(co1);
+    this.ctx.view3d.unproject(co2);
 
     let mat = new Matrix4(); //XXX get proper matrix space transform
     mat.multiply(ret.spaceMatrix);
@@ -303,7 +307,7 @@ export class ScaleWidget extends WidgetTool {
   }}
 
   static validate(ctx) {
-    let selmask = ctx.view3d.selectmode;
+    let selmask = ctx.view3d.ctx.selectMask;
 
     if (selmask == SelMask.OBJECT) {
       for (let ob of ctx.scene.objects.selected.editable) {
@@ -345,27 +349,27 @@ export class ScaleWidget extends WidgetTool {
 
     this.axes = [x, y, z];
 
-    center.on_mousedown = (localX, localY) => {
+    center.on_mousedown = (e, localX, localY) => {
       this.startTool(-1, localX, localY);
     };
 
-    x.on_mousedown = (localX, localY) => {
+    x.on_mousedown = (e, localX, localY) => {
       this.startTool(0, localX, localY);
     };
-    y.on_mousedown = (localX, localY) => {
+    y.on_mousedown = (e, localX, localY) => {
       this.startTool(1, localX, localY);
     };
-    z.on_mousedown = (localX, localY) => {
+    z.on_mousedown = (e, localX, localY) => {
       this.startTool(2, localX, localY);
     };
 
-    px.on_mousedown = (localX, localY) => {
+    px.on_mousedown = (e, localX, localY) => {
       this.startTool(3, localX, localY);
     };
-    py.on_mousedown = (localX, localY) => {
+    py.on_mousedown = (e, localX, localY) => {
       this.startTool(4, localX, localY);
     };
-    pz.on_mousedown = (localX, localY) => {
+    pz.on_mousedown = (e, localX, localY) => {
       this.startTool(5, localX, localY);
     };
 
@@ -388,7 +392,7 @@ export class ScaleWidget extends WidgetTool {
       tool.inputs.constraint.setValue(con);
     }
 
-    this.execTool(tool);
+    this.execTool(this.ctx, tool);
   }
 
   update(ctx) {
@@ -400,7 +404,7 @@ export class ScaleWidget extends WidgetTool {
       y = this.axes[1],
       z = this.axes[2];
 
-    let ret = this.view3d.getTransCenter();
+    let ret = this.ctx.view3d.getTransCenter();
 
     let tmat = new Matrix4();
     let ts = 0.5;
@@ -411,15 +415,15 @@ export class ScaleWidget extends WidgetTool {
     let co1 = new Vector3(ret.center);
     let co2 = new Vector3(co1);
 
-    this.view3d.project(co1);
-    this.view3d.project(co2);
+    this.ctx.view3d.project(co1);
+    this.ctx.view3d.project(co2);
 
     co1[0] += 1.0;
 
-    let z2 = this.view3d.camera.pos.vectorDistance(this.view3d.camera.target);
+    let z2 = this.ctx.view3d.camera.pos.vectorDistance(this.ctx.view3d.camera.target);
 
-    this.view3d.unproject(co1);
-    this.view3d.unproject(co2);
+    this.ctx.view3d.unproject(co1);
+    this.ctx.view3d.unproject(co2);
 
     let mat = new Matrix4(); //XXX get proper matrix space transform
     mat.multiply(ret.spaceMatrix);
@@ -517,7 +521,10 @@ export class ExtrudeWidget extends WidgetTool {
   }}
 
   static validate(ctx) {
-    let selmask = ctx.view3d.selectmode;
+    if (!(ctx.selectmode & SelMask.GEOM))
+      return false;
+
+    let selmask = ctx.view3d.ctx.selectMask;
 
     for (let ob of ctx.selectedMeshObjects) {
       for (let f of ob.data.faces.selected) {
@@ -535,7 +542,7 @@ export class ExtrudeWidget extends WidgetTool {
 
     let arrow = this.arrow = this.getArrow(undefined, "orange");
 
-    arrow.on_mousedown = (localX, localY) => {
+    arrow.on_mousedown = (e, localX, localY) => {
       this.startTool(localX, localY);
     };
 
@@ -555,7 +562,7 @@ export class ExtrudeWidget extends WidgetTool {
     });
     tool2.inputs.constraint.setValue([0, 0, 1]);
 
-    this.execTool(macro, this.ctx);
+    this.execTool(this.ctx, macro);
     //"mesh.extrude_regions()"
 
   }
@@ -618,4 +625,4 @@ export class ExtrudeWidget extends WidgetTool {
     this.arrow.setMatrix(mat);
   }
 }
-WidgetTool.register(ExtrudeWidget);
+//WidgetTool.register(ExtrudeWidget);

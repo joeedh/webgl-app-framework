@@ -1,121 +1,186 @@
 import {DataBlock, DataRef} from './lib_api.js';
 import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags} from './graph.js';
-import '../path.ux/scripts/struct.js';
+import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4, UIBase,
+        PackFlags, Container, ToolOp, IntProperty, StringProperty} from '../path.ux/scripts/pathux.js';
+
 let STRUCT = nstructjs.STRUCT;
 import {DependSocket, Vec3Socket, Vec4Socket, Matrix4Socket, FloatSocket} from "./graphsockets.js";
-import {UIBase} from '../path.ux/scripts/ui_base.js';
-import {Container} from '../path.ux/scripts/ui.js';
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
-import * as util from '../util/util.js';
 import {AbstractGraphClass} from './graph_class.js';
-import {ShaderGenerator, OutputNode, DiffuseNode} from "../shadernodes/shader_nodes.js";
+import {Icons} from "../editors/icon_enum.js";
+import {ShaderNetwork} from "../shadernodes/shadernetwork.js";
+import {DiffuseNode, GeometryNode, OutputNode} from "../shadernodes/shader_nodes.js";
 
-export {ShaderNetworkClass, ShaderNodeTypes, ShaderGenerator} from '../shadernodes/shader_nodes.js';
-
-export const MaterialFlags = {
-  SELECT : 1
-};
-
-export const ShadowFlags = {
-  NO_SHADOWS : 1
-};
-
-export class ShadowSettings {
+export class MakeMaterialOp extends ToolOp {
   constructor() {
-    this.bias = 1.0;
-    this.flag = 0;
+    super();
+  }
+
+  static tooldef() {return {
+    uiname : "Make Material",
+    toolpath : "material.new",
+    icon : Icons.SMALL_PLUS,
+    description : "Create a new material",
+    inputs : {
+      dataPathToSet : new StringProperty(),
+      name : new StringProperty("")
+    },
+    outputs : {
+      materialID : new IntProperty()
+    }
+  }}
+
+  static invoke(ctx, args) {
+    let ret = new MakeMaterialOp();
+
+    if ("dataPathToSet" in args) {
+      ret.inputs.dataPathToSet.setValue(args.dataPathToSet);
+    }
+
+    return ret;
+  }
+
+  exec(ctx) {
+    let mat = new Material();
+    let name = this.inputs.name.getValue();
+
+    mat.name = name && name !== "" ? name : mat.name;
+    ctx.datalib.add(mat);
+
+    let path = this.inputs.dataPathToSet.getValue();
+    if (path) {
+      let val = ctx.api.getValue(ctx, path);
+
+      if (val !== undefined) {
+        let meta = ctx.api.resolvePath(ctx, path);
+        val.lib_remUser(meta.obj);
+      }
+
+      console.log("PATH", path);
+      ctx.api.setValue(ctx, path, mat);
+
+      let meta = ctx.api.resolvePath(ctx, path);
+      mat.lib_addUser(meta.obj);
+    }
+
+    let diff = new DiffuseNode();
+    let output = new OutputNode();
+    let geom = new GeometryNode();
+
+    mat.graph.add(geom);
+    mat.graph.add(diff);
+    mat.graph.add(output);
+
+    geom.graph_ui_pos[0] = -geom.graph_ui_size[0] - 5;
+    output.graph_ui_pos[0] = diff.graph_ui_size[0] + 5;
+
+    geom.outputs.normal.connect(diff.inputs.normal);
+    diff.outputs.surface.connect(output.inputs.surface);
+
+    this.outputs.materialID.setValue(mat.lib_id);
   }
 }
+ToolOp.register(MakeMaterialOp);
 
-ShadowSettings.STRUCT = `
-ShadowSettings {
-  bias : float;
-  flag : int;
+export class UnlinkMaterialOp extends ToolOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {return {
+    uiname : "Make Material",
+    toolpath : "material.unlink",
+    icon : Icons.DELETE,
+    description : "Create a new material",
+    inputs : {
+      dataPathToUnset : new StringProperty(),
+    }
+  }}
+
+  static invoke(ctx, args) {
+    let ret = new UnlinkMaterialOp();
+
+    if ("dataPathToUnset" in args) {
+      ret.inputs.dataPathToUnset.setValue(args.dataPathToUnset);
+    }
+
+    return ret;
+  }
+
+  exec(ctx) {
+    let meta = ctx.api.resolvePath(ctx, this.inputs.dataPathToUnset.getValue());
+    let val = ctx.api.getValue(ctx, this.inputs.dataPathToUnset.getValue());
+
+    if (val !== undefined) {
+      val.lib_remUser(meta.obj);
+    }
+
+    ctx.api.setValue(ctx, this.inputs.dataPathToUnset.getValue(), undefined);
+  }
 }
-`;
-nstructjs.manager.add_class(ShadowSettings);
+ToolOp.register(UnlinkMaterialOp);
 
-export class ShaderNetwork extends DataBlock {
+export class MaterialFlags {
+};
+
+let DefaultMat;
+
+export class Material extends ShaderNetwork {
   constructor() {
     super();
 
-    this.shadow = new ShadowSettings();
     this.flag = 0;
-    this.graph = new Graph();
-    this.graph.onFlagResort = this._on_flag_resort.bind(this);
-    this._regen = true;
   }
 
-  _on_flag_resort() {
-    console.log("material shader resort");
-    this._regen = 1;
+  calcSettingsHash() {
+    throw new Error("implement me");
   }
+  /**
+   * Checks if a material name "Default" exists in ctx.datalib and returns it,
+   * otherwise it returns a frozen Material instance.
+   * @param ctx : Context
+   * @returns Material
+   * */
+  static getDefaultMaterial(ctx) {
+    //look for material named Default
+    let mat = ctx.datalib.material.get("Default");
 
-  static nodedef() {return {
-    inputs  : {},
-    outputs : {
-      onTopologyChange : new DependSocket("onTopologyChange")
+    if (mat === undefined) {
+      return DefaultMat;
     }
-  }};
 
-  dataLink(getblock, getblock_us) {
-    super.dataLink(getblock, getblock_us);
-    //this.graph.dataLink(getblock, getblock_us);
-  }
-
-  generate(scene) {
-    if (scene === undefined) {
-      throw new Error("scene cannot be undefined");
-    }
-    this._regen = false;
-
-    let gen = new ShaderGenerator(scene);
-    
-    gen.generate(this.graph);
-    let shader = gen.genShader();
-
-    return shader;
+    return mat;
   }
 
   static blockDefine() {return {
-    typeName    : "shadernetwork",
-    defaultName : "Shader Network",
-    uiName   : "Shader Network",
-    flag     : 0,
-    icon     : -1
+    typeName : "material",
+    defaultName : "Material",
+    uiName : "Material",
+    flag : 0,
+    icon : -1
   }}
+
+  static nodedef() {
+    return {
+      uiname: "Material",
+      inputs: {}, outputs: {}
+    }
+  }
+
+  dataLink(getblock, getblock_addUser) {
+    super.dataLink(getblock, getblock_addUser);
+  }
 
   loadSTRUCT(reader) {
     super.loadSTRUCT(reader);
     reader(this);
-
-    this.graph.onFlagResort = this._on_flag_resort.bind(this);
   }
-};
-
-ShaderNetwork.STRUCT = STRUCT.inherit(ShaderNetwork, DataBlock) + `
-  graph    : graph.Graph;
-  flag     : int;
-  shadow   : ShadowSettings;
 }
-`;
-DataBlock.register(ShaderNetwork);
-nstructjs.manager.add_class(ShaderNetwork);
 
-export function makeDefaultShaderNetwork() {
-  let sn = new ShaderNetwork();
+Material.STRUCT = STRUCT.inherit(Material, ShaderNetwork) + `
+}`;
 
-  let out = new OutputNode();
-  sn.graph.add(out);
+DataBlock.register(Material);
+nstructjs.manager.add_class(Material);
 
-  let shader = new DiffuseNode();
-  sn.graph.add(shader);
-
-  shader.outputs.surface.connect(out.inputs.surface);
-
-  shader.graph_ui_pos[0] -= 100;
-  out.graph_ui_pos[0] += 300;
-
-  return sn;
-}
+DefaultMat = Object.freeze(new Material());
 

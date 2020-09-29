@@ -1,15 +1,17 @@
 "use strict";
 
-import {ToolOp, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
-import {IntProperty, EnumProperty, BoolProperty, FloatProperty, FlagProperty} from "../path.ux/scripts/toolprop.js";
-import {Mesh, MeshTypes, MeshFlags} from './mesh.js';
+import {ToolOp, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {IntProperty, EnumProperty, BoolProperty, FloatProperty, FlagProperty} from "../path.ux/scripts/toolsys/toolprop.js";
+import {MeshTypes, MeshFlags} from './mesh_base.js';
 import * as util from '../util/util.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SelMask, SelOneToolModes, SelToolModes} from '../editors/view3d/selectmode.js';
 import {DataRefListProperty, DataRefProperty} from "../core/lib_api.js";
 import {Icons} from '../editors/icon_enum.js';
+import {MeshOp} from "./mesh_ops_base.js";
+import {SceneObject} from "../sceneobject/sceneobject.js";
 
-export class SelectOpBase extends ToolOp {
+export class SelectOpBase extends MeshOp {
   constructor() {
     super();
   }
@@ -19,11 +21,11 @@ export class SelectOpBase extends ToolOp {
     toolpath      : "{selectopbase}",
     icon          : -1,
     description   : "select an element",
-    inputs        : {
-      object      : new DataRefProperty("object"),
-      selmask     : new FlagProperty(undefined, SelMask),
+    inputs        : ToolOp.inherit({
+      object      : new DataRefProperty("object").private(),
+      selmask     : new FlagProperty(undefined, SelMask).private(),
       mode        : new EnumProperty(undefined, SelToolModes)
-    }
+    })
   }}
 
   undoPre(ctx) {
@@ -35,13 +37,14 @@ export class SelectOpBase extends ToolOp {
       this._undo.activeObject = -1;
     }
 
-    for (let ob of ctx.selectedMeshObjects) {
-      let mesh = ob.data;
+    for (let mesh of this.getMeshes(ctx)) {
+      let object_id = mesh.ownerId !== undefined ? mesh.ownerId : -1;
 
       let ud = this._undo[mesh.lib_id] = {
-        object  : ob.lib_id,
-        actives : {},
-        data    : []
+        object   : object_id,
+        dataPath : mesh.meshDataPath,
+        actives  : {},
+        data     : []
       };
 
       let data = ud.data;
@@ -81,14 +84,18 @@ export class SelectOpBase extends ToolOp {
         continue;
       }
 
-      let mesh = ctx.datalib.get(k);
+      let ud = this._undo[k];
+      let mesh = ctx.api.getValue(ctx, ud.dataPath);
+      //let mesh = ctx.datalib.get(k);
 
       if (mesh === undefined) {
         console.warn("Bad undo data", k);
         continue;
       }
 
-      let ud = this._undo[k];
+      if (mesh instanceof SceneObject) {
+        mesh = mesh.data;
+      }
 
       mesh.selectNone();
 
@@ -126,26 +133,19 @@ export class SelectOneOp extends SelectOpBase {
     inputs        : ToolOp.inherit({
       mode        : new EnumProperty(undefined, SelOneToolModes),
       setActiveObject : new BoolProperty(true),
-      eid         : new IntProperty(-1)
+      eid         : new IntProperty(-1).private()
     })
   }}
 
   exec(ctx) {
-    let ob = ctx.datalib.get(this.inputs.object.getValue());
-    if (ob === undefined) {
-      console.warn("Bad object id passed to SelectOneOp", this.inputs.object.getValue());
-      return;
-    }
+    let mesh = this.getMeshes(ctx)[0];
 
-    let mesh = ob.data;
     let e = mesh.eidmap[this.inputs.eid.getValue()];
 
     if (e === undefined) {
       console.warn("invalid eid " + this.inputs.eid.getValue() + " in selectoneop.exec");
       return;
     }
-
-    console.log("select", this.inputs.mode.getValue());
 
     switch (this.inputs.mode.getValue()) {
       case SelOneToolModes.UNIQUE:
@@ -166,6 +166,7 @@ export class SelectOneOp extends SelectOpBase {
     mesh.regenRender();
   }
 };
+ToolOp.register(SelectOneOp);
 
 export class ToggleSelectAll extends SelectOpBase {
   constructor() {
@@ -173,9 +174,9 @@ export class ToggleSelectAll extends SelectOpBase {
   }
 
   static invoke(ctx, args) {
-    let ret = new ToggleSelectAll();
+    let ret = super.invoke(ctx, args);
 
-    //ret.inputs.selmask.setValue(ctx.view3d.selectmode);
+    //ret.inputs.selmask.setValue(ctx.view3d.ctx.selectMask);
     ret.inputs.selmask.setValue(SelMask.VERTEX|SelMask.EDGE|SelMask.FACE);
 
     if ("mode" in args) {
@@ -199,10 +200,10 @@ export class ToggleSelectAll extends SelectOpBase {
       toolpath: "mesh.toggle_select_all",
       icon: Icons.TOGGLE_SEL_ALL,
       description: "toggle select all",
-      inputs: {
-        selmask: new FlagProperty(undefined, SelMask),
+      inputs: ToolOp.inherit({
+        selmask: new FlagProperty(undefined, SelMask).private(),
         mode: new EnumProperty(undefined, SelToolModes)
-      }
+      })
     }
   }
 
@@ -211,21 +212,10 @@ export class ToggleSelectAll extends SelectOpBase {
     let selmask = this.inputs.selmask.getValue();
     let mode = this.inputs.mode.getValue();
 
-    if (selmask == SelMask.OBJECT) {
-      throw new Error("implement me!");
-      if (mode == SelToolModes.AUTO) {
-
-      }
-
-      return;
-    }
-
-    for (let ob of ctx.selectedMeshObjects) {
-      let mesh = ob.data;
-
+    for (let mesh of this.getMeshes(ctx)) {
       let mode2 = mode;
 
-      if (mode == SelToolModes.AUTO) {
+      if (mode === SelToolModes.AUTO) {
         mode2 = SelToolModes.ADD;
 
         for (let elist of mesh.getElemLists()) {

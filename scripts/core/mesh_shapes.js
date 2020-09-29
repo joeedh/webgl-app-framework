@@ -22,7 +22,9 @@ export function makeCube(mesh) {
     
     return map[k];
   }
-  
+
+  let faces = [];
+
   function quad(axis, sign) {
     let i1 = (axis+1) % 3;
     let i2 = (axis+2) % 3;
@@ -41,8 +43,12 @@ export function makeCube(mesh) {
     for (let i=0; i<vs.length; i++) {
       vs[i] = getvert(vs[i]);
     }
-    
-    mesh.makeFace(vs);
+
+    if (sign < 0) {
+      vs.reverse();
+    }
+
+    faces.push(mesh.makeFace(vs));
   }
   
   for (let i=0; i<3; i++) {
@@ -51,5 +57,9 @@ export function makeCube(mesh) {
   }
   
   mesh.recalcNormals();
-  return mesh;
+
+  return {
+    mesh  : mesh,
+    faces : faces
+  }
 }

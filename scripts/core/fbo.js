@@ -27,6 +27,7 @@ export class FBO {
     this.size = [width, height];
     this.texDepth = undefined;
     this.texColor = undefined;
+
   }
 
   copy() {
@@ -39,6 +40,12 @@ export class FBO {
   }
 
   create(gl) {
+    if (this.fbo && this.gl) {
+      this.destroy();
+    }
+
+    this.regen = 0;
+
     gl = this.gl = gl === undefined ? this.gl : gl;
 
     this.size[0] = ~~this.size[0];
@@ -47,6 +54,7 @@ export class FBO {
     //console.trace("framebuffer creation");
     
     this.fbo = gl.createFramebuffer();
+
     if (!this.texDepth)
       this.texDepth = new webgl.Texture(undefined, gl.createTexture());
     if (!this.texColor)
@@ -55,26 +63,35 @@ export class FBO {
     let target = this.target;
     let layer = this.layer;
 
-    function texParams(tex) {
+    function texParams(target, tex) {
       gl.bindTexture(target, tex);
 
       gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
       gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(target, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+
+      if (target !== gl.TEXTURE_2D) {
+        gl.texParameteri(target, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+      }
     }
 
-    texParams(this.texDepth.texture);
-    texParams(this.texColor.texture);
+    texParams(this.target, this.texDepth.texture);
+    if (gl.haveWebGL2) {
+      gl.texParameteri(target, gl.TEXTURE_COMPARE_MODE, gl.NONE);
+      //gl.texParameteri(target, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
+      //gl.texParameteri(target, gl.TEXTURE_COMPARE_FUNC, gl.ALWAYS);
+    }
+
+    texParams(this.target, this.texColor.texture);
 
     let initTex = (dtype, dtype2, dtype3) => {
       if (this.target !== gl.TEXTURE_2D)
         return;
 
       if (gl.haveWebGL2) {
-        //gl.texStorage2D(gl.TEXTURE_2D, 1, dtype, this.size[0], this.size[1]);
         gl.texImage2D(this.target, 0, dtype, this.size[0], this.size[1], 0, dtype2, dtype3, null);
+        //gl.texStorage2D(gl.TEXTURE_2D, 1, dtype, this.size[0], this.size[1]);
       } else {
         gl.texImage2D(this.target, 0, dtype, this.size[0], this.size[1], 0, dtype2, dtype3, null);
       }
@@ -85,6 +102,7 @@ export class FBO {
     let dtype = this.dtype;
     let dtype2 = gl.DEPTH_STENCIL;
 
+    //UNSIGNED_INT_24_8
     let dtype3 = gl.haveWebGL2 ? gl.UNSIGNED_INT_24_8 : gl.depth_texture.UNSIGNED_INT_24_8_WEBGL;
 
     gl.bindTexture(this.target, this.texDepth.texture);
@@ -98,13 +116,13 @@ export class FBO {
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
 
-    if (this.target == gl.TEXTURE_2D) {
+    if (this.target === gl.TEXTURE_2D) {
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texColor.texture, 0);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.TEXTURE_2D, this.texDepth.texture, 0);
     } else {
       let target2 = target;
 
-      if (target == gl.TEXTURE_CUBE_MAP) {
+      if (target === gl.TEXTURE_CUBE_MAP) {
         target2 = layer;
       }
 
@@ -121,7 +139,6 @@ export class FBO {
       }
     }
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
     let errret = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
     
     if (DEBUG.fbo) {
@@ -135,11 +152,94 @@ export class FBO {
     gl = this.gl = gl === undefined ? this.gl : gl;
     
     if (this.regen) {
-      this.regen = 0;
       this.create();
     }
     
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+  }
+
+  _getQuad(gl, width, height) {
+    width = ~~width;
+    height = ~~height;
+
+    if (this.smesh === undefined || this.size[0] != width || this.size[1] != height) {
+      console.log(this.size, this.smesh);
+      
+      this.size[0] = width;
+      this.size[1] = height;
+
+      console.warn("updating framebuffer pipeline for new width/height", width, height);
+
+
+      let lf = simplemesh.LayerTypes;
+      this.smesh = new simplemesh.SimpleMesh(lf.LOC | lf.UV);
+      this.smesh.program = this.blitshader = webgl.getShader(gl, getBlitShaderCode(gl));
+
+      let quad = this.smesh.quad([-1,-1,0], [-1,1,0], [1,1,0], [1,-1,0]);
+      quad.uvs([0,0,0], [0,1,0], [1,1,0], [1,0,0]);
+    }
+
+    return this.smesh;
+  }
+
+  /**
+   * Draws depth texture to rgba
+   * Does not bind framebuffer.
+   * */
+  drawDepth(gl, width, height, tex) {
+    let quad = this._getQuad(gl, width, height);
+
+    quad.program = this.blitshader;
+
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+    gl.disable(gl.CULL_FACE);
+    let dither = gl.getParameter(gl.DITHER);
+
+    gl.disable(gl.DITHER);
+
+    quad.draw(gl, {
+      rgba  : tex,
+      depth : tex,
+      size : [width, height],
+      valueScale : 1.0
+    });
+
+    if (dither) {
+      gl.enable(gl.DITHER);
+    }
+  }
+
+  drawQuadScaled(gl, width, height, tex=this.texColor, value_scale=1.0, depth=this.texDepth) {
+    let quad = this._getQuad(gl, width, height);
+
+    quad.program = this.blitshader;
+    quad.uniforms.rgba = tex;
+    quad.uniforms.depth = depth;
+    quad.uniforms.valueScale = value_scale;
+
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+
+    this.smesh.draw(gl);
+  }
+  /**
+   * Draws texture to screen
+   * Does not bind framebuffer
+   * */
+  drawQuad(gl, width, height, tex=this.texColor, depth=this.texDepth) {
+    let quad = this._getQuad(gl, width, height);
+
+    quad.program = this.blitshader;
+    quad.uniforms.rgba = tex;
+    quad.uniforms.depth = depth;
+    quad.uniforms.valueScale = 1.0;
+
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+    gl.disable(gl.CULL_FACE);
+
+    this.smesh.draw(gl);
   }
 
   unbind(gl) {
@@ -203,7 +303,7 @@ export class FrameStage extends FBO {
   }
 }
 
-export let BlitShader = {
+export let BlitShaderGLSL200 = {
   vertex : `
 precision mediump float;
 
@@ -216,8 +316,8 @@ attribute vec2 uv;
 varying vec2 v_Uv;
 
 void main(void) {
-gl_Position = vec4(position, 1.0);
-v_Uv = uv;
+  gl_Position = vec4(position, 1.0);
+  v_Uv = uv;
 }
     
   `,
@@ -229,12 +329,14 @@ precision mediump float;
 
 uniform sampler2D rgba;
 uniform sampler2D depth;
+uniform float valueScale;
 
 varying vec2 v_Uv;
 
 void main(void) {
-gl_FragColor = texture2D(rgba, v_Uv);
-gl_FragDepthEXT = texture2D(depth, v_Uv)[0];
+  vec4 color = texture2D(rgba, v_Uv);
+  gl_FragColor = vec4(color.rgb*valueScale, color.a);
+  gl_FragDepthEXT = texture2D(depth, v_Uv)[0];
 }
 
   `,
@@ -255,8 +357,8 @@ in vec2 uv;
 out vec2 v_Uv;
 
 void main(void) {
-gl_Position = vec4(position, 1.0);
-v_Uv = uv;
+  gl_Position = vec4(position, 1.0);
+  v_Uv = uv;
 }
     
   `,
@@ -267,13 +369,20 @@ precision mediump float;
 
 uniform sampler2D rgba;
 uniform sampler2D depth;
+uniform float valueScale;
 
 in vec2 v_Uv;
 out vec4 fragColor;
 
 void main(void) {
-fragColor = texture(rgba, v_Uv);
-gl_FragDepth = texture(depth, v_Uv)[0];
+  vec4 color = texture(rgba, v_Uv);
+  float d = texture(depth, v_Uv)[0];
+  
+  //color[0] = color[1] = color[2] = d*0.9;
+  
+  fragColor = vec4(color.rgb*valueScale, color.a);
+  
+  gl_FragDepth = texture(depth, v_Uv)[0];
 }
 
   `,
@@ -317,7 +426,7 @@ export class FramePipeline {
     this.stages.push(stage);
     return stage;
   }
-  
+
   draw(gl, drawfunc, width, height, drawmats) {
     if (this.smesh === undefined || this.size[0] != width || this.size[1] != height) {
       this.size[0] = width;
@@ -327,7 +436,8 @@ export class FramePipeline {
       
       let lf = simplemesh.LayerTypes;
       this.smesh = new simplemesh.SimpleMesh(lf.LOC | lf.UV);
-      this.smesh.program = this.blitshader = webgl.getShader(gl, BlitShader);
+
+      this.smesh.program = this.blitshader = webgl.getShader(gl, getBlitShaderCode(gl));
       this.smesh.uniforms.iprojectionMatrix = drawmats.irendermat;
       this.smesh.uniforms.projectionMatrix = drawmats.rendermat;
       
@@ -352,20 +462,20 @@ export class FramePipeline {
     drawfunc(gl);
     let laststage = stage;
 
-    gl.depthMask(1);
+    gl.depthMask(true);
     gl.disable(gl.DEPTH_TEST);
     
     for (let i=1; i<this.stages.length; i++) {
       let stage = this.stages[i];
       
       stage.update(gl, width, height);
-      
-      stage.shader.uniforms.rgba = this._texs[0];
+
       this._texs[0].texture = laststage.texColor.texture;
-      
-      stage.shader.uniforms.depth = this._texs[1];
+      stage.shader.uniforms.rgba = this._texs[0];
+
       this._texs[1].texture = laststage.texDepth.texture;
-      
+      stage.shader.uniforms.depth = this._texs[1];
+
       stage.shader.uniforms.size = this.size;
 
       this.smesh.program = stage.shader;
@@ -397,3 +507,12 @@ export class FramePipeline {
     this.smesh.draw(gl);
   }
 }
+
+export function getBlitShaderCode(gl) {
+  if (gl.haveWebGL2) {
+    return BlitShaderGLSL300;
+  } else {
+    return BlitShaderGLSL200;
+  }
+}
+

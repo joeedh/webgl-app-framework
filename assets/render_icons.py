@@ -1,4 +1,10 @@
+#!python3
 import os, os.path, sys, subprocess, time, math, random
+
+SHARPEN = True
+SVG_SIZE = 512
+SVG_DIVISIONS = 16
+OUTPUT_HEIGHT_SCALE = 0.5
 
 #sys.exit(0)
 sep = os.path.sep
@@ -35,6 +41,8 @@ def find_inkscape_win32():
     
   ret = find(inkscape_path, "c:\\Program Files\\Inkscape\\inkscape.exe")
   ret = find(ret, "c:\\Program Files (x86)\\Inkscape\\inkscape.exe")
+  ret = find(inkscape_path, "c:\\Program Files\\Inkscape\\bin\\inkscape.exe")
+  ret = find(ret, "c:\\Program Files (x86)\\Inkscape\\bin\\inkscape.exe")
   
   return ret
   
@@ -64,6 +72,20 @@ if inkscape_path == None:
   sys.exit();
   #sys.exit(-1)
 
+def get_inkscape_version():
+    p = subprocess.run([inkscape_path, "--version"], stdout=subprocess.PIPE, check=True)
+    s = str(p.stdout, "latin-1").lower()
+    if s.startswith("inkscape"):
+        s = s[8:].strip()
+
+    if " " in s:
+        s = s[:s.find(" ")].strip()
+
+    return s
+
+inkscape_version = get_inkscape_version()
+inkscape_1 = inkscape_version.startswith("1")
+
 files = ["iconsheet.svg"]
 
 def gen_cmdstr(cmd):
@@ -91,6 +113,9 @@ except:
 oversample_fac = 2
 
 def sharpen_iconsheets(paths):
+    print("\nsharpening. . .\n");
+    sys.stdout.flush();
+
     global have_pillow, oversample_fac
 
     if not have_pillow:
@@ -109,7 +134,8 @@ def sharpen_iconsheets(paths):
         im = im.resize((im.width//oversample_fac, im.height//oversample_fac), PIL.Image.LANCZOS)
         im = im.filter(filter);
 
-        print(im.width, im.height)
+        print("  sharpened %ix%i" % (im.width, im.height))
+        sys.stdout.flush();
         im.save(f)
 
 sizes = [16, 24, 32, 40, 50, 64, 80, 128]
@@ -117,47 +143,51 @@ paths = []
 
 start_dir = os.getcwd()
 basepath = "./"
-dir = np(os.getcwd()) + basepath
+dir = np(os.getcwd())
+if not dir.endswith(os.path.sep):
+    dir += os.path.sep
+dir += basepath
+
 
 def main():
   os.chdir(dir)
 
   for s in sizes:
-      if have_pillow: #render twice as big for downsampling
-          dimen = s*16*oversample_fac
+      if have_pillow and SHARPEN: #render twice as big for downsampling
+          dimen = s*SVG_DIVISIONS*oversample_fac
       else:
-          dimen = s*16
+          dimen = s*SVG_DIVISIONS
 
       for f in files:
         out = os.path.split(f)[1].replace(".svg", "")
 
         fname = "%s%i.png"%(out, s)
 
-        x1, y1 = 0, int(512*2.0/3.0)
-        x2, y2 = 512, 512
+        x1, y1 = 0, int(SVG_SIZE*(1.0 - OUTPUT_HEIGHT_SCALE))
+        x2, y2 = SVG_SIZE, SVG_SIZE
 
-        height = dimen // 3;
-        
-        cmd = [inkscape_path, "-C", "-e"+fname, "-w %i"%dimen, "-h %i"%height, "-z", "--export-area=%i:%i:%i:%i" % (x1,y1,x2,y2), f]
+        height = int(dimen * OUTPUT_HEIGHT_SCALE)
+
+        if inkscape_1:
+            y1 = 0
+            y2 =  int(SVG_SIZE * OUTPUT_HEIGHT_SCALE)
+            cmd = [inkscape_path, "--export-filename="+fname, "-w",  "%i"%dimen, "-h", "%i"%height, "--export-area=%i:%i:%i:%i" % (x1,y1,x2,y2), f]
+        else:
+            cmd = [inkscape_path, "-C", "-e"+fname, "-w %i"%dimen, "-h %i"%height, "-z", "--export-area=%i:%i:%i:%i" % (x1,y1,x2,y2), f]
 
         print("- " + gen_cmdstr(cmd))
+        sys.stdout.flush();
+
         subprocess.call(cmd)
 
         paths.append("./" + fname)
 
-  sharpen_iconsheets(paths)
+  if SHARPEN:
+    sharpen_iconsheets(paths)
 
   for p in paths:
       fname = os.path.split(p)[1]
       copy(p, "./" + fname)
-
-  #"""
-  #print("copying rendered icon sheet to build/")
-  #copy("./%s.png"%out, "../../build/%s.png"%out)
-  #copy("./%s16.png"%out, "../../build/%s16.png"%out)
-  #os.system("%s %s %s%sbuild%s%s" % (cp, "%s.png"%out, sub, sub, sep, "%s.png"%out))
-  #os.system("%s %s %s%sbuild%s%s" % (cp, "%s16.png"%out, sub, sub, sep, "%s16.png"%out))
-  #"""
 
   os.chdir(start_dir)
 

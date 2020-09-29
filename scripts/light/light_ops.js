@@ -2,15 +2,15 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
-  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
-import {dist_to_line_2d} from '../path.ux/scripts/math.js';
-import {CallbackNode, NodeFlags} from "../core/graph.js";
+  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
+import {CallbackNode, Node, NodeFlags} from "../core/graph.js";
 import {DependSocket, Vec3Socket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
-import {SceneObject} from '../core/sceneobject.js';
+import {SceneObject} from '../sceneobject/sceneobject.js';
 
 import {Light, LightTypes, LightFlags} from './light.js';
 
@@ -22,7 +22,7 @@ export class AddLightOp extends ToolOp {
   static invoke(ctx, args) {
     let tool = new this();
 
-    if (args.position == "cursor") {
+    if (args.position === "cursor") {
       let co = new Vector3();
       co.multVecMatrix(ctx.view3d.cursor3D);
 

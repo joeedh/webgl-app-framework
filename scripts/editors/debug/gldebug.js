@@ -1,21 +1,8 @@
-import {Area} from '../../path.ux/scripts/ScreenArea.js';
-import {saveFile, loadFile} from '../../path.ux/scripts/html5_fileapi.js';
+import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 
-import {Editor, VelPan} from '../editor_base.js';
-
-import '../../path.ux/scripts/struct.js';
+import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
-import {DataPathError} from '../../path.ux/scripts/controller.js';
-import {KeyMap, HotKey} from '../../path.ux/scripts/simple_events.js';
-import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/ui_base.js';
-import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/ui.js';
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
-import * as util from '../../util/util.js';
-import {DataRef} from '../../core/lib_api.js';
-import {NodeEditor} from "../node/NodeEditor.js";
-
-import {SimpleMesh, LayerTypes} from "../../core/simplemesh.js";
 import {FBO} from '../../core/fbo.js';
 import {getShader, ShaderProgram, Texture} from "../../core/webgl.js";
 import {getWebGL} from "../view3d/view3d.js";

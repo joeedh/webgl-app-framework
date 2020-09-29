@@ -3,8 +3,10 @@ import {Vector3} from '../../util/vectormath.js';
 import {Mesh, MeshFlags, MeshTypes} from "../../mesh/mesh.js";
 import {LayerTypes} from "../../core/simplemesh.js";
 import {SelMask} from "./selectmode.js";
-import {Shaders} from "./view3d_shaders.js";
+import {Shaders} from "../../shaders/shaders.js";
 import {View3DFlags} from './view3d_base.js';
+
+//TODO: get rid of this file
 
 export const Colors = {
   DRAW_DEBUG : [0, 1.0, 0.5, 1.0],
@@ -299,7 +301,7 @@ export class BasicMeshDrawer extends MeshDrawInterface {
   }
 
   draw(view3d, gl, object, uniforms, program) {
-    if (!(view3d.selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE))) {
+    if (!(view3d.ctx.selectMask & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE))) {
       return;
     }
 
@@ -312,7 +314,7 @@ export class BasicMeshDrawer extends MeshDrawInterface {
 
     let mesh = object.data;
 
-    let selmode = view3d.selectmode;
+    let selmode = view3d.ctx.selectMask;
     let program2 = Shaders.MeshEditShader;
     //let program2 = Shaders.MeshIDShader;
 
@@ -324,7 +326,7 @@ export class BasicMeshDrawer extends MeshDrawInterface {
       program2.uniforms.active_id = list.active !== undefined ? list.active.eid : -1;
       program2.uniforms.highlight_id = list.highlight !== undefined ? list.highlight.eid : -1;
       program2.uniforms.last_id = list.last !== undefined ? list.last.eid : -1;
-      program2.uniforms.projectionMatrix = view3d.camera.rendermat;
+      program2.uniforms.projectionMatrix = view3d.activeCamera.rendermat;
 
       program2.uniforms.polygonOffset = Colors.POLYGON_OFFSET;
       uniforms.polygonOffset = Colors.POLYGON_OFFSET;
@@ -371,7 +373,7 @@ export class BasicMeshDrawer extends MeshDrawInterface {
 
     let drawElements = (list, smesh) => {
       program2.uniforms.object_id = object.lib_id;
-      program2.uniforms.projectionMatrix = view3d.camera.rendermat;
+      program2.uniforms.projectionMatrix = view3d.activeCamera.rendermat;
       program2.uniforms.objectMatrix = object.outputs.matrix.getValue();
       program2.uniforms.pointSize = Colors.POINTSIZE;
 

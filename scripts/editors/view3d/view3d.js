@@ -1,44 +1,56 @@
-import {TranslateOp} from './transform_ops.js';
+import "../../extern/three.js";
+
+import * as util from '../../util/util.js';
+import * as cconst from '../../core/const.js';
+
+import './findnearest/all.js';
+import './tools/tools.js';
+import * as textsprite from '../../core/textsprite.js';
+import {FindNearest} from './findnearest.js';
+import {TranslateOp} from './transform/transform_ops.js';
 import {RenderEngine} from "../../renderengine/renderengine_base.js";
 import {RealtimeEngine} from "../../renderengine/renderengine_realtime.js";
-import {Area} from '../../path.ux/scripts/ScreenArea.js';
-import {PackFlags} from '../../path.ux/scripts/ui_base.js';
+import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
+import {PackFlags} from '../../path.ux/scripts/core/ui_base.js';
 import {Editor} from '../editor_base.js';
 import {Camera, init_webgl, ShaderProgram} from '../../core/webgl.js';
 import {SelMask} from './selectmode.js';
-import '../../path.ux/scripts/struct.js';
+import '../../path.ux/scripts/util/struct.js';
 import {DrawModes} from './drawmode.js';
 let STRUCT = nstructjs.STRUCT;
-import {UIBase, color2css, css2color}  from '../../path.ux/scripts/ui_base.js';
-import * as view3d_shaders from './view3d_shaders.js';
-import {loadShader} from './view3d_shaders.js';
+import {UIBase, color2css, css2color}  from '../../path.ux/scripts/core/ui_base.js';
+import * as view3d_shaders from '../../shaders/shaders.js';
+import {loadShader} from '../../shaders/shaders.js';
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
-import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
+import {Vector3, Vector2, Vector4, Matrix4, Quat, Matrix4ToTHREE} from '../../util/vectormath.js';
 import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js';
 import {cachering, print_stack, time_ms} from '../../util/util.js';
-import './view3d_mesh_editor.js';
-import {ObjectEditor} from './view3d_object_editor.js';
-import {SubEditors} from './view3d_subeditor.js';
+import './tools/mesheditor.js';
+import {ObjectEditor} from './tools/selecttool.js';
+import {ToolModes, makeToolModeEnum} from './view3d_toolmode.js';
 import {Mesh} from '../../mesh/mesh.js';
 import {GPUSelectBuffer} from './view3d_select.js';
 import {KeyMap, HotKey} from "../editor_base.js";
 import {WidgetManager, WidgetTool, WidgetTools} from './widgets.js';
-import {MeshCache} from './view3d_subeditor.js';
-import {calcTransCenter} from './transform_query.js';
+import {MeshCache} from './view3d_toolmode.js';
+import {calcTransCenter, calcTransAABB} from './transform/transform_query.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
-import {ConstraintSpaces} from './transform_base.js';
-import {eventWasTouch} from '../../path.ux/scripts/simple_events.js';
+import {ConstraintSpaces} from './transform/transform_base.js';
+import {eventWasTouch} from '../../path.ux/scripts/util/simple_events.js';
 import {CursorModes, OrbitTargetModes} from './view3d_utils.js';
 import {Icons} from '../icon_enum.js';
 import {WidgetSceneCursor, NoneWidget} from './widget_tools.js';
-import {View3DFlags} from './view3d_base.js';
+import {View3DFlags, CameraModes} from './view3d_base.js';
+import {ResourceBrowser} from "../resbrowser/resbrowser.js";
+import {ObjectFlags} from '../../sceneobject/sceneobject.js';
 
 let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
 let curtemps = cachering.fromConstructor(Vector3, 32);
 
-let _gl = undefined;
+//let _gl = undefined;
+window._gl = undefined;
 
 export function getWebGL() {
   if (!_gl) {
@@ -48,7 +60,138 @@ export function getWebGL() {
   return _gl;
 }
 
+export class ThreeCamera extends THREE.Camera {
+  constructor(camera) {
+    super();
+
+    this.camera = camera;
+    this.camerastack = [camera];
+    this.uniform_stack = [];
+    this.uniforms = {};
+  }
+
+  pushCamera(camera) {
+    this.camerastack.push(this.camera);
+    this.camera = camera;
+  }
+
+  popCamera() {
+    this.camera = this.camerastack.pop();
+  }
+
+  set matrixWorld(val) {
+    //do nothing
+  }
+
+  set matrixWorldInverse(val) {
+    //do nothing;
+  }
+
+  set projectionMatrix(val) {
+    //do nothing;
+  }
+
+  set projectionMatrixInverse(val) {
+    //do nothing;
+  }
+
+  //for overriding matrixWorld with uniforms.objectMatrix
+  pushUniforms(uniforms) {
+    this.uniform_stack.push(this.uniforms);
+    this.uniforms = uniforms;
+  }
+
+  popUniforms() {
+    let uniforms = this.uniforms;
+
+    this.uniforms = this.uniform_stack.pop();
+    return uniforms;
+  }
+
+  set near(val) {
+    this.camera.near = val;
+    this.camera.regen_mats();
+  }
+
+  get near() {
+    return this.camera.near;
+  }
+
+  set far(val) {
+    this.camera.far = val;
+    this.camera.regen_mats();
+  }
+
+  get far() {
+    return this.camera.far;
+  }
+
+  get fov() {
+    return this.camera.fovy;
+  }
+
+  updateProjectionMatrix() {
+    this.camera.regen_mats();
+    return;
+  }
+
+  get isPerspectiveCamera() {
+    return true;
+  }
+
+  get matrixWorld() {
+    if (this.uniforms.objectMatrix) {
+      let mat = new Matrix4(this.uniforms.objectMatrix);
+      mat.preMultiply(this.camera.cameramat);
+      mat.invert();
+
+      return Matrix4ToTHREE(mat);
+    }
+
+    //if (this.uniforms.)
+    return Matrix4ToTHREE(this.camera.icameramat);
+  }
+
+  get matrixWorldInverse() {
+    if (this.uniforms.objectMatrix) {
+      let mat = new Matrix4(this.uniforms.objectMatrix);
+      mat.preMultiply(this.camera.cameramat);
+
+      return Matrix4ToTHREE(mat);
+    }
+
+    return Matrix4ToTHREE(this.camera.cameramat);
+  }
+
+  /**
+   * Okay, a bit of nomenclature difference with three.js here.
+   * I like to call the final matrix the projection matrix, while
+   * three.js is calling the perspective matrix the projection matrix.
+   * */
+  get projectionMatrix() {
+    return Matrix4ToTHREE(this.camera.persmat);
+  }
+
+  get projectionMatrixInverse() {
+    return Matrix4ToTHREE(this.camera.ipersmat);
+  }
+
+  clone() {
+    let ret = new ThreeCamera();
+    ret.camera = this.camera.copy();
+
+    return ret;
+  }
+}
+
+window._getShaderSource = function(shader) {
+  let gl = _appstate.ctx.view3d.gl;
+  return gl.getExtension('WEBGL_debug_shaders').getTranslatedShaderSource(shader);
+};
+
 export function initWebGL() {
+  console.warn("initWebGL called");
+
   let canvas = document.createElement("canvas");
   let dpi = UIBase.getDPI();
   let w, h;
@@ -58,7 +201,8 @@ export function initWebGL() {
   canvas.id = "webgl";
 
   if (_appstate.screen !== undefined) {
-    w = _appstate.screen.size[0], h = _appstate.screen.size[1];
+    w = _appstate.screen.size[0];
+    h = _appstate.screen.size[1];
   } else {
     w = h = 512;
   }
@@ -66,6 +210,7 @@ export function initWebGL() {
   canvas.width = ~~(w*dpi);
   canvas.height = ~~(h*dpi);
 
+  canvas.style["display"] = "float";
   canvas.style["left"] = "0px";
   canvas.style["top"] = "0px";
   canvas.style["width"] = w + "px";
@@ -77,9 +222,70 @@ export function initWebGL() {
 
   document.body.appendChild(canvas);
   
-  _gl = init_webgl(canvas, {});
+  let gl = _gl = init_webgl(canvas, {
+    antialias : false,
+    alpha     : false,
+    powerPreference : "high-performance",
+    preserveDrawingBuffer : true,
+    stencil : true
+  });
+
+  var scene = new THREE.Scene();
+  var renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
+    context: _gl,
+    alpha: true,
+    preserveDrawingBuffer : true,
+    logarithmicDepthBuffer : false,
+    premultipliedAlpha: false
+  });
+  renderer.sortObjects = false;
+
+  if (!gl.createVertexArray) {
+    //*
+    let extVAO = gl.getExtension('OES_vertex_array_object');
+
+    if(!extVAO){
+      throw new Error("OES_vertex_array_object extension not supported");
+    }
+
+    gl.createVertexArray = extVAO.createVertexArrayOES.bind(extVAO);
+    gl.bindVertexArray = extVAO.bindVertexArrayOES.bind(extVAO);
+  }
+  //*/
+
+  renderer.autoClear = false;
+
+  _appstate.three_scene = scene;
+  _appstate.three_render = renderer;
+
+  //renderer.setSize( window.innerWidth, window.innerHeight );
+
   //_gl.canvas = canvas;
   loadShaders(_gl);
+  textsprite.defaultFont.update(_gl);
+
+  canvas.addEventListener("webglcontextrestored", (e) => {
+    loadShaders(_gl);
+
+    let datalib = _appstate.ctx.datalib;
+
+    for (let ob of datalib.objects) {
+      ob.onContextLost(e);
+    }
+
+    for (let sarea of _appstate.screen.sareas) {
+      for (let area of sarea.editors) {
+        if (area instanceof View3D) {
+          area.onContextLost(e);
+        }
+      }
+    }
+
+    textsprite.onContextLost(e);
+    textsprite.defaultFont.update(_gl);
+  }, false);
+
 }
 
 export function loadShaders(gl) {
@@ -104,18 +310,25 @@ export class View3D extends Editor {
   constructor() {
     super();
 
+    this._last_camera_hash = undefined;
+
+    //current calculated fps
+    this.fps = 60.0;
+
+    this.subViewPortSize = 512;
+    this.subViewPortPos = new Vector2();
+
+    this._nodes = [];
+
+    this._pobj_map = {};
     this._last_render_draw = 0;
     this.renderEngine = undefined;
 
-    this.flag = View3DFlags.SHOW_CURSOR;
+    this.flag = View3DFlags.SHOW_CURSOR|View3DFlags.SHOW_GRID;
 
     this.orbitMode = OrbitTargetModes.FIXED;
-    this.cursor3D = new Matrix4();
+    this.localCursor3D = new Matrix4();
     this.cursorMode = CursorModes.TRANSFORM_CENTER;
-
-    //last widget update time
-    this._last_wutime = 0;
-    this.widgets = new WidgetManager(this);
 
     this._viewvec_temps = cachering.fromConstructor(Vector3, 32);
 
@@ -123,13 +336,9 @@ export class View3D extends Editor {
     this.glSize = [512, 512];
 
     this.T = 0.0;
-    this.camera = new Camera();
+    this.camera = this.activeCamera = new Camera();
 
     this.start_mpos = new Vector2();
-    this.editors = [];
-    for (let cls of SubEditors) {
-      this.editors.push(new cls(this));
-    }
 
     this.drawlines = [];
 
@@ -149,32 +358,106 @@ export class View3D extends Editor {
     this.camera.near = 0.01;
     this.camera.far = 10000.0;
     this.camera.fovy = 50.0;
-    
-    this.selectmode = SelMask.VERTEX;
-
-    //this.widgettool is an enum, built from WidgetTool.getToolEnum()
-    this.widgettool = 0; //active widget tool index in WidgetTools
-    this.widget = undefined; //active widget instance
 
     this.drawmode = DrawModes.TEXTURED;
+    this.threeCamera = new ThreeCamera(this.camera);
+  }
+
+  get cameraMode() {
+    let cam = this.activeCamera;
+    return cam.isPerspective ? CameraModes.PERSPECTIVE : CameraModes.ORTHOGRAPHIC;
+  }
+
+  set cameraMode(val) {
+    let cam = this.activeCamera;
+
+    cam.isPerspective = val === CameraModes.PERSPECTIVE;
+    cam.regen_mats();
+  }
+
+  get cursor3D() {
+    if (this.flag & View3DFlags.LOCAL_CURSOR) {
+      return this.localCursor3D;
+    }
+
+    if (this.ctx !== undefined && this.ctx.scene !== undefined) {
+      return this.ctx.scene.cursor3D;
+    }
+
+    return this.localCursor3D;
+  }
+
+  get selectmode() {
+    return this.ctx.selectMask;
+  }
+
+  updateClipping() {
+    if (this.ctx === undefined || this.ctx.scene === undefined) {
+      return;
+    }
+
+    let min = new Vector3();
+    let max = new Vector3();
+    let first = true;
+
+    for (let ob of this.ctx.scene.objects) {
+      let bbox = ob.getBoundingBox();
+      if (bbox === undefined) {
+        continue;
+      }
+
+      if (first) {
+        min.load(bbox[0]);
+        max.load(bbox[1]);
+      } else {
+        min.min(bbox[0]);
+        max.max(bbox[1]);
+      }
+    }
+
+    max.sub(min);
+
+    let size = Math.max(Math.max(Math.abs(max[0]), Math.abs(max[1])), Math.abs(max[2]));
+    size = Math.max(size, this.camera.pos.vectorDistance(this.camera.target));
+
+    let clipend = Math.max(size*15, 5000);
+    let clipstart = clipend*0.0001 + 0.001;
+
+    console.log(clipstart, clipend);
+
+    this.camera.near = clipstart;
+    this.camera.far = clipend;
+  }
+
+  set selectmode(val) {
+    console.warn("setting selectmode", val);
+    this.ctx.scene.selectMask = val;
+  }
+
+  get widgets() {
+    return this.ctx.scene.widgets;
   }
 
   onFileLoad(is_active) {
-    if (is_active) {
-      this._graphnode = undefined;
-      //this.makeGraphNode(); wait for redraw
-    } else {
-      this._graphnode = undefined;
-    }
+    window.setTimeout(() => {
+      this.deleteGraphNodes();
+
+      if (is_active) {
+        this.makeGraphNodes();
+      }
+    }, 10);
   }
 
-  makeGraphNode() {
+  makeGraphNodes() {
     let ctx = this.ctx;
+    let scene = ctx.scene;
 
-    if (this._graphnode !== undefined) {
-      if (this.ctx.graph.has(this._graphnode)) {
-        this.ctx.graph.remove(this._graphnode);
-      }
+    if (scene === undefined) {
+      return;
+    }
+
+    if (this._nodes.length > 0) {
+      this.deleteGraphNodes();
     }
 
     this._graphnode = CallbackNode.create("view3d", () => {}, {},
@@ -183,41 +466,159 @@ export class View3D extends Editor {
         onDrawPost: new DependSocket("onDrawPre")
       });
 
-    this.ctx.graph.add(this._graphnode);
+    this.addGraphNode(this._graphnode);
+
+    let node = CallbackNode.create("toolmode change", () => {
+      this.rebuildHeader();
+    }, {
+      onToolModeChange : new DependSocket("onToolModeChange")
+    }, {});
+
+    this.addGraphNode(node);
+
+    node.inputs.onToolModeChange.connect(scene.outputs.onToolModeChange);
+  }
+
+  addGraphNode(node) {
+    this._nodes.push(node);
+    this.ctx.graph.add(node);
+  }
+
+  remGraphNode(node) {
+    if (this._nodes.indexOf(node) >= 0) {
+      this._nodes.remove(node);
+      this.ctx.graph.remove(node);
+    }
+  }
+
+  getGraphNode() {
+    return this._graphnode;
+  }
+
+  deleteGraphNodes() {
+    for (let node of this._nodes) {
+      try {
+        let graph = this.ctx.graph;
+        if (graph.has(node)) {
+          graph.remove(node);
+        }
+      } catch (error) {
+        util.print_stack(error);
+        console.log("failed to delete graph node");
+      }
+    }
+
+    this._nodes = [];
   }
 
   getKeyMaps() {
     let ret = [];
 
-    for (let ed of this.editors) {
-      let selmask = ed.constructor.define().selmask;
-
-      if (this.selectmode & selmask) {
-        ret.push(ed.keymap);
-      }
+    if (this.ctx.toolmode !== undefined) {
+      ret = ret.concat(this.ctx.toolmode.getKeyMaps());
     }
 
     ret.push(this.keymap);
+
     return ret;
   }
 
-  viewSelected() {
-    let cent = this.getTransCenter();
+  viewSelected(ob=undefined) {
+    //let cent = this.getTransCenter();
+    let cent = new Vector3();
+    let aabb;
+
+    if (ob === undefined) {
+      if (this.ctx.scene !== undefined) {
+        let toolmode = this.ctx.scene.toolmode;
+
+        if (toolmode !== undefined) {
+          aabb = toolmode.getViewCenter();
+
+          if (aabb) {
+            aabb = [aabb, aabb.copy()];
+          }
+        }
+      }
+
+      if (aabb === undefined) {
+        aabb = this.getTransBounds();
+      }
+    } else {
+      aabb = ob.getBoundingBox();
+    }
+
+    console.log("v3d aabb ret", aabb[0], aabb[1]);
+
+    let is_point = aabb[0].vectorDistance(aabb[1]) === 0.0;
+
+    if (aabb[0].vectorDistance(aabb[1]) === 0.0 && aabb[0].dot(aabb[0]) === 0.0) {
+      cent.zero();
+      cent.multVecMatrix(this.cursor3D);
+    } else {
+      cent.load(aabb[0]).interp(aabb[1],  0.5);
+    }
+
+    let dis = 0.001;
+
+    for (let i=0; i<3; i++) {
+      let d = aabb[1][i] - aabb[0][i];
+      dis = Math.max(dis, d);
+    }
+
+    dis *= Math.sqrt(3.0)*1.25;
 
     if (cent === undefined) {
       cent = new Vector3();
       cent.multVecMatrix(this.cursor3D);
-    } else {
-      cent = cent.center;
     }
 
-    this.camera.target.load(cent);
+    let off = new Vector3(cent).sub(this.camera.target);
+
+    this.camera.target.add(off);
+    this.camera.pos.add(off);
+
     if (this.camera.pos.vectorDistance(this.camera.target) == 0.0) {
       this.camera.pos.addScalar(0.5);
-    } else if (this.camera.pos.vectorDistance(this.camera.target) < 0.05) {
-      this.camera.pos.sub(this.camera.target).normalize().mulScalar(0.05).add(this.camera.target);
+    }
+    this.camera.regen_mats();
+
+    /*
+    comment: in camera space;
+
+    dx := 0.0;
+    dy := 0.0;
+    dz := 1.0;
+
+    ex := dx*dis + size;
+    ey := dy*dis;
+    ez := dz*dis;
+
+    f1 := atan(ex / ez) - fov;
+
+    solve(f1, dis);
+    */
+
+    let fov = Math.PI * this.camera.fovy / 180;
+
+    let pos = new Vector3(this.camera.pos);
+    let up = new Vector3(this.camera.up);
+    let target = new Vector3(this.camera.target);
+
+
+    //dis = Math.abs(Math.tan(fov)*dis);
+    dis = Math.abs(dis / Math.tan(fov));
+    //console.log("DIS", dis);
+
+    dis = dis == 0.0 ? 0.005 : dis;
+    if (!is_point) {
+      this.camera.pos.sub(this.camera.target).normalize().mulScalar(dis).add(this.camera.target);
     }
 
+    this.updateClipping();
+
+    this.camera.regen_mats();
+    this.onCameraChange();
     window.redraw_viewport();
   }
 
@@ -226,7 +627,7 @@ export class View3D extends Editor {
       new HotKey("G", [], "view3d.translate()"),
       new HotKey("S", [], "view3d.scale()"),
       new HotKey("W", [], "mesh.vertex_smooth()"),
-      new HotKey(".", [], "view3d.view_selected()")
+      new HotKey(".", [], "view3d.view_selected()"),
     ]);
 
 
@@ -244,11 +645,11 @@ export class View3D extends Editor {
 
     co[0] = localX;
     co[1] = localY;
-    co[2] = -this.camera.near - 0.001;
+    co[2] = -this.activeCamera.near - 0.001;
 
     this.unproject(co);
 
-    co.sub(this.camera.pos).normalize();
+    co.sub(this.activeCamera.pos).normalize();
     return co;
   }
 
@@ -263,14 +664,16 @@ export class View3D extends Editor {
     }
     
     tmp[3] = 1.0;
-    tmp.multVecMatrix(this.camera.rendermat);
+    tmp.multVecMatrix(this.activeCamera.rendermat);
     
     if (tmp[3] != 0.0) {
       tmp[0] /= tmp[3];
       tmp[1] /= tmp[3];
       tmp[2] /= tmp[3];
     }
-    
+
+    let w = tmp[3];
+
     tmp[0] = (tmp[0]*0.5 + 0.5) * this.size[0];
     tmp[1] = (1.0-(tmp[1]*0.5+0.5)) * this.size[1];
     
@@ -278,7 +681,7 @@ export class View3D extends Editor {
       co[i] = tmp[i];
     }
     
-    return tmp;
+    return w;
   }
   
   unproject(co) {
@@ -290,10 +693,17 @@ export class View3D extends Editor {
     if (co.length > 2) {
       tmp[2] = co[2];
     }
-    
-    tmp[3] = 1.0;
-    tmp.multVecMatrix(this.camera.irendermat);
-    
+
+    if (co.length > 3) {
+      tmp[3] = co[3];
+    } else {
+      tmp[3] = 1.0;
+    }
+
+    tmp.multVecMatrix(this.activeCamera.irendermat);
+
+    let w = tmp[3];
+
     if (tmp[3] != 0.0) {
       tmp[0] /= tmp[3];
       tmp[1] /= tmp[3];
@@ -304,7 +714,7 @@ export class View3D extends Editor {
       co[i] = tmp[i];
     }
     
-    return tmp;
+    return w;
   }
 
   setCursor(mat) {
@@ -325,68 +735,143 @@ export class View3D extends Editor {
     //this.camera.orbitTarget.load(p);
   }
 
-  init() {
-    super.init();
-
-    let tools = [
-      "mesh.subdivide_smooth()",
-      "view3d.view_selected()",
-      "mesh.toggle_select_all()"
-    ];
-
-    this.makeGraphNode();
-
-    for (let ed of this.editors) {
-      ed.ctx = this.ctx;
+  rebuildHeader() {
+    if (this.ctx === undefined) {
+      this.doOnce(this.rebuildHeader);
+      return;
     }
 
+    if (this.header !== undefined) {
+      this.header.remove();
+    }
+
+    this.makeHeader(this.container);
+
+    this.header.useIcons();
+
     let header = this.header;
-    header.menu("Tools", tools);
+
+    let rows = header.col();
+
+    header = rows.row();
     let row1 = header.row();
     let row2 = header.row();
 
-    //row2.label("yay");
-    row2.prop("view3d.flag[SHOW_RENDER]", PackFlags.USE_ICONS);
-    row2.prop("view3d.flag[ONLY_RENDER]", PackFlags.USE_ICONS);
+    row2.prop("view3d.flag[SHOW_RENDER]");
+    //row2.prop("view3d.flag[ONLY_RENDER]");
+
+    let makeRow = () => {
+      return rows.row();
+    };
+
+    let toolmode = this.ctx.toolmode;
+
+    if (toolmode !== undefined) {
+      toolmode.constructor.buildHeader(header, makeRow);
+    } else {
+      this.doOnce(this.rebuildHeader);
+    }
 
     header = row1;
-    header.prop("view3d.selectmode", PackFlags.USE_ICONS);
-    header.prop("view3d.active_tool", PackFlags.USE_ICONS);
 
-    header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
-    header.tool("view3d.view_selected()", PackFlags.USE_ICONS);
-    header.tool("mesh.toggle_select_all()", PackFlags.USE_ICONS);
+    let strip;
 
-    header.iconbutton(Icons.UNDO, "Undo", () => {
+    strip = header.strip();
+    strip.inherit_packflag |= PackFlags.HIDE_CHECK_MARKS;
+    strip.prop("scene.toolmode[mesh]");
+    strip.prop("scene.toolmode[object]");
+    strip.prop("scene.toolmode[pan]");
+    //header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
+    //strip.tool("view3d.view_selected()", PackFlags.USE_ICONS);
+    //strip.tool("view3d.center_at_mouse()", PackFlags.USE_ICONS);
+
+    strip.iconbutton(Icons.UNDO, "Undo", () => {
       this.ctx.toolstack.undo();
       window.redraw_viewport();
     });
 
-    header.iconbutton(Icons.REDO, "Redo", () => {
+    strip.iconbutton(Icons.REDO, "Redo", () => {
       this.ctx.toolstack.redo();
       window.redraw_viewport();
     });
 
-    header.prop("mesh.flag[SUBSURF]", PackFlags.USE_ICONS);
-    header.tool("light.new(position='cursor')", PackFlags.USE_ICONS);
+
+    strip = header.strip();
+    strip.useIcons();
+    strip.prop("view3d.flag[SHOW_GRID]");
+
+    //strip.prop("scene.toolmode[pan]");
+    //strip.prop("scene.toolmode[object]");
+
+    //header.prop("mesh.flag[SUBSURF]", PackFlags.USE_ICONS);
+    //strip.tool("light.new(position='cursor')", PackFlags.USE_ICONS);
 
     //header.iconbutton(Icons.VIEW_SELECTED, "Recenter View (fixes orbit/rotate problems)", () => {
     //  this.viewSelected();
     //});
 
     this.setCSS();
+    header.flushUpdate();
+  }
 
-    let uiHasFocus = (e) => {
-      let node = this.getScreen().pickElement(e.pageX, e.pageY);
+  init() {
+    super.init();
 
-      return node !== this;
+    this.overdraw = document.createElement("overdraw-x");
+    this.overdraw.ctx = this.ctx;
+    //this.overdraw.zindex_base = 5;
+
+    this.overdraw.startNode(this, this.ctx.screen);
+    this.overdraw.remove();
+    this.shadow.appendChild(this.overdraw);
+
+    let eventdom = this; //this.overdraw;
+
+    this.makeGraphNodes();
+    this.rebuildHeader();
+
+    let on_mousewheel = (e) => {
+      console.log("mouse wheel!", e, e.deltaY);
+
+      let df = e.deltaY / 100.0;
+
+      df = Math.min(Math.max(df, -0.5), 0.5);
+      df = 1.0 + df*0.4;
+
+      console.log(df);
+
+      let cam = this.camera;
+
+      let dis = cam.pos.vectorDistance(cam.target);
+      if (df < 1.0 && dis*df < cam.near*5.0) {
+        return;
+      }
+
+      cam.pos.sub(cam.target).mulScalar(df).add(cam.target);
+      window.redraw_viewport();
     };
 
-    let getSubEditorMpos = (e) => {
-      return this.getLocalMouse(e.clientX, e.clientY);
-    }
+    this.addEventListener("wheel", on_mousewheel);
+
+    let uiHasFocus = (e) => {
+      let node = this.getScreen().pickElement(e.x, e.y);
+
+      if (1) {
+        console.log(node ? node.tagName : undefined);
+      }
+      //console.log(e.pageX, e.pageY, node);
+      return node !== this && node !== this.overdraw;
+    };
 
     let on_mousemove = (e, was_mousemove=true) => {
+      /*
+      if (this.overdraw !== undefined) {
+        let r = this.getLocalMouse(e.x, e.y);
+
+        this.overdraw.clear();
+        this.overdraw.text("Test!", r[0], r[1]);
+      }//*/
+
       if (uiHasFocus(e)) {
         return;
       }
@@ -398,37 +883,17 @@ export class View3D extends Editor {
 
       this.push_ctx_active();
 
-      let r = getSubEditorMpos(e);
+      let r = this.getLocalMouse(e.x, e.y);
       let x = r[0], y = r[1];
+      //console.log(r, e.y, "bleh");
 
-      if (this.mdown) {
-        let dis = this.start_mpos.vectorDistance(r);
-
-        if (dis > 35) {
-          this.mdown = false;
-
-          let tool = new TranslateOp(this.start_mpos);
-          tool.inputs.selmask.setValue(this.selectmode);
-
-          this.ctx.api.execTool(this.ctx, tool);
-        }
-      } else {
-        if (this.widgets.on_mousemove(x, y, was_touch)) {
-          this.pop_ctx_active();
-          return;
-        }
-
-        for (let ed of this.editors) {
-          ed.on_mousemove(this.ctx, x, y, was_touch);
-        }
-      }
-
+      this.widgets.on_mousemove(e, x, y, was_touch);
       this.pop_ctx_active();
     };
 
-    this.addEventListener("mousemove", on_mousemove);
+    eventdom.addEventListener("mousemove", on_mousemove);
 
-    this.addEventListener("mouseup", (e) => {
+    eventdom.addEventListener("mouseup", (e) => {
       let was_touch = eventWasTouch(e);
 
       let ctx = this.ctx;
@@ -446,64 +911,59 @@ export class View3D extends Editor {
       }
       let was_touch = eventWasTouch(e);
 
-      if (was_touch) {
-        on_mousemove(e, false);
+      //if (was_touch) {
+        //on_mousemove(e, false);
+      //}
+
+      let r = this.getLocalMouse(e.clientX, e.clientY);
+      let x = r[0], y = r[1];
+
+      if (this.widgets.on_mousedown(e, x, y, was_touch)) {
+        this.pop_ctx_active();
+        return;
       }
 
       this.push_ctx_active();
 
       this.updateCursor();
 
-      let docontrols = e.button == 1 || e.button == 2 || e.altKey;
+      let docontrols = e.button === 1 || e.button === 2 || e.altKey;
 
-      if (!docontrols && e.button == 0) {
-        let selmask = this.selectmode;
-
-        let r = getSubEditorMpos(e);
-        let x = r[0], y = r[1];
-
-        if (this.widgets.on_mousedown(x, y, was_touch)) {
-          this.pop_ctx_active();
-          return;
-        }
+      if (!docontrols && e.button === 0) {
+        let selmask = this.ctx.selectMask;
 
         docontrols = true;
 
         this.mdown = true;
-        for (let ed of this.editors) {
-          this.start_mpos = new Vector2(r);
-
-          if (ed.constructor.define().selmask & selmask) {
-            docontrols = docontrols && !ed.clickselect(e, x, y, selmask, was_touch);
-          }
-        }
       }
+
+      this.start_mpos = new Vector2(r);
 
       if (docontrols) {
         this.mdown = false;
       }
 
-      console.log("touch", eventWasTouch(e), e);
+      //console.log("touch", eventWasTouch(e), e);
       if (docontrols && eventWasTouch(e)) {
         console.log("multitouch view tool");
 
         let tool = new TouchViewTool();
-        this.ctx.state.toolstack.execTool(tool);
+        this.ctx.state.toolstack.execTool(this.ctx, tool);
         window.redraw_viewport();
       } else if (docontrols && !e.shiftKey && !e.ctrlKey) {
         console.log("orbit!");
         let tool = new OrbitTool();
-        this.ctx.state.toolstack.execTool(tool);
+        this.ctx.state.toolstack.execTool(this.ctx, tool);
         window.redraw_viewport();
       } else if (docontrols && e.shiftKey && !e.ctrlKey) {
         console.log("pan!");
         let tool = new PanTool();
-        this.ctx.state.toolstack.execTool(tool);
+        this.ctx.state.toolstack.execTool(this.ctx, tool);
         window.redraw_viewport();
       } else if (docontrols && e.ctrlKey && !e.shiftKey) {
         console.log("zoom!");
         let tool = new ZoomTool();
-        this.ctx.state.toolstack.execTool(tool);
+        this.ctx.state.toolstack.execTool(this.ctx, tool);
         window.redraw_viewport();
       }
 
@@ -512,7 +972,7 @@ export class View3D extends Editor {
       e.stopPropagation();
     };
 
-    this.addEventListener("mousedown", on_mousedown);
+    eventdom.addEventListener("mousedown", on_mousedown);
 
     window.redraw_viewport();
   }
@@ -525,21 +985,34 @@ export class View3D extends Editor {
     this.gl = getWebGL();
     this.canvas = this.gl.canvas;
     this.grid = this.makeGrid();
-    this.widgets.loadShapes();
+  }
+
+  getTransBounds() {
+    return calcTransAABB(this.ctx, this.ctx.selectMask);
   }
 
   getTransCenter() {
-    return calcTransCenter(this.ctx, this.selectmode, this.transformSpace);
+    return calcTransCenter(this.ctx, this.ctx.selectMask, this.transformSpace);
   }
 
   getLocalMouse(x, y) {
     let r = this.getClientRects()[0];
     let dpi = UIBase.getDPI();
 
+    //x -= this.pos[0];
+    //y -= this.pos[1];
+
     x = (x - r.x); // dpi;
     y = (y - r.y); // dpi;
 
     return [x, y];
+  }
+
+  _showCursor() {
+    let ok = this.flag & View3DFlags.SHOW_CURSOR;
+    ok = ok && (this.widget === undefined || this.widget instanceof NoneWidget);
+
+    return ok;
   }
 
   updateCursor() {
@@ -558,84 +1031,33 @@ export class View3D extends Editor {
     }
   }
 
-  updateWidgets() {
-    try {
-      this.push_ctx_active(this.ctx);
-      this.updateWidgets_intern();
-      this.pop_ctx_active(this.ctx);
-    } catch (error) {
-      print_stack(error);
-      console.warn("updateWidgets() failed");
-    }
+  checkCamera() {
+    let cam = this.activeCamera;
 
-    this.updateCursor();
-  }
+    if (cam) {
+      let hash = cam.generateUpdateHash();
 
-  _showCursor() {
-    let ok = this.flag & View3DFlags.SHOW_CURSOR;
-    ok = ok && (this.widget === undefined || this.widget instanceof NoneWidget);
-
-    return ok;
-  }
-
-  updateWidgets_intern() {
-    if (this._showCursor() && !this.widgets.hasWidget(WidgetSceneCursor)) {
-      this.widgets.add(new WidgetSceneCursor());
-      window.redraw_viewport();
-    }
-
-    //return;
-    if (this.ctx === undefined)
-      return;
-
-    let tool = WidgetTools[this.widgettool];
-    if (tool === undefined) {
-      return;
-    }
-
-    let valid = tool.validate(this.ctx);
-
-    if (this.widget !== undefined) {
-      let bad = !(this.widget instanceof tool) || (this.widget.manager !== this.widgets);
-      bad = bad || !valid;
-
-      if (bad) {
-        this.widget.destroy(this.gl);
-        this.widget = undefined;
+      if (hash !== this._last_camera_hash && this.renderEngine) {
+        this._last_camera_hash = hash;
+        this.renderEngine.resetRender();
       }
     }
-
-    if (this.widget === undefined && valid) {
-      this.widget = new tool(this.widgets);
-
-      console.log("making widget instance", this.widget);
-
-      this.widget.create(this.ctx, this.widgets);
-
-      let def = this.widget.constructor.widgetDefine();
-
-      if (def.selectMode !== undefined && this.selectmode != def.selectMode) {
-        this.selectmode = def.selectMode;
-        window.redraw_viewport();
-      }
-    } else if (tool && this.widget === undefined) {
-      let def = tool.widgetDefine();
-
-      if (def.selectMode !== undefined && this.selectmode != def.selectMode) {
-        this.selectmode = def.selectMode;
-        window.redraw_viewport();
-      }
-    }
-
-    if (this.widget !== undefined) {
-      this.widget.update();
-    }
-
-    this.widgets.update(this);
   }
 
   update() {
-    super.update();
+    if (this.ctx.scene !== undefined) {
+      this.ctx.scene.updateWidgets();
+    }
+
+    let screen = this.ctx.screen;
+    if (this.pos[1] + this.size[1] > screen.size[1]+4) {
+      console.log("view3d is too big", this.pos[1] + this.size[1], screen.size[1]);
+      this.ctx.screen.snapScreenVerts();
+      this.ctx.screen.regenBorders();
+    }
+
+
+    this.checkCamera();
 
     //TODO have limits for how many samplers to render
     if (time_ms() - this._last_render_draw > 100) {
@@ -643,15 +1065,11 @@ export class View3D extends Editor {
       //this._last_render_draw = time_ms();
     }
 
-    if (time_ms() - this._last_wutime > 50) {
-      this.updateWidgets();
-      this._last_wutime = time_ms();
-    }
-
     this.push_ctx_active();
+    super.update();
 
-    if (this._last_selectmode !== this.selectmode) {
-      this._last_selectmode = this.selectmode;
+    if (this._last_selectmode !== this.ctx.selectMask) {
+      this._last_selectmode = this.ctx.selectMask;
       window.redraw_viewport()
     }
 
@@ -679,7 +1097,8 @@ export class View3D extends Editor {
       if (i % 8 == 0) d = 0.3;
       else if (i % 4 == 0.0) d = 0.6;
       else if (i % 2 == 0.0) d = 0.7;
-      let clr = [d, d, d, 1.0];
+
+      let clr = [1.0-d, 1.0-d, 1.0-d, 1.0];
       
       let line = mesh.line([-sz, t, 0.0], [sz, t, 0.0]);
       
@@ -702,7 +1121,7 @@ export class View3D extends Editor {
   on_resize(newsize) {
     super.on_resize(newsize);
 
-    //trigger rebuild of renderEngine, if necassary
+    //trigger rebuild of renderEngine, if necessary
     if (this.renderEngine !== undefined) {
       let engine = this.renderEngine;
       this.renderEngine = undefined;
@@ -747,18 +1166,7 @@ export class View3D extends Editor {
   }
 
   destroy() {
-    try {
-      if (this._graphnode) {
-        this.ctx.graph.remove(this._graphnode);
-        this._graphnode = undefined;
-      }
-    } catch (error) {
-      print_stack(error);
-    }
-
-    for (let ed of this.editors) {
-      ed.destroy(this.gl);
-    }
+    this.deleteGraphNodes();
 
     if (this.renderEngine !== undefined) {
       this.renderEngine.destroy(this.gl);
@@ -770,34 +1178,98 @@ export class View3D extends Editor {
       this.grid = undefined;
     }
 
-    this.widgets.destroy(this.gl);
     this.gl = undefined;
   }
 
   on_area_inactive() {
+    this.deleteGraphNodes();
     this.destroy();
     this.gl = undefined;
+  }
+
+  onCameraChange() {
+    this.updatePointClouds();
   }
 
   on_area_active() {
     super.on_area_active();
 
     this.glInit();
-    this.makeGraphNode();
 
-    for (let ed of this.editors) {
-      ed.ctx = this.ctx;
+    this.makeGraphNodes();
+  }
+
+  drawCameraView() {
+    let gl = this.gl;
+
+    let camera = this.ctx.camera;
+
+    if (camera === undefined) {
+      camera = this.camera;
     }
+
+    gl.enable(gl.SCISSOR_TEST);
+    let pos = new Vector2(this.subViewPortPos);
+    let scale = this.subViewPortSize;
+    let size = new Vector2([scale, scale]);
+
+    size[0] /= camera.aspect;
+
+    //console.log(pos, size, camera.aspect);
+
+    pos.floor();
+    size.floor();
+
+    camera.regen_mats();
+
+    gl.scissor(pos[0], pos[1], size[0], size[1]);
+    gl.clearColor(0, 0, 0, 1.0);
+    gl.clearDepth(camera.far);
+
+    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+    gl.depthMask(true);
+    gl.enable(gl.DEPTH_TEST);
+
+    let scene = this.scene;
+
+    this.threeCamera.pushCamera(camera);
+    try {
+      this.drawObjects(camera);
+    } catch (error) {
+      util.print_stack(error);
+      console.warn("Draw error");
+    }
+
+    this.threeCamera.popCamera(camera);
   }
 
   viewportDraw() {
+    if (cconst.DEBUG.debugUIUpdatePerf) {
+      return;
+    }
+
+    if (this.flag & View3DFlags.USE_CTX_CAMERA) {
+      this.activeCamera = this.ctx.camera || this.camera;
+      this.threeCamera.camera = this.activeCamera;
+    } else {
+      this.activeCamera = this.camera;
+      this.threeCamera.camera = this.activeCamera;
+    }
+
+    this.checkCamera();
+    this.overdraw.clear();
+
     if (!this.gl) {
       this.glInit();
     }
 
     this.push_ctx_active();
-    this.updateWidgets();
     this.viewportDraw_intern();
+
+    if (this.flag & View3DFlags.SHOW_CAMERA_VIEW) {
+      this.drawCameraView();
+    }
+
     this.pop_ctx_active();
   }
 
@@ -807,14 +1279,51 @@ export class View3D extends Editor {
     }
   }
 
-  drawRender() {
+  drawRender(extraDrawCB) {
     let gl = this.gl;
 
     if (this.renderEngine === undefined) {
       this.renderEngine = new RealtimeEngine(this);
     }
 
-    this.renderEngine.render(this.camera, this.gl, this.glPos, this.glSize, this.ctx.scene);
+    this.renderEngine.render(this.activeCamera, this.gl, this.glPos, this.glSize, this.ctx.scene, extraDrawCB);
+  }
+
+  drawThreeScene() {
+    this.threeRenderer = this.ctx.state.three_render;
+
+    this.threeRenderer.setViewport(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1]);
+
+    let state = this.ctx.state;
+    let scene3 = state.three_scene;
+    let render3 = state.three_render;
+    let scene = this.ctx.scene;
+
+    render3.render(scene3, this.threeCamera);
+  }
+
+  updatePointClouds() {
+    /*
+    let scene = this.ctx.scene;
+
+    for (let ob of scene.objects) {
+      if (ob.data instanceof PointSet && ob.data.ready) {
+        //
+      }
+    }
+    //*/
+  }
+
+  onContextLost(e) {
+    if (this.drawline_mesh !== undefined) {
+      this.drawline_mesh.onContextLost(e);
+    }
+
+    this.widget.onContextLost(e);
+
+    if (this.grid !== undefined) {
+      this.grid.onContextLost(e);
+    }
   }
 
   viewportDraw_intern() {
@@ -823,23 +1332,18 @@ export class View3D extends Editor {
     }
 
     if (this._graphnode === undefined) {
-      this.makeGraphNode();
+      this.makeGraphNodes();
     }
 
-    this._graphnode.outputs.onDrawPre.update();
-    //force graph execution
-    window.updateDataGraph(true);
+    this._graphnode.outputs.onDrawPre.immediateUpdate();
 
     let scene = this.ctx.scene;
-    
-    //make sure dependency graph is up to date
-    window.updateDataGraph();
-    
+
     let gl = this.gl;
     let dpi = this.canvas.dpi;//UIBase.getDPI();
 
-    let x = this.pos[0]*dpi, y = this.pos[1]*dpi;
-    let w = this.size[0]*dpi, h = this.size[1]*dpi;
+    let x = this.owning_sarea.pos[0]*dpi, y = this.owning_sarea.pos[1]*dpi;
+    let w = this.owning_sarea.size[0]*dpi, h = this.owning_sarea.size[1]*dpi;
     //console.log("DPI", dpi);
 
     let screen = this.ctx.screen;
@@ -849,62 +1353,85 @@ export class View3D extends Editor {
     this.glPos = new Vector2([~~x, ~~y]);
     this.glSize = new Vector2([~~w, ~~h]);
 
+    gl.enable(gl.SCISSOR_TEST);
     gl.viewport(~~x, ~~y, ~~w, ~~h);
     gl.scissor(~~x, ~~y, ~~w, ~~h);
 
-    if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
-      gl.clearColor(0.5, 0.5, 0.5, 1.0);
-    } else {
-      gl.clearColor(0.8, 0.8, 1.0, 1.0);
-    }
+    //if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
+      gl.clearColor(0.15, 0.15, 0.15, 1.0);
+    //} else {
+    //  gl.clearColor(0.8, 0.8, 1.0, 1.0);
+    //}
     //gl.clearColor(1.0, 1.0, 1.0, 0.0);
 
-    gl.clearDepth(100000);
+    gl.clearDepth(this.activeCamera.far+1);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     
     gl.disable(gl.BLEND);
     gl.disable(gl.STENCIL_TEST);
-
-    gl.enable(gl.SCISSOR_TEST);
 
     gl.enable(gl.DEPTH_TEST);
     gl.depthMask(true);
 
     //console.log(this.size);
     let aspect = this.size[0] / this.size[1];
-    this.camera.regen_mats(aspect);
+    this.activeCamera.regen_mats(aspect);
+
+    //console.log("viewport draw start");
+
+    //this.drawThreeScene();
+    //return;
 
     //this._testCamera();
     //window.redraw_viewport();
 
-    if (this.grid !== undefined) {
-      //console.log("drawing grid");
-      
-      this.grid.program = view3d_shaders.Shaders.BasicLineShader;
-      
-      this.grid.uniforms.projectionMatrix = this.camera.rendermat;
-      this.grid.draw(gl);
-    }
+    let drawIntern = () => {
+      let drawgrid = this.flag & View3DFlags.SHOW_GRID;
 
-    for (let ed of this.editors) {
-      ed.on_drawstart(gl);
+      gl.depthMask(true);
+      gl.enable(gl.DEPTH_TEST);
+
+      if (this.grid !== undefined && drawgrid) {
+        //console.log("drawing grid");
+
+        this.grid.program = view3d_shaders.Shaders.BasicLineShader;
+
+        this.grid.uniforms.projectionMatrix = this.activeCamera.rendermat;
+        this.grid.draw(gl);
+      }
+
+      this.drawThreeScene();
+      this.drawObjects();
+
+      if (scene.toolmode) {
+        scene.toolmode.on_drawstart(gl, this);
+      }
+
+      if (this.drawlines.length > 0) {
+        this.drawDrawLines(gl);
+      }
+
+      gl.depthMask(true);
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.SCISSOR_TEST);
+
+
+      this._graphnode.outputs.onDrawPost.immediateUpdate();
+
+      gl.clear(gl.DEPTH_BUFFER_BIT);
+      this.widgets.draw(this.gl, this);
+
+      if (scene.toolmode) {
+        scene.toolmode.on_drawend(gl, this);
+      }
+
+      gl.disable(gl.BLEND);
     }
 
     if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
-      this.drawRender();
-    }
-
-    this.drawObjects();
-
-    if (this.drawlines.length > 0) {
-      this.drawDrawLines(gl);
-    }
-
-    gl.clear(gl.DEPTH_BUFFER_BIT);
-    this.widgets.draw(this.gl, this);
-
-    for (let ed of this.editors) {
-      ed.on_drawend(gl);
+      this.drawRender(drawIntern);
+    } else {
+      drawIntern();
     }
   }
 
@@ -919,7 +1446,7 @@ export class View3D extends Editor {
     }
 
     this.drawline_mesh.program = view3d_shaders.Shaders.BasicLineShader;
-    this.drawline_mesh.uniforms.projectionMatrix = this.camera.rendermat;
+    this.drawline_mesh.uniforms.projectionMatrix = this.activeCamera.rendermat;
     this.drawline_mesh.uniforms.alpha = 1.0;
 
     gl.enable(gl.BLEND);
@@ -933,6 +1460,7 @@ export class View3D extends Editor {
     this.drawline_mesh.destroy(gl);
 
   }
+
   makeDrawLine(v1, v2, color=[0,0,0,1]) {
     if (typeof color == "string") {
       color = css2color(color);
@@ -957,44 +1485,54 @@ export class View3D extends Editor {
     window.redraw_viewport();
   }
 
-  drawObjects() {
+  drawObjects(camera=this.activeCamera) {
     let scene = this.ctx.scene, gl = this.gl;
     let program = view3d_shaders.Shaders.BasicLitMesh;
-    let camera = this.camera;
-    
+
     let uniforms = {
       projectionMatrix : camera.rendermat,
       normalMatrix     : camera.normalmat
     };
-    
+
+    let only_render = this.flag & (View3DFlags.ONLY_RENDER);
+
     for (let ob of scene.objects.visible) {
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
+      uniforms.object_id = ob.lib_id;
 
-      let draw = !(this.flag & View3DFlags.SHOW_RENDER);
-      draw = draw || !(ob.data instanceof Mesh);
-      draw = draw && !(this.flag & View3DFlags.ONLY_RENDER);
+      if (only_render) {
+        //this.threeCamera.pushUniforms(uniforms);
+        //ob.draw(this, gl, uniforms, program);
+        //this.threeCamera.popUniforms();
 
-      if (draw) {
-        ob.draw(gl, uniforms, program);
+        //continue;
       }
 
-      if (this.flag & View3DFlags.ONLY_RENDER)
-        continue;
+      if (scene.toolmode) {
+        scene.toolmode.view3d = this;
 
-      let ok = false;
-      for (let ed of this.editors) {
-        //console.log(ed);
+        this.threeCamera.pushUniforms(uniforms);
 
-        if (ed.draw(gl, uniforms, program, ob, ob.data)) {
-          ok = true;
-          break;
+
+        if (scene.toolmode.drawObject(gl, uniforms, program, ob, ob.data)) {
+          this.threeCamera.popUniforms();
+          continue;
         }
+
+        this.threeCamera.popUniforms();
       }
 
-      //no editors drew the objects
-      if (!ok) {
-      //  ob.draw(gl, uniforms, program);
+      if (this.flag & View3DFlags.SHOW_RENDER) {
+        continue;
       }
+
+      uniforms.objectMatrix = ob.outputs.matrix.getValue();
+      uniforms.object_id = ob.lib_id;
+
+      //did toolmode not draw the object?
+      this.threeCamera.pushUniforms(uniforms);
+      ob.draw(this, gl, uniforms, program);
+      this.threeCamera.popUniforms();
     }
   }
   
@@ -1002,12 +1540,20 @@ export class View3D extends Editor {
     let ret = document.createElement("view3d-editor-x");
 
     ret.widgettool = this.widgettool;
+
     ret._select_transparent = this._select_transparent;
-    ret.camera = this.camera.copy();
-    ret.selectmode = this.selectmode;
+    ret.camera.load(this.camera);
     ret.drawmode = this.drawmode;
+    ret.glInit();
     
     return ret;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+
+    this.activeCamera = this.camera;
+    this.threeCamera.camera = this.activeCamera;
   }
 
   static define() {return {
@@ -1020,29 +1566,33 @@ export class View3D extends Editor {
 };
 View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
   camera              : Camera;
-  selectmode          : int;
   transformSpace      : int; 
   drawmode            : int;
   _select_transparent : int;
-  widgettool          : int;
-  cursor3D            : mat4;
   cursorMode          : int;
   orbitMode           : int;
   flag                : int;
+  subViewPortSize     : float;
+  subViewPortPos      : vec3;
 }
 `
 Editor.register(View3D);
 nstructjs.manager.add_class(View3D);
 
-
 let animreq = undefined;
 let resetRender = 0;
+let drawCount = 1;
 
-let f = () => {
-  animreq = undefined;
+let f2 = () => {
   let screen = _appstate.screen;
   let resetrender = resetRender;
+  let gl = _gl;
+
   resetRender = 0;
+
+  //try to calculate fps rate
+
+  let time = util.time_ms();
 
   for (let sarea of screen.sareas) {
     let sdef = sarea.area.constructor.define();
@@ -1057,14 +1607,47 @@ let f = () => {
       sarea.area.viewportDraw();
     }
   }
+
+  if (!gl) {
+    return;
+  }
+  
+  //wait for gpu
+  gl.finish();
+
+  //be real sure gpu has finished drawing
+  gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(8*8*4));
+
+  //now get time
+  time = util.time_ms() - time;
+  time = 1000.0 / time;
+
+  for (let sarea of screen.sareas) {
+    let area = sarea.area;
+
+    if (!area) continue;
+
+    if (area instanceof View3D) {
+      area.fps = time;
+    }
+  }
 };
 
-window.redraw_viewport = (ResetRender=false) => {
+let f = () => {
+  animreq = undefined;
+
+  for (let i=0; i<drawCount; i++) {
+    f2();
+  }
+};
+
+window.redraw_viewport = (ResetRender=false, DrawCount=1) => {
   resetRender |= ResetRender ? 1 : 0;
+  drawCount = DrawCount;
 
   if (animreq !== undefined) {
     return;
   }
 
   animreq = requestAnimationFrame(f);
-}
+};

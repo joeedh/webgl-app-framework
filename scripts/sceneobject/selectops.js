@@ -2,14 +2,14 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
-  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
-import {dist_to_line_2d} from '../path.ux/scripts/math.js';
+  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import {Icons} from '../editors/icon_enum.js';
-import {SceneObject, ObjectFlags} from '../core/sceneobject.js';
+import {SceneObject, ObjectFlags} from './sceneobject.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
 
 import {SelMask, SelToolModes, SelOneToolModes} from "../editors/view3d/selectmode.js";
@@ -21,6 +21,10 @@ export class SelectOpBase extends ToolOp {
 
   static tooldef() {return {
   }}
+
+  execPre() {
+    window.redraw_viewport();
+  }
 
   undoPre(ctx) {
     let ud = this._undo = {
@@ -59,8 +63,8 @@ export class SelectOpBase extends ToolOp {
     ud.active = datalib.get(ud.active);
     ud.highlight = datalib.get(ud.highlight);
 
-    scene.setActive(ud.active);
-    scene.setHighlight(ud.highlight);
+    scene.objects.setActive(ud.active);
+    scene.objects.setHighlight(ud.highlight);
 
     window.updateDataGraph();
     window.redraw_all();
@@ -79,7 +83,7 @@ export class SelectOneOp extends SelectOpBase {
     icon      : -1,
     inputs    : {
       mode       : new EnumProperty("UNIQUE", SelOneToolModes),
-      objectId   : new IntProperty(-1),
+      objectId   : new IntProperty(-1).private(),
       setActive  : new BoolProperty(true)
     }
   }}
@@ -145,9 +149,9 @@ export class ToggleSelectOp extends SelectOpBase {
       name: "toggle_select_all",
       toolpath: "object.toggle_select_all",
       icon: -1,
-      inputs: {
+      inputs: ToolOp.inherit({
         mode: new EnumProperty("AUTO", SelToolModes)
-      }
+      })
   }}
 
   static invoke(ctx, args) {

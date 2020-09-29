@@ -1,16 +1,16 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags, SocketTypes} from '../core/graph.js';
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {DependSocket, Vec2Socket, Vec3Socket, RGBASocket, Vec4Socket, Matrix4Socket, FloatSocket} from "../core/graphsockets.js";
-import {UIBase} from '../path.ux/scripts/ui_base.js';
-import {Container} from '../path.ux/scripts/ui.js';
+import {UIBase} from '../path.ux/scripts/core/ui_base.js';
+import {Container} from '../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {AbstractGraphClass} from '../core/graph_class.js';
 import {ShaderFragments, LightGen, DiffuseBRDF} from './shader_lib.js';
 import {Light, LightTypes} from '../light/light.js';
-import {loadShader} from "../editors/view3d/view3d_shaders.js";
+import {loadShader} from "../shaders/shaders.js";
 
 export {ClosureGLSL, PointLightCode} from './shader_lib.js';
 
@@ -107,7 +107,8 @@ ClosureSocket.STRUCT = STRUCT.inherit(ClosureSocket, NodeSocketType, "shader.Clo
   data : shader.Closure;
 }
 `;
-nstructjs.manager.add_class(ClosureSocket);
+nstructjs.register(ClosureSocket);
+NodeSocketType.register(ClosureSocket);
 
 export const ShaderContext = {
   GLOBALCO : 1,
@@ -276,6 +277,9 @@ export class ShaderGenerator {
 #define attribute in
 #define varying out
 precision highp float;
+precision highp samplerCubeShadow;
+precision highp sampler2DShadow;
+
     ${ShaderFragments.CLOSUREDEF}
     ${ShaderFragments.UNIFORMS}
     ${ShaderFragments.ATTRIBUTES}
@@ -312,6 +316,14 @@ precision highp float;
 
     if (output === undefined) {
       console.warn("no output node");
+
+      this.fragment = `
+      out vec4 fragColor;
+      
+      void main() {
+        fragColor = vec4(0.0, 0.0, 0.0, 1.0);  
+      }
+      `;
       return this;
     }
 
@@ -347,7 +359,7 @@ precision highp float;
 
       for (let k in node.outputs) {
         let sock = node.outputs[k];
-        if (sock.edges.length == 0) {
+        if (sock.edges.length === 0) {
           //continue;
         }
 
@@ -545,7 +557,7 @@ ${gen.getSocketName(this.outputs.surface)} = cl;
     category  : "Shaders",
     uiname    : "Diffuse",
     inputs    : {
-      color     : new RGBASocket(),
+      color     : new RGBASocket(undefined, undefined, [0.8, 0.8, 0.8, 1.0]),
       roughness : new FloatSocket(),
       normal    : new Vec3Socket()
     },

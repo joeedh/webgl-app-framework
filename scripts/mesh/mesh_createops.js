@@ -1,11 +1,12 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 
+import {makeCube} from '../core/mesh_shapes.js';
 import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
-  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
-import {dist_to_line_2d} from '../path.ux/scripts/math.js';
+  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DataRefProperty} from "../core/lib_api.js";
 import {DependSocket} from '../core/graphsockets.js';
@@ -14,17 +15,33 @@ import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
 
 import {Mesh, MeshTypes, MeshFlags} from './mesh.js';
-import {MeshOp} from './mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
-import {SceneObject} from "../core/sceneobject.js";
+import {SceneObject} from "../sceneobject/sceneobject.js";
+import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
+import {MeshOp} from "./mesh_ops_base.js";
 
-export class MeshCreateOp extends ToolOp {
+export class MeshCreateOp extends MeshOp {
   constructor() {
     super();
   }
 
+  modalStart(ctx) {
+    super.modalStart(ctx);
+    this.modalEnd(false);
+
+    if (ctx.scene && ctx.scene.toolmode) {
+      let toolmode = ctx.scene.toolmode;
+
+      if (!(toolmode instanceof MeshToolBase)) {
+        this.inputs.makeNewObject.setValue(true);
+      }
+    }
+
+    this.exec(ctx);
+  }
+
   static invoke(ctx, args) {
-    let tool = new this();
+    let tool = super.invoke(ctx, args);
 
     if ("makeNewObject" in args) {
       tool.inputs.makeNewObject.setValue(args.makeNewObject);
@@ -43,11 +60,12 @@ export class MeshCreateOp extends ToolOp {
   }
 
   static tooldef() {return {
-    inputs : {
-      makeNewObject     : new BoolProperty(),
+    inputs : ToolOp.inherit({
+      makeNewObject     : new BoolProperty(false),
       transformMatrix   : new Mat4Property()
-    },
+    }),
 
+    is_modal : true,
     outputs : {
       newObject : new DataRefProperty()
     }
@@ -61,12 +79,15 @@ export class MeshCreateOp extends ToolOp {
   exec(ctx) {
     let ob, mesh, mat;
     let create = this.inputs.makeNewObject.getValue();
-    create = create || ctx.object === undefined || !(ctx.object.data instanceof Mesh);
+    create = create || !ctx.object || !ctx.object.data || !(ctx.object.data instanceof Mesh);
 
     if (create) {
+      console.log("creating new object");
+
       ob = new SceneObject();
       ob.data = new Mesh();
       ob.data.lib_addUser(ob);
+      mesh = ob.data;
 
       ctx.datalib.add(ob);
       ctx.datalib.add(ob.data);
@@ -76,8 +97,8 @@ export class MeshCreateOp extends ToolOp {
 
       mat = new Matrix4();
     } else {
+      mesh = ctx.object.data;
       ob = ctx.object;
-      mesh = ob.data;
 
       mat = new Matrix4(this.inputs.transformMatrix.getValue());
     }
@@ -97,6 +118,7 @@ export class MakePlaneOp extends MeshCreateOp {
   static tooldef() {return {
     toolpath : "mesh.make_plane",
     uiname   : "Make Plane",
+    is_modal : true,
     inputs   : ToolOp.inherit({
       size : new FloatProperty(1.0)
     }),
@@ -133,3 +155,39 @@ export class MakePlaneOp extends MeshCreateOp {
 }
 
 ToolOp.register(MakePlaneOp);
+
+export class MakeCubeOp extends MeshCreateOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {return {
+    toolpath : "mesh.make_cube",
+    uiname   : "Make Cube",
+    is_modal : true,
+    inputs   : ToolOp.inherit({
+      size : new FloatProperty(1.0)
+    }),
+    outputs  : ToolOp.inherit()
+  }}
+
+  internalCreate(ob, mesh, mat) {
+    let size = this.inputs.size.getValue()*0.5;
+    let faces = makeCube(mesh).faces;
+    let vset = new util.set();
+
+    for (let f of faces) {
+      mesh.faces.setSelect(f, true);
+      for (let v of f.verts) {
+        vset.add(v);
+      }
+    }
+
+    for (let v of vset) {
+      mesh.verts.setSelect(v, true);
+      v.mulScalar(size);
+    }
+  }
+}
+
+ToolOp.register(MakeCubeOp);

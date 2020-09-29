@@ -1,5 +1,5 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
-import {loadShader, Shaders} from '../editors/view3d/view3d_shaders.js';
+import {loadShader, Shaders} from '../shaders/shaders.js';
 import {LightGen} from '../shadernodes/shader_lib.js';
 import {Light} from '../light/light.js';
 import {FBO} from '../core/fbo.js';
@@ -9,9 +9,9 @@ import {Texture, CubeTexture} from '../core/webgl.js';
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {SceneObject, ObjectFlags} from '../core/sceneobject.js';
+import {SceneObject, ObjectFlags} from '../sceneobject/sceneobject.js';
 import {RenderEngine} from "./renderengine_base.js";
 import {Mesh} from '../mesh/mesh.js';
 import {BasicFileOp} from "../core/appstate.js";
@@ -70,6 +70,9 @@ export class CubeFace {
   render(gl, scene, light) {
     let size = this.size;
 
+    //XXX
+    let view3d = _appstate.ctx.view3d;
+
     this.fbo.update(gl, size[0], size[1]);
     this.fbo.bind(gl);
 
@@ -113,7 +116,7 @@ export class CubeFace {
       uniforms.alpha = 1.0;
       uniforms.polygonOffset = 0.0;
 
-      ob.draw(gl, uniforms, program);
+      ob.draw(view3d, gl, uniforms, program);
     }
 
     window.gldebug_sample();
@@ -322,6 +325,8 @@ export class RealtimeEngine extends RenderEngine {
       passThru.outputs.fbo.connect(out.inputs.fbo);
     } else {
       base.outputs.fbo.connect(out.inputs.fbo);
+      //ao.outputs.fbo.disconnect();
+      //ao.outputs.fbo.connect(out.inputs.fbo);
     }
   }
 
@@ -330,7 +335,7 @@ export class RealtimeEngine extends RenderEngine {
   }
 
   resetRender() {
-    console.log("reset render frame");
+    //console.log("reset render frame");
     this.uSample = -1;
   }
 
@@ -362,7 +367,7 @@ export class RealtimeEngine extends RenderEngine {
     }
   }
 
-  render(camera, gl, viewbox_pos, viewbox_size, scene) {
+  render(camera, gl, viewbox_pos, viewbox_size, scene, extraDrawCB) {
     this.scene = scene;
     this.gl = gl;
     this.camera = camera;
@@ -372,6 +377,7 @@ export class RealtimeEngine extends RenderEngine {
     this.initLights();
     this.renderShadowMaps();
 
+    this.extraDrawCB = extraDrawCB;
     this.rendergraph.exec(gl, this, viewbox_size, camera, scene);
 
     let graph = this.rendergraph.graph;
@@ -384,7 +390,6 @@ export class RealtimeEngine extends RenderEngine {
       }
     }
 
-
     if (!output) {
       return;
     }
@@ -392,9 +397,9 @@ export class RealtimeEngine extends RenderEngine {
     if (output.outputs.fbo.getValue().texColor) {
       let rctx = this.rendergraph.rctx;
 
-      gl.enable(gl.DEPTH_TEST);
-      gl.disable(gl.BLEND);
-      gl.depthMask(false);
+      gl.disable(gl.DEPTH_TEST);
+      gl.enable(gl.BLEND);
+      gl.depthMask(true);
 
       rctx.drawFinalQuad(output.outputs.fbo.getValue());
     }
@@ -529,6 +534,9 @@ export class RealtimeEngine extends RenderEngine {
   }
 
   render_normals(camera, gl, viewbox_pos, viewbox_size, scene) {
+    //XXX
+    let view3d = _appstate.ctx.view3d;
+
     let uniforms = {
       projectionMatrix : this.getProjMat(camera, viewbox_size),
       normalMatrix     : camera.normalmat,
@@ -550,7 +558,7 @@ export class RealtimeEngine extends RenderEngine {
 
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
       //program.uniforms.objectMatrix = ob.outputs.matrix.getValue();
-      ob.draw(gl, uniforms, program);
+      ob.draw(view3d, gl, uniforms, program);
     }
   }
 
@@ -570,6 +578,8 @@ export class RealtimeEngine extends RenderEngine {
   }
 
   render_intern(camera, gl, viewbox_pos, viewbox_size, scene) {
+    let view3d = _appstate.ctx.view3d;
+
     this.cache.drawStart(gl);
 
     let uniforms = {
@@ -580,8 +590,6 @@ export class RealtimeEngine extends RenderEngine {
       ambientPower     : scene.envlight.power,
       uSample          : this.uSample
     };
-
-    console.log("ambient color", scene.envlight.color);
 
     let ao = this.aoPass.getOutput();
     if (ao.texColor) {
@@ -631,13 +639,12 @@ export class RealtimeEngine extends RenderEngine {
       }
 
       if (program === undefined) {
-        console.warn("no material");
         program = Shaders.BasicLitMesh;
       }
 
       uniforms.objectMatrix = ob.outputs.matrix.getValue();
 
-      ob.draw(gl, uniforms, program);
+      ob.draw(view3d, gl, uniforms, program);
     }
 
     this.cache.drawEnd(gl);

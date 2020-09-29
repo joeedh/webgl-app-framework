@@ -2,19 +2,113 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
-  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/simple_toolsys.js';
-import {dist_to_line_2d} from '../path.ux/scripts/math.js';
+  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, ToolMacro, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {TranslateOp} from "../editors/view3d/transform/transform_ops.js";
+import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
 
-import {Mesh, MeshTypes, MeshFlags} from './mesh.js';
+import {MeshFlags, MeshTypes, MeshFeatures} from './mesh_base.js';
 import {MeshOp} from './mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
-import './mesh_createops.js';
+import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
+
+export class DeleteOp extends MeshOp {
+  static tooldef() {return {
+    uiname : "Delete Selected",
+    icon : Icons.TINY_X,
+    toolpath : "mesh.delete_selected",
+    inputs : ToolOp.inherit(),
+    outputs : ToolOp.inherit()
+  }}
+
+  exec(ctx) {
+    console.warn("mesh.delete_selected");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let del = [];
+
+      for (let v of mesh.verts.selected.editable) {
+        del.push(v);
+      }
+
+      for (let v of del) {
+        mesh.killVertex(v);
+      }
+
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.update();
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(DeleteOp);
+
+export class ExtrudeOneVertexOp extends MeshOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {return {
+    uiname       : "Extrude Vertex",
+    icon         : Icons.EXTRUDE,
+    toolpath     : "mesh.extrude_one_vertex",
+    description  : "Extrude one vertex",
+    inputs       : ToolOp.inherit({
+      co         : new Vec3Property(),
+      select     : new BoolProperty(true),
+      setActive  : new BoolProperty(true)
+    }),
+    outputs : ToolOp.inherit({
+      vertex : new IntProperty(-1), //output vertex eid
+      edge   : new IntProperty(-1) //output edge eid
+    })
+  }}
+
+  exec(ctx) {
+    let mesh = this.getActiveMesh(ctx);
+
+    if (!(mesh.features & MeshFeatures.MAKE_VERT)) {
+      ctx.error("Mesh doesn't support making new vertices");
+      ctx.toolstack.toolCancel(ctx, this);
+      return;
+    }
+
+    let co = this.inputs.co.getValue();
+    let v = mesh.makeVertex(co);
+
+    let ok = mesh.verts.active !== undefined;
+    ok = ok && (mesh.features & MeshFeatures.MAKE_EDGE);
+    ok = ok && v !== mesh.verts.active; //in case of auto-setting somewhere
+
+    ok = ok && (mesh.verts.active.edges.length < 2 || (mesh.features & MeshFeatures.GREATER_TWO_VALENCE));
+
+    this.outputs.vertex.setValue(v.eid);
+
+    if (ok) {
+      let e = mesh.makeEdge(mesh.verts.active, v);
+      this.outputs.edge.setValue(e.eid);
+    }
+
+    if (this.inputs.select.getValue()) {
+      mesh.setSelect(v, true);
+    }
+
+    if (this.inputs.setActive.getValue()) {
+      mesh.setActive(v);
+    }
+
+    mesh.regenTesellation();
+    mesh.regenRender();
+  }
+}
+ToolOp.register(ExtrudeOneVertexOp);
 
 export class ExtrudeRegionsOp extends MeshOp {
   constructor() {
@@ -27,12 +121,35 @@ export class ExtrudeRegionsOp extends MeshOp {
     toolpath : "mesh.extrude_regions",
     undoflag : 0,
     flag     : 0,
-    inputs   : {},
+    inputs   : ToolOp.inherit({}),
     outputs  : {
       normal : new Vec3Property(),
       normalSpace : new Mat4Property()
     }
   }}
+
+  static invoke(ctx, args) {
+    let tool = super.invoke(ctx, args);
+
+    if (args["transform"]) {
+      let macro = new ToolMacro();
+      macro.add(tool);
+
+      let translate = new TranslateOp();
+      translate.inputs.selmask.setValue(SelMask.GEOM);
+      translate.inputs.constraint.setValue([0, 0, 1]);
+
+      macro.add(translate);
+
+      macro.connect(tool, translate, () => {
+        translate.inputs.constraint_space.setValue(tool.outputs.normalSpace.getValue());
+      });
+
+      return macro;
+    }
+
+    return tool;
+  }
 
   _exec_intern(ctx, mesh) {
     let fset = new util.set(mesh.faces.selected.editable);
@@ -198,8 +315,8 @@ export class ExtrudeRegionsOp extends MeshOp {
   }
 
   exec(ctx) {
-    for (let ob of ctx.selectedMeshObjects) {
-      this._exec_intern(ctx, ob.data);
+    for (let mesh of this.getMeshes(ctx)) {
+      this._exec_intern(ctx, mesh);
     }
   }
 }
@@ -217,17 +334,47 @@ export class CatmullClarkeSubd extends MeshOp {
     toolpath : "mesh.subdivide_smooth",
     undoflag : 0,
     flag     : 0,
-    inputs   : {},
+    inputs   : ToolOp.inherit({}),
   }}
 
   exec(ctx) {
     console.log("subdivide smooth!");
 
-    for (let ob of ctx.selectedMeshObjects) {
-      let mesh = ob.data;
+    for (let mesh of this.getMeshes(ctx)) {
+      console.log("doing mesh", mesh.lib_id);
 
       subdivide(mesh, list(mesh.faces.selected.editable));
       mesh.regenRender();
+
+      let es = new util.set();
+
+      for (let e of mesh.edges.selected.editable) {
+        if (!e.l) {
+          es.add(e);
+        }
+      }
+
+      //handle wire edges
+      let vs = new util.set();
+
+      for (let e of es) {
+        vs.add(e.v1);
+        vs.add(e.v2);
+
+        let ret = mesh.splitEdge(e, 0.5);
+
+        if (ret.length > 0) {
+          vs.add(ret[1]);
+          mesh.setSelect(ret[0], true);
+          mesh.setSelect(ret[1], true);
+        }
+      }
+
+      vertexSmooth(mesh, vs);
+
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.update();
     }
   }
 }
@@ -285,15 +432,13 @@ export class VertexSmooth extends MeshOp {
     toolpath : "mesh.vertex_smooth",
     undoflag : 0,
     flag     : 0,
-    inputs   : {},
+    inputs   : ToolOp.inherit({}),
   }}
 
   exec(ctx) {
-    console.log("subdivide smooth!");
+    console.log("smooth!");
 
-    for (let ob of ctx.selectedMeshObjects) {
-      let mesh = ob.data;
-
+    for (let mesh of this.getMeshes(ctx)) {
       vertexSmooth(mesh);
     }
   }

@@ -1,10 +1,10 @@
-import {Area} from '../../path.ux/scripts/ScreenArea.js';
+import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor} from '../editor_base.js';
-import '../../path.ux/scripts/struct.js';
+import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {KeyMap, HotKey} from '../../path.ux/scripts/simple_events.js';
-import {UIBase} from '../../path.ux/scripts/ui_base.js';
-import {Container} from '../../path.ux/scripts/ui.js';
+import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
+import {UIBase} from '../../path.ux/scripts/core/ui_base.js';
+import {Container} from '../../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
@@ -12,10 +12,13 @@ import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader
 import {AbstractGraphClass} from '../../core/graph_class.js';
 import {NodeFlags, SocketFlags, SocketTypes, NodeSocketType} from "../../core/graph.js";
 
-import {IntProperty, Vec2Property, StringProperty, PropSubTypes, PropTypes, PropFlags} from '../../path.ux/scripts/toolprop.js';
-import {ToolOp, UndoFlags, ToolFlags} from '../../path.ux/scripts/simple_toolsys.js';
+import {IntProperty, Vec2Property, StringProperty, PropSubTypes, PropTypes, PropFlags} from '../../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, UndoFlags, ToolFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
 import {Icons} from '../icon_enum.js';
-import {DataPathError} from '../../path.ux/scripts/controller.js';
+import {DataPathError} from '../../path.ux/scripts/controller/controller.js';
+import {getContextArea} from "../editor_base.js";
+import {ModalFlags} from "../../core/modalflags.js";
+import {NodeEditor} from "./NodeEditor.js";
 
 export class NodeGraphOp extends ToolOp {
   constructor() {
@@ -31,6 +34,15 @@ export class NodeGraphOp extends ToolOp {
         return undefined;
       } else {
         throw error;
+      }
+    }
+  }
+
+  updateAllEditors(ctx) {
+    for (let sarea of ctx.screen.sareas) {
+      if (sarea.area instanceof NodeEditor) {
+        sarea.area.flushUpdate();
+        sarea.area._recalcLines();
       }
     }
   }
@@ -81,9 +93,17 @@ export class NodeTranslateOp extends NodeGraphOp {
     })
   }}
 
+  modalStart(ctx) {
+    super.modalStart(ctx);
+
+    ctx.setModalFlag(ModalFlags.TRANSFORMING);
+  }
+
   modalEnd(cancelled) {
     let ctx = this.modal_ctx;
     super.modalEnd(cancelled);
+
+    ctx.clearModalFlag(ModalFlags.TRANSFORMING);
 
     this.first = true;
     this.start_mpos = new Vector2();
@@ -115,7 +135,7 @@ export class NodeTranslateOp extends NodeGraphOp {
     off.load(mpos).sub(this.start_mpos);
 
     this.exec(ctx);
-    ctx.nodeEditor.update();
+    this.updateAllEditors(ctx);
   }
 
   _apply(ctx, offset) {
@@ -291,16 +311,16 @@ export class ConnectNodeOp extends NodeGraphOp {
 
     let uisock1 = ned.getUISocket(sock1);
 
-    this.resetDrawLines();
+    this.resetTempGeom();
 
     if (uisock1 === undefined) {
       return;
     }
     
-    let p = new Vector2(uisock1.getAbsPos());
+    let p = new Vector2(uisock1.getAbsPos(true));
     ned.project(p, true);
 
-    this.addDrawLine(p, mpos, "orange");
+    this.makeTempLine(p, mpos, "orange");
 
     let p2 = new Vector2(mpos);
     ned.unproject(p2, true);
@@ -326,7 +346,7 @@ export class ConnectNodeOp extends NodeGraphOp {
     ok = ok && sock2.socket.socketType !== sock1.socketType;
 
     if (ok) {
-      let p3 = new Vector2(sock2.getAbsPos());
+      let p3 = new Vector2(sock2.getAbsPos(true));
 
       this.inputs.sock2_id.setValue(sock2.socket.graph_id);
       this.inputs.node2_id.setValue(sock2.socket.node.graph_id);
@@ -386,6 +406,13 @@ export class ConnectNodeOp extends NodeGraphOp {
       console.log(this);
       console.warn("Error in node connect op: bad arguments");
       return;
+    }
+
+    if (sock1.hasEdges && !(sock1.graph_flag & SocketFlags.MULTI)) {
+      sock1.disconnect();
+    }
+    if (sock2.hasEdges && !(sock2.graph_flag & SocketFlags.MULTI)) {
+      sock2.disconnect();
     }
 
     sock1.connect(sock2);

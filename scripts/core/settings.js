@@ -1,4 +1,4 @@
-import '../path.ux/scripts/struct.js';
+import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
 let STRUCT = nstructjs.STRUCT;
 
 export class SavedScreen {

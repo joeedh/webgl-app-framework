@@ -1,17 +1,23 @@
-import {Area} from '../../path.ux/scripts/ScreenArea.js';
+import {Area, BorderMask} from '../../path.ux/scripts/screen/ScreenArea.js';
+import {saveFile, loadFile} from '../../path.ux/scripts/util/html5_fileapi.js';
+import {Icons} from "../icon_enum.js";
+
+import {NoteFrame, Note} from '../../path.ux/scripts/widgets/ui_noteframe.js';
+
 import {Editor, VelPan} from '../editor_base.js';
-import {Light} from "../../light/light.js";
-import {Mesh} from "../../mesh/mesh.js";
-import '../../path.ux/scripts/struct.js';
+import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {DataPathError} from '../../path.ux/scripts/controller.js';
-import {KeyMap, HotKey} from '../../path.ux/scripts/simple_events.js';
-import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/ui_base.js';
-import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/ui.js';
+
+import {DataPathError} from '../../path.ux/scripts/controller/controller.js';
+import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
+import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
+import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
 import {NodeEditor} from "../node/NodeEditor.js";
+import * as cconst from '../../core/const.js';
+import {Menu} from "../../path.ux/scripts/widgets/ui_menu.js";
 
 export class PropsEditor extends Editor {
   constructor() {
@@ -20,85 +26,56 @@ export class PropsEditor extends Editor {
 
   init() {
     super.init();
+    this.background = this.getDefault("DefaultPanelBG");
 
     let header = this.header;
     let container = this.container;
 
-    let col = container.col();
+    this.tabs = container.tabs("left");
+    let tab;
 
-    let tabs = col.tabs("left");
-    this.buildScene(tabs.tab("Scene"));
-
-    tabs.tab("Material");
-    this.buildObject(tabs.tab("Object"));
-  }
-
-  buildObject(tab) {
-    tab.getContextKey = () => {
-      let ctx = this.ctx;
-
-      let ob = ctx.object;
-      if (ob === undefined) {
-        return "undefined";
-      }
-
-      let key = ob.data.constructor.blockDefine().typeName;
-      return key;
-    };
-
-    tab._update = tab.update;
-    tab.ctxkey = "";
-    tab.update = () => {
-      let key = tab.getContextKey();
-
-      if (key != tab.ctxkey) {
-        console.log("tab transformation");
-        tab.ctxkey = key;
-        tab.clear();
-
-        let ob = this.ctx.object;
-        if (ob === undefined) {
-          tab._update();
-          return;
-        }
-
-        if (ob.data instanceof Light) {
-          tab.prop("light.inputs['power'].value");
-        } else if (ob.data instanceof Mesh) {
-
-        }
-      }
-
-      tab._update();
-    }
-  }
-
-  buildScene(tab) {
-    let l = tab.label("Scene Properties for: ");
-    l.setAttribute("datapath", "scene.name");
-
-    let panel = tab.panel("Ambient Light");
+    tab = this.tabs.tab("Scene");
+    let panel = tab.panel("Render Settings");
     panel.prop("scene.envlight.color");
     panel.prop("scene.envlight.power");
-
-    panel = tab.panel("Ambient Occlusion");
+    panel.prop("scene.envlight.flag");
     panel.prop("scene.envlight.ao_dist");
     panel.prop("scene.envlight.ao_fac");
+
+    tab = this.tabs.tab("Material");
+    this.materialPanel(tab);
+
+    tab = this.tabs.tab("Object");
+
+    tab = this.tabs.tab("Last Command");
+    let last = document.createElement("last-tool-panel-x")
+    tab.add(last);
   }
 
-  on_area_active() {
-    this.setCSS();
+  materialPanel(tab) {
+    let panel = document.createElement("mesh-material-panel-x");
+    panel.setAttribute("datapath", "mesh");
+    tab.add(panel);
+  }
+
+  update() {
+    super.update();
   }
 
   copy() {
-    let ret = document.createElement("property-editor-x");
+    let ret = document.createElement("props-editor-x");
+    ret.ctx = this.ctx;
 
     return ret;
   }
 
+  setCSS() {
+    super.setCSS();
+  }
+
   static define() {return {
-    tagname : "property-editor-x",
-    areaname : "PropsEditor",
+    tagname : "props-editor-x",
+    areaname : "props",
     uiname   : "Properties",
     icon     : -1
   }}

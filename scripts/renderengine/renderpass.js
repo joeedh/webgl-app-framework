@@ -1,21 +1,21 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import {getShader} from '../core/webgl.js';
-import {loadShader, Shaders} from '../editors/view3d/view3d_shaders.js';
+import {loadShader, Shaders} from '../shaders/shaders.js';
 import {LightGen} from '../shadernodes/shader_lib.js';
 import {LayerTypes, SimpleMesh} from '../core/simplemesh.js';
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {SceneObject, ObjectFlags} from '../core/sceneobject.js';
+import {SceneObject, ObjectFlags} from '../sceneobject/sceneobject.js';
 import {RenderEngine} from "./renderengine_base.js";
 import {Mesh} from '../mesh/mesh.js';
 
 import {Node, Graph, NodeSocketType, SocketTypes, SocketFlags, NodeFlags} from '../core/graph.js';
 import {Vec3Socket, Vec4Socket, Matrix4Socket, Vec2Socket, FloatSocket, DependSocket} from "../core/graphsockets.js";
 
-import {FBO, FramePipeline, BlitShader, BlitShaderGLSL300} from '../core/fbo.js';
+import {FBO, FramePipeline, getBlitShaderCode} from '../core/fbo.js';
 import {getWebGL} from "../editors/view3d/view3d.js";
 
 export class FBOSocket extends NodeSocketType {
@@ -88,21 +88,33 @@ export class RenderContext {
 
       console.log("updateing framebuffer pipeline for new width/height");
 
-      let BlitShaderSrc = gl.haveWebGL2 ? BlitShaderGLSL300 : BlitShader;
+      let BlitShaderSrc = getBlitShaderCode(gl);
 
       let lf = LayerTypes;
+
       this.smesh = new SimpleMesh(lf.LOC | lf.UV);
       this.smesh.program = this.blitshader = getShader(gl, BlitShaderSrc);
+
       this.smesh.uniforms.uSample = this.uSample;
       this.smesh.uniforms.size = this.size;
       this.smesh.uniforms.projectionMatrix = drawmats.rendermat;
 
-      let quad = this.smesh.quad([-1,-1,0], [-1,1,0], [1,1,0], [1,-1,0])
-      quad.uvs([0,0,0], [0,1,0], [1,1,0], [1,0,0]);
+      let quad = this.smesh.quad(
+        [1,-1,0],
+        [1,1,0],
+        [-1,1,0],
+        [-1,-1,0],
+      );
+      quad.uvs(
+        [1,0,0],
+        [1,1,0],
+        [0,1,0],
+        [0,0,0],
+      );
     }
   }
 
-  drawQuad(program, draw_depth=false) {
+  drawQuad(program) {
     if (program === undefined || this.smesh === undefined || this.gl === undefined) {
       console.warn("eek!", program);
       return;
@@ -114,27 +126,12 @@ export class RenderContext {
     this.smesh.uniforms.size = this.size;
     this.smesh.program = program;
 
-    if (draw_depth) {
-      gl.enable(gl.DEPTH_TEST);
-      gl.depthMask(true);
-    } else {
-      //gl.depthMask(false);
-    }
-
-    /*
-    if (draw_depth) {
-      gl.enable(gl.DEPTH_TEST);
-    } else {
-      gl.disable(gl.DEPTH_TEST);
-    }
-    gl.enable(gl.BLEND);
-
-    gl.depthMask(draw_depth);
-    //*/
+    gl.disable(gl.CULL_FACE);
+    gl.disable(gl.SCISSOR_TEST);
+    gl.disable(gl.DITHER);
+    gl.depthMask(true);
 
     this.smesh.draw(gl);
-    //gl.enable(gl.DEPTH_TEST);
-    //gl.depthMask(true);
   }
 
   drawFinalQuad(fbo) {
@@ -146,37 +143,31 @@ export class RenderContext {
     let gl = this.gl;
 
     this.smesh.program = this.blitshader;
+
+    gl.disable(gl.CULL_FACE);
+    gl.disable(gl.DITHER);
+    gl.disable(gl.BLEND);
+
     this.smesh.uniforms.uSample = this.uSample;
+    this.smesh.uniforms.valueScale = 1.0;
     this.smesh.uniforms.size = this.size;
 
     this.smesh.uniforms.rgba = fbo.texColor;
     this.smesh.uniforms.depth = fbo.texDepth;
 
-    gl.disable(gl.BLEND);
-    gl.disable(gl.DEPTH_TEST);
-    gl.depthMask(false);
-
     this.smesh.draw(gl);
   }
 
-  renderStage(fbo, drawfunc, input_fbos) {
+  renderStage(fbo, drawfunc) {
     let gl = this.gl;
 
-    fbo.update(this.gl, this.size[0], this.size[1]);
+    fbo.update(this.gl, ~~this.size[0], ~~this.size[1]);
     fbo.bind(gl);
-
-    gl.viewport(0, 0, ~~this.size[0], ~~this.size[1]);
 
     //gl.enable(gl.DEPTH_TEST);
     //gl.depthMask(true);
     //gl.disable(gl.DEPTH_TEST);
     //gl.depthMask(false);
-
-    if (this.uSample == 0) {
-      gl.clearDepth(5000000.0);
-      gl.clearColor(1.0, 1.0, 1.0, 1.0);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    }
 
     drawfunc(gl);
 
@@ -205,7 +196,7 @@ export class RenderPass extends Node {
     },
     shader : `
       gl_FragColor = texture2D(fbo_rgba, v_Uv);
-      gl_FragDepthEXT = texture2D(fbo_depth, v_Uv)[0];
+      gl_FragDepth = sampleDepth(fbo_depth, v_Uv);
     `,
     shaderPre : ``
   }}
@@ -221,6 +212,7 @@ export class RenderPass extends Node {
   compileShader(rctx) {
     let gl = rctx.gl;
     let fragment = this.shader !== undefined ? this.shader : this.constructor.nodedef().shader;
+
     let shaderPre = this.shaderPre !== undefined ? this.shaderPre : this.constructor.nodedef().shaderPre;
     shaderPre = shaderPre === undefined ? '' : shaderPre;
 
@@ -245,7 +237,12 @@ ${!have_webgl2 ? "#define WEBGL1" : ""}
 #define varying in
 #endif
 
-precision mediump float;
+precision highp float;
+precision highp sampler2DShadow;
+
+float sampleDepth(sampler2D sampler, vec2 uv) {
+  return texture2D(sampler, uv)[0];
+}
 
 uniform mat4 projectionMatrix;
 uniform mat4 iprojectionMatrix;
@@ -256,7 +253,7 @@ uniform float uSample;
 uniform vec2 size;
 
 #ifndef WEBGL1
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 #define gl_FragColor fragColor
 #endif
 
@@ -264,7 +261,7 @@ ${shaderPre}
 ${samplers}
 
 varying vec2 v_Uv;
-  
+
 void main(void) {
 ${fragment}
 }
@@ -279,10 +276,8 @@ ${!have_webgl2 ? "#define WEBGL1" : ""}
 #define attribute in
 #endif
 
-precision mediump float;
+precision highp float;
 
-uniform sampler2D rgba;
-uniform sampler2D depth;
 uniform float uSample;
 uniform vec2 size;
 
@@ -292,7 +287,7 @@ attribute vec2 uv;
 varying vec2 v_Uv;
 
 void main(void) {
-  gl_Position = vec4(position, 1.0);
+  gl_Position = vec4(position.xy, 0.0, 1.0);
   v_Uv = uv;
 }
     `;
@@ -308,13 +303,39 @@ void main(void) {
 
     this._shader = loadShader(gl, shader);
 
+    //console.log(fragment);
     return shader;
   }
 
-  renderIntern(rctx, draw_depth=false) {
-    let program = this.getShader(rctx);
+  bindInputs(rctx, program) {
     let gl = rctx.gl;
 
+    for (let k in this.inputs) {
+      if (!(this.inputs[k] instanceof FBOSocket)) {
+        continue;
+      }
+
+      let fbo = this.inputs[k].getValue();
+
+      if (!fbo.texColor) {
+        console.log("Warning: missing fbo texColor for '" + this.constructor.name + ":" + this.graph_id + ":" + k + "'", fbo);
+      }
+
+      if (!fbo.texDepth) {
+        console.log("Warning: missing fbo texDepth for '" + this.constructor.name + ":" + this.graph_id + ":" + k + "'", fbo);
+      }
+
+      if (fbo.texColor)
+        program.uniforms[k + "_rgba"] = fbo.texColor;
+      if (fbo.texDepth)
+        program.uniforms[k + "_depth"] = fbo.texDepth;
+    }
+  }
+
+  renderIntern(rctx) {
+    let gl = rctx.gl;
+
+    let program = this.getShader(rctx);
     if (program === undefined) {
       console.warn("bad program for render buffer");
       return;
@@ -333,24 +354,9 @@ void main(void) {
       program.uniforms[k] = this.uniforms[k];
     }
 
-    for (let k in this.inputs) {
-      if (!(this.inputs[k] instanceof FBOSocket)) {
-        continue;
-      }
+    this.bindInputs(rctx, program);
 
-      let fbo = this.inputs[k].getValue();
-
-      if (!fbo.texColor) {
-        console.log("Warning: missing fbo for '" + this.constructor.name + ":" + this.graph_id + ":" + k + "'", fbo);
-      }
-      
-      if (fbo.texColor)
-        program.uniforms[k + "_rgba"] = fbo.texColor;
-      if (fbo.texDepth)
-        program.uniforms[k + "_depth"] = fbo.texDepth;
-    }
-
-    rctx.drawQuad(program, draw_depth);
+    rctx.drawQuad(program);
   }
 
   exec(rctx) {
@@ -360,30 +366,23 @@ void main(void) {
       this.renderIntern(rctx);
     };
 
-    let inputs = {};
-    for (let k in this.inputs) {
-      let sock = this.inputs[k];
+    rctx.renderStage(this.outputs.fbo.data, render);
+    gl.finish();
 
-      if (sock instanceof FBOSocket) {
-        inputs[k] = sock.getValue();
-      }
-    }
-
-    rctx.renderStage(this.outputs.fbo.getValue(), render, inputs);
-
-    //don't use NodeSocketType.prototype.update, it likes to copy values
+    //don't use NodeSocketType.prototype.graphUpdate, it likes to copy values
     for (let k in this.outputs) {
       let sock = this.outputs[k];
 
       if (sock instanceof FBOSocket) {
         for (let e of sock.edges) {
           e.data = sock.data;
+          e.node.graphUpdate();
         }
       } else {
-        sock.update();
+        sock.graphUpdate();
       }
 
-      sock.node.update();
+      sock.node.graphUpdate();
     }
   }
 }
@@ -405,9 +404,29 @@ export class RenderGraph {
 
     rctx.update(gl, size);
 
+    this.size[0] = ~~size[0];
+    this.size[1] = ~~size[1];
+
+    gl.viewport(0, 0, ~~size[0], ~~size[1]);
+
     this.graph.sort();
+
+    let rec = (n) => {
+      n.graphUpdate();
+
+      for (let k in n.inputs) {
+        let sock = n.inputs[k];
+
+        for (let e of sock.edges) {
+          e.node.graphUpdate();
+        }
+      }
+    }
+
     for (let node of this.graph.sortlist) {
-      node.update();
+      if (node.constructor.name === "OutputPass") {
+        rec(node);
+      }
     }
 
     this.graph.exec(this.rctx);

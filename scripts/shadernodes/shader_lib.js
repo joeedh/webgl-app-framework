@@ -46,8 +46,6 @@ export class LightGen {
         let rlight = undefined;
 
         if (renderlights !== undefined && light.lib_id in renderlights) {
-          console.log("Found rlight!");
-
           rlight = renderlights[light.lib_id];
           shadowmap = rlight.shadowmap;
         }
@@ -60,11 +58,11 @@ export class LightGen {
         if (use_jitter) {
           switch (light.data.type) {
             case LightTypes.AREA_DISK:
-              //break;
+            //break;
             case LightTypes.AREA_RECT:
-              //break;
+            //break;
             case LightTypes.SUN:
-              //break;
+            //break;
             case LightTypes.POINT:
             default:
               r[0] = (util.random()-0.5)*2.0;
@@ -74,7 +72,7 @@ export class LightGen {
               r.mulScalar(light.data.inputs.radius.getValue());
               p.add(r);
 
-            break;
+              break;
           }
         }
 
@@ -163,15 +161,18 @@ export let PointLightCode = new LightGen({
   totname : "MAXPLIGHT",
   pre : `
   #if defined(MAXPLIGHT) && MAXPLIGHT > 0
-  #define HAVE_POINTLIGHT
-  
+    #define HAVE_POINTLIGHT
+    //define HAVE_SHADOW
+    
     struct PointLight {
       vec3 co;
       float power;
       float radius; //soft shadow radius
       vec3 color;
       float distance; //falloff distance
+#ifdef HAVE_SHADOW
       samplerCubeShadow shadow;
+#endif
       float shadow_near;
       float shadow_far;
     };
@@ -194,6 +195,7 @@ export let PointLightCode = new LightGen({
       float energy = 1.0 / (1.0 + sqrt(length(lvec)/POINTLIGHTS[li].distance));
       energy *= POINTLIGHTS[li].power;
      
+#ifdef HAVE_SHADOW
       float z = 1.0/length(lvec) - 1.0/POINTLIGHTS[li].shadow_near;
       z /= 1.0/POINTLIGHTS[li].shadow_far - 1.0/POINTLIGHTS[li].shadow_near;
       
@@ -202,9 +204,12 @@ export let PointLightCode = new LightGen({
       vec4 sp = vec4(lvec, z);
       
       float shadow = texture(POINTLIGHTS[li].shadow, sp);
-       
-      //CLOSURE.light += f * POINTLIGHTS[li].color * energy * shadow;
-      CLOSURE.light += vec3(shadow, shadow, shadow);
+#else
+      float shadow = 1.0;
+#endif
+  
+      CLOSURE.light += f * POINTLIGHTS[li].color * energy * shadow;
+      //CLOSURE.light += vec3(shadow, shadow, shadow);
     }
   #endif
   `,

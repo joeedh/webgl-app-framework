@@ -13,11 +13,8 @@ import {
   SocketFlags,
   GraphFlags,
 } from "./graph.js";
-import {DependSocket} from "./graphsockets.js";
-import {Matrix4, Vector2, Vector3, Vector4} from '../util/vectormath.js';
-import * as util from '../util/util.js';
-import '../path.ux/scripts/struct.js';
-let STRUCT = nstructjs.STRUCT;
+
+import {Matrix4, Vector2, Vector3, Vector4, util, nstructjs} from '../path.ux/scripts/pathux.js';
 
 export let GraphTypes = [];
 export let GraphMap = {};

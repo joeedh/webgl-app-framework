@@ -1,13 +1,13 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
-import {loadShader, Shaders} from '../editors/view3d/view3d_shaders.js';
+import {loadShader, Shaders} from '../shaders/shaders.js';
 import {LightGen} from '../shadernodes/shader_lib.js';
 import {FBO} from '../core/fbo.js';
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
-import '../path.ux/scripts/struct.js';
+import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {SceneObject, ObjectFlags} from '../core/sceneobject.js';
+import {SceneObject, ObjectFlags} from '../sceneobject/sceneobject.js';
 import {RenderEngine} from "./renderengine_base.js";
 import {Mesh} from '../mesh/mesh.js';
 import {FBOSocket, RenderContext, RenderGraph, RenderPass} from "./renderpass.js";
@@ -41,7 +41,7 @@ export class BasePass extends RenderPass {
     //gl.clear = () => {};
 
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
-    gl.clearDepth(1000000.0);
+    gl.clearDepth(1.0);
     gl.depthMask(true);
 
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
@@ -49,8 +49,12 @@ export class BasePass extends RenderPass {
     gl.enable(gl.DEPTH_TEST);
     gl.disable(gl.BLEND);
 
-    console.log("base pass exec!");
+    //console.log("base pass exec!");
     rctx.engine.render_intern(rctx.drawmats, rctx.gl, zero, rctx.size, rctx.scene);
+
+    if (rctx.engine.extraDrawCB) {
+      rctx.engine.extraDrawCB();
+    }
   }
 }
 
@@ -71,17 +75,17 @@ export class NormalPass extends RenderPass {
     }),
     shader : `
 gl_FragColor = texture2D(fbo_rgba, v_Uv);
-gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
+gl_FragDepth = sampleDepth(fbo_depth, v_Uv);
     `
   }}
 
   renderIntern(rctx) {
     let gl = rctx.gl;
 
-    console.log("normal pass exec!");
+    //console.log("normal pass exec!");
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    gl.clearDepth(1000000.0);
+    gl.clearDepth(1.0);
     gl.depthMask(true);
 
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
@@ -107,25 +111,32 @@ export class OutputPass extends RenderPass {
     outputs : Node.inherit({
 
     }),
-    shader : `
-vec4 color = texture2D(fbo_rgba, v_Uv);
 
-//float f = color.r / (1.0 + uSample);
-//gl_FragColor = vec4(f, f, f, 1.0);
-gl_FragColor = vec4(color.rgb / (1.0+uSample), 1.0);
-gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
+    shader : `
+    vec4 color = texture2D(fbo_rgba, v_Uv);
+    if (uSample > 0.0) {
+      color.rgb = color.rgb / uSample;
+    }
+    
+gl_FragColor = color;
+gl_FragDepth = sampleDepth(fbo_depth, v_Uv);
     `
   }}
 
   renderIntern(rctx) {
     let gl = rctx.gl;
 
-    gl.depthMask(true);
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    super.renderIntern(rctx, false);
+    gl.depthMask(true);
+
+    super.renderIntern(rctx);
+
+    //run 'chrome --enable-privileged-webgl-extension' from shell
+    //let fragmentShader = this._shader.fragmentShader;
+    //console.log(gl.getExtension("WEBGL_debug_shaders").getTranslatedShaderSource(fragmentShader));
+
   }
 }
 
@@ -212,7 +223,7 @@ float rand(float x, float y, float seed) {
   vec4 p = vec4(gl_FragCoord.xyz, 1.0);
   p.xy = (p.xy / size)*2.0 - 1.0;
 
-  p.z = texture2D(fbo_depth, v_Uv)[0];
+  p.z = sampleDepth(fbo_depth, v_Uv);
   float z = p.z;
 
   p = unproject(p);
@@ -247,7 +258,7 @@ float rand(float x, float y, float seed) {
     float oldz = p2.z;
     
     vec4 c = texture2D(fbo_rgba, (p2.xy*0.5 + 0.5));
-    p2.z = texture2D(fbo_depth, (p2.xy*0.5 + 0.5))[0];
+    p2.z = sampleDepth(fbo_depth, (p2.xy*0.5 + 0.5));
     
     vec4 p3 = unproject(p2);
     //float w = min(length(p3.xyz - p.xyz) / dist, 1.0);
@@ -275,12 +286,19 @@ float rand(float x, float y, float seed) {
   
   //gl_FragColor = texture2D(fbo_rgba, v_Uv);
   //gl_FragColor = vec4(texture2D(fbo_rgba, v_Uv).rgb, 1.0);
-  gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
+  
+  gl_FragDepth = sampleDepth(fbo_depth, v_Uv);
   `
   }}
 
   renderIntern(rctx) {
     let gl = rctx.gl;
+
+    gl.clearDepth(1.0);
+    gl.clearColor(1.0, 1.0, 1.0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.depthMask(true);
 
     this.uniforms.factor = rctx.scene.envlight.ao_fac;
     this.uniforms.dist = rctx.scene.envlight.ao_dist;
@@ -336,7 +354,7 @@ export class BlurPass extends RenderPass {
     accum /= tot;
     
     gl_FragColor = accum;
-    gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
+    gl_FragDepth = sampleDepth(fbo_depth, v_Uv);
     `,
   }}
 
@@ -345,7 +363,7 @@ export class BlurPass extends RenderPass {
 
     shaderPre += "#define BLUR_SAMPLES " + (~~this.inputs.samples.getValue()) + "\n";
 
-    if (this.inputs.axis.getValue() == 0.0) {
+    if (this.inputs.axis.getValue() === 0.0) {
       shaderPre += "#define BLUR_AXIS 0\n" + shaderPre;
     } else {
       shaderPre += "#define BLUR_AXIS 1\n" + shaderPre;
@@ -377,7 +395,7 @@ vec4 color1 = texture2D(fbo_rgba, v_Uv);
 vec4 color2 = texture2D(lastBuf, v_Uv);
 
 gl_FragColor = vec4(color1.rgb, 1.0) + vec4(color2.rgb, 1.0)*float(uSample > 0.0);
-gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
+gl_FragDepth = sampleDepth(fbo_depth, v_Uv);
     `
   }}
 
@@ -387,8 +405,16 @@ gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
     //*
     let buf = rctx.engine.passThru.outputs.fbo.getValue();
 
+    if (rctx.uSample === 0) {
+      gl.clearColor(1.0, 1.0, 1.0, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    } else {
+      gl.clearDepth(1.0);
+      gl.clear(gl.DEPTH_BUFFER_BIT);
+    }
+
     gl.disable(gl.DEPTH_TEST);
-    //gl.depthMask(true);
+    gl.depthMask(true);
 
     gl.disable(gl.BLEND);
 
@@ -415,7 +441,7 @@ export class PassThruPass extends RenderPass {
     }),
     shader : `
 gl_FragColor = texture2D(fbo_rgba, v_Uv);
-gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
+gl_FragDepth = sampleDepth(fbo_depth, v_Uv);
     `
   }}
 
@@ -424,7 +450,7 @@ gl_FragDepth = texture2D(fbo_depth, v_Uv)[0];
 
     gl.disable(gl.BLEND);
     gl.disable(gl.DEPTH_TEST);
-    gl.depthMask(false);
+    gl.depthMask(true);
 
     super.renderIntern(rctx, false);
   }

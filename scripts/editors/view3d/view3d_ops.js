@@ -1,7 +1,13 @@
 import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
-import {ToolOp, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
-import {eventWasTouch, keymap} from '../../path.ux/scripts/simple_events.js';
+import {ToolOp, UndoFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
+import {eventWasTouch, keymap} from '../../path.ux/scripts/util/simple_events.js';
 import {Icons} from '../icon_enum.js';
+import {SelMask} from "./selectmode.js";
+import {CallbackNode} from "../../core/graph.js";
+import {DependSocket} from "../../core/graphsockets.js";
+import {CastModes, castViewRay} from "./findnearest.js";
+import {Shapes} from '../../core/simplemesh_shapes.js';
+import {Shaders} from "../../shaders/shaders.js";
 
 export class ViewSelected extends ToolOp {
   constructor() {
@@ -11,8 +17,8 @@ export class ViewSelected extends ToolOp {
   static tooldef() {return {
     uiname   : "View Selected",
     toolpath : "view3d.view_selected",
-    description : "Recenter View (fixes orbit/rotate problems)",
-    icon     : Icons.VIEW_SELECTED,
+    description : "Zoom Out",
+    icon     : Icons.ZOOM_OUT,
     is_modal : true,
     undoflag : UndoFlags.NO_UNDO
   }}
@@ -25,6 +31,128 @@ export class ViewSelected extends ToolOp {
   }
 }
 ToolOp.register(ViewSelected);
+
+export class CenterViewOp extends ToolOp {
+  constructor() {
+    super();
+
+    this.p = undefined;
+  }
+
+  static tooldef() {return {
+    uiname   : "Center View",
+    toolpath : "view3d.center_at_mouse",
+    description : "Recenter View At Mouse",
+    icon     : Icons.FIX_VIEW,
+    is_modal : true,
+    undoflag : UndoFlags.NO_UNDO
+  }}
+
+  modalStart(ctx) {
+    super.modalStart(ctx);
+    this.node = CallbackNode.create("view3d.center_at_mouse", this.draw.bind(this), {
+      onDrawPost : new DependSocket()
+    });
+
+    ctx.graph.add(this.node);
+    let vnode = ctx.view3d.getGraphNode();
+
+    vnode.outputs.onDrawPost.connect(this.node.inputs.onDrawPost);
+  }
+
+  draw() {
+    let ctx = this.modal_ctx;
+    let view3d = ctx.view3d;
+    let gl = view3d.gl;
+
+    let mat = new Matrix4();
+    let co = new Vector3(this.p);
+    let w = view3d.project(co);
+    let s = w*0.05;
+
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthMask(true);
+
+    if (this.p === undefined) {
+      return;
+    }
+    
+    mat.translate(this.p[0], this.p[1], this.p[2]);
+    mat.scale(s, s, s);
+    
+    let cam = view3d.camera;
+    
+    Shapes.SPHERE.draw(gl, {
+      projectionMatrix : cam.rendermat,
+      objectMatrix : mat,
+      color : [1, 0.4, 0.2, 1.0],
+    }, Shaders.WidgetMeshShader)
+
+    console.log("draw!");
+  }
+
+  on_mouseup(e) {
+    this.on_mousemove(e);
+
+    console.log("mouse up!");
+    let ctx = this.modal_ctx;
+    let view3d = ctx.view3d;
+    let cam = view3d.camera;
+
+    if (this.p !== undefined && !isNaN(this.p.dot(this.p))) {
+      cam.target.load(this.p);
+    }
+
+    this.modalEnd(false);
+  }
+
+  on_keydown(e) {
+    switch (e.keyCode) {
+      case keymap["Enter"]:
+      case keymap["Escape"]:
+      case keymap["Space"]:
+        this.modalEnd(false);
+        break;
+    }
+  }
+  modalEnd(was_cancelled) {
+    let ctx = this.modal_ctx;
+    let view3d = this.view3d;
+
+    super.modalEnd(was_cancelled);
+
+    if (this.node !== undefined) {
+      ctx.graph.remove(this.node);
+      this.node = undefined;
+    }
+  }
+
+  on_mousemove(e) {
+    let ctx = this.modal_ctx;
+    let view3d = ctx.view3d;
+    let mpos = view3d.getLocalMouse(e.x, e.y);
+
+    let overdraw = this.getOverdraw();
+
+    window.redraw_viewport();
+
+    overdraw.clear();
+    overdraw.circle([e.x, e.y], 35, "red");
+
+    //castViewRay(ctx, selectMask, mpos, view3d, mode=CastModes.FRAMEBUFFER) {
+    let ret = castViewRay(ctx, SelMask.OBJECT|SelMask.GEOM, mpos, view3d, CastModes.FRAMEBUFFER);
+    console.log(ret);
+
+    if (ret !== undefined) {
+      this.p = new Vector3(ret.p3d);
+    } else {
+      this.p = undefined;
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(CenterViewOp);
 
 /*
 let cssmap = {
@@ -193,6 +321,8 @@ export class OrbitTool extends ToolOp {
     
     camera.pos.add(camera.target);
     window.redraw_viewport(true);
+
+    view3d.onCameraChange();
   }
 
   on_mouseup(e) {
@@ -304,7 +434,10 @@ export class TouchViewTool extends ToolOp {
 
     if (ilen == 1) {
       let t = this.touches[0];
-      this.orbit(t.delta[0], t.delta[1]);
+      
+      if (t !== undefined) {
+        this.orbit(t.delta[0], t.delta[1]);
+      }
 
       //reset touche starts for zoom
       for (let touch of this.touches) {
@@ -336,6 +469,7 @@ export class TouchViewTool extends ToolOp {
     }
 
     window.redraw_viewport(true);
+    view3d.onCameraChange();
   }
 
   zoom(scale) {
@@ -483,8 +617,6 @@ export class PanTool extends ToolOp {
 
     let p = new Vector3(camera.target);
 
-    console.log(dx, dy);
-
     view3d.project(p);
     p[0] += -dx;
     p[1] += -dy;
@@ -497,6 +629,7 @@ export class PanTool extends ToolOp {
     camera.regen_mats(camera.aspect);
     
     window.redraw_viewport(true);
+    view3d.onCameraChange();
   }
   
   on_mouseup(e) {
@@ -576,6 +709,7 @@ export class ZoomTool extends ToolOp {
     camera.regen_mats(camera.aspect);
     
     window.redraw_viewport(true);
+    view3d.onCameraChange();
   }
   
   on_mouseup(e) {

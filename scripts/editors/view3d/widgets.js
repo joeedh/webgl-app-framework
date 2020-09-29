@@ -2,17 +2,17 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
 import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
         FlagProperty, ToolProperty, Vec3Property,
-        PropFlags, PropTypes, PropSubTypes} from '../../path.ux/scripts/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/simple_toolsys.js';
-import {WidgetShapes} from './widget_shapes.js';
-import {Shaders} from './view3d_shaders.js';
-import {dist_to_line_2d} from '../../path.ux/scripts/math.js';
-import {IsMobile} from '../../path.ux/scripts/ui_base.js'
+        PropFlags, PropTypes, PropSubTypes} from '../../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
+import {Shapes} from '../../core/simplemesh_shapes.js';
+import {Shaders} from '../../shaders/shaders.js';
+import {dist_to_line_2d} from '../../path.ux/scripts/util/math.js';
+import {IsMobile} from '../../path.ux/scripts/core/ui_base.js'
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
-import {css2color} from '../../path.ux/scripts/ui_base.js';
+import {css2color} from '../../path.ux/scripts/core/ui_base.js';
 import * as util from '../../util/util.js';
-import * as math from '../../path.ux/scripts/math.js';
+import * as math from '../../path.ux/scripts/util/math.js';
 
 let dist_temps = util.cachering.fromConstructor(Vector3, 512);
 let dist_rets = util.cachering.fromConstructor(Vector2, 512);
@@ -22,153 +22,12 @@ export const WidgetFlags = {
   //HIDE      : 2,
   HIGHLIGHT : 4,
   CAN_SELECT : 8,
-  IGNORE_EVENTS : 16
+  IGNORE_EVENTS : 16,
+  ALL_EVENTS : 32, //widget gets event regardless of if mouse cursor is near it
 };
 
 export let WidgetTools = [];
 
-export class WidgetTool {
-  constructor(manager) {
-    this.manager = manager;
-    this.view3d = manager.view3d;
-    this.ctx = this.view3d.ctx;
-
-    let def = this.constructor.widgetDefine();
-
-    this.flag = def.flag !== undefined ? def.flag : 0;
-
-    this.destroyed = false;
-    this.name = def.name;
-    this.uiname = def.uiname;
-    this.icon = def.icon !== undefined ? def.icon : -1;
-    this.description = def.description !== undefined ? def.description : "";
-
-    this.widgets = [];
-  }
-
-  getArrow(matrix, color) {
-    let ret = this.manager.arrow(matrix, color);
-    this.widgets.push(ret);
-    return ret;
-  }
-
-  getSphere(matrix, color) {
-    let ret = this.manager.sphere(matrix, color);
-    this.widgets.push(ret);
-    return ret;
-  }
-
-  getChevron(matrix, color) {
-    let ret = this.manager.chevron(matrix, color);
-    this.widgets.push(ret);
-    return ret;
-  }
-
-  /**
-   * executes a (usually modal) tool, adding (and removing)
-   * draw callbacks to execute this.update() as appropriate
-   * */
-  execTool(tool) {
-    let view3d = this.view3d;
-
-    if (this._widget_tempnode === undefined) {
-      let n = this._widget_tempnode = this.manager.createCallbackNode(0, "widget redraw", () => {
-        this.update();
-      }, {trigger: new DependSocket("trigger")}, {});
-
-      this.ctx.graph.add(n);
-      n.inputs.trigger.connect(view3d._graphnode.outputs.onDrawPre);
-    }
-
-    this.ctx.toolstack.execTool(tool);
-
-    if (tool._promise !== undefined) {
-      tool._promise.then((ctx, was_cancelled) => {
-        console.log("tool was finished", this, this._widget_tempnode, ".");
-
-        if (this._widget_tempnode !== undefined) {
-          //this.ctx.graph.remove(this._widget_tempnode);
-          this.manager.removeCallbackNode(this._widget_tempnode);
-          this._widget_tempnode = undefined;
-        }
-      })
-    }
-  }
-
-  getPlane(matrix, color) {
-    let ret = this.manager.plane(matrix, color);
-    this.widgets.push(ret);
-    return ret;
-  }
-
-  getBlockArrow(matrix, color) {
-    let ret = this.manager.blockarrow(matrix, color);
-    this.widgets.push(ret);
-    return ret;
-  }
-
-  static widgetDefine() {return {
-    name        : "name",
-    uiname      : "uiname",
-    icon        : -1,
-    flag        : 0,
-    description : "",
-    selectMode  : undefined, //if set, preferred selectmode, see SelModes
-  }}
-
-  static register(cls) {
-    WidgetTools.push(cls);
-  }
-
-  static getToolEnum() {
-    let enumdef = {};
-    let icondef = {};
-    let uinames = {};
-    let i = 0;
-
-    for (let cls of WidgetTools) {
-      let def = cls.widgetDefine();
-
-      enumdef[def.name] = i;
-      icondef[def.name] = def.icon;
-      uinames[def.name] = def.uiname;
-
-      i += 1;
-    }
-
-    let prop = new EnumProperty(undefined, enumdef, undefined, "Tools", "Tool Widgets");
-    prop.ui_value_names = uinames;
-    prop.addIcons(icondef);
-
-    return prop;
-  }
-
-  static validate(ctx) {
-
-  }
-
-  create(ctx, manager) {
-    this.ctx = ctx;
-    this.manager = manager;
-  }
-
-  update(ctx) {
-
-  }
-
-  destroy(gl) {
-    if (this.destroyed) {
-      return;
-    }
-
-    for (let w of this.widgets) {
-      this.manager.remove(w);
-    }
-
-    this.widgets.length = 0;
-    this.manager.clearNodes();
-  }
-};
 
 export class WidgetShape {
   constructor(view3d) {
@@ -196,8 +55,22 @@ export class WidgetShape {
     }
   }
 
+  onContextLost(e) {
+    if (this.mesh !== undefined) {
+      this.mesh.onContextLost(e);
+    }
+  }
+
   destroy(gl) {
-    if (this.destroyed) {
+    if (this.gl !== undefined && gl !== this.gl) {
+      console.warn("Destroy called with new gl context");
+    } else if (this.gl === undefined && gl !== undefined) {
+      this.gl = gl;
+    }
+
+    gl = this.gl;
+
+    if (gl === undefined) {
       return;
     }
 
@@ -230,6 +103,11 @@ export class WidgetShape {
   }
 
   draw(gl, manager, matrix, localMatrix) {
+    if (this.destroyed) {
+      console.log("Reusing widget shape");
+      this.destroyed = false;
+    }
+
     if (this.mesh === undefined) {
       console.warn("missing mesh in WidgetShape.prototype.draw()");
       return;
@@ -242,17 +120,19 @@ export class WidgetShape {
     let mat = this.drawmatrix;
     mat.load(this.matrix).multiply(matrix);
 
+    let view3d = manager.ctx.view3d;
+    let camera = manager.ctx.view3d.camera;
     let co = this._drawtemp;
     co.zero();
     co.multVecMatrix(mat);
-    let w = co.multVecMatrix(manager.view3d.camera.rendermat);
+    let w = co.multVecMatrix(camera.rendermat);
 
     let smat = this._tempmat;
     smat.makeIdentity();
 
     mat.load(this.matrix);
 
-    let scale = IsMobile() ? w*0.15 : w*0.075; //Math.max(w*0.05, 0.01);
+    let scale = util.isMobile() ? w*0.15 : w*0.075; //Math.max(w*0.05, 0.01);
 
     let local = this._tempmat2.load(this.localMatrix);
     if (localMatrix !== undefined) {
@@ -266,7 +146,7 @@ export class WidgetShape {
     mat.multiply(local);
 
     this.mesh.uniforms.polygonOffset = 0.0;
-    this.mesh.uniforms.projectionMatrix = manager.view3d.camera.rendermat;
+    this.mesh.uniforms.projectionMatrix = manager.ctx.view3d.camera.rendermat;
     this.mesh.uniforms.objectMatrix = mat;
 
     gl.enable(gl.BLEND);
@@ -277,6 +157,8 @@ export class WidgetShape {
 
     gl.disable(gl.DEPTH_TEST);
     gl.depthMask(false);
+    gl.disable(gl.CULL_FACE);
+
     this.mesh.draw(gl);
 
     gl.enable(gl.DEPTH_TEST);
@@ -548,6 +430,7 @@ export class WidgetBase {
   constructor() {
     let def = this.constructor.widgetDefine();
 
+    this.ctx = undefined;
     this.flag = def.flag !== 0 ? def.flag : 0;
     this.id = -1;
     this.children = [];
@@ -574,12 +457,22 @@ export class WidgetBase {
 
   //can this widget run?
   static ctxValid(ctx) {
-    return ctx.view3d.selectmode & this.constructor.widgetDefine().selMask;
+    return ctx.selectMask & this.constructor.widgetDefine().selMask;
   }
 
   get isDead() {
     //throw new Error("implement me");
     return false;
+  }
+
+  remove() {
+    this.manager.remove(this);
+  }
+
+  onContextLost(e) {
+    if (this.shape !== undefined) {
+      this.shape.onContextLost(e);
+    }
   }
 
   destroy(gl) {
@@ -648,17 +541,49 @@ export class WidgetBase {
     this.manager.remove(this);
   }
 
-  on_mousedown(localX, localY) {
+  on_mousedown(e, localX, localY, was_touch) {
+    let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
+
+    if (child !== undefined && child !== this) {
+      if (child.on_mousedown) {
+        child.on_mousedown(e, localX, localY);
+      }
+      return true;
+    } else if (child === this) {
+      return true;
+    }
+
+    return false;
   }
 
-  on_mousemove(localX, localY) {
+  on_mousemove(e, localX, localY) {
+    let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
+
+    if (child !== undefined && child !== this) {
+      child.on_mousemove(e, localX, localY);
+      return true;
+    } else if (child === this) {
+      return true;
+    }
+
+    return false;
   }
 
-  on_mouseup(localX, localY) {
+  on_mouseup(e, localX, localY, was_touch) {
+    let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
+
+    if (child !== undefined && child !== this) {
+      child.on_mouseup(e, localX, localY);
+      return true;
+    } else if (child === this) {
+      return true;
+    }
+
+    return false;
   }
 
-  on_keydown(localX, localY) {
-
+  on_keydown(e, localX, localY) {
+    return true;
   }
 
   draw(gl, manager, matrix=undefined) {
@@ -689,13 +614,204 @@ export class WidgetBase {
   }
 }
 
+export class WidgetTool extends WidgetBase {
+  constructor(manager) {
+    super();
+
+    if (manager !== undefined) {
+      this.manager = manager;
+      this.ctx = manager.ctx;
+    } else {
+      this.manager = this.ctx = undefined;
+    }
+
+    let def = this.constructor.widgetDefine();
+
+    this.flag = def.flag !== undefined ? def.flag : 0;
+
+    this.destroyed = false;
+    this.name = def.name;
+    this.uiname = def.uiname;
+    this.icon = def.icon !== undefined ? def.icon : -1;
+    this.description = def.description !== undefined ? def.description : "";
+
+    this.widgets = [];
+  }
+
+  setManager(manager) {
+    this.manager = manager;
+    this.ctx = manager.ctx;
+  }
+
+  getArrow(matrix, color) {
+    let ret = this.manager.arrow(matrix, color);
+    this.widgets.push(ret);
+    return ret;
+  }
+
+  getSphere(matrix, color) {
+    let ret = this.manager.sphere(matrix, color);
+    this.widgets.push(ret);
+    return ret;
+  }
+
+  getChevron(matrix, color) {
+    let ret = this.manager.chevron(matrix, color);
+    this.widgets.push(ret);
+    return ret;
+  }
+
+
+  /**
+   * executes a (usually modal) tool, adding (and removing)
+   * draw callbacks to execute this.update() as appropriate
+   * */
+  execTool(ctx, tool) {
+    let view3d = this.ctx.view3d;
+
+    if (this._widget_tempnode === undefined) {
+      let n = this._widget_tempnode = this.manager.createCallbackNode(0, "widget redraw", () => {
+        this.update();
+      }, {trigger: new DependSocket("trigger")}, {});
+
+      this.ctx.graph.add(n);
+      n.inputs.trigger.connect(view3d._graphnode.outputs.onDrawPre);
+    }
+
+    this.ctx.toolstack.execTool(ctx, tool);
+
+    if (tool._promise !== undefined) {
+      tool._promise.then((ctx, was_cancelled) => {
+        console.log("tool was finished", this, this._widget_tempnode, ".");
+
+        if (this._widget_tempnode !== undefined) {
+          //this.ctx.graph.remove(this._widget_tempnode);
+          this.manager.removeCallbackNode(this._widget_tempnode);
+          this._widget_tempnode = undefined;
+        }
+      })
+    }
+  }
+
+  getPlane(matrix, color) {
+    let ret = this.manager.plane(matrix, color);
+    this.widgets.push(ret);
+    return ret;
+  }
+
+  getBlockArrow(matrix, color) {
+    let ret = this.manager.blockarrow(matrix, color);
+    this.widgets.push(ret);
+    return ret;
+  }
+
+  static widgetDefine() {return {
+    name        : "name",
+    uiname      : "uiname",
+    icon        : -1,
+    flag        : 0,
+    description : "",
+    selectMode  : undefined, //force selectmode to this on widget create
+  }}
+
+  static register(cls) {
+    WidgetTools.push(cls);
+  }
+
+  static getTool(name) {
+    for (let cls of WidgetTools) {
+      if (cls.widgetDefine().name === name) {
+        return cls;
+      }
+    }
+
+    return undefined;
+  }
+
+  static getToolEnum(classes=WidgetTools, propcls=EnumProperty, is_bitmask=false) {
+    let enumdef = {};
+    let icondef = {};
+    let uinames = {};
+    let i = 0;
+
+    for (let cls of classes) {
+      let def = cls.widgetDefine();
+
+      if (is_bitmask) {
+        enumdef[def.name] = 1<<i;
+      } else {
+        enumdef[def.name] = i;
+      }
+
+      icondef[def.name] = def.icon;
+      uinames[def.name] = def.uiname;
+
+      i++;
+    }
+
+    let prop = new propcls(undefined, enumdef, undefined, "Tools", "Tool Widgets");
+    prop.ui_value_names = uinames;
+    prop.addIcons(icondef);
+
+    return prop;
+  }
+
+  static validate(ctx) {
+
+  }
+
+  create(ctx, manager) {
+    this.ctx = ctx;
+    this.manager = manager;
+  }
+
+  update(ctx) {
+    super.update(this.manager);
+  }
+
+  onremove() {
+    let manager = this.manager;
+
+    for (let w of this.widgets) {
+      manager.remove(w);
+    }
+
+    this.widgets = [];
+
+    if (this._widget_tempnode !== undefined ){
+      manager.removeCallbackNode(this._widget_tempnode);
+      this._widget_tempnode = undefined;
+    }
+  }
+
+  remove() {
+    let manager = this.manager;
+    
+    manager.remove(this);
+  }
+
+  destroy(gl) {
+    super.destroy(gl);
+
+    if (this.destroyed) {
+      return;
+    }
+
+    for (let w of this.widgets) {
+      w.destroy(gl);
+    }
+  }
+};
+
 export class WidgetManager {
-  constructor(view3d) {
-    this.view3d = view3d;
+  constructor(ctx) {
+    this._init = false;
     this.widgets = [];
     this.widget_idmap = {};
     this.shapes = {};
     this.idgen = new util.IDGen();
+    this.ctx = ctx;
+    this.gl = undefined;
 
     //execution graph nodes
     this.nodes = {};
@@ -723,8 +839,21 @@ export class WidgetManager {
     }
   }
 
+  glInit(gl) {
+    this.gl = gl;
+    this.loadShapes();
+  }
+
+  onContextLost(e) {
+    this._init = false;
+
+    for (let w of this.widgets) {
+      w.onContextLost(e);
+    }
+  }
+
   clearNodes() {
-    let graph = this.view3d.ctx.graph;
+    let graph = this.ctx.graph;
 
     for (let k in this.nodes) {
       let n = this.nodes[k];
@@ -749,7 +878,7 @@ export class WidgetManager {
     let key = n._key;
 
     if (this.nodes[key]) {
-      this.view3d.ctx.graph.remove(this.nodes[key]);
+      this.ctx.graph.remove(this.nodes[key]);
     }
   }
 
@@ -757,7 +886,7 @@ export class WidgetManager {
     let key = id + ":" + name;
 
     if (this.nodes[key]) {
-      this.view3d.ctx.graph.remove(this.nodes[key]);
+      this.ctx.graph.remove(this.nodes[key]);
     }
 
     this.nodes[key] = CallbackNode.create(key, callback, inputs, outputs);
@@ -767,9 +896,8 @@ export class WidgetManager {
   }
 
   loadShapes() {
-    for (let k in WidgetShapes) {
-      let mesh = WidgetShapes[k].copy();
-      let smesh = mesh.genRender();
+    for (let k in Shapes) {
+      let smesh = Shapes[k].copy();
 
       this.shapes[k] = smesh;
     }
@@ -780,22 +908,44 @@ export class WidgetManager {
   _picklimit(was_touch) {
     return was_touch ? 35 : 8;
   }
-  /**see view3d.getSubEditorMpos for how localX/localY are derived*/
-  on_mousedown(localX, localY, was_touch) {
-    console.warn("was touch:", was_touch, "limit:", this._picklimit(was_touch));
 
-    let w = this.findNearest(localX, localY, this._picklimit(was_touch));
-    console.log("w", w);
+  _fireAllEventWidgets(e, key, localX, localY, was_touch) {
+    let ret = 0;
 
-    if (w !== undefined) {
-      if (this.widgets.hightlight !== undefined) {
-        this.widgets.hightlight.flag &= ~WidgetFlags.HIGHLIGHT;
+    for (let w of this.widgets) {
+      if (w.flag & WidgetFlags.ALL_EVENTS) {
+        ret |= w[key](e, localX, localY, was_touch);
       }
+    }
 
-      this.widgets.highlight = w;
-      w.flag |= WidgetFlags.HIGHLIGHT;
-      w.on_mousedown(localX, localY);
+    return ret;
+  }
+
+  on_keydown(e, localX, localY) {
+    if (this._fireAllEventWidgets(e, "on_keydown", localX, localY, false)) {
       return true;
+    }
+
+    if (this.widgets.highlight !== undefined) {
+      this.widgets.highlight.on_keydown(e, localX, localY);
+    }
+  }
+
+  /**see view3d.getSubEditorMpos for how localX/localY are derived*/
+  on_mousedown(e, localX, localY, was_touch) {
+    this.updateHighlight(e, localX, localY, was_touch);
+
+    if (this._fireAllEventWidgets(e, "on_mousedown", localX, localY, was_touch)) {
+      return true;
+    }
+
+    if (this.widgets.highlight !== undefined) {
+      let flag = this.widgets.highlight.flag;
+      if (!(flag & WidgetFlags.IGNORE_EVENTS)) {
+        this.widgets.highlight.on_mousedown(e, localX, localY, was_touch);
+
+        return true;
+      }
     }
   }
 
@@ -809,7 +959,7 @@ export class WidgetManager {
         continue;
       }
 
-      let ret = w.findNearest(this.view3d, x, y, limit);
+      let ret = w.findNearest(this.ctx.view3d, x, y, limit);
 
       if (ret === undefined || ret.dis > limit) {
         continue;
@@ -828,10 +978,8 @@ export class WidgetManager {
     return minw;
   }
 
-  on_mousemove(localX, localY, was_touch) {
+  updateHighlight(e, localX, localY, was_touch) {
     let w = this.findNearest(localX, localY, this._picklimit(was_touch));
-    
-    //console.log(w);
 
     if (this.widgets.highlight !== w) {
       if (this.widgets.highlight !== undefined) {
@@ -846,13 +994,30 @@ export class WidgetManager {
       window.redraw_viewport();
     }
 
-    if (w !== undefined) {
+    return w !== undefined;
+  }
+
+  on_mousemove(e, localX, localY, was_touch) {
+    let ret = this.updateHighlight(e, localX, localY, was_touch);
+
+    //console.log(w);
+    if (this._fireAllEventWidgets(e, "on_mousemove", localX, localY, was_touch)) {
       return true;
     }
+
+    return ret;
   }
   
-  on_mouseup(localX, localY) {
-    
+  on_mouseup(e, localX, localY, was_touch) {
+    this.updateHighlight(e, localX, localY, was_touch);
+
+    if (this._fireAllEventWidgets(e, "on_mouseup", localX, localY, was_touch)) {
+      return true;
+    }
+
+    if (this.widgets.highlight !== undefined) {
+      return this.widgets.highlight.on_mouseup(e, localX, localY);
+    }
   }
 
   add(widget) {
@@ -861,11 +1026,12 @@ export class WidgetManager {
       throw new Error("invalid widget type for " + widget);
     }
 
-    if (widget.id !== -1) {
+    if (widget.id !== -1 && widget.id in this.widget_idmap) {
       console.warn("Warning, tried to add same widget twice");
       return undefined;
     }
 
+    widget.ctx = this.ctx;
     widget.id = this.idgen.next();
     widget.manager = this;
 
@@ -877,22 +1043,41 @@ export class WidgetManager {
 
   remove(widget) {
     if (!(widget.id in this.widget_idmap)) {
-      console.warn("widget not in graph", widget.id, widget);
+      console.warn("widget not in manager", widget.id, widget);
       return;
     }
 
-    if (this.view3d !== undefined && this.view3d.gl !== undefined) {
-      widget.destroy(this.view3d.gl);
+    if (widget.onremove) {
+      widget.onremove();
     }
 
-    widget.manager = undefined;
+    if (this.ctx.view3d !== undefined && this.ctx.view3d.gl !== undefined) {
+      widget.destroy(this.ctx.view3d.gl);
+    }
 
+    if (widget === this.highlight) {
+      this.highlight = undefined;
+    }
+    if (widget === this.active) {
+      this.active = undefined;
+    }
+
+    delete this.widget_idmap[widget.id];
     this.widgets.remove(widget);
+
     widget.id = -1;
   }
 
+  clear() {
+    let ws = this.widgets.slice(0, this.widgets.length);
+
+    for (let widget of ws) {
+      this.remove(widget);
+    }
+  }
+
   destroy(gl) {
-    if (this.view3d !== undefined) {
+    if (this.ctx.view3d !== undefined) {
       this.clearNodes();
     } else {
       //XXX ok just nuke all references in this.nodes
@@ -903,19 +1088,57 @@ export class WidgetManager {
       let shape = this.shapes[k];
       shape.destroy(gl);
     }
+
+    if (this.gl !== undefined && gl !== this.gl) {
+      console.warn("Destroy called with new gl context");
+    } else if (this.gl === undefined && gl !== undefined) {
+      this.gl = gl;
+    }
+
+    gl = this.gl;
+    let widgets = this.widgets;
+
+    this.widgets = [];
+    this.widget_idmap = {};
+    this.widgets.active = undefined;
+    this.widgets.highlight = undefined;
+
+    if (gl === undefined) {
+      return;
+    }
+
+    for (let w of widgets) {
+      w.ctx = this.ctx;
+      w.manager = this;
+
+      try {
+        w.destroy(gl);
+      } catch (error) {
+        util.print_stack(error);
+        console.warn("Failed to destroy a widget", w);
+      }
+    }
   }
 
   draw(gl, view3d) {
-    this.view3d = view3d;
-    this.gl = gl;
+    if (!this._init) {
+      this._init = true;
+      this.glInit(gl);
+    }
+
+    let pushctx = view3d !== undefined && view3d !== this.ctx.view3d;
+
+    if (pushctx) {
+      view3d.push_ctx_active();
+    }
 
     for (let widget of this.widgets) {
       widget.draw(gl, this);
     }
-  }
 
-  updateWidgets() {
-
+    if (pushctx) {
+      view3d.pop_ctx_active();
+    }
   }
 
   _newbase(matrix, color, shape) {
@@ -962,8 +1185,6 @@ export class WidgetManager {
   }
 
   update(view3d) {
-    this.view3d = view3d;
-
     for (let widget of this.widgets) {
       widget.update(this);
 

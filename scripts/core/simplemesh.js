@@ -6,6 +6,13 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 var set = util.set;
 var RenderBuffer = webgl.RenderBuffer;
 
+export const PrimitiveTypes = {
+  POINTS : 1,
+  LINES  : 2,
+  TRIS   : 4,
+  ALL    : 1|2|4
+};
+
 export const LayerTypes = {
   LOC    : 1,
   UV     : 2,
@@ -284,12 +291,13 @@ export class GeoLayer extends Array {
   extend(data) {
     var tot = this.size;
     var starti = this.length;
+
+    //okay, V8's optimizer did *not* like calling push in a for loop,
+    //just increment length instead, according to ES spec this is fine
+    //and it's much faster
+    this.length += tot;
     
-    for (var i=0; i<tot; i++) {
-      this.push(0);
-    }
-    
-    if (data != undefined) {
+    if (data !== undefined) {
       this.copy(~~(starti/this.size), data, 1);
     }
     
@@ -331,7 +339,30 @@ export class GeoLayerManager {
     this.layer_meta = {};
     this.layer_idgen = new util.IDGen();
   }
-  
+
+  copy() {
+    let ret = new GeoLayerManager();
+
+    for (let layer of this.layers) {
+      let layer2 = ret.get(layer.name, layer.type, layer.size, layer.idx);
+
+      let a = layer.data_f32;
+      let b = layer2.data_f32;
+
+      b.length = a.length;
+      layer2.length = layer.length;
+
+      for (let i=0; i<a.length; i++) {
+        b[i] = a[i];
+      }
+      for (let i=0; i<layer.length; i++) {
+        layer2[i] = layer[i];
+      }
+    }
+
+    return ret;
+  }
+
   get_meta(type) {
     if (!(type in this.layer_meta)) {
       this.layer_meta[type] = new GeoLayerMeta(type);
@@ -356,8 +387,8 @@ export class GeoLayerManager {
      
      var layer = new GeoLayer(size, name, type, idx);
      layer.id = this.layer_idgen.next();
-     
-     
+
+
      this.layers.add(layer);
      meta.layers.push(layer);
      
@@ -373,24 +404,10 @@ var _default_id = [-1];
 export class SimpleIsland {
   constructor() {
     var lay = this.layers = new GeoLayerManager();
-    
-    this.tri_cos    = lay.get("tri_cos", LayerTypes.LOC); //array
-    this.tri_normals = lay.get("tri_normals", LayerTypes.NORMAL); //array
-    this.tri_uvs    = lay.get("tri_uvs", LayerTypes.UV); //array
-    this.tri_colors = lay.get("tri_colors", LayerTypes.COLOR); //array
-    this.tri_ids    = lay.get("tri_ids", LayerTypes.ID); //array
-    
-    this.line_cos    = lay.get("line_cos", LayerTypes.LOC); //array
-    this.line_normals = lay.get("line_normals", LayerTypes.NORMAL); //array
-    this.line_uvs    = lay.get("line_uvs", LayerTypes.UV); //array
-    this.line_colors = lay.get("line_colors", LayerTypes.COLOR); //array
-    this.line_ids    = lay.get("line_ids", LayerTypes.ID); //array
 
-    this.point_cos    = lay.get("point_cos", LayerTypes.LOC); //array
-    this.point_normals = lay.get("point_normals", LayerTypes.NORMAL); //array
-    this.point_uvs    = lay.get("point_uvs", LayerTypes.UV); //array
-    this.point_colors = lay.get("point_colors", LayerTypes.COLOR); //array
-    this.point_ids    = lay.get("point_ids", LayerTypes.ID); //array
+    this.primflag = undefined;  //if undefined, will get from this.mesh.primflag
+
+    this.makeBufferAliases();
 
     this.totpoint = 0;
     this.totline = 0;
@@ -412,14 +429,63 @@ export class SimpleIsland {
     this.uniforms = {};
     this._uniforms_temp = {};
   }
-  
+
+  makeBufferAliases() {
+    let lay = this.layers;
+
+    this.tri_cos    = lay.get("tri_cos", LayerTypes.LOC); //array
+    this.tri_normals = lay.get("tri_normals", LayerTypes.NORMAL); //array
+    this.tri_uvs    = lay.get("tri_uvs", LayerTypes.UV); //array
+    this.tri_colors = lay.get("tri_colors", LayerTypes.COLOR); //array
+    this.tri_ids    = lay.get("tri_ids", LayerTypes.ID); //array
+
+    this.line_cos    = lay.get("line_cos", LayerTypes.LOC); //array
+    this.line_normals = lay.get("line_normals", LayerTypes.NORMAL); //array
+    this.line_uvs    = lay.get("line_uvs", LayerTypes.UV); //array
+    this.line_colors = lay.get("line_colors", LayerTypes.COLOR); //array
+    this.line_ids    = lay.get("line_ids", LayerTypes.ID); //array
+
+    this.point_cos    = lay.get("point_cos", LayerTypes.LOC); //array
+    this.point_normals = lay.get("point_normals", LayerTypes.NORMAL); //array
+    this.point_uvs    = lay.get("point_uvs", LayerTypes.UV); //array
+    this.point_colors = lay.get("point_colors", LayerTypes.COLOR); //array
+    this.point_ids    = lay.get("point_ids", LayerTypes.ID); //array
+  }
+
+  copy() {
+    let ret = new SimpleIsland();
+
+    ret.primflag = this.primflag;
+    ret.layerflag = this.layerflag;
+
+    ret.totline = this.totline;
+    ret.tottri = this.tottri;
+    ret.totpoint = this.totpoint;
+
+    for (let k in this.uniforms) {
+      ret.uniforms[k] = this.uniforms[k];
+    }
+
+    for (let tex of this.textures) {
+      ret.textures.push(tex);
+    }
+
+    ret.program = this.program;
+    ret.layers = this.layers.copy();
+    ret.regen = 1;
+
+    ret.makeBufferAliases();
+
+    return ret;
+  }
+
   point(v1) {
     let i = this.totpoint;
 
     let cos = this.point_cos;
     cos.push(v1[0]); cos.push(v1[1]); cos.push(v1[2]);
 
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
+    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
 
     for (i=0; i<1; i++) {
       if (layerflag & LayerTypes.UV)
@@ -443,7 +509,7 @@ export class SimpleIsland {
     cos.push(v1[0]); cos.push(v1[1]); cos.push(v1[2]);
     cos.push(v2[0]); cos.push(v2[1]); cos.push(v2[2]);
 
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
+    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
     
     for (i=0; i<2; i++) {
       if (layerflag & LayerTypes.UV)
@@ -468,7 +534,7 @@ export class SimpleIsland {
     cos.push(v2[0]); cos.push(v2[1]); cos.push(v2[2]);
     cos.push(v3[0]); cos.push(v3[1]); cos.push(v3[2]);
     
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
+    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
     
     for (var i=0; i<3; i++) {
       if (layerflag & LayerTypes.UV)
@@ -501,7 +567,7 @@ export class SimpleIsland {
   }
   
   gen_buffers(gl) {
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
+    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
     
     for (var layer of this.layers) {
       if (!(layer.type & layerflag)) {
@@ -522,57 +588,15 @@ export class SimpleIsland {
   }
   
   _draw_tris(gl, uniforms, params, program) {
-    let li = 0;
-    
-    for (let i=0; i<6; i++) {
-      gl.disableVertexAttribArray(i);
-    }
-    
-    gl.enableVertexAttribArray(li);
-    
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.tri_cos);
-    gl.vertexAttribPointer(li, this.tri_cos.size, gl.FLOAT, false, 0, 0);
-    
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
-    
-    if (layerflag & LayerTypes.NORMAL) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.tri_normals);
-      gl.vertexAttribPointer(li, this.tri_normals.size, gl.FLOAT, true, 0, 0);
-    }
-    
-    if (layerflag & LayerTypes.UV) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.tri_uvs);
-      gl.vertexAttribPointer(li, this.tri_uvs.size, gl.FLOAT, false, 0, 0);
-    } 
-    
-    if (layerflag & LayerTypes.COLOR) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.tri_colors);
-      gl.vertexAttribPointer(li, this.tri_colors.size, gl.FLOAT, false, 0, 0);
-    }
-    
-    if (layerflag & LayerTypes.ID) {
-      li++;
-
-      //console.log(this.tri_ids, "====================", this.tri_cos.length/3, this.tri_ids.size);
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.tri_ids);
-      gl.vertexAttribPointer(li, this.tri_ids.size, gl.FLOAT, false, 0, 0);
-    }
+    this.bindArrays(gl, uniforms, program, "tri");
     
     gl.drawArrays(gl.TRIANGLES, 0, this.tottri*3);
   }
 
-  _draw_points(gl, uniforms, params) {
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
+  bindArrays(gl, uniforms, program, key) {
+    program = program === undefined ? this.program : program;
+    program = program === undefined ? this.mesh.program : program;
+    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
 
     for (let i=0; i<6; i++) {
       gl.disableVertexAttribArray(i);
@@ -581,96 +605,88 @@ export class SimpleIsland {
     let li = 0;
     gl.enableVertexAttribArray(li);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.point_cos);
-    gl.vertexAttribPointer(li, this.point_cos.size, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_cos"]);
+    gl.vertexAttribPointer(li, this[key + "_cos"].size, gl.FLOAT, false, 0, 0);
 
     if (layerflag & LayerTypes.NORMAL) {
-      li++;
+      li = program.attrLoc("normal");
+      if (li > 0) {
+        gl.simpleshader = program;
 
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.point_normals);
-      gl.vertexAttribPointer(li, this.point_normals.size, gl.FLOAT, true, 0, 0);
+        gl.enableVertexAttribArray(li);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_normals"]);
+        gl.vertexAttribPointer(li, this[key + "_normals"].size, gl.FLOAT, true, 0, 0);
+      } else {
+        //console.warn("no normals attribute");
+      }
     }
 
     if (layerflag & LayerTypes.UV) {
-      li++;
+      li = program.attrLoc("uv");
 
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.point_uvs);
-      gl.vertexAttribPointer(li, this.point_uvs.size, gl.FLOAT, false, 0, 0);
+      if (li > 0) {
+        gl.enableVertexAttribArray(li);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_uvs"]);
+        gl.vertexAttribPointer(li, this[key + "_uvs"].size, gl.FLOAT, false, 0, 0);
+      } else {
+        //console.warn("no uv attribute");
+      }
     }
 
     if (layerflag & LayerTypes.COLOR) {
-      li++;
+      li = program.attrLoc("color");
 
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.point_colors);
-      gl.vertexAttribPointer(li, this.point_colors.size, gl.FLOAT, false, 0, 0);
+      if (li > 0) {
+        gl.enableVertexAttribArray(li);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_colors"]);
+        gl.vertexAttribPointer(li, this[key + "_colors"].size, gl.FLOAT, false, 0, 0);
+      } else {
+        //console.warn("no color attribute");
+      }
     }
 
     if (layerflag & LayerTypes.ID) {
-      li++;
+      li = program.attrLoc("id");
 
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.point_ids);
-      gl.vertexAttribPointer(li, this.point_ids.size, gl.FLOAT, false, 0, 0);
+      if (li > 0) {
+        gl.enableVertexAttribArray(li);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_ids"]);
+        gl.vertexAttribPointer(li, this[key + "_ids"].size, gl.FLOAT, false, 0, 0);
+      } else {
+        //console.warn("no id attribute");
+      }
     }
-
-    //console.log(this.totpoint, this.point_cos);
-    gl.drawArrays(gl.POINTS, 0, this.totpoint);
   }
 
-  _draw_lines(gl, uniforms, params) {
-    var layerflag = this.layerflag == undefined ? this.mesh.layerflag : this.layerflag;
+  _draw_points(gl, uniforms, params, program) {
+    this.bindArrays(gl, uniforms, program, "point");
 
-    for (let i=0; i<6; i++) {
-      gl.disableVertexAttribArray(i);
+    if (this.totpoint > 0) {
+      //console.log(this.totpoint, this.point_cos);
+      gl.drawArrays(gl.POINTS, 0, this.totpoint);
+    } else {
+      console.log("no geometry");
     }
-    
-    let li = 0;
-    gl.enableVertexAttribArray(li);
-    
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.line_cos);
-    gl.vertexAttribPointer(li, this.line_cos.size, gl.FLOAT, false, 0, 0);
+  }
 
-    if (layerflag & LayerTypes.NORMAL) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.line_normals);
-      gl.vertexAttribPointer(li, this.line_normals.size, gl.FLOAT, true, 0, 0);
-    }
-    
-    if (layerflag & LayerTypes.UV) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.line_uvs);
-      gl.vertexAttribPointer(li, this.line_uvs.size, gl.FLOAT, false, 0, 0);
-    } 
-    
-    if (layerflag & LayerTypes.COLOR) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.line_colors);
-      gl.vertexAttribPointer(li, this.line_colors.size, gl.FLOAT, false, 0, 0);
-    }
-    
-    if (layerflag & LayerTypes.ID) {
-      li++;
-      
-      gl.enableVertexAttribArray(li);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer.line_ids);
-      gl.vertexAttribPointer(li, this.line_ids.size, gl.FLOAT, false, 0, 0);
-    }
+  _draw_lines(gl, uniforms, params, program) {
+    this.bindArrays(gl, uniforms, program, "line");
     
     //console.log(this.totline, this.line_cos);
-    gl.drawArrays(gl.LINES, 0, this.totline*2);
+    if (this.totline > 0) {
+      gl.drawArrays(gl.LINES, 0, this.totline*2);
+    } else {
+      console.log("no geometry");
+    }
   }
-  
+
+  onContextLost(e) {
+    this.regen = 1;
+  }
+
   draw(gl, uniforms, params, program_override=undefined) {
     var program = this.program == undefined ? this.mesh.program : this.program;
+    let primflag = this.primflag === undefined ? this.mesh.primflag : this.primflag;
 
     if (program_override !== undefined) {
       program = program_override;
@@ -681,64 +697,90 @@ export class SimpleIsland {
       this.gen_buffers(gl);
     }
     
-    if (uniforms == undefined) {
-      for (var k in this._uniforms_temp) {
+    if (uniforms === undefined) {
+      for (let k in this._uniforms_temp) {
         delete this._uniforms_temp[k];
       }
       
       uniforms = this._uniforms_temp;
     }
     
-    for (var k in this.uniforms) {
+    for (let k in this.uniforms) {
       if (!(k in uniforms)) {
         uniforms[k] = this.uniforms[k];
       }
     }
     
-    for (var k in this.mesh.uniforms) {
+    for (let k in this.mesh.uniforms) {
       if (!(k in uniforms)) {
         uniforms[k] = this.mesh.uniforms[k];
       }
     }
     
-    if (program == undefined)
+    if (program === undefined)
       program = gl.simple_shader;
   
-    program.bind(gl, uniforms);
+    if (!program.bind(gl, uniforms)) {
+      return; //bad shader;
+    }
     
-    if (this.tottri) {
+    if (this.tottri && (primflag & PrimitiveTypes.TRIS)) {
       this._draw_tris(gl, uniforms, params, program);
     }
     
-    if (this.totline) {
+    if (this.totline && (primflag & PrimitiveTypes.LINES)) {
       this._draw_lines(gl, uniforms, params, program);
     }
 
-    if (this.totpoint) {
+    if (this.totpoint && (primflag & PrimitiveTypes.POINTS)) {
       this._draw_points(gl, uniforms, params, program);
     }
 
-    if (gl.getError()) {
-      this.regen = 1;
-    }
+    //if (gl.getError()) {
+    //  this.regen = 1;
+    //}
   }
 }
 
 export class SimpleMesh {
   constructor(layerflag=LayerTypes.LOC|LayerTypes.NORMAL|LayerTypes.UV) {
-    
     this.layerflag = layerflag;
-    
+    this.primflag = PrimitiveTypes.ALL;
+
     this.islands = [];
     this.uniforms = {};
     
     this.add_island();
     this.island = this.islands[0];
   }
-  
+
+  copy() {
+    let ret = new SimpleMesh();
+
+    ret.primflag = this.primflag;
+    ret.layerflag = this.layerflag;
+
+    for (let k in this.uniforms) {
+      ret.uniforms[k] = this.uniforms[k];
+    }
+
+    for (let island of this.islands) {
+      let island2 = island.copy();
+
+      island2.mesh = ret;
+      ret.islands.push(island2);
+
+      if (island === this.island) {
+        ret.island = island2;
+      }
+    }
+
+    return ret;
+  }
+
   add_island() {
     var island = new SimpleIsland();
-    
+
     island.mesh = this;
     this.island = island;
     
@@ -766,6 +808,16 @@ export class SimpleMesh {
 
   point(v1) {
     return this.island.point(v1);
+  }
+
+  drawLines(gl, uniforms, program_override=undefined) {
+    for (let island of this.islands) {
+      let primflag = island.primflag;
+
+      island.primflag = PrimitiveTypes.LINES;
+      island.draw(gl, uniforms, undefined, program_override);
+      island.primflag = primflag;
+    }
   }
 
   draw(gl, uniforms, program_override=undefined) {
@@ -825,6 +877,12 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     }
 
     return this.get_chunk(id);
+  }
+
+  onContextLost(e) {
+    for (var island of this.islands) {
+      island.onContextLost(e);
+    }
   }
 
   destroy(gl) {
@@ -898,3 +956,13 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     }
   }
 }
+
+export function makeCube() {
+
+};
+
+export function makeSphere() {
+
+}
+
+
