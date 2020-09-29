@@ -10,6 +10,7 @@ git clone . _site
 cd _site
 
 git checkout gh-pages
+git pull
 
 rm -rf scripts node_modules assets
 unzip -q ../app.zip
