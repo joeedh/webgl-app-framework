@@ -18,7 +18,7 @@ if cd _site; then
   git commit -a -m "update gh-pages"
   git push
   cd ../
-  rm -rf _site
+#  rm -rf _site
 else
   echo "Failed to create _site dir"
   exit 1
