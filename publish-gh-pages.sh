@@ -14,9 +14,18 @@ if cd _site; then
 
   rm -rf scripts node_modules assets
   unzip -o -q ../app.zip
-  git add *
-  git commit -a -m "update gh-pages"
-  git push
+  
+  rm -rf scripts/path.ux
+  git submodule init
+  git submodule update
+  cd scripts/path.ux
+  git pull origin master
+  
+  cd ../../
+    
+#  git add *
+#  git commit -a -m "update gh-pages"
+#  git push
   cd ../
 #  rm -rf _site
 else
