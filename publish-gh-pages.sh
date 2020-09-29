@@ -1,7 +1,13 @@
 #!/bin/bash
 
 git commit -a
+if git pull; then
+else
+  echo "git pull failed"
+  exit 1
+fi
 
+exit 1
 python make_zip.py
 
 rm -rf _site
