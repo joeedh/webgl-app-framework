@@ -84,6 +84,7 @@ export class SceneObject extends DataBlock {
 
   static nodedef() {
     return {
+      name : "sceneobject",
       inputs: {
         depend: new DependSocket("depend", SocketFlags.MULTI),
         matrix: new Matrix4Socket("matrix"),

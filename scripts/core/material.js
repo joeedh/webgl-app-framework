@@ -161,6 +161,7 @@ export class Material extends ShaderNetwork {
 
   static nodedef() {
     return {
+      name: "material",
       uiname: "Material",
       inputs: {}, outputs: {}
     }

@@ -64,9 +64,11 @@ window.init = () => {
   appstate.init();
 
   //shortcut for console use only
-  Object.defineProperty(window, "CTX", {
-    get : () => {
-      return _appstate.ctx;
-    }
-  })
+  if (typeof CTX === "undefined") {
+    Object.defineProperty(window, "CTX", {
+      get: () => {
+        return _appstate.ctx;
+      }
+    })
+  }
 };

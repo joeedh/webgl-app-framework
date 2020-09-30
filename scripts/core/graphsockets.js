@@ -162,7 +162,7 @@ export class IntSocket extends NodeSocketType {
     reader(this);
     super.loadSTRUCT(reader);
 
-    this.value = !!this.value;
+    this.value = ~~this.value;
   }
 };
 IntSocket.STRUCT = nstructjs.inherit(IntSocket, NodeSocketType, "graph.IntSocket") + `
@@ -510,6 +510,50 @@ export class EnumSocket extends IntSocket {
   cmpValue(b) {
     return ~~this.value !== ~~b;
   }
+};
+EnumSocket.STRUCT = nstructjs.inherit(EnumSocket, IntSocket, "graph.EnumSocket") + `
+}
+`;
+nstructjs.register(EnumSocket);
+NodeSocketType.register(EnumSocket);
+
+
+export class BoolSocket extends NodeSocketType {
+  constructor(uiname, flag) {
+    super(uiname, flag);
+
+    this.value = 0;
+  }
+
+  static apiDefine(api, sockstruct) {
+    sockstruct.bool("value", "value", "value");
+  }
+
+  static nodedef() {return {
+    name : "bool",
+    uiname : "Boolean",
+    color : [0.0,0.75,0.25,1]
+  }}
+
+  diffValue(b) {
+    return (this.value - b);
+  }
+
+  copyValue() {
+    return ~~this.value;
+  }
+
+  getValue() {
+    return !!this.value;
+  }
+
+  setValue(b) {
+    this.value = !!b;
+  }
+
+  cmpValue(b) {
+    return !!this.value !== !!b;
+  }
 
   loadSTRUCT(reader) {
     reader(this);
@@ -518,8 +562,9 @@ export class EnumSocket extends IntSocket {
     this.value = !!this.value;
   }
 };
-EnumSocket.STRUCT = nstructjs.inherit(EnumSocket, IntSocket, "graph.EnumSocket") + `
+BoolSocket.STRUCT = nstructjs.inherit(BoolSocket, NodeSocketType, "graph.BoolSocket") + `
+  value : bool;
 }
 `;
-nstructjs.register(EnumSocket);
-NodeSocketType.register(EnumSocket);
+nstructjs.register(BoolSocket);
+NodeSocketType.register(BoolSocket);

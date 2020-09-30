@@ -57,9 +57,12 @@ export const NodeFlags = {
   ZOMBIE    : 32, /** don't save this node, used for UI event handlers and stuff */
 
   /**proxy nodes are replaced during saving with a lightwieght proxy,
-    that can be replaced with real object on load.  for dealing with
-    nodes that are saved outside of the Graph data structure.*/
-  SAVE_PROXY     : 64
+   that can be replaced with real object on load.  for dealing with
+   nodes that are saved outside of the Graph data structure.*/
+  SAVE_PROXY     : 64,
+  FORCE_SOCKET_INHERIT : 128,
+  FORCE_FLAG_INHERIT    : 256,
+  FORCE_INHERIT        : 128|256
 };
 
 /**
@@ -94,14 +97,19 @@ export class NodeSocketType {
     if (uiname === undefined) {
       uiname = this.constructor.nodedef().uiname;
     }
-    
+
     this.uiname = uiname;
     this.name = this.constructor.nodedef().name;
-    
+
     let def = this.constructor.nodedef();
     if (def.graph_flag !== undefined) {
       flag |= def.graph_flag;
     }
+
+    if (!def.name || typeof def.name !== "string") {
+      throw new Error("nodedef must have a .name member");
+    }
+
 
     this.socketName = undefined;
     this.socketType = undefined;
@@ -169,16 +177,16 @@ export class NodeSocketType {
   copyValue() {
     throw new Error("implement me");
   }
-  
+
   cmpValue(b) {
     throw new Error("implement me");
   }
-  
+
   //return float value representing difference with value b
   diffValue(b) {
     throw new Error("implement me");
   }
-  
+
   connect(sock) {
     if (this.edges.indexOf(sock) >= 0) {
       console.warn("Already have socket connected");
@@ -209,7 +217,7 @@ export class NodeSocketType {
 
     return this;
   }
-  
+
   disconnect(sock) {
     if (sock === undefined) {
       let _i = 0;
@@ -228,11 +236,11 @@ export class NodeSocketType {
 
     this.edges.remove(sock, true);
     sock.edges.remove(this, true);
-    
+
     this.node.graphUpdate();
     sock.node.graphUpdate();
     this.node.graph_graph.flagResort();
-    
+
     return this;
   }
 
@@ -255,7 +263,7 @@ export class NodeSocketType {
     color  : undefined,
     flag   : 0
   }}
-  
+
   //for the sake of sane, performant code,
   //this is allowed to return a reference, but client
   //code is *only allowed to modify that reference's data
@@ -263,11 +271,11 @@ export class NodeSocketType {
   getValue() {
     throw new Error("implement me!");
   }
-  
+
   setValue(val) {
     throw new Error("implement me!");
   }
-  
+
   copyTo(b) {
     b.graph_flag = this.graph_flag;
     b.name = this.name;
@@ -284,21 +292,26 @@ export class NodeSocketType {
   execute the data graph
   */
   immediateUpdate() {
-    this.update();
+    this.graphUpdate();
 
     if (this.edges.length > 0) {
       window.updateDataGraph(true);
     }
   }
 
+  update() {
+    console.warn("NodeSocketType.prototype.update() is deprecated; use .graphUpdate instead");
+    return this.graphUpdate();
+  }
+
   /*
   flag the socket as updated and queue
   the datagraph for execution
   */
-  update(_exclude=undefined) {
+  graphUpdate(_exclude=undefined) {
     if (this === _exclude)
       return;
-    
+
     this.graph_flag |= NodeFlags.UPDATE;
 
     //make sure a graph update is queued up
@@ -312,14 +325,14 @@ export class NodeSocketType {
       if (sock.node)
         sock.node.graphUpdate();
     }
-    
+
     return this;
   }
-  
+
   copy() {
     let ret = new this.constructor();
     this.copyTo(ret);
-    
+
     return ret;
   }
 
@@ -373,33 +386,92 @@ export class Node {
   constructor(flag=0) {
     let def = this.constructor.nodedef();
 
-    if (def.graph_flag !== undefined) {
-      flag |= def.graph_flag;
+    if (!def.name || typeof def.name !== "string") {
+      throw new Error("nodedef must have a .name member");
     }
+
+    let graph_uiname = def.uiname || def.name;
+
+    this.graph_uiname = graph_uiname;
+    this.graph_name = def.name;
 
     this.graph_ui_pos = new Vector2();
     this.graph_ui_size = new Vector2([235, 200]);
     this.graph_ui_flag = 0;
-    
-    this.graph_flag = flag | NodeFlags.UPDATE;
+
     this.graph_id = -1;
     this.graph_graph = undefined;
-    
+
+    let getflag = () => {
+      let inherit = typeof def.flag === "object" && def.flag !== null && def.flag instanceof InheritFlag;
+
+      //walk up class hiearchy andd see if NodeFlags.FORCE_SOCKET_INHERIT
+      //is nodedef().flag of any ancestor
+      let p = this.constructor;
+      let def2 = def;
+
+      while (p !== null && p !== undefined && p !== Object && p !== Node) {
+        if (p.nodedef) {
+          def2 = p.nodedef();
+
+          inherit = inherit || (def2.flag & NodeFlags.FORCE_FLAG_INHERIT);
+        }
+        p = p.prototype.__proto__.constructor;
+      }
+
+      if (inherit) {
+        let flag = def.flag !== undefined ? def.flag : 0;
+
+        let p = this.constructor;
+        while (p !== null && p !== undefined && p !== Object && p !== Node) {
+          if (p.nodedef) {
+            def2 = p.nodedef();
+
+            if (def2.flag) {
+              flag |= def2.flag;
+            }
+          }
+          p = p.prototype.__proto__.constructor;
+        }
+
+        return flag;
+      } else {
+        return def.flag === undefined ? 0 : def.flag;
+      }
+    }
+
+    this.graph_flag = flag | getflag() | NodeFlags.UPDATE;
+
     let getsocks = (key) => {
       let obj = def[key];
       let ret = {};
-      
-      if (obj instanceof InheritFlag) {
+
+      let inherit = obj instanceof InheritFlag;
+      inherit = inherit || (flag & NodeFlags.FORCE_SOCKET_INHERIT);
+
+      //walk up class hiearchy andd see if NodeFlags.FORCE_SOCKET_INHERIT
+      //is nodedef().flag of any ancestor
+      let p = this.constructor;
+      while (p !== null && p !== undefined && p !== Object && p !== Node) {
+        if (p.nodedef) {
+          let def = p.nodedef();
+
+          inherit = inherit || (def.flag & NodeFlags.FORCE_SOCKET_INHERIT);
+        }
+        p = p.prototype.__proto__.constructor;
+      }
+
+      if (inherit) {
         let p = this.constructor;
-        
+
         while (p !== null && p !== undefined && p !== Object && p !== Node) {
           if (p.nodedef === undefined) continue;
           let obj2 = p.nodedef()[key];
-          
+
           if (obj2 instanceof InheritFlag) {
             obj2 = obj2.data;
           }
-          
+
           if (obj2 !== undefined) {
             for (let k in obj2) {
               let sock2 = obj2[k];
@@ -413,7 +485,7 @@ export class Node {
               }
             }
           }
-          
+
           p = p.prototype.__proto__.constructor;
         }
       } else if (obj !== undefined) {
@@ -421,17 +493,17 @@ export class Node {
           ret[k] = obj[k].copy();
         }
       }
-      
+
       for (let k in ret) {
         ret[k].node = this;
       }
-      
+
       return ret;
     };
-    
+
     this.inputs = getsocks("inputs");
     this.outputs = getsocks("outputs");
-    
+
     for (let sock of this.allsockets) {
       sock.node = this;
     }
@@ -455,12 +527,12 @@ export class Node {
 
     for (let k in this.outputs) {
       let sock = this.outputs[k];
-      
+
       if (!(sock.graph_flag & SocketFlags.NO_MULTI_OUTPUTS)) {
         sock.graph_flag |= SocketFlags.MULTI;
       }
     }
-    
+
     this.icon = -1;
   }
 
@@ -549,14 +621,14 @@ export class Node {
     uiname : "uiname",
     flag   : 0,
     inputs : {}, //can inherit from parent class by wrapping in Node.inherit({})
-    outputs : {}        
+    outputs : {}
   }}
 
   /** see nodedef static method */
   static inherit(obj={}) {
     return new InheritFlag(obj);
   }
-  
+
   get allsockets() {
     let this2 = this;
     return (function*() {
@@ -568,24 +640,24 @@ export class Node {
       }
     })();
   }
-  
+
   copyTo(b) {
     b.graph_name = this.graph_name;
     b.uiname = this.uiname;
     b.icon = this.icon;
     b.graph_flag = this.graph_flag;
-    
+
     for (let i=0; i<2; i++) {
       let sockets1 = i ? this.outputs : this.inputs;
       let sockets2 = i ? b.outputs : b.inputs;
-      
+
       for (let k in sockets1) {
         let sock1 = sockets1[k];
-        
+
         if (!k in sockets2) {
           sockets2[k] = sock1.copy();
         }
-        
+
         let sock2 = sockets2[k];
         sock2.node = b;
 
@@ -593,14 +665,14 @@ export class Node {
       }
     }
   }
-  
+
   copy() {
     let ret = new this.constructor();
     this.copyTo(ret);
-    
+
     return ret;
   }
-  
+
   /**state is provided by client code, it's the argument to Graph.prototype.exec()
    *exec should call update on output sockets itself
    *DO NOT call super() unless you want to send an update signal to all
@@ -609,10 +681,10 @@ export class Node {
   exec(state) {
     //default implementation simply flags all output sockets
     for (let k in this.outputs) {
-      this.outputs[k].update();
+      this.outputs[k].graphUpdate();
     }
   }
-  
+
   update() {
     this.graphUpdate();
     console.warn("deprecated call to graph.Node.prototype.update(); use graphUpdate instead");
@@ -632,27 +704,35 @@ export class Node {
   loadSTRUCT(reader) {
     reader(this);
 
-    let ins = {};
-    let outs = {};
+    if (Array.isArray(this.inputs)) {
+      let ins = {};
 
-    for (let pair of this.inputs) {
-      ins[pair.key] = pair.val;
+      for (let pair of this.inputs) {
+        ins[pair.key] = pair.val;
 
-      pair.val.socketType = SocketTypes.INPUT;
-      pair.val.socketName = pair.key;
-      pair.val.node = this;
+        pair.val.socketType = SocketTypes.INPUT;
+        pair.val.socketName = pair.key;
+        pair.val.node = this;
+      }
+
+      this.inputs = ins;
     }
 
-    for (let pair of this.outputs) {
-      outs[pair.key] = pair.val;
+    if (Array.isArray(this.outputs)) {
+      let outs = {};
 
-      pair.val.socketType = SocketTypes.OUTPUT;
-      pair.val.socketName = pair.key;
-      pair.val.node = this;
+      for (let pair of this.outputs) {
+        outs[pair.key] = pair.val;
+
+        pair.val.socketType = SocketTypes.OUTPUT;
+        pair.val.socketName = pair.key;
+        pair.val.node = this;
+      }
+
+      this.outputs = outs;
     }
 
-    this.inputs = ins;
-    this.outputs = outs;
+    let ins = this.inputs, outs = this.outputs;
 
     /*deal with any changes in sockets across file versions*/
     let def = this.constructor.getFinalNodeDef();
@@ -711,11 +791,11 @@ export class Node {
 
   _save_map(map) {
     let ret = [];
-    
+
     for (let k in map) {
       ret.push(new KeyValPair(k, map[k]));
     }
-    
+
     return ret;
   }
 }
@@ -907,7 +987,11 @@ export class Graph {
       to send certain updates to the UI, because the sheer number of nodes
       in normal workflows would make that slow and error-prone.
       so, like with meshes, we use a random number that changes when the ui should
-      redraw things*/
+      redraw things.
+
+      That said, in theory you could make the dependency graph compile into code
+      like shader graphs compile to glsl.
+     */
     this.updateGen = Math.random();
 
     this.onFlagResort = undefined;
@@ -939,66 +1023,66 @@ export class Graph {
 
     this.graph_flag |= GraphFlags.RESORT;
   }
-  
+
   sort() {
     let sortlist = this.sortlist;
     let nodes = this.nodes;
-    
+
     this.graph_flag &= ~NodeFlags.CYCLIC;
-    
+
     sortlist.length = 0;
 
     for (let n of nodes) {
       n.graph_flag &= ~(NodeFlags.SORT_TAG|NodeFlags.CYCLE_TAG);
     }
-    
+
     let dosort = (n) => {
       if (n.graph_flag & NodeFlags.CYCLE_TAG) {
         console.warn("Warning: graph cycle detected!");
         this.graph_flag |= GraphFlags.CYCLIC;
         return;
       }
-      
+
       if (n.graph_flag & NodeFlags.SORT_TAG) {
         return;
       }
-      
+
       n.graph_flag |= NodeFlags.SORT_TAG;
       n.graph_flag |= NodeFlags.CYCLE_TAG;
-      
+
       for (let k in n.inputs) {
         let s1 = n.inputs[k];
-        
+
         for (let s2 of s1.edges) {
           let n2 = s2.node;
-          
+
           if (!(n2.graph_flag & NodeFlags.SORT_TAG)) {
             dosort(n2);
           }
         }
       }
-      
+
       sortlist.push(n);
-      
+
       n.graph_flag &= ~NodeFlags.CYCLE_TAG;
     }
-    
+
     for (let n of nodes) {
       dosort(n);
     }
 
     //we may not have caught all cycle cases
-    
+
     let cyclesearch = (n) => {
       if (n.graph_flag & NodeFlags.CYCLE_TAG) {
         console.warn("Warning: graph cycle detected!");
         this.graph_flag |= GraphFlags.CYCLIC;
         return true;
       }
-      
+
       for (let k in n.outputs) {
         let s1 = n.outputs[k];
-        
+
         n.graph_flag |= NodeFlags.CYCLE_TAG;
         for (let s2 of s1.edges) {
           if (s2.node === undefined) {
@@ -1013,18 +1097,18 @@ export class Graph {
         n.graph_flag &= ~NodeFlags.CYCLE_TAG;
       }
     }
-    
+
     for (let n of this.nodes) {
       if (cyclesearch(n))
         break;
     }
-    
+
     this.graph_flag &= ~GraphFlags.RESORT;
   }
-  
+
   _cyclic_step(context) {
     let sortlist = this.sortlist;
-    
+
     for (let n of sortlist) {
       if (n.graph_flag & NodeFlags.DISABLED) {
         continue;
@@ -1032,13 +1116,13 @@ export class Graph {
       if (!(n.graph_flag & NodeFlags.UPDATE)) {
         continue;
       }
-      
+
       n.graph_flag &= ~NodeFlags.UPDATE;
       n.exec(context);
     }
 
     let change = 0.0;//, tot = 0.0;
-    
+
     for (let n of sortlist) {
       if (n.graph_flag & NodeFlags.DISABLED) {
         continue;
@@ -1046,81 +1130,90 @@ export class Graph {
       if (!(n.graph_flag & NodeFlags.UPDATE)) {
         continue;
       }
-      
+
       for (let sock of n.allsockets) {
         let diff = Math.abs(sock.diffValue(sock._old));
-        
+
         if (isNaN(diff)) {
           console.warn("Got NaN from a socket's diffValue method!", sock);
           continue;
         }
-        
+
         change += diff;
         //tot += 1.0;
-        
+
         sock._old = sock.copyValue();
       }
     }
-    
+
     return change; //tot > 0.0 ? change : 0.0;
   }
-  
+
   _cyclic_exec(context) {
     //console.log("cycle exec", this.sortlist.length, this.nodes.length);
-    
+
     let sortlist = this.sortlist;
-    
+
     for (let n of sortlist) {
       if (n.graph_flag & NodeFlags.DISABLED) {
         continue;
       }
-      
+
       for (let sock of n.allsockets) {
         sock._old = sock.copyValue();
       }
     }
-    
+
     for (let i=0; i<this.max_cycle_steps; i++) {
       let limit = this.cycle_stop_threshold;
       let change = this._cyclic_step(context);
-      
+
       //console.log("change", change.toFixed(5), limit);
-      
+
       if (Math.abs(change) < limit) {
         break;
       }
     }
   }
-  
+
   //context is provided by client code
   exec(context, force_single_solve=false) {
     if (this.graph_flag & GraphFlags.RESORT) {
       this.sort();
     }
-    
+
     if ((this.graph_flag & GraphFlags.CYCLIC) && !(this.graph_flag & GraphFlags.CYCLIC_ALLOWED)) {
       throw new Error("cycles in graph now allowed");
     } else if (!force_single_solve && (this.graph_flag & GraphFlags.CYCLIC)) {
       return this._cyclic_exec(context);
     }
-    
+
     let sortlist = this.sortlist;
-    
+
     for (let node of sortlist) {
       if (node.graph_flag & NodeFlags.DISABLED) {
         continue;
       }
-      
+
       if (node.graph_flag & NodeFlags.UPDATE) {
         node.graph_flag &= ~NodeFlags.UPDATE;
         node.exec(context);
       }
     }
   }
-  
+
   update() {
+    console.warn("Graph.prototype.update() called; use .graphUpdate instead");
+    return this.graphUpdate();
   }
-  
+
+  graphUpdate() {
+    if (this.graph_flag & GraphFlags.RESORT) {
+      console.log("resorting graph");
+      this.sort();
+    }
+  }
+
   remove(node) {
     if (node.graph_id == -1) {
       console.warn("Warning, twiced to remove node not in graph (double remove?)", node.graph_id, node);
@@ -1158,10 +1251,10 @@ export class Graph {
       console.warn("Warning, tried to add same node twice", node.graph_id, node);
       return;
     }
-    
+
     node.graph_graph = this;
     node.graph_id = this.graph_idgen.next();
-    
+
     for (let k in node.inputs) {
       let sock = node.inputs[k];
 
@@ -1169,7 +1262,7 @@ export class Graph {
       sock.graph_id = this.graph_idgen.next();
       this.sock_idmap[sock.graph_id] = sock;
     }
-    
+
     for (let k in node.outputs) {
       let sock = node.outputs[k];
 
@@ -1177,13 +1270,13 @@ export class Graph {
       sock.graph_id = this.graph_idgen.next();
       this.sock_idmap[sock.graph_id] = sock;
     }
-    
+
     this.node_idmap[node.graph_id] = node;
     this.nodes.push(node);
-    
+
     this.flagResort();
     node.graph_flag |= NodeFlags.UPDATE;
-    
+
     return this;
   }
 
@@ -1200,7 +1293,7 @@ export class Graph {
     }
     console.log(buf);
     //*/
-    
+
     let node_idmap = this.node_idmap;
     let sock_idmap = this.sock_idmap;
 
@@ -1230,7 +1323,17 @@ export class Graph {
           s.edges[i] = sock_idmap[s.edges[i]];
 
           if (!s.edges[i]) {
-            s.edges.remove(undefined);
+            //probably a connection to a zombie node, which aren't saved?
+            let j = i;
+
+            while (j < s.edges.length-1) {
+              s.edges[j] = s.edges[j+1];
+              j++;
+            }
+
+            s.edges[s.edges.length-1] = undefined;
+            s.edges.length--;
+
             i--;
           }
         }
@@ -1239,7 +1342,7 @@ export class Graph {
       }
     }
 
-    //prune zombie nodes
+    //paranoia check, prune any surviving zombie nodes
     for (let node of this.nodes.slice(0, this.nodes.length)) {
       if (node.graph_flag & NodeFlags.ZOMBIE) {
         this.remove(node);
@@ -1314,6 +1417,73 @@ export class Graph {
     }
   }
 
+  execSubtree(startnode, context, checkStartParents=true) {
+    if (this.graph_flag & GraphFlags.RESORT) {
+      console.log("resorting graph");
+      this.sort();
+    }
+
+    function visit(node) {
+      //console.log(node.constructor.name, node.graph_id);
+
+      if (node.graph_flag & NodeFlags.CYCLE_TAG) {
+        throw new GraphCycleError("Cycle error");
+      }
+
+      node.graph_flag |= NodeFlags.CYCLE_TAG;
+      let found_parent = false;
+
+      for (let k in node.inputs) {
+        if (node === startnode && !checkStartParents) {
+          break;
+        }
+
+        let sock = node.inputs[k];
+
+        for (let e of sock.edges) {
+          let n = e.node;
+
+          if (n.graph_flag & NodeFlags.UPDATE) {
+            node.graph_flag &= ~NodeFlags.CYCLE_TAG;
+            visit(n);
+            found_parent = true;
+          }
+        }
+      }
+
+      if (found_parent) {
+        return;
+      }
+
+      if (node.graph_flag & NodeFlags.UPDATE) {
+        node.graph_flag &= ~NodeFlags.UPDATE;
+
+        try {
+          node.exec(context);
+        } catch (error) {
+          node.graph_flag &= ~NodeFlags.CYCLE_TAG;
+          throw error;
+        }
+
+        for (let k in node.outputs) {
+          let sock = node.outputs[k];
+
+          for (let e of sock.edges) {
+            let n = e.node;
+
+            if (n.graph_flag & NodeFlags.UPDATE) {
+              visit(n);
+            }
+          }
+        }
+      }
+
+      node.graph_flag &= ~NodeFlags.CYCLE_TAG;
+    }
+
+    visit(startnode);
+  }
+
   _save_nodes() {
     let ret = [];
 
@@ -1328,8 +1498,13 @@ export class Graph {
       }
     }
 
-    //replace nodes with proxies, for nodes who request it
     for (let n of this.nodes) {
+      //don't save zombie nodes
+      if (n.graph_flag & NodeFlags.ZOMBIE) {
+        continue;
+      }
+
+      //replace nodes with proxies, for nodes who request it
       if (n.graph_flag & NodeFlags.SAVE_PROXY) {
         n = ProxyNode.fromNode(n);
       }
@@ -1350,13 +1525,13 @@ nstructjs.manager.add_class(Graph);
 
 export function test(exec_cycles=true) {
   let ob1, ob2;
-  
+
   class SceneObject extends Node {
     constructor(mesh) {
       super();
       this.mesh = mesh;
     }
-    
+
     static nodedef() {return {
       inputs : {
         depend : new DependSocket("depend", SocketFlags.MULTI),
@@ -1364,77 +1539,77 @@ export function test(exec_cycles=true) {
         color  : new Vec4Socket("color"),
         loc    : new Vec3Socket("loc")
       },
-      
+
       outputs : {
         color : new Vec4Socket("color"),
         matrix : new Matrix4Socket("matrix"),
         depend : new DependSocket("depend")
       }
     }}
-    
+
     getLoc() {
       let p = new Vector3();
-      
+
       p.multVecMatrix(this.outputs.matrix.getValue());
-      
+
       return p;
     }
-    
+
     exec() {
       let pmat = this.inputs.matrix.getValue();
       if (this.inputs.matrix.edges.length > 0) {
         pmat = this.inputs.matrix.edges[0].getValue();
       }
       let loc = this.inputs.loc.getValue();
-      
+
       let mat = this.outputs.matrix.getValue();
 
       mat.makeIdentity();
       mat.translate(loc[0], loc[1], loc[2]);
       mat.multiply(pmat);
-      
+
       this.outputs.matrix.setValue(mat);
       this.outputs.depend.setValue(true);
 
-      this.outputs.matrix.update();
-      this.outputs.depend.update();
-      
+      this.outputs.matrix.graphUpdate();
+      this.outputs.depend.graphUpdate();
+
       let color = this.inputs.color.getValue();
-      
+
       if (this.inputs.color.edges.length > 0) {
         let ob1 = this, ob2 = this.inputs.color.edges[0].node;
         let p1 = ob1.getLoc(), p2 = ob2.getLoc();
-        
+
         let f = p1.vectorDistance(p2);
-        
+
         color[0] = color[1] = f;
         color[3] = 1.0;
       }
-      
+
       this.outputs.color.setValue(color);
-      this.outputs.color.update();
-      
+      this.outputs.color.graphUdate();
+
       this.mesh.uniforms.objectMatrix = this.outputs.matrix.getValue();
       //console.log("node exec", this.graph_id, this.graph_graph.sortlist[0].graph_id, this.graph_graph .sortlist[1].graph_id);
     }
   }
-  
+
   let mesh = new simplemesh.SimpleMesh();
   let gl = _appstate.gl;
   mesh.program = gl.program;
-  
+
   let m1 = mesh.island;
   let m2 = mesh.add_island();
-  
-  m1.tri([-1, -1, 0], [0, 1, 0], [1, -1, 0]); 
+
+  m1.tri([-1, -1, 0], [0, 1, 0], [1, -1, 0]);
   m2.tri([-1, -1, 0.1], [0, 1, 0.1], [1, -1, 0.1]);
-  
+
   m1.uniforms = {};
   m2.uniforms = {};
-  
+
   ob1 = new SceneObject(m1);
   ob2 = new SceneObject(m2);
-  
+
   let graph = new Graph();
   graph.graph_flag |= GraphFlags.CYCLIC_ALLOWED;
   graph.add(ob1);
@@ -1442,67 +1617,67 @@ export function test(exec_cycles=true) {
 
   ob1.inputs.color.setValue(new Vector4([0, 0, 0, 1]));
   ob2.inputs.color.setValue(new Vector4([1, 0.55, 0.25, 1]));
-  
+
   //console.log(list(ob1.allsockets));
-  
+
   ob1.outputs.matrix.connect(ob2.inputs.matrix);
   ob2.outputs.color.connect(ob1.inputs.color);
-  
+
   let last = ob2;
   let x = 1.0;
   let z = .2;
-  
+
   //make a chain!
   for (let i=0; i<35; i++) {
     let m2 = mesh.add_island();
-    
+
     m2.tri([-1, -1, z], [0, 1, z], [1, -1, z]);
     z += .001;
     m2.uniforms = {};
-    
+
     let ob = new SceneObject(m2);
     graph.add(ob);
-    
+
     ob.inputs.loc.setValue(new Vector3([x-0.3, i*0.01, 0.0]));
-    
+
     last.inputs.color.connect(ob.outputs.color);
     last.outputs.matrix.connect(ob.inputs.matrix);
-    
+
     last = ob;
     m2.uniforms.objectMatrix = ob.outputs.matrix.getValue();
     m2.uniforms.uColor = ob.outputs.color.getValue();
-    
+
     x += 0.001;
   }
   //don't start out in topological order
   //graph.nodes.reverse();
-  
+
   _appstate.mesh = mesh;
 
   let loc = new Vector3();
-  
+
   let t = 0.0;
-  
+
   ob2.inputs.loc.setValue(new Vector3([0.5, 0.0, 0.0]));
   window.d = 0;
-  
+
   window.setInterval(() => {
     loc[0] = Math.cos(t+window.d)*0.95 + window.d;
     loc[1] = Math.sin(t)*0.95;
-    
+
     ob1.inputs.loc.setValue(loc);
     ob1.graphUpdate();
-    
+
     graph.max_cycle_steps = 128;
     graph.exec(undefined, !exec_cycles);
-    
+
     m1.uniforms.objectMatrix = ob1.outputs.matrix.getValue();
     m2.uniforms.objectMatrix = ob2.outputs.matrix.getValue();
-    
+
     m1.uniforms.uColor = ob1.outputs.color.getValue();
     m2.uniforms.uColor = [0, 0, 0, 1];//ob2.outputs.color.getValue();
-    
+
     t += 0.05;
     window.redraw_all();
-  }, 10);    
+  }, 10);
 }
