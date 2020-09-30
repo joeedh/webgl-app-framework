@@ -801,6 +801,8 @@ export class Node {
 }
 Node.STRUCT = `
 graph.Node {
+  graph_name    : string;
+  graph_uiname  : string;
   graph_id      : int;
   graph_flag    : int;
   inputs        : array(graph.KeyValPair) | obj._save_map(obj.inputs);
