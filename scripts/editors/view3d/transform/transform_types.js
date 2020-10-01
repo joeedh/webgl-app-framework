@@ -493,11 +493,7 @@ export class ObjectTransType extends TransDataType {
     r = ob.inputs.rot.getValue();
     s = ob.inputs.scale.getValue();
 
-    console.log("ORDER", order, ob.name, ob.inputs);
-
-    console.log("ROT1", ob.inputs.rot.getValue());
     mat.decompose(ob.inputs.loc.getValue(), r, s, undefined, undefined, order);
-    console.log("ROT2", ob.inputs.rot.getValue());
 
     ob.graphUpdate();
   }

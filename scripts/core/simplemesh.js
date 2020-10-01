@@ -2,6 +2,7 @@ import * as util from '../util/util.js';
 import * as math from '../util/math.js';
 import * as webgl from './webgl.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
+import {ShaderProgram} from "./webgl.js";
 
 var set = util.set;
 var RenderBuffer = webgl.RenderBuffer;
@@ -21,7 +22,7 @@ export const LayerTypes = {
   ID     : 16
 }
 
-export const TypeSizes = {
+let _TypeSizes = {
   LOC    : 3,
   UV     : 2,
   COLOR  : 4,
@@ -29,16 +30,18 @@ export const TypeSizes = {
   ID     : 1
 };
 
-for (var k in TypeSizes) {
-  TypeSizes[LayerTypes[k]] = TypeSizes[k];
+export const TypeSizes = {};
+
+for (var k in LayerTypes) {
+  TypeSizes[LayerTypes[k]] = TypeSizes[k] = _TypeSizes[k];
 }
 
 function appendvec(a, b, n, defaultval) {
   if (defaultval == undefined)
-      defaultval = 0.0;
-    
+    defaultval = 0.0;
+
   for (var i=0; i<n; i++) {
-    var val = b[i];
+    let val = b[i];
     a.push(val == undefined ? defaultval : val);
   }
 }
@@ -48,10 +51,10 @@ let zero = new Vector3();
 
 function copyvec(a, b, starti, n, defaultval) {
   if (defaultval == undefined)
-      defaultval = 0.0;
-    
+    defaultval = 0.0;
+
   for (var i=starti; i<starti+n; i++) {
-    var val = b[i];
+    let val = b[i];
     a[i] = val == undefined ? defaultval : val;
   }
 }
@@ -61,112 +64,112 @@ export class TriEditor {
     this.mesh = undefined;
     this.i = 0
   }
-  
+
   bind(mesh, i) {
     this.mesh = mesh;
     this.i = i;
-    
+
     return this;
   }
-  
+
   colors(c1, c2, c3) {
-    var data = this.mesh.tri_colors;
-    var i = this.i*3; //*3 is because triangles have three vertices
-    
+    let data = this.mesh.tri_colors;
+    let i = this.i*3; //*3 is because triangles have three vertices
+
     data.copy(i, c1);
     data.copy(i+1, c2);
     data.copy(i+2, c3);
-    
+
     return this;
   }
-  
-  normals(n1, n2, n3){ 
-    var data = this.mesh.tri_normals
-    var i = this.i*3; //*3 is because triangles have three vertices
-    
+
+  normals(n1, n2, n3){
+    let data = this.mesh.tri_normals
+    let i = this.i*3; //*3 is because triangles have three vertices
+
     data.copy(i, n1);
     data.copy(i+1, n2);
     data.copy(i+2, n3);
-    
+
     return this;
   }
-  
+
   uvs(u1, u2, u3) {
-    var data = this.mesh.tri_uvs
-    var i = this.i*3*2; //*3 is because triangles have three vertices
-    
+    let data = this.mesh.tri_uvs
+    let i = this.i*3*2; //*3 is because triangles have three vertices
+
     data[i++] = u1[0];
     data[i++] = u1[1];
-    
+
     data[i++] = u2[0];
     data[i++] = u2[1];
-    
+
     data[i++] = u3[0];
     data[i++] = u3[1];
-    
+
     return this;
   }
-  
+
   ids(i1, i2, i3) {
     if (i1 === undefined || i2 === undefined || i3 === undefined) {
       throw new Error("i1/i2/i3 cannot be undefined");
     }
 
-    var data = this.mesh.tri_ids
-    var i = this.i*3; //*3 is because triangles have three vertices
-    
+    let data = this.mesh.tri_ids
+    let i = this.i*3; //*3 is because triangles have three vertices
+
     _ids_arrs[0][0] = i1, i1 = _ids_arrs[0];
     _ids_arrs[1][0] = i2, i2 = _ids_arrs[1];
     _ids_arrs[2][0] = i3, i3 = _ids_arrs[2];
-    
+
     data.copy(i, i1);
     data.copy(i+1, i2);
     data.copy(i+2, i3);
-    
+
     return this;
   }
 }
 
 export class QuadEditor {
-    constructor() {
-      this.t1 = new TriEditor();
-      this.t2 = new TriEditor();
-    }
-    
-    bind(mesh, i, i2) {
-      this.t1.bind(mesh, i);
-      this.t2.bind(mesh, i2);
-      
-      return this;
-    }
-    
-    uvs(u1, u2, u3, u4) {
-      this.t1.uvs(u1, u2, u3);
-      this.t2.uvs(u1, u3, u4);
-      
-      return this;
-    }
-    
-    colors(u1, u2, u3, u4) {
-      this.t1.colors(u1, u2, u3);
-      this.t2.colors(u1, u3, u4);
-      
-      return this;
-    }
-    
-    normals(u1, u2, u3, u4) {
-      this.t1.normals(u1, u2, u3);
-      this.t2.normals(u1, u3, u4);
-      
-      return this;
-    }
-    
-    ids(u1, u2, u3, u4) {
-      this.t1.ids(u1, u2, u3);
-      this.t2.ids(u1, u3, u4);
-      
-      return this;
-    }
+  constructor() {
+    this.t1 = new TriEditor();
+    this.t2 = new TriEditor();
+  }
+
+  bind(mesh, i, i2) {
+    this.t1.bind(mesh, i);
+    this.t2.bind(mesh, i2);
+
+    return this;
+  }
+
+  uvs(u1, u2, u3, u4) {
+    this.t1.uvs(u1, u2, u3);
+    this.t2.uvs(u1, u3, u4);
+
+    return this;
+  }
+
+  colors(u1, u2, u3, u4) {
+    this.t1.colors(u1, u2, u3);
+    this.t2.colors(u1, u3, u4);
+
+    return this;
+  }
+
+  normals(u1, u2, u3, u4) {
+    this.t1.normals(u1, u2, u3);
+    this.t2.normals(u1, u3, u4);
+
+    return this;
+  }
+
+  ids(u1, u2, u3, u4) {
+    this.t1.ids(u1, u2, u3);
+    this.t2.ids(u1, u3, u4);
+
+    return this;
+  }
 }
 
 export class LineEditor {
@@ -174,49 +177,49 @@ export class LineEditor {
     this.mesh = undefined;
     this.i = 0;
   }
-  
+
   bind(mesh, i) {
     this.mesh = mesh;
     this.i = i;
     return this;
   }
-  
+
   colors(c1, c2) {
-    var data = this.mesh.line_colors;
-    var i = this.i*2; //*3 is because triangles have three vertices
-    
+    let data = this.mesh.line_colors;
+    let i = this.i*2; //*3 is because triangles have three vertices
+
     data.copy(i, c1);
     data.copy(i+1, c2);
-    
+
     return this;
-  }  
-  
+  }
+
   uvs(c1, c2) {
-    var data = this.mesh.line_uvs;
-    var i = this.i*2; //*3 is because triangles have three vertices
-    
+    let data = this.mesh.line_uvs;
+    let i = this.i*2; //*3 is because triangles have three vertices
+
     data.copy(i, c1);
     data.copy(i+1, c2);
-    
+
     return this;
-  }  
-  
+  }
+
   ids(i1, i2) {
     if (i1 === undefined || i2 === undefined) {
       throw new Error("i1/i2 cannot be undefined");
     }
 
-    var data = this.mesh.line_ids;
-    var i = this.i*2; //*3 is because triangles have three vertices
-    
+    let data = this.mesh.line_ids;
+    let i = this.i*2; //*3 is because triangles have three vertices
+
     _ids_arrs[0][0] = i1, i1 = _ids_arrs[0];
     _ids_arrs[1][0] = i2, i2 = _ids_arrs[1];
-    
+
     data.copy(i, _ids_arrs[0]);
     data.copy(i+1, _ids_arrs[1]);
-    
+
     return this;
-  }  
+  }
 }
 
 export class PointEditor {
@@ -232,8 +235,8 @@ export class PointEditor {
   }
 
   colors(c1) {
-    var data = this.mesh.point_colors;
-    var i = this.i;
+    let data = this.mesh.point_colors;
+    let i = this.i;
 
     data.copy(i, c1);
 
@@ -241,8 +244,8 @@ export class PointEditor {
   }
 
   normals(c1) {
-    var data = this.mesh.point_normals;
-    var i = this.i;
+    let data = this.mesh.point_normals;
+    let i = this.i;
 
     data.copy(i, c1);
 
@@ -250,8 +253,8 @@ export class PointEditor {
   }
 
   uvs(c1) {
-    var data = this.mesh.point_uvs;
-    var i = this.i;
+    let data = this.mesh.point_uvs;
+    let i = this.i;
 
     data.copy(i, c1);
 
@@ -263,8 +266,8 @@ export class PointEditor {
       throw new Error("i1 cannot be undefined");
     }
 
-    var data = this.mesh.point_ids;
-    var i = this.i;
+    let data = this.mesh.point_ids;
+    let i = this.i;
 
     _ids_arrs[0][0] = i1, i1 = _ids_arrs[0];
 
@@ -275,124 +278,196 @@ export class PointEditor {
 }
 
 export class GeoLayer extends Array {
-  constructor(size, name, type, idx) { //idx is for different layers of same type, e.g. multiple uv layers
+  constructor(size, name, primflag, type, idx) { //idx is for different layers of same type, e.g. multiple uv layers
     super();
-    
+
     this.type = type;
     this.data_f32 = [];
-    
+    this.normalized = false;
+
     this.size = size;
     this.name = name;
-    
+
+    this.primflag = primflag;
+    this.bufferKey = undefined;
     this.idx = idx;
     this.id = undefined;
   }
-  
-  extend(data) {
-    var tot = this.size;
-    var starti = this.length;
 
-    //okay, V8's optimizer did *not* like calling push in a for loop,
-    //just increment length instead, according to ES spec this is fine
-    //and it's much faster
+  extend(data) {
+    let tot = this.size;
+    let starti = this.length;
+
+    /*v8's optimizer hates this:
+    for (var i=0; i<tot; i++) {
+      this.push(0);
+    }*/
+
+    //according to ES spec this is valid:
     this.length += tot;
-    
+
     if (data !== undefined) {
       this.copy(~~(starti/this.size), data, 1);
     }
-    
+
     return this;
   }
-  
+
   //i and n will be multiplied by .size
   copy(i, data, n) {
     if (n == undefined) n = 1;
-    
-    var tot = n*this.size;
-    
+
+    let tot = n*this.size;
+
     i *= this.size;
-    
-    var di = 0;
-    var end = i + tot;
+
+    let di = 0;
+    let end = i + tot;
     while (i < end) {
       this[i] = data[di];
       di++;
       i++;
     }
   }
-  
+
   [Symbol.keystr]() {
     return "" + this.id;
   }
 }
 
 export class GeoLayerMeta {
-  constructor(type) {
+  constructor(primflag, type) {
     this.type = type;
+    this.primflag = primflag;
     this.layers = [];
+    this.normalized = false;
   }
 }
 
+function get_meta_mask(primflag, type) {
+  return type | (primflag << 16);
+}
+
+let _debug_idgen = 0;
+
 export class GeoLayerManager {
   constructor() {
-    this.layers = new util.set();
-    this.layer_meta = {};
+    this.layers = [];
+    //this.layers_prim_map = new
+
+    this.has_multilayers = false;
+
+    this._debug_id = _debug_idgen++;
+
+    this.layer_meta = new Map();
     this.layer_idgen = new util.IDGen();
   }
 
   copy() {
     let ret = new GeoLayerManager();
 
-    for (let layer of this.layers) {
-      let layer2 = ret.get(layer.name, layer.type, layer.size, layer.idx);
+    ret.layer_idgen = this.layer_idgen.copy();
+    ret.has_multilayers = this.has_multilayers;
 
-      let a = layer.data_f32;
-      let b = layer2.data_f32;
+    for (let key of this.layer_meta.keys()) {
+      let meta = this.layer_meta.get(key);
+      let meta2 = ret.get_meta(meta.type, meta.primflag);
 
-      b.length = a.length;
-      layer2.length = layer.length;
+      for (let layer of meta.layers) {
+        let layer2 = new GeoLayer(layer.size, layer.name, layer.primflag, layer.type, layer.idx);
 
-      for (let i=0; i<a.length; i++) {
-        b[i] = a[i];
-      }
-      for (let i=0; i<layer.length; i++) {
-        layer2[i] = layer[i];
+        let a = layer.data_f32;
+        let b = layer2.data_f32;
+
+        layer2.length = layer.length;
+        b.length = a.length;
+
+        layer2.id = layer.id;
+        layer2.bufferKey = layer.bufferKey;
+        layer2.normalized = layer.normalized;
+
+        for (let i=0; i<layer2.length; i++) {
+          layer2[i] = layer[i];
+        }
+
+        for (let i=0; i<a.length; i++) {
+          b[i] = a[i];
+        }
+
+        meta2.layers.push(layer2);
+        ret.layers.push(layer2);
       }
     }
 
     return ret;
   }
 
-  get_meta(type) {
-    if (!(type in this.layer_meta)) {
-      this.layer_meta[type] = new GeoLayerMeta(type);
+  get_meta(primflag, type) {
+    let mask = get_meta_mask(primflag, type);
+
+    if (!this.layer_meta.has(mask)) {
+      this.layer_meta.set(mask, new GeoLayerMeta(primflag, type));
     }
-    
-    return this.layer_meta[type];
+
+    return this.layer_meta.get(mask);
   }
-  
+
   [Symbol.iterator]() {
     return this.layers[Symbol.iterator]();
   }
-  
-  get(name, type, size, idx) {
-     if (size == undefined) {
-       size = TypeSizes[type];
-     }
-     
-     var meta = this.get_meta(type);
-     
-     if (idx == undefined)
-       idx = meta.layers.length;
-     
-     var layer = new GeoLayer(size, name, type, idx);
-     layer.id = this.layer_idgen.next();
+
+  extend(primflag, type, data) {
+    let meta = this.get_meta(primflag, type);
+
+    for (let i=0; i<meta.layers.length; i++) {
+      meta.layers[i].extend(data);
+    }
+
+    return this;
+  }
+
+  layerCount(primflag, type) {
+    return this.get_meta(primflag, type).layers.length;
+  }
+
+  pushLayer(name, primflag, type, size) {
+    let meta = this.get_meta(primflag, type);
+    let idx = meta.layers.length;
+
+    let layer = new GeoLayer(size, name, primflag, type, idx);
+
+    layer.id = this.layer_idgen.next();
+    layer.primflag = primflag;
+    layer.bufferKey = layer.name + ":" + layer.id;
+
+    this.layers.push(layer);
+    meta.layers.push(layer);
+
+    layer.normalized = meta.normalized;
+
+    return layer;
+  }
 
 
-     this.layers.add(layer);
-     meta.layers.push(layer);
-     
-     return layer;
+  get(name, primflag, type, size, idx=0) {
+    if (size === undefined) {
+      size = TypeSizes[type];
+    }
+
+    if (idx > 0) {
+      this.has_multilayers = true;
+    }
+
+    let meta = this.get_meta(primflag, type);
+    if (idx < meta.layers.length) {
+      return meta.layers[idx];
+    }
+
+    if (idx === meta.layers.length) {
+      return this.pushLayer(name, primflag, type, size, idx);
+    } else {
+      throw new Error("layer at idx doesn't exist, and there aren't enough previous layers to auto create it: " + idx);
+    }
   }
 }
 
@@ -403,7 +478,7 @@ var _default_id = [-1];
 
 export class SimpleIsland {
   constructor() {
-    var lay = this.layers = new GeoLayerManager();
+    let lay = this.layers = new GeoLayerManager();
 
     this.primflag = undefined;  //if undefined, will get from this.mesh.primflag
 
@@ -414,9 +489,9 @@ export class SimpleIsland {
     this.tottri = 0;
 
     this.layerflag = undefined;
-    
+
     this.regen = 1;
-    
+
     this.tri_editors = util.cachering.fromConstructor(TriEditor, 32);
     this.quad_editors = util.cachering.fromConstructor(QuadEditor, 32);
     this.line_editors = util.cachering.fromConstructor(LineEditor, 32);
@@ -424,7 +499,7 @@ export class SimpleIsland {
 
     this.buffer = new RenderBuffer();
     this.program = undefined;
-    
+
     this.textures = [];
     this.uniforms = {};
     this._uniforms_temp = {};
@@ -433,23 +508,30 @@ export class SimpleIsland {
   makeBufferAliases() {
     let lay = this.layers;
 
-    this.tri_cos    = lay.get("tri_cos", LayerTypes.LOC); //array
-    this.tri_normals = lay.get("tri_normals", LayerTypes.NORMAL); //array
-    this.tri_uvs    = lay.get("tri_uvs", LayerTypes.UV); //array
-    this.tri_colors = lay.get("tri_colors", LayerTypes.COLOR); //array
-    this.tri_ids    = lay.get("tri_ids", LayerTypes.ID); //array
+    lay.get_meta(PrimitiveTypes.TRIS, LayerTypes.NORMAL).normalized = true;
+    lay.get_meta(PrimitiveTypes.LINES, LayerTypes.NORMAL).normalized = true;
+    lay.get_meta(PrimitiveTypes.POINTS, LayerTypes.NORMAL).normalized = true;
 
-    this.line_cos    = lay.get("line_cos", LayerTypes.LOC); //array
-    this.line_normals = lay.get("line_normals", LayerTypes.NORMAL); //array
-    this.line_uvs    = lay.get("line_uvs", LayerTypes.UV); //array
-    this.line_colors = lay.get("line_colors", LayerTypes.COLOR); //array
-    this.line_ids    = lay.get("line_ids", LayerTypes.ID); //array
+    let pflag = PrimitiveTypes.TRIS;
+    this.tri_cos    = lay.get("tri_cos", pflag, LayerTypes.LOC); //array
+    this.tri_normals = lay.get("tri_normals", pflag, LayerTypes.NORMAL); //array
+    this.tri_uvs    = lay.get("tri_uvs", pflag, LayerTypes.UV); //array
+    this.tri_colors = lay.get("tri_colors", pflag, LayerTypes.COLOR); //array
+    this.tri_ids    = lay.get("tri_ids", pflag, LayerTypes.ID); //array
 
-    this.point_cos    = lay.get("point_cos", LayerTypes.LOC); //array
-    this.point_normals = lay.get("point_normals", LayerTypes.NORMAL); //array
-    this.point_uvs    = lay.get("point_uvs", LayerTypes.UV); //array
-    this.point_colors = lay.get("point_colors", LayerTypes.COLOR); //array
-    this.point_ids    = lay.get("point_ids", LayerTypes.ID); //array
+    pflag = PrimitiveTypes.LINES;
+    this.line_cos    = lay.get("line_cos", pflag, LayerTypes.LOC); //array
+    this.line_normals = lay.get("line_normals", pflag, LayerTypes.NORMAL); //array
+    this.line_uvs    = lay.get("line_uvs", pflag, LayerTypes.UV); //array
+    this.line_colors = lay.get("line_colors", pflag, LayerTypes.COLOR); //array
+    this.line_ids    = lay.get("line_ids", pflag, LayerTypes.ID); //array
+
+    pflag = PrimitiveTypes.POINTS;
+    this.point_cos    = lay.get("point_cos", pflag, LayerTypes.LOC); //array
+    this.point_normals = lay.get("point_normals", pflag, LayerTypes.NORMAL); //array
+    this.point_uvs    = lay.get("point_uvs", pflag, LayerTypes.UV); //array
+    this.point_colors = lay.get("point_colors", pflag, LayerTypes.COLOR); //array
+    this.point_ids    = lay.get("point_ids", pflag, LayerTypes.ID); //array
   }
 
   copy() {
@@ -485,181 +567,178 @@ export class SimpleIsland {
     let cos = this.point_cos;
     cos.push(v1[0]); cos.push(v1[1]); cos.push(v1[2]);
 
-    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
+    let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
 
-    for (i=0; i<1; i++) {
-      if (layerflag & LayerTypes.UV)
-        this.point_uvs.extend(_default_uv);
-      if (layerflag & LayerTypes.COLOR)
-        this.point_colors.extend(_default_color);
-      if (layerflag & LayerTypes.NORMAL)
-        this.point_normals.extend(_default_normal);
-      if (layerflag & layerflag.ID)
-        this.point_ids.extend(_default_id);
-    }
+    if (layerflag & LayerTypes.UV)
+      this.layers.extend(LayerTypes.UV, PrimitiveTypes.POINTS, _default_uv);
+    if (layerflag & LayerTypes.COLOR)
+      this.layers.extend(LayerTypes.COLOR, PrimitiveTypes.POINTS, _default_color);
+    if (layerflag & LayerTypes.NORMAL)
+      this.layers.extend(LayerTypes.NORMAL, PrimitiveTypes.POINTS, _default_normal);
+    if (layerflag & LayerTypes.ID)
+      this.layers.extend(LayerTypes.ID, PrimitiveTypes.POINTS, _default_id);
 
     this.totpoint++;
     return this.point_editors.next().bind(this, this.totpoint-1);
   }
-  
+
   line(v1, v2) {
     let i = this.totline;
-    
+
     let cos = this.line_cos;
     cos.push(v1[0]); cos.push(v1[1]); cos.push(v1[2]);
     cos.push(v2[0]); cos.push(v2[1]); cos.push(v2[2]);
 
-    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
-    
-    for (i=0; i<2; i++) {
+    let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
+
+    for (let j=0; j<2; j++) {
       if (layerflag & LayerTypes.UV)
-        this.line_uvs.extend(_default_uv);
+        this.layers.extend(LayerTypes.UV, PrimitiveTypes.LINES, _default_uv);
       if (layerflag & LayerTypes.COLOR)
-        this.line_colors.extend(_default_color);
+        this.layers.extend(LayerTypes.COLOR, PrimitiveTypes.LINES, _default_color);
       if (layerflag & LayerTypes.NORMAL)
-        this.line_normals.extend(_default_normal);
-      if (layerflag & layerflag.ID)
-        this.line_ids.extend(_default_id);
+        this.layers.extend(LayerTypes.NORMAL, PrimitiveTypes.LINES, _default_normal);
+      if (layerflag & LayerTypes.ID)
+        this.layers.extend(LayerTypes.ID, PrimitiveTypes.LINES, _default_id);
     }
-    
+
     this.totline++;
     return this.line_editors.next().bind(this, this.totline-1);
   }
-  
+
   tri(v1, v2, v3) {
-    var i = this.tottri;
-    
-    var cos = this.tri_cos;
+    let cos = this.tri_cos;
+
     cos.push(v1[0]); cos.push(v1[1]); cos.push(v1[2]);
     cos.push(v2[0]); cos.push(v2[1]); cos.push(v2[2]);
     cos.push(v3[0]); cos.push(v3[1]); cos.push(v3[2]);
-    
-    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
-    
-    for (var i=0; i<3; i++) {
+
+    let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
+
+    for (let j=0; j<3; j++) {
       if (layerflag & LayerTypes.UV)
-        this.tri_uvs.extend(_default_uv);
+        this.layers.extend(LayerTypes.UV, PrimitiveTypes.TRIS, _default_uv);
       if (layerflag & LayerTypes.COLOR)
-        this.tri_colors.extend(_default_color);
+        this.layers.extend(LayerTypes.COLOR, PrimitiveTypes.TRIS, _default_color);
       if (layerflag & LayerTypes.NORMAL)
-        this.tri_normals.extend(_default_normal);
-      if (layerflag & layerflag.ID)
-        this.tri_ids.extend(_default_id);
+        this.layers.extend(LayerTypes.NORMAL, PrimitiveTypes.TRIS, _default_normal);
+      if (layerflag & LayerTypes.ID)
+        this.layers.extend(LayerTypes.ID, PrimitiveTypes.TRIS, _default_id);
     }
-    
+
     this.tottri++;
-    
+
     return this.tri_editors.next().bind(this, this.tottri-1);
   }
-  
+
   quad(v1, v2, v3, v4) {
-    var i = this.tottri;
-    
+    let i = this.tottri;
+
     this.tri(v1, v2, v3);
     this.tri(v1, v3, v4);
-    
+
     return this.quad_editors.next().bind(this, i, i+1);
   }
-  
+
   destroy(gl) {
     this.buffer.destroy(gl);
     this.regen = true;
   }
-  
+
   gen_buffers(gl) {
-    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
-    
+    let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
+
     for (var layer of this.layers) {
       if (!(layer.type & layerflag)) {
         continue;
       }
-      
-      var size = layer.size*layer.length;
-      
-      if (layer.data_f32 == undefined || layer.data_f32.length != size) {
+
+      let size = layer.size*layer.length;
+
+      if (layer.data_f32 === undefined || layer.data_f32.length !== size) {
         layer.data_f32 = new Float32Array(layer);
       }
-      
-      var buf = this.buffer.get(gl, layer.name);
+
+      let buf = this.buffer.get(gl, layer.bufferKey);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, buf);
       gl.bufferData(gl.ARRAY_BUFFER, layer.data_f32, gl.STATIC_DRAW);
     }
   }
-  
+
   _draw_tris(gl, uniforms, params, program) {
-    this.bindArrays(gl, uniforms, program, "tri");
-    
+    this.bindArrays(gl, uniforms, program, "tri", PrimitiveTypes.TRIS);
+
     gl.drawArrays(gl.TRIANGLES, 0, this.tottri*3);
   }
 
-  bindArrays(gl, uniforms, program, key) {
+  bindArrays(gl, uniforms, program, key, primflag) {
     program = program === undefined ? this.program : program;
     program = program === undefined ? this.mesh.program : program;
-    var layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
+    let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
 
-    for (let i=0; i<6; i++) {
+    if (!program || !program.program) {
+      return;
+    }
+
+    let maxattrib = gl.getParameter(gl.MAX_VERTEX_ATTRIBS);
+
+    for (let i=0; i<maxattrib; i++) {
       gl.disableVertexAttribArray(i);
     }
 
     let li = 0;
-    gl.enableVertexAttribArray(li);
+    let layer = this.layers.get_meta(primflag, LayerTypes.LOC).layers[0];
+    let buf = this.buffer.get(gl, layer.bufferKey);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_cos"]);
-    gl.vertexAttribPointer(li, this[key + "_cos"].size, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.vertexAttribPointer(0, layer.size, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(0);
 
-    if (layerflag & LayerTypes.NORMAL) {
-      li = program.attrLoc("normal");
-      if (li > 0) {
-        gl.simpleshader = program;
+    let bindArray = (name, type) => {
+      if (!(layerflag & type)) {
+        return;
+      }
 
-        gl.enableVertexAttribArray(li);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_normals"]);
-        gl.vertexAttribPointer(li, this[key + "_normals"].size, gl.FLOAT, true, 0, 0);
+      let meta = this.layers.get_meta(primflag, type);
+      if (!meta.layers.length) {
+        gl.disableVertexAttribArray(li);
+        li++;
+        return;
       } else {
-        //console.warn("no normals attribute");
+
+        for (let i=0; i<meta.layers.length; i++) {
+          let layer = meta.layers[i];
+
+          let key = ShaderProgram.multiLayerAttrKey(name, i, gl.haveWebGL2);
+
+          let buf = this.buffer.get(gl, layer.bufferKey);
+
+          li = program.attrLoc(key);
+          if (li < 0) {
+            continue;
+          }
+
+          gl.enableVertexAttribArray(li);
+          gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+          gl.vertexAttribPointer(li, layer.size, gl.FLOAT, layer.normalize, 0, 0);
+        }
       }
     }
 
-    if (layerflag & LayerTypes.UV) {
-      li = program.attrLoc("uv");
+    bindArray("normal", LayerTypes.NORMAL);
+    bindArray("uv", LayerTypes.UV);
+    bindArray("color", LayerTypes.COLOR);
+    bindArray("id", LayerTypes.ID);
+  }
 
-      if (li > 0) {
-        gl.enableVertexAttribArray(li);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_uvs"]);
-        gl.vertexAttribPointer(li, this[key + "_uvs"].size, gl.FLOAT, false, 0, 0);
-      } else {
-        //console.warn("no uv attribute");
-      }
-    }
-
-    if (layerflag & LayerTypes.COLOR) {
-      li = program.attrLoc("color");
-
-      if (li > 0) {
-        gl.enableVertexAttribArray(li);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_colors"]);
-        gl.vertexAttribPointer(li, this[key + "_colors"].size, gl.FLOAT, false, 0, 0);
-      } else {
-        //console.warn("no color attribute");
-      }
-    }
-
-    if (layerflag & LayerTypes.ID) {
-      li = program.attrLoc("id");
-
-      if (li > 0) {
-        gl.enableVertexAttribArray(li);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer[key + "_ids"]);
-        gl.vertexAttribPointer(li, this[key + "_ids"].size, gl.FLOAT, false, 0, 0);
-      } else {
-        //console.warn("no id attribute");
-      }
-    }
+  addDataLayer(primflag, type) {
+    this.layers.pushLayer("multilayer layer", primflag, type, TypeSizes[type]);
+    return this;
   }
 
   _draw_points(gl, uniforms, params, program) {
-    this.bindArrays(gl, uniforms, program, "point");
+    this.bindArrays(gl, uniforms, program, "point", PrimitiveTypes.POINTS);
 
     if (this.totpoint > 0) {
       //console.log(this.totpoint, this.point_cos);
@@ -670,8 +749,8 @@ export class SimpleIsland {
   }
 
   _draw_lines(gl, uniforms, params, program) {
-    this.bindArrays(gl, uniforms, program, "line");
-    
+    this.bindArrays(gl, uniforms, program, "line", PrimitiveTypes.LINES);
+
     //console.log(this.totline, this.line_cos);
     if (this.totline > 0) {
       gl.drawArrays(gl.LINES, 0, this.totline*2);
@@ -685,7 +764,7 @@ export class SimpleIsland {
   }
 
   draw(gl, uniforms, params, program_override=undefined) {
-    var program = this.program == undefined ? this.mesh.program : this.program;
+    let program = this.program === undefined ? this.mesh.program : this.program;
     let primflag = this.primflag === undefined ? this.mesh.primflag : this.primflag;
 
     if (program_override !== undefined) {
@@ -696,38 +775,36 @@ export class SimpleIsland {
       this.regen = 0;
       this.gen_buffers(gl);
     }
-    
+
     if (uniforms === undefined) {
       for (let k in this._uniforms_temp) {
         delete this._uniforms_temp[k];
       }
-      
+
       uniforms = this._uniforms_temp;
     }
-    
+
     for (let k in this.uniforms) {
       if (!(k in uniforms)) {
         uniforms[k] = this.uniforms[k];
       }
     }
-    
+
     for (let k in this.mesh.uniforms) {
       if (!(k in uniforms)) {
         uniforms[k] = this.mesh.uniforms[k];
       }
     }
-    
+
     if (program === undefined)
       program = gl.simple_shader;
-  
-    if (!program.bind(gl, uniforms)) {
-      return; //bad shader;
-    }
-    
+
+    program.bind(gl, uniforms);
+
     if (this.tottri && (primflag & PrimitiveTypes.TRIS)) {
       this._draw_tris(gl, uniforms, params, program);
     }
-    
+
     if (this.totline && (primflag & PrimitiveTypes.LINES)) {
       this._draw_lines(gl, uniforms, params, program);
     }
@@ -749,9 +826,15 @@ export class SimpleMesh {
 
     this.islands = [];
     this.uniforms = {};
-    
+
     this.add_island();
     this.island = this.islands[0];
+  }
+
+  addDataLayer(primflag, type) {
+    for (let island of this.islands) {
+      island.addDataLayer(primflag, type);
+    }
   }
 
   copy() {
@@ -779,29 +862,29 @@ export class SimpleMesh {
   }
 
   add_island() {
-    var island = new SimpleIsland();
+    let island = new SimpleIsland();
 
     island.mesh = this;
     this.island = island;
-    
+
     this.islands.push(island);
     return island;
   }
-  
+
   destroy(gl) {
     for (var island of this.islands) {
       island.destroy(gl);
     }
   }
-  
+
   tri(v1, v2, v3) {
     return this.island.tri(v1, v2, v3);
   }
-  
+
   quad(v1, v2, v3, v4) {
     return this.island.quad(v1, v2, v3, v4);
   }
-  
+
   line(v1, v2) {
     return this.island.line(v1, v2);
   }
@@ -964,5 +1047,3 @@ export function makeCube() {
 export function makeSphere() {
 
 }
-
-

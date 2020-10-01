@@ -137,6 +137,13 @@ export class NodeSocketType {
     return this;
   }
 
+  setAndUpdate(val, updateParentNode=false) {
+    this.setValue(val);
+    this.graphUpdate(updateParentNode);
+
+    return this;
+  }
+
   static apiDefine(api, sockstruct) {
 
   }
