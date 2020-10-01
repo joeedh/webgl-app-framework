@@ -155,7 +155,19 @@ function api_define_node(api, cls=Node) {
         if (obj === undefined)
           return api.getStruct(NodeSocketType);
 
-        let ret = api.getStruct(obj.constructor);
+        let ret;
+
+        if (obj.graph_flag & SocketFlags.INSTANCE_API_DEFINE) {
+          if (!api.hasStruct(obj)) {
+            ret = api.mapStruct(obj, true);
+            obj.apiDefine(api, ret);
+          } else {
+            ret = api.getStruct(obj);
+          }
+        } else {
+          ret = api.getStruct(obj.constructor);
+        }
+
         return ret === undefined ? api.getStruct(NodeSocketType) : ret;
       }
     ]);

@@ -32,7 +32,7 @@ export class SceneObjectData extends DataBlock {
   }}
 
   exec() {
-    this.outputs.depend.update();
+    this.outputs.depend.graphUpdate();
   }
 
   static getTools() {

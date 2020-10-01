@@ -27,7 +27,9 @@ export const SocketFlags = {
   UPDATE : 2,
   MULTI  : 4, //socket can have multiple connections, enable by default for outputs
   NO_MULTI_OUTPUTS : 8, //don't flag outputs with MULTI by default
-  PRIVATE : 16
+  PRIVATE : 16,
+  NO_UNITS : 32,
+  INSTANCE_API_DEFINE : 64
 };
 
 /**
@@ -119,6 +121,22 @@ export class NodeSocketType {
     this.graph_id = -1;
   }
 
+  //used to load data that might change between file versions
+  //e.g. EnumProperty's enumeration definitions
+  onFileLoad(templateInstance) {
+    this.graph_flag |= templateInstance.graph_flag;
+  }
+
+  needInstanceAPI() {
+    this.graph_flag |= SocketFlags.INSTANCE_API_DEFINE;
+    return this;
+  }
+
+  noUnits() {
+    this.graph_flag |= SocketFlags.NO_UNITS;
+    return this;
+  }
+
   static apiDefine(api, sockstruct) {
 
   }
@@ -134,6 +152,7 @@ export class NodeSocketType {
     return false;
   }
 
+  /*
   get node() {
     return this._node;
   }
@@ -144,7 +163,8 @@ export class NodeSocketType {
     }
 
     this._node = node;
-  }
+  }*/
+
 
   /**
    Build ui for a node socket.
@@ -281,6 +301,7 @@ export class NodeSocketType {
     b.name = this.name;
     b.uiname = this.uiname;
     //b.node = this.node;
+    return this;
   }
 
   get hasEdges() {
@@ -308,11 +329,15 @@ export class NodeSocketType {
   flag the socket as updated and queue
   the datagraph for execution
   */
-  graphUpdate(_exclude=undefined) {
+  graphUpdate(updateParentNode=false, _exclude=undefined) {
     if (this === _exclude)
       return;
 
     this.graph_flag |= NodeFlags.UPDATE;
+
+    if (updateParentNode) {
+      this.node.graphUpdate();
+    }
 
     //make sure a graph update is queued up
     //only one update will be queued at a time
@@ -331,7 +356,9 @@ export class NodeSocketType {
 
   copy() {
     let ret = new this.constructor();
+
     this.copyTo(ret);
+    ret.graph_flag = this.graph_flag;
 
     return ret;
   }
@@ -779,6 +806,22 @@ export class Node {
         }
 
         socks1[k].node = this;
+      }
+    }
+
+    //load any template data that needs loading
+    for (let i=0; i<2; i++) {
+      let socks1 = i ? this.outputs : this.inputs;
+      let socks2 = i ? def.outputs : def.inputs;
+
+      for (let k in socks1) {
+        let sock = socks1[k];
+
+        if (!(k in socks2)) {
+          continue;
+        }
+
+        sock.onFileLoad(socks2[k]);
       }
     }
 
@@ -1414,6 +1457,8 @@ export class Graph {
         if (typeof socks2[k] === "number") {
           socks2[k] = sock_idmap[socks2[k]];
         }
+
+        socks2[k].onFileLoad(socks1[k]);
 
         socks1[k] = socks2[k];
         socks1[k].node = n;

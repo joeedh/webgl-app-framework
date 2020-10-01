@@ -90,10 +90,10 @@ export class SceneObject extends DataBlock {
         matrix: new Matrix4Socket("matrix"),
         color: new Vec4Socket("color", undefined, [0.5, 0.5, 0.5, 1.0]),
         loc: new Vec3Socket("loc"),
-        rot: new Vec3Socket("rot"),
+        rot: new Vec3Socket("rot").noUnits(),
         rotOrder: new EnumSocket("Euler Order", EulerOrders, undefined,
           EulerOrders.XYZ),
-        scale: new Vec3Socket("scale", undefined, [1, 1, 1])
+        scale: new Vec3Socket("scale", undefined, [1, 1, 1]).noUnits()
       },
 
       outputs: {
@@ -104,6 +104,22 @@ export class SceneObject extends DataBlock {
     }
   }
 
+  get rotationEuler() {
+    return this.inputs.rot.getValue();
+  }
+  get rotationOrder() {
+    return this.inputs.rotOrder.getValue();
+  }
+  set rotationOrder(i) {
+    this.inputs.rotOrder.setValue(i);
+  }
+
+  get location() {
+    return this.inputs.loc.getValue();
+  }
+  get scale() {
+    return this.inputs.scale.getValue();
+  }
   get material() {
     return this.data !== undefined && this.data.usesMaterial ? this.data.material : undefined;
   }
@@ -177,8 +193,8 @@ export class SceneObject extends DataBlock {
     this.outputs.matrix.setValue(mat);
     this.outputs.depend.setValue(true);
 
-    this.outputs.matrix.update();
-    this.outputs.depend.update();
+    this.outputs.matrix.graphUpdate();
+    this.outputs.depend.graphUpdate();
   }
 
   loadMatrixToInputs(mat) {

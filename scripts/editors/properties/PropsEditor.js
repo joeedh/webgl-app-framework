@@ -45,7 +45,8 @@ export class PropsEditor extends Editor {
     tab = this.tabs.tab("Material");
     this.materialPanel(tab);
 
-    tab = this.tabs.tab("Object");
+    tab = this.objTab = this.tabs.tab("Object");
+    this._last_obj = undefined;
 
     tab = this.tabs.tab("Last Command");
     let last = document.createElement("last-tool-panel-x")
@@ -58,7 +59,18 @@ export class PropsEditor extends Editor {
     tab.add(panel);
   }
 
+  objectPanel(tab) {
+    tab.clear();
+    tab.prop('object.inputs["rot"].value');
+    tab.prop('object.inputs["rotOrder"].value');
+  }
+
   update() {
+    //do object panel
+    if (this.objTab && this._last_obj === undefined && this.ctx && this.ctx.object) {
+      this.objectPanel(this.objTab);
+      this._last_obj = true; //this.ctx.object;
+    }
     super.update();
   }
 
