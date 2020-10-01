@@ -1876,12 +1876,6 @@ export class Mesh extends SceneObjectData {
     return ret;
   }
 
-  dataLink(getblock, getblock_addUser) {
-    for (let i=0; i<this.materials.length; i++) {
-      this.materials[i] = getblock_addUser(this.materials[i], this);
-    }
-  }
-
   static blockDefine() { return {
     typeName    : "mesh",
     defaultName : "Mesh",
@@ -1917,7 +1911,6 @@ Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
   _elists   : array(mesh.ElementList) | obj._getArrays();
   eidgen    : IDGen;
   flag      : int;
-  materials : array(e, DataRef) | DataRef.fromBlock(e);
   features  : int;
 }
 `;

@@ -216,9 +216,8 @@ export function api_define_meshvertex(api) {
   let st = api.inheritStruct(Vertex, Element);
 }
 
-export function api_define_mesh(api, pstruct) {
-  let mstruct = api_define_datablock(api, Mesh);
-  pstruct.struct("mesh", "mesh", "Mesh", mstruct);
+export function api_define_sceneobject_data(api, cls) {
+  let mstruct = api_define_datablock(api, cls);
 
   mstruct.list("materials", "materials", [
     function getIter(api, list) {
@@ -237,6 +236,14 @@ export function api_define_mesh(api, pstruct) {
       return api.mapStruct(Material);
     }
   ]);
+
+  mstruct.bool("usesMaterial", "usesMaterial", "Uses Material").read_only();
+  return mstruct;
+}
+
+export function api_define_mesh(api, pstruct) {
+  let mstruct = api_define_sceneobject_data(api, Mesh);
+  pstruct.struct("mesh", "mesh", "Mesh", mstruct);
 
   let def = mstruct.flags("flag", "flag", MeshModifierFlags, "Modifier Flag", "Mesh modifier flags");
   def.icons({

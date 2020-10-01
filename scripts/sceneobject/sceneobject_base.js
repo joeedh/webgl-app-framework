@@ -12,7 +12,7 @@ export class SceneObjectData extends DataBlock {
   constructor() {
     super();
     
-    this.material = undefined;
+    this.materials = [];
     this.usesMaterial = false;
   }
 
@@ -100,6 +100,23 @@ export class SceneObjectData extends DataBlock {
 
   }
 
+  dataLink(getblock, getblock_addUser) {
+    super.dataLink(getblock, getblock_addUser);
+
+    let mats = [];
+
+    //non-datablock materials are allowed
+
+    for (let i=0; i<this.materials.length; i++) {
+      let mat = getblock_addUser(this.materials[i], this);
+      if (mat) {
+        mats.push(mat);
+      }
+    }
+
+    this.materials = mats;
+  }
+
   static register(cls) {
     if (!cls.hasOwnProperty("dataDefine")) {
       throw new Error("missing .dataDefine static method");
@@ -114,6 +131,7 @@ export class SceneObjectData extends DataBlock {
   }
 }
 SceneObjectData.STRUCT = STRUCT.inherit(SceneObjectData, DataBlock) + `
+  materials : array(e, DataRef) | DataRef.fromBlock(e); 
 }
 `;
 nstructjs.register(SceneObjectData);

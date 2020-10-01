@@ -1,7 +1,7 @@
 import {DataBlock, DataRef} from './lib_api.js';
 import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags} from './graph.js';
 import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4, UIBase,
-        PackFlags, Container, ToolOp, IntProperty, StringProperty} from '../path.ux/scripts/pathux.js';
+  PackFlags, Container, ToolOp, IntProperty, StringProperty} from '../path.ux/scripts/pathux.js';
 
 let STRUCT = nstructjs.STRUCT;
 import {DependSocket, Vec3Socket, Vec4Socket, Matrix4Socket, FloatSocket} from "./graphsockets.js";
@@ -9,6 +9,26 @@ import {AbstractGraphClass} from './graph_class.js';
 import {Icons} from "../editors/icon_enum.js";
 import {ShaderNetwork} from "../shadernodes/shadernetwork.js";
 import {DiffuseNode, GeometryNode, OutputNode} from "../shadernodes/shader_nodes.js";
+
+export function makeDefaultMaterial() {
+  let mat = new Material();
+
+  let diff = new DiffuseNode();
+  let output = new OutputNode();
+  let geom = new GeometryNode();
+
+  mat.graph.add(geom);
+  mat.graph.add(diff);
+  mat.graph.add(output);
+
+  geom.graph_ui_pos[0] = -geom.graph_ui_size[0] - 5;
+  output.graph_ui_pos[0] = diff.graph_ui_size[0] + 5;
+
+  geom.outputs.normal.connect(diff.inputs.normal);
+  diff.outputs.surface.connect(output.inputs.surface);
+
+  return mat;
+}
 
 export class MakeMaterialOp extends ToolOp {
   constructor() {
@@ -40,7 +60,7 @@ export class MakeMaterialOp extends ToolOp {
   }
 
   exec(ctx) {
-    let mat = new Material();
+    let mat = makeDefaultMaterial();
     let name = this.inputs.name.getValue();
 
     mat.name = name && name !== "" ? name : mat.name;
@@ -61,20 +81,6 @@ export class MakeMaterialOp extends ToolOp {
       let meta = ctx.api.resolvePath(ctx, path);
       mat.lib_addUser(meta.obj);
     }
-
-    let diff = new DiffuseNode();
-    let output = new OutputNode();
-    let geom = new GeometryNode();
-
-    mat.graph.add(geom);
-    mat.graph.add(diff);
-    mat.graph.add(output);
-
-    geom.graph_ui_pos[0] = -geom.graph_ui_size[0] - 5;
-    output.graph_ui_pos[0] = diff.graph_ui_size[0] + 5;
-
-    geom.outputs.normal.connect(diff.inputs.normal);
-    diff.outputs.surface.connect(output.inputs.surface);
 
     this.outputs.materialID.setValue(mat.lib_id);
   }

@@ -1042,6 +1042,8 @@ export class Graph {
       if (n.graph_flag & NodeFlags.CYCLE_TAG) {
         console.warn("Warning: graph cycle detected!");
         this.graph_flag |= GraphFlags.CYCLIC;
+        n.graph_flag &= ~NodeFlags.CYCLE_TAG;
+
         return;
       }
 
@@ -1093,8 +1095,11 @@ export class Graph {
           }
 
           let ret = cyclesearch(s2.node);
-          if (ret)
+
+          if (ret) {
+            n.graph_flag &= ~NodeFlags.CYCLE_TAG;
             return ret;
+          }
         }
         n.graph_flag &= ~NodeFlags.CYCLE_TAG;
       }
@@ -1181,6 +1186,7 @@ export class Graph {
   //context is provided by client code
   exec(context, force_single_solve=false) {
     if (this.graph_flag & GraphFlags.RESORT) {
+      console.log("resorting graph");
       this.sort();
     }
 
@@ -1196,6 +1202,9 @@ export class Graph {
       if (node.graph_flag & NodeFlags.DISABLED) {
         continue;
       }
+
+      //paranoia check
+      node.graph_flag &= ~NodeFlags.CYCLE_TAG;
 
       if (node.graph_flag & NodeFlags.UPDATE) {
         node.graph_flag &= ~NodeFlags.UPDATE;
