@@ -779,6 +779,7 @@ export class View3D extends Editor {
       toolmode.constructor.buildHeader(header, makeRow);
     } else {
       this.doOnce(this.rebuildHeader);
+      return;
     }
 
     header = row1;
@@ -820,7 +821,7 @@ export class View3D extends Editor {
     //});
 
     this.setCSS();
-    header.flushUpdate();
+    this.flushUpdate();
   }
 
   init() {
