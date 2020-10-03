@@ -177,7 +177,7 @@ export function init_webgl(canvas, params={}) {
   canvas.addEventListener(
     "webglcontextrestored", onContextLost, false);
 
-  //addFastParameterGet(gl);
+  addFastParameterGet(gl);
 
   _gl = gl;
   gl.haveWebGL2 = webgl2;

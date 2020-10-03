@@ -206,6 +206,10 @@ export class ToolMode extends WidgetTool {
     this.ctx.scene.widgets.remove(widget);
   }
 
+  drawsObjectIdsExclusively(obj) {
+    return false;
+  }
+
   hasUniqueWidget(cls) {
     return this.getUniqueWidget(cls) !== undefined;
   }

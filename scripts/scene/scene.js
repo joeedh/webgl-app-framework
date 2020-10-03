@@ -25,7 +25,7 @@ export const EnvLightFlags = {
 export class EnvLight {
   constructor() {
     this.color = new Vector3([1.0, 1.0, 1]);
-    this.power = 0.25;
+    this.power = 0.55;
     this.ao_dist = 25.0;
     this.ao_fac = 0.7;
     this.flag = EnvLightFlags.USE_AO;

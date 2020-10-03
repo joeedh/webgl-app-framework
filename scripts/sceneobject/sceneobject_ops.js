@@ -47,7 +47,7 @@ export class DeleteObjectOp extends SceneObjectOp {
 
     let list = [];
 
-    for (let ob of scene.objects.editable) {
+    for (let ob of scene.objects.selected.editable) {
       list.push(ob);
     }
 

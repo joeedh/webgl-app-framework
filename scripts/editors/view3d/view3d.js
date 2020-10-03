@@ -1291,6 +1291,10 @@ export class View3D extends Editor {
   drawRender(extraDrawCB) {
     let gl = this.gl;
 
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthMask(true);
+    gl.disable(gl.SCISSOR_TEST);
+
     if (this.renderEngine === undefined) {
       this.renderEngine = new RealtimeEngine(this);
     }
@@ -1381,24 +1385,20 @@ export class View3D extends Editor {
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     
     gl.disable(gl.BLEND);
-    gl.disable(gl.STENCIL_TEST);
-
     gl.enable(gl.DEPTH_TEST);
     gl.depthMask(true);
 
-    //console.log(this.size);
     let aspect = this.size[0] / this.size[1];
     this.activeCamera.regen_mats(aspect);
 
-    //console.log("viewport draw start");
-
     //this.drawThreeScene();
-    //return;
 
-    //this._testCamera();
-    //window.redraw_viewport();
+    let finish = (projmat) => {
+      this.activeCamera.regen_mats(aspect);
+      if (projmat) {
+        this.activeCamera.rendermat = projmat;
+      }
 
-    let drawIntern = () => {
       let drawgrid = this.flag & View3DFlags.SHOW_GRID;
 
       gl.depthMask(true);
@@ -1420,32 +1420,31 @@ export class View3D extends Editor {
         scene.toolmode.on_drawstart(this, gl);
       }
 
-      if (this.drawlines.length > 0) {
-        this.drawDrawLines(gl);
-      }
-
-      gl.depthMask(true);
-      gl.enable(gl.DEPTH_TEST);
-      gl.enable(gl.SCISSOR_TEST);
-
-
-      this._graphnode.outputs.onDrawPost.immediateUpdate();
-
-      if (scene.toolmode) {
-        scene.toolmode.on_drawend(this, gl);
-      }
-
-      gl.clear(gl.DEPTH_BUFFER_BIT);
-      this.widgets.draw(this.gl, this);
-
       gl.disable(gl.BLEND);
     }
 
     if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
-      this.drawRender(drawIntern);
+      this.drawRender(finish);
+      this.activeCamera.regen_mats()
     } else {
-      drawIntern();
+      finish();
     }
+
+    if (this.drawlines.length > 0) {
+      this.drawDrawLines(gl);
+    }
+
+    gl.depthMask(true);
+    gl.enable(gl.DEPTH_TEST);
+
+    this._graphnode.outputs.onDrawPost.immediateUpdate();
+
+    if (scene.toolmode) {
+      scene.toolmode.on_drawend(this, gl);
+    }
+
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+    this.widgets.draw(this.gl, this);
   }
 
   drawDrawLines(gl) {

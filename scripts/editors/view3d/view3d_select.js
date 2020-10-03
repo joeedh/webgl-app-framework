@@ -36,8 +36,8 @@ export class GPUSelectBuffer {
   gen(ctx, gl, view3d) {
     this.regen = false;
 
-    let w = this.size[0] = ~~view3d.size[0];
-    let h = this.size[1] = ~~view3d.size[1];
+    let w = this.size[0] = ~~view3d.glSize[0];
+    let h = this.size[1] = ~~view3d.glSize[1];
 
     if (this.fbo === undefined) {
       this.fbo = new FBO(gl, w, h);
@@ -239,7 +239,7 @@ export class GPUSelectBuffer {
   }
 
   _check(ctx, gl, view3d, selmask = this._last_selmask) {
-    let bad = this.size.vectorDistance(view3d.glSize) !== 0.0;
+    let bad = this.size.vectorDistance(view3d.glSize) > 0.0001;
     //bad = bad || this._last_selmask !== selmask;
 
     //bad = bad || this.pos.vectorDistance(view3d.glPos) != 0.0;
@@ -275,9 +275,9 @@ export class GPUSelectBuffer {
 
     if (update) {
       console.log("DRAWING");
-    //window.setTimeout(() => {
+      //window.setTimeout(() => {
       this.draw(ctx, gl, view3d, selmask);
-    //}, 1);
+      //}, 1);
     }
   }
 

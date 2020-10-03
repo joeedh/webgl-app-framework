@@ -1420,6 +1420,37 @@ export class Mesh extends SceneObjectData {
       meshes[key].draw(gl, uniforms, program);
     }
 
+    if (selmask & SelMask.FACE) {
+      let alpha = uniforms.alpha;
+
+      if (drawTransFaces) {
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        uniforms.alpha = 0.25;
+
+        //gl.depthMask(false);
+        //gl.disable(gl.DEPTH_TEST);
+      }
+
+      uniforms.polygonOffset *= 0.25;
+      draw_list(this.faces, "faces");
+
+      if (drawTransFaces) {
+        /*
+        gl.disable(gl.DEPTH_TEST);
+        gl.depthMask(true);
+
+        gl.enable(gl.BLEND);
+        draw_list(this.faces, "faces");
+
+        gl.disable(gl.BLEND);
+        gl.enable(gl.DEPTH_TEST);
+         */
+        gl.disable(gl.BLEND);
+      }
+    }
+
     if (selmask & SelMask.VERTEX) {
       draw_list(this.verts, "verts");
     }
@@ -1431,30 +1462,6 @@ export class Mesh extends SceneObjectData {
       draw_list(this.edges, "edges");
     }
 
-    if (selmask & SelMask.FACE) {
-      let alpha = uniforms.alpha;
-
-      if (drawTransFaces) {
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-        uniforms.alpha = 0.25;
-
-        gl.depthMask(false);
-        gl.disable(gl.DEPTH_TEST);
-      }
-
-      uniforms.polygonOffset *= 0.25;
-      draw_list(this.faces, "faces");
-
-      if (drawTransFaces) {
-        uniforms.alpha = alpha;
-        gl.disable(gl.BLEND);
-
-        gl.enable(gl.DEPTH_TEST);
-        gl.depthMask(true);
-      }
-    }
   }
 
   draw(view3d, gl, uniforms, program, object) {

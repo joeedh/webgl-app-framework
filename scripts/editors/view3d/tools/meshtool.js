@@ -165,18 +165,23 @@ export class MeshToolBase extends ToolMode {
       }
     }
 
-
     let ret = castViewRay(ctx, ctx.selectMask, mpos, ctx.view3d, CastModes.FRAMEBUFFER);
+    let p;
     if (ret !== undefined) {
-      let toolop = ctx.api.createTool(ctx, "mesh.extrude_one_vertex()");
-
-      toolop.inputs.meshPaths.setValue(this.getMeshPaths());
-      toolop.inputs.co.setValue(ret.p3d);
-      ctx.toolstack.execTool(this.ctx, toolop);
-
-      console.log(ret);
-      return true;
+      p = ret.p3d;
+    } else {
+      p = new Vector3();
+      p.multVecMatrix(this.ctx.view3d.cursor3D);
     }
+
+    let toolop = ctx.api.createTool(ctx, "mesh.extrude_one_vertex()");
+
+    toolop.inputs.meshPaths.setValue(this.getMeshPaths());
+    toolop.inputs.co.setValue(p);
+    ctx.toolstack.execTool(this.ctx, toolop);
+
+    console.log(ret);
+    return true;
 
     return e.button === 0;// || (e.touches !== undefined && e.touches.length === 0);
   }
