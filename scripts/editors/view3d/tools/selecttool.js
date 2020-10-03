@@ -215,7 +215,8 @@ export class ObjectEditor extends ToolMode {
     }
   }
 
-  on_drawstart(gl) {
+  on_drawstart(view3d, gl) {
+    super.on_drawstart(view3d, gl);
   }
 
   /*
@@ -274,8 +275,8 @@ export class ObjectEditor extends ToolMode {
     return true;
   }
 
-  on_drawend(gl) {
-    super.on_drawend(gl);
+  on_drawend(view3d, gl) {
+    super.on_drawend(view3d, gl);
   }
 
   findnearest(ctx, x, y, selmask=SelMask.OBJECT, limit=25) {

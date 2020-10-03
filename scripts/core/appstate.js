@@ -20,7 +20,7 @@ import '../editors/resbrowser/resbrowser_types.js';
 
 import '../editors/view3d/tools/tools.js';
 import cconst2 from "../path.ux/scripts/config/const.js";
-import {Material} from './material.js';
+import {Material, makeDefaultMaterial} from './material.js';
 import {App, ScreenBlock} from '../editors/editor_base.js';
 import {Library, DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import {IDGen} from '../util/util.js';
@@ -95,17 +95,16 @@ export class BasicFileOp extends ToolOp {
     lib.add(screenblock);
     lib.setActive(screenblock);
 
-    let mat = new Material();
-    mat.name = "Default";
-    mat.lib_flag |= BlockFlags.HIDE;
-
-    lib.add(mat);
-
     //*
     let mesh = new Mesh();
     lib.add(mesh);
 
     makeCube(mesh);
+
+    let mat = makeDefaultMaterial();
+    lib.add(mat);
+    mesh.materials.push(mat);
+    mat.lib_addUser(mesh);
 
     let sob = new SceneObject();
     lib.add(sob);
@@ -116,6 +115,15 @@ export class BasicFileOp extends ToolOp {
     scene.add(sob);
     scene.objects.setSelect(sob, true);
     scene.objects.setActive(sob);
+
+    let light = new Light();
+    lib.add(light);
+
+    let sob2 = new SceneObject(light);
+    lib.add(sob2);
+    sob2.location[2] = 7.0;
+
+    scene.add(sob2);
 
     sob.graphUpdate();
     mesh.graphUpdate();
@@ -144,6 +152,7 @@ import {genDefaultScreen} from '../editors/screengen.js';
 import {Collection} from "../scene/collection.js";
 import {PropsEditor} from "../editors/properties/PropsEditor.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
+import {Light} from "../light/light.js";
 
 export function genDefaultFile(appstate, dont_load_startup=0) {
   if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {

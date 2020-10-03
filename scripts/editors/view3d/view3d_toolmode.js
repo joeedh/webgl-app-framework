@@ -56,6 +56,10 @@ export class ToolMode extends WidgetTool {
     this.defineKeyMap();
   }
 
+  drawsObjectExclusively(ob) {
+
+  }
+
   get typeName() {
     return this.constructor.widgetDefine().name;
   }
@@ -222,6 +226,14 @@ export class ToolMode extends WidgetTool {
     widget.remove();
   }
 
+  getWidgetHighlight() {
+    return this.ctx.scene.widgets.widgets.highlight;
+  }
+
+  hasWidgetHighlight() {
+    return this.getWidgetHighlight() !== undefined;
+  }
+
   updateTransWidgets() {
     let prop = this._transProp;
     let mask = this.transformWidget;
@@ -296,6 +308,10 @@ export class ToolMode extends WidgetTool {
 
   onContextLost(e) {
     return super.onContextLost(e);
+  }
+
+  loadSTRUCT(reader) {
+    reader(this)
   }
 
   on_mousedown(e, x, y, was_touch) {

@@ -24,17 +24,28 @@ export class FBO {
     this.gl = gl;
     this.fbo = undefined;
     this.regen = true;
-    this.size = [width, height];
+    this.size = new Vector2([width, height]);
     this.texDepth = undefined;
     this.texColor = undefined;
 
   }
 
-  copy() {
+  copy(copy_buffers=false) {
     let ret = new FBO();
 
-    ret.size = [this.size[0], this.size[1]];
+    ret.size = new Vector2(this.size);
     ret.gl = this.gl;
+
+    if (!copy_buffers || !this.gl || !this.fbo) {
+      return ret;
+    }
+
+    ret.create(this.gl);
+
+    let gl = this.gl;
+
+    //ret.texColor = this.texColor.copy(gl, true);
+    //ret.texDepth = this.texDepth.copy(gl, true);
 
     return ret;
   }
@@ -52,7 +63,7 @@ export class FBO {
     this.size[1] = ~~this.size[1];
 
     //console.trace("framebuffer creation");
-    
+
     this.fbo = gl.createFramebuffer();
 
     if (!this.texDepth)
@@ -64,36 +75,36 @@ export class FBO {
     let layer = this.layer;
 
     function texParams(target, tex) {
-      gl.bindTexture(target, tex);
+      gl.bindTexture(target, tex.texture);
 
-      gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-      gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-      gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      tex.texParameteri(gl, target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      tex.texParameteri(gl, target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      tex.texParameteri(gl, target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      tex.texParameteri(gl, target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
       if (target !== gl.TEXTURE_2D) {
-        gl.texParameteri(target, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+        tex.texParameteri(gl, target, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
       }
     }
 
-    texParams(this.target, this.texDepth.texture);
+    texParams(this.target, this.texDepth);
     if (gl.haveWebGL2) {
-      gl.texParameteri(target, gl.TEXTURE_COMPARE_MODE, gl.NONE);
+      this.texDepth.texParameteri(gl, this.target, gl.TEXTURE_COMPARE_MODE, gl.NONE);
       //gl.texParameteri(target, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
       //gl.texParameteri(target, gl.TEXTURE_COMPARE_FUNC, gl.ALWAYS);
     }
 
-    texParams(this.target, this.texColor.texture);
+    texParams(this.target, this.texColor);
 
-    let initTex = (dtype, dtype2, dtype3) => {
+    let initTex = (tex, dtype, dtype2, dtype3) => {
       if (this.target !== gl.TEXTURE_2D)
         return;
 
       if (gl.haveWebGL2) {
-        gl.texImage2D(this.target, 0, dtype, this.size[0], this.size[1], 0, dtype2, dtype3, null);
-        //gl.texStorage2D(gl.TEXTURE_2D, 1, dtype, this.size[0], this.size[1]);
+        tex.texImage2D(gl, this.target, 0, dtype, this.size[0], this.size[1], 0, dtype2, dtype3, null);
+        //  gl.texStorage2D(gl.TEXTURE_2D, 1, dtype, this.size[0], this.size[1]);
       } else {
-        gl.texImage2D(this.target, 0, dtype, this.size[0], this.size[1], 0, dtype2, dtype3, null);
+        tex.texImage2D(gl, this.target, 0, dtype, this.size[0], this.size[1], 0, dtype2, dtype3, null);
       }
     };
 
@@ -106,13 +117,13 @@ export class FBO {
     let dtype3 = gl.haveWebGL2 ? gl.UNSIGNED_INT_24_8 : gl.depth_texture.UNSIGNED_INT_24_8_WEBGL;
 
     gl.bindTexture(this.target, this.texDepth.texture);
-    initTex(dtype, dtype2, dtype3);
+    initTex(this.texDepth, dtype, dtype2, dtype3);
 
     let ctype = this.ctype;
     let ctype2 = gl.RGBA, ctype3 = gl.FLOAT;
 
     gl.bindTexture(target, this.texColor.texture);
-    initTex(ctype, ctype2, ctype3);
+    initTex(this.texColor, ctype, ctype2, ctype3);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
 
@@ -129,7 +140,7 @@ export class FBO {
       if (DEBUG.fbo) {
         console.log("TARGET2", target2);
       }
-      
+
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, target2, this.texColor.texture, 0);
       if (target === gl.TEXTURE_2D) {
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, target2, this.texDepth.texture, 0);
@@ -140,43 +151,43 @@ export class FBO {
     }
 
     let errret = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-    
+
     if (DEBUG.fbo) {
       console.log("FBO STATUS:", errret, webgl.constmap[errret]);
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
-  
+
   bind(gl) {
+    this._last_viewport = gl.getParameter(gl.VIEWPORT);
+
     gl = this.gl = gl === undefined ? this.gl : gl;
-    
+
     if (this.regen) {
-      this.create();
+      this.create(gl);
     }
-    
+
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+    gl.viewport(0, 0, this.size[0], this.size[1]);
   }
 
-  _getQuad(gl, width, height) {
+  _getQuad(gl, width, height, program) {
     width = ~~width;
     height = ~~height;
 
     if (this.smesh === undefined || this.size[0] != width || this.size[1] != height) {
-      console.log(this.size, this.smesh);
-      
-      this.size[0] = width;
-      this.size[1] = height;
-
-      console.warn("updating framebuffer pipeline for new width/height", width, height);
-
-
       let lf = simplemesh.LayerTypes;
       this.smesh = new simplemesh.SimpleMesh(lf.LOC | lf.UV);
-      this.smesh.program = this.blitshader = webgl.getShader(gl, getBlitShaderCode(gl));
 
       let quad = this.smesh.quad([-1,-1,0], [-1,1,0], [1,1,0], [1,-1,0]);
       quad.uvs([0,0,0], [0,1,0], [1,1,0], [1,0,0]);
+    }
+
+    if (program) {
+      this.smesh.program = program;
+    } else {
+      this.smesh.program = this.blitshader = webgl.getShader(gl, getBlitShaderCode(gl));
     }
 
     return this.smesh;
@@ -227,10 +238,15 @@ export class FBO {
    * Draws texture to screen
    * Does not bind framebuffer
    * */
-  drawQuad(gl, width, height, tex=this.texColor, depth=this.texDepth) {
-    let quad = this._getQuad(gl, width, height);
+  drawQuad(gl, width, height, tex=this.texColor, depth=this.texDepth, program=undefined, uniforms=undefined) {
+    let quad = this._getQuad(gl, width, height, program);
 
-    quad.program = this.blitshader;
+    if (program) {
+      quad.program = program;
+    } else {
+      quad.program = this.blitshader;
+    }
+
     quad.uniforms.rgba = tex;
     quad.uniforms.depth = depth;
     quad.uniforms.valueScale = 1.0;
@@ -239,11 +255,18 @@ export class FBO {
     gl.disable(gl.BLEND);
     gl.disable(gl.CULL_FACE);
 
-    this.smesh.draw(gl);
+    this.smesh.draw(gl, uniforms);
   }
 
   unbind(gl) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    let vb = this._last_viewport;
+    if (!vb) {
+      return;
+    }
+
+    gl.viewport(vb[0], vb[1], vb[2], vb[3]);
   }
 
   destroy() {
@@ -255,10 +278,11 @@ export class FBO {
         this.gl.deleteTexture(this.texColor.texture);
       }
 
+      this.texDepth.texture = this.texColor.texture = undefined;
       this.fbo = undefined;
     }
   }
-  
+
   update(gl, width, height) {
     width = ~~width;
     height = ~~height;
@@ -274,13 +298,17 @@ export class FBO {
     //*/
 
     gl = this.gl = gl === undefined ? this.gl : gl;
-    
-    if (width !== this.size[0] || height !== this.size[1]) {
+
+    if (width !== this.size[0] || height !== this.size[1] || gl !== this.gl) {
       console.log("fbo update", width, height);
       this.size[0] = width;
       this.size[1] = height;
-      
-      this.destroy();
+
+      if (this.gl === undefined || gl === this.gl) {
+        this.destroy(gl);
+      }
+
+      this.texDepth = this.texColor = undefined;
       this.create(gl);
     }
   }
@@ -289,16 +317,16 @@ export class FBO {
 export class FrameStage extends FBO {
   constructor(shader, width=512, height=512) {
     super(undefined, width, height);
-    
+
     this.shader = shader;
   }
-  
+
   update(gl, width, height) {
     if (gl === undefined || width === undefined || height === undefined) {
       console.log("bad arguments to fbo.FrameStage.update()", arguments);
       throw new Error("bad arguments to fbo.FrameStage.update()");
     }
-    
+
     super.update(gl, width, height);
   }
 }
@@ -393,9 +421,9 @@ void main(void) {
 export class FramePipeline {
   constructor(width=512, height=512) {
     this.stages = [new FrameStage()];
-    this.size = [width, height];
+    this.size = new Vector2([width, height]);
     this.smesh = undefined;
-    
+
     this._texs = [
       new webgl.Texture(0),
       new webgl.Texture(1),
@@ -405,24 +433,24 @@ export class FramePipeline {
       new webgl.Texture(5)
     ];
   }
-  
+
   destroy(gl) {
     for (let stage of this.stages) {
       stage.destroy(gl);
     }
-    
+
     if (this.smesh !== undefined) {
       this.smesh.destroy(gl);
       this.smesh = undefined;
     }
     this.stages = undefined;
   }
-  
+
   //see webgl.getShader for shaderdef, ignore old loadShader cruft
   addStage(gl, shaderdef) {
     let shader = webgl.getShader(gl, shaderdef);
     let stage = new FrameStage(shader, this.size[0], this.size[1]);
-    
+
     this.stages.push(stage);
     return stage;
   }
@@ -431,43 +459,43 @@ export class FramePipeline {
     if (this.smesh === undefined || this.size[0] != width || this.size[1] != height) {
       this.size[0] = width;
       this.size[1] = height;
-      
+
       console.log("updateing framebuffer pipeline for new width/height");
-      
+
       let lf = simplemesh.LayerTypes;
       this.smesh = new simplemesh.SimpleMesh(lf.LOC | lf.UV);
 
       this.smesh.program = this.blitshader = webgl.getShader(gl, getBlitShaderCode(gl));
       this.smesh.uniforms.iprojectionMatrix = drawmats.irendermat;
       this.smesh.uniforms.projectionMatrix = drawmats.rendermat;
-      
+
       let quad = this.smesh.quad([-1,-1,0], [-1,1,0], [1,1,0], [1,-1,0])
       quad.uvs([0,0,0], [0,1,0], [1,1,0], [1,0,0]);
     }
-    
+
     //do first stage
     let stage = this.stages[0];
-    
+
     stage.update(gl, width, height);
     stage.bind(gl);
-    
+
     gl.viewport(0, 0, this.size[0], this.size[1]);
-    
+
     gl.enable(gl.DEPTH_TEST);
-    
+
     gl.clearDepth(1000000.0);
     gl.clearColor(0.0, 0.0, 0.0, 0.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    
+
     drawfunc(gl);
     let laststage = stage;
 
     gl.depthMask(true);
     gl.disable(gl.DEPTH_TEST);
-    
+
     for (let i=1; i<this.stages.length; i++) {
       let stage = this.stages[i];
-      
+
       stage.update(gl, width, height);
 
       this._texs[0].texture = laststage.texColor.texture;
@@ -480,30 +508,30 @@ export class FramePipeline {
 
       this.smesh.program = stage.shader;
       stage.bind(gl);
-      
+
       this.smesh.draw(gl);
-      
+
       laststage = stage;
     }
   }
-  
+
   drawFinal(gl, stage=undefined) {
     if (stage === undefined) {
       stage = this.stages[this.stages.length-1];
     }
-    
+
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.disable(gl.DEPTH_TEST);
     gl.depthMask(1);
-    
+
     this.smesh.program = this.blitshader;
     this.blitshader.uniforms.rgba = this._texs[0];
     this.blitshader.uniforms.depth = this._texs[1];
     this.blitshader.uniforms.size = this.size;
-    
+
     this._texs[0].texture = stage.texColor.texture;
     this._texs[1].texture = stage.texDepth.texture;
-    
+
     this.smesh.draw(gl);
   }
 }

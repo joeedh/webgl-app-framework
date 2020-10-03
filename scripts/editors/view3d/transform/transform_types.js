@@ -22,7 +22,7 @@ export class MeshTransType extends TransDataType {
   }}
 
   /**FIXME this only handles the active mesh object, it should
-    iterator over ctx.selectedMeshObjets*/
+    iterate over ctx.selectedMeshObjets*/
   static genData(ctx, selectmode, propmode, propradius) {
     let mesh = ctx.mesh;
     let tdata = [];
@@ -33,7 +33,7 @@ export class MeshTransType extends TransDataType {
 
     //console.log("MESH GEN", selectmode & SelMask.GEOM, selectmode);
 
-    if (propmode != PropModes.NONE) {
+    if (propmode !== PropModes.NONE) {
       let i = 0;
       let unset_w = 100000.0;
 
@@ -395,7 +395,7 @@ export class MeshTransType extends TransDataType {
 
     mesh.regenTesellation();
     mesh.regenRender();
-    mesh.outputs.depend.update();
+    mesh.outputs.depend.graphUpdate();
     //mesh.regenPartial();
   }
 }

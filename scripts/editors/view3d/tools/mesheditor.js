@@ -176,7 +176,7 @@ export class MeshEditor extends MeshToolBase {
     return super.on_mousemove(e, x, y, was_touch);
   }
 
-  on_drawstart(gl, view3d) {
+  on_drawstart(view3d, gl) {
     if (!this.ctx) return;
 
     this._getObject();
@@ -194,7 +194,7 @@ export class MeshEditor extends MeshToolBase {
       }
     }
 
-    super.on_drawstart(gl, view3d);
+    super.on_drawstart(view3d, gl);
   }
 
   dataLink(scene, getblock, getblock_addUser) {

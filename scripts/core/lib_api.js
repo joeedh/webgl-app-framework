@@ -1,5 +1,5 @@
 import {Matrix4, Vector2, Vector3, Vector4, nstructjs, ToolProperty, PropTypes, PropFlags,
-        EnumProperty} from '../path.ux/scripts/pathux.js';
+  EnumProperty} from '../path.ux/scripts/pathux.js';
 import * as util from '../util/util.js';
 
 import {IDGen} from '../util/util.js';
@@ -10,9 +10,10 @@ let STRUCT = nstructjs.STRUCT;
 
 export let BlockTypes = [];
 export const BlockFlags = {
-  SELECT : 1,
-  HIDE   : 2,
-  FAKE_USER : 4
+  SELECT    : 1,
+  HIDE      : 2,
+  FAKE_USER : 4,
+  NO_SAVE   : 8 //do not save
 };
 
 export class DataBlock extends Node {
@@ -23,13 +24,15 @@ export class DataBlock extends Node {
       if (k.startsWith("lib_") || k === "name") {
         continue;
       }
+
       if (k.startsWith("graph_")) {
         continue;
       }
+
       if (k === "inputs" || k === "outputs") {
         continue;
       }
-      
+
       this[k] = obj[k];
     }
 
@@ -49,17 +52,17 @@ export class DataBlock extends Node {
     this.graph_flag |= NodeFlags.SAVE_PROXY;
 
     let def = this.constructor.blockDefine();
-    
+
     this.lib_id = -1;
     this.name = def.defaultName;
-    this.lib_flag = def.flag;
+    this.lib_flag = def.flag !== undefined ? def.flag : 0;
     this.lib_icon = def.icon;
     this.lib_type = def.typeName;
     this.lib_users= 0;
     this.lib_external_ref = undefined; //presently unused
 
     //note that this is regenerated on file load
-    this.lib_userlist = [];
+    this.lib_userlist = []; //list of things using us
 
     if (this.lib_flag & BlockFlags.FAKE_USER) {
       this.lib_users = 1;
@@ -79,12 +82,7 @@ export class DataBlock extends Node {
     return ret;
   }
 
-  //decriments lib_users in blocks in lib_userlist,
-  //but does *not* actually call their .destroy functions
   destroy() {
-    for (let block of this.lib_userlist) {
-      block.lib_users--;
-    }
   }
 
   //like swapDataBlockContents but copies a few lib_ and graph_ fields
@@ -120,7 +118,7 @@ export class DataBlock extends Node {
   }
 
   /**
-    returns type info for a datablock
+   returns type info for a datablock
 
    @returns {{typeName: string, defaultName: string, uiName: string, flag: number, icon: number}}
    @example
@@ -206,8 +204,8 @@ export class DataBlock extends Node {
   }
 
   /**all subclasses must call STRUCT.Super
-    instead of read inside their loadSTRUCTs,
-    that's how afterSTRUCT is invoked*/
+   instead of read inside their loadSTRUCTs,
+   that's how afterSTRUCT is invoked*/
   loadSTRUCT(reader) {
     reader(this);
     super.loadSTRUCT(reader);
@@ -219,7 +217,7 @@ export class DataBlock extends Node {
   static register(cls) {
     BlockTypes.push(cls);
   }
-  
+
   static getClass(typeName) {
     for (let type of BlockTypes) {
       if (type.blockDefine().typeName == typeName)
@@ -260,7 +258,7 @@ export class DataRef {
 
     return ret;
   }
-  
+
   static fromBlock(block) {
     if (block instanceof DataRef) {
       return block.copy();
@@ -283,7 +281,7 @@ export class DataRef {
     ret.lib_id = block.lib_id;
     ret.name = block.name;
     ret.lib_external_ref = block.lib_external_ref;
-    
+
     return ret;
   }
 
@@ -311,7 +309,7 @@ window.DataRef = DataRef;
 export class BlockSet extends Array {
   constructor(type, datalib) {
     super();
-    
+
     this.datalib = datalib;
     this.type = type;
     this.__active = undefined;
@@ -393,16 +391,16 @@ export class BlockSet extends Array {
       console.warn("Block already in dataset");
       return false;
     }
-    
+
     super.push(block);
-    
+
     if (block.lib_id == -1) {
       block.lib_id = this.datalib.idgen.next();
     }
 
     this.datalib.block_idmap[block.lib_id] = block;
     this.datalib.block_namemap[block.name] = block;
-    
+
     this.idmap[block.lib_id] = block;
     this.namemap[block.name] = block;
 
@@ -446,7 +444,7 @@ export class BlockSet extends Array {
   remove(block) {
     let bad = block === undefined || !(block instanceof DataBlock) || block.lib_id === undefined;
     bad = bad || !(block.lib_id in this.idmap);
-    
+
     if (bad) {
       console.warn("Bad call to lib_api.BlockSet.prototype.remove(); block:", block);
       return;
@@ -473,13 +471,22 @@ export class BlockSet extends Array {
     delete this.datalib.block_idmap[block.lib_id];
 
     block.lib_id = -1;
-    
+
     if (block === this.active) {
       this.active = undefined;
     }
 
     super.remove(block);
-    block.destroy();
+
+    try {
+      block.destroy();
+    } catch (error) {
+      util.print_stack(error);
+      console.log("block.destroy() callback failed", block);
+    }
+
+    //remove form dependency graph
+    this.datalib.graph.remove(block);
   }
 
   destroy() {
@@ -487,10 +494,10 @@ export class BlockSet extends Array {
       block.destroy();
     }
   }
-  
+
   dataLink(getblock, getblock_addUser) {
     let type = this.type.blockDefine().typeName;
-    
+
     if (DEBUG.DataLink) {
       console.warn("Linking " + type + ". . .", this.active, this.idmap);
     }
@@ -504,7 +511,7 @@ export class BlockSet extends Array {
     for (let block of this) {
       block.dataLink(getblock, getblock_addUser);
     }
-    
+
     return this;
   }
 
@@ -522,11 +529,11 @@ export class BlockSet extends Array {
 //to allow loading them individually
 BlockSet.STRUCT = `
 BlockSet {
-  type   : string | obj.type.blockDefine().typeName;
-  active : int | obj.active !== undefined ? obj.active.lib_id : -1;
+  type   : string | this.type.blockDefine().typeName;
+  active : int | this.active !== undefined ? obj.active.lib_id : -1;
 }
 `;
-nstructjs.manager.add_class(BlockSet);
+nstructjs.register(BlockSet);
 
 export class Library {
   constructor() {
@@ -543,7 +550,7 @@ export class Library {
 
     for (let cls of BlockTypes) {
       let lib = new BlockSet(cls, this);
-      
+
       this.libs.push(lib);
       this.libmap[cls.blockDefine().typeName] =  lib;
 
@@ -627,7 +634,7 @@ export class Library {
 
   add(block, force_unique_name=true) {
     let typename = block.constructor.blockDefine().typeName;
-    
+
     if (!(typename in this.libmap)) {
       //see if we're missing a legitimate block type
       for (let cls of BlockTypes) {
@@ -644,17 +651,17 @@ export class Library {
 
     return this.getLibrary(typename).add(block, undefined, force_unique_name);
   }
-  
+
   remove(block) {
     return this.getLibrary(block.constructor.blockDefine().typeName).remove(block);
   }
-  
+
   destroy() {
     for (let lib of this.libs) {
       lib.destroy();
     }
   }
-  
+
   getLibrary(typeName) {
     return this.libmap[typeName];
   }
@@ -670,7 +677,7 @@ export class Library {
     this.libs.length = 0;
 
     reader(this);
-    
+
     for (let lib of this.libs.slice(0, this.libs.length)) {
       let type = undefined;
 
@@ -681,14 +688,14 @@ export class Library {
           type = cls;
         }
       }
-      
+
       if (type === undefined) {
         console.warn("Failed to load library type", lib.type);
 
         this.libs.remove(lib);
         continue;
       }
-      
+
       lib.afterLoad(this, type);
     }
 

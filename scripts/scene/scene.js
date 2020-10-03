@@ -24,11 +24,46 @@ export const EnvLightFlags = {
 
 export class EnvLight {
   constructor() {
-    this.color = new Vector3([0.5, 0.8, 1]);
-    this.power = 0.5;
-    this.ao_dist = 5.0;
-    this.ao_fac = 5.0;
+    this.color = new Vector3([1.0, 1.0, 1]);
+    this.power = 0.25;
+    this.ao_dist = 25.0;
+    this.ao_fac = 0.7;
     this.flag = EnvLightFlags.USE_AO;
+
+    this.sunDir = new Vector3([-0.14083751989292737, -0.4480698391806443, -0.8828353256451855]);
+    this.sunDir.normalize();
+
+    this.sunPower = 0.33;
+    this.sunRadius = 0.5;
+    this.sunColor = new Vector3([1, 1, 1]);
+    this.sunLight = undefined;
+
+    this._digest = new util.HashDigest();
+  }
+
+  calcUpdateHash() {
+    let ret = this._digest;
+
+    ret.reset();
+
+    for (let i = 0; i < 3; i++) {
+      ret.add(this.color[i]*1024);
+    }
+
+    ret.add(this.ao_dist*1024);
+    ret.add(this.ao_fac*1024);
+    ret.add(this.flag*1024);
+    ret.add(this.power*1024);
+
+    for (let i=0; i<3; i++) {
+      ret.add(this.sunDir[i]);
+      ret.add(this.sunColor[i]);
+    }
+
+    ret.add(this.sunPower);
+    ret.add(this.sunRadius);
+
+    return ret.get();
   }
 }
 
@@ -39,9 +74,13 @@ EnvLight {
   ao_dist    : float;
   ao_fac     : float;
   flag       : int;
+  sunColor   : vec3;
+  sunPower   : float;
+  sunRadius  : float;
+  sunDir     : vec3;
 }
 `;
-nstructjs.manager.add_class(EnvLight);
+nstructjs.register(EnvLight);
 
 export const SceneFlags = {
   SELECT : 1

@@ -1,6 +1,6 @@
 import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
-import {WidgetFlags, WidgetTool} from "../widgets.js";
+import {WidgetFlags} from "../widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {HotKey, KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
@@ -15,7 +15,7 @@ import {MovableWidget} from '../widget_utils.js';
 import {SnapModes, TranslateOp} from "../transform/transform_ops.js";
 import {SelOneToolModes} from "../selectmode.js";
 
-import {SceneObject} from "../../../sceneobject/sceneobject.js";
+import {ObjectFlags, SceneObject} from "../../../sceneobject/sceneobject.js";
 import {Mesh} from "../../../mesh/mesh.js";
 import {FindnearestMesh} from '../findnearest/findnearest_mesh.js';
 
@@ -26,10 +26,12 @@ import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
   MeshFeatureError} from '../../../mesh/mesh_base.js';
 
 export class MeshToolBase extends ToolMode {
-  constructor(manager) {
-    super(manager);
+  constructor() {
+    super(...arguments);
 
-    this.meshPath = "object"; //set to scene object so resolveMesh is happy
+    this.transformConstraint = undefined; //string, e.g. xy
+    this.drawOwnIds = true;
+    this.meshPath = "object";
     this.selectMask = SelMask.GEOM;
     this.drawSelectMask = SelMask.EDGE|SelMask.VERTEX|SelMask.HANDLE;
 
@@ -41,9 +43,9 @@ export class MeshToolBase extends ToolMode {
     this.keymap = new KeyMap([
       new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
       new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
-      new HotKey("D", [], "mesh.subdivide_smooth()"),
+      new HotKey("D", [], "mesh.subdivide()"),
       new HotKey("G", [], "view3d.translate(selmask=17)"),
-      new HotKey("X", [], "mesh.delete_selected()")
+      new HotKey("X", [], "mesh.delete_selected()"),
     ]);
 
     return this.keymap;
@@ -129,7 +131,7 @@ export class MeshToolBase extends ToolMode {
       return false;
     }
 
-    if (this.manager.widgets.highlight !== undefined) {
+    if (this.hasWidgetHighlight()) {
       return false;
     }
 
@@ -224,10 +226,10 @@ export class MeshToolBase extends ToolMode {
     super.update();
   }
 
-  findHighlight(e, x, y) {
+  findHighlight(e, x, y, selectMask=this.selectMask) {
     let view3d = this.ctx.view3d;
 
-    let ret = this.findnearest3d(view3d, x, y, this.selectMask);
+    let ret = this.findnearest3d(view3d, x, y, selectMask);
     let found = false;
 
     if (ret !== undefined && ret.length > 0) {
@@ -246,6 +248,7 @@ export class MeshToolBase extends ToolMode {
 
       let redraw = mesh.getElemList(elem.type).highlight !== elem;
 
+      mesh.clearHighlight();
       mesh.setHighlight(elem);
 
       if (redraw) {
@@ -290,7 +293,7 @@ export class MeshToolBase extends ToolMode {
       return false;
     }
 
-    if (this.manager.widgets.highlight !== undefined) {
+    if (this.hasWidgetHighlight()) {
       return false;
     }
 
@@ -327,6 +330,11 @@ export class MeshToolBase extends ToolMode {
         console.log("translate");
         let tool = new TranslateOp();
 
+        if (this.transformConstraint) {
+          tool.setConstraintFromString(this.transformConstraint);
+          console.log("TC", this.transformConstraint, tool.inputs.constraint.getValue());
+        }
+
         tool.inputs.selmask.setValue(SelMask.GEOM);
         this.ctx.toolstack.execTool(this.ctx, tool);
 
@@ -344,22 +352,34 @@ export class MeshToolBase extends ToolMode {
     return FindNearest(this.ctx, selmask, new Vector2([x, y]), view3d);
   }
 
+  drawsObjectIdsExclusively(obj, check_mesh=false) {
+    let ret = !check_mesh || obj.data instanceof Mesh;
+
+    ret = ret && ((obj.flag & ObjectFlags.SELECT) || obj === this.ctx.scene.objects.active);
+    ret = ret && !(obj.flag & ObjectFlags.HIDE);
+
+    return ret;
+  }
+
   drawIDs(view3d, gl, uniforms, selmask=SelMask.GEOM) {
+    if (!this.drawOwnIds) {
+      return;
+    }
+
     view3d.activeCamera.regen_mats();
 
     uniforms = Object.assign({}, uniforms);
 
-    uniforms.projectionMatrix = view3d.activeCamera.rendermat;
-    uniforms.objectMatrix = new Matrix4();
+    let matrix = new Matrix4(uniforms.objectMatrix);
 
     let camdist = view3d.activeCamera.pos.vectorDistance(view3d.activeCamera.target);
 
     for (let mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
       if (mesh.ownerMatrix && mesh.ownerId !== undefined) {
-        uniforms.objectMatrix.load(mesh.ownerMatrix);
+        uniforms.objectMatrix.load(matrix).multiply(mesh.ownerMatrix);
         uniforms.object_id = mesh.ownerId;
       } else {
-        uniforms.objectMatrix.makeIdentity();
+        uniforms.objectMatrix.load(matrix);
         //selection system needs some sort of object id
         uniforms.object_id = 131072;
       }
@@ -376,7 +396,7 @@ export class MeshToolBase extends ToolMode {
     }
   }
 
-  drawSphere(gl, view3d, p, scale=0.01) {
+  drawSphere(gl, view3d, p, scale=0.01, color=[1, 0.4, 0.2, 1.0]) {
     let cam = this.ctx.view3d.activeCamera;
     let mat = new Matrix4();
 
@@ -392,12 +412,11 @@ export class MeshToolBase extends ToolMode {
     Shapes.SPHERE.draw(gl, {
       projectionMatrix : cam.rendermat,
       objectMatrix : mat,
-      color : [1, 0.4, 0.2, 1.0],
+      color : color,
     }, Shaders.WidgetMeshShader)
   }
 
-  on_drawstart(gl, manager) {
-    let view3d = this.ctx.view3d;
+  on_drawend(view3d, gl) {
     let cam = this.ctx.view3d.activeCamera;
 
     let uniforms = {
@@ -423,7 +442,7 @@ export class MeshToolBase extends ToolMode {
       if (mesh.ownerId) {
         object = datalib.get(mesh.ownerId);
       }
-      
+
       if (mesh.ownerMatrix !== undefined) {
         uniforms.objectMatrix.load(mesh.ownerMatrix);
       } else {
@@ -441,7 +460,7 @@ export class MeshToolBase extends ToolMode {
       mesh.drawElements(view3d, gl, this.drawSelectMask, uniforms, program, object, true);
     }
 
-    this.drawCursor = this.manager.widgets.highlight === undefined;
+    this.drawCursor = this.hasWidgetHighlight();
 
     if (this.drawCursor && this.cursor !== undefined) {
       this.drawSphere(gl, view3d, this.cursor);
@@ -450,14 +469,12 @@ export class MeshToolBase extends ToolMode {
 
   loadSTRUCT(reader) {
     reader(this);
-    if (super.loadSTRUCT) {
-      super.loadSTRUCT(reader);
-    }
+    super.loadSTRUCT(reader);
   }
 
 }
 
 MeshToolBase.STRUCT = STRUCT.inherit(MeshToolBase, ToolMode) + `
 }`;
-nstructjs.manager.add_class(MeshToolBase);
+nstructjs.register(MeshToolBase);
 //ToolMode.register(MeshToolBase);

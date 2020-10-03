@@ -63,6 +63,10 @@ export class SceneObject extends DataBlock {
 
     this.data = data;
     this.flag = 0;
+
+    if (data) {
+      data.lib_addUser(this);
+    }
     /** @type {ObjectFlags}*/
   }
 

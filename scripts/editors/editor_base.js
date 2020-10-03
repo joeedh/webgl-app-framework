@@ -598,6 +598,8 @@ window.setInterval(() => {
   }
 }, 1000.0 / 30.0);
 
+
+
 export class MeshMaterialChooser extends Container {
   constructor() {
     super();
@@ -839,14 +841,15 @@ export class MeshMaterialPanel extends Container {
       return;
     }
 
-    let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute("datapath"));
+    let mesh = this.getPathValue(this.ctx, this.getAttribute("datapath"));
     if (!mesh) {
       return;
     }
 
     let mat = this.chooser.getActive(mesh);
-    return this.ctx.api.getValue(this.ctx, this.getAttribute("datapath") + `.materials[${mat}].shader`);
+    return this.getPathValue(this.ctx, this.getAttribute("datapath") + `.materials[${mat}].shader`);
   }
+
   update() {
     if (!this.chooser || !this.ctx) {
       return;
@@ -881,3 +884,443 @@ export class MeshMaterialPanel extends Container {
   }}
 }
 UIBase.register(MeshMaterialPanel);
+
+export class DirectionChooser extends UIBase {
+  constructor() {
+    super();
+
+    this._last_dpi = undefined;
+    this.size = 128;
+    this.canvas = document.createElement("canvas");
+    this.shadow.appendChild(this.canvas);
+    this.mdown = false;
+    this.modaldata = undefined;
+    this._highlight = false;
+    this.last_th = 0;
+    this.start_th = 0;
+
+    this.flip = [1, 1];
+
+    this.last_mpos = new Vector2();
+    this.start_mpos = new Vector2();
+    this.value = new Vector3([0, 0.1, 1]);
+
+    this.g = this.canvas.getContext("2d");
+  }
+
+  endModal() {
+    if (this.modaldata) {
+      console.log("end modal");
+      popModalLight(this.modaldata);
+    }
+
+    this.modaldata = undefined;
+    this.mdown = false;
+    return;
+  }
+
+  init() {
+    super.init();
+
+    this.noMarginsOrPadding();
+    this.setCSS();
+    this._disabled = false;
+
+    this.addEventListener("mouseover", (e) => {
+      this.highlight = true;
+    })
+    this.addEventListener("mouseleave", (e) => {
+      this.highlight = false;
+      //this.mdown = false;
+    })
+    this.addEventListener("mouseout", (e) => {
+      this.highlight = false;
+      //this.mdown = false;
+    })
+    this.addEventListener("focus", (e) => {
+      this.highlight = true;
+    })
+    this.addEventListener("blur", (e) => {
+      this.highlight = false;
+      this.mdown = false;
+    })
+
+    let mousedown = (e, x, y) => {
+      this.mdown = true;
+      this.last_th = 0;
+      this.first = true;
+      this.start_value = new Vector3(this.value);
+      this.start_mpos[0] = x;
+      this.start_mpos[1] = y;
+      this.last_mpos[0] = x;
+      this.last_mpos[1] = y;
+
+      this.flip = [1, 1];
+
+      let table = [-1, 1, -1, -1];
+
+      let a = this.value[0] >= 0.0;
+      let b = this.value[1] >= 0.0;
+      let m = a | (b << 1);
+
+      let r = this.getBoundingClientRect();
+      let dx2 = x - (r.x+r.width*0.5), dy2 = y - r.y-r.height*0.5;
+      let s = dx2*this.value[1] - dy2*this.value[0];
+
+      //this.flip[0] = s < 0.0 ? -1.0 : 1.0;
+      //this.flip[0] = table[m];
+
+      if (this.modaldata) {
+        this.endModal();
+      }
+
+      this.modaldata = pushModalLight({
+        on_mousedown : (e) => {
+          if (e.button === 2) {
+            this.endModal();
+            this.setValue(this.start_value);
+          }
+        },
+        on_mousemove : (e) => {
+          let mat = new Matrix4();
+
+          //mat.multiply(rmat);
+
+          let r = this.canvas.getBoundingClientRect();
+          let rx = r.x + r.width*0.5;
+          let ry = r.y + r.height*0.5;
+
+          let dx2 = e.x - rx, dy2 = e.y - ry;
+          let sdx2 = this.start_mpos[0] - rx, sdy2 = this.start_mpos[1] - ry;
+
+          let scale = 1.0 / (0.5 * this.size * Math.sqrt(3.0));
+          let rawlen = Math.sqrt(dx2*dx2 + dy2*dy2) / (Math.sqrt(2.0)*this.size);
+
+          sdx2 = Math.min(Math.max(sdx2, -this.size), this.size);
+          sdy2 = Math.min(Math.max(sdy2, -this.size), this.size);
+          dx2 = Math.min(Math.max(dx2, -this.size), this.size);
+          dy2 = Math.min(Math.max(dy2, -this.size), this.size);
+
+          let v1 = new Vector3([sdx2*scale, sdy2*scale, 0]);
+          let v2 = new Vector3([dx2*scale, dy2*scale, 0]);
+
+
+          v1[2] = 1.0 - (v1[0] + v1[1]);
+          v2[2] = 1.0 - (v2[0] + v2[1]);
+
+          v1.normalize();
+          v2.normalize();
+
+          if (v1.vectorDistance(v2) < 0.05) {
+            return;
+          }
+
+          let axis = new Vector3(v1).cross(v2).normalize();
+          rawlen *= 4.0;
+
+          let th = Math.acos(v1.dot(v2)*0.999999);
+          th += rawlen*Math.sign(th);
+
+          let quat = new Quat();
+          quat.axisAngleToQuat(axis, th);
+          quat.normalize();
+          mat = quat.toMatrix();
+
+          this.value.load(this.start_value);
+          this.value.multVecMatrix(mat);
+
+          //*
+          if (this.hasAttribute("datapath")) {
+            this.setPathValue(this.ctx, this.getAttribute("datapath"), this.value);
+          }
+          if (this.onchange) {
+            this.onchange(this.value);
+          }//*/
+
+          this.last_mpos[0] = e.x;
+          this.last_mpos[1] = e.y;
+          this.render();
+        },
+        on_mouseup : (e) => {
+          this.endModal();
+        },
+        on_touchend : (e) => {
+          this.endModal();
+        },
+        on_touchcancel : (e) => {
+          this.endModal();
+          this.setValue(this.start_value);
+        },
+        on_keydown : (e) => {
+          console.log(e.keyCode, this.modaldata);
+
+          switch (e.keyCode) {
+            case keymap["Escape"]:
+              this.setValue(this.start_value);
+            case keymap["Enter"]:
+              this.endModal();
+              break;
+          }
+        }
+      })
+    }
+
+    this.addEventListener("touchstart", (e) => {
+      if (e.touches.length === 0) {
+        return;
+      }
+
+      mousedown(e, e.touches[0].pageX, e.touches[0].pageY);
+    });
+    this.addEventListener("touchend", (e) => {
+      if (this.modaldata) {
+        this.endModal();
+      }
+    });
+
+    this.addEventListener("mousedown", (e) => {
+      mousedown(e, e.x, e.y);
+    })
+
+
+    this.tabIndex = 0;
+  }
+
+  set highlight(v) {
+    let render = !!v !== !!this._highlight;
+
+    this._highlight = v;
+    if (render) {
+      this.doOnce(this.render);
+    }
+  }
+
+  get highlight() {
+    return this._highlight;
+  }
+
+  _getRMat() {
+    let quat = new Quat();
+    let axis = new Vector3();
+    let av = new Vector3(this.value);
+    let value = new Vector3(this.value).normalize();
+
+    av.abs();
+
+    if (1||av[0] > av[1] && av[0] > av[2]) {
+      axis[2] = 1.0;
+    } else {
+      axis[0] = 1.0;
+    }
+
+    axis.cross(value).normalize();
+
+    let vth = Math.acos(value[2]*0.99999);
+    quat.axisAngleToQuat(axis, vth);
+    quat.normalize();
+    let rmat = quat.toMatrix();
+
+    return rmat;
+  }
+
+  setCSS() {
+    super.setCSS();
+
+    let dpi = UIBase.getDPI();
+
+    this._last_dpi = dpi;
+
+    let w = ~~(this.size * dpi);
+    this.canvas.width = w;
+    this.canvas.height = w;
+
+    this.canvas.style.width = (w/dpi) + "px";
+    this.canvas.style.height = (w/dpi) + "px";
+
+    this.canvas.style["border-radius"] = "5px";
+    this.canvas.style["background-color"] = "white";
+
+    this.render();
+  }
+
+  render() {
+    //console.log("rendering direction chooser");
+
+    let g = this.g, canvas = this.canvas, size = canvas.width;
+
+    g.clearRect(0, 0, size, size);
+
+    if (this.disabled) {
+      g.fillStyle = "rgb(55,55,55)";
+      g.beginPath();
+      g.rect(0, 0, size, size);
+      g.fill();
+      return;
+    }
+
+    g.save();
+    g.scale(size, size);
+    g.beginPath();
+
+    let steps;
+    let p = new Vector4();
+    let r = 0.04;
+
+    let mat = new Matrix4();
+
+    let rmat = this._getRMat();
+
+    mat.perspective(25, 1.0, 0.01, 10.0);
+
+    function proj(p) {
+      p[3] = 1.0;
+      //p[2] = -p[2];
+      p[2] -= 4.0;
+
+      p.multVecMatrix(mat);
+      let w = p[3];
+
+      if (Math.abs(w) > 0.00001) {
+        p.mulScalar(1.0 / w);
+        p[3] = w;
+      }
+
+      p[0] = p[0]*0.5 + 0.5;
+      p[1] = p[1]*0.5 + 0.5;
+
+      return w;
+    }
+
+    g.beginPath();
+    g.fillStyle = "rgba(55,55,55,0.35)";
+
+    steps = 64;
+    let th = -Math.PI, dth = (Math.PI*2.0)/steps;
+    r *= 1.5;
+
+    for (let i=0; i<steps; i++, th += dth) {
+      //break;
+      for (let j=0; j<3; j++) {
+        let r2 = 0.33;
+        p[j] = Math.sin(th)*r2;
+        p[(j+1)%3] = Math.cos(th)*r2;
+        p[(j+2)%3] = 0.0;
+
+        p.multVecMatrix(rmat);
+
+        let w = proj(p);
+
+        if (w < 0) continue;
+
+        //console.log("XY",p[0].toFixed(3), p[1].toFixed(3), th, i, dth);
+
+        g.moveTo(p[0], p[1]);
+        g.arc(p[0], p[1], r/w, -Math.PI, Math.PI);
+      }
+    }
+
+    g.fill();
+
+    g.beginPath();
+    if (this.highlight) {
+      g.fillStyle = "rgba(250, 128, 55, 0.5)";
+    } else {
+      g.fillStyle = "rgba(55,55,55,0.5)";
+    }
+
+    steps = 64;
+    let s=0, ds = 1.0 / steps;
+
+    for (let i=0; i<steps; i++, s += ds) {
+      p.zero().interp(this.value, s).mulScalar(1.5);
+
+      let w = proj(p);
+
+      let x = p[0];
+      let y = p[1];
+
+      if (w < 0.0) {
+        continue;
+      }
+      g.moveTo(x, y);
+      g.arc(x, y, r/w, -Math.PI, Math.PI);
+    }
+
+    g.fill();
+
+    g.restore();
+  }
+
+  get disabled() {
+    return this._disabled;
+  }
+
+  set disabled(v) {
+    let render;
+
+    if (this._disabled !== v) {
+      this.render();
+    }
+
+    this._disabled = v;
+  }
+
+  setValue(v) {
+    this.value.load(v);
+
+    if (this.hasAttribute("datapath")) {
+      this.setPathValue(this.ctx, this.getAttribute("datapath"), this.value);
+      this.render();
+    }
+
+    if (this.onchange) {
+      this.onchange(this.value);
+    }
+  }
+
+  updateDataPath() {
+    if (!this.hasAttribute("datapath") || !this.ctx) {
+      return;
+    }
+
+    let val = this.getPathValue(this.ctx, this.getAttribute("datapath"));
+
+    if (val === undefined) {
+      this.disabled = true;
+      return;
+    }
+
+    this.disabled = false;
+    if (this.value.vectorDistance(val) > 0.0001) {
+      console.log("path update");
+
+      this.value.load(val);
+      if (this.onchange) {
+        this.onchange(val);
+      }
+
+      this.render();
+    }
+  }
+
+  updateDPI() {
+    let dpi = UIBase.getDPI();
+
+    if (this._last_dpi !== dpi) {
+      this._last_dpi = dpi;
+      this.setCSS();
+    }
+  }
+
+  update() {
+    super.update();
+
+    this.updateDPI();
+    this.updateDataPath();
+  }
+
+  static define() {return {
+    tagname : "direction-chooser-3d-x"
+  }}
+}
+UIBase.register(DirectionChooser);

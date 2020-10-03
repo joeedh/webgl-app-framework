@@ -15,6 +15,10 @@ export class FindnearestMesh extends FindnearestClass {
     selectMask : SelMask.GEOM
   }}
 
+  static drawsObjectExclusively(view3d, object) {
+    return false;
+  }
+
   /*
   * called for all objects;  returns true
   * if an object is valid for this class (and was drawn)

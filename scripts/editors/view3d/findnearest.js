@@ -105,6 +105,10 @@ export class FindnearestClass {
     selectMask : 0
   }}
 
+  static drawsObjectExclusively(view3d, object) {
+    return false;
+  }
+
   /**
    *
    * @param ctx

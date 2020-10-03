@@ -8,6 +8,8 @@ import './const.js';
 
 export const constmap = {};
 
+let TEXTURE_2D = 3553;
+
 export class IntUniform {
   constructor(val) {
     this.val = val;
@@ -406,7 +408,11 @@ export class ShaderProgram {
 
     if (this._use_ml_array()) {
       let ret = `
-${size}_DECLARE
+#ifndef ${size}_DECLARE
+#define ${size} 1
+#endif
+
+//${size}_DECLARE
 #define ${attr} ${attr}_layers[0]\n`;
       if (!is_fragment) {
         ret += `${keyword} ${type} ${attr}_layers[${size}];\n`;
@@ -417,7 +423,10 @@ ${size}_DECLARE
     }
 
     let ret = `
-${size}_DECLARE\n`;
+#ifndef ${size}_DECLARE
+#define ${size} 1
+#endif
+//${size}_DECLARE\n`;
     if (!is_fragment) {
       ret += `${keyword} ${type} ${attr};\n`;
     }
@@ -494,6 +503,8 @@ v${attr} = ${attr};
       }
     }
     ret += '#endif\n';
+
+    return ret;
   }
 
   setAttributeLayerCount(attr, n) {
@@ -696,8 +707,8 @@ v${attr} = ${attr};
 
       let define = `#define ${size} ${i}`;
 
-      shader.vertexSource = shader.vertexSource.replace(size + "_DECLARE", define);
-      shader.fragmentSource = shader.fragmentSource.replace(size + "_DECLARE", define);
+      shader.vertexSource = shader.vertexSource.replace("//"+size + "_DECLARE", define);
+      shader.fragmentSource = shader.fragmentSource.replace("//"+size + "_DECLARE", define);
     }
 
     this.multilayer_programs[key] = shader;
@@ -851,6 +862,112 @@ export class Texture {
     this.texture = texture;
     this.texture_slot = texture_slot;
     this.target = target;
+
+    this.createParams = {
+      target : TEXTURE_2D
+    };
+
+    this.createParamsList = [TEXTURE_2D];
+
+    this._params = {};
+  }
+
+  texParameteri(gl, target, param, value) {
+    this._params[param] = value;
+
+    gl.texParameteri(target, param, value);
+    return this;
+  }
+
+  getParameter(gl, param) {
+    return this._params[param];
+  }
+
+  _texImage2D1(gl, target, level, internalformat, format, type, source) {
+    gl.bindTexture(target, this.texture);
+    gl.texImage2D(target, level, internalformat, format, type, source);
+
+    this.createParams = {
+      target, level, internalformat, format, type, source
+    };
+    this.createParamsList = [
+      target, level, internalformat, format, type, source
+    ];
+
+    if (source instanceof Image || source instanceof ImageData) {
+      this.createParams.width = source.width;
+      this.createParams.height = source.height;
+    }
+
+    return this;
+  }
+
+  _texImage2D2(gl, target, level, internalformat, width, height, border, format, type, source) {
+    gl.bindTexture(target, this.texture);
+
+    //if (source === undefined || source === null) {
+    //  gl.texImage2D(target, level, internalformat, width, height, border, format, type, undefined);
+    //} else {
+      gl.texImage2D(target, level, internalformat, width, height, border, format, type, source);
+    //}
+
+    this.createParams = {
+      target, level, internalformat, format, type, source, width, height, border
+    };
+    this.createParamsList = [
+      target, level, internalformat, format, type, source, width, height, border
+    ];
+
+    return this;
+  }
+
+  texImage2D() {
+    if (arguments.length === 7) {
+      return this._texImage2D1(...arguments);
+    } else {
+      return this._texImage2D2(...arguments);
+    }
+  }
+
+  copy(gl, copy_data=false) {
+    let tex = new Texture();
+
+    tex.texture = gl.createTexture();
+    tex.createParams = Object.assign({}, this.createParams);
+    tex.createParamsList = this.createParamsList.concat([]);
+    tex.texture_slot = this.texture_slot;
+
+    gl.bindTexture(this.createParams.target, tex.texture);
+
+    if (!copy_data) {
+      let p = this.createParams;
+
+      tex.texImage2D(p.target, p.level, p.internalformat, p.format, p.type, null);
+    } else {
+      this.copyTexTo(gl, tex);
+    }
+
+    for (let k in this._params) {
+      let key = parseInt(k);
+      let val = this._params[key];
+
+      gl.texParameteri(this.createParams.target, key, val);
+    }
+
+    return tex;
+  }
+
+  copyTexTo(gl, b) {
+    if (this.texture === undefined) {
+      return;
+    }
+
+    let p = this.createParams;
+
+    gl.bindTexture(p.target, b.texture);
+    b.texImage2D(gl, p.target, p.level, p.internalformat, p.width, p.height, p.border, p.format, p.type, this.texture);
+
+    return this;
   }
 
   destroy(gl) {
@@ -874,10 +991,10 @@ export class Texture {
   static defaultParams(gl, tex, target=gl.TEXTURE_2D) {
     gl.bindTexture(target, tex);
 
-    gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    this.texParameteri(gl, target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    this.texParameteri(gl, target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    this.texParameteri(gl, target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    this.texParameteri(gl, target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
   }
 

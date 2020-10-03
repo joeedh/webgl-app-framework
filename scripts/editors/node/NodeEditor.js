@@ -925,7 +925,11 @@ export class NodeEditor extends Editor {
 
   on_resize(newsize) {
     super.on_resize(newsize);
-    this.setCSS();
+
+    console.log("EDITOR RESIZE");
+
+    //calls this.setCSS()
+    this._setNodeContainerRect();
 
     try {
       this.doOnce(this.rebuildAll);
@@ -1117,6 +1121,21 @@ export class NodeEditor extends Editor {
     this._last_compile_test = util.time_ms();
   }
 
+  _setNodeContainerRect() {
+    let r = this.header.getBoundingClientRect();
+
+    this.nodeContainer.yoff = r.height;
+    this.nodeContainer.style["position"] = "absolute";
+    this.nodeContainer.style["height"] = (this.size[1] - r.height) + "px";
+    this.nodeContainer.style["width"] = this.size[0] + "px";
+    this.nodeContainer.style["top"] = r.height + "px";
+
+    this.setCSS();
+    for (let node of this.nodes) {
+      node.setCSS();
+    }
+  }
+
   update() {
     super.update();
 
@@ -1124,16 +1143,7 @@ export class NodeEditor extends Editor {
     //console.log("R", r);
     if (r) {
       if (r.height !== this.nodeContainer.yoff) {
-        this.nodeContainer.yoff = r.height;
-        this.nodeContainer.style["position"] = "absolute";
-        this.nodeContainer.style["height"] = (this.size[1] - r.height) + "px";
-        this.nodeContainer.style["width"] = this.size[0] + "px";
-        this.nodeContainer.style["top"] = r.height + "px";
-
-        this.setCSS();
-        for (let node of this.nodes) {
-          node.setCSS();
-        }
+        this._setNodeContainerRect();
       }
     }
 

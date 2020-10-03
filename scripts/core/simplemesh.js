@@ -22,6 +22,14 @@ export const LayerTypes = {
   ID     : 16
 }
 
+export const LayerTypeNames = {
+  [LayerTypes.LOC] : "position",
+  [LayerTypes.UV] : "uv",
+  [LayerTypes.COLOR] : "color",
+  [LayerTypes.ID] : "id",
+  [LayerTypes.NORMAL] : "normal"
+};
+
 let _TypeSizes = {
   LOC    : 3,
   UV     : 2,
@@ -336,11 +344,23 @@ export class GeoLayer extends Array {
 }
 
 export class GeoLayerMeta {
-  constructor(primflag, type) {
+  constructor(primflag, type, attrsizes) {
     this.type = type;
     this.primflag = primflag;
     this.layers = [];
     this.normalized = false;
+
+    this.attrsizes = attrsizes;
+  }
+
+  add(layer) {
+    this.layers.push(layer);
+
+    if (this.attrsizes[LayerTypeNames[layer.type]] === undefined) {
+      this.attrsizes[LayerTypeNames[layer.type]] = 0;
+    } else {
+      this.attrsizes[LayerTypeNames[layer.type]]++;
+    }
   }
 }
 
@@ -361,6 +381,8 @@ export class GeoLayerManager {
 
     this.layer_meta = new Map();
     this.layer_idgen = new util.IDGen();
+
+    this.attrsizes = new Map(); //maps primitive types to attribute size maps
   }
 
   copy() {
@@ -371,7 +393,7 @@ export class GeoLayerManager {
 
     for (let key of this.layer_meta.keys()) {
       let meta = this.layer_meta.get(key);
-      let meta2 = ret.get_meta(meta.type, meta.primflag);
+      let meta2 = ret.get_meta(meta.primflag, meta.type);
 
       for (let layer of meta.layers) {
         let layer2 = new GeoLayer(layer.size, layer.name, layer.primflag, layer.type, layer.idx);
@@ -406,7 +428,10 @@ export class GeoLayerManager {
     let mask = get_meta_mask(primflag, type);
 
     if (!this.layer_meta.has(mask)) {
-      this.layer_meta.set(mask, new GeoLayerMeta(primflag, type));
+      let attrsizes = {};
+      this.attrsizes.set(primflag, attrsizes);
+
+      this.layer_meta.set(mask, new GeoLayerMeta(primflag, type, attrsizes));
     }
 
     return this.layer_meta.get(mask);
@@ -441,7 +466,7 @@ export class GeoLayerManager {
     layer.bufferKey = layer.name + ":" + layer.id;
 
     this.layers.push(layer);
-    meta.layers.push(layer);
+    meta.add(layer);
 
     layer.normalized = meta.normalized;
 
@@ -649,6 +674,7 @@ export class SimpleIsland {
     let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
 
     for (var layer of this.layers) {
+
       if (!(layer.type & layerflag)) {
         continue;
       }
@@ -799,17 +825,29 @@ export class SimpleIsland {
     if (program === undefined)
       program = gl.simple_shader;
 
-    program.bind(gl, uniforms);
+    if (!this.layers.has_multilayers) {
+      program.bind(gl, uniforms);
+    }
 
     if (this.tottri && (primflag & PrimitiveTypes.TRIS)) {
+      if (this.layers.has_multilayers) {
+        program.bindMultiLayer(gl, uniforms, this.layers.attrsizes.get(PrimitiveTypes.TRIS));
+      }
+
       this._draw_tris(gl, uniforms, params, program);
     }
 
     if (this.totline && (primflag & PrimitiveTypes.LINES)) {
+      if (this.layers.has_multilayers) {
+        program.bindMultiLayer(gl, uniforms, this.layers.attrsizes.get(PrimitiveTypes.LINES));
+      }
       this._draw_lines(gl, uniforms, params, program);
     }
 
     if (this.totpoint && (primflag & PrimitiveTypes.POINTS)) {
+      if (this.layers.has_multilayers) {
+        program.bindMultiLayer(gl, uniforms, this.layers.attrsizes.get(PrimitiveTypes.POINTS));
+      }
       this._draw_points(gl, uniforms, params, program);
     }
 
@@ -1047,3 +1085,5 @@ export function makeCube() {
 export function makeSphere() {
 
 }
+
+

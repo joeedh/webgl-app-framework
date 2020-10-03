@@ -51,6 +51,7 @@ export class Mesh extends SceneObjectData {
     this.features = features;
 
     this.materials = [];
+    this.usesMaterial = true;
 
     this._ltris = undefined;
     this._ltrimap_start = {}; //maps face eid to first loop index
@@ -76,9 +77,9 @@ export class Mesh extends SceneObjectData {
     //this.uniforms = {
     //  uColor : [1, 1, 1, 1]
     //};
-    
+
     this.elists = {};
-    
+
     this.verts = this.getElemList(MeshTypes.VERTEX);
     this.loops = this.getElemList(MeshTypes.LOOP);
     this.edges = this.getElemList(MeshTypes.EDGE);
@@ -127,10 +128,10 @@ export class Mesh extends SceneObjectData {
       this.elists[type].customData.on_layeradd = this._on_cdlayer_add.bind(this);
       this.elists[type].customData.on_layerremove = this._on_cdlayer_rem.bind(this);
     }
-    
+
     return this.elists[type];
   }
-  
+
   static nodedef() {return {
     name   : "mesh",
     uiname : "Mesh",
@@ -138,7 +139,7 @@ export class Mesh extends SceneObjectData {
     inputs : Node.inherit({}),
     outputs : Node.inherit({})
   }}
-    
+
   _element_init(e) {
     let list = this.getElemList(e.type);
 
@@ -147,35 +148,35 @@ export class Mesh extends SceneObjectData {
     e.eid = this.eidgen.next();
     this.eidmap[e.eid] = e;
   }
-  
+
   makeVertex(co) {
     if (!(this.features & MeshFeatures.MAKE_VERT))
       throw new MeshFeatureError("makeVertex not supported");
 
     var v = new Vertex(co);
-    
+
     this._element_init(v);
     this.verts.push(v);
-    
+
     return v;
   }
-  
+
   getEdge(v1, v2) {
     for (var e of v1.edges) {
       if (e.otherVertex(v1) === v2)
         return e;
     }
-    
+
     return undefined;
   }
-  
+
   ensureEdge(v1, v2) {
     let e = this.getEdge(v1, v2);
-    
+
     if (e === undefined) {
       e = this.makeEdge(v1, v2);
     }
-    
+
     return e;
   }
 
@@ -194,10 +195,10 @@ export class Mesh extends SceneObjectData {
       throw new MeshFeatureError("makeEdge not supported");
 
     var e = new Edge();
-    
+
     e.v1 = v1;
     e.v2 = v2;
-    
+
     v1.edges.push(e);
     v2.edges.push(e);
 
@@ -214,37 +215,37 @@ export class Mesh extends SceneObjectData {
 
     return e;
   }
-  
+
   minMax() {
     this.min = new Vector3();
     this.max = new Vector3();
-    
+
     if (this.verts.length === 0) {
       return;
     }
-    
+
     this.min[0] = this.min[1] = this.min[2] = 1e17;
     this.max[0] = this.max[1] = this.max[2] = -1e17;
-    
+
     for (let v of this.verts) {
       this.min.min(v);
       this.max.max(v);
     }
-    
+
     return this;
   }
-  
+
   _makeLoop() {
     let loop = new Loop();
-    
+
     loop.radial_next = loop.radial_prev = loop;
-    
+
     this._element_init(loop);
     this.loops.push(loop);
 
     return loop;
   }
-  
+
   _killLoop(loop) {
     this._radialRemove(loop.e, loop);
 
@@ -340,31 +341,31 @@ export class Mesh extends SceneObjectData {
     if (verts.length < 2) {
       throw new Error("need at least two verts");
     }
-    
+
     let f = new Face();
-    
+
     let firstl, prevl;
-    
+
     let list = new LoopList();
     f.lists.push(list);
-    
+
     for (let v of verts) {
       let l = this._makeLoop();
-      
+
       l.list = list;
       l.v = v;
       l.f = f;
-      
+
       if (firstl === undefined) {
         firstl = l;
       } else {
         l.prev = prevl;
         prevl.next = l;
       }
-      
+
       prevl = l;
     }
-    
+
     list.l = firstl;
     firstl.prev = prevl;
     prevl.next = firstl;
@@ -376,16 +377,16 @@ export class Mesh extends SceneObjectData {
 
     for (let i=0; i<f.verts.length; i++) {
       let v1 = f.verts[i], v2 = f.verts[(i+1) % f.verts.length];
-      
+
       this.edges.push(this.ensureEdge(v1, v2));
     }
-    
+
     f.calcCent();
     f.calcNormal();
-    
+
     this._element_init(f);
     this.faces.push(f);
-    
+
     return f;
   }
 
@@ -465,7 +466,7 @@ export class Mesh extends SceneObjectData {
 
     this._recalcNormals_intern();
   }
-  
+
   killVertex(v, _nocheck=false) {
     if (!_nocheck) {
       if (!(this.features & MeshFeatures.KILL_VERT))
@@ -476,21 +477,21 @@ export class Mesh extends SceneObjectData {
       console.trace("Warning: vertex", v.eid, "already freed", v);
       return;
     }
-    
+
     let _i = 0;
     while (v.edges.length > 0 && _i++ < 10000) {
       this.killEdge(v.edges[0]);
     }
-    
+
     if (_i >= 10000) {
       console.trace("mesh integrity warning, infinite loop detected in killVertex");
     }
-    
+
     delete this.eidmap[v.eid];
     this.verts.remove(v);
     v.eid = -1;
   }
-  
+
   killEdge(e) {
     if (!(this.features & MeshFeatures.KILL_EDGE))
       throw new MeshFeatureError("killEdge not supported");
@@ -499,17 +500,17 @@ export class Mesh extends SceneObjectData {
       console.trace("Warning: edge", e.eid, "already freed", e);
       return;
     }
-    
+
     let _i = 0;
     while (e.l !== undefined && _i++ < 10000) {
       this.killFace(e.l.f);
     }
-    
+
     delete this.eidmap[e.eid];
     this.edges.remove(e);
-    
+
     e.eid = -1;
-    
+
     e.v1.edges.remove(e);
     e.v2.edges.remove(e);
 
@@ -521,7 +522,7 @@ export class Mesh extends SceneObjectData {
       this.handles.remove(e.h2);
     }
   }
-  
+
   killFace(f) {
     if (!(this.features & MeshFeatures.KILL_FACE))
       throw new MeshFeatureError("killEdge not supported");
@@ -530,16 +531,16 @@ export class Mesh extends SceneObjectData {
       console.trace("Warning: edge", e.eid, "already freed", e);
       return;
     }
-    
+
     for (let list of f.lists) {
       for (let l of list) {
         this._killLoop(l);
       }
     }
-    
+
     delete this.eidmap[f.eid];
     this.faces.remove(f);
-    
+
     f.eid = -1;
   }
 
@@ -563,7 +564,7 @@ export class Mesh extends SceneObjectData {
 
       var set_active = this.edges.active === undefined;
       set_active = set_active || !((this.edges.active.v1.flag|this.edges.active.v2.flag) & MeshFlags.SELECT);
-      
+
       for (var e of this.edges) {
         if (e.flag & MeshFlags.HIDE) {
           continue;
@@ -571,7 +572,7 @@ export class Mesh extends SceneObjectData {
 
         if ((e.v1.flag & MeshFlags.SELECT) && (e.v2.flag & MeshFlags.SELECT)) {
           this.edges.setSelect(e, true);
-          
+
           if (set_active) {
             this.edges.active = e;
           }
@@ -596,7 +597,7 @@ export class Mesh extends SceneObjectData {
       }
     } else if (selmode & MeshTypes.EDGE) {
       this.verts.selectNone();
-      
+
       for (var v of this.verts) {
         for (var e of v.edges) {
           if (e.flag & MeshFlags.SELECT) {
@@ -668,7 +669,7 @@ export class Mesh extends SceneObjectData {
     let v1 = e.v1, v2 = e.v2;
 
     t = t === undefined ? 0.5 : t;
-    
+
     var nv = this.makeVertex(e.v1).interp(e.v2, t);
     var ne = this.makeEdge(nv, e.v2);
 
@@ -676,11 +677,11 @@ export class Mesh extends SceneObjectData {
 
     e.v2 = nv;
     nv.edges.push(e);
-    
+
     if (e.flag & MeshFlags.SELECT) {
       this.edges.setSelect(ne, true);
     }
-    
+
     if ((e.v1 & MeshFlags.SELECT) && (e.v2 & MeshFlags.SELECT)) {
       this.verts.setSelect(nv, true);
     }
@@ -700,20 +701,20 @@ export class Mesh extends SceneObjectData {
 
     return [ne, nv];
   }
-  
+
   splitEdge(e, t=0.5) {
     if (!(this.features & MeshFeatures.SPLIT_EDGE))
       throw new MeshFeatureError("splitEdge not supported");
 
     let ret = this._splitEdgeNoFace(e, t);
-    
+
     if (e.l === undefined) {
       return ret;
     }
-    
+
     let ne = ret[0], nv = ret[1];
     let v1 = e.v1, v2 = ne.v2;
-    
+
     let l = e.l;
 
     let _i = 0;
@@ -738,13 +739,13 @@ export class Mesh extends SceneObjectData {
 
       l2.list = l.list;
       l2.f = l.f;
-      
+
       if (l.v === v1) {
         l2.v = nv;
         l2.e = ne;
 
         this._radialInsert(ne, l2);
-        
+
         l.next.prev = l2;
         l2.next = l.next;
         l2.prev = l;
@@ -752,15 +753,15 @@ export class Mesh extends SceneObjectData {
       } else {
         l.v = v2;
         l.e = ne;
-        
+
         this._radialRemove(e, l);
         this._radialInsert(ne, l);
-        
+
         l2.v = nv;
         l2.e = e;
-        
+
         this._radialInsert(e, l2);
-        
+
         l.next.prev = l2;
         l2.next = l.next;
         l2.prev = l;
@@ -770,7 +771,7 @@ export class Mesh extends SceneObjectData {
 
     return ret;
   }
-  
+
   _radialInsert(e, l) {
     if (e.l === undefined) {
       e.l = l;
@@ -782,16 +783,16 @@ export class Mesh extends SceneObjectData {
       e.l.radial_next = l;
     }
   }
-  
+
   _radialRemove(e, l) {
     if (e.l === l) {
       e.l = l === l.radial_next ? undefined : l.radial_next;
     }
-    
+
     l.radial_next.radial_prev = l.radial_prev;
     l.radial_prev.radial_next = l.radial_next;
   }
-  
+
   //XXX untested!
   dissolveVertex(v) {
     if (!(this.features & MeshFeatures.JOIN_EDGE))
@@ -801,53 +802,53 @@ export class Mesh extends SceneObjectData {
     if (v.edges.length == 2 && v.edges[0].l === undefined && v.edges[1].l === undefined) {
       let v1 = v.edges[0].otherVertex(v);
       let v2 = v.edges[1].otherVertex(v);
-      
+
       this.ensureEdge(v1, v2);
       return;
     }
-    
+
     let faces = new util.set();
-    
+
     if (v.edges.length == 0) {
       this.killVertex(v, true);
       return;
     }
-    
+
     for (let f of v.faces) {
       faces.add(f);
     }
-    
+
     let vset = new set();
     let verts = [];
-    
+
     //scan in both directions
     for (let step=0; step<2; step++) {
       let startv = v, _i = 0;
       let verts2 = step ? [] : verts;
-      
+
       let v1 = v.edges[0].otherVertex(v);
       let l = v.edges[0].l;
       let e;
-      
+
       if (l.v === v1) {
         e = l.next.e;
       } else {
         e = l.prev.e;
       }
-      
+
       if (step) {
         v = e.otherVertex(v);
       }
-      
+
       do {
         verts2.push(v);
         v = e2.otherVertex(v);
         let ok = false;
-        
+
         for (let e2 of v1.edges) {
           if (e === e2)
             break;
-          
+
           for (let f of e2.faces) {
             if (fset.has(f) && !e2.has(v)) {
               ok = true;
@@ -856,42 +857,42 @@ export class Mesh extends SceneObjectData {
             }
           }
         }
-        
+
         if (!ok) {
           break;
         }
-        
+
         if (_i++ > 10000) {
           console.warn("infinite loop detected in dissolve vert");
           break;
         }
       } while (v1 !== startv);
-      
+
       if (step) {
         verts2.reverse();
         verts = verts2.concat(verts);
       }
     }
-    
+
     return this.makeFace(verts);
   }
-  
+
   setSelect(e, state) {
     this.getElemList(e.type).setSelect(e, state);
   }
-  
+
   selectNone() {
     for (let e of this.getElemLists()) {
       e.selectNone();
     }
   }
-  
+
   selectAll() {
     for (let e of this.getElemLists()) {
       e.selectAll();
     }
   }
-  
+
   setShadeSmooth(smooth) {
     for (let f of this.faces) {
       if (smooth)
@@ -899,7 +900,7 @@ export class Mesh extends SceneObjectData {
       else
         f.flag |= MeshFlags.FLAT;
     }
-    
+
     this.regenRender();
   }
 
@@ -1150,11 +1151,11 @@ export class Mesh extends SceneObjectData {
 
     return sm;
   }
-  
+
   rescale() {
     this.minMax();
     let min = this.min, max = this.max;
-    
+
     for (let v of this.verts) {
       for (let i=0; i<3; i++) {
         v[i] = ((v[i] - min[i]) / (max[i] - min[i]) - 0.5) * 2.0;
@@ -1174,7 +1175,7 @@ export class Mesh extends SceneObjectData {
     }
 
     console.warn("partial update");
-    
+
     let sm = this.smesh;
     this.recalc &= ~RecalcFlags.PARTIAL;
 
@@ -1228,7 +1229,7 @@ export class Mesh extends SceneObjectData {
 
     return sm;
   }
-  
+
   checkPartialUpdate(gl) {
    if (this.recalc & RecalcFlags.PARTIAL) {
       this.partialUpdate(gl);
@@ -1398,14 +1399,12 @@ export class Mesh extends SceneObjectData {
       this._genRenderElements(view3d, gl, uniforms);
     }
 
-    uniforms = uniforms || {};
+    uniforms = uniforms !== undefined ? Object.assign({}, uniforms) : {};
     uniforms.alpha = uniforms.alpha === undefined ? 1.0 : uniforms.alpha;
 
     let meshes = this._fancyMeshes;
 
     uniforms.pointSize = uniforms.pointSize === undefined ? 10 : uniforms.pointSize;
-
-    uniforms = Object.assign({}, uniforms);
     uniforms.polygonOffset = uniforms.polygonOffset === undefined ? 0.5 : uniforms.polygonOffset;
 
     let draw_list = (list, key) => {
@@ -1491,7 +1490,7 @@ export class Mesh extends SceneObjectData {
 
   get elements() {
     var this2 = this;
-    
+
     return (function*() {
       for (var k in this2.eidmap) {
         yield this2.eidmap[k];
@@ -1517,7 +1516,7 @@ export class Mesh extends SceneObjectData {
     for (let k in this.elists) {
       ret.push(this.elists[k]);
     }
-    
+
     return ret;
   }
 
@@ -1666,12 +1665,12 @@ export class Mesh extends SceneObjectData {
 
   _on_cdlayer_add(layer, set) {
   }
-  
+
   _on_cdlayer_rem(layer, set) {
     let cls = CustomDataElem.getTypeClass(set.typeName);
     let mask = layer.elemTypeMask;
     let index = layer.index;
-    
+
     for (let k in MeshTypes) {
       let flag = MeshTypes[k];
       //let elist = this.getElem
@@ -1762,7 +1761,7 @@ export class Mesh extends SceneObjectData {
     super.loadSTRUCT(reader);
 
     this.elists = {};
-    
+
     for (let elist of this._elists) {
       this.elists[elist.type] = elist;
     }
@@ -1777,15 +1776,15 @@ export class Mesh extends SceneObjectData {
 
     for (let k in this.elists) {
       let elist = this.elists[k];
-      
+
       elist.customData.on_layeradd = this._on_cdlayer_add.bind(this);
       elist.customData.on_layerremove = this._on_cdlayer_rem.bind(this);
     }
 
     this.regenRender();
-    
+
     let eidmap = this.eidmap;
-    
+
     for (let vert of this.verts) {
       eidmap[vert.eid] = vert;
     }
@@ -1810,26 +1809,26 @@ export class Mesh extends SceneObjectData {
     for (let l of this.loops) {
       eidmap[l.eid] = l;
     }
-    
+
     for (let e of this.edges) {
       e.l = eidmap[e.l];
     }
 
     for (let face of this.faces) {
       eidmap[face.eid] = face;
-      
+
       for (let list of face.lists) {
         list.l = eidmap[list.l];
       }
     }
-    
+
     for (let l of this.loops) {
       l.radial_next = eidmap[l.radial_next];
       l.radial_prev = eidmap[l.radial_prev];
-      
+
       l.next = eidmap[l.next];
       l.prev = eidmap[l.prev];
-      
+
       l.f = eidmap[l.f];
       l.e = eidmap[l.e];
       l.v = eidmap[l.v];

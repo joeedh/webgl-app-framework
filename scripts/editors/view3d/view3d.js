@@ -9,7 +9,7 @@ import * as textsprite from '../../core/textsprite.js';
 import {FindNearest} from './findnearest.js';
 import {TranslateOp} from './transform/transform_ops.js';
 import {RenderEngine} from "../../renderengine/renderengine_base.js";
-import {RealtimeEngine} from "../../renderengine/renderengine_realtime.js";
+import {RealtimeEngine, RenderSettings} from "../../renderengine/renderengine_realtime.js";
 import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {PackFlags} from '../../path.ux/scripts/core/ui_base.js';
 import {Editor} from '../editor_base.js';
@@ -310,6 +310,10 @@ export class View3D extends Editor {
   constructor() {
     super();
 
+    this.drawHash = 0;
+
+    this.renderSettings = new RenderSettings();
+
     this._last_camera_hash = undefined;
 
     //current calculated fps
@@ -389,6 +393,11 @@ export class View3D extends Editor {
 
   get selectmode() {
     return this.ctx.selectMask;
+  }
+
+  get sortedObjects() {
+    //implement me!
+    return this.ctx.scene.objects.visible;
   }
 
   updateClipping() {
@@ -1327,6 +1336,10 @@ export class View3D extends Editor {
   }
 
   viewportDraw_intern() {
+    if (!this.owning_sarea) {
+      return;
+    }
+
     if (this.ctx === undefined || this.gl === undefined || this.size === undefined) {
       return;
     }
@@ -1404,7 +1417,7 @@ export class View3D extends Editor {
       this.drawObjects();
 
       if (scene.toolmode) {
-        scene.toolmode.on_drawstart(gl, this);
+        scene.toolmode.on_drawstart(this, gl);
       }
 
       if (this.drawlines.length > 0) {
@@ -1418,12 +1431,12 @@ export class View3D extends Editor {
 
       this._graphnode.outputs.onDrawPost.immediateUpdate();
 
+      if (scene.toolmode) {
+        scene.toolmode.on_drawend(this, gl);
+      }
+
       gl.clear(gl.DEPTH_BUFFER_BIT);
       this.widgets.draw(this.gl, this);
-
-      if (scene.toolmode) {
-        scene.toolmode.on_drawend(gl, this);
-      }
 
       gl.disable(gl.BLEND);
     }
@@ -1491,7 +1504,11 @@ export class View3D extends Editor {
 
     let uniforms = {
       projectionMatrix : camera.rendermat,
-      normalMatrix     : camera.normalmat
+      normalMatrix     : camera.normalmat,
+      near             : camera.near,
+      far              : camera.far,
+      aspect           : camera.aspect,
+      size             : this.glSize
     };
 
     let only_render = this.flag & (View3DFlags.ONLY_RENDER);
@@ -1574,6 +1591,7 @@ View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
   flag                : int;
   subViewPortSize     : float;
   subViewPortPos      : vec3;
+  renderSettings      : renderengine_realtime.RenderSettings;
 }
 `
 Editor.register(View3D);
@@ -1604,7 +1622,7 @@ let f2 = () => {
         sarea.area.resetRender();
       }
 
-      sarea.area.viewportDraw();
+      sarea.area.viewportDraw(gl);
     }
   }
 
@@ -1616,7 +1634,7 @@ let f2 = () => {
   gl.finish();
 
   //be real sure gpu has finished drawing
-  gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(8*8*4));
+  //gl.readPixels(0, 0, 8, 8, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(8*8*4));
 
   //now get time
   time = util.time_ms() - time;

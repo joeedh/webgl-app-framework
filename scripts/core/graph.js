@@ -1059,6 +1059,16 @@ export class Graph {
     this.sock_idmap = {};
   }
 
+  clear() {
+    let nodes = this.nodes.concat([]);
+
+    for (let n of nodes) {
+      this.remove(n);
+    }
+
+    return this;
+  }
+
   /**unfortunately we can't use normal event callbacks (or the graph itself)
    to send certain updates to the UI, because the sheer number of nodes
    in normal workflows would make that slow and error-prone.

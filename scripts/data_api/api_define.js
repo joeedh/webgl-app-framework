@@ -9,7 +9,7 @@ import {Camera} from '../core/webgl.js';
 
 import {makeToolModeEnum, ToolModes, ToolMode} from "../editors/view3d/view3d_toolmode.js";
 import {NodeSocketClasses} from "../core/graph.js";
-
+import {RenderSettings} from "../renderengine/renderengine_realtime.js";
 
 import '../mesh/mesh_createops.js';
 
@@ -88,6 +88,20 @@ export function api_define_resbrowser(api, pstruct) {
   return rstruct;
 }
 
+
+export function api_define_rendersettings(api) {
+  let st = api.mapStruct(RenderSettings, true);
+
+  st.bool("sharpen", "sharpen", "Sharpen");
+  st.int("sharpenWidth", "sharpenWidth", "Sharpen Width").noUnits();
+  st.float("filterWidth", "filterWidth", "AA Width").noUnits();
+  st.float("sharpenFac", "sharpenFac", "Sharpen Fac").noUnits();
+  st.int("minSamples", "minSamples", "Min Samples",
+    "Minimum samples to render before drawing to screen"
+  ).noUnits().range(0, 10);
+}
+
+
 export function api_define_view3d(api, pstruct) {
   let vstruct = api_define_editor(api, View3D);
 
@@ -95,6 +109,8 @@ export function api_define_view3d(api, pstruct) {
   vstruct.vec2("subViewPortPos", "subViewPortPos", "View Pos").range(1, 2048);
 
   pstruct.struct("view3d", "view3d", "Viewport", vstruct);
+
+  vstruct.struct("renderSettings", "render", "Render Settings", api.mapStruct(RenderSettings));
 
   function onchange() {
     window.redraw_viewport();
@@ -812,6 +828,7 @@ export function getDataAPI() {
 
   api_define_datablock(api, DataBlock);
 
+  api_define_rendersettings(api);
   api_define_view3d(api, cstruct);
   api_define_resbrowser(api, cstruct);
   api_define_node_editor(api, cstruct);

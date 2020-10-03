@@ -432,6 +432,16 @@ export class ElementList {
     return cdmap2;
   }
 
+  _get_compact() {
+    let ret = [];
+
+    for (let item of this) {
+      ret.push(item);
+    }
+
+    return ret;
+  }
+
   loadSTRUCT(reader) {
     reader(this);
 
@@ -514,7 +524,7 @@ export class ElementList {
 };
 ElementList.STRUCT = `
 mesh.ElementList {
-  items       : iter(abstract(mesh.Element)) | this;
+  items       : iter(abstract(mesh.Element)) | this._get_compact();
   active      : int | this.active !== undefined ? this.active.eid : -1;
   highlight   : int | this.highlight !== undefined ? this.highlight.eid : -1;
   type        : int;

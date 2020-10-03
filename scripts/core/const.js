@@ -5,6 +5,7 @@ export const FILE_MAGIC = "WPRJ";
 
 export const autoSizeUpdate = true;
 export const useAreaTabSwitcher = false;
+export const cacheSelectBufs = true;
 
 export const DEBUG = {
   enableDebugGraphPanel : true,
