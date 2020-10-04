@@ -203,12 +203,15 @@ export class DataBlock extends Node {
     super.afterSTRUCT();
   }
 
-  /**all subclasses must call STRUCT.Super
-   instead of read inside their loadSTRUCTs,
-   that's how afterSTRUCT is invoked*/
   loadSTRUCT(reader) {
     reader(this);
     super.loadSTRUCT(reader);
+
+    try {
+      this.lib_userData = JSON.parse(this.lib_userData);
+    } catch (error) {
+      console.error("Error parsing lib_userData!");
+    }
 
     this.afterSTRUCT();
   }

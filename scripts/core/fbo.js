@@ -51,6 +51,8 @@ export class FBO {
   }
 
   create(gl) {
+    console.warn("fbo create");
+
     if (this.fbo && this.gl) {
       this.destroy();
     }

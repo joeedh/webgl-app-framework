@@ -3,6 +3,8 @@ import "../../extern/three.js";
 import * as util from '../../util/util.js';
 import * as cconst from '../../core/const.js';
 
+import {getBlueMask} from "../../shadernodes/shader_lib.js";
+
 import './findnearest/all.js';
 import './tools/tools.js';
 import * as textsprite from '../../core/textsprite.js';
@@ -264,6 +266,8 @@ export function initWebGL() {
   //_gl.canvas = canvas;
   loadShaders(_gl);
   textsprite.defaultFont.update(_gl);
+
+  getBlueMask(_gl);
 
   canvas.addEventListener("webglcontextrestored", (e) => {
     loadShaders(_gl);

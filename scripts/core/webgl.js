@@ -166,8 +166,15 @@ export function init_webgl(canvas, params={}) {
     gl.color_buffer_float = gl.getExtension("EXT_color_buffer_float");
   } else {
     gl = canvas.getContext("webgl", params);
+
+    if (!gl.RGBA32F) {
+      gl.RGBA32F = gl.RGBA;
+      gl.RGBA8UI = gl.RGBA;
+    }
+
     gl.getExtension("EXT_frag_depth");
     gl.color_buffer_float = gl.getExtension("WEBGL_color_buffer_float");
+    gl.texture_float = gl.getExtension("OES_texture_float");
   }
 
   canvas.addEventListener("webglcontextlost", function(event) {
@@ -192,7 +199,6 @@ export function init_webgl(canvas, params={}) {
 
   window._constmap = constmap;
 
-  gl.texture_float = gl.getExtension("OES_texture_float");
   gl.texture_float = gl.getExtension("OES_texture_float_linear");
   gl.float_blend = gl.getExtension("EXT_float_blend");
   gl.getExtension("OES_standard_derivatives");
@@ -887,6 +893,8 @@ export class Texture {
     gl.bindTexture(target, this.texture);
     gl.texImage2D(target, level, internalformat, format, type, source);
 
+    gl.getError();
+
     this.createParams = {
       target, level, internalformat, format, type, source
     };
@@ -905,6 +913,8 @@ export class Texture {
   _texImage2D2(gl, target, level, internalformat, width, height, border, format, type, source) {
     gl.bindTexture(target, this.texture);
 
+    gl.getError();
+
     //if (source === undefined || source === null) {
     //  gl.texImage2D(target, level, internalformat, width, height, border, format, type, undefined);
     //} else {
@@ -917,6 +927,8 @@ export class Texture {
     this.createParamsList = [
       target, level, internalformat, format, type, source, width, height, border
     ];
+
+    gl.getError();
 
     return this;
   }
@@ -943,6 +955,7 @@ export class Texture {
       let p = this.createParams;
 
       tex.texImage2D(p.target, p.level, p.internalformat, p.format, p.type, null);
+      gl.getError();
     } else {
       this.copyTexTo(gl, tex);
     }
@@ -952,6 +965,7 @@ export class Texture {
       let val = this._params[key];
 
       gl.texParameteri(this.createParams.target, key, val);
+      gl.getError();
     }
 
     return tex;
@@ -966,6 +980,7 @@ export class Texture {
 
     gl.bindTexture(p.target, b.texture);
     b.texImage2D(gl, p.target, p.level, p.internalformat, p.width, p.height, p.border, p.format, p.type, this.texture);
+    gl.getError();
 
     return this;
   }
@@ -974,27 +989,41 @@ export class Texture {
     gl.deleteTexture(this.texture);
   }
 
-  static load(gl, width, height, data, target = gl.TEXTURE_2D) {
-    let tex = gl.createTexture();
-
-    gl.bindTexture(target, tex);
-    if (data instanceof Float32Array) {
-      gl.texImage2D(target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.FLOAT, data);
-    } else {
-      gl.texImage2D(target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  load(gl, width, height, data, target = gl.TEXTURE_2D) {
+    if (!this.texture) {
+      this.texture = gl.createTexture();
     }
-    Texture.defaultParams(gl, tex, target);
+    gl.bindTexture(target, this.texture);
 
-    return new Texture(0, tex);
+    if (data instanceof Float32Array) {
+      gl.texImage2D(target, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, data);
+    } else {
+      gl.texImage2D(target, 0, gl.RGBA8UI, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    }
+
+    gl.getError();
+    Texture.defaultParams(gl, this, target);
+    gl.getError();
+
+    return this;
+  }
+
+  static load(gl, width, height, data, target = gl.TEXTURE_2D) {
+    return new Texture(0).load(...arguments);
   }
 
   static defaultParams(gl, tex, target=gl.TEXTURE_2D) {
-    gl.bindTexture(target, tex);
+    if (!(tex instanceof Texture)) {
+      console.warn("Depracated call to Texture.defaultParams with 'tex' a raw WebGLTexture instance instance of wrapper webgl.Texture object");
+      tex = new Texture(undefined, tex);
+    }
 
-    this.texParameteri(gl, target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    this.texParameteri(gl, target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    this.texParameteri(gl, target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    this.texParameteri(gl, target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindTexture(target, tex.texture);
+
+    tex.texParameteri(gl, target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    tex.texParameteri(gl, target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    tex.texParameteri(gl, target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    tex.texParameteri(gl, target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
   }
 
