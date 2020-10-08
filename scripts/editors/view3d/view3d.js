@@ -19,6 +19,7 @@ import {Camera, init_webgl, ShaderProgram} from '../../core/webgl.js';
 import {SelMask} from './selectmode.js';
 import '../../path.ux/scripts/util/struct.js';
 import {DrawModes} from './drawmode.js';
+import {EnvLightFlags} from "../../scene/scene.js";
 let STRUCT = nstructjs.STRUCT;
 import {UIBase, color2css, css2color}  from '../../path.ux/scripts/core/ui_base.js';
 import * as view3d_shaders from '../../shaders/shaders.js';
@@ -1304,6 +1305,9 @@ export class View3D extends Editor {
       this.renderEngine = new RealtimeEngine(this);
     }
 
+    this.renderEngine.renderSettings = this.renderSettings;
+    this.renderEngine.renderSettings.ao = this.ctx.scene.envlight.flag & EnvLightFlags.USE_AO;
+
     this.renderEngine.render(this.activeCamera, this.gl, this.glPos, this.glSize, this.ctx.scene, extraDrawCB);
   }
 
@@ -1592,6 +1596,7 @@ View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
   _select_transparent : int;
   cursorMode          : int;
   orbitMode           : int;
+  renderSettings      : RenderSettings;
   flag                : int;
   subViewPortSize     : float;
   subViewPortPos      : vec3;
