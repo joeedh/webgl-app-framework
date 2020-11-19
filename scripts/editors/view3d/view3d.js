@@ -1596,13 +1596,13 @@ View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
   _select_transparent : int;
   cursorMode          : int;
   orbitMode           : int;
-  renderSettings      : RenderSettings;
   flag                : int;
   subViewPortSize     : float;
   subViewPortPos      : vec3;
   renderSettings      : renderengine_realtime.RenderSettings;
 }
 `
+
 Editor.register(View3D);
 nstructjs.manager.add_class(View3D);
 

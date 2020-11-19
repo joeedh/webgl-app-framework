@@ -394,6 +394,11 @@ export function vertexSmooth(mesh, verts=mesh.verts.selected.editable, fac=0.5) 
     for (let e of v.edges) {
       let v2 = e.otherVertex(v);
 
+      if (!(v2.eid in cos)) {
+        //console.error("Mesh corruption error!!", v, v2, e);
+        continue;
+      }
+
       v.add(cos[v2.eid]);
       tot++;
     }

@@ -1,6 +1,8 @@
 import * as appstate from './core/appstate.js';
 import {loadShapes} from './core/simplemesh_shapes.js';
 
+import {nstructjs} from './path.ux/scripts/util/struct.js';
+
 import {setMetric, setBaseUnit} from "./path.ux/scripts/core/units.js";
 import {Icons} from './editors/icon_enum.js';
 import {setIconMap, setIconManager, IconManager, UIBase} from './path.ux/scripts/core/ui_base.js';
@@ -60,6 +62,9 @@ updateIconDPI();
 
 window.init = () => {
   console.log("init!");
+
+  nstructjs.validateStructs();
+
   loadShapes();
   appstate.init();
 

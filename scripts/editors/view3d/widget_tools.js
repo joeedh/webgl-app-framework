@@ -1,22 +1,22 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
-import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js';
+import {SimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
 import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property,
-  PropFlags, PropTypes, PropSubTypes} from '../../path.ux/scripts/toolsys/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
-import {Shaders} from '../../shaders/shaders.js';
-import {dist_to_line_2d} from '../../path.ux/scripts/util/math.js';
-import {CallbackNode, NodeFlags} from "../../core/graph.js";
-import {DependSocket} from '../../core/graphsockets.js';
-import * as util from '../../util/util.js';
-import {SelMask} from './selectmode.js';
+  PropFlags, PropTypes, PropSubTypes} from '../../../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, ToolFlags, UndoFlags} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
+import {Shaders} from '../../../shaders/shaders.js';
+import {dist_to_line_2d} from '../../../path.ux/scripts/util/math.js';
+import {CallbackNode, Node, NodeFlags} from "../../../core/graph.js";
+import {DependSocket} from '../../../core/graphsockets.js';
+import * as util from '../../../util/util.js';
+import {SelMask} from '../selectmode.js';
 
-import {View3DFlags} from "./view3d_base.js";
-import {WidgetBase, WidgetSphere, WidgetArrow, WidgetTool, WidgetFlags} from './widgets.js';
-import {TranslateOp, ScaleOp} from "./transform/transform_ops.js";
-import {calcTransCenter} from './transform/transform_query.js';
-import {ToolMacro} from "../../path.ux/scripts/toolsys/simple_toolsys.js";
-import {Icons} from '../icon_enum.js';
+import {View3DFlags} from "../view3d_base.js";
+import {WidgetBase, WidgetSphere, WidgetArrow, WidgetFlags} from './widgets.js';
+import {TranslateOp, ScaleOp, RotateOp} from "../transform/transform_ops.js";
+import {calcTransCenter} from '../transform/transform_query.js';
+import {ToolMacro} from "../../../path.ux/scripts/toolsys/simple_toolsys.js";
+import {Icons} from '../../icon_enum.js';
 
 let update_temps = util.cachering.fromConstructor(Vector3, 64);
 let update_temps4 = util.cachering.fromConstructor(Vector4, 64);
@@ -54,7 +54,7 @@ export class WidgetSceneCursor extends WidgetBase {
   }
 };
 
-export class NoneWidget extends WidgetTool {
+export class NoneWidget extends WidgetBase {
   static widgetDefine() {return {
     uiname     : "Disable widgets",
     name       : "none",
@@ -66,22 +66,8 @@ export class NoneWidget extends WidgetTool {
     return true;
   }
 }
-WidgetTool.register(NoneWidget);
 
-export class TranslateWidget extends WidgetTool {
-  constructor(manager) {
-    super(manager);
-
-    this.axes = undefined;
-  }
-
-  static widgetDefine() {return {
-    uiname    : "Move",
-    name      : "translate",
-    icon      : Icons.TRANSLATE,
-    flag      : 0
-  }}
-
+export class TransformWidget extends WidgetBase {
   static validate(ctx) {
     let selmask = ctx.selectMask;
 
@@ -102,9 +88,33 @@ export class TranslateWidget extends WidgetTool {
     return false;
   }
 
-  create(ctx, manager) {
-    super.create(ctx, manager);
+  getTransCenter() {
+    let ret = this.ctx.view3d.getTransCenter();
+    let aabb = this.ctx.view3d.getTransBounds();
 
+    //use aabb midpoint instead of median center
+    ret.center = new Vector3(aabb[0]).interp(aabb[1], 0.5);
+
+    return ret;
+  }
+}
+
+export class TranslateWidget extends TransformWidget {
+  constructor(manager) {
+    super();
+
+    this.axes = undefined;
+  }
+
+  static widgetDefine() {return {
+    uiname    : "Move",
+    name      : "translate",
+    icon      : Icons.TRANSLATE,
+    flag      : 0
+  }}
+
+
+  create(ctx, manager) {
     console.log("creating widget");
 
     let center = this.center = this.getSphere(undefined, [0.5, 0.5, 0.5, 1.0]);
@@ -178,18 +188,17 @@ export class TranslateWidget extends WidgetTool {
 
   update(ctx) {
     if (this.axes === undefined) {
-      return;
+      this.create(ctx, this.manager);
     }
 
     let x = this.axes[0],
-        y = this.axes[1],
-        z = this.axes[2];
+      y = this.axes[1],
+      z = this.axes[2];
 
     //let ret = new Vector3(aabb[0]).interp(aabb[1], 0.5);
 
-    let ret = this.ctx.view3d.getTransCenter();
-    let aabb = this.ctx.view3d.getTransBounds();
-    ret.center = new Vector3(aabb[0]).interp(aabb[1], 0.5);
+
+    let ret = this.getTransCenter();
     //ret = {center:  ret};
 
     let tmat = new Matrix4();
@@ -217,7 +226,9 @@ export class TranslateWidget extends WidgetTool {
     let xmat = new Matrix4();
     let ymat = new Matrix4();
 
-    let scale = 1.0, scale2 = 1.5;
+    //let dpi = devicePixelRatio;
+
+    let scale = 0.65, scale2 = scale*1.5;
     xmat.euler_rotate(0.0, Math.PI*0.5, 0.0);
     x.localMatrix.makeIdentity();
     x.localMatrix.translate(0.0, 0.0, scale);
@@ -262,17 +273,17 @@ export class TranslateWidget extends WidgetTool {
 
     xmat.euler_rotate(0.0, Math.PI*0.5, 0.0);
     px.localMatrix.makeIdentity();
-    px.localMatrix.translate(scale*fac, -scale*fac, 0.0);
+    px.localMatrix.translate(-scale*fac, -scale*fac, 0.0);
     xmat.scale(scale, scale, scale);
 
     ymat.euler_rotate(Math.PI*0.5, 0.0, 0.0);
     py.localMatrix.makeIdentity();
-    py.localMatrix.translate(-scale*fac, scale*fac, 0.0);
+    py.localMatrix.translate(scale*fac, scale*fac, 0.0);
     ymat.scale(scale, scale, scale);
 
     zmat.euler_rotate(0.0, 0.0, 0.0);
     pz.localMatrix.makeIdentity();
-    pz.localMatrix.translate(-scale*fac, -scale*fac, 0.0);
+    pz.localMatrix.translate(scale*fac, -scale*fac, 0.0);
     zmat.scale(scale, scale, scale);
 
     xmat.preMultiply(mat);
@@ -289,10 +300,8 @@ export class TranslateWidget extends WidgetTool {
   }
 }
 
-WidgetTool.register(TranslateWidget);
 
-
-export class ScaleWidget extends WidgetTool {
+export class ScaleWidget extends TransformWidget {
   constructor(manager) {
     super(manager);
 
@@ -305,24 +314,6 @@ export class ScaleWidget extends WidgetTool {
     icon      : Icons.SCALE_WIDGET,
     flag      : 0
   }}
-
-  static validate(ctx) {
-    let selmask = ctx.view3d.ctx.selectMask;
-
-    if (selmask == SelMask.OBJECT) {
-      for (let ob of ctx.scene.objects.selected.editable) {
-        return true;
-      }
-    }
-
-    for (let ob of ctx.selectedMeshObjects) {
-      for (let v of ob.data.verts.selected) {
-        return true;
-      }
-    }
-
-    return false;
-  }
 
   create(ctx, manager) {
     super.create(ctx, manager);
@@ -404,12 +395,13 @@ export class ScaleWidget extends WidgetTool {
       y = this.axes[1],
       z = this.axes[2];
 
-    let ret = this.ctx.view3d.getTransCenter();
+    let ret = this.getTransCenter();
 
     let tmat = new Matrix4();
     let ts = 0.5;
     tmat.translate(ret.center[0], ret.center[1], ret.center[2]);
     tmat.scale(ts, ts, ts);
+
     this.center.setMatrix(tmat);
 
     let co1 = new Vector3(ret.center);
@@ -503,126 +495,93 @@ export class ScaleWidget extends WidgetTool {
   }
 }
 
-WidgetTool.register(ScaleWidget);
+export class RotateWidget extends TransformWidget {
+  constructor() {
+    super();
 
-export class ExtrudeWidget extends WidgetTool {
-  constructor(manager) {
-    super(manager);
-
-    this.axes = undefined;
+    this._first = true;
   }
 
   static widgetDefine() {return {
-    uiname      : "Extrude",
-    name        : "extrude",
-    icon        : Icons.EXTRUDE,
-    flag        : 0,
-    selectMode  : SelMask.FACE
+    uiname    : "Rotate",
+    name      : "rotate",
+    icon      : Icons.ROTATE,
+    flag      : 0,
   }}
 
-  static validate(ctx) {
-    if (!(ctx.selectmode & SelMask.GEOM))
-      return false;
+  static nodedef() {return {
+    name : "rotate_widget",
+    inputs : Node.inherit({
+      view3d_draw_depend : new DependSocket()
+    })
+  }}
 
-    let selmask = ctx.view3d.ctx.selectMask;
+  create(ctx) {
+    this._first = false;
+    let manager = this.manager;
 
-    for (let ob of ctx.selectedMeshObjects) {
-      for (let f of ob.data.faces.selected) {
-        return true;
-      }
+    let view3d = ctx.view3d;
+    if (view3d) {
+      let node = view3d.getGraphNode();
+      node.outputs.onDrawPre.connect(this.inputs.view3d_draw_depend);
     }
 
-    return false;
+    this.axes = [
+      this.getTorus(new Matrix4(), [1, 0, 0, 1]),
+      this.getTorus(new Matrix4(), [0, 1, 0, 1]),
+      this.getTorus(new Matrix4(), [0, 0, 1, 1]),
+      //this.getTorus(new Matrix4(), [1, 1, 1, 1]) //view axis
+    ];
+
+    let makeonclick = (axis) => {
+      return (e) => {
+        this.onclick(e, axis);
+      }
+    }
+    for (let i=0; i<this.axes.length; i++) {
+      this.axes[i].axis = i;
+      this.axes[i].onclick = makeonclick(i);
+    }
   }
 
-  create(ctx, manager) {
-    super.create(ctx, manager);
+  onclick(e, axis) {
+    console.log(axis);
+    let op = new RotateOp();
+    let con = new Vector3();
+    con[axis] = 1.0;
 
-    console.log("creating widget");
+    op.inputs.constraint.setValue(con);
+    op.inputs.selmask.setValue(this.ctx.selectMask);
 
-    let arrow = this.arrow = this.getArrow(undefined, "orange");
-
-    arrow.on_mousedown = (e, localX, localY) => {
-      this.startTool(localX, localY);
-    };
-
-    this.update(ctx);
+    this.ctx.api.execTool(this.ctx, op);
   }
+  draw(gl, manager, matrix=undefined) {
+    gl.depthMask(true);
+    gl.enable(gl.DEPTH_TEST);
 
-  startTool(axis, localX, localY) {
-    let tool1 = this.ctx.api.createTool(this.ctx, "mesh.extrude_regions()");
-    let tool2 = this.ctx.api.createTool(this.ctx, "view3d.translate()");
+    super.draw(gl, manager, matrix);
 
-    let macro = new ToolMacro();
-    macro.add(tool1);
-    macro.add(tool2);
-
-    macro.connect(tool1, tool2, () => {
-      tool2.inputs.constraint_space.setValue(tool1.outputs.normalSpace.getValue());
-    });
-    tool2.inputs.constraint.setValue([0, 0, 1]);
-
-    this.execTool(this.ctx, macro);
-    //"mesh.extrude_regions()"
-
+    gl.disable(gl.DEPTH_TEST);
   }
-
   update(ctx) {
-    if (ctx === undefined) {
-      ctx = this.ctx;
+    if (this._first) {
+      this.create(ctx)
+    }
+    super.update(ctx);
+
+    let cent = this.getTransCenter().center;
+
+    this.matrix.makeIdentity();
+    this.matrix.translate(cent[0], cent[1], cent[2]);
+    let scale = 1.5;
+    this.matrix.scale(scale, scale, scale);
+
+    for (let shape of this.axes) {
+      shape.matrix.makeIdentity();
     }
 
-    let no = update_temps.next().zero();
-    let no2 = update_temps4.next();
-    let no3 = update_temps.next();
-    let co = update_temps.next().zero();
-    let co2 = update_temps.next().zero();
-    let tot = 0.0;
-
-    for (let ob of ctx.selectedMeshObjects) {
-      let mesh = ob.data;
-      let obmat = ob.outputs.matrix.getValue();
-      no3.zero();
-
-      for (let f of mesh.faces.selected.editable) {
-        co2.load(f.cent).multVecMatrix(obmat);
-
-        no2.load(f.no);
-        no2[3] = 0.0;
-        no2.multVecMatrix(obmat);
-        no3.add(no2);
-
-        co.add(co2);
-        tot += 1.0;
-      }
-
-      no3.normalize();
-      no.add(no3);
-    }
-
-    if (tot == 0.0) {
-      console.warn("error in extrudewidget update");
-      return; //should never happen, see this.validate()
-    }
-
-    co.mulScalar(1.0 / tot);
-    no.normalize();
-
-    let mat = update_mats.next();
-    let tmat = update_mats.next();
-
-    mat.makeIdentity();
-    tmat.makeIdentity();
-
-    mat.makeNormalMatrix(no);
-    tmat.translate(co[0], co[1], co[2]);
-    mat.preMultiply(tmat);
-
-    let localmat = this.arrow.localMatrix;
-    localmat.makeIdentity();
-    localmat.translate(0.0, 0.0, 0.5);
-
-    this.arrow.setMatrix(mat);
+    this.axes[0].matrix.euler_rotate(0.0, Math.PI*0.5, 0.0);
+    this.axes[1].matrix.euler_rotate(Math.PI*0.5, 0.0, 0.0);
+    this.axes[2].matrix.euler_rotate(0.0, 0.0, Math.PI*0.5);
   }
 }
-//WidgetTool.register(ExtrudeWidget);

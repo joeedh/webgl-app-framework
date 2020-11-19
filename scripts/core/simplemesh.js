@@ -194,7 +194,7 @@ export class LineEditor {
 
   colors(c1, c2) {
     let data = this.mesh.line_colors;
-    let i = this.i*2; //*3 is because triangles have three vertices
+    let i = this.i*2;
 
     data.copy(i, c1);
     data.copy(i+1, c2);
@@ -204,7 +204,7 @@ export class LineEditor {
 
   uvs(c1, c2) {
     let data = this.mesh.line_uvs;
-    let i = this.i*2; //*3 is because triangles have three vertices
+    let i = this.i*2;
 
     data.copy(i, c1);
     data.copy(i+1, c2);
@@ -214,14 +214,14 @@ export class LineEditor {
 
   ids(i1, i2) {
     if (i1 === undefined || i2 === undefined) {
-      throw new Error("i1/i2 cannot be undefined");
+      throw new Error("i1 i2 cannot be undefined");
     }
 
     let data = this.mesh.line_ids;
-    let i = this.i*2; //*3 is because triangles have three vertices
+    let i = this.i*2;
 
-    _ids_arrs[0][0] = i1, i1 = _ids_arrs[0];
-    _ids_arrs[1][0] = i2, i2 = _ids_arrs[1];
+    _ids_arrs[0][0] = i1;
+    _ids_arrs[1][0] = i2;
 
     data.copy(i, _ids_arrs[0]);
     data.copy(i+1, _ids_arrs[1]);
@@ -290,6 +290,7 @@ export class GeoLayer extends Array {
     super();
 
     this.type = type;
+    this.data = [];
     this.data_f32 = [];
     this.normalized = false;
 
@@ -304,15 +305,16 @@ export class GeoLayer extends Array {
 
   extend(data) {
     let tot = this.size;
-    let starti = this.length;
+    let starti = this.data.length;
 
-    /*v8's optimizer hates this:
+    /*
+    //v8's optimizer hates this:
     for (var i=0; i<tot; i++) {
-      this.push(0);
-    }*/
+      this.data.push(0);
+    }//*/
 
     //according to ES spec this is valid:
-    this.length += tot;
+    this.data.length += tot;
 
     if (data !== undefined) {
       this.copy(~~(starti/this.size), data, 1);
@@ -323,16 +325,17 @@ export class GeoLayer extends Array {
 
   //i and n will be multiplied by .size
   copy(i, data, n) {
-    if (n == undefined) n = 1;
+    if (n === undefined) n = 1;
 
     let tot = n*this.size;
 
     i *= this.size;
+    let thisdata = this.data;
 
     let di = 0;
     let end = i + tot;
     while (i < end) {
-      this[i] = data[di];
+      thisdata[i] = data[di];
       di++;
       i++;
     }
@@ -401,15 +404,15 @@ export class GeoLayerManager {
         let a = layer.data_f32;
         let b = layer2.data_f32;
 
-        layer2.length = layer.length;
+        layer2.data.length = layer.data.length;
         b.length = a.length;
 
         layer2.id = layer.id;
         layer2.bufferKey = layer.bufferKey;
         layer2.normalized = layer.normalized;
 
-        for (let i=0; i<layer2.length; i++) {
-          layer2[i] = layer[i];
+        for (let i=0; i<layer2.data.length; i++) {
+          layer2.data[i] = layer.data[i];
         }
 
         for (let i=0; i<a.length; i++) {
@@ -589,7 +592,7 @@ export class SimpleIsland {
   point(v1) {
     let i = this.totpoint;
 
-    let cos = this.point_cos;
+    let cos = this.point_cos.data;
     cos.push(v1[0]); cos.push(v1[1]); cos.push(v1[2]);
 
     let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
@@ -610,7 +613,8 @@ export class SimpleIsland {
   line(v1, v2) {
     let i = this.totline;
 
-    let cos = this.line_cos;
+    let cos = this.line_cos.data;
+
     cos.push(v1[0]); cos.push(v1[1]); cos.push(v1[2]);
     cos.push(v2[0]); cos.push(v2[1]); cos.push(v2[2]);
 
@@ -632,7 +636,7 @@ export class SimpleIsland {
   }
 
   tri(v1, v2, v3) {
-    let cos = this.tri_cos;
+    let cos = this.tri_cos.data;
 
     cos.push(v1[0]); cos.push(v1[1]); cos.push(v1[2]);
     cos.push(v2[0]); cos.push(v2[1]); cos.push(v2[2]);
@@ -679,10 +683,10 @@ export class SimpleIsland {
         continue;
       }
 
-      let size = layer.size*layer.length;
+      let size = layer.size*layer.data.length;
 
       if (layer.data_f32 === undefined || layer.data_f32.length !== size) {
-        layer.data_f32 = new Float32Array(layer);
+        layer.data_f32 = new Float32Array(layer.data);
       }
 
       let buf = this.buffer.get(gl, layer.bufferKey);
@@ -788,6 +792,18 @@ export class SimpleIsland {
   onContextLost(e) {
     this.regen = 1;
   }
+
+  /*
+  set regen(v) {
+    if (v && this.__regen !== v) {
+      console.warn("set regen", v, this.__regen);
+    }
+    this.__regen = v;
+  }
+
+  get regen() {
+    return this.__regen;
+  }//*/
 
   draw(gl, uniforms, params, program_override=undefined) {
     let program = this.program === undefined ? this.mesh.program : this.program;
@@ -1016,7 +1032,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     let chunk = this.get_chunk(id);
     let itri = this.idmap[id];
 
-    let tri_cos = chunk.tri_cos;
+    let tri_cos = chunk.tri_cos.data;
     let i = itri*9;
 
     if (tri_cos.length < i+9) {
@@ -1040,10 +1056,10 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     let chunk = this.get_chunk(id);
     let iline = this.idmap[id];
 
-    let line_cos = chunk.line_cos;
+    let line_cos = chunk.line_cos.data;
     let i = iline*6;
 
-    if (line_cos.length < i+6) {
+    if (line_cos.length < i+12) {
       chunk.line(v1, v2);
     } else {
       line_cos[i++] = v1[0]; line_cos[i++] = v1[1]; line_cos[i++] = v1[2];
@@ -1058,10 +1074,10 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     let chunk = this.get_chunk(id);
     let ipoint = this.idmap[id];
 
-    let point_cos = chunk.point_cos;
+    let point_cos = chunk.point_cos.data;
     let i = ipoint*3;
 
-    if (point_cos.length < i+9) {
+    if (point_cos.data.length < i+9) {
       chunk.point(v1);
     } else {
       point_cos[i++] = v1[0]; point_cos[i++] = v1[1]; point_cos[i++] = v1[2];

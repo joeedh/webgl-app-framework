@@ -1080,6 +1080,7 @@ export class Mesh extends SceneObjectData {
     let sm = this.smesh = new ChunkedSimpleMesh(LayerTypes.LOC|LayerTypes.NORMAL|LayerTypes.UV);
     let wm = this.wmesh = new ChunkedSimpleMesh(LayerTypes.LOC|LayerTypes.NORMAL|LayerTypes.UV);
 
+
     let zero2 = [0, 0];
     let w = [1, 1, 1, 1];
 
@@ -1274,6 +1275,127 @@ export class Mesh extends SceneObjectData {
     uniforms.pointSize = 10;
 
     this.draw(view3d, gl, uniforms, program, object);
+  }
+
+
+  _genRenderElementsNew(view3d, gl, uniforms) {
+    this.recalc &= ~RecalcFlags.ELEMENTS;
+
+    let selcolor = uniforms.select_color;
+    let unselcolor = [0.5, 0.5, 1.0, 1.0];
+
+    //if (!selcolor) {
+    selcolor = Colors[1];
+    //}
+
+    for (let k in this._fancyMeshes) {
+      //this._fancyMeshes[k].destroy(gl);
+    }
+
+    let meshes = this._fancyMeshes = {};
+    let sm;
+
+    sm = meshes.verts = new ChunkedSimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR);
+    sm.primflag = PrimitiveTypes.POINTS;
+    for (let v of this.verts) {
+      if ((v.flag & MeshFlags.HIDE) || !(v.flag & MeshFlags.UPDATE)) {
+        continue;
+      }
+      let p = sm.point(v.eid, v);
+
+      let color = v.flag & MeshFlags.SELECT ? selcolor : v.color;
+
+      for (let i = 0; i < v.edges.length; i++) {
+        let e = v.edges[i];
+        e.flag |= MeshFlags.UPDATE;
+      }
+
+      p.ids(v.eid);
+      p.colors(color);
+    }
+
+
+    sm = meshes.handles = new ChunkedSimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR);
+    sm.primflag = PrimitiveTypes.POINTS;
+    for (let h of this.handles) {
+      if (!h.visible || !(h.flag & MeshFlags.UPDATE)) {
+        continue;
+      }
+      let p = sm.point(h.eid, h);
+
+      let color = h.flag & MeshFlags.SELECT ? selcolor : h.color;
+
+      p.ids(h.eid);
+      p.colors(color);
+    }
+
+    if (this.features & MeshFeatures.EDGE_CURVES_ONLY) {
+      meshes.edges = this.genRender_curves(gl, false, view3d, LayerTypes.LOC | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR);
+      meshes.edges.primflag = PrimitiveTypes.LINES;
+    } else {
+      sm = meshes.edges = new ChunkedSimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR);
+      sm.primflag = PrimitiveTypes.LINES;
+
+      for (let e of this.edges) {
+        if ((e.flag & MeshFlags.HIDE) || !(e.flag & MeshFlags.UPDATE)) {
+          continue;
+        }
+
+        let l = e.l;
+        if (l) {
+          let _i = 0;
+
+          do {
+            l.f.flag |= MeshFlags.UPDATE;
+            l = l.radial_next;
+          } while (l !== e.l && _i++ < 10);
+        }
+
+        let line = sm.line(e.eid, e.v1, e.v2);
+
+        if (e.flag & MeshFlags.SELECT) {
+          line.colors(selcolor, selcolor);
+        } else {
+          line.colors(e.v1.color, e.v2.color);
+        }
+
+        line.ids(e.eid, e.eid);
+        line.uvs([0, 0], [1, 1])
+      }
+    }
+
+    sm = meshes.faces = new ChunkedSimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR);
+    sm.primflag = PrimitiveTypes.TRIS;
+
+    let ltris = this._ltris;
+    ltris = ltris === undefined ? [] : ltris;
+
+    for (let i = 0; i < ltris.length; i += 3) {
+      let v1 = ltris[i].v;
+      let v2 = ltris[i + 1].v;
+      let v3 = ltris[i + 2].v;
+      let f = ltris[i].f;
+
+      if ((f.flag & MeshFlags.HIDE) || !(f.flag & MeshFlags.UPDATE)) {
+        continue;
+      }
+
+      let tri = sm.tri(f.eid, v1, v2, v3);
+      tri.ids(f.eid, f.eid, f.eid);
+
+      if (f.flag & MeshFlags.SELECT) {
+        tri.colors(selcolor, selcolor, selcolor);
+      } else {
+        tri.colors(unselcolor, unselcolor, unselcolor);
+      }
+
+      let uv = ltris[i].uv;
+      if (uv === undefined) {
+        continue;
+      }
+
+      tri.uvs(ltris[i].uv, ltris[i + 1].uv, ltris[i + 2].uv);
+    }
   }
 
   _genRenderElements(view3d, gl, uniforms) {

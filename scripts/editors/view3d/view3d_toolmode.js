@@ -1,67 +1,91 @@
-/*
-
-UPDATE:
-To avoid violating model-view-controller design, toolmode and widgets will
-have to be moved to Scene.  That means all 3D viewports will have the same
-widgets.
-
-Toolmode refactor.
-
-The old subeditor system is going to be replaced
-with a more flexible toolmode system.
-
-Logically tool modes handle events and selection.  They
-inherit from WidgetTool to have a unified event system
-for widgets/toolmodes.
-
-TODO:
-* DONE: Move toolmodes to Scene class.
-  - Note this means toolmodes will now be shared across View3D instances.
-* DONE: Refactor findnearest (screen picking) into its own module
-* PARTIALLY DONE: Bundle some standard tools into StandardTools class
- - With appropriate changes to keymap definitions.
-*  Move pick functionality (findnearest) to static methods in SceneObjectData.
-* DONE Tools modes (editors) should inherent from WidgetTool
-  - Note: not all widget tools must be tool modes
-*/
 
 import {Vector2, Vector3} from '../../util/vectormath.js';
 import {KeyMap, HotKey} from "../editor_base.js";
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from "../../core/simplemesh.js";
-import {WidgetTool, WidgetFlags, WidgetTools} from "./widgets.js";
+import {WidgetFlags} from "./widgets/widgets.js";
 import {EnumProperty, FlagProperty} from "../../path.ux/scripts/toolsys/toolprop.js";
 import {Icons} from '../icon_enum.js';
 import {SelMask} from "./selectmode.js";
 import '../../path.ux/scripts/util/struct.js';
-import {TranslateWidget, WidgetSceneCursor} from "./widget_tools.js";
+import {TranslateWidget, WidgetSceneCursor} from "./widgets/widget_tools.js";
+import {Node, NodeFlags} from '../../core/graph.js';
 
 import '../../core/textsprite.js';
 
 let STRUCT = nstructjs.STRUCT;
 
-export class ToolMode extends WidgetTool {
-  constructor(manager) {
-    super(manager);
+export class ToolMode extends Node {
+  constructor(ctx) {
+    super();
 
-    this.ctx = manager !== undefined ? manager.ctx : undefined;
+    this.ctx = ctx;
     this.flag |= WidgetFlags.ALL_EVENTS;
 
-    this.widgettool = undefined; //integer, index into WidgetTools list
+    this.drawlines = [];
+    this.drawtexts = [];
+
     this.widgets = [];
     this._uniqueWidgets = {};
+    this.transWidget = undefined;
 
+    this.selectMask = this.constructor.toolModeDefine().selectMode;
     this._transProp = this.constructor.getTransformProp();
 
     this.keymap = new KeyMap();
     this.defineKeyMap();
   }
 
-  drawsObjectExclusively(ob) {
-
+  drawsObjectIdsExclusively(ob) {
+    return false;
   }
 
+  /** easy line drawing (in 3d)*/
+  makeTempLine(v1, v2, color) {
+    let dl = this.ctx.view3d.makeTempLine(v1, v2, color);
+    this.drawlines.push(dl);
+    return dl;
+  }
+
+  makeTempText(co, string, color) {
+    let dt = this.ctx.view3d.makeTempText(co, string, color);
+    this.drawtexts.push(dt);
+    return dt;
+  }
+
+  resetTempGeom(ctx=this.ctx) {
+    for (let dl of this.drawlines) {
+      ctx.view3d.removeTempLine(dl);
+    }
+    for (let dt of this.drawtexts) {
+      ctx.view3d.removeTempText(dt);
+    }
+
+    this.drawlines.length = 0;
+  }
+
+  static toolModeDefine() {
+    return {
+      name: "name",
+      uiname: "uiname",
+      icon: -1,
+      flag: 0,
+      description: "",
+      selectMode: undefined, //if set, preferred selectmode, see SelModes
+      stdtools: undefined, //if set, will override standard tools in inherited keymaps
+      transWidgets: [], //list of widget classes tied to this.transformWidget
+    }
+  }
+
+  static nodedef() {return {
+    name    : "tool",
+    uiname  : "tool",
+    inputs  : {},
+    outputs : {}
+  }}
+
+
   get typeName() {
-    return this.constructor.widgetDefine().name;
+    return this.constructor.toolModeDefine().name;
   }
 
   getKeyMaps() {
@@ -100,27 +124,56 @@ export class ToolMode extends WidgetTool {
 
   }
 
+
   static getContextOverlayClass() {
     return undefined;
   }
 
   static register(cls) {
     ToolModes.push(cls);
-    WidgetTool.register(cls);
   }
 
   static getTransformProp() {
-    let classes = this.widgetDefine().transWidgets;
+    let classes = this.toolModeDefine().transWidgets;
     classes = classes === undefined ? [] : classes;
 
-    return WidgetTool.getToolEnum(classes, FlagProperty, true);
+    let enumdef = {};
+    let uinames = {};
+    let icons = {};
+    let descr = {};
+
+    enumdef.NONE = 0;
+    icons.NONE = -1;
+    uinames.NONE = "disable"
+    descr.NONE = "Hide transform widgets"
+
+    let i = 1;
+
+    for (let cls of classes) {
+      let def = cls.widgetDefine();
+
+      let k = def.name || cls.name;
+
+      enumdef[k] = i++;
+      uinames[k] = def.uiname ? def.uiname : k;
+      descr[k] = def.description ? def.description : uinames[k];
+      icons[k] = def.icon ? def.icon : -1;
+    }
+
+    let prop = new EnumProperty(undefined, enumdef);
+    prop.addIcons(icons);
+    prop.addUINames(uinames);
+    prop.addDescriptions(descr);
+
+    return prop;
+    //return WidgetTool.getToolEnum(classes, FlagProperty, true);
   }
 
   static defineAPI(api) {
     let cls = this;
 
     let tstruct = api.mapStruct(cls, true);
-    tstruct.name = this.name !== undefined ? this.name : this.widgetDefine().name;
+    tstruct.name = this.name !== undefined ? this.name : this.toolModeDefine().name;
 
     tstruct.string("typeName", "type", "Type", "Tool Mode Type");
 
@@ -132,23 +185,33 @@ export class ToolMode extends WidgetTool {
     return tstruct;
   }
 
-  static widgetDefine() {
-    return {
-      name: "name",
-      uiname: "uiname",
-      icon: -1,
-      flag: 0,
-      description: "",
-      selectMode: undefined, //if set, preferred selectmode, see SelModes
-      stdtools: undefined, //if set, will override standard tools in inherited keymaps
-      transWidgets: [], //list of widget classes tied to this.transformWidget
+  addWidget(widget) {
+    this.ctx.scene.widgets.add(widget);
+    this.widgets.push(widget);
+  }
+
+  removeWidget(widget) {
+    this.ctx.scene.widgets.remove(widget);
+    this.widgets.remove(widget);
+  }
+
+  hasWidgetWithKey(key) {
+    return this.getWidgetWithKey(key) !== undefined;
+  }
+
+  getWidgetWithKey(key) {
+    let widget = this.ctx.scene.widgets.getWidgetWithKey(key);
+
+    if (widget && !widget.isDead && this.widgets.indexOf(widget) >= 0) {
+      return widget;
     }
+
+    return undefined;
   }
 
   /**
-   * Checks if widgettool has changed, and, if widget is supported by this toolmode,
-   * spawns new widget accordingly.
-   * @param widgettool : integer, index in WidgetTools list
+   * Spawn a unique widget
+   * @param widgetclass : widget class
    */
   ensureUniqueWidget(widgetclass) {
     if (this.ctx === undefined)
@@ -161,6 +224,10 @@ export class ToolMode extends WidgetTool {
     let valid = widgetclass.validate(this.ctx);
     let def = widgetclass.widgetDefine();
 
+    if (def.name in this._uniqueWidgets && this._uniqueWidgets[def.name].isDead) {
+      this.removeUniqueWidget(this.getUniqueWidget(widgetclass));
+    }
+
     if (!valid && def.name in this._uniqueWidgets) {
       this.removeUniqueWidget(this.getUniqueWidget(widgetclass));
       window.redraw_viewport();
@@ -172,13 +239,6 @@ export class ToolMode extends WidgetTool {
       let widget = new widgetclass(manager);
       manager.add(widget);
 
-      if (widget instanceof WidgetTool) {
-        //stupid, WidgetTools have this create() method,
-        //need to finish refactoring WidgetTool to be proper
-        //subclass of WidgetBase
-        widget.create(this.ctx, manager);
-      }
-
       this.widgets.push(widget);
       this._uniqueWidgets[def.name] = widget;
 
@@ -187,6 +247,9 @@ export class ToolMode extends WidgetTool {
       }
 
       window.redraw_viewport();
+      return widget;
+    } else {
+      return this._uniqueWidgets[def.name];
     }
   }
 
@@ -204,10 +267,6 @@ export class ToolMode extends WidgetTool {
 
     this.widgets.remove(widget);
     this.ctx.scene.widgets.remove(widget);
-  }
-
-  drawsObjectIdsExclusively(obj) {
-    return false;
   }
 
   hasUniqueWidget(cls) {
@@ -238,26 +297,7 @@ export class ToolMode extends WidgetTool {
     return this.getWidgetHighlight() !== undefined;
   }
 
-  updateTransWidgets() {
-    let prop = this._transProp;
-    let mask = this.transformWidget;
-
-    for (let key in prop.values) {
-      let bit = prop.values[key];
-      let toolcls = WidgetTool.getTool(key);
-
-      if (mask & bit) {
-        this.ensureUniqueWidget(toolcls);
-      } else if (this.hasUniqueWidget(toolcls)) {
-        this.removeUniqueWidget(this.getUniqueWidget(toolcls));
-        window.redraw_viewport();
-      }
-    }
-  }
-
   update() {
-    super.update();
-
     if (!this.ctx) {
       return;
     }
@@ -267,7 +307,37 @@ export class ToolMode extends WidgetTool {
       this.ctx.pushOverlay(new cls(this.ctx.state, this));
     }
 
-    this.updateTransWidgets();
+    let del = [];
+
+    for (let widget of this.widgets) {
+      if (widget.isDead) {
+        del.push(widget);
+      }
+    }
+
+    for (let widget of del) {
+      this.widgets.remove(widget);
+    }
+
+    let tws = this.constructor.toolModeDefine().transWidgets || [];
+    let tcls, ti = this.transformWidget-1;
+
+
+    if (ti >= 0 && ti < tws.length) {
+      tcls = tws[ti];
+    }
+
+    if (this.transWidget && tcls !== this.transWidget.constructor) {
+      console.log("removign transform widget");
+      this.removeUniqueWidget(this.transWidget);
+      this.transWidget = undefined;
+    }
+
+
+    if (!this.transWidget && tcls) {
+      this.transWidget = this.ensureUniqueWidget(tcls);
+      console.log("making transform widget", tcls.name, this.transformWidget, this.transWidget);
+    }
 
     /*
     for (let widget of this.widgets) {
@@ -280,7 +350,7 @@ export class ToolMode extends WidgetTool {
 
   }
 
-  clearWidgets() {
+  clearWidgets(gl) {
     if (!this.ctx || !this.ctx.scene) {
       return;
     }
@@ -291,9 +361,10 @@ export class ToolMode extends WidgetTool {
       manager.remove(widget);
     }
 
+    this.transWidget = undefined;
+
     this._uniqueWidgets = {};
     this.widgets = [];
-
   }
 
   onInactive() {
@@ -304,18 +375,25 @@ export class ToolMode extends WidgetTool {
     }
 
     this.clearWidgets();
+
+    if (this.ctx) {
+      this.resetTempGeom();
+    }
   }
 
-  destroy() {
-    this.clearWidgets();
+  graphDisconnect() {
+    for (let sock of this.allsockets) {
+      sock.disconnect();
+    }
+  }
+
+  destroy(gl) {
+    this.clearWidgets(gl);
+    this.graphDisconnect();
   }
 
   onContextLost(e) {
     return super.onContextLost(e);
-  }
-
-  loadSTRUCT(reader) {
-    reader(this)
   }
 
   on_mousedown(e, x, y, was_touch) {
@@ -328,6 +406,10 @@ export class ToolMode extends WidgetTool {
   }
 
   on_drawstart(view3d, gl) {
+
+  }
+
+  draw(view3d, gl) {
 
   }
 
@@ -346,6 +428,10 @@ set view3d(val) {
 }
 //*/
 
+  drawsObjectIds(obj) {
+    return false;
+  }
+
   /**
    * draw any extra ids the toolmode needs
    * */
@@ -359,6 +445,11 @@ set view3d(val) {
   */
   drawObject(gl, uniforms, program, object, mesh) {
     return false;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
   }
 }
 
@@ -417,6 +508,8 @@ export class MeshCache {
   }
 }
 
+ToolMode.dataPath = "scene.tool";
+
 export let ToolModes = [];
 
 export function makeToolModeEnum() {
@@ -427,7 +520,7 @@ export function makeToolModeEnum() {
   let i = 0;
 
   for (let cls of ToolModes) {
-    let def = cls.widgetDefine();
+    let def = cls.toolModeDefine();
 
     let key = def.name;
 
