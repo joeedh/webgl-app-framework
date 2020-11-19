@@ -14,7 +14,7 @@ import {calcTransCenter} from "./transform_query.js";
 import {CastModes, castViewRay} from '../findnearest.js';
 
 import {ListProperty, StringSetProperty} from "../../../path.ux/scripts/toolsys/toolprop.js";
-import {ModalStates} from "../../../core/modalstate.js";
+import {ModalFlags} from "../../../core/modalflags.js";
 
 /*
 Transform refactor:
@@ -200,7 +200,7 @@ export class TransformOp extends View3DOp {
   }
 
   modalStart(ctx) {
-    ctx.setModalState(ModalStates.TRANSFORMING);
+    ctx.setModalFlag(ModalFlags.TRANSFORMING);
 
     let promise = super.modalStart(ctx);
 
@@ -250,7 +250,7 @@ export class TransformOp extends View3DOp {
     //partial update, do a full sync to gpu on mouse up
 
     let ctx = this.modal_ctx;
-    ctx.clearModalState(ModalStates.TRANSFORMING);
+    ctx.clearModalFlag(ModalFlags.TRANSFORMING);
 
     for (let ob of ctx.selectedMeshObjects) {
       ob.data.regenRender();

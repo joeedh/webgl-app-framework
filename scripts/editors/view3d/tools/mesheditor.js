@@ -1,6 +1,5 @@
 import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
-import {WidgetFlags, WidgetTool} from "../widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {HotKey, KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
@@ -12,7 +11,7 @@ import {MeshToolBase} from "./meshtool.js";
 let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../../../shaders/shaders.js';
-import {MovableWidget} from '../widget_utils.js';
+import {MovableWidget} from '../widgets/widget_utils.js';
 import {SnapModes} from "../transform/transform_ops.js";
 
 import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
@@ -30,7 +29,7 @@ export class MeshEditor extends MeshToolBase {
     this.drawSelectMask = this.selectMask;
   }
 
-  static widgetDefine() {return {
+  static toolModeDefine() {return {
     name        : "mesh",
     uianme      : "Edit Geometry",
     icon       : Icons.MESHTOOL,
@@ -62,7 +61,7 @@ export class MeshEditor extends MeshToolBase {
 
   static buildElementSettings(container) {
     super.buildElementSettings(container);
-    let path = "scene.tools." + this.widgetDefine().name;
+    let path = "scene.tools." + this.toolModeDefine().name;
   }
 
   static buildSettings(container) {
@@ -109,7 +108,7 @@ export class MeshEditor extends MeshToolBase {
       } else {
         return [];
       }
-      //let path = "scene.tools." + this.constructor.widgetDefine().name;
+      //let path = "scene.tools." + this.constructor.toolModeDefine().name;
       //path += ".mesh";
     }
 
@@ -154,7 +153,7 @@ export class MeshEditor extends MeshToolBase {
 
     this.sceneObject = ctx.object;
     this.mesh = this.sceneObject.data;
-    this.mesh.owningToolMode = this.constructor.widgetDefine().name;
+    this.mesh.owningToolMode = this.constructor.toolModeDefine().name;
   }
 
   update() {
@@ -209,7 +208,7 @@ export class MeshEditor extends MeshToolBase {
       super.loadSTRUCT(reader);
     }
 
-    this.mesh.owningToolMode = this.constructor.widgetDefine().name;
+    this.mesh.owningToolMode = this.constructor.toolModeDefine().name;
   }
 
 }

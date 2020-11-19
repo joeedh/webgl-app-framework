@@ -1,6 +1,6 @@
 import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
-import {WidgetFlags} from "../widgets.js";
+import {WidgetFlags} from "../widgets/widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {HotKey, KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
@@ -11,7 +11,7 @@ import '../../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../../../shaders/shaders.js';
-import {MovableWidget} from '../widget_utils.js';
+import {MovableWidget} from '../widgets/widget_utils.js';
 import {SnapModes, TranslateOp} from "../transform/transform_ops.js";
 import {SelOneToolModes} from "../selectmode.js";
 
@@ -112,6 +112,14 @@ export class MeshToolBase extends ToolMode {
   getMeshPaths() {
     return ["_all_objects_"];
   }
+
+  static toolModeDefine() {return {
+    name        : "basemesh",
+    uianme      : "Edit Geometry",
+    icon       : Icons.MESHTOOL,
+    flag        : 0,
+    description : "Edit vertices/edges/faces"
+  }}
 
   static defineAPI(api) {
     let tstruct = super.defineAPI(api);
@@ -366,7 +374,11 @@ export class MeshToolBase extends ToolMode {
     return ret;
   }
 
-  drawIDs(view3d, gl, uniforms, selmask=SelMask.GEOM) {
+  drawIDs(view3d, gl, uniforms, selmask=undefined) {
+    if (selmask === undefined) {
+      selmask = this.ctx.selectMask;
+    }
+
     if (!this.drawOwnIds) {
       return;
     }
@@ -422,6 +434,10 @@ export class MeshToolBase extends ToolMode {
   }
 
   on_drawend(view3d, gl) {
+    if (!this.ctx) {
+      return;
+    }
+
     let cam = this.ctx.view3d.activeCamera;
 
     let uniforms = {

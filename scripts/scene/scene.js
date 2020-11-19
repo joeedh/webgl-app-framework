@@ -1,7 +1,7 @@
 import {DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import '../path.ux/scripts/util/struct.js';
 import {ToolModes, makeToolModeEnum} from '../editors/view3d/view3d_toolmode.js';
-import {WidgetManager, WidgetTool, WidgetTools} from "../editors/view3d/widgets.js";
+import {WidgetManager} from "../editors/view3d/widgets/widgets.js";
 
 let STRUCT = nstructjs.STRUCT;
 import {Graph} from '../core/graph.js';
@@ -13,7 +13,7 @@ import {Vector3, Matrix4} from '../util/vectormath.js';
 
 import * as THREE from '../extern/three.js';
 import {print_stack} from "../util/util.js";
-import {WidgetSceneCursor} from "../editors/view3d/widget_tools.js";
+import {WidgetSceneCursor} from "../editors/view3d/widgets/widget_tools.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {Collection} from "./collection.js";
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
@@ -491,7 +491,7 @@ export class Scene extends DataBlock {
     }
   }
 
-  switchToolMode(mode) {
+  switchToolMode(mode, _file_loading=false) {
     console.warn("switchToolMode called");
 
     if (mode === undefined) {
@@ -509,10 +509,10 @@ export class Scene extends DataBlock {
 
     if (this.toolmode_i in this.toolmode_map) {
       console.log("calling old tool inactive", this.toolmode, this.toolmode.onInactive);
-      this.widgets.remove(this.toolmode);
-      console.log(this.toolmode.widgets);
 
-      this.toolmode.onInactive();
+      if (!_file_loading) {
+        this.toolmode.onInactive();
+      }
     }
 
     for (let mode of this.toolmodes) {
@@ -525,19 +525,27 @@ export class Scene extends DataBlock {
     if (ret === undefined) {
       ret = new cls(this.widgets);
 
-      let def = cls.widgetDefine();
+      let def = cls.toolModeDefine();
 
       this.toolmodes.push(ret);
       this.toolmode_map[i] = ret;
       this.toolmode_namemap[def.name] = ret;
     }
 
+    ret.ctx = this.ctx;
     this.toolmode_i = i;
-    this.widgets.add(ret);
 
-    ret.onActive();
+    if (_file_loading) {
+      window.setTimeout(() => {
+        if (ret === this.toolmode) {
+          ret.onActive();
+        }
+      }, 10);
+    } else {
+      ret.onActive();
+    }
 
-    if (this.outputs.onToolModeChange.hasEdges) {
+    if (!_file_loading && this.outputs.onToolModeChange.hasEdges) {
       this.outputs.onToolModeChange.update();
     }
 
@@ -648,11 +656,10 @@ export class Scene extends DataBlock {
     for (let mode of this.toolmodes) {
       mode.setManager(this.widgets);
 
-      let def = mode.constructor.widgetDefine();
+      let def = mode.constructor.toolModeDefine();
       let i = this.toolModeProp.values[def.name];
 
       if (i === this.toolmode_i) {
-        this.widgets.add(mode);
         found = 1;
       }
 
@@ -664,7 +671,7 @@ export class Scene extends DataBlock {
       let i = this.toolmode_i;
       this.toolmode_i = -1;
 
-      this.switchToolMode(i);
+      this.switchToolMode(0, true);
     }
   }
   
@@ -698,6 +705,11 @@ export class Scene extends DataBlock {
       return;
     }
 
+    let toolmode = this.toolmode;
+    if (toolmode) {
+      toolmode.ctx = ctx;
+    }
+
     try {
       this.updateWidgets_intern();
     } catch (error) {
@@ -711,8 +723,11 @@ export class Scene extends DataBlock {
     if (ctx === undefined)
       return;
 
+    this.ctx = ctx;
+
     this.widgets.update(this);
     if (this.toolmode !== undefined) {
+      this.toolmode.ctx = ctx;
       this.toolmode.update();
     }
   }

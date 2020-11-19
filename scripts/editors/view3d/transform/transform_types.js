@@ -119,6 +119,23 @@ export class MeshTransType extends TransDataType {
   static applyTransform(ctx, elem, do_prop, matrix, toolop) {
     let td = elem;
 
+    let v = td.data1;
+    v.flag |= MeshFlags.UPDATE;
+
+    for (let e of v.edges) {
+      e.flag |= MeshFlags.UPDATE;
+
+      if (e.l) {
+        let l = e.l;
+        let _i = 0;
+
+        do {
+          l.f.flag |= MeshFlags.UPDATE;
+          l = l.radial_next;
+        } while (l !== e.l && _i++ < 100);
+      }
+    }
+
     td.data1.load(td.data2).multVecMatrix(matrix);
   }
 

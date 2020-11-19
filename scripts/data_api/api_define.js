@@ -16,8 +16,8 @@ import '../mesh/mesh_createops.js';
 import {CurveSpline} from "../curve/curve.js";
 
 let STRUCT = nstructjs.STRUCT;
-import '../editors/view3d/widget_tools.js'; //ensure widget tools are all registered
-import {WidgetTool, WidgetFlags} from '../editors/view3d/widgets.js';
+import '../editors/view3d/widgets/widget_tools.js'; //ensure widget tools are all registered
+import {WidgetFlags} from '../editors/view3d/widgets/widgets.js';
 import {AddLightOp} from "../light/light_ops.js";
 import {Light} from '../light/light.js';
 import {DataAPI, DataPathError} from '../path.ux/scripts/controller/simple_controller.js';
@@ -768,10 +768,11 @@ export function api_define_scene(api, pstruct) {
     window.redraw_viewport();
   };
 
-  prop = WidgetTool.getToolEnum();
+  /*
   def = sstruct.enum("widgettool", "active_tool", prop.values, "Active Tool", "Currently active tool widget");
   def.setProp(prop);
   def.on("change", onchange);
+  */
 
   let base = ToolMode.defineAPI(api);
   sstruct.dynamicStruct("toolmode", "tool", "Active Tool", base);
@@ -781,7 +782,7 @@ export function api_define_scene(api, pstruct) {
   struct2.name = "ToolModes";
 
   for (let cls of ToolModes) {
-    let def = cls.widgetDefine();
+    let def = cls.toolModeDefine();
 
     let struct3 = cls.defineAPI(api);
 

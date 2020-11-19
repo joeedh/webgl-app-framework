@@ -34,7 +34,7 @@ import {ToolModes, makeToolModeEnum} from './view3d_toolmode.js';
 import {Mesh} from '../../mesh/mesh.js';
 import {GPUSelectBuffer} from './view3d_select.js';
 import {KeyMap, HotKey} from "../editor_base.js";
-import {WidgetManager, WidgetTool, WidgetTools} from './widgets.js';
+import {WidgetManager} from './widgets/widgets.js';
 import {MeshCache} from './view3d_toolmode.js';
 import {calcTransCenter, calcTransAABB} from './transform/transform_query.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
@@ -43,7 +43,7 @@ import {ConstraintSpaces} from './transform/transform_base.js';
 import {eventWasTouch} from '../../path.ux/scripts/util/simple_events.js';
 import {CursorModes, OrbitTargetModes} from './view3d_utils.js';
 import {Icons} from '../icon_enum.js';
-import {WidgetSceneCursor, NoneWidget} from './widget_tools.js';
+import {WidgetSceneCursor, NoneWidget} from './widgets/widget_tools.js';
 import {View3DFlags, CameraModes} from './view3d_base.js';
 import {ResourceBrowser} from "../resbrowser/resbrowser.js";
 import {ObjectFlags} from '../../sceneobject/sceneobject.js';
@@ -829,6 +829,44 @@ export class View3D extends Editor {
     this.flushUpdate();
   }
 
+  doEvent(type, e) {
+    if (!this.ctx || !this.ctx.scene || !this.ctx.toolmode) {
+      return;
+    }
+
+    function exec(target, x, y) {
+      if (target["on_"] + type)
+        return (target["on_"+type])(e, x, y, e.was_touch);
+      if (target["on"] + type)
+        return (target["on"+type])(e, x, y, e.was_touch);
+      if (target[type])
+        return (target[type])(e, x, y, e.was_touch);
+    }
+
+    let toolmode = this.ctx.toolmode;
+    let widgets = this.ctx.scene.widgets;
+
+    let ismouse = type.search("mouse") >= 0 || type.search("touch") >= 0 || type.search("pointer") >= 0;
+
+    if (ismouse) {
+      let ret = this.getLocalMouse(e.x, e.y);
+
+      let x = ret[0], y = ret[1];
+
+      widgets.updateHighlight(x, y, e.was_touch);
+
+      if (exec(toolmode, x, y)) {
+        return true;
+      } else if (exec(widgets)) {
+        return true;
+      }
+
+      return false;
+    } else {
+      return exec(widgets) || exec(toolmode);
+    }
+  }
+
   init() {
     super.init();
 
@@ -896,20 +934,15 @@ export class View3D extends Editor {
       if (this.canvas === undefined)
         return;
 
-      this.push_ctx_active();
-
-      let r = this.getLocalMouse(e.x, e.y);
-      let x = r[0], y = r[1];
-      //console.log(r, e.y, "bleh");
-
-      this.widgets.on_mousemove(e, x, y, was_touch);
-      this.pop_ctx_active();
+      this.doEvent("mousemove", e);
     };
 
     eventdom.addEventListener("mousemove", on_mousemove);
 
     eventdom.addEventListener("mouseup", (e) => {
       let was_touch = eventWasTouch(e);
+
+      this.doEvent("mouseup", e);
 
       let ctx = this.ctx;
       this.push_ctx_active(ctx);
@@ -933,7 +966,7 @@ export class View3D extends Editor {
       let r = this.getLocalMouse(e.clientX, e.clientY);
       let x = r[0], y = r[1];
 
-      if (this.widgets.on_mousedown(e, x, y, was_touch)) {
+      if (this.doEvent("mousedown", e)) {
         this.pop_ctx_active();
         return;
       }
@@ -1453,7 +1486,7 @@ export class View3D extends Editor {
     }
 
     gl.clear(gl.DEPTH_BUFFER_BIT);
-    this.widgets.draw(this.gl, this);
+    this.widgets.draw(this, this.gl);
   }
 
   drawDrawLines(gl) {

@@ -58,7 +58,7 @@ void main(void) {
   for (int i=0; i<3; i++) {
     float f = color[i];
     
-    if (f <= 0.0) {
+    if (f == 0.0) {
       f = 0.0;
     } else {
       f = fract(f*0.2)*0.8 + 0.2;

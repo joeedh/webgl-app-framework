@@ -61,7 +61,8 @@ export const MeshFlags = {
   TEMP2         : 512,
   TEMP3         : 1024,
   UPDATE        : 2048,
-  CURVE_FLIP    : 4096 //edge.evaluate goes backwards
+  CURVE_FLIP    : 4096, //edge.evaluate goes backwards
+  SMOOTH_DRAW   : 4096*2
 };
 
 export const MeshModifierFlags = {

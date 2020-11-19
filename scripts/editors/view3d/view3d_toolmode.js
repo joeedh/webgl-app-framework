@@ -39,6 +39,10 @@ export class ToolMode extends Node {
     return false;
   }
 
+  setManager(widget_manager) {
+    this.manager = widget_manager;
+  }
+
   /** easy line drawing (in 3d)*/
   makeTempLine(v1, v2, color) {
     let dl = this.ctx.view3d.makeTempLine(v1, v2, color);
@@ -130,6 +134,9 @@ export class ToolMode extends Node {
   }
 
   static register(cls) {
+    if (cls.toolModeDefine === this.toolModeDefine) {
+      throw new Error("cls is missing its toolModeDefine");
+    }
     ToolModes.push(cls);
   }
 
@@ -522,7 +529,7 @@ export function makeToolModeEnum() {
   for (let cls of ToolModes) {
     let def = cls.toolModeDefine();
 
-    let key = def.name;
+    let key = def.name || cls.name;
 
     map[key] = i;
     icons[key] = def.icon !== undefined ? def.icon : -1;
@@ -540,3 +547,6 @@ export function makeToolModeEnum() {
 
   return prop;
 }
+
+window._ToolModes = ToolModes;
+window._makeToolModeEnum = makeToolModeEnum;

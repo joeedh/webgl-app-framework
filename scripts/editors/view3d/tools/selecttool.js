@@ -22,8 +22,7 @@ import {TranslateOp} from "../transform/transform_ops.js";
 import {nstructjs} from '../../../path.ux/scripts/pathux.js';
 let STRUCT = nstructjs.STRUCT;
 import {Icons} from '../../icon_enum.js';
-import {WidgetTool} from "../widgets.js";
-import {TranslateWidget} from "../widget_tools.js";
+import {TranslateWidget} from "../widgets/widget_tools.js";
 import {FlagProperty} from "../../../path.ux/scripts/toolsys/toolprop.js";
 
 let _shift_temp = [0, 0];
@@ -49,11 +48,7 @@ export class ObjectEditor extends ToolMode {
     return tstruct;
   }
 
-  updateWidgetTool(view3d, widgettool) {
-    return super.updateWidgetTool(view3d, widgettool);
-  }
-
-  static widgetDefine() {return {
+  static toolModeDefine() {return {
     name        : "object",
     uiname      : "Object",
     description : "Select Scene Objects",

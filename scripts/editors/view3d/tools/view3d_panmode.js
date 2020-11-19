@@ -1,10 +1,10 @@
-import {WidgetFlags, WidgetTool} from "../widgets.js";
+import {WidgetFlags} from "../widgets/widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
 import '../../../path.ux/scripts/util/struct.js';
-import {TranslateWidget} from "../widget_tools.js";
+import {TranslateWidget} from "../widgets/widget_tools.js";
 let STRUCT = nstructjs.STRUCT;
 
 export class PanToolMode extends ToolMode {
@@ -18,10 +18,10 @@ export class PanToolMode extends ToolMode {
 
   static register(cls) {
     ToolModes.push(cls);
-    WidgetTool.register(cls);
+    //WidgetTool.register(cls);
   }
 
-  static widgetDefine() {return {
+  static toolModeDefine() {return {
     name        : "pan",
     uiname      : "Pan",
     icon        : Icons.PAN,

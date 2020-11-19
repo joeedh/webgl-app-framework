@@ -104,16 +104,11 @@ export class TriEditor {
 
   uvs(u1, u2, u3) {
     let data = this.mesh.tri_uvs
-    let i = this.i*3*2; //*3 is because triangles have three vertices
+    let i = this.i*3; //*3 is because triangles have three vertices
 
-    data[i++] = u1[0];
-    data[i++] = u1[1];
-
-    data[i++] = u2[0];
-    data[i++] = u2[1];
-
-    data[i++] = u3[0];
-    data[i++] = u3[1];
+    data.copy(i, u1);
+    data.copy(i+1, u2);
+    data.copy(i+2, u3);
 
     return this;
   }
@@ -973,6 +968,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     this.chunksize = chunksize;
     this.islands = [];
     this.uniforms = {};
+    this.primflag = PrimitiveTypes.TRIS;
 
     this.island = undefined;
 
@@ -1007,6 +1003,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
     let chunki = this.islands.length;
     let chunk = this.add_island();
+    chunk.primflag = this.primflag;
 
     for (let i=0; i<this.chunksize; i++) {
       this.freelist.push(chunki);
@@ -1077,7 +1074,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     let point_cos = chunk.point_cos.data;
     let i = ipoint*3;
 
-    if (point_cos.data.length < i+9) {
+    if (point_cos.length < i+9) {
       chunk.point(v1);
     } else {
       point_cos[i++] = v1[0]; point_cos[i++] = v1[1]; point_cos[i++] = v1[2];
