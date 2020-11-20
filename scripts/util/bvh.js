@@ -104,6 +104,8 @@ export class BVHNode {
     this.allTris = new Set();
     this.children = [];
 
+    this.subtreeDepth = 0;
+
     this._castRayRets = util.cachering.fromConstructor(IsectRet, 64);
 
     this.cent = new Vector3(min).interp(max, 0.5);
@@ -114,6 +116,12 @@ export class BVHNode {
     if (!this.leaf) {
       console.error("bvh split called on non-leaf node", this);
       return;
+    }
+
+    let n = this;
+    while (n) {
+      n.subtreeDepth = Math.max(n.subtreeDepth, this.depth+1);
+      n = n.parent;
     }
 
     this.tottri = 0;
@@ -178,8 +186,8 @@ export class BVHNode {
     this.uniqueTris = undefined;
     this.allTris = undefined;
 
-    for (let t of allTris) {
-      this.addTri(t.id, t.tri_idx, t.v1, t.v2, t.v3);
+    for (let tri of allTris) {
+      this.addTri(tri.id, tri.tri_idx, tri.v1, tri.v2, tri.v3);
     }
   }
 
@@ -290,6 +298,7 @@ export class BVHNode {
       this.uniqueTris.add(tri);
     } else {
       this.otherTris.add(tri);
+      //this.uniqueTris.add(tri);
     }
 
     tri.nodes.push(this);
@@ -440,8 +449,8 @@ export class BVH {
     this.forceUniqueTris = false;
     this.storeVerts = false;
 
-    this.leafLimit = 128;
-    this.drawLevelOffset = 2;
+    this.leafLimit = 64;
+    this.drawLevelOffset = 3;
     this.depthLimit = 10;
 
     this.nodes = [];
@@ -544,6 +553,7 @@ export class BVH {
     if (!this.fmap.has(id)) {
       this.fmap.set(id, []);
     }
+
     let tri = this.tris.get(tri_idx);
 
     tri.v1 = tri.vs[0] = v1;

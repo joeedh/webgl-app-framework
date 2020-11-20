@@ -11,12 +11,43 @@ import {Mesh} from '../../../mesh/mesh.js';
 import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {Shaders} from "../../../shaders/shaders.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js';
-import {ToolOp, Vec4Property, ListProperty} from "../../../path.ux/scripts/pathux.js";
+import {ToolOp, Vec4Property, FloatProperty, EnumProperty, FlagProperty, ListProperty} from "../../../path.ux/scripts/pathux.js";
 import {MeshFlags} from "../../../mesh/mesh.js";
 import {SimpleMesh, LayerTypes} from "../../../core/simplemesh.js";
 import {splitEdgesSmart} from "../../../mesh/mesh_subdivide.js";
 
 let _triverts = new Array(3);
+
+export const SculptTools = {
+  DRAW : 0,
+  SHARP : 1,
+  FILL : 2,
+  SMOOTH : 3,
+  CLAY : 4,
+  SCRAPE : 5
+};
+
+export class SculptBrush {
+  constructor() {
+    this.tool = SculptTools.CLAY;
+    this.strength = 1.0;
+    this.spacing = 0.07;
+    this.radius = 55.0;
+    this.autosmooth = 0.0;
+    this.planeoff = 0.0;
+  }
+}
+SculptBrush.STRUCT = `
+SculptBrush {
+  autosmooth : float;
+  strength   : float;
+  tool       : int;
+  radius     : float;
+  planeoff   : float;
+  spacing    : float;
+}
+`
+nstructjs.register(SculptBrush);
 
 export function dynTopoExec(verts, esize) {
   let edges = new Set();
@@ -31,6 +62,12 @@ export function dynTopoExec(verts, esize) {
 export class PaintOp extends ToolOp {
   constructor() {
     super();
+
+    this.last_mpos = new Vector2();
+    this.last_p = new Vector3();
+    this._first = true;
+    this.last_radius = 0;
+    this.last_vec = new Vector3();
   }
 
   static tooldef() {return {
@@ -38,9 +75,67 @@ export class PaintOp extends ToolOp {
     toolpath : "bvh.paint",
     is_modal : true,
     inputs : {
-      points : new ListProperty(Vec4Property) //fourth component is radius
+      points : new ListProperty(Vec4Property), //fourth component is radius
+      vecs : new ListProperty(Vec4Property), //displacements, fourth component
+      tool : new EnumProperty("CLAY", SculptTools),
+      strength : new FloatProperty(1.0),
+      radius : new FloatProperty(55.0),
+      planeoff : new FloatProperty(0.0),
+      autosmooth : new FloatProperty(0.0),
+      spacing : new FloatProperty(0.07)
     }
   }}
+
+  undoPre(ctx) {
+    let mesh;
+    if (ctx.object && ctx.object.data instanceof Mesh) {
+      mesh = ctx.object.data;
+    }
+
+    this._undo = {mesh : mesh ? mesh.lib_id : -1, vmap : new Map()};
+  }
+
+  undo(ctx) {
+    let undo = this._undo;
+    let mesh = ctx.datalib.get(undo.mesh);
+
+    if (!mesh) {
+      console.warn("eek! no mesh!");
+      return;
+    }
+
+    let bvh = mesh.bvh;
+    let cd_node;
+
+    if (bvh) {
+      cd_node = bvh.cd_node;
+    }
+
+    for (let eid of undo.vmap.keys()) {
+      let v = mesh.eidmap[eid];
+
+      if (v) {
+        v.flag |= MeshFlags.UPDATE;
+        v.load(undo.vmap.get(eid));
+
+        if (bvh) {
+          let node = v.customData[cd_node].node;
+          if (node) {
+            node.flag |= BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_NORMALS;
+          }
+        }
+      }
+    }
+
+    mesh.recalcNormals();
+    mesh.regenRender();
+    mesh.regenPartial();
+
+    if (bvh) {
+      bvh.update();
+    }
+    window.redraw_viewport();
+  }
 
   on_mousemove(e) {
     let ctx = this.modal_ctx;
@@ -53,6 +148,10 @@ export class PaintOp extends ToolOp {
 
     let mpos = view3d.getLocalMouse(e.x, e.y);
     let x = mpos[0], y = mpos[1];
+
+    let radius = this.inputs.radius.getValue();
+    let strength = this.inputs.strength.getValue();
+    let planeoff = this.inputs.planeoff.getValue();
 
     let view = view3d.getViewVec(x, y);
     let origin = view3d.activeCamera.pos;
@@ -68,12 +167,18 @@ export class PaintOp extends ToolOp {
       return;
     }
 
+    let p3 = new Vector4(isect.p);
+    p3[3] = 1.0;
 
-    let p2 = new Vector3(isect.p).addFac(isect.tri.v1.no, 0.5);
+    let matrix = new Matrix4(ob.outputs.matrix.getValue());
+    p3.multVecMatrix(view3d.activeCamera.rendermat);
 
-    //view3d.makeDrawLine(isect.p, p2, [1, 0, 0, 1]);
 
-    //console.log(isect, isect.tri);
+    let w = p3[3] * matrix.$matrix.m11;
+    if (w <= 0) return;
+
+    radius /= Math.max(view3d.glSize[0], view3d.glSize[1]);
+    radius *= w;
 
     let vec = new Vector3(isect.tri.v1.no);
     vec.add(isect.tri.v2.no);
@@ -84,13 +189,175 @@ export class PaintOp extends ToolOp {
     if (vec.dot(view) < 0) {
       view.negate();
     }
+    view.normalize();
+
     vec.add(view).normalize();
 
+    console.log("first", this._first);
+
+    if (this._first) {
+      this.last_mpos.load(mpos);
+      this.last_p.load(isect.p);
+      this.last_vec.load(vec);
+      this.last_radius = radius;
+      this._first = false;
+
+      return;
+    }
+
+    let spacing = this.inputs.spacing.getValue();
+    let steps = Math.ceil(this.last_p.vectorDistance(isect.p)/(radius*spacing));
+    steps = Math.max(steps, 1);
+
+    console.log("STEPS", steps, radius, spacing, this._first);
+
+    for (let i=0; i<steps; i++) {
+      let s = (i+1) / steps;
+
+      const DRAW = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
+        SMOOTH = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE;
+
+      let mode = this.inputs.tool.getValue();
+
+      let isplane = false;
+
+      if (e.shiftKey) {
+        mode = SMOOTH;
+      }
+
+      switch (mode) {
+        case FILL:
+        case CLAY:
+        case SCRAPE:
+          isplane = true;
+          break;
+        default:
+          isplane = false;
+          break;
+      }
+
+      let p2 = new Vector3(this.last_p).interp(isect.p, s);
+
+      p3.load(p2).multVecMatrix(view3d.activeCamera.rendermat);
+      let w = p3[3] * matrix.$matrix.m11;
+
+      let vec2 = new Vector3(this.last_vec).interp(vec, s);
+
+      //view3d.makeDrawLine(isect.p, p2, [1, 0, 0, 1]);
+
+      //console.log(isect, isect.tri);
+
+      //vec.load(view);
+
+      if (mode === SHARP) {
+        vec2.negate();
+      }
+
+      if (e.ctrlKey) {
+        vec2.negate();
+      }
+
+      let esize = 8.0;
+
+      esize /= Math.max(view3d.glSize[0], view3d.glSize[1]);
+
+      esize *= matrix.$matrix.m11;
+      esize *= w;
+
+      let radius2 = radius + (this.last_radius - radius)*s;
+
+      p3.load(p2);
+      p3[3] = radius2;
+
+      let vec4 = new Vector4(vec2);
+      vec4[3] = this.inputs.planeoff.getValue();
+
+      this.inputs.points.push(p3);
+      this.inputs.vecs.push(vec4);
+
+      this.execDot(ctx, p3, vec4);
+    }
+
+    this.last_mpos.load(mpos);
+    this.last_p.load(isect.p);
+    this.last_vec.load(vec);
+    this.last_r = radius;
+
+    window.redraw_viewport();
+  }
+
+  exec(ctx) {
+    let i = 0;
+    for (let p of this.inputs.points) {
+      this.execDot(ctx, p, this.inputs.vecs.getListItem(i));
+      i++;
+    }
+
+    window.redraw_viewport();
+  }
+
+  execDot(ctx, p3, vec) {
+    const DRAW = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
+      SMOOTH = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE;
+
+    if (!ctx.object || !(ctx.object.data instanceof Mesh)) {
+      console.log("ERROR!");
+      return;
+    }
+
+    let undo = this._undo;
+    let vmap = undo.vmap;
+
+    let ob = ctx.object;
+    let mesh = ob.data;
+
+    let bvh = mesh.getBVH(false);
+
+    let mode = this.inputs.tool.getValue();
+    let radius = p3[3];
+    let strength = this.inputs.strength.getValue();
+
+    let planeoff = vec[3];
+    let isplane = false;
+
+    let esize = 8.0;
+
+    if (mode === SCRAPE) {
+      planeoff += -0.5;
+      //strength *= 5.0;
+      isplane = true;
+    } else if (mode === FILL) {
+      strength *= 0.5;
+      isplane = true;
+    } else if (mode === CLAY) {
+      planeoff += 1.5;
+      strength *= 2.0;
+      isplane = true;
+    } else if (mode === SMOOTH) {
+      isplane = true;
+    }
+
+    vec = new Vector3(vec);
+    vec.mulScalar(strength*0.1*radius);
+    let vlen = vec.vectorLength();
+    let nvec = new Vector3(vec).normalize();
+    let planep = new Vector3(p3);
+
+    planep.addFac(vec, planeoff);
+
+    //console.log(w);
+
+    //console.log("radius", radius);
+
+    p3 = new Vector3(p3);
+    let vs = bvh.closestVerts(p3, radius);
+
+    //console.log(vs, p3);
+
+    let vsw;
     let _tmp = new Vector3();
 
-    let vsw = e.shiftKey ? 1.0 : 0.25;
-
-    let vsmooth = (v) => {
+    let vsmooth = (v, fac) => {
       _tmp.load(v);
       let w = 1.0;
 
@@ -102,97 +369,121 @@ export class PaintOp extends ToolOp {
       }
 
       _tmp.mulScalar(1.0 / w);
-      v.interp(_tmp, vsw);
+      v.interp(_tmp, vsw * fac);
     }
-
-    let vs = new Set();
-
-    let vadd = (v) => {
-      vs.add(v);
-
-      for (let e of v.edges) {
-        vs.add(e.otherVertex(v));
-      }
-    }
-
-    vadd(isect.tri.v1);
-    vadd(isect.tri.v2);
-    vadd(isect.tri.v3);
-
-    vec.mulScalar(0.05);
-    if (e.ctrlKey) {
-      vec.mulScalar(-1.0);
-    }
-    if (e.shiftKey) {
-      vec.mulScalar(0.0);
-    }
-
-    let radius = 75.0;
-    let esize = 8.0;
-
-    let p3 = new Vector4(isect.p);
-    p3[3] = 1.0;
-
-    radius /= Math.min(view3d.glSize[0], view3d.glSize[1]);
-    esize /= Math.min(view3d.glSize[0], view3d.glSize[1]);
-
-    let matrix = new Matrix4(ob.outputs.matrix.getValue());
-    //matrix.invert();
-
-    esize *= matrix.$matrix.m11;
-
-    p3.multVecMatrix(view3d.activeCamera.rendermat);
-
-    let w = p3[3];
-    if (w <= 0) return;
-
-    //console.log(w);
-
-    radius *= w;
-    esize *= w;
-
-    //console.log("radius", radius);
-
-    vs = bvh.closestVerts(isect.p, radius);
-    //console.log(vs);
-
 
     let cd_node = bvh.cd_node;
+    let ws = new Array(vs.size);
+
+    let wi = 0;
+
+    let planetmp = new Vector3();
+
+    switch (mode) {
+      case SculptTools.SMOOTH:
+        vsw = 1.0; //strength; //Math.min(Math.max(strength, 0.0), 1.0);
+        break;
+      default:
+        vsw = this.inputs.autosmooth.getValue();
+        break;
+    }
+
+    vsw += this.inputs.autosmooth.getValue();
+
+    //console.log("VSW", vsw, mode);
 
     for (let v of vs) {
-      let f = Math.max(1.0 - v.vectorDistance(isect.p) / radius, 0.0);
-      f = f*f*(3.0 - 2.0*f);
+      if (!vmap.has(v.eid)) {
+        vmap.set(v.eid, new Vector3(v));
+      }
+
+      let f = Math.max(1.0 - v.vectorDistance(p3) / radius, 0.0);
+      let f2 = f;
+
+      if (mode === SHARP) {
+        f *= f;
+        //f2 = Math.pow(f2, 0.5);
+      } else if (mode === FILL) {
+        //f = f * f * (3.0 - 2.0 * f);
+        f = Math.sqrt(f);
+      } else if (mode === SCRAPE) {
+        f = Math.pow(f, 0.2);
+        f = 1.0;
+      } else if (mode === CLAY) {
+        f = Math.sqrt(f);
+      } else if (mode === SMOOTH) {
+        f = f*f*(3.0-2.0*f);
+        f *= strength;
+      } else {
+        f = f*f*(3.0-2.0*f);
+      }
+
+      /*
+      f = 1.0 - f;
+      f = 1.0 - Math.exp(-f*10.0);
+      f = 1.0 - f;
+      //*/
+      ws[wi++] = f;
+
       //f=1.0
 
+      if (mode === SHARP) {
+        f *= 1.0;
+        f2 *= 0.25;
+
+        let d = 1.0 - Math.max(v.no.dot(nvec), 0.0);
+
+        //d = 1.0 - d;
+        //d *= d*d*d*d;
+        d *= d;
+        //d = 1.0 - d;
+
+        v.addFac(v.no, vlen*d*f2);
+        v.addFac(vec, f);//
+      } else if (isplane) {
+        let co = planetmp.load(v);
+        co.sub(planep);
+
+        let d = co.dot(nvec);
+        v.addFac(vec, -d*f);
+      } else if (mode === DRAW) {
+        v.addFac(vec, f);//
+      }
+
+      v.flag |= MeshFlags.UPDATE;
+    }
+
+    //let es = new Set();
+    wi = 0;
+
+    for (let v of vs) {
       let node = v.customData[cd_node].node;
 
       if (node) {
         node.flag |= BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_NORMALS;
       }
 
-      v.addFac(vec, f);
+      //for (let e of v.edges) {
+      //  es.add(e);
+      //}
+
+      if (vsw >= 0) {
+        vsmooth(v, ws[wi++]);
+      }
+
       v.flag |= MeshFlags.UPDATE;
     }
 
-    let es = new Set();
-
-    for (let v of vs) {
-      for (let e of v.edges) {
-        es.add(e);
-      }
-
-      if (e.shiftKey) {
-        vsmooth(v);
-      }
-    }
-
     //this.doTopology(mesh, bvh, esize, vs, es);
+
+    if (!this.modalRunning) {
+      mesh.regenTesellation();
+    }
 
     //mesh.recalcNormals();
     mesh.regenRender();
 
     bvh.update();
-    window.redraw_viewport(true);
   }
 
   doTopology(mesh, bvh, esize, vs, es) {
@@ -292,6 +583,11 @@ export class PaintOp extends ToolOp {
     }
   }
 
+  modalStart(ctx) {
+    this._first = true;
+    return super.modalStart(ctx);
+  }
+
   on_mouseup(e) {
     let ob = this.modal_ctx.object;
     let mesh = ob ? ob.data : undefined;
@@ -313,8 +609,8 @@ export class BVHToolMode extends ToolMode {
 
     this.flag |= WidgetFlags.ALL_EVENTS;
 
-    this.drawBVH = true;
-    this.enableDraw = false;
+    this.brush = new SculptBrush();
+    this.drawBVH = false;
 
     this._last_bvh_key = "";
     this.view3d = manager !== undefined ? manager.view3d : undefined;
@@ -346,12 +642,36 @@ export class BVHToolMode extends ToolMode {
 
     let strip = header.strip();
     strip.prop(`scene.tools.${name}.drawBVH`);
+
+    let row = addHeaderRow();
+    let path = `scene.tools.${name}.brush`
+
+    strip = row.strip();
+
+    strip.listenum(path + ".tool");
+    strip.prop(path + ".radius");
+
+    strip = addHeaderRow().strip();
+    strip.prop(path + ".strength");
+    strip.prop(path + ".autosmooth");
+
+    strip = addHeaderRow().strip();
+    strip.prop(path + ".planeoff");
+    strip.prop(path + ".spacing");
   }
 
   static defineAPI(api) {
     let st = super.defineAPI(api);
 
     st.bool("drawBVH", "drawBVH", "drawBVH");
+
+    let bst = st.struct("brush", "brush", "Brush");
+    bst.float("strength", "strength", "Strength").range(0.001, 2.0).noUnits();
+    bst.float("radius", "radius", "Radius").range(0.1, 150.0).noUnits();
+    bst.enum("tool", "tool", SculptTools);
+    bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 1.0).noUnits();
+    bst.float("planeoff", "planeoff", "planeoff").range(-1.0, 1.0).noUnits();
+    bst.float("spacing", "spacing", "Spacing").range(0.01, 2.0).noUnits();
 
     return st;
   }
@@ -364,13 +684,19 @@ export class BVHToolMode extends ToolMode {
     super.on_mousedown(e, x, y);
 
     if (e.button === 0 && !e.altKey) {
-      this.ctx.api.execTool(this.ctx, "bvh.paint()");
+      let brush = this.brush;
+
+      this.ctx.api.execTool(this.ctx, "bvh.paint()", {
+        strength : brush.strength,
+        tool : e.shiftKey ? SculptTools.SMOOTH : brush.tool,
+        radius : brush.radius,
+        autosmooth : brush.autosmooth,
+        planeoff : brush.planeoff,
+        spacing : brush.spacing
+      });
       return true;
     }
 
-    this.enableDraw ^= true;
-
-    console.log("enableDraw", this.enableDraw);
     window.redraw_viewport();
 
     return false;
@@ -410,8 +736,6 @@ export class BVHToolMode extends ToolMode {
     if (!this.ctx || !this.ctx.scene) {
       return;
     }
-
-    //if (!this.enableDraw) return;
 
     let ctx = this.ctx, scene = ctx.scene;
 
@@ -536,6 +860,12 @@ export class BVHToolMode extends ToolMode {
     let parentoff = bvh.drawLevelOffset;
 
     for (let node of bvh.nodes) {
+      node.flag &= ~BVHFlags.TEMP_TAG;
+    }
+
+    let drawnodes = new Set();
+
+    for (let node of bvh.nodes) {
       if (!node.leaf) {
         continue;
       }
@@ -544,15 +874,57 @@ export class BVHToolMode extends ToolMode {
       //get parent parentoff levels up
 
       for (let i=0; i<parentoff; i++) {
+        if (p.flag & BVHFlags.TEMP_TAG) {
+          break;
+        }
+
         p = p.parent ? p.parent : p;
+        /*
+        let p2 = p.parent ? p.parent : p;
+
+        let d;
+        let bad = false;
+
+        for (let c of p2.children) {
+          if (d === undefined) {
+            d = c.subtreeDepth;
+          } else {
+            bad = bad || c.subtreeDepth !== d;
+          }
+        }
+
+        if (!bad) {
+          p = p2;
+        } else {
+          break;
+        }
+        */
       }
+
+      p.flag |= BVHFlags.TEMP_TAG;
+
+      drawnodes.add(p);
 
       if (node.flag & BVHFlags.UPDATE_DRAW) {
         p.flag |= BVHFlags.UPDATE_DRAW;
       }
-
-      p.flag |= BVHFlags.TEMP_TAG;
     }
+
+    for (let node of new Set(drawnodes)) {
+      let p2 = node.parent;
+      while (p2) {
+        if (p2.flag & BVHFlags.TEMP_TAG) {
+          node.flag &= ~BVHFlags.TEMP_TAG;
+          p2.flag |= node.flag & BVHFlags.UPDATE_DRAW;
+          break;
+        }
+        p2 = p2.parent;
+      }
+    }
+
+    let t1 = new Vector3();
+    let t2 = new Vector3();
+    let t3 = new Vector3();
 
     function genNodeMesh(node) {
       let lflag = LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV | LayerTypes.NORMAL | LayerTypes.ID;
@@ -571,7 +943,26 @@ export class BVHToolMode extends ToolMode {
         let id = object.lib_id;
 
         for (let tri of node.uniqueTris) {
-          let tri2 = sm.tri(tri.v1, tri.v2, tri.v3);
+          /*
+          t1.load(tri.v1);
+          t2.load(tri.v2);
+          t3.load(tri.v3);
+
+
+          for (let i=0; i<3; i++) {
+            t1[i] += (Math.random()-0.5)*0.01;
+            t2[i] += (Math.random()-0.5)*0.01;
+            t3[i] += (Math.random()-0.5)*0.01;
+
+          }*/
+
+          //*
+          t1 = tri.v1;
+          t2 = tri.v2;
+          t3 = tri.v3;
+          //*/
+
+          let tri2 = sm.tri(t1, t2, t3);
 
           n.load(tri.v1.no).add(tri.v2.no).add(tri.v3.no).normalize();
 
@@ -588,6 +979,7 @@ export class BVHToolMode extends ToolMode {
       //console.log("updating draw data for bvh node", node.id);
 
       rec(node);
+      sm.gen = 0;
       node.drawData = sm;
     }
 
@@ -595,6 +987,7 @@ export class BVHToolMode extends ToolMode {
       if (node.drawData && !(node.flag & BVHFlags.TEMP_TAG)) {
         node.drawData.destroy(gl);
         node.drawData = undefined;
+        continue;
       }
 
       if (node.flag & BVHFlags.TEMP_TAG) {
@@ -610,10 +1003,34 @@ export class BVHToolMode extends ToolMode {
 
         let program2 = Shaders.SculptShader;
 
-        uniforms.uColor = [f, f, f, 1.0];
+        uniforms.uColor = [f, Math.fract(f*3.23423+0.432), Math.fract(f*5.234+.13432), 1.0];
         uniforms.alpha = 1.0;
 
+        if (node.drawData.gen === 0) {
+        //  uniforms.uColor = [f, f, f, 1.0];
+        }
         node.drawData.draw(gl, uniforms, program2);
+
+        if (0) {
+          uniforms.alpha = 0.5;
+
+          gl.depthMask(false);
+          gl.disable(gl.DEPTH_TEST);
+          gl.enable(gl.CULL_FACE);
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+          node.drawData.draw(gl, uniforms, program2);
+
+          gl.depthMask(true);
+          gl.disable(gl.CULL_FACE);
+          gl.disable(gl.BLEND);
+          gl.enable(gl.DEPTH_TEST);
+        }
+
+
+        gl.disable(gl.CULL_FACE);
+        node.drawData.gen++;
       }
 
       node.flag &= ~(BVHFlags.TEMP_TAG|BVHFlags.UPDATE_DRAW);
@@ -624,6 +1041,7 @@ export class BVHToolMode extends ToolMode {
 
 BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
   drawBVH : bool;
+  brush   : SculptBrush;
 }`;
 nstructjs.manager.add_class(BVHToolMode);
 
