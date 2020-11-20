@@ -51,6 +51,7 @@ export class MeshEditor extends MeshToolBase {
       new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
       new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
       new HotKey("D", [], "mesh.subdivide_smooth()"),
+      //new HotKey("D", [], "mesh.test_collapse_edge()"),
       new HotKey("G", [], "view3d.translate(selmask=17)"),
       new HotKey("X", [], "mesh.delete_selected()"),
       new HotKey("E", [], "mesh.extrude_regions(transform=true)")

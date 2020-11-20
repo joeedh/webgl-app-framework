@@ -1,8 +1,10 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
-import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
+import {
+  IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
-  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolsys/toolprop.js';
+  PropFlags, PropTypes, PropSubTypes
+} from '../path.ux/scripts/toolsys/toolprop.js';
 import {ToolOp, ToolMacro, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
 import {TranslateOp} from "../editors/view3d/transform/transform_ops.js";
 import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
@@ -16,15 +18,18 @@ import {MeshFlags, MeshTypes, MeshFeatures} from './mesh_base.js';
 import {MeshOp} from './mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
 import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
+import {splitEdgesSmart} from "./mesh_subdivide.js";
 
 export class DeleteOp extends MeshOp {
-  static tooldef() {return {
-    uiname : "Delete Selected",
-    icon : Icons.TINY_X,
-    toolpath : "mesh.delete_selected",
-    inputs : ToolOp.inherit(),
-    outputs : ToolOp.inherit()
-  }}
+  static tooldef() {
+    return {
+      uiname: "Delete Selected",
+      icon: Icons.TINY_X,
+      toolpath: "mesh.delete_selected",
+      inputs: ToolOp.inherit(),
+      outputs: ToolOp.inherit()
+    }
+  }
 
   exec(ctx) {
     console.warn("mesh.delete_selected");
@@ -48,28 +53,90 @@ export class DeleteOp extends MeshOp {
     window.redraw_viewport();
   }
 }
+
 ToolOp.register(DeleteOp);
+
+
+export class TriangulateOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Triangulate",
+      toolpath: "mesh.triangulate",
+      inputs: ToolOp.inherit(),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.delete_selected");
+
+    let tri = [0, 0, 0];
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let del = [];
+
+      let fs = new Set(mesh.faces.selected.editable);
+
+      let ltris = mesh.loopTris;
+
+      for (let i=0; i<ltris.length; i += 3) {
+        let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
+
+        if (fs.has(l1.f)) {
+          tri.length = 3;
+          tri[0] = l1.v;
+          tri[1] = l2.v;
+          tri[2] = l3.v;
+
+          console.log(l1, l2, l3);
+          let f2 = mesh.makeFace(tri);
+          let l = f2.lists[0].l;
+
+          mesh.copyElemData(f2, l1.f);
+          mesh.copyElemData(l, l1);
+          mesh.copyElemData(l.next, l2);
+          mesh.copyElemData(l.prev, l3);
+        }
+      }
+
+      for (let f of fs) {
+        mesh.killFace(f);
+      }
+
+      mesh.recalcNormals();
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(TriangulateOp);
 
 export class ExtrudeOneVertexOp extends MeshOp {
   constructor() {
     super();
   }
 
-  static tooldef() {return {
-    uiname       : "Extrude Vertex",
-    icon         : Icons.EXTRUDE,
-    toolpath     : "mesh.extrude_one_vertex",
-    description  : "Extrude one vertex",
-    inputs       : ToolOp.inherit({
-      co         : new Vec3Property(),
-      select     : new BoolProperty(true),
-      setActive  : new BoolProperty(true)
-    }),
-    outputs : ToolOp.inherit({
-      vertex : new IntProperty(-1), //output vertex eid
-      edge   : new IntProperty(-1) //output edge eid
-    })
-  }}
+  static tooldef() {
+    return {
+      uiname: "Extrude Vertex",
+      icon: Icons.EXTRUDE,
+      toolpath: "mesh.extrude_one_vertex",
+      description: "Extrude one vertex",
+      inputs: ToolOp.inherit({
+        co: new Vec3Property(),
+        select: new BoolProperty(true),
+        setActive: new BoolProperty(true)
+      }),
+      outputs: ToolOp.inherit({
+        vertex: new IntProperty(-1), //output vertex eid
+        edge: new IntProperty(-1) //output edge eid
+      })
+    }
+  }
 
   exec(ctx) {
     let mesh = this.getActiveMesh(ctx);
@@ -108,6 +175,7 @@ export class ExtrudeOneVertexOp extends MeshOp {
     mesh.regenRender();
   }
 }
+
 ToolOp.register(ExtrudeOneVertexOp);
 
 export class ExtrudeRegionsOp extends MeshOp {
@@ -115,18 +183,20 @@ export class ExtrudeRegionsOp extends MeshOp {
     super();
   }
 
-  static tooldef() {return {
-    uiname   : "Extrude Regions",
-    icon     : -1,
-    toolpath : "mesh.extrude_regions",
-    undoflag : 0,
-    flag     : 0,
-    inputs   : ToolOp.inherit({}),
-    outputs  : {
-      normal : new Vec3Property(),
-      normalSpace : new Mat4Property()
+  static tooldef() {
+    return {
+      uiname: "Extrude Regions",
+      icon: -1,
+      toolpath: "mesh.extrude_regions",
+      undoflag: 0,
+      flag: 0,
+      inputs: ToolOp.inherit({}),
+      outputs: {
+        normal: new Vec3Property(),
+        normalSpace: new Mat4Property()
+      }
     }
-  }}
+  }
 
   static invoke(ctx, args) {
     let tool = super.invoke(ctx, args);
@@ -235,7 +305,7 @@ export class ExtrudeRegionsOp extends MeshOp {
 
       let quadvs = new Array(4);
 
-      for (let i=0; i<f2.lists.length; i++) {
+      for (let i = 0; i < f2.lists.length; i++) {
         let list1 = f.lists[i];
         let list2 = f2.lists[i];
 
@@ -328,14 +398,16 @@ export class CatmullClarkeSubd extends MeshOp {
     super();
   }
 
-  static tooldef() {return {
-    uiname   : "Subdivide Smooth",
-    icon     : Icons.SUBDIVIDE,
-    toolpath : "mesh.subdivide_smooth",
-    undoflag : 0,
-    flag     : 0,
-    inputs   : ToolOp.inherit({}),
-  }}
+  static tooldef() {
+    return {
+      uiname: "Subdivide Smooth",
+      icon: Icons.SUBDIVIDE,
+      toolpath: "mesh.subdivide_smooth",
+      undoflag: 0,
+      flag: 0,
+      inputs: ToolOp.inherit({}),
+    }
+  }
 
   exec(ctx) {
     console.log("subdivide smooth!");
@@ -372,15 +444,17 @@ export class CatmullClarkeSubd extends MeshOp {
 
       vertexSmooth(mesh, vs);
 
+      mesh.recalcNormals();
       mesh.regenRender();
       mesh.regenTesellation();
       mesh.update();
     }
   }
 }
+
 ToolOp.register(CatmullClarkeSubd);
 
-export function vertexSmooth(mesh, verts=mesh.verts.selected.editable, fac=0.5) {
+export function vertexSmooth(mesh, verts = mesh.verts.selected.editable, fac = 0.5) {
   let cos = {};
 
   for (let v of verts) {
@@ -407,7 +481,7 @@ export function vertexSmooth(mesh, verts=mesh.verts.selected.editable, fac=0.5) 
       v.load(cos[v.eid]);
     } else {
       v.mulScalar(1.0 / tot);
-      v.interp(cos[v.eid], 1.0-fac);
+      v.interp(cos[v.eid], 1.0 - fac);
     }
   }
 
@@ -431,14 +505,16 @@ export class VertexSmooth extends MeshOp {
     super();
   }
 
-  static tooldef() {return {
-    uiname   : "Vertex Smooth",
-    icon     : -1,
-    toolpath : "mesh.vertex_smooth",
-    undoflag : 0,
-    flag     : 0,
-    inputs   : ToolOp.inherit({}),
-  }}
+  static tooldef() {
+    return {
+      uiname: "Vertex Smooth",
+      icon: -1,
+      toolpath: "mesh.vertex_smooth",
+      undoflag: 0,
+      flag: 0,
+      inputs: ToolOp.inherit({}),
+    }
+  }
 
   exec(ctx) {
     console.log("smooth!");
@@ -448,4 +524,100 @@ export class VertexSmooth extends MeshOp {
     }
   }
 }
+
 ToolOp.register(VertexSmooth);
+
+
+export class TestSplitFaceOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Test Split Face",
+      icon: Icons.TINY_X,
+      toolpath: "mesh.test_split_face",
+      inputs: ToolOp.inherit(),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.test_split_face");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let vs = new Set();
+      let es = new Set();
+
+      for (let v of mesh.verts.selected.editable) {
+        vs.add(v);
+      }
+
+      for (let v of vs) {
+        for (let e of v.edges) {
+          if (vs.has(e.otherVertex(v))) {
+            es.add(e);
+          }
+        }
+      }
+
+      let {newvs, newfs} = splitEdgesSmart(mesh, es);
+      console.log(newvs, newfs);
+
+      mesh.recalcNormals();
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(TestSplitFaceOp);
+
+
+export class TestCollapseOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Test Collapse Edge",
+      icon: Icons.TINY_X,
+      toolpath: "mesh.test_collapse_edge",
+      inputs: ToolOp.inherit(),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.test_collapse_edge");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let vs = new Set();
+      let es = new Set();
+
+      for (let v of mesh.verts.selected.editable) {
+        vs.add(v);
+      }
+
+      for (let v of vs) {
+        for (let e of v.edges) {
+          if (vs.has(e.otherVertex(v))) {
+            es.add(e);
+          }
+        }
+      }
+
+      for (let e of es) {
+        mesh.collapseEdge(e);
+      }
+      //let {newvs, newfs} = splitEdgesSmart(mesh, es);
+      //console.log(newvs, newfs);
+
+      mesh.recalcNormals();
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(TestCollapseOp);

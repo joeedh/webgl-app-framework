@@ -51,12 +51,12 @@ void main() {
   gl_FragColor = vColor * vec4(1.0, 1.0, 1.0, alpha);
 }
   `,
-  
+
   uniforms : {
     alpha : 1.0,
     objectMatrix : new Matrix4()
   },
-  
+
   attributes : [
     "position", "uv", "color"
   ]
@@ -145,7 +145,7 @@ void main() {
 }
 
   `,
-  
+
   fragment : `precision mediump float;
 uniform float alpha;
 
@@ -164,12 +164,75 @@ void main() {
   gl_FragColor = c;
 }
   `,
-  
+
   uniforms : {
     alpha : 1.0,
     objectMatrix : new Matrix4()
   },
+
+  attributes : [
+    "position", "normal", "uv", "color"
+  ]
+};
+
+export let SculptShader = {
+  vertex : `precision mediump float;
   
+uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
+uniform mat4 normalMatrix;
+
+attribute vec3 position;
+attribute vec3 normal;
+attribute vec2 uv;
+attribute vec4 color;
+
+varying vec4 vColor;
+varying vec3 vNormal;
+varying vec2 vUv;
+
+void main() {
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
+  vec4 n = normalMatrix * vec4(normal, 0.0);
+  
+  gl_Position = p;
+  
+  vUv = uv;
+  vNormal = n.xyz;
+  vColor = color;
+}
+
+  `,
+
+  fragment : `precision mediump float;
+uniform float alpha;
+
+varying vec4 vColor;
+varying vec3 vNormal;
+varying vec2 vUv;
+
+uniform vec4 uColor;
+
+void main() {
+  float f;
+  vec3 no = normalize(vNormal);
+  
+  f = abs(no[1]*0.333 + no[2]*0.333 + no[0]*0.333);
+  f = f*0.8 + 0.2;
+  vec4 c = vec4(f, f, f, 1.0)*uColor;
+  //c[3] *= alpha;
+  
+  gl_FragColor = c;
+}
+  `,
+
+  uniforms : {
+    alpha : 1.0,
+    uColor : [1, 1, 1, 1],
+    objectMatrix : new Matrix4()
+  },
+
   attributes : [
     "position", "normal", "uv", "color"
   ]
@@ -569,7 +632,8 @@ export const ShaderDef = {
   MeshIDShader         : MeshIDShader,
   WidgetMeshShader     : WidgetMeshShader,
   NormalPassShader     : NormalPassShader,
-  MeshLinearZShader    : MeshLinearZShader
+  MeshLinearZShader    : MeshLinearZShader,
+  SculptShader         : SculptShader
 };
 
 export let Shaders = {

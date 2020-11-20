@@ -410,7 +410,8 @@ export class MeshTransType extends TransDataType {
       }
     }
 
-    mesh.regenTesellation();
+    //mesh.regenTesellation(); //slow, disables partial redraw for that frame
+    mesh.regenElementsDraw();
     mesh.regenRender();
     mesh.outputs.depend.graphUpdate();
     //mesh.regenPartial();

@@ -334,12 +334,20 @@ export class ElementList {
 
   selectNone() {
     for (var e of this) {
+      if (e.flag & MeshFlags.SELECT) {
+        e.flag |= MeshFlags.UPDATE;
+      }
+
       this.setSelect(e, false);
     }
   }
 
   selectAll() {
     for (var e of this) {
+      if (!(e.flag & MeshFlags.SELECT)) {
+        e.flag |= MeshFlags.UPDATE;
+      }
+
       this.setSelect(e, true);
     }
   }
@@ -360,9 +368,14 @@ export class ElementList {
   }
 
   setSelect(e, state) {
-    if (e.type != this.type) {
+    if (e.type !== this.type) {
       throw new Error("wrong type " + e.type + " expected " + this.type);
     }
+
+    if (!!state !== !!(e.flag & MeshFlags.SELECT)) {
+      e.flag |= MeshFlags.UPDATE;
+    }
+
     if (state) {
       if (!this.selected.has(e)) {
         this.selected.add(e);

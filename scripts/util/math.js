@@ -1,8 +1,10 @@
 //handle to module.  never access in code; for debug console use only.
 var _math = undefined;
 
-/*TODO: clean up this module*/
+export * from '../path.ux/scripts/util/math.js';
 
+/*TODO: clean up this module*/
+`
 import * as vectormath from './vectormath.js';
 import * as util from './util.js';
 
@@ -1642,3 +1644,4 @@ var WVector3=exports.WVector3 = function(view, arg) {
 };
 WVector3.prototype = util.inherit(WVector3, Vector3, {
 });
+`

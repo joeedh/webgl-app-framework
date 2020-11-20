@@ -401,15 +401,12 @@ export class MeshToolBase extends ToolMode {
         uniforms.object_id = 131072;
       }
 
-      //console.log("drawing elements");
       let program = Shaders.MeshIDShader;
 
       uniforms.pointSize = 15;
       uniforms.polygonOffset = 10 + camdist**2;
-      //console.log("polygonOffset", uniforms.polygonOffset.toFixed(3));
 
       mesh.drawElements(view3d, gl, selmask, uniforms, program);
-      //mesh.draw(view3d, gl, uniforms, program);
     }
   }
 

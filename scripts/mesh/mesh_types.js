@@ -698,8 +698,9 @@ export class Edge extends Element {
       }
       
       do {
-        if (i++ > 10000) {
+        if (i++ > 100) {
           console.warn("infinite loop detected in Edge.prototype.[get faces]()");
+          throw new Error("infinite loop detected in Edge.prototype.[get faces]()");
         }
 
         l.f.flag &= ~MeshFlags.ITER_TEMP1;
@@ -707,8 +708,9 @@ export class Edge extends Element {
       } while (l !== this2.l);
 
       do {
-        if (i++ > 10000) {
+        if (i++ > 100) {
           console.warn("infinite loop detected in Edge.prototype.[get faces]()");
+          throw new Error("infinite loop detected in Edge.prototype.[get faces]()");
           break;
         }
 
@@ -938,14 +940,13 @@ class LoopIter {
   }
 }
 
-export class LoopList extends Array {
+export class LoopList {
   constructor() {
-    super();
-
     this.flag = 0;
     this.l = undefined;
+    this.length = 0;
 
-    this.iterstack = new Array(16);
+    this.iterstack = new Array(4);
     for (let i=0; i<this.iterstack.length; i++) {
       this.iterstack[i] = new LoopIter();
     }
@@ -967,6 +968,16 @@ export class LoopList extends Array {
     return stack[stack.cur].init(this);
   }
 
+  _recount() {
+    this.length = 0;
+
+    for (let l of this) {
+      this.length++;
+    }
+
+    return this.length;
+  }
+
   //used by STRUCT script
   get _loops() {
     return this;
@@ -975,7 +986,8 @@ export class LoopList extends Array {
 
 LoopList.STRUCT = `
 mesh.LoopList {
-  l : int | obj.l.eid;
+  l      : int | obj.l.eid;
+  length : int;
 }
 `;
 nstructjs.manager.add_class(LoopList);

@@ -111,6 +111,10 @@ export class SelectOpBase extends MeshOp {
           continue;
         }
 
+        if (!(e.flag & MeshFlags.SELECT)) {
+          e.flag |= MeshFlags.UPDATE;
+        }
+
         mesh.setSelect(e, true);
       }
 
@@ -161,6 +165,8 @@ export class SelectOneOp extends SelectOpBase {
         mesh.setSelect(e, false);
         break;
     };
+
+    e.flag |= MeshFlags.UPDATE;
 
     mesh.selectFlush(this.inputs.selmask.getValue());
     mesh.regenRender();

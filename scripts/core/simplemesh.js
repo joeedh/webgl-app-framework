@@ -197,6 +197,16 @@ export class LineEditor {
     return this;
   }
 
+  normals(c1, c2) {
+    let data = this.mesh.line_normals;
+    let i = this.i*2;
+
+    data.copy(i, c1);
+    data.copy(i+1, c2);
+
+    return this;
+  }
+
   uvs(c1, c2) {
     let data = this.mesh.line_uvs;
     let i = this.i*2;
