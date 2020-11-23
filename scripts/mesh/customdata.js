@@ -22,6 +22,15 @@ export class CustomDataElem {
     this.constructor.prototype.typeName = this.constructor.define().typeName;
   }
 
+  /*if defined in a subclass, will be called whenever a new data layer is created
+    even if of another type
+  onNewLayer(layer_class, layer_index) {
+
+  }
+  onRemoveLayer(layercls, layer_i=undefined) {
+  }
+  */
+
   static apiDefine(api, dstruct) {
 
   }
@@ -390,6 +399,7 @@ export class CustomData {
     if (this.on_layeradd) {
       this.on_layeradd(layer, lset);
     }
+
     return layer;
   }
 
@@ -398,7 +408,7 @@ export class CustomData {
 
     for (let layer of this.flatlist) {
       let cls = CustomDataElem.getTypeClass(layer.typeName);
-      e.customData.push(new cls());
+      e.customData.push(new cls(e));
     }
   }
 
@@ -419,16 +429,42 @@ export class CustomData {
       typename = typename.define().typeName;
     }
 
-    let i = 0;
-    for (let layer of this.flatlist) {
-      if (layer.typeName === typename) {
-        return i;
-      }
-
-      i++;
+    let lset = this.layers[typename];
+    if (!lset) {
+      return -1;
     }
 
-    return -1;
+    if (!lset.active && lset.length > 0) {
+      lset.active = lset[0];
+    }
+
+    return lset.active ? lset.active.index : -1;
+  }
+
+  getActiveLayer(typecls_or_name) {
+    let typeName = typecls_or_name;
+
+    if (typeof typeName !== "string") {
+      typeName = typeName.define().typeName;
+    }
+
+    let set = this.layers[typeName];
+    if (!set) {
+      return undefined;
+    }
+
+    if (set.active === undefined && set.length > 0) {
+      set.active = set[0];
+    }
+
+    return set.active;
+  }
+
+  setActiveLayer(layerIndex) {
+    let layer = this.flatlist[layerIndex];
+    let set = this.layers[layer.typeName];
+
+    set.active = layer;
   }
 
   remLayer(layer) {
@@ -439,6 +475,7 @@ export class CustomData {
     }
 
     set.remove(layer);
+    this.flatlist.remove(layer);
 
     this._updateFlatList();
 
@@ -456,6 +493,7 @@ export class CustomData {
   _getUniqueName(name) {
     let count = (name) => {
       let c = 0;
+
       for (let layer of this.flatlist) {
         if (layer.name === name) {
           c++;
@@ -502,7 +540,7 @@ export class CustomData {
       }
 
       if (layer.name === name) {
-        return name;
+        return layer;
       }
     }
   }

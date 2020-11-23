@@ -1,5 +1,5 @@
 import {CustomDataElem} from "./customdata.js";
-import {Vector2} from "../util/vectormath.js";
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import {MeshTypes} from "./mesh_base.js";
 import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
@@ -297,3 +297,64 @@ NormalLayerElem.STRUCT = STRUCT.inherit(NormalLayerElem, CustomDataElem, "mesh.N
 `;
 nstructjs.manager.add_class(NormalLayerElem);
 CustomDataElem.register(NormalLayerElem);
+
+
+export class ColorLayerElem extends CustomDataElem {
+  constructor() {
+    super();
+
+    this.color = new Vector4([1, 1, 1, 1]);
+  }
+
+  setValue(uv) {
+    this.color.load(uv);
+  }
+
+  getValue() {
+    return this.color;
+  }
+
+  copyTo(b) {
+    b.color.load(this.color);
+  }
+
+  copy() {
+    let ret = new ColorLayerElem();
+    this.copyTo(ret);
+    return ret;
+  }
+
+  interp(dest, datas, ws) {
+    dest.color.zero();
+
+    if (datas.length === 0) {
+      return;
+    }
+
+    for (let i=0; i<datas.length; i++) {
+      dest.color[0] += ws[i]*datas[i].color[0];
+      dest.color[1] += ws[i]*datas[i].color[1];
+      dest.color[2] += ws[i]*datas[i].color[2];
+      dest.color[3] += ws[i]*datas[i].color[3];
+    }
+  }
+
+  validate() {
+    return true;
+  }
+
+  static define() {return {
+    elemTypeMask: MeshTypes.VERTEX|MeshTypes.LOOP,
+    typeName    : "color",
+    uiTypeName  : "Color",
+    defaultName : "Color",
+    valueSize : 4,
+    flag     : 0
+  }};
+}
+ColorLayerElem.STRUCT = STRUCT.inherit(ColorLayerElem, CustomDataElem, "mesh.ColorLayerElem") + `
+  color : vec4;
+}
+`;
+nstructjs.manager.add_class(ColorLayerElem);
+CustomDataElem.register(ColorLayerElem);

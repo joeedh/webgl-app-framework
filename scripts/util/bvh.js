@@ -5,6 +5,7 @@ import {triBoxOverlap, aabb_ray_isect, ray_tri_isect} from './isect.js';
 
 import {CustomDataElem} from "../mesh/customdata.js";
 import {MeshTypes} from "../mesh/mesh_base.js";
+import {GridBase} from "../mesh/mesh_grids.js";
 
 let _triverts = new Array(3);
 
@@ -25,6 +26,8 @@ export class BVHTri {
     this.tri_idx = tri_idx;
     this.node = undefined;
     this.removed = false;
+
+    this.no = new Vector3();
 
     this.f = f;
 
@@ -347,12 +350,54 @@ export class BVHNode {
     }
   }
 
+  updateNormalsGrids() {
+    for (let tri of this.uniqueTris) {
+      //stupid hack to get better normals along grid seams
+      /*
+      let d = 4;
+      tri.v1.no.mulScalar(d);
+      tri.v2.no.mulScalar(d);
+      tri.v3.no.mulScalar(d);
+      //*/
+
+      //*
+      tri.v1.no.zero();
+      tri.v2.no.zero();
+      tri.v3.no.zero();
+      //*/
+    }
+
+    for (let tri of this.allTris) {
+      let n = math.normal_tri(tri.v1, tri.v2, tri.v3);
+
+      tri.no.load(n);
+
+      tri.v1.no.add(n);
+      tri.v2.no.add(n);
+      tri.v3.no.add(n);
+    }
+
+    for (let tri of this.uniqueTris) {
+      tri.v1.no.normalize();
+      tri.v2.no.normalize();
+      tri.v3.no.normalize();
+    }
+  }
+
   updateNormals() {
     this.flag &= ~BVHFlags.UPDATE_NORMALS;
 
+    if (this.bvh.cd_grid >= 0) {
+      this.updateNormalsGrids();
+      return;
+    }
+
     for (let tri of this.uniqueTris) {
       if (tri.f) {
+        tri.no.load(tri.f.no);
         tri.f.calcNormal();
+      } else {
+        tri.no.load(math.normal_tri(tri.v1, tri.v2, tri.v3));
       }
     }
 
@@ -442,6 +487,8 @@ export class BVH {
     this.min = new Vector3(min);
     this.max = new Vector3(max);
 
+    this.updateNodes = new Set();
+
     this.mesh = mesh;
 
     this.node_idgen = 0;
@@ -451,7 +498,7 @@ export class BVH {
 
     this.leafLimit = 64;
     this.drawLevelOffset = 3;
-    this.depthLimit = 10;
+    this.depthLimit = 12;
 
     this.nodes = [];
     this.node_idmap = {};
@@ -474,8 +521,22 @@ export class BVH {
     let cd_node = this.cd_node;
     let cd_face_node = this.cd_face_node;
 
-    for (let v of mesh.verts) {
-      v.customData[cd_node].node = undefined;
+    let cd_grid = GridBase.meshGridOffset(mesh);
+
+    if (cd_grid >= 0) {
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+
+        for (let p of grid.points) {
+          p.customData[cd_node].node = undefined;
+        }
+      }
+    } else if (mesh.verts.customData.hasLayer(CDNodeInfo)) {
+      cd_node = mesh.verts.customData.getLayerIndex(CDNodeInfo);
+
+      for (let v of mesh.verts) {
+        v.customData[cd_node].node = undefined;
+      }
     }
 
     for (let f of mesh.faces) {
@@ -572,6 +633,8 @@ export class BVH {
 
     node.id = this.node_idgen++;
 
+    this.updateNodes.add(node);
+
     this.node_idmap[node.id] = node;
     this.nodes.push(node);
 
@@ -589,16 +652,22 @@ export class BVH {
     node.id = -1;
   }
 
-  static create(mesh, storeVerts=true) {
+  static create(mesh, storeVerts=true, useGrids=true) {
     if (!mesh.verts.customData.hasLayer(CDNodeInfo)) {
       mesh.verts.addCustomDataLayer(CDNodeInfo, "bvh");
+    }
+
+    if (useGrids && GridBase.meshGridOffset(mesh) >= 0) {
+      if (!mesh.loops.customData.hasLayer(CDNodeInfo)) {
+        mesh.loops.addCustomDataLayer(CDNodeInfo, "bvh");
+      }
     }
 
     if (!mesh.faces.customData.hasLayer(CDNodeInfo)) {
       mesh.faces.addCustomDataLayer(CDNodeInfo, "bvh");
     }
 
-    let aabb = mesh.getBoundingBox();
+    let aabb = mesh.getBoundingBox(useGrids);
 
     aabb[0] = new Vector3(aabb[0]);
     aabb[1] = new Vector3(aabb[1]);
@@ -610,16 +679,101 @@ export class BVH {
 
     let bvh = new BVH(mesh, aabb[0], aabb[1]);
 
-    bvh.cd_node = mesh.verts.customData.getLayerIndex(CDNodeInfo);
+    let cd_grid = bvh.cd_grid = useGrids ? GridBase.meshGridOffset(mesh) : -1;
+
+    if (useGrids && cd_grid >= 0) {
+      bvh.cd_node = mesh.loops.customData.getLayerIndex(CDNodeInfo);
+    } else {
+      bvh.cd_node = mesh.verts.customData.getLayerIndex(CDNodeInfo);
+    }
+
     bvh.cd_face_node = mesh.faces.customData.getLayerIndex(CDNodeInfo);
     bvh.storeVerts = storeVerts;
 
-    let ltris = mesh.loopTris;
+    if (cd_grid >= 0) {
+      let rand = new util.MersenneRandom(0);
 
-    for (let i=0; i<ltris.length; i += 3) {
-      let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
+      //we carefully randomize insertion order
+      let ls = [];
+      for (let l of mesh.loops) {
+        ls.push(l);
+      }
 
-      bvh.addTri(l1.f.eid, i, l1.v, l2.v, l3.v);
+      let dimen = 3;
+      for (let l of ls) {
+        let grid = l.customData[cd_grid];
+        dimen = grid.dimen;
+        break;
+      }
+
+      let map2 = [];
+      let li = 0;
+      for (let l of ls) {
+        for (let i=0; i<(dimen-1)*(dimen-1); i++) {
+          map2.push(li);
+          map2.push(i);
+        }
+
+        li++;
+      }
+
+      for (let i=0; i<map2.length/4; i++) {
+        let i2 = i*2;
+        let ri = (~~(Math.random()*map2.length*0.499999))*2;
+
+        let t = map2[i2];
+        let t2 = map2[i2+1];
+
+        map2[i2] = map2[ri];
+        map2[i2+1] = map2[ri+1];
+
+        map2[ri] = t;
+        map2[ri+1] = t2;
+      }
+
+      let map = [1];
+
+      for (let i=0; i<map2.length; i += 2) {
+        let l = ls[map2[i]];
+        let idx = map2[i+1];
+
+        let grid = l.customData[cd_grid];
+
+        map[0] = idx;
+
+        grid.recalcNormals();
+        grid.makeBVHTris(mesh, bvh, l, cd_grid, map);
+      }
+
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+
+        for (let p of grid.points) {
+          p.bNext = p.bPrev = undefined;
+        }
+      }
+
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+        grid.recalcNeighbors(mesh, l, cd_grid);
+      }
+
+      for (let node of bvh.nodes) {
+        if (node.leaf) {
+          node.flag |= BVHFlags.UPDATE_NORMALS|BVHFlags.UPDATE_DRAW;
+          bvh.updateNodes.add(node);
+        }
+      }
+
+      bvh.root.update();
+    } else {
+      let ltris = mesh.loopTris;
+
+      for (let i = 0; i < ltris.length; i += 3) {
+        let l1 = ltris[i], l2 = ltris[i + 1], l3 = ltris[i + 2];
+
+        bvh.addTri(l1.f.eid, i, l1.v, l2.v, l3.v);
+      }
     }
 
     //update aabbs
@@ -629,7 +783,30 @@ export class BVH {
   }
 
   update() {
-    this.root.update();
+    for (let node of this.updateNodes) {
+      node.update();
+    }
+
+    for (let node of this.updateNodes) {
+      let p = node.parent;
+
+      while (p) {
+        p.min.zero().addScalar(1e17);
+        p.max.zero().addScalar(-1e17);
+
+        for (let c of p.children) {
+          p.min.min(c.min);
+          p.max.max(c.max);
+        }
+
+        p.cent.load(p.min).interp(p.max, 0.5);
+        p.halfsize.load(p.max).sub(p.min).mulScalar(0.5);
+
+        p = p.parent;
+      }
+    }
+
+    this.updateNodes = new Set();
   }
 
   addTri(id, tri_idx, v1, v2, v3) {

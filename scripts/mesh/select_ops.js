@@ -243,7 +243,8 @@ export class ToggleSelectAll extends SelectOpBase {
         }
 
         for (let e of elist.editable) {
-          elist.setSelect(e, mode2 == SelToolModes.ADD);
+          elist.setSelect(e, mode2 === SelToolModes.ADD);
+          e.flag |= MeshFlags.UPDATE;
         }
       }
 

@@ -75,7 +75,12 @@ export class ElementListIter {
   return() {
     if (!this.ret.done) {
       this.elist.iterstack.cur--;
+      this.ret.done = true;
     }
+
+    this.ret.value = undefined;
+
+    return this.ret;
   }
 }
 
@@ -352,8 +357,40 @@ export class ElementList {
     }
   }
 
+  _fixcd(dest) {
+    if (dest.customData.length !== this.customData.flatlist.length) {
+      console.error("customdata error! trying to fix. . .", dest.eid);
+
+      let old = dest.customData.concat([]);
+
+      dest.customData.length = 0;
+      this.customData.initElement(dest);
+
+      for (let data1 of old) {
+        for (let i=0; i<dest.customData.length; i++) {
+          let data2 = dest.customData[i];
+
+          if (data2.constructor === data1.constructor) {
+            dest.customData[i] = data2;
+            break;
+          }
+        }
+      }
+    }
+  }
+
   customDataInterp(dest, sources, ws) {
     let sources2 = getArrayTemp(sources.length);
+
+    this._fixcd(dest);
+
+    for (let elem of sources) {
+      if (elem === undefined) {
+        console.error(".customDataInterp error: an element was undefined", sources);
+        return;
+      }
+      this._fixcd(elem);
+    }
 
     for (let i=0; i<dest.customData.length; i++) {
       let cd = dest.customData[i];
@@ -487,11 +524,77 @@ export class ElementList {
     }
   }
 
-  addCustomDataLayer(typecls, name) {
+  removeCustomDataLayer(layer_i) {
+    if (layer_i < 0 || layer_i === undefined) {
+      throw new Error("bad call to removeCustomDataLayer");
+    }
+
+    let cls = CustomDataElem.getTypeClass(this.customData.flatlist[layer_i].typeName);
+    let ret = this.customData.remLayer(this.customData.flatlist[layer_i]);
+
+    let haveOnRemoveLayer = false;
+
+    for (let layer of this.customData.flatlist) {
+      let cls = CustomDataElem.getTypeClass(layer.typeName);
+
+      if (new cls().onRemoveLayer) {
+        haveOnRemoveLayer = true;
+      }
+    }
+
+
+    for (let e of this) {
+      let i = layer_i;
+      let cd = e.customData;
+
+      while (i < cd.length-1) {
+        cd[i] = cd[i+1];
+        i++;
+      }
+
+      cd[i] = undefined;
+      cd.length--;
+
+      if (haveOnRemoveLayer) {
+        for (let data of cd) {
+          if (data.onRemoveLayer) {
+            data.onRemoveLayer(cls, layer_i);
+          }
+        }
+      }
+    }
+
+    return ret;
+  }
+
+  addCustomDataLayer(typecls_or_name, name) {
+    let typecls = typecls_or_name;
+    if (typeof typecls === "string") {
+      typecls = CustomDataElem.getTypeClass(typecls);
+    }
+
     let ret = this.customData.addLayer(typecls, name);
+
+    let haveOnNewLayer = false;
+
+    for (let layer of this.customData.flatlist) {
+      let cls = CustomDataElem.getTypeClass(layer.typeName);
+
+      if (new cls().onNewLayer) {
+        haveOnNewLayer = true;
+      }
+    }
 
     for (let item of this) {
       item.customData.push(new typecls());
+
+      if (haveOnNewLayer) {
+        for (let cd of item.customData) {
+          if (cd.onNewLayer) {
+            cd.onNewLayer(typecls, item.customData.length-1);
+          }
+        }
+      }
     }
 
     return ret;

@@ -38,6 +38,8 @@ import {PrimitiveTypes} from "../core/simplemesh.js";
 import {Node} from '../core/graph.js';
 import {Colors} from '../sceneobject/sceneobject.js';
 import {BVH} from "../util/bvh.js";
+import {drawMeshElements, genRenderMesh} from "./mesh_draw.js";
+import {GridBase} from "./mesh_grids.js";
 
 let split_temp = new Array(512);
 split_temp.used = 0;
@@ -52,6 +54,9 @@ let _cdwtemp2 = new Array(2);
 let _collapsetemp = new Array(256);
 let _collapsetemp2 = new Array(256);
 let _collapsetemp3 = new Array(256);
+
+let splitcd_ls = [0, 0];
+let splitcd_ws = [0.5, 0.5];
 
 export class Mesh extends SceneObjectData {
   constructor(features = MeshFeatures.BASIC) {
@@ -716,7 +721,7 @@ export class Mesh extends SceneObjectData {
       this.verts.setSelect(nv, true);
     }
 
-    _cdtemp1[0] = [e];
+    _cdtemp1[0] = e;
     _cdwtemp1[0] = 1.0;
 
     this.edges.customDataInterp(ne, _cdtemp1, _cdwtemp1);
@@ -1000,8 +1005,11 @@ export class Mesh extends SceneObjectData {
 
     split_temp.used = _i;
 
+
     for (let i = 0; i < split_temp.used; i++) {
       let l = split_temp[i];
+
+      let lnext = l.next;
 
       let l2 = this._makeLoop();
 
@@ -1035,6 +1043,15 @@ export class Mesh extends SceneObjectData {
         l2.prev = l;
         l.next = l2;
       }
+
+      let cdls = splitcd_ls;
+      let cdws = splitcd_ls;
+
+      cdws[0] = cdws[1] = 0.5;
+      cdls[0] = l;
+      cdls[1] = lnext;
+
+      this.loops.customDataInterp(l2, cdls, cdws);
 
       if (l && l.list) {
         l.list._recount();
@@ -1339,15 +1356,19 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  getBVH(auto_update=true) {
+  getBVH(auto_update=true, useGrids=true) {
     let key = this.verts.length + ":" + this.faces.length + ":" + this.edges.length + ":" + this.loops.length;
-    key += ":" + this.eidgen._cur;
+    key += ":" + this.eidgen._cur + ":" + useGrids;
+
+    if (useGrids) {
+      key += ":" + GridBase.meshGridOffset(this);
+    }
 
     if (!this.bvh || key !== this._last_bvh_key) {
       this._last_bvh_key = key;
 
       if (auto_update || !this.bvh) {
-        this.bvh = BVH.create(this, true);
+        this.bvh = BVH.create(this, true, useGrids);
       }
     }
 
@@ -1419,78 +1440,6 @@ export class Mesh extends SceneObjectData {
     }
 
     return this.smesh;
-
-    let zero2 = [0, 0];
-    let w = [1, 1, 1, 1];
-
-    if (combinedWireframe) {
-      sm.primflag = simplemesh.PrimitiveTypes.TRIS;
-    }
-
-    for (let e of this.edges) {
-      let line;
-
-      if (combinedWireframe) {
-        line = sm.line(e.eid, e.v1, e.v2);
-        line.ids(e.eid, e.eid);
-      }
-
-      line = wm.line(e.eid, e.v1, e.v2);
-      line.ids(e.eid, e.eid);
-
-      //line = wm.line(i, l2.v, l3.v); line.ids(i, i);
-      //line = wm.line(i, l3.v, l1.v); line.ids(i, i);
-    }
-
-    let useLoopNormals = this.drawflag & MeshDrawFlags.USE_LOOP_NORMALS;
-    useLoopNormals = useLoopNormals && this.loops.customData.hasLayer(NormalLayerElem);
-
-    let nidx = useLoopNormals ? this.loops.customData.getLayerIndex(NormalLayerElem) : -1;
-
-    for (let i = 0; i < ltris.length; i += 3) {
-      let l1 = ltris[i], l2 = ltris[i + 1], l3 = ltris[i + 2];
-
-      let tri = sm.tri(i, l1.v, l2.v, l3.v);
-      tri.colors(w, w, w);
-
-      let n1, n2, n3;
-
-      if (useLoopNormals) {
-        n1 = l1.customData[nidx].no;
-        n2 = l2.customData[nidx].no;
-        n3 = l3.customData[nidx].no;
-      } else {
-        n1 = l1.v.no;
-        n2 = l2.v.no;
-        n3 = l3.v.no;
-      }
-
-      if (!useLoopNormals && (l1.f.flag & MeshFlags.FLAT)) {
-        tri.normals(l1.f.no, l2.f.no, l3.f.no);
-      } else {
-        tri.normals(l1.v.no, l2.v.no, l3.v.no);
-      }
-
-      tri.ids(l1.f.eid, l1.f.eid, l1.f.eid);
-
-      let uvidx = -1;
-      let j = 0;
-
-      for (let data of l1.customData) {
-        if (data instanceof UVLayerElem) {
-          uvidx = j;
-          break;
-        }
-
-        j++;
-      }
-
-      if (uvidx >= 0) {
-        tri.uvs(l1.customData[uvidx].uv, l2.customData[uvidx].uv, l3.customData[uvidx].uv);
-      }
-    }
-
-    return sm;
   }
 
   rescale() {
@@ -1525,7 +1474,7 @@ export class Mesh extends SceneObjectData {
     let ltris = this._ltris;
     for (let eid in this.updatelist) {
       let e = this.updatelist[eid];
-      if (e.type == MeshTypes.FACE) {
+      if (e.type === MeshTypes.FACE) {
         let f = e;
         let li = this._ltrimap_start[f.eid];
         let len = this._ltrimap_len[f.eid];
@@ -1619,196 +1568,7 @@ export class Mesh extends SceneObjectData {
 
 
   _genRenderElements(gl, uniforms) {
-    let recalc;
-
-    if (this.recalc & RecalcFlags.ELEMENTS) {
-      recalc = MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE;
-    } else {
-      recalc = MeshTypes.FACE;
-    }
-
-    this.recalc &= ~RecalcFlags.ELEMENTS;
-
-    let selcolor = uniforms.select_color || Colors[1];
-    let unselcolor = [0.5, 0.5, 1.0, 1.0];
-
-    let getmesh = (key) => {
-      if (!(key in this._fancyMeshes)) {
-        this._fancyMeshes[key] = new ChunkedSimpleMesh(LayerTypes.LOC | LayerTypes.NORMAL | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR);
-      }
-
-      return this._fancyMeshes[key];
-    }
-
-    let trilen = this._ltris === undefined ? 0 : this._ltris.length;
-    let updatekey = "" + trilen + ":" + this.verts.length + ":" + this.edges.length;
-
-    if (updatekey !== this._last_elem_update_key) {
-      console.log("full element draw regen", updatekey);
-
-      recalc = MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE;
-
-      for (let v of this.verts) {
-        v.flag |= MeshFlags.UPDATE;
-      }
-      for (let e of this.edges) {
-        e.flag |= MeshFlags.UPDATE;
-      }
-      for (let f of this.faces) {
-        f.flag |= MeshFlags.UPDATE;
-      }
-
-      this._last_elem_update_key = updatekey;
-      for (let k in this._fancyMeshes) {
-        this._fancyMeshes[k].destroy(gl);
-      }
-
-      this._fancyMeshes = {};
-    }
-
-    let sm;
-    let meshes = this._fancyMeshes;
-
-    if (recalc & MeshTypes.VERTEX) {
-      let tot = 0;
-      sm = getmesh("verts");
-      sm.primflag = PrimitiveTypes.POINTS;
-
-      for (let v of this.verts) {
-        if ((v.flag & MeshFlags.HIDE) || !(v.flag & MeshFlags.UPDATE)) {
-          continue;
-        }
-
-        let p = sm.point(v.eid, v);
-
-        let color = v.flag & MeshFlags.SELECT ? selcolor : v.color;
-
-        for (let i = 0; i < v.edges.length; i++) {
-          let e = v.edges[i];
-          e.flag |= MeshFlags.UPDATE;
-        }
-
-        tot++;
-        p.ids(v.eid);
-        p.colors(color);
-      }
-
-      console.log("  ", tot, "vertices updated");
-
-      sm = getmesh("handles");
-      sm.primflag = PrimitiveTypes.POINTS;
-      for (let h of this.handles) {
-        if (!h.visible || !(h.flag & MeshFlags.UPDATE)) {
-          continue;
-        }
-        let p = sm.point(h.eid, h);
-
-        let color = h.flag & MeshFlags.SELECT ? selcolor : h.color;
-
-        p.ids(h.eid);
-        p.colors(color);
-      }
-    }
-
-    if (recalc & MeshTypes.EDGE) {
-      if (this.features & MeshFeatures.EDGE_CURVES_ONLY) {
-        if (meshes.edges) {
-          meshes.edges.destroy(gl);
-        }
-
-        //XXX
-        let view3d = _appstate.ctx.view3d;
-
-        meshes.edges = this.genRender_curves(gl, false, view3d, LayerTypes.LOC | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR);
-        meshes.edges.primflag = PrimitiveTypes.LINES;
-      } else {
-        sm = getmesh("edges");
-        sm.primflag = PrimitiveTypes.LINES;
-
-        for (let e of this.edges) {
-          let update = e.v1.flag & MeshFlags.UPDATE;
-          update = update || (e.v2.flag & MeshFlags.UPDATE);
-          update = update || (e.flag & MeshFlags.UPDATE);
-          update = update && !(e.flag & MeshFlags.HIDE);
-
-          if (!update) {
-            continue;
-          }
-
-          let l = e.l;
-          if (l) {
-            let _i = 0;
-
-            do {
-              l.f.flag |= MeshFlags.UPDATE;
-              l = l.radial_next;
-            } while (l !== e.l && _i++ < 10);
-          }
-
-          let line = sm.line(e.eid, e.v1, e.v2);
-
-          if (e.flag & MeshFlags.SELECT) {
-            line.colors(selcolor, selcolor);
-          } else {
-            line.colors(e.v1.color, e.v2.color);
-          }
-
-          line.ids(e.eid, e.eid);
-          line.uvs([0, 0], [1, 1])
-        }
-      }
-    }
-
-    if (recalc & MeshTypes.FACE) {
-      let useLoopNormals = this.drawflag & MeshDrawFlags.USE_LOOP_NORMALS;
-      useLoopNormals = useLoopNormals && this.loops.customData.hasLayer(NormalLayerElem);
-
-      let cd_nor = useLoopNormals ? this.loops.customData.getLayerIndex(NormalLayerElem) : -1;
-
-      let haveUVs = this.loops.customData.hasLayer(UVLayerElem);
-      let cd_uvs = haveUVs ? this.loops.customData.getLayerIndex(UVLayerElem) : -1;
-
-
-      sm = getmesh("faces");
-      sm.primflag = PrimitiveTypes.TRIS;
-
-      let ltris = this._ltris;
-      ltris = ltris === undefined ? [] : ltris;
-
-      for (let i = 0; i < ltris.length; i += 3) {
-        let v1 = ltris[i].v;
-        let v2 = ltris[i + 1].v;
-        let v3 = ltris[i + 2].v;
-        let f = ltris[i].f;
-
-        if ((f.flag & MeshFlags.HIDE) || !(f.flag & MeshFlags.UPDATE)) {
-          continue;
-        }
-
-        let tri = sm.tri(i, v1, v2, v3);
-        tri.ids(f.eid, f.eid, f.eid);
-
-        if (f.flag & MeshFlags.SELECT) {
-          tri.colors(selcolor, selcolor, selcolor);
-        } else {
-          tri.colors(unselcolor, unselcolor, unselcolor);
-        }
-
-        if (useLoopNormals) {
-          tri.normals(ltris[i].customData[cd_nor].no, ltris[i + 1].customData[cd_nor].no, ltris[i + 2].customData[cd_nor].no);
-        } else if (f.flag & MeshFlags.SMOOTH_DRAW) {
-          tri.normals(ltris[i].v.no, ltris[i + 1].v.no, ltris[i + 2].v.no);
-        } else {
-          tri.normals(f.no, f.no, f.no);
-        }
-
-        if (haveUVs) {
-          tri.uvs(ltris[i].customData[cd_uvs].uv, ltris[i + 1].customData[cd_uvs].uv, ltris[i + 2].customData[cd_uvs].uv);
-        }
-      }
-    }
-
-    this.clearUpdateFlags(recalc);
+    genRenderMesh(gl, this, uniforms);
   }
 
   clearUpdateFlags(typemask) {
@@ -1832,88 +1592,7 @@ export class Mesh extends SceneObjectData {
   }
 
   drawElements(view3d, gl, selmask, uniforms, program, object, drawTransFaces = false) {
-    if (!uniforms.active_color) {
-      uniforms.active_color = [1.0, 0.8, 0.2, 1.0];
-    }
-    if (!uniforms.highlight_color) {
-      uniforms.highlight_color = [1.0, 0.5, 0.25, 1.0];
-    }
-    if (!uniforms.select_color) {
-      uniforms.select_color = [1.0, 0.7, 0.5, 1.0];
-    }
-
-    if (this.recalc & RecalcFlags.TESSELATE) {
-      this.tessellate();
-    }
-
-    if (this.recalc & RecalcFlags.ELEMENTS) {
-      //console.log("_genRenderElements");
-      this._genRenderElements(gl, uniforms);
-    }
-
-    uniforms = uniforms !== undefined ? Object.assign({}, uniforms) : {};
-    uniforms.alpha = uniforms.alpha === undefined ? 1.0 : uniforms.alpha;
-
-    let meshes = this._fancyMeshes;
-
-    uniforms.pointSize = uniforms.pointSize === undefined ? 10 : uniforms.pointSize;
-    uniforms.polygonOffset = uniforms.polygonOffset === undefined ? 0.5 : uniforms.polygonOffset;
-
-    let draw_list = (list, key) => {
-      uniforms.active_id = list.active !== undefined ? list.active.eid : -1;
-      uniforms.highlight_id = list.highlight !== undefined ? list.highlight.eid : -1;
-
-      if (!meshes[key]) {
-        console.warn("missing mesh element draw data", key);
-        this.regenElementsDraw();
-        return;
-      }
-
-      meshes[key].draw(gl, uniforms, program);
-    }
-
-    if (selmask & SelMask.FACE) {
-      let alpha = uniforms.alpha;
-
-      if (drawTransFaces) {
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-        uniforms.alpha = 0.25;
-
-        //gl.depthMask(false);
-        //gl.disable(gl.DEPTH_TEST);
-      }
-
-      if (selmask & SelMask.EDGE) {
-        uniforms.polygonOffset *= 0.5;
-        draw_list(this.edges, "edges");
-      }
-
-      uniforms.polygonOffset *= 0.25;
-      draw_list(this.faces, "faces");
-
-      if (drawTransFaces) {
-        /*
-        gl.disable(gl.DEPTH_TEST);
-        gl.depthMask(true);
-
-        gl.enable(gl.BLEND);
-        draw_list(this.faces, "faces");
-
-        gl.disable(gl.BLEND);
-        gl.enable(gl.DEPTH_TEST);
-         */
-        gl.disable(gl.BLEND);
-      }
-    }
-
-    if (selmask & SelMask.VERTEX) {
-      draw_list(this.verts, "verts");
-    }
-    if (selmask & SelMask.HANDLE) {
-      draw_list(this.handles, "handles");
-    }
+    return drawMeshElements(this, ...arguments);
   }
 
   draw(view3d, gl, uniforms, program, object) {
@@ -1985,7 +1664,7 @@ export class Mesh extends SceneObjectData {
   }
 
   copyElemData(dst, src) {
-    if (dst.type != src.type) {
+    if (dst.type !== src.type) {
       throw new Error("mismatched between element types in Mesh.prototype.copyElemData()");
     }
 
@@ -2355,7 +2034,7 @@ export class Mesh extends SceneObjectData {
     this.validateMesh();
   }
 
-  getBoundingBox() {
+  getBoundingBox(useGrids=true) {
     let ret = undefined;
 
     for (let v of this.verts) {
@@ -2364,6 +2043,25 @@ export class Mesh extends SceneObjectData {
       } else {
         ret[0].min(v);
         ret[1].max(v);
+      }
+    }
+
+    let cd_grid = GridBase.meshGridOffset(this);
+
+    if (cd_grid >= 0) {
+      for (let l of this.loops) {
+        if (ret === undefined) {
+          ret = [new Vector3(), new Vector3()];
+          ret[0].addScalar(1e17);
+          ret[1].addScalar(-1e17);
+        }
+
+        let grid = l.customData[cd_grid];
+
+        for (let p of grid.points) {
+          ret[0].min(p);
+          ret[1].max(p);
+        }
       }
     }
 

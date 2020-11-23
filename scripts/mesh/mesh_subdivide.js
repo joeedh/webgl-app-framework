@@ -1,3 +1,4 @@
+
 export function splitEdgesSmart(mesh, es) {
   let vs = new Set();
   for (let e of es) {

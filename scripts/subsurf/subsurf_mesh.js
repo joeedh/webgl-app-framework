@@ -48,7 +48,7 @@ export function createPatches(mesh, faces=mesh.faces) {
   return patches;
 }
 
-export function subdivide(mesh, faces=mesh.faces) {
+export function subdivide(mesh, faces=mesh.faces, linear=false) {
   let fset = new util.set();
   let eset = new util.set();
   let vset = new util.set();
@@ -93,47 +93,51 @@ export function subdivide(mesh, faces=mesh.faces) {
     i++;
   }
 
-  for (let v of vset) {
-    let val = v.edges.length;
+  if (!linear) {
+    for (let v of vset) {
+      let val = v.edges.length;
 
-    let wa = 3.0/(2*val);
-    let wb = 1.0/(4*val);
-    let wv = 1.0 - wa - wb;
+      let wa = 3.0 / (2 * val);
+      let wb = 1.0 / (4 * val);
+      let wv = 1.0 - wa - wb;
 
-    wa /= val;
-    wb /= val;
+      wa /= val;
+      wb /= val;
 
-    let tot = wv;
-    v.load(vcos[v.index]);
-    v.mulScalar(wv);
+      let tot = wv;
+      v.load(vcos[v.index]);
+      v.mulScalar(wv);
 
-    for (let e of v.edges) {
-      let v2 = e.otherVertex(v);
+      for (let e of v.edges) {
+        let v2 = e.otherVertex(v);
 
-      v.addFac(vcos[v2.index], wa);
-      tot += wa;
-
-      let l = e.l;
-      if (e.l === undefined) {
-        continue;
-      }
-
-      do {
-        let v3;
-        if (l.v === v) {
-          v3 = l.next.v;
-        } else {
-          v3 = l.v;
+        if (vcos[v2.index]) {
+          v.addFac(vcos[v2.index], wa);
+          tot += wa;
         }
 
-        v.addFac(vcos[v2.index], wb);
-        tot += wb;
+        let l = e.l;
+        if (e.l === undefined) {
+          continue;
+        }
 
-        l = l.radial_next;
-      } while (l !== e.l)
+        do {
+          let v3;
+          if (l.v === v) {
+            v3 = l.next.v;
+          } else {
+            v3 = l.v;
+          }
+
+          v.addFac(vcos[v2.index], wb);
+          tot += wb;
+
+          l = l.radial_next;
+        } while (l !== e.l)
+      }
+
+      v.mulScalar(1.0 / tot);
     }
-
-    v.mulScalar(1.0 / tot);
   }
 
   for (let e of eset) {
@@ -148,10 +152,21 @@ export function subdivide(mesh, faces=mesh.faces) {
     splitvs.add(nv);
   }
 
+  let lsinterp = [];
+  let winterp = [];
+
   for (let f of fset) {
     let centv = mesh.makeVertex(f.cent);
 
     mesh.verts.setSelect(centv, true);
+
+    lsinterp.length = 0;
+    f.lists[0]._recount();
+
+    for (let l of f.lists[0]) {
+      lsinterp.push(l);
+      winterp.push(1.0 / f.lists[0].length);
+    }
 
     let l = f.lists[0].l;
     let _i = 0;
@@ -162,6 +177,13 @@ export function subdivide(mesh, faces=mesh.faces) {
       let v4 = l.prev.v;
 
       let f2 = mesh.makeQuad(v1, v2, v3, v4);
+
+      let l2 = f2.lists[0].l;
+      mesh.copyElemData(l2, l);
+      mesh.copyElemData(l2.next, l.next);
+      mesh.copyElemData(l2.next.next, l.next);
+      //mesh.loops.customDataInterp(l2.next.next, lsinterp, winterp);
+      mesh.copyElemData(l2.prev, l.prev);
 
       mesh.faces.setSelect(f2, true);
 

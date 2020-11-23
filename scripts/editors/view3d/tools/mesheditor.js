@@ -42,6 +42,7 @@ export class MeshEditor extends MeshToolBase {
       "mesh.delete_selected()",
       "mesh.toggle_select_all()",
       "mesh.subdivide_smooth()",
+      "mesh.subdivide_simple()",
       "mesh.extrude_regions(transform=true)"
     ]
   }
@@ -82,6 +83,11 @@ export class MeshEditor extends MeshToolBase {
     strip.prop("scene.selectMaskEnum[FACE]");
 
     strip.tool(`mesh.delete_selected`);
+
+    strip.button("Add Grids", function() {
+      console.log(arguments);
+      strip.ctx.api.execTool(this.ctx, "mesh.ensure_grids()");
+    });
   }
 
   static haveHandles() {

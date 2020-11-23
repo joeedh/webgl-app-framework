@@ -2,7 +2,7 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
-  FlagProperty, ToolProperty, Vec3Property, Mat4Property,
+  FlagProperty, ToolProperty, Vec3Property, Mat4Property, StringProperty,
   PropFlags, PropTypes, PropSubTypes
 } from '../path.ux/scripts/toolsys/toolprop.js';
 import {ToolOp, ToolMacro, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
@@ -19,6 +19,8 @@ import {MeshOp} from './mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
 import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
 import {splitEdgesSmart} from "./mesh_subdivide.js";
+import {GridBase, Grid, gridSides} from "./mesh_grids.js";
+import {CustomDataElem} from "./customdata.js";
 
 export class DeleteOp extends MeshOp {
   static tooldef() {
@@ -454,6 +456,65 @@ export class CatmullClarkeSubd extends MeshOp {
 
 ToolOp.register(CatmullClarkeSubd);
 
+export class SubdivideSimple extends MeshOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname: "Subdivide Simple",
+      icon: Icons.SUBDIVIDE,
+      toolpath: "mesh.subdivide_simple",
+      undoflag: 0,
+      flag: 0,
+      inputs: ToolOp.inherit({}),
+    }
+  }
+
+  exec(ctx) {
+    console.log("subdivide smooth!");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      console.log("doing mesh", mesh.lib_id);
+
+      subdivide(mesh, list(mesh.faces.selected.editable), true);
+
+      mesh.regenRender();
+
+      let es = new util.set();
+
+      for (let e of mesh.edges.selected.editable) {
+        if (!e.l) {
+          es.add(e);
+        }
+      }
+
+      //handle wire edges
+      let vs = new util.set();
+
+      for (let e of es) {
+        vs.add(e.v1);
+        vs.add(e.v2);
+
+        let ret = mesh.splitEdge(e, 0.5);
+
+        if (ret.length > 0) {
+          vs.add(ret[1]);
+          mesh.setSelect(ret[0], true);
+          mesh.setSelect(ret[1], true);
+        }
+      }
+
+      mesh.recalcNormals();
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.update();
+    }
+  }
+}
+ToolOp.register(SubdivideSimple);
+
 export function vertexSmooth(mesh, verts = mesh.verts.selected.editable, fac = 0.5) {
   let cos = {};
 
@@ -621,3 +682,173 @@ export class TestCollapseOp extends MeshOp {
 }
 
 ToolOp.register(TestCollapseOp);
+
+export class EnsureGridsOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Ensure Grids",
+      icon: Icons.TINY_X,
+      toolpath: "mesh.ensure_grids",
+      inputs: ToolOp.inherit({
+        depth: new IntProperty(3)
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.ensure_grids");
+
+    let depth = this.inputs.depth.getValue();
+    let dimen = gridSides[depth];
+
+    console.log("DIMEN", dimen);
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let off = GridBase.meshGridOffset(mesh);
+
+      if (off < 0) {
+        console.log("Adding grids to mesh", mesh);
+
+        Grid.initMesh(mesh, dimen, -1)
+
+        mesh.regenTesellation();
+        mesh.regenRender();
+        mesh.regenElementsDraw();
+        mesh.graphUpdate();
+      }
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(EnsureGridsOp);
+
+
+export class DeleteGridsOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Delete Grids",
+      icon: Icons.TINY_X,
+      toolpath: "mesh.delete_grids",
+      inputs: ToolOp.inherit({
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.delete_grids");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let off = GridBase.meshGridOffset(mesh);
+
+      if (off >= 0) {
+        console.log("Deleting grids from mesh", mesh);
+
+        mesh.loops.removeCustomDataLayer(off);
+      }
+
+      //force bvh update
+      mesh.bvh = undefined;
+
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.regenElementsDraw();
+    }
+
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(DeleteGridsOp);
+
+
+export class ResetGridsOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Reset Grids",
+      icon: Icons.TINY_X,
+      toolpath: "mesh.reset_grids",
+      inputs: ToolOp.inherit({
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.reset_grids");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let off = GridBase.meshGridOffset(mesh);
+      if (off < 0) {
+        continue;
+      }
+
+      console.log("resetting grids");
+
+      for (let l of mesh.loops) {
+        let grid = l.customData[off];
+
+        grid.init(grid.dimen, l);
+      }
+
+      //force bvh reload
+      mesh.bvh = undefined;
+      mesh.getBVH();
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(ResetGridsOp);
+
+export class AddCDLayerOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Add Data Layer",
+      icon: Icons.SMALL_PLUS,
+      toolpath: "mesh.add_cd_layer",
+      inputs: ToolOp.inherit({
+        elemType : new EnumProperty(MeshTypes.VERTEX, MeshTypes),
+        layerType : new StringProperty("uv"),
+        name : new StringProperty("")
+      }),
+      outputs: ToolOp.inherit({
+        layerIndex: new IntProperty(-1)
+      })
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.add_cd_layer");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let name = this.inputs.name.getValue().trim();
+      if (name === "") {
+        name = undefined;
+      }
+
+      let type = this.inputs.elemType.getValue();
+      let elist = mesh.getElemList(type);
+
+      let typecls = CustomDataElem.getTypeClass(this.inputs.layerType.getValue());
+      if (!typecls) {
+        this.ctx.error("Unknown layer type " + this.inputs.layerType.getValue());
+        return;
+      }
+
+      let ret = elist.addCustomDataLayer(typecls, name);
+
+      if (ret) {
+        this.outputs.layerIndex.setValue(ret.index);
+      }
+
+      //XXX add support for MeshOp to only operate on active mesh
+      break;
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(AddCDLayerOp);

@@ -218,9 +218,11 @@ void main() {
   float f;
   vec3 no = normalize(vNormal);
   
-  f = abs(no[1]*0.333 + no[2]*0.333 + no[0]*0.333);
+  f = no[1]*0.333 + no[2]*0.333 + no[0]*0.333;
+  f = f < 0.0 ? -f*0.5 : f;
   f = f*0.8 + 0.2;
-  vec4 c = vec4(f, f, f, 1.0)*uColor;
+  
+  vec4 c = vec4(f, f, f, 1.0)*uColor*vColor;
   c[3] *= alpha;
   
   gl_FragColor = c;
