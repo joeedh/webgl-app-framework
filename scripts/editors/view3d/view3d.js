@@ -1180,7 +1180,10 @@ export class View3D extends Editor {
     }
 
     this.setCSS();
-    window.redraw_viewport();
+
+    if (window.redraw_viewport) {
+      window.redraw_viewport();
+    }
   }
 
   _testCamera() {

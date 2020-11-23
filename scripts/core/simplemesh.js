@@ -19,7 +19,8 @@ export const LayerTypes = {
   UV     : 2,
   COLOR  : 4,
   NORMAL : 8,
-  ID     : 16
+  ID     : 16,
+  CUSTOM : 32
 }
 
 export const LayerTypeNames = {
@@ -27,7 +28,8 @@ export const LayerTypeNames = {
   [LayerTypes.UV] : "uv",
   [LayerTypes.COLOR] : "color",
   [LayerTypes.ID] : "id",
-  [LayerTypes.NORMAL] : "normal"
+  [LayerTypes.NORMAL] : "normal",
+  [LayerTypes.CUSTOM] : "custom"
 };
 
 let _TypeSizes = {
@@ -35,7 +37,8 @@ let _TypeSizes = {
   UV     : 2,
   COLOR  : 4,
   NORMAL : 3,
-  ID     : 1
+  ID     : 1,
+  CUSTOM : 4
 };
 
 export const TypeSizes = {};
@@ -45,12 +48,12 @@ for (var k in LayerTypes) {
 }
 
 function appendvec(a, b, n, defaultval) {
-  if (defaultval == undefined)
+  if (defaultval === undefined)
     defaultval = 0.0;
 
   for (var i=0; i<n; i++) {
     let val = b[i];
-    a.push(val == undefined ? defaultval : val);
+    a.push(val === undefined ? defaultval : val);
   }
 }
 
@@ -58,12 +61,12 @@ var _ids_arrs = [[0], [0], [0], [0]];
 let zero = new Vector3();
 
 function copyvec(a, b, starti, n, defaultval) {
-  if (defaultval == undefined)
+  if (defaultval === undefined)
     defaultval = 0.0;
 
   for (var i=starti; i<starti+n; i++) {
     let val = b[i];
-    a[i] = val == undefined ? defaultval : val;
+    a[i] = val === undefined ? defaultval : val;
   }
 }
 
@@ -98,6 +101,15 @@ export class TriEditor {
     data.copy(i, n1);
     data.copy(i+1, n2);
     data.copy(i+2, n3);
+
+    return this;
+  }
+
+  custom(layer, v1, v2, v3) {
+    let i = this.i*3;
+    layer.copy(i, v1);
+    layer.copy(i+1, v2);
+    layer.copy(i+2, v3);
 
     return this;
   }
@@ -741,11 +753,29 @@ export class SimpleIsland {
         li++;
         return;
       } else {
-
         for (let i=0; i<meta.layers.length; i++) {
           let layer = meta.layers[i];
+          let count;
+          let mli = i;
 
-          let key = ShaderProgram.multiLayerAttrKey(name, i, gl.haveWebGL2);
+          if (type === LayerTypes.CUSTOM) {
+            name = layer.name;
+            count = 0;
+
+            for (let j=0; j<meta.layers.length; j++) {
+              if (j === i) {
+                break;
+              }
+
+              if (meta.layers[j].type === LayerTypes.CUSTOM && meta.layers[j].name === name) {
+                count++;
+              }
+            }
+
+            mli = count;
+          }
+
+          let key = ShaderProgram.multiLayerAttrKey(name, mli, gl.haveWebGL2);
 
           let buf = this.buffer.get(gl, layer.bufferKey);
 
@@ -765,11 +795,11 @@ export class SimpleIsland {
     bindArray("uv", LayerTypes.UV);
     bindArray("color", LayerTypes.COLOR);
     bindArray("id", LayerTypes.ID);
+    bindArray("custom", LayerTypes.CUSTOM);
   }
 
-  addDataLayer(primflag, type) {
-    this.layers.pushLayer("multilayer layer", primflag, type, TypeSizes[type]);
-    return this;
+  addDataLayer(primflag, type, size=TypeSizes[type], name=LayerTypeNames[type]) {
+    return this.layers.pushLayer(name, primflag, type, size);
   }
 
   _draw_points(gl, uniforms, params, program) {
@@ -890,10 +920,18 @@ export class SimpleMesh {
     this.island = this.islands[0];
   }
 
-  addDataLayer(primflag, type) {
+  addDataLayer(primflag, type, size=TypeSizes[type], name=LayerTypeNames[type]) {
+    let ret;
+
     for (let island of this.islands) {
-      island.addDataLayer(primflag, type);
+      let ret2 = island.addDataLayer(primflag, type, size, name);
+
+      if (island === this.island) {
+        ret = ret2;
+      }
     }
+
+    return ret;
   }
 
   copy() {

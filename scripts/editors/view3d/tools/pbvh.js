@@ -6,6 +6,7 @@ import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
 import '../../../path.ux/scripts/util/struct.js';
 import {TranslateWidget} from "../widgets/widget_tools.js";
+import * as util from '../../../util/util.js';
 
 let STRUCT = nstructjs.STRUCT;
 import {Loop, Mesh} from '../../../mesh/mesh.js';
@@ -22,200 +23,16 @@ import {
   Curve1D, Curve1DProperty
 } from "../../../path.ux/scripts/pathux.js";
 import {MeshFlags} from "../../../mesh/mesh.js";
-import {SimpleMesh, LayerTypes} from "../../../core/simplemesh.js";
+import {SimpleMesh, LayerTypes, PrimitiveTypes} from "../../../core/simplemesh.js";
 import {splitEdgesSmart} from "../../../mesh/mesh_subdivide.js";
 import {GridBase} from "../../../mesh/mesh_grids.js";
 
 let _triverts = new Array(3);
 
-export const SculptTools = {
-  DRAW: 0,
-  SHARP: 1,
-  FILL: 2,
-  SMOOTH: 3,
-  CLAY: 4,
-  SCRAPE: 5,
-  PAINT: 6
-};
-
-export class BrushDynChannel {
-  constructor(name = "") {
-    this.name = name;
-    this.curve = new Curve1D();
-    this.useDynamics = false;
-  }
-
-  loadSTRUCT(reader) {
-    reader(this);
-
-    if (!this.name) {
-      this.name = "unnamed";
-    }
-  }
-}
-
-BrushDynChannel.STRUCT = `
-BrushDynChannel {
-  name        : string;
-  useDynamics : bool;
-  curve       : Curve1D; 
-}`;
-nstructjs.register(BrushDynChannel);
-
-let radius_curve_json = {
-  "generators": [{"type": "EquationCurve", "equation": "x"}, {
-    "type": "GuassianCurve",
-    "height": 1,
-    "offset": 1,
-    "deviation": 0.3
-  }, {
-    "type": "BSplineCurve",
-    "interpolating": false,
-    "points": [{"0": 0.02344, "1": 0.12891, "eid": 1, "flag": 1, "tangent": 1}, {
-      "0": 0.29297,
-      "1": 0.85156,
-      "eid": 3,
-      "flag": 0,
-      "tangent": 1
-    }, {"0": 1, "1": 1, "eid": 2, "flag": 0, "tangent": 1}],
-    "deg": 6,
-    "eidgen": {"_cur": 4}
-  }, {
-    "type": "BounceCurve",
-    "params": {"decay": 1, "scale": 1, "freq": 1, "phase": 0, "offset": 0}
-  }, {"type": "ElasticCurve", "params": {"mode": false, "amplitude": 1, "period": 1}}, {
-    "type": "EaseCurve",
-    "params": {"mode_in": true, "mode_out": true, "amplitude": 1}
-  }, {"type": "RandCurve", "params": {"amplitude": 1, "decay": 1, "in_mode": true}}],
-  "uiZoom": 1,
-  "VERSION": 1,
-  "active_generator": "BSplineCurve"
-};
-
-export class BrushDynamics {
-  constructor() {
-    this.channels = [];
-
-    let ch = this.getChannel("strength", true);
-    ch.useDynamics = false;
-    ch.curve.loadJSON(radius_curve_json);
-
-    ch = this.getChannel("radius", true);
-    ch.useDynamics = false;
-    ch.curve.loadJSON(radius_curve_json);
-
-    ch = this.getChannel("autosmooth", true);
-    ch.useDynamics = true;
-    ch.curve.loadJSON(radius_curve_json);
-  }
-
-  loadDefault(name) {
-    let json = new BrushDynamics().getChannel(name, true).curve.toJSON();
-    //let json = radius_curve_json;
-    //let json2 = new BrushDynamics().radius.curve.toJSON();
-
-    this.getChannel(name, true).curve.loadJSON(json);
-  }
-
-  hasChannel(name) {
-    return this.getChannel(name, false) !== undefined;
-  }
-
-  getChannel(name, autoCreate = true) {
-    for (let ch of this.channels) {
-      if (ch.name === name) {
-        return ch;
-      }
-    }
-
-    if (autoCreate) {
-      let ch = new BrushDynChannel(name);
-      this.channels.push(ch);
-
-      if (!this.hasOwnProperty(name)) {
-        Object.defineProperty(this, name, {
-          get: function () {
-            return this.getChannel(name);
-          }
-        });
-      }
-
-      return ch;
-    }
-
-    return undefined;
-  }
-
-  getCurve(channel) {
-    let ch = this.getChannel(channel);
-
-    if (ch) {
-      return ch.curve;
-    }
-  }
-
-  loadSTRUCT(reader) {
-    reader(this);
-
-    let defineProp = (name) => {
-      if (this.hasOwnProperty(name)) {
-        return;
-      }
-
-      Object.defineProperty(this, name, {
-        get: function () {
-          return this.getChannel(name);
-        }
-      });
-    }
-
-    if (!this.autosmooth) {
-      this.loadDefault("autosmooth");
-    }
-
-    for (let ch of this.channels) {
-      defineProp(ch.name);
-    }
-  }
-}
-
-BrushDynamics.STRUCT = `
-BrushDynamics {
-  channels : array(BrushDynChannel);
-}
-`;
-nstructjs.register(BrushDynamics);
-
-export class SculptBrush {
-  constructor() {
-    this.tool = SculptTools.CLAY;
-    this.strength = 1.0;
-    this.spacing = 0.07;
-    this.radius = 55.0;
-    this.autosmooth = 0.0;
-    this.planeoff = 0.0;
-
-    this.color = new Vector4([1, 1, 1, 1]);
-    this.bgcolor = new Vector4([0, 0, 0, 1]);
-
-    this.dynamics = new BrushDynamics();
-  }
-}
-
-SculptBrush.STRUCT = `
-SculptBrush {
-  autosmooth : float;
-  strength   : float;
-  tool       : int;
-  radius     : float;
-  planeoff   : float;
-  spacing    : float;
-  color      : vec4;
-  bgcolor    : vec4;
-  dynamics   : BrushDynamics;
-}
-`
-nstructjs.register(SculptBrush);
+import {
+  DynamicsMask, SculptTools, BrushDynamics, SculptBrush,
+  BrushDynChannel, DefaultBrushes, SculptIcons, PaintToolSlot
+} from "../../../brush/brush.js";
 
 export function dynTopoExec(verts, esize) {
   let edges = new Set();
@@ -227,11 +44,65 @@ export function dynTopoExec(verts, esize) {
   }
 }
 
-export const DynamicsMask  = {
-  STRENGTH: 1,
-  RADIUS: 2,
-  AUTOSMOOTH : 4
-};
+let cfrets = util.cachering.fromConstructor(Vector4, 128);
+export let colorfilterfuncs = [0, 0];
+
+
+colorfilterfuncs[1] = function (v, cd_color, fac = 0.5) {
+  if (cd_color < 0) {
+    return;
+  }
+
+  let ret = cfrets.next().zero();
+  let tot = 0.0;
+  fac = 1.0 - fac;
+
+  for (let v2 of v.neighbors) {
+    let clr = v2.customData[cd_color].color;
+    let w = 1.0;
+
+    tot += w;
+    ret.addFac(clr, w);
+  }
+
+  if (tot === 0.0) {
+    ret.load(v.customData[cd_color].color);
+  } else {
+    ret.mulScalar(1.0 / tot);
+    ret.interp(v.customData[cd_color].color, fac);
+  }
+
+  return ret;
+}
+
+colorfilterfuncs[0] = function (v, cd_color, fac = 0.5) {
+  if (cd_color < 0) {
+    return;
+  }
+
+  let ret = cfrets.next().zero();
+  let tot = 0.0;
+  fac = 1.0 - fac;
+
+  for (let e of v.edges) {
+    let v2 = e.otherVertex(v);
+    let clr = v2.customData[cd_color].color;
+    let w = 1.0;
+
+    tot += w;
+    ret.addFac(clr, w);
+  }
+
+  if (tot === 0.0) {
+    ret.load(v.customData[cd_color].color);
+  } else {
+    ret.mulScalar(1.0 / tot);
+    ret.interp(v.customData[cd_color].color, fac);
+  }
+
+  return ret;
+}
+
 
 export class PaintOp extends ToolOp {
   constructor() {
@@ -263,10 +134,10 @@ export class PaintOp extends ToolOp {
         color: new Vec4Property([1, 1, 0, 1]),
 
 
-        dynamicsMask : new FlagProperty(0, DynamicsMask),
-        strengthCurve : new Curve1DProperty(),
-        radiusCurve : new Curve1DProperty(),
-        autosmoothCurve : new Curve1DProperty()
+        dynamicsMask: new FlagProperty(0, DynamicsMask),
+        strengthCurve: new Curve1DProperty(),
+        radiusCurve: new Curve1DProperty(),
+        autosmoothCurve: new Curve1DProperty()
       }
     }
   }
@@ -354,9 +225,10 @@ export class PaintOp extends ToolOp {
   }
 
   on_mousemove(e) {
+    let mode = this.inputs.tool.getValue();
     let pressure = 1.0;
 
-    if (e.was_touch && e.targetTouches.length > 0) {
+    if (e.was_touch && e.targetTouches && e.targetTouches.length > 0) {
       let t = e.targetTouches[0];
 
       if (t.pressure !== undefined) {
@@ -419,18 +291,36 @@ export class PaintOp extends ToolOp {
     radius /= Math.max(view3d.glSize[0], view3d.glSize[1]);
     radius *= w;
 
-    let vec = new Vector3(isect.tri.v1.no);
-    vec.add(isect.tri.v2.no);
-    vec.add(isect.tri.v3.no);
-    vec.normalize();
+    let vec;
 
-    view.negate();
-    if (vec.dot(view) < 0) {
+    if (mode !== SculptTools.SNAKE) {
+      vec = new Vector3(isect.tri.v1.no);
+      vec.add(isect.tri.v2.no);
+      vec.add(isect.tri.v3.no);
+      vec.normalize();
+
       view.negate();
-    }
-    view.normalize();
+      if (vec.dot(view) < 0) {
+        view.negate();
+      }
+      view.normalize();
 
-    vec.add(view).normalize();
+      vec.add(view).normalize();
+    } else {
+      vec = new Vector3(isect.p).sub(this.last_p);
+      let p1 = new Vector3(isect.p);
+      let p2 = new Vector3(this.last_p);
+
+      view3d.project(p1);
+      view3d.project(p2);
+
+      p1[2] = p2[2];
+
+      view3d.unproject(p1);
+      view3d.unproject(p2);
+
+      vec.load(p1).sub(p2);
+    }
 
     //console.log("first", this._first);
 
@@ -445,19 +335,22 @@ export class PaintOp extends ToolOp {
     }
 
     let spacing = this.inputs.spacing.getValue();
-    let steps = Math.ceil(this.last_p.vectorDistance(isect.p) / (radius * spacing));
-    steps = Math.max(steps, 1);
+    let steps = this.last_p.vectorDistance(isect.p) / (radius * spacing);
 
-    //console.log("STEPS", steps, radius, spacing, this._first);
+    if (steps < 1) {
+      return;
+    }
+    steps = Math.max(Math.ceil(steps), 1);
+
+    console.log("STEPS", steps, radius, spacing, this._first);
 
     for (let i = 0; i < steps; i++) {
       let s = (i + 1) / steps;
 
       const DRAW = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
         SMOOTH = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
-        PAINT = SculptTools.PAINT;
-
-      let mode = this.inputs.tool.getValue();
+        PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
+        PAINT_SMOOTH = SculptTools.PAINT_SMOOTH;
 
       let isplane = false;
 
@@ -495,6 +388,9 @@ export class PaintOp extends ToolOp {
 
       if (e.ctrlKey) {
         vec2.negate();
+        if (mode === SculptTools.INFLATE) {
+          strength *= -1;
+        }
       }
 
       let esize = 8.0;
@@ -540,18 +436,22 @@ export class PaintOp extends ToolOp {
 
   exec(ctx) {
     let i = 0;
+    let lastp;
+
     for (let p of this.inputs.points) {
-      this.execDot(ctx, p, this.inputs.vecs.getListItem(i), this.inputs.extra.getListItem(i));
+      this.execDot(ctx, p, this.inputs.vecs.getListItem(i), this.inputs.extra.getListItem(i), lastp);
+      lastp = p;
       i++;
     }
 
     window.redraw_viewport();
   }
 
-  execDot(ctx, p3, vec, extra) {
+  execDot(ctx, p3, vec, extra, lastp3 = p3) {
     const DRAW = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
       SMOOTH = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
-      PAINT = SculptTools.PAINT;
+      PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
+      PAINT_SMOOTH = SculptTools.PAINT_SMOOTH;
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh)) {
       console.log("ERROR!");
@@ -595,7 +495,9 @@ export class PaintOp extends ToolOp {
     }
 
     vec = new Vector3(vec);
-    vec.mulScalar(strength * 0.1 * radius);
+    if (mode !== SNAKE) {
+      vec.mulScalar(strength * 0.1 * radius);
+    }
 
     let vlen = vec.vectorLength();
     let nvec = new Vector3(vec).normalize();
@@ -630,7 +532,11 @@ export class PaintOp extends ToolOp {
       }
     }
 
+    let colorfilter;
+
     if (haveGrids) {
+      colorfilter = colorfilterfuncs[1];
+
       for (let l of mesh.loops) {
         let grid = l.customData[bvh.cd_grid];
         gdimen = grid.dimen;
@@ -650,6 +556,8 @@ export class PaintOp extends ToolOp {
         v.interp(_tmp, vsw * fac);
       }
     } else {
+      colorfilter = colorfilterfuncs[0];
+
       vsmooth = (v, fac) => {
         _tmp.load(v);
         let w = 1.0;
@@ -665,6 +573,8 @@ export class PaintOp extends ToolOp {
         v.interp(_tmp, vsw * fac);
       }
     }
+
+    let isPaintMode = mode === PAINT || mode === PAINT_SMOOTH;
 
     let cd_node = bvh.cd_node;
     let ws = new Array(vs.size);
@@ -688,19 +598,18 @@ export class PaintOp extends ToolOp {
     let planetmp = new Vector3();
 
     switch (mode) {
-      case SculptTools.SMOOTH:
-        vsw = 1.0; //strength; //Math.min(Math.max(strength, 0.0), 1.0);
+      case SMOOTH:
+      case PAINT_SMOOTH:
+        vsw = strength + extra[1];
         break;
       default:
         vsw = extra[1]; //autosmooth
         break;
     }
 
-    //vsw += this.inputs.autosmooth.getValue();
+    //vsw += extra[1];
 
-
-    //console.log("VSW", vsw, mode);
-
+    wi = 0;
     for (let v of vs) {
       if (!haveGrids && !vmap.has(v.eid)) {
         vmap.set(v.eid, new Vector3(v));
@@ -746,7 +655,6 @@ export class PaintOp extends ToolOp {
       f = 1.0 - Math.exp(-f*10.0);
       f = 1.0 - f;
       //*/
-      ws[wi++] = f;
 
       //f=1.0
 
@@ -775,15 +683,25 @@ export class PaintOp extends ToolOp {
         let c = v.customData[cd_color];
 
         c.color.interp(color, f * strength);
+      } else if (mode === INFLATE) {
+        v.addFac(v.no, f * strength * 0.1);
+      } else if (mode === SNAKE) {
+        f = f * f * (3.0 - 2.0 * f);
+        v.addFac(vec, f * strength);
+      } else if (mode === PAINT_SMOOTH) {
+        f = f * f * (3.0 - 2.0 * f);
       }
 
       if (haveGrids && v.bLink) {
         doGridBoundary(v);
       }
 
+      ws[wi++] = f;
 
       v.flag |= MeshFlags.UPDATE;
     }
+
+    console.log("strength", strength);
 
     //let es = new Set();
     wi = 0;
@@ -800,8 +718,12 @@ export class PaintOp extends ToolOp {
       //  es.add(e);
       //}
 
-      if (vsw >= 0) {
-        vsmooth(v, ws[wi++]);
+      if (vsw > 0) {
+        if (isPaintMode) {
+          v.customData[cd_color].color.load(colorfilter(v, cd_color, vsw * ws[wi++]));
+        } else {
+          vsmooth(v, ws[wi++]);
+        }
       }
 
       if (haveGrids && v.bLink) {
@@ -948,11 +870,27 @@ export class BVHToolMode extends ToolMode {
 
     this.flag |= WidgetFlags.ALL_EVENTS;
 
-    this.brush = new SculptBrush();
+    this.tool = SculptTools.CLAY;
+    //this.brush = new SculptBrush();
+    this.slots = {};
+
+    for (let k in SculptTools) {
+      let tool = SculptTools[k];
+      this.slots[tool] = new PaintToolSlot(tool);
+    }
+
     this.drawBVH = false;
 
     this._last_bvh_key = "";
     this.view3d = manager !== undefined ? manager.view3d : undefined;
+  }
+
+  getBrush(tool=this.tool) {
+    if (!this.ctx) {
+      return undefined;
+    }
+
+    return this.slots[tool].resolveBrush(this.ctx);
   }
 
   static register(cls) {
@@ -998,14 +936,10 @@ export class BVHToolMode extends ToolMode {
     }
 
     strip = row.strip();
-    strip.listenum(path + ".tool");
+    //strip.listenum(path + ".tool");
+    strip.prop(`scene.tools.${name}.tool`);
 
-    strip.prop(path + ".radius");
-    strip.prop(path + ".dynamics.radius.useDynamics");
-    panel = strip.panel();
-    panel.prop(path + ".dynamics.radius.curve");
-    panel.closed = true;
-
+    doChannel("radius");
     doChannel("strength");
     doChannel("autosmooth");
 
@@ -1023,17 +957,22 @@ export class BVHToolMode extends ToolMode {
     header.flushUpdate();
   }
 
+  get _apiBrushHelper() {
+    return this.getBrush();
+  }
+
   static defineAPI(api) {
     let st = super.defineAPI(api);
 
     st.bool("drawBVH", "drawBVH", "drawBVH");
+    st.enum("tool", "tool", SculptTools).icons(SculptIcons);
 
-    let bst = st.struct("brush", "brush", "Brush");
+    let bst = st.struct("_apiBrushHelper", "brush", "Brush");
 
     bst.float("strength", "strength", "Strength").range(0.001, 2.0).noUnits();
     bst.float("radius", "radius", "Radius").range(0.1, 150.0).noUnits();
-    bst.enum("tool", "tool", SculptTools);
-    bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 1.0).noUnits();
+    bst.enum("tool", "tool", SculptTools).icons(SculptIcons);
+    bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 2.0).noUnits();
     bst.float("planeoff", "planeoff", "planeoff").range(-1.0, 1.0).noUnits();
     bst.float("spacing", "spacing", "Spacing").range(0.01, 2.0).noUnits();
     bst.color4("color", "color", "Primary Color");
@@ -1068,9 +1007,17 @@ export class BVHToolMode extends ToolMode {
     super.on_mousedown(e, x, y);
 
     if (e.button === 0 && !e.altKey) {
-      let brush = this.brush;
+      let brush = this.getBrush();
+
+      let isColor = brush.tool === SculptTools.PAINT || brush.tool === SculptTools.PAINT_SMOOTH;
+      let smoothtool = isColor ? SculptTools.PAINT_SMOOTH : SculptTools.SMOOTH;
 
       let dynmask = 0;
+
+      if (e.shiftKey) {
+        brush = this.getBrush(smoothtool);
+      }
+
       if (brush.dynamics.radius.useDynamics) {
         dynmask |= DynamicsMask.RADIUS;
       }
@@ -1081,25 +1028,21 @@ export class BVHToolMode extends ToolMode {
         dynmask |= DynamicsMask.AUTOSMOOTH;
       }
 
-      if (e.shiftKey) {
-        dynmask |= DynamicsMask.STRENGTH;
-      }
-
       console.log("dynmask", dynmask);
 
       this.ctx.api.execTool(this.ctx, "bvh.paint()", {
         strength: brush.strength,
-        tool: e.shiftKey ? SculptTools.SMOOTH : brush.tool,
+        tool: e.shiftKey ? smoothtool : brush.tool,
         radius: brush.radius,
         autosmooth: brush.autosmooth,
         planeoff: brush.planeoff,
         spacing: brush.spacing,
         color: e.ctrlKey ? brush.bgcolor : brush.color,
 
-        dynamicsMask : dynmask,
-        radiusCurve : brush.radius.curve,
-        strengthCurve : brush.strength.curve,
-        autosmoothCurve : brush.autosmooth.curve
+        dynamicsMask: dynmask,
+        radiusCurve: brush.radius.curve,
+        strengthCurve: brush.strength.curve,
+        autosmoothCurve: brush.autosmooth.curve
       });
       return true;
     }
@@ -1366,11 +1309,76 @@ export class BVHToolMode extends ToolMode {
     let t3 = new Vector3();
 
     let drawBVH = this.drawBVH;
+    let puv3 = [0, 0];
+    let puv2 = [0, 1];
+    let puv1 = [1, 0];
 
     function genNodeMesh(node) {
       let lflag = LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV | LayerTypes.NORMAL | LayerTypes.ID;
 
+      lflag |= LayerTypes.CUSTOM;
+
       let sm = new SimpleMesh(lflag);
+      //primflag, type, size=TypeSizes[type], name=LayerTypeNames[type]) {
+
+      //let primc1 = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 4, "primc1");
+      //let primc2 = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 4, "primc2");
+      //let primc3 = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 4, "primc3");
+
+      let primuv = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 2, "primUV");
+
+
+      let cfrets = util.cachering.fromConstructor(Vector4, 16);
+      let colorfilter;
+
+      if (have_grids) {
+        colorfilter = function (v, fac = 0.5) {
+          let ret = cfrets.next().zero();
+          let tot = 0.0;
+          fac = 1.0 - fac;
+
+          for (let v2 of v.neighbors) {
+            let clr = v2.customData[cd_color].color;
+            let w = 1.0;
+
+            tot += w;
+            ret.addFac(clr, w);
+          }
+
+          if (tot === 0.0) {
+            ret.load(v.customData[cd_color].color);
+          } else {
+            ret.mulScalar(1.0 / tot);
+            ret.interp(v.customData[cd_color].color, fac);
+          }
+
+          return ret;
+        }
+      } else {
+        colorfilter = function (v, fac = 0.5) {
+          let ret = cfrets.next().zero();
+          let tot = 0.0;
+          fac = 1.0 - fac;
+
+          for (let e of v.edges) {
+            let v2 = e.otherVertex(v);
+            let clr = v2.customData[cd_color].color;
+            let w = 1.0;
+
+            tot += w;
+            ret.addFac(clr, w);
+          }
+
+          if (tot === 0.0) {
+            ret.load(v.customData[cd_color].color);
+          } else {
+            ret.mulScalar(1.0 / tot);
+            ret.interp(v.customData[cd_color].color, fac);
+          }
+
+          return ret;
+        }
+      }
 
       function rec(node) {
         if (!node.leaf) {
@@ -1383,6 +1391,7 @@ export class BVHToolMode extends ToolMode {
 
         let n = new Vector3();
         let id = object.lib_id;
+
 
         for (let tri of node.uniqueTris) {
           /*
@@ -1415,12 +1424,26 @@ export class BVHToolMode extends ToolMode {
             tri2.normals(n, n, n);
           }
 
+          tri2.custom(primuv, puv1, puv2, puv3);
+
           tri2.ids(id, id, id);
 
           if (have_color) {
+            //*
             let c1 = tri.v1.customData[cd_color].color;
             let c2 = tri.v2.customData[cd_color].color;
             let c3 = tri.v3.customData[cd_color].color;
+            //*/
+
+            /*
+            let c1 = colorfilter(tri.v1);
+            let c2 = colorfilter(tri.v2);
+            let c3 = colorfilter(tri.v3);
+            //*/
+
+            //tri2.custom(primc1, c1, c1, c1);
+            //tri2.custom(primc2, c2, c2, c2);
+            //tri2.custom(primc3, c3, c3, c3);
 
             tri2.colors(c1, c2, c3);
           } else {
@@ -1498,11 +1521,47 @@ export class BVHToolMode extends ToolMode {
     }
     return true;
   }
+
+  dataLink(scene, getblock, getblock_addUser) {
+    for (let k in this.slots) {
+      this.slots[k].dataLink(scene, getblock, getblock_addUser);
+    }
+
+    for (let k in SculptTools) {
+      let tool = SculptTools[k];
+
+      if (!(tool in this.slots)) {
+        this.slots[tool] = new PaintToolSlot(tool);
+      }
+    }
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+
+    //deal with old files
+    if (Array.isArray(this.slots)) {
+      let slots = this.slots;
+      this.slots = {};
+
+      for (let slot of slots) {
+        this.slots[slot.tool] = slot;
+      }
+    }
+
+    //also happens in old files
+    if (this.brush) {
+      this.tool = this.brush.tool;
+      delete this.brush;
+    }
+  }
 }
 
 BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
   drawBVH : bool;
-  brush   : SculptBrush;
+  tool    : int;
+  slots   : iterkeys(PaintToolSlot); 
 }`;
 nstructjs.manager.add_class(BVHToolMode);
 

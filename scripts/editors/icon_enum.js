@@ -56,6 +56,13 @@ export let Icons = {
   FAKE_USER      : 50,
   PAN            : 51,
   LARGE_CHECK    : 52,
-  MESHTOOL       : 53
+  MESHTOOL       : 53,
+  ZOOM_IN        : 54,
+  ZOOM_OUT       : 55,
+  SCULPT_DRAW    : 56,
+  SCULPT_INFLATE : 57,
+  SCULPT_SHARP   : 58,
+  SCULPT_CLAY    : 59,
+  SCULPT_PAINT   : 60
 };
 setIconMap(Icons);

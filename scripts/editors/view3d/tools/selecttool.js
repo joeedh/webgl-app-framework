@@ -104,7 +104,7 @@ export class ObjectEditor extends ToolMode {
       this.start_mpos[1] = y;
     }
 
-    if (this.manager.widgets.highlight !== undefined) {
+    if (this.hasWidgetHighlight()) {
       return false;
     }
 
@@ -149,7 +149,7 @@ export class ObjectEditor extends ToolMode {
   on_mousemove(e, x, y, was_touch) {
     let ctx = this.ctx;
 
-    if (this.manager.widgets.highlight !== undefined) {
+    if (this.hasWidgetHighlight()) {
       return false;
     }
 

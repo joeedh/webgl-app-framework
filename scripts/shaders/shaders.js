@@ -186,10 +186,20 @@ attribute vec3 position;
 attribute vec3 normal;
 attribute vec2 uv;
 attribute vec4 color;
+attribute vec2 primUV;
+
+attribute vec4 primc1;
+attribute vec4 primc2;
+attribute vec4 primc3;
 
 varying vec4 vColor;
 varying vec3 vNormal;
 varying vec2 vUv;
+varying vec2 vPrimUV;
+
+varying vec4 vPrimC1;
+varying vec4 vPrimC2;
+varying vec4 vPrimC3;
 
 void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
@@ -201,16 +211,64 @@ void main() {
   vUv = uv;
   vNormal = n.xyz;
   vColor = color;
+  vPrimUV = primUV;
+  
+  vPrimC1 = primc1;
+  vPrimC2 = primc2;
+  vPrimC3 = primc3;
 }
 
   `,
 
+  /*
+  on factor;
+
+  p1 := u*k1 + v*k2 + (1.0-u-v)*k3;
+  p2 := sub(k1=k3, k2=k4, k3=k5, p1);
+  p3 := sub(k1=k5, k2=k6, k3=k7, p1);
+
+  w := 1.0-u-v;
+
+  p := a*u*k1 + a*u**2*k2 + a*u**3*k3 +
+       b*v*k4 + b*v**2*k5 + b*v**3*k6 +
+       c*w*k7 + c*w**2*k8 + c*w**3*k9;
+
+  f1 := sub(u=0, v=0, df(p, u)) = 0;
+  f2 := sub(u=1, v=0, df(p, u)) = 0;
+  f3 := sub(u=0, v=1, df(p, u)) = 0;
+  f4 := sub(u=0, v=0, df(p, v)) = 0;
+  f5 := sub(u=1, v=0, df(p, v)) = 0;
+  f6 := sub(u=0, v=1, df(p, v)) = 0;
+  f7 := sub(u=0, v=0, p) = c;
+  f8 := sub(u=1, v=0, p) = a;
+  f9 := sub(u=0, v=1, p) = b;
+
+  ff := solve({f1, f2, f3, f4, f5, f6, f7, f8, f9}, {k1, k2, k3, k4, k5, k6, k7, k8, k9});
+
+  fk1 := part(ff, 1, 1, 2);
+  fk2 := part(ff, 1, 2, 2);
+  fk3 := part(ff, 1, 3, 2);
+  fk4 := part(ff, 1, 4, 2);
+  fk5 := part(ff, 1, 5, 2);
+  fk6 := part(ff, 1, 6, 2);
+  fk7 := part(ff, 1, 7, 2);
+  fk8 := part(ff, 1, 8, 2);
+  fk9 := part(ff, 1, 9, 2);
+
+  fp := sub(k1=fk1, k2=fk2, k3=fk3, k4=fk4, k5=fk5, k6=fk6, k7=fk7, k8=fk8, k9=fk9, p);
+
+  * */
   fragment : `precision mediump float;
 uniform float alpha;
 
 varying vec4 vColor;
 varying vec3 vNormal;
 varying vec2 vUv;
+
+varying vec2 vPrimUV;
+varying vec4 vPrimC1;
+varying vec4 vPrimC2;
+varying vec4 vPrimC3;
 
 uniform vec4 uColor;
 
@@ -221,8 +279,37 @@ void main() {
   f = no[1]*0.333 + no[2]*0.333 + no[0]*0.333;
   f = f < 0.0 ? -f*0.5 : f;
   f = f*0.8 + 0.2;
+     
+  vec3 uvw = vec3(vPrimUV, 1.0-vPrimUV[0]-vPrimUV[1]);
+  vec4 vcol;
+
+//make sure to uncomment primc1/c2/c3 layer stuff in pbvh.c
+//#define VCOL_PATCH
+#ifdef VCOL_PATCH
+  {
+    vec4 a = vPrimC1;
+    vec4 b = vPrimC2;
+    vec4 c = vPrimC3;
+      
+    float u = uvw[0], u2 = u*u, u3 = u*u*u;
+    float v = uvw[1], v2=v*v, v3=v*v*v;
+    float ac1 = 1.0;
+    
+    vcol = ((ac1*c-a)*(2.0*u-3.0)*u+ac1*c)*u+
+           ((ac1*c-b)*(2.0*v-3.0)*v+ac1*c)*v-(2.0*
+           (v-1.0+u)*(v-1.0+u)*(ac1-1.0)+3.0*(v-1.0+u)*(ac1-1.0)+ac1)*(v-1.0+u)*c;
+    
+    //vcol -= vPrimC1*uvw[0] + vPrimC2*uvw[1] + vPrimC3*uvw[2];
+    //vcol = abs(vcol);
+    //vcol[3] = 1.0;
+  }
+#else
+  //vcol = vPrimC1*uvw[0] + vPrimC2*uvw[1] + vPrimC3*uvw[2];
+  vcol = vColor;
+#endif
+  //vec4 vcol = vPrimC1*uvw[0] + vPrimC2*uvw[1] + vPrimC3*uvw[2];
+  vec4 c = vec4(f, f, f, 1.0)*uColor*vcol;
   
-  vec4 c = vec4(f, f, f, 1.0)*uColor*vColor;
   c[3] *= alpha;
   
   gl_FragColor = c;
@@ -236,7 +323,7 @@ void main() {
   },
 
   attributes : [
-    "position", "normal", "uv", "color"
+    "position", "normal", "uv", "color", "primUV", "primc1", "primc2", "primc3"
   ]
 };
 
