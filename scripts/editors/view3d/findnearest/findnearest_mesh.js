@@ -159,7 +159,7 @@ export class FindnearestMesh extends FindnearestClass {
       let e = mesh.eidmap[idx];
 
       if (e === undefined) {
-        console.warn(`Corruption in findnearest_mesh implemented; e=${e}, ob=${ob}, idx=${idx}`, ob);
+        //console.warn(`Corruption in findnearest_mesh implemented; e=${e}, ob=${ob}, idx=${idx}`, ob);
         continue;
       }
 

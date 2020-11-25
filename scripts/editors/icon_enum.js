@@ -63,6 +63,17 @@ export let Icons = {
   SCULPT_INFLATE : 57,
   SCULPT_SHARP   : 58,
   SCULPT_CLAY    : 59,
-  SCULPT_PAINT   : 60
+  SCULPT_PAINT   : 60,
+  SCULPT_SMOOTH  : 61,
+  SCULPT_FILL    : 62,
+  SCULPT_SCRAPE  : 63,
+  SCULPT_PAINT_SMOOTH : 64,
+  SCULPT_SNAKE : 65,
+  SYMMETRIZE   : 66,
+  ADD_GRIDS    : 67,
+  SYM_X        : 68,
+  SYM_Y        : 69,
+  SYM_Z        : 70,
+  BISECT       : 71
 };
 setIconMap(Icons);

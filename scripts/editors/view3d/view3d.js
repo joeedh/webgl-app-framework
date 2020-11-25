@@ -910,10 +910,7 @@ export class View3D extends Editor {
     let uiHasFocus = (e) => {
       let node = this.getScreen().pickElement(e.x, e.y);
 
-      if (1) {
-        console.log(node ? node.tagName : undefined);
-      }
-      //console.log(e.pageX, e.pageY, node);
+      //console.log(node ? node.tagName : undefined);
       return node !== this && node !== this.overdraw;
     };
 

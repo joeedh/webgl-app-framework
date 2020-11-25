@@ -568,7 +568,7 @@ export class Library {
 
   //builds enum property of active blocks
   //for path.ux.  does not include ones that are hidden.
-  getBlockListEnum(blockClass) {
+  getBlockListEnum(blockClass, filterfunc) {
     let tname = blockClass.blockDefine().typeName;
     let uiname = blockClass.blockDefine().uiName;
     let lib = this.libmap[tname];
@@ -577,6 +577,9 @@ export class Library {
     let icons = {};
 
     for (let block of lib) {
+      if (filterfunc && !filterfunc(block)) {
+        continue;
+      }
       if (block.lib_flag & BlockFlags.HIDE) {
         continue;
       }
@@ -726,6 +729,10 @@ export class DataRefProperty extends ToolProperty {
   constructor(type, apiname, uiname, description, flag, icon) {
     super(undefined, apiname, uiname, description, flag, icon)
 
+    if (typeof type === "object" || typeof type === "function") {
+      type = type.blockDefine().typeName;
+    }
+
     this.blockType = type;
     this.data = new DataRef();
   }
@@ -733,6 +740,17 @@ export class DataRefProperty extends ToolProperty {
   setValue(val) {
     if (val === undefined || val === -1) {
       this.data.lib_id = -1;
+      return;
+    }
+
+    //are we typed?
+    if (this.blockType === undefined) {
+      if (typeof val === "number") {
+        this.data.lib_id = val;
+      } else {
+        this.data.set(val);
+      }
+
       return;
     }
 

@@ -43,7 +43,8 @@ export class MeshEditor extends MeshToolBase {
       "mesh.toggle_select_all()",
       "mesh.subdivide_smooth()",
       "mesh.subdivide_simple()",
-      "mesh.extrude_regions(transform=true)"
+      "mesh.extrude_regions(transform=true)",
+      "mesh.vertex_smooth()"
     ]
   }
 
@@ -70,7 +71,7 @@ export class MeshEditor extends MeshToolBase {
   }
 
   static buildHeader(header, addHeaderRow) {
-    let strip = header.strip();
+    let strip = addHeaderRow().strip();
 
     strip.useIcons();
     strip.inherit_packflag |= PackFlags.HIDE_CHECK_MARKS;
@@ -84,10 +85,11 @@ export class MeshEditor extends MeshToolBase {
 
     strip.tool(`mesh.delete_selected`);
 
-    strip.button("Add Grids", function() {
-      console.log(arguments);
-      strip.ctx.api.execTool(this.ctx, "mesh.ensure_grids()");
-    });
+    strip.tool("mesh.ensure_grids()");
+    strip.tool("mesh.symmetrize()");
+    strip.tool("mesh.bisect()");
+
+    strip.prop("mesh.symFlag");
   }
 
   static haveHandles() {

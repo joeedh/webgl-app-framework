@@ -1,12 +1,14 @@
 
 export function splitEdgesSmart(mesh, es) {
   let vs = new Set();
+
   for (let e of es) {
     vs.add(e.v1);
     vs.add(e.v2);
   }
 
   let newvs = new Set();
+  let killfs = new Set();
   let fs = new Set();
 
   for (let e of es) {
@@ -196,6 +198,7 @@ export function splitEdgesSmart(mesh, es) {
         newfs.add(f2);
       }
 
+      killfs.add(f);
       mesh.killFace(f);
       continue;
     }
@@ -240,6 +243,7 @@ export function splitEdgesSmart(mesh, es) {
 
   return {
     newvs : newvs,
-    newfs : newfs
+    newfs : newfs,
+    killfs : killfs
   }
 }

@@ -146,7 +146,7 @@ export class CDLayerPanel extends ColumnFrame {
     }
 
     if (key !== this._lastUpdateKey) {
-      console.log("rebuilding mesh layers list");
+      //console.log("rebuilding mesh layers list");
 
       this.doOnce(this.rebuild);
     }
@@ -221,6 +221,8 @@ UIBase.register(ObjectPanel);
 export class PropsEditor extends Editor {
   constructor() {
     super();
+
+    this._last_toolmode = undefined;
   }
 
   init() {
@@ -232,6 +234,8 @@ export class PropsEditor extends Editor {
 
     this.tabs = container.tabs("left");
     let tab;
+
+    this.workspaceTab = this.tabs.tab("Workspace");
 
     tab = this.tabs.tab("Scene");
     let panel = tab.panel("Render Settings");
@@ -261,7 +265,26 @@ export class PropsEditor extends Editor {
     tab.add(panel);
   }
 
+  updateToolMode() {
+    if (!this.ctx || !this.ctx.toolmode || !this.workspaceTab) {
+      return;
+    }
+
+    let toolmode = this.ctx.toolmode;
+
+    if (toolmode === this._last_toolmode) {
+      return;
+    }
+
+    this._last_toolmode = toolmode;
+
+    this.workspaceTab.clear();
+    toolmode.constructor.buildSettings(this.workspaceTab);
+  }
+
   update() {
+    this.updateToolMode();
+
     super.update();
   }
 

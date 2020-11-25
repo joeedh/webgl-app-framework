@@ -22,7 +22,7 @@ import {LayerTypes, ChunkedSimpleMesh, SimpleMesh} from "../core/simplemesh.js";
 import {MeshTools} from './mesh_stdtools.js';
 import {
   MeshFeatures, MeshFeatureError, MeshError,
-  MeshTypes, MeshFlags, RecalcFlags, MeshDrawFlags
+  MeshTypes, MeshSymFlags, MeshSymMap, MeshFlags, RecalcFlags, MeshDrawFlags
 } from './mesh_base.js';
 
 export * from "./mesh_base.js";
@@ -61,6 +61,8 @@ let splitcd_ws = [0.5, 0.5];
 export class Mesh extends SceneObjectData {
   constructor(features = MeshFeatures.BASIC) {
     super();
+
+    this.symFlag = 0; //symmetry flag;
 
     this._last_bvh_key = "";
 
@@ -210,7 +212,7 @@ export class Mesh extends SceneObjectData {
     return h;
   }
 
-  makeEdge(v1, v2, checkExist=false) {
+  makeEdge(v1, v2, checkExist = false) {
     if (v1 === v2) {
       throw new MeshError("mesh.makeEdge: v1 and v2 were the same");
     }
@@ -846,6 +848,20 @@ export class Mesh extends SceneObjectData {
           continue;
         }
 
+        if (l2.v === l2.next.v) {
+          if (f.lists[0].l === l2.next) {
+            f.lists[0].l = l2;
+          }
+
+          let l3 = l2.next;
+
+          l3.next.prev = l2;
+          l2.next = l3.next;
+
+          delete this.eidmap[l3.eid];
+          this.loops.remove(l3);
+          l3.eid = -1;
+        }
         l2.list._recount();
         //console.log("LEN", l2.list.length);
 
@@ -858,9 +874,53 @@ export class Mesh extends SceneObjectData {
     this.killVertex(v2);
   }
 
+  reverseWinding(f) {
+    for (let list of f.lists) {
+      for (let l of list) {
+        this._radialRemove(l.e, l);
+      }
+
+      let l = list.l;
+      let _i = 0;
+      do {
+        let next = l.next;
+
+        l.next = l.prev;
+        l.prev = next;
+
+        if (_i++ > 10000) {
+          console.warn("infinite loop error");
+          break;
+        }
+        l = next;
+      } while (l !== list.l);
+
+      for (let l of list) {
+        l.e = this.getEdge(l.v, l.next.v);
+        this._radialInsert(l.e, l);
+      }
+    }
+  }
+
+  makeHole(f, vs) {
+    throw new Error("makeHole: implement me!");
+    console.error("makeHole: IMPLEMENT ME!");
+
+  }
 
   splitFace(f, l1, l2) {
     //TODO: handle holes
+
+    if (l1.eid < 0) {
+      throw new MeshError("splitFace: l1 is dead");
+    }
+    if (l2.eid < 0) {
+      throw new MeshError("splitFace: l2 is dead");
+    }
+    if (f.eid < 0) {
+      throw new MeshError("splitFace: f is dead");
+    }
+
 
     if (l1.f !== f || l2.f !== f || l1 === l2 || l2 === l1.next || l2 === l1.prev) {
       console.log(l2 === l1.next, l2 === l1.prev, l1.f !== f, l2.f !== f, l1 === l2);
@@ -870,6 +930,17 @@ export class Mesh extends SceneObjectData {
     let l = l1;
     let _i = 0;
 
+    do {
+      if (_i++ > 1000) {
+        throw new MeshError("mesh structure error");
+      }
+
+      this._radialRemove(l.e, l);
+
+      l = l.next;
+    } while (l !== l1);
+
+    l = l1;
     do {
       if (_i++ > 1000) {
         throw new MeshError("loop l2 not in mesh");
@@ -912,18 +983,18 @@ export class Mesh extends SceneObjectData {
 
     let e = this.makeEdge(l1.v, l2.v);
 
+    //this._radialRemove(l1.e, l1);
+    //this._radialRemove(l2.e, l2);
+
     let el1 = new Loop();
-    el1.radial_next = el1.radial_prev = el1;
     this._element_init(el1);
     this.loops.push(el1);
+    el1.radial_next = el1.radial_prev = undefined;
 
     let el2 = new Loop();
-    el2.radial_next = el2.radial_prev = el2;
     this._element_init(el2);
     this.loops.push(el2);
-
-    this._radialRemove(l1.e, l1);
-    this._radialRemove(l2.e, l2);
+    el2.radial_next = el2.radial_prev = undefined;
 
     el1.v = l1.v;
     el1.f = f;
@@ -959,16 +1030,26 @@ export class Mesh extends SceneObjectData {
     l1.e = this.getEdge(l1.v, l1.next.v);
     l2.e = this.getEdge(l2.v, l2.next.v);
 
-    this._radialInsert(l1.e, l1);
-    this._radialInsert(l2.e, l2);
+    //this._radialInsert(l1.e, l1);
+    //this._radialInsert(l2.e, l2);
 
-    this._radialInsert(e, el1);
-    this._radialInsert(e, el2);
+    //this._radialInsert(e, el1);
+    //this._radialInsert(e, el2);
 
     for (let list of f.lists) {
+      for (let l of list) {
+        l.e = this.getEdge(l.v, l.next.v);
+        this._radialInsert(l.e, l);
+      }
       list._recount();
     }
+
     for (let list of f2.lists) {
+      for (let l of list) {
+        l.e = this.getEdge(l.v, l.next.v);
+        this._radialInsert(l.e, l);
+      }
+
       list._recount();
     }
 
@@ -1356,7 +1437,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  getBVH(auto_update=true, useGrids=true) {
+  getBVH(auto_update = true, useGrids = true) {
     let key = this.verts.length + ":" + this.faces.length + ":" + this.edges.length + ":" + this.loops.length;
     key += ":" + this.eidgen._cur + ":" + useGrids;
 
@@ -1454,9 +1535,11 @@ export class Mesh extends SceneObjectData {
   }
 
   flagElemUpdate(e) {
-    if (!(e.eid in this.updatelist)) {
-      this.updatelist[e.eid] = e;
-    }
+    e.flag |= MeshFlags.UPDATE;
+
+    //if (!(e.eid in this.updatelist)) {
+    //  this.updatelist[e.eid] = e;
+    //}
   }
 
   partialUpdate(gl) {
@@ -1566,6 +1649,54 @@ export class Mesh extends SceneObjectData {
     this.draw(view3d, gl, uniforms, program, object);
   }
 
+
+  updateMirrorTag(v, threshold = 0.0001) {
+    let sym = this.symFlag;
+
+    v.flag &= ~(MeshFlags.MIRRORED | MeshFlags.MIRROR_BOUNDARY);
+
+    if (!sym) {
+      return;
+    }
+
+    for (let i = 0; i < 3; i++) {
+      if (!(sym & (1 << i))) {
+        continue;
+      }
+
+      if (Math.abs(v[i]) < threshold) {
+        v.flag |= MeshFlags.MIRROREDX << i;
+
+        for (let e of v.edges) {
+          if (!e.l || e.l.radial_next === e.l) {
+
+            v.flag |= MeshFlags.MIRROR_BOUNDARY;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  doMirrorSnap(v, threshold = 0.0001) {
+    if (v.flag & MeshFlags.MIRROREDX) {
+      v[0] = 0;
+    }
+
+    if (v.flag & MeshFlags.MIRROREDY) {
+      v[1] = 0;
+    }
+
+    if (v.flag & MeshFlags.MIRROREDZ) {
+      v[2] = 0;
+    }
+  }
+
+  updateMirrorTags(threshold = 0.0001) {
+    for (let v of this.verts) {
+      this.updateMirrorTag(v, threshold);
+    }
+  }
 
   _genRenderElements(gl, uniforms) {
     genRenderMesh(gl, this, uniforms);
@@ -1690,7 +1821,7 @@ export class Mesh extends SceneObjectData {
   }
 
   copy(addLibUsers = false) {
-    let ret = super.copy();
+    let ret = new this.constructor();
 
     ret.materials = [];
     for (let mat of this.materials) {
@@ -2034,7 +2165,7 @@ export class Mesh extends SceneObjectData {
     this.validateMesh();
   }
 
-  getBoundingBox(useGrids=true) {
+  getBoundingBox(useGrids = true) {
     let ret = undefined;
 
     for (let v of this.verts) {
@@ -2107,6 +2238,7 @@ Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
   _elists   : array(mesh.ElementList) | obj._getArrays();
   eidgen    : IDGen;
   flag      : int;
+  symFlag   : int;
   features  : int;
 }
 `;

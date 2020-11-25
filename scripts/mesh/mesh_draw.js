@@ -59,10 +59,19 @@ export function genRenderMesh(gl, mesh, uniforms) {
     mesh._fancyMeshes = {};
   }
 
+  let axes = [-1];
+  for (let i=0; i<3; i++) {
+    if (mesh.symFlag & (1<<i)) {
+      axes.push(i);
+    }
+  }
+
   let sm;
   let meshes = mesh._fancyMeshes;
 
   if (recalc & MeshTypes.VERTEX) {
+    mesh.updateMirrorTags();
+
     let tot = 0;
     sm = getmesh("verts");
     sm.primflag = PrimitiveTypes.POINTS;
@@ -179,6 +188,10 @@ export function genRenderMesh(gl, mesh, uniforms) {
     let ltris = mesh._ltris;
     ltris = ltris === undefined ? [] : ltris;
 
+    let p1 = new Vector3();
+    let p2 = new Vector3();
+    let p3 = new Vector3();
+
     for (let i = 0; i < ltris.length; i += 3) {
       let v1 = ltris[i].v;
       let v2 = ltris[i + 1].v;
@@ -189,25 +202,41 @@ export function genRenderMesh(gl, mesh, uniforms) {
         continue;
       }
 
-      let tri = sm.tri(i, v1, v2, v3);
-      tri.ids(f.eid, f.eid, f.eid);
+      for (let axis of axes) {
+        let tri;
 
-      if (f.flag & MeshFlags.SELECT) {
-        tri.colors(selcolor, selcolor, selcolor);
-      } else {
-        tri.colors(unselcolor, unselcolor, unselcolor);
-      }
+        if (axis === -1) {
+          tri = sm.tri(i, v1, v2, v3);
+        } else {
+          p1.load(v1);
+          p2.load(v2);
+          p3.load(v3);
 
-      if (useLoopNormals) {
-        tri.normals(ltris[i].customData[cd_nor].no, ltris[i + 1].customData[cd_nor].no, ltris[i + 2].customData[cd_nor].no);
-      } else if (f.flag & MeshFlags.SMOOTH_DRAW) {
-        tri.normals(ltris[i].v.no, ltris[i + 1].v.no, ltris[i + 2].v.no);
-      } else {
-        tri.normals(f.no, f.no, f.no);
-      }
+          p1[axis] = -p1[axis];
+          p2[axis] = -p2[axis];
+          p3[axis] = -p3[axis];
 
-      if (haveUVs) {
-        tri.uvs(ltris[i].customData[cd_uvs].uv, ltris[i + 1].customData[cd_uvs].uv, ltris[i + 2].customData[cd_uvs].uv);
+          tri = sm.tri(ltris.length + i*3+axis, p1, p2, p3);
+        }
+        tri.ids(f.eid, f.eid, f.eid);
+
+        if (f.flag & MeshFlags.SELECT) {
+          tri.colors(selcolor, selcolor, selcolor);
+        } else {
+          tri.colors(unselcolor, unselcolor, unselcolor);
+        }
+
+        if (useLoopNormals) {
+          tri.normals(ltris[i].customData[cd_nor].no, ltris[i + 1].customData[cd_nor].no, ltris[i + 2].customData[cd_nor].no);
+        } else if (f.flag & MeshFlags.SMOOTH_DRAW) {
+          tri.normals(ltris[i].v.no, ltris[i + 1].v.no, ltris[i + 2].v.no);
+        } else {
+          tri.normals(f.no, f.no, f.no);
+        }
+
+        if (haveUVs) {
+          tri.uvs(ltris[i].customData[cd_uvs].uv, ltris[i + 1].customData[cd_uvs].uv, ltris[i + 2].customData[cd_uvs].uv);
+        }
       }
     }
   }

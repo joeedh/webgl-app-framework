@@ -137,6 +137,7 @@ export function subdivide(mesh, faces=mesh.faces, linear=false) {
       }
 
       v.mulScalar(1.0 / tot);
+      mesh.doMirrorSnap(v);
     }
   }
 
@@ -148,6 +149,8 @@ export function subdivide(mesh, faces=mesh.faces, linear=false) {
 
     mesh.verts.setSelect(nv, true);
     mesh.edges.setSelect(ne, true);
+
+    mesh.updateMirrorTag(nv);
 
     splitvs.add(nv);
   }
@@ -181,8 +184,8 @@ export function subdivide(mesh, faces=mesh.faces, linear=false) {
       let l2 = f2.lists[0].l;
       mesh.copyElemData(l2, l);
       mesh.copyElemData(l2.next, l.next);
-      mesh.copyElemData(l2.next.next, l.next);
-      //mesh.loops.customDataInterp(l2.next.next, lsinterp, winterp);
+      //mesh.copyElemData(l2.next.next, l.next);
+      mesh.loops.customDataInterp(l2.next.next, lsinterp, winterp);
       mesh.copyElemData(l2.prev, l.prev);
 
       mesh.faces.setSelect(f2, true);
@@ -202,6 +205,14 @@ export function subdivide(mesh, faces=mesh.faces, linear=false) {
     mesh.killFace(f);
   }
 
+  for (let v of vset) {
+    mesh.doMirrorSnap(v);
+  }
+  for (let v of splitvs) {
+    mesh.doMirrorSnap(v);
+  }
+
+  mesh.updateMirrorTags();
   mesh.validateMesh();
 
   return mesh;

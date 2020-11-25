@@ -245,7 +245,7 @@ let dir = new Vector3();
 let tmps = util.cachering.fromConstructor(Vector3, 32);
 let tmp1 = new Vector3();
 
-export function   aabb_ray_isect(co, indir, min, max) {
+export function aabb_ray_isect(co, indir, min, max) {
   if (point_in_aabb(co, min, max)) {
     return true;
   }

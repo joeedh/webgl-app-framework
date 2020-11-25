@@ -1,4 +1,4 @@
-import {nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
+import {nstructjs, Vector2, Vector3, Vector4, ToolOp, StringProperty, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
 
 import * as units from '../path.ux/scripts/core/units.js';
 
@@ -20,9 +20,108 @@ import {PackFlags} from "../path.ux/scripts/core/ui_base.js";
 
 export {keymap, KeyMap, HotKey} from '../path.ux/scripts/util/simple_events.js';
 import {keymap, KeyMap, HotKey} from '../path.ux/scripts/util/simple_events.js';
-import {DataBlock, BlockFlags} from '../core/lib_api.js';
+import {DataBlock, BlockFlags, DataRefProperty} from '../core/lib_api.js';
 
 export {VelPanFlags, VelPan} from './velpan.js';
+
+/*default toolops for new/duplicate/unlinking datablocks*/
+export class NewDataBlockOp extends ToolOp {
+  static tooldef() {return {
+    uiname     : "New",
+    toolpath   : "datalib.default_new",
+    inputs     : {
+      name : new StringProperty(),
+      blockType : new StringProperty(),
+      dataPathToSet : new StringProperty()
+    },
+    outputs : {
+      block : new DataRefProperty()
+    }
+  }}
+
+  exec(ctx) {
+    let type = this.inputs.blockType.getValue();
+    let cls = DataBlock.getClass(type);
+
+    let ret = new cls();
+    let name = this.inputs.name.getValue();
+
+    if (name !== "") {
+      ret.name = name;
+    }
+
+    ctx.datalib.add(ret);
+
+    let path = this.inputs.dataPathToSet.getValue();
+    if (path !== "") {
+      ctx.api.setValue(ctx, path, ret);
+    }
+
+    this.outputs.block.setValue(ret);
+  }
+}
+ToolOp.register(NewDataBlockOp);
+
+export class CopyDataBlockOp extends ToolOp {
+  static tooldef() {return {
+    uiname     : "Copy",
+    toolpath   : "datalib.default_copy",
+    inputs     : {
+      block : new DataRefProperty(),
+      dataPathToSet : new StringProperty()
+    },
+    outputs : {
+      block : new DataRefProperty()
+    }
+  }}
+
+  exec(ctx) {
+    let block = ctx.datalib.get(this.inputs.block.getValue());
+
+    if (!block) {
+      ctx.warning("failed to duplicated block", block);
+      return;
+    }
+
+    let ret = block.copy();
+
+    ctx.datalib.add(ret);
+
+    let path = this.inputs.dataPathToSet.getValue();
+    if (path !== "") {
+      ctx.api.setValue(ctx, path, ret);
+    }
+
+    this.outputs.block.setValue(ret);
+  }
+}
+ToolOp.register(CopyDataBlockOp);
+
+
+export class UnlinkDataBlockOp extends ToolOp {
+  static tooldef() {return {
+    uiname     : "Unlink Block",
+    toolpath   : "datalib.default_unlink",
+    inputs     : {
+      block : new DataRefProperty(),
+      dataPathToUnset : new StringProperty()
+    },
+    outputs : {
+    }
+  }}
+
+  exec(ctx) {
+    let block = ctx.datalib.get(this.inputs.block.getValue());
+
+    if (!block) {
+      ctx.warning("failed to duplicated block", block);
+      return;
+    }
+
+    this.inputs.dataPathToUnset.setValue(undefined);
+  }
+}
+ToolOp.register(UnlinkDataBlockOp);
 
 /**
  * Expects a datapath DOM attribute
@@ -37,13 +136,20 @@ export class DataBlockBrowser extends Container {
     this._needs_rebuild = true;
     this._last_mat_name = undefined;
 
+    /* if not undefined, is a function that filters blocks for visibility
+    *  in menu*/
+    this.filterFunc = undefined;
     this.onValidData = undefined;
+
+    this.newOp = "datalib.default_new";
+    this.duplicateOp = "datalib.default_copy";
+    this.unlinkOp = "datalib.default_unlink";
   }
 
   init() {
     super.init();
 
-    this.rebuild();
+    this.flagRebuild();
   }
 
   setCSS() {
@@ -51,6 +157,7 @@ export class DataBlockBrowser extends Container {
   }
 
   flagRebuild() {
+    console.warn("flagRebuild");
     this._needs_rebuild = true;
   }
 
@@ -60,14 +167,14 @@ export class DataBlockBrowser extends Container {
     let ctx = this.ctx;
     let path = this.getAttribute("datapath");
 
-    console.warn("Data block browser recalc");
-
     this.clear();
 
     if (!this.doesOwnerExist()) {
       this.label("Nothing selected");
       return;
     }
+
+    console.warn("Data block browser recalc");
 
     let col = this.col();
 
@@ -76,9 +183,7 @@ export class DataBlockBrowser extends Container {
 
     this._last_mat_name = val === undefined ? undefined : val.name;
 
-    this.label("Block");
-
-    let prop = ctx.datalib.getBlockListEnum(this.blockClass);
+    let prop = ctx.datalib.getBlockListEnum(this.blockClass, this.filterFunc);
     let dropbox = document.createElement("dropbox-x")
 
     dropbox.prop = prop;
@@ -89,7 +194,7 @@ export class DataBlockBrowser extends Container {
       let val = this.getPathValue(ctx, path);
       let meta = this.ctx.api.resolvePath(this.ctx, path);
 
-      if (val !== undefined && val.lib_id == id) {
+      if (val !== undefined && val.lib_id === id) {
         return;
       }
 
@@ -108,15 +213,21 @@ export class DataBlockBrowser extends Container {
 
     let update = dropbox.update;
     dropbox.update = () => {
-      dropbox.prop = ctx.datalib.getBlockListEnum(this.blockClass);
+      dropbox.prop = ctx.datalib.getBlockListEnum(this.blockClass, this.filterFunc);
       update.apply(dropbox, arguments);
     };
 
     let row = col.row();
     row.add(dropbox);
 
-    row.tool(`material.new(dataPathToSet="${path}")`, PackFlags.USE_ICONS);
-    row.tool(`material.unlink(dataPathToUnset="${path}")`, PackFlags.USE_ICONS);
+    let type = this.blockClass.blockDefine().typeName;
+
+    if (val) {
+      row.tool(`${this.duplicateOp}(block=${val.lib_id} dataPathToSet="${path}")`, PackFlags.USE_ICONS);
+      row.tool(`${this.unlinkOp}(block=${val.lib_id} dataPathToUnset="${path}")`, PackFlags.USE_ICONS);
+    } else {
+      row.tool(`${this.newOp}(blockType="${type}" dataPathToSet="${path}")`, PackFlags.USE_ICONS);
+    }
 
     if (val !== undefined) {
       row.prop(`${path}.flag[FAKE_USER]`, PackFlags.USE_ICONS);
@@ -148,13 +259,14 @@ export class DataBlockBrowser extends Container {
     let val = this.getPathValue(this.ctx, path);
     let name = val === undefined ? undefined : val.name;
 
-    let rebuild = exists !== this._owner_exists || (!!val) != this._path_exists;
+    let rebuild = exists !== this._owner_exists || (!!val) !== this._path_exists;
     rebuild = rebuild || this._needs_rebuild;
     rebuild = rebuild || name !== this._last_mat_name;
 
     if (rebuild) {
       this._owner_exists = exists;
       this._path_exists = !!val;
+      this._last_mat_name = name;
 
       this.rebuild();
     }

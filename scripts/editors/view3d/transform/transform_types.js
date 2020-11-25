@@ -43,6 +43,7 @@ export class MeshTransType extends TransDataType {
         let td = new TransDataElem();
         td.data1 = v;
         td.data2 = new Vector3(v);
+        td.symFlag = mesh.symFlag;
 
         tdata.push(td);
 
@@ -108,6 +109,7 @@ export class MeshTransType extends TransDataType {
         td.data1 = v;
         td.data2 = new Vector3(v);
         td.w = 1.0;
+        td.symFlag = mesh.symFlag;
 
         tdata.push(td);
       }
@@ -136,7 +138,15 @@ export class MeshTransType extends TransDataType {
       }
     }
 
-    td.data1.load(td.data2).multVecMatrix(matrix);
+    v.load(td.data2).multVecMatrix(matrix);
+
+    if (v.flag & MeshFlags.MIRRORED) {
+      for (let i=0; i<3; i++) {
+        if (td.symFlag & (1<<i)) {
+          v[i] = 0.0;
+        }
+      }
+    }
   }
 
   static undoPre(ctx, elemlist) {
@@ -185,6 +195,7 @@ export class MeshTransType extends TransDataType {
 
       v.load(cos[k]);
       v.no.load(nos[k]);
+      v.flag |= MeshFlags.UPDATE;
     }
 
     for (let k in fcos) {
@@ -197,6 +208,8 @@ export class MeshTransType extends TransDataType {
 
       f.no.load(fnos[k]);
       f.cent.load(fcos[k]);
+
+      f.flag |= MeshFlags.UPDATE;
     }
 
     mesh.regenRender();

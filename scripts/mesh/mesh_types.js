@@ -54,9 +54,8 @@ export class Element {
 
 Element.STRUCT = `
 mesh.Element {
-  type        : int;
+  type        : byte;
   flag        : int;
-  index       : int;
   eid         : int;
   customData  : array(abstract(mesh.CustomDataElem));
 }
@@ -668,6 +667,10 @@ export class Edge extends Element {
     return (function*() {
       let l = this2.l;
       let i = 0;
+
+      if (!l) {
+        return;
+      }
 
       do {
         if (i++ > 10000) {

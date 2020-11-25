@@ -1,13 +1,13 @@
 import {Icons} from "../editors/icon_enum.js";
-import {Curve1D} from "../path.ux/scripts/pathux.js";
+import {Curve1D, SplineTemplates} from "../path.ux/scripts/pathux.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {DataBlock, BlockFlags} from "../core/lib_api.js";
 import {GraphFlags, NodeFlags} from "../core/graph.js";
 
 export const BrushFlags = {
-  SELECT      : 1,
-  SHARED_SIZE : 2
+  SELECT: 1,
+  SHARED_SIZE: 2
 };
 
 export const DynamicsMask = {
@@ -244,6 +244,8 @@ export class SculptBrush extends DataBlock {
     this.autosmooth = 0.0;
     this.planeoff = 0.0;
 
+    this.falloff = new Curve1D();
+
     this.color = new Vector4([1, 1, 1, 1]);
     this.bgcolor = new Vector4([0, 0, 0, 1]);
 
@@ -257,11 +259,14 @@ export class SculptBrush extends DataBlock {
 
     b.tool = this.tool;
     b.strength = this.strength;
+    b.spacing = this.spacing;
     b.radius = this.radius;
     b.autosmooth = this.autosmooth;
     b.planeoff = this.planeoff;
     b.color.load(this.color);
     b.bgcolor.load(this.bgcolor);
+
+    b.falloff = this.falloff.copy();
 
     this.dynamics.copyTo(b.dynamics);
   }
@@ -316,6 +321,7 @@ SculptBrush.STRUCT = nstructjs.inherit(SculptBrush, DataBlock) + `
   bgcolor    : vec4;
   dynamics   : BrushDynamics;
   flag       : int;
+  falloff    : Curve1D;
 }
 `;
 nstructjs.register(SculptBrush);
@@ -337,24 +343,51 @@ export function makeDefaultBrushes() {
   }
 
   let brush;
+  brush = bmap[SculptTools.PAINT];
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+
+  brush = bmap[SculptTools.PAINT_SMOOTH];
+  brush.autosmooth = 0.0;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+
+  brush = bmap[SculptTools.DRAW];
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   brush = bmap[SculptTools.CLAY];
   brush.autosmooth = 0.2;
   brush.strength = 0.9;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   brush = bmap[SculptTools.FILL];
   brush.autosmooth = 0.2;
   brush.strength = 0.9;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
 
   brush = bmap[SculptTools.SCRAPE];
   brush.autosmooth = 0.2;
   brush.strength = 0.9;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
 
   brush = bmap[SculptTools.INFLATE];
   brush.strength = 0.25;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   brush = bmap[SculptTools.SMOOTH];
   brush.strength = 1.0;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+  brush.dynamics.strength.useDynamics = true;
+
+  brush = bmap[SculptTools.SNAKE];
+  brush.strength = 0.2;
+  brush.autosmooth = 0.4;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+
+  brush = bmap[SculptTools.SHARP];
+  brush.strength = 1.0;
+  brush.autosmooth = 0.1;
+  brush.spacing = 0.075;
+  brush.dynamics.strength.useDynamics = true;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARPER);
 
   return brushes;
 }
@@ -367,6 +400,19 @@ export class PaintToolSlot {
 
   dataLink(owner, getblock, getblock_addUser) {
     this.brush = getblock_addUser(this.brush, owner);
+  }
+
+  setBrush(brush, scene) {
+    if (brush === this.brush) {
+      return;
+    }
+
+    if (this.brush !== undefined && typeof this.brush === "object") {
+      this.brush.lib_remUser(scene);
+    }
+
+    brush.lib_addUser(scene);
+    this.brush = brush;
   }
 
   resolveBrush(ctx) {

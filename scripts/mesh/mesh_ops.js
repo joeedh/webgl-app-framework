@@ -21,6 +21,8 @@ import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
 import {splitEdgesSmart} from "./mesh_subdivide.js";
 import {GridBase, Grid, gridSides} from "./mesh_grids.js";
 import {CustomDataElem} from "./customdata.js";
+import {bisectMesh, symmetrizeMesh} from "./mesh_utils.js";
+
 
 export class DeleteOp extends MeshOp {
   static tooldef() {
@@ -49,7 +51,7 @@ export class DeleteOp extends MeshOp {
 
       mesh.regenRender();
       mesh.regenTesellation();
-      mesh.update();
+      mesh.graphUpdate();
     }
 
     window.redraw_viewport();
@@ -58,6 +60,140 @@ export class DeleteOp extends MeshOp {
 
 ToolOp.register(DeleteOp);
 
+
+export class SymmetrizeOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Symmetrize",
+      toolpath: "mesh.symmetrize",
+      icon : Icons.SYMMETRIZE,
+      inputs: ToolOp.inherit({
+        axis: new EnumProperty(0, {X: 0, Y: 1, Z: 2}),
+        side: new EnumProperty(1, {LEFT: -1, RIGHT: 1}),
+        selectedOnly : new BoolProperty(false)
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.delete_selected");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let del = [];
+
+      let fset;
+
+      if (this.inputs.selectedOnly.getValue()) {
+        fset = mesh.faces.selected.editable;
+      } else {
+        fset = mesh.faces;
+      }
+
+      fset = new Set(fset);
+
+      let vector = new Vector3();
+      let axis = this.inputs.axis.getValue();
+      let side = this.inputs.side.getValue();
+
+      vector[axis] = side;
+
+      //force bvh update
+      if (mesh.bvh) {
+        mesh.bvh.destroy(mesh);
+      }
+
+      symmetrizeMesh(mesh, fset, axis, side);
+
+      //force bvh update
+      mesh.bvh = undefined;
+
+      mesh.recalcNormals();
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(SymmetrizeOp);
+
+
+
+export class BisectOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Bisect Mesh",
+      toolpath: "mesh.bisect",
+      icon : Icons.BISECT,
+      inputs: ToolOp.inherit({
+        axis: new EnumProperty(0, {X: 0, Y: 1, Z: 2}),
+        side: new EnumProperty(1, {LEFT: -1, RIGHT: 1}),
+        selectedOnly : new BoolProperty(false)
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.delete_selected");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let del = [];
+
+      let fset;
+
+      if (this.inputs.selectedOnly.getValue()) {
+        fset = mesh.faces.selected.editable;
+      } else {
+        fset = mesh.faces;
+      }
+
+      fset = new Set(fset);
+
+      let vector = new Vector3();
+      let axis = this.inputs.axis.getValue();
+      let side = this.inputs.side.getValue();
+
+      vector[axis] = side;
+
+      //force bvh update
+      if (mesh.bvh) {
+        mesh.bvh.destroy(mesh);
+      }
+
+      let vs = new Set();
+
+      for (let f of fset) {
+        for (let l of f.loops) {
+          vs.add(l.v);
+        }
+      }
+
+      let ret = bisectMesh(mesh, fset, vector);
+
+      for (let v of vs) {
+        if (Math.sign(v[axis]) !== Math.sign(side) && Math.abs(v[axis]) > 0.0001) {
+          mesh.killVertex(v);
+        }
+      }
+
+      //force bvh update
+      mesh.bvh = undefined;
+
+      mesh.recalcNormals();
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(BisectOp);
 
 export class TriangulateOp extends MeshOp {
   static tooldef() {
@@ -449,7 +585,7 @@ export class CatmullClarkeSubd extends MeshOp {
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.regenTesellation();
-      mesh.update();
+      mesh.graphUpdate();
     }
   }
 }
@@ -477,6 +613,8 @@ export class SubdivideSimple extends MeshOp {
 
     for (let mesh of this.getMeshes(ctx)) {
       console.log("doing mesh", mesh.lib_id);
+
+      mesh.updateMirrorTags();
 
       subdivide(mesh, list(mesh.faces.selected.editable), true);
 
@@ -509,7 +647,7 @@ export class SubdivideSimple extends MeshOp {
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.regenTesellation();
-      mesh.update();
+      mesh.graphUpdate();
     }
   }
 }
@@ -518,9 +656,21 @@ ToolOp.register(SubdivideSimple);
 export function vertexSmooth(mesh, verts = mesh.verts.selected.editable, fac = 0.5) {
   let cos = {};
 
+  verts = new Set(verts);
+
   for (let v of verts) {
     cos[v.eid] = new Vector3(v);
+
+    for (let e of v.edges) {
+      let v2 = e.otherVertex(v);
+
+      if (!(v2.eid in cos)) {
+        cos[v2.eid] = new Vector3(v2);
+      }
+    }
   }
+
+  let sym = mesh.symFlag;
 
   for (let v of verts) {
     v.zero();
@@ -538,27 +688,26 @@ export function vertexSmooth(mesh, verts = mesh.verts.selected.editable, fac = 0
       tot++;
     }
 
-    if (tot == 0.0) {
+    if (tot === 0.0) {
       v.load(cos[v.eid]);
     } else {
       v.mulScalar(1.0 / tot);
       v.interp(cos[v.eid], 1.0 - fac);
     }
+
+    if ((v.flag & MeshFlags.MIRRORED) && (v.flag & MeshFlags.MIRROR_BOUNDARY)) {
+      for (let i=0; i<3; i++) {
+        if (sym & (1<<i)) {
+          v[i] = 0.0;
+        }
+      }
+    }
   }
 
   for (let v of verts) {
-    mesh.flagElemUpdate(v);
-
-    for (let e of v.edges) {
-      mesh.flagElemUpdate(e);
-    }
-
-    for (let f of v.faces) {
-      mesh.flagElemUpdate(f);
-    }
+    //mesh.flagElemUpdate(v);
+    v.flag |= MeshFlags.UPDATE;
   }
-
-  mesh.regenPartial();
 }
 
 export class VertexSmooth extends MeshOp {
@@ -573,7 +722,9 @@ export class VertexSmooth extends MeshOp {
       toolpath: "mesh.vertex_smooth",
       undoflag: 0,
       flag: 0,
-      inputs: ToolOp.inherit({}),
+      inputs: ToolOp.inherit({
+        repeat : new IntProperty(1)
+      }),
     }
   }
 
@@ -581,7 +732,18 @@ export class VertexSmooth extends MeshOp {
     console.log("smooth!");
 
     for (let mesh of this.getMeshes(ctx)) {
-      vertexSmooth(mesh);
+      let repeat = this.inputs.repeat.getValue();
+
+      console.log("mesh:", mesh.lib_id, repeat);
+
+      for (let i=0; i<repeat; i++) {
+        vertexSmooth(mesh, mesh.verts.selected.editable);
+      }
+
+      mesh.recalcNormals();
+      mesh.regenPartial();
+      mesh.regenRender();
+      mesh.regenElementsDraw();
     }
   }
 }
@@ -686,11 +848,12 @@ ToolOp.register(TestCollapseOp);
 export class EnsureGridsOp extends MeshOp {
   static tooldef() {
     return {
-      uiname: "Ensure Grids",
+      uiname: "Add Grids",
       icon: Icons.TINY_X,
       toolpath: "mesh.ensure_grids",
+      icon : Icons.ADD_GRIDS,
       inputs: ToolOp.inherit({
-        depth: new IntProperty(3)
+        depth: new IntProperty(2)
       }),
       outputs: ToolOp.inherit()
     }

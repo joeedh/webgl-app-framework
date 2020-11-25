@@ -718,11 +718,21 @@ export class Grid extends GridBase {
         let i1 = y1*dimen + x1;
         let i2 = y2*dimen + x2;
 
+        if (!ps2 || !ps2[i2]) {
+          continue;
+        }
+
+        //*
         ps[i1].bLink = ps2[i2];
 
         if (!ps2[i2].bLink) {
           ps2[i2].bLink = ps[i1];
         }
+
+        //*/
+
+        //ps2[i2] = ps[i1];
+        //ps[i1] = ps2[i2];
 
         //ps[i1].neighbors.push(ps2[i2]);
       }

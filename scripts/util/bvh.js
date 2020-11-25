@@ -50,6 +50,10 @@ export class CDNodeInfo extends CustomDataElem {
     flag         : 0
   }}
 
+  interp() {
+    return;
+  }
+
   copyTo(b) {
     b.node = this.node;
   }
@@ -78,6 +82,10 @@ export class IsectRet {
     this.tri = b.tri;
 
     return this;
+  }
+
+  copy() {
+    return new IsectRet().load(this);
   }
 }
 
@@ -313,6 +321,8 @@ export class BVHNode {
     }
 
     this.allTris.add(tri);
+    this.flag |= BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_NORMALS;
+    //this.bvh.updateNodes.add(this);
   }
 
   _addVert(v) {
@@ -328,6 +338,14 @@ export class BVHNode {
 
   updateUniqueVerts() {
     this.flag &= ~BVHFlags.UPDATE_UNIQUE_VERTS;
+
+    if (!this.leaf) {
+      for (let c of this.children) {
+        c.updateUniqueVerts();
+      }
+
+      return;
+    }
 
     this.uniqueVerts = new Set();
     this.otherVerts = new Set();
@@ -653,6 +671,8 @@ export class BVH {
   }
 
   static create(mesh, storeVerts=true, useGrids=true) {
+    mesh.updateMirrorTags();
+
     if (!mesh.verts.customData.hasLayer(CDNodeInfo)) {
       mesh.verts.addCustomDataLayer(CDNodeInfo, "bvh");
     }
@@ -809,8 +829,19 @@ export class BVH {
     this.updateNodes = new Set();
   }
 
-  addTri(id, tri_idx, v1, v2, v3) {
+  addTri(id, tri_idx, v1, v2, v3, noSplit=false) {
+    let old;
+
+    if (noSplit) {
+      old = this.depthLimit;
+      this.depthLimit = 1;
+    }
+
     this.root.addTri(id, tri_idx, v1, v2, v3);
+
+    if (noSplit) {
+      this.depthLimit = old;
+    }
   }
 
   remTri(id) {

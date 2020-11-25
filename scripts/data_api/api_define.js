@@ -32,7 +32,7 @@ import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from "../co
 import {VelPan, VelPanFlags} from '../editors/velpan.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {ToolContext} from '../core/context.js';
-import {MeshModifierFlags, MeshFlags, MeshTypes, MeshDrawFlags, MeshFeatures} from '../mesh/mesh_base.js';
+import {MeshModifierFlags, MeshFlags, MeshTypes, MeshDrawFlags, MeshFeatures, MeshSymFlags} from '../mesh/mesh_base.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Vertex, Edge, Element, Loop, Face, Handle} from '../mesh/mesh_types.js';
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js';
@@ -273,7 +273,25 @@ export function api_define_mesh(api, pstruct) {
   let mstruct = api_define_sceneobject_data(api, Mesh);
   pstruct.struct("mesh", "mesh", "Mesh", mstruct);
 
-  let def = mstruct.flags("flag", "flag", MeshModifierFlags, "Modifier Flag", "Mesh modifier flags");
+  let def;
+  def = mstruct.flags("symFlag", "symFlag", MeshSymFlags, "Symmetry Flags", "Mesh Symmetry Flags");
+  def.icons({
+    X : Icons.SYM_X,
+    Y : Icons.SYM_Y,
+    Z : Icons.SYM_Z,
+  });
+  def.on("change", function(e) {
+    let mesh = this.dataref;
+
+    mesh.updateMirrorTags();
+
+    mesh.recalcNormals();
+    mesh.regenRender();
+    mesh.regenTesellation();
+    mesh.graphUpdate();
+  });
+
+  def = mstruct.flags("flag", "flag", MeshModifierFlags, "Modifier Flag", "Mesh modifier flags");
   def.icons({
     SUBSURF : Icons.SUBSURF
   });
