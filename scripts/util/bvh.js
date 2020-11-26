@@ -515,7 +515,7 @@ export class BVH {
     this.storeVerts = false;
 
     this.leafLimit = 64;
-    this.drawLevelOffset = 3;
+    this.drawLevelOffset = 4;
     this.depthLimit = 12;
 
     this.nodes = [];
@@ -539,14 +539,24 @@ export class BVH {
     let cd_node = this.cd_node;
     let cd_face_node = this.cd_face_node;
 
+    cd_face_node = mesh.faces.customData.getLayerIndex("bvh");
+    cd_node = mesh.verts.customData.getLayerIndex("bvh");
+
     let cd_grid = GridBase.meshGridOffset(mesh);
 
-    if (cd_grid >= 0) {
-      for (let l of mesh.loops) {
-        let grid = l.customData[cd_grid];
+    if (cd_grid >= 0 && cd_node >= 0) {
+      cd_node = mesh.loops.customData.getLayerIndex("bvh");
 
-        for (let p of grid.points) {
-          p.customData[cd_node].node = undefined;
+      if (cd_node >= 0) {
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+
+          grid.relinkCustomData();
+
+          for (let p of grid.points) {
+            //console.log(p.customData, cd_node);
+            p.customData[cd_node].node = undefined;
+          }
         }
       }
     } else if (mesh.verts.customData.hasLayer(CDNodeInfo)) {
@@ -761,16 +771,32 @@ export class BVH {
 
         map[0] = idx;
 
-        grid.recalcNormals();
-        grid.makeBVHTris(mesh, bvh, l, cd_grid, map);
+        //grid.makeBVHTris(mesh, bvh, l, cd_grid, map);
       }
+
+      let tris = [];
 
       for (let l of mesh.loops) {
         let grid = l.customData[cd_grid];
+        grid.makeBVHTris(mesh, bvh, l, cd_grid, tris);
+        grid.recalcNormals();
 
         for (let p of grid.points) {
           p.bNext = p.bPrev = undefined;
         }
+      }
+
+      while (tris.length > 0) {
+        let i = (~~(Math.random()*tris.length/5*0.99999))*5;
+        let i2 = tris.length - 5;
+
+        bvh.addTri(tris[i], tris[i+1], tris[i+2], tris[i+3], tris[i+4]);
+
+        for (let j=0; j<5; j++) {
+          tris[i+j] = tris[i2+j];
+        }
+
+        tris.length -= 5;
       }
 
       for (let l of mesh.loops) {

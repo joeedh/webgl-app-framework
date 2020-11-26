@@ -392,6 +392,7 @@ export class CustomData {
 
     layer.index = this.flatlist.length;
     layer.elemTypeMask = cls.define().elemTypeMask;
+    layer.name = name;
 
     this.flatlist.push(layer);
     lset.push(layer);
@@ -475,6 +476,7 @@ export class CustomData {
     }
 
     set.remove(layer);
+
     this.flatlist.remove(layer);
 
     this._updateFlatList();
@@ -491,22 +493,20 @@ export class CustomData {
   }
 
   _getUniqueName(name) {
-    let count = (name) => {
-      let c = 0;
-
+    let taken = (name) => {
       for (let layer of this.flatlist) {
         if (layer.name === name) {
-          c++;
+          return true;
         }
       }
 
-      return c;
+      return false;
     }
 
     let name2 = name;
     let i = 2;
 
-    while (count(name2) > 0) {
+    while (taken(name2)) {
       name2 = name + i;
       i++;
     }

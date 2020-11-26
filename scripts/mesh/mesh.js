@@ -1969,6 +1969,7 @@ export class Mesh extends SceneObjectData {
   }
 
   _on_cdlayer_rem(layer, set) {
+    /*
     let cls = CustomDataElem.getTypeClass(set.typeName);
     let mask = layer.elemTypeMask;
     let index = layer.index;
@@ -1983,6 +1984,7 @@ export class Mesh extends SceneObjectData {
         }
       }
     }
+     */
   }
 
   validateMesh(msg_out = [0]) {

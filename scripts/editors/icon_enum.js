@@ -74,6 +74,8 @@ export let Icons = {
   SYM_X        : 68,
   SYM_Y        : 69,
   SYM_Z        : 70,
-  BISECT       : 71
+  BISECT       : 71,
+  RESET_GRIDS  : 72,
+  DELETE_GRIDS : 73
 };
 setIconMap(Icons);

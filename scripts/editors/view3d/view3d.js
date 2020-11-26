@@ -885,14 +885,10 @@ export class View3D extends Editor {
     this.rebuildHeader();
 
     let on_mousewheel = (e) => {
-      console.log("mouse wheel!", e, e.deltaY);
-
       let df = e.deltaY / 100.0;
 
       df = Math.min(Math.max(df, -0.5), 0.5);
       df = 1.0 + df*0.4;
-
-      console.log(df);
 
       let cam = this.camera;
 

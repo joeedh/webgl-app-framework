@@ -627,6 +627,11 @@ export class PaintOp extends ToolOp {
       strength *= 2.0;
     }
 
+    let updateflag = BVHFlags.UPDATE_DRAW;
+    if (mode !== PAINT && mode !== PAINT_SMOOTH) {
+      updateflag |= BVHFlags.UPDATE_NORMALS;
+    }
+
     let sym = mesh.symFlag;
 
     vec = new Vector3(vec);
@@ -711,7 +716,7 @@ export class PaintOp extends ToolOp {
 
       if (node) {
         bvh.updateNodes.add(node);
-        node.flag |= BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_DRAW;
+        node.flag |= updateflag;
       }
     }
 
@@ -856,7 +861,7 @@ export class PaintOp extends ToolOp {
 
       if (node) {
         bvh.updateNodes.add(node);
-        node.flag |= BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS;
+        node.flag |= updateflag;
       }
 
       //for (let e of v.edges) {
@@ -869,10 +874,6 @@ export class PaintOp extends ToolOp {
         } else {
           vsmooth(v, ws[wi++]);
         }
-      }
-
-      if (haveGrids && v.bLink) {
-        doGridBoundary(v);
       }
 
       if ((v.flag & MeshFlags.MIRRORED) && (v.flag & MeshFlags.MIRROR_BOUNDARY)) {
@@ -890,6 +891,13 @@ export class PaintOp extends ToolOp {
       v.flag |= MeshFlags.UPDATE;
     }
 
+    if (haveGrids) {
+      for (let v of vs) {
+        if (v.bLink) {
+          doGridBoundary(v);
+        }
+      }
+    }
     /*
     if (!haveGrids && mode !== SMOOTH) {
       let es = new Set();

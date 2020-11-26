@@ -19,7 +19,7 @@ import {MeshOp} from './mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
 import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
 import {splitEdgesSmart} from "./mesh_subdivide.js";
-import {GridBase, Grid, gridSides} from "./mesh_grids.js";
+import {QuadTreeGrid, GridBase, Grid, gridSides} from "./mesh_grids.js";
 import {CustomDataElem} from "./customdata.js";
 import {bisectMesh, symmetrizeMesh} from "./mesh_utils.js";
 
@@ -849,7 +849,6 @@ export class EnsureGridsOp extends MeshOp {
   static tooldef() {
     return {
       uiname: "Add Grids",
-      icon: Icons.TINY_X,
       toolpath: "mesh.ensure_grids",
       icon : Icons.ADD_GRIDS,
       inputs: ToolOp.inherit({
@@ -873,7 +872,8 @@ export class EnsureGridsOp extends MeshOp {
       if (off < 0) {
         console.log("Adding grids to mesh", mesh);
 
-        Grid.initMesh(mesh, dimen, -1)
+        //Grid.initMesh(mesh, dimen, -1)
+        QuadTreeGrid.initMesh(mesh, dimen, -1);
 
         mesh.regenTesellation();
         mesh.regenRender();
@@ -892,7 +892,7 @@ export class DeleteGridsOp extends MeshOp {
   static tooldef() {
     return {
       uiname: "Delete Grids",
-      icon: Icons.TINY_X,
+      icon: Icons.DELETE_GRIDS,
       toolpath: "mesh.delete_grids",
       inputs: ToolOp.inherit({
       }),
@@ -918,6 +918,7 @@ export class DeleteGridsOp extends MeshOp {
       mesh.regenRender();
       mesh.regenTesellation();
       mesh.regenElementsDraw();
+      mesh.graphUpdate();
     }
 
 
@@ -931,7 +932,7 @@ export class ResetGridsOp extends MeshOp {
   static tooldef() {
     return {
       uiname: "Reset Grids",
-      icon: Icons.TINY_X,
+      icon: Icons.RESET_GRIDS,
       toolpath: "mesh.reset_grids",
       inputs: ToolOp.inherit({
       }),
@@ -957,8 +958,15 @@ export class ResetGridsOp extends MeshOp {
       }
 
       //force bvh reload
+      if (mesh.bvh) {
+        mesh.bvh.destroy(mesh);
+      }
       mesh.bvh = undefined;
-      mesh.getBVH();
+
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.regenElementsDraw();
+      mesh.graphUpdate();
     }
 
     window.redraw_viewport();

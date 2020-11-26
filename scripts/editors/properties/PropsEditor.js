@@ -6,6 +6,7 @@ import {NoteFrame, Note} from '../../path.ux/scripts/widgets/ui_noteframe.js';
 
 import {Editor, VelPan} from '../editor_base.js';
 import '../../path.ux/scripts/util/struct.js';
+
 let STRUCT = nstructjs.STRUCT;
 
 import {DataPathError} from '../../path.ux/scripts/controller/controller.js';
@@ -33,6 +34,7 @@ export class CDLayerPanel extends ColumnFrame {
 
   rebuild() {
     if (!this.ctx) {
+      this._lastUpdateKey = undefined;
       return;
     }
 
@@ -56,6 +58,7 @@ export class CDLayerPanel extends ColumnFrame {
 
     let mesh = this.ctx.api.getValue(this.ctx, meshpath);
     if (!mesh) {
+      this.ctx.error("data api error", meshpath);
       return;
     }
     let elist = mesh.getElemList(type);
@@ -81,7 +84,7 @@ export class CDLayerPanel extends ColumnFrame {
 
         checks.push(check);
 
-        check.onchange = function() {
+        check.onchange = function () {
           if (this.checked) {
             elist.customData.setActiveLayer(this.layerIndex);
 
@@ -116,7 +119,9 @@ export class CDLayerPanel extends ColumnFrame {
     let type = this.getAttribute("type");
     let layertype = this.getAttribute("layer");
 
-    if (!this.hasAttribute("datapath") || !this.hasAttribute("type") || !this.hasAttribute("layer")) {
+    if (!this.hasAttribute("datapath")
+      || !this.hasAttribute("type")
+      || !this.hasAttribute("layer")) {
       return;
     }
 
@@ -128,7 +133,7 @@ export class CDLayerPanel extends ColumnFrame {
     }
 
     let mesh = this.ctx.api.getValue(this.ctx, meshpath);
-    if (!mesh ){
+    if (!mesh) {
       return;
     }
 
@@ -146,12 +151,11 @@ export class CDLayerPanel extends ColumnFrame {
     }
 
     if (key !== this._lastUpdateKey) {
+      this._lastUpdateKey = key;
+
       //console.log("rebuilding mesh layers list");
-
-      this.doOnce(this.rebuild);
+      this.rebuild();
     }
-
-    this._lastUpdateKey = key;
   }
 
   update() {
@@ -160,15 +164,20 @@ export class CDLayerPanel extends ColumnFrame {
     this.updateDataPath();
   }
 
-  static define() {return {
-    tagname : "cd-layer-panel-x"
-  }}
+  static define() {
+    return {
+      tagname: "cd-layer-panel-x"
+    }
+  }
 }
+
 UIBase.register(CDLayerPanel);
 
 export class ObjectPanel extends ColumnFrame {
   constructor() {
     super();
+
+    this._last_update_key = "";
   }
 
   init() {
@@ -208,14 +217,33 @@ export class ObjectPanel extends ColumnFrame {
       cd.setAttribute("layer", "color");
 
       panel.add(cd);
-
     }
   }
 
-  static define() {return {
-    tagname : "scene-object-panel-x"
-  }}
+  update() {
+    super.update();
+
+    if (!this.ctx || !this.ctx.object) {
+      return;
+    }
+
+
+    let ob = this.ctx.object;
+    let key = "" + ob.lib_id + ":" + ob.data.lib_id;
+
+    if (key !== this._last_update_key) {
+      this._last_update_key = key;
+      this.rebuild();
+    }
+  }
+
+  static define() {
+    return {
+      tagname: "scene-object-panel-x"
+    }
+  }
 }
+
 UIBase.register(ObjectPanel);
 
 export class PropsEditor extends Editor {
@@ -299,12 +327,14 @@ export class PropsEditor extends Editor {
     super.setCSS();
   }
 
-  static define() {return {
-    tagname : "props-editor-x",
-    areaname : "props",
-    uiname   : "Properties",
-    icon     : -1
-  }}
+  static define() {
+    return {
+      tagname: "props-editor-x",
+      areaname: "props",
+      uiname: "Properties",
+      icon: -1
+    }
+  }
 }
 
 PropsEditor.STRUCT = STRUCT.inherit(PropsEditor, Editor) + `

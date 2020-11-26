@@ -546,7 +546,7 @@ export class Scene extends DataBlock {
     }
 
     if (!_file_loading && this.outputs.onToolModeChange.hasEdges) {
-      this.outputs.onToolModeChange.update();
+      this.outputs.onToolModeChange.graphUpdate();
     }
 
     return ret;
@@ -595,7 +595,7 @@ export class Scene extends DataBlock {
 
   _onselect(obj, state) {
     if (this.outputs.onSelect.hasEdges) {
-      this.outputs.onSelect.update();
+      this.outputs.onSelect.graphUpdate();
     }
   }
 
@@ -617,7 +617,7 @@ export class Scene extends DataBlock {
 
     this.time = newtime;
     for (let ob of this.objects) {
-      ob.update();
+      ob.graphUpdate();
     }
 
     if (this.collection) {
@@ -627,7 +627,7 @@ export class Scene extends DataBlock {
       }
     }
 
-    this.outputs.onTimeChange.update();
+    this.outputs.onTimeChange.graphUpdate();
     window.updateDataGraph(true);
   }
 

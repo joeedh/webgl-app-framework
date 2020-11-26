@@ -9,7 +9,7 @@ import {Colors} from "../sceneobject/sceneobject.js";
 import {ChunkedSimpleMesh, LayerTypes, PrimitiveTypes} from "../core/simplemesh.js";
 import {NormalLayerElem, UVLayerElem} from "./mesh_customdata.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
-import {Grid} from "./mesh_grids.js";
+import {Grid, GridBase} from "./mesh_grids.js";
 
 export function genRenderMesh(gl, mesh, uniforms) {
   let recalc;
@@ -161,8 +161,8 @@ export function genRenderMesh(gl, mesh, uniforms) {
     }
   }
 
-  let have_grids = mesh.loops.customData.hasLayer("grid");
-  let cd_grid = mesh.loops.customData.getLayerIndex("grid");
+  let cd_grid = GridBase.meshGridOffset(mesh);
+  let have_grids = cd_grid >= 0;
 
   if (have_grids && (recalc & MeshTypes.FACE)) {
     sm = getmesh("faces");

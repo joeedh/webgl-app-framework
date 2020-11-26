@@ -86,6 +86,8 @@ export class MeshEditor extends MeshToolBase {
     strip.tool(`mesh.delete_selected`);
 
     strip.tool("mesh.ensure_grids()");
+    strip.tool("mesh.reset_grids()");
+    strip.tool("mesh.delete_grids()");
     strip.tool("mesh.symmetrize()");
     strip.tool("mesh.bisect()");
 

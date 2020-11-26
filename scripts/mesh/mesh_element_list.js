@@ -529,8 +529,10 @@ export class ElementList {
       throw new Error("bad call to removeCustomDataLayer");
     }
 
-    let cls = CustomDataElem.getTypeClass(this.customData.flatlist[layer_i].typeName);
-    let ret = this.customData.remLayer(this.customData.flatlist[layer_i]);
+    let layer = this.customData.flatlist[layer_i];
+
+    let cls = CustomDataElem.getTypeClass(layer.typeName);
+    let ret = this.customData.remLayer(layer);
 
     let haveOnRemoveLayer = false;
 
@@ -541,7 +543,6 @@ export class ElementList {
         haveOnRemoveLayer = true;
       }
     }
-
 
     for (let e of this) {
       let i = layer_i;
@@ -587,7 +588,9 @@ export class ElementList {
 
     for (let item of this) {
       item.customData.push(new typecls());
+    }
 
+    for (let item of this) {
       if (haveOnNewLayer) {
         for (let cd of item.customData) {
           if (cd.onNewLayer) {

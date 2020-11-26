@@ -136,6 +136,8 @@ export class DataBlockBrowser extends Container {
     this._needs_rebuild = true;
     this._last_mat_name = undefined;
 
+    this.useDataPathUndo = false;
+
     /* if not undefined, is a function that filters blocks for visibility
     *  in menu*/
     this.filterFunc = undefined;
@@ -207,6 +209,7 @@ export class DataBlockBrowser extends Container {
 
       console.log("Assigning block");
 
+      this.useDataPathUndo = false;
       this.setPathValue(ctx, path, block);
       this.flagRebuild();
     };
