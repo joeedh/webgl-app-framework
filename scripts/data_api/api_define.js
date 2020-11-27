@@ -52,13 +52,14 @@ let api = new DataAPI();
 import {Icons} from '../editors/icon_enum.js';
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 import {MaterialEditor} from "../editors/node/MaterialEditor.js";
+import {BrushDynamics, BrushDynChannel, BrushFlags, SculptBrush, SculptIcons, SculptTools} from "../brush/brush.js";
 
 export function api_define_editor(api, cls) {
   let astruct = api.mapStruct(cls);
 
   astruct.vec2("pos", "pos", "Position", "Position of editor in window");
   astruct.vec2("size", "size", "Size", "Size of editor");
-  astruct.string("type", "type", "Type", "Editor type").customGetSet(function() {
+  astruct.string("type", "type", "Type", "Editor type").customGetSet(function () {
     let obj = this.dataref;
 
     return obj.constructor.define().areaname;
@@ -117,17 +118,17 @@ export function api_define_view3d(api, pstruct) {
   }
 
   vstruct.flags("flag", "flag", View3DFlags, "View3D Flags").on("change", onchange).icons({
-    SHOW_RENDER : Icons.RENDER,
-    SHOW_GRID : Icons.SHOW_GRID
+    SHOW_RENDER: Icons.RENDER,
+    SHOW_GRID: Icons.SHOW_GRID
   });
 
   vstruct.enum("cameraMode", "cameraMode", CameraModes, "Camera Modes").on("change", onchange).icons({
-    PERSPECTIVE : Icons.PERSPECTIVE,
-    ORTHOGRAPHIC : Icons.ORTHOGRAPHIC
+    PERSPECTIVE: Icons.PERSPECTIVE,
+    ORTHOGRAPHIC: Icons.ORTHOGRAPHIC
   });
 }
 
-function api_define_socket(api, cls=NodeSocketType) {
+function api_define_socket(api, cls = NodeSocketType) {
   let nstruct = api.mapStruct(cls, true);
 
   nstruct.flags("graph_flag", "graph_flag", SocketFlags, "Flag", "Flags");
@@ -138,7 +139,7 @@ function api_define_socket(api, cls=NodeSocketType) {
   return nstruct;
 }
 
-function api_define_node(api, cls=Node) {
+function api_define_node(api, cls = Node) {
   let nstruct = api.mapStruct(cls, true);
 
   nstruct.flags("graph_flag", "graph_flag", NodeFlags, "Flag", "Flags");
@@ -147,7 +148,7 @@ function api_define_node(api, cls=Node) {
   function defineSockets(inorouts) {
     nstruct.list("", inorouts, [
       function getIter(api, list) {
-        return (function*() {
+        return (function* () {
           for (let k in list[inorouts]) {
             yield list[inorouts][k];
           }
@@ -195,22 +196,22 @@ function api_define_node(api, cls=Node) {
   return nstruct;
 }
 
-function api_define_datablock(api, cls=DataBlock) {
+function api_define_datablock(api, cls = DataBlock) {
   let dstruct = api_define_node(api, cls);
 
   dstruct.int("lib_id", "lib_id", "Lib ID").read_only();
 
-  let def = dstruct.flags("lib_flag", "flag", BlockFlags, "Flag");
+  let def = dstruct.flags("lib_flag", "lib_flag", BlockFlags, "Flag");
 
   def.icons({
-    FAKE_USER : Icons.FAKE_USER
+    FAKE_USER: Icons.FAKE_USER
   });
 
   def.on('change', function (newval, oldval) {
     let owner = this.dataref;
     console.log("Fake user change", newval, oldval);
 
-    if (newval == oldval) {
+    if (newval === oldval) {
       return;
     }
 
@@ -222,7 +223,7 @@ function api_define_datablock(api, cls=DataBlock) {
   });
 
   def.descriptions({
-    FAKE_USER : "Protect against auto delete"
+    FAKE_USER: "Protect against auto delete"
   });
 
   dstruct.string("name", "name", "name");
@@ -276,11 +277,11 @@ export function api_define_mesh(api, pstruct) {
   let def;
   def = mstruct.flags("symFlag", "symFlag", MeshSymFlags, "Symmetry Flags", "Mesh Symmetry Flags");
   def.icons({
-    X : Icons.SYM_X,
-    Y : Icons.SYM_Y,
-    Z : Icons.SYM_Z,
+    X: Icons.SYM_X,
+    Y: Icons.SYM_Y,
+    Z: Icons.SYM_Z,
   });
-  def.on("change", function(e) {
+  def.on("change", function (e) {
     let mesh = this.dataref;
 
     mesh.updateMirrorTags();
@@ -293,7 +294,7 @@ export function api_define_mesh(api, pstruct) {
 
   def = mstruct.flags("flag", "flag", MeshModifierFlags, "Modifier Flag", "Mesh modifier flags");
   def.icons({
-    SUBSURF : Icons.SUBSURF
+    SUBSURF: Icons.SUBSURF
   });
 
   def.on("change", (e) => {
@@ -334,7 +335,7 @@ export function api_define_mesh(api, pstruct) {
 export function api_define_curvespline(api) {
   let cstruct = api.inheritStruct(CurveSpline, Mesh);
 
-  cstruct.bool("isClosed", "isClosed", "Closed Curve").on("change", function() {
+  cstruct.bool("isClosed", "isClosed", "Closed Curve").on("change", function () {
     this.dataref.checkUpdate();
     this.dataref.regenRender();
   });
@@ -351,7 +352,7 @@ function api_define_shadernode(api, cls) {
 export function api_define_camera(api) {
   let cstruct = api.mapStruct(Camera, true);
 
-  let onchange = function() {
+  let onchange = function () {
     window.redraw_viewport();
   }
 
@@ -400,7 +401,7 @@ export function api_define_cameradata(api) {
 
 }
 
-function api_define_graph(api, cls=Graph) {
+function api_define_graph(api, cls = Graph) {
   let gstruct = api.mapStruct(cls);
 
   gstruct.list("", "nodes", [
@@ -482,7 +483,7 @@ function api_define_material(api) {
 
   let def = st.bool("", "has_shader", "Has Shader", "Has Shader");
 
-  def.customGetSet(function() {
+  def.customGetSet(function () {
     return getShaderNode(this.dataref) !== undefined;
   }, undefined /*function(val) {
     //do nothing
@@ -493,7 +494,7 @@ function api_define_material(api) {
   def = st.pathmap.shader;
   console.log("DEF", def);
 
-  def.customGetSet(function() {
+  def.customGetSet(function () {
     return getShaderNode(this.dataref);
   }, undefined);
 
@@ -641,7 +642,7 @@ export function api_define_velpan(api, parent) {
 export function api_define_debugeditor(api, parent) {
   let dedstruct = api_define_editor(api, DebugEditor);
 
-  let redrawDebug = function() {
+  let redrawDebug = function () {
     let editor = this.dataref;
 
     editor._redraw();
@@ -651,10 +652,10 @@ export function api_define_debugeditor(api, parent) {
   let edef = dedstruct.enum("displayMode", "displayMode", DisplayModes);
 
   edef.icons({
-    RAW : Icons.VIEW_RAW,
-    NORMAL : Icons.VIEW_NORMALS,
-    DEPTH : Icons.VIEW_DEPTH,
-    ALPHA : Icons.VIEW_ALPHA
+    RAW: Icons.VIEW_RAW,
+    NORMAL: Icons.VIEW_NORMALS,
+    DEPTH: Icons.VIEW_DEPTH,
+    ALPHA: Icons.VIEW_ALPHA
   });
 
   edef.on("change", redrawDebug);
@@ -693,7 +694,7 @@ export function api_define_screen(api, parent) {
 
     function getKey(api, list, obj) {
       console.log(arguments);
-      for (let i=0; i<list.length; i++) {
+      for (let i = 0; i < list.length; i++) {
         if (list[i].area === obj) {
           return i;
         }
@@ -705,7 +706,7 @@ export function api_define_screen(api, parent) {
     },
 
     function getIter(api, list) {
-      return (function *() {
+      return (function* () {
         for (let sarea of list) {
           yield sarea.area;
         }
@@ -769,7 +770,7 @@ export function api_define_scene(api, pstruct) {
   let prop = makeToolModeEnum();
 
   let def = sstruct.enum("toolmode_i", "toolmode", prop, "ToolMode", "ToolMode");
-  def.on('change', function(newval, oldval) {
+  def.on('change', function (newval, oldval) {
     let scene = this.dataref;
 
     console.log("toolmode change", oldval, newval);
@@ -779,7 +780,7 @@ export function api_define_scene(api, pstruct) {
     window.redraw_viewport();
   });
 
-  let onchange = function(newval, oldval) {
+  let onchange = function (newval, oldval) {
     let scene = this.dataref;
 
     scene.updateWidgets();
@@ -812,13 +813,43 @@ export function api_define_scene(api, pstruct) {
   }
 }
 
+export function api_define_brush(api, cstruct) {
+  let bst = api_define_datablock(api, SculptBrush);
+
+  bst.flags("flag", "flag", BrushFlags, "Flag");
+  bst.float("strength", "strength", "Strength").range(0.001, 2.0).noUnits();
+  bst.float("radius", "radius", "Radius").range(0.1, 150.0).noUnits();
+  bst.enum("tool", "tool", SculptTools).icons(SculptIcons);
+  bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 2.0).noUnits();
+  bst.float("planeoff", "planeoff", "planeoff").range(-3.5, 3.5).noUnits();
+  bst.float("spacing", "spacing", "Spacing").range(0.01, 2.0).noUnits();
+  bst.color4("color", "color", "Primary Color");
+  bst.color4("bgcolor", "bgcolor", "Secondary Color");
+
+  bst.curve1d("falloff", "falloff", "Falloff");
+
+  let dst;
+
+  let cst = api.mapStruct(BrushDynChannel, true);
+  cst.bool("useDynamics", "useDynamics", "Use Dynamics");
+  cst.curve1d("curve", "curve", "Curve");
+
+  dst = api.mapStruct(BrushDynamics, true);
+  let b = new BrushDynamics();
+  for (let ch of b.channels) {
+    dst.struct(ch.name, ch.name, ch.name, cst);
+  }
+
+  bst.struct("dynamics", "dynamics", "Dynamics", dst);
+}
+
 export function api_define_matrix4(api) {
   let st = api.mapStruct(Matrix4, true);
 
   let data = st.struct("$matrix", "data", "Matrix Data");
 
-  for (let i=1; i<=4; i++) {
-    for (let j=1; j<=4; j++) {
+  for (let i = 1; i <= 4; i++) {
+    for (let j = 1; j <= 4; j++) {
       let key = "m" + i + j;
       data.float(key, key, key);
     }
@@ -846,6 +877,7 @@ export function getDataAPI() {
   cstruct.struct("graph", "graph", "Graph", api.mapStruct(Graph));
 
   api_define_datablock(api, DataBlock);
+  api_define_brush(api, cstruct);
 
   api_define_rendersettings(api);
   api_define_view3d(api, cstruct);
@@ -872,7 +904,7 @@ export function getDataAPI() {
 
   cstruct.list("", "objects", [
     function getIter(api, list) {
-      return (function*() {
+      return (function* () {
         for (let ob of list.datalib.object) {
           yield ob;
         }
@@ -924,20 +956,20 @@ export function getDataAPI() {
 
   let def = cstruct.flags("selectMask", "selectmode", SelMask, "Selection Mode", "Selection Mode");
   def.icons({
-    VERTEX : Icons.VERT_MODE,
-    EDGE   : Icons.EDGE_MODE,
-    FACE   : Icons.FACE_MODE,
-    OBJECT : Icons.CIRCLE_SEL
+    VERTEX: Icons.VERT_MODE,
+    EDGE: Icons.EDGE_MODE,
+    FACE: Icons.FACE_MODE,
+    OBJECT: Icons.CIRCLE_SEL
   });
 
   let sstruct = api.mapStruct(Scene, false);
 
   def = sstruct.flags("selectMask", "selectMaskEnum", SelMask, "Selection Mode", "Selection Mode");
   def.icons({
-    VERTEX : Icons.VERT_MODE,
-    EDGE   : Icons.EDGE_MODE,
-    FACE   : Icons.FACE_MODE,
-    OBJECT : Icons.CIRCLE_SEL
+    VERTEX: Icons.VERT_MODE,
+    EDGE: Icons.EDGE_MODE,
+    FACE: Icons.FACE_MODE,
+    OBJECT: Icons.CIRCLE_SEL
   });
   def.on('change', function (newv, oldv) {
     let owner = this.dataref;
@@ -951,7 +983,7 @@ export function getDataAPI() {
     let newf = mask & (~old);
     console.log("new flag", newf);
 
-    owner.selectMask &= ~(SelMask.VERTEX|SelMask.FACE|SelMask.EDGE);
+    owner.selectMask &= ~(SelMask.VERTEX | SelMask.FACE | SelMask.EDGE);
     owner.selectMask |= newf;
 
     for (let ob of owner.objects.selected.editable) {

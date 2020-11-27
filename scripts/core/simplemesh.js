@@ -749,7 +749,7 @@ export class SimpleIsland {
 
       let meta = this.layers.get_meta(primflag, type);
       if (!meta.layers.length) {
-        gl.disableVertexAttribArray(li);
+        //gl.disableVertexAttribArray(li);
         li++;
         return;
       } else {

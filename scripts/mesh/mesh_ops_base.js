@@ -161,9 +161,16 @@ export class MeshOp extends View3DOp {
 
       let mesh2 = loadUndoMesh(ctx, data);
 
+      if (mesh.bvh) {
+        mesh.bvh = undefined;
+      }
+
       mesh.swapDataBlockContents(mesh2);
+
+      mesh.regenTesellation();
+      mesh.regenElementsDraw();
       mesh.regenRender();
-      mesh.update();
+      mesh.graphUpdate();
     }
 
     window.updateDataGraph();

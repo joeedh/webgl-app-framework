@@ -619,22 +619,40 @@ export class Library {
   }
 
   get(id_or_dataref_or_name) {
-    if (id_or_dataref_or_name instanceof DataRef) {
-      id_or_dataref_or_name = id_or_dataref_or_name.lib_id;
-    } else if (typeof id_or_dataref_or_name === "string") {
-      return this.block_namemap[id_or_dataref_or_name];
+    let f = id_or_dataref_or_name;
+
+    if (f === undefined || f === null) {
+      return false;
     }
 
-    return this.block_idmap[id_or_dataref_or_name];
+    if (typeof f === "number") {
+      return this.block_idmap[f];
+    } else if (typeof f === "string") {
+      return this.block_namemap[f];
+    } else if (typeof f === "object" && (f instanceof DataRef)) {
+      return this.block_idmap[f.lib_id];
+    } else {
+      throw new Error("bad parameter passed to Library.get()");
+    }
   }
 
-  has(block) {
-    if (block === undefined || block === null) {
+  has(id_or_dataref_or_block_or_name) {
+    let f = id_or_dataref_or_block_or_name;
+
+    if (f === undefined | f === null) {
       return false;
-    } else if (block instanceof DataBlock) {
-      return block.lib_id >= 0 && block.lib_id in this.block_idmap;
+    }
+
+    if (typeof f === "number") {
+      return this.block_idmap[f];
+    } else if (typeof f === "string") {
+      return this.block_namemap[f];
+    } else if (typeof f === "object" && (f instanceof DataRef)) {
+      return this.block_idmap[f.lib_id];
+    } else if (typeof f === "object" && (f instanceof DataBlock)) {
+      return f.lib_id >= 0 && this.block_idmap[f.lib_id] === f;
     } else {
-      return this.get(block) !== undefined;
+      throw new Error("bad parameter passed to Library.get()");
     }
   }
 

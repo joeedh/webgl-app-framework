@@ -76,6 +76,7 @@ export let Icons = {
   SYM_Z        : 70,
   BISECT       : 71,
   RESET_GRIDS  : 72,
-  DELETE_GRIDS : 73
+  DELETE_GRIDS : 73,
+  SCULPT_TOPOLOGY : 74
 };
 setIconMap(Icons);

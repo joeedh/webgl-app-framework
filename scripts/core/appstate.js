@@ -496,17 +496,17 @@ export class AppState {
       data = new DataView((new Uint8Array(data)).buffer);
       //console.log("Reading block of type", type);
 
-      if (args.load_screen && type == BlockTypes.SCREEN) {
+      if (args.load_screen && type === BlockTypes.SCREEN) {
         console.warn("Old screen block detected");
 
         screen = istruct.read_object(data, App);
         found_screen = true;
-      } else if (args.load_library && type == BlockTypes.LIBRARY) {
+      } else if (args.load_library && type === BlockTypes.LIBRARY) {
         datalib = istruct.read_object(data, Library);
 
         this.datalib.destroy();
         this.datalib = datalib;
-      } else if (args.load_library && type == BlockTypes.DATABLOCK) {
+      } else if (args.load_library && type === BlockTypes.DATABLOCK) {
         let file2 = new BinaryReader(data);
 
         let len = file2.int32();
@@ -517,7 +517,7 @@ export class AppState {
         let data2 = file2.bytes(len);
         let block;
 
-        if (!args.load_screen && cls.blockDefine().typeName == "screen") {
+        if (!args.load_screen && cls.blockDefine().typeName === "screen") {
           continue;
         }
 
@@ -529,7 +529,7 @@ export class AppState {
           block = istruct.read_object(data2, cls);
         }
 
-        if (cls.blockDefine().typeName == "screen") {
+        if (cls.blockDefine().typeName === "screen") {
           block.screen._ctx = this.ctx;
           //console.log("SCREEN", block.screen.sareas)
         }
@@ -610,13 +610,16 @@ export class AppState {
     if (screen !== undefined) {
       found_screen = true;
 
-      if (this.screen !== undefined) {
+      if (this.screen !== screen && this.screen !== undefined) {
         this.screen.destroy();
         this.screen.remove();
       }
 
+      document.body.appendChild(screen);
+
       this.screen = screen;
       this.screen.ctx = this.ctx;
+      this.screen._init();
       this.screen.listen();
 
       //push active area contexts
@@ -624,8 +627,6 @@ export class AppState {
         sarea.area.push_ctx_active();
         sarea.area.pop_ctx_active();
       }
-
-      document.body.appendChild(screen);
 
       this.screen.update();
       this.screen.regenBorders();
@@ -653,8 +654,10 @@ export class AppState {
       this.modalFlag = 0;
 
       for (let sblock of lastscreens) {
-        sblock.lib_id = sblock.graph_id = -1; //request new id
-        datalib.add(sblock);
+        if (!datalib.has(sblock)) {
+          sblock.lib_id = sblock.graph_id = -1; //request new id
+          datalib.add(sblock);
+        }
       }
 
       datalib.libmap.screen.active = lastscreens_active;
@@ -691,6 +694,8 @@ export class AppState {
 
   /** this is executed after block re-linking has happened*/
   do_versions_post(version, datalib) {
+    console.log("VERSION", version);
+
     if (version < 1) {
       for (let scene of datalib.scene) {
         scene.collection = new Collection();

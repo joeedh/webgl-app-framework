@@ -17,6 +17,7 @@ import {
   ToolOp,
   Vec4Property,
   FloatProperty,
+  BoolProperty,
   EnumProperty,
   FlagProperty,
   ListProperty,
@@ -25,13 +26,13 @@ import {
 import {MeshFlags} from "../../../mesh/mesh.js";
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from "../../../core/simplemesh.js";
 import {splitEdgesSmart} from "../../../mesh/mesh_subdivide.js";
-import {GridBase} from "../../../mesh/mesh_grids.js";
+import {GridBase, QRecalcFlags, QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from "../../../mesh/mesh_grids.js";
 
 let _triverts = new Array(3);
 
 import {
   DynamicsMask, SculptTools, BrushDynamics, SculptBrush,
-  BrushDynChannel, DefaultBrushes, SculptIcons, PaintToolSlot
+  BrushDynChannel, DefaultBrushes, SculptIcons, PaintToolSlot, BrushFlags
 } from "../../../brush/brush.js";
 import {DataRefProperty} from "../../../core/lib_api.js";
 
@@ -125,12 +126,15 @@ export class PaintOp extends ToolOp {
         spacing: new FloatProperty(0.07),
         color: new Vec4Property([1, 1, 0, 1]),
 
-        falloff : new Curve1DProperty(),
+        falloff: new Curve1DProperty(),
 
         dynamicsMask: new FlagProperty(0, DynamicsMask),
         strengthCurve: new Curve1DProperty(),
         radiusCurve: new Curve1DProperty(),
-        autosmoothCurve: new Curve1DProperty()
+        autosmoothCurve: new Curve1DProperty(),
+
+        dynTopoLength : new FloatProperty(25),
+        useDynTopo : new BoolProperty(false)
       }
     }
   }
@@ -145,12 +149,15 @@ export class PaintOp extends ToolOp {
       mesh: mesh ? mesh.lib_id : -1,
       mode: this.inputs.tool.getValue(),
       vmap: new Map(),
+      gmap: new Map(),
       gdata: [],
       gset: new Set()
     };
   }
 
   undo(ctx) {
+    console.log("BVH UNDO!");
+
     let undo = this._undo;
     let mesh = ctx.datalib.get(undo.mesh);
 
@@ -267,10 +274,101 @@ export class PaintOp extends ToolOp {
       }
     }
 
+    let doQuadTreeGrids = () => {
+      console.log("gmap:", undo.gmap);
+      let gmap = undo.gmap;
+
+      let updateloops = new Set();
+      let killloops = new Set();
+
+      for (let l of gmap.keys()) {
+        let grid1 = l.customData[cd_grid];
+        let grid2 = gmap.get(l);
+
+        //forcably unlink verts from uniqueVerts in bvh tree nodes
+        for (let p of grid1.points) {
+          let node = p.customData[cd_node];
+          if (node.node && node.node.uniqueVerts) {
+            node.node.uniqueVerts.delete(p);
+            node.node = undefined;
+          }
+        }
+
+        //bvh.removeFace(l.eid, true);
+
+        grid2.copyTo(grid1);
+        grid1.recalcFlag |= QRecalcFlags.MIRROR;
+
+        killloops.add(l);
+
+        updateloops.add(l);
+        updateloops.add(l.prev.radial_next);
+        updateloops.add(l.radial_next.next);
+        updateloops.add(l.prev);
+        updateloops.add(l.next);
+      }
+
+      bvh.update();
+
+      let updateflag = QRecalcFlags.NEIGHBORS|QRecalcFlags.POLYS;
+
+      for (let l of killloops) {
+        let grid = l.customData[cd_grid];
+
+        bvh.removeFace(l.eid, true);
+        grid.recalcFlag |= updateflag;
+      }
+
+      for (let l of updateloops) {
+        let grid = l.customData[cd_grid];
+
+        grid.update(mesh, l, cd_grid);
+      }
+
+      let trisout = [];
+
+      for (let l of killloops) {
+        let grid = l.customData[cd_grid];
+        grid.makeBVHTris(mesh, bvh, l, cd_grid, trisout);
+      }
+
+      while (trisout.length > 0) {
+        let ri = (~~(Math.random()*trisout.length/5.0*0.99999))*5;
+        let ri2 = trisout.length - 5;
+
+        let eid = trisout[ri];
+        let id = trisout[ri+1];
+        let v1 = trisout[ri+2];
+        let v2 = trisout[ri+3];
+        let v3 = trisout[ri+4];
+
+        bvh.addTri(eid, id, v1, v2, v3);
+
+        for (let j=0; j<5; j++) {
+          trisout[ri+j] = trisout[ri2+j];
+        }
+
+        trisout.length -= 5;
+      }
+    }
+
+    let haveQuadTreeGrids = false;
+    if (cd_grid >= 0) {
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+
+        if (grid instanceof QuadTreeGrid) {
+          haveQuadTreeGrids = true;
+        }
+        break;
+      }
+    }
     let mode = undo.mode;
     let isPaintColor = mode === SculptTools.PAINT || mode === SculptTools.PAINT_SMOOTH;
 
-    if (isPaintColor) {
+    if (haveQuadTreeGrids) {
+      doQuadTreeGrids();
+    } else if (isPaintColor) {
       doColors();
     } else {
       doCoords();
@@ -347,8 +445,8 @@ export class PaintOp extends ToolOp {
     let axes = [-1];
     let sym = mesh.symFlag;
 
-    for (let i=0; i<3; i++) {
-      if (mesh.symFlag & (1<<i)) {
+    for (let i = 0; i < 3; i++) {
+      if (mesh.symFlag & (1 << i)) {
         axes.push(i);
       }
     }
@@ -519,9 +617,9 @@ export class PaintOp extends ToolOp {
         }
       }
 
-      let esize = 12.0;
+      let esize = this.inputs.dynTopoLength.getValue();
 
-      esize /= Math.max(view3d.glSize[0], view3d.glSize[1]);
+      esize /= view3d.glSize[1]; //Math.min(view3d.glSize[0], view3d.glSize[1]);
       esize *= w;
 
       let radius2 = radius + (this.last_radius - radius) * s;
@@ -588,6 +686,7 @@ export class PaintOp extends ToolOp {
     let undo = this._undo;
     let vmap = undo.vmap;
     let gset = undo.gset;
+    let gmap = undo.gmap;
     let gdata = undo.gdata;
 
     let ob = ctx.object;
@@ -665,7 +764,22 @@ export class PaintOp extends ToolOp {
     let _tmp = new Vector3();
 
     let haveGrids = bvh.cd_grid >= 0;
+    let cd_grid = bvh.cd_grid;
+
     let vsmooth, gdimen, cd_color, have_color;
+    let haveQuadTreeGrids = false;
+
+    if (haveGrids) {
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+
+        if (grid instanceof QuadTreeGrid) {
+          haveQuadTreeGrids = true;
+        }
+
+        break;
+      }
+    }
 
     function doUndo(v) {
       if (!haveGrids && !vmap.has(v.eid)) {
@@ -673,6 +787,26 @@ export class PaintOp extends ToolOp {
           vmap.set(v.eid, new Vector4(v.customData[cd_color].color));
         } else if (!isPaintMode) {
           vmap.set(v.eid, new Vector3(v));
+        }
+      } else if (haveQuadTreeGrids) {
+        let node = v.customData[cd_node];
+        if (node.node) {
+          node.node.flag |= BVHFlags.UPDATE_NORMALS|BVHFlags.UPDATE_DRAW;
+        }
+
+        if (v.loopEid !== undefined) {
+          let l = mesh.eidmap[v.loopEid];
+
+          if (l && l instanceof Loop && l.eid === v.loopEid) {
+            let grid = l.customData[cd_grid];
+
+            if (!gmap.has(l)) {
+              grid.recalcFlag |= QRecalcFlags.MIRROR;
+              gmap.set(l, grid.copy())
+              grid.update(mesh, l, cd_grid);
+              grid.relinkCustomData();
+            }
+          }
         }
       } else if (haveGrids) {
         let id = v.loopEid * gdimen * gdimen + v.index;
@@ -700,23 +834,46 @@ export class PaintOp extends ToolOp {
     }
 
     function doGridBoundary(v) {
-      doUndo(v.bLink);
+      doUndo(v.bLink.v1);
+
+      if (v.bLink.v2) {
+        //doUndo(v.bLink.v2);
+      }
 
       if (isPaintMode && have_color) {
         let c1 = v.customData[cd_color].color;
-        let c2 = v.bLink.customData[cd_color].color;
+        let c2 = v.bLink.getColor(cd_color);
 
         c1.interp(c2, 0.5);
-        c2.load(c1);
+
+        if (!v.bLink.v2) {
+          let c2 = v.bLink.v1.customData[cd_color].color;
+          c2.load(c1);
+        }
       } else if (!isPaintMode) {
-        v.interp(v.bLink, 0.5);
-        v.bLink.load(v, true);
+        let co = v.bLink.get();
+
+        if (!v.bLink.v2) {
+          v.interp(co, 0.5);
+          v.bLink.v1.load(v, true);
+        } else {
+          v.load(co);
+        }
       }
-      let node = v.bLink.customData[cd_node].node;
+      let node = v.bLink.v1.customData[cd_node].node;
 
       if (node) {
         bvh.updateNodes.add(node);
         node.flag |= updateflag;
+      }
+
+      if (v.bLink.v2) {
+        node = v.bLink.v2.customData[cd_node].node;
+
+        if (node) {
+          bvh.updateNodes.add(node);
+          node.flag |= updateflag;
+        }
       }
     }
 
@@ -726,7 +883,8 @@ export class PaintOp extends ToolOp {
       colorfilter = colorfilterfuncs[1];
 
       for (let l of mesh.loops) {
-        let grid = l.customData[bvh.cd_grid];
+        let grid = l.customData[cd_grid];
+
         gdimen = grid.dimen;
         break;
       }
@@ -820,11 +978,12 @@ export class PaintOp extends ToolOp {
 
         //v.addFac(v.no, -vlen*d*f2*0.5*strength);
         v.addFac(vec, f);//
-      } else */if (isplane) {
-        f2 = f*strength;
+      } else */
+      if (isplane) {
+        f2 = f * strength;
 
         if (mode === SMOOTH) {
-          f2 *= f2*f2*0.2;
+          f2 *= f2 * f2 * 0.2;
         }
 
         let co = planetmp.load(v);
@@ -845,7 +1004,7 @@ export class PaintOp extends ToolOp {
       }
 
       if (haveGrids && v.bLink) {
-        doGridBoundary(v);
+        //doGridBoundary(v);
       }
 
       ws[wi++] = f;
@@ -897,6 +1056,20 @@ export class PaintOp extends ToolOp {
           doGridBoundary(v);
         }
       }
+    }
+
+    let doTopo = mode === SculptTools.TOPOLOGY || this.inputs.useDynTopo.getValue();
+
+    if (haveGrids && haveQuadTreeGrids && doTopo) {
+      let vs2 = new Set(vs);
+
+      for (let v of vs) {
+        for (let v2 of v.neighbors) {
+          vs2.add(v2);
+        }
+      }
+
+      this.doQuadTopo(mesh, bvh, esize, vs2, p3);
     }
     /*
     if (!haveGrids && mode !== SMOOTH) {
@@ -963,7 +1136,7 @@ export class PaintOp extends ToolOp {
     es = es0;
 
     for (let e of es) {
-      let ri = ~~(Math.random()*es.length*0.9999);
+      let ri = ~~(Math.random() * es.length * 0.9999);
       e = es[ri];
 
       if (es2.length >= max) {
@@ -976,7 +1149,7 @@ export class PaintOp extends ToolOp {
 
       let lensqr = e.v1.vectorDistanceSqr(e.v2);
 
-      if (Math.random() > lensqr/esqr) {
+      if (Math.random() > lensqr / esqr) {
         continue;
       }
 
@@ -996,7 +1169,7 @@ export class PaintOp extends ToolOp {
     let fs2 = new Set();
 
     for (let e1 of es2) {
-      for (let i=0; i<2; i++) {
+      for (let i = 0; i < 2; i++) {
         let v = i ? e1.v2 : e1.v1;
 
         for (let e of v.edges) {
@@ -1061,6 +1234,415 @@ export class PaintOp extends ToolOp {
     }
   }
 
+  doQuadTopo(mesh, bvh, esize, vs, brushco) {
+    //console.log("quadtree topo!")
+    if (util.time_ms() - this._last_time < 15) {
+      return;
+    }
+    //ensure bounds are correct
+    bvh.update();
+
+    let cd_grid = bvh.cd_grid;
+    let cd_node = bvh.cd_node;
+
+    const esize1 = esize*2.0;
+    const esize2 = esize*0.5;
+
+    const esqr1 = esize1 * esize1;
+    const esqr2 = esize2 * esize2;
+
+    let data = [];
+    const DGRID = 0, DNODE = 1, DLOOP = 2, DMODE=3, DTOT = 4;
+
+    const SUBDIVIDE = 0, COLLAPSE = 1;
+
+    const QFLAG = QuadTreeFields.QFLAG,
+      QDEPTH = QuadTreeFields.QDEPTH,
+      QPARENT = QuadTreeFields.QPARENT;
+
+    const LEAF = QuadTreeFlags.LEAF,
+      DEAD = QuadTreeFlags.DEAD;
+
+    const updateflag = BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_DRAW;
+
+    let vs2 = new Set();
+    let grids = new Set();
+    let gridmap = new Map();
+
+    function update_grid(l) {
+      let grid = l.customData[cd_grid];
+
+      grid.flagNeighborRecalc();
+      grids.add(grid);
+
+      grid = l.prev.customData[cd_grid];
+      grid.flagNeighborRecalc();
+      grids.add(grid);
+
+      grid = l.next.customData[cd_grid];
+      grid.flagNeighborRecalc();
+      grids.add(grid);
+    }
+
+    let visit = new Set();
+    let updateloops = new Set();
+    let bnodes = new Set();
+
+    let visits = new Map();
+    let tot = 0;
+
+    let vs3 = [];
+    for (let v of vs) {
+      vs3.push(v);
+    }
+    vs = vs3;
+
+    //vs.sort((a, b) => a.vectorDistanceSqr(brushco) - b.vectorDistanceSqr(brushco));
+
+    let limit = 10;
+
+    for (let _i=0; _i<vs.length; _i++) {
+      let ri = ~~(Math.random()*vs.length*0.99999);
+      let v = vs[ri];
+
+    //for (let v of vs) {
+      if (tot >= limit) {
+        break;
+      }
+
+      let l = v.loopEid;
+      l = mesh.eidmap[l];
+
+      if (l === undefined || !(l instanceof Loop)) {
+        continue;
+      }
+
+      let ok = false;
+      let dtot=0, ntot=0;
+      let etot = 0;
+      let maxlen = 0;
+      let minlen = 1e17;
+
+      for (let v2 of v.neighbors) {
+        if (v2.bLink) {
+          continue;
+        }
+
+        let distsqr = v.vectorDistanceSqr(v2);
+
+        maxlen = Math.max(maxlen, distsqr);
+        minlen = Math.min(minlen, distsqr);
+
+        if (distsqr > esqr1) {
+          dtot++;
+        } else if (distsqr < esqr2) {
+          etot++;
+        }
+
+        ntot++;
+      }
+
+      etot = maxlen < esqr2 ? 1 : 0;
+
+      if (dtot > 0 || etot > 0) {//>= ntot*0.5) {
+        ok = true;
+      }
+
+
+      if (ok) {
+        vs2.add(v);
+
+        let grid = l.customData[cd_grid];
+
+        if (!grids.has(grid)) {
+          grid.recalcPointIndices();
+          visits.set(grid, new Set());
+          gridmap.set(grid, l);
+
+          grids.add(grid);
+        }
+
+        let visit2 = visits.get(grid);
+
+        let topo = grid.getTopo();
+        let ns = grid.nodes;
+
+        let v2 = topo.vmap[v.index];
+
+        if (!v2) {
+          //console.log("error", v.index);
+          continue;
+        }
+
+        let ok = false;
+
+        for (let ni of v2.nodes) {
+          if (tot >= limit) {
+            break;
+          }
+
+          if (!visit2.has(ni) && (ns[ni + QFLAG] & LEAF) && !(ns[ni + QFLAG] & DEAD)) {
+            let mode = etot ? COLLAPSE : SUBDIVIDE;
+            //let mode = dtot > etot ? SUBDIVIDE : COLLAPSE;
+
+            if (mode === COLLAPSE) {
+              if (!ni || visit2.has(grid.nodes[ni+QPARENT])) {
+                continue;
+              }
+
+              ni = grid.nodes[ni+QPARENT];
+            }
+
+            updateloops.add(l);
+
+            data.push(grid);
+            data.push(ni);
+            data.push(l);
+            //data.push(COLLAPSE);
+            data.push(mode);
+
+            visit2.add(ni);
+
+            ok = true;
+            tot++;
+          }
+        }
+
+        if (ok) {
+          let node = v.customData[cd_node].node;
+
+          if (node) {
+            bvh.updateNodes.add(node);
+            node.flag |= updateflag;
+            bnodes.add(node);
+          }
+        }
+      }
+    }
+
+    /*
+    for (let n of bvh.nodes) {//bnodes) {
+      if (n.id < 0) {
+        continue;
+      }
+
+      //bvh.checkJoin(n);
+    }*/
+
+    //console.log(data);
+    //updateloops = new Set(mesh.loops);
+
+    cd_node = mesh.loops.customData.getLayerIndex("bvh");
+
+    for (let l of updateloops) {
+      let grid = l.customData[cd_grid];
+
+      //forcibly unlink vert node refs
+      for (let p of grid.points) {
+        let node = p.customData[cd_node];
+
+        if (node.node && node.node.uniqueVerts) {
+          node.node.uniqueVerts.delete(p);
+        }
+
+        node.node = undefined;
+      }
+
+      bvh.removeFace(l.eid, true, false);
+    }
+
+    /*
+    for (let grid of visits.keys()) {
+      let qnodes = visits.get(grid);
+      let idmul = grid.idmul;
+      let l = gridmap.get(grid);
+
+      let id = l.eid*idmul;
+      for (let ni of qnodes) {
+        bvh.removeFace(id + ni);
+      }
+    }
+    //*/
+
+    for (let node of bnodes) {
+      if (node.id < 0) { //node died at some point?
+        continue;
+      }
+    }
+    bvh.updateTriCounts();
+
+    let maxdimen = 1;
+    for (let grid of grids) {
+      maxdimen = Math.max(maxdimen, grid.dimen);
+    }
+
+    let idmul = (maxdimen + 2) * (maxdimen + 2) * 128;
+
+    //console.log(data.length / DTOT);
+    for (let grid of grids) {
+      grid.recalcFlag |= QRecalcFlags.TOPO;
+
+      //grid._rebuildHash();
+      //grid.checkCustomDataLayout(mesh);
+      //grid.relinkCustomData();
+    }
+
+    let compactgrids = new Set();
+
+    for (let di = 0; di < data.length; di += DTOT) {
+      let grid = data[di], ni = data[di + 1], l = data[di + 2];
+      let mode = data[di+3];
+
+      let ns = grid.nodes, ps = grid.points;
+
+      let key = l.eid * idmul + ni;
+      if (visit.has(key) || (grid.nodes[ni+QFLAG] & DEAD)) {
+        continue;
+      }
+
+      visit.add(key);
+      if (mode === SUBDIVIDE && grid.points.length < 512*512) {// && (ns[ni + QFLAG] & LEAF)) {
+        grid.subdivide(ni, l.eid);
+      } else if (mode === COLLAPSE) {
+        grid.collapse(ni);
+      }
+
+      if (grid.freelist.length > 32) {
+        compactgrids.add(grid);
+      }
+      //console.log(ni, "depth:", ns[ni+QDEPTH], "key", key);
+    }
+
+    if (compactgrids.size > 0) {
+      console.log("COMPACT", compactgrids);
+    }
+
+    for (let grid of compactgrids) {
+      grid.compactNodes();
+    }
+
+    //console.log(bvh.nodes.length, bvh.root.tottri);
+
+    let trisout = [];
+
+    let visit2 = new Set();
+
+    let updateloops2 = new Set();
+
+    for (let l of updateloops) {
+      let grid = l.customData[cd_grid];
+
+      let l2 = l.radial_next;
+      updateloops2.add(l2);
+
+      l2 = l.prev.radial_next;
+      updateloops2.add(l2);
+
+      l2 = l.next.radial_next;
+      updateloops2.add(l2);
+
+      l2 = l.radial_next.next;
+      updateloops2.add(l2);
+
+      l2 = l.radial_next.prev;
+      updateloops2.add(l2);
+
+      l2 = l.next;
+      updateloops2.add(l2);
+
+      l2 = l.prev;
+      updateloops2.add(l2);
+
+      updateloops2.add(l);
+    }
+
+    for (let l of updateloops2) {
+      let grid = l.customData[cd_grid];
+      let updateflag2 = QRecalcFlags.NEIGHBORS|QRecalcFlags.TOPO;
+
+      grid.recalcFlag |= updateflag2;
+      grid.update(mesh, l, cd_grid);
+    }
+
+    for (let l of updateloops) {
+      let grid = l.customData[cd_grid];
+
+      if (visit2.has(grid)) {
+        throw new Error("eek!");
+      }
+      visit2.add(grid);
+
+      let a = trisout.length;
+
+      grid.makeBVHTris(mesh, bvh, l, cd_grid, trisout);
+      //console.log("tris", (trisout.length-a)/5);
+    }
+
+    //console.log("bnodes", bnodes);
+    //console.log("trisout", trisout.length/5, updateloops, updateloops.size);
+
+    let _tmp = [0,0 ,0];
+    function sort3(a, b, c) {
+      _tmp[0] = a;
+      _tmp[1] = b;
+      _tmp[2] = c;
+      _tmp.sort();
+
+      return _tmp;
+    }
+
+    let _i = 0;
+    while (trisout.length > 0) {
+      let ri = (~~(Math.random()*trisout.length/5*0.999999))*5;
+      //let ri = 0;
+
+      let feid = trisout[ri];
+      let id = trisout[ri+1];
+      let v1 = trisout[ri+2];
+      let v2 = trisout[ri+3];
+      let v3 = trisout[ri+4];
+
+      let sort = sort3(v1.index, v2.index, v3.index);
+      let key = `${feid}:${id}:${sort[0]}:${sort[1]}:${sort[2]}`
+      if (visit2.has(key)) {
+        //throw new Error("eek2");
+      } else {
+
+        //console.log("feid", feid);
+        //if (!bvh.hasTri(id)) {
+
+        if (!bvh.hasTri(feid, id)) {
+          bvh.addTri(feid, id, v1, v2, v3, true);
+        }
+        //}
+      }
+
+      //swap with last for fast pop
+      let ri2 = trisout.length - 5;
+
+      for (let j=0; j < 5; j++) {
+        trisout[ri+j] = trisout[ri2+j];
+      }
+
+      trisout.length -= 5;
+
+      if (_i++ >= 97) {
+      //  break;
+      }
+    }
+
+    for (let grid of grids) {
+      grid.recalcFlag |= QRecalcFlags.ALL;
+    }
+    /*
+
+        update_grid(l); //will do l.prev/.next too
+        update_grid(l.radial_next);
+
+
+    * */
+  }
+
   doTopologySubdivide(mesh, bvh, esize, vs, es) {
     let esetin = es;
 
@@ -1081,12 +1663,12 @@ export class PaintOp extends ToolOp {
     let cd_face_node = bvh.cd_face_node;
 
     let pad = 4;
-    let max = 18*pad;
+    let max = 18 * pad;
 
     let lens = [];
 
     for (let e of es) {
-      let ri = ~~(Math.random()*0.9999*es.length);
+      let ri = ~~(Math.random() * 0.9999 * es.length);
       e = es[ri];
 
       if (es2.length >= max) {
@@ -1115,7 +1697,7 @@ export class PaintOp extends ToolOp {
     }
 
     es2.sort((a, b) => lens[a.index] - lens[b.index]);
-    es2 = es2.slice(0, max/pad);
+    es2 = es2.slice(0, max / pad);
     es2 = new Set(es2);
 
     for (let f of fs) {
@@ -1302,7 +1884,7 @@ export class SetBrushRadius extends ToolOp {
 
     if (this.first) {
       this.first = false;
-      this.cent_mpos.load(mpos).subScalar(this.inputs.radius.getValue()/devicePixelRatio/Math.sqrt(2.0));
+      this.cent_mpos.load(mpos).subScalar(this.inputs.radius.getValue() / devicePixelRatio / Math.sqrt(2.0));
 
       this.start_mpos.load(mpos);
       this.last_mpos.load(mpos);
@@ -1334,7 +1916,7 @@ export class SetBrushRadius extends ToolOp {
 
     let ratio = l1 / l2;
 
-    let radius = brush.radius*ratio;
+    let radius = brush.radius * ratio;
     console.log("F", ratio, radius);
 
     this.last_mpos.load(mpos);
@@ -1416,6 +1998,8 @@ export class BVHToolMode extends ToolMode {
   constructor(manager) {
     super(manager);
 
+    this.dynTopoLength = 30;
+
     this.mpos = new Vector2();
     this._radius = undefined;
 
@@ -1434,6 +2018,7 @@ export class BVHToolMode extends ToolMode {
     }
 
     this.drawBVH = false;
+    this.drawWireframe = false;
 
     this._last_bvh_key = "";
     this.view3d = manager !== undefined ? manager.view3d : undefined;
@@ -1520,7 +2105,7 @@ export class BVHToolMode extends ToolMode {
     let browser = document.createElement("data-block-browser-x");
     browser.blockClass = SculptBrush;
     browser.setAttribute("datapath", path + ".brush");
-    browser.filterFunc = function(brush) {
+    browser.filterFunc = function (brush) {
       if (!browser.ctx) {
         return false;
       }
@@ -1588,6 +2173,9 @@ export class BVHToolMode extends ToolMode {
     strip.tool("mesh.reset_grids()");
     strip.tool("mesh.delete_grids()");
 
+    col.prop(path + ".dynTopoLength");
+    col.prop(path + ".brush.flag[DYNTOPO]");
+
     container.flushUpdate();
   }
 
@@ -1599,6 +2187,7 @@ export class BVHToolMode extends ToolMode {
     let strip = header.strip();
     strip.prop(`scene.tools.${name}.drawBVH`);
     strip.prop(`scene.tools.${name}.drawFlat`);
+    strip.prop(`scene.tools.${name}.drawWireframe`);
 
     let row = addHeaderRow();
     let path = `scene.tools.${name}.brush`
@@ -1636,40 +2225,13 @@ export class BVHToolMode extends ToolMode {
   static defineAPI(api) {
     let st = super.defineAPI(api);
 
-    st.bool("drawBVH", "drawBVH", "drawBVH");
+    st.bool("drawWireframe", "drawWireframe", "Draw Wireframe");
+    st.bool("drawBVH", "drawBVH", "Draw BVH");
     st.bool("drawFlat", "drawFlat", "Draw Flat");
     st.enum("tool", "tool", SculptTools).icons(SculptIcons);
+    st.float("dynTopoLength", "dynTopoLength", "Detail Size").range(1.0, 75.0).noUnits();
 
-    let bst = st.struct("_apiBrushHelper", "brush", "Brush");
-
-    bst.float("strength", "strength", "Strength").range(0.001, 2.0).noUnits();
-    bst.float("radius", "radius", "Radius").range(0.1, 150.0).noUnits();
-    bst.enum("tool", "tool", SculptTools).icons(SculptIcons);
-    bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 2.0).noUnits();
-    bst.float("planeoff", "planeoff", "planeoff").range(-3.5, 3.5).noUnits();
-    bst.float("spacing", "spacing", "Spacing").range(0.01, 2.0).noUnits();
-    bst.color4("color", "color", "Primary Color");
-    bst.color4("bgcolor", "bgcolor", "Secondary Color");
-
-    bst.curve1d("falloff", "falloff", "Falloff");
-
-    let dst;
-
-    if (!api.hasStruct(BrushDynamics)) {
-      let cst = api.mapStruct(BrushDynChannel, true);
-      cst.bool("useDynamics", "useDynamics", "Use Dynamics");
-      cst.curve1d("curve", "curve", "Curve");
-
-      dst = api.mapStruct(BrushDynamics, true);
-      let b = new BrushDynamics();
-      for (let ch of b.channels) {
-        dst.struct(ch.name, ch.name, ch.name, cst);
-      }
-    } else {
-      dst = api.mapStruct(BrushDynamics);
-    }
-
-    bst.struct("dynamics", "dynamics", "Dynamics", dst);
+    st.struct("_apiBrushHelper", "brush", "Brush", api.mapStruct(SculptBrush));
 
     return st;
   }
@@ -1734,7 +2296,10 @@ export class BVHToolMode extends ToolMode {
         radiusCurve: brush.radius.curve,
         strengthCurve: brush.strength.curve,
         autosmoothCurve: brush.autosmooth.curve,
-        falloff : brush.falloff
+        falloff: brush.falloff,
+
+        dynTopoLength : this.dynTopoLength,
+        useDynTopo: brush.flag & BrushFlags.DYNTOPO
       });
       return true;
     }
@@ -1865,14 +2430,15 @@ export class BVHToolMode extends ToolMode {
   * itself
   */
   drawObject(gl, uniforms, program, object, mesh) {
+    //return true;
     if (!(this.ctx && this.ctx.object && mesh === this.ctx.object.data)) {
       return false;
     }
 
     let symflag = mesh.symFlag;
     let axes = [-1];
-    for (let i=0; i<3; i++) {
-      if (symflag & (1<<i)) {
+    for (let i = 0; i < 3; i++) {
+      if (symflag & (1 << i)) {
         axes.push(i);
       }
     }
@@ -1911,6 +2477,17 @@ export class BVHToolMode extends ToolMode {
     let ob = object;//let ob = this.ctx.object;
     let bvh = mesh.getBVH(false);
 
+    /*
+    for (let node of new Set(bvh.nodes)) {
+      if (!node || node.id < 0) {
+        continue;
+      }
+
+      bvh.checkJoin(node);
+    }
+    bvh.update();
+     //*/
+
     let parentoff = bvh.drawLevelOffset;
 
     let fullDraw = false;
@@ -1918,6 +2495,8 @@ export class BVHToolMode extends ToolMode {
     let grid_off = GridBase.meshGridOffset(mesh);
     let have_grids = grid_off >= 0;
     let white = [1, 1, 1, 1];
+    let red = [1, 0, 0, 1];
+
     let cd_color = -1;
     let have_color;
 
@@ -2017,7 +2596,20 @@ export class BVHToolMode extends ToolMode {
     let puv2 = [0, 1];
     let puv1 = [1, 0];
 
+    let drawWireframe = this.drawWireframe;
+
+    let tstart = util.time_ms();
+
     function genNodeMesh(node) {
+      if (util.time_ms() - tstart > 15) {
+        //return;
+      }
+
+      if (node.drawData) {
+        node.drawData.destroy(gl);
+        node.drawData = undefined;
+      }
+
       let lflag = LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV | LayerTypes.NORMAL | LayerTypes.ID;
 
       lflag |= LayerTypes.CUSTOM;
@@ -2105,16 +2697,24 @@ export class BVHToolMode extends ToolMode {
 
 
           for (let i=0; i<3; i++) {
-            t1[i] += (Math.random()-0.5)*0.01;
-            t2[i] += (Math.random()-0.5)*0.01;
-            t3[i] += (Math.random()-0.5)*0.01;
+            t1[i] += (Math.random()-0.5)*0.05;
+            t2[i] += (Math.random()-0.5)*0.05;
+            t3[i] += (Math.random()-0.5)*0.05;
 
-          }*/
+          }//*/
 
           //*
           t1 = tri.v1;
           t2 = tri.v2;
           t3 = tri.v3;
+          //*/
+
+          //*
+          if (drawWireframe) {
+            sm.line(t1, t2);
+            sm.line(t2, t3);
+            sm.line(t3, t1);
+          }
           //*/
 
           let tri2 = sm.tri(t1, t2, t3);
@@ -2140,6 +2740,23 @@ export class BVHToolMode extends ToolMode {
             let c3 = tri.v3.customData[cd_color].color;
             //*/
 
+            if (!c1 || !c2 || !c3) {
+              let v = !c1 ? tri.v1 : undefined;
+
+              v = !v && !c2 ? tri.v2 : v;
+              v = !v && !c3 ? tri.v3 : v;
+
+              let l = v.loopEid;
+              l = mesh.eidmap[l];
+              if (l && l.eid === v.loopEid) {
+                l.customData[bvh.cd_grid].checkCustomDataLayout(mesh);
+
+                console.log(l, l.customData[bvh.cd_grid]);
+              }
+              console.error("customdata error", c1, c2, c3, tri);
+              tri2.colors(red, red, red);
+              continue;
+            }
             /*
             let c1 = colorfilter(tri.v1);
             let c2 = colorfilter(tri.v2);
@@ -2159,6 +2776,7 @@ export class BVHToolMode extends ToolMode {
 
       if (node.drawData) {
         node.drawData.destroy(gl);
+        node.drawData = undefined;
       }
 
       //console.log("updating draw data for bvh node", node.id);
@@ -2183,6 +2801,10 @@ export class BVHToolMode extends ToolMode {
 
         if (update) {
           genNodeMesh(node);
+        }
+
+        if (!node.drawData) {
+          continue;
         }
 
         let f = node.id * 0.1 * Math.sqrt(3.0);
@@ -2290,10 +2912,12 @@ export class BVHToolMode extends ToolMode {
 }
 
 BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
-  drawBVH   : bool;
-  drawFlat  : bool;
-  tool      : int;
-  slots     : iterkeys(PaintToolSlot); 
+  drawBVH       : bool;
+  drawFlat      : bool;
+  drawWireframe : bool;
+  dynTopoLength : float;
+  tool          : int;
+  slots         : iterkeys(PaintToolSlot); 
 }`;
 nstructjs.manager.add_class(BVHToolMode);
 

@@ -10,10 +10,11 @@ import {GridBase} from "../mesh/mesh_grids.js";
 let _triverts = new Array(3);
 
 export const BVHFlags = {
-  UPDATE_DRAW         : 1,
-  TEMP_TAG            : 2,
-  UPDATE_UNIQUE_VERTS : 4,
-  UPDATE_NORMALS      : 8
+  UPDATE_DRAW: 1,
+  TEMP_TAG: 2,
+  UPDATE_UNIQUE_VERTS: 4,
+  UPDATE_NORMALS: 8,
+  UPDATE_TOTTRI : 16
 };
 
 export class BVHTri {
@@ -36,19 +37,27 @@ export class BVHTri {
   }
 }
 
+let addtri_tempco1 = new Vector3();
+let addtri_tempco2 = new Vector3();
+let addtri_tempco3 = new Vector3();
+let addtri_tempco4 = new Vector3();
+let addtri_tempco5 = new Vector3();
+
 export class CDNodeInfo extends CustomDataElem {
   constructor() {
     super();
     this.node = undefined;
   }
 
-  static define() {return {
-    elemTypeMask : MeshTypes.VERTEX, //see MeshTypes in mesh.js
-    typeName     : "bvh",
-    uiTypeName   : "bvh",
-    defaultName  : "bvh",
-    flag         : 0
-  }}
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.VERTEX, //see MeshTypes in mesh.js
+      typeName: "bvh",
+      uiTypeName: "bvh",
+      defaultName: "bvh",
+      flag: 0
+    }
+  }
 
   interp() {
     return;
@@ -58,6 +67,7 @@ export class CDNodeInfo extends CustomDataElem {
     b.node = this.node;
   }
 }
+
 CDNodeInfo.STRUCT = nstructjs.inherit(CDNodeInfo, CustomDataElem) + `
 }`;
 nstructjs.register(CDNodeInfo);
@@ -117,6 +127,8 @@ export class BVHNode {
 
     this.subtreeDepth = 0;
 
+    this.nodePad = 0.00001;
+
     this._castRayRets = util.cachering.fromConstructor(IsectRet, 64);
 
     this.cent = new Vector3(min).interp(max, 0.5);
@@ -128,38 +140,80 @@ export class BVHNode {
       console.error("bvh split called on non-leaf node", this);
       return;
     }
+    if (this.allTris.size === 0) {
+      console.error("split called on empty node");
+      return;
+    }
+
+    //this.update();
 
     let n = this;
     while (n) {
-      n.subtreeDepth = Math.max(n.subtreeDepth, this.depth+1);
+      n.subtreeDepth = Math.max(n.subtreeDepth, this.depth + 1);
       n = n.parent;
     }
 
-    this.tottri = 0;
+    let uniqueVerts = this.uniqueVerts;
+    let otherVerts = this.otherVerts;
+    let uniqueTris = this.uniqueTris;
+    let allTris = this.allTris;
 
+    this.uniqueVerts = undefined;
+    this.otherVerts = undefined;
+    this.uniqueTris = undefined;
+    this.allTris = undefined;
+
+    this.tottri = 0; //will be regenerated later
     this.leaf = false;
+
     let axis = (this.axis + 1) % 3;
 
     let min = new Vector3(this.min), max = new Vector3(this.max);
     let split = 0;
     let tot = 0;
 
-    for (let tri of this.allTris) {
+    if (this === this.bvh.root) {
+      let ax = Math.abs(max[0] - min[0]);
+      let ay = Math.abs(max[1] - min[1]);
+      let az = Math.abs(max[2] - min[2]);
+
+      if (ax > ay && ax > az) {
+        axis = 0;
+      } else if (ay > ax && ay > az) {
+        axis = 1;
+      } else if (az > ax && az > ay) {
+        axis = 2;
+      }
+    }
+
+    for (let tri of allTris) {
       tri.nodes.remove(this);
 
       split += tri.v1[axis];
       split += tri.v2[axis];
       split += tri.v3[axis];
+
       tot += 3;
     }
 
     if (!tot) {
-      split = max[axis]*0.5 + min[axis]*0.5;
+      split = max[axis] * 0.5 + min[axis] * 0.5;
     } else {
       split /= tot;
     }
 
-    for (let i=0; i<2; i++) {
+    let dd = Math.abs(max[axis] - min[axis])*0.1;
+
+    if (split < min[axis]+dd) {
+      split = min[axis]+dd;
+    }
+    if (split > max[axis]-dd) {
+      split = max[axis]-dd;
+    }
+
+    split = (min[axis]+max[axis])*0.5;
+
+    for (let i = 0; i < 2; i++) {
       if (!i) {
         max[axis] = split;
       } else {
@@ -170,17 +224,15 @@ export class BVHNode {
 
       let c = this.bvh._newNode(min, max);
 
+      c.min.subScalar(this.nodePad);
+      c.max.addScalar(this.nodePad);
+
       c.axis = axis;
       c.parent = this;
       c.depth = this.depth + 1;
 
       this.children.push(c);
     }
-
-    let uniqueVerts = this.uniqueVerts;
-    let otherVerts = this.otherVerts;
-    let uniqueTris = this.uniqueTris;
-    let allTris = this.allTris;
 
     for (let tri of uniqueTris) {
       tri.node = undefined;
@@ -192,18 +244,13 @@ export class BVHNode {
       v.customData[cd_node].node = undefined;
     }
 
-    this.uniqueVerts = undefined;
-    this.otherVerts = undefined;
-    this.uniqueTris = undefined;
-    this.allTris = undefined;
-
     for (let tri of allTris) {
       this.addTri(tri.id, tri.tri_idx, tri.v1, tri.v2, tri.v3);
     }
   }
 
   closestVerts(co, radius, out) {
-    let radius2 = radius*radius;
+    let radius2 = radius * radius;
 
     if (!this.leaf) {
       for (let c of this.children) {
@@ -279,27 +326,110 @@ export class BVHNode {
     }
   }
 
-  addTri(id, tri_idx, v1, v2, v3) {
-    if (this.leaf && this.allTris.size >= this.bvh.leafLimit && this.depth <= this.bvh.depthLimit) {
+  addTri(id, tri_idx, v1, v2, v3, noSplit = false) {
+    if (!noSplit && this.leaf && this.uniqueTris.size >= this.bvh.leafLimit &&
+        this.depth <= this.bvh.depthLimit) {
+      //console.log(this.depth, this.id, this.allTris.size, this.uniqueTris.size);
       this.split();
     }
 
     this.tottri++;
 
     if (!this.leaf) {
-      let tri = _triverts;
+      let tritmp = _triverts;
 
-      tri[0] = v1;
-      tri[1] = v2;
-      tri[2] = v3;
+      tritmp[0] = v1;
+      tritmp[1] = v2;
+      tritmp[2] = v3;
 
-      for (let c of this.children) {
-        if (triBoxOverlap(c.cent, c.halfsize, tri)) {
-          c.addTri(id, tri_idx, v1, v2, v3);
+      let found = 0;
+
+      let cs = this.children;
+      let ci = 0;
+
+      for (let c of cs) {
+        if (triBoxOverlap(c.cent, c.halfsize, tritmp)) {
+          found |= 1<<ci;
+        }
+
+        ci++;
+      }
+
+      let tri;
+
+      if (found === 1) {
+        tri = cs[0].addTri(id, tri_idx, v1, v2, v3, noSplit);
+      } else if (found === 2) {
+        tri = cs[1].addTri(id, tri_idx, v1, v2, v3, noSplit);
+      }
+
+      let closest, mindis=1e17, closesti;
+
+      let ci2 = 0;
+      for (let c of cs) {
+        /*
+        let dis = Math.abs(c.cent[c.axis] - v1[c.axis]);
+        dis = Math.abs(c.cent[c.axis] - v2[c.axis]);
+        dis = Math.abs(c.cent[c.axis] - v3[c.axis]);
+        //*/
+
+        let co = addtri_tempco1.zero();
+        co.load(v1).add(v2).add(v3).mulScalar(1.0 / 3.0);
+        let dis = c.cent.vectorDistanceSqr(co);
+
+        /*
+        let dis = math.aabb_sphere_dist(v1, c.min, c.max);
+        dis = Math.min(dis, math.aabb_sphere_dist(v2, c.min, c.max));
+        dis = Math.min(dis, math.aabb_sphere_dist(v3, c.min, c.max));
+        //*/
+        //console.log("DIS", dis);
+
+        if (dis < mindis) {
+          closest = c;
+          closesti = ci2;
+          mindis = dis;
+        }
+
+        ci2++;
+      }
+
+      //max sure we pick at least one branch
+      if (!found || found === 3) {
+        if (!found) {
+          //console.warn("triBoxOverlap failure");
+        }
+
+        tri = closest.addTri(id, tri_idx, v1, v2, v3, noSplit);
+
+        if (found === 3) {
+          closesti = (closesti+1) % cs.length;
+          let c = cs[closesti];
+
+          let tri2 = c.addTri(id, tri_idx, v1, v2, v3, noSplit);
+
+          if (!tri2 && tri === undefined) {
+            tri = tri2;
+          }
+        } else {
+          //this.update(true);
+
+          //this.bvh.updateNodes.add(this);
+          //this.bvh.updateNodes.add(closest);
         }
       }
 
-      return;
+      if (found === 3 && closest.leaf) {
+        if (tri.node && tri.node.uniqueTris) {
+          tri.node.uniqueTris.delete(tri);
+          tri.node.otherTris.add(tri);
+        }
+
+        tri.node = closest;
+        closest.uniqueTris.add(tri);
+        closest.otherTris.delete(tri);
+      }
+
+      return tri;
     }
 
     let tri = this.bvh._getTri(id, tri_idx, v1, v2, v3);
@@ -321,8 +451,11 @@ export class BVHNode {
     }
 
     this.allTris.add(tri);
-    this.flag |= BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_NORMALS;
+
+    this.flag |= BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS;
     //this.bvh.updateNodes.add(this);
+
+    return tri;
   }
 
   _addVert(v) {
@@ -353,7 +486,7 @@ export class BVHNode {
     let cd_node = this.bvh.cd_node;
 
     for (let tri of this.allTris) {
-      for (let i=0; i<3; i++) {
+      for (let i = 0; i < 3; i++) {
         let v = tri.vs[i];
 
         let cdn = v.customData[cd_node];
@@ -385,7 +518,7 @@ export class BVHNode {
       //*/
     }
 
-    for (let tri of this.allTris) {
+    for (let tri of this.uniqueTris) {
       let n = math.normal_tri(tri.v1, tri.v2, tri.v3);
 
       tri.no.load(n);
@@ -440,11 +573,28 @@ export class BVHNode {
     }
   }
 
-  update() {
-    if (!this.leaf && this.children.length > 0) {
-      this.min[0] = this.min[1] = this.min[2] = 1e17;
-      this.max[0] = this.max[1] = this.max[2] = -1e17;
+  update(boundsOnly=false) {
+    if (isNaN(this.min.dot(this.max))) {
+      //throw new Error("eek!");
+      console.error("NAN!", this, this.min, this.max);
+      this.min.zero().subScalar(0.01);
+      this.max.zero().addScalar(0.01);
+    }
 
+    if (!boundsOnly && this.leaf) {
+      if (this.flag & BVHFlags.UPDATE_UNIQUE_VERTS) {
+        this.updateUniqueVerts();
+      } else if (this.flag & BVHFlags.UPDATE_NORMALS) {
+        this.updateNormals();
+      }
+    }
+
+    //return;
+    //if (!boundsOnly) {
+    //  return;
+    //}
+
+    if (!this.leaf && this.children.length > 0) {
       for (let c of this.children) {
         c.update();
 
@@ -452,7 +602,8 @@ export class BVHNode {
         this.max.max(c.max);
       }
 
-      //let pad = this.min.vectorDistance(this.max)*0.0001;
+      //let pad = this.min.vectorDistance(this.max)*0.00001;
+      //let pad = 0.00001;
       //this.min.subScalar(pad);
       //this.max.addScalar(pad);
 
@@ -465,29 +616,40 @@ export class BVHNode {
         this.updateNormals();
       }
 
-      this.min[0] = this.min[1] = this.min[2] = 1e17;
-      this.max[0] = this.max[1] = this.max[2] = -1e17;
-
       let min = this.min;
       let max = this.max;
-      let found = this.allTris.size > 0;
 
-      for (let tri of this.allTris) {
+      let omin = new Vector3(min);
+      let omax = new Vector3(max);
+      let size = (max[0]-min[0]) + (max[1]-min[1]) + (max[2]-min[2]);
+      size /= 3.0;
+
+      min.zero().addScalar(1e17);
+      max.zero().addScalar(-1e17);
+
+      for (let tri of this.uniqueTris) {
         min.min(tri.v1);
         max.max(tri.v1);
+
         min.min(tri.v2);
         max.max(tri.v2);
+
         min.min(tri.v3);
         max.max(tri.v3);
       }
 
-      if (!found) {
-        min.zero().addScalar(-0.0001);
-        max.zero().addScalar(0.0001);
+      if (this.uniqueTris.size === 0) {
+        size = 0.01;
+        min.zero().addScalar(-size*0.5);
+        max.zero().addScalar(size*0.5);
+        //min.load(omin);
+        //max.load(omax);
       } else {
-        let pad = min.vectorDistance(max)*0.0001;
-        this.min.subScalar(pad);
-        this.max.addScalar(pad);
+        //let pad = this.nodePad;
+
+        //let pad = min.vectorDistance(max) * 0.001;
+        //this.min.subScalar(pad);
+        //this.max.addScalar(pad);
       }
 
       this.cent.load(this.min).interp(this.max, 0.5);
@@ -505,17 +667,18 @@ export class BVH {
     this.min = new Vector3(min);
     this.max = new Vector3(max);
 
+    this.flag = 0;
     this.updateNodes = new Set();
 
     this.mesh = mesh;
 
-    this.node_idgen = 0;
+    this.node_idgen = 1;
 
     this.forceUniqueTris = false;
     this.storeVerts = false;
 
-    this.leafLimit = 64;
-    this.drawLevelOffset = 4;
+    this.leafLimit = 320;
+    this.drawLevelOffset = 2;
     this.depthLimit = 12;
 
     this.nodes = [];
@@ -526,7 +689,7 @@ export class BVH {
     this.tri_idgen = 0;
 
     this.cd_node = -1;
-    this.cd_face_node = -1;
+    //this.cd_face_node = -1;
     this.tris = new Map();
     this.fmap = new Map();
 
@@ -537,9 +700,9 @@ export class BVH {
 
   destroy(mesh) {
     let cd_node = this.cd_node;
-    let cd_face_node = this.cd_face_node;
+    //let cd_face_node = this.cd_face_node;
 
-    cd_face_node = mesh.faces.customData.getLayerIndex("bvh");
+    //cd_face_node = mesh.faces.customData.getLayerIndex("bvh");
     cd_node = mesh.verts.customData.getLayerIndex("bvh");
 
     let cd_grid = GridBase.meshGridOffset(mesh);
@@ -567,9 +730,9 @@ export class BVH {
       }
     }
 
-    for (let f of mesh.faces) {
-      f.customData[cd_face_node].node = undefined;
-    }
+    //for (let f of mesh.faces) {
+    //  f.customData[cd_face_node].node = undefined;
+    //}
   }
 
   closestVerts(co, radius) {
@@ -587,7 +750,7 @@ export class BVH {
     return this.root.castRay(origin, dir);
   }
 
-  removeFace(id) {
+  removeFace(id, unlinkVerts=false, joinNodes=false) {
     if (!this.fmap.has(id)) {
       return;
     }
@@ -595,7 +758,7 @@ export class BVH {
     let tris = this.fmap.get(id);
 
     for (let t of tris) {
-      this._removeTri(t, true);
+      this._removeTri(t, true, unlinkVerts, joinNodes);
       this.tris.delete(t.tri_idx);
     }
 
@@ -608,22 +771,138 @@ export class BVH {
     return this.tri_idgen;
   }
 
-  _removeTri(tri, partial=false) {
+  checkJoin(node) {
+   // return;
+    if (!node.parent || node.parent === this.root) {
+      return;
+    }
+
+    let p = node.parent;
+    let join;
+
+    let tot = 0;
+
+    for (let c of p.children) {
+      if (c.leaf && c.tottri < this.leafLimit/3) {//c.allTris.size < this.leafLimit/3) {
+        tot++;
+      }
+
+      //join = join || c.leaf && c.allTris.size < this.leafLimit/3;
+    }
+
+    join = tot === 2;
+
+    if (join) {
+      let cd_node = this.cd_node;
+
+      //console.log("EMPTY node!", p.children);
+      let allTris = new Set();
+
+      let rec = (n) => {
+        if (n.id >= 0) {
+          this._remNode(n);
+        }
+
+        if (!n.leaf) {
+          for (let c of n.children) {
+            rec(c);
+          }
+
+          return;
+        }
+
+        for (let v of n.uniqueVerts) {
+          let node = v.customData[cd_node];
+          if (node.node === n) {
+            node.node = undefined;
+          }
+        }
+
+        for (let tri of n.allTris) {
+          if (tri.nodes.indexOf(n) >= 0) {
+            tri.nodes.remove(n);
+          }
+          if (tri.node === n) {
+            tri.node = undefined;
+          }
+          allTris.add(tri);
+        }
+      }
+
+      for (let n2 of p.children) {
+        rec(n2);
+      }
+
+      p.tottri = 0;
+      p.children = [];
+
+      p.leaf = true;
+
+      p.allTris = new Set();
+      p.uniqueTris = new Set();
+      p.otherTris = new Set();
+      p.uniqueVerts = new Set();
+      p.otherVerts = new Set();
+
+      for (let tri of allTris) {
+        p.addTri(tri.id, tri.tri_idx, tri.v1, tri.v2, tri.v3);
+      }
+
+      p.flag |= BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_TOTTRI;
+      this.updateNodes.add(p);
+    }
+  }
+
+  _removeTri(tri, partial = false, unlinkVerts, joinNodes=false) {
     if (tri.removed) {
       return;
     }
 
+    if (unlinkVerts) {
+      for (let node of tri.nodes) {
+        node.uniqueVerts.delete(tri.v1);
+        node.uniqueVerts.delete(tri.v2);
+        node.uniqueVerts.delete(tri.v3);
+
+        node.otherVerts.delete(tri.v1);
+        node.otherVerts.delete(tri.v2);
+        node.otherVerts.delete(tri.v3);
+      }
+    }
+
     tri.removed = true;
 
-    for (let node of tri.nodes) {
-      node.allTris.delete(tri);
-      node.tottri--;
-      node.flag |= BVHFlags.UPDATE_UNIQUE_VERTS|BVHFlags.UPDATE_DRAW;
+    //console.log("tri.nodes", tri.nodes.concat([]));
 
+    for (let node of tri.nodes) {
+      if (!node.allTris || !node.allTris.has(tri)) {
+        //throw new Error("bvh error");
+        console.warn("bvh error");
+        continue;
+      }
+
+      node.allTris.delete(tri);
       //if (node.uniqueTris.has(tri)) {
         node.uniqueTris.delete(tri);
+        node.otherTris.delete(tri);
       //}
+      node.flag |= BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS;
+
+      this.updateNodes.add(node);
+
+      node.tottri--;
     }
+
+    if (joinNodes) {
+      for (let node of tri.nodes) {
+        this.checkJoin(node);
+      }
+    }
+
+    this.flag |= BVHFlags.UPDATE_TOTTRI;
+
+    tri.nodes.length = 0;
+    tri.node = undefined;
 
     if (!partial) {
       let tris = this.fmap.get(tri.id);
@@ -632,8 +911,13 @@ export class BVH {
     }
   }
 
+  hasTri(id, tri_idx) {//, v1, v2, v3) {
+    let tri = this.tris.get(tri_idx);
+    return tri && !tri.removed;
+  }
+
   _getTri(id, tri_idx, v1, v2, v3) {
-    this.tri_idgen = Math.max(this.tri_idgen, tri_idx+1);
+    this.tri_idgen = Math.max(this.tri_idgen, tri_idx + 1);
 
     if (!this.tris.has(tri_idx)) {
       this.tris.set(tri_idx, new BVHTri(id, tri_idx));
@@ -645,9 +929,13 @@ export class BVH {
 
     let tri = this.tris.get(tri_idx);
 
+    tri.removed = false;
+
     tri.v1 = tri.vs[0] = v1;
     tri.v2 = tri.vs[1] = v2;
     tri.v3 = tri.vs[2] = v3;
+
+    //tri.no.load(math.normal_tri(v1, v2, v3));
 
     tri.f = this.mesh.eidmap[id];
 
@@ -675,12 +963,20 @@ export class BVH {
       return;
     }
 
-    delete this.nodes[node.id];
-    this.nodes.remove(node);
+    delete this.node_idmap[node.id];
     node.id = -1;
+
+    let ni = this.nodes.indexOf(node);
+    let last = this.nodes.length-1;
+
+    if (ni >= 0) {
+      this.nodes[ni] = this.nodes[last];
+      this.nodes[last] = undefined;
+      this.nodes.length--;
+    }
   }
 
-  static create(mesh, storeVerts=true, useGrids=true) {
+  static create(mesh, storeVerts = true, useGrids = true) {
     mesh.updateMirrorTags();
 
     if (!mesh.verts.customData.hasLayer(CDNodeInfo)) {
@@ -702,7 +998,7 @@ export class BVH {
     aabb[0] = new Vector3(aabb[0]);
     aabb[1] = new Vector3(aabb[1]);
 
-    let pad = Math.max(aabb[0].vectorDistance(aabb[1])*0.001, 0.001);
+    let pad = Math.max(aabb[0].vectorDistance(aabb[1]) * 0.001, 0.001);
 
     aabb[0].subScalar(pad);
     aabb[1].addScalar(pad);
@@ -717,96 +1013,48 @@ export class BVH {
       bvh.cd_node = mesh.verts.customData.getLayerIndex(CDNodeInfo);
     }
 
-    bvh.cd_face_node = mesh.faces.customData.getLayerIndex(CDNodeInfo);
+    //bvh.cd_face_node = mesh.faces.customData.getLayerIndex(CDNodeInfo);
     bvh.storeVerts = storeVerts;
 
     if (cd_grid >= 0) {
       let rand = new util.MersenneRandom(0);
 
       //we carefully randomize insertion order
-      let ls = [];
-      for (let l of mesh.loops) {
-        ls.push(l);
-      }
-
-      let dimen = 3;
-      for (let l of ls) {
-        let grid = l.customData[cd_grid];
-        dimen = grid.dimen;
-        break;
-      }
-
-      let map2 = [];
-      let li = 0;
-      for (let l of ls) {
-        for (let i=0; i<(dimen-1)*(dimen-1); i++) {
-          map2.push(li);
-          map2.push(i);
-        }
-
-        li++;
-      }
-
-      for (let i=0; i<map2.length/4; i++) {
-        let i2 = i*2;
-        let ri = (~~(Math.random()*map2.length*0.499999))*2;
-
-        let t = map2[i2];
-        let t2 = map2[i2+1];
-
-        map2[i2] = map2[ri];
-        map2[i2+1] = map2[ri+1];
-
-        map2[ri] = t;
-        map2[ri+1] = t2;
-      }
-
-      let map = [1];
-
-      for (let i=0; i<map2.length; i += 2) {
-        let l = ls[map2[i]];
-        let idx = map2[i+1];
-
-        let grid = l.customData[cd_grid];
-
-        map[0] = idx;
-
-        //grid.makeBVHTris(mesh, bvh, l, cd_grid, map);
-      }
-
       let tris = [];
 
       for (let l of mesh.loops) {
         let grid = l.customData[cd_grid];
-        grid.makeBVHTris(mesh, bvh, l, cd_grid, tris);
-        grid.recalcNormals();
 
         for (let p of grid.points) {
           p.bNext = p.bPrev = undefined;
         }
+
+        grid.update(mesh, l, cd_grid);
+        grid.recalcNeighbors(mesh, l, cd_grid);
+
+        let a = tris.length;
+        grid.makeBVHTris(mesh, bvh, l, cd_grid, tris);
+        grid.updateMirrorFlags(mesh);
+
+        grid.recalcNormals();
       }
 
       while (tris.length > 0) {
-        let i = (~~(Math.random()*tris.length/5*0.99999))*5;
+        let i = (~~(rand.random() * tris.length / 5 * 0.99999)) * 5;
         let i2 = tris.length - 5;
 
-        bvh.addTri(tris[i], tris[i+1], tris[i+2], tris[i+3], tris[i+4]);
+        bvh.addTri(tris[i], tris[i + 1], tris[i + 2], tris[i + 3], tris[i + 4]);
 
-        for (let j=0; j<5; j++) {
-          tris[i+j] = tris[i2+j];
+        for (let j = 0; j < 5; j++) {
+          tris[i + j] = tris[i2 + j];
         }
 
         tris.length -= 5;
       }
 
-      for (let l of mesh.loops) {
-        let grid = l.customData[cd_grid];
-        grid.recalcNeighbors(mesh, l, cd_grid);
-      }
-
       for (let node of bvh.nodes) {
         if (node.leaf) {
-          node.flag |= BVHFlags.UPDATE_NORMALS|BVHFlags.UPDATE_DRAW;
+          node.flag |= BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_DRAW;
           bvh.updateNodes.add(node);
         }
       }
@@ -828,7 +1076,33 @@ export class BVH {
     return bvh;
   }
 
+  updateTriCounts() {
+    this.flag &= ~BVHFlags.UPDATE_TOTTRI;
+
+    let rec = (n) => {
+      if (!n.leaf) {
+        n.tottri = 0;
+
+        for (let c of n.children) {
+          n.tottri += rec(c);
+        }
+
+        return n.tottri;
+      } else {
+        n.tottri = n.uniqueTris.size;
+
+        return n.tottri;
+      }
+    }
+
+    rec(this.root);
+  }
+
   update() {
+    if (this.flag & BVHFlags.UPDATE_TOTTRI) {
+      this.updateTriCounts();
+    }
+
     for (let node of this.updateNodes) {
       node.update();
     }
@@ -855,22 +1129,23 @@ export class BVH {
     this.updateNodes = new Set();
   }
 
-  addTri(id, tri_idx, v1, v2, v3, noSplit=false) {
-    let old;
+  addTri(id, tri_idx, v1, v2, v3, noSplit = false) {
+    /*
+    this.root.min.min(v1);
+    this.root.max.max(v1);
+    this.root.min.min(v2);
+    this.root.max.max(v2);
+    this.root.min.min(v3);
+    this.root.max.max(v3);
 
-    if (noSplit) {
-      old = this.depthLimit;
-      this.depthLimit = 1;
-    }
+    this.root.cent.load(this.root.min).interp(this.root.max, 0.5);
+    this.root.halfsize.load(this.root.max).sub(this.root.min);
+    */
 
-    this.root.addTri(id, tri_idx, v1, v2, v3);
-
-    if (noSplit) {
-      this.depthLimit = old;
-    }
+    this.root.addTri(id, tri_idx, v1, v2, v3, noSplit);
   }
 
-  remTri(id) {
+  //remTri(id) {
 
-  }
+  //}
 }

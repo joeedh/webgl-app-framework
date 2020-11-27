@@ -233,7 +233,7 @@ export class DataBlockBrowser extends Container {
     }
 
     if (val !== undefined) {
-      row.prop(`${path}.flag[FAKE_USER]`, PackFlags.USE_ICONS);
+      row.prop(`${path}.lib_flag[FAKE_USER]`, PackFlags.USE_ICONS);
 
       if (this.onValidData !== undefined) {
         col.inherit_packflag = this.inherit_packflag;
@@ -674,8 +674,8 @@ export class ScreenBlock extends DataBlock {
   }
 
   loadSTRUCT(reader) {
-    super.loadSTRUCT(reader);
     reader(this);
+    super.loadSTRUCT(reader);
   }
 }
 ScreenBlock.STRUCT = STRUCT.inherit(ScreenBlock, DataBlock) + `

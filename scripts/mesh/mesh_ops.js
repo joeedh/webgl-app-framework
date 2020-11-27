@@ -974,6 +974,51 @@ export class ResetGridsOp extends MeshOp {
 }
 ToolOp.register(ResetGridsOp);
 
+
+export class ApplyGridBaseOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Apply Base",
+      icon: Icons.RESET_GRIDS,
+      toolpath: "mesh.apply_grid_base",
+      inputs: ToolOp.inherit({
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.apply_grid_base");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let off = GridBase.meshGridOffset(mesh);
+      if (off < 0) {
+        continue;
+      }
+
+      for (let l of mesh.loops) {
+        let grid = l.customData[off];
+
+        grid.applyBase(mesh, l, off);
+      }
+
+      //force bvh reload
+      if (mesh.bvh) {
+        mesh.bvh.destroy(mesh);
+      }
+      mesh.bvh = undefined;
+
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.regenElementsDraw();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(ApplyGridBaseOp);
+
 export class AddCDLayerOp extends MeshOp {
   static tooldef() {
     return {

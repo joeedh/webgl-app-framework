@@ -7,7 +7,8 @@ import {GraphFlags, NodeFlags} from "../core/graph.js";
 
 export const BrushFlags = {
   SELECT: 1,
-  SHARED_SIZE: 2
+  SHARED_SIZE: 2,
+  DYNTOPO : 4
 };
 
 export const DynamicsMask = {
@@ -25,8 +26,9 @@ export const SculptTools = {
   SHARP: 5,
   INFLATE: 6,
   SNAKE: 7,
+  TOPOLOGY : 8,
   PAINT: 128,
-  PAINT_SMOOTH: 129
+  PAINT_SMOOTH: 129,
 };
 
 export const SculptIcons = {}
