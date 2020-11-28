@@ -979,7 +979,7 @@ export class ApplyGridBaseOp extends MeshOp {
   static tooldef() {
     return {
       uiname: "Apply Base",
-      icon: Icons.RESET_GRIDS,
+      icon: Icons.APPLY_GRIDS_BASE,
       toolpath: "mesh.apply_grid_base",
       inputs: ToolOp.inherit({
       }),
@@ -1008,6 +1008,7 @@ export class ApplyGridBaseOp extends MeshOp {
       }
       mesh.bvh = undefined;
 
+      mesh.recalcNormals();
       mesh.regenRender();
       mesh.regenTesellation();
       mesh.regenElementsDraw();

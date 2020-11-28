@@ -313,6 +313,7 @@ export class ElementList {
     }
 
     this.length = this.size = 0;
+    this.freelist.length = 0;
 
     for (let item of list) {
       this._push(item);

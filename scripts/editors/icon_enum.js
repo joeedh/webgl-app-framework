@@ -77,6 +77,7 @@ export let Icons = {
   BISECT       : 71,
   RESET_GRIDS  : 72,
   DELETE_GRIDS : 73,
-  SCULPT_TOPOLOGY : 74
+  SCULPT_TOPOLOGY : 74,
+  APPLY_GRIDS_BASE : 75
 };
 setIconMap(Icons);

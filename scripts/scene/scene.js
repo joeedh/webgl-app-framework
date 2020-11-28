@@ -498,6 +498,10 @@ export class Scene extends DataBlock {
       throw new Error("switchToolMode: mode cannot be undefined");
     }
 
+    if (typeof mode === "boolean") {
+      mode = mode ? 1 : 0;
+    }
+
     let i = typeof mode == "number" ? mode : this.toolModeProp.values[mode];
 
     if (i === undefined) {

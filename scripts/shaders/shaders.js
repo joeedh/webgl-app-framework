@@ -202,11 +202,14 @@ varying vec2 vPrimUV;
 varying vec4 vPrimC1;
 varying vec4 vPrimC2;
 varying vec4 vPrimC3;
+${PolygonOffset.pre}
 
 void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   vec4 n = normalMatrix * vec4(normal, 0.0);
+
+  ${PolygonOffset.vertex("p")}
   
   gl_Position = p;
   
@@ -273,6 +276,7 @@ varying vec4 vPrimC2;
 varying vec4 vPrimC3;
 
 uniform vec4 uColor;
+${PolygonOffset.pre}
 
 void main() {
   float f;
@@ -313,6 +317,8 @@ void main() {
   vec4 c = vec4(f, f, f, 1.0)*uColor*vcol;
   
   c[3] *= alpha;
+
+  ${PolygonOffset.fragment}
   
   gl_FragColor = c;
 }
