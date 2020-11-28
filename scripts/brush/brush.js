@@ -237,7 +237,7 @@ export class SculptBrush extends DataBlock {
   constructor() {
     super();
 
-    this.flag = 0;
+    this.flag = BrushFlags.SHARED_SIZE;
 
     this.tool = SculptTools.CLAY;
     this.strength = 0.5;
@@ -259,6 +259,7 @@ export class SculptBrush extends DataBlock {
       super.copyTo(b, false);
     }
 
+    b.flag = this.flag;
     b.tool = this.tool;
     b.strength = this.strength;
     b.spacing = this.spacing;

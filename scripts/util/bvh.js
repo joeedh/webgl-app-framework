@@ -3,7 +3,7 @@ import * as math from './math.js';
 import * as util from './util.js';
 import {triBoxOverlap, aabb_ray_isect, ray_tri_isect} from './isect.js';
 
-import {CustomDataElem} from "../mesh/customdata.js";
+import {CDFlags, CustomDataElem} from "../mesh/customdata.js";
 import {MeshTypes} from "../mesh/mesh_base.js";
 import {GridBase} from "../mesh/mesh_grids.js";
 
@@ -1311,17 +1311,17 @@ export class BVH {
     times.push(util.time_ms()); //1
 
     if (!mesh.verts.customData.hasLayer(CDNodeInfo)) {
-      mesh.verts.addCustomDataLayer(CDNodeInfo, "bvh");
+      mesh.verts.addCustomDataLayer(CDNodeInfo, "bvh").flag |= CDFlags.TEMPORARY;
     }
 
     if (useGrids && GridBase.meshGridOffset(mesh) >= 0) {
       if (!mesh.loops.customData.hasLayer(CDNodeInfo)) {
-        mesh.loops.addCustomDataLayer(CDNodeInfo, "bvh");
+        mesh.loops.addCustomDataLayer(CDNodeInfo, "bvh").flag |= CDFlags.TEMPORARY;
       }
     }
 
     if (!mesh.faces.customData.hasLayer(CDNodeInfo)) {
-      mesh.faces.addCustomDataLayer(CDNodeInfo, "bvh");
+      mesh.faces.addCustomDataLayer(CDNodeInfo, "bvh").flag |= CDFlags.TEMPORARY;
     }
 
     times.push(util.time_ms()); //2
@@ -1364,7 +1364,7 @@ export class BVH {
 
         for (let p of grid.points) {
           p.customData[cd_node].node = undefined;
-          
+
           p.bLink = undefined;
           p.bNext = p.bPrev = undefined;
         }

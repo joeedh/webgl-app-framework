@@ -11,6 +11,7 @@ import {FloatElem} from "./mesh_customdata.js";
 let blink_rets = util.cachering.fromConstructor(Vector3, 64);
 let blink_rets4 = util.cachering.fromConstructor(Vector4, 64);
 
+
 export class BLink {
   constructor(a, b = undefined, t = 0.5) {
     this.v1 = a;
@@ -2318,11 +2319,11 @@ export class QuadTreeGrid extends GridBase {
 
     for (let i = 0; i < this.customDatas.length; i++) {
       let cd1 = this.customDatas[i];
-      let cd2 = [];
+      let cd2 = new Array(newps.length);
 
       for (let j = 0; j < cd1.length; j++) {
         if (pmap[j] !== undefined) {
-          cd2.push(cd1[j]);
+          cd2[pmap[j]] = cd1[j];
         }
       }
 
@@ -2352,42 +2353,6 @@ export class QuadTreeGrid extends GridBase {
     rec2(ni);
 
     ns[ni + QFLAG] |= LEAF;
-    this.recalcFlag |= QRecalcFlags.ALL;
-    return;
-
-    let rec = (ni) => {
-      if (!(ns[ni + QFLAG] & LEAF)) {
-        for (let i = 0; i < 4; i++) {
-          let ni2 = ns[ni + QCHILD1 + i];
-
-          if (ni2) {
-            rec(ni2);
-          }
-        }
-      }
-
-      if (ni !== 0) {
-        let pi = ns[ni + QPARENT];
-        let qidx = ns[ni + QQUADIDX];
-
-        let d = ns[ni + QDEPTH] - 1;
-
-        for (let i = 0; i < 4; i++) {
-          let ni2 = ns[pi + QCHILD1 + i];
-          let d2 = ns[ni2 + QSUBTREE_DEPTH] + 1;
-
-          d = Math.max(d, d2);
-        }
-
-        ns[pi + QSUBTREE_DEPTH] = d;
-        ns[pi + QCHILD1 + qidx] = 0;
-      }
-
-      this._freeNode(ni);
-    }
-
-    rec(ni);
-
     this.recalcFlag |= QRecalcFlags.ALL;
   }
 
@@ -2424,20 +2389,27 @@ export class QuadTreeGrid extends GridBase {
     let du = (nodes[ni + QMAXU] - nodes[ni + QMINU]) * 0.5;
     let dv = (nodes[ni + QMAXV] - nodes[ni + QMINV]) * 0.5;
 
-    let p1 = this._ensureNodePoint(ni, 0, loopEid);
-    let p2 = this._ensureNodePoint(ni, 1, loopEid);
-    let p3 = this._ensureNodePoint(ni, 2, loopEid);
-    let p4 = this._ensureNodePoint(ni, 3, loopEid);
-    let p5 = this._ensureNodePoint(ni, 4, loopEid);
+    let np1 = this._ensureNodePoint(ni, 0, loopEid);
+    let np2 = this._ensureNodePoint(ni, 1, loopEid);
+    let np3 = this._ensureNodePoint(ni, 2, loopEid);
+    let np4 = this._ensureNodePoint(ni, 3, loopEid);
+    let np5 = this._ensureNodePoint(ni, 4, loopEid);
+
+    let centu = nodes[ni+QCENTU];
+    let centv = nodes[ni+QCENTV];
+
+    let cdps = [0, 0, 0, 0];
+    let cdws = [0, 0, 0, 0];
 
     let news = [[0], [0], [0], [0], [0]];
     let bs = new Array(5);
 
-    p1 = this.subdtemps.next().load(p1);
-    p2 = this.subdtemps.next().load(p2);
-    p3 = this.subdtemps.next().load(p3);
-    p4 = this.subdtemps.next().load(p4);
-    p5 = this.subdtemps.next().load(p5);
+    let p1 = this.subdtemps.next().load(np1);
+    let p2 = this.subdtemps.next().load(np2);
+    let p3 = this.subdtemps.next().load(np3);
+    let p4 = this.subdtemps.next().load(np4);
+    let p5 = this.subdtemps.next().load(np5);
+
     let tmp1 = this.subdtemps.next(), tmp2 = this.subdtemps.next();
 
     let uvs = new Array(5);
@@ -2495,10 +2467,34 @@ export class QuadTreeGrid extends GridBase {
         uvs[3][0] = u + 0.5;
         uvs[3][1] = v;
 
-        for (let k = 0; k < 5; k++) {
+        for (let k = 0; k < 4; k++) {
           if (!news[k][0]) {
             continue;
           }
+
+          /*blinear basis functions
+
+           on factor;
+
+           a := p1 + (p2 - p1)*v2;
+           b := p4 + (p3 - p4)*v2;
+           w := a + (b - a)*u2;
+
+           fw1 := sub(p2=0, p3=0, p4=0, w)/p1;
+           fw2 := sub(p1=0, p3=0, p4=0, w)/p2;
+           fw3 := sub(p1=0, p2=0, p4=0, w)/p3;
+           fw4 := sub(p1=0, p2=0, p3=0, w)/p4;
+
+
+           fw1 := (u2*v2 - u2 - v2 + 1.0);
+           fw2 := (-u2*v2 + v2);
+           fw3 := (u2*v2);
+           fw4 := (u2 - u2*v2);
+
+           fpoly := fw1*p1 + fw2*p2 + fw3*p3 + fw4*p4;
+           fpoly - w;
+
+          */
 
           let u2 = uvs[k][0];
           let v2 = uvs[k][1];
@@ -2507,10 +2503,59 @@ export class QuadTreeGrid extends GridBase {
           tmp2.load(p4).interp(p3, v2);
           tmp1.interp(tmp2, u2);
 
-          bs[k].load(tmp1);
+          let pnew = bs[k];
+          pnew.load(tmp1);
+
+          cdws[0] = u2*v2 - u2 - v2 + 1.0;
+          cdws[1] = v2*(1.0 - u2);
+          cdws[2] = u2*v2;
+          cdws[3] = u2*(1.0 - v2);
+
+          let sum = cdws[0]+cdws[1]+cdws[2]+cdws[3];
+          sum = sum === 0.0 ? 0.00001 : sum;
+
+          for (let i1=0; i1<4; i1++) {
+            cdws[i1] /= sum;
+          }
+
+          console.log(cdws, sum);
+
+          for (let ci=0; ci<pnew.customData.length; ci++) {
+            if (pnew.customData[ci]) {
+              cdps[0] = np1.customData[ci];
+              cdps[1] = np2.customData[ci];
+              cdps[2] = np3.customData[ci];
+              cdps[3] = np4.customData[ci];
+
+              pnew.customData[ci].interp(pnew.customData[ci], cdps, cdws);
+            }
+          }
         }
 
         b5.load(b1).add(b2).add(b3).add(b4).mulScalar(0.25);
+
+        cdws[0] = cdws[1] = cdws[2] = cdws[3] = 0.25;
+        let pnew = b5;
+
+        let cp1, cp2, cp3, cp4;
+
+        cp1 = b1;
+        cp2 = b2;
+        cp3 = b3;
+        cp4 = b4;
+
+        cdws[0] = cdws[1] = cdws[2] = cdws[3] = 0.25;
+
+        for (let ci=0; ci<pnew.customData.length; ci++) {
+          if (pnew.customData[ci]) {
+            cdps[0] = cp1.customData[ci];
+            cdps[1] = cp2.customData[ci];
+            cdps[2] = cp3.customData[ci];
+            cdps[3] = cp4.customData[ci];
+
+            pnew.customData[ci].interp(pnew.customData[ci], cdps, cdws);
+          }
+        }
       }
     }
 

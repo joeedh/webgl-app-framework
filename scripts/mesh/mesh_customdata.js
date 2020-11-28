@@ -2,6 +2,8 @@ import {CustomDataElem} from "./customdata.js";
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import {MeshTypes} from "./mesh_base.js";
 import '../path.ux/scripts/util/struct.js';
+import '../util/floathalf.js';
+
 let STRUCT = nstructjs.STRUCT;
 
 export class UVLayerElem extends CustomDataElem {
@@ -89,8 +91,8 @@ export class OrigIndexElem extends CustomDataElem {
     return ret;
   }
 
-  interp(dest, ws, datas) {
-    if (datas.length == 0) {
+  interp(dest, datas, ws) {
+    if (datas.length === 0) {
       return;
     }
 
@@ -343,6 +345,21 @@ export class ColorLayerElem extends CustomDataElem {
     return true;
   }
 
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+
+    if (this.color.constructor === Array) {
+      for (let i=0; i<4; i++) {
+        this.color[i] = half2float(this.color[i]);
+      }
+
+      this.color = new Vector4(this.color);
+    } else {
+      //old files
+    }
+
+  }
   static define() {return {
     elemTypeMask: MeshTypes.VERTEX|MeshTypes.LOOP,
     typeName    : "color",
@@ -353,7 +370,7 @@ export class ColorLayerElem extends CustomDataElem {
   }};
 }
 ColorLayerElem.STRUCT = STRUCT.inherit(ColorLayerElem, CustomDataElem, "mesh.ColorLayerElem") + `
-  color : vec4;
+  color : array(e, short) | float2half(e);
 }
 `;
 nstructjs.manager.add_class(ColorLayerElem);

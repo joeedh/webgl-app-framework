@@ -23,6 +23,7 @@ import {QuadTreeGrid, GridBase, Grid, gridSides} from "./mesh_grids.js";
 import {CustomDataElem} from "./customdata.js";
 import {bisectMesh, symmetrizeMesh} from "./mesh_utils.js";
 
+import '../util/floathalf.js';
 
 export class DeleteOp extends MeshOp {
   static tooldef() {
@@ -875,6 +876,7 @@ export class EnsureGridsOp extends MeshOp {
         //Grid.initMesh(mesh, dimen, -1)
         QuadTreeGrid.initMesh(mesh, dimen, -1);
 
+        mesh.regenBVH();
         mesh.regenTesellation();
         mesh.regenRender();
         mesh.regenElementsDraw();

@@ -5,7 +5,8 @@ let STRUCT = nstructjs.STRUCT;
 
 export const CDFlags = {
   SELECT       : 1,
-  SINGLE_LAYER : 2
+  SINGLE_LAYER : 2,
+  TEMPORARY    : 4
 };
 
 export let CDElemMap = {};

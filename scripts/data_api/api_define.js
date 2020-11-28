@@ -816,9 +816,11 @@ export function api_define_scene(api, pstruct) {
 export function api_define_brush(api, cstruct) {
   let bst = api_define_datablock(api, SculptBrush);
 
-  bst.flags("flag", "flag", BrushFlags, "Flag");
+  bst.flags("flag", "flag", BrushFlags, "Flag").icons({
+    SHARED_SIZE : Icons.SHARED_BRUSH_SIZE
+  });
   bst.float("strength", "strength", "Strength").range(0.001, 2.0).noUnits();
-  bst.float("radius", "radius", "Radius").range(0.1, 150.0).noUnits();
+  bst.float("radius", "radius", "Radius").range(0.1, 350.0).noUnits().step(0.5);
   bst.enum("tool", "tool", SculptTools).icons(SculptIcons);
   bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 2.0).noUnits();
   bst.float("planeoff", "planeoff", "planeoff").range(-3.5, 3.5).noUnits();

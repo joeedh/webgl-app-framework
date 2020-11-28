@@ -1767,6 +1767,13 @@ export class Mesh extends SceneObjectData {
     })()
   }
 
+  regenBVH() {
+    if (this.bvh) {
+      this.bvh.destroy(this);
+      this.bvh = undefined;
+    }
+  }
+
   regenTesellation() {
     this._last_elem_update_key = ""; //clear partial redraw
     this._last_bvh_key = ""; //flag bvh update

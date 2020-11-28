@@ -22,6 +22,7 @@ import {
   EnumProperty,
   FlagProperty,
   ListProperty,
+  PackFlags,
   Curve1D, Curve1DProperty, SplineTemplates
 } from "../../../path.ux/scripts/pathux.js";
 import {MeshFlags} from "../../../mesh/mesh.js";
@@ -1373,6 +1374,12 @@ export class PaintOp extends ToolOp {
     }
     vs = vs3;
 
+    let dn1 = new Vector3();
+    let dn2 = new Vector3();
+    let dn3 = new Vector3();
+    let dn4 = new Vector3();
+    let dn5 = new Vector3();
+
     let rsqr = brushradius*brushradius;
 
     //vs.sort((a, b) => a.vectorDistanceSqr(brushco) - b.vectorDistanceSqr(brushco));
@@ -1462,9 +1469,31 @@ export class PaintOp extends ToolOp {
           let found = false;
           for (let i=0; i<5; i++) {
             let p = grid.points[ns[ni+QPOINT1+i]];
+            let p2 = grid.points[ns[ni+QPOINT1+((i+1)%5)]];
             let dist = p.vectorDistanceSqr(brushco);
 
             if (dist <= rsqr) {
+              found = true;
+              break;
+            }
+
+            let t = dn1.load(p2).sub(p);
+            let len = t.vectorLength();
+
+            if (len > 0.000001) {
+              t.mulScalar(1.0 / len);
+            }
+
+            let co = dn2.load(brushco).sub(p);
+
+            let dt = t.dot(co) / len;
+
+            dt = Math.min(Math.max(dt, 0.0), 1.0);
+
+            co.load(p).interp(p2, dt);
+            dist = p.vectorDistanceSqr(co);
+
+            if (dist < rsqr) {
               found = true;
               break;
             }
@@ -2012,8 +2041,20 @@ export class SetBrushRadius extends ToolOp {
     }
 
     let ratio = l1 / l2;
+    let radius;
 
-    let radius = brush.radius * ratio;
+    if (brush.flag & BrushFlags.SHARED_SIZE) {
+      let bvhtool = ctx.scene.toolmode_namemap.bvh;
+      if (bvhtool) {
+        radius = bvhtool.sharedBrushRadius;
+      } else {
+        radius = brush.radius;
+      }
+    } else {
+      radius = brush.radius;
+    }
+
+    radius *= ratio;
     console.log("F", ratio, radius);
 
     this.last_mpos.load(mpos);
@@ -2040,7 +2081,8 @@ export class SetBrushRadius extends ToolOp {
     }
 
     if (!("radius" in args)) {
-      tool.inputs.radius.setValue(brush.radius);
+      let radius = brush.flag & BrushFlags.SHARED_SIZE ? toolmode.sharedBrushRadius : brush.radius;
+      tool.inputs.radius.setValue(radius);
     }
 
     return tool;
@@ -2054,7 +2096,15 @@ export class SetBrushRadius extends ToolOp {
     let brush = ctx.datalib.get(this.inputs.brush.getValue());
 
     if (brush) {
-      brush.radius = this.inputs.radius.getValue();
+      if (brush.flag & BrushFlags.SHARED_SIZE) {
+        let toolmode = ctx.scene.toolmode_namemap.bvh;
+
+        if (toolmode) {
+          toolmode.sharedBrushRadius = this.inputs.radius.getValue();
+        }
+      } else {
+        brush.radius = this.inputs.radius.getValue();
+      }
     }
   }
 
@@ -2081,7 +2131,15 @@ export class SetBrushRadius extends ToolOp {
       return;
     }
 
-    brush.radius = undo.radius;
+    if (brush.flag & BrushFlags.SHARED_SIZE) {
+      let toolmode = ctx.scene.toolmode_namemap.bvh;
+
+      if (toolmode) {
+        toolmode.sharedBrushRadius = undo.radius;
+      }
+    } else {
+      brush.radius = undo.radius;
+    }
   }
 
   on_keydown(e) {
@@ -2094,6 +2152,8 @@ ToolOp.register(SetBrushRadius);
 export class BVHToolMode extends ToolMode {
   constructor(manager) {
     super(manager);
+
+    this.sharedBrushRadius = 55;
 
     this.dynTopoLength = 30;
     this.dynTopoDepth = 4;
@@ -2176,7 +2236,9 @@ export class BVHToolMode extends ToolMode {
       return;
     }
 
-    let r = this._radius !== undefined ? this._radius : brush.radius;
+    let radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius;
+
+    let r = this._radius !== undefined ? this._radius : radius;
     drawCircle(this.mpos[0], this.mpos[1], r);
   }
 
@@ -2221,12 +2283,17 @@ export class BVHToolMode extends ToolMode {
     function doChannel(name) {
       let col2 = col.col();
 
+
       col2.style["padding"] = "7px";
       col2.style["margin"] = "2px";
       col2.style["border"] = "1px solid rgba(25,25,25,0.25)";
       col2.style["border-radius"] = "15px";
 
-      col2.prop(path + `.brush.${name}`);
+      if (name === "radius") {
+        col2.prop(path + `.brushRadius`);
+      } else {
+        col2.prop(path + `.brush.${name}`);
+      }
 
       panel = col2.panel("Dynamics");
 
@@ -2301,10 +2368,39 @@ export class BVHToolMode extends ToolMode {
     strip.tool("mesh.symmetrize()");
 
     strip = addHeaderRow().strip();
-    strip.prop(path + ".radius");
+    strip.prop(`scene.tools.${name}.brushRadius`);
     strip.prop(path + ".strength");
+    strip.prop(path + ".flag[SHARED_SIZE]", PackFlags.HIDE_CHECK_MARKS);
 
     header.flushUpdate();
+  }
+
+  get _brushSizeHelper() {
+    let brush = this.getBrush();
+
+    if (!brush) {
+      return 55.0;
+    }
+
+    if (brush.flag & BrushFlags.SHARED_SIZE) {
+      return this.sharedBrushRadius;
+    } else {
+      return brush.radius;
+    }
+  }
+
+  set _brushSizeHelper(val) {
+    let brush = this.getBrush();
+
+    if (!brush) {
+      return 55;
+    }
+
+    if (brush.flag & BrushFlags.SHARED_SIZE) {
+      this.sharedBrushRadius = val;
+    } else {
+      brush.radius = val;
+    }
   }
 
   get _apiBrushHelper() {
@@ -2327,6 +2423,9 @@ export class BVHToolMode extends ToolMode {
 
   static defineAPI(api) {
     let st = super.defineAPI(api);
+
+    st.float("sharedBrushRadius", "sharedBrushRadius", "Shared Radius").noUnits().range(0, 450);
+    st.float("_brushSizeHelper", "brushRadius", "Radius").noUnits().range(0, 450).step(0.5);
 
     st.bool("drawWireframe", "drawWireframe", "Draw Wireframe");
     st.bool("drawBVH", "drawBVH", "Draw BVH");
@@ -2388,10 +2487,12 @@ export class BVHToolMode extends ToolMode {
 
       console.log("dynmask", dynmask);
 
+      let radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius;
+
       this.ctx.api.execTool(this.ctx, "bvh.paint()", {
         strength: brush.strength,
         tool: e.shiftKey ? smoothtool : brush.tool,
-        radius: brush.radius,
+        radius: radius,
         autosmooth: brush.autosmooth,
         planeoff: brush.planeoff,
         spacing: brush.spacing,
@@ -2974,11 +3075,20 @@ export class BVHToolMode extends ToolMode {
 
           }
 
+          if (drawWireframe) {
+            uniforms.polygonOffset = window.d || 10.0;
+            node.drawData.drawLines(gl, uniforms, program2);
+            uniforms.polygonOffset = 0.0;
+          }
+
+          node.drawData.primflag &= ~PrimitiveTypes.LINES;
           node.drawData.draw(gl, uniforms, program2);
 
-          uniforms.polygonOffset = window.d || 0.5;
-          node.drawData.drawLines(gl, uniforms, program2);
-          uniforms.polygonOffset = 0.0;
+          if (drawWireframe) {
+           // uniforms.polygonOffset = window.d || 10.0;
+            //node.drawData.drawLines(gl, uniforms, program2);
+            //uniforms.polygonOffset = 0.0;
+          }
 
           uniforms.objectMatrix = oldmat;
         }
@@ -3054,7 +3164,8 @@ BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
   dynTopoLength : float;
   dynTopoDepth  : int;
   tool          : int;
-  slots         : iterkeys(PaintToolSlot); 
+  slots         : iterkeys(PaintToolSlot);
+  sharedBrushRadius : float; 
 }`;
 nstructjs.manager.add_class(BVHToolMode);
 
