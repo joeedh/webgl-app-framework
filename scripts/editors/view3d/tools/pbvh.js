@@ -146,7 +146,8 @@ export class PaintOp extends ToolOp {
 
         dynTopoLength : new FloatProperty(25),
         dynTopoDepth : new IntProperty(20),
-        useDynTopo : new BoolProperty(false)
+        useDynTopo : new BoolProperty(false),
+        useMultiResDepth : new BoolProperty(false)
       }
     }
   }
@@ -767,7 +768,7 @@ export class PaintOp extends ToolOp {
       strength *= 2.0;
       isplane = true;
     } else if (mode === SMOOTH) {
-      //isplane = true;
+      isplane = true;
     } else if (mode === PAINT) {
 
     } else if (mode === SHARP) {
@@ -1062,7 +1063,7 @@ export class PaintOp extends ToolOp {
         f2 = f * strength;
 
         if (mode === SMOOTH) {
-          f2 *= f2 * f2 * 0.2;
+          f2 *= f2 * f2 * 0.1;
         }
 
         let co = planetmp.load(v);
@@ -1077,7 +1078,7 @@ export class PaintOp extends ToolOp {
 
         c.color.interp(color, f * strength);
       } else if (mode === INFLATE) {
-        v.addFac(v.no, f * strength * 0.1);
+        v.addFac(v.no, f * strength * 0.025);
       } else if (mode === SNAKE) {
         v.addFac(vec, f * strength);
       }
@@ -1142,6 +1143,7 @@ export class PaintOp extends ToolOp {
     }
 
     let doTopo = mode === SculptTools.TOPOLOGY || this.inputs.useDynTopo.getValue();
+    doTopo = doTopo && !this.inputs.useMultiResDepth.getValue();
 
     if (haveGrids && haveQuadTreeGrids && doTopo) {
       let vs2 = new Set(vs);
@@ -1328,8 +1330,8 @@ export class PaintOp extends ToolOp {
     let cd_grid = bvh.cd_grid;
     let cd_node = bvh.cd_node;
 
-    const esize1 = esize*2.0;
-    const esize2 = esize*0.5;
+    const esize1 = esize*1.5;
+    const esize2 = esize*0.75;
 
     const esqr1 = esize1 * esize1;
     const esqr2 = esize2 * esize2;
@@ -1352,21 +1354,6 @@ export class PaintOp extends ToolOp {
     let vs2 = new Set();
     let grids = new Set();
     let gridmap = new Map();
-
-    function update_grid(l) {
-      let grid = l.customData[cd_grid];
-
-      grid.flagNeighborRecalc();
-      grids.add(grid);
-
-      grid = l.prev.customData[cd_grid];
-      grid.flagNeighborRecalc();
-      grids.add(grid);
-
-      grid = l.next.customData[cd_grid];
-      grid.flagNeighborRecalc();
-      grids.add(grid);
-    }
 
     let visit = new Set();
     let updateloops = new Set();
@@ -1418,7 +1405,7 @@ export class PaintOp extends ToolOp {
       let minlen = 1e17;
 
       for (let v2 of v.neighbors) {
-        if (v2.bLink) {
+        if (v2.bLink && v2.loopEid !== v.loopEid) {
           continue;
         }
 
@@ -1454,6 +1441,7 @@ export class PaintOp extends ToolOp {
           gridmap.set(grid, l);
 
           grids.add(grid);
+          grid.update(mesh, l, cd_grid);
         }
 
         let visit2 = visits.get(grid);
@@ -1476,9 +1464,9 @@ export class PaintOp extends ToolOp {
           }
 
           let found = false;
-          for (let i=0; i<5; i++) {
+          for (let i=0; i<4; i++) {
             let p = grid.points[ns[ni+QPOINT1+i]];
-            let p2 = grid.points[ns[ni+QPOINT1+((i+1)%5)]];
+            let p2 = grid.points[ns[ni+QPOINT1+((i+1)%4)]];
             let dist = p.vectorDistanceSqr(brushco);
 
             if (dist <= rsqr) {
@@ -1513,7 +1501,14 @@ export class PaintOp extends ToolOp {
           }
 
           if (!visit2.has(ni) && (ns[ni + QFLAG] & LEAF) && !(ns[ni + QFLAG] & DEAD)) {
-            let mode = etot ? COLLAPSE : SUBDIVIDE;
+            let mode;// = etot ? COLLAPSE : SUBDIVIDE;
+            if (etot) {
+              mode = COLLAPSE;
+            } else if (dtot) {
+              mode = SUBDIVIDE;
+            } else {
+              continue;
+            }
             //let mode = dtot > etot ? SUBDIVIDE : COLLAPSE;
 
             if (mode === SUBDIVIDE && ns[ni+QDEPTH] >= maxDepth) {
@@ -2357,11 +2352,13 @@ export class BVHToolMode extends ToolMode {
 
     panel = col.panel("Multi Resolution");
     panel.prop(path + ".dynTopoDepth").setAttribute("labelOnTop", true);
-    
+
     strip = panel.strip();
 
     strip.prop(path + ".enableMaxEditDepth");
     strip.prop(path + ".gridEditDepth");
+
+    panel.tool("mesh.subdivide_grids()");
 
     //panel
     container.flushUpdate();
@@ -2527,7 +2524,8 @@ export class BVHToolMode extends ToolMode {
 
         dynTopoLength : this.dynTopoLength,
         dynTopoDepth : this.dynTopoDepth,
-        useDynTopo: brush.flag & BrushFlags.DYNTOPO
+        useDynTopo: brush.flag & BrushFlags.DYNTOPO,
+        useMultiResDepth : this.enableMaxEditDepth
       });
       return true;
     }
@@ -3009,9 +3007,9 @@ export class BVHToolMode extends ToolMode {
 
           //*
           if (drawWireframe) {
-            //sm.line(t1, t2);
+            sm.line(t1, t2);
             sm.line(t2, t3);
-            //sm.line(t3, t1);
+            sm.line(t3, t1);
           }
           //*/
 

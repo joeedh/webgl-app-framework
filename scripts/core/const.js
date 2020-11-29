@@ -1,4 +1,4 @@
-export const APP_VERSION = 3;
+export const APP_VERSION = 4;
 export const APP_KEY_NAME = "webgl-app-framework";
 export const FILE_EXT = "wproj";
 export const FILE_MAGIC = "WPRJ";

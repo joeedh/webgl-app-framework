@@ -1369,6 +1369,7 @@ export class BVH {
           p.bNext = p.bPrev = undefined;
         }
 
+        grid.recalcFlag |= 2;
         grid.update(mesh, l, cd_grid);
         grid.recalcNeighbors(mesh, l, cd_grid);
 

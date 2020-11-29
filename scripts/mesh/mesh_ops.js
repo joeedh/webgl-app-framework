@@ -890,6 +890,46 @@ export class EnsureGridsOp extends MeshOp {
 ToolOp.register(EnsureGridsOp);
 
 
+export class SubdivideGridsOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Subdivide Grids",
+      toolpath: "mesh.subdivide_grids",
+      inputs: ToolOp.inherit({
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.subdivide_grids");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let cd_grid = mesh.loops.customData.getLayerIndex(QuadTreeGrid);
+
+      if (cd_grid >= 0) {
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+
+          grid.update(mesh, l, cd_grid);
+          grid.subdivideAll(mesh, l, cd_grid);
+          grid.update(mesh, l, cd_grid);
+        }
+      }
+
+      mesh.regenBVH();
+      mesh.regenTesellation();
+      mesh.regenRender();
+      mesh.regenElementsDraw();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(SubdivideGridsOp);
+
+
 export class DeleteGridsOp extends MeshOp {
   static tooldef() {
     return {

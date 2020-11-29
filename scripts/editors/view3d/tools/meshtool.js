@@ -173,6 +173,7 @@ export class MeshToolBase extends ToolMode {
       }
     }
 
+    /*
     let ret = castViewRay(ctx, ctx.selectMask, mpos, ctx.view3d, CastModes.FRAMEBUFFER);
     let p;
     if (ret !== undefined) {
@@ -190,7 +191,8 @@ export class MeshToolBase extends ToolMode {
 
     console.log(ret);
     return true;
-
+    */
+    
     return e.button === 0;// || (e.touches !== undefined && e.touches.length === 0);
   }
 

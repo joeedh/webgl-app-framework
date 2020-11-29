@@ -690,6 +690,19 @@ export class AppState {
 
   /** this is executed before block re-linking has happened*/
   do_versions(version, datalib) {
+    for (let mesh of datalib.mesh) {
+      let cd_grid = mesh.loops.customData.getLayerIndex("QuadTreeGrid");
+
+      if (cd_grid < 0) {
+        continue;
+      }
+
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+        grid.updateNormalQuad(l);
+        grid.pruneDeadPoints();
+      }
+    }
   }
 
   /** this is executed after block re-linking has happened*/
