@@ -9,7 +9,7 @@ import {genResBrowserScreen} from '../screengen.js';
 
 import {Editor} from '../editor_base.js';
 import {KeyMap} from "../../path.ux/scripts/util/simple_events.js";
-import {Area} from "../../path.ux/scripts/screen/ScreenArea.js";
+import {Area, AreaFlags} from "../../path.ux/scripts/screen/ScreenArea.js";
 import {UIBase} from "../../path.ux/scripts/core/ui_base.js";
 
 let ResIconStyle =`
@@ -76,7 +76,8 @@ export class ResourceIcon extends UIBase {
   }
 
   static define() {return {
-    tagname : "resource-icon-x"
+    tagname : "resource-icon-x",
+    flag : AreaFlags.HIDDEN
   }}
 
   updateCellSize() {

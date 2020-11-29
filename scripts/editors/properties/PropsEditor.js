@@ -257,6 +257,8 @@ export class PropsEditor extends Editor {
     super.init();
     this.background = this.getDefault("DefaultPanelBG");
 
+    this.style["overflow"] = "scroll";
+
     let header = this.header;
     let container = this.container;
 
@@ -332,7 +334,7 @@ export class PropsEditor extends Editor {
       tagname: "props-editor-x",
       areaname: "props",
       uiname: "Properties",
-      icon: -1
+      icon: Icons.EDITOR_PROPERTIES
     }
   }
 }

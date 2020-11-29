@@ -1,7 +1,5 @@
 import '../path.ux/scripts/util/struct.js';
 import * as util from '../util/util.js';
-import {Node} from "../core/graph.js";
-let STRUCT = nstructjs.STRUCT;
 
 export const CDFlags = {
   SELECT       : 1,
@@ -77,7 +75,10 @@ export class CustomDataElem {
     uiTypeName   : "uiTypeName",
     defaultName  : "defaultName",
     valueSize    : undefined,
-    flag         : 0
+    flag         : 0,
+
+    //if not undefined, a LayerSettingsBase child class defining overall settings that's not per-element
+    settingsClass : undefined,
   }};
 
   static register(cls) {
@@ -113,7 +114,62 @@ mesh.CustomDataElem {
 `;
 nstructjs.manager.add_class(CustomDataElem);
 
-export function buildCDAPI(api, dstruct) {
+export function buildCDAPI(api) {
+  let layerst = api.mapStruct(CustomDataLayer, true);
+
+  layerst.string("name", "name", "Name");
+  layerst.dynamicStruct("typeSettings", "settings", "Settings");
+  let def = layerst.pathmap["settings"];
+  def.customGet(function() {
+    return this.dataref.getTypeSettings();
+  });
+
+  layerst.int("index", "index", "index").readOnly();
+  layerst.string("typeName", "typeName", "Type").readOnly();
+
+  let st = api.mapStruct(CustomData, true);
+
+  function makeGetter(typeName) {
+    return function() {
+      let customData = this.dataref;
+      return customData.getActiveLayer(typeName);
+    }
+  }
+
+  for (let cls of CDElemTypes) {
+    let ldef = cls.define();
+
+    //let def = st.struct
+    if (ldef.settingsClass) {
+      ldef.settingsClass.apiDefine(api);
+    }
+
+    st.struct(ldef.typeName, ldef.typeName, "Active " + ldef.typeName + " layer", layerst);
+    let def = st.pathmap[ldef.typeName];
+
+    def.customGetSet(makeGetter(ldef.typeName));
+  }
+
+  st.list("flatlist", "layers", [
+    function getIter(api, list) {
+      return list;
+    },
+    function getLength(api, list) {
+      return list.length;
+    },
+    function get(api, list, key) {
+      return list[key];
+    },
+    function getKey(api, list, obj) {
+      return obj !== undefined ? obj.list : -1;
+    },
+    function getStruct(api, list, key) {
+      return api.mapStruct(CustomDataLayer, false);
+    }
+  ]);
+}
+
+export function buildElementAPI(api, dstruct) {
   for (let cls of CDElemTypes) {
     let cstruct = api.mapStruct(cls, true);
     cls.apiDefine(api, cstruct);
@@ -175,6 +231,39 @@ export function buildCDAPI(api, dstruct) {
   ]);
 }
 
+export class LayerSettingsBase {
+  copyTo(b) {
+    throw new Error("implement me");
+  }
+
+  static apiDefine(api) {
+
+  }
+
+  copy() {
+    let ret = new this.constructor();
+
+    this.copyTo(ret);
+
+    return ret;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+  }
+}
+LayerSettingsBase.STRUCT = `
+LayerSettingsBase {
+}
+`;
+nstructjs.register(LayerSettingsBase);
+
+class _Nothing extends LayerSettingsBase {
+}
+_Nothing.STRUCT = nstructjs.inherit(_Nothing, LayerSettingsBase) + `
+}`;
+nstructjs.register(_Nothing);
+
 export class CustomDataLayer {
   constructor(typename, name=this.constructor.name, flag=0, id=-1) {
     this.elemTypeMask = 0;
@@ -182,16 +271,36 @@ export class CustomDataLayer {
     this.name = name;
     this.flag = flag;
     this.id = id;
+    this.typeSettings = undefined;
     this.index = 0; //index in flat list of layers in elements
+  }
+
+  getTypeSettings() {
+    if (this.typeSettings === undefined) {
+      let cls = CustomDataElem.getTypeClass(this.typeName);
+      let def = cls.define();
+
+      if (def.settingsClass) {
+        this.typeSettings = new def.settingsClass();
+      }
+    }
+
+    return this.typeSettings;
   }
 
   [Symbol.keystr]() {
     return cdLayerKey(this.typeName, this.name);
   }
 
+  //used by struct script
+  __getNothing() {
+    return new _Nothing();
+  }
+
   copy() {
     let ret = new CustomDataLayer(this.typeName, this.name, this.flag, this.id);
 
+    ret.settingsClass = this.settingsClass.copy();
     ret.index = this.index;
     ret.elemTypeMask = this.elemTypeMask;
 
@@ -200,6 +309,10 @@ export class CustomDataLayer {
 
   loadSTRUCT(reader) {
     reader(this);
+
+    if (this.typeSettings instanceof _Nothing) {
+      this.typeSettings = undefined;
+    }
   }
 }
 
@@ -211,6 +324,7 @@ mesh.CustomDataLayer {
   id            : int;
   index         : int;
   elemTypeMask  : int;
+  typeSettings  : abstract(Object) | this.typeSettings === undefined ? this.__getNothing() : this.typeSettings;
 }
 `;
 nstructjs.manager.add_class(CustomDataLayer);
@@ -372,6 +486,10 @@ export class CustomData {
     }
 
     return cdmap;
+  }
+
+  getLayerSettings(typecls_or_name) {
+    return this.getActiveLayer(typecls_or_name).getTypeSettings();
   }
 
   addLayer(cls, name) {

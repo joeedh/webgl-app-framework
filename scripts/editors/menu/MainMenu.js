@@ -119,6 +119,7 @@ export class MenuBarEditor extends Editor {
     super();
 
     this.menuSize = menuSize;
+    this.areaDragToolEnabled = false;
 
     this._switcher_key = "";
     this._ignore_tab_change = false;
@@ -156,7 +157,7 @@ export class MenuBarEditor extends Editor {
     this.background = this.getDefault("DefaultPanelBG");
 
     let header = this.header;
-    let strip = this._strip = header.strip();
+    let strip = this._strip = header.row();
 
     this.console = document.createElement("tool-console-x");
     this.container.add(this.console);
@@ -360,7 +361,7 @@ export class MenuBarEditor extends Editor {
     tagname : "menu-editor-x",
     areaname : "MenuBarEditor",
     uiname   : "Main Menu",
-    icon     : -1,
+    icon     : Icons.EDITOR_MENU,
     flag     : AreaFlags.HIDDEN|AreaFlags.NO_SWITCHER
   }}
 }

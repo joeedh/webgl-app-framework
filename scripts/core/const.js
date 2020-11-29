@@ -3,9 +3,9 @@ export const APP_KEY_NAME = "webgl-app-framework";
 export const FILE_EXT = "wproj";
 export const FILE_MAGIC = "WPRJ";
 
-export const autoSizeUpdate = true;
-export const useAreaTabSwitcher = false;
-export const cacheSelectBufs = true;
+import config from '../config/config.js';
+
+export var cacheSelectBufs = config.cacheSelectBufs;
 
 export const DEBUG = {
   enableDebugGraphPanel : true,

@@ -3,14 +3,47 @@ import * as math from '../util/math.js';
 import * as util from '../util/util.js';
 
 import {MeshFlags, MeshTypes, RecalcFlags} from "./mesh_base.js";
-import {CustomData, CustomDataElem} from "./customdata.js";
+import {CustomData, CustomDataElem, LayerSettingsBase} from "./customdata.js";
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {ChunkedSimpleMesh} from "../core/simplemesh.js";
 import {FloatElem} from "./mesh_customdata.js";
 
 let blink_rets = util.cachering.fromConstructor(Vector3, 64);
 let blink_rets4 = util.cachering.fromConstructor(Vector4, 64);
+let tmptanmat = new Matrix4();
 
+export const GridSettingFlags = {
+  SELECT: 1,
+  ENABLE_DEPTH_LIMIT: 2,
+}
+
+export class GridSettings extends LayerSettingsBase {
+  constructor() {
+    super();
+    this.flag = 0;
+    this.depthLimit = 2;
+  }
+
+  static apiDefine(api) {
+    let st = api.mapStruct(GridSettings, true);
+
+    st.flags("flag", "flag", GridSettingFlags, "Flag", "Flags");
+    let lvl = st.int("depthLimit", "depthLimit", "Limit", "Maximum subdivision level");
+
+    lvl.range(0, 10);
+  }
+
+  copyTo(b) {
+    b.flag = this.flag;
+    b.depthLimit = this.depthLimit;
+  }
+}
+
+GridSettings.STRUCT = nstructjs.inherit(GridSettings, LayerSettingsBase, "mesh.GridSettings") + `
+  flag       : int;
+  depthLimit : int;
+}`;
+nstructjs.register(GridSettings);
 
 export class BLink {
   constructor(a, b = undefined, t = 0.5) {
@@ -793,6 +826,7 @@ export class Grid extends GridBase {
       typeName: "grid",
       uiTypeName: "Grid",
       defaultName: "grid",
+      settingsClass: GridSettings,
       valueSize: undefined,
       flag: 0
     }
@@ -1342,6 +1376,18 @@ function makeCompressedNodeStruct() {
 
 window.makeCompressedNodeStruct = makeCompressedNodeStruct;
 
+let _btm_temp1 = new Vector3();
+let _btm_temp2 = new Vector3();
+let _btm_temp3 = new Vector3();
+let _btm_temp4 = new Vector3();
+let _btm_temp5 = new Vector3();
+let _btm_temp6 = new Vector3();
+let _btm_temp7 = new Vector3();
+let _btm_temp8 = new Vector3();
+let _btm_temp9 = new Vector3();
+let imattemp = new Matrix4();
+let imattemp2 = new Matrix4();
+
 export class CompressedQuadNode {
   constructor() {
     for (let k in CompressedQuadNode.fields) {
@@ -1405,6 +1451,12 @@ let _getuv_rets = util.cachering.fromConstructor(Vector2, 32);
 export class QuadTreeGrid extends GridBase {
   constructor() {
     super();
+
+    //these two are copied from GridSettings
+    this.depthLimit = 0;
+    this.depthLimitEnabled = false;
+
+    this.normalQuad = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
 
     this.dimen = 1;
     this.pmap = {};
@@ -1520,6 +1572,27 @@ export class QuadTreeGrid extends GridBase {
     }
 
     return this;
+  }
+
+  getNormalQuad(loop) {
+    let ret = recttemps.next();
+
+    ret[0].load(loop.f.no);
+    ret[2].load(loop.v.no);
+
+    ret[1].zero();
+    for (let l of loop.prev.e.loops) {
+      ret[1].add(l.f.no);
+    }
+    ret[1].normalize();
+
+    ret[3].zero();
+    for (let l of loop.e.loops) {
+      ret[3].add(l.f.no);
+    }
+    ret[3].normalize();
+
+    return ret;
   }
 
   getQuad(loop) {
@@ -1906,6 +1979,11 @@ export class QuadTreeGrid extends GridBase {
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       maxdepth = Math.max(maxdepth, ns[ni + QDEPTH]);
     }
+
+    if (this.depthLimitEnabled) {
+      maxdepth = Math.min(maxdepth, this.depthLimit);
+    }
+
     let dimen = this.dimen = gridSides[maxdepth] - 1;
 
     let emap = new Map();
@@ -1975,8 +2053,19 @@ export class QuadTreeGrid extends GridBase {
       e.nodes.push(ni);
     }
 
+    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000;
+
     for (let ni = 0; ni < ns.length; ni += QTOT) {
-      if (!(ns[ni + QFLAG] & LEAF) || (ns[ni + QFLAG] & DEAD)) {
+      let depth = ns[ni + QDEPTH];
+
+      if ((ns[ni + QFLAG] & LEAF) && depth > depthLimit) {
+        continue;
+      }
+
+      let isleaf = ns[ni + QFLAG] & LEAF;
+      isleaf = isleaf || depth === depthLimit;
+
+      if (!isleaf || (ns[ni + QFLAG] & DEAD)) {
         continue;
       }
 
@@ -2129,8 +2218,314 @@ export class QuadTreeGrid extends GridBase {
     }
   }
 
+  buildTangentMatrix(ni, u, v, matOut) {
+    let m = matOut.$matrix;
+
+    matOut.makeIdentity();
+
+    let ns = this.nodes;
+    let ps = this.points;
+
+
+    u = (u - ns[ni+QMINU]) / (ns[ni+QMAXU] - ns[ni+QMINU]);
+    v = (v - ns[ni+QMINV]) / (ns[ni+QMAXV] - ns[ni+QMINV]);
+
+    let p1 = ps[ns[ni + QPOINT1]];
+    let p2 = ps[ns[ni + QPOINT2]];
+    let p3 = ps[ns[ni + QPOINT3]];
+    let p4 = ps[ns[ni + QPOINT4]];
+    let p5 = ps[ns[ni + QPOINT5]];
+
+    let quadco = _btm_temp9;
+    let a = _btm_temp1;
+    let b = _btm_temp2;
+
+    a.load(p1).interp(p2, v);
+    b.load(p4).interp(p3, v);
+    quadco.load(a).interp(b, u);
+
+    let tmat = tmptanmat;
+    tmat.makeIdentity();
+    tmat.translate(quadco[0], quadco[1], quadco[2]);
+
+    let vx = _btm_temp3;
+    let vy = _btm_temp4;
+
+    vx.load(p2).sub(p1);
+    vy.load(p4).sub(p1);
+
+    let lx = vx.vectorLength();
+    let ly = vy.vectorLength();
+
+    if (lx === 0.0 || ly === 0.0) {
+      return;
+    }
+
+    let n = _btm_temp5;
+
+    let scale = (lx + ly) * 0.5;
+    scale = Math.max(scale, 0.0001);
+
+    vx.normalize();
+    vy.normalize();
+
+    if (ni === 0) { //root?
+      let nq = this.normalQuad;
+      a.load(nq[0]).interp(nq[1], v);
+      b.load(nq[3]).interp(nq[2], v);
+      n.load(a).interp(b, u);
+      n.normalize();
+    } else {
+      let nq = this.normalQuad;
+      a.load(p1.no).interp(p2.no, v);
+      b.load(p4.no).interp(p3.no, v);
+      n.load(a).interp(b, u);
+      n.normalize();
+
+      n.load(vx).cross(vy).normalize().mulScalar(scale);
+    }
+    vy.load(n).cross(vx).normalize().mulScalar(lx);
+    vx.load(vy).cross(n).normalize().mulScalar(ly);
+
+    m.m11 = vx[0];
+    m.m21 = vx[1];
+    m.m31 = vx[2];
+
+    m.m12 = vy[0];
+    m.m22 = vy[1];
+    m.m32 = vy[2];
+
+    m.m13 = n[0];
+    m.m23 = n[1];
+    m.m33 = n[2];
+
+    matOut.preMultiply(tmat);
+  }
+
+  invertTangentMatrix(mat) {
+    let tmat = imattemp;
+
+    tmat.makeIdentity();
+
+    //let start = imattemp2;
+    //start.load(mat);
+
+    let m = mat.$matrix;
+    let x = m.m41;
+    let y = m.m42;
+    let z = m.m43;
+
+    let tm = tmat.$matrix;
+    tm.m41 = -x;
+    tm.m42 = -y;
+    tm.m43 = -z;
+
+    m.m41 = 0;
+    m.m42 = 0;
+    m.m43 = 0;
+    m.m44 = 1;
+
+    let lx = m.m11 * m.m11 + m.m21 * m.m21 + m.m31 * m.m31;
+    let ly = m.m12 * m.m12 + m.m22 * m.m22 + m.m32 * m.m32;
+    let lz = m.m13 * m.m13 + m.m23 * m.m23 + m.m33 * m.m33;
+
+    //console.log("LENS", lx.toFixed(4), ly.toFixed(4), lz.toFixed(4));
+    //console.log("MT", "" + mat);
+
+    if (lx > 0.0) {
+      lx = 1.0 / lx;
+      m.m11 *= lx;
+      m.m21 *= lx;
+      m.m31 *= lx;
+    }
+    if (ly > 0.0) {
+      ly = 1.0 / ly;
+      m.m12 *= ly;
+      m.m22 *= ly;
+      m.m32 *= ly;
+    }
+    if (lz > 0.0) {
+      lz = 1.0 / lz;
+      m.m13 *= lz;
+      m.m23 *= lz;
+      m.m33 *= lz;
+    }
+
+    mat.transpose();
+    mat.multiply(tmat);
+
+    //start.multiply(mat);
+    //console.log(""+start);
+  }
+
+  tangentToGlobal(level = this.depthLimit, inverse = false) {
+    let ns = this.nodes, ps = this.points;
+
+    let doneset = new WeakSet();
+    let plvls = new Map();
+    for (let p of this.points) {
+      plvls.set(p, 100000);
+    }
+
+    for (let ni = 0; ni < ns.length; ni += QTOT) {
+      let depth = ns[ni + QDEPTH];
+
+      if (ns[ni + QFLAG] & DEAD) {
+        continue;
+      }
+
+      for (let i = 0; i < 4; i++) {
+        let p = ps[ns[ni + QPOINT1 + i]];
+
+        let lvl = plvls.get(p);
+        lvl = Math.min(lvl, depth);
+
+        plvls.set(p, lvl);
+      }
+    }
+
+    let tanMat = new Matrix4();
+    let mat2 = new Matrix4();
+
+    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000;
+    let tmp1 = new Vector3();
+    let tmp2 = new Vector3();
+    let tmp3 = new Vector3();
+    let tmp4 = new Vector3();
+    let tmp5 = new Vector3();
+
+    for (let p of this.points) {
+      let lvl = plvls.get(p);
+      if (lvl <= depthLimit) {
+        doneset.add(p);
+      }
+    }
+
+    let si = 1;
+    let cur = 0;
+
+    const STACKSIZE = 256;
+    let stack = new Array(STACKSIZE);
+    stack[0] = 0;
+
+    console.log("Level", level, "Inverse", inverse);
+
+    let nodes = [];
+    for (let ni=0; ni<ns.length; ni += QTOT) {
+      if (ns[ni+QFLAG] & DEAD) {
+        continue;
+      }
+      nodes.push(ni);
+    }
+
+    if (inverse) {
+      nodes.sort((a, b) => ns[b+QDEPTH] - ns[a+QDEPTH]);
+    } else {
+      nodes.sort((a, b) => ns[a+QDEPTH] - ns[b+QDEPTH]);
+    }
+
+    console.log(nodes);
+    for (let ni of nodes) {
+
+    /*
+    let _i = 0;
+    while (1) {
+      if (_i++ > 1000) {
+        console.warn("infinite loop!");
+        break;
+      }
+
+      let ni;
+
+      //depth first
+      if (!inverse) {
+        ni = stack[--si];
+      } else {//breadth first
+        ni = stack[cur];
+        cur = (cur + 1) % STACKSIZE;
+      }*/
+
+      let depth = ns[ni + QDEPTH];
+
+      if (!ni || depth <= level) {
+        continue;
+      }
+
+      let pi = ns[ni+QPARENT];
+      //console.log("pi", pi, ni);
+
+      for (let i = 0; i < 5; i++) {
+        let p = ps[ns[ni + QPOINT1 + i]];
+        let lvl = plvls.get(p);
+
+        if (lvl !== ns[ni+QDEPTH] || doneset.has(p)) {
+          continue;
+        }
+
+        //console.log(lvl);
+        doneset.add(p);
+
+        let uv = this._getUV(ni, i);
+
+        tanMat.makeIdentity();
+        this.buildTangentMatrix(pi, uv[0], uv[1], tanMat);
+
+        if (inverse) {
+          //this.invertTangentMatrix(tanMat);
+          tanMat.invert();
+        }
+
+        //console.log(ni, ""+tanMat);
+        p.multVecMatrix(tanMat);
+      }
+    }
+  }
+
+  globalToTangent(level = this.depthLimit) {
+    return this.tangentToGlobal(level, true);
+  }
+
+  _changeMresSettings(depthLimit, enabled) {
+    if (this.recalcFlag & QRecalcFlags.NEIGHBORS) {
+      this.recalcNeighbors(mesh, loop, cd_grid);
+    }
+
+    if (!enabled && this.depthLimitEnabled) {
+      this.tangentToGlobal();
+
+      this.depthLimit = depthLimit;
+      this.depthLimitEnabled = enabled;
+      return;
+    }
+
+    if (depthLimit === this.depthLimit && enabled === this.depthLimitEnabled) {
+      return;
+    }
+
+    if (this.depthLimitEnabled) {
+      this.tangentToGlobal(this.depthLimit);
+    }
+
+    this.depthLimitEnabled = enabled;
+    this.depthLimit = depthLimit;
+
+    this.globalToTangent(depthLimit);
+  }
 
   update(mesh, loop, cd_grid) {
+    let mres = mesh.loops.customData.flatlist[cd_grid].getTypeSettings();
+
+    let limitDepth = !!(mres.flag & GridSettingFlags.ENABLE_DEPTH_LIMIT);
+
+    if (limitDepth !== !!this.depthLimitEnabled || mres.depthLimit !== this.depthLimit) {
+      console.log("grid settings change detected");
+      this.updateNormalQuad(loop);
+      this._changeMresSettings(mres.depthLimit, limitDepth);
+
+      this.recalcFlag |= QRecalcFlags.TOPO | QRecalcFlags.POLYS | QRecalcFlags.NORMALS | QRecalcFlags.NEIGHBORS;
+      this.topo = undefined;
+    }
+
     if (this.recalcFlag & QRecalcFlags.CHECK_CUSTOMDATA) {
       this.recalcFlag &= ~QRecalcFlags.CHECK_CUSTOMDATA;
       this.checkCustomDataLayout(mesh);
@@ -2205,22 +2600,29 @@ export class QuadTreeGrid extends GridBase {
     let polys = this.polys;
     let poly = [];
 
-    for (let ni = 0; ni < ns.length; ni += QTOT) {
-      if (!(ns[ni + QFLAG] & LEAF) || (ns[ni + QFLAG] & DEAD)) {
-        continue;
+    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000;
+    
+
+    let rec = (ni) => {
+      let isleaf = (ns[ni + QFLAG] & LEAF) || ns[ni + QDEPTH] === depthLimit;
+
+      if (!isleaf) {
+        if (!(ns[ni + QFLAG] & LEAF)) {
+          for (let i = 0; i < 4; i++) {
+            let ni2 = ns[ni + QCHILD1 + i];
+            rec(ni2);
+          }
+        }
+
+        return;
       }
 
       let ip5 = ns[ni + QPOINT5];
 
-      //let poly = [];
-
       ns[ni + QPOLYSTART] = polys.length;
 
-      //if (1) {
-      //let i = 1;
-
       poly.length = 0;
-      poly.push(ip5);
+      //poly.push(ip5);
 
       for (let i = 0; i < 4; i++) {
         let ip1 = ns[ni + QPOINT1 + i];
@@ -2238,13 +2640,10 @@ export class QuadTreeGrid extends GridBase {
         let sign1 = Math.sign(duv1[0]);
         let sign2 = Math.sign(duv1[1]);
 
-        //console.log("steps:", ~~steps, axis, i, steps);
         steps = ~~steps;
 
         uv2[0] = v1.uv[0];
         uv2[1] = v1.uv[1];
-
-        //console.log(uv2[0]*dimen+0.00001, uv2[1]*dimen+0.00001, uv2[1]*(dimen-1)+0.00001, uv2[1]*(dimen+1)+0.00001);
 
         let dt = duv[axis] * Math.sign(duv1[axis]);
 
@@ -2257,8 +2656,6 @@ export class QuadTreeGrid extends GridBase {
           let p = uvmap[key];
 
           if (p !== undefined && (poly.length === 0 || p !== poly[poly.length - 1])) {
-            //console.log("found", uvmap[key], uv2[axis]);
-            //poly.push(uvmap[key]);
             poly.push(uvmap[key]);
           }
 
@@ -2267,7 +2664,7 @@ export class QuadTreeGrid extends GridBase {
 
       }
 
-      //poly.pop();
+      poly.pop();
 
       if (poly.length > 2) {
         for (let p of poly) {
@@ -2277,6 +2674,8 @@ export class QuadTreeGrid extends GridBase {
 
       ns[ni + QPOLYEND] = polys.length;
     }
+
+    rec(0);
 
     return {
       vmap: vmap,
@@ -2303,8 +2702,6 @@ export class QuadTreeGrid extends GridBase {
       for (let i = 0; i < 5; i++) {
         let ip = ns[ni + QPOINT1 + i];
         let p = ps[ip];
-
-        //console.log(ip, p, this);
 
         if (pmap[ip] === undefined) {
           pmap[ip] = p.index = newps.length;
@@ -2395,8 +2792,8 @@ export class QuadTreeGrid extends GridBase {
     let np4 = this._ensureNodePoint(ni, 3, loopEid);
     let np5 = this._ensureNodePoint(ni, 4, loopEid);
 
-    let centu = nodes[ni+QCENTU];
-    let centv = nodes[ni+QCENTV];
+    let centu = nodes[ni + QCENTU];
+    let centv = nodes[ni + QCENTV];
 
     let cdps = [0, 0, 0, 0];
     let cdws = [0, 0, 0, 0];
@@ -2506,21 +2903,19 @@ export class QuadTreeGrid extends GridBase {
           let pnew = bs[k];
           pnew.load(tmp1);
 
-          cdws[0] = u2*v2 - u2 - v2 + 1.0;
-          cdws[1] = v2*(1.0 - u2);
-          cdws[2] = u2*v2;
-          cdws[3] = u2*(1.0 - v2);
+          cdws[0] = u2 * v2 - u2 - v2 + 1.0;
+          cdws[1] = v2 * (1.0 - u2);
+          cdws[2] = u2 * v2;
+          cdws[3] = u2 * (1.0 - v2);
 
-          let sum = cdws[0]+cdws[1]+cdws[2]+cdws[3];
+          let sum = cdws[0] + cdws[1] + cdws[2] + cdws[3];
           sum = sum === 0.0 ? 0.00001 : sum;
 
-          for (let i1=0; i1<4; i1++) {
+          for (let i1 = 0; i1 < 4; i1++) {
             cdws[i1] /= sum;
           }
 
-          console.log(cdws, sum);
-
-          for (let ci=0; ci<pnew.customData.length; ci++) {
+          for (let ci = 0; ci < pnew.customData.length; ci++) {
             if (pnew.customData[ci]) {
               cdps[0] = np1.customData[ci];
               cdps[1] = np2.customData[ci];
@@ -2546,7 +2941,7 @@ export class QuadTreeGrid extends GridBase {
 
         cdws[0] = cdws[1] = cdws[2] = cdws[3] = 0.25;
 
-        for (let ci=0; ci<pnew.customData.length; ci++) {
+        for (let ci = 0; ci < pnew.customData.length; ci++) {
           if (pnew.customData[ci]) {
             cdps[0] = cp1.customData[ci];
             cdps[1] = cp2.customData[ci];
@@ -2566,6 +2961,7 @@ export class QuadTreeGrid extends GridBase {
     return {
       elemTypeMask: MeshTypes.LOOP, //see MeshTypes in mesh.js
       typeName: "QuadTreeGrid",
+      settingsClass: GridSettings,
       uiTypeName: "QuadTreeGrid",
       defaultName: "QuadTreeGrid",
       valueSize: undefined,
@@ -2597,6 +2993,8 @@ export class QuadTreeGrid extends GridBase {
   }
 
   makeDrawTris(mesh, smesh, loop, cd_grid) {
+    this.updateNormalQuad(loop);
+
     if (this.points.length === 0) {
       this.init(this.dimen, loop);
     }
@@ -2958,7 +3356,16 @@ export class QuadTreeGrid extends GridBase {
     }
   }
 
+  updateNormalQuad(loop) {
+    let quad = this.getNormalQuad(loop);
+    for (let i=0; i<4; i++) {
+      this.normalQuad[i].load(quad[i]);
+    }
+  }
+
   makeBVHTris(mesh, bvh, loop, cd_grid, trisout) {
+    this.updateNormalQuad(loop);
+
     for (let p of this.points) {
       p.loopEid = loop.eid;
     }
@@ -2978,10 +3385,18 @@ export class QuadTreeGrid extends GridBase {
 
     let needsCDFix = false;
 
+    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000;
+    let depthLimitEnabled = this.depthLimitEnabled;
+
     for (let ni = 0; ni < nodes.length; ni += QTOT) {
-      if (!(nodes[ni + QFLAG] & LEAF) || (nodes[ni + QFLAG] & DEAD)) {
+      let depth = nodes[ni + QDEPTH];
+
+      let isleaf = (nodes[ni + QFLAG] & LEAF) || depth === depthLimit;
+
+      if (!isleaf || depth > depthLimit || (nodes[ni + QFLAG] & DEAD)) {
         continue;
       }
+
 
       let start = nodes[ni + QPOLYSTART];
       let end = nodes[ni + QPOLYEND];
@@ -3001,6 +3416,11 @@ export class QuadTreeGrid extends GridBase {
         let tri;
         //let id = Math.random();
         let id = loop.eid * idmul + i;
+
+        if (!p1 || !p2 || !p3) {
+          console.warn("missing points", p1, p2, p3);
+          continue;
+        }
 
         trisout.push(leid);
         //trisout.push(loop.eid*idmul + ni);
@@ -3037,6 +3457,8 @@ export class QuadTreeGrid extends GridBase {
 
     //console.log("FIELDS", fields);
 
+    let leaves = [];
+
     for (let n of ns1) {
       let ni = ns2.length;
 
@@ -3062,11 +3484,11 @@ export class QuadTreeGrid extends GridBase {
     ns2[QCENTU] = ns2[QCENTV] = 0.5;
 
     for (let ni = 0; ni < ns2.length; ni += QTOT) {
-      ns2[ni+QFLAG] |= TEMP;
+      ns2[ni + QFLAG] |= TEMP;
     }
 
     let rec = (ni, depth = 0) => {
-      ns2[ni+QFLAG] &= ~TEMP;
+      ns2[ni + QFLAG] &= ~TEMP;
 
       ns2[ni + QCENTU] = ns2[ni + QMINU] * 0.5 + ns2[ni + QMAXU] * 0.5;
       ns2[ni + QCENTV] = ns2[ni + QMINV] * 0.5 + ns2[ni + QMAXV] * 0.5;
@@ -3108,27 +3530,30 @@ export class QuadTreeGrid extends GridBase {
           ns2[ni2 + QPARENT] = ni;
           ns2[ni2 + QQUADIDX] = i;
 
-          rec(ni2, depth+1);
+          rec(ni2, depth + 1);
         }
       } else if (1) {
-        let p = ns2[ni + QPARENT];
-
-        depth++;
-        ns2[ni + QSUBTREE_DEPTH] = depth;
-
-        while (p) {
-          ns2[p + QSUBTREE_DEPTH] = Math.max(ns2[p + QSUBTREE_DEPTH], depth);
-          p = ns2[p + QPARENT];
-        }
-
-        ns2[QSUBTREE_DEPTH] = Math.max(ns2[QSUBTREE_DEPTH], depth);
+        leaves.push(ni);
       }
     }
 
     rec(0);
 
+    for (let ni of leaves) {
+      let p = ns2[ni + QPARENT];
+      let depth = ns2[ni+QDEPTH];
+
+      ns2[ni + QSUBTREE_DEPTH] = depth;
+
+      while (p) {
+        ns2[p + QSUBTREE_DEPTH] = Math.max(ns2[p + QSUBTREE_DEPTH], depth);
+        p = ns2[p + QPARENT];
+      }
+
+      ns2[QSUBTREE_DEPTH] = Math.max(ns2[QSUBTREE_DEPTH], depth);
+    }
     for (let ni = 0; ni < ns2.length; ni += QTOT) {
-      if (!(ns2[ni+QFLAG] & DEAD) && (ns2[ni+QFLAG] & TEMP)) {
+      if (!(ns2[ni + QFLAG] & DEAD) && (ns2[ni + QFLAG] & TEMP)) {
         console.error("Unmarked dead quad tree node detected", ni, this);
       }
 
@@ -3204,7 +3629,10 @@ export class QuadTreeGrid extends GridBase {
 }
 
 QuadTreeGrid.STRUCT = nstructjs.inherit(QuadTreeGrid, GridBase, "mesh.QuadTreeGrid") + `
-    nodes         : array(mesh_grid.CompressedQuadNode) | this._saveNodes();
+  nodes               : array(mesh_grid.CompressedQuadNode) | this._saveNodes();
+  depthLimitEnabled   : bool;
+  depthLimit          : int;
+  normalQuad          : array(vec3);
 }`;
 nstructjs.register(QuadTreeGrid);
 CustomDataElem.register(QuadTreeGrid);

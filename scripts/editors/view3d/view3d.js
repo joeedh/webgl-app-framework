@@ -1616,7 +1616,7 @@ export class View3D extends Editor {
     tagname  : "view3d-editor-x",
     areaname : "view3d",
     uiname   : "Viewport",
-    icon     : -1
+    icon     : Icons.EDITOR_VIEW3D
   }}
 };
 View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `

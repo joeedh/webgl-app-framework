@@ -6,6 +6,7 @@ import {VelPan, VelPanPanOp} from "../velpan.js";
 import {Vector2} from "../../path.ux/scripts/pathux.js";
 import {UIBase, color2css, css2color} from "../../path.ux/scripts/pathux.js";
 import {DataBlock} from "../../core/lib_api.js";
+import {Icons} from "../icon_enum.js";
 
 export class NodeViewer extends Editor {
   constructor() {
@@ -431,7 +432,8 @@ export class NodeViewer extends Editor {
   static define() {return {
     tagname : "nodegraph-viewer-x",
     areaname : "nodegraph_viewer",
-    uiname  : "Graph Viewer"
+    uiname  : "SceneGraph Viewer",
+    icon : Icons.EDITOR_NODE
   }}
 }
 

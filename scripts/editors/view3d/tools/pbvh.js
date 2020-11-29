@@ -28,7 +28,14 @@ import {
 import {MeshFlags} from "../../../mesh/mesh.js";
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from "../../../core/simplemesh.js";
 import {splitEdgesSmart} from "../../../mesh/mesh_subdivide.js";
-import {GridBase, QRecalcFlags, QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from "../../../mesh/mesh_grids.js";
+import {
+  GridBase,
+  GridSettingFlags,
+  QRecalcFlags,
+  QuadTreeFields,
+  QuadTreeFlags,
+  QuadTreeGrid
+} from "../../../mesh/mesh_grids.js";
 
 let _triverts = new Array(3);
 
@@ -102,6 +109,8 @@ colorfilterfuncs[0] = function (v, cd_color, fac = 0.5) {
 export class PaintOp extends ToolOp {
   constructor() {
     super();
+
+    this._last_enable_mres = "";
 
     this.last_mpos = new Vector2();
     this.last_p = new Vector3();
@@ -758,7 +767,7 @@ export class PaintOp extends ToolOp {
       strength *= 2.0;
       isplane = true;
     } else if (mode === SMOOTH) {
-      isplane = true;
+      //isplane = true;
     } else if (mode === PAINT) {
 
     } else if (mode === SHARP) {
@@ -2155,6 +2164,8 @@ export class BVHToolMode extends ToolMode {
 
     this.sharedBrushRadius = 55;
 
+    this.gridEditDepth = 2;
+    this.enableMaxEditDepth = false;
     this.dynTopoLength = 30;
     this.dynTopoDepth = 4;
 
@@ -2342,9 +2353,17 @@ export class BVHToolMode extends ToolMode {
     strip.tool("mesh.delete_grids()");
 
     col.prop(path + ".dynTopoLength");
-    col.prop(path + ".dynTopoDepth");
     col.prop(path + ".brush.flag[DYNTOPO]");
 
+    panel = col.panel("Multi Resolution");
+    panel.prop(path + ".dynTopoDepth").setAttribute("labelOnTop", true);
+    
+    strip = panel.strip();
+
+    strip.prop(path + ".enableMaxEditDepth");
+    strip.prop(path + ".gridEditDepth");
+
+    //panel
     container.flushUpdate();
   }
 
@@ -2433,7 +2452,9 @@ export class BVHToolMode extends ToolMode {
     st.bool("drawFlat", "drawFlat", "Draw Flat");
     st.enum("tool", "tool", SculptTools).icons(SculptIcons);
     st.float("dynTopoLength", "dynTopoLength", "Detail Size").range(1.0, 75.0).noUnits();
-    st.int("dynTopoDepth", "dynTopoDepth", "Grid Depth", "Maximum quad tree grid subdivision level").range(0, 15).noUnits();
+    st.int("dynTopoDepth", "dynTopoDepth", "DynTopo Depth", "Maximum quad tree grid subdivision level").range(0, 15).noUnits();
+    st.bool("enableMaxEditDepth", "enableMaxEditDepth", "Multi Resolution Editing");
+    st.int("gridEditDepth", "gridEditDepth", "Edit Depth", "Maximum quad tree grid edit level").range(0, 15).noUnits();
 
     st.struct("_apiBrushHelper", "brush", "Brush", api.mapStruct(SculptBrush));
 
@@ -2524,8 +2545,71 @@ export class BVHToolMode extends ToolMode {
     return false;
   }
 
+  getMeshMresSettings(mesh) {
+    let cd_grid = GridBase.meshGridOffset(mesh);
+
+    if (cd_grid >= 0) {
+      return mesh.loops.customData.flatlist[cd_grid].getTypeSettings();
+    }
+
+    return undefined;
+  }
+
+  updateMeshMres(mesh) {
+    let cd_grid = GridBase.meshGridOffset(mesh);
+
+    if (cd_grid < 0) {
+      return;
+    }
+
+    let mres = this.getMeshMresSettings(mesh);
+    let flag = mres.flag;
+
+    if (this.enableMaxEditDepth) {
+      flag |= GridSettingFlags.ENABLE_DEPTH_LIMIT;
+    } else {
+      flag &= ~GridSettingFlags.ENABLE_DEPTH_LIMIT;
+    }
+
+    let update = flag !== mres.flag || this.gridEditDepth !== mres.depthLimit;
+
+    mres.depthLimit = this.gridEditDepth;
+    mres.flag = flag;
+
+    if (update) {
+      console.log("MRES SETTINGS UPDATE");
+
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+        grid.update(mesh, l, cd_grid);
+      }
+      mesh.regenRender();
+      mesh.regenBVH();
+      mesh.graphUpdate();
+
+      window.redraw_viewport(true);
+    }
+  }
+
   update() {
     super.update();
+
+    if (!this.ctx || !this.ctx.object || !(this.ctx.object.data instanceof Mesh)) {
+      return;
+    }
+
+    let key = "" + this.enableMaxEditDepth;
+    if (this.enableMaxEditDepth) {
+      key += ":" + this.gridEditDepth;
+    }
+
+    key += ":" + this.ctx.object.data.lib_id;
+
+    if (key !== this._last_enable_mres) {
+      this._last_enable_mres = key;
+
+      this.updateMeshMres(this.ctx.object.data);
+    }
   }
 
   destroy() {
@@ -3157,15 +3241,17 @@ export class BVHToolMode extends ToolMode {
 }
 
 BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
-  drawBVH       : bool;
-  drawFlat      : bool;
-  drawWireframe : bool;
-  drawNodeIds   : bool;
-  dynTopoLength : float;
-  dynTopoDepth  : int;
-  tool          : int;
-  slots         : iterkeys(PaintToolSlot);
-  sharedBrushRadius : float; 
+  drawBVH                : bool;
+  drawFlat               : bool;
+  drawWireframe          : bool;
+  drawNodeIds            : bool;
+  dynTopoLength          : float;
+  dynTopoDepth           : int;
+  gridEditDepth          : int;
+  enableMaxEditDepth     : bool;
+  tool                   : int;
+  slots                  : iterkeys(PaintToolSlot);
+  sharedBrushRadius      : float; 
 }`;
 nstructjs.manager.add_class(BVHToolMode);
 

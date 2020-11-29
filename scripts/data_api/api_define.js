@@ -1,9 +1,11 @@
 import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
 
+import * as editors from '../editors/all.js';
+
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js';
 import {resourceManager} from "../core/resource.js";
 import '../core/image.js';
-import {buildCDAPI} from "../mesh/customdata.js";
+import {buildCDAPI, buildElementAPI, CustomData} from "../mesh/customdata.js";
 import {CameraData} from "../camera/camera.js";
 import {Camera} from '../core/webgl.js';
 
@@ -132,7 +134,7 @@ function api_define_socket(api, cls = NodeSocketType) {
   let nstruct = api.mapStruct(cls, true);
 
   nstruct.flags("graph_flag", "graph_flag", SocketFlags, "Flag", "Flags");
-  nstruct.int("graph_id", "graph_id", "Graph ID", "Unique graph ID").read_only();
+  nstruct.int("graph_id", "graph_id", "Graph ID", "Unique graph ID").readOnly();
   nstruct.string("name", "name", "Name", "Name of socket");
   nstruct.string("uiname", "uiname", "UI Name", "Name of socket");
 
@@ -143,7 +145,7 @@ function api_define_node(api, cls = Node) {
   let nstruct = api.mapStruct(cls, true);
 
   nstruct.flags("graph_flag", "graph_flag", NodeFlags, "Flag", "Flags");
-  nstruct.int("graph_id", "graph_id", "Graph ID", "Unique graph ID").read_only();
+  nstruct.int("graph_id", "graph_id", "Graph ID", "Unique graph ID").readOnly();
 
   function defineSockets(inorouts) {
     nstruct.list("", inorouts, [
@@ -199,7 +201,7 @@ function api_define_node(api, cls = Node) {
 function api_define_datablock(api, cls = DataBlock) {
   let dstruct = api_define_node(api, cls);
 
-  dstruct.int("lib_id", "lib_id", "Lib ID").read_only();
+  dstruct.int("lib_id", "lib_id", "Lib ID").readOnly();
 
   let def = dstruct.flags("lib_flag", "lib_flag", BlockFlags, "Flag");
 
@@ -235,10 +237,10 @@ export function api_define_meshelem(api) {
   let st = api.mapStruct(Element, true);
 
   st.flags("flag", "flag", MeshFlags);
-  st.flags("type", "type", MeshTypes).read_only();
-  st.int("eid", "id", "ID", "ID").read_only();
+  st.flags("type", "type", MeshTypes).readOnly();
+  st.int("eid", "id", "ID", "ID").readOnly();
 
-  buildCDAPI(api, st);
+  buildElementAPI(api, st);
 }
 
 export function api_define_meshvertex(api) {
@@ -266,11 +268,13 @@ export function api_define_sceneobject_data(api, cls) {
     }
   ]);
 
-  mstruct.bool("usesMaterial", "usesMaterial", "Uses Material").read_only();
+  mstruct.bool("usesMaterial", "usesMaterial", "Uses Material").readOnly();
   return mstruct;
 }
 
 export function api_define_mesh(api, pstruct) {
+  buildCDAPI(api);
+
   let mstruct = api_define_sceneobject_data(api, Mesh);
   pstruct.struct("mesh", "mesh", "Mesh", mstruct);
 
@@ -304,30 +308,39 @@ export function api_define_mesh(api, pstruct) {
   api_define_meshelem(api);
   api_define_meshvertex(api);
 
-  mstruct.list("verts", "verts", [
-    function getIter(api, list) {
-      return list;
-    },
-    function getLength(api, list) {
-      return list.length;
-    },
-    function get(api, list, key) {
-      return list.local_eidmap[key];
-    },
-    function getKey(api, list, obj) {
-      return obj !== undefined ? obj.eid : -1;
-    },
-    function getActive(api, list) {
-      return list.active;
-    },
-    function setActive(api, list, key) {
-      list.active = key !== undefined ? list.local_eidmap[key] : undefined;
-      window.redraw_viewport();
-    },
-    function getStruct(api, list, key) {
-      return api.mapStruct(Vertex, false);
-    }
-  ]);
+  function defineElemList(key, type) {
+    mstruct.struct(key + ".customData", key + "Data", "Custom Datas", api.mapStruct(CustomData, false))
+
+    mstruct.list(key, key, [
+      function getIter(api, list) {
+        return list;
+      },
+      function getLength(api, list) {
+        return list.length;
+      },
+      function get(api, list, key) {
+        return list.local_eidmap[key];
+      },
+      function getKey(api, list, obj) {
+        return obj !== undefined ? obj.eid : -1;
+      },
+      function getActive(api, list) {
+        return list.active;
+      },
+      function setActive(api, list, key) {
+        list.active = key !== undefined ? list.local_eidmap[key] : undefined;
+        window.redraw_viewport();
+      },
+      function getStruct(api, list, key) {
+        return api.mapStruct(Vertex, false);
+      }
+    ]);
+  }
+
+  defineElemList("verts", MeshTypes.VERTEX);
+  defineElemList("edges", MeshTypes.EDGE);
+  defineElemList("loops", MeshTypes.LOOP);
+  defineElemList("faces", MeshTypes.FACE);
 
   //MeshModifierFlags
 }

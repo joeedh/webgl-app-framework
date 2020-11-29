@@ -1,4 +1,4 @@
-import {Area, contextWrangler} from '../../path.ux/scripts/screen/ScreenArea.js';
+import {Area, AreaFlags, contextWrangler} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor, VelPan} from '../editor_base.js';
 import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
@@ -22,6 +22,7 @@ import {haveModal} from '../../path.ux/scripts/util/simple_events.js';
 import {layoutNode} from '../../core/graph_spatial.js';
 import {getContextArea} from "../editor_base.js";
 import {ModalFlags} from "../../core/modalflags.js";
+import {Icons} from "../icon_enum.js";
 
 export class NodeSocketElem extends RowFrame {
   constructor() {
@@ -1422,7 +1423,8 @@ export class NodeEditor extends Editor {
     tagname : "node-editor-x",
     areaname : "NodeEditor",
     uiname   : "Node Editor",
-    icon     : -1
+    icon     : Icons.EDITOR_NODE,
+    flag     : AreaFlags.HIDDEN
   }}
 };
 NodeEditor.STRUCT = STRUCT.inherit(NodeEditor, Editor) + `
