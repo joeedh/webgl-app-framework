@@ -153,7 +153,7 @@ export class GPUSelectBuffer {
       uniforms2.projectionMatrix = view3d.activeCamera.rendermat;
       uniforms2.object_id = -1;
 
-      ctx.scene.toolmode.drawIDs(view3d, gl, uniforms2);
+      ctx.scene.toolmode.drawIDs(view3d, gl, uniforms2, selmask);
     }
 
     gl.finish();
@@ -260,9 +260,7 @@ export class GPUSelectBuffer {
     hash ^= selmask;
 
     if (hash !== this._last_hash) {
-      console.log("HASH", hash);
       update = true;
-      console.warn("SELMASK", selmask);
     }
 
     this._last_selmask = selmask;
@@ -274,7 +272,6 @@ export class GPUSelectBuffer {
     }
 
     if (update) {
-      console.log("DRAWING");
       //window.setTimeout(() => {
       this.draw(ctx, gl, view3d, selmask);
       //}, 1);

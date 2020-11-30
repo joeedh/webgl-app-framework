@@ -105,6 +105,15 @@ export class ElementList {
     this.highlight = this.active = undefined;
   }
 
+  /*sanity alias to this.customData*/
+  get cd() {
+    return this.customData;
+  }
+
+  set cd(v) {
+    this.customData = v;
+  }
+
   [Symbol.iterator]() {
     if (this.iterstack.cur >= this.iterstack.length) {
       console.warn("deep nesting of ElementListIter detected; growing cache stack by one", this.iterstack.cur);
@@ -567,6 +576,15 @@ export class ElementList {
     }
 
     return ret;
+  }
+
+  clearCustomData() {
+    for (let e of this) {
+      e.customData = [];
+      //CD e.cd = e.customData;
+    }
+
+    this.customData._clear();
   }
 
   addCustomDataLayer(typecls_or_name, name) {

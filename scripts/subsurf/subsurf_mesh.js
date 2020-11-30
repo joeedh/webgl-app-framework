@@ -1,6 +1,5 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
-import {MeshTypes, MeshFlags} from '../mesh/mesh.js';
 import {PCOS, PEID, PCOLOR, PTOT, PatchData, PatchList} from './subsurf_base.js';
 
 //this assumes that all faces are already quads
@@ -54,11 +53,7 @@ export function subdivide(mesh, faces=mesh.faces, linear=false) {
   let vset = new util.set();
   let splitvs = new util.set();
 
-  console.log(faces);
-
-  for (let f of faces) {
-    //console.log("f", f.eid);
-  }
+  let lmap = new Map();
 
   for (let f of faces) {
     fset.add(f);
@@ -174,19 +169,35 @@ export function subdivide(mesh, faces=mesh.faces, linear=false) {
     let l = f.lists[0].l;
     let _i = 0;
     do {
+
+      let li = lsinterp.indexOf(l);
+      let t = lsinterp[li];
+      lsinterp[li] = lsinterp[lsinterp.length-1];
+      lsinterp[lsinterp.length-1] = t;
+
+      /*
       let v1 = l.v;
       let v2 = l.next.v;
       let v3 = centv;
       let v4 = l.prev.v;
+      */
+
+      let v1 = centv;
+      let v2 = l.prev.v;
+      let v3 = l.v;
+      let v4 = l.next.v;
 
       let f2 = mesh.makeQuad(v1, v2, v3, v4);
-
       let l2 = f2.lists[0].l;
-      mesh.copyElemData(l2, l);
-      mesh.copyElemData(l2.next, l.next);
-      //mesh.copyElemData(l2.next.next, l.next);
-      mesh.loops.customDataInterp(l2.next.next, lsinterp, winterp);
-      mesh.copyElemData(l2.prev, l.prev);
+
+      f2.calcCent();
+
+      lmap.set(l.eid, f2);
+
+      mesh.loops.customDataInterp(l2, lsinterp, winterp);
+      mesh.copyElemData(l2.next, l.prev);
+      mesh.copyElemData(l2.next.next, l);
+      mesh.copyElemData(l2.prev, l.next);
 
       mesh.faces.setSelect(f2, true);
 
@@ -215,6 +226,9 @@ export function subdivide(mesh, faces=mesh.faces, linear=false) {
   mesh.updateMirrorTags();
   mesh.validateMesh();
 
-  return mesh;
+  return {
+    oldLoopEidsToQuads : lmap
+  }
+  //return mesh;
 }
 

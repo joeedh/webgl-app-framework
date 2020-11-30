@@ -1499,6 +1499,7 @@ export class View3D extends Editor {
     this.drawline_mesh.program = view3d_shaders.Shaders.BasicLineShader;
     this.drawline_mesh.uniforms.projectionMatrix = this.activeCamera.rendermat;
     this.drawline_mesh.uniforms.alpha = 1.0;
+    this.drawline_mesh.uniforms.polygonOffset = 15.5;
 
     gl.enable(gl.BLEND);
     gl.enable(gl.DEPTH_TEST);

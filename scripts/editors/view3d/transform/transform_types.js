@@ -41,6 +41,8 @@ export class MeshTransType extends TransDataType {
         v.index = i;
 
         let td = new TransDataElem();
+
+        td.mesh = mesh;
         td.data1 = v;
         td.data2 = new Vector3(v);
         td.symFlag = mesh.symFlag;
@@ -108,6 +110,7 @@ export class MeshTransType extends TransDataType {
         let td = new TransDataElem();
         td.data1 = v;
         td.data2 = new Vector3(v);
+        td.mesh = mesh;
         td.w = 1.0;
         td.symFlag = mesh.symFlag;
 
@@ -120,6 +123,8 @@ export class MeshTransType extends TransDataType {
 
   static applyTransform(ctx, elem, do_prop, matrix, toolop) {
     let td = elem;
+
+    td.mesh.graphUpdate();
 
     let v = td.data1;
     v.flag |= MeshFlags.UPDATE;

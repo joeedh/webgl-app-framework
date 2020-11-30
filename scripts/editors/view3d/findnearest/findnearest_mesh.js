@@ -26,6 +26,7 @@ export class FindnearestMesh extends FindnearestClass {
   * When drawing pass the object id to red and any subdata
   * to green.
   * */
+  //XXX is this method used anymore?
   static drawIDs(view3d, gl, uniforms, object, mesh) {
     let program = Shaders.MeshIDShader;
 
@@ -34,9 +35,10 @@ export class FindnearestMesh extends FindnearestClass {
       uniforms.object_id = object.lib_id;
     }
 
-    view3d.threeCamera.pushUniforms(uniforms);
-    object.drawIds(view3d, gl, view3d.ctx.selectMask, uniforms);
-    view3d.threeCamera.popUniforms();
+    ///view3d.ctx.selectMask
+    //object.drawIds(view3d, gl, view3d.ctx.selectMask, uniforms);
+
+    return true;
   }
 
   static castViewRay_framebuffer(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {

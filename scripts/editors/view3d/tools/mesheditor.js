@@ -71,6 +71,8 @@ export class MeshEditor extends MeshToolBase {
   }
 
   static buildHeader(header, addHeaderRow) {
+    header.prop("mesh.symFlag");
+
     let strip = addHeaderRow().strip();
 
     strip.useIcons();
@@ -83,16 +85,18 @@ export class MeshEditor extends MeshToolBase {
     strip.prop("scene.selectMaskEnum[EDGE]");
     strip.prop("scene.selectMaskEnum[FACE]");
 
-    strip.tool(`mesh.delete_selected`);
+    strip.tool("mesh.edgecut");
 
-    strip.tool("mesh.ensure_grids()");
+    strip.tool("mesh.add_or_subdivide_grids()");
     strip.tool("mesh.reset_grids()");
     strip.tool("mesh.delete_grids()");
     strip.tool("mesh.apply_grid_base()");
+    strip.tool("mesh.smooth_grids()");
+    strip.tool("mesh.grids_test()");
+
     strip.tool("mesh.symmetrize()");
     strip.tool("mesh.bisect()");
-
-    strip.prop("mesh.symFlag");
+    strip.tool(`mesh.delete_selected`);
   }
 
   static haveHandles() {

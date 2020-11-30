@@ -14,7 +14,8 @@ export class Element {
     this.type = type;
     this.flag = this.index = 0;
     this.eid = -1;
-    this.customData = [];
+    this.customData =  [];
+    //CD this.cd = this.customData;
   }
 
   valueOf() {
@@ -49,6 +50,12 @@ export class Element {
     this.eid = obj.eid;
 
     return this;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+
+    //CD this.cd = this.customData;
   }
 }
 
@@ -170,6 +177,7 @@ export class Vertex extends Element {
 
   loadSTRUCT(reader) {
     reader(this);
+    super.loadSTRUCT(reader);
   }
 }
 util.mixin(Vertex, Vector3);
@@ -210,6 +218,7 @@ export class Handle extends Element {
 
   loadSTRUCT(reader) {
     reader(this);
+    super.loadSTRUCT(reader);
   }
 }
 util.mixin(Handle, Vector3);
@@ -810,6 +819,7 @@ export class Edge extends Element {
 
   loadSTRUCT(reader) {
     reader(this);
+    super.loadSTRUCT(reader);
 
     this.flag &= MeshFlags.DRAW_DEBUG;
   }
@@ -854,6 +864,11 @@ export class Loop extends Element {
       if (layer instanceof UVLayerElem)
         return layer.uv;
     }
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
   }
 }
 Loop.STRUCT = STRUCT.inherit(Loop, Element, "mesh.Loop") + `
@@ -993,7 +1008,7 @@ mesh.LoopList {
   length : int;
 }
 `;
-nstructjs.manager.add_class(LoopList);
+nstructjs.register(LoopList);
 
 export class Face extends Element {
   constructor() {
@@ -1083,6 +1098,11 @@ export class Face extends Element {
 
     this.cent.mulScalar(1.0 / tot);
     return this.cent;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
   }
 }
 Face.STRUCT = STRUCT.inherit(Face, Element, "mesh.Face") + `

@@ -7,6 +7,8 @@ import {CDFlags, CustomDataElem} from "../mesh/customdata.js";
 import {MeshTypes} from "../mesh/mesh_base.js";
 import {GridBase} from "../mesh/mesh_grids.js";
 
+import {QRecalcFlags} from "../mesh/mesh_grids.js";
+
 let _triverts = [new Vector3(), new Vector3(), new Vector3()];
 
 export const BVHFlags = {
@@ -154,7 +156,19 @@ export class CDNodeInfo extends CustomDataElem {
   interp() {
     return;
   }
+/*
+  set node(v) {
+    if (typeof v === "number") {
+      throw new Error("eek");
+    }
 
+    this._node = v;
+  }
+
+  get node() {
+    return this._node;
+  }
+*/
   copyTo(b) {
     b.node = this.node;
   }
@@ -214,7 +228,7 @@ export class BVHNode {
     this._id = _bvh_idgen++;
 
     this.uniqueVerts = new Set();
-    this.uniqueTris = new FakeSet(); //new Set();
+    this.uniqueTris = new Set(); //new Set();
     this.otherVerts = new Set();
     this.otherTris = new Set();
 
@@ -447,6 +461,9 @@ export class BVHNode {
     while (si > 0) {
       let node = stack[--si];
 
+      if (!node) {
+        break;
+      }
       node.tottri++;
 
       if (!node.leaf) {
@@ -466,7 +483,9 @@ export class BVHNode {
           }
         }
 
-        stack[si++] = closest;
+        if (closest) {
+          stack[si++] = closest;
+        }
       } else {
         if (!noSplit && node.uniqueTris.size >= leafLimit && node.depth <= depthLimit) {
           node.split();
@@ -516,6 +535,10 @@ export class BVHNode {
   }
 
   addTri_old(id, tri_idx, v1, v2, v3, noSplit = false) {
+    if (isNaN(v1.dot(v2)*v2.dot(v3))) {
+      console.log(id, tri_idx, v1, v2, v3, noSplit);
+      throw new Error("nan!");
+    }
 
     if (!noSplit && this.leaf && this.uniqueTris.size >= this.bvh.leafLimit &&
         this.depth <= this.bvh.depthLimit) {
@@ -745,6 +768,76 @@ export class BVHNode {
   }
 
   updateNormalsGrids() {
+    let mesh = this.bvh.mesh;
+    let cd_grid = this.bvh.cd_grid;
+
+    let ls = new Set();
+
+    let hasBoundary = false;
+    for (let v of this.uniqueVerts) {
+      let l = v.loopEid;
+      l = l !== undefined ? mesh.eidmap[l] : undefined;
+
+      hasBoundary = hasBoundary || v.bLink !== undefined;
+
+      if (!l) {
+        continue;
+      }
+
+      ls.add(l);
+    }
+
+    if (1||hasBoundary) {
+      for (let l of new Set(ls)) {
+        ls.add(l);
+        ls.add(l.radial_next);
+        ls.add(l.radial_next.next)
+        ls.add(l.radial_next.prev)
+        ls.add(l.prev.radial_next);
+        ls.add(l.prev.radial_next.next);
+        ls.add(l.prev);
+        ls.add(l.next);
+      }
+    }
+
+    //try to update any pending non-normal updates first
+    for (let l of ls) {
+      let grid = l.customData[cd_grid];
+      grid.update(mesh, l, cd_grid);
+      grid.flagNormalsUpdate();
+    }
+
+    //now update normals
+    for (let l of ls) {
+      let grid = l.customData[cd_grid];
+      grid.update(mesh, l, cd_grid);
+    }
+
+    /*
+    for (let v of this.uniqueVerts) {
+      for (let v2 of v.neighbors) {
+        if (v2.loopEid !== v.loopEid) {
+         for (let v3 of v2.neighbors) {
+           if (v3.loopEid !== v2.loopEid) {
+             continue;
+           }
+
+           v.no.add(v3.no);
+         }
+        } else {
+          v.no.add(v2.no);
+        }
+      }
+
+      v.no.normalize();
+    }
+    //*/
+
+    return;
+    let vs = new Set();
+    let fs = new Set();
+
+
     for (let tri of this.uniqueTris) {
       //stupid hack to get better normals along grid seams
       /*
@@ -759,19 +852,50 @@ export class BVHNode {
       tri.v2.no.zero();
       tri.v3.no.zero();
       //*/
+
+      let l1 = mesh.eidmap[tri.v1.loopEid];
+      let l2 = mesh.eidmap[tri.v2.loopEid];
+      let l3 = mesh.eidmap[tri.v3.loopEid];
+
+      if (l1) {
+        vs.add(l1.v);
+        fs.add(l1.f);
+      }
+      if (l2) {
+        vs.add(l1.v);
+        fs.add(l1.f);
+      }
+      if (l3) {
+        vs.add(l1.v);
+        fs.add(l1.f);
+      }
     }
 
-    for (let tri of this.uniqueTris) {
-      let n = math.normal_tri(tri.v1, tri.v2, tri.v3);
+    for (let v of vs) {
+      v.no.zero();
+    }
 
-      tri.no.load(n);
+    for (let f of fs) {
+      f.calcNormal();
+      for (let v of f.verts) {
+        v.no.add(f.no);
+      }
+    }
 
-      tri.v1.no.add(n);
-      tri.v2.no.add(n);
-      tri.v3.no.add(n);
+    for (let v of vs) {
+      v.no.normalize();
     }
 
     let n = new Vector3();
+
+    for (let tri of this.uniqueTris) {
+      let n2 = math.normal_tri(tri.v1, tri.v2, tri.v3);
+
+      tri.no.load(n2);
+      tri.v1.no.add(n2);
+      tri.v2.no.add(n2);
+      tri.v3.no.add(n2);
+    }
 
     function doBoundary(v) {
       if (!v.bLink) {
@@ -780,6 +904,7 @@ export class BVHNode {
 
       if (v.bLink.v2) {
         n.load(v.bLink.v1.no).interp(v.bLink.v2.no, v.bLink.t)
+        n.normalize();
         n.interp(v.no, 0.5);
         v.no.load(n).normalize();
       } else {
@@ -818,14 +943,7 @@ export class BVHNode {
       return;
     }
 
-    for (let tri of this.uniqueTris) {
-      if (tri.f) {
-        tri.no.load(tri.f.no);
-        tri.f.calcNormal();
-      } else {
-        tri.no.load(math.normal_tri(tri.v1, tri.v2, tri.v3));
-      }
-    }
+    let doneset = new WeakSet();
 
     for (let v of this.uniqueVerts) {
       v.no.zero();
@@ -839,6 +957,11 @@ export class BVHNode {
         let _i = 0;
 
         do {
+          if (!doneset.has(l.f)) {
+            doneset.add(l.f);
+            l.f.calcNormal();
+          }
+
           v.no.add(l.f.no);
           l = l.radial_next;
         } while (l !== e.l && _i++ < 100);
@@ -1353,6 +1476,7 @@ export class BVH {
 
     if (cd_grid >= 0) {
       let rand = new util.MersenneRandom(0);
+      let cd_node = bvh.cd_node;
 
       //we carefully randomize insertion order
       let tris = [];
@@ -1360,7 +1484,14 @@ export class BVH {
       for (let l of mesh.loops) {
         let grid = l.customData[cd_grid];
 
-        let cd_node = bvh.cd_node;
+        //reset any temporary data
+        //we do this to prevent convergent behavior
+        //across bvh builds
+        //grid.stripExtraData();
+      }
+
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
 
         for (let p of grid.points) {
           p.customData[cd_node].node = undefined;
@@ -1369,15 +1500,13 @@ export class BVH {
           p.bNext = p.bPrev = undefined;
         }
 
-        grid.recalcFlag |= 2;
+        grid.recalcFlag |= QRecalcFlags.TOPO|QRecalcFlags.NORMALS;
         grid.update(mesh, l, cd_grid);
         grid.recalcNeighbors(mesh, l, cd_grid);
 
         let a = tris.length;
         grid.makeBVHTris(mesh, bvh, l, cd_grid, tris);
-        grid.updateMirrorFlags(mesh);
-
-        grid.recalcNormals();
+        grid.updateMirrorFlags(mesh, l, cd_grid);
       }
 
       times.push(util.time_ms()); //4

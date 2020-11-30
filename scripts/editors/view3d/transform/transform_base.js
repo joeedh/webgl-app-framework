@@ -47,6 +47,8 @@ export class TransDataElem {
   constructor(typecls) {
     this.data1 = undefined; //set by client code
     this.data2 = undefined; //set by client code
+    this.mesh = undefined;
+
     this.index = -1;
     this.symFlag = 0; //see MeshSymFlags
     this.w = 1.0;

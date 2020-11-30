@@ -1,3 +1,4 @@
+///XXX truly ancient code
 export const PCOS=0, PEID=PCOS+16*3, PCOLOR=PEID+1, PTOT=PCOLOR+4;
 
 export class PatchList {

@@ -446,6 +446,13 @@ export class CustomData {
     this.idgen = new util.IDGen();
   }
 
+  _clear() {
+    this.layers = {};
+    this.flatlist = [];
+
+    return this;
+  }
+
   copy() {
     let ret = new CustomData();
     ret.idgen = this.idgen.copy();

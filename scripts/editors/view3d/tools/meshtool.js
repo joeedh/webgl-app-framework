@@ -192,7 +192,7 @@ export class MeshToolBase extends ToolMode {
     console.log(ret);
     return true;
     */
-    
+
     return e.button === 0;// || (e.touches !== undefined && e.touches.length === 0);
   }
 
@@ -408,6 +408,7 @@ export class MeshToolBase extends ToolMode {
       uniforms.pointSize = 15;
       uniforms.polygonOffset = 10 + camdist**2;
 
+      selmask |= SelMask.FACE;
       mesh.drawElements(view3d, gl, selmask, uniforms, program);
     }
   }

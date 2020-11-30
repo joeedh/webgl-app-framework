@@ -30,9 +30,13 @@ attribute vec4 color;
 varying vec4 vColor;
 varying vec2 vUv;
 
+${PolygonOffset.pre}
+
 void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
+  
+  ${PolygonOffset.vertex("p")}
   
   gl_Position = p;
   vColor = color;

@@ -17,6 +17,56 @@ import {splitEdgesSmart} from "./mesh_subdivide.js";
 import {GridBase, Grid, gridSides} from "./mesh_grids.js";
 import {CustomDataElem} from "./customdata.js";
 
+export function* walkFaceLoop(e) {
+  let l = e.l;
+
+  if (!l) {
+    return;
+  }
+
+  let visit = new WeakSet();
+  let _i = 0;
+
+  while (1) {
+    if (_i++ > 1000000) {
+      console.error("infinite loop detected");
+      break;
+    }
+    if (visit.has(l)) {
+      break;
+    }
+
+    visit.add(l);
+    l = l.prev.prev;
+
+    if (l === l.radial_next) {
+      break;
+    }
+  }
+
+  _i = 0;
+  visit = new WeakSet();
+
+  do {
+    if (_i++ > 1000000) {
+      console.error("infinite loop detected");
+      break;
+    }
+
+    if (visit.has(l)) {
+      break;
+    }
+
+    yield l;
+
+    visit.add(l)
+    if (l === l.radial_next) {
+      break;
+    }
+    l = l.radial_next.next.next;
+  } while (_i++ < 1000000);
+}
+
 let _tritemp = new Array(3);
 
 export function triangulateMesh(mesh, faces = mesh.faces) {

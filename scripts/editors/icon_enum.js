@@ -85,6 +85,11 @@ export let Icons = {
   EDITOR_VIEW3D   : 79,
   EDITOR_MENU     : 80,
   EDITOR_PROPERTIES : 81,
-  CONSOLE : 82
+  CONSOLE : 82,
+  SMOOTH_GRIDS : 83,
+  GRIDS_TEST : 84,
+  FACELOOP : 85,
+  EDGELOOP : 86,
+  EDGECUT  : 87
 };
 setIconMap(Icons);

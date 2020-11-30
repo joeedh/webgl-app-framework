@@ -908,6 +908,29 @@ export class Mesh extends SceneObjectData {
 
   }
 
+  splitFaceAtVerts(f, v1, v2) {
+    for (let list of f.lists) {
+      let l1, l2;
+
+      for (let l of list) {
+        if (l.v === v1 || l.v === v2) {
+          if (l1) {
+            l1 = l.v;
+          } else {
+            l2 = l.v;
+            break;
+          }
+        }
+      }
+
+      if (l1 && l2) {
+        return this.splitFace(f, l1, l2);
+      }
+    }
+
+    console.warn("Failed to split face", f, v1, v2);
+  }
+
   splitFace(f, l1, l2) {
     //TODO: handle holes
 
@@ -1272,6 +1295,33 @@ export class Mesh extends SceneObjectData {
     }
 
     this.regenRender();
+  }
+
+  updateGrids() {
+    let cd_grid = GridBase.meshGridOffset(this);
+
+    console.log("update grid");
+
+    if (cd_grid < 0) {
+      return;
+    }
+
+    let cls = this.loops.customData.flatlist[cd_grid].typeName;
+    cls = CustomDataElem.getTypeClass(cls);
+
+    cls.updateSubSurf(this, cd_grid, true);
+
+    for (let l of this.loops) {
+      let grid = l.customData[cd_grid];
+
+      grid.update(this, l, cd_grid);
+    }
+  }
+
+  exec(ctx) {
+    super.exec();
+
+    this.updateGrids();
   }
 
   tessellate() {
@@ -1767,6 +1817,13 @@ export class Mesh extends SceneObjectData {
     })()
   }
 
+  clearCustomData() {
+    for (let k in this.elists) {
+      let elist = this.elists[k];
+      elist.clearCustomData();
+    }
+  }
+
   regenBVH() {
     if (this.bvh) {
       this.bvh.destroy(this);
@@ -1827,7 +1884,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  copy(addLibUsers = false) {
+  copy(addLibUsers = false, clearCustomData=false) {
     let ret = new this.constructor();
 
     ret.materials = [];
@@ -1844,7 +1901,12 @@ export class Mesh extends SceneObjectData {
         continue;
       }
 
-      elist.customData = this.elists[elist.type].customData.copy();
+      if (clearCustomData) {
+        elist.customData._clear();
+      } else {
+        elist.customData = this.elists[elist.type].customData.copy();
+      }
+
       elist.customData.on_layeradd = ret._on_cdlayer_add.bind(ret);
       elist.customData.on_layerremove = ret._on_cdlayer_rem.bind(ret);
     }
@@ -1856,7 +1918,10 @@ export class Mesh extends SceneObjectData {
       let v2 = ret.makeVertex(v);
 
       ret.verts.customData.initElement(v2);
-      ret.copyElemData(v2, v);
+
+      if (!clearCustomData) {
+        ret.copyElemData(v2, v);
+      }
 
       v2.no.load(v.no);
 
@@ -1880,8 +1945,10 @@ export class Mesh extends SceneObjectData {
         e2.h1.load(e.h1);
         e2.h2.load(e.h2);
 
-        ret.copyElemData(e2.h1, e.h1);
-        ret.copyElemData(e2.h2, e.h2);
+        if (!clearCustomData) {
+          ret.copyElemData(e2.h1, e.h1);
+          ret.copyElemData(e2.h2, e.h2);
+        }
 
         ret.handles.customData.initElement(e2.h1);
         ret.handles.customData.initElement(e2.h2);
@@ -1894,7 +1961,9 @@ export class Mesh extends SceneObjectData {
       eidmap[e2.eid] = e2;
       ret.edges.push(e2);
 
-      ret.copyElemData(e2, e);
+      if (!clearCustomData) {
+        ret.copyElemData(e2, e);
+      }
     }
 
     for (let l of this.loops) {
@@ -1919,7 +1988,9 @@ export class Mesh extends SceneObjectData {
       eidmap[l2.eid] = l2;
       ret.loops.push(l2);
 
-      ret.copyElemData(l2, l);
+      if (!clearCustomData) {
+        ret.copyElemData(l2, l);
+      }
     }
 
     for (let e of this.edges) {
@@ -1962,7 +2033,10 @@ export class Mesh extends SceneObjectData {
       ret.faces.push(f2);
 
       ret.faces.customData.initElement(f2);
-      ret.copyElemData(f2, f);
+
+      if (!clearCustomData) {
+        ret.copyElemData(f2, f);
+      }
     }
 
     for (let l2 of ret.loops) {

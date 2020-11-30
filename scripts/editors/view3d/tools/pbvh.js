@@ -21,6 +21,7 @@ import {
   BoolProperty,
   EnumProperty,
   FlagProperty,
+  math,
   ListProperty,
   PackFlags,
   Curve1D, Curve1DProperty, SplineTemplates
@@ -32,10 +33,12 @@ import {
   GridBase,
   GridSettingFlags,
   QRecalcFlags,
+} from "../../../mesh/mesh_grids.js";
+import {
   QuadTreeFields,
   QuadTreeFlags,
   QuadTreeGrid
-} from "../../../mesh/mesh_grids.js";
+} from "../../../mesh/mesh_grids_quadtree.js";
 
 let _triverts = new Array(3);
 
@@ -48,7 +51,6 @@ import {DataRefProperty} from "../../../core/lib_api.js";
 
 let cfrets = util.cachering.fromConstructor(Vector4, 128);
 export let colorfilterfuncs = [0, 0];
-
 
 colorfilterfuncs[1] = function (v, cd_color, fac = 0.5) {
   if (cd_color < 0) {
@@ -742,7 +744,54 @@ export class PaintOp extends ToolOp {
     let ob = ctx.object;
     let mesh = ob.data;
 
+    let mres, oldmres;
+
     let bvh = mesh.getBVH(false);
+
+    /* test deforming base (well, level 1) of grid but displaying full thing
+    if (GridBase.meshGridOffset(mesh) >= 0) {
+      let cd_grid = GridBase.meshGridOffset(mesh);
+      let layer = mesh.loops.customData.flatlist[cd_grid];
+
+      mres = mesh.loops.customData.getLayerSettings(layer.typeName);
+      if (mres) {
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+          let co = new Vector3();
+
+          for (let p of grid.points) {
+            co.load(p);
+            let tot = 1;
+
+            for (let pr of p.bRing) {
+              co.add(pr);
+              tot++;
+            }
+
+            co.mulScalar(1.0 / tot);
+            p.load(co);
+          }
+
+          grid.recalcFlag |= QRecalcFlags.NORMALS|QRecalcFlags.TOPO|QRecalcFlags.NEIGHBORS;
+          grid.update(mesh, l, cd_grid);
+        }
+
+        oldmres = mres.copy();
+
+        mres.flag |= GridSettingFlags.ENABLE_DEPTH_LIMIT;
+        mres.depthLimit = 1;
+
+        mesh.regenBVH();
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+
+          grid.recalcFlag |= QRecalcFlags.NORMALS|QRecalcFlags.TOPO|QRecalcFlags.NEIGHBORS;
+          grid.update(mesh, l, cd_grid);
+        }
+        bvh = mesh.getBVH(false);
+      }
+    }
+    //*/
 
     let mode = this.inputs.tool.getValue();
     let radius = p3[3];
@@ -888,6 +937,7 @@ export class PaintOp extends ToolOp {
     }
 
     function doGridBoundary(v) {
+      //return;
       doUndo(v.bLink.v1);
 
       if (v.bLink.v2) {
@@ -944,42 +994,48 @@ export class PaintOp extends ToolOp {
       }
 
       vsmooth = (v, fac) => {
-        _tmp.load(v);
-        let w = 1.0;
+        _tmp.zero();
+        let w = 0.0;
+
+        for (let vr of v.bRing) {//v.neighbors) {
+          doUndo(vr);
+          vr.interp(v, 0.5);
+          v.load(vr, true);
+        }
+
+        for (let vr of v.bRing) {
+          for (let v2 of vr.neighbors) {
+            if (v2 === vr || v2.loopEid !== vr.loopEid) {
+              continue;
+            }
+
+            let w2 = 1.0;
+            _tmp.addFac(v2, w2);
+            w += w2;
+          }
+        }
 
         for (let v2 of v.neighbors) {
+          if (v2.loopEid !== v.loopEid) {
+            continue;
+          }
+
           _tmp.add(v2);
           w++;
         }
 
-        let w2 = 1.0;
-
-        if (v.bLink) {
-          let w3 = w2;
-
-          if (v.bLink.v2) {
-            w3 *= 1.0 - v.bLink.t;
-          }
-
-          for (let v2 of v.bLink.v1.neighbors) {
-            _tmp.addFac(v2, w3);
-            w += w3;
-          }
-        }
-        if (v.bLink && v.bLink.v2) {
-          let w3 = w2;
-
-          w3 *= v.bLink.t;
-
-          for (let v2 of v.bLink.v2.neighbors) {
-            _tmp.addFac(v2, w3);
-            w += w3;
-          }
+        if (w !== 0.0) {
+          _tmp.mulScalar(1.0 / w);
+          v.interp(_tmp, vsw * fac);
         }
 
-        _tmp.mulScalar(1.0 / w);
-        v.interp(_tmp, vsw * fac);
-      }
+        /*
+        for (let v2 of v.bRing) {
+          v2[0] = v[0];
+          v2[1] = v[1];
+          v2[2] = v[2];
+        }//*/
+      };
     } else {
       colorfilter = colorfilterfuncs[0];
 
@@ -1170,14 +1226,28 @@ export class PaintOp extends ToolOp {
     }
     //*/
 
+    bvh.update();
+
+    if (mres && oldmres) {
+      oldmres.copyTo(mres);
+
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+
+        grid.recalcFlag |= QRecalcFlags.NORMALS|QRecalcFlags.TOPO|QRecalcFlags.NEIGHBORS;
+        grid.update(mesh, l, cd_grid);
+      }
+
+      mesh.regenBVH();
+      mesh.getBVH(false).update();
+    }
+
     if (!this.modalRunning) {
       mesh.regenTesellation();
     }
 
     //mesh.recalcNormals();
     mesh.regenRender();
-
-    bvh.update();
   }
 
   doTopology(mesh, bvh, esize, vs, es) {
@@ -2215,7 +2285,7 @@ export class BVHToolMode extends ToolMode {
 
     let drawCircle = (x, y, r, mat = new Matrix4(), z = 0.0) => {
       let p = new Vector3(), lastp = new Vector3();
-      let steps = Math.max(Math.ceil((Math.PI * r * 2) / 5), 8);
+      let steps = Math.max(Math.ceil((Math.PI * r * 2) / 20), 8);
       let th = -Math.PI, dth = (2.0 * Math.PI) / (steps - 1);
 
       r /= devicePixelRatio;
@@ -2343,18 +2413,21 @@ export class BVHToolMode extends ToolMode {
 
     strip = col.row();
     strip.useIcons();
-    strip.tool("mesh.ensure_grids()");
+    strip.tool("mesh.add_or_subdivide_grids()");
     strip.tool("mesh.reset_grids()");
     strip.tool("mesh.delete_grids()");
 
     col.prop(path + ".dynTopoLength");
     col.prop(path + ".brush.flag[DYNTOPO]");
 
+    col.tool("mesh.smooth_grids()");
+    col.tool("mesh.grids_test()");
+
     panel = col.panel("Multi Resolution");
     panel.prop(path + ".dynTopoDepth").setAttribute("labelOnTop", true);
 
-    strip = panel.strip();
 
+    strip = panel.strip();
     strip.prop(path + ".enableMaxEditDepth");
     strip.prop(path + ".gridEditDepth");
 
@@ -2441,7 +2514,7 @@ export class BVHToolMode extends ToolMode {
     let st = super.defineAPI(api);
 
     st.float("sharedBrushRadius", "sharedBrushRadius", "Shared Radius").noUnits().range(0, 450);
-    st.float("_brushSizeHelper", "brushRadius", "Radius").noUnits().range(0, 450).step(0.5);
+    st.float("_brushSizeHelper", "brushRadius", "Radius").noUnits().range(0, 450).step(1.0);
 
     st.bool("drawWireframe", "drawWireframe", "Draw Wireframe");
     st.bool("drawBVH", "drawBVH", "Draw BVH");
@@ -2581,6 +2654,7 @@ export class BVHToolMode extends ToolMode {
         let grid = l.customData[cd_grid];
         grid.update(mesh, l, cd_grid);
       }
+
       mesh.regenRender();
       mesh.regenBVH();
       mesh.graphUpdate();
@@ -2605,6 +2679,7 @@ export class BVHToolMode extends ToolMode {
 
     if (key !== this._last_enable_mres) {
       this._last_enable_mres = key;
+      console.log(key);
 
       this.updateMeshMres(this.ctx.object.data);
     }
@@ -3020,8 +3095,9 @@ export class BVHToolMode extends ToolMode {
           if (!drawFlat) {
             tri2.normals(tri.v1.no, tri.v2.no, tri.v3.no);
           } else {
-            n.load(tri.no);
+            //n.load(tri.no);
             //n.load(tri.v1.no).add(tri.v2.no).add(tri.v3.no).normalize();
+            n.load(math.normal_tri(tri.v1, tri.v2, tri.v3));
             tri2.normals(n, n, n);
           }
 
