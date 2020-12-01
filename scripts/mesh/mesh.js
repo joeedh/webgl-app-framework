@@ -1300,8 +1300,6 @@ export class Mesh extends SceneObjectData {
   updateGrids() {
     let cd_grid = GridBase.meshGridOffset(this);
 
-    console.log("update grid");
-
     if (cd_grid < 0) {
       return;
     }
@@ -1499,6 +1497,7 @@ export class Mesh extends SceneObjectData {
       this._last_bvh_key = key;
 
       if (auto_update || !this.bvh) {
+        console.error("BVH rebuild!");
         this.bvh = BVH.create(this, true, useGrids);
       }
     }

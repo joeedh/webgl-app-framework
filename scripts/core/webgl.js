@@ -822,42 +822,173 @@ v${attr} = ${attr};
 
 window._ShaderProgram = ShaderProgram;
 
+export class VBO {
+  constructor(gl, vbo, size=-1) {
+    this.gl = gl;
+    this.vbo = vbo;
+    this.size = size;
+
+    this.ready = false;
+    this.lastData = undefined;
+    this.dead = false;
+    this.target = undefined;
+    this.drawmode = undefined;
+    this.lastData = undefined;
+  }
+
+  get(gl) {
+    if (this.dead) {
+      throw new Error("vbo is dead");
+    }
+
+    if (gl !== undefined && gl !== this.gl) {
+      this.ready = false;
+      this.gl = gl;
+      this.vbo = gl.createBuffer();
+
+      console.warn("context loss detected");
+    }
+
+    if (!this.ready) {
+      console.warn("buffer was not ready; forgot to call .uploadData?");
+    }
+
+    if (!this.vbo) {
+      throw new Error("webgl error");
+    }
+
+    return this.vbo;
+  }
+
+  checkContextLoss(gl) {
+    if (gl !== undefined && gl !== this.gl) {
+      this.ready = false;
+      this.gl = gl;
+      this.vbo = gl.createBuffer();
+
+      console.warn("context loss detected");
+
+      if (this.lastData !== undefined) {
+        this.uploadData(gl, this.lastData, this.target, this.drawmode);
+      }
+    }
+  }
+
+  reset(gl) {
+    if (this.dead) {
+      this.dead = false;
+      this.gl = gl;
+      this.vbo = gl.createBuffer();
+      console.log("vbo creation");
+    }
+
+    this.ready = false;
+    this.lastData = undefined;
+
+    return this;
+  }
+
+  destroy(gl) {
+    if (this.dead) {
+      console.warn("tried to kill vbo twice");
+      return;
+    }
+
+    this.ready = false;
+
+    gl.deleteBuffer(this.vbo);
+
+    this.vbo = undefined;
+    this.lastData = undefined;
+    this.gl = undefined;
+    this.dead = true;
+  }
+
+  uploadData(gl, dataF32, target=gl.ARRAY_BUFFER, drawmode=gl.STATIC_DRAW) {
+    if (gl !== this.gl) {
+      //context loss
+      this.gl = gl;
+      this.vbo = gl.createBuffer();
+      this.size = -1;
+
+      console.warn("Restoring VBO after context loss");
+    }
+
+    let useSub = this.size === dataF32.length && this.vbo;
+
+    this.lastData = dataF32;
+    this.size = dataF32.length;
+
+    this.target = target;
+    this.drawmode = drawmode;
+
+    gl.bindBuffer(target, this.vbo);
+    if (useSub) {
+      gl.bufferSubData(target, 0, dataF32);
+    } else {
+      console.warn("bufferData");
+      gl.bufferData(target, dataF32, drawmode);
+    }
+
+    this.ready = true;
+  }
+}
+
 export class RenderBuffer {
   constructor() {
     this._layers = {};
   }
 
   get(gl, name) {
-    if (this[name] != undefined) {
+    if (this[name] !== undefined) {
       return this[name];
     }
 
-    var buf = gl.createBuffer();
+    console.log("new buffer");
+    let buf = gl.createBuffer();
 
-    this._layers[name] = buf;
-    this[name] = buf;
+    let vbo = new VBO(gl, buf);
 
-    return buf;
+    this._layers[name] = vbo;
+    this[name] = vbo;
+
+    return vbo;
+  }
+
+  get buffers() {
+    let this2 = this;
+
+    return (function*() {
+      for (let k in this2._layers) {
+        yield this2._layers[k];
+      }
+    })();
+  }
+
+  reset(gl) {
+    for (let vbo of this.buffers) {
+      vbo.reset(gl);
+    }
   }
 
   destroy(gl, name) {
-    if (name == undefined) {
-      for (var k in this._layers) {
-        gl.deleteBuffer(this._layers[k]);
+    if (name === undefined) {
+      for (let k in this._layers) {
+        this._layers[k].destroy(gl);
 
-        this._layers[k] = undefined;
-        this[k] = undefined;
+        delete this._layers[name];
+        delete this[name];
       }
     } else {
-      if (this._layers[name] == undefined) {
-        console.trace("WARNING: gl buffer no in RenderBuffer!", name, gl);
+      if (this._layers[name] === undefined) {
+        console.trace("WARNING: gl buffer not in RenderBuffer!", name, gl);
         return;
       }
 
-      gl.deleteBuffer(this._layers[name]);
+      this._layers[name].destroy(gl);
 
-      this._layers[name] = undefined;
-      this[name] = undefined;
+      delete this._layers[name];
+      delete this[name];
     }
   }
 }

@@ -2971,15 +2971,15 @@ export class BVHToolMode extends ToolMode {
       }
 
       if (node.drawData) {
-        node.drawData.destroy(gl);
-        node.drawData = undefined;
+        node.drawData.reset(gl);
       }
 
       let lflag = LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV | LayerTypes.NORMAL | LayerTypes.ID;
 
       lflag |= LayerTypes.CUSTOM;
 
-      let sm = new SimpleMesh(lflag);
+      let sm = node.drawData || new SimpleMesh(lflag);
+
       //primflag, type, size=TypeSizes[type], name=LayerTypeNames[type]) {
 
       //let primc1 = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 4, "primc1");
@@ -3160,11 +3160,6 @@ export class BVHToolMode extends ToolMode {
             tri2.colors(white, white, white);
           }
         }
-      }
-
-      if (node.drawData) {
-        node.drawData.destroy(gl);
-        node.drawData = undefined;
       }
 
       //console.log("updating draw data for bvh node", node.id);

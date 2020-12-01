@@ -30,10 +30,12 @@ export function genRenderMesh(gl, mesh, uniforms) {
       mesh._fancyMeshes[key] = new ChunkedSimpleMesh(LayerTypes.LOC | LayerTypes.NORMAL | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR);
     }
 
-    return mesh._fancyMeshes[key];
+    let sm = mesh._fancyMeshes[key];
+
+    return sm;
   }
 
-  let trilen = mesh._ltris === undefined ? 0 : mesh._ltris.length;
+  let trilen = mesh._ltris === undefined ? mesh.faces.length : mesh._ltris.length;
   let updatekey = "" + trilen + ":" + mesh.verts.length + ":" + mesh.edges.length;
 
   if (updatekey !== mesh._last_elem_update_key) {
@@ -73,6 +75,7 @@ export function genRenderMesh(gl, mesh, uniforms) {
     mesh.updateMirrorTags();
 
     let tot = 0;
+
     sm = getmesh("verts");
     sm.primflag = PrimitiveTypes.POINTS;
 
@@ -94,8 +97,6 @@ export function genRenderMesh(gl, mesh, uniforms) {
       p.ids(v.eid);
       p.colors(color);
     }
-
-    console.log("  ", tot, "vertices updated");
 
     sm = getmesh("handles");
     sm.primflag = PrimitiveTypes.POINTS;
@@ -239,6 +240,10 @@ export function genRenderMesh(gl, mesh, uniforms) {
         }
       }
     }
+  }
+
+  for (let k in mesh._fancyMeshes) {
+    let sm = mesh._fancyMeshes[k];
   }
 
   mesh.clearUpdateFlags(recalc);

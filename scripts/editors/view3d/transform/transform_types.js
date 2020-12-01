@@ -375,37 +375,27 @@ export class MeshTransType extends TransDataType {
     let mesh = ctx.mesh;
 
     if (elemlist !== undefined) {
-      let fset = new util.set();
-      let vset = new util.set();
+      let doneset = new WeakSet();
 
       for (let e of elemlist) {
         let v = e.data1;
-        vset.add(v);
 
-        for (let e2 of v.edges) {
-          for (let f of e2.faces) {
-            fset.add(f);
-          }
-        }
-      }
-
-      for (let v of vset) {
         v.no.zero();
-      }
-
-      for (let f of fset) {
-        f.calcNormal();
-        f.calcCent();
-      }
-
-      for (let v of vset) {
-        for (let f of v.faces) {
-          v.no.add(f.no);
-          mesh.flagElemUpdate(f);
-        }
-
         for (let e of v.edges) {
-          mesh.flagElemUpdate(e);
+          for (let l of e.loops) {
+            let f = l.f;
+
+            if (!doneset.has(f)) {
+              doneset.add(f);
+
+              f.calcCent();
+              f.calcNormal();
+
+              mesh.flagElemUpdate(f);
+
+              v.no.add(f.no);
+            }
+          }
         }
 
         v.no.normalize();
@@ -413,19 +403,6 @@ export class MeshTransType extends TransDataType {
       }
     } else {
       mesh.recalcNormals();
-
-      for (let item of elemlist) {
-        mesh.flagElemUpdate(item.data1);
-
-        for (let e of item.data1.edges) {
-          mesh.flagElemUpdate(e);
-          e.update();
-        }
-
-        for (let f of item.data1.faces) {
-          mesh.flagElemUpdate(f);
-        }
-      }
     }
 
     //mesh.regenTesellation(); //slow, disables partial redraw for that frame

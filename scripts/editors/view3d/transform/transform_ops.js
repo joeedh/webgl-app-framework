@@ -39,6 +39,17 @@ export class TransformOp extends View3DOp {
     this.center = new Vector3();
   }
 
+  exec(ctx) {
+    if (!this.modalRunning) {
+      this.genTransData(ctx);
+    }
+  }
+
+  execPost(ctx) {
+    //prevent reference leaks from keeping this.tdata around
+    this.tdata = undefined;
+  }
+
   static canRun(ctx) {
     return ctx.view3d !== undefined;
   }
@@ -546,9 +557,7 @@ export class TranslateOp extends TransformOp {
   }
 
   exec(ctx) {
-    if (this.tdata === undefined) {
-      this.genTransData(ctx);
-    }
+    super.exec(ctx);
 
     let mat = new Matrix4();
 
@@ -737,10 +746,7 @@ export class ScaleOp extends TransformOp {
   }
 
   exec(ctx) {
-    if (this.tdata === undefined) {
-      this.genTransData(ctx);
-    }
-
+    super.exec(ctx);
     let mat = new Matrix4();
 
     let off = new Vector3(this.inputs.value.getValue());
@@ -1057,10 +1063,7 @@ export class RotateOp extends TransformOp {
   }
 
   exec(ctx) {
-    if (this.tdata === undefined) {
-      this.genTransData(ctx);
-    }
-
+    super.exec(ctx);
     let mat = new Matrix4();
 
     let off = new Vector3(this.inputs.value.getValue());
