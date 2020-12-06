@@ -265,6 +265,7 @@ export class TexturePanel extends Container {
     this._drawreq = undefined;
     this._rebuildReq = undefined;
 
+    /*
     this.modebox = this.listenum(undefined, {
       name : "Mode",
       enumDef : ProceduralTex.buildGeneratorEnum(),
@@ -276,7 +277,7 @@ export class TexturePanel extends Container {
           tex.setGenerator(ProceduralTex.getPattern(id));
         }
       }
-    });
+    });*/
   }
 
   getTexture() {
@@ -291,11 +292,11 @@ export class TexturePanel extends Container {
   init() {
     super.init();
 
+    this.mode = this.listenum(undefined, "Type", {});
     this.preview = this.panel("Preview");
     this.settings = this.panel("Settings");
     this.preview.add(this.canvas);
 
-    let path = this.getAttribute("datapath");
     this.flagRebuild();
 
     this.flagRedraw();
@@ -318,9 +319,13 @@ export class TexturePanel extends Container {
       return;
     }
 
+    this.mode.ctx = this.ctx;
+
     let cls = tex.generator.constructor;
 
     let path = this.getAttribute("datapath");
+
+    this.mode.setAttribute("datapath", path + ".mode");
 
     panel.dataPrefix = path;
 

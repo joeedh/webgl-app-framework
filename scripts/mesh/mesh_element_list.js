@@ -689,7 +689,7 @@ export class ElementList {
 };
 ElementList.STRUCT = `
 mesh.ElementList {
-  items       : iter(abstract(mesh.Element)) | this._get_compact();
+  items       : iter(abstract(Object)) | this._get_compact();
   active      : int | this.active !== undefined ? this.active.eid : -1;
   highlight   : int | this.highlight !== undefined ? this.highlight.eid : -1;
   type        : int;

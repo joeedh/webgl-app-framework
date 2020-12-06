@@ -341,7 +341,7 @@ export class MeshToolBase extends ToolMode {
       ok = ok && dist > 4;
       if (ok) {
         console.log("translate");
-        let tool = new TranslateOp();
+        let tool = TranslateOp.invoke(this.ctx, {});
 
         if (this.transformConstraint) {
           tool.setConstraintFromString(this.transformConstraint);

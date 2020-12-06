@@ -367,6 +367,7 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
 
 
   let lsinterp = [];
+  let vsinterp = [];
   let winterp = [];
   let cent2 = new Vector3();
   let centout = new Map();
@@ -387,10 +388,15 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
     lsinterp.length = 0;
     f.lists[0]._recount();
 
+    vsinterp.length = 0;
+
     for (let l of f.lists[0]) {
+      vsinterp.push(l.v);
       lsinterp.push(l);
       winterp.push(1.0/f.lists[0].length);
     }
+
+    mesh.verts.customDataInterp(centv, vsinterp, winterp);
 
     let l = f.lists[0].l;
     let _i = 0;

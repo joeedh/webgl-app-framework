@@ -1,4 +1,4 @@
-import {keymap} from '../../../path.ux/scripts/util/simple_events.js';
+import {keymap, reverse_keymap} from '../../../path.ux/scripts/util/simple_events.js';
 import {TransDataElem, TransformData, TransDataType, PropModes, TransDataTypes, TransDataList} from "./transform_base.js";
 import {MeshTransType} from "./transform_types.js";
 import {ToolOp, UndoFlags} from "../../../path.ux/scripts/toolsys/simple_toolsys.js";
@@ -34,6 +34,11 @@ export class TransformOp extends View3DOp {
   constructor() {
     super();
 
+    this.numericVal = undefined;
+
+    this._mpos = new Vector2();
+    this._first = true;
+
     this.tdata = undefined;
     this.centfirst = true;
     this.center = new Vector3();
@@ -43,6 +48,11 @@ export class TransformOp extends View3DOp {
     if (!this.modalRunning) {
       this.genTransData(ctx);
     }
+  }
+
+  //called only during modal mode
+  numericSet(val) {
+    throw new Error("numericSet: implement me!");
   }
 
   execPost(ctx) {
@@ -75,26 +85,28 @@ export class TransformOp extends View3DOp {
   }
 
   static invoke(ctx, args) {
-    let tool = new this();
+    let tool = super.invoke(ctx, args);
 
     if ("constraint" in args) {
       tool.setConstraintFromString(args.constraint);
     }
 
-    console.log("TRANSFROM INVOKE", args);
+    //console.log("TRANSFROM INVOKE", args);
 
-    if ("selmask" in args) {
-      tool.inputs.selmask.setValue(args.selmask);
-    } else {
+    if (!("selmask" in args)) {
       tool.inputs.selmask.setValue(ctx.selectMask);
     }
 
-    if ("propmode" in args) {
-      tool.inputs.propmode.setValue(args.propmode);
+    if (!("propEnabled" in args)) {
+      tool.inputs.propEnabled.setValue(ctx.scene.propEnabled);
     }
 
-    if ("propradius" in args) {
-      tool.inputs.propradius.setValue(args.propradius);
+    if (!("propMode" in args)) {
+      tool.inputs.propMode.setValue(ctx.scene.propMode);
+    }
+
+    if (!("propRadius" in args)) {
+      tool.inputs.propRadius.setValue(ctx.scene.propRadius);
     }
 
     return tool;
@@ -112,11 +124,11 @@ export class TransformOp extends View3DOp {
       constraint : new Vec3Property([1.0,1.0,1.0]).private(), //locked constraint axes
       constraint_space : new Mat4Property().private(),
       selmask    : new FlagProperty("GEOM", SelMask).private(),
-      propmode   : new EnumProperty(0, PropModes, undefined,
-        "Prop Mode", "Proportional (magnet) mode",
-        PropFlags.SAVE_LAST_VALUE).private(),
-      propradius : new FloatProperty(0.125, "propradius", "Prop Radius",
-        "Proportional radius", PropFlags.SAVE_LAST_VALUE).private()
+      propMode   : new EnumProperty(0, PropModes, undefined,
+        "Prop Mode", "Proportional (magnet) mode"),
+      propRadius : new FloatProperty(0.125, "propradius", "Prop Radius",
+        "Proportional radius", PropFlags.SAVE_LAST_VALUE),
+      propEnabled : new BoolProperty(false)
     }
   }}
 
@@ -140,11 +152,11 @@ export class TransformOp extends View3DOp {
 
   genTransData(ctx) {
     let tdata = this.tdata = new TransformData();
-    let propmode = this.inputs.propmode.getValue();
-    let propradius = this.inputs.propradius.getValue();
+    let propmode = this.inputs.propMode.getValue();
+    let propradius = this.inputs.propRadius.getValue();
     let selmask = this.inputs.selmask.getValue();
 
-    //console.log("selmask", selmask, "propmode", propmode, "propradius", propradius);
+    propmode = !this.inputs.propEnabled.getValue() ? undefined : propmode;
 
     for (let type of this.getTransTypes(ctx)) {
       let list = type.genData(ctx, selmask, propmode, propradius, this);
@@ -188,8 +200,11 @@ export class TransformOp extends View3DOp {
   }
 
 
-  undoPre(ctx) {
-    this.genTransData(ctx);
+  undoPre(ctx, checkTransData=true) {
+    if (checkTransData) {
+      this.genTransData(ctx);
+    }
+
     this._undo = {};
 
     for (let list of this.tdata) {
@@ -211,10 +226,12 @@ export class TransformOp extends View3DOp {
   }
 
   modalStart(ctx) {
+
     ctx.setModalFlag(ModalFlags.TRANSFORMING);
 
     let promise = super.modalStart(ctx);
 
+    this.numericVal = undefined;
     this.tdata = this.genTransData(ctx);
 
     for (let t of this.getTransTypes(ctx)) {
@@ -233,7 +250,7 @@ export class TransformOp extends View3DOp {
 
   applyTransform(ctx, mat) {
     let tdata = this.tdata;
-    let do_prop = this.inputs.propmode.getValue() !== PropModes.NONE;
+    let do_prop = this.inputs.propEnabled.getValue();
 
     for (let list of tdata) {
       for (let td of list) {
@@ -246,7 +263,7 @@ export class TransformOp extends View3DOp {
 
   doUpdates(ctx) {
     let tdata = this.tdata;
-    let do_prop = this.inputs.propmode.getValue() !== PropModes.NONE;
+    let do_prop = this.inputs.propEnabled.getValue();
 
     for (let list of tdata) {
       list.type.update(ctx, list);
@@ -284,7 +301,7 @@ export class TransformOp extends View3DOp {
   on_mouseup(e) {
     console.log("mouseup!");
 
-    if (e.button != 0) {
+    if (e.button !== 0) {
       this.cancel();
     } else {
       this.finish();
@@ -293,7 +310,54 @@ export class TransformOp extends View3DOp {
     window.redraw_viewport();
   }
 
-  on_mousemove(e) {
+  on_mousewheel(e) {
+    console.log("wheel!", e, e.x, e.y);
+
+    let dy = 1.0 + e.deltaY*0.001;
+    dy = Math.max(dy, 0.001);
+
+    let r = this.inputs.propRadius.getValue() * dy;
+    this.inputs.propRadius.setValue(r);
+
+    this.modal_ctx.scene.propRadius = r;
+
+    let mpos = new Vector2();
+    let view3d = this.modal_ctx.view3d;
+
+    if (e.x !== undefined && e.y !== undefined) {
+      mpos.load(view3d.getLocalMouse(e.x, e.y));
+    } else if (e.x !== undefined && e.y !== undefined) {
+      mpos.load(view3d.getLocalMouse(e.x, e.y));
+    } else if (!this._first) {
+      mpos.load(this._mpos);
+    } else {
+      return;
+    }
+
+    this.updatePropRadius(r, mpos);
+
+    console.log("dy", dy, r);
+
+  }
+
+  updatePropRadius(r, mpos) {
+    this.inputs.propRadius.setValue(r);
+    this.modal_ctx.scene.propRadius = r;
+
+    this.updateDrawLines(mpos[0], mpos[1])
+    this.updateTransData();
+    this.exec(this.modal_ctx);
+  }
+
+  updateTransData() {
+    this.applyTransform(this.modal_ctx, new Matrix4());
+    this.tdata = undefined;
+
+    this.genTransData(this.modal_ctx);
+    this.undoPre(this.modal_ctx, false);
+  }
+
+  updateDrawLines(localX, localY) {
     let ctx = this.modal_ctx;
 
     if (this.centfirst) {
@@ -301,11 +365,26 @@ export class TransformOp extends View3DOp {
       this.center.load(this.calcCenter(ctx, this.inputs.selmask.getValue()));
     }
 
+    return;
+
     let axis_colors = ["red", "green", "blue"];
     let view3d = ctx.view3d;
 
     let c = this.inputs.constraint.getValue();
-    this.resetTempGeom();
+    this.resetDrawLines();
+
+    let cent = this.calcCenter(ctx, this.inputs.selmask.getValue());
+
+    let sco = new Vector4(cent);
+    sco[3] = 1.0;
+    view3d.project(sco);
+
+    let dpi = window.devicePixelRatio;
+
+    let r = this.inputs.propRadius.getValue();
+    r *= view3d.glSize[1]/sco[3]/dpi;
+
+    this.addDrawCircle2D(sco, r, "rgba(0.8,0.8,0.8,1.0)")
 
     if (c.dot(c) === 1.0) {
       let v1 = new Vector3(c), v2 = new Vector3();
@@ -316,20 +395,20 @@ export class TransformOp extends View3DOp {
 
       let axis = 0;
       for (let i=0; i<3; i++) {
-        if (c[i] != 0.0) {
+        if (c[i] !== 0.0) {
           axis = i;
           break;
         }
       }
 
-      this.makeTempLine(v1, v2, axis_colors[axis]);
-    } else if (c.dot(c) == 2.0) {
+      this.addDrawLine(v1, v2, axis_colors[axis]);
+    } else if (c.dot(c) === 2.0) {
       let v1 = new Vector3();
       let v2 = new Vector3();
       let axis = 0;
 
       for (let i=0; i<3; i++) {
-        if (c[i] == 0.0) {
+        if (c[i] === 0.0) {
           axis = i;
           break;
         }
@@ -340,23 +419,120 @@ export class TransformOp extends View3DOp {
       v2.multVecMatrix(this.inputs.constraint_space.getValue());
       v1.add(this.center); v2.add(this.center);
 
-      this.makeTempLine(v1, v2, axis_colors[(axis+1)%3]);
+      this.addDrawLine(v1, v2, axis_colors[(axis+1)%3]);
 
       v1.zero(); v2.zero();
       v1[(axis+2)%3] -= 1000.0; v2[(axis+2)%3] += 1000.0;
       v1.multVecMatrix(this.inputs.constraint_space.getValue());
       v2.multVecMatrix(this.inputs.constraint_space.getValue());
       v1.add(this.center); v2.add(this.center);
-      this.makeTempLine(v1, v2, axis_colors[(axis+2)%3]);
+      this.addDrawLine(v1, v2, axis_colors[(axis+2)%3]);
     }
+  }
+
+  on_mousemove(e) {
+    let view3d = this.modal_ctx.view3d;
+
+    this._mpos.load(view3d.getLocalMouse(e.x, e.y));
+    this._first = false;
+
+    this.updateDrawLines(this._mpos[0], this._mpos[1]);
+  }
+
+  doNumericInput(key) {
+    if (this.numericVal === undefined) {
+      this.numericVal = {
+        sign : 1,
+        str : '',
+        value : 0.0
+      }
+    }
+
+    let num = this.numericVal;
+
+    if (key === keymap['-']) {
+      num.sign *= -1;
+    } else if (key >= keymap['0'] && key <= keymap['9']) {
+      num.str += reverse_keymap[key];
+    } else if (key === keymap['.']) {
+      if (num.str === '') {
+        num.str = '0';
+      }
+
+      num.str += '.'
+    } else if (key === keymap['Backspace']) {
+      if (num.str.length > 0) {
+        num.str = num.str.slice(0, num.str.length-1);
+      }
+    }
+
+    console.log("Numeric input!", key, this.numericVal);
+
+    let f = num.str;
+    if (f.endsWith(".")) {
+      f = f.slice(0, f.length-1);
+    }
+
+    if (f.length === 0) {
+      return;
+    }
+
+    if (isNaN(parseFloat(f))) {
+      this.ctx.error("Numeric input error! " + f);
+      return;
+    }
+
+    f = parseFloat(f) * num.sign;
+    this.numericSet(f);
+
+    console.log("Numeric input:", f, (num.sign ? '-' : '') + num.str);
+
+    this.exec(this.modal_ctx);
+    window.redraw_viewport();
   }
 
   on_keydown(e) {
     console.log(e.keyCode);
 
+    let doprop = false, sign = undefined;
+
+    if (e.ctrlKey && (e.keyCode === keymap['='] || e.keyCode === keymap['-'])) {
+      doprop = true;
+      sign = e.keyCode === keymap['='] ? 1.0 : -1.0;
+    }
+
+    if (e.keyCode === keymap["NumPlus"] || e.keyCode === keymap["NumMinus"]) {
+      doprop = true;
+      sign = e.keyCode === keymap["NumPlus"] ? 1.0 : -1.0;
+    }
+
+    if (doprop) {
+      let r = this.inputs.propRadius.getValue();
+      let step = 0.15;
+
+      r *= 1.0 + step*sign;
+
+      this.updatePropRadius(r, this._mpos);
+
+      return;
+    }
+
+    let numeric = e.keyCode === keymap['-'] || e.keyCode === keymap['.'];
+    numeric = numeric || (e.keyCode >= keymap['0'] && e.keyCode <= keymap['9']);
+    numeric = numeric || e.keyCode === keymap['Backspace'];
+
+    if (numeric) {
+      this.doNumericInput(e.keyCode);
+      return;
+    }
+
     switch (e.keyCode) {
       case keymap["Escape"]:
-        this.cancel();
+        //if (!this.numericVal) {
+          this.cancel();
+        //} else {
+        //  this.numericVal = undefined;
+        //}
         break;
       case keymap["Enter"]:
         this.finish();
@@ -416,8 +592,44 @@ export class TranslateOp extends TransformOp {
     icon        : -1
   }}
 
+  numericSet(val) {
+    let off = this.inputs.value.getValue();
+    off.zero();
+    let con = this.inputs.constraint.getValue();
+
+    let mask = 1*(!!con[0]) + 2*(!!con[1]) + 4*(!!con[2]);
+
+    switch (mask) {
+      case 0:
+      case 7:
+        off[0] = off[1] = off[2] = val;
+        break;
+      case 1:
+        off[0] = val;
+        break;
+      case 2:
+        off[1] = val;
+        break;
+      case 4:
+        off[2] = val;
+        break;
+      case 3:
+        off[0] = off[1] = val;
+        break;
+      case 5:
+        off[0] = off[2] = val;
+        break;
+      case 6:
+        off[1] = off[2] = val;
+    }
+  }
+
   on_mousemove(e) {
     super.on_mousemove(e);
+
+    if (this.numericVal !== undefined) {
+      return;
+    }
 
     let ctx = this.modal_ctx;
     let view3d = ctx.view3d;
@@ -610,8 +822,47 @@ export class ScaleOp extends TransformOp {
     icon        : -1
   }}
 
+  numericSet(val) {
+    let off = this.inputs.value.getValue();
+    off.zero().addScalar(1.0);
+
+    let con = this.inputs.constraint.getValue();
+
+    let mask = 1*(!!con[0]) + 2*(!!con[1]) + 4*(!!con[2]);
+
+    switch (mask) {
+      case 0:
+      case 7:
+        off[0] = off[1] = off[2] = val;
+        break;
+      case 1:
+        off[0] = val;
+        break;
+      case 2:
+        off[1] = val;
+        break;
+      case 4:
+        off[2] = val;
+        break;
+      case 3:
+        off[0] = off[1] = val;
+        break;
+      case 5:
+        off[0] = off[2] = val;
+        break;
+      case 6:
+        off[1] = off[2] = val;
+    }
+
+    this.inputs.value.setValue(off);
+  }
+
   on_mousemove(e) {
     super.on_mousemove(e);
+
+    if (this.numericVal !== undefined) {
+      return;
+    }
 
     let ctx = this.modal_ctx;
     let view3d = ctx.view3d;
@@ -813,6 +1064,10 @@ export class RotateOp extends TransformOp {
   }}
 
   on_mousemove(e) {
+    if (this.numericVal !== undefined) {
+      return;
+    }
+
     if (this.trackball) {
       return this.on_mousemove_trackball(e);
     } else {
@@ -963,8 +1218,10 @@ export class RotateOp extends TransformOp {
       }
       this.thsum += w;
 
-      this.inputs.euler.getValue().zero();
-      this.inputs.euler.getValue()[axis] = this.thsum;
+      //this.inputs.euler.getValue().zero();
+      //this.inputs.euler.getValue()[axis] = this.thsum;
+
+      this._update();
     } else {
       let v1 = new Vector2(this.mpos).sub(scent);
       let v2 = new Vector2(this.last_mpos).sub(scent);
@@ -973,9 +1230,13 @@ export class RotateOp extends TransformOp {
       v2.normalize();
 
       let w = v1[0]*v2[1] - v1[1]*v2[0];
+
       w = -Math.asin(w*0.999);
       this.thsum += w;
 
+      this._update();
+
+      /*
       let mat = new Matrix4();
       let rmat = new Matrix4(view3d.activeCamera.rendermat);
       rmat.makeRotationOnly();
@@ -986,7 +1247,88 @@ export class RotateOp extends TransformOp {
       irmat.invert();
 
       let rotmat = new Matrix4();
-      rotmat.euler_rotate(0, 0, this.thsum);
+      rotmat.euler_rotate_order(0, 0, this.thsum, EulerOrders.XYZ);
+
+      mat.multiply(irmat);
+      mat.multiply(rotmat);
+      mat.multiply(rmat);
+
+      mat.decompose(new Vector3(), eul);
+
+      this.inputs.euler.setValue(eul);
+
+      // */
+    }
+
+    this.exec(ctx);
+
+    this.last_mpos.load(this.mpos);
+  }
+
+  _update() {
+    if (this.trackball) {
+      return;
+    }
+
+    let ctx = this.modal_ctx;
+    let view3d = ctx.view3d;
+
+    let cent = this.center;
+    let scent = new Vector3(cent);
+
+    view3d.project(scent);
+
+    //this.makeTempLine(cent, rco, "orange");
+
+    let axismap = {
+      3 : 2, //xy
+      5 : 1, //zy,
+      6 : 0, //xz,
+      0 : 0,
+      1 : 0,
+      2 : 1,
+      4 : 2,
+    };
+
+
+    let con = this.inputs.constraint.getValue();
+    if (con.dot(con) !== 3.0) {
+      let mask = 0;
+      for (let i=0; i<con.length; i++) {
+        mask |= con[i] !== 0.0 ? 1 << i : 0;
+      }
+
+      let axis = axismap[mask];
+
+      let cmat = new Matrix4(this.inputs.constraint_space.getValue());
+      cmat.makeRotationOnly();
+
+      let icmat = new Matrix4(cmat);
+      icmat.invert();
+
+      let eul = this.inputs.euler.getValue();
+
+      eul.zero();
+      eul[axis] = this.thsum;
+
+      let mat = new Matrix4();
+      mat.euler_rotate_order(eul[0], eul[1], eul[2], EulerOrders.XYZ);
+      mat.multiply(icmat);
+      mat.decompose(new Vector3(), eul, undefined, undefined, undefined, EulerOrders.XYZ);
+
+      this.inputs.euler.setValue(eul);
+    } else {
+      let mat = new Matrix4();
+      let rmat = new Matrix4(view3d.activeCamera.rendermat);
+      rmat.makeRotationOnly();
+
+      let irmat = new Matrix4(rmat);
+      let eul = new Vector3();
+
+      irmat.invert();
+
+      let rotmat = new Matrix4();
+      rotmat.euler_rotate_order(0, 0, this.thsum, EulerOrders.XYZ);
 
       mat.multiply(irmat);
       mat.multiply(rotmat);
@@ -996,10 +1338,11 @@ export class RotateOp extends TransformOp {
 
       this.inputs.euler.setValue(eul);
     }
+  }
 
-    this.exec(ctx);
-
-    this.last_mpos.load(this.mpos);
+  numericSet(value) {
+    this.thsum = value/180.0*Math.PI;
+    this._update();
   }
 
   on_mousemove_trackball(e) {
@@ -1071,7 +1414,6 @@ export class RotateOp extends TransformOp {
     let cent = this.center;
 
     let con = this.inputs.constraint.getValue();
-
     let eul = this.inputs.euler.getValue();
 
     let axismap = {

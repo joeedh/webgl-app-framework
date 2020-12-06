@@ -269,7 +269,7 @@ export class SelectLinkedPickOp extends SelectLinkedOp {
     let ok = false;
 
     for (let item of ret) {
-      if (item.data && item.data instanceof Element) {
+      if (item.data && Element.isElement(item.data)) {
         this.inputs.mesh.setValue(item.mesh);
         this.inputs.elemEid.setValue(item.data.eid);
         ok = true;

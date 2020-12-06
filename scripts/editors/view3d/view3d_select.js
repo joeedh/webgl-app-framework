@@ -199,7 +199,10 @@ export class GPUSelectBuffer {
       util.print_stack(error);
       console.log("error in sampleBlock");
 
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      if (gl) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      }
+
       return undefined;
     }
 

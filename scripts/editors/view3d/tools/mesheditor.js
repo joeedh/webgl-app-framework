@@ -136,6 +136,7 @@ export class MeshEditor extends MeshToolBase {
     strip.prop("scene.tool.transformWidget[translate]");
     strip.prop("scene.tool.transformWidget[scale]");
     strip.prop("scene.tool.transformWidget[rotate]");
+    strip.prop("scene.tool.transformWidget[NONE]");
 
 
     /*

@@ -553,7 +553,7 @@ export class ExtrudeRegionsOp extends MeshOp {
     }
 
     for (let v of vset) {
-      if (v.edges.length == 0) {
+      if (v.edges.length === 0) {
         mesh.killVertex(v);
       }
     }
@@ -563,17 +563,19 @@ export class ExtrudeRegionsOp extends MeshOp {
     }
 
     no.normalize();
-    if (no.dot(no) == 0.0) {
+    if (no.dot(no) === 0.0) {
       no[2] = 1.0;
     }
 
     this.outputs.normalSpace.setValue(new Matrix4().makeNormalMatrix(no));
     this.outputs.normal.setValue(no);
 
-    mesh.tessellate();
-
     mesh.regenRender();
     mesh.regenTesellation();
+    mesh.recalcNormals();
+    mesh.graphUpdate();
+    mesh.regenBVH();
+
     window.redraw_viewport();
   }
 

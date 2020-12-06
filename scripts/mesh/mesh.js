@@ -1870,7 +1870,11 @@ export class Mesh extends SceneObjectData {
 
       if (auto_update || !this.bvh) {
         console.error("BVH rebuild!");
+
         this.bvh = BVH.create(this, true, useGrids);
+        if (useGrids) {
+          this.uiTriangleCount = this.bvh.root.tottri;
+        }
       }
     }
 

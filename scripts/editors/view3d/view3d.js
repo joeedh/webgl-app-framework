@@ -789,6 +789,7 @@ export class View3D extends Editor {
 
     this.makeHeader(this.container);
 
+    this.header.inherit_packflag |= PackFlags.SMALL_ICON;
     this.header.useIcons();
 
     let header = this.header;
@@ -797,9 +798,7 @@ export class View3D extends Editor {
 
     header = rows.row();
     let row1 = header.row();
-    let row2 = header.row();
 
-    row2.prop("view3d.flag[SHOW_RENDER]");
     //row2.prop("view3d.flag[ONLY_RENDER]");
 
     let makeRow = () => {
@@ -842,8 +841,13 @@ export class View3D extends Editor {
 
 
     strip = header.strip();
-    strip.useIcons();
     strip.prop("view3d.flag[SHOW_GRID]");
+    strip.prop("view3d.flag[SHOW_RENDER]");
+
+    strip = header.strip();
+
+    strip.prop("scene.propEnabled");
+    strip.listenum("scene.propMode");
 
     //strip.prop("scene.toolmode[pan]");
     //strip.prop("scene.toolmode[object]");
@@ -860,6 +864,11 @@ export class View3D extends Editor {
   }
 
   doEvent(type, e) {
+    if (!this.gl) {
+      //wait for gl
+      return;
+    }
+
     if (!this.ctx || !this.ctx.scene || !this.ctx.toolmode) {
       return;
     }
@@ -1343,7 +1352,7 @@ export class View3D extends Editor {
     }
 
     this.checkCamera();
-    this.overdraw.clear();
+    //this.overdraw.clear();
 
     if (!this.gl) {
       this.glInit();
@@ -1609,6 +1618,10 @@ export class View3D extends Editor {
 
   resetDrawLines() {
     this.drawlines.length = 0;
+
+    if (this.overdraw) {
+      this.overdraw.clear();
+    }
     window.redraw_viewport();
   }
 
@@ -1682,7 +1695,7 @@ export class View3D extends Editor {
 
     vstruct.flags("flag", "flag", View3DFlags, "View3D Flags").on("change", onchange).icons({
       SHOW_RENDER: Icons.RENDER,
-      SHOW_GRID: Icons.SHOW_GRID
+      SHOW_GRID: Icons.SHOW_GRID_FLOOR
     });
 
     vstruct.enum("cameraMode", "cameraMode", CameraModes, "Camera Modes").on("change", onchange).icons({

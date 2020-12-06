@@ -11,11 +11,21 @@ let vec3_temps = util.cachering.fromConstructor(Vector3, 1024);
 
 export class Element {
   constructor(type) {
+    this._initElement(type);
+  }
+
+  _initElement(type) {
     this.type = type;
     this.flag = this.index = 0;
     this.eid = -1;
     this.customData =  [];
     //CD this.cd = this.customData;
+
+    return this;
+  }
+
+  static isElement(obj) {
+    return obj instanceof Element || obj instanceof Vertex;
   }
 
   valueOf() {
@@ -201,10 +211,11 @@ for (let i=0; i<_vficache.length; i++) {
 }//*/
 
 //has Vector3 mixin
-export class Vertex extends Element {
+export class Vertex extends Vector3 {
   constructor(co) {
-    super(MeshTypes.VERTEX);
-    this.initVector3();
+    super();
+    this._initElement(MeshTypes.VERTEX);
+    //this.initVector3();
 
     if (co !== undefined) {
       this.load(co);
@@ -221,6 +232,19 @@ export class Vertex extends Element {
     this.no = new Vector3();
     this.no[2] = 1.0;
     this.edges = [];
+  }
+
+  /*to avoid messing up v8's optimizer
+    we have to inherit from Vector3 (and thus Array),
+    not Element.  However util.mixin won't pull in valueOf and [Symbol.keystr]
+    from Element because they exist in Vector3.
+  */
+  valueOf() {
+    return this.eid;
+  }
+
+  [Symbol.keystr]() {
+    return this.eid;
   }
 
   toJSON() {
@@ -344,10 +368,12 @@ export class Vertex extends Element {
 
   loadSTRUCT(reader) {
     reader(this);
-    super.loadSTRUCT(reader);
+
+    //we mixed in Element instead of inheriting from it
+    Element.prototype.loadSTRUCT.call(this, reader);
   }
 }
-util.mixin(Vertex, Vector3);
+util.mixin(Vertex, Element);
 
 Vertex.STRUCT = STRUCT.inherit(Vertex, Element, 'mesh.Vertex') + `
   0       : float;
@@ -358,7 +384,7 @@ Vertex.STRUCT = STRUCT.inherit(Vertex, Element, 'mesh.Vertex') + `
   color   : vec4;
 }
 `;
-nstructjs.manager.add_class(Vertex);
+nstructjs.register(Vertex);
 
 export class Handle extends Element {
   constructor(co) {
@@ -1132,7 +1158,7 @@ export class LoopList {
     this.l = undefined;
     this.length = 0;
 
-    this.iterstack = new Array(4);
+    this.iterstack = new Array(9);
     for (let i=0; i<this.iterstack.length; i++) {
       this.iterstack[i] = new LoopIter();
     }

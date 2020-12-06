@@ -11,6 +11,8 @@ export const PatternRecalcFlags = {
   PREVIEW: 1
 };
 
+let patterns_namemap = {};
+
 export const Patterns = [];
 export const PatternFlags = {
   SELECT: 1
@@ -98,11 +100,20 @@ export class PatternGen {
     return co2;
   }
 
+  static getGeneratorClass(name) {
+    return patterns_namemap[name];
+  }
+
   static register(cls) {
     if (!cls.structName) {
       throw new Error("You forgot to register " + cls.name + " with nstructjs");
     }
 
+    if (cls.patternDefine().typeName in patterns_namemap) {
+      throw new Error("Pattern " + cls.name + " does not have a unique typeName in its patternDefine");
+    }
+
+    patterns_namemap[cls.patternDefine().typeName] = cls;
     Patterns.push(cls);
   }
 }
@@ -838,6 +849,28 @@ export function buildProcTextureAPI(api, api_define_datablock) {
     this.dataref.updateGen++;
     this.dataref.graphUpdate();
   }
+
+  let prop = ProceduralTex.buildGeneratorEnum();
+  st.enum("mode", "mode", prop, "Mode").on('change', function() {
+    let tex = this.dataref;
+    tex.recalcFlag |= PatternRecalcFlags.PREVIEW;
+  }).customGetSet(function() {
+    let tex = this.dataref;
+
+    return tex.generator.constructor.patternDefine().typeName;
+  }, function(val) {
+    let tex = this.dataref;
+
+    let cls;
+
+    if (typeof val === "string") {
+      cls = PatternGen.getGeneratorClass(val);
+    } else {
+      cls = Patterns[val];
+    }
+
+    tex.setGenerator(cls);
+  });
 
   st.float("scale", "scale", "Scale").noUnits().range(0.001, 2000.0).on('change', onchange);
   st.float("power", "power", "Exp").noUnits().range(0.001, 100.0).on('change', onchange);

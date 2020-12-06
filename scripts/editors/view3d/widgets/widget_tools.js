@@ -94,6 +94,7 @@ export class TransformWidget extends WidgetBase {
 
     //use aabb midpoint instead of median center
     ret.center = new Vector3(aabb[0]).interp(aabb[1], 0.5);
+    //ret.center = new Vector3(aabb[0]).interp(aabb[1], 0.5);
 
     return ret;
   }
@@ -165,7 +166,7 @@ export class TranslateWidget extends TransformWidget {
   }
 
   startTool(axis, localX, localY) {
-    let tool = new TranslateOp([localX, localY]);
+    let tool = TranslateOp.invoke(this.ctx, {}); //new TranslateOp([localX, localY]);
     let con = new Vector3();
     let selmode = this.ctx.view3d.ctx.selectMask;
 
@@ -351,7 +352,7 @@ export class ScaleWidget extends TransformWidget {
   }
 
   startTool(axis, localX, localY) {
-    let tool = new ScaleOp([localX, localY]);
+    let tool = ScaleOp.invoke(this.ctx, {}); //new ScaleOp([localX, localY]);
     let con = new Vector3();
     let selmode = this.ctx.view3d.ctx.selectMask;
 
@@ -493,7 +494,7 @@ export class RotateWidget extends TransformWidget {
 
   onclick(e, axis) {
     console.log(axis);
-    let op = new RotateOp();
+    let op = RotateOp.invoke(this.ctx, {}); //new RotateOp();
     let con = new Vector3();
     con[axis] = 1.0;
 
@@ -510,6 +511,7 @@ export class RotateWidget extends TransformWidget {
 
     gl.disable(gl.DEPTH_TEST);
   }
+
   update(ctx) {
     if (this._first) {
       this.create(ctx)

@@ -1168,7 +1168,7 @@ export class Grid extends GridBase {
       uiTypeName: "Grid",
       defaultName: "grid",
       settingsClass: GridSettings,
-      needsSubSurf : true,
+      //needsSubSurf : true,
       valueSize: undefined,
       flag: 0
     }

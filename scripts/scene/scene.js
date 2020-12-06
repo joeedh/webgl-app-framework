@@ -291,6 +291,12 @@ export class Scene extends DataBlock {
 
     this.collection = undefined;
 
+    //magnet transform settings
+
+    this.propRadius = 1.0;
+    this.propMode = 0;
+    this.propEnabled = false;
+
     this.widgets = new WidgetManager();
     this.widgets.ctx = _appstate.ctx;
     this.cursor3D = new Matrix4();
@@ -756,17 +762,20 @@ export class Scene extends DataBlock {
 }
 DataBlock.register(Scene);
 Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
-  flag       : int;
-  objects    : ObjectList;
-  active     : int | obj.active !== undefined ? obj.active.lib_id : -1;
-  time       : float;
-  selectMask : int;
-  cursor3D   : mat4;
-  envlight   : EnvLight;
-  toolmode_i : string | obj.toolModeProp.keys[obj.toolmode_i];
-  toolmodes  : array(abstract(ToolMode));
-  collection : DataRef | DataRef.fromBlock(obj.collection);
-  fps        : int;
+  flag         : int;
+  objects      : ObjectList;
+  active       : int | obj.active !== undefined ? obj.active.lib_id : -1;
+  time         : float;
+  selectMask   : int;
+  cursor3D     : mat4;
+  envlight     : EnvLight;
+  toolmode_i   : string | obj.toolModeProp.keys[obj.toolmode_i];
+  toolmodes    : array(abstract(ToolMode));
+  collection   : DataRef | DataRef.fromBlock(obj.collection);
+  fps          : int;
+  propMode     : int;
+  propRadius   : float;
+  propEnabled  : bool;
 }
 `;
 

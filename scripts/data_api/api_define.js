@@ -56,6 +56,7 @@ import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 import {MaterialEditor} from "../editors/node/MaterialEditor.js";
 import {BrushDynamics, BrushDynChannel, BrushFlags, SculptBrush, SculptIcons, SculptTools} from "../brush/brush.js";
 import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../brush/proceduralTex.js';
+import {PropModes} from '../editors/view3d/transform/transform_base.js';
 
 
 export function api_define_rendersettings(api) {
@@ -680,6 +681,9 @@ export function api_define_scene(api, pstruct) {
   pstruct.struct("scene", "scene", "Scene", sstruct);
 
   sstruct.struct("envlight", "envlight", "Ambient Light", api_define_envlight(api));
+  sstruct.bool("propEnabled", "propEnabled", "Magnet Mode").icon(Icons.MAGNET);
+  sstruct.enum("propMode", "propMode", PropModes, "Magnet Curve");
+  sstruct.float("propRadius", "propRadius", "Magnet Radius").noUnits().range(0.01, 1000000);
 
   let prop = makeToolModeEnum();
 

@@ -537,7 +537,7 @@ export class GeoLayer extends Array {
   }
 
   extend(data) {
-    if (this.data === this.data_f32 && this.dataUsed >= this.data.length) {
+    if (this.data.constructor !== Array && this.dataUsed >= this.data.length) {
       if (DEBUG.simplemesh) {
         console.warn("Resizing simplemesh attribute after conversion to a typed array");
       }
@@ -552,6 +552,13 @@ export class GeoLayer extends Array {
       }
 
       this.data_f32 = [];
+    }
+
+    let bad = isNaN(this.dataUsed) || this.dataUsed !== ~~this.dataUsed || this.dataUsed < 0;
+    bad = bad || isNaN(this.size) || isNaN(this.data.length) || this.size <= 0 || this.data.length < 0;
+
+    if (bad) {
+      throw new Error("dataUsed NaN error " + this.dataUsed);
     }
 
     let size = this.size;
@@ -579,16 +586,50 @@ export class GeoLayer extends Array {
     return this;
   }
 
-  //i and n will be multiplied by .size
-  copy(i, data, n = 1) {
+  _copy_int(i, data, n = 1) {
     let tot = n*this.size;
     this.f32Ready = false;
 
     i *= this.size;
     let thisdata = this.data;
 
-    if (i >= this.dataUsed) {
+    let mul = this.glSizeMul;
+
+    let di = 0;
+    let end = i + tot;
+
+    while (i < end) {
+      thisdata[i] = ~~(data[di]*mul);
+      di++;
+      i++;
+    }
+
+    return this;
+  }
+
+
+  //i and n will be multiplied by .size
+  copy(i, data, n = 1) {
+    //V8's optimizer doesn't like it if we pass floats
+    //to integer typed arrays, even if we multiply them by
+    //the proper range scale first.  They must be truncated.
+    if (this.glSizeMul !== 1) {
+      return this._copy_int(i, data, n);
+    }
+
+    let tot = n*this.size;
+    this.f32Ready = false;
+
+    i *= this.size;
+    let thisdata = this.data;
+
+    if (i >= this.dataUsed || i + tot > this.data.length) {
+      throw new Error("eek!");
       return;
+    }
+
+    if (isNaN(i)) {
+      throw new Error("NaN!");
     }
 
     let mul = this.glSizeMul;
@@ -1556,6 +1597,22 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   }
 
   get_chunk(id) {
+    if (id > 1<<18 && this.idmap instanceof IDMap) {
+      let idmap = new Map();
+
+      for (let [k, v] of this.idmap) {
+        idmap.set(k, v);
+      }
+
+      this.idmap = idmap;
+
+      let chunkmap = new Map();
+      for (let [k, v] of this.chunkmap) {
+        chunkmap.set(k, v);
+      }
+
+      this.chunkmap = chunkmap;
+    }
     /*
     if (this.islands.length === 0) {
       this.add_island();
@@ -1658,10 +1715,6 @@ export class ChunkedSimpleMesh extends SimpleMesh {
       chunk.regen = 1;
       return chunk.tri(v1, v2, v3);
     } else {
-      if (i > tri_cos.data.length - 9) {
-        throw new Error("error");
-      }
-
       tri_cos = tri_cos.data;
 
       tri_cos[i++] = v1[0];
@@ -1675,6 +1728,11 @@ export class ChunkedSimpleMesh extends SimpleMesh {
       tri_cos[i++] = v3[0];
       tri_cos[i++] = v3[1];
       tri_cos[i++] = v3[2];
+
+      if (i > tri_cos.length) {
+        console.log(i, tri_cos.length, tri_cos);
+        throw new Error("range error");
+      }
     }
 
     chunk.regen = 1;
@@ -1724,6 +1782,11 @@ export class ChunkedSimpleMesh extends SimpleMesh {
       line_cos[i++] = v2[0];
       line_cos[i++] = v2[1];
       line_cos[i++] = v2[2];
+
+      if (i > line_cos.length) {
+        console.log(i, line_cos.length, line_cos);
+        throw new Error("range error");
+      }
     }
 
     chunk.regen = 1;
@@ -1751,6 +1814,11 @@ export class ChunkedSimpleMesh extends SimpleMesh {
       line_cos[i++] = v2[0];
       line_cos[i++] = v2[1];
       line_cos[i++] = v2[2];
+
+      if (i > line_cos.length) {
+        console.log(i, line_cos.length, line_cos);
+        throw new Error("range error");
+      }
     }
 
     chunk.regen = 1;
@@ -1773,6 +1841,11 @@ export class ChunkedSimpleMesh extends SimpleMesh {
       point_cos[i++] = v1[0];
       point_cos[i++] = v1[1];
       point_cos[i++] = v1[2];
+
+      if (i > point_cos.length) {
+        console.log(i, point_cos.length, point_cos);
+        throw new Error("range error");
+      }
     }
 
     chunk.regen = 1;

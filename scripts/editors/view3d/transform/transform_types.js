@@ -13,6 +13,8 @@ let meshGetCenterTemps = util.cachering.fromConstructor(Vector3, 64);
 let meshGetCenterTemps2 = util.cachering.fromConstructor(Vector3, 64);
 let meshGetCenterTempsMats = util.cachering.fromConstructor(Matrix4, 16);
 
+let meshapplytemp = new Vector3();
+
 export class MeshTransType extends TransDataType {
   static transformDefine() {return {
     name   : "mesh",
@@ -35,80 +37,175 @@ export class MeshTransType extends TransDataType {
     let normalvs = tdata.normalvs = new Set();
 
 
-    //console.log("MESH GEN", selectmode & SelMask.GEOM, selectmode);
+    console.log("MESH GEN", selectmode & SelMask.GEOM, selectmode, propmode, propradius);
 
-    if (propmode !== PropModes.NONE) {
+    if (propmode !== undefined) {
       let i = 0;
       let unset_w = 100000.0;
 
-      for (let v of mesh.verts.editable) {
+      let visit = new WeakSet();
+      let vs = new Set(mesh.verts.selected.editable);
+      let boundary = new Set();
+
+      for (let v of vs) {
         v.index = i;
 
         let td = new TransDataElem();
 
         td.mesh = mesh;
         td.data1 = v;
+        td.w = 0.0;
         td.data2 = new Vector3(v);
         td.symFlag = mesh.symFlag;
 
         tdata.push(td);
 
+        for (let e of v.edges) {
+          let v2 = e.otherVertex(v);
+          let ok = !(v2.flag & MeshFlags.HIDE);
+          ok = ok && !(v2.flag & MeshFlags.SELECT);
+
+          if (ok) {
+            boundary.add(v);
+            break;
+          }
+        }
+
         td.w = v.flag & MeshFlags.SELECT ? 0.0 : unset_w;
         i++;
       }
 
-      //let visit = new util.set();
-      let visit = new Array(tdata.length);
       let limit = 2;
 
-      for (let i = 0; i < visit.length; i++) {
-        visit[i] = 0;
-      }
+      let doneset = new WeakSet();
+      let stack = [];
 
-      let stack = new Array(1024);
       stack.cur = 0;
+      stack.end = 0;
 
-      for (let v of mesh.verts.selected.editable) {
-        stack.cur = 0;
-        stack[0] = v;
-        let startv = v;
+      for (let vboundary of vs) {
+        stack.push(vboundary);
+        stack.push(vboundary);
+        stack.push(0);
+      }
+      stack.end = stack.length;
 
-        while (stack.cur >= 0) {
-          let v = stack[stack.cur--];
-          let td1 = tdata[v.index];
+      stack.length *= 8;
 
-          for (let e of v.edges) {
-            let v2 = e.otherVertex(v);
+      let _i = 0;
 
-            if (visit[v2.index] > limit || (v2.flag & MeshFlags.HIDE) || (v2.flag & MeshFlags.SELECT)) {
-              continue;
-            }
+      let vi = 0;
+      let wmap = new Array(mesh.verts.length);
+      let totmap = new Array(mesh.verts.length);
+      let vmap = new Array(mesh.verts.length);
 
-            let td2 = tdata[v2.index];
-            let dis = td1.w + e.v2.vectorDistance(e.v1);
-            td2.w = Math.min(td2.w, dis);
+      let finalvs = new Set();
 
-            if (td2.w < propradius) {
-              stack[stack.cur++] = v2;
-            }
-          }
-
-          if (stack.cur >= stack.length - 50) {
-            stack.length = ~~(stack.length * 1.5);
-            console.log("reallocation in proportional edit mode recursion stack", stack.length);
-          }
-        }
+      for (let v of mesh.verts) {
+        wmap[vi] = -1;
+        totmap[vi] = 0;
+        v.index = vi++;
       }
 
-      for (let v of mesh.verts.editable) {
-        if (v.flag & MeshFlags.SELECT) {
-          tdata[v.index].w = 1;
-        } else if (tdata[v.index].w === unset_w) {
-          tdata[v.index].w = 0;
-        } else {
-          tdata[v.index].w = TransDataType.calcPropCurve(tdata[v.index].w);
-        }
+      for (let v of vs) {
+        wmap[v.index] = 0.0;
       }
+
+      let radius = propradius*1.01;
+
+      while (stack.length > 0 && Math.abs(stack.cur - stack.end) !== 0) {
+        let v = stack[stack.cur++];
+        let vboundary = stack[stack.cur++];
+        let waccum = stack[stack.cur++];
+
+        let w = v.vectorDistance(vboundary);
+
+        //if (_i++ > 1000000) {
+        //  console.warn("infinite loop detected");
+        // break;
+        //}
+
+        stack.cur = stack.cur%stack.length;
+
+        let td = new TransDataElem();
+
+        td.data1 = v;
+        td.data2 = new Vector3(v);
+        td.mesh = mesh;
+        td.w = w;
+        td.symFlag = mesh.symFlag;
+
+        tdata.push(td);
+        for (let e of v.edges) {
+          let v2 = e.otherVertex(v);
+
+
+          if (v === v2 || (v2.flag & (MeshFlags.SELECT | MeshFlags.HIDE))) {
+            continue;
+          }
+
+          let dis = v2.vectorDistance(v);
+          let dx = v2[0] - v[0];
+          let dy = v2[1] - v[1];
+          let dz = v2[2] - v[2];
+
+
+          //hackish, try to cull unrelated geometry with geometric distance
+          if (w + dis > propradius) {
+            continue;
+          }
+
+          let w2 = w + dis;
+          let w3 = !doneset.has(v2) ? w2 : wmap[v2.index];
+
+          wmap[v2.index] = Math.min(w2, w3);
+
+          if (doneset.has(v2)) {
+            continue;
+          }
+
+          doneset.add(v2);
+
+          let end = (stack.end + 3)%stack.length;
+
+          if (end === stack.cur) {
+            console.warn("Reallocating stack", stack.length, stack.cur, stack.end);
+            let len = stack.length*3;
+
+            let stack2 = new Array(len);
+            for (let i = 0; i < stack.length; i++) {
+              let i2 = (i + stack.cur)%stack.length;
+              stack2[i] = stack[i2];
+            }
+
+            stack2.cur = 0;
+            stack2.end = stack.length - 3;
+            stack = stack2;
+          }
+
+          stack[stack.end++] = v2;
+          stack[stack.end++] = vboundary;
+          stack[stack.end++] = waccum + dis;
+          stack.end = (stack.end)%stack.length;
+        }
+
+      }
+
+      for (let v of vs) {
+        //wmap[v.index] = 0;
+      }
+
+      for (let td of tdata) {
+        td.w = wmap[td.data1.index];
+
+        let tot = totmap[td.data1.index];
+        tot = !tot ? 1.0 : tot;
+
+        td.w /= tot;
+        td.w = TransDataType.calcPropCurve(td.w, propmode, propradius);
+      }
+
+//      tdata[v.index].w = TransDataType.calcPropCurve(tdata[v.index].w, propmode, propradius);
     } else {
       for (let v of mesh.verts.selected.editable) {
         let td = new TransDataElem();
@@ -156,6 +253,7 @@ export class MeshTransType extends TransDataType {
 
     let v = td.data1;
     v.flag |= MeshFlags.UPDATE;
+    /*
 
     for (let e of v.edges) {
       e.flag |= MeshFlags.UPDATE;
@@ -169,9 +267,12 @@ export class MeshTransType extends TransDataType {
           l = l.radial_next;
         } while (l !== e.l && _i++ < 100);
       }
-    }
+    }*/
 
-    v.load(td.data2).multVecMatrix(matrix);
+    let co = meshapplytemp;
+
+    co.load(td.data2).multVecMatrix(matrix);
+    v.load(td.data2).interp(co, td.w);
 
     if (v.flag & MeshFlags.MIRRORED) {
       for (let i=0; i<3; i++) {
@@ -183,6 +284,7 @@ export class MeshTransType extends TransDataType {
   }
 
   static undoPre(ctx, elemlist) {
+    console.log("bleh");
     let cos = {};
     let nos = {};
     let fnos = {};
@@ -381,10 +483,10 @@ export class MeshTransType extends TransDataType {
     let min = new Vector3([d, d, d]), max = new Vector3([-d, -d, -d]);
     let ok = false;
 
-    for (let ob in ctx.selectedMeshObjects) {
+    for (let ob of ctx.selectedMeshObjects) {
       let mesh = ob.data;
 
-      for (let v of mesh.verts.editable()) {
+      for (let v of mesh.verts.selected.editable) {
         min.min(v);
         max.max(v);
         ok = true;
@@ -410,6 +512,20 @@ export class MeshTransType extends TransDataType {
 
       return;
     }
+
+    /*
+    for (let v of elemlist.normalvs) {
+      v.flag |= MeshFlags.UPDATE;
+    }
+    for (let td of elemlist) {
+      let v = td.data1;
+      v.flag |= MeshFlags.UPDATE;
+    }
+
+    mesh.regenRender();
+    mesh.outputs.depend.graphUpdate();
+    return;
+    //*/
 
     for (let v of elemlist.normalvs) {
       v.no[0] = v.no[1] = v.no[2] = 0.0;

@@ -1032,6 +1032,10 @@ export class PaintOp extends ToolOp {
 
         c1.interp(c2, 0.5);
 
+        //if (isNaN(c1.dot(c1))) {
+        //  c1.load(c2);
+        //}
+
         if (!v.bLink.v2) {
           let c2 = v.bLink.v1.customData[cd_color].color;
           c2.load(c1);

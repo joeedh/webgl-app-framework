@@ -2590,7 +2590,7 @@ export class QuadTreeGrid extends GridBase {
       settingsClass: GridSettings,
       uiTypeName   : "QuadTreeGrid",
       defaultName  : "QuadTreeGrid",
-      needsSubSurf : true,
+      //needsSubSurf : true,
       valueSize    : undefined,
       flag         : 0
     }
