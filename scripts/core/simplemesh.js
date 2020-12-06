@@ -3,15 +3,18 @@ import * as math from '../util/math.js';
 import * as webgl from './webgl.js';
 import {Vector2, BaseVector, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {ShaderProgram} from "./webgl.js";
+import './const.js';
+import {Shaders, loadShader} from '../shaders/shaders.js';
 
 //let Map = util.map;
 var RenderBuffer = webgl.RenderBuffer;
 
 export const PrimitiveTypes = {
-  POINTS: 1,
-  LINES : 2,
-  TRIS  : 4,
-  ALL   : 1 | 2 | 4
+  POINTS        : 1,
+  LINES         : 2,
+  TRIS          : 4,
+  ADVANCED_LINES: 8,
+  ALL           : 1 | 2 | 4 | 8
 };
 
 export const LayerTypes = {
@@ -46,6 +49,17 @@ export const TypeSizes = {};
 for (var k in LayerTypes) {
   TypeSizes[LayerTypes[k]] = TypeSizes[k] = _TypeSizes[k];
 }
+
+let line2_temp4s = util.cachering.fromConstructor(Vector4, 64);
+let line2_stripuvs = [
+  [1, 0],
+  [-1, 0],
+  [-1, 1],
+
+  [1, 0],
+  [-1, 1],
+  [1, 1],
+];
 
 function appendvec(a, b, n, defaultval) {
   if (defaultval === undefined)
@@ -106,7 +120,9 @@ export class TriEditor {
     return this;
   }
 
-  custom(layer, v1, v2, v3) {
+  custom(layeri, v1, v2, v3) {
+    let layer = this.mesh.layers.layers[layeri];
+
     let i = this.i*3;
     layer.copy(i, v1);
     layer.copy(i + 1, v2);
@@ -248,6 +264,128 @@ export class LineEditor {
   }
 }
 
+class DummyEditor {
+  colors() {
+    return this
+  }
+
+  ids() {
+    return this
+  }
+
+  normals() {
+    return this
+  }
+
+  custom() {
+    return this
+  }
+
+  tangent() {
+    return this
+  }
+
+  uvs() {
+    return this
+  }
+}
+
+let dummyeditor = new DummyEditor();
+
+export class LineEditor2 {
+  constructor() {
+    this.mesh = undefined;
+    this.i = 0;
+  }
+
+  bind(mesh, i) {
+    this.mesh = mesh;
+    this.i = i;
+    return this;
+  }
+
+  custom(layeri, c1, c2) {
+    let data = this.mesh.layers.layers[layeri];
+
+    let i = this.i*6;
+
+    data.copy(i + 0, c1);
+    data.copy(i + 1, c1);
+    data.copy(i + 2, c2);
+    data.copy(i + 3, c1);
+    data.copy(i + 4, c2);
+    data.copy(i + 5, c2);
+
+    return this;
+  }
+
+  colors(c1, c2) {
+    let data = this.mesh.line_colors2;
+    let i = this.i*6;
+
+    data.copy(i + 0, c1);
+    data.copy(i + 1, c1);
+    data.copy(i + 2, c2);
+    data.copy(i + 3, c1);
+    data.copy(i + 4, c2);
+    data.copy(i + 5, c2);
+
+    return this;
+  }
+
+  normals(c1, c2) {
+    let data = this.mesh.line_normals2;
+    let i = this.i*6;
+
+    data.copy(i + 0, c1);
+    data.copy(i + 1, c1);
+    data.copy(i + 2, c2);
+    data.copy(i + 3, c1);
+    data.copy(i + 4, c2);
+    data.copy(i + 5, c2);
+
+    return this;
+  }
+
+  uvs(c1, c2) {
+    let data = this.mesh.line_uvs2;
+    let i = this.i*6;
+
+    data.copy(i + 0, c1);
+    data.copy(i + 1, c1);
+    data.copy(i + 2, c2);
+    data.copy(i + 3, c1);
+    data.copy(i + 4, c2);
+    data.copy(i + 5, c2);
+
+    return this;
+  }
+
+  ids(i1, i2) {
+    if (i1 === undefined || i2 === undefined) {
+      throw new Error("i1 i2 cannot be undefined");
+    }
+
+    let data = this.mesh.line_ids2;
+    let i = this.i*6;
+
+    let c1 = _ids_arrs[0];
+    let c2 = _ids_arrs[1];
+
+    c1[0] = i1;
+    c2[0] = i2;
+
+    data.copy(i + 0, c1);
+    data.copy(i + 1, c1);
+    data.copy(i + 2, c2);
+    data.copy(i + 3, c1);
+    data.copy(i + 4, c2);
+    data.copy(i + 5, c2);
+
+    return this;
+  }
+}
+
 export class PointEditor {
   constructor() {
     this.mesh = undefined;
@@ -303,9 +441,53 @@ export class PointEditor {
   }
 }
 
+const glTypeSizes = {
+  5126: 4, //gl.FLOAT
+  5120: 1, //gl.BYTE
+  5121: 1, //gl.UNSIGNED_BYTE
+  5123: 2, //gl.UNSIGNED_SHORT
+  5122: 2, //gl.SHORT
+  5124: 4, //gl.INT
+  5125: 4, //gl.UNSIGNED_INT
+}
+const glTypeArrays = {
+  5126: Float32Array, //gl.FLOAT
+  5120: Int8Array, //gl.BYTE
+  5121: Uint8Array, //gl.UNSIGNED_BYTE
+  5122: Int16Array, //gl.SHORT
+  5123: Uint16Array, //gl.UNSIGNED_SHORT
+  5124: Int32Array, //gl.INT
+  5125: Uint32Array, //gl.UNSIGNED_INT
+}
+
+const glTypeArrayMuls = {
+  5126: 1, //gl.FLOAT
+  5120: 127, //gl.BYTE
+  5121: 255, //gl.UNSIGNED_BYTE
+  5123: 65535, //gl.UNSIGNED_SHORT
+  5122: 32767, //gl.SHORT
+  5124: 1, //gl.INT
+  5125: 1, //gl.UNSIGNED_INT
+};
+
+const glSizes = {
+  FLOAT         : 5126,
+  BYTE          : 5120,
+  UNSIGNED_BYTE : 5121,
+  SHORT         : 5122,
+  UNSIGNED_SHORT: 5123,
+  INT           : 5124,
+  UNSIGNED_INT  : 5125
+};
+
 export class GeoLayer extends Array {
   constructor(size, name, primflag, type, idx) { //idx is for different layers of same type, e.g. multiple uv layers
     super();
+
+    this.index = undefined;
+
+    this.glSize = 5126; //gl.FLOAT
+    this.glSizeMul = 1.0;
 
     this.type = type;
     this.data = [];
@@ -337,12 +519,41 @@ export class GeoLayer extends Array {
     this._dataUsed = v;
   }*/
 
+  setGLSize(size) {
+    this.glSize = size;
+    this.glSizeMul = glTypeArrayMuls[size];
+
+    return this;
+  }
+
+  setNormalized(state) {
+    this.normalized = !!state;
+    return this;
+  }
+
   reset() {
     this.f32Ready = false;
     this.dataUsed = 0;
   }
 
   extend(data) {
+    if (this.data === this.data_f32 && this.dataUsed >= this.data.length) {
+      if (DEBUG.simplemesh) {
+        console.warn("Resizing simplemesh attribute after conversion to a typed array");
+      }
+
+      this.data = new Array(this.data_f32.length);
+
+      let a = this.data;
+      let b = this.data_f32;
+
+      for (let i=0; i<a.length; i++) {
+        a[i] = b[i];
+      }
+
+      this.data_f32 = [];
+    }
+
     let size = this.size;
     let starti = this.dataUsed;
 
@@ -380,11 +591,13 @@ export class GeoLayer extends Array {
       return;
     }
 
+    let mul = this.glSizeMul;
+
     let di = 0;
     let end = i + tot;
 
     while (i < end) {
-      thisdata[i] = data[di];
+      thisdata[i] = data[di]*mul;
       di++;
       i++;
     }
@@ -465,7 +678,10 @@ export class GeoLayerManager {
         layer2.data.length = layer.data.length;
         layer2.dataUsed = layer.dataUsed;
 
+        layer2.glSize = layer.glSize;
+        layer2.glSizeMul = layer.glSizeMul;
         layer2.id = layer.id;
+        layer2.index = layer.index;
         layer2.bufferKey = layer.bufferKey;
         layer2.normalized = layer.normalized;
 
@@ -523,6 +739,7 @@ export class GeoLayerManager {
     let layer = new GeoLayer(size, name, primflag, type, idx);
 
     layer.id = this.layer_idgen.next();
+    layer.index = this.layers.length;
     layer.primflag = primflag;
     layer.bufferKey = layer.name + ":" + layer.id;
 
@@ -535,7 +752,7 @@ export class GeoLayerManager {
   }
 
 
-  get(name, primflag, type, size, idx = 0) {
+  get(name, primflag, type, size, idx = undefined) {
     if (size === undefined) {
       size = TypeSizes[type];
     }
@@ -545,15 +762,22 @@ export class GeoLayerManager {
     }
 
     let meta = this.get_meta(primflag, type);
-    if (idx < meta.layers.length) {
-      return meta.layers[idx];
+
+    if (type === LayerTypes.CUSTOM) {
+      for (let layer of meta.layers) {
+        if (layer.name === name) {
+          return layer;
+        }
+      }
+    } else {
+      idx = idx && 0;
+
+      if (idx < meta.layers.length) {
+        return meta.layers[idx];
+      }
     }
 
-    if (idx === meta.layers.length) {
-      return this.pushLayer(name, primflag, type, size, idx);
-    } else {
-      throw new Error("layer at idx doesn't exist, and there aren't enough previous layers to auto create it: " + idx);
-    }
+    return this.pushLayer(name, primflag, type, size, idx);
   }
 }
 
@@ -575,15 +799,18 @@ export class SimpleIsland {
     this.totpoint = 0;
     this.totline = 0;
     this.tottri = 0;
+    this.totline_tristrip = 0;
 
     this.layerflag = undefined;
 
     this.regen = 1;
 
-    this.tri_editors = util.cachering.fromConstructor(TriEditor, 32);
-    this.quad_editors = util.cachering.fromConstructor(QuadEditor, 32);
-    this.line_editors = util.cachering.fromConstructor(LineEditor, 32);
-    this.point_editors = util.cachering.fromConstructor(PointEditor, 32);
+    this.tri_editors = util.cachering.fromConstructor(TriEditor, 32, true);
+    this.quad_editors = util.cachering.fromConstructor(QuadEditor, 32, true);
+    this.line_editors = util.cachering.fromConstructor(LineEditor, 32, true);
+    this.point_editors = util.cachering.fromConstructor(PointEditor, 32, true);
+
+    this.tristrip_line_editors = util.cachering.fromConstructor(LineEditor2, 32, true);
 
     this.buffer = new RenderBuffer();
     this.program = undefined;
@@ -597,37 +824,47 @@ export class SimpleIsland {
     this.layers.reset();
     this.buffer.reset(gl);
 
-    this.tottri = this.totline = this.totpoint = 0;
+    this.tottri = this.totline = this.totpoint = this.totline_tristrip = 0;
     this.regen = 1;
   }
 
   makeBufferAliases() {
     let lay = this.layers;
 
-    lay.get_meta(PrimitiveTypes.TRIS, LayerTypes.NORMAL).normalized = true;
-    lay.get_meta(PrimitiveTypes.LINES, LayerTypes.NORMAL).normalized = true;
-    lay.get_meta(PrimitiveTypes.POINTS, LayerTypes.NORMAL).normalized = true;
-
     let pflag = PrimitiveTypes.TRIS;
     this.tri_cos = lay.get("tri_cos", pflag, LayerTypes.LOC); //array
-    this.tri_normals = lay.get("tri_normals", pflag, LayerTypes.NORMAL); //array
-    this.tri_uvs = lay.get("tri_uvs", pflag, LayerTypes.UV); //array
-    this.tri_colors = lay.get("tri_colors", pflag, LayerTypes.COLOR); //array
+    this.tri_normals = lay.get("tri_normals", pflag, LayerTypes.NORMAL).setGLSize(glSizes.SHORT).setNormalized(true); //array
+    this.tri_uvs = lay.get("tri_uvs", pflag, LayerTypes.UV).setGLSize(glSizes.SHORT).setNormalized(true); //array
+    this.tri_colors = lay.get("tri_colors", pflag, LayerTypes.COLOR).setGLSize(glSizes.UNSIGNED_BYTE).setNormalized(true); //array
     this.tri_ids = lay.get("tri_ids", pflag, LayerTypes.ID); //array
 
     pflag = PrimitiveTypes.LINES;
     this.line_cos = lay.get("line_cos", pflag, LayerTypes.LOC); //array
-    this.line_normals = lay.get("line_normals", pflag, LayerTypes.NORMAL); //array
-    this.line_uvs = lay.get("line_uvs", pflag, LayerTypes.UV); //array
-    this.line_colors = lay.get("line_colors", pflag, LayerTypes.COLOR); //array
+    this.line_normals = lay.get("line_normals", pflag, LayerTypes.NORMAL).setGLSize(glSizes.SHORT).setNormalized(true); //array
+    this.line_uvs = lay.get("line_uvs", pflag, LayerTypes.UV).setGLSize(glSizes.SHORT).setNormalized(true); //array
+    this.line_colors = lay.get("line_colors", pflag, LayerTypes.COLOR).setGLSize(glSizes.UNSIGNED_BYTE).setNormalized(true); //array
     this.line_ids = lay.get("line_ids", pflag, LayerTypes.ID); //array
 
     pflag = PrimitiveTypes.POINTS;
     this.point_cos = lay.get("point_cos", pflag, LayerTypes.LOC); //array
-    this.point_normals = lay.get("point_normals", pflag, LayerTypes.NORMAL); //array
-    this.point_uvs = lay.get("point_uvs", pflag, LayerTypes.UV); //array
-    this.point_colors = lay.get("point_colors", pflag, LayerTypes.COLOR); //array
+    this.point_normals = lay.get("point_normals", pflag, LayerTypes.NORMAL).setGLSize(glSizes.SHORT).setNormalized(true); //array
+    this.point_uvs = lay.get("point_uvs", pflag, LayerTypes.UV).setGLSize(glSizes.SHORT).setNormalized(true); //array
+    this.point_colors = lay.get("point_colors", pflag, LayerTypes.COLOR).setGLSize(glSizes.UNSIGNED_BYTE).setNormalized(true); //array
     this.point_ids = lay.get("point_ids", pflag, LayerTypes.ID); //array
+
+    if (this.primflag & PrimitiveTypes.ADVANCED_LINES) {
+      pflag = PrimitiveTypes.ADVANCED_LINES;
+
+      this.line_cos2 = lay.get("line_cos2", pflag, LayerTypes.LOC); //array
+      this.line_normals2 = lay.get("line_normals2", pflag, LayerTypes.NORMAL).setGLSize(glSizes.SHORT).setNormalized(true); //array
+      this.line_uvs2 = lay.get("line_uvs2", pflag, LayerTypes.UV).setGLSize(glSizes.SHORT).setNormalized(true);
+      this.line_colors2 = lay.get("line_colors2", pflag, LayerTypes.COLOR).setGLSize(glSizes.UNSIGNED_BYTE).setNormalized(true);
+      this.line_ids2 = lay.get("line_ids2", pflag, LayerTypes.ID); //array
+
+      this.line_stripuvs = this.getDataLayer(PrimitiveTypes.ADVANCED_LINES, LayerTypes.CUSTOM, 2, "_strip_uv");
+      this.line_stripdirs = this.getDataLayer(PrimitiveTypes.ADVANCED_LINES, LayerTypes.CUSTOM, 4, "_strip_dir");
+      this.line_stripdirs.normalized = false;
+    }
   }
 
   copy() {
@@ -666,7 +903,72 @@ export class SimpleIsland {
     return this.point_editors.next().bind(this, this.totpoint - 1);
   }
 
+  smoothline(v1, v2, w1 = 2, w2 = 2) {
+    let dv = 0.0;
+    for (let i = 0; i < 3; i++) {
+      dv += (v1[i] - v2[i])*(v1[i] - v2[i]);
+    }
+
+    if (dv === 0.0) {
+      return dummyeditor;
+    }
+
+    if (!this.line_cos2) {
+      this.regen = true;
+      this.primflag |= PrimitiveTypes.ADVANCED_LINES;
+
+      if (this.layerflag !== undefined) {
+        this.layerflag |= LayerTypes.CUSTOM;
+      } else {
+        this.mesh.layerflag |= LayerTypes.CUSTOM;
+      }
+
+      this.makeBufferAliases();
+    }
+
+    this.line_cos2.extend(v1);
+    this.line_cos2.extend(v1);
+    this.line_cos2.extend(v2);
+
+    this.line_cos2.extend(v1);
+    this.line_cos2.extend(v2);
+    this.line_cos2.extend(v2);
+
+    this._newElem(PrimitiveTypes.ADVANCED_LINES, 6);
+
+    let i = this.totline_tristrip*6;
+
+    this.line_stripuvs.copy(i, line2_stripuvs[0]);
+    this.line_stripuvs.copy(i + 1, line2_stripuvs[1]);
+    this.line_stripuvs.copy(i + 2, line2_stripuvs[2]);
+    this.line_stripuvs.copy(i + 3, line2_stripuvs[3]);
+    this.line_stripuvs.copy(i + 4, line2_stripuvs[4]);
+    this.line_stripuvs.copy(i + 5, line2_stripuvs[5]);
+
+    let d = line2_temp4s.next().load(v2).sub(v1);
+    d[3] = 0.0;
+    d.normalize();
+
+    d[3] = w1;
+    this.line_stripdirs.copy(i, d);
+    this.line_stripdirs.copy(i + 1, d);
+    d[3] = w2;
+    this.line_stripdirs.copy(i + 2, d);
+
+    d[3] = w1;
+    this.line_stripdirs.copy(i + 3, d);
+    d[3] = w2;
+    this.line_stripdirs.copy(i + 4, d);
+    this.line_stripdirs.copy(i + 5, d);
+
+    this.totline_tristrip++;
+
+    return this.tristrip_line_editors.next().bind(this, this.totline_tristrip - 1);
+  }
+
   line(v1, v2) {
+    //return this.smoothline(v1, v2);
+
     this.line_cos.extend(v1);
     this.line_cos.extend(v2);
 
@@ -736,17 +1038,23 @@ export class SimpleIsland {
   gen_buffers(gl) {
     let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
 
-    for (var layer of this.layers) {
-      if (layer.dataUsed === 0 || !(layer.type & layerflag)) {
+    //convert all layers to final typedarrays to save memory, even ones that aren't used
+    for (let layer of this.layers) {
+      if (layer.dataUsed === 0) {
         continue;
       }
 
       if (!layer.f32Ready) {
         layer.f32Ready = true;
 
+        let typedarray = glTypeArrays[layer.glSize];
+
         if (!layer.data_f32 || layer.data_f32.length !== layer.dataUsed) {
-          layer.data_f32 = new Float32Array(layer.dataUsed);
-          console.log("new layer data");
+          if (DEBUG.simplemesh) {
+            console.warn("new layer data", layer.data_f32, layer);
+          }
+
+          layer.data_f32 = new typedarray(layer.dataUsed);
         }
 
         let a = layer.data;
@@ -757,6 +1065,14 @@ export class SimpleIsland {
         for (let i = 0; i < count; i++) {
           b[i] = a[i];
         }
+
+        layer.data = layer.data_f32;
+      }
+    }
+
+    for (let layer of this.layers) {
+      if (layer.dataUsed === 0 || !(layer.type & layerflag)) {
+        continue;
       }
 
       //console.log(layer.dataUsed, layer.data_f32.length);
@@ -771,6 +1087,55 @@ export class SimpleIsland {
     if (this.tottri) {
       this.bindArrays(gl, uniforms, program, "tri", PrimitiveTypes.TRIS);
       gl.drawArrays(gl.TRIANGLES, 0, this.tottri*3);
+    }
+  }
+
+  _draw_line_tristrips(gl, uniforms, params, program) {
+    if (this.totline_tristrip) {
+      //program = Shaders.LineTriStripShader;
+      //program.bind(gl, uniforms);
+
+      if (!program._smoothline) {
+        let uniforms2 = Object.assign({}, uniforms);
+        let attributes = new Set(program.attrs);
+
+        attributes.add("_strip_dir");
+        attributes.add("_strip_uv");
+
+        let vertex = program.vertexSource;
+        let fragment = program.fragmentSource;
+
+        vertex = ShaderProgram.insertDefine(`
+#ifndef SMOOTH_LINE
+#define SMOOTH_LINE
+#endif
+        `, vertex);
+        fragment = ShaderProgram.insertDefine(`
+#ifndef SMOOTH_LINE
+#define SMOOTH_LINE
+#endif
+        `, fragment);
+
+        let sdef = {
+          vertex, fragment, uniforms: uniforms2, attributes
+        };
+
+        program._smoothline = loadShader(gl, sdef);
+        //console.warn("Auto-generating smooth line shader");
+        //let sdef = {
+        //vertexProgram :
+        //}
+        //program._smoothline = loadShader(gl, sdef);
+      }
+
+      //program = Shaders.LineTriStripShader;
+      program = program._smoothline;
+      program.bind(gl, uniforms);
+
+      this.bindArrays(gl, uniforms, program, "line2", PrimitiveTypes.ADVANCED_LINES);
+      gl.drawArrays(gl.TRIANGLES, 0, this.totline_tristrip*6);
+
+      //gl.drawArrays(gl.LINES, 0, this.totline_tristrip*2);
     }
   }
 
@@ -809,7 +1174,7 @@ export class SimpleIsland {
     let buf = this.buffer.get(gl, layer.bufferKey).get(gl);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    gl.vertexAttribPointer(0, layer.size, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(0, layer.size, layer.glSize, false, 0, 0);
     gl.enableVertexAttribArray(0);
 
     let bindArray = (name, type) => {
@@ -862,7 +1227,7 @@ export class SimpleIsland {
           gl.enableVertexAttribArray(li);
           gl.bindBuffer(gl.ARRAY_BUFFER, buf);
 
-          gl.vertexAttribPointer(li, layer.size, gl.FLOAT, layer.normalize, 0, 0);
+          gl.vertexAttribPointer(li, layer.size, layer.glSize, layer.normalized, 0, 0);
         }
       }
     }
@@ -876,6 +1241,10 @@ export class SimpleIsland {
 
   addDataLayer(primflag, type, size = TypeSizes[type], name = LayerTypeNames[type]) {
     return this.layers.pushLayer(name, primflag, type, size);
+  }
+
+  getDataLayer(primflag, type, size = TypeSizes[type], name = LayerTypeNames[type]) {
+    return this.layers.get(name, primflag, type, size);
   }
 
   _draw_points(gl, uniforms, params, program) {
@@ -893,8 +1262,6 @@ export class SimpleIsland {
     if (this.totline > 0) {
       this.bindArrays(gl, uniforms, program, "line", PrimitiveTypes.LINES);
       gl.drawArrays(gl.LINES, 0, this.totline*2);
-    } else {
-      console.log("no geometry");
     }
   }
 
@@ -915,6 +1282,8 @@ export class SimpleIsland {
   }//*/
 
   draw(gl, uniforms, params, program_override = undefined) {
+    this.gl = gl;
+
     let program = this.program === undefined ? this.mesh.program : this.program;
     let primflag = this.primflag === undefined ? this.mesh.primflag : this.primflag;
 
@@ -976,6 +1345,14 @@ export class SimpleIsland {
       this._draw_points(gl, uniforms, params, program);
     }
 
+    if (this.totline_tristrip && (primflag & PrimitiveTypes.ADVANCED_LINES)) {
+      if (this.layers.has_multilayers) {
+        program.bindMultiLayer(gl, uniforms, this.layers.attrsizes.get(PrimitiveTypes.ADVANCED_LINES));
+      }
+      this._draw_line_tristrips(gl, uniforms, params, program);
+    }
+
+
     //if (gl.getError()) {
     //  this.regen = 1;
     //}
@@ -986,6 +1363,8 @@ export class SimpleMesh {
   constructor(layerflag = LayerTypes.LOC | LayerTypes.NORMAL | LayerTypes.UV) {
     this.layerflag = layerflag;
     this.primflag = PrimitiveTypes.ALL;
+
+    this.gl = undefined;
 
     this.islands = [];
     this.uniforms = {};
@@ -1004,6 +1383,20 @@ export class SimpleMesh {
     for (let island of this.islands) {
       island.flagRecalc();
     }
+  }
+
+  getDataLayer(primflag, type, size = TypeSizes[type], name = LayerTypeNames[type]) {
+    let ret;
+
+    for (let island of this.islands) {
+      let ret2 = island.getDataLayer(primflag, type, size, name);
+
+      if (island === this.island) {
+        ret = ret2;
+      }
+    }
+
+    return ret;
   }
 
   addDataLayer(primflag, type, size = TypeSizes[type], name = LayerTypeNames[type]) {
@@ -1053,7 +1446,11 @@ export class SimpleMesh {
     return island;
   }
 
-  destroy(gl) {
+  destroy(gl = this.gl) {
+    if (!gl) {
+      console.warn("failed to destroy a mesh");
+      return;
+    }
     for (var island of this.islands) {
       island.destroy(gl);
     }
@@ -1086,14 +1483,21 @@ export class SimpleMesh {
   }
 
   draw(gl, uniforms, program_override = undefined) {
+    this.gl = gl;
+
     for (var island of this.islands) {
       island.draw(gl, uniforms, undefined, program_override);
     }
   }
 }
 
+let IDMap = util.IDMap;
+
+//IDMap = Map
+
 export class ChunkedSimpleMesh extends SimpleMesh {
-  constructor(layerflag = LayerTypes.LOC | LayerTypes.NORMAL | LayerTypes.UV, chunksize = 128) {
+  constructor(layerflag = LayerTypes.LOC | LayerTypes.NORMAL | LayerTypes.UV,
+              chunksize = 2048) {
     super(layerflag);
 
     this.chunksize = chunksize;
@@ -1104,14 +1508,14 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
     this.island = undefined;
 
-    this.quad_editors = util.cachering.fromConstructor(QuadEditor, 32);
+    this.quad_editors = util.cachering.fromConstructor(QuadEditor, 32, true);
 
     this.freelist = [];
     this.freeset = new Set();
     this.delset = undefined;
 
-    this.chunkmap = new Map();
-    this.idmap = new Map();
+    this.chunkmap = new IDMap();
+    this.idmap = new IDMap();
     this.idgen = 0;
   }
 
@@ -1152,6 +1556,20 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   }
 
   get_chunk(id) {
+    /*
+    if (this.islands.length === 0) {
+      this.add_island();
+    }
+    let island = this.islands;
+    if (island._i === undefined) {
+      island._i = 0;
+    }
+    island.primflag = this.primflag;
+    this.idmap.set(id, island._i++);
+    return this.islands[0];
+
+    */
+
     if (this.chunkmap.has(id)) {
       return this.islands[this.chunkmap.get(id)];
     }
@@ -1179,6 +1597,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     return this.get_chunk(id);
   }
 
+
   onContextLost(e) {
     for (var island of this.islands) {
       island.onContextLost(e);
@@ -1189,10 +1608,18 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     for (var island of this.islands) {
       island.destroy(gl);
     }
+
+    this.regen = 1;
+    this.chunkmap = new IDMap();
+    this.idmap = new IDMap();
+    this.freelist.length = 0;
+
+    this.islands.length = 0;
+    this.add_island();
   }
 
   tri(id, v1, v2, v3) {
-    if (1) {
+    if (0) {
       function isvec(v) {
         if (!v) {
           return false;
@@ -1231,7 +1658,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
       chunk.regen = 1;
       return chunk.tri(v1, v2, v3);
     } else {
-      if (i > tri_cos.data.length-9) {
+      if (i > tri_cos.data.length - 9) {
         throw new Error("error");
       }
 
@@ -1258,7 +1685,54 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     throw new Error("unsupported for chunked meshes");
   }
 
+  smoothline(id, v1, v2) {
+    let chunk = this.get_chunk(id);
+    let iline = this.idmap.get(id);
+
+    chunk.flagRecalc();
+
+    if (!chunk.line_cos2) {
+      chunk.primflag |= PrimitiveTypes.ADVANCED_LINES;
+      this.layerflag |= LayerTypes.CUSTOM;
+      chunk.makeBufferAliases()
+    }
+
+    let line_cos = chunk.line_cos2;
+    let i = iline*18;
+
+    if (line_cos.dataUsed < i + 18) {
+      chunk.smoothline(v1, v2);
+    } else {
+      line_cos = line_cos.data;
+
+      line_cos[i++] = v1[0];
+      line_cos[i++] = v1[1];
+      line_cos[i++] = v1[2];
+      line_cos[i++] = v1[0];
+      line_cos[i++] = v1[1];
+      line_cos[i++] = v1[2];
+      line_cos[i++] = v2[0];
+      line_cos[i++] = v2[1];
+      line_cos[i++] = v2[2];
+
+      line_cos[i++] = v1[0];
+      line_cos[i++] = v1[1];
+      line_cos[i++] = v1[2];
+      line_cos[i++] = v2[0];
+      line_cos[i++] = v2[1];
+      line_cos[i++] = v2[2];
+      line_cos[i++] = v2[0];
+      line_cos[i++] = v2[1];
+      line_cos[i++] = v2[2];
+    }
+
+    chunk.regen = 1;
+    return chunk.tristrip_line_editors.next().bind(chunk, iline);
+  }
+
   line(id, v1, v2) {
+    //return this.smoothline(id, v1, v2);
+
     let chunk = this.get_chunk(id);
     let iline = this.idmap.get(id);
 
@@ -1306,6 +1780,8 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   }
 
   draw(gl, uniforms, program_override = undefined) {
+    this.gl = gl;
+
     for (var island of this.islands) {
       island.draw(gl, uniforms, undefined, program_override);
     }

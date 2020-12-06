@@ -26,7 +26,7 @@ import {DataAPI, DataPathError} from '../path.ux/scripts/controller/simple_contr
 import {DataBlock, DataRef, Library, BlockTypes, BlockSet, BlockFlags} from '../core/lib_api.js'
 import {View3D} from '../editors/view3d/view3d.js';
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js';
-import {Editor, App} from '../editors/editor_base.js';
+import {Editor, App, buildEditorsAPI} from '../editors/editor_base.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js';
 import {MenuBarEditor} from "../editors/menu/MainMenu.js";
@@ -55,41 +55,7 @@ import {Icons} from '../editors/icon_enum.js';
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 import {MaterialEditor} from "../editors/node/MaterialEditor.js";
 import {BrushDynamics, BrushDynChannel, BrushFlags, SculptBrush, SculptIcons, SculptTools} from "../brush/brush.js";
-
-export function api_define_editor(api, cls) {
-  let astruct = api.mapStruct(cls);
-
-  astruct.vec2("pos", "pos", "Position", "Position of editor in window");
-  astruct.vec2("size", "size", "Size", "Size of editor");
-  astruct.string("type", "type", "Type", "Editor type").customGetSet(function () {
-    let obj = this.dataref;
-
-    return obj.constructor.define().areaname;
-  });
-
-  return astruct;
-}
-
-export function api_define_resbrowser(api, pstruct) {
-  let rstruct = api_define_editor(api, ResourceBrowser);
-
-  let types = resourceManager.makeEnum();
-
-  function rebuild() {
-    let resbrowser = this.dataref;
-
-    if (resbrowser !== undefined) {
-      resbrowser.rebuild();
-    }
-  }
-
-  pstruct.struct("resbrowser", "resbrowser", "Resource Browser", rstruct);
-
-  let prop = rstruct.enum("resourceType", "resourceType", types, "Mode");
-  prop.on("change", rebuild);
-
-  return rstruct;
-}
+import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../brush/proceduralTex.js';
 
 
 export function api_define_rendersettings(api) {
@@ -104,31 +70,6 @@ export function api_define_rendersettings(api) {
   ).noUnits().range(0, 10);
 }
 
-
-export function api_define_view3d(api, pstruct) {
-  let vstruct = api_define_editor(api, View3D);
-
-  vstruct.float("subViewPortSize", "subViewPortSize", "View Size").range(1, 2048);
-  vstruct.vec2("subViewPortPos", "subViewPortPos", "View Pos").range(1, 2048);
-
-  pstruct.struct("view3d", "view3d", "Viewport", vstruct);
-
-  vstruct.struct("renderSettings", "render", "Render Settings", api.mapStruct(RenderSettings));
-
-  function onchange() {
-    window.redraw_viewport();
-  }
-
-  vstruct.flags("flag", "flag", View3DFlags, "View3D Flags").on("change", onchange).icons({
-    SHOW_RENDER: Icons.RENDER,
-    SHOW_GRID: Icons.SHOW_GRID
-  });
-
-  vstruct.enum("cameraMode", "cameraMode", CameraModes, "Camera Modes").on("change", onchange).icons({
-    PERSPECTIVE: Icons.PERSPECTIVE,
-    ORTHOGRAPHIC: Icons.ORTHOGRAPHIC
-  });
-}
 
 function api_define_socket(api, cls = NodeSocketType) {
   let nstruct = api.mapStruct(cls, true);
@@ -277,6 +218,8 @@ export function api_define_mesh(api, pstruct) {
 
   let mstruct = api_define_sceneobject_data(api, Mesh);
   pstruct.struct("mesh", "mesh", "Mesh", mstruct);
+
+  mstruct.int("uiTriangleCount", "triCount", "Triangles", "Total number of triangles in the mesh").readOnly();
 
   let def;
   def = mstruct.flags("symFlag", "symFlag", MeshSymFlags, "Symmetry Flags", "Mesh Symmetry Flags");
@@ -652,48 +595,6 @@ export function api_define_velpan(api, parent) {
   return vp;
 }
 
-export function api_define_debugeditor(api, parent) {
-  let dedstruct = api_define_editor(api, DebugEditor);
-
-  let redrawDebug = function () {
-    let editor = this.dataref;
-
-    editor._redraw();
-  }
-
-  parent.struct("debugEditor", "debugEditor", "Debug Editor", dedstruct);
-  let edef = dedstruct.enum("displayMode", "displayMode", DisplayModes);
-
-  edef.icons({
-    RAW: Icons.VIEW_RAW,
-    NORMAL: Icons.VIEW_NORMALS,
-    DEPTH: Icons.VIEW_DEPTH,
-    ALPHA: Icons.VIEW_ALPHA
-  });
-
-  edef.on("change", redrawDebug);
-}
-
-export function api_define_node_editor(api, parent) {
-  let nedstruct = api_define_editor(api, NodeEditor);
-
-  parent.struct("nodeEditor", "nodeEditor", "Node Editor", nedstruct);
-  nedstruct.string("graphPath", "graphPath", "data path to graph that's being edited");
-  nedstruct.struct("velpan", "velpan", "Pan / Zoom", api.getStruct(VelPan));
-}
-
-export function api_define_mateditor(api) {
-  return api.inheritStruct(MaterialEditor, NodeEditor);
-}
-
-export function api_define_node_viewer(api, parent) {
-  let nedstruct = api_define_editor(api, NodeViewer);
-
-  parent.struct("nodeViewer", "nodeViewer", "Node Viewer", nedstruct);
-  nedstruct.string("graphPath", "graphPath", "data path to graph that's being edited");
-  nedstruct.struct("velpan", "velpan", "Pan / Zoom", api.getStruct(VelPan));
-}
-
 export function api_define_screen(api, parent) {
   let st = api.mapStruct(App);
 
@@ -832,7 +733,7 @@ export function api_define_brush(api, cstruct) {
   bst.flags("flag", "flag", BrushFlags, "Flag").icons({
     SHARED_SIZE : Icons.SHARED_BRUSH_SIZE
   });
-  bst.float("strength", "strength", "Strength").range(0.001, 2.0).noUnits();
+  bst.float("strength", "strength", "Strength").range(0.001, 2.0).noUnits().step(0.015);
   bst.float("radius", "radius", "Radius").range(0.1, 350.0).noUnits().step(1.0);
   bst.enum("tool", "tool", SculptTools).icons(SculptIcons);
   bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 2.0).noUnits();
@@ -841,16 +742,19 @@ export function api_define_brush(api, cstruct) {
   bst.color4("color", "color", "Primary Color");
   bst.color4("bgcolor", "bgcolor", "Secondary Color");
 
+  bst.struct("texUser", "texUser", "Texture", api.mapStruct(ProceduralTexUser));
+
   bst.curve1d("falloff", "falloff", "Falloff");
 
   let dst;
 
   let cst = api.mapStruct(BrushDynChannel, true);
-  cst.bool("useDynamics", "useDynamics", "Use Dynamics");
+  cst.bool("useDynamics", "useDynamics", "Use Dynamics").icon(Icons.BRUSH_DYNAMICS);
   cst.curve1d("curve", "curve", "Curve");
 
   dst = api.mapStruct(BrushDynamics, true);
   let b = new BrushDynamics();
+
   for (let ch of b.channels) {
     dst.struct(ch.name, ch.name, ch.name, cst);
   }
@@ -885,27 +789,29 @@ export function getDataAPI() {
   api_define_shadernode(api);
   api_define_graph(api);
 
+  api_define_datablock(api, DataBlock);
   api_define_shadernetwork(api, cstruct);
   api_define_material(api);
 
 
   cstruct.struct("graph", "graph", "Graph", api.mapStruct(Graph));
 
-  api_define_datablock(api, DataBlock);
+  buildProcTextureAPI(api, api_define_datablock);
+
   api_define_brush(api, cstruct);
 
   api_define_rendersettings(api);
-  api_define_view3d(api, cstruct);
-  api_define_resbrowser(api, cstruct);
+
+  /*
   api_define_node_editor(api, cstruct);
   api_define_node_viewer(api, cstruct);
   api_define_mateditor(api);
   api_define_debugeditor(api, cstruct);
+  */
 
   api_define_mesh(api, cstruct);
 
   api_define_library(api, cstruct);
-  api_define_editor(api, Editor);
   api_define_screen(api, cstruct);
   api_define_curvespline(api);
   api_define_camera(api);
@@ -1007,6 +913,8 @@ export function getDataAPI() {
       }
     }
   });
+
+  buildEditorsAPI(api, cstruct);
 
   return api;
 }

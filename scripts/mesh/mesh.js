@@ -58,6 +58,162 @@ let _collapsetemp3 = new Array(256);
 let splitcd_ls = [0, 0];
 let splitcd_ws = [0.5, 0.5];
 
+let _idgen = 0;
+
+let debuglog = false;
+
+import {CustomData} from './customdata.js';
+
+const VEID=0, VFLAG=1, VX=1, VY=2, VZ=3, VNX=4, VNY=5, VNZ=6, VTOT=7;
+const EEID=0, EFLAG=1, EV1=2, EV2=3, ETOT=4;
+const LEID=0, LFLAG=1, LV=2, LE=3, LTOT=4;
+const LISTFACE=0, LISTSTART=1, LISTLEN=2, LISTTOT=3;
+const FEID=0, FFLAG=1, FLISTSTART=3, FTOTLIST=4, FTOT=5;
+const HEID=0, HFLAG=1, HX=2, HY=3, HZ=4, HTOT=5;
+
+export class CompressMeshElemList extends Array {
+  constructor(type) {
+    super();
+
+    this.type = type;
+    this.customData = new CustomData();
+    this.cdLayers = [];
+  }
+
+  loadCustomData(cd) {
+    this.customData = cd.copy();
+    for (let layer of this.customData.flatlist) {
+      this.cdLayers.push([]);
+    }
+  }
+}
+CompressMeshElemList.STRUCT = `
+mesh.CompressMeshElemList {
+  data          : array(float) | this;
+  customData    : mesh.CustomData;
+  cdLayers      : array(array(abstract(mesh.CustomDataElem)));  
+}
+`;
+nstructjs.register(CompressMeshElemList);
+
+export class CompressedMesh {
+  constructor() {
+    this.verts = new CompressMeshElemList(MeshTypes.VERTEX);
+    this.edges = new CompressMeshElemList(MeshTypes.EDGE);
+    this.loops = new CompressMeshElemList(MeshTypes.LOOP);
+    this.handles = new CompressMeshElemList(MeshTypes.HANDLE);
+    this.faces = new CompressMeshElemList(MeshTypes.FACE);
+
+    this.lists = [];
+
+    this.eidmax = -1;
+  }
+
+  reset() {
+    this.verts = new CompressMeshElemList(MeshTypes.VERTEX);
+    this.edges = new CompressMeshElemList(MeshTypes.EDGE);
+    this.loops = new CompressMeshElemList(MeshTypes.LOOP);
+    this.handles = new CompressMeshElemList(MeshTypes.HANDLE);
+    this.faces = new CompressMeshElemList(MeshTypes.FACE);
+
+    this.lists = [];
+
+    this.eidmax = -1;
+  }
+
+  loadMesh(mesh) {
+    let vs = this.verts, ls = this.loops, fs = this.faces, es = this.edges;
+    let lists = this.lists;
+
+    mesh.updateIndices();
+
+    let ListIdxMap = new Map();
+
+    let listi = 0, loopi = 0;
+
+    for (let f of mesh.faces) {
+      for (let list of f.lists) {
+        ListIdxMap.set(list, listi++);
+
+        for (let l of list) {
+          l.index = loopi++;
+        }
+      }
+    }
+
+    vs.loadCustomData(this.verts.customData);
+    es.loadCustomData(this.edges.customData);
+    ls.loadCustomData(this.loops.customData);
+    fs.loadCustomData(this.faces.customData);
+
+    vs.length = VTOT*mesh.verts.length;
+    es.length = ETOT*mesh.edges.length;
+    ls.length = LTOT*loopi;
+    fs.length = FTOT*mesh.faces.length;
+    lists.length = listi*LISTLEN;
+
+    let vi = 0;
+    for (let v of mesh.verts) {
+      vs[vi+VEID] = v.eid;
+      vs[vi+VFLAG] = v.flag;
+      vs[vi+VX] = v[0];
+      vs[vi+VY] = v[1];
+      vs[vi+VZ] = v[2];
+      vs[vi+VNX] = v.no[0];
+      vs[vi+VNY] = v.no[1];
+      vs[vi+VNZ] = v.no[2];
+
+      let di = 0;
+      for (let data of v.customData) {
+        vs.cdLayers[di++].push(data);
+      }
+
+      vi += VTOT;
+    }
+
+    let ei = 0;
+    for (let e of mesh.verts) {
+      es[ei+EEID] = e.eid;
+      es[ei+EFLAG] = e.flag;
+
+      let di = 0;
+      for (let data of e.customData) {
+        es.cdLayers[di++].push(data);
+      }
+
+      ei += ETOT;
+    }
+
+    for (let l of mesh.loops) {
+      let li = l.index*LTOT;
+
+      es[li+LEID] = l.eid;
+      es[li+LFLAG] = l.flag;
+      es[li+LE] = l.e.index;
+      es[li+LV] = l.v.index;
+    }
+
+    return this;
+  }
+
+  save() {
+    let data = [];
+    nstructjs.manager.writeObject(data, this);
+    return data;
+  }
+}
+
+CompressedMesh.STRUCT = `
+mesh.CompressedMesh {
+  verts : mesh.CompressMeshElemList;
+  edges : mesh.CompressMeshElemList;
+  faces : mesh.CompressMeshElemList;
+  loops : mesh.CompressMeshElemList;
+}
+`
+nstructjs.register(CompressedMesh);
+
+
 export class Mesh extends SceneObjectData {
   constructor(features = MeshFeatures.BASIC) {
     super();
@@ -65,6 +221,8 @@ export class Mesh extends SceneObjectData {
     this.symFlag = 0; //symmetry flag;
 
     this._last_bvh_key = "";
+
+    this._debug_id1 = _idgen++;
 
     this.features = features;
 
@@ -87,7 +245,8 @@ export class Mesh extends SceneObjectData {
 
     this.drawflag = MeshDrawFlags.USE_LOOP_NORMALS;
 
-    this.eidgen = new util.IDGen();
+    this.eidgen = this._makeEIDGen(new util.IDGen());
+
     this.eidmap = {};
     this.recalc = RecalcFlags.RENDER | RecalcFlags.TESSELATE;
     this.smesh = undefined;
@@ -103,6 +262,31 @@ export class Mesh extends SceneObjectData {
     this.edges = this.getElemList(MeshTypes.EDGE);
     this.faces = this.getElemList(MeshTypes.FACE);
     this.handles = this.getElemList(MeshTypes.HANDLE);
+
+    //used ex
+    this.uiTriangleCount = 0;
+
+    if (debuglog) {
+      this.debuglog = [];
+    }
+  }
+
+  compress() {
+    return new CompressedMesh().loadMesh(this);
+  }
+
+  _makeEIDGen(eidgen2 = new util.IDGen()) {
+    let this2 = this;
+
+    eidgen2.next = function() {
+      if (this2._debug_id1 !== -1) {
+        //console.warn(this2._debug_id1, this2.eidgen._cur);
+      }
+
+      return util.IDGen.prototype.next.apply(this, arguments);
+    }
+
+    return eidgen2;
   }
 
   hasHandles() {
@@ -160,13 +344,80 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  _element_init(e) {
+  debugLogClear() {
+    if (this.debuglog) {
+      this.debuglog.length = 0;
+    }
+  }
+
+  debugLogCompare(mesh2) {
+    let log1 = this.debuglog;
+    let log2 = mesh2.debuglog;
+
+    function pad(s) {
+      while (s.length < 10) {
+        s = " " + s;
+      }
+
+      return s;
+    }
+
+    let buf = '';
+    let buf2 = '';
+
+    let len = Math.min(log1.length, log2.length);
+    let lines = [];
+
+    for (let i=0; i<len; i++) {
+      let l1 = log1[i], l2 = log2[i];
+
+      let line = `${pad(l1.e.constructor.name)} ${l1.eid} ${pad(l2.e.constructor.name)} ${l2.eid}\n`;
+      lines.push(line);
+
+      buf += line;
+    }
+
+    buf += "\n\n";
+
+    for (let i=0; i<len; i++) {
+      let l1 = log1[i], l2 = log2[i];
+
+      if (l1.e.constructor !== l2.e.constructor || l1.eid !== l2.eid) {
+        buf += `Entry ${i} differ\n`;
+        buf += "  " + lines[i];
+      }
+    }
+
+    if (log1.length !== log2.length) {
+      buf2 += `\nDebug log sizes differ ${log1.length} ${log2.length}\n`
+    } else {
+      buf2 += `\nDebug log sizes: ${log1.length} ${log2.length}\n`;
+    }
+
+    console.log(buf);
+
+    for (let l of buf2.split("\n")) {
+      console.log(l);
+      buf = l + '\n' + buf2;
+    }
+    //return buf;
+  }
+
+  _element_init(e, set_eid=true) {
     let list = this.getElemList(e.type);
 
     list.customData.initElement(e);
 
-    e.eid = this.eidgen.next();
-    this.eidmap[e.eid] = e;
+    if (set_eid) {
+      e.eid = this.eidgen.next();
+      this.eidmap[e.eid] = e;
+    }
+
+    if (this.debuglog) {
+      this.debuglog.push({
+        e, eid : e.eid, type : e.type
+      });
+    }
   }
 
   makeVertex(co) {
@@ -293,47 +544,56 @@ export class Mesh extends SceneObjectData {
 
     this._element_init(f2);
     this.faces.push(f2);
-
     this.copyElemData(f2, f);
+
+    for (let l of f.loops) {
+      this._radialRemove(l.e, l);
+    }
 
     for (let list of f.lists) {
       let list2 = new LoopList();
+
       list2.flag = list.flag;
+      list2.length = list.length;
 
       let l1 = list.l;
-      let l2 = list2.l = this._makeLoop();
+      let l2;
       let _i = 0;
-      let startl = l2;
+      let startl2, prevl2;
 
       do {
-        let prevl2 = l2;
-
-        if (l1 !== list.l) {
-          l2 = this._makeLoop();
-        }
+        l2 = this._makeLoop();
         this.copyElemData(l2, l1);
 
         l2.list = list2;
         l2.v = new_vmap[l1.v.eid];
+        l2.f = f2;
+
+        if (l1 === list.l) {
+          list2.l = l2;
+          startl2 = l2;
+        }
 
         if (l2.v === undefined) {
           throw new MeshError("copyFace's new_vmap parameter didn't have vertex " + l1.v.eid + " for loop " + l1.eid);
         }
-        l2.f = f2;
 
-        prevl2.next = l2;
-        l2.prev = prevl2;
+        if (prevl2) {
+          prevl2.next = l2;
+          l2.prev = prevl2;
+        }
 
         if (_i++ > 10000) {
           console.warn("infinite loop detected");
           break;
         }
 
+        prevl2 = l2;
         l1 = l1.next;
       } while (l1 !== list.l);
 
-      l2.next = startl;
-      startl.prev = l2;
+      l2.next = startl2;
+      startl2.prev = l2;
 
       for (let l of list2) {
         l.e = this.ensureEdge(l.v, l.next.v);
@@ -343,6 +603,10 @@ export class Mesh extends SceneObjectData {
       }
 
       f2.lists.push(list2);
+    }
+
+    for (let l of f.loops) {
+      this._radialInsert(l.e, l);
     }
 
     this.regenTesellation();
@@ -438,19 +702,34 @@ export class Mesh extends SceneObjectData {
       f.calcNormal();
     }
 
+    this._recalcVertexNormals();
+  }
+
+  _recalcVertexNormals() {
     let i = 0;
     let vtots = new Array(this.verts.length);
+
     for (let v of this.verts) {
       v.index = i++;
       v.no.zero();
       vtots[v.index] = 0;
     }
 
-    for (let f of this.faces) {
-      for (let v of f.verts) {
-        v.no.add(f.no);
-        vtots[v.index]++;
-      }
+    let ltris = this.loopTris;
+
+    for (let i=0; i<ltris.length; i += 3) {
+      let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
+
+      let n = math.normal_tri(l1.v, l2.v, l3.v);
+      let w = math.tri_area(l1.v, l2.v, l3.v);
+
+      l1.v.no.addFac(n, w);
+      l2.v.no.addFac(n, w);
+      l3.v.no.addFac(n, w);
+
+      vtots[l1.v.index] += w;
+      vtots[l2.v.index] += w;
+      vtots[l3.v.index] += w;
     }
 
     for (let v of this.verts) {
@@ -461,47 +740,96 @@ export class Mesh extends SceneObjectData {
   }
 
   recalcNormalsCustom() {
-    if (!this.faces.customData.hasLayer(NormalLayerElem)) {
+    let ok = this.faces.customData.hasLayer(NormalLayerElem);
+    ok = ok || this.loops.customData.hasLayer(NormalLayerElem);
+    ok = ok || this.verts.customData.hasLayer(NormalLayerElem);
+
+    if (!ok) {
       for (let f of this.faces) {
         f.calcNormal();
       }
-    }
 
-    if (this.verts.customData.hasLayer(NormalLayerElem)) {
+      this._recalcVertexNormals();
       return;
     }
 
-    //regenerate vertex normals if normal layer is in loops or faces?
-    let i = 0;
-    let vtots = new Array(this.verts.length);
-    for (let v of this.verts) {
-      v.index = i++;
-      v.no.zero();
-      vtots[v.index] = 0;
-    }
+    if (!this.faces.customData.hasLayer(NormalLayerElem)) {
+      if (this.loops.customData.hasLayer(NormalLayerElem)) {
+        let cd_nor = this.loops.customData.getLayerIndex(NormalLayerElem);
+        let have_vno = this.verts.customData.hasLayer(NormalLayerElem);
 
-    for (let f of this.faces) {
-      for (let v of f.verts) {
-        v.no.add(f.no);
-        vtots[v.index]++;
-      }
-    }
+        let tots = [];
 
-    for (let v of this.verts) {
-      if (vtots[v.index] > 0) {
-        v.no.normalize();
+        if (!have_vno) {
+          for (let v of this.verts) {
+            v.index = tots.length;
+            v.no.zero();
+            tots.push(0);
+          }
+        }
+
+        //copy loop normals to verts and faces
+        for (let f of this.faces) {
+          f.no.zero();
+
+          for (let l of f.loops) {
+            let no = l.customData[cd_nor].no;
+            no.normalize();
+
+            if (!have_vno) {
+              l.v.no.add(no);
+              tots[l.v.index]++;
+            }
+
+            f.no.add(no);
+          }
+
+          f.no.normalize();
+        }
+
+        if (!have_vno) {
+          for (let v of this.verts) {
+            v.no.normalize();
+          }
+        }
+      } else if (this.verts.customData.hasLayer(NormalLayerElem)) {
+        let cd_nor = this.verts.customData.getLayerIndex(NormalLayerElem);
+
+        //copy vert normals to faces
+        for (let f of this.faces) {
+          f.no.zero();
+
+          for (let l of f.loops) {
+            let no = l.v.customData[cd_nor].no;
+            no.normalize();
+
+            f.no.add(no);
+          }
+
+          f.no.normalize();
+        }
       }
+    } else {
+      let cd_no = this.faces.customData.getLayerIndex(NormalLayerElem);
+
+      for (let f of this.faces) {
+        f.no.load(f.customData[cd_no].no).normalize();
+      }
+
+      this._recalcVertexNormals();
     }
   }
 
   recalcNormals() {
-    if (this.hasCustomNormals) {
-      //try not to override custom normals
-      this.recalcNormalsCustom();
-      return;
+    for (let f of this.faces) {
+      f.calcCent();
     }
 
-    this._recalcNormals_intern();
+    if (this.hasCustomNormals) {
+      this.recalcNormalsCustom();
+    } else {
+      this._recalcNormals_intern();
+    }
   }
 
   killVertex(v, _nocheck = false) {
@@ -553,10 +881,12 @@ export class Mesh extends SceneObjectData {
 
     if (e.h1) {
       this.handles.remove(e.h1);
+      e.h1.eid = -1;
     }
 
     if (e.h2) {
       this.handles.remove(e.h2);
+      e.h2.eid = -1;
     }
   }
 
@@ -908,16 +1238,42 @@ export class Mesh extends SceneObjectData {
 
   }
 
+  /** trys to connect two verts through exactly
+   *  one face, which is split.  returns loop of new split edge*/
+  connectVerts(v1, v2) {
+    for (let f of v1.faces) {
+      let tot = 0;
+
+      for (let l of f.lists[0]) {
+        if (l.v === v1) {
+          tot++;
+        } else if (l.v === v2) {
+          tot++;
+        }
+
+        if (tot === 2) {
+          break;
+        }
+      }
+
+      if (tot === 2) {
+        console.log("found face");
+
+        return this.splitFaceAtVerts(f, v1, v2);
+      }
+    }
+  }
+
   splitFaceAtVerts(f, v1, v2) {
     for (let list of f.lists) {
       let l1, l2;
 
       for (let l of list) {
         if (l.v === v1 || l.v === v2) {
-          if (l1) {
-            l1 = l.v;
-          } else {
-            l2 = l.v;
+          if (!l1) {
+            l1 = l;
+          } else if (l !== l1.next && l !== l1.prev) {
+            l2 = l;
             break;
           }
         }
@@ -1323,6 +1679,10 @@ export class Mesh extends SceneObjectData {
   }
 
   tessellate() {
+    if (DEBUG.simplemesh) {
+      console.warn("Mesh tesselation");
+    }
+
     this.recalc &= ~RecalcFlags.TESSELATE;
     let ltris = this._ltris = [];
 
@@ -1353,6 +1713,18 @@ export class Mesh extends SceneObjectData {
       } while (l.next !== f.lists[0].l);
 
       llen[f.eid] = _i;
+    }
+
+    let haveGrid = GridBase.meshGridOffset(this) >= 0;
+
+    if (!haveGrid) {
+      this.uiTriangleCount = ltris.length/3;
+    }
+  }
+
+  compact() {
+    for (let k in this.elists) {
+      this.elists[k].compact();
     }
   }
 
@@ -1592,6 +1964,9 @@ export class Mesh extends SceneObjectData {
   }
 
   partialUpdate(gl) {
+    //XXX
+    return;
+
     if (this.features & MeshFeatures.EDGE_CURVES_ONLY) {
       return;
     }
@@ -1871,6 +2246,9 @@ export class Mesh extends SceneObjectData {
     switch (dst.type) {
       case MeshTypes.HANDLE:
         dst.load(src);
+        dst.mode = src.mode;
+        dst.color.load(src.color);
+        dst.roll = src.roll;
         break;
       case MeshTypes.VERTEX:
         dst.load(src);
@@ -1900,27 +2278,18 @@ export class Mesh extends SceneObjectData {
         continue;
       }
 
-      if (clearCustomData) {
-        elist.customData._clear();
-      } else {
+      if (!clearCustomData) {
         elist.customData = this.elists[elist.type].customData.copy();
+        elist.customData.on_layeradd = ret._on_cdlayer_add.bind(ret);
+        elist.customData.on_layerremove = ret._on_cdlayer_rem.bind(ret);
       }
-
-      elist.customData.on_layeradd = ret._on_cdlayer_add.bind(ret);
-      elist.customData.on_layerremove = ret._on_cdlayer_rem.bind(ret);
     }
 
-    ret.eidgen = this.eidgen.copy();
-    let eidmap = ret.eidmap;
+    ret.eidgen = ret._makeEIDGen(this.eidgen.copy());
+    let eidmap = ret.eidmap = {};
 
     for (let v of this.verts) {
-      let v2 = ret.makeVertex(v);
-
-      ret.verts.customData.initElement(v2);
-
-      if (!clearCustomData) {
-        ret.copyElemData(v2, v);
-      }
+      let v2 = new Vertex(v);
 
       v2.no.load(v.no);
 
@@ -1929,29 +2298,39 @@ export class Mesh extends SceneObjectData {
       v2.eid = v.eid;
 
       eidmap[v2.eid] = v2;
-      ret.verts.push(v);
+      ret.verts.push(v2);
+      ret.verts.customData.initElement(v2);
+
+      if (!clearCustomData) {
+        ret.copyElemData(v2, v);
+      }
+    }
+
+    for (let h of this.handles) {
+      let h2 = new Handle(h);
+
+      h2.flag = h.flag;
+      h2.index = h.index;
+      h2.eid = h.eid;
+
+      eidmap[h2.eid] = h2;
+      ret.handles.push(h2);
+      ret.handles.customData.initElement(h2);
+
+      h2.mode = h.mode;
+      h2.roll = h.roll;
+      h2.color.load(h.color);
+
+      if (!clearCustomData) {
+        ret.copyElemData(h2, h);
+      }
     }
 
     for (let e of this.edges) {
       let v1 = eidmap[e.v1.eid];
       let v2 = eidmap[e.v2.eid];
 
-      let e2 = ret.makeEdge(v1, v2);
-
-      ret.edges.customData.initElement(e2);
-
-      if (e2.h1) {
-        e2.h1.load(e.h1);
-        e2.h2.load(e.h2);
-
-        if (!clearCustomData) {
-          ret.copyElemData(e2.h1, e.h1);
-          ret.copyElemData(e2.h2, e.h2);
-        }
-
-        ret.handles.customData.initElement(e2.h1);
-        ret.handles.customData.initElement(e2.h2);
-      }
+      let e2 = new Edge();
 
       e2.eid = e.eid;
       e2.flag = e.flag;
@@ -1959,6 +2338,21 @@ export class Mesh extends SceneObjectData {
 
       eidmap[e2.eid] = e2;
       ret.edges.push(e2);
+      ret.edges.customData.initElement(e2);
+
+      e2.v1 = v1;
+      e2.v2 = v2;
+
+      v1.edges.push(e2);
+      v2.edges.push(e2);
+
+      if (e.h1) {
+        e2.h1 = eidmap[e.h1.eid];
+        e2.h2 = eidmap[e.h2.eid];
+
+        e2.h1.owner = e2;
+        e2.h2.owner = e2;
+      }
 
       if (!clearCustomData) {
         ret.copyElemData(e2, e);
@@ -1968,24 +2362,23 @@ export class Mesh extends SceneObjectData {
     for (let l of this.loops) {
       let l2 = new Loop();
 
-      ret.loops.customData.initElement(l2);
-
       l2.flag = l.flag;
       l2.eid = l.eid;
       l2.index = l.index;
 
+      eidmap[l2.eid] = l2;
+      ret.loops.push(l2);
+      ret.loops.customData.initElement(l2);
+
       l2.e = eidmap[l.e.eid];
       l2.v = eidmap[l.v.eid];
 
-      l2.radial_next = l.radial_next;
-      l2.radial_prev = l.radial_prev;
-      l2.next = l.next;
-      l2.prev = l.prev;
+      l2.radial_next = l.radial_next.eid;
+      l2.radial_prev = l.radial_prev.eid;
+      l2.next = l.next.eid;
+      l2.prev = l.prev.eid;
 
       l2.f = l.f.eid;
-
-      eidmap[l2.eid] = l2;
-      ret.loops.push(l2);
 
       if (!clearCustomData) {
         ret.copyElemData(l2, l);
@@ -2001,10 +2394,10 @@ export class Mesh extends SceneObjectData {
     }
 
     for (let l2 of ret.loops) {
-      l2.radial_next = eidmap[l2.radial_next.eid];
-      l2.radial_prev = eidmap[l2.radial_prev.eid];
-      l2.next = eidmap[l2.next.eid];
-      l2.prev = eidmap[l2.prev.eid];
+      l2.radial_next = eidmap[l2.radial_next];
+      l2.radial_prev = eidmap[l2.radial_prev];
+      l2.next = eidmap[l2.next];
+      l2.prev = eidmap[l2.prev];
     }
 
     for (let f of this.faces) {
@@ -2015,6 +2408,10 @@ export class Mesh extends SceneObjectData {
       f2.eid = f.eid;
       f2.index = f.index;
       f2.flag = f.flag;
+
+      eidmap[f2.eid] = f2;
+      ret.faces.push(f2);
+      ret.faces.customData.initElement(f2);
 
       f2.cent.load(f.cent);
       f2.no.load(f.no);
@@ -2028,19 +2425,65 @@ export class Mesh extends SceneObjectData {
         f2.lists.push(list2);
       }
 
-      eidmap[f2.eid] = f2;
-      ret.faces.push(f2);
-
-      ret.faces.customData.initElement(f2);
-
       if (!clearCustomData) {
         ret.copyElemData(f2, f);
       }
     }
 
-    for (let l2 of ret.loops) {
-      l2.f = eidmap[l2.f];
+    for (let f2 of ret.faces) {
+      for (let list of f2.lists) {
+        let l = list.l;
+        let _i = 0;
+
+        do {
+          if (_i++ > 10000) {
+            console.warn("infinite loop detected");
+            break;
+          }
+
+          l.f = f2;
+          l.list = list;
+
+          l = l.next;
+        } while (l !== list.l);
+      }
     }
+
+    let delLoops = [];
+
+    for (let l2 of ret.loops) {
+      if (!l2.f || typeof l2.f === "number") {
+        console.warn("Mesh error", l2);
+        delLoops.push(l2);
+      }
+    }
+
+    if (delLoops.length > 0) {
+      //to ensure mesh integrity, first clear edge radial lists
+      for (let l of ret.loops) {
+        l.radial_next = l.radial_prev = undefined
+      }
+      for (let e of ret.edges) {
+        e.l = undefined;
+      }
+
+      //kill offending loops
+      for (let l2 of delLoops) {
+        delete ret.eidmap[l2.eid];
+        ret.loops.remove(l2);
+      }
+
+      //rebuild radial lists
+      for (let f of ret.faces) {
+        for (let l of f.loops) {
+          ret._radialInsert(l.e, l);
+        }
+      }
+    }
+
+    ret.validateMesh();
+    ret.regenRender();
+    ret.regenElementsDraw();
 
     return ret;
   }
@@ -2143,6 +2586,8 @@ export class Mesh extends SceneObjectData {
   loadSTRUCT(reader) {
     reader(this);
     super.loadSTRUCT(reader);
+
+    this.eidgen = this._makeEIDGen(this.eidgen);
 
     this.elists = {};
 
@@ -2322,6 +2767,7 @@ Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
   flag      : int;
   symFlag   : int;
   features  : int;
+  uiTriangleCount : int;
 }
 `;
 

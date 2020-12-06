@@ -8,7 +8,7 @@ units.Unit.baseUnit = "foot";
 import './theme.js';
 
 let STRUCT = nstructjs.STRUCT;
-import {Area, ScreenArea} from '../path.ux/scripts/screen/ScreenArea.js';
+import {Area, ScreenArea, areaclasses} from '../path.ux/scripts/screen/ScreenArea.js';
 import {Screen} from '../path.ux/scripts/screen/FrameManager.js';
 import {UIBase, saveUIData, loadUIData} from '../path.ux/scripts/core/ui_base.js';
 import {Container} from '../path.ux/scripts/core/ui.js';
@@ -97,6 +97,42 @@ export class CopyDataBlockOp extends ToolOp {
 }
 ToolOp.register(CopyDataBlockOp);
 
+export class AssignDataBlock extends ToolOp {
+  static tooldef() {return {
+    uiname     : "Assign",
+    toolpath   : "datalib.default_assign",
+    inputs     : {
+      block : new DataRefProperty(),
+      dataPathToSet : new StringProperty()
+    }
+  }}
+
+  exec(ctx) {
+    let block = ctx.datalib.get(this.inputs.block.getValue());
+
+    let path = this.inputs.dataPathToSet.getValue();
+    let rdef = ctx.api.resolvePath(path);
+
+    if (rdef && rdef.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
+      let obj = rdef.obj;
+      let old = ctx.api.getValue(ctx, path);
+
+      if (old) {
+        old.lib_remUser(obj);
+      }
+
+      if (block) {
+        obj.lib_addUser(block);
+      }
+    }
+
+    if (path !== "") {
+      ctx.api.setValue(ctx, path, block);
+    }
+  }
+}
+ToolOp.register(AssignDataBlock);
+
 
 export class UnlinkDataBlockOp extends ToolOp {
   static tooldef() {return {
@@ -113,24 +149,43 @@ export class UnlinkDataBlockOp extends ToolOp {
   exec(ctx) {
     let block = ctx.datalib.get(this.inputs.block.getValue());
 
-    if (!block) {
-      ctx.warning("failed to duplicated block", block);
-      return;
+    let path = this.inputs.dataPathToUnset.getValue();
+    let rdef = ctx.api.resolvePath(ctx, path);
+
+    if (block && rdef && rdef.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
+      rdef.obj.lib_remUser(block);
     }
 
-    this.inputs.dataPathToUnset.setValue(undefined);
+    console.log(`setting ${path} to undefined`);
+    ctx.api.setValue(ctx, path, undefined);
   }
 }
+
 ToolOp.register(UnlinkDataBlockOp);
 
 /**
- * Expects a datapath DOM attribute
+ * Requires attributes:
+ *
+ * \attribute datapath
+ *
+ * \prop blockClass class of data blocks for this browser
+ * \prop newOp toolpath for op to make a new block (defaults to "datalib.default_new")
+ * \prop duplicateOp toolpath for op to duplciate a block (defaults to "datalib.default_copy")
+ * \prop unlinkOp toolpath for op to unlink a block from its owner (defualts to "datalib.default_unlink")
  */
+
 export class DataBlockBrowser extends Container {
   constructor() {
     super();
 
+    this.overrideClass("strip");
+
     this.blockClass = undefined;
+
+    //if not undefined, path to "owner" of datapath
+    //if undefined, will be derived via datapath api
+    this.ownerPath = undefined;
+
     this._owner_exists = false;
     this._path_exists = false;
     this._needs_rebuild = true;
@@ -146,6 +201,7 @@ export class DataBlockBrowser extends Container {
     this.newOp = "datalib.default_new";
     this.duplicateOp = "datalib.default_copy";
     this.unlinkOp = "datalib.default_unlink";
+    this.assignOp = "datalib.default_assign";
   }
 
   init() {
@@ -156,6 +212,17 @@ export class DataBlockBrowser extends Container {
 
   setCSS() {
     super.setCSS();
+
+    this.background = this.getDefault("background");
+
+    let radius = this.getDefault("BoxRadius") ?? 10;
+    let color = this.getDefault("BoxBorder") ?? "black";
+    let wid = this.getDefault("BoxLineWidth") ?? 1;
+    let padding = this.getDefault("BoxMargin") ?? 2;
+
+    this.style["border"] = `${wid}px solid ${color}`;
+    this.style["border-radius"] = radius + "px";
+    this.style["padding"] = padding + "px";
   }
 
   flagRebuild() {
@@ -172,7 +239,7 @@ export class DataBlockBrowser extends Container {
     this.clear();
 
     if (!this.doesOwnerExist()) {
-      this.label("Nothing selected");
+      //this.label("Nothing selected");
       return;
     }
 
@@ -245,6 +312,10 @@ export class DataBlockBrowser extends Container {
   }
 
   doesOwnerExist() {
+    if (this.ownerPath !== undefined) {
+      return this.ctx.api.getValue(this.ownerPath);
+    }
+
     let path = this.getAttribute("datapath");
     let meta = this.ctx.api.resolvePath(this.ctx, path);
     
@@ -310,6 +381,71 @@ export let getContextArea = (cls) => {
   return Area.getActiveArea(cls);
 }
 
+//used by datapath system
+export class EditorAccessor {
+  constructor() {
+    this._defined = new Set();
+    this._namemap = {};
+
+    this.update();
+  }
+
+  update() {
+    let define = (k, cls) => {
+      Object.defineProperty(this, k, {
+        get() {
+          return getContextArea(cls);
+        }
+      });
+    }
+
+    for (let k in areaclasses) {
+      if (this._defined.has(k)) {
+        continue;
+      }
+
+      this._defined.add(k);
+
+      let cls = areaclasses[k];
+      let def = cls.define();
+
+      let name = def.apiname ?? def.areaname;
+      name = name.replace(/[\- \t]/g, "_");
+
+      this._namemap[name] = k;
+
+      console.log("NAME", name);
+      define(name, areaclasses[k]);
+    }
+  }
+}
+
+export let editorAccessor = new EditorAccessor();
+export function rebuildEditorAccessor() {
+  editorAccessor.update();
+}
+
+export function buildEditorsAPI(api, ctxStruct) {
+  Editor.defineAPI(api);
+
+  editorAccessor.update();
+
+  let st = api.mapStruct(EditorAccessor, true);
+
+  //let st = api.mapStruct(
+  for (let k in areaclasses) {
+    let cls = areaclasses[k];
+
+    cls.defineAPI(api);
+
+    let name = cls.define().apiname ?? cls.define().areaname;
+    name = name.replace(/[\- \t]/g, "_");
+
+    ctxStruct.struct("editors." + name, name, cls.define().uiname, api.mapStruct(cls));
+    st.struct(name, name, cls.define().uiname, api.mapStruct(cls));
+  }
+}
+
 export class Editor extends Area {
   constructor() {
     super();
@@ -329,6 +465,19 @@ export class Editor extends Area {
     this.container.useDataPathUndo = this.useDataPathUndo;
 
     this.style["overflow"] = "hidden";
+  }
+
+  static defineAPI(api) {
+    let st = api.mapStruct(this, true);
+
+    st.vec2("pos", "pos", "Position", "Position of editor in window");
+    st.vec2("size", "size", "Size", "Size of editor");
+    st.string("type", "type", "Type", "Editor type").customGetSet(function () {
+      let obj = this.dataref;
+      return obj.constructor.define().areaname;
+    });
+
+    return st;
   }
 
   swapBack() {
@@ -375,8 +524,9 @@ export class Editor extends Area {
     example of how to define an area.
 
   static define() {return {
-    tagname  : undefined, // e.g. "areadata-x",
-    areaname : undefined, //api name for area type
+    tagname  : "areaname-x", //the -x is required by html
+    areaname : "areaname", //api name for area type
+    apiname  : undefined, //if undefined, will override api instance name, e.g. if you want ctx.areaName instead of ctx.areaname
     uiname   : undefined,
     icon : undefined //icon representing area in MakeHeader's area switching menu. Integer.
     flag : see AreaFlags
@@ -689,6 +839,11 @@ let last_time = util.time_ms();
 
 window.setInterval(() => {
   if (window._appstate && _appstate.ctx && _appstate.ctx.scene && _appstate.ctx.view3d) {
+    //for debugging purposes, check if screen is listening
+    if (_appstate.screen.listen_timer === undefined) {
+      return;
+    }
+
     window.redraw_viewport();
 
     if (_appstate.playing) {

@@ -122,7 +122,7 @@ export class WidgetShape {
     uniforms.aspect = view3d.activeCamera.aspect;
     uniforms.near = view3d.activeCamera.near;
     uniforms.far = view3d.activeCamera.far;
-    uniforms.polygonOffset = 0.0;
+    uniforms.polygonOffset = 0.25;
     uniforms.projectionMatrix = manager.ctx.view3d.activeCamera.rendermat;
     uniforms.objectMatrix = this.drawmatrix;
   }
@@ -697,7 +697,7 @@ export class WidgetBase extends Node {
       if (mindis === undefined || ret.dis < mindis) {
         mindis = ret.dis;
         minz = ret.z;
-        minret = child;
+        minret = ret.data ? ret.data : child;
       }
     }
 
@@ -897,7 +897,8 @@ export class WidgetBase extends Node {
       this.inputs.depend.connect(view3d._graphnode.outputs.onDrawPre);
     }
 
-    this.ctx.toolstack.execTool(ctx, tool);
+    let toolstack = this.ctx.toolstack;
+    toolstack.execTool(ctx, tool);
 
     if (tool._promise !== undefined) {
       tool._promise.then((ctx, was_cancelled) => {
@@ -1111,7 +1112,7 @@ export class WidgetManager {
       let dis = ret.dis;
       let z = ret.z;
 
-      if (minw === undefined || (dis < mindis || (dis == mindis && z < minz))) {
+      if (minw === undefined || (dis < mindis || (dis === mindis && z < minz))) {
         mindis = dis;
         minw = ret.data;
       }

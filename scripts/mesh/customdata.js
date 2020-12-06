@@ -300,7 +300,10 @@ export class CustomDataLayer {
   copy() {
     let ret = new CustomDataLayer(this.typeName, this.name, this.flag, this.id);
 
-    ret.settingsClass = this.settingsClass.copy();
+    if (this.typeSettings) {
+      ret.typeSettings = this.typeSettings.copy();
+    }
+
     ret.index = this.index;
     ret.elemTypeMask = this.elemTypeMask;
 
@@ -455,6 +458,7 @@ export class CustomData {
 
   copy() {
     let ret = new CustomData();
+
     ret.idgen = this.idgen.copy();
 
     for (let layer of this.flatlist) {
@@ -464,7 +468,12 @@ export class CustomData {
       layer2.index = ret.flatlist.length;
       ret.flatlist.push(layer2);
 
+      let oldlset = this.getLayerSet(layer.typeName);
+
       lset.push(layer2);
+      if (layer === oldlset.active) {
+        lset.active = layer2;
+      }
     }
 
     return ret;

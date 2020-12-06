@@ -116,8 +116,9 @@ export class MeshToolBase extends ToolMode {
   static toolModeDefine() {return {
     name        : "basemesh",
     uianme      : "Edit Geometry",
-    icon       : Icons.MESHTOOL,
+    icon        : Icons.MESHTOOL,
     flag        : 0,
+    selectMode  : SelMask.OBJECT,
     description : "Edit vertices/edges/faces"
   }}
 
@@ -210,17 +211,14 @@ export class MeshToolBase extends ToolMode {
     }
 
     for (let mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
-      for (let v of mesh.verts) {
-        if (v.flag & MeshFlags.HIDE)
-          continue;
-
+      for (let v of mesh.verts.selected.editable) {
         minmax(v);
       }
-      for (let h of mesh.verts) {
-        if (h.flag & MeshFlags.HIDE)
-          continue;
 
-        minmax(h);
+      if (mesh.handles) {
+        for (let h of mesh.handles.selected.editable) {
+          minmax(h);
+        }
       }
     }
 
@@ -406,7 +404,10 @@ export class MeshToolBase extends ToolMode {
       let program = Shaders.MeshIDShader;
 
       uniforms.pointSize = 15;
-      uniforms.polygonOffset = 10 + camdist**2;
+      uniforms.polygonOffset = 1.0;
+
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(true);
 
       selmask |= SelMask.FACE;
       mesh.drawElements(view3d, gl, selmask, uniforms, program);
@@ -476,7 +477,7 @@ export class MeshToolBase extends ToolMode {
       gl.depthMask(true);
 
       uniforms.pointSize = 8;
-      uniforms.polygonOffset = 1 + camdist;
+      uniforms.polygonOffset = 1.0;
 
       mesh.drawElements(view3d, gl, this.drawSelectMask, uniforms, program, object, true);
     }

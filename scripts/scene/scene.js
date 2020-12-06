@@ -508,6 +508,7 @@ export class Scene extends DataBlock {
       throw new Error("invalid tool mode " + mode);
     }
 
+    let old;
     let cls = ToolModes[i];
     let ret;
 
@@ -526,6 +527,11 @@ export class Scene extends DataBlock {
       }
     }
 
+    if (this.toolmode_i < this.toolmodes.length && this.toolmode_i >= 0) {
+      old = this.toolmodes[this.toolmode_i];
+      old.storedSelectMask = this.selectMask;
+    }
+
     if (ret === undefined) {
       ret = new cls(this.widgets);
 
@@ -538,6 +544,18 @@ export class Scene extends DataBlock {
 
     ret.ctx = this.ctx;
     this.toolmode_i = i;
+
+    if (ret.storedSelectMask === -1 || ret.storedSelectMask === undefined) {
+      let def = cls.toolModeDefine();
+
+      if (def.selectMode !== undefined) {
+        ret.storedSelectMask = def.selectMode;
+      }
+    }
+
+    if (ret.storedSelectMask >= 0) {
+      this.selectMask = ret.storedSelectMask;
+    }
 
     if (_file_loading) {
       window.setTimeout(() => {

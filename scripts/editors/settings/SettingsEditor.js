@@ -26,6 +26,7 @@ export class SettingsEditor extends Editor {
     this.style["overflow"] = "scroll";
 
     tab = tabs.tab("General");
+
     tab = tabs.tab("Theme");
 
     tab.button("Export Theme", () => {
@@ -66,7 +67,7 @@ export class SettingsEditor extends Editor {
   }
 
   static define() {return {
-    uiname : 'Settings Editor',
+    uiname : 'Settings',
     areaname : 'settings-editor',
     tagname : 'settings-editor-x',
     icon : Icons.EDITOR_SETTINGS,

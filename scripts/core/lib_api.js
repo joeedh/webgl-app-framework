@@ -223,7 +223,7 @@ export class DataBlock extends Node {
 
   static getClass(typeName) {
     for (let type of BlockTypes) {
-      if (type.blockDefine().typeName == typeName)
+      if (type.blockDefine().typeName === typeName)
         return type;
     }
   }
@@ -318,6 +318,20 @@ export class BlockSet extends Array {
     this.__active = undefined;
     this.idmap = {};
     this.namemap = {};
+  }
+
+  create(name=undefined) {
+    let cls = this.type;
+
+    name = name ?? cls.blockDefine().defaultName ?? cls.blockDefine().uiName ?? cls.blockDefine().typeName;
+    name = name ?? cls.name;
+
+    let block = new cls();
+    block.name = name;
+
+    this.datalib.add(block);
+
+    return block;
   }
 
   uniqueName(name=this.type.blockDefine().defaultName) {

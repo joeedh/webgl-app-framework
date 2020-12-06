@@ -52,19 +52,20 @@ export class ElementListIter {
   next() {
     let ret = this.ret;
     let elist = this.elist;
+    let list = elist.list;
 
-    while (this.i < elist.size && elist[this.i] === undefined) {
+    while (this.i < list.length && list[this.i] === undefined) {
       this.i++;
     }
 
-    if (this.i >= this.elist.size) {
+    if (this.i >= list.length) {
       ret.done = true;
       ret.value = undefined;
 
       elist.iterstack.cur--;
       return ret;
     } else {
-      ret.value = elist[this.i];
+      ret.value = list[this.i];
     }
 
     this.i++;
@@ -86,9 +87,13 @@ export class ElementListIter {
 
 export class ElementList {
   constructor(type) {
+    this.list = [];
+
     this.length = 0;
     this.size = 0;
     this.freelist = [];
+
+    this.idxmap = {};
 
     this.customData = new CustomData();
     this.local_eidmap = {};
@@ -171,18 +176,20 @@ export class ElementList {
     if (i2 < 0)
       throw new Error("element not in array " + b);
 
-    this[i2] = a;
-    this[i1] = b;
+    this.list[i2] = a;
+    this.list[i1] = b;
     return this;
   }
 
   reverse() {
-    for (let i=0; i<this.length>>1; i++) {
-      let i2 = this.length - i - 1;
+    let len = this.list.length;
 
-      let t = this[i];
-      this[i] = this[i2];
-      this[i2] = t;
+    for (let i=0; i<(len>>1); i++) {
+      let i2 = len - i - 1;
+
+      let t = this.list[i];
+      this.list[i] = this.list[i2];
+      this.list[i2] = t;
     }
 
     return this;
@@ -210,8 +217,8 @@ export class ElementList {
 
   toJSON() {
     var arr = [];
-    for (var i=0; i<this.length; i++) {
-      arr.push(this[i]);
+    for (let item of this) {
+      arr.push(item);
     }
 
     var sel = [];
@@ -270,11 +277,14 @@ export class ElementList {
     if (this.freelist.length > 0) {
       i = this.freelist.pop();
     } else {
-      i = this.size;
+      i = this.list.length;
       this.size++;
+      this.list.push();
     }
 
-    this[i] = e;
+    this.idxmap[e.eid] = i;
+
+    this.list[i] = e;
     this.length++;
   }
 
@@ -294,8 +304,11 @@ export class ElementList {
   }
 
   indexOf(e) {
-    for (let i=0; i<this.size; i++) {
-      if (this[i] === e) {
+    let idx = this.idxmap[e.eid];
+    return idx !== undefined ? idx : -1;
+
+    for (let i=0; i<this.list.length; i++) {
+      if (this.list[i] === e) {
         return i;
       }
     }
@@ -307,11 +320,23 @@ export class ElementList {
     let i = this.indexOf(e);
 
     if (i >= 0) {
+      delete this.idxmap[e.eid];
+
       this.freelist.push(i);
-      this[i] = undefined;
+      this.list[i] = undefined;
       this.length--;
     } else {
       throw new Error("element " + e.eid + " is not in array");
+    }
+  }
+
+  forEach(cb, thisvar) {
+    for (let item of this) {
+      if (thisvar) {
+        cb.call(thisvar, item);
+      } else {
+        cb(item);
+      }
     }
   }
 
@@ -323,6 +348,8 @@ export class ElementList {
 
     this.length = this.size = 0;
     this.freelist.length = 0;
+    this.list.length = 0;
+    this.idxmap = {};
 
     for (let item of list) {
       this._push(item);

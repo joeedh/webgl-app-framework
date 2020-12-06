@@ -90,6 +90,7 @@ export let Icons = {
   GRIDS_TEST : 84,
   FACELOOP : 85,
   EDGELOOP : 86,
-  EDGECUT  : 87
+  EDGECUT  : 87,
+  BRUSH_DYNAMICS : 88
 };
 setIconMap(Icons);

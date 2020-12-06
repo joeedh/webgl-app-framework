@@ -196,6 +196,7 @@ export class View3DOp extends ToolOp {
     super();
 
     this.drawlines = [];
+    this.drawquads = [];
   }
 
   modalEnd(wasCancelled) {
@@ -203,8 +204,13 @@ export class View3DOp extends ToolOp {
     return super.modalEnd(wasCancelled);
   }
 
-  addDrawLine(v1, v2, color) {
-    let dl = this.modal_ctx.view3d.makeDrawLine(v1, v2, color);
+  addDrawQuad(v1, v2, v3, v4, color, useZ=true) {
+    let dq = this.modal_ctx.view3d.makeDrawLine(v1, v2, v3, v4, color, useZ);
+    this.drawquads.push(dq);
+  }
+
+  addDrawLine(v1, v2, color, useZ=true) {
+    let dl = this.modal_ctx.view3d.makeDrawLine(v1, v2, color, useZ);
     this.drawlines.push(dl);
     return dl;
   }
@@ -215,6 +221,10 @@ export class View3DOp extends ToolOp {
     }
 
     this.drawlines.length = 0;
+
+    for (let dq of this.drawquads) {
+      this.modal_ctx.view3d.removeDrawQuad(dq);
+    }
   }
 
   removeDrawLine(dl) {

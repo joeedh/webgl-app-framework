@@ -20,6 +20,7 @@ import {SimpleMesh, LayerTypes} from "../../core/simplemesh.js";
 import {Texture} from '../../core/webgl.js';
 import {DisplayModes} from './DebugEditor_base.js';
 import {loadShader} from "../../shaders/shaders.js";
+import {Icons} from '../icon_enum.js';
 
 export const DrawShaders = {
   IDS: { //key should map to one of DisplayModes keys
@@ -93,6 +94,29 @@ export class DebugEditor extends Editor {
     this.curTex = 0;
     this._ignore_tab_change = false;
     this.shaders = {};
+  }
+
+  static defineAPI(api) {
+    let dedstruct = super.defineAPI(api);
+
+    let redrawDebug = function () {
+      let editor = this.dataref;
+
+      editor._redraw();
+    }
+
+    let edef = dedstruct.enum("displayMode", "displayMode", DisplayModes);
+
+    edef.icons({
+      RAW   : Icons.VIEW_RAW,
+      NORMAL: Icons.VIEW_NORMALS,
+      DEPTH : Icons.VIEW_DEPTH,
+      ALPHA : Icons.VIEW_ALPHA
+    });
+
+    edef.on("change", redrawDebug);
+
+    return dedstruct;
   }
 
   updateShaders(gl) {
@@ -351,6 +375,7 @@ export class DebugEditor extends Editor {
     has3D     : true,
     tagname   : "debug-editor-x",
     areaname  : "DebugEditor",
+    apiname   : "debugEditor",
     uiname    : "Debug",
     icon      : -1
   }}

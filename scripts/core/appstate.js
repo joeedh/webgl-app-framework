@@ -153,6 +153,7 @@ import {Collection} from "../scene/collection.js";
 import {PropsEditor} from "../editors/properties/PropsEditor.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {Light} from "../light/light.js";
+import {GridBase} from '../mesh/mesh_grids.js';
 
 export function genDefaultFile(appstate, dont_load_startup=0) {
   if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
@@ -161,20 +162,19 @@ export function genDefaultFile(appstate, dont_load_startup=0) {
     try {
       buf = util.atob(buf);
       appstate.loadFile(buf.buffer);
+      return;
     } catch (error) {
       util.print_stack(error);
       console.warn("Failed to load startup file");
     }
-
-    return;
   }
 
   let tool = new BasicFileOp();
 
-  genDefaultScreen(appstate);
-
   appstate.datalib = new Library();
   appstate.toolstack.execTool(appstate.ctx, tool);
+
+  genDefaultScreen(appstate);
 }
 
 window._genDefaultFile = genDefaultFile; //this global is for debugging purposes only
@@ -523,8 +523,8 @@ export class AppState {
 
         if (cls === undefined) {
           console.warn("Warning, unknown block type", clsname);
-
-          block = istruct.read_object(data2, DataBlock);
+          continue;
+          //block = istruct.read_object(data2, DataBlock);
         } else {
           block = istruct.read_object(data2, cls);
         }
@@ -690,17 +690,34 @@ export class AppState {
 
   /** this is executed before block re-linking has happened*/
   do_versions(version, datalib) {
-    for (let mesh of datalib.mesh) {
-      let cd_grid = mesh.loops.customData.getLayerIndex("QuadTreeGrid");
+    if (version < 4) {
+      for (let mesh of datalib.mesh) {
+        let cd_grid = mesh.loops.customData.getLayerIndex("QuadTreeGrid");
 
-      if (cd_grid < 0) {
-        continue;
+        if (cd_grid < 0) {
+          continue;
+        }
+
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+          grid.updateNormalQuad(l);
+          grid.pruneDeadPoints();
+        }
       }
+    }
 
-      for (let l of mesh.loops) {
-        let grid = l.customData[cd_grid];
-        grid.updateNormalQuad(l);
-        grid.pruneDeadPoints();
+    if (version < 5) { //recalc normals since GridVert.no changed into a short for saving
+      for (let mesh of datalib.mesh) {
+        let cd_grid = GridBase.meshGridOffset(mesh);
+
+        if (cd_grid < 0) {
+          continue;
+        }
+
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+          grid.flagNormalsUpdate();
+        }
       }
     }
   }

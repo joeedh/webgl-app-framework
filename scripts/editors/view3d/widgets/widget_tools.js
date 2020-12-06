@@ -300,10 +300,9 @@ export class TranslateWidget extends TransformWidget {
   }
 }
 
-
 export class ScaleWidget extends TransformWidget {
   constructor(manager) {
-    super(manager);
+    super();
 
     this.axes = undefined;
   }
@@ -315,17 +314,11 @@ export class ScaleWidget extends TransformWidget {
     flag      : 0
   }}
 
-  create(ctx, manager) {
-    super.create(ctx, manager);
 
+  create(ctx, manager) {
     console.log("creating widget");
 
     let center = this.center = this.getSphere(undefined, [0.5, 0.5, 0.5, 1.0]);
-
-    let px = this.getPlane(undefined, [1, 0, 0, 0.5]); //"rgba(255, 0, 0, 0.8)");
-    let py = this.getPlane(undefined, "rgba(0, 255, 0, 0.2)");
-    let pz = this.getPlane(undefined, "rgba(0, 0, 255, 0.2)");
-    this.plane_axes = [px, py, pz];
 
     let x = this.getBlockArrow(undefined, "red");
     let y = this.getBlockArrow(undefined, "green");
@@ -354,31 +347,18 @@ export class ScaleWidget extends TransformWidget {
       this.startTool(2, localX, localY);
     };
 
-    px.on_mousedown = (e, localX, localY) => {
-      this.startTool(3, localX, localY);
-    };
-    py.on_mousedown = (e, localX, localY) => {
-      this.startTool(4, localX, localY);
-    };
-    pz.on_mousedown = (e, localX, localY) => {
-      this.startTool(5, localX, localY);
-    };
-
     this.update(ctx);
   }
 
   startTool(axis, localX, localY) {
     let tool = new ScaleOp([localX, localY]);
     let con = new Vector3();
+    let selmode = this.ctx.view3d.ctx.selectMask;
+
+    tool.inputs.selmask.setValue(selmode);
 
     if (axis >= 0) {
-      if (axis > 2) {
-        axis -= 3;
-        con[(axis + 1) % 3] = 1.0;
-        con[(axis + 2) % 3] = 1.0;
-      } else {
-        con[axis] = 1.0;
-      }
+      con[axis] = 1.0;
 
       tool.inputs.constraint.setValue(con);
     }
@@ -388,20 +368,23 @@ export class ScaleWidget extends TransformWidget {
 
   update(ctx) {
     if (this.axes === undefined) {
-      return;
+      this.create(ctx, this.manager);
     }
 
     let x = this.axes[0],
-      y = this.axes[1],
-      z = this.axes[2];
+        y = this.axes[1],
+        z = this.axes[2];
+
+    //let ret = new Vector3(aabb[0]).interp(aabb[1], 0.5);
+
 
     let ret = this.getTransCenter();
+    //ret = {center:  ret};
 
     let tmat = new Matrix4();
     let ts = 0.5;
     tmat.translate(ret.center[0], ret.center[1], ret.center[2]);
     tmat.scale(ts, ts, ts);
-
     this.center.setMatrix(tmat);
 
     let co1 = new Vector3(ret.center);
@@ -423,21 +406,23 @@ export class ScaleWidget extends TransformWidget {
     let xmat = new Matrix4();
     let ymat = new Matrix4();
 
-    let scale = 1.0;
+    //let dpi = devicePixelRatio;
+
+    let scale = 0.65, scale2 = scale*1.5;
     xmat.euler_rotate(0.0, Math.PI*0.5, 0.0);
     x.localMatrix.makeIdentity();
     x.localMatrix.translate(0.0, 0.0, scale);
-    xmat.scale(scale, scale, scale);
+    xmat.scale(scale, scale, scale2);
 
-    ymat.euler_rotate(Math.PI*0.5, 0.0, 0.0);
+    ymat.euler_rotate(-Math.PI*0.5, 0.0, 0.0);
     y.localMatrix.makeIdentity();
     y.localMatrix.translate(0.0, 0.0, scale);
-    ymat.scale(scale, scale, scale);
+    ymat.scale(scale, scale, scale2);
 
     let zmat = new Matrix4();
     z.localMatrix.makeIdentity();
     z.localMatrix.translate(0.0, 0.0, scale);
-    zmat.scale(scale, scale, scale);
+    zmat.scale(scale, scale, scale2);
 
     let mat2 = new Matrix4();
     mat2.translate(ret.center[0], ret.center[1], ret.center[2]);
@@ -453,47 +438,9 @@ export class ScaleWidget extends TransformWidget {
     x.setMatrix(xmat);
     y.setMatrix(ymat);
     z.setMatrix(zmat);
-
-    let px = this.plane_axes[0];
-    let py = this.plane_axes[1];
-    let pz = this.plane_axes[2];
-
-    xmat.makeIdentity();
-    ymat.makeIdentity();
-    zmat.makeIdentity();
-
-    scale *= 0.6;
-
-    let fac = 1.5;
-
-    xmat.euler_rotate(0.0, Math.PI*0.5, 0.0);
-    px.localMatrix.makeIdentity();
-    px.localMatrix.translate(scale*fac, -scale*fac, 0.0);
-    xmat.scale(scale, scale, scale);
-
-    ymat.euler_rotate(Math.PI*0.5, 0.0, 0.0);
-    py.localMatrix.makeIdentity();
-    py.localMatrix.translate(-scale*fac, scale*fac, 0.0);
-    ymat.scale(scale, scale, scale);
-
-    zmat.euler_rotate(0.0, 0.0, 0.0);
-    pz.localMatrix.makeIdentity();
-    pz.localMatrix.translate(-scale*fac, -scale*fac, 0.0);
-    zmat.scale(scale, scale, scale);
-
-    xmat.preMultiply(mat);
-    ymat.preMultiply(mat);
-    zmat.preMultiply(mat);
-
-    xmat.preMultiply(mat2);
-    ymat.preMultiply(mat2);
-    zmat.preMultiply(mat2);
-
-    px.setMatrix(xmat);
-    py.setMatrix(ymat);
-    pz.setMatrix(zmat);
   }
 }
+
 
 export class RotateWidget extends TransformWidget {
   constructor() {

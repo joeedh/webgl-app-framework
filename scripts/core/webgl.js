@@ -361,6 +361,7 @@ export class ShaderProgram {
   constructor(gl, vertex, fragment, attributes) {
     this.vertexSource = vertex;
     this.fragmentSource = fragment;
+
     this.attrs = [];
 
     this.multilayer_programs = {};
@@ -379,6 +380,18 @@ export class ShaderProgram {
 
     this.uniforms = {};
     this.gl = gl;
+  }
+
+  static insertDefine(define, code) {
+    code = code.trim().split("\n");
+
+    if (code.length > 3) {
+      code = code.slice(0, 3).concat([define]).concat(code.slice(3, code.length));
+    } else {
+      code = code.concat([define]);
+    }
+
+    return code.join("\n") + "\n";
   }
 
   static _use_ml_array() {
@@ -572,6 +585,7 @@ v${attr} = ${attr};
 
     for (let i = 0; i < attribs.length; ++i) {
       let attr = attribs[i];
+
       if (attr in this.multilayer_attrs) {
         let count = this.multilayer_attrs[attr];
         for (let j=0; j<count; j++) {
@@ -613,7 +627,6 @@ v${attr} = ${attr};
     this.gl = gl;
     this.vertexShader = vertexShader;
     this.fragmentShader = fragmentShader;
-    this.attrs = [];
 
     this.attrlocs = {};
     this.uniformlocs = {};
@@ -621,7 +634,6 @@ v${attr} = ${attr};
     this.uniforms = {}; //default uniforms
 
     for (var i=0; i<attribs.length; i++) {
-      this.attrs.push(i);
       this.attrlocs[attribs[i]] = i;
     }
   }
@@ -926,7 +938,9 @@ export class VBO {
     if (useSub) {
       gl.bufferSubData(target, 0, dataF32);
     } else {
-      console.warn("bufferData");
+      if (DEBUG.simplemesh) {
+        console.warn("bufferData");
+      }
       gl.bufferData(target, dataF32, drawmode);
     }
 
@@ -944,7 +958,7 @@ export class RenderBuffer {
       return this[name];
     }
 
-    console.log("new buffer");
+    //console.log("new buffer");
     let buf = gl.createBuffer();
 
     let vbo = new VBO(gl, buf);

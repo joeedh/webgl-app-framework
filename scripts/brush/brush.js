@@ -4,6 +4,7 @@ import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {DataBlock, BlockFlags} from "../core/lib_api.js";
 import {GraphFlags, NodeFlags} from "../core/graph.js";
+import {ProceduralTexUser} from './proceduralTex.js';
 
 export const BrushFlags = {
   SELECT: 1,
@@ -239,6 +240,8 @@ export class SculptBrush extends DataBlock {
 
     this.flag = BrushFlags.SHARED_SIZE;
 
+    this.texUser = new ProceduralTexUser();
+
     this.tool = SculptTools.CLAY;
     this.strength = 0.5;
     this.spacing = 0.25;
@@ -259,13 +262,17 @@ export class SculptBrush extends DataBlock {
       super.copyTo(b, false);
     }
 
+    this.texUser.copyTo(b.texUser);
+
     b.flag = this.flag;
     b.tool = this.tool;
+
     b.strength = this.strength;
     b.spacing = this.spacing;
     b.radius = this.radius;
     b.autosmooth = this.autosmooth;
     b.planeoff = this.planeoff;
+
     b.color.load(this.color);
     b.bgcolor.load(this.bgcolor);
 
@@ -304,6 +311,12 @@ export class SculptBrush extends DataBlock {
     super.loadSTRUCT(reader);
   }
 
+  dataLink(getblock, getblock_adduser) {
+    super.dataLink(getblock, getblock_adduser);
+
+    this.texUser.dataLink(this, getblock, getblock_adduser);
+  }
+
   static nodedef() {
     return {
       name: "brush",
@@ -325,6 +338,7 @@ SculptBrush.STRUCT = nstructjs.inherit(SculptBrush, DataBlock) + `
   dynamics   : BrushDynamics;
   flag       : int;
   falloff    : Curve1D;
+  texUser    : ProceduralTexUser;
 }
 `;
 nstructjs.register(SculptBrush);

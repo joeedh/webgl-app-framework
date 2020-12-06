@@ -109,6 +109,24 @@ export class ResourceBrowser extends Editor {
     this.cellsize = 128;
   }
 
+  static defineAPI(api) {
+    let rstruct = super.defineAPI(api);
+    let types = resourceManager.makeEnum();
+
+    function rebuild() {
+      let resbrowser = this.dataref;
+
+      if (resbrowser !== undefined) {
+        resbrowser.rebuild();
+      }
+    }
+
+    let prop = rstruct.enum("resourceType", "resourceType", types, "Mode");
+    prop.on("change", rebuild);
+
+    return rstruct;
+  }
+
   static openResourceBrowser(area, resourceType, oncancel) {
     return new Promise((accept, reject) => {
       let ctx = area.ctx;

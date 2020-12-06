@@ -27,7 +27,7 @@ export class PanToolMode extends ToolMode {
     icon        : Icons.PAN,
     flag        : 0,
     description : "Pan",
-    selectMode  : SelMask.OBJECT|SelMask.GEOM, //if set, preferred selectmode, see SelModes
+    selectMode  : SelMask.OBJECT, //if set, preferred selectmode, see SelModes
     transWidgets: []
   }}
 

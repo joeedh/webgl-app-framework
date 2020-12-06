@@ -9,6 +9,7 @@ import {subdivide} from "../subsurf/subsurf_mesh.js";
 import {BinomialTable} from "../util/binomial_table.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import * as util from '../util/util.js';
+import {ccSmooth} from '../subsurf/subsurf_mesh.js';
 
 export class PatchBuilder {
   constructor(mesh, cd_grid) {
@@ -20,8 +21,11 @@ export class PatchBuilder {
   }
 
   buildQuad(l, margin = 0.0) {
+
     function getv(l) {
+      return ccSmooth(l.v);
       let v = new Vector3();
+
       let tot = l.v.edges.length;
       v.addFac(l.v, tot);
 
@@ -41,10 +45,19 @@ export class PatchBuilder {
       return v;
     }
 
+    function edgev(l) {
+      return l.v;
+      let co = new Vector3();
+
+      co.load(l.v);
+      return ccSmooth(l.v);
+      return l.v;
+    }
+
     let p1 = new Vector3(l.f.cent);
-    let p2 = new Vector3(l.v).interp(l.prev.v, 0.5);
+    let p2 = new Vector3(l.v).interp(edgev(l.prev), 0.5);
     let p3 = new Vector3(getv(l));
-    let p4 = new Vector3(l.v).interp(l.next.v, 0.5);
+    let p4 = new Vector3(l.v).interp(edgev(l.next), 0.5);
 
     let c = new Vector3(p1).add(p2).add(p3).add(p4).mulScalar(0.25);
     p1.sub(c).mulScalar(1.0 + margin).add(c);
@@ -53,6 +66,25 @@ export class PatchBuilder {
     p4.sub(c).mulScalar(1.0 + margin).add(c);
 
     return [p1, p2, p3, p4];
+  }
+
+  getQuad(l) {
+    let quad = this.quads.get(l);
+
+    if (!quad) {
+      for (let l2 of this.mesh.loops) {
+        if (l2.eid === l.eid) {
+          console.log(l2);
+        }
+      }
+      console.warn(l, l.eid)
+
+      throw new Error("eek");
+      quad = this.buildQuad(l);
+      this.quads.set(l, quad);
+    }
+
+    return quad;
   }
 
   buildPatch(l) {
@@ -86,7 +118,7 @@ export class PatchBuilder {
     //*/
 
     this.patches.set(l, patch);
-    let bad = l.v.edges.length !== 4;// || l.next.next.v.edges.length !== 4;
+    let bad = l.v.edges.length !== 4 || l.v.isBoundary();// || l.next.next.v.edges.length !== 4;
 
     if (bad) {
       patch.basis = bernstein;
@@ -98,13 +130,13 @@ export class PatchBuilder {
 
     if (nocheck || l.next.v.edges.length === 4) {
       let l2 = l.radial_next;
-      let q2 = this.quads.get(l2);
+      let q2 = this.getQuad(l2);
 
       patch.setPoint(3, 0, q2[1]);
       patch.setPoint(3, 1, q2[0]);
 
       l2 = l2.next;
-      q2 = this.quads.get(l2);
+      q2 = this.getQuad(l2);
 
       patch.setPoint(3, 2, q2[3]);
     }
@@ -113,36 +145,36 @@ export class PatchBuilder {
 
     if (nocheck || flen === 4) {
       let l2 = l.next;
-      let q2 = this.quads.get(l2);
+      let q2 = this.getQuad(l2);
 
       patch.setPoint(1, 0, q2[3]);
       patch.setPoint(2, 0, q2[2]);
 
       l2 = l.next.next;
-      q2 = this.quads.get(l2);
+      q2 = this.getQuad(l2);
       patch.setPoint(0, 0, q2[2]);
       patch.setPoint(0, 1, q2[3]);
 
       l2 = l.prev;
-      q2 = this.quads.get(l2);
+      q2 = this.getQuad(l2);
       patch.setPoint(0, 2, q2[2]);
     }
 
     if (nocheck || l.prev.v.edges.length === 4) {
       let l2 = l.prev.radial_next;
-      let q2 = this.quads.get(l2);
+      let q2 = this.getQuad(l2);
 
       patch.setPoint(2, 3, q2[1]);
       patch.setPoint(1, 3, q2[0]);
 
       l2 = l2.next;
-      q2 = this.quads.get(l2);
+      q2 = this.getQuad(l2);
       patch.setPoint(0, 3, q2[3]);
     }
 
     if (nocheck || l.v.edges.length === 4) {
       let l2 = l.radial_next.next.radial_next.next;
-      let q2 = this.quads.get(l2);
+      let q2 = this.getQuad(l2);
 
       patch.setPoint(3, 3, q2[0]);
     }
@@ -182,6 +214,8 @@ export class PatchBuilder {
     }
 
     function vsmooth(v) {
+      return ccSmooth(v);
+
       let lco = new Vector3();
       let w1 = v.edges.length*0.75;
       let w2 = 1.0;
@@ -204,9 +238,15 @@ export class PatchBuilder {
         continue;
       }
 
+      let p = this.patches.get(l);
+
+      //XXX
+      if (p.basis === bernstein) {
+        continue
+      }
+
       let lco = vsmooth(l.v);
 
-      let p = this.patches.get(l);
       let l2 = l.radial_next.next;
       let p2 = this.patches.get(l2);
 
@@ -256,6 +296,12 @@ export class PatchBuilder {
       }
 
       let p = this.patches.get(l);
+
+      //XXX
+      if (p.basis === bernstein) {
+        continue
+      }
+
       let v1 = p.getPoint(0, 0);
       let v2 = p.getPoint(0, 3);
       let v3 = p.getPoint(3, 3);
@@ -278,6 +324,11 @@ export class PatchBuilder {
       }
 
       let p = this.patches.get(l);
+
+      //XXX
+      if (p.basis === bernstein) {
+        continue;
+      }
 
       let l2 = l.radial_next.next;
       let p2 = this.patches.get(l2);
@@ -311,10 +362,12 @@ export class PatchBuilder {
     }
 
     for (let l of mesh.loops) {
+      //XXX
       //break;
+
       let p = this.patches.get(l);
 
-      if (p.basis !== bernstein) {
+      if (p.basis !== bernstein || l.v.isBoundary()) {
         continue;
       }
 
@@ -323,7 +376,6 @@ export class PatchBuilder {
 
       let l2 = l.next;
       let p2 = this.patches.get(l2);
-
 
       if (l.v.edges.length !== 4) {
         function findClosest(u, v, dt, steps) {

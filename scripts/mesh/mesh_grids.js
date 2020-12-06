@@ -244,6 +244,7 @@ export class NeighborMap {
 }
 
 let maps = {};
+let shortNormalRet = [0, 0, 0];
 
 export function getNeighborMap(dimen) {
   if (!(dimen in maps)) {
@@ -258,7 +259,15 @@ export class GridVert extends Vector3 {
     super();
 
     this.no = new Vector3();
+    this.tan = new Vector3(); //not saved
+    this.bin = new Vector3(); //not saved
+    this.sco = new Vector3(); //not saved
+    this.totsco = 1; //internal
+    this.tot = 0;
+    this.uv = new Vector2();  //not saved
+
     this.flag = 0;
+
     this.index = index;
     this.loopEid = loopEid;
     this.customData = this.cd = [];
@@ -268,6 +277,32 @@ export class GridVert extends Vector3 {
 
     this.bLink = undefined;
     this.bNext = this.bPrev = undefined; //boundary next/prev
+  }
+
+  startTan() {
+    this.tot = 0;
+    this.tan.zero();
+    this.bin.zero();
+  }
+
+  tanMulFac(depth) {
+    let dimen = gridSides[depth]-1;
+
+    return Math.pow(2.0, depth);
+  }
+
+  finishTan() {
+    if (this.tot > 0) {
+      this.tan.mulScalar(1.0 / this.tot);
+      this.bin.mulScalar(1.0 / this.tot);
+    }
+
+    //this.tan.normalize();
+    //this.bin.normalize();
+  }
+
+  addTan(ns, ni, pidx) {
+    //this.tot++;
   }
 
   get bRing() {
@@ -391,10 +426,29 @@ export class GridVert extends Vector3 {
 
     return this;
   }
+
+  _saveShortNormal() {
+    let n1 = this.no;
+    let n2 = shortNormalRet;
+
+    n2[0] = ~~(n1[0]*32765);
+    n2[1] = ~~(n1[1]*32765);
+    n2[2] = ~~(n1[2]*32765);
+
+    return n2;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+
+    this.no = new Vector3(this.no);
+    this.no.mulScalar(1.0 / 32765);
+  }
 }
 
 GridVert.STRUCT = nstructjs.inherit(GridVert, Vector3, "mesh.GridVert") + `
-  no         : vec3;
+  no         : array(short) | this._saveShortNormal();
   flag       : int;
   index      : int;
 }`;
@@ -419,8 +473,8 @@ export class GridBase extends CustomDataElem {
   constructor() {
     super();
 
-    this.cdmap = new Array(32);
-    this.cdmap_reverse = new Array(32);
+    this.cdmap = new Array(64);
+    this.cdmap_reverse = new Array(64);
     this._max_cd_i = 0;
 
     this.recalcFlag |= QRecalcFlags.ALL | QRecalcFlags.NORMALS;
@@ -432,6 +486,10 @@ export class GridBase extends CustomDataElem {
 
     this.needsSubSurf = false;
     this.subsurf = undefined; //subsurf patch
+  }
+
+  subdivideAll() {
+    console.warn(this.constructor.name + ".prototype.subdivideAll(): implement me!");
   }
 
   static updateSubSurf(mesh, cd_grid, check_coords=false) {
@@ -832,14 +890,18 @@ export class GridBase extends CustomDataElem {
     return cdlayers;
   }
 
-  static initMesh(mesh, dimen, cd_off = mesh.loop.customData.getLayerIndex(this)) {
-    if (cd_off === -1) {
+  static initMesh(mesh, dimen, cd_grid = mesh.loop.customData.getLayerIndex(this)) {
+    if (cd_grid === -1) {
       mesh.loops.addCustomDataLayer(this, this.define().typeName);
-      cd_off = mesh.loops.customData.getLayerIndex(this);
+      cd_grid = mesh.loops.customData.getLayerIndex(this);
     }
 
+    //static updateSubSurf(mesh, cd_grid, check_coords=false) {
+
+    this.updateSubSurf(mesh, cd_grid, true);
+
     for (let l of mesh.loops) {
-      let grid = l.customData[cd_off];
+      let grid = l.customData[cd_grid];
 
       grid.init(dimen, l);
     }
@@ -1180,7 +1242,7 @@ export class Grid extends GridBase {
           tri = smesh.tri(ps[i1], ps[i2], ps[i3], ps[i4]);
         }
 
-        if (this.subsurf) {
+        if (0 && this.subsurf) {
           this.subsurf.evaluate(u, v, undefined, undefined, n);
         } else {
           n.load(ps[i1].no).add(ps[i2].no).add(ps[i3].no).add(ps[i4].no).normalize();
@@ -1213,7 +1275,7 @@ export class Grid extends GridBase {
   }
 
   recalcNormals(mesh, loop, cd_grid) {
-    return;
+    //return;
     let dimen = this.dimen;
     let ps = this.points;
     let n = new Vector3();

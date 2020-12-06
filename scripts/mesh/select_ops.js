@@ -1,7 +1,9 @@
 "use strict";
 
 import {ToolOp, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
-import {IntProperty, EnumProperty, BoolProperty, FloatProperty, FlagProperty} from "../path.ux/scripts/toolsys/toolprop.js";
+import {
+  IntProperty, EnumProperty, BoolProperty, FloatProperty, FlagProperty
+} from "../path.ux/scripts/toolsys/toolprop.js";
 import {MeshTypes, MeshFlags} from './mesh_base.js';
 import * as util from '../util/util.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
@@ -10,23 +12,37 @@ import {DataRefListProperty, DataRefProperty} from "../core/lib_api.js";
 import {Icons} from '../editors/icon_enum.js';
 import {MeshOp} from "./mesh_ops_base.js";
 import {SceneObject} from "../sceneobject/sceneobject.js";
+import {Element} from './mesh_types.js';
+import {FindNearest} from '../editors/view3d/findnearest.js';
 
 export class SelectOpBase extends MeshOp {
   constructor() {
     super();
   }
 
-  static tooldef() { return {
-    uiname        : "Mesh Select",
-    toolpath      : "{selectopbase}",
-    icon          : -1,
-    description   : "select an element",
-    inputs        : ToolOp.inherit({
-      object      : new DataRefProperty("object").private(),
-      selmask     : new FlagProperty(undefined, SelMask).private(),
-      mode        : new EnumProperty(undefined, SelToolModes)
-    })
-  }}
+  static tooldef() {
+    return {
+      uiname     : "Mesh Select",
+      toolpath   : "{selectopbase}",
+      icon       : -1,
+      description: "select an element",
+      inputs     : ToolOp.inherit({
+        object : new DataRefProperty("object").private(),
+        selmask: new FlagProperty(undefined, SelMask).private(),
+        mode   : new EnumProperty(undefined, SelToolModes)
+      })
+    }
+  }
+
+  static invoke(ctx, args) {
+    let tool = super.invoke(ctx, args);
+
+    if (!("selmask" in args)) {
+      tool.inputs.selmask.setValue(ctx.selectMask);
+    }
+
+    return tool;
+  }
 
   undoPre(ctx) {
     this._undo = {};
@@ -41,10 +57,10 @@ export class SelectOpBase extends MeshOp {
       let object_id = mesh.ownerId !== undefined ? mesh.ownerId : -1;
 
       let ud = this._undo[mesh.lib_id] = {
-        object   : object_id,
-        dataPath : mesh.meshDataPath,
-        actives  : {},
-        data     : []
+        object  : object_id,
+        dataPath: mesh.meshDataPath,
+        actives : {},
+        data    : []
       };
 
       let data = ud.data;
@@ -124,22 +140,337 @@ export class SelectOpBase extends MeshOp {
   }
 };
 
-export class SelectOneOp extends SelectOpBase {
-  constructor(mesh, eid) {
+export class SelectLinkedOp extends SelectOpBase {
+  constructor() {
     super();
   }
 
-  static tooldef() { return {
-    uiname        : "Mesh Select",
-    toolpath      : "mesh.selectone",
-    icon          : -1,
-    description   : "select an element",
-    inputs        : ToolOp.inherit({
-      mode        : new EnumProperty(undefined, SelOneToolModes),
-      setActiveObject : new BoolProperty(true),
-      eid         : new IntProperty(-1).private()
-    })
-  }}
+  static tooldef() {
+    return {
+      uiname     : "Select Linked (Mesh)",
+      toolpath   : "mesh.select_linked",
+      icon       : -1,
+      description: "select linked elements",
+      inputs     : ToolOp.inherit({})
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      let vs = new Set(mesh.verts.selected.editable);
+
+      for (let e of mesh.edges.selected.editable) {
+        vs.add(e.v1);
+        vs.add(e.v2);
+      }
+
+      for (let f of mesh.faces.selected.editable) {
+        for (let v of f.verts) {
+          vs.add(v);
+        }
+      }
+
+      let mode = this.inputs.mode.getValue();
+      let selmask = this.inputs.selmask.getValue();
+
+      let stack = [];
+      let doneset = new WeakSet();
+
+      mode = mode === SelToolModes.ADD;
+
+      for (let v of vs) {
+        if (doneset.has(v)) {
+          continue;
+        }
+
+        this.selLinked(mesh, v, doneset, stack);
+      }
+
+      mesh.regenElementsDraw();
+      mesh.regenRender();
+
+      window.redraw_viewport(true);
+    }
+  }
+
+  selLinked(mesh, v, doneset, stack) {
+    let mode = this.inputs.mode.getValue();
+    mode = mode === SelToolModes.ADD;
+
+    doneset.add(v);
+
+    stack.length = 0;
+    stack.push(v);
+
+    while (stack.length > 0) {
+      let v2 = stack.pop();
+
+      doneset.add(v2);
+
+      if ((v2.flag & MeshFlags.SELECT) !== mode) {
+        v2.flag |= MeshFlags.UPDATE;
+      }
+      mesh.verts.setSelect(v2, mode);
+
+      for (let e of v2.edges) {
+        if (!!(e.flag & MeshFlags.SELECT) !== mode) {
+          e.flag |= MeshFlags.UPDATE;
+        }
+
+        mesh.edges.setSelect(e, mode);
+
+        for (let l of e.loops) {
+          if ((l.f.flag & MeshFlags.SELECT) !== mode) {
+            l.f.flag |= MeshFlags.UPDATE;
+          }
+          mesh.faces.setSelect(l.f, mode);
+        }
+
+        let v3 = e.otherVertex(v2);
+        if (!doneset.has(v3)) {
+          stack.push(v3);
+        }
+      }
+    }
+  }
+}
+
+ToolOp.register(SelectLinkedOp);
+
+export class SelectLinkedPickOp extends SelectLinkedOp {
+  static tooldef() {
+    return {
+      uiname     : "Pick Select Linked (Mesh)",
+      toolpath   : "mesh.pick_select_linked",
+      icon       : -1,
+      description: "select linked elements",
+      inputs     : ToolOp.inherit({
+        elemEid: new IntProperty(-1).private(),
+        mesh   : new DataRefProperty("mesh")
+      }),
+      is_modal   : true
+    }
+  }
+
+  modalStart(ctx) {
+    super.modalStart(ctx);
+
+    let view3d = ctx.view3d;
+    if (!view3d) {
+      this.modalEnd(true);
+    }
+
+    let ret = FindNearest(ctx, ctx.selectMask, view3d.last_mpos, view3d, 75);
+    if (!ret || ret.length === 0) {
+      this.modalEnd(true);
+      return;
+    }
+
+    let ok = false;
+
+    for (let item of ret) {
+      if (item.data && item.data instanceof Element) {
+        this.inputs.mesh.setValue(item.mesh);
+        this.inputs.elemEid.setValue(item.data.eid);
+        ok = true;
+      }
+    }
+
+    console.log(ret, ok);
+
+    this.modalEnd(!ok);
+
+    if (ok) {
+      this.exec(ctx);
+    }
+  }
+
+  exec(ctx) {
+    let mesh = ctx.datalib.get(this.inputs.mesh.getValue());
+
+    if (!mesh) {
+      ctx.error("mesh was bad");
+      return;
+    }
+
+    let eid = this.inputs.elemEid.getValue();
+    let elem = mesh.eidmap[eid];
+
+    if (!elem) {
+      ctx.error("eid was bad");
+      return;
+    }
+
+    if (elem.type === MeshTypes.EDGE) {
+      elem = elem.v1;
+    } else if (elem.type === MeshTypes.FACE) {
+      elem = elem.lists[0].l.v;
+    } else if (elem.type !== MeshTypes.VERTEX) {
+      ctx.error("got bad element", elem);
+      return;
+    }
+
+    this.selLinked(mesh, elem, new WeakSet(), []);
+
+    mesh.regenElementsDraw();
+    mesh.regenRender();
+
+    window.redraw_viewport(true);
+  }
+}
+
+ToolOp.register(SelectLinkedPickOp);
+
+export class SelectMoreLess extends SelectOpBase {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname     : "Select More/Less",
+      toolpath   : "mesh.select_more_less",
+      icon       : -1,
+      description: "Grow or shrink selection along boundaries",
+      inputs     : ToolOp.inherit({})
+    }
+  }
+
+  exec(ctx) {
+    let mode = this.inputs.mode.getValue();
+    let selmask = this.inputs.selmask.getValue();
+
+    mode = mode === SelToolModes.ADD;
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let vset = new Set(mesh.verts.selected.editable);
+      let eset = new Set(mesh.edges.selected.editable);
+      let fset = new Set(mesh.faces.selected.editable);
+
+      console.log("SELMASK", selmask);
+
+      if (selmask & SelMask.VERTEX) {
+        for (let v of vset) {
+          if (mode) {
+            for (let e of v.edges) {
+              let v2 = e.otherVertex(v);
+              mesh.verts.setSelect(v2, true);
+            }
+          } else {
+            let ok = true;
+
+            for (let e of v.edges) {
+              let v2 = e.otherVertex(v);
+              if (!vset.has(v2)) {
+                ok = false
+              }
+            }
+
+            if (!ok) {
+              mesh.verts.setSelect(v, false);
+            }
+          }
+        }
+      }
+
+      if (selmask & SelMask.EDGE) {
+        for (let e of eset) {
+          if (mode) {
+            for (let i = 0; i < 2; i++) {
+              let v = i ? e.v2 : e.v1;
+
+              for (let e2 of v.edges) {
+                mesh.edges.setSelect(e2, true);
+              }
+            }
+          } else {
+            let ok = true;
+
+            let tot = 0;
+
+            for (let i = 0; i < 2; i++) {
+              let v = i ? e.v2 : e.v1;
+
+              for (let e2 of v.edges) {
+                tot++;
+
+                if (!eset.has(e2)) {
+                  ok = false;
+                }
+              }
+            }
+
+            ok = ok && tot > 1;
+            if (!ok) {
+              mesh.edges.setSelect(e, false);
+            }
+          }
+        }
+      }
+
+      if (selmask & SelMask.FACE) {
+        for (let f of fset) {
+          if (mode) {
+            for (let l of f.loops) {
+              for (let l2 of l.e.loops) {
+                if (l2.f === f) {
+                  continue;
+                }
+
+                mesh.faces.setSelect(l2.f, true);
+              }
+            }
+          } else {
+            let ok = true;
+            let tot = 0;
+
+            for (let l of f.loops) {
+              if (l.radial_next !== l) {
+                tot++;
+              }
+
+              for (let l2 of l.e.loops) {
+                if (!fset.has(l2.f)) {
+                  ok = false;
+                }
+              }
+            }
+
+            if (!ok && tot > 0) {
+              mesh.faces.setSelect(f, false);
+            }
+          }
+        }
+      }
+
+      mesh.selectFlush(selmask);
+      mesh.regenElementsDraw();
+    }
+
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(SelectMoreLess);
+
+export class SelectOneOp extends SelectOpBase {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname     : "Mesh Select",
+      toolpath   : "mesh.selectone",
+      icon       : -1,
+      description: "select an element",
+      inputs     : ToolOp.inherit({
+        mode           : new EnumProperty(undefined, SelOneToolModes),
+        setActiveObject: new BoolProperty(true),
+        eid            : new IntProperty(-1).private()
+      })
+    }
+  }
 
   exec(ctx) {
     let mesh = this.getMeshes(ctx)[0];
@@ -164,7 +495,8 @@ export class SelectOneOp extends SelectOpBase {
       case SelOneToolModes.SUB:
         mesh.setSelect(e, false);
         break;
-    };
+    }
+    ;
 
     e.flag |= MeshFlags.UPDATE;
 
@@ -183,7 +515,7 @@ export class ToggleSelectAll extends SelectOpBase {
     let ret = super.invoke(ctx, args);
 
     //ret.inputs.selmask.setValue(ctx.view3d.ctx.selectMask);
-    ret.inputs.selmask.setValue(SelMask.VERTEX|SelMask.EDGE|SelMask.FACE);
+    ret.inputs.selmask.setValue(SelMask.VERTEX | SelMask.EDGE | SelMask.FACE);
 
     if ("mode" in args) {
       let mode = args.mode;
@@ -202,13 +534,13 @@ export class ToggleSelectAll extends SelectOpBase {
 
   static tooldef() {
     return {
-      uiname: "Toggle Select All",
-      toolpath: "mesh.toggle_select_all",
-      icon: Icons.TOGGLE_SEL_ALL,
+      uiname     : "Toggle Select All",
+      toolpath   : "mesh.toggle_select_all",
+      icon       : Icons.TOGGLE_SEL_ALL,
       description: "toggle select all",
-      inputs: ToolOp.inherit({
+      inputs     : ToolOp.inherit({
         selmask: new FlagProperty(undefined, SelMask).private(),
-        mode: new EnumProperty(undefined, SelToolModes)
+        mode   : new EnumProperty(undefined, SelToolModes)
       })
     }
   }
@@ -255,3 +587,102 @@ export class ToggleSelectAll extends SelectOpBase {
 }
 
 ToolOp.register(ToggleSelectAll);
+
+export class SetFaceSmoothOp extends ToolOp {
+  static tooldef() {
+    return {
+      uiname  : "Shade Smooth/Flat",
+      toolpath: "mesh.set_smooth",
+      inputs  : {
+        set : new BoolProperty(true)
+      }
+    }
+  }
+
+  undoPre(ctx) {
+    this._undo = {};
+
+    let mesh = ctx.mesh;
+
+    if (!mesh) {
+      this._undo.mesh = undefined;
+      return;
+    }
+
+    this._undo.mesh = mesh.lib_id;
+    let data = this._undo.data = {};
+
+    for (let f of mesh.faces.selected.editable) {
+      data[f.eid] = f.flag;
+    }
+  }
+
+  undo(ctx) {
+    let ud = this._undo;
+    let data = ud.data;
+    let mesh = ud.mesh;
+
+    if (mesh === undefined) {
+      return;
+    }
+
+    mesh = ctx.datalib.get(mesh);
+
+    if (mesh === undefined) {
+      return;
+    }
+
+    for (let eid in data) {
+      let f = mesh.eidmap[eid];
+
+      if (!f || f.type !== MeshTypes.FACE) {
+        console.warn("Undo reference error, missing face " + eid, f);
+        continue;
+      }
+
+      let flag = data[eid];
+
+      //ensure select is absolutely not modified
+      f.flag = flag & ~MeshFlags.SELECT;
+      f.flag |= MeshFlags.UPDATE;
+
+      for (let v of f.verts) {
+        v.flag |= MeshFlags.UPDATE;
+      }
+    }
+
+    mesh.recalcNormals();
+    mesh.regenRender();
+    mesh.graphUpdate();
+    mesh.regenElementsDraw();
+
+    window.redraw_viewport();
+  }
+
+  exec(ctx) {
+    let mesh = ctx.mesh;
+
+    if (!mesh) {
+      return;
+    }
+
+    let mode = this.inputs.set.getValue();
+    for (let f of mesh.faces.selected.editable) {
+      if (mode) {
+        f.flag |= MeshFlags.SMOOTH_DRAW;
+      } else {
+        f.flag &= ~MeshFlags.SMOOTH_DRAW;
+      }
+
+      f.flag |= MeshFlags.UPDATE;
+    }
+
+    mesh.recalcNormals();
+    mesh.regenRender();
+    mesh.regenElementsDraw();
+    mesh.graphUpdate();
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(SetFaceSmoothOp);

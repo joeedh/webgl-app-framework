@@ -26,6 +26,18 @@ export function calcUpdateHash(view3d, do_objects=true) {
 
       //console.log("UPDATEGEN:", ob.updateGen, ob.data.updateGen);
 
+      if (ob.data instanceof Mesh) {
+        let mesh = ob.data;
+
+        thehash.add(mesh.verts.length);
+        thehash.add(mesh.faces.length);
+        thehash.add(mesh.edges.length);
+        thehash.add(mesh.loops.length);
+
+        if (mesh._ltris) {
+          thehash.add(mesh._ltris.length);
+        }
+      }
       if (ob.data.updateGen !== undefined) {
         thehash.add(ob.data.updateGen);
       }

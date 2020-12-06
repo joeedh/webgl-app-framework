@@ -1,3 +1,4 @@
+import './mesh_loopops.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 import {
@@ -16,7 +17,7 @@ import {Icons} from '../editors/icon_enum.js';
 
 import {MeshFlags, MeshTypes, MeshFeatures} from './mesh_base.js';
 import {MeshOp} from './mesh_ops_base.js';
-import {subdivide} from '../subsurf/subsurf_mesh.js';
+import {ccSmooth, subdivide} from '../subsurf/subsurf_mesh.js';
 import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
 import {splitEdgesSmart} from "./mesh_subdivide.js";
 import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
@@ -31,12 +32,13 @@ import {walkFaceLoop} from "./mesh_utils.js";
 
 import '../util/floathalf.js';
 import {DataRefProperty} from "../core/lib_api.js";
+import {CubicPatch, bernstein, bspline} from '../subsurf/subsurf_patch.js';
 
 export class DeleteOp extends MeshOp {
   static tooldef() {
     return {
       uiname: "Delete Selected",
-      icon: Icons.TINY_X,
+      icon: Icons.DELETE,
       toolpath: "mesh.delete_selected",
       inputs: ToolOp.inherit(),
       outputs: ToolOp.inherit()
@@ -46,11 +48,55 @@ export class DeleteOp extends MeshOp {
   exec(ctx) {
     console.warn("mesh.delete_selected");
 
+    let selectmode = ctx.selectMask;
+    console.log("selectmode:", selectmode);
+
     for (let mesh of this.getMeshes(ctx)) {
       let del = [];
 
-      for (let v of mesh.verts.selected.editable) {
-        del.push(v);
+      if (selectmode & SelMask.VERTEX) {
+        for (let v of new Set(mesh.verts.selected.editable)) {
+          mesh.killVertex(v);
+        }
+      } else if (selectmode & SelMask.EDGE) {
+        let vset = new Set();
+
+        for (let e of new Set(mesh.edges.selected.editable)) {
+          vset.add(e.v1);
+          vset.add(e.v2);
+
+          mesh.killEdge(e);
+        }
+
+        for (let v of vset) {
+          if (v.edges.length === 0) {
+            mesh.killVertex(v);
+          }
+        }
+      } else if (selectmode & SelMask.FACE) {
+        let vset = new Set();
+        let eset = new Set();
+
+        for (let f of new Set(mesh.faces.selected.editable)) {
+          for (let l of f.loops) {
+            eset.add(l.e);
+            vset.add(l.v);
+          }
+
+          mesh.killFace(f);
+        }
+
+        for (let e of eset) {
+          if (!e.l) {
+            mesh.killEdge(e);
+          }
+        }
+
+        for (let v of vset) {
+          if (v.edges.length === 0) {
+            mesh.killVertex(v);
+          }
+        }
       }
 
       for (let v of del) {
@@ -85,7 +131,7 @@ export class SymmetrizeOp extends MeshOp {
   }
 
   exec(ctx) {
-    console.warn("mesh.delete_selected");
+    console.warn("mesh.symmetrize");
 
     for (let mesh of this.getMeshes(ctx)) {
       let del = [];
@@ -116,9 +162,9 @@ export class SymmetrizeOp extends MeshOp {
       //force bvh update
       mesh.bvh = undefined;
 
+      mesh.regenTesellation();
       mesh.recalcNormals();
       mesh.regenRender();
-      mesh.regenTesellation();
       mesh.graphUpdate();
     }
 
@@ -146,7 +192,7 @@ export class BisectOp extends MeshOp {
   }
 
   exec(ctx) {
-    console.warn("mesh.delete_selected");
+    console.warn("mesh.bisect");
 
     for (let mesh of this.getMeshes(ctx)) {
       let del = [];
@@ -191,9 +237,9 @@ export class BisectOp extends MeshOp {
       //force bvh update
       mesh.bvh = undefined;
 
+      mesh.regenTesellation();
       mesh.recalcNormals();
       mesh.regenRender();
-      mesh.regenTesellation();
       mesh.graphUpdate();
     }
 
@@ -214,7 +260,7 @@ export class TriangulateOp extends MeshOp {
   }
 
   exec(ctx) {
-    console.warn("mesh.delete_selected");
+    console.warn("mesh.triangulate");
 
     let tri = [0, 0, 0];
 
@@ -249,9 +295,9 @@ export class TriangulateOp extends MeshOp {
         mesh.killFace(f);
       }
 
+      mesh.regenTesellation();
       mesh.recalcNormals();
       mesh.regenRender();
-      mesh.regenTesellation();
       mesh.graphUpdate();
     }
 
@@ -403,7 +449,7 @@ export class ExtrudeRegionsOp extends MeshOp {
         l = l.radial_next;
       } while (l !== e.l);
 
-      if (_i == 1) {
+      if (_i === 1) {
         boundary.add(e);
       }
     }
@@ -443,6 +489,7 @@ export class ExtrudeRegionsOp extends MeshOp {
       }
 
       mesh.faces.setSelect(f2, true);
+
       for (let list2 of f2.lists) {
         for (let l2 of list2) {
           mesh.edges.setSelect(l2.e, true);
@@ -539,6 +586,8 @@ export class ExtrudeRegionsOp extends MeshOp {
 
 ToolOp.register(ExtrudeRegionsOp);
 
+import {meshSubdivideTest} from './mesh_subdivide.js';
+
 export class CatmullClarkeSubd extends MeshOp {
   constructor() {
     super();
@@ -561,7 +610,8 @@ export class CatmullClarkeSubd extends MeshOp {
     for (let mesh of this.getMeshes(ctx)) {
       console.log("doing mesh", mesh.lib_id);
 
-      subdivide(mesh, list(mesh.faces.selected.editable));
+      subdivide(mesh, new Set(mesh.faces.selected.editable));
+
       mesh.regenRender();
 
       let es = new util.set();
@@ -590,15 +640,47 @@ export class CatmullClarkeSubd extends MeshOp {
 
       vertexSmooth(mesh, vs);
 
+      mesh.regenTesellation();
       mesh.recalcNormals();
       mesh.regenRender();
-      mesh.regenTesellation();
       mesh.graphUpdate();
     }
   }
 }
 
 ToolOp.register(CatmullClarkeSubd);
+
+export class MeshSubdTest extends MeshOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname: "Test Subdiv Reversing",
+      icon: Icons.SUBDIVIDE,
+      toolpath: "mesh.subdiv_test",
+      undoflag: 0,
+      flag: 0,
+      inputs: ToolOp.inherit({}),
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      meshSubdivideTest(mesh);
+
+      mesh.graphUpdate();
+      mesh.regenTesellation();
+      mesh.recalcNormals();
+      mesh.regenRender();
+      mesh.regenBVH();
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(MeshSubdTest);
 
 export class SubdivideSimple extends MeshOp {
   constructor() {
@@ -617,7 +699,7 @@ export class SubdivideSimple extends MeshOp {
   }
 
   exec(ctx) {
-    console.log("subdivide smooth!");
+    console.log("subdivide simple!");
 
     for (let mesh of this.getMeshes(ctx)) {
       console.log("doing mesh", mesh.lib_id);
@@ -652,9 +734,9 @@ export class SubdivideSimple extends MeshOp {
         }
       }
 
+      mesh.regenTesellation();
       mesh.recalcNormals();
       mesh.regenRender();
-      mesh.regenTesellation();
       mesh.graphUpdate();
     }
   }
@@ -689,20 +771,59 @@ export class SplitEdgesOp extends MeshOp {
       }
 
       mesh.regenBVH();
+      mesh.regenTesellation();
       mesh.recalcNormals();
       mesh.regenRender();
-      mesh.regenTesellation();
       mesh.graphUpdate();
     }
   }
 }
 ToolOp.register(SplitEdgesOp);
 
-export function vertexSmooth(mesh, verts = mesh.verts.selected.editable, fac = 0.5) {
-  let cos = {};
-
+export function vertexSmooth_tst(mesh, verts = mesh.verts.selected.editable, fac = 0.5) {
   verts = new Set(verts);
 
+  if (1) {
+    let faces = new Set();
+
+    for (let v of verts) {
+      for (let f of v.faces) {
+        faces.add(f);
+      }
+    }
+
+    let ret = subdivide(mesh, faces, true);
+    for (let v of ret.newVerts) {
+      verts.add(v);
+    }
+
+    mesh.regenRender();
+    mesh.regenTesellation();
+  }
+
+  for (let i=0; i<5; i++) {
+    vertexSmooth1(mesh, verts, fac);
+  }
+}
+
+export function vertexSmooth(mesh, verts = mesh.verts.selected.editable, fac = 0.5) {
+  verts = new Set(verts);
+
+  if (1) {
+    let cos = new Map();
+
+    for (let v of verts) {
+      cos.set(v, new Vector3(ccSmooth(v)));
+    }
+
+    for (let [v, co] of cos) {
+      v.interp(co, fac);
+      v.flag |= MeshFlags.UPDATE;
+    }
+    return;
+  }
+
+  let cos = {};
   for (let v of verts) {
     cos[v.eid] = new Vector3(v);
 
@@ -717,9 +838,24 @@ export function vertexSmooth(mesh, verts = mesh.verts.selected.editable, fac = 0
 
   let sym = mesh.symFlag;
 
+  let c1 = new Vector3();
+  let c2 = new Vector3();
+
   for (let v of verts) {
     v.zero();
     let tot = 0.0;
+
+    c1.load(cos[v.eid]);
+    //v.zero().addScalar(1.0);
+
+    let off = 0.0;
+
+    for (let e of v.edges) {
+      let v2 = e.otherVertex(v);
+      off = Math.max(off, cos[v.eid].vectorDistance(cos[v2.eid]));
+    }
+
+    //off *= 0.0;
 
     for (let e of v.edges) {
       let v2 = e.otherVertex(v);
@@ -729,14 +865,49 @@ export function vertexSmooth(mesh, verts = mesh.verts.selected.editable, fac = 0
         continue;
       }
 
-      v.add(cos[v2.eid]);
-      tot++;
+      //c2.load(cos[v2.eid]).sub(c1);
+      //c2.addScalar(off);
+
+      //v.mul(c2);
+      let fac = cos[v.eid].vectorDistance(cos[v2.eid]);
+      fac /= off;
+      //fac -= off*0.3;
+
+      //fac = Math.pow(fac, 2.0);
+      //fac = fac*fac*(3.0 - 2.0*fac);
+      fac = 1.0 / fac;
+      fac = 1.0;
+
+      v.addFac(cos[v2.eid], fac);
+
+      //v.add(cos[v2.eid]);
+      //v.mul(cos[v2.eid]);
+
+      for (let i=0; i<3; i++) {
+        //v[i] = Math.pow(Math.abs(v[i]), 0.5)*Math.sign(v[i]);
+        //v[i] = Math.pow(v[i], 1.0 / tot);
+      }
+
+      tot += fac;
     }
 
     if (tot === 0.0) {
       v.load(cos[v.eid]);
     } else {
       v.mulScalar(1.0 / tot);
+      /*
+      for (let i=0; i<3; i++) {
+        if (1||tot % 2 === 0) {
+          v[i] = Math.pow(Math.abs(v[i]), 1.0/tot)*Math.sign(v[i]);
+        } else {
+          v[i] = Math.pow(v[i], 1.0/tot);
+        }
+        v[i] += c1[i] - off;
+        //v[i] -= 10.0/v.edges.length;
+        //v[i] = Math.pow(v[i], 1.0 / tot);
+      }
+      */
+
       v.interp(cos[v.eid], 1.0 - fac);
     }
 
@@ -747,6 +918,24 @@ export function vertexSmooth(mesh, verts = mesh.verts.selected.editable, fac = 0
         }
       }
     }
+  }
+
+  if (0) {
+    let faces = new Set();
+
+    for (let v of verts) {
+      for (let f of v.faces) {
+        faces.add(f);
+      }
+    }
+
+    let ret = subdivide(mesh, faces, true);
+    for (let v of ret.newVerts) {
+      verts.add(v);
+    }
+
+    mesh.regenRender();
+    mesh.regenTesellation();
   }
 
   for (let v of verts) {
@@ -829,9 +1018,9 @@ export class TestSplitFaceOp extends MeshOp {
       let {newvs, newfs} = splitEdgesSmart(mesh, es);
       console.log(newvs, newfs);
 
+      mesh.regenTesellation();
       mesh.recalcNormals();
       mesh.regenRender();
-      mesh.regenTesellation();
       mesh.graphUpdate();
     }
 
@@ -878,9 +1067,9 @@ export class TestCollapseOp extends MeshOp {
       //let {newvs, newfs} = splitEdgesSmart(mesh, es);
       //console.log(newvs, newfs);
 
+      mesh.regenTesellation();
       mesh.recalcNormals();
       mesh.regenRender();
-      mesh.regenTesellation();
       mesh.graphUpdate();
     }
 
@@ -890,6 +1079,11 @@ export class TestCollapseOp extends MeshOp {
 
 ToolOp.register(TestCollapseOp);
 
+let GridTypes = {
+  SIMPLE   : 0,
+  QUADTREE : 1,
+};
+
 export class EnsureGridsOp extends MeshOp {
   static tooldef() {
     return {
@@ -897,7 +1091,8 @@ export class EnsureGridsOp extends MeshOp {
       toolpath: "mesh.add_or_subdivide_grids",
       icon : Icons.ADD_GRIDS,
       inputs: ToolOp.inherit({
-        depth: new IntProperty(2)
+        depth: new IntProperty(2),
+        types: new EnumProperty(GridTypes.QUADTREE, GridTypes)
       }),
       outputs: ToolOp.inherit()
     }
@@ -911,15 +1106,24 @@ export class EnsureGridsOp extends MeshOp {
 
     console.log("DIMEN", dimen);
 
+    let type = this.inputs.types.getValue();
+    let cls;
+
+    if (type === GridTypes.SIMPLE) {
+      cls = Grid;
+    } else {
+      cls = QuadTreeGrid;
+    }
+
     for (let mesh of this.getMeshes(ctx)) {
       let off = GridBase.meshGridOffset(mesh);
 
       if (off < 0) {
         console.log("Adding grids to mesh", mesh);
 
-        Grid.initMesh(mesh, dimen, -1)
+        cls.initMesh(mesh, dimen, -1)
         //QuadTreeGrid.initMesh(mesh, dimen, -1);
-      } else if ((off = mesh.loops.customData.getLayerIndex(QuadTreeGrid)) >= 0){
+      } else if ((off = mesh.loops.customData.getLayerIndex(cls)) >= 0){
         for (let l of mesh.loops) {
           let grid = l.customData[off];
           grid.update(mesh, l, off);
@@ -1101,11 +1305,97 @@ export class SmoothGridsOp extends MeshOp {
 }
 ToolOp.register(SmoothGridsOp);
 
+const staroffs = [
+  [-1, 0],
+  [1, 0],
+  [0, 1],
+  [0, -1]
+]
+
+const staroffs_origin = [
+  [-1, 0],
+  [1, 0],
+  [0, 1],
+  [0, -1],
+  [0, 0],
+]
+
+let boxoffs = [];
+
+for (let ix = -1; ix <= 1; ix++) {
+  for (let iy = -1; iy <= 1; iy++) {
+    boxoffs.push([ix, iy]);
+  }
+}
+
+export class GridsTestOp2 extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Grid Test 2",
+      toolpath: "mesh.grids_test",
+      icon : Icons.GRIDS_TEST,
+      inputs: ToolOp.inherit({
+        factor : new FloatProperty(0.25).setRange(0.01, 2.0),
+        setColors : new BoolProperty(false)
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    let mesh = ctx.mesh;
+
+    let cd_grid = mesh.loops.customData.getLayerIndex(QuadTreeGrid);
+    if (cd_grid < 0) {
+      return;
+    }
+
+    for (let l of mesh.loops) {
+      let grid = l.customData[cd_grid];
+
+      grid.recalcFlag |= QRecalcFlags.TOPO|QRecalcFlags.POLYS;
+      grid.update(mesh, l, cd_grid);
+    }
+
+    for (let l of mesh.loops) {
+      let grid = l.customData[cd_grid];
+
+      grid.recalcFlag |= QRecalcFlags.NEIGHBORS;
+      grid.update(mesh, l, cd_grid);
+    }
+
+    for (let l of mesh.loops) {
+      let grid = l.customData[cd_grid];
+
+      for (let pi of grid.getLeafPoints()) {
+        let p = grid.points[pi];
+
+        p.load(p.sco);
+      }
+
+      grid.recalcFlag |= QRecalcFlags.NORMALS;
+    }
+
+    for (let l of mesh.loops) {
+      let grid = l.customData[cd_grid];
+
+      grid.update(mesh, l, cd_grid);
+    }
+
+    mesh.regenRender();
+    mesh.regenBVH();
+    mesh.graphUpdate();
+
+    window.redraw_viewport(true);
+  }
+}
+ToolOp.register(GridsTestOp2);
+
 export class GridsTestOp extends MeshOp {
   static tooldef() {
     return {
       uiname: "Grids Debug Test",
-      toolpath: "mesh.grids_test",
+      toolpath: "mesh.grids_test2",
       icon : Icons.GRIDS_TEST,
       inputs: ToolOp.inherit({
         factor : new FloatProperty(0.25).setRange(0.01, 2.0),
@@ -1120,14 +1410,383 @@ export class GridsTestOp extends MeshOp {
 
     let fac = this.inputs.factor.getValue();
 
-    for (let mesh of this.getMeshes(ctx)) {
+    let view3d = _appstate.ctx.view3d;
+    view3d.resetDrawLines();
+
+    function makeDrawLine(a, b, color) {
+      if (!window.dd) {
+        return view3d.makeDrawLine(a, b, color);
+      }
+    }
+
+    let QPOINT1 = QuadTreeFields.QPOINT1;
+    let QPARENT = QuadTreeFields.QPARENT;
+    let QDEPTH = QuadTreeFields.QDEPTH;
+    let QSUBTREE_DEPTH = QuadTreeFields.QSUBTREE_DEPTH;
+    let QMINU = QuadTreeFields.QMINU;
+    let QMINV = QuadTreeFields.QMINV;
+    let QMAXU = QuadTreeFields.QMAXU;
+    let QMAXV = QuadTreeFields.QMAXV;
+
+    if (1) { //for (let mesh of this.getMeshes(ctx)) {
+      let mesh = ctx.mesh;
       let cd_grid = mesh.loops.customData.getLayerIndex(Grid);
 
-      if (cd_grid < 0) {
-        continue;
+      if (cd_grid >= 0) {
+        buildGridsSubSurf(mesh, this.inputs.setColors.getValue());
       }
 
-      buildGridsSubSurf(mesh, this.inputs.setColors.getValue());
+      cd_grid = mesh.loops.customData.getLayerIndex(QuadTreeGrid);
+      if (cd_grid >= 0) {
+        let p1 = new Vector3();
+        let p2 = new Vector3();
+        let temps = util.cachering.fromConstructor(Vector3, 64);
+
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+
+          grid.recalcFlag |= QRecalcFlags.TOPO;
+          grid.update(mesh, l, cd_grid);
+        }
+
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+          grid.update(mesh, l, cd_grid);
+
+          grid.recalcNeighbors(mesh, l, cd_grid);
+        }
+
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+          grid.update(mesh, l, cd_grid);
+
+          for (let p of grid.points) {
+            p.orig = new Vector3(p);
+          }
+        }
+
+
+        function getp(p, o, depth, grid) {
+          let co = new Vector3();
+
+          let tot = 0.0;
+
+          let dimen = gridSides[depth]-1;
+          let dt = 1.0 / dimen;
+
+          let uv = p.uv;
+
+          for (let off of staroffs) {
+            let u = uv[0] + off[0]*dt;
+            let v = uv[1] + off[1]*dt;
+
+            let co2 = grid.evaluate(u, v);
+            co.add(co2);
+            tot++;
+          }
+
+          if (tot) {
+            co.mulScalar(1.0 / tot);
+            co.interp(p.orig, 1.0/2.0);
+          } else {
+            co.load(p.orig);
+          }
+
+          return co;
+        }
+
+        function makePatch(grid, ni, ns, p1, p2, p3, p4, o1, o2, o3, o4) {
+          let p = new CubicPatch();
+
+          let depth = ns[ni+QDEPTH];
+
+          o1 = getp(p1, o1, depth, grid);
+          o2 = getp(p2, o2, depth, grid);
+          o3 = getp(p3, o3, depth, grid);
+          o4 = getp(p4, o4, depth, grid);
+
+          let clr = "green";
+          //*
+          makeDrawLine(p1.orig, p2.orig, clr);
+          makeDrawLine(p2.orig, p3.orig, clr);
+          makeDrawLine(p3.orig, p4.orig, clr);
+          makeDrawLine(p4.orig, p1.orig, clr);
+           //*/
+
+          p.basis = bernstein;
+          //let cent = new Vector3();
+          //cent.load(o1).add(o2).add(o3).add(o4).mulScalar(1.0 / 4.0);
+
+          function set(x, y, co) {
+            for (let x2=x; x2<x+2; x2++) {
+              for (let y2=y; y2<y+2; y2++) {
+                p.setPoint(x2, y2, co);
+              }
+            }
+          }
+
+          let a = new Vector3();
+          let b = new Vector3();
+          let c = new Vector3();
+
+          let disable = 0;
+
+          for (let x=0; x<4; x++) {
+            let u = x / 3;
+
+            for (let y=0; y<4; y++) {
+              let v = y / 3;
+
+              if (!disable && x >= 1 && x <= 2 && y >= 1 && y <=2) {
+                continue;
+              }
+              a.load(o1).interp(o2, v);
+              b.load(o4).interp(o3, v);
+              a.interp(b, u);
+              p.setPoint(x, y, a);
+            }
+          }
+
+          if (disable) {
+            return p;
+          }
+
+          let l1 = o1.vectorDistance(o2);
+          let l3 = o3.vectorDistance(o4);
+
+          let l2 = o2.vectorDistance(o3);
+          let l4 = o4.vectorDistance(o1);
+
+          let d = window.d2 ?? 1.0/3.0;
+          let d2 = window.d3 ?? 0.0;
+
+          let dfac = 1.0 / Math.pow(2, depth);
+          function gt(p) {
+            return new Vector3(p).mulScalar(dfac);
+          }
+
+          function gn(p1, p2, t) {
+            let n = new Vector3();
+
+            let l = p1.vectorDistance(p2)*d2;
+            n.load(p1.no).interp(p2.no, t).normalize().mulScalar(l);
+            return n;
+
+            let t1 = gt(p1.tan);
+            let t2 = gt(p2.tan);
+            let b1 = gt(p1.bin);
+            let b2 = gt(p2.bin);
+
+            t2.sub(t1);
+            b2.sub(b1);
+
+            n.load(b2).cross(t2).mulScalar(d2);
+            l = n.vectorLength();
+
+            n.load(p1.no).interp(p2.no, t).normalize().mulScalar(l);
+            return n;
+          }
+
+          function sinterp(v2, t) {
+            //return this.interp(v2, t);
+            let v1 = this;
+            let l1 = v1.vectorLength();
+            let l2 = v2.vectorLength();
+
+            v1.interp(v2, t).normalize().mulScalar(l1 + (l2 - l1)*t);
+            return v1;
+          }
+          Vector3.prototype.sinterp = sinterp;
+
+          if (!disable) {
+            for (let i = 0; i < 2; i++) {
+              let t = (i + 1.0)/3.0;
+
+              let mul2 = l1 + (l3 - l1)*t;
+              let mul1 = l2 + (l4 - l2)*t;
+
+              //mul1 = -mul1;
+
+              mul1 *= d;
+              mul2 *= d;
+
+              //let mul3 = (mul1+mul2)*0.5 * (window.d3 || 1.0);
+              let mul3 = mul1*mul2*d2;
+              let mul4 = mul2*mul1*d2;
+
+              //*
+              c.load(o1).interp(o2, t);
+              b.load(gt(p1.tan)).sinterp(gt(p2.tan), t).mulScalar(d);
+              a.load(c).addFac(b, 1.0);
+              makeDrawLine(c, a, "red");
+
+              p.addPoint(1, i + 1, a);
+              a.load(gn(p1, p2, t));
+              p.addPoint(1, i + 1, a, false);
+              p.addPoint(0, i + 1, a, false);
+
+
+
+              c.load(o4).interp(o3, t);
+              b.load(gt(p4.tan)).sinterp(gt(p3.tan), t).mulScalar(d);
+              a.load(c).addFac(b, -1.0);
+              makeDrawLine(c, a, "red");
+
+              p.addPoint(2, i + 1, a);
+              a.load(gn(p4, p3, t));
+              p.addPoint(2, i + 1, a, false);
+              p.addPoint(3, i + 1, a, false);
+              //*/
+
+
+
+              //*
+              c.load(o1).interp(o4, t);
+              b.load(gt(p1.bin)).sinterp(gt(p4.bin), t).mulScalar(d);
+              a.load(c).addFac(b, 1.0);
+              makeDrawLine(c, a, "red");
+
+              p.addPoint(i + 1, 1, a);
+              a.load(gn(p1, p4, t));
+              p.addPoint(i + 1, 1, a, false);
+              p.addPoint(i + 1, 0, a, false);
+
+
+
+              c.load(o2).interp(o3, t);
+              b.load(gt(p2.bin)).sinterp(gt(p3.bin), t).mulScalar(d);
+              a.load(c).addFac(b, -1.0);
+              makeDrawLine(c, a, "red");
+
+              p.addPoint(i + 1, 2, a, true);
+              a.load(gn(p2, p3, t));
+              p.addPoint(i + 1, 2, a, false);
+              p.addPoint(i + 1, 3, a, false);
+              //*/
+            }
+
+
+            let ww = window.d5 ?? 0.0;
+            /*
+            p.addPoint(0, 0, p1.sco, true, ww);
+            p.addPoint(0, 1, p2.sco, true, ww);
+            p.addPoint(1, 1, p3.sco, true, ww);
+            p.addPoint(1, 0, p4.sco, true, ww);
+            */
+
+            /*
+            p.addPoint(0, 0, p1.no, false, d*d2);
+            p.addPoint(0, 1, p2.no, false, d*d2);
+            p.addPoint(1, 1, p3.no, false, d*d2);
+            p.addPoint(1, 0, p4.no, false, d*d2);
+            */
+
+            p.finishPoints();
+          }
+
+          clr = "orange";
+          for (let i=0; i<3; i++) {
+            for (let j=0; j<3; j++) {
+              let a = p.getPoint(i, j);
+              let b = p.getPoint(i, j+1);
+              let c = p.getPoint(i+1, j+1);
+              let d = p.getPoint(i, j+1);
+
+              makeDrawLine(a, b, clr);
+              makeDrawLine(b, c, clr);
+              makeDrawLine(c, d, clr);
+              makeDrawLine(d, a, clr);
+            }
+          }
+          return p;
+        }
+
+        for (let l of mesh.loops) {
+          let doneset = new WeakSet();
+
+          let grid = l.customData[cd_grid];
+          let ns = grid.nodes, ps = grid.points;
+
+          let patches = new Map();
+
+          let origco = new Map();
+          for (let p of grid.points) {
+            origco.set(p, new Vector3(p));
+          }
+
+          for (let ni of grid.getLeafNodes()) {
+            if (ni === 0) {
+              continue;
+            }
+
+            for (let i=0; i<4; i++) {
+              let pi = ns[ni+QPOINT1+i];
+              let p = ps[pi];
+
+              if (doneset.has(p)) {
+                continue;
+              }
+
+              let uv = grid._getUV(ni, i);
+              doneset.add(p);
+
+              let ni2 = ns[ni+QPARENT];
+
+              for (let j=0; j<2; j++) {
+                if (ni2) {
+                  ni2 = ns[ni2 + QPARENT];
+                }
+              }
+
+              let u = (uv[0] - ns[ni2+QMINU]) / (ns[ni2+QMAXU] - ns[ni2+QMINU]);
+              let v = (uv[1] - ns[ni2+QMINV]) / (ns[ni2+QMAXV] - ns[ni2+QMINV]);
+
+              let p1 = ps[ns[ni2+QPOINT1]];
+              let p2 = ps[ns[ni2+QPOINT1+1]];
+              let p3 = ps[ns[ni2+QPOINT1+2]];
+              let p4 = ps[ns[ni2+QPOINT1+3]];
+
+              let p1b = origco.get(p1);
+              let p2b = origco.get(p2);
+              let p3b = origco.get(p3);
+              let p4b = origco.get(p4);
+
+              let a = temps.next();
+              let b = temps.next();
+
+              a.load(p1b).interp(p2b, v);
+              b.load(p4b).interp(p3b, v);
+              a.interp(b, u);
+
+              let patch = patches.get(ni2);
+              if (!patch) {
+                patch = makePatch(grid, ni2, ns, p1, p2, p3, p4, p1b, p2b, p3b, p4b);
+                patches.set(ni2, patch);
+              }
+
+              p.load(patch.evaluate(u, v));
+              p.load(grid.subsurf.evaluate(uv[0], uv[1]));
+
+            }
+          }
+
+          for (let pi of grid.getLeafPoints()) {
+            break;
+            let p = grid.points[pi];
+
+            //p1.load(p).sub(p.sco);
+            //p.addFac(p1, 0.5);
+            p.load(p.sco);
+          }
+
+        }
+
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+          grid.recalcFlag |= QRecalcFlags.ALL;
+          grid.update(mesh, l, cd_grid);
+        }
+      }
 
       mesh.regenBVH();
       mesh.regenTesellation();
@@ -1137,6 +1796,15 @@ export class GridsTestOp extends MeshOp {
     }
 
     window.redraw_viewport();
+  }
+
+  undo(ctx) {
+    super.undo(ctx);
+
+    let view3d = _appstate.ctx.view3d;
+    if (view3d) {
+      view3d.resetDrawLines();
+    }
   }
 }
 ToolOp.register(GridsTestOp);
@@ -1204,6 +1872,10 @@ export class ResetGridsOp extends MeshOp {
 
       console.log("resetting grids");
 
+      for (let f of mesh.faces) {
+        f.calcCent();
+      }
+
       for (let l of mesh.loops) {
         let grid = l.customData[off];
 
@@ -1216,8 +1888,9 @@ export class ResetGridsOp extends MeshOp {
       }
       mesh.bvh = undefined;
 
-      mesh.regenRender();
       mesh.regenTesellation();
+      mesh.recalcNormals();
+      mesh.regenRender();
       mesh.regenElementsDraw();
       mesh.graphUpdate();
     }
@@ -1261,9 +1934,9 @@ export class ApplyGridBaseOp extends MeshOp {
       }
       mesh.bvh = undefined;
 
+      mesh.regenTesellation();
       mesh.recalcNormals();
       mesh.regenRender();
-      mesh.regenTesellation();
       mesh.regenElementsDraw();
       mesh.graphUpdate();
     }
@@ -1322,192 +1995,4 @@ export class AddCDLayerOp extends MeshOp {
   }
 }
 ToolOp.register(AddCDLayerOp);
-
-export class EdgeCutOp extends MeshOp {
-  constructor() {
-    super();
-
-    this.mpos = new Vector2();
-    this.start_mpos = new Vector2();
-    this.last_mpos = new Vector2();
-    this.first = true;
-  }
-
-  static tooldef() {
-    return {
-      uiname: "Edge Loop Cut",
-      is_modal : true,
-      icon: Icons.EDGECUT,
-      toolpath: "mesh.edgecut",
-      inputs: ToolOp.inherit({
-        edgeEid : new IntProperty(-1),
-        mesh : new DataRefProperty("mesh")
-      }),
-      outputs: ToolOp.inherit()
-    }
-  }
-
-  modalStart(ctx) {
-    super.modalStart(ctx);
-    this.first = true;
-  }
-
-  on_mousemove(e) {
-    let ctx = this.modal_ctx;
-    let view3d = ctx.view3d;
-
-    let mpos = view3d.getLocalMouse(e.x, e.y);
-    view3d.resetDrawLines();
-
-    console.log(mpos);
-    let ret = FindNearest(ctx, SelMask.EDGE, mpos, view3d);
-
-    if (!ret || ret.length === 0) {
-      return;
-    }
-
-    console.log(ret[0]);
-    let e1 = ret[0].data;
-    let mesh = ret[0].mesh;
-    let ob = ret[0].object;
-
-    let matrix = ob.outputs.matrix.getValue();
-
-    function vco(v) {
-      let v2 = new Vector3(v);
-      v2.multVecMatrix(matrix);
-      return v2;
-    }
-
-    view3d.makeDrawLine(vco(e1.v1), vco(e1.v2), "teal");
-
-    let lastv;
-    let firstv;
-    let lastl = undefined;
-    let firstl = undefined;
-
-    for (let l of walkFaceLoop(e1)) {
-      let v = vco(l.e.v1).interp(vco(l.e.v2), 0.5);
-
-      if (!firstv) {
-        firstl = l;
-        firstv = v;
-      }
-
-      if (lastv) {
-        view3d.makeDrawLine(lastv, v, "red");
-      }
-      //view3d.makeDrawLine(vco(l.e.v1), vco(l.e.v2), "red");
-      lastv = v;
-      lastl = l;
-    }
-
-    this.inputs.mesh.setValue(mesh);
-    this.inputs.edgeEid.setValue(e1.eid);
-
-    let connect = false;
-    if (firstl && lastl) {
-      connect = connect || firstl === lastl;
-      connect = connect || firstl.f === lastl.f;
-      connect = connect || firstl.f === lastl.radial_next.f;
-    }
-
-    if (connect) {
-      view3d.makeDrawLine(lastv, firstv, "red");
-    }
-  }
-
-  modalEnd(wasCancelled) {
-    let ctx = this.modal_ctx;
-
-    this.modal_ctx.view3d.resetDrawLines();
-    super.modalEnd(wasCancelled);
-
-    if (!wasCancelled && this.inputs.edgeEid.getValue() >= 0) {
-      this.exec(ctx);
-    }
-  }
-
-  on_mouseup(e) {
-    let ctx = this.modal_ctx;
-
-    this.modalEnd(e.button !== 0);
-  }
-
-  exec(ctx) {
-    console.warn("mesh.edgecut");
-
-    let e = this.inputs.edgeEid.getValue();
-    console.log("e", e);
-
-    let mesh = ctx.datalib.get(this.inputs.mesh.getValue());
-
-    console.log("mesh", mesh);
-    if (!mesh) {
-      return;
-    }
-
-    e = mesh.eidmap[e];
-    if (!e || !e.l) {
-      return;
-    }
-
-    console.log(e)
-
-    let loops = [];
-    let verts = [];
-    let vset = new Set();
-
-    for (let l of walkFaceLoop(e)) {
-      loops.push(l);
-    }
-
-    if (loops.length === 0) {
-      return;
-    }
-
-    let firstl = loops[0], lastl = loops[loops.length-1];
-    let firstv = firstl.v, lastv = lastl.v;
-
-    let connect = false;
-    if (firstl && lastl) {
-      connect = connect || firstl === lastl;
-      connect = connect || firstl.f === lastl.f;
-      connect = connect || firstl.f === lastl.radial_next.f;
-    }
-
-    for (let l of loops) {
-      let v = mesh.splitEdge(l.e)[1];
-      vset.add(v);
-      verts.push(v);
-    }
-
-    for (let i=0; i<loops.length; i++) {
-      let f = loops[i].f;
-      let l1, l2;
-
-      for (let l of f.loops) {
-        if (vset.has(l.v)) {
-          if (!l1) {
-            l1 = l;
-          } else {
-            l2 = l;
-            break;
-          }
-        }
-      }
-
-      if (l1 && l2) {
-        mesh.splitFace(f, l1, l2);
-      }
-    }
-
-    mesh.graphUpdate();
-    mesh.regenTesellation();
-    mesh.regenRender();
-
-    window.redraw_viewport();
-  }
-}
-ToolOp.register(EdgeCutOp);
 

@@ -659,6 +659,15 @@ export class NodeEditor extends Editor {
     this.node_idmap = {};
   }
 
+  static defineAPI(api) {
+    let nedstruct = super.defineAPI(api);
+
+    nedstruct.string("graphPath", "graphPath", "data path to graph that's being edited");
+    nedstruct.struct("velpan", "velpan", "Pan / Zoom", api.getStruct(VelPan));
+
+    return nedstruct;
+  }
+
   //prevent context system from putting different node editor subclasses
   //in different "active" bins
   push_ctx_active(dontSetLastRef=false) {
@@ -1422,6 +1431,7 @@ export class NodeEditor extends Editor {
   static define() {return {
     tagname : "node-editor-x",
     areaname : "NodeEditor",
+    apiname  : "nodeEditor",
     uiname   : "Node Editor",
     icon     : Icons.EDITOR_NODE,
     flag     : AreaFlags.HIDDEN

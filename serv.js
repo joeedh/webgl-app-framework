@@ -1,15 +1,17 @@
-const url = require('url');
+import url from 'url';
+import net from 'net';
+import fs from 'fs';
+import http from 'http';
+import path from 'path';
+
 const PORT = 5007;
 const HOST = "localhost"
-
-const net = require('net');
-const fs = require('fs');
-const http = require('http');
-const path = require('path');
 
 const INDEX = "index.html"
 const SAVEPATH = "data/zelda_mm.json"
 const basedir = process.cwd();
+
+export const exports = {};
 
 let mimemap = {
   ".js" : "application/javascript",
@@ -17,7 +19,8 @@ let mimemap = {
   ".html" : "text/html",
   ".png" : "image/png",
   ".jpg" : "image/jpeg",
-  ".css" : "text/css"
+  ".css" : "text/css",
+  ".svg" : "image/svg+xml"
 };
 
 let getMime = (p) => {

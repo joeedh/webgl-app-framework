@@ -40,7 +40,7 @@ import {calcTransCenter, calcTransAABB} from './transform/transform_query.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
 import {ConstraintSpaces} from './transform/transform_base.js';
-import {eventWasTouch} from '../../path.ux/scripts/util/simple_events.js';
+import {eventWasTouch, haveModal} from '../../path.ux/scripts/util/simple_events.js';
 import {CursorModes, OrbitTargetModes} from './view3d_utils.js';
 import {Icons} from '../icon_enum.js';
 import {WidgetSceneCursor, NoneWidget} from './widgets/widget_tools.js';
@@ -61,6 +61,14 @@ export function getWebGL() {
   }
 
   return _gl;
+}
+
+if (!window.THREE) {
+  window.THREE = {
+    Camera : class Camera {
+
+    }
+  }
 }
 
 export class ThreeCamera extends THREE.Camera {
@@ -233,16 +241,23 @@ export function initWebGL() {
     stencil : true
   });
 
-  var scene = new THREE.Scene();
-  var renderer = new THREE.WebGLRenderer({
-    canvas: canvas,
-    context: _gl,
-    alpha: true,
-    preserveDrawingBuffer : true,
-    logarithmicDepthBuffer : false,
-    premultipliedAlpha: false
-  });
-  renderer.sortObjects = false;
+  if (window.THREE && window.THREE.Scene) {
+    var scene = new THREE.Scene();
+    var renderer = new THREE.WebGLRenderer({
+      canvas                : canvas,
+      context               : _gl,
+      alpha                 : true,
+      preserveDrawingBuffer : true,
+      logarithmicDepthBuffer: false,
+      premultipliedAlpha    : false
+    });
+    renderer.sortObjects = false;
+
+    renderer.autoClear = false;
+
+    _appstate.three_scene = scene;
+    _appstate.three_render = renderer;
+  }
 
   if (!gl.createVertexArray) {
     //*
@@ -256,11 +271,6 @@ export function initWebGL() {
     gl.bindVertexArray = extVAO.bindVertexArrayOES.bind(extVAO);
   }
   //*/
-
-  renderer.autoClear = false;
-
-  _appstate.three_scene = scene;
-  _appstate.three_render = renderer;
 
   //renderer.setSize( window.innerWidth, window.innerHeight );
 
@@ -299,12 +309,28 @@ export function loadShaders(gl) {
   }
 }
 
+export class DrawQuad {
+  constructor(v1, v2, v3, v4, color, useZ) {
+    this.v1 = new Vector3(v1);
+    this.v2 = new Vector3(v2);
+    this.v3 = new Vector3(v3);
+    this.v4 = new Vector3(v4);
+    this.color = new Vector4(color);
+    this.useZ = !!useZ;
+
+    let a = color.length > 3 ? color[3] : 1.0;
+    this.color[3] = a;
+  }
+}
+
 export class DrawLine {
-  constructor(v1, v2, color=[0,0,0,1]) {
+  constructor(v1, v2, color=[0,0,0,1], useZ) {
     let a = color.length > 3 ? color[3] : 1.0;
 
     this.color = new Vector4(color);
     this.color[3] = a;
+
+    this.useZ = !!useZ;
 
     this.v1 = new Vector3(v1);
     this.v2 = new Vector3(v2);
@@ -348,6 +374,7 @@ export class View3D extends Editor {
     this.camera = this.activeCamera = new Camera();
 
     this.start_mpos = new Vector2();
+    this.last_mpos = new Vector2();
 
     this.drawlines = [];
 
@@ -633,6 +660,7 @@ export class View3D extends Editor {
 
     this.camera.regen_mats();
     this.onCameraChange();
+
     window.redraw_viewport();
   }
 
@@ -801,6 +829,7 @@ export class View3D extends Editor {
     //strip.tool("view3d.view_selected()", PackFlags.USE_ICONS);
     //strip.tool("view3d.center_at_mouse()", PackFlags.USE_ICONS);
 
+    strip = header.strip();
     strip.iconbutton(Icons.UNDO, "Undo", () => {
       this.ctx.toolstack.undo();
       window.redraw_viewport();
@@ -854,17 +883,17 @@ export class View3D extends Editor {
 
       let x = ret[0], y = ret[1];
 
-      widgets.updateHighlight(x, y, e.was_touch);
+      widgets.updateHighlight(e, x, y, e.was_touch);
 
       if (exec(toolmode, x, y)) {
         return true;
-      } else if (exec(widgets)) {
+      } else if (exec(widgets, x, y)) {
         return true;
       }
 
       return false;
     } else {
-      return exec(widgets) || exec(toolmode);
+      return exec(widgets, x, y) || exec(toolmode, x, y);
     }
   }
 
@@ -904,6 +933,10 @@ export class View3D extends Editor {
     this.addEventListener("wheel", on_mousewheel);
 
     let uiHasFocus = (e) => {
+      if (haveModal()) {
+        return true;
+      }
+
       let node = this.getScreen().pickElement(e.x, e.y);
 
       //console.log(node ? node.tagName : undefined);
@@ -911,6 +944,8 @@ export class View3D extends Editor {
     };
 
     let on_mousemove = (e, was_mousemove=true) => {
+      this.last_mpos.load(this.getLocalMouse(e.x, e.y));
+
       /*
       if (this.overdraw !== undefined) {
         let r = this.getLocalMouse(e.x, e.y);
@@ -936,6 +971,8 @@ export class View3D extends Editor {
     eventdom.addEventListener("mouseup", (e) => {
       let was_touch = eventWasTouch(e);
 
+      this.last_mpos.load(this.getLocalMouse(e.x, e.y));
+
       this.doEvent("mouseup", e);
 
       let ctx = this.ctx;
@@ -948,6 +985,8 @@ export class View3D extends Editor {
     });
 
     let on_mousedown = (e) => {
+      console.log("HAVE MODAL", haveModal());
+
       if (uiHasFocus(e)) {
         return;
       }
@@ -957,7 +996,11 @@ export class View3D extends Editor {
         //on_mousemove(e, false);
       //}
 
+
       let r = this.getLocalMouse(e.clientX, e.clientY);
+      this.start_mpos.load(r);
+      this.last_mpos.load(r);
+
       let x = r[0], y = r[1];
 
       if (this.doEvent("mousedown", e)) {
@@ -979,14 +1022,12 @@ export class View3D extends Editor {
         this.mdown = true;
       }
 
-      this.start_mpos = new Vector2(r);
-
       if (docontrols) {
         this.mdown = false;
       }
 
       //console.log("touch", eventWasTouch(e), e);
-      if (docontrols && eventWasTouch(e)) {
+      if (docontrols && eventWasTouch(e) && !e.shiftKey && !e.ctrlKey && !e.altKey) {
         console.log("multitouch view tool");
 
         let tool = new TouchViewTool();
@@ -1124,7 +1165,7 @@ export class View3D extends Editor {
 
   makeGrid() {
     let mesh = new SimpleMesh(LayerTypes.LOC|LayerTypes.UV|LayerTypes.COLOR);
-    
+
     let d = 3;
     //let quad = mesh.quad([-d, -d, 0], [-d, d, 0], [d, d, 0], [d, -d, 0]);
     //quad.colors(clr, clr, clr, clr);
@@ -1342,16 +1383,17 @@ export class View3D extends Editor {
   }
 
   drawThreeScene() {
-    this.threeRenderer = this.ctx.state.three_render;
+    if (this.ctx.state.three_render) {
+      this.threeRenderer = this.ctx.state.three_render;
+      this.threeRenderer.setViewport(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1]);
 
-    this.threeRenderer.setViewport(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1]);
+      let state = this.ctx.state;
+      let scene3 = state.three_scene;
+      let render3 = state.three_render;
+      let scene = this.ctx.scene;
 
-    let state = this.ctx.state;
-    let scene3 = state.three_scene;
-    let render3 = state.three_render;
-    let scene = this.ctx.scene;
-
-    render3.render(scene3, this.threeCamera);
+      render3.render(scene3, this.threeCamera);
+    }
   }
 
   updatePointClouds() {
@@ -1448,7 +1490,14 @@ export class View3D extends Editor {
 
         this.grid.program = view3d_shaders.Shaders.BasicLineShader;
 
+        this.grid.uniforms.near = this.activeCamera.near;
+        this.grid.uniforms.far = this.activeCamera.far;
+        this.grid.uniforms.size = this.glSize;
+        this.grid.uniforms.aspect = this.activeCamera.aspect;
+
         this.grid.uniforms.projectionMatrix = this.activeCamera.rendermat;
+        this.grid.uniforms.objectMatrix = new Matrix4();
+
         this.grid.draw(gl);
       }
 
@@ -1487,33 +1536,59 @@ export class View3D extends Editor {
   }
 
   drawDrawLines(gl) {
-    let sm = this.drawline_mesh = new SimpleMesh(LayerTypes.LOC|LayerTypes.COLOR|LayerTypes.UV);
+    let sm = new SimpleMesh(LayerTypes.LOC|LayerTypes.COLOR|LayerTypes.UV);
+    let sm2 = new SimpleMesh(LayerTypes.LOC|LayerTypes.COLOR|LayerTypes.UV);
 
     for (let dl of this.drawlines) {
-      let line = sm.line(dl.v1, dl.v2);
+      let line;
+
+      if (!dl.useZ) {
+        line = sm2.line(dl.v1, dl.v2);
+      } else {
+        line = sm.line(dl.v1, dl.v2);
+      }
 
       line.uvs([0, 0], [1.0, 1.0]);
       line.colors(dl.color, dl.color);
     }
 
-    this.drawline_mesh.program = view3d_shaders.Shaders.BasicLineShader;
-    this.drawline_mesh.uniforms.projectionMatrix = this.activeCamera.rendermat;
-    this.drawline_mesh.uniforms.alpha = 1.0;
-    this.drawline_mesh.uniforms.polygonOffset = 15.5;
+    let uniforms = {
+      projectionMatrix : this.activeCamera.rendermat,
+      aspect : this.activeCamera.aspect,
+      size : this.glSize,
+      near : this.activeCamera.near,
+      far : this.activeCamera.far,
+      objectMatrix : new Matrix4(),
+      polygonOffset : 2.5,
+      alpha : 1.0
+    };
+
+    let program = view3d_shaders.Shaders.BasicLineShader;
+
+    gl.depthMask(false);
+    gl.disable(gl.DEPTH_TEST);
+    sm2.draw(gl, uniforms, program);
 
     gl.enable(gl.BLEND);
     gl.enable(gl.DEPTH_TEST);
-    gl.depthMask(false);
 
-    this.drawline_mesh.draw(gl);
-    gl.finish();
+    sm.draw(gl, uniforms, program);
+
     gl.depthMask(true);
 
-    this.drawline_mesh.destroy(gl);
+    sm.destroy(gl);
+  }
+
+  makeDrawQuad(v1, v2, v3, v4, color, useZ=true) {
+    if (typeof color == "string") {
+      color = css2color(color);
+    }
+
+    let dq = new DrawQuad(v1, v2, v3, v4, color);
 
   }
 
-  makeDrawLine(v1, v2, color=[0,0,0,1]) {
+  makeDrawLine(v1, v2, color=[0,0,0,1], useZ=true) {
     if (typeof color == "string") {
       color = css2color(color);
     }
@@ -1547,7 +1622,8 @@ export class View3D extends Editor {
       near             : camera.near,
       far              : camera.far,
       aspect           : camera.aspect,
-      size             : this.glSize
+      size             : this.glSize,
+      polygonOffset    : 0.0
     };
 
     let only_render = this.flag & (View3DFlags.ONLY_RENDER);
@@ -1591,7 +1667,30 @@ export class View3D extends Editor {
       this.threeCamera.popUniforms();
     }
   }
-  
+
+  static defineAPI(api) {
+    let vstruct = super.defineAPI(api);
+
+    vstruct.float("subViewPortSize", "subViewPortSize", "View Size").range(1, 2048);
+    vstruct.vec2("subViewPortPos", "subViewPortPos", "View Pos").range(1, 2048);
+
+    vstruct.struct("renderSettings", "render", "Render Settings", api.mapStruct(RenderSettings));
+
+    function onchange() {
+      window.redraw_viewport();
+    }
+
+    vstruct.flags("flag", "flag", View3DFlags, "View3D Flags").on("change", onchange).icons({
+      SHOW_RENDER: Icons.RENDER,
+      SHOW_GRID: Icons.SHOW_GRID
+    });
+
+    vstruct.enum("cameraMode", "cameraMode", CameraModes, "Camera Modes").on("change", onchange).icons({
+      PERSPECTIVE: Icons.PERSPECTIVE,
+      ORTHOGRAPHIC: Icons.ORTHOGRAPHIC
+    });
+  }
+
   copy() {
     let ret = document.createElement("view3d-editor-x");
 

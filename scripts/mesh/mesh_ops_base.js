@@ -168,6 +168,7 @@ export class MeshOp extends View3DOp {
       mesh.swapDataBlockContents(mesh2);
 
       mesh.regenTesellation();
+      mesh.recalcNormals();
       mesh.regenElementsDraw();
       mesh.regenRender();
       mesh.graphUpdate();

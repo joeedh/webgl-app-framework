@@ -69,6 +69,129 @@ mesh.Element {
 `;
 nstructjs.manager.add_class(Element);
 
+
+export class VertFaceIter {
+  constructor(v) {
+    this.v = v;
+    this.ret = {done : true, value : undefined};
+    this.l = undefined;
+    this.i = 0;
+    this.done = true;
+    this.count = 0;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.done = true;
+      this.ret.value = undefined;
+      this.ret.done = true;
+      this.v.faceiters.cur--;
+      this.v.faceiters.cur = Math.max(this.v.faceiters.cur, 0);
+    }
+
+    return this.ret;
+  }
+
+  return() {
+    return this.finish();
+  }
+
+  reset() {
+    this.done = false;
+    this.l = undefined;
+    this.i = 0;
+    this.count = 0;
+    this.ret.value = undefined;
+    this.ret.done = false;
+
+    let flag = MeshFlags.ITER_TEMP2a;
+
+    //clear temp flag
+
+    let v = this.v;
+    for (let i=0; i<v.edges.length; i++) {
+      let e = v.edges[i];
+
+      if (!e.l) {
+        continue;
+      }
+
+      let l = e.l;
+      let _i = 0;
+
+      do {
+        l.f.flag &= ~flag;
+
+        l = l.radial_next;
+      } while (l !== e.l && _i++ <10);
+    }
+
+    return this;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+
+  next() {
+    this.count++;
+
+    if (this.count > 1000) {
+      console.warn("infinite loop detected");
+      return this.finish();
+    }
+
+    let ret = this.ret;
+    ret.done = false;
+
+    let v = this.v;
+
+    while (this.i < v.edges.length && !v.edges[this.i].l) {
+      this.l = undefined;
+      this.i++;
+    }
+
+    if (this.i >= v.edges.length) {
+      if (this.l && !(this.l.f & flag)) {
+        ret.done = false;
+        ret.value = this.l;
+
+        this.l = undefined;
+
+        return ret;
+      }
+
+      return this.finish();
+    }
+
+    let e = this.v.edges[this.i];
+
+    if (this.l === undefined) {
+      this.l = e.l;
+    }
+
+    let l = this.l;
+
+    let skip = l.f.flag & MeshFlags.ITER_TEMP2a;
+    l.f.flag |= MeshFlags.ITER_TEMP2a;
+
+    if (this.l === e.l.radial_prev || this.l === this.l.radial_next) {
+      this.i++;
+      this.l = undefined;
+    } else {
+      this.l = this.l.radial_next;
+    }
+
+    if (skip) {
+      return this.next();
+    }
+
+    ret.value = l.f;
+    ret.done = false;
+
+    return ret;
+  }
+}
 /*
 class VertFaceIter {
 }
@@ -85,6 +208,12 @@ export class Vertex extends Element {
 
     if (co !== undefined) {
       this.load(co);
+    }
+
+    this.faceiters = new Array(4);
+    this.faceiters.cur = 0;
+    for (let i=0; i<this.faceiters.length; i++) {
+      this.faceiters[i] = new VertFaceIter(this);
     }
 
     this.color = new Vector4([0, 0, 0, 1]);
@@ -110,6 +239,26 @@ export class Vertex extends Element {
   }
 
   get faces() {
+    //return this.faces2;
+    let i = this.faceiters.cur;
+    let stack = this.faceiters;
+
+    for (let j=0; j<stack.length; j++) {
+      let i2 = (i + j) % stack.length;
+
+      if (stack[i2].done) {
+        stack.cur++;
+        return stack[i2].reset();
+      }
+    }
+
+    stack.cur++;
+    stack.push(new VertFaceIter(this));
+
+    return stack[stack.length-1].reset();
+  }
+
+  get faces2() {
     let this2 = this;
 
     return (function*() {
@@ -164,8 +313,26 @@ export class Vertex extends Element {
     })();
   }
 
+  isBoundary(includeWire=false) {
+    for (let e of this.edges) {
+      if (!e.l) {
+        if (includeWire) {
+          return true;
+        }
+
+        continue;
+      }
+
+      if (e.l.radial_next === e.l) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   otherEdge(e) {
-    if (this.edges.length != 2) {
+    if (this.edges.length !== 2) {
       throw new MeshError("otherEdge only works on 2-valence vertices");
     }
 
@@ -202,6 +369,7 @@ export class Handle extends Element {
       this.load(co);
     }
 
+    this.owner = undefined;
     this.mode = HandleTypes.AUTO;
     this.color = new Vector4([0,0,0,1]);
     this.roll = 0;

@@ -62,7 +62,7 @@ export class FakeSetIter {
 export class FakeSet1 extends Array {
   constructor() {
     super();
-    this.itercache = util.cachering.fromConstructor(FakeSetIter, 8);
+    this.itercache = util.cachering.fromConstructor(FakeSetIter, 8, true);
     this.length = 0;
   }
 
@@ -239,7 +239,7 @@ export class BVHNode {
 
     this.nodePad = 0.00001;
 
-    this._castRayRets = util.cachering.fromConstructor(IsectRet, 64);
+    this._castRayRets = util.cachering.fromConstructor(IsectRet, 64, true);
 
     this.cent = new Vector3(min).interp(max, 0.5);
     this.halfsize = new Vector3(max).sub(min).mulScalar(0.5);
@@ -787,7 +787,7 @@ export class BVHNode {
       ls.add(l);
     }
 
-    if (1||hasBoundary) {
+    if (0&&hasBoundary) {
       for (let l of new Set(ls)) {
         ls.add(l);
         ls.add(l.radial_next);
@@ -800,17 +800,11 @@ export class BVHNode {
       }
     }
 
-    //try to update any pending non-normal updates first
     for (let l of ls) {
       let grid = l.customData[cd_grid];
-      grid.update(mesh, l, cd_grid);
-      grid.flagNormalsUpdate();
-    }
 
-    //now update normals
-    for (let l of ls) {
-      let grid = l.customData[cd_grid];
-      grid.update(mesh, l, cd_grid);
+      grid.flagNormalsUpdate();
+      this.bvh.updateGridLoops.add(l);
     }
 
     /*
@@ -1069,6 +1063,7 @@ export class BVH {
 
     this.flag = 0;
     this.updateNodes = new Set();
+    this.updateGridLoops = new Set();
 
     this.mesh = mesh;
 
@@ -1078,7 +1073,7 @@ export class BVH {
     this.storeVerts = false;
 
     this.leafLimit = 256;
-    this.drawLevelOffset = 1;
+    this.drawLevelOffset = 0;
     this.depthLimit = 17;
 
     this.nodes = [];
@@ -1107,7 +1102,7 @@ export class BVH {
 
     let cd_grid = GridBase.meshGridOffset(mesh);
 
-    if (cd_grid >= 0 && cd_node >= 0) {
+    if (cd_grid >= 0 && mesh.loops.customData.hasLayer(CDNodeInfo)) {
       cd_node = mesh.loops.customData.getLayerIndex("bvh");
 
       if (cd_node >= 0) {
@@ -1122,13 +1117,39 @@ export class BVH {
           }
         }
       }
-    } else if (mesh.verts.customData.hasLayer(CDNodeInfo)) {
+    }
+
+    if (mesh.verts.customData.hasLayer(CDNodeInfo)) {
       cd_node = mesh.verts.customData.getLayerIndex(CDNodeInfo);
 
       for (let v of mesh.verts) {
         v.customData[cd_node].node = undefined;
       }
     }
+
+    if (mesh.faces.customData.hasLayer(CDNodeInfo)) {
+      cd_node = mesh.faces.customData.getLayerIndex(CDNodeInfo);
+
+      for (let f of mesh.faces) {
+        f.customData[cd_node].node = undefined;
+      }
+    }
+
+    for (let n of this.nodes) {
+      if (n.drawData) {
+        n.drawData.destroy();
+        n.drawData = undefined;
+      }
+    }
+
+    this.root = undefined;
+    this.nodes = undefined;
+    this.mesh = undefined;
+    this.node_idmap = undefined;
+    this.verts = undefined;
+    this.updateNodes = undefined;
+    this.tris = undefined;
+    this.fmap = undefined;
 
     //for (let f of mesh.faces) {
     //  f.customData[cd_face_node].node = undefined;
@@ -1411,6 +1432,11 @@ export class BVH {
       return;
     }
 
+    if (node.drawData) {
+      node.drawData.destroy();
+      node.drawData = undefined;
+    }
+
     this.needsIndexRebuild = true;
 
     delete this.node_idmap[node.id];
@@ -1588,12 +1614,31 @@ export class BVH {
   }
 
   update() {
+    if (this.updateNodes === undefined) {
+      console.warn("Dead bvh!");
+      return;
+    }
+
     if (this.flag & BVHFlags.UPDATE_TOTTRI) {
       this.updateTriCounts();
     }
 
     for (let node of this.updateNodes) {
       node.update();
+    }
+
+    if (this.cd_grid >= 0) {
+      let cd_grid = this.cd_grid;
+
+      for (let l of this.updateGridLoops) {
+        let grid = l.customData[cd_grid];
+
+        grid.update(this.mesh, l, cd_grid);
+      }
+
+      this.updateGridLoops = new Set();
+    } else if (this.updateGridLoops.size > 0) {
+      this.updateGridLoops = new Set();
     }
 
     for (let node of this.updateNodes) {

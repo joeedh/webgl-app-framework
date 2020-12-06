@@ -31,6 +31,8 @@ export class ToolMode extends Node {
     this.selectMask = this.constructor.toolModeDefine().selectMode;
     this._transProp = this.constructor.getTransformProp();
 
+    this.storedSelectMask = -1; //used by scene
+
     this.keymap = new KeyMap();
     this.defineKeyMap();
   }
@@ -462,7 +464,8 @@ set view3d(val) {
 
 ToolMode.STRUCT = `
 ToolMode {
-  transformWidget : int;
+  transformWidget  : int;
+  storedSelectMask : int;
 }
 `;
 nstructjs.manager.add_class(ToolMode);

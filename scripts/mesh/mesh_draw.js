@@ -20,14 +20,42 @@ export function genRenderMesh(gl, mesh, uniforms) {
     recalc = MeshTypes.FACE;
   }
 
+  let lineuv1 = [0, 0];
+  let lineuv2 = [1, 1];
+
   mesh.recalc &= ~RecalcFlags.ELEMENTS;
 
-  let selcolor = uniforms.select_color || Colors[1];
-  let unselcolor = [0.5, 0.5, 1.0, 1.0];
+  //let selcolor = uniforms.select_color || Colors[1];
+  let selcolor = Colors[1];
+  let unselcolor = new Vector4(Colors[0]).mulScalar(0.5);
+
+  function facecolor(c) {
+    c = new Vector4(c);
+
+    //desaturate a bit
+    for (let i=0; i<c.length; i++) {
+      c[i] = Math.pow(c[i], 0.5);
+    }
+
+    return c;
+  }
+
+  let face_selcolor = facecolor(selcolor);
+  let face_unselcolor = facecolor(unselcolor);
 
   let getmesh = (key) => {
+    let layerflag = LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.ID;
+
+    //LayerTypes.NORMAL | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR;
+
+    if (key === "faces") {
+      layerflag |= LayerTypes.UV | LayerTypes.NORMAL;
+    } else if (key === "edges") {
+      layerflag |= LayerTypes.UV;
+    }
+
     if (!(key in mesh._fancyMeshes)) {
-      mesh._fancyMeshes[key] = new ChunkedSimpleMesh(LayerTypes.LOC | LayerTypes.NORMAL | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR);
+      mesh._fancyMeshes[key] = new ChunkedSimpleMesh(layerflag);
     }
 
     let sm = mesh._fancyMeshes[key];
@@ -126,7 +154,7 @@ export function genRenderMesh(gl, mesh, uniforms) {
       meshes.edges.primflag = PrimitiveTypes.LINES;
     } else {
       sm = getmesh("edges");
-      sm.primflag = PrimitiveTypes.LINES;
+      sm.primflag = PrimitiveTypes.LINES|PrimitiveTypes.ADVANCED_LINES;
 
       for (let e of mesh.edges) {
         let update = e.v1.flag & MeshFlags.UPDATE;
@@ -148,7 +176,7 @@ export function genRenderMesh(gl, mesh, uniforms) {
           } while (l !== e.l && _i++ < 10);
         }
 
-        let line = sm.line(e.eid, e.v1, e.v2);
+        let line = sm.smoothline(e.eid, e.v1, e.v2);
 
         if (e.flag & MeshFlags.SELECT) {
           line.colors(selcolor, selcolor);
@@ -157,7 +185,7 @@ export function genRenderMesh(gl, mesh, uniforms) {
         }
 
         line.ids(e.eid, e.eid);
-        line.uvs([0, 0], [1, 1])
+        line.uvs(lineuv1, lineuv2);
       }
     }
   }
@@ -222,9 +250,9 @@ export function genRenderMesh(gl, mesh, uniforms) {
         tri.ids(f.eid, f.eid, f.eid);
 
         if (f.flag & MeshFlags.SELECT) {
-          tri.colors(selcolor, selcolor, selcolor);
+          tri.colors(face_selcolor, face_selcolor, face_selcolor);
         } else {
-          tri.colors(unselcolor, unselcolor, unselcolor);
+          tri.colors(face_unselcolor, face_unselcolor, face_unselcolor);
         }
 
         if (useLoopNormals) {
@@ -250,6 +278,9 @@ export function genRenderMesh(gl, mesh, uniforms) {
 }
 
 export function drawMeshElements(mesh, view3d, gl, selmask, uniforms, program, object, drawTransFaces = false) {
+
+  uniforms = uniforms !== undefined ? Object.assign({}, uniforms) : {};
+
   if (!uniforms.active_color) {
     uniforms.active_color = [1.0, 0.8, 0.2, 1.0];
   }
@@ -269,7 +300,6 @@ export function drawMeshElements(mesh, view3d, gl, selmask, uniforms, program, o
     mesh._genRenderElements(gl, uniforms);
   }
 
-  uniforms = uniforms !== undefined ? Object.assign({}, uniforms) : {};
   uniforms.alpha = uniforms.alpha === undefined ? 1.0 : uniforms.alpha;
 
   let meshes = mesh._fancyMeshes;
@@ -305,7 +335,11 @@ export function drawMeshElements(mesh, view3d, gl, selmask, uniforms, program, o
 
     if (selmask & SelMask.EDGE) {
       uniforms.polygonOffset *= 0.5;
+      let alpha = uniforms.alpha;
+      uniforms.alpha = 1.0;
+
       draw_list(mesh.edges, "edges");
+      uniforms.alpha = alpha;
     }
 
     uniforms.polygonOffset *= 0.25;

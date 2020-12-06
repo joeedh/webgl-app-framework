@@ -17,6 +17,7 @@ import {
   ToolOp,
   Vec4Property,
   FloatProperty,
+  ToolProperty,
   IntProperty,
   BoolProperty,
   EnumProperty,
@@ -47,6 +48,63 @@ import {
   BrushDynChannel, DefaultBrushes, SculptIcons, PaintToolSlot, BrushFlags
 } from "../../../brush/brush.js";
 import {DataRefProperty} from "../../../core/lib_api.js";
+import {ProceduralTex} from '../../../brush/proceduralTex.js';
+
+/*
+BrushProperty works by copying SculptBrush.  It also copies any
+textures inside of them, but not anything those textures references (e.g. images).
+
+WARNING: this means there could conceivably be reference leaks here with the undo stack
+*/
+
+let BRUSH_PROP_TYPE;
+export class BrushProperty extends ToolProperty {
+  constructor(value) {
+    super(BRUSH_PROP_TYPE);
+
+    this.brush = new SculptBrush();
+    this._texture = new ProceduralTex();
+
+    if (value) {
+      this.setValue(value);
+    }
+  }
+
+  setValue(brush) {
+    brush.copyTo(this.brush, true);
+
+    if (this.brush.texUser.texture) {
+      this.brush.texUser.texture.copyTo(this._texture, true);
+      this.brush.texUser.texture = this._texture;
+    }
+
+    return this;
+  }
+
+  getValue() {
+    return this.brush;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader)
+
+    let texuser = this.brush.texUser;
+    if (texuser.texture !== undefined && texuser.texture !== -1) {
+      this.brush.texUser.texture = this._texture;
+    } else {
+      this.brush.texUser.texture = undefined;
+    }
+  }
+}
+
+BrushProperty.STRUCT = nstructjs.inherit(BrushProperty, ToolProperty) + `
+  brush : SculptBrush;
+  _texture : ProceduralTex;
+}`;
+
+nstructjs.register(BrushProperty);
+BRUSH_PROP_TYPE = ToolProperty.register(BrushProperty);
 
 
 let cfrets = util.cachering.fromConstructor(Vector4, 128);
@@ -127,6 +185,8 @@ export class PaintOp extends ToolOp {
       toolpath: "bvh.paint",
       is_modal: true,
       inputs: {
+        brush : new BrushProperty(),
+
         points: new ListProperty(Vec4Property), //fourth component is radius
         vecs: new ListProperty(Vec4Property), //displacements, fourth component
         extra: new ListProperty(Vec4Property), //stores strength
@@ -162,7 +222,7 @@ export class PaintOp extends ToolOp {
 
     this._undo = {
       mesh: mesh ? mesh.lib_id : -1,
-      mode: this.inputs.tool.getValue(),
+      mode: this.inputs.brush.getValue().tool,
       vmap: new Map(),
       gmap: new Map(),
       gdata: [],
@@ -241,6 +301,9 @@ export class PaintOp extends ToolOp {
           }
         }
       }
+
+      //XXX for now, regen bvh on undo
+      mesh.regenBVH();
 
       mesh.regenRender();
       mesh.regenPartial();
@@ -434,7 +497,7 @@ export class PaintOp extends ToolOp {
   }
 
   on_mousemove(e) {
-    let mode = this.inputs.tool.getValue();
+    let mode = this.inputs.brush.getValue().tool;
     let pressure = 1.0;
 
     if (e.was_touch && e.targetTouches && e.targetTouches.length > 0) {
@@ -464,8 +527,14 @@ export class PaintOp extends ToolOp {
     let mpos = view3d.getLocalMouse(e.x, e.y);
     let x = mpos[0], y = mpos[1];
 
+    /*
+    let falloff = this.inputs.falloff.getValue();
+    let strengthMul = falloff.integrate(1.0) - falloff.integrate(0.0);
+    strengthMul = Math.abs(strengthMul !== 0.0 ? 1.0 / strengthMul : strengthMul);
+    */
+
     let radius = this.inputs.radius.getValue();
-    let strength = this.inputs.strength.getValue();
+    let strength = this.inputs.strength.getValue();// * strengthMul;
     let planeoff = this.inputs.planeoff.getValue();
     let dynmask = this.inputs.dynamicsMask.getValue();
 
@@ -615,13 +684,26 @@ export class PaintOp extends ToolOp {
 
     //console.log("STEPS", steps, radius, spacing, this._first);
 
+    const DRAW = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
+          SMOOTH = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
+          PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
+          PAINT_SMOOTH = SculptTools.PAINT_SMOOTH;
+
+    let invert = false;
+    if (mode === SHARP) {
+      invert = true;
+    }
+
+    if (e.ctrlKey) {
+      //if (mode === SculptTools.INFLATE || mode === SculptTools.SHARP) {
+      //}
+      if (mode !== SculptTools.PAINT && mode !== SculptTools.PAINT_SMOOTH) {
+        invert ^= true;
+      }
+    }
+
     for (let i = 0; i < steps; i++) {
       let s = (i + 1) / steps;
-
-      const DRAW = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
-        SMOOTH = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
-        PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
-        PAINT_SMOOTH = SculptTools.PAINT_SMOOTH;
 
       let isplane = false;
 
@@ -656,18 +738,6 @@ export class PaintOp extends ToolOp {
 
       //vec.load(view);
 
-      if (mode === SHARP) {
-        strength *= -1;
-      }
-
-      if (e.ctrlKey) {
-        //if (mode === SculptTools.INFLATE || mode === SculptTools.SHARP) {
-        //}
-        if (mode !== SculptTools.PAINT && mode !== SculptTools.PAINT_SMOOTH) {
-          strength *= -1;
-        }
-      }
-
       let esize = this.inputs.dynTopoLength.getValue();
 
       esize /= view3d.glSize[1]; //Math.min(view3d.glSize[0], view3d.glSize[1]);
@@ -683,6 +753,10 @@ export class PaintOp extends ToolOp {
 
       let extra = new Vector4();
       extra[0] = strength;
+
+      if (invert) {
+        extra[0] = -extra[0];
+      }
 
       let autosmooth = this.inputs.autosmooth.getValue();
 
@@ -724,6 +798,11 @@ export class PaintOp extends ToolOp {
 
   execDot(ctx, p3, vec, extra, lastp3 = p3) {
     let falloff = this.inputs.falloff.getValue();
+
+    let brush = this.inputs.brush.getValue();
+    let haveTex = brush.texUser.texture !== undefined;
+    let texScale = 1.0;
+    let tex = brush.texUser.texture;
 
     const DRAW = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
       SMOOTH = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
@@ -793,17 +872,23 @@ export class PaintOp extends ToolOp {
     }
     //*/
 
-    let mode = this.inputs.tool.getValue();
+    let mode = this.inputs.brush.getValue().tool;
     let radius = p3[3];
     let strength = extra[0];
 
     let isPaintMode = mode === PAINT || mode === PAINT_SMOOTH;
 
     let planeoff = vec[3];
+    vec[3] = 0.0;
+
     let isplane = false;
 
     let esize = extra[2];
     let w = extra[3];
+
+    if (haveTex) {
+      texScale *= 10.0/w;
+    }
 
     if (mode === SCRAPE) {
       planeoff += -0.5;
@@ -814,7 +899,9 @@ export class PaintOp extends ToolOp {
       isplane = true;
     } else if (mode === CLAY) {
       planeoff += 1.5;
+
       strength *= 2.0;
+
       isplane = true;
     } else if (mode === SMOOTH) {
       isplane = true;
@@ -824,6 +911,11 @@ export class PaintOp extends ToolOp {
       isplane = true;
       planeoff += 3.0;
       strength *= 2.0;
+    }
+
+    if (isplane && strength < 0) {
+      strength = Math.abs(strength);
+      planeoff = -planeoff;
     }
 
     let updateflag = BVHFlags.UPDATE_DRAW;
@@ -845,23 +937,13 @@ export class PaintOp extends ToolOp {
     let nvec = new Vector3(vec).normalize();
     let planep = new Vector3(p3);
 
-    if (isplane && strength < 0.0) {
-      //nvec.negate();
-      //vec.negate();
-      planeoff *= 1.5;
-      strength = Math.abs(strength);
-    }
-
     planep.addFac(vec, planeoff);
 
-    //console.log(w);
-
-    //console.log("radius", radius);
 
     p3 = new Vector3(p3);
-    let vs = bvh.closestVerts(p3, radius);
 
-    //console.log(vs, p3);
+    //query bvh tree
+    let vs = bvh.closestVerts(p3, radius);
 
     let vsw;
     let _tmp = new Vector3();
@@ -1102,6 +1184,10 @@ export class PaintOp extends ToolOp {
 
       f = falloff.evaluate(f);
 
+      if (haveTex) {
+        f *= tex.evaluate(v, texScale);
+      }
+
       /*if (mode === SHARP) {
         let d = 1.0 - Math.max(v.no.dot(nvec), 0.0);
 
@@ -1244,10 +1330,8 @@ export class PaintOp extends ToolOp {
 
     if (!this.modalRunning) {
       mesh.regenTesellation();
+      mesh.regenRender();
     }
-
-    //mesh.recalcNormals();
-    mesh.regenRender();
   }
 
   doTopology(mesh, bvh, esize, vs, es) {
@@ -2261,7 +2345,8 @@ export class BVHToolMode extends ToolMode {
 
   defineKeyMap() {
     this.keymap = new KeyMap([
-      new HotKey("F", [], "brush.set_radius()")
+      new HotKey("F", [], "brush.set_radius()"),
+      new HotKey(".", [], "view3d.view_selected()")
     ]);
   }
 
@@ -2357,13 +2442,12 @@ export class BVHToolMode extends ToolMode {
     let strip, panel;
 
     function doChannel(name) {
-      let col2 = col.col();
+      let col2 = col.col().strip();
 
-
-      col2.style["padding"] = "7px";
-      col2.style["margin"] = "2px";
-      col2.style["border"] = "1px solid rgba(25,25,25,0.25)";
-      col2.style["border-radius"] = "15px";
+      //col2.style["padding"] = "7px";
+      //col2.style["margin"] = "2px";
+      //col2.style["border"] = "1px solid rgba(25,25,25,0.25)";
+      //col2.style["border-radius"] = "15px";
 
       if (name === "radius") {
         col2.prop(path + `.brushRadius`);
@@ -2380,6 +2464,15 @@ export class BVHToolMode extends ToolMode {
       panel.closed = true;
       panel.setCSS();
     }
+
+    panel = col.panel("Texture");
+    let tex = document.createElement("texture-select-panel-x");
+
+    tex.setAttribute("datapath", path + ".brush.texUser.texture");
+
+    panel.add(tex);
+
+    panel.closed = true;
 
     panel = col.panel("Falloff");
     let i1 = 1;
@@ -2417,15 +2510,19 @@ export class BVHToolMode extends ToolMode {
     strip.tool("mesh.reset_grids()");
     strip.tool("mesh.delete_grids()");
 
-    col.prop(path + ".dynTopoLength");
-    col.prop(path + ".brush.flag[DYNTOPO]");
+    strip = col.strip();
+    strip.useIcons(false);
+    strip.prop(path + ".dynTopoLength");
+    strip.prop(path + ".brush.flag[DYNTOPO]");
 
-    col.tool("mesh.smooth_grids()");
-    col.tool("mesh.grids_test()");
+    strip = col.row().strip();
+    strip.useIcons(false);
+    strip.tool("mesh.smooth_grids()");
+    strip.tool("mesh.grids_test()");
 
     panel = col.panel("Multi Resolution");
+    panel.useIcons(false);
     panel.prop(path + ".dynTopoDepth").setAttribute("labelOnTop", true);
-
 
     strip = panel.strip();
     strip.prop(path + ".enableMaxEditDepth");
@@ -2456,12 +2553,21 @@ export class BVHToolMode extends ToolMode {
     strip.prop(`scene.tools.${name}.tool`);
     strip.tool("mesh.symmetrize()");
 
-    strip = addHeaderRow().strip();
+    row = addHeaderRow();
+    strip = row.strip();
+    strip.prop(path + ".dynamics.radius.useDynamics");
     strip.prop(`scene.tools.${name}.brushRadius`);
+
+    strip.prop(path + ".dynamics.strength.useDynamics");
     strip.prop(path + ".strength");
     strip.prop(path + ".flag[SHARED_SIZE]", PackFlags.HIDE_CHECK_MARKS);
 
+    strip = row.strip();
+    strip.pathlabel("mesh.triCount", "Triangles");
+
     header.flushUpdate();
+
+
   }
 
   get _brushSizeHelper() {
@@ -2581,6 +2687,8 @@ export class BVHToolMode extends ToolMode {
       let radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius;
 
       this.ctx.api.execTool(this.ctx, "bvh.paint()", {
+        brush : brush,
+
         strength: brush.strength,
         tool: e.shiftKey ? smoothtool : brush.tool,
         radius: radius,
@@ -2760,6 +2868,13 @@ export class BVHToolMode extends ToolMode {
       uniforms.color[1] = Math.fract(f * Math.sqrt(5.0) + 0.234);
       uniforms.color[2] = Math.fract(f * Math.sqrt(2.0) + 0.8234);
       uniforms.color[3] = 1.0;
+
+      let camera = view3d.activeCamera;
+      uniforms.aspect = camera.aspect;
+      uniforms.near = camera.near;
+      uniforms.far = camera.far;
+      uniforms.size = view3d.glSize;
+
       //console.log(uniforms);
 
       //ob.data.draw(view3d, gl, uniforms, program, ob);
@@ -2978,7 +3093,7 @@ export class BVHToolMode extends ToolMode {
 
       lflag |= LayerTypes.CUSTOM;
 
-      let sm = node.drawData || new SimpleMesh(lflag);
+      let sm = node.drawData;
 
       //primflag, type, size=TypeSizes[type], name=LayerTypeNames[type]) {
 
@@ -2986,7 +3101,14 @@ export class BVHToolMode extends ToolMode {
       //let primc2 = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 4, "primc2");
       //let primc3 = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 4, "primc3");
 
-      let primuv = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 2, "primUV");
+      let primuv;
+
+      if (!sm) {
+        sm = new SimpleMesh(lflag);
+        primuv = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 2, "primUV").index;
+      } else {
+        primuv = sm.getDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 2, "primUV").setGLSize(gl.SHORT).setNormalized(true).index;
+      }
 
 
       let cfrets = util.cachering.fromConstructor(Vector4, 16);
@@ -3229,9 +3351,13 @@ export class BVHToolMode extends ToolMode {
           }
 
           if (drawWireframe) {
-            uniforms.polygonOffset = window.d || 10.0;
+            //uniforms.polygonOffset = window.d || 10.0;
+            let off = uniforms.polygonOffset ?? 0.0, old = off;
+            off = off !== 0.0 ? off*2.0 : 0.2;
+
+            uniforms.polygonOffset = off;
             node.drawData.drawLines(gl, uniforms, program2);
-            uniforms.polygonOffset = 0.0;
+            uniforms.polygonOffset = old;
           }
 
           node.drawData.primflag &= ~PrimitiveTypes.LINES;

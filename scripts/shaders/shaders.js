@@ -5,17 +5,97 @@ export let PolygonOffset = {
   //pre : '',
   //vertex : (posname) => {return '';},
   pre  : `uniform float polygonOffset;`,
-  vertex : (posname) => `
+  vertex : (posname, nearname, farname) => {
+    if (nearname && farname) {
+      return `
+  {
+    float z = ${posname}[2];
+    float near = ${nearname};
+    float far = ${farname};
+    float w = ${posname}[3];
+    
+    float off = 5.0*polygonOffset/(far - near + 0.00001);
+    
+    z -= off;
+    
+    ${posname}[2] = z;
+  }`;
+    } else {
+      return `
   {
     float z = ${posname}[2];
     z -= polygonOffset*0.00001;
     
     ${posname}[2] = z;
-  }
-  `,
+  }`;
+
+    }
+  },
   fragment : `
   `
 };
+
+export let SmoothLine = {
+  pre : `
+#ifdef SMOOTH_LINE
+    attribute vec2 _strip_uv;
+    attribute vec4 _strip_dir;
+    varying vec2 vStripUv;
+#endif
+  `,
+  fragmentPre: `
+#ifdef SMOOTH_LINE
+    varying vec2 vStripUv;
+#endif
+  `,
+  vertex : (pname) => {
+    let p = pname;
+
+    return `
+#ifdef SMOOTH_LINE
+    {
+      float width = _strip_dir[3];
+      vec4 dir = objectMatrix * vec4(_strip_dir.xyz, 0.0);
+      
+      dir = projectionMatrix * dir;
+      dir = vec4(dir.xy, 0.0, 0.0);
+      dir = normalize(dir);
+      
+      ${p}.xyz /= ${p}.w;
+      
+      float s = width/size[1];
+      
+      ${p}[0] += dir[1]*_strip_uv[0]*s;
+      ${p}[1] += -dir[0]*_strip_uv[0]*s;
+
+      vStripUv = vec2(_strip_uv[0], width); 
+
+      ${p}.xyz *= ${p}.w;
+    }
+#endif
+    `
+  },
+  fragment : (alphaname) => {
+    if (!alphaname) {
+      return '';
+    }
+
+    return `
+#ifdef SMOOTH_LINE
+{   
+  float f = abs(vStripUv[0]);
+  float t = vStripUv[1] - 1.5;
+  
+  f *= vStripUv[1];
+  f = f > t ? 1.0 - (f - t) / (vStripUv[1] - t) : 1.0;
+  
+  ${alphaname} *= f;
+}
+#endif
+    
+    `;
+  }
+}
 
 export let BasicLineShader = {
   vertex : `precision mediump float;
@@ -30,13 +110,15 @@ attribute vec4 color;
 varying vec4 vColor;
 varying vec2 vUv;
 
+uniform float aspect, near, far;
+uniform vec2 size;
 ${PolygonOffset.pre}
 
 void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
-  ${PolygonOffset.vertex("p")}
+  ${PolygonOffset.vertex("p", "near", "far", "size")}
   
   gl_Position = p;
   vColor = color;
@@ -82,11 +164,14 @@ ${PolygonOffset.pre}
 varying vec2 vUv;
 uniform vec2 shift;
 
+uniform float aspect, near, far;
+uniform vec2 size;
+
 void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
-  ${PolygonOffset.vertex("p")}
+  ${PolygonOffset.vertex("p", "near", "far", "size")}
   
   p.xy += shift*p.w;  
   gl_Position = p;
@@ -208,12 +293,15 @@ varying vec4 vPrimC2;
 varying vec4 vPrimC3;
 ${PolygonOffset.pre}
 
+uniform float aspect, near, far;
+uniform vec2 size;
+
 void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   vec4 n = normalMatrix * vec4(normal, 0.0);
 
-  ${PolygonOffset.vertex("p")}
+  ${PolygonOffset.vertex("p", "near", "far", "size")}
   
   gl_Position = p;
   
@@ -281,6 +369,9 @@ varying vec4 vPrimC3;
 
 uniform vec4 uColor;
 ${PolygonOffset.pre}
+
+uniform float aspect, near, far;
+uniform vec2 size;
 
 void main() {
   float f;
@@ -365,11 +456,18 @@ varying vec4 vColor;
 varying float vId;
 ${PolygonOffset.pre}
 
+${SmoothLine.pre}
+
+uniform float near, far, aspect;
+uniform vec2 size;
+
 void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
-  ${PolygonOffset.vertex("p")}
+  ${PolygonOffset.vertex("p", "near", "far", "size")}
+  
+  ${SmoothLine.vertex("p")}
   
   gl_Position = p;
   gl_PointSize = pointSize;
@@ -391,13 +489,18 @@ void main() {
 uniform float alpha;
 varying vec4 vColor;
 varying float vId;
+
 ${PolygonOffset.pre}
+${SmoothLine.fragmentPre}
 
 void main() {
   vec4 c = vColor;
+  float alpha2 = alpha;
   
   ${PolygonOffset.fragment}
-  gl_FragColor = c * vec4(1.0, 1.0, 1.0, alpha);
+  ${SmoothLine.fragment("alpha2")};
+  
+  gl_FragColor = c * vec4(1.0, 1.0, 1.0, alpha2);
 }
   `,
 
@@ -435,14 +538,20 @@ uniform vec4 last_color;
 uniform vec4 highlight_color;
 uniform float pointSize;
 
+uniform float aspect, near, far;
+uniform vec2 size;
+
 varying float vId;
+
 ${PolygonOffset.pre}
+${SmoothLine.pre}
 
 void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
-  ${PolygonOffset.vertex("p")}
+  ${PolygonOffset.vertex("p", "near", "far", "size")}
+  ${SmoothLine.vertex("p")}
   
   gl_Position = p;
   gl_PointSize = pointSize;
@@ -457,10 +566,12 @@ uniform float object_id;
 
 varying float vId;
 ${PolygonOffset.pre}
+${SmoothLine.fragmentPre}
 
 void main() {
   gl_FragColor = vec4(object_id+1.0, vId, 0.0, 1.0);
   ${PolygonOffset.fragment}
+  ${SmoothLine.fragment()}
 }
   `,
 
@@ -685,13 +796,16 @@ attribute vec2 uv;
 uniform vec4 color;
 uniform float pointSize;
 
+uniform float aspect, near, far;
+uniform vec2 size;
+
 ${PolygonOffset.pre}
 
 void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
-  ${PolygonOffset.vertex("p")}
+  ${PolygonOffset.vertex("p", "near", "far", "size")}
   
   gl_Position = p;
   gl_PointSize = pointSize;
@@ -719,6 +833,92 @@ void main() {
   ]
 };
 
+export let LineTriStripShader = {
+  vertex : `precision mediump float;
+  
+uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
+uniform mat4 normalMatrix;
+
+attribute vec3 position;
+attribute vec3 normal;
+attribute vec2 uv;
+attribute vec4 _strip_dir;
+attribute vec2 _strip_uv;
+
+uniform vec4 color;
+uniform float pointSize;
+
+uniform float aspect, near, far;
+uniform vec2 size;
+
+varying vec2 vStripUv;
+varying vec4 vColor;
+
+${PolygonOffset.pre}
+
+void main() {
+  float width = _strip_dir[3];
+
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
+  
+  ${PolygonOffset.vertex("p", "near", "far", "size")}
+  
+  {
+    vec4 dir = objectMatrix * vec4(_strip_dir.xyz, 0.0);
+    dir = projectionMatrix * dir;
+    dir = normalize(dir);
+    
+    p.xyz /= p.w;
+    
+    float s = width/size[1];
+    
+    p[0] += dir[1]*_strip_uv[0]*s;
+    p[1] += -dir[0]*_strip_uv[0]*s;
+    p.xyz *= p.w;
+    
+    vStripUv = vec2(_strip_uv[0], width);
+  }
+  
+  vColor = color;
+  
+  gl_Position = p;
+  gl_PointSize = pointSize;
+}
+`,
+  fragment : `precision mediump float;
+uniform vec4 color;
+
+varying vec2 vStripUv;
+varying vec4 vColor;
+
+${PolygonOffset.pre}
+
+void main() {
+  ${PolygonOffset.fragment}
+   
+  float f = abs(vStripUv[0]);
+  float t = vStripUv[1] - 1.5;
+  
+  f *= vStripUv[1];
+  f = f > t ? 1.0 - (f - t) / (vStripUv[1] - t) : 1.0;
+  
+  //gl_FragColor = vec4(f, f, f, f);
+  gl_FragColor = color*vColor*vec4(1.0, 1.0, 1.0, f);
+}
+  `,
+
+  uniforms : {
+    pointSize : 10.0,
+    objectMatrix : new Matrix4(),
+    color : [0, 0, 0, 1]
+  },
+
+  attributes : [
+    "position", "color", "id", "_strip_uv", "_strip_dir"
+  ]
+};
 
 export let SubSurfPatchShader = {
   vertex : `precision mediump float;
@@ -734,7 +934,8 @@ export const ShaderDef = {
   WidgetMeshShader     : WidgetMeshShader,
   NormalPassShader     : NormalPassShader,
   MeshLinearZShader    : MeshLinearZShader,
-  SculptShader         : SculptShader
+  SculptShader         : SculptShader,
+  LineTriStripShader   : LineTriStripShader
 };
 
 export let Shaders = {

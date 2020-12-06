@@ -43,9 +43,9 @@ function mix(a, b, t) {
 
 export let Colors = {
   0                       : [0.7, 0.7, 0.7, 1.0], //0
-  [ObjectFlags.SELECT]    : [1.0, 0.7, 0.5, 1.0], //1
-  [ObjectFlags.HIGHLIGHT] : [1.0, 0.8, 0.2, 1.0], //8
-  [ObjectFlags.ACTIVE]    : [1.0, 0.5, 0.25, 1.0]
+  [ObjectFlags.SELECT]    : [1.0, 0.378, 0.15, 1.0], //1
+  [ObjectFlags.HIGHLIGHT] : [0.9, 0.5, 0.3, 1.0], //8
+  [ObjectFlags.ACTIVE]    : [0.0, 0.5, 1.0, 1.0]
 };
 Colors[ObjectFlags.SELECT | ObjectFlags.HIGHLIGHT]
   = mix(Colors[ObjectFlags.SELECT], Colors[ObjectFlags.HIGHLIGHT], 0.5);

@@ -19,6 +19,10 @@ export class MaterialEditor extends NodeEditor {
     this.activeMatMap = {};
   }
 
+  static defineAPI(api) {
+    return api.inheritStruct(MaterialEditor, NodeEditor);
+  }
+
   init() {
     super.init();
     this.headerRow = this.header.row();

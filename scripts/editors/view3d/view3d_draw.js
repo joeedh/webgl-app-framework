@@ -84,8 +84,8 @@ export class MeshDrawInterface {
   }
 }
 
-let orig_rets = util.cachering.fromConstructor(OrigRef, 128);
-let ltri_rets = util.cachering.fromConstructor(LoopTriRet, 128);
+//let orig_rets = util.cachering.fromConstructor(OrigRef, 128);
+//let ltri_rets = util.cachering.fromConstructor(LoopTriRet, 128);
 
 export class BasicMeshDrawer extends MeshDrawInterface {
   constructor(mesh, meshcache) {

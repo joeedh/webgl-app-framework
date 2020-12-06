@@ -5,7 +5,7 @@ let exports = {
     useAreaTabSwitcher: false,
     autoSizeUpdate: true,
     showPathsInToolTips: true,
-    colorSchemeType: "light",
+    colorSchemeType: "dark",
     useNumSliderTextboxes: true,
 
     menu_close_time: 500,

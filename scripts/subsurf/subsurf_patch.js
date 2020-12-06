@@ -26,15 +26,15 @@ export function bernstein(v, x, n) {
 }
 
 bernstein.derivative = function (v, x, n) {
-  let eps = 0.00001;
+  let eps = 0.000001;
   x = eps + (1.0 - eps*2.0)*x;
 
-  let f = BinomialTable[n][v];
+  let bin = BinomialTable[n][v];
 
-  f = Math.pow(x, v) * Math.pow(1.0 - x, n) * f * (n * x - v);
+  let f = Math.pow(x, v) * Math.pow(1.0 - x, n) * bin * (n * x - v);
   f /= Math.pow(1.0 - x, v) * x * (x - 1);
 
-  return f;
+  return f/32.0;
 }
 
 //uniform bspline basis
@@ -165,9 +165,87 @@ bspline.derivative = function (i, s, degree) {
 
 let getpoints_ret = util.cachering.fromConstructor(Vector3, 64);
 
+let _btm_temp1 = new Vector3();
+let _btm_temp2 = new Vector3();
+let _btm_temp3 = new Vector3();
+let _btm_temp4 = new Vector3();
+let _btm_temp5 = new Vector3();
+let _btm_temp6 = new Vector3();
+let _btm_temp7 = new Vector3();
+let _btm_temp8 = new Vector3();
+
+let tmptanmat = new Matrix4();
+let tanmats_rets = util.cachering.fromConstructor(Matrix4, 64);
+
+export class PatchBase {
+  buildTangentMatrix(u, v, matOut=tanmats_rets.next().makeIdentity()) {
+    let eps = 0.000001;
+    u = eps + u*(1.0 - eps*2.0);
+    v = eps + v*(1.0 - eps*2.0);
+
+    let m = matOut.$matrix;
+
+    matOut.makeIdentity();
+
+    let dvu = _btm_temp1, dvv = _btm_temp2, no = _btm_temp3;
+    let quadco = this.evaluate(u, v, dvu, dvv, no);
+
+    let tmat = tmptanmat;
+    tmat.makeIdentity();
+    tmat.translate(quadco[0], quadco[1], quadco[2]);
+
+    let vx = dvv, vy = dvu;
+    //let vx = dvu, vy = dvv;
+
+    let lx = vx.vectorLength();
+    let ly = vy.vectorLength();
+
+    if (lx === 0.0 || ly === 0.0) {
+      return;
+    }
+
+    let n = _btm_temp5;
+
+    let scale = (lx + ly) * 0.5;
+    //scale = lx = ly = 1.0;
+    scale = Math.max(scale, 0.0001);
+
+    vx.normalize();
+    vy.normalize();
+
+    n.load(vx).cross(vy).normalize();
+    n.mulScalar(scale);
+
+    vy.load(n).cross(vx).normalize().mulScalar(lx);
+    vx.load(vy).cross(n).normalize().mulScalar(ly);
+
+    m.m11 = vx[0];
+    m.m21 = vx[1];
+    m.m31 = vx[2];
+
+    m.m12 = vy[0];
+    m.m22 = vy[1];
+    m.m32 = vy[2];
+
+    m.m13 = n[0];
+    m.m23 = n[1];
+    m.m33 = n[2];
+
+    matOut.preMultiply(tmat);
+
+    return matOut;
+  }
+
+  evaluate(u, v, dv_u_out, dv_v_out, normal_out) {
+    throw new Error("implement me");
+  }
+}
+
 //uniform cubic bspline patch
-export class CubicPatch {
+export class CubicPatch extends PatchBase {
   constructor() {
+    super();
+
     this._patch = new Float64Array(KTOT);
     for (let i = 0; i < KTOT; i++) {
       this._patch[i] = 0;
@@ -181,6 +259,12 @@ export class CubicPatch {
     this.basis = bspline;
     this.scratchu = new Vector3();
     this.scratchv = new Vector3();
+
+    this.pointTots = new Array(16);
+    for (let i=0; i<16; i++) {
+      this.pointTots[i] = 0.0;
+    }
+
     //this.basis = bernstein;
   }
 
@@ -192,7 +276,48 @@ export class CubicPatch {
     ps[i + 1] = p[1];
     ps[i + 2] = p[2];
 
+    this.pointTots[~~(i/3)] = 1;
     this.flag |= CubicPatchFlags.UPDATE;
+    return this;
+  }
+
+  addPoint(x, y, p, increment=true, fac=1.0) {
+    let i = (y * 4 + x) * 3;
+    let ps = this._patch;
+
+    ps[i] += p[0]*fac;
+    ps[i + 1] += p[1]*fac;
+    ps[i + 2] += p[2]*fac;
+
+    if (increment) {
+      this.pointTots[~~(i/3)] += fac;
+    }
+
+    this.flag |= CubicPatchFlags.UPDATE;
+    return this;
+  }
+
+  finishPoints() {
+    for (let i=0; i<16; i++) {
+      let tot = this.pointTots[i];
+      let x = i % 4, y = ~~(i / 4);
+      if (tot) {
+        this.mulScalarPoint(x, y, 1.0 / tot);
+      }
+    }
+  }
+
+  mulScalarPoint(x, y, f) {
+    let i = (y * 4 + x) * 3;
+    let ps = this._patch;
+
+    ps[i] *= f;
+    ps[i + 1] *= f;
+    ps[i + 2] *= f;
+
+    this.flag |= CubicPatchFlags.UPDATE;
+
+    return this;
   }
 
   getPoint(x, y) {
@@ -314,8 +439,10 @@ export class SSPatch {
 
 let zeropatch = new CubicPatch();
 
-export class Patch4 {
+export class Patch4 extends PatchBase {
   constructor(p1, p2, p3, p4) {
+    super();
+
     this.patches = [p1, p2, p3, p4];
     this.dv_urets = util.cachering.fromConstructor(Vector3, 8);
     this.dv_vrets = util.cachering.fromConstructor(Vector3, 8);
@@ -328,14 +455,22 @@ export class Patch4 {
     let su = u, sv = v;
 
     //return this.patches[0].evaluate(...arguments);
+    let usign = 1, vsign = 1;
 
     if (u <= 0.5 && v <= 0.5) {
       let t = u;
       u = v;
       v = t;
 
+      t = dv_v;
+      dv_v = dv_u;
+      dv_u = t;
+
       u = 1.0 - u * 2.0;
       v = 1.0 - v * 2.0;
+
+      usign = -1;
+      vsign = -1;
 
       p = this.patches[0];
     } else if (u <= 0.5 && v >= 0.5) {
@@ -344,23 +479,44 @@ export class Patch4 {
 
       u = 1.0 - u;
 
+      usign = -1;
+
       p = this.patches[1];
     } else if (u >= 0.5 && v >= 0.5) {
       let t = u;
       u = v;
       v = t;
 
+      t = dv_v;
+      dv_v = dv_u;
+      dv_u = t;
+
       u = (u - 0.5) * 2.0;
       v = (v - 0.5) * 2.0;
+
       p = this.patches[2];
     } else {
       u = (u - 0.5) * 2.0;
       v = 1.0 - v * 2.0;
 
+      vsign = -1;
       p = this.patches[3];
     }
 
-    let co = p.evaluate(v, u, dv_u, dv_v, norout);
+    let co = p.evaluate(v, u, dv_v, dv_u, norout);
+
+
+    if (dv_u) {
+      dv_u.mulScalar(usign);
+    }
+
+    if (dv_v) {
+      dv_v.mulScalar(vsign);
+    }
+
+    if (norout) {
+      norout.mulScalar(usign*vsign);
+    }
 
     //co[2] += su*0.5;
 

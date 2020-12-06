@@ -6,3 +6,4 @@ export {MaterialEditor} from './node/MaterialEditor.js';
 export {PropsEditor} from './properties/PropsEditor.js';
 export {View3D} from './view3d/view3d.js';
 export {SettingsEditor} from './settings/SettingsEditor.js';
+export {ConsoleEditor} from './console/console.js';

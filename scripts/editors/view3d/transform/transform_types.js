@@ -4,7 +4,7 @@ import {keymap} from '../../../path.ux/scripts/util/simple_events.js';
 import {MeshFlags, MeshTypes, Mesh} from '../../../mesh/mesh.js';
 import {SelMask} from '../selectmode.js';
 import {SceneObject, ObjectFlags} from "../../../sceneobject/sceneobject.js";
-import {PropModes, TransDataType, TransDataElem} from './transform_base.js';
+import {PropModes, TransDataType, TransDataElem, TransDataList} from './transform_base.js';
 import * as util from '../../../util/util.js';
 import {aabb_union} from '../../../util/math.js';
 
@@ -25,11 +25,15 @@ export class MeshTransType extends TransDataType {
     iterate over ctx.selectedMeshObjets*/
   static genData(ctx, selectmode, propmode, propradius) {
     let mesh = ctx.mesh;
-    let tdata = [];
+    let tdata = new TransDataList(this);
 
     if (!mesh || !(selectmode & SelMask.GEOM)) {
       return undefined;
     }
+
+    let faces = tdata.faces = new Set();
+    let normalvs = tdata.normalvs = new Set();
+
 
     //console.log("MESH GEN", selectmode & SelMask.GEOM, selectmode);
 
@@ -99,7 +103,7 @@ export class MeshTransType extends TransDataType {
       for (let v of mesh.verts.editable) {
         if (v.flag & MeshFlags.SELECT) {
           tdata[v.index].w = 1;
-        } else if (tdata[v.index].w == unset_w) {
+        } else if (tdata[v.index].w === unset_w) {
           tdata[v.index].w = 0;
         } else {
           tdata[v.index].w = TransDataType.calcPropCurve(tdata[v.index].w);
@@ -118,6 +122,30 @@ export class MeshTransType extends TransDataType {
       }
     }
 
+    for (let td of tdata) {
+      let v = td.data1;
+
+      normalvs.add(v);
+
+      for (let f of v.faces) {
+        faces.add(f);
+      }
+    }
+
+    for (let f of faces) {
+      for (let l of f.loops) {
+        normalvs.add(l.v);
+
+        /*
+        if (l === l.radial_next) {
+          continue;
+        }
+
+        for (let v of l.radial_next.f.verts) {
+          normalvs.add(v);
+        }//*/
+      }
+    }
     return tdata;
   }
 
@@ -235,7 +263,7 @@ export class MeshTransType extends TransDataType {
       let mesh = ob.data;
       let obmat = ob.outputs.matrix.getValue();
 
-      if (spacemode == ConstraintSpaces.LOCAL) {
+      if (spacemode === ConstraintSpaces.LOCAL) {
         //XXX implement me
       }
 
@@ -245,7 +273,7 @@ export class MeshTransType extends TransDataType {
       }
 
       for (let f of mesh.faces.selected.editable) {
-        if (spacemode == ConstraintSpaces.NORMAL) {
+        if (spacemode === ConstraintSpaces.NORMAL) {
           let mat = meshGetCenterTempsMats.next();
 
           let up = meshGetCenterTemps2.next();
@@ -374,15 +402,75 @@ export class MeshTransType extends TransDataType {
   static update(ctx, elemlist) {
     let mesh = ctx.mesh;
 
+    if (elemlist === undefined) {
+      mesh.recalcNormals();
+      mesh.regenElementsDraw();
+      mesh.regenRender();
+      mesh.graphUpdate();
+
+      return;
+    }
+
+    for (let v of elemlist.normalvs) {
+      v.no[0] = v.no[1] = v.no[2] = 0.0;
+    }
+
+    for (let f of elemlist.faces) {
+      f.calcCent();
+      f.calcNormal();
+
+      mesh.flagElemUpdate(f);
+
+      for (let v of f.verts) {
+        v.no.add(f.no);
+      }
+    }
+
+    for (let v of elemlist.normalvs) {
+      v.no.normalize();
+    }
+
+    for (let e of elemlist) {
+      let v = e.data1;
+      mesh.flagElemUpdate(v);
+    }
+
+    mesh.regenElementsDraw();
+    mesh.regenRender();
+    mesh.outputs.depend.graphUpdate();
+    return;
     if (elemlist !== undefined) {
       let doneset = new WeakSet();
 
       for (let e of elemlist) {
         let v = e.data1;
 
-        v.no.zero();
+        let n = v.no;
+        n[0] = n[1] = n[2] = 0.0;
+
+
+        for (let f of v.faces) {
+          if (!doneset.has(f)) {
+            doneset.add(f);
+
+            f.calcCent();
+            f.calcNormal();
+
+            mesh.flagElemUpdate(f);
+
+          }
+
+          v.no.add(f.no);
+        }
+        /*
         for (let e of v.edges) {
-          for (let l of e.loops) {
+          if (!e.l) {
+            continue;
+          }
+          let l = e.l;
+          let _i = 0;
+
+          do {
             let f = l.f;
 
             if (!doneset.has(f)) {
@@ -395,8 +483,10 @@ export class MeshTransType extends TransDataType {
 
               v.no.add(f.no);
             }
-          }
+            l = l.radial_next;
+          } while (l !== e.l && _i++ < 10);
         }
+         */
 
         v.no.normalize();
         mesh.flagElemUpdate(v);
@@ -450,7 +540,7 @@ export class ObjectTransType extends TransDataType {
       return undefined;
     }
 
-    let tdata = [];
+    let tdata = new TransDataList(this);
 
     function get_transform_parent(ob) {
       if (ob.inputs.matrix.edges.length > 0) {

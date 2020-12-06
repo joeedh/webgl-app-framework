@@ -337,6 +337,12 @@ export class NodeSocketType {
   the datagraph for execution
   */
   graphUpdate(updateParentNode=false, _exclude=undefined) {
+    if (this.graph_id === -1) {
+      //we're not in a graph
+      console.warn("graphUpdate called on non-node", this);
+      return;
+    }
+
     if (this === _exclude)
       return;
 
@@ -1475,7 +1481,9 @@ export class Graph {
           socks2[k] = sock_idmap[socks2[k]];
         }
 
-        socks2[k].onFileLoad(socks1[k]);
+        if (socks1[k]) {
+          socks2[k].onFileLoad(socks1[k]);
+        }
 
         socks1[k] = socks2[k];
         socks1[k].node = n;

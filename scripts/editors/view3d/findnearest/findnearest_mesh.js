@@ -45,7 +45,7 @@ export class FindnearestMesh extends FindnearestClass {
     let gl = view3d.gl;
     let sbuf = view3d.selectbuf;
     let x = ~~p[0], y = ~~p[1];
-    let ret = _castray_rets.next().reset();
+    let ret = new FindNearestRet(); //ref leak? _castray_rets.next().reset();
     let size = view3d.glSize;
 
     let dpi = view3d.gl.canvas.dpi;
@@ -176,7 +176,7 @@ export class FindnearestMesh extends FindnearestClass {
         continue;
       }*/
 
-      let ret = _findnearest_rets.next().reset();
+      let ret = new FindNearestRet(); //ref leaf? _findnearest_rets.next().reset();
 
       ret.data = e;
       ret.object = ob;

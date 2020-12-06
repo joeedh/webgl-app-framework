@@ -3,7 +3,7 @@ import '../path.ux/scripts/util/struct.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js';
-import {getContextArea, Editor} from '../editors/editor_base.js';
+import {getContextArea, Editor, editorAccessor} from '../editors/editor_base.js';
 import {ResourceBrowser} from "../editors/resbrowser/resbrowser.js";
 import * as util from '../util/util.js';
 import {Mesh} from '../mesh/mesh.js';
@@ -250,11 +250,39 @@ export class ViewOverlay extends ContextOverlay {
     return getContextArea(NodeEditor);
   }
 
+  get shaderEditor() {
+    return getContextArea(MaterialEditor);
+  }
+
   get nodeViewer() {
     return getContextArea(NodeViewer);
   }
 
+  get editors() {
+    return editorAccessor;
+  }
+
+  editors_save() {
+    let editors = this.editors;
+
+    let ret = {};
+
+    for (let k in editors._namemap) {
+      ret[k] = editors[k];
+    }
+
+    return ret;
+  }
+
+  editors_load(ctx, data) {
+    return data;
+  }
+
   get area() {
+    return this.editor;
+  }
+
+  get editor() {
     return Editor.getActiveArea();
   }
 
@@ -308,6 +336,12 @@ export class ToolContext extends Context {
   }
 
   saveProperty_intern(val, owning_key) {
+    if (owning_key === "editors") {
+      //let editors = val;
+
+      //return val;
+    }
+
     if (typeof val !== "object")
       return val;
 

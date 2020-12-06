@@ -36,6 +36,15 @@ export class NodeViewer extends Editor {
     this.shadow.appendChild(this.canvas);
   }
 
+  static defineAPI(api) {
+    let nedstruct = super.defineAPI(api);
+
+    nedstruct.string("graphPath", "graphPath", "data path to graph that's being edited");
+    nedstruct.struct("velpan", "velpan", "Pan / Zoom", api.getStruct(VelPan));
+
+    return nedstruct;
+  }
+
   init() {
     super.init();
 
@@ -430,6 +439,7 @@ export class NodeViewer extends Editor {
   }
 
   static define() {return {
+    apiname : "nodeViewer",
     tagname : "nodegraph-viewer-x",
     areaname : "nodegraph_viewer",
     uiname  : "SceneGraph Viewer",

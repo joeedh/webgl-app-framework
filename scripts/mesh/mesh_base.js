@@ -79,7 +79,8 @@ export const MeshFlags = {
   MIRROREDY     : 4096<<3,
   MIRROREDZ     : 4096<<4,
   MIRRORED      : (4096<<2)|(4096<<3)|(4096<<4),
-  MIRROR_BOUNDARY      : 4096<<5 //used by mirror
+  MIRROR_BOUNDARY   : 4096<<5, //used by mirror
+  GRID_MRES_HIDDEN  : 4096<<6, //used by grids to flag gridverts as not part of visible multires level
 };
 
 export const MeshModifierFlags = {

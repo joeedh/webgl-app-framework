@@ -54,6 +54,7 @@ export class ObjectEditor extends ToolMode {
     description : "Select Scene Objects",
     icon        : Icons.CURSOR_ARROW,
     flag        : 0,
+    selectMode  : SelMask.OBJECT,
     transWidgets: [TranslateWidget]
   }}
 
@@ -99,10 +100,12 @@ export class ObjectEditor extends ToolMode {
   on_mousedown(e, x, y, was_touch) {
     let ctx = this.ctx;
 
-    if (e.button == 0 || e.touches && e.touches.length > 0) {
+    if (e.button === 0 || e.touches && e.touches.length > 0) {
       this.start_mpos[0] = x;
       this.start_mpos[1] = y;
     }
+
+    console.log(this.hasWidgetHighlight());
 
     if (this.hasWidgetHighlight()) {
       return false;
@@ -231,23 +234,6 @@ export class ObjectEditor extends ToolMode {
 
     program = Shaders.ObjectLineShader;
 
-    /*
-    let size = gl.getParameter(gl.VIEWPORT);
-    size = [size[2], size[3]];
-
-    let d = 1;
-    for (let x=-d; x<=d; x++) {
-      for (let y=-d; y<=d; y++) {
-        uniforms.shift[0] = x/size[0]*3.0;
-        uniforms.shift[1] = y/size[1]*3.0;
-
-        this.view3d.threeCamera.pushUniforms(uniforms);
-        object.drawOutline(this.view3d, gl, uniforms, program);
-        this.view3d.threeCamera.popUniforms();
-      }
-    }
-    //*/
-
     let draw_outline = object.flag & ObjectFlags.SELECT;
     draw_outline = draw_outline || object === this.ctx.scene.objects.highlight;
 
@@ -256,17 +242,14 @@ export class ObjectEditor extends ToolMode {
 
       gl.depthMask(false);
 
-      this.view3d.threeCamera.pushUniforms(uniforms);
       object.drawOutline(this.view3d, gl, uniforms, program);
-      this.view3d.threeCamera.popUniforms();
 
       //uniforms.shift = undefined;
       gl.depthMask(mask);
     }
 
-    this.view3d.threeCamera.pushUniforms(uniforms);
+    program = Shaders.BasicLitMesh;
     object.draw(this.view3d, gl, uniforms, program);
-    this.view3d.threeCamera.popUniforms();
 
     return true;
   }
