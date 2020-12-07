@@ -789,7 +789,7 @@ export class View3D extends Editor {
 
     this.makeHeader(this.container);
 
-    this.header.inherit_packflag |= PackFlags.SMALL_ICON;
+    //this.header.inherit_packflag |= PackFlags.SMALL_ICON;
     this.header.useIcons();
 
     let header = this.header;

@@ -271,8 +271,17 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  compress() {
+  compress2() {
     return new CompressedMesh().loadMesh(this);
+  }
+
+  compress() {
+    let data = [];
+
+    nstructjs.manager.writeObject(data, this);
+
+    console.log((data.length/1024/1024).toFixed(2) + "mb");
+    return data;
   }
 
   _makeEIDGen(eidgen2 = new util.IDGen()) {
@@ -674,12 +683,6 @@ export class Mesh extends SceneObjectData {
     for (let l of list) {
       l.e = this.ensureEdge(l.v, l.next.v);
       this._radialInsert(l.e, l);
-    }
-
-    for (let i = 0; i < f.verts.length; i++) {
-      let v1 = f.verts[i], v2 = f.verts[(i + 1) % f.verts.length];
-
-      this.edges.push(this.ensureEdge(v1, v2));
     }
 
     f.calcCent();
@@ -1924,14 +1927,12 @@ export class Mesh extends SceneObjectData {
   }
 
   _genRender_full(gl, combinedWireframe = false) {
-    //if (this.recalc & RecalcFlags.ELEMENTS) {
-    this._genRenderElements(gl, {});
-    //}
-
     this.recalc &= ~RecalcFlags.RENDER;
     this.updateGen = ~~(Math.random() * 1024 * 1024 * 1024);
 
-    let ltris = this.loopTris;
+    //if (this.recalc & RecalcFlags.ELEMENTS) {
+    this._genRenderElements(gl, {});
+    //}
 
     let meshes = this._fancyMeshes;
     if (meshes.faces) {

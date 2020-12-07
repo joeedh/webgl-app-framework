@@ -93,6 +93,8 @@ export let Icons = {
   EDGECUT  : 87,
   BRUSH_DYNAMICS : 88,
   MAGNET : 89,
-  SHOW_GRID_FLOOR : 90
+  SHOW_GRID_FLOOR : 90,
+  DRAW_SCULPT_WIREFRAME : 91,
+  DRAW_SCULPT_FLAT : 92,
 };
 setIconMap(Icons);

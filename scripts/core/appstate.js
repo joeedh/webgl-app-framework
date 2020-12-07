@@ -720,6 +720,23 @@ export class AppState {
         }
       }
     }
+
+    if (version < 6) {
+      for (let mesh of datalib.mesh) {
+        let cd_grid = GridBase.meshGridOffset(mesh);
+
+        if (cd_grid < 0) {
+          continue;
+        }
+
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+
+          console.error("Building grid vert eids for old file. . .");
+          grid.flagIdsRegen();
+        }
+      }
+    }
   }
 
   /** this is executed after block re-linking has happened*/

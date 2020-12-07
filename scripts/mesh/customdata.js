@@ -662,6 +662,15 @@ export class CustomData {
     return this.getNamedLayer(name, opt_cls_or_typeName) !== undefined;
   }
 
+  getNamedLayerIndex(name, opt_cls_or_typeName) {
+    let layer = this.getNamedLayer(name, opt_cls_or_typeName);
+    if (!layer) {
+      return -1;
+    }
+
+    return layer.index;
+  }
+
   getNamedLayer(name, opt_cls_or_typeName) {
     let typeName = opt_cls_or_typeName;
 

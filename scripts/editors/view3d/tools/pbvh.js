@@ -22,10 +22,11 @@ import {
   BoolProperty,
   EnumProperty,
   FlagProperty,
+  FloatArrayProperty,
   math,
   ListProperty,
   PackFlags,
-  Curve1D, Curve1DProperty, SplineTemplates
+  Curve1D, Curve1DProperty, SplineTemplates, Vec3Property
 } from "../../../path.ux/scripts/pathux.js";
 import {MeshFlags} from "../../../mesh/mesh.js";
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from "../../../core/simplemesh.js";
@@ -49,6 +50,16 @@ import {
 } from "../../../brush/brush.js";
 import {DataRefProperty} from "../../../core/lib_api.js";
 import {ProceduralTex} from '../../../brush/proceduralTex.js';
+import {KdTreeFields, KdTreeFlags, KdTreeGrid} from '../../../mesh/mesh_grids_kdtree.js';
+import {CDFlags} from '../../../mesh/customdata.js';
+
+//grab data field definition
+let GEID=0, GEID2=1, GDIS=2, GTOT=3;
+
+/*
+let GVEID = 0, GVTOT=1;
+let GGEID_LOOP=0, GGEID_GRIDVERT=1, GGTOT=2;
+*/
 
 /*
 BrushProperty works by copying SculptBrush.  It also copies any
@@ -172,11 +183,39 @@ export class PaintOp extends ToolOp {
 
     this._last_enable_mres = "";
 
+    this.grabEidMap = undefined;
+    this.grabDists = undefined;
+
     this.last_mpos = new Vector2();
     this.last_p = new Vector3();
     this._first = true;
     this.last_radius = 0;
     this.last_vec = new Vector3();
+  }
+
+  initOrigData(mesh) {
+    let cd_grid = GridBase.meshGridOffset(mesh);
+
+    let cd_orig;
+    let haveGrids = cd_grid >= 0;
+
+    if (haveGrids) {
+      cd_orig = mesh.loops.customData.getNamedLayerIndex("__orig_co", "vec3");
+      if (cd_orig < 0) {
+        let layer = mesh.loops.addCustomDataLayer("vec3", "__orig_co");
+        layer.flag |= CDFlags.TEMPORARY;
+        cd_orig = layer.index;
+      }
+    } else {
+      cd_orig = mesh.verts.customData.getNamedLayerIndex("__orig_co", "vec3");
+      if (cd_orig < 0) {
+        let layer = mesh.verts.addCustomDataLayer("vec3", "__orig_co");
+        layer.flag |= CDFlags.TEMPORARY;
+        cd_orig = layer.index;
+      }
+    }
+
+    return cd_orig;
   }
 
   static tooldef() {
@@ -186,6 +225,9 @@ export class PaintOp extends ToolOp {
       is_modal: true,
       inputs: {
         brush : new BrushProperty(),
+
+        grabData : new FloatArrayProperty(),
+        grabCo : new Vec3Property(),
 
         points: new ListProperty(Vec4Property), //fourth component is radius
         vecs: new ListProperty(Vec4Property), //displacements, fourth component
@@ -390,7 +432,7 @@ export class PaintOp extends ToolOp {
 
         //bvh.removeFace(l.eid, true);
 
-        grid2.copyTo(grid1);
+        grid2.copyTo(grid1, true);
 
         grid1.recalcFlag |= QRecalcFlags.MIRROR|QRecalcFlags.ALL|QRecalcFlags.TOPO;
 
@@ -474,6 +516,10 @@ export class PaintOp extends ToolOp {
         let grid = l.customData[cd_grid];
 
         if (grid instanceof QuadTreeGrid) {
+          haveQuadTreeGrids = true;
+        }
+
+        if (grid instanceof KdTreeGrid) {
           haveQuadTreeGrids = true;
         }
         break;
@@ -613,7 +659,21 @@ export class PaintOp extends ToolOp {
     }
 
     if (!isect) {
-      return;
+      if ((mode === SculptTools.GRAB || mode === SculptTools.SNAKE) && !this._first) {
+        let p = new Vector3(this.last_p);
+        view3d.project(p);
+
+        p[0] = mpos[0];
+        p[1] = mpos[1];
+
+        view3d.unproject(p);
+
+        let dis = p.vectorDistance(origin);
+
+        isect = {p, dis};
+      } else {
+        return;
+      }
     }
 
     let p3 = new Vector4(isect.p);
@@ -633,7 +693,7 @@ export class PaintOp extends ToolOp {
 
     let vec;
 
-    if (mode !== SculptTools.SNAKE) {
+    if (mode !== SculptTools.SNAKE && mode !== SculptTools.GRAB) {
       vec = new Vector3(isect.tri.v1.no);
       vec.add(isect.tri.v2.no);
       vec.add(isect.tri.v3.no);
@@ -671,11 +731,20 @@ export class PaintOp extends ToolOp {
       this.last_radius = radius;
       this._first = false;
 
+      if (mode === SculptTools.GRAB) {
+        this.inputs.grabCo.setValue(isect.p);
+        this.initGrabData(mesh, isect.p, radius);
+      }
+
       return;
     }
 
     let spacing = this.inputs.spacing.getValue();
     let steps = this.last_p.vectorDistance(isect.p) / (radius * spacing);
+
+    if (mode === SculptTools.GRAB) {
+      steps = 1;
+    }
 
     if (steps < 1) {
       return;
@@ -687,7 +756,7 @@ export class PaintOp extends ToolOp {
     const DRAW = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
           SMOOTH = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
           PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
-          PAINT_SMOOTH = SculptTools.PAINT_SMOOTH;
+          PAINT_SMOOTH = SculptTools.PAINT_SMOOTH, GRAB = SculptTools.GRAB;
 
     let invert = false;
     if (mode === SHARP) {
@@ -783,6 +852,100 @@ export class PaintOp extends ToolOp {
     window.redraw_viewport();
   }
 
+  initGrabData(mesh, co, radius) {
+    let bvh = mesh.getBVH(false);
+    let vs = bvh.closestVerts(co, radius);
+
+    let gd = [];
+    let cd_grid = GridBase.meshGridOffset(mesh);
+    let haveGrids = cd_grid >= 0;
+    let gdists = this.grabDists = [];
+
+    if (haveGrids) {
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+        grid.update(mesh, l, cd_grid);
+      }
+
+      this.grabEidMap = new Map();
+
+      for (let v of vs) {
+        gd.push(v.loopEid);
+        gd.push(v.eid);
+        gd.push(v.vectorDistance(co));
+
+        gdists.push(v.vectorDistance(co));
+        this.grabEidMap.set(v.eid, v);
+      }
+    } else {
+      for (let v of vs) {
+        gd.push(v.eid);
+        gd.push(0);
+        gd.push(v.vectorDistance(co));
+
+        gdists.push(v.vectorDistance(co));
+      }
+    }
+
+    this.inputs.grabData.setValue(gd);
+  }
+
+  execPost() {
+    //prevent nasty reference leak in undo stack
+    this.grabEidMap = undefined;
+  }
+
+  _ensuregrabEidMap(ctx) {
+    let mesh = ctx.mesh;
+
+    if (!this.grabEidMap) {
+      let gdists = this.grabDists = [];
+
+      let gmap = this.grabEidMap = new Map();
+      let grids = new WeakSet();
+      let gd = this.inputs.grabData.getValue();
+
+      let cd_grid = GridBase.meshGridOffset(mesh);
+
+      if (cd_grid >= 0) {
+        for (let i = 0; i < gd.length; i += GTOT) {
+          let l = gd[i], p = gd[i+1], dis = gd[i+2];
+
+          gdists.push(dis);
+
+          l = mesh.eidmap[l];
+          if (!l) {
+            console.error("error, missing loop " + l);
+            continue;
+          }
+
+          let grid = l.customData[cd_grid];
+          if (!grids.has(grid)) {
+            grids.add(grid);
+            grid.update(mesh, l, cd_grid);
+
+            for (let p of grid.points) {
+              gmap.set(p.eid, p);
+            }
+          }
+        }
+      } else {
+        for (let i=0; i<gd.length; i += GTOT) {
+          let eid = gd[i], dis = gd[i+2];
+
+          let v = mesh.eidmap[eid];
+          if (!v) {
+            console.warn("Missing vertex error: " + eid + " was missing");
+            continue;
+          }
+
+          gdists.push(dis);
+          gmap.set(v.eid, v);
+        }
+      }
+    }
+  }
+
   exec(ctx) {
     let i = 0;
     let lastp;
@@ -804,15 +967,21 @@ export class PaintOp extends ToolOp {
     let texScale = 1.0;
     let tex = brush.texUser.texture;
 
+    if (this.inputs.brush.getValue().tool === SculptTools.GRAB) {
+      this._ensuregrabEidMap(ctx);
+    }
+
     const DRAW = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
       SMOOTH = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
       PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
-      PAINT_SMOOTH = SculptTools.PAINT_SMOOTH;
+      PAINT_SMOOTH = SculptTools.PAINT_SMOOTH, GRAB = SculptTools.GRAB;
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh)) {
       console.log("ERROR!");
       return;
     }
+
+    let haveOrigData = false;
 
     let undo = this._undo;
     let vmap = undo.vmap;
@@ -876,6 +1045,9 @@ export class PaintOp extends ToolOp {
     let radius = p3[3];
     let strength = extra[0];
 
+    let haveGrids = bvh.cd_grid >= 0;
+    let cd_grid = bvh.cd_grid;
+
     let isPaintMode = mode === PAINT || mode === PAINT_SMOOTH;
 
     let planeoff = vec[3];
@@ -911,6 +1083,9 @@ export class PaintOp extends ToolOp {
       isplane = true;
       planeoff += 3.0;
       strength *= 2.0;
+    } else if (mode === GRAB || mode === SNAKE) {
+      haveOrigData = true;
+      isplane = false;
     }
 
     if (isplane && strength < 0) {
@@ -921,6 +1096,12 @@ export class PaintOp extends ToolOp {
     let updateflag = BVHFlags.UPDATE_DRAW;
     if (mode !== PAINT && mode !== PAINT_SMOOTH) {
       updateflag |= BVHFlags.UPDATE_NORMALS;
+    }
+
+    let cd_orig = -1;
+
+    if (haveOrigData) {
+      cd_orig = this.initOrigData(mesh);
     }
 
     let sym = mesh.symFlag;
@@ -943,13 +1124,41 @@ export class PaintOp extends ToolOp {
     p3 = new Vector3(p3);
 
     //query bvh tree
-    let vs = bvh.closestVerts(p3, radius);
+    let vs;
+    if (mode === GRAB) {
+      let gmap = this.grabEidMap;
+      let gd = this.inputs.grabData.getValue();
+      vs = new Set();
+
+      if (haveGrids) {
+        for (let i = 0; i < gd.length; i += GTOT) {
+          let leid = gd[i], peid = gd[i+1];
+          let v = gmap.get(peid);
+          if (!v) {
+            console.warn("Missing grid vert " + peid);
+            throw new Error("missing grid vert");
+            continue;
+          }
+
+          vs.add(v);
+        }
+      } else {
+        for (let i=0; i<gd.length; i += GTOT) {
+          let v = mesh.eidmap[gd[i]];
+          if (!v) {
+            console.warn("Missing vert " + gd[i]);
+            continue;
+          }
+
+          vs.add(v);
+        }
+      }
+    } else {
+      vs = bvh.closestVerts(p3, radius);
+    }
 
     let vsw;
     let _tmp = new Vector3();
-
-    let haveGrids = bvh.cd_grid >= 0;
-    let cd_grid = bvh.cd_grid;
 
     let vsmooth, gdimen, cd_color, have_color;
     let haveQuadTreeGrids = false;
@@ -960,20 +1169,34 @@ export class PaintOp extends ToolOp {
 
         if (grid instanceof QuadTreeGrid) {
           haveQuadTreeGrids = true;
+        } else if (grid instanceof KdTreeGrid) {
+          haveQuadTreeGrids = true;
         }
 
         break;
       }
     }
 
+    let origset = new WeakSet();
+
     function doUndo(v) {
       if (!haveGrids && !vmap.has(v.eid)) {
+        if (haveOrigData) {
+          console.log(v.customData, cd_orig);
+          v.customData[cd_orig].value.load(v);
+        }
+
         if (isPaintMode && have_color) {
           vmap.set(v.eid, new Vector4(v.customData[cd_color].color));
         } else if (!isPaintMode) {
           vmap.set(v.eid, new Vector3(v));
         }
       } else if (haveQuadTreeGrids) {
+        if (haveOrigData && !origset.has(v)) {
+          v.customData[cd_orig].value.load(v);
+          origset.add(v);
+        }
+
         let node = v.customData[cd_node];
         if (node.node) {
           node.node.flag |= BVHFlags.UPDATE_NORMALS|BVHFlags.UPDATE_DRAW;
@@ -987,7 +1210,11 @@ export class PaintOp extends ToolOp {
 
             if (!gmap.has(l)) {
               grid.recalcFlag |= QRecalcFlags.MIRROR;
-              gmap.set(l, grid.copy())
+
+              let gridcpy = new grid.constructor();
+              grid.copyTo(gridcpy, true);
+
+              gmap.set(l, gridcpy)
               grid.update(mesh, l, cd_grid);
               grid.relinkCustomData();
             }
@@ -995,7 +1222,12 @@ export class PaintOp extends ToolOp {
         }
       } else if (haveGrids) {
         let id = v.loopEid * gdimen * gdimen + v.index;
+
         if (!gset.has(id)) {
+          if (haveOrigData) {
+            v.customData[cd_orig].value.load(v);
+          }
+
           gset.add(id);
           gdata.push(v.loopEid);
           gdata.push(v.index);
@@ -1179,11 +1411,16 @@ export class PaintOp extends ToolOp {
     let astrength = Math.abs(strength);
     let bLinks = new Set();
 
+    let gdists = this.grabDists, idis = 0;
+
     wi = 0;
     for (let v of vs) {
       doUndo(v);
 
-      let f = Math.max(1.0 - v.vectorDistance(p3) / radius, 0.0);
+      let dis = mode === GRAB ? gdists[idis++] : v.vectorDistance(p3);
+
+
+      let f = Math.max(1.0 - dis / radius, 0.0);
       let f2 = f;
 
       f = falloff.evaluate(f);
@@ -1226,7 +1463,11 @@ export class PaintOp extends ToolOp {
       } else if (mode === INFLATE) {
         v.addFac(v.no, f * strength * 0.025);
       } else if (mode === SNAKE) {
+        v.load(v.customData[cd_orig].value);
         v.addFac(vec, f * strength);
+      } else if (mode === GRAB) {
+        v.load(v.customData[cd_orig].value);
+        v.addFac(vec, f);
       }
 
       if (haveGrids && v.bLink) {
@@ -1334,8 +1575,10 @@ export class PaintOp extends ToolOp {
 
     if (!this.modalRunning) {
       mesh.regenTesellation();
-      mesh.regenRender();
     }
+
+    //flag mesh to upload to gpu after exiting pbvh toolmode
+    mesh.regenRender();
   }
 
   doTopology(mesh, bvh, esize, vs, es) {
@@ -1494,18 +1737,34 @@ export class PaintOp extends ToolOp {
     const esqr1 = esize1 * esize1;
     const esqr2 = esize2 * esize2;
 
+    let haveKdTree = false;
+    let layer = mesh.loops.customData.flatlist[bvh.cd_grid];
+    if (layer.typeName === "KdTreeGrid") {
+      haveKdTree = true;
+    }
+
+    let MAXCHILD = haveKdTree ? 2 : 4;
     let data = [];
     const DGRID = 0, DNODE = 1, DLOOP = 2, DMODE=3, DTOT = 4;
 
     const SUBDIVIDE = 0, COLLAPSE = 1;
 
-    const QFLAG = QuadTreeFields.QFLAG,
+    let QFLAG = QuadTreeFields.QFLAG,
       QDEPTH = QuadTreeFields.QDEPTH,
       QPARENT = QuadTreeFields.QPARENT,
       QPOINT1 = QuadTreeFields.QPOINT1;
 
-    const LEAF = QuadTreeFlags.LEAF,
+    let LEAF = QuadTreeFlags.LEAF,
       DEAD = QuadTreeFlags.DEAD;
+
+    if (haveKdTree) {
+      QFLAG = KdTreeFields.QFLAG;
+      QDEPTH = KdTreeFields.QDEPTH;
+      QPARENT = KdTreeFields.QPARENT;
+      QPOINT1 = KdTreeFields.QPOINT1;
+      LEAF = KdTreeFlags.LEAF;
+      DEAD = KdTreeFlags.DEAD;
+    }
 
     const updateflag = BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_DRAW;
 
@@ -1518,6 +1777,10 @@ export class PaintOp extends ToolOp {
     let bnodes = new Set();
 
     let maxDepth = this.inputs.dynTopoDepth.getValue();
+
+    if (haveKdTree) {
+      maxDepth *= 2;
+    }
 
     let visits = new Map();
     let tot = 0;
@@ -1538,7 +1801,7 @@ export class PaintOp extends ToolOp {
 
     //vs.sort((a, b) => a.vectorDistanceSqr(brushco) - b.vectorDistanceSqr(brushco));
 
-    let limit = 55;
+    let limit = 155;
 
     for (let _i=0; _i<vs.length; _i++) {
       let ri = ~~(Math.random()*vs.length*0.99999);
@@ -1625,6 +1888,12 @@ export class PaintOp extends ToolOp {
           for (let i=0; i<4; i++) {
             let p = grid.points[ns[ni+QPOINT1+i]];
             let p2 = grid.points[ns[ni+QPOINT1+((i+1)%4)]];
+
+            if (!p2 || !p) {
+              console.warn("eek!", ni);
+              continue;
+            }
+
             let dist = p.vectorDistanceSqr(brushco);
 
             if (dist <= rsqr) {
@@ -1660,6 +1929,11 @@ export class PaintOp extends ToolOp {
 
           if (!visit2.has(ni) && (ns[ni + QFLAG] & LEAF) && !(ns[ni + QFLAG] & DEAD)) {
             let mode;// = etot ? COLLAPSE : SUBDIVIDE;
+
+            if (Math.random() > 0.97) {
+              etot = 1;
+            }
+
             if (etot) {
               mode = COLLAPSE;
             } else if (dtot) {
@@ -1667,6 +1941,7 @@ export class PaintOp extends ToolOp {
             } else {
               continue;
             }
+
             //let mode = dtot > etot ? SUBDIVIDE : COLLAPSE;
 
             if (mode === SUBDIVIDE && ns[ni+QDEPTH] >= maxDepth) {
@@ -1790,7 +2065,7 @@ export class PaintOp extends ToolOp {
 
       visit.add(key);
       if (mode === SUBDIVIDE && grid.points.length < 512*512) {// && (ns[ni + QFLAG] & LEAF)) {
-        grid.subdivide(ni, l.eid);
+        grid.subdivide(ni, l.eid, mesh);
       } else if (mode === COLLAPSE) {
         grid.collapse(ni);
       }
@@ -2106,6 +2381,8 @@ export class PaintOp extends ToolOp {
   modalEnd() {
     let ctx = this.modal_ctx;
 
+    this.grabEidMap = undefined;
+
     let ret = super.modalEnd(...arguments);
 
     if (ctx.toolmode) {
@@ -2342,6 +2619,7 @@ export class BVHToolMode extends ToolMode {
     this.drawBVH = false;
     this.drawNodeIds = false;
     this.drawWireframe = false;
+    this.drawQuadsOnly = false;
 
     this._last_bvh_key = "";
     this.view3d = manager !== undefined ? manager.view3d : undefined;
@@ -2549,6 +2827,11 @@ export class BVHToolMode extends ToolMode {
     strip.prop(`scene.tools.${name}.drawWireframe`);
     strip.prop(`scene.tools.${name}.drawNodeIds`);
 
+    strip = header.strip();
+    strip.useIcons(false);
+    strip.prop(`scene.tools.${name}.drawQuadsOnly`);
+
+
     let row = addHeaderRow();
     let path = `scene.tools.${name}.brush`
 
@@ -2626,10 +2909,35 @@ export class BVHToolMode extends ToolMode {
     st.float("sharedBrushRadius", "sharedBrushRadius", "Shared Radius").noUnits().range(0, 450);
     st.float("_brushSizeHelper", "brushRadius", "Radius").noUnits().range(0, 450).step(1.0);
 
-    st.bool("drawWireframe", "drawWireframe", "Draw Wireframe");
-    st.bool("drawBVH", "drawBVH", "Draw BVH");
-    st.bool("drawNodeIds", "drawNodeIds", "Draw BVH Vertex IDs");
-    st.bool("drawFlat", "drawFlat", "Draw Flat");
+    function onchange() {
+      let pbvh = this.dataref;
+      let mesh = pbvh.ctx.mesh;
+
+      if (mesh && mesh.bvh) {
+        let bvh = mesh.bvh;
+        for (let node of bvh.nodes) {
+          if (node.leaf) {
+            node.flag |= BVHFlags.UPDATE_DRAW;
+            bvh.updateNodes.add(node);
+          }
+        }
+
+        bvh.update();
+      }
+    }
+
+    st.bool("drawWireframe", "drawWireframe", "Draw Wireframe")
+      .on('change', onchange)
+      .icon(Icons.DRAW_SCULPT_WIREFRAME);
+    st.bool("drawQuadsOnly", "drawQuadsOnly", "Quad Wireframes")
+      .description("Draw multires grid wireframes with quads only")
+      .on('change', onchange)
+      .icon(Icons.DRAW_SCULPT_WIREFRAME);
+    st.bool("drawBVH", "drawBVH", "Draw BVH").on('change', onchange);
+    st.bool("drawNodeIds", "drawNodeIds", "Draw BVH Vertex IDs").on('change', onchange);
+    st.bool("drawFlat", "drawFlat", "Draw Flat")
+      .on('change', onchange)
+      .icon(Icons.DRAW_SCULPT_FLAT);
     st.enum("tool", "tool", SculptTools).icons(SculptIcons);
     st.float("dynTopoLength", "dynTopoLength", "Detail Size").range(1.0, 75.0).noUnits();
     st.int("dynTopoDepth", "dynTopoDepth", "DynTopo Depth", "Maximum quad tree grid subdivision level").range(0, 15).noUnits();
@@ -2778,6 +3086,22 @@ export class BVHToolMode extends ToolMode {
   update() {
     super.update();
 
+    //hackishly update triangle count
+    //in the UI
+    if (this.ctx.mesh && this.ctx.mesh.bvh && this.ctx.mesh.bvh.cd_grid >= 0) {
+      let mesh = this.ctx.mesh, bvh = mesh.bvh;
+      let tottri = 0;
+      let cd_grid = bvh.cd_grid;
+
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+
+        tottri += grid.totTris;
+      }
+
+      mesh.uiTriangleCount = tottri;
+    }
+
     if (!this.ctx || !this.ctx.object || !(this.ctx.object.data instanceof Mesh)) {
       return;
     }
@@ -2801,6 +3125,11 @@ export class BVHToolMode extends ToolMode {
   }
 
   onInactive() {
+    for (let l of this._brush_lines) {
+      l.remove();
+    }
+    this._brush_lines = [];
+
     if (!this.ctx || !this.ctx.object) {
       return;
     }
@@ -3081,6 +3410,7 @@ export class BVHToolMode extends ToolMode {
     let puv1 = [1, 0];
 
     let drawWireframe = this.drawWireframe;
+    let drawQuadsOnly = this.drawQuadsOnly;
 
     let tstart = util.time_ms();
 
@@ -3208,9 +3538,15 @@ export class BVHToolMode extends ToolMode {
 
           //*
           if (drawWireframe) {
-            sm.line(t1, t2);
-            sm.line(t2, t3);
-            sm.line(t3, t1);
+            if (drawQuadsOnly) {
+              //sm.line(t1, t2);
+              sm.line(t2, t3);
+              //sm.line(t3, t1);
+            } else {
+              sm.line(t1, t2);
+              sm.line(t2, t3);
+              sm.line(t3, t1);
+            }
           }
           //*/
 
@@ -3443,6 +3779,7 @@ BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
   drawBVH                : bool;
   drawFlat               : bool;
   drawWireframe          : bool;
+  drawQuadsOnly          : bool;
   drawNodeIds            : bool;
   dynTopoLength          : float;
   dynTopoDepth           : int;

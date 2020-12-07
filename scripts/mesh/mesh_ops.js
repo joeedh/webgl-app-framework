@@ -33,6 +33,7 @@ import {walkFaceLoop} from "./mesh_utils.js";
 import '../util/floathalf.js';
 import {DataRefProperty} from "../core/lib_api.js";
 import {CubicPatch, bernstein, bspline} from '../subsurf/subsurf_patch.js';
+import {KdTreeGrid} from './mesh_grids_kdtree.js';
 
 export class DeleteOp extends MeshOp {
   static tooldef() {
@@ -1084,6 +1085,7 @@ ToolOp.register(TestCollapseOp);
 let GridTypes = {
   SIMPLE   : 0,
   QUADTREE : 1,
+  KDTREE   : 2
 };
 
 export class EnsureGridsOp extends MeshOp {
@@ -1094,7 +1096,7 @@ export class EnsureGridsOp extends MeshOp {
       icon : Icons.ADD_GRIDS,
       inputs: ToolOp.inherit({
         depth: new IntProperty(2),
-        types: new EnumProperty(GridTypes.QUADTREE, GridTypes)
+        types: new EnumProperty(GridTypes.KDTREE, GridTypes)
       }),
       outputs: ToolOp.inherit()
     }
@@ -1113,8 +1115,10 @@ export class EnsureGridsOp extends MeshOp {
 
     if (type === GridTypes.SIMPLE) {
       cls = Grid;
-    } else {
+    } else if (type === GridTypes.QUADTREE) {
       cls = QuadTreeGrid;
+    } else {
+      cls = KdTreeGrid;
     }
 
     for (let mesh of this.getMeshes(ctx)) {
@@ -1265,6 +1269,10 @@ export class SmoothGridsOp extends MeshOp {
 
     for (let mesh of this.getMeshes(ctx)) {
       let cd_grid = mesh.loops.customData.getLayerIndex(QuadTreeGrid);
+
+      if (cd_grid < 0) {
+        cd_grid = mesh.loops.customData.getLayerIndex(KdTreeGrid);
+      }
 
       if (cd_grid < 0) {
         continue;
@@ -1881,7 +1889,7 @@ export class ResetGridsOp extends MeshOp {
       for (let l of mesh.loops) {
         let grid = l.customData[off];
 
-        grid.init(grid.dimen, l);
+        grid.init(grid.dimen, mesh, l);
       }
 
       //force bvh reload

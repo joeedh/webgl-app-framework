@@ -365,7 +365,7 @@ export class TransformOp extends View3DOp {
       this.center.load(this.calcCenter(ctx, this.inputs.selmask.getValue()));
     }
 
-    return;
+    //return;
 
     let axis_colors = ["red", "green", "blue"];
     let view3d = ctx.view3d;

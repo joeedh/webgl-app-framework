@@ -107,7 +107,6 @@ export const theme = {
 
   checkbox:  {
     BoxMargin         : 6,
-    BoxuMargin        : 2,
     CheckSide         : 'left',
     background        : 'blue',
     'background-color': 'orange',

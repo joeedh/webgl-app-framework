@@ -229,8 +229,6 @@ export class View3DOp extends ToolOp {
     let steps = Math.ceil((r*2.0*Math.PI) / quality);
     steps = Math.max(steps, 6);
 
-    console.log("STEPS", steps);
-
     let t = -Math.PI, dt = (2.0 * Math.PI) / (steps - 1);
     let p1 = new Vector2();
     let p2 = new Vector2();

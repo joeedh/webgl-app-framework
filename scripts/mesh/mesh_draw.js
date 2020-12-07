@@ -14,6 +14,20 @@ import {Grid, GridBase} from "./mesh_grids.js";
 export function genRenderMesh(gl, mesh, uniforms) {
   let recalc;
 
+  let times = [];
+  let start = util.time_ms();
+
+  function pushtime(tag) {
+    let s = util.time_ms() - start;
+    s = (s/1000.0).toFixed(3) + "s";
+    s = tag + ":" + s;
+
+    start = util.time_ms();
+    times.push(s);
+  }
+
+  pushtime("start");
+
   if (mesh.recalc & RecalcFlags.ELEMENTS) {
     recalc = MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE;
   } else {
@@ -89,6 +103,8 @@ export function genRenderMesh(gl, mesh, uniforms) {
     mesh._fancyMeshes = {};
   }
 
+  pushtime("start2");
+
   let axes = [-1];
   for (let i=0; i<3; i++) {
     if (mesh.symFlag & (1<<i)) {
@@ -126,6 +142,8 @@ export function genRenderMesh(gl, mesh, uniforms) {
       p.colors(color);
     }
 
+    pushtime("vertex");
+
     sm = getmesh("handles");
     sm.primflag = PrimitiveTypes.POINTS;
     for (let h of mesh.handles) {
@@ -139,6 +157,8 @@ export function genRenderMesh(gl, mesh, uniforms) {
       p.ids(h.eid);
       p.colors(color);
     }
+
+    pushtime("handles");
   }
 
   if (recalc & MeshTypes.EDGE) {
@@ -152,9 +172,17 @@ export function genRenderMesh(gl, mesh, uniforms) {
 
       meshes.edges = mesh.genRender_curves(gl, false, view3d, LayerTypes.LOC | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR);
       meshes.edges.primflag = PrimitiveTypes.LINES;
+
+      pushtime("curves");
     } else {
       sm = getmesh("edges");
-      sm.primflag = PrimitiveTypes.LINES|PrimitiveTypes.ADVANCED_LINES;
+      sm.primflag = PrimitiveTypes.LINES
+
+      let smoothline = mesh.edges.length < 100000;
+
+      if (smoothline) {
+        sm.primflag |= PrimitiveTypes.ADVANCED_LINES;
+      }
 
       for (let e of mesh.edges) {
         let update = e.v1.flag & MeshFlags.UPDATE;
@@ -176,7 +204,8 @@ export function genRenderMesh(gl, mesh, uniforms) {
           } while (l !== e.l && _i++ < 10);
         }
 
-        let line = sm.smoothline(e.eid, e.v1, e.v2);
+
+        let line = smoothline ? sm.smoothline(e.eid, e.v1, e.v2) : sm.line(e.eid, e.v1, e.v2);
 
         if (e.flag & MeshFlags.SELECT) {
           line.colors(selcolor, selcolor);
@@ -188,6 +217,8 @@ export function genRenderMesh(gl, mesh, uniforms) {
         line.uvs(lineuv1, lineuv2);
       }
     }
+
+    pushtime("edges");
   }
 
   let cd_grid = GridBase.meshGridOffset(mesh);
@@ -202,6 +233,8 @@ export function genRenderMesh(gl, mesh, uniforms) {
 
       grid.makeDrawTris(mesh, sm, l, cd_grid);
     }
+
+    pushtime("grids");
   } else if (!have_grids && (recalc & MeshTypes.FACE)) {
     let useLoopNormals = mesh.drawflag & MeshDrawFlags.USE_LOOP_NORMALS;
     useLoopNormals = useLoopNormals && mesh.loops.customData.hasLayer(NormalLayerElem);
@@ -268,6 +301,8 @@ export function genRenderMesh(gl, mesh, uniforms) {
         }
       }
     }
+
+    pushtime("faces");
   }
 
   for (let k in mesh._fancyMeshes) {
@@ -275,6 +310,14 @@ export function genRenderMesh(gl, mesh, uniforms) {
   }
 
   mesh.clearUpdateFlags(recalc);
+  pushtime("final");
+
+  let buf = 'genRenderMesh times:\n';
+  for (let time of times) {
+    buf += '  ' + time + '\n';
+  }
+
+  console.log(buf);
 }
 
 export function drawMeshElements(mesh, view3d, gl, selmask, uniforms, program, object, drawTransFaces = false) {

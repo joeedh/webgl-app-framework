@@ -28,6 +28,7 @@ export const SculptTools = {
   INFLATE: 6,
   SNAKE: 7,
   TOPOLOGY : 8,
+  GRAB : 9,
   PAINT: 128,
   PAINT_SMOOTH: 129,
 };

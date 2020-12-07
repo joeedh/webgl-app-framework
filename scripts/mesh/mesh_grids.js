@@ -35,6 +35,7 @@ export const QRecalcFlags = {
   LEAF_NODES: 2048,
   LEAVES: 1024 | 2048,
   PATCH_UVS : 4096, //not part of ALL
+  REGEN_IDS : 8192, //most definitely not part of ALL
   ALL: 1 | 2 | 4 | 8 | 64 | 128 | 256 | 512 | 1024 | 2048 //does not include mirror or check_customdata or normals
 };
 
@@ -255,7 +256,7 @@ export function getNeighborMap(dimen) {
 }
 
 export class GridVert extends Vector3 {
-  constructor(index = 0, loopEid = -1) {
+  constructor(index = 0, loopEid = -1, eid=-1) {
     super();
 
     this.no = new Vector3();
@@ -267,6 +268,10 @@ export class GridVert extends Vector3 {
     this.uv = new Vector2();  //not saved
 
     this.flag = 0;
+
+    //not a subclass of mesh_types.Element but we still use
+    //the main mesh's id generator
+    this.eid = eid;
 
     this.index = index;
     this.loopEid = loopEid;
@@ -450,7 +455,7 @@ export class GridVert extends Vector3 {
 GridVert.STRUCT = nstructjs.inherit(GridVert, Vector3, "mesh.GridVert") + `
   no         : array(short) | this._saveShortNormal();
   flag       : int;
-  index      : int;
+  eid        : int;
 }`;
 nstructjs.register(GridVert);
 
@@ -479,6 +484,8 @@ export class GridBase extends CustomDataElem {
 
     this.recalcFlag |= QRecalcFlags.ALL | QRecalcFlags.NORMALS;
 
+    this.totTris = 0;
+
     this.dimen = 0;
     this.customDataLayout = [];
     this.points = [];
@@ -486,6 +493,24 @@ export class GridBase extends CustomDataElem {
 
     this.needsSubSurf = false;
     this.subsurf = undefined; //subsurf patch
+  }
+
+  copyTo(b, copyPointEids=false) {
+    if (!copyPointEids) {
+      this.recalcFlag |= QRecalcFlags.REGEN_IDS;
+    }
+  }
+
+  regenIds(mesh, loop, cd_grid) {
+    this.recalcFlag &= ~QRecalcFlags.REGEN_IDS;
+
+    for (let p of this.points) {
+      p.eid = mesh.eidgen.next();
+    }
+  }
+
+  flagIdsRegen() {
+    this.recalcFlag |= QRecalcFlags.REGEN_IDS;
   }
 
   subdivideAll() {
@@ -650,6 +675,10 @@ export class GridBase extends CustomDataElem {
   update(mesh, loop, cd_grid) {
     this.constructor.updateSubSurf(mesh, cd_grid);
 
+    if (this.recalcFlag & QRecalcFlags.REGEN_IDS) {
+      this.regenIds(mesh, loop, cd_grid);
+    }
+
     if (GridBase.hasPatchUVLayer(mesh, cd_grid) && (this.recalcFlag & QRecalcFlags.PATCH_UVS)) {
       let cd_uv = GridBase.getPatchUVLayer(mesh, cd_grid);
       this.initPatchUVLayer(mesh, loop, cd_grid, cd_uv);
@@ -718,7 +747,7 @@ export class GridBase extends CustomDataElem {
   }
 
   /** loop is allowed to be undefined, if not is used to init point positions */
-  init(dimen, loop = undefined) {
+  init(dimen, mesh, loop = undefined) {
     throw new Error("implement me");
   }
 
@@ -791,17 +820,20 @@ export class GridBase extends CustomDataElem {
     this.copyTo(b);
   }
 
-  copyTo(b) {
+  copyTo(b, copy_eids=false) {
     let totpoint = this.points.length;
 
     if (b.points.length === 0) {
-      //init points
-      b.init(this.dimen);
+      for (let p of this.points) {
+        b.points.push(new GridVert());
+      }
     }
 
-    b.recalcFlag = this.recalcFlag;
-
     this.recalcPointIndices();
+
+    if (!copy_eids) {
+      b.recalcFlag = this.recalcFlag | QRecalcFlags.REGEN_IDS;
+    }
 
     //copy customdata layers
     if (b.customDatas.length !== this.customDatas.length) {
@@ -838,7 +870,15 @@ export class GridBase extends CustomDataElem {
     let ps1 = this.points, ps2 = b.points;
 
     for (let i = 0; i < totpoint; i++) {
-      ps2[i].load(ps1[i], false);
+      let p1 = ps1[i];
+      let p2 = ps2[i];
+
+      p2.load(p1, false);
+
+      if (copy_eids) {
+        p2.eid = p1.eid;
+        p2.loopEid = p1.loopEid;
+      }
     }
 
     let cd1 = this.customDatas, cd2 = b.customDatas;
@@ -903,7 +943,7 @@ export class GridBase extends CustomDataElem {
     for (let l of mesh.loops) {
       let grid = l.customData[cd_grid];
 
-      grid.init(dimen, l);
+      grid.init(dimen, mesh, l);
     }
 
     mesh.regenRender();
@@ -1027,6 +1067,11 @@ export class GridBase extends CustomDataElem {
     reader(this);
     super.loadSTRUCT(reader);
 
+    let ps = this.points;
+    for (let i=0; i<ps.length; i++) {
+      ps[i].index = i;
+    }
+
     for (let i = 0; i < this.cdmap.length; i++) {
       if (this.cdmap[i] === -1) {
         this.cdmap[i] = undefined;
@@ -1114,20 +1159,20 @@ export class Grid extends GridBase {
     return ret;
   }
 
-  init(dimen, loop) {
+  init(dimen, mesh, loop) {
     if (dimen !== this.dimen) {
       this.points.length = 0;
       this.dimen = dimen;
     }
     let totpoint = dimen * dimen;
 
-    if (this.points.length === 0) {
-      for (let i = 0; i < totpoint; i++) {
-        this.points.push(new GridVert(i, loop ? loop.eid : -1));
-      }
-    }
-
     if (loop !== undefined) {
+      if (this.points.length === 0) {
+        for (let i = 0; i < totpoint; i++) {
+          this.points.push(new GridVert(i, loop.eid, mesh.eidgen.next()));
+        }
+      }
+
       let quad = this.getQuad(loop);
 
       let a = new Vector3();
@@ -1185,7 +1230,7 @@ export class Grid extends GridBase {
         }
       }
 
-      this.init(this.dimen, loop);
+      this.init(this.dimen, mesh, loop);
 
       let layeri = 0;
 
@@ -1205,6 +1250,8 @@ export class Grid extends GridBase {
     this._ensure(mesh, loop, cd_grid);
 
     this.update(mesh, loop, cd_grid);
+
+    this.totTris = 0;
 
     let quad = this.getQuad(loop);
     let dimen = this.dimen;
@@ -1241,6 +1288,8 @@ export class Grid extends GridBase {
         } else {
           tri = smesh.tri(ps[i1], ps[i2], ps[i3], ps[i4]);
         }
+
+        this.totTris += 2;
 
         if (0 && this.subsurf) {
           this.subsurf.evaluate(u, v, undefined, undefined, n);
@@ -1431,6 +1480,8 @@ export class Grid extends GridBase {
   makeBVHTris(mesh, bvh, loop, cd_grid, trisout) {// randmap, bridgeEdges = false) {
     this._ensure(mesh, loop, cd_grid);
 
+    this.totTris = 0;
+
     this.update(mesh, loop, cd_grid);
 
     let dimen = this.dimen;
@@ -1568,6 +1619,8 @@ export class Grid extends GridBase {
       trisout.push(ps[i1]);
       trisout.push(ps[i3]);
       trisout.push(ps[i4]);
+
+      this.totTris += 2;
 
       //bvh.addTri(feid, id2, ps[i1], ps[i2], ps[i3]);
       //bvh.addTri(feid, id2 + 1, ps[i1], ps[i3], ps[i4]);

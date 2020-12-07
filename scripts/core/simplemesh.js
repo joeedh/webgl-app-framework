@@ -479,6 +479,81 @@ const glSizes = {
   INT           : 5124,
   UNSIGNED_INT  : 5125
 };
+const glRanges = {
+  [glSizes.FLOAT]: [-1e17, 1e17],
+  [glSizes.UNSIGNED_SHORT]: [0, 65535],
+  [glSizes.SHORT]: [-32767, 32767],
+  [glSizes.BYTE]: [-127, 127],
+  [glSizes.UNSIGNED_BYTE]: [0, 255],
+  [glSizes.UNSIGNED_INT]: [0, (1<<32)-1],
+  [glSizes.INT]: [-((1<<31)-1), (1<<31)-1],
+};
+window.glRanges = glRanges;
+
+let dmap = new WeakSet();
+function debugproxy(data, min=-1e17, max=1e17, isint) {
+  if (dmap.has(data)) {
+    data.debug.min = min;
+    data.isint = isint;
+    data.debug.max = max;
+    return data.debug.proxy;
+  }
+
+  dmap.add(data);
+
+  function validate(target, prop) {
+    if (typeof prop === "string") {
+      prop = parseFloat(prop);
+    }
+
+    let bad = prop !== ~~prop;
+    bad = bad || isNaN(prop) || !isFinite(prop);
+    bad = bad || prop < 0 || prop >= data.length;
+
+    if (bad) {
+      console.log(target, prop)
+      throw new Error("bad prop " + prop);
+    }
+
+    return prop;
+  }
+
+  let debug = {
+    min, max, isint
+  };
+
+  let proxy = new Proxy(data,{
+    get(target, prop, rc) {
+      prop = validate(target, prop);
+
+      return target[prop];
+    },
+
+    set(target, prop, val) {
+      prop = validate(target, prop);
+
+      let bad = typeof val !== "number";
+      bad = bad || val < debug.min || val > debug.max;
+      bad = bad || isNaN(val) || !isFinite(val);
+      bad = bad || (1 && val !== ~~val);
+
+      if (bad) {
+        console.log(val, target, prop, debug.min, debug.max);
+        throw new Error("bad value " + val);
+      }
+
+      target[prop] = val;
+
+      return true;
+    }
+  })
+
+  data.debug = debug;
+  data.debug.proxy = proxy;
+
+  return proxy;
+}
+window.debugproxy = debugproxy;
 
 export class GeoLayer extends Array {
   constructor(size, name, primflag, type, idx) { //idx is for different layers of same type, e.g. multiple uv layers
@@ -491,6 +566,8 @@ export class GeoLayer extends Array {
 
     this.type = type;
     this.data = [];
+    this._useTypedData = false; //make v8's optimizer happy by not assinging .data
+
     this.dataUsed = 0;
     this.data_f32 = [];
 
@@ -519,6 +596,10 @@ export class GeoLayer extends Array {
     this._dataUsed = v;
   }*/
 
+  _getWriteData() {
+    return this._useTypedData ? this.data_f32 : this.data;
+  }
+
   setGLSize(size) {
     this.glSize = size;
     this.glSizeMul = glTypeArrayMuls[size];
@@ -532,16 +613,18 @@ export class GeoLayer extends Array {
   }
 
   reset() {
+    this._useTypedData = false;
     this.f32Ready = false;
     this.dataUsed = 0;
   }
 
   extend(data) {
-    if (this.data.constructor !== Array && this.dataUsed >= this.data.length) {
-      if (DEBUG.simplemesh) {
+    if (this._useTypedData && this.dataUsed >= this.data_f32.length) {
+      //if (DEBUG.simplemesh) {
         console.warn("Resizing simplemesh attribute after conversion to a typed array");
-      }
+      //}
 
+      this._useTypedData = false;
       this.data = new Array(this.data_f32.length);
 
       let a = this.data;
@@ -564,10 +647,10 @@ export class GeoLayer extends Array {
     let size = this.size;
     let starti = this.dataUsed;
 
-    this.f32Ready = false;
+    this.f32Ready = this._useTypedData;
     this.dataUsed += size;
 
-    if (this.dataUsed > this.data.length) {
+    if (!this._useTypedData && this.dataUsed > this.data.length) {
       /*
         //v8's optimizer hates this:
         for (var i=0; i<tot; i++) {
@@ -576,7 +659,7 @@ export class GeoLayer extends Array {
 
       //according to ES spec this is valid:
 
-      this.data.length = this.dataUsed;
+      this.data.length = ~~(this.dataUsed*1.5);
     }
 
     if (data !== undefined) {
@@ -586,23 +669,52 @@ export class GeoLayer extends Array {
     return this;
   }
 
+  _copy2Typed(data1, data2, n, mul, start) {
+    for (let i=0; i<n; i++) {
+      data1[start++] = ~~(data2[i]*mul);
+    }
+  }
+
+  _copy2(data1, data2, n, mul, start) {
+    for (let i=0; i<n; i++) {
+      data1[start++] = ~~(data2[i]*mul);
+    }
+  }
+
   _copy_int(i, data, n = 1) {
     let tot = n*this.size;
     this.f32Ready = false;
 
     i *= this.size;
-    let thisdata = this.data;
-
+    let thisdata;
     let mul = this.glSizeMul;
 
-    let di = 0;
-    let end = i + tot;
+    //let di = 0;
+    //let end = i + tot;
 
+    if (this._useTypedData) {
+      thisdata = this.data_f32;
+    } else {
+      thisdata = this.data;
+    }
+
+    if (DEBUG.simplemesh) {
+      let range = glRanges[this.glSize];
+      thisdata = debugproxy(thisdata, range[0], range[1], this.glSize !== glSizes.FLOAT);
+    }
+
+    if (this._useTypedData) {
+      this._copy2Typed(thisdata, data, tot, mul, i);
+    } else {
+      this._copy2(thisdata, data, tot, mul, i);
+    }
+
+    /*
     while (i < end) {
       thisdata[i] = ~~(data[di]*mul);
       di++;
       i++;
-    }
+    }*/
 
     return this;
   }
@@ -618,12 +730,19 @@ export class GeoLayer extends Array {
     }
 
     let tot = n*this.size;
-    this.f32Ready = false;
+
+    this.f32Ready = this._useTypedData;
 
     i *= this.size;
-    let thisdata = this.data;
+    let thisdata;
 
-    if (i >= this.dataUsed || i + tot > this.data.length) {
+    if (this._useTypedData) {
+      thisdata = this.data_f32;
+    } else {
+      thisdata = this.data;
+    }
+
+    if (i >= this.dataUsed) {// || i + tot > this.data.length) {
       throw new Error("eek!");
       return;
     }
@@ -632,13 +751,11 @@ export class GeoLayer extends Array {
       throw new Error("NaN!");
     }
 
-    let mul = this.glSizeMul;
-
     let di = 0;
     let end = i + tot;
 
     while (i < end) {
-      thisdata[i] = data[di]*mul;
+      thisdata[i] = data[di];
       di++;
       i++;
     }
@@ -719,6 +836,8 @@ export class GeoLayerManager {
         layer2.data.length = layer.data.length;
         layer2.dataUsed = layer.dataUsed;
 
+        layer2._useTypedData = layer._useTypedData;
+
         layer2.glSize = layer.glSize;
         layer2.glSizeMul = layer.glSizeMul;
         layer2.id = layer.id;
@@ -730,8 +849,10 @@ export class GeoLayerManager {
         let b = layer2.data;
         let len = layer.dataUsed;
 
-        for (let i = 0; i < len; i++) {
-          b[i] = a[i];
+        if (layer._useTypedData) {
+          layer2.data_f32 = layer.data_f32.slice(0, layer.data_f32.length);
+        } else {
+          layer2.data = layer.data.slice(0, layer.data.length);
         }
 
         meta2.layers.push(layer2);
@@ -1085,12 +1206,16 @@ export class SimpleIsland {
         continue;
       }
 
+      if (layer._useTypedData && !layer.f32Ready) {
+        layer.f32Ready = true;
+      }
+
       if (!layer.f32Ready) {
         layer.f32Ready = true;
 
         let typedarray = glTypeArrays[layer.glSize];
 
-        if (!layer.data_f32 || layer.data_f32.length !== layer.dataUsed) {
+        if (!layer.data_f32 || layer.data_f32.length < layer.dataUsed) {
           if (DEBUG.simplemesh) {
             console.warn("new layer data", layer.data_f32, layer);
           }
@@ -1103,11 +1228,11 @@ export class SimpleIsland {
 
         let count = layer.dataUsed;
 
-        for (let i = 0; i < count; i++) {
-          b[i] = a[i];
-        }
+        layer.data.length = layer.dataUsed;
+        layer.data_f32.set(layer.data);
 
-        layer.data = layer.data_f32;
+        layer._useTypedData = true;
+        layer.data = [];
       }
     }
 
@@ -1715,7 +1840,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
       chunk.regen = 1;
       return chunk.tri(v1, v2, v3);
     } else {
-      tri_cos = tri_cos.data;
+      tri_cos = tri_cos._getWriteData();
 
       tri_cos[i++] = v1[0];
       tri_cos[i++] = v1[1];
@@ -1761,7 +1886,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     if (line_cos.dataUsed < i + 18) {
       chunk.smoothline(v1, v2);
     } else {
-      line_cos = line_cos.data;
+      line_cos = line_cos._getWriteData();
 
       line_cos[i++] = v1[0];
       line_cos[i++] = v1[1];
@@ -1807,7 +1932,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     if (line_cos.dataUsed < i + 6) {
       chunk.line(v1, v2);
     } else {
-      line_cos = line_cos.data;
+      line_cos = line_cos._getWriteData();
       line_cos[i++] = v1[0];
       line_cos[i++] = v1[1];
       line_cos[i++] = v1[2];
@@ -1837,7 +1962,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     if (point_cos.dataUsed < i + 3) {
       chunk.point(v1);
     } else {
-      point_cos = point_cos.data;
+      point_cos = point_cos._getWriteData();
       point_cos[i++] = v1[0];
       point_cos[i++] = v1[1];
       point_cos[i++] = v1[2];

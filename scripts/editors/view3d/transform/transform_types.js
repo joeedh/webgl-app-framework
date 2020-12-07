@@ -532,7 +532,6 @@ export class MeshTransType extends TransDataType {
     }
 
     for (let f of elemlist.faces) {
-      f.calcCent();
       f.calcNormal();
 
       mesh.flagElemUpdate(f);
