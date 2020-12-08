@@ -684,8 +684,13 @@ export class AppState {
     let buf = this.createFile({write_settings : false});
     buf = util.btoa(buf);
 
-    localStorage[cconst.APP_KEY_NAME] = buf;
-    console.log(`saved startup file; ${(buf.length/1024).toFixed(2)}kb`);
+    try {
+      localStorage[cconst.APP_KEY_NAME] = buf;
+      console.log(`saved startup file; ${(buf.length/1024).toFixed(2)}kb`);
+      this.ctx.message("Saved startup file");
+    } catch (error) {
+      this.ctx.error("Failed to save startup file");
+    }
   }
 
   /** this is executed before block re-linking has happened*/

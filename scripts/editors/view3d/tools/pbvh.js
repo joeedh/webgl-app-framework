@@ -68,7 +68,7 @@ textures inside of them, but not anything those textures references (e.g. images
 WARNING: this means there could conceivably be reference leaks here with the undo stack
 */
 
-let BRUSH_PROP_TYPE;
+export let BRUSH_PROP_TYPE;
 export class BrushProperty extends ToolProperty {
   constructor(value) {
     super(BRUSH_PROP_TYPE);
@@ -117,6 +117,109 @@ BrushProperty.STRUCT = nstructjs.inherit(BrushProperty, ToolProperty) + `
 nstructjs.register(BrushProperty);
 BRUSH_PROP_TYPE = ToolProperty.register(BrushProperty);
 
+export class PaintSample {
+  constructor() {
+    this.p = new Vector4();
+    this.dp = new Vector4();
+    this.viewPlane = new Vector3();
+
+    this.vec = new Vector3();
+    this.dvec = new Vector3();
+
+    this.strength = 0.0;
+    this.radius = 0.0;
+    this.autosmooth = 0.0;
+    this.esize = 0.0;
+    this.planeoff = 0.0;
+  }
+
+  copyTo(b) {
+    b.viewPlane.load(this.viewPlane);
+    b.dp.load(this.dp);
+    b.p.load(this.p);
+    b.vec.load(this.vec);
+    b.dvec.load(this.dvec);
+    b.strength =  this.strength;
+    b.radius = this.radius;
+    b.autosmooth = this.autosmooth;
+    b.esize = this.esize;
+    b.planeoff = this.planeoff;
+  }
+
+  copy()  {
+    let ret = new PaintSample();
+
+    this.copyTo(ret);
+
+    return ret;
+  }
+}
+PaintSample.STRUCT = `
+PaintSample {
+  p            : vec4;
+  dp           : vec4;
+  vec          : vec3;
+  dvec         : vec3;
+  planeoff     : float;
+  strength     : float;
+  radius       : float;
+  autosmooth   : float;
+  viewPlane    : vec3;
+}`;
+nstructjs.register(PaintSample);
+
+export let PAINT_SAMPLE_TYPE;
+export class PaintSampleProperty extends ToolProperty {
+  constructor() {
+    super(PAINT_SAMPLE_TYPE);
+    this.data = [];
+  }
+
+  push(sample) {
+    this.data.push(sample);
+    return this;
+  }
+
+  getValue() {
+    return this.data;
+  }
+
+  setValue(b) {
+    super.setValue(b);
+
+    this.data.length = 0;
+    for (let item of b) {
+      this.data.push(item);
+    }
+
+    return this;
+  }
+
+  copy() {
+    let ret = new PaintSampleProperty();
+
+    for (let item of this) {
+      ret.push(item.copy());
+    }
+
+    return ret;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+  }
+
+  [Symbol.iterator]() {
+    return this.data[Symbol.iterator]();
+  }
+}
+PaintSampleProperty.STRUCT = nstructjs.inherit(PaintSampleProperty, ToolProperty) + `
+  data : array(PaintSample);
+}`;
+
+nstructjs.register(PaintSampleProperty);
+PAINT_SAMPLE_TYPE = ToolProperty.register(PaintSampleProperty);
 
 let cfrets = util.cachering.fromConstructor(Vector4, 128);
 export let colorfilterfuncs = [0, 0];
@@ -226,14 +329,13 @@ export class PaintOp extends ToolOp {
       inputs: {
         brush : new BrushProperty(),
 
+        samples : new PaintSampleProperty(),
+
         grabData : new FloatArrayProperty(),
         grabCo : new Vec3Property(),
 
-        points: new ListProperty(Vec4Property), //fourth component is radius
-        vecs: new ListProperty(Vec4Property), //displacements, fourth component
-        extra: new ListProperty(Vec4Property), //stores strength
-
         tool: new EnumProperty("CLAY", SculptTools),
+
         strength: new FloatProperty(1.0),
         radius: new FloatProperty(55.0),
         planeoff: new FloatProperty(0.0),
@@ -579,9 +681,9 @@ export class PaintOp extends ToolOp {
     strengthMul = Math.abs(strengthMul !== 0.0 ? 1.0 / strengthMul : strengthMul);
     */
 
-    let radius = this.inputs.radius.getValue();
-    let strength = this.inputs.strength.getValue();// * strengthMul;
-    let planeoff = this.inputs.planeoff.getValue();
+    let radius = this.inputs.brush.getValue().radius;
+    let strength = this.inputs.brush.getValue().strength; //*strengthMul
+    let planeoff = this.inputs.brush.getValue().planeoff;
     let dynmask = this.inputs.dynamicsMask.getValue();
 
     if (dynmask & DynamicsMask.STRENGTH) {
@@ -739,7 +841,7 @@ export class PaintOp extends ToolOp {
       return;
     }
 
-    let spacing = this.inputs.spacing.getValue();
+    let spacing = this.inputs.brush.getValue().spacing;
     let steps = this.last_p.vectorDistance(isect.p) / (radius * spacing);
 
     if (mode === SculptTools.GRAB) {
@@ -814,34 +916,46 @@ export class PaintOp extends ToolOp {
 
       let radius2 = radius + (this.last_radius - radius) * s;
 
-      p3.load(p2);
-      p3[3] = radius2;
-
-      let vec4 = new Vector4(vec2);
-      vec4[3] = this.inputs.planeoff.getValue();
-
-      let extra = new Vector4();
-      extra[0] = strength;
-
       if (invert) {
-        extra[0] = -extra[0];
+        if (isplane) {
+          //planeoff = -planeoff;
+        } else {
+          //strength = -strength;
+        }
       }
 
-      let autosmooth = this.inputs.autosmooth.getValue();
+      let autosmooth = this.inputs.brush.getValue().autosmooth;
 
       if (dynmask & DynamicsMask.AUTOSMOOTH) {
         autosmooth *= this.inputs.autosmoothCurve.evaluate(pressure);
       }
 
-      extra[1] = autosmooth;
-      extra[2] = esize;
-      extra[3] = w;
+      let ps = new PaintSample();
 
-      this.inputs.points.push(p3);
-      this.inputs.vecs.push(vec4);
-      this.inputs.extra.push(extra);
+      ps.invert = invert;
+      ps.p.load(p2);
+      ps.p[3] = w;
+      ps.viewPlane.load(view).normalize();
 
-      this.execDot(ctx, p3, vec4, extra);
+      ps.autosmooth = autosmooth;
+      ps.esize = esize;
+      ps.vec.load(vec2);
+      ps.planeoff = planeoff;
+      ps.radius = radius2;
+      ps.strength = strength;
+
+      let lastps;
+      let data = this.inputs.samples.data;
+
+      if (data.length > 0) {
+        lastps = data[data.length-1];
+
+        ps.dvec.load(ps.vec).sub(lastps.vec);
+        ps.dp.load(ps.p).sub(lastps.p);
+      }
+
+      this.inputs.samples.push(ps);
+      this.execDot(ctx, ps, lastps);
     }
 
     this.last_mpos.load(mpos);
@@ -948,20 +1062,24 @@ export class PaintOp extends ToolOp {
 
   exec(ctx) {
     let i = 0;
-    let lastp;
+    let lastps;
 
+    for (let ps of this.inputs.samples) {
+      this.execDot(ctx, ps, lastps);
+    }
+
+    /*
     for (let p of this.inputs.points) {
       this.execDot(ctx, p, this.inputs.vecs.getListItem(i), this.inputs.extra.getListItem(i), lastp);
       lastp = p;
       i++;
-    }
+    }*/
 
     window.redraw_viewport();
   }
 
-  execDot(ctx, p3, vec, extra, lastp3 = p3) {
+  execDot(ctx, ps, lastps) {//ctx, p3, vec, extra, lastp3 = p3) {
     let falloff = this.inputs.falloff.getValue();
-
     let brush = this.inputs.brush.getValue();
     let haveTex = brush.texUser.texture !== undefined;
     let texScale = 1.0;
@@ -1042,21 +1160,21 @@ export class PaintOp extends ToolOp {
     //*/
 
     let mode = this.inputs.brush.getValue().tool;
-    let radius = p3[3];
-    let strength = extra[0];
+    let radius = ps.radius;
+    let strength = ps.strength;
 
     let haveGrids = bvh.cd_grid >= 0;
     let cd_grid = bvh.cd_grid;
 
     let isPaintMode = mode === PAINT || mode === PAINT_SMOOTH;
 
-    let planeoff = vec[3];
-    vec[3] = 0.0;
+    let planeoff = ps.planeoff;
 
     let isplane = false;
 
-    let esize = extra[2];
-    let w = extra[3];
+    let esize = ps.esize;
+
+    let w = ps.p[3];
 
     if (haveTex) {
       texScale *= 10.0/w;
@@ -1083,14 +1201,24 @@ export class PaintOp extends ToolOp {
       isplane = true;
       planeoff += 3.0;
       strength *= 2.0;
-    } else if (mode === GRAB || mode === SNAKE) {
+    } else if (mode === GRAB) {
+      haveOrigData = true;
+      strength *= 5.0;
+      isplane = false;
+    } else if (mode === SNAKE) {
       haveOrigData = true;
       isplane = false;
     }
 
-    if (isplane && strength < 0) {
-      strength = Math.abs(strength);
-      planeoff = -planeoff;
+    let vec = new Vector3(ps.vec);
+
+    if (ps.invert) {//isplane && strength < 0) {
+      //strength = Math.abs(strength);
+      if (isplane) {
+        planeoff = -planeoff;
+      } else if (mode !== SMOOTH && mode !== PAINT_SMOOTH) {
+        strength *= -1;
+      }
     }
 
     let updateflag = BVHFlags.UPDATE_DRAW;
@@ -1106,7 +1234,6 @@ export class PaintOp extends ToolOp {
 
     let sym = mesh.symFlag;
 
-    vec = new Vector3(vec);
     if (mode !== SNAKE) {
       //let w2 = Math.pow(Math.abs(w), 0.5)*Math.sign(w);
       let w2 = Math.pow(Math.abs(radius), 0.5)*Math.sign(radius);
@@ -1116,12 +1243,11 @@ export class PaintOp extends ToolOp {
 
     let vlen = vec.vectorLength();
     let nvec = new Vector3(vec).normalize();
-    let planep = new Vector3(p3);
+    let planep = new Vector3(ps.p);
 
     planep.addFac(vec, planeoff);
 
-
-    p3 = new Vector3(p3);
+    let p3 = new Vector3(ps.p);
 
     //query bvh tree
     let vs;
@@ -1157,6 +1283,63 @@ export class PaintOp extends ToolOp {
       vs = bvh.closestVerts(p3, radius);
     }
 
+    if (mode === SNAKE) {
+      p3.zero();
+      let tot = 0.0;
+
+      for (let v of vs) {
+        p3.add(v);
+        tot++;
+      }
+
+      if (tot) {
+        p3.mulScalar(1.0/tot);
+      }
+    }
+
+    let rmat;
+
+    if (mode === SNAKE && lastps) {
+      rmat = new Matrix4();
+
+      let t1 = new Vector3(ps.dp).normalize();
+      let t2 = new Vector3(lastps.dp).normalize();
+      let t3 = new Vector3(t2).cross(t1);
+      let c = lastps.p;
+
+      if (1||t1.dot(t2) > 0.05) {
+        let quat = new Quat();
+
+        t1.cross(ps.viewPlane).normalize();
+        t2.cross(ps.viewPlane).normalize();
+
+        let th = t1.dot(t2)*0.99999;
+        th = Math.acos(th);
+
+        if (t3.dot(ps.viewPlane) < 0) {
+          th = -th;
+        }
+
+        //th *= 0.75;
+        //th *= 1.25;
+        th *= 0.98;
+
+        quat.axisAngleToQuat(ps.viewPlane, th);
+
+        let tmat = new Matrix4();
+        tmat.makeIdentity().translate(c[0], c[1], c[2]);
+
+        quat.toMatrix(rmat);
+        rmat.preMultiply(tmat);
+
+        tmat.makeIdentity().translate(-c[0], -c[1], -c[2]);
+        rmat.multiply(tmat);
+      }
+    } else if (mode === SNAKE) {
+      rmat = new Matrix4();
+    }
+
+
     let vsw;
     let _tmp = new Vector3();
 
@@ -1182,7 +1365,6 @@ export class PaintOp extends ToolOp {
     function doUndo(v) {
       if (!haveGrids && !vmap.has(v.eid)) {
         if (haveOrigData) {
-          console.log(v.customData, cd_orig);
           v.customData[cd_orig].value.load(v);
         }
 
@@ -1192,11 +1374,6 @@ export class PaintOp extends ToolOp {
           vmap.set(v.eid, new Vector3(v));
         }
       } else if (haveQuadTreeGrids) {
-        if (haveOrigData && !origset.has(v)) {
-          v.customData[cd_orig].value.load(v);
-          origset.add(v);
-        }
-
         let node = v.customData[cd_node];
         if (node.node) {
           node.node.flag |= BVHFlags.UPDATE_NORMALS|BVHFlags.UPDATE_DRAW;
@@ -1209,6 +1386,12 @@ export class PaintOp extends ToolOp {
             let grid = l.customData[cd_grid];
 
             if (!gmap.has(l)) {
+              if (haveOrigData) {
+                for (let p of grid.points) {
+                  p.customData[cd_orig].value.load(p);
+                }
+              }
+
               grid.recalcFlag |= QRecalcFlags.MIRROR;
 
               let gridcpy = new grid.constructor();
@@ -1344,7 +1527,7 @@ export class PaintOp extends ToolOp {
 
         if (w !== 0.0) {
           _tmp.mulScalar(1.0 / w);
-          v.interp(_tmp, vsw * fac);
+          v.interp(_tmp, fac);
         }
 
         /*
@@ -1356,20 +1539,21 @@ export class PaintOp extends ToolOp {
       };
     } else {
       colorfilter = colorfilterfuncs[0];
+      let _tmp2 = new Vector3();
 
       vsmooth = (v, fac) => {
-        _tmp.load(v);
+        _tmp2.load(v);
         let w = 1.0;
 
         for (let e of v.edges) {
           let v2 = e.otherVertex(v);
 
-          _tmp.add(v2);
+          _tmp2.add(v2);
           w++;
         }
 
-        _tmp.mulScalar(1.0 / w);
-        v.interp(_tmp, vsw * fac);
+        _tmp2.mulScalar(1.0 / w);
+        v.interp(_tmp2, fac);
       }
     }
 
@@ -1385,7 +1569,7 @@ export class PaintOp extends ToolOp {
 
     let color;
     if (have_color) {
-      color = this.inputs.color.getValue();
+      color = new Vector4(this.inputs.brush.getValue().color);
     }
 
     let wi = 0;
@@ -1395,14 +1579,12 @@ export class PaintOp extends ToolOp {
     switch (mode) {
       case SMOOTH:
       case PAINT_SMOOTH:
-        vsw = Math.abs(strength) + extra[1];
+        vsw = Math.abs(strength) + ps.autosmooth;
         break;
       default:
-        vsw = extra[1]; //autosmooth
+        vsw = ps.autosmooth; //autosmooth
         break;
     }
-
-    //vsw += extra[1];
 
     if (isPaintMode && !have_color) {
       return;
@@ -1463,10 +1645,13 @@ export class PaintOp extends ToolOp {
       } else if (mode === INFLATE) {
         v.addFac(v.no, f * strength * 0.025);
       } else if (mode === SNAKE) {
-        v.load(v.customData[cd_orig].value);
+        v.interp(v.customData[cd_orig].value, 0.1*f);
         v.addFac(vec, f * strength);
+
+        _tmp.load(v).multVecMatrix(rmat);
+        v.interp(_tmp, f*strength);
       } else if (mode === GRAB) {
-        v.load(v.customData[cd_orig].value);
+        //v.load(v.customData[cd_orig].value);
         v.addFac(vec, f);
       }
 
@@ -1480,8 +1665,49 @@ export class PaintOp extends ToolOp {
       v.flag |= MeshFlags.UPDATE;
     }
 
+    console.log("AUTOSMOOTH", vsw, ps.autosmooth);
+
     //let es = new Set();
     wi = 0;
+
+    let smoothvs = vs;
+
+    if (mode === SNAKE) {
+      smoothvs = new Set(vs);
+
+      if (haveGrids) {
+        /*
+        for (let v of vs) {
+          for (let v2 of v.neighbors) {
+            smoothvs.add(v2);
+          }
+        }
+        //*/
+      } else {
+        let vs2 = vs;
+
+        for (let i=0; i<1; i++) {
+          let boundary = new Set();
+
+          for (let v of vs2) {
+            for (let e of v.edges) {
+              let v2 = e.otherVertex(v);
+
+              if (!smoothvs.has(v2)) {
+                boundary.add(v2);
+                doUndo(v2);
+              }
+
+              smoothvs.add(v2);
+            }
+          }
+
+          vs2 = boundary;
+        }
+
+        console.log("smoothvs", smoothvs.size, vs.size);
+      }
+    }
 
     for (let v of vs) {
       let node = v.customData[cd_node].node;
@@ -1499,7 +1725,7 @@ export class PaintOp extends ToolOp {
         if (isPaintMode) {
           v.customData[cd_color].color.load(colorfilter(v, cd_color, vsw * ws[wi++]));
         } else {
-          vsmooth(v, ws[wi++]);
+          vsmooth(v, vsw*ws[wi++]);
         }
       }
 
@@ -1732,7 +1958,7 @@ export class PaintOp extends ToolOp {
     let cd_node = bvh.cd_node;
 
     const esize1 = esize*1.5;
-    const esize2 = esize*0.75;
+    const esize2 = esize;
 
     const esqr1 = esize1 * esize1;
     const esqr2 = esize2 * esize2;
@@ -1801,7 +2027,7 @@ export class PaintOp extends ToolOp {
 
     //vs.sort((a, b) => a.vectorDistanceSqr(brushco) - b.vectorDistanceSqr(brushco));
 
-    let limit = 155;
+    let limit = 555;
 
     for (let _i=0; _i<vs.length; _i++) {
       let ri = ~~(Math.random()*vs.length*0.99999);
@@ -1928,8 +2154,17 @@ export class PaintOp extends ToolOp {
           }
 
           if (!visit2.has(ni) && (ns[ni + QFLAG] & LEAF) && !(ns[ni + QFLAG] & DEAD)) {
-            let mode;// = etot ? COLLAPSE : SUBDIVIDE;
+            let mode;
 
+            mode = etot < dtot ? SUBDIVIDE : COLLAPSE;
+
+            if (Math.random() > 0.9) {
+              mode = COLLAPSE;
+            } else if (!etot && !dtot) {
+              continue;
+            }
+
+            /*
             if (Math.random() > 0.97) {
               etot = 1;
             }
@@ -1941,6 +2176,7 @@ export class PaintOp extends ToolOp {
             } else {
               continue;
             }
+            //*/
 
             //let mode = dtot > etot ? SUBDIVIDE : COLLAPSE;
 
@@ -2447,22 +2683,23 @@ export class SetBrushRadius extends ToolOp {
     mpos[0] = e.x;
     mpos[1] = e.y;
 
-    if (this.first) {
-      this.first = false;
-      this.cent_mpos.load(mpos).subScalar(this.inputs.radius.getValue() / devicePixelRatio / Math.sqrt(2.0));
-
-      this.start_mpos.load(mpos);
-      this.last_mpos.load(mpos);
-      return;
-    }
-
-
     let ctx = this.modal_ctx;
 
     let brush = ctx.datalib.get(this.inputs.brush.getValue());
     if (!brush) {
       return;
     }
+
+
+    if (this.first) {
+      this.first = false;
+      this.cent_mpos.load(mpos).subScalar(brush.radius / devicePixelRatio / Math.sqrt(2.0));
+
+      this.start_mpos.load(mpos);
+      this.last_mpos.load(mpos);
+      return;
+    }
+
 
     let l1 = mpos.vectorDistance(this.cent_mpos);
     let l2 = this.last_mpos.vectorDistance(this.cent_mpos);
@@ -2723,8 +2960,10 @@ export class BVHToolMode extends ToolMode {
     let col = container.col();
     let strip, panel;
 
+    let settings = col.panel("Brush Settings");
+
     function doChannel(name) {
-      let col2 = col.col().strip();
+      let col2 = settings.col().strip();
 
       //col2.style["padding"] = "7px";
       //col2.style["margin"] = "2px";
@@ -2998,16 +3237,20 @@ export class BVHToolMode extends ToolMode {
 
       let radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius;
 
+      brush = brush.copy();
+
+      if (e.ctrlKey) {
+        let t = brush.color;
+        brush.color = brush.bgcolor;
+        brush.bgcolor = t;
+      }
+      brush.radius = radius;
+
       this.ctx.api.execTool(this.ctx, "bvh.paint()", {
         brush : brush,
 
         strength: brush.strength,
         tool: e.shiftKey ? smoothtool : brush.tool,
-        radius: radius,
-        autosmooth: brush.autosmooth,
-        planeoff: brush.planeoff,
-        spacing: brush.spacing,
-        color: e.ctrlKey ? brush.bgcolor : brush.color,
 
         dynamicsMask: dynmask,
         radiusCurve: brush.radius.curve,

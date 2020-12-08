@@ -79,7 +79,6 @@ mesh.Element {
 `;
 nstructjs.manager.add_class(Element);
 
-
 let vertiters_f;
 
 export class VertFaceIter {
@@ -213,15 +212,7 @@ for (let i=0; i<vertiters_f.length; i++) {
 }
 vertiters_f.cur = 0;
 
-/*
-class VertFaceIter {
-}
-let _vficache = new Array(256);
-for (let i=0; i<_vficache.length; i++) {
-
-}//*/
-
-//has Vector3 mixin
+//has Element mixin
 export class Vertex extends Vector3 {
   constructor(co) {
     super();

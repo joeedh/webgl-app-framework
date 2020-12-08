@@ -1129,7 +1129,7 @@ export class EnsureGridsOp extends MeshOp {
 
         cls.initMesh(mesh, dimen, -1)
         //QuadTreeGrid.initMesh(mesh, dimen, -1);
-      } else if ((off = mesh.loops.customData.getLayerIndex(cls)) >= 0){
+      } else {
         for (let l of mesh.loops) {
           let grid = l.customData[off];
           grid.update(mesh, l, off);

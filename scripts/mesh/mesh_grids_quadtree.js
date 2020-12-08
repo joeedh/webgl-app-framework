@@ -180,6 +180,10 @@ let _btm_temp6 = new Vector3();
 let _btm_temp7 = new Vector3();
 let _btm_temp8 = new Vector3();
 let _btm_temp9 = new Vector3();
+let _btm_temp10 = new Vector3();
+let _btm_temp11 = new Vector3();
+let _btm_temp12 = new Vector3();
+let _btm_temp13 = new Vector3();
 let imattemp = new Matrix4();
 let imattemp2 = new Matrix4();
 
@@ -1613,13 +1617,32 @@ export class QuadTreeGrid extends GridBase {
       quadco.load(a).interp(b, u);
     }
 
-    a.load(p1.sco).interp(p2.sco, v);
-    b.load(p4.sco).interp(p3.sco, v);
-    quadco.load(a).interp(b, u);
+    if (1) {
+      let b1 = _btm_temp10.load(p1);
+      let b2 = _btm_temp11.load(p2);
+      let b3 = _btm_temp12.load(p3);
+      let b4 = _btm_temp13.load(p4);
 
+      let f = 1.5;
+      b1.interp(p1.sco, f);
+      b2.interp(p2.sco, f);
+      b3.interp(p3.sco, f);
+      b4.interp(p4.sco, f);
 
-    vx.load(p4.sco).sub(p1.sco);
-    vy.load(p2.sco).sub(p1.sco);
+      a.load(b1).interp(b2, v);
+      b.load(b4).interp(b3, v);
+      quadco.load(a).interp(b, u);
+
+      vx.load(b4).sub(b1);
+      vy.load(b2).sub(b1);
+    } else {
+      a.load(p1.sco).interp(p2.sco, v);
+      b.load(p4.sco).interp(p3.sco, v);
+      quadco.load(a).interp(b, u);
+
+      vx.load(p4.sco).sub(p1.sco);
+      vy.load(p2.sco).sub(p1.sco);
+    }
 
     let lx = vx.vectorLength();
     let ly = vy.vectorLength();
