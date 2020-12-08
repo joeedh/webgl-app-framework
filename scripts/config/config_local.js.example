@@ -1,0 +1,26 @@
+/*
+example config_local.js.
+
+note that this is loaded asynchronously; anything that must be
+set immediately has to be changed in config.js itself.
+*/
+
+let exports = {
+  pathuxConfig: {
+    //autoSizeUpdate: true,
+    //showPathsInToolTips: true,
+    //colorSchemeType: "light",
+
+    //menu_close_time: 500,
+    //doubleClickTime: 500,
+
+    /*timeout for press-and-hold (touch) version of
+      double clicking
+     */
+    //doubleClickHoldTime: 750
+  },
+
+  //cacheSelectBufs: true
+}
+
+export default exports;
