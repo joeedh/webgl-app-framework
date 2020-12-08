@@ -40,6 +40,7 @@ export class Light extends SceneObjectData {
   }}
 
   static nodedef() {return {
+    name   : "light",
     flag   : NodeFlags.SAVE_PROXY,
     inputs : Node.inherit({
       color  : new Vec3Socket("color", undefined, [1, 1, 1]),

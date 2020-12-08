@@ -28,9 +28,9 @@ import {keymap} from '../../../path.ux/scripts/util/simple_events.js';
 import {ListProperty, StringSetProperty} from "../../../path.ux/scripts/toolsys/toolprop.js";
 
 export const ConstraintSpaces = {
-  WORLD      : 0,
-  LOCAL      : 1,
-  NORMAL     : 2
+  WORLD : 0,
+  LOCAL : 1,
+  NORMAL: 2,
   //2-16 are reserved for further global types
 
   //children will add types here
@@ -38,16 +38,22 @@ export const ConstraintSpaces = {
 
 //proportional edit mode, "magnet tool"
 export const PropModes = {
-  NONE   : 0,
-  SMOOTH : 1,
-  SHARP  : 2
+  SMOOTH     : 0,
+  SHARP      : 1,
+  EXTRA_SHARP: 2,
+  SPHERE     : 3,
+  LINEAR     : 4,
+  CONSTANT   : 5,
 };
 
 export class TransDataElem {
   constructor(typecls) {
     this.data1 = undefined; //set by client code
     this.data2 = undefined; //set by client code
+    this.mesh = undefined;
+
     this.index = -1;
+    this.symFlag = 0; //see MeshSymFlags
     this.w = 1.0;
     this.type = typecls;
   }
@@ -80,18 +86,20 @@ export let TransDataTypes = [];
 export let TransDataMap = {};
 
 export class TransDataType {
-  static transformDefine() {return {
-    name   : "",
-    uiname : "",
-    flag   : 0,
-    icon   : -1
-  }}
+  static transformDefine() {
+    return {
+      name  : "",
+      uiname: "",
+      flag  : 0,
+      icon  : -1
+    }
+  }
 
   static isValid(ctx, toolop) {
     return true;
   }
 
-  static buildTypesProp(default_value=undefined) {
+  static buildTypesProp(default_value = undefined) {
     let def = new util.set();
 
     for (let cls of TransDataTypes) {
@@ -117,26 +125,32 @@ export class TransDataType {
   static calcPropCurve(dis, propmode, propradius, toolop) {
     dis /= propradius;
     dis = 1.0 - Math.min(Math.max(dis, 0.0), 1.0);
-    
-    if (propmode == PropTypes.SMOOTH) {
+
+    if (propmode === PropModes.SMOOTH) {
       dis = dis*dis*(3.0 - 2.0*dis);
-    } else {
+    } else if (propmode === PropModes.SPHERE) {
+      dis = 1.0 - (1.0 - dis)*(1.0 - dis);
+    } else if (propmode === PropModes.SHARP) {
       dis *= dis;
+    } else if (propmode === PropModes.EXTRA_SHARP) {
+      dis *= dis*dis*dis;
+    } else if (propmode === PropModes.CONSTANT) {
+      dis = 1.0;
     }
-    
+
     return dis;
   }
-  
+
   static genData(ctx, selectmode, propmode, propradius, toolop) {
   }
-  
+
   static applyTransform(ctx, elem, do_prop, matrix, toolop) {
   }
-  
+
   static undoPre(ctx, elemlist) {
     //returns undo data
   }
-  
+
   static undo(ctx, undodata) {
   }
 
@@ -148,12 +162,12 @@ export class TransDataType {
    * @param space_matrix_out   : Matrix4, optional, matrix to put constraint space in
    */
   static getCenter(ctx, list, selmask, spacemode, space_matrix_out, toolop) {
-    
+
   }
-  
+
   static calcAABB(ctx, toolop) {
   }
-  
+
   static update(ctx, elemlist) {
   }
 }

@@ -20,7 +20,7 @@ import '../editors/resbrowser/resbrowser_types.js';
 
 import '../editors/view3d/tools/tools.js';
 import cconst2 from "../path.ux/scripts/config/const.js";
-import {Material} from './material.js';
+import {Material, makeDefaultMaterial} from './material.js';
 import {App, ScreenBlock} from '../editors/editor_base.js';
 import {Library, DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import {IDGen} from '../util/util.js';
@@ -95,17 +95,16 @@ export class BasicFileOp extends ToolOp {
     lib.add(screenblock);
     lib.setActive(screenblock);
 
-    let mat = new Material();
-    mat.name = "Default";
-    mat.lib_flag |= BlockFlags.HIDE;
-
-    lib.add(mat);
-
     //*
     let mesh = new Mesh();
     lib.add(mesh);
 
     makeCube(mesh);
+
+    let mat = makeDefaultMaterial();
+    lib.add(mat);
+    mesh.materials.push(mat);
+    mat.lib_addUser(mesh);
 
     let sob = new SceneObject();
     lib.add(sob);
@@ -116,6 +115,15 @@ export class BasicFileOp extends ToolOp {
     scene.add(sob);
     scene.objects.setSelect(sob, true);
     scene.objects.setActive(sob);
+
+    let light = new Light();
+    lib.add(light);
+
+    let sob2 = new SceneObject(light);
+    lib.add(sob2);
+    sob2.location[2] = 7.0;
+
+    scene.add(sob2);
 
     sob.graphUpdate();
     mesh.graphUpdate();
@@ -144,6 +152,8 @@ import {genDefaultScreen} from '../editors/screengen.js';
 import {Collection} from "../scene/collection.js";
 import {PropsEditor} from "../editors/properties/PropsEditor.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
+import {Light} from "../light/light.js";
+import {GridBase} from '../mesh/mesh_grids.js';
 
 export function genDefaultFile(appstate, dont_load_startup=0) {
   if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
@@ -152,20 +162,19 @@ export function genDefaultFile(appstate, dont_load_startup=0) {
     try {
       buf = util.atob(buf);
       appstate.loadFile(buf.buffer);
+      return;
     } catch (error) {
       util.print_stack(error);
       console.warn("Failed to load startup file");
     }
-
-    return;
   }
 
   let tool = new BasicFileOp();
 
-  genDefaultScreen(appstate);
-
   appstate.datalib = new Library();
   appstate.toolstack.execTool(appstate.ctx, tool);
+
+  genDefaultScreen(appstate);
 }
 
 window._genDefaultFile = genDefaultFile; //this global is for debugging purposes only
@@ -487,17 +496,17 @@ export class AppState {
       data = new DataView((new Uint8Array(data)).buffer);
       //console.log("Reading block of type", type);
 
-      if (args.load_screen && type == BlockTypes.SCREEN) {
+      if (args.load_screen && type === BlockTypes.SCREEN) {
         console.warn("Old screen block detected");
 
         screen = istruct.read_object(data, App);
         found_screen = true;
-      } else if (args.load_library && type == BlockTypes.LIBRARY) {
+      } else if (args.load_library && type === BlockTypes.LIBRARY) {
         datalib = istruct.read_object(data, Library);
 
         this.datalib.destroy();
         this.datalib = datalib;
-      } else if (args.load_library && type == BlockTypes.DATABLOCK) {
+      } else if (args.load_library && type === BlockTypes.DATABLOCK) {
         let file2 = new BinaryReader(data);
 
         let len = file2.int32();
@@ -508,19 +517,19 @@ export class AppState {
         let data2 = file2.bytes(len);
         let block;
 
-        if (!args.load_screen && cls.blockDefine().typeName == "screen") {
+        if (!args.load_screen && cls.blockDefine().typeName === "screen") {
           continue;
         }
 
         if (cls === undefined) {
           console.warn("Warning, unknown block type", clsname);
-
-          block = istruct.read_object(data2, DataBlock);
+          continue;
+          //block = istruct.read_object(data2, DataBlock);
         } else {
           block = istruct.read_object(data2, cls);
         }
 
-        if (cls.blockDefine().typeName == "screen") {
+        if (cls.blockDefine().typeName === "screen") {
           block.screen._ctx = this.ctx;
           //console.log("SCREEN", block.screen.sareas)
         }
@@ -601,13 +610,16 @@ export class AppState {
     if (screen !== undefined) {
       found_screen = true;
 
-      if (this.screen !== undefined) {
+      if (this.screen !== screen && this.screen !== undefined) {
         this.screen.destroy();
         this.screen.remove();
       }
 
+      document.body.appendChild(screen);
+
       this.screen = screen;
       this.screen.ctx = this.ctx;
+      this.screen._init();
       this.screen.listen();
 
       //push active area contexts
@@ -615,8 +627,6 @@ export class AppState {
         sarea.area.push_ctx_active();
         sarea.area.pop_ctx_active();
       }
-
-      document.body.appendChild(screen);
 
       this.screen.update();
       this.screen.regenBorders();
@@ -644,8 +654,10 @@ export class AppState {
       this.modalFlag = 0;
 
       for (let sblock of lastscreens) {
-        sblock.lib_id = sblock.graph_id = -1; //request new id
-        datalib.add(sblock);
+        if (!datalib.has(sblock)) {
+          sblock.lib_id = sblock.graph_id = -1; //request new id
+          datalib.add(sblock);
+        }
       }
 
       datalib.libmap.screen.active = lastscreens_active;
@@ -672,16 +684,70 @@ export class AppState {
     let buf = this.createFile({write_settings : false});
     buf = util.btoa(buf);
 
-    localStorage[cconst.APP_KEY_NAME] = buf;
-    console.log(`saved startup file; ${(buf.length/1024).toFixed(2)}kb`);
+    try {
+      localStorage[cconst.APP_KEY_NAME] = buf;
+      console.log(`saved startup file; ${(buf.length/1024).toFixed(2)}kb`);
+      this.ctx.message("Saved startup file");
+    } catch (error) {
+      this.ctx.error("Failed to save startup file");
+    }
   }
 
   /** this is executed before block re-linking has happened*/
   do_versions(version, datalib) {
+    if (version < 4) {
+      for (let mesh of datalib.mesh) {
+        let cd_grid = mesh.loops.customData.getLayerIndex("QuadTreeGrid");
+
+        if (cd_grid < 0) {
+          continue;
+        }
+
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+          grid.updateNormalQuad(l);
+          grid.pruneDeadPoints();
+        }
+      }
+    }
+
+    if (version < 5) { //recalc normals since GridVert.no changed into a short for saving
+      for (let mesh of datalib.mesh) {
+        let cd_grid = GridBase.meshGridOffset(mesh);
+
+        if (cd_grid < 0) {
+          continue;
+        }
+
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+          grid.flagNormalsUpdate();
+        }
+      }
+    }
+
+    if (version < 6) {
+      for (let mesh of datalib.mesh) {
+        let cd_grid = GridBase.meshGridOffset(mesh);
+
+        if (cd_grid < 0) {
+          continue;
+        }
+
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+
+          console.error("Building grid vert eids for old file. . .");
+          grid.flagIdsRegen();
+        }
+      }
+    }
   }
 
   /** this is executed after block re-linking has happened*/
   do_versions_post(version, datalib) {
+    console.log("VERSION", version);
+
     if (version < 1) {
       for (let scene of datalib.scene) {
         scene.collection = new Collection();

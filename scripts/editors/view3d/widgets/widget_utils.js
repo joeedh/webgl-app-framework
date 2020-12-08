@@ -1,30 +1,30 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
-import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js';
+import {SimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
 import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, ListProperty,
   PropFlags, PropTypes, PropSubTypes, StringSetProperty
-} from '../../path.ux/scripts/toolsys/toolprop.js';
-import {ToolMacro, ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
-import {Shaders} from '../../shaders/shaders.js';
-import {dist_to_line_2d} from '../../path.ux/scripts/util/math.js';
-import {CallbackNode, NodeFlags} from "../../core/graph.js";
-import {DependSocket} from '../../core/graphsockets.js';
-import * as util from '../../util/util.js';
-import {SelMask} from './selectmode.js';
-import {Colors} from "../../sceneobject/sceneobject.js";
-import {ObjectFlags} from "../../sceneobject/sceneobject.js";
+} from '../../../path.ux/scripts/toolsys/toolprop.js';
+import {ToolMacro, ToolOp, ToolFlags, UndoFlags} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
+import {Shaders} from '../../../shaders/shaders.js';
+import {dist_to_line_2d} from '../../../path.ux/scripts/util/math.js';
+import {CallbackNode, NodeFlags} from "../../../core/graph.js";
+import {DependSocket} from '../../../core/graphsockets.js';
+import * as util from '../../../util/util.js';
+import {SelMask} from '.././selectmode.js';
+import {Colors} from "../../../sceneobject/sceneobject.js";
+import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
 
-import {View3DFlags} from "./view3d_base.js";
-import {WidgetBase, WidgetSphere, WidgetArrow, WidgetTool, WidgetFlags} from './widgets.js';
-import {TranslateOp, ScaleOp, SnapModes} from "./transform/transform_ops.js";
-import {calcTransCenter} from './transform/transform_query.js';
-import {Icons} from '../icon_enum.js';
-import {DataPathError} from "../../path.ux/scripts/controller/controller.js";
-import {PropModes, TransDataType, TransDataElem, TransDataMap, TransDataTypes} from './transform/transform_base.js';
-import {ConstraintSpaces} from "./transform/transform_base.js";
-import {aabb_union} from '../../util/math.js';
-import {TransformOp} from './transform/transform_ops.js';
+import {View3DFlags} from "../view3d_base.js";
+import {WidgetBase, WidgetSphere, WidgetArrow, WidgetFlags} from './widgets.js';
+import {TranslateOp, ScaleOp, SnapModes} from "../transform/transform_ops.js";
+import {calcTransCenter} from '../transform/transform_query.js';
+import {Icons} from '../../icon_enum.js';
+import {DataPathError} from "../../../path.ux/scripts/controller/controller.js";
+import {PropModes, TransDataType, TransDataElem, TransDataMap, TransDataTypes} from '../transform/transform_base.js';
+import {ConstraintSpaces} from "../transform/transform_base.js";
+import {aabb_union} from '../../../util/math.js';
+import {TransformOp} from '../transform/transform_ops.js';
 
 export class TransMovWidget extends TransDataType {
   static transformDefine() {return {

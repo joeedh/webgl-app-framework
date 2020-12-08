@@ -22,8 +22,7 @@ import {TranslateOp} from "../transform/transform_ops.js";
 import {nstructjs} from '../../../path.ux/scripts/pathux.js';
 let STRUCT = nstructjs.STRUCT;
 import {Icons} from '../../icon_enum.js';
-import {WidgetTool} from "../widgets.js";
-import {TranslateWidget} from "../widget_tools.js";
+import {TranslateWidget} from "../widgets/widget_tools.js";
 import {FlagProperty} from "../../../path.ux/scripts/toolsys/toolprop.js";
 
 let _shift_temp = [0, 0];
@@ -49,22 +48,20 @@ export class ObjectEditor extends ToolMode {
     return tstruct;
   }
 
-  updateWidgetTool(view3d, widgettool) {
-    return super.updateWidgetTool(view3d, widgettool);
-  }
-
-  static widgetDefine() {return {
+  static toolModeDefine() {return {
     name        : "object",
     uiname      : "Object",
     description : "Select Scene Objects",
     icon        : Icons.CURSOR_ARROW,
     flag        : 0,
+    selectMode  : SelMask.OBJECT,
     transWidgets: [TranslateWidget]
   }}
 
   defineKeyMap() {
     this.keymap = new KeyMap([
       new HotKey("G", [], "view3d.translate(selmask='OBJECT')"),
+      new HotKey("R", [], "view3d.rotate(selmask='OBJECT')"),
       new HotKey("A", [], "object.toggle_select_all(mode='AUTO')"),
       new HotKey("A", ["ALT"], "object.toggle_select_all(mode='SUB')"),
       new HotKey("X", [], "object.delete_selected()"),
@@ -103,12 +100,14 @@ export class ObjectEditor extends ToolMode {
   on_mousedown(e, x, y, was_touch) {
     let ctx = this.ctx;
 
-    if (e.button == 0 || e.touches && e.touches.length > 0) {
+    if (e.button === 0 || e.touches && e.touches.length > 0) {
       this.start_mpos[0] = x;
       this.start_mpos[1] = y;
     }
 
-    if (this.manager.widgets.highlight !== undefined) {
+    console.log(this.hasWidgetHighlight());
+
+    if (this.hasWidgetHighlight()) {
       return false;
     }
 
@@ -153,7 +152,7 @@ export class ObjectEditor extends ToolMode {
   on_mousemove(e, x, y, was_touch) {
     let ctx = this.ctx;
 
-    if (this.manager.widgets.highlight !== undefined) {
+    if (this.hasWidgetHighlight()) {
       return false;
     }
 
@@ -215,7 +214,8 @@ export class ObjectEditor extends ToolMode {
     }
   }
 
-  on_drawstart(gl) {
+  on_drawstart(view3d, gl) {
+    super.on_drawstart(view3d, gl);
   }
 
   /*
@@ -234,23 +234,6 @@ export class ObjectEditor extends ToolMode {
 
     program = Shaders.ObjectLineShader;
 
-    /*
-    let size = gl.getParameter(gl.VIEWPORT);
-    size = [size[2], size[3]];
-
-    let d = 1;
-    for (let x=-d; x<=d; x++) {
-      for (let y=-d; y<=d; y++) {
-        uniforms.shift[0] = x/size[0]*3.0;
-        uniforms.shift[1] = y/size[1]*3.0;
-
-        this.view3d.threeCamera.pushUniforms(uniforms);
-        object.drawOutline(this.view3d, gl, uniforms, program);
-        this.view3d.threeCamera.popUniforms();
-      }
-    }
-    //*/
-
     let draw_outline = object.flag & ObjectFlags.SELECT;
     draw_outline = draw_outline || object === this.ctx.scene.objects.highlight;
 
@@ -259,23 +242,20 @@ export class ObjectEditor extends ToolMode {
 
       gl.depthMask(false);
 
-      this.view3d.threeCamera.pushUniforms(uniforms);
       object.drawOutline(this.view3d, gl, uniforms, program);
-      this.view3d.threeCamera.popUniforms();
 
       //uniforms.shift = undefined;
       gl.depthMask(mask);
     }
 
-    this.view3d.threeCamera.pushUniforms(uniforms);
+    program = Shaders.BasicLitMesh;
     object.draw(this.view3d, gl, uniforms, program);
-    this.view3d.threeCamera.popUniforms();
 
     return true;
   }
 
-  on_drawend(gl) {
-    super.on_drawend(gl);
+  on_drawend(view3d, gl) {
+    super.on_drawend(view3d, gl);
   }
 
   findnearest(ctx, x, y, selmask=SelMask.OBJECT, limit=25) {

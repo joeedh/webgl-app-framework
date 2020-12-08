@@ -15,6 +15,10 @@ export class FindnearestMesh extends FindnearestClass {
     selectMask : SelMask.GEOM
   }}
 
+  static drawsObjectExclusively(view3d, object) {
+    return false;
+  }
+
   /*
   * called for all objects;  returns true
   * if an object is valid for this class (and was drawn)
@@ -22,6 +26,7 @@ export class FindnearestMesh extends FindnearestClass {
   * When drawing pass the object id to red and any subdata
   * to green.
   * */
+  //XXX is this method used anymore?
   static drawIDs(view3d, gl, uniforms, object, mesh) {
     let program = Shaders.MeshIDShader;
 
@@ -30,16 +35,17 @@ export class FindnearestMesh extends FindnearestClass {
       uniforms.object_id = object.lib_id;
     }
 
-    view3d.threeCamera.pushUniforms(uniforms);
-    object.drawIds(view3d, gl, view3d.ctx.selectMask, uniforms);
-    view3d.threeCamera.popUniforms();
+    ///view3d.ctx.selectMask
+    //object.drawIds(view3d, gl, view3d.ctx.selectMask, uniforms);
+
+    return true;
   }
 
   static castViewRay_framebuffer(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
     let gl = view3d.gl;
     let sbuf = view3d.selectbuf;
     let x = ~~p[0], y = ~~p[1];
-    let ret = _castray_rets.next().reset();
+    let ret = new FindNearestRet(); //ref leak? _castray_rets.next().reset();
     let size = view3d.glSize;
 
     let dpi = view3d.gl.canvas.dpi;
@@ -155,7 +161,7 @@ export class FindnearestMesh extends FindnearestClass {
       let e = mesh.eidmap[idx];
 
       if (e === undefined) {
-        console.warn(`Corruption in findnearest_mesh implemented; e=${e}, ob=${ob}, idx=${idx}`, ob);
+        //console.warn(`Corruption in findnearest_mesh implemented; e=${e}, ob=${ob}, idx=${idx}`, ob);
         continue;
       }
 
@@ -170,7 +176,7 @@ export class FindnearestMesh extends FindnearestClass {
         continue;
       }*/
 
-      let ret = _findnearest_rets.next().reset();
+      let ret = new FindNearestRet(); //ref leaf? _findnearest_rets.next().reset();
 
       ret.data = e;
       ret.object = ob;

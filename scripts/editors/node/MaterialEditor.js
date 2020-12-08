@@ -7,6 +7,7 @@ import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';
 import {MakeMaterialOp} from "../../core/material.js";
+import {Icons} from "../icon_enum.js";
 
 export class MaterialEditor extends NodeEditor {
   constructor() {
@@ -16,6 +17,10 @@ export class MaterialEditor extends NodeEditor {
     this.dataBlockPath = "";
 
     this.activeMatMap = {};
+  }
+
+  static defineAPI(api) {
+    return api.inheritStruct(MaterialEditor, NodeEditor);
   }
 
   init() {
@@ -170,7 +175,7 @@ export class MaterialEditor extends NodeEditor {
     tagname : "material-editor-x",
     areaname : "MaterialEditor",
     uiname   : "Shader Editor",
-    icon     : -1
+    icon     : Icons.EDITOR_NODE
   }}
 };
 

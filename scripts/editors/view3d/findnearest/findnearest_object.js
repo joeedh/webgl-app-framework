@@ -6,8 +6,8 @@ import * as util from "../../../util/util.js";
 import {FindNearestRet} from "../findnearest.js";
 import {Mesh} from "../../../mesh/mesh.js";
 
-let _findnearest_rets = util.cachering.fromConstructor(FindNearestRet, 1024);
-let _castray_rets = util.cachering.fromConstructor(FindNearestRet, 1024);
+//let _findnearest_rets = util.cachering.fromConstructor(FindNearestRet, 128);
+//let _castray_rets = util.cachering.fromConstructor(FindNearestRet, 128);
 
 export class FindnearestObject extends FindnearestClass {
   static define() {return {
@@ -36,7 +36,7 @@ export class FindnearestObject extends FindnearestClass {
     let gl = view3d.gl;
     let sbuf = view3d.selectbuf;
     let x = ~~p[0], y = ~~p[1];
-    let ret = _castray_rets.next().reset();
+    let ret = new FindNearestRet(); //_castray_rets.next().reset();
     let size = view3d.glSize;
 
     let dpi = view3d.gl.canvas.dpi;
@@ -228,7 +228,7 @@ export class FindnearestObject extends FindnearestClass {
         continue;
       }
 
-      let ret = _findnearest_rets.next().reset();
+      let ret = new FindNearestRet(); //possible ref leak->_findnearest_rets.next().reset();
 
       ret.data = idx >= 0 ? idx : ob;
       ret.object = ob;

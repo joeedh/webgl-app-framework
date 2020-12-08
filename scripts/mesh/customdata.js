@@ -1,11 +1,10 @@
 import '../path.ux/scripts/util/struct.js';
 import * as util from '../util/util.js';
-import {Node} from "../core/graph.js";
-let STRUCT = nstructjs.STRUCT;
 
 export const CDFlags = {
   SELECT       : 1,
-  SINGLE_LAYER : 2
+  SINGLE_LAYER : 2,
+  TEMPORARY    : 4
 };
 
 export let CDElemMap = {};
@@ -21,6 +20,15 @@ export class CustomDataElem {
     this.constructor.typeName = this.constructor.define().typeName;
     this.constructor.prototype.typeName = this.constructor.define().typeName;
   }
+
+  /*if defined in a subclass, will be called whenever a new data layer is created
+    even if of another type
+  onNewLayer(layer_class, layer_index) {
+
+  }
+  onRemoveLayer(layercls, layer_i=undefined) {
+  }
+  */
 
   static apiDefine(api, dstruct) {
 
@@ -67,7 +75,10 @@ export class CustomDataElem {
     uiTypeName   : "uiTypeName",
     defaultName  : "defaultName",
     valueSize    : undefined,
-    flag         : 0
+    flag         : 0,
+
+    //if not undefined, a LayerSettingsBase child class defining overall settings that's not per-element
+    settingsClass : undefined,
   }};
 
   static register(cls) {
@@ -103,7 +114,62 @@ mesh.CustomDataElem {
 `;
 nstructjs.manager.add_class(CustomDataElem);
 
-export function buildCDAPI(api, dstruct) {
+export function buildCDAPI(api) {
+  let layerst = api.mapStruct(CustomDataLayer, true);
+
+  layerst.string("name", "name", "Name");
+  layerst.dynamicStruct("typeSettings", "settings", "Settings");
+  let def = layerst.pathmap["settings"];
+  def.customGet(function() {
+    return this.dataref.getTypeSettings();
+  });
+
+  layerst.int("index", "index", "index").readOnly();
+  layerst.string("typeName", "typeName", "Type").readOnly();
+
+  let st = api.mapStruct(CustomData, true);
+
+  function makeGetter(typeName) {
+    return function() {
+      let customData = this.dataref;
+      return customData.getActiveLayer(typeName);
+    }
+  }
+
+  for (let cls of CDElemTypes) {
+    let ldef = cls.define();
+
+    //let def = st.struct
+    if (ldef.settingsClass) {
+      ldef.settingsClass.apiDefine(api);
+    }
+
+    st.struct(ldef.typeName, ldef.typeName, "Active " + ldef.typeName + " layer", layerst);
+    let def = st.pathmap[ldef.typeName];
+
+    def.customGetSet(makeGetter(ldef.typeName));
+  }
+
+  st.list("flatlist", "layers", [
+    function getIter(api, list) {
+      return list;
+    },
+    function getLength(api, list) {
+      return list.length;
+    },
+    function get(api, list, key) {
+      return list[key];
+    },
+    function getKey(api, list, obj) {
+      return obj !== undefined ? obj.list : -1;
+    },
+    function getStruct(api, list, key) {
+      return api.mapStruct(CustomDataLayer, false);
+    }
+  ]);
+}
+
+export function buildElementAPI(api, dstruct) {
   for (let cls of CDElemTypes) {
     let cstruct = api.mapStruct(cls, true);
     cls.apiDefine(api, cstruct);
@@ -165,6 +231,39 @@ export function buildCDAPI(api, dstruct) {
   ]);
 }
 
+export class LayerSettingsBase {
+  copyTo(b) {
+    throw new Error("implement me");
+  }
+
+  static apiDefine(api) {
+
+  }
+
+  copy() {
+    let ret = new this.constructor();
+
+    this.copyTo(ret);
+
+    return ret;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+  }
+}
+LayerSettingsBase.STRUCT = `
+LayerSettingsBase {
+}
+`;
+nstructjs.register(LayerSettingsBase);
+
+class _Nothing extends LayerSettingsBase {
+}
+_Nothing.STRUCT = nstructjs.inherit(_Nothing, LayerSettingsBase) + `
+}`;
+nstructjs.register(_Nothing);
+
 export class CustomDataLayer {
   constructor(typename, name=this.constructor.name, flag=0, id=-1) {
     this.elemTypeMask = 0;
@@ -172,15 +271,38 @@ export class CustomDataLayer {
     this.name = name;
     this.flag = flag;
     this.id = id;
+    this.typeSettings = undefined;
     this.index = 0; //index in flat list of layers in elements
+  }
+
+  getTypeSettings() {
+    if (this.typeSettings === undefined) {
+      let cls = CustomDataElem.getTypeClass(this.typeName);
+      let def = cls.define();
+
+      if (def.settingsClass) {
+        this.typeSettings = new def.settingsClass();
+      }
+    }
+
+    return this.typeSettings;
   }
 
   [Symbol.keystr]() {
     return cdLayerKey(this.typeName, this.name);
   }
 
+  //used by struct script
+  __getNothing() {
+    return new _Nothing();
+  }
+
   copy() {
     let ret = new CustomDataLayer(this.typeName, this.name, this.flag, this.id);
+
+    if (this.typeSettings) {
+      ret.typeSettings = this.typeSettings.copy();
+    }
 
     ret.index = this.index;
     ret.elemTypeMask = this.elemTypeMask;
@@ -190,6 +312,10 @@ export class CustomDataLayer {
 
   loadSTRUCT(reader) {
     reader(this);
+
+    if (this.typeSettings instanceof _Nothing) {
+      this.typeSettings = undefined;
+    }
   }
 }
 
@@ -201,6 +327,7 @@ mesh.CustomDataLayer {
   id            : int;
   index         : int;
   elemTypeMask  : int;
+  typeSettings  : abstract(Object) | this.typeSettings === undefined ? this.__getNothing() : this.typeSettings;
 }
 `;
 nstructjs.manager.add_class(CustomDataLayer);
@@ -322,8 +449,16 @@ export class CustomData {
     this.idgen = new util.IDGen();
   }
 
+  _clear() {
+    this.layers = {};
+    this.flatlist = [];
+
+    return this;
+  }
+
   copy() {
     let ret = new CustomData();
+
     ret.idgen = this.idgen.copy();
 
     for (let layer of this.flatlist) {
@@ -333,7 +468,12 @@ export class CustomData {
       layer2.index = ret.flatlist.length;
       ret.flatlist.push(layer2);
 
+      let oldlset = this.getLayerSet(layer.typeName);
+
       lset.push(layer2);
+      if (layer === oldlset.active) {
+        lset.active = layer2;
+      }
     }
 
     return ret;
@@ -364,6 +504,10 @@ export class CustomData {
     return cdmap;
   }
 
+  getLayerSettings(typecls_or_name) {
+    return this.getActiveLayer(typecls_or_name).getTypeSettings();
+  }
+
   addLayer(cls, name) {
     if (!cls.define || !cls.define() || !cls.define().typeName) {
       throw new Error("Invalid customdata class " + cls.name);
@@ -383,6 +527,7 @@ export class CustomData {
 
     layer.index = this.flatlist.length;
     layer.elemTypeMask = cls.define().elemTypeMask;
+    layer.name = name;
 
     this.flatlist.push(layer);
     lset.push(layer);
@@ -390,6 +535,7 @@ export class CustomData {
     if (this.on_layeradd) {
       this.on_layeradd(layer, lset);
     }
+
     return layer;
   }
 
@@ -398,7 +544,7 @@ export class CustomData {
 
     for (let layer of this.flatlist) {
       let cls = CustomDataElem.getTypeClass(layer.typeName);
-      e.customData.push(new cls());
+      e.customData.push(new cls(e));
     }
   }
 
@@ -419,16 +565,42 @@ export class CustomData {
       typename = typename.define().typeName;
     }
 
-    let i = 0;
-    for (let layer of this.flatlist) {
-      if (layer.typeName === typename) {
-        return i;
-      }
-
-      i++;
+    let lset = this.layers[typename];
+    if (!lset) {
+      return -1;
     }
 
-    return -1;
+    if (!lset.active && lset.length > 0) {
+      lset.active = lset[0];
+    }
+
+    return lset.active ? lset.active.index : -1;
+  }
+
+  getActiveLayer(typecls_or_name) {
+    let typeName = typecls_or_name;
+
+    if (typeof typeName !== "string") {
+      typeName = typeName.define().typeName;
+    }
+
+    let set = this.layers[typeName];
+    if (!set) {
+      return undefined;
+    }
+
+    if (set.active === undefined && set.length > 0) {
+      set.active = set[0];
+    }
+
+    return set.active;
+  }
+
+  setActiveLayer(layerIndex) {
+    let layer = this.flatlist[layerIndex];
+    let set = this.layers[layer.typeName];
+
+    set.active = layer;
   }
 
   remLayer(layer) {
@@ -439,6 +611,8 @@ export class CustomData {
     }
 
     set.remove(layer);
+
+    this.flatlist.remove(layer);
 
     this._updateFlatList();
 
@@ -454,21 +628,20 @@ export class CustomData {
   }
 
   _getUniqueName(name) {
-    let count = (name) => {
-      let c = 0;
+    let taken = (name) => {
       for (let layer of this.flatlist) {
         if (layer.name === name) {
-          c++;
+          return true;
         }
       }
 
-      return c;
+      return false;
     }
 
     let name2 = name;
     let i = 2;
 
-    while (count(name2) > 0) {
+    while (taken(name2)) {
       name2 = name + i;
       i++;
     }
@@ -489,6 +662,15 @@ export class CustomData {
     return this.getNamedLayer(name, opt_cls_or_typeName) !== undefined;
   }
 
+  getNamedLayerIndex(name, opt_cls_or_typeName) {
+    let layer = this.getNamedLayer(name, opt_cls_or_typeName);
+    if (!layer) {
+      return -1;
+    }
+
+    return layer.index;
+  }
+
   getNamedLayer(name, opt_cls_or_typeName) {
     let typeName = opt_cls_or_typeName;
 
@@ -502,7 +684,7 @@ export class CustomData {
       }
 
       if (layer.name === name) {
-        return name;
+        return layer;
       }
     }
   }

@@ -1,6 +1,9 @@
 import {Light, LightTypes} from '../light/light.js';
 import {Vector3, Vector4, Matrix4, Vector2, Quat} from '../util/vectormath.js';
 import * as util from '../util/util.js';
+import * as webgl from '../core/webgl.js';
+
+import * as bluenoise from './bluenoise_mask.js';
 
 export let ClosureGLSL = `
 struct Closure {
@@ -37,18 +40,18 @@ export class LightGen {
     for (let gen of LightGenerators) {
       let i = 0;
 
-      for (let light of scene.lights.renderable) {
-        if (light.data.type != gen.lightType) {
+      for (let k in renderlights) {
+        let rlight = renderlights[k];
+        let light = rlight.light;
+
+        if (light.data.type !== gen.lightType) {
           continue;
         }
 
-        let shadowmap = undefined;
-        let rlight = undefined;
+        let m = light.outputs.matrix.getValue().$matrix;
+        let dir = new Vector3([m.m31, m.m32, m.m33]);
 
-        if (renderlights !== undefined && light.lib_id in renderlights) {
-          rlight = renderlights[light.lib_id];
-          shadowmap = rlight.shadowmap;
-        }
+        let shadowmap = rlight.shadowmap;
         let uname = gen.uniformName + `[${i}]`;
         i++;
 
@@ -62,7 +65,9 @@ export class LightGen {
             case LightTypes.AREA_RECT:
             //break;
             case LightTypes.SUN:
-            //break;
+              //break;
+              uniforms[uname + ".dir"] = dir;
+            //yes, the pass through is deliberate
             case LightTypes.POINT:
             default:
               r[0] = (util.random()-0.5)*2.0;
@@ -91,26 +96,29 @@ export class LightGen {
     }
   }
 
-  genDefines(scene) {
+  genDefines(rlights) {
     let tot = 0;
 
-    for (let light of scene.lights.renderable) {
-      if (light.data.type == this.lightType) {
+    for (let k in rlights) {
+      let rlight = rlights[k];
+      let light = rlight.light;
+
+      if (light.data.type === this.lightType) {
         tot++;
       }
     }
 
-    if (tot == 0) return '';
+    if (tot === 0) return '';
 
     return `#define ${this.totname} ${tot}\n`;
   }
 
 
-  static genDefines(scene) {
+  static genDefines(rlights) {
     let ret = '';
 
     for (let gen of LightGenerators) {
-      ret += gen.genDefines(scene) + "\n";
+      ret += gen.genDefines(rlights) + "\n";
     }
 
     return ret;
@@ -224,6 +232,77 @@ export let PointLightCode = new LightGen({
 });
 LightGen.register(PointLightCode);
 
+
+export let SunLightCode = new LightGen({
+  lightType : LightTypes.SUN,
+  name : "SUNLIGHT",
+  uniformName : "SUNLIGHTS",
+  totname : "MAXSLIGHT",
+  pre : `
+  #if defined(MAXSLIGHT) && MAXSLIGHT > 0
+    #define HAVE_SUNLIGHT
+    //define HAVE_SHADOW
+    
+    struct SUNLight {
+      vec3 co;
+      vec3 dir;
+      float power;
+      float radius; //soft shadow radius
+      vec3 color;
+      float distance; //falloff distance
+#ifdef HAVE_SHADOW
+      samplerCubeShadow shadow;
+#endif
+      float shadow_near;
+      float shadow_far;
+    };
+    
+    uniform SUNLight SUNLIGHTS[MAXSLIGHT];
+  #endif
+  `,
+
+  //inputs: CLOSURE CO NORMAL COLOR (for BRDF)
+  lightLoop : `
+  #ifdef HAVE_SUNLIGHT
+    for (int li=0; li<MAXSLIGHT; li++) {
+      vec3 lvec = SUNLIGHTS[li].dir;
+      vec3 ln = normalize(lvec);
+      
+      BRDF;
+
+      vec3 f = brdf_out * max(dot(ln, NORMAL), 0.0);
+      
+      float energy = SUNLIGHTS[li].power;
+     
+#ifdef HAVE_SHADOW
+      float z = 1.0/length(lvec) - 1.0/SUNLIGHTS[li].shadow_near;
+      z /= 1.0/SUNLIGHTS[li].shadow_far - 1.0/SUNLIGHTS[li].shadow_near;
+      
+      z = length(lvec);
+      
+      vec4 sp = vec4(lvec, z);
+      
+      float shadow = texture(SUNLIGHTS[li].shadow, sp);
+#else
+      float shadow = 1.0;
+#endif
+  
+      CLOSURE.light += f * SUNLIGHTS[li].color * energy * shadow;
+      //CLOSURE.light += vec3(shadow, shadow, shadow);
+    }
+  #endif
+  `,
+
+  defines : [
+    'MAXSLIGHT'
+  ],
+
+  getLightVector : function(co, i) {
+    return `SUNLIGHTS${i}.dir`;
+  }
+});
+LightGen.register(SunLightCode);
+
 export class BRDFGen {
   constructor(code) {
     this.code = code;
@@ -257,14 +336,23 @@ export let ShaderFragments = {
     }
   `,
   AMBIENT : ` //inputs: CLOSURE
-    CLOSURE.light += CLOSURE.diffuse*texture2D(passAO, gl_FragCoord.xy/viewportSize).rgb*ambientColor*ambientPower;
+#ifdef WITH_AO
+    {
+    float aopass1 = texture2D(passAO, gl_FragCoord.xy/viewportSize)[0];
+    vec3 aopass = vec3(aopass1, aopass1, aopass1);
+    
+    CLOSURE.light += CLOSURE.diffuse*aopass*ambientColor*ambientPower;
     //CLOSURE.light = ambientColor;
+    }
+#else
+    CLOSURE.light += CLOSURE.diffuse*ambientColor*ambientPower;
+#endif
   `,
   CLOSUREDEF : ClosureGLSL,
   ATTRIBUTES : `
 attribute vec3 position;
 attribute vec3 normal;
-attribute vec2 uv;
+MULTILAYER_UV_DECLARE
 attribute vec4 color;
 attribute float id;
 `,
@@ -284,7 +372,6 @@ uniform float uSample;
 
 `,
   VARYINGS : `
-    varying vec2 vUv;
     varying vec4 vColor;
     varying vec3 vNormal;
     varying float vId;
@@ -337,3 +424,112 @@ Closure floattoclosure(float c) {
 
 `
 };
+
+let bluemask = {
+  tex : undefined,
+  gl : undefined,
+  shaderPre : `
+  uniform sampler2D blueMask;
+  uniform vec2 blueUVOff;
+  uniform vec2 blueUVScale;
+  
+  /*
+  float _hashrand(float f) {
+    f = fract((f + f*0.1 + f*1000.0)*sqrt(3.0));
+    return fract(1.0 / (f*0.00001 + 0.000001));
+  }*/
+  
+  vec4 sampleBlue(vec2 uv) {
+    return texture2D(blueMask, uv*blueUVScale + blueUVOff);
+  }
+    
+  `
+};
+
+export function getBlueMaskDef() {
+  return bluemask;
+}
+
+/*
+* Get a four-component blue noise mask.
+* Each component is blue-corralated with the others,
+* so it's four seperate but related masks.
+*
+* Use each component for different shading parameters,
+* e.g. one for AO, one for subsurface scattering, etc, etc
+* */
+export function getBlueMask(gl) {
+  if (!gl) {
+    throw new Error("gl cannot be undefined");
+    return undefined;
+  }
+
+  if (bluemask.gl === gl) {
+    return bluemask.tex;
+  }
+
+  bluemask.gl = gl;
+  bluemask.tex = new webgl.Texture();
+  bluemask.tex.texture = gl.createTexture(gl.TEXTURE_2D);
+
+  console.log("creating blue noise mask");
+
+  //convert to float data
+  //
+  let mask = bluenoise.cmyk;
+  let data = mask.mask;
+  let size = mask.dimen;
+  let comps = mask.components;
+  let tot = comps*size*size;
+
+  let tex = new Float32Array(size*size*4);
+
+  let maxelem = mask.bytesPerPixel / mask.components;
+  maxelem = (1<<(maxelem*8))-1;
+
+  if (maxelem !== 255) {
+    throw new Error(""+maxelem);
+  }
+
+  for (let i=0; i<size*size; i++) {
+    let idx1 = i*comps;
+    let idx2 = i*4;
+
+    if (comps < 3) {
+      tex[idx2+3] = 1.0;
+    }
+
+    for (let j=0; j<comps; j++) {
+      let f = data[idx1+j]/maxelem;
+      tex[idx2+j] = f;
+    }
+  }
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, bluemask.tex.texture);
+  bluemask.tex.texImage2D(gl, gl.TEXTURE_2D, 0, gl.RGBA32F, ~~size, ~~size, 0, gl.RGBA, gl.FLOAT, tex);
+  //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ~~size, ~~size, 0, gl.RGBA, gl.FLOAT, null);
+  //bluemask.tex.load(gl, size, size, tex);
+
+  bluemask.tex.texParameteri(gl, gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  bluemask.tex.texParameteri(gl, gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  bluemask.tex.texParameteri(gl, gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  bluemask.tex.texParameteri(gl, gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+
+  bluemask.tex.width = bluemask.tex.height = size;
+
+  return bluemask.tex;
+}
+
+let _rand = new util.MersenneRandom();
+
+export function setBlueUniforms(uniforms, viewport_size, bluetex, uSample=0.0) {
+  let size = viewport_size;
+
+  _rand.seed(uSample);
+
+  uniforms.blueUVOff = [_rand.random(), _rand.random()];
+  uniforms.blueMask = bluetex;
+  uniforms.blueUVScale = [size[0]/bluetex.width, size[1]/bluetex.height];
+
+}

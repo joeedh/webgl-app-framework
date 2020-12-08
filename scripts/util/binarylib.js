@@ -42,6 +42,9 @@ export class BinaryWriter {
         this.data.push(c.charCodeAt(i));
       }
     } else {
+      if (!Array.isArray(c)) {
+        console.error("eek!");
+      }
       for (let i=0; i<c.length; i++) {
         this.data.push(c[i]);
       }

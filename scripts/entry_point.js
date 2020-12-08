@@ -1,6 +1,10 @@
 import * as appstate from './core/appstate.js';
 import {loadShapes} from './core/simplemesh_shapes.js';
 
+import {nstructjs} from './path.ux/scripts/util/struct.js';
+import {cconst} from './path.ux/scripts/pathux.js';
+import config from './config/config.js';
+
 import {setMetric, setBaseUnit} from "./path.ux/scripts/core/units.js";
 import {Icons} from './editors/icon_enum.js';
 import {setIconMap, setIconManager, IconManager, UIBase} from './path.ux/scripts/core/ui_base.js';
@@ -60,13 +64,18 @@ updateIconDPI();
 
 window.init = () => {
   console.log("init!");
+
+  nstructjs.validateStructs();
+
   loadShapes();
   appstate.init();
 
   //shortcut for console use only
-  Object.defineProperty(window, "CTX", {
-    get : () => {
-      return _appstate.ctx;
-    }
-  })
+  if (typeof CTX === "undefined") {
+    Object.defineProperty(window, "CTX", {
+      get: () => {
+        return _appstate.ctx;
+      }
+    })
+  }
 };

@@ -9,7 +9,7 @@ import {genResBrowserScreen} from '../screengen.js';
 
 import {Editor} from '../editor_base.js';
 import {KeyMap} from "../../path.ux/scripts/util/simple_events.js";
-import {Area} from "../../path.ux/scripts/screen/ScreenArea.js";
+import {Area, AreaFlags} from "../../path.ux/scripts/screen/ScreenArea.js";
 import {UIBase} from "../../path.ux/scripts/core/ui_base.js";
 
 let ResIconStyle =`
@@ -76,7 +76,8 @@ export class ResourceIcon extends UIBase {
   }
 
   static define() {return {
-    tagname : "resource-icon-x"
+    tagname : "resource-icon-x",
+    flag : AreaFlags.HIDDEN
   }}
 
   updateCellSize() {
@@ -106,6 +107,24 @@ export class ResourceBrowser extends Editor {
     this.swapCancelled = undefined;
     this._swapEnd = undefined;
     this.cellsize = 128;
+  }
+
+  static defineAPI(api) {
+    let rstruct = super.defineAPI(api);
+    let types = resourceManager.makeEnum();
+
+    function rebuild() {
+      let resbrowser = this.dataref;
+
+      if (resbrowser !== undefined) {
+        resbrowser.rebuild();
+      }
+    }
+
+    let prop = rstruct.enum("resourceType", "resourceType", types, "Mode");
+    prop.on("change", rebuild);
+
+    return rstruct;
   }
 
   static openResourceBrowser(area, resourceType, oncancel) {

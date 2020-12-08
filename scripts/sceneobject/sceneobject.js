@@ -43,9 +43,9 @@ function mix(a, b, t) {
 
 export let Colors = {
   0                       : [0.7, 0.7, 0.7, 1.0], //0
-  [ObjectFlags.SELECT]    : [1.0, 0.7, 0.5, 1.0], //1
-  [ObjectFlags.HIGHLIGHT] : [1.0, 0.8, 0.2, 1.0], //8
-  [ObjectFlags.ACTIVE]    : [1.0, 0.5, 0.25, 1.0]
+  [ObjectFlags.SELECT]    : [1.0, 0.378, 0.15, 1.0], //1
+  [ObjectFlags.HIGHLIGHT] : [0.9, 0.5, 0.3, 1.0], //8
+  [ObjectFlags.ACTIVE]    : [0.0, 0.5, 1.0, 1.0]
 };
 Colors[ObjectFlags.SELECT | ObjectFlags.HIGHLIGHT]
   = mix(Colors[ObjectFlags.SELECT], Colors[ObjectFlags.HIGHLIGHT], 0.5);
@@ -63,6 +63,10 @@ export class SceneObject extends DataBlock {
 
     this.data = data;
     this.flag = 0;
+
+    if (data) {
+      data.lib_addUser(this);
+    }
     /** @type {ObjectFlags}*/
   }
 
@@ -84,15 +88,16 @@ export class SceneObject extends DataBlock {
 
   static nodedef() {
     return {
+      name : "sceneobject",
       inputs: {
         depend: new DependSocket("depend", SocketFlags.MULTI),
         matrix: new Matrix4Socket("matrix"),
         color: new Vec4Socket("color", undefined, [0.5, 0.5, 0.5, 1.0]),
         loc: new Vec3Socket("loc"),
-        rot: new Vec3Socket("rot"),
+        rot: new Vec3Socket("rot").noUnits(),
         rotOrder: new EnumSocket("Euler Order", EulerOrders, undefined,
           EulerOrders.XYZ),
-        scale: new Vec3Socket("scale", undefined, [1, 1, 1])
+        scale: new Vec3Socket("scale", undefined, [1, 1, 1]).noUnits()
       },
 
       outputs: {
@@ -103,6 +108,22 @@ export class SceneObject extends DataBlock {
     }
   }
 
+  get rotationEuler() {
+    return this.inputs.rot.getValue();
+  }
+  get rotationOrder() {
+    return this.inputs.rotOrder.getValue();
+  }
+  set rotationOrder(i) {
+    this.inputs.rotOrder.setValue(i);
+  }
+
+  get location() {
+    return this.inputs.loc.getValue();
+  }
+  get scale() {
+    return this.inputs.scale.getValue();
+  }
   get material() {
     return this.data !== undefined && this.data.usesMaterial ? this.data.material : undefined;
   }
@@ -176,8 +197,8 @@ export class SceneObject extends DataBlock {
     this.outputs.matrix.setValue(mat);
     this.outputs.depend.setValue(true);
 
-    this.outputs.matrix.update();
-    this.outputs.depend.update();
+    this.outputs.matrix.graphUpdate();
+    this.outputs.depend.graphUpdate();
   }
 
   loadMatrixToInputs(mat) {

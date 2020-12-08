@@ -1,4 +1,4 @@
-import {Area, contextWrangler} from '../../path.ux/scripts/screen/ScreenArea.js';
+import {Area, AreaFlags, contextWrangler} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor, VelPan} from '../editor_base.js';
 import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
@@ -22,6 +22,7 @@ import {haveModal} from '../../path.ux/scripts/util/simple_events.js';
 import {layoutNode} from '../../core/graph_spatial.js';
 import {getContextArea} from "../editor_base.js";
 import {ModalFlags} from "../../core/modalflags.js";
+import {Icons} from "../icon_enum.js";
 
 export class NodeSocketElem extends RowFrame {
   constructor() {
@@ -658,6 +659,15 @@ export class NodeEditor extends Editor {
     this.node_idmap = {};
   }
 
+  static defineAPI(api) {
+    let nedstruct = super.defineAPI(api);
+
+    nedstruct.string("graphPath", "graphPath", "data path to graph that's being edited");
+    nedstruct.struct("velpan", "velpan", "Pan / Zoom", api.getStruct(VelPan));
+
+    return nedstruct;
+  }
+
   //prevent context system from putting different node editor subclasses
   //in different "active" bins
   push_ctx_active(dontSetLastRef=false) {
@@ -925,7 +935,11 @@ export class NodeEditor extends Editor {
 
   on_resize(newsize) {
     super.on_resize(newsize);
-    this.setCSS();
+
+    console.log("EDITOR RESIZE");
+
+    //calls this.setCSS()
+    this._setNodeContainerRect();
 
     try {
       this.doOnce(this.rebuildAll);
@@ -1117,6 +1131,21 @@ export class NodeEditor extends Editor {
     this._last_compile_test = util.time_ms();
   }
 
+  _setNodeContainerRect() {
+    let r = this.header.getBoundingClientRect();
+
+    this.nodeContainer.yoff = r.height;
+    this.nodeContainer.style["position"] = "absolute";
+    this.nodeContainer.style["height"] = (this.size[1] - r.height) + "px";
+    this.nodeContainer.style["width"] = this.size[0] + "px";
+    this.nodeContainer.style["top"] = r.height + "px";
+
+    this.setCSS();
+    for (let node of this.nodes) {
+      node.setCSS();
+    }
+  }
+
   update() {
     super.update();
 
@@ -1124,16 +1153,7 @@ export class NodeEditor extends Editor {
     //console.log("R", r);
     if (r) {
       if (r.height !== this.nodeContainer.yoff) {
-        this.nodeContainer.yoff = r.height;
-        this.nodeContainer.style["position"] = "absolute";
-        this.nodeContainer.style["height"] = (this.size[1] - r.height) + "px";
-        this.nodeContainer.style["width"] = this.size[0] + "px";
-        this.nodeContainer.style["top"] = r.height + "px";
-
-        this.setCSS();
-        for (let node of this.nodes) {
-          node.setCSS();
-        }
+        this._setNodeContainerRect();
       }
     }
 
@@ -1411,8 +1431,10 @@ export class NodeEditor extends Editor {
   static define() {return {
     tagname : "node-editor-x",
     areaname : "NodeEditor",
+    apiname  : "nodeEditor",
     uiname   : "Node Editor",
-    icon     : -1
+    icon     : Icons.EDITOR_NODE,
+    flag     : AreaFlags.HIDDEN
   }}
 };
 NodeEditor.STRUCT = STRUCT.inherit(NodeEditor, Editor) + `

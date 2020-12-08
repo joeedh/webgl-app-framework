@@ -1,6 +1,6 @@
 import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
-import {WidgetFlags, WidgetTool} from "../widgets.js";
+import {WidgetFlags} from "../widgets/widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {HotKey, KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
@@ -12,7 +12,7 @@ import {MeshToolBase} from "./meshtool.js";
 let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../../../shaders/shaders.js';
-import {MovableWidget} from '../widget_utils.js';
+import {MovableWidget} from '../widgets/widget_utils.js';
 import {SnapModes} from "../transform/transform_ops.js";
 
 import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
@@ -92,7 +92,7 @@ export class CurveToolBase extends MeshToolBase {
     this.curve = undefined; //is created later
   }
 
-  static widgetDefine() {return {
+  static toolModeDefine() {return {
     name        : "curve_test",
     uianme      : "Curve Test",
     icon       : Icons.APPEND_VERTEX,
@@ -110,7 +110,7 @@ export class CurveToolBase extends MeshToolBase {
 
   static buildElementSettings(container) {
     let col = container.col();
-    let path = "scene.tools." + this.widgetDefine().name;
+    let path = "scene.tools." + this.toolModeDefine().name;
 
     col.prop(path + ".curve.verts.active.namedLayers['knot'].speed");
     col.prop(path + ".curve.verts.active.namedLayers['knot'].tilt");
@@ -124,7 +124,7 @@ export class CurveToolBase extends MeshToolBase {
 
     strip.useIcons();
 
-    let path = "scene.tools." + this.widgetDefine().name;
+    let path = "scene.tools." + this.toolModeDefine().name;
     path += ".curve";
 
     //strip.tool(`mesh.delete_selected`);
@@ -144,7 +144,7 @@ export class CurveToolBase extends MeshToolBase {
       } else {
         return [];
       }
-      //let path = "scene.tools." + this.constructor.widgetDefine().name;
+      //let path = "scene.tools." + this.constructor.toolModeDefine().name;
       //path += ".curve";
     }
 
@@ -179,7 +179,7 @@ export class CurveToolBase extends MeshToolBase {
 
   _getObject() {
     if (this.sceneObject === undefined) {
-      let key = "toolmode_" + this.constructor.widgetDefine().name;
+      let key = "toolmode_" + this.constructor.toolModeDefine().name;
 
       let data = this.curve !== undefined ? this.curve : CurveSpline;
 
@@ -187,7 +187,7 @@ export class CurveToolBase extends MeshToolBase {
       this.ctx.scene.setSelect(this.sceneObject, true);
 
       this.curve = this.sceneObject.data;
-      this.curve.owningToolMode = this.constructor.widgetDefine().name;
+      this.curve.owningToolMode = this.constructor.toolModeDefine().name;
     }
   }
 
@@ -255,7 +255,7 @@ export class CurveToolBase extends MeshToolBase {
       super.loadSTRUCT(reader);
     }
 
-    this.curve.owningToolMode = this.constructor.widgetDefine().name;
+    this.curve.owningToolMode = this.constructor.toolModeDefine().name;
   }
 
 }

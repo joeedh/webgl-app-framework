@@ -7,6 +7,18 @@ export const HandleTypes = {
   STRAIGHT : 2
 };
 
+export const MeshSymFlags = {
+  X : 1,
+  Y : 2,
+  Z : 4
+};
+
+export const MeshSymMap = {
+  1 : 0,
+  2 : 1,
+  4 : 2
+};
+
 export const MeshDrawFlags = {
   SHOW_NORMALS : 1,
   USE_LOOP_NORMALS : 2 //use loop normals if they have a NormalElemLayer customdata layer
@@ -61,7 +73,14 @@ export const MeshFlags = {
   TEMP2         : 512,
   TEMP3         : 1024,
   UPDATE        : 2048,
-  CURVE_FLIP    : 4096 //edge.evaluate goes backwards
+  CURVE_FLIP    : 4096, //edge.evaluate goes backwards
+  SMOOTH_DRAW   : 4096<<1,
+  MIRROREDX     : 4096<<2,
+  MIRROREDY     : 4096<<3,
+  MIRROREDZ     : 4096<<4,
+  MIRRORED      : (4096<<2)|(4096<<3)|(4096<<4),
+  MIRROR_BOUNDARY   : 4096<<5, //used by mirror
+  GRID_MRES_HIDDEN  : 4096<<6, //used by grids to flag gridverts as not part of visible multires level
 };
 
 export const MeshModifierFlags = {

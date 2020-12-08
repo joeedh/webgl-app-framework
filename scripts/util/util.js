@@ -1,3 +1,4 @@
+
 if (Math.fract === undefined) {
   Math.fract = (f) => f - Math.floor(f);
 }
@@ -17,8 +18,14 @@ export function inherit(c, p, obj) {
   return c.prototype;
 }
 export function mixin(cls, parent) {
-  for (var k of Object.getOwnPropertyNames(parent.prototype)) {
+  for (let k of Object.getOwnPropertyNames(parent.prototype)) {
     if (!(k in cls.prototype)) {
+      cls.prototype[k] = parent.prototype[k];
+    }
+  }
+
+  for (let k of Object.getOwnPropertySymbols(parent.prototype)) {
+    if (cls.prototype[k] === undefined) {
       cls.prototype[k] = parent.prototype[k];
     }
   }

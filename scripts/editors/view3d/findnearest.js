@@ -13,10 +13,39 @@ export const FindNearestTypes = [];
 export class FindNearestRet {
   constructor() {
     this.data = undefined;
-    this.object = undefined;
+    this._object = -1;
+    this._mesh = -1;
+
     this.p2d = new Vector2();
     this.p3d = new Vector3();
     this.dis = undefined;
+  }
+
+  //avoid reference leaks in cacherings
+  get object() {
+    return _appstate.datalib.get(this._object);
+  }
+
+  set object(ob) {
+    if (!ob) {
+      this._object = -1;
+      return;
+    }
+
+    this._object = ob.lib_id;
+  }
+
+  get mesh() {
+    return _appstate.datalib.get(this._mesh);
+  }
+
+  set mesh(ob) {
+    if (!ob) {
+      this._mesh = -1;
+      return;
+    }
+
+    this._mesh = ob.lib_id;
   }
 
   reset() {
@@ -104,6 +133,10 @@ export class FindnearestClass {
   static define() {return {
     selectMask : 0
   }}
+
+  static drawsObjectExclusively(view3d, object) {
+    return false;
+  }
 
   /**
    *

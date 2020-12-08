@@ -10,7 +10,7 @@ export function readOBJ(buf) {
 
   for (let l of lines) {
     l = l.trim();
-    if (l.length == 0 || l.startsWith("#")) {
+    if (l.length === 0 || l.startsWith("#")) {
       continue;
     }
 
@@ -19,28 +19,30 @@ export function readOBJ(buf) {
   lines = lines2;
   
   let me = new Mesh();
+  me._debug_id1 = -1; //prevent debug printing
+
   let vert_uvs = [];
   let vert_nos = [];
 
   for (let i=0; i<lines.length; i++) {
     let l = lines[i].split(" ");
-    if (l.length == 0) {
+    if (l.length === 0) {
       continue;
     }
 
     l[0] = l[0].toLowerCase();
 
-    for (let j=1; l[0] != "f" && j<l.length; j++) {
+    for (let j=1; l[0] !== "f" && j<l.length; j++) {
       l[j] = parseFloat(l[j]);
     }
 
-    if (l[0] == "v") {
+    if (l[0] === "v") {
       me.makeVertex(l.slice(1, 4));
-    } else if (l[0] == "vt") {
+    } else if (l[0] === "vt") {
       vert_uvs.push(l.slice(1, 3));
-    } else if (l[0] == "vn") {
+    } else if (l[0] === "vn") {
       vert_nos.push(new Vector3(l.slice(1, 4)));
-    } else if (l[0] == "f") {
+    } else if (l[0] === "f") {
       let vs = l.slice(1, l.length);
 
       let fvs = [];
@@ -72,7 +74,7 @@ export function readOBJ(buf) {
           vi = vi >= 0 ? vi-1 : vs.length + vi;
         }
 
-        fvs.push(me.verts[vi]);
+        fvs.push(me.verts.list[vi]);
       }
 
       let f = me.makeFace(fvs);

@@ -1,7 +1,7 @@
 import {DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import '../path.ux/scripts/util/struct.js';
 import {ToolModes, makeToolModeEnum} from '../editors/view3d/view3d_toolmode.js';
-import {WidgetManager, WidgetTool, WidgetTools} from "../editors/view3d/widgets.js";
+import {WidgetManager} from "../editors/view3d/widgets/widgets.js";
 
 let STRUCT = nstructjs.STRUCT;
 import {Graph} from '../core/graph.js';
@@ -13,7 +13,7 @@ import {Vector3, Matrix4} from '../util/vectormath.js';
 
 import * as THREE from '../extern/three.js';
 import {print_stack} from "../util/util.js";
-import {WidgetSceneCursor} from "../editors/view3d/widget_tools.js";
+import {WidgetSceneCursor} from "../editors/view3d/widgets/widget_tools.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {Collection} from "./collection.js";
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
@@ -24,11 +24,46 @@ export const EnvLightFlags = {
 
 export class EnvLight {
   constructor() {
-    this.color = new Vector3([0.5, 0.8, 1]);
-    this.power = 0.5;
-    this.ao_dist = 5.0;
-    this.ao_fac = 5.0;
+    this.color = new Vector3([1.0, 1.0, 1]);
+    this.power = 0.55;
+    this.ao_dist = 25.0;
+    this.ao_fac = 0.7;
     this.flag = EnvLightFlags.USE_AO;
+
+    this.sunDir = new Vector3([-0.14083751989292737, -0.4480698391806443, -0.8828353256451855]);
+    this.sunDir.normalize();
+
+    this.sunPower = 0.33;
+    this.sunRadius = 0.5;
+    this.sunColor = new Vector3([1, 1, 1]);
+    this.sunLight = undefined;
+
+    this._digest = new util.HashDigest();
+  }
+
+  calcUpdateHash() {
+    let ret = this._digest;
+
+    ret.reset();
+
+    for (let i = 0; i < 3; i++) {
+      ret.add(this.color[i]*1024);
+    }
+
+    ret.add(this.ao_dist*1024);
+    ret.add(this.ao_fac*1024);
+    ret.add(this.flag*1024);
+    ret.add(this.power*1024);
+
+    for (let i=0; i<3; i++) {
+      ret.add(this.sunDir[i]);
+      ret.add(this.sunColor[i]);
+    }
+
+    ret.add(this.sunPower);
+    ret.add(this.sunRadius);
+
+    return ret.get();
   }
 }
 
@@ -39,9 +74,13 @@ EnvLight {
   ao_dist    : float;
   ao_fac     : float;
   flag       : int;
+  sunColor   : vec3;
+  sunPower   : float;
+  sunRadius  : float;
+  sunDir     : vec3;
 }
 `;
-nstructjs.manager.add_class(EnvLight);
+nstructjs.register(EnvLight);
 
 export const SceneFlags = {
   SELECT : 1
@@ -252,6 +291,12 @@ export class Scene extends DataBlock {
 
     this.collection = undefined;
 
+    //magnet transform settings
+
+    this.propRadius = 1.0;
+    this.propMode = 0;
+    this.propEnabled = false;
+
     this.widgets = new WidgetManager();
     this.widgets.ctx = _appstate.ctx;
     this.cursor3D = new Matrix4();
@@ -452,11 +497,15 @@ export class Scene extends DataBlock {
     }
   }
 
-  switchToolMode(mode) {
+  switchToolMode(mode, _file_loading=false) {
     console.warn("switchToolMode called");
 
     if (mode === undefined) {
       throw new Error("switchToolMode: mode cannot be undefined");
+    }
+
+    if (typeof mode === "boolean") {
+      mode = mode ? 1 : 0;
     }
 
     let i = typeof mode == "number" ? mode : this.toolModeProp.values[mode];
@@ -465,15 +514,16 @@ export class Scene extends DataBlock {
       throw new Error("invalid tool mode " + mode);
     }
 
+    let old;
     let cls = ToolModes[i];
     let ret;
 
     if (this.toolmode_i in this.toolmode_map) {
       console.log("calling old tool inactive", this.toolmode, this.toolmode.onInactive);
-      this.widgets.remove(this.toolmode);
-      console.log(this.toolmode.widgets);
 
-      this.toolmode.onInactive();
+      if (!_file_loading) {
+        this.toolmode.onInactive();
+      }
     }
 
     for (let mode of this.toolmodes) {
@@ -483,23 +533,48 @@ export class Scene extends DataBlock {
       }
     }
 
+    if (this.toolmode_i < this.toolmodes.length && this.toolmode_i >= 0) {
+      old = this.toolmodes[this.toolmode_i];
+      old.storedSelectMask = this.selectMask;
+    }
+
     if (ret === undefined) {
       ret = new cls(this.widgets);
 
-      let def = cls.widgetDefine();
+      let def = cls.toolModeDefine();
 
       this.toolmodes.push(ret);
       this.toolmode_map[i] = ret;
       this.toolmode_namemap[def.name] = ret;
     }
 
+    ret.ctx = this.ctx;
     this.toolmode_i = i;
-    this.widgets.add(ret);
 
-    ret.onActive();
+    if (ret.storedSelectMask === -1 || ret.storedSelectMask === undefined) {
+      let def = cls.toolModeDefine();
 
-    if (this.outputs.onToolModeChange.hasEdges) {
-      this.outputs.onToolModeChange.update();
+      if (def.selectMode !== undefined) {
+        ret.storedSelectMask = def.selectMode;
+      }
+    }
+
+    if (ret.storedSelectMask >= 0) {
+      this.selectMask = ret.storedSelectMask;
+    }
+
+    if (_file_loading) {
+      window.setTimeout(() => {
+        if (ret === this.toolmode) {
+          ret.onActive();
+        }
+      }, 10);
+    } else {
+      ret.onActive();
+    }
+
+    if (!_file_loading && this.outputs.onToolModeChange.hasEdges) {
+      this.outputs.onToolModeChange.graphUpdate();
     }
 
     return ret;
@@ -548,7 +623,7 @@ export class Scene extends DataBlock {
 
   _onselect(obj, state) {
     if (this.outputs.onSelect.hasEdges) {
-      this.outputs.onSelect.update();
+      this.outputs.onSelect.graphUpdate();
     }
   }
 
@@ -570,7 +645,7 @@ export class Scene extends DataBlock {
 
     this.time = newtime;
     for (let ob of this.objects) {
-      ob.update();
+      ob.graphUpdate();
     }
 
     if (this.collection) {
@@ -580,7 +655,7 @@ export class Scene extends DataBlock {
       }
     }
 
-    this.outputs.onTimeChange.update();
+    this.outputs.onTimeChange.graphUpdate();
     window.updateDataGraph(true);
   }
 
@@ -609,11 +684,10 @@ export class Scene extends DataBlock {
     for (let mode of this.toolmodes) {
       mode.setManager(this.widgets);
 
-      let def = mode.constructor.widgetDefine();
+      let def = mode.constructor.toolModeDefine();
       let i = this.toolModeProp.values[def.name];
 
       if (i === this.toolmode_i) {
-        this.widgets.add(mode);
         found = 1;
       }
 
@@ -625,7 +699,7 @@ export class Scene extends DataBlock {
       let i = this.toolmode_i;
       this.toolmode_i = -1;
 
-      this.switchToolMode(i);
+      this.switchToolMode(0, true);
     }
   }
   
@@ -659,6 +733,11 @@ export class Scene extends DataBlock {
       return;
     }
 
+    let toolmode = this.toolmode;
+    if (toolmode) {
+      toolmode.ctx = ctx;
+    }
+
     try {
       this.updateWidgets_intern();
     } catch (error) {
@@ -672,25 +751,31 @@ export class Scene extends DataBlock {
     if (ctx === undefined)
       return;
 
+    this.ctx = ctx;
+
     this.widgets.update(this);
     if (this.toolmode !== undefined) {
+      this.toolmode.ctx = ctx;
       this.toolmode.update();
     }
   }
 }
 DataBlock.register(Scene);
 Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
-  flag       : int;
-  objects    : ObjectList;
-  active     : int | obj.active !== undefined ? obj.active.lib_id : -1;
-  time       : float;
-  selectMask : int;
-  cursor3D   : mat4;
-  envlight   : EnvLight;
-  toolmode_i : string | obj.toolModeProp.keys[obj.toolmode_i];
-  toolmodes  : array(abstract(ToolMode));
-  collection : DataRef | DataRef.fromBlock(obj.collection);
-  fps        : int;
+  flag         : int;
+  objects      : ObjectList;
+  active       : int | obj.active !== undefined ? obj.active.lib_id : -1;
+  time         : float;
+  selectMask   : int;
+  cursor3D     : mat4;
+  envlight     : EnvLight;
+  toolmode_i   : string | obj.toolModeProp.keys[obj.toolmode_i];
+  toolmodes    : array(abstract(ToolMode));
+  collection   : DataRef | DataRef.fromBlock(obj.collection);
+  fps          : int;
+  propMode     : int;
+  propRadius   : float;
+  propEnabled  : bool;
 }
 `;
 

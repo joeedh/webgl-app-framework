@@ -1,20 +1,29 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
-import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
+/*
+Widget Refactor Todo:
+
+* DONE: Destroy WidgetTool, rename to ViewportEventListener or something
+
+
+* */
+
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js';
+import {SimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
 import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
-        FlagProperty, ToolProperty, Vec3Property,
-        PropFlags, PropTypes, PropSubTypes} from '../../path.ux/scripts/toolsys/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
-import {Shapes} from '../../core/simplemesh_shapes.js';
-import {Shaders} from '../../shaders/shaders.js';
-import {dist_to_line_2d} from '../../path.ux/scripts/util/math.js';
-import {IsMobile} from '../../path.ux/scripts/core/ui_base.js'
-import {CallbackNode, NodeFlags} from "../../core/graph.js";
-import {DependSocket} from '../../core/graphsockets.js';
-import {css2color} from '../../path.ux/scripts/core/ui_base.js';
-import * as util from '../../util/util.js';
-import * as math from '../../path.ux/scripts/util/math.js';
+  FlagProperty, ToolProperty, Vec3Property,
+  PropFlags, PropTypes, PropSubTypes} from '../../../path.ux/scripts/toolsys/toolprop.js';
+import {ToolOp, ToolFlags, UndoFlags} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
+import {Shapes} from '../../../core/simplemesh_shapes.js';
+import {Shaders} from '../../../shaders/shaders.js';
+import {dist_to_line_2d, isect_ray_plane} from '../../../path.ux/scripts/util/math.js';
+import {isMobile} from '../../../path.ux/scripts/util/util.js'
+import {CallbackNode, Node, NodeFlags} from "../../../core/graph.js";
+import {DependSocket} from '../../../core/graphsockets.js';
+import {css2color} from '../../../path.ux/scripts/core/ui_base.js';
+import * as util from '../../../util/util.js';
+import * as math from '../../../path.ux/scripts/util/math.js';
 
 let dist_temps = util.cachering.fromConstructor(Vector3, 512);
+let dist_temps4 = util.cachering.fromConstructor(Vector4, 512);
 let dist_rets = util.cachering.fromConstructor(Vector2, 512);
 
 export const WidgetFlags = {
@@ -26,22 +35,25 @@ export const WidgetFlags = {
   ALL_EVENTS : 32, //widget gets event regardless of if mouse cursor is near it
 };
 
-export let WidgetTools = [];
-
+let shape_idgen = 0;
 
 export class WidgetShape {
   constructor(view3d) {
     this._drawtemp = new Vector3();
+
+    this._debug_id = shape_idgen++;
 
     this.destroyed = false;
     this.flag = WidgetFlags.CAN_SELECT;
     this.owner = undefined;
 
     this.color = new Vector4([0.1, 0.5, 1.0, 1.0]);
-    this.hcolor = new Vector4([0.7, 0.7, 0.7, 0.5]); //highlight color
+    this.hcolor = new Vector4([0.9, 0.9, 0.9, 0.8]); //highlight color
 
     this.matrix = new Matrix4();
     this.localMatrix = new Matrix4(); //we need a seperate local matrix for zoom correction to work
+
+    this.colortemp = new Vector4();
 
     //internal final draw matrix
     this.drawmatrix = new Matrix4();
@@ -102,7 +114,20 @@ export class WidgetShape {
     return b;
   }
 
-  draw(gl, manager, matrix, localMatrix) {
+  setUniforms(manager, uniforms) {
+    let view3d = manager.ctx.view3d;
+
+    uniforms.color = this.colortemp.load(this.color);
+    uniforms.size = view3d.glSize;
+    uniforms.aspect = view3d.activeCamera.aspect;
+    uniforms.near = view3d.activeCamera.near;
+    uniforms.far = view3d.activeCamera.far;
+    uniforms.polygonOffset = 0.25;
+    uniforms.projectionMatrix = manager.ctx.view3d.activeCamera.rendermat;
+    uniforms.objectMatrix = this.drawmatrix;
+  }
+
+  draw(gl, manager, matrix, localMatrix, alpha=1.0, no_z_write=false) {
     if (this.destroyed) {
       console.log("Reusing widget shape");
       this.destroyed = false;
@@ -113,15 +138,17 @@ export class WidgetShape {
       return;
     }
 
+    let view3d = manager.ctx.view3d;
+
     this.mesh.program = Shaders.WidgetMeshShader;
 
-    this.mesh.uniforms.color = this.color;
+    this.setUniforms(manager, this.mesh.uniforms);
+    this.mesh.uniforms.color[3] = alpha;
 
     let mat = this.drawmatrix;
-    mat.load(this.matrix).multiply(matrix);
+    mat.load(matrix).multiply(this.matrix);
 
-    let view3d = manager.ctx.view3d;
-    let camera = manager.ctx.view3d.camera;
+    let camera = manager.ctx.view3d.activeCamera;
     let co = this._drawtemp;
     co.zero();
     co.multVecMatrix(mat);
@@ -130,9 +157,7 @@ export class WidgetShape {
     let smat = this._tempmat;
     smat.makeIdentity();
 
-    mat.load(this.matrix);
-
-    let scale = util.isMobile() ? w*0.15 : w*0.075; //Math.max(w*0.05, 0.01);
+    let scale = isMobile() ? w*0.15 : w*0.075; //Math.max(w*0.05, 0.01);
 
     let local = this._tempmat2.load(this.localMatrix);
     if (localMatrix !== undefined) {
@@ -141,13 +166,12 @@ export class WidgetShape {
 
     smat.scale(scale, scale, scale);
 
+    mat.makeIdentity();
     mat.multiply(matrix);
+    mat.multiply(this.matrix);
     mat.multiply(smat);
     mat.multiply(local);
 
-    this.mesh.uniforms.polygonOffset = 0.0;
-    this.mesh.uniforms.projectionMatrix = manager.ctx.view3d.camera.rendermat;
-    this.mesh.uniforms.objectMatrix = mat;
 
     gl.enable(gl.BLEND);
 
@@ -155,32 +179,176 @@ export class WidgetShape {
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE);
     //gl.blendEquation(gl.FUNC_ADD);
 
-    gl.disable(gl.DEPTH_TEST);
-    gl.depthMask(false);
-    gl.disable(gl.CULL_FACE);
+    if (!no_z_write) {
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(true);
+    } else {
+      gl.depthMask(false);
+    }
 
-    this.mesh.draw(gl);
-
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthMask(true);
     this.mesh.draw(gl);
 
 
     if (this.flag & WidgetFlags.HIGHLIGHT) {
       gl.enable(gl.BLEND);
+      gl.disable(gl.DEPTH_TEST);
+      //this.mesh.draw(gl);
+
+      let hcolor = this.colortemp.load(this.hcolor);
+      hcolor[3] = alpha;
 
       this.mesh.draw(gl, {
         polygonOffset : 0.1,
-        color         : this.hcolor
+        color         : hcolor
       });
+
+      if (!no_z_write) {
+        gl.enable(gl.DEPTH_TEST);
+      }
     }
 
     gl.disable(gl.BLEND);
   }
 }
 
+export class WidgetTorus extends WidgetShape {
+  constructor() {
+    super();
+
+    this.colortemp = new Vector4();
+
+    this.tco = new Vector3();
+    this.shapeid = "TORUS";
+  }
+
+
+  draw(gl, manager, matrix, localMatrix) {
+    this.mesh = manager.shapes[this.shapeid];
+
+    gl.depthMask(true);
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
+    gl.frontFace(gl.CW);
+    gl.enable(gl.BLEND);
+
+    //draw back faces of a sphere
+
+    //super.draw(gl, manager, matrix, localMatrix);
+    let mesh = manager.shapes.SPHERE;
+    mesh.program = Shaders.WidgetMeshShader;
+
+    this.setUniforms(manager, mesh.uniforms);
+    mesh.uniforms.objectMatrix = new Matrix4(mesh.uniforms.objectMatrix);
+    mesh.uniforms.objectMatrix.scale(0.9, 0.9, 0.9);
+    mesh.uniforms.color = [1, 1, 1, 0.01];
+
+    mesh.draw(gl, this.uniforms);
+
+    //draw torus transparently without writing to the depth buffer
+    gl.disable(gl.DEPTH_TEST);
+    super.draw(gl, manager, matrix, localMatrix, 0.25, true);
+    gl.enable(gl.DEPTH_TEST);
+
+    gl.frontFace(gl.CCW);
+    gl.disable(gl.CULL_FACE);
+    gl.disable(gl.BLEND);
+
+    //manager.shapes.SPHERE.draw(gl, manager, matrix, localMatrix);
+    super.draw(gl, manager, matrix, localMatrix, 1.0);
+
+    /*
+    let mat = new Matrix4();
+    let plane = manager.shapes.PLANE;
+
+    plane.program = mesh.program;
+    this.setUniforms(manager, plane.uniforms);
+
+    mat.translate(this.tco[0], this.tco[1], this.tco[2]);
+    let rmat = new Matrix4(this.drawmatrix);
+    rmat.makeRotationOnly();
+    mat.multiply(rmat);
+
+    let s = 4;
+    mat.scale(s, s, s);
+
+    gl.enable(gl.BLEND);
+
+    plane.uniforms.objectMatrix = mat;
+    plane.uniforms.color = new Vector4(this.color);
+    plane.uniforms.color[3] = 0.1;
+
+    mesh.uniforms.objectMatrix = mat;
+    mesh.uniforms.color = plane.uniforms.color;
+
+    plane.draw(gl, this.uniforms);
+    mesh.uniforms.objectMatrix.scale(0.3, 0.3, 0.3);
+    mesh.draw(gl, this.uniforms);
+
+    // */
+  }
+
+  distToMouse(view3d, x, y) {
+    let mat = this.drawmatrix;
+
+    let plane = dist_temps.next().zero();
+    plane[2] = 1.0;
+
+    let rmat = new Matrix4(mat);
+    rmat.makeRotationOnly();
+    plane.multVecMatrix(rmat);
+
+    let origin = dist_temps4.next().zero();
+    origin[0] = mat.$matrix.m41;
+    origin[1] = mat.$matrix.m42;
+    origin[2] = mat.$matrix.m43;
+
+    let view = view3d.getViewVec(x, y);
+    view.normalize();
+
+    let isect = isect_ray_plane(origin, plane, view3d.activeCamera.pos, view);
+    if (!isect) {
+      return 10000.0;
+    }
+
+    this.tco = new Vector3(isect);
+
+    let ret = dist_rets.next();
+
+    let sisect = dist_temps4.next().load(isect);
+    view3d.project(sisect);
+
+    ret[1] = sisect[2];
+
+    let sorigin = dist_temps.next().load(origin);
+
+    view3d.project(sorigin);
+    sisect[2] = sorigin[2] = sisect[3] = 0.0;
+
+    let dis = sorigin.vectorDistance(sisect);
+
+    sisect.load(isect);
+    sisect[3] = 1.0;
+    sisect.multVecMatrix(view3d.activeCamera.rendermat);
+    let w = sisect[3];
+
+    isect.sub(origin);
+
+    let scale = Math.sqrt(mat.$matrix.m11**2 + mat.$matrix.m12**2 + mat.$matrix.m13**2);
+    let t = new Vector3(isect).normalize().mulScalar(scale*0.5);
+    t.add(origin);
+    view3d.project(t);
+
+    t[2] = 0.0;
+    let radius = t.vectorDistance(sorigin);
+
+    ret[0] = Math.abs(dis - radius);
+
+    return ret;
+  }
+}
+
 export class WidgetArrow extends WidgetShape {
-  constructor(manager) {
+  constructor() {
     super();
 
     this.shapeid = "ARROW";
@@ -364,7 +532,7 @@ export class WidgetPlane extends WidgetShape {
 
     let view = view3d.getViewVec(x, y);
 
-    let ret = math.isect_ray_plane(v1, n, view3d.camera.pos, view);
+    let ret = math.isect_ray_plane(v1, n, view3d.activeCamera.pos, view);
     let ret2 = dist_rets.next();
 
     if (ret) {
@@ -426,20 +594,39 @@ export class WidgetChevron extends WidgetPlane {
   }
 }
 
-export class WidgetBase {
+export class WidgetDoubleChevron extends WidgetPlane {
   constructor() {
+    super();
+
+    this.shapeid = "CHEVRON_DOUBLE";
+  }
+}
+
+export class WidgetBase extends Node {
+  constructor() {
+    super();
+
     let def = this.constructor.widgetDefine();
 
     this.ctx = undefined;
     this.flag = def.flag !== 0 ? def.flag : 0;
     this.id = -1;
+
     this.children = [];
     this.destroyed = false;
+
     this.shape = undefined;
     this.manager = undefined; //is set by WidgetManager
+
     this.matrix = new Matrix4();
     this.localMatrix = new Matrix4(); //we need a seperate local matrix for zoom correction to work
     this._tempmatrix = new Matrix4();
+  }
+
+  /** generate a string key that describes this widget, but isn't necassarily unique.
+   *  this is used to keep track of whether widgets have already been created or not */
+  genKey() {
+    return "";
   }
 
   setMatrix(mat) {
@@ -447,17 +634,9 @@ export class WidgetBase {
     return this;
   }
 
-  static widgetDefine() {return {
-    uiName   : "name",
-    typeName : "typeName",
-    selMask  : undefined,
-    icon     : -1,
-    flag     : 0, //one of WidgetFlags
-  }}
-
   //can this widget run?
   static ctxValid(ctx) {
-    return ctx.selectMask & this.constructor.widgetDefine().selMask;
+    return ctx.selectMask & this.constructor.widgetDefine().selectMode;
   }
 
   get isDead() {
@@ -465,8 +644,13 @@ export class WidgetBase {
     return false;
   }
 
-  remove() {
+  onRemove() {
     this.manager.remove(this);
+
+    if (this.graph_graph) {
+      this.graph_graph.remove(this);
+      this.graph_graph = undefined;
+    }
   }
 
   onContextLost(e) {
@@ -497,7 +681,7 @@ export class WidgetBase {
 
     if (this.shape !== undefined) {
       let disz = this.shape.distToMouse(view3d, x, y);
-      
+
       mindis = disz[0];
       minz = disz[1];
       minret = this;
@@ -506,14 +690,14 @@ export class WidgetBase {
     for (let child of this.children) {
       let ret = child.findNearest(view3d, x, y, limit);
 
-      if (ret !== undefined) {
-        //console.log(ret.z)
+      if (ret === undefined) {
+        continue;
       }
 
       if (mindis === undefined || ret.dis < mindis) {
         mindis = ret.dis;
         minz = ret.z;
-        minret = child;
+        minret = ret.data ? ret.data : child;
       }
     }
 
@@ -528,6 +712,20 @@ export class WidgetBase {
     };
   }
 
+  add(child) {
+    this.children.push(child);
+
+    child.parent = this;
+    child.manager = this.manager;
+    child.ctx = this.ctx;
+
+    if (this.manager) {
+      this.manager.add(child);
+    }
+
+    return child;
+  }
+
   update(manager) {
     if (this.isDead) {
       this.remove();
@@ -537,12 +735,24 @@ export class WidgetBase {
   remove() {
     if (this.manager === undefined) {
       console.warn("widget not part of a graph", this.manager);
+      return;
     }
+
     this.manager.remove(this);
+
+    if (this.graph_graph) {
+      this.graph_graph.remove(this);
+      this.graph_graph = undefined;
+    }
   }
 
   on_mousedown(e, localX, localY, was_touch) {
     let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
+    let ret = false;
+
+    if (this.onclick) {
+      ret = this.onclick(e);
+    }
 
     if (child !== undefined && child !== this) {
       if (child.on_mousedown) {
@@ -553,7 +763,7 @@ export class WidgetBase {
       return true;
     }
 
-    return false;
+    return ret;
   }
 
   on_mousemove(e, localX, localY) {
@@ -593,7 +803,7 @@ export class WidgetBase {
     mat.load(this.matrix);
 
     if (matrix !== undefined) {
-      mat.multiply(matrix);
+      mat.preMultiply(matrix);
     }
 
     for (let w of this.children) {
@@ -612,30 +822,56 @@ export class WidgetBase {
 
     this.shape.draw(gl, manager, mat, this.localMatrix);
   }
-}
 
-export class WidgetTool extends WidgetBase {
-  constructor(manager) {
-    super();
+  _newbase(matrix, color, shape) {
+    let ret = new WidgetBase();
 
-    if (manager !== undefined) {
-      this.manager = manager;
-      this.ctx = manager.ctx;
-    } else {
-      this.manager = this.ctx = undefined;
+    ret.shape = shape;
+
+    if (typeof color == "string") {
+      color = css2color(color);
     }
 
-    let def = this.constructor.widgetDefine();
+    if (color !== undefined) {
+      ret.shape.color.load(color);
 
-    this.flag = def.flag !== undefined ? def.flag : 0;
+      if (color.length < 4)
+        ret.shape.color[3] = 1.0;
+    }
 
-    this.destroyed = false;
-    this.name = def.name;
-    this.uiname = def.uiname;
-    this.icon = def.icon !== undefined ? def.icon : -1;
-    this.description = def.description !== undefined ? def.description : "";
+    if (matrix !== undefined) {
+      ret.matrix.load(matrix);
+    }
 
-    this.widgets = [];
+    return ret;
+  }
+
+  getTorus(matrix, color) {
+    return this.add(this._newbase(matrix, color, new WidgetTorus(this)));
+  }
+
+  getArrow(matrix, color) {
+    return this.add(this._newbase(matrix, color, new WidgetArrow(this)));
+  }
+
+  getSphere(matrix, color) {
+    return this.add(this._newbase(matrix, color, new WidgetSphere(this)));
+  }
+
+  getChevron(matrix, color) {
+    return this.add(this._newbase(matrix, color, new WidgetChevron(this)));
+  }
+
+  getDoubleChevron(matrix, color) {
+    return this.add(this._newbase(matrix, color, new WidgetDoubleChevron(this)));
+  }
+
+  getPlane(matrix, color) {
+    return this.add(this._newbase(matrix, color, new WidgetPlane(this)));
+  }
+
+  getBlockArrow(matrix, color) {
+    return this.add(this._newbase(matrix, color, new WidgetBlockArrow(this)));
   }
 
   setManager(manager) {
@@ -643,24 +879,12 @@ export class WidgetTool extends WidgetBase {
     this.ctx = manager.ctx;
   }
 
-  getArrow(matrix, color) {
-    let ret = this.manager.arrow(matrix, color);
-    this.widgets.push(ret);
-    return ret;
-  }
+  exec(ctx) {
+    super.exec();
 
-  getSphere(matrix, color) {
-    let ret = this.manager.sphere(matrix, color);
-    this.widgets.push(ret);
-    return ret;
+    this.update();
+    this.outputs.depend.graphUpdate();
   }
-
-  getChevron(matrix, color) {
-    let ret = this.manager.chevron(matrix, color);
-    this.widgets.push(ret);
-    return ret;
-  }
-
 
   /**
    * executes a (usually modal) tool, adding (and removing)
@@ -669,41 +893,35 @@ export class WidgetTool extends WidgetBase {
   execTool(ctx, tool) {
     let view3d = this.ctx.view3d;
 
-    if (this._widget_tempnode === undefined) {
-      let n = this._widget_tempnode = this.manager.createCallbackNode(0, "widget redraw", () => {
-        this.update();
-      }, {trigger: new DependSocket("trigger")}, {});
-
-      this.ctx.graph.add(n);
-      n.inputs.trigger.connect(view3d._graphnode.outputs.onDrawPre);
+    if (!this.inputs.depend.has(view3d._graphnode.outputs.onDrawPre)) {
+      this.inputs.depend.connect(view3d._graphnode.outputs.onDrawPre);
     }
 
-    this.ctx.toolstack.execTool(ctx, tool);
+    let toolstack = this.ctx.toolstack;
+    toolstack.execTool(ctx, tool);
 
     if (tool._promise !== undefined) {
       tool._promise.then((ctx, was_cancelled) => {
         console.log("tool was finished", this, this._widget_tempnode, ".");
 
         if (this._widget_tempnode !== undefined) {
-          //this.ctx.graph.remove(this._widget_tempnode);
-          this.manager.removeCallbackNode(this._widget_tempnode);
-          this._widget_tempnode = undefined;
+          this.inputs.depend.disconnect(view3d._graphnode.outputs.onDrawPre);
         }
       })
     }
   }
 
-  getPlane(matrix, color) {
-    let ret = this.manager.plane(matrix, color);
-    this.widgets.push(ret);
-    return ret;
-  }
-
-  getBlockArrow(matrix, color) {
-    let ret = this.manager.blockarrow(matrix, color);
-    this.widgets.push(ret);
-    return ret;
-  }
+  static nodedef() {return {
+    name   : "widget3d",
+    uiname : "widget3d",
+    inputs : {
+      depend : new DependSocket()
+    },
+    outputs : {
+      depend : new DependSocket()
+    },
+    flag : NodeFlags.FORCE_INHERIT|NodeFlags.ZOMBIE
+  }}
 
   static widgetDefine() {return {
     name        : "name",
@@ -713,95 +931,7 @@ export class WidgetTool extends WidgetBase {
     description : "",
     selectMode  : undefined, //force selectmode to this on widget create
   }}
-
-  static register(cls) {
-    WidgetTools.push(cls);
-  }
-
-  static getTool(name) {
-    for (let cls of WidgetTools) {
-      if (cls.widgetDefine().name === name) {
-        return cls;
-      }
-    }
-
-    return undefined;
-  }
-
-  static getToolEnum(classes=WidgetTools, propcls=EnumProperty, is_bitmask=false) {
-    let enumdef = {};
-    let icondef = {};
-    let uinames = {};
-    let i = 0;
-
-    for (let cls of classes) {
-      let def = cls.widgetDefine();
-
-      if (is_bitmask) {
-        enumdef[def.name] = 1<<i;
-      } else {
-        enumdef[def.name] = i;
-      }
-
-      icondef[def.name] = def.icon;
-      uinames[def.name] = def.uiname;
-
-      i++;
-    }
-
-    let prop = new propcls(undefined, enumdef, undefined, "Tools", "Tool Widgets");
-    prop.ui_value_names = uinames;
-    prop.addIcons(icondef);
-
-    return prop;
-  }
-
-  static validate(ctx) {
-
-  }
-
-  create(ctx, manager) {
-    this.ctx = ctx;
-    this.manager = manager;
-  }
-
-  update(ctx) {
-    super.update(this.manager);
-  }
-
-  onremove() {
-    let manager = this.manager;
-
-    for (let w of this.widgets) {
-      manager.remove(w);
-    }
-
-    this.widgets = [];
-
-    if (this._widget_tempnode !== undefined ){
-      manager.removeCallbackNode(this._widget_tempnode);
-      this._widget_tempnode = undefined;
-    }
-  }
-
-  remove() {
-    let manager = this.manager;
-    
-    manager.remove(this);
-  }
-
-  destroy(gl) {
-    super.destroy(gl);
-
-    if (this.destroyed) {
-      return;
-    }
-
-    for (let w of this.widgets) {
-      w.destroy(gl);
-    }
-  }
-};
+}
 
 export class WidgetManager {
   constructor(ctx) {
@@ -812,6 +942,8 @@ export class WidgetManager {
     this.idgen = new util.IDGen();
     this.ctx = ctx;
     this.gl = undefined;
+
+    this.widget_keymap = {};
 
     //execution graph nodes
     this.nodes = {};
@@ -866,8 +998,16 @@ export class WidgetManager {
 
       delete this.nodes[k];
 
-      if (n.graph_id != -1) {
-        graph.remove(n);
+      try {
+        n.onRemove();
+      } catch (error) {
+        util.print_stack(error);
+        console.warn("Error removing a node", n);
+      }
+
+      if (n.graph_graph) {
+        n.graph_graph.remove(this);
+        n.graph_graph = undefined;
       }
     }
 
@@ -933,7 +1073,7 @@ export class WidgetManager {
 
   /**see view3d.getSubEditorMpos for how localX/localY are derived*/
   on_mousedown(e, localX, localY, was_touch) {
-    this.updateHighlight(e, localX, localY, was_touch);
+    console.log("widget mouse down");
 
     if (this._fireAllEventWidgets(e, "on_mousedown", localX, localY, was_touch)) {
       return true;
@@ -955,7 +1095,10 @@ export class WidgetManager {
     let minw = undefined;
 
     for (let w of this.widgets) {
-      if (w.flag & WidgetFlags.IGNORE_EVENTS) {
+      let skip = w.flag & WidgetFlags.IGNORE_EVENTS;
+      skip = skip || w.parent !== undefined;
+
+      if (skip) {
         continue;
       }
 
@@ -969,12 +1112,12 @@ export class WidgetManager {
       let dis = ret.dis;
       let z = ret.z;
 
-      if (minw === undefined || (dis < mindis || (dis == mindis && z < minz))) {
+      if (minw === undefined || (dis < mindis || (dis === mindis && z < minz))) {
         mindis = dis;
         minw = ret.data;
       }
     }
-      
+
     return minw;
   }
 
@@ -1007,7 +1150,7 @@ export class WidgetManager {
 
     return ret;
   }
-  
+
   on_mouseup(e, localX, localY, was_touch) {
     this.updateHighlight(e, localX, localY, was_touch);
 
@@ -1035,10 +1178,26 @@ export class WidgetManager {
     widget.id = this.idgen.next();
     widget.manager = this;
 
+    this.widget_keymap[widget.genKey()] = widget;
     this.widget_idmap[widget.id] = widget;
     this.widgets.push(widget);
 
+    //add children too
+    for (let child of widget.children) {
+      if (!(child.id in this.widget_idmap)) {
+        this.add(child);
+      }
+    }
+
     return widget;
+  }
+
+  hasWidgetWithKey(key) {
+    return key in this.widget_keymap;
+  }
+
+  getWidgetWithKey(key) {
+    return this.widget_keymap[key];
   }
 
   remove(widget) {
@@ -1047,12 +1206,12 @@ export class WidgetManager {
       return;
     }
 
-    if (widget.onremove) {
-      widget.onremove();
+    if (this.ctx && this.ctx.graph) {
+      this.ctx.graph.remove(widget);
     }
 
-    if (this.ctx.view3d !== undefined && this.ctx.view3d.gl !== undefined) {
-      widget.destroy(this.ctx.view3d.gl);
+    if (widget.onremove) {
+      widget.onremove();
     }
 
     if (widget === this.highlight) {
@@ -1063,9 +1222,15 @@ export class WidgetManager {
     }
 
     delete this.widget_idmap[widget.id];
+    delete this.widget_keymap[widget.genKey()];
+
     this.widgets.remove(widget);
 
     widget.id = -1;
+
+    if (this.ctx.view3d !== undefined && this.ctx.view3d.gl !== undefined) {
+      widget.destroy(this.ctx.view3d.gl);
+    }
   }
 
   clear() {
@@ -1120,7 +1285,7 @@ export class WidgetManager {
     }
   }
 
-  draw(gl, view3d) {
+  draw(view3d, gl) {
     if (!this._init) {
       this._init = true;
       this.glInit(gl);
@@ -1133,7 +1298,9 @@ export class WidgetManager {
     }
 
     for (let widget of this.widgets) {
-      widget.draw(gl, this);
+      if (!widget.parent) {
+        widget.draw(gl, this);
+      }
     }
 
     if (pushctx) {
@@ -1184,7 +1351,23 @@ export class WidgetManager {
     return this.add(this._newbase(matrix, color, new WidgetBlockArrow(this)));
   }
 
+  updateGraph() {
+    if (!this.ctx || !this.ctx.graph) {
+      return;
+    }
+
+    let graph = this.ctx.graph;
+
+    for (let widget of this.widgets) {
+      if (widget.graph_id < 0) {
+        graph.add(widget);
+      }
+    }
+  }
+
   update(view3d) {
+    this.updateGraph();
+
     for (let widget of this.widgets) {
       widget.update(this);
 

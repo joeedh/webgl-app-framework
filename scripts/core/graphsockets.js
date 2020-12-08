@@ -1,4 +1,4 @@
-import {Matrix4, Vector2, Vector3, Vector4, util, nstructjs} from '../path.ux/scripts/pathux.js';
+import {EnumKeyPair, Matrix4, Vector2, Vector3, Vector4, util, nstructjs} from '../path.ux/scripts/pathux.js';
 import {NodeSocketType, NodeFlags, SocketFlags} from './graph.js';
 
 export class Matrix4Socket extends NodeSocketType {
@@ -12,8 +12,13 @@ export class Matrix4Socket extends NodeSocketType {
     }
   }
 
+  addToUpdateHash(digest) {
+    digest.add(this.value);
+  }
+
   static apiDefine(api, sockstruct) {
-    sockstruct.struct("value", "value", "Value", api.mapStruct(Matrix4));
+    let def = sockstruct.struct("value", "value", "Value", api.mapStruct(Matrix4));
+    //def.on('change', function() { this.dataref.graphUpdate(true)});
   }
 
   static nodedef() {return {
@@ -21,47 +26,47 @@ export class Matrix4Socket extends NodeSocketType {
     uiname : "Matrix",
     color : [1,0.5,0.25,1]
   }}
-  
+
   copy() {
     let ret = new Matrix4Socket(this.uiname, this.flag);
     this.copyTo(ret);
     return ret;
   }
-  
+
   copyTo(b) {
     super.copyTo(b);
-    
+
     b.value.load(this.value);
   }
-  
+
   cmpValue(b) {
     return -1;
   }
-  
+
   copyValue() {
-      return new Matrix4(this.value);
+    return new Matrix4(this.value);
   }
-  
+
   diffValue(b) {
     let m1 = this.value.$matrix;
     let m2 = b.$matrix;
-    
+
     let diff = 0.0, tot=0.0;
-    
+
     for (let k in m1) {
       let a = m1[k], b = m2[k];
-      
+
       diff += Math.abs(a-b);
       tot += 1.0;
     }
-    
+
     return tot != 0.0 ? diff / tot : 0.0;
   }
-  
+
   getValue() {
     return this.value;
   }
-  
+
   setValue(val) {
     this.value.load(val);
   }
@@ -76,32 +81,36 @@ NodeSocketType.register(Matrix4Socket);
 export class DependSocket extends NodeSocketType {
   constructor(uiname, flag) {
     super(uiname, flag);
-    
+
     this.value = false;
   }
-  
+
+  addToUpdateHash(digest) {
+    //digest.add(0);
+  }
+
   static nodedef() {return {
     name : "dep",
     uiname : "Dependency",
     color : [0.0,0.75,0.25,1]
   }}
-  
+
   diffValue(b) {
     return (!!this.value != !!b)*0.001;
   }
-  
+
   copyValue() {
     return this.value;
   }
-  
+
   getValue() {
     return this.value;
   }
-  
+
   setValue(b) {
     this.value = !!b;
   }
-  
+
   cmpValue(b) {
     return !!this.value == !!b;
   }
@@ -129,7 +138,13 @@ export class IntSocket extends NodeSocketType {
   }
 
   static apiDefine(api, sockstruct) {
-    sockstruct.int("value", "value", "value");
+    let def = sockstruct.int("value", "value", "value");
+
+    def.on('change', function() { this.dataref.graphUpdate(true)});
+
+    if (this.graph_flag & SocketFlags.NO_UNITS) {
+      def.noUnits();
+    }
   }
 
   static nodedef() {return {
@@ -158,11 +173,15 @@ export class IntSocket extends NodeSocketType {
     return ~~this.value !== ~~b;
   }
 
+  addToUpdateHash(digest) {
+    digest.add(this.value);
+  }
+
   loadSTRUCT(reader) {
     reader(this);
     super.loadSTRUCT(reader);
 
-    this.value = !!this.value;
+    this.value = ~~this.value;
   }
 };
 IntSocket.STRUCT = nstructjs.inherit(IntSocket, NodeSocketType, "graph.IntSocket") + `
@@ -180,7 +199,13 @@ export class Vec2Socket extends NodeSocketType {
   }
 
   static apiDefine(api, sockstruct) {
-    sockstruct.vec2('value', 'value', 'value');
+    let def = sockstruct.vec2('value', 'value', 'value');
+
+    def.on('change', function() { this.dataref.graphUpdate(true)});
+
+    if (this.graph_flag & SocketFlags.NO_UNITS) {
+      def.noUnits();
+    }
   }
 
   static nodedef() {return {
@@ -189,7 +214,13 @@ export class Vec2Socket extends NodeSocketType {
     color : [0.25, 0.45, 1.0, 1]
   }}
 
+  addToUpdateHash(digest) {
+    digest.add(this.value[0]);
+    digest.add(this.value[1]);
+  }
+
   copyTo(b) {
+    super.copyTo(b);
     b.value.load(this.value);
   }
 
@@ -236,12 +267,18 @@ export class VecSocket extends NodeSocketType {
 export class Vec3Socket extends VecSocket {
   constructor(uiname, flag, default_value) {
     super(uiname, flag);
-    
+
     this.value = new Vector3(default_value);
   }
 
   static apiDefine(api, sockstruct) {
-    sockstruct.vec3('value', 'value', 'value');
+    let def = sockstruct.vec3('value', 'value', 'value');
+
+    def.on('change', function() { this.dataref.graphUpdate(true)});
+
+    //if (this.graph_flag & SocketFlags.NO_UNITS) {
+      def.noUnits();
+    //}
   }
 
   static nodedef() {return {
@@ -250,26 +287,34 @@ export class Vec3Socket extends VecSocket {
     color : [0.25, 0.45, 1.0, 1]
   }}
 
+  addToUpdateHash(digest) {
+    digest.add(this.value[0]);
+    digest.add(this.value[1]);
+    digest.add(this.value[2]);
+  }
+
   copyTo(b) {
+    super.copyTo(b);
+
     b.value.load(this.value);
   }
 
   diffValue(b) {
     return this.value.vectorDistance(b);
   }
-  
+
   copyValue() {
     return new Vector3(this.value);
   }
-  
+
   getValue() {
     return this.value;
   }
-  
+
   setValue(b) {
     this.value.load(b);
   }
-  
+
   //eh. . .dot product?
   cmpValue(b) {
     return this.value.dot(b);
@@ -285,10 +330,10 @@ NodeSocketType.register(Vec3Socket);
 export class Vec4Socket extends NodeSocketType {
   constructor(uiname, flag, default_value) {
     super(uiname, flag);
-    
+
     this.value = new Vector4(default_value);
   }
-  
+
   static nodedef() {return {
     name : "vec4",
     uiname : "Vector4",
@@ -296,23 +341,38 @@ export class Vec4Socket extends NodeSocketType {
   }}
 
   static apiDefine(api, sockstruct) {
-    sockstruct.vec4('value', 'value', 'value');
+    let def = sockstruct.vec4('value', 'value', 'value');
+
+    def.on('change', function() { this.dataref.graphUpdate(true)});
+
+    if (this.graph_flag & SocketFlags.NO_UNITS) {
+      def.noUnits();
+    }
+  }
+
+  addToUpdateHash(digest) {
+    digest.add(this.value[0]);
+    digest.add(this.value[1]);
+    digest.add(this.value[2]);
+    digest.add(this.value[3]);
   }
 
 
   diffValue(b) {
     return this.value.vectorDistance(b);
   }
-  
+
   copyValue() {
     return new Vector4(this.value);
   }
-  
+
   getValue() {
     return this.value;
   }
 
   copyTo(b) {
+    super.copyTo(b);
+
     b.value.load(this.value);
   }
 
@@ -323,7 +383,7 @@ export class Vec4Socket extends NodeSocketType {
     }
     this.value.load(b);
   }
-  
+
   //eh. . .dot product?
   cmpValue(b) {
     return this.value.dot(b);
@@ -348,7 +408,9 @@ export class RGBASocket extends Vec4Socket {
   }}
 
   static apiDefine(api, sockstruct) {
-    sockstruct.color4('value', 'value', 'value');
+    let def = sockstruct.color4('value', 'value', 'value');
+
+    def.on('change', function() { this.dataref.graphUpdate(true)});
   }
 
   buildUI(container, onchange) {
@@ -377,12 +439,22 @@ NodeSocketType.register(RGBASocket);
 export class FloatSocket extends NodeSocketType {
   constructor(uiname, flag, default_value=0.0) {
     super(uiname, flag);
-    
+
     this.value = default_value;
   }
 
+  addToUpdateHash(digest) {
+    digest.add(this.value);
+  }
+
   static apiDefine(api, sockstruct) {
-    sockstruct.float('value', 'value', 'value').noUnits();
+    let def = sockstruct.float('value', 'value', 'value');
+
+    if (this.graph_flag & SocketFlags.NO_UNITS) {
+      def.noUnits();
+    }
+
+    def.on('change', function() { this.dataref.graphUpdate(true)});
   }
 
   static nodedef() {return {
@@ -405,16 +477,18 @@ export class FloatSocket extends NodeSocketType {
   diffValue(b) {
     return Math.abs(this.value - b);
   }
-  
+
   copyValue() {
     return this.value;
   }
-  
+
   getValue() {
     return this.value;
   }
-  
+
   copyTo(b) {
+    super.copyTo(b);
+
     b.value = this.value;
   }
 
@@ -423,10 +497,10 @@ export class FloatSocket extends NodeSocketType {
       console.warn(this, b);
       throw new Error("NaN!");
     }
-    
+
     this.value = b;
   }
-  
+
   //eh. . .dot product?
   cmpValue(b) {
     return this.value - b;
@@ -443,8 +517,16 @@ export class EnumSocket extends IntSocket {
   constructor(uiname, items={}, flag, default_value=undefined) {
     super(uiname, flag);
 
+    this.graph_flag |= SocketFlags.INSTANCE_API_DEFINE;
+
     this.items = {};
     this.value = 0;
+
+    if (items !== undefined) {
+      for (let k in items) {
+        this.items[k] = items[k];
+      }
+    }
 
     if (default_value !== undefined) {
       this.value = default_value;
@@ -452,7 +534,7 @@ export class EnumSocket extends IntSocket {
 
     this.uimap = {};
     for (let k in this.items) {
-      let k2 = k2.split("-_ ");
+      let k2 = k.split("-_ ");
       let uiname = "";
 
       for (let item of k2) {
@@ -460,12 +542,22 @@ export class EnumSocket extends IntSocket {
       }
 
       let v = this.items[k];
-      this.uimap[k] = this.items[v] = uiname.trim();
+      this.uimap[k] = uiname.trim();
     }
   }
 
-  static apiDefine(api, sockstruct) {
-    sockstruct.enum('value', 'value', this.items, 'value').uiNames(this.uimap);
+
+  addToUpdateHash(digest) {
+    digest.add(this.value);
+  }
+
+  apiDefine(api, sockstruct) {
+    let def;
+
+    def = sockstruct.enum('value', 'value', this.items, this.uiname).uiNames(this.uimap);
+    def.on('change', function() {
+      this.dataref.graphUpdate(true);
+    });
   }
 
   addUiItems(items) {
@@ -474,8 +566,9 @@ export class EnumSocket extends IntSocket {
     }
   }
   static nodedef() {return {
-    name : "int",
-    uiname : "Integer",
+    name : "enum",
+    uiname : "Enumeration",
+    graph_flag : SocketFlags.INSTANCE_API_DEFINE,
     color : [0.0,0.75,0.25,1]
   }}
 
@@ -485,6 +578,15 @@ export class EnumSocket extends IntSocket {
 
   copyValue() {
     return ~~this.value;
+  }
+
+  copyTo(b) {
+    super.copyTo(b);
+
+    b.items = Object.assign({}, this.items);
+    b.uimap = Object.assign({}, this.uimap);
+
+    return this;
   }
 
   getValue() {
@@ -507,8 +609,110 @@ export class EnumSocket extends IntSocket {
     this.value = ~~b;
   }
 
+  _saveMap(obj) {
+    obj = obj === undefined ? {} : obj;
+    let ret = [];
+
+    for (let k in obj) {
+      ret.push(new EnumKeyPair(k, obj[k]));
+    }
+
+    return ret;
+  }
+
+  onFileLoad(socketTemplate) {
+    this.items = Object.assign({}, socketTemplate.items);
+    this.uimap = Object.assign({}, socketTemplate.uimap);
+    //console.log("Enumeration type load!", this.graph_id, this.items);
+  }
+
+  _loadMap(obj) {
+    if (!obj || !Array.isArray(obj)) {
+      return {};
+    }
+
+    let ret = {};
+    for (let k of obj) {
+      ret[k.key] = k.val;
+    }
+
+    return ret;
+  }
+
+  /*
+  get items() {
+    return this._items;
+  }
+  set items(v) {
+    console.error(this.graph_id, "items set", v);
+    this._items = v;
+  }//*/
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+
+    //note that onFileLoad overwrites this in
+    //most cases
+    this.items = this._loadMap(this.items);
+    this.uimap = this._loadMap(this.uimap);
+
+    //force this flag
+    this.graph_flag |= SocketFlags.INSTANCE_API_DEFINE;
+  }
+
   cmpValue(b) {
     return ~~this.value !== ~~b;
+  }
+};
+EnumSocket.STRUCT = nstructjs.inherit(EnumSocket, IntSocket, "graph.EnumSocket") + `
+  items : array(EnumKeyPair) | this._saveMap(this.items);
+  uimap : array(EnumKeyPair) | this._saveMap(this.uimap);
+}
+`;
+nstructjs.register(EnumSocket);
+NodeSocketType.register(EnumSocket);
+
+
+export class BoolSocket extends NodeSocketType {
+  constructor(uiname, flag) {
+    super(uiname, flag);
+
+    this.value = 0;
+  }
+
+  static apiDefine(api, sockstruct) {
+    sockstruct.bool("value", "value", "value");
+  }
+
+  static nodedef() {return {
+    name : "bool",
+    uiname : "Boolean",
+    color : [0.0,0.75,0.25,1]
+  }}
+
+  addToUpdateHash(digest) {
+    digest.add(this.value);
+  }
+
+  diffValue(b) {
+    return (this.value - b);
+  }
+
+  copyValue() {
+    return ~~this.value;
+  }
+
+  getValue() {
+    return !!this.value;
+  }
+
+  setValue(b) {
+    this.value = !!b;
+  }
+
+  cmpValue(b) {
+    return !!this.value !== !!b;
   }
 
   loadSTRUCT(reader) {
@@ -518,8 +722,9 @@ export class EnumSocket extends IntSocket {
     this.value = !!this.value;
   }
 };
-EnumSocket.STRUCT = nstructjs.inherit(EnumSocket, IntSocket, "graph.EnumSocket") + `
+BoolSocket.STRUCT = nstructjs.inherit(BoolSocket, NodeSocketType, "graph.BoolSocket") + `
+  value : bool;
 }
 `;
-nstructjs.register(EnumSocket);
-NodeSocketType.register(EnumSocket);
+nstructjs.register(BoolSocket);
+NodeSocketType.register(BoolSocket);

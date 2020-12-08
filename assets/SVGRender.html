@@ -1,0 +1,366 @@
+<!doctype html>
+<html>
+<head>
+  <title>SVG Render</title>
+  <link rel="prefetch" type="text/xml" href="./iconsheet.svg">
+  <script id="svg3" type="text/plain" src="./iconsheet.svg"></script>
+  <script type="application/javascript">
+"use strict";
+
+const SVGURL = "http://www.w3.org/2000/svg";
+const LSKEY = "svgrender_1"
+
+let P = {
+  scale : 1.0,
+  fwid : 2.0,
+  pwid : 0.5,
+  fac : 0.33,
+  enabled : 1
+};
+
+Array.prototype.remove = function(item) {
+  let i = this.indexOf(item);
+  if (i < 0) {
+    throw new Error("item not in array");
+  }
+
+  while (i < this.length-1) {
+    this[i] = this[i+1];
+    i++;
+  }
+
+  this[this.length-1] = undefined;
+  this.length--;
+
+  return this;
+}
+
+Math.fract = (f) => f - Math.floor(f);
+
+let _scache = {};
+_scache[0] = [[0, 0, 1]];
+
+function getSearchOff(n) {
+  if (n in _scache) {
+    return _scache[n];
+  }
+
+  let list = [];
+
+  for (let i=-n; i<=n; i++) {
+    for (let j=-n; j<=n; j++) {
+      if (i*i + j*j > n*n) {
+        continue;
+      }
+
+      let w = 1.0 - Math.sqrt(i*i + j*j) / Math.sqrt(n*n);
+
+      list.push([i, j, w]);
+    }
+  }
+
+  _scache[n] = list;
+  return list;
+}
+
+let _i = 0;
+function random() {
+  let f = _i*Math.sqrt(3.0) + _i*0.1*Math.sqrt(5.0) +_i*11.0*Math.sqrt(2.0);
+
+  _i++;
+  f = Math.fract(f);
+
+  return Math.fract(1.0 / (0.00001*f + 0.00001));
+}
+function seed(f) {
+  _i = ~~(f*10.0 + f);
+}
+class AppState {
+  constructor() {
+    this.canvas = undefined;
+    this.g = undefined;
+  }
+
+  start() {
+    let canvas = this.canvas = document.createElement("canvas");
+    let g = this.g = canvas.getContext("2d");
+
+    document.body.append(canvas);
+
+    window.redraw_all();
+
+    window.setInterval(() => {
+      this.onTick();
+    }, 50);
+  }
+
+  onTick() {
+    let key = JSON.stringify(P);
+
+    if (key !== this._last_update_key_2) {
+      console.log(JSON.stringify(P))
+
+      this.save();
+      this._last_update_key_2 = key;
+      window.redraw_all();
+    }
+
+    this.checkSize();
+  }
+
+  save() {
+    localStorage[LSKEY] = JSON.stringify(P);
+  }
+
+  load() {
+    let p2;
+
+    try {
+      p2 = JSON.parse(localStorage[LSKEY]);
+    } catch (error) {
+      console.log(error.stack);
+      console.log(error.message);
+      console.log("Failed to load saved parameters", localStorage[LSKEY]);
+    }
+
+    for (let k in p2) {
+      P[k] = p2[k];
+    }
+  }
+
+  checkSize() {
+    let canvas = this.canvas, g = this.g;
+
+    canvas.style["background-color"] = "rgba(0,0,0,0)";
+
+    let dpi = devicePixelRatio;
+    let w = ~~((window.innerWidth)*dpi - 50);
+    let h = ~~((window.innerHeight)*dpi - 50);
+
+    let w2 = w/dpi;
+    let h2 = h/dpi;
+
+    let key = "" + w + ":" + h + ":" + dpi;
+    if (key !== this._last_update_key) {
+      this._last_update_key = key;
+
+      console.log("resize");
+
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style["width"] = w2 + "px";
+      canvas.style["height"] = h2 + "px";
+
+      window.redraw_all();
+    }
+  }
+
+  draw() {
+    this.checkSize();
+
+    //console.log("draw");
+    let canvas = this.canvas, g = this.g;
+
+    //console.log(w, h)
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.beginPath();
+    g.rect(0, 0, 500, 500);
+    g.fillStyle = "orange";
+    //g.fill();
+
+    //let svg = document.createElementNS(SVGURL, "svg")
+    //svg.setAttributeNS(SVGURL, "viewBox", "0 0 500 300")
+
+
+    g.imageSmoothingEnabled = false;
+
+    //console.log(img,img2)
+    //console.log(svg3.text);
+
+    if (!window.svgimg) {
+      return;
+    }
+
+    let scale = P.scale || 2.0;
+    let w = 512, h = 512;
+
+    w = ~~(w*scale+5), h = ~~(h*scale+5);
+
+    g.save();
+    seed(0)
+    g.scale(scale, scale)
+
+    if (!P.enabled) {
+      g.drawImage(svgimg, 5/scale, 5/scale);
+      g.restore();
+      //window.redraw_all();
+      return;
+    }
+
+    //{"scale":1,"fwid":5,"pwid":1.5,"fac":0,"enabled":1}
+
+    let image = new ImageData(w, h);
+    let fdata = new Float64Array(w*h*4);
+
+    for (let i=0; i<fdata.length; i++) {
+      fdata[i] = 0.0;
+    }
+
+    let ws = [];
+    let totws = 0.0;
+
+    //g.globalAlpha = 1.0;
+    let fwid = (~~(P.fwid+0.00001)) || 3;
+    let pwid = P.pwid || 0.55;
+    pwid /= scale;
+
+    let totaw = 0.0;
+
+    let wsfac = [P.w1||1, P.w2||2, P.w3||3, P.w4||4];
+
+
+    for (let off of getSearchOff(fwid)) {
+      let d = pwid / fwid;
+      let x = off[0], y = off[1];
+
+      x += (random()-0.5)/fwid;
+      y += (random()-0.5)/fwid;
+
+      x *= d;
+      y *= d;
+
+      g.clearRect(0, 0, canvas.width, canvas.height);
+      g.drawImage(svgimg, x, y)
+      let idata = g.getImageData(0, 0, w, h);
+
+      let id = idata.data;
+      let f = off[2];
+      f = f*f*(3.0 - 2.0*f);
+
+      let d2 = P.fac || 0.33;
+      f = f*(1.0+d2) - d2;
+
+      let af = off[2]**(P.afac || 2.5);
+
+      for (let i=0; i<id.length; i++) {
+        let f2 = ((i & 3) === 3) ? af : f;
+        let wi = i & 3;
+
+        let f3 = (id[i]/255.0);
+        f3 = Math.pow(f3, wsfac[wi]);
+
+        fdata[i] += f2*f3;
+      }
+
+      totaw += af;
+      totws += f;
+    }
+
+
+    let idata = image.data;
+    let mul1 = 1.0 / totws;
+    let mul2 = 1.0 / totaw;
+
+    for (let i=0; i<wsfac.length; i++) {
+      wsfac[i] = 1.0 / wsfac[i];
+    }
+
+    for (let i=0; i<fdata.length; i++) {
+      let mul = ((i & 3) === 3) ? mul2 : mul1;
+
+      let wi = i & 3;
+
+      let n = fdata[i]*mul;
+      n = Math.pow(n, wsfac[wi]);
+
+      n = ~~(n*255);
+
+      idata[i] = n;
+    }
+
+    //window.redraw_all();
+    g.restore();
+
+    let off = 5;
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.putImageData(image, off, off);
+  }
+}
+
+
+function init() {
+  let iframe = document.createElement("iframe")
+  iframe.src = "/assets/iconsheet.svg"
+  document.body.appendChild(iframe);
+
+  iframe.onload = () => {
+    console.log("load!")
+    let svgnode = iframe.contentDocument.children[0]
+    svgnode.setAttributeNS(SVGURL, "shape-rendering", "crispEdges")
+
+    let rec = (n) => {
+      if (typeof n === "string") {
+        return;
+      }
+
+      if (n.setAttribute) {
+        n.setAttributeNS(SVGURL, "shape-rendering", "crispEdges")
+        n.setAttribute("shape-rendering", "crispEdges")
+      }
+
+      if (n.childNodes) {
+        for (let c of n.childNodes) {
+          rec(c);
+        }
+      }
+    }
+
+    rec(svgnode);
+    //console.log(svgnode)
+
+    window.svg = svgnode;
+    let text = svgnode.outerHTML;
+    let blob = new Blob([text], {type : "image/svg+xml"})
+
+    let url = URL.createObjectURL(blob);
+    console.log(url)
+
+    let img = document.createElement("img")
+    img.src = url;
+
+    img.onload = () => {
+      window.redraw_all();
+    }
+
+    window.svgimg = img;
+
+    iframe.remove();
+
+    window.redraw_all();
+  }
+
+  let animreq = undefined;
+
+  let frame = () => {
+    animreq = undefined;
+    _appstate.draw();
+  }
+  window.redraw_all = () => {
+    if (animreq) {
+      return;
+    }
+
+    animreq = requestAnimationFrame(frame);
+  }
+  console.log("init");
+  window._appstate = new AppState();
+
+  _appstate.start();
+  _appstate.load();
+}
+  </script>
+</head>
+<body style="background-color: rgb(45,45,45)" onload="init()">
+
+</body>
+</html>

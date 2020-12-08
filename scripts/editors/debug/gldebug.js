@@ -101,6 +101,57 @@ export const ShaderDef = {
 
 export const Shaders = {};
 
+export class FBOHistory extends Array {
+  constructor(max=5) {
+    super();
+    this.max = max;
+  }
+
+  push(fbo) {
+    let fbo2;
+
+    if (!fbo.gl) {
+      console.warn("bad fbo passed to FBOHistory.push", fbo);
+      return;
+    }
+
+    let gl = fbo.gl;
+
+    if (this.length >= this.max) {
+      fbo2 = this.shift();
+    }
+
+    //*
+    if (fbo2 && fbo2.fbo && fbo2.texColor && fbo2.size.vectorDistance(fbo.size) < 0.0001) {
+      //console.log("reusing fbo2");
+      //fbo.texColor.copyTexTo(fbo.gl, fbo2.texColor);
+
+    } else {
+      if (fbo2 && fbo2.gl && fbo2.fbo) {
+        fbo2.destroy(fbo2.gl);
+      }
+
+      fbo2 = fbo.copy(false);
+      fbo2.create(gl);
+    }
+
+    //fbo.bind(fbo.gl);
+
+    //gl.bindTexture(gl.TEXTURE_2D, fbo2.texColor.texture);
+    //gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 0, 0, fbo.size[0], fbo.size[1], 0);
+    //fbo.unbind(fbo.gl);
+    fbo2.bind(fbo.gl);
+    fbo.drawQuad(fbo.gl, fbo.size[0], fbo.size[1]);
+    fbo2.unbind(fbo.gl);
+
+    return super.push(fbo2);
+  }
+
+  get head() {
+    return this[this.length-1];
+  }
+}
+
 export class glDebug {
   constructor(gl) {
     this.gl = gl;
@@ -110,11 +161,36 @@ export class glDebug {
     this._clean_gl = this.saveGL();
     //this.fbos = [];
     this.texs = [];
+    this.fbos = {};
 
     this.loadShaders();
   }
 
-  saveDrawBufferFBOBlit() {
+  get debugEditorOpen() {
+    for (let sarea of _appstate.screen.sareas) {
+      if (sarea.area.constructor.define().areaname === "DebugEditor") {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  pushFBO(name="draw", fbo, only_if_debug_editor=true) {
+    //fbo = fbo.copy()
+
+    if (only_if_debug_editor && !this.debugEditorOpen) {
+      return;
+    }
+
+    if (!(name in this.fbos))  {
+      this.fbos[name] = new FBOHistory();
+    }
+
+    this.fbos[name].push(fbo);
+  }
+
+  saveDrawBufferFBOBlit(name) {
     let gl = this.gl;
 
     let oldtex = gl.getParameter(gl.TEXTURE_BINDING_2D);
@@ -136,14 +212,11 @@ export class glDebug {
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, dbuf);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, rbuf);
 
-    let tex = fbo.texColor.texture;
-    tex.depth = fbo.texDepth.texture;
-
-    this.texs.push(tex);
+    this.pushFBO(name, fbo);
   }
 
-  saveDrawBuffer() {
-    this.saveDrawBufferFBOBlit();
+  saveDrawBuffer(name) {
+    this.saveDrawBufferFBOBlit(name);
     return;
 
     let gl = this.gl;
@@ -230,13 +303,7 @@ export class glDebug {
   }
 
   static getDebug(gl) {
-    if (gl._debug) {
-      return gl._debug;
-    }
-
-    gl._debug = new glDebug(gl);
-
-    return gl._debug;
+    return getFBODebug(gl);
   }
 
   loadShaders() {
@@ -249,6 +316,25 @@ export class glDebug {
     }
   }
 };
+
+let gldebug = undefined;
+export function getFBODebug(gl) {
+  if (!gl) {
+    throw new Error("gl cannot be undefined in getFBODebug()");
+  }
+
+  if (!gldebug || gldebug.gl !== gl) {
+    if (gldebug) {
+      //if this was caused by a context loss, don't call gl destroy
+      //functions, stead just clear all references.
+      gldebug.fbos = gldebug.texs = gldebug.stack = gldebug.gl = gldebug._clean_gl = undefined;
+    }
+
+    gldebug = new glDebug(gl);
+  }
+
+  return gldebug;
+}
 
 window.gldebug_sample = () => {
   let gl = getWebGL();

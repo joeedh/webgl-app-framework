@@ -11,10 +11,21 @@ let vec3_temps = util.cachering.fromConstructor(Vector3, 1024);
 
 export class Element {
   constructor(type) {
+    this._initElement(type);
+  }
+
+  _initElement(type) {
     this.type = type;
     this.flag = this.index = 0;
     this.eid = -1;
-    this.customData = [];
+    this.customData =  [];
+    //CD this.cd = this.customData;
+
+    return this;
+  }
+
+  static isElement(obj) {
+    return obj instanceof Element || obj instanceof Vertex;
   }
 
   valueOf() {
@@ -50,32 +61,163 @@ export class Element {
 
     return this;
   }
+
+  loadSTRUCT(reader) {
+    reader(this);
+
+    //CD this.cd = this.customData;
+  }
 }
 
 Element.STRUCT = `
 mesh.Element {
-  type        : int;
+  type        : byte;
   flag        : int;
-  index       : int;
   eid         : int;
   customData  : array(abstract(mesh.CustomDataElem));
 }
 `;
 nstructjs.manager.add_class(Element);
 
-/*
-class VertFaceIter {
+let vertiters_f;
+
+export class VertFaceIter {
+  constructor(v) {
+    this.v = v;
+    this.ret = {done : true, value : undefined};
+    this.l = undefined;
+    this.i = 0;
+    this.done = true;
+    this.count = 0;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.done = true;
+      this.ret.value = undefined;
+      this.ret.done = true;
+
+      vertiters_f.cur--;
+      vertiters_f.cur = Math.max(vertiters_f.cur, 0);
+
+      this.v = undefined;
+    }
+
+    return this.ret;
+  }
+
+  return() {
+    return this.finish();
+  }
+
+  reset(v) {
+    this.v = v;
+    this.done = false;
+    this.l = undefined;
+    this.i = 0;
+    this.count = 0;
+    this.ret.value = undefined;
+    this.ret.done = false;
+
+    let flag = MeshFlags.ITER_TEMP2a;
+
+    //clear temp flag
+
+    for (let i=0; i<v.edges.length; i++) {
+      let e = v.edges[i];
+
+      if (!e.l) {
+        continue;
+      }
+
+      let l = e.l;
+      let _i = 0;
+
+      do {
+        l.f.flag &= ~flag;
+
+        l = l.radial_next;
+      } while (l !== e.l && _i++ <10);
+    }
+
+    return this;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+
+  next() {
+    this.count++;
+
+    if (this.count > 1000) {
+      console.warn("infinite loop detected");
+      return this.finish();
+    }
+
+    let ret = this.ret;
+    ret.done = false;
+
+    let v = this.v;
+
+    while (this.i < v.edges.length && !v.edges[this.i].l) {
+      this.l = undefined;
+      this.i++;
+    }
+
+    if (this.i >= v.edges.length) {
+      if (this.l && !(this.l.f & flag)) {
+        ret.done = false;
+        ret.value = this.l;
+
+        this.l = undefined;
+
+        return ret;
+      }
+
+      return this.finish();
+    }
+
+    let e = this.v.edges[this.i];
+
+    if (this.l === undefined) {
+      this.l = e.l;
+    }
+
+    let l = this.l;
+
+    let skip = l.f.flag & MeshFlags.ITER_TEMP2a;
+    l.f.flag |= MeshFlags.ITER_TEMP2a;
+
+    if (this.l === e.l.radial_prev || this.l === this.l.radial_next) {
+      this.i++;
+      this.l = undefined;
+    } else {
+      this.l = this.l.radial_next;
+    }
+
+    if (skip) {
+      return this.next();
+    }
+
+    ret.value = l.f;
+    ret.done = false;
+
+    return ret;
+  }
 }
-let _vficache = new Array(256);
-for (let i=0; i<_vficache.length; i++) {
+vertiters_f = new Array(256);
+for (let i=0; i<vertiters_f.length; i++) {
+  vertiters_f[i] = new VertFaceIter();
+}
+vertiters_f.cur = 0;
 
-}//*/
-
-//has Vector3 mixin
-export class Vertex extends Element {
+//has Element mixin
+export class Vertex extends Vector3 {
   constructor(co) {
-    super(MeshTypes.VERTEX);
-    this.initVector3();
+    super();
+    this._initElement(MeshTypes.VERTEX);
+    //this.initVector3();
 
     if (co !== undefined) {
       this.load(co);
@@ -86,6 +228,19 @@ export class Vertex extends Element {
     this.no = new Vector3();
     this.no[2] = 1.0;
     this.edges = [];
+  }
+
+  /*to avoid messing up v8's optimizer
+    we have to inherit from Vector3 (and thus Array),
+    not Element.  However util.mixin won't pull in valueOf and [Symbol.keystr]
+    from Element because they exist in Vector3.
+  */
+  valueOf() {
+    return this.eid;
+  }
+
+  [Symbol.keystr]() {
+    return this.eid;
   }
 
   toJSON() {
@@ -104,6 +259,26 @@ export class Vertex extends Element {
   }
 
   get faces() {
+    //return this.faces2;
+    let i = vertiters_f.cur;
+    let stack = vertiters_f;
+
+    for (let j=0; j<stack.length; j++) {
+      let i2 = (i + j) % stack.length;
+
+      if (stack[i2].done) {
+        stack.cur++;
+        return stack[i2].reset(this);
+      }
+    }
+
+    stack.cur++;
+    stack.push(new VertFaceIter(this));
+
+    return stack[stack.length-1].reset(this);
+  }
+
+  get faces2() {
     let this2 = this;
 
     return (function*() {
@@ -158,8 +333,26 @@ export class Vertex extends Element {
     })();
   }
 
+  isBoundary(includeWire=false) {
+    for (let e of this.edges) {
+      if (!e.l) {
+        if (includeWire) {
+          return true;
+        }
+
+        continue;
+      }
+
+      if (e.l.radial_next === e.l) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   otherEdge(e) {
-    if (this.edges.length != 2) {
+    if (this.edges.length !== 2) {
       throw new MeshError("otherEdge only works on 2-valence vertices");
     }
 
@@ -171,9 +364,12 @@ export class Vertex extends Element {
 
   loadSTRUCT(reader) {
     reader(this);
+
+    //we mixed in Element instead of inheriting from it
+    Element.prototype.loadSTRUCT.call(this, reader);
   }
 }
-util.mixin(Vertex, Vector3);
+util.mixin(Vertex, Element);
 
 Vertex.STRUCT = STRUCT.inherit(Vertex, Element, 'mesh.Vertex') + `
   0       : float;
@@ -184,7 +380,7 @@ Vertex.STRUCT = STRUCT.inherit(Vertex, Element, 'mesh.Vertex') + `
   color   : vec4;
 }
 `;
-nstructjs.manager.add_class(Vertex);
+nstructjs.register(Vertex);
 
 export class Handle extends Element {
   constructor(co) {
@@ -195,6 +391,7 @@ export class Handle extends Element {
       this.load(co);
     }
 
+    this.owner = undefined;
     this.mode = HandleTypes.AUTO;
     this.color = new Vector4([0,0,0,1]);
     this.roll = 0;
@@ -211,6 +408,7 @@ export class Handle extends Element {
 
   loadSTRUCT(reader) {
     reader(this);
+    super.loadSTRUCT(reader);
   }
 }
 util.mixin(Handle, Vector3);
@@ -405,17 +603,29 @@ class ArcLengthCache {
   }
 }
 
+
 export class Edge extends Element {
   constructor() {
     super(MeshTypes.EDGE);
 
-    //XXX should be created when needed
-    this.arcCache = new ArcLengthCache(undefined, this);
+    this._arcCache = undefined;
 
     this.l = undefined;
     this.v1 = this.v2 = undefined;
     this.h1 = this.h2 = undefined;
     this._length = undefined;
+  }
+
+  get arcCache() {
+    if (!this._arcCache) {
+      this._arcCache = new ArcLengthCache(undefined, this);
+    }
+
+    return this._arcCache;
+  }
+
+  set arcCache(val) {
+    this._arcCache = val;
   }
 
   calcScreenLength(view3d) {
@@ -669,6 +879,10 @@ export class Edge extends Element {
       let l = this2.l;
       let i = 0;
 
+      if (!l) {
+        return;
+      }
+
       do {
         if (i++ > 10000) {
           console.warn("infinite loop detected in Edge.prototype.[get loops]()");
@@ -698,8 +912,9 @@ export class Edge extends Element {
       }
       
       do {
-        if (i++ > 10000) {
+        if (i++ > 100) {
           console.warn("infinite loop detected in Edge.prototype.[get faces]()");
+          throw new Error("infinite loop detected in Edge.prototype.[get faces]()");
         }
 
         l.f.flag &= ~MeshFlags.ITER_TEMP1;
@@ -707,8 +922,9 @@ export class Edge extends Element {
       } while (l !== this2.l);
 
       do {
-        if (i++ > 10000) {
+        if (i++ > 100) {
           console.warn("infinite loop detected in Edge.prototype.[get faces]()");
+          throw new Error("infinite loop detected in Edge.prototype.[get faces]()");
           break;
         }
 
@@ -805,6 +1021,7 @@ export class Edge extends Element {
 
   loadSTRUCT(reader) {
     reader(this);
+    super.loadSTRUCT(reader);
 
     this.flag &= MeshFlags.DRAW_DEBUG;
   }
@@ -850,6 +1067,11 @@ export class Loop extends Element {
         return layer.uv;
     }
   }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+  }
 }
 Loop.STRUCT = STRUCT.inherit(Loop, Element, "mesh.Loop") + `
   v           : int | obj.v.eid;
@@ -862,6 +1084,8 @@ Loop.STRUCT = STRUCT.inherit(Loop, Element, "mesh.Loop") + `
 }
 `;
 nstructjs.manager.add_class(Loop);
+
+let loopiterstack;
 
 class LoopIter {
   constructor() {
@@ -899,7 +1123,8 @@ class LoopIter {
 
       console.warn("infinite loop detected in LoopIter");
 
-      this.list.iterstack.cur--;
+      loopiterstack.cur--;
+      this.l = this.list = undefined;
       this.done = true;
 
       return ret;
@@ -909,8 +1134,9 @@ class LoopIter {
       ret.done = true;
       ret.value = undefined;
 
-      this.list.iterstack.cur--;
+      loopiterstack.cur--;
       this.done = true;
+      this.l = this.list = undefined;
       return ret;
     }
 
@@ -928,7 +1154,8 @@ class LoopIter {
 
     if (!this.done) {
       this.done = true;
-      this.list.iterstack.cur--;
+      loopiterstack.cur--;
+      this.l = this.list = undefined;
     }
 
     this.ret.value = undefined;
@@ -938,23 +1165,21 @@ class LoopIter {
   }
 }
 
-export class LoopList extends Array {
-  constructor() {
-    super();
+loopiterstack = new Array(512);
+for (let i=0; i<loopiterstack.length; i++) {
+  loopiterstack[i] = new LoopIter();
+}
+loopiterstack.cur = 0;
 
+export class LoopList {
+  constructor() {
     this.flag = 0;
     this.l = undefined;
-
-    this.iterstack = new Array(16);
-    for (let i=0; i<this.iterstack.length; i++) {
-      this.iterstack[i] = new LoopIter();
-    }
-
-    this.iterstack.cur = 0;
+    this.length = 0;
   }
 
   [Symbol.iterator]() {
-    let stack = this.iterstack;
+    let stack = loopiterstack; //this.iterstack;
 
     stack.cur++;
 
@@ -967,6 +1192,16 @@ export class LoopList extends Array {
     return stack[stack.cur].init(this);
   }
 
+  _recount() {
+    this.length = 0;
+
+    for (let l of this) {
+      this.length++;
+    }
+
+    return this.length;
+  }
+
   //used by STRUCT script
   get _loops() {
     return this;
@@ -975,10 +1210,108 @@ export class LoopList extends Array {
 
 LoopList.STRUCT = `
 mesh.LoopList {
-  l : int | obj.l.eid;
+  l      : int | obj.l.eid;
+  length : int;
 }
 `;
-nstructjs.manager.add_class(LoopList);
+nstructjs.register(LoopList);
+
+let fiter_stack_v;
+let fiter_stack_l;
+let fiter_stack_e;
+
+let codegen = `
+result = class $NAME {
+  constructor() {
+    this.ret = {done : true, value : undefined};
+    this.done = true;
+    this.f = undefined;
+  }
+
+  reset(face) {
+    this.f = face;
+    this.done = false;
+    this.listi = 0;
+    this.l = face.lists[0].l;
+
+    return this;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.done = true;
+      this.ret.value = undefined;
+      this.ret.done = true;
+      this.l = undefined;
+      fiterstack.cur = Math.max(fiterstack.cur-1, 0);
+    }
+  }
+
+  next() {
+    let ret = this.ret;
+
+    if (this.listi >= this.f.lists.length) {
+      ret.done = true;
+      ret.value = undefined;
+      this.finish();
+
+      return ret;
+    }
+
+    let list = this.f.lists[this.listi];
+
+    ret.value = this.$RET;
+    ret.done = false;
+
+    if (this.l === list.l.prev) {
+      this.listi++;
+
+      //fetch loop for next time
+      if (this.listi < this.f.lists.length) {
+        this.l = this.f.lists[this.listi].l;
+      } else {
+        this.l = undefined;
+      }
+    } else {
+      this.l = this.l.next;
+    }
+
+    return ret;
+  }
+
+  return() {
+    this.finish();
+    return this.ret;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+}
+
+fiterstack = new Array(1024);
+for (let i=0; i<fiterstack.length; i++) {
+  fiterstack[i] = new result();
+}
+fiterstack.cur = 0;
+`;
+
+function makecls(name, stackname, ret) {
+  let codegen2 = codegen;
+
+  codegen2 = codegen2.replace(/\$NAME/g, name);
+  codegen2 = codegen2.replace(/\$RET/g, ret);
+  codegen2 = codegen2.replace(/fiterstack/g, stackname);
+
+  var result;
+  eval(codegen2);
+
+  return result;
+}
+
+export let FaceVertIter = makecls("FaceVertIter", "fiter_stack_v", "l.v");
+export let FaceEdgeIter = makecls("FaceEdgeIter", "fiter_stack_e", "l.e");
+export let FaceLoopIter = makecls("FaceLoopIter", "fiter_stack_l", "l");
 
 export class Face extends Element {
   constructor() {
@@ -993,6 +1326,7 @@ export class Face extends Element {
   }
 
   get verts() {
+    return fiter_stack_v[fiter_stack_v.cur++].reset(this);
     let this2 = this;
     return (function*() {
       for (let loop of this2.loops) {
@@ -1002,10 +1336,13 @@ export class Face extends Element {
   }
 
   get loops() {
+    return fiter_stack_l[fiter_stack_l.cur++].reset(this);
     return this.lists[0];
   }
 
   get edges() {
+    return fiter_stack_e[fiter_stack_e.cur++].reset(this);
+
     let this2 = this;
     return (function*() {
       for (let list of this2.lists) {
@@ -1019,7 +1356,7 @@ export class Face extends Element {
   get uvs() {
     let this2 = this;
     return (function*() {
-      for (let loop of this.loops) {
+      for (let loop of this2.loops) {
         yield loop.uv;
       }
     })();
@@ -1068,6 +1405,11 @@ export class Face extends Element {
 
     this.cent.mulScalar(1.0 / tot);
     return this.cent;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
   }
 }
 Face.STRUCT = STRUCT.inherit(Face, Element, "mesh.Face") + `

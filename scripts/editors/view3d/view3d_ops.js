@@ -196,6 +196,8 @@ export class View3DOp extends ToolOp {
     super();
 
     this.drawlines = [];
+    this.drawquads = [];
+    this.drawlines2d = [];
   }
 
   modalEnd(wasCancelled) {
@@ -203,10 +205,48 @@ export class View3DOp extends ToolOp {
     return super.modalEnd(wasCancelled);
   }
 
-  addDrawLine(v1, v2, color) {
-    let dl = this.modal_ctx.view3d.makeDrawLine(v1, v2, color);
+  addDrawQuad(v1, v2, v3, v4, color, useZ=true) {
+    let dq = this.modal_ctx.view3d.makeDrawLine(v1, v2, v3, v4, color, useZ);
+    this.drawquads.push(dq);
+  }
+
+  addDrawLine(v1, v2, color, useZ=true) {
+    let dl = this.modal_ctx.view3d.makeDrawLine(v1, v2, color, useZ);
     this.drawlines.push(dl);
     return dl;
+  }
+
+  addDrawLine2D(v1, v2, color) {
+    let overdraw = this.modal_ctx.view3d.overdraw;
+
+    let dl = overdraw.line(v1, v2, color);
+    this.drawlines2d.push(dl);
+
+    return dl;
+  }
+
+  addDrawCircle2D(p, r, color, quality=15) {
+    let steps = Math.ceil((r*2.0*Math.PI) / quality);
+    steps = Math.max(steps, 6);
+
+    let t = -Math.PI, dt = (2.0 * Math.PI) / (steps - 1);
+    let p1 = new Vector2();
+    let p2 = new Vector2();
+
+    for (let i=0; i<steps; i++, t += dt) {
+      p1[0] = Math.sin(t)*r + p[0];
+      p1[1] = Math.cos(t)*r + p[1];
+
+      if (i > 0) {
+        this.addDrawLine2D(p2, p1, color);
+      }
+
+      p2.load(p1);
+    }
+  }
+
+  resetTempGeom() {
+    this.resetDrawLines();
   }
 
   resetDrawLines() {
@@ -214,13 +254,26 @@ export class View3DOp extends ToolOp {
       this.modal_ctx.view3d.removeDrawLine(dl);
     }
 
+    for (let dl of this.drawlines2d) {
+      dl.remove();
+    }
+
+    for (let dq of this.drawquads) {
+      this.modal_ctx.view3d.removeDrawQuad(dq);
+    }
+
     this.drawlines.length = 0;
+    this.drawquads.length = 0;
+    this.drawlines2d.length = 0;
   }
 
   removeDrawLine(dl) {
     if (this.drawlines.indexOf(dl) >= 0) {
       this.modal_ctx.view3d.removeDrawLine(dl);
       this.drawlines.remove(dl);
+    } else if (this.drawlines2d.indexOf(dl) >= 0) {
+      this.drawlines2d.remove(dl);
+      dl.remove();
     }
   }
 }

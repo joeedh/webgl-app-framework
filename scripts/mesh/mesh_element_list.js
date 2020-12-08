@@ -52,19 +52,20 @@ export class ElementListIter {
   next() {
     let ret = this.ret;
     let elist = this.elist;
+    let list = elist.list;
 
-    while (this.i < elist.size && elist[this.i] === undefined) {
+    while (this.i < list.length && list[this.i] === undefined) {
       this.i++;
     }
 
-    if (this.i >= this.elist.size) {
+    if (this.i >= list.length) {
       ret.done = true;
       ret.value = undefined;
 
       elist.iterstack.cur--;
       return ret;
     } else {
-      ret.value = elist[this.i];
+      ret.value = list[this.i];
     }
 
     this.i++;
@@ -75,15 +76,24 @@ export class ElementListIter {
   return() {
     if (!this.ret.done) {
       this.elist.iterstack.cur--;
+      this.ret.done = true;
     }
+
+    this.ret.value = undefined;
+
+    return this.ret;
   }
 }
 
 export class ElementList {
   constructor(type) {
+    this.list = [];
+
     this.length = 0;
     this.size = 0;
     this.freelist = [];
+
+    this.idxmap = {};
 
     this.customData = new CustomData();
     this.local_eidmap = {};
@@ -98,6 +108,15 @@ export class ElementList {
     this.selected = new SelectionSet();
     this.on_selected = undefined;
     this.highlight = this.active = undefined;
+  }
+
+  /*sanity alias to this.customData*/
+  get cd() {
+    return this.customData;
+  }
+
+  set cd(v) {
+    this.customData = v;
   }
 
   [Symbol.iterator]() {
@@ -157,18 +176,20 @@ export class ElementList {
     if (i2 < 0)
       throw new Error("element not in array " + b);
 
-    this[i2] = a;
-    this[i1] = b;
+    this.list[i2] = a;
+    this.list[i1] = b;
     return this;
   }
 
   reverse() {
-    for (let i=0; i<this.length>>1; i++) {
-      let i2 = this.length - i - 1;
+    let len = this.list.length;
 
-      let t = this[i];
-      this[i] = this[i2];
-      this[i2] = t;
+    for (let i=0; i<(len>>1); i++) {
+      let i2 = len - i - 1;
+
+      let t = this.list[i];
+      this.list[i] = this.list[i2];
+      this.list[i2] = t;
     }
 
     return this;
@@ -196,8 +217,8 @@ export class ElementList {
 
   toJSON() {
     var arr = [];
-    for (var i=0; i<this.length; i++) {
-      arr.push(this[i]);
+    for (let item of this) {
+      arr.push(item);
     }
 
     var sel = [];
@@ -256,11 +277,14 @@ export class ElementList {
     if (this.freelist.length > 0) {
       i = this.freelist.pop();
     } else {
-      i = this.size;
+      i = this.list.length;
       this.size++;
+      this.list.push();
     }
 
-    this[i] = e;
+    this.idxmap[e.eid] = i;
+
+    this.list[i] = e;
     this.length++;
   }
 
@@ -280,8 +304,11 @@ export class ElementList {
   }
 
   indexOf(e) {
-    for (let i=0; i<this.size; i++) {
-      if (this[i] === e) {
+    let idx = this.idxmap[e.eid];
+    return idx !== undefined ? idx : -1;
+
+    for (let i=0; i<this.list.length; i++) {
+      if (this.list[i] === e) {
         return i;
       }
     }
@@ -293,11 +320,23 @@ export class ElementList {
     let i = this.indexOf(e);
 
     if (i >= 0) {
+      delete this.idxmap[e.eid];
+
       this.freelist.push(i);
-      this[i] = undefined;
+      this.list[i] = undefined;
       this.length--;
     } else {
       throw new Error("element " + e.eid + " is not in array");
+    }
+  }
+
+  forEach(cb, thisvar) {
+    for (let item of this) {
+      if (thisvar) {
+        cb.call(thisvar, item);
+      } else {
+        cb(item);
+      }
     }
   }
 
@@ -308,6 +347,9 @@ export class ElementList {
     }
 
     this.length = this.size = 0;
+    this.freelist.length = 0;
+    this.list.length = 0;
+    this.idxmap = {};
 
     for (let item of list) {
       this._push(item);
@@ -334,18 +376,58 @@ export class ElementList {
 
   selectNone() {
     for (var e of this) {
+      if (e.flag & MeshFlags.SELECT) {
+        e.flag |= MeshFlags.UPDATE;
+      }
+
       this.setSelect(e, false);
     }
   }
 
   selectAll() {
     for (var e of this) {
+      if (!(e.flag & MeshFlags.SELECT)) {
+        e.flag |= MeshFlags.UPDATE;
+      }
+
       this.setSelect(e, true);
+    }
+  }
+
+  _fixcd(dest) {
+    if (dest.customData.length !== this.customData.flatlist.length) {
+      console.error("customdata error! trying to fix. . .", dest.eid);
+
+      let old = dest.customData.concat([]);
+
+      dest.customData.length = 0;
+      this.customData.initElement(dest);
+
+      for (let data1 of old) {
+        for (let i=0; i<dest.customData.length; i++) {
+          let data2 = dest.customData[i];
+
+          if (data2.constructor === data1.constructor) {
+            dest.customData[i] = data2;
+            break;
+          }
+        }
+      }
     }
   }
 
   customDataInterp(dest, sources, ws) {
     let sources2 = getArrayTemp(sources.length);
+
+    this._fixcd(dest);
+
+    for (let elem of sources) {
+      if (elem === undefined) {
+        console.error(".customDataInterp error: an element was undefined", sources);
+        return;
+      }
+      this._fixcd(elem);
+    }
 
     for (let i=0; i<dest.customData.length; i++) {
       let cd = dest.customData[i];
@@ -360,9 +442,14 @@ export class ElementList {
   }
 
   setSelect(e, state) {
-    if (e.type != this.type) {
+    if (e.type !== this.type) {
       throw new Error("wrong type " + e.type + " expected " + this.type);
     }
+
+    if (!!state !== !!(e.flag & MeshFlags.SELECT)) {
+      e.flag |= MeshFlags.UPDATE;
+    }
+
     if (state) {
       if (!this.selected.has(e)) {
         this.selected.add(e);
@@ -432,6 +519,16 @@ export class ElementList {
     return cdmap2;
   }
 
+  _get_compact() {
+    let ret = [];
+
+    for (let item of this) {
+      ret.push(item);
+    }
+
+    return ret;
+  }
+
   loadSTRUCT(reader) {
     reader(this);
 
@@ -464,11 +561,89 @@ export class ElementList {
     }
   }
 
-  addCustomDataLayer(typecls, name) {
+  removeCustomDataLayer(layer_i) {
+    if (layer_i < 0 || layer_i === undefined) {
+      throw new Error("bad call to removeCustomDataLayer");
+    }
+
+    let layer = this.customData.flatlist[layer_i];
+
+    let cls = CustomDataElem.getTypeClass(layer.typeName);
+    let ret = this.customData.remLayer(layer);
+
+    let haveOnRemoveLayer = false;
+
+    for (let layer of this.customData.flatlist) {
+      let cls = CustomDataElem.getTypeClass(layer.typeName);
+
+      if (new cls().onRemoveLayer) {
+        haveOnRemoveLayer = true;
+      }
+    }
+
+    for (let e of this) {
+      let i = layer_i;
+      let cd = e.customData;
+
+      while (i < cd.length-1) {
+        cd[i] = cd[i+1];
+        i++;
+      }
+
+      cd[i] = undefined;
+      cd.length--;
+
+      if (haveOnRemoveLayer) {
+        for (let data of cd) {
+          if (data.onRemoveLayer) {
+            data.onRemoveLayer(cls, layer_i);
+          }
+        }
+      }
+    }
+
+    return ret;
+  }
+
+  clearCustomData() {
+    for (let e of this) {
+      e.customData = [];
+      //CD e.cd = e.customData;
+    }
+
+    this.customData._clear();
+  }
+
+  addCustomDataLayer(typecls_or_name, name) {
+    let typecls = typecls_or_name;
+    if (typeof typecls === "string") {
+      typecls = CustomDataElem.getTypeClass(typecls);
+    }
+
     let ret = this.customData.addLayer(typecls, name);
+
+    let haveOnNewLayer = false;
+
+    for (let layer of this.customData.flatlist) {
+      let cls = CustomDataElem.getTypeClass(layer.typeName);
+
+      if (new cls().onNewLayer) {
+        haveOnNewLayer = true;
+      }
+    }
 
     for (let item of this) {
       item.customData.push(new typecls());
+    }
+
+    for (let item of this) {
+      if (haveOnNewLayer) {
+        for (let cd of item.customData) {
+          if (cd.onNewLayer) {
+            cd.onNewLayer(typecls, item.customData.length-1);
+          }
+        }
+      }
     }
 
     return ret;
@@ -514,7 +689,7 @@ export class ElementList {
 };
 ElementList.STRUCT = `
 mesh.ElementList {
-  items       : iter(abstract(mesh.Element)) | this;
+  items       : iter(abstract(Object)) | this._get_compact();
   active      : int | this.active !== undefined ? this.active.eid : -1;
   highlight   : int | this.highlight !== undefined ? this.highlight.eid : -1;
   type        : int;

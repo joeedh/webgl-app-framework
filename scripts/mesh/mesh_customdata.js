@@ -1,7 +1,9 @@
 import {CustomDataElem} from "./customdata.js";
-import {Vector2} from "../util/vectormath.js";
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import {MeshTypes} from "./mesh_base.js";
 import '../path.ux/scripts/util/struct.js';
+import '../util/floathalf.js';
+
 let STRUCT = nstructjs.STRUCT;
 
 export class UVLayerElem extends CustomDataElem {
@@ -89,8 +91,8 @@ export class OrigIndexElem extends CustomDataElem {
     return ret;
   }
 
-  interp(dest, ws, datas) {
-    if (datas.length == 0) {
+  interp(dest, datas, ws) {
+    if (datas.length === 0) {
       return;
     }
 
@@ -297,3 +299,143 @@ NormalLayerElem.STRUCT = STRUCT.inherit(NormalLayerElem, CustomDataElem, "mesh.N
 `;
 nstructjs.manager.add_class(NormalLayerElem);
 CustomDataElem.register(NormalLayerElem);
+
+export class ColorLayerElem extends CustomDataElem {
+  constructor() {
+    super();
+
+    this.color = new Vector4([1, 1, 1, 1]);
+  }
+
+  setValue(uv) {
+    this.color.load(uv);
+  }
+
+  getValue() {
+    return this.color;
+  }
+
+  copyTo(b) {
+    b.color.load(this.color);
+  }
+
+  copy() {
+    let ret = new ColorLayerElem();
+    this.copyTo(ret);
+    return ret;
+  }
+
+  interp(dest, datas, ws) {
+    dest.color.zero();
+
+    if (datas.length === 0) {
+      return;
+    }
+
+    for (let i=0; i<datas.length; i++) {
+      dest.color[0] += ws[i]*datas[i].color[0];
+      dest.color[1] += ws[i]*datas[i].color[1];
+      dest.color[2] += ws[i]*datas[i].color[2];
+      dest.color[3] += ws[i]*datas[i].color[3];
+    }
+  }
+
+  validate() {
+    return true;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+
+    if (this.color.constructor === Array) {
+      for (let i=0; i<4; i++) {
+        this.color[i] = half2float(this.color[i]);
+      }
+
+      this.color = new Vector4(this.color);
+    } else {
+      //old files
+    }
+
+  }
+  static define() {return {
+    elemTypeMask: MeshTypes.VERTEX|MeshTypes.LOOP,
+    typeName    : "color",
+    uiTypeName  : "Color",
+    defaultName : "Color",
+    valueSize : 4,
+    flag     : 0
+  }};
+}
+ColorLayerElem.STRUCT = STRUCT.inherit(ColorLayerElem, CustomDataElem, "mesh.ColorLayerElem") + `
+  color : array(e, short) | float2half(e);
+}
+`;
+nstructjs.manager.add_class(ColorLayerElem);
+CustomDataElem.register(ColorLayerElem);
+
+
+export class Vector3LayerElem extends CustomDataElem {
+  constructor() {
+    super();
+
+    this.value = new Vector3();
+  }
+
+  setValue(val) {
+    this.value.load(val);
+  }
+
+  getValue() {
+    return this.value;
+  }
+
+  copyTo(b) {
+    b.value.load(this.value);
+  }
+
+  copy() {
+    let ret = new Vector3LayerElem();
+    this.copyTo(ret);
+    return ret;
+  }
+
+  interp(dest, datas, ws) {
+    dest.value.zero();
+
+    if (datas.length === 0) {
+      return;
+    }
+
+    for (let i=0; i<datas.length; i++) {
+      dest.value[0] += ws[i]*datas[i].value[0];
+      dest.value[1] += ws[i]*datas[i].value[1];
+      dest.value[2] += ws[i]*datas[i].value[2];
+    }
+  }
+
+  validate() {
+    return true;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+  }
+
+  static define() {return {
+    elemTypeMask: MeshTypes.VERTEX|MeshTypes.LOOP,
+    typeName    : "vec3",
+    uiTypeName  : "Vector3",
+    defaultName : "Coordinates",
+    valueSize : 4,
+    flag     : 0
+  }};
+}
+Vector3LayerElem.STRUCT = STRUCT.inherit(Vector3LayerElem, CustomDataElem, "mesh.Vector3LayerElem") + `
+  value : vec3;
+}
+`;
+nstructjs.manager.add_class(Vector3LayerElem);
+CustomDataElem.register(Vector3LayerElem);

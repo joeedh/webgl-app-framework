@@ -1,6 +1,6 @@
 import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
-import {WidgetFlags, WidgetTool} from "../widgets.js";
+import {WidgetFlags} from "../widgets/widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {HotKey, KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
@@ -11,11 +11,11 @@ import '../../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../../../shaders/shaders.js';
-import {MovableWidget} from '../widget_utils.js';
+import {MovableWidget} from '../widgets/widget_utils.js';
 import {SnapModes, TranslateOp} from "../transform/transform_ops.js";
 import {SelOneToolModes} from "../selectmode.js";
 
-import {SceneObject} from "../../../sceneobject/sceneobject.js";
+import {ObjectFlags, SceneObject} from "../../../sceneobject/sceneobject.js";
 import {Mesh} from "../../../mesh/mesh.js";
 import {FindnearestMesh} from '../findnearest/findnearest_mesh.js';
 
@@ -26,10 +26,12 @@ import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
   MeshFeatureError} from '../../../mesh/mesh_base.js';
 
 export class MeshToolBase extends ToolMode {
-  constructor(manager) {
-    super(manager);
+  constructor() {
+    super(...arguments);
 
-    this.meshPath = "object"; //set to scene object so resolveMesh is happy
+    this.transformConstraint = undefined; //string, e.g. xy
+    this.drawOwnIds = true;
+    this.meshPath = "object";
     this.selectMask = SelMask.GEOM;
     this.drawSelectMask = SelMask.EDGE|SelMask.VERTEX|SelMask.HANDLE;
 
@@ -41,9 +43,9 @@ export class MeshToolBase extends ToolMode {
     this.keymap = new KeyMap([
       new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
       new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
-      new HotKey("D", [], "mesh.subdivide_smooth()"),
+      new HotKey("D", [], "mesh.subdivide()"),
       new HotKey("G", [], "view3d.translate(selmask=17)"),
-      new HotKey("X", [], "mesh.delete_selected()")
+      new HotKey("X", [], "mesh.delete_selected()"),
     ]);
 
     return this.keymap;
@@ -111,6 +113,15 @@ export class MeshToolBase extends ToolMode {
     return ["_all_objects_"];
   }
 
+  static toolModeDefine() {return {
+    name        : "basemesh",
+    uianme      : "Edit Geometry",
+    icon        : Icons.MESHTOOL,
+    flag        : 0,
+    selectMode  : SelMask.OBJECT,
+    description : "Edit vertices/edges/faces"
+  }}
+
   static defineAPI(api) {
     let tstruct = super.defineAPI(api);
 
@@ -129,7 +140,7 @@ export class MeshToolBase extends ToolMode {
       return false;
     }
 
-    if (this.manager.widgets.highlight !== undefined) {
+    if (this.hasWidgetHighlight()) {
       return false;
     }
 
@@ -163,18 +174,25 @@ export class MeshToolBase extends ToolMode {
       }
     }
 
-
+    /*
     let ret = castViewRay(ctx, ctx.selectMask, mpos, ctx.view3d, CastModes.FRAMEBUFFER);
+    let p;
     if (ret !== undefined) {
-      let toolop = ctx.api.createTool(ctx, "mesh.extrude_one_vertex()");
-
-      toolop.inputs.meshPaths.setValue(this.getMeshPaths());
-      toolop.inputs.co.setValue(ret.p3d);
-      ctx.toolstack.execTool(this.ctx, toolop);
-
-      console.log(ret);
-      return true;
+      p = ret.p3d;
+    } else {
+      p = new Vector3();
+      p.multVecMatrix(this.ctx.view3d.cursor3D);
     }
+
+    let toolop = ctx.api.createTool(ctx, "mesh.extrude_one_vertex()");
+
+    toolop.inputs.meshPaths.setValue(this.getMeshPaths());
+    toolop.inputs.co.setValue(p);
+    ctx.toolstack.execTool(this.ctx, toolop);
+
+    console.log(ret);
+    return true;
+    */
 
     return e.button === 0;// || (e.touches !== undefined && e.touches.length === 0);
   }
@@ -193,17 +211,14 @@ export class MeshToolBase extends ToolMode {
     }
 
     for (let mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
-      for (let v of mesh.verts) {
-        if (v.flag & MeshFlags.HIDE)
-          continue;
-
+      for (let v of mesh.verts.selected.editable) {
         minmax(v);
       }
-      for (let h of mesh.verts) {
-        if (h.flag & MeshFlags.HIDE)
-          continue;
 
-        minmax(h);
+      if (mesh.handles) {
+        for (let h of mesh.handles.selected.editable) {
+          minmax(h);
+        }
       }
     }
 
@@ -224,10 +239,10 @@ export class MeshToolBase extends ToolMode {
     super.update();
   }
 
-  findHighlight(e, x, y) {
+  findHighlight(e, x, y, selectMask=this.selectMask) {
     let view3d = this.ctx.view3d;
 
-    let ret = this.findnearest3d(view3d, x, y, this.selectMask);
+    let ret = this.findnearest3d(view3d, x, y, selectMask);
     let found = false;
 
     if (ret !== undefined && ret.length > 0) {
@@ -246,6 +261,7 @@ export class MeshToolBase extends ToolMode {
 
       let redraw = mesh.getElemList(elem.type).highlight !== elem;
 
+      mesh.clearHighlight();
       mesh.setHighlight(elem);
 
       if (redraw) {
@@ -290,7 +306,7 @@ export class MeshToolBase extends ToolMode {
       return false;
     }
 
-    if (this.manager.widgets.highlight !== undefined) {
+    if (this.hasWidgetHighlight()) {
       return false;
     }
 
@@ -325,7 +341,12 @@ export class MeshToolBase extends ToolMode {
       ok = ok && dist > 4;
       if (ok) {
         console.log("translate");
-        let tool = new TranslateOp();
+        let tool = TranslateOp.invoke(this.ctx, {});
+
+        if (this.transformConstraint) {
+          tool.setConstraintFromString(this.transformConstraint);
+          console.log("TC", this.transformConstraint, tool.inputs.constraint.getValue());
+        }
 
         tool.inputs.selmask.setValue(SelMask.GEOM);
         this.ctx.toolstack.execTool(this.ctx, tool);
@@ -344,39 +365,56 @@ export class MeshToolBase extends ToolMode {
     return FindNearest(this.ctx, selmask, new Vector2([x, y]), view3d);
   }
 
-  drawIDs(view3d, gl, uniforms, selmask=SelMask.GEOM) {
+  drawsObjectIdsExclusively(obj, check_mesh=false) {
+    let ret = !check_mesh || obj.data instanceof Mesh;
+
+    ret = ret && ((obj.flag & ObjectFlags.SELECT) || obj === this.ctx.scene.objects.active);
+    ret = ret && !(obj.flag & ObjectFlags.HIDE);
+
+    return ret;
+  }
+
+  drawIDs(view3d, gl, uniforms, selmask=undefined) {
+    if (selmask === undefined) {
+      selmask = this.ctx.selectMask;
+    }
+
+    if (!this.drawOwnIds) {
+      return;
+    }
+
     view3d.activeCamera.regen_mats();
 
     uniforms = Object.assign({}, uniforms);
 
-    uniforms.projectionMatrix = view3d.activeCamera.rendermat;
-    uniforms.objectMatrix = new Matrix4();
+    let matrix = new Matrix4(uniforms.objectMatrix);
 
     let camdist = view3d.activeCamera.pos.vectorDistance(view3d.activeCamera.target);
 
     for (let mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
       if (mesh.ownerMatrix && mesh.ownerId !== undefined) {
-        uniforms.objectMatrix.load(mesh.ownerMatrix);
+        uniforms.objectMatrix.load(matrix).multiply(mesh.ownerMatrix);
         uniforms.object_id = mesh.ownerId;
       } else {
-        uniforms.objectMatrix.makeIdentity();
+        uniforms.objectMatrix.load(matrix);
         //selection system needs some sort of object id
         uniforms.object_id = 131072;
       }
 
-      //console.log("drawing elements");
       let program = Shaders.MeshIDShader;
 
       uniforms.pointSize = 15;
-      uniforms.polygonOffset = 10 + camdist**2;
-      //console.log("polygonOffset", uniforms.polygonOffset.toFixed(3));
+      uniforms.polygonOffset = 1.0;
 
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(true);
+
+      selmask |= SelMask.FACE;
       mesh.drawElements(view3d, gl, selmask, uniforms, program);
-      //mesh.draw(view3d, gl, uniforms, program);
     }
   }
 
-  drawSphere(gl, view3d, p, scale=0.01) {
+  drawSphere(gl, view3d, p, scale=0.01, color=[1, 0.4, 0.2, 1.0]) {
     let cam = this.ctx.view3d.activeCamera;
     let mat = new Matrix4();
 
@@ -392,12 +430,15 @@ export class MeshToolBase extends ToolMode {
     Shapes.SPHERE.draw(gl, {
       projectionMatrix : cam.rendermat,
       objectMatrix : mat,
-      color : [1, 0.4, 0.2, 1.0],
+      color : color,
     }, Shaders.WidgetMeshShader)
   }
 
-  on_drawstart(gl, manager) {
-    let view3d = this.ctx.view3d;
+  on_drawend(view3d, gl) {
+    if (!this.ctx) {
+      return;
+    }
+
     let cam = this.ctx.view3d.activeCamera;
 
     let uniforms = {
@@ -423,7 +464,7 @@ export class MeshToolBase extends ToolMode {
       if (mesh.ownerId) {
         object = datalib.get(mesh.ownerId);
       }
-      
+
       if (mesh.ownerMatrix !== undefined) {
         uniforms.objectMatrix.load(mesh.ownerMatrix);
       } else {
@@ -436,12 +477,12 @@ export class MeshToolBase extends ToolMode {
       gl.depthMask(true);
 
       uniforms.pointSize = 8;
-      uniforms.polygonOffset = 1 + camdist;
+      uniforms.polygonOffset = 1.0;
 
       mesh.drawElements(view3d, gl, this.drawSelectMask, uniforms, program, object, true);
     }
 
-    this.drawCursor = this.manager.widgets.highlight === undefined;
+    this.drawCursor = this.hasWidgetHighlight();
 
     if (this.drawCursor && this.cursor !== undefined) {
       this.drawSphere(gl, view3d, this.cursor);
@@ -450,14 +491,12 @@ export class MeshToolBase extends ToolMode {
 
   loadSTRUCT(reader) {
     reader(this);
-    if (super.loadSTRUCT) {
-      super.loadSTRUCT(reader);
-    }
+    super.loadSTRUCT(reader);
   }
 
 }
 
 MeshToolBase.STRUCT = STRUCT.inherit(MeshToolBase, ToolMode) + `
 }`;
-nstructjs.manager.add_class(MeshToolBase);
+nstructjs.register(MeshToolBase);
 //ToolMode.register(MeshToolBase);

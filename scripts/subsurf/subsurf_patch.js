@@ -1,778 +1,546 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
+import * as math from '../util/math.js';
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
+import {nstructjs} from '../path.ux/scripts/pathux.js';
+import {BinomialTable} from "../util/binomial_table.js";
 
-function facto(n) {
-  var prod = 1;
-  for (var i=1; i<n+1; i++) {
-    prod *= i;
-  }
-  return prod;
-}
+let KPOINTS = 0, KTOT = KPOINTS + 16 * 3;
 
-function gen_xy_array(sizex, sizey) {
-  var arr = new Array([]);
-  for (var i=0; i<sizex; i++) {
-    arr.push(new Array([]));
-
-    for (var j=0; j<sizey; j++) {
-      arr[i].push(new Vector3());
-    }
-  }
-
-  return arr;
-}
-
-function list(lst) {
-  if (lst == undefined) return lst;
-
-  var ret = [];
-
-  if (lst instanceof Array) {
-    for (var i=0; i<lst.length; i++) {
-      ret.push(lst[i]);
-    }
-  } else {
-    lst.forEach(function(item) {
-      ret.push(item);
-    }, this);
-  }
-
-  return ret;
-}
-
-var _p_tab = [1, 3, 3, 1];
-export class Patch {
-  constructor(degx, degy) {
-    this.size = [degx+1, degy+1];
-    this.points = gen_xy_array(degx+1, degy+1);
-
-    this.degree = [degx, degy]
-  }
-
-  eval(u, v) {
-    var n = this.degree[0];
-    var m = this.degree[1];
-    var dx = this.size[0];
-    var dy = this.size[1];
-
-    var u2 = u;
-    var v2 = v
-
-    var k = this.points
-    var p = new Vector3();
-    for (var i = 0; i < n + 1; i++) {
-      for (var j = 0; j < m + 1; j++) {
-        var bi = _p_tab[i];
-        bi *= Math.pow(u, i) * Math.pow(1 - u, n - i);
-
-        var bj = _p_tab[j];
-        bj *= Math.pow(v, j) * Math.pow(1 - v, m - j);
-
-        p.add(k[i][j].static_mulScalar(bi * bj));
-      }
-    }
-  }
+export const CubicPatchFields = {
+  KPOINTS, KTOT
 };
 
-function tess_patch(m, face, patch, steps) {
-  var df = 1.0 / (steps-1);
-  var verts = gen_xy_array(steps, steps);
+export const CubicPatchFlags = {
+  SELECT: 1,
+  UPDATE: 2
+};
 
-  for (var i=0; i<steps; i++) {
-    for (var j=0; j<steps; j++) {
-      var p = patch.eval(df*i, df*j);
 
-      var v = m.make_vert(p);
-      verts[i][j] = v;
-    }
-  }
+export function bernstein(v, x, n) {
+  let eps = 0.00001;
+  x = eps + (1.0 - eps*2.0)*x;
+  //v++;
+  let f = BinomialTable[n][v];
 
-  for (var i=0; i<steps-1; i++) {
-    for (var j=0; j<steps-1; j++) {
-      var vs = new Array([verts[i][j], verts[i+1][j], verts[i+1][j+1], verts[i][j+1]]);
-      vs.reverse();
-      var f = m.make_face(vs);
-      f.flag = face.flag;
-    }
-  }
+  return f * Math.pow(x, v) * Math.pow(1.0 - x, n - v);
 }
 
-function out_patch(m, patch) {
-  var verts = gen_xy_array(4, 4);
+bernstein.derivative = function (v, x, n) {
+  let eps = 0.000001;
+  x = eps + (1.0 - eps*2.0)*x;
 
-  for (var i=0; i<4; i++) {
-    for (var j=0; j<4; j++) {
-      var p = patch.points[i][j];
+  let bin = BinomialTable[n][v];
 
-      var v = m.make_vert(p);
-      verts[i][j] = v;
-    }
-  }
+  let f = Math.pow(x, v) * Math.pow(1.0 - x, n) * bin * (n * x - v);
+  f /= Math.pow(1.0 - x, v) * x * (x - 1);
 
-  for (var i=0; i<3; i++) {
-    for (var j=0; j<3; j++) {
-      var vs = [verts[i][j], verts[i+1][j], verts[i+1][j+1], verts[i][j+1]]
-      ensure_edge(m, vs[0], vs[1])
-      ensure_edge(m, vs[1], vs[2])
-      ensure_edge(m, vs[2], vs[3])
-      ensure_edge(m, vs[3], vs[0])
-    }
-  }
+  return f/32.0;
 }
 
-function norm(m) {
-  var sum = 0.0;
-
-  for (var k=0; k<m.length; k++) {
-    sum += m[k];
+//uniform bspline basis
+export function bspline(i, s, degree) {
+  function impulse(s, a, b) {
+    return s >= a && s < b ? 1 : 0;
   }
 
-  for (var k=0; k<m.length; k++) {
-    m[k] /= sum;
-  }
-}
+  let i1 = i;
 
-function get_v_loops(v, vlooplists) {
-  var vloops;
-  if (vlooplists.hasOwnProperty(v.eid.toString())) {
-    vloops = vlooplists[v.eid];
-  } else {
-    vloops = new Array();
+  return ((((s+3.0-i1)*impulse(s,i1-3.0,i1-2.0)-(s+1.0-i1)*
+     impulse(s,i1-2.0,i1-1.0))*(s+3.0-i1)+((s+2.0-i1)*
+     impulse(s,i1-2.0,i1-
+     1.0)+(i1-s)*impulse(s,i1-1.0,i1))*(i1-s))*(s+3.0-i1)-(((s+2.0-
+     i1)*impulse(s,i1-2.0,i1-1.0)+(i1-s)*impulse(s,i1-1.0,i1))*(s+
+     2.0-i1)-((s+1.0-i1)*impulse(s,i1-1.0,i1)-(s-1.0-i1)*impulse(s,
+     i1,i1+1.0))*(s-1.0-i1))*(s-1.0-i1))/6.0;
 
-    v.loops.forEach(function(l) {
-      vloops.push(l);
-    });
+  let n = degree;
+  s *= n - 2;
+  //let tdiv = 1.0;
 
-    vlooplists[v.eid.toString()] = vloops;
-  }
+  //uniform cox de boor
+  function deboor(i, n) {
+    let i2 = i - 3
 
-  return vloops;
-}
+    let ti = i2
+    let ti2 = i2 + 1
+    let tip = i2 + n
+    let tip2 = i2 + n + 1
 
-function get_ring(v, f) {
-  var e = v.edges[0];
-  var v1 = e.other_vert(v);
-}
+    /*
+    let ti *= tdiv
+    let ti2 *= tdiv
+    let tip *= tdiv
+    let tip2 *= tdiv
+    */
 
-//we're assuming consistent face windings
-function get_ring(v, f, vlooplists) {
-  var lst = new Array();
-  var l = null;
-
-  var vls = get_v_loops(v, vlooplists);
-  for (var i=0; i<vls.length; i++) {
-    var l2 = vls[i];
-    if (l2.v == v && l2.f == f) {
-      l = l2
-      break
-    }
-  }
-
-  if (l == undefined)
-    return lst;
-
-  var startl = l;
-  var unwind = false;
-
-  if (1) {
-    while (1) {
-      lst.push(l.next.v);
-      lst.push(l.next.next.v);
-
-      if (l.radial_next == l) {
-        unwind = true;
-        break;
-      }
-
-      l = l.radial_next.next;
-
-      if (l == startl)
-        break;
-    }
-  }
-
-  l = startl.prev.radial_next;
-  if (l == l.radial_next || unwind == false) {
-    if (l == l.radial_next && unwind) {
-      lst.push(l.v);
-
-      /*hackish! give startl.v greater weight*/
-      lst.push(startl.v);
-      lst.push(startl.v);
-      lst.push(startl.v);
-      lst.push(startl.v);
-    }
-
-    return lst;
-  }
-
-  if (unwind) {
-    /*hackish! give startl.v greater weight*/
-    lst.push(startl.v);
-    lst.push(startl.v);
-    lst.push(startl.v);
-    lst.push(startl.v);
-  }
-
-  var i = 0;
-  while (1) {
-    lst.push(l.next.v);
-    lst.push(l.next.next.v);
-
-    if (l.prev.radial_next != l.prev) {
-      l = l.prev.radial_next;
+    if (n === 0) {
+      return s >= ti && s < ti2 ? 1 : 0;
     } else {
-      lst.push(l.prev.v);
-      break;
-    }
+      let a = (s - ti) / (tip - ti)
+      let b = (tip2 - s) / (tip2 - ti2)
 
-    if (l == startl)
-      break;
-
-    if (i > 1000) {
-      console.log("lset test was necessary");
-      i = -1;
-      break;
-    }
-
-    i++;
-  }
-
-  if (i == -1) {
-    var lset = new util.set();
-    while (1) {
-      lst.push(l.next.v);
-      lst.push(l.next.next.v);
-
-      if (l.prev.radial_next != l.prev) {
-        l = l.prev.radial_next;
-      } else {
-        lst.push(l.prev.v);
-
-        lst.push(startl.v);
-        lst.push(startl.v);
-        lst.push(startl.v);
-        break;
-      }
-
-      if (l == startl)
-        break;
-
-      if (lset.has(l)) {
-        break;
-      }
-
-      lset.add(l);
+      return deboor(i, n - 1) * a + deboor(i + 1, n - 1) * b;
     }
   }
 
-  return lst;
+  return deboor(i, n);
 }
 
-function lerp(a, b, t) {
-  return a + (b-a)*t;
-}
+bspline.derivative = function (i, s, degree) {
+  let i1 = i;
 
-function match_quad(f, vlooplists) {
-  var ptch = new Patch(3, 3)
+  function impulse(s, a, b) {
+    return s >= a && s < b ? 1 : 0;
+  }
 
-  var ls = list(f.loops);
+  return  (impulse(s,i1-3.0,i1-2.0)*i1**2-2.0*impulse(s,i1-3.0,i1-2.0
+    )*i1*s-6.0*impulse(s,i1-3.0,i1-2.0)*i1+impulse(s,i1-3.0,i1-2.0
+    )*s**2+6.0*impulse(s,i1-3.0,i1-2.0)*s+9.0*impulse(s,i1-3.0,i1-
+    2.0)-3.0*impulse(s,i1-2.0,i1-1.0)*i1**2+6.0*impulse(s,i1-2.0,
+    i1-1.0)*i1*s+10.0*impulse(s,i1-2.0,i1-1.0)*i1-3.0*impulse(s,i1
+    -2.0,i1-1.0)*s**2-10.0*impulse(s,i1-2.0,i1-1.0)*s-7.0*impulse(
+    s,i1-2.0,i1-1.0)+3.0*impulse(s,i1-1.0,i1)*i1**2-6.0*impulse(s,
+    i1-1.0,i1)*i1*s-2.0*impulse(s,i1-1.0,i1)*i1+3.0*impulse(s,i1-
+    1.0,i1)*s**2+2.0*impulse(s,i1-1.0,i1)*s-impulse(s,i1-1.0,i1)-
+    impulse(s,i1,i1+1.0)*i1**2+2.0*impulse(s,i1,i1+1.0)*i1*s-2.0*
+    impulse(s,i1,i1+1.0)*i1-impulse(s,i1,i1+1.0)*s**2+2.0*impulse(
+    s,i1,i1+1.0)*s-impulse(s,i1,i1+1.0))/2.0;
 
-  var v1 = ls[0].v, v2 = ls[1].v, v3 = ls[2].v, v4 = ls[3].v;
+  /*
+  on factor;
+  operator impulse;
+  for all s,a,b let df(impulse(s, a, b), s) = 0;
 
-  var ps = ptch.points;
-  function corner(x, y, i) {
-    var ring = get_ring(ls[i].v, f, vlooplists);
-    ring.push(ls[i].v);
+  procedure basis1(i, n, degree); begin scalar n, s2, i2, ti, ti2, tip, tip2, a, b;
+    i2 := i - 3;
+    s2 := s*(degree - 2);
 
-    ps[x][y] = new Vector3();
+    ti := i2;
+    ti2 := i2 + 1;
+    tip := i2 + n;
+    tip2 := i2 + n + 1;
 
-    var mc = new Array()
-    for (var j=0; j<ring.length-1; j++) {
-      mc.push((j%2)==0 ? 4 : 1);
-    }
+    return if n=0 then
+      impulse(s2, ti, ti2)
+    else <<
+      a := (s2 - ti) / (tip - ti);
+      b := (tip2 - s2) / (tip2 - ti2);
 
-    var len = ls[i].v.edges.length;
-    mc.push(len*len);
+      basis1(i, n-1, degree)*a + basis1(i+1, n-1, degree)*b
+      >>
+  end;
 
-    norm(mc);
 
-    for (var j=0; j<ring.length; j++) {
-      if (j >= mc.length) break;
-      var v = ring[j];
+  procedure basis(i, n);
+    basis1(i, n, n);
 
-      ps[x][y].add(v.co.static_mulScalar(mc[j]));
+  f1 := basis(i1, 2);
+  f2 := basis(i1, 3);
+
+  on factor;
+  on fort;
+
+  f1;
+  f2;
+  df(f1, s);
+  df(f2, s);
+
+  off fort;
+
+
+
+  for (let i=0; i<4; i++) {
+    for (let j=0; j<4; j++) {
+      let w = basis(i, u, degree)*basis(j,v,degree);
+
+      let pi = (j*4 + i)*3;
+      ret[0] += ps[pi]*w;
+      ret[1] += ps[pi+1]*w;
+      ret[2] += ps[pi+2]*w;
     }
   }
 
-  corner(0, 0, 0);
-  corner(0, 3, 1);
-  corner(3, 3, 2);
-  corner(3, 0, 3);
-
-  function get_e_ring(v1, v2, f) {
-    var l1 = null, l2 = null;
-    var r = [];
-
-    var vls = get_v_loops(v1, vlooplists);
-    for (var i=0; i<vls.length; i++) {
-      var l = vls[i];
-
-      if (l.f == f) {
-        l1 = l;
-        break;
-      }
-    }
-
-    var vls = get_v_loops(v2, vlooplists);
-    for (var i=0; i<vls.length; i++) {
-      var l = vls[i];
-      if (l.f == f) {
-        l2 = l;
-        break;
-      }
-    }
-
-    if (l1 == undefined || l2 == undefined) {
-      console.log("yeeek---->", l1, l2);
-      console.log("subsurf yeek");
-
-      return r;
-    }
-
-    //corner1 adj1 adj2 corner2
-    if (l1.next.v == v2) {
-      if (l1.radial_next != l1) {
-        r.push(l1.radial_next.next.next.v);
-        r.push(l1.prev.v);
-        r.push(l1.next.next.v);
-        r.push(l1.radial_next.prev.v);
-      } else {
-        r.push(v1);
-        r.push(l1.prev.v);
-        r.push(l1.next.next.v);
-        r.push(v2);
-      }
-    } else {
-      if (l2.radial_next.prev != l2) {
-        r.push(l2.radial_next.prev.v);
-        r.push(l2.prev.prev.v);
-        r.push(l2.radial_next.next.next.v);
-        r.push(l2.prev.v);
-      } else {
-        r.push(v1);
-        r.push(l2.prev.prev.v);
-        r.push(v2);
-        r.push(l2.prev.v);
-      }
-    }
-
-    r.push(v1);
-    r.push(v2);
-
-    return r;
-  }
-
-  function edge(x1, y1, x2, y2, v1, v2) {
-    var r = get_e_ring(v1, v2, f);
-
-    if (r.length != 6)
-      return
-
-    var v11 = new Vector3()
-    var v22 = new Vector3()
-
-    var me1 = [2, 2, 1, 1, 8, 4];
-    var me2 = [1, 1, 2, 2, 4, 8];
-    me1[me1.length-2] = 2*v1.edges.length;
-    me2[me1.length-1] = 2*v2.edges.length;
-    norm(me1);
-    norm(me2);
-
-    for (var j=0; j<me1.length; j++) {
-      v11.add(r[j].co.static_mulScalar(me1[j]));
-    }
-
-    for (var j=0; j<me2.length; j++) {
-      v22.add(r[j].co.static_mulScalar(me2[j]));
-    }
-
-    ps[x1][y1] = v11;
-    ps[x2][y2] = v22;
-  }
-
-  function rot(m, end) { //end is optional
-    if (end == undefined) end = 0;
-    var m2 = [];
-    for (var i1=m.length; i1<-end; i1++) {
-      m2.push(m[(i1+1)%(m.length-end)]);
-    }
-
-    for (var i1=m.length-end; i1<m.length; i1++) {
-      m2.push(m[i1]);
-    }
-
-    for (var i1=0; i1<m.length; i1++)
-      m[i1] = m2[i1];
-  }
-
-  edge(0, 1, 0, 2, v1, v2)
-  edge(1, 3, 2, 3, v2, v3)
-  edge(3, 1, 3, 2, v4, v3)
-  edge(1, 0, 2, 0, v1, v4)
-
-  function interior(x, y, v) {
-    var r = get_ring(v, f, vlooplists);
-    r[3] = v;
-
-    if (v == ls[0].v)
-      r = [ls[0].v, ls[1].v, ls[2].v, ls[3].v];
-    else if (v == ls[1].v)
-      r = [ls[1].v, ls[2].v, ls[3].v, ls[0].v];
-    else if (v == ls[2].v)
-      r = [ls[2].v, ls[3].v, ls[0].v, ls[1].v];
-    else if (v == ls[3].v)
-      r = [ls[3].v, ls[0].v, ls[1].v, ls[2].v];
-
-    r.splice(r.indexOf(v), 1);
-    r.push(v);
-
-    var mi = [2, 1, 2, v.edges.length];
-    norm(mi);
-
-    ps[x][y] = new Vector3();
-    for (var i=0; i<4; i++) {
-      ps[x][y].add(r[i].co.static_mulScalar(mi[i]));
-    }
-  }
-
-  interior(1, 1, v1);
-  interior(1, 2, v2);
-  interior(2, 2, v3);
-  interior(2, 1, v4);
-
-  return ptch;
-}
-
-function v_in_e(e, v) {
-  return v == e.v1 || v == e.v2;
-}
-
-export function changeSteps(gl, ss_mesh, steps) {
-  if (steps == ss_mesh.render.ss_steps) return;
-
-  var vertbuf = [];
-  var df = 1.0 / (steps-1);
-
-  for (var i=0; i<steps; i++) {
-    for (var j=0; j<steps; j++) {
-      vertbuf.push(i*df);
-      vertbuf.push(j*df);
-    }
-  }
-
-  vertbuf = new Float32Array(vertbuf);
-
-  var edgebuf = [];
-  var u = 1.0 / (steps-1);
-  for (var i=0; i<steps; i++) {
-    edgebuf.push(1.0);
-    edgebuf.push(i*u);
-  }
-
-  var idxbuf = [];
-  for (var i=0; i<steps-1; i++) {
-    for (var j=0; j<steps-1; j++) {
-      idxbuf.push(j*steps + i); idxbuf.push((j+1)*steps + i); idxbuf.push((j+1)*steps+i+1);
-      idxbuf.push(j*steps+i); idxbuf.push((j+1)*steps+i+1); idxbuf.push(j*steps+i+1);
-    }
-  }
-
-  ss_mesh.render.numIndices = idxbuf.length;
-  idxbuf = new Uint16Array(idxbuf);
-
-  ss_mesh.render.destroy(gl);
-
-  var vbuf = ss_mesh.render.vertbuf = ss_mesh.render.buffer(gl, "vertbuf");
-  gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
-  gl.bufferData(gl.ARRAY_BUFFER, vertbuf, gl.STATIC_DRAW);
-
-  edgebuf = new Float32Array(edgebuf);
-
-  var ebuf = ss_mesh.render.buffer(gl, "edgebuf");
-  gl.bindBuffer(gl.ARRAY_BUFFER, ebuf);
-  gl.bufferData(gl.ARRAY_BUFFER, edgebuf, gl.STATIC_DRAW);
-
-  var indexbuf = ss_mesh.render.buffer(gl, "indexbuf");
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexbuf);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idxbuf, gl.STATIC_DRAW);
-
-  ss_mesh.render.ss_steps = steps;
-}
-
-export function gpuSubsurf(gl, in_mesh2, steps, ss_mesh) {
-  var m = new mesh.Mesh()
-
-  if (steps == undefined) {
-    steps = 18.0;
-  }
-
-  var themesh = null;
-
-  themesh = in_mesh2.copy()
-  subdiv.subdivide(themesh);
-
-  themesh.render = new draw.RenderBuffers();
-
-  var data_size = 4*4*3*themesh.faces.length;
-  data_size = 1<<Math.ceil(Math.log(Math.sqrt(data_size)) / Math.log(2.0));
-
-  /*data_size = Math.ceil(Math.sqrt(data_size));
-  if (data_size % 2 != 0)
-    data_size += 1;*/
-
-  if (ss_mesh != undefined && ss_mesh.render.ss_data.length == data_size*data_size) {
-    var data = ss_mesh.render.ss_data;
-  } else {
-    var data = new Float32Array(new ArrayBuffer(data_size*data_size*4));
-  }
-
-  var vlooplists = {};
-  var c = 0;
-  var totmatch = 0;
-  themesh.faces.forEach(function(f) {
-    var qpatch = match_quad(f, vlooplists);
-    var ps = qpatch.points;
-    totmatch++;
-
-    f.patch = qpatch;
-
-    for (var x=0; x<4; x++) {
-      for (var y=0; y<4; y++) {
-        data[c++] = ps[x][y][0];
-        data[c++] = ps[x][y][1];
-        data[c++] = ps[x][y][2];
-      }
-    }
-  }, this);
-
-  /*if (totmatch > 0) {
-    console.log("totmatch:", totmatch);
-  }*/
-
-  themesh.render.ss_data = data;
-
-  themesh.render.ss_tex = gl.createTexture();
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, themesh.render.ss_tex);
-
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.ALPHA, data_size, data_size,
-    0, gl.ALPHA, gl.FLOAT, data);
-
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-  var vertbuf = [];
-  var df = 1.0 / (steps-1);
-
-  for (var i=0; i<steps; i++) {
-    for (var j=0; j<steps; j++) {
-      vertbuf.push(i*df);
-      vertbuf.push(j*df);
-    }
-  }
-
-  vertbuf = new Float32Array(vertbuf);
-
-  var edgebuf = [];
-  var u = 1.0 / (steps-1);
-  for (var i=0; i<steps; i++) {
-    edgebuf.push(1.0);
-    edgebuf.push(i*u);
-  }
-
-  var idxbuf = [];
-  for (var i=0; i<steps-1; i++) {
-    for (var j=0; j<steps-1; j++) {
-      idxbuf.push(j*steps + i); idxbuf.push((j+1)*steps + i); idxbuf.push((j+1)*steps+i+1);
-      idxbuf.push(j*steps+i); idxbuf.push((j+1)*steps+i+1); idxbuf.push(j*steps+i+1);
-    }
-  }
-
-  themesh.render.numIndices = idxbuf.length;
-  idxbuf = new Uint16Array(idxbuf);
-
-  themesh.render.destroy(gl);
-
-  var vbuf = themesh.render.vertbuf = themesh.render.buffer(gl, "vertbuf");
-  gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
-  gl.bufferData(gl.ARRAY_BUFFER, vertbuf, gl.STATIC_DRAW);
-
-  edgebuf = new Float32Array(edgebuf);
-
-  var ebuf = themesh.render.buffer(gl, "edgebuf");
-  gl.bindBuffer(gl.ARRAY_BUFFER, ebuf);
-  gl.bufferData(gl.ARRAY_BUFFER, edgebuf, gl.STATIC_DRAW);
-
-  var indexbuf = themesh.render.buffer(gl, "indexbuf");
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexbuf);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idxbuf, gl.STATIC_DRAW);
-
-  themesh.render.ss_steps = steps;
-  themesh.render.ss_tex_size = data_size;
-
-  themesh.render.ss_program = new draw.ShaderProgram(
-    gl,
-    // The ids of the vertex and fragment shaders
-    "ss_vshader", "simple_fshader",
-    // The vertex attribute names used by the shaders.
-    // The order they appear here corresponds to their index
-    // used later.
-    [ "position"]
-  );
-
-  gl.activeTexture(gl.TEXTURE1);
-  var utiltex = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, utiltex);
-
-
-  /*format of util tex:
-
-    0-64: lookup table for integer shift operation
-       [mul_part_1, mul_part_2],...
-
-    use by multiplying by part 1 and part 2
-
-    64-35: float precision information
-      precision
-      rangemin
-      rangemax
-  */
-
-  var data = new Uint8Array(new ArrayBuffer(67))
-  for (var i=0; i<32; i++) {
-    if (i < 8) {
-      data[i*2] = 1<<(i);
-      data[i*2+1] = 1;
-    } else {
-      data[i*2] = 128;
-      data[i*2+1] = 1<<(i-7);
-    }
-  }
-
-  /*float precision information*/
-  var float_prec = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
-  //console.log("float precision:", float_prec.precision, float_prec.rangeMin, float_prec.rangeMax)
-
-  data[64] = float_prec.precision;
-  data[65] = float_prec.rangeMin;
-  data[66] = float_prec.rangeMax;
-
-  /*upload util texture*/
-  var util_w = data.length;
-  data = new Uint8Array(data);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.ALPHA, data.length, 1,
-    0, gl.ALPHA, gl.UNSIGNED_BYTE, data);
-
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-  themesh.render.util_tex = utiltex;
-
-  return themesh;
-}
-
-//drawmode is optional, gl.TRIANGLES
-export function subsurfRender(gl, ss_mesh, drawmats)
-{
-  var drawmode=gl.TRIANGLES;
-
-  gl.enable(gl.DEPTH_TEST);
-  gl.enable(gl.POLYGON_OFFSET_FILL);
-  gl.disable(gl.DITHER);
-
-  var program = ss_mesh.render.ss_program
-
-  function bind_sstext(ssprogram) {
-    //gl.activeTexture(gl.TEXTURE1);
-    //gl.bindTexture(gl.TEXTURE_2D, ss_mesh.render.util_tex);
-
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, ss_mesh.render.ss_tex);
-
-    gl.uniform1i(ssprogram.uniformloc("sampler2d"), 0);
-    //gl.uniform1i(ssprogram.uniformloc("util_sampler2d"), 1);
-    gl.uniform1f(ssprogram.uniformloc("steps"), ss_mesh.render.ss_steps);
-    gl.uniform1f(ssprogram.uniformloc("data_size"), ss_mesh.render.ss_tex_size);
-  }
-
-  program.bind(drawmats);
-  bind_sstext(program);
-
-  gl.disableVertexAttribArray(1);
-  gl.disableVertexAttribArray(2);
-  gl.disableVertexAttribArray(3);
-  gl.disableVertexAttribArray(4);
-
-  gl.enableVertexAttribArray(0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, ss_mesh.render.buffer(gl, "vertbuf"));
-  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-
-  gl.enable(gl.POLYGON_OFFSET_FILL);
-  gl.polygonOffset(2, 2);
-
-  // Bind the index array
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ss_mesh.render.buffer(gl, "indexbuf"));
-
-  var clr = [0.875, 0.875, 0.875, 1.0];
-  var i = 0;
-  ss_mesh.faces.forEach(function(f) {
-    gl.uniform4fv(program.uniformloc("face_color"), clr);
-    gl.uniform1f(program.uniformloc("patch1"), i);
-
-    gl.drawElements(gl.TRIANGLES, ss_mesh.render.numIndices, gl.UNSIGNED_SHORT, 0);
-
-    i += 1;
-  }, this);
-
-  gl.polygonOffset(0, 0);
-  /* curved edge drawing function
-  function draw_ss_edges(alpha_mul) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, ss_mesh.render.buffer(gl, "edgebuf"););
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-
-    bind_sstext(program);
-
-    //draw curved edges
-    i = 0;
-    var clr = [1, 1, 1, 1];
-
-    ss_mesh.faces.forEach(function(f) {
-      gl.uniform4fv(program.uniformloc("face_color"), clr);
-      gl.uniform1f(program.uniformloc("patch1"), i);
-
-      gl.drawArrays(gl.LINE_STRIP, 0, ss_mesh.render.ss_steps);
-      i += 1;
-    }, this);
-  }
-
-  draw_ss_edges(1.0);
   */
 }
 
-export function destroySubsurf(gl, ss_mesh)
-{
-  if (ss_mesh == undefined) {
-    console.trace();
-    return;
+let getpoints_ret = util.cachering.fromConstructor(Vector3, 64);
+
+let _btm_temp1 = new Vector3();
+let _btm_temp2 = new Vector3();
+let _btm_temp3 = new Vector3();
+let _btm_temp4 = new Vector3();
+let _btm_temp5 = new Vector3();
+let _btm_temp6 = new Vector3();
+let _btm_temp7 = new Vector3();
+let _btm_temp8 = new Vector3();
+
+let tmptanmat = new Matrix4();
+let tanmats_rets = util.cachering.fromConstructor(Matrix4, 64);
+
+export class PatchBase {
+  buildTangentMatrix(u, v, matOut=tanmats_rets.next().makeIdentity()) {
+    let eps = 0.000001;
+    u = eps + u*(1.0 - eps*2.0);
+    v = eps + v*(1.0 - eps*2.0);
+
+    let m = matOut.$matrix;
+
+    matOut.makeIdentity();
+
+    let dvu = _btm_temp1, dvv = _btm_temp2, no = _btm_temp3;
+    let quadco = this.evaluate(u, v, dvu, dvv, no);
+
+    let tmat = tmptanmat;
+    tmat.makeIdentity();
+    tmat.translate(quadco[0], quadco[1], quadco[2]);
+
+    let vx = dvv, vy = dvu;
+    //let vx = dvu, vy = dvv;
+
+    let lx = vx.vectorLength();
+    let ly = vy.vectorLength();
+
+    if (lx === 0.0 || ly === 0.0) {
+      return;
+    }
+
+    let n = _btm_temp5;
+
+    let scale = (lx + ly) * 0.5;
+    //scale = lx = ly = 1.0;
+    scale = Math.max(scale, 0.0001);
+
+    vx.normalize();
+    vy.normalize();
+
+    n.load(vx).cross(vy).normalize();
+    n.mulScalar(scale);
+
+    vy.load(n).cross(vx).normalize().mulScalar(lx);
+    vx.load(vy).cross(n).normalize().mulScalar(ly);
+
+    m.m11 = vx[0];
+    m.m21 = vx[1];
+    m.m31 = vx[2];
+
+    m.m12 = vy[0];
+    m.m22 = vy[1];
+    m.m32 = vy[2];
+
+    m.m13 = n[0];
+    m.m23 = n[1];
+    m.m33 = n[2];
+
+    matOut.preMultiply(tmat);
+
+    return matOut;
   }
 
-  ss_mesh.render.destroy(gl);
-  gl.deleteTexture(ss_mesh.render.ss_tex);
-  gl.deleteTexture(ss_mesh.render.util_tex);
+  evaluate(u, v, dv_u_out, dv_v_out, normal_out) {
+    throw new Error("implement me");
+  }
+}
+
+//uniform cubic bspline patch
+export class CubicPatch extends PatchBase {
+  constructor() {
+    super();
+
+    this._patch = new Float64Array(KTOT);
+    for (let i = 0; i < KTOT; i++) {
+      this._patch[i] = 0;
+    }
+
+    this.evaluate_rets = util.cachering.fromConstructor(Vector3, 64);
+    this.dv_rets = util.cachering.fromConstructor(Vector3, 64);
+    this.dv2_rets = util.cachering.fromConstructor(Vector3, 64);
+    this.normal_rets = util.cachering.fromConstructor(Vector3, 64);
+
+    this.basis = bspline;
+    this.scratchu = new Vector3();
+    this.scratchv = new Vector3();
+
+    this.pointTots = new Array(16);
+    for (let i=0; i<16; i++) {
+      this.pointTots[i] = 0.0;
+    }
+
+    //this.basis = bernstein;
+  }
+
+  setPoint(x, y, p) {
+    let i = (y * 4 + x) * 3;
+    let ps = this._patch;
+
+    ps[i] = p[0];
+    ps[i + 1] = p[1];
+    ps[i + 2] = p[2];
+
+    this.pointTots[~~(i/3)] = 1;
+    this.flag |= CubicPatchFlags.UPDATE;
+    return this;
+  }
+
+  addPoint(x, y, p, increment=true, fac=1.0) {
+    let i = (y * 4 + x) * 3;
+    let ps = this._patch;
+
+    ps[i] += p[0]*fac;
+    ps[i + 1] += p[1]*fac;
+    ps[i + 2] += p[2]*fac;
+
+    if (increment) {
+      this.pointTots[~~(i/3)] += fac;
+    }
+
+    this.flag |= CubicPatchFlags.UPDATE;
+    return this;
+  }
+
+  finishPoints() {
+    for (let i=0; i<16; i++) {
+      let tot = this.pointTots[i];
+      let x = i % 4, y = ~~(i / 4);
+      if (tot) {
+        this.mulScalarPoint(x, y, 1.0 / tot);
+      }
+    }
+  }
+
+  mulScalarPoint(x, y, f) {
+    let i = (y * 4 + x) * 3;
+    let ps = this._patch;
+
+    ps[i] *= f;
+    ps[i + 1] *= f;
+    ps[i + 2] *= f;
+
+    this.flag |= CubicPatchFlags.UPDATE;
+
+    return this;
+  }
+
+  getPoint(x, y) {
+    let p = getpoints_ret.next();
+    let ps = this._patch;
+
+    let idx = (y*4 + x)*3;
+
+    p[0] = ps[idx];
+    p[1] = ps[idx+1];
+    p[2] = ps[idx+2];
+
+    return p;
+  }
+
+  evaluate(u, v, dv_u_out, dv_v_out, normal_out) {
+    //we do not have derivatives everywhere
+    let eps = 0.000005;
+    u = eps + u*(1.0 - eps*2);
+    v = eps + v*(1.0 - eps*2);
+
+    let ret = this.evaluate_rets.next().zero();
+    let order = 4;
+    let degree = 3;
+    let ps = this._patch;
+
+    let basis = this.basis;
+
+    let dvu, dvv;
+
+    if (dv_u_out) {
+      dvu = dv_u_out;
+    } else {
+      dvu = this.scratchu;
+    }
+
+    if (dv_v_out) {
+      dvv = dv_v_out;
+    } else {
+      dvv = this.scratchv;
+    }
+
+    dvu[0] = dvu[1] = dvu[2] = 0.0;
+    dvv[0] = dvv[1] = dvv[2] = 0.0;
+
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 4; j++) {
+        let wu = basis(i, u, degree);
+        let wv = basis(j, v, degree);
+
+        let dwu = basis.derivative(i, u, degree);
+        let dwv = basis.derivative(j, v, degree);
+
+        let w = wu*wv;
+
+        let pi = (j * 4 + i) * 3;
+
+        ret[0] += ps[pi] * w;
+        ret[1] += ps[pi + 1] * w;
+        ret[2] += ps[pi + 2] * w;
+
+        dvu[0] += ps[pi]*dwu*wv;
+        dvu[1] += ps[pi+1]*dwu*wv;
+        dvu[2] += ps[pi+2]*dwu*wv;
+
+        dvv[0] += ps[pi]*dwv*wu;
+        dvv[1] += ps[pi+1]*dwv*wu;
+        dvv[2] += ps[pi+2]*dwv*wu;
+      }
+    }
+
+    if (normal_out) {
+      normal_out.load(dvv).cross(dvu).normalize();
+      if (this.basis === bernstein) {
+        //normal_out.negate();
+      }
+    }
+
+    return ret;
+  }
+
+  derivative(u, v) {
+    let ret = this.dv_rets.next().zero();
+
+  }
+
+  derivative2(u, v) {
+    let ret = this.dv2_rets.next().zero();
+
+  }
+
+  normal(u, v) {
+    let ret = this.normal_rets.next().zero();
+  }
+}
+
+export class SSPatch {
+  constructor(patch, loop) {
+    this.patch = patch;
+    this.l = loop;
+  }
+
+  evaluate(u, v, dv_u, dv_v, norout) {
+    return this.patch.evaluate(u, v, dv_u, dv_v, norout);
+  }
+
+  derivative(u, v) {
+    return this.patch.derivative(u, v);
+  }
+
+  derivative2(u, v) {
+    return this.patch.derivative2(u, v);
+  }
+
+  normal(u, v) {
+    return this.patch.normal(u, v);
+  }
+}
+
+let zeropatch = new CubicPatch();
+
+export class Patch4 extends PatchBase {
+  constructor(p1, p2, p3, p4) {
+    super();
+
+    this.patches = [p1, p2, p3, p4];
+    this.dv_urets = util.cachering.fromConstructor(Vector3, 8);
+    this.dv_vrets = util.cachering.fromConstructor(Vector3, 8);
+    this.nor_rets = util.cachering.fromConstructor(Vector3, 8);
+  }
+
+  evaluate(u, v, dv_u, dv_v, norout) {
+    let p;
+
+    let su = u, sv = v;
+
+    //return this.patches[0].evaluate(...arguments);
+    let usign = 1, vsign = 1;
+
+    if (u <= 0.5 && v <= 0.5) {
+      let t = u;
+      u = v;
+      v = t;
+
+      t = dv_v;
+      dv_v = dv_u;
+      dv_u = t;
+
+      u = 1.0 - u * 2.0;
+      v = 1.0 - v * 2.0;
+
+      usign = -1;
+      vsign = -1;
+
+      p = this.patches[0];
+    } else if (u <= 0.5 && v >= 0.5) {
+      u *= 2.0;
+      v = (v - 0.5) * 2.0;
+
+      u = 1.0 - u;
+
+      usign = -1;
+
+      p = this.patches[1];
+    } else if (u >= 0.5 && v >= 0.5) {
+      let t = u;
+      u = v;
+      v = t;
+
+      t = dv_v;
+      dv_v = dv_u;
+      dv_u = t;
+
+      u = (u - 0.5) * 2.0;
+      v = (v - 0.5) * 2.0;
+
+      p = this.patches[2];
+    } else {
+      u = (u - 0.5) * 2.0;
+      v = 1.0 - v * 2.0;
+
+      vsign = -1;
+      p = this.patches[3];
+    }
+
+    let co = p.evaluate(v, u, dv_v, dv_u, norout);
+
+
+    if (dv_u) {
+      dv_u.mulScalar(usign);
+    }
+
+    if (dv_v) {
+      dv_v.mulScalar(vsign);
+    }
+
+    if (norout) {
+      norout.mulScalar(usign*vsign);
+    }
+
+    //co[2] += su*0.5;
+
+    return co;
+  }
+
+  derivativeU(u, v) {
+    let dv = this.dv_urets.next().zero();
+    this.evaluate(u, v, dv);
+
+    return dv;
+  }
+
+  derivativeV(u, v) {
+    let dv = this.dv_vrets.next().zero();
+    this.evaluate(u, v, undefined, dv);
+
+    return dv;
+  }
+
+  normal(u, v) {
+    let dv = this.nor_rets.next().zero();
+    this.evaluate(u, v, undefined, undefined, dv);
+
+    return dv;
+  }
 }

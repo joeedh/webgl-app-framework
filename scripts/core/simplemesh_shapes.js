@@ -29,6 +29,13 @@ export function loadShapes() {
     let buf = ShapeOBJs[k];
     buf = atob(buf);
 
-    Shapes[k] = readOBJ(buf).genRender(undefined, true);
+    let mesh = readOBJ(buf);
+
+    mesh.regenElementsDraw();
+    mesh.regenTesellation();
+    mesh.regenRender();
+
+    let sm = mesh.genRenderBasic(true);
+    Shapes[k] = sm;
   }
 }

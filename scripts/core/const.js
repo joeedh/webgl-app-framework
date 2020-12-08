@@ -1,12 +1,14 @@
-export const APP_VERSION = 0;
+export const APP_VERSION = 6;
 export const APP_KEY_NAME = "webgl-app-framework";
 export const FILE_EXT = "wproj";
 export const FILE_MAGIC = "WPRJ";
 
-export const autoSizeUpdate = true;
-export const useAreaTabSwitcher = false;
+import config from '../config/config.js';
+
+export var cacheSelectBufs = config.cacheSelectBufs;
 
 export const DEBUG = {
+  simplemesh : false,
   enableDebugGraphPanel : true,
   verboseDataPath : 0, //show verbose data path debug messages
   gl  : 0,

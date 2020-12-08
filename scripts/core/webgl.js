@@ -8,6 +8,8 @@ import './const.js';
 
 export const constmap = {};
 
+let TEXTURE_2D = 3553;
+
 export class IntUniform {
   constructor(val) {
     this.val = val;
@@ -61,7 +63,7 @@ export function addFastParameterGet(gl) {
   gl._scissor = gl.scissor;
   gl._depthMask = gl.depthMask;
 
-  let validkeys = new Set([gl.DEPTH_TEST, gl.DEPTH_WRITEMASK, gl.SCISSOR_BOX, gl.VIEWPORT]);
+  let validkeys = new Set([gl.DEPTH_TEST, gl.MAX_VERTEX_ATTRIBS, gl.DEPTH_WRITEMASK, gl.SCISSOR_BOX, gl.VIEWPORT]);
 
   gl.depthMask = function(mask) {
     mask = !!mask;
@@ -164,8 +166,15 @@ export function init_webgl(canvas, params={}) {
     gl.color_buffer_float = gl.getExtension("EXT_color_buffer_float");
   } else {
     gl = canvas.getContext("webgl", params);
+
+    if (!gl.RGBA32F) {
+      gl.RGBA32F = gl.RGBA;
+      gl.RGBA8UI = gl.RGBA;
+    }
+
     gl.getExtension("EXT_frag_depth");
     gl.color_buffer_float = gl.getExtension("WEBGL_color_buffer_float");
+    gl.texture_float = gl.getExtension("OES_texture_float");
   }
 
   canvas.addEventListener("webglcontextlost", function(event) {
@@ -175,7 +184,7 @@ export function init_webgl(canvas, params={}) {
   canvas.addEventListener(
     "webglcontextrestored", onContextLost, false);
 
-  //addFastParameterGet(gl);
+  addFastParameterGet(gl);
 
   _gl = gl;
   gl.haveWebGL2 = webgl2;
@@ -190,7 +199,6 @@ export function init_webgl(canvas, params={}) {
 
   window._constmap = constmap;
 
-  gl.texture_float = gl.getExtension("OES_texture_float");
   gl.texture_float = gl.getExtension("OES_texture_float_linear");
   gl.float_blend = gl.getExtension("EXT_float_blend");
   gl.getExtension("OES_standard_derivatives");
@@ -201,7 +209,7 @@ export function init_webgl(canvas, params={}) {
 
   gl.depth_texture = gl.getExtension("WEBGL_depth_texture");
   //gl.getExtension("WEBGL_debug_shaders");
-  
+
   gl.shadercache = {};
 
   if (DEBUG.gl) {
@@ -215,35 +223,35 @@ function format_lines(script) {
   var i = 1;
   var lines = script.split("\n")
   var maxcol = Math.ceil(Math.log(lines.length) / Math.log(10))+1;
-  
+
   var s = "";
-  
+
   for (var line of lines) {
     s += ""+i + ":";
     while (s.length < maxcol) {
       s += " "
     }
-    
+
     s += line + "\n";
     i++;
   }
-  
+
   return s;
 }
 
 export function hashShader(sdef) {
   let hash;
-  
+
   let clean = {
     vertex : sdef.vertex,
     fragment : sdef.fragment,
     uniforms : sdef.uniforms,
     attributes : sdef.attributes
   };
-  
+
   let ret = JSON.stringify(clean);
   sdef.__hash = ret;
-  
+
   return ret;
 }
 
@@ -261,16 +269,16 @@ export function getShader(gl, shaderdef) {
   if (gl.shadercache === undefined) {
     gl.shadercache = {};
   }
-  
+
   let hash = shaderdef.__hash !== undefined ? shaderdef.__hash : hashShader(shaderdef);
   if (hash in gl.shadercache) {
     return gl.shadercache[hash];
   }
-  
+
   let shader = new ShaderProgram(gl, shaderdef.vertex, shaderdef.fragment, shaderdef.attributes);
   if (shaderdef.uniforms)
     shader.uniforms = shaderdef.uniforms;
-  
+
   gl.shadercache[hash] = shader;
   return shader;
 }
@@ -282,61 +290,61 @@ export function getShader(gl, shaderdef) {
 // Load this shader and return the WebGLShader object corresponding to it.
 //
 function loadShader(ctx, shaderId)
-{   
-    var shaderScript = document.getElementById(shaderId);
-    
-    if (!shaderScript) {
-      shaderScript = {text : shaderId, type : undefined};
-      
-      if (shaderId.trim().toLowerCase().startsWith("//vertex")) {
-        shaderScript.type = "x-shader/x-vertex";
-      } else if (shaderId.trim().toLowerCase().startsWith("//fragment")) {
-        shaderScript.type = "x-shader/x-fragment";
-      } else {
-        console.trace();
-        console.log("Invalid shader type");
-        console.log("================");
-        console.log(format_lines(shaderScript));
-        console.log("================");
-        throw new Error("Invalid shader type for shader script;\n script must start with //vertex or //fragment");
-      }
-    }
+{
+  var shaderScript = document.getElementById(shaderId);
 
-    if (shaderScript.type == "x-shader/x-vertex")
-        var shaderType = ctx.VERTEX_SHADER;
-    else if (shaderScript.type == "x-shader/x-fragment")
-        var shaderType = ctx.FRAGMENT_SHADER;
-    else {
-        log("*** Error: shader script '"+shaderId+"' of undefined type '"+shaderScript.type+"'");
-        return null;
-    }
+  if (!shaderScript) {
+    shaderScript = {text : shaderId, type : undefined};
 
-    // Create the shader object
-    if (ctx == undefined || ctx == null || ctx.createShader == undefined)
+    if (shaderId.trim().toLowerCase().startsWith("//vertex")) {
+      shaderScript.type = "x-shader/x-vertex";
+    } else if (shaderId.trim().toLowerCase().startsWith("//fragment")) {
+      shaderScript.type = "x-shader/x-fragment";
+    } else {
       console.trace();
-      
-    var shader = ctx.createShader(shaderType);
-
-    // Load the shader source
-    ctx.shaderSource(shader, shaderScript.text);
-
-    // Compile the shader
-    ctx.compileShader(shader);
-
-    // Check the compile status
-    var compiled = ctx.getShaderParameter(shader, ctx.COMPILE_STATUS);
-    if (!compiled && !ctx.isContextLost()) {
-        // Something went wrong during compilation; get the error
-        var error = ctx.getShaderInfoLog(shader);
-        
-        console.log(format_lines(shaderScript.text));
-        console.log("\nError compiling shader: ", error);
-        
-        ctx.deleteShader(shader);
-        return null;
+      console.log("Invalid shader type");
+      console.log("================");
+      console.log(format_lines(shaderScript));
+      console.log("================");
+      throw new Error("Invalid shader type for shader script;\n script must start with //vertex or //fragment");
     }
+  }
 
-    return shader;
+  if (shaderScript.type == "x-shader/x-vertex")
+    var shaderType = ctx.VERTEX_SHADER;
+  else if (shaderScript.type == "x-shader/x-fragment")
+    var shaderType = ctx.FRAGMENT_SHADER;
+  else {
+    log("*** Error: shader script '"+shaderId+"' of undefined type '"+shaderScript.type+"'");
+    return null;
+  }
+
+  // Create the shader object
+  if (ctx == undefined || ctx == null || ctx.createShader == undefined)
+    console.trace();
+
+  var shader = ctx.createShader(shaderType);
+
+  // Load the shader source
+  ctx.shaderSource(shader, shaderScript.text);
+
+  // Compile the shader
+  ctx.compileShader(shader);
+
+  // Check the compile status
+  var compiled = ctx.getShaderParameter(shader, ctx.COMPILE_STATUS);
+  if (!compiled && !ctx.isContextLost()) {
+    // Something went wrong during compilation; get the error
+    var error = ctx.getShaderInfoLog(shader);
+
+    console.log(format_lines(shaderScript.text));
+    console.log("\nError compiling shader: ", error);
+
+    ctx.deleteShader(shader);
+    return null;
+  }
+
+  return shader;
 }
 
 var _safe_arrays = [
@@ -347,96 +355,269 @@ var _safe_arrays = [
   new Float32Array(4),
 ];
 
+export let use_ml_array = false;
+
 export class ShaderProgram {
   constructor(gl, vertex, fragment, attributes) {
     this.vertexSource = vertex;
     this.fragmentSource = fragment;
+
     this.attrs = [];
-    
+
+    this.multilayer_programs = {};
+
     for (var a of attributes) {
       this.attrs.push(a);
     }
-    
+
+    this.multilayer_attrs = {};
+
     this.rebuild = 1;
-    
+
     this.uniformlocs = {};
     this.attrlocs = {};
     this.uniform_defaults = {};
-    
+
     this.uniforms = {};
     this.gl = gl;
   }
-  
+
+  static insertDefine(define, code) {
+    code = code.trim().split("\n");
+
+    if (code.length > 3) {
+      code = code.slice(0, 3).concat([define]).concat(code.slice(3, code.length));
+    } else {
+      code = code.concat([define]);
+    }
+
+    return code.join("\n") + "\n";
+  }
+
+  static _use_ml_array() {
+    return use_ml_array;
+  }
+  static multilayerAttrSize(attr) {
+    return attr.toUpperCase() + "_SIZE";
+  }
+
+  static multilayerGet(attr, i) {
+    if (this._use_ml_array()) {
+      return `${attr}_layers[${i}]`;
+    } else {
+      return `get_${attr}_layer(i)`;
+    }
+  }
+
+  static maxMultilayer() {
+    return 8;
+  }
+
+  static multilayerAttrDeclare(attr, type, is_fragment, is_glsl_300) {
+    let keyword, keyword2;
+
+    if (is_fragment) {
+      keyword = is_glsl_300 ? 'in' : "attribute";
+      keyword2 = is_glsl_300 ? 'in' : "varying";
+    } else {
+      keyword = is_glsl_300 ? 'in' : "attribute";
+      keyword2 = is_glsl_300 ? 'out' : "varying";
+    }
+    let size = this.multilayerAttrSize(attr);
+
+    if (this._use_ml_array()) {
+      let ret = `
+#ifndef ${size}_DECLARE
+#define ${size} 1
+#endif
+
+//${size}_DECLARE
+#define ${attr} ${attr}_layers[0]\n`;
+      if (!is_fragment) {
+        ret += `${keyword} ${type} ${attr}_layers[${size}];\n`;
+      }
+      ret += `${keyword2} ${type} v${attr}_layers[${size}];\n`;
+
+      return ret;
+    }
+
+    let ret = `
+#ifndef ${size}_DECLARE
+#define ${size} 1
+#endif
+//${size}_DECLARE\n`;
+    if (!is_fragment) {
+      ret += `${keyword} ${type} ${attr};\n`;
+    }
+    ret += `    
+${keyword2} ${type} v${attr};
+    `
+
+    let func = `
+${type} get_${attr}_layer(int i) {
+  switch (i) {
+    case 0:
+      return ${attr}
+
+    `
+    for (let i=0; i<this.maxMultilayer(); i++) {
+      ret += `
+      #if ${size} > ${i+1}\n`;
+      if (!is_fragment) {
+        ret += `${keyword} ${type} ${attr}_${i+2};\n`;
+      }
+
+      ret += `${keyword2} ${type} v${attr}_${i+2};
+      #endif
+      `
+
+      if (i === 0) {
+        continue;
+      }
+
+      func += `
+    case ${i}:
+#if ${size} > ${i+1} 
+      return ${attr}_${i+2};
+      break;
+#endif
+      `;
+
+    }
+
+    func += '  }\n}\n';
+
+    return ret;
+  }
+
+  static multiLayerAttrKey(attr, i, use_glsl300) {
+    if (!this._use_ml_array()) {
+      return i ? `${attr}_${i}` : attr;
+    } else {
+      return `${attr}_layers[${i}]`;
+    }
+  }
+  static multilayerVertexCode(attr) {
+    let size = this.multilayerAttrSize(attr);
+    let ret = `
+
+v${attr} = ${attr};
+#if ${size} > 1
+
+    `;
+
+    for (let i=1; i<this.maxMultilayer; i++) {
+      if (this._use_ml_array()) {
+        ret += `
+#if ${size} >= ${i}
+  v${attr}_layers[{i}] = ${attr}_layers[${i}];
+#endif
+      `;
+      } else {
+        ret += `
+#if ${size} >= ${i}
+  v${attr}_${i+2} = ${attr}_${i+2};
+#endif
+      `;
+      }
+    }
+    ret += '#endif\n';
+
+    return ret;
+  }
+
+  setAttributeLayerCount(attr, n) {
+    if (n <= 1 && attr in this.multilayer_attrs) {
+      delete this.multilayer_attrs[attr];
+    } else {
+      this.multilayer_attrs[attr] = n;
+    }
+
+    return this;
+  }
+
   init(gl) {
     this.gl = gl;
     this.rebuild = false;
-    
-    var vshader = this.vertexSource, fshader = this.fragmentSource;
-    
+
+    let vshader = this.vertexSource, fshader = this.fragmentSource;
+
     function loadShader(shaderType, code) {
-        var shader = gl.createShader(shaderType);
+      var shader = gl.createShader(shaderType);
 
-        // Load the shader source
-        gl.shaderSource(shader, code);
+      // Load the shader source
+      gl.shaderSource(shader, code);
 
-        // Compile the shader
-        gl.compileShader(shader);
+      // Compile the shader
+      gl.compileShader(shader);
 
-        // Check the compile status
-        var compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
-        if (!compiled && !gl.isContextLost()) {
-            // Something went wrong during compilation; get the error
-            var error = gl.getShaderInfoLog(shader);
-            
-            console.log(format_lines(code));
-            console.log("\nError compiling shader: ", error);
-            
-            gl.deleteShader(shader);
-            return null;
-        }
+      // Check the compile status
+      let compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+      if (!compiled && !gl.isContextLost()) {
+        // Something went wrong during compilation; get the error
+        var error = gl.getShaderInfoLog(shader);
 
-        return shader;
+        console.log(format_lines(code));
+        console.log("\nError compiling shader: ", error);
+
+        gl.deleteShader(shader);
+        return null;
+      }
+
+      return shader;
     }
 
     // create our shaders
-    var vertexShader = loadShader(gl.VERTEX_SHADER, vshader);
-    var fragmentShader = loadShader(gl.FRAGMENT_SHADER, fshader);
-    
+    let vertexShader = loadShader(gl.VERTEX_SHADER, vshader);
+    let fragmentShader = loadShader(gl.FRAGMENT_SHADER, fshader);
+
     // Create the program object
-    var program = gl.createProgram();
+    let program = gl.createProgram();
 
     // Attach our two shaders to the program
     gl.attachShader (program, vertexShader);
     gl.attachShader (program, fragmentShader);
 
-    var attribs = this.attrs;
-    
-    // Bind attributes
-    for (var i = 0; i < attribs.length; ++i)
-        gl.bindAttribLocation (program, i, attribs[i]);
+    let attribs = this.attrs;
 
+    // Bind attributes
+    let li = 0;
+
+    for (let i = 0; i < attribs.length; ++i) {
+      let attr = attribs[i];
+
+      if (attr in this.multilayer_attrs) {
+        let count = this.multilayer_attrs[attr];
+        for (let j=0; j<count; j++) {
+          let key = this.constructor.multiLayerAttrKey(attr, j, gl.haveWebGL2);
+          gl.bindAttribLocation(program, li++, key);
+        }
+      } else {
+        gl.bindAttribLocation(program, li++, attribs[i]);
+      }
+    }
     // Link the program
     gl.linkProgram(program);
 
     // Check the link status
-    var linked = gl.getProgramParameter(program, gl.LINK_STATUS);
+    let linked = gl.getProgramParameter(program, gl.LINK_STATUS);
     if (!linked && !gl.isContextLost()) {
-        // something went wrong with the link
-        var error = gl.getProgramInfoLog (program);
+      // something went wrong with the link
+      let error = gl.getProgramInfoLog (program);
 
-        console.log("\nVERTEX:\n" + format_lines(vshader));
-        console.log("\nFRAGMENT\n:" + format_lines(fshader));
+      console.log("\nVERTEX:\n" + format_lines(vshader));
+      console.log("\nFRAGMENT\n:" + format_lines(fshader));
 
-        console.log("Error in program linking:"+error);
+      console.log("Error in program linking:"+error);
 
-        gl.deleteProgram(program);
+      gl.deleteProgram(program);
 
-        //do nothing
-        //gl.deleteProgram(program);
-        //gl.deleteProgram(fragmentShader);
-        //gl.deleteProgram(vertexShader);
+      //do nothing
+      //gl.deleteProgram(program);
+      //gl.deleteProgram(fragmentShader);
+      //gl.deleteProgram(vertexShader);
 
-        return null;
+      return null;
     }
 
     //console.log("created shader", program);
@@ -446,19 +627,17 @@ export class ShaderProgram {
     this.gl = gl;
     this.vertexShader = vertexShader;
     this.fragmentShader = fragmentShader;
-    this.attrs = [];
-    
+
     this.attrlocs = {};
     this.uniformlocs = {};
-    
+
     this.uniforms = {}; //default uniforms
-    
+
     for (var i=0; i<attribs.length; i++) {
-      this.attrs.push(i);
       this.attrlocs[attribs[i]] = i;
     }
   }
-  
+
   //this function was originally asyncrounous
   static load_shader(scriptid, attrs) {
     var script = document.getElementById(scriptid);
@@ -484,12 +663,12 @@ export class ShaderProgram {
 
     return ret;
   }
-  
+
   on_gl_lost(newgl) {
     this.rebuild = 1;
     this.gl = newgl;
     this.program = undefined;
-    
+
     this.uniformlocs = {};
   }
 
@@ -508,7 +687,7 @@ export class ShaderProgram {
     if (this.uniformlocs[name] == undefined) {
       this.uniformlocs[name] = this.gl.getUniformLocation(this.program, name);
     }
-    
+
     return this.uniformlocs[name];
   }
 
@@ -523,21 +702,59 @@ export class ShaderProgram {
 
     return this.attrlocs[name];
   }
-  
+
+  bindMultiLayer(gl, uniforms, attrsizes) {
+    let key = "";
+    for (let k in attrsizes) {
+      key += k + ":" + attrsizes[k] + ":";
+    }
+
+    if (key in this.multilayer_programs) {
+      return this.multilayer_programs[key].bind(gl);
+    }
+
+    let shader = this.copy();
+    for (let k in attrsizes) {
+      let i = attrsizes[k];
+
+      if (i > 1) {
+        shader.multilayer_attrs[k] = i;
+      }
+
+      let size = this.constructor.multilayerAttrSize(k);
+
+      let define = `#define ${size} ${i}`;
+
+      shader.vertexSource = shader.vertexSource.replace("//"+size + "_DECLARE", define);
+      shader.fragmentSource = shader.fragmentSource.replace("//"+size + "_DECLARE", define);
+    }
+
+    this.multilayer_programs[key] = shader;
+    return shader.bind(gl, uniforms);
+  }
+
+  copy() {
+    let ret = new ShaderProgram(this.gl, this.vertexSource, this.fragmentSource, this.attrs);
+
+    ret.uniforms = this.uniforms;
+
+    //ret.vertexSource
+    //ret.attrs
+  }
   bind(gl, uniforms) {
     this.gl = gl;
-    
+
     if (this.rebuild) {
       this.init(gl);
-      
-      if (this.rebuild) 
+
+      if (this.rebuild)
         return false; //failed to initialize
     }
 
     if (!this.program) {
       return false;
     }
-    
+
     function setv(dst, src, n) {
       for (var i=0; i<n; i++) {
         dst[i] = src[i];
@@ -547,7 +764,7 @@ export class ShaderProgram {
     let slot_i = 0;
     gl.useProgram(this.program);
     this.gl = gl;
-    
+
     for (var i=0; i<2; i++) {
       var us = i ? uniforms : this.uniforms;
 
@@ -558,14 +775,14 @@ export class ShaderProgram {
       for (var k in us) {
         var v = us[k];
         var loc = this.uniformloc(k)
-        
+
         if (loc == undefined) {
-            //stupid gl returns null if it optimized away the uniform,
-            //so we must silently accept this
-            //console.log("Warning, could not locate uniform", k, "in shader");
-            continue;
+          //stupid gl returns null if it optimized away the uniform,
+          //so we must silently accept this
+          //console.log("Warning, could not locate uniform", k, "in shader");
+          continue;
         }
-        
+
         if (v instanceof IntUniform) {
           gl.uniform1i(loc, v.val);
         } else if (v instanceof Texture) {
@@ -581,7 +798,7 @@ export class ShaderProgram {
             case 2:
               var arr = _safe_arrays[2];
               setv(arr, v, 2);
-              
+
               gl.uniform2fv(loc, arr);
               break;
             case 3:
@@ -602,7 +819,7 @@ export class ShaderProgram {
         } else if (v instanceof Matrix4) {
           //console.log("found matrix");
           v.setUniform(gl, loc);
-        } else if (typeof v == "number") { 
+        } else if (typeof v == "number") {
           gl.uniform1f(loc, v);
         } else if (v !== undefined && v !== null) {
           console.warn("Invalid uniform", k, v);
@@ -610,8 +827,124 @@ export class ShaderProgram {
         }
       }
     }
-    
+
     return this;
+  }
+}
+
+window._ShaderProgram = ShaderProgram;
+
+export class VBO {
+  constructor(gl, vbo, size=-1) {
+    this.gl = gl;
+    this.vbo = vbo;
+    this.size = size;
+
+    this.ready = false;
+    this.lastData = undefined;
+    this.dead = false;
+    this.target = undefined;
+    this.drawmode = undefined;
+    this.lastData = undefined;
+  }
+
+  get(gl) {
+    if (this.dead) {
+      throw new Error("vbo is dead");
+    }
+
+    if (gl !== undefined && gl !== this.gl) {
+      this.ready = false;
+      this.gl = gl;
+      this.vbo = gl.createBuffer();
+
+      console.warn("context loss detected");
+    }
+
+    if (!this.ready) {
+      console.warn("buffer was not ready; forgot to call .uploadData?");
+    }
+
+    if (!this.vbo) {
+      throw new Error("webgl error");
+    }
+
+    return this.vbo;
+  }
+
+  checkContextLoss(gl) {
+    if (gl !== undefined && gl !== this.gl) {
+      this.ready = false;
+      this.gl = gl;
+      this.vbo = gl.createBuffer();
+
+      console.warn("context loss detected");
+
+      if (this.lastData !== undefined) {
+        this.uploadData(gl, this.lastData, this.target, this.drawmode);
+      }
+    }
+  }
+
+  reset(gl) {
+    if (this.dead) {
+      this.dead = false;
+      this.gl = gl;
+      this.vbo = gl.createBuffer();
+      console.log("vbo creation");
+    }
+
+    this.ready = false;
+    this.lastData = undefined;
+
+    return this;
+  }
+
+  destroy(gl) {
+    if (this.dead) {
+      console.warn("tried to kill vbo twice");
+      return;
+    }
+
+    this.ready = false;
+
+    gl.deleteBuffer(this.vbo);
+
+    this.vbo = undefined;
+    this.lastData = undefined;
+    this.gl = undefined;
+    this.dead = true;
+  }
+
+  uploadData(gl, dataF32, target=gl.ARRAY_BUFFER, drawmode=gl.STATIC_DRAW) {
+    if (gl !== this.gl) {
+      //context loss
+      this.gl = gl;
+      this.vbo = gl.createBuffer();
+      this.size = -1;
+
+      console.warn("Restoring VBO after context loss");
+    }
+
+    let useSub = this.size === dataF32.length && this.vbo;
+
+    this.lastData = dataF32;
+    this.size = dataF32.length;
+
+    this.target = target;
+    this.drawmode = drawmode;
+
+    gl.bindBuffer(target, this.vbo);
+    if (useSub) {
+      gl.bufferSubData(target, 0, dataF32);
+    } else {
+      if (DEBUG.simplemesh) {
+        console.warn("bufferData");
+      }
+      gl.bufferData(target, dataF32, drawmode);
+    }
+
+    this.ready = true;
   }
 }
 
@@ -619,38 +952,57 @@ export class RenderBuffer {
   constructor() {
     this._layers = {};
   }
-  
+
   get(gl, name) {
-    if (this[name] != undefined) {
+    if (this[name] !== undefined) {
       return this[name];
     }
-    
-    var buf = gl.createBuffer();
-    
-    this._layers[name] = buf;
-    this[name] = buf;
-    
-    return buf;
+
+    //console.log("new buffer");
+    let buf = gl.createBuffer();
+
+    let vbo = new VBO(gl, buf);
+
+    this._layers[name] = vbo;
+    this[name] = vbo;
+
+    return vbo;
   }
-  
+
+  get buffers() {
+    let this2 = this;
+
+    return (function*() {
+      for (let k in this2._layers) {
+        yield this2._layers[k];
+      }
+    })();
+  }
+
+  reset(gl) {
+    for (let vbo of this.buffers) {
+      vbo.reset(gl);
+    }
+  }
+
   destroy(gl, name) {
-    if (name == undefined) {
-      for (var k in this._layers) {
-        gl.deleteBuffer(this._layers[k]);
-        
-        this._layers[k] = undefined;
-        this[k] = undefined;
+    if (name === undefined) {
+      for (let k in this._layers) {
+        this._layers[k].destroy(gl);
+
+        delete this._layers[name];
+        delete this[name];
       }
     } else {
-      if (this._layers[name] == undefined) {
-        console.trace("WARNING: gl buffer no in RenderBuffer!", name, gl);
+      if (this._layers[name] === undefined) {
+        console.trace("WARNING: gl buffer not in RenderBuffer!", name, gl);
         return;
       }
-      
-      gl.deleteBuffer(this._layers[name]);
-      
-      this._layers[name] = undefined;
-      this[name] = undefined;
+
+      this._layers[name].destroy(gl);
+
+      delete this._layers[name];
+      delete this[name];
     }
   }
 }
@@ -661,36 +1013,165 @@ export class Texture {
     this.texture = texture;
     this.texture_slot = texture_slot;
     this.target = target;
+
+    this.createParams = {
+      target : TEXTURE_2D
+    };
+
+    this.createParamsList = [TEXTURE_2D];
+
+    this._params = {};
+  }
+
+  texParameteri(gl, target, param, value) {
+    this._params[param] = value;
+
+    gl.texParameteri(target, param, value);
+    return this;
+  }
+
+  getParameter(gl, param) {
+    return this._params[param];
+  }
+
+  _texImage2D1(gl, target, level, internalformat, format, type, source) {
+    gl.bindTexture(target, this.texture);
+    gl.texImage2D(target, level, internalformat, format, type, source);
+
+    gl.getError();
+
+    this.createParams = {
+      target, level, internalformat, format, type, source
+    };
+    this.createParamsList = [
+      target, level, internalformat, format, type, source
+    ];
+
+    if (source instanceof Image || source instanceof ImageData) {
+      this.createParams.width = source.width;
+      this.createParams.height = source.height;
+    }
+
+    return this;
+  }
+
+  _texImage2D2(gl, target, level, internalformat, width, height, border, format, type, source) {
+    gl.bindTexture(target, this.texture);
+
+    gl.getError();
+
+    //if (source === undefined || source === null) {
+    //  gl.texImage2D(target, level, internalformat, width, height, border, format, type, undefined);
+    //} else {
+      gl.texImage2D(target, level, internalformat, width, height, border, format, type, source);
+    //}
+
+    this.createParams = {
+      target, level, internalformat, format, type, source, width, height, border
+    };
+    this.createParamsList = [
+      target, level, internalformat, format, type, source, width, height, border
+    ];
+
+    gl.getError();
+
+    return this;
+  }
+
+  texImage2D() {
+    if (arguments.length === 7) {
+      return this._texImage2D1(...arguments);
+    } else {
+      return this._texImage2D2(...arguments);
+    }
+  }
+
+  copy(gl, copy_data=false) {
+    let tex = new Texture();
+
+    tex.texture = gl.createTexture();
+    tex.createParams = Object.assign({}, this.createParams);
+    tex.createParamsList = this.createParamsList.concat([]);
+    tex.texture_slot = this.texture_slot;
+
+    gl.bindTexture(this.createParams.target, tex.texture);
+
+    if (!copy_data) {
+      let p = this.createParams;
+
+      tex.texImage2D(p.target, p.level, p.internalformat, p.format, p.type, null);
+      gl.getError();
+    } else {
+      this.copyTexTo(gl, tex);
+    }
+
+    for (let k in this._params) {
+      let key = parseInt(k);
+      let val = this._params[key];
+
+      gl.texParameteri(this.createParams.target, key, val);
+      gl.getError();
+    }
+
+    return tex;
+  }
+
+  copyTexTo(gl, b) {
+    if (this.texture === undefined) {
+      return;
+    }
+
+    let p = this.createParams;
+
+    gl.bindTexture(p.target, b.texture);
+    b.texImage2D(gl, p.target, p.level, p.internalformat, p.width, p.height, p.border, p.format, p.type, this.texture);
+    gl.getError();
+
+    return this;
   }
 
   destroy(gl) {
     gl.deleteTexture(this.texture);
   }
 
-  static load(gl, width, height, data, target = gl.TEXTURE_2D) {
-    let tex = gl.createTexture();
-    
-    gl.bindTexture(target, tex);
-    if (data instanceof Float32Array) {
-      gl.texImage2D(target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.FLOAT, data);
-    } else {
-      gl.texImage2D(target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  load(gl, width, height, data, target = gl.TEXTURE_2D) {
+    if (!this.texture) {
+      this.texture = gl.createTexture();
     }
-    Texture.defaultParams(gl, tex, target);
-    
-    return new Texture(0, tex);
+    gl.bindTexture(target, this.texture);
+
+    if (data instanceof Float32Array) {
+      gl.texImage2D(target, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, data);
+    } else {
+      gl.texImage2D(target, 0, gl.RGBA8UI, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    }
+
+    gl.getError();
+    Texture.defaultParams(gl, this, target);
+    gl.getError();
+
+    return this;
   }
-  
+
+  static load(gl, width, height, data, target = gl.TEXTURE_2D) {
+    return new Texture(0).load(...arguments);
+  }
+
   static defaultParams(gl, tex, target=gl.TEXTURE_2D) {
-    gl.bindTexture(target, tex);
-    
-    gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    
+    if (!(tex instanceof Texture)) {
+      console.warn("Depracated call to Texture.defaultParams with 'tex' a raw WebGLTexture instance instance of wrapper webgl.Texture object");
+      tex = new Texture(undefined, tex);
+    }
+
+    gl.bindTexture(target, tex.texture);
+
+    tex.texParameteri(gl, target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    tex.texParameteri(gl, target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    tex.texParameteri(gl, target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    tex.texParameteri(gl, target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
   }
-  
+
   bind(gl, uniformloc, slot=this.texture_slot) {
     gl.activeTexture(gl.TEXTURE0 + slot);
     gl.bindTexture(this.target, this.texture);
@@ -722,27 +1203,27 @@ export class DrawMats {
     this.persmat = new Matrix4();
     this.rendermat = new Matrix4();
     this.normalmat = new Matrix4();
-    
+
     this.icameramat = new Matrix4();
     this.ipersmat = new Matrix4();
     this.irendermat = new Matrix4();
     this.inormalmat = new Matrix4();
   }
-  
+
   regen_mats(aspect=this.aspect) {
     this.aspect = aspect;
-    
+
     this.rendermat.load(this.persmat).multiply(this.cameramat);
     this.normalmat.load(this.cameramat).makeRotationOnly();
-    
+
     this.icameramat.load(this.cameramat).invert();
     this.ipersmat.load(this.persmat).invert();
     this.irendermat.load(this.rendermat).invert();
     this.inormalmat.load(this.normalmat).invert();
-    
+
     return this;
   }
-  
+
   toJSON() {
     return {
       cameramat  : this.cameramat.getAsArray(),
@@ -757,7 +1238,7 @@ export class DrawMats {
       inormalmat : this.inormalmat.getAsArray()
     }
   }
-  
+
   loadJSON(obj) {
     this.cameramat.load(obj.cameramat);
     this.persmat.load(obj.persmat);
@@ -769,7 +1250,7 @@ export class DrawMats {
     this.ipersmat.load(obj.ipersmat);
     this.irendermat.load(obj.irendermat);
     this.inormalmat.load(obj.inormalmat);
-    
+
     return this;
   }
 
@@ -792,7 +1273,7 @@ DrawMats {
 `;
 nstructjs.manager.add_class(DrawMats);
 
-//simplest  
+//simplest
 export class Camera extends DrawMats {
   constructor() {
     super();
@@ -808,7 +1289,7 @@ export class Camera extends DrawMats {
 
     this.up = new Vector3([1, 3, 0]);
     this.up.normalize();
-    
+
     this.near = 0.25;
     this.far = 10000.0;
   }
@@ -859,78 +1340,78 @@ export class Camera extends DrawMats {
     this.up.load(b.up);
     this.near = b.near;
     this.far = b.far;
-    
+
     this.regen_mats(this.aspect);
-    
+
     return this;
   }
-  
+
   copy() {
     let ret = new Camera();
 
     ret.isPerspective = this.isPerspective;
     ret.fovy = this.fovy;
     ret.aspect = this.aspect;
-    
+
     ret.pos.load(this.pos);
     ret.target.load(this.target);
     ret.orbitTarget.load(this.orbitTarget);
     ret.up.load(this.up);
-    
+
     ret.near = this.near;
     ret.far = this.far;
-    
+
     ret.regen_mats(ret.aspect);
-    
+
     return ret;
   }
-  
+
   reset() {
     this.pos = new Vector3([0, 0, 5]);
     this.target = new Vector3();
     this.up = new Vector3([1, 3, 0]);
     this.up.normalize();
-    
+
     this.regen_mats(this.aspect);
     window.redraw_all();
-    
+
     return this;
   }
-  
+
   toJSON() {
     var ret = super.toJSON();
-    
+
     ret.fovy = this.fovy;
     ret.near = this.near;
     ret.far = this.far;
     ret.aspect = this.aspect;
-    
+
     ret.target = this.target.slice(0);
     ret.pos = this.pos.slice(0);
     ret.up = this.up.slice(0);
-    
+
     return ret;
   }
-  
+
   loadJSON(obj) {
     super.loadJSON(obj);
-    
+
     this.fovy = obj.fovy;
-    
+
     this.near = obj.near;
     this.far = obj.far;
     this.aspect = obj.aspect;
-    
+
     this.target.load(obj.target);
     this.pos.load(obj.pos);
     this.up.load(obj.up);
-    
+
     return this;
   }
-  
-  regen_mats(aspect=this.aspect) {  
+
+  regen_mats(aspect=this.aspect) {
     this.aspect = aspect;
-    
+
     this.persmat.makeIdentity();
     if (this.isPerspective) {
       this.persmat.perspective(this.fovy, aspect, this.near, this.far);
@@ -948,7 +1429,7 @@ export class Camera extends DrawMats {
     this.cameramat.makeIdentity();
     this.cameramat.lookat(this.pos, this.target, this.up);
     this.cameramat.invert();
-    
+
     this.rendermat.load(this.persmat).multiply(this.cameramat);
     //this.rendermat.load(this.cameramat).multiply(this.persmat);
 
