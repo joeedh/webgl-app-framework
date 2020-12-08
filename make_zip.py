@@ -5,8 +5,10 @@ outfile = "./app.zip"
 sources = [
   "./scripts/*.js",
   "./scripts/core/**",
+  "./scripts/config/**",
   "./scripts/scene/**",
   "./scripts/curve/**",
+  "./scripts/brush/**",
   "./scripts/mesh/**",
   "./scripts/editors/**",
   "./scripts/data_api/**",
