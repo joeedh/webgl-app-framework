@@ -16,7 +16,7 @@ import * as ui_noteframe from '../path.ux/scripts/widgets/ui_noteframe.js';
 import {Matrix4} from "../util/vectormath.js";
 import {MenuBarEditor} from "../editors/menu/MainMenu.js";
 import {Context, ContextOverlay, ContextFlags} from "./context_base.js";
-import {UIBase, Screen} from '../path.ux/scripts/pathux.js';
+import {UIBase, Screen, SavedToolDefaults} from '../path.ux/scripts/pathux.js';
 import {PropsEditor} from '../editors/properties/PropsEditor.js';
 import {MaterialEditor} from "../editors/node/MaterialEditor.js";
 
@@ -37,6 +37,30 @@ export class BaseOverlay extends ContextOverlay {
 
   validate() {
     return true;
+  }
+
+  get toolDefaults() {
+    return SavedToolDefaults.accessors;
+  }
+
+  toolDefaults_save() {
+    return SavedToolDefaults.accessors;
+  }
+
+  toolDefaults_load() {
+    return SavedToolDefaults.accessors;
+  }
+
+  get propCache() { //used by datapath api
+    return SavedToolDefaults;
+  }
+
+  propCache_save() {
+    return SavedToolDefaults;
+  }
+
+  propCache_load(ctx, data) {
+    return SavedToolDefaults;
   }
 
   //used by UI code
@@ -191,6 +215,34 @@ export class ViewOverlay extends ContextOverlay {
     flag : ContextFlags.IS_VIEW
   }}
 
+  get activeTexture() {
+    let uve = this.editors.imageEditor;
+
+    if (!uve) {
+      return undefined;
+    }
+
+    uve = uve.uvEditor;
+    if (!uve.imageUser.image || !uve.imageUser.image.ready) {
+      if (uve.imageUser.image) {
+        uve.imageUser.image.update();
+      }
+
+      return undefined;
+    }
+
+    return uve.imageUser.image;
+  }
+
+  activeTexture_save() {
+    let block = this.activeTexture;
+
+    return block ? block.lib_id : -1;
+  }
+
+  activeTexture_load(ctx, data) {
+    return ctx.datalib.get(data);
+  }
 
   get modalFlag() {
     return this.state.modalFlags;

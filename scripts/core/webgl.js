@@ -1143,7 +1143,7 @@ export class Texture {
     if (data instanceof Float32Array) {
       gl.texImage2D(target, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, data);
     } else {
-      gl.texImage2D(target, 0, gl.RGBA8UI, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+      gl.texImage2D(target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
     }
 
     gl.getError();

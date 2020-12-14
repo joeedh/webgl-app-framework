@@ -58,6 +58,7 @@ export class AppToolStack extends ToolStack {
       toolop.execPre(tctx);
       toolop.exec(tctx);
       toolop.execPost(tctx);
+      toolop.saveDefaultInputs();
     }
   }
 

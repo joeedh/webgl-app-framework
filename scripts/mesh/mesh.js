@@ -63,6 +63,7 @@ let _idgen = 0;
 let debuglog = false;
 
 import {CustomData} from './customdata.js';
+import {UVWrangler} from './unwrapping.js';
 
 const VEID=0, VFLAG=1, VX=1, VY=2, VZ=3, VNX=4, VNY=5, VNZ=6, VTOT=7;
 const EEID=0, EFLAG=1, EV1=2, EV2=3, ETOT=4;
@@ -219,8 +220,11 @@ export class Mesh extends SceneObjectData {
     super();
 
     this.symFlag = 0; //symmetry flag;
+    this.uvRecalcGen = 0;
 
     this._last_bvh_key = "";
+    this._last_wr_key = "";
+    this._last_wr_loophash = undefined;
 
     this._debug_id1 = _idgen++;
 
@@ -228,6 +232,9 @@ export class Mesh extends SceneObjectData {
 
     this.materials = [];
     this.usesMaterial = true;
+
+    this.bvh = undefined;
+    this.uvWrangler = undefined;
 
     this._ltris = undefined;
     this._ltrimap_start = {}; //maps face eid to first loop index
@@ -928,6 +935,32 @@ export class Mesh extends SceneObjectData {
     this.getElemList(e.type).highlight = e;
   }
 
+  /** flushes MeshFlags.UPDATE from faces/edges to vertices*/
+  flushUpdateFlags(typemask=MeshFlags.EDGE|MeshFlags.FACE) {
+    if (typemask & MeshTypes.EDGE) {
+      for (let e of this.edges) {
+        if (!(e.flag & MeshFlags.UPDATE)) {
+          continue;
+        }
+
+        e.v1.flag |= MeshFlags.UPDATE;
+        e.v2.flag |= MeshFlags.UPDATE;
+      }
+    }
+
+    if (typemask & MeshTypes.FACE) {
+      for (let f of this.faces) {
+        if (!(f.flag & MeshFlags.UPDATE)) {
+          continue;
+        }
+
+        for (let v of f.verts) {
+          v.flag |= MeshFlags.UPDATE;
+        }
+      }
+    }
+  }
+
   selectFlush(selmode) {
     if (selmode & MeshTypes.VERTEX) {
       this.edges.selectNone();
@@ -1042,6 +1075,8 @@ export class Mesh extends SceneObjectData {
 
     var nv = this.makeVertex(e.v1).interp(e.v2, t);
     var ne = this.makeEdge(nv, e.v2);
+
+    this.copyElemData(ne, e);
 
     e.v2.edges.remove(e);
 
@@ -1508,7 +1543,7 @@ export class Mesh extends SceneObjectData {
       }
 
       let cdls = splitcd_ls;
-      let cdws = splitcd_ls;
+      let cdws = splitcd_ws;
 
       cdws[0] = cdws[1] = 0.5;
       cdls[0] = l;
@@ -1860,6 +1895,65 @@ export class Mesh extends SceneObjectData {
     }
   }
 
+  getUVWrangler(check=true, checkUvs=false) {
+    let update = !this.uvWrangler || (this.recalc & RecalcFlags.UVWRANGLER);
+
+    if (!check && this.uvWrangler) {
+      return this.uvWrangler;
+    }
+
+    if (this._last_wr_loophash === undefined) {
+      checkUvs = true;
+    }
+
+    let cd_uv = this.loops.customData.getLayerIndex("uv");
+
+    let key = "" + this.loops.length + ":" + this.edges.length + ":" + this.faces.length;
+    key += ":" + this.verts.length + ":" + cd_uv;
+
+    if (checkUvs && cd_uv >= 0) {
+      let hash = new util.HashDigest();
+
+      for (let l of this.loops) {
+        let uv = l.customData[cd_uv].uv;
+
+        hash.add(uv[0]*8196);
+        hash.add(uv[1]*8196);
+      }
+
+      this._last_wr_loophash = hash.get();
+    }
+
+    key += ":" + this._last_wr_loophash;
+
+    update = update || key !== this._last_wr_key;
+
+    if (update) {
+      this.recalc &= ~RecalcFlags.UVWRANGLER;
+      this._last_wr_key = key;
+
+      console.log("making new UVWrangler", key);
+
+      if (this.uvWrangler) {
+        this.uvWrangler.destroy(this);
+      }
+
+      this.uvWrangler = new UVWrangler(this, this.faces, cd_uv);
+      this.uvWrangler.buildIslands();
+    }
+
+    return this.uvWrangler;
+  }
+
+  destroyUVWrangler() {
+    if (this.uvWrangler) {
+      this.uvWrangler.destroy(this);
+    }
+
+    this.uvWrangler = undefined;
+    return this;
+  }
+
   getBVH(auto_update = true, useGrids = true) {
     let key = this.verts.length + ":" + this.faces.length + ":" + this.edges.length + ":" + this.loops.length;
     key += ":" + this.eidgen._cur + ":" + useGrids;
@@ -2129,6 +2223,7 @@ export class Mesh extends SceneObjectData {
 
   _genRenderElements(gl, uniforms) {
     genRenderMesh(gl, this, uniforms);
+    this.updateGen = ~~(Math.random() * 1024 * 1024 * 1024);
   }
 
   clearUpdateFlags(typemask) {
@@ -2208,24 +2303,51 @@ export class Mesh extends SceneObjectData {
       this.bvh.destroy(this);
       this.bvh = undefined;
     }
+
+    return this;
   }
 
   regenTesellation() {
+    this.updateGen = ~~(Math.random() * 1024 * 1024 * 1024);
     this._last_elem_update_key = ""; //clear partial redraw
     this._last_bvh_key = ""; //flag bvh update
-    this.recalc |= RecalcFlags.TESSELATE | RecalcFlags.ELEMENTS;
+    this._last_wr_key = "";
+
+    this.recalc |= RecalcFlags.TESSELATE | RecalcFlags.ELEMENTS | RecalcFlags.UVWRANGLER;
+    return this;
   }
 
+  regenUVEditor() {
+    /*using this.recalc won't work if multiple UV editors are open,
+      since they are the ones that would clear a hypothetical
+      RecalcFlags.UV_EDITOR flag.
+
+      instead just increment an update generation.
+     */
+    this.uvRecalcGen++;
+    return this;
+  }
+
+  regenUVWrangler() {
+    this.recalc |= RecalcFlacs.UVWRANGLER;
+    return this;
+  }
+
+  /** also calls this.regenElementsDraw and this.regenUVDraw */
   regenRender() {
+    this.regenUVEditor();
     this.recalc |= RecalcFlags.RENDER | RecalcFlags.ELEMENTS;
+    return this;
   }
 
   regenElementsDraw() {
     this.recalc |= RecalcFlags.ELEMENTS;
+    return this;
   }
 
   regenPartial() {
     this.recalc |= RecalcFlags.PARTIAL | RecalcFlags.ELEMENTS;
+    return this;
   }
 
   _getArrays() {

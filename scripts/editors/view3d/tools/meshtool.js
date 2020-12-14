@@ -18,12 +18,14 @@ import {SelOneToolModes} from "../selectmode.js";
 import {ObjectFlags, SceneObject} from "../../../sceneobject/sceneobject.js";
 import {Mesh} from "../../../mesh/mesh.js";
 import {FindnearestMesh} from '../findnearest/findnearest_mesh.js';
+import {ToggleFlagOp} from '../../../mesh/mesh_flagops.js';
 
 //import '../../../mesh/select_ops.js';
 //import '../../../mesh/mesh_ops.js';
 
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
   MeshFeatureError} from '../../../mesh/mesh_base.js';
+import {SelectEdgeLoopOp} from '../../../mesh/select_ops.js';
 
 export class MeshToolBase extends ToolMode {
   constructor() {
@@ -136,11 +138,33 @@ export class MeshToolBase extends ToolMode {
 
     this.findHighlight(e, x, y);
 
-    if (e.button === 1 || e.ctrlKey || e.altKey || e.commandKey) {
+    if (this.hasWidgetHighlight()) {
       return false;
     }
 
-    if (this.hasWidgetHighlight()) {
+    if (this.ctx.mesh && e.button === 0 && (e.ctrlKey && !e.altKey)) {
+      let mesh = this.ctx.mesh;
+      let edge = mesh.edges.highlight;
+
+      if (edge) {
+        let tool = SelectEdgeLoopOp.invoke(this.ctx, {});
+        let mode;
+
+        if (e.shiftKey) {
+          mode = edge.flag & MeshFlags.SELECT ? SelOneToolModes.SUB : SelOneToolModes.ADD;
+        } else {
+          mode = SelOneToolModes.UNIQUE;
+        }
+
+        tool.inputs.mode.setValue(mode);
+        tool.inputs.edgeEid.setValue(edge.eid);
+        this.ctx.api.execTool(this.ctx, tool);
+
+        return true;
+      }
+    }
+
+    if (e.button === 1 || e.ctrlKey || e.altKey || e.commandKey) {
       return false;
     }
 
@@ -241,6 +265,10 @@ export class MeshToolBase extends ToolMode {
 
   findHighlight(e, x, y, selectMask=this.selectMask) {
     let view3d = this.ctx.view3d;
+
+    if (e.ctrlkey && !e.altKey) {
+      selectMask = SelMask.EDGE;
+    }
 
     let ret = this.findnearest3d(view3d, x, y, selectMask);
     let found = false;
@@ -487,6 +515,30 @@ export class MeshToolBase extends ToolMode {
     if (this.drawCursor && this.cursor !== undefined) {
       this.drawSphere(gl, view3d, this.cursor);
     }
+  }
+
+  drawObject(gl, uniforms, program, object, mesh) {
+    if (!(object.data instanceof Mesh)) {
+      return super.drawObject(gl, uniforms, program, object, mesh);
+    }
+
+    let view3d = this.ctx.view3d;
+
+    if (program === Shaders.BasicLitMesh) {
+      let image = this.ctx.activeTexture;
+
+      if (image && image.ready) {
+        uniforms.texture = image.getGlTex(gl);
+        program = Shaders.BasicLitMeshTexture;
+      } else {
+        uniforms.texture = undefined;
+      }
+    } else {
+      uniforms.texture = undefined;
+    }
+    object.draw(view3d, gl, uniforms, program);
+
+    return true;
   }
 
   loadSTRUCT(reader) {

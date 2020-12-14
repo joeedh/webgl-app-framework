@@ -172,10 +172,24 @@ export class DataBlock extends Node {
     return this.lib_userlist;
   }
 
-  /**increment reference count*/
+  /**increment reference count.
+   * if user is not undefined and is a datablock,
+   * it will be added to this.lib_userlist
+   * */
   lib_addUser(user) {
     if (user) {
-      this.lib_userlist.push(user);
+      let bad = typeof user !== "object";
+      bad = bad || !(user instanceof DataBlock);
+      bad = bad || user.lib_id < 0;
+
+      if (bad) {
+        console.error(`
+Bad owner passed to lib_addUser; ref count will be increased,
+but owner will not be added to this.lib_userlist`.trim());
+        console.warn("this:", this, "owner:", user);
+      } else {
+        this.lib_userlist.push(user);
+      }
     }
 
     this.lib_users++;
@@ -240,12 +254,12 @@ DataBlock.STRUCT = STRUCT.inherit(DataBlock, Node) + `
 nstructjs.manager.add_class(DataBlock);
 
 export class DataRef {
-  constructor(lib_id = -1, lib_type = 0) {
+  constructor(lib_id = -1, lib_type = undefined) {
     if (typeof lib_id === "object") {
       lib_id = lib_id.lib_id;
     }
 
-    this.lib_type = lib_id;
+    this.lib_type = lib_type;
     this.lib_id = lib_id;
     this.name = undefined;
     this.lib_external_ref = undefined;
@@ -288,9 +302,16 @@ export class DataRef {
     return ret;
   }
 
-  set(ob) {
-    this.lib_id = ob.lib_id;
-    this.name = ob.name;
+  set(block) {
+    if (!block) {
+      this.lib_id = -1;
+      this.name = "";
+    } else {
+      this.lib_id = block.lib_id;
+      this.name = block.name;
+    }
+
+    return this;
   }
 
   loadSTRUCT(reader) {
@@ -786,8 +807,15 @@ export class DataRefProperty extends ToolProperty {
       return;
     }
 
-    if (typeof val == "object" && (val.constructor.blockDefine().typeName !== this.blockType)) {
+    console.log("VAL", val);
+
+    if (typeof val === "object" && val instanceof DataRef) {
+      this.data.lib_id = val.lib_id;
+      this.data.name = val.name;
+      this.data.lib_type = val.lib_type;
+    } else if (typeof val == "object" && val instanceof DataBlock && (val.constructor.blockDefine().typeName !== this.blockType)) {
       throw new Error("invalid block type " + val.constructor.blockDefine().typeName + "; expected" + this.blockType + ".");
+
       this.data.lib_id = val.lib_id;
       this.data.name = val.name;
     } else if (typeof val == "number") {
@@ -796,9 +824,8 @@ export class DataRefProperty extends ToolProperty {
 
       this.data.lib_id = val;
       this.data.name = "";
-    } else if (typeof val == "object") {
-      this.data.lib_id = val.lib_id;
-      this.data.name = val.name;
+    } else if (typeof val === "object" && val instanceof DataBlock) {
+      this.data.set(val);
     } else {
       console.warn("failed to set DataRefProperty; arguments:", arguments);
     }

@@ -37,7 +37,9 @@ export function* walkFaceLoop(e) {
     }
 
     visit.add(l);
+
     l = l.prev.prev;
+    l = l.radial_next;
 
     if (l === l.radial_next) {
       break;
@@ -46,6 +48,10 @@ export function* walkFaceLoop(e) {
 
   _i = 0;
   visit = new WeakSet();
+
+  if (l === l.radial_next) {
+    l = l.next.next;
+  }
 
   do {
     if (_i++ > 1000000) {

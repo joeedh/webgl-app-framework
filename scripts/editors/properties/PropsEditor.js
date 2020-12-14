@@ -213,16 +213,22 @@ export class ObjectPanel extends ColumnFrame {
       return;
     }
 
+    let cdpanels = [
+      ["VERTEX", "color"],
+      ["LOOP", "uv"]
+    ];
+
     let data = ob.data;
     if (data instanceof Mesh) {
       let panel = this.panel("Data Layers");
-      let cd = UIBase.createElement("cd-layer-panel-x")
 
-      cd.setAttribute("datapath", "mesh");
-      cd.setAttribute("type", "VERTEX");
-      cd.setAttribute("layer", "color");
-
-      panel.add(cd);
+      for (let cdp of cdpanels) {
+        let cd = UIBase.createElement("cd-layer-panel-x");
+        cd.setAttribute("datapath", "mesh");
+        cd.setAttribute("type", cdp[0]);
+        cd.setAttribute("layer", cdp[1]);
+        panel.add(cd);
+      }
     }
   }
 

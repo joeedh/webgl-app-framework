@@ -296,6 +296,7 @@ export class Scene extends DataBlock {
     this.propRadius = 1.0;
     this.propMode = 0;
     this.propEnabled = false;
+    this.propIslandOnly = true;
 
     this.widgets = new WidgetManager();
     this.widgets.ctx = _appstate.ctx;
@@ -774,6 +775,7 @@ Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
   collection   : DataRef | DataRef.fromBlock(obj.collection);
   fps          : int;
   propMode     : int;
+propIslandOnly : bool;
   propRadius   : float;
   propEnabled  : bool;
 }

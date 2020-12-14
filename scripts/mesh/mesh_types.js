@@ -616,6 +616,18 @@ export class Edge extends Element {
     this._length = undefined;
   }
 
+  set flag(v) {
+    //if (!v) {
+    //  console.error("flag set");
+    //}
+
+    this._flag = v;
+  }
+
+  get flag() {
+    return this._flag;
+  }
+
   get arcCache() {
     if (!this._arcCache) {
       this._arcCache = new ArcLengthCache(undefined, this);
@@ -1023,7 +1035,7 @@ export class Edge extends Element {
     reader(this);
     super.loadSTRUCT(reader);
 
-    this.flag &= MeshFlags.DRAW_DEBUG;
+    this.flag &= ~MeshFlags.DRAW_DEBUG;
   }
 }
 Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
@@ -1323,6 +1335,18 @@ export class Face extends Element {
 
     this.no = new Vector3();
     this.cent = new Vector3();
+  }
+
+  get flag() {
+    return this._flag;
+  }
+
+  set flag(f) {
+    if (f & MeshFlags.HIDE) {
+      console.error("HIDE was set!");
+    }
+
+    this._flag = f;
   }
 
   get verts() {

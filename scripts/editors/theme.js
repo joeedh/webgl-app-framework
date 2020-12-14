@@ -13,6 +13,7 @@ export const theme = {
     BoxBG                   : 'rgba(84,84,84, 1)',
     BoxBorder               : 'rgba(177,177,177, 1)',
     BoxDepressed            : 'rgba(48,48,48, 1)',
+    DisabledBG              : 'rgba(25,25,25,1.0)',
     BoxDrawMargin           : 2,
     BoxHighlight            : 'rgba(74,149,255, 0.367)',
     BoxMargin               : 4,
@@ -321,6 +322,15 @@ export const theme = {
     defaultHeight: 18,
     defaultWidth : 100,
   },
+
+  uveditor: {
+    background: 'rgba(55, 55, 55, 1.0)',
+    gridLines : 'rgba(230, 230, 230, 1.0)'
+  },
+
+  sidebar: {
+    background : 'rgba(55, 55, 55, 0.5)',
+  }
 
 };
 

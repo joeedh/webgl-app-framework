@@ -122,7 +122,7 @@ export class TransDataType {
     TransDataMap[def.name] = cls;
   }
 
-  static calcPropCurve(dis, propmode, propradius, toolop) {
+  static calcPropCurve(dis, propmode, propradius) {
     dis /= propradius;
     dis = 1.0 - Math.min(Math.max(dis, 0.0), 1.0);
 

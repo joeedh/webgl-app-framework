@@ -20,6 +20,8 @@ export class VelPan {
     this.vel = new Vector2();
     this.oldpos = new Vector2();
 
+    this.maxVelocity = 0.001;
+
     this.axes = 3;
     this.flag = VelPanFlags.UNIFORM_SCALE;
 
@@ -47,6 +49,17 @@ export class VelPan {
     return this.bounds[1];
   }
 
+  reset(fireOnChange=true) {
+    this.pos.zero();
+    this.scale.zero().addScalar(1.0);
+    this.updateMatrix();
+
+    if (this.onchange && fireOnChange) {
+      this.onchange();
+    }
+
+    return this;
+  }
 
   /**
    load settings from another velocity pan instance
@@ -67,7 +80,8 @@ export class VelPan {
   startVelocity() {
     if (this.timer === undefined) {
       this.last_update_time = util.time_ms();
-      this.timer = window.setInterval(this.doVelocity.bind(this), 30);
+
+      this.timer = window.setInterval(() => this.doVelocity(), 30);
     }
   }
 
@@ -82,16 +96,25 @@ export class VelPan {
     let dt = util.time_ms() - this.last_update_time;
     this.pos.addFac(this.vel, dt);
 
-    dt = Math.max(dt, 0.001);
+    dt = Math.max(dt, this.maxVelocity);
     this.vel.mulScalar(Math.pow(this.decay, dt));
+
+    this.updateMatrix();
+
+    if (this.onchange) {
+      this.onchange();
+    }
 
     this.last_update_time = util.time_ms();
   }
 
-  update(fire_events=true, do_velocity=true) {
-    if (do_velocity && this.vel.dot(this.vel) > 0.001) {
-      this.startVelocity();
-    }
+  updateMatrix() {
+    let s = this.scale;
+    let min = new Vector2(this.bounds[0]).div(s);
+    let max = new Vector2(this.bounds[1]).div(s);
+
+    this.pos.max(min);
+    this.pos.min(max);
 
     this.mat.makeIdentity();
     this.mat.scale(this.scale[0], this.scale[1], 1.0);
@@ -99,14 +122,24 @@ export class VelPan {
 
     this.imat.load(this.mat).invert();
 
-    if (fire_events && JSON.stringify(this.mat) != JSON.stringify(this._last_mat)) {
-      //console.log("velpan update");
+    return this;
+  }
 
+  update(fire_events=true, do_velocity=true) {
+    if (do_velocity && this.vel.dot(this.vel) > 0.001) {
+      this.startVelocity();
+    }
+
+    this.updateMatrix();
+
+    if (fire_events && JSON.stringify(this.mat) !== JSON.stringify(this._last_mat)) {
       this._last_mat.load(this.mat);
 
       if (this.onchange)
         this.onchange(this);
     }
+
+    return this;
   }
 
   loadSTRUCT(reader) {

@@ -31,6 +31,7 @@ export const SculptTools = {
   GRAB : 9,
   PAINT: 128,
   PAINT_SMOOTH: 129,
+  TEXTURE_PAINT : 150,
 };
 
 export const SculptIcons = {}

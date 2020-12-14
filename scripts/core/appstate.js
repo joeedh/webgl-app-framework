@@ -566,12 +566,21 @@ export class AppState {
         return undefined;
       }
 
+      //handle cases where dataLink methods are called twice
+      if (typeof dataref === "object" && dataref instanceof DataBlock) {
+        return dataref;
+      }
+
       return datalib.get(dataref);
     }
 
     function getblock_addUser(dataref, user) {
       if (dataref === undefined) {
         return undefined;
+      }
+
+      if (typeof dataref === "object" && dataref instanceof DataBlock) {
+        return dataref;
       }
 
       let addUser = dataref !== undefined && !(dataref instanceof DataBlock);
@@ -616,6 +625,30 @@ export class AppState {
       }
 
       document.body.appendChild(screen);
+
+      let ok = false;
+
+      for (let sblock of this.datalib.screen) {
+        sblock.screen.ctx = this.ctx;
+
+        if (sblock.screen === this.screen) {
+          ok = true;
+        }
+
+        for (let sarea of sblock.screen.sareas) {
+          for (let editor of sarea.editors) {
+            editor.dataLink(sblock, getblock, getblock_addUser);
+          }
+        }
+      }
+
+      if (!ok) {
+        for (let sarea of this.screen.sareas) {
+          for (let editor of sarea.editors) {
+            editor.dataLink(undefined, getblock, getblock_addUser);
+          }
+        }
+      }
 
       this.screen = screen;
       this.screen.ctx = this.ctx;
@@ -665,11 +698,6 @@ export class AppState {
 
     if (found_screen) {
       this.screen.afterSTRUCT();
-    }
-
-
-    for (let sblock of this.datalib.screen) {
-      sblock.screen.ctx = this.ctx;
     }
 
     this._execEditorOnFileLoad();

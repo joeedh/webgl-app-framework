@@ -708,7 +708,7 @@ export class View3D extends Editor {
     tmp[3] = 1.0;
     tmp.multVecMatrix(this.activeCamera.rendermat);
     
-    if (tmp[3] != 0.0) {
+    if (tmp[3] !== 0.0) {
       tmp[0] /= tmp[3];
       tmp[1] /= tmp[3];
       tmp[2] /= tmp[3];
@@ -1774,7 +1774,9 @@ let f2 = () => {
         sarea.area.resetRender();
       }
 
+      sarea.area.push_ctx_active(true);
       sarea.area.viewportDraw(gl);
+      sarea.area.pop_ctx_active(true);
     }
   }
 

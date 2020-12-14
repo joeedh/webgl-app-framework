@@ -4,7 +4,7 @@ import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property, StringProperty,
-  PropFlags, PropTypes, PropSubTypes
+  PropFlags, PropTypes, PropSubTypes,
 } from '../path.ux/scripts/toolsys/toolprop.js';
 import {ToolOp, ToolMacro, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
 import {TranslateOp} from "../editors/view3d/transform/transform_ops.js";
@@ -590,6 +590,9 @@ export class ExtrudeRegionsOp extends MeshOp {
 ToolOp.register(ExtrudeRegionsOp);
 
 import {meshSubdivideTest} from './mesh_subdivide.js';
+import {UVWrangler, voxelUnwrap} from './unwrapping.js';
+import {relaxUVs, UnWrapSolver} from './unwrapping_solve.js';
+import {MeshOpBaseUV} from './mesh_uvops_base.js';
 
 export class CatmullClarkeSubd extends MeshOp {
   constructor() {
@@ -1159,6 +1162,388 @@ export class EnsureGridsOp extends MeshOp {
   }
 }
 ToolOp.register(EnsureGridsOp);
+
+
+export class VoxelUnwrapOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Voxel Unwrap",
+      toolpath: "mesh.voxel_unwrap",
+      icon : -1,
+      inputs: ToolOp.inherit({
+        setSeams : new BoolProperty(true)
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.voxel_unwrap");
+
+
+    for (let mesh of this.getMeshes(ctx)) {
+      voxelUnwrap(mesh, mesh.faces.selected.editable, undefined, this.inputs.setSeams.getValue());
+
+      mesh.regenBVH();
+      mesh.regenTesellation();
+      mesh.regenRender();
+      mesh.regenElementsDraw();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(VoxelUnwrapOp);
+
+
+
+export class RandomizeUVsOp extends MeshOpBaseUV {
+  static tooldef() {
+    return {
+      uiname: "Randomize UVs",
+      toolpath: "mesh.randomize_uvs",
+      icon : -1,
+      inputs: ToolOp.inherit({
+        setSeams : new BoolProperty(true)
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.randomize_uvs");
+
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let cd_uv = mesh.loops.customData.getLayerIndex("uv");
+      if (cd_uv < 0) {
+        continue;
+      }
+
+      let wr = new UVWrangler(mesh, this.getFaces(ctx), cd_uv);
+      wr.buildIslands();
+
+      for (let island of wr.islands) {
+        let scale = Math.min(island.boxsize[0], island.boxsize[1]) + 0.1;
+        let newmin = new Vector2(island.min);
+        newmin.fract();
+
+        scale = 0.1;
+
+        for (let v of island) {
+          if (isNaN(v[0]) || isNaN(v[1])) {
+            v[0] = Math.random();
+            v[1] = Math.random();
+          }
+
+          v[0] += (Math.random() - 0.5)*scale;
+          v[1] += (Math.random() - 0.5)*scale;
+
+          //v.sub(island.min).add(newmin);
+          v[2] = 0.0;
+        }
+      }
+
+      //wr.packIslands();
+      wr.finish();
+
+      mesh.regenBVH();
+      mesh.regenTesellation();
+      mesh.regenRender();
+      mesh.regenElementsDraw();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(RandomizeUVsOp);
+
+let unwrap_solvers = window._unwrap_solvers = new Map();
+unwrap_solvers.clear = function() {
+  for (let k of new Set(unwrap_solvers.keys())) {
+    unwrap_solvers.delete(k);
+  }
+}
+
+export class UnwrapSolveOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Unwrap Solve",
+      toolpath: "mesh.unwrap_solve",
+      icon : -1,
+      inputs: ToolOp.inherit({
+        preserveIslands : new BoolProperty().setFlag(PropFlags.SAVE_LAST_VALUE)
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.unwrap_solve");
+
+    let i = 0;
+    let meshes = new Set(this.getMeshes(ctx));
+
+    if (unwrap_solvers.size > 5) {
+      unwrap_solvers = new Map();
+    }
+
+    let preserveIslands = this.inputs.preserveIslands.getValue();
+
+    let time = util.time_ms();
+    for (let mesh of meshes) {
+      let faces = mesh.faces.selected.editable;
+      let solver = UnWrapSolver.restoreOrRebuild(mesh, faces, unwrap_solvers.get(mesh.lib_id), undefined, preserveIslands);
+
+      while (util.time_ms() - time < 400) {
+        solver.step();
+      }
+      solver.finish();
+
+      unwrap_solvers.set(mesh.lib_id, solver.save())
+
+      mesh.regenBVH();
+      mesh.regenUVEditor();
+      mesh.regenRender();
+      mesh.regenElementsDraw();
+      mesh.graphUpdate();
+    }
+
+    console.log("unwrap_solvers:", unwrap_solvers);
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(UnwrapSolveOp)
+
+export class RelaxUVsOp extends MeshOpBaseUV {
+  static tooldef() {
+    return {
+      uiname: "Relax UVs",
+      toolpath: "mesh.relax_uvs",
+      icon : -1,
+      inputs: ToolOp.inherit({
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.relax_uvs");
+
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let cd_uv = mesh.loops.customData.getLayerIndex("uv");
+
+      if (cd_uv >= 0) {
+        if (1) {
+          let faces = mesh.faces.selected.editable;
+          let solver = UnWrapSolver.restoreOrRebuild(mesh, faces, unwrap_solvers.get(mesh.lib_id), undefined, true);
+          //let solver = new UnWrapSolver(mesh, faces, cd_uv, true);
+          solver.step();
+          solver.finish();
+
+          unwrap_solvers.set(mesh.lib_id, solver.save())
+        }
+
+        relaxUVs(mesh, cd_uv, this.getLoops(ctx), false);
+
+        /*
+        let wr = new UVWrangler(mesh, mesh.faces);
+
+        wr.buildIslands();
+        wr.packIslands();
+        wr.finish();
+         */
+
+        mesh.regenBVH();
+        mesh.regenUVEditor();
+        mesh.regenRender();
+        mesh.regenElementsDraw();
+        mesh.graphUpdate();
+      }
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(RelaxUVsOp)
+
+
+export class ResetUVs extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Reset UVs",
+      toolpath: "mesh.reset_uvs",
+      icon : -1,
+      inputs: ToolOp.inherit({
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.relax_uvs");
+
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let cd_uv = mesh.loops.customData.getLayerIndex("uv");
+
+      if (cd_uv >= 0) {
+        for (let f of mesh.faces.selected.editable) {
+          for (let list of f.lists) {
+            let count = 0;
+            for (let l of list) {
+              count++;
+            }
+
+            let l = list.l;
+
+            l.f.flag |= MeshFlags.UPDATE;
+
+            l.customData[cd_uv].uv.loadXY(0, 0);
+            l.next.customData[cd_uv].uv.loadXY(0, 1);
+            l.next.next.customData[cd_uv].uv.loadXY(1, 1);
+
+            if (count === 4) {
+              l.prev.customData[cd_uv].uv.loadXY(1, 0);
+            }
+          }
+        }
+
+        /*
+        let wr = new UVWrangler(mesh, mesh.faces);
+
+        wr.buildIslands();
+        wr.packIslands();
+        wr.finish();
+         */
+
+        mesh.regenBVH();
+        mesh.regenUVEditor();
+        mesh.regenRender();
+        mesh.regenElementsDraw();
+        mesh.graphUpdate();
+      }
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(ResetUVs)
+
+
+export class GridUVs extends MeshOp {
+  static tooldef() {
+    return {
+      uiname: "Grid UVs",
+      toolpath: "mesh.grid_uvs",
+      icon : -1,
+      inputs: ToolOp.inherit({
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.grid_uvs");
+
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let cd_uv = mesh.loops.customData.getLayerIndex("uv");
+
+      if (cd_uv >= 0) {
+        for (let f of mesh.faces.selected.editable) {
+          for (let list of f.lists) {
+            let count = 0;
+            for (let l of list) {
+              count++;
+            }
+
+            let l = list.l;
+
+            l.f.flag |= MeshFlags.UPDATE;
+
+            l.customData[cd_uv].uv.loadXY(0, 0);
+            l.next.customData[cd_uv].uv.loadXY(0, 1);
+            l.next.next.customData[cd_uv].uv.loadXY(1, 1);
+
+            if (count === 4) {
+              l.prev.customData[cd_uv].uv.loadXY(1, 0);
+            }
+          }
+
+          let off = new Vector2().loadXY(Math.random(), Math.random());
+
+          for (let l of f.loops) {
+            l.customData[cd_uv].uv.add(off);
+          }
+        }
+
+        //*
+        let wr = new UVWrangler(mesh, mesh.faces);
+
+        wr.buildIslands();
+        wr.packIslands();
+        wr.finish();
+        // */
+
+        mesh.regenBVH();
+        mesh.regenUVEditor();
+        mesh.regenRender();
+        mesh.regenElementsDraw();
+        mesh.graphUpdate();
+      }
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(GridUVs)
+
+
+export class PackIslandsOp extends MeshOpBaseUV {
+  static tooldef() {
+    return {
+      uiname: "Pack UVs",
+      toolpath: "mesh.pack_uvs",
+      icon : -1,
+      inputs: ToolOp.inherit({
+      }),
+      outputs: ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.pack_uvs");
+
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let cd_uv = mesh.loops.customData.getLayerIndex("uv");
+
+      if (cd_uv >= 0) {
+        let iter = this.inputs.selectedFacesOnly.getValue() ? mesh.faces.selected.editable : mesh.faces;
+
+        let wr = new UVWrangler(mesh, iter);
+
+        wr.buildIslands();
+        wr.packIslands();
+        wr.finish();
+
+        mesh.regenBVH();
+        mesh.regenUVEditor();
+        mesh.regenRender();
+        mesh.regenElementsDraw();
+        mesh.graphUpdate();
+      }
+    }
+
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(PackIslandsOp)
 
 export class SubdivideGridsOp extends MeshOp {
   static tooldef() {

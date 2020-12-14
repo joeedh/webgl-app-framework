@@ -311,6 +311,11 @@ export class ConsoleEditor extends Editor {
   }
 
   push(msg, linefg = "", linebg = "", childafter = false) {
+    msg = "" + msg;
+    if (msg.length > 1000) {
+      msg = msg.slice(0, 1000);
+    }
+
     let stack = "" + new Error().stack;
 
     stack = ("" + stack.split("\n")[5]).trim();

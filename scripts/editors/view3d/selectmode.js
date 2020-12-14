@@ -35,7 +35,6 @@ export const SelMask = {
 
   MESH       : (1<<8),
   LIGHT      : (1<<9),
-  POINTSET   : (1<<10),
   CAMERA     : (1<<11),
   NULLOBJECT : (1<<12),
   OBJECT     : (1<<8)|(1<<9)|(1<<10)|(1<<11)|(1<<12), //all types

@@ -17,6 +17,10 @@ export class UVLayerElem extends CustomDataElem {
     this.uv.load(uv);
   }
 
+  static apiDefine(api, dstruct) {
+    dstruct.vec2("uv", "uv", "uv");
+  }
+
   getValue() {
     return this.uv;
   }
@@ -305,6 +309,10 @@ export class ColorLayerElem extends CustomDataElem {
     super();
 
     this.color = new Vector4([1, 1, 1, 1]);
+  }
+
+  apiDefine(api, dstruct) {
+    dstruct.color4("color", "color", "Color");
   }
 
   setValue(uv) {
