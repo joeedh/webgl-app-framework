@@ -18,13 +18,17 @@ let exports = {
   cacheSelectBufs: true
 }
 
+if (!window.__baseModulePath) {
+  window.__baseModulePath = "./scripts";
+}
+
 //load config_local.js if it exists
 let script = document.createElement("script");
 script.setAttribute("type", "module");
 script.innerText = `
-  import * as configlocal from './scripts/config/config_local.js';
-  import {cconst} from './scripts/path.ux/scripts/pathux.js';
-  import config from './scripts/config/config.js';
+  import * as configlocal from '${__baseModulePath}/config/config_local.js';
+  import {cconst} from '${__baseModulePath}/path.ux/scripts/pathux.js';
+  import config from '${__baseModulePath}/config/config.js';
   
   let local = configlocal.default;
   

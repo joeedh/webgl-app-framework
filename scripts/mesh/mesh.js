@@ -725,6 +725,10 @@ export class Mesh extends SceneObjectData {
       vtots[v.index] = 0;
     }
 
+    for (let e of this.edges) {
+      e.updateLength();
+    }
+
     let ltris = this.loopTris;
 
     for (let i=0; i<ltris.length; i += 3) {
@@ -753,6 +757,10 @@ export class Mesh extends SceneObjectData {
     let ok = this.faces.customData.hasLayer(NormalLayerElem);
     ok = ok || this.loops.customData.hasLayer(NormalLayerElem);
     ok = ok || this.verts.customData.hasLayer(NormalLayerElem);
+
+    for (let e of this.edges) {
+      e.updateLength();
+    }
 
     if (!ok) {
       for (let f of this.faces) {
@@ -2799,6 +2807,10 @@ export class Mesh extends SceneObjectData {
       for (let i = 0; i < v.edges.length; i++) {
         v.edges[i] = eidmap[v.edges[i]];
       }
+    }
+
+    for (let e of this.edges) {
+      e.updateLength();
     }
 
     for (let f of this.faces) {

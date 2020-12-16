@@ -6,11 +6,16 @@ import '../util/floathalf.js';
 
 let STRUCT = nstructjs.STRUCT;
 
+export const UVFlags = {
+  PIN : 2
+};
+
 export class UVLayerElem extends CustomDataElem {
   constructor() {
     super();
 
     this.uv = new Vector2();
+    this.flag = 0;
   }
 
   setValue(uv) {
@@ -26,6 +31,7 @@ export class UVLayerElem extends CustomDataElem {
   }
 
   copyTo(b) {
+    b.flag = this.flag;
     b.uv.load(this.uv);
   }
 
@@ -62,7 +68,8 @@ export class UVLayerElem extends CustomDataElem {
   }};
 }
 UVLayerElem.STRUCT = STRUCT.inherit(UVLayerElem, CustomDataElem, "mesh.UVLayerElem") + `
-  uv : vec2;
+  uv   : vec2;
+  flag : byte;
 }
 `;
 nstructjs.manager.add_class(UVLayerElem);

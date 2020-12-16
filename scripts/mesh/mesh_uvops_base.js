@@ -77,6 +77,21 @@ export class MeshOpBaseUV extends MeshOp {
   }
 }
 
+export class UnwrapOpBase extends MeshOpBaseUV {
+  execPre(ctx) {
+    super.execPre(ctx);
+
+    let mesh = ctx.mesh;
+
+    if (!mesh) {
+      return;
+    }
+
+    if (!mesh.loops.customData.hasLayer("uv")) {
+      mesh.loops.addCustomDataLayer("uv");
+    }
+  }
+}
 
 export class UVOpBase extends View3DOp {
   constructor() {

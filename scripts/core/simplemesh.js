@@ -441,7 +441,7 @@ export class PointEditor {
   }
 }
 
-const glTypeSizes = {
+export const glTypeSizes = {
   5126: 4, //gl.FLOAT
   5120: 1, //gl.BYTE
   5121: 1, //gl.UNSIGNED_BYTE
@@ -450,7 +450,7 @@ const glTypeSizes = {
   5124: 4, //gl.INT
   5125: 4, //gl.UNSIGNED_INT
 }
-const glTypeArrays = {
+export const glTypeArrays = {
   5126: Float32Array, //gl.FLOAT
   5120: Int8Array, //gl.BYTE
   5121: Uint8Array, //gl.UNSIGNED_BYTE
@@ -460,7 +460,7 @@ const glTypeArrays = {
   5125: Uint32Array, //gl.UNSIGNED_INT
 }
 
-const glTypeArrayMuls = {
+export const glTypeArrayMuls = {
   5126: 1, //gl.FLOAT
   5120: 127, //gl.BYTE
   5121: 255, //gl.UNSIGNED_BYTE
@@ -613,9 +613,10 @@ export class GeoLayer extends Array {
   }
 
   reset() {
-    this._useTypedData = false;
-    this.f32Ready = false;
+    //this._useTypedData = false;
+    //this.f32Ready = false;
     this.dataUsed = 0;
+    return this;
   }
 
   extend(data) {
@@ -667,6 +668,36 @@ export class GeoLayer extends Array {
     }
 
     return this;
+  }
+
+  setCount(count) {
+    count *= this.size;
+
+    this.dataUsed = count;
+    let data = this._useTypedData ? this.data_f32 : this.data;
+
+    if (this.dataUsed > data.length) {
+      if (!this._useTypedData) {
+        this.data.length = this.dataUsed;
+        this._useTypedData = false;
+        this.f32Ready = false;
+      } else {
+        console.log("simpleisland is converting back to simple array", count, this.data_f32.length, this.dataUsed);
+        this.data = new Array(this.data_f32.length);
+
+        let a = this.data;
+        let b = this.data_f32;
+
+        for (let i=0; i<b.length; i++) {
+          a[i] = b[i];
+        }
+
+        this.data.length = this.dataUsed;
+
+        this._useTypedData = false;
+        this.f32Ready = false;
+      }
+    }
   }
 
   _copy2Typed(data1, data2, n, mul, start) {
@@ -880,11 +911,11 @@ export class GeoLayerManager {
     return this.layers[Symbol.iterator]();
   }
 
-  extend(primflag, type, data) {
+  extend(primflag, type, data, count) {
     let meta = this.get_meta(primflag, type);
 
     for (let i = 0; i < meta.layers.length; i++) {
-      meta.layers[i].extend(data);
+      meta.layers[i].extend(data, count);
     }
 
     return this;
@@ -990,6 +1021,38 @@ export class SimpleIsland {
     this.regen = 1;
   }
 
+  setPrimitiveCount(primtype, tot) {
+    switch (primtype) {
+      case PrimitiveTypes.TRIS:
+        this.tottri = tot;
+        tot *= 3;
+        break;
+      case PrimitiveTypes.LINES:
+        this.totline = tot;
+        tot *= 2;
+        break;
+      case PrimitiveTypes.ADVANCED_LINES:
+        this.totline_tristrip = tot;
+        tot *= 6;
+        break;
+      case PrimitiveTypes.POINTS:
+        this.totpoint = tot;
+        break;
+    }
+
+    let lf = this.layerflag ? this.layerflag : this.mesh.layerflag;
+
+    for (let layer of this.layers.layers) {
+      if (layer.primflag !== primtype || !(layer.type & lf)) {
+        continue;
+      }
+
+      layer.setCount(tot);
+    }
+
+    return this;
+  }
+
   makeBufferAliases() {
     let lay = this.layers;
 
@@ -1071,10 +1134,6 @@ export class SimpleIsland {
       dv += (v1[i] - v2[i])*(v1[i] - v2[i]);
     }
 
-    if (dv === 0.0) {
-      return dummyeditor;
-    }
-
     if (!this.line_cos2) {
       this.regen = true;
       this.primflag |= PrimitiveTypes.ADVANCED_LINES;
@@ -1088,6 +1147,8 @@ export class SimpleIsland {
       this.makeBufferAliases();
     }
 
+    let li = this.line_cos2.dataUsed;
+
     this.line_cos2.extend(v1);
     this.line_cos2.extend(v1);
     this.line_cos2.extend(v2);
@@ -1095,6 +1156,14 @@ export class SimpleIsland {
     this.line_cos2.extend(v1);
     this.line_cos2.extend(v2);
     this.line_cos2.extend(v2);
+
+    let data = this.line_cos2._getWriteData();
+    if (dv === 0.0) {
+      while (li < this.line_cos2.dataUsed) {
+        data[li++] += Math.random()*0.001;
+      }
+    }
+
 
     this._newElem(PrimitiveTypes.ADVANCED_LINES, 6);
 
@@ -1638,6 +1707,10 @@ export class SimpleMesh {
     return this.island.point(v1);
   }
 
+  smoothline(v1, v2) {
+    return this.island.smoothline(v1, v2);
+  }
+
   drawLines(gl, uniforms, program_override = undefined) {
     for (let island of this.islands) {
       let primflag = island.primflag;
@@ -1685,8 +1758,16 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     this.idgen = 0;
   }
 
-  reset() {
+  reset(gl) {
+    this.chunkmap = new IDMap();
+    this.idmap = new IDMap();
+    this.freelist.length = 0;
+    this.freeset = new Set();
+    this.delset = undefined;
 
+    for (let island of this.islands) {
+      island.reset(gl);
+    }
   }
 
   free(id) {
@@ -1884,16 +1965,23 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     let i = iline*18;
 
     if (line_cos.dataUsed < i + 18) {
-      chunk.smoothline(v1, v2);
+      let ret = chunk.smoothline(v1, v2);
+
+      iline = ret.i;
+      this.idmap.set(id, iline);
+
+      return ret;
     } else {
       line_cos = line_cos._getWriteData();
 
       line_cos[i++] = v1[0];
       line_cos[i++] = v1[1];
       line_cos[i++] = v1[2];
+
       line_cos[i++] = v1[0];
       line_cos[i++] = v1[1];
       line_cos[i++] = v1[2];
+
       line_cos[i++] = v2[0];
       line_cos[i++] = v2[1];
       line_cos[i++] = v2[2];
@@ -1901,9 +1989,11 @@ export class ChunkedSimpleMesh extends SimpleMesh {
       line_cos[i++] = v1[0];
       line_cos[i++] = v1[1];
       line_cos[i++] = v1[2];
+
       line_cos[i++] = v2[0];
       line_cos[i++] = v2[1];
       line_cos[i++] = v2[2];
+
       line_cos[i++] = v2[0];
       line_cos[i++] = v2[1];
       line_cos[i++] = v2[2];

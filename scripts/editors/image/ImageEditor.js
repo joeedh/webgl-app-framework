@@ -8,8 +8,6 @@ import {
 import {VelPanPanOp} from '../velpan.js';
 import {Colors, ObjectFlags} from '../../sceneobject/sceneobject.js';
 import {MeshFlags, MeshTypes, MeshSymFlags} from '../../mesh/mesh_base.js';
-import './uv_selectops.js';
-import './uv_transformops.js';
 import {snap} from '../../path.ux/scripts/screen/FrameManager_mesh.js';
 import {SelectOneUVOp} from './uv_selectops.js';
 import {SelOneToolModes} from '../view3d/selectmode.js';
@@ -18,6 +16,11 @@ import {PrimitiveTypes, LayerTypes, SimpleMesh} from '../../core/simplemesh.js';
 import {UVWrangler} from '../../mesh/unwrapping.js';
 import {Shaders} from '../../shaders/shaders.js';
 import {DataRefProperty} from '../../core/lib_api.js';
+
+import './uv_selectops.js';
+import './uv_transformops.js';
+import './uv_ops.js';
+import {UVFlags} from '../../mesh/mesh_customdata.js';
 
 let _projtmp = new Vector2();
 
@@ -513,6 +516,24 @@ export class UVEditor extends UIBase {
     this.imatrix.load(this.matrix).invert();
   }
 
+  drawDrawLines(gl, uniforms, program) {
+    let lf = LayerTypes.LOC|LayerTypes.UV|LayerTypes.COLOR|LayerTypes.ID;
+
+    let sm = new SimpleMesh(lf);
+    sm.primflag |= PrimitiveTypes.ADVANCED_LINES|PrimitiveTypes.LINES;
+
+    for (let dl of this.drawlines) {
+      let line = sm.line(dl.v1, dl.v2);
+
+      line.colors(dl.color, dl.color);
+      line.ids(2, 2, 2);
+      line.uvs([0, 0], [1, 1]);
+    }
+
+    sm.draw(gl, uniforms, program);
+    sm.destroy(gl);
+  }
+
   viewportDraw(gl) {
     this.gl = gl;
 
@@ -583,7 +604,9 @@ export class UVEditor extends UIBase {
     if (gltex) {
       this.smesh2.islands[1].draw(gl, uniforms);
     }
+
     this.smesh.draw(gl, uniforms, Shaders.MeshEditShader);
+    this.drawDrawLines(gl, uniforms, Shaders.MeshEditShader);
   }
 
   genMeshes(gl = this.gl) {
@@ -601,7 +624,7 @@ export class UVEditor extends UIBase {
       colors[k] = c;
     }
 
-    function getColor(isSel, isHigh, isAct) {
+    function getColor(isSel, isHigh, isAct, isPin) {
       let mask = 0;
 
       if (isSel) {
@@ -688,6 +711,8 @@ export class UVEditor extends UIBase {
     let lhighlight = mesh.loops.highlight;
     let lactive = mesh.loops.active;
 
+    let red = [1, 0, 0, 0.6];
+
     for (let island of wr.islands) {
       for (let v of island) {
         v[2] = 0.0;
@@ -696,16 +721,23 @@ export class UVEditor extends UIBase {
         p.ids(v.eid);
 
         let sel = false, high = false, active = false;
+        let pin = false;
 
         for (let l of wr.vertMap.get(v)) {
           if (l.flag & MeshFlags.SELECT) {
             sel = true;
           }
+
           if (l === lhighlight) {
             high = true;
           }
+
           if (l === lactive) {
             active = true;
+          }
+
+          if (l.customData[cd_uv].flag & UVFlags.PIN) {
+            pin = true;
           }
 
           if (wr.islandLoopMap.get(l) !== island) {
@@ -721,6 +753,12 @@ export class UVEditor extends UIBase {
 
         let color = getColor(sel, high, active);
         p.colors(color);
+
+        if (pin) {
+          p = sm.point(v);
+          p.ids(v.eid);
+          p.colors(red);
+        }
       }
     }
 
@@ -1106,9 +1144,19 @@ nstructjs.register(UVEditor);
 UIBase.register(UVEditor);
 
 export class DrawLine {
-  constructor(v1, v2, color) {
-    this.v1 = new Vector2(v1);
-    this.v2 = new Vector2(v2);
+  constructor(v1, v2, color="black") {
+    if (typeof color === "string") {
+      color = css2color(color);
+    }
+
+    let a = color.length > 3 ? color[3] : 1.0;
+    color = new Vector4(color);
+    color[3] = a;
+
+    this.v1 = new Vector3(v1);
+    this.v2 = new Vector3(v2);
+    this.v1[2] = this.v2[2] = 0.0;
+
     this.color = color;
   }
 }
@@ -1387,12 +1435,17 @@ export class ImageEditor extends Editor {
     this.doOnce(this.regenSidebar);
 
     let header = this.header;
-    header.iconbutton(Icons.HOME, "Reset Pan/Zoom", () => {
-      this.uvEditor.velpan.reset();
-    });
+    let row = header.row().strip();
+
+    row.menu("Edit", this.buildEditMenu());
+    row.menu("View", []);
 
     let col = header.col();
-    let row = col.row();
+    row = col.row();
+
+    row.iconbutton(Icons.HOME, "Reset Pan/Zoom", () => {
+      this.uvEditor.velpan.reset();
+    });
 
     let browser = document.createElement("data-block-browser-x");
     browser.setAttribute("datapath", "imageEditor.uvEditor.imageUser.image");
@@ -1407,8 +1460,17 @@ export class ImageEditor extends Editor {
 
   }
 
-  defineKeyMap() {
-
+  buildEditMenu() {
+    return [
+      "uveditor.toggle_select_all(mode='AUTO')",
+      "uveditor.pick_select_linked(mode='ADD' immediateMode=true)",
+      "uveditor.pick_select_linked(mode='SUB' immediateMode=true)",
+      "uveditor.translate()",
+      "uveditor.scale()",
+      "uveditor.rotate()",
+      "uveditor.set_flag(flag='PIN')|Set Pin",
+      "uveditor.clear_flag(flag='PIN')|Clear Pin",
+    ];
   }
 
   defineKeyMap() {
@@ -1418,7 +1480,9 @@ export class ImageEditor extends Editor {
       new HotKey("L", ["SHIFT"], "uveditor.pick_select_linked(mode='SUB' immediateMode=true)"),
       new HotKey("G", [], "uveditor.translate()"),
       new HotKey("S", [], "uveditor.scale()"),
-      new HotKey("R", [], "uveditor.rotate()")
+      new HotKey("R", [], "uveditor.rotate()"),
+      new HotKey("P", [], "uveditor.set_flag(flag='PIN')"),
+      new HotKey("P", ["ALT"], "uveditor.clear_flag(flag='PIN')")
     ]);
   }
 

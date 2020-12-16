@@ -178,6 +178,12 @@ export function genRenderMesh(gl, mesh, uniforms) {
       //XXX
       let view3d = _appstate.ctx.view3d;
 
+      for (let e of mesh.edges) {
+        if (e.flag & MeshFlags.UPDATE) {
+          e.updateLength();
+        }
+      }
+
       meshes.edges = mesh.genRender_curves(gl, false, view3d, LayerTypes.LOC | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR);
       meshes.edges.primflag = PrimitiveTypes.LINES;
 
@@ -201,6 +207,8 @@ export function genRenderMesh(gl, mesh, uniforms) {
         if (!update) {
           continue;
         }
+
+        e.updateLength();
 
         let l = e.l;
         if (l) {

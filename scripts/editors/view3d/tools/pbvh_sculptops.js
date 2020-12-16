@@ -452,7 +452,7 @@ export class PaintOp extends ToolOp {
     if (bvh) {
       bvh.update();
     }
-    window.redraw_viewport();
+    window.redraw_viewport(true);
   }
 
   on_mousemove(e) {
@@ -774,7 +774,7 @@ export class PaintOp extends ToolOp {
     this.last_vec.load(vec);
     this.last_r = radius;
 
-    window.redraw_viewport();
+    window.redraw_viewport(true);
   }
 
   initGrabData(mesh, co, radius) {
@@ -886,7 +886,7 @@ export class PaintOp extends ToolOp {
       i++;
     }*/
 
-    window.redraw_viewport();
+    window.redraw_viewport(true);
   }
 
   execDot(ctx, ps, lastps) {//ctx, p3, vec, extra, lastp3 = p3) {
@@ -1475,8 +1475,6 @@ export class PaintOp extends ToolOp {
 
       v.flag |= MeshFlags.UPDATE;
     }
-
-    console.log("AUTOSMOOTH", vsw, ps.autosmooth);
 
     //let es = new Set();
     wi = 0;

@@ -77,6 +77,7 @@ export class BVHToolMode extends ToolMode {
     }
 
     this.drawBVH = false;
+    this.drawCavityMap = false;
     this.drawNodeIds = false;
     this.drawWireframe = false;
     this.drawQuadsOnly = false;
@@ -287,6 +288,7 @@ export class BVHToolMode extends ToolMode {
     strip.prop(`scene.tools.${name}.drawBVH`);
     strip.prop(`scene.tools.${name}.drawFlat`);
     strip.prop(`scene.tools.${name}.drawWireframe`);
+    strip.prop(`scene.tools.${name}.drawCavityMap`);
     strip.prop(`scene.tools.${name}.drawNodeIds`);
 
     strip = header.strip();
@@ -398,6 +400,8 @@ export class BVHToolMode extends ToolMode {
       .on('change', onchange)
       .icon(Icons.DRAW_SCULPT_WIREFRAME);
     st.bool("drawBVH", "drawBVH", "Draw BVH").on('change', onchange);
+    st.bool("drawCavityMap", "drawCavityMap", "Cavity Map").on('change', onchange);
+
     st.bool("drawNodeIds", "drawNodeIds", "Draw BVH Vertex IDs").on('change', onchange);
     st.bool("drawFlat", "drawFlat", "Draw Flat")
       .on('change', onchange)
@@ -881,14 +885,20 @@ export class BVHToolMode extends ToolMode {
     let t2 = new Vector3();
     let t3 = new Vector3();
 
+    let nsmooth_rets = util.cachering.fromConstructor(Vector3, 16);
+
     let drawBVH = this.drawBVH;
     let drawNodeIds = this.drawNodeIds;
     let puv3 = [0, 0];
     let puv2 = [0, 1];
     let puv1 = [1, 0];
 
+    let nv1 = new Vector3();
+    let nv2 = new Vector3();
+    let nv3 = new Vector3();
     let drawWireframe = this.drawWireframe;
     let drawQuadsOnly = this.drawQuadsOnly;
+    let drawCavityMap = this.drawCavityMap;
 
     let cd_uv = mesh.loops.customData.getLayerIndex("uv");
     let haveUvs = cd_uv >= 0;
@@ -925,11 +935,42 @@ export class BVHToolMode extends ToolMode {
         primuv = sm.getDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 2, "primUV").setGLSize(gl.SHORT).setNormalized(true).index;
       }
 
+      //count triangles
+      let tottri = 0;
+      function countrec(node) {
+        if (node.leaf) {
+          tottri += node.uniqueTris.size;
+        } else {
+          for (let c of node.children) {
+            countrec(c);
+          }
+        }
+      }
 
-      let cfrets = util.cachering.fromConstructor(Vector4, 16);
+      countrec(node);
+      if (!tottri) {
+        return;
+      }
+
+      sm.island.setPrimitiveCount(PrimitiveTypes.TRIS, tottri);
+
+      let nmul = sm.island.tri_normals.glSizeMul;
+      let cmul = sm.island.tri_colors.glSizeMul;
+      let uvmul = sm.island.tri_uvs.glSizeMul;
+
+      let tri_cos = sm.island.tri_cos._getWriteData();
+      let tri_nos = sm.island.tri_normals._getWriteData();
+      let tri_cls = sm.island.tri_colors._getWriteData();
+      let tri_ids = sm.island.tri_ids._getWriteData();
+      let tri_uvs = sm.island.tri_uvs._getWriteData();
+
+      let ti = 0;
+
+      let cfrets;
       let colorfilter;
 
       if (have_grids) {
+        let cfrets = util.cachering.fromConstructor(Vector4, 16);
         colorfilter = function (v, fac = 0.5) {
           let ret = cfrets.next().zero();
           let tot = 0.0;
@@ -985,6 +1026,105 @@ export class BVHToolMode extends ToolMode {
       let cd_node = have_grids ? mesh.loops.customData.getLayerIndex("bvh")
                                : mesh.verts.customData.getLayerIndex("bvh");
 
+      let vn1 = new Vector3();
+
+      let nsmooth;
+
+      if (have_grids) {
+        nsmooth = function(v, fac=1.0) {
+          let tot = 0;
+          let n = nsmooth_rets.next().zero();
+
+          for (let v2 of v.neighbors) {
+            n.add(v2.no);
+            tot++;
+          }
+
+          if (tot > 0) {
+            n.mulScalar(1.0 / tot);
+            n.interp(v.no, 1.0-fac);
+            n.normalize();
+          } else {
+            n.load(v.no);
+          }
+
+          return n;
+        }
+      } else {
+        nsmooth = function(v, fac=1.0) {
+          let tot = 0;
+          let n = nsmooth_rets.next().zero();
+
+          for (let e of v.edges) {
+            let v2 = e.otherVertex(v);
+
+            let w = v.vectorDistanceSqr(v2);
+
+            for (let l of e.loops) {
+              n.addFac(l.f.no, w);
+              tot += w;
+            }
+          }
+
+          if (tot > 0) {
+            n.mulScalar(1.0 / tot);
+            n.interp(v.no, 1.0-fac);
+            n.normalize();
+          } else {
+            n.load(v.no);
+          }
+
+          return n;
+        }
+      }
+
+      nsmooth = (v) => v.no;
+
+      function vcavity(v) {
+        let sum = 0.0, tot = 0.0;
+
+        if (have_grids) {
+          for (let v2 of v.neighbors) {
+            nv1.load(v).sub(v2).normalize();
+            let dot = -nv1.dot(v2.no);
+
+            sum += dot;
+            tot++;
+          }
+        } else {
+          nv1.zero();
+
+          for (let e of v.edges) {
+            let v2 = e.otherVertex(v);
+
+            nv1.load(v).sub(v2).normalize();
+            //nv2.load(v.no).cross(nv1);
+
+            let dot;
+            //dot = 2.0 - v.no.dot(v2.no);
+
+            dot = -nv1.dot(v2.no);
+
+            sum += dot;
+            tot++;
+          }
+        }
+
+        if (tot) {
+          let f = sum / tot;
+          f = Math.min(Math.max(f, -0.9999), 0.99999);
+
+          f = 0.5 + f*0.5;
+          f *= 1.8;
+
+          f =  Math.min(Math.max(f, 0.0), 1.0);
+          f = Math.pow(f, 9.0);
+          return f*0.5 + 0.5;
+        }
+
+        return 1.0;
+      }
+
       function rec(node) {
         if (!node.leaf) {
           for (let c of node.children) {
@@ -996,6 +1136,10 @@ export class BVHToolMode extends ToolMode {
 
         let n = new Vector3();
         let id = object.lib_id;
+
+        tc1.zero().addScalar(1.0);
+        tc2.zero().addScalar(1.0);
+        tc3.zero().addScalar(1.0);
 
 
         for (let tri of node.uniqueTris) {
@@ -1018,6 +1162,164 @@ export class BVHToolMode extends ToolMode {
           t3 = tri.v3;
           //*/
 
+          let i = ti*3;
+          tri_cos[i++] = t1[0];
+          tri_cos[i++] = t1[1];
+          tri_cos[i++] = t1[2];
+
+          tri_cos[i++] = t2[0];
+          tri_cos[i++] = t2[1];
+          tri_cos[i++] = t2[2];
+
+          tri_cos[i++] = t3[0];
+          tri_cos[i++] = t3[1];
+          tri_cos[i++] = t3[2];
+
+          let no1 = nsmooth(t1);
+          let no2 = nsmooth(t2);
+          let no3 = nsmooth(t3);
+
+          i = ti*3;
+          tri_nos[i++] = no1[0]*nmul;
+          tri_nos[i++] = no1[1]*nmul;
+          tri_nos[i++] = no1[2]*nmul;
+
+          tri_nos[i++] = no2[0]*nmul;
+          tri_nos[i++] = no2[1]*nmul;
+          tri_nos[i++] = no2[2]*nmul;
+
+          tri_nos[i++] = no3[0]*nmul;
+          tri_nos[i++] = no3[1]*nmul;
+          tri_nos[i++] = no3[2]*nmul;
+
+          i = ti;
+          tri_ids[i++] = id;
+          tri_ids[i++] = id;
+          tri_ids[i++] = id;
+
+          if (haveUvs) {
+            let uv1, uv2, uv3;
+
+            if (have_grids) {
+              uv1 = t1.customData[cd_uv].uv;
+              uv2 = t2.customData[cd_uv].uv;
+              uv3 = t3.customData[cd_uv].uv;
+            } else {
+              let ltris = mesh.loopTris;
+
+              let l1 = ltris[tri.tri_idx];
+              let l2 = ltris[tri.tri_idx + 1];
+              let l3 = ltris[tri.tri_idx + 2];
+
+              uv1 = l1.customData[cd_uv].uv;
+              uv2 = l2.customData[cd_uv].uv;
+              uv3 = l3.customData[cd_uv].uv;
+            }
+
+            i = ti*2;
+
+            tri_uvs[i++] = uv1[0]*uvmul;
+            tri_uvs[i++] = uv1[1]*uvmul;
+            tri_uvs[i++] = uv2[0]*uvmul;
+            tri_uvs[i++] = uv2[1]*uvmul;
+            tri_uvs[i++] = uv3[0]*uvmul;
+            tri_uvs[i++] = uv3[1]*uvmul;
+          }
+
+          let cv1 = 1.0, cv2=1.0, cv3=1.0;
+
+          if (drawCavityMap) {
+            cv1 = vcavity(tri.v1);
+            cv2 = vcavity(tri.v2);
+            cv3 = vcavity(tri.v3);
+
+            if (!have_color) {
+              for (let j = 0; j < 3; j++) {
+                tc1[j] = cv1;
+                tc2[j] = cv2;
+                tc3[j] = cv3;
+              }
+              tc1[3] = tc2[3] = tc3[3] = 1.0;
+            }
+          }
+
+          if (drawNodeIds && cd_node >= 0) {
+            let node1 = tri.v1.customData[cd_node].node;
+            let node2 = tri.v2.customData[cd_node].node;
+            let node3 = tri.v3.customData[cd_node].node;
+
+            let id1 = node1 ? node1._id : 0;
+            let id2 = node2 ? node2._id : 0;
+            let id3 = node3 ? node3._id : 0;
+
+            tc1[0] = Math.fract(id1*13.234344);
+            tc2[0] = Math.fract(id2*13.234344);
+            tc3[0] = Math.fract(id3*13.234344);
+
+            tc1[1] = tc2[1] = tc3[1] = 0.5;
+          } else if (have_color) {
+            //*
+            let c1 = tri.v1.customData[cd_color].color;
+            let c2 = tri.v2.customData[cd_color].color;
+            let c3 = tri.v3.customData[cd_color].color;
+            //*/
+
+            tc1.load(c1);
+            tc2.load(c2);
+            tc3.load(c3);
+
+            for (let j=0; j<3; j++) {
+              tc1[j] *= cv1;
+              tc2[j] *= cv2;
+              tc3[j] *= cv3;
+            }
+
+            if (!c1 || !c2 || !c3) {
+              let v = !c1 ? tri.v1 : undefined;
+
+              v = !v && !c2 ? tri.v2 : v;
+              v = !v && !c3 ? tri.v3 : v;
+
+              let l = v.loopEid;
+              l = mesh.eidmap[l];
+              if (l && l.eid === v.loopEid) {
+                l.customData[bvh.cd_grid].checkCustomDataLayout(mesh);
+
+                //console.log(l, l.customData[bvh.cd_grid]);
+              }
+
+              //console.error("customdata error", c1, c2, c3, tri);
+            }
+            /*
+            let c1 = colorfilter(tri.v1);
+            let c2 = colorfilter(tri.v2);
+            let c3 = colorfilter(tri.v3);
+            //*/
+
+            //tri2.custom(primc1, c1, c1, c1);
+            //tri2.custom(primc2, c2, c2, c2);
+            //tri2.custom(primc3, c3, c3, c3);
+
+          }
+
+          i = ti*4;
+          tri_cls[i++] = tc1[0]*cmul;
+          tri_cls[i++] = tc1[1]*cmul;
+          tri_cls[i++] = tc1[2]*cmul;
+          tri_cls[i++] = tc1[3]*cmul;
+
+          tri_cls[i++] = tc2[0]*cmul;
+          tri_cls[i++] = tc2[1]*cmul;
+          tri_cls[i++] = tc2[2]*cmul;
+          tri_cls[i++] = tc2[3]*cmul;
+
+          tri_cls[i++] = tc3[0]*cmul;
+          tri_cls[i++] = tc3[1]*cmul;
+          tri_cls[i++] = tc3[2]*cmul;
+          tri_cls[i++] = tc3[3]*cmul;
+
+          ti += 3;
+          continue;
           //*
           if (drawWireframe) {
             if (drawQuadsOnly) {
@@ -1066,9 +1368,30 @@ export class BVHToolMode extends ToolMode {
             tri2.normals(n, n, n);
           }
 
-          tri2.custom(primuv, puv1, puv2, puv3);
+          //tri2.custom(primuv, puv1, puv2, puv3);
 
           tri2.ids(id, id, id);
+
+
+
+          //let cv1 = 1.0, cv2=1.0, cv3=1.0;
+
+          if (drawCavityMap) {
+            cv1 = vcavity(tri.v1);
+            cv2 = vcavity(tri.v2);
+            cv3 = vcavity(tri.v3);
+
+            if (!have_color) {
+              for (let j = 0; j < 3; j++) {
+                tc1[j] = cv1;
+                tc2[j] = cv2;
+                tc3[j] = cv3;
+              }
+              tc1[3] = tc2[3] = tc3[3] = 1.0;
+
+              tri2.colors(tc1, tc2, tc3);
+            }
+          }
 
           if (drawNodeIds && cd_node >= 0) {
             let node1 = tri.v1.customData[cd_node].node;
@@ -1092,6 +1415,16 @@ export class BVHToolMode extends ToolMode {
             let c2 = tri.v2.customData[cd_color].color;
             let c3 = tri.v3.customData[cd_color].color;
             //*/
+
+            tc1.load(c1);
+            tc2.load(c2);
+            tc3.load(c3);
+
+            for (let j=0; j<3; j++) {
+              tc1[j] *= cv1;
+              tc2[j] *= cv2;
+              tc3[j] *= cv3;
+            }
 
             if (!c1 || !c2 || !c3) {
               let v = !c1 ? tri.v1 : undefined;
@@ -1120,7 +1453,7 @@ export class BVHToolMode extends ToolMode {
             //tri2.custom(primc2, c2, c2, c2);
             //tri2.custom(primc3, c3, c3, c3);
 
-            tri2.colors(c1, c2, c3);
+            tri2.colors(tc1, tc2, tc3);
           } else {
             tri2.colors(white, white, white);
           }
@@ -1160,10 +1493,15 @@ export class BVHToolMode extends ToolMode {
 
         let program2 = Shaders.SculptShader;
 
+
         if (!drawBVH) {
           uniforms.uColor = [1, 1, 1, 1];
         } else {
-          uniforms.uColor = [f, Math.fract(f*3.23423 + 0.432), Math.fract(f*5.234 + .13432), 1.0];
+          let f2 = 1.0;
+          if (update) {
+            f2 = 0.5;
+          }
+          uniforms.uColor = [f*f2, f2*Math.fract(f*3.23423 + 0.432), f2*Math.fract(f*5.234 + .13432), 1.0];
         }
         uniforms.alpha = 1.0;
 
@@ -1295,6 +1633,7 @@ export class BVHToolMode extends ToolMode {
 
 BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
   drawBVH                : bool;
+  drawCavityMap          : bool;
   drawFlat               : bool;
   drawWireframe          : bool;
   drawQuadsOnly          : bool;

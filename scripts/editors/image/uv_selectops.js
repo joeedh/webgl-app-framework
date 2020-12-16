@@ -164,7 +164,7 @@ export class SelectLinkedOpPick extends SelectOpBaseUV {
 
   static tooldef() {
     return {
-      name : "Select Linked (Pick)",
+      uiname : "Select Linked (Pick)",
       toolpath : "uveditor.pick_select_linked",
       is_modal : true,
       inputs : ToolOp.inherit({

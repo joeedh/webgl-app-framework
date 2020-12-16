@@ -22,6 +22,15 @@ import {Menu} from "../../path.ux/scripts/widgets/ui_menu.js";
 
 const menuSize = 27;
 
+import * as platform from '../../core/platform.js';
+
+let electron_api;
+if (window.haveElectron) {
+  import("../../path.ux/scripts/platforms/electron/electron_api.js").then((api) => {
+    electron_api = api;
+  });
+}
+
 export class ToolHistoryConsole extends ColumnFrame {
   constructor() {
     super();
@@ -118,6 +127,8 @@ export class MenuBarEditor extends Editor {
   constructor() {
     super();
 
+    this.needElectronRebuild = true;
+
     this.menuSize = menuSize;
     this.areaDragToolEnabled = false;
 
@@ -129,6 +140,8 @@ export class MenuBarEditor extends Editor {
   }
 
   buildEditMenu() {
+    this.needElectronRebuild = true;
+
     let def = this._editMenuDef;
 
     def.length = 0;
@@ -163,7 +176,9 @@ export class MenuBarEditor extends Editor {
     this.container.add(this.console);
     this.console.hidden = true;
 
-    strip.menu("File", [
+    let menubar = this._menubar = strip.row();
+
+    menubar.menu("File", [
       ["New  ", () => {
         console.log("File new");
         if (confirm("Make new file?")) {
@@ -173,20 +188,51 @@ export class MenuBarEditor extends Editor {
       Menu.SEP,
       ["Save Project", () => {
         console.log("File save");
-        saveFile(_appstate.createFile(), "unnamed."+cconst.FILE_EXT, ["."+cconst.FILE_EXT]);
+
+        platform.platform.showSaveDialog("Save File", _appstate.createFile(),{
+          filters : [
+            {
+              defaultPath : "unnamed." + cconst.FILE_EXT,
+              name : "Project Files",
+              extensions : [cconst.FILE_EXT]
+            }
+          ]
+        }).then(() => {
+          this.ctx.message("File saved");
+        });
+        //saveFile(_appstate.createFile(), "unnamed."+cconst.FILE_EXT, ["."+cconst.FILE_EXT]);
       }],
       ["Load Project", () => {
         console.log("File load");
 
-        loadFile(undefined, ["."+cconst.FILE_EXT]).then((filedata) => {
-          _appstate.loadFile(filedata);
+        platform.platform.showOpenDialog("Open File", {
+          filters : [
+            {
+              name : "Project Files",
+              extensions : [cconst.FILE_EXT]
+            }
+          ]
+        }).then((paths) => {
+          console.log("paths", paths);
+          if (paths.length === 0) {
+            return;
+          }
+
+          return platform.platform.readFile(paths[0], "application/x-octet-stream")
+        }).then((data) => {
+          console.log("got data!", data);
+          _appstate.loadFileAsync(data);
         });
+
+        //loadFile(undefined, ["."+cconst.FILE_EXT]).then((filedata) => {
+          //_appstate.loadFile(filedata);
+        //});
       }],
     ]);
 
     this._editMenuDef = [];
 
-    strip.menu("Edit", this._editMenuDef);
+    menubar.menu("Edit", this._editMenuDef);
 
     this.buildEditMenu();
 
@@ -195,12 +241,12 @@ export class MenuBarEditor extends Editor {
       //"light.new(position='cursor')",
     ];
 
-    strip.menu("Add", [
+    menubar.menu("Add", [
       "mesh.make_cube()",
       "light.new()",
     ]);
 
-    strip.menu("Session", [
+    menubar.menu("Session", [
       ["Save Default File  ", () => {
         console.log("saving default file");
         _appstate.saveStartupFile();
@@ -210,6 +256,8 @@ export class MenuBarEditor extends Editor {
         _appstate.clearStartupFile();
       }]
     ]);
+
+    menubar.update();
 
     strip.iconbutton(Icons.CONSOLE, "Show Console", () => {
       if (this.menuSize !== menuSize) {
@@ -225,7 +273,13 @@ export class MenuBarEditor extends Editor {
 
     strip.noteframe();
     //this.makeScreenSwitcher(this.container);
+
     this.setCSS();
+    this.flushUpdate();
+
+    if (window.haveElectron) {
+      menubar.style["display"] = "none";
+    }
   }
 
   onFileLoad() {
@@ -323,6 +377,13 @@ export class MenuBarEditor extends Editor {
 
   update() {
     super.update();
+
+    if (this.needElectronRebuild && window.haveElectron && electron_api) {
+      this.needElectronRebuild = false;
+      electron_api.initMenuBar(this, true);
+      this._menubar.style["display"] = "none";
+
+    }
 
     if (this.ctx && this.ctx.toolmode && this.ctx.toolmode.constructor && this.ctx.toolmode.constructor.name !== this._last_toolmode) {
       console.warn("Rebuilding edit menu");

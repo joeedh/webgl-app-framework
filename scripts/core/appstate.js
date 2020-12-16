@@ -5,6 +5,8 @@ import {ViewContext} from './context.js';
 import {AppToolStack} from "./toolstack.js";
 import '../editors/node/MaterialEditor.js';
 
+import './platform.js';
+
 import {initSimpleController, checkForTextBox, keymap, Vector3, Vector4, Vector2, Quat, Matrix4,
   ToolOp, UndoFlags, nstructjs} from '../path.ux/scripts/pathux.js';
 
@@ -448,8 +450,150 @@ export class AppState {
     }, 350);
   }
 
+  loadFileAsync(buf, args) {
+    let this2 = this;
+
+    return new Promise((accept, reject) => {
+      //kind of want to use new asyn stuff. . .
+      let readblocks = function*(filectx) {
+        let args = filectx.args;
+        filectx.datablocks = [];
+        let file = filectx.file;
+
+        window.FILE_LOADING = true;
+
+        while (!file.at_end()) {
+          this2.loadFile_readBlock(filectx);
+          yield;
+        }
+
+        args = filectx.args;
+
+        //just loading settings?
+        if (!args.load_library) {
+          window.FILE_LOADING = false;
+          return;
+        }
+
+        if (filectx.datalib === undefined) {
+          window.FILE_LOADING = false;
+
+          throw new Error("failed to load file");
+        }
+      }
+
+      let step = 0.0;
+
+      let log = function() {
+        console.log.apply(this, arguments);
+      }
+
+      let gen = function*() {
+        log("begin");
+        let filectx = this2.loadFile_start(buf, args);
+        yield;
+
+        step += 1.0;
+
+        let time = util.time_ms();
+
+        let startstep = 0;
+
+        log("reading blocks");
+        for (let block of readblocks(filectx)) {
+          let file = filectx.file;
+          let perc = file.i / file.view.buffer.byteLength;
+
+          step = startstep + perc*4.0;
+
+          if (util.time_ms() - time > 50) {
+            time = util.time_ms();
+            yield;
+          }
+        }
+
+        yield;
+
+        log("initializing datalib");
+        this2.loadFile_initDatalib(filectx);
+        step += 1.0;
+
+        yield;
+
+        log("loading screen data, if any");
+        this2.loadFile_loadScreen(filectx);
+        step += 1.0;
+
+        yield
+
+        log("finishing");
+        this2.loadFile_finish(filectx);
+        step += 1.0;
+
+        log("done");
+
+        accept();
+      }
+
+      let iter = gen()[Symbol.iterator]();
+
+      if (this.screen) {
+        this.screen.remove();
+      }
+
+      let pcirc = document.createElement("progress-circle-x");
+      pcirc.init();
+
+      document.body.appendChild(pcirc);
+      pcirc.startTimer();
+
+      let timer = window.setInterval(() => {
+        let perc = step / 6.0;
+
+        pcirc.value = perc;
+
+        perc = (perc*100).toFixed(1) + "%";
+        console.log(util.termColor(perc, "green"));
+
+        let item;
+        try {
+          item = iter.next();
+        } catch (error) {
+          pcirc.remove();
+          window.clearInterval(timer);
+          reject(error);
+        }
+
+        if (item.done) {
+          pcirc.remove();
+          window.clearInterval(timer);
+        }
+      }, 5);
+    });
+  }
+
+  loadFile(buf, args) {
+    let ret;
+    try {
+      ret = this.loadFile_intern(...arguments);
+    } catch (error) {
+      window.FILE_LOADING = false;
+      throw error;
+    }
+
+    return ret;
+  }
+
+  loadFile_intern(buf, args) {
+    let filectx = this.loadFile_start(buf, args);
+    this.loadFile_readBlocks(filectx);
+    this.loadFile_initDatalib(filectx);
+    this.loadFile_loadScreen(filectx);
+    this.loadFile_finish(filectx);
+  }
+
   //expects an ArrayBuffer or a DataView
-  loadFile(buf, args={reset_toolstack : true, load_screen : true, load_settings : false}) {
+  loadFile_start(buf, args={reset_toolstack : true, load_screen : true, load_settings : false}) {
     let lastscreens = undefined;
     let lastscreens_active = undefined;
 
@@ -467,7 +611,9 @@ export class AppState {
       }
     }
 
-    let file = new BinaryReader(buf);
+    let filectx = {};
+
+    let file = filectx.file = new BinaryReader(buf);
 
     let s = file.string(4);
     if (s !== cconst.FILE_MAGIC) {
@@ -484,74 +630,113 @@ export class AppState {
 
     istruct.parse_structs(structs);
 
-    let screen, found_screen;
-    let datablocks = [];
-    let datalib = undefined;
+    filectx.lastscreens_active = lastscreens_active;
+    filectx.lastscreens = lastscreens;
+    filectx.istruct = istruct;
+    filectx.flag = flag;
+    filectx.version = version;
+    filectx.args = args;
+    filectx.buf = buf;
+    filectx.datablocks = [];
+    filectx.found_screen = false;
+    filectx.datalib = undefined;
+    filectx.screen = undefined;
+
+    return filectx;
+  }
+
+  loadFile_readBlock(filectx) {
+    let {istruct, flag, version, args, buf, file} = filectx;
+
+    let type = file.string(4);
+    let len = file.int32();
+
+    let data = file.bytes(len);
+    data = new DataView((new Uint8Array(data)).buffer);
+    //console.log("Reading block of type", type);
+
+    if (args.load_screen && type === BlockTypes.SCREEN) {
+      console.warn("Old screen block detected");
+
+      screen = istruct.read_object(data, App);
+      filectx.found_screen = true;
+    } else if (args.load_library && type === BlockTypes.LIBRARY) {
+      filectx.datalib = istruct.read_object(data, Library);
+
+      this.datalib.destroy();
+      this.datalib = filectx.datalib;
+    } else if (args.load_library && type === BlockTypes.DATABLOCK) {
+      let file2 = new BinaryReader(data);
+
+      let len = file2.int32();
+      let clsname = file2.string(len);
+
+      let cls = DataBlock.getClass(clsname);
+      len = data.byteLength - len - 4;
+      let data2 = file2.bytes(len);
+      let block;
+
+      if (!args.load_screen && cls.blockDefine().typeName === "screen") {
+        return undefined;
+      }
+
+      if (cls === undefined) {
+        console.warn("Warning, unknown block type", clsname);
+        return undefined;
+        //block = istruct.read_object(data2, DataBlock);
+      } else {
+        block = istruct.read_object(data2, cls);
+      }
+
+      if (cls.blockDefine().typeName === "screen") {
+        block.screen._ctx = this.ctx;
+        //console.log("SCREEN", block.screen.sareas)
+      }
+
+      filectx.datablocks.push([clsname, block]);
+
+      return block;
+    } else if (args.load_settings && type == BlockTypes.SETTINGS) {
+      let settings = istruct.read_object(data, AppSettings);
+
+      this.settings.destroy();
+      this.settings = settings;
+
+      return settings;
+    }
+  }
+
+  loadFile_readBlocks(filectx) {
+    let args = filectx.args;
+    let datablocks = filectx.datablocks = [];
+    let file = filectx.file;
+
+    window.FILE_LOADING = true;
 
     while (!file.at_end()) {
-      let type = file.string(4);
-      let len = file.int32();
-
-      let data = file.bytes(len);
-      data = new DataView((new Uint8Array(data)).buffer);
-      //console.log("Reading block of type", type);
-
-      if (args.load_screen && type === BlockTypes.SCREEN) {
-        console.warn("Old screen block detected");
-
-        screen = istruct.read_object(data, App);
-        found_screen = true;
-      } else if (args.load_library && type === BlockTypes.LIBRARY) {
-        datalib = istruct.read_object(data, Library);
-
-        this.datalib.destroy();
-        this.datalib = datalib;
-      } else if (args.load_library && type === BlockTypes.DATABLOCK) {
-        let file2 = new BinaryReader(data);
-
-        let len = file2.int32();
-        let clsname = file2.string(len);
-
-        let cls = DataBlock.getClass(clsname);
-        len = data.byteLength - len - 4;
-        let data2 = file2.bytes(len);
-        let block;
-
-        if (!args.load_screen && cls.blockDefine().typeName === "screen") {
-          continue;
-        }
-
-        if (cls === undefined) {
-          console.warn("Warning, unknown block type", clsname);
-          continue;
-          //block = istruct.read_object(data2, DataBlock);
-        } else {
-          block = istruct.read_object(data2, cls);
-        }
-
-        if (cls.blockDefine().typeName === "screen") {
-          block.screen._ctx = this.ctx;
-          //console.log("SCREEN", block.screen.sareas)
-        }
-
-        datablocks.push([clsname, block]);
-      } else if (args.load_settings && type == BlockTypes.SETTINGS) {
-        let settings = istruct.read_object(data, AppSettings);
-
-        this.settings.destroy();
-        this.settings = settings;
-      }
+      this.loadFile_readBlock(filectx);
     }
+
+    args = filectx.args;
 
     //just loading settings?
     if (!args.load_library) {
+      window.FILE_LOADING = false;
       return;
     }
 
+    let {istruct, screen, found_screen, datalib, flag, version, buf} = filectx;
+
     if (datalib === undefined) {
+      window.FILE_LOADING = false;
+
       throw new Error("failed to load file");
       return;
     }
+  }
+
+  loadFile_initDatalib(filectx) {
+    let {screen, found_screen, datalib, version, datablocks} = filectx;
 
     for (let dblock of datablocks) {
       datalib.getLibrary(dblock[0]).add(dblock[1], true);
@@ -574,6 +759,8 @@ export class AppState {
       return datalib.get(dataref);
     }
 
+    filectx.getblock = getblock;
+
     function getblock_addUser(dataref, user) {
       if (dataref === undefined) {
         return undefined;
@@ -594,6 +781,8 @@ export class AppState {
       return ret;
     }
 
+    filectx.getblock_addUser = getblock_addUser;
+
     //reference counts are re-derived during linking
     for (let lib of datalib.libs) {
       for (let block of lib) {
@@ -606,6 +795,11 @@ export class AppState {
     }
     datalib.afterSTRUCT();
 
+  }
+
+  loadFile_loadScreen(filectx) {
+    let {screen, getblock, getblock_addUser, found_screen, datalib, version, args, datablocks} = filectx;
+
     if (args.load_screen && screen === undefined) {
       screen = datalib.libmap.screen.active;
       if (screen === undefined) { //paranoia check
@@ -617,7 +811,7 @@ export class AppState {
     }
 
     if (screen !== undefined) {
-      found_screen = true;
+      found_screen = filectx.found_screen = true;
 
       if (this.screen !== screen && this.screen !== undefined) {
         this.screen.destroy();
@@ -672,7 +866,13 @@ export class AppState {
       });
     }
 
+  }
+  loadFile_finish(filectx) {
+    let {lastscreens, found_screen, screen, version, datalib, lastscreens_active, datablocks, args} = filectx;
+
     this.do_versions_post(version, datalib);
+
+    window.FILE_LOADING = false;
 
     if (args.reset_context) {
       this.ctx.reset(true);

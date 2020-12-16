@@ -272,7 +272,8 @@ export class Vec3Socket extends VecSocket {
   }
 
   static apiDefine(api, sockstruct) {
-    let def = sockstruct.vec3('value', 'value', 'value');
+    let cb = NodeSocketType._api_uiname;
+    let def = sockstruct.vec3('value', 'value', 'value').uiNameGetter(cb);
 
     def.on('change', function() { this.dataref.graphUpdate(true)});
 
@@ -396,6 +397,47 @@ Vec4Socket.STRUCT = nstructjs.inherit(Vec4Socket, NodeSocketType, "graph.Vec4Soc
 nstructjs.register(Vec4Socket);
 NodeSocketType.register(Vec4Socket);
 
+
+export class RGBSocket extends Vec3Socket {
+  constructor(uiname, flag, default_value=[0.5, 0.5, 0.5]) {
+    super(uiname, flag, default_value);
+  }
+
+  static nodedef() {return {
+    name : "rgb",
+    uiname : "Color",
+    color : [1.0, 0.7, 0.7, 1]
+  }}
+
+  static apiDefine(api, sockstruct) {
+    let def = sockstruct.color3('value', 'value', 'value').uiNameGetter(NodeSocketType._api_uiname);
+
+    def.on('change', function() { this.dataref.graphUpdate(true)});
+  }
+
+  buildUI(container, onchange) {
+    if (this.edges.length === 0) {
+      container.colorbutton("value");
+      /*
+      container.button(this.uiname, () => {
+        console.log("edit color, yay");
+
+        let colorpicker = container.ctx.screen.popup(container);
+        let widget = colorpicker.colorPicker("value");
+
+        widget.onchange = onchange;
+      });//*/
+    } else {
+      container.label(this.uiname);
+    }
+  }
+}
+RGBSocket.STRUCT = nstructjs.inherit(RGBSocket, Vec3Socket, 'graph.RGBSocket') + `
+}
+`;
+nstructjs.register(RGBSocket);
+NodeSocketType.register(RGBSocket);
+
 export class RGBASocket extends Vec4Socket {
   constructor(uiname, flag, default_value=[0.5, 0.5, 0.5, 1.0]) {
     super(uiname, flag, default_value);
@@ -408,7 +450,7 @@ export class RGBASocket extends Vec4Socket {
   }}
 
   static apiDefine(api, sockstruct) {
-    let def = sockstruct.color4('value', 'value', 'value');
+    let def = sockstruct.color4('value', 'value', 'value').uiNameGetter(NodeSocketType._api_uiname);
 
     def.on('change', function() { this.dataref.graphUpdate(true)});
   }

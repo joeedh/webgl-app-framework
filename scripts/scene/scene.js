@@ -93,6 +93,20 @@ export class ObjectSet extends util.set {
     this.list = oblist;
   }
 
+  get renderable() {
+    let this2 = this;
+
+    return (function*() {
+      for (let ob of this2) {
+        if (ob.flag & (ObjectFlags.HIDE)) {
+          continue;
+        }
+
+        yield ob;
+      }
+    })();
+  }
+
   get editable() {
     let this2 = this;
 

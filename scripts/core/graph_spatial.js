@@ -64,8 +64,8 @@ export function layoutNode(node, args={}) {
     let socks = !i ? node.inputs : node.outputs;
     let def = !i ? ret.inputs : ret.outputs;
 
-    let x = i ? ret.size[0]: 0;
-    let y = 0;
+    let x = i ? ret.size[0] : 0;
+    let y = 35;
 
     for (let k in socks) {
       let sock = socks[k];

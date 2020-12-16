@@ -613,7 +613,7 @@ export class Edge extends Element {
     this.l = undefined;
     this.v1 = this.v2 = undefined;
     this.h1 = this.h2 = undefined;
-    this._length = undefined;
+    this.length = 0.0;
   }
 
   set flag(v) {
@@ -631,6 +631,7 @@ export class Edge extends Element {
   get arcCache() {
     if (!this._arcCache) {
       this._arcCache = new ArcLengthCache(undefined, this);
+      this._arcCache.update();
     }
 
     return this._arcCache;
@@ -659,7 +660,7 @@ export class Edge extends Element {
       lastco = co;
     }
 
-    this._length = sum;
+    this.length = sum;
     return sum;
   }
 
@@ -673,13 +674,12 @@ export class Edge extends Element {
   }
 
   updateLength() {
-    this.flag &= ~MeshFlags.UPDATE;
-
-    if (this.arcCache === undefined) {
-      this.arcCache = new ArcLengthCache(undefined, this);
+    if (this._arcCache !== undefined) {
+      this._arcCache.update();
+      this.length = this._arcCache._calcS(1.0);
+    } else {
+      this.length = this.v1.vectorDistance(this.v2);
     }
-
-    this.arcCache.update();
 
     return this.length;
   }
@@ -871,19 +871,6 @@ export class Edge extends Element {
     return this.arcDerivative2(s).normalize();
   }
 
-  get length() {
-    if ((this.v1.flag & MeshFlags.UPDATE) || (this.v2.flag & MeshFlags.UPDATE)) {
-      this.update();
-    }
-
-    if (this.flag & MeshFlags.UPDATE) {
-      this.updateLength();
-      this.updateHandles();
-    }
-
-    return this._length;
-  }
-
   get loops() {
     let this2 = this;
 
@@ -1044,7 +1031,7 @@ Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
   v2      : int | obj.v2.eid;
   h1      : int | obj.h1 !== undefined ? obj.h1.eid : -1;
   h2      : int | obj.h2 !== undefined ? obj.h2.eid : -1;
-  _length : float; 
+  length  : float; 
 }
 `;
 nstructjs.manager.add_class(Edge);

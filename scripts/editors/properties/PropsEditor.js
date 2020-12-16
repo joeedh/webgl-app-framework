@@ -114,6 +114,7 @@ export class CDLayerPanel extends ColumnFrame {
 
     panel.useIcons(false);
     panel.tool(`mesh.add_cd_layer(elemType=${type} layerType="${layertype}")`);
+    panel.tool(`mesh.remove_cd_layer(elemType=${type} layerType="${layertype}")`);
   }
 
   updateDataPath() {

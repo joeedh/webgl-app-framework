@@ -5,10 +5,24 @@ import {Constraint, Solver} from '../path.ux/scripts/util/solver.js'
 import '../util/numeric.js';
 
 import {MeshTypes, MeshFlags, MeshSymFlags, MeshModifierFlags} from './mesh_base.js';
-import {UVLayerElem} from './mesh_customdata.js';
+import {UVFlags, UVLayerElem} from './mesh_customdata.js';
 import {BVH, BVHNode} from '../util/bvh.js';
 
 let chp_rets = util.cachering.fromConstructor(Vector2, 64);
+
+export class UVIsland extends Set {
+  constructor() {
+    super();
+
+    this.hasPins = false;
+    this.hasSelLoops = false;
+
+    this.boxcenter = new Vector2();
+    this.area = 0.0;
+    this.min = new Vector2();
+    this.max = new Vector2();
+  }
+}
 
 export class UVWrangler {
   constructor(mesh, faces, cd_uv) {
@@ -299,6 +313,19 @@ export class UVWrangler {
       }
     }
 
+    let cd_uv = this.cd_uv;
+
+    for (let v of this.uvMesh.verts) {
+      v.hasPins = false;
+
+      for (let l of this.vertMap.get(v)) {
+        if (l.customData[cd_uv].flag & UVFlags.PIN) {
+          v.hasPins = true;
+          break;
+        }
+      }
+    }
+
     this.islands = [];
     let doneset = new Set();
 
@@ -310,18 +337,27 @@ export class UVWrangler {
       doneset.add(v);
       let stack = [v];
 
-      let vlist = new Set();
+      let island = new UVIsland();
+      island.hasPins = false;
 
       while (stack.length > 0) {
         let v2 = stack.pop();
 
-        this.islandVertMap.set(v2, vlist);
+        this.islandVertMap.set(v2, island);
 
         for (let l of this.vertMap.get(v2)) {
-          this.islandLoopMap.set(l, vlist);
+          if (l.customData[cd_uv].flag & UVFlags.PIN) {
+            island.hasPins = true;
+          }
+
+          if ((l.flag & MeshFlags.SELECT) && !(l.flag & MeshFlags.HIDE)) {
+            island.hasSelLoops = true;
+          }
+
+          this.islandLoopMap.set(l, island);
         }
 
-        vlist.add(v2);
+        island.add(v2);
 
         for (let e of v2.edges) {
           let v3 = e.otherVertex(v2);
@@ -333,13 +369,13 @@ export class UVWrangler {
         }
       }
 
-      for (let v of vlist) {
+      for (let v of island) {
         for (let l of this.vertMap.get(v)) {
-          this.islandLoopMap.set(l, vlist);
+          this.islandLoopMap.set(l, island);
         }
       }
 
-      this.islands.push(vlist);
+      this.islands.push(island);
     }
 
     for (let island of this.islands) {
@@ -712,7 +748,7 @@ export class UVWrangler {
     l.area = l.boxsize[0]*l.boxsize[1];
   }
 
-  packIslands() {
+  packIslands(ignorePinnedIslands=false, islandsWithSelLoops=false) {
     let uve = _appstate.ctx.editors.imageEditor;
     if (uve) {
       uve = uve.uvEditor;
@@ -722,6 +758,7 @@ export class UVWrangler {
 
     function drawline(v1, v2, color="red") {
       if (uve) {
+        return;
         uve.addDrawLine(v1, v2, color);
         uve.flagRedraw();
       }
@@ -730,6 +767,13 @@ export class UVWrangler {
 
     let islands = [];
     for (let l of this.islands) {
+      if (ignorePinnedIslands && l.hasPins) {
+        continue;
+      }
+      if (islandsWithSelLoops && !l.hasSelLoops) {
+        continue;
+      }
+
       this.updateAABB(l);
 
       for (let v of l) {
@@ -737,11 +781,13 @@ export class UVWrangler {
       }
 
       let cent = new Vector2(l.min).interp(l.max, 0.5);
-      let steps = 8;
+      let steps = 16;
       let th = 0.0, dth = Math.PI*0.5 / steps;
 
       let min = 1e17, minth = 0.0;
       for (let i=0; i<steps; i++, th += dth) {
+        //th += (Math.random()-0.5)*dth;
+
         for (let v of l) {
           v.load(v.orig).sub(cent).rot2d(th).add(cent);
         }
@@ -765,6 +811,13 @@ export class UVWrangler {
 
     islands = [];
     for (let island of this.islands) {
+      if (ignorePinnedIslands && island.hasPins) {
+        continue;
+      }
+      if (islandsWithSelLoops && !island.hasSelLoops) {
+        continue;
+      }
+
       this.updateAABB(island);
       islands.push(island);
       totarea += island.area;
@@ -815,7 +868,9 @@ export class UVWrangler {
       for (let island2 of islands) {
         this.updateAABB(island2);
 
-        if (island2.area < area && Math.abs(area - island2.area) < min) {
+        let pass = Math.random() > 0.85;
+
+        if (!pass && (island2.area < area && Math.abs(area - island2.area) < min)) {
           min = Math.abs(area - island2.area);
           island = island2;
         }

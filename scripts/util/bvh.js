@@ -976,6 +976,10 @@ export class BVHNode {
 
     let doneset = new WeakSet();
 
+    for (let t of this.uniqueTris) {
+      t.area = math.tri_area(t.v1, t.v2, t.v3);
+    }
+
     for (let v of this.uniqueVerts) {
       v.no.zero();
 
@@ -1110,7 +1114,7 @@ export class BVH {
     this.storeVerts = false;
 
     this._leafLimit = 256;
-    this.drawLevelOffset = 0;
+    this.drawLevelOffset = 1;
     this.depthLimit = 17;
 
     this.nodes = [];
@@ -1436,7 +1440,8 @@ export class BVH {
     tri.v2 = tri.vs[1] = v2;
     tri.v3 = tri.vs[2] = v3;
 
-    //tri.no.load(math.normal_tri(v1, v2, v3));
+    tri.no.load(math.normal_tri(v1, v2, v3));
+    tri.area = math.tri_area(v1, v2, v3);
 
     //tri.f = this.mesh.eidmap[id];
 

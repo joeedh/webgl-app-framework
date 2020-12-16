@@ -84,6 +84,10 @@ export function relaxUVs(mesh, cd_uv, loops=mesh.loops, doPack=false, boundaryWe
           w = boundaryWeight;
           break;
         }
+
+        if (v.hasPins) {
+          w += boundaryWeight*2.0;
+        }
       }
 
       avg.addFac(v, w);
@@ -125,7 +129,7 @@ export function relaxUVs(mesh, cd_uv, loops=mesh.loops, doPack=false, boundaryWe
   }
 
   if (doPack) {
-    wr.packIslands();
+    wr.packIslands(true, true);
   }
 
   wr.finish();
@@ -147,7 +151,7 @@ class SolveTri {
 }
 
 export class UnWrapSolver {
-  constructor(mesh, faces, cd_uv = -1, preserveIslands=false) {
+  constructor(mesh, faces, cd_uv = -1, preserveIslands=false, selLoopsOnly=false) {
     if (cd_uv === -1) {
       cd_uv = mesh.loops.customData.getLayerIndex("uv");
     }
@@ -155,6 +159,7 @@ export class UnWrapSolver {
     window.uvsolver = this;
 
     this.preserveIslands = preserveIslands;
+    this.selLoopsOnly = selLoopsOnly;
 
     this.mesh = mesh;
     this.faces = new Set(faces);
@@ -171,9 +176,9 @@ export class UnWrapSolver {
 
     let wr = this.uvw;
 
-    wr.buildIslands(true);
+    wr.buildIslands(!this.preserveIslands);
 
-    if (this.preserveIslands) {
+    if (this.preserveIslands || this.selLoopsOnly) {
       for (let island of wr.islands) {
         wr.updateAABB(island);
 
@@ -184,6 +189,10 @@ export class UnWrapSolver {
     }
 
     for (let island of wr.islands) {
+      if (this.selLoopsOnly && !island.hasSelLoops) {
+        continue;
+      }
+
       let no = new Vector3();
       let co = new Vector3();
       let tot = 0.0;
@@ -258,11 +267,15 @@ export class UnWrapSolver {
     }
 
     if (!this.preserveIslands) {
-      wr.packIslands();
+      this.packIslands();
     }
 
     this.buildSolver();
     wr.finish();
+  }
+
+  packIslands() {
+    //this.uvw.packIslands(true, true);
   }
 
   buildSolver(includeArea=true) {
@@ -568,7 +581,10 @@ export class UnWrapSolver {
     for (let island of wr.islands) {
       wr.updateAABB(island);
 
-      if (!this.preserveIslands) {
+      let ok = !island.hasPins && !this.preserveIslands;
+      ok = ok && !(this.selLoopsOnly && !island.hasSelLoops);
+
+      if (ok) {
         for (let v of island) {
           v.sub(island.min).div(island.boxsize);
           v[2] = 0.0;
@@ -577,6 +593,10 @@ export class UnWrapSolver {
     }
 
     for (let island of this.uvw.islands) {
+      if (this.selLoopsOnly && !island.hasSelLoops) {
+        continue;
+      }
+
       let tris = new Set();
       let solver = new Solver();
 
@@ -632,16 +652,19 @@ export class UnWrapSolver {
         //}
 
         let params = [v1, v2, v3, goalth, wind];
+        let klst = [v1, v2, v3].filter(v => !v.hasPins);
 
-        let con = new Constraint("angle_c", angle_c, [v1, v2, v3], params);
-        let r = con.evaluate();
+        if (klst.length > 0) {
+          let con = new Constraint("angle_c", angle_c, klst, params);
+          let r = con.evaluate();
 
-        con.df = df;
+          con.df = df;
 
-        //con.k = 1.0 / (1.0 + Math.abs(r));
-        //con.k = 1/(1.0+math.tri_area(v1, v2, v3) / maxarea);
+          //con.k = 1.0 / (1.0 + Math.abs(r));
+          //con.k = 1/(1.0+math.tri_area(v1, v2, v3) / maxarea);
 
-        solver.add(con);
+          solver.add(con);
+        }
       }
 
       let ratio = 1.0/totarea2;
@@ -679,9 +702,10 @@ export class UnWrapSolver {
       for (let tri of tris) {
         let goal = tri.worldArea*ratio*wind*1.0;
         let params = [wind, tri.v1, tri.v2, tri.v3, goal, 100.0/totarea];
+        let klst = [tri.v1, tri.v2, tri.v3].filter(v => !v.hasPins);
 
-        if (includeArea) {
-          let con = new Constraint("area_c", area_c, [tri.v1, tri.v2, tri.v3], params);
+        if (includeArea && klst.length > 0) {
+          let con = new Constraint("area_c", area_c, klst, params);
           con.df = df;
           let r = Math.abs(con.evaluate());
           con.threshold = 0.0001;
@@ -930,6 +954,7 @@ export class UnWrapSolver {
       //least squares
       //err += this.solveIntern(slv, count, gk);
 
+      //guess-seidel
       slv.solve(1, gk);
     }
 
@@ -953,7 +978,7 @@ export class UnWrapSolver {
 
     //XXX
     count = 1;
-    count2 = 5;
+    count2 = 3;
 
     let time = util.time_ms();
 
@@ -972,8 +997,23 @@ export class UnWrapSolver {
     let si = 0;
     let tmp = new Vector3();
 
+    let smoothvs = new Set();
+    for (let island of this.uvw.islands) {
+      if (this.selLoopsOnly && !island.hasSelLoops) {
+        continue;
+      }
+
+      for (let v of island) {
+        smoothvs.add(v);
+      }
+    }
+
     let vsmooth = (fac) => {
-      for (let v of uvmesh.verts) {
+      for (let v of smoothvs) {
+        if (v.hasPins) {
+          continue;
+        }
+
         tmp.zero();
         let w = 1.0;
 
@@ -987,6 +1027,12 @@ export class UnWrapSolver {
         for (let e of v.edges) {
           let w = 1.0;
           let v2 = e.otherVertex(v);
+
+          if (v2.hasPins) {
+            w = 10000.0;
+          } else if (v2.corner) {
+            //w = 10;
+          }
 
           tmp.addFac(v2, w);
           tot += w;
@@ -1141,7 +1187,7 @@ export class UnWrapSolver {
     return true;
   }
 
-  static restoreOrRebuild(mesh, faces, solver, cd_uv, preserveIslands=false) {
+  static restoreOrRebuild(mesh, faces, solver, cd_uv, preserveIslands=false, selLoopsOnly=false) {
     if (cd_uv === undefined) {
       cd_uv = mesh.loops.customData.getLayerIndex("uv");
     }
@@ -1158,6 +1204,9 @@ export class UnWrapSolver {
       bad = true;
     } else if (solver.preserveIslands !== preserveIslands) {
       console.log("preserveIslands differs");
+      bad = true;
+    } else if (!!solver.selLoopsOnly !== !!selLoopsOnly) {
+      console.log("selLoopsOnly differ");
       bad = true;
     } else if (solver.faces.size !== faces.size) {
       console.log("Face list size differs; old:", solver.faces.size, "new:", faces.size);
@@ -1179,7 +1228,7 @@ export class UnWrapSolver {
 
     if (bad) {
       console.warn("Making new solver");
-      solver = new UnWrapSolver(mesh, faces, cd_uv, preserveIslands);
+      solver = new UnWrapSolver(mesh, faces, cd_uv, preserveIslands, selLoopsOnly);
       solver.start();
     }
 
@@ -1198,16 +1247,25 @@ export class UnWrapSolver {
     }
 
     if (!this.preserveIslands) {
-      wr.packIslands();
-    } else {
-      for (let island of wr.islands) {
-        wr.updateAABB(island);
+      this.packIslands();
+    }
 
-        for (let v of island) {
-          v.sub(island.min).div(island.boxsize).mul(island.oldsize).add(island.oldmin);
-        }
+    for (let island of wr.islands) {
+      let ok = this.preserveIslands;
+      ok = ok || (this.selLoopsOnly && !island.hasSelLoops);
+      ok = ok && !island.hasPins;
+
+      if (!ok) {
+        continue;
+      }
+
+      wr.updateAABB(island);
+
+      for (let v of island) {
+        v.sub(island.min).div(island.boxsize).mul(island.oldsize).add(island.oldmin);
       }
     }
+
 
     wr.finish();
   }
