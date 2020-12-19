@@ -178,14 +178,6 @@ export class ImageBlock extends DataBlock {
       }
     }
 
-    if (this.glType === gl.FLOAT && this.type === ImageTypes.BYTE_BUFFER) {
-      this.type = ImageTypes.FLOAT_BUFFER;
-      this.convertTypeTo(ImageTypes.BYTE_BUFFER);
-    } else if (this.glType === gl.UNSIGNED_BYTE && this.type === ImageTypes.FLOAT_BUFFER) {
-      this.type = ImageTypes.BYTE_BUFFER;
-      this.convertTypeTo(ImageTypes.FLOAT_BUFFER);
-    }
-
     //let fbuf = new Float32Array(this.width*this.height*4);
 
     gl.finish();
@@ -198,6 +190,14 @@ export class ImageBlock extends DataBlock {
     fbo.unbind(gl);
     fbo.destroy(gl);
     //copyTexImage2D
+
+    if (this.glType === gl.FLOAT && this.type === ImageTypes.BYTE_BUFFER) {
+      this.type = ImageTypes.FLOAT_BUFFER;
+      this.convertTypeTo(ImageTypes.BYTE_BUFFER);
+    } else if (this.glType === gl.UNSIGNED_BYTE && this.type === ImageTypes.FLOAT_BUFFER) {
+      this.type = ImageTypes.BYTE_BUFFER;
+      this.convertTypeTo(ImageTypes.FLOAT_BUFFER);
+    }
 
     this.flag |= ImageTypes.UPDATE;
     //this._image = undefined;

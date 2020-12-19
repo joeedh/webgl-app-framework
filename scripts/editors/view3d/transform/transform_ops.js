@@ -1,11 +1,10 @@
 import {keymap, reverse_keymap} from '../../../path.ux/scripts/util/simple_events.js';
 import {TransDataElem, TransformData, TransDataType, PropModes, TransDataTypes, TransDataList} from "./transform_base.js";
 import {MeshTransType} from "./transform_types.js";
-import {ToolOp, UndoFlags} from "../../../path.ux/scripts/toolsys/simple_toolsys.js";
-import {IntProperty, FlagProperty, EnumProperty,
+import {ToolOp, UndoFlags, IntProperty, FlagProperty, EnumProperty,
   Vec3Property, Mat4Property, FloatProperty,
   BoolProperty, PropFlags, PropTypes, PropSubTypes
-} from "../../../path.ux/scripts/toolsys/toolprop.js";
+} from "../../../path.ux/scripts/pathux.js";
 import {SelMask} from '../selectmode.js';
 import {Vector2, Vector3, EulerOrders, Vector4, Quat, Matrix4} from '../../../util/vectormath.js';
 import {View3DOp} from '../view3d_ops.js';
@@ -13,7 +12,7 @@ import {isect_ray_plane} from '../../../path.ux/scripts/util/math.js';
 import {calcTransCenter} from "./transform_query.js";
 import {CastModes, castViewRay} from '../findnearest.js';
 
-import {ListProperty, StringSetProperty} from "../../../path.ux/scripts/toolsys/toolprop.js";
+import {ListProperty, StringSetProperty} from "../../../path.ux/scripts/pathux.js";
 import {ModalFlags} from "../../../core/modalflags.js";
 
 /*

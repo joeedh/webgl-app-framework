@@ -2,10 +2,11 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 
 import {makeCube} from '../core/mesh_shapes.js';
-import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
+import {
+  IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
-  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolsys/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+  PropFlags, PropTypes, PropSubTypes, ToolOp, ToolFlags, UndoFlags
+} from '../path.ux/scripts/pathux.js';
 import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DataRefProperty} from "../core/lib_api.js";
@@ -59,17 +60,19 @@ export class MeshCreateOp extends MeshOp {
     return tool;
   }
 
-  static tooldef() {return {
-    inputs : ToolOp.inherit({
-      makeNewObject     : new BoolProperty(false),
-      transformMatrix   : new Mat4Property()
-    }),
+  static tooldef() {
+    return {
+      inputs: ToolOp.inherit({
+        makeNewObject  : new BoolProperty(false),
+        transformMatrix: new Mat4Property()
+      }),
 
-    is_modal : true,
-    outputs : {
-      newObject : new DataRefProperty()
+      is_modal: true,
+      outputs : {
+        newObject: new DataRefProperty()
+      }
     }
-  }}
+  }
 
   /** create new mesh primitive in 'mesh', multiply vertices by matrix */
   internalCreate(ob, mesh, matrix) {
@@ -115,15 +118,17 @@ export class MakePlaneOp extends MeshCreateOp {
     super();
   }
 
-  static tooldef() {return {
-    toolpath : "mesh.make_plane",
-    uiname   : "Make Plane",
-    is_modal : true,
-    inputs   : ToolOp.inherit({
-      size : new FloatProperty(1.0)
-    }),
-    outputs  : ToolOp.inherit()
-  }}
+  static tooldef() {
+    return {
+      toolpath: "mesh.make_plane",
+      uiname  : "Make Plane",
+      is_modal: true,
+      inputs  : ToolOp.inherit({
+        size: new FloatProperty(1.0)
+      }),
+      outputs : ToolOp.inherit()
+    }
+  }
 
   internalCreate(ob, mesh, mat) {
     let size = this.inputs.size.getValue()*0.5;
@@ -161,15 +166,17 @@ export class MakeCubeOp extends MeshCreateOp {
     super();
   }
 
-  static tooldef() {return {
-    toolpath : "mesh.make_cube",
-    uiname   : "Make Cube",
-    is_modal : true,
-    inputs   : ToolOp.inherit({
-      size : new FloatProperty(1.0)
-    }),
-    outputs  : ToolOp.inherit()
-  }}
+  static tooldef() {
+    return {
+      toolpath: "mesh.make_cube",
+      uiname  : "Make Cube",
+      is_modal: true,
+      inputs  : ToolOp.inherit({
+        size: new FloatProperty(1.0)
+      }),
+      outputs : ToolOp.inherit()
+    }
+  }
 
   internalCreate(ob, mesh, mat) {
     let size = this.inputs.size.getValue()*0.5;

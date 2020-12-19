@@ -4,7 +4,7 @@ import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {DataBlock, BlockFlags} from "../core/lib_api.js";
 import {GraphFlags, NodeFlags} from "../core/graph.js";
-import {ProceduralTexUser} from './proceduralTex.js';
+import {ProceduralTexUser} from '../texture/proceduralTex.js';
 
 export const BrushFlags = {
   SELECT: 1,

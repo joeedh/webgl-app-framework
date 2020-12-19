@@ -18,7 +18,7 @@ import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
   MeshFeatureError} from '../../../mesh/mesh_base.js';
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
-import {ContextOverlay} from "../../../path.ux/scripts/controller/context.js";
+import {ContextOverlay} from "../../../path.ux/scripts/pathux.js";
 import {PackFlags} from "../../../path.ux/scripts/core/ui_base.js";
 import {RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
 

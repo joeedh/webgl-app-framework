@@ -1,1 +1,1 @@
-export * from '../path.ux/scripts/controller/context.js';
+export * from '../path.ux/scripts/path-controller/controller/context.js';

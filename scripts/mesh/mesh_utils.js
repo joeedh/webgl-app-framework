@@ -1,6 +1,6 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
-import {ToolOp, ToolMacro, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {ToolOp, ToolMacro, ToolFlags, UndoFlags} from '../path.ux/scripts/pathux.js';
 import {TranslateOp} from "../editors/view3d/transform/transform_ops.js";
 import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";

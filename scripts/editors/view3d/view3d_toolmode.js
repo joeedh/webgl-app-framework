@@ -3,7 +3,7 @@ import {Vector2, Vector3} from '../../util/vectormath.js';
 import {KeyMap, HotKey} from "../editor_base.js";
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from "../../core/simplemesh.js";
 import {WidgetFlags} from "./widgets/widgets.js";
-import {EnumProperty, FlagProperty} from "../../path.ux/scripts/toolsys/toolprop.js";
+import {EnumProperty, FlagProperty} from "../../path.ux/scripts/pathux.js";
 import {Icons} from '../icon_enum.js';
 import {SelMask} from "./selectmode.js";
 import '../../path.ux/scripts/util/struct.js';

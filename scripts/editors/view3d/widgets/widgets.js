@@ -8,10 +8,9 @@ Widget Refactor Todo:
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
-import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
+import {ToolOp, ToolFlags, UndoFlags, IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property,
-  PropFlags, PropTypes, PropSubTypes} from '../../../path.ux/scripts/toolsys/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
+  PropFlags, PropTypes, PropSubTypes} from '../../../path.ux/scripts/pathux.js';
 import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {Shaders} from '../../../shaders/shaders.js';
 import {dist_to_line_2d, isect_ray_plane} from '../../../path.ux/scripts/util/math.js';

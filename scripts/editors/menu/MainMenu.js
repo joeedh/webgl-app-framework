@@ -1,5 +1,4 @@
 import {Area, BorderMask, AreaFlags} from '../../path.ux/scripts/screen/ScreenArea.js';
-import {saveFile, loadFile} from '../../path.ux/scripts/util/html5_fileapi.js';
 import {Icons} from "../icon_enum.js";
 
 import {NoteFrame, Note} from '../../path.ux/scripts/widgets/ui_noteframe.js';
@@ -8,9 +7,9 @@ import {Editor, VelPan} from '../editor_base.js';
 import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
+import {saveFile, loadFile, DataPathError, KeyMap, HotKey} from '../../path.ux/scripts/pathux.js';
+
 import "../../mesh/mesh_createops.js";
-import {DataPathError} from '../../path.ux/scripts/controller/controller.js';
-import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
 import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';

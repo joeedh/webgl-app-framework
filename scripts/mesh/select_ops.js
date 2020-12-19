@@ -1,9 +1,9 @@
 "use strict";
 
-import {ToolOp, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
 import {
-  IntProperty, EnumProperty, BoolProperty, FloatProperty, FlagProperty
-} from "../path.ux/scripts/toolsys/toolprop.js";
+  IntProperty, EnumProperty, BoolProperty,
+  FloatProperty, FlagProperty, ToolOp, UndoFlags
+} from "../path.ux/scripts/pathux.js";
 import {MeshTypes, MeshFlags} from './mesh_base.js';
 import * as util from '../util/util.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';

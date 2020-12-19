@@ -592,8 +592,9 @@ export class TexPaintOp extends ToolOp {
       sm.uniforms = uniforms;
 
       gl.enable(gl.BLEND);
+      gl.blendColor(1.0, 1.0, 1.0, 1.0);
       //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.CONSTANT_ALPHA, gl.CONSTANT_ALPHA);
       sm.draw(gl, uniforms, Shaders.TexturePaintShader);
 
       window.sm = sm;

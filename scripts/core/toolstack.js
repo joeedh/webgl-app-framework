@@ -1,4 +1,4 @@
-import {ToolStack, UndoFlags} from "../path.ux/scripts/toolsys/simple_toolsys.js";
+import {ToolStack, UndoFlags} from "../path.ux/scripts/pathux.js";
 
 export class AppToolStack extends ToolStack {
   constructor(ctx) {

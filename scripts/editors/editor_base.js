@@ -1,5 +1,6 @@
 import {
-  nstructjs, Vector2, Vector3, Vector4, ToolOp, StringProperty, Quat, Matrix4
+  nstructjs, Vector2, Vector3, Vector4, ToolOp, StringProperty, Quat, Matrix4,
+  haveModal, keymap, KeyMap, HotKey, ToolClasses, ToolFlags, ToolMacro
 } from '../path.ux/scripts/pathux.js';
 
 import * as units from '../path.ux/scripts/core/units.js';
@@ -15,13 +16,11 @@ import {Screen} from '../path.ux/scripts/screen/FrameManager.js';
 import {UIBase, saveUIData, loadUIData} from '../path.ux/scripts/core/ui_base.js';
 import {Container} from '../path.ux/scripts/core/ui.js';
 import * as util from '../util/util.js';
-import {haveModal} from "../path.ux/scripts/util/simple_events.js";
 import {warning} from "../path.ux/scripts/widgets/ui_noteframe.js";
 import {Icons} from './icon_enum.js';
 import {PackFlags} from "../path.ux/scripts/core/ui_base.js";
 
-export {keymap, KeyMap, HotKey} from '../path.ux/scripts/util/simple_events.js';
-import {keymap, KeyMap, HotKey} from '../path.ux/scripts/util/simple_events.js';
+export {keymap, KeyMap, HotKey} from '../path.ux/scripts/pathux.js';
 import {DataBlock, BlockFlags, DataRefProperty} from '../core/lib_api.js';
 
 export {VelPanFlags, VelPan} from './velpan.js';
@@ -769,7 +768,6 @@ Editor.STRUCT = STRUCT.inherit(Editor, Area) + `
 `;
 nstructjs.manager.add_class(Editor);
 
-import {ToolClasses, ToolFlags, ToolMacro} from "../path.ux/scripts/toolsys/simple_toolsys.js";
 import {Menu} from "../path.ux/scripts/widgets/ui_menu.js";
 import * as ui_base from "../path.ux/scripts/core/ui_base.js";
 import {time_ms} from "../util/util.js";

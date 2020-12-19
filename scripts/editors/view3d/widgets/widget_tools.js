@@ -2,8 +2,8 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath
 import {SimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
 import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property,
-  PropFlags, PropTypes, PropSubTypes} from '../../../path.ux/scripts/toolsys/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
+  ToolOp, ToolFlags, UndoFlags,
+  PropFlags, PropTypes, PropSubTypes} from '../../../path.ux/scripts/pathux.js';
 import {Shaders} from '../../../shaders/shaders.js';
 import {dist_to_line_2d} from '../../../path.ux/scripts/util/math.js';
 import {CallbackNode, Node, NodeFlags} from "../../../core/graph.js";
@@ -15,7 +15,7 @@ import {View3DFlags} from "../view3d_base.js";
 import {WidgetBase, WidgetSphere, WidgetArrow, WidgetFlags} from './widgets.js';
 import {TranslateOp, ScaleOp, RotateOp} from "../transform/transform_ops.js";
 import {calcTransCenter} from '../transform/transform_query.js';
-import {ToolMacro} from "../../../path.ux/scripts/toolsys/simple_toolsys.js";
+import {ToolMacro} from "../../../path.ux/scripts/pathux.js";
 import {Icons} from '../../icon_enum.js';
 
 let update_temps = util.cachering.fromConstructor(Vector3, 64);

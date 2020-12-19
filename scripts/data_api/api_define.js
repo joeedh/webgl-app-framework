@@ -26,7 +26,7 @@ import '../editors/view3d/widgets/widget_tools.js'; //ensure widget tools are al
 import {WidgetFlags} from '../editors/view3d/widgets/widgets.js';
 import {AddLightOp} from "../light/light_ops.js";
 import {Light} from '../light/light.js';
-import {DataAPI, DataPathError} from '../path.ux/scripts/controller/simple_controller.js';
+import {DataAPI, DataPathError} from '../path.ux/scripts/pathux.js';
 import {DataBlock, DataRef, Library, BlockTypes, BlockSet, BlockFlags} from '../core/lib_api.js'
 import {View3D} from '../editors/view3d/view3d.js';
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js';
@@ -59,7 +59,7 @@ import {Icons} from '../editors/icon_enum.js';
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 import {MaterialEditor} from "../editors/node/MaterialEditor.js";
 import {BrushDynamics, BrushDynChannel, BrushFlags, SculptBrush, SculptIcons, SculptTools} from "../brush/brush.js";
-import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../brush/proceduralTex.js';
+import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.js';
 import {PropModes} from '../editors/view3d/transform/transform_base.js';
 import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../image/image.js';
 

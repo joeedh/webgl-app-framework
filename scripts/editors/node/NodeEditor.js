@@ -2,9 +2,8 @@ import {Area, AreaFlags, contextWrangler} from '../../path.ux/scripts/screen/Scr
 import {Editor, VelPan} from '../editor_base.js';
 import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {startMenu} from '../../path.ux/scripts/pathux.js';
-import {DataPathError} from '../../path.ux/scripts/controller/controller.js';
-import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
+import {startMenu, DataPath, DataPathError, KeyMap, HotKey, haveModal} from '../../path.ux/scripts/pathux.js';
+
 import {UIBase, PackFlags, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
@@ -12,14 +11,12 @@ import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
 import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader_nodes.js';
 import {AddNodeOp, ConnectNodeOp} from './node_ops.js';
-import {DataPath} from "../../path.ux/scripts/controller/simple_controller.js";
 let projcos = util.cachering.fromConstructor(Vector2, 64);
 import {VelPanPanOp} from '../velpan.js';
 import {SelectOneOp, SelectOpBase} from './node_selectops.js';
 import {SelOneToolModes} from "../view3d/selectmode.js";
 import {Node, NodeFlags, SocketFlags, SocketTypes} from '../../core/graph.js';
 import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw.js';
-import {haveModal} from '../../path.ux/scripts/util/simple_events.js';
 import {layoutNode} from '../../core/graph_spatial.js';
 import {getContextArea} from "../editor_base.js";
 import {ModalFlags} from "../../core/modalflags.js";

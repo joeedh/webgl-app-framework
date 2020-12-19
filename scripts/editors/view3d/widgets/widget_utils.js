@@ -3,9 +3,9 @@ import {SimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
 import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, ListProperty,
-  PropFlags, PropTypes, PropSubTypes, StringSetProperty
-} from '../../../path.ux/scripts/toolsys/toolprop.js';
-import {ToolMacro, ToolOp, ToolFlags, UndoFlags} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
+  PropFlags, PropTypes, PropSubTypes, StringSetProperty,
+  ToolMacro, ToolOp, ToolFlags, UndoFlags, DataPathError
+} from '../../../path.ux/scripts/pathux.js';
 import {Shaders} from '../../../shaders/shaders.js';
 import {dist_to_line_2d} from '../../../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../../../core/graph.js";
@@ -20,7 +20,6 @@ import {WidgetBase, WidgetSphere, WidgetArrow, WidgetFlags} from './widgets.js';
 import {TranslateOp, ScaleOp, SnapModes} from "../transform/transform_ops.js";
 import {calcTransCenter} from '../transform/transform_query.js';
 import {Icons} from '../../icon_enum.js';
-import {DataPathError} from "../../../path.ux/scripts/controller/controller.js";
 import {PropModes, TransDataType, TransDataElem, TransDataMap, TransDataTypes} from '../transform/transform_base.js';
 import {ConstraintSpaces} from "../transform/transform_base.js";
 import {aabb_union} from '../../../util/math.js';

@@ -7,6 +7,10 @@ import {GraphFlags, NodeFlags} from "../core/graph.js";
 import {DependSocket} from '../core/graphsockets.js';
 import {RecalcFlags} from '../mesh/mesh_base.js';
 
+import {TextureShader, TextureShaderFlags} from './texture_base.js';
+import {compileTexShaderJS} from './textureGen.js';
+import './textures.js';
+
 export const PatternRecalcFlags = {
   PREVIEW: 1
 };
@@ -36,6 +40,10 @@ export class PatternGen {
       icon       : -1,
       flag       : 0
     }
+  }
+
+  genGlsl() {
+
   }
 
   copy() {

@@ -1,7 +1,7 @@
 //grab data field definition
 import {FloatProperty, ToolOp, ToolProperty, Vector2, Vector3, Vector4} from '../../../path.ux/scripts/pathux.js';
 import {BrushFlags, SculptBrush} from '../../../brush/brush.js';
-import {ProceduralTex} from '../../../brush/proceduralTex.js';
+import {ProceduralTex} from '../../../texture/proceduralTex.js';
 import {DataRefProperty} from '../../../core/lib_api.js';
 import {BVHToolMode} from './pbvh.js';
 

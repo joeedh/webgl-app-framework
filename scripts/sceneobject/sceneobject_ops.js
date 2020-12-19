@@ -1,9 +1,10 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
-import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
+import {
+  IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
-  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolsys/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+  PropFlags, PropTypes, PropSubTypes, ToolOp, ToolFlags, UndoFlags
+} from '../path.ux/scripts/pathux.js';
 import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DependSocket} from '../core/graphsockets.js';
@@ -32,15 +33,17 @@ export class DeleteObjectOp extends SceneObjectOp {
     super();
   }
 
-  static tooldef() {return {
-    toolpath : "object.delete_selected",
-    name : "delete_selected",
-    uiname : "Delete Selected",
-    description : "Delete all selected objects",
-    inputs : {},
-    outputs : {},
-    icon : -1
-  }}
+  static tooldef() {
+    return {
+      toolpath   : "object.delete_selected",
+      name       : "delete_selected",
+      uiname     : "Delete Selected",
+      description: "Delete all selected objects",
+      inputs     : {},
+      outputs    : {},
+      icon       : -1
+    }
+  }
 
   exec(ctx) {
     let scene = ctx.scene;
@@ -68,19 +71,21 @@ export class DeleteObjectOp extends SceneObjectOp {
     }
   }
 }
+
 ToolOp.register(DeleteObjectOp);
 
 //
 export class ObjectTools extends StandardTools {
-  static ToggleSelectAll(ctx, mode=SelToolModes.AUTO) {
+  static ToggleSelectAll(ctx, mode = SelToolModes.AUTO) {
     ctx.api.execTool(ctx, `object.toggle_select_all(mode=${mode})`);
   }
 
   static Delete(ctx) {
-    ctx.api.execTool(ctx, "object.delete_selected()");s
+    ctx.api.execTool(ctx, "object.delete_selected()");
+    s
   }
 
-  static SelectOne(ctx, unique=true) {
+  static SelectOne(ctx, unique = true) {
     let view3d = ctx.view3d;
     let scene = ctx.scene;
 

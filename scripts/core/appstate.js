@@ -1,6 +1,5 @@
 "use strict";
 
-import * as toolsys from '../path.ux/scripts/toolsys/simple_toolsys.js';
 import {ViewContext} from './context.js';
 import {AppToolStack} from "./toolstack.js";
 import '../editors/node/MaterialEditor.js';
