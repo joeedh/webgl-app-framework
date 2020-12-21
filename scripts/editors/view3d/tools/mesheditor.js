@@ -96,6 +96,10 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.bisect()");
     strip.tool("mesh.symmetrize()");
 
+    strip = panel.row().strip();
+    strip.tool("mesh.flip_long_tris()");
+    strip.tool("mesh.tris_to_quads()");
+
     panel = container.panel("Transform");
 
     strip = panel.row().strip();
@@ -126,6 +130,8 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.apply_grid_base()");
     strip.tool("mesh.smooth_grids()");
     strip.tool("mesh.grids_test()");
+
+
   }
 
   static buildHeader(header, addHeaderRow) {

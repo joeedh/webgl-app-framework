@@ -9,6 +9,68 @@ let quat_temps = util.cachering.fromConstructor(Quat, 512);
 let mat_temps = util.cachering.fromConstructor(Matrix4, 256);
 let vec3_temps = util.cachering.fromConstructor(Vector3, 1024);
 
+let vnistack = new Array(32);
+vnistack.cur = 0;
+
+export class VertNeighborIter {
+  constructor() {
+    this.ret = {done : false, value : undefined};
+    this.done = true;
+    this.v = undefined;
+    this.i = 0;
+  }
+
+  reset(v) {
+    this.v = v;
+    this.i = 0;
+    this.done = false
+    this.ret.done = false;
+
+    return this;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.done = true;
+      vnistack.cur--;
+      this.v = undefined;
+      this.ret.value = undefined;
+      this.ret.done = true;
+    }
+
+    return this;
+  }
+
+  return() {
+    this.finish();
+
+    return this.ret;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+
+  next() {
+    let ret = this.ret;
+    let v = this.v;
+
+    if (this.i >= v.edges.length) {
+      this.finish();
+      return this.ret;
+    }
+
+    let e = v.edges[this.i];
+    this.i++;
+
+    ret.value = e.otherVertex(v);
+    return ret;
+  }
+}
+for (let i=0; i<vnistack.length; i++) {
+  vnistack[i] = new VertNeighborIter();
+}
+
 export class Element {
   constructor(type) {
     this._initElement(type);
@@ -241,6 +303,10 @@ export class Vertex extends Vector3 {
 
   [Symbol.keystr]() {
     return this.eid;
+  }
+
+  get neighbors() {
+    return vnistack[vnistack.cur++].reset(this);
   }
 
   toJSON() {

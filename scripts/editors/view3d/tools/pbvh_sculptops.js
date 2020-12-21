@@ -903,7 +903,8 @@ export class PaintOp extends ToolOp {
     const DRAW = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
           SMOOTH = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
           PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
-          PAINT_SMOOTH = SculptTools.PAINT_SMOOTH, GRAB = SculptTools.GRAB;
+          PAINT_SMOOTH = SculptTools.PAINT_SMOOTH, GRAB = SculptTools.GRAB,
+          COLOR_BOUNDARY = SculptTools.COLOR_BOUNDARY;
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh)) {
       console.log("ERROR!");
@@ -1356,9 +1357,7 @@ export class PaintOp extends ToolOp {
         _tmp2.load(v);
         let w = 1.0;
 
-        for (let e of v.edges) {
-          let v2 = e.otherVertex(v);
-
+        for (let v2 of v.neighbors) {
           _tmp2.add(v2);
           w++;
         }
@@ -1367,6 +1366,39 @@ export class PaintOp extends ToolOp {
         v.interp(_tmp2, fac);
       }
     }
+
+    let _ctmp = new Vector3();
+    let abs = Math.abs;
+
+    let colorboundary = (v, fac) => {
+      let co = _ctmp.zero();
+      let c1 = v.customData[cd_color].color;
+
+      co.add(v);
+      let tot = 1.0;
+
+      for (let v2 of v.neighbors) {
+        let c2 = v2.customData[cd_color].color;
+
+        let dr = abs(c1[0]-c2[0]);
+        let dg = abs(c1[1]-c2[1]);
+        let db = abs(c1[2]-c2[2]);
+
+        let w = (dr*1.25 + dg*1.5 + db)*0.25;
+        //w *= w;
+
+        co.addFac(v2, w);
+        tot += w;
+      }
+
+      if (tot === 0.0) {
+        return;
+      }
+
+      co.mulScalar(1.0 / tot);
+
+      v.interp(co, fac);
+    };
 
     let cd_node = bvh.cd_node;
     let ws = new Array(vs.size);
@@ -1381,6 +1413,10 @@ export class PaintOp extends ToolOp {
     let color;
     if (have_color) {
       color = new Vector4(this.inputs.brush.getValue().color);
+    }
+
+    if (mode === COLOR_BOUNDARY && !have_color) {
+      return;
     }
 
     let wi = 0;
@@ -1464,6 +1500,8 @@ export class PaintOp extends ToolOp {
       } else if (mode === GRAB) {
         //v.load(v.customData[cd_orig].value);
         v.addFac(vec, f);
+      } else if (mode === COLOR_BOUNDARY) {
+        colorboundary(v, f*strength);
       }
 
       if (haveGrids && v.bLink) {

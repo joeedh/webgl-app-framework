@@ -45,7 +45,7 @@ let split_temp = new Array(512);
 split_temp.used = 0;
 
 let _quad = new Array(4);
-let _tri = new Array(4);
+let _tri = new Array(3);
 let _cdtemp1 = new Array(1);
 let _cdtemp2 = new Array(2);
 let _cdwtemp1 = new Array(1);
@@ -640,6 +640,16 @@ export class Mesh extends SceneObjectData {
   }
 
   makeTri(v1, v2, v3) {
+    if (!v1 || !v2 || !v3) {
+      console.log("missing verts", v1, v2, v3);
+      throw new MeshError("Missing verts in makeTri");
+    }
+
+    if (v1 === v2 || v1 === v3 || v2 === v3) {
+      console.log("duplicate verts", v1, v2, v3);
+      throw new MeshError("Duplicate verts in makeTri");
+    }
+
     _tri[0] = v1;
     _tri[1] = v2;
     _tri[2] = v3;

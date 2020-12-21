@@ -462,7 +462,7 @@ export class BVHToolMode extends ToolMode {
         dynmask |= DynamicsMask.AUTOSMOOTH;
       }
 
-      let isTexPaint = SculptTools.TEXTURE_PAINT;
+      let isTexPaint = brush.tool === SculptTools.TEXTURE_PAINT;
 
       console.log("dynmask", dynmask);
 

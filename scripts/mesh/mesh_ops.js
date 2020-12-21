@@ -5,7 +5,8 @@ import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property, StringProperty,
   PropFlags, PropTypes, PropSubTypes,
-  ToolOp, ToolMacro, ToolFlags, UndoFlags} from '../path.ux/scripts/pathux.js';
+  ToolOp, ToolMacro, ToolFlags, UndoFlags
+} from '../path.ux/scripts/pathux.js';
 import {TranslateOp} from "../editors/view3d/transform/transform_ops.js";
 import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";
@@ -22,7 +23,7 @@ import {splitEdgesSmart} from "./mesh_subdivide.js";
 import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
 import {CustomDataElem} from "./customdata.js";
-import {bisectMesh, symmetrizeMesh} from "./mesh_utils.js";
+import {bisectMesh, flipLongTriangles, symmetrizeMesh, trianglesToQuads, TriQuadFlags} from "./mesh_utils.js";
 import {QRecalcFlags} from "./mesh_grids.js";
 
 import {buildGridsSubSurf} from "./mesh_grids_subsurf.js";
@@ -113,6 +114,72 @@ export class DeleteOp extends MeshOp {
 }
 
 ToolOp.register(DeleteOp);
+
+export class FlipLongTrisOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Flip Long Triangles",
+      icon    : Icons.TRIANGLE_FLIPPER,
+      toolpath: "mesh.flip_long_tris",
+      inputs  : ToolOp.inherit(),
+      outputs : ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.delete_selected");
+
+    let selectmode = ctx.selectMask;
+    console.log("selectmode:", selectmode);
+
+    for (let mesh of this.getMeshes(ctx)) {
+
+      flipLongTriangles(mesh, mesh.faces.selected.editable);
+
+      mesh.regenBVH();
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(FlipLongTrisOp);
+
+
+export class TriToQuadsOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Triangles To Quads",
+      icon    : Icons.TRIS_TO_QUADS,
+      toolpath: "mesh.tris_to_quads",
+      inputs  : ToolOp.inherit({
+        options: new FlagProperty(TriQuadFlags.DEFAULT, TriQuadFlags)
+      }),
+      outputs : ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.tris_to_quads");
+
+    for (let mesh of this.getMeshes(ctx)) {
+      trianglesToQuads(mesh, mesh.faces.selected.editable, this.inputs.options.getValue());
+
+      mesh.regenBVH();
+      mesh.regenRender();
+      mesh.regenTesellation();
+      mesh.graphUpdate();
+      mesh.recalcNormals();
+    }
+
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(TriToQuadsOp);
 
 
 export class SymmetrizeOp extends MeshOp {

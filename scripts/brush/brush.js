@@ -31,6 +31,7 @@ export const SculptTools = {
   GRAB : 9,
   PAINT: 128,
   PAINT_SMOOTH: 129,
+  COLOR_BOUNDARY : 130,
   TEXTURE_PAINT : 150,
 };
 
@@ -367,6 +368,10 @@ export function makeDefaultBrushes() {
 
   brush = bmap[SculptTools.PAINT_SMOOTH];
   brush.autosmooth = 0.0;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+
+  brush = bmap[SculptTools.COLOR_BOUNDARY];
+  brush.autosmooth = 0.01;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
 
   brush = bmap[SculptTools.DRAW];
