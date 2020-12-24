@@ -820,7 +820,7 @@ export class View3D extends Editor {
 
     strip = header.strip();
     strip.inherit_packflag |= PackFlags.HIDE_CHECK_MARKS;
-    strip.prop("scene.toolmode[bvh]");
+    strip.prop("scene.toolmode[sculpt]");
     strip.prop("scene.toolmode[mesh]");
     strip.prop("scene.toolmode[object]");
     strip.prop("scene.toolmode[pan]");

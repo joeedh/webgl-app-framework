@@ -130,8 +130,6 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.apply_grid_base()");
     strip.tool("mesh.smooth_grids()");
     strip.tool("mesh.grids_test()");
-
-
   }
 
   static buildHeader(header, addHeaderRow) {

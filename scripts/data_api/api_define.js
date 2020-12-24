@@ -776,6 +776,7 @@ export function api_define_brush(api, cstruct) {
   bst.float("spacing", "spacing", "Spacing").range(0.01, 2.0).noUnits();
   bst.color4("color", "color", "Primary Color");
   bst.color4("bgcolor", "bgcolor", "Secondary Color");
+  bst.float("concaveFilter", "concaveFilter", "Concave Wash").range(0.0, 1.0).noUnits();
 
   bst.struct("texUser", "texUser", "Texture", api.mapStruct(ProceduralTexUser));
 

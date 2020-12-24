@@ -9,13 +9,13 @@ import {
 } from '../../../path.ux/scripts/pathux.js';
 import {GridBase, QRecalcFlags} from '../../../mesh/mesh_grids.js';
 import {CDFlags} from '../../../mesh/customdata.js';
-import {DynamicsMask, SculptTools} from '../../../brush/brush.js';
+import {BrushFlags, DynamicsMask, SculptTools} from '../../../brush/brush.js';
 import {Loop, Mesh, MeshFlags} from '../../../mesh/mesh.js';
 import {BVHFlags} from '../../../util/bvh.js';
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js';
 import {KdTreeFields, KdTreeFlags, KdTreeGrid} from '../../../mesh/mesh_grids_kdtree.js';
 import {splitEdgesSmart} from '../../../mesh/mesh_subdivide.js';
-import {BrushProperty, PaintSample, PaintSampleProperty} from './pbvh_base.js';
+import {BrushProperty, calcConcave, PaintSample, PaintSampleProperty} from './pbvh_base.js';
 
 let GEID =0, GEID2 =1, GDIS =2, GTOT =3;
 
@@ -456,7 +456,8 @@ export class PaintOp extends ToolOp {
   }
 
   on_mousemove(e) {
-    let mode = this.inputs.brush.getValue().tool;
+    let brush = this.inputs.brush.getValue();
+    let mode = brush.tool;
     let pressure = 1.0;
 
     if (e.was_touch && e.targetTouches && e.targetTouches.length > 0) {
@@ -492,18 +493,27 @@ export class PaintOp extends ToolOp {
     strengthMul = Math.abs(strengthMul !== 0.0 ? 1.0 / strengthMul : strengthMul);
     */
 
-    let radius = this.inputs.brush.getValue().radius;
-    let strength = this.inputs.brush.getValue().strength; //*strengthMul
-    let planeoff = this.inputs.brush.getValue().planeoff;
-    let dynmask = this.inputs.dynamicsMask.getValue();
+    let radius = brush.radius;
+    let strength = brush.strength;
+    let planeoff = brush.planeoff;
+    let autosmooth = brush.autosmooth;
+    let concaveFilter = brush.concaveFilter;
 
-    if (dynmask & DynamicsMask.STRENGTH) {
-      strength *= this.inputs.strengthCurve.evaluate(pressure);
+    let ch;
+
+    let getdyn = (key, val) => {
+      let ch = brush.dynamics.getChannel(key);
+      if (ch.useDynamics) {
+        return val*ch.curve.evaluate(pressure);
+      } else {
+        return val;
+      }
     }
 
-    if (dynmask & DynamicsMask.RADIUS) {
-      radius *= this.inputs.radiusCurve.evaluate(pressure);
-    }
+    strength = getdyn("strength", strength);
+    radius = getdyn("radius", radius);
+    autosmooth = getdyn("autosmooth", autosmooth);
+    concaveFilter = getdyn("concaveFilter", concaveFilter);
 
     if (toolmode) {
       toolmode._radius = radius;
@@ -735,12 +745,6 @@ export class PaintOp extends ToolOp {
         }
       }
 
-      let autosmooth = this.inputs.brush.getValue().autosmooth;
-
-      if (dynmask & DynamicsMask.AUTOSMOOTH) {
-        autosmooth *= this.inputs.autosmoothCurve.evaluate(pressure);
-      }
-
       let ps = new PaintSample();
 
       ps.invert = invert;
@@ -748,6 +752,7 @@ export class PaintOp extends ToolOp {
       ps.p[3] = w;
       ps.viewPlane.load(view).normalize();
 
+      ps.concaveFilter = concaveFilter;
       ps.autosmooth = autosmooth;
       ps.esize = esize;
       ps.vec.load(vec2);
@@ -1410,7 +1415,9 @@ export class PaintOp extends ToolOp {
     }
     have_color = cd_color >= 0;
 
-    let color;
+    let color, concaveFilter = ps.concaveFilter;
+    let invertConcave = brush.flag & BrushFlags.INVERT_CONCAVE_FILTER;
+
     if (have_color) {
       color = new Vector4(this.inputs.brush.getValue().color);
     }
@@ -1486,6 +1493,19 @@ export class PaintOp extends ToolOp {
       } else if (mode === DRAW) {
         v.addFac(vec, f);//
       } else if (have_color && mode === PAINT) {
+        if (concaveFilter !== 0.0) {
+          let cf = calcConcave(v);
+
+          if (invertConcave) {
+            cf = 1.0 - cf;
+          }
+
+          cf = Math.pow(cf*1.25, (concaveFilter+1.0)*4.0);
+          cf = cf < 0.0 ? 0.0 : cf;
+          cf = cf > 1.0 ? 1.0 : cf;
+
+          f *= cf;
+        }
         let c = v.customData[cd_color];
 
         c.color.interp(color, f * strength);

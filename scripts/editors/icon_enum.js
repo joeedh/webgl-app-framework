@@ -103,6 +103,7 @@ export let Icons = {
   SELECT_INVERSE : 97,
   SCULPT_TEXTURE_PAINT : 98,
   TRIANGLE_FLIPPER : 99,
-  TRIS_TO_QUADS : 100
+  TRIS_TO_QUADS : 100,
+  SCULPT_MODE : 101
 };
 setIconMap(Icons);

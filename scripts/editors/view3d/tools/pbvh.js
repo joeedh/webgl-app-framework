@@ -48,6 +48,8 @@ import './pbvh_sculptops.js';
 import './pbvh_base.js';
 import './pbvh_texpaint.js';
 
+import {calcConcave} from './pbvh_base.js';
+
 export class BVHToolMode extends ToolMode {
   constructor(manager) {
     super(manager);
@@ -153,9 +155,9 @@ export class BVHToolMode extends ToolMode {
 
   static toolModeDefine() {
     return {
-      name        : "bvh",
-      uiname      : "bvh test",
-      icon        : Icons.FACE_MODE,
+      name        : "sculpt",
+      uiname      : "Sculpt",
+      icon        : Icons.SCULPT_MODE,
       flag        : 0,
       description : "Test bvh",
       selectMode  : SelMask.OBJECT | SelMask.GEOM, //if set, preferred selectmode, see SelModes
@@ -208,6 +210,8 @@ export class BVHToolMode extends ToolMode {
       panel.prop(path + `.brush.dynamics.${name}.curve`);
       panel.closed = true;
       panel.setCSS();
+
+      return col2;
     }
 
     panel = col.panel("Texture");
@@ -242,6 +246,9 @@ export class BVHToolMode extends ToolMode {
     doChannel("radius");
     doChannel("strength");
     doChannel("autosmooth");
+
+    let p = doChannel("concaveFilter");
+    p.prop(path + ".brush.flag[INVERT_CONCAVE_FILTER]");
 
     col.prop(path + ".brush.spacing");
     col.prop(path + ".brush.color");
@@ -452,16 +459,6 @@ export class BVHToolMode extends ToolMode {
         brush = this.getBrush(smoothtool);
       }
 
-      if (brush.dynamics.radius.useDynamics) {
-        dynmask |= DynamicsMask.RADIUS;
-      }
-      if (brush.dynamics.strength.useDynamics) {
-        dynmask |= DynamicsMask.STRENGTH;
-      }
-      if (brush.dynamics.autosmooth.useDynamics) {
-        dynmask |= DynamicsMask.AUTOSMOOTH;
-      }
-
       let isTexPaint = brush.tool === SculptTools.TEXTURE_PAINT;
 
       console.log("dynmask", dynmask);
@@ -488,12 +485,6 @@ export class BVHToolMode extends ToolMode {
 
           strength: brush.strength,
           tool    : e.shiftKey ? smoothtool : brush.tool,
-
-          dynamicsMask   : dynmask,
-          radiusCurve    : brush.radius.curve,
-          strengthCurve  : brush.strength.curve,
-          autosmoothCurve: brush.autosmooth.curve,
-          falloff        : brush.falloff,
 
           dynTopoLength   : this.dynTopoLength,
           dynTopoDepth    : this.dynTopoDepth,
@@ -1081,6 +1072,7 @@ export class BVHToolMode extends ToolMode {
       nsmooth = (v) => v.no;
 
       function vcavity(v) {
+        return 1.0 - calcConcave(v);
         let sum = 0.0, tot = 0.0;
 
         if (have_grids) {

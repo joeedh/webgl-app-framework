@@ -4,6 +4,7 @@ import {BrushFlags, SculptBrush} from '../../../brush/brush.js';
 import {ProceduralTex} from '../../../texture/proceduralTex.js';
 import {DataRefProperty} from '../../../core/lib_api.js';
 import {BVHToolMode} from './pbvh.js';
+import {CDFlags} from '../../../mesh/customdata.js';
 
 export let BRUSH_PROP_TYPE;
 export class BrushProperty extends ToolProperty {
@@ -69,6 +70,7 @@ export class PaintSample {
     this.vec = new Vector3();
     this.dvec = new Vector3();
 
+    this.concaveFilter = 0.0;
     this.strength = 0.0;
     this.radius = 0.0;
     this.autosmooth = 0.0;
@@ -88,6 +90,7 @@ export class PaintSample {
     b.autosmooth = this.autosmooth;
     b.esize = this.esize;
     b.planeoff = this.planeoff;
+    b.concaveFilter = this.concaveFilter;
   }
 
   copy()  {
@@ -100,16 +103,17 @@ export class PaintSample {
 }
 PaintSample.STRUCT = `
 PaintSample {
-  p            : vec4;
-  dp           : vec4;
-  vec          : vec3;
-  dvec         : vec3;
-  planeoff     : float;
-  strength     : float;
-  angle        : float;
-  radius       : float;
-  autosmooth   : float;
-  viewPlane    : vec3;
+  p              : vec4;
+  dp             : vec4;
+  vec            : vec3;
+  dvec           : vec3;
+  planeoff       : float;
+  strength       : float;
+  angle          : float;
+  radius         : float;
+  autosmooth     : float;
+  viewPlane      : vec3;
+  concaveFilter  : float;
 }`;
 nstructjs.register(PaintSample);
 
@@ -345,3 +349,50 @@ export class SetBrushRadius extends ToolOp {
 }
 
 ToolOp.register(SetBrushRadius);
+
+let co = new Vector3();
+let t1 = new Vector3();
+let t2 = new Vector3();
+
+export function calcConcave(v) {
+  co.zero();
+  let tot = 0.0;
+  let elen = 0;
+
+  for (let v2 of v.neighbors) {
+    co.add(v2);
+    elen += v2.vectorDistance(v);
+
+    tot++;
+  }
+
+  if (tot === 0.0) {
+    return 0.5;
+  }
+
+  elen /= tot;
+
+  co.mulScalar(1.0 / tot);
+  t1.load(v).sub(co).mulScalar(1.0 / elen);
+  let fac = t1.dot(v.no)*0.5 + 0.5;
+
+  return 1.0 - fac;
+}
+
+export function calcConcaveLayer(mesh) {
+  let name = "_paint_concave";
+
+  let cd_concave = mesh.verts.customData.getNamedLayerIndex(name, "float");
+  if (cd_concave < 0) {
+    let layer = mesh.verts.addCustomDataLayer("float", name);
+    layer.flag |= CDFlags.TEMPORARY;
+
+    cd_concave = layer.index;
+  }
+
+
+
+  for (let v of mesh.verts) {
+
+  }
+}
