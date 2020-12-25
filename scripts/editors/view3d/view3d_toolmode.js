@@ -152,7 +152,7 @@ export class ToolMode extends Node {
     let descr = {};
 
     enumdef.NONE = 0;
-    icons.NONE = -1;
+    icons.NONE = Icons.DISABLED;
     uinames.NONE = "disable"
     descr.NONE = "Hide transform widgets"
 

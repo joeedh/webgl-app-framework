@@ -1153,6 +1153,24 @@ export class Texture {
     return this;
   }
 
+  initEmpty(gl, target, width, height, format=gl.RGBA, type=gl.FLOAT) {
+    this.target = target;
+    //this.width = width;
+    //this.height = height;
+    //this.format = format;
+    //this.type = type;
+
+    if (!this.texture) {
+      this.texture = gl.createTexture();
+      Texture.defaultParams(gl, this.texture, target);
+    }
+
+    gl.bindTexture(this.texture);
+    gl.texImage2D(this.target, 0, format, width, height, 0, format, type, null);
+
+    return this;
+  }
+
   static load(gl, width, height, data, target = gl.TEXTURE_2D) {
     return new Texture(0).load(...arguments);
   }

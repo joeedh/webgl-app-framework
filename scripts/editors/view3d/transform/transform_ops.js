@@ -383,7 +383,9 @@ export class TransformOp extends View3DOp {
     let r = this.inputs.propRadius.getValue();
     r *= view3d.glSize[1]/sco[3]/dpi;
 
-    this.addDrawCircle2D(sco, r, "rgba(0.8,0.8,0.8,1.0)")
+    if (this.inputs.propEnabled.getValue()) {
+      this.addDrawCircle2D(sco, r, "rgba(0.8,0.8,0.8,1.0)")
+    }
 
     if (c.dot(c) === 1.0) {
       let v1 = new Vector3(c), v2 = new Vector3();

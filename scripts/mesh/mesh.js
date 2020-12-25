@@ -513,6 +513,8 @@ export class Mesh extends SceneObjectData {
       e.h2.load(e.v1).interp(e.v2, 2.0 / 3.0);
     }
 
+    e.flag |= MeshFlags.UPDATE;
+
     return e;
   }
 

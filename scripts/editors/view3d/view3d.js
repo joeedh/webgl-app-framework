@@ -913,6 +913,7 @@ export class View3D extends Editor {
     this.overdraw.ctx = this.ctx;
     //this.overdraw.zindex_base = 5;
 
+
     this.overdraw.startNode(this, this.ctx.screen);
     this.overdraw.remove();
     this.shadow.appendChild(this.overdraw);
@@ -1012,12 +1013,12 @@ export class View3D extends Editor {
 
       let x = r[0], y = r[1];
 
+      this.push_ctx_active();
+
       if (this.doEvent("mousedown", e)) {
         this.pop_ctx_active();
         return;
       }
-
-      this.push_ctx_active();
 
       this.updateCursor();
 
@@ -1454,8 +1455,10 @@ export class View3D extends Editor {
     //console.log("DPI", dpi);
 
     let screen = this.ctx.screen;
-    let rect = screen.getClientRects();
-    y = rect.height - y;
+    let rect = screen.getBoundingClientRect();
+
+    y = screen.size[1]*dpi - y - h;
+    //y += h;
 
     this.glPos = new Vector2([~~x, ~~y]);
     this.glSize = new Vector2([~~w, ~~h]);

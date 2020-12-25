@@ -825,7 +825,7 @@ export class PaintOp extends ToolOp {
     this.grabEidMap = undefined;
   }
 
-  _ensuregrabEidMap(ctx) {
+  _ensureGrabEidMap(ctx) {
     let mesh = ctx.mesh;
 
     if (!this.grabEidMap) {
@@ -895,14 +895,14 @@ export class PaintOp extends ToolOp {
   }
 
   execDot(ctx, ps, lastps) {//ctx, p3, vec, extra, lastp3 = p3) {
-    let falloff = this.inputs.falloff.getValue();
     let brush = this.inputs.brush.getValue();
+    let falloff = brush.falloff;
     let haveTex = brush.texUser.texture !== undefined;
     let texScale = 1.0;
     let tex = brush.texUser.texture;
 
     if (this.inputs.brush.getValue().tool === SculptTools.GRAB) {
-      this._ensuregrabEidMap(ctx);
+      this._ensureGrabEidMap(ctx);
     }
 
     const DRAW = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,

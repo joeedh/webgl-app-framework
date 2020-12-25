@@ -1344,7 +1344,7 @@ export class UnwrapSolveOp extends UnwrapOpBase {
       toolpath: "mesh.unwrap_solve",
       icon    : -1,
       inputs  : ToolOp.inherit({
-        preserveIslands: new BoolProperty().setFlag(PropFlags.SAVE_LAST_VALUE)
+        preserveIslands: new BoolProperty(false).setFlag(PropFlags.SAVE_LAST_VALUE)
       }),
       outputs : ToolOp.inherit()
     }
