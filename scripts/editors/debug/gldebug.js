@@ -209,7 +209,7 @@ export class glDebug {
 
     gl.blitFramebuffer(vp[0], vp[1], vp[0]+vp[2], vp[1]+vp[3], 0, 0, vp[2], vp[3], mask, filter)
 
-    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, dbuf);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, dbuf);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, rbuf);
 
     this.pushFBO(name, fbo);

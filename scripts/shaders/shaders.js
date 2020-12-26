@@ -1284,6 +1284,7 @@ varying vec3 vNormal;
 varying vec2 vParams;
 
 //{PolygonOffset.pre}
+//{BRUSH_TEX_PRE}
 
 void main() {
   vec4 p = vec4(position, 1.0);
@@ -1345,7 +1346,20 @@ void main() {
   c.rgb *= cell[1];
 #endif
   
-#if 1
+#ifdef BRUSH_TEX
+{
+  float inP = vColor.xyz/vColor.w;
+  vec4 outC;
+
+{  
+  BRUSH_TEX
+}
+ 
+  c *= outC;
+}
+#endif
+
+#if 0
 {
   vec3 p = vColor.xyz/vColor.w*0.0875;
   vec2 p2 = rot2d(p.xy, angle);

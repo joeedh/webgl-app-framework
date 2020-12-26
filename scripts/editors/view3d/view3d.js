@@ -765,7 +765,7 @@ export class View3D extends Editor {
     let p = curtemps.next().zero();
     p.multVecMatrix(mat);
 
-    if (this.orbitMode == OrbitTargetModes.CURSOR) {
+    if (this.orbitMode === OrbitTargetModes.CURSOR) {
       let redraw = this.camera.target.vectorDistance(p) > 0.0;
 
       this.camera.target.load(p);

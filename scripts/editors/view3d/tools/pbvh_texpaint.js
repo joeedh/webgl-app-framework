@@ -3,9 +3,9 @@ import * as util from '../../../util/util.js';
 import {
   BoolProperty,
   Curve1DProperty,
-  EnumProperty, FlagProperty, FloatArrayProperty, FloatProperty, IntProperty, Matrix4, Quat, ToolOp, Vec3Property,
-  Vec4Property,
-  Vector2, Vector3,
+  EnumProperty, FlagProperty, FloatArrayProperty,
+  FloatProperty, IntProperty, Matrix4, Quat, ToolOp,
+  Vec3Property, Vec4Property, Vector2, Vector3,
   Vector4, math, Mat4Property, Vec2Property
 } from '../../../path.ux/scripts/pathux.js';
 import {DynamicsMask, SculptTools} from '../../../brush/brush.js';
@@ -14,13 +14,14 @@ import {GridBase} from '../../../mesh/mesh_grids.js';
 import {ImageTypes} from '../../../image/image.js';
 import {FBO} from '../../../core/fbo.js';
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
-import {Shaders} from '../../../shaders/shaders.js';
+import {Shaders, ShaderDef} from '../../../shaders/shaders.js';
 import {getFBODebug} from '../../debug/gldebug.js';
-import {Texture} from '../../../core/webgl.js';
+import {Texture, getShader} from '../../../core/webgl.js';
+import {project} from '../view3d_utils.js';
 
 let _id = 0;
 
-let UNDO_TILESIZE = 256;
+import {tileManager, UNDO_TILESIZE} from '../../../image/gpuimage.js';
 
 export class TexPaintOp extends ToolOp {
   constructor() {
@@ -42,11 +43,40 @@ export class TexPaintOp extends ToolOp {
         brush    : new BrushProperty(),
         samples  : new PaintSampleProperty(),
         rendermat: new Mat4Property(),
-        glSize   : new Vec2Property()
+        glSize   : new Vec2Property(),
+        viewSize : new Vec2Property()
       },
 
       is_modal: true
     }
+  }
+
+  getShader(gl, brush) {
+    let sdef = Object.assign({}, ShaderDef.TexturePaintShader);
+
+    let uniforms = {
+      brushAngle : 0.0
+    };
+
+    if (brush.texUser.texture) {
+      let pre = '#define BRUSH_TEX\n';
+
+      let tex = brush.texUser.texture;
+      pre += tex.genGlslPre("inP", "outC", uniforms);
+
+      let code = tex.genGlsl("inP", "outC", uniforms);
+
+      //put code in new block scope
+      code = `{\n${code}\n}\n`;
+
+      let frag = sdef.fragment;
+      frag = frag.replace(/\/\/\{BRUSH_TEX_PRE\}/, pre);
+      frag = frag.replace(/\BRUSH_TEX/, code);
+
+      sdef.fragment = frag.trim();
+    }
+
+    return getShader(gl, sdef);
   }
 
   on_keydown(e) {
@@ -91,8 +121,11 @@ export class TexPaintOp extends ToolOp {
 
     let cam = view3d.activeCamera;
 
+    let rendermat = cam.rendermat;
+
     this.inputs.rendermat.setValue(cam.rendermat);
     this.inputs.glSize.setValue(view3d.glSize);
+    this.inputs.viewSize.setValue(view3d.size);
 
     let ob = ctx.object;
 
@@ -166,7 +199,7 @@ export class TexPaintOp extends ToolOp {
     let p4 = new Vector4(isect.p);
     p4[3] = 1.0;
 
-    p4.multVecMatrix(view3d.activeCamera.rendermat);
+    p4.multVecMatrix(rendermat);
     let w = p4[3];
 
     if (w < 0.0) {
@@ -193,10 +226,21 @@ export class TexPaintOp extends ToolOp {
 
     let th = Math.atan2(dy, dx);
 
+    let list = this.inputs.samples.getValue();
+    let lastw;
+
+    if (list.length > 0) {
+      lastw = list[list.length-1].w;
+    } else {
+      lastw = w;
+    }
+
     for (let i = 0; i < steps; i++) {
       let t = i/(steps - 1);
 
       let ps = new PaintSample();
+
+      ps.w = w + (lastw - w) * t;
 
       ps.viewvec.load(view);
       ps.vieworigin.load(origin);
@@ -258,7 +302,6 @@ export class TexPaintOp extends ToolOp {
 
     let texture = ctx.activeTexture;
 
-
     if (!texture.ready) {
       return;
     }
@@ -272,7 +315,7 @@ export class TexPaintOp extends ToolOp {
         texture._drawFBO.destroy(gl);
         texture._drawFBO = undefined;
       }
-      
+
       texture.convertTypeTo(ImageTypes.FLOAT_BUFFER);
       texture.update();
     }
@@ -283,10 +326,7 @@ export class TexPaintOp extends ToolOp {
 
     let fbo;
 
-    if (!texture._drawFBO) {
-      texture._drawFBO = new FBO(gl, texture.width, texture.height);
-      texture._drawFBO.create(gl);
-    }
+    texture.getDrawFBO(gl);
 
     let co = new Vector3(ps.p);
     let w = ps.p[3];
@@ -348,15 +388,20 @@ export class TexPaintOp extends ToolOp {
 
     // */
 
+    let rendermat = this.inputs.rendermat.getValue(); //view3d.activeCamera.rendermat;
+    let glSize = this.inputs.glSize.getValue();
+    let viewSize = this.inputs.viewSize.getValue();
+
     let brush = this.inputs.brush.getValue();
     let brushco = new Vector3(ps.p);
 
-    let view3d = CTX.view3d;
-    let w0 = view3d.project(brushco);
+    let w0 = project(brushco, rendermat, viewSize);
     brushco.load(ps.mpos);
     brushco[2] = 0.0;
 
     let radius2 = brush.radius;
+    radius2 *= 0.5;
+
     //radius2 = radius;
 
     let sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.CUSTOM); // | LayerTypes.COLOR | LayerTypes.NORMAL);
@@ -373,8 +418,6 @@ export class TexPaintOp extends ToolOp {
     let size = new Vector2().loadXY(texture.width, texture.height);
     let isize = new Vector2().addScalar(1.0).div(size);
 
-    let rendermat = view3d.activeCamera.rendermat;
-
     let texelU = 1.0/texture.width;
     let texelV = 1.0/texture.height;
 
@@ -382,7 +425,6 @@ export class TexPaintOp extends ToolOp {
 
     let centuv = new Vector2();
     let duv = new Vector2();
-    let glSize = view3d.glSize;
 
     function getcorner(l) {
       return wrangler.loopMap.get(l).corner;
@@ -454,17 +496,10 @@ export class TexPaintOp extends ToolOp {
 
       p1[3] = p2[3] = p3[3] = 1.0;
 
-      view3d.project(p1);
-      view3d.project(p2);
-      view3d.project(p3);
 
-
-      //p1[3] = view3d.project(p1);
-      //p2[3] = view3d.project(p2);
-      //p3[3] = view3d.project(p3);
-
-      //p1[3] = p2[3] = p3[3] = 1.0;
-      //tri2.colors(p1, p2, p3);
+      project(p1, rendermat, viewSize);
+      project(p2, rendermat, viewSize);
+      project(p3, rendermat, viewSize);
 
       let triuv;
 
@@ -573,8 +608,10 @@ export class TexPaintOp extends ToolOp {
 
       console.log(ssize, smin, smax);
 
-      let gldebug = getFBODebug(gl);
-      let savetile = new FBO(gl, ssize[0], ssize[1]);
+      //let gldebug = getFBODebug(gl);
+      let tile = tileManager.alloc(gl);
+
+      let savetile = tile.fbo; //new FBO(gl, ssize[0], ssize[1]);
       savetile.update(gl, ssize[0], ssize[1]);
 
       let sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV);
@@ -609,7 +646,7 @@ export class TexPaintOp extends ToolOp {
       gl.depthMask(false);
 
       gl.clearColor(0, 0, 0, 1);
-      gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
       savetile.bind(gl);
 
@@ -617,22 +654,22 @@ export class TexPaintOp extends ToolOp {
 
       gl.finish();
 
-      let rowsize = Math.ceil(texture.width / UNDO_TILESIZE);
+      let rowsize = Math.ceil(texture.width/UNDO_TILESIZE);
       let id = ty*rowsize + tx;
 
-      gldebug.saveDrawBuffer("undotile:" + id); //"buf:" + (_id++));
+      //gldebug.saveDrawBuffer("undotile:" + id); //"buf:" + (_id++));
 
       gl.finish();
       savetile.unbind(gl);
 
-      savetile.x = tx*UNDO_TILESIZE;
-      savetile.y = ty*UNDO_TILESIZE;
-      savetile.u = (tx*UNDO_TILESIZE)/texture.width;
-      savetile.v = (ty*UNDO_TILESIZE)/texture.height;
+      tile.x = tx*UNDO_TILESIZE;
+      tile.y = ty*UNDO_TILESIZE;
+      tile.u = (tx*UNDO_TILESIZE)/texture.width;
+      tile.v = (ty*UNDO_TILESIZE)/texture.height;
 
       sm.destroy(gl);
 
-      return savetile;
+      return tile;
     }
 
     let saveUndoTile = (smin, smax) => {
@@ -669,7 +706,7 @@ export class TexPaintOp extends ToolOp {
 
     if (1) {
       let smin = new Vector2(umin), smax = new Vector2(umax);
-      if (!fbo.___bleh) {
+      if (!fbo.__first) {
         smin.zero();
         smax[0] = texture.width;
         smax[1] = texture.height;
@@ -684,10 +721,10 @@ export class TexPaintOp extends ToolOp {
       gl.depthMask(false);
       gl.disable(gl.DEPTH_TEST);
 
-      if (!fbo.___bleh) {
+      if (!fbo.__first) {
         gl.disable(gl.SCISSOR_TEST);
 
-        fbo.___bleh = true;
+        fbo.__first = true;
       } else {
         gl.enable(gl.SCISSOR_TEST);
         gl.scissor(umin[0], umin[1], (umax[0] - umin[0]), (umax[1] - umin[1]));
@@ -712,12 +749,13 @@ export class TexPaintOp extends ToolOp {
         uColor          : color,
         brushCo         : brushco,
         radius          : radius2,
-        angle           : ps.angle
+        brushAngle      : ps.angle
       };
 
       gl.depthMask(false);
 
-      sm.program = Shaders.TexturePaintShader;
+      sm.program = this.getShader(gl, brush);
+      //sm.program = Shaders.TexturePaintShader;
       sm.uniforms = uniforms;
 
       gl.enable(gl.BLEND);
@@ -740,14 +778,7 @@ export class TexPaintOp extends ToolOp {
 
       fbo.unbind(gl);
 
-      let temp = gltex = texture.glTex;
-      texture.glTex = fbo.texColor;
-
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      gl.finish();
-
-      fbo.setTexColor(gl, temp);
-      gl.bindTexture(gl.TEXTURE_2D, null);
+      texture.swapWithFBO(gl);
     }
 
     if (haveColor && 0) {
@@ -796,7 +827,97 @@ export class TexPaintOp extends ToolOp {
   }
 
   undo(ctx) {
-    console.warn("undoPre: implement me!");
+    console.warn("undo: implement me!");
+    console.log(this._tiles);
+
+    if (!ctx.mesh || !ctx.activeTexture) {
+      return;
+    }
+
+    let texture = ctx.activeTexture;
+
+    //check texture is in proper float buffer state
+    if (texture.type !== ImageTypes.FLOAT_BUFFER) {
+      texture.convertTypeTo(ImageTypes.FLOAT_BUFFER);
+      texture.update();
+    }
+
+    if (!texture.ready || !texture.glTex) {
+      if (texture.ready) {
+        texture.getGlTex(ctx.gl);
+      }
+
+      //hrm, should be a rare case
+      if (this._tiles.length > 0) {
+        console.warn("Texture race condition?");
+        let time = util.time_ms();
+
+        //try again
+        window.setTimeout(() => {
+          //is texture still not ready after 5 seconds?
+          if (util.time_ms() - time > 5000) {
+            console.warn("Undo timeout");
+            return;
+          }
+
+          this.undo(ctx);
+        }, 10);
+
+        return;
+      }
+      return;
+    }
+
+    let gl = ctx.gl;
+
+    console.log("texture paint undo!");
+
+    let dbuf = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING);
+    let rbuf = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING);
+
+    let fbo = texture.getDrawFBO(gl);
+
+    fbo.bind(gl);
+
+    gl.disable(gl.DEPTH_TEST);
+    gl.depthMask(false);
+    gl.disable(gl.SCISSOR_TEST);
+    gl.disable(gl.CULL_FACE);
+    gl.disable(gl.BLEND);
+    gl.disable(gl.DITHER);
+
+    fbo.drawQuad(gl, texture.width, texture.height, texture.glTex, null);
+    fbo.unbind(gl);
+
+    for (let tile of this._tiles) {
+      let tilefbo = tile.fbo;
+
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, tilefbo.fbo);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo.fbo);
+
+      let w = tile.width, h = tile.height;
+
+      w = Math.max(w + tile.x, texture.width - 1) - tile.x;
+      h = Math.max(h + tile.y, texture.height - 1) - tile.y;
+
+      console.log(w, h, tile.x, tile.y);
+
+      gl.blitFramebuffer(0, 0, w, h,
+        tile.x, tile.y, tile.x + w, tile.y + h,
+        gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    }
+
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, dbuf);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, rbuf);
+
+    gl.enable(gl.DITHER);
+
+    fbo.__first = true;
+
+    texture.swapWithFBO(gl);
+    texture.freeDrawFBO(gl);
+
+    window.redraw_viewport(true);
   }
 
   modalEnd() {

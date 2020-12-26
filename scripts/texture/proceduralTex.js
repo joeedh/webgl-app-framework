@@ -43,7 +43,33 @@ export class PatternGen {
   }
 
   genGlsl() {
+    console.error("Implement me! genGlsl!");
+  }
 
+  genGlslPre(inC, outP, uniforms={}) {
+    let uniforms2 = this.constructor.patternDefine().uniforms || {};
+
+    let pre = '';
+
+    for (let k in uniforms2) {
+      let v = uniforms2[k];
+
+      pre += `uniform ${v} ${k};\n`;
+    }
+
+    return pre;
+  }
+
+  bindUniforms(uniforms) {
+    let uniforms2 = this.constructor.patternDefine().uniforms || {};
+
+    let pre = '';
+
+    for (let k in uniforms2) {
+      uniforms[k] = this[k];
+    }
+
+    return this;
   }
 
   copy() {
@@ -309,7 +335,108 @@ SimpleNoise.STRUCT = nstructjs.inherit(SimpleNoise, PatternGen) + `
 PatternGen.register(SimpleNoise);
 nstructjs.register(SimpleNoise);
 
+let mevals = util.cachering.fromConstructor(Vector3, 64);
 
+export class MoireNoise extends PatternGen {
+  constructor() {
+    super();
+
+    this.dynamicAngle = false;
+    this.angleOffset = 0.0;
+  }
+
+  copyTo(b) {
+    super.copyTo(b);
+
+    b.dynamicAngle = this.dynamicAngle;
+    b.angleOffset = this.angleOffset;
+  }
+
+  static defineAPI(api) {
+    let st = super.defineAPI(api);
+
+    st.bool("dynamicAngle", "dynamicAngle", "Rake Mode");
+    st.float("angleOffset", "angleOffset", "Angle").noUnits().range(-Math.PI*2, Math.PI*2);
+
+    return st;
+  }
+
+  calcUpdateHash(digest) {
+    digest.add(this.dynamicAngle);
+    digest.add(this.angleOffset);
+  }
+
+  static buildSettings(container) {
+    container.prop("angleOffset");
+    container.prop("dynamicAngle");
+  }
+
+  genGlsl(inputP, outputC, uniforms) {
+    let th = this.angleOffset;
+
+    if (uniforms.brushAngle !== undefined) {
+      th = `(${th} + brushAngle)`;
+    }
+
+    return `
+  
+  
+  vec3 p = ${inputP};
+  vec2 p2 = rot2d(p.xy, ${th});
+  
+  float dx1 = 1.0 - abs(fract(p2.x)-0.5)*2.0;
+  float dy1 = 1.0 - abs(fract(p2.y)-0.5)*2.0;
+  float dx2 = 1.0 - abs(fract(p.x)-0.5)*2.0;
+  float dy2 = 1.0 - abs(fract(p.y)-0.5)*2.0;
+  
+  //float f = pow(dx1*dy1*dx2*dy2, 1.0/4.0);
+  float f = (dx1+dx2+dy1+dy2)*0.25;
+  
+  f = cos(f*13.11432)*0.5 + 0.5;
+  
+  ${outputC} = vec4(f, f, f, 1.0);
+`
+  }
+
+  evaluate(co, dv_out) {
+    let p = mevals.next().load(co);
+    let p2 = mevals.next().load(co);
+
+    p.mulScalar(5.0);
+
+    p2.rot2d(this.angleOffset);
+
+    let fract = Math.fract, abs = Math.abs, cos = Math.cos;
+
+    const dx1 = 1.0 - abs(fract(p2[0])-0.5)*2.0;
+    const dy1 = 1.0 - abs(fract(p2[1])-0.5)*2.0;
+    const dx2 = 1.0 - abs(fract(p[0])-0.5)*2.0;
+    const dy2 = 1.0 - abs(fract(p[1])-0.5)*2.0;
+
+    //let f = pow(dx1*dy1*dx2*dy2, 1.0/4.0);
+    let f = (dx1+dx2+dy1+dy2)*0.25;
+
+    f = cos(f*13.11432)*0.5 + 0.5;
+
+    return f;
+  }
+
+  static patternDefine() {
+    return {
+      typeName   : "MoireNoise",
+      defaultName: "Moire",
+      uiName     : "Moire",
+      uniforms   : {
+        angleOffset : "float"
+      }
+    }
+  }
+}
+MoireNoise.STRUCT = nstructjs.inherit(MoireNoise, PatternGen) + `
+  dynamicAngle : bool;
+  angleOffset  : float; 
+};`
+PatternGen.register(MoireNoise);
 
 export class GaborNoise extends PatternGen {
   constructor() {
@@ -552,6 +679,25 @@ export class ProceduralTex extends DataBlock {
     this._last_update_hash = undefined;
     this._digest = new util.HashDigest();
   }
+
+  bindUniforms(uniforms) {
+    this.generator.bindUniforms(uniforms);
+  }
+
+  genGlsl(inP, outC, uniforms={}) {
+    uniforms = Object.assign({}, uniforms);
+    this.bindUniforms(uniforms);
+
+    return this.generator.genGlsl(inP, outC, uniforms);
+  }
+
+  genGlslPre(inP, outC, uniforms={}) {
+    uniforms = Object.assign({}, uniforms);
+    this.bindUniforms(uniforms);
+
+    return this.generator.genGlslPre(inP, outC, uniforms);
+  }
+
 
   static getPattern(index_or_typename_or_class) {
     let cls = index_or_typename_or_class;

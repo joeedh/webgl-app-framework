@@ -60,6 +60,41 @@ export class ImageBlock extends DataBlock {
     this._image = undefined;
   }
 
+  getDrawFBO(gl) {
+    if (!this._drawFBO) {
+      this._drawFBO = new FBO(gl, this.width, this.height);
+      this._drawFBO.update(gl, this.width, this.height);
+      this._drawFBO.create(gl);
+    }
+
+    return this._drawFBO;
+  }
+
+  freeDrawFBO(gl) {
+    if (this._drawFBO) {
+      this._drawFBO.destroy(gl);
+    }
+
+    this._drawFBO = undefined;
+    return this;
+  }
+
+  swapWithFBO(gl) {
+    let fbo = this.getDrawFBO(gl);
+    Texture.unbindAllTextures(gl);
+
+    let temp = this.glTex;
+    this.glTex = fbo.texColor;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.finish();
+
+    fbo.setTexColor(gl, temp);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    return this;
+  }
+
   packAsURL() {
     if (!this._image || !this.ready) {
       throw new Error("image is not ready");
@@ -288,7 +323,13 @@ export class ImageBlock extends DataBlock {
     this.flag |= ImageFlags.UPDATE;
     this.update();
 
+    if (this._drawFBO) {
+      this._drawFBO.destroy(window._gl);
+      this._drawFBO = undefined;
+    }
+
     this.type = type;
+
     return this;
   }
 

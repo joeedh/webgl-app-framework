@@ -61,6 +61,8 @@ export class PaintSample {
     this.dp = new Vector4();
     this.viewPlane = new Vector3();
 
+    this.w = 0.0;
+
     this.color = new Vector4();
     this.angle = 0;
 
@@ -81,6 +83,7 @@ export class PaintSample {
   copyTo(b) {
     b.viewPlane.load(this.viewPlane);
     b.dp.load(this.dp);
+    b.w = this.w;
     b.p.load(this.p);
     b.angle = this.angle;
     b.vec.load(this.vec);
@@ -111,6 +114,7 @@ PaintSample {
   strength       : float;
   angle          : float;
   radius         : float;
+  w              : float;
   autosmooth     : float;
   viewPlane      : vec3;
   concaveFilter  : float;

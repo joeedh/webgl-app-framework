@@ -4,7 +4,7 @@ import {ViewContext} from './context.js';
 import {AppToolStack} from "./toolstack.js";
 import '../editors/node/MaterialEditor.js';
 
-import {imageManager} from '../image/gpuimage.js';
+import {tileManager} from '../image/gpuimage.js';
 
 import './platform.js';
 
@@ -715,7 +715,7 @@ export class AppState {
     window.FILE_LOADING = true;
 
     //clear gpu image history cache
-    imageManager.clear();
+    tileManager.clear();
 
     while (!file.at_end()) {
       this.loadFile_readBlock(filectx);

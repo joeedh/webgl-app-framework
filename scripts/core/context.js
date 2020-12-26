@@ -35,6 +35,18 @@ export class BaseOverlay extends ContextOverlay {
     return this.scene ? this.scene.timeEnd : 0;
   }
 
+  get gl() {
+    return window._gl;
+  }
+
+  gl_save() {
+    return undefined;
+  }
+
+  gl_load(ctx, data) {
+    //do nothing
+  }
+
   validate() {
     return true;
   }
