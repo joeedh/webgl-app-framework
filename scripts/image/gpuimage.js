@@ -1,5 +1,4 @@
-import {DataBlock} from '../core/lib_api.js';
-import {nstructjs, util, color2css, Vector2, Vector3, Vector4, Matrix4} from '../path.ux/scripts/pathux.js';
+import {nstructjs, color2css} from '../path.ux/scripts/pathux.js';
 import {Icons} from '../editors/icon_enum.js';
 import {DependSocket} from '../core/graphsockets.js';
 import {GraphFlags, NodeFlags} from '../core/graph.js';
@@ -304,6 +303,8 @@ export class GPUHistoryImage extends GPUTiledImage {
   addSetPoint() {
     this.setpoints.push(this.history.length);
     this.setpoints.cur = this.setpoints.length;
+
+    return this.setpoints.cur;
   }
 
   truncateHistory(gl = this.gl) {
@@ -317,3 +318,61 @@ export class GPUHistoryImage extends GPUTiledImage {
     return this;
   }
 }
+
+export function makeKey(id, width, height, type) {
+  return `${id}:${width}:${height}:${type}`;
+}
+
+export class GPUImageManager {
+  constructor() {
+    this.images = [];
+    this.image_idmap = {};
+    this.tiles = [];
+    this.tile_idmap = {};
+  }
+
+  get(gl, id, width, height, type) {
+    let key = makeKey(id, width, height, type);
+
+    this.gl = gl;
+
+    if (key in this.image_idmap) {
+      return this.image_idmap[key];
+    }
+
+    let image = new GPUHistoryImage(gl, width, height);
+
+    this.images.push(image);
+    this.image_idmap[key] = image;
+
+    return image;
+  }
+
+  addTile(tile, id) {
+    id = "tile_"  + id;
+    let key = makeKey(id, tile.width, tile.height, tile.type);
+
+    this.tile_idmap[id] = tile;
+    this.tiles.push(tile);
+  }
+
+  clear() {
+    for (let image of this.images) {
+      image.destroy(this.gl);
+    }
+
+    for (let tile of this.tiles) {
+      tile.destroy(this.gl);
+    }
+
+    this.images.length = 0;
+    this.image_idmap = {};
+
+    this.tiles.length = 0;
+    this.tile_idmap = {};
+
+    return this;
+  }
+}
+
+export const imageManager = new GPUImageManager();

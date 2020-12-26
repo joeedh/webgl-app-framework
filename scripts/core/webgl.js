@@ -1023,6 +1023,13 @@ export class Texture {
     this._params = {};
   }
 
+  static unbindAllTextures(gl) {
+    for (let i=gl.TEXTURE0; i<gl.TEXTURE0+31; i++) {
+      gl.activeTexture(i);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+  }
+
   texParameteri(gl, target, param, value) {
     this._params[param] = value;
 

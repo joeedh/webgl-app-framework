@@ -4,6 +4,8 @@ import {ViewContext} from './context.js';
 import {AppToolStack} from "./toolstack.js";
 import '../editors/node/MaterialEditor.js';
 
+import {imageManager} from '../image/gpuimage.js';
+
 import './platform.js';
 
 import {initSimpleController, checkForTextBox, keymap, Vector3, Vector4, Vector2, Quat, Matrix4,
@@ -711,6 +713,9 @@ export class AppState {
     let file = filectx.file;
 
     window.FILE_LOADING = true;
+
+    //clear gpu image history cache
+    imageManager.clear();
 
     while (!file.at_end()) {
       this.loadFile_readBlock(filectx);

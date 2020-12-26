@@ -15,6 +15,12 @@ import {ImageTypes} from '../../../image/image.js';
 import {FBO} from '../../../core/fbo.js';
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
 import {Shaders} from '../../../shaders/shaders.js';
+import {getFBODebug} from '../../debug/gldebug.js';
+import {Texture} from '../../../core/webgl.js';
+
+let _id = 0;
+
+let UNDO_TILESIZE = 256;
 
 export class TexPaintOp extends ToolOp {
   constructor() {
@@ -262,6 +268,11 @@ export class TexPaintOp extends ToolOp {
         texture.glTex.destroy(gl)
         texture.glTex = undefined;
       }
+      if (texture._drawFBO) {
+        texture._drawFBO.destroy(gl);
+        texture._drawFBO = undefined;
+      }
+      
       texture.convertTypeTo(ImageTypes.FLOAT_BUFFER);
       texture.update();
     }
@@ -473,8 +484,8 @@ export class TexPaintOp extends ToolOp {
       let rx = (w2/texture.width)//*(glSize[1]/texture.width);
       let ry = (w2/texture.height)//*(glSize[1]/texture.height);
 
-      rx = w2 / glSize[1];
-      ry = w2 / glSize[1];
+      rx = w2/glSize[1];
+      ry = w2/glSize[1];
 
       rx *= 6.0;
       ry *= 6.0;
@@ -548,7 +559,125 @@ export class TexPaintOp extends ToolOp {
 
     log(umin, umax);
 
+    let saveUndoTile_intern = (tx, ty) => {
+      let smin = new Vector2([tx*UNDO_TILESIZE, ty*UNDO_TILESIZE]);
+      smin[0] /= texture.width;
+      smin[1] /= texture.height;
+
+      let smax = new Vector2([(tx + 1)*UNDO_TILESIZE, (ty + 1)*UNDO_TILESIZE]);
+      smax[0] /= texture.width;
+      smax[1] /= texture.height;
+
+      let ssize = new Vector2([UNDO_TILESIZE, UNDO_TILESIZE]);
+
+
+      console.log(ssize, smin, smax);
+
+      let gldebug = getFBODebug(gl);
+      let savetile = new FBO(gl, ssize[0], ssize[1]);
+      savetile.update(gl, ssize[0], ssize[1]);
+
+      let sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV);
+      sm.primflag = PrimitiveTypes.TRIS;
+      sm.island.primflag = PrimitiveTypes.TRIS;
+
+      let quad = sm.quad(
+        [-1, -1, 0],
+        [-1, 1, 0],
+        [1, 1, 0],
+        [1, -1, 0]
+      );
+
+      Texture.unbindAllTextures(gl);
+
+      quad.uvs(
+        [smin[0], smin[1]],
+        [smin[0], smax[1]],
+        [smax[0], smax[1]],
+        [smax[0], smin[1]]
+      );
+
+      sm.program = fbo.getBlitShader(gl);
+      sm.uniforms.rgba = texture.glTex;
+      sm.uniforms.valueScale = 1.0;
+
+      gl.disable(gl.DEPTH_TEST);
+      gl.disable(gl.CULL_FACE);
+      gl.disable(gl.BLEND);
+      gl.disable(gl.SCISSOR_TEST);
+
+      gl.depthMask(false);
+
+      gl.clearColor(0, 0, 0, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
+      savetile.bind(gl);
+
+      sm.draw(gl, sm.uniforms, sm.program);
+
+      gl.finish();
+
+      let rowsize = Math.ceil(texture.width / UNDO_TILESIZE);
+      let id = ty*rowsize + tx;
+
+      gldebug.saveDrawBuffer("undotile:" + id); //"buf:" + (_id++));
+
+      gl.finish();
+      savetile.unbind(gl);
+
+      savetile.x = tx*UNDO_TILESIZE;
+      savetile.y = ty*UNDO_TILESIZE;
+      savetile.u = (tx*UNDO_TILESIZE)/texture.width;
+      savetile.v = (ty*UNDO_TILESIZE)/texture.height;
+
+      sm.destroy(gl);
+
+      return savetile;
+    }
+
+    let saveUndoTile = (smin, smax) => {
+      smin[0] = Math.min(Math.max(smin[0], 0), texture.width - 1);
+      smin[1] = Math.min(Math.max(smin[1], 0), texture.height - 1);
+
+      smax[0] = Math.min(Math.max(smax[0], 0), texture.width);
+      smax[1] = Math.min(Math.max(smax[1], 0), texture.height);
+
+      smin.mulScalar(1.0/UNDO_TILESIZE).floor();
+      smax.mulScalar(1.0/UNDO_TILESIZE).ceil();
+
+      smax[0] = Math.max(smax[0], smin[0] + 1);
+      smax[1] = Math.max(smax[1], smin[1] + 1);
+
+      let rowsize = Math.ceil(texture.width/UNDO_TILESIZE);
+
+      //console.log(smin, smax);
+
+      for (let iy = smin[1]; iy < smax[1]; iy++) {
+        for (let ix = smin[0]; ix < smax[0]; ix++) {
+          let idx = (iy*rowsize + ix);
+          if (!(idx in this._tilemap)) {
+            let t = saveUndoTile_intern(ix, iy);
+
+            this._tilemap[idx] = t;
+            this._tiles.push(t);
+
+            console.log("saving tile", ix, iy);
+          }
+        }
+      }
+    }
+
     if (1) {
+      let smin = new Vector2(umin), smax = new Vector2(umax);
+      if (!fbo.___bleh) {
+        smin.zero();
+        smax[0] = texture.width;
+        smax[1] = texture.height;
+      }
+
+      saveUndoTile(smin, smax);
+      Texture.unbindAllTextures(gl);
+
       fbo.update(gl, texture.width, texture.height);
       fbo.bind(gl);
 
@@ -660,6 +789,9 @@ export class TexPaintOp extends ToolOp {
   }
 
   undoPre(ctx) {
+    this._tiles = [];
+    this._tilemap = {};
+
     console.warn("undoPre: implement me!");
   }
 

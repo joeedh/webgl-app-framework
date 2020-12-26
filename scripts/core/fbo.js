@@ -31,6 +31,10 @@ export class FBO {
     this.texColor = undefined;
   }
 
+  getBlitShader(gl) {
+    return webgl.getShader(gl, getBlitShaderCode(gl));
+  }
+
   copy(copy_buffers=false) {
     let ret = new FBO();
 
@@ -490,6 +494,10 @@ export class FramePipeline {
 
     this.stages.push(stage);
     return stage;
+  }
+
+  getBlitShader(gl) {
+    return webgl.getShader(gl, getBlitShaderCode(gl));
   }
 
   draw(gl, drawfunc, width, height, drawmats) {
