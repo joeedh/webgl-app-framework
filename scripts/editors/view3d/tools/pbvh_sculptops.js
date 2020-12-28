@@ -5,7 +5,7 @@ import {
   EnumProperty, FlagProperty, FloatArrayProperty, FloatProperty, IntProperty, Matrix4, Quat, ToolOp, Vec3Property,
   Vec4Property,
   Vector2, Vector3,
-  Vector4
+  Vector4, closest_point_on_line
 } from '../../../path.ux/scripts/pathux.js';
 import {GridBase, QRecalcFlags} from '../../../mesh/mesh_grids.js';
 import {CDFlags} from '../../../mesh/customdata.js';
@@ -1015,9 +1015,12 @@ export class PaintOp extends ToolOp {
     } else if (mode === PAINT) {
 
     } else if (mode === SHARP) {
-      isplane = true;
-      planeoff += 3.0;
-      strength *= 2.0;
+      let t1 = new Vector3(ps.dp);
+
+      haveOrigData = true;
+      //isplane = true;
+      //planeoff += 3.0;
+      //strength *= 2.0;
     } else if (mode === GRAB) {
       haveOrigData = true;
       strength *= 5.0;
@@ -1060,7 +1063,23 @@ export class PaintOp extends ToolOp {
 
     let vlen = vec.vectorLength();
     let nvec = new Vector3(vec).normalize();
+    let nvec2 = new Vector3(nvec);
     let planep = new Vector3(ps.p);
+
+    if (0 && mode === SHARP) {
+      let q = new Quat();
+      let pth = Math.PI*0.35;
+
+      q.axisAngleToQuat(nvec, pth);
+      let mat = q.toMatrix();
+
+      nvec.multVecMatrix(mat);
+
+      q.axisAngleToQuat(nvec2, -pth);
+      mat = q.toMatrix();
+
+      nvec2.multVecMatrix(mat);
+    }
 
     planep.addFac(vec, planeoff);
 
@@ -1429,6 +1448,7 @@ export class PaintOp extends ToolOp {
     let wi = 0;
 
     let planetmp = new Vector3();
+    let conetmp = new Vector3();
 
     switch (mode) {
       case SMOOTH:
@@ -1453,7 +1473,11 @@ export class PaintOp extends ToolOp {
     for (let v of vs) {
       doUndo(v);
 
-      let dis = mode === GRAB ? gdists[idis++] : v.vectorDistance(p3);
+      let vco = v;
+      if (mode === SHARP) {
+        vco = v.customData[cd_orig].value;
+      }
+      let dis = mode === GRAB ? gdists[idis++] : vco.vectorDistance(p3);
 
 
       let f = Math.max(1.0 - dis / radius, 0.0);
@@ -1478,7 +1502,23 @@ export class PaintOp extends ToolOp {
         //v.addFac(v.no, -vlen*d*f2*0.5*strength);
         v.addFac(vec, f);//
       } else */
-      if (isplane) {
+      if (mode === SHARP) {
+        f2 = f * Math.abs(strength);
+
+        let height = radius*0.5;
+
+        v.addFac(vec, f);
+
+        conetmp.load(ps.p).addFac(nvec, 0.0);
+        planetmp.load(conetmp).addFac(nvec, height);
+
+        let r = closest_point_on_line(v, conetmp, planetmp, true);
+
+        //r[1] = Math.max(r[1], height*0.75);
+
+        planetmp.load(v).sub(r[0]).normalize().mulScalar(r[1]).add(r[0]);
+        v.interp(planetmp, f2*0.4);
+      } else if (isplane) {
         f2 = f * strength;
 
         if (mode === SMOOTH) {

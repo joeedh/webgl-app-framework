@@ -26,7 +26,8 @@ import {
   math,
   ListProperty,
   PackFlags,
-  Curve1D, Curve1DProperty, SplineTemplates, Vec3Property
+  Curve1D, Curve1DProperty, SplineTemplates, Vec3Property,
+  SplineTemplateIcons
 } from "../../../path.ux/scripts/pathux.js";
 import {MeshFlags} from "../../../mesh/mesh.js";
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from "../../../core/simplemesh.js";
@@ -226,18 +227,23 @@ export class BVHToolMode extends ToolMode {
     panel = col.panel("Falloff");
     let i1 = 1;
 
-    function makebutton(k) {
-      panel.button("" + (i1++), () => {
+    function makebutton(strip, k) {
+      let icon = strip.iconbutton(-1, ToolProperty.makeUIName(k), () => {
         let curve = panel.ctx.toolmode.getBrush().falloff;
         curve.setGenerator("bspline");
 
         let bspline = curve.generators.active;
         bspline.loadTemplate(SplineTemplates[k]);
       });
+
+      icon.iconsheet = 0;
+      icon.customIcon = SplineTemplateIcons[k];
     }
 
+    let bstrip = panel.row().strip();
     for (let k in SplineTemplates) {
-      makebutton(k);
+
+      makebutton(bstrip, k);
     }
 
     panel.prop(path + ".brush.falloff");

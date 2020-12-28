@@ -975,9 +975,16 @@ export class BVHNode {
     }
 
     let doneset = new WeakSet();
+    let eidmap = this.bvh.mesh.eidmap;
 
     for (let t of this.uniqueTris) {
+      t.no.load(math.normal_tri(t.v1, t.v2, t.v3));
       t.area = math.tri_area(t.v1, t.v2, t.v3);
+
+      let f = eidmap[t.id];
+      if (f) {
+        f.no.load(t.no);
+      }
     }
 
     for (let v of this.uniqueVerts) {
@@ -992,14 +999,20 @@ export class BVHNode {
         let _i = 0;
 
         do {
-          if (!doneset.has(l.f)) {
-            doneset.add(l.f);
-            l.f.calcNormal();
-          }
+          //if (!doneset.has(l.f)) {
+          //  doneset.add(l.f);
+          //  l.f.calcNormal();
+          //}
 
           v.no.add(l.f.no);
+
+          if (_i++ > 10) {
+            console.warn("Infinite loop detected");
+            break;
+          }
+
           l = l.radial_next;
-        } while (l !== e.l && _i++ < 100);
+        } while (l !== e.l);
       }
 
       v.no.normalize();
@@ -1113,7 +1126,7 @@ export class BVH {
     this.forceUniqueTris = false;
     this.storeVerts = false;
 
-    this._leafLimit = 256;
+    this._leafLimit = 512;
     this.drawLevelOffset = 1;
     this.depthLimit = 17;
 
