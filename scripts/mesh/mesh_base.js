@@ -61,26 +61,27 @@ export const MeshTypes = {
 };
 
 export const MeshFlags = {
-  SELECT        : 1,
-  HIDE          : 2,
-  FLAT          : 4,
-  ITER_TEMP1    : 8, //temporary flag used by faces-around-edge iterators
-  ITER_TEMP2a   : 16, //temporary flag used by faces-around-vertex iterators
-  ITER_TEMP2b   : 32, //temporary flag used by faces-around-vertex iterators
-  ITER_TEMP2c   : 64, //temporary flag used by faces-around-vertex iterators
-  DRAW_DEBUG    : 128,
-  TEMP1         : 256,
-  TEMP2         : 512,
-  TEMP3         : 1024,
-  UPDATE        : 2048,
-  CURVE_FLIP    : 4096, //edge.evaluate goes backwards
-  SMOOTH_DRAW   : 4096<<1,
-  MIRROREDX     : 4096<<2,
-  MIRROREDY     : 4096<<3,
-  MIRROREDZ     : 4096<<4,
-  MIRRORED      : (4096<<2)|(4096<<3)|(4096<<4),
-  MIRROR_BOUNDARY   : 4096<<5, //used by mirror
-  GRID_MRES_HIDDEN  : 4096<<6, //used by grids to flag gridverts as not part of visible multires level
+  SELECT        : (1<<0),
+  HIDE          : (1<<1),
+  FLAT          : (1<<2),
+  ITER_TEMP1    : (1<<3), //temporary flag used by faces-around-edge iterators
+  ITER_TEMP2a   : (1<<4), //temporary flag used by faces-around-vertex iterators
+  ITER_TEMP2b   : (1<<5), //temporary flag used by faces-around-vertex iterators
+  ITER_TEMP2c   : (1<<6), //temporary flag used by faces-around-vertex iterators
+  DRAW_DEBUG    : (1<<7),
+  TEMP1         : (1<<8),
+  TEMP2         : (1<<9),
+  TEMP3         : (1<<10),
+  UPDATE        : (1<<11),
+  CURVE_FLIP    : (1<<12), //edge.evaluate goes backwards
+  SMOOTH_DRAW   : (1<<13),
+  MIRROREDX     : (1<<14),
+  MIRROREDY     : (1<<15),
+  MIRROREDZ     : (1<<16),
+  MIRRORED      : (1<<14)|(1<<15)|(1<<16),
+  MIRROR_BOUNDARY   : (1<<17), //used by mirror
+  GRID_MRES_HIDDEN  : (1<<18), //used by grids to flag gridverts as not part of visible multires level
+  SEAM              : (1<<19)
 };
 
 export const MeshModifierFlags = {
@@ -91,6 +92,7 @@ export const RecalcFlags = {
   RENDER     : 1,
   TESSELATE  : 2,
   PARTIAL    : 4,
-  ELEMENTS   : 8
+  ELEMENTS   : 8,
+  UVWRANGLER : 16
 };
 

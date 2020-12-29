@@ -5,12 +5,104 @@ import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {CustomData, CustomDataElem} from "./customdata.js";
 
+const sel_iter_stack = new Array(64);
+
+window._sel_iter_stack = sel_iter_stack;
+
+export class SelectedEditableIter {
+  constructor(set) {
+    this.ret = {done : true, value : undefined};
+    this.listiter = undefined;
+    this.done = true;
+    this.set = set;
+  }
+
+  reset(set) {
+    this.listiter = set[Symbol.iterator]();
+    this.done = false;
+    this.ret.done = false;
+    this.set = set;
+
+    return this;
+  }
+
+  [Symbol.iterator]() {
+    this.reset(this.set);
+
+    return this;
+  }
+
+  next() {
+    if (this.done) {
+      this.ret.done = true;
+      this.ret.value = undefined;
+      return this.ret;
+    }
+
+    let item = this.listiter.next();
+
+    while (!item.done && (item.value.flag & (MeshFlags.HIDE))) {
+      item = this.listiter.next();
+    }
+
+    if (item.done) {
+      this.finish();
+    }
+
+    return item;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.done = true;
+      this.set.eiterstack.cur--;
+      this.set.eiterstack.cur = Math.max(this.set.eiterstack.cur, 0);
+      this.ret.done = true;
+      this.ret.value = undefined;
+      this.listiter = undefined;
+    }
+  }
+
+  return() {
+    this.finish();
+    return this.ret;
+  }
+}
+
+export class SelectedEditableStack extends Array {
+  constructor(set) {
+    super();
+
+    this.length = 32;
+    this.cur = 0;
+    this.set = set;
+
+    for (let i=0; i<this.length; i++) {
+      this[i] = new SelectedEditableIter(set);
+    }
+  }
+
+  [Symbol.iterator]() {
+    return this.next().reset(this.set);
+  }
+
+  next() {
+    return this[this.cur++];
+  }
+}
+
 export class SelectionSet extends util.set {
   constructor() {
     super();
+
+    this.eiterstack = new SelectedEditableStack(this);
   }
 
   get editable() {
+    return this.eiterstack;
+  }
+
+  get editable_old() {
     let this2 = this;
 
     return (function*() {
@@ -76,6 +168,7 @@ export class ElementListIter {
   return() {
     if (!this.ret.done) {
       this.elist.iterstack.cur--;
+      this.elist.iterstack.cur = Math.max(this.elist.iterstack.cur, 0);
       this.ret.done = true;
     }
 
@@ -374,14 +467,16 @@ export class ElementList {
     return this;
   }
 
-  selectNone() {
-    for (var e of this) {
-      if (e.flag & MeshFlags.SELECT) {
-        e.flag |= MeshFlags.UPDATE;
-      }
 
-      this.setSelect(e, false);
+  selectNone() {
+    for (let elem of this.selected) {
+      elem.flag &= ~MeshFlags.SELECT;
+      elem.flag |= MeshFlags.UPDATE;
     }
+
+    this.selected.clear();
+
+    return this;
   }
 
   selectAll() {

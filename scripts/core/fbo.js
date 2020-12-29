@@ -6,6 +6,7 @@ import {Texture} from "./webgl.js";
 
 let DEPTH24_STENCIL8 = 35056;
 let RGBA32F = 34836;
+let FLOAT = 5126
 
 export class FBO {
   /*
@@ -20,6 +21,7 @@ export class FBO {
 
     this.ctype = RGBA32F;
     this.dtype = DEPTH24_STENCIL8;
+    this.etype = FLOAT;
 
     this.gl = gl;
     this.fbo = undefined;
@@ -27,7 +29,10 @@ export class FBO {
     this.size = new Vector2([width, height]);
     this.texDepth = undefined;
     this.texColor = undefined;
+  }
 
+  getBlitShader(gl) {
+    return webgl.getShader(gl, getBlitShaderCode(gl));
   }
 
   copy(copy_buffers=false) {
@@ -50,7 +55,7 @@ export class FBO {
     return ret;
   }
 
-  create(gl) {
+  create(gl, texColor=undefined, texDepth=undefined) {
     console.warn("fbo create");
 
     if (this.fbo && this.gl) {
@@ -67,6 +72,12 @@ export class FBO {
     //console.trace("framebuffer creation");
 
     this.fbo = gl.createFramebuffer();
+
+    this.texColor = texColor;
+    this.texDepth = texDepth;
+
+    let haveColor = !!this.texColor;
+    let haveDepth = !!this.texDepth;
 
     if (!this.texDepth)
       this.texDepth = new webgl.Texture(undefined, gl.createTexture());
@@ -89,14 +100,18 @@ export class FBO {
       }
     }
 
-    texParams(this.target, this.texDepth);
-    if (gl.haveWebGL2) {
-      this.texDepth.texParameteri(gl, this.target, gl.TEXTURE_COMPARE_MODE, gl.NONE);
-      //gl.texParameteri(target, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
-      //gl.texParameteri(target, gl.TEXTURE_COMPARE_FUNC, gl.ALWAYS);
+    if (!haveDepth) {
+      texParams(this.target, this.texDepth);
+      if (gl.haveWebGL2) {
+        this.texDepth.texParameteri(gl, this.target, gl.TEXTURE_COMPARE_MODE, gl.NONE);
+        //gl.texParameteri(target, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
+        //gl.texParameteri(target, gl.TEXTURE_COMPARE_FUNC, gl.ALWAYS);
+      }
     }
 
-    texParams(this.target, this.texColor);
+    if (!haveColor) {
+      texParams(this.target, this.texColor);
+    }
 
     let initTex = (tex, dtype, dtype2, dtype3) => {
       if (this.target !== gl.TEXTURE_2D)
@@ -119,13 +134,19 @@ export class FBO {
     let dtype3 = gl.haveWebGL2 ? gl.UNSIGNED_INT_24_8 : gl.depth_texture.UNSIGNED_INT_24_8_WEBGL;
 
     gl.bindTexture(this.target, this.texDepth.texture);
-    initTex(this.texDepth, dtype, dtype2, dtype3);
+
+    if (!haveDepth) {
+      initTex(this.texDepth, dtype, dtype2, dtype3);
+    }
 
     let ctype = this.ctype;
-    let ctype2 = gl.RGBA, ctype3 = gl.FLOAT;
+    let ctype2 = gl.RGBA, ctype3 = this.etype;
 
     gl.bindTexture(target, this.texColor.texture);
-    initTex(this.texColor, ctype, ctype2, ctype3);
+
+    if (!haveColor) {
+      initTex(this.texColor, ctype, ctype2, ctype3);
+    }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
 
@@ -150,6 +171,24 @@ export class FBO {
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, target2, this.texDepth.texture, 0);
         //gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, target2, this.texDepth.texture, 0);
       }
+    }
+
+    let errret = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+
+    if (DEBUG.fbo) {
+      console.log("FBO STATUS:", errret, webgl.constmap[errret]);
+    }
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  setTexColor(gl, tex) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+
+    this.texColor = tex;
+
+    if (this.target === gl.TEXTURE_2D) {
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texColor.texture, 0);
     }
 
     let errret = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
@@ -455,6 +494,10 @@ export class FramePipeline {
 
     this.stages.push(stage);
     return stage;
+  }
+
+  getBlitShader(gl) {
+    return webgl.getShader(gl, getBlitShaderCode(gl));
   }
 
   draw(gl, drawfunc, width, height, drawmats) {

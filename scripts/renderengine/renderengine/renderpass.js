@@ -84,7 +84,7 @@ export class RenderContext {
     this.uSample = this.engine.uSample;
     this.weightSum = this.engine.weightSum;
 
-    if (this.smesh === undefined || this.size[0] != width || this.size[1] != height) {
+    if (this.smesh === undefined || this.size[0] !== width || this.size[1] !== height) {
       this.size[0] = width;
       this.size[1] = height;
 

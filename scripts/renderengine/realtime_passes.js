@@ -346,7 +346,7 @@ uniform float steps;
 
 //const float dist=2.0, factor=2.5, steps=1024.0;
 
-#define samples 20
+#define samples 25
 #define seed1 0.23432
 #define seed2=1.2342
 
@@ -362,17 +362,19 @@ vec4 unproject(vec4 p) {
 float rand(float x, float y, float seed) {
   //partially de-correlate with blue noise mask
   float sf = sampleBlue(vec2(x, y))[0];
-
+  
   //squish blue noise range
-  sf = floor(sf*14.0)/14.0;
+  //sf = fract(x*y*23.0);
+  sf = floor(sf*10.0)/10.0;
   
   //add uSample
   sf += fract(uSample*sqrt(3.0))*0.1;
 
   //calc final random value
-  seed += sf*10.0; 
+  seed += sf*1012.23432; 
   
-  float f = fract(seed*sqrt(3.0));
+  float f = fract(fract(seed*312.23432) + seed);
+  //float f = fract(seed*sqrt(3.0) + cos(seed*23.0));
   f = fract(1.0 / (f*0.00001 + 0.00001));
   
   return f;
@@ -397,8 +399,8 @@ float rand(float x, float y, float seed) {
   for (int i=0; i<samples; i++) {
     vec3 n;
     n[0] = rand(v_Uv[0], v_Uv[1], seed)-0.5;
-    n[1] = rand(v_Uv[0], v_Uv[1], seed+1.0)-0.5;
-    n[2] = rand(v_Uv[0], v_Uv[1], seed+2.0)-0.5;
+    n[1] = rand(v_Uv[0], v_Uv[1], seed+2.23432)-0.5;
+    n[2] = rand(v_Uv[0], v_Uv[1], seed+1.9234)-0.5;
     
     //n = normalize(n + 0.25*nin);
     
@@ -428,7 +430,7 @@ float rand(float x, float y, float seed) {
     
     f += w;
     
-    seed += sqrt(5.0);
+    seed += 3.0;
     tot += 1.0;
   }
 
@@ -444,11 +446,9 @@ float rand(float x, float y, float seed) {
   float depth = sampleDepth(fbo_depth, v_Uv);
    
   vec4 color = texture2D(fbo_rgba, v_Uv);
+  
+  //f = sampleBlue(v_Uv)[0];
   gl_FragColor = vec4(f, f, depth, 1.0);
-  
-  //gl_FragColor = texture2D(fbo_rgba, v_Uv);
-  //gl_FragColor = vec4(texture2D(fbo_rgba, v_Uv).rgb, 1.0);
-  
   gl_FragDepth = depth;
   
 `
@@ -683,6 +683,15 @@ export class SharpenPass extends RenderPass {
     super();
   }
 
+
+  getDebugName() {
+    if (this.inputs.axis.getValue() === 1) {
+      return "SharpenY";
+    } else {
+      return "SharpenX";
+    }
+  }
+
   static nodedef() {return {
     uiname : "Sharpen Pass",
     name   : "sharpen",
@@ -707,7 +716,8 @@ export class SharpenPass extends RenderPass {
     float tot=0.0;
     vec2 p = v_Uv * size;
     const float isamp = 1.0 / float(SAMPLES);
-      
+    //float mul = 1.0 / (uSample+1.0);
+    
     for (int i=-SAMPLES; i<SAMPLES; i++) {
       float w = 1.0 - abs(float(i) / float(SAMPLES));
       //w = w*(1.0 - isamp) + isamp;
@@ -726,7 +736,9 @@ export class SharpenPass extends RenderPass {
     
     accum /= tot;
     
-    gl_FragColor = accum + (texture2D(fbo_rgba, v_Uv) - accum)*(1.0 - sharpen);
+    vec4 color = accum + (texture2D(fbo_rgba, v_Uv) - accum)*(1.0 - sharpen);
+    
+    gl_FragColor = vec4(color.xyz, 1.0);
     gl_FragDepth = sampleDepth(fbo_depth, v_Uv);
     `,
   }}
@@ -775,11 +787,11 @@ export class AccumPass extends RenderPass {
 vec4 color1 = texture2D(fbo_rgba, v_Uv);
 vec4 color2 = texture2D(lastBuf, v_Uv);
 
-if (isnan(dot(color1, color1))) {
-  gl_FragColor = vec4(color2.rgb, 1.0)*((weightSum+weight)/weightSum);
-} else {
+//if (isnan(dot(color1, color1))) {
+//  gl_FragColor = vec4(color2.rgb, 1.0); //*((weightSum+weight)/weightSum);
+//} else {
   gl_FragColor = vec4(color1.rgb, 1.0)*weight + vec4(color2.rgb, 1.0)*float(uSample > 1.0);
-}
+//}
 gl_FragDepth = sampleDepth(fbo_depth, v_Uv);
     `
   }}
@@ -787,11 +799,19 @@ gl_FragDepth = sampleDepth(fbo_depth, v_Uv);
   renderIntern(rctx) {
     let gl = rctx.gl;
 
-    rctx.engine.weightSum += this.inputs.w.getValue();
-    rctx.engine.weightSum  = Math.max(rctx.engine.weightSum, 0.0001);
-    rctx.weightSum = rctx.engine.weightSum;
+    let w = this.inputs.w.getValue();
+    w = 1.0;
 
-    this.uniforms.weight = this.inputs.w.getValue();
+    let oldw = rctx.engine.weightSum;
+
+    if (rctx.engine.uSample === 0) {
+      rctx.engine.weightSum = 0.0;
+    }
+
+    rctx.engine.weightSum += w;
+    rctx.weightSum = rctx.engine.uSample; //XXX weighting is broken
+
+    this.uniforms.weight = w;
 
     setBlueUniforms(this.uniforms, rctx.size, getBlueMask(gl), rctx.uSample);
 
@@ -808,9 +828,10 @@ gl_FragDepth = sampleDepth(fbo_depth, v_Uv);
     gl.disable(gl.BLEND);
 
     if (buf.texColor) {
-      this.uniforms.weightSum = rctx.weightSum;
+      this.uniforms.weightSum = oldw;
       this.uniforms.lastBuf = buf.texColor;
-
+    } else {
+      this.uniforms.weightSum = 1.0;
     }
     //*/
 

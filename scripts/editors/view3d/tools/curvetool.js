@@ -20,7 +20,7 @@ import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
         MeshFeatureError} from '../../../mesh/mesh_base.js';
 import {CurveSpline} from "../../../curve/curve.js";
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
-import {ContextOverlay} from "../../../path.ux/scripts/controller/context.js";
+import {ContextOverlay} from "../../../path.ux/scripts/pathux.js";
 
 export class CurveToolOverlay extends ContextOverlay {
   constructor(state, toolmode) {

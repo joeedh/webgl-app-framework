@@ -591,6 +591,7 @@ export class GeometryNode extends ShaderNode {
       ${gen.getSocketName(this.outputs.position)} = vGlobalCo;
       ${gen.getSocketName(this.outputs.local)} = vLocalCo;
       ${gen.getSocketName(this.outputs.normal)} = vNormal;
+      //{gen.getSocketName(this.outputs.uv)} = vuv;
     `)
   }
   static nodedef() {return {
@@ -601,7 +602,8 @@ export class GeometryNode extends ShaderNode {
       position : new Vec3Socket(),
       normal   : new Vec3Socket(),
       screen   : new Vec3Socket(),
-      local    : new Vec3Socket()
+      local    : new Vec3Socket(),
+      //uv       : new Vec2Socket()
       //tangent  : new Vec3Socket()
     }
   }}

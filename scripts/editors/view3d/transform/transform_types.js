@@ -1,5 +1,5 @@
 import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../../util/vectormath.js';
-import {ToolOp, UndoFlags} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
+import {ToolOp, UndoFlags} from '../../../path.ux/scripts/pathux.js';
 import {keymap} from '../../../path.ux/scripts/util/simple_events.js';
 import {MeshFlags, MeshTypes, Mesh} from '../../../mesh/mesh.js';
 import {SelMask} from '../selectmode.js';
@@ -7,6 +7,7 @@ import {SceneObject, ObjectFlags} from "../../../sceneobject/sceneobject.js";
 import {PropModes, TransDataType, TransDataElem, TransDataList} from './transform_base.js';
 import * as util from '../../../util/util.js';
 import {aabb_union} from '../../../util/math.js';
+import {SpatialHash} from '../../../util/spatialhash.js';
 
 import {ConstraintSpaces} from "./transform_base.js";
 let meshGetCenterTemps = util.cachering.fromConstructor(Vector3, 64);
@@ -39,7 +40,88 @@ export class MeshTransType extends TransDataType {
 
     console.log("MESH GEN", selectmode & SelMask.GEOM, selectmode, propmode, propradius);
 
-    if (propmode !== undefined) {
+    let propconnected = true;
+
+    if (propmode !== undefined && !propconnected) {
+      let i = 0;
+      let unset_w = 100000.0;
+
+      let visit = new WeakSet();
+      let vs = new Set(mesh.verts.selected.editable);
+      let boundary = new Set();
+
+      for (let v of vs) {
+        v.index = i;
+
+        let td = new TransDataElem();
+
+        td.mesh = mesh;
+        td.data1 = v;
+        td.w = 0.0;
+        td.data2 = new Vector3(v);
+        td.symFlag = mesh.symFlag;
+
+        tdata.push(td);
+
+        for (let e of v.edges) {
+          let v2 = e.otherVertex(v);
+          let ok = !(v2.flag & MeshFlags.HIDE);
+          ok = ok && !(v2.flag & MeshFlags.SELECT);
+
+          if (ok) {
+            boundary.add(v);
+            break;
+          }
+        }
+
+        td.w = v.flag & MeshFlags.SELECT ? 0.0 : unset_w;
+        i++;
+      }
+
+      //let shash = SpatialHash.fromMesh(mesh, mesh.verts.editable);
+      //console.log("shash:", shash);
+
+      let bvh = mesh.getBVH();
+      bvh.update();
+
+      let tvs = new Map();
+      for (let v of boundary) {
+        for (let v2 of bvh.closestVerts(v, propradius*1.1)) {
+        //for (let v2 of shash.closestVerts(v, propradius)) {
+        //  v2 = mesh.eidmap[v2];
+
+          if (boundary.has(v2) || v === v2) {
+            continue;
+          }
+
+          let w = tvs.get(v2);
+          if (w === undefined) {
+            tvs.set(v2, v.vectorDistanceSqr(v2));
+          } else {
+            w = Math.min(w, v.vectorDistanceSqr(v2));
+            tvs.set(v2, w);
+          }
+        }
+      }
+
+      for (let [v, dis] of tvs) {
+        let td = new TransDataElem();
+
+        td.mesh = mesh;
+        td.data1 = v;
+        td.w = Math.sqrt(dis);
+        td.data2 = new Vector3(v);
+        td.symFlag = mesh.symFlag;
+
+        tdata.push(td);
+      }
+
+      console.log(tvs);
+
+      for (let td of tdata) {
+        td.w = TransDataType.calcPropCurve(td.w, propmode, propradius);
+      }
+    } else if (propmode !== undefined) {
       let i = 0;
       let unset_w = 100000.0;
 

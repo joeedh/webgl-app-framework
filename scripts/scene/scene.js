@@ -93,6 +93,20 @@ export class ObjectSet extends util.set {
     this.list = oblist;
   }
 
+  get renderable() {
+    let this2 = this;
+
+    return (function*() {
+      for (let ob of this2) {
+        if (ob.flag & (ObjectFlags.HIDE)) {
+          continue;
+        }
+
+        yield ob;
+      }
+    })();
+  }
+
   get editable() {
     let this2 = this;
 
@@ -296,6 +310,7 @@ export class Scene extends DataBlock {
     this.propRadius = 1.0;
     this.propMode = 0;
     this.propEnabled = false;
+    this.propIslandOnly = true;
 
     this.widgets = new WidgetManager();
     this.widgets.ctx = _appstate.ctx;
@@ -774,6 +789,7 @@ Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
   collection   : DataRef | DataRef.fromBlock(obj.collection);
   fps          : int;
   propMode     : int;
+propIslandOnly : bool;
   propRadius   : float;
   propEnabled  : bool;
 }

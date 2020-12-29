@@ -35,10 +35,25 @@ let getMime = (p) => {
   return "text/plain";
 }
 
+
+let allowed_origins = new Set([
+  `http://${HOST}:${PORT}/`,
+  `http://${HOST}:${PORT}`
+]);
+
+
 exports.ServerResponse = class ServerResponse extends http.ServerResponse {
-  _addHeaders() {
+  _addHeaders(origin) {
     this.setHeader("X-Content-Type-Options", "nosniff");
-    this.setHeader("Access-Control-Allow-Origin", "*");
+
+    if (allowed_origins.has(origin)) {
+      this.setHeader("Access-Control-Allow-Origin", origin);
+    }
+
+    this.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+    this.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+    this.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+    this.setHeader("Vary", "Origin");
   }
 
   sendError(code, message) {
@@ -69,9 +84,11 @@ const serv = http.createServer({
     p = "/" + p
   }
   
-  console.log(req.method, p);
-  
-  if (p == "/") {
+  let origin = req.headers["origin"] || "";
+
+  console.log(req.method, p, origin);
+
+  if (p === "/") {
     p += INDEX
   }
   
@@ -100,7 +117,7 @@ const serv = http.createServer({
   
   res.statusCode = 200;
   res.setHeader('Content-Type', mime);
-  res._addHeaders();
+  res._addHeaders(origin);
   res.end(buf);
 });
 

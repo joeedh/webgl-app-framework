@@ -1,9 +1,9 @@
 "use strict";
 
-import {ToolOp, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
 import {
-  IntProperty, EnumProperty, BoolProperty, FloatProperty, FlagProperty
-} from "../path.ux/scripts/toolsys/toolprop.js";
+  IntProperty, EnumProperty, BoolProperty,
+  FloatProperty, FlagProperty, ToolOp, UndoFlags
+} from "../path.ux/scripts/pathux.js";
 import {MeshTypes, MeshFlags} from './mesh_base.js';
 import * as util from '../util/util.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
@@ -72,7 +72,7 @@ export class SelectOpBase extends MeshOp {
           ud.actives[elist.type] = -1;
         }
 
-        if (elist.type == MeshTypes.LOOP) {
+        if (elist.type === MeshTypes.LOOP) {
           continue;
         }
 
@@ -412,6 +412,10 @@ export class SelectMoreLess extends SelectOpBase {
         for (let f of fset) {
           if (mode) {
             for (let l of f.loops) {
+              if (l.e.flag & MeshFlags.SEAM) {
+                continue;
+              }
+
               for (let l2 of l.e.loops) {
                 if (l2.f === f) {
                   continue;
@@ -594,7 +598,7 @@ export class SetFaceSmoothOp extends ToolOp {
       uiname  : "Shade Smooth/Flat",
       toolpath: "mesh.set_smooth",
       inputs  : {
-        set : new BoolProperty(true)
+        set: new BoolProperty(true)
       }
     }
   }
@@ -685,4 +689,155 @@ export class SetFaceSmoothOp extends ToolOp {
     window.redraw_viewport();
   }
 }
+
 ToolOp.register(SetFaceSmoothOp);
+
+
+export class SelectEdgeLoopOp extends SelectOpBase {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname     : "Edge Loop Select",
+      toolpath   : "mesh.edgeloop_select",
+      icon       : Icons.EDGELOOP,
+      description: "Select edge loop",
+      inputs     : ToolOp.inherit({
+        selmask: new FlagProperty(undefined, SelMask).private(),
+        mode   : new EnumProperty(undefined, SelOneToolModes),
+        edgeEid: new IntProperty(-1)
+      })
+    }
+  }
+
+  exec(ctx) {
+    let selmask = this.inputs.selmask.getValue();
+    let mode = this.inputs.mode.getValue();
+
+    let eid = this.inputs.edgeEid.getValue();
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let e = mesh.eidmap[eid];
+
+      if (!e || e.type !== MeshTypes.EDGE || !e.l) {
+        continue;
+      }
+
+      console.log("Edge:", e);
+
+      let state = mode !== SelOneToolModes.SUB;
+      if (mode === SelOneToolModes.UNIQUE) {
+        mesh.edges.selectNone();
+      }
+
+      let startl = e.l;
+
+      if (startl.v.edges.length !== 4) {
+        startl = startl.radial_next;
+      }
+
+      let l = startl;
+      let _i = 0;
+      do {
+        //break;
+        if (_i++ > 1000000) {
+          console.warn("Infinite loop detected");
+          break;
+        }
+
+        if (l.v.edges.length !== 4) {
+          break;
+        }
+
+        mesh.setSelect(l.e, state);
+
+        if (l.next.v.edges.length !== 4) {
+          break;
+        }
+
+        l = l.next;
+
+        if (l.radial_next.v === l.v) {
+          l = l.radial_next;
+        } else {
+          l = l.radial_next.next;
+        }
+      } while (l !== e.l);
+
+      //now go backwards
+      l = startl;
+      do {
+        if (_i++ > 1000000) {
+          console.warn("Infinite loop detected");
+          break;
+        }
+
+        mesh.setSelect(l.e, state);
+
+        if (l.v.edges.length !== 4) {
+          break;
+        }
+        l = l.prev;
+
+        if (l.radial_next.v === l.v) {
+          l = l.radial_next.next;
+        } else {
+          l = l.radial_next.prev;
+        }
+      } while (l !== e.l);
+
+      mesh.selectFlush(selmask);
+      mesh.regenRender();
+    }
+  }
+}
+
+ToolOp.register(SelectEdgeLoopOp);
+
+
+
+
+export class SelectInverse extends SelectOpBase {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname     : "Select Inverse",
+      toolpath   : "mesh.select_inverse",
+      icon       : Icons.SELECT_INVERSE,
+      description: "Invert selection",
+      inputs     : ToolOp.inherit({
+        selmask: new FlagProperty(undefined, SelMask).private(),
+      })
+    }
+  }
+
+  exec(ctx) {
+    let selmask = this.inputs.selmask.getValue();
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let elist;
+
+      if (selmask & MeshTypes.FACE) {
+        elist = mesh.faces;
+      } else if (selmask & MeshTypes.EDGE) {
+        elist = mesh.edges;
+      } else if (selmask & MeshTypes.VERTEX) {
+        elist = mesh.verts;
+      }
+
+      for (let e of elist.editable) {
+        elist.setSelect(e, !(e.flag & MeshFlags.SELECT));
+      }
+
+      mesh.selectFlush(selmask);
+      mesh.regenRender();
+    }
+  }
+}
+
+ToolOp.register(SelectInverse);

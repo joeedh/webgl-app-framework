@@ -18,7 +18,7 @@ import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
   MeshFeatureError} from '../../../mesh/mesh_base.js';
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
-import {ContextOverlay} from "../../../path.ux/scripts/controller/context.js";
+import {ContextOverlay} from "../../../path.ux/scripts/pathux.js";
 import {PackFlags} from "../../../path.ux/scripts/core/ui_base.js";
 import {RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
 
@@ -68,7 +68,8 @@ export class MeshEditor extends MeshToolBase {
       new HotKey("L", ["SHIFT"], "mesh.pick_select_linked(mode=\"SUB\")"),
       new HotKey("X", [], "mesh.delete_selected()"),
       new HotKey("E", [], "mesh.extrude_regions(transform=true)"),
-      new HotKey("R", ["SHIFT"], "mesh.edgecut()")
+      new HotKey("R", ["SHIFT"], "mesh.edgecut()"),
+      new HotKey("I", ["CTRL"], "mesh.select_inverse()"),
     ]);
 
     return this.keymap;
@@ -94,6 +95,29 @@ export class MeshEditor extends MeshToolBase {
     strip = panel.row().strip();
     strip.tool("mesh.bisect()");
     strip.tool("mesh.symmetrize()");
+
+    strip = panel.row().strip();
+    strip.tool("mesh.flip_long_tris()");
+    strip.tool("mesh.tris_to_quads()");
+
+    panel = container.panel("Transform");
+
+    strip = panel.row().strip();
+    strip.useIcons(true);
+    strip.prop("scene.propEnabled");
+    strip.useIcons(false);
+    strip.prop("scene.propMode");
+
+    strip = panel.row().strip();
+    strip.prop("scene.propRadius");
+
+    panel = container.panel("UV");
+
+    strip = panel.col().strip();
+    strip.useIcons(false);
+    strip.tool("mesh.set_flag(elemMask='EDGE' flag='SEAM')", undefined, undefined, "Set Seam");
+    strip.tool("mesh.clear_flag(elemMask='EDGE' flag='SEAM')", undefined, undefined, "Clear Seam");
+    strip.tool("mesh.toggle_flag(elemMask='EDGE' flag='SEAM')", undefined, undefined, "Toggle Seam");
 
     panel = container.panel("MultiRes");
 
@@ -273,7 +297,7 @@ export class MeshEditor extends MeshToolBase {
   dataLink(scene, getblock, getblock_addUser) {
     super.dataLink(...arguments);
 
-    this.mesh = getblock_addUser(this.mesh, this);
+    this.mesh = getblock_addUser(this.mesh);
   }
 
   loadSTRUCT(reader) {

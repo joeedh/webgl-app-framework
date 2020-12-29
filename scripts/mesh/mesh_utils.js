@@ -1,8 +1,8 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
-import {ToolOp, ToolMacro, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+import {ToolOp, ToolMacro, ToolFlags, UndoFlags} from '../path.ux/scripts/pathux.js';
 import {TranslateOp} from "../editors/view3d/transform/transform_ops.js";
-import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
+import {dist_to_line_2d, winding} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
@@ -37,7 +37,9 @@ export function* walkFaceLoop(e) {
     }
 
     visit.add(l);
+
     l = l.prev.prev;
+    l = l.radial_next;
 
     if (l === l.radial_next) {
       break;
@@ -46,6 +48,10 @@ export function* walkFaceLoop(e) {
 
   _i = 0;
   visit = new WeakSet();
+
+  if (l === l.radial_next) {
+    l = l.next.next;
+  }
 
   do {
     if (_i++ > 1000000) {
@@ -106,6 +112,33 @@ export function triangulateMesh(mesh, faces = mesh.faces) {
   }
 
   return ret;
+}
+
+export function triangulateFan(mesh, f, newfaces=undefined) {
+  let startl = f.lists[0].l;
+  let l = startl.next;
+
+  do {
+    let v1 = startl.v;
+    let v2 = l.v;
+    let v3 = l.next.v;
+
+    let tri = mesh.makeTri(v1, v2, v3);
+    let l2 = tri.lists[0].l;
+
+    mesh.copyElemData(l2, startl);
+    mesh.copyElemData(l2.next, l);
+    mesh.copyElemData(l2.prev, l.next);
+    mesh.copyElemData(tri, f);
+
+    if (newfaces !== undefined) {
+      newfaces.push(tri);
+    }
+
+    l = l.next;
+  } while (l !== startl.prev);
+
+  mesh.killFace(f);
 }
 
 export function bisectMesh(mesh, faces, vec, offset = new Vector3()) {
@@ -204,7 +237,7 @@ export function bisectMesh(mesh, faces, vec, offset = new Vector3()) {
     //console.log(p1[2], p2[2]);
 
     p2.sub(p1);
-    let t = -p1[2] / p2[2];
+    let t = -p1[2]/p2[2];
 
     p1.addFac(p2, t);
     p1[2] = 0.0;
@@ -241,8 +274,8 @@ export function bisectMesh(mesh, faces, vec, offset = new Vector3()) {
   }
 
   return {
-    newVerts : verts2,
-    newEdges : edges2
+    newVerts: verts2,
+    newEdges: edges2
   };
 }
 
@@ -252,9 +285,9 @@ export function duplicateMesh(mesh, geom) {
   let es = new Set();
 
   let sets = {
-    [MeshTypes.VERTEX] : vs,
-    [MeshTypes.EDGE] : es,
-    [MeshTypes.FACE] : fs
+    [MeshTypes.VERTEX]: vs,
+    [MeshTypes.EDGE]  : es,
+    [MeshTypes.FACE]  : fs
   };
 
   for (let e of geom) {
@@ -343,7 +376,7 @@ export function duplicateMesh(mesh, geom) {
       }
 
       let l = list2.l;
-      for (let i=0; i<ls.length; i++) {
+      for (let i = 0; i < ls.length; i++) {
         mesh.copyElemData(l, ls[i]);
         l = l.next;
       }
@@ -353,11 +386,11 @@ export function duplicateMesh(mesh, geom) {
   }
 
   return {
-    newVerts : newvs,
-    newEdges : newes,
-    newFaces : newfs,
-    oldToNew : newmap,
-    newToOld : oldmap
+    newVerts: newvs,
+    newEdges: newes,
+    newFaces: newfs,
+    oldToNew: newmap,
+    newToOld: oldmap
   }
 }
 
@@ -547,7 +580,7 @@ export function weldVerts(mesh, mergeMap) {
 }
 
 
-export function symmetrizeMesh(mesh, faces, axis, sign, mergeThreshold=0.00001) {
+export function symmetrizeMesh(mesh, faces, axis, sign, mergeThreshold = 0.00001) {
   let vs = new Set();
   let es = new Set();
 
@@ -604,5 +637,290 @@ export function symmetrizeMesh(mesh, faces, axis, sign, mergeThreshold=0.00001) 
     mesh.reverseWinding(f);
   }
 
-   weldVerts(mesh, mergeMap);
+  weldVerts(mesh, mergeMap);
+}
+
+//export function rotateEdge(mesh, e) {
+//}
+
+export function flipLongTriangles(mesh, faces) {
+  let es = new Set();
+  let faces2 = new Set();
+
+  for (let f of faces) {
+    let count = 0;
+    for (let l of f.loops) {
+      count++;
+    }
+
+    if (count !== 3 || f.lists.length > 1) {
+      continue;
+    }
+
+    faces2.add(f);
+  }
+
+  faces = faces2;
+
+  for (let f of faces) {
+    for (let l of f.loops) {
+      if (l.radial_next !== l && faces.has(l.radial_next.f)) {
+        es.add(l.e);
+      }
+    }
+  }
+
+  console.log(es, faces);
+  let deles = new Set();
+
+  for (let e of es) {
+    let l1 = e.l;
+    let l2 = e.l.radial_next;
+
+    let ok = true;
+
+    let w1 = winding(l1.v, l2.prev.v, l1.prev.v);
+    let w2 = winding(l1.prev.v, l2.prev.v, l1.next.v);
+
+    ok = ok && w1 === w2;
+    ok = ok && l1.prev.v.vectorDistanceSqr(l2.prev.v) < e.v1.vectorDistanceSqr(e.v2);
+
+    if (ok) {
+      es.delete(e);
+
+      let f1 = mesh.makeTri(l1.v, l2.prev.v, l1.prev.v);
+      let f2 = mesh.makeTri(l1.prev.v, l2.prev.v, l1.next.v);
+
+      let e2 = mesh.getEdge(l1.prev.v, l2.prev.v);
+
+      mesh.copyElemData(f1, l1.f);
+      mesh.copyElemData(f2, l2.f);
+      mesh.copyElemData(e2, e);
+
+      deles.add(e);
+
+      let lb1 = f1.lists[0].l;
+      let lb2 = f2.lists[0].l;
+
+      mesh.copyElemData(lb1, lb1);
+      mesh.copyElemData(lb1.next, l2.prev);
+      mesh.copyElemData(lb1.prev, l1.prev);
+
+      mesh.copyElemData(lb2, l1.prev);
+      mesh.copyElemData(lb2.next, l2.prev);
+      mesh.copyElemData(lb2.prev, l1.next);
+
+      f1.calcNormal();
+      f2.calcNormal();
+
+      e.v1.flag |= MeshFlags.UPDATE;
+      e.v2.flag |= MeshFlags.UPDATE;
+      mesh.killEdge(e);
+    }
+  }
+
+  for (let e of deles) {
+    e.v1.flag |= MeshFlags.UPDATE;
+    e.v2.flag |= MeshFlags.UPDATE;
+
+    mesh.killEdge(e);
+  }
+
+  console.log("done");
+}
+
+export const TriQuadFlags = {
+  NICE_QUADS: 1,
+  COLOR     : 2,
+  SEAM      : 4,
+  UVS       : 8,
+  DEFAULT   : 1 | 4
+};
+
+export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT) {
+  let es = new Set();
+  let faces2 = new Set();
+
+  for (let f of faces) {
+    let count = 0;
+    for (let l of f.loops) {
+      count++;
+    }
+
+    if (count !== 3 || f.lists.length > 1) {
+      continue;
+    }
+
+    faces2.add(f);
+  }
+  faces = faces2;
+
+  for (let f of faces) {
+    for (let l of f.loops) {
+      if (l.radial_next !== l && faces.has(l.radial_next.f)) {
+        es.add(l.e);
+      }
+    }
+  }
+
+  let cd_color = mesh.verts.customData.getLayerIndex("color");
+  let cd_uv = mesh.loops.customData.getLayerIndex("uv");
+  let have_color = cd_color >= 0;
+  let have_uv = cd_uv >= 0;
+
+  let t1 = new Vector3();
+  let t2 = new Vector3();
+  let t3 = new Vector3();
+
+  let dot3 = (v1, v2, v3) => {
+    t1.load(v1).sub(v2).normalize();
+    t2.load(v3).sub(v2).normalize();
+
+    return t1.dot(t2);
+  }
+
+  let errorNiceQuad = (e, v1, v2, v3, v4) => {
+    let th1 = dot3(v4, v1, v2);
+    let th2 = dot3(v1, v2, v3);
+    let th3 = dot3(v2, v3, v4);
+    let th4 = dot3(v3, v4, v1);
+
+    return th1**2 + th2**2 + th3**2 + th4**2;
+  }
+
+  if ((flag & TriQuadFlags.UVS) && !have_uv) {
+    flag &= ~TriQuadFlags.UVS;
+  }
+
+  if ((flag & TriQuadFlags.COLOR) && !have_color) {
+    flag &= ~TriQuadFlags.COLOR;
+  }
+
+  let errorSeam = (e, v1, v2, v3, v4) => {
+    return e.flag & MeshFlags.SEAM ? 100000 : 0.0;
+  }
+
+  let errorUv = (e, v1, v2, v3, v4) => {
+    let l1 = e.l, l2 = e.l.radial_next;
+
+    let u1 = l1.customData[cd_uv].uv;
+    let u2 = l2.customData[cd_uv].uv;
+    let u3 = l1.next.customData[cd_uv].uv;
+    let u4 = l1.next.radial_next.customData[cd_uv].uv;
+
+    return u1.vectorDistanceSqr(u2) + u3.vectorDistanceSqr(u4);
+  }
+
+  let errorColor = (e, v1, v2, v3, v4) => {
+    let l1 = e.l, l2 = e.l.radial_next;
+
+    let u1 = l1.v.customData[cd_color].color;
+    let u2 = l2.v.customData[cd_color].color;
+    let u3 = l1.next.v.customData[cd_color].color;
+    let u4 = l1.next.radial_next.v.customData[cd_color].color;
+
+    return u1.vectorDistanceSqr(u2) + u3.vectorDistanceSqr(u4);
+  }
+
+  let funcs1 = {
+    [TriQuadFlags.COLOR] : errorColor,
+    [TriQuadFlags.UVS] : errorUv,
+    [TriQuadFlags.SEAM] : errorSeam,
+    [TriQuadFlags.NICE_QUADS] : errorNiceQuad
+  };
+
+  let funcs = [];
+
+  for (let k in TriQuadFlags) {
+    if (k === "DEFAULT") {
+      continue;
+    }
+
+    let v = TriQuadFlags[k];
+
+    if (flag & v) {
+      funcs.push(funcs1[v]);
+    }
+  }
+
+  let error = (e, v1, v2, v3,v4) => {
+    let sum = 0.0;
+    for (let f of funcs) {
+      sum += f(e, v1, v2, v3, v4);
+    }
+
+    return sum;
+  }
+
+  let i = 0;
+  let edges = [];
+  for (let e of es) {
+    edges.push(i++);
+  }
+
+  let ETOT = 5;
+
+  let edata = [];
+  for (let e of es) {
+    let la = e.l, lb = e.l.radial_next;
+
+    let l4 = la.prev, l3 = la.next, l2 = lb.prev, l1 = la;
+
+    edata.push(e);
+    edata.push(l1);
+    edata.push(l2);
+    edata.push(l3);
+    edata.push(l4);
+  }
+
+  let ed = edata;
+  edges.sort((a, b) => {
+    a *= ETOT;
+    b *= ETOT;
+    let e1 = ed[a]
+    let e2 = ed[b];
+
+    let w1 = error(e1, ed[a+1].v, ed[a+2].v, ed[a+3].v, ed[a+4].v);
+    let w2 = error(e2, ed[b+1].v, ed[b+2].v, ed[b+3].v, ed[b+4].v);
+
+    //console.log(w1, w2);
+    return w1 - w2;
+  });
+
+  let ws = [0.5, 0.5];
+  let fs = [0, 0,];
+
+  for (let i of edges) {
+    i *= ETOT;
+
+    let e = edata[i];
+
+    if (!e.l || !faces.has(e.l.f) || !faces.has(e.l.radial_next.f)) {
+      continue;
+    }
+
+    let l1 = edata[i+1], l2 = edata[i+2], l3 = edata[i+3], l4 = edata[i+4];
+
+    let f1 = e.l.f, f2 = e.l.radial_next.f;
+
+    faces.delete(f1);
+    faces.delete(f2);
+
+    fs[0] = f1;
+    fs[1] = f2;
+
+    let f = mesh.makeQuad(l1.v, l2.v, l3.v, l4.v);
+
+    let l = f.lists[0].l;
+
+    mesh.copyElemData(f, f1);
+    mesh.faces.customDataInterp(f, fs, ws);
+
+    mesh.copyElemData(l, l1);
+    mesh.copyElemData(l.next, l2);
+    mesh.copyElemData(l.next.next, l3);
+    mesh.copyElemData(l.prev, l4);
+
+    mesh.killEdge(e);
+  }
 }

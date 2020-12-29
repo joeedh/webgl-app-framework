@@ -1023,6 +1023,13 @@ export class Texture {
     this._params = {};
   }
 
+  static unbindAllTextures(gl) {
+    for (let i=gl.TEXTURE0; i<gl.TEXTURE0+31; i++) {
+      gl.activeTexture(i);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+  }
+
   texParameteri(gl, target, param, value) {
     this._params[param] = value;
 
@@ -1143,12 +1150,30 @@ export class Texture {
     if (data instanceof Float32Array) {
       gl.texImage2D(target, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, data);
     } else {
-      gl.texImage2D(target, 0, gl.RGBA8UI, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+      gl.texImage2D(target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
     }
 
     gl.getError();
     Texture.defaultParams(gl, this, target);
     gl.getError();
+
+    return this;
+  }
+
+  initEmpty(gl, target, width, height, format=gl.RGBA, type=gl.FLOAT) {
+    this.target = target;
+    //this.width = width;
+    //this.height = height;
+    //this.format = format;
+    //this.type = type;
+
+    if (!this.texture) {
+      this.texture = gl.createTexture();
+      Texture.defaultParams(gl, this.texture, target);
+    }
+
+    gl.bindTexture(this.texture);
+    gl.texImage2D(this.target, 0, format, width, height, 0, format, type, null);
 
     return this;
   }

@@ -403,8 +403,8 @@ export class RealtimeEngine extends RenderEngine {
 
       blury.inputs.axis.setValue(1);
 
-      blury.inputs.samples.setValue(2);
-      blurx.inputs.samples.setValue(2);
+      blury.inputs.samples.setValue(5);
+      blurx.inputs.samples.setValue(5);
 
       ao.outputs.fbo.connect(blurx.inputs.fbo);
       //blurx.outputs.fbo.connect(blury.inputs.fbo);
@@ -837,7 +837,7 @@ export class RealtimeEngine extends RenderEngine {
     }
 
     if (hash.get() !== this._last_envlight_hash) {
-      console.log("light update");
+      console.log("light update", hash.get());
       this._last_envlight_hash = hash.get();
       this.resetSamples();
     }

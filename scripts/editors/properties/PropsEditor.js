@@ -1,5 +1,4 @@
 import {Area, BorderMask} from '../../path.ux/scripts/screen/ScreenArea.js';
-import {saveFile, loadFile} from '../../path.ux/scripts/util/html5_fileapi.js';
 import {Icons} from "../icon_enum.js";
 
 import {NoteFrame, Note} from '../../path.ux/scripts/widgets/ui_noteframe.js';
@@ -9,7 +8,7 @@ import '../../path.ux/scripts/util/struct.js';
 
 let STRUCT = nstructjs.STRUCT;
 
-import {DataPathError} from '../../path.ux/scripts/controller/controller.js';
+import {DataPathError, saveFile, loadFile} from '../../path.ux/scripts/pathux.js';
 import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
 import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';
@@ -20,7 +19,7 @@ import {NodeEditor} from "../node/NodeEditor.js";
 import * as cconst from '../../core/const.js';
 import {Menu} from "../../path.ux/scripts/widgets/ui_menu.js";
 import {MeshTypes} from "../../mesh/mesh_base.js";
-import {ProceduralTex, ProceduralTexUser} from '../../brush/proceduralTex.js';
+import {ProceduralTex, ProceduralTexUser} from '../../texture/proceduralTex.js';
 
 export const TexturePathModes = {
   BRUSH : 0,
@@ -114,6 +113,7 @@ export class CDLayerPanel extends ColumnFrame {
 
     panel.useIcons(false);
     panel.tool(`mesh.add_cd_layer(elemType=${type} layerType="${layertype}")`);
+    panel.tool(`mesh.remove_cd_layer(elemType=${type} layerType="${layertype}")`);
   }
 
   updateDataPath() {
@@ -213,16 +213,22 @@ export class ObjectPanel extends ColumnFrame {
       return;
     }
 
+    let cdpanels = [
+      ["VERTEX", "color"],
+      ["LOOP", "uv"]
+    ];
+
     let data = ob.data;
     if (data instanceof Mesh) {
       let panel = this.panel("Data Layers");
-      let cd = UIBase.createElement("cd-layer-panel-x")
 
-      cd.setAttribute("datapath", "mesh");
-      cd.setAttribute("type", "VERTEX");
-      cd.setAttribute("layer", "color");
-
-      panel.add(cd);
+      for (let cdp of cdpanels) {
+        let cd = UIBase.createElement("cd-layer-panel-x");
+        cd.setAttribute("datapath", "mesh");
+        cd.setAttribute("type", cdp[0]);
+        cd.setAttribute("layer", cdp[1]);
+        panel.add(cd);
+      }
     }
   }
 

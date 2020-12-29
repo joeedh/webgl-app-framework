@@ -2,23 +2,21 @@ import {Area, AreaFlags, contextWrangler} from '../../path.ux/scripts/screen/Scr
 import {Editor, VelPan} from '../editor_base.js';
 import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {DataPathError} from '../../path.ux/scripts/controller/controller.js';
-import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
-import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
+import {startMenu, DataPath, DataPathError, KeyMap, HotKey, haveModal} from '../../path.ux/scripts/pathux.js';
+
+import {UIBase, PackFlags, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
 import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader_nodes.js';
 import {AddNodeOp, ConnectNodeOp} from './node_ops.js';
-import {DataPath} from "../../path.ux/scripts/controller/simple_controller.js";
 let projcos = util.cachering.fromConstructor(Vector2, 64);
 import {VelPanPanOp} from '../velpan.js';
 import {SelectOneOp, SelectOpBase} from './node_selectops.js';
 import {SelOneToolModes} from "../view3d/selectmode.js";
 import {Node, NodeFlags, SocketFlags, SocketTypes} from '../../core/graph.js';
 import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw.js';
-import {haveModal} from '../../path.ux/scripts/util/simple_events.js';
 import {layoutNode} from '../../core/graph_spatial.js';
 import {getContextArea} from "../editor_base.js";
 import {ModalFlags} from "../../core/modalflags.js";
@@ -38,6 +36,7 @@ export class NodeSocketElem extends RowFrame {
     this.isHighlight = false;
 
     this._last_update_key = undefined;
+    this.inherit_packflag |= PackFlags.NO_NUMSLIDER_TEXTBOX;
 
     this.ned = undefined; //owning node editor
 
@@ -193,7 +192,7 @@ export class NodeSocketElem extends RowFrame {
 
       this.socket.buildUI(this, onchange);
     }
-    if (this.type == "output") {
+    if (this.type === "output") {
       this.add(this.canvas);
     }
 
@@ -271,10 +270,13 @@ export class NodeSocketElem extends RowFrame {
     r = r[0];
 
     let key = "" + r.width + ":" + this.type;
-    if (key == this._last_update_key) {
+    if (key === this._last_update_key) {
       return;
     }
+    this._last_update_key = key;
 
+    this.setCSS();
+    return;
     this._last_update_key = key;
 
     if (this.type === "output") {
@@ -525,6 +527,8 @@ export class NodeUI extends Container {
 
     ui.style["position"] = "absolute";
     ui.style["top"] = ~~((y+30)*this.ned.velpan.scale[1]) + "px";
+
+    this.setCSS();
   }
 
   getNode() {
@@ -539,9 +543,15 @@ export class NodeUI extends Container {
   setCSS() {
     super.setCSS();
 
+    let node = this.getNode();
+    if (!node) {
+      return;
+    }
+
+    this.pos.load(node.graph_ui_pos);
+
     let co = this.pos;
     let scale = this.size;
-    let node;
 
     this.rawpos = new Vector2(co);
 
@@ -587,13 +597,18 @@ export class NodeUI extends Container {
     this.style["width"] = (~~scale[0]) + "px";
     this.style["height"] = (~~scale[1]) + "px";
 
-    this.background = this.getDefault("BoxSubBG");
+    this.background = this.getDefault("NodeBG");
 
+    let color;
     if (node.graph_flag & NodeFlags.SELECT) {
-      this.style["border"] = "2px solid grey";
+      color = this.getDefault("borderSelect")
     } else {
-      this.style["border"] = "2px solid black";
+      color = this.getDefault("borderColor")
     }
+
+    this.style["border"] = `2px solid ${color}`;
+    this.style["border-radius"] = this.getDefault("BoxRadius") + "px";
+
     this.float(co[0], co[1] - yoff);
   }
 
@@ -612,7 +627,8 @@ export class NodeUI extends Container {
 
   }
   static define() {return {
-    tagname : "nodeui-x"
+    tagname : "nodeui-x",
+    style : "NodeEditor"
   }}
 }
 UIBase.register(NodeUI);
@@ -637,6 +653,8 @@ export class NodeEditor extends Editor {
     this.nodeContainer = document.createElement("container-x");
     this.nodeContainer.yoff = 0;
     this.nodeContainer.style["overflow"] = "hidden";
+
+    this.nodeContainer.inherit_packflag |= PackFlags.NO_NUMSLIDER_TEXTBOX;
 
     this.nodeContainer.getDPI = () => {
       return this.getNodeDPI();
@@ -840,7 +858,7 @@ export class NodeEditor extends Editor {
 
     this.setCSS();
 
-    let bgcolor = "rgb(130, 130, 130)";
+    let bgcolor = this.getDefault("editorBG");
     this.background = bgcolor;
     this.style["background-color"] = bgcolor;
     //header.prop("NodeEditor.selectmode");
@@ -935,6 +953,11 @@ export class NodeEditor extends Editor {
 
   on_resize(newsize) {
     super.on_resize(newsize);
+
+    if (!this.header || !this.ctx) {
+      this.doOnce(this.rebuildAll);
+      return;
+    }
 
     console.log("EDITOR RESIZE");
 
@@ -1090,7 +1113,6 @@ export class NodeEditor extends Editor {
   updateZoom() {
     if (this._last_zoom.vectorDistance(this.velpan.scale) > 0.0001) {
       this._last_zoom.load(this.velpan.scale);
-
     }
   }
 
@@ -1106,7 +1128,7 @@ export class NodeEditor extends Editor {
     }
 
     let key;
-    if (this.graphClass == "shader") {
+    if (this.graphClass === "shader") {
       key = "material";
     }
 
@@ -1147,6 +1169,9 @@ export class NodeEditor extends Editor {
   }
 
   update() {
+    if (!this.ctx || window.FILE_LOADING) {
+      return;
+    }
     super.update();
 
     let r = this.header.getBoundingClientRect();
@@ -1251,7 +1276,6 @@ export class NodeEditor extends Editor {
       menu2.ctx = this.ctx;
 
       for (let cls of cats[k]) {
-        console.log(cls);
         menu2.addItem(cls.nodedef().uiname, cls.name);
       }
 
@@ -1273,12 +1297,16 @@ export class NodeEditor extends Editor {
       //"node.add_node(graphPath=\"material.graph\" graphClass=\"shader\" nodeClass=\"DiffuseNode\")")
     };
 
+    startMenu(menu, this.last_mpos[0]-10, this.last_mpos[1]-20, false);
+
+    /*
     menu.style["position"] = "absolute";
     //this.ctx.screen.appendChild(menu);
     document.body.appendChild(menu);
 
     menu.start();
     menu.float(this.last_mpos[0], this.last_mpos[1]-25, 8);
+     */
     //menu.float(this.last_mpos[0], this.last_mpos[1]-25, 8);
   }
 
@@ -1434,7 +1462,8 @@ export class NodeEditor extends Editor {
     apiname  : "nodeEditor",
     uiname   : "Node Editor",
     icon     : Icons.EDITOR_NODE,
-    flag     : AreaFlags.HIDDEN
+    flag     : AreaFlags.HIDDEN,
+    style    : "NodeEditor"
   }}
 };
 NodeEditor.STRUCT = STRUCT.inherit(NodeEditor, Editor) + `

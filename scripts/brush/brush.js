@@ -4,33 +4,37 @@ import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {DataBlock, BlockFlags} from "../core/lib_api.js";
 import {GraphFlags, NodeFlags} from "../core/graph.js";
-import {ProceduralTexUser} from './proceduralTex.js';
+import {ProceduralTexUser} from '../texture/proceduralTex.js';
 
 export const BrushFlags = {
-  SELECT: 1,
-  SHARED_SIZE: 2,
-  DYNTOPO : 4
+  SELECT               : 1,
+  SHARED_SIZE          : 2,
+  DYNTOPO              : 4,
+  INVERT_CONCAVE_FILTER: 8
 };
 
 export const DynamicsMask = {
-  STRENGTH: 1,
-  RADIUS: 2,
-  AUTOSMOOTH: 4
+  STRENGTH     : 1,
+  RADIUS       : 2,
+  AUTOSMOOTH   : 4,
+  CONCAVEFILTER: 8
 };
 
 export const SculptTools = {
-  CLAY: 0,
-  FILL: 1,
-  SCRAPE: 2,
-  SMOOTH: 3,
-  DRAW: 4,
-  SHARP: 5,
-  INFLATE: 6,
-  SNAKE: 7,
-  TOPOLOGY : 8,
-  GRAB : 9,
-  PAINT: 128,
-  PAINT_SMOOTH: 129,
+  CLAY          : 0,
+  FILL          : 1,
+  SCRAPE        : 2,
+  SMOOTH        : 3,
+  DRAW          : 4,
+  SHARP         : 5,
+  INFLATE       : 6,
+  SNAKE         : 7,
+  TOPOLOGY      : 8,
+  GRAB          : 9,
+  PAINT         : 128,
+  PAINT_SMOOTH  : 129,
+  COLOR_BOUNDARY: 130,
+  TEXTURE_PAINT : 150,
 };
 
 export const SculptIcons = {}
@@ -69,68 +73,68 @@ BrushDynChannel {
 nstructjs.register(BrushDynChannel);
 
 let radius_curve_json = {
-  "generators": [{"type": "EquationCurve", "equation": "x"}, {
-    "type": "GuassianCurve",
-    "height": 1,
-    "offset": 1,
+  "generators"      : [{"type": "EquationCurve", "equation": "x"}, {
+    "type"     : "GuassianCurve",
+    "height"   : 1,
+    "offset"   : 1,
     "deviation": 0.3
   }, {
-    "type": "BSplineCurve",
+    "type"         : "BSplineCurve",
     "interpolating": false,
-    "points": [{"0": 0.02344, "1": 0.12891, "eid": 1, "flag": 1, "tangent": 1}, {
-      "0": 0.29297,
-      "1": 0.85156,
-      "eid": 3,
-      "flag": 0,
+    "points"       : [{"0": 0.02344, "1": 0.12891, "eid": 1, "flag": 1, "tangent": 1}, {
+      "0"      : 0.29297,
+      "1"      : 0.85156,
+      "eid"    : 3,
+      "flag"   : 0,
       "tangent": 1
     }, {"0": 1, "1": 1, "eid": 2, "flag": 0, "tangent": 1}],
-    "deg": 6,
-    "eidgen": {"_cur": 4}
+    "deg"          : 6,
+    "eidgen"       : {"_cur": 4}
   }, {
-    "type": "BounceCurve",
+    "type"  : "BounceCurve",
     "params": {"decay": 1, "scale": 1, "freq": 1, "phase": 0, "offset": 0}
   }, {"type": "ElasticCurve", "params": {"mode": false, "amplitude": 1, "period": 1}}, {
-    "type": "EaseCurve",
+    "type"  : "EaseCurve",
     "params": {"mode_in": true, "mode_out": true, "amplitude": 1}
   }, {"type": "RandCurve", "params": {"amplitude": 1, "decay": 1, "in_mode": true}}],
-  "uiZoom": 1,
-  "VERSION": 1,
+  "uiZoom"          : 1,
+  "VERSION"         : 1,
   "active_generator": "BSplineCurve"
 };
 
 let reverse_brush_curve = {
-  "generators": [{"type": "EquationCurve", "equation": "x"}, {
-    "type": "GuassianCurve",
-    "height": 1,
-    "offset": 1,
+  "generators"      : [{"type": "EquationCurve", "equation": "x"}, {
+    "type"     : "GuassianCurve",
+    "height"   : 1,
+    "offset"   : 1,
     "deviation": 0.3
   }, {
-    "type": "BSplineCurve",
+    "type"         : "BSplineCurve",
     "interpolating": false,
-    "points": [{"0": 0.0, "1": 1.0, "eid": 1, "flag": 0, "tangent": 1}, {
-      "0": 0.24219,
-      "1": 0.91406,
-      "eid": 3,
-      "flag": 0,
+    "points"       : [{"0": 0.0, "1": 1.0, "eid": 1, "flag": 0, "tangent": 1}, {
+      "0"      : 0.24219,
+      "1"      : 0.91406,
+      "eid"    : 3,
+      "flag"   : 0,
       "tangent": 1
     }, {"0": 0.6562525, "1": 0.09766125000000003, "eid": 4, "flag": 1, "tangent": 1}, {
-      "0": 1.0,
-      "1": 0.0,
-      "eid": 2,
-      "flag": 0,
+      "0"      : 1.0,
+      "1"      : 0.0,
+      "eid"    : 2,
+      "flag"   : 0,
       "tangent": 1
     }],
-    "deg": 6,
-    "eidgen": {"_cur": 5}
+    "deg"          : 6,
+    "eidgen"       : {"_cur": 5}
   }, {
-    "type": "BounceCurve",
+    "type"  : "BounceCurve",
     "params": {"decay": 1, "scale": 1, "freq": 1, "phase": 0, "offset": 0}
   }, {"type": "ElasticCurve", "params": {"mode": false, "amplitude": 1, "period": 1}}, {
-    "type": "EaseCurve",
+    "type"  : "EaseCurve",
     "params": {"mode_in": true, "mode_out": true, "amplitude": 1}
   }, {"type": "RandCurve", "params": {"amplitude": 1, "decay": 1, "in_mode": true}}],
-  "uiZoom": 0.9414801494010006,
-  "VERSION": 1,
+  "uiZoom"          : 0.9414801494010006,
+  "VERSION"         : 1,
   "active_generator": "BSplineCurve"
 };
 
@@ -147,6 +151,10 @@ export class BrushDynamics {
     ch.curve.loadJSON(radius_curve_json);
 
     ch = this.getChannel("autosmooth", true);
+    ch.useDynamics = true;
+    ch.curve.loadJSON(reverse_brush_curve);
+
+    ch = this.getChannel("concaveFilter", true);
     ch.useDynamics = true;
     ch.curve.loadJSON(reverse_brush_curve);
   }
@@ -243,6 +251,8 @@ export class SculptBrush extends DataBlock {
 
     this.texUser = new ProceduralTexUser();
 
+    this.concaveFilter = 0.0;
+
     this.tool = SculptTools.CLAY;
     this.strength = 0.5;
     this.spacing = 0.25;
@@ -267,6 +277,8 @@ export class SculptBrush extends DataBlock {
 
     b.flag = this.flag;
     b.tool = this.tool;
+
+    b.concaveFilter = this.concaveFilter;
 
     b.strength = this.strength;
     b.spacing = this.spacing;
@@ -293,11 +305,11 @@ export class SculptBrush extends DataBlock {
 
   static blockDefine() {
     return {
-      typeName: "brush",
+      typeName   : "brush",
       defaultName: "Brush",
-      uiName: "Brush",
-      flag: BlockFlags.FAKE_USER,
-      icon: Icons.SCULPT_PAINT
+      uiName     : "Brush",
+      flag       : BlockFlags.FAKE_USER,
+      icon       : Icons.SCULPT_PAINT
     }
   }
 
@@ -320,9 +332,9 @@ export class SculptBrush extends DataBlock {
 
   static nodedef() {
     return {
-      name: "brush",
+      name  : "brush",
       uiname: "Brush",
-      flag: NodeFlags.SAVE_PROXY
+      flag  : NodeFlags.SAVE_PROXY
     }
   }
 }
@@ -333,6 +345,7 @@ SculptBrush.STRUCT = nstructjs.inherit(SculptBrush, DataBlock) + `
   tool       : int;
   radius     : float;
   planeoff   : float;
+  concaveFilter : float;
   spacing    : float;
   color      : vec4;
   bgcolor    : vec4;
@@ -366,6 +379,10 @@ export function makeDefaultBrushes() {
 
   brush = bmap[SculptTools.PAINT_SMOOTH];
   brush.autosmooth = 0.0;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+
+  brush = bmap[SculptTools.COLOR_BOUNDARY];
+  brush.autosmooth = 0.01;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
 
   brush = bmap[SculptTools.DRAW];
@@ -403,9 +420,9 @@ export function makeDefaultBrushes() {
   brush = bmap[SculptTools.SHARP];
   brush.strength = 1.0;
   brush.autosmooth = 0.1;
-  brush.spacing = 0.075;
+  brush.spacing = 0.25;
   brush.dynamics.strength.useDynamics = true;
-  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARPER);
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARP);
 
   brush = bmap[SculptTools.TOPOLOGY];
   brush.autosmooth = 0.35;

@@ -22,10 +22,7 @@ Transform interface refactor:
 
 import * as util from '../../../util/util.js';
 import {Vector3, Vector2, Vector4, Matrix4, Quat} from '../../../util/vectormath.js';
-import {ToolOp, UndoFlags} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
-import {keymap} from '../../../path.ux/scripts/util/simple_events.js';
-
-import {ListProperty, StringSetProperty} from "../../../path.ux/scripts/toolsys/toolprop.js";
+import {ToolOp, UndoFlags, keymap, ListProperty, StringSetProperty} from '../../../path.ux/scripts/pathux.js';
 
 export const ConstraintSpaces = {
   WORLD : 0,
@@ -122,7 +119,7 @@ export class TransDataType {
     TransDataMap[def.name] = cls;
   }
 
-  static calcPropCurve(dis, propmode, propradius, toolop) {
+  static calcPropCurve(dis, propmode, propradius) {
     dis /= propradius;
     dis = 1.0 - Math.min(Math.max(dis, 0.0), 1.0);
 

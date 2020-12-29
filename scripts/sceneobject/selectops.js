@@ -1,9 +1,10 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
-import {IntProperty, BoolProperty, FloatProperty, EnumProperty,
+import {
+  IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
-  PropFlags, PropTypes, PropSubTypes} from '../path.ux/scripts/toolsys/toolprop.js';
-import {ToolOp, ToolFlags, UndoFlags} from '../path.ux/scripts/toolsys/simple_toolsys.js';
+  PropFlags, PropTypes, PropSubTypes, ToolOp, ToolFlags, UndoFlags
+} from '../path.ux/scripts/pathux.js';
 import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DependSocket} from '../core/graphsockets.js';
@@ -19,8 +20,9 @@ export class SelectOpBase extends ToolOp {
     super();
   }
 
-  static tooldef() {return {
-  }}
+  static tooldef() {
+    return {}
+  }
 
   execPre() {
     window.redraw_viewport();
@@ -28,7 +30,7 @@ export class SelectOpBase extends ToolOp {
 
   undoPre(ctx) {
     let ud = this._undo = {
-      flags : {}
+      flags: {}
     };
 
     let scene = ctx.scene;
@@ -76,17 +78,19 @@ export class SelectOneOp extends SelectOpBase {
     super();
   }
 
-  static tooldef() {return {
-    uiname    : "Select One (Object)",
-    name      : "object_select",
-    toolpath  : "object.selectone",
-    icon      : -1,
-    inputs    : {
-      mode       : new EnumProperty("UNIQUE", SelOneToolModes),
-      objectId   : new IntProperty(-1).private(),
-      setActive  : new BoolProperty(true)
+  static tooldef() {
+    return {
+      uiname  : "Select One (Object)",
+      name    : "object_select",
+      toolpath: "object.selectone",
+      icon    : -1,
+      inputs  : {
+        mode     : new EnumProperty("UNIQUE", SelOneToolModes),
+        objectId : new IntProperty(-1).private(),
+        setActive: new BoolProperty(true)
+      }
     }
-  }}
+  }
 
   static invoke(ctx, args) {
     let tool = new this();
@@ -136,6 +140,7 @@ export class SelectOneOp extends SelectOpBase {
     }
   }
 }
+
 ToolOp.register(SelectOneOp);
 
 export class ToggleSelectOp extends SelectOpBase {
@@ -145,14 +150,15 @@ export class ToggleSelectOp extends SelectOpBase {
 
   static tooldef() {
     return {
-      uiname: "Toggle Select All (Object)",
-      name: "toggle_select_all",
+      uiname  : "Toggle Select All (Object)",
+      name    : "toggle_select_all",
       toolpath: "object.toggle_select_all",
-      icon: -1,
-      inputs: ToolOp.inherit({
+      icon    : -1,
+      inputs  : ToolOp.inherit({
         mode: new EnumProperty("AUTO", SelToolModes)
       })
-  }}
+    }
+  }
 
   static invoke(ctx, args) {
     let tool = new this();
@@ -182,5 +188,6 @@ export class ToggleSelectOp extends SelectOpBase {
     }
   }
 }
+
 ToolOp.register(ToggleSelectOp);
 

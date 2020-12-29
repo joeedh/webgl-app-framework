@@ -1,6 +1,10 @@
-import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
+import {
+  util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4, ToolPropertyCache, buildToolSysAPI
+} from '../path.ux/scripts/pathux.js';
 
 import * as editors from '../editors/all.js';
+
+import '../image/image.js';
 
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js';
 import {resourceManager} from "../core/resource.js";
@@ -22,7 +26,7 @@ import '../editors/view3d/widgets/widget_tools.js'; //ensure widget tools are al
 import {WidgetFlags} from '../editors/view3d/widgets/widgets.js';
 import {AddLightOp} from "../light/light_ops.js";
 import {Light} from '../light/light.js';
-import {DataAPI, DataPathError} from '../path.ux/scripts/controller/simple_controller.js';
+import {DataAPI, DataPathError} from '../path.ux/scripts/pathux.js';
 import {DataBlock, DataRef, Library, BlockTypes, BlockSet, BlockFlags} from '../core/lib_api.js'
 import {View3D} from '../editors/view3d/view3d.js';
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js';
@@ -55,8 +59,9 @@ import {Icons} from '../editors/icon_enum.js';
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 import {MaterialEditor} from "../editors/node/MaterialEditor.js";
 import {BrushDynamics, BrushDynChannel, BrushFlags, SculptBrush, SculptIcons, SculptTools} from "../brush/brush.js";
-import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../brush/proceduralTex.js';
+import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.js';
 import {PropModes} from '../editors/view3d/transform/transform_base.js';
+import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../image/image.js';
 
 
 export function api_define_rendersettings(api) {
@@ -75,7 +80,7 @@ export function api_define_rendersettings(api) {
 function api_define_socket(api, cls = NodeSocketType) {
   let nstruct = api.mapStruct(cls, true);
 
-  nstruct.flags("graph_flag", "graph_flag", SocketFlags, "Flag", "Flags");
+  nstruct.flags("graph_flag", "graph_flag", SocketFlags, "Graph Flags", "Flags");
   nstruct.int("graph_id", "graph_id", "Graph ID", "Unique graph ID").readOnly();
   nstruct.string("name", "name", "Name", "Name of socket");
   nstruct.string("uiname", "uiname", "UI Name", "Name of socket");
@@ -86,7 +91,7 @@ function api_define_socket(api, cls = NodeSocketType) {
 function api_define_node(api, cls = Node) {
   let nstruct = api.mapStruct(cls, true);
 
-  nstruct.flags("graph_flag", "graph_flag", NodeFlags, "Flag", "Flags");
+  nstruct.flags("graph_flag", "graph_flag", NodeFlags, "Graph Flags", "Flags");
   nstruct.int("graph_id", "graph_id", "Graph ID", "Unique graph ID").readOnly();
 
   function defineSockets(inorouts) {
@@ -212,6 +217,29 @@ export function api_define_sceneobject_data(api, cls) {
 
   mstruct.bool("usesMaterial", "usesMaterial", "Uses Material").readOnly();
   return mstruct;
+}
+
+export function api_define_imageuser(api) {
+  let st = api.mapStruct(ImageUser, true);
+
+  st.struct("image", "image", "Image", api.mapStruct(ImageBlock));
+
+  return st;
+}
+
+export function api_define_image(api) {
+  let st = api_define_datablock(api, ImageBlock);
+
+  st.enum("type", "type", ImageTypes, "Image Type");
+  st.enum("genType", "genType", ImageGenTypes, "Generator");
+  st.int("width", "width", "Width").noUnits().range(1, 16384).step(5);
+  st.int("height", "height", "Height").noUnits().range(1, 16384).step(5);
+  st.string("url", "url", "URL");
+  st.bool("ready", "ready", "Ready", "Is the image ready for use").readOnly();
+  st.flags("flag", "flag", ImageFlags, "Flag");
+  st.color4("genColor", "genColor", "Color");
+
+  api_define_imageuser(api);
 }
 
 export function api_define_mesh(api, pstruct) {
@@ -395,8 +423,10 @@ function api_define_graph(api, cls = Graph) {
 }
 
 function api_define_nodesockets(api) {
+  api_define_socket(api);
+
   for (let cls of NodeSocketClasses) {
-    let st = api_define_socket(api, cls);
+    let st = api.inheritStruct(cls, NodeSocketType);
     cls.apiDefine(api, st);
   }
 }
@@ -684,6 +714,7 @@ export function api_define_scene(api, pstruct) {
   sstruct.bool("propEnabled", "propEnabled", "Magnet Mode").icon(Icons.MAGNET);
   sstruct.enum("propMode", "propMode", PropModes, "Magnet Curve");
   sstruct.float("propRadius", "propRadius", "Magnet Radius").noUnits().range(0.01, 1000000);
+  sstruct.bool("propIslandOnly", "propIslandOnly", "Island Only");
 
   let prop = makeToolModeEnum();
 
@@ -745,6 +776,7 @@ export function api_define_brush(api, cstruct) {
   bst.float("spacing", "spacing", "Spacing").range(0.01, 2.0).noUnits();
   bst.color4("color", "color", "Primary Color");
   bst.color4("bgcolor", "bgcolor", "Secondary Color");
+  bst.float("concaveFilter", "concaveFilter", "Concave Wash").range(0.0, 1.0).noUnits();
 
   bst.struct("texUser", "texUser", "Texture", api.mapStruct(ProceduralTexUser));
 
@@ -774,7 +806,8 @@ export function api_define_matrix4(api) {
   for (let i = 1; i <= 4; i++) {
     for (let j = 1; j <= 4; j++) {
       let key = "m" + i + j;
-      data.float(key, key, key);
+
+      data.float(key, key, key).noUnits();
     }
   }
 
@@ -790,6 +823,8 @@ export function getDataAPI() {
   api_define_nodesockets(api);
 
   api_define_node(api);
+  api_define_image(api);
+
   api_define_shadernode(api);
   api_define_graph(api);
 
@@ -919,6 +954,9 @@ export function getDataAPI() {
   });
 
   buildEditorsAPI(api, cstruct);
+  buildToolSysAPI(api);
+
+  cstruct.struct("propCache", "toolDefaults", "Tool Defaults", api.mapStruct(ToolPropertyCache));
 
   return api;
 }

@@ -1,5 +1,60 @@
 let myglobal;
 
+if (Set.prototype.map === undefined) {
+  Set.prototype.map = function(func, thisArg) {
+    let ret = new Set();
+    let i = 0;
+
+    if (thisArg) {
+      for (let item of this) {
+        ret.add(func(item, i++, this));
+      }
+    } else {
+      for (let item of this) {
+        ret.add(func.call(thisArg, item, i++, this));
+      }
+    }
+
+    return ret;
+  }
+}
+
+if (Set.prototype.filter === undefined) {
+  Set.prototype.filter = function(func, thisArg) {
+    let ret = new Set();
+    let i = 0;
+
+    if (thisArg) {
+      for (let item of this) {
+        if (func(item, i++, this)) {
+          ret.add(item);
+        }
+      }
+    } else {
+      for (let item of this) {
+        if (func.call(thisArg, item, i++, this)) {
+          ret.add(item);
+        }
+      }
+    }
+
+    return ret;
+  }
+}
+
+if (Set.prototype.reduce === undefined) {
+  Set.prototype.reduce = function(func, initialVal) {
+    let accum = initialVal;
+    let i = 0;
+
+    for (let item of this) {
+      accum = func(accum, item, i++, this);
+    }
+
+    return accum;
+  }
+}
+
 if (typeof window === "undefined") {
   if (typeof self !== "undefined") {
     myglobal = self;

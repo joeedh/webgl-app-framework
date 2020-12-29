@@ -1,12 +1,12 @@
 import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
-import {saveFile, loadFile} from '../../path.ux/scripts/util/html5_fileapi.js';
+import {saveFile, loadFile} from '../../path.ux/scripts/pathux.js';
 import {PackFlags} from "../../path.ux/scripts/core/ui_base.js";
 
 import {Editor, VelPan} from '../editor_base.js';
 
 import '../../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
-import {DataPathError} from '../../path.ux/scripts/controller/controller.js';
+import {DataPathError} from '../../path.ux/scripts/pathux.js';
 import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
 import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';

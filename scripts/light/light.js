@@ -4,7 +4,9 @@ let STRUCT = nstructjs.STRUCT;
 import {Graph, Node, NodeFlags, SocketFlags} from '../core/graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
 import {Mesh} from '../mesh/mesh.js';
-import {Vec3Socket, FloatSocket, DependSocket, Matrix4Socket, Vec4Socket} from '../core/graphsockets.js';
+import {
+  Vec3Socket, FloatSocket, DependSocket, Matrix4Socket, Vec4Socket, RGBASocket, RGBSocket
+} from '../core/graphsockets.js';
 import {Shapes} from '../core/simplemesh_shapes.js';
 import {Shaders} from '../shaders/shaders.js';
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
@@ -43,7 +45,7 @@ export class Light extends SceneObjectData {
     name   : "light",
     flag   : NodeFlags.SAVE_PROXY,
     inputs : Node.inherit({
-      color  : new Vec3Socket("color", undefined, [1, 1, 1]),
+      color  : new RGBSocket("color", undefined, [1, 1, 1]),
       power  : new FloatSocket("power", undefined, 1.0),
       radius  : new FloatSocket("radius", undefined, 0.5),
       distance  : new FloatSocket("distance", undefined, 50.0),
@@ -51,6 +53,14 @@ export class Light extends SceneObjectData {
     }),
     outputs : Node.inherit()
   }}
+
+  getBoundingBox() {
+    let r = this.inputs.radius.getValue();
+    r = Math.max(r, 0.1);
+
+    let aabb = [new Vector3().addScalar(-r), new Vector3().addScalar(r)];
+    return aabb;
+  }
 
   draw(view3d, gl, uniforms, program, object) {
     if (program !== Shaders.MeshIDShader) {

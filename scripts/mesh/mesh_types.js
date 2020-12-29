@@ -9,6 +9,68 @@ let quat_temps = util.cachering.fromConstructor(Quat, 512);
 let mat_temps = util.cachering.fromConstructor(Matrix4, 256);
 let vec3_temps = util.cachering.fromConstructor(Vector3, 1024);
 
+let vnistack = new Array(32);
+vnistack.cur = 0;
+
+export class VertNeighborIter {
+  constructor() {
+    this.ret = {done : false, value : undefined};
+    this.done = true;
+    this.v = undefined;
+    this.i = 0;
+  }
+
+  reset(v) {
+    this.v = v;
+    this.i = 0;
+    this.done = false
+    this.ret.done = false;
+
+    return this;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.done = true;
+      vnistack.cur--;
+      this.v = undefined;
+      this.ret.value = undefined;
+      this.ret.done = true;
+    }
+
+    return this;
+  }
+
+  return() {
+    this.finish();
+
+    return this.ret;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+
+  next() {
+    let ret = this.ret;
+    let v = this.v;
+
+    if (this.i >= v.edges.length) {
+      this.finish();
+      return this.ret;
+    }
+
+    let e = v.edges[this.i];
+    this.i++;
+
+    ret.value = e.otherVertex(v);
+    return ret;
+  }
+}
+for (let i=0; i<vnistack.length; i++) {
+  vnistack[i] = new VertNeighborIter();
+}
+
 export class Element {
   constructor(type) {
     this._initElement(type);
@@ -241,6 +303,10 @@ export class Vertex extends Vector3 {
 
   [Symbol.keystr]() {
     return this.eid;
+  }
+
+  get neighbors() {
+    return vnistack[vnistack.cur++].reset(this);
   }
 
   toJSON() {
@@ -613,12 +679,25 @@ export class Edge extends Element {
     this.l = undefined;
     this.v1 = this.v2 = undefined;
     this.h1 = this.h2 = undefined;
-    this._length = undefined;
+    this.length = 0.0;
+  }
+
+  set flag(v) {
+    //if (!v) {
+    //  console.error("flag set");
+    //}
+
+    this._flag = v;
+  }
+
+  get flag() {
+    return this._flag;
   }
 
   get arcCache() {
     if (!this._arcCache) {
       this._arcCache = new ArcLengthCache(undefined, this);
+      this._arcCache.update();
     }
 
     return this._arcCache;
@@ -647,7 +726,7 @@ export class Edge extends Element {
       lastco = co;
     }
 
-    this._length = sum;
+    this.length = sum;
     return sum;
   }
 
@@ -661,13 +740,12 @@ export class Edge extends Element {
   }
 
   updateLength() {
-    this.flag &= ~MeshFlags.UPDATE;
-
-    if (this.arcCache === undefined) {
-      this.arcCache = new ArcLengthCache(undefined, this);
+    if (this._arcCache !== undefined) {
+      this._arcCache.update();
+      this.length = this._arcCache._calcS(1.0);
+    } else {
+      this.length = this.v1.vectorDistance(this.v2);
     }
-
-    this.arcCache.update();
 
     return this.length;
   }
@@ -859,19 +937,6 @@ export class Edge extends Element {
     return this.arcDerivative2(s).normalize();
   }
 
-  get length() {
-    if ((this.v1.flag & MeshFlags.UPDATE) || (this.v2.flag & MeshFlags.UPDATE)) {
-      this.update();
-    }
-
-    if (this.flag & MeshFlags.UPDATE) {
-      this.updateLength();
-      this.updateHandles();
-    }
-
-    return this._length;
-  }
-
   get loops() {
     let this2 = this;
 
@@ -1023,7 +1088,7 @@ export class Edge extends Element {
     reader(this);
     super.loadSTRUCT(reader);
 
-    this.flag &= MeshFlags.DRAW_DEBUG;
+    this.flag &= ~MeshFlags.DRAW_DEBUG;
   }
 }
 Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
@@ -1032,7 +1097,7 @@ Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
   v2      : int | obj.v2.eid;
   h1      : int | obj.h1 !== undefined ? obj.h1.eid : -1;
   h2      : int | obj.h2 !== undefined ? obj.h2.eid : -1;
-  _length : float; 
+  length  : float; 
 }
 `;
 nstructjs.manager.add_class(Edge);
@@ -1323,6 +1388,18 @@ export class Face extends Element {
 
     this.no = new Vector3();
     this.cent = new Vector3();
+  }
+
+  get flag() {
+    return this._flag;
+  }
+
+  set flag(f) {
+    if (f & MeshFlags.HIDE) {
+      console.error("HIDE was set!");
+    }
+
+    this._flag = f;
   }
 
   get verts() {

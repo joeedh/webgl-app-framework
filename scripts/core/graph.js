@@ -100,7 +100,9 @@ export class NodeSocketType {
       uiname = this.constructor.nodedef().uiname;
     }
 
+    //XXX shouldn't this be this.graph_uiname?
     this.uiname = uiname;
+
     this.name = this.constructor.nodedef().name;
 
     let def = this.constructor.nodedef();
@@ -119,6 +121,10 @@ export class NodeSocketType {
     this._node = undefined;
     this.graph_flag = flag;
     this.graph_id = -1;
+  }
+
+  static _api_uiname() {
+    return this.dataref.uiname;
   }
 
   //used to load data that might change between file versions
@@ -307,6 +313,7 @@ export class NodeSocketType {
     b.graph_flag = this.graph_flag;
     b.name = this.name;
     b.uiname = this.uiname;
+    b.socketName = this.socketName;
     //b.node = this.node;
     return this;
   }
@@ -772,20 +779,18 @@ export class Node {
       this.outputs = outs;
     }
 
-    let ins = this.inputs, outs = this.outputs;
-
     /*deal with any changes in sockets across file versions*/
     let def = this.constructor.getFinalNodeDef();
 
     for (let i=0; i<2; i++) {
-      let socks1 = i ? outs : ins;
+      let socks1 = i ? this.outputs : this.inputs;
       let socks2 = i ? def.outputs : def.inputs;
 
       for (let k in socks2) {
         //there's a new socket?
         if (!(k in socks1)) {
           socks1[k] = socks2[k].copy();
-          socks1[k].graph_id = -1;
+          socks1[k].graph_id = -1; //flag that we are a new socket
         }
       }
 
@@ -805,6 +810,8 @@ export class Node {
 
           //our types differ?
           if ((s2 instanceof s1.constructor) || (s1 instanceof s2.constructor)) {
+            console.log("Inheritance");
+
             //easy case, the old file uses a parent class of a new one,
             //e.g. Vec4Socket was changed to RGBASocket
             s2 = s2.copy();
@@ -829,6 +836,11 @@ export class Node {
 
       for (let k in socks1) {
         let sock = socks1[k];
+
+        //ensure socketName is corret
+        if (!sock.socketName) {
+          sock.socketName = k;
+        }
 
         if (!(k in socks2)) {
           continue;
@@ -1463,6 +1475,7 @@ export class Graph {
     }
 
     let n2 = this.node_idmap[n.graph_id];
+
     let node_idmap = this.node_idmap;
     let sock_idmap = this.sock_idmap;
 
@@ -1481,12 +1494,46 @@ export class Graph {
           socks2[k] = sock_idmap[socks2[k]];
         }
 
-        if (socks1[k]) {
-          socks2[k].onFileLoad(socks1[k]);
-        }
+        //deal with socket type changes
+        let s1 = socks1[k];
+        let s2 = socks2[k];
 
-        socks1[k] = socks2[k];
-        socks1[k].node = n;
+        if (s1.constructor !== s2.constructor) {
+          try {
+            //attempt to copy old value
+            s1.setValue(s2.getValue());
+          } catch (error) {
+            console.warn("Failed to load data from old file " + s2.constructor.name + " to " + s1.constructor.name);
+          }
+
+          s1.edges = s2.edges;
+
+          for (let s3 of s2.edges) {
+            if (s3.edges.indexOf(s2) >= 0) {
+              //paranoia check
+              if (s3.edges.indexOf(s1) >= 0) {
+                s3.edges.remove(s2);
+              } else {
+                s3.edges.replace(s2, s1);
+              }
+            }
+          }
+
+          if (s1.graph_id < 0) {
+            s1.graph_id = s2.graph_id;
+            sock_idmap[s1.graph_id] = s1;
+          } else {
+            delete sock_idmap[s2.graph_id];
+            sock_idmap[s1.graph_id] = s1;
+          }
+        } else {
+          if (socks1[k]) {
+            socks2[k].onFileLoad(socks1[k]);
+          }
+
+          socks1[k] = s2;
+          socks1[k].node = n;
+        }
       }
     }
 

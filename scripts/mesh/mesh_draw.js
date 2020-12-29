@@ -103,6 +103,14 @@ export function genRenderMesh(gl, mesh, uniforms) {
     mesh._fancyMeshes = {};
   }
 
+  let ecolors = {};
+  ecolors[0] = [0, 0, 0, 1];
+  ecolors[MeshFlags.SELECT] = selcolor;
+  ecolors[MeshFlags.SEAM] = [0, 1.0, 1.0, 1.0];
+
+  let clr = new Vector4(selcolor).interp(ecolors[MeshFlags.SEAM], 0.5);
+  ecolors[MeshFlags.SELECT|MeshFlags.SEAM] = clr;
+
   pushtime("start2");
 
   let axes = [-1];
@@ -170,6 +178,12 @@ export function genRenderMesh(gl, mesh, uniforms) {
       //XXX
       let view3d = _appstate.ctx.view3d;
 
+      for (let e of mesh.edges) {
+        if (e.flag & MeshFlags.UPDATE) {
+          e.updateLength();
+        }
+      }
+
       meshes.edges = mesh.genRender_curves(gl, false, view3d, LayerTypes.LOC | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR);
       meshes.edges.primflag = PrimitiveTypes.LINES;
 
@@ -194,6 +208,8 @@ export function genRenderMesh(gl, mesh, uniforms) {
           continue;
         }
 
+        e.updateLength();
+
         let l = e.l;
         if (l) {
           let _i = 0;
@@ -207,11 +223,10 @@ export function genRenderMesh(gl, mesh, uniforms) {
 
         let line = smoothline ? sm.smoothline(e.eid, e.v1, e.v2) : sm.line(e.eid, e.v1, e.v2);
 
-        if (e.flag & MeshFlags.SELECT) {
-          line.colors(selcolor, selcolor);
-        } else {
-          line.colors(e.v1.color, e.v2.color);
-        }
+        let mask = e.flag & (MeshFlags.SELECT | MeshFlags.SEAM);
+        let color = ecolors[mask];
+
+        line.colors(color, color);
 
         line.ids(e.eid, e.eid);
         line.uvs(lineuv1, lineuv2);
@@ -312,12 +327,14 @@ export function genRenderMesh(gl, mesh, uniforms) {
   mesh.clearUpdateFlags(recalc);
   pushtime("final");
 
+  /*
   let buf = 'genRenderMesh times:\n';
   for (let time of times) {
     buf += '  ' + time + '\n';
   }
 
   console.log(buf);
+   */
 }
 
 export function drawMeshElements(mesh, view3d, gl, selmask, uniforms, program, object, drawTransFaces = false) {

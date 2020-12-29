@@ -1,4 +1,7 @@
-import {nstructjs, Vector2, Vector3, Vector4, ToolOp, StringProperty, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
+import {
+  nstructjs, Vector2, Vector3, Vector4, ToolOp, StringProperty, Quat, Matrix4,
+  haveModal, keymap, KeyMap, HotKey, ToolClasses, ToolFlags, ToolMacro
+} from '../path.ux/scripts/pathux.js';
 
 import * as units from '../path.ux/scripts/core/units.js';
 
@@ -8,36 +11,36 @@ units.Unit.baseUnit = "foot";
 import './theme.js';
 
 let STRUCT = nstructjs.STRUCT;
-import {Area, ScreenArea, areaclasses} from '../path.ux/scripts/screen/ScreenArea.js';
+import {Area, ScreenArea, contextWrangler, areaclasses} from '../path.ux/scripts/screen/ScreenArea.js';
 import {Screen} from '../path.ux/scripts/screen/FrameManager.js';
 import {UIBase, saveUIData, loadUIData} from '../path.ux/scripts/core/ui_base.js';
 import {Container} from '../path.ux/scripts/core/ui.js';
 import * as util from '../util/util.js';
-import {haveModal} from "../path.ux/scripts/util/simple_events.js";
 import {warning} from "../path.ux/scripts/widgets/ui_noteframe.js";
 import {Icons} from './icon_enum.js';
 import {PackFlags} from "../path.ux/scripts/core/ui_base.js";
 
-export {keymap, KeyMap, HotKey} from '../path.ux/scripts/util/simple_events.js';
-import {keymap, KeyMap, HotKey} from '../path.ux/scripts/util/simple_events.js';
+export {keymap, KeyMap, HotKey} from '../path.ux/scripts/pathux.js';
 import {DataBlock, BlockFlags, DataRefProperty} from '../core/lib_api.js';
 
 export {VelPanFlags, VelPan} from './velpan.js';
 
 /*default toolops for new/duplicate/unlinking datablocks*/
 export class NewDataBlockOp extends ToolOp {
-  static tooldef() {return {
-    uiname     : "New",
-    toolpath   : "datalib.default_new",
-    inputs     : {
-      name : new StringProperty(),
-      blockType : new StringProperty(),
-      dataPathToSet : new StringProperty()
-    },
-    outputs : {
-      block : new DataRefProperty()
+  static tooldef() {
+    return {
+      uiname  : "New",
+      toolpath: "datalib.default_new",
+      inputs  : {
+        name         : new StringProperty(),
+        blockType    : new StringProperty(),
+        dataPathToSet: new StringProperty()
+      },
+      outputs : {
+        block: new DataRefProperty()
+      }
     }
-  }}
+  }
 
   exec(ctx) {
     let type = this.inputs.blockType.getValue();
@@ -53,27 +56,49 @@ export class NewDataBlockOp extends ToolOp {
     ctx.datalib.add(ret);
 
     let path = this.inputs.dataPathToSet.getValue();
+    let addUser = true;
+
     if (path !== "") {
+      //try to intelligently add reference count with owner block ref. . .
+      let rdef = ctx.api.resolvePath(ctx, path);
+
+      if (rdef && rdef.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
+        if (rdef.obj !== ctx.api.getValue(ctx, path)) {
+          ret.lib_addUser(rdef.obj);
+          addUser = false
+        }
+      }
+
+
       ctx.api.setValue(ctx, path, ret);
+    }
+
+    //if pulling owner block from data api failed (e.g. the owner isn't a datablcok) increment the reference count
+    //anyway; it will be regenerated on file load
+    if (addUser) {
+      ret.lib_addUser();
     }
 
     this.outputs.block.setValue(ret);
   }
 }
+
 ToolOp.register(NewDataBlockOp);
 
 export class CopyDataBlockOp extends ToolOp {
-  static tooldef() {return {
-    uiname     : "Copy",
-    toolpath   : "datalib.default_copy",
-    inputs     : {
-      block : new DataRefProperty(),
-      dataPathToSet : new StringProperty()
-    },
-    outputs : {
-      block : new DataRefProperty()
+  static tooldef() {
+    return {
+      uiname  : "Copy",
+      toolpath: "datalib.default_copy",
+      inputs  : {
+        block        : new DataRefProperty(),
+        dataPathToSet: new StringProperty()
+      },
+      outputs : {
+        block: new DataRefProperty()
+      }
     }
-  }}
+  }
 
   exec(ctx) {
     let block = ctx.datalib.get(this.inputs.block.getValue());
@@ -95,17 +120,20 @@ export class CopyDataBlockOp extends ToolOp {
     this.outputs.block.setValue(ret);
   }
 }
+
 ToolOp.register(CopyDataBlockOp);
 
 export class AssignDataBlock extends ToolOp {
-  static tooldef() {return {
-    uiname     : "Assign",
-    toolpath   : "datalib.default_assign",
-    inputs     : {
-      block : new DataRefProperty(),
-      dataPathToSet : new StringProperty()
+  static tooldef() {
+    return {
+      uiname  : "Assign",
+      toolpath: "datalib.default_assign",
+      inputs  : {
+        block        : new DataRefProperty(),
+        dataPathToSet: new StringProperty()
+      }
     }
-  }}
+  }
 
   exec(ctx) {
     let block = ctx.datalib.get(this.inputs.block.getValue());
@@ -131,20 +159,22 @@ export class AssignDataBlock extends ToolOp {
     }
   }
 }
+
 ToolOp.register(AssignDataBlock);
 
 
 export class UnlinkDataBlockOp extends ToolOp {
-  static tooldef() {return {
-    uiname     : "Unlink Block",
-    toolpath   : "datalib.default_unlink",
-    inputs     : {
-      block : new DataRefProperty(),
-      dataPathToUnset : new StringProperty()
-    },
-    outputs : {
+  static tooldef() {
+    return {
+      uiname  : "Unlink Block",
+      toolpath: "datalib.default_unlink",
+      inputs  : {
+        block          : new DataRefProperty(),
+        dataPathToUnset: new StringProperty()
+      },
+      outputs : {}
     }
-  }}
+  }
 
   exec(ctx) {
     let block = ctx.datalib.get(this.inputs.block.getValue());
@@ -318,11 +348,11 @@ export class DataBlockBrowser extends Container {
 
     let path = this.getAttribute("datapath");
     let meta = this.ctx.api.resolvePath(this.ctx, path);
-    
+
     if (meta === undefined) {
       return false;
     }
-    
+
     return meta.obj !== undefined;
   }
 
@@ -348,10 +378,13 @@ export class DataBlockBrowser extends Container {
     super.update();
   }
 
-  static define() {return {
-    tagname : "data-block-browser-x"
-  }}
+  static define() {
+    return {
+      tagname: "data-block-browser-x"
+    }
+  }
 }
+
 UIBase.register(DataBlockBrowser);
 
 /**
@@ -421,6 +454,7 @@ export class EditorAccessor {
 }
 
 export let editorAccessor = new EditorAccessor();
+
 export function rebuildEditorAccessor() {
   editorAccessor.update();
 }
@@ -446,6 +480,151 @@ export function buildEditorsAPI(api, ctxStruct) {
   }
 }
 
+export class EditorSideBar extends Container {
+  constructor() {
+    super();
+
+    //expects this.editor to be set by Editor
+    this.editor = undefined;
+
+
+    this._closed = false;
+
+    this.closedWidth = 25;
+    this.openWidth = 250;
+
+    this._height = 500;
+    this._width = this.openWidth;
+
+    this.clear();
+  }
+
+  clear() {
+    super.clear();
+
+    this._icon = this.iconbutton(Icons.SHIFT_RIGHT, "Collapse/Expand", () => {
+      if (this._closed) {
+        this.expand();
+      } else {
+        this.collapse();
+      }
+    }, undefined, PackFlags.SMALL_ICON);
+
+
+    let tabs = this.tabpanel = this.tabs("left");
+
+    //make tabs smaller
+    let font = tabs.getDefault("TabText");
+
+    font = font.copy();
+    font.size = 12;
+
+    tabs.overrideDefault("TabText", font);
+  }
+
+  set width(v) {
+    this._width = v;
+    this.style["width"] = this._width + "px";
+  }
+
+  get width() {
+    return this._width;
+  }
+
+  get height() {
+    return this._height;
+  }
+
+  set height(v) {
+    this._height = v;
+  }
+
+  collapse() {
+    if (this._closed) {
+      return;
+    }
+
+    console.log("collapse");
+    this._closed = true;
+
+    this.animate().goto("width", this.closedWidth, 500).then(() => {
+      this._icon.icon = Icons.SHIFT_LEFT;
+    });
+  }
+
+  expand() {
+    if (!this._closed) {
+      return;
+    }
+
+    console.log("expand");
+    this._closed = false;
+    this.animate().goto("width", this.openWidth, 500).then(() => {
+      this._icon.icon = Icons.SHIFT_RIGHT;
+    });
+  }
+
+  update() {
+    super.update();
+
+    if (!this.editor.size) {
+      return;
+    }
+
+    let h = this.editor.size[1];
+
+    if (h !== this._height) {
+      this._height = h;
+      this.style["height"] = "" + this._height + "px";
+      this.flushUpdate();
+      console.log("Sidebar height update");
+    }
+  }
+
+  setCSS() {
+    this.style["height"] = "" + this._height + "px";
+    this.style["width"] = "" + this._width + "px";
+    this.background = this.getDefault("background");
+  }
+
+  saveData() {
+    let ret = super.saveData();
+
+    ret.closed = this._closed;
+
+    return ret;
+  }
+
+  set closed(v) {
+    if (!!v === !!this._closed) {
+      return;
+    }
+
+    if (v) {
+      this.collapse();
+    } else {
+      this.expand();
+    }
+  }
+
+  loadData(obj) {
+    if (!obj) {
+      return;
+    }
+
+    this.closed = obj.closed;
+  }
+
+  static define() {
+    return {
+      tagname: "editor-sidebar-x",
+      style  : "sidebar"
+    }
+  }
+}
+
+UIBase.register(EditorSideBar);
+
 export class Editor extends Area {
   constructor() {
     super();
@@ -459,12 +638,36 @@ export class Editor extends Area {
     this.shadow.appendChild(this.container);
   }
 
+  makeSideBar() {
+    let sidebar = document.createElement("editor-sidebar-x");
+    sidebar.editor = this;
+
+    this.container.add(sidebar);
+
+    return sidebar;
+  }
+
+  dataLink(owner, getblock, getblock_addUser) {
+
+  }
+
   init() {
     super.init();
 
     this.container.useDataPathUndo = this.useDataPathUndo;
 
     this.style["overflow"] = "hidden";
+
+    let cb = () => {
+      this.push_ctx_active();
+      this.pop_ctx_active();
+    }
+
+    this.addEventListener("dragover", cb);
+    this.addEventListener("mouseenter", cb);
+    this.addEventListener("mouseover", cb);
+    this.addEventListener("mousein", cb);
+    this.addEventListener("focus", cb);
   }
 
   static defineAPI(api) {
@@ -475,7 +678,7 @@ export class Editor extends Area {
     st.string("type", "type", "Type", "Editor type").customGetSet(function () {
       let obj = this.dataref;
       return obj.constructor.define().areaname;
-    });
+    }).readOnly();
 
     return st;
   }
@@ -491,7 +694,7 @@ export class Editor extends Area {
     return sarea.area;
   }
 
-  swap(editor_cls, storeSwapParent=true) {
+  swap(editor_cls, storeSwapParent = true) {
     let sarea = this.owning_sarea;
 
     sarea.switch_editor(editor_cls);
@@ -546,11 +749,12 @@ export class Editor extends Area {
     this.makeHeader(this.container);
     this.setCSS();
   }
-  
+
   getScreen() {
-    return this.owning_sarea !== undefined && this.owning_sarea.screen !== undefined ? this.owning_sarea.screen : _appstate.screen;
+    return this.owning_sarea !== undefined && this.owning_sarea.screen !== undefined ? this.owning_sarea.screen
+                                                                                     : _appstate.screen;
   }
-  
+
   static register(cls) {
     Area.register(cls);
   }
@@ -564,7 +768,6 @@ Editor.STRUCT = STRUCT.inherit(Editor, Area) + `
 `;
 nstructjs.manager.add_class(Editor);
 
-import {ToolClasses, ToolFlags, ToolMacro} from "../path.ux/scripts/toolsys/simple_toolsys.js";
 import {Menu} from "../path.ux/scripts/widgets/ui_menu.js";
 import * as ui_base from "../path.ux/scripts/core/ui_base.js";
 import {time_ms} from "../util/util.js";
@@ -579,7 +782,16 @@ function spawnToolSearchMenu(ctx) {
   let menu = document.createElement("menu-x");
 
   for (let cls of ToolClasses) {
-    if ((cls.tooldef().flag & ToolFlags.PRIVATE) || !cls.canRun(ctx)) {
+    let ok = !(cls.tooldef().flag & ToolFlags.PRIVATE);
+
+    try {
+      ok = cls.canRun(ctx);
+    } catch (error) {
+      util.print_stack(error);
+      ok = false;
+    }
+
+    if (!ok) {
       continue;
     }
 
@@ -659,18 +871,20 @@ export class App extends Screen {
 
       new HotKey("Left", [], () => {
         let time = this.ctx.scene.time;
-        this.ctx.scene.changeTime(Math.max(time-1, 0));
+        this.ctx.scene.changeTime(Math.max(time - 1, 0));
       }),
       new HotKey("Right", [], () => {
         let time = this.ctx.scene.time;
-        this.ctx.scene.changeTime(time+1);
+        this.ctx.scene.changeTime(time + 1);
       }),
     ]);
   }
 
-  static define() {return {
-    tagname : "webgl-app-x"
-  }}
+  static define() {
+    return {
+      tagname: "webgl-app-x"
+    }
+  }
 
   static newSTRUCT() {
     return document.createElement(this.define().tagname);
@@ -784,7 +998,7 @@ export class App extends Screen {
 
     this.updateWidgets();
     this.updateDPI();
- }
+  }
 };
 
 window.setInterval(() => {
@@ -805,13 +1019,15 @@ export class ScreenBlock extends DataBlock {
     //this.screen = document.createElement("webgl-app-x");
   }
 
-  static blockDefine() {return {
-    typeName    : "screen",
-    defaultName : "Screen",
-    uiName      : "Screen",
-    icon        : -1,
-    flag        : BlockFlags.FAKE_USER //always have user count > 0
-  }}
+  static blockDefine() {
+    return {
+      typeName   : "screen",
+      defaultName: "Screen",
+      uiName     : "Screen",
+      icon       : -1,
+      flag       : BlockFlags.FAKE_USER //always have user count > 0
+    }
+  }
 
   copy() {
     let ret = new ScreenBlock();
@@ -828,6 +1044,7 @@ export class ScreenBlock extends DataBlock {
     super.loadSTRUCT(reader);
   }
 }
+
 ScreenBlock.STRUCT = STRUCT.inherit(ScreenBlock, DataBlock) + `
   screen : App;
 }
@@ -866,8 +1083,7 @@ window.setInterval(() => {
 
     last_time = util.time_ms();
   }
-}, 1000.0 / 30.0);
-
+}, 1000.0/30.0);
 
 
 export class MeshMaterialChooser extends Container {
@@ -887,12 +1103,12 @@ export class MeshMaterialChooser extends Container {
   getActive(mesh) {
     if (!mesh) return 0;
 
-    for (let i=0; i<this._activeMatCache.length; i += 2) {
+    for (let i = 0; i < this._activeMatCache.length; i += 2) {
       if (this._activeMatCache[i] === mesh.lib_id) {
-        let ret = this._activeMatCache[i+1];
+        let ret = this._activeMatCache[i + 1];
 
         if (ret >= mesh.materials.length) {
-          ret = this._activeMatCache[i+1] = mesh.materials.length-1;
+          ret = this._activeMatCache[i + 1] = mesh.materials.length - 1;
         }
 
         return ret;
@@ -905,7 +1121,7 @@ export class MeshMaterialChooser extends Container {
 
   saveData() {
     return Object.assign(super.saveData(), {
-      _activeMatCache : this._activeMatCache
+      _activeMatCache: this._activeMatCache
     });
   }
 
@@ -922,7 +1138,7 @@ export class MeshMaterialChooser extends Container {
   setActive(mesh, mati) {
     let idx = -1;
 
-    for (let i=0; i<this._activeMatCache.length; i += 2) {
+    for (let i = 0; i < this._activeMatCache.length; i += 2) {
       if (this._activeMatCache[i] === mesh.lib_id) {
         idx = i;
         break;
@@ -935,7 +1151,7 @@ export class MeshMaterialChooser extends Container {
       }
       this._activeMatCache = [mesh.lib_id, mati].concat(this._activeMatCache);
     } else {
-      this._activeMatCache[idx+1] = mati;
+      this._activeMatCache[idx + 1] = mati;
     }
   }
 
@@ -968,7 +1184,7 @@ export class MeshMaterialChooser extends Container {
         mat.lib_addUser(mesh);
 
         if (this.onchange) {
-          this.onchange(mesh.materials.length-1);
+          this.onchange(mesh.materials.length - 1);
         }
       });
 
@@ -1020,9 +1236,11 @@ export class MeshMaterialChooser extends Container {
     }
   }
 
-  static define() {return {
-    tagname : "mesh-material-chooser-x"
-  }}
+  static define() {
+    return {
+      tagname: "mesh-material-chooser-x"
+    }
+  }
 }
 
 UIBase.register(MeshMaterialChooser);
@@ -1079,8 +1297,8 @@ export class MeshMaterialPanel extends Container {
 
     this.subpanel.prop("has_shader");
 
-    if (this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix+"has_shader")) {
-      let node = this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix+"shader");
+    if (this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix + "has_shader")) {
+      let node = this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix + "shader");
 
       for (let k in node.inputs) {
         let sock = node.inputs[k];
@@ -1096,7 +1314,8 @@ export class MeshMaterialPanel extends Container {
         this.subpanel.dataPrefix = subpath;
         this.subpanel.inherit_packflag |= PackFlags.NO_NUMSLIDER_TEXTBOX;
 
-        sock.buildUI(this.subpanel, () => {});
+        sock.buildUI(this.subpanel, () => {
+        });
       }
 
       this.subpanel.dataPrefix = dataPrefix;
@@ -1149,10 +1368,13 @@ export class MeshMaterialPanel extends Container {
     }
   }
 
-  static define() {return {
-    tagname : "mesh-material-panel-x"
-  }}
+  static define() {
+    return {
+      tagname: "mesh-material-panel-x"
+    }
+  }
 }
+
 UIBase.register(MeshMaterialPanel);
 
 export class DirectionChooser extends UIBase {
@@ -1231,10 +1453,10 @@ export class DirectionChooser extends UIBase {
 
       let a = this.value[0] >= 0.0;
       let b = this.value[1] >= 0.0;
-      let m = a | (b << 1);
+      let m = a | (b<<1);
 
       let r = this.getBoundingClientRect();
-      let dx2 = x - (r.x+r.width*0.5), dy2 = y - r.y-r.height*0.5;
+      let dx2 = x - (r.x + r.width*0.5), dy2 = y - r.y - r.height*0.5;
       let s = dx2*this.value[1] - dy2*this.value[0];
 
       //this.flip[0] = s < 0.0 ? -1.0 : 1.0;
@@ -1245,13 +1467,13 @@ export class DirectionChooser extends UIBase {
       }
 
       this.modaldata = pushModalLight({
-        on_mousedown : (e) => {
+        on_mousedown  : (e) => {
           if (e.button === 2) {
             this.endModal();
             this.setValue(this.start_value);
           }
         },
-        on_mousemove : (e) => {
+        on_mousemove  : (e) => {
           let mat = new Matrix4();
 
           //mat.multiply(rmat);
@@ -1263,8 +1485,8 @@ export class DirectionChooser extends UIBase {
           let dx2 = e.x - rx, dy2 = e.y - ry;
           let sdx2 = this.start_mpos[0] - rx, sdy2 = this.start_mpos[1] - ry;
 
-          let scale = 1.0 / (0.5 * this.size * Math.sqrt(3.0));
-          let rawlen = Math.sqrt(dx2*dx2 + dy2*dy2) / (Math.sqrt(2.0)*this.size);
+          let scale = 1.0/(0.5*this.size*Math.sqrt(3.0));
+          let rawlen = Math.sqrt(dx2*dx2 + dy2*dy2)/(Math.sqrt(2.0)*this.size);
 
           sdx2 = Math.min(Math.max(sdx2, -this.size), this.size);
           sdy2 = Math.min(Math.max(sdy2, -this.size), this.size);
@@ -1311,17 +1533,17 @@ export class DirectionChooser extends UIBase {
           this.last_mpos[1] = e.y;
           this.render();
         },
-        on_mouseup : (e) => {
+        on_mouseup    : (e) => {
           this.endModal();
         },
-        on_touchend : (e) => {
+        on_touchend   : (e) => {
           this.endModal();
         },
-        on_touchcancel : (e) => {
+        on_touchcancel: (e) => {
           this.endModal();
           this.setValue(this.start_value);
         },
-        on_keydown : (e) => {
+        on_keydown    : (e) => {
           console.log(e.keyCode, this.modaldata);
 
           switch (e.keyCode) {
@@ -1377,7 +1599,7 @@ export class DirectionChooser extends UIBase {
 
     av.abs();
 
-    if (1||av[0] > av[1] && av[0] > av[2]) {
+    if (1 || av[0] > av[1] && av[0] > av[2]) {
       axis[2] = 1.0;
     } else {
       axis[0] = 1.0;
@@ -1400,7 +1622,7 @@ export class DirectionChooser extends UIBase {
 
     this._last_dpi = dpi;
 
-    let w = ~~(this.size * dpi);
+    let w = ~~(this.size*dpi);
     this.canvas.width = w;
     this.canvas.height = w;
 
@@ -1451,7 +1673,7 @@ export class DirectionChooser extends UIBase {
       let w = p[3];
 
       if (Math.abs(w) > 0.00001) {
-        p.mulScalar(1.0 / w);
+        p.mulScalar(1.0/w);
         p[3] = w;
       }
 
@@ -1468,13 +1690,13 @@ export class DirectionChooser extends UIBase {
     let th = -Math.PI, dth = (Math.PI*2.0)/steps;
     r *= 1.5;
 
-    for (let i=0; i<steps; i++, th += dth) {
+    for (let i = 0; i < steps; i++, th += dth) {
       //break;
-      for (let j=0; j<3; j++) {
+      for (let j = 0; j < 3; j++) {
         let r2 = 0.33;
         p[j] = Math.sin(th)*r2;
-        p[(j+1)%3] = Math.cos(th)*r2;
-        p[(j+2)%3] = 0.0;
+        p[(j + 1)%3] = Math.cos(th)*r2;
+        p[(j + 2)%3] = 0.0;
 
         p.multVecMatrix(rmat);
 
@@ -1499,9 +1721,9 @@ export class DirectionChooser extends UIBase {
     }
 
     steps = 64;
-    let s=0, ds = 1.0 / steps;
+    let s = 0, ds = 1.0/steps;
 
-    for (let i=0; i<steps; i++, s += ds) {
+    for (let i = 0; i < steps; i++, s += ds) {
       p.zero().interp(this.value, s).mulScalar(1.5);
 
       let w = proj(p);
@@ -1589,8 +1811,11 @@ export class DirectionChooser extends UIBase {
     this.updateDataPath();
   }
 
-  static define() {return {
-    tagname : "direction-chooser-3d-x"
-  }}
+  static define() {
+    return {
+      tagname: "direction-chooser-3d-x"
+    }
+  }
 }
+
 UIBase.register(DirectionChooser);

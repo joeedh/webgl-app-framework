@@ -708,7 +708,7 @@ export class View3D extends Editor {
     tmp[3] = 1.0;
     tmp.multVecMatrix(this.activeCamera.rendermat);
     
-    if (tmp[3] != 0.0) {
+    if (tmp[3] !== 0.0) {
       tmp[0] /= tmp[3];
       tmp[1] /= tmp[3];
       tmp[2] /= tmp[3];
@@ -765,7 +765,7 @@ export class View3D extends Editor {
     let p = curtemps.next().zero();
     p.multVecMatrix(mat);
 
-    if (this.orbitMode == OrbitTargetModes.CURSOR) {
+    if (this.orbitMode === OrbitTargetModes.CURSOR) {
       let redraw = this.camera.target.vectorDistance(p) > 0.0;
 
       this.camera.target.load(p);
@@ -820,7 +820,7 @@ export class View3D extends Editor {
 
     strip = header.strip();
     strip.inherit_packflag |= PackFlags.HIDE_CHECK_MARKS;
-    strip.prop("scene.toolmode[bvh]");
+    strip.prop("scene.toolmode[sculpt]");
     strip.prop("scene.toolmode[mesh]");
     strip.prop("scene.toolmode[object]");
     strip.prop("scene.toolmode[pan]");
@@ -912,6 +912,7 @@ export class View3D extends Editor {
     this.overdraw = document.createElement("overdraw-x");
     this.overdraw.ctx = this.ctx;
     //this.overdraw.zindex_base = 5;
+
 
     this.overdraw.startNode(this, this.ctx.screen);
     this.overdraw.remove();
@@ -1012,12 +1013,12 @@ export class View3D extends Editor {
 
       let x = r[0], y = r[1];
 
+      this.push_ctx_active();
+
       if (this.doEvent("mousedown", e)) {
         this.pop_ctx_active();
         return;
       }
-
-      this.push_ctx_active();
 
       this.updateCursor();
 
@@ -1454,8 +1455,10 @@ export class View3D extends Editor {
     //console.log("DPI", dpi);
 
     let screen = this.ctx.screen;
-    let rect = screen.getClientRects();
-    y = rect.height - y;
+    let rect = screen.getBoundingClientRect();
+
+    y = screen.size[1]*dpi - y - h;
+    //y += h;
 
     this.glPos = new Vector2([~~x, ~~y]);
     this.glSize = new Vector2([~~w, ~~h]);
@@ -1774,7 +1777,9 @@ let f2 = () => {
         sarea.area.resetRender();
       }
 
+      sarea.area.push_ctx_active(true);
       sarea.area.viewportDraw(gl);
+      sarea.area.pop_ctx_active(true);
     }
   }
 

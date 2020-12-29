@@ -1,10 +1,14 @@
 import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor} from '../editor_base.js';
 import '../../path.ux/scripts/util/struct.js';
+
 let STRUCT = nstructjs.STRUCT;
 import {Node, NodeSocketType, Graph, NodeFlags, SocketFlags, GraphFlags, GraphNodes} from "../../core/graph.js";
-import {IntProperty, StringProperty, EnumProperty, FlagProperty, PropSubTypes, PropTypes, PropFlags} from '../../path.ux/scripts/toolsys/toolprop.js';
-import {ToolOp, UndoFlags, ToolFlags} from '../../path.ux/scripts/toolsys/simple_toolsys.js';
+import {
+  IntProperty, StringProperty, EnumProperty,
+  FlagProperty, PropSubTypes, PropTypes,
+  PropFlags, ToolOp, UndoFlags, ToolFlags
+} from '../../path.ux/scripts/pathux.js';
 import {Icons} from '../icon_enum.js';
 import {NodeGraphOp} from './node_ops.js';
 import {SelToolModes, SelOneToolModes} from '../view3d/selectmode.js';
@@ -16,9 +20,11 @@ export class SelectOpBase extends NodeGraphOp {
     this._undo = undefined;
   }
 
-  static tooldef() { return {
-    inputs: ToolOp.inherit()
-  }}
+  static tooldef() {
+    return {
+      inputs: ToolOp.inherit()
+    }
+  }
 
   static canRun(ctx) {
     return ctx.nodeEditor !== undefined;
@@ -36,8 +42,8 @@ export class SelectOpBase extends NodeGraphOp {
     }
 
     let ud = this._undo = {
-      sel   : {},
-      order : {}
+      sel  : {},
+      order: {}
     };
 
     let sel = ud.sel, order = ud.order;
@@ -72,7 +78,7 @@ export class SelectOpBase extends NodeGraphOp {
     let nodes = graph.nodes.slice(0, graph.nodes.length);
     let donemap = {};
 
-    for (let i=0; i<nodes.length; i++) {
+    for (let i = 0; i < nodes.length; i++) {
       graph.nodes[i] = undefined;
     }
 
@@ -93,7 +99,7 @@ export class SelectOpBase extends NodeGraphOp {
     for (let node of nodes) {
       if (!(node.graph_id in donemap)) {
         console.warn("orphan node found in node_selectops.SelectOpBase.prototype.undo");
-        for (let i=0; i<nodes.length; i++) {
+        for (let i = 0; i < nodes.length; i++) {
           if (graph.nodes[i] === undefined) {
             graph.nodes[i] = node;
           }
@@ -106,13 +112,15 @@ export class SelectOpBase extends NodeGraphOp {
 }
 
 export class SelectOneOp extends SelectOpBase {
-  static tooldef() { return {
-    toolpath : "node.selectone",
-    inputs : ToolOp.inherit({
-      nodeId : new IntProperty(),
-      mode   : new EnumProperty("UNIQUE", SelOneToolModes)
-    })
-  }}
+  static tooldef() {
+    return {
+      toolpath: "node.selectone",
+      inputs  : ToolOp.inherit({
+        nodeId: new IntProperty(),
+        mode  : new EnumProperty("UNIQUE", SelOneToolModes)
+      })
+    }
+  }
 
   static invoke(ctx, args) {
     let tool = super.invoke(ctx, args);
@@ -159,6 +167,7 @@ export class SelectOneOp extends SelectOpBase {
     graph.nodes.pushToFront(node);
   }
 }
+
 ToolOp.register(SelectOneOp);
 
 
@@ -166,7 +175,7 @@ export class ToggleSelectAll extends SelectOpBase {
   static tooldef() {
     return {
       toolpath: "node.toggle_select_all",
-      inputs: ToolOp.inherit({
+      inputs  : ToolOp.inherit({
         mode: new EnumProperty("AUTO", SelToolModes)
       })
     }
