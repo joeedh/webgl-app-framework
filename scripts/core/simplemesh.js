@@ -621,9 +621,9 @@ export class GeoLayer extends Array {
 
   extend(data) {
     if (this._useTypedData && this.dataUsed >= this.data_f32.length) {
-      //if (DEBUG.simplemesh) {
+      if (DEBUG.simplemesh) {
         console.warn("Resizing simplemesh attribute after conversion to a typed array");
-      //}
+      }
 
       this._useTypedData = false;
       this.data = new Array(this.data_f32.length);
@@ -682,7 +682,10 @@ export class GeoLayer extends Array {
         this._useTypedData = false;
         this.f32Ready = false;
       } else {
-        console.log("simpleisland is converting back to simple array", count, this.data_f32.length, this.dataUsed);
+        if (window.DEBUG && window.DEBUG.simplemesh) {
+          console.log("simpleisland is converting back to simple array", count, this.data_f32.length, this.dataUsed);
+        }
+
         this.data = new Array(this.data_f32.length);
 
         let a = this.data;

@@ -57,6 +57,7 @@ BRUSH_PROP_TYPE = ToolProperty.register(BrushProperty);
 
 export class PaintSample {
   constructor() {
+    this.origp = new Vector4();
     this.p = new Vector4();
     this.dp = new Vector4();
     this.viewPlane = new Vector3();

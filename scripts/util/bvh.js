@@ -1247,6 +1247,8 @@ export class BVH {
   }
 
   _nextTriIdx() {
+    //XXX
+    return ~~(Math.random()*1024*1024*32);
     this.tri_idgen++;
 
     return this.tri_idgen;

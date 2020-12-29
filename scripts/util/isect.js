@@ -232,8 +232,8 @@ export function ray_tri_isect(orig, dir, vert0, vert1, vert2) {
 
   let ret = rti_ret;
 
-  ret[0] = u;
-  ret[1] = v;
+  ret[0] = 1.0-u-v;
+  ret[1] = u;
   ret[2] = t;
 
   return ret;

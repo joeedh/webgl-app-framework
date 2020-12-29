@@ -34,6 +34,7 @@ import '../util/floathalf.js';
 import {DataRefProperty} from "../core/lib_api.js";
 import {CubicPatch, bernstein, bspline} from '../subsurf/subsurf_patch.js';
 import {KdTreeGrid} from './mesh_grids_kdtree.js';
+import {triangulateFan} from './mesh_utils.js';
 
 export class DeleteOp extends MeshOp {
   static tooldef() {
@@ -346,7 +347,6 @@ export class TriangulateOp extends MeshOp {
           tri[1] = l2.v;
           tri[2] = l3.v;
 
-          console.log(l1, l2, l3);
           let f2 = mesh.makeFace(tri);
           let l = f2.lists[0].l;
 

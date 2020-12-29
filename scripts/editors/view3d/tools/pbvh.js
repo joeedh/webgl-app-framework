@@ -1139,6 +1139,15 @@ export class BVHToolMode extends ToolMode {
         tc2.zero().addScalar(1.0);
         tc3.zero().addScalar(1.0);
 
+        function doline(sm, t1, t2, v1, v2) {
+          if (have_grids) {
+            sm.line(t1, t2);
+          } else {
+            if (mesh.getEdge(v1, v2)) {
+              sm.line(t1, t2);
+            }
+          }
+        }
 
         for (let tri of node.uniqueTris) {
           /*
@@ -1317,20 +1326,15 @@ export class BVHToolMode extends ToolMode {
           tri_cls[i++] = tc3[3]*cmul;
 
           ti += 3;
-          continue;
+
           //*
           if (drawWireframe) {
-            if (drawQuadsOnly) {
-              //sm.line(t1, t2);
-              sm.line(t2, t3);
-              //sm.line(t3, t1);
-            } else {
-              sm.line(t1, t2);
-              sm.line(t2, t3);
-              sm.line(t3, t1);
-            }
+            doline(sm, t1, t2, tri.v1, tri.v2);
+            doline(sm, t2, t3, tri.v2, tri.v3);
+            doline(sm, t3, t1, tri.v3, tri.v1);
           }
           //*/
+          continue;
 
           let tri2 = sm.tri(t1, t2, t3);
 

@@ -114,6 +114,33 @@ export function triangulateMesh(mesh, faces = mesh.faces) {
   return ret;
 }
 
+export function triangulateFan(mesh, f, newfaces=undefined) {
+  let startl = f.lists[0].l;
+  let l = startl.next;
+
+  do {
+    let v1 = startl.v;
+    let v2 = l.v;
+    let v3 = l.next.v;
+
+    let tri = mesh.makeTri(v1, v2, v3);
+    let l2 = tri.lists[0].l;
+
+    mesh.copyElemData(l2, startl);
+    mesh.copyElemData(l2.next, l);
+    mesh.copyElemData(l2.prev, l.next);
+    mesh.copyElemData(tri, f);
+
+    if (newfaces !== undefined) {
+      newfaces.push(tri);
+    }
+
+    l = l.next;
+  } while (l !== startl.prev);
+
+  mesh.killFace(f);
+}
+
 export function bisectMesh(mesh, faces, vec, offset = new Vector3()) {
   faces = new Set(faces);
 

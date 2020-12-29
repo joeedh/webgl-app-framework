@@ -420,9 +420,9 @@ export function makeDefaultBrushes() {
   brush = bmap[SculptTools.SHARP];
   brush.strength = 1.0;
   brush.autosmooth = 0.1;
-  brush.spacing = 0.075;
+  brush.spacing = 0.25;
   brush.dynamics.strength.useDynamics = true;
-  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARPER);
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARP);
 
   brush = bmap[SculptTools.TOPOLOGY];
   brush.autosmooth = 0.35;
