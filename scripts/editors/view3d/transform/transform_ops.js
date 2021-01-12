@@ -210,7 +210,9 @@ export class TransformOp extends View3DOp {
 
     for (let k in this._undo) {
       let ud = this._undo[k];
-      tot += map[k].calcCenter(ctx);
+      let type = map[k];
+
+      tot += type.calcUndoMem ? type.calcUndoMem(ctx, ud) : 0;
     }
 
     return tot;

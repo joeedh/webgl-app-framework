@@ -1279,6 +1279,9 @@ export class PaintOp extends ToolOp {
     let haveGrids = bvh.cd_grid >= 0;
     let cd_grid = bvh.cd_grid;
 
+    let doTopo = mode === SculptTools.TOPOLOGY || this.inputs.useDynTopo.getValue();
+    doTopo = doTopo && !this.inputs.useMultiResDepth.getValue();
+
     let isPaintMode = mode === PAINT || mode === PAINT_SMOOTH;
 
     let planeoff = ps.planeoff;
@@ -1450,6 +1453,16 @@ export class PaintOp extends ToolOp {
       vs = bvh.closestVerts(p3, radius);
     }
 
+    if (doTopo && !haveGrids) {
+      let log = this._undo.log;
+      log.checkStart(mesh);
+
+      for (let v of vs) {
+        log.ensure(v);
+      }
+    }
+
+
     if (mode === SNAKE) {
       p3.zero();
       let tot = 0.0;
@@ -1530,6 +1543,22 @@ export class PaintOp extends ToolOp {
     let origset = new WeakSet();
 
     function doUndo(v) {
+      if (doTopo && !haveGrids) {
+        if (haveOrigData && !vmap.has(v)) {
+          let data = v.customData[cd_orig].value;
+
+          data.load(v);
+
+          if (isPaintMode && have_color) {
+            vmap.set(v.eid, new Vector4(v.customData[cd_color].color));
+          } else {
+            vmap.set(v.eid, new Vector3(data));
+          }
+        }
+
+        return;
+      }
+
       if (!haveGrids && !vmap.has(v.eid)) {
         if (haveOrigData) {
           v.customData[cd_orig].value.load(v);
@@ -2254,9 +2283,6 @@ export class PaintOp extends ToolOp {
       smoother.smooth(sverts, wfunc, wfac);
     }
 
-    let doTopo = mode === SculptTools.TOPOLOGY || this.inputs.useDynTopo.getValue();
-    doTopo = doTopo && !this.inputs.useMultiResDepth.getValue();
-
     if (haveGrids && haveQuadTreeGrids && doTopo) {
       let vs2 = new Set(vs);
 
@@ -2273,17 +2299,23 @@ export class PaintOp extends ToolOp {
     if (doTopo && !haveGrids && mode !== SMOOTH) {
       let es = new Set();
 
+      let log = this._undo.log;
+      log.checkStart(mesh);
+
       for (let v of vs) {
+        log.ensure(v);
+
         for (let e of v.edges) {
           es.add(e);
 
           let v2 = e.otherVertex(v);
+          log.ensure(v2);
+
           //*
           for (let e2 of v2.edges) {
             let v3 = e2.otherVertex(v2);
-            //for (let e3 of v3.edges) {
-             // es.add(e3);
-            //}
+            log.ensure(v3);
+
             es.add(e2);
           }//*/
         }
@@ -2517,6 +2549,44 @@ export class PaintOp extends ToolOp {
         log.logAdd(elem);
       }
     }
+
+    /*
+    let flag = MeshFlags.TEMP2;
+
+    function logStart(v) {
+      v.flag |= flag;
+
+      log.ensure(v);
+
+      for (let v2 of v.neighbors) {
+        if (!(v2.flag & flag)) {
+          v2.flag |= flag;
+
+          log.ensure(v2);
+        }
+      }
+    }
+
+    for (let e of es2) {
+      for (let i=0; i<2; i++) {
+        let v = i ? e.v2 : e.v1;
+
+        v.flag &= ~flag;
+
+        for (let v2 of v.neighbors) {
+          v2.flag &= ~flag;
+        }
+      }
+    }
+
+    for (let e of es2) {
+      if (!(e.v1.flag & flag)) {
+        logStart(e.v1);
+      }
+      if (!(e.v2.flag & flag)) {
+        logStart(e.v2);
+      }
+    }//*/
 
     for (let e of es2) {
       if (e.eid < 0) {

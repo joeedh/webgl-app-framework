@@ -48,7 +48,7 @@ export class SelectOpBase extends MeshOp {
     let tot = 0;
 
     for (let k in this._undo) {
-      if (k === "acriveObject") {
+      if (k === "activeObject") {
         tot += 8;
         continue;
       }

@@ -3098,11 +3098,43 @@ export class Mesh extends SceneObjectData {
     }
 
     for (let e of this.edges) {
-      if (count_edges(e.v1, e.v2) !== 1) {
-        console.warn("Edge corruption in edge", e.eid, count_edges(e.v1, e.v2));
+      let count = count_edges(e.v1, e.v2);
 
+      if (count !== 1) {
+        console.warn("Edge corruption in edge", e.eid, count_edges(e.v1, e.v2));
         msg_out[0] = "Edge corruption in edge " + e.eid;
-        return false;
+
+        if (count === 0) {
+          return false;
+        }
+
+        console.warn("Fixing...");
+
+        //fix
+        for (let e2 of e.v1.edges) {
+          if (e === e2 || e2.otherVertex(e.v1) !== e.v2) {
+            continue;
+          }
+
+          let _i = 0;
+
+          while (e2.l) {
+            let l = e2.l;
+
+            this._radialRemove(e2, l);
+            this._radialInsert(e, l);
+
+            if (_i++ > 100) {
+              console.error("infinite loop error");
+              break;
+            }
+          }
+
+          e2.l = undefined;
+          mesh.killEdge(e2);
+        }
+
+        //return true;
       }
 
       e.index = 0;

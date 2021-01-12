@@ -37,6 +37,9 @@ export const EdgeLayout = {
   V2   : 3
 };
 
+let LTYPE=0, LCANCEL=1, LEID=2, LPARENT=3, LTOTCD=4, LTOTDATA=5, LTOT=6;
+let CTYPE=0, CLEN=1, CTOT=2;
+
 export class LogEntry {
   constructor(type, eid, customData) {
     this.type = type;
@@ -106,38 +109,128 @@ export class LogEntry {
   }
 }
 
+export class CustomDataList extends Array {
+  constructor(list) {
+    super();
+
+    this.list = list;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+  }
+}
+CustomDataList.STRUCT = `
+mesh_log.CustomDataList {
+  list : array(abstract(mesh.CustomDataElem));
+}
+`;
+nstructjs.register(CustomDataList);
+
+let _cdtmp = new CustomDataList();
+let _cdReadMem = new Uint8Array(1024*1024*4);
+let _cdReadView = new DataView(_cdReadMem.buffer);
+
 export class MeshLog {
   constructor() {
     this.log = [];
+    this.logstarts = [];
 
     this.startEid = -1;
     this.eidmap = {};
   }
 
+  _newEntry(elem, subtype) {
+    let log = this.log;
+
+    let li = this.log.length;
+    this.logstarts.push(li);
+
+    log.length += LTOT;
+
+    let cdlist = _cdtmp;
+    cdlist.list = elem.customData;
+
+    nstructjs.writeObject(log, cdlist);
+
+    log[li+LTOTCD] = log.length - li - LTOT;
+
+    log[li+LTYPE] = elem.type | subtype;
+    log[li+LCANCEL] = false;
+    log[li+LEID] = elem.eid;
+
+    let i = log.length;
+
+    //let ret = new LogEntry(elem.type | subtype, elem.eid, cd2);
+    log.push(elem.flag);
+    log.push(elem.index);
+
+    switch (elem.type) {
+      case MeshTypes.VERTEX:
+        log.push(elem[0]);
+        log.push(elem[1]);
+        log.push(elem[2]);
+        log.push(elem.no[0]);
+        log.push(elem.no[1]);
+        log.push(elem.no[2]);
+        break;
+      case MeshTypes.EDGE:
+        log.push(elem.v1.eid);
+        log.push(elem.v2.eid);
+        break;
+      case MeshTypes.LOOP:
+        log.push(elem.v.eid);
+        log.push(elem.e.eid);
+        log.push(elem.f.eid);
+        break;
+      case MeshTypes.FACE:
+        log.push(elem.lists.length);
+
+        for (let list of elem.lists) {
+          log.push(list.length);
+
+          for (let l of list) {
+            log.push(l.eid);
+            log.push(l.v.eid);
+            log.push(l.e.eid);
+          }
+        }
+
+        break;
+    }
+
+    log[li+LTOTDATA] = log.length - i;
+
+    return li;
+  }
+
   logVertex(v, subtype = 0) {
-    let le = LogEntry.newEntry(v, subtype);
-    this._logAdd(le);
-    return le;
+    let li = this._newEntry(v, subtype);
+    this._logAdd(li);
+    return li;
   }
 
   logEdge(e, subtype = 0) {
-    let le = LogEntry.newEntry(e, subtype);
-    this._logAdd(le);
-    return le;
+    let li = this._newEntry(e, subtype);
+    this._logAdd(li);
+    return li;
   }
 
   logLoop(l, subtype = 0) {
-    let le = LogEntry.newEntry(l, subtype);
-    this._logAdd(le);
-    return le;
+    let li = this._newEntry(l, subtype);
+    this._logAdd(li);
+    return li;
   }
 
   calcMemSize() {
     let tot = 0;
 
-    for (let item of this.log) {
-      tot += item.calcMemSize();
-    }
+    tot += this.log.length*8;
+    tot += this.logstarts.length*8;
+
+    //for (let item of this.log) {
+    //  tot += item.calcMemSize();
+    //}
 
     for (let k in this.eidmap) {
       tot += 8;
@@ -146,32 +239,40 @@ export class MeshLog {
     return tot + 256;
   }
 
-  _logAdd(le, eid=le.eid) {
-    if (this.eidmap[eid]) {
-      le.parent = this.eidmap[eid];
+  _logAdd(li, eid=undefined) {
+    let log = this.log;
+
+    if (eid === undefined) {
+      eid = log[li+LEID];
     }
-    this.eidmap[eid] = le;
-    this.log.push(le);
+
+    log[li+LPARENT] = this.eidmap[eid];
+    this.eidmap[eid] = li;
   }
 
   logFace(f, subtype = 0) {
-    let le = LogEntry.newEntry(f, subtype);
-    this._logAdd(le);
-    return le;
+    let li = this._newEntry(f, subtype);
+    this._logAdd(li);
+    return li;
   }
 
-  cancelEntry(le) {
-    if (le.cancel) {
+  cancelEntry(li) {
+    let log = this.log;
+
+    if (log[li+LCANCEL]) {
       return; //already canceled
     }
 
-    if (le.parent) {
-      this.eidmap[le.eid] = le.parent;
+    let parent = log[li+LPARENT];
+    let eid = log[li+LEID];
+
+    if (parent) {
+      this.eidmap[eid] = parent;
     } else {
-      delete this.eidmap[le.eid];
+      delete this.eidmap[eid];
     }
 
-    le.cancel = true;
+    log[li+LCANCEL] = true;
   }
 
   ensure(elem) {
@@ -293,12 +394,20 @@ export class MeshLog {
     //console.log("Log undo!");
 
     let finalfaces = new Set();
+    let log = this.log, logstarts = this.logstarts;
 
-    let loadCustomData = (le, elem) => {
+    let loadCustomData = (li, elem, cdidx, cdlen) => {
       let mask = 0;
 
-      for (let j=0; j<le.customData.length; j++) {
-        let cd1 = le.customData[j];
+      let mem = _cdReadMem;
+      for (let i=0; i<cdlen; i++) {
+        mem[i] = log[cdidx+i];
+      }
+
+      let customData = nstructjs.readObject(_cdReadView, CustomDataList).list;
+
+      for (let j=0; j<customData.length; j++) {
+        let cd1 = customData[j];
         let cd2;
 
         for (let k=0; k<elem.customData.length; k++) {
@@ -325,52 +434,60 @@ export class MeshLog {
       }
     }
 
-    let loadElem = (le, elem) => {
-      loadCustomData(le, elem);
+    let loadElem = (li, elem) => {
+      let cdidx = li + LTOT;
+      let cdlen = log[li+LTOTCD];
 
-      let data = le.data;
+      loadCustomData(li, elem, cdidx, cdlen);
 
-      if (data[0] & MeshFlags.SELECT) {
+      let i = li + LTOT + cdlen;
+
+      if (log[i] & MeshFlags.SELECT) {
         mesh.setSelect(elem, true);
       } else {
         mesh.setSelect(elem, false);
       }
 
-      elem.flag = data[0];
-      elem.index = data[1];
+      elem.flag = log[i++];
+      elem.index = log[i++];
 
       switch (elem.type) {
         case MeshTypes.VERTEX:
-          elem[0] = data[2];
-          elem[1] = data[3];
-          elem[2] = data[4];
+          elem[0] = log[i++];
+          elem[1] = log[i++];
+          elem[2] = log[i++];
 
-          elem.no[0] = data[5];
-          elem.no[1] = data[6];
-          elem.no[2] = data[7];
+          elem.no[0] = log[i++];
+          elem.no[1] = log[i++];
+          elem.no[2] = log[i++];
           break;
       }
     }
 
-    for (let i = this.log.length - 1; i >= 0; i--) {
-      let le = this.log[i];
-      let subtype = le.type & ~LogTypes.GEOM_MASK;
+    for (let i=logstarts.length-1; i >= 0; i--) {
+      let li = logstarts[i];
+      let type = log[li+LTYPE];
+      let eid = log[li+LEID];
+      let data_start = li + LTOT + log[li+LTOTCD];
+
+      let subtype = type & ~LogTypes.GEOM_MASK;
       let elem;
 
-      if (le.cancel) {
+      if (log[li+LCANCEL]) {
         continue;
       }
 
       //console.log(le.type & LogTypes.GEOM_MASK, subtype, le);
+      let di = data_start;
 
       if (subtype === LogTypes.ADD) {
-        elem = mesh.eidmap[le.eid];
+        elem = mesh.eidmap[eid];
 
         if (!elem) {
           //console.log(le.type & LogTypes.GEOM_MASK, le);
           //console.warn("Invalid Element " + le.eid);
           continue;
-          throw new Error("invalid element " + le.eid);
+          throw new Error("invalid element " + eid);
         }
 
         //console.log("Killing element", elem);
@@ -383,77 +500,75 @@ export class MeshLog {
         mesh.killElem(elem);
         continue;
       } else if (subtype === LogTypes.REMOVE) {
-        let data = le.data;
-
-        switch (le.type & LogTypes.GEOM_MASK) {
+        switch (type & LogTypes.GEOM_MASK) {
           case MeshTypes.VERTEX:
-            elem = mesh.makeVertex(undefined, le.eid);
+            elem = mesh.makeVertex(undefined, eid);
 
-            if (data[0] & MeshFlags.SELECT) {
+            if (log[di] & MeshFlags.SELECT) {
               mesh.setSelect(elem, true);
             }
 
             //console.log("VERT", elem.eid, le.eid);
 
-            elem.flag = data[0];
-            elem.index = data[1];
+            elem.flag = log[di++];
+            elem.index = log[di++];
 
-            elem[0] = data[2];
-            elem[1] = data[3];
-            elem[2] = data[4];
-            elem.no[0] = data[5];
-            elem.no[1] = data[6];
-            elem.no[2] = data[7];
+            elem[0] = log[di++];
+            elem[1] = log[di++];
+            elem[2] = log[di++];
+            elem.no[0] = log[di++];
+            elem.no[1] = log[di++];
+            elem.no[2] = log[di++];
             break;
           case MeshTypes.EDGE:
-            let v1 = mesh.eidmap[data[2]];
-            let v2 = mesh.eidmap[data[3]];
+            let v1 = mesh.eidmap[log[di+2]];
+            let v2 = mesh.eidmap[log[di+3]];
 
-            elem = mesh.makeEdge(v1, v2, undefined, le.eid);
+            elem = mesh.makeEdge(v1, v2, true, eid);
             //console.log("EDGE", elem.eid, le.eid);
 
-            if (data[0] & MeshFlags.SELECT) {
+            if (log[di] & MeshFlags.SELECT) {
               mesh.setSelect(elem, true);
             }
 
-            elem.flag = data[0];
-            elem.index = data[1];
+            elem.flag = log[di];
+            elem.index = log[di+1];
 
             break;
           case MeshTypes.LOOP: //ignore
             break;
           case MeshTypes.FACE:
-            let j = 2;
+            let j = di + 2;
 
-            let totlist = data[j++];
+            let totlist = log[j++];
             for (let il=0; il<totlist; il++) {
-              let totloop = data[j++];
+              let totloop = log[j++];
               let vs = [];
               let es = [];
               let ls = [];
 
               for (let k=0; k<totloop; k++) {
-                let leid = data[j++];
-                let veid = data[j++];
-                let eeid = data[j++];
+                let leid = log[j++];
+                let veid = log[j++];
+                let eeid = log[j++];
 
                 vs.push(mesh.eidmap[veid]);
                 ls.push(leid);
               }
 
               if (il === 0) {
-                elem = mesh.makeFace(vs, le.eid, ls);
+                elem = mesh.makeFace(vs, eid, ls);
 
                 finalfaces.add(elem);
 
                 //console.log("FACE", elem.eid, le.eid);
 
-                if (data[0] & MeshFlags.SELECT) {
+                if (log[di] & MeshFlags.SELECT) {
                   mesh.setSelect(elem, true);
                 }
 
-                elem.flag = data[0];
-                elem.index = data[1];
+                elem.flag = log[di];
+                elem.index = log[di+1];
               } else {
                 mesh.makeHole(elem, vs, ls);
               }
@@ -461,27 +576,31 @@ export class MeshLog {
 
             //load loop customdata
             for (let l of elem.loops) {
-              let le2 = this.eidmap[l.eid];
-              if (le2) {
-                loadCustomData(le2, l);
+              let li2 = this.eidmap[l.eid];
+
+              if (li2) {
+                let cdlen = log[li2+LTOTCD];
+                let cdidx = li2 + LTOT;
+
+                loadCustomData(li2, l, cdidx, cdlen);
               }
             }
 
             break;
         }
 
-        if (!(le.type & MeshTypes.LOOP)) {
-          loadCustomData(le, elem);
+        if (!(type & MeshTypes.LOOP)) {
+          let cdidx = li + LTOT;
+          let cdlen = log[li+LTOTCD];
+
+          loadCustomData(li, elem, cdidx, cdlen);
         }
       } else {
         //load customdata
-        elem = mesh.eidmap[le.eid];
+        elem = mesh.eidmap[eid];
 
         if (elem) { //elem can be undefined, like for loops
-          elem.flag = le.data[0];
-          elem.index = le.data[1];
-
-          loadElem(le, elem);
+          loadElem(li, elem);
         }
       }
     }
