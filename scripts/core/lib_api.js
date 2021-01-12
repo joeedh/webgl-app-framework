@@ -232,6 +232,10 @@ but owner will not be added to this.lib_userlist`.trim());
 
   /**call this to register a subclass*/
   static register(cls) {
+    if (cls.blockDefine === DataBlock.blockDefine) {
+      throw new Error(cls.name + " is missing its blockDefine static method");
+    }
+
     BlockTypes.push(cls);
   }
 
@@ -790,6 +794,10 @@ export class DataRefProperty extends ToolProperty {
     this.data = new DataRef();
   }
 
+  calcMemSize() {
+    return super.calcMemSize() + (this.blockType ? this.blockType.length*4+8 : 8) + 64;
+  }
+
   setValue(val) {
     if (val === undefined || val === -1) {
       this.data.lib_id = -1;
@@ -847,7 +855,21 @@ export class DataRefProperty extends ToolProperty {
     this.copyTo(ret);
     return ret;
   }
+
+  loadSTRUCT(reader) {
+    reader(this);
+
+    if (this.blockType === "undefined") {
+      this.blockType = undefined;
+    }
+  }
 }
+DataRefProperty.STRUCT = nstructjs.inherit(DataRefProperty, ToolProperty) + `
+  blockType : string;
+  data      : DataRef;
+}`;
+nstructjs.register(DataRefProperty);
+
 PropTypes.DATAREF = ToolProperty.register(DataRefProperty);
 
 export class DataRefListProperty extends ToolProperty {
@@ -856,6 +878,16 @@ export class DataRefListProperty extends ToolProperty {
 
     this.blockType = typeName;
     this.data = [];
+  }
+
+  calcMemSize() {
+    let tot = super.calcMemSize();
+
+    tot += this.blockType ? this.blockType.length + 4 : 0;
+    tot += 8;
+
+    tot += this.data.length * 64; //64 is probably incorrect for size of DataRef
+    return tot;
   }
 
   setValue(val) {
@@ -897,6 +929,12 @@ export class DataRefListProperty extends ToolProperty {
     return ret;
   }
 }
+DataRefListProperty.STRUCT = nstructjs.inherit(DataRefListProperty, ToolProperty) + `
+  blockType : string;
+  data      : array(DataRef);
+}`;
+nstructjs.register(DataRefListProperty);
+
 PropTypes.DATAREFLIST = ToolProperty.register(DataRefListProperty);
 
 export class DataRefList extends Array {

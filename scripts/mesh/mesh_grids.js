@@ -274,6 +274,8 @@ export class GridVert extends Vector3 {
     this.eid = eid;
 
     this.index = index;
+    this.index2 = index;
+
     this.loopEid = loopEid;
     this.customData = this.cd = [];
     this.neighbors = []; //is not saved
@@ -282,6 +284,17 @@ export class GridVert extends Vector3 {
 
     this.bLink = undefined;
     this.bNext = this.bPrev = undefined; //boundary next/prev
+  }
+
+  static getMemSize(p) {
+    let tot = 21*8;
+
+    tot += 4*3*8 + 2*8;
+    if (p) {
+      tot += p.neighbors.length*8 + p.bRingSet.size*8;
+    }
+
+    return tot;
   }
 
   startTan() {
@@ -495,6 +508,25 @@ export class GridBase extends CustomDataElem {
     this.subsurf = undefined; //subsurf patch
   }
 
+  calcMemSize() {
+    let tot = 128*8 + 10*8;
+
+    if (this.points.length === 0) {
+      return tot;
+    }
+
+    let p = this.points[0];
+    for (let cd of p.customData) {
+      tot += cd.calcMemSize()*this.points.length;
+    }
+
+    for (let p of this.points) {
+      tot += GridVert.getMemSize(p);
+    }
+
+    return tot;
+  }
+
   copyTo(b, copyPointEids=false) {
     if (!copyPointEids) {
       this.recalcFlag |= QRecalcFlags.REGEN_IDS;
@@ -619,6 +651,7 @@ export class GridBase extends CustomDataElem {
 
     for (let i = 0; i < ps.length; i++) {
       ps[i].index = i;
+      ps[i].index2 = i;
     }
 
     return this;
@@ -691,6 +724,7 @@ export class GridBase extends CustomDataElem {
 
       for (let i = 0; i < ps.length; i++) {
         ps[i].index = i;
+        ps[i].index2 = i;
       }
     }
 
@@ -1070,6 +1104,7 @@ export class GridBase extends CustomDataElem {
     let ps = this.points;
     for (let i=0; i<ps.length; i++) {
       ps[i].index = i;
+      ps[i].index2 = i;
     }
 
     for (let i = 0; i < this.cdmap.length; i++) {

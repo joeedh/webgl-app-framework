@@ -680,6 +680,10 @@ export class ProceduralTex extends DataBlock {
     this._digest = new util.HashDigest();
   }
 
+  calcMemSize() {
+    return 1024; //just assume a large-ish block of memory
+  }
+
   bindUniforms(uniforms) {
     this.generator.bindUniforms(uniforms);
   }

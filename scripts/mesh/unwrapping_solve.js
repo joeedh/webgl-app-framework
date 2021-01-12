@@ -176,6 +176,9 @@ export class UnWrapSolver {
 
     let wr = this.uvw;
 
+    console.log("this.preserveIslands", this.preserveIslands);
+
+    wr.needTopo = true;
     wr.buildIslands(!this.preserveIslands);
 
     for (let island of wr.islands) {
@@ -226,10 +229,10 @@ export class UnWrapSolver {
         variance = variance/tot;
       }
 
-      //console.log("normal variance of island patch:", variance);
+      console.log("normal variance of island patch:", variance);
 
       if (variance > 1.0) {
-        continue;
+        //continue;
       }
 
       let mat = new Matrix4();
@@ -248,11 +251,15 @@ export class UnWrapSolver {
         if (!tot) {
           continue;
         }
+
         co.mulScalar(1.0 / tot);
 
-        (co).multVecMatrix(mat);
-        v.interp(co, 0.5);
-        v[2] = 0.0;
+        co.multVecMatrix(mat);
+        co[2] = 0.0;
+        v.load(co);
+
+        //v.multVecMatrix(mat);
+        //v.interp(co, 0.5);
       }
 
       wr.updateAABB(island);
@@ -841,7 +848,8 @@ export class UnWrapSolver {
     //matrix = numeric.ccsSparse(matrix);
 
     let matrixT = numeric.transpose(matrix);
-    let matrix1 = numeric.dotMMsmall(matrixT, matrix);
+    //let matrix1 = numeric.dotMMsmall(matrixT, matrix);
+    let matrix1 = numeric.dot(matrixT, matrix);
 
     let svd = numeric.svd(matrix1);
     window.svd = svd;
@@ -949,6 +957,17 @@ export class UnWrapSolver {
   solve(count, gk) {
     let err = 0.0;
 
+    let uvmesh = this.uvw.uvMesh;
+    let damp = 0.95;
+
+    for (let v of uvmesh.verts) {
+      v[0] += v.vel[0]*damp;
+      v[1] += v.vel[1]*damp;
+
+      v.oldco.load(v);
+      v[2] = v.oldco[2] = 0.0;
+    }
+
     for (let slv of this.solvers) {
       //iterate guess-seidel
       slv.solve(1, gk);
@@ -958,6 +977,11 @@ export class UnWrapSolver {
 
       //guess-seidel
       slv.solve(1, gk);
+    }
+
+    for (let v of uvmesh.verts) {
+      v.vel.load(v).sub(v.oldco);
+      v.vel[2] = 0.0;
     }
 
     return err;
@@ -1079,6 +1103,7 @@ export class UnWrapSolver {
     }
 
     this.solve(count, gk);
+    console.log("gk", gk);
     //solvestep(gk);
 
     if (0) {

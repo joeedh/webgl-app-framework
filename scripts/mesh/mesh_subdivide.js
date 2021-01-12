@@ -2,6 +2,100 @@ import * as util from '../util/util.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as math from '../util/math.js';
 import '../util/numeric.js';
+import {applyTriangulation, triangulateFace} from './mesh_tess.js';
+
+export function splitEdgesSimple(mesh, es, testfunc, lctx) {
+  let newvs = new Set();
+  let newfs = new Set();
+  let killfs = new Set();
+  let newes = new Set();
+
+  //return {newvs, newfs, killfs, newes};
+
+  for (let e of es) {
+    for (let f of e.faces) {
+      if (f.lists[0].length > 3 || f.lists.length > 1) {
+        //killfs.add(f);
+      }
+    }
+  }
+
+  let fs = [];
+
+  for (let e of es) {
+    if (testfunc && !testfunc(e)) {
+      continue;
+    }
+
+    //if (e.v1.edges.length + e.v2.edges.length < 18) {
+      fs.length = 0;
+      for (let f of e.faces) {
+        if (f.lists.length > 1 || f.lists[0].length > 3) {
+          fs.push(f);
+        }
+      }
+
+      for (let f of fs) {
+        killfs.add(f);
+        newfs.delete(f);
+        applyTriangulation(mesh, f, newfs, newes, lctx);
+      }
+
+      let [ne, nv] = mesh.splitEdge(e, 0.5, lctx);
+
+      newes.add(ne);
+      newvs.add(nv);
+    //}
+  }
+
+/*
+  let ltris = [];
+  for (let f of killfs) {
+    f.calcNormal();
+    triangulateFace(f, ltris);
+  }
+
+  for (let i=0; i<ltris.length; i += 3) {
+    let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
+
+    let e1 = mesh.getEdge(l1.v, l2.v);
+    let e2 = mesh.getEdge(l2.v, l3.v);
+    let e3 = mesh.getEdge(l3.v, l1.v);
+
+    let tri = mesh.makeTri(l1.v, l2.v, l3.v);
+    let l = tri.lists[0].l;
+
+    tri.calcNormal();
+    tri.flag |= MeshFlags.UPDATE;
+
+    mesh.copyElemData(tri, l1.f);
+    mesh.copyElemData(l, l1);
+    mesh.copyElemData(l.next, l2);
+    mesh.copyElemData(l.prev, l3);
+
+    newfs.add(tri);
+
+    if (!e1) {
+      newes.add(l.e);
+    }
+
+    if (!e2) {
+      newes.add(l.next.e);
+    }
+
+    if (!e3) {
+      newes.add(l.prev.e);
+    }
+  }*/
+
+  for (let f of killfs) {
+    if (f.eid >= 0) {
+      mesh.killFace(f, lctx);
+    }
+  }
+
+  return {newvs, newfs, killfs, newes};
+}
 
 export function splitEdgesSmart(mesh, es) {
   let vs = new Set();

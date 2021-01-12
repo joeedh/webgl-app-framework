@@ -44,6 +44,22 @@ export class SelectOpBase extends MeshOp {
     return tool;
   }
 
+  calcUndoMem(ctx) {
+    let tot = 0;
+
+    for (let k in this._undo) {
+      if (k === "acriveObject") {
+        tot += 8;
+        continue;
+      }
+
+      let ud = this._undo[k];
+      tot += ud.data.length*8 + ud.dataPath.length;
+    }
+
+    return tot;
+  }
+
   undoPre(ctx) {
     this._undo = {};
 
@@ -718,6 +734,42 @@ export class SelectEdgeLoopOp extends SelectOpBase {
 
     let eid = this.inputs.edgeEid.getValue();
 
+    let doBoundary = (mesh, e) => {
+      for (let step=0; step<2; step++) {
+        let visit = new WeakSet();
+        let startv = step ? e.v2 : e.v1;
+        let e2 = e;
+
+        let v = startv;
+
+        do {
+          if (visit.has(v)) {
+            break;
+          }
+
+          visit.add(v);
+          mesh.setSelect(v, true);
+          mesh.setSelect(e2, true);
+
+          v = e2.otherVertex(v);
+
+          let ok = false;
+
+          for (let e3 of v.edges) {
+            if (e3 !== e2 && (!e3.l || e3.l === e3.l.radial_next)) {
+              e2 = e3;
+              ok = true;
+              break;
+            }
+          }
+
+          if (!ok) {
+            break;
+          }
+        } while (v !== startv);
+      }
+    }
+
     for (let mesh of this.getMeshes(ctx)) {
       let e = mesh.eidmap[eid];
 
@@ -725,7 +777,14 @@ export class SelectEdgeLoopOp extends SelectOpBase {
         continue;
       }
 
-      console.log("Edge:", e);
+      //boundary and already selected?
+      if ((e.flag & MeshFlags.SELECT) && e.l && e.l === e.l.radial_next) {
+        doBoundary(mesh, e);
+
+        mesh.selectFlush(selmask);
+        mesh.regenRender();
+        continue;
+      }
 
       let state = mode !== SelOneToolModes.SUB;
       if (mode === SelOneToolModes.UNIQUE) {
@@ -841,3 +900,58 @@ export class SelectInverse extends SelectOpBase {
 }
 
 ToolOp.register(SelectInverse);
+
+export class SelectNonManifold extends SelectOpBase {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname     : "Select Non-Manifold Edges",
+      toolpath   : "mesh.select_non_manifold",
+      icon       : -1,
+      description: "select an element",
+      inputs     : ToolOp.inherit({
+        boundary : new BoolProperty(false),
+        wire     : new BoolProperty(false)
+      })
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      let selmask = this.inputs.selmask.getValue();
+      let boundary = this.inputs.boundary.getValue();
+      let wire = this.inputs.wire.getValue();
+
+      for (let e of mesh.edges) {
+        if (e.flag & MeshFlags.HIDE) {
+          continue;
+        }
+
+        let ok = wire && !e.l;
+        ok = ok || (boundary && e.l && e.l === e.l.radial_next);
+
+        if (!ok) {
+          let count = 0;
+
+          for (let l of e.loops) {
+            count++;
+          }
+
+          ok = count > 2;
+        }
+
+        if (ok) {
+          mesh.edges.setSelect(e, true);
+          e.flag |= MeshFlags.UPDATE;
+        }
+      }
+
+      mesh.selectFlush(this.inputs.selmask.getValue());
+      mesh.regenRender();
+    }
+  }
+};
+ToolOp.register(SelectNonManifold);

@@ -12,6 +12,7 @@ import {CallbackNode, NodeFlags} from "../core/graph.js";
 import {DataRefProperty} from "../core/lib_api.js";
 import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
+import * as math from '../util/math.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
 
@@ -20,6 +21,8 @@ import {subdivide} from '../subsurf/subsurf_mesh.js';
 import {SceneObject} from "../sceneobject/sceneobject.js";
 import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
 import {MeshOp} from "./mesh_ops_base.js";
+import {GenTypes, ProceduralMesh} from './mesh_gen.js';
+import {DefaultMat, Material} from '../core/material.js';
 
 export class MeshCreateOp extends MeshOp {
   constructor() {
@@ -89,14 +92,23 @@ export class MeshCreateOp extends MeshOp {
 
       ob = new SceneObject();
       ob.data = new Mesh();
-      ob.data.lib_addUser(ob);
-      mesh = ob.data;
 
       ctx.datalib.add(ob);
       ctx.datalib.add(ob.data);
 
+      ob.data.lib_addUser(ob);
+      mesh = ob.data;
+
       ctx.scene.add(ob);
       ob.loadMatrixToInputs(this.inputs.transformMatrix.getValue());
+
+      ob.graphUpdate();
+      ob.data.graphUpdate();
+
+      window.redraw_viewport(true);
+      window.updateDataGraph(true);
+
+      ob.graphUpdate();
 
       mat = new Matrix4();
     } else {
@@ -108,8 +120,10 @@ export class MeshCreateOp extends MeshOp {
 
     this.internalCreate(ob, mesh, mat);
 
-    mesh.regenRender();
     mesh.regenTesellation();
+    mesh.regenRender();
+
+    window.redraw_viewport(true);
   }
 }
 
@@ -198,3 +212,365 @@ export class MakeCubeOp extends MeshCreateOp {
 }
 
 ToolOp.register(MakeCubeOp);
+
+export class CreateFaceOp extends MeshOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname  : "Create Face",
+      toolpath: "mesh.create_face",
+      inputs  : ToolOp.inherit()
+    }
+  }
+
+  execIntern(ctx, mesh) {
+    let vs = new Set(mesh.verts.selected.editable);
+    let es = new Set(mesh.edges.selected.editable);
+
+    let makeFace = (vs) => {
+      let f2;
+
+      if (f2 = mesh.getFace(vs)) {
+        console.log("Face already exists", f2, vs);
+        ctx.error("Face already exists");
+        return;
+      }
+
+      for (let i = 0; i < vs.length; i++) {
+        for (let j = 0; j < vs.length; j++) {
+          if (i !== j && vs[i] === vs[j]) {
+            ctx.error("Duplicate verts");
+            return;
+          }
+        }
+      }
+
+      if (vs.length < 3) {
+        ctx.error("Not enough verts");
+        return;
+      }
+
+      let f = mesh.makeFace(vs);
+      let flip = 0;
+
+      for (let l of f.loops) {
+        if (l.radial_next !== l) {
+          flip += l.v === l.radial_next.v ? 1 : -1;
+        }
+      }
+
+      if (flip > 0) {
+        mesh.reverseWinding(f);
+      }
+
+      f.calcNormal();
+
+      for (let l of f.loops) {
+        l.v.flag |= MeshFlags.UPDATE;
+        l.e.flag |= MeshFlags.UPDATE;
+      }
+
+      f.flag |= MeshFlags.UPDATE;
+
+      mesh.faces.setSelect(f, true);
+      mesh.faces.setActive(f);
+
+      return f;
+    }
+
+    let vs2 = [];
+    for (let v of vs) {
+      vs2.push(v);
+    }
+    vs = vs2;
+
+    if (vs2.length === 3) {
+      makeFace(vs2);
+    } else if (vs2.length === 4) {
+      let orders = [
+        [0, 1, 2, 3], //0
+        [0, 1, 3, 2], //1
+        [0, 2, 1, 3], //2
+        [0, 2, 3, 1], //3
+        [0, 3, 2, 1], //4
+        [0, 3, 1, 2], //5
+      ];
+
+      let i = 0;
+      for (let [v1, v2, v3, v4] of orders) {
+        v1 = vs[v1];
+        v2 = vs[v2];
+        v3 = vs[v3];
+        v4 = vs[v4];
+
+        let n1 = new Vector3(math.normal_tri(v1, v2, v3));
+        let n2 = new Vector3(math.normal_tri(v2, v3, v4));
+        let n3 = new Vector3(math.normal_tri(v3, v4, v1));
+        let n4 = new Vector3(math.normal_tri(v4, v1, v2));
+
+        let bad = n1.dot(n2) < 0 || n2.dot(n3) < 0 || n1.dot(n3) < 0;
+        bad = bad || n1.dot(n4) < 0 || n2.dot(n4) < 0;
+
+        console.log(i, "bad", bad);
+        if (!bad) {
+          makeFace([v1, v2, v3, v4]);
+          break;
+        }
+
+        i++;
+      }
+    } else if (vs.length > 4) {
+      let startv = vs[0];
+      let vset = new Set();
+
+      for (let e of es) {
+        vset.add(e.v1);
+        vset.add(e.v2);
+      }
+
+      for (let v of vs) {
+        vset.add(v);
+      }
+
+      for (let v of vset) {
+        let count = 0;
+        for (let e of v.edges) {
+          if (vset.has(e.otherVertex(v))) {
+            count++;
+          }
+        }
+
+        if (count === 1) {
+          startv = v;
+          break;
+        }
+      }
+
+      let starte;
+      for (let e2 of startv.edges) {
+        if (vset.has(e2.otherVertex(startv))) {
+          starte = e2;
+          break;
+        }
+      }
+
+      if (!starte) {
+        ctx.error("Error creating face.");
+        return;
+      }
+
+      let v = startv;
+      let e = starte;
+
+      let vs2 = [];
+      let _i = 0;
+
+      do {
+        vs2.push(v);
+        v = e.otherVertex(v);
+
+        let count = 0;
+        let count2 = 0;
+
+        let e3;
+
+        for (let e2 of v.edges) {
+          if (vset.has(e2.otherVertex(v))) {
+            count2++;
+          }
+
+          let boundary = !e2.l || e2.l.radial_next === e2.l;
+
+          if (boundary && !e3 && e2 !== e && vset.has(e2.otherVertex(v))) {
+            count++;
+            e3 = e2;
+          }
+        }
+
+        e = e3;
+
+        if (count !== 1) {
+          vs2.push(v);
+          break;
+        }
+
+        if (_i++ > 100000) {
+          console.warn("infinite loop error");
+          break;
+        }
+      } while (v !== startv);
+
+      console.log(vs2);
+      console.log(vset);
+
+      if (vs2.length > 2) {
+        makeFace(vs2);
+      }
+    }
+
+    mesh.regenTesellation();
+    mesh.regenBVH();
+    mesh.regenUVEditor();
+    mesh.regenRender();
+    mesh.regenElementsDraw();
+    window.redraw_viewport(true);
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      this.execIntern(ctx, mesh);
+    }
+  }
+}
+
+ToolOp.register(CreateFaceOp);
+
+export class CreateMeshGenOp extends ToolOp {
+  static tooldef() {
+    return {
+      uiname  : "Add Procedural",
+      toolpath: "mesh.procedural_add",
+      inputs  : {
+        type: new EnumProperty(0, GenTypes)
+      },
+      outputs : {
+        objectId: new IntProperty(-1)
+      }
+    }
+  }
+
+  static canRun(ctx) {
+    return ctx.scene;
+  }
+
+  exec(ctx) {
+    let procmesh = new ProceduralMesh();
+    let ob = new SceneObject();
+
+    ctx.datalib.add(ob);
+    ctx.datalib.add(procmesh);
+
+    ob.data = procmesh;
+    procmesh.lib_addUser(ob);
+
+    let scene = ctx.scene;
+
+    scene.add(ob);
+
+    this.outputs.objectId.setValue(ob.lib_id);
+
+    this._undo.newObject = ob.lib_id;
+
+    ob.graphUpdate();
+    ob.data.graphUpdate();
+    window.redraw_viewport(true);
+  }
+
+  undoPre(ctx) {
+    this._undo = {
+      selectObjects: [],
+      activeObject : -1,
+      newObject    : -1
+    };
+
+    let scene = ctx.scene;
+
+    for (let ob of scene.objects.selected) {
+      this._undo.selectObjects.push(ob.lib_id);
+    }
+
+    let act = scene.objects.active;
+    if (act) {
+      this._undo.activeObject = act.lib_id;
+    }
+  }
+
+  undo(ctx) {
+    let scene = ctx.scene;
+    let ud = this._undo;
+
+    let ob = ctx.datalib.get(ud.newObject);
+    if (ob) {
+      scene.remove(ob);
+
+      ctx.datalib.remove(ob.data);
+      ctx.datalib.remove(ob);
+    }
+
+    let act = ctx.datalib.get(ud.activeObject);
+    scene.objects.clearSelection();
+
+    for (let id of ud.selectObjects) {
+      let ob = ctx.datalib.get(id);
+
+      if (ob) {
+        scene.objects.setSelect(ob, true);
+      }
+    }
+
+    scene.objects.setActive(act);
+
+    window.redraw_viewport(true);
+  }
+}
+
+ToolOp.register(CreateMeshGenOp);
+
+export class ProceduralToMesh extends ToolOp {
+  static tooldef() {
+    return {
+      uiname  : "Convert Procedural To Mesh",
+      toolpath: "mesh.procedural_to_mesh",
+      inputs  : {
+        objectId: new IntProperty()
+      }
+    }
+  }
+
+  exec(ctx) {
+    let ob = this.inputs.objectId.getValue();
+    ob = ctx.datalib.get(ob);
+
+    if (!ob) {
+      ctx.error("Object does not exist");
+      return;
+    }
+
+    if (!(ob.data instanceof ProceduralMesh)) {
+      ctx.error("Invalid object");
+      return;
+    }
+
+    let mesh = ob.data.generator.genMesh();
+    ctx.datalib.add(mesh);
+
+    ob.data.lib_remUser(ob);
+    ctx.datalib.remove(ob.data);
+
+    let mat = Material.getDefaultMaterial(ctx);
+
+    if (mat === DefaultMat) {
+      mat = mat.copy();
+      ctx.datalib.add(mat);
+    }
+
+    ob.data = mesh;
+    mesh.materials.length = 0;
+    mesh.materials.push(mat);
+    mat.lib_addUser(mesh);
+
+    mesh.regenRender();
+    mesh.regenTesellation();
+    mesh.recalcNormals();
+    mesh.regenBVH();
+    mesh.regenElementsDraw();
+    mesh.graphUpdate();
+    ob.graphUpdate();
+
+
+  }
+}
+ToolOp.register(ProceduralToMesh);

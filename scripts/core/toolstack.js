@@ -1,14 +1,30 @@
-import {ToolStack, UndoFlags} from "../path.ux/scripts/pathux.js";
+import {util, ToolStack, UndoFlags} from "../path.ux/scripts/pathux.js";
 
 export class AppToolStack extends ToolStack {
   constructor(ctx) {
     super(ctx);
 
+    this.enforceMemLimit = true;
+    this.memLimit = 512*1024*1024;
+
     this._undo_branch = undefined;
   }
 
+  limitMemory(limit, ctx) {
+    let mem = this.calcMemSize(ctx);
+
+    mem = (mem/1024/1024).toFixed(3) + "mb";
+    console.warn("Toolstack Memory:", mem);
+
+    return super.limitMemory(limit, ctx);
+  }
+
   execTool(ctx, toolop) {
-    if (!toolop.constructor.canRun(ctx)) {
+    if (this.enforceMemLimit) {
+      this.limitMemory(this.memLimit, ctx);
+    }
+
+    if (!toolop.constructor.canRun(ctx, toolop)) {
       console.log("toolop.constructor.canRun returned false");
       return;
     }
@@ -84,6 +100,10 @@ export class AppToolStack extends ToolStack {
   }
 
   undo() {
+    if (this.enforceMemLimit) {
+      this.limitMemory(this.memLimit);
+    }
+
     if (this.cur >= 0 && !(this[this.cur].undoflag & UndoFlags.IS_UNDO_ROOT)) {
       console.log("undo!");
 
@@ -97,6 +117,10 @@ export class AppToolStack extends ToolStack {
 
   //reruns a tool if it's at the head of the stack
   rerun(tool) {
+    if (this.enforceMemLimit) {
+      this.limitMemory(this.memLimit);
+    }
+
     if (tool === this[this.cur]) {
       this.undo();
       this.redo();
@@ -105,7 +129,46 @@ export class AppToolStack extends ToolStack {
     }
   }
 
+  replay() {
+    let cur = this.cur;
+
+    this.rewind();
+
+    let last = this.cur;
+
+    let start = util.time_ms();
+
+    let timer = window.setInterval(() => {
+      //if (this.cur >= cur) {
+      //  window.clearInterval(timer);
+      //  return;
+      //}
+
+      last = this.cur;
+
+      this.redo();
+
+      window.redraw_viewport(true);
+      window.updateDataGraph(true);
+
+      if (last === this.cur) {
+        console.warn("time:", (util.time_ms()-start)/1000.0);
+        window.clearInterval(timer);
+
+        if (this.enforceMemLimit) {
+          this.limitMemory(this.memLimit);
+        }
+      }
+    }, 50);
+
+    return timer;
+  }
+
   redo() {
+    if (this.enforceMemLimit) {
+      this.limitMemory(this.memLimit);
+    }
+
     console.log("redo!");
     
     if (this.cur >= -1 && this.cur+1 < this.length) {
@@ -113,6 +176,10 @@ export class AppToolStack extends ToolStack {
 
       this.cur++;
       let tool = this[this.cur];
+
+      if (!tool.execCtx) {
+        tool.execCtx = this.ctx;
+      }
 
       tool._was_redo = true;
 

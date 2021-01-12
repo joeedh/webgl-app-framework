@@ -341,11 +341,11 @@ export class ColorLayerElem extends CustomDataElem {
   }
 
   interp(dest, datas, ws) {
-    dest.color.zero();
-
     if (datas.length === 0) {
       return;
     }
+
+    dest.color.zero();
 
     for (let i=0; i<datas.length; i++) {
       dest.color[0] += ws[i]*datas[i].color[0];

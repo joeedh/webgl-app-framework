@@ -47,108 +47,8 @@ let STRUCT = nstructjs.STRUCT;
 
 export class FileLoadError extends Error {};
 
-//override default undo implementation in Path.ux's toolop class
-ToolOp.prototype.undoPre = function(ctx) {
-  this._undo = ctx.state.createUndoFile();
-}
-
-ToolOp.prototype.undo = function(ctx) {
-  console.log("loading undo file 1");
-  ctx.state.loadUndoFile(this._undo);
-
-  window.redraw_viewport();
-};
-
-ToolOp.prototype.execPost = function(ctx) {
-  window.redraw_viewport();
-};
-
-
-/*root operator for when leading files*/
-export class RootFileOp extends ToolOp {
-  static tooldef() {return {
-    undoflag    : UndoFlags.IS_UNDO_ROOT | UndoFlags.NO_UNDO,
-    uiname      : "File Start",
-    toolpath    : "app.__new_file"
-  }}
-}
-
-/*root operator that build a file*/
-export class BasicFileOp extends ToolOp {
-  constructor() {
-    super();
-  }
-
-  exec(ctx) {
-    let scene = new Scene();
-    let lib = ctx.datalib;
-
-    lib.add(scene);
-    lib.setActive(scene);
-
-    let collection = new Collection();
-    lib.add(collection);
-
-    scene.collection = collection;
-    collection.lib_addUser(scene);
-
-    let screenblock = new ScreenBlock();
-    screenblock.screen = _appstate.screen;
-
-    lib.add(screenblock);
-    lib.setActive(screenblock);
-
-    //*
-    let mesh = new Mesh();
-    lib.add(mesh);
-
-    makeCube(mesh);
-
-    let mat = makeDefaultMaterial();
-    lib.add(mat);
-    mesh.materials.push(mat);
-    mat.lib_addUser(mesh);
-
-    let sob = new SceneObject();
-    lib.add(sob);
-
-    sob.data = mesh;
-    mesh.lib_addUser(sob);
-
-    scene.add(sob);
-    scene.objects.setSelect(sob, true);
-    scene.objects.setActive(sob);
-
-    let light = new Light();
-    lib.add(light);
-
-    let sob2 = new SceneObject(light);
-    lib.add(sob2);
-    sob2.location[2] = 7.0;
-
-    scene.add(sob2);
-
-    sob.graphUpdate();
-    mesh.graphUpdate();
-
-    mesh.regenRender();
-    mesh.regenTesellation();
-    mesh.regenElementsDraw();
-
-    window.updateDataGraph();
-
-    // /*/
-
-    scene.selectMask = SelMask.VERTEX;
-    scene.switchToolMode("mesh");
-  }
-
-  static tooldef() {return {
-    undoflag    : UndoFlags.IS_UNDO_ROOT | UndoFlags.NO_UNDO,
-    uiname      : "File Start",
-    toolpath    : "app.__new_file_basic"
-  }}
-};
+import {BasicFileOp, RootFileOp} from './app_ops.js';
+export {BasicFileOp, RootFileOp} from './app_ops.js';
 
 export {genDefaultScreen} from '../editors/screengen.js';
 import {genDefaultScreen} from '../editors/screengen.js';
@@ -186,7 +86,8 @@ export const BlockTypes = {
   SCREEN     : "scrn",
   DATABLOCK  : "dblk",
   SETTINGS   : "sett",
-  LIBRARY    : "libr"
+  LIBRARY    : "libr",
+  TOOLSTACK  : "tstk"
 }
 
 export class FileBlock {
@@ -206,6 +107,7 @@ export class FileData {
 
 export class AppState {
   constructor() {
+    this.saveHandle = undefined;
     this.settings = new AppSettings;
     this.ctx = new ViewContext(this);
     this.toolstack = new AppToolStack(this.ctx);
@@ -300,6 +202,10 @@ export class AppState {
       args.save_library = true;
     }
 
+    if (args.save_toolstack === undefined) {
+      args.save_toolstack = false;
+    }
+
     if (args.save_screen === undefined) {
       args.save_screen = true;
     }
@@ -362,6 +268,10 @@ export class AppState {
         file.string(typeName);
         file.bytes(data);
       }
+    }
+
+    if (args.save_toolstack) {
+      writeblock(BlockTypes.TOOLSTACK, this.toolstack);
     }
 
     return file.finish().buffer;
@@ -601,7 +511,7 @@ export class AppState {
     args.load_library = args.load_library === undefined ? true : args.load_library;
     args.reset_context = args.reset_context === undefined ? args.reset_toolstack : args.reset_context;
 
-    //if we didn't load a screen, preserve screens from last datalib
+    //if we didn't lreset_toolstackoad a screen, preserve screens from last datalib
     if (!args.load_screen && args.load_library) {
       lastscreens = [];
 
@@ -656,7 +566,11 @@ export class AppState {
     data = new DataView((new Uint8Array(data)).buffer);
     //console.log("Reading block of type", type);
 
-    if (args.load_screen && type === BlockTypes.SCREEN) {
+    if (type === BlockTypes.TOOLSTACK) {
+      console.warn("File had a toolstack");
+      filectx.found_toolstack = true;
+      filectx.toolstack = istruct.read_object(data, AppToolStack);
+    } else if (args.load_screen && type === BlockTypes.SCREEN) {
       console.warn("Old screen block detected");
 
       screen = istruct.read_object(data, App);
@@ -884,7 +798,13 @@ export class AppState {
 
     if (args.reset_toolstack) {
       this.toolstack.reset(this.ctx);
-      this.toolstack.execTool(this.ctx, new RootFileOp());
+
+      if (filectx.found_toolstack) {
+        this.toolstack = filectx.toolstack;
+        this.toolstack.ctx = this.ctx;
+      } else {
+        this.toolstack.execTool(this.ctx, new RootFileOp());
+      }
     }
 
     if (!args.load_screen) {

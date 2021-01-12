@@ -13,7 +13,7 @@ import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader
 import {AddNodeOp, ConnectNodeOp} from './node_ops.js';
 let projcos = util.cachering.fromConstructor(Vector2, 64);
 import {VelPanPanOp} from '../velpan.js';
-import {SelectOneOp, SelectOpBase} from './node_selectops.js';
+import {NodeSelectOneOp, NodeSelectOpBase} from './node_selectops.js';
 import {SelOneToolModes} from "../view3d/selectmode.js";
 import {Node, NodeFlags, SocketFlags, SocketTypes} from '../../core/graph.js';
 import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw.js';

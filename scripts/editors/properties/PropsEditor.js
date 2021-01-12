@@ -20,6 +20,7 @@ import * as cconst from '../../core/const.js';
 import {Menu} from "../../path.ux/scripts/widgets/ui_menu.js";
 import {MeshTypes} from "../../mesh/mesh_base.js";
 import {ProceduralTex, ProceduralTexUser} from '../../texture/proceduralTex.js';
+import {ProceduralMesh} from '../../mesh/mesh_gen.js';
 
 export const TexturePathModes = {
   BRUSH : 0,
@@ -204,9 +205,15 @@ export class ObjectPanel extends ColumnFrame {
     this.clear();
     this.pathlabel("object.name");
 
-    this.label("Rotation");
-    this.prop('object.inputs["rot"].value');
-    this.prop('object.inputs["rotOrder"].value');
+    let panel;
+
+    panel = this.panel("Transform");
+
+    panel.prop(`object.inputs["loc"].value`);
+
+    panel.label("Rotation");
+    panel.prop('object.inputs["rot"].value');
+    panel.prop('object.inputs["rotOrder"].value');
 
     let ob = this.ctx.object;
     if (!ob) {
@@ -229,6 +236,15 @@ export class ObjectPanel extends ColumnFrame {
         cd.setAttribute("layer", cdp[1]);
         panel.add(cd);
       }
+    } else if (data instanceof ProceduralMesh) {
+      let panel = this.panel("Procedural");
+
+      panel.tool(`mesh.procedural_to_mesh(objectId=${ob.lib_id})`);
+
+      let strip = panel.col().strip();
+
+      strip.dataPrefix = "object.data.generator";
+      data.generator.constructor.buildSettings(strip);
     }
   }
 

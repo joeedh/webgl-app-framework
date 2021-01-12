@@ -10,7 +10,9 @@ export const BrushFlags = {
   SELECT               : 1,
   SHARED_SIZE          : 2,
   DYNTOPO              : 4,
-  INVERT_CONCAVE_FILTER: 8
+  INVERT_CONCAVE_FILTER: 8,
+  MULTIGRID_SMOOTH     : 16,
+  PLANAR_SMOOTH        : 32
 };
 
 export const DynamicsMask = {
@@ -148,7 +150,7 @@ export class BrushDynamics {
 
     ch = this.getChannel("radius", true);
     ch.useDynamics = false;
-    ch.curve.loadJSON(radius_curve_json);
+    //ch.curve.loadJSON(radius_curve_json);
 
     ch = this.getChannel("autosmooth", true);
     ch.useDynamics = true;
@@ -157,6 +159,13 @@ export class BrushDynamics {
     ch = this.getChannel("concaveFilter", true);
     ch.useDynamics = true;
     ch.curve.loadJSON(reverse_brush_curve);
+
+    ch = this.getChannel("rake", true);
+    ch.useDynamics = false;
+    ch.curve.loadJSON(reverse_brush_curve);
+
+    ch = this.getChannel("pinch", true);
+    ch.useDynamics = false;
   }
 
   loadDefault(name) {
@@ -259,6 +268,10 @@ export class SculptBrush extends DataBlock {
     this.radius = 55.0;
     this.autosmooth = 0.0;
     this.planeoff = 0.0;
+    this.rake = 0.0;
+    this.pinch = 0.0;
+
+    this.normalfac = 0.5;
 
     this.falloff = new Curve1D();
 
@@ -266,6 +279,10 @@ export class SculptBrush extends DataBlock {
     this.bgcolor = new Vector4([0, 0, 0, 1]);
 
     this.dynamics = new BrushDynamics();
+  }
+
+  calcMemSize() {
+    return 16*8 + 512; //estimation
   }
 
   copyTo(b, noDataBlockCopy = false) {
@@ -279,7 +296,10 @@ export class SculptBrush extends DataBlock {
     b.tool = this.tool;
 
     b.concaveFilter = this.concaveFilter;
+    b.pinch = this.pinch;
 
+    b.normalfac = this.normalfac;
+    b.rake = this.rake;
     b.strength = this.strength;
     b.spacing = this.spacing;
     b.radius = this.radius;
@@ -346,13 +366,16 @@ SculptBrush.STRUCT = nstructjs.inherit(SculptBrush, DataBlock) + `
   radius     : float;
   planeoff   : float;
   concaveFilter : float;
+  rake       : float;    
   spacing    : float;
   color      : vec4;
+  normalfac  : float;
   bgcolor    : vec4;
   dynamics   : BrushDynamics;
   flag       : int;
   falloff    : Curve1D;
   texUser    : ProceduralTexUser;
+  pinch      : float;
 }
 `;
 nstructjs.register(SculptBrush);
@@ -408,8 +431,11 @@ export function makeDefaultBrushes() {
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   brush = bmap[SculptTools.SMOOTH];
-  brush.strength = 1.0;
-  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+  brush.strength = 0.5;
+  brush.planeoff = -1.5;
+  brush.normalfac = 1.0;
+  brush.flag |= BrushFlags.PLANAR_SMOOTH;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.LINEAR);
   brush.dynamics.strength.useDynamics = true;
 
   brush = bmap[SculptTools.SNAKE];
@@ -418,14 +444,17 @@ export function makeDefaultBrushes() {
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   brush = bmap[SculptTools.SHARP];
-  brush.strength = 1.0;
+  brush.strength = 0.5;
   brush.autosmooth = 0.1;
+  brush.pinch = 0.5;
   brush.spacing = 0.25;
   brush.dynamics.strength.useDynamics = true;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARP);
 
   brush = bmap[SculptTools.TOPOLOGY];
-  brush.autosmooth = 0.35;
+  brush.autosmooth = 0.1;
+  brush.rake = 0.75;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.CONSTANT);
 
   return brushes;
 }

@@ -5,11 +5,13 @@ import {UVLayerElem} from "./mesh_customdata.js";
 import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
+import {EDGE_LINKED_LISTS} from '../core/const.js';
+
 let quat_temps = util.cachering.fromConstructor(Quat, 512);
 let mat_temps = util.cachering.fromConstructor(Matrix4, 256);
 let vec3_temps = util.cachering.fromConstructor(Vector3, 1024);
 
-let vnistack = new Array(32);
+let vnistack = new Array(512);
 vnistack.cur = 0;
 
 export class VertNeighborIter {
@@ -55,7 +57,7 @@ export class VertNeighborIter {
     let ret = this.ret;
     let v = this.v;
 
-    if (this.i >= v.edges.length) {
+    if (this.i >= v.valence) {
       this.finish();
       return this.ret;
     }
@@ -67,8 +69,70 @@ export class VertNeighborIter {
     return ret;
   }
 }
+
+export class VertNeighborIterLinkedList {
+  constructor() {
+    this.ret = {done : false, value : undefined};
+    this.done = true;
+    this.e = undefined;
+    this.v = undefined;
+    this.i = 0;
+  }
+
+  reset(v) {
+    this.v = v;
+    this.i = 0;
+    this.e = undefined;
+    this.done = false
+    this.ret.done = false;
+
+    return this;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.done = true;
+      vnistack.cur--;
+      this.e = undefined;
+      this.v = undefined;
+      this.ret.value = undefined;
+      this.ret.done = true;
+    }
+
+    return this;
+  }
+
+  return() {
+    this.finish();
+
+    return this.ret;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+
+  next() {
+    let ret = this.ret;
+    let v = this.v;
+
+    if (this.i > 0 && this.e === v.e) {
+      this.finish();
+      return this.ret;
+    }
+
+    let e = this.e;
+
+    this.e = this.e.v1 === v ? this.e.v1next : this.e.v2next;
+    this.i++;
+
+    ret.value = e.otherVertex(v);
+    return ret;
+  }
+}
+
 for (let i=0; i<vnistack.length; i++) {
-  vnistack[i] = new VertNeighborIter();
+  vnistack[i] = EDGE_LINKED_LISTS ? new VertNeighborIterLinkedList() : new VertNeighborIter();
 }
 
 export class Element {
@@ -268,11 +332,232 @@ export class VertFaceIter {
     return ret;
   }
 }
+
+export class VertFaceIterLinkedList {
+  constructor(v) {
+    this.v = v;
+    this.ret = {done : true, value : undefined};
+    this.l = undefined;
+    this.i = 0;
+    this.done = true;
+    this.count = 0;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.done = true;
+      this.ret.value = undefined;
+      this.ret.done = true;
+
+      vertiters_f.cur--;
+      vertiters_f.cur = Math.max(vertiters_f.cur, 0);
+
+      this.v = undefined;
+      this.e = undefined;
+    }
+
+    return this.ret;
+  }
+
+  return() {
+    return this.finish();
+  }
+
+  reset(v) {
+    this.v = v;
+    this.done = false;
+    this.l = undefined;
+    this.e = v.e;
+    this.i = 0;
+    this.count = 0;
+    this.ret.value = undefined;
+    this.ret.done = false;
+
+    let flag = MeshFlags.ITER_TEMP2a;
+
+    //clear temp flag
+
+    for (let e of v.edges) {
+      if (!e.l) {
+        continue;
+      }
+
+      let l = e.l;
+      let _i = 0;
+
+      do {
+        l.f.flag &= ~flag;
+
+        l = l.radial_next;
+      } while (l !== e.l && _i++ <10);
+    }
+
+    return this;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+
+  next() {
+    this.count++;
+
+    if (this.count > 1000) {
+      console.warn("infinite loop detected");
+      return this.finish();
+    }
+
+    let ret = this.ret;
+    ret.done = false;
+
+    let v = this.v;
+
+    if (!v.e) {
+      ret.done = true;
+      ret.value = undefined;
+
+      return this.finish();
+    }
+
+    while (!this.e.l && this.e !== v.e) {
+      this.l = undefined;
+      this.e = this.e.v1 === v ? this.e.v1next : this.e.v2next;
+    }
+
+    if (this.e === v.e && this.i > 0) {
+      if (this.l && !(this.l.f & flag)) {
+        ret.done = false;
+        ret.value = this.l;
+
+        this.l = undefined;
+
+        return ret;
+      }
+
+      return this.finish();
+    }
+
+    this.i++;
+
+    let e = this.e;
+
+    if (this.l === undefined) {
+      this.l = e.l;
+    }
+
+    let l = this.l;
+
+    let skip = l.f.flag & MeshFlags.ITER_TEMP2a;
+    l.f.flag |= MeshFlags.ITER_TEMP2a;
+
+    if (this.l === e.l.radial_prev || this.l === this.l.radial_next) {
+      this.i++;
+      this.l = undefined;
+    } else {
+      this.l = this.l.radial_next;
+    }
+
+    if (skip) {
+      return this.next();
+    }
+
+    ret.value = l.f;
+    ret.done = false;
+
+    return ret;
+  }
+}
+
 vertiters_f = new Array(256);
 for (let i=0; i<vertiters_f.length; i++) {
-  vertiters_f[i] = new VertFaceIter();
+  vertiters_f[i] = EDGE_LINKED_LISTS ? new VertFaceIterLinkedList() : new VertFaceIter();
 }
 vertiters_f.cur = 0;
+
+let vedgeiters = new Array(512);
+
+let IN_VERTEX_STRUCT = false;
+export class VEdgeIter {
+  constructor() {
+    this.v = undefined;
+    this.e = undefined;
+    this.i = 0;
+    this.ret = {done : false, value : undefined};
+    this.done = false;
+  }
+
+  reset(v) {
+    this.v = v;
+    this.e = v.e;
+    this.i = 0;
+    this.ret.done = false;
+    this.ret.value = undefined;
+    this.done = false;
+
+    return this;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+
+  next() {
+    let ret = this.ret;
+
+    let e = this.e;
+    let v = this.v;
+
+    if (e === v.e && this.i > 0) {
+      return this.finish();
+    }
+
+    if (this.i > 1000) {
+      console.warn("Infinite loop detected!");
+      return this.finish();
+    }
+
+    ret.value = e;
+    ret.done = false;
+
+    if (v === e.v1) {
+      this.e = e.v1next;
+    } else {
+      this.e = e.v2next;
+    }
+
+    this.i++;
+
+    return ret;
+  }
+
+  get length() {
+    return undefined;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.done = true;
+
+      this.ret.value = undefined;
+      this.ret.done = true;
+
+      vedgeiters.cur--;
+    }
+
+    return this.ret;
+  }
+
+  return() {
+    this.finish();
+
+    return this.ret;
+  }
+}
+
+for (let i=0; i<vedgeiters.length; i++) {
+  vedgeiters[i] = new VEdgeIter();
+}
+vedgeiters.cur = 0;
 
 //has Element mixin
 export class Vertex extends Vector3 {
@@ -285,11 +570,14 @@ export class Vertex extends Vector3 {
       this.load(co);
     }
 
-    this.color = new Vector4([0, 0, 0, 1]);
-
     this.no = new Vector3();
     this.no[2] = 1.0;
-    this.edges = [];
+
+    if (EDGE_LINKED_LISTS) {
+      this.e = undefined;
+    } else {
+      this._edges = [];
+    }
   }
 
   /*to avoid messing up v8's optimizer
@@ -299,6 +587,22 @@ export class Vertex extends Vector3 {
   */
   valueOf() {
     return this.eid;
+  }
+
+  get edges() {
+    if (EDGE_LINKED_LISTS && !IN_VERTEX_STRUCT) {
+      return vedgeiters[vedgeiters.cur++].reset(this);
+    } else {
+      return this._edges;
+    }
+  }
+
+  set edges(val) {
+    if (!EDGE_LINKED_LISTS || IN_VERTEX_STRUCT) {
+      this._edges = val;
+    } else {
+      throw new Error("cannot set .edges");
+    }
   }
 
   [Symbol.keystr]() {
@@ -417,19 +721,43 @@ export class Vertex extends Vector3 {
     return false;
   }
 
+  get valence() {
+    if (!EDGE_LINKED_LISTS) {
+      return this.edges.length;
+    } else {
+      let count = 0;
+
+      for (let e of this.edges) {
+        count++;
+      }
+
+      return count;
+    }
+  }
+
   otherEdge(e) {
-    if (this.edges.length !== 2) {
+    if (this.valence !== 2) {
       throw new MeshError("otherEdge only works on 2-valence vertices");
     }
 
-    if (e === this.edges[0])
-      return this.edges[1];
-    else if (e === this.edges[1])
-      return this.edges[0];
+    if (EDGE_LINKED_LISTS) {
+      if (e === this.e) {
+        return this === e.v1 ? e.v1next : e.v1prev;
+      } else {
+        return this.e;
+      }
+    } else {
+      if (e === this.edges[0])
+        return this.edges[1];
+      else if (e === this.edges[1])
+        return this.edges[0];
+    }
   }
 
   loadSTRUCT(reader) {
+    IN_VERTEX_STRUCT = true;
     reader(this);
+    IN_VERTEX_STRUCT = false;
 
     //we mixed in Element instead of inheriting from it
     Element.prototype.loadSTRUCT.call(this, reader);
@@ -442,10 +770,13 @@ Vertex.STRUCT = STRUCT.inherit(Vertex, Element, 'mesh.Vertex') + `
   1       : float;
   2       : float;
   no      : vec3 | obj.no;
-  edges   : array(e, int) | (e.eid);
-  color   : vec4;
 }
 `;
+/*
+save space by deriving these on file load:
+  edges   : array(e, int) | (e.eid);
+*/
+
 nstructjs.register(Vertex);
 
 export class Handle extends Element {
@@ -459,7 +790,6 @@ export class Handle extends Element {
 
     this.owner = undefined;
     this.mode = HandleTypes.AUTO;
-    this.color = new Vector4([0,0,0,1]);
     this.roll = 0;
   }
 
@@ -483,9 +813,8 @@ Handle.STRUCT = STRUCT.inherit(Handle, Element, "mesh.Handle") + `
   0        : float;
   1        : float;
   2        : float; 
-  mode     : float;
+  mode     : byte;
   owner    : int | obj.owner !== undefined ? obj.owner.eid : -1;
-  color    : vec4;
   roll     : float;
 }
 `;
@@ -680,6 +1009,11 @@ export class Edge extends Element {
     this.v1 = this.v2 = undefined;
     this.h1 = this.h2 = undefined;
     this.length = 0.0;
+
+    if (EDGE_LINKED_LISTS) {
+      this.v1next = this.v1prev = undefined;
+      this.v2next = this.v2prev = undefined;
+    }
   }
 
   set flag(v) {
@@ -790,7 +1124,7 @@ export class Edge extends Element {
       let v = this.vertex(h);
       //v = this.otherVertex(v);
 
-      if (h.mode === HandleTypes.AUTO && v.edges.length === 2) {
+      if (h.mode === HandleTypes.AUTO && v.valence === 2) {
         let e2 = v.otherEdge(this);
         let v2 = e2.otherVertex(v);
 
@@ -1092,7 +1426,6 @@ export class Edge extends Element {
   }
 }
 Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
-  l       : int | obj.l !== undefined ? obj.l.eid : -1;
   v1      : int | obj.v1.eid;
   v2      : int | obj.v2.eid;
   h1      : int | obj.h1 !== undefined ? obj.h1.eid : -1;
@@ -1126,6 +1459,13 @@ export class Loop extends Element {
     }
   //*/
 
+  _free() {
+    this.e = this.f = this.v = this.list = this.next = this.prev = undefined;
+    this.radial_next = this.radial_prev = undefined;
+
+    return this;
+  }
+
   get uv() {
     for (let layer of this.customData) {
       if (layer instanceof UVLayerElem)
@@ -1140,14 +1480,16 @@ export class Loop extends Element {
 }
 Loop.STRUCT = STRUCT.inherit(Loop, Element, "mesh.Loop") + `
   v           : int | obj.v.eid;
-  e           : int | obj.e.eid;
-  f           : int | obj.f.eid;
-  radial_next : int | obj.radial_next.eid;
-  radial_prev : int | obj.radial_prev.eid;
-  next        : int | obj.next.eid;
-  prev        : int | obj.prev.eid;
 }
 `;
+
+/* save space by deriving these values on file load:
+  e           : int | obj.e.eid;
+  radial_next : int | obj.radial_next.eid;
+  radial_prev : int | obj.radial_prev.eid;
+  prev        : int | obj.prev.eid;
+*/
+
 nstructjs.manager.add_class(Loop);
 
 let loopiterstack;
@@ -1271,14 +1613,41 @@ export class LoopList {
   get _loops() {
     return this;
   }
+
+  loadSTRUCT(reader) {
+    reader(this);
+
+    if (this.__loops !== undefined) {
+      let ls = this.__loops;
+
+      for (let i=0; i<ls.length; i++) {
+        let i1 = (i - 1 + ls.length) % ls.length;
+        let i2 = (i + 1) % ls.length;
+
+        let l = ls[i];
+        l.prev = ls[i1];
+        l.next = ls[i2];
+      }
+
+      this.l = ls[0];
+
+      delete this.__loops;
+    }
+  }
 }
 
 LoopList.STRUCT = `
 mesh.LoopList {
-  l      : int | obj.l.eid;
+  __loops : iter(mesh.Loop) | this;  
   length : int;
 }
 `;
+/*
+store loops in LoopList to save having to store
+next pointers
+  l      : int | obj.l.eid;
+
+*/
 nstructjs.register(LoopList);
 
 let fiter_stack_v;
@@ -1446,6 +1815,7 @@ export class Face extends Element {
     sum.zero();
 
     this.calcCent();
+
     let c = this.cent;
 
     let _i = 0;

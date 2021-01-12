@@ -230,7 +230,7 @@ void main() {
   
   vUv = uv;
   vNormal = n.xyz;
-  vColor = color;
+  vColor = color;//*p.w;
 }
 
   `,
@@ -252,7 +252,10 @@ void main() {
   f = f*0.8 + 0.2;
   vec4 c = vec4(f, f, f, 1.0);
   
-  gl_FragColor = c;
+  vec4 vcolor = vColor;// * gl_FragCoord.w;
+  //vcolor.rgb = fract(vcolor.rgb*5.0);
+  
+  gl_FragColor = c + (c*vcolor - c)*vcolor[3];
 }
   `,
 
@@ -391,20 +394,27 @@ attribute vec3 position;
 attribute vec3 normal;
 attribute vec2 uv;
 attribute vec4 color;
-attribute vec2 primUV;
+attribute vec4 primUV;
 
 attribute vec4 primc1;
 attribute vec4 primc2;
 attribute vec4 primc3;
+attribute vec4 primc4;
+attribute vec4 primc5;
+attribute vec4 primc6;
 
 varying vec4 vColor;
 varying vec3 vNormal;
 varying vec2 vUv;
-varying vec2 vPrimUV;
+varying vec4 vPrimUV;
 
 varying vec4 vPrimC1;
 varying vec4 vPrimC2;
 varying vec4 vPrimC3;
+varying vec4 vPrimC4;
+varying vec4 vPrimC5;
+varying vec4 vPrimC6;
+
 ${PolygonOffset.pre}
 
 uniform float aspect, near, far;
@@ -427,6 +437,9 @@ void main() {
   vPrimC1 = primc1;
   vPrimC2 = primc2;
   vPrimC3 = primc3;
+  vPrimC4 = primc4;
+  vPrimC5 = primc5;
+  vPrimC6 = primc6;
 }
 
   `,
@@ -476,10 +489,14 @@ varying vec4 vColor;
 varying vec3 vNormal;
 varying vec2 vUv;
 
-varying vec2 vPrimUV;
+varying vec4 vPrimUV;
+
 varying vec4 vPrimC1;
 varying vec4 vPrimC2;
 varying vec4 vPrimC3;
+varying vec4 vPrimC4;
+varying vec4 vPrimC5;
+varying vec4 vPrimC6;
 
 uniform sampler2D texture;
 uniform float hasTexture;
@@ -487,6 +504,7 @@ uniform float hasTexture;
 uniform vec4 uColor;
 ${PolygonOffset.pre}
 
+uniform float iTime;
 uniform float aspect, near, far;
 uniform vec2 size;
 
@@ -498,16 +516,17 @@ void main() {
   f = f < 0.0 ? -f*0.5 : f;
   f = f*0.8 + 0.2;
   
-  vec3 uvw = vec3(vPrimUV, 1.0-vPrimUV[0]-vPrimUV[1]);
+  vec3 uvw = vec3(vPrimUV.xy, 1.0-vPrimUV[0]-vPrimUV[1]);
   vec4 vcol;
 
   vec4 tex = texture2D(texture, vUv);
   tex += (vec4(1.0, 1.0, 1.0, 1.0) - tex) * (1.0 - hasTexture);
   
-//make sure to uncomment primc1/c2/c3 layer stuff in pbvh.c
+//make sure to set vpatch = true in pbvh.c
 //#define VCOL_PATCH
 #ifdef VCOL_PATCH
   {
+#if 0 //bilinear smoothstep
     vec4 a = vPrimC1;
     vec4 b = vPrimC2;
     vec4 c = vPrimC3;
@@ -519,10 +538,97 @@ void main() {
     vcol = ((ac1*c-a)*(2.0*u-3.0)*u+ac1*c)*u+
            ((ac1*c-b)*(2.0*v-3.0)*v+ac1*c)*v-(2.0*
            (v-1.0+u)*(v-1.0+u)*(ac1-1.0)+3.0*(v-1.0+u)*(ac1-1.0)+ac1)*(v-1.0+u)*c;
-    
-    //vcol -= vPrimC1*uvw[0] + vPrimC2*uvw[1] + vPrimC3*uvw[2];
-    //vcol = abs(vcol);
-    //vcol[3] = 1.0;
+#elif 0 //quadratic bezier triangle
+  float ww = 0.5;
+  float ww2 = 0.0;
+  float w1 = uvw[0], w2 = uvw[1];
+  
+  vec4 k1 = vPrimC1;
+  vec4 k2 = (vPrimC4+vPrimC5)*ww + (vPrimC1 - vPrimC4)*ww2;
+  vec4 k3 = vPrimC2;
+  vec4 k4 = (vPrimC5+vPrimC6)*ww + (vPrimC2 - vPrimC5)*ww2;
+  vec4 k5 = vPrimC3;
+  vec4 k6 = (vPrimC6+vPrimC4)*ww + (vPrimC3 - vPrimC6)*ww2;
+  
+  vcol = ((w2-1.0+w1)*k5-(k4*w2+k6*w1))*(w2-1.0+w1)-((w2-1.0+w1)*k6
+         -(k1*w1+k2*w2))*w1-((w2-1.0+w1)*k4-(k2*w1+k3*w2))*w2;
+#elif 1 //cubic bezier triangle
+  float ww = 0.5;
+  float ww2 = 0.0;
+  float w1 = uvw[0], w2 = uvw[1];
+  
+  w1 = w1*w1*(3.0 - 2.0*w1);
+  w2 = w2*w2*(3.0 - 2.0*w2);
+  
+  vec4 j1 = vPrimC4;
+  vec4 j5 = vPrimC5;
+  vec4 j9 = vPrimC6;
+
+  vec4 k1 = vPrimC1;
+  vec4 k5 = vPrimC2;
+  vec4 k9 = vPrimC3;
+  
+  float tt = 1.0; //(cos(iTime*25.0)*0.5 + 0.5)*2.5;
+  
+  j1 = k1 + (j1 - k1)*tt;
+  j5 = k5 + (j5 - k5)*tt;
+  j9 = k9 + (j9 - k9)*tt;
+  
+  tt = -1.0;
+  
+  k1 += (vPrimC4 - k1)*tt;
+  k5 += (vPrimC5 - k5)*tt;
+  k9 += (vPrimC6 - k9)*tt;
+  
+  vec4 k2 = k1 + (j5 - k1)*0.25;
+  vec4 k3 = j1 + (j5 - j1)*0.5;
+  vec4 k4 = j1 + (k5 - j1)*0.75;
+
+  vec4 k6 = k5 + (j9 - k5)*0.25;
+  vec4 k7 = j5 + (j9 - j5)*0.5;
+  vec4 k8 = j5 + (k9 - j5)*0.75;
+
+  vec4 k10 = k9 + (j1 - k9)*0.25;
+  vec4 k11 = j9 + (j1 - j9)*0.5;
+  vec4 k12 = j9 + (k1 - j9)*0.75;
+  
+  vec4 k13 = (k3 + k11)*0.5;
+  vec4 k14 = (k3 + k7)*0.5;
+  vec4 k15 = (k7 + k11)*0.5;
+  
+  tt = -1.5; //cos(iTime*50.0 + 3.14159*0.5);
+  
+  //k13 = vPrimC1 + (vPrimC4 - vPrimC1)*-tt;
+  //k14 = vPrimC2 + (vPrimC5 - vPrimC2)*-tt;
+  //k15 = vPrimC3 + (vPrimC6 - vPrimC3)*-tt;
+  
+  k13 += (vPrimC4 - vPrimC1)*tt;
+  k14 += (vPrimC5 - vPrimC2)*tt;
+  k15 += (vPrimC6 - vPrimC3)*tt;
+  
+  vcol = -((((w2-1.0+w1)*k6-(k4*w1+k5*w2))*w2-((w2-1.0+w1)*k7-(k14
+          *w1+k6*w2))*(w2-1.0+w1)+((w2-1.0+w1)*k14-(k3*w1+k4*w2))*w1)*w2
+          -(((w2-1.0+w1)*k8-(k15*w1+k7*w2))*w2-((w2-1.0+w1)*k9-(k10*w1+
+          k8*w2))*(w2-1.0+w1)+((w2-1.0+w1)*k10-(k11*w1+k15*w2))*w1)*(w2-
+          1.0+w1)+(((w2-1.0+w1)*k12-(k1*w1+k2*w2))*w1+((w2-1.0+w1)*k13-(
+          k2*w1+k3*w2))*w2-((w2-1.0+w1)*k11-(k12*w1+k13*w2))*(w2-1.0+w1)
+          )*w1);
+#else
+  float w1 = uvw[0], w2 = uvw[1], w3 = uvw[2];
+   
+  w1 = w1*w1*(3.0 - 2.0*w1);
+  w2 = w2*w2*(3.0 - 2.0*w2);
+  w3 = 1.0-w2-w1; //w3*w3*(3.0 - 2.0*w3);
+
+  vcol = vPrimC1*w1 + vPrimC2*w2 + vPrimC3*w3;
+#endif
+
+#if 0 //uncomment to display difference with original
+    vcol -= vPrimC1*uvw[0] + vPrimC2*uvw[1] + vPrimC3*uvw[2];
+    vcol = abs(vcol);
+    vcol[3] = 1.0;
+#endif
+ 
   }
 #else
   //vcol = vPrimC1*uvw[0] + vPrimC2*uvw[1] + vPrimC3*uvw[2];
@@ -547,7 +653,97 @@ void main() {
   },
 
   attributes : [
-    "position", "normal", "uv", "color", "primUV", "primc1", "primc2", "primc3"
+    "position", "normal", "uv", "color", "primUV",
+    "primc1", "primc2", "primc3", "primc4", "primc5",
+    "primc6"
+  ]
+};
+
+
+export let SculptShaderSimple = {
+  vertex : `precision mediump float;
+  
+uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
+uniform mat4 normalMatrix;
+
+attribute vec3 position;
+attribute vec3 normal;
+attribute vec2 uv;
+attribute vec4 color;
+
+varying vec4 vColor;
+varying vec3 vNormal;
+varying vec2 vUv;
+
+${PolygonOffset.pre}
+
+uniform float aspect, near, far;
+uniform vec2 size;
+
+void main() {
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
+  vec4 n = normalMatrix * vec4(normal, 0.0);
+
+  ${PolygonOffset.vertex("p", "near", "far", "size")}
+  
+  gl_Position = p;
+  
+  vUv = uv;
+  vNormal = n.xyz;
+  vColor = color;
+}
+
+  `,
+
+  fragment : `precision mediump float;
+uniform float alpha;
+
+varying vec4 vColor;
+varying vec3 vNormal;
+varying vec2 vUv;
+
+uniform sampler2D texture;
+uniform float hasTexture;
+
+uniform vec4 uColor;
+${PolygonOffset.pre}
+
+uniform float iTime;
+uniform float aspect, near, far;
+uniform vec2 size;
+
+void main() {
+  float f;
+  vec3 no = normalize(vNormal);
+  
+  f = no[1]*0.333 + no[2]*0.333 + no[0]*0.333;
+  f = f < 0.0 ? -f*0.5 : f;
+  f = f*0.8 + 0.2;
+
+  vec4 tex = texture2D(texture, vUv);
+  tex += (vec4(1.0, 1.0, 1.0, 1.0) - tex) * (1.0 - hasTexture);
+
+  vec4 c = vec4(f, f, f, 1.0)*uColor*vColor;
+
+  c[3] *= alpha;
+
+  ${PolygonOffset.fragment}
+  
+  gl_FragColor = c * tex;
+}
+  `,
+
+  uniforms : {
+    alpha : 1.0,
+    hasTexture : 0.0,
+    uColor : [1, 1, 1, 1],
+    objectMatrix : new Matrix4()
+  },
+
+  attributes : [
+    "position", "normal", "uv", "color"
   ]
 };
 
@@ -1525,6 +1721,7 @@ export const ShaderDef = {
   NormalPassShader     : NormalPassShader,
   MeshLinearZShader    : MeshLinearZShader,
   SculptShader         : SculptShader,
+  SculptShaderSimple   : SculptShaderSimple,
   LineTriStripShader   : LineTriStripShader,
   TexturePaintShader   : TexturePaintShader,
   FlatMeshTexture      : FlatMeshTexture

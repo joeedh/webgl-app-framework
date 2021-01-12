@@ -13,6 +13,8 @@ import {buildCDAPI, buildElementAPI, CustomData} from "../mesh/customdata.js";
 import {CameraData} from "../camera/camera.js";
 import {Camera} from '../core/webgl.js';
 
+import {buildProcMeshAPI} from '../mesh/mesh_gen.js';
+
 import {makeToolModeEnum, ToolModes, ToolMode} from "../editors/view3d/view3d_toolmode.js";
 import {NodeSocketClasses} from "../core/graph.js";
 import {RenderSettings} from "../renderengine/renderengine_realtime.js";
@@ -47,7 +49,7 @@ import '../shadernodes/allnodes.js';
 import {OutputNode, ShaderNode} from '../shadernodes/shader_nodes.js';
 import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph.js';
 import {SceneObject} from '../sceneobject/sceneobject.js';
-import {SelectOneOp} from '../sceneobject/selectops.js';
+import {ObjectSelectOneOp} from '../sceneobject/selectops.js';
 import {DeleteObjectOp} from '../sceneobject/sceneobject_ops.js';
 import {Scene, EnvLight, EnvLightFlags} from "../scene/scene.js";
 import {api_define_graphclasses} from '../core/graph_class.js';
@@ -777,6 +779,9 @@ export function api_define_brush(api, cstruct) {
   bst.color4("color", "color", "Primary Color");
   bst.color4("bgcolor", "bgcolor", "Secondary Color");
   bst.float("concaveFilter", "concaveFilter", "Concave Wash").range(0.0, 1.0).noUnits();
+  bst.float("rake", "rake", "Rake").range(0.0, 1.0).noUnits();
+  bst.float("normalfac", "normalfac", "Normal Fac").range(0.0, 1.0).noUnits();
+  bst.float("pinch", "pinch", "Pinch").range(0.0, 1.0).noUnits();
 
   bst.struct("texUser", "texUser", "Texture", api.mapStruct(ProceduralTexUser));
 
@@ -909,6 +914,7 @@ export function getDataAPI() {
   ]);
 
   api_define_graphclasses(api);
+  buildProcMeshAPI(api);
 
   cstruct.struct("material", "material", "Material", api.mapStruct(Material, false));
 

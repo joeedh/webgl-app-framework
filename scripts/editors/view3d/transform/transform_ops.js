@@ -199,6 +199,23 @@ export class TransformOp extends View3DOp {
   }
 
 
+  calcUndoMem(ctx) {
+    let tot = 0;
+
+    let types = this.getTransTypes(ctx);
+    let map = {};
+    for (let t of types) {
+      map[t.name] = t;
+    }
+
+    for (let k in this._undo) {
+      let ud = this._undo[k];
+      tot += map[k].calcCenter(ctx);
+    }
+
+    return tot;
+  }
+
   undoPre(ctx, checkTransData=true) {
     if (checkTransData) {
       this.genTransData(ctx);

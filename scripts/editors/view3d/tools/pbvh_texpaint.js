@@ -44,7 +44,8 @@ export class TexPaintOp extends ToolOp {
         samples  : new PaintSampleProperty(),
         rendermat: new Mat4Property(),
         glSize   : new Vec2Property(),
-        viewSize : new Vec2Property()
+        viewSize : new Vec2Property(),
+        symmetryAxes : new FlagProperty(undefined, {X : 1, Y : 2, Z : 4})
       },
 
       is_modal: true
@@ -176,6 +177,8 @@ export class TexPaintOp extends ToolOp {
     if (!isect) {
       return;
     }
+
+    toolmode.debugSphere.load(isect.p);
 
     if (this.first) {
       this.first = false;
@@ -782,16 +785,54 @@ export class TexPaintOp extends ToolOp {
     }
 
     if (haveColor && 0) {
+      let ts2 = [];
+
       for (let t of ts) {
         let c1 = t.v1.customData[cd_color].color;
         let c2 = t.v2.customData[cd_color].color;
         let c3 = t.v3.customData[cd_color].color;
 
-        let dis = math.dist_to_tri_v3(co, t.v1, t.v2, t.v3, t.no);
+        c1.zero().addScalar(1.0);
+        c2.zero().addScalar(1.0);
+        c3.zero().addScalar(1.0);
 
-        c1[0] = dis/radius;
-        c2[0] = dis/radius;
-        c3[0] = dis/radius;
+        ts2.push(t);
+      }
+      ts = ts2;
+
+      for (let v of mesh.verts) {
+        let c = v.customData[cd_color].color;
+
+        c.zero().addScalar(1.0);
+      }
+
+      for (let i1=0; i1<ts.length; i1++) {
+        let ri = ~~(Math.random()*0.99999*ts.length);
+        let t = ts[ri];
+
+      //for (let t of ts) {
+        let c1 = t.v1.customData[cd_color].color;
+        let c2 = t.v2.customData[cd_color].color;
+        let c3 = t.v3.customData[cd_color].color;
+
+        t.no.load(math.normal_tri(t.v1, t.v2, t.v3));
+
+        let dis = math.dist_to_tri_v3(ps.p, t.v1, t.v2, t.v3, t.no);
+
+        //dis = Math.sqrt(Math.abs(dis));
+
+        //let t1 = new Vector3(ps.p).sub(t.v1);
+        //dis = (Math.abs(t1.dot(t.no)));
+
+        let dis2 = dis/radius*0.5;
+
+        c1[0] = Math.min(c1[0], dis2);
+        c2[0] = Math.min(c2[0], dis2);
+        c3[0] = Math.min(c3[0], dis2);
+
+        for (let i=1; i<3; i++) {
+          c1[i] = c2[i] = c3[i] = 0.2;
+        }
 
         if (t.node) {
           t.node.flag |= BVHFlags.UPDATE_DRAW;
@@ -802,8 +843,8 @@ export class TexPaintOp extends ToolOp {
 
     sm.destroy(gl);
 
-    bvh.update();
-    window.redraw_viewport();
+    //bvh.update();
+    window.redraw_viewport(true);
     //console.log(vs);
   }
 

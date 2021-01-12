@@ -198,16 +198,16 @@ export class CurveSpline extends Mesh {
   }
 
   *walk(all_verts=false) {
-    if (this.verts.length === 0 || this.verts[0].edges.length === 0) {
+    if (this.verts.length === 0 || this.verts.first.valence === 0) {
       return; //empty mesh
     }
 
     //set flip flags
-    let v = this.verts[0];
+    let v = this.verts.first;
     let e = v.edges[0];
 
     let pv;
-    if (v.edges.length > 1) {
+    if (v.valence > 1) {
       pv = v.edges[1].otherVertex(v);
     }
 
@@ -230,7 +230,7 @@ export class CurveSpline extends Mesh {
 
       let v2 = e.otherVertex(v);
 
-      if (v2.edges.length < 2) {
+      if (v2.valence < 2) {
         if (all_verts) {
           ret = WalkRets.next().load(v2, e);
           yield ret;
@@ -241,7 +241,7 @@ export class CurveSpline extends Mesh {
 
       e = v2.otherEdge(e);
       v = v2;
-    } while (v !== this.verts[0])
+    } while (v !== this.verts.first)
   }
 
   get length() {
@@ -315,7 +315,7 @@ export class CurveSpline extends Mesh {
   update() {
     super.update();
 
-    if (this.verts.length === 0 || this.verts[0].edges.length === 0) {
+    if (this.verts.length === 0 || this.verts.first.valence === 0) {
       return; //empty mesh
     }
 
@@ -325,11 +325,12 @@ export class CurveSpline extends Mesh {
 
     this._length = 0;
 
-    for (let i = 0; i < this.verts.length; i++) {
-      if (this.verts[i].edges.length < 2) {
+    let i = 0;
+    for (let v of this.verts) {
+      if (v.valence < 2) {
         if (i > 0) {
           console.warn("start of curve moved; fixing.")
-          this.verts.swap(this.verts[i], this.verts[0]);
+          this.verts.swap(v, this.verts.first);
         }
 
         break;
@@ -415,8 +416,10 @@ export class CurveSpline extends Mesh {
       return;
     }
 
+    this.verts.compact();
+
     for (let i=0; i<vs.length; i++) {
-      this.verts[i] = vs[i];
+      this.verts.list[i] = vs[i];
     }
 
     return this;
@@ -432,7 +435,7 @@ export class CurveSpline extends Mesh {
 
     s = s * this.speedLength / this.length*0.999999;
 
-    let vs = this.verts;
+    let vs = this.verts.list; //compacted in sortVerts
     let ks = this.knots;
     let sum = 0.0;
 
@@ -684,19 +687,19 @@ export class CurveSpline extends Mesh {
       break;
     }
 
-    let closed = v.edges.length > 1;
+    let closed = v.valence > 1;
     if (!!closed !== !!this.isClosed) {
       this.sortVerts();
 
       if (closed) {
         for (let e of v.edges) {
-          if (e.otherVertex(v) !== this.verts[1]) {
+          if (e.otherVertex(v) !== this.verts.list[1]) {
             this.killEdge(e);
             break;
           }
         }
       } else {
-        this.makeEdge(this.verts[0], this.verts[this.verts.length-1]);
+        this.makeEdge(this.verts.first, this.verts.last);
       }
 
       for (let e of this.edges) {
@@ -711,8 +714,7 @@ export class CurveSpline extends Mesh {
     //let hash = "";
     let key = this.isClosed;
 
-    for (let i=0; i<this.verts.length; i++) {
-      let v = this.verts[i];
+    for (let v of this.verts) {
       let knot = getKnot(v);
       let key2 = knot.knot*((1<<24)-1);
       let key3 = knot.tilt*((1<<24)-1);

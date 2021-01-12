@@ -145,6 +145,18 @@ export class MeshOp extends View3DOp {
     window.updateDataGraph();
   }
 
+  calcUndoMem(ctx) {
+    let tot = 0;
+
+    for (let id in this._undo) {
+      let data = this._undo[id];
+
+      tot += data.dview.buffer.byteLength;
+    }
+
+    return tot;
+  }
+
   undoPre(ctx) {
     let undo = this._undo = {};
 

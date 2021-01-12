@@ -155,6 +155,10 @@ export class ObjectList extends Array {
       this.selected.remove(ob);
     }
 
+    if (ob === this.active) {
+      this.active = undefined;
+    }
+
     ob.lib_remUser(this.scene);
     return super.remove(ob);
   }
@@ -602,6 +606,7 @@ export class Scene extends DataBlock {
     }
     
     this.objects.remove(ob);
+    this.collection.remove(ob);
   }
 
   destroy() {

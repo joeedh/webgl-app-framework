@@ -924,3 +924,323 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT) {
     mesh.killEdge(e);
   }
 }
+
+export function recalcWindings(mesh, faces=mesh.faces) {
+  faces = new Set(faces);
+
+  let shells = [];
+
+  let stack = [];
+
+  let flag = MeshFlags.TEMP3;
+
+  for (let f of faces) {
+    f.flag &= ~flag;
+  }
+
+  for (let f of faces) {
+    if (f.flag & flag) {
+      continue;
+    }
+
+    stack.length = 0;
+    stack.push(f);
+    f.flag |= flag;
+
+    let shell = [];
+
+    while (stack.length > 0) {
+      let f2 = stack.pop();
+
+      shell.push(f2);
+      f2.flag |= flag;
+
+      for (let l of f2.loops) {
+        let lr = l.radial_next;
+        let _i = 0;
+
+        while (lr !== l) {
+          if (!(lr.f.flag & flag) && faces.has(lr.f)) {
+            stack.push(lr.f);
+            lr.f.flag |= flag;
+          }
+
+          lr = lr.radial_next;
+
+          if (_i++ > 100) {
+            console.error("Infinite loop error");
+            break;
+          }
+        }
+      }
+    }
+
+    shell = new Set(shell);
+    shells.push(shell);
+  }
+
+  console.log("shells:", shells);
+
+  for (let shell of shells) {
+    let cent = new Vector3();
+    let tot = 0.0;
+
+    for (let f of shell) {
+      cent.add(f.cent);
+
+      tot++;
+    }
+
+    if (!tot) {
+      continue;
+    }
+
+    cent.mulScalar(1.0 / tot);
+    let maxdis = undefined;
+    let maxf = undefined;
+
+    for (let f of shell) {
+      let dis = f.cent.vectorDistance(cent);
+
+      if (maxdis === undefined || dis > maxdis) {
+        maxf = f;
+        maxdis = dis;
+      }
+
+      f.flag &= ~flag;
+    }
+
+    stack.length = 0;
+
+    maxf.calcNormal();
+    let n = new Vector3(maxf.cent).sub(cent).normalize();
+
+    if (maxf.no.dot(n) < 0) {
+      mesh.reverseWinding(maxf);
+    }
+
+    stack.push(maxf);
+    maxf.flag |= flag;
+
+    while (stack.length > 0) {
+      let f = stack.pop();
+
+      for (let l of f.loops) {
+        let lr = l.radial_next;
+
+        let _i = 0;
+
+        while (lr !== l) {
+          let ok = lr !== l && shell.has(lr.f);
+          ok = ok && !(lr.f.flag & flag);
+
+          let next = lr.radial_next;
+
+          if (ok) {
+            lr.f.flag |= flag;
+            stack.push(lr.f);
+
+            if (lr.v === l.v) {
+              mesh.reverseWinding(lr.f);
+            }
+          }
+
+          if (_i++ > 100) {
+            console.error("Infinite loop error", lr, l.eid);
+            break;
+          }
+
+          lr = next;
+        }
+      }
+    }
+  }
+}
+
+export function fixManifold(mesh) {
+  let es = new Set();
+
+  for (let e of mesh.edges) {
+    let c = 0;
+    for (let l of e.loops) {
+      c++;
+    }
+
+    if (c > 2) {
+      es.add(e);
+    }
+  }
+
+  let stack = [];
+  let flag = MeshFlags.TEMP3;
+  for (let f of mesh.faces) {
+    f.flag &= ~flag;
+  }
+
+  let shells = [];
+
+  for (let f of mesh.faces) {
+    if (f.flag & flag) {
+      continue;
+    }
+
+    let shell = [];
+
+    stack.length = 0;
+    stack.push(f);
+    shell.push(f);
+
+    f.flag |= flag;
+
+    while (stack.length > 0) {
+      let f2 = stack.pop();
+      shell.push(f2);
+
+      for (let l of f2.loops) {
+        let count = 0;
+        for (let l2 of l.e.loops) {
+          count++;
+        }
+
+        let ok = count === 2;
+        ok = ok && !(l.radial_next.f.flag & flag);
+
+        if (ok) {
+          stack.push(l.radial_next.f);
+          l.radial_next.f.flag |= flag;
+        }
+      }
+    }
+
+    shells.push(shell);
+  }
+
+  for (let shell of shells) {
+    for (let f of shell) {
+      f.index = shell.length;
+    }
+  }
+
+  console.log("shells", shells);
+  console.log("non-manifold edges:", es);
+
+  if (es.size === 0) {
+    return false;
+  }
+
+  for (let e of es) {
+    let count = 0;
+    for (let l of e.loops) {
+      count++;
+    }
+
+    let v1 = mesh.makeVertex(e.v1);
+    let v2 = mesh.makeVertex(e.v2);
+
+    v1.no.load(e.v1.no);
+    v2.no.load(e.v2.no);
+
+    mesh.copyElemData(v1, e.v1);
+    mesh.copyElemData(v2, e.v2);
+
+    let e2 = mesh.makeEdge(v1, v2);
+    mesh.copyElemData(e2, e);
+
+    let minl, minw;
+
+    for (let i=0; i<count-2; i++) {
+      for (let l of e.loops) {
+        console.log(l.f.index);
+
+        if (minl === undefined || l.f.index < minw) {
+          minl = l;
+          minw = l.f.index;
+        }
+      }
+
+      let f2;
+      let f = minl.f;
+
+      for (let list of f.lists) {
+        let vs = [];
+
+        for (let l of list) {
+          if (l.v === e.v1) {
+            vs.push(v1);
+          } else if (l.v === e.v2) {
+            vs.push(v2);
+          } else {
+            vs.push(l.v);
+          }
+        }
+
+        if (list === f.lists[0]) {
+          f2 = mesh.makeFace(vs);
+          mesh.copyElemData(f2, f);
+          f2.index = f.index;
+        } else {
+          mesh.makeHole(f2, vs);
+        }
+      }
+
+      for (let i=0; i<f.lists.length; i++) {
+        let list1 = f.lists[i];
+        let list2 = f2.lists[i];
+
+        let l1 = list1.l;
+        let l2 = list2.l;
+        let _i = 0;
+
+        do {
+          mesh.copyElemData(l2, l1);
+
+          l1 = l1.next;
+          l2 = l2.next;
+          if (_i++ > 100000) {
+            console.error("Infinite loop error");
+            break;
+          }
+        } while (l1 !== list1.l);
+      }
+
+      //make sure we nuke any wire edges
+      let es2 = [];
+      for (let l of f.loops) {
+        if (l.radial_next === l) {
+          es2.push(l.e);
+        }
+      }
+
+      mesh.killFace(f);
+
+      for (let e of es2) {
+        mesh.killEdge(e);
+      }
+    }
+  }
+
+  return true;
+}
+
+let ftmp = [];
+export function connectVerts(mesh, v1, v2) {
+  let fs = ftmp;
+  fs.length = 0;
+
+  for (let f of v1.faces) {
+    fs.push(f);
+  }
+
+  for (let f of fs) {
+    outer: for (let list of f.lists) {
+      for (let l of list) {
+        if (l.v === v2) {
+          mesh.splitFaceAtVerts(f, v1, v2);
+          break outer;
+        }
+      }
+    }
+  }
+  //let heap = new util.MinHeapQueue();
+}
+

@@ -6,6 +6,20 @@ import {DataRefProperty} from '../../../core/lib_api.js';
 import {BVHToolMode} from './pbvh.js';
 import {CDFlags} from '../../../mesh/customdata.js';
 
+export const SymAxisMap = [
+  [],
+  [[-1,1,1]], //x
+  [[1,-1,1]], //y
+  [[-1,1,1],[-1,-1,1],[1,-1,1]], //x + y
+
+  [[1, 1, -1]], //z
+  [[-1,1,1], [1,1,-1], [-1,1,-1]], //x+z
+  [[1,-1,1], [1, 1, -1], [1, -1, -1]], //y+z
+
+  [[-1, 1, 1], [1, -1, 1], [1, 1, -1], [-1, -1, 1], [-1, -1, -1], [-1, 1, -1], [1, -1, -1]] //x+y+z
+];
+
+
 export let BRUSH_PROP_TYPE;
 export class BrushProperty extends ToolProperty {
   constructor(value) {
@@ -17,6 +31,10 @@ export class BrushProperty extends ToolProperty {
     if (value) {
       this.setValue(value);
     }
+  }
+
+  calcMemSize() {
+    return this.brush.calcMemSize() + this._texture.calcMemSize();
   }
 
   setValue(brush) {
@@ -39,7 +57,8 @@ export class BrushProperty extends ToolProperty {
     super.loadSTRUCT(reader)
 
     let texuser = this.brush.texUser;
-    if (texuser.texture !== undefined && texuser.texture !== -1) {
+    if (this.hasTex) { //texuser.texture !== undefined && texuser.texture !== -1) {
+      delete this.hasTex;
       this.brush.texUser.texture = this._texture;
     } else {
       this.brush.texUser.texture = undefined;
@@ -48,8 +67,9 @@ export class BrushProperty extends ToolProperty {
 }
 
 BrushProperty.STRUCT = nstructjs.inherit(BrushProperty, ToolProperty) + `
-  brush : SculptBrush;
+  brush    : SculptBrush;
   _texture : ProceduralTex;
+  hasTex   : bool | !!this.brush.texUser.texture;
 }`;
 
 nstructjs.register(BrushProperty);
@@ -61,6 +81,14 @@ export class PaintSample {
     this.p = new Vector4();
     this.dp = new Vector4();
     this.viewPlane = new Vector3();
+
+    this.pinch = 0.0;
+
+    //screen coordinates
+    this.sp = new Vector4();
+    this.dsp = new Vector4();
+
+    this.invert = false;
 
     this.w = 0.0;
 
@@ -76,23 +104,65 @@ export class PaintSample {
     this.concaveFilter = 0.0;
     this.strength = 0.0;
     this.radius = 0.0;
+    this.rake = 0.0;
     this.autosmooth = 0.0;
     this.esize = 0.0;
     this.planeoff = 0.0;
   }
 
+  static getMemSize() {
+    let tot = 13*8;
+    tot += 5*3*8 + 8*5;
+    tot += 5*4*8 + 8*5;
+
+    return tot;
+  }
+
+  mirror(mul=new Vector4([1, 1, 1, 1])) {
+    this.p.mul(mul);
+    this.dp.mul(mul);
+    this.origp.mul(mul);
+
+    //this.sp.mulScalar(mul);
+    this.dsp.mul(mul);
+    this.viewvec.mul(mul);
+
+    this.vec.mul(mul);
+    this.dvec.mul(mul);
+
+    this.angle *= mul[0]*mul[1]*mul[2];
+
+    return this;
+  }
+
   copyTo(b) {
     b.viewPlane.load(this.viewPlane);
-    b.dp.load(this.dp);
-    b.w = this.w;
-    b.p.load(this.p);
+    b.viewvec.load(this.viewvec);
+    b.vieworigin.load(this.vieworigin);
     b.angle = this.angle;
+    b.invert = this.invert;
+
+    b.origp.load(this.origp);
+
+    b.sp.load(this.sp);
+    b.dsp.load(this.dsp);
+
     b.vec.load(this.vec);
     b.dvec.load(this.dvec);
+
+    b.p.load(this.p);
+    b.dp.load(this.dp);
+
+    b.w = this.w;
+    b.esize = this.esize;
+
+    b.color.load(this.color);
+
+    b.pinch = this.pinch;
+    b.rake = this.rake;
     b.strength =  this.strength;
     b.radius = this.radius;
     b.autosmooth = this.autosmooth;
-    b.esize = this.esize;
     b.planeoff = this.planeoff;
     b.concaveFilter = this.concaveFilter;
   }
@@ -109,16 +179,30 @@ PaintSample.STRUCT = `
 PaintSample {
   p              : vec4;
   dp             : vec4;
+  sp             : vec4;
+  dsp            : vec4;
+  origp          : vec4;
+
   vec            : vec3;
   dvec           : vec3;
+
+  color          : vec4;
+
+  viewvec        : vec3;
+  vieworigin     : vec3;
+  viewPlane      : vec3;
+
   planeoff       : float;
+  rake           : float;
   strength       : float;
   angle          : float;
   radius         : float;
   w              : float;
+  pinch          : float;
   autosmooth     : float;
-  viewPlane      : vec3;
   concaveFilter  : float;
+  invert         : bool;
+  esize          : float;
 }`;
 nstructjs.register(PaintSample);
 
@@ -127,6 +211,14 @@ export class PaintSampleProperty extends ToolProperty {
   constructor() {
     super(PAINT_SAMPLE_TYPE);
     this.data = [];
+  }
+
+  calcMemSize() {
+    let tot = super.calcMemSize();
+
+    tot += PaintSample.getMemSize()*this.data.length;
+
+    return tot;
   }
 
   push(sample) {

@@ -17,7 +17,7 @@ import {MeshOp} from '../mesh/mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
 import {NOTEXIST, StandardTools} from "./stdtools.js";
 import {SelToolModes, SelOneToolModes} from '../editors/view3d/selectmode.js';
-import {SelectOneOp} from './selectops.js';
+import {ObjectSelectOneOp} from './selectops.js';
 import {ObjectFlags} from "./sceneobject.js";
 import {ObjectDataTypes} from './sceneobject_base.js';
 
@@ -90,7 +90,7 @@ export class ObjectTools extends StandardTools {
     let scene = ctx.scene;
 
     if (ctx.scene.objects.highlight !== undefined) {
-      let tool = new SelectOneOp();
+      let tool = new ObjectSelectOneOp();
 
       let ob = ctx.scene.objects.highlight;
       tool.objectId = ob.lib_id;

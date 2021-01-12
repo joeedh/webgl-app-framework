@@ -2,9 +2,10 @@ import '../path.ux/scripts/util/struct.js';
 import * as util from '../util/util.js';
 
 export const CDFlags = {
-  SELECT       : 1,
-  SINGLE_LAYER : 2,
-  TEMPORARY    : 4
+  SELECT             : 1,
+  SINGLE_LAYER       : 2,
+  TEMPORARY          : 4, //implies IGNORE_FOR_INDEXBUF
+  IGNORE_FOR_INDEXBUF: 8
 };
 
 export let CDElemMap = {};
@@ -19,6 +20,22 @@ export class CustomDataElem {
   constructor() {
     this.constructor.typeName = this.constructor.define().typeName;
     this.constructor.prototype.typeName = this.constructor.define().typeName;
+  }
+
+  calcMemSize() {
+    let data = this.getValue();
+
+    let pad = 16; //assume some padding
+
+    if (typeof data === "number") {
+      return 8 + pad;
+    }
+
+    if (Array.isArray(data)) {
+      return data.length * 8 + pad;
+    }
+
+    return 64; //just assume some largish size
   }
 
   /*if defined in a subclass, will be called whenever a new data layer is created
@@ -47,6 +64,30 @@ export class CustomDataElem {
     return this;
   }
 
+  //used for building island meshes
+  hash(snapLimit = 0.01) {
+    let val = this.getValue();
+
+    if (typeof val === "object" && typeof val[0] === "number") {
+      let f = 0;
+      let dimen = 4196;
+
+      for (let i=0; i<val.length; i++) {
+        let f2 = Math.floor(val[i]/snapLimit);
+        //f = f ^ f2;
+
+        f += f2*Math.pow(dimen, i);
+        f = f & ((1<<30)-1);
+      }
+
+      return f;
+    } else if (typeof val === "number") {
+      return Math.floor(val/snapLimit);
+    } else {
+      throw new Error("implement me!");
+    }
+  }
+
   copyTo(b) {
     throw new Error("implement me");
   }
@@ -69,17 +110,19 @@ export class CustomDataElem {
     return true;
   }
 
-  static define() {return {
-    elemTypeMask : 0, //see MeshTypes in mesh.js
-    typeName     : "typeName",
-    uiTypeName   : "uiTypeName",
-    defaultName  : "defaultName",
-    valueSize    : undefined,
-    flag         : 0,
+  static define() {
+    return {
+      elemTypeMask: 0, //see MeshTypes in mesh.js
+      typeName    : "typeName",
+      uiTypeName  : "uiTypeName",
+      defaultName : "defaultName",
+      valueSize   : undefined,
+      flag        : 0,
 
-    //if not undefined, a LayerSettingsBase child class defining overall settings that's not per-element
-    settingsClass : undefined,
-  }};
+      //if not undefined, a LayerSettingsBase child class defining overall settings that's not per-element
+      settingsClass: undefined,
+    }
+  };
 
   static register(cls) {
     if (!cls.hasOwnProperty("STRUCT")) {
@@ -108,6 +151,7 @@ export class CustomDataElem {
     return CDElemMap[typeName];
   }
 }
+
 CustomDataElem.STRUCT = `
 mesh.CustomDataElem {
 }
@@ -120,7 +164,7 @@ export function buildCDAPI(api) {
   layerst.string("name", "name", "Name");
   layerst.dynamicStruct("typeSettings", "settings", "Settings");
   let def = layerst.pathmap["settings"];
-  def.customGet(function() {
+  def.customGet(function () {
     return this.dataref.getTypeSettings();
   });
 
@@ -130,7 +174,7 @@ export function buildCDAPI(api) {
   let st = api.mapStruct(CustomData, true);
 
   function makeGetter(typeName) {
-    return function() {
+    return function () {
       let customData = this.dataref;
       return customData.getActiveLayer(typeName);
     }
@@ -210,7 +254,7 @@ export function buildElementAPI(api, dstruct) {
       if (list === undefined) {
         return undefined;
       }
-      for (let i=0; i<list.length; i++) {
+      for (let i = 0; i < list.length; i++) {
         if (list[i].typeName === key) {
           return list[i];
         }
@@ -252,6 +296,7 @@ export class LayerSettingsBase {
     reader(this);
   }
 }
+
 LayerSettingsBase.STRUCT = `
 LayerSettingsBase {
 }
@@ -260,18 +305,20 @@ nstructjs.register(LayerSettingsBase);
 
 class _Nothing extends LayerSettingsBase {
 }
+
 _Nothing.STRUCT = nstructjs.inherit(_Nothing, LayerSettingsBase) + `
 }`;
 nstructjs.register(_Nothing);
 
 export class CustomDataLayer {
-  constructor(typename, name=this.constructor.name, flag=0, id=-1) {
+  constructor(typename, name = this.constructor.name, flag = 0, id = -1) {
     this.elemTypeMask = 0;
     this.typeName = typename;
     this.name = name;
     this.flag = flag;
     this.id = id;
     this.typeSettings = undefined;
+    this.islandSnapLimit = 0.0001;
     this.index = 0; //index in flat list of layers in elements
   }
 
@@ -321,13 +368,14 @@ export class CustomDataLayer {
 
 CustomDataLayer.STRUCT = `
 mesh.CustomDataLayer {
-  typeName      : string;
-  name          : string;
-  flag          : int;
-  id            : int;
-  index         : int;
-  elemTypeMask  : int;
-  typeSettings  : abstract(Object) | this.typeSettings === undefined ? this.__getNothing() : this.typeSettings;
+  typeName        : string;
+  name            : string;
+  flag            : int;
+  id              : int;
+  islandSnapLimit : float;
+  index           : int;
+  elemTypeMask    : int;
+  typeSettings    : abstract(Object) | this.typeSettings === undefined ? this.__getNothing() : this.typeSettings;
 }
 `;
 nstructjs.manager.add_class(CustomDataLayer);
@@ -353,10 +401,10 @@ export class CDElemArray extends Array {
     return false;
   }
 
-  getLayer(cls, idx=0) {
+  getLayer(cls, idx = 0) {
     let j = 0;
 
-    for (let i=0; i<this.length; i++) {
+    for (let i = 0; i < this.length; i++) {
       let item = this[i];
       if (item instanceof cls) {
         if (j === idx) {
@@ -381,6 +429,7 @@ export class CDElemArray extends Array {
     delete this._items;
   }
 }
+
 CDElemArray.STRUCT = `
 mesh.CDElemArray {
   _items : array(abstract(mesh.CustomDataElem)) | this;
@@ -400,6 +449,27 @@ export class LayerSet extends Array {
   push(layer) {
     super.push(layer);
     this.idmap[layer.id] = layer;
+  }
+
+  has(layer) {
+    return layer.id in this.idmap;
+  }
+
+  remove(layer) {
+    if (!(layer.id in this.idmap)) {
+      console.warn("layer already removed from set", layer.id);
+      return;
+    }
+
+    super.remove(layer);
+
+    if (layer === this.active) {
+      this.active = this.length > 0 ? this[0] : undefined;
+    }
+
+    delete this.idmap[layer.id];
+
+    return this;
   }
 
   copy() {
@@ -431,6 +501,7 @@ export class LayerSet extends Array {
     delete this._layers;
   }
 }
+
 LayerSet.STRUCT = `
 mesh.LayerSet {
   _layers  : array(abstract(mesh.CustomDataLayer)) | obj;
@@ -452,6 +523,26 @@ export class CustomData {
   _clear() {
     this.layers = {};
     this.flatlist = [];
+
+    return this;
+  }
+
+  stripTempLayers() {
+    let newlist = [];
+
+    for (let layer of new Set(this.flatlist)) {
+      let lset = this.getLayerSet(layer.typeName);
+
+      if (layer.flag & CDFlags.TEMPORARY) {
+        lset.remove(layer);
+        continue;
+      }
+
+      layer.index = newlist.length;
+      newlist.push(layer);
+    }
+
+    this.flatlist = newlist;
 
     return this;
   }
@@ -528,6 +619,7 @@ export class CustomData {
     layer.index = this.flatlist.length;
     layer.elemTypeMask = cls.define().elemTypeMask;
     layer.name = name;
+    layer.flag = cls.define().flag || 0;
 
     this.flatlist.push(layer);
     lset.push(layer);
@@ -607,7 +699,7 @@ export class CustomData {
     let set = this.layers[layer.typeName];
 
     if (set.active === layer) {
-      set.active = set.length > 1 ? set[(set.indexOf(layer)+1) % set.length] : undefined;
+      set.active = set.length > 1 ? set[(set.indexOf(layer) + 1)%set.length] : undefined;
     }
 
     set.remove(layer);
@@ -622,7 +714,7 @@ export class CustomData {
   }
 
   _updateFlatList() {
-    for (let i=0; i<this.flatlist.length; i++) {
+    for (let i = 0; i < this.flatlist.length; i++) {
       this.flatlist[i].index = i;
     }
   }
@@ -658,7 +750,7 @@ export class CustomData {
     return this.layers[typename];
   }
 
-  hasNamedLayer(name, opt_cls_or_typeName=undefined) {
+  hasNamedLayer(name, opt_cls_or_typeName = undefined) {
     return this.getNamedLayer(name, opt_cls_or_typeName) !== undefined;
   }
 
@@ -702,7 +794,7 @@ export class CustomData {
       }
     }
 
-    for (let i=0; i<this.flatlist.length; i++) {
+    for (let i = 0; i < this.flatlist.length; i++) {
       this.flatlist[i] = idmap[this.flatlist[i]];
     }
 

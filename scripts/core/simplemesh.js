@@ -23,7 +23,8 @@ export const LayerTypes = {
   COLOR : 4,
   NORMAL: 8,
   ID    : 16,
-  CUSTOM: 32
+  CUSTOM: 32,
+  INDEX : 64
 }
 
 export const LayerTypeNames = {
@@ -41,7 +42,8 @@ let _TypeSizes = {
   COLOR : 4,
   NORMAL: 3,
   ID    : 1,
-  CUSTOM: 4
+  CUSTOM: 4,
+  INDEX : 1
 };
 
 export const TypeSizes = {};
@@ -480,18 +482,19 @@ const glSizes = {
   UNSIGNED_INT  : 5125
 };
 const glRanges = {
-  [glSizes.FLOAT]: [-1e17, 1e17],
+  [glSizes.FLOAT]         : [-1e17, 1e17],
   [glSizes.UNSIGNED_SHORT]: [0, 65535],
-  [glSizes.SHORT]: [-32767, 32767],
-  [glSizes.BYTE]: [-127, 127],
-  [glSizes.UNSIGNED_BYTE]: [0, 255],
-  [glSizes.UNSIGNED_INT]: [0, (1<<32)-1],
-  [glSizes.INT]: [-((1<<31)-1), (1<<31)-1],
+  [glSizes.SHORT]         : [-32767, 32767],
+  [glSizes.BYTE]          : [-127, 127],
+  [glSizes.UNSIGNED_BYTE] : [0, 255],
+  [glSizes.UNSIGNED_INT]  : [0, (1<<32) - 1],
+  [glSizes.INT]           : [-((1<<31) - 1), (1<<31) - 1],
 };
 window.glRanges = glRanges;
 
 let dmap = new WeakSet();
-function debugproxy(data, min=-1e17, max=1e17, isint) {
+
+function debugproxy(data, min = -1e17, max = 1e17, isint) {
   if (dmap.has(data)) {
     data.debug.min = min;
     data.isint = isint;
@@ -522,7 +525,7 @@ function debugproxy(data, min=-1e17, max=1e17, isint) {
     min, max, isint
   };
 
-  let proxy = new Proxy(data,{
+  let proxy = new Proxy(data, {
     get(target, prop, rc) {
       prop = validate(target, prop);
 
@@ -553,7 +556,12 @@ function debugproxy(data, min=-1e17, max=1e17, isint) {
 
   return proxy;
 }
+
 window.debugproxy = debugproxy;
+
+const GL_ARRAY_BUFFER = 34962;
+const GL_ELEMENT_ARRAY_BUFFER = 34963;
+const GL_STATIC_DRAW = 35044;
 
 export class GeoLayer extends Array {
   constructor(size, name, primflag, type, idx) { //idx is for different layers of same type, e.g. multiple uv layers
@@ -573,6 +581,9 @@ export class GeoLayer extends Array {
 
     this.f32Ready = false;
     this.normalized = false;
+
+    this.bufferType = GL_ARRAY_BUFFER;
+    this.bufferHint = GL_STATIC_DRAW;
 
     this.size = size;
     this.name = name;
@@ -631,7 +642,7 @@ export class GeoLayer extends Array {
       let a = this.data;
       let b = this.data_f32;
 
-      for (let i=0; i<a.length; i++) {
+      for (let i = 0; i < a.length; i++) {
         a[i] = b[i];
       }
 
@@ -671,6 +682,10 @@ export class GeoLayer extends Array {
   }
 
   setCount(count) {
+    if (isNaN(count)) {
+      throw new Error("count was NaN");
+    }
+
     count *= this.size;
 
     this.dataUsed = count;
@@ -691,7 +706,7 @@ export class GeoLayer extends Array {
         let a = this.data;
         let b = this.data_f32;
 
-        for (let i=0; i<b.length; i++) {
+        for (let i = 0; i < b.length; i++) {
           a[i] = b[i];
         }
 
@@ -704,13 +719,13 @@ export class GeoLayer extends Array {
   }
 
   _copy2Typed(data1, data2, n, mul, start) {
-    for (let i=0; i<n; i++) {
+    for (let i = 0; i < n; i++) {
       data1[start++] = ~~(data2[i]*mul);
     }
   }
 
   _copy2(data1, data2, n, mul, start) {
-    for (let i=0; i<n; i++) {
+    for (let i = 0; i < n; i++) {
       data1[start++] = ~~(data2[i]*mul);
     }
   }
@@ -997,6 +1012,7 @@ export class SimpleIsland {
     this.tottri = 0;
     this.totline_tristrip = 0;
 
+    this.indexedMode = undefined; //inherited from mesh
     this.layerflag = undefined;
 
     this.regen = 1;
@@ -1022,6 +1038,14 @@ export class SimpleIsland {
 
     this.tottri = this.totline = this.totpoint = this.totline_tristrip = 0;
     this.regen = 1;
+  }
+
+  getIndexedMode() {
+    if (this.indexedMode !== undefined) {
+      return this.indexedMode;
+    } else {
+      return this.mesh.indexedMode;
+    }
   }
 
   setPrimitiveCount(primtype, tot) {
@@ -1313,18 +1337,62 @@ export class SimpleIsland {
         continue;
       }
 
-      //console.log(layer.dataUsed, layer.data_f32.length);
+      //console.log(layer.bufferKey, layer.dataUsed, layer.data_f32.length, layer.bufferType, layer.data_f32);
 
-      let vbo = this.buffer.get(gl, layer.bufferKey);
-
-      vbo.uploadData(gl, layer.data_f32);
+      let vbo = this.buffer.get(gl, layer.bufferKey, layer.bufferType);
+      vbo.uploadData(gl, layer.data_f32, layer.bufferType, layer.bufferHint);
     }
+  }
+
+  getIndexBuffer(ptype) {
+    let key = "";
+
+    switch (ptype) {
+      case PrimitiveTypes.TRIS:
+        key = "tri";
+        break;
+      case PrimitiveTypes.LINES:
+        key = "line";
+        break;
+      case PrimitiveTypes.POINTS:
+        key = "point";
+        break;
+    }
+
+    key += "_indices";
+
+    if (!this[key]) {
+      let layer = this[key] = this.layers.get(key, ptype, LayerTypes.INDEX);
+
+      layer.glSize = glSizes.UNSIGNED_SHORT;
+      layer.normalized = false;
+      layer.bufferType = GL_ELEMENT_ARRAY_BUFFER;
+    }
+
+    return this[key];
   }
 
   _draw_tris(gl, uniforms, params, program) {
     if (this.tottri) {
       this.bindArrays(gl, uniforms, program, "tri", PrimitiveTypes.TRIS);
-      gl.drawArrays(gl.TRIANGLES, 0, this.tottri*3);
+
+      if (this.getIndexedMode()) {
+        let idx = this.getIndexBuffer(PrimitiveTypes.TRIS);
+
+        if (!idx) {
+          console.warn("Missing index layer", this);
+          return;
+        }
+
+        let vbo = this.buffer.get(gl, idx.bufferKey, idx.bufferType);
+        let buf = vbo.get(gl);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf);
+        gl.drawElements(gl.TRIANGLES, this.tottri*3, gl.UNSIGNED_SHORT, 0);
+        //gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+      } else {
+        gl.drawArrays(gl.TRIANGLES, 0, this.tottri*3);
+      }
     }
   }
 
@@ -1411,12 +1479,17 @@ export class SimpleIsland {
 
     let buf = this.buffer.get(gl, layer.bufferKey).get(gl);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    let btype = gl.ARRAY_BUFFER;
+    if (this.getIndexedMode()) {
+      //btype = gl.ELEMENT_ARRAY_BUFFER;
+    }
+
+    gl.bindBuffer(btype, buf);
     gl.vertexAttribPointer(0, layer.size, layer.glSize, false, 0, 0);
     gl.enableVertexAttribArray(0);
 
     let bindArray = (name, type) => {
-      if (!(layerflag & type)) {
+      if (!(layerflag & type) || (type & LayerTypes.INDEX)) {
         return;
       }
 
@@ -1463,7 +1536,7 @@ export class SimpleIsland {
           }
 
           gl.enableVertexAttribArray(li);
-          gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+          gl.bindBuffer(btype, buf);
 
           gl.vertexAttribPointer(li, layer.size, layer.glSize, layer.normalized, 0, 0);
         }
@@ -1496,8 +1569,26 @@ export class SimpleIsland {
   }
 
   _draw_lines(gl, uniforms, params, program) {
-    //console.log(this.totline, this.line_cos);
-    if (this.totline > 0) {
+    if (this.totline === 0) {
+      return;
+    }
+
+    if (this.getIndexedMode()) {
+      let idx = this.getIndexBuffer(PrimitiveTypes.LINES);
+      //reuse tri vert arrays in indexed mode
+      this.bindArrays(gl, uniforms, program, "tris", PrimitiveTypes.TRIS);
+
+      if (!idx) {
+        console.warn("Missing index layer", this);
+        return;
+      }
+
+      let vbo = this.buffer.get(gl, idx.bufferKey, idx.bufferType);
+      let buf = vbo.get(gl);
+
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf);
+      gl.drawElements(gl.LINES, this.totline*2, gl.UNSIGNED_SHORT, 0);
+    } else {
       this.bindArrays(gl, uniforms, program, "line", PrimitiveTypes.LINES);
       gl.drawArrays(gl.LINES, 0, this.totline*2);
     }
@@ -1601,6 +1692,7 @@ export class SimpleMesh {
   constructor(layerflag = LayerTypes.LOC | LayerTypes.NORMAL | LayerTypes.UV) {
     this.layerflag = layerflag;
     this.primflag = PrimitiveTypes.ALL;
+    this.indexedMode = false;
 
     this.gl = undefined;
 

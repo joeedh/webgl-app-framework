@@ -52,6 +52,66 @@ export class MeshFeatureError extends MeshError {
 
 };
 
+export class LogContext {
+  constructor() {
+    this.newVerts = new Set();
+    this.newEdges = new Set();
+    this.newFaces = new Set();
+
+    this.killVerts = new Set();
+    this.killEdges = new Set();
+    this.killFaces = new Set();
+
+    this.onnew = null;
+    this.onkill = null;
+  }
+
+  newVertex(v) {
+    if (this.onnew) {
+      this.onnew(v);
+    }
+    this.newVerts.add(v);
+  }
+
+  newEdge(e) {
+    if (this.onnew) {
+      this.onnew(e);
+    }
+    this.newEdges.add(e);
+  }
+  newFace(f) {
+    if (this.onnew) {
+      this.onnew(f);
+    }
+    this.newFaces.add(f);
+  }
+
+  killVertex(v) {
+    if (this.onkill) {
+      this.onkill(v);
+    }
+
+    this.killVerts.add(v);
+  }
+
+  killEdge(e) {
+    if (this.onkill) {
+      this.onkill(e);
+    }
+
+    this.killEdges.add(e);
+  }
+
+  killFace(f) {
+    if (this.onkill) {
+      this.onkill(f);
+    }
+
+    this.killFaces.add(f);
+  }
+
+}
+
 export const MeshTypes = {
   VERTEX : 1,
   EDGE   : 2,
@@ -81,7 +141,8 @@ export const MeshFlags = {
   MIRRORED      : (1<<14)|(1<<15)|(1<<16),
   MIRROR_BOUNDARY   : (1<<17), //used by mirror
   GRID_MRES_HIDDEN  : (1<<18), //used by grids to flag gridverts as not part of visible multires level
-  SEAM              : (1<<19)
+  SEAM              : (1<<19),
+  FACE_EXIST_FLAG   : (1<<20)
 };
 
 export const MeshModifierFlags = {

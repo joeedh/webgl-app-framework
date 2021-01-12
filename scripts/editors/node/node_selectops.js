@@ -13,7 +13,7 @@ import {Icons} from '../icon_enum.js';
 import {NodeGraphOp} from './node_ops.js';
 import {SelToolModes, SelOneToolModes} from '../view3d/selectmode.js';
 
-export class SelectOpBase extends NodeGraphOp {
+export class NodeSelectOpBase extends NodeGraphOp {
   constructor() {
     super();
 
@@ -98,7 +98,7 @@ export class SelectOpBase extends NodeGraphOp {
     //do a sanity check that we've re-added all nodes
     for (let node of nodes) {
       if (!(node.graph_id in donemap)) {
-        console.warn("orphan node found in node_selectops.SelectOpBase.prototype.undo");
+        console.warn("orphan node found in node_selectops.NodeSelectOpBase.prototype.undo");
         for (let i = 0; i < nodes.length; i++) {
           if (graph.nodes[i] === undefined) {
             graph.nodes[i] = node;
@@ -111,7 +111,7 @@ export class SelectOpBase extends NodeGraphOp {
   }
 }
 
-export class SelectOneOp extends SelectOpBase {
+export class NodeSelectOneOp extends NodeSelectOpBase {
   static tooldef() {
     return {
       toolpath: "node.selectone",
@@ -141,7 +141,7 @@ export class SelectOneOp extends SelectOpBase {
     let graph = this.fetchGraph(ctx);
 
     if (graph === undefined) {
-      console.warn("error in node_selectops.SelectOneOp");
+      console.warn("error in node_selectops.NodeSelectOneOp");
       return;
     }
 
@@ -168,10 +168,10 @@ export class SelectOneOp extends SelectOpBase {
   }
 }
 
-ToolOp.register(SelectOneOp);
+ToolOp.register(NodeSelectOneOp);
 
 
-export class ToggleSelectAll extends SelectOpBase {
+export class NodeToggleSelectAll extends NodeSelectOpBase {
   static tooldef() {
     return {
       toolpath: "node.toggle_select_all",
@@ -202,7 +202,7 @@ export class ToggleSelectAll extends SelectOpBase {
     console.log("toggle select all", graph);
 
     if (graph === undefined) {
-      console.warn("error in node_selectops.ToggleSelectAll");
+      console.warn("error in node_selectops.NodeToggleSelectAll");
       return;
     }
 
@@ -227,4 +227,4 @@ export class ToggleSelectAll extends SelectOpBase {
   }
 }
 
-ToolOp.register(ToggleSelectAll);
+ToolOp.register(NodeToggleSelectAll);

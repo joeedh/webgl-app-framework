@@ -834,17 +834,21 @@ v${attr} = ${attr};
 
 window._ShaderProgram = ShaderProgram;
 
+const GL_ARRAY_BUFFER = 34962;
+const GL_ELEMENT_ARRAY_BUFFER = 34963;
+
 export class VBO {
-  constructor(gl, vbo, size=-1) {
+  constructor(gl, vbo, size=-1, bufferType=GL_ARRAY_BUFFER) {
     this.gl = gl;
     this.vbo = vbo;
     this.size = size;
 
+    this.bufferType = bufferType;
+
     this.ready = false;
     this.lastData = undefined;
     this.dead = false;
-    this.target = undefined;
-    this.drawmode = undefined;
+    this.drawhint = undefined;
     this.lastData = undefined;
   }
 
@@ -881,7 +885,7 @@ export class VBO {
       console.warn("context loss detected");
 
       if (this.lastData !== undefined) {
-        this.uploadData(gl, this.lastData, this.target, this.drawmode);
+        this.uploadData(gl, this.lastData, this.bufferType, this.drawhint);
       }
     }
   }
@@ -916,7 +920,7 @@ export class VBO {
     this.dead = true;
   }
 
-  uploadData(gl, dataF32, target=gl.ARRAY_BUFFER, drawmode=gl.STATIC_DRAW) {
+  uploadData(gl, dataF32, target=this.bufferType, drawhint=gl.STATIC_DRAW) {
     if (gl !== this.gl) {
       //context loss
       this.gl = gl;
@@ -931,8 +935,7 @@ export class VBO {
     this.lastData = dataF32;
     this.size = dataF32.length;
 
-    this.target = target;
-    this.drawmode = drawmode;
+    this.drawhint = drawhint;
 
     gl.bindBuffer(target, this.vbo);
     if (useSub) {
@@ -941,7 +944,7 @@ export class VBO {
       if (DEBUG.simplemesh) {
         console.warn("bufferData");
       }
-      gl.bufferData(target, dataF32, drawmode);
+      gl.bufferData(target, dataF32, drawhint);
     }
 
     this.ready = true;
@@ -953,7 +956,7 @@ export class RenderBuffer {
     this._layers = {};
   }
 
-  get(gl, name) {
+  get(gl, name, bufferType) {
     if (this[name] !== undefined) {
       return this[name];
     }
@@ -961,7 +964,7 @@ export class RenderBuffer {
     //console.log("new buffer");
     let buf = gl.createBuffer();
 
-    let vbo = new VBO(gl, buf);
+    let vbo = new VBO(gl, buf, undefined, bufferType);
 
     this._layers[name] = vbo;
     this[name] = vbo;
