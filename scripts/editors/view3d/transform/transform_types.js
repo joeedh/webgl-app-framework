@@ -378,7 +378,7 @@ export class MeshTransType extends TransDataType {
       return c*3*8;
     }
 
-    return count(ud.cos) + count(ud.nos) + count(ud.fnos) + bound(ud.fcos);
+    return count(ud.cos) + count(ud.nos) + count(ud.fnos) + count(ud.fcos);
   }
 
   static undoPre(ctx, elemlist) {
