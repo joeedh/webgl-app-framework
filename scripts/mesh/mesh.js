@@ -1448,6 +1448,9 @@ export class Mesh extends SceneObjectData {
         this._radialInsert(l.e, l);
       }
     }
+
+    f.no.negate();
+    f.flag |= MeshFlags.UPDATE;
   }
 
   makeHole(f, vs, customLoopEids = undefined) {

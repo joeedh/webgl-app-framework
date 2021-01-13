@@ -990,6 +990,14 @@ export class BVHToolMode extends ToolMode {
 
     let tstart = util.time_ms();
 
+    if (bvh.computeValidEdges !== drawQuadsOnly) {
+      for (let node of bvh.nodes) {
+        node.flag |= BVHFlags.UPDATE_INDEX_VERTS|BVHFlags.UPDATE_DRAW;
+        bvh.updateNodes.add(node);
+      }
+    }
+
+    bvh.computeValidEdges = drawQuadsOnly;
     bvh.update();
 
     function genNodeMesh_index(node) {

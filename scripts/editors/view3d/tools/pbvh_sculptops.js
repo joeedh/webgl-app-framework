@@ -24,6 +24,21 @@ import {MultiGridSmoother} from '../../../mesh/multigrid_smooth.js';
 
 let GEID = 0, GEID2 = 1, GDIS = 2, GSX = 3, GSY = 4, GSZ = 5, GAX = 6, GAY = 7, GAZ = 8, GTOT = 9;
 
+let MAX_DYNTOPO_EDGES = 100;
+let ENABLE_DYNTOPO_EDGE_WEIGHTS = true;
+
+window.disableDynTopoEdgeWeights = (state) => {
+  ENABLE_DYNTOPO_EDGE_WEIGHTS = !!state;
+}
+
+window.setDynTopoMaxEdges = (n) => {
+  let old = MAX_DYNTOPO_EDGES;
+
+  MAX_DYNTOPO_EDGES = n;
+
+  return old;
+}
+
 /*
 let GVEID = 0, GVTOT=1;
 let GGEID_LOOP=0, GGEID_GRIDVERT=1, GGTOT=2;
@@ -2313,8 +2328,8 @@ export class PaintOp extends ToolOp {
 
           //*
           for (let e2 of v2.edges) {
-            let v3 = e2.otherVertex(v2);
-            log.ensure(v3);
+            //let v3 = e2.otherVertex(v2);
+            //log.ensure(v3);
 
             es.add(e2);
           }//*/
@@ -2367,6 +2382,10 @@ export class PaintOp extends ToolOp {
     mesh.regenTesellation();
   }
 
+  edist_simple(v1, v2) {
+    return v1.vectorDistanceSqr(v2);
+  }
+
   edist(v1, v2, mode=0) {
     let dis = v1.vectorDistanceSqr(v2);
     //return dis;
@@ -2390,11 +2409,12 @@ export class PaintOp extends ToolOp {
       dis *= d;
     }
 
-    if (val1 === 4 || val2 === 4) {
-      dis /= 2.0;
+    //try to avoid four-valence verts with all triangles
+    if (mode && (val1 === 4 || val2 === 4) && Math.random() > 0.8) {
+      dis /= 3.0;
     }
 
-    return dis;
+    return dis*2.0;
   }
 
   //calculates edge size from density and radius
@@ -2416,7 +2436,7 @@ export class PaintOp extends ToolOp {
 
     esize /= 2.0;
 
-    let edist = this.edist;
+    let edist = ENABLE_DYNTOPO_EDGE_WEIGHTS ? this.edist : this.edist_simple;
 
     let log = this._undo.log;
     log.checkStart(mesh);
@@ -2438,7 +2458,7 @@ export class PaintOp extends ToolOp {
 
     let esqr = esize*esize;
 
-    let max = 75;//498;
+    let max = MAX_DYNTOPO_EDGES;//498;
 
     let es0 = [];
     for (let e of es) {
@@ -3199,7 +3219,7 @@ export class PaintOp extends ToolOp {
     }
     //esize = esize2;
 
-    let edist = this.edist;
+    let edist = ENABLE_DYNTOPO_EDGE_WEIGHTS ? this.edist : this.edist_simple;
 
     let es2 = [];
 
@@ -3220,7 +3240,15 @@ export class PaintOp extends ToolOp {
 
     //let cd_face_node = bvh.cd_face_node;
 
-    let max = 125//108;
+    let max = ~~(MAX_DYNTOPO_EDGES*1.25);
+
+    let max2 = max;
+
+    if (max2 < 10) {
+      max2 = 32;
+    } else {
+      max2 *= 2;
+    }
 
     let lens = [];
 
@@ -3228,7 +3256,7 @@ export class PaintOp extends ToolOp {
       let ri = ~~(Math.random()*0.9999*es.length);
       e = es[ri];
 
-      if (es2.length >= max*2) {
+      if (es2.length >= max2) {
         break;
       }
 
@@ -3263,8 +3291,16 @@ export class PaintOp extends ToolOp {
       es2 = es2.slice(0, ~~(max));
     }
 
+    let ws = [];
+    for (let e of es2) {
+      ws.push(lens[e.index]);
+    }
+
+    let heap = new util.MinHeapQueue(es2, ws);
+
     es2 = new Set(es2);
 
+    //*
     for (let f of fs) {
       let tris = bvh.fmap.get(f.eid);
       if (tris) {
@@ -3280,7 +3316,7 @@ export class PaintOp extends ToolOp {
       }
 
       bvh.removeFace(f.eid);
-    }
+    }//*/
 
     let kills = [];
     for (let f of fs) {
@@ -3312,13 +3348,120 @@ export class PaintOp extends ToolOp {
       log.logAdd(e);
     }
 
-    let {newvs, newfs, killfs, newes} = splitEdgesSimple(mesh, es2, test, lctx);
+    let newvs = new Set(), newfs = new Set(), killfs = new Set(), newes = new Set();
+
     /*
-    let newvs = new Set();
-    let newfs = new Set();
-    let killfs = new Set();
-    let newes = new Set();
+
+    let i2 = 0;
+    while (heap.length > 0 && i2 < max) {
+      i2++;
+
+      let e = heap.pop();
+
+      if (e.eid < 0) {
+        continue;
+      }
+
+      for (let f of e.faces) {
+        let tris = bvh.fmap.get(f.eid);
+        if (tris) {
+          for (let tri of tris) {
+            let node = tri.node;
+
+            if (node) {
+              node.flag |= BVHFlags.UPDATE_UNIQUE_VERTS;
+              bvh.updateNodes.add(node);
+              fmap.set(f, node);
+            }
+          }
+        }
+
+        bvh.removeFace(f.eid);
+      }
+
+      let es3 = new Set([e]);
+
+      let ret = splitEdgesSimple(mesh, es3, test, lctx);
+
+      for (let item of ret.newvs) {
+        newvs.add(item);
+      }
+      for (let item of ret.newfs) {
+        newfs.add(item);
+      }
+      for (let item of ret.killfs) {
+        killfs.add(item);
+      }
+      for (let item of ret.newes) {
+        newes.add(item);
+      }
+    }
     */
+
+    let es4 = es2;
+
+    for (let step=0; step<2; step++) {
+      let ret  = splitEdgesSimple(mesh, es4, test, lctx);
+
+      for (let item of ret.newvs) {
+        newvs.add(item);
+      }
+      for (let item of ret.newfs) {
+        newfs.add(item);
+      }
+      for (let item of ret.killfs) {
+        killfs.add(item);
+      }
+      for (let item of ret.newes) {
+        newes.add(item);
+      }
+
+      //XXX
+      break;
+
+      let heap = new util.MinHeapQueue();
+
+      for (let e of newes) {
+        if (heap.length > max) {
+          break;
+        }
+
+        if (e.eid < 0) {
+          continue;
+        }
+
+        let w = edist(e.v1, e.v2);
+        if (w >= esqr) {
+          heap.push(e, -w);
+
+          for (let f of e.faces) {
+            let tris = bvh.fmap.get(f.eid);
+            if (tris) {
+              for (let tri of tris) {
+                let node = tri.node;
+
+                if (node) {
+                  node.flag |= BVHFlags.UPDATE_UNIQUE_VERTS;
+                  bvh.updateNodes.add(node);
+                  fmap.set(f, node);
+                }
+              }
+            }
+
+            bvh.removeFace(f.eid);
+          }
+        }
+      }
+
+      es4 = new Set();
+
+      while (heap.length > 0) {
+        es4.add(heap.pop());
+      }
+    }
+
+    newfs = newfs.filter(f => f.eid >= 0);
+    newes = newes.filter(e => e.eid >= 0);
 
     for (let v of newvs) {
       for (let e of v.edges) {

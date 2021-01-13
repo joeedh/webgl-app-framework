@@ -1127,6 +1127,8 @@ export class BVHNode {
     }
 
 
+    let computeValidEdges = this.bvh.computeValidEdges;
+
     this.indexVerts = [];
     this.indexLoops = [];
 
@@ -1166,14 +1168,25 @@ export class BVHNode {
         tris.push(tri.v2.index);
         tris.push(tri.v3.index);
 
-        edges.push(tri.v1.index);
-        edges.push(tri.v2.index);
+        let ok;
 
-        edges.push(tri.v2.index);
-        edges.push(tri.v3.index);
+        ok = computeValidEdges ? !!mesh.getEdge(tri.v1, tri.v2) : true;
+        if (ok) {
+          edges.push(tri.v1.index);
+          edges.push(tri.v2.index);
+        }
 
-        edges.push(tri.v3.index);
-        edges.push(tri.v1.index);
+        ok = computeValidEdges ? !!mesh.getEdge(tri.v2, tri.v3) : true;
+        if (ok) {
+          edges.push(tri.v2.index);
+          edges.push(tri.v3.index);
+        }
+
+        ok = computeValidEdges ? !!mesh.getEdge(tri.v3, tri.v1) : true;
+        if (ok) {
+          edges.push(tri.v3.index);
+          edges.push(tri.v1.index);
+        }
       }
 
       return;
@@ -1401,6 +1414,8 @@ export class BVH {
     this.max = new Vector3(max);
 
     this.needsIndexRebuild = false;
+
+    this.computeValidEdges = false; //when building indexed draw buffers, only add edges that really exist in mesh
 
     this.tottri = 0;
 

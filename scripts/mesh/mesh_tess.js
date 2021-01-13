@@ -5,7 +5,7 @@ import * as util from '../util/util.js';
 import Delaunay from '../util/delaunay.js';
 import {CustomDataElem} from './customdata.js';
 
-let EPS = 0.0001;
+let EPS = 0.000001;
 
 export function setEPS(eps) {
   EPS = eps;
@@ -873,6 +873,11 @@ export function applyTriangulation(mesh, f, newfaces, newedges, lctx) {
     }
 
     tri.calcNormal();
+
+    if (tri.no.dot(f.no) < 0) {
+      mesh.reverseWinding(tri);
+    }
+
     tri.flag |= MeshFlags.UPDATE;
 
     mesh.copyElemData(tri, l1.f);

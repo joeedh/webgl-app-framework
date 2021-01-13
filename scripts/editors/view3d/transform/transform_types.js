@@ -368,7 +368,17 @@ export class MeshTransType extends TransDataType {
   static calcUndoMem(ctx, undodata) {
     let ud = undodata;
 
-    return ud.cos.length*3*8 + ud.nos.length*3*8 + ud.fnos.length*3*8 + ud.fcos.length*3*8;
+    function count(obj) {
+      let c = 0;
+
+      for (let k in obj) {
+        c++;
+      }
+
+      return c*3*8;
+    }
+
+    return count(ud.cos) + count(ud.nos) + count(ud.fnos) + bound(ud.fcos);
   }
 
   static undoPre(ctx, elemlist) {
