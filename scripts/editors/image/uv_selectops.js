@@ -35,6 +35,10 @@ export class SelectOpBaseUV extends UVOpBase {
     }
   }
 
+  calcUndoMem(ctx) {
+    return this._undo.list.length*8;
+  }
+
   undoPre(ctx) {
     let mesh = ctx.mesh;
     let cd_uv = mesh.loops.customData.getLayerIndex("uv");

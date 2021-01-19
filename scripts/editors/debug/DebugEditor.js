@@ -59,6 +59,9 @@ void main(void) {
   for (int i=0; i<3; i++) {
     float f = color[i];
     
+    f /= sqrt(5.0)*sqrt(3.0);
+    f += sqrt(5.0);
+    
     if (f == 0.0) {
       f = 0.0;
     } else {

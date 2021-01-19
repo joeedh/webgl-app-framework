@@ -122,6 +122,8 @@ export function genRenderMesh(gl, mesh, uniforms) {
 
   let sm;
   let meshes = mesh._fancyMeshes;
+  let white = [1, 1, 1, 1];
+  let black = [0, 0, 0, 1];
 
   if (recalc & MeshTypes.VERTEX) {
     mesh.updateMirrorTags();
@@ -138,7 +140,7 @@ export function genRenderMesh(gl, mesh, uniforms) {
 
       let p = sm.point(v.eid, v);
 
-      let color = v.flag & MeshFlags.SELECT ? selcolor : v.color;
+      let color = v.flag & MeshFlags.SELECT ? selcolor : black;
 
       for (let i = 0; i < v.edges.length; i++) {
         let e = v.edges[i];
@@ -160,7 +162,7 @@ export function genRenderMesh(gl, mesh, uniforms) {
       }
       let p = sm.point(h.eid, h);
 
-      let color = h.flag & MeshFlags.SELECT ? selcolor : h.color;
+      let color = h.flag & MeshFlags.SELECT ? selcolor : black;
 
       p.ids(h.eid);
       p.colors(color);
@@ -259,6 +261,9 @@ export function genRenderMesh(gl, mesh, uniforms) {
     let haveUVs = mesh.loops.customData.hasLayer(UVLayerElem);
     let cd_uvs = haveUVs ? mesh.loops.customData.getLayerIndex(UVLayerElem) : -1;
 
+    let cd_color = mesh.verts.customData.getLayerIndex("color");
+    let haveColors = cd_color >= 0;
+
     sm = getmesh("faces");
     sm.primflag = PrimitiveTypes.TRIS;
 
@@ -313,6 +318,14 @@ export function genRenderMesh(gl, mesh, uniforms) {
 
         if (haveUVs) {
           tri.uvs(ltris[i].customData[cd_uvs].uv, ltris[i + 1].customData[cd_uvs].uv, ltris[i + 2].customData[cd_uvs].uv);
+        }
+
+        if (cd_color >= 0) {
+          let c1 = v1.customData[cd_color].color;
+          let c2 = v2.customData[cd_color].color;
+          let c3 = v3.customData[cd_color].color;
+
+          tri.colors(c1, c2, c3);
         }
       }
     }
@@ -418,6 +431,8 @@ export function drawMeshElements(mesh, view3d, gl, selmask, uniforms, program, o
        */
       gl.disable(gl.BLEND);
     }
+  } else if (selmask & SelMask.EDGE) {
+    draw_list(mesh.edges, "edges");
   }
 
   if (selmask & SelMask.VERTEX) {

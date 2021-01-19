@@ -1,4 +1,5 @@
 import '../path.ux/scripts/util/struct.js';
+import * as util from '../util/util.js';
 let STRUCT = nstructjs.STRUCT;
 
 export const HandleTypes = {
@@ -52,6 +53,98 @@ export class MeshFeatureError extends MeshError {
 
 };
 
+//inherit from this to flag iterators that are reusable *and* auto-resets
+export class ReusableIter {
+  reset() {
+    return this;
+  }
+
+  static safeIterable(iter) {
+    if (!iter || (typeof iter !== "object" && typeof iter !== "function")) {
+      return false;
+    }
+
+    let ret = Array.isArray(iter);
+    ret = ret || (iter instanceof ReusableIter);
+    ret = ret || (iter instanceof Set);
+    ret = ret || (iter instanceof util.set);
+
+    return ret;
+  }
+
+  static getSafeIter(iter) {
+    if (iter === undefined) {
+      return undefined;
+    }
+
+    if (!this.safeIterable(iter)) {
+      return new Set(iter);
+    } else {
+      return iter;
+    }
+  }
+}
+
+export class LogContext {
+  constructor() {
+    this.newVerts = new Set();
+    this.newEdges = new Set();
+    this.newFaces = new Set();
+
+    this.killVerts = new Set();
+    this.killEdges = new Set();
+    this.killFaces = new Set();
+
+    this.onnew = null;
+    this.onkill = null;
+  }
+
+  newVertex(v) {
+    if (this.onnew) {
+      this.onnew(v);
+    }
+    this.newVerts.add(v);
+  }
+
+  newEdge(e) {
+    if (this.onnew) {
+      this.onnew(e);
+    }
+    this.newEdges.add(e);
+  }
+  newFace(f) {
+    if (this.onnew) {
+      this.onnew(f);
+    }
+    this.newFaces.add(f);
+  }
+
+  killVertex(v) {
+    if (this.onkill) {
+      this.onkill(v);
+    }
+
+    this.killVerts.add(v);
+  }
+
+  killEdge(e) {
+    if (this.onkill) {
+      this.onkill(e);
+    }
+
+    this.killEdges.add(e);
+  }
+
+  killFace(f) {
+    if (this.onkill) {
+      this.onkill(f);
+    }
+
+    this.killFaces.add(f);
+  }
+
+}
+
 export const MeshTypes = {
   VERTEX : 1,
   EDGE   : 2,
@@ -81,7 +174,11 @@ export const MeshFlags = {
   MIRRORED      : (1<<14)|(1<<15)|(1<<16),
   MIRROR_BOUNDARY   : (1<<17), //used by mirror
   GRID_MRES_HIDDEN  : (1<<18), //used by grids to flag gridverts as not part of visible multires level
-  SEAM              : (1<<19)
+  SEAM              : (1<<19),
+  FACE_EXIST_FLAG   : (1<<20),
+  TEMP4             : (1<<21),
+  TEMP5             : (1<<22),
+  TEMP6             : (1<<23)
 };
 
 export const MeshModifierFlags = {
@@ -93,6 +190,20 @@ export const RecalcFlags = {
   TESSELATE  : 2,
   PARTIAL    : 4,
   ELEMENTS   : 8,
-  UVWRANGLER : 16
+  UVWRANGLER : 16,
+  ALL        : 1|2|4|8|16
 };
 
+
+let atemps = {};
+
+export function getArrayTemp(n) {
+  if (n in atemps) {
+    return atemps[n].next();
+  }
+
+  let ring = new util.cachering(() => new Array(n), 64);
+  atemps[n] = ring;
+
+  return ring.next();
+}

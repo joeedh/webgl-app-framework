@@ -13,6 +13,8 @@ import {buildCDAPI, buildElementAPI, CustomData} from "../mesh/customdata.js";
 import {CameraData} from "../camera/camera.js";
 import {Camera} from '../core/webgl.js';
 
+import {buildProcMeshAPI} from '../mesh/mesh_gen.js';
+
 import {makeToolModeEnum, ToolModes, ToolMode} from "../editors/view3d/view3d_toolmode.js";
 import {NodeSocketClasses} from "../core/graph.js";
 import {RenderSettings} from "../renderengine/renderengine_realtime.js";
@@ -47,7 +49,7 @@ import '../shadernodes/allnodes.js';
 import {OutputNode, ShaderNode} from '../shadernodes/shader_nodes.js';
 import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph.js';
 import {SceneObject} from '../sceneobject/sceneobject.js';
-import {SelectOneOp} from '../sceneobject/selectops.js';
+import {ObjectSelectOneOp} from '../sceneobject/selectops.js';
 import {DeleteObjectOp} from '../sceneobject/sceneobject_ops.js';
 import {Scene, EnvLight, EnvLightFlags} from "../scene/scene.js";
 import {api_define_graphclasses} from '../core/graph_class.js';
@@ -58,10 +60,13 @@ let api = new DataAPI();
 import {Icons} from '../editors/icon_enum.js';
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 import {MaterialEditor} from "../editors/node/MaterialEditor.js";
-import {BrushDynamics, BrushDynChannel, BrushFlags, SculptBrush, SculptIcons, SculptTools} from "../brush/brush.js";
+import {
+  BrushDynamics, BrushDynChannel, BrushFlags, DynTopoFlags, DynTopoSettings, SculptBrush, SculptIcons, SculptTools
+} from "../brush/brush.js";
 import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.js';
 import {PropModes} from '../editors/view3d/transform/transform_base.js';
 import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../image/image.js';
+import {BVHSettings} from '../util/bvh.js';
 
 
 export function api_define_rendersettings(api) {
@@ -242,13 +247,24 @@ export function api_define_image(api) {
   api_define_imageuser(api);
 }
 
+export function api_define_bvhsettings(api) {
+  let st = api.mapStruct(BVHSettings, true);
+
+  st.int("depthLimit", "depthLimit", "Depth Limit").range(1, 32).noUnits();
+  st.int("drawLevelOffset", "drawLevelOffset", "Draw Level").range(0, 8).noUnits();
+  st.int("leafLimit", "leafLimit", "Tri Limit").range(1, 4096).step(5).noUnits();
+}
+
 export function api_define_mesh(api, pstruct) {
   buildCDAPI(api);
+
+  api_define_bvhsettings(api);
 
   let mstruct = api_define_sceneobject_data(api, Mesh);
   pstruct.struct("mesh", "mesh", "Mesh", mstruct);
 
   mstruct.int("uiTriangleCount", "triCount", "Triangles", "Total number of triangles in the mesh").readOnly();
+  mstruct.struct("bvhSettings", "bvhSettings", "BVH Settings", api.mapStruct(BVHSettings));
 
   let def;
   def = mstruct.flags("symFlag", "symFlag", MeshSymFlags, "Symmetry Flags", "Mesh Symmetry Flags");
@@ -762,8 +778,28 @@ export function api_define_scene(api, pstruct) {
   }
 }
 
+export function api_define_dyntopo(api) {
+  let st = api.mapStruct(DynTopoSettings);
+
+  st.int("valenceGoal", "valenceGoal", "Valence Goal", "Number of edges around vertices to aim for")
+    .range(0, 12)
+    .noUnits();
+
+  st.float("subdivideFactor", "subdivideFactor", "Subdivision Factor").range(0.0, 1.0).noUnits();
+  st.float("decimateFactor", "decimateFactor", "Decimate Factor").range(0.0, 1.0).noUnits();
+  st.float("edgeSize", "edgeSize", "Edge Length", "Edge length (in pixels)").range(0.25, 40.0).noUnits();
+  st.flags("flag", "flag", DynTopoFlags, "Flag");
+  st.int("maxDepth", "maxDepth", "Max Depth", "Maximum quad tree grid subdivision level").range(0, 15).noUnits();
+  st.int("edgeCount", "edgeCount", "Edge Count", "Number of edges to split/collapse per run")
+    .range(1, 2048)
+    .noUnits()
+    .step(5);
+}
+
 export function api_define_brush(api, cstruct) {
   let bst = api_define_datablock(api, SculptBrush);
+
+  api_define_dyntopo(api);
 
   bst.flags("flag", "flag", BrushFlags, "Flag").icons({
     SHARED_SIZE : Icons.SHARED_BRUSH_SIZE
@@ -777,8 +813,16 @@ export function api_define_brush(api, cstruct) {
   bst.color4("color", "color", "Primary Color");
   bst.color4("bgcolor", "bgcolor", "Secondary Color");
   bst.float("concaveFilter", "concaveFilter", "Concave Wash").range(0.0, 1.0).noUnits();
+  bst.float("rake", "rake", "Rake").range(0.0, 1.0).noUnits();
+  bst.float("normalfac", "normalfac", "Normal Fac").range(0.0, 1.0).noUnits();
+  bst.float("pinch", "pinch", "Pinch").range(0.0, 1.0).noUnits();
+
+  bst.float("smoothProj", "smoothProj", "Projection", "How much smoothing should project to surface")
+    .range(0.0, 1.0)
+    .noUnits();
 
   bst.struct("texUser", "texUser", "Texture", api.mapStruct(ProceduralTexUser));
+  bst.struct("dynTopo", "dynTopo", "DynTopo", api.mapStruct(DynTopoSettings));
 
   bst.curve1d("falloff", "falloff", "Falloff");
 
@@ -903,12 +947,13 @@ export function getDataAPI() {
       return obj.lib_id;
     },
     function getStruct(api, list, key) {
-      console.log(list.datalib.get(key).constructor);
+      //console.log(list.datalib.get(key).constructor);
       return api.mapStruct(list.datalib.get(key).constructor, false);
     }
   ]);
 
   api_define_graphclasses(api);
+  buildProcMeshAPI(api);
 
   cstruct.struct("material", "material", "Material", api.mapStruct(Material, false));
 

@@ -13,6 +13,7 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath
 import {Shaders} from '../../../shaders/shaders.js';
 import {MovableWidget} from '../widgets/widget_utils.js';
 import {SnapModes} from "../transform/transform_ops.js";
+import * as util from '../../../util/util.js';
 
 import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
@@ -21,13 +22,19 @@ import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
 import {ContextOverlay} from "../../../path.ux/scripts/pathux.js";
 import {PackFlags} from "../../../path.ux/scripts/core/ui_base.js";
 import {RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
+import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
 
 export class MeshEditor extends MeshToolBase {
   constructor(manager) {
     super(manager);
 
+    this.loopMesh = undefined;
+
     this.selectMask = SelMask.VERTEX;
     this.drawSelectMask = this.selectMask;
+    this.drawLoops = false;
+
+    this._last_update_loop_key = "";
   }
 
   static toolModeDefine() {return {
@@ -49,7 +56,8 @@ export class MeshEditor extends MeshToolBase {
       "mesh.vertex_smooth()",
       "mesh.select_more_less(mode='ADD')",
       "mesh.select_more_less(mode='SUB')",
-      "mesh.select_linked(mode='ADD')"
+      "mesh.select_linked(mode='ADD')",
+      "mesh.create_face()",
     ]
   }
 
@@ -57,9 +65,14 @@ export class MeshEditor extends MeshToolBase {
     this.keymap = new KeyMap([
       new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
       new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
-      new HotKey("D", [], "mesh.subdivide_smooth()"),
+      new HotKey("J", ["ALT"], "mesh.tris_to_quads()"),
+      new HotKey("J", [], "mesh.connect_verts()"),
+      //new HotKey("D", [], "mesh.subdivide_smooth()"),
+      //new HotKey("D", [], "mesh.subdivide_smooth_loop()"),
+      new HotKey("D", [], "mesh.dissolve_verts()"),
       new HotKey("K", [], "mesh.subdiv_test()"),
       //new HotKey("D", [], "mesh.test_collapse_edge()"),
+      new HotKey("F", [], "mesh.create_face()"),
       new HotKey("G", [], "view3d.translate(selmask=17)"),
       new HotKey("R", [], "view3d.rotate(selmask=17)"),
       new HotKey("L", [], "mesh.pick_select_linked()"),
@@ -86,6 +99,12 @@ export class MeshEditor extends MeshToolBase {
     let strip;
     let panel;
 
+    let path = "scene.tools." + this.toolModeDefine().name;
+
+    panel = container.panel("Viewport");
+    strip = panel.row().strip();
+    strip.prop(path + ".drawLoops");
+
     panel = container.panel("Tools");
     strip = panel.row().strip();
 
@@ -99,6 +118,26 @@ export class MeshEditor extends MeshToolBase {
     strip = panel.row().strip();
     strip.tool("mesh.flip_long_tris()");
     strip.tool("mesh.tris_to_quads()");
+    strip.tool("mesh.triangulate()");
+
+    strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.remesh(remesher='UNIFORM_TRI')|Tri Remesh");
+    strip.tool("mesh.remesh(remesher='UNIFORM_QUAD')|Quad Remesh");
+
+    strip = panel.row().strip();
+    strip.tool("mesh.test_multigrid_smooth()");
+
+    strip = panel.row().strip();
+    strip.tool("mesh.fix_normals()");
+    strip.tool("mesh.split_edges_smart()");
+
+    strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.dissolve_verts()");
+    strip.tool("mesh.cleanup_quads()");
+
+    strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.dissolve_edges()");
+    strip.tool("mesh.collapse_edges()");
 
     panel = container.panel("Transform");
 
@@ -130,6 +169,11 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.apply_grid_base()");
     strip.tool("mesh.smooth_grids()");
     strip.tool("mesh.grids_test()");
+
+    panel = container.panel("Non-Manifold");
+    strip = panel.row().strip();
+    strip.tool("mesh.select_non_manifold");
+    strip.tool("mesh.fix_manifold");
   }
 
   static buildHeader(header, addHeaderRow) {
@@ -219,6 +263,7 @@ export class MeshEditor extends MeshToolBase {
     let mstruct = api.mapStruct(Mesh, false);
 
     tstruct.struct("mesh", "mesh", "Mesh", mstruct);
+    tstruct.bool("drawLoops", "drawLoops", "Draw Loops");
 
     let onchange = () => {
       window.redraw_viewport();
@@ -273,6 +318,75 @@ export class MeshEditor extends MeshToolBase {
     return super.on_mousemove(e, x, y, was_touch);
   }
 
+  updateLoopMesh(gl) {
+    let mesh = this.mesh;
+    let key = "" + mesh.lib_id + ":" + mesh.updateGen + ":" + mesh.verts.length + ":" + mesh.eidgen._cur;
+
+    if (key === this._last_update_loop_key) {
+      return;
+    }
+
+    this._last_update_loop_key = key;
+
+    if (this.loopMesh) {
+      this.loopMesh.destroy(gl);
+    }
+
+    let sm = this.loopMesh = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV);
+    sm.primflag = PrimitiveTypes.LINES;
+
+    let a = new Vector3(), b = new Vector3(), c = new Vector3();
+    let d = new Vector3(), e = new Vector3();
+    let color = [0, 0, 0, 1];
+
+    let ctmps = util.cachering.fromConstructor(Vector3, 64);
+    let rtmps = new util.cachering(() => [new Vector3(), new Vector3(), new Vector3()], 32);
+
+    function calcloop(l) {
+      let fac = 0.9;
+      let f = l.f;
+
+      let ret = rtmps.next();
+      let a = ret[0], b = ret[1], c = ret[2];
+
+      a.load(l.v).sub(f.cent).mulScalar(fac).add(f.cent);
+      b.load(l.next.v).sub(f.cent).mulScalar(fac).add(f.cent);
+
+      c.load(a).interp(b, 0.5);
+      a.interp(c, 0.1);
+      b.interp(c, 0.1);
+
+      return ret;
+    }
+
+    for (let f of mesh.faces.selected) {
+      f.calcCent();
+
+      for (let l of f.loops) {
+        let [a, b, c] = calcloop(l);
+
+        let line = sm.line(a, b);
+        line.colors(color, color);
+
+        d.load(b).interp(f.cent, 0.1);
+
+        line = sm.line(b, d);
+        line.colors(color, color);
+
+        if (l.radial_next !== l) {
+          let [a2, b2, c2] = calcloop(l.radial_next);
+
+          let t = Math.random()*0.5 + 0.5;
+
+          d.load(a).interp(b, t);
+          e.load(a2).interp(b2, 1.0-t);
+          line = sm.line(d, e);
+          line.colors(color, color);
+        }
+      }
+    }
+  }
+
   on_drawstart(view3d, gl) {
     if (!this.ctx) return;
 
@@ -291,6 +405,31 @@ export class MeshEditor extends MeshToolBase {
       }
     }
 
+    if (this.drawLoops && this.mesh) {
+      this.updateLoopMesh(gl);
+
+      if (this.loopMesh) {
+        let ob = this.ctx.object;
+        let color = [1, 0.8, 0.7, 1.0];
+
+        let uniforms = {
+          projectionMatrix : view3d.activeCamera.rendermat,
+          objectMatrix : ob.outputs.matrix.getValue(),
+          object_id : ob.lib_id,
+          aspect : view3d.activeCamera.aspect,
+          size : view3d.glSize,
+          near : view3d.activeCamera.near,
+          far : view3d.activeCamera.far,
+          color : color,
+          uColor : color,
+          alpha : 1.0,
+          opacity : 1.0,
+          polygonOffset : 5.0
+        };
+
+        this.loopMesh.draw(gl, uniforms, Shaders.WidgetMeshShader);
+      }
+    }
     super.on_drawstart(view3d, gl);
   }
 
@@ -312,8 +451,9 @@ export class MeshEditor extends MeshToolBase {
 }
 
 MeshEditor.STRUCT = STRUCT.inherit(MeshEditor, ToolMode) + `
-  mesh    : DataRef | DataRef.fromBlock(obj.mesh);
-  drawflag : int;
+  mesh      : DataRef | DataRef.fromBlock(obj.mesh);
+  drawflag  : int;
+  drawLoops : bool;
 }`;
 nstructjs.manager.add_class(MeshEditor);
 ToolMode.register(MeshEditor);

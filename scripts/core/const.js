@@ -7,6 +7,8 @@ import config from '../config/config.js';
 
 export var cacheSelectBufs = config.cacheSelectBufs;
 
+export const EDGE_LINKED_LISTS = false;
+
 export const DEBUG = {
   simplemesh : false,
   enableDebugGraphPanel : true,

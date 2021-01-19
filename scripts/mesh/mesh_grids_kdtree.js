@@ -268,6 +268,14 @@ export class KdTreeGrid extends GridBase {
     this.subdtemps = util.cachering.fromConstructor(Vector3, 32);
   }
 
+  calcMemSize() {
+    let tot = super.calcMemSize() + this.nodes.length*8;
+    tot += this.freelist.length*8 + this.subdtemps.length*8*32;
+    tot += this.polys.length*8;
+
+    return tot;
+  }
+
   /*
   set nodes(ns) {
     let ns2 = {};
@@ -334,6 +342,7 @@ export class KdTreeGrid extends GridBase {
 
     for (let p of this.points) {
       let p2 = new GridVert(p.index);
+      p2.index2 = p.index2;
 
       p2.load(p);
 
@@ -688,7 +697,7 @@ export class KdTreeGrid extends GridBase {
 
     let p = this._getPoint(u, v, loopEid, mesh, isNewOut);
 
-    this.nodes[ni + QPOINT1 + pidx] = p.index;
+    this.nodes[ni + QPOINT1 + pidx] = p.index2;
 
     return p;
   }
@@ -842,13 +851,13 @@ export class KdTreeGrid extends GridBase {
   }
 
   getTopo() {
-    if (this.recalcFlag & QRecalcFlags.INDICES) {
-      this.recalcPointIndices();
-    }
-
     if (this.topo && !(this.recalcFlag & QRecalcFlags.TOPO)) {
       return this.topo;
     }
+
+    //if (this.recalcFlag & QRecalcFlags.INDICES) {
+      this.recalcPointIndices();
+    //}
 
     this.topo = undefined;
     this.recalcFlag &= ~QRecalcFlags.TOPO;
@@ -859,7 +868,7 @@ export class KdTreeGrid extends GridBase {
     let vmap = [];
 
     for (let i = 0; i < ps.length; i++) {
-      ps[i].index = i;
+      ps[i].index2 = i;
 
       vmap.push({
         edges: [],
@@ -2139,6 +2148,11 @@ export class KdTreeGrid extends GridBase {
   }
 
   update(mesh, loop, cd_grid, _ignore_mres = false) {
+    if (this.recalcFlag & (QRecalcFlags.NORMALS|QRecalcFlags.TOPO|QRecalcFlags.POINT_PRUNE|QRecalcFlags.NEIGHBORS
+      | QRecalcFlags.INDICES|QRecalcFlags.POINTHASH|QRecalcFlags.NODE_NORMALS)) {
+      this.recalcPointIndices();
+    }
+
     if (GridBase.hasPatchUVLayer(mesh, cd_grid) && (this.recalcFlag & QRecalcFlags.PATCH_UVS)) {
       let cd_uv = GridBase.getPatchUVLayer(mesh, cd_grid);
       this.initPatchUVLayer(mesh, loop, cd_grid, cd_uv);
@@ -2179,6 +2193,8 @@ export class KdTreeGrid extends GridBase {
     }
 
     if (this.recalcFlag & QRecalcFlags.TOPO) {
+      this.recalcPointIndices();
+
       for (let p of this.points) {
         p.loopEid = loop.eid;
       }
@@ -2367,7 +2383,7 @@ export class KdTreeGrid extends GridBase {
         let p = ps[ip];
 
         if (pmap[ip] === undefined) {
-          pmap[ip] = p.index = newps.length;
+          pmap[ip] = p.index2 = newps.length;
           newps.push(p);
         }
 
@@ -2675,7 +2691,7 @@ export class KdTreeGrid extends GridBase {
     let ps = this.points;
 
     for (let i = 0; i < ps.length; i++) {
-      ps[i].index = i;
+      ps[i].index2 = i;
     }
 
     let polys = this.polys;
@@ -3087,7 +3103,7 @@ export class KdTreeGrid extends GridBase {
 
         let w = 1.0;
 
-        let v = topo.vmap[p.index];
+        let v = topo.vmap[p.index2];
         for (let ni of v.nodes) {
           let tf = p.tanMulFac(ns[ni + QDEPTH]);
 
@@ -3133,7 +3149,7 @@ export class KdTreeGrid extends GridBase {
       p.no.zero();
       p.startTan();
 
-      let v = topo.vmap[p.index];
+      let v = topo.vmap[p.index2];
       for (let ni of v.nodes) {
         let depth = ns[ni + QDEPTH];
 
@@ -3198,7 +3214,7 @@ export class KdTreeGrid extends GridBase {
         let topo2 = grid2.getTopo();
 
         let ns2 = grid2.nodes, ps2 = grid2.points;
-        let vm = topo2.vmap[p2.index];
+        let vm = topo2.vmap[p2.index2];
         if (!vm) {
           continue;
         }
@@ -3237,7 +3253,7 @@ export class KdTreeGrid extends GridBase {
       p.sco.mulScalar(1.0/p.totsco);
       p.totsco = 1.0;
 
-      if (p.index < 2) {
+      if (p.index2 < 2) {
         scotmp.zero();
         let tot = 0.0;
 
@@ -3275,7 +3291,7 @@ export class KdTreeGrid extends GridBase {
     let ps = this.points;
 
     for (let i = 0; i < ps.length; i++) {
-      ps[i].index = i;
+      ps[i].index2 = i;
     }
 
     for (let v of topo.vmap) {
@@ -3283,7 +3299,7 @@ export class KdTreeGrid extends GridBase {
       p.neighbors = new Set();
 
       for (let e of v.edges) {
-        let v2 = e.v1 === v.index ? e.v2 : e.v1;
+        let v2 = e.v1 === v.index2 ? e.v2 : e.v1;
         v2 = topo.vmap[v2];
 
         p.neighbors.add(v2.p);

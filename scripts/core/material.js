@@ -128,7 +128,7 @@ ToolOp.register(UnlinkMaterialOp);
 export class MaterialFlags {
 };
 
-let DefaultMat;
+export var DefaultMat;
 
 export class Material extends ShaderNetwork {
   constructor() {

@@ -301,6 +301,14 @@ export class QuadTreeGrid extends GridBase {
     this.subdtemps = util.cachering.fromConstructor(Vector3, 32);
   }
 
+  calcMemSize() {
+    let tot = super.calcMemSize() + this.nodes.length*8;
+    tot += this.freelist.length*8 + this.subdtemps.length*8*32;
+    tot += this.polys.length*8;
+
+    return tot;
+  }
+
   /*
   set nodes(ns) {
     let ns2 = {};

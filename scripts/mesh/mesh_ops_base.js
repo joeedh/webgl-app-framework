@@ -33,7 +33,6 @@ import {SceneObject} from "../sceneobject/sceneobject.js";
 export function* resolveMeshes(ctx, pathset) {
   for (let key of pathset) {
     if (key === "_all_objects_") {
-
       for (let ob of ctx.selectedMeshObjects) {
         let mesh = ob.data;
 
@@ -45,6 +44,10 @@ export function* resolveMeshes(ctx, pathset) {
       }
     } else {
       let mesh = ctx.api.getValue(ctx, key);
+
+      if (!mesh) {
+        continue;
+      }
 
       if (mesh instanceof SceneObject) {
         let ob = mesh;
@@ -143,6 +146,18 @@ export class MeshOp extends View3DOp {
 
     window.redraw_viewport();
     window.updateDataGraph();
+  }
+
+  calcUndoMem(ctx) {
+    let tot = 0;
+
+    for (let id in this._undo) {
+      let data = this._undo[id];
+
+      tot += data.dview.buffer.byteLength;
+    }
+
+    return tot;
   }
 
   undoPre(ctx) {

@@ -2,16 +2,25 @@ import {Edge} from "./mesh_types.js";
 import {MeshError, MeshFlags, MeshTypes} from "./mesh_base.js";
 import * as util from "../util/util.js";
 import '../path.ux/scripts/util/struct.js';
+
 let STRUCT = nstructjs.STRUCT;
-import {CustomData, CustomDataElem} from "./customdata.js";
+import {CDFlags, CustomData, CustomDataElem} from "./customdata.js";
+import {Vertex, Loop, Face, Handle} from './mesh_types.js';
 
 const sel_iter_stack = new Array(64);
 
 window._sel_iter_stack = sel_iter_stack;
 
+let typemap = {
+  [MeshTypes.VERTEX]: Vertex,
+  [MeshTypes.EDGE]  : Edge,
+  [MeshTypes.LOOP]  : Loop,
+  [MeshTypes.FACE]  : Face
+};
+
 export class SelectedEditableIter {
   constructor(set) {
-    this.ret = {done : true, value : undefined};
+    this.ret = {done: true, value: undefined};
     this.listiter = undefined;
     this.done = true;
     this.set = set;
@@ -77,7 +86,7 @@ export class SelectedEditableStack extends Array {
     this.cur = 0;
     this.set = set;
 
-    for (let i=0; i<this.length; i++) {
+    for (let i = 0; i < this.length; i++) {
       this[i] = new SelectedEditableIter(set);
     }
   }
@@ -105,7 +114,7 @@ export class SelectionSet extends util.set {
   get editable_old() {
     let this2 = this;
 
-    return (function*() {
+    return (function* () {
       for (let item of this2) {
         if (!(item.flag & MeshFlags.HIDE)) {
           yield item;
@@ -127,10 +136,10 @@ function getArrayTemp(n) {
 }
 
 export class ElementListIter {
-  constructor() {
-    this.ret = {done : false, value : undefined};
+  constructor(elist) {
+    this.ret = {done: false, value: undefined};
     this.i = 0;
-    this.elist = undefined;
+    this.elist = elist;
   }
 
   init(elist) {
@@ -185,15 +194,18 @@ export class ElementList {
     this.length = 0;
     this.size = 0;
     this.freelist = [];
+    this.free_elems = [];
+
+    this.storeFreedElems = false;
 
     this.idxmap = {};
 
     this.customData = new CustomData();
     this.local_eidmap = {};
 
-    this.iterstack = new Array(32);
-    for (let i=0; i<this.iterstack.length; i++) {
-      this.iterstack[i] = new ElementListIter();
+    this.iterstack = new Array(64);
+    for (let i = 0; i < this.iterstack.length; i++) {
+      this.iterstack[i] = new ElementListIter(this);
     }
     this.iterstack.cur = 0;
 
@@ -215,7 +227,7 @@ export class ElementList {
   [Symbol.iterator]() {
     if (this.iterstack.cur >= this.iterstack.length) {
       console.warn("deep nesting of ElementListIter detected; growing cache stack by one", this.iterstack.cur);
-      this.iterstack.push(new ElementListIter());
+      this.iterstack.push(new ElementListIter(this));
     }
 
     return this.iterstack[this.iterstack.cur++].init(this);
@@ -277,7 +289,7 @@ export class ElementList {
   reverse() {
     let len = this.list.length;
 
-    for (let i=0; i<(len>>1); i++) {
+    for (let i = 0; i < (len>>1); i++) {
       let i2 = len - i - 1;
 
       let t = this.list[i];
@@ -291,7 +303,7 @@ export class ElementList {
   get editable() {
     let this2 = this;
 
-    return (function*() {
+    return (function* () {
       for (let e of this2) {
         if (!(e.flag & MeshFlags.HIDE)) {
           yield e;
@@ -320,11 +332,11 @@ export class ElementList {
     }
 
     return {
-      type      : this.type,
-      array     : arr,
-      selected  : sel,
-      active    : this.active !== undefined ? this.active.eid : -1,
-      highlight : this.highlight !== undefined ? this.highlight.eid : -1
+      type     : this.type,
+      array    : arr,
+      selected : sel,
+      active   : this.active !== undefined ? this.active.eid : -1,
+      highlight: this.highlight !== undefined ? this.highlight.eid : -1
     };
   }
 
@@ -400,7 +412,7 @@ export class ElementList {
     let idx = this.idxmap[e.eid];
     return idx !== undefined ? idx : -1;
 
-    for (let i=0; i<this.list.length; i++) {
+    for (let i = 0; i < this.list.length; i++) {
       if (this.list[i] === e) {
         return i;
       }
@@ -416,6 +428,11 @@ export class ElementList {
       delete this.idxmap[e.eid];
 
       this.freelist.push(i);
+      if (this.storeFreedElems) {
+        this.free_elems.push(e);
+        e._free();
+      }
+
       this.list[i] = undefined;
       this.length--;
     } else {
@@ -499,7 +516,7 @@ export class ElementList {
       this.customData.initElement(dest);
 
       for (let data1 of old) {
-        for (let i=0; i<dest.customData.length; i++) {
+        for (let i = 0; i < dest.customData.length; i++) {
           let data2 = dest.customData[i];
 
           if (data2.constructor === data1.constructor) {
@@ -524,7 +541,7 @@ export class ElementList {
       this._fixcd(elem);
     }
 
-    for (let i=0; i<dest.customData.length; i++) {
+    for (let i = 0; i < dest.customData.length; i++) {
       let cd = dest.customData[i];
 
       let j = 0;
@@ -533,6 +550,23 @@ export class ElementList {
       }
 
       cd.interp(cd, sources2, ws);
+    }
+  }
+
+  get first() {
+    for (let item of this) {
+      return item;
+    }
+  }
+
+  get last() {
+    let list = this.list;
+    for (let i = list.length - 1; i >= 0; i--) {
+      let ret = list[i];
+
+      if (ret) {
+        return ret;
+      }
     }
   }
 
@@ -571,7 +605,7 @@ export class ElementList {
   }
 
   mergeCustomData(b) {
-    let i=0, cdmap = {};
+    let i = 0, cdmap = {};
     for (let list of this.customData.flatlist) {
       cdmap[list[Symbol.keystr]()] = i;
       i++;
@@ -591,7 +625,7 @@ export class ElementList {
 
       e.customData.length = this.customData.flatlist.length;
 
-      for (let i=0; i<e.customData.length; i++) {
+      for (let i = 0; i < e.customData.length; i++) {
         let list = this.customData.flatlist[i];
 
         let cd = cdmap[list[Symbol.keystr]()];
@@ -680,8 +714,8 @@ export class ElementList {
       let i = layer_i;
       let cd = e.customData;
 
-      while (i < cd.length-1) {
-        cd[i] = cd[i+1];
+      while (i < cd.length - 1) {
+        cd[i] = cd[i + 1];
         i++;
       }
 
@@ -735,7 +769,7 @@ export class ElementList {
       if (haveOnNewLayer) {
         for (let cd of item.customData) {
           if (cd.onNewLayer) {
-            cd.onNewLayer(typecls, item.customData.length-1);
+            cd.onNewLayer(typecls, item.customData.length - 1);
           }
         }
       }
@@ -781,7 +815,58 @@ export class ElementList {
       }
     }
   }
+
+  stripTempLayers(saveState = true) {
+    let state = {
+      cdata: this.customData.copy(),
+      elems: []
+    };
+
+    let cdata = this.customData;
+    let layers = cdata.flatlist;
+    let map = new Array(layers.length);
+    let j = 0;
+
+    for (let i = 0; i < layers.length; i++) {
+      let layer = layers[i];
+
+      map[i] = !(layer.flag & CDFlags.TEMPORARY) ? j++ : undefined;
+    }
+
+    this.customData.stripTempLayers();
+
+    for (let elem of this) {
+      let customData = elem.customData;
+
+      if (saveState) {
+        state.elems.push(customData.slice(0, customData.length));
+      }
+
+      let j = 0;
+      for (let i = 0; i < customData.length; i++) {
+        if (map[i] === undefined) {
+          continue;
+        }
+
+        customData[j++] = customData[i];
+      }
+
+      customData.length = j;
+    }
+
+    return state;
+  }
+
+  unstripTempLayers(state) {
+    this.customData = state.customData;
+
+    let i = 0;
+    for (let elem of this) {
+      elem.customData = state.elems[i++];
+    }
+  }
 };
+
 ElementList.STRUCT = `
 mesh.ElementList {
   items       : iter(abstract(Object)) | this._get_compact();

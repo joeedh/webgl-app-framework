@@ -26,7 +26,7 @@ export class PatchBuilder {
       return ccSmooth(l.v);
       let v = new Vector3();
 
-      let tot = l.v.edges.length;
+      let tot = l.v.valence;
       v.addFac(l.v, tot);
 
       for (let e of l.v.edges) {
@@ -118,7 +118,7 @@ export class PatchBuilder {
     //*/
 
     this.patches.set(l, patch);
-    let bad = l.v.edges.length !== 4 || l.v.isBoundary();// || l.next.next.v.edges.length !== 4;
+    let bad = l.v.valence !== 4 || l.v.isBoundary();// || l.next.next.v.valence !== 4;
 
     if (bad) {
       patch.basis = bernstein;
@@ -128,7 +128,7 @@ export class PatchBuilder {
 
     let nocheck = true;
 
-    if (nocheck || l.next.v.edges.length === 4) {
+    if (nocheck || l.next.v.valence === 4) {
       let l2 = l.radial_next;
       let q2 = this.getQuad(l2);
 
@@ -160,7 +160,7 @@ export class PatchBuilder {
       patch.setPoint(0, 2, q2[2]);
     }
 
-    if (nocheck || l.prev.v.edges.length === 4) {
+    if (nocheck || l.prev.v.valence === 4) {
       let l2 = l.prev.radial_next;
       let q2 = this.getQuad(l2);
 
@@ -172,7 +172,7 @@ export class PatchBuilder {
       patch.setPoint(0, 3, q2[3]);
     }
 
-    if (nocheck || l.v.edges.length === 4) {
+    if (nocheck || l.v.valence === 4) {
       let l2 = l.radial_next.next.radial_next.next;
       let q2 = this.getQuad(l2);
 
@@ -217,7 +217,7 @@ export class PatchBuilder {
       return ccSmooth(v);
 
       let lco = new Vector3();
-      let w1 = v.edges.length*0.75;
+      let w1 = v.valence*0.75;
       let w2 = 1.0;
       let tot = w1;
 
@@ -234,7 +234,7 @@ export class PatchBuilder {
     }
 
     for (let l of mesh.loops) {
-      if (l.v.edges.length === 4) {
+      if (l.v.valence === 4) {
         continue;
       }
 
@@ -291,7 +291,7 @@ export class PatchBuilder {
     }
 
     for (let l of mesh.loops) {
-      if (l.v.edges.length === 4) {
+      if (l.v.valence === 4) {
         continue;
       }
 
@@ -319,7 +319,7 @@ export class PatchBuilder {
     }
 
     for (let l of mesh.loops) {
-      if (l.v.edges.length === 4) {
+      if (l.v.valence === 4) {
         continue;
       }
 
@@ -377,7 +377,7 @@ export class PatchBuilder {
       let l2 = l.next;
       let p2 = this.patches.get(l2);
 
-      if (l.v.edges.length !== 4) {
+      if (l.v.valence !== 4) {
         function findClosest(u, v, dt, steps) {
           let list = [];
           let m1 = new Vector2([u, v]);

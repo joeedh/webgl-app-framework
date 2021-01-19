@@ -1095,8 +1095,13 @@ export class View3D extends Editor {
     //x -= this.pos[0];
     //y -= this.pos[1];
 
-    x = (x - r.x); // dpi;
-    y = (y - r.y); // dpi;
+    if (r) {
+      x = (x - r.x); // dpi;
+      y = (y - r.y); // dpi;
+    } else {
+      x -= this.pos[0];
+      y -= this.pos[1];
+    }
 
     return [x, y];
   }

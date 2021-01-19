@@ -30,6 +30,8 @@ export * from "./mesh_types.js";
 export * from "./mesh_customdata.js";
 export * from "./mesh_element_list.js";
 
+import {EDGE_LINKED_LISTS} from '../core/const.js';
+
 import {UVLayerElem, OrigIndexElem, NormalLayerElem} from "./mesh_customdata.js";
 import {Element, Vertex, Edge, Handle, Loop, LoopList, Face} from "./mesh_types.js";
 import {SelectionSet, ElementList} from "./mesh_element_list.js";
@@ -37,9 +39,12 @@ import {SelMask} from "../editors/view3d/selectmode.js";
 import {PrimitiveTypes} from "../core/simplemesh.js";
 import {Node} from '../core/graph.js';
 import {Colors} from '../sceneobject/sceneobject.js';
-import {BVH} from "../util/bvh.js";
+import {BVH, BVHSettings} from "../util/bvh.js";
 import {drawMeshElements, genRenderMesh} from "./mesh_draw.js";
 import {GridBase} from "./mesh_grids.js";
+
+import {getArrayTemp} from './mesh_base.js';
+import {LogContext} from './mesh_base.js';
 
 let split_temp = new Array(512);
 split_temp.used = 0;
@@ -65,12 +70,12 @@ let debuglog = false;
 import {CustomData} from './customdata.js';
 import {UVWrangler} from './unwrapping.js';
 
-const VEID=0, VFLAG=1, VX=1, VY=2, VZ=3, VNX=4, VNY=5, VNZ=6, VTOT=7;
-const EEID=0, EFLAG=1, EV1=2, EV2=3, ETOT=4;
-const LEID=0, LFLAG=1, LV=2, LE=3, LTOT=4;
-const LISTFACE=0, LISTSTART=1, LISTLEN=2, LISTTOT=3;
-const FEID=0, FFLAG=1, FLISTSTART=3, FTOTLIST=4, FTOT=5;
-const HEID=0, HFLAG=1, HX=2, HY=3, HZ=4, HTOT=5;
+const VEID = 0, VFLAG = 1, VX = 1, VY = 2, VZ = 3, VNX = 4, VNY = 5, VNZ = 6, VTOT = 7;
+const EEID = 0, EFLAG = 1, EV1 = 2, EV2 = 3, ETOT = 4;
+const LEID = 0, LFLAG = 1, LV = 2, LE = 3, LTOT = 4;
+const LISTFACE = 0, LISTSTART = 1, LISTLEN = 2, LISTTOT = 3;
+const FEID = 0, FFLAG = 1, FLISTSTART = 3, FTOTLIST = 4, FTOT = 5;
+const HEID = 0, HFLAG = 1, HX = 2, HY = 3, HZ = 4, HTOT = 5;
 
 export class CompressMeshElemList extends Array {
   constructor(type) {
@@ -88,6 +93,7 @@ export class CompressMeshElemList extends Array {
     }
   }
 }
+
 CompressMeshElemList.STRUCT = `
 mesh.CompressMeshElemList {
   data          : array(float) | this;
@@ -155,14 +161,14 @@ export class CompressedMesh {
 
     let vi = 0;
     for (let v of mesh.verts) {
-      vs[vi+VEID] = v.eid;
-      vs[vi+VFLAG] = v.flag;
-      vs[vi+VX] = v[0];
-      vs[vi+VY] = v[1];
-      vs[vi+VZ] = v[2];
-      vs[vi+VNX] = v.no[0];
-      vs[vi+VNY] = v.no[1];
-      vs[vi+VNZ] = v.no[2];
+      vs[vi + VEID] = v.eid;
+      vs[vi + VFLAG] = v.flag;
+      vs[vi + VX] = v[0];
+      vs[vi + VY] = v[1];
+      vs[vi + VZ] = v[2];
+      vs[vi + VNX] = v.no[0];
+      vs[vi + VNY] = v.no[1];
+      vs[vi + VNZ] = v.no[2];
 
       let di = 0;
       for (let data of v.customData) {
@@ -174,8 +180,8 @@ export class CompressedMesh {
 
     let ei = 0;
     for (let e of mesh.verts) {
-      es[ei+EEID] = e.eid;
-      es[ei+EFLAG] = e.flag;
+      es[ei + EEID] = e.eid;
+      es[ei + EFLAG] = e.flag;
 
       let di = 0;
       for (let data of e.customData) {
@@ -188,10 +194,10 @@ export class CompressedMesh {
     for (let l of mesh.loops) {
       let li = l.index*LTOT;
 
-      es[li+LEID] = l.eid;
-      es[li+LFLAG] = l.flag;
-      es[li+LE] = l.e.index;
-      es[li+LV] = l.v.index;
+      es[li + LEID] = l.eid;
+      es[li + LFLAG] = l.flag;
+      es[li + LE] = l.e.index;
+      es[li + LV] = l.v.index;
     }
 
     return this;
@@ -218,6 +224,8 @@ nstructjs.register(CompressedMesh);
 export class Mesh extends SceneObjectData {
   constructor(features = MeshFeatures.BASIC) {
     super();
+
+    this.bvhSettings = new BVHSettings();
 
     this.symFlag = 0; //symmetry flag;
     this.uvRecalcGen = 0;
@@ -278,6 +286,62 @@ export class Mesh extends SceneObjectData {
     }
   }
 
+  get uniforms() {
+    throw new Error("no longer supported: Mesh.prototype.uniforms property!");
+  }
+
+  get loopTris() {
+    if (this._ltris === undefined || (this.recalc & RecalcFlags.TESSELATE)) {
+      this.tessellate();
+    }
+
+    return this._ltris;
+  }
+
+  get hasCustomNormals() {
+    let ret = this.loops.customData.hasLayer(NormalLayerElem);
+    return ret || this.verts.customData.hasLayer(NormalLayerElem);
+    return ret;
+  }
+
+  get elements() {
+    var this2 = this;
+
+    return (function* () {
+      for (var k in this2.eidmap) {
+        yield this2.eidmap[k];
+      }
+    })()
+  }
+
+  static nodedef() {
+    return {
+      name   : "mesh",
+      uiname : "Mesh",
+      flag   : NodeFlags.SAVE_PROXY,
+      inputs : Node.inherit({}),
+      outputs: Node.inherit({})
+    }
+  }
+
+  static blockDefine() {
+    return {
+      typeName   : "mesh",
+      defaultName: "Mesh",
+      uiName     : "Mesh",
+      flag       : 0,
+      icon       : -1
+    }
+  }
+
+  static dataDefine() {
+    return {
+      name      : "Mesh",
+      selectMask: SelMask.MESH,
+      tools     : MeshTools
+    }
+  }
+
   compress2() {
     return new CompressedMesh().loadMesh(this);
   }
@@ -294,7 +358,7 @@ export class Mesh extends SceneObjectData {
   _makeEIDGen(eidgen2 = new util.IDGen()) {
     let this2 = this;
 
-    eidgen2.next = function() {
+    eidgen2.next = function () {
       if (this2._debug_id1 !== -1) {
         //console.warn(this2._debug_id1, this2.eidgen._cur);
       }
@@ -307,10 +371,6 @@ export class Mesh extends SceneObjectData {
 
   hasHandles() {
     return this.features & MeshFeatures.EDGE_HANDLES;
-  }
-
-  get uniforms() {
-    throw new Error("no longer supported: Mesh.prototype.uniforms property!");
   }
 
   getElemLists() {
@@ -332,14 +392,6 @@ export class Mesh extends SceneObjectData {
     return this;
   }
 
-  get loopTris() {
-    if (this._ltris === undefined || (this.recalc & RecalcFlags.TESSELATE)) {
-      this.tessellate();
-    }
-
-    return this._ltris;
-  }
-
   getElemList(type) {
     if (!(type in this.elists)) {
       this.elists[type] = new ElementList(type);
@@ -348,16 +400,6 @@ export class Mesh extends SceneObjectData {
     }
 
     return this.elists[type];
-  }
-
-  static nodedef() {
-    return {
-      name: "mesh",
-      uiname: "Mesh",
-      flag: NodeFlags.SAVE_PROXY,
-      inputs: Node.inherit({}),
-      outputs: Node.inherit({})
-    }
   }
 
   debugLogClear() {
@@ -384,7 +426,7 @@ export class Mesh extends SceneObjectData {
     let len = Math.min(log1.length, log2.length);
     let lines = [];
 
-    for (let i=0; i<len; i++) {
+    for (let i = 0; i < len; i++) {
       let l1 = log1[i], l2 = log2[i];
 
       let line = `${pad(l1.e.constructor.name)} ${l1.eid} ${pad(l2.e.constructor.name)} ${l2.eid}\n`;
@@ -395,7 +437,7 @@ export class Mesh extends SceneObjectData {
 
     buf += "\n\n";
 
-    for (let i=0; i<len; i++) {
+    for (let i = 0; i < len; i++) {
       let l1 = log1[i], l2 = log2[i];
 
       if (l1.e.constructor !== l2.e.constructor || l1.eid !== l2.eid) {
@@ -419,30 +461,28 @@ export class Mesh extends SceneObjectData {
     //return buf;
   }
 
-  _element_init(e, set_eid=true) {
+  _element_init(e, customEid = undefined) {
     let list = this.getElemList(e.type);
 
     list.customData.initElement(e);
 
-    if (set_eid) {
-      e.eid = this.eidgen.next();
-      this.eidmap[e.eid] = e;
-    }
+    e.eid = customEid !== undefined ? customEid : this.eidgen.next();
+    this.eidmap[e.eid] = e;
 
     if (this.debuglog) {
       this.debuglog.push({
-        e, eid : e.eid, type : e.type
+        e, eid: e.eid, type: e.type
       });
     }
   }
 
-  makeVertex(co) {
+  makeVertex(co, customEid = undefined) {
     if (!(this.features & MeshFeatures.MAKE_VERT))
       throw new MeshFeatureError("makeVertex not supported");
 
     var v = new Vertex(co);
 
-    this._element_init(v);
+    this._element_init(v, customEid);
     this.verts.push(v);
 
     v.flag |= MeshFlags.UPDATE;
@@ -459,11 +499,15 @@ export class Mesh extends SceneObjectData {
     return undefined;
   }
 
-  ensureEdge(v1, v2) {
+  ensureEdge(v1, v2, lctx) {
     let e = this.getEdge(v1, v2);
 
     if (e === undefined) {
       e = this.makeEdge(v1, v2);
+
+      if (lctx) {
+        lctx.newEdge(e);
+      }
     }
 
     return e;
@@ -479,7 +523,56 @@ export class Mesh extends SceneObjectData {
     return h;
   }
 
-  makeEdge(v1, v2, checkExist = false) {
+  _diskInsert(v, e) {
+    if (!EDGE_LINKED_LISTS) {
+      v.edges.push(e);
+      return;
+    }
+
+    if (!v.e) {
+      v.e = e;
+      return;
+    }
+
+    if (e.v1 === v) {
+      v.e.v1next.v1prev = e;
+      e.v1prev = v.e;
+      e.v1next = v.e.v1next;
+      v.e.v1next = e;
+    } else {
+      v.e.v2next.v2prev = e;
+      e.v2prev = v.e;
+      e.v2next = v.e.v2next;
+      v.e.v2next = e;
+    }
+  }
+
+  _diskRemove(v, e) {
+    if (!EDGE_LINKED_LISTS) {
+      v.edges.remove(e);
+      return;
+    }
+
+    if (e === v.e) {
+      v.e = v === e.v1 ? e.v1next : e.v2next;
+
+      if (v.e === e) {
+        v.e = undefined;
+
+        return;
+      }
+    }
+
+    if (e.v1 === v) {
+      e.v1prev.v1next = e.v1next;
+      e.v1next.v1prev = e.v1prev;
+    } else {
+      e.v2prev.v2next = e.v2next;
+      e.v2next.v2prev = e.v2prev;
+    }
+  }
+
+  makeEdge(v1, v2, checkExist = false, customEid = undefined) {
     if (v1 === v2) {
       throw new MeshError("mesh.makeEdge: v1 and v2 were the same");
     }
@@ -499,18 +592,23 @@ export class Mesh extends SceneObjectData {
     e.v1 = v1;
     e.v2 = v2;
 
-    v1.edges.push(e);
-    v2.edges.push(e);
+    if (EDGE_LINKED_LISTS) {
+      e.v1next = e.v1prev = e;
+      e.v2next = e.v2prev = e;
+    }
 
-    this._element_init(e);
+    this._diskInsert(e.v1, e);
+    this._diskInsert(e.v2, e);
+
+    this._element_init(e, customEid);
     this.edges.push(e);
 
     if (this.features & MeshFeatures.EDGE_HANDLES) {
       e.h1 = this._makeHandle(e);
       e.h2 = this._makeHandle(e);
 
-      e.h1.load(e.v1).interp(e.v2, 1.0 / 3.0);
-      e.h2.load(e.v1).interp(e.v2, 2.0 / 3.0);
+      e.h1.load(e.v1).interp(e.v2, 1.0/3.0);
+      e.h2.load(e.v1).interp(e.v2, 2.0/3.0);
     }
 
     e.flag |= MeshFlags.UPDATE;
@@ -537,23 +635,59 @@ export class Mesh extends SceneObjectData {
     return this;
   }
 
-  _makeLoop() {
+  _makeLoop(customEid = undefined) {
     let loop = new Loop();
 
     loop.radial_next = loop.radial_prev = loop;
 
-    this._element_init(loop);
+    this._element_init(loop, customEid);
     this.loops.push(loop);
 
     return loop;
   }
 
   _killLoop(loop) {
-    this._radialRemove(loop.e, loop);
+    if (loop.e) {
+      this._radialRemove(loop.e, loop);
+    }
 
     this.loops.remove(loop);
     delete this.eidmap[loop.eid];
     loop.eid = -1;
+  }
+
+  getFace(vs) {
+    let flag = MeshFlags.FACE_EXIST_FLAG;
+
+    for (let v of vs) {
+      v.flag &= ~flag;
+    }
+
+    for (let v of vs) {
+      for (let e of v.edges) {
+        for (let l of e.loops) {
+          let f = l.f;
+
+          for (let l2 of l.list) {
+            l2.v.flag |= flag;
+          }
+
+          let ok = true;
+
+          for (let v of vs) {
+            if (!(v.flag & flag)) {
+              ok = false;
+            }
+
+            v.flag &= ~flag;
+          }
+
+          if (ok) {
+            return f;
+          }
+        }
+      }
+    }
   }
 
   //new_vmap is an object mapping old vertex eid's to new vertices
@@ -659,7 +793,7 @@ export class Mesh extends SceneObjectData {
     return this.makeFace(_tri);
   }
 
-  makeFace(verts) {
+  makeFace(verts, customEid = undefined, customLoopEids = undefined, lctx = undefined) {
     if (!(this.features & MeshFeatures.MAKE_FACE))
       throw new MeshFeatureError("makeFace not supported");
 
@@ -678,8 +812,12 @@ export class Mesh extends SceneObjectData {
 
     list.length = verts.length;
 
+    let i = 0;
+
     for (let v of verts) {
-      let l = this._makeLoop();
+      let eid = customLoopEids !== undefined ? customLoopEids[i] : undefined;
+
+      let l = this._makeLoop(eid);
 
       l.list = list;
       l.v = v;
@@ -693,6 +831,7 @@ export class Mesh extends SceneObjectData {
       }
 
       prevl = l;
+      i++;
     }
 
     list.l = firstl;
@@ -700,23 +839,32 @@ export class Mesh extends SceneObjectData {
     prevl.next = firstl;
 
     for (let l of list) {
-      l.e = this.ensureEdge(l.v, l.next.v);
+      l.e = this.getEdge(l.v, l.next.v);
+      let wasnew = false;
+
+      if (!l.e) {
+        l.e = this.makeEdge(l.v, l.next.v);
+        wasnew = true;
+      }
+
       this._radialInsert(l.e, l);
+
+      if (wasnew && lctx) {
+        lctx.newEdge(l.e);
+      }
     }
 
     f.calcCent();
     f.calcNormal();
 
-    this._element_init(f);
+    this._element_init(f, customEid);
     this.faces.push(f);
 
-    return f;
-  }
+    if (lctx) {
+      lctx.newFace(f);
+    }
 
-  get hasCustomNormals() {
-    let ret = this.loops.customData.hasLayer(NormalLayerElem);
-    return ret || this.verts.customData.hasLayer(NormalLayerElem);
-    return ret;
+    return f;
   }
 
   _recalcNormals_intern() {
@@ -743,8 +891,8 @@ export class Mesh extends SceneObjectData {
 
     let ltris = this.loopTris;
 
-    for (let i=0; i<ltris.length; i += 3) {
-      let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
+    for (let i = 0; i < ltris.length; i += 3) {
+      let l1 = ltris[i], l2 = ltris[i + 1], l3 = ltris[i + 2];
 
       let n = math.normal_tri(l1.v, l2.v, l3.v);
       let w = math.tri_area(l1.v, l2.v, l3.v);
@@ -862,7 +1010,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  killVertex(v, _nocheck = false) {
+  killVertex(v, _nocheck = false, lctx) {
     if (!_nocheck) {
       if (!(this.features & MeshFeatures.KILL_VERT))
         throw new MeshFeatureError("killVertex not supported");
@@ -874,12 +1022,23 @@ export class Mesh extends SceneObjectData {
     }
 
     let _i = 0;
-    while (v.edges.length > 0 && _i++ < 10000) {
-      this.killEdge(v.edges[0]);
+
+    if (EDGE_LINKED_LISTS) {
+      while (v.e !== undefined && _i++ < 10000) {
+        this.killEdge(v.e, lctx);
+      }
+    } else {
+      while (v.edges.length > 0 && _i++ < 10000) {
+        this.killEdge(v.edges[0], lctx);
+      }
     }
 
     if (_i >= 10000) {
       console.trace("mesh integrity warning, infinite loop detected in killVertex");
+    }
+
+    if (lctx) {
+      lctx.killVertex(v);
     }
 
     delete this.eidmap[v.eid];
@@ -887,18 +1046,22 @@ export class Mesh extends SceneObjectData {
     v.eid = -1;
   }
 
-  killEdge(e) {
+  killEdge(e, lctx) {
     if (!(this.features & MeshFeatures.KILL_EDGE))
       throw new MeshFeatureError("killEdge not supported");
 
-    if (e.eid == -1) {
+    if (e.eid === -1) {
       console.trace("Warning: edge", e.eid, "already freed", e);
       return;
     }
 
     let _i = 0;
     while (e.l !== undefined && _i++ < 10000) {
-      this.killFace(e.l.f);
+      this.killFace(e.l.f, lctx);
+    }
+
+    if (lctx) {
+      lctx.killEdge(e);
     }
 
     delete this.eidmap[e.eid];
@@ -906,8 +1069,8 @@ export class Mesh extends SceneObjectData {
 
     e.eid = -1;
 
-    e.v1.edges.remove(e);
-    e.v2.edges.remove(e);
+    this._diskRemove(e.v1, e);
+    this._diskRemove(e.v2, e);
 
     if (e.h1) {
       this.handles.remove(e.h1);
@@ -920,13 +1083,17 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  killFace(f) {
+  killFace(f, lctx) {
     if (!(this.features & MeshFeatures.KILL_FACE))
       throw new MeshFeatureError("killEdge not supported");
 
-    if (f.eid == -1) {
+    if (f.eid === -1) {
       console.trace("Warning: face", f.eid, "already freed", f);
       return;
+    }
+
+    if (lctx) {
+      lctx.killFace(f);
     }
 
     for (let list of f.lists) {
@@ -939,6 +1106,23 @@ export class Mesh extends SceneObjectData {
     this.faces.remove(f);
 
     f.eid = -1;
+  }
+
+  killElem(elem, lctx = undefined) {
+    switch (elem.type) {
+      case MeshTypes.VERTEX:
+        this.killVertex(elem, undefined, lctx);
+        break;
+      case MeshTypes.EDGE:
+        this.killEdge(elem, lctx);
+        break;
+      case MeshTypes.FACE:
+        this.killFace(elem, lctx);
+        break;
+      default:
+        console.log(elem);
+        throw new MeshError("invalid element " + elem);
+    }
   }
 
   setActive(e) {
@@ -956,7 +1140,7 @@ export class Mesh extends SceneObjectData {
   }
 
   /** flushes MeshFlags.UPDATE from faces/edges to vertices*/
-  flushUpdateFlags(typemask=MeshFlags.EDGE|MeshFlags.FACE) {
+  flushUpdateFlags(typemask = MeshFlags.EDGE | MeshFlags.FACE) {
     if (typemask & MeshTypes.EDGE) {
       for (let e of this.edges) {
         if (!(e.flag & MeshFlags.UPDATE)) {
@@ -1088,20 +1272,24 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  _splitEdgeNoFace(e, t = 0.5) {
+  _splitEdgeNoFace(e, t = 0.5, lctx) {
     let v1 = e.v1, v2 = e.v2;
 
     t = t === undefined ? 0.5 : t;
+
+    //pretend we're killing e
+    if (lctx) {
+      lctx.killEdge(e);
+    }
 
     var nv = this.makeVertex(e.v1).interp(e.v2, t);
     var ne = this.makeEdge(nv, e.v2);
 
     this.copyElemData(ne, e);
 
-    e.v2.edges.remove(e);
-
+    this._diskRemove(e.v2, e);
     e.v2 = nv;
-    nv.edges.push(e);
+    this._diskInsert(nv, e);
 
     if (e.flag & MeshFlags.SELECT) {
       this.edges.setSelect(ne, true);
@@ -1124,12 +1312,21 @@ export class Mesh extends SceneObjectData {
 
     this.verts.customDataInterp(nv, _cdtemp2, _cdwtemp2);
 
+    if (lctx) {
+      lctx.newVertex(nv);
+      lctx.newEdge(e);
+      lctx.newEdge(ne);
+    }
+
     return [ne, nv];
   }
 
-  collapseEdge(e) {
+  //lctx is a LogContext instance, or undefined
+  collapseEdge(e, lctx) {
     if (!e.l) {
-      this.killEdge(e);
+      if (e.eid >= 0) {
+        this.killEdge(e, lctx);
+      }
       return;
     }
 
@@ -1216,6 +1413,12 @@ export class Mesh extends SceneObjectData {
             }
           }
         }
+
+        //prevent callbacks in log ctx, since face is in invalid state
+        if (lctx) {
+          lctx.killFaces.add(f);
+        }
+
         delete this.eidmap[f.eid];
         this.faces.remove(f);
         f.eid = -1;
@@ -1226,7 +1429,8 @@ export class Mesh extends SceneObjectData {
 
     for (let e2 of temp3) {
       e2.l = undefined;
-      this.killEdge(e2);
+
+      this.killEdge(e2, lctx);
     }
 
     for (let f of temp2) {
@@ -1253,13 +1457,22 @@ export class Mesh extends SceneObjectData {
         l2.list._recount();
         //console.log("LEN", l2.list.length);
 
-        l2.e = this.makeEdge(l2.v, l2.next.v, true);
+        l2.e = this.getEdge(l2.v, l2.next.v);
+
+        if (!l2.e) {
+          l2.e = this.makeEdge(l2.v, l2.next.v);
+
+          if (lctx) {
+            lctx.newEdge(l2.e);
+          }
+        }
+
         this._radialInsert(l2.e, l2);
       }
 
     }
 
-    this.killVertex(v2);
+    this.killVertex(v2, undefined, lctx);
   }
 
   reverseWinding(f) {
@@ -1288,9 +1501,12 @@ export class Mesh extends SceneObjectData {
         this._radialInsert(l.e, l);
       }
     }
+
+    f.no.negate();
+    f.flag |= MeshFlags.UPDATE;
   }
 
-  makeHole(f, vs) {
+  makeHole(f, vs, customLoopEids = undefined) {
     throw new Error("makeHole: implement me!");
     console.error("makeHole: IMPLEMENT ME!");
 
@@ -1322,7 +1538,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  splitFaceAtVerts(f, v1, v2) {
+  splitFaceAtVerts(f, v1, v2, lctx) {
     for (let list of f.lists) {
       let l1, l2;
 
@@ -1338,14 +1554,14 @@ export class Mesh extends SceneObjectData {
       }
 
       if (l1 && l2) {
-        return this.splitFace(f, l1, l2);
+        return this.splitFace(f, l1, l2, lctx);
       }
     }
 
-    console.warn("Failed to split face", f, v1, v2);
+    console.error("Failed to split face", f, v1, v2);
   }
 
-  splitFace(f, l1, l2) {
+  splitFace(f, l1, l2, lctx) {
     //TODO: handle holes
 
     if (l1.eid < 0) {
@@ -1358,10 +1574,15 @@ export class Mesh extends SceneObjectData {
       throw new MeshError("splitFace: f is dead");
     }
 
-
     if (l1.f !== f || l2.f !== f || l1 === l2 || l2 === l1.next || l2 === l1.prev) {
       console.log(l2 === l1.next, l2 === l1.prev, l1.f !== f, l2.f !== f, l1 === l2);
       throw new MeshError("splitFace: l1 and l2 are bad");
+    }
+
+    if (l1.v === l2.v) {
+      console.log(l1, l2);
+      throw new MeshError("splitFace: l1.v and l2.v were the same");
+      return undefined;
     }
 
     let l = l1;
@@ -1419,6 +1640,10 @@ export class Mesh extends SceneObjectData {
     //l1 goes to new face, l2 stays behind
 
     let e = this.makeEdge(l1.v, l2.v);
+
+    if (lctx) {
+      lctx.newEdge(e);
+    }
 
     //this._radialRemove(l1.e, l1);
     //this._radialRemove(l2.e, l2);
@@ -1490,14 +1715,57 @@ export class Mesh extends SceneObjectData {
       list._recount();
     }
 
+    if (lctx) {
+      lctx.newFace(f2);
+    }
+
     return el2;
   }
 
-  splitEdge(e, t = 0.5) {
+  __splitEdgeSimple(e, t = 0.5) {
+    let nv = this.makeVertex(e.v1);
+    nv.interp(e.v2, t);
+
+    let e1 = this.makeEdge(e.v1, nv);
+    let e2 = this.makeEdge(nv, e.v2);
+
+    for (let l of e.loops) {
+      let vs = [];
+      let ls = [];
+
+      for (let l2 of l.f.lists[0]) {
+        vs.push(l2.v);
+        ls.push(l2);
+
+        if (l2.e === e) {
+          vs.push(nv);
+          ls.push(l2);
+        }
+      }
+
+      this.makeFace(vs);
+    }
+
+    this.killEdge(e);
+
+    return [e2, nv];
+  }
+
+  splitEdge(e, t = 0.5, lctx) {
     if (!(this.features & MeshFeatures.SPLIT_EDGE))
       throw new MeshFeatureError("splitEdge not supported");
 
-    let ret = this._splitEdgeNoFace(e, t);
+    if (e.eid < 0) {
+      throw new MeshError("tried to split deleted edge");
+    }
+
+    if (lctx) {
+      for (let f of e.faces) {
+        lctx.killFace(f);
+      }
+    }
+
+    let ret = this._splitEdgeNoFace(e, t, lctx);
 
     if (e.l === undefined) {
       return ret;
@@ -1509,7 +1777,6 @@ export class Mesh extends SceneObjectData {
     let l = e.l;
 
     let _i = 0;
-
     do {
       if (_i > 1000) {
         console.warn("infinite loop detected in splitEdge");
@@ -1523,6 +1790,10 @@ export class Mesh extends SceneObjectData {
 
     split_temp.used = _i;
 
+    for (let i = 0; i < split_temp.used; i++) {
+      let l = split_temp[i];
+      this._radialRemove(l.e, l);
+    }
 
     for (let i = 0; i < split_temp.used; i++) {
       let l = split_temp[i];
@@ -1539,6 +1810,7 @@ export class Mesh extends SceneObjectData {
         l2.e = ne;
 
         this._radialInsert(ne, l2);
+        this._radialInsert(e, l);
 
         l.next.prev = l2;
         l2.next = l.next;
@@ -1548,12 +1820,10 @@ export class Mesh extends SceneObjectData {
         l.v = v2;
         l.e = ne;
 
-        this._radialRemove(e, l);
-        this._radialInsert(ne, l);
-
         l2.v = nv;
         l2.e = e;
 
+        this._radialInsert(ne, l);
         this._radialInsert(e, l2);
 
         l.next.prev = l2;
@@ -1573,6 +1843,16 @@ export class Mesh extends SceneObjectData {
 
       if (l && l.list) {
         l.list._recount();
+      }
+    }
+
+    if (lctx) {
+      for (let f of e.faces) {
+        lctx.newFace(f);
+      }
+
+      for (let f of ne.faces) {
+        lctx.newFace(f);
       }
     }
 
@@ -1600,88 +1880,522 @@ export class Mesh extends SceneObjectData {
     l.radial_prev.radial_next = l.radial_next;
   }
 
-  //XXX untested!
-  dissolveVertex(v) {
+  dissolveVertex(v, lctx) {
+    const dolog = false;
+
     if (!(this.features & MeshFeatures.JOIN_EDGE))
       throw new MeshFeatureError("dissolveVertex not supported");
 
     //handle case of two-valence vert with no surrounding faces
-    if (v.edges.length === 2 && v.edges[0].l === undefined && v.edges[1].l === undefined) {
-      let v1 = v.edges[0].otherVertex(v);
-      let v2 = v.edges[1].otherVertex(v);
-
-      this.ensureEdge(v1, v2);
-      return;
-    }
-
-    let faces = new util.set();
-
-    if (v.edges.length === 0) {
-      this.killVertex(v, true);
-      return;
-    }
-
-    for (let f of v.faces) {
-      faces.add(f);
-    }
-
-    let vset = new set();
-    let verts = [];
-
-    //scan in both directions
-    for (let step = 0; step < 2; step++) {
-      let startv = v, _i = 0;
-      let verts2 = step ? [] : verts;
-
-      let v1 = v.edges[0].otherVertex(v);
-      let l = v.edges[0].l;
-      let e;
-
-      if (l.v === v1) {
-        e = l.next.e;
+    let e1, e2;
+    for (let e of v.edges) {
+      if (!e1) {
+        e1 = e;
       } else {
-        e = l.prev.e;
+        e2 = e;
       }
+    }
 
-      if (step) {
-        v = e.otherVertex(v);
-      }
+    if (v.valence === 2 && !e1.l && !e2.l) {
+      let v1 = e1.otherVertex(v);
+      let v2 = e2.otherVertex(v);
 
-      do {
-        verts2.push(v);
-        v = e2.otherVertex(v);
-        let ok = false;
 
-        for (let e2 of v1.edges) {
-          if (e === e2)
-            break;
+      let e = this.ensureEdge(v1, v2);
+      this.copyElemData(e, e1);
 
-          for (let f of e2.faces) {
-            if (fset.has(f) && !e2.has(v)) {
-              ok = true;
-              e = e2;
-              break;
+      this.killVertex(v, undefined, lctx);
+      return;
+    }
+
+    let flag1 = MeshFlags.TEMP4;
+    let flag2 = MeshFlags.TEMP5;
+    let flag3 = MeshFlags.TEMP6;
+
+    let allflags = flag1 | flag2 | flag3;
+
+    for (let e of v.edges) {
+      e.flag &= ~allflags;
+
+      for (let l of e.loops) {
+        l.f.flag &= ~allflags;
+
+        for (let l2 of l.f.loops) {
+          l2.v.flag &= ~allflags;
+          l2.e.flag &= ~allflags;
+          l2.flag &= ~allflags;
+
+          for (let e2 of l2.v.edges) {
+            e2.flag &= ~allflags;
+
+            for (let l3 of e2.loops) {
+              l3.flag &= ~allflags;
+              l3.v.flag &= ~allflags;
+              l3.f.flag &= ~allflags;
             }
           }
         }
-
-        if (!ok) {
-          break;
-        }
-
-        if (_i++ > 10000) {
-          console.warn("infinite loop detected in dissolve vert");
-          break;
-        }
-      } while (v1 !== startv);
-
-      if (step) {
-        verts2.reverse();
-        verts = verts2.concat(verts);
       }
     }
 
-    return this.makeFace(verts);
+    let startl = undefined;
+    let boundary = 0;
+
+    if (boundary) {
+      console.warn("Cannot dissolve boundary vertex");
+      return;
+    }
+
+    v.flag |= flag3;
+
+    let count = 0;
+    //for (let f of v.faces) {
+    for (let e1 of v.edges) {
+      for (let l1 of e1.loops) {
+        let f = l1.f;
+
+        for (let l of f.loops) {
+          if (!startl && l.e.v1 !== v && l.e.v2 !== v) {
+            startl = l;
+          }
+
+          l.flag |= flag1;
+          l.f.flag |= flag1;
+
+          if (l.e.v1 !== v && l.e.v2 !== v) {
+            l.e.flag |= flag1;
+            l.e.flag &= ~flag2;
+            //this.setSelect(l.e, true);
+          } else {
+            l.e.flag &= ~flag1;
+            //this.setSelect(l.e, false);
+          }
+
+          if (!(l.v.flag & flag3)) {
+            l.v.flag |= flag3;
+            count++;
+          }
+        }
+      }
+    }
+
+    //return;
+    if (!startl) {
+      this.killVertex(v, undefined, lctx);
+      return;
+    }
+
+    if (dolog) console.log("startl", startl);
+
+    if (dolog) console.log("veid", v.eid, "count:", count, startl);
+    let ls = getArrayTemp(count);
+
+
+    let vi = 0;
+    let l = startl;
+
+    startl.e.flag |= flag2;
+
+    for (let e of v.edges) {
+      e.flag |= flag2;
+    }
+
+    for (let i = 0; i < count*2; i++) {
+      ls[vi++] = l;
+
+      l.v.flag |= flag2;
+
+      let nexte = undefined;
+
+      for (let e of l.v.edges) {
+        if (dolog) console.log("  " + l.e.eid, e.eid, "  ", !!e.l, e.flag & flag1, e.flag & flag2);
+
+        if (!e.l) { //e === l.e || !e.l || e.v1 === v || e.v2 === v) {
+          continue;
+        }
+
+        if (!(e.flag & flag1) || (e.flag & flag2)) {
+          continue;
+        }
+
+        nexte = e;
+        break;
+      }
+
+      if (dolog) console.log("nexte:", nexte ? nexte.eid : "undefined");
+
+      if (!nexte) {
+        break;
+      }
+
+      nexte.flag |= flag2;
+
+      if (nexte.l.v === l.v) {
+        l = nexte.l.next;
+      } else {
+        l = nexte.l;
+      }
+
+      if (nexte === startl.e) {
+        if (l.v !== startl.v) {// && !(l.v.flag & flag2)) {
+          ls[vi++] = l;
+          l.v.flag |= flag2;
+        }
+
+        break;
+      }
+    }
+
+    if (dolog) console.log("vi", vi, "count", count);
+
+    ls.length = vi;
+    for (let l of ls) {
+      l.v.flag &= ~(flag1 | flag2);
+    }
+
+    let ls2 = getArrayTemp(ls.length);
+    let li = 0;
+
+    for (let l of ls) {
+      if (!(l.v.flag & flag1)) {
+        ls2[li++] = l;
+      }
+
+      l.v.flag |= flag1;
+    }
+
+    ls2.length = li;
+    let vs = getArrayTemp(li);
+
+    if (dolog) console.log("vs", vs.length);
+
+    vi = 0;
+
+    for (let l of ls2) {
+      vs[vi++] = l.v;
+    }
+
+    let f;
+
+    if (vs.length > 2) {
+      //let e = this.ensureEdge(vs[0], vs[1], lctx);
+      //if (e.l && e.l.v === vs[0]) {
+      //  vs.reverse();
+      //}
+
+      f = this.makeFace(vs, undefined, undefined, lctx);
+      li = 0;
+
+      for (let l of f.loops) {
+        if (li === 0) {
+          this.copyElemData(f, ls[li].f);
+        }
+
+        this.copyElemData(l, ls[li]);
+        li++;
+      }
+    }
+
+    for (let i = 0; i < vs.length; i++) {
+      vs[i] = undefined;
+    }
+    //prevent reference leaks
+    for (let i = 0; i < ls.length; i++) {
+      ls[i] = undefined;
+    }
+    for (let i = 0; i < ls2.length; i++) {
+      ls2[i] = undefined;
+    }
+
+    this.killVertex(v, undefined, lctx);
+
+    if (f) {
+      //check winding
+      let totbad = 0;
+      for (let l of f.loops) {
+        totbad += l.radial_next.v === l.v ? 1 : -1;
+      }
+
+      if (totbad > 0) {
+        this.reverseWinding(f);
+      }
+    }
+  }
+
+  dissolveEdge(e, lctx=undefined) {
+    if (!e.l || e.l === e.l.radial_next) {
+      this.killEdge(e, undefined, lctx);
+      return;
+    }
+
+    let l1 = e.l;
+    let l2 = e.l.radial_next;
+
+    if (l2.radial_next !== l1) {
+      //non-manifold face
+      console.warn("Non-manifold face!", l1.e, l1.f, l2.f);
+      return undefined;
+    }
+
+    if (l1.f === l2.f) {
+      console.warn("Intruding edge!");
+
+      let f = l1.f;
+
+      for (let list of f.lists) {
+        for (let l of list) {
+          this._radialRemove(l.e, l);
+          l.list = list;
+        }
+      }
+
+      if (l1.list.l === l1) {
+        l1.list.l = l1.list.l.next;
+      }
+      if (l2.list.l === l2) {
+        l2.list.l = l2.list.l.next;
+      }
+
+      l1.list.length--;
+      l2.list.length--;
+
+      for (let i=0; i<f.lists.length; i++) {
+        let list = f.lists[i];
+        if (list.length < 3) {
+          f.lists.remove(list);
+          i--;
+        }
+      }
+
+      if (f.lists.length === 0) {
+        this.killFace(f, lctx);
+        return undefined;
+      }
+
+      if (l1.list.l !== l2.list.l) {
+        console.warn("Tried to join holes in wrong way");
+        return undefined;
+      }
+
+      l1.prev.next = l2.next;
+      l1.next.prev = l2.prev;
+
+      l2.next.prev = l1.prev;
+      l2.prev.next = l1.next;
+
+      if (l1.eid >= 0) {
+        this._killLoop(l1);
+      }
+      if (l2.eid >= 0) {
+        this._killLoop(l2);
+      }
+
+      //filter out any bad loops
+      for (let list of f.lists) {
+        let l = list.l;
+        let _i = 0;
+
+        do {
+          if (_i++ > 100000) {
+            console.warn("infinite loop error");
+            break;
+          }
+
+          if (l.eid < 0 || l.next.v === l.v) {
+            list.length--;
+
+            l.prev.next = l.next;
+            l.next.prev = l.prev;
+
+            if (l === list.l && l.next === l) {
+              list.length = 0;
+              list.l = undefined;
+            } else if (l === list.l) {
+              list.l = l.next;
+            }
+          }
+
+          l = l.next;
+        } while (l !== list.l);
+      }
+
+      for (let i=0; i<f.lists.length; i++) {
+        if (f.lists[i].length < 3) {
+          f.lists.remove(f.lists[i]);
+          i--;
+        }
+      }
+
+      if (f.lists.length === 0) {
+        this.killFace(f, lctx);
+        return undefined;
+      }
+
+      for (let l of f.loops) {
+        if (l === l.next) {
+          console.warn("Dissolve error", l);
+
+          for (let list of l.f.lists) {
+            if (list !== l.list) {
+              for (let l2 of list) {
+                if (l2.eid >= 0) {
+                  this._killLoop(l2);
+                }
+              }
+            }
+          }
+
+          if (l.eid >= 0) {
+            this._killLoop(l);
+          }
+          if (f.eid >= 0) {
+            this.faces.remove(f);
+            f.eid = -1;
+          }
+
+          if (lctx) {
+            lctx.killFace(f);
+          }
+
+          return undefined;
+        }
+      }
+
+      for (let l of f.loops) {
+        l.e = this.ensureEdge(l.v, l.next.v, lctx);
+        this._radialInsert(l.e, l);
+      }
+
+      this.killEdge(e, lctx);
+
+      return;
+    }
+
+    if (l1.v === l2.v) {
+      this.reverseWinding(l2.f);
+      l1 = e.l;
+      l2 = e.l.radial_next;
+    }
+
+    let f1 = l1.f;
+    let f2 = l2.f;
+
+    for (let l of f1.loops) {
+      this._radialRemove(l.e, l);
+    }
+    for (let l of f2.loops) {
+      this._radialRemove(l.e, l);
+    }
+
+    for (let list of f1.lists) {
+      if (list.l === l1) {
+        list.l = list.l.next;
+      }
+    }
+
+    //f1 is kept
+    for (let list of f2.lists) {
+      if (list.l === l2) {
+        list.l = l2.next;
+      }
+      for (let l of list) {
+        l.f = f1;
+      }
+
+      if (list === f2.lists[0]) {
+        for (let l of list) {
+          l.list = f1.lists[0];
+        }
+
+        continue;
+      } else {
+        f1.lists.push(list);
+      }
+    }
+
+    /*
+    | |             ^
+    | v             |
+    | ------l2------>
+    |=================
+    | <-----l1-------
+    | |             ^
+    | v             |
+
+
+     */
+
+    l1.prev.next = l2.next;
+    l1.next.prev = l2.prev;
+
+    l2.next.prev = l1.prev;
+    l2.prev.next = l1.next;
+
+    this._killLoop(l1);
+    this._killLoop(l2);
+
+    delete this.eidmap[f2.eid];
+    this.faces.remove(f2);
+
+    if (lctx) {
+      lctx.killFace(f2);
+    }
+
+    f2.eid = -1;
+
+    //filter out any bad loops
+    for (let list of f1.lists) {
+      let l = list.l;
+      let _i = 0;
+
+      do {
+        if (l.eid < 0 || l.next.v === l.v) {
+          list.length--;
+
+          l.prev.next = l.next;
+          l.next.prev = l.prev;
+
+          if (l === list.l && l.next === l) {
+            list.length = 0;
+            list.l = undefined;
+          } else if (l === list.l) {
+            list.l = l.next;
+          }
+        }
+
+        if (_i++ > 100000) {
+          console.warn("infinite loop error");
+          break;
+        }
+      } while (l !== list.l);
+    }
+
+    for (let i=0; i<f1.lists.length; i++) {
+      let list = f1.lists[i];
+      list._recount();
+
+      if (list.length < 3) {
+        f1.lists.remove(list);
+        i--;
+      }
+    }
+
+    if (f1.lists.length === 0) {
+      this.killFace(f1, lctx);
+      return undefined;
+    }
+
+    for (let l of f1.loops) {
+      if (l.next.v === l.v) {
+        console.log("Eek", l);
+      }
+      l.e = this.ensureEdge(l.v, l.next.v, lctx);
+      this._radialInsert(l.e, l);
+    }
+
+    this.killEdge(e, lctx);
+
+    return f1;
   }
 
   setSelect(e, state) {
@@ -1750,6 +2464,13 @@ export class Mesh extends SceneObjectData {
     let lstart = this._ltrimap_start;
     let llen = this._ltrimap_len;
 
+    let visitflag = MeshFlags.TEMP2;
+
+    for (let f of this.faces) {
+      f.area = 0;
+      f.flag &= ~visitflag;
+    }
+
     for (let f of this.faces) {
       let first = f.lists[0].l;
       let l = f.lists[0].l.next;
@@ -1771,6 +2492,27 @@ export class Mesh extends SceneObjectData {
       } while (l.next !== f.lists[0].l);
 
       llen[f.eid] = _i;
+    }
+
+    for (let i=0; i<ltris.length; i += 3) {
+      let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
+      let f = l1.f;
+
+      f.flag |= visitflag;
+      f.area += math.tri_area(l1.v, l2.v, l3.v);
+    }
+
+    for (let f of this.faces) {
+      if (f.area === 0) {
+        //for the case of tesselation failure,
+        //ensure we don't have zero area.  Otherwise
+        //f really does have zero area.
+
+        if (!(f.flag & visitflag)) {
+          f.area = 1.0;
+          console.warn("Tesselation failure for face", f.eid, f);
+        }
+      }
     }
 
     let haveGrid = GridBase.meshGridOffset(this) >= 0;
@@ -1812,9 +2554,9 @@ export class Mesh extends SceneObjectData {
         len = e.length;
       }
 
-      let steps = Math.max(Math.floor(len / 5), 8);
-      let t = 0, dt = 1.0 / (steps - 1);
-      let s = 0, ds = e.length / (steps - 1);
+      let steps = Math.max(Math.floor(len/5), 8);
+      let t = 0, dt = 1.0/(steps - 1);
+      let s = 0, ds = e.length/(steps - 1);
       let lastco = undefined;
       let black = [0, 0, 0, 1];
       let color1 = new Vector4();
@@ -1834,7 +2576,7 @@ export class Mesh extends SceneObjectData {
           let n = e.arcNormal(s);
 
           let co2 = new Vector3(co);
-          co2.addFac(n, e.length * 0.05);
+          co2.addFac(n, e.length*0.05);
 
           line = sm.line(co, co2);
           if (layers & LayerTypes.COLOR) {
@@ -1889,7 +2631,6 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-
   genRender_full(gl, combinedWireframe) {
     try {
       return this._genRender_full(gl, combinedWireframe);
@@ -1915,7 +2656,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  getUVWrangler(check=true, checkUvs=false) {
+  getUVWrangler(check = true, checkUvs = false) {
     let update = !this.uvWrangler || (this.recalc & RecalcFlags.UVWRANGLER);
 
     if (!check && this.uvWrangler) {
@@ -1974,7 +2715,7 @@ export class Mesh extends SceneObjectData {
     return this;
   }
 
-  getBVH(auto_update = true, useGrids = true) {
+  getBVH(auto_update = true, useGrids = true, force = false) {
     let key = this.verts.length + ":" + this.faces.length + ":" + this.edges.length + ":" + this.loops.length;
     key += ":" + this.eidgen._cur + ":" + useGrids;
 
@@ -1982,17 +2723,28 @@ export class Mesh extends SceneObjectData {
       key += ":" + GridBase.meshGridOffset(this);
     }
 
-    if (!this.bvh || key !== this._last_bvh_key) {
+    let bkey = this.bvhSettings.calcUpdateKey();
+
+    key += ":" + bkey;
+
+    if (force || !this.bvh || key !== this._last_bvh_key) {
       this._last_bvh_key = key;
 
-      if (auto_update || !this.bvh) {
+      if (bkey !== this.bvhSettings._last_key || auto_update || !this.bvh || force) {
+        this.bvhSettings._last_key = this.bvhSettings.calcUpdateKey();
+
         console.error("BVH rebuild!");
 
-        this.bvh = BVH.create(this, true, useGrids);
-        if (useGrids) {
-          this.uiTriangleCount = this.bvh.root.tottri;
+        if (this.bvh) {
+          this.bvh.destroy(this);
         }
+
+        this.bvh = BVH.create(this, true, useGrids);
       }
+    }
+
+    if (1 || useGrids) {
+      this.uiTriangleCount = this.bvh.tottri;
     }
 
     return this.bvh;
@@ -2026,13 +2778,15 @@ export class Mesh extends SceneObjectData {
       }
     }
 
+    let white = [1, 1, 1, 1];
+
     if (combinedWireframe) {
       for (let e of this.edges) {
         let line = sm.line(e.v1, e.v2);
 
         line.ids(e.eid, e.eid);
         line.uvs([0, 0], [1, 0]);
-        line.colors(e.v1.color, e.v2.color);
+        line.colors(white, white);
         line.normals(e.v1.no, e.v2.no);
       }
     }
@@ -2040,9 +2794,31 @@ export class Mesh extends SceneObjectData {
     return sm;
   }
 
+  stripTempLayers(saveState = true) {
+    let state = {}
+
+    for (let k in this.elists) {
+      let elist = this.elists[k];
+
+      state[k] = elist.stripTempLayers(saveState);
+    }
+
+    return state;
+  }
+
+  unstripTempLayers(state) {
+    for (let k in state) {
+      let elist = this.elists[k];
+
+      elist.unstripTempLayers(state[k]);
+    }
+
+    return this;
+  }
+
   _genRender_full(gl, combinedWireframe = false) {
     this.recalc &= ~RecalcFlags.RENDER;
-    this.updateGen = ~~(Math.random() * 1024 * 1024 * 1024);
+    this.updateGen = ~~(Math.random()*1024*1024*1024);
 
     //if (this.recalc & RecalcFlags.ELEMENTS) {
     this._genRenderElements(gl, {});
@@ -2069,7 +2845,7 @@ export class Mesh extends SceneObjectData {
 
     for (let v of this.verts) {
       for (let i = 0; i < 3; i++) {
-        v[i] = ((v[i] - min[i]) / (max[i] - min[i]) - 0.5) * 2.0;
+        v[i] = ((v[i] - min[i])/(max[i] - min[i]) - 0.5)*2.0;
       }
     }
   }
@@ -2141,7 +2917,7 @@ export class Mesh extends SceneObjectData {
       }
     }
 
-    this.partialUpdateGen = ~~(Math.random() * 1024 * 1024 * 1024);
+    this.partialUpdateGen = ~~(Math.random()*1024*1024*1024);
 
     return sm;
   }
@@ -2192,7 +2968,6 @@ export class Mesh extends SceneObjectData {
     this.draw(view3d, gl, uniforms, program, object);
   }
 
-
   updateMirrorTag(v, threshold = 0.0001) {
     let sym = this.symFlag;
 
@@ -2203,12 +2978,12 @@ export class Mesh extends SceneObjectData {
     }
 
     for (let i = 0; i < 3; i++) {
-      if (!(sym & (1 << i))) {
+      if (!(sym & (1<<i))) {
         continue;
       }
 
       if (Math.abs(v[i]) < threshold) {
-        v.flag |= MeshFlags.MIRROREDX << i;
+        v.flag |= MeshFlags.MIRROREDX<<i;
 
         for (let e of v.edges) {
           if (!e.l || e.l.radial_next === e.l) {
@@ -2243,7 +3018,7 @@ export class Mesh extends SceneObjectData {
 
   _genRenderElements(gl, uniforms) {
     genRenderMesh(gl, this, uniforms);
-    this.updateGen = ~~(Math.random() * 1024 * 1024 * 1024);
+    this.updateGen = ~~(Math.random()*1024*1024*1024);
   }
 
   clearUpdateFlags(typemask) {
@@ -2264,6 +3039,54 @@ export class Mesh extends SceneObjectData {
     for (let e of this.edges) {
       e.updateHandles();
     }
+  }
+
+  compactEids() {
+    let oldmax = 0;
+
+    for (let k in this.elists) {
+      let elist = this.elists[k];
+      elist.selected.clear();
+      elist.local_eidmap = {};
+      elist.idxmap = {}
+
+      for (let e of elist) {
+        oldmax = Math.max(oldmax, e.eid);
+      }
+    }
+
+    let eidmap = this.eidmap = {};
+    let eidgen = this.eidgen = this._makeEIDGen(new util.IDGen());
+
+    for (let k in this.elists) {
+      let elist = this.elists[k];
+      let eidmap2 = elist.local_eidmap = {};
+      let i = 0;
+
+      for (let e of elist) {
+        e.eid = eidgen.next();
+
+        elist.idxmap[e.eid] = i++;
+        eidmap[e.eid] = e;
+        eidmap2[e.eid] = e;
+      }
+    }
+
+    for (let k in this.elists) {
+      let elist = this.elists[k];
+
+      for (let e of elist) {
+        if (e.flag & MeshFlags.SELECT) {
+          elist.selected.add(e);
+        }
+      }
+    }
+
+    console.log(oldmax, this.eidgen._cur);
+
+    this.regenTesellation();
+    this.regenRender();
+    window.redraw_viewport(true);
   }
 
   drawElements(view3d, gl, selmask, uniforms, program, object, drawTransFaces = false) {
@@ -2301,16 +3124,6 @@ export class Mesh extends SceneObjectData {
     return super.swapDataBlockContents(...arguments);
   }
 
-  get elements() {
-    var this2 = this;
-
-    return (function* () {
-      for (var k in this2.eidmap) {
-        yield this2.eidmap[k];
-      }
-    })()
-  }
-
   clearCustomData() {
     for (let k in this.elists) {
       let elist = this.elists[k];
@@ -2328,7 +3141,7 @@ export class Mesh extends SceneObjectData {
   }
 
   regenTesellation() {
-    this.updateGen = ~~(Math.random() * 1024 * 1024 * 1024);
+    this.updateGen = ~~(Math.random()*1024*1024*1024);
     this._last_elem_update_key = ""; //clear partial redraw
     this._last_bvh_key = ""; //flag bvh update
     this._last_wr_key = "";
@@ -2365,6 +3178,11 @@ export class Mesh extends SceneObjectData {
     return this;
   }
 
+  regenAll() {
+    this.recalc |= RecalcFlags.ALL;
+    return this;
+  }
+
   regenPartial() {
     this.recalc |= RecalcFlags.PARTIAL | RecalcFlags.ELEMENTS;
     return this;
@@ -2373,6 +3191,16 @@ export class Mesh extends SceneObjectData {
   _getArrays() {
     let ret = [];
     for (let k in this.elists) {
+      //we no longer save this.loops in struct data directly, but we still
+      //have to save customdata layout
+      if (parseInt(k) === MeshTypes.LOOP) {
+        let template = new ElementList(MeshTypes.LOOP);
+        template.customData = this.loops.customData;
+
+        ret.push(template);
+        continue;
+      }
+
       ret.push(this.elists[k]);
     }
 
@@ -2408,7 +3236,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  copy(addLibUsers = false, clearCustomData=false) {
+  copy(addLibUsers = false, clearCustomData = false) {
     let ret = new this.constructor();
 
     ret.materials = [];
@@ -2484,14 +3312,15 @@ export class Mesh extends SceneObjectData {
       e2.index = e.index;
 
       eidmap[e2.eid] = e2;
+
       ret.edges.push(e2);
       ret.edges.customData.initElement(e2);
 
       e2.v1 = v1;
       e2.v2 = v2;
 
-      v1.edges.push(e2);
-      v2.edges.push(e2);
+      ret._diskInsert(v1, e2);
+      ret._diskInsert(v2, e2);
 
       if (e.h1) {
         e2.h1 = eidmap[e.h1.eid];
@@ -2610,6 +3439,7 @@ export class Mesh extends SceneObjectData {
       for (let l of ret.loops) {
         l.radial_next = l.radial_prev = undefined
       }
+
       for (let e of ret.edges) {
         e.l = undefined;
       }
@@ -2657,11 +3487,141 @@ export class Mesh extends SceneObjectData {
      */
   }
 
+  fixDuplicateFaces(report = true, lctx) {
+    let flag = MeshFlags.TEMP3;
+
+    let checkFace = (f1, f2) => {
+      for (let l of f1.loops) {
+        l.v.flag &= ~flag;
+        l.e.flag &= ~flag;
+      }
+
+      for (let l of f2.loops) {
+        l.v.flag |= flag;
+        l.e.flag |= flag;
+      }
+
+      let ok = true;
+
+      for (let l of f1.loops) {
+        if (!(l.v.flag & flag) || !(l.e.flag & flag)) {
+          ok = false;
+          break;
+        }
+      }
+
+      return ok;
+    }
+
+    for (let f of this.faces) {
+      outer: for (let l of f.loops) {
+        if (l.radial_next === l) {
+          continue;
+        }
+
+        for (let l2 of l.e.loops) {
+          if (l2 === l) {
+            continue;
+          }
+
+          if (checkFace(f, l2.f)) {
+            if (report) {
+              console.warn("Found a duplicate face", f, l2.f);
+            }
+
+            this.killFace(f, lctx);
+            break outer;
+          }
+        }
+      }
+    }
+  }
+
+  fixLoops(lctx) {
+    this.fixDuplicateFaces(undefined, lctx);
+
+    let flag = MeshFlags.TEMP3;
+
+    for (let l of this.loops) {
+      l.flag &= ~flag;
+    }
+
+    for (let f of this.faces) {
+      for (let l of f.loops) {
+        l.flag |= flag;
+        this._radialRemove(l.e, l);
+      }
+    }
+
+    for (let e of this.edges) {
+      if (e.l) {
+        console.error("Edge still had a loop assigned to it", e, e.l);
+
+        e.l = undefined;
+      }
+    }
+
+    for (let f of this.faces) {
+      for (let l of f.loops) {
+        this._radialInsert(l.e, l);
+      }
+    }
+
+    for (let l of this.loops) {
+      if (!(l.flag & flag)) {
+        console.warn("Orphaned loop detected", l);
+
+        if (l.eid >= 0) {
+          delete this.eidmap[l.eid];
+        }
+
+        this.loops.remove(l);
+      }
+    }
+  }
+
   validateMesh(msg_out = [0]) {
     let fix = false;
 
     let visit = new util.set();
     let totshell = 0;
+
+    for (let f of this.faces) {
+      for (let i = 0; i < f.lists.length; i++) {
+        let list = f.lists[i];
+
+        if (!list.l) {
+          msg_out[0] = "Corrupted face";
+
+          //try to delete face
+          for (let list of f.lists) {
+            if (list.l) {
+              for (let l of list) {
+                this._radialRemove(l.e, l);
+              }
+            }
+          }
+
+          for (let l of this.loops) {
+            if (l.f === f) {
+              delete this.eidmap[l.eid];
+              if (l.eid >= 0) {
+                this.loops.remove(l);
+              }
+              l.eid = -1;
+            }
+          }
+
+          delete this.eidmap[f.eid];
+          if (f.eid >= 0) {
+            this.faces.remove(f);
+          }
+          f.eid = -1;
+
+          return false;
+        }
+      }
+    }
 
     for (let v of this.verts) {
       if (visit.has(v)) {//} || v.edges.length === 0) {
@@ -2692,8 +3652,89 @@ export class Mesh extends SceneObjectData {
       return false;
     }
 
+    function count_edges(v1, v2) {
+      let count = 0;
+
+      for (let e of v1.edges) {
+        if (e.otherVertex(v1) === v2) {
+          count++;
+        }
+      }
+
+      return count;
+    }
+
+    for (let e of this.edges) {
+      let count = count_edges(e.v1, e.v2);
+
+      if (count !== 1) {
+        console.warn("Edge corruption in edge", e.eid, count_edges(e.v1, e.v2));
+        msg_out[0] = "Edge corruption in edge " + e.eid;
+
+        if (count === 0) {
+          return false;
+        }
+
+        console.warn("Fixing...");
+
+        //fix
+        for (let e2 of e.v1.edges) {
+          if (e === e2 || e2.otherVertex(e.v1) !== e.v2) {
+            continue;
+          }
+
+          let _i = 0;
+
+          while (e2.l) {
+            let l = e2.l;
+
+            this._radialRemove(e2, l);
+            this._radialInsert(e, l);
+
+            if (_i++ > 100) {
+              console.error("infinite loop error");
+              break;
+            }
+          }
+
+          e2.l = undefined;
+          this.killEdge(e2);
+        }
+
+        //return true;
+      }
+
+      e.index = 0;
+    }
+
+    for (let f of this.faces) {
+      for (let l of f.loops) {
+        l.e.index++;
+      }
+    }
+
+    for (let e of this.edges) {
+      let count = 0;
+      for (let l of e.loops) {
+        count++;
+      }
+
+      if (count !== e.index) {
+        console.warn("Edge radial list corruption", e.eid, count, e.index);
+        fix = true;
+      }
+    }
+
     for (let f of this.faces) {
       for (let list of f.lists) {
+        if (list.length < 3) {
+          list._recount();
+        }
+
+        if (list.length < 3) {
+          console.warn("1 or 2-vertex face detected", f.eid, f, list);
+        }
+
         for (let l of list) {
           l.list = list;
 
@@ -2761,8 +3802,13 @@ export class Mesh extends SceneObjectData {
 
     let eidmap = this.eidmap;
 
-    for (let vert of this.verts) {
-      eidmap[vert.eid] = vert;
+    for (let v of this.verts) {
+      eidmap[v.eid] = v;
+
+      //old files might have data in vert.edges, clear it
+      if (!EDGE_LINKED_LISTS) {
+        v.edges.length = 0;
+      }
     }
 
     for (let h of this.handles) {
@@ -2775,6 +3821,11 @@ export class Mesh extends SceneObjectData {
       e.v1 = eidmap[e.v1];
       e.v2 = eidmap[e.v2];
 
+      e.l = undefined;
+
+      this._diskInsert(e.v1, e);
+      this._diskInsert(e.v2, e);
+
       e.h1 = eidmap[e.h1];
       e.h2 = eidmap[e.h2];
     }
@@ -2782,43 +3833,50 @@ export class Mesh extends SceneObjectData {
     for (let h of this.handles) {
       h.owner = eidmap[h.owner];
     }
-    for (let l of this.loops) {
-      eidmap[l.eid] = l;
-    }
 
-    for (let e of this.edges) {
-      e.l = eidmap[e.l];
-    }
+    //are we an old file that stored this.loops directly?
+    if (this.loops.length > 0) {
+      for (let l of this.loops) {
+        eidmap[l.eid] = l;
+      }
 
-    for (let face of this.faces) {
-      eidmap[face.eid] = face;
+      for (let l of this.loops) {
+        l.next = eidmap[l.next];
+      }
 
-      for (let list of face.lists) {
-        list.l = eidmap[list.l];
+      for (let f of this.faces) {
+        let prev = undefined;
+
+        for (let list of f.lists) {
+          list.l = eidmap[list.l];
+
+          for (let l of list) {
+            if (prev) {
+              l.prev = prev;
+            }
+            prev = l;
+          }
+
+          list.l.prev = prev;
+        }
+      }
+    } else {
+      for (let f of this.faces) {
+        for (let list of f.lists) {
+          for (let l of list) {
+            eidmap[l.eid] = l;
+            this.loops.push(l);
+          }
+        }
       }
     }
 
+    for (let f of this.faces) {
+      eidmap[f.eid] = f;
+    }
+
     for (let l of this.loops) {
-      l.radial_next = eidmap[l.radial_next];
-      l.radial_prev = eidmap[l.radial_prev];
-
-      l.next = eidmap[l.next];
-      l.prev = eidmap[l.prev];
-
-      l.f = eidmap[l.f];
-      l.e = eidmap[l.e];
       l.v = eidmap[l.v];
-
-      //detected old corrupted files
-      if (l.e.l === undefined) {
-        l.e.l = l;
-      }
-    }
-
-    for (let v of this.verts) {
-      for (let i = 0; i < v.edges.length; i++) {
-        v.edges[i] = eidmap[v.edges[i]];
-      }
     }
 
     for (let e of this.edges) {
@@ -2830,14 +3888,29 @@ export class Mesh extends SceneObjectData {
         list.length = 0;
 
         for (let l of list) {
+          l.e = this.getEdge(l.v, l.next.v);
+
+          if (!l.e) {
+            console.error("Mesh corruption error; fixing...", l);
+            l.e = this.makeEdge(l.v, l.next.v);
+          }
+
           l.list = list;
+          l.f = f;
           list.length++;
+
+        }
+
+        for (let l of list) {
+          l.radial_next = l.radial_prev = l;
+          this._radialInsert(l.e, l);
         }
       }
     }
 
     for (let k in this.elists) {
       this.elists[k].fixCustomData();
+      this.elists[k].stripTempLayers(false);
     }
 
     this.validateMesh();
@@ -2877,16 +3950,6 @@ export class Mesh extends SceneObjectData {
     return ret;
   }
 
-  static blockDefine() {
-    return {
-      typeName: "mesh",
-      defaultName: "Mesh",
-      uiName: "Mesh",
-      flag: 0,
-      icon: -1
-    }
-  }
-
   copyAddUsers() {
     let ret = this.copy();
 
@@ -2902,23 +3965,16 @@ export class Mesh extends SceneObjectData {
 
     return ret;
   }
-
-  static dataDefine() {
-    return {
-      name: "Mesh",
-      selectMask: SelMask.MESH,
-      tools: MeshTools
-    }
-  }
 };
 
 Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
-  _elists   : array(mesh.ElementList) | obj._getArrays();
-  eidgen    : IDGen;
-  flag      : int;
-  symFlag   : int;
-  features  : int;
+  _elists         : array(mesh.ElementList) | obj._getArrays();
+  eidgen          : IDGen;
+  flag            : int;
+  symFlag         : int;
+  features        : int;
   uiTriangleCount : int;
+  bvhSettings     : bvh.BVHSettings;
 }
 `;
 

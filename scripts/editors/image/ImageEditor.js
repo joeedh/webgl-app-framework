@@ -461,6 +461,8 @@ export class UVEditor extends UIBase {
   }
 
   flagRedraw() {
+    window.redraw_viewport(false);
+
     //console.warn("Redraw");
 
     if (this._redraw_req) {

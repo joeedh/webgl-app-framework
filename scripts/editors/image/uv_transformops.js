@@ -40,7 +40,6 @@ export class UVTransformOp extends UVOpBase {
     is_modal : true
   }}
 
-
   static invoke(ctx, args) {
     let tool = super.invoke(ctx, args);
     let scene = ctx.scene;
@@ -264,6 +263,13 @@ export class UVTransformOp extends UVOpBase {
     }
 
     this.tcenter = this.getTransCenter(ctx, this.tdata);
+  }
+
+  calcUndoMem(ctx) {
+    let tot = 0;
+    let ud = this._undo;
+
+    return ud.list.length*8;
   }
 
   undoPre(ctx) {

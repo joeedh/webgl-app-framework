@@ -365,6 +365,22 @@ export class MeshTransType extends TransDataType {
     }
   }
 
+  static calcUndoMem(ctx, undodata) {
+    let ud = undodata;
+
+    function count(obj) {
+      let c = 0;
+
+      for (let k in obj) {
+        c++;
+      }
+
+      return c*3*8;
+    }
+
+    return count(ud.cos) + count(ud.nos) + count(ud.fnos) + count(ud.fcos);
+  }
+
   static undoPre(ctx, elemlist) {
     console.log("bleh");
     let cos = {};
@@ -796,6 +812,17 @@ export class ObjectTransType extends TransDataType {
     mat.decompose(ob.inputs.loc.getValue(), r, s, undefined, undefined, order);
 
     ob.graphUpdate();
+  }
+
+  static calcUndoMem(ctx, undodata) {
+    let ud = undodata;
+    let tot = 0;
+
+    for (let k in ud) {
+      tot += 16*8 + 32; //matrix4
+    }
+
+    return tot;
   }
 
   static undoPre(ctx, elemlist) {

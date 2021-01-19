@@ -178,14 +178,9 @@ export class MenuBarEditor extends Editor {
     let menubar = this._menubar = strip.row();
 
     menubar.menu("File", [
-      ["New  ", () => {
-        console.log("File new");
-        if (confirm("Make new file?")) {
-          _genDefaultFile(_appstate, false);
-        }
-      }],
+      "app.new()",
       Menu.SEP,
-      ["Save Project", () => {
+     /* ["Save", () => {
         console.log("File save");
 
         platform.platform.showSaveDialog("Save File", _appstate.createFile(),{
@@ -200,33 +195,10 @@ export class MenuBarEditor extends Editor {
           this.ctx.message("File saved");
         });
         //saveFile(_appstate.createFile(), "unnamed."+cconst.FILE_EXT, ["."+cconst.FILE_EXT]);
-      }],
-      ["Load Project", () => {
-        console.log("File load");
-
-        platform.platform.showOpenDialog("Open File", {
-          filters : [
-            {
-              name : "Project Files",
-              extensions : [cconst.FILE_EXT]
-            }
-          ]
-        }).then((paths) => {
-          console.log("paths", paths);
-          if (paths.length === 0) {
-            return;
-          }
-
-          return platform.platform.readFile(paths[0], "application/x-octet-stream")
-        }).then((data) => {
-          console.log("got data!", data);
-          _appstate.loadFileAsync(data);
-        });
-
-        //loadFile(undefined, ["."+cconst.FILE_EXT]).then((filedata) => {
-          //_appstate.loadFile(filedata);
-        //});
-      }],
+      }],*/
+      "app.open()",
+      "app.save(forceDialog=false saveToolStack=true)|Save With Toolstack",
+      "app.save(forceDialog=true)|Save As",
     ]);
 
     this._editMenuDef = [];
@@ -241,7 +213,12 @@ export class MenuBarEditor extends Editor {
     ];
 
     menubar.menu("Add", [
+      "mesh.procedural_add()",
+      Menu.SEP,
       "mesh.make_cube()",
+      "mesh.make_sphere()",
+      "mesh.make_ico_sphere()",
+      Menu.SEP,
       "light.new()",
     ]);
 

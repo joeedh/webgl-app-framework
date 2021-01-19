@@ -36,6 +36,7 @@ export const QRecalcFlags = {
   LEAVES: 1024 | 2048,
   PATCH_UVS : 4096, //not part of ALL
   REGEN_IDS : 8192, //most definitely not part of ALL
+  REGEN_EIDMAP : 8192<<1, //not part of ALL
   ALL: 1 | 2 | 4 | 8 | 64 | 128 | 256 | 512 | 1024 | 2048 //does not include mirror or check_customdata or normals
 };
 
@@ -274,6 +275,8 @@ export class GridVert extends Vector3 {
     this.eid = eid;
 
     this.index = index;
+    this.index2 = index;
+
     this.loopEid = loopEid;
     this.customData = this.cd = [];
     this.neighbors = []; //is not saved
@@ -282,6 +285,17 @@ export class GridVert extends Vector3 {
 
     this.bLink = undefined;
     this.bNext = this.bPrev = undefined; //boundary next/prev
+  }
+
+  static getMemSize(p) {
+    let tot = 21*8;
+
+    tot += 4*3*8 + 2*8;
+    if (p) {
+      tot += p.neighbors.length*8 + p.bRingSet.size*8;
+    }
+
+    return tot;
   }
 
   startTan() {
@@ -491,8 +505,52 @@ export class GridBase extends CustomDataElem {
     this.points = [];
     this.customDatas = [];
 
+    this.eidmap = undefined;
+
     this.needsSubSurf = false;
     this.subsurf = undefined; //subsurf patch
+  }
+
+  regenEIDMap() {
+    this.recalcFlag |= QRecalcFlags.REGEN_EIDMAP;
+  }
+
+  getEIDMap(mesh) {
+    if (this.eidmap && !(this.recalcFlag & QRecalcFlags.REGEN_EIDMAP)) {
+      return this.eidmap;
+    }
+
+    this.recalcFlag &= ~QRecalcFlags.REGEN_EIDMAP;
+    let eidmap = this.eidmap = {};
+
+    for (let p of this.points) {
+      if (p.eid < 0) {
+        p.eid = mesh.eidgen.next();
+      }
+
+      eidmap[p.eid] = p;
+    }
+
+    return eidmap;
+  }
+
+  calcMemSize() {
+    let tot = 128*8 + 10*8;
+
+    if (this.points.length === 0) {
+      return tot;
+    }
+
+    let p = this.points[0];
+    for (let cd of p.customData) {
+      tot += cd.calcMemSize()*this.points.length;
+    }
+
+    for (let p of this.points) {
+      tot += GridVert.getMemSize(p);
+    }
+
+    return tot;
   }
 
   copyTo(b, copyPointEids=false) {
@@ -619,6 +677,7 @@ export class GridBase extends CustomDataElem {
 
     for (let i = 0; i < ps.length; i++) {
       ps[i].index = i;
+      ps[i].index2 = i;
     }
 
     return this;
@@ -691,6 +750,7 @@ export class GridBase extends CustomDataElem {
 
       for (let i = 0; i < ps.length; i++) {
         ps[i].index = i;
+        ps[i].index2 = i;
       }
     }
 
@@ -1070,6 +1130,7 @@ export class GridBase extends CustomDataElem {
     let ps = this.points;
     for (let i=0; i<ps.length; i++) {
       ps[i].index = i;
+      ps[i].index2 = i;
     }
 
     for (let i = 0; i < this.cdmap.length; i++) {

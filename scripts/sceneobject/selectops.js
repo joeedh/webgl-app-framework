@@ -15,7 +15,7 @@ import {subdivide} from '../subsurf/subsurf_mesh.js';
 
 import {SelMask, SelToolModes, SelOneToolModes} from "../editors/view3d/selectmode.js";
 
-export class SelectOpBase extends ToolOp {
+export class ObjectSelectOpBase extends ToolOp {
   constructor() {
     super();
   }
@@ -26,6 +26,10 @@ export class SelectOpBase extends ToolOp {
 
   execPre() {
     window.redraw_viewport();
+  }
+
+  calcUndoMem(ctx) {
+    return 256;
   }
 
   undoPre(ctx) {
@@ -73,7 +77,7 @@ export class SelectOpBase extends ToolOp {
   }
 }
 
-export class SelectOneOp extends SelectOpBase {
+export class ObjectSelectOneOp extends ObjectSelectOpBase {
   constructor() {
     super();
   }
@@ -141,9 +145,9 @@ export class SelectOneOp extends SelectOpBase {
   }
 }
 
-ToolOp.register(SelectOneOp);
+ToolOp.register(ObjectSelectOneOp);
 
-export class ToggleSelectOp extends SelectOpBase {
+export class ObjectToggleSelectOp extends ObjectSelectOpBase {
   constructor() {
     super();
   }
@@ -189,5 +193,5 @@ export class ToggleSelectOp extends SelectOpBase {
   }
 }
 
-ToolOp.register(ToggleSelectOp);
+ToolOp.register(ObjectToggleSelectOp);
 

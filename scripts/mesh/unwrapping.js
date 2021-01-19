@@ -411,7 +411,9 @@ export class UVWrangler {
 
     let islands = [];
 
-    for (let f of mesh.faces) {
+    let faces = this.faces;
+
+    for (let f of faces) {
       if (doneset.has(f)) {
         continue;
       }
@@ -509,7 +511,7 @@ export class UVWrangler {
       return nextl(startl, cb,true);
     }
 
-    console.log("Islands length 2", islands.length);
+    console.log("Islands length b:", islands.length);
 
     let imap = new Map();
 
@@ -538,7 +540,8 @@ export class UVWrangler {
         }
 
         ///XXX warning, n^2 (though of small numbers)
-        for (let i=0; i<l.v.edges.length; i++) {
+        for (let step of l.v.edges) {
+        //for (let i=0; i<l.v.edges.length; i++) {
           for (let e of l.v.edges) {
             if (!e.l) {
               continue;
@@ -555,7 +558,11 @@ export class UVWrangler {
               l2 = l2.next;
             }
 
-            if (!(e.flag & MeshFlags.SEAM) && ls.has(l2) && l2.index !== l.index) {
+            let ok = !(e.flag & MeshFlags.SEAM);
+            ok = ok && !(l2.e.flag & MeshFlags.SEAM);
+            ok = ok && ls.has(l2) && l2.index !== l.index;
+
+            if (ok) {
               l2.index = l.index;
             }
           }
@@ -880,7 +887,7 @@ export class UVWrangler {
         return;
       }
 
-      let maxdepth = 14;
+      let maxdepth = 10;
 
       if (depth > maxdepth) {
         return;

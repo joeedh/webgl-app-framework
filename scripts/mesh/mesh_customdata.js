@@ -133,10 +133,10 @@ CustomDataElem.register(OrigIndexElem);
 
 
 export class FloatElem extends CustomDataElem {
-  constructor() {
+  constructor(value=0.0) {
     super();
 
-    this.value = new Vector2();
+    this.value = value;
   }
 
   setValue(f) {
@@ -152,7 +152,7 @@ export class FloatElem extends CustomDataElem {
   }
 
   copy() {
-    let ret = new FloatElem();
+    let ret = new this.constructor();
     this.copyTo(ret);
     return ret;
   }
@@ -341,11 +341,11 @@ export class ColorLayerElem extends CustomDataElem {
   }
 
   interp(dest, datas, ws) {
-    dest.color.zero();
-
     if (datas.length === 0) {
       return;
     }
+
+    dest.color.zero();
 
     for (let i=0; i<datas.length; i++) {
       dest.color[0] += ws[i]*datas[i].color[0];
@@ -454,3 +454,23 @@ Vector3LayerElem.STRUCT = STRUCT.inherit(Vector3LayerElem, CustomDataElem, "mesh
 `;
 nstructjs.manager.add_class(Vector3LayerElem);
 CustomDataElem.register(Vector3LayerElem);
+
+export class MaskElem extends FloatElem {
+  constructor() {
+    super(1.0);
+  }
+
+  static define() {return {
+    elemTypeMask: MeshTypes.VERTEX,
+    typeName    : "mask",
+    uiTypeName  : "Paint Mask",
+    defaultName : "Mask Layer",
+    valueSize : 1,
+    flag     : 0
+  }};
+}
+MaskElem.STRUCT = STRUCT.inherit(MaskElem, FloatElem, "mesh.MaskElem") + `
+}
+`;
+nstructjs.manager.add_class(MaskElem);
+CustomDataElem.register(MaskElem);

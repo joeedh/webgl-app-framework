@@ -235,13 +235,27 @@ export class MeshToolBase extends ToolMode {
     }
 
     for (let mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
+      let matrix = new Matrix4();
+
+      if (mesh.ownerId !== undefined) {
+        let ob = this.ctx.datalib.get(mesh.ownerId);
+
+        if (ob) {
+          matrix.load(ob.outputs.matrix.getValue());
+        }
+      }
+
+      let co = new Vector3();
+
       for (let v of mesh.verts.selected.editable) {
-        minmax(v);
+        co.load(v).multVecMatrix(matrix);
+        minmax(co);
       }
 
       if (mesh.handles) {
         for (let h of mesh.handles.selected.editable) {
-          minmax(h);
+          co.load(h).multVecMatrix(matrix);
+          minmax(co);
         }
       }
     }
@@ -437,8 +451,21 @@ export class MeshToolBase extends ToolMode {
       gl.enable(gl.DEPTH_TEST);
       gl.depthMask(true);
 
-      selmask |= SelMask.FACE;
-      mesh.drawElements(view3d, gl, selmask, uniforms, program);
+      gl.disable(gl.DITHER);
+      gl.disable(gl.BLEND);
+
+      uniforms.polygonOffset = 0.0;
+      uniforms.alpha = 1.0;
+
+      mesh.drawElements(view3d, gl, SelMask.FACE, uniforms, program);
+
+      selmask &= ~SelMask.FACE;
+
+      if (selmask) {
+        uniforms.polygonOffset = 1.0;
+
+        mesh.drawElements(view3d, gl, selmask, uniforms, program);
+      }
     }
   }
 

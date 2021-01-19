@@ -514,12 +514,7 @@ export class EditorSideBar extends Container {
     let tabs = this.tabpanel = this.tabs("left");
 
     //make tabs smaller
-    let font = tabs.getDefault("TabText");
-
-    font = font.copy();
-    font.size = 12;
-
-    tabs.overrideDefault("TabText", font);
+    tabs.tabFontScale = 0.75;
   }
 
   set width(v) {
@@ -868,6 +863,10 @@ export class App extends Screen {
 
         spawnToolSearchMenu(_appstate.ctx);
       }),
+      new HotKey("S", ["CTRL"], "app.save(forceDialog=false)"),
+      new HotKey("O", ["CTRL"], "app.open()"),
+      new HotKey("N", ["CTRL"], "app.new()"),
+      new HotKey("N", ["CTRL", "ALT"], "app.new()"),
 
       new HotKey("Left", [], () => {
         let time = this.ctx.scene.time;
@@ -1054,37 +1053,38 @@ DataBlock.register(ScreenBlock);
 
 let last_time = util.time_ms();
 
-window.setInterval(() => {
-  if (window._appstate && _appstate.ctx && _appstate.ctx.scene && _appstate.ctx.view3d) {
-    //for debugging purposes, check if screen is listening
-    if (_appstate.screen.listen_timer === undefined) {
-      return;
-    }
-
-    window.redraw_viewport();
-
-    if (_appstate.playing) {
-      let scene = _appstate.ctx.scene;
-      if (scene.fps !== 30 && util.time_ms() - last_time < 1000.0/scene.fps) {
+if (0) {
+  window.setInterval(() => {
+    if (window._appstate && _appstate.ctx && _appstate.ctx.scene && _appstate.ctx.view3d) {
+      //for debugging purposes, check if screen is listening
+      if (_appstate.screen.listen_timer === undefined) {
         return;
       }
 
-      let t = scene.time;
-      t++;
+      window.redraw_viewport();
 
-      if (t > _appstate.ctx.timeEnd) {
-        t = _appstate.ctx.timeStart;
-      } else if (t < _appstate.ctx.timeStart) {
-        t = _appstate.ctx.timeStart;
+      if (_appstate.playing) {
+        let scene = _appstate.ctx.scene;
+        if (scene.fps !== 30 && util.time_ms() - last_time < 1000.0/scene.fps) {
+          return;
+        }
+
+        let t = scene.time;
+        t++;
+
+        if (t > _appstate.ctx.timeEnd) {
+          t = _appstate.ctx.timeStart;
+        } else if (t < _appstate.ctx.timeStart) {
+          t = _appstate.ctx.timeStart;
+        }
+
+        scene.changeTime(t);
       }
 
-      scene.changeTime(t);
+      last_time = util.time_ms();
     }
-
-    last_time = util.time_ms();
-  }
-}, 1000.0/30.0);
-
+  }, 1000.0/30.0);
+}
 
 export class MeshMaterialChooser extends Container {
   constructor() {
