@@ -44,9 +44,10 @@ let _triverts = new Array(3);
 
 import {
   DynamicsMask, SculptTools, BrushDynamics, SculptBrush,
-  BrushDynChannel, DefaultBrushes, SculptIcons, PaintToolSlot, BrushFlags
+  BrushDynChannel, DefaultBrushes, SculptIcons, PaintToolSlot, BrushFlags, DynTopoFlags, DynTopoSettings
 } from "../../../brush/brush.js";
 
+import './pbvh_holefiller.js';
 import './pbvh_sculptops.js';
 import './pbvh_base.js';
 import './pbvh_texpaint.js';
@@ -61,8 +62,10 @@ export class BVHToolMode extends ToolMode {
 
     this.gridEditDepth = 2;
     this.enableMaxEditDepth = false;
-    this.dynTopoLength = 30;
     this.dynTopoDepth = 4;
+
+    this.dynTopo = new DynTopoSettings();
+    this.dynTopo.flag = DynTopoFlags.COLLAPSE | DynTopoFlags.SUBDIVIDE | DynTopoFlags.FANCY_EDGE_WEIGHTS;
 
     this.mpos = new Vector2();
     this._radius = undefined;
@@ -70,6 +73,9 @@ export class BVHToolMode extends ToolMode {
     this.debugSphere = new Vector3();
 
     this.drawFlat = false;
+    this.drawMask = true;
+    this._last_cd_mask = -1;
+
     this.flag |= WidgetFlags.ALL_EVENTS;
 
     this.tool = SculptTools.CLAY;
@@ -95,64 +101,88 @@ export class BVHToolMode extends ToolMode {
     this.view3d = manager !== undefined ? manager.view3d : undefined;
   }
 
-  defineKeyMap() {
-    this.keymap = new KeyMap([
-      new HotKey("F", [], "brush.set_radius()"),
-      new HotKey(".", [], "view3d.view_selected()")
-    ]);
-  }
-
-  static buildEditMenu() {
-    return ["brush.set_radius()"];
-  }
-
-  getBrush(tool = this.tool) {
-    if (!this.ctx) {
-      return undefined;
-    }
-
-    return this.slots[tool].resolveBrush(this.ctx);
-  }
-
-  drawBrush(view3d) {
-    for (let l of this._brush_lines) {
-      l.remove();
-    }
-    this._brush_lines.length = 0;
-
-    let drawCircle = (x, y, r, mat = new Matrix4(), z = 0.0) => {
-      let p = new Vector3(), lastp = new Vector3();
-      let steps = Math.max(Math.ceil((Math.PI*r*2)/20), 8);
-      let th = -Math.PI, dth = (2.0*Math.PI)/(steps - 1);
-
-      r /= devicePixelRatio;
-      let mpos = view3d.getLocalMouse(x, y);
-      x = mpos[0];
-      y = mpos[1];
-      //y -= r * 0.5;
-
-      for (let i = 0; i < steps; i++, th += dth) {
-        p[0] = x + Math.cos(th)*r;
-        p[1] = y + Math.sin(th)*r;
-        p[2] = z;
-
-        p.multVecMatrix(mat);
-        if (i > 0) {
-          this._brush_lines.push(view3d.overdraw.line(lastp, p, "red"));
-        }
-        lastp.load(p);
-      }
-    }
-
+  get _brushSizeHelper() {
     let brush = this.getBrush();
+
     if (!brush) {
+      return 55.0;
+    }
+
+    if (brush.flag & BrushFlags.SHARED_SIZE) {
+      return this.sharedBrushRadius;
+    } else {
+      return brush.radius;
+    }
+  }
+
+  set _brushSizeHelper(val) {
+    let brush = this.getBrush();
+
+    if (!brush) {
+      return 55;
+    }
+
+    if (brush.flag & BrushFlags.SHARED_SIZE) {
+      this.sharedBrushRadius = val;
+    } else {
+      brush.radius = val;
+    }
+  }
+
+  get _apiBrushHelper() {
+    return this.getBrush();
+  }
+
+  set _apiBrushHelper(brush) {
+    if (brush === undefined) {
       return;
     }
 
-    let radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius;
+    let oldbrush = this.getBrush();
+    if (oldbrush === brush) {
+      return;
+    }
 
-    let r = this._radius !== undefined ? this._radius : radius;
-    drawCircle(this.mpos[0], this.mpos[1], r);
+    let scene = this.ctx ? this.ctx.scene : undefined;
+    this.slots[this.tool].setBrush(brush, scene);
+  }
+
+  get _apiDynTopo() {
+    let brush = this.getBrush();
+
+    if (!brush) {
+      return this.dynTopo;
+    }
+
+    if (brush.dynTopo.flag & DynTopoFlags.INHERIT_DEFAULT) {
+      return this.dynTopo;
+    } else {
+      return brush.dynTopo;
+    }
+  }
+
+  get _apiInheritDynTopo() {
+    let brush = this.getBrush();
+    if (!brush) {
+      return false;
+    }
+
+    return brush.dynTopo.flag & DynTopoFlags.INHERIT_DEFAULT;
+  }
+
+  set _apiInheritDynTopo(v) {
+    if (v) {
+      this.getBrush().dynTopo.flag |= DynTopoFlags.INHERIT_DEFAULT;
+    } else {
+      this.getBrush().dynTopo.flag &= ~DynTopoFlags.INHERIT_DEFAULT;
+    }
+  }
+
+  static buildEditMenu() {
+    return [
+      "brush.set_radius()",
+      "paint.clear_mask()"
+    ];
   }
 
   static register(cls) {
@@ -195,8 +225,8 @@ export class BVHToolMode extends ToolMode {
 
     let settings = col.panel("Brush Settings");
 
-    function doChannel(name) {
-      let col2 = settings.col().strip();
+    function doChannel(name, panel=settings) {
+      let col2 = panel.col().strip();
 
       //col2.style["padding"] = "7px";
       //col2.style["margin"] = "2px";
@@ -264,6 +294,8 @@ export class BVHToolMode extends ToolMode {
     p.prop(path + ".brush.flag[MULTIGRID_SMOOTH]");
     p.prop(path + ".brush.flag[PLANAR_SMOOTH]");
 
+    doChannel("smoothProj", p);
+
     doChannel("rake");
     doChannel("pinch");
 
@@ -283,10 +315,21 @@ export class BVHToolMode extends ToolMode {
     strip.tool("mesh.reset_grids()");
     strip.tool("mesh.delete_grids()");
 
-    strip = col.strip();
-    strip.useIcons(false);
-    strip.prop(path + ".dynTopoLength");
-    strip.prop(path + ".brush.flag[DYNTOPO]");
+    panel = col.panel("DynTopo");
+    panel.useIcons(false);
+    panel.prop(path + ".inheritDynTopo");
+    panel.prop(path + ".dynTopo.edgeSize");
+    panel.prop(path + ".dynTopo.flag[ENABLED]");
+    strip = panel.strip();
+    strip.prop(path + ".dynTopo.flag[SUBDIVIDE]");
+    strip.prop(path + ".dynTopo.flag[COLLAPSE]");
+    strip.prop(path + ".dynTopo.flag[FANCY_EDGE_WEIGHTS]");
+    strip.prop(path + ".dynTopo.flag[QUAD_COLLAPSE]");
+
+    panel.prop(path + ".dynTopo.subdivideFactor");
+    panel.prop(path + ".dynTopo.decimateFactor");
+    panel.prop(path + ".dynTopo.edgeCount");
+    panel.prop(path + ".dynTopo.valenceGoal");
 
     strip = col.row().strip();
     strip.useIcons(false);
@@ -295,7 +338,7 @@ export class BVHToolMode extends ToolMode {
 
     panel = col.panel("Multi Resolution");
     panel.useIcons(false);
-    panel.prop(path + ".dynTopoDepth").setAttribute("labelOnTop", true);
+    panel.prop(path + ".dynTopo.maxDepth").setAttribute("labelOnTop", true);
 
     strip = panel.strip();
     strip.prop(path + ".enableMaxEditDepth");
@@ -319,6 +362,7 @@ export class BVHToolMode extends ToolMode {
     strip.prop(`scene.tools.${name}.drawCavityMap`);
     strip.prop(`scene.tools.${name}.drawNodeIds`);
     strip.prop(`scene.tools.${name}.drawColPatches`);
+    strip.prop(`scene.tools.${name}.drawMask`);
 
     strip = header.strip();
     strip.useIcons(false);
@@ -351,52 +395,6 @@ export class BVHToolMode extends ToolMode {
     header.flushUpdate();
 
 
-  }
-
-  get _brushSizeHelper() {
-    let brush = this.getBrush();
-
-    if (!brush) {
-      return 55.0;
-    }
-
-    if (brush.flag & BrushFlags.SHARED_SIZE) {
-      return this.sharedBrushRadius;
-    } else {
-      return brush.radius;
-    }
-  }
-
-  set _brushSizeHelper(val) {
-    let brush = this.getBrush();
-
-    if (!brush) {
-      return 55;
-    }
-
-    if (brush.flag & BrushFlags.SHARED_SIZE) {
-      this.sharedBrushRadius = val;
-    } else {
-      brush.radius = val;
-    }
-  }
-
-  get _apiBrushHelper() {
-    return this.getBrush();
-  }
-
-  set _apiBrushHelper(brush) {
-    if (brush === undefined) {
-      return;
-    }
-
-    let oldbrush = this.getBrush();
-    if (oldbrush === brush) {
-      return;
-    }
-
-    let scene = this.ctx ? this.ctx.scene : undefined;
-    this.slots[this.tool].setBrush(brush, scene);
   }
 
   static defineAPI(api) {
@@ -441,6 +439,8 @@ export class BVHToolMode extends ToolMode {
       .icon(Icons.DRAW_SCULPT_WIREFRAME);
     st.bool("drawBVH", "drawBVH", "Draw BVH").on('change', onchange);
     st.bool("drawCavityMap", "drawCavityMap", "Cavity Map").on('change', onchange);
+    st.bool("drawMask", "drawMask", "Draw Mask").on('change', onchange);
+
     st.bool("drawColPatches", "drawColPatches", "Draw Color Patches").on('change', onchange);
 
     st.bool("drawNodeIds", "drawNodeIds", "Draw BVH Vertex IDs").on('change', onchange);
@@ -448,14 +448,73 @@ export class BVHToolMode extends ToolMode {
       .on('change', onchange)
       .icon(Icons.DRAW_SCULPT_FLAT);
     st.enum("tool", "tool", SculptTools).icons(SculptIcons);
-    st.float("dynTopoLength", "dynTopoLength", "Detail Size").range(1.0, 75.0).noUnits();
-    st.int("dynTopoDepth", "dynTopoDepth", "DynTopo Depth", "Maximum quad tree grid subdivision level").range(0, 15).noUnits();
+
     st.bool("enableMaxEditDepth", "enableMaxEditDepth", "Multi Resolution Editing");
     st.int("gridEditDepth", "gridEditDepth", "Edit Depth", "Maximum quad tree grid edit level").range(0, 15).noUnits();
 
     st.struct("_apiBrushHelper", "brush", "Brush", api.mapStruct(SculptBrush));
 
+    st.struct("_apiDynTopo", "dynTopo", "DynTopo", api.mapStruct(DynTopoSettings));
+    st.bool("_apiInheritDynTopo", "inheritDynTopo", "Use Defaults");
+
     return st;
+  }
+
+  defineKeyMap() {
+    this.keymap = new KeyMap([
+      new HotKey("F", [], "brush.set_radius()"),
+      new HotKey(".", [], "view3d.view_selected()"),
+      new HotKey("M", ["ALT"], "paint.clear_mask()"),
+    ]);
+  }
+
+  getBrush(tool = this.tool) {
+    if (!this.ctx) {
+      return undefined;
+    }
+
+    return this.slots[tool].resolveBrush(this.ctx);
+  }
+
+  drawBrush(view3d) {
+    for (let l of this._brush_lines) {
+      l.remove();
+    }
+    this._brush_lines.length = 0;
+
+    let drawCircle = (x, y, r, mat = new Matrix4(), z = 0.0) => {
+      let p = new Vector3(), lastp = new Vector3();
+      let steps = Math.max(Math.ceil((Math.PI*r*2)/20), 8);
+      let th = -Math.PI, dth = (2.0*Math.PI)/(steps - 1);
+
+      r /= devicePixelRatio;
+      let mpos = view3d.getLocalMouse(x, y);
+      x = mpos[0];
+      y = mpos[1];
+      //y -= r * 0.5;
+
+      for (let i = 0; i < steps; i++, th += dth) {
+        p[0] = x + Math.cos(th)*r;
+        p[1] = y + Math.sin(th)*r;
+        p[2] = z;
+
+        p.multVecMatrix(mat);
+        if (i > 0) {
+          this._brush_lines.push(view3d.overdraw.line(lastp, p, "red"));
+        }
+        lastp.load(p);
+      }
+    }
+
+    let brush = this.getBrush();
+    if (!brush) {
+      return;
+    }
+
+    let radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius;
+
+    let r = this._radius !== undefined ? this._radius : radius;
+    drawCircle(this.mpos[0], this.mpos[1], r);
   }
 
   getBVH(mesh, useGrids = true) {
@@ -501,6 +560,10 @@ export class BVHToolMode extends ToolMode {
 
       brush = brush.copy();
 
+      if (brush.dynTopo.flag & DynTopoFlags.INHERIT_DEFAULT) {
+        brush.dynTopo.load(this.dynTopo);
+      }
+
       if (e.ctrlKey && !isTexPaint) {
         let t = brush.color;
         brush.color = brush.bgcolor;
@@ -508,7 +571,12 @@ export class BVHToolMode extends ToolMode {
       }
       brush.radius = radius;
 
-      if (brush.tool === SculptTools.TEXTURE_PAINT) {
+      if (brush.tool === SculptTools.HOLE_FILLER) {
+        this.ctx.api.execTool(this.ctx, "bvh.hole_filler()", {
+          brush       : brush,
+          symmetryAxes: this.symmetryAxes
+        });
+      } else if (brush.tool === SculptTools.TEXTURE_PAINT) {
         this.ctx.api.execTool(this.ctx, "bvh.texpaint()", {
           brush       : brush,
           symmetryAxes: this.symmetryAxes
@@ -518,9 +586,7 @@ export class BVHToolMode extends ToolMode {
           brush: brush,
 
           symmetryAxes    : this.symmetryAxes,
-          dynTopoLength   : this.dynTopoLength,
           dynTopoDepth    : this.dynTopoDepth,
-          useDynTopo      : brush.flag & BrushFlags.DYNTOPO,
           useMultiResDepth: this.enableMaxEditDepth
         });
       }
@@ -938,8 +1004,6 @@ export class BVHToolMode extends ToolMode {
     let t2 = new Vector3();
     let t3 = new Vector3();
 
-    let nsmooth_rets = util.cachering.fromConstructor(Vector3, 16);
-
     let drawBVH = this.drawBVH;
     let drawNodeIds = this.drawNodeIds;
     let puv3 = [0, 0, 0, 0];
@@ -984,6 +1048,7 @@ export class BVHToolMode extends ToolMode {
     let drawQuadsOnly = this.drawQuadsOnly;
     let drawCavityMap = this.drawCavityMap;
     let drawColPatches = this.drawColPatches;
+    let drawMask = this.drawMask;
 
     let cd_uv = mesh.loops.customData.getLayerIndex("uv");
     let haveUvs = cd_uv >= 0;
@@ -992,13 +1057,131 @@ export class BVHToolMode extends ToolMode {
 
     if (bvh.computeValidEdges !== drawQuadsOnly) {
       for (let node of bvh.nodes) {
-        node.flag |= BVHFlags.UPDATE_INDEX_VERTS|BVHFlags.UPDATE_DRAW;
+        node.flag |= BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_DRAW;
         bvh.updateNodes.add(node);
       }
     }
 
     bvh.computeValidEdges = drawQuadsOnly;
     bvh.update();
+
+    let vn1 = new Vector3();
+
+    let nsmooth;
+    let nsmooth_rets = util.cachering.fromConstructor(Vector3, 16);
+
+    if (have_grids) {
+      nsmooth = function (v, fac = 1.0) {
+        let tot = 0;
+        let n = nsmooth_rets.next().zero();
+
+        for (let v2 of v.neighbors) {
+          n.add(v2.no);
+          tot++;
+        }
+
+        if (tot > 0) {
+          n.mulScalar(1.0/tot);
+          n.interp(v.no, 1.0 - fac);
+          n.normalize();
+        } else {
+          n.load(v.no);
+        }
+
+        return n;
+      }
+    } else {
+      nsmooth = function (v, fac = 1.0) {
+        let tot = 0;
+        let n = nsmooth_rets.next().zero();
+
+        for (let e of v.edges) {
+          let v2 = e.otherVertex(v);
+
+          let w = v.vectorDistanceSqr(v2);
+
+          for (let l of e.loops) {
+            n.addFac(l.f.no, w);
+            tot += w;
+          }
+        }
+
+        if (tot > 0) {
+          n.mulScalar(1.0/tot);
+          n.interp(v.no, 1.0 - fac);
+          n.normalize();
+        } else {
+          n.load(v.no);
+        }
+
+        return n;
+      }
+    }
+
+    nsmooth = (v) => v.no;
+
+    function vcavity(v) {
+      return 1.0 - calcConcave(v);
+      let sum = 0.0, tot = 0.0;
+
+      if (have_grids) {
+        for (let v2 of v.neighbors) {
+          nv1.load(v).sub(v2).normalize();
+          let dot = -nv1.dot(v2.no);
+
+          sum += dot;
+          tot++;
+        }
+      } else {
+        nv1.zero();
+
+        for (let e of v.edges) {
+          let v2 = e.otherVertex(v);
+
+          nv1.load(v).sub(v2).normalize();
+          //nv2.load(v.no).cross(nv1);
+
+          let dot;
+          //dot = 2.0 - v.no.dot(v2.no);
+
+          dot = -nv1.dot(v2.no);
+
+          sum += dot;
+          tot++;
+        }
+      }
+
+      if (tot) {
+        let f = sum/tot;
+        f = Math.min(Math.max(f, -0.9999), 0.99999);
+
+        f = 0.5 + f*0.5;
+        f *= 1.8;
+
+        f = Math.min(Math.max(f, 0.0), 1.0);
+        f = Math.pow(f, 9.0);
+        return f*0.5 + 0.5;
+      }
+
+      return 1.0;
+    }
+
+    let cd_mask;
+
+    if (have_grids) {
+      cd_mask = mesh.loops.customData.getLayerIndex("mask");
+    } else {
+      cd_mask = mesh.verts.customData.getLayerIndex("mask");
+    }
+
+    if (this.drawMask && cd_mask !== this._last_cd_mask) {
+      this._last_cd_mask = cd_mask;
+
+      for (let node of bvh.nodes) {
+        bvh.updateNodes.add(node);
+        node.flag |= BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_MASK;
+      }
+    }
 
     function genNodeMesh_index(node) {
       let nodes = [];
@@ -1016,10 +1199,19 @@ export class BVHToolMode extends ToolMode {
 
       buildNodes(node);
 
-      let totvert = 0, tottri = 0;
+      let totvert = 0, totedge = 0, tottri = 0;
+      let updateColors = false;
+      let updateUvs = false;
+
       for (let n2 of nodes) {
+        totedge += n2.indexEdges.length>>1;
         totvert += n2.indexVerts.length;
-        tottri += n2.uniqueTris.size;
+        tottri += ~~(n2.indexTris.length/3 + 0.00001);
+
+        if (drawMask && cd_mask >= 0 && (n2.flag & BVHFlags.UPDATE_MASK)) {
+          n2.flag &= ~BVHFlags.UPDATE_MASK;
+          updateColors = true;
+        }
       }
 
       let i = 0;
@@ -1029,31 +1221,39 @@ export class BVHToolMode extends ToolMode {
         }
       }
 
-      let updateColors = false;
-      let updateUvs = false;
-
       let lflag = LayerTypes.LOC | LayerTypes.INDEX | LayerTypes.COLOR | LayerTypes.UV | LayerTypes.NORMAL;
 
       let sm = node.drawData;
       if (!sm) {
         sm = node.drawData = new SimpleMesh(lflag);
         sm.indexedMode = true;
+
         updateColors = true;
         updateUvs = cd_uv >= 0;
+      } else {
+        let island = sm.islands[0];
+
+        if (island.totvert !== totvert || island.tottri !== tottri || island.drawCavityMap !== drawCavityMap) {
+          updateUvs = cd_uv >= 0;
+          updateColors = true;
+        }
       }
 
       let island = sm.island;
 
+      island.totvert = totvert;
+      island.tottri = tottri;
+      island.drawCavityMap = drawCavityMap;
+
       island.regen = true;
       island.indexedMode = true;
 
-      island.tottri = tottri;
-
       let idx = island.getIndexBuffer(PrimitiveTypes.TRIS);
+
 
       //console.log("TOTTRI", tottri, totvert);
 
-      idx.setCount(tottri*3);
+      idx.setCount(tottri*3, true);
       idx = idx._getWriteData();
 
       island.tri_cos.bufferHint = gl.DYNAMIC_DRAW;
@@ -1065,21 +1265,28 @@ export class BVHToolMode extends ToolMode {
       let vnos = island.tri_normals;
       let vuvs, vcolors, colormul, uvmul;
 
+      if (cd_uv >= 0) {
+        updateUvs = updateUvs || island.tri_uvs.dataUsed/2 !== totvert;
+      }
+
       if (updateUvs) {
         vuvs = island.tri_uvs;
         uvmul = vuvs.glSizeMul;
 
-        vuvs.setCount(totvert);
+        vuvs.setCount(totvert, true);
         vuvs = vuvs._getWriteData();
       }
 
       updateColors = updateColors || island.tri_colors.dataUsed/4 !== totvert;
+      updateColors = updateColors || drawCavityMap;
 
-      for (let n of nodes) {
-        if (n.flag & BVHFlags.UPDATE_COLORS) {
-          updateColors = true;
+      if (!updateColors) {
+        for (let n of nodes) {
+          if (n.flag & BVHFlags.UPDATE_COLORS) {
+            updateColors = true;
 
-          n.flag &= ~BVHFlags.UPDATE_COLORS;
+            n.flag &= ~BVHFlags.UPDATE_COLORS;
+          }
         }
       }
 
@@ -1087,14 +1294,14 @@ export class BVHToolMode extends ToolMode {
         vcolors = island.tri_colors;
         colormul = vcolors.glSizeMul;
 
-        vcolors.setCount(totvert);
+        vcolors.setCount(totvert, true);
         vcolors = vcolors._getWriteData();
       }
 
-      vcos.setCount(totvert);
+      vcos.setCount(totvert, true);
       vcos = vcos._getWriteData();
 
-      vnos.setCount(totvert);
+      vnos.setCount(totvert, true);
       let nomul = vnos.glSizeMul;
       vnos = vnos._getWriteData();
 
@@ -1104,7 +1311,7 @@ export class BVHToolMode extends ToolMode {
       if (drawWireframe) {
         lineidx = island.getIndexBuffer(PrimitiveTypes.LINES);
 
-        lineidx.setCount(tottri*3*2);
+        lineidx.setCount(totedge*2, true);
         lineidx = lineidx._getWriteData();
       }
 
@@ -1130,22 +1337,37 @@ export class BVHToolMode extends ToolMode {
           vnos[j++] = v.no[1]*nomul;
           vnos[j++] = v.no[2]*nomul;
 
+          let colormul2 = colormul;
+
+          if (drawMask && cd_mask >= 0) {
+            let mask = v.customData[cd_mask].value;
+            colormul2 *= mask*0.8 + 0.2;
+          }
+
+          if (drawCavityMap) {
+            let f = vcavity(v);
+            f = f*f*(3.0 - 2.0*f);
+            f *= 1.25;
+
+            colormul2 *= f;
+          }
+
           if (updateColors) {
             if (cd_color >= 0) {
               let c = v.customData[cd_color].color;
 
               j = vi*4;
 
-              vcolors[j++] = c[0]*colormul;
-              vcolors[j++] = c[1]*colormul;
-              vcolors[j++] = c[2]*colormul;
+              vcolors[j++] = c[0]*colormul2;
+              vcolors[j++] = c[1]*colormul2;
+              vcolors[j++] = c[2]*colormul2;
               vcolors[j++] = c[3]*colormul;
             } else {
               j = vi*4;
 
-              vcolors[j++] = colormul;
-              vcolors[j++] = colormul;
-              vcolors[j++] = colormul;
+              vcolors[j++] = colormul2;
+              vcolors[j++] = colormul2;
+              vcolors[j++] = colormul2;
               vcolors[j++] = colormul;
             }
           }
@@ -1171,8 +1393,8 @@ export class BVHToolMode extends ToolMode {
         let lmap = n.indexTris;
         let li = 0;
 
-        for (let i=0; i<lmap.length; i += 3) {
-          let i1 = lmap[i]+base, i2 = lmap[i+1]+base, i3 = lmap[i+2]+base;
+        for (let i = 0; i < lmap.length; i += 3) {
+          let i1 = lmap[i] + base, i2 = lmap[i + 1] + base, i3 = lmap[i + 2] + base;
 
           idx[ti++] = i1;
           idx[ti++] = i2;
@@ -1182,7 +1404,7 @@ export class BVHToolMode extends ToolMode {
         if (drawWireframe) {
           let emap = n.indexEdges;
 
-          for (let i=0; i<emap.length; i++) {
+          for (let i = 0; i < emap.length; i++) {
             lineidx[ei++] = emap[i] + base;
           }
         }
@@ -1190,7 +1412,7 @@ export class BVHToolMode extends ToolMode {
         base += n.indexVerts.length;
       }
 
-      island.totline = ei>>1;
+      island.totline = totedge;
     }
 
     function genNodeMesh(node) {
@@ -1386,105 +1608,6 @@ export class BVHToolMode extends ToolMode {
       let cd_node = have_grids ? mesh.loops.customData.getLayerIndex("bvh")
                                : mesh.verts.customData.getLayerIndex("bvh");
 
-      let vn1 = new Vector3();
-
-      let nsmooth;
-
-      if (have_grids) {
-        nsmooth = function (v, fac = 1.0) {
-          let tot = 0;
-          let n = nsmooth_rets.next().zero();
-
-          for (let v2 of v.neighbors) {
-            n.add(v2.no);
-            tot++;
-          }
-
-          if (tot > 0) {
-            n.mulScalar(1.0/tot);
-            n.interp(v.no, 1.0 - fac);
-            n.normalize();
-          } else {
-            n.load(v.no);
-          }
-
-          return n;
-        }
-      } else {
-        nsmooth = function (v, fac = 1.0) {
-          let tot = 0;
-          let n = nsmooth_rets.next().zero();
-
-          for (let e of v.edges) {
-            let v2 = e.otherVertex(v);
-
-            let w = v.vectorDistanceSqr(v2);
-
-            for (let l of e.loops) {
-              n.addFac(l.f.no, w);
-              tot += w;
-            }
-          }
-
-          if (tot > 0) {
-            n.mulScalar(1.0/tot);
-            n.interp(v.no, 1.0 - fac);
-            n.normalize();
-          } else {
-            n.load(v.no);
-          }
-
-          return n;
-        }
-      }
-
-      nsmooth = (v) => v.no;
-
-      function vcavity(v) {
-        return 1.0 - calcConcave(v);
-        let sum = 0.0, tot = 0.0;
-
-        if (have_grids) {
-          for (let v2 of v.neighbors) {
-            nv1.load(v).sub(v2).normalize();
-            let dot = -nv1.dot(v2.no);
-
-            sum += dot;
-            tot++;
-          }
-        } else {
-          nv1.zero();
-
-          for (let e of v.edges) {
-            let v2 = e.otherVertex(v);
-
-            nv1.load(v).sub(v2).normalize();
-            //nv2.load(v.no).cross(nv1);
-
-            let dot;
-            //dot = 2.0 - v.no.dot(v2.no);
-
-            dot = -nv1.dot(v2.no);
-
-            sum += dot;
-            tot++;
-          }
-        }
-
-        if (tot) {
-          let f = sum/tot;
-          f = Math.min(Math.max(f, -0.9999), 0.99999);
-
-          f = 0.5 + f*0.5;
-          f *= 1.8;
-
-          f = Math.min(Math.max(f, 0.0), 1.0);
-          f = Math.pow(f, 9.0);
-          return f*0.5 + 0.5;
-        }
-
-        return 1.0;
-      }
 
       function rec(node) {
         if (!node.leaf) {
@@ -2189,15 +2312,16 @@ BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
   drawWireframe          : bool;
   drawQuadsOnly          : bool;
   drawNodeIds            : bool;
+  drawMask               : bool;
   drawColPatches         : bool;
   symmetryAxes           : int;
-  dynTopoLength          : float;
   dynTopoDepth           : int;
   gridEditDepth          : int;
   enableMaxEditDepth     : bool;
   tool                   : int;
   slots                  : iterkeys(PaintToolSlot);
-  sharedBrushRadius      : float; 
+  sharedBrushRadius      : float;
+  dynTopo                : DynTopoSettings; 
 }`;
 nstructjs.manager.add_class(BVHToolMode);
 

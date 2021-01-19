@@ -4,6 +4,402 @@ import * as math from '../util/math.js';
 import '../util/numeric.js';
 import {applyTriangulation, triangulateFace} from './mesh_tess.js';
 
+import {getArrayTemp} from './mesh_base.js';
+
+export class Pattern {
+  constructor(verts, newverts, faces) {
+    this.verts = verts;
+    this.newverts = newverts;
+    this.faces = faces;
+    this.shift = 0;
+
+    this.facetemps = [];
+    this.facetemps2 = [];
+
+    if (verts) {
+      this.array1 = new Array(verts.length + newverts.length);
+      this.array2 = new Array(verts.length + newverts.length);
+      this.array3 = new Array(verts.length + newverts.length);
+      this.array4 = new Array(verts.length + newverts.length);
+
+      this.genFaceTemps();
+    }
+  }
+
+  genMasks() {
+    let vs = this.verts;
+    let vlen = vs.length;
+
+    let masks = {};
+
+    for (let i = 0; i < vlen; i++) {
+      let mask = 0;
+
+      for (let j = 0; j < vlen; j++) {
+        let j2 = (j - i + vlen)%vlen;
+
+        if (vs[j2]) {
+          mask |= 1<<j;
+        }
+      }
+
+      mask = mask | (vlen<<15);
+
+      masks[mask] = i;
+    }
+
+    return masks;
+  }
+
+  mirror() {
+    this.verts.reverse();
+    let vlen = this.verts.length;
+
+    for (let vpat of this.newverts) {
+      for (let i = 0; i < vpat.length; i += 2) {
+        vpat[i] = (vlen - vpat[i] - 1)%vlen;
+      }
+    }
+
+    //vlen += this.newverts.length;
+
+    for (let f of this.faces) {
+      for (let i = 0; i < f.length; i++) {
+        if (f[i] < this.verts.length) {
+          f[i] = (vlen - f[i] - 1)%vlen;
+        }
+      }
+
+      f.reverse();
+    }
+
+    return this;
+  }
+
+  copy() {
+    let p = new Pattern()
+
+    p.verts = this.verts.concat([]);
+    p.newverts = this.newverts.concat([]);
+    p.faces = this.faces.concat([]);
+
+    p.array1 = new Array(this.verts.length + this.newverts.length);
+    p.array2 = new Array(this.verts.length + this.newverts.length);
+    p.array3 = new Array(this.verts.length + this.newverts.length);
+    p.array4 = new Array(this.verts.length + this.newverts.length);
+
+    for (let i = 0; i < p.newverts.length; i++) {
+      p.newverts[i] = p.newverts[i].concat([]);
+    }
+
+    for (let i = 0; i < p.faces.length; i++) {
+      p.faces[i] = p.faces[i].concat([]);
+    }
+
+    p.shift = this.shift;
+    p.genFaceTemps();
+
+    return p;
+  }
+
+  genFaceTemps() {
+    let fs = this.facetemps = [];
+    let fs2 = this.facetemps2 = [];
+
+    for (let f of this.faces) {
+      fs.push(new Array(f.length));
+      fs2.push(new Array(f.length));
+    }
+  }
+}
+
+function makePatterns() {
+  let patterns = [
+    //tri with one subdivide edge
+    new Pattern([0, 1, 0, 0], [], [
+      [0, 1, 3],
+      [1, 2, 3]]
+    ),//*/
+
+    //tri with two subdivided edges
+    new Pattern([0, 1, 0, 1, 0], [], [
+      [0, 1, 3],
+      [1, 2, 3],
+      [3, 4, 0],
+    ]),//*/
+
+    //tri with three subdivided edges
+    new Pattern([0, 1, 0, 1, 0, 1], [], [
+      [5, 0, 1],
+      [1, 2, 3],
+      [3, 4, 5],
+      [1, 3, 5]
+    ]),
+
+    //quad with one edge
+    new Pattern([0, 1, 0, 0, 0], [], [
+      [0, 1, 3],
+      [1, 2, 3],
+      [0, 3, 4]
+    ]),
+
+    //quad with two opposite edges
+    new Pattern([0, 1, 0, 0, 1, 0], [], [
+      [0, 1, 4, 5],
+      [1, 2, 3, 4],
+    ]),
+
+    //quad with two adj edges
+    new Pattern([0, 1, 0, 1, 0, 0], [[1, 0.5, 3, 0.5]], [
+      [0, 1, 6, 5],
+      [1, 2, 3, 6],
+      [3, 4, 5, 6]
+    ]),
+
+    //quad with three edges
+    new Pattern([0, 1, 0, 1, 0, 1, 0], [], [
+      [1, 2, 3],
+      [1, 3, 4, 5],
+      [5, 6, 0, 1]
+    ]),
+
+    //full quad
+    new Pattern([0, 1, 0, 1, 0, 1, 0, 1], [
+      [0, 0.25, 2, 0.25, 4, 0.25, 6, 0.25]
+    ], [
+      [7, 0, 1, 8],
+      [1, 2, 3, 8],
+      [3, 4, 5, 8],
+      [5, 6, 7, 8]
+    ])
+  ]
+
+  for (let p of patterns.concat([])) {
+    //continue;
+    let p2 = p.copy().mirror();
+
+    let masks1 = p.genMasks();
+    let masks2 = p2.genMasks();
+
+    let ok = true;
+
+    for (let mask in masks2) {
+      if (mask in masks1) {
+        //mirror of pattern is just pattern shifted
+        //ok = false;
+      }
+    }
+
+    if (ok) {
+      patterns.push(p2);
+    }
+  }
+
+  let pmap = {};
+
+  for (let p of patterns) {
+    let masks = p.genMasks();
+
+    for (let mask in masks) {
+      let shift = masks[mask];
+
+      let p2 = p.copy();
+
+      let vlen = p.verts.length;
+
+      for (let vmap of p2.newverts) {
+        for (let i = 0; i < vmap.length; i += 2) {
+          vmap[i] = (vmap[i] + shift)%vlen;
+        }
+      }
+
+      //vlen += p.newverts.length;
+
+      for (let f of p2.faces) {
+        for (let i = 0; i < f.length; i++) {
+          if (f[i] < p.verts.length) {
+            f[i] = (f[i] + shift)%vlen;
+          }
+        }
+      }
+
+      p2.shift = shift;
+      pmap[mask] = p2;
+      //console.log(mask);
+    }
+  }
+
+  return pmap;
+}
+
+let patterns = makePatterns();
+window._patterns = patterns;
+
+export function splitEdgesSmart2(mesh, es, testfunc, lctx) {
+  let newes = new Set();
+  let newvs = new Set();
+  let fs = new Set();
+
+  if (!(es instanceof Set)) {
+    es = new Set(es);
+  }
+
+  for (let e of es) {
+    for (let l of e.loops) {
+      fs.add(l.f);
+    }
+  }
+
+  if (0) {
+    for (let f of fs) {
+      let tot = 0, tot2 = 0;
+      for (let l of f.loops) {
+        tot++;
+
+        if (es.has(l.e)) {
+          tot2++;
+        }
+      }
+
+      if (tot === 4 && tot2 === 1) {
+        for (let l of f.loops) {
+          let lr = l.radial_next;
+          let _i = 0;
+
+          do {
+            fs.delete(lr.f);
+
+            if (_i++ > 10) {
+              console.warn("infinite loop error");
+              break;
+            }
+
+            lr = lr.radial_next;
+          } while (lr !== l);
+          es.delete(l.e);
+        }
+
+        fs.delete(f);
+      }
+    }
+  }
+
+  for (let e of es) {
+    let [ne, nv] = mesh.splitEdge(e, 0.5, lctx);
+
+    newvs.add(nv);
+    newes.add(ne);
+  }
+
+  for (let f of fs) {
+    if (f.lists.length > 1) {
+      console.warn("Implement me!");
+      continue;
+    }
+
+    let mask = 0;
+    let i = 0;
+    let count = 0;
+
+    for (let l of f.loops) {
+      let bit = newvs.has(l.v);
+
+      l.v.index = bit ? 1 : 0;
+      mask |= bit ? (1<<i) : 0;
+
+      i++;
+      count++;
+    }
+
+    mask |= count<<15;
+
+    //console.log(mask, patterns[mask]);
+
+    let pat = patterns[mask];
+    if (!pat) {
+      continue;
+    }
+
+    let vs = pat.array1;
+    let ls = pat.array2;
+
+    let vi = 0;
+
+    for (let l of f.loops) {
+      vs[vi] = l.v;
+      ls[vi] = l;
+      vi++;
+    }
+
+    for (let vmap of pat.newverts) {
+      let v = mesh.makeVertex();
+      v.zero();
+
+      vs[vi] = v;
+
+      let ws2 = getArrayTemp(vmap.length>>1);
+      let ls2 = getArrayTemp(vmap.length>>1);
+
+      //create a dummy loop
+      let l = new Loop();
+      l.eid = 0;
+      mesh.loops.customData.initElement(l);
+
+      let wi = 0;
+
+      for (let i = 0; i < vmap.length; i += 2) {
+        let v2 = vs[vmap[i]];
+        let w = vmap[i + 1];
+
+        ls2[wi] = ls[vmap[i]];
+        ws2[wi] = w;
+
+        v.addFac(v2, w);
+
+        wi++;
+      }
+
+      mesh.loops.customDataInterp(l, ls2, ws2);
+      ls[vi] = l;
+
+      vi++;
+    }
+
+    for (let i = 0; i < pat.faces.length; i++) {
+      let f2 = pat.faces[i], vs2 = pat.facetemps[i];
+      let ls2 = pat.facetemps2[i];
+
+      for (let j = 0; j < f2.length; j++) {
+        //console.log(f2[j], vs);
+        vs2[j] = vs[f2[j]];
+        ls2[j] = ls[f2[j]];
+      }
+
+      //console.log("--", vs2, pat.faces[i], i);
+
+      f2 = mesh.makeFace(vs2, undefined, undefined, lctx);
+
+      mesh.copyElemData(f2, f);
+
+      let j = 0;
+      for (let l of f2.loops) {
+        mesh.copyElemData(l, ls2[j]);
+        j++;
+      }
+
+      for (let j = 0; j < vs2.length; j++) {
+        vs2[j] = ls2[j] = undefined;
+      }
+    }
+
+    for (let i = 0; i < vs.length; i++) {
+      vs[i] = ls[i] = undefined;
+    }
+
+    mesh.killFace(f, lctx);
+  }
+}
+
 export function splitEdgesSimple(mesh, es, testfunc, lctx) {
   let newvs = new Set();
   let newfs = new Set();
@@ -28,65 +424,81 @@ export function splitEdgesSimple(mesh, es, testfunc, lctx) {
     }
 
     //if (e.v1.edges.length + e.v2.edges.length < 18) {
-      fs.length = 0;
-      for (let f of e.faces) {
+    fs.length = 0;
+    for (let f of e.faces) {
+      if (f.lists.length > 1 || f.lists[0].length > 3) {
+        fs.push(f);
+      }
+    }
+
+    for (let f of fs) {
+      killfs.add(f);
+      newfs.delete(f);
+      applyTriangulation(mesh, f, newfs, newes, lctx);
+    }
+
+    let [ne, nv] = mesh.splitEdge(e, 0.5, lctx);
+
+    /*
+    for (let i=0; i<2; i++) {
+      let v = i ? nv : e.v1;
+      for (let f of v.faces) {
         if (f.lists.length > 1 || f.lists[0].length > 3) {
-          fs.push(f);
+          killfs.add(f);
         }
       }
+    }
 
-      for (let f of fs) {
-        killfs.add(f);
-        newfs.delete(f);
+    for (let f of killfs) {
+      if (f.eid >= 0) {
         applyTriangulation(mesh, f, newfs, newes, lctx);
       }
+    }//*/
 
-      let [ne, nv] = mesh.splitEdge(e, 0.5, lctx);
-
-      newes.add(ne);
-      newvs.add(nv);
+    newes.add(ne);
+    newvs.add(nv);
     //}
   }
 
-/*
-  let ltris = [];
-  for (let f of killfs) {
-    f.calcNormal();
-    triangulateFace(f, ltris);
-  }
-
-  for (let i=0; i<ltris.length; i += 3) {
-    let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
-
-    let e1 = mesh.getEdge(l1.v, l2.v);
-    let e2 = mesh.getEdge(l2.v, l3.v);
-    let e3 = mesh.getEdge(l3.v, l1.v);
-
-    let tri = mesh.makeTri(l1.v, l2.v, l3.v);
-    let l = tri.lists[0].l;
-
-    tri.calcNormal();
-    tri.flag |= MeshFlags.UPDATE;
-
-    mesh.copyElemData(tri, l1.f);
-    mesh.copyElemData(l, l1);
-    mesh.copyElemData(l.next, l2);
-    mesh.copyElemData(l.prev, l3);
-
-    newfs.add(tri);
-
-    if (!e1) {
-      newes.add(l.e);
+  /*
+    let ltris = [];
+    for (let f of killfs) {
+      f.calcNormal();
+      triangulateFace(f, ltris);
     }
 
-    if (!e2) {
-      newes.add(l.next.e);
-    }
+    for (let i=0; i<ltris.length; i += 3) {
+      let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
 
-    if (!e3) {
-      newes.add(l.prev.e);
-    }
-  }*/
+      let e1 = mesh.getEdge(l1.v, l2.v);
+      let e2 = mesh.getEdge(l2.v, l3.v);
+      let e3 = mesh.getEdge(l3.v, l1.v);
+
+      let tri = mesh.makeTri(l1.v, l2.v, l3.v);
+      let l = tri.lists[0].l;
+
+      tri.calcNormal();
+      tri.flag |= MeshFlags.UPDATE;
+
+      mesh.copyElemData(tri, l1.f);
+      mesh.copyElemData(l, l1);
+      mesh.copyElemData(l.next, l2);
+      mesh.copyElemData(l.prev, l3);
+
+      newfs.add(tri);
+
+      if (!e1) {
+        newes.add(l.e);
+      }
+
+      if (!e2) {
+        newes.add(l.next.e);
+      }
+
+      if (!e3) {
+        newes.add(l.prev.e);
+      }
+    }*/
 
   for (let f of killfs) {
     if (f.eid >= 0) {
@@ -143,14 +555,14 @@ export function splitEdgesSmart(mesh, es) {
     }
 
     for (let i = 0; i < pat2[0].length; i++) {
-      let i2 = (i + pat2[0].length - 1) % pat2[0].length;
+      let i2 = (i + pat2[0].length - 1)%pat2[0].length;
       i2 = pat2[0].length - 1 - i2;
 
       pat2[0][i] = pat[0][i2];
       let t = pat[1][i2];
 
       if (t >= 0) {
-        t = (t + pat2[0].length - 1) % pat2[0].length;
+        t = (t + pat2[0].length - 1)%pat2[0].length;
         t = pat2[0].length - 1 - t;
 
         pat2[1][i] = t;
@@ -175,11 +587,11 @@ export function splitEdgesSmart(mesh, es) {
 
     for (let i = 0; i < pat.length; i++) {
       if (pmask[i]) {
-        mask |= 1 << i;
+        mask |= 1<<i;
       }
     }
 
-    mask |= pat.length << 8;
+    mask |= pat.length<<8;
     ptable[mask] = pat;
     temps[mask] = new Array(pat.length);
   }
@@ -207,18 +619,18 @@ export function splitEdgesSmart(mesh, es) {
 
     let l = l1;
     let mi = 0;
-    let mask = tot << 8;
+    let mask = tot<<8;
 
     do {
       if (newvs.has(l.v)) {
-        mask |= 1 << mi;
+        mask |= 1<<mi;
       }
 
       mi++;
       l = l.next;
     } while (l !== l1);
 
-    if (mask === (1|4|16|64) + (8<<8)) {
+    if (mask === (1 | 4 | 16 | 64) + (8<<8)) {
       //console.log("quad!");
 
       let a = l1.prev.prev;
@@ -240,7 +652,7 @@ export function splitEdgesSmart(mesh, es) {
       continue;
 
 
-      for (let step=0; step<2; step++) {
+      for (let step = 0; step < 2; step++) {
         let e2 = step ? newe : olde;
 
         let l3 = e2.l;
@@ -272,7 +684,7 @@ export function splitEdgesSmart(mesh, es) {
       //mesh.splitFace(l3.f, l3, l3.next.next.next);
 
       continue;
-    } else if (mask === (1|4|16) + (6<<8)) {
+    } else if (mask === (1 | 4 | 16) + (6<<8)) {
       let l3 = l1.next.next;
       let l4 = l1.prev;
 
@@ -293,8 +705,8 @@ export function splitEdgesSmart(mesh, es) {
         ls.push(l);
       }
 
-      for (let i=1; i<ls.length-1; i++) {
-        let l1 = ls[0], l2 = ls[i], l3 = ls[i+1];
+      for (let i = 1; i < ls.length - 1; i++) {
+        let l1 = ls[0], l2 = ls[i], l3 = ls[i + 1];
 
         let f2 = mesh.makeFace([l1.v, l2.v, l3.v]);
         let l = f2.lists[0].l;
@@ -353,12 +765,12 @@ export function splitEdgesSmart(mesh, es) {
   return {
     newvs : newvs,
     newfs : newfs,
-    killfs : killfs
+    killfs: killfs
   }
 }
 
 import {ccSmooth, subdivide} from '../subsurf/subsurf_mesh.js';
-import {Vertex} from './mesh_types.js';
+import {Loop, Vertex} from './mesh_types.js';
 import {MeshFlags} from './mesh_base.js';
 
 let ccSmoothRets = util.cachering.fromConstructor(Vector3, 64);
@@ -384,7 +796,7 @@ export function ccSmooth2(v, ws) {
 
 
   if (weight1 === undefined) {
-    weight1 = (val - 3) / val;
+    weight1 = (val - 3)/val;
   }
 
   if (weightR === undefined) {
@@ -513,7 +925,7 @@ export function ccSmooth2(v, ws) {
   }
 
   if (tot3 > 0) {
-    eco2.mulScalar(1.0 / tot3);
+    eco2.mulScalar(1.0/tot3);
     ret.addFac(eco2, weightR2);
     tot += weightR2;
   }
@@ -539,10 +951,10 @@ export function ccSmooth2(v, ws) {
 let seed = 0;
 
 window.wlist = new Array(32);
-for (let i=0; i<wlist.length; i++) {
+for (let i = 0; i < wlist.length; i++) {
   wlist[i] = new Array(3);
 
-  for (let j=0; j<wlist[i].length; j++) {
+  for (let j = 0; j < wlist[i].length; j++) {
     wlist[i][j] = 1.0;
   }
 
@@ -552,7 +964,13 @@ for (let i=0; i<wlist.length; i++) {
 //wlist = [[1,1,1],[1,1,1],[1,1,1],[0.7272410983839575,2.4435813347809017,-2.178471789743571],[4.430013563162839,-3.0104949259826426,-0.4227987613820692],[1.326717836316675,0.6465272350430536,-0.9773217315750529],[0.681027649669421,-0.4787632516505709,0.7498618279686324],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1]];
 //wlist = [[1,1,1],[1,1,1],[1,1,1],[6.646167205089089,-2.8228640166703745,-2.7923176090302224],[4.430013563162839,-3.0104949259826426,-0.4227987613820692],[1.5229585272194894,0.6007029290427015,-1.1367121116859757],[0.8063591339449,-0.7008216471446179,0.9884848294883335],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1]];
 //wlist = [[1,1,1],[1,1,1],[1,1,1],[3.064527215512514,0.9003473696084594,-2.9824036081532084],[4.430013563162839,-3.0104949259826426,-0.4227987613820692],[1.4373421440850709,0.18100604726428346,-0.6684819059378884],[0.46086543509170635,0.7658991176565205,-0.256928076403811],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1]]
-wlist = [[1,1,1],[1,1,1],[1,1,1],[-6.6919689877574235,7.7449541418130865,-5.255286055420358],[2.9252062698775627,-1.9281125217402386,-2.4574709914875257],[3.388478383795898,-2.3908329266981805,4.022667641869909],[0.08234435848112126,0.9784174088989873,0.1754479515452284],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1],[1,1,1]];
+wlist = [[1, 1, 1], [1, 1, 1], [1, 1, 1], [-6.6919689877574235, 7.7449541418130865, -5.255286055420358],
+         [2.9252062698775627, -1.9281125217402386, -2.4574709914875257],
+         [3.388478383795898, -2.3908329266981805, 4.022667641869909],
+         [0.08234435848112126, 0.9784174088989873, 0.1754479515452284], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1],
+         [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1],
+         [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1], [1, 1, 1],
+         [1, 1, 1]];
 
 for (let ws of wlist) {
   ws.vs = [];
@@ -561,7 +979,7 @@ for (let ws of wlist) {
 window.__last1 = new Map();
 
 let timer = undefined;
-window.__solve = function() {
+window.__solve = function () {
   if (timer) {
     console.log("stopping timer");
     window.clearInterval(timer);
@@ -583,7 +1001,7 @@ window.__solve = function() {
   }, 100);
 }
 
-export function meshSubdivideTest(mesh, faces=mesh.faces) {
+export function meshSubdivideTest(mesh, faces = mesh.faces) {
   if (__last1) {
     for (let v of mesh.verts) {
       let co = __last1.get(v.eid);
@@ -637,7 +1055,7 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
     }
     len /= v.edges.length;
 
-    for (let j=0; j<3; j++) {
+    for (let j = 0; j < 3; j++) {
       v[j] += (util.random() - 0.5)*len;
       v.flag |= MeshFlags.UPDATE;
     }
@@ -659,12 +1077,12 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
   let myconsole = new util.SmartConsoleContext("solve");
   myconsole.timeIntervalAll = 150;
 
-  function solve(err, ws, steps= 1550, val) {
+  function solve(err, ws, steps = 1550, val) {
     let df = 0.0005;
     let gs = new Array(ws.length);
 
     let startws1 = new Array(ws.length);
-    for (let i=0; i<ws.length; i++) {
+    for (let i = 0; i < ws.length; i++) {
       startws1[i] = ws[i];
     }
 
@@ -675,7 +1093,7 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
 
     let startws = new Array(ws.length);
 
-    let stepi = 0, step=-1;
+    let stepi = 0, step = -1;
 
     let order = new Array(ws.length);
 
@@ -690,10 +1108,10 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
 
       let wmin = -1.0, wmax = 1.0;
 
-      for(let i=0; i<order.length; i++) {
+      for (let i = 0; i < order.length; i++) {
         order[i] = i;
       }
-      for (let i=0; i<order.length; i++) {
+      for (let i = 0; i < order.length; i++) {
         let t = order[i];
         let ri = ~~(util.random()*order.length*0.999999);
 
@@ -704,7 +1122,7 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
       for (let i of order) {
         startws[i] = ws[i];
 
-        ws[i] += (util.random()-0.5)*f2*r;
+        ws[i] += (util.random() - 0.5)*f2*r;
         //ws[i] = Math.min(Math.max(ws[i], wmin), wmax);
       }
 
@@ -767,7 +1185,7 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
           let rfac;
           //rfac = Math.min(Math.max(Math.abs(r1), -5.0), 5.0);
           //rfac = (r1 < 0 ? -1 : 1) / totg;
-          rfac = 0.15*r1 / totg;
+          rfac = 0.15*r1/totg;
 
           let delta = -rfac*gs[j];
           //delta = Math.max(Math.abs(delta), 0.01)*Math.sign(delta);
@@ -803,7 +1221,7 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
         f3 = Math.exp(-f3*6.0);
 
         if (err() > r1) {// && util.random() > f3) {
-          for (let j=0; j<ws.length; j++) {
+          for (let j = 0; j < ws.length; j++) {
             ws[j] = startws[j];
           }
 
@@ -811,7 +1229,7 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
         }
 
         //if (stepi % 20 === 0) {
-          myconsole.log("  error:", err().toFixed(3), i + 1, fac, "val", val);
+        myconsole.log("  error:", err().toFixed(3), i + 1, fac, "val", val);
         //}
         fac *= 0.95;
       }
@@ -828,8 +1246,8 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
     }
     */
 
-    let s = '' + val +  '['
-    for (let i=0; i<ws.length; i++) {
+    let s = '' + val + '['
+    for (let i = 0; i < ws.length; i++) {
       if (i > 0) {
         s += ", ";
       }
@@ -839,7 +1257,7 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
     s += ']';
 
     if (err() > starterr) {
-      for (let i=0; i<ws.length; i++) {
+      for (let i = 0; i < ws.length; i++) {
         ws[i] = startws1[i];
       }
     }
@@ -853,7 +1271,7 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
   copy.recalcNormals();
   mesh.recalcNormals();
 
-  for (let i=0; i<wlist.length; i++) {
+  for (let i = 0; i < wlist.length; i++) {
     wlist[i].vs.length = 0;
   }
 
@@ -869,7 +1287,7 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
   }
 
   let wi = 0;
-  for (let wi=0; wi<wlist.length; wi++) {
+  for (let wi = 0; wi < wlist.length; wi++) {
     let ws2 = wlist[wi];
 
     if (ws2.vs.length === 0) {
@@ -932,7 +1350,7 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
     function rand() {
       let f = util.random();
 
-      return f-0.5;
+      return f - 0.5;
     }
 
     if (v && v instanceof Vertex) {
@@ -942,7 +1360,7 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
       let ws2;
 
       function error() {
-        for (let i=0; i<startws.length; i++) {
+        for (let i = 0; i < startws.length; i++) {
           //startws[i] = ws2[i];
         }
 
@@ -954,7 +1372,7 @@ export function meshSubdivideTest(mesh, faces=mesh.faces) {
 
         let co = ccSmooth2(v, ws);
 
-        for (let i=0; i<startws.length; i++) {
+        for (let i = 0; i < startws.length; i++) {
           //ws2[i] = startws[i];
         }
 

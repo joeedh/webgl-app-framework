@@ -436,7 +436,7 @@ export class BlockSet extends Array {
 
     super.push(block);
 
-    if (block.lib_id == -1) {
+    if (block.lib_id === -1) {
       block.lib_id = this.datalib.idgen.next();
     }
 

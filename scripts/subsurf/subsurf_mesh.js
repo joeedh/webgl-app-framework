@@ -1,7 +1,7 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {PCOS, PEID, PCOLOR, PTOT, PatchData, PatchList} from './subsurf_base.js';
-import {MeshTypes} from '../mesh/mesh_base.js';
+import {MeshTypes, MeshFlags} from '../mesh/mesh_base.js';
 
 let eco = new Vector3();
 let ccSmoothRets = util.cachering.fromConstructor(Vector3, 64);
@@ -381,6 +381,8 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
     f.calcCent();
     f.index = cents.length;
 
+    f.flag |= MeshFlags.UPDATE;
+
     let centv = mesh.makeVertex(f.cent);
 
     mesh.verts.setSelect(centv, true);
@@ -445,6 +447,10 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
 
   for (let e of eset) {
     let v1 = e.v1, v2 = e.v2;
+
+    e.flag |= MeshFlags.UPDATE;
+    v1.flag |= MeshFlags.UPDATE;
+    v2.flag |= MeshFlags.UPDATE;
 
     //console.log("subdividing edge", e.eid);
     let ret = mesh.splitEdge(e, 0.5);

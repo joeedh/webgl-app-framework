@@ -874,9 +874,17 @@ export function applyTriangulation(mesh, f, newfaces, newedges, lctx) {
 
     tri.calcNormal();
 
-    if (tri.no.dot(f.no) < 0) {
+    let lr = l.radial_next;
+    if (lr.f === f) {
+      lr = lr.radial_next;
+    }
+
+    if (lr.v === l.v && lr !== l && lr.f !== f) {
       mesh.reverseWinding(tri);
     }
+    //if (tri.no.dot(f.no) < 0) {
+      //mesh.reverseWinding(tri);
+    //}
 
     tri.flag |= MeshFlags.UPDATE;
 

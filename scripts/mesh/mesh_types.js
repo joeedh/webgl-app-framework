@@ -580,6 +580,36 @@ export class Vertex extends Vector3 {
     }
   }
 
+  /*try to avoid using this,
+   it duplicates lots of work
+   compared to other methods
+   */
+  calcNormal(doFaces=true) {
+    if (doFaces) {
+      for (let f of this.faces) {
+        f.calcNormal();
+      }
+    }
+
+    let tot = 0.0;
+    this.no.zero();
+
+    for (let e of this.edges) {
+      for (let l of e.loops) {
+        this.no.addFac(l.f.no, l.f.area);
+        tot += l.f.area;
+      }
+    }
+
+    if (tot) {
+      this.no.mulScalar(1.0 / tot).normalize();
+    } else {
+      this.no[2] = 1.0; //just have normal point upwards
+    }
+
+    return this;
+  }
+
   /*to avoid messing up v8's optimizer
     we have to inherit from Vector3 (and thus Array),
     not Element.  However util.mixin won't pull in valueOf and [Symbol.keystr]
@@ -1755,8 +1785,35 @@ export class Face extends Element {
 
     this.flag |= MeshFlags.FLAT;
 
+    this.area = 1.0; //not guaranteed to be correct, used for weighting normals
     this.no = new Vector3();
     this.cent = new Vector3();
+  }
+
+  get length() {
+    let count = 0;
+
+    for (let list of this.lists) {
+      count += list.length;
+    }
+
+    return count;
+  }
+
+  isNgon() {
+    if (this.lists.length === 0) {
+      return false; //bad face
+    }
+
+    return this.lists.length > 1 || this.lists[0].length > 4;
+  }
+
+  isTri() {
+    return this.lists.length === 1 && this.lists[0].length === 3;
+  }
+
+  isQuad() {
+    return this.lists.length === 1 && this.lists[0].length === 4;
   }
 
   get flag() {

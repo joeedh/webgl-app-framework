@@ -1,10 +1,17 @@
 //grab data field definition
-import {FloatProperty, ToolOp, ToolProperty, Vector2, Vector3, Vector4} from '../../../path.ux/scripts/pathux.js';
-import {BrushFlags, SculptBrush} from '../../../brush/brush.js';
+import {
+  Curve1DProperty,
+  FlagProperty, FloatProperty, Matrix4, ToolOp, ToolProperty, Vector2, Vector3, Vector4
+} from '../../../path.ux/scripts/pathux.js';
+import {BrushFlags, SculptBrush, SculptTools} from '../../../brush/brush.js';
 import {ProceduralTex} from '../../../texture/proceduralTex.js';
 import {DataRefProperty} from '../../../core/lib_api.js';
 import {BVHToolMode} from './pbvh.js';
 import {CDFlags} from '../../../mesh/customdata.js';
+import {Mesh} from '../../../mesh/mesh.js';
+import {GridBase} from '../../../mesh/mesh_grids.js';
+import {BVHFlags} from '../../../util/bvh.js';
+import {MeshFlags} from '../../../mesh/mesh.js';
 
 export const SymAxisMap = [
   [],
@@ -35,6 +42,10 @@ export class BrushProperty extends ToolProperty {
 
   calcMemSize() {
     return this.brush.calcMemSize() + this._texture.calcMemSize();
+  }
+
+  setDynTopoSettings(dynTopo) {
+    this.brush.dynTopo.load(dynTopo);
   }
 
   setValue(brush) {
@@ -81,6 +92,8 @@ export class PaintSample {
     this.p = new Vector4();
     this.dp = new Vector4();
     this.viewPlane = new Vector3();
+
+    this.smoothProj = 0.0;
 
     this.pinch = 0.0;
 
@@ -136,6 +149,8 @@ export class PaintSample {
   }
 
   copyTo(b) {
+    b.smoothProj = this.smoothProj;
+
     b.viewPlane.load(this.viewPlane);
     b.viewvec.load(this.viewvec);
     b.vieworigin.load(this.vieworigin);
@@ -199,6 +214,7 @@ PaintSample {
   radius         : float;
   w              : float;
   pinch          : float;
+  smoothProj     : float;
   autosmooth     : float;
   concaveFilter  : float;
   invert         : bool;
@@ -493,3 +509,519 @@ export function calcConcaveLayer(mesh) {
 
   }
 }
+
+export class PaintOpBase extends ToolOp {
+  constructor() {
+    super();
+
+    this.last_mpos = new Vector2();
+    this.last_p = new Vector3();
+    this.last_origco = new Vector4();
+    this._first = true;
+    this.last_radius = 0;
+    this.last_vec = new Vector3();
+  }
+
+  static tooldef() {
+    return {
+      inputs : {
+        brush: new BrushProperty(),
+        samples: new PaintSampleProperty(),
+        symmetryAxes: new FlagProperty(undefined, {X: 1, Y: 2, Z: 4}),
+        falloff: new Curve1DProperty(),
+      }
+    }
+  }
+
+  static needOrig(mode) {
+    let ret = mode === SculptTools.SHARP || mode === SculptTools.GRAB;
+    ret = ret || mode === SculptTools.SNAKE; // || mode === SculptTools.SMOOTH;
+
+    return ret;
+  }
+
+  on_mousemove(e) {
+    let brush = this.inputs.brush.getValue();
+    let mode = brush.tool;
+    let pressure = 1.0;
+
+    if (e.was_touch && e.targetTouches && e.targetTouches.length > 0) {
+      let t = e.targetTouches[0];
+
+      if (t.pressure !== undefined) {
+        pressure = t.pressure;
+      } else {
+        pressure = t.force;
+      }
+    }
+
+    let ctx = this.modal_ctx;
+
+    if (!ctx.object || !(ctx.object.data instanceof Mesh)) {
+      return;
+    }
+
+    let toolmode = ctx.toolmode;
+    let view3d = ctx.view3d;
+
+    //the pbvh toolmode is responsible for drawing brush circle,
+    //make sure it has up to date info for that
+    toolmode.mpos[0] = e.x;
+    toolmode.mpos[1] = e.y;
+
+    let mpos = view3d.getLocalMouse(e.x, e.y);
+    let x = mpos[0], y = mpos[1];
+
+    /*
+    let falloff = this.inputs.falloff.getValue();
+    let strengthMul = falloff.integrate(1.0) - falloff.integrate(0.0);
+    strengthMul = Math.abs(strengthMul !== 0.0 ? 1.0 / strengthMul : strengthMul);
+    */
+
+    let radius = brush.radius;
+
+    let ch;
+
+    let getchannel = (key, val) => {
+      let ch = brush.dynamics.getChannel(key);
+      if (ch.useDynamics) {
+        return val*ch.curve.evaluate(pressure);
+      } else {
+        return val;
+      }
+    }
+
+    radius = getchannel("radius", radius);
+
+    if (toolmode) {
+      toolmode._radius = radius;
+    }
+
+    //console.log("pressure", pressure, strength, dynmask);
+
+    let view = view3d.getViewVec(x, y);
+    let origin = view3d.activeCamera.pos;
+
+    let ob = ctx.object;
+    let mesh = ob.data;
+
+    let bvh = mesh.getBVH(false);
+
+    let axes = [-1];
+    let sym = mesh.symFlag;
+
+    for (let i = 0; i < 3; i++) {
+      if (mesh.symFlag & (1<<i)) {
+        axes.push(i);
+      }
+    }
+
+    let haveOrigData = PaintOpBase.needOrig(brush.tool);
+    let cd_orig = -1;
+    let cd_grid = GridBase.meshGridOffset(mesh);
+
+    if (haveOrigData) {
+      cd_orig = this.initOrigData(mesh);
+    }
+
+    let isect;
+    let obmat = ob.outputs.matrix.getValue();
+    let matinv = new Matrix4(obmat);
+    matinv.invert();
+
+    origin = new Vector3(origin);
+    origin.multVecMatrix(matinv);
+
+    view = new Vector4(view);
+    view[3] = 0.0;
+    view.multVecMatrix(matinv);
+    view = new Vector3(view).normalize();
+
+    for (let axis of axes) {
+      let view2 = new Vector3(view);
+      let origin2 = new Vector3(origin);
+
+      if (axis !== -1) {
+        origin2[axis] = -origin2[axis];
+        view2[axis] = -view2[axis];
+      }
+
+      origin2 = new Vector3(origin2);
+      view2 = new Vector3(view2);
+
+      let isect2 = bvh.castRay(origin2, view2);
+
+      if (isect2 && (!isect || isect2.dist < isect.dist)) {
+        isect = isect2.copy();
+        origin = origin2;
+        view = view2;
+      }
+    }
+
+    let origco = new Vector4();
+
+    if (!isect) {
+      if ((mode === SculptTools.GRAB || (mode === SculptTools.SNAKE)) && !this._first) {
+        let p = new Vector3(this.last_p);
+        p.multVecMatrix(obmat);
+
+        view3d.project(p);
+
+        p[0] = mpos[0];
+        p[1] = mpos[1];
+
+        view3d.unproject(p);
+        p.multVecMatrix(matinv);
+
+        let dis = p.vectorDistance(origin);
+
+        isect = {p, dis};
+      } else {
+        return;
+      }
+    } else {
+      let tri = isect.tri;
+
+      if (haveOrigData) {
+        let o1 = this.getOrigCo(mesh, tri.v1, cd_grid, cd_orig);
+        let o2 = this.getOrigCo(mesh, tri.v2, cd_grid, cd_orig);
+        let o3 = this.getOrigCo(mesh, tri.v3, cd_grid, cd_orig);
+
+        for (let i = 0; i < 3; i++) {
+          origco[i] = o1[i]*isect.uv[0] + o2[i]*isect.uv[1] + o3[i]*(1.0 - isect.uv[0] - isect.uv[1]);
+        }
+
+        origco[3] = 1.0;
+      } else {
+        origco.load(isect.p);
+        origco[3] = 1.0;
+      }
+    }
+
+    let p3 = new Vector4(isect.p);
+    p3[3] = 1.0;
+
+    let matrix = new Matrix4(ob.outputs.matrix.getValue());
+    p3.multVecMatrix(view3d.activeCamera.rendermat);
+
+    let w = p3[3]*matrix.$matrix.m11;
+    //let w2 = Math.cbrt(w);
+
+    if (w <= 0) return;
+
+    radius /= Math.max(view3d.glSize[0], view3d.glSize[1]);
+    radius *= Math.abs(w);
+
+    let vec = new Vector3(isect.tri.v1.no);
+    vec.add(isect.tri.v2.no);
+    vec.add(isect.tri.v3.no);
+    vec.normalize();
+
+    view.negate();
+    if (vec.dot(view) < 0) {
+      view.negate();
+    }
+    view.normalize();
+
+    vec.interp(view, 1.0 - brush.normalfac).normalize();
+
+    if (this._first) {
+      this.last_mpos.load(mpos);
+      this.last_p.load(isect.p);
+      this.last_origco.load(origco);
+      this.last_vec.load(vec);
+      this.last_radius = radius;
+      this._first = false;
+
+      return undefined;
+    }
+
+    return {
+      origco, p: isect.p, radius, vec, mpos, view, getchannel, w
+    }
+  }
+
+  on_mouseup(e) {
+    this.modalEnd(false);
+  }
+
+  undoPre(ctx) {
+    throw new Error("implement me!");
+  }
+
+  calcUndoMem(ctx) {
+    throw new Error("implement me!");
+  }
+
+  modalStart(ctx) {
+    this._first = true;
+    super.modalStart(ctx);
+  }
+
+  undo(ctx) {
+    throw new Error("implement me!");
+  }
+}
+
+export class MaskOpBase extends ToolOp {
+  constructor() {
+    super();
+  }
+
+  calcUndoMem(ctx) {
+    let ud = this._undo;
+
+    if (ud.gridData) {
+      return ud.gridData.length*8;
+    }
+
+    if (ud.vertData) {
+      return ud.vertData.length*8;
+    }
+
+    return 0;
+  }
+
+  undoPre(ctx) {
+    let mesh = ctx.mesh;
+
+    let ud = this._undo = {mesh : -1};
+
+    if (!mesh) {
+      return;
+    }
+
+    ud.mesh = mesh.lib_id;
+
+    let cd_grid = GridBase.meshGridOffset(mesh);
+    let cd_mask;
+
+    ud.cd_grid = cd_grid;
+
+    if (cd_grid >= 0) {
+      let gd = ud.gridData = [];
+      cd_mask = ud.cd_mask = mesh.loops.customData.getLayerIndex("mask");
+
+      if (cd_mask < 0) {
+        return;
+      }
+
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+
+        for (let p of grid.points) {
+          if (p.flag & MeshFlags.HIDE) {
+            continue;
+          }
+
+          gd.push(l.eid);
+          gd.push(p.eid);
+          gd.push(p.customData[cd_mask].value);
+        }
+      }
+    } else {
+      cd_mask = ud.cd_mask = mesh.verts.customData.getLayerIndex("mask");
+
+      if (cd_mask < 0) {
+        return;
+      }
+      let vd = ud.vertData = [];
+
+      for (let v of mesh.verts) {
+        if (v.flag & MeshFlags.HIDE) {
+          continue;
+        }
+
+        vd.push(v.eid);
+        vd.push(v.customData[cd_mask].value);
+      }
+    }
+  }
+
+  undo(ctx) {
+    let ud = this._undo;
+    let mesh = ctx.datalib.get(ud.mesh);
+
+    if (!mesh) {
+      return;
+    }
+
+    let cd_grid = GridBase.meshGridOffset(mesh);
+    let cd_mask;
+    let cd_node = mesh.bvh ? mesh.bvh.cd_node : -1;
+
+    ud.cd_grid = cd_grid;
+    let updateflag = BVHFlags.UPDATE_MASK|BVHFlags.UPDATE_DRAW;
+
+    if (cd_grid >= 0) {
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+        grid.regenEIDMap();
+      }
+
+      let gd = ud.gridData;
+      cd_mask = ud.cd_mask = mesh.loops.customData.getLayerIndex("mask");
+
+      if (cd_mask < 0) {
+        return;
+      }
+
+      for (let gi=0; gi<gd.length; gi += 3) {
+        let leid = gd[gi], peid = gd[gi+1], mask = gd[gi+2];
+
+        let l = mesh.eidmap[leid];
+        if (!l) {
+          console.error("Missing loop " + leid);
+          continue;
+        }
+
+        let grid = l.customData[cd_grid];
+        let eidmap = grid.getEIDMap(mesh);
+
+        let p = eidmap[peid];
+
+        if (!p) {
+          console.warn("Missing grid vert:" + peid);
+          continue;
+        }
+
+        p.customData[cd_mask].value = mask;
+        p.flag |= MeshFlags.UPDATE;
+
+        if (cd_node >= 0) {
+          let node = p.customData[cd_node].node;
+
+          if (node) {
+            node.flag |= updateflag;
+            mesh.bvh.updateNodes.add(node);
+          }
+        }
+      }
+    } else {
+      cd_mask = ud.cd_mask = mesh.verts.customData.getLayerIndex("mask");
+
+      if (cd_mask < 0) {
+        return;
+      }
+      let vd = ud.vertData;
+
+      for (let vi=0; vi<vd.length; vi += 2) {
+        let veid = vd[vi], mask = vd[vi+1];
+
+        let v = mesh.eidmap[veid];
+
+        if (!v) {
+          console.warn("Missing vertex " + veid);
+          continue;
+        }
+
+        v.customData[cd_mask].value = mask;
+        v.flag |= MeshFlags.UPDATE;
+
+        if (cd_node) {
+          let node = v.customData[cd_node].node;
+          if (node) {
+            node.flag |= updateflag;
+            mesh.bvh.updateNodes.add(node);
+          }
+        }
+      }
+    }
+
+    mesh.regenRender();
+    mesh.graphUpdate();
+    window.redraw_viewport(true);
+  }
+
+  getCDMask(mesh) {
+    let cd_grid = GridBase.meshGridOffset(mesh);
+
+    if (cd_grid >= 0){
+      return mesh.loops.customData.getLayerIndex("mask");
+    } else {
+      return mesh.verts.customData.getLayerIndex("mask");
+    }
+  }
+
+  getVerts(mesh, updateBVHNodes=true) {
+    let this2 = this;
+
+    let cd_node = mesh.bvh ? mesh.bvh.cd_node : -1;
+    let bvh = mesh.bvh ? mesh.bvh : undefined;
+
+    updateBVHNodes = updateBVHNodes && cd_node >= 0;
+
+    let updateflag = BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK;
+
+    return (function*() {
+      let cd_mask = this2.getCDMask(mesh);
+      let cd_grid = GridBase.meshGridOffset(mesh);
+
+      if (cd_mask < 0) {
+        return;
+      }
+
+      if (cd_grid >= 0) {
+        for (let l of mesh.loops) {
+          let grid = l.customData[cd_grid];
+          for (let p of grid.points) {
+            yield p;
+
+            if (updateBVHNodes) {
+              let node = p.customData[cd_node].node;
+              if (node) {
+                node.flag |= updateflag;
+                bvh.updateNodes.add(node);
+              }
+            }
+          }
+        }
+      } else {
+        for (let v of mesh.verts) {
+          yield v;
+
+          if (updateBVHNodes) {
+            let node = v.customData[cd_node].node;
+            if (node) {
+              node.flag |= updateflag;
+              bvh.updateNodes.add(node);
+            }
+          }
+        }
+      }
+
+      mesh.regenRender();
+      mesh.graphUpdate();
+      window.redraw_viewport(true);
+    })();
+  }
+}
+
+export class ClearMaskOp extends MaskOpBase {
+  static tooldef() {return {
+    uiname : "Clear Mask",
+    toolpath : "paint.clear_mask",
+    inputs : {
+      value : new FloatProperty(1.0)
+    }
+  }}
+
+  exec(ctx) {
+    let mesh = ctx.mesh;
+    if (!mesh) {
+      return;
+    }
+
+    let cd_mask = this.getCDMask(mesh);
+    if (cd_mask < 0) {
+      return;
+    }
+
+    let value = this.inputs.value.getValue();
+
+    for (let v of this.getVerts(mesh, true)) {
+      v.customData[cd_mask].value = value;
+    }
+  }
+}
+ToolOp.register(ClearMaskOp);

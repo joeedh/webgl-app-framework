@@ -11,6 +11,43 @@ import {QRecalcFlags} from "../mesh/mesh_grids.js";
 
 let _triverts = [new Vector3(), new Vector3(), new Vector3()];
 
+export class BVHSettings {
+  constructor(leafLimit=256, drawLevelOffset=2, depthLimit=18) {
+    this.leafLimit = leafLimit;
+    this.drawLevelOffset = drawLevelOffset;
+    this.depthLimit = depthLimit;
+
+    this._last_key = "";
+  }
+
+  copyTo(b) {
+    b.leafLimit = this.leafLimit;
+    b.drawLevelOffset = this.drawLevelOffset;
+    b.depthLimit = this.depthLimit;
+  }
+
+  calcUpdateKey() {
+    return "" + this.leafLimit + ":" + this.drawLevelOffset + ":" + this.depthLimit;
+  }
+
+  load(b) {
+    b.copyTo(this);
+    return this;
+  }
+
+  copy(b) {
+    return new BVHSettings().load(this);
+  }
+};
+BVHSettings.STRUCT = `
+bvh.BVHSettings {
+  leafLimit       : int;
+  drawLevelOffset : int;
+  depthLimit      : int;
+}
+`;
+nstructjs.register(BVHSettings);
+
 export const BVHFlags = {
   UPDATE_DRAW          : 1,
   TEMP_TAG             : 2,
@@ -20,7 +57,8 @@ export const BVHFlags = {
   UPDATE_TOTTRI        : 32,
   UPDATE_OTHER_VERTS   : 64,
   UPDATE_INDEX_VERTS   : 128,
-  UPDATE_COLORS        : 256
+  UPDATE_COLORS        : 256,
+  UPDATE_MASK          : 512
 };
 
 export const BVHTriFlags = {
@@ -157,6 +195,7 @@ export class CDNodeInfo extends CustomDataElem {
   constructor() {
     super();
     this.node = undefined;
+    this.vel = new Vector3(); //for smoothing
   }
 
   static define() {
@@ -585,7 +624,7 @@ export class BVHNode {
           node.uniqueTris.add(tri);
         }
 
-        node.flag |= BVHFlags.UPDATE_INDEX_VERTS;
+        node.flag |= BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_DRAW;
         node._pushTri(tri);
       }
     }
@@ -1126,16 +1165,24 @@ export class BVHNode {
       return this.updateIndexVertsGrids();
     }
 
-
     let computeValidEdges = this.bvh.computeValidEdges;
 
     this.indexVerts = [];
     this.indexLoops = [];
+    let tris = this.indexTris = [];
+    let edges = this.indexEdges = [];
 
     let mesh = this.bvh.mesh;
 
+    for (let tri of this.uniqueTris) {
+      tri.v1.index = tri.v2.index = tri.v3.index = -1;
+      tri.l1.index = tri.l2.index = tri.l3.index = -1;
+    }
+
     let cdlayers = mesh.loops.customData.flatlist;
     cdlayers = cdlayers.filter(f => !(f.flag & (CDFlags.TEMPORARY|CDFlags.IGNORE_FOR_INDEXBUF)));
+
+    //simple code path for if there's no cd layer to build islands out of
     if (cdlayers.length === 0) {
       let vi = 0;
 
@@ -1160,10 +1207,46 @@ export class BVHNode {
         }
       }
 
-      let tris = this.indexTris = []
-      let edges = this.indexEdges = [];
+      let deadtris = new Set();
 
       for (let tri of this.uniqueTris) {
+        if (tri.v1.index < 0 || tri.v2.index < 0 || tri.v3.index < 0) {
+          //console.warn("Tri index buffer error");
+
+          if (tri.v1.eid < 0 || tri.v2.eid < 0 || tri.v3.eid < 0) {
+            console.warn("Tri index buffer error", tri);
+            deadtris.add(tri);
+            continue;
+          }
+
+          if (tri.l1.eid < 0 || tri.l2.eid < 0 || tri.l3.eid < 0) {
+            console.warn("Tri index buffer error 2");
+            continue;
+          }
+
+          if (tri.v1.index < 0) {
+            tri.v1.index = vi++;
+            this.indexVerts.push(tri.v1);
+            this.indexLoops.push(tri.l1);
+            this.otherVerts.add(tri.v1);
+          }
+
+          if (tri.v2.index < 0) {
+            tri.v2.index = vi++;
+            this.indexVerts.push(tri.v2);
+            this.indexLoops.push(tri.l2);
+            this.otherVerts.add(tri.v2);
+          }
+
+          if (tri.v3.index < 0) {
+            tri.v3.index = vi++;
+            this.indexVerts.push(tri.v3);
+            this.indexLoops.push(tri.l3);
+            this.otherVerts.add(tri.v3);
+          }
+          //continue;
+        }
+
         tris.push(tri.v1.index);
         tris.push(tri.v2.index);
         tris.push(tri.v3.index);
@@ -1187,6 +1270,24 @@ export class BVHNode {
           edges.push(tri.v3.index);
           edges.push(tri.v1.index);
         }
+      }
+
+      if (deadtris.size > 0) {
+        for (let v of this.uniqueVerts) {
+          if (v.eid < 0) {
+            this.uniqueVerts.delete(v);
+          }
+        }
+        for (let v of this.otherVerts) {
+          if (v.eid < 0) {
+            this.otherVerts.delete(v);
+          }
+        }
+      }
+
+      for (let tri of deadtris) {
+        this.uniqueTris.delete(tri);
+        this.bvh.removeTri(tri);
       }
 
       return;
@@ -1247,10 +1348,23 @@ export class BVHNode {
       }
     }
 
+    for (let l of ls) {
+      if (l.index < 0) {
+        l.index = idxbase++;
+        this.indexVerts.push(l.v);
+        this.indexLoops.push(l);
+      }
+    }
+
     let idxmap = this.indexTris = [];
     let eidxmap = this.indexEdges = [];
 
     for (let tri of this.uniqueTris) {
+      if (tri.l1.index < 0 || tri.l2.index < 0 || tri.l3.index < 0) {
+        console.warn("Tri index buffer error");
+        continue;
+      }
+
       idxmap.push(tri.l1.index);
       idxmap.push(tri.l2.index);
       idxmap.push(tri.l3.index);
@@ -1314,6 +1428,8 @@ export class BVHNode {
       doidx = doidx && !(this.flag & (BVHFlags.UPDATE_UNIQUE_VERTS));
 
       if (this.flag & BVHFlags.UPDATE_UNIQUE_VERTS) {
+        this.flag |= BVHFlags.UPDATE_INDEX_VERTS;
+
         for (let v of this.uniqueVerts) {
           let node = v.customData[this.bvh.cd_node];
 
@@ -1323,6 +1439,7 @@ export class BVHNode {
         this.flag &= ~BVHFlags.UPDATE_UNIQUE_VERTS;
         this.flag |= BVHFlags.UPDATE_UNIQUE_VERTS_2;
       } else if (this.flag & BVHFlags.UPDATE_UNIQUE_VERTS_2) {
+        this.flag &= ~BVHFlags.UPDATE_UNIQUE_VERTS_2;
         this.updateUniqueVerts();
       }
 
@@ -1797,6 +1914,11 @@ export class BVH {
     }
   }
 
+  removeTri(tri) {
+    this._removeTri(tri, false, false);
+    this.tris.delete(tri.tri_idx);
+  }
+
   _removeTri(tri, partial = false, unlinkVerts, joinNodes = false) {
     if (tri.removed) {
       return;
@@ -2030,11 +2152,17 @@ export class BVH {
 
     if (leafLimit !== undefined) {
       bvh.leafLimit = leafLimit;
+    } else {
+      bvh.leafLimit = mesh.bvhSettings.leafLimit;
     }
 
     if (depthLimit !== undefined) {
       bvh.depthLimit = depthLimit;
+    } else {
+      bvh.depthLimit = mesh.bvhSettings.depthLimit;
     }
+
+    bvh.drawLevelOffset = mesh.bvhSettings.drawLevelOffset;
 
     let cd_grid = bvh.cd_grid = useGrids ? GridBase.meshGridOffset(mesh) : -1;
 

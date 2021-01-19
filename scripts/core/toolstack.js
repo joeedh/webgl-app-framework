@@ -188,6 +188,8 @@ export class AppToolStack extends ToolStack {
       tool.exec(tool.execCtx);
       tool.execPost(tool.execCtx);
 
+      tool.saveDefaultInputs();
+
       window.redraw_viewport();
     }
   }

@@ -69,7 +69,7 @@ export class MeshEditor extends MeshToolBase {
       new HotKey("J", [], "mesh.connect_verts()"),
       //new HotKey("D", [], "mesh.subdivide_smooth()"),
       //new HotKey("D", [], "mesh.subdivide_smooth_loop()"),
-      new HotKey("D", [], "mesh.test_multigrid_smooth()"),
+      new HotKey("D", [], "mesh.dissolve_verts()"),
       new HotKey("K", [], "mesh.subdiv_test()"),
       //new HotKey("D", [], "mesh.test_collapse_edge()"),
       new HotKey("F", [], "mesh.create_face()"),
@@ -120,13 +120,24 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.tris_to_quads()");
     strip.tool("mesh.triangulate()");
 
+    strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.remesh(remesher='UNIFORM_TRI')|Tri Remesh");
+    strip.tool("mesh.remesh(remesher='UNIFORM_QUAD')|Quad Remesh");
+
     strip = panel.row().strip();
-    strip.tool("mesh.remesh()");
     strip.tool("mesh.test_multigrid_smooth()");
 
     strip = panel.row().strip();
     strip.tool("mesh.fix_normals()");
     strip.tool("mesh.split_edges_smart()");
+
+    strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.dissolve_verts()");
+    strip.tool("mesh.cleanup_quads()");
+
+    strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.dissolve_edges()");
+    strip.tool("mesh.collapse_edges()");
 
     panel = container.panel("Transform");
 

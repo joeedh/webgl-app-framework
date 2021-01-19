@@ -136,10 +136,10 @@ function getArrayTemp(n) {
 }
 
 export class ElementListIter {
-  constructor() {
+  constructor(elist) {
     this.ret = {done: false, value: undefined};
     this.i = 0;
-    this.elist = undefined;
+    this.elist = elist;
   }
 
   init(elist) {
@@ -203,9 +203,9 @@ export class ElementList {
     this.customData = new CustomData();
     this.local_eidmap = {};
 
-    this.iterstack = new Array(32);
+    this.iterstack = new Array(64);
     for (let i = 0; i < this.iterstack.length; i++) {
-      this.iterstack[i] = new ElementListIter();
+      this.iterstack[i] = new ElementListIter(this);
     }
     this.iterstack.cur = 0;
 
@@ -227,7 +227,7 @@ export class ElementList {
   [Symbol.iterator]() {
     if (this.iterstack.cur >= this.iterstack.length) {
       console.warn("deep nesting of ElementListIter detected; growing cache stack by one", this.iterstack.cur);
-      this.iterstack.push(new ElementListIter());
+      this.iterstack.push(new ElementListIter(this));
     }
 
     return this.iterstack[this.iterstack.cur++].init(this);

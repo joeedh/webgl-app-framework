@@ -832,7 +832,7 @@ void main() {
 };
 
 export let MeshIDShader = {
-  vertex : `precision mediump float;
+  vertex : `precision highp float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -876,7 +876,7 @@ void main() {
   vId = id + 1.0; // + id_offset;
 }
 `,
-  fragment : `precision mediump float;
+  fragment : `precision highp float;
 
 uniform float id_offset;
 uniform float object_id;

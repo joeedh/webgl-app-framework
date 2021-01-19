@@ -502,7 +502,15 @@ export class MeshLog {
       } else if (subtype === LogTypes.REMOVE) {
         switch (type & LogTypes.GEOM_MASK) {
           case MeshTypes.VERTEX:
-            elem = mesh.makeVertex(undefined, eid);
+            if (eid in mesh.eidmap) {
+              elem = mesh.eidmap[eid];
+              if (elem.type !== MeshTypes.VERTEX) {
+                console.log(elem.eid, elem);
+                throw new Error("Mesh undo log corruption");
+              }
+            } else {
+              elem = mesh.makeVertex(undefined, eid);
+            }
 
             if (log[di] & MeshFlags.SELECT) {
               mesh.setSelect(elem, true);

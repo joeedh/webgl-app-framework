@@ -178,12 +178,7 @@ export class MenuBarEditor extends Editor {
     let menubar = this._menubar = strip.row();
 
     menubar.menu("File", [
-      ["New  ", () => {
-        console.log("File new");
-        if (confirm("Make new file?")) {
-          _genDefaultFile(_appstate, false);
-        }
-      }],
+      "app.new()",
       Menu.SEP,
      /* ["Save", () => {
         console.log("File save");
@@ -219,7 +214,11 @@ export class MenuBarEditor extends Editor {
 
     menubar.menu("Add", [
       "mesh.procedural_add()",
+      Menu.SEP,
       "mesh.make_cube()",
+      "mesh.make_sphere()",
+      "mesh.make_ico_sphere()",
+      Menu.SEP,
       "light.new()",
     ]);
 

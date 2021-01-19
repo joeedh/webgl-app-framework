@@ -451,8 +451,21 @@ export class MeshToolBase extends ToolMode {
       gl.enable(gl.DEPTH_TEST);
       gl.depthMask(true);
 
-      selmask |= SelMask.FACE;
-      mesh.drawElements(view3d, gl, selmask, uniforms, program);
+      gl.disable(gl.DITHER);
+      gl.disable(gl.BLEND);
+
+      uniforms.polygonOffset = 0.0;
+      uniforms.alpha = 1.0;
+
+      mesh.drawElements(view3d, gl, SelMask.FACE, uniforms, program);
+
+      selmask &= ~SelMask.FACE;
+
+      if (selmask) {
+        uniforms.polygonOffset = 1.0;
+
+        mesh.drawElements(view3d, gl, selmask, uniforms, program);
+      }
     }
   }
 

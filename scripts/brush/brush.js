@@ -33,11 +33,63 @@ export const SculptTools = {
   SNAKE         : 7,
   TOPOLOGY      : 8,
   GRAB          : 9,
+  HOLE_FILLER   : 10,
+  MASK_PAINT    : 11,
   PAINT         : 128,
   PAINT_SMOOTH  : 129,
   COLOR_BOUNDARY: 130,
   TEXTURE_PAINT : 150,
 };
+
+export const DynTopoFlags = {
+  SUBDIVIDE         : 1,
+  COLLAPSE          : 2,
+  INHERIT_DEFAULT   : 4,
+  ENABLED           : 8,
+  FANCY_EDGE_WEIGHTS: 16,
+  QUAD_COLLAPSE     : 32
+};
+
+export class DynTopoSettings {
+  constructor() {
+    this.valenceGoal = 6;
+    this.edgeSize = 20.0;
+    this.decimateFactor = 1.0;
+    this.subdivideFactor = 1.0;
+    this.maxDepth = 0.0; //used by multigrid code
+    this.flag = DynTopoFlags.INHERIT_DEFAULT | DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE | DynTopoFlags.FANCY_EDGE_WEIGHTS;
+    this.edgeCount = 150;
+  }
+
+  load(b) {
+    this.decimateFactor = b.decimateFactor;
+    this.edgeSize = b.edgeSize;
+    this.subdivideFactor = b.subdivideFactor;
+    this.flag = b.flag;
+    this.valenceGoal = b.valenceGoal;
+    this.maxDepth = b.maxDepth;
+    this.edgeCount = b.edgeCount;
+
+    return this;
+  }
+
+  copy() {
+    return new DynTopoSettings().load(this);
+  }
+}
+
+DynTopoSettings.STRUCT = `
+DynTopoSettings {
+  edgeSize        : float;
+  decimateFactor  : float;
+  subdivideFactor : float;
+  maxDepth        : int;
+  flag            : int;
+  edgeCount       : int;
+  valenceGoal     : int;
+}
+`;
+nstructjs.register(DynTopoSettings);
 
 export const SculptIcons = {}
 for (let k in SculptTools) {
@@ -166,6 +218,9 @@ export class BrushDynamics {
 
     ch = this.getChannel("pinch", true);
     ch.useDynamics = false;
+
+    ch = this.getChannel("smoothProj", true);
+    ch.useDynamics = false;
   }
 
   loadDefault(name) {
@@ -258,9 +313,13 @@ export class SculptBrush extends DataBlock {
 
     this.flag = BrushFlags.SHARED_SIZE;
 
+    this.smoothProj = 0.0; //how much smoothing should project to surface
+
     this.texUser = new ProceduralTexUser();
 
     this.concaveFilter = 0.0;
+
+    this.dynTopo = new DynTopoSettings();
 
     this.tool = SculptTools.CLAY;
     this.strength = 0.5;
@@ -281,6 +340,24 @@ export class SculptBrush extends DataBlock {
     this.dynamics = new BrushDynamics();
   }
 
+  static blockDefine() {
+    return {
+      typeName   : "brush",
+      defaultName: "Brush",
+      uiName     : "Brush",
+      flag       : BlockFlags.FAKE_USER,
+      icon       : Icons.SCULPT_PAINT
+    }
+  }
+
+  static nodedef() {
+    return {
+      name  : "brush",
+      uiname: "Brush",
+      flag  : NodeFlags.SAVE_PROXY
+    }
+  }
+
   calcMemSize() {
     return 16*8 + 512; //estimation
   }
@@ -295,8 +372,11 @@ export class SculptBrush extends DataBlock {
     b.flag = this.flag;
     b.tool = this.tool;
 
+    b.smoothProj = this.smoothProj;
     b.concaveFilter = this.concaveFilter;
     b.pinch = this.pinch;
+
+    b.dynTopo.load(this.dynTopo);
 
     b.normalfac = this.normalfac;
     b.rake = this.rake;
@@ -323,16 +403,6 @@ export class SculptBrush extends DataBlock {
     return ret;
   }
 
-  static blockDefine() {
-    return {
-      typeName   : "brush",
-      defaultName: "Brush",
-      uiName     : "Brush",
-      flag       : BlockFlags.FAKE_USER,
-      icon       : Icons.SCULPT_PAINT
-    }
-  }
-
   loadSTRUCT(reader) {
     reader(this);
 
@@ -349,14 +419,6 @@ export class SculptBrush extends DataBlock {
 
     this.texUser.dataLink(this, getblock, getblock_adduser);
   }
-
-  static nodedef() {
-    return {
-      name  : "brush",
-      uiname: "Brush",
-      flag  : NodeFlags.SAVE_PROXY
-    }
-  }
 }
 
 SculptBrush.STRUCT = nstructjs.inherit(SculptBrush, DataBlock) + `
@@ -368,6 +430,7 @@ SculptBrush.STRUCT = nstructjs.inherit(SculptBrush, DataBlock) + `
   concaveFilter : float;
   rake       : float;    
   spacing    : float;
+  smoothProj : float;
   color      : vec4;
   normalfac  : float;
   bgcolor    : vec4;
@@ -376,6 +439,7 @@ SculptBrush.STRUCT = nstructjs.inherit(SculptBrush, DataBlock) + `
   falloff    : Curve1D;
   texUser    : ProceduralTexUser;
   pinch      : float;
+  dynTopo    : DynTopoSettings;
 }
 `;
 nstructjs.register(SculptBrush);
@@ -431,11 +495,13 @@ export function makeDefaultBrushes() {
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   brush = bmap[SculptTools.SMOOTH];
-  brush.strength = 0.5;
-  brush.planeoff = -1.5;
+  brush.strength = 0.25;
+  brush.planeoff = -1.0;
   brush.normalfac = 1.0;
   brush.flag |= BrushFlags.PLANAR_SMOOTH;
-  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.LINEAR);
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SPHERE);
+
+  brush.dynamics.strength.curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.LINEAR);
   brush.dynamics.strength.useDynamics = true;
 
   brush = bmap[SculptTools.SNAKE];
@@ -452,9 +518,16 @@ export function makeDefaultBrushes() {
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARP);
 
   brush = bmap[SculptTools.TOPOLOGY];
-  brush.autosmooth = 0.1;
-  brush.rake = 0.75;
+  brush.autosmooth = 0.15;
+  brush.rake = 0.7;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.CONSTANT);
+
+  brush = bmap[SculptTools.GRAB];
+  brush.autosmooth = 0.0;
+  brush.rake = 0.0;
+  brush.dynTopo.flag &= ~(DynTopoFlags.INHERIT_DEFAULT|DynTopoFlags.ENABLED);
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+  brush.dynamics.autosmooth.useDynamics = false;
 
   return brushes;
 }

@@ -58,6 +58,16 @@ export class MeshFlagOpBase extends MeshOp {
     this._undo = undo;
   }
 
+  calcUndoMem(ctx) {
+    let tot = 0;
+
+    for (let udata of this._undo.meshes) {
+      tot += udata.list.length*20;
+    }
+
+    return tot;
+  }
+
   undo(ctx) {
     for (let udata of this._undo.meshes) {
       let {mesh, list} = udata;

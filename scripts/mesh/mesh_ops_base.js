@@ -33,7 +33,6 @@ import {SceneObject} from "../sceneobject/sceneobject.js";
 export function* resolveMeshes(ctx, pathset) {
   for (let key of pathset) {
     if (key === "_all_objects_") {
-
       for (let ob of ctx.selectedMeshObjects) {
         let mesh = ob.data;
 
@@ -45,6 +44,10 @@ export function* resolveMeshes(ctx, pathset) {
       }
     } else {
       let mesh = ctx.api.getValue(ctx, key);
+
+      if (!mesh) {
+        continue;
+      }
 
       if (mesh instanceof SceneObject) {
         let ob = mesh;

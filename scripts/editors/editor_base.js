@@ -870,6 +870,8 @@ export class App extends Screen {
       }),
       new HotKey("S", ["CTRL"], "app.save(forceDialog=false)"),
       new HotKey("O", ["CTRL"], "app.open()"),
+      new HotKey("N", ["CTRL"], "app.new()"),
+      new HotKey("N", ["CTRL", "ALT"], "app.new()"),
 
       new HotKey("Left", [], () => {
         let time = this.ctx.scene.time;

@@ -431,6 +431,8 @@ export function drawMeshElements(mesh, view3d, gl, selmask, uniforms, program, o
        */
       gl.disable(gl.BLEND);
     }
+  } else if (selmask & SelMask.EDGE) {
+    draw_list(mesh.edges, "edges");
   }
 
   if (selmask & SelMask.VERTEX) {

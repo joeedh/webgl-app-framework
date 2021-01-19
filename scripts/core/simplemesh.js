@@ -571,6 +571,7 @@ export class GeoLayer extends Array {
 
     this.glSize = 5126; //gl.FLOAT
     this.glSizeMul = 1.0;
+    this.glReady = false;
 
     this.type = type;
     this.data = [];
@@ -624,6 +625,7 @@ export class GeoLayer extends Array {
   }
 
   reset() {
+    this.glReady = false;
     //this._useTypedData = false;
     //this.f32Ready = false;
     this.dataUsed = 0;
@@ -681,27 +683,36 @@ export class GeoLayer extends Array {
     return this;
   }
 
-  setCount(count) {
+  setCount(count, dirty=false) {
     if (isNaN(count)) {
       throw new Error("count was NaN");
     }
 
     count *= this.size;
 
+    if (dirty) {
+      this.glReady = false;
+    }
+
     this.dataUsed = count;
     let data = this._useTypedData ? this.data_f32 : this.data;
 
-    if (this.dataUsed > data.length) {
+    if (this.dataUsed !== data.length) {
       if (!this._useTypedData) {
-        this.data.length = this.dataUsed;
-        this._useTypedData = false;
+        if (this.data.length < this.dataUsed) {
+          this.data.length = this.dataUsed;
+          this.glReady = false;
+        }
+
         this.f32Ready = false;
       } else {
         if (window.DEBUG && window.DEBUG.simplemesh) {
           console.log("simpleisland is converting back to simple array", count, this.data_f32.length, this.dataUsed);
         }
 
-        this.data = new Array(this.data_f32.length);
+        let len = this.dataUsed;
+
+        this.data = new Array(len);
 
         let a = this.data;
         let b = this.data_f32;
@@ -712,6 +723,7 @@ export class GeoLayer extends Array {
 
         this.data.length = this.dataUsed;
 
+        this.glReady = false;
         this._useTypedData = false;
         this.f32Ready = false;
       }
@@ -1016,6 +1028,7 @@ export class SimpleIsland {
     this.layerflag = undefined;
 
     this.regen = 1;
+    this._regen_all = 0;
 
     this.tri_editors = util.cachering.fromConstructor(TriEditor, 32, true);
     this.quad_editors = util.cachering.fromConstructor(QuadEditor, 32, true);
@@ -1144,6 +1157,10 @@ export class SimpleIsland {
     ret.makeBufferAliases();
 
     return ret;
+  }
+
+  glFlagUploadAll(primflag=PrimitiveTypes.ALL) {
+    this._regen_all |= primflag;
   }
 
   point(v1) {
@@ -1296,6 +1313,9 @@ export class SimpleIsland {
   gen_buffers(gl) {
     let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
 
+    let allflag = this._regen_all;
+    this._regen_all = 0;
+
     //convert all layers to final typedarrays to save memory, even ones that aren't used
     for (let layer of this.layers) {
       if (layer.dataUsed === 0) {
@@ -1311,7 +1331,7 @@ export class SimpleIsland {
 
         let typedarray = glTypeArrays[layer.glSize];
 
-        if (!layer.data_f32 || layer.data_f32.length < layer.dataUsed) {
+        if (!layer.data_f32 || layer.data_f32.length !== layer.dataUsed) {
           if (DEBUG.simplemesh) {
             console.warn("new layer data", layer.data_f32, layer);
           }
@@ -1329,10 +1349,19 @@ export class SimpleIsland {
 
         layer._useTypedData = true;
         layer.data = [];
+        layer.glReady = false;
+      }
+
+      if (layer.glReady && layer.dataUsed !== layer.data_f32.length) {
+        throw new Error("simplemesh error");
       }
     }
 
     for (let layer of this.layers) {
+      if (layer.glReady && !(allflag & layer.primflag)) {
+        continue;
+      }
+
       if (layer.dataUsed === 0 || !(layer.type & layerflag)) {
         continue;
       }
@@ -1341,6 +1370,7 @@ export class SimpleIsland {
 
       let vbo = this.buffer.get(gl, layer.bufferKey, layer.bufferType);
       vbo.uploadData(gl, layer.data_f32, layer.bufferType, layer.bufferHint);
+      layer.glReady = true;
     }
   }
 
@@ -1364,6 +1394,8 @@ export class SimpleIsland {
     if (!this[key]) {
       let layer = this[key] = this.layers.get(key, ptype, LayerTypes.INDEX);
 
+      layer.size = 1;
+      layer.glSizeMul = 1;
       layer.glSize = glSizes.UNSIGNED_SHORT;
       layer.normalized = false;
       layer.bufferType = GL_ELEMENT_ARRAY_BUFFER;
@@ -1389,7 +1421,7 @@ export class SimpleIsland {
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf);
         gl.drawElements(gl.TRIANGLES, this.tottri*3, gl.UNSIGNED_SHORT, 0);
-        //gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
       } else {
         gl.drawArrays(gl.TRIANGLES, 0, this.tottri*3);
       }
@@ -1477,7 +1509,7 @@ export class SimpleIsland {
       return;
     }
 
-    let buf = this.buffer.get(gl, layer.bufferKey).get(gl);
+    let buf = this.buffer.get(gl, layer.bufferKey, layer.bufferType).get(gl);
 
     let btype = gl.ARRAY_BUFFER;
     if (this.getIndexedMode()) {
@@ -1527,7 +1559,7 @@ export class SimpleIsland {
 
           let key = ShaderProgram.multiLayerAttrKey(name, mli, gl.haveWebGL2);
 
-          let vbo = this.buffer.get(gl, layer.bufferKey);
+          let vbo = this.buffer.get(gl, layer.bufferKey, layer.bufferType);
           let buf = vbo.get(gl);
 
           li = program.attrLoc(key);
@@ -2007,6 +2039,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     let itri = this.idmap.get(id);
 
     chunk.flagRecalc();
+    chunk.glFlagUploadAll(PrimitiveTypes.TRIS);
 
     let tri_cos = chunk.tri_cos;
 
@@ -2014,8 +2047,10 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
     if (tri_cos.dataUsed < i + 9) {
       chunk.regen = 1;
+
       return chunk.tri(v1, v2, v3);
     } else {
+      tri_cos.glReady = false;
       tri_cos = tri_cos._getWriteData();
 
       tri_cos[i++] = v1[0];
@@ -2049,6 +2084,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     let iline = this.idmap.get(id);
 
     chunk.flagRecalc();
+    chunk.glFlagUploadAll(PrimitiveTypes.ADVANCED_LINES);
 
     if (!chunk.line_cos2) {
       chunk.primflag |= PrimitiveTypes.ADVANCED_LINES;
@@ -2110,6 +2146,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     let iline = this.idmap.get(id);
 
     chunk.flagRecalc();
+    chunk.glFlagUploadAll(PrimitiveTypes.LINES);
 
     let line_cos = chunk.line_cos;
     let i = iline*6;
@@ -2140,6 +2177,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     let ipoint = this.idmap.get(id);
 
     chunk.flagRecalc();
+    chunk.glFlagUploadAll(PrimitiveTypes.POINTS);
 
     let point_cos = chunk.point_cos;
     let i = ipoint*3;

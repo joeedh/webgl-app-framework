@@ -1,4 +1,5 @@
 import '../path.ux/scripts/util/struct.js';
+import * as util from '../util/util.js';
 let STRUCT = nstructjs.STRUCT;
 
 export const HandleTypes = {
@@ -51,6 +52,38 @@ export class MeshError extends Error {
 export class MeshFeatureError extends MeshError {
 
 };
+
+//inherit from this to flag iterators that are reusable *and* auto-resets
+export class ReusableIter {
+  reset() {
+    return this;
+  }
+
+  static safeIterable(iter) {
+    if (!iter || (typeof iter !== "object" && typeof iter !== "function")) {
+      return false;
+    }
+
+    let ret = Array.isArray(iter);
+    ret = ret || (iter instanceof ReusableIter);
+    ret = ret || (iter instanceof Set);
+    ret = ret || (iter instanceof util.set);
+
+    return ret;
+  }
+
+  static getSafeIter(iter) {
+    if (iter === undefined) {
+      return undefined;
+    }
+
+    if (!this.safeIterable(iter)) {
+      return new Set(iter);
+    } else {
+      return iter;
+    }
+  }
+}
 
 export class LogContext {
   constructor() {
@@ -142,7 +175,10 @@ export const MeshFlags = {
   MIRROR_BOUNDARY   : (1<<17), //used by mirror
   GRID_MRES_HIDDEN  : (1<<18), //used by grids to flag gridverts as not part of visible multires level
   SEAM              : (1<<19),
-  FACE_EXIST_FLAG   : (1<<20)
+  FACE_EXIST_FLAG   : (1<<20),
+  TEMP4             : (1<<21),
+  TEMP5             : (1<<22),
+  TEMP6             : (1<<23)
 };
 
 export const MeshModifierFlags = {
@@ -154,6 +190,20 @@ export const RecalcFlags = {
   TESSELATE  : 2,
   PARTIAL    : 4,
   ELEMENTS   : 8,
-  UVWRANGLER : 16
+  UVWRANGLER : 16,
+  ALL        : 1|2|4|8|16
 };
 
+
+let atemps = {};
+
+export function getArrayTemp(n) {
+  if (n in atemps) {
+    return atemps[n].next();
+  }
+
+  let ring = new util.cachering(() => new Array(n), 64);
+  atemps[n] = ring;
+
+  return ring.next();
+}

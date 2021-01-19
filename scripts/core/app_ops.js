@@ -152,7 +152,6 @@ export class FileSaveOp extends ToolOp {
     let args = {save_toolstack : this.inputs.saveToolStack.getValue()};
 
     if (!needDialog) {
-
       let data = _appstate.createFile(args);
 
       platform.platform.writeFile(data, _appstate.saveHandle, "application/x-octet-stream").then(() => {
@@ -162,7 +161,10 @@ export class FileSaveOp extends ToolOp {
       });
       return;
     }
-    platform.platform.showSaveDialog("Save File", _appstate.createFile(args), {
+
+    let savefunc = () => _appstate.createFile(args);
+
+    platform.platform.showSaveDialog("Save File", savefunc, {
       filters: [
         {
           defaultPath: "unnamed." + cconst.FILE_EXT,
@@ -223,3 +225,26 @@ export class FileOpenOp extends ToolOp {
 }
 
 ToolOp.register(FileOpenOp);
+
+
+export class FileNewOp extends ToolOp {
+  static tooldef() {
+    return {
+      uiname  : "New",
+      toolpath: "app.new",
+      inputs  : {
+        //forceDialog: new BoolProperty(true)
+      },
+      undoflag: UndoFlags.NO_UNDO
+    }
+  }
+
+  exec(ctx) {
+    console.log("File new");
+    if (confirm("Make new file?")) {
+      _genDefaultFile(_appstate, false);
+    }
+  }
+}
+ToolOp.register(FileNewOp);
+

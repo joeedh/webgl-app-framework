@@ -124,6 +124,7 @@ export class FindnearestMesh extends FindnearestClass {
     }
 
     let sample = sbuf.sampleBlock(ctx, view3d.gl, view3d, x, y, limit, limit, false, selmask);
+
     if (sample === undefined) {
       return;
     }
@@ -135,8 +136,8 @@ export class FindnearestMesh extends FindnearestClass {
       let x2 = i % limit, y2 = ~~(i / limit);
       i *= 4;
 
-      let ob = ~~(block[i] + 0.5) - 1;
-      let idx = ~~(block[i+1] + 0.5) - 1;
+      let ob = ~~(block[i] + 0.25) - 1;
+      let idx = ~~(block[i+1] + 0.25) - 1;
 
       if (ob < 0 || idx <= 0)
         continue;
@@ -157,6 +158,10 @@ export class FindnearestMesh extends FindnearestClass {
         //HACKISH!
         mesh = ctx.mesh;
       }
+
+      //if (Math.random() > 0.998) {
+      //  console.log(idx, mesh.eidmap[idx-3], mesh.eidmap[idx-2], mesh.eidmap[idx-1], mesh.eidmap[idx], mesh.eidmap[idx+1], mesh.eidmap[idx+2], mesh.eidmap[idx+3]);
+      //}
 
       let e = mesh.eidmap[idx];
 

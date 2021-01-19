@@ -938,6 +938,7 @@ export class VBO {
     this.drawhint = drawhint;
 
     gl.bindBuffer(target, this.vbo);
+
     if (useSub) {
       gl.bufferSubData(target, 0, dataF32);
     } else {
@@ -956,7 +957,7 @@ export class RenderBuffer {
     this._layers = {};
   }
 
-  get(gl, name, bufferType) {
+  get(gl, name, bufferType=gl.ARRAY_BUFFER) {
     if (this[name] !== undefined) {
       return this[name];
     }

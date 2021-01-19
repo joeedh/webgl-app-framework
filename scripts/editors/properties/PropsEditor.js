@@ -222,7 +222,8 @@ export class ObjectPanel extends ColumnFrame {
 
     let cdpanels = [
       ["VERTEX", "color"],
-      ["LOOP", "uv"]
+      ["LOOP", "uv"],
+      ["VERTEX", "mask"]
     ];
 
     let data = ob.data;
@@ -236,6 +237,12 @@ export class ObjectPanel extends ColumnFrame {
         cd.setAttribute("layer", cdp[1]);
         panel.add(cd);
       }
+
+      panel = this.panel("BVH");
+
+      panel.prop("mesh.bvhSettings.leafLimit");
+      panel.prop("mesh.bvhSettings.drawLevelOffset");
+      panel.prop("mesh.bvhSettings.depthLimit");
     } else if (data instanceof ProceduralMesh) {
       let panel = this.panel("Procedural");
 

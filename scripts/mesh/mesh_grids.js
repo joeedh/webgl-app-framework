@@ -36,6 +36,7 @@ export const QRecalcFlags = {
   LEAVES: 1024 | 2048,
   PATCH_UVS : 4096, //not part of ALL
   REGEN_IDS : 8192, //most definitely not part of ALL
+  REGEN_EIDMAP : 8192<<1, //not part of ALL
   ALL: 1 | 2 | 4 | 8 | 64 | 128 | 256 | 512 | 1024 | 2048 //does not include mirror or check_customdata or normals
 };
 
@@ -504,8 +505,33 @@ export class GridBase extends CustomDataElem {
     this.points = [];
     this.customDatas = [];
 
+    this.eidmap = undefined;
+
     this.needsSubSurf = false;
     this.subsurf = undefined; //subsurf patch
+  }
+
+  regenEIDMap() {
+    this.recalcFlag |= QRecalcFlags.REGEN_EIDMAP;
+  }
+
+  getEIDMap(mesh) {
+    if (this.eidmap && !(this.recalcFlag & QRecalcFlags.REGEN_EIDMAP)) {
+      return this.eidmap;
+    }
+
+    this.recalcFlag &= ~QRecalcFlags.REGEN_EIDMAP;
+    let eidmap = this.eidmap = {};
+
+    for (let p of this.points) {
+      if (p.eid < 0) {
+        p.eid = mesh.eidgen.next();
+      }
+
+      eidmap[p.eid] = p;
+    }
+
+    return eidmap;
   }
 
   calcMemSize() {

@@ -17,39 +17,32 @@ import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
 
 import {Mesh, MeshTypes, MeshFlags} from './mesh.js';
-import {subdivide} from '../subsurf/subsurf_mesh.js';
+import {loopSubdivide, subdivide} from '../subsurf/subsurf_mesh.js';
 import {SceneObject} from "../sceneobject/sceneobject.js";
 import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
 import {MeshOp} from "./mesh_ops_base.js";
 import {GenTypes, ProceduralMesh} from './mesh_gen.js';
 import {DefaultMat, Material} from '../core/material.js';
+import {saveUndoMesh, loadUndoMesh} from './mesh_ops_base.js';
+import {css2matrix} from '../path.ux/scripts/path-controller/util/cssutils.js';
+import {splitEdgesSmart2} from './mesh_subdivide.js';
 
 export class MeshCreateOp extends MeshOp {
   constructor() {
     super();
   }
 
-  modalStart(ctx) {
-    super.modalStart(ctx);
-    this.modalEnd(false);
-
-    if (ctx.scene && ctx.scene.toolmode) {
-      let toolmode = ctx.scene.toolmode;
-
-      if (!(toolmode instanceof MeshToolBase)) {
-        this.inputs.makeNewObject.setValue(true);
-      }
-    }
-
-    this.exec(ctx);
-  }
-
   static invoke(ctx, args) {
     let tool = super.invoke(ctx, args);
 
-    if ("makeNewObject" in args) {
-      tool.inputs.makeNewObject.setValue(args.makeNewObject);
+    if (!("makeNewObject" in args)) {
+      if (ctx.toolmode && !(ctx.toolmode instanceof MeshToolBase)) {
+        tool.inputs.makeNewObject.setValue(true);
+      } else {
+        tool.inputs.makeNewObject.setValue(false);
+      }
     }
+
 
     let mat = new Matrix4();
 
@@ -67,13 +60,122 @@ export class MeshCreateOp extends MeshOp {
     return {
       inputs: ToolOp.inherit({
         makeNewObject  : new BoolProperty(false),
-        transformMatrix: new Mat4Property()
+        transformMatrix: new Mat4Property(),
+        _objectID : new IntProperty(-1).private(),
+        _meshID : new IntProperty(-1).private()
       }),
 
       is_modal: true,
       outputs : {
         newObject: new DataRefProperty()
       }
+    }
+  }
+
+  modalStart(ctx) {
+    super.modalStart(ctx);
+    this.modalEnd(false);
+
+    if (ctx.scene && ctx.scene.toolmode) {
+      let toolmode = ctx.scene.toolmode;
+
+      if (!(toolmode instanceof MeshToolBase)) {
+        this.inputs.makeNewObject.setValue(true);
+      }
+    }
+
+    this.exec(ctx);
+  }
+
+  undoPre(ctx) {
+    let addnew = this.inputs.makeNewObject.getValue();
+    addnew = addnew || !ctx.object || !(ctx.object.data instanceof Mesh);
+
+    let ud = this._undo = {};
+    let scene = ctx.scene;
+
+    if (addnew) {
+      ud.type = "new";
+      ud.selection = [];
+
+      for (let ob of scene.objects.selected) {
+        ud.selection.push(ob.lib_id);
+      }
+
+      let act = scene.objects.active;
+
+      if (act) {
+        ud.active = act.lib_id;
+      } else {
+        ud.active = -1;
+      }
+    } else {
+      ud.type = "mesh";
+      ud.object = ctx.object.lib_id;
+      ud.mesh = ctx.object.data.lib_id;
+      ud.data = saveUndoMesh(ctx.object.data);
+    }
+  }
+
+  undo(ctx) {
+    let ud = this._undo;
+
+    if (ud.type === "new") {
+      let ob = ctx.datalib.get(this.outputs.newObject.getValue());
+      let scene = ctx.scene;
+
+      scene.remove(ob);
+
+      if (ob) {
+        this.inputs._objectID.setValue(ob.lib_id);
+        this.inputs._meshID.setValue(ob.data.lib_id);
+      }
+
+      ctx.datalib.remove(ob);
+      ob.data.lib_remUser(ob);
+
+      ctx.datalib.remove(ob.data);
+      ctx.datalib.remove(ob);
+
+      scene.objects.clearSelection();
+
+      for (let id of ud.selection) {
+        let ob = ctx.datalib.get(id);
+
+        if (ob) {
+          scene.objects.setSelect(ob, true);
+        }
+      }
+
+      let act = ctx.datalib.get(ud.active);
+      if (act) {
+        scene.objects.setActive(act);
+      }
+    } else {
+      let data = ud.data;
+      let mesh = ctx.datalib.get(ud.mesh);
+
+      let mesh2 = loadUndoMesh(ctx, data);
+
+      mesh.swapDataBlockContents(mesh2);
+
+      mesh.regenTesellation();
+      mesh.recalcNormals();
+      mesh.regenRender();
+      mesh.regenBVH();
+      mesh.regenUVEditor();
+    }
+
+    window.redraw_viewport(true);
+  }
+
+  calcUndoMem(ctx) {
+    let ud = this._undo;
+
+    if (ud.type === "new") {
+      return 256;
+    } else {
+      return ud.data.dview.byteLength;
     }
   }
 
@@ -93,20 +195,42 @@ export class MeshCreateOp extends MeshOp {
       ob = new SceneObject();
       ob.data = new Mesh();
 
+      let oid = this.inputs._objectID.getValue();
+      let mid = this.inputs._meshID.getValue();
+
+      if (oid >= 0) {
+        ob.lib_id = oid;
+      }
+
+      if (mid >= 0) {
+        ob.data.lib_id = mid;
+      }
+
       ctx.datalib.add(ob);
       ctx.datalib.add(ob.data);
 
       ob.data.lib_addUser(ob);
       mesh = ob.data;
 
-      ctx.scene.add(ob);
+      let scene = ctx.scene;
+
+      scene.add(ob);
       ob.loadMatrixToInputs(this.inputs.transformMatrix.getValue());
+
+      scene.objects.setSelect(ob, true);
+      scene.objects.setActive(ob, true);
 
       ob.graphUpdate();
       ob.data.graphUpdate();
 
       window.redraw_viewport(true);
       window.updateDataGraph(true);
+
+      this.outputs.newObject.setValue(ob);
+
+      //save ids so undo/redo works properly
+      this.inputs._objectID.setValue(ob.lib_id);
+      this.inputs._meshID.setValue(ob.data.lib_id);
 
       ob.graphUpdate();
 
@@ -212,6 +336,226 @@ export class MakeCubeOp extends MeshCreateOp {
 }
 
 ToolOp.register(MakeCubeOp);
+
+export class MakeSphere extends MeshCreateOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      toolpath: "mesh.make_sphere",
+      uiname  : "Make Sphere",
+      is_modal: true,
+      inputs  : ToolOp.inherit({
+        size     : new FloatProperty(1.0).setRange(0.0001, 10000.0).saveLastValue(),
+        segmentsU: new IntProperty(32).setRange(3, 512).saveLastValue(),
+        segmentsV: new IntProperty(32).setRange(3, 512).saveLastValue()
+      }),
+      outputs : ToolOp.inherit()
+    }
+  }
+
+  internalCreate(ob, mesh, mat) {
+    let size = this.inputs.size.getValue()*0.5;
+    let totu = this.inputs.segmentsU.getValue();
+    let totv = this.inputs.segmentsV.getValue();
+
+    let top = mesh.makeVertex([0, 0, size]);
+    let bottom = mesh.makeVertex([0, 0, -size]);
+    let matrix = new Matrix4();
+
+    let rows = [];
+    let co = new Vector3();
+
+    let dthu = (Math.PI*2.0)/totu;
+    let thu = -Math.PI;
+
+    for (let i = 0; i < totu; i++, thu += dthu) {
+      let row = new Array(totv);
+      row[0] = top;
+      row[row.length - 1] = bottom;
+
+      rows.push(row);
+
+      let dthv = Math.PI/(totv - 1);
+      let thv = dthv + Math.PI*0.5;
+
+      matrix.makeIdentity();
+      matrix.euler_rotate(0, 0, thu);
+
+      for (let j = 1; j < totv - 1; j++, thv += dthv) {
+        co[0] = Math.cos(thv)*size;
+        co[2] = Math.sin(thv)*size;
+        co[1] = 0.0;
+
+        co.multVecMatrix(matrix);
+
+        row[j] = mesh.makeVertex(co);
+      }
+    }
+
+    for (let i = 0; i < totu; i++) {
+      let i2 = (i + 1)%totu;
+
+      let r1 = rows[i];
+      let r2 = rows[i2];
+
+      let last = totv - 2;
+
+      mesh.makeTri(r1[0], r1[1], r2[1]);
+      mesh.makeTri(r1[last], r1[last + 1], r2[last]);
+
+      for (let j = 1; j < totv - 2; j++) {
+        let v1 = r1[j], v2 = r1[j + 1];
+        let v3 = r2[j + 1], v4 = r2[j];
+
+        mesh.makeQuad(v1, v2, v3, v4);
+      }
+    }
+  }
+}
+
+ToolOp.register(MakeSphere);
+
+
+export class MakeIcoSphere extends MeshCreateOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      toolpath: "mesh.make_ico_sphere",
+      uiname  : "Make Ico Sphere",
+      is_modal: true,
+      inputs  : ToolOp.inherit({
+        size     : new FloatProperty(1.0).setRange(0.0001, 10000.0).saveLastValue(),
+        subdivisions: new IntProperty(2).setRange(0, 8).saveLastValue(),
+        //size2 : new FloatProperty(1.0),
+        //ratio : new FloatProperty(1.0)
+      }),
+      outputs : ToolOp.inherit()
+    }
+  }
+
+  internalCreate(ob, mesh, mat) {
+    let size = this.inputs.size.getValue()*0.5;
+    let levels = this.inputs.subdivisions.getValue();
+
+    //let size2 = this.inputs.size2.getValue();
+    //let ratio = this.inputs.ratio.getValue();
+
+    let size2 = 1.0;
+
+    let vs = [
+      [0, 0, size],
+      [0, 0, -size],
+    ];
+
+    let steps = 5;
+
+    let dth = (Math.PI*2.0) / (steps);
+    let th = -Math.PI;
+
+    for (let i=0; i<steps; i++, th += dth) {
+      let co = new Vector3();
+
+      co[0] = Math.cos(th)*size*size2;
+      co[1] = Math.sin(th)*size*size2;
+      co[2] = 0.0;
+
+      vs.push(co);
+    }
+
+    let cent = new Vector3();
+    for (let i=2; i<vs.length; i++) {
+      cent.add(vs[i]);
+    }
+    cent.mulScalar(1.0/3.0);
+
+    console.log("cent", cent);
+
+    for (let i=0; i<vs.length; i++) {
+      vs[i] = mesh.makeVertex(vs[i]);
+
+      if (i > 0) {
+        //vs[i].sub(cent);
+        //vs[i][2] = -size;
+      }
+
+      //vs[i].normalize().mulScalar(size);
+    }
+
+    for (let i=2; i<vs.length; i++) {
+      let i2 = ((i-2) + 1) % (vs.length - 2);
+      i2 += 2;
+
+      mesh.makeTri(vs[0], vs[i], vs[i2]);
+      mesh.makeTri(vs[1], vs[i2], vs[i]);
+    }
+
+
+    for (let i=0; i<levels; i++) {
+      //break
+      splitEdgesSmart2(mesh, new Set(mesh.edges));
+
+      cent.zero();
+      let tot = 0;
+      for (let v of mesh.verts) {
+        cent.add(v);
+        tot++;
+      }
+
+      cent.mulScalar(1.0 / tot);
+      let co = new Vector3();
+
+      for (let v of mesh.verts) {
+        v.sub(cent).normalize().mulScalar(size);
+      }
+
+      for (let v of mesh.verts) {
+        let tot = 0;
+        co.zero();
+
+        for (let v2 of v.neighbors) {
+          co.add(v);
+          tot++;
+        }
+
+        if (tot === 0) {
+          continue;
+        }
+
+        co.mulScalar(1.0 / tot);
+        v.interp(co, 0.5);
+      }
+
+      if (i === levels-1) {
+        for (let v of mesh.verts) {
+          v.sub(cent).normalize().mulScalar(size);
+        }
+      }
+    }
+
+    for (let v of mesh.verts) {
+      mesh.setSelect(v, true);
+    }
+    for (let e of mesh.edges) {
+      mesh.setSelect(e, true);
+    }
+    for (let f of mesh.faces) {
+      mesh.setSelect(f, true);
+    }
+
+    mesh.regenTesellation();
+    mesh.recalcNormals();
+    mesh.regenRender();
+    mesh.graphUpdate();
+  }
+}
+
+ToolOp.register(MakeIcoSphere);
 
 export class CreateFaceOp extends MeshOp {
   constructor() {
@@ -573,4 +917,5 @@ export class ProceduralToMesh extends ToolOp {
 
   }
 }
+
 ToolOp.register(ProceduralToMesh);
