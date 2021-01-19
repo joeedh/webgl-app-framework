@@ -295,6 +295,8 @@ export const theme = {
 
   tabs:  {
     TabHighlight   : 'rgba(50, 50, 50, 0.2)',
+    TabActive      : 'rgba(79,79,79, 1)',
+    TabBarRadius   : 6,
     TabInactive    : 'rgba(61,61,61, 1)',
     TabStrokeStyle1: 'rgba(0,0,0, 1)',
     TabStrokeStyle2: 'rgba(0,0,0, 1)',

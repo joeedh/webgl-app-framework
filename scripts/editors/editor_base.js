@@ -514,12 +514,7 @@ export class EditorSideBar extends Container {
     let tabs = this.tabpanel = this.tabs("left");
 
     //make tabs smaller
-    let font = tabs.getDefault("TabText");
-
-    font = font.copy();
-    font.size = 12;
-
-    tabs.overrideDefault("TabText", font);
+    tabs.tabFontScale = 0.75;
   }
 
   set width(v) {
