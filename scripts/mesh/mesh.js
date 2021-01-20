@@ -775,7 +775,7 @@ export class Mesh extends SceneObjectData {
     return this.makeFace(_quad);
   }
 
-  makeTri(v1, v2, v3) {
+  makeTri(v1, v2, v3, lctx) {
     if (!v1 || !v2 || !v3) {
       console.log("missing verts", v1, v2, v3);
       throw new MeshError("Missing verts in makeTri");
@@ -790,7 +790,7 @@ export class Mesh extends SceneObjectData {
     _tri[1] = v2;
     _tri[2] = v3;
 
-    return this.makeFace(_tri);
+    return this.makeFace(_tri, undefined, undefined, lctx);
   }
 
   makeFace(verts, customEid = undefined, customLoopEids = undefined, lctx = undefined) {
@@ -2120,6 +2120,66 @@ export class Mesh extends SceneObjectData {
         this.reverseWinding(f);
       }
     }
+
+    return f;
+  }
+
+  rotateEdge(e, dir=1, lctx) {
+    if (!e.l) {
+      return;
+    }
+
+    let bad = e.l.radial_next === e.l || e.l.v === e.l.radial_next.v;
+    bad = bad || e.l.radial_next.radial_next !== e.l;
+
+    if (bad) {
+      return;
+    }
+
+    let eid = e.eid;
+
+    let l1 = e.l, l2 = e.l.radial_next;
+    let l1b = l1.prev, l2b = l2.prev;
+
+    let customData = e.customData;
+
+    let f1 = this.dissolveEdge(e, lctx);
+    if (!f1) {
+      return;
+    }
+
+    let el2 = this.splitFace(f1, l1b, l2b, lctx);
+    let e2 = el2.e;
+
+    if (e2) {
+      e2.customData = customData;
+      if (lctx) {
+        lctx.killEdge(e2);
+      }
+
+      this.setEID(e2, eid);
+
+      //logctx may have selected the edge
+      let flag = e.flag & ~MeshFlags.SELECT;
+      e2.flag = flag | (e2.flag & MeshFlags.SELECT);
+
+      if (lctx) {
+        lctx.newEdge(e2);
+      }
+    }
+    console.log(f1, l1b, l2b, l1, l2);
+
+    return e2;
+  }
+
+  setEID(elem, eid) {
+    let elist = this.elists[elem.type];
+
+    delete this.eidmap[eid];
+    elist.setEID(elem, eid);
+
+    this.eidmap[elem.eid] = elem;
+    return this;
   }
 
   dissolveEdge(e, lctx=undefined) {
@@ -2714,6 +2774,7 @@ export class Mesh extends SceneObjectData {
     this.uvWrangler = undefined;
     return this;
   }
+
 
   getBVH(auto_update = true, useGrids = true, force = false) {
     let key = this.verts.length + ":" + this.faces.length + ":" + this.edges.length + ":" + this.loops.length;

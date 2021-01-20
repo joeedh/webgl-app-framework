@@ -3,11 +3,14 @@ import * as math from './math.js';
 import * as util from './util.js';
 import {triBoxOverlap, aabb_ray_isect, ray_tri_isect} from './isect.js';
 
+import {Vertex, Handle, Edge, Loop, LoopList, Face} from '../mesh/mesh_types.js';
+
 import {CDFlags, CustomDataElem} from "../mesh/customdata.js";
-import {MeshTypes} from "../mesh/mesh_base.js";
+import {MeshTypes, MeshFlags} from "../mesh/mesh_base.js";
 import {GridBase} from "../mesh/mesh_grids.js";
 
 import {QRecalcFlags} from "../mesh/mesh_grids.js";
+import {EDGE_LINKED_LISTS} from '../core/const.js';
 
 let _triverts = [new Vector3(), new Vector3(), new Vector3()];
 
@@ -1131,6 +1134,47 @@ export class BVHNode {
     let map = this.indexTris = [];
     let emap = this.indexEdges = [];
 
+    let computeValidEdges = this.bvh.computeValidEdges;
+
+    let edgeExists = (v1, v2) => {
+      if (!computeValidEdges) {
+        return true;
+      }
+
+      for (let v3 of v1.neighbors) {
+        if (v3 === v2) {
+          return true;
+        }
+      }
+
+      for (let v3 of v2.neighbors) {
+        if (v3 === v1) {
+          console.warn("Neighbor error!");
+          for (let i=0; i<2; i++) {
+            let v = i ? v2 : v1;
+            if (v.loopEid === undefined) {
+              console.warn("Missing loop!", v.loopEid, v);
+              continue;
+            }
+
+            let l = this.bvh.mesh.eidmap[v.loopEid];
+            if (!l || l.type !== MeshTypes.LOOP) {
+              console.warn("Missing loop", v.loopEid, v);
+              continue;
+            }
+
+            let cd_grid = this.bvh.cd_grid;
+            let grid = l.customData[cd_grid];
+
+            grid.flagFixNeighbors();
+          }
+          return true;
+        }
+      }
+
+      return false;
+    }
+
     for (let v of this.uniqueVerts) {
       v.index = list.length;
 
@@ -1149,14 +1193,22 @@ export class BVHNode {
       map.push(tri.v2.index);
       map.push(tri.v3.index);
 
-      emap.push(tri.v1.index);
-      emap.push(tri.v2.index);
 
-      emap.push(tri.v2.index);
-      emap.push(tri.v3.index);
+      if (edgeExists(tri.v1, tri.v2)) {
+        emap.push(tri.v1.index);
+        emap.push(tri.v2.index);
+      }
 
-      emap.push(tri.v3.index);
-      emap.push(tri.v1.index);
+
+      if (edgeExists(tri.v2, tri.v3)) {
+        emap.push(tri.v2.index);
+        emap.push(tri.v3.index);
+      }
+
+      if (edgeExists(tri.v3, tri.v1)) {
+        emap.push(tri.v3.index);
+        emap.push(tri.v1.index);
+      }
     }
   }
 
@@ -1599,7 +1651,285 @@ export class BVH {
     }
   }
 
-  spatiallySortMesh(mesh) {
+  //attempt to sort mesh spatially within memory
+  //in an attempt to improve cpu cache performance
+  spatiallySortMesh() {
+    let mesh = this.mesh;
+
+    //first destroy node references
+    let elist;
+    let cd_node = this.cd_node;
+
+    if (this.cd_grid >= 0) {
+      let cd_grid = this.cd_grid;
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+        for (let p of grid.points) {
+          p.customData[cd_node].node = undefined;
+        }
+      }
+    } else {
+      for (let v of mesh.verts) {
+        v.customData[cd_node].node = undefined;
+      }
+    }
+
+    let doneflag = MeshFlags.TEMP2;
+    let updateflag = MeshFlags.UPDATE;
+    let allflags = doneflag;
+
+
+    for (let elist of mesh.getElemLists()) {
+      let i = 0;
+
+      for (let elem of elist) {
+        elem.flag &= ~allflags;
+        elem.index = i++;
+      }
+    }
+
+    let verts = util.list(mesh.verts);
+    let edges = util.list(mesh.edges);
+    let faces = util.list(mesh.faces);
+    let loops = util.list(mesh.loops);
+    let handles = util.list(mesh.handles);
+
+    let newvs = new Array(verts.length);
+    let newhs = new Array(handles.length);
+    let newes = new Array(edges.length);
+    let newls = new Array(loops.length);
+    let newfs = new Array(faces.length);
+
+    let eidmap = mesh.eidmap;
+
+    let elists = mesh.elists;
+
+    mesh.elists = {};
+    mesh.verts = mesh.getElemList(MeshTypes.VERTEX);
+    mesh.edges = mesh.getElemList(MeshTypes.EDGE);
+    mesh.handles = mesh.getElemList(MeshTypes.HANDLE);
+    mesh.loops = mesh.getElemList(MeshTypes.LOOP);
+    mesh.faces = mesh.getElemList(MeshTypes.FACE);
+
+    for (let k in mesh.elists) {
+      let elist1 = mesh.elists[k];
+      let elist2 = elists[k];
+
+      elist1.customData = elist2.customData;
+    }
+
+    mesh.eidmap = {};
+
+    let visit = new WeakSet();
+    let fleaves = [];
+
+    for (let n of this.nodes) {
+      if (!n.leaf) {
+        continue;
+      }
+
+      let fs = [];
+
+      for (let t of n.uniqueTris) {
+        let f = mesh.eidmap[t.id] || t.f || (t.l1 ? t.l1.f : undefined);
+
+        if (f === undefined) {
+          continue;
+        }
+
+        if (!visit.has(f) && f.type === MeshTypes.FACE) {
+          fs.push(f);
+          visit.add(f);
+        }
+      }
+
+      if (fs.length > 0) {
+        fleaves.push(fs);
+      }
+    }
+
+    console.log(fleaves);
+
+    function copyCustomData(cd) {
+      let ret = new Array(cd.length);
+      for (let i=0; i<ret.length; i++) {
+        ret[i] = cd[i].copy();
+      }
+
+      return ret;
+    }
+
+    for (let fs of fleaves) {
+      for (let f of fs) {
+        for (let l of f.loops) {
+          let v = l.v;
+
+          if (newvs[v.index]) {
+            continue;
+          }
+
+          let v2 = newvs[v.index] = new Vertex(v);
+
+          v2.eid = v.eid;
+          mesh.eidmap[v2.eid] = v2;
+
+          v2.customData = copyCustomData(v.customData);
+
+          v2.no.load(v.no);
+          v2.flag = v.flag | updateflag;
+
+          mesh.verts.push(v2);
+        }
+
+        for (let l of f.loops) {
+          let e = l.e;
+
+          if (newes[e.index]) {
+            continue;
+          }
+
+          let e2 = newes[e.index] = new Edge();
+
+          if (EDGE_LINKED_LISTS) {
+            e.v1next = e.v1prev = e;
+            e.v2next = e.v2prev = e;
+          }
+
+          e2.eid = e.eid;
+          e2.customData = copyCustomData(e.customData);
+          e2.flag = e.flag | updateflag;
+
+          e2.length = e.length;
+          e2.v1 = newvs[e.v1.index];
+          e2.v2 = newvs[e.v2.index];
+
+          if (e.h1 && !e2.h1) {
+            for (let step=0; step<2; step++) {
+              let h1 = step ? e.h2 : e.h1;
+              let h2 = new Handle(h1);
+
+              h2.owner = e2;
+              h2.roll = h1.roll;
+              h2.mode = h1.mode;
+              h2.flag = h1.flag | updateflag;
+              h2.index = h1.index;
+
+              if (step) {
+                e.h2 = h2;
+              } else {
+                e.h1 = h2;
+              }
+
+              h2.eid = h1.eid;
+              mesh.eidmap[h2.eid] = h2;
+              mesh.handles.push(h2);
+            }
+          }
+
+          mesh.edges.push(e2);
+          mesh.eidmap[e2.eid] = e2;
+
+          mesh._diskInsert(e2.v1, e2);
+          mesh._diskInsert(e2.v2, e2);
+        }
+
+        let f2 = newfs[f.index] = new Face();
+
+        f2.eid = f.eid;
+        f2.flag = f.flag | updateflag;
+        f2.customData = copyCustomData(f.customData);
+        f2.no.load(f.no);
+        f2.area = f.area;
+        f2.cent.load(f.cent);
+
+        mesh.eidmap[f2.eid] = f2;
+        mesh.faces.push(f2);
+
+        for (let list1 of f.lists) {
+          let list2 = new LoopList();
+          list2.flag = list1.flag;
+
+          f2.lists.push(list2);
+
+          let l1 = list1.l;
+          let prevl = undefined;
+          let _i = 0;
+
+          do {
+            let l2 = new Loop();
+
+            l2.customData = copyCustomData(l1.customData);
+            l2.eid = l1.eid;
+            l2.flag = l1.flag;
+            l2.index = l1.index;
+
+            l2.v = newvs[l1.v.index];
+            l2.e = newes[l1.e.index];
+            l2.list = list2;
+            l2.f = f2;
+
+            mesh.eidmap[l2.eid] = l2;
+            mesh.loops.push(l2);
+
+            if (prevl) {
+              l2.prev = prevl;
+              prevl.next = l2;
+            } else {
+              list2.l = l2;
+            }
+
+            prevl = l2;
+
+            if (_i++ > 1000000) {
+              console.error("infinite loop error");
+              break;
+            }
+            l1 = l1.next
+          } while (l1 !== list1.l);
+
+          list2.l.prev = prevl;
+          prevl.next = list2.l;
+          list2._recount();
+        }
+
+        for (let l of f2.loops) {
+          mesh._radialInsert(l.e, l);
+        }
+      }
+    }
+
+    for (let elist of mesh.getElemLists()) {
+      let oelist = elists[elist.type];
+
+      let i = 0;
+      let act = oelist.active;
+
+      for (let elem of elist) {
+        if (elem.flag & MeshFlags.SELECT) {
+          elist.setSelect(elem, true);
+        }
+
+        if (act && i === act.index) {
+          elist.setActive(elem);
+        }
+        i++;
+      }
+    }
+
+    //don't allow this.destroy to be called
+    mesh.bvh = undefined;
+
+    //ensure ltris are dead
+    mesh._ltris = [];
+
+    mesh.regenAll();
+    mesh.recalcNormals();
+    mesh.graphUpdate();
+
+    this.nodes = [];
+  }
+
+  oldspatiallySortMesh(mesh) {
     let verts = mesh.verts;
     let edges = mesh.edges;
     let faces = mesh.faces;
@@ -1712,9 +2042,10 @@ export class BVH {
       }
     }
 
+    mesh.regenAll();
     mesh.regenBVH();
-    mesh.regenRender();
-    mesh.regenTesellation();
+    mesh.recalcNormals();
+    mesh.graphUpdate();
   }
 
   destroy(mesh) {

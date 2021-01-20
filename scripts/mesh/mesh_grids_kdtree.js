@@ -2209,6 +2209,10 @@ export class KdTreeGrid extends GridBase {
       this.recalcNeighbors(mesh, loop, cd_grid);
     }
 
+    if (this.recalcFlag & QRecalcFlags.FIX_NEIGHBORS) {
+      this.fixNeighbors(mesh, loop, cd_grid);
+    }
+
     if (this.recalcFlag & QRecalcFlags.MIRROR) {
       this.updateMirrorFlags(mesh, loop, cd_grid);
     }
@@ -3522,6 +3526,9 @@ export class KdTreeGrid extends GridBase {
         uv[axis] += dt;
       }
     }
+
+    //fix missing neighbor entries at grid boundaries
+    this.fixNeighbors(mesh, loop, cd_grid);
   }
 
   updateNormalQuad(loop) {

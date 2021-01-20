@@ -777,6 +777,10 @@ export class BVHToolMode extends ToolMode {
         return;
       }
 
+      if (node.uniqueTris.size === 0) {
+        return;
+      }
+
       matrix = new Matrix4(matrix);
       uniforms.objectMatrix = matrix;
 

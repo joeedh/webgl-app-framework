@@ -861,9 +861,9 @@ export function applyTriangulation(mesh, f, newfaces, newedges, lctx) {
       continue;
     }
 
-    let tri = mesh.makeTri(l1.v, l2.v, l3.v);
+    let tri = mesh.makeTri(l1.v, l2.v, l3.v, lctx);
     if (lctx) {
-      lctx.newFace(tri);
+      //lctx.newFace(tri);
     }
 
     let l = tri.lists[0].l;

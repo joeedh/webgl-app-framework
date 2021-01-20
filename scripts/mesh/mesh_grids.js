@@ -34,9 +34,10 @@ export const QRecalcFlags = {
   LEAF_POINTS: 1024,
   LEAF_NODES: 2048,
   LEAVES: 1024 | 2048,
-  PATCH_UVS : 4096, //not part of ALL
-  REGEN_IDS : 8192, //most definitely not part of ALL
-  REGEN_EIDMAP : 8192<<1, //not part of ALL
+  PATCH_UVS : 1<<12, //not part of ALL
+  REGEN_IDS : 1<<13, //most definitely not part of ALL
+  REGEN_EIDMAP : 1<<14, //not part of ALL
+  FIX_NEIGHBORS : 1<<15,
   ALL: 1 | 2 | 4 | 8 | 64 | 128 | 256 | 512 | 1024 | 2048 //does not include mirror or check_customdata or normals
 };
 
@@ -731,6 +732,10 @@ export class GridBase extends CustomDataElem {
     this.recalcFlag |= QRecalcFlags.NORMALS;
   }
 
+  flagFixNeighbors() {
+    this.recalcFlag |= QRecalcFlags.FIX_NEIGHBORS | QRecalcFlags.NEIGHBORS;
+  }
+
   update(mesh, loop, cd_grid) {
     this.constructor.updateSubSurf(mesh, cd_grid);
 
@@ -757,6 +762,10 @@ export class GridBase extends CustomDataElem {
     if (this.recalcFlag & QRecalcFlags.NEIGHBORS) {
       this.recalcFlag &= ~QRecalcFlags.NEIGHBORS;
       this.recalcNeighbors(mesh, loop, cd_grid);
+    }
+
+    if (this.recalcFlag & QRecalcFlags.FIX_NEIGHBORS) {
+      this.fixNeighbors(mesh, loop, cd_grid);
     }
 
     if (this.recalcFlag & QRecalcFlags.NORMALS) {
@@ -964,6 +973,31 @@ export class GridBase extends CustomDataElem {
 
   makeBVHTris(mesh, bvh, loop, cd_grid, trisout) {//, randmap, bridgeEdges = false) {
     throw new Error("implement me");
+  }
+
+  fixNeighbors(mesh, loop, cd_grid) {
+    this.recalcFlag &= ~QRecalcFlags.FIX_NEIGHBORS;
+
+    for (let p1 of this.points) {
+      for (let p2 of p1.neighbors) {
+        let ok = false;
+
+        for (let p3 of p2.neighbors) {
+          if (p3 === p1) {
+            ok = true;
+            break;
+          }
+        }
+
+        if (!ok) {
+          if (p2.neighbors instanceof Set) {
+            p2.neighbors.add(p1);
+          } else {
+            p2.neighbors.push(p1);
+          }
+        }
+      }
+    }
   }
 
   recalcNeighbors(mesh, loop, cd_grid) {

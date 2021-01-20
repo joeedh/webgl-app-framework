@@ -1,11 +1,11 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import * as math from '../util/math.js';
-import {MeshTypes, MeshFlags} from './mesh_base.js';
+import {MeshTypes, MeshFlags, LogContext} from './mesh_base.js';
 import {CDFlags, CustomDataElem, LayerSettingsBase} from './customdata.js';
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {applyTriangulation} from './mesh_tess.js';
-import {fixManifold, trianglesToQuads} from './mesh_utils.js';
+import {fixManifold, trianglesToQuads, triangulateFan, triangulateMesh, vertexSmooth} from './mesh_utils.js';
 
 export const Remeshers = {};
 
@@ -216,15 +216,153 @@ export class UniformTriRemesher extends Remesher {
 Remesher.register(UniformTriRemesher);
 
 
+let _lctx = new LogContext();
+
+export function cleanupTris(mesh, faces, lctx) {
+  let vs = new Set();
+  let es = new Set();
+  let fs = new Set(faces);
+
+  if (!lctx) {
+    lctx = _lctx;
+  }
+
+  let onnew = lctx.onnew;
+  lctx.onnew = (e) => {
+    if (onnew) {
+      onnew(e);
+    }
+
+    if (e.type === MeshTypes.FACE) {
+      fs.add(e);
+    }
+  }
+
+  triangulateMesh(mesh, faces, lctx);
+  lctx.onnew = onnew;
+  fs = fs.filter(f => f.eid >= 0);
+
+  faces = fs;
+
+  for (let f of faces) {
+    for (let l of f.loops) {
+      vs.add(l.v);
+      es.add(l.e);
+    }
+  }
+
+  for (let e of new Set(es)) {
+    if (e.eid < 0 || !e.l) {
+      continue;
+    }
+
+    let l1 = e.l, l2 = e.l.radial_next;
+
+    if (l1 === l2 || !l1.f.isQuad() || !l2.f.isQuad()) {
+      continue;
+    }
+
+    if (l1.v === l2.v) {
+      //non-manifold edge
+      continue;
+    }
+
+    let v1 = l1.prev.v;
+    let v2 = l1.v;
+    let v3 = l2.prev.v;
+    let v4 = l1.next.v;
+
+    if (v1.valence+v3.valence < v2.valence + v4.valence) {
+      //mesh.dissolveEdge(
+      let e2 = mesh.rotateEdge(e, lctx);
+      if (e2) {
+        es.add(e2);
+      }
+    }
+  }
+
+  for (let v of vs) {
+    if (v.eid < 0) {
+      continue;
+    }
+
+    if (v.valence === 3 || v.valence === 4) {
+      mesh.dissolveVertex(v, lctx);
+    }
+  }
+
+  for (let e of es) {
+    if (e.eid < 0) {
+      continue;
+    }
+
+    if (e.v1.valence < 5 || e.v2.valence < 5) {
+      mesh.collapseEdge(e, lctx);
+    } else if (e.v1.valence > 6 && e.v2.valence > 6) {
+      mesh.dissolveEdge(e, lctx);
+    }
+  }
+
+  vs = vs.filter(v => v.eid >= 0);
+
+  vertexSmooth(mesh, vs, 0.5, 0.8);
+
+  for (let v of vs) {
+    v.flag |= MeshFlags.UPDATE;
+  }
+}
+
 export function cleanupQuads(mesh, faces, lctx) {
   let ret = true;
   let vs = new Set();
+
+  let co = new Vector3();
+  function vsmooth(v, fac=0.5) {
+    co.zero();
+    let tot = 0;
+
+    for (let v2 of v.neighbors) {
+      tot++;
+      co.add(v2);
+    }
+
+    if (tot) {
+      co.mulScalar(1.0/tot);
+      v.interp(co, 0.5);
+    }
+  }
 
 
   if (!(faces instanceof Set)) {
     faces = new Set(faces);
   }
 
+  /*
+  if (0) {
+    for (let f of faces) {
+      if (!f.isTri()) {
+        for (let l of f.loops) {
+          vsmooth(l.v, 0.5);
+        }
+
+        f.calcNormal();
+
+        applyTriangulation(mesh, f, faces, undefined, lctx);
+      }
+    }
+
+    for (let f of faces) {
+      if (f.eid >= 0) {
+        for (let l of f.loops) {
+          vsmooth(l.v);
+        }
+      }
+    }
+
+    trianglesToQuads(mesh, faces, undefined, lctx, faces);
+  }//*/
+
+  faces = faces.filter(f => f.eid >= 0);
   for (let f of faces) {
     for (let l of f.loops) {
       vs.add(l.v);
@@ -232,14 +370,52 @@ export function cleanupQuads(mesh, faces, lctx) {
   }
 
   for (let v of vs) {
-    if (v.valence === 2) {
-      mesh.dissolveVertex(v, lctx);
+    if (v.eid < 0) {
+      continue;
+    }
+
+    if (v.valence < 3 || v.valence > 5) {
+      /*
+      if ((v.valence === 3 || v.valence === 5) && Math.random() > 0.05) {
+        continue;
+      }//*/
+
+      let bad = false;
+      for (let e of v.edges) {
+        for (let l of e.loops) {
+          if (l.f.lists[0].length > 4) {
+            bad = true;
+            break;
+          }
+        }
+
+        if (bad) {
+          break;
+        }
+      }
+
+      if (!bad) {
+        let f = mesh.dissolveVertex(v, lctx);
+        if (f) {
+          faces.add(f);
+          //applyTriangulation(mesh, f, faces, undefined, lctx);
+        }
+      }
     }
   }
 
+
   for (let f of faces) {
     if (f.eid >= 0 && f.isNgon()) {
-      applyTriangulation(mesh, f, faces);
+      for (let l of f.loops) {
+        let v = l.v;
+        vsmooth(v, 0.5);
+      }
+
+      f.calcNormal();
+
+      applyTriangulation(mesh, f, faces, undefined, lctx);
+      //triangulateFan(mesh, f, faces, lctx);
     }
     //if (f.lists.length > 0
   }

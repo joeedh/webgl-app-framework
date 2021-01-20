@@ -196,6 +196,7 @@ export const RecalcFlags = {
 
 
 let atemps = {};
+window._arrcache = atemps;
 
 export function getArrayTemp(n) {
   if (n in atemps) {

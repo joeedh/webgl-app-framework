@@ -20,6 +20,7 @@ import {GridBase, Grid, gridSides} from "./mesh_grids.js";
 import {CustomDataElem} from "./customdata.js";
 
 import {getArrayTemp} from './mesh_base.js';
+import {applyTriangulation} from './mesh_tess.js';
 
 export function* walkFaceLoop(e) {
   let l = e.l;
@@ -79,12 +80,18 @@ export function* walkFaceLoop(e) {
 
 let _tritemp = new Array(3);
 
-export function triangulateMesh(mesh, faces = mesh.faces) {
+export function triangulateMesh(mesh, faces = mesh.faces, lctx) {
   let tri = _tritemp;
 
   if (!(faces instanceof Set)) {
     faces = new Set(faces);
   }
+
+  for (let f of faces) {
+    applyTriangulation(mesh, f, undefined, undefined, lctx);
+  }
+
+  return;
 
   let ret = [];
   let ltris = mesh.loopTris;
@@ -118,7 +125,7 @@ export function triangulateMesh(mesh, faces = mesh.faces) {
   return ret;
 }
 
-export function triangulateFan(mesh, f, newfaces=undefined) {
+export function triangulateFan(mesh, f, newfaces=undefined, lctx) {
   let startl = f.lists[0].l;
   let l = startl.next;
 
@@ -127,7 +134,7 @@ export function triangulateFan(mesh, f, newfaces=undefined) {
     let v2 = l.v;
     let v3 = l.next.v;
 
-    let tri = mesh.makeTri(v1, v2, v3);
+    let tri = mesh.makeTri(v1, v2, v3, lctx);
     let l2 = tri.lists[0].l;
 
     mesh.copyElemData(l2, startl);
@@ -136,13 +143,17 @@ export function triangulateFan(mesh, f, newfaces=undefined) {
     mesh.copyElemData(tri, f);
 
     if (newfaces !== undefined) {
-      newfaces.push(tri);
+      if (newfaces instanceof Set) {
+        newfaces.add(tri);
+      } else {
+        newfaces.push(tri);
+      }
     }
 
     l = l.next;
   } while (l !== startl.prev);
 
-  mesh.killFace(f);
+  mesh.killFace(f, lctx);
 }
 
 export function bisectMesh(mesh, faces, vec, offset = new Vector3()) {
@@ -937,7 +948,7 @@ export const TriQuadFlags = {
   DEFAULT   : 1 | 4
 };
 
-export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx) {
+export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, newfaces) {
   let es = new Set();
   let faces2 = new Set();
 
@@ -1112,6 +1123,10 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx) {
     let f = mesh.makeQuad(l1.v, l2.v, l3.v, l4.v);
     if (!f) {
       continue;
+    }
+
+    if (newfaces) {
+      newfaces.add(f);
     }
 
     if (lctx) {
@@ -1977,6 +1992,27 @@ export function buildCotanVerts(mesh, verts) {
   }
 
   return {vertexData : vdata, allVerts : vs};
+}
+
+export function buildCotanMap(mesh, verts) {
+  let map = new Map();
+
+  let vs = new Set(verts);
+
+  for (let v of verts) {
+    for (let v2 of v.neighbors) {
+      vs.add(v2);
+    }
+  }
+
+  for (let v of vs) {
+    let list = getCotanData(v);
+    list = list.slice(0, list.length);
+    map.set(v, list);
+  }
+
+  map.recordSize = VETOT;
+  return map;
 }
 
 let cvtmp1 = new Vector3();

@@ -858,6 +858,24 @@ export class App extends Screen {
         _appstate.toolstack.redo();
         window.redraw_viewport();
       }),
+      new HotKey("T", ["ALT"], () => {
+        if (window.__stest) {
+          window.__stest.stop();
+          window.__stest = undefined;
+        } else {
+          window.__stest = window._testSculpt(undefined, {sort : 1});
+          window.__stest.start();
+        }
+      }),
+      new HotKey("I", ["ALT"], () => {
+        if (window.__stest) {
+          window.__stest.stop();
+          window.__stest = undefined;
+        } else {
+          window.__stest = window._testSculpt(undefined, {sort : 0});
+          window.__stest.start();
+        }
+      }),
       new HotKey("Space", [], () => {
         console.log("Space Bar!");
 

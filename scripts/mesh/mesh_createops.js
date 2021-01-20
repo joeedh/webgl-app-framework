@@ -778,7 +778,8 @@ export class CreateMeshGenOp extends ToolOp {
       uiname  : "Add Procedural",
       toolpath: "mesh.procedural_add",
       inputs  : {
-        type: new EnumProperty(0, GenTypes)
+        type: new EnumProperty(0, GenTypes),
+        setActive: new BoolProperty(true)
       },
       outputs : {
         objectId: new IntProperty(-1)
@@ -803,6 +804,11 @@ export class CreateMeshGenOp extends ToolOp {
     let scene = ctx.scene;
 
     scene.add(ob);
+    scene.objects.setSelect(ob, true);
+
+    if (this.inputs.setActive.getValue()) {
+      scene.objects.setActive(ob);
+    }
 
     this.outputs.objectId.setValue(ob.lib_id);
 
@@ -869,14 +875,19 @@ export class ProceduralToMesh extends ToolOp {
       uiname  : "Convert Procedural To Mesh",
       toolpath: "mesh.procedural_to_mesh",
       inputs  : {
-        objectId: new IntProperty()
+        objectId: new IntProperty(-1)
       }
     }
   }
 
   exec(ctx) {
     let ob = this.inputs.objectId.getValue();
-    ob = ctx.datalib.get(ob);
+
+    if (ob === -1) {
+      ob = ctx.object;
+    } else {
+      ob = ctx.datalib.get(ob);
+    }
 
     if (!ob) {
       ctx.error("Object does not exist");
@@ -913,8 +924,6 @@ export class ProceduralToMesh extends ToolOp {
     mesh.regenElementsDraw();
     mesh.graphUpdate();
     ob.graphUpdate();
-
-
   }
 }
 

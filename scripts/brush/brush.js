@@ -35,6 +35,7 @@ export const SculptTools = {
   GRAB          : 9,
   HOLE_FILLER   : 10,
   MASK_PAINT    : 11,
+  WING_SCRAPE   : 12,
   PAINT         : 128,
   PAINT_SMOOTH  : 129,
   COLOR_BOUNDARY: 130,
@@ -477,17 +478,17 @@ export function makeDefaultBrushes() {
 
   brush = bmap[SculptTools.CLAY];
   brush.autosmooth = 0.2;
-  brush.strength = 0.9;
+  brush.strength = 0.5;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   brush = bmap[SculptTools.FILL];
-  brush.autosmooth = 0.2;
-  brush.strength = 0.9;
+  brush.autosmooth = 0.5;
+  brush.strength = 0.25;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
 
   brush = bmap[SculptTools.SCRAPE];
   brush.autosmooth = 0.2;
-  brush.strength = 0.9;
+  brush.strength = 0.3;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
 
   brush = bmap[SculptTools.INFLATE];
@@ -528,6 +529,12 @@ export function makeDefaultBrushes() {
   brush.dynTopo.flag &= ~(DynTopoFlags.INHERIT_DEFAULT|DynTopoFlags.ENABLED);
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
   brush.dynamics.autosmooth.useDynamics = false;
+
+  brush = bmap[SculptTools.WING_SCRAPE];
+  brush.autosmooth = 0.0;
+  brush.rake = 0.25;
+  brush.pinch = 0.0;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   return brushes;
 }

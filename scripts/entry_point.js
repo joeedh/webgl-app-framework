@@ -1,6 +1,11 @@
 import * as appstate from './core/appstate.js';
 import {loadShapes} from './core/simplemesh_shapes.js';
 
+import './test/test_base.js';
+import './test/test_sculpt.js';
+import './test/test.js';
+import './test/test_sculpt_run.js';
+
 import {nstructjs} from './path.ux/scripts/util/struct.js';
 import {cconst} from './path.ux/scripts/pathux.js';
 import config from './config/config.js';

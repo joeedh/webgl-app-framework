@@ -1,5 +1,5 @@
 import {Edge} from "./mesh_types.js";
-import {MeshError, MeshFlags, MeshTypes} from "./mesh_base.js";
+import {getArrayTemp, MeshError, MeshFlags, MeshTypes} from "./mesh_base.js";
 import * as util from "../util/util.js";
 import '../path.ux/scripts/util/struct.js';
 
@@ -122,17 +122,6 @@ export class SelectionSet extends util.set {
       }
     })();
   }
-}
-
-let _arrcache = {};
-
-function getArrayTemp(n) {
-  if (n in _arrcache) {
-    return _arrcache[n];
-  }
-
-  _arrcache[n] = new Array(n);
-  return _arrcache[n];
 }
 
 export class ElementListIter {
@@ -376,6 +365,28 @@ export class ElementList {
     }
   }
 
+  setEID(e, neweid) {
+    let sel = this.selected.has(e); //e.flag & MeshFlags.SELECT;
+
+    if (sel) {
+      this.selected.remove(e);
+    }
+
+    delete this.local_eidmap[e.eid];
+    let i = this.idxmap[e.eid];
+
+    e.eid = neweid;
+
+    this.local_eidmap[e.eid] = e;
+    this.idxmap[e.eid] = i;
+
+    if (sel) {
+      this.selected.add(e);
+    }
+
+    return this;
+  }
+
   _push(e) {
     let i;
 
@@ -465,6 +476,14 @@ export class ElementList {
       this._push(item);
     }
 
+    this.selected.clear();
+
+    for (let item of this) {
+      if (item.flag & MeshFlags.SELECT) {
+        this.selected.add(item);
+      }
+    }
+
     return this;
   }
 
@@ -550,6 +569,10 @@ export class ElementList {
       }
 
       cd.interp(cd, sources2, ws);
+    }
+
+    for (let i=0; i<sources2.length; i++) {
+      sources2[i] = undefined;
     }
   }
 

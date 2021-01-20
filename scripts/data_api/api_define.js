@@ -858,7 +858,13 @@ export function api_define_matrix4(api) {
   return st;
 }
 
+let _done = false;
+
 export function getDataAPI() {
+  if (_done) {
+    return api;
+  }
+
   let cstruct = api.mapStruct(ToolContext);
 
   api_define_matrix4(api);
@@ -1002,6 +1008,8 @@ export function getDataAPI() {
   buildToolSysAPI(api);
 
   cstruct.struct("propCache", "toolDefaults", "Tool Defaults", api.mapStruct(ToolPropertyCache));
+
+  _done = true;
 
   return api;
 }

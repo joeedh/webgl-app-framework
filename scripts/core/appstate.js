@@ -59,7 +59,7 @@ import {Light} from "../light/light.js";
 import {GridBase} from '../mesh/mesh_grids.js';
 
 export function genDefaultFile(appstate, dont_load_startup=0) {
-  if (cconst.APP_KEY_NAME in localStorage && !dont_load_startup) {
+  if ((cconst.APP_KEY_NAME in localStorage) && !dont_load_startup) {
     let buf = localStorage[cconst.APP_KEY_NAME];
 
     try {
@@ -115,6 +115,8 @@ export class AppState {
     this.screen = undefined;
     this.datalib = new Library();
 
+    this.ignoreEvents = false;
+
     this.modalFlag = 0;
 
     this.three_scene = undefined;
@@ -156,12 +158,26 @@ export class AppState {
     screen.update();
   }
 
-  start() {
+  stopEvents() {
+    this.ignoreEvents = true;
+    return this;
+  }
+
+  startEvents() {
+    this.ignoreEvents = false;
+    return this;
+  }
+
+  start(loadDefaultFile=true) {
     this.loadSettings();
 
     this.ctx = new ViewContext(this);
 
     window.addEventListener("mousedown", (e) => {
+      if (this.ignoreEvents) {
+        return;
+      }
+
       let tbox = checkForTextBox(_appstate.screen, e.pageX, e.pageY);
 
       if (e.button === 0 && !tbox) {
@@ -170,6 +186,10 @@ export class AppState {
     });
 
     window.addEventListener("contextmenu", (e) => {
+      if (this.ignoreEvents) {
+        return;
+      }
+
       console.log(e);
       let screen = _appstate.screen;
       if (screen === undefined) {
@@ -193,7 +213,9 @@ export class AppState {
     this.screen.setCSS();
     this.screen.listen();
 
-    genDefaultFile(this);
+    if (loadDefaultFile) {
+      genDefaultFile(this);
+    }
     this.filename = "unnamed." + cconst.FILE_EXT;
   }
 

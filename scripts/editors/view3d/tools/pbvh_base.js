@@ -1,5 +1,6 @@
 //grab data field definition
 import {
+  BaseVector,
   Curve1DProperty,
   FlagProperty, FloatProperty, Matrix4, ToolOp, ToolProperty, Vector2, Vector3, Vector4
 } from '../../../path.ux/scripts/pathux.js';
@@ -10,7 +11,7 @@ import {BVHToolMode} from './pbvh.js';
 import {CDFlags} from '../../../mesh/customdata.js';
 import {Mesh} from '../../../mesh/mesh.js';
 import {GridBase} from '../../../mesh/mesh_grids.js';
-import {BVHFlags} from '../../../util/bvh.js';
+import {BVHFlags, IsectRet} from '../../../util/bvh.js';
 import {MeshFlags} from '../../../mesh/mesh.js';
 
 export const SymAxisMap = [
@@ -520,6 +521,8 @@ export class PaintOpBase extends ToolOp {
     this._first = true;
     this.last_radius = 0;
     this.last_vec = new Vector3();
+
+    this._savedViewPoints = [];
   }
 
   static tooldef() {
@@ -533,16 +536,40 @@ export class PaintOpBase extends ToolOp {
     }
   }
 
-  static needOrig(mode) {
+  static needOrig(brush) {
+    let mode = brush.tool;
+
+    let isPaint = mode === SculptTools.MASK_PAINT || mode === SculptTools.TEXTURE_PAINT;
+    isPaint = isPaint || mode === SculptTools.PAINT || mode === SculptTools.PAINT_SMOOTH;
+
     let ret = mode === SculptTools.SHARP || mode === SculptTools.GRAB;
     ret = ret || mode === SculptTools.SNAKE; // || mode === SculptTools.SMOOTH;
+    ret = ret || (!isPaint && mode !== SculptTools.GRAB && brush.pinch !== 0.0);
 
     return ret;
   }
 
   on_mousemove(e) {
+    let ctx = this.modal_ctx;
+
+    if (!ctx.object || !(ctx.object.data instanceof Mesh)) {
+      return;
+    }
+
+    let toolmode = ctx.toolmode;
+    let view3d = ctx.view3d;
     let brush = this.inputs.brush.getValue();
-    let mode = brush.tool;
+
+    if (toolmode) {
+      //the pbvh toolmode is responsible for drawing brush circle,
+      //make sure it has up to date info for that
+      toolmode.mpos[0] = e.x;
+      toolmode.mpos[1] = e.y;
+    }
+
+    let mpos = view3d.getLocalMouse(e.x, e.y);
+    let x = mpos[0], y = mpos[1];
+
     let pressure = 1.0;
 
     if (e.was_touch && e.targetTouches && e.targetTouches.length > 0) {
@@ -555,22 +582,29 @@ export class PaintOpBase extends ToolOp {
       }
     }
 
+    let rendermat = view3d.activeCamera.rendermat;
+    let view = view3d.getViewVec(x, y);
+    let origin = view3d.activeCamera.pos;
+
+    let invert = false;
+    let mode = brush.tool;
+
+    if (e.ctrlKey && (mode !== SculptTools.PAINT && mode !== SculptTools.PAINT_SMOOTH)) {
+      invert = true;
+    }
+
+    return this.sampleViewRay(rendermat, mpos, view, origin, pressure, invert);
+  }
+
+  sampleViewRay(rendermat, mpos, view, origin, pressure, invert) {
+    let brush = this.inputs.brush.getValue();
+    let mode = brush.tool;
+
     let ctx = this.modal_ctx;
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh)) {
       return;
     }
-
-    let toolmode = ctx.toolmode;
-    let view3d = ctx.view3d;
-
-    //the pbvh toolmode is responsible for drawing brush circle,
-    //make sure it has up to date info for that
-    toolmode.mpos[0] = e.x;
-    toolmode.mpos[1] = e.y;
-
-    let mpos = view3d.getLocalMouse(e.x, e.y);
-    let x = mpos[0], y = mpos[1];
 
     /*
     let falloff = this.inputs.falloff.getValue();
@@ -579,8 +613,6 @@ export class PaintOpBase extends ToolOp {
     */
 
     let radius = brush.radius;
-
-    let ch;
 
     let getchannel = (key, val) => {
       let ch = brush.dynamics.getChannel(key);
@@ -593,14 +625,14 @@ export class PaintOpBase extends ToolOp {
 
     radius = getchannel("radius", radius);
 
+    let toolmode = ctx.toolmode;
+    let view3d = ctx.view3d;
+
     if (toolmode) {
       toolmode._radius = radius;
     }
 
     //console.log("pressure", pressure, strength, dynmask);
-
-    let view = view3d.getViewVec(x, y);
-    let origin = view3d.activeCamera.pos;
 
     let ob = ctx.object;
     let mesh = ob.data;
@@ -616,7 +648,7 @@ export class PaintOpBase extends ToolOp {
       }
     }
 
-    let haveOrigData = PaintOpBase.needOrig(brush.tool);
+    let haveOrigData = PaintOpBase.needOrig(brush);
     let cd_orig = -1;
     let cd_grid = GridBase.meshGridOffset(mesh);
 
@@ -665,17 +697,21 @@ export class PaintOpBase extends ToolOp {
         let p = new Vector3(this.last_p);
         p.multVecMatrix(obmat);
 
-        view3d.project(p);
+        view3d.project(p, rendermat);
 
         p[0] = mpos[0];
         p[1] = mpos[1];
 
-        view3d.unproject(p);
+        view3d.unproject(p, rendermat.clone().invert());
         p.multVecMatrix(matinv);
 
         let dis = p.vectorDistance(origin);
 
-        isect = {p, dis};
+        isect = new IsectRet();
+
+        isect.p = p;
+        isect.dis = dis;
+        isect.tri = undefined;
       } else {
         return;
       }
@@ -702,7 +738,7 @@ export class PaintOpBase extends ToolOp {
     p3[3] = 1.0;
 
     let matrix = new Matrix4(ob.outputs.matrix.getValue());
-    p3.multVecMatrix(view3d.activeCamera.rendermat);
+    p3.multVecMatrix(rendermat);
 
     let w = p3[3]*matrix.$matrix.m11;
     //let w2 = Math.cbrt(w);
@@ -712,10 +748,16 @@ export class PaintOpBase extends ToolOp {
     radius /= Math.max(view3d.glSize[0], view3d.glSize[1]);
     radius *= Math.abs(w);
 
-    let vec = new Vector3(isect.tri.v1.no);
-    vec.add(isect.tri.v2.no);
-    vec.add(isect.tri.v3.no);
-    vec.normalize();
+    let vec = new Vector3();
+
+    if (isect.tri) {
+      vec.load(isect.tri.v1.no);
+      vec.add(isect.tri.v2.no);
+      vec.add(isect.tri.v3.no);
+      vec.normalize();
+    } else {
+      vec.load(view).normalize();
+    }
 
     view.negate();
     if (vec.dot(view) < 0) {
@@ -736,9 +778,91 @@ export class PaintOpBase extends ToolOp {
       return undefined;
     }
 
+    this._savedViewPoints.push({
+      viewvec : new Vector3(view),
+      viewp : new Vector3(origin),
+      rendermat : rendermat.clone(),
+      mpos : new Vector2(mpos)
+    });
+
     return {
-      origco, p: isect.p, radius, vec, mpos, view, getchannel, w
+      origco, p: isect.p, isect: isect.copy(), radius, ob, vec, mpos, view, getchannel, w
     }
+  }
+
+  //for debugging purposes
+  writeSaveViewPoints(n=5) {
+     function toFixed(f) {
+       let s = f.toFixed(n);
+       while (s.endsWith("0")) {
+         s = s.slice(0, s.length-1);
+       }
+
+       if (s.length === 0) {
+         return "0";
+       }
+
+       if (s[s.length-1] === ".") {
+         s += "0";
+       }
+
+       return s;
+     }
+
+     function myToJSON(obj) {
+       if (typeof obj === "object") {
+         if (Array.isArray(obj) || obj instanceof BaseVector) {
+           let s = '[';
+           for (let i=0; i<obj.length; i++) {
+             if (i > 0) {
+               s += ',';
+             }
+
+             s += myToJSON(obj[i]);
+           }
+
+           s += ']';
+
+           return s;
+         } else if (obj instanceof Matrix4) {
+           return myToJSON(obj.getAsArray());
+         } else {
+           let s = '{';
+           let keys = Object.keys(obj);
+
+           for (let i=0; i<keys.length; i++) {
+             let k = keys[i];
+             let v;
+
+             try {
+               v = obj[k];
+             } catch (error) {
+               console.log("error with property " + k);
+               continue;
+             }
+
+             if (typeof v === "function") {
+               continue;
+             }
+
+             if (i > 0) {
+               s += ",";
+             }
+
+             s += `"${k}" : ${myToJSON(v)}`;
+           }
+           s += '}';
+
+           return s;
+         }
+       } else if (typeof obj === "number") {
+         return toFixed(obj);
+       } else {
+         return "" + obj;
+       }
+     }
+
+     return myToJSON(this._savedViewPoints);
   }
 
   on_mouseup(e) {

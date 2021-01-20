@@ -152,9 +152,9 @@ export class TriEditor {
     let data = this.mesh.tri_ids
     let i = this.i*3; //*3 is because triangles have three vertices
 
-    _ids_arrs[0][0] = i1, i1 = _ids_arrs[0];
-    _ids_arrs[1][0] = i2, i2 = _ids_arrs[1];
-    _ids_arrs[2][0] = i3, i3 = _ids_arrs[2];
+    _ids_arrs[0][0] = i1; i1 = _ids_arrs[0];
+    _ids_arrs[1][0] = i2; i2 = _ids_arrs[1];
+    _ids_arrs[2][0] = i3; i3 = _ids_arrs[2];
 
     data.copy(i, i1);
     data.copy(i + 1, i2);
@@ -435,7 +435,7 @@ export class PointEditor {
     let data = this.mesh.point_ids;
     let i = this.i;
 
-    _ids_arrs[0][0] = i1, i1 = _ids_arrs[0];
+    _ids_arrs[0][0] = i1; i1 = _ids_arrs[0];
 
     data.copy(i, _ids_arrs[0]);
 
