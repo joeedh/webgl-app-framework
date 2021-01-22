@@ -214,6 +214,8 @@ export class ElementList {
   }
 
   [Symbol.iterator]() {
+    //console.log(this.type, "iterator read");
+
     if (this.iterstack.cur >= this.iterstack.length) {
       console.warn("deep nesting of ElementListIter detected; growing cache stack by one", this.iterstack.cur);
       this.iterstack.push(new ElementListIter(this));

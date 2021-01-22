@@ -22,7 +22,8 @@ import {LayerTypes, ChunkedSimpleMesh, SimpleMesh} from "../core/simplemesh.js";
 import {MeshTools} from './mesh_stdtools.js';
 import {
   MeshFeatures, MeshFeatureError, MeshError,
-  MeshTypes, MeshSymFlags, MeshSymMap, MeshFlags, RecalcFlags, MeshDrawFlags
+  MeshTypes, MeshSymFlags, MeshSymMap, MeshFlags, RecalcFlags, MeshDrawFlags, ReusableIter, MAX_FACE_VERTS,
+  reallocArrayTemp
 } from './mesh_base.js';
 
 export * from "./mesh_base.js";
@@ -500,6 +501,10 @@ export class Mesh extends SceneObjectData {
   }
 
   ensureEdge(v1, v2, lctx) {
+    if (v1 === v2) {
+      throw new MeshError("mesh.ensureEdge: v1 and v2 were the same");
+    }
+
     let e = this.getEdge(v1, v2);
 
     if (e === undefined) {
@@ -775,7 +780,7 @@ export class Mesh extends SceneObjectData {
     return this.makeFace(_quad);
   }
 
-  makeTri(v1, v2, v3, lctx) {
+  makeTri(v1, v2, v3, lctx, ignoreDuplicates=false) {
     if (!v1 || !v2 || !v3) {
       console.log("missing verts", v1, v2, v3);
       throw new MeshError("Missing verts in makeTri");
@@ -783,7 +788,11 @@ export class Mesh extends SceneObjectData {
 
     if (v1 === v2 || v1 === v3 || v2 === v3) {
       console.log("duplicate verts", v1, v2, v3);
-      throw new MeshError("Duplicate verts in makeTri");
+      if (!ignoreDuplicates) {
+        throw new MeshError("Duplicate verts in makeTri");
+      } else {
+        return undefined;
+      }
     }
 
     _tri[0] = v1;
@@ -1414,9 +1423,8 @@ export class Mesh extends SceneObjectData {
           }
         }
 
-        //prevent callbacks in log ctx, since face is in invalid state
         if (lctx) {
-          lctx.killFaces.add(f);
+          lctx.killFace(f);
         }
 
         delete this.eidmap[f.eid];
@@ -1871,6 +1879,40 @@ export class Mesh extends SceneObjectData {
     }
   }
 
+  pruneWireGeometry(verts=this.verts, lctx) {
+    let update = false;
+
+    verts = ReusableIter.getSafeIter(verts);
+
+    let edges = new Set();
+    for (let v of verts) {
+      for (let e of v.edges) {
+        edges.add(e);
+      }
+    }
+
+    for (let e of edges) {
+      if (!e.l) {
+        this.killEdge(e, lctx);
+        update = true;
+      }
+    }
+
+    for (let v of verts) {
+      if (v.valence === 0) {
+        this.killVertex(v, undefined, lctx);
+        update = true;
+      }
+    }
+
+    if (update) {
+      this.regenTesellation();
+      this.regenRender();
+    }
+
+    return update;
+  }
+
   _radialRemove(e, l) {
     if (e.l === l) {
       e.l = l === l.radial_next ? undefined : l.radial_next;
@@ -1878,6 +1920,266 @@ export class Mesh extends SceneObjectData {
 
     l.radial_next.radial_prev = l.radial_prev;
     l.radial_prev.radial_next = l.radial_next;
+  }
+
+  joinTwoEdges(v, lctx) {
+    if (v.valence !== 2) {
+      throw new MeshError("vertex valence must be 2");
+    }
+
+    let e1, e2;
+
+    for (let e of v.edges) {
+      if (!e1)
+        e1 = e
+      else if (!e2)
+        e2 = e;
+    }
+
+    let v1 = e1.otherVertex(v), v2 = e2.otherVertex(v);
+
+    v1.flag |= MeshFlags.UPDATE;
+    v2.flag |= MeshFlags.UPDATE;
+
+    if (!e1.l && !e2.l) {
+      if (lctx) {
+        lctx.killEdge(e1);
+      }
+
+      this._diskRemove(v, e1);
+
+      if (e1.v1 === v) {
+        e1.v1 = v2;
+      } else {
+        e1.v2 = v2;
+      }
+
+      this._diskInsert(v2, e1);
+
+      if (lctx) {
+        lctx.newEdge(e1);
+      }
+
+      this.killEdge(e2, lctx);
+      return undefined;
+    }
+
+    let count = 0;
+    let flag = MeshFlags.TEMP5;
+    let flag2 = MeshFlags.TEMP6;
+
+    for (let i=0; i<2; i++) {
+      let e = i ? e2 : e1;
+      for (let l of e.loops) {
+        l.f.flag &= ~(flag|flag2);
+      }
+    }
+    for (let i=0; i<2; i++) {
+      let e = i ? e2 : e1;
+      for (let l of e.loops) {
+        if (!(l.f.flag & flag)) {
+          l.f.flag |= flag;
+          count++;
+        }
+      }
+    }
+
+    let fs = getArrayTemp(count);
+    let fi = 0;
+
+    for (let i=0; i<2; i++) {
+      let e = i ? e2 : e1;
+      for (let l of e.loops) {
+        if (!(l.f.flag & flag2)) {
+          l.f.flag |= flag2;
+          fs[fi++] = l.f;
+        }
+      }
+    }
+
+    for (let f of fs) {
+      if (f.isTri()) {
+        this.killFace(f);
+        continue;
+      }
+
+      f.flag |= MeshFlags.UPDATE;
+
+      for (let l of f.loops) {
+        l.v.flag |= MeshFlags.UPDATE;
+        l.e.flag |= MeshFlags.UPDATE;
+
+        this._radialRemove(l.e, l);
+      }
+    }
+
+    for (let f of fs) {
+      if (f.eid < 0) {
+        continue;
+      }
+
+      for (let i=0; i<f.lists.length; i++) {
+        let list = f.lists[i];
+        let l = list.l;
+        let _i = 0;
+
+        do {
+          if (_i++ > 1000000) {
+            console.warn("infinite loop error");
+            break;
+          }
+
+          let next = l.next;
+
+          if (l.v === v) {
+            if (list.l === l) {
+              list.l = l.next;
+
+              if (list.l === l || list.l.next === l) {
+                this._killLoop(l);
+
+                f.lists.remove(list);
+                i--;
+
+                if (f.lists.length === 0) {
+                  this.killFace(f, lctx);
+                  break;
+                }
+
+                continue;
+              }
+            }
+
+            l.next.prev = l.prev;
+            l.prev.next = l.next;
+            this._killLoop(l);
+          }
+
+          l = next;
+        } while (l !== list.l);
+
+        if (f.eid < 0) {
+          break;
+        }
+      }
+    }
+
+    let e0 = this.getEdge(v1, v2);
+    if (!e0) {
+      e0 = e1;
+      this._diskRemove(v, e1);
+
+      if (e1.v1 === v) {
+        e1.v1 = v2;
+      } else {
+        e1.v2 = v2;
+      }
+
+      this._diskInsert(v2, e1);
+    } else {
+      this.killEdge(e1, lctx);
+    }
+
+    this.killEdge(e2, lctx);
+
+    for (let f of fs) {
+      if (f.eid < 0) {
+        continue;
+      }
+
+      this._fixFace(f, lctx, false, true);
+    }
+
+    for (let i=0; i<fs.length; i++) {
+      fs[i] = undefined; //prevent reference leak
+    }
+
+    this.killVertex(v);
+
+    return e0;
+  }
+
+  _fixFace(f, lctx, f_is_linked=true, relink=true) {
+    let ret = false;
+
+    let _unlink = !f_is_linked;
+    let this2 = this;
+
+    function unlink() {
+      if (_unlink) {
+        return;
+      }
+
+      _unlink = true;
+      relink = true;
+
+      for (let l of f.loops) {
+        if (l.e) {
+          this2._radialRemove(l.e, l);
+        }
+      }
+    }
+
+    for (let list of f.lists) {
+      let l = list.l;
+      let _i = 0;
+
+      do {
+        let next = l.next;
+
+        if (l.v === l.next.v) {
+          console.log("duplicate loop verts", l);
+          ret = true;
+
+          unlink();
+
+          if (_i++ > MAX_FACE_VERTS) {
+            console.warn("infinite loop error");
+            break;
+          }
+
+          l.next.prev = l.prev;
+          l.prev.next = l.next;
+
+          if (l === l.list.l) {
+            l.list.l = l.next;
+          }
+
+          if (l === l.list.l) {
+            l.list.l = undefined;
+            l.list.count = 0;
+
+            this._killLoop(l);
+            break;
+          }
+
+          this._killLoop(l);
+        }
+
+        l = next;
+      } while (l !== list.l);
+    }
+
+    for (let i=0; i<f.lists.length; i++) {
+      if (!f.lists[i].l) {
+        f.lists.remove(f.lists[i]);
+        i--;
+      }
+    }
+
+    if (f.lists.length === 0) {
+      this.killFace(f);
+      relink = false;
+    }
+
+    if (relink) {
+      for (let l of f.loops) {
+        l.e = this.ensureEdge(l.v, l.next.v, lctx);
+        this._radialInsert(l.e, l);
+      }
+    }
+
+    return ret;
   }
 
   dissolveVertex(v, lctx) {
@@ -2048,7 +2350,10 @@ export class Mesh extends SceneObjectData {
 
     if (dolog) console.log("vi", vi, "count", count);
 
-    ls.length = vi;
+    if (ls.length !== vi) {
+      ls = reallocArrayTemp(ls, vi);
+    }
+
     for (let l of ls) {
       l.v.flag &= ~(flag1 | flag2);
     }
@@ -2064,7 +2369,10 @@ export class Mesh extends SceneObjectData {
       l.v.flag |= flag1;
     }
 
-    ls2.length = li;
+    if (ls2.length !== li) {
+      ls2 = reallocArrayTemp(ls2, li);
+    }
+
     let vs = getArrayTemp(li);
 
     if (dolog) console.log("vs", vs.length);
@@ -2137,13 +2445,24 @@ export class Mesh extends SceneObjectData {
     }
 
     let eid = e.eid;
+    let flag = e.flag;
+    let act = e === this.edges.active;
 
     let l1 = e.l, l2 = e.l.radial_next;
     let l1b = l1.prev, l2b = l2.prev;
 
     let customData = e.customData;
 
+    if (l1b.v === l2b.v || l1b === l2b) {
+      return;
+    }
+
+    if (this.getEdge(l1b.v, l2b.v)) {
+      return; //can't dissolve
+    }
+
     let f1 = this.dissolveEdge(e, lctx);
+
     if (!f1) {
       return;
     }
@@ -2153,6 +2472,13 @@ export class Mesh extends SceneObjectData {
 
     if (e2) {
       e2.customData = customData;
+
+      if (act) {
+        this.edges.active = e;
+      }
+
+      e2.flag = flag & ~MeshFlags.SELECT;
+
       if (lctx) {
         lctx.killEdge(e2);
       }
@@ -2160,14 +2486,17 @@ export class Mesh extends SceneObjectData {
       this.setEID(e2, eid);
 
       //logctx may have selected the edge
-      let flag = e.flag & ~MeshFlags.SELECT;
+      flag = flag & ~MeshFlags.SELECT;
       e2.flag = flag | (e2.flag & MeshFlags.SELECT);
+
+      if (!(e2.flag & MeshFlags.SELECT) || (flag & MeshFlags.SELECT)) {
+        this.edges.setSelect(e2, true);
+      }
 
       if (lctx) {
         lctx.newEdge(e2);
       }
     }
-    console.log(f1, l1b, l2b, l1, l2);
 
     return e2;
   }
@@ -2340,6 +2669,11 @@ export class Mesh extends SceneObjectData {
     let f1 = l1.f;
     let f2 = l2.f;
 
+    if (f1 === f2) {
+      console.warn("Dissolve error");
+      return;
+    }
+
     for (let l of f1.loops) {
       this._radialRemove(l.e, l);
     }
@@ -2441,19 +2775,33 @@ export class Mesh extends SceneObjectData {
     }
 
     if (f1.lists.length === 0) {
+      console.log("Killing empty face");
+
       this.killFace(f1, lctx);
       return undefined;
     }
 
+    let bad = false;
+
     for (let l of f1.loops) {
       if (l.next.v === l.v) {
-        console.log("Eek", l);
+        console.error("Dissolve error", l);
+        continue;
       }
+
       l.e = this.ensureEdge(l.v, l.next.v, lctx);
+
+      if (l.e === e) {
+        console.warn("Dissolve error");
+        bad = true;
+      }
+
       this._radialInsert(l.e, l);
     }
 
-    this.killEdge(e, lctx);
+    if (!bad) {
+      this.killEdge(e, lctx);
+    }
 
     return f1;
   }
@@ -2583,9 +2931,22 @@ export class Mesh extends SceneObjectData {
   }
 
   compact() {
+    let lens1 = [];
+    let lens2 = [];
+
     for (let k in this.elists) {
+      let elist = this.elists[k];
+
+      lens1.push(elist.list.length);
+      lens2.push(elist.length);
+
       this.elists[k].compact();
     }
+
+    console.log(lens1);
+    console.log(lens2);
+
+    return this;
   }
 
   genRender_curves(gl, combinedWireframe, view3d,
@@ -3143,6 +3504,16 @@ export class Mesh extends SceneObjectData {
       }
     }
 
+    for (let l of this.loops) {
+      for (let cd of l.customData) {
+        if (cd instanceof GridBase) {
+          for (let p of cd.points) {
+            p.loopEid = l.eid;
+          }
+        }
+      }
+    }
+
     console.log(oldmax, this.eidgen._cur);
 
     this.regenTesellation();
@@ -3275,6 +3646,11 @@ export class Mesh extends SceneObjectData {
 
     for (let i = 0; i < dst.customData.length; i++) {
       dst.customData[i].load(src.customData[i]);
+    }
+
+    //make sure dst is actually in this mesh before selecting it
+    if ((src.flag & MeshFlags.SELECT) && dst.eid >= 0 && this.eidmap[dst.eid] === dst) {
+      this.setSelect(dst, true);
     }
 
     dst.flag = src.flag;
@@ -3945,7 +4321,8 @@ export class Mesh extends SceneObjectData {
     }
 
     for (let f of this.faces) {
-      for (let list of f.lists) {
+      for (let i=0; i<f.lists.length; i++) {
+        let list = f.lists[i];
         list.length = 0;
 
         for (let l of list) {
@@ -3953,19 +4330,45 @@ export class Mesh extends SceneObjectData {
 
           if (!l.e) {
             console.error("Mesh corruption error; fixing...", l);
-            l.e = this.makeEdge(l.v, l.next.v);
+
+            if (l.next.v === l.v) {
+              //bad loop!
+              l.prev.next = l.next;
+              l.next.prev = l.prev;
+
+              if (l === list.l) {
+                list.l = l.next;
+              }
+
+              if (list.l === l) {
+                list.length = 0;
+                f.lists.remove(list);
+                i--;
+                break;
+              }
+            } else {
+              l.e = this.makeEdge(l.v, l.next.v);
+            }
           }
 
           l.list = list;
           l.f = f;
           list.length++;
+        }
 
+        if (list.length === 0) {
+          continue;
         }
 
         for (let l of list) {
           l.radial_next = l.radial_prev = l;
           this._radialInsert(l.e, l);
         }
+      }
+
+      if (f.lists.length === 0) {
+        console.warn("Removed dead face", f);
+        this.killFace(f);
       }
     }
 

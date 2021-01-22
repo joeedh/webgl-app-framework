@@ -14,6 +14,7 @@ import {Light} from '../light/light.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import * as cconst from './const.js';
 import * as platform from '../core/platform.js';
+import {exportSTLMesh} from '../util/stlformat.js';
 
 ToolOp.prototype.calcUndoMem = function(ctx) {
   if (this.undoPre !== ToolOp.prototype.undoPre) {
@@ -226,7 +227,6 @@ export class FileOpenOp extends ToolOp {
 
 ToolOp.register(FileOpenOp);
 
-
 export class FileNewOp extends ToolOp {
   static tooldef() {
     return {
@@ -248,3 +248,44 @@ export class FileNewOp extends ToolOp {
 }
 ToolOp.register(FileNewOp);
 
+
+export class FileExportSTL extends ToolOp {
+  static tooldef() {
+    return {
+      uiname  : "Export STL",
+      toolpath: "app.export_stl",
+      inputs  : {
+        forceDialog  : new BoolProperty(true),
+        saveToolStack: new BoolProperty(false)
+      },
+      undoflag: UndoFlags.NO_UNDO
+    }
+  }
+
+  exec(ctx) {
+    let list = new Set(ctx.selectedMeshObjects).map(f => f.data);
+    if (list.size === 0) {
+      return;
+    }
+
+    let savefunc = () => {
+      return exportSTLMesh(list);
+    }
+
+    platform.platform.showSaveDialog("Export STL", savefunc, {
+      filters: [
+        {
+          defaultPath: "unnamed.stl",
+          name       : "STL Files",
+          extensions : ["stl"]
+        }
+      ]
+    }).then((saveHandle) => {
+      _appstate.saveHandle = saveHandle;
+      ctx.message("File saved");
+    });
+    //saveFile(_appstate.createFile(), "unnamed."+cconst.FILE_EXT, ["."+cconst.FILE_EXT]);
+  }
+}
+
+ToolOp.register(FileExportSTL);

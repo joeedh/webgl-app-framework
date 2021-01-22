@@ -2,7 +2,7 @@
 import {
   BaseVector,
   Curve1DProperty,
-  FlagProperty, FloatProperty, Matrix4, ToolOp, ToolProperty, Vector2, Vector3, Vector4
+  FlagProperty, FloatProperty, keymap, Matrix4, ToolOp, ToolProperty, Vector2, Vector3, Vector4
 } from '../../../path.ux/scripts/pathux.js';
 import {BrushFlags, SculptBrush, SculptTools} from '../../../brush/brush.js';
 import {ProceduralTex} from '../../../texture/proceduralTex.js';
@@ -13,6 +13,8 @@ import {Mesh} from '../../../mesh/mesh.js';
 import {GridBase} from '../../../mesh/mesh_grids.js';
 import {BVHFlags, IsectRet} from '../../../util/bvh.js';
 import {MeshFlags} from '../../../mesh/mesh.js';
+import * as util from '../../../util/util.js';
+import * as math from '../../../util/math.js';
 
 export const SymAxisMap = [
   [],
@@ -458,7 +460,17 @@ export class SetBrushRadius extends ToolOp {
   }
 
   on_keydown(e) {
-    super.on_keydown(e);
+    switch (e.keyCode) {
+      case keymap["Enter"]:
+      case keymap["Space"]:
+      case keymap["Escape"]:
+        if (this.queue.length > 0) {
+          this.queue.push("stop");
+        } else {
+          this.modalEnd(false);
+        }
+        break;
+    }
   }
 }
 
@@ -467,6 +479,17 @@ ToolOp.register(SetBrushRadius);
 let co = new Vector3();
 let t1 = new Vector3();
 let t2 = new Vector3();
+
+export class PathPoint {
+  constructor(co, dt) {
+    this.color = "yellow";
+    this.co = new Vector2(co);
+    this.origco = new Vector2(co);
+    this.vel = new Vector2();
+    this.acc = new Vector2();
+    this.dt = dt;
+  }
+}
 
 export function calcConcave(v) {
   co.zero();
@@ -511,6 +534,8 @@ export function calcConcaveLayer(mesh) {
   }
 }
 
+import {bez4} from '../../../util/bezier.js';
+
 export class PaintOpBase extends ToolOp {
   constructor() {
     super();
@@ -521,6 +546,13 @@ export class PaintOpBase extends ToolOp {
     this._first = true;
     this.last_radius = 0;
     this.last_vec = new Vector3();
+
+    this.queue = [];
+    this.qlast_time = util.time_ms();
+    this.timer = undefined;
+
+    this.path = [];
+    this.alast_time = util.time_ms();
 
     this._savedViewPoints = [];
   }
@@ -545,11 +577,175 @@ export class PaintOpBase extends ToolOp {
     let ret = mode === SculptTools.SHARP || mode === SculptTools.GRAB;
     ret = ret || mode === SculptTools.SNAKE; // || mode === SculptTools.SMOOTH;
     ret = ret || (!isPaint && mode !== SculptTools.GRAB && brush.pinch !== 0.0);
+    ret = ret || mode === SculptTools.PINCH;
 
     return ret;
   }
 
-  on_mousemove(e) {
+  timer_on_tick() {
+    //XXX currently disabled
+    if (this.queue.length === 0) {
+      return;
+    }
+
+    if (util.time_ms() - this.qlast_time > 20) {
+      let time = util.time_ms();
+
+      while (this.queue.length > 0 && util.time_ms() - time < 30) {
+        let e = this.queue.pop();
+
+        if (e === "stop") {
+          this.modalEnd();
+          return;
+        }
+
+        this.on_mousemove(e, true);
+        window.redraw_viewport(true);
+        console.log(e);
+      }
+
+      this.qlast_time = util.time_ms();
+    }
+  }
+
+  appendPath(x, y) {
+    let dt = util.time_ms() - this.alast_time;
+    dt = Math.max(dt, 1.0);
+
+    let p = new PathPoint([x, y], dt);
+    let path = this.path;
+
+    if (path.length > 0) {
+      let p0 = path[path.length-1];
+      p.vel.load(p.co).sub(p0.co);
+      p.acc.load(p.vel).sub(p0.vel);
+
+      let vel;
+      //vel = new Vector3(p.vel).add(p0.vel).mulScalar(0.5);
+      vel = p.vel;
+      let l1 = p0.vel.vectorLength();
+      let l2 = p.vel.vectorLength();
+
+      if (p.vel.vectorLength() > 30) {
+        let co = new Vector3();
+
+        let a = new Vector3();
+        let b = new Vector3();
+        let c = new Vector3();
+        let d = new Vector3();
+
+
+        let vel1 = new Vector3(p0.vel).addFac(p0.acc, 0.5).mulScalar(0.5);
+        let vel2 = new Vector3(p.vel).addFac(p.acc, 0.5).mulScalar(0.5);
+
+        a.load(p0.co);
+        d.load(p.co);
+        b.load(a).addFac(vel1, 1.0/3.0);
+        c.load(d).addFac(vel2, -1.0/3.0);
+
+        co.load(p0.co).addFac(p.vel, 0.5).addFac(p.acc, 1.0/6.0);
+
+        let steps = Math.ceil(p.co.vectorDistance(p0.co) / 15);
+
+        if (steps === 0) {
+          this.path.push(p);
+          this.alast_time = util.time_ms();
+          return;
+        }
+
+        let s = 0, ds = 1.0 / steps;
+        dt *= ds;
+
+        let lastp = p0;
+
+        for (let i=0; i<steps; i++, s += ds) {
+          let p2 = new PathPoint(undefined, ds);
+          for (let j=0; j<2; j++) {
+            p2.co[j] = bez4(a[j], b[j], c[j], d[j], s);
+          }
+
+          p2.color = "orange";
+          p2.origco.load(p0.co).interp(p.co, s);
+
+          //console.log(p2.co);
+
+          p2.vel.load(p2.co).sub(lastp.co);
+          p2.acc.load(p2.vel).sub(lastp.vel);
+          this.path.push(p2);
+        }
+
+        p.vel.load(p.co).sub(lastp.co);
+        p.acc.load(p.vel).sub(lastp.vel);
+        p.dt = dt;
+
+        if (0) {
+
+          let p2 = new PathPoint(co, dt*0.5);
+          path.push(p2);
+
+          p2.dt = dt*0.5;
+          p.dt = dt*0.5;
+
+          p2.vel.load(p2.co).sub(p0.co);
+          p2.acc.load(p2.vel).sub(p0.vel);
+
+          p.vel.load(p.co).sub(p2.co);
+          p.acc.load(p.vel).sub(p2.vel);
+        }
+
+        //console.log("add points");
+      }
+    }
+
+    path.push(p);
+    this.alast_time = util.time_ms();
+  }
+
+  drawPath() {
+    this.resetTempGeom();
+    let lastp;
+
+    let n = new Vector2();
+
+    for (let p of this.path) {
+      if (lastp) {
+        n.load(p.co).sub(lastp.co).normalize();
+        let t = n[0];
+        n[0] = n[1];
+        n[1] = -t;
+        n.mulScalar(15.0);
+        n.add(p.origco);
+
+        this.makeTempLine(lastp.co, p.co, "yellow");
+        this.makeTempLine(lastp.origco, p.origco, p.color);
+        this.makeTempLine(p.origco, n, p.color);
+      }
+      lastp = p;
+    }
+  }
+
+  on_mousemove(e, in_timer=false) {
+    let pi = this.path.length;
+
+    this.appendPath(e.x, e.y);
+    //this.drawPath();
+
+    for (; pi<this.path.length; pi++) {
+      let p = this.path[pi];
+
+      this.on_mousemove_intern(e, p.co[0], p.co[1], in_timer);
+    }
+  }
+
+  on_mousemove_intern(e, x=e.x, y=e.y, in_timer=false) {
+    //this.makeTempLine()
+
+    /*
+    if (!in_timer) {// && util.time_ms() - this.qlast_time > 5) {
+      this.queue.push(e);
+      return;
+    }*/
+
     let ctx = this.modal_ctx;
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh)) {
@@ -563,12 +759,13 @@ export class PaintOpBase extends ToolOp {
     if (toolmode) {
       //the pbvh toolmode is responsible for drawing brush circle,
       //make sure it has up to date info for that
-      toolmode.mpos[0] = e.x;
-      toolmode.mpos[1] = e.y;
+      toolmode.mpos[0] = x;
+      toolmode.mpos[1] = y;
     }
 
-    let mpos = view3d.getLocalMouse(e.x, e.y);
-    let x = mpos[0], y = mpos[1];
+    let mpos = view3d.getLocalMouse(x, y);
+    x = mpos[0];
+    y = mpos[1];
 
     let pressure = 1.0;
 
@@ -865,8 +1062,21 @@ export class PaintOpBase extends ToolOp {
      return myToJSON(this._savedViewPoints);
   }
 
+  modalEnd(was_cancelled) {
+    super.modalEnd(was_cancelled);
+
+    if (this.timer !== undefined) {
+      window.clearInterval(this.timer);
+      this.timer = undefined;
+    }
+  }
+
   on_mouseup(e) {
-    this.modalEnd(false);
+    if (this.queue.length > 0) {
+      this.queue.push("stop");
+    } else {
+      this.modalEnd(false);
+    }
   }
 
   undoPre(ctx) {
@@ -878,6 +1088,12 @@ export class PaintOpBase extends ToolOp {
   }
 
   modalStart(ctx) {
+    if (this.timer !== undefined) {
+      window.clearInterval(this.timer);
+    }
+
+    //this.timer = window.setInterval(() => this.timer_on_tick(), 5);
+
     this._first = true;
     super.modalStart(ctx);
   }

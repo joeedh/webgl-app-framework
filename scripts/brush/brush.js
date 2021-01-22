@@ -36,6 +36,7 @@ export const SculptTools = {
   HOLE_FILLER   : 10,
   MASK_PAINT    : 11,
   WING_SCRAPE   : 12,
+  PINCH         : 13,
   PAINT         : 128,
   PAINT_SMOOTH  : 129,
   COLOR_BOUNDARY: 130,
@@ -48,16 +49,17 @@ export const DynTopoFlags = {
   INHERIT_DEFAULT   : 4,
   ENABLED           : 8,
   FANCY_EDGE_WEIGHTS: 16,
-  QUAD_COLLAPSE     : 32
+  QUAD_COLLAPSE     : 32,
+  ALLOW_VALENCE4    : 64
 };
 
 export class DynTopoSettings {
   constructor() {
     this.valenceGoal = 6;
     this.edgeSize = 20.0;
-    this.decimateFactor = 1.0;
-    this.subdivideFactor = 1.0;
-    this.maxDepth = 0.0; //used by multigrid code
+    this.decimateFactor = 0.5;
+    this.subdivideFactor = 0.25;
+    this.maxDepth = 6; //used by multigrid code
     this.flag = DynTopoFlags.INHERIT_DEFAULT | DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE | DynTopoFlags.FANCY_EDGE_WEIGHTS;
     this.edgeCount = 150;
   }
@@ -499,7 +501,7 @@ export function makeDefaultBrushes() {
   brush.strength = 0.25;
   brush.planeoff = -1.0;
   brush.normalfac = 1.0;
-  brush.flag |= BrushFlags.PLANAR_SMOOTH;
+  //brush.flag |= BrushFlags.PLANAR_SMOOTH;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SPHERE);
 
   brush.dynamics.strength.curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.LINEAR);
@@ -535,6 +537,11 @@ export function makeDefaultBrushes() {
   brush.rake = 0.25;
   brush.pinch = 0.0;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+
+  brush = bmap[SculptTools.PINCH];
+  brush.autosmooth = 0.0;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARPER);
+  brush.dynamics.strength.useDynamics = true;
 
   return brushes;
 }

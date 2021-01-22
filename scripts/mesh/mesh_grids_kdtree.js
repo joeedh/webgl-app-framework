@@ -7,6 +7,19 @@ import {ChunkedSimpleMesh} from "../core/simplemesh.js";
 import {BLink, GridBase, GridSettingFlags, GridSettings, gridSides, GridVert, QRecalcFlags} from "./mesh_grids.js";
 import '../util/numeric.js';
 
+
+export const VMAXE = 16, VMAXN = 16;
+const VINDEX = 0, VU = 1, VV = 2, VP = 3, VTOTE = 4, VTOTN = VTOTE + VMAXE + 1, VTOT = VTOTN + VMAXN + 1;
+export const EMAXN = VMAXN;
+const EINDEX = 0, EID = 1, EV1 = 2, EV2 = 3, ETOTN = 4, ETOT = ETOTN + 1 + EMAXN;
+
+export const VMapFields = {
+  VINDEX, VU, VV, VP, VTOTE, VTOTN, VTOT
+};
+export const EMapFields = {
+  EINDEX, EID, EV1, EV2, ETOTN, ETOT
+};
+
 let a = 0;
 export const KdTreeFields = {
   QFLAG         : a++,
@@ -119,10 +132,10 @@ function makeCompressedNodeStruct() {
     QPOINT2: "int",
     QPOINT3: "int",
     QPOINT4: "int",
-    QMINU: "float",
-    QMAXU: "float",
-    QMINV: "float",
-    QMAXV: "float"
+    QMINU  : "float",
+    QMAXU  : "float",
+    QMINV  : "float",
+    QMAXV  : "float"
   }
 
   let s = `mesh_grid.CompressedKdNode {\n`
@@ -174,6 +187,97 @@ let boxoffs = [];
 for (let ix = -1; ix <= 1; ix++) {
   for (let iy = -1; iy <= 1; iy++) {
     boxoffs.push([ix, iy]);
+  }
+}
+
+let polystack = new Array(2048);
+
+export class UVMap extends Array {
+  constructor(dimen) {
+    if (isNaN(dimen) || !isFinite(dimen)) {
+      console.log(dimen);
+      throw new Error("eek! NaN!");
+    }
+
+    //add one so we include 1.0
+    super((dimen + 1)*(dimen + 1));
+
+    this._len = this.length;
+
+    this.dimen = dimen;
+
+    this.size = 0;
+  }
+
+  reset(dimen) {
+    this.dimen = dimen;
+    this._len = (dimen+1)*(dimen+1);
+
+    if (this.length < this._len) {
+      this.length = (dimen + 1)*(dimen + 1);
+    }
+
+    this.size = 0;
+
+
+    for (let i = 0; i < this._len; i++) {
+      this[i] = undefined;
+    }
+
+
+    return this;
+  }
+
+  clear() {
+    this.size = 0;
+
+    for (let i = 0; i < this._len; i++) {
+      this[i] = undefined;
+    }
+
+    return this;
+  }
+
+  has(i) {
+    if (i < 0 || i >= this._len) {
+      return false;
+    }
+
+    return this[i] !== undefined;
+  }
+
+  set(i, val) {
+    if (i < 0 || i >= this._len) {
+      return false;
+    }
+
+    let ret = this[i] !== undefined;
+    this[i] = val;
+
+    if (ret) {
+      this.size++;
+    }
+
+    return ret;
+  }
+
+  get(i) {
+    return this[i];//i >= 0 && i < this.length ? this[i] : undefined;
+  }
+
+  delete(i) {
+    if (i < 0 || i >= this._len) {
+      return false;
+    }
+
+    let ret = this[i] !== undefined;
+    this[i] = undefined;
+
+    if (ret) {
+      this.size--;
+    }
+
+    return ret;
   }
 }
 
@@ -234,10 +338,11 @@ export const KdTreeFlags = {
   SELECT: 1,
   LEAF  : 2,
   DEAD  : 4,
-  TEMP  : 8
+  TEMP  : 8,
+  TEMP2 : 16
 };
 
-const {SELECT, LEAF, DEAD, TEMP} = KdTreeFlags;
+const {SELECT, LEAF, DEAD, TEMP, TEMP2} = KdTreeFlags;
 
 let _getuv_rets = util.cachering.fromConstructor(Vector2, 32);
 
@@ -254,10 +359,12 @@ export class KdTreeGrid extends GridBase {
 
     this.normalQuad = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
 
+    this._uvmap = undefined;
+
     this.loopEid = -1;
 
     this.dimen = 1;
-    this.pmap = {};
+    this.pmap = new Map();
     this.nodes = [];
     this.freelist = []; //for freeds nodes
     this.polys = [];
@@ -268,13 +375,18 @@ export class KdTreeGrid extends GridBase {
     this.subdtemps = util.cachering.fromConstructor(Vector3, 32);
   }
 
-  calcMemSize() {
-    let tot = super.calcMemSize() + this.nodes.length*8;
-    tot += this.freelist.length*8 + this.subdtemps.length*8*32;
-    tot += this.polys.length*8;
-
-    return tot;
-  }
+  static define() {
+    return {
+      elemTypeMask : MeshTypes.LOOP, //see MeshTypes in mesh.js
+      typeName     : "KdTreeGrid",
+      settingsClass: GridSettings,
+      uiTypeName   : "KdTreeGrid",
+      defaultName  : "KdTreeGrid",
+      //needsSubSurf : true,
+      valueSize    : undefined,
+      flag         : 0
+    }
+  };
 
   /*
   set nodes(ns) {
@@ -325,11 +437,19 @@ export class KdTreeGrid extends GridBase {
     return this._nodes;
   }*/
 
+  calcMemSize() {
+    let tot = super.calcMemSize() + this.nodes.length*8;
+    tot += this.freelist.length*8 + this.subdtemps.length*8*32;
+    tot += this.polys.length*8;
+
+    return tot;
+  }
+
   _saveNodes() {
     return CompressedKdNode.fromNodes(this.nodes);
   }
 
-  copyTo(b, copy_eids=false) {
+  copyTo(b, copy_eids = false) {
     b.topo = undefined;
     b.dimen = this.dimen;
     b.nodes = this.nodes.concat([]);
@@ -377,7 +497,7 @@ export class KdTreeGrid extends GridBase {
     b.cdmap = this.cdmap.concat([]);
     b.cdmap_reverse = this.cdmap_reverse.concat([]);
 
-    b.recalcFlag = QRecalcFlags.ALL;
+    b.recalcFlag = (1<<20) - 1; //QRecalcFlags.ALL;
 
     b.relinkCustomData();
     b._rebuildHash();
@@ -455,8 +575,8 @@ export class KdTreeGrid extends GridBase {
     let w = 0.0;
 
     for (let vr of v.bRing) {//v.neighbors) {
-      vr.interp(v, 0.5);
-      v.load(vr, true);
+      vr.co.interp(v.co, 0.5);
+      v.co.load(vr.co, true);
     }
 
     for (let vr of v.bRing) {
@@ -494,18 +614,27 @@ export class KdTreeGrid extends GridBase {
   }
 
   stitchBoundaries() {
+    return;
     for (let p of this.points) {
+      if (p.eid < 0) {
+        console.error("Error!");
+      }
+
       let w = 1.0;
 
       for (let pr of p.bRing) {
-        p.add(pr);
-        w++;
+        if (pr.eid >= 0) {
+          p.add(pr);
+          w++;
+        }
       }
 
       p.mulScalar(1.0/w);
 
       for (let pr of p.bRing) {
-        pr.load(p, true);
+        if (pr.eid >= 0) {
+          pr.load(p, true);
+        }
       }
     }
   }
@@ -518,26 +647,26 @@ export class KdTreeGrid extends GridBase {
     return v*dimen + u;
   }
 
-
   _getPoint(u, v, loopEid, mesh, isNewOut) {
     if (this.pmap === undefined) {// || (this.recalcFlag & QRecalcFlags.POINTHASH)) {
       this._rebuildHash();
     }
 
+    let pmap = this.pmap;
     let key = this._hashPoint(u, v);
 
-    if (key in this.pmap) {
+    if (pmap.has(key)) {
       if (isNewOut) {
         isNewOut[0] = false;
       }
-      return this.points[this.pmap[key]];
+      return this.points[pmap.get(key)];
     }
 
     if (isNewOut) {
       isNewOut[0] = true;
     }
 
-    this.pmap[key] = this.points.length;
+    pmap.set(key, this.points.length);
     let p = new GridVert(this.points.length, loopEid);
 
     p.neighbors = new Set();
@@ -595,7 +724,7 @@ export class KdTreeGrid extends GridBase {
 
     let nodes = this.nodes;
 
-    this.pmap = {};
+    this.pmap = new Map();
 
     let donode = (ni, a, b, pi) => {
       let u, v;
@@ -604,7 +733,7 @@ export class KdTreeGrid extends GridBase {
       v = nodes[ni + b];
 
       let key = this._hashPoint(u, v);
-      this.pmap[key] = nodes[ni + QPOINT1 + pi];
+      this.pmap.set(key, nodes[ni + QPOINT1 + pi]);
     }
 
     for (let ni = 0; ni < nodes.length; ni += QTOT) {
@@ -672,6 +801,21 @@ export class KdTreeGrid extends GridBase {
     return ni;
   }
 
+  /*
+  set recalcFlag(val) {
+    let was_set = this._recalcFlag & QRecalcFlags.NEIGHBORS;
+
+    this._recalcFlag = val;
+
+    if (!was_set && (val & QRecalcFlags.NEIGHBORS)) {
+      console.warn("Neighbors recalc");
+    }
+  }
+
+  get recalcFlag() {
+    return this._recalcFlag;
+  }//*/
+
   _ensureNodePoint(ni, pidx, loopEid = undefined, mesh, isNewOut) {
     let nodes = this.nodes;
 
@@ -702,23 +846,10 @@ export class KdTreeGrid extends GridBase {
     return p;
   }
 
-  /*
-  set recalcFlag(val) {
-    let was_set = this._recalcFlag & QRecalcFlags.NEIGHBORS;
-
-    this._recalcFlag = val;
-
-    if (!was_set && (val & QRecalcFlags.NEIGHBORS)) {
-      console.warn("Neighbors recalc");
-    }
-  }
-
-  get recalcFlag() {
-    return this._recalcFlag;
-  }//*/
-
-  init(dimen, mesh, loop) {
+  init(dimen, mesh, loop, cd_grid) {
     //console.log("grid init!");
+
+    this._uvmap = undefined;
 
     this.depthLimitEnabled = false;
     this.depthLimit = 0;
@@ -732,7 +863,7 @@ export class KdTreeGrid extends GridBase {
 
     this.recalcFlag = QRecalcFlags.ALL | QRecalcFlags.MIRROR;
 
-    this.pmap = {};
+    this.pmap = new Map();
     this.leafNodes.length = 0;
     this.leafPoints.length = 0;
 
@@ -784,9 +915,13 @@ export class KdTreeGrid extends GridBase {
 
       //rec(ni, 2);
 
-      this.rebuildNodePolys();
-      this.flagNeighborRecalc();
+      if (mesh) {
+        this.rebuildNodePolys(mesh, loop, cd_grid);
+      } else {
+        this.recalcFlag |= QRecalcFlags.POLYS;
+      }
 
+      this.flagNeighborRecalc();
       this.initCDLayoutFromLoop(loop);
     }
 
@@ -826,7 +961,7 @@ export class KdTreeGrid extends GridBase {
     return s;
   }
 
-  flagfRecalc() {
+  flagTopoRecalc() {
     this.recalcFlag |= QRecalcFlags.TOPO;
   }
 
@@ -850,34 +985,56 @@ export class KdTreeGrid extends GridBase {
     mesh.doMirrorSnap(l.v);
   }
 
-  getTopo() {
+  //mesh can be undefined
+  getTopo(mesh, cd_grid) {
+    if (mesh && cd_grid === undefined) {
+      throw new Error("cd_grid cannot be undefined if mesh isn't");
+    }
+
     if (this.topo && !(this.recalcFlag & QRecalcFlags.TOPO)) {
       return this.topo;
     }
 
+    if (mesh && (this.recalcFlag & QRecalcFlags.POINT_PRUNE)) {
+      this.pruneDeadPoints(mesh, undefined, cd_grid);
+    }
+
     //if (this.recalcFlag & QRecalcFlags.INDICES) {
-      this.recalcPointIndices();
+    this.recalcPointIndices();
     //}
 
-    this.topo = undefined;
     this.recalcFlag &= ~QRecalcFlags.TOPO;
 
     let ns = this.nodes;
     let ps = this.points;
 
-    let vmap = [];
+    let vmap2;
+    let emap2;
+
+    if (this.topo) {
+      emap2 = this.topo.emap2;
+      emap2.length = 0;
+    } else {
+      emap2 = [];
+    }
+
+    if (this.topo && this.topo.vmap2.length === ps.length*VTOT) {
+      vmap2 = this.topo.vmap2;
+    } else {
+      vmap2 = new Float64Array(ps.length*VTOT);
+    }
 
     for (let i = 0; i < ps.length; i++) {
-      ps[i].index2 = i;
+      let vi = i*VTOT;
 
-      vmap.push({
-        edges: [],
-        nodes: [],
-        index: i,
-        uv   : [-1, -1],
-        p    : ps[i]
-      });
+      vmap2[vi + VINDEX] = i;
+      vmap2[vi + VP] = 0;
+      vmap2[vi + VU] = -1;
+      vmap2[vi + VV] = -1;
+      vmap2[vi + VTOTE] = vmap2[vi + VTOTN] = 0;
     }
+
+    this.topo = undefined;
 
     //get dimen of grid fine enough for deepest node
 
@@ -903,60 +1060,83 @@ export class KdTreeGrid extends GridBase {
       //return Math.min(a, b) + ":" + Math.max(a, b);
     }
 
+    let eindex = 0;
+
     function getedge(a, b) {
       let key = ekey(a, b);
 
-      if (!emap.has(key)) {
-        let e = {
-          v1   : a,
-          v2   : b,
-          p1   : ps[a],
-          p2   : ps[b],
-          id   : idgen++,
-          nodes: []
-        }
+      let ei = emap.get(key);
 
-        vmap[a].edges.push(e);
-        vmap[b].edges.push(e);
+      if (ei === undefined) {
+        ei = emap2.length;
 
-        emap.set(key, e);
-        return e;
+        emap2.length += ETOT;
+        emap2[ei + EINDEX] = eindex*ETOT;
+        emap2[ei + EID] = idgen;
+        emap2[ei + EV1] = a;
+        emap2[ei + EV2] = b;
+        emap2[ei + ETOTN] = 0;
+
+        emap.set(key, ei);
+
+        eindex++;
+        idgen++;
       }
 
-      return emap.get(key);
+      let vi = a*VTOT;
+
+      if (vmap2[vi + VTOTE] < VMAXE) {
+        let vi2 = vi + VTOTE + 1 + vmap2[vi + VTOTE];
+
+        vmap2[vi + VTOTE]++;
+        vmap2[vi2] = ei;
+      }
+
+      return ei;
     }
 
-    let uvmap = {};
+    let dimen3 = ~~(dimen*16);
+    let uvmap;
+
+    if (dimen3 <= 256) {
+      uvmap = this._uvmap;
+
+      if (!uvmap) {
+        uvmap = this._uvmap = new UVMap(dimen3);
+      } else {
+        uvmap.reset(dimen3);
+      }
+    } else {
+      this._uvmap = undefined;
+      uvmap = new Map();
+    }
 
     function uvkey(u, v) {
-      let dimen2 = dimen*16;
 
-      u = ~~(u*dimen2 + 0.0001);
-      v = ~~(v*dimen2 + 0.0001);
-      return v*dimen2 + u;
+      u = ~~(u*dimen3 + 0.0001);
+      v = ~~(v*dimen3 + 0.0001);
+
+      return v*dimen3 + u;
     }
 
-    function setuv(v1, u, v) {
-      let was_set = v1.uv[0] >= 0;
-
-      let eps = 0.0000001;
-
-      if (was_set && (Math.abs(u - v1.uv[0]) > eps || Math.abs(v - v1.uv[1])) > eps) {
-        //console.log(v1, v1.uv[0], v1.uv[1], u, v);
-        //throw new Error("u, v differ");
-      }
-
-      v1.uv[0] = u;
-      v1.uv[1] = v;
+    function setuv(vi, u, v) {
+      //let was_set = 0;
+      vmap2[vi+VU] = u;
+      vmap2[vi+VV] = v;
     }
 
     function addedge(ni, a, b, u, v) {
-      let v1 = vmap[a], v2 = vmap[b];
+      setuv(a*VTOT, u, v);
 
-      setuv(v1, u, v);
+      let ei = getedge(a, b);
+      //e.nodes.push(ni);
 
-      let e = getedge(a, b);
-      e.nodes.push(ni);
+      if (emap2[ei + ETOTN] < EMAXN) {
+        let ei2 = ei + ETOTN + emap2[ei + ETOTN] + 1;
+
+        emap2[ei + ETOTN]++;
+        emap2[ei2] = ei;
+      }
     }
 
     let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000;
@@ -991,7 +1171,14 @@ export class KdTreeGrid extends GridBase {
       for (let j = 0; j < 4; j++) {
         let ip = ns[ni + QPOINT1 + j];
 
-        vmap[ip].nodes.push(ni);
+        let vi = ip*VTOT;
+
+        if (vmap2[vi+VTOTN] < VMAXN) {
+          let vi2 = vi + VTOTN + vmap2[vi+VTOTN] + 1;
+
+          vmap2[vi+VTOTN]++;
+          vmap2[vi2] = ni;
+        }
       }
 
       addedge(ni, ip1, ip2, minu, minv);
@@ -1001,14 +1188,18 @@ export class KdTreeGrid extends GridBase {
     }
 
     for (let i = 0; i < ps.length; i++) {
-      let v = vmap[i];
-      let key = uvkey(v.uv[0], v.uv[1]);
+      let vi = i*VTOT;
 
-      uvmap[key] = i;
+      let u = vmap2[vi+VU];
+      let v = vmap2[vi+VV];
+
+      let key = uvkey(u, v);
+
+      uvmap.set(key, i);
     }
 
     this.topo = {
-      maxdepth, vmap, emap, uvmap, dimen, uvkey
+      maxdepth, uvmap, dimen, uvkey, emap2, vmap2
     };
 
     return this.topo;
@@ -1057,7 +1248,9 @@ export class KdTreeGrid extends GridBase {
   }
 
   compactNodes() {
-    this.recalcFlag |= QRecalcFlags.POLYS | QRecalcFlags.NEIGHBORS | QRecalcFlags.TOPO;
+    //console.warn("compactNodes called");
+    this.recalcFlag |= QRecalcFlags.POLYS | QRecalcFlags.NEIGHBORS | QRecalcFlags.TOPO | QRecalcFlags.LEAVES;
+    this.recalcFlag |= QRecalcFlags.POINT_PRUNE | QRecalcFlags.POINTHASH;
 
     this.topo = undefined;
 
@@ -1401,7 +1594,7 @@ export class KdTreeGrid extends GridBase {
       //this.subsurf.buildTangentMatrix(u1, v1, matOut);
       //return matOut;
       /*
-      
+
        */
       m1.invert();
       m2.invert();
@@ -1998,8 +2191,11 @@ export class KdTreeGrid extends GridBase {
       }
     }
 
-    this.recalcFlag |= QRecalcFlags.NORMALS | QRecalcFlags.TOPO | QRecalcFlags.POLYS;
-    this.recalcFlag |= QRecalcFlags.LEAF_NODES | QRecalcFlags.LEAF_POINTS | QRecalcFlags.NEIGHBORS;
+    console.warn("tangentToGlobal called");
+    this.recalcFlag |= QRecalcFlags.NORMALS;
+
+    //this.recalcFlag |= QRecalcFlags.NORMALS | QRecalcFlags.TOPO | QRecalcFlags.POLYS;
+    //this.recalcFlag |= QRecalcFlags.LEAF_NODES | QRecalcFlags.LEAF_POINTS | QRecalcFlags.NEIGHBORS;
   }
 
   globalToTangent(level = this.depthLimit) {
@@ -2094,7 +2290,7 @@ export class KdTreeGrid extends GridBase {
         //update topology for all grids first
         grid2.getLeafNodes();
         grid2.getLeafPoints();
-        grid2.getTopo();
+        grid2.getTopo(mesh, cd_grid);
       }
 
       for (let l of mesh.loops) {
@@ -2148,8 +2344,12 @@ export class KdTreeGrid extends GridBase {
   }
 
   update(mesh, loop, cd_grid, _ignore_mres = false) {
-    if (this.recalcFlag & (QRecalcFlags.NORMALS|QRecalcFlags.TOPO|QRecalcFlags.POINT_PRUNE|QRecalcFlags.NEIGHBORS
-      | QRecalcFlags.INDICES|QRecalcFlags.POINTHASH|QRecalcFlags.NODE_NORMALS)) {
+    if (this.recalcFlag & QRecalcFlags.POINT_PRUNE) {
+      this.pruneDeadPoints(mesh, loop, cd_grid);
+    }
+
+    if (this.recalcFlag & (QRecalcFlags.NORMALS | QRecalcFlags.TOPO | QRecalcFlags.POINT_PRUNE | QRecalcFlags.NEIGHBORS
+      | QRecalcFlags.INDICES | QRecalcFlags.POINTHASH | QRecalcFlags.NODE_NORMALS)) {
       this.recalcPointIndices();
     }
 
@@ -2167,8 +2367,7 @@ export class KdTreeGrid extends GridBase {
     }
 
     if (this.recalcFlag & QRecalcFlags.POINT_PRUNE) {
-      //this.recalcFlag |= QRecalcFlags.TOPO | QRecalcFlags.POLYS;
-      this.pruneDeadPoints();
+      this.pruneDeadPoints(mesh, loop, cd_grid);
     }
 
     if (this.recalcFlag & QRecalcFlags.REGEN_IDS) {
@@ -2193,16 +2392,15 @@ export class KdTreeGrid extends GridBase {
     }
 
     if (this.recalcFlag & QRecalcFlags.TOPO) {
-      this.recalcPointIndices();
-
       for (let p of this.points) {
         p.loopEid = loop.eid;
       }
-      this.getTopo();
+
+      this.getTopo(mesh, cd_grid);
     }
 
     if (this.recalcFlag & QRecalcFlags.POLYS) {
-      this.rebuildNodePolys();
+      this.rebuildNodePolys(mesh, loop, cd_grid);
     }
 
     if (this.recalcFlag & QRecalcFlags.NEIGHBORS) {
@@ -2213,12 +2411,16 @@ export class KdTreeGrid extends GridBase {
       this.fixNeighbors(mesh, loop, cd_grid);
     }
 
+    if (this.recalcFlag & QRecalcFlags.NODE_NORMALS) {
+      this.checkNodeNormals();
+    }
+
     if (this.recalcFlag & QRecalcFlags.MIRROR) {
       this.updateMirrorFlags(mesh, loop, cd_grid);
     }
 
-    if (this.recalcFlag & QRecalcFlags.NODE_NORMALS) {
-      this.checkNodeNormals();
+    if (this.recalcFlag & QRecalcFlags.NODE_DEPTH_DELTA) {
+      this.enforceNeighborDepthLimit(mesh, loop, cd_grid);
     }
 
     if (this.recalcFlag & QRecalcFlags.VERT_NORMALS) {
@@ -2226,17 +2428,17 @@ export class KdTreeGrid extends GridBase {
     }
   }
 
-  rebuildNodePolys() {
+  rebuildNodePolys(mesh, l, cd_grid) {
     if (this.recalcFlag & QRecalcFlags.POINT_PRUNE) {
-      this.pruneDeadPoints();
+      this.pruneDeadPoints(mesh, l, cd_grid);
     }
 
     //console.log("Rebuilding polygon map for quadtree node");
 
-    this.recalcFlag &= ~QRecalcFlags.POLYS;
-
     let ns = this.nodes, ps = this.points;
-    let {maxdepth, vmap, emap, uvmap, dimen, uvkey} = this.getTopo();
+    let {maxdepth, vmap, emap, vmap2, emap2, uvmap, dimen, uvkey} = this.getTopo(mesh, cd_grid);
+
+    this.recalcFlag &= ~QRecalcFlags.POLYS;
 
     /*
     for (let ni = 0; ni < ns.length; ni += QTOT) {
@@ -2267,7 +2469,38 @@ export class KdTreeGrid extends GridBase {
 
     let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000;
 
-    let rec = (ni) => {
+    let stack = polystack;
+
+    /*
+    for (let ni=0; ni<ns.length; ni += QTOT) {
+      let isleaf = (ns[ni + QFLAG] & LEAF) || ns[ni + QDEPTH] === depthLimit;
+      isleaf = isleaf && !(ns[ni+QFLAG] & DEAD);
+      isleaf = isleaf && ns[ni+QDEPTH] <= depthLimit;
+
+      if (!isleaf) {
+        continue;
+      }
+
+      ns[ni + QPOLYSTART] = polys.length;
+      polys.push(ns[ni+QPOINT1]);
+      polys.push(ns[ni+QPOINT2]);
+      polys.push(ns[ni+QPOINT3]);
+      polys.push(ns[ni+QPOINT4]);
+      ns[ni + QPOLYEND] = polys.length;
+    }
+
+    return {
+      vmap : vmap,
+      emap : emap,
+      dimen: dimen,
+      uvmap: uvmap
+    };//*/
+
+    let cur = 0;
+    stack[cur++] = 0;
+
+    while (cur > 0) {
+      let ni = stack[--cur];
       let isleaf = (ns[ni + QFLAG] & LEAF) || ns[ni + QDEPTH] === depthLimit;
 
       if (!isleaf) {
@@ -2275,24 +2508,48 @@ export class KdTreeGrid extends GridBase {
           for (let i = 0; i < MAXCHILD; i++) {
             let ni2 = ns[ni + QCHILD1 + i];
             if (!ni2) {
-              return;
+              continue;
             }
-            rec(ni2);
+
+            stack[cur++] = ni2;
           }
         }
 
-        return;
+        continue;
+      }
+    }
+
+    cur = 0;
+    stack[cur++] = 0;
+
+    while (cur > 0) {
+      let ni = stack[--cur];
+      let isleaf = (ns[ni + QFLAG] & LEAF) || ns[ni + QDEPTH] === depthLimit;
+
+      if (!isleaf) {
+        if (!(ns[ni + QFLAG] & LEAF)) {
+          for (let i = 0; i < MAXCHILD; i++) {
+            let ni2 = ns[ni + QCHILD1 + i];
+            if (!ni2) {
+              continue;
+            }
+
+            stack[cur++] = ni2;
+          }
+        }
+
+        continue;
       }
 
       let split;
       if (ni === 0) {
         split = 0.5;
       } else {
-        let split = ns[ns[ni+QPARENT]+QSPLIT];
+        split = ns[ns[ni + QPARENT] + QSPLIT];
       }
 
       let axis = ns[ni + QAXIS];
-      let dt = 1.0 / dimen;
+      let dt = 1.0/dimen;
 
       du = axis ? 1.0 : dt;
       dv = axis ? dt : 1.0;
@@ -2310,39 +2567,57 @@ export class KdTreeGrid extends GridBase {
       for (let i = 0; i < 4; i++) {
         let ip1 = ns[ni + QPOINT1 + i];
         let ip2 = ns[ni + QPOINT1 + ((i + 1)%4)];
-        let v1 = vmap[ip1];
-        let v2 = vmap[ip2];
 
-        duv1.load(v2.uv).sub(v1.uv);
+        //let v1 = vmap[ip1];
+        //let v2 = vmap[ip2];
+
+        let vi1 = ip1*VTOT;
+        let vi2 = ip2*VTOT;
+
+        duv1[0] = vmap2[vi2+VU] - vmap2[vi1+VU];
+        duv1[1] = vmap2[vi2+VV] - vmap2[vi1+VV];
+
+        //duv1.load(v2.uv).sub(v1.uv);
 
         let axis = (i & 1) ^ 1;
 
-        let steps = Math.abs(duv1[axis]/duv[axis]) + 0.00001;
-        steps += 1;
+        let steps;
 
-        let sign1 = Math.sign(duv1[0]);
-        let sign2 = Math.sign(duv1[1]);
+        if (duv[axis] === 0) { //paranoia check
+          steps = 1;
+        } else {
+          steps = Math.abs(duv1[axis]/duv[axis]) + 0.00001;
 
-        steps = ~~steps;
+          steps += 1;
+          steps = ~~steps;
+        }
 
-        uv2[0] = v1.uv[0];
-        uv2[1] = v1.uv[1];
+        uv2[0] = vmap2[vi1+VU]; //v1.uv[0];
+        uv2[1] = vmap2[vi1+VV]; //v1.uv[1];
+        //uv2[0] = v1.uv[0];
+        //uv2[1] = v1.uv[1];
 
         let dt = duv[axis]*Math.sign(duv1[axis]);
 
+        if (Math.random() > 0.99) {
+          //console.log("steps", steps);
+        }
+
         for (let j = 0; j < steps; j++) {
           if (uv2[axis] < 0 || uv2[axis] > 1) {
+            //break;
             continue;
           }
 
           let key = uvkey(uv2[0], uv2[1]);
-          let p = uvmap[key];
+          let p = uvmap.get(key);
 
           if (p !== undefined && (poly.length === 0 || p !== poly[poly.length - 1])) {
-            poly.push(uvmap[key]);
+            poly.push(p);
           }
 
           uv2[axis] += dt;
+          //break;
         }
 
       }
@@ -2358,8 +2633,6 @@ export class KdTreeGrid extends GridBase {
       ns[ni + QPOLYEND] = polys.length;
     }
 
-    rec(0);
-
     return {
       vmap : vmap,
       emap : emap,
@@ -2369,13 +2642,16 @@ export class KdTreeGrid extends GridBase {
     //rec2(0);
   }
 
-  pruneDeadPoints() {
+  pruneDeadPoints(mesh, l, cd_grid) {
     let ps = this.points;
     let ns = this.nodes;
-    let newps = [];
-    let pmap = new Array(ps.length);
-
     this.recalcFlag &= ~QRecalcFlags.POINT_PRUNE;
+
+    let pi = 0;
+
+    for (let p of this.points) {
+      p.flag &= ~(TEMP | TEMP2);
+    }
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
@@ -2386,29 +2662,107 @@ export class KdTreeGrid extends GridBase {
         let ip = ns[ni + QPOINT1 + i];
         let p = ps[ip];
 
-        if (pmap[ip] === undefined) {
-          pmap[ip] = p.index2 = newps.length;
-          newps.push(p);
+        if (!(p.flag & TEMP2)) {
+          pi++;
         }
 
-        ns[ni + QPOINT1 + i] = pmap[ip];
+        p.flag |= TEMP2;
       }
     }
 
-    this.points = newps;
+    if (pi === this.points.length) {
+      return;
+    }
+
+    let newps = [];
+
+    for (let ni = 0; ni < ns.length; ni += QTOT) {
+      if (ns[ni + QFLAG] & DEAD) {
+        continue;
+      }
+
+      for (let i = 0; i < 4; i++) {
+        let ip = ns[ni + QPOINT1 + i];
+        let p = ps[ip];
+
+        if (!(p.flag & TEMP)) {
+          p.flag |= TEMP;
+          p.index = p.index2 = newps.length;
+          newps.push(p);
+        }
+
+        ns[ni + QPOINT1 + i] = p.index2;
+      }
+    }
+
+    this.recalcFlag |= QRecalcFlags.TOPO|QRecalcFlags.NEIGHBORS|QRecalcFlags.POLYS;
+    this.recalcFlag |= QRecalcFlags.REGEN_EIDMAP|QRecalcFlags.LEAVES;
+
+    this.topo = undefined;
+
+    for (let p of this.points) {
+      p.flag &= ~TEMP;
+    }
+
+    for (let p of newps) {
+      p.flag |= TEMP;
+    }
+
+    for (let p of this.points) {
+      if (!(p.flag & TEMP)) {
+        p.eid = -1;
+
+        if (1 || p.bLink) {
+          for (let step = 0; step < 2; step++) {
+            let list = step ? p.neighbors : p.bRing;
+
+            for (let p2 of list) {
+              if (p2.loopEid !== p.loopEid && p2.loopEid !== undefined) {
+                let l = mesh.eidmap[p2.loopEid];
+
+                if (l && l.eid === MeshTypes.LOOP) {
+                  let grid = l.customData[cd_grid];
+
+                  grid.flag |= QRecalcFlags.NEIGHBORS | QRecalcFlags.TOPO;
+                }
+              }
+
+              if (p2.neighbors instanceof Set) {
+                p2.neighbors.delete(p);
+              } else {
+                p2.neighbors.remove(p);
+              }
+
+              if (p2.bLink && p2.bLink.v1 === p) {
+                p2.bLink = undefined;
+              } else if (p2.bLink && p2.bLink.v2 === p) {
+                p2.bLink.v2 = undefined;
+              }
+            }
+          }
+        }
+
+        p.bLink = undefined;
+        p.bRingRemove();
+      }
+    }
 
     for (let i = 0; i < this.customDatas.length; i++) {
       let cd1 = this.customDatas[i];
       let cd2 = new Array(newps.length);
 
       for (let j = 0; j < cd1.length; j++) {
-        if (pmap[j] !== undefined) {
-          cd2[pmap[j]] = cd1[j];
+        let p = this.points[j];
+
+        if (p.flag & TEMP) {
+          cd2[p.index2] = cd1[j];
         }
       }
 
       this.customDatas[i] = cd2;
     }
+
+    this.points = newps;
 
     this.relinkCustomData();
     this._rebuildHash();
@@ -2434,10 +2788,98 @@ export class KdTreeGrid extends GridBase {
 
     ns[ni + QFLAG] |= LEAF;
 
-    this.recalcFlag |= QRecalcFlags.LEAVES | QRecalcFlags.ALL | QRecalcFlags.MIRROR | QRecalcFlags.NEIGHBORS;
+    const updateflag = QRecalcFlags.LEAVES | QRecalcFlags.NEIGHBORS | QRecalcFlags.MIRROR |
+      QRecalcFlags.NORMALS | QRecalcFlags.TOPO | QRecalcFlags.POLYS
+      | QRecalcFlags.INDICES | QRecalcFlags.POINT_PRUNE | QRecalcFlags.POINTHASH;
+
+    this.recalcFlag |= updateflag;// | QRecalcFlags.ALL;
+  }
+
+  enforceNeighborDepthLimit(mesh, l, cd_grid) {
+    this.recalcFlag &= ~QRecalcFlags.NODE_DEPTH_DELTA;
+
+    let _i = 0;
+    let ret = false;
+
+    while (this.enforceNeighborDepthLimit_intern(mesh, l, cd_grid)) {
+      ret = true;
+      if (_i++ > 100) {
+        break;
+      }
+    }
+
+    return ret;
+  }
+
+  //make sure nodes never differ in depth from their neighbors by more then 1
+  enforceNeighborDepthLimit_intern(mesh, l, cd_grid) {
+    //console.log("Check Node Limit");
+
+    this.recalcFlag &= ~QRecalcFlags.NODE_DEPTH_DELTA;
+
+    let ns = this.nodes;
+    let ps = this.points;
+
+    let ret = false;
+
+    let topo = this.getTopo(mesh, cd_grid);
+    let vmap = topo.vmap;
+    let vmap2 = topo.vmap2;
+
+    for (let ni = 0; ni < ns.length; ni += QTOT) {
+      let flag = ns[ni + QFLAG];
+      if ((flag & DEAD) || !(flag & LEAF)) {
+        continue;
+      }
+
+      ns[ni + QFLAG] &= ~TEMP;
+    }
+
+    for (let ni = 0; ni < ns.length; ni += QTOT) {
+      let flag = ns[ni + QFLAG];
+      if ((flag & DEAD) || !(flag & LEAF)) {
+        continue;
+      }
+
+      for (let i = 0; i < 4; i++) {
+        let pi = ns[ni + QPOINT1 + i];
+        let vi = pi*VTOT;
+        let totn = vmap2[vi+VTOTN];
+
+        for (let j=0; j<totn; j++) {
+          let vi2 = vi + VTOTN + 1 + j;
+          let ni2 = vmap2[vi2];
+        //}
+        //for (let ni2 of vmap[pi].nodes) {
+          if (ns[ni2 + QDEPTH] > ns[ni + QDEPTH] + 2) {
+            ns[ni + QFLAG] |= TEMP;
+            //console.log("Subdivide Node");
+            ret = true;
+          }
+        }
+      }
+
+    }
+
+    for (let ni = 0; ni < ns.length; ni += QTOT) {
+      let flag = ns[ni + QFLAG];
+      if ((flag & DEAD) || !(flag & LEAF)) {
+        continue;
+      }
+
+      if (flag & TEMP) {
+        this.subdivide(ni, l.eid, mesh);
+      }
+    }
+
+    return ret;
   }
 
   subdivide(ni, loopEid, mesh) {
+    return this._subdivide_intern(ni, loopEid, mesh);
+  }
+
+  _subdivide_intern(ni, loopEid, mesh) {
     let nodes = this.nodes;
 
     if (nodes[ni + QFLAG] & DEAD) {
@@ -2491,11 +2933,11 @@ export class KdTreeGrid extends GridBase {
     let tmp1 = this.subdtemps.next(), tmp2 = this.subdtemps.next();
 
     let uvs = uvstmp;
-    let axis = (nodes[ni + QAXIS] + 1) % 2;
+    let axis = (nodes[ni + QAXIS] + 1)%2;
 
     let d1 = p1.vectorDistance(p2)*0.5 + p3.vectorDistance(p4)*0.5;
     let d2 = p1.vectorDistance(p4)*0.5 + p3.vectorDistance(p2)*0.5;
-    let pick = Math.abs(d1-d2) > Math.abs(d1+d2)*0.1;
+    let pick = Math.abs(d1 - d2) > Math.abs(d1 + d2)*0.1;
 
     if (pick) {
       axis = d1 < d2 ? 0 : 1;
@@ -2641,25 +3083,17 @@ export class KdTreeGrid extends GridBase {
       }
     }
 
-    this.recalcFlag |= QRecalcFlags.LEAVES | QRecalcFlags.ALL | QRecalcFlags.MIRROR | QRecalcFlags.NORMALS;
-  }
+    const updateflag = QRecalcFlags.LEAVES | QRecalcFlags.NEIGHBORS | QRecalcFlags.MIRROR |
+      QRecalcFlags.NORMALS | QRecalcFlags.TOPO | QRecalcFlags.POLYS
+      | QRecalcFlags.INDICES; // | QRecalcFlags.POINTHASH;
 
-  static define() {
-    return {
-      elemTypeMask : MeshTypes.LOOP, //see MeshTypes in mesh.js
-      typeName     : "KdTreeGrid",
-      settingsClass: GridSettings,
-      uiTypeName   : "KdTreeGrid",
-      defaultName  : "KdTreeGrid",
-      //needsSubSurf : true,
-      valueSize    : undefined,
-      flag         : 0
-    }
-  };
+    this.recalcFlag |= updateflag;
+  }
 
   _ensure(mesh, loop, cd_grid) {
     if (this.points.length === 0) {
-      this.init(this.dimen, mesh, loop);
+      this.init(this.dimen, mesh, loop, cd_grid);
+
       let layeri = 0, i = 0;
 
       console.log("INIT", this);
@@ -2686,7 +3120,7 @@ export class KdTreeGrid extends GridBase {
     this.totTris = 0;
 
     if (this.points.length === 0) {
-      this.init(this.dimen, mesh, loop);
+      this.init(this.dimen, mesh, loop, cd_grid);
     }
 
     this.update(mesh, loop, cd_grid);
@@ -2926,11 +3360,7 @@ export class KdTreeGrid extends GridBase {
     //update centers
     let depthLimit = this.depthLimitEnabled ? this.depthLimit : 1000;
     for (let ni = 0; ni < ns.length; ni += QTOT) {
-      if (ns[ni + QDEPTH] > depthLimit) {
-        continue;
-      }
-
-      if (ns[ni + QFLAG] & DEAD) {
+      if ((ns[ni + QFLAG] & DEAD) || ns[ni + QDEPTH] > depthLimit) {
         continue;
       }
 
@@ -3066,6 +3496,10 @@ export class KdTreeGrid extends GridBase {
   }
 
   recalcNormals(mesh, l, cd_grid) {
+    if (cd_grid === undefined) {
+      throw new Error("cd_grid cannot be undefined");
+    }
+
     if (!this.recalcFlag & QRecalcFlags.NORMALS) {
       return;
     }
@@ -3097,18 +3531,24 @@ export class KdTreeGrid extends GridBase {
     //let temp = new Array(256);
 
     if (!mesh) {
-      this.recalcFlag |= QRecalcFlags.VERT_NORMALS;
+      //this.recalcFlag |= QRecalcFlags.VERT_NORMALS;
 
       for (let p of ps2) {
-        let topo = this.getTopo();
+        let topo = this.getTopo(undefined, cd_grid);
 
         p.no.zero();
         p.startTan();
 
         let w = 1.0;
 
-        let v = topo.vmap[p.index2];
-        for (let ni of v.nodes) {
+        //let v = topo.vmap[p.index2];
+        let vi2 = p.index2*VTOT;
+        let vmap2 = topo.vmap2;
+        let totn = vmap2[vi2+VTOTN];
+        for (let i=0; i<totn; i++) {
+          let ni = vi2 + VTOTN + 1 + i;
+          ni = vmap2[ni];
+
           let tf = p.tanMulFac(ns[ni + QDEPTH]);
 
           p.no[0] += ns[ni + QNX];
@@ -3148,13 +3588,18 @@ export class KdTreeGrid extends GridBase {
     let scotmp4 = new Vector3();
 
     for (let p of ps2) {
-      let topo = this.getTopo();
+      let topo = this.getTopo(mesh, cd_grid);
 
       p.no.zero();
       p.startTan();
 
-      let v = topo.vmap[p.index2];
-      for (let ni of v.nodes) {
+      let vi2 = p.index2*VTOT;
+      let vmap2 = topo.vmap2;
+      let totn = vmap2[vi2+VTOTN];
+      for (let i=0; i<totn; i++) {
+        let ni = vi2 + VTOTN + 1 + i;
+        ni = vmap2[ni];
+
         let depth = ns[ni + QDEPTH];
 
         p.no[0] += ns[ni + QNX];
@@ -3215,15 +3660,17 @@ export class KdTreeGrid extends GridBase {
           grid2.recalcPointIndices();
         }
 
-        let topo2 = grid2.getTopo();
+        let topo2 = grid2.getTopo(mesh, cd_grid);
 
         let ns2 = grid2.nodes, ps2 = grid2.points;
-        let vm = topo2.vmap[p2.index2];
-        if (!vm) {
-          continue;
-        }
+        let vi2 = p2.index2*VTOT;
 
-        for (let ni of vm.nodes) {
+        let vmap2 = topo2.vmap2;
+        let totn = vmap2[vi2+VTOTN];
+        for (let i=0; i<totn; i++) {
+          let ni = vi2 + VTOTN + 1 + i;
+          ni = vmap2[ni];
+
           p.no[0] += ns2[ni + QNX];
           p.no[1] += ns2[ni + QNY];
           p.no[2] += ns2[ni + QNZ];
@@ -3291,22 +3738,54 @@ export class KdTreeGrid extends GridBase {
   recalcNeighbors(mesh, loop, cd_grid) {
     this.recalcFlag &= ~QRecalcFlags.NEIGHBORS;
 
-    let topo = this.getTopo();
+    for (let p of this.points) {
+      p.bRingRemove();
+    }
+
+    let topo = this.getTopo(mesh, cd_grid);
     let ps = this.points;
 
     for (let i = 0; i < ps.length; i++) {
       ps[i].index2 = i;
     }
 
-    for (let v of topo.vmap) {
-      let p = v.p;
+    let vmap2 = topo.vmap2;
+    let emap2 = topo.emap2;
+
+    for (let pi=0; pi<ps.length; pi++) {
+      let vi = pi*VTOT;
+      let p = ps[pi];
+
+    //for (let v of topo.vmap) {
+      //let p = v.p;
       p.neighbors = new Set();
 
+      let tote = vmap2[vi+VTOTE];
+
+      for (let i=0; i<tote; i++) {
+        let ei = vi + VTOTE + 1 + i;
+        ei = vmap2[ei];
+
+        let v1 = emap2[ei+EV1];
+        let v2 = emap2[ei+EV2];
+
+        if (v2 === pi) {
+          v2 = v1;
+        }
+
+        if (ps[v2]) {
+          p.neighbors.add(ps[v2]);
+        }
+      }
+
+      continue;
       for (let e of v.edges) {
         let v2 = e.v1 === v.index2 ? e.v2 : e.v1;
         v2 = topo.vmap[v2];
 
-        p.neighbors.add(v2.p);
+        if (v2.p) {
+          p.neighbors.add(v2.p);
+        }
       }
     }
 
@@ -3344,18 +3823,18 @@ export class KdTreeGrid extends GridBase {
       lprbad = true;
     }
 
-    lprtopo = lpr.customData[cd_grid].getTopo();
+    lprtopo = lpr.customData[cd_grid].getTopo(mesh, cd_grid);
     lprps = lpr.customData[cd_grid].points;
 
 
     if (lr !== l) {
-      lrtopo = lr.customData[cd_grid].getTopo();
-      lrntopo = lrn.customData[cd_grid].getTopo();
+      lrtopo = lr.customData[cd_grid].getTopo(mesh, cd_grid);
+      lrntopo = lrn.customData[cd_grid].getTopo(mesh, cd_grid);
     }
 
     let ln = l.next, lp = l.prev;
-    let lntopo = ln.customData[cd_grid].getTopo();
-    let lptopo = lp.customData[cd_grid].getTopo();
+    let lntopo = ln.customData[cd_grid].getTopo(mesh, cd_grid);
+    let lptopo = lp.customData[cd_grid].getTopo(mesh, cd_grid);
     let lnps = ln.customData[cd_grid].points;
     let lpps = lp.customData[cd_grid].points;
 
@@ -3378,7 +3857,7 @@ export class KdTreeGrid extends GridBase {
 
       for (let i = 0; i < dimen2 + 1; i++) {
         let key = ltopo.uvkey(uv[0], uv[1]);
-        let v = ltopo.uvmap[key];
+        let v = ltopo.uvmap.get(key);
 
         if (v === undefined) {
           uv[axis] += dt;
@@ -3405,15 +3884,28 @@ export class KdTreeGrid extends GridBase {
       if (v1 === v2 && v1 !== undefined) {
         v1 = lps[v1];
 
-        p.neighbors.add(v1);
-        p.bLink = new BLink(v1);
-        p.bRingInsert(v1);
+        if (1 || v1) {
+          p.neighbors.add(v1);
+          p.bLink = new BLink(v1);
+          p.bRingInsert(v1);
+        }
       } else if (v1 !== undefined && v2 !== undefined) {
         v1 = lps[v1];
         v2 = lps[v2];
 
+        //if (v1) {
         p.neighbors.add(v1);
+        //}
+
+        //if (v2) {
         p.neighbors.add(v2);
+        //}
+
+        /*if (!v1 && v2) {
+          v1 = v2;
+          v2 = undefined;
+          f1 = f2;
+        }*/
 
         let t;
         if (f2 === f1) {
@@ -3422,9 +3914,10 @@ export class KdTreeGrid extends GridBase {
           t = (goal - f1)/(f2 - f1);
         }
 
-        p.bLink = new BLink(v1, v2, t);
+        if (v1) {
+          p.bLink = new BLink(v1, v2, t);
+        }
       }
-
     }
 
     for (let i = 0; i < 4; i++) {
@@ -3439,14 +3932,14 @@ export class KdTreeGrid extends GridBase {
       for (let j = 0; j < dimen; j++) {
         let val = uv[axis];
         let key = uvkey(uv[0], uv[1]);
-        let p1 = uvmap[key];
+        let p1 = uvmap.get(key);
 
         if (!(val < 0.00001 || val > 0.9999)) {
           //uv[axis] += dt;
           //continue;
         }
 
-        if (p1 === undefined) {
+        if (p1 === undefined || p1 < 0 || p1 >= ps.length || ps[p1] === undefined) {
           uv[axis] += dt;
           continue;
         }
@@ -3459,14 +3952,16 @@ export class KdTreeGrid extends GridBase {
 
           let key = lprtopo.uvkey(u, v);
 
-          let p2 = lprtopo.uvmap[key];
+          let p2 = lprtopo.uvmap.get(key);
           if (p2 !== undefined) {
             p2 = lprps[p2];
 
             //console.log("found", axis, uv[0], uv[1], u, v, key in lrntopo.uvmap);
-            p1.neighbors.add(p2);
-            p1.bLink = new BLink(p2);
-            p1.bRingInsert(p2);
+            if (1 || p2) {
+              p1.neighbors.add(p2);
+              p1.bLink = new BLink(p2);
+              p1.bRingInsert(p2);
+            }
           } else {
             findNeighborEdge(p1, lpr, lprtopo, lprps, i, u, v, axis ^ 1);
           }
@@ -3476,14 +3971,16 @@ export class KdTreeGrid extends GridBase {
 
           let key = lrntopo.uvkey(u, v);
 
-          let p2 = lrntopo.uvmap[key];
+          let p2 = lrntopo.uvmap.get(key);
           if (p2 !== undefined) {
             p2 = lrnps[p2];
 
             //console.log("found", axis, uv[0], uv[1], u, v, key in lrntopo.uvmap);
-            p1.neighbors.add(p2);
-            p1.bLink = new BLink(p2);
-            p1.bRingInsert(p2);
+            if (1 || p2) {
+              p1.neighbors.add(p2);
+              p1.bLink = new BLink(p2);
+              p1.bRingInsert(p2);
+            }
           } else {
             findNeighborEdge(p1, lrn, lrntopo, lrnps, i, u, v, axis ^ 1);
           }
@@ -3492,15 +3989,17 @@ export class KdTreeGrid extends GridBase {
           let v = val;
 
           let key = lntopo.uvkey(u, v);
-          let p2 = lntopo.uvmap[key];
+          let p2 = lntopo.uvmap.get(key);
 
           if (p2 !== undefined) {
             p2 = lnps[p2];
 
             //console.log("found", axis, uv[0], uv[1], u, v, key in lntopo.uvmap);
-            p1.neighbors.add(p2);
-            p1.bLink = new BLink(p2);
-            p1.bRingInsert(p2);
+            if (1 || p2) {
+              p1.neighbors.add(p2);
+              p1.bLink = new BLink(p2);
+              p1.bRingInsert(p2);
+            }
           } else {
             findNeighborEdge(p1, ln, lntopo, lnps, i, u, v, 1);
           }
@@ -3509,15 +4008,17 @@ export class KdTreeGrid extends GridBase {
           let v = 0;
 
           let key = lptopo.uvkey(u, v);
-          let p2 = lptopo.uvmap[key];
+          let p2 = lptopo.uvmap.get(key);
 
           if (p2 !== undefined) {
             p2 = lpps[p2];
 
             //console.log("found", axis, uv[0], uv[1], u, v, key in lptopo.uvmap);
-            p1.neighbors.add(p2);
-            p1.bLink = new BLink(p2);
-            p1.bRingInsert(p2);
+            if (1 || p2) {
+              p1.neighbors.add(p2);
+              p1.bLink = new BLink(p2);
+              p1.bRingInsert(p2);
+            }
           } else {
             findNeighborEdge(p1, lp, lptopo, lpps, i, u, v, 0);
           }
@@ -3527,8 +4028,88 @@ export class KdTreeGrid extends GridBase {
       }
     }
 
+    /*
+    for (let p of this.points) {
+      if (p.bLink && !p.bLink.v2) {
+        p.bLink.v1.co = p.co;
+      }
+
+      for (let pr of p.bRing) {
+        pr.co = p.co;
+      }
+    }
+    //*/
+
     //fix missing neighbor entries at grid boundaries
     this.fixNeighbors(mesh, loop, cd_grid);
+
+    if (window._addTriNeighbors) {
+      this.addTriNeighbors();
+    }
+  }
+
+  addTriNeighbors() {
+    let nodes = this.nodes;
+    let ps = this.points;
+    let polys = this.polys;
+
+    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000;
+
+    function isEdge(p1, p2) {
+      for (let p of p1.neighbors) {
+        if (p === p2) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    for (let ni = 0; ni < nodes.length; ni += QTOT) {
+      let depth = nodes[ni + QDEPTH];
+
+      let isleaf = (nodes[ni + QFLAG] & LEAF) || depth === depthLimit;
+
+      if (!isleaf || depth > depthLimit || (nodes[ni + QFLAG] & DEAD)) {
+        continue;
+      }
+
+
+      let start = nodes[ni + QPOLYSTART];
+      let end = nodes[ni + QPOLYEND];
+
+      let p1 = ps[polys[start]];
+
+      if (end - start < 3) {
+        continue;
+      }
+      //continue;
+      //console.log("fan:", end-start);
+
+      for (let i = start + 1; i < end - 1; i++) {
+        let p2 = ps[polys[i]];
+        let p3 = ps[polys[i + 1]];
+
+        if (!p1 || !p2 || !p3) {
+          //console.warn("missing points", p1, p2, p3);
+          continue;
+        }
+
+        if (!isEdge(p1, p2)) {
+          p1.neighbors.add(p2);
+          p2.neighbors.add(p1);
+        }
+        if (!isEdge(p2, p3)) {
+          p2.neighbors.add(p2);
+          p3.neighbors.add(p3);
+        }
+        if (!isEdge(p3, p1)) {
+          p3.neighbors.add(p3);
+          p1.neighbors.add(p1);
+        }
+
+      }
+    }
   }
 
   updateNormalQuad(loop) {
@@ -3787,7 +4368,8 @@ export class KdTreeGrid extends GridBase {
       this.nodeFieldSize = 32;
     }
 
-    this.recalcFlag |= QRecalcFlags.MIRROR;
+    //this.recalcFlag |= QRecalcFlags.MIRROR + QRecalcFlags.ALL | QRecalcFlags.POINT_PRUNE | QRecalcFlags.INDICES;
+    this.recalcFlag = QRecalcFlags.ALL;
 
     for (let p of this.points) {
       p.loopEid = this.loopEid;

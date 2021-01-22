@@ -2,9 +2,9 @@
 
 import {
   IntProperty, EnumProperty, BoolProperty,
-  FloatProperty, FlagProperty, ToolOp, UndoFlags
+  FloatProperty, FlagProperty, ToolOp, UndoFlags, ReportProperty
 } from "../path.ux/scripts/pathux.js";
-import {MeshTypes, MeshFlags} from './mesh_base.js';
+import {MeshTypes, MeshFlags, LogContext} from './mesh_base.js';
 import * as util from '../util/util.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SelMask, SelOneToolModes, SelToolModes} from '../editors/view3d/selectmode.js';
@@ -14,6 +14,7 @@ import {MeshOp} from "./mesh_ops_base.js";
 import {SceneObject} from "../sceneobject/sceneobject.js";
 import {Element} from './mesh_types.js';
 import {FindNearest} from '../editors/view3d/findnearest.js';
+import {getEdgeLoop} from './mesh_utils.js';
 
 export class SelectOpBase extends MeshOp {
   constructor() {
@@ -955,3 +956,138 @@ export class SelectNonManifold extends SelectOpBase {
   }
 };
 ToolOp.register(SelectNonManifold);
+
+
+export class SelectShortestLoop extends SelectOpBase {
+  constructor() {
+    super();
+
+    this.mode = true;
+
+    //disable unused mode input
+    this.inputs.mode.private();
+  }
+
+  static tooldef() {
+    return {
+      uiname  : "Select Shortest Loop",
+      toolpath: "mesh.select_shortest_edgeloop",
+      inputs  : ToolOp.inherit({
+        everything : new BoolProperty(false)
+          .saveLastValue()
+          .setDescription("Process all possible edges (slower)"),
+        edgeCount: new ReportProperty("0"),
+        minEdges: new IntProperty(0)
+          .saveLastValue()
+          .setDescription("Minimum edge count, ignored if 0")
+          .setRange(0, 100000)
+          .setUIName("Min Count")
+          .noUnits()
+      })
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      let flag = MeshFlags.NOAPI_TEMP1;
+
+      mesh.selectNone();
+
+      let doAll = this.inputs.everything.getValue();
+
+      for (let e of mesh.edges) {
+        e.flag &= ~flag;
+      }
+
+      let loops = [];
+      let minEdges = this.inputs.minEdges.getValue();
+
+      for (let e of mesh.edges) {
+        let ok = !(e.flag & flag);
+
+        ok = ok && e.l;
+        ok = ok && e.l.f.isQuad();
+        ok = ok && e.loopCount < 3;
+        ok = ok && e.l.radial_next.f.isQuad();
+
+        if (!ok) {
+          continue;
+        }
+
+        e.flag |= flag;
+
+        let eloop = getEdgeLoop(e);
+
+        if (minEdges > 0 && eloop.length < minEdges) {
+          continue;
+        }
+
+        loops.push({e,  eloop});
+
+        if (!doAll) {
+          for (let e2 of eloop) {
+            e2.flag |= flag;
+          }
+        }
+      }
+
+      let msg = "0";
+
+      let sign = this.mode ? 1 : -1;
+
+      loops.sort((a, b) => sign*(a.eloop.length - b.eloop.length));
+      if (loops.length > 0) {
+        let count = 0;
+
+        for (let e of loops[0].eloop) {
+          mesh.edges.setSelect(e, true);
+          count++;
+        }
+
+        msg = "" + count;
+        mesh.edges.setActive(loops[0].e);
+      }
+
+      this.inputs.edgeCount.setValue(msg);
+
+      mesh.selectFlush(this.inputs.selmask.getValue());
+
+      for (let e of mesh.edges.selected.editable) {
+        e.flag |= MeshFlags.UPDATE;
+        e.v1.flag |= MeshFlags.UPDATE;
+        e.v2.flag |= MeshFlags.UPDATE;
+
+        for (let l of e.loops) {
+          l.f.flag |= MeshFlags.UPDATE;
+        }
+      }
+
+      mesh.regenRender();
+      mesh.recalcNormals();
+      mesh.graphUpdate();
+      window.redraw_viewport(true);
+    }
+  }
+}
+
+ToolOp.register(SelectShortestLoop);
+
+export class SelectLongestLoop extends SelectShortestLoop {
+  constructor() {
+    super();
+
+    this.mode = false;
+  }
+
+  static tooldef() {
+    return {
+      uiname  : "Select Longest Loop",
+      toolpath: "mesh.select_longest_edgeloop",
+      inputs : ToolOp.inherit({
+
+      })
+    }
+  }
+}
+ToolOp.register(SelectLongestLoop);
+

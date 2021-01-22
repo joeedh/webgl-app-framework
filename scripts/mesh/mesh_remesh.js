@@ -1,11 +1,14 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import * as math from '../util/math.js';
-import {MeshTypes, MeshFlags, LogContext} from './mesh_base.js';
+import {MeshTypes, MeshFlags, LogContext, MeshError} from './mesh_base.js';
 import {CDFlags, CustomDataElem, LayerSettingsBase} from './customdata.js';
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {applyTriangulation} from './mesh_tess.js';
-import {fixManifold, trianglesToQuads, triangulateFan, triangulateMesh, vertexSmooth} from './mesh_utils.js';
+import {
+  dissolveEdgeLoops,
+  fixManifold, getEdgeLoop, trianglesToQuads, triangulateFan, triangulateMesh, vertexSmooth
+} from './mesh_utils.js';
 
 export const Remeshers = {};
 
@@ -312,9 +315,380 @@ export function cleanupTris(mesh, faces, lctx) {
   }
 }
 
+function cleanWireEdges(mesh, faces, lctx) {
+  let vs = new Set();
+
+  for (let f of faces) {
+    for (let l of f.loops) {
+      vs.add(l.v);
+
+      for (let e of l.v.edges) {
+        let v2 = e.otherVertex(l.v);
+
+        vs.add(v2);
+      }
+    }
+  }
+
+  return mesh.pruneWireGeometry(vs, lctx);
+}
+
+export function cleanupQuads2(mesh, faces, lctx) {
+  let ret = false;
+
+  //XXX
+  faces = mesh.faces;
+
+  if (cleanWireEdges(mesh, faces, lctx)) {
+    faces = new Set(faces).filter(f => f.eid >= 0);
+  }
+
+  let newfaces = new Set();
+
+  trianglesToQuads(mesh, faces, undefined, lctx, newfaces);
+
+  for (let f of faces) {
+    if (f.eid >= 0) {
+      newfaces.add(f);
+    }
+  }
+  faces = newfaces;
+
+  let flag = MeshFlags.NOAPI_TEMP1;
+
+  for (let e of mesh.edges) {
+    e.flag |= flag;
+  }
+
+  for (let f of faces) {
+    for (let l of f.loops) {
+      l.e.flag &= ~flag;
+    }
+  }
+
+  function step1() {
+    let ret2 = false;
+
+    let vs = new Set();
+    let es = new Set();
+
+    for (let f of faces) {
+      for (let l of f.loops) {
+        vs.add(l.v);
+        es.add(l.e);
+      }
+    }
+
+    let eloops = [];
+
+    for (let e of es) {
+      if (e.eid < 0 || !e.l) {
+        continue;
+      }
+      if (e.flag & flag) {
+        continue;
+      }
+
+      let ok = e.v1.valence === 4 && e.v2.valence === 4;
+      ok = ok && e.l.f.isQuad();
+      ok = ok && e.l.radial_next !== e.l && e.l.radial_next.f.isQuad();
+      ok = ok && e.l.radial_next.radial_next === e.l;
+
+      if (ok) {
+        let eloop = getEdgeLoop(e);
+
+        let bad = false;
+
+        for (let e2 of eloop) {
+          if (e2.flag & flag) {
+            //bad = true;
+            break;
+          }
+        }
+
+        if (!bad) {
+          for (let e2 of eloop) {
+            e2.flag |= flag;
+          }
+
+          eloops.push(eloop);
+          e.flag |= flag;
+
+          ret2 = true;
+          break;
+        }
+      }
+    }
+
+    for (let eloop of eloops) {
+      eloop = eloop.filter((e) => {
+        if (e.eid < 0) {
+          return false;
+        }
+
+        if (e.faceCount !== 2) {
+          return false;
+        }
+
+        return e.l.f.isQuad() && e.l.radial_next.f.isQuad();
+      });
+
+      eloop = new Set(eloop);
+
+      if (eloop.size > 0) {
+        dissolveEdgeLoops(mesh, eloop, false, lctx);
+      }
+    }
+
+    //XXX
+    faces = mesh.faces;
+    //faces = faces.filter(f => f.eid >= 0);
+
+    return ret2;
+  }
+
+  let vs = new Set();
+  let es = new Set();
+
+  for (let f of faces) {
+    for (let l of f.loops) {
+      vs.add(l.v);
+      es.add(l.e);
+    }
+  }
+
+  function step2() {
+    //return;
+    let ret2 = false;
+
+    let newfaces = new Set();
+    trianglesToQuads(mesh, faces, undefined, lctx, newfaces);
+    /*
+    for (let f of newfaces) {
+      faces.add(f);
+    }
+    faces = faces.filter(f => f.eid >= 0);
+    */
+
+    let co = new Vector3();
+
+    for (let f of faces) {
+      if (f.eid < 0) {
+        continue;
+      }
+
+      if (!f.isTri()) {
+        continue;
+      }
+
+      if (Math.random() > 0.1) {
+        continue;
+      }
+
+      let l1 = f.lists[0].l;
+      let e1 = l1.e;
+      let e2 = l1.next.e;
+      let e3 = l1.prev.e;
+
+      let v1 = l1.v, v2 = l1.next.v, v3 = l1.prev.v;
+      co.load(v1).add(v2).add(v3).mulScalar(1.0 / 3.0);
+
+      mesh.collapseEdge(e1, lctx);
+      mesh.collapseEdge(e2, lctx);
+
+      if (v1.eid >= 0) {
+        v1.load(co);
+      } else if (v2.eid >= 0) {
+        v2.load(co);
+      } else if (v3.eid >= 0) {
+        v3.load(co);
+      }
+    }
+
+    vs = new Set();
+    for (let f of faces) {
+      if (f.eid < 0) {
+        continue;
+      }
+
+      for (let list of f.lists) {
+        list._recount();
+      }
+
+      for (let l of f.loops) {
+        vs.add(l.v);
+      }
+    }
+
+    for (let v of vs) {
+      if (v.eid < 0) {
+        continue;
+      }
+
+      if (v.valence === 2) {
+        mesh.joinTwoEdges(v);
+      }
+    }
+
+    for (let v of vs) {
+      if (v.eid < 0) {
+        continue;
+      }
+
+      if (v.valence !== 4) {
+        v.index = 0;
+        continue;
+      }
+
+      let ok = true;
+      for (let f of v.faces) {
+        ok = ok && f.isQuad();
+      }
+
+      if (ok) {
+        v.index = 4;
+      }
+    }
+
+    for (let v of vs) {
+      if (v.eid < 0) {
+        continue;
+      }
+
+      if (v.index === 4) {
+        mesh.dissolveVertex(v);
+        ret2 = true;
+       // break;
+      }
+    }
+
+    //XXX
+    faces = mesh.faces;
+    //faces = faces.filter(f => f.eid >= 0);
+    return ret2;
+  }
+
+  let _i = 0;
+  while (step1() && _i++ < 1000) {
+
+  }
+
+  mesh.recalcNormals();
+
+  /*
+  _i = 0;
+  while (step2() && _i++ < 1000) {
+
+  }*/
+
+  return ret;
+}
+
+let _lctx_ring = util.cachering.fromConstructor(LogContext, 64);
+
 export function cleanupQuads(mesh, faces, lctx) {
+  if (0) {
+    faces = mesh.faces;
+
+    for (let v of mesh.verts) {
+      let ok = v.valence === 4;
+
+      for (let f of v.faces) {
+        if (!f.isQuad()) {
+          ok = false;
+        }
+      }
+
+      if (v.valence === 2) {
+        v.index = 2;
+      } else if (ok) {
+        v.index = 4;
+      } else {
+        v.index = 0;
+      }
+
+      for (let v of mesh.verts) {
+        if (v.index === 4) {
+          mesh.dissolveVertex(v, lctx);
+        }
+      }
+    }
+
+    for (let v of mesh.verts) {
+      if (v.valence === 2) {
+        mesh.joinTwoEdges(v, lctx);
+      }
+    }
+
+    mesh.recalcNormals();
+
+    for (let i=0; i<2; i++) {
+      vertexSmooth(mesh, mesh.verts, 0.5, 0.5);
+    }
+
+    mesh.recalcNormals();
+
+    triangulateMesh(mesh, mesh.faces, lctx);
+
+    for (let i=0; i<6; i++) {
+      vertexSmooth(mesh, mesh.verts, 0.5, 0.5);
+    }
+
+    trianglesToQuads(mesh, mesh.faces, undefined, lctx);
+    mesh.recalcNormals();
+
+    for (let i=0; i<6; i++) {
+      vertexSmooth(mesh, mesh.verts, 0.5, 0.5);
+    }
+
+    mesh.recalcNormals();
+
+    return;
+  }
+
+  if (0) {
+    cleanupQuads2(mesh, faces, lctx);
+    vertexSmooth(mesh, mesh.verts, 0.5, 0.5);
+
+    let lctx2;
+
+    //XXX
+    if (1) {
+      faces = mesh.faces;
+      lctx2 = lctx;
+    } else {
+      faces = new Set(faces).filter(f => f.eid >= 0);
+
+      function onnew(f) {
+        if (f.type !== MeshTypes.FACE) {
+          return;
+        }
+
+        faces.add(f);
+
+        if (lctx) {
+          lctx.newFace(f);
+        }
+      }
+
+      lctx2 = _lctx_ring.next().reset();
+      lctx2.onnew = onnew;
+    }
+
+    triangulateMesh(mesh, new Set(faces), lctx2);
+    trianglesToQuads(mesh, faces, undefined, lctx2);
+  }
+
   let ret = true;
   let vs = new Set();
+
+  if (cleanWireEdges(mesh, faces, lctx)) {
+    faces = new Set(faces).filter(f => f.eid >= 0);
+  }
+
+  for (let f of faces) {
+    f.calcNormal();
+  }
 
   let co = new Vector3();
   function vsmooth(v, fac=0.5) {
@@ -370,11 +744,29 @@ export function cleanupQuads(mesh, faces, lctx) {
   }
 
   for (let v of vs) {
+    v.index = v.valence;
+  }
+
+  for (let v of vs) {
     if (v.eid < 0) {
       continue;
     }
 
-    if (v.valence < 3 || v.valence > 5) {
+    let kill = (v.index === 3 && Math.random() < 0.1);
+    //kill = kill || (v.index === 5 && Math.random() < 0.02);
+
+    if (kill) {
+      let f = mesh.dissolveVertex(v, lctx);
+      if (f) {
+        faces.add(f);
+      }
+      continue;
+    }
+
+    if (v.index < 3 || v.index > 5) {
+      //if (Math.random() > 0.01) {
+      //  continue;
+      //}
       /*
       if ((v.valence === 3 || v.valence === 5) && Math.random() > 0.05) {
         continue;
@@ -404,12 +796,22 @@ export function cleanupQuads(mesh, faces, lctx) {
     }
   }
 
+  let es = new Set();
+  for (let f of faces) {
+    for (let l of f.loops) {
+      es.add(l.e);
+    }
+  }
 
   for (let f of faces) {
     if (f.eid >= 0 && f.isNgon()) {
       for (let l of f.loops) {
         let v = l.v;
-        vsmooth(v, 0.5);
+        vsmooth(v, 1.0);
+
+        for (let v2 of v.neighbors) {
+          vsmooth(v2, 0.5);
+        }
       }
 
       f.calcNormal();
@@ -465,15 +867,23 @@ export function cleanupQuads(mesh, faces, lctx) {
         let e1 = l.e, e2 = l.next.e;
         let v = l.next.v;
 
-        let newl = mesh.splitFace(f, l, l.next.next, lctx);
-        let [ne, nv] = mesh.splitEdge(newl.e, 0.5, lctx);
+        try {
+          let newl = mesh.splitFace(f, l, l.next.next, lctx);
+          let [ne, nv] = mesh.splitEdge(newl.e, 0.5, lctx);
 
-        let newl2 = mesh.splitFaceAtVerts(l.f, v, nv, lctx);
+          let newl2 = mesh.splitFaceAtVerts(l.f, v, nv, lctx);
 
-        mesh.dissolveEdge(e1, lctx);
-        mesh.dissolveEdge(e2, lctx);
+          mesh.dissolveEdge(e1, lctx);
+          mesh.dissolveEdge(e2, lctx);
 
-        ret = false;
+          ret = false;
+        } catch (error) {
+          if (!(error instanceof MeshError)) {
+            throw error;
+          } else {
+            util.print_stack(error);
+          }
+        }
 
         break;
       }
@@ -481,7 +891,7 @@ export function cleanupQuads(mesh, faces, lctx) {
       if (stop) {
         continue;
       }
-    } else if (len === 3 && 0) { //strategy one: collapse loops between tris
+    } else if (len === 3 && 1) { //strategy one: collapse loops between tris
       let stop = false;
 
       let minl, mincount;
@@ -522,6 +932,10 @@ export function cleanupQuads(mesh, faces, lctx) {
         } while (l2 !== l);
 
         if (l2.f.isQuad()) {
+          //continue;
+        }
+
+        if (l.e.v1.valence > 4 || l.e.v2.valence > 4) {
           continue;
         }
 
@@ -529,13 +943,13 @@ export function cleanupQuads(mesh, faces, lctx) {
 
         //console.log("count:", count);
 
-        if (minl === undefined || count < mincount) {
+        if (mincount === undefined || count < mincount) {
           mincount = count;
           minl = l;
         }
       }
 
-      if (minl) {
+      if (minl) {// && Math.random() > 0.1) {
         stop = true;
         mesh.collapseEdge(minl.e, lctx);
         ret = false;

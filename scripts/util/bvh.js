@@ -15,7 +15,7 @@ import {EDGE_LINKED_LISTS} from '../core/const.js';
 let _triverts = [new Vector3(), new Vector3(), new Vector3()];
 
 export class BVHSettings {
-  constructor(leafLimit=256, drawLevelOffset=2, depthLimit=18) {
+  constructor(leafLimit=256, drawLevelOffset=4, depthLimit=18) {
     this.leafLimit = leafLimit;
     this.drawLevelOffset = drawLevelOffset;
     this.depthLimit = depthLimit;
@@ -320,6 +320,15 @@ export class BVHNode {
 
     this.cent = new Vector3(min).interp(max, 0.5);
     this.halfsize = new Vector3(max).sub(min).mulScalar(0.5);
+  }
+
+  setUpdateFlag(flag) {
+    if ((this.flag & flag) !== flag) {
+      this.bvh.updateNodes.add(this);
+      this.flag |= flag;
+    }
+
+    return this;
   }
 
   split() {
@@ -940,6 +949,11 @@ export class BVHNode {
         ls.add(l.prev);
         ls.add(l.next);
       }
+    }
+
+    for (let tri of this.uniqueTris) {
+      tri.no.load(math.normal_tri(tri.v1, tri.v2, tri.v3));
+      tri.area = math.tri_area(tri.v1, tri.v2, tri.v3);
     }
 
     for (let l of ls) {
@@ -1582,6 +1596,8 @@ export class BVH {
     this.min = new Vector3(min);
     this.max = new Vector3(max);
 
+    this.dead = false;
+
     this.needsIndexRebuild = false;
 
     this.computeValidEdges = false; //when building indexed draw buffers, only add edges that really exist in mesh
@@ -2049,6 +2065,12 @@ export class BVH {
   }
 
   destroy(mesh) {
+    if (this.dead) {
+      return;
+    }
+
+    this.dead = true;
+
     this._checkCD();
 
     let cd_node = this.cd_node;
@@ -2525,16 +2547,19 @@ export class BVH {
       for (let l of mesh.loops) {
         let grid = l.customData[cd_grid];
 
+        grid.recalcFlag = QRecalcFlags.EVERYTHING;
+        //grid.recalcFlag |= QRecalcFlags.TOPO | QRecalcFlags.NORMALS | QRecalcFlags.NEIGHBORS;
+      }
+
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+
         for (let p of grid.points) {
           p.customData[cd_node].node = undefined;
-
-          p.bLink = undefined;
-          p.bNext = p.bPrev = undefined;
         }
 
-        grid.recalcFlag |= QRecalcFlags.TOPO | QRecalcFlags.NORMALS;
         grid.update(mesh, l, cd_grid);
-        grid.recalcNeighbors(mesh, l, cd_grid);
+        //grid.recalcNeighbors(mesh, l, cd_grid);
 
         let a = tris.length;
         grid.makeBVHTris(mesh, bvh, l, cd_grid, tris);
@@ -2645,6 +2670,13 @@ export class BVH {
     }
 
     let run_again = false;
+
+    if (this.cd_grid >= 0) {
+      for (let l of this.updateGridLoops) {
+        let grid = l.customData[this.cd_grid];
+        grid.update(this.mesh, l, this.cd_grid);
+      }
+    }
 
     for (let node of this.updateNodes) {
       if (node.flag & BVHFlags.UPDATE_UNIQUE_VERTS) {

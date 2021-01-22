@@ -1,4 +1,4 @@
-import {MeshFlags, MeshTypes} from './mesh_base.js';
+import {getArrayTemp, MeshFlags, MeshTypes} from './mesh_base.js';
 import {Vector3, Vector2, Matrix4, Vector4, Quat} from '../util/vectormath.js';
 import * as math from '../util/math.js';
 import * as util from '../util/util.js';
@@ -582,6 +582,66 @@ function fillFace(f, loopTris) {
   }
 }
 
+export function triangulateQuad(mesh, f, lctx, newfaces) {
+  if (!f.isQuad()) {
+    throw new Error("f was not a quad");
+  }
+
+  let l = f.lists[0].l;
+
+  let d1 = l.v.vectorDistance(l.next.next.v);
+  let d2 = l.next.v.vectorDistance(l.prev.v);
+  let f1, f2;
+
+  let l1 = l, l2 = l.next;
+  let l3 = l2.next, l4 = l3.next;
+
+  if (d1 <= d2) {
+    f1 = mesh.makeTri(l1.v, l2.v, l3.v, lctx);
+    f2 = mesh.makeTri(l1.v, l3.v, l4.v, lctx);
+
+    l = f1.lists[0].l;
+    mesh.copyElemData(l, l1);
+    mesh.copyElemData(l.next, l2);
+    mesh.copyElemData(l.prev, l3);
+
+    l = f2.lists[0].l;
+    mesh.copyElemData(l, l1);
+    mesh.copyElemData(l.next, l3);
+    mesh.copyElemData(l.prev, l4);
+  } else {
+    f1 = mesh.makeTri(l4.v, l1.v, l2.v, lctx);
+    f2 = mesh.makeTri(l4.v, l2.v, l3.v, lctx);
+    //f1 = mesh.makeTri(l2.v, l1.v, l4.v, lctx);
+    //f2 = mesh.makeTri(l3.v, l2.v, l4.v, lctx);
+
+    l = f1.lists[0].l;
+    mesh.copyElemData(l, l4);
+    mesh.copyElemData(l.next, l1);
+    mesh.copyElemData(l.prev, l2);
+
+    l = f2.lists[0].l;
+    mesh.copyElemData(l, l4);
+    mesh.copyElemData(l.next, l2);
+    mesh.copyElemData(l.prev, l3);
+  }
+
+  mesh.copyElemData(f1, f);
+  mesh.copyElemData(f2, f);
+
+  if (newfaces) {
+    if (newfaces instanceof Set) {
+      newfaces.add(f1);
+      newfaces.add(f2);
+    } else {
+      newfaces.push(f1);
+      newfaces.push(f2);
+    }
+  }
+
+  mesh.killFace(f, lctx);
+}
+
 export function triangulateFace(f, loopTris=[]) {
   if (f.lists[0].length === 3 && f.lists.length === 1) {
     let l = f.lists[0].l;
@@ -845,6 +905,12 @@ export function genCommands(mesh, ltri) {
 }
 
 export function applyTriangulation(mesh, f, newfaces, newedges, lctx) {
+  if (f.isQuad()) {
+    triangulateQuad(mesh, f, lctx, newfaces);
+  } else if (f.isTri()) {
+    return;
+  }
+
   let ltris = triangulateFace(f);
 
   for (let i=0; i<ltris.length; i += 3) {
@@ -868,10 +934,6 @@ export function applyTriangulation(mesh, f, newfaces, newedges, lctx) {
 
     let l = tri.lists[0].l;
 
-    if (f.flag & MeshFlags.SELECT) {
-      mesh.setSelect(tri, true);
-    }
-
     tri.calcNormal();
 
     let lr = l.radial_next;
@@ -892,6 +954,10 @@ export function applyTriangulation(mesh, f, newfaces, newedges, lctx) {
     mesh.copyElemData(l, l1);
     mesh.copyElemData(l.next, l2);
     mesh.copyElemData(l.prev, l3);
+
+    if (f.flag & MeshFlags.SELECT) {
+      mesh.setSelect(tri, true);
+    }
 
     if (newfaces) {
       newfaces.add(tri);

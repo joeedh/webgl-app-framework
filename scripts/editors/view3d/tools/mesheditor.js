@@ -19,7 +19,7 @@ import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
   MeshFeatureError} from '../../../mesh/mesh_base.js';
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
-import {ContextOverlay} from "../../../path.ux/scripts/pathux.js";
+import {ContextOverlay, ToolMacro} from "../../../path.ux/scripts/pathux.js";
 import {PackFlags} from "../../../path.ux/scripts/core/ui_base.js";
 import {RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
@@ -123,6 +123,7 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.tris_to_quads()");
     strip.tool("mesh.triangulate()");
 
+    panel = container.panel("Misc Tools");
     strip = panel.row().strip().useIcons(false);
     strip.tool("mesh.remesh(remesher='UNIFORM_TRI')|Tri Remesh");
     strip.tool("mesh.remesh(remesher='UNIFORM_QUAD')|Quad Remesh");
@@ -145,6 +146,48 @@ export class MeshEditor extends MeshToolBase {
     strip = panel.row().strip().useIcons(false);
     strip.tool("mesh.dissolve_edges()");
     strip.tool("mesh.collapse_edges()");
+
+    strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.random_flip_edges()");
+    strip.tool("mesh.dissolve_edgeloops()");
+
+    strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.select_shortest_edgeloop()");
+    strip.tool("mesh.select_longest_edgeloop()");
+
+    strip = panel.row().strip().useIcons(false);
+    strip.button("Dissolve Shortest Loop", () => {
+      let ctx = strip.ctx;
+
+      //let tool1 = ctx.api.createTool(ctx, "mesh.toggle_select_all(mode='ADD')");
+      //let tool2 = ctx.api.createTool(ctx, "mesh.tris_to_quads(mode='ADD')");
+      let tool3 = ctx.api.createTool(ctx, "mesh.select_shortest_edgeloop()");
+      let tool4 = ctx.api.createTool(ctx, "mesh.dissolve_edgeloops()");
+
+      let macro = new ToolMacro();
+      //macro.add(tool1);
+      //macro.add(tool2);
+      macro.add(tool3);
+      macro.add(tool4);
+
+      ctx.api.execTool(ctx, macro);
+    });
+    strip.button("Dissolve Longest Loop", () => {
+      let ctx = strip.ctx;
+
+      //let tool1 = ctx.api.createTool(ctx, "mesh.toggle_select_all(mode='ADD')");
+      //let tool2 = ctx.api.createTool(ctx, "mesh.tris_to_quads(mode='ADD')");
+      let tool3 = ctx.api.createTool(ctx, "mesh.select_longest_edgeloop()");
+      let tool4 = ctx.api.createTool(ctx, "mesh.dissolve_edgeloops()");
+
+      let macro = new ToolMacro();
+      //macro.add(tool1);
+      //macro.add(tool2);
+      macro.add(tool3);
+      macro.add(tool4);
+
+      ctx.api.execTool(ctx, macro);
+    });
 
     panel = container.panel("Transform");
 

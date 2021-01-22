@@ -62,7 +62,6 @@ export class BVHToolMode extends ToolMode {
 
     this.gridEditDepth = 2;
     this.enableMaxEditDepth = false;
-    this.dynTopoDepth = 4;
 
     this.dynTopo = new DynTopoSettings();
     this.dynTopo.flag = DynTopoFlags.COLLAPSE | DynTopoFlags.SUBDIVIDE | DynTopoFlags.FANCY_EDGE_WEIGHTS;
@@ -321,15 +320,21 @@ export class BVHToolMode extends ToolMode {
     panel.prop(path + ".dynTopo.edgeSize");
     panel.prop(path + ".dynTopo.flag[ENABLED]");
     strip = panel.strip();
-    strip.prop(path + ".dynTopo.flag[SUBDIVIDE]");
-    strip.prop(path + ".dynTopo.flag[COLLAPSE]");
-    strip.prop(path + ".dynTopo.flag[FANCY_EDGE_WEIGHTS]");
-    strip.prop(path + ".dynTopo.flag[QUAD_COLLAPSE]");
+
+    let row2 = strip.row();
+    row2.prop(path + ".dynTopo.flag[SUBDIVIDE]");
+    row2.prop(path + ".dynTopo.flag[COLLAPSE]");
+    row2.prop(path + ".dynTopo.flag[FANCY_EDGE_WEIGHTS]");
+
+    row2 = strip.row();
+    row2.prop(path + ".dynTopo.flag[QUAD_COLLAPSE]");
+    row2.prop(path + ".dynTopo.flag[ALLOW_VALENCE4]");
 
     panel.prop(path + ".dynTopo.subdivideFactor");
     panel.prop(path + ".dynTopo.decimateFactor");
     panel.prop(path + ".dynTopo.edgeCount");
     panel.prop(path + ".dynTopo.valenceGoal");
+    panel.prop(path + ".dynTopo.maxDepth").setAttribute("labelOnTop", true);
 
     strip = col.row().strip();
     strip.useIcons(false);
@@ -338,7 +343,6 @@ export class BVHToolMode extends ToolMode {
 
     panel = col.panel("Multi Resolution");
     panel.useIcons(false);
-    panel.prop(path + ".dynTopo.maxDepth").setAttribute("labelOnTop", true);
 
     strip = panel.strip();
     strip.prop(path + ".enableMaxEditDepth");
@@ -427,6 +431,7 @@ export class BVHToolMode extends ToolMode {
         }
 
         bvh.update();
+        window.redraw_viewport(true);
       }
     }
 
@@ -586,7 +591,7 @@ export class BVHToolMode extends ToolMode {
           brush: brush,
 
           symmetryAxes    : this.symmetryAxes,
-          dynTopoDepth    : this.dynTopoDepth,
+          dynTopoDepth    : brush.dynTopo.maxDepth,
           useMultiResDepth: this.enableMaxEditDepth
         });
       }
@@ -743,6 +748,7 @@ export class BVHToolMode extends ToolMode {
 
     let uniforms = {
       projectionMatrix: view3d.activeCamera.rendermat,
+      //normalMatrix    : new Matrix4()
       objectMatrix    : new Matrix4(),
       object_id       : -1,
       size            : view3d.glSize,
@@ -946,14 +952,20 @@ export class BVHToolMode extends ToolMode {
 
     let drawnodes = new Set();
 
-    for (let node of bvh.nodes) {
-      if (!node.leaf) {
+    let sortnodes = bvh.nodes.filter(n => n.leaf);
+    sortnodes.sort((a, b) => b.depth - a.depth);
+
+    for (let node of sortnodes) {
+      let p = node;
+
+      if (node.parent && node.parent.subtreeDepth > node.depth+1) {
+        node.flag |= BVHFlags.TEMP_TAG;
+
+        drawnodes.add(node);
         continue;
       }
 
-      let p = node;
-      //get parent parentoff levels up
-
+      //go parentoff levels up
       for (let i = 0; i < parentoff; i++) {
         if (!p.parent || (p.flag & BVHFlags.TEMP_TAG)) {
           break;
@@ -2182,14 +2194,14 @@ export class BVHToolMode extends ToolMode {
         if (tex) {
           let gltex = tex.getGlTex(gl);
           if (gltex) {
-            uniforms.texture = gltex;
+            uniforms.text = gltex;
             uniforms.hasTexture = 1.0;
           } else {
-            uniforms.texture = undefined;
+            uniforms.text = undefined;
             uniforms.hasTexture = 0.0;
           }
         } else {
-          uniforms.texture = undefined;
+          uniforms.text = undefined;
           uniforms.hasTexture = 0.0;
         }
 
@@ -2219,6 +2231,12 @@ export class BVHToolMode extends ToolMode {
 
             uniforms.objectMatrix = mat2;
 
+          }
+
+          if (drawFlat) {
+            program2.defines.DRAW_FLAT = null;
+          } else {
+            delete program2.defines.DRAW_FLAT;
           }
 
           if (drawWireframe) {
@@ -2319,7 +2337,6 @@ BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
   drawMask               : bool;
   drawColPatches         : bool;
   symmetryAxes           : int;
-  dynTopoDepth           : int;
   gridEditDepth          : int;
   enableMaxEditDepth     : bool;
   tool                   : int;

@@ -1,4 +1,6 @@
-import {MeshError, MeshFlags, MeshTypes, HandleTypes} from "./mesh_base.js";
+import {
+  MeshError, MeshFlags, MeshTypes, HandleTypes, MAX_EDGE_FACES, MAX_FACE_VERTS, MAX_VERT_EDGES
+} from "./mesh_base.js";
 import {Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import * as util from "../util/util.js";
 import {UVLayerElem} from "./mesh_customdata.js";
@@ -85,7 +87,7 @@ export class VertLoopIter {
   next() {
     this.count++;
 
-    if (this.count > 1000) {
+    if (this.count > MAX_VERT_EDGES) {
       console.warn("infinite loop detected");
       return this.finish();
     }
@@ -417,7 +419,7 @@ export class VertFaceIter {
   next() {
     this.count++;
 
-    if (this.count > 1000) {
+    if (this.count > MAX_VERT_EDGES) {
       console.warn("infinite loop detected");
       return this.finish();
     }
@@ -544,7 +546,7 @@ export class VertFaceIterLinkedList {
   next() {
     this.count++;
 
-    if (this.count > 1000) {
+    if (this.count > MAX_VERT_EDGES) {
       console.warn("infinite loop detected");
       return this.finish();
     }
@@ -653,7 +655,7 @@ export class VEdgeIter {
       return this.finish();
     }
 
-    if (this.i > 1000) {
+    if (this.i > MAX_VERT_EDGES) {
       console.warn("Infinite loop detected!");
       return this.finish();
     }
@@ -845,7 +847,7 @@ export class Vertex extends Vector3 {
           let _i = 0;
 
           do {
-            if (_i++ > 10000) {
+            if (_i++ > MAX_EDGE_FACES) {
               console.warn("infinite loop detected");
               break;
             }
@@ -1177,6 +1179,81 @@ class ArcLengthCache {
   }
 }
 
+let eliter_stack = new Array(1024);
+eliter_stack.cur = 0;
+
+class EdgeLoopIter {
+  constructor() {
+    this.ret = {done : true, value : undefined};
+    this.done = true;
+    this.e = undefined;
+    this.l = undefined;
+    this.i = 0;
+  }
+
+  reset(e) {
+    this.i = 0;
+    this.done = false;
+    this.ret.done = false;
+
+    this.e = e;
+    this.l = e.l;
+
+    return this;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.ret.done = true;
+      this.ret.value = undefined;
+
+      this.e = undefined;
+      this.l = undefined;
+
+      this.done = true;
+      eliter_stack.cur--;
+    }
+
+    return this.ret;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+
+  next() {
+    if (!this.l) {
+      return this.finish();
+    }
+
+    this.i++;
+
+    if (this.i >= MAX_EDGE_FACES) {
+      console.warn("infinite loop error in radial list");
+      return this.finish();
+    }
+
+    let l = this.l;
+
+    this.l = this.l.radial_next;
+    if (this.l === this.e.l) {
+      this.l = undefined; //terminate iterator at next run
+    }
+
+    this.ret.value = l;
+    this.ret.done = false;
+
+    return this.ret;
+  }
+
+  return() {
+    return this.finish();
+  }
+}
+
+for (let i=0; i<eliter_stack.length; i++) {
+  eliter_stack[i] = new EdgeLoopIter();
+}
 
 export class Edge extends Element {
   constructor() {
@@ -1195,6 +1272,70 @@ export class Edge extends Element {
     }
   }
 
+  get loopCount() {
+    if (!this.l) {
+      return 0;
+    }
+
+    let l = this.l;
+    let count = 0;
+
+    do {
+      if (count > MAX_EDGE_FACES) {
+        console.warn("Infinite loop error");
+        break;
+      }
+
+      l = l.radial_next;
+      count++;
+    } while (l !== this.l);
+
+    return count;
+  }
+
+  get faceCount() {
+    if (!this.l) {
+      return 0;
+    }
+
+    let flag = MeshFlags.ITER_TEMP3;
+
+    let l = this.l;
+    let _i = 0;
+
+    do {
+      if (_i++ > MAX_EDGE_FACES) {
+        console.warn("Infinite loop error");
+        break;
+      }
+
+      l.f.flag &= ~flag;
+      l = l.radial_next;
+    } while (l !== this.l);
+
+    l = this.l;
+    _i = 0;
+
+    let count = 0;
+
+    do {
+      if (_i++ > MAX_EDGE_FACES) {
+        console.warn("Infinite loop error");
+        break;
+      }
+
+      if (!(l.f.flag & flag)) {
+        count++;
+        l.f.flag |= flag;
+      }
+
+      l = l.radial_next;
+    } while (l !== this.l);
+
+    return count;
+  }
+
+  /*
   set flag(v) {
     //if (!v) {
     //  console.error("flag set");
@@ -1205,7 +1346,7 @@ export class Edge extends Element {
 
   get flag() {
     return this._flag;
-  }
+  }//*/
 
   get arcCache() {
     if (!this._arcCache) {
@@ -1451,6 +1592,10 @@ export class Edge extends Element {
   }
 
   get loops() {
+    return eliter_stack[eliter_stack.cur++].reset(this);
+  }
+
+  get loops2() {
     let this2 = this;
 
     return (function*() {
@@ -1462,7 +1607,7 @@ export class Edge extends Element {
       }
 
       do {
-        if (i++ > 10000) {
+        if (i++ > MAX_EDGE_FACES) {
           console.warn("infinite loop detected in Edge.prototype.[get loops]()");
           break;
         }
@@ -1490,7 +1635,7 @@ export class Edge extends Element {
       }
       
       do {
-        if (i++ > 100) {
+        if (i++ > MAX_EDGE_FACES) {
           console.warn("infinite loop detected in Edge.prototype.[get faces]()");
           throw new Error("infinite loop detected in Edge.prototype.[get faces]()");
         }
@@ -1500,7 +1645,7 @@ export class Edge extends Element {
       } while (l !== this2.l);
 
       do {
-        if (i++ > 100) {
+        if (i++ > MAX_EDGE_FACES) {
           console.warn("infinite loop detected in Edge.prototype.[get faces]()");
           throw new Error("infinite loop detected in Edge.prototype.[get faces]()");
           break;
@@ -1703,7 +1848,7 @@ class LoopIter {
     let ret = this.ret;
     let l = this.l;
 
-    if (this._i++ > 10000) {
+    if (this._i++ > MAX_FACE_VERTS) {
       ret.done = true;
       ret.value = undefined;
 
@@ -2035,7 +2180,7 @@ export class Face extends Element {
       t1.cross(t2).normalize();
       sum.add(t1);
 
-      if (_i++ > 100000) {
+      if (_i++ > MAX_FACE_VERTS) {
         console.warn("infinite loop detected");
         break;
       }

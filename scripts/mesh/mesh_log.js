@@ -131,6 +131,8 @@ let _cdtmp = new CustomDataList();
 let _cdReadMem = new Uint8Array(1024*1024*4);
 let _cdReadView = new DataView(_cdReadMem.buffer);
 
+const disableLog = false;
+
 export class MeshLog {
   constructor() {
     this.log = [];
@@ -205,24 +207,32 @@ export class MeshLog {
   }
 
   logVertex(v, subtype = 0) {
+    if (disableLog) return;
+
     let li = this._newEntry(v, subtype);
     this._logAdd(li);
     return li;
   }
 
   logEdge(e, subtype = 0) {
+    if (disableLog) return;
+
     let li = this._newEntry(e, subtype);
     this._logAdd(li);
     return li;
   }
 
   logLoop(l, subtype = 0) {
+    if (disableLog) return;
+
     let li = this._newEntry(l, subtype);
     this._logAdd(li);
     return li;
   }
 
   calcMemSize() {
+    if (disableLog) return 0;
+
     let tot = 0;
 
     tot += this.log.length*8;
@@ -251,12 +261,16 @@ export class MeshLog {
   }
 
   logFace(f, subtype = 0) {
+    if (disableLog) return;
+
     let li = this._newEntry(f, subtype);
     this._logAdd(li);
     return li;
   }
 
   cancelEntry(li) {
+    if (disableLog) return;
+
     let log = this.log;
 
     if (log[li+LCANCEL]) {
@@ -276,6 +290,8 @@ export class MeshLog {
   }
 
   ensure(elem) {
+    if (disableLog) return;
+
     if (!(elem.eid in this.eidmap)) {
       return this.logElem(elem);
     }
@@ -284,6 +300,8 @@ export class MeshLog {
   }
 
   logElem(elem) {
+    if (disableLog) return;
+
     switch (elem.type) {
       case MeshTypes.VERTEX:
         return this.logVertex(elem);
@@ -301,6 +319,8 @@ export class MeshLog {
   }
 
   reset() {
+    if (disableLog) return;
+
     this.startEid = -1;
     this.log.length = 0;
     this.eidmap = {};
@@ -309,6 +329,8 @@ export class MeshLog {
   }
 
   checkStart(mesh) {
+    if (disableLog) return;
+
     if (this.startEid < 0) {
       this.start(mesh);
       return true;
@@ -318,6 +340,8 @@ export class MeshLog {
   }
 
   logKillVertex(v) {
+    if (disableLog) return;
+
     for (let e of v.edges) {
       this.ensure(e);
     }
@@ -330,6 +354,8 @@ export class MeshLog {
   }
 
   logKill(elem) {
+    if (disableLog) return;
+
     switch (elem.type) {
       case MeshTypes.VERTEX:
         return this.logKillVertex(elem);
@@ -344,6 +370,8 @@ export class MeshLog {
   }
 
   logAdd(elem) {
+    if (disableLog) return;
+
     switch (elem.type) {
       case MeshTypes.VERTEX:
         return this.logAddVertex(elem);
@@ -358,6 +386,8 @@ export class MeshLog {
   }
 
   logKillEdge(e) {
+    if (disableLog) return;
+
     for (let f of e.faces) {
       this.ensure(f);
     }
@@ -366,14 +396,20 @@ export class MeshLog {
   }
 
   logKillFace(f) {
+    if (disableLog) return;
+
     return this.logFace(f, LogTypes.REMOVE);
   }
 
   logAddVertex(v) {
+    if (disableLog) return;
+
     return this.logVertex(v, LogTypes.ADD);
   }
 
   logAddEdge(e) {
+    if (disableLog) return;
+
     this.ensure(e.v1);
     this.ensure(e.v2);
 
@@ -381,6 +417,8 @@ export class MeshLog {
   }
 
   logAddFace(f) {
+    if (disableLog) return;
+
     for (let l of f.loops) {
       this.ensure(l.v);
       this.ensure(l.e);
@@ -391,6 +429,8 @@ export class MeshLog {
   }
 
   undo(mesh, onnew, ondel) {
+    if (disableLog) return;
+
     //console.log("Log undo!");
 
     let finalfaces = new Set();

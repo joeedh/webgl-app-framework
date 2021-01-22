@@ -1,6 +1,15 @@
 import '../path.ux/scripts/util/struct.js';
 import * as util from '../util/util.js';
+import {AfterAspect, clearAspectCallbacks, initAspectClass, _setUIBase} from '../path.ux/scripts/core/aspect.js';
+import {UIBase} from '../path.ux/scripts/pathux.js';
+
+_setUIBase(UIBase);
+
 let STRUCT = nstructjs.STRUCT;
+
+export const MAX_FACE_VERTS = 1000000;
+export const MAX_VERT_EDGES = 1000;
+export const MAX_EDGE_FACES = 100;
 
 export const HandleTypes = {
   AUTO     : 0,
@@ -85,8 +94,16 @@ export class ReusableIter {
   }
 }
 
+let lctx_blacklist = new Set([
+  "reset", "newVertex", "killVertex", "killEdge", "killFace",
+  "newFace", "newEdge", "newVertex", "onnew", "onkill"
+]);
+
 export class LogContext {
   constructor() {
+    initAspectClass(this, lctx_blacklist);
+
+    /*
     this.newVerts = new Set();
     this.newEdges = new Set();
     this.newFaces = new Set();
@@ -94,29 +111,38 @@ export class LogContext {
     this.killVerts = new Set();
     this.killEdges = new Set();
     this.killFaces = new Set();
+     */
 
     this.onnew = null;
     this.onkill = null;
+  }
+
+  reset() {
+    this.onnew = this.onkill = undefined;
+
+    clearAspectCallbacks(this);
+
+    return this;
   }
 
   newVertex(v) {
     if (this.onnew) {
       this.onnew(v);
     }
-    this.newVerts.add(v);
+    //this.newVerts.add(v);
   }
 
   newEdge(e) {
     if (this.onnew) {
       this.onnew(e);
     }
-    this.newEdges.add(e);
+    //this.newEdges.add(e);
   }
   newFace(f) {
     if (this.onnew) {
       this.onnew(f);
     }
-    this.newFaces.add(f);
+    //this.newFaces.add(f);
   }
 
   killVertex(v) {
@@ -124,7 +150,7 @@ export class LogContext {
       this.onkill(v);
     }
 
-    this.killVerts.add(v);
+    //this.killVerts.add(v);
   }
 
   killEdge(e) {
@@ -132,7 +158,7 @@ export class LogContext {
       this.onkill(e);
     }
 
-    this.killEdges.add(e);
+    //this.killEdges.add(e);
   }
 
   killFace(f) {
@@ -140,7 +166,7 @@ export class LogContext {
       this.onkill(f);
     }
 
-    this.killFaces.add(f);
+    //this.killFaces.add(f);
   }
 
 }
@@ -178,7 +204,11 @@ export const MeshFlags = {
   FACE_EXIST_FLAG   : (1<<20),
   TEMP4             : (1<<21),
   TEMP5             : (1<<22),
-  TEMP6             : (1<<23)
+  TEMP6             : (1<<23),
+  NOAPI_TEMP1       : (1<<24), //temp flag that's not allowed to be used by core API functions
+  NOAPI_TEMP2       : (1<<25),
+  NOAPI_TEMP3       : (1<<26),
+  ITER_TEMP3        : (1<<27)
 };
 
 export const MeshModifierFlags = {
@@ -197,14 +227,40 @@ export const RecalcFlags = {
 
 let atemps = {};
 window._arrcache = atemps;
+let nullarray = [];
 
 export function getArrayTemp(n) {
+  if (n === 0) {
+    if (nullarray.length !== 0) {
+      nullarray.length = n;
+    }
+
+    return nullarray;
+  }
+
   if (n in atemps) {
-    return atemps[n].next();
+    let ret = atemps[n].next();
+
+    if (ret.length !== n) {
+      console.warn("An array temp's length was modified", ret);
+      ret.length = n;
+    }
+
+    return ret;
   }
 
   let ring = new util.cachering(() => new Array(n), 64);
   atemps[n] = ring;
 
   return ring.next();
+}
+
+export function reallocArrayTemp(arr, newlen) {
+  let ret = getArrayTemp(newlen);
+
+  for (let i=0; i<newlen; i++) {
+    ret[i] = i < arr.length ? arr[i] : undefined;
+  }
+
+  return ret;
 }
