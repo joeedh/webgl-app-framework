@@ -61,7 +61,9 @@ import {Icons} from '../editors/icon_enum.js';
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 import {MaterialEditor} from "../editors/node/MaterialEditor.js";
 import {
-  BrushDynamics, BrushDynChannel, BrushFlags, DynTopoFlags, DynTopoSettings, SculptBrush, SculptIcons, SculptTools
+  BrushDynamics, BrushDynChannel, BrushFlags, BrushSpacingModes, DynTopoFlags, DynTopoOverrides, DynTopoSettings,
+  SculptBrush, SculptIcons,
+  SculptTools
 } from "../brush/brush.js";
 import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.js';
 import {PropModes} from '../editors/view3d/transform/transform_base.js';
@@ -785,15 +787,38 @@ export function api_define_dyntopo(api) {
     .range(0, 12)
     .noUnits();
 
+  let tooltips = {};
+  for (let k in DynTopoOverrides) {
+    if (k === "ALL") {
+      tooltips[k] = "Use Defaults For Everything";
+    } else {
+      tooltips[k] = "Use Local Brush Settings";
+    }
+  }
+
+  st.flags("overrideMask", "overrides", DynTopoOverrides, "Overrides")
+    .descriptions(tooltips);
+
   st.float("subdivideFactor", "subdivideFactor", "Subdivision Factor").range(0.0, 1.0).noUnits();
   st.float("decimateFactor", "decimateFactor", "Decimate Factor").range(0.0, 1.0).noUnits();
   st.float("edgeSize", "edgeSize", "Edge Length", "Edge length (in pixels)").range(0.25, 40.0).noUnits();
   st.flags("flag", "flag", DynTopoFlags, "Flag");
   st.int("maxDepth", "maxDepth", "Max Depth", "Maximum quad tree grid subdivision level").range(0, 15).noUnits();
-  st.int("edgeCount", "edgeCount", "Edge Count", "Number of edges to split/collapse per run")
+  st.int("repeat", "repeat", "Repeat", "Number of times to run topology engine")
+    .range(1, 25).noUnits();
+
+  st.float("spacing", "spacing", "Spacing").range(0.01, 12.0).noUnits();
+  st.enum("spacingMode", "spacingMode", BrushSpacingModes, "Spacing Mode")
+    .descriptions({
+      EVEN : "Fixed distance between brush points",
+      NONE : "Use raw brush points"
+    });
+
+  st.int("edgeCount", "edgeCount", "Edge Count")
     .range(1, 2048)
     .noUnits()
-    .step(5);
+    .step(5)
+    .description("Number of edges to split/collapse per run");
 }
 
 export function api_define_brush(api, cstruct) {
@@ -804,12 +829,23 @@ export function api_define_brush(api, cstruct) {
   bst.flags("flag", "flag", BrushFlags, "Flag").icons({
     SHARED_SIZE : Icons.SHARED_BRUSH_SIZE
   });
+
+  bst.float("rakeCurvatureFactor", "rakeCurvatureFactor", "Curvature Factor")
+    .noUnits()
+    .range(0.0, 1.0);
+
+  bst.enum("spacingMode", "spacingMode", BrushSpacingModes, "Spacing Mode")
+    .descriptions({
+      EVEN : "Fixed distance between brush points",
+      NONE : "Use raw brush points"
+    });
+
   bst.float("strength", "strength", "Strength").range(0.001, 2.0).noUnits().step(0.015);
   bst.float("radius", "radius", "Radius").range(0.1, 350.0).noUnits().step(1.0);
   bst.enum("tool", "tool", SculptTools).icons(SculptIcons);
-  bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 2.0).noUnits();
+  bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 1.0).noUnits();
   bst.float("planeoff", "planeoff", "planeoff").range(-3.5, 3.5).noUnits();
-  bst.float("spacing", "spacing", "Spacing").range(0.01, 2.0).noUnits();
+  bst.float("spacing", "spacing", "Spacing").range(0.01, 12.0).noUnits();
   bst.color4("color", "color", "Primary Color");
   bst.color4("bgcolor", "bgcolor", "Secondary Color");
   bst.float("concaveFilter", "concaveFilter", "Concave Wash").range(0.0, 1.0).noUnits();
@@ -818,7 +854,7 @@ export function api_define_brush(api, cstruct) {
   bst.float("pinch", "pinch", "Pinch").range(0.0, 1.0).noUnits();
 
   bst.float("smoothProj", "smoothProj", "Projection", "How much smoothing should project to surface")
-    .range(0.0, 1.0)
+    .range(0.0, 0.97)
     .noUnits();
 
   bst.struct("texUser", "texUser", "Texture", api.mapStruct(ProceduralTexUser));
@@ -858,7 +894,13 @@ export function api_define_matrix4(api) {
   return st;
 }
 
+let _done = false;
+
 export function getDataAPI() {
+  if (_done) {
+    return api;
+  }
+
   let cstruct = api.mapStruct(ToolContext);
 
   api_define_matrix4(api);
@@ -1002,6 +1044,8 @@ export function getDataAPI() {
   buildToolSysAPI(api);
 
   cstruct.struct("propCache", "toolDefaults", "Tool Defaults", api.mapStruct(ToolPropertyCache));
+
+  _done = true;
 
   return api;
 }

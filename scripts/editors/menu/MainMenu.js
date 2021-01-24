@@ -199,6 +199,7 @@ export class MenuBarEditor extends Editor {
       "app.open()",
       "app.save(forceDialog=false saveToolStack=true)|Save With Toolstack",
       "app.save(forceDialog=true)|Save As",
+      "app.export_stl()",
     ]);
 
     this._editMenuDef = [];

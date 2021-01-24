@@ -12,7 +12,7 @@ import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 
-import {Mesh, MeshTypes} from './mesh.js';
+import {Mesh, MeshFlags, MeshTypes} from './mesh.js';
 import '../path.ux/scripts/util/struct.js';
 import {View3DOp} from '../editors/view3d/view3d_ops.js';
 import {SceneObject} from "../sceneobject/sceneobject.js";
@@ -193,3 +193,72 @@ export class MeshOp extends View3DOp {
     window.redraw_viewport();
   }
 };
+
+export class MeshDeformOp extends MeshOp {
+  constructor() {
+    super();
+  }
+
+  calcUndoMem() {
+    let tot = 0.0;
+
+    for (let k in this._undo) {
+      let data = this._undo[k];
+      tot += data.length*8;
+    }
+
+    return tot;
+  }
+
+  undoPre(ctx) {
+    let undo = this._undo = {};
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let list = [];
+
+      undo[mesh.lib_id] = list;
+
+      for (let v of mesh.verts) {
+        list.push(v.eid);
+
+        list.push(v[0]);
+        list.push(v[1]);
+        list.push(v[2]);
+      }
+    }
+  }
+
+  undo(ctx) {
+    for (let k in this._undo) {
+      let mesh = ctx.datalib.get(parseInt(k));
+
+      if (!mesh) {
+        console.warn("Undo error", k);
+        continue;
+      }
+
+      let list = this._undo[k];
+      for (let i=0; i<list.length; i += 4) {
+        let eid = list[i], x = list[i+1], y = list[i+2], z = list[i+3];
+        let v = mesh.eidmap[eid];
+        if (!v || v.type !== MeshTypes.VERTEX) {
+          console.error("Undo error for vertex eid", eid, "got", v);
+          continue;
+        }
+
+        v[0] = x;
+        v[1] = y;
+        v[2] = z;
+
+        v.flag |= MeshFlags.UPDATE;
+      }
+
+      mesh.regenAll();
+      mesh.recalcNormals();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport(true);
+    window.updateDataGraph();
+  }
+}

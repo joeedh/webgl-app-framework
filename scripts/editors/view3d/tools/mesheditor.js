@@ -19,10 +19,12 @@ import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
   MeshFeatureError} from '../../../mesh/mesh_base.js';
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
-import {ContextOverlay} from "../../../path.ux/scripts/pathux.js";
+import {ContextOverlay, ToolMacro} from "../../../path.ux/scripts/pathux.js";
 import {PackFlags} from "../../../path.ux/scripts/core/ui_base.js";
 import {RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
+import {buildCotanMap} from '../../../mesh/mesh_utils.js';
+import {CurvVert, CVFlags, getCurveVerts} from '../../../mesh/mesh_curvature.js';
 
 export class MeshEditor extends MeshToolBase {
   constructor(manager) {
@@ -33,6 +35,7 @@ export class MeshEditor extends MeshToolBase {
     this.selectMask = SelMask.VERTEX;
     this.drawSelectMask = this.selectMask;
     this.drawLoops = false;
+    this.drawCurvatures = false;
 
     this._last_update_loop_key = "";
   }
@@ -104,6 +107,7 @@ export class MeshEditor extends MeshToolBase {
     panel = container.panel("Viewport");
     strip = panel.row().strip();
     strip.prop(path + ".drawLoops");
+    strip.prop(path + ".drawCurvatures");
 
     panel = container.panel("Tools");
     strip = panel.row().strip();
@@ -120,6 +124,7 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.tris_to_quads()");
     strip.tool("mesh.triangulate()");
 
+    panel = container.panel("Misc Tools");
     strip = panel.row().strip().useIcons(false);
     strip.tool("mesh.remesh(remesher='UNIFORM_TRI')|Tri Remesh");
     strip.tool("mesh.remesh(remesher='UNIFORM_QUAD')|Quad Remesh");
@@ -136,8 +141,54 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.cleanup_quads()");
 
     strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.cleanup_tris()");
+    strip.tool("mesh.rotate_edges()");
+
+    strip = panel.row().strip().useIcons(false);
     strip.tool("mesh.dissolve_edges()");
     strip.tool("mesh.collapse_edges()");
+
+    strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.random_flip_edges()");
+    strip.tool("mesh.dissolve_edgeloops()");
+
+    strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.select_shortest_edgeloop()");
+    strip.tool("mesh.select_longest_edgeloop()");
+
+    strip = panel.row().strip().useIcons(false);
+    strip.button("Dissolve Shortest Loop", () => {
+      let ctx = strip.ctx;
+
+      //let tool1 = ctx.api.createTool(ctx, "mesh.toggle_select_all(mode='ADD')");
+      //let tool2 = ctx.api.createTool(ctx, "mesh.tris_to_quads(mode='ADD')");
+      let tool3 = ctx.api.createTool(ctx, "mesh.select_shortest_edgeloop()");
+      let tool4 = ctx.api.createTool(ctx, "mesh.dissolve_edgeloops()");
+
+      let macro = new ToolMacro();
+      //macro.add(tool1);
+      //macro.add(tool2);
+      macro.add(tool3);
+      macro.add(tool4);
+
+      ctx.api.execTool(ctx, macro);
+    });
+    strip.button("Dissolve Longest Loop", () => {
+      let ctx = strip.ctx;
+
+      //let tool1 = ctx.api.createTool(ctx, "mesh.toggle_select_all(mode='ADD')");
+      //let tool2 = ctx.api.createTool(ctx, "mesh.tris_to_quads(mode='ADD')");
+      let tool3 = ctx.api.createTool(ctx, "mesh.select_longest_edgeloop()");
+      let tool4 = ctx.api.createTool(ctx, "mesh.dissolve_edgeloops()");
+
+      let macro = new ToolMacro();
+      //macro.add(tool1);
+      //macro.add(tool2);
+      macro.add(tool3);
+      macro.add(tool4);
+
+      ctx.api.execTool(ctx, macro);
+    });
 
     panel = container.panel("Transform");
 
@@ -264,6 +315,7 @@ export class MeshEditor extends MeshToolBase {
 
     tstruct.struct("mesh", "mesh", "Mesh", mstruct);
     tstruct.bool("drawLoops", "drawLoops", "Draw Loops");
+    tstruct.bool("drawCurvatures", "drawCurvatures", "Draw Curvatures");
 
     let onchange = () => {
       window.redraw_viewport();
@@ -316,6 +368,336 @@ export class MeshEditor extends MeshToolBase {
 
   on_mousemove(e, x, y, was_touch) {
     return super.on_mousemove(e, x, y, was_touch);
+  }
+
+  updateCurvatureMesh(gl) {
+    let mesh = this.mesh;
+    let key = "" + mesh.lib_id + ":" + mesh.updateGen + ":" + mesh.verts.length + ":" + mesh.eidgen._cur;
+
+    let cd_curv = getCurveVerts(mesh);
+
+    console.log("cd_curve", cd_curv);
+
+    //CurvVert.propegateUpdateFlags(mesh, cd_curv);
+
+    for (let v of mesh.verts) {
+      let cv = v.customData[cd_curv];
+      cv.check(v);
+      break;
+    }
+
+    if (this.curvatureMesh && key === this._last_update_loop_key) {
+      return;
+    }
+
+    if (this.curvatureMesh) {
+      this.curvatureMesh.destroy(gl);
+    }
+
+    this._last_update_loop_key = key;
+
+    let sm = this.curvatureMesh = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV);
+    sm.primflag = PrimitiveTypes.LINES;
+
+    let co1 = new Vector3();
+    let co2 = new Vector3();
+
+    let amat = new Float64Array(16);
+    let mat = new Matrix4();
+
+    for (let i=0; i<amat.length; i++) {
+      amat[i] = 0.0;
+    }
+
+    let calcNorLen = (v) => {
+      let tot = 0;
+      let sum = 0;
+
+      for (let v2 of v.neighbors) {
+        sum += v2.vectorDistance(v);
+        tot++;
+      }
+
+      return tot ? sum/tot : 1.0;
+    }
+
+    let no3 = new Vector3();
+
+    let sumMat = (v, v1, amat, w=1.0) => {
+      //*
+      no3.load(v.no);
+      for (let v2 of v.neighbors) {
+        no3.add(v2.no);
+      }
+      no3.normalize();
+      //*/
+
+      //v = v.no;
+      //no3.load(v.n).sub(v1.no);
+      no3.sub(v1.no);
+
+      v = no3;
+
+      amat[0] += v[0]*v[0]*w;
+      amat[1] += v[0]*v[1]*w;
+      amat[2] += v[0]*v[2]*w;
+
+      //skip 3
+      amat[4] += v[1]*v[0]*w;
+      amat[5] += v[1]*v[1]*w;
+      amat[6] += v[1]*v[2]*w;
+
+      //skip 7
+      amat[8] += v[1]*v[0]*w;
+      amat[9] += v[1]*v[1]*w;
+      amat[10] += v[1]*v[2]*w;
+    }
+
+    let vs = new Set(mesh.verts.selected.editable);
+    for (let v of mesh.verts.selected.editable) {
+      for (let v2 of v.neighbors) {
+        vs.add(v2);
+        for (let v3 of v2.neighbors) {
+          vs.add(v3);
+        }
+      }
+    }
+
+    const cotanmap = buildCotanMap(mesh, vs);
+    const VETOT = cotanmap.recordSize;
+
+    let calcMat = (v, amat) => {
+      for (let i=0; i<16; i++) {
+        amat[i] = 0.0;
+      }
+
+      let tot = 0.0;
+      let cot = cotanmap.get(v);
+
+      let vi = 4;
+
+      for (let e of v.edges) {
+        let v2 = e.otherVertex(v);
+        let area = cot[vi], ctan1 = cot[vi+1], ctan2 = cot[vi+2], w = cot[vi+3];
+
+        w = area; //(ctan1 + ctan2)*area;
+        w = 1.0;
+
+        sumMat(v2, v, amat, w);
+        tot += w;
+
+        vi += VETOT;
+      }
+      return;
+      //sumMat(v, amat);
+
+      let flag = MeshFlags.TEMP2;
+      for (let f of v.faces) {
+        f.flag &= ~flag;
+      }
+
+      for (let v2 of v.neighbors) {
+        for (let e of v2.edges) {
+          for (let l of e.loops) {
+            l.f.flag &= ~flag;
+          }
+        }
+      }
+
+      for (let e of v.edges) {
+        let v2 = e.otherVertex(v);
+      //for (let l of v.loops) {//for (let v2 of v.neighbors) {
+        //let v2 = l.e.otherVertex(v);
+
+        let w = 1.0;
+
+        let l = e.l;
+        if (!l) {
+          continue;
+        }
+
+        if (l.f.flag & flag) {
+          l = l.radial_next;
+        }
+
+        if (l.f.flag & flag) {
+          continue;
+        }
+
+        l.f.flag |= flag;
+
+        w = l.f.area + 0.0000001;
+        //w=1.0;
+
+        sumMat(v2, v, amat, w);
+        tot += w;
+
+        //continue;
+
+        for (let e2 of v2.edges) {
+          let l2 = e2.l;
+          let v3 = e2.otherVertex(v2);
+
+          if (!l2) {
+            continue;
+          }
+
+          if (l2.f.flag & flag) {
+            l2 = l2.radial_next;
+          }
+          if (l2.f.flag & flag) {
+            continue;
+          }
+          l2.f.flag |= flag;
+
+
+          let w2 = l2.f.area + 0.00001;
+          //w2 = 1.0;
+
+          sumMat(v3, v, amat, w);
+          tot += w2;
+        }
+      }
+
+      if (!tot) {
+        return;
+      }
+
+      tot = 1.0 / tot;
+      for (let i=0; i<amat.length; i++) {
+        amat[i] *= tot;
+      }
+    }
+
+    let white = [1, 1, 1, 1];
+    let black = [0, 0, 0, 1];
+
+    let no = new Vector3();
+
+    let wmap = new Map();
+    let nomap = new Map();
+    let binmap = new Map();
+
+    let steps = window.ddd || 245;
+    let lastno = new Vector3();
+
+    for (let v of vs) {
+      if (v.valence === 0) {
+        continue;
+      }
+
+      calcMat(v, amat);
+
+      mat.makeIdentity();
+      mat.load(amat);
+
+      //console.log(amat);
+
+      //mat.transpose();
+
+      let e;
+      for (let e1 of v.edges) {
+        e = e1;
+        break;
+      }
+
+      //no.load(e.otherVertex(v)).sub(v).normalize();
+      no.load(v.no);
+      lastno.zero();
+
+      let i;
+      for (i=0; i<steps; i++) {
+        no.normalize();
+
+        if (i > 0 && lastno.vectorDistanceSqr(no) < 0.0001) {
+          //console.log(i);
+          no.multVecMatrix(mat);
+          break;
+        }
+
+        lastno.load(no);
+        no.multVecMatrix(mat);
+      }
+
+      //no.cross(v.no);
+
+      //no.normalize().cross(v.no).normalize();//.mulScalar(l);
+      //no.normalize();
+      nomap.set(v, new Vector3(no));
+
+      let bin = new Vector3(no).cross(v.no);
+      let lastbin = new Vector3(bin);
+
+      for (let i=0; i<steps; i++) {
+        bin.normalize();
+        //break;
+
+        if (i > 0 && lastbin.vectorDistanceSqr(bin) < 0.0001) {
+          //console.log(i);
+          break;
+        }
+
+        bin.multVecMatrix(mat);
+        lastbin.load(bin);
+      }
+
+      binmap.set(v, bin);
+    }
+
+    let no2 = new Vector3();
+
+    for (let v of mesh.verts.selected.editable) {
+      if (v.valence === 0) {
+        continue;
+      }
+      let len = calcNorLen(v);
+
+      let no = nomap.get(v);
+      let cv = v.customData[cd_curv];
+      cv.check(v);
+
+      no = cv.tan;
+
+      /*
+      no2.load(no);
+      let tot = 1;
+
+      for (let v2 of v.neighbors) {
+        no = nomap.get(v2);
+        no2.add(no);
+      }
+      no2.normalize();
+
+      no = no2;
+      //*/
+
+      //no.normalize();
+
+      co1.load(v);
+      co2.load(v).addFac(no, len);
+
+      let line = sm.line(co1, co2);
+      line.colors(white, white)
+
+      continue;
+
+      let bin = binmap.get(v);
+      bin.normalize();
+
+      co1.load(v);
+      co2.addFac(bin, len*0.55);
+
+      line = sm.line(co1, co2);
+      line.colors(black, black);
+
+      continue;
+      co1.load(v);
+      co2.load(v).addFac(v.no, len);
+
+      line = sm.line(co1, co2);
+      line.colors(black, black);
+      //line.ids(1, 1);
+    }
   }
 
   updateLoopMesh(gl) {
@@ -405,6 +787,32 @@ export class MeshEditor extends MeshToolBase {
       }
     }
 
+    if (this.drawCurvatures && this.mesh) {
+      this.updateCurvatureMesh(gl);
+
+      if (this.curvatureMesh) {
+        let ob = this.ctx.object;
+        let color = [1, 0.8, 0.7, 1.0];
+
+        let uniforms = {
+          projectionMatrix: view3d.activeCamera.rendermat,
+          objectMatrix    : ob.outputs.matrix.getValue(),
+          object_id       : ob.lib_id,
+          aspect          : view3d.activeCamera.aspect,
+          size            : view3d.glSize,
+          near            : view3d.activeCamera.near,
+          far             : view3d.activeCamera.far,
+          color           : color,
+          uColor          : color,
+          alpha           : 1.0,
+          opacity         : 1.0,
+          polygonOffset   : 5.0
+        };
+
+        this.curvatureMesh.draw(gl, uniforms, Shaders.WidgetMeshShader);
+      }
+    }
+
     if (this.drawLoops && this.mesh) {
       this.updateLoopMesh(gl);
 
@@ -454,6 +862,7 @@ MeshEditor.STRUCT = STRUCT.inherit(MeshEditor, ToolMode) + `
   mesh      : DataRef | DataRef.fromBlock(obj.mesh);
   drawflag  : int;
   drawLoops : bool;
+  drawCurvatures : bool;
 }`;
 nstructjs.manager.add_class(MeshEditor);
 ToolMode.register(MeshEditor);

@@ -744,7 +744,7 @@ export class ZoomTool extends ToolOp {
     
     //len = len < 1.0 ? len**2 : len;
     len = Math.log(len) / Math.log(2);
-    console.log(len)
+
     //if (len > 3.0) {
       len += 0.01*dy;
     //}

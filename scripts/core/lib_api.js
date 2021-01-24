@@ -345,6 +345,14 @@ export class BlockSet extends Array {
     this.namemap = {};
   }
 
+  clear() {
+    for (let block of new Set(this)) {
+      this.datalib.remove(block);
+    }
+
+    return this;
+  }
+
   create(name=undefined) {
     let cls = this.type;
 

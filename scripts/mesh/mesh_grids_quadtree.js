@@ -857,7 +857,7 @@ export class QuadTreeGrid extends GridBase {
     return s;
   }
 
-  flagfRecalc() {
+  flagTopoRecalc() {
     this.recalcFlag |= QRecalcFlags.TOPO;
   }
 
@@ -2179,7 +2179,7 @@ export class QuadTreeGrid extends GridBase {
       //boundaries again
       for (let l of mesh.loops) {
         let grid2 = l.customData[cd_grid];
-        //grid2.stitchBoundaries();
+        grid2.stitchBoundaries();
       }
 
       //and final update

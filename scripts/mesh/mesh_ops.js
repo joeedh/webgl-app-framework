@@ -8,37 +8,30 @@ import {
   ToolOp, ToolMacro, ToolFlags, UndoFlags
 } from '../path.ux/scripts/pathux.js';
 import {TranslateOp} from "../editors/view3d/transform/transform_ops.js";
-import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
-import {CallbackNode, NodeFlags} from "../core/graph.js";
-import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
 
 import {MeshFlags, MeshTypes, MeshFeatures, LogContext} from './mesh_base.js';
-import {MeshOp} from './mesh_ops_base.js';
+import {MeshDeformOp, MeshOp} from './mesh_ops_base.js';
 import {ccSmooth, subdivide, loopSubdivide} from '../subsurf/subsurf_mesh.js';
-import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
-import {splitEdgesSmart, splitEdgesSmart2} from "./mesh_subdivide.js";
+import {splitEdgesPreserveQuads, splitEdgesSmart, splitEdgesSmart2} from "./mesh_subdivide.js";
 import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
 import {CustomDataElem} from "./customdata.js";
 import {
-  bisectMesh, connectVerts, cotanVertexSmooth, fixManifold, flipLongTriangles, recalcWindings, symmetrizeMesh,
+  bisectMesh, connectVerts, cotanVertexSmooth, dissolveEdgeLoops, fixManifold, flipLongTriangles, recalcWindings,
+  symmetrizeMesh,
   trianglesToQuads,
   TriQuadFlags, vertexSmooth
 } from "./mesh_utils.js";
 import {QRecalcFlags} from "./mesh_grids.js";
 
 import {buildGridsSubSurf} from "./mesh_grids_subsurf.js";
-import {FindNearest} from "../editors/view3d/findnearest.js";
-import {walkFaceLoop} from "./mesh_utils.js";
 
 import '../util/floathalf.js';
-import {DataRefProperty} from "../core/lib_api.js";
 import {CubicPatch, bernstein, bspline} from '../subsurf/subsurf_patch.js';
 import {KdTreeGrid} from './mesh_grids_kdtree.js';
-import {triangulateFan} from './mesh_utils.js';
 import {triangulateFace, setMeshClass, applyTriangulation} from './mesh_tess.js';
 import {Mesh} from './mesh.js';
 
@@ -778,7 +771,7 @@ import {UVWrangler, voxelUnwrap} from './unwrapping.js';
 import {relaxUVs, UnWrapSolver} from './unwrapping_solve.js';
 import {MeshOpBaseUV, UnwrapOpBase} from './mesh_uvops_base.js';
 import {MultiGridSmoother} from './multigrid_smooth.js';
-import {cleanupQuads, Remeshers, remeshMesh} from './mesh_remesh.js';
+import {cleanupQuads, cleanupTris, Remeshers, remeshMesh} from './mesh_remesh.js';
 
 export class CatmullClarkeSubd extends MeshOp {
   constructor() {
@@ -1112,7 +1105,13 @@ export function ccVertexSmooth(mesh, verts = mesh.verts.selected.editable, fac =
   }
 }
 
-export class VertexSmooth extends MeshOp {
+export const SmoothTypes = {
+  CC     : 1,
+  COTAN  : 2,
+  UNIFORM: 4
+};
+
+export class VertexSmooth extends MeshDeformOp {
   constructor() {
     super();
   }
@@ -1125,22 +1124,37 @@ export class VertexSmooth extends MeshOp {
       undoflag: 0,
       flag    : 0,
       inputs  : ToolOp.inherit({
-        repeat: new IntProperty(1)
+        repeat: new IntProperty(1).saveLastValue().noUnits().setRange(1, 256),
+        type: new EnumProperty(1, SmoothTypes).saveLastValue(),
+        projection : new FloatProperty(0.0).saveLastValue().setRange(0.0, 1.0).noUnits(),
+        factor: new FloatProperty(0.5).saveLastValue().setRange(0.0, 1.0).noUnits()
       }),
     }
   }
 
   exec(ctx) {
-    console.log("smooth!");
-
     for (let mesh of this.getMeshes(ctx)) {
       let repeat = this.inputs.repeat.getValue();
 
-      console.log("mesh:", mesh.lib_id, repeat);
+      let fac = this.inputs.factor.getValue();
+      let proj = this.inputs.projection.getValue();
+
+      for (let v of mesh.verts.selected.editable) {
+        v.flag |= MeshFlags.UPDATE;
+      }
 
       for (let i = 0; i < repeat; i++) {
-        ccVertexSmooth(mesh, mesh.verts.selected.editable);
-        //cotanVertexSmooth(mesh, mesh.verts.selected.editable);
+        switch (this.inputs.type.getValue()) {
+          case SmoothTypes.CC:
+            ccVertexSmooth(mesh, mesh.verts.selected.editable, fac, proj);
+            break;
+          case SmoothTypes.COTAN:
+            cotanVertexSmooth(mesh, mesh.verts.selected.editable, fac, proj);
+            break;
+          case SmoothTypes.UNIFORM:
+            vertexSmooth(mesh, mesh.verts.selected.editable, fac, proj);
+            break;
+        }
       }
 
       mesh.recalcNormals();
@@ -1190,21 +1204,30 @@ export class TestSplitFaceOp extends MeshOp {
 
         if (e.type === MeshTypes.FACE) {
           for (let l of e.loops) {
+            l.v.flag |= MeshFlags.UPDATE;
+            l.e.flag |= MeshFlags.UPDATE;
+
             mesh.setSelect(l.e, true);
             mesh.setSelect(l.v, true);
           }
+        } else if (e.type === MeshTypes.EDGE) {
+          e.v1.flag |= MeshFlags.UPDATE;
+          e.v2.flag |= MeshFlags.UPDATE;
+
+          mesh.setSelect(e.v1, true);
+          mesh.setSelect(e.v2, true);
+
+          for (let l2 of e.loops) {
+            mesh.setSelect(l2.f, true);
+          }
         }
+
         e.flag |= MeshFlags.UPDATE;
       }
 
-      splitEdgesSmart2(mesh, es, undefined, lctx);
+      splitEdgesPreserveQuads(mesh, es, undefined, lctx);
+      //splitEdgesSmart2(mesh, es, undefined, lctx);
 
-      for (let e of lctx.newEdges) {
-        mesh.setSelect(e, true);
-      }
-      for (let v of lctx.newVerts) {
-        mesh.setSelect(v, true);
-      }
       //console.log(newvs, newfs);
 
       mesh.regenTesellation();
@@ -2523,7 +2546,7 @@ export class ResetGridsOp extends MeshOp {
       for (let l of mesh.loops) {
         let grid = l.customData[off];
 
-        grid.init(grid.dimen, mesh, l);
+        grid.init(grid.dimen, mesh, l, off);
       }
 
       //force bvh reload
@@ -2843,6 +2866,8 @@ export class FixManifoldOp extends MeshOp {
         }
       }
 
+      recalcWindings(mesh, mesh.faces, lctx);
+
       mesh.fixLoops();
 
       console.log("euler-poincare:", calcEulerPoincare(mesh));
@@ -2929,7 +2954,11 @@ export class DissolveVertOp extends MeshOp {
       }
 
       for (let v of vs) {
-        mesh.dissolveVertex(v, lctx);
+        if (v.valence === 2) {
+          mesh.joinTwoEdges(v, lctx);
+        } else {
+          mesh.dissolveVertex(v, lctx);
+        }
       }
 
       mesh.regenAll();
@@ -2939,14 +2968,15 @@ export class DissolveVertOp extends MeshOp {
     }
   }
 }
+
 ToolOp.register(DissolveVertOp);
 
 export class CleanupQuads extends MeshOp {
   static tooldef() {
     return {
-      uiname : "Cleanup Quads",
-      toolpath : "mesh.cleanup_quads",
-      inputs : ToolOp.inherit({})
+      uiname  : "Cleanup Quads",
+      toolpath: "mesh.cleanup_quads",
+      inputs  : ToolOp.inherit({})
     }
   }
 
@@ -2987,6 +3017,60 @@ export class CleanupQuads extends MeshOp {
         }
       }
 
+      for (let i=0; i<5; i++) {
+        vertexSmooth(mesh, vs, 0.5, 0.5);
+      }
+
+      mesh.regenAll();
+      mesh.recalcNormals();
+      mesh.graphUpdate();
+      window.redraw_viewport(true);
+    }
+  }
+}
+
+ToolOp.register(CleanupQuads);
+
+export class CleanupTris extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Cleanup Tris",
+      toolpath: "mesh.cleanup_tris",
+      inputs  : ToolOp.inherit({})
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      let faces = new Set(mesh.faces.selected.editable);
+
+      let lctx = new LogContext();
+      let newfs = new Set();
+
+      lctx.onnew = (e) => {
+        mesh.setSelect(e, true);
+
+        if (e.type === MeshTypes.FACE) {
+          newfs.add(e);
+        }
+      }
+
+      for (let i=0; i<5; i++) {
+        faces = new Set(mesh.faces.selected.editable);
+        cleanupTris(mesh, faces, lctx);
+      }
+
+      let vs = new Set();
+      for (let f of newfs) {
+        if (f.eid < 0) {
+          continue;
+        }
+
+        for (let l of f.loops) {
+          vs.add(l.v);
+        }
+      }
+
       vertexSmooth(mesh, vs, 0.5, 0.5);
 
       mesh.regenAll();
@@ -2996,15 +3080,15 @@ export class CleanupQuads extends MeshOp {
     }
   }
 }
-ToolOp.register(CleanupQuads);
 
+ToolOp.register(CleanupTris);
 
 export class DissolveEdgesOp extends MeshOp {
   static tooldef() {
     return {
-      uiname : "Dissolve Edges",
-      toolpath : "mesh.dissolve_edges",
-      inputs : ToolOp.inherit({})
+      uiname  : "Dissolve Edges",
+      toolpath: "mesh.dissolve_edges",
+      inputs  : ToolOp.inherit({})
     }
   }
 
@@ -3027,15 +3111,61 @@ export class DissolveEdgesOp extends MeshOp {
     }
   }
 }
+
 ToolOp.register(DissolveEdgesOp);
+
+export const RotateEdgeModes = {
+  FORWARD : 0,
+  BACKWARD : 1
+};
+
+export class RotateEdgeOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Rotate Edges",
+      toolpath: "mesh.rotate_edges",
+      inputs  : ToolOp.inherit({
+        mode : new EnumProperty(0, RotateEdgeModes)
+      })
+    }
+  }
+
+  exec(ctx) {
+    let mode = this.inputs.mode.getValue();
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let lctx = new LogContext();
+      lctx.onnew = (e) => {
+        if (e.type !== MeshTypes.FACE) {
+          mesh.setSelect(e, true);
+        }
+      }
+
+      for (let e of new Set(mesh.edges.selected.editable)) {
+        if (e.eid >= 0) {
+          mesh.rotateEdge(e, !mode ? 1 : -1, lctx);
+        }
+      }
+
+      mesh.regenAll();
+      mesh.regenTesellation();
+      mesh.recalcNormals();
+      mesh.graphUpdate();
+
+      window.redraw_viewport(true);
+    }
+  }
+}
+
+ToolOp.register(RotateEdgeOp);
 
 
 export class CollapseEdgesOp extends MeshOp {
   static tooldef() {
     return {
-      uiname : "Collapse Edges",
-      toolpath : "mesh.collapse_edges",
-      inputs : ToolOp.inherit({})
+      uiname  : "Collapse Edges",
+      toolpath: "mesh.collapse_edges",
+      inputs  : ToolOp.inherit({})
     }
   }
 
@@ -3061,4 +3191,128 @@ export class CollapseEdgesOp extends MeshOp {
     }
   }
 }
+
 ToolOp.register(CollapseEdgesOp);
+
+export class RandomCollapseOp extends MeshOp {
+  static tooldef() { return {
+    uiname : "Random Flip",
+    toolpath : "mesh.random_flip_edges",
+    inputs : ToolOp.inherit({
+      probability : new FloatProperty(0.85).saveLastValue()
+    })
+  }}
+
+  exec(ctx) {
+    let prob = this.inputs.probability.getValue();
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let es = new Set();
+
+      for (let e of mesh.edges.selected.editable) {
+        if (Math.random() > 0.8) {
+          continue;
+        }
+
+        let bad = false;
+
+        for (let i=0; i<2; i++) {
+          let v = i ? e.v2 : e.v1;
+          for (let e2 of v.edges) {
+            if (es.has(e2)) {
+              bad = true;
+            }
+          }
+        }
+
+        if (!bad) {
+          es.add(e);
+        }
+      }
+
+      for (let e of es) {
+        if (e.eid < 0) {
+          continue;
+        }
+
+        if (Math.random() > prob) {
+          continue;
+        }
+
+        e.v1.flag |= MeshFlags.UPDATE;
+        e.v2.flag |= MeshFlags.UPDATE;
+        e.flag |= MeshFlags.UPDATE;
+
+        mesh.rotateEdge(e, Math.random() > 0.5 ? 1 : -1);
+      }
+
+      mesh.regenAll();
+      mesh.recalcNormals();
+      mesh.graphUpdate();
+      window.redraw_viewport(true);
+    }
+  }
+}
+ToolOp.register(RandomCollapseOp);
+
+export class DissolveEdgeLoopsOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Dissolve Loops",
+      toolpath: "mesh.dissolve_edgeloops",
+      inputs  : ToolOp.inherit({
+        ensureQuads : new BoolProperty(false).saveLastValue(),
+        selectFaces : new BoolProperty(false).saveLastValue()
+      })
+    }
+  }
+
+  exec(ctx) {
+    let ensureQuads = this.inputs.ensureQuads.getValue();
+    let selmask = ctx.selectMask;
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let lctx = new LogContext();
+
+      let es = new Set(mesh.edges.selected.editable);
+
+      if (this.inputs.selectFaces.getValue()) {
+        for (let e of es) {
+          for (let l of e.loops) {
+            mesh.setSelect(l.f, true);
+
+            for (let l2 of l.f.loops) {
+              if (selmask & MeshTypes.EDGE) {
+                l2.e.flag |= MeshFlags.UPDATE;
+                l2.v.flag |= MeshFlags.UPDATE;
+                mesh.setSelect(l2.e, true);
+              }
+
+              if (selmask & MeshTypes.VERTEX) {
+                l2.v.flag |= MeshFlags.UPDATE;
+                mesh.setSelect(l2.v, true);
+              }
+            }
+
+            l.f.flag |= MeshFlags.UPDATE;
+          }
+        }
+      }
+
+      lctx.onnew = (elem) => {
+        elem.flag |= MeshFlags.UPDATE;
+        mesh.setSelect(elem, true);
+      }
+
+      dissolveEdgeLoops(mesh, es, ensureQuads, lctx);
+
+      mesh.regenAll();
+      mesh.recalcNormals();
+      mesh.graphUpdate();
+      window.redraw_viewport(true);
+    }
+  }
+}
+
+ToolOp.register(DissolveEdgeLoopsOp);
+

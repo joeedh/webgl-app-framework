@@ -1,6 +1,6 @@
 import * as vectormath from './vectormath.js';
 
-import {Mesh} from '../mesh/mesh.js';
+import {Mesh, MeshFlags} from '../mesh/mesh.js';
 
 let Vector3 = vectormath.Vector3;
 
@@ -77,6 +77,28 @@ export function readOBJ(buf) {
         fvs.push(me.verts.list[vi]);
       }
 
+      let flag = MeshFlags.TEMP1;
+
+      for (let v of fvs) {
+        v.flag &= ~flag;
+      }
+
+      let vi = 0;
+      for (let v of fvs) {
+        if (!(v.flag & flag)) {
+          v.flag |= flag;
+          fvs[vi++] = v;
+        }
+      }
+
+      if (vi !== fvs.length) {
+        console.warn("Bad face in OBJ file!", fvs);
+        fvs.length = vi;
+      }
+
+      if (vi < 3) {
+        continue;
+      }
       let f = me.makeFace(fvs);
       for (let j=0; j<uvs.length; j++) {
         //XXX get uvs working again

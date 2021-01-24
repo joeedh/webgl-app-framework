@@ -695,7 +695,7 @@ export class View3D extends Editor {
     return co;
   }
 
-  project(co) {
+  project(co, mat=undefined) {
     let tmp = proj_temps.next().zero();
     
     tmp[0] = co[0];
@@ -706,7 +706,7 @@ export class View3D extends Editor {
     }
     
     tmp[3] = 1.0;
-    tmp.multVecMatrix(this.activeCamera.rendermat);
+    tmp.multVecMatrix(mat ? mat : this.activeCamera.rendermat);
     
     if (tmp[3] !== 0.0) {
       tmp[0] /= tmp[3];
@@ -726,7 +726,7 @@ export class View3D extends Editor {
     return w;
   }
   
-  unproject(co) {
+  unproject(co, mat=undefined) {
     let tmp = unproj_temps.next().zero();
     
     tmp[0] = (co[0]/this.size[0])*2.0 - 1.0;
@@ -742,7 +742,7 @@ export class View3D extends Editor {
       tmp[3] = 1.0;
     }
 
-    tmp.multVecMatrix(this.activeCamera.irendermat);
+    tmp.multVecMatrix(mat ? mat : this.activeCamera.irendermat);
 
     let w = tmp[3];
 
@@ -1813,12 +1813,20 @@ let f2 = () => {
   }
 };
 
+let rcbs = [];
+
 let f = () => {
   animreq = undefined;
 
   for (let i=0; i<drawCount; i++) {
     f2();
   }
+
+  for (let cb of rcbs) {
+    cb();
+  }
+
+  rcbs.length = 0;
 };
 
 window.redraw_viewport = (ResetRender=false, DrawCount=1) => {
@@ -1831,3 +1839,10 @@ window.redraw_viewport = (ResetRender=false, DrawCount=1) => {
 
   animreq = requestAnimationFrame(f);
 };
+
+window.redraw_viewport_p = (ResetRender=false, DrawCount=1) => {
+  return new Promise((accept, reject) => {
+    rcbs.push(accept);
+    window.redraw_viewport(ResetRender, DrawCount);
+  });
+}

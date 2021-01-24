@@ -245,10 +245,14 @@ export class ObjectPanel extends ColumnFrame {
       panel.prop("mesh.bvhSettings.depthLimit");
     } else if (data instanceof ProceduralMesh) {
       let panel = this.panel("Procedural");
+      let strip;
 
-      panel.tool(`mesh.procedural_to_mesh(objectId=${ob.lib_id})`);
+      strip = panel.col().strip();
 
-      let strip = panel.col().strip();
+      strip.prop('toolDefaults.mesh.procedural_to_mesh.triangulate');
+      strip.tool(`mesh.procedural_to_mesh(objectId=${ob.lib_id})`);
+
+      strip = panel.col().strip();
 
       strip.dataPrefix = "object.data.generator";
       data.generator.constructor.buildSettings(strip);

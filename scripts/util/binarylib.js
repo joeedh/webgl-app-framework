@@ -31,6 +31,28 @@ export class BinaryWriter {
     this.data.push((c>>24) & 255);
   }
 
+  float32(f) {
+    Float32Buf[0] = f;
+
+    this.data.push(Uint8Buf[0]);
+    this.data.push(Uint8Buf[1]);
+    this.data.push(Uint8Buf[2]);
+    this.data.push(Uint8Buf[3]);
+  }
+
+  float64(f) {
+    Float64Buf[0] = f;
+
+    this.data.push(Uint8Buf[0]);
+    this.data.push(Uint8Buf[1]);
+    this.data.push(Uint8Buf[2]);
+    this.data.push(Uint8Buf[3]);
+    this.data.push(Uint8Buf[4]);
+    this.data.push(Uint8Buf[5]);
+    this.data.push(Uint8Buf[6]);
+    this.data.push(Uint8Buf[7]);
+  }
+
   uint16(c) {
     this.data.push(c & 255);
     this.data.push((c>>8) & 255);

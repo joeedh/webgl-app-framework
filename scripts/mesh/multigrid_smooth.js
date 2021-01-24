@@ -592,7 +592,7 @@ export class Smoother {
     return ret;
   }
 
-  smooth(superVerts = this.superVerts, fac = 1.0, repeat = 4) {
+  smooth(superVerts = this.superVerts, fac = 1.0, projection, repeat = 4) {
     let cd_smooth = this.cd_smooth;
     let tmp = new Vector3();
 
@@ -618,7 +618,18 @@ export class Smoother {
         let area = math.tri_area(sv.co, sv2.co, sv3.co);
         totarea += area;
 
-        tmp.add(sv2.co);
+        if (projection > 0.0) {
+          let t1 = _n1.load(sv2.co);
+
+          t1.sub(sv.co);
+          let d = t1.dot(v.no);
+
+          t1.addFac(v.no, -d*projection).add(sv.co);
+          tmp.add(t1);
+        } else {
+          tmp.add(sv2.co);
+        }
+
         tot++;
       }
 
@@ -649,69 +660,72 @@ export class Smoother {
     let ratio = totarea / totarea2;
     let orig = new Vector3();
 
-    for (let v of superVerts) {
-      let sv = v.customData[cd_smooth];
+    if (0) {
+      for (let v of superVerts) {
+        let sv = v.customData[cd_smooth];
 
-      let nfac3 = 0;
-      let tot = 0;
+        let nfac3 = 0;
+        let tot = 0;
 
-      orig.load(sv.co);
+        orig.load(sv.co);
 
-      for (let i=0; i<sv.neighbors.length; i++) {
-        let v2 = sv.neighbors[i];
-        let v3 = sv.neighbors[(i+1)%sv.neighbors.length];
+        //try to preserve surface area
+        for (let i = 0; i < sv.neighbors.length; i++) {
+          let v2 = sv.neighbors[i];
+          let v3 = sv.neighbors[(i + 1)%sv.neighbors.length];
 
-        let sv2 = v2.customData[cd_smooth];
-        let sv3 = v3.customData[cd_smooth];
+          let sv2 = v2.customData[cd_smooth];
+          let sv3 = v3.customData[cd_smooth];
 
-        let area = math.tri_area(sv.co, sv2.co, sv3.co);
-        let goal = area*ratio;
+          let area = math.tri_area(sv.co, sv2.co, sv3.co);
+          let goal = area*ratio;
 
-        let nfac = (area - goal)*0.2;
-        let df = 0.00001;
+          let nfac = (area - goal)*0.2;
+          let df = 0.00001;
 
-        //newton-raphson
-        for (let step=0; step<1; step++) {
-          sv.co.load(orig).addFac(v.no, nfac);
-          let r1 = math.tri_area(sv.co, sv2.co, sv3.co) - goal;
+          //newton-raphson
+          for (let step = 0; step < 5; step++) {
+            sv.co.load(orig).addFac(v.no, nfac);
+            let r1 = math.tri_area(sv.co, sv2.co, sv3.co) - goal;
 
-          let nfac2 = nfac + df;
-          sv.co.load(orig).addFac(v.no, nfac2);
+            let nfac2 = nfac + df;
+            sv.co.load(orig).addFac(v.no, nfac2);
 
-          let r2 = math.tri_area(sv.co, sv2.co, sv3.co) - goal;
+            let r2 = math.tri_area(sv.co, sv2.co, sv3.co) - goal;
 
-          r1 *= r1;
-          r2 *= r2;
+            r1 *= r1;
+            r2 *= r2;
 
-          let dnfac = (r2 - r1)/df;
+            let dnfac = (r2 - r1)/df;
 
-          //console.log(dnfac, r1, nfac);
+            //console.log(dnfac, r1, nfac);
 
-          let limit = step ? 0.0001 : 0.00001;
+            let limit = step ? 0.0001 : 0.00001;
 
-          if (Math.abs(dnfac) > limit) {
-            nfac += -r1/dnfac;
+            if (Math.abs(dnfac) > limit) {
+              nfac += -0.25*r1/dnfac;
+            }
           }
+
+          //console.log("nfac:", nfac);
+
+          nfac *= 1.1;
+
+          nfac3 += nfac;
+          tot += 1;
         }
 
-        //console.log("nfac:", nfac);
+        if (tot === 0.0) {
+          continue;
+        }
 
-        nfac *= 1.1;
+        nfac3 /= tot;
 
-        nfac3 += nfac;
-        tot += 1;
+        sv.co.load(orig).addFac(v.no, nfac3);
       }
-
-      if (tot === 0.0) {
-        continue;
-      }
-
-      nfac3 /= tot;
-
-      sv.co.load(orig).addFac(v.no, nfac3);
     }
 
-    console.log("ratio:", ratio);
+    //console.log("ratio:", ratio);
 
     let totarea3 = 0;
 
@@ -730,7 +744,7 @@ export class Smoother {
       }
     }
 
-    console.log("totarea", totarea, totarea2, totarea3);
+    //console.log("totarea", totarea, totarea2, totarea3);
 
     this.interp(superVerts);
 
@@ -746,9 +760,20 @@ export class Smoother {
 
       for (let v2 of v.neighbors) {
         let sv2 = v2.customData[cd_smooth];
+        let w = 1.0;
 
-        tmp.add(sv2.co);
-        tot++;
+        if (projection > 0.0) {
+          let t1 = _n1;
+          t1.load(v2).sub(v);
+          let d = t1.dot(v.no);
+
+          t1.addFac(v.no, -d*projection).add(v);
+
+          tmp.addFac(t1, w);
+        } else {
+          tmp.addFac(sv2.co, w);
+        }
+        tot += w;
       }
 
       if (tot === 0.0) {
@@ -772,6 +797,11 @@ export class Smoother {
     }
   }
 }
+
+var _n1 = new Vector3();
+var _n2 = new Vector3();
+var _n3 = new Vector3();
+var _n4 = new Vector3();
 
 export class MultiGridSmoother {
   constructor(mesh, levels = 2, limitFactor=1.5) {
@@ -864,7 +894,7 @@ export class MultiGridSmoother {
     return new Set(vs);
   }
 
-  smooth(verts=this.verts, weightFunc, fac = 1.0, repeat = 4) {
+  smooth(verts=this.verts, weightFunc, fac = 1.0, projection=0.0, repeat = 4) {
     let sverts = [];
 
     for (let ms of this.levels) {
@@ -919,7 +949,7 @@ export class MultiGridSmoother {
         }
       }
 
-      ms.smooth(svs, fac, repeat) //, weightFunc, fac, repeat);
+      ms.smooth(svs, fac, projection, repeat) //, weightFunc, fac, repeat);
       lastsvs = svs;
       last_cd_smooth = cd_smooth;
 

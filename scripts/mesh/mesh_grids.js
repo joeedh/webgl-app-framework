@@ -20,28 +20,31 @@ for (let i = 0; i < 4; i++) {
 let stmp1 = new Vector3(), stmp2 = new Vector3();
 
 export const QRecalcFlags = {
-  POLYS: 1,
-  TOPO: 2,
-  POINT_PRUNE: 4,
-  NEIGHBORS: 8,
-  MIRROR: 16,
-  CHECK_CUSTOMDATA: 32,
-  POINTHASH: 64,
-  VERT_NORMALS: 128,
-  NODE_NORMALS: 256,
-  NORMALS: 128 | 256,
-  INDICES: 512,
-  LEAF_POINTS: 1024,
-  LEAF_NODES: 2048,
-  LEAVES: 1024 | 2048,
-  PATCH_UVS : 4096, //not part of ALL
-  REGEN_IDS : 8192, //most definitely not part of ALL
-  REGEN_EIDMAP : 8192<<1, //not part of ALL
-  ALL: 1 | 2 | 4 | 8 | 64 | 128 | 256 | 512 | 1024 | 2048 //does not include mirror or check_customdata or normals
+  POLYS           : 1<<0,
+  TOPO            : 1<<1,
+  POINT_PRUNE     : 1<<2,
+  NEIGHBORS       : 1<<3,
+  MIRROR          : 1<<4,
+  CHECK_CUSTOMDATA: 1<<5,
+  POINTHASH       : 1<<6,
+  VERT_NORMALS    : 1<<7,
+  NODE_NORMALS    : 1<<8,
+  NORMALS         : (1<<7) | (1<<8),
+  INDICES         : 1<<9,
+  LEAF_POINTS     : 1<<10,
+  LEAF_NODES      : 1<<11,
+  LEAVES          : (1<<10) | (1<<11),
+  PATCH_UVS       : 1<<12, //not part of ALL
+  REGEN_IDS       : 1<<13, //most definitely not part of ALL
+  REGEN_EIDMAP    : 1<<14, //not part of ALL
+  FIX_NEIGHBORS   : 1<<15,
+  NODE_DEPTH_DELTA: 1<<16,
+  ALL             : 1 | 2 | 4 | 8 | 64 | 128 | 256 | (1<<9) | (1<<10) | (1<<11),
+  EVERYTHING      : (1<<16)-1
 };
 
 export const GridSettingFlags = {
-  SELECT: 1,
+  SELECT            : 1,
   ENABLE_DEPTH_LIMIT: 2,
 }
 
@@ -122,10 +125,10 @@ let interptemp1 = [];
 const IDX = -1, IDXINV = -2;
 
 export const NeighborKeys = {
-  L: 1, //loop
-  LP: 2, //loop.prev
-  LN: 4, //loop.next
-  LR: 8, //loop.radial_next
+  L  : 1, //loop
+  LP : 2, //loop.prev
+  LN : 4, //loop.next
+  LR : 8, //loop.radial_next
   LRP: 16, //loop.radial_next.prev
   LRN: 32, //loop.radial_next.prev
   LPR: 64, //loop.prev.radial_next
@@ -148,10 +151,10 @@ export class NeighborMap {
     this.dimen = dimen;
 
     let masks = {
-      l: 1,
-      lp: 2,
-      ln: 4,
-      lr: 8,
+      l  : 1,
+      lp : 2,
+      ln : 4,
+      lr : 8,
       lrp: 16,
       lrn: 32,
       lpr: 64,
@@ -192,7 +195,7 @@ export class NeighborMap {
 
       */
 
-      [lmask("l", "lp")]: [[0, IDX], [undefined, undefined], [IDX, 0]],
+      [lmask("l", "lp")] : [[0, IDX], [undefined, undefined], [IDX, 0]],
       [lmask("l", "lpr")]: [[IDX, dimen - 1], [dimen - 1, IDX], [undefined, IDX]],
     }
 
@@ -256,9 +259,15 @@ export function getNeighborMap(dimen) {
   return maps[dimen];
 }
 
+let _instruct = false;
+
 export class GridVert extends Vector3 {
-  constructor(index = 0, loopEid = -1, eid=-1) {
+  constructor(index = 0, loopEid = -1, eid = -1) {
+    _instruct = true;
     super();
+    _instruct = false;
+
+    //this.co = new Vector3();
 
     this.no = new Vector3();
     this.tan = new Vector3(); //not saved
@@ -287,42 +296,56 @@ export class GridVert extends Vector3 {
     this.bNext = this.bPrev = undefined; //boundary next/prev
   }
 
-  static getMemSize(p) {
-    let tot = 21*8;
+  get co() {
+    return this;
+  }
 
-    tot += 4*3*8 + 2*8;
-    if (p) {
-      tot += p.neighbors.length*8 + p.bRingSet.size*8;
+  set co(c) {
+    this[0] = c[0];
+    this[1] = c[1];
+    this[2] = c[2];
+
+    if (!_instruct) {
+      console.warn("this.co set");
+    }
+  }
+  /*
+  get 0() {
+    //throw new Error("gridvert access");
+    if (!this.co) return;
+    return this.co[0];
+  }
+  set 0(f) {
+    if (!_instruct) {
+     // throw new Error("gridvert access");
     }
 
-    return tot;
+    if (!this.co) return;
+    this.co[0] = f;
   }
-
-  startTan() {
-    this.tot = 0;
-    this.tan.zero();
-    this.bin.zero();
+  get 1() {
+    //throw new Error("gridvert access");
+    return this.co[1];
   }
-
-  tanMulFac(depth) {
-    let dimen = gridSides[depth]-1;
-
-    return Math.pow(2.0, depth);
+  set 1(f) {
+    if (!_instruct) {
+    //  throw new Error("gridvert access");
+    }
+    if (!this.co) return;
+    this.co[1] = f;
   }
-
-  finishTan() {
-    if (this.tot > 0) {
-      this.tan.mulScalar(1.0 / this.tot);
-      this.bin.mulScalar(1.0 / this.tot);
+  get 2() {
+    //throw new Error("gridvert access");
+    return this.co[2];
+  }
+  set 2(f) {
+    if (!_instruct) {
+    //  throw new Error("gridvert access");
     }
 
-    //this.tan.normalize();
-    //this.bin.normalize();
-  }
-
-  addTan(ns, ni, pidx) {
-    //this.tot++;
-  }
+    if (!this.co) return;
+    this.co[2] = f;
+  } //*/
 
   get bRing() {
     return this.bRingSet;
@@ -348,7 +371,50 @@ export class GridVert extends Vector3 {
     })();
   }
 
+  static getMemSize(p) {
+    let tot = 21*8;
+
+    tot += 4*3*8 + 2*8;
+    if (p) {
+      tot += p.neighbors.length*8 + p.bRingSet.size*8;
+    }
+
+    return tot;
+  }
+
+  startTan() {
+    this.tot = 0;
+    this.tan.zero();
+    this.bin.zero();
+  }
+
+  tanMulFac(depth) {
+    let dimen = gridSides[depth] - 1;
+
+    return Math.pow(2.0, depth);
+  }
+
+  finishTan() {
+    if (this.tot > 0) {
+      this.tan.mulScalar(1.0/this.tot);
+      this.bin.mulScalar(1.0/this.tot);
+    }
+
+    //this.tan.normalize();
+    //this.bin.normalize();
+  }
+
+  addTan(ns, ni, pidx) {
+    //this.tot++;
+  }
+
   bRingInsert(v) {
+    if (!v) {
+      throw new Error("bRingInsert called with undefined v parameter");
+      console.warn("bRingInsert called in error");
+      return;
+    }
+
     this.bRingSet.add(v);
     v.bRingSet.add(this);
 
@@ -437,6 +503,7 @@ export class GridVert extends Vector3 {
     }
 
     super.load(b);
+    //this.co.load(b);
 
     if (!coOnly && b instanceof GridVert) {
       b.no.load(this.no);
@@ -458,16 +525,20 @@ export class GridVert extends Vector3 {
   }
 
   loadSTRUCT(reader) {
+    _instruct = true;
     reader(this);
+    _instruct = false;
+
     super.loadSTRUCT(reader);
 
     this.no = new Vector3(this.no);
-    this.no.mulScalar(1.0 / 32765);
+    this.no.mulScalar(1.0/32765);
   }
 }
 
 GridVert.STRUCT = nstructjs.inherit(GridVert, Vector3, "mesh.GridVert") + `
   no         : array(short) | this._saveShortNormal();
+  co         : vec3;
   flag       : int;
   eid        : int;
 }`;
@@ -478,7 +549,7 @@ export function genGridDimens(depth = 32) {
   let ret = [2];
 
   for (let i = 0; i < depth; i++) {
-    dimen = (dimen - 1) * 2 + 1;
+    dimen = (dimen - 1)*2 + 1;
     ret.push(dimen);
   }
 
@@ -509,6 +580,170 @@ export class GridBase extends CustomDataElem {
 
     this.needsSubSurf = false;
     this.subsurf = undefined; //subsurf patch
+  }
+
+  static updateSubSurf(mesh, cd_grid, check_coords = false) {
+    if (!this.define().needsSubSurf) {
+      return;
+    }
+
+    let mres = mesh.loops.customData.flatlist[cd_grid].getTypeSettings();
+    let key = "" + mesh.eidgen._cur;
+
+    key += ":" + mesh.verts.length + ":" + mesh.edges.length + ":" + mesh.faces.length;
+
+    if (check_coords || !mres._last_coords_hash) {
+      let hash = new util.HashDigest();
+      for (let v of mesh.verts) {
+        hash.add(v[0]);
+        hash.add(v[1]);
+        hash.add(v[2]);
+      }
+
+      hash = "" + hash.get();
+      mres._last_coords_hash = hash;
+
+    }
+
+    key += ":" + mres._last_coords_hash;
+
+    if (key !== mres._last_subsurf_key) {
+      mres._last_subsurf_key = key;
+      console.error("Subsurf update!", key);
+
+      this.recalcSubSurf(mesh, cd_grid);
+    }
+  }
+
+  static recalcSubSurf(mesh, cd_grid) {
+    let builder = new PatchBuilder(mesh, cd_grid);
+    builder.build();
+
+    for (let l of mesh.loops) {
+      let grid = l.customData[cd_grid];
+      grid.subsurf = builder.patches.get(l);
+    }
+  }
+
+  static patchUVLayerName(mesh, cd_grid) {
+    return "_" + cd_grid + "_patch_uv";
+  }
+
+  static hasPatchUVLayer(mesh, cd_grid) {
+    return mesh.loops.customData.hasNamedLayer(this.patchUVLayerName(mesh, cd_grid), "uv");
+  }
+
+  static getPatchUVLayer(mesh, cd_grid) {
+    let name = this.patchUVLayerName(mesh, cd_grid);
+
+    if (mesh.loops.customData.hasNamedLayer(name), "uv") {
+      return mesh.loops.customData.getNamedLayer(name, "uv").index;
+    }
+
+    let layer = mesh.loops.addCustomDataLayer("uv", name);
+    layer.flag |= CDFlags.TEMPORARY;
+
+    let cd_uv = layer.index;
+    for (let l of mesh.loops) {
+      let grid = l.customData[cd_grid];
+
+      grid.initPatchUVLayer(mesh, l, cd_grid, cd_uv);
+    }
+  }
+
+  static isGridClass(cls) {
+    //return new cls() instanceof GridBase;
+    let p = cls;
+
+    while (p && p !== Object) {
+      if (p === GridBase) {
+        return true;
+      }
+      p = p.__proto__;
+    }
+
+    return false;
+  }
+
+  static syncVertexLayers(mesh) {
+    if (this.meshGridOffset(mesh) < 0) {
+      return; //no grid data
+    }
+
+    let validtypes = new Set(["normal", "color"]);
+
+    for (let layer of mesh.verts.customData.flatlist) {
+      if (!validtypes.has(layer.typeName)) {
+        continue;
+      }
+
+      let name2 = "_v_" + layer.name;
+      if (!mesh.loops.customData.hasNamedLayer(name2, layer.typeName)) {
+        console.log("Adding grid data layer", name2);
+        mesh.loops.addCustomDataLayer(layer.typeName, name2);
+      }
+
+      let layer2 = mesh.loops.customData.getNamedLayer(name2, layer.typeName);
+      if (layer === mesh.verts.customData.getActiveLayer(layer.typeName)) {
+        mesh.loops.customData.setActiveLayer(layer2.index);
+      }
+    }
+  }
+
+  static meshGridOffset(mesh) {
+    let i = 0;
+
+    for (let layer of mesh.loops.customData.flatlist) {
+      let cls = CustomDataElem.getTypeClass(layer.typeName);
+
+      if (GridBase.isGridClass(cls)) {
+        return i;
+      }
+
+      i++;
+    }
+
+    return -1;
+  }
+
+  static calcCDLayout(mesh) {
+    let cdlayers = [];
+    let i = 0;
+
+    for (let layer of mesh.loops.customData.flatlist) {
+      let cls = CustomDataElem.getTypeClass(layer.typeName);
+      let ok = cls;
+
+      ok = ok && !(GridBase.isGridClass(cls));
+
+      if (ok) {
+        cdlayers.push([i, cls]);
+      }
+
+      i++;
+    }
+
+    return cdlayers;
+  }
+
+  static initMesh(mesh, dimen, cd_grid = mesh.loop.customData.getLayerIndex(this)) {
+    if (cd_grid === -1) {
+      mesh.loops.addCustomDataLayer(this, this.define().typeName);
+      cd_grid = mesh.loops.customData.getLayerIndex(this);
+    }
+
+    //static updateSubSurf(mesh, cd_grid, check_coords=false) {
+
+    this.updateSubSurf(mesh, cd_grid, true);
+
+    for (let l of mesh.loops) {
+      let grid = l.customData[cd_grid];
+
+      grid.init(dimen, mesh, l, cd_grid);
+    }
+
+    mesh.regenRender();
+    mesh.regenElementsDraw();
   }
 
   regenEIDMap() {
@@ -553,7 +788,7 @@ export class GridBase extends CustomDataElem {
     return tot;
   }
 
-  copyTo(b, copyPointEids=false) {
+  copyTo(b, copyPointEids = false) {
     if (!copyPointEids) {
       this.recalcFlag |= QRecalcFlags.REGEN_IDS;
     }
@@ -575,50 +810,7 @@ export class GridBase extends CustomDataElem {
     console.warn(this.constructor.name + ".prototype.subdivideAll(): implement me!");
   }
 
-  static updateSubSurf(mesh, cd_grid, check_coords=false) {
-    if (!this.define().needsSubSurf) {
-      return;
-    }
-
-    let mres = mesh.loops.customData.flatlist[cd_grid].getTypeSettings();
-    let key = "" + mesh.eidgen._cur;
-
-    key += ":" + mesh.verts.length + ":" + mesh.edges.length + ":" + mesh.faces.length;
-
-    if (check_coords || !mres._last_coords_hash) {
-      let hash = new util.HashDigest();
-      for (let v of mesh.verts) {
-        hash.add(v[0]);
-        hash.add(v[1]);
-        hash.add(v[2]);
-      }
-
-      hash = "" + hash.get();
-      mres._last_coords_hash = hash;
-
-    }
-
-    key += ":" + mres._last_coords_hash;
-
-    if (key !== mres._last_subsurf_key) {
-      mres._last_subsurf_key = key;
-      console.error("Subsurf update!", key);
-
-      this.recalcSubSurf(mesh, cd_grid);
-    }
-  }
-
-  static recalcSubSurf(mesh, cd_grid) {
-    let builder = new PatchBuilder(mesh, cd_grid);
-    builder.build();
-
-    for (let l of mesh.loops) {
-      let grid = l.customData[cd_grid];
-      grid.subsurf = builder.patches.get(l);
-    }
-  }
-
-  tangentToGlobal(depthLimit, inverse=false) {
+  tangentToGlobal(depthLimit, inverse = false) {
 
   }
 
@@ -626,48 +818,8 @@ export class GridBase extends CustomDataElem {
     return this.tangentToGlobal(depthLimit, true);
   }
 
-  static patchUVLayerName(mesh, cd_grid) {
-    return "_" + cd_grid + "_patch_uv";
-  }
-
-  static hasPatchUVLayer(mesh, cd_grid) {
-    return mesh.loops.customData.hasNamedLayer(this.patchUVLayerName(mesh, cd_grid), "uv");
-  }
-
-  static getPatchUVLayer(mesh, cd_grid) {
-    let name = this.patchUVLayerName(mesh, cd_grid);
-
-    if (mesh.loops.customData.hasNamedLayer(name), "uv") {
-      return mesh.loops.customData.getNamedLayer(name, "uv").index;
-    }
-
-    let layer = mesh.loops.addCustomDataLayer("uv", name);
-    layer.flag |= CDFlags.TEMPORARY;
-
-    let cd_uv = layer.index;
-    for (let l of mesh.loops) {
-      let grid = l.customData[cd_grid];
-
-      grid.initPatchUVLayer(mesh, l, cd_grid, cd_uv);
-    }
-  }
-
   initPatchUVLayer(mesh, l, cd_grid, cd_uv) {
     console.warn("initPatchUVLayer: implement me!");
-  }
-
-  static isGridClass(cls) {
-    //return new cls() instanceof GridBase;
-    let p = cls;
-
-    while (p && p !== Object) {
-      if (p === GridBase) {
-        return true;
-      }
-      p = p.__proto__;
-    }
-
-    return false;
   }
 
   recalcPointIndices() {
@@ -682,7 +834,6 @@ export class GridBase extends CustomDataElem {
 
     return this;
   }
-
 
   recalcNormals(mesh, l, cd_grid) {
     throw new Error("implement me");
@@ -731,6 +882,10 @@ export class GridBase extends CustomDataElem {
     this.recalcFlag |= QRecalcFlags.NORMALS;
   }
 
+  flagFixNeighbors() {
+    this.recalcFlag |= QRecalcFlags.FIX_NEIGHBORS | QRecalcFlags.NEIGHBORS;
+  }
+
   update(mesh, loop, cd_grid) {
     this.constructor.updateSubSurf(mesh, cd_grid);
 
@@ -759,55 +914,18 @@ export class GridBase extends CustomDataElem {
       this.recalcNeighbors(mesh, loop, cd_grid);
     }
 
+    if (this.recalcFlag & QRecalcFlags.FIX_NEIGHBORS) {
+      this.fixNeighbors(mesh, loop, cd_grid);
+    }
+
     if (this.recalcFlag & QRecalcFlags.NORMALS) {
       this.recalcFlag &= ~QRecalcFlags.NORMALS;
       this.recalcNormals(mesh, loop, cd_grid);
     }
   }
 
-  static syncVertexLayers(mesh) {
-    if (this.meshGridOffset(mesh) < 0) {
-      return; //no grid data
-    }
-
-    let validtypes = new Set(["normal", "color"]);
-
-    for (let layer of mesh.verts.customData.flatlist) {
-      if (!validtypes.has(layer.typeName)) {
-        continue;
-      }
-
-      let name2 = "_v_" + layer.name;
-      if (!mesh.loops.customData.hasNamedLayer(name2, layer.typeName)) {
-        console.log("Adding grid data layer", name2);
-        mesh.loops.addCustomDataLayer(layer.typeName, name2);
-      }
-
-      let layer2 = mesh.loops.customData.getNamedLayer(name2, layer.typeName);
-      if (layer === mesh.verts.customData.getActiveLayer(layer.typeName)) {
-        mesh.loops.customData.setActiveLayer(layer2.index);
-      }
-    }
-  }
-
-  static meshGridOffset(mesh) {
-    let i = 0;
-
-    for (let layer of mesh.loops.customData.flatlist) {
-      let cls = CustomDataElem.getTypeClass(layer.typeName);
-
-      if (GridBase.isGridClass(cls)) {
-        return i;
-      }
-
-      i++;
-    }
-
-    return -1;
-  }
-
   /** loop is allowed to be undefined, if not is used to init point positions */
-  init(dimen, mesh, loop = undefined) {
+  init(dimen, mesh, loop = undefined, cd_grid) {
     throw new Error("implement me");
   }
 
@@ -880,7 +998,7 @@ export class GridBase extends CustomDataElem {
     this.copyTo(b);
   }
 
-  copyTo(b, copy_eids=false) {
+  copyTo(b, copy_eids = false) {
     let totpoint = this.points.length;
 
     if (b.points.length === 0) {
@@ -966,48 +1084,33 @@ export class GridBase extends CustomDataElem {
     throw new Error("implement me");
   }
 
+  fixNeighbors(mesh, loop, cd_grid) {
+    this.recalcFlag &= ~QRecalcFlags.FIX_NEIGHBORS;
+
+    for (let p1 of this.points) {
+      for (let p2 of p1.neighbors) {
+        let ok = false;
+
+        for (let p3 of p2.neighbors) {
+          if (p3 === p1) {
+            ok = true;
+            break;
+          }
+        }
+
+        if (!ok) {
+          if (p2.neighbors instanceof Set) {
+            p2.neighbors.add(p1);
+          } else {
+            p2.neighbors.push(p1);
+          }
+        }
+      }
+    }
+  }
+
   recalcNeighbors(mesh, loop, cd_grid) {
     throw new Error("implement me");
-  }
-
-  static calcCDLayout(mesh) {
-    let cdlayers = [];
-    let i = 0;
-
-    for (let layer of mesh.loops.customData.flatlist) {
-      let cls = CustomDataElem.getTypeClass(layer.typeName);
-      let ok = cls;
-
-      ok = ok && !(GridBase.isGridClass(cls));
-
-      if (ok) {
-        cdlayers.push([i, cls]);
-      }
-
-      i++;
-    }
-
-    return cdlayers;
-  }
-
-  static initMesh(mesh, dimen, cd_grid = mesh.loop.customData.getLayerIndex(this)) {
-    if (cd_grid === -1) {
-      mesh.loops.addCustomDataLayer(this, this.define().typeName);
-      cd_grid = mesh.loops.customData.getLayerIndex(this);
-    }
-
-    //static updateSubSurf(mesh, cd_grid, check_coords=false) {
-
-    this.updateSubSurf(mesh, cd_grid, true);
-
-    for (let l of mesh.loops) {
-      let grid = l.customData[cd_grid];
-
-      grid.init(dimen, mesh, l);
-    }
-
-    mesh.regenRender();
-    mesh.regenElementsDraw();
   }
 
   checkCustomDataLayout(mesh) {
@@ -1128,7 +1231,7 @@ export class GridBase extends CustomDataElem {
     super.loadSTRUCT(reader);
 
     let ps = this.points;
-    for (let i=0; i<ps.length; i++) {
+    for (let i = 0; i < ps.length; i++) {
       ps[i].index = i;
       ps[i].index2 = i;
     }
@@ -1198,11 +1301,24 @@ export class Grid extends GridBase {
     this.dimen = gridSides[2];
   }
 
+  static define() {
+    return {
+      elemTypeMask : MeshTypes.LOOP, //see MeshTypes in mesh.js
+      typeName     : "grid",
+      uiTypeName   : "Grid",
+      defaultName  : "grid",
+      settingsClass: GridSettings,
+      //needsSubSurf : true,
+      valueSize    : undefined,
+      flag         : 0
+    }
+  };
+
   applyBase(mesh, l, cd_grid) {
     let dimen = this.dimen;
     let x = dimen - 1, y = dimen - 1;
 
-    let idx = y * dimen + x;
+    let idx = y*dimen + x;
     l.v.load(this.points[idx]);
   }
 
@@ -1220,12 +1336,12 @@ export class Grid extends GridBase {
     return ret;
   }
 
-  init(dimen, mesh, loop) {
+  init(dimen, mesh, loop, cd_grid) {
     if (dimen !== this.dimen) {
       this.points.length = 0;
       this.dimen = dimen;
     }
-    let totpoint = dimen * dimen;
+    let totpoint = dimen*dimen;
 
     if (loop !== undefined) {
       if (this.points.length === 0) {
@@ -1240,11 +1356,11 @@ export class Grid extends GridBase {
       let b = new Vector3();
 
       for (let iu = 0; iu < dimen; iu++) {
-        let u = (iu) / (dimen - 1);
+        let u = (iu)/(dimen - 1);
 
         for (let iv = 0; iv < dimen; iv++) {
-          let v = (iv) / (dimen - 1);
-          let idx = iv * dimen + iu;
+          let v = (iv)/(dimen - 1);
+          let idx = iv*dimen + iu;
 
           let p = this.points[idx];
 
@@ -1267,19 +1383,6 @@ export class Grid extends GridBase {
     return this;
   }
 
-  static define() {
-    return {
-      elemTypeMask: MeshTypes.LOOP, //see MeshTypes in mesh.js
-      typeName: "grid",
-      uiTypeName: "Grid",
-      defaultName: "grid",
-      settingsClass: GridSettings,
-      //needsSubSurf : true,
-      valueSize: undefined,
-      flag: 0
-    }
-  };
-
   _ensure(mesh, loop, cd_grid) {
     if (this.points.length === 0) {
       //try to get grid dimen
@@ -1291,7 +1394,7 @@ export class Grid extends GridBase {
         }
       }
 
-      this.init(this.dimen, mesh, loop);
+      this.init(this.dimen, mesh, loop, cd_grid);
 
       let layeri = 0;
 
@@ -1326,26 +1429,26 @@ export class Grid extends GridBase {
     let uvs = have_uvs ? this.customDatas[this.cdmap[cd_uv]] : undefined;
     let eid = loop.f.eid;
 
-    let id = loop.eid * dimen * dimen * 2;
+    let id = loop.eid*dimen*dimen*2;
 
     let n = new Vector3();
 
-    let dt = 1.0 / (dimen - 1);
+    let dt = 1.0/(dimen - 1);
 
     for (let x = 0; x < dimen - 1; x++) {
       for (let y = 0; y < dimen - 1; y++) {
-        let u = x / (dimen-1) + dt*0.5;
-        let v = y / (dimen-1) + dt*0.5;
+        let u = x/(dimen - 1) + dt*0.5;
+        let v = y/(dimen - 1) + dt*0.5;
 
-        let i1 = y * dimen + x;
-        let i2 = ((y + 1) * dimen + x);
-        let i3 = ((y + 1) * dimen + x + 1);
-        let i4 = (y * dimen + x + 1);
+        let i1 = y*dimen + x;
+        let i2 = ((y + 1)*dimen + x);
+        let i3 = ((y + 1)*dimen + x + 1);
+        let i4 = (y*dimen + x + 1);
 
         let tri;
 
         if (chunkmode) {
-          tri = smesh.tri(id + i1 * 2, ps[i1], ps[i2], ps[i3], ps[i4]);
+          tri = smesh.tri(id + i1*2, ps[i1], ps[i2], ps[i3], ps[i4]);
         } else {
           tri = smesh.tri(ps[i1], ps[i2], ps[i3], ps[i4]);
         }
@@ -1368,7 +1471,7 @@ export class Grid extends GridBase {
 
         //*
         if (chunkmode) {
-          tri = smesh.tri(id + i1 * 2 + 1, ps[i1], ps[i3], ps[i4]);
+          tri = smesh.tri(id + i1*2 + 1, ps[i1], ps[i3], ps[i4]);
         } else {
           tri = smesh.tri(ps[i1], ps[i3], ps[i4]);
         }
@@ -1396,10 +1499,10 @@ export class Grid extends GridBase {
 
     for (let x = 0; x < dimen - 1; x++) {
       for (let y = 0; y < dimen - 1; y++) {
-        let i1 = y * dimen + x;
-        let i2 = ((y + 1) * dimen + x);
-        let i3 = ((y + 1) * dimen + x + 1);
-        let i4 = (y * dimen + x + 1);
+        let i1 = y*dimen + x;
+        let i2 = ((y + 1)*dimen + x);
+        let i3 = ((y + 1)*dimen + x + 1);
+        let i4 = (y*dimen + x + 1);
 
         let p1 = ps[i1];
         let p2 = ps[i2];
@@ -1414,11 +1517,11 @@ export class Grid extends GridBase {
         let dy2 = p3[1] - p1[1];
         let dz2 = p3[2] - p1[2];
 
-        let nx = dy1 * dz2 - dz1 * dy2;
-        let ny = dz1 * dx2 - dx1 * dz2;
-        let nz = dx1 * dy2 - dy1 * dx2;
+        let nx = dy1*dz2 - dz1*dy2;
+        let ny = dz1*dx2 - dx1*dz2;
+        let nz = dx1*dy2 - dy1*dx2;
 
-        let l = Math.sqrt(nx * nx + ny * ny + nz * nz);
+        let l = Math.sqrt(nx*nx + ny*ny + nz*nz);
         if (l > 0.0001) {
           nx /= l;
           ny /= l;
@@ -1466,10 +1569,10 @@ export class Grid extends GridBase {
     let lpr = l.prev.radial_next, lnr = l.next.radial_next;
 
     let lmap = {
-      [NeighborKeys.L]: l,
-      [NeighborKeys.LP]: lp,
-      [NeighborKeys.LN]: ln,
-      [NeighborKeys.LR]: lr,
+      [NeighborKeys.L]  : l,
+      [NeighborKeys.LP] : lp,
+      [NeighborKeys.LN] : ln,
+      [NeighborKeys.LR] : lr,
       [NeighborKeys.LRP]: lrp,
       [NeighborKeys.LRN]: lrn,
       [NeighborKeys.LPR]: lpr,
@@ -1488,8 +1591,8 @@ export class Grid extends GridBase {
 
         let ps2 = l2.customData[cd_grid].points;
 
-        let i1 = y1 * dimen + x1;
-        let i2 = y2 * dimen + x2;
+        let i1 = y1*dimen + x1;
+        let i2 = y2*dimen + x2;
 
         if (!ps2 || !ps2[i2]) {
           continue;
@@ -1513,25 +1616,25 @@ export class Grid extends GridBase {
 
     for (let i = 0; i < dimen; i++) {
       for (let j = 0; j < dimen; j++) {
-        let i1 = j * dimen + i;
+        let i1 = j*dimen + i;
 
         if (j < dimen - 1) {
-          let i2 = (j + 1) * dimen + i;
+          let i2 = (j + 1)*dimen + i;
           ps[i1].neighbors.push(ps[i2]);
         }
 
         if (j > 0) {
-          let i3 = (j - 1) * dimen + i;
+          let i3 = (j - 1)*dimen + i;
           ps[i1].neighbors.push(ps[i3]);
         }
 
         if (i < dimen - 1) {
-          let i4 = j * dimen + i + 1;
+          let i4 = j*dimen + i + 1;
           ps[i1].neighbors.push(ps[i4]);
         }
 
         if (i > 0) {
-          let i5 = j * dimen + i - 1;
+          let i5 = j*dimen + i - 1;
           ps[i1].neighbors.push(ps[i5]);
         }
       }
@@ -1547,7 +1650,7 @@ export class Grid extends GridBase {
 
     let dimen = this.dimen;
 
-    let id = loop.eid * ((this.dimen + 1) * (this.dimen + 1)) * 2;//+4*this.dimen)*2;
+    let id = loop.eid*((this.dimen + 1)*(this.dimen + 1))*2;//+4*this.dimen)*2;
 
     let feid = loop.f.eid;
     let ps = this.points;
@@ -1561,10 +1664,10 @@ export class Grid extends GridBase {
     let lpr = l.prev.radial_next, lnr = l.next.radial_next;
 
     let lmap = {
-      [NeighborKeys.L]: l,
-      [NeighborKeys.LP]: lp,
-      [NeighborKeys.LN]: ln,
-      [NeighborKeys.LR]: lr,
+      [NeighborKeys.L]  : l,
+      [NeighborKeys.LP] : lp,
+      [NeighborKeys.LN] : ln,
+      [NeighborKeys.LR] : lr,
       [NeighborKeys.LRP]: lrp,
       [NeighborKeys.LRN]: lrn,
       [NeighborKeys.LPR]: lpr,
@@ -1580,7 +1683,7 @@ export class Grid extends GridBase {
         {l1: NeighborKeys.L, l2: NeighborKeys.LPR}
       ];
 
-      id += dimen * dimen * 2;
+      id += dimen*dimen*2;
       let ci = 0;
 
       for (let c of cases) {
@@ -1592,14 +1695,14 @@ export class Grid extends GridBase {
           let ps2 = l2.customData[cd_grid].points;
 
           let ret = map.resolve(i, l1, l2, c.l1, c.l2);
-          let i1 = ret.y1 * dimen + ret.x1;
-          let i2 = ret.y2 * dimen + ret.x2;
+          let i1 = ret.y1*dimen + ret.x1;
+          let i2 = ret.y2*dimen + ret.x2;
 
           ret = map.resolve(i + 1, l1, l2, c.l1, c.l2);
-          let i3 = ret.y1 * dimen + ret.x1;
-          let i4 = ret.y2 * dimen + ret.x2;
+          let i3 = ret.y1*dimen + ret.x1;
+          let i4 = ret.y2*dimen + ret.x2;
 
-          let id2 = id + i * 2;
+          let id2 = id + i*2;
 
           //id2 = Math.random();
 
@@ -1645,7 +1748,7 @@ export class Grid extends GridBase {
           }
         }
 
-        id += dimen * 2;
+        id += dimen*2;
         ci++;
       }
 
@@ -1654,18 +1757,18 @@ export class Grid extends GridBase {
 
     //return;
 
-    let rilen = (dimen - 1) * (dimen - 1);
+    let rilen = (dimen - 1)*(dimen - 1);
 
     for (let ri = 0; ri < rilen; ri++) {
-      let x = ri % (dimen - 1);
-      let y = ~~(ri / (dimen - 1));
+      let x = ri%(dimen - 1);
+      let y = ~~(ri/(dimen - 1));
 
-      let i1 = y * dimen + x;
-      let i2 = ((y + 1) * dimen + x);
-      let i3 = ((y + 1) * dimen + x + 1);
-      let i4 = (y * dimen + x + 1);
+      let i1 = y*dimen + x;
+      let i2 = ((y + 1)*dimen + x);
+      let i3 = ((y + 1)*dimen + x + 1);
+      let i4 = (y*dimen + x + 1);
 
-      let id2 = id + i1 * 2;
+      let id2 = id + i1*2;
 
       //id2 = Math.random();
 

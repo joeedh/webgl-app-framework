@@ -26,6 +26,7 @@ import {DefaultMat, Material} from '../core/material.js';
 import {saveUndoMesh, loadUndoMesh} from './mesh_ops_base.js';
 import {css2matrix} from '../path.ux/scripts/path-controller/util/cssutils.js';
 import {splitEdgesSmart2} from './mesh_subdivide.js';
+import {triangulateMesh} from './mesh_utils.js';
 
 export class MeshCreateOp extends MeshOp {
   constructor() {
@@ -778,7 +779,8 @@ export class CreateMeshGenOp extends ToolOp {
       uiname  : "Add Procedural",
       toolpath: "mesh.procedural_add",
       inputs  : {
-        type: new EnumProperty(0, GenTypes)
+        type: new EnumProperty(0, GenTypes),
+        setActive: new BoolProperty(true)
       },
       outputs : {
         objectId: new IntProperty(-1)
@@ -803,6 +805,11 @@ export class CreateMeshGenOp extends ToolOp {
     let scene = ctx.scene;
 
     scene.add(ob);
+    scene.objects.setSelect(ob, true);
+
+    if (this.inputs.setActive.getValue()) {
+      scene.objects.setActive(ob);
+    }
 
     this.outputs.objectId.setValue(ob.lib_id);
 
@@ -869,14 +876,20 @@ export class ProceduralToMesh extends ToolOp {
       uiname  : "Convert Procedural To Mesh",
       toolpath: "mesh.procedural_to_mesh",
       inputs  : {
-        objectId: new IntProperty()
+        objectId: new IntProperty(-1).private(),
+        triangulate: new BoolProperty(false)
       }
     }
   }
 
   exec(ctx) {
     let ob = this.inputs.objectId.getValue();
-    ob = ctx.datalib.get(ob);
+
+    if (ob === -1) {
+      ob = ctx.object;
+    } else {
+      ob = ctx.datalib.get(ob);
+    }
 
     if (!ob) {
       ctx.error("Object does not exist");
@@ -901,6 +914,12 @@ export class ProceduralToMesh extends ToolOp {
       ctx.datalib.add(mat);
     }
 
+    if (this.inputs.triangulate.getValue()) {
+      mesh.regenTesellation();
+      mesh.recalcNormals();
+      triangulateMesh(mesh);
+    }
+
     ob.data = mesh;
     mesh.materials.length = 0;
     mesh.materials.push(mat);
@@ -913,8 +932,6 @@ export class ProceduralToMesh extends ToolOp {
     mesh.regenElementsDraw();
     mesh.graphUpdate();
     ob.graphUpdate();
-
-
   }
 }
 

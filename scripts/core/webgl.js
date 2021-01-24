@@ -370,6 +370,10 @@ export class ShaderProgram {
       this.attrs.push(a);
     }
 
+    this.defines = {};
+    this._use_def_shaders = true;
+    this._def_shaders = {};
+
     this.multilayer_attrs = {};
 
     this.rebuild = 1;
@@ -542,6 +546,28 @@ v${attr} = ${attr};
 
     let vshader = this.vertexSource, fshader = this.fragmentSource;
 
+    if (!this._use_def_shaders) {
+      let defs = '';
+
+      for (let k in this.defines) {
+        let v = this.defines[k];
+
+        if (v === undefined || v === null || v === "") {
+          defs += `#define ${k}\n`;
+        } else {
+          defs += `#define ${k} ${v}\n`;
+        }
+      }
+
+      if (defs !== '') {
+        vshader = this.constructor.insertDefine(defs, vshader);
+        fshader = this.constructor.insertDefine(defs, fshader);
+
+        this._vertexSource = vshader;
+        this._fragmentSource = fshader;
+      }
+    }
+
     function loadShader(shaderType, code) {
       var shader = gl.createShader(shaderType);
 
@@ -703,6 +729,22 @@ v${attr} = ${attr};
     return this.attrlocs[name];
   }
 
+  calcDefKey() {
+    let key = "";
+
+    for (let k in this.defines) {
+      let v = this.defines[k];
+
+      key += k;
+
+      if (v !== null && v !== undefined && v !== "") {
+        key += ":" + v;
+      }
+    }
+
+    return key;
+  }
+
   bindMultiLayer(gl, uniforms, attrsizes) {
     let key = "";
     for (let k in attrsizes) {
@@ -710,10 +752,14 @@ v${attr} = ${attr};
     }
 
     if (key in this.multilayer_programs) {
-      return this.multilayer_programs[key].bind(gl);
+      let shader = this.multilayer_programs[key];
+      shader.defines = this.defines;
+
+      return shader.bind(gl);
     }
 
     let shader = this.copy();
+
     for (let k in attrsizes) {
       let i = attrsizes[k];
 
@@ -737,12 +783,28 @@ v${attr} = ${attr};
     let ret = new ShaderProgram(this.gl, this.vertexSource, this.fragmentSource, this.attrs);
 
     ret.uniforms = this.uniforms;
+    ret.defines = Object.assign({}, this.defines);
 
-    //ret.vertexSource
-    //ret.attrs
+    return ret;
   }
+
   bind(gl, uniforms) {
     this.gl = gl;
+
+    if (this._use_def_shaders) {
+      let key = this.calcDefKey();
+
+      if (key !== "") {
+        if (!(key in this._def_shaders)) {
+          let shader = this.copy();
+          shader._use_def_shaders = false;
+
+          this._def_shaders[key] = shader;
+        }
+
+        return this._def_shaders[key].bind(gl, uniforms);
+      }
+    }
 
     if (this.rebuild) {
       this.init(gl);
@@ -776,7 +838,7 @@ v${attr} = ${attr};
         var v = us[k];
         var loc = this.uniformloc(k)
 
-        if (loc == undefined) {
+        if (loc === undefined) {
           //stupid gl returns null if it optimized away the uniform,
           //so we must silently accept this
           //console.log("Warning, could not locate uniform", k, "in shader");

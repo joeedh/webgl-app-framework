@@ -661,20 +661,27 @@ void main() {
 
 
 export let SculptShaderSimple = {
-  vertex : `precision mediump float;
+  vertex : `#version 300 es
+  precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
 uniform mat4 normalMatrix;
 
-attribute vec3 position;
-attribute vec3 normal;
-attribute vec2 uv;
-attribute vec4 color;
+in vec3 position;
+in vec3 normal;
+in vec2 uv;
+in vec4 color;
 
-varying vec4 vColor;
-varying vec3 vNormal;
-varying vec2 vUv;
+out vec4 vColor;
+
+out vec3 vNormal;
+
+#ifdef DRAW_FLAT
+out vec3 vWorldCo;
+#endif
+
+out vec2 vUv;
 
 ${PolygonOffset.pre}
 
@@ -683,28 +690,45 @@ uniform vec2 size;
 
 void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
-  p = projectionMatrix * vec4(p.xyz, 1.0);
-  vec4 n = normalMatrix * vec4(normal, 0.0);
 
+#ifdef DRAW_FLAT
+  vWorldCo = p.xyz;
+#endif
+
+  p = projectionMatrix * vec4(p.xyz, 1.0);
+  //vec4 n = normalMatrix * vec4(normal, 0.0);
+  vec4 n = objectMatrix * vec4(normal, 0.0);
+  
+  n = projectionMatrix * n;
+  
   ${PolygonOffset.vertex("p", "near", "far", "size")}
   
   gl_Position = p;
   
   vUv = uv;
-  vNormal = n.xyz;
+  vNormal = normalize(n.xyz);
   vColor = color;
 }
 
   `,
 
-  fragment : `precision mediump float;
+  fragment : `#version 300 es
+precision mediump float;
 uniform float alpha;
 
-varying vec4 vColor;
-varying vec3 vNormal;
-varying vec2 vUv;
 
-uniform sampler2D texture;
+#ifdef DRAW_FLAT
+uniform mat4 projectionMatrix;
+in vec3 vWorldCo;
+#endif
+
+in vec4 vColor;
+in vec3 vNormal;
+in vec2 vUv;
+
+out vec4 fragColor;
+
+uniform sampler2D text;
 uniform float hasTexture;
 
 uniform vec4 uColor;
@@ -717,12 +741,25 @@ uniform vec2 size;
 void main() {
   float f;
   vec3 no = normalize(vNormal);
+    
+#ifdef DRAW_FLAT
+  {
+  vec3 n1 = dFdx(vWorldCo);
+  vec3 n2 = dFdy(vWorldCo);
   
-  f = no[1]*0.333 + no[2]*0.333 + no[0]*0.333;
+  no = cross(n1, n2);
+  no = (projectionMatrix * vec4(no, 0.0)).xyz;
+  no = normalize(no);
+  }
+#endif
+
+  vec3 l = vec3(0.096, -0.288, 0.96);
+  f = dot(no, l);
+
   f = f < 0.0 ? -f*0.5 : f;
   f = f*0.8 + 0.2;
 
-  vec4 tex = texture2D(texture, vUv);
+  vec4 tex = texture(text, vUv);
   tex += (vec4(1.0, 1.0, 1.0, 1.0) - tex) * (1.0 - hasTexture);
 
   vec4 c = vec4(f, f, f, 1.0)*uColor*vColor;
@@ -731,7 +768,7 @@ void main() {
 
   ${PolygonOffset.fragment}
   
-  gl_FragColor = c * tex;
+  fragColor = c * tex;
 }
   `,
 
@@ -771,8 +808,8 @@ uniform float pointSize;
 
 varying vec4 vColor;
 varying float vId;
-${PolygonOffset.pre}
 
+${PolygonOffset.pre}
 ${SmoothLine.pre}
 
 uniform float near, far, aspect;

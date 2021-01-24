@@ -825,6 +825,10 @@ export class HashDigest {
   }
 
   add(v) {
+    if (v >= -5 && v <= 5) {
+      v *= 32;
+    }
+
     //glibc linear congruel generator
     this.i = ((this.i + (~~v))*1103515245 + 12345) & ((1<<29) - 1);
     //according to wikipedia only the top 16 bits are random

@@ -61,7 +61,7 @@ export class DeleteObjectOp extends SceneObjectOp {
         console.log("Nuking object");
         let data = ob.data;
 
-        ctx.datalib.remove(ob);
+        ctx.datalib.remove(ob); //will call ob.destroy()
 
         if (data.lib_users <= 0) {
           console.log("Nuking object data too");

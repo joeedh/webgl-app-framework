@@ -1,25 +1,15 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
-import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
-import {ToolOp, ToolMacro, ToolFlags, UndoFlags, COLINEAR_ISECT} from '../path.ux/scripts/pathux.js';
-import {TranslateOp} from "../editors/view3d/transform/transform_ops.js";
 import {dist_to_line_2d, winding} from '../path.ux/scripts/util/math.js';
-import {CallbackNode, NodeFlags} from "../core/graph.js";
-import {DependSocket} from '../core/graphsockets.js';
 import * as util from '../util/util.js';
 import * as math from '../util/math.js';
 
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
 
-import {MeshFlags, MeshTypes, MeshFeatures, ReusableIter} from './mesh_base.js';
-import {MeshOp} from './mesh_ops_base.js';
-import {subdivide} from '../subsurf/subsurf_mesh.js';
-import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
-import {splitEdgesSmart} from "./mesh_subdivide.js";
-import {GridBase, Grid, gridSides} from "./mesh_grids.js";
-import {CustomDataElem} from "./customdata.js";
+import {MeshFlags, MeshTypes, MeshFeatures, ReusableIter, LogContext, ChangeFlags} from './mesh_base.js';
 
 import {getArrayTemp} from './mesh_base.js';
+import {applyTriangulation} from './mesh_tess.js';
 
 export function* walkFaceLoop(e) {
   let l = e.l;
@@ -79,12 +69,18 @@ export function* walkFaceLoop(e) {
 
 let _tritemp = new Array(3);
 
-export function triangulateMesh(mesh, faces = mesh.faces) {
+export function triangulateMesh(mesh, faces = mesh.faces, lctx) {
   let tri = _tritemp;
 
   if (!(faces instanceof Set)) {
     faces = new Set(faces);
   }
+
+  for (let f of faces) {
+    applyTriangulation(mesh, f, undefined, undefined, lctx);
+  }
+
+  return;
 
   let ret = [];
   let ltris = mesh.loopTris;
@@ -118,7 +114,7 @@ export function triangulateMesh(mesh, faces = mesh.faces) {
   return ret;
 }
 
-export function triangulateFan(mesh, f, newfaces=undefined) {
+export function triangulateFan(mesh, f, newfaces=undefined, lctx) {
   let startl = f.lists[0].l;
   let l = startl.next;
 
@@ -127,7 +123,7 @@ export function triangulateFan(mesh, f, newfaces=undefined) {
     let v2 = l.v;
     let v3 = l.next.v;
 
-    let tri = mesh.makeTri(v1, v2, v3);
+    let tri = mesh.makeTri(v1, v2, v3, lctx);
     let l2 = tri.lists[0].l;
 
     mesh.copyElemData(l2, startl);
@@ -136,13 +132,17 @@ export function triangulateFan(mesh, f, newfaces=undefined) {
     mesh.copyElemData(tri, f);
 
     if (newfaces !== undefined) {
-      newfaces.push(tri);
+      if (newfaces instanceof Set) {
+        newfaces.add(tri);
+      } else {
+        newfaces.push(tri);
+      }
     }
 
     l = l.next;
   } while (l !== startl.prev);
 
-  mesh.killFace(f);
+  mesh.killFace(f, lctx);
 }
 
 export function bisectMesh(mesh, faces, vec, offset = new Vector3()) {
@@ -843,7 +843,7 @@ export function symmetrizeMesh(mesh, faces, axis, sign, mergeThreshold = 0.0001)
 //export function rotateEdge(mesh, e) {
 //}
 
-export function flipLongTriangles(mesh, faces) {
+export function flipLongTriangles(mesh, faces, lctx) {
   let es = new Set();
   let faces2 = new Set();
 
@@ -874,6 +874,10 @@ export function flipLongTriangles(mesh, faces) {
   let deles = new Set();
 
   for (let e of es) {
+    if (e.eid < 0) {
+      continue;
+    }
+
     let l1 = e.l;
     let l2 = e.l.radial_next;
 
@@ -884,46 +888,56 @@ export function flipLongTriangles(mesh, faces) {
 
     ok = ok && w1 === w2;
     ok = ok && l1.prev.v.vectorDistanceSqr(l2.prev.v) < e.v1.vectorDistanceSqr(e.v2);
+    ok = ok && l1.prev.v !== l2.prev.v;
 
     if (ok) {
       es.delete(e);
 
-      let f1 = mesh.makeTri(l1.v, l2.prev.v, l1.prev.v);
-      let f2 = mesh.makeTri(l1.prev.v, l2.prev.v, l1.next.v);
+      let f1 = mesh.makeTri(l1.v, l2.prev.v, l1.prev.v, lctx, true);
+      let f2 = mesh.makeTri(l1.prev.v, l2.prev.v, l1.next.v, lctx, true);
 
-      let e2 = mesh.getEdge(l1.prev.v, l2.prev.v);
+      let e2 = mesh.ensureEdge(l1.prev.v, l2.prev.v, lctx);
 
-      mesh.copyElemData(f1, l1.f);
-      mesh.copyElemData(f2, l2.f);
       mesh.copyElemData(e2, e);
 
       deles.add(e);
 
-      let lb1 = f1.lists[0].l;
-      let lb2 = f2.lists[0].l;
+      if (f1) {
+        let lb1 = f1.lists[0].l;
+        mesh.copyElemData(f1, l1.f);
+        mesh.copyElemData(lb1, lb1);
+        mesh.copyElemData(lb1.next, l2.prev);
+        mesh.copyElemData(lb1.prev, l1.prev);
 
-      mesh.copyElemData(lb1, lb1);
-      mesh.copyElemData(lb1.next, l2.prev);
-      mesh.copyElemData(lb1.prev, l1.prev);
+        f1.calcNormal();
+      }
 
-      mesh.copyElemData(lb2, l1.prev);
-      mesh.copyElemData(lb2.next, l2.prev);
-      mesh.copyElemData(lb2.prev, l1.next);
+      if (f2) {
+        mesh.copyElemData(f2, l2.f);
+        let lb2 = f2.lists[0].l;
+        mesh.copyElemData(lb2, l1.prev);
+        mesh.copyElemData(lb2.next, l2.prev);
+        mesh.copyElemData(lb2.prev, l1.next);
+        f2.calcNormal();
+      }
 
-      f1.calcNormal();
-      f2.calcNormal();
-
-      e.v1.flag |= MeshFlags.UPDATE;
-      e.v2.flag |= MeshFlags.UPDATE;
-      mesh.killEdge(e);
+      if (e.eid >= 0) {
+        e.v1.flag |= MeshFlags.UPDATE;
+        e.v2.flag |= MeshFlags.UPDATE;
+        mesh.killEdge(e, lctx);
+      }
     }
   }
 
   for (let e of deles) {
+    if (e.eid < 0) {
+      continue;
+    }
+
     e.v1.flag |= MeshFlags.UPDATE;
     e.v2.flag |= MeshFlags.UPDATE;
 
-    mesh.killEdge(e);
+    mesh.killEdge(e, lctx);
   }
 
   console.log("done");
@@ -934,20 +948,37 @@ export const TriQuadFlags = {
   COLOR     : 2,
   SEAM      : 4,
   UVS       : 8,
+  MARK_ONLY : 16,
   DEFAULT   : 1 | 4
 };
 
-export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx) {
+export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, newfaces) {
   let es = new Set();
   let faces2 = new Set();
 
+  let mark_only = flag & TriQuadFlags.MARK_ONLY;
+  if (mark_only) {
+    flag &= ~TriQuadFlags.MARK_ONLY;
+  }
+
+  let eflag = MeshFlags.TEMP3;
+  let fflag = MeshFlags.TEMP3;
+  let quadflag = MeshFlags.QUAD_EDGE;
+
   for (let f of faces) {
+    f.flag &= ~fflag;
+
     let count = 0;
     for (let l of f.loops) {
       count++;
     }
 
     if (count !== 3 || f.lists.length > 1) {
+      if (mark_only) {
+        for (let l of f.loops) {
+          l.e.flag &= ~quadflag;
+        }
+      }
       continue;
     }
 
@@ -957,6 +988,17 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx) {
 
   for (let f of faces) {
     for (let l of f.loops) {
+      if (mark_only) {
+        //save last quadflag state in eflag
+        if (l.e.flag & quadflag) {
+          l.e.flag |= eflag;
+        } else {
+          l.e.flag &= ~eflag;
+        }
+
+        l.e.flag &= ~quadflag;
+      }
+
       if (l.radial_next !== l && faces.has(l.radial_next.f)) {
         es.add(l.e);
       }
@@ -973,10 +1015,28 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx) {
   let t3 = new Vector3();
 
   let dot3 = (v1, v2, v3) => {
-    t1.load(v1).sub(v2).normalize();
-    t2.load(v3).sub(v2).normalize();
+    let dx1 = v1[0]-v2[0], dy1 = v1[1]-v2[1], dz1=v1[2]-v2[2];
+    let dx2 = v3[0]-v2[0], dy2 = v3[1]-v2[1], dz2=v3[2]-v2[2];
 
-    return t1.dot(t2);
+    let l1 = Math.sqrt(dx1*dx1 + dy1*dy1 * dz1*dz1);
+    let l2 = Math.sqrt(dx2*dx2 + dy2*dy2 + dz2*dz2);
+
+    if (l1 > 0.00001) {
+      l1 = 1.0 / l1;
+      dx1 *= l1;
+      dy1 *= l1;
+      dz1 *= l1;
+    }
+
+    if (l2 > 0.00001) {
+      l2 = 1.0 / l2;
+      dx2 *= l2;
+      dy2 *= l2;
+      dz2 *= l2;
+    }
+
+    let f = dx1*dx2 + dy1*dy2 + dz1*dz2;
+    return Math.abs(f);
   }
 
   let errorNiceQuad = (e, v1, v2, v3, v4) => {
@@ -985,7 +1045,20 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx) {
     let th3 = dot3(v2, v3, v4);
     let th4 = dot3(v3, v4, v1);
 
-    return th1**2 + th2**2 + th3**2 + th4**2;
+    //t1.load(v1.no).add(v3.no).normalize();
+    //t2.load(v2.no).add(v4.no).normalize();
+
+    let f = (th1 + th2 + th3 + th4)*0.25;
+
+    //let th = t1.dot(t2);
+    //f += th*35.0;
+    //return th*10.0+f;
+
+    //return Math.abs(th);
+
+    //f += Math.abs(th)*0.25;
+
+    return f;
   }
 
   if ((flag & TriQuadFlags.UVS) && !have_uv) {
@@ -1058,7 +1131,7 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx) {
     edges.push(i++);
   }
 
-  let ETOT = 5;
+  let ETOT = 6;
 
   let edata = [];
   for (let e of es) {
@@ -1066,29 +1139,31 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx) {
 
     let l4 = la.prev, l3 = la.next, l2 = lb.prev, l1 = la;
 
+    let a = edata.length;
+
     edata.push(e);
     edata.push(l1);
     edata.push(l2);
     edata.push(l3);
     edata.push(l4);
+
+    let w = error(e, edata[a+1].v, edata[a+2].v, edata[a+3].v, edata[a+4].v);
+    edata.push(w);
   }
 
-  let ed = edata;
   edges.sort((a, b) => {
     a *= ETOT;
     b *= ETOT;
-    let e1 = ed[a]
-    let e2 = ed[b];
 
-    let w1 = error(e1, ed[a+1].v, ed[a+2].v, ed[a+3].v, ed[a+4].v);
-    let w2 = error(e2, ed[b+1].v, ed[b+2].v, ed[b+3].v, ed[b+4].v);
+    let w1 = edata[a+5];
+    let w2 = edata[b+5];
 
-    //console.log(w1, w2);
     return w1 - w2;
   });
 
   let ws = [0.5, 0.5];
   let fs = [0, 0,];
+  const chflag = ChangeFlags.FLAG;
 
   for (let i of edges) {
     i *= ETOT;
@@ -1106,12 +1181,31 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx) {
     faces.delete(f1);
     faces.delete(f2);
 
+    if (mark_only) {
+      if (!(f1.flag & fflag) && !(f2.flag & fflag)) {
+        e.flag |= quadflag;
+
+        f1.flag |= fflag;
+        f2.flag |= fflag;
+
+        if (lctx && !!(e.flag & eflag) !== !!(e.flag & quadflag)) {
+          lctx.changeEdge(e, chflag);
+        }
+      }
+
+      continue;
+    }
+
     fs[0] = f1;
     fs[1] = f2;
 
     let f = mesh.makeQuad(l1.v, l2.v, l3.v, l4.v);
     if (!f) {
       continue;
+    }
+
+    if (newfaces) {
+      newfaces.add(f);
     }
 
     if (lctx) {
@@ -1132,7 +1226,7 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx) {
   }
 }
 
-export function recalcWindings(mesh, faces=mesh.faces) {
+export function recalcWindings(mesh, faces=mesh.faces, lctx) {
   faces = new Set(faces);
 
   let shells = [];
@@ -1485,8 +1579,6 @@ export function fixManifold(mesh, lctx) {
 
     for (let i=0; i<count-2; i++) {
       for (let l of e.loops) {
-        console.log(l.f.index);
-
         if (minl === undefined || l.f.index < minw) {
           minl = l;
           minw = l.f.index;
@@ -1979,6 +2071,27 @@ export function buildCotanVerts(mesh, verts) {
   return {vertexData : vdata, allVerts : vs};
 }
 
+export function buildCotanMap(mesh, verts) {
+  let map = new Map();
+
+  let vs = new Set(verts);
+
+  for (let v of verts) {
+    for (let v2 of v.neighbors) {
+      vs.add(v2);
+    }
+  }
+
+  for (let v of vs) {
+    let list = getCotanData(v);
+    list = list.slice(0, list.length);
+    map.set(v, list);
+  }
+
+  map.recordSize = VETOT;
+  return map;
+}
+
 let cvtmp1 = new Vector3();
 let cvtmp2 = new Vector3();
 let cvtmp3 = new Vector3();
@@ -2098,3 +2211,226 @@ export function cotanVertexSmooth(mesh, verts=mesh.verts, fac=0.5, proj=0.0) {
     }
   }
 }
+
+let quad_lctx = new LogContext();
+
+export function quadrilateFaces(mesh, faces, quadflag=TriQuadFlags.DEFAULT, lctx) {
+  faces = ReusableIter.getSafeIter(faces);
+
+  let flag = MeshFlags.TEMP3;
+
+  for (let f of faces) {
+    f.flag &= ~flag;
+
+    if (!f.isQuad() && !f.isTri()) {
+      f.flag |= flag;
+    }
+  }
+
+  let oldnew;
+
+  if (lctx) {
+    oldnew = lctx.onnew;
+  } else {
+    lctx = quad_lctx.reset();
+  }
+
+  let newfaces;
+
+  lctx.onnew = function onnew(e) {
+    if (e.type === MeshTypes.FACE) {
+      if (!newfaces) {
+        newfaces = new Set();
+      }
+
+      newfaces.add(e);
+    }
+  }
+
+  for (let f of faces) {
+    if (f.eid < 0) {
+      continue;
+    }
+
+    applyTriangulation(mesh, f, undefined, undefined, lctx);
+  }
+
+  lctx.onnew = oldnew;
+
+  if (newfaces) {
+    for (let f of faces) {
+      if (f.eid >= 0) {
+        newfaces.add(f);
+      }
+    }
+
+    for (let f of newfaces) {
+      if (f.eid < 0) {
+        console.error("Eek!");
+        newfaces.delete(f);
+      }
+    }
+
+  } else {
+    newfaces = new Set();
+
+    for (let f of faces) {
+      if (f.eid >= 0) {
+        newfaces.add(f);
+      }
+    }
+  }
+
+  trianglesToQuads(mesh, newfaces, quadflag, lctx);
+}
+
+export function dissolveEdgeLoops(mesh, edges, quadrilate=false, lctx) {
+  let vs = new Set();
+  let fs;
+
+  if (quadrilate) {
+    fs = new Set();
+
+    for (let e of edges) {
+      for (let l of e.loops) {
+        fs.add(l.f);
+        l.v.flag |= MeshFlags.UPDATE;
+        l.e.flag |= MeshFlags.UPDATE;
+        l.f.flag |= MeshFlags.UPDATE;
+      }
+    }
+  }
+
+  edges = ReusableIter.getSafeIter(edges);
+
+  let flag1 = MeshFlags.TEMP2;
+
+  /*
+  for (let e of edges) {
+    for (let i=0; i<2; i++) {
+      let v = i ? e.v2 : e.v1;
+
+      for (let e2 of v.edges) {
+        e2.flag &= ~flag1;
+      }
+    }
+  }
+
+  for (let e of edges) {
+    e.flag |= flag1;
+  }*/
+
+  for (let e of edges) {
+    vs.add(e.v1);
+    vs.add(e.v2);
+  }
+
+  for (let e of edges) {
+    mesh.dissolveEdge(e, lctx);
+  }
+
+  for (let v of vs) {
+    if (v.valence === 2) {
+      mesh.joinTwoEdges(v, lctx);
+    } else if (v.valence === 0) {
+      mesh.killVertex(v, undefined, lctx);
+    }
+  }
+
+  if (quadrilate) {
+    fs = fs.filter(f => f.eid >= 0);
+
+    quadrilateFaces(mesh, fs, undefined, lctx);
+  }
+}
+
+export function getEdgeLoop(e) {
+  let startl = e.l;
+
+  if (!startl) {
+    return getArrayTemp(0);
+  }
+
+  if (startl.v.edges.length !== 4) {
+    startl = startl.radial_next;
+  }
+
+  let list = [];
+
+  let l = startl;
+  let _i = 0;
+  do {
+    //break;
+    if (_i++ > 1000000) {
+      console.warn("Infinite loop detected");
+      break;
+    }
+
+    if (l.v.edges.length !== 4) {
+      break;
+    }
+
+    list.push(l.e);
+
+    if (l.next.v.edges.length !== 4) {
+      break;
+    }
+
+    l = l.next;
+
+    if (l.radial_next.v === l.v) {
+      l = l.radial_next;
+    } else {
+      l = l.radial_next.next;
+    }
+  } while (l !== e.l);
+
+  list.reverse();
+
+  //now go backwards
+  l = startl;
+  do {
+    if (_i++ > 1000000) {
+      console.warn("Infinite loop detected");
+      break;
+    }
+
+    if (l !== startl) {
+      list.push(l.e);
+    }
+
+    if (l.v.edges.length !== 4) {
+      break;
+    }
+    l = l.prev;
+
+    if (l.radial_next.v === l.v) {
+      l = l.radial_next.next;
+    } else {
+      l = l.radial_next.prev;
+    }
+  } while (l !== e.l);
+
+  let flag = MeshFlags.TEMP1;
+
+  for (let e of list) {
+    e.flag &= ~flag;
+  }
+  let ei = 0;
+  for (let e of list) {
+    if (!(e.flag & flag)) {
+      list[ei++] = e;
+    }
+  }
+
+  if (ei !== list.length) {
+    list.length = ei;
+  }
+
+  if (list.length === 0) {
+    list.push(e);
+  }
+
+  return list;
+}
+
