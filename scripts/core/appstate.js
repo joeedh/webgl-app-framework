@@ -57,8 +57,12 @@ import {PropsEditor} from "../editors/properties/PropsEditor.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {Light} from "../light/light.js";
 import {GridBase} from '../mesh/mesh_grids.js';
+import {DefaultBrushes, DynTopoFlags, DynTopoOverrides, SculptBrush, SculptTools} from '../brush/brush.js';
+import {APP_VERSION} from './const.js';
 
 export function genDefaultFile(appstate, dont_load_startup=0) {
+  _appstate.saveHandle = undefined;
+
   if ((cconst.APP_KEY_NAME in localStorage) && !dont_load_startup) {
     let buf = localStorage[cconst.APP_KEY_NAME];
 
@@ -914,6 +918,55 @@ export class AppState {
           console.error("Building grid vert eids for old file. . .");
           grid.flagIdsRegen();
         }
+      }
+    }
+
+    if (version < 7) {
+      for (let brush of datalib.brush) {
+        if (brush.tool === SculptTools.GRAB) {
+          brush.dynTopo.overrideMask &= ~DynTopoOverrides.ALL;
+          brush.dynTopo.flag &= ~DynTopoFlags.ENABLED;
+        }
+      }
+    }
+
+    //merge brushes
+    if (version !== APP_VERSION) {
+      this.mergeDefaultBrushes();
+    }
+  }
+
+  mergeDefaultBrushes(datalib=this.datalib) {
+    for (let k in DefaultBrushes) {
+      let b1 = datalib.get(k);
+
+      if (!b1 || !(b1 instanceof SculptBrush)) {
+        continue;
+      }
+
+      let b2 = "__original_brush_" + b1.name;
+      b2 = datalib.get(b2);
+
+      if (!b2 || !(b2 instanceof SculptBrush)) {
+        continue;
+      }
+
+      if (b1.equals(b2, false, true) && !b1.equals(DefaultBrushes[k], false, true)) {
+        console.log("Found unmodified default brush " + b1.name);
+        console.log(b1, b2);
+        console.log("hashes (b1, b2, default):", b1.calcHashKey(), b2.calcHashKey(), DefaultBrushes[k].calcHashKey(), DefaultBrushes[k].equals(b1));
+        console.log("-->", DefaultBrushes[k].calcHashKey(), DefaultBrushes[k].copy().calcHashKey());
+
+        let radius = b1.radius;
+        let strength = b1.strength;
+
+        DefaultBrushes[k].copyTo(b1, false);
+        DefaultBrushes[k].copyTo(b2, false);
+
+        console.log("hash4", b1.calcHashKey(), b2.calcHashKey());
+
+        b1.strength = strength;
+        b1.radius = radius;
       }
     }
   }

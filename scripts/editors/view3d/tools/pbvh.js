@@ -44,7 +44,8 @@ let _triverts = new Array(3);
 
 import {
   DynamicsMask, SculptTools, BrushDynamics, SculptBrush,
-  BrushDynChannel, DefaultBrushes, SculptIcons, PaintToolSlot, BrushFlags, DynTopoFlags, DynTopoSettings
+  BrushDynChannel, DefaultBrushes, SculptIcons, PaintToolSlot, BrushFlags, DynTopoFlags, DynTopoSettings,
+  DynTopoOverrides
 } from "../../../brush/brush.js";
 
 import './pbvh_holefiller.js';
@@ -53,6 +54,7 @@ import './pbvh_base.js';
 import './pbvh_texpaint.js';
 
 import {calcConcave} from './pbvh_base.js';
+import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js';
 
 export class BVHToolMode extends ToolMode {
   constructor(manager) {
@@ -64,7 +66,7 @@ export class BVHToolMode extends ToolMode {
     this.enableMaxEditDepth = false;
 
     this.dynTopo = new DynTopoSettings();
-    this.dynTopo.flag = DynTopoFlags.COLLAPSE | DynTopoFlags.SUBDIVIDE | DynTopoFlags.FANCY_EDGE_WEIGHTS;
+    //this.dynTopo.flag = DynTopoFlags.COLLAPSE | DynTopoFlags.SUBDIVIDE | DynTopoFlags.FANCY_EDGE_WEIGHTS;
 
     this.mpos = new Vector2();
     this._radius = undefined;
@@ -94,10 +96,102 @@ export class BVHToolMode extends ToolMode {
     this.drawCavityMap = false;
     this.drawNodeIds = false;
     this.drawWireframe = false;
-    this.drawQuadsOnly = false;
+    this.drawValidEdges = false;
 
     this._last_bvh_key = "";
+    this._last_hqed = "";
+
     this.view3d = manager !== undefined ? manager.view3d : undefined;
+
+    this._apiDynTopo = new Proxy(this.dynTopo, {
+      get: (target, key) => {
+        let brush = this.getBrush();
+
+        if (brush && key === "overrideMask") {
+          return brush.dynTopo.overrideMask;
+        }
+
+        let all = !brush || (brush.dynTopo.overrideMask & DynTopoOverrides.ALL);
+
+        if (all) {
+          return this.dynTopo[key];
+        }
+
+        if (key !== "flag") {
+          let key2 = DynTopoSettings.apiKeyToOverride(key);
+
+          if (!key2) {
+            return brush.dynTopo[key];
+          }
+
+          let override = DynTopoOverrides[key2];
+          override = brush.dynTopo.overrideMask & override;
+
+          if (override) {
+            return this.dynTopo[key];
+          } else {
+            return brush.dynTopo[key];
+          }
+        } else {
+          //create merged flags
+          let flag = 0;
+          let f1 = this.dynTopo.flag;
+          let f2 = brush.dynTopo.flag;
+          let oflag = brush.dynTopo.overrideMask;
+
+          for (let k in DynTopoFlags) {
+            let f = DynTopoFlags[k];
+
+            if (oflag & f) {
+              flag |= f1 & f ? f : 0;
+            } else {
+              flag |= f2 & f ? f : 0;
+            }
+          }
+
+          return flag;
+        }
+      },
+      set: (target, key, val) => {
+        let brush = this.getBrush();
+
+        let all = !brush || (brush.dynTopo.overrideMask & DynTopoOverrides.ALL);
+
+        if (brush && key === "overrideMask") {
+          brush.dynTopo.overrideMask = val;
+          return true;
+        } else if (all) {
+          this.dynTopo[key] = val;
+          return true;
+        }
+
+        if (key !== "flag") {
+          let key2 = DynTopoSettings.apiKeyToOverride(key);
+
+          if (key2 && (brush.dynTopo.overrideMask & DynTopoOverrides[key2])) {
+            this.dynTopo[key] = val;
+          } else {
+            brush.dynTopo[key] = val;
+          }
+        } else {
+          let flag = 0;
+          let oflag = brush.dynTopo.overrideMask;
+
+          for (let k in DynTopoFlags) {
+            let f = DynTopoFlags[k];
+            let dynTopo = oflag & f ? this.dynTopo : brush.dynTopo;
+
+            if (val & f) {
+              dynTopo.flag |= f;
+            } else {
+              dynTopo.flag &= ~f;
+            }
+          }
+        }
+
+        return true;
+      }
+    });
   }
 
   get _brushSizeHelper() {
@@ -146,34 +240,25 @@ export class BVHToolMode extends ToolMode {
     this.slots[this.tool].setBrush(brush, scene);
   }
 
-  get _apiDynTopo() {
-    let brush = this.getBrush();
-
-    if (!brush) {
-      return this.dynTopo;
-    }
-
-    if (brush.dynTopo.flag & DynTopoFlags.INHERIT_DEFAULT) {
-      return this.dynTopo;
-    } else {
-      return brush.dynTopo;
-    }
-  }
-
   get _apiInheritDynTopo() {
     let brush = this.getBrush();
     if (!brush) {
       return false;
     }
 
-    return brush.dynTopo.flag & DynTopoFlags.INHERIT_DEFAULT;
+    return !!(brush.dynTopo.overrideMask & DynTopoOverrides.ALL);
   }
 
   set _apiInheritDynTopo(v) {
+    let brush = this.getBrush();
+    if (!brush) {
+      return;
+    }
+
     if (v) {
-      this.getBrush().dynTopo.flag |= DynTopoFlags.INHERIT_DEFAULT;
+      brush.dynTopo.overrideMask |= DynTopoOverrides.ALL;
     } else {
-      this.getBrush().dynTopo.flag &= ~DynTopoFlags.INHERIT_DEFAULT;
+      brush.dynTopo.overrideMask &= ~DynTopoOverrides.ALL;
     }
   }
 
@@ -223,8 +308,11 @@ export class BVHToolMode extends ToolMode {
     let strip, panel;
 
     let settings = col.panel("Brush Settings");
+    strip = settings.row().strip().useIcons(false);
+    strip.label("Spacing");
+    strip.prop(path + ".brush.spacingMode");
 
-    function doChannel(name, panel=settings) {
+    function doChannel(name, panel = settings) {
       let col2 = panel.col().strip();
 
       //col2.style["padding"] = "7px";
@@ -295,7 +383,10 @@ export class BVHToolMode extends ToolMode {
 
     doChannel("smoothProj", p);
 
-    doChannel("rake");
+    p = doChannel("rake");
+    p.prop(path + ".brush.rakeCurvatureFactor");
+    p.prop(path + ".brush.flag[CURVE_RAKE_ONLY_POS_X]");
+
     doChannel("pinch");
 
     p = doChannel("concaveFilter");
@@ -314,8 +405,65 @@ export class BVHToolMode extends ToolMode {
     strip.tool("mesh.reset_grids()");
     strip.tool("mesh.delete_grids()");
 
+    function dfield(con, key) {
+      let row = con.row();
+      let strip = row.strip(undefined, 4, 0);
+
+      strip.overrideDefault("labelOnTop", false);
+      strip.overrideDefault("BoxMargin", 0);
+      strip.overrideDefault("margin", 0);
+      strip.overrideDefault("BoxRadius", 5);
+
+      let okey = DynTopoSettings.apiKeyToOverride(key);
+      //let icon = row.iconcheck(`${path}.dynTopo.overrides[${okey}]`);
+      let icon = strip.iconcheck(`${path}.dynTopo.overrides[${okey}]`);
+      let ret = strip.prop(`${path}.dynTopo.${key}`);
+
+      icon.iconsheet = 0; //use small icons
+      icon.drawCheck = false;
+
+      /*
+      row.update.after(() => {
+        let val = !icon.checked;
+
+        if (val !== strip.disabled) {
+          strip.disabled = val;
+        }
+      });
+      */
+
+      //strip.prop
+
+      return ret;
+    }
+
     panel = col.panel("DynTopo");
     panel.useIcons(false);
+    panel.noMarginsOrPadding();
+
+    panel.prop(path + ".inheritDynTopo");
+    dfield(panel, "edgeSize");
+    dfield(panel, "flag[ENABLED]");
+    dfield(panel, "flag[SUBDIVIDE]");
+    dfield(panel, "flag[COLLAPSE]");
+
+    dfield(panel, "spacing");
+    dfield(panel, "spacingMode");
+
+    let panel2 = panel.panel("Advanced");
+    dfield(panel2, "flag[FANCY_EDGE_WEIGHTS]");
+    dfield(panel2, "subdivideFactor");
+    dfield(panel2, "decimateFactor");
+    dfield(panel2, "edgeCount");
+    dfield(panel2, "repeat");
+    dfield(panel2, "valenceGoal");
+    dfield(panel2, "maxDepth");
+
+    dfield(panel2, "flag[QUAD_COLLAPSE]");
+    dfield(panel2, "flag[ALLOW_VALENCE4]");
+    dfield(panel2, "flag[DRAW_TRIS_AS_QUADS]");
+
+    /*
     panel.prop(path + ".inheritDynTopo");
     panel.prop(path + ".dynTopo.edgeSize");
     panel.prop(path + ".dynTopo.flag[ENABLED]");
@@ -326,15 +474,23 @@ export class BVHToolMode extends ToolMode {
     row2.prop(path + ".dynTopo.flag[COLLAPSE]");
     row2.prop(path + ".dynTopo.flag[FANCY_EDGE_WEIGHTS]");
 
+    let panel2 = panel.panel("Advanced");
+
+    panel2.prop(path + ".dynTopo.subdivideFactor");
+    panel2.prop(path + ".dynTopo.decimateFactor");
+    panel2.prop(path + ".dynTopo.edgeCount");
+
+    strip = panel2.strip()
+
     row2 = strip.row();
     row2.prop(path + ".dynTopo.flag[QUAD_COLLAPSE]");
     row2.prop(path + ".dynTopo.flag[ALLOW_VALENCE4]");
+    row2 = strip.row();
+    row2.prop(path + ".dynTopo.flag[DRAW_TRIS_AS_QUADS]");
 
-    panel.prop(path + ".dynTopo.subdivideFactor");
-    panel.prop(path + ".dynTopo.decimateFactor");
-    panel.prop(path + ".dynTopo.edgeCount");
-    panel.prop(path + ".dynTopo.valenceGoal");
-    panel.prop(path + ".dynTopo.maxDepth").setAttribute("labelOnTop", true);
+    panel2.prop(path + ".dynTopo.valenceGoal");
+    panel2.prop(path + ".dynTopo.maxDepth").setAttribute("labelOnTop", true);
+    */
 
     strip = col.row().strip();
     strip.useIcons(false);
@@ -370,7 +526,7 @@ export class BVHToolMode extends ToolMode {
 
     strip = header.strip();
     strip.useIcons(false);
-    strip.prop(`scene.tools.${name}.drawQuadsOnly`);
+    strip.prop(`scene.tools.${name}.drawValidEdges`);
 
 
     let row = addHeaderRow();
@@ -438,8 +594,8 @@ export class BVHToolMode extends ToolMode {
     st.bool("drawWireframe", "drawWireframe", "Draw Wireframe")
       .on('change', onchange)
       .icon(Icons.DRAW_SCULPT_WIREFRAME);
-    st.bool("drawQuadsOnly", "drawQuadsOnly", "Quad Wireframes")
-      .description("Draw multires grid wireframes with quads only")
+    st.bool("drawValidEdges", "drawValidEdges", "Valid Edges Only")
+      .description("Draw sculpt wireframe with valid edges only,\n instead of all tris")
       .on('change', onchange)
       .icon(Icons.DRAW_SCULPT_WIREFRAME);
     st.bool("drawBVH", "drawBVH", "Draw BVH").on('change', onchange);
@@ -565,9 +721,7 @@ export class BVHToolMode extends ToolMode {
 
       brush = brush.copy();
 
-      if (brush.dynTopo.flag & DynTopoFlags.INHERIT_DEFAULT) {
-        brush.dynTopo.load(this.dynTopo);
-      }
+      brush.dynTopo.loadDefaults(this.dynTopo);
 
       if (e.ctrlKey && !isTexPaint) {
         let t = brush.color;
@@ -898,6 +1052,43 @@ export class BVHToolMode extends ToolMode {
 
     let ob = object;//let ob = this.ctx.object;
     let bvh = this.getBVH(mesh);
+    let dynTopo = this._apiDynTopo;
+
+    let hideQuadEdges = false;
+
+    hideQuadEdges = !!(dynTopo.flag & DynTopoFlags.DRAW_TRIS_AS_QUADS);
+
+    let key = "" + mesh.lib_id + ":" + hideQuadEdges;
+    let update = false;
+
+    if (this._last_hqed !== key) {
+      this._last_hqed = key;
+      update = true;
+    }
+
+    bvh.hideQuadEdges = hideQuadEdges;
+
+    if (update) {
+      console.log("hideQuadEdges:", hideQuadEdges);
+
+      let quadflag = MeshFlags.QUAD_EDGE;
+      for (let e of mesh.edges) {
+        e.flag &= ~quadflag;
+      }
+
+      trianglesToQuads(mesh, mesh.faces, TriQuadFlags.DEFAULT | TriQuadFlags.MARK_ONLY);
+
+      for (let node of bvh.nodes) {
+        if (!node.leaf) {
+          continue;
+        }
+
+        node.flag |= BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_INDEX_VERTS;
+        bvh.updateNodes.add(node);
+      }
+
+      bvh.update();
+    }
 
     //*
     for (let node of new Set(bvh.nodes)) {
@@ -958,7 +1149,7 @@ export class BVHToolMode extends ToolMode {
     for (let node of sortnodes) {
       let p = node;
 
-      if (node.parent && node.parent.subtreeDepth > node.depth+1) {
+      if (node.parent && node.parent.subtreeDepth > node.depth + 1) {
         node.flag |= BVHFlags.TEMP_TAG;
 
         drawnodes.add(node);
@@ -1061,7 +1252,7 @@ export class BVHToolMode extends ToolMode {
     let nv2 = new Vector3();
     let nv3 = new Vector3();
     let drawWireframe = this.drawWireframe;
-    let drawQuadsOnly = this.drawQuadsOnly;
+    let drawValidEdges = this.drawValidEdges;
     let drawCavityMap = this.drawCavityMap;
     let drawColPatches = this.drawColPatches;
     let drawMask = this.drawMask;
@@ -1071,14 +1262,14 @@ export class BVHToolMode extends ToolMode {
 
     let tstart = util.time_ms();
 
-    if (bvh.computeValidEdges !== drawQuadsOnly) {
+    if (bvh.computeValidEdges !== drawValidEdges) {
       for (let node of bvh.nodes) {
         node.flag |= BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_DRAW;
         bvh.updateNodes.add(node);
       }
     }
 
-    bvh.computeValidEdges = drawQuadsOnly;
+    bvh.computeValidEdges = drawValidEdges;
     bvh.update();
 
     let vn1 = new Vector3();
@@ -1195,7 +1386,7 @@ export class BVHToolMode extends ToolMode {
 
       for (let node of bvh.nodes) {
         bvh.updateNodes.add(node);
-        node.flag |= BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_MASK;
+        node.flag |= BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK;
       }
     }
 
@@ -2332,7 +2523,7 @@ BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
   drawCavityMap          : bool;
   drawFlat               : bool;
   drawWireframe          : bool;
-  drawQuadsOnly          : bool;
+  drawValidEdges          : bool;
   drawNodeIds            : bool;
   drawMask               : bool;
   drawColPatches         : bool;

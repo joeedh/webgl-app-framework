@@ -808,8 +808,8 @@ uniform float pointSize;
 
 varying vec4 vColor;
 varying float vId;
-${PolygonOffset.pre}
 
+${PolygonOffset.pre}
 ${SmoothLine.pre}
 
 uniform float near, far, aspect;

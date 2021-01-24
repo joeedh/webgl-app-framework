@@ -993,7 +993,7 @@ export class GeoLayerManager {
         }
       }
     } else {
-      idx = idx && 0;
+      idx = idx === undefined ? 0 : idx;
 
       if (idx < meta.layers.length) {
         return meta.layers[idx];
@@ -2208,13 +2208,4 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     }
   }
 }
-
-export function makeCube() {
-
-};
-
-export function makeSphere() {
-
-}
-
 

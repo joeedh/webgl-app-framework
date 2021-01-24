@@ -6,7 +6,7 @@ import * as math from '../util/math.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
 
-import {MeshFlags, MeshTypes, MeshFeatures, ReusableIter, LogContext} from './mesh_base.js';
+import {MeshFlags, MeshTypes, MeshFeatures, ReusableIter, LogContext, ChangeFlags} from './mesh_base.js';
 
 import {getArrayTemp} from './mesh_base.js';
 import {applyTriangulation} from './mesh_tess.js';
@@ -948,6 +948,7 @@ export const TriQuadFlags = {
   COLOR     : 2,
   SEAM      : 4,
   UVS       : 8,
+  MARK_ONLY : 16,
   DEFAULT   : 1 | 4
 };
 
@@ -955,13 +956,29 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
   let es = new Set();
   let faces2 = new Set();
 
+  let mark_only = flag & TriQuadFlags.MARK_ONLY;
+  if (mark_only) {
+    flag &= ~TriQuadFlags.MARK_ONLY;
+  }
+
+  let eflag = MeshFlags.TEMP3;
+  let fflag = MeshFlags.TEMP3;
+  let quadflag = MeshFlags.QUAD_EDGE;
+
   for (let f of faces) {
+    f.flag &= ~fflag;
+
     let count = 0;
     for (let l of f.loops) {
       count++;
     }
 
     if (count !== 3 || f.lists.length > 1) {
+      if (mark_only) {
+        for (let l of f.loops) {
+          l.e.flag &= ~quadflag;
+        }
+      }
       continue;
     }
 
@@ -971,6 +988,17 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
 
   for (let f of faces) {
     for (let l of f.loops) {
+      if (mark_only) {
+        //save last quadflag state in eflag
+        if (l.e.flag & quadflag) {
+          l.e.flag |= eflag;
+        } else {
+          l.e.flag &= ~eflag;
+        }
+
+        l.e.flag &= ~quadflag;
+      }
+
       if (l.radial_next !== l && faces.has(l.radial_next.f)) {
         es.add(l.e);
       }
@@ -987,11 +1015,27 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
   let t3 = new Vector3();
 
   let dot3 = (v1, v2, v3) => {
-    t1.load(v1).sub(v2).normalize();
-    t2.load(v3).sub(v2).normalize();
+    let dx1 = v1[0]-v2[0], dy1 = v1[1]-v2[1], dz1=v1[2]-v2[2];
+    let dx2 = v3[0]-v2[0], dy2 = v3[1]-v2[1], dz2=v3[2]-v2[2];
 
-    let f = t1.dot(t2);
+    let l1 = Math.sqrt(dx1*dx1 + dy1*dy1 * dz1*dz1);
+    let l2 = Math.sqrt(dx2*dx2 + dy2*dy2 + dz2*dz2);
 
+    if (l1 > 0.00001) {
+      l1 = 1.0 / l1;
+      dx1 *= l1;
+      dy1 *= l1;
+      dz1 *= l1;
+    }
+
+    if (l2 > 0.00001) {
+      l2 = 1.0 / l2;
+      dx2 *= l2;
+      dy2 *= l2;
+      dz2 *= l2;
+    }
+
+    let f = dx1*dx2 + dy1*dy2 + dz1*dz2;
     return Math.abs(f);
   }
 
@@ -1001,14 +1045,18 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
     let th3 = dot3(v2, v3, v4);
     let th4 = dot3(v3, v4, v1);
 
-    t1.load(v1.no).add(v3.no).normalize();
-    t2.load(v2.no).add(v4.no).normalize();
+    //t1.load(v1.no).add(v3.no).normalize();
+    //t2.load(v2.no).add(v4.no).normalize();
 
     let f = (th1 + th2 + th3 + th4)*0.25;
 
-    let th = t1.dot(t2)*4.0;
+    //let th = t1.dot(t2);
+    //f += th*35.0;
+    //return th*10.0+f;
 
-    f += Math.abs(th);
+    //return Math.abs(th);
+
+    //f += Math.abs(th)*0.25;
 
     return f;
   }
@@ -1083,7 +1131,7 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
     edges.push(i++);
   }
 
-  let ETOT = 5;
+  let ETOT = 6;
 
   let edata = [];
   for (let e of es) {
@@ -1091,29 +1139,31 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
 
     let l4 = la.prev, l3 = la.next, l2 = lb.prev, l1 = la;
 
+    let a = edata.length;
+
     edata.push(e);
     edata.push(l1);
     edata.push(l2);
     edata.push(l3);
     edata.push(l4);
+
+    let w = error(e, edata[a+1].v, edata[a+2].v, edata[a+3].v, edata[a+4].v);
+    edata.push(w);
   }
 
-  let ed = edata;
   edges.sort((a, b) => {
     a *= ETOT;
     b *= ETOT;
-    let e1 = ed[a]
-    let e2 = ed[b];
 
-    let w1 = error(e1, ed[a+1].v, ed[a+2].v, ed[a+3].v, ed[a+4].v);
-    let w2 = error(e2, ed[b+1].v, ed[b+2].v, ed[b+3].v, ed[b+4].v);
+    let w1 = edata[a+5];
+    let w2 = edata[b+5];
 
-    //console.log(w1, w2);
     return w1 - w2;
   });
 
   let ws = [0.5, 0.5];
   let fs = [0, 0,];
+  const chflag = ChangeFlags.FLAG;
 
   for (let i of edges) {
     i *= ETOT;
@@ -1130,6 +1180,21 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
 
     faces.delete(f1);
     faces.delete(f2);
+
+    if (mark_only) {
+      if (!(f1.flag & fflag) && !(f2.flag & fflag)) {
+        e.flag |= quadflag;
+
+        f1.flag |= fflag;
+        f2.flag |= fflag;
+
+        if (lctx && !!(e.flag & eflag) !== !!(e.flag & quadflag)) {
+          lctx.changeEdge(e, chflag);
+        }
+      }
+
+      continue;
+    }
 
     fs[0] = f1;
     fs[1] = f2;
@@ -1161,7 +1226,7 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
   }
 }
 
-export function recalcWindings(mesh, faces=mesh.faces) {
+export function recalcWindings(mesh, faces=mesh.faces, lctx) {
   faces = new Set(faces);
 
   let shells = [];

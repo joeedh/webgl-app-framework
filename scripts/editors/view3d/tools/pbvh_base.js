@@ -1,10 +1,11 @@
 //grab data field definition
 import {
   BaseVector,
-  Curve1DProperty,
-  FlagProperty, FloatProperty, keymap, Matrix4, ToolOp, ToolProperty, Vector2, Vector3, Vector4
+  Curve1DProperty, EnumProperty,
+  FlagProperty, FloatProperty, keymap, Matrix4, ToolOp,
+  ToolProperty, Vector2, Vector3, Vector4
 } from '../../../path.ux/scripts/pathux.js';
-import {BrushFlags, SculptBrush, SculptTools} from '../../../brush/brush.js';
+import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes} from '../../../brush/brush.js';
 import {ProceduralTex} from '../../../texture/proceduralTex.js';
 import {DataRefProperty} from '../../../core/lib_api.js';
 import {BVHToolMode} from './pbvh.js';
@@ -18,19 +19,19 @@ import * as math from '../../../util/math.js';
 
 export const SymAxisMap = [
   [],
-  [[-1,1,1]], //x
-  [[1,-1,1]], //y
-  [[-1,1,1],[-1,-1,1],[1,-1,1]], //x + y
+  [[-1, 1, 1]], //x
+  [[1, -1, 1]], //y
+  [[-1, 1, 1], [-1, -1, 1], [1, -1, 1]], //x + y
 
   [[1, 1, -1]], //z
-  [[-1,1,1], [1,1,-1], [-1,1,-1]], //x+z
-  [[1,-1,1], [1, 1, -1], [1, -1, -1]], //y+z
+  [[-1, 1, 1], [1, 1, -1], [-1, 1, -1]], //x+z
+  [[1, -1, 1], [1, 1, -1], [1, -1, -1]], //y+z
 
   [[-1, 1, 1], [1, -1, 1], [1, 1, -1], [-1, -1, 1], [-1, -1, -1], [-1, 1, -1], [1, -1, -1]] //x+y+z
 ];
 
-
 export let BRUSH_PROP_TYPE;
+
 export class BrushProperty extends ToolProperty {
   constructor(value) {
     super(BRUSH_PROP_TYPE);
@@ -52,7 +53,7 @@ export class BrushProperty extends ToolProperty {
   }
 
   setValue(brush) {
-    brush.copyTo(this.brush, true);
+    brush.copyTo(this.brush, false);
 
     if (this.brush.texUser.texture) {
       this.brush.texUser.texture.copyTo(this._texture, true);
@@ -96,6 +97,9 @@ export class PaintSample {
     this.dp = new Vector4();
     this.viewPlane = new Vector3();
 
+    this.strokeS = 0.0;
+    this.dstrokeS = 0.0;
+
     this.smoothProj = 0.0;
 
     this.pinch = 0.0;
@@ -113,6 +117,8 @@ export class PaintSample {
 
     this.viewvec = new Vector3();
     this.vieworigin = new Vector3();
+
+    this.isInterp = false;
 
     this.vec = new Vector3();
     this.dvec = new Vector3();
@@ -134,7 +140,7 @@ export class PaintSample {
     return tot;
   }
 
-  mirror(mul=new Vector4([1, 1, 1, 1])) {
+  mirror(mul = new Vector4([1, 1, 1, 1])) {
     this.p.mul(mul);
     this.dp.mul(mul);
     this.origp.mul(mul);
@@ -153,6 +159,9 @@ export class PaintSample {
 
   copyTo(b) {
     b.smoothProj = this.smoothProj;
+
+    b.strokeS = this.strokeS;
+    b.dstrokeS = this.dstrokeS;
 
     b.viewPlane.load(this.viewPlane);
     b.viewvec.load(this.viewvec);
@@ -175,17 +184,18 @@ export class PaintSample {
     b.esize = this.esize;
 
     b.color.load(this.color);
+    b.isInterp = this.isInterp;
 
     b.pinch = this.pinch;
     b.rake = this.rake;
-    b.strength =  this.strength;
+    b.strength = this.strength;
     b.radius = this.radius;
     b.autosmooth = this.autosmooth;
     b.planeoff = this.planeoff;
     b.concaveFilter = this.concaveFilter;
   }
 
-  copy()  {
+  copy() {
     let ret = new PaintSample();
 
     this.copyTo(ret);
@@ -193,13 +203,17 @@ export class PaintSample {
     return ret;
   }
 }
+
 PaintSample.STRUCT = `
 PaintSample {
   p              : vec4;
   dp             : vec4;
   sp             : vec4;
+  strokeS        : float;
+  dstrokeS       : float;
   dsp            : vec4;
   origp          : vec4;
+  isInterp       : bool;
 
   vec            : vec3;
   dvec           : vec3;
@@ -226,6 +240,7 @@ PaintSample {
 nstructjs.register(PaintSample);
 
 export let PAINT_SAMPLE_TYPE;
+
 export class PaintSampleProperty extends ToolProperty {
   constructor() {
     super(PAINT_SAMPLE_TYPE);
@@ -279,6 +294,7 @@ export class PaintSampleProperty extends ToolProperty {
     return this.data[Symbol.iterator]();
   }
 }
+
 PaintSampleProperty.STRUCT = nstructjs.inherit(PaintSampleProperty, ToolProperty) + `
   data : array(PaintSample);
 }`;
@@ -303,81 +319,14 @@ export class SetBrushRadius extends ToolOp {
 
   static tooldef() {
     return {
-      uiname: "Set Brush Radius",
+      uiname  : "Set Brush Radius",
       toolpath: "brush.set_radius",
-      inputs: {
+      inputs  : {
         radius: new FloatProperty(15.0),
-        brush: new DataRefProperty(SculptBrush)
+        brush : new DataRefProperty(SculptBrush)
       },
       is_modal: true
     }
-  }
-
-  modalStart(ctx) {
-    this.first = true;
-    return super.modalStart(ctx);
-  }
-
-  on_mousemove(e) {
-    let mpos = this.mpos;
-
-    mpos[0] = e.x;
-    mpos[1] = e.y;
-
-    let ctx = this.modal_ctx;
-
-    let brush = ctx.datalib.get(this.inputs.brush.getValue());
-    if (!brush) {
-      return;
-    }
-
-
-    if (this.first) {
-      this.first = false;
-      this.cent_mpos.load(mpos).subScalar(brush.radius / devicePixelRatio / Math.sqrt(2.0));
-
-      this.start_mpos.load(mpos);
-      this.last_mpos.load(mpos);
-      return;
-    }
-
-
-    let l1 = mpos.vectorDistance(this.cent_mpos);
-    let l2 = this.last_mpos.vectorDistance(this.cent_mpos);
-
-    if (l2 === 0.0 || l1 === 0.0) {
-      return;
-    }
-
-    this.resetTempGeom();
-    this.makeTempLine(this.cent_mpos, this.mpos, "rgba(25,25,25,0.25)");
-
-    let toolmode = ctx.toolmode;
-    if (toolmode && toolmode instanceof BVHToolMode) {
-      toolmode.mpos.load(this.cent_mpos);
-    }
-
-    let ratio = l1 / l2;
-    let radius;
-
-    if (brush.flag & BrushFlags.SHARED_SIZE) {
-      let bvhtool = ctx.scene.toolmode_namemap.bvh;
-      if (bvhtool) {
-        radius = bvhtool.sharedBrushRadius;
-      } else {
-        radius = brush.radius;
-      }
-    } else {
-      radius = brush.radius;
-    }
-
-    radius *= ratio;
-    console.log("F", ratio, radius);
-
-    this.last_mpos.load(mpos);
-    this.inputs.radius.setValue(radius);
-
-    this.exec(ctx);
   }
 
   static invoke(ctx, args) {
@@ -403,6 +352,75 @@ export class SetBrushRadius extends ToolOp {
     }
 
     return tool;
+  }
+
+  modalStart(ctx) {
+    this.rand.seed(0);
+    this.first = true;
+
+    return super.modalStart(ctx);
+  }
+
+  on_mousemove(e) {
+    let mpos = this.mpos;
+
+    mpos[0] = e.x;
+    mpos[1] = e.y;
+
+    let ctx = this.modal_ctx;
+
+    let brush = ctx.datalib.get(this.inputs.brush.getValue());
+    if (!brush) {
+      return;
+    }
+
+
+    if (this.first) {
+      this.first = false;
+      this.cent_mpos.load(mpos).subScalar(brush.radius/devicePixelRatio/Math.sqrt(2.0));
+
+      this.start_mpos.load(mpos);
+      this.last_mpos.load(mpos);
+      return;
+    }
+
+
+    let l1 = mpos.vectorDistance(this.cent_mpos);
+    let l2 = this.last_mpos.vectorDistance(this.cent_mpos);
+
+    if (l2 === 0.0 || l1 === 0.0) {
+      return;
+    }
+
+    this.resetTempGeom();
+    this.makeTempLine(this.cent_mpos, this.mpos, "rgba(25,25,25,0.25)");
+
+    let toolmode = ctx.toolmode;
+    if (toolmode && toolmode instanceof BVHToolMode) {
+      toolmode.mpos.load(this.cent_mpos);
+    }
+
+    let ratio = l1/l2;
+    let radius;
+
+    if (brush.flag & BrushFlags.SHARED_SIZE) {
+      let bvhtool = ctx.scene.toolmode_namemap.bvh;
+      if (bvhtool) {
+        radius = bvhtool.sharedBrushRadius;
+      } else {
+        radius = brush.radius;
+      }
+    } else {
+      radius = brush.radius;
+    }
+
+    radius *= ratio;
+    console.log("F", ratio, radius);
+
+    this.last_mpos.load(mpos);
+    this.inputs.radius.setValue(radius);
+
+    this.exec(ctx);
   }
 
   on_mouseup(e) {
@@ -509,8 +527,8 @@ export function calcConcave(v) {
 
   elen /= tot;
 
-  co.mulScalar(1.0 / tot);
-  t1.load(v).sub(co).mulScalar(1.0 / elen);
+  co.mulScalar(1.0/tot);
+  t1.load(v).sub(co).mulScalar(1.0/elen);
   let fac = t1.dot(v.no)*0.5 + 0.5;
 
   return 1.0 - fac;
@@ -526,7 +544,6 @@ export function calcConcaveLayer(mesh) {
 
     cd_concave = layer.index;
   }
-
 
 
   for (let v of mesh.verts) {
@@ -547,6 +564,8 @@ export class PaintOpBase extends ToolOp {
     this.last_radius = 0;
     this.last_vec = new Vector3();
 
+    this.rand = new util.MersenneRandom();
+
     this.queue = [];
     this.qlast_time = util.time_ms();
     this.timer = undefined;
@@ -559,11 +578,11 @@ export class PaintOpBase extends ToolOp {
 
   static tooldef() {
     return {
-      inputs : {
-        brush: new BrushProperty(),
-        samples: new PaintSampleProperty(),
+      inputs: {
+        brush       : new BrushProperty(),
+        samples     : new PaintSampleProperty(),
         symmetryAxes: new FlagProperty(undefined, {X: 1, Y: 2, Z: 4}),
-        falloff: new Curve1DProperty(),
+        falloff     : new Curve1DProperty(),
       }
     }
   }
@@ -616,7 +635,7 @@ export class PaintOpBase extends ToolOp {
     let path = this.path;
 
     if (path.length > 0) {
-      let p0 = path[path.length-1];
+      let p0 = path[path.length - 1];
       p.vel.load(p.co).sub(p0.co);
       p.acc.load(p.vel).sub(p0.vel);
 
@@ -645,7 +664,10 @@ export class PaintOpBase extends ToolOp {
 
         co.load(p0.co).addFac(p.vel, 0.5).addFac(p.acc, 1.0/6.0);
 
-        let steps = Math.ceil(p.co.vectorDistance(p0.co) / 15);
+        let brush = this.inputs.brush.getValue();
+        let radius = brush.radius;
+
+        let steps = Math.ceil(p.co.vectorDistance(p0.co)/(4*radius));
 
         if (steps === 0) {
           this.path.push(p);
@@ -653,14 +675,14 @@ export class PaintOpBase extends ToolOp {
           return;
         }
 
-        let s = 0, ds = 1.0 / steps;
+        let s = 0, ds = 1.0/steps;
         dt *= ds;
 
         let lastp = p0;
 
-        for (let i=0; i<steps; i++, s += ds) {
+        for (let i = 0; i < steps; i++, s += ds) {
           let p2 = new PathPoint(undefined, ds);
-          for (let j=0; j<2; j++) {
+          for (let j = 0; j < 2; j++) {
             p2.co[j] = bez4(a[j], b[j], c[j], d[j], s);
           }
 
@@ -724,20 +746,30 @@ export class PaintOpBase extends ToolOp {
     }
   }
 
-  on_mousemove(e, in_timer=false) {
+  on_mousemove(e, in_timer = false) {
     let pi = this.path.length;
 
-    this.appendPath(e.x, e.y);
+    if (this.inputs.brush.getValue().spacingMode === BrushSpacingModes.EVEN) {
+      //try to detect janky events and interpolate with a curve
+      //note that this is not the EVEN spacing mode which happens in
+      //subclases, it doesn't respect brush spacing when outputting the curve
+      this.appendPath(e.x, e.y);
+    } else {
+      let p = new PathPoint([e.x, e.y], util.time_ms() - this.alast_time);
+      this.path.push(p);
+    }
+
+    this.alast_time = util.time_ms();
     //this.drawPath();
 
-    for (; pi<this.path.length; pi++) {
+    for (; pi < this.path.length; pi++) {
       let p = this.path[pi];
 
-      this.on_mousemove_intern(e, p.co[0], p.co[1], in_timer);
+      this.on_mousemove_intern(e, p.co[0], p.co[1], in_timer, pi !== this.path.length-1);
     }
   }
 
-  on_mousemove_intern(e, x=e.x, y=e.y, in_timer=false) {
+  on_mousemove_intern(e, x = e.x, y = e.y, in_timer = false, isInterp=false) {
     //this.makeTempLine()
 
     /*
@@ -790,10 +822,10 @@ export class PaintOpBase extends ToolOp {
       invert = true;
     }
 
-    return this.sampleViewRay(rendermat, mpos, view, origin, pressure, invert);
+    return this.sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp);
   }
 
-  sampleViewRay(rendermat, mpos, view, origin, pressure, invert) {
+  sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp) {
     let brush = this.inputs.brush.getValue();
     let mode = brush.tool;
 
@@ -976,10 +1008,10 @@ export class PaintOpBase extends ToolOp {
     }
 
     this._savedViewPoints.push({
-      viewvec : new Vector3(view),
-      viewp : new Vector3(origin),
-      rendermat : rendermat.clone(),
-      mpos : new Vector2(mpos)
+      viewvec  : new Vector3(view),
+      viewp    : new Vector3(origin),
+      rendermat: rendermat.clone(),
+      mpos     : new Vector2(mpos)
     });
 
     return {
@@ -988,78 +1020,78 @@ export class PaintOpBase extends ToolOp {
   }
 
   //for debugging purposes
-  writeSaveViewPoints(n=5) {
-     function toFixed(f) {
-       let s = f.toFixed(n);
-       while (s.endsWith("0")) {
-         s = s.slice(0, s.length-1);
-       }
+  writeSaveViewPoints(n = 5) {
+    function toFixed(f) {
+      let s = f.toFixed(n);
+      while (s.endsWith("0")) {
+        s = s.slice(0, s.length - 1);
+      }
 
-       if (s.length === 0) {
-         return "0";
-       }
+      if (s.length === 0) {
+        return "0";
+      }
 
-       if (s[s.length-1] === ".") {
-         s += "0";
-       }
+      if (s[s.length - 1] === ".") {
+        s += "0";
+      }
 
-       return s;
-     }
+      return s;
+    }
 
-     function myToJSON(obj) {
-       if (typeof obj === "object") {
-         if (Array.isArray(obj) || obj instanceof BaseVector) {
-           let s = '[';
-           for (let i=0; i<obj.length; i++) {
-             if (i > 0) {
-               s += ',';
-             }
+    function myToJSON(obj) {
+      if (typeof obj === "object") {
+        if (Array.isArray(obj) || obj instanceof BaseVector) {
+          let s = '[';
+          for (let i = 0; i < obj.length; i++) {
+            if (i > 0) {
+              s += ',';
+            }
 
-             s += myToJSON(obj[i]);
-           }
+            s += myToJSON(obj[i]);
+          }
 
-           s += ']';
+          s += ']';
 
-           return s;
-         } else if (obj instanceof Matrix4) {
-           return myToJSON(obj.getAsArray());
-         } else {
-           let s = '{';
-           let keys = Object.keys(obj);
+          return s;
+        } else if (obj instanceof Matrix4) {
+          return myToJSON(obj.getAsArray());
+        } else {
+          let s = '{';
+          let keys = Object.keys(obj);
 
-           for (let i=0; i<keys.length; i++) {
-             let k = keys[i];
-             let v;
+          for (let i = 0; i < keys.length; i++) {
+            let k = keys[i];
+            let v;
 
-             try {
-               v = obj[k];
-             } catch (error) {
-               console.log("error with property " + k);
-               continue;
-             }
+            try {
+              v = obj[k];
+            } catch (error) {
+              console.log("error with property " + k);
+              continue;
+            }
 
-             if (typeof v === "function") {
-               continue;
-             }
+            if (typeof v === "function") {
+              continue;
+            }
 
-             if (i > 0) {
-               s += ",";
-             }
+            if (i > 0) {
+              s += ",";
+            }
 
-             s += `"${k}" : ${myToJSON(v)}`;
-           }
-           s += '}';
+            s += `"${k}" : ${myToJSON(v)}`;
+          }
+          s += '}';
 
-           return s;
-         }
-       } else if (typeof obj === "number") {
-         return toFixed(obj);
-       } else {
-         return "" + obj;
-       }
-     }
+          return s;
+        }
+      } else if (typeof obj === "number") {
+        return toFixed(obj);
+      } else {
+        return "" + obj;
+      }
+    }
 
-     return myToJSON(this._savedViewPoints);
+    return myToJSON(this._savedViewPoints);
   }
 
   modalEnd(was_cancelled) {
@@ -1125,7 +1157,7 @@ export class MaskOpBase extends ToolOp {
   undoPre(ctx) {
     let mesh = ctx.mesh;
 
-    let ud = this._undo = {mesh : -1};
+    let ud = this._undo = {mesh: -1};
 
     if (!mesh) {
       return;
@@ -1191,7 +1223,7 @@ export class MaskOpBase extends ToolOp {
     let cd_node = mesh.bvh ? mesh.bvh.cd_node : -1;
 
     ud.cd_grid = cd_grid;
-    let updateflag = BVHFlags.UPDATE_MASK|BVHFlags.UPDATE_DRAW;
+    let updateflag = BVHFlags.UPDATE_MASK | BVHFlags.UPDATE_DRAW;
 
     if (cd_grid >= 0) {
       for (let l of mesh.loops) {
@@ -1206,8 +1238,8 @@ export class MaskOpBase extends ToolOp {
         return;
       }
 
-      for (let gi=0; gi<gd.length; gi += 3) {
-        let leid = gd[gi], peid = gd[gi+1], mask = gd[gi+2];
+      for (let gi = 0; gi < gd.length; gi += 3) {
+        let leid = gd[gi], peid = gd[gi + 1], mask = gd[gi + 2];
 
         let l = mesh.eidmap[leid];
         if (!l) {
@@ -1245,8 +1277,8 @@ export class MaskOpBase extends ToolOp {
       }
       let vd = ud.vertData;
 
-      for (let vi=0; vi<vd.length; vi += 2) {
-        let veid = vd[vi], mask = vd[vi+1];
+      for (let vi = 0; vi < vd.length; vi += 2) {
+        let veid = vd[vi], mask = vd[vi + 1];
 
         let v = mesh.eidmap[veid];
 
@@ -1276,14 +1308,18 @@ export class MaskOpBase extends ToolOp {
   getCDMask(mesh) {
     let cd_grid = GridBase.meshGridOffset(mesh);
 
-    if (cd_grid >= 0){
+    if (cd_grid >= 0) {
       return mesh.loops.customData.getLayerIndex("mask");
     } else {
       return mesh.verts.customData.getLayerIndex("mask");
     }
   }
 
-  getVerts(mesh, updateBVHNodes=true) {
+  execPre(ctx) {
+    this.rand.seed(0);
+  }
+
+  getVerts(mesh, updateBVHNodes = true) {
     let this2 = this;
 
     let cd_node = mesh.bvh ? mesh.bvh.cd_node : -1;
@@ -1293,7 +1329,7 @@ export class MaskOpBase extends ToolOp {
 
     let updateflag = BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK;
 
-    return (function*() {
+    return (function* () {
       let cd_mask = this2.getCDMask(mesh);
       let cd_grid = GridBase.meshGridOffset(mesh);
 
@@ -1338,13 +1374,15 @@ export class MaskOpBase extends ToolOp {
 }
 
 export class ClearMaskOp extends MaskOpBase {
-  static tooldef() {return {
-    uiname : "Clear Mask",
-    toolpath : "paint.clear_mask",
-    inputs : {
-      value : new FloatProperty(1.0)
+  static tooldef() {
+    return {
+      uiname  : "Clear Mask",
+      toolpath: "paint.clear_mask",
+      inputs  : {
+        value: new FloatProperty(1.0)
+      }
     }
-  }}
+  }
 
   exec(ctx) {
     let mesh = ctx.mesh;
@@ -1364,4 +1402,5 @@ export class ClearMaskOp extends MaskOpBase {
     }
   }
 }
+
 ToolOp.register(ClearMaskOp);

@@ -468,6 +468,8 @@ export class Mesh extends SceneObjectData {
     list.customData.initElement(e);
 
     e.eid = customEid !== undefined ? customEid : this.eidgen.next();
+    e._old_eid = e.eid;
+
     this.eidmap[e.eid] = e;
 
     if (this.debuglog) {
@@ -898,6 +900,10 @@ export class Mesh extends SceneObjectData {
       e.updateLength();
     }
 
+    for (let f of this.faces) {
+      f.area = 0;
+    }
+
     let ltris = this.loopTris;
 
     for (let i = 0; i < ltris.length; i += 3) {
@@ -910,6 +916,8 @@ export class Mesh extends SceneObjectData {
       l2.v.no.addFac(n, w);
       l3.v.no.addFac(n, w);
 
+      l1.f.area += w;
+
       vtots[l1.v.index] += w;
       vtots[l2.v.index] += w;
       vtots[l3.v.index] += w;
@@ -919,6 +927,20 @@ export class Mesh extends SceneObjectData {
       if (vtots[v.index] > 0) {
         v.no.normalize();
       }
+    }
+  }
+
+  * allGeometry() {
+    for (let v of this.verts) {
+      yield v;
+    }
+
+    for (let e of this.edges) {
+      yield e;
+    }
+
+    for (let f of this.faces) {
+      yield f;
     }
   }
 
@@ -1052,6 +1074,7 @@ export class Mesh extends SceneObjectData {
 
     delete this.eidmap[v.eid];
     this.verts.remove(v);
+
     v.eid = -1;
   }
 
@@ -3486,7 +3509,7 @@ export class Mesh extends SceneObjectData {
       let i = 0;
 
       for (let e of elist) {
-        e.eid = eidgen.next();
+        e.eid = e._old_eid = eidgen.next();
 
         elist.idxmap[e.eid] = i++;
         eidmap[e.eid] = e;
@@ -3707,7 +3730,7 @@ export class Mesh extends SceneObjectData {
 
       v2.flag = v.flag;
       v2.index = v.index;
-      v2.eid = v.eid;
+      v2.eid = v2._old_eid = v.eid;
 
       eidmap[v2.eid] = v2;
       ret.verts.push(v2);
@@ -3723,7 +3746,7 @@ export class Mesh extends SceneObjectData {
 
       h2.flag = h.flag;
       h2.index = h.index;
-      h2.eid = h.eid;
+      h2.eid = h2._old_eid = h.eid;
 
       eidmap[h2.eid] = h2;
       ret.handles.push(h2);
@@ -3744,7 +3767,7 @@ export class Mesh extends SceneObjectData {
 
       let e2 = new Edge();
 
-      e2.eid = e.eid;
+      e2.eid = e2._old_eid = e.eid;
       e2.flag = e.flag;
       e2.index = e.index;
 
@@ -3776,7 +3799,7 @@ export class Mesh extends SceneObjectData {
       let l2 = new Loop();
 
       l2.flag = l.flag;
-      l2.eid = l.eid;
+      l2.eid = l2._old_eid = l.eid;
       l2.index = l.index;
 
       eidmap[l2.eid] = l2;
@@ -3818,7 +3841,7 @@ export class Mesh extends SceneObjectData {
 
       f2.lists = [];
 
-      f2.eid = f.eid;
+      f2.eid = f2._old_eid = f.eid;
       f2.index = f.index;
       f2.flag = f.flag;
 

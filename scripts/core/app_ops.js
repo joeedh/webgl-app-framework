@@ -242,6 +242,9 @@ export class FileNewOp extends ToolOp {
   exec(ctx) {
     console.log("File new");
     if (confirm("Make new file?")) {
+      //paranoia check, clear this here
+      _appstate.saveHandle = undefined;
+
       _genDefaultFile(_appstate, false);
     }
   }

@@ -15,7 +15,7 @@ import {Icons} from '../editors/icon_enum.js';
 import {MeshFlags, MeshTypes, MeshFeatures, LogContext} from './mesh_base.js';
 import {MeshDeformOp, MeshOp} from './mesh_ops_base.js';
 import {ccSmooth, subdivide, loopSubdivide} from '../subsurf/subsurf_mesh.js';
-import {splitEdgesSmart, splitEdgesSmart2} from "./mesh_subdivide.js";
+import {splitEdgesPreserveQuads, splitEdgesSmart, splitEdgesSmart2} from "./mesh_subdivide.js";
 import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
 import {CustomDataElem} from "./customdata.js";
@@ -1225,7 +1225,8 @@ export class TestSplitFaceOp extends MeshOp {
         e.flag |= MeshFlags.UPDATE;
       }
 
-      splitEdgesSmart2(mesh, es, undefined, lctx);
+      splitEdgesPreserveQuads(mesh, es, undefined, lctx);
+      //splitEdgesSmart2(mesh, es, undefined, lctx);
 
       //console.log(newvs, newfs);
 
@@ -2864,6 +2865,8 @@ export class FixManifoldOp extends MeshOp {
           break;
         }
       }
+
+      recalcWindings(mesh, mesh.faces, lctx);
 
       mesh.fixLoops();
 

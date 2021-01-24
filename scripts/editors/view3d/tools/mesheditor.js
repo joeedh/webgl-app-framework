@@ -24,6 +24,7 @@ import {PackFlags} from "../../../path.ux/scripts/core/ui_base.js";
 import {RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
 import {buildCotanMap} from '../../../mesh/mesh_utils.js';
+import {CurvVert, CVFlags, getCurveVerts} from '../../../mesh/mesh_curvature.js';
 
 export class MeshEditor extends MeshToolBase {
   constructor(manager) {
@@ -373,6 +374,18 @@ export class MeshEditor extends MeshToolBase {
     let mesh = this.mesh;
     let key = "" + mesh.lib_id + ":" + mesh.updateGen + ":" + mesh.verts.length + ":" + mesh.eidgen._cur;
 
+    let cd_curv = getCurveVerts(mesh);
+
+    console.log("cd_curve", cd_curv);
+
+    //CurvVert.propegateUpdateFlags(mesh, cd_curv);
+
+    for (let v of mesh.verts) {
+      let cv = v.customData[cd_curv];
+      cv.check(v);
+      break;
+    }
+
     if (this.curvatureMesh && key === this._last_update_loop_key) {
       return;
     }
@@ -410,15 +423,20 @@ export class MeshEditor extends MeshToolBase {
 
     let no3 = new Vector3();
 
-    let sumMat = (v, amat, w=1.0) => {
+    let sumMat = (v, v1, amat, w=1.0) => {
+      //*
       no3.load(v.no);
       for (let v2 of v.neighbors) {
         no3.add(v2.no);
       }
       no3.normalize();
-      v = no3;
+      //*/
 
       //v = v.no;
+      //no3.load(v.n).sub(v1.no);
+      no3.sub(v1.no);
+
+      v = no3;
 
       amat[0] += v[0]*v[0]*w;
       amat[1] += v[0]*v[1]*w;
@@ -430,9 +448,9 @@ export class MeshEditor extends MeshToolBase {
       amat[6] += v[1]*v[2]*w;
 
       //skip 7
-      amat[8] += v[2]*v[0]*w;
-      amat[9] += v[2]*v[1]*w;
-      amat[10] += v[2]*v[2]*w;
+      amat[8] += v[1]*v[0]*w;
+      amat[9] += v[1]*v[1]*w;
+      amat[10] += v[1]*v[2]*w;
     }
 
     let vs = new Set(mesh.verts.selected.editable);
@@ -448,8 +466,6 @@ export class MeshEditor extends MeshToolBase {
     const cotanmap = buildCotanMap(mesh, vs);
     const VETOT = cotanmap.recordSize;
 
-    console.log(cotanmap);
-
     let calcMat = (v, amat) => {
       for (let i=0; i<16; i++) {
         amat[i] = 0.0;
@@ -458,10 +474,6 @@ export class MeshEditor extends MeshToolBase {
       let tot = 0.0;
       let cot = cotanmap.get(v);
 
-      if (Math.random() > 0.99) {
-        console.log(cot);
-      }
-
       let vi = 4;
 
       for (let e of v.edges) {
@@ -469,8 +481,9 @@ export class MeshEditor extends MeshToolBase {
         let area = cot[vi], ctan1 = cot[vi+1], ctan2 = cot[vi+2], w = cot[vi+3];
 
         w = area; //(ctan1 + ctan2)*area;
+        w = 1.0;
 
-        sumMat(v2, amat, w);
+        sumMat(v2, v, amat, w);
         tot += w;
 
         vi += VETOT;
@@ -516,7 +529,7 @@ export class MeshEditor extends MeshToolBase {
         w = l.f.area + 0.0000001;
         //w=1.0;
 
-        sumMat(v2, amat, w);
+        sumMat(v2, v, amat, w);
         tot += w;
 
         //continue;
@@ -541,7 +554,7 @@ export class MeshEditor extends MeshToolBase {
           let w2 = l2.f.area + 0.00001;
           //w2 = 1.0;
 
-          sumMat(v3, amat, w);
+          sumMat(v3, v, amat, w);
           tot += w2;
         }
       }
@@ -563,6 +576,7 @@ export class MeshEditor extends MeshToolBase {
 
     let wmap = new Map();
     let nomap = new Map();
+    let binmap = new Map();
 
     let steps = window.ddd || 245;
     let lastno = new Vector3();
@@ -597,6 +611,7 @@ export class MeshEditor extends MeshToolBase {
 
         if (i > 0 && lastno.vectorDistanceSqr(no) < 0.0001) {
           //console.log(i);
+          no.multVecMatrix(mat);
           break;
         }
 
@@ -604,11 +619,29 @@ export class MeshEditor extends MeshToolBase {
         no.multVecMatrix(mat);
       }
 
-      no.cross(v.no);
-      let l = no.vectorLength();
-      no.normalize().cross(v.no).mulScalar(l);
+      //no.cross(v.no);
 
+      //no.normalize().cross(v.no).normalize();//.mulScalar(l);
+      //no.normalize();
       nomap.set(v, new Vector3(no));
+
+      let bin = new Vector3(no).cross(v.no);
+      let lastbin = new Vector3(bin);
+
+      for (let i=0; i<steps; i++) {
+        bin.normalize();
+        //break;
+
+        if (i > 0 && lastbin.vectorDistanceSqr(bin) < 0.0001) {
+          //console.log(i);
+          break;
+        }
+
+        bin.multVecMatrix(mat);
+        lastbin.load(bin);
+      }
+
+      binmap.set(v, bin);
     }
 
     let no2 = new Vector3();
@@ -620,6 +653,11 @@ export class MeshEditor extends MeshToolBase {
       let len = calcNorLen(v);
 
       let no = nomap.get(v);
+      let cv = v.customData[cd_curv];
+      cv.check(v);
+
+      no = cv.tan;
+
       /*
       no2.load(no);
       let tot = 1;
@@ -633,14 +671,24 @@ export class MeshEditor extends MeshToolBase {
       no = no2;
       //*/
 
-      no.normalize();
+      //no.normalize();
 
       co1.load(v);
       co2.load(v).addFac(no, len);
 
       let line = sm.line(co1, co2);
-
       line.colors(white, white)
+
+      continue;
+
+      let bin = binmap.get(v);
+      bin.normalize();
+
+      co1.load(v);
+      co2.addFac(bin, len*0.55);
+
+      line = sm.line(co1, co2);
+      line.colors(black, black);
 
       continue;
       co1.load(v);

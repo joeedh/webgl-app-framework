@@ -960,6 +960,7 @@ export const TexUserModes = {
   VIEWPLANE : 1,
 };
 
+let _udigest = new util.HashDigest();
 export class ProceduralTexUser {
   constructor() {
     this.texture = undefined;
@@ -973,6 +974,31 @@ export class ProceduralTexUser {
     b.scale = this.scale;
     b.mode = this.mode;
     b.flag = this.flag;
+  }
+
+  equals(b) {
+    let r = this.texture === b.texture;
+
+    function feq(a, b) {
+      return Math.abs(a - b) < 0.00001;
+    }
+
+    r = r && feq(this.scale, b.scale);
+    r = r && this.mode === b.mode;
+    r = r && this.flag === b.flag;
+
+    return r;
+  }
+
+  calcHashKey(digest=_udigest) {
+    let d = digest;
+
+    d.add(this.scale);
+    d.add(this.texture ? this.texture.lib_id : -1);
+    d.add(this.mode);
+    d.add(this.flag);
+
+    return d.get();
   }
 
   dataLink(owner, getblock, getblock_adduser) {

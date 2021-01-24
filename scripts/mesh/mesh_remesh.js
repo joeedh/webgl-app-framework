@@ -104,6 +104,20 @@ export class UniformTriRemesher extends Remesher {
 
     let i = 0;
 
+    function edist1(e) {
+      let dist = e.v1.vectorDistance(e.v2);
+
+      let d = (e.v1.valence + e.v2.valence)*0.5;
+      d = Math.max((d - 5.0)*0.5, 1.0);
+
+      dist *= d;
+
+      return dist;
+    }
+    function edist2(e) {
+      return e.v1.vectorDistanceSqr(e.v2);
+    }
+
     for (let e of mesh.edges) {
       let w = e.v1.vectorDistance(e.v2);
 
@@ -111,18 +125,49 @@ export class UniformTriRemesher extends Remesher {
       e.index = i++;
     }
 
+    let heap = new util.MinHeapQueue(es, ws);
+
     es.sort((a, b) => ws[a.index] - ws[b.index]);
 
     elen *= 0.9;
 
     for (let i = 0; i < max; i++) {
+      //if (heap.length === 0) {
+      //  break;
+      //}
+
+
+      //let e = heap.pop(); //es[i];
       let e = es[i];
 
       if (e.eid < 0) {
         continue; //edge was already deleted
       }
 
-      let w = e.v1.vectorDistance(e.v2);
+      let w = edist1(e, e.v1, e.v2);
+
+      if (ws[i] >= elen || w >= elen) {
+        continue;
+      }
+
+      mesh.collapseEdge(e, lctx);
+    }
+
+
+    for (let i = 0; i < max; i++) {
+      //if (heap.length === 0) {
+      //  break;
+      //}
+
+
+      //let e = heap.pop(); //es[i];
+      let e = es[i];
+
+      if (e.eid < 0) {
+        continue; //edge was already deleted
+      }
+
+      let w = edist1(e, e.v1, e.v2);
 
       if (ws[i] >= elen || w >= elen) {
         continue;

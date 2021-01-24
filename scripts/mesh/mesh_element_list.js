@@ -378,6 +378,7 @@ export class ElementList {
     let i = this.idxmap[e.eid];
 
     e.eid = neweid;
+    e._old_eid = neweid;
 
     this.local_eidmap[e.eid] = e;
     this.idxmap[e.eid] = i;

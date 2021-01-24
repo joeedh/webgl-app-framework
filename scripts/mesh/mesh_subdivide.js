@@ -6,6 +6,62 @@ import {applyTriangulation, triangulateFace} from './mesh_tess.js';
 
 import {getArrayTemp} from './mesh_base.js';
 
+let countmap = [
+  [0], [0,0], [0,0,0], [ //tris
+    0, 1, 2, 3
+  ],
+  [ //quads
+    0, 2, 1, 3, 4
+  ]
+];
+
+/**
+  counts number of new edges created by pattern-based subdivision,
+  as done by splitEdgesSmart and splitEdgesSmart2
+ */
+export function countNewSplitEdges(e, eset) {
+  if (!eset) {
+    let count = 0;
+
+    for (let f of e.faces) {
+      if (f.isTri()) {
+        count += 1;
+      } else if (f.isQuad()) {
+        count += 2;
+      }
+    }
+
+    return count;
+  }
+
+  let count = 0;
+
+  for (let f of e.faces) {
+    if (f.lists.length > 0) {
+      continue;
+    }
+
+    let tote = 0;
+    let totv = 0;
+
+    for (let l2 of f.loops) {
+      if (l2.e === e || eset.has(l2.e)) {
+        tote++;
+      }
+
+      totv++;
+    }
+
+    if (totv < countmap.length) {
+      count += countmap[totv][tote];
+    }
+  }
+
+  count = Math.max(count, 1);
+
+  return count;
+}
+
 export class Pattern {
   constructor(verts, newverts, faces) {
     this.verts = verts;
@@ -235,6 +291,239 @@ function makePatterns() {
 let patterns = makePatterns();
 window._patterns = patterns;
 
+export function splitEdgesPreserveQuads(mesh, es, testfunc, lctx) {
+  if (!(es instanceof Set)) {
+    es = new Set(es);
+  }
+
+  let fs = new Set();
+
+  function addf(f) {
+    if (fs.has(f)) {
+      return false;
+    }
+
+    f.index = 0;
+
+    for (let l of f.loops) {
+      if (es.has(l.e)) {
+        f.index++;
+      }
+    }
+
+    fs.add(f);
+
+    return true;
+  }
+
+  for (let e of es) {
+    for (let f of e.faces) {
+      addf(f);
+    }
+  }
+
+  function adde(e) {
+    if (!es.has(e)) {
+      for (let f of e.faces) {
+        if (!addf(f)) {
+          f.index++;
+        }
+      }
+
+      es.add(e);
+    }
+  }
+
+  function reme(e) {
+    if (!es.delete(e)) {
+      return;
+    }
+
+    for (let f of e.faces) {
+      f.index--;
+    }
+  }
+
+  if (0) { //split edge loops
+    for (let e of es) {
+      for (let f of e.faces) {
+        if (!f.isQuad() || f.index !== 1) {
+          continue;
+        }
+
+        let startl = e.loopForFace(f);
+        let l = startl;
+        let maxsteps = 1000;
+        for (let i=0; i<maxsteps; i++) {
+          if (i === maxsteps-1) {
+            console.warn("Possible infinite loop error");
+          }
+
+          adde(l.e);
+
+          l = l.next.next.radial_next;
+
+          if (!fs.has(l.f)) {
+            addf(l.f);
+          }
+
+          let bad = l === startl || l === l.radial_next;
+          bad = bad || !l.f.isQuad();
+          bad = bad || l.f.index > 2;
+
+          if (bad) {
+            break;
+          }
+        }
+
+      }
+    }
+  }
+
+  console.log("es", es, fs);
+
+  for (let step=0; step<15; step++) {
+    let found = false;
+
+    let flag = MeshFlags.TEMP1;
+
+    for (let f of fs) {
+      f.flag &= ~flag;
+    }
+
+    if (0 && step === 0) {
+      for (let f of fs) {
+        console.log(f.index);
+
+        if (f.flag & flag) {
+          continue;
+        }
+
+        f.flag |= flag;
+
+        if (f.index === 4) {
+          for (let l of f.loops) {
+            for (let e of l.v.edges) {
+              if (es.has(e)) {
+                continue;
+              }
+
+              for (let l2 of e.loops) {
+                if (!fs.has(l2.f)) {
+                  addf(l2.f);
+                  l2.f.flag |= flag;
+                } else {
+                  l2.f.index++;
+                }
+              }
+
+              es.add(e);
+            }
+          }
+
+          found = true;
+        }
+      }
+    }
+
+    for (let f of fs) {
+      if (!f.isQuad()) {
+        continue;
+      }
+
+      let e, l;
+      let count = 0;
+
+      for (let l2 of f.loops) {
+        if (es.has(l2.e)) {
+          count++;
+          e = l2.e;
+          l = l2;
+        }
+      }
+
+      if (count !== 1 || !e) {
+        continue;
+      }
+
+      //case a
+      //try to find one vert to split
+      let va;
+
+      for (let v of e.verts) {
+        let ok = true;
+
+        let val = v.valence;
+        if (val !== 4 && val > 2) {
+          va = v;
+          continue;
+        }
+
+        for (let l2 of v.loops) {
+          let e2 = l2.e;
+
+          if (e2 === e || !fs.has(l2.f)) {
+            continue;
+          }
+
+          if (es.has(e2)) {
+            ok = false;
+            break;
+          }
+        }
+
+        if (ok) {
+          va = v;
+          break;
+        }
+      }
+
+      if (va) {
+        found = true;
+        for (let e2 of va.edges) {
+          adde(e2);
+        }
+      } else {
+        reme(e);
+      }
+    }
+
+    for (let e of es) {
+      for (let l of e.loops) {
+        if (!fs.has(l.f)) {
+          l.f.index = 0;
+          for (let e of l.f.edges) {
+            l.f.index += es.has(e) ? 1 : 0;
+          }
+        }
+
+        fs.add(l.f);
+      }
+    }
+
+    for (let f of fs) {
+      if (step < 3 && !found) {
+        break;
+      }
+
+      if (f.isQuad() && f.index === 3) {
+        found = true;
+
+        for (let e of f.edges) {
+          es.add(e);
+        }
+      }
+    }
+
+    if (!found) {
+      break;
+    }
+  }
+
+  return splitEdgesSmart2(mesh, es, testfunc, lctx);
+}
+
+//like splitEdgesSmart but optimized for sculpt
 export function splitEdgesSmart2(mesh, es, testfunc, lctx) {
   let newes = new Set();
   let newvs = new Set();
@@ -244,11 +533,14 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx) {
     es = new Set(es);
   }
 
+  let flag = MeshFlags.TEMP2;
+
   for (let e of es) {
     for (let l of e.loops) {
       fs.add(l.f);
     }
   }
+
 
   if (0) {
     for (let f of fs) {

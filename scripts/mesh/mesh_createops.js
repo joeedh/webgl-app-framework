@@ -26,6 +26,7 @@ import {DefaultMat, Material} from '../core/material.js';
 import {saveUndoMesh, loadUndoMesh} from './mesh_ops_base.js';
 import {css2matrix} from '../path.ux/scripts/path-controller/util/cssutils.js';
 import {splitEdgesSmart2} from './mesh_subdivide.js';
+import {triangulateMesh} from './mesh_utils.js';
 
 export class MeshCreateOp extends MeshOp {
   constructor() {
@@ -875,7 +876,8 @@ export class ProceduralToMesh extends ToolOp {
       uiname  : "Convert Procedural To Mesh",
       toolpath: "mesh.procedural_to_mesh",
       inputs  : {
-        objectId: new IntProperty(-1)
+        objectId: new IntProperty(-1).private(),
+        triangulate: new BoolProperty(false)
       }
     }
   }
@@ -910,6 +912,12 @@ export class ProceduralToMesh extends ToolOp {
     if (mat === DefaultMat) {
       mat = mat.copy();
       ctx.datalib.add(mat);
+    }
+
+    if (this.inputs.triangulate.getValue()) {
+      mesh.regenTesellation();
+      mesh.recalcNormals();
+      triangulateMesh(mesh);
     }
 
     ob.data = mesh;

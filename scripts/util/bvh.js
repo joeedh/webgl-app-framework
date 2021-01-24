@@ -14,6 +14,8 @@ import {EDGE_LINKED_LISTS} from '../core/const.js';
 
 let _triverts = [new Vector3(), new Vector3(), new Vector3()];
 
+const HIGH_QUAL_SPLIT = true;
+
 export class BVHSettings {
   constructor(leafLimit=256, drawLevelOffset=4, depthLimit=18) {
     this.leafLimit = leafLimit;
@@ -1231,10 +1233,13 @@ export class BVHNode {
       return this.updateIndexVertsGrids();
     }
 
-    let computeValidEdges = this.bvh.computeValidEdges;
+    const computeValidEdges = this.bvh.computeValidEdges;
+    const hideQuadEdges = this.bvh.hideQuadEdges;
+    const quadflag = MeshFlags.QUAD_EDGE;
 
     this.indexVerts = [];
     this.indexLoops = [];
+
     let tris = this.indexTris = [];
     let edges = this.indexEdges = [];
 
@@ -1319,20 +1324,17 @@ export class BVHNode {
 
         let ok;
 
-        ok = computeValidEdges ? !!mesh.getEdge(tri.v1, tri.v2) : true;
-        if (ok) {
+        if (validEdge(tri.v1, tri.v2)) {
           edges.push(tri.v1.index);
           edges.push(tri.v2.index);
         }
 
-        ok = computeValidEdges ? !!mesh.getEdge(tri.v2, tri.v3) : true;
-        if (ok) {
+        if (validEdge(tri.v2, tri.v3)) {
           edges.push(tri.v2.index);
           edges.push(tri.v3.index);
         }
 
-        ok = computeValidEdges ? !!mesh.getEdge(tri.v3, tri.v1) : true;
-        if (ok) {
+        if (validEdge(tri.v3, tri.v1)) {
           edges.push(tri.v3.index);
           edges.push(tri.v1.index);
         }
@@ -1361,6 +1363,23 @@ export class BVHNode {
 
     let ls = new Set();
     let vs = new Set();
+
+    function validEdge(v1, v2) {
+      if (!computeValidEdges) {
+        return true;
+      }
+
+      let e = mesh.getEdge(v1, v2);
+      if (!e) {
+        return false;
+      }
+
+      if (hideQuadEdges && (e.flag & quadflag)) {
+        return false;
+      }
+
+      return true;
+    }
 
     for (let tri of this.uniqueTris) {
       vs.add(tri.v1);
@@ -1435,22 +1454,17 @@ export class BVHNode {
       idxmap.push(tri.l2.index);
       idxmap.push(tri.l3.index);
 
-      let e;
-
-      e = mesh.getEdge(tri.v1, tri.v2);
-      if (e) {
+      if (validEdge(tri.v1, tri.v2)) {
         eidxmap.push(tri.l1.index);
         eidxmap.push(tri.l2.index);
       }
 
-      e = mesh.getEdge(tri.v2, tri.v3);
-      if (e) {
+      if (validEdge(tri.v2, tri.v3)) {
         eidxmap.push(tri.l2.index);
         eidxmap.push(tri.l3.index);
       }
 
-      e = mesh.getEdge(tri.v3, tri.v1);
-      if (e) {
+      if (validEdge(tri.v3, tri.v1)) {
         eidxmap.push(tri.l3.index);
         eidxmap.push(tri.l1.index);
       }
@@ -1599,7 +1613,7 @@ export class BVH {
     this.dead = false;
 
     this.needsIndexRebuild = false;
-
+    this.hideQuadEdges = false;
     this.computeValidEdges = false; //when building indexed draw buffers, only add edges that really exist in mesh
 
     this.tottri = 0;
@@ -2144,6 +2158,10 @@ export class BVH {
     dir.normalize();
 
     return this.root.castRay(origin, dir);
+  }
+
+  getFaceTris(id) {
+    return this.fmap.get(id);
   }
 
   removeFace(id, unlinkVerts = false, joinNodes = false) {

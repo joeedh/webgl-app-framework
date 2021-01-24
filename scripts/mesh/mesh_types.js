@@ -282,6 +282,7 @@ export class Element {
   }
 
   _initElement(type) {
+    this._old_eid = -1;
     this.type = type;
     this.flag = this.index = 0;
     this.eid = -1;
@@ -324,13 +325,15 @@ export class Element {
     this.type = obj.type;
     this.flag = obj.flag;
     this.index = obj.index;
-    this.eid = obj.eid;
+    this.eid = this._old_eid = obj.eid;
 
     return this;
   }
 
   loadSTRUCT(reader) {
     reader(this);
+
+    this._old_eid = this.eid;
 
     //CD this.cd = this.customData;
   }
@@ -1255,6 +1258,66 @@ for (let i=0; i<eliter_stack.length; i++) {
   eliter_stack[i] = new EdgeLoopIter();
 }
 
+let eviter_stack = new Array(4192);
+eviter_stack.cur = 0;
+
+class EdgeVertIter {
+  constructor() {
+    this.e = undefined;
+    this.i = 0;
+    this.ret = {done : false, value : undefined};
+    this.done = true;
+  }
+
+  reset(e) {
+    this.e = e;
+    this.i = 0;
+    this.done = false;
+    this.ret.done = false;
+    eviter_stack.cur--;
+
+    return this;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+
+  next() {
+    if (this.i === 2) {
+      return this.finish();
+    }
+
+    let v;
+    v = this.i ? this.e.v2 : this.e.v1;
+
+    this.i++;
+
+    let ret = this.ret;
+    ret.value = v;
+
+    return ret;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.ret.value = undefined;
+      this.ret.done = true;
+      this.done = true;
+      this.e = undefined;
+    }
+
+    return this.ret;
+  }
+
+  return() {
+    return this.finish();
+  }
+}
+for (let i=0; i<eviter_stack.length; i++) {
+  eviter_stack[i] = new EdgeVertIter();
+}
+
 export class Edge extends Element {
   constructor() {
     super(MeshTypes.EDGE);
@@ -1270,6 +1333,10 @@ export class Edge extends Element {
       this.v1next = this.v1prev = undefined;
       this.v2next = this.v2prev = undefined;
     }
+  }
+
+  get verts() {
+    return eviter_stack[eviter_stack.cur++].reset(this);
   }
 
   get loopCount() {
@@ -1335,6 +1402,28 @@ export class Edge extends Element {
     return count;
   }
 
+  loopForFace(face) {
+    if (!this.l) {
+      return undefined;
+    }
+
+    let l = this.l;
+    let _i = 0;
+    do {
+      if (l.f === face) {
+        return l;
+      }
+
+      if (_i++ > MAX_EDGE_FACES) {
+        console.warn("Infinite loop error");
+        break;
+      }
+      l = l.radial_next;
+    } while (l !== this.l);
+
+    return undefined;
+  }
+
   /*
   set flag(v) {
     //if (!v) {
@@ -1388,9 +1477,9 @@ export class Edge extends Element {
     if (force) {
       this.updateHandles();
       this.updateLength();
-    } else {
-      this.flag |= MeshFlags.UPDATE;
     }
+
+    this.flag |= MeshFlags.UPDATE;
   }
 
   updateLength() {
@@ -1402,6 +1491,14 @@ export class Edge extends Element {
     }
 
     return this.length;
+  }
+
+  commonVertex(e) {
+    if (e.v1 === this.v1 || e.v1 === this.v2)
+      return e.v1;
+
+    if (e.v2 === this.v1 || e.v2 === this.v2)
+      return e.v2;
   }
 
   vertex(h) {

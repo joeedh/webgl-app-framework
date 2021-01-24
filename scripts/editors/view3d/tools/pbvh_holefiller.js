@@ -211,7 +211,7 @@ export class HoleFillPaintOp extends PaintOpBase {
     window.redraw_viewport(true);
   }
 
-  on_mousemove_intern(e, x, y, in_timer=false) {
+  on_mousemove_intern(e, x, y, in_timer=false, isInterp=false) {
     let ctx = this.modal_ctx;
     if (!ctx.mesh) {
       return;
@@ -239,6 +239,7 @@ export class HoleFillPaintOp extends PaintOpBase {
     ps.strength = strength;
     ps.autosmooth = autosmooth;
     ps.w = w;
+    ps.isInterp = isInterp;
 
     let list = this.inputs.samples.getValue();
     let lastps;

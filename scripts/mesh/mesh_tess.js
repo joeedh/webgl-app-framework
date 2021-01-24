@@ -907,6 +907,7 @@ export function genCommands(mesh, ltri) {
 export function applyTriangulation(mesh, f, newfaces, newedges, lctx) {
   if (f.isQuad()) {
     triangulateQuad(mesh, f, lctx, newfaces);
+    return;
   } else if (f.isTri()) {
     return;
   }

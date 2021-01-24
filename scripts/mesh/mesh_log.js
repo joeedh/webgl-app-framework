@@ -68,7 +68,7 @@ export class LogEntry {
       cd2.push(cd.copy());
     }
 
-    let ret = new LogEntry(elem.type | subtype, elem.eid, cd2);
+    let ret = new LogEntry(elem.type | subtype, elem._old_eid, cd2);
 
     ret.data.push(elem.flag);
     ret.data.push(elem.index);
@@ -83,22 +83,22 @@ export class LogEntry {
         ret.data.push(elem.no[2]);
         break;
       case MeshTypes.EDGE:
-        ret.data.push(elem.v1.eid);
-        ret.data.push(elem.v2.eid);
+        ret.data.push(elem.v1._old_eid);
+        ret.data.push(elem.v2._old_eid);
         break;
       case MeshTypes.LOOP:
-        ret.data.push(elem.v.eid);
-        ret.data.push(elem.e.eid);
-        ret.data.push(elem.f.eid);
+        ret.data.push(elem.v._old_eid);
+        ret.data.push(elem.e._old_eid);
+        ret.data.push(elem.f._old_eid);
         break;
       case MeshTypes.FACE:
         ret.data.push(elem.lists.length);
         for (let list of elem.lists) {
           ret.data.push(list.length);
           for (let l of list) {
-            ret.data.push(l.eid);
-            ret.data.push(l.v.eid);
-            ret.data.push(l.e.eid);
+            ret.data.push(l._old_eid);
+            ret.data.push(l.v._old_eid);
+            ret.data.push(l.e._old_eid);
           }
         }
 
@@ -159,11 +159,11 @@ export class MeshLog {
 
     log[li+LTYPE] = elem.type | subtype;
     log[li+LCANCEL] = false;
-    log[li+LEID] = elem.eid;
+    log[li+LEID] = elem._old_eid;
 
     let i = log.length;
 
-    //let ret = new LogEntry(elem.type | subtype, elem.eid, cd2);
+    //let ret = new LogEntry(elem.type | subtype, elem._old_eid, cd2);
     log.push(elem.flag);
     log.push(elem.index);
 
@@ -177,13 +177,13 @@ export class MeshLog {
         log.push(elem.no[2]);
         break;
       case MeshTypes.EDGE:
-        log.push(elem.v1.eid);
-        log.push(elem.v2.eid);
+        log.push(elem.v1._old_eid);
+        log.push(elem.v2._old_eid);
         break;
       case MeshTypes.LOOP:
-        log.push(elem.v.eid);
-        log.push(elem.e.eid);
-        log.push(elem.f.eid);
+        log.push(elem.v._old_eid);
+        log.push(elem.e._old_eid);
+        log.push(elem.f._old_eid);
         break;
       case MeshTypes.FACE:
         log.push(elem.lists.length);
@@ -192,9 +192,9 @@ export class MeshLog {
           log.push(list.length);
 
           for (let l of list) {
-            log.push(l.eid);
-            log.push(l.v.eid);
-            log.push(l.e.eid);
+            log.push(l._old_eid);
+            log.push(l.v._old_eid);
+            log.push(l.e._old_eid);
           }
         }
 
@@ -292,7 +292,7 @@ export class MeshLog {
   ensure(elem) {
     if (disableLog) return;
 
-    if (!(elem.eid in this.eidmap)) {
+    if (!(elem._old_eid in this.eidmap)) {
       return this.logElem(elem);
     }
 
@@ -388,8 +388,11 @@ export class MeshLog {
   logKillEdge(e) {
     if (disableLog) return;
 
-    for (let f of e.faces) {
-      this.ensure(f);
+    this.ensure(e.v1);
+    this.ensure(e.v2);
+
+    for (let l of e.loops) {
+      this.ensure(l.f);
     }
 
     return this.logEdge(e, LogTypes.REMOVE);
@@ -397,6 +400,11 @@ export class MeshLog {
 
   logKillFace(f) {
     if (disableLog) return;
+
+    for (let l of f.loops) {
+      this.ensure(l.v);
+      this.ensure(l.e);
+    }
 
     return this.logFace(f, LogTypes.REMOVE);
   }
@@ -545,7 +553,7 @@ export class MeshLog {
             if (eid in mesh.eidmap) {
               elem = mesh.eidmap[eid];
               if (elem.type !== MeshTypes.VERTEX) {
-                console.log(elem.eid, elem);
+                console.log(elem._old_eid, elem);
                 throw new Error("Mesh undo log corruption");
               }
             } else {
@@ -556,7 +564,7 @@ export class MeshLog {
               mesh.setSelect(elem, true);
             }
 
-            //console.log("VERT", elem.eid, le.eid);
+            //console.log("VERT", elem._old_eid, le._old_eid);
 
             elem.flag = log[di++];
             elem.index = log[di++];
@@ -572,8 +580,13 @@ export class MeshLog {
             let v1 = mesh.eidmap[log[di+2]];
             let v2 = mesh.eidmap[log[di+3]];
 
+            if (!v1 || !v2 || v1 === v2) {
+              console.warn("Undo log corruption", v1, v2);
+              continue;
+            }
+
             elem = mesh.makeEdge(v1, v2, true, eid);
-            //console.log("EDGE", elem.eid, le.eid);
+            //console.log("EDGE", elem._old_eid, le._old_eid);
 
             if (log[di] & MeshFlags.SELECT) {
               mesh.setSelect(elem, true);
@@ -588,6 +601,8 @@ export class MeshLog {
           case MeshTypes.FACE:
             let j = di + 2;
 
+            let bad = false;
+
             let totlist = log[j++];
             for (let il=0; il<totlist; il++) {
               let totloop = log[j++];
@@ -600,8 +615,19 @@ export class MeshLog {
                 let veid = log[j++];
                 let eeid = log[j++];
 
-                vs.push(mesh.eidmap[veid]);
+                let v = mesh.eidmap[veid];
+                if (!v) {
+                  console.warn("Undo log corruption", veid);
+                  bad = true;
+                  break;
+                }
+
+                vs.push(v);
                 ls.push(leid);
+              }
+
+              if (bad) {
+                break;
               }
 
               if (il === 0) {
@@ -609,7 +635,7 @@ export class MeshLog {
 
                 finalfaces.add(elem);
 
-                //console.log("FACE", elem.eid, le.eid);
+                //console.log("FACE", elem._old_eid, le._old_eid);
 
                 if (log[di] & MeshFlags.SELECT) {
                   mesh.setSelect(elem, true);
@@ -622,9 +648,13 @@ export class MeshLog {
               }
             }
 
+            if (bad) {
+              continue;
+            }
+
             //load loop customdata
             for (let l of elem.loops) {
-              let li2 = this.eidmap[l.eid];
+              let li2 = this.eidmap[l._old_eid];
 
               if (li2) {
                 let cdlen = log[li2+LTOTCD];
