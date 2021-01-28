@@ -8,8 +8,10 @@ import {tileManager} from '../image/gpuimage.js';
 
 import './platform.js';
 
-import {initSimpleController, checkForTextBox, keymap, Vector3, Vector4, Vector2, Quat, Matrix4,
-  ToolOp, UndoFlags, nstructjs} from '../path.ux/scripts/pathux.js';
+import {
+  initSimpleController, checkForTextBox, keymap, Vector3, Vector4, Vector2, Quat, Matrix4,
+  ToolOp, UndoFlags, nstructjs
+} from '../path.ux/scripts/pathux.js';
 
 import './polyfill.js';
 
@@ -48,6 +50,7 @@ let STRUCT = nstructjs.STRUCT;
 export class FileLoadError extends Error {};
 
 import {BasicFileOp, RootFileOp} from './app_ops.js';
+
 export {BasicFileOp, RootFileOp} from './app_ops.js';
 
 export {genDefaultScreen} from '../editors/screengen.js';
@@ -58,9 +61,9 @@ import {SelMask} from "../editors/view3d/selectmode.js";
 import {Light} from "../light/light.js";
 import {GridBase} from '../mesh/mesh_grids.js';
 import {DefaultBrushes, DynTopoFlags, DynTopoOverrides, SculptBrush, SculptTools} from '../brush/brush.js';
-import {APP_VERSION} from './const.js';
+import {APP_VERSION, CompressionFlags} from './const.js';
 
-export function genDefaultFile(appstate, dont_load_startup=0) {
+export function genDefaultFile(appstate, dont_load_startup = 0) {
   _appstate.saveHandle = undefined;
 
   if ((cconst.APP_KEY_NAME in localStorage) && !dont_load_startup) {
@@ -87,11 +90,11 @@ export function genDefaultFile(appstate, dont_load_startup=0) {
 window._genDefaultFile = genDefaultFile; //this global is for debugging purposes only
 
 export const BlockTypes = {
-  SCREEN     : "scrn",
-  DATABLOCK  : "dblk",
-  SETTINGS   : "sett",
-  LIBRARY    : "libr",
-  TOOLSTACK  : "tstk"
+  SCREEN   : "scrn",
+  DATABLOCK: "dblk",
+  SETTINGS : "sett",
+  LIBRARY  : "libr",
+  TOOLSTACK: "tstk"
 }
 
 export class FileBlock {
@@ -148,7 +151,7 @@ export class AppState {
     this.setScreen(screen, false);
   }
 
-  setScreen(screen, trigger_destroy=true) {
+  setScreen(screen, trigger_destroy = true) {
     this.screen.unlisten();
     this.screen.remove(trigger_destroy);
 
@@ -172,7 +175,7 @@ export class AppState {
     return this;
   }
 
-  start(loadDefaultFile=true) {
+  start(loadDefaultFile = true) {
     this.loadSettings();
 
     this.ctx = new ViewContext(this);
@@ -210,8 +213,8 @@ export class AppState {
 
     this.screen = document.createElement("webgl-app-x");
     this.screen.ctx = this.ctx;
-    this.screen.size[0] = window.innerWidth-45;
-    this.screen.size[1] = window.innerHeight-45;
+    this.screen.size[0] = window.innerWidth - 45;
+    this.screen.size[1] = window.innerHeight - 45;
 
     document.body.appendChild(this.screen);
     this.screen.setCSS();
@@ -223,7 +226,7 @@ export class AppState {
     this.filename = "unnamed." + cconst.FILE_EXT;
   }
 
-  createFile(args={save_screen : true, save_settings : false, save_library : true}) {
+  createFile(args = {save_screen: true, save_settings: false, save_library: true}) {
     if (args.save_library === undefined) {
       args.save_library = true;
     }
@@ -236,11 +239,26 @@ export class AppState {
       args.save_screen = true;
     }
 
-    let file = new BinaryWriter();
+    let compflag = 0;
 
-    file.string(cconst.FILE_MAGIC);
-    file.uint16(cconst.APP_VERSION);
-    file.uint16(0); //reserved for file flags (may compression?)
+    if (args.compress) {
+      compflag = CompressionFlags.JSZIP;
+    }
+
+    let file = new BinaryWriter();
+    let header;
+
+    let docompress = compflag & CompressionFlags.JSZIP;
+
+    if (docompress) {
+      header = new BinaryWriter();
+    } else {
+      header = file;
+    }
+
+    header.string(cconst.FILE_MAGIC);
+    header.uint16(cconst.APP_VERSION);
+    header.uint16(compflag); //compression flags
 
     let buf = nstructjs.write_scripts();
 
@@ -300,6 +318,15 @@ export class AppState {
       writeblock(BlockTypes.TOOLSTACK, this.toolstack);
     }
 
+    if (docompress) {
+      file.data = JSZip.deflate(file.data);
+
+      header.int32(file.data.length);
+      header.concat(file);
+
+      return header.finish().buffer;
+    }
+
     return file.finish().buffer;
   }
 
@@ -310,16 +337,16 @@ export class AppState {
   }
 
   testFileIO() {
-    let file = this.createFile({save_settings : true});
+    let file = this.createFile({save_settings: true});
     this.loadFile(file);
     window.redraw_viewport();
   }
 
   loadUndoFile(buf) {
     this.loadFile(buf, {
-      load_screen     : false,
-      load_settings   : false,
-      reset_toolstack : false
+      load_screen    : false,
+      load_settings  : false,
+      reset_toolstack: false
     });
 
     this._execEditorOnFileLoad();
@@ -392,7 +419,7 @@ export class AppState {
 
     return new Promise((accept, reject) => {
       //kind of want to use new asyn stuff. . .
-      let readblocks = function*(filectx) {
+      let readblocks = function* (filectx) {
         let args = filectx.args;
         filectx.datablocks = [];
         let file = filectx.file;
@@ -421,11 +448,11 @@ export class AppState {
 
       let step = 0.0;
 
-      let log = function() {
+      let log = function () {
         console.log.apply(this, arguments);
       }
 
-      let gen = function*() {
+      let gen = function* () {
         log("begin");
         let filectx = this2.loadFile_start(buf, args);
         yield;
@@ -439,7 +466,7 @@ export class AppState {
         log("reading blocks");
         for (let block of readblocks(filectx)) {
           let file = filectx.file;
-          let perc = file.i / file.view.buffer.byteLength;
+          let perc = file.i/file.view.buffer.byteLength;
 
           step = startstep + perc*4.0;
 
@@ -485,7 +512,7 @@ export class AppState {
       pcirc.startTimer();
 
       let timer = window.setInterval(() => {
-        let perc = step / 6.0;
+        let perc = step/6.0;
 
         pcirc.value = perc;
 
@@ -529,8 +556,14 @@ export class AppState {
     this.loadFile_finish(filectx);
   }
 
+  testFileCompression() {
+    let buf = this.createFile({compress: true});
+    this.loadFile(buf, {reset_toolstack: false, load_screen: false, load_settings: false});
+    window.redraw_viewport(true);
+  }
+
   //expects an ArrayBuffer or a DataView
-  loadFile_start(buf, args={reset_toolstack : true, load_screen : true, load_settings : false}) {
+  loadFile_start(buf, args = {reset_toolstack: true, load_screen: true, load_settings: false}) {
     let lastscreens = undefined;
     let lastscreens_active = undefined;
 
@@ -559,6 +592,16 @@ export class AppState {
 
     let version = file.uint16();
     let flag = file.uint16();
+
+    if (flag & CompressionFlags.JSZIP) {
+      let len = file.uint32();
+
+      //decompress
+      let udata = new Uint8Array(file.view.buffer, file.i, len);
+      udata = JSZip.inflate(udata);
+
+      file = filectx.file = new BinaryReader(udata.buffer);
+    }
 
     let len = file.int32();
     let structs = file.string(len);
@@ -811,6 +854,7 @@ export class AppState {
     }
 
   }
+
   loadFile_finish(filectx) {
     let {lastscreens, found_screen, screen, version, datalib, lastscreens_active, datablocks, args} = filectx;
 
@@ -859,7 +903,7 @@ export class AppState {
   }
 
   saveStartupFile() {
-    let buf = this.createFile({write_settings : false});
+    let buf = this.createFile({write_settings: false, compress: true});
     buf = util.btoa(buf);
 
     try {
@@ -936,7 +980,7 @@ export class AppState {
     }
   }
 
-  mergeDefaultBrushes(datalib=this.datalib) {
+  mergeDefaultBrushes(datalib = this.datalib) {
     for (let k in DefaultBrushes) {
       let b1 = datalib.get(k);
 
@@ -1005,8 +1049,8 @@ export class AppState {
 
   createSettingsFile() {
     let args = {
-      save_settings : true,
-      save_screen   : false,
+      save_settings: true,
+      save_screen  : false,
       save_library : false
     };
 
@@ -1038,9 +1082,9 @@ export class AppState {
     file = util.atob(file).buffer;
 
     let args = {
-      load_screen: false,
-      load_settings: true,
-      load_library : false,
+      load_screen    : false,
+      load_settings  : true,
+      load_library   : false,
       reset_toolstack: false
     }
 
@@ -1050,8 +1094,8 @@ export class AppState {
 
   createUndoFile() {
     let args = {
-      save_screen   : false,
-      save_settings : false
+      save_screen  : false,
+      save_settings: false
     };
 
     return this.createFile(args);
@@ -1077,7 +1121,7 @@ export function init() {
 
     _appstate.draw();
   }
-  window.redraw_all = function() {
+  window.redraw_all = function () {
     if (animreq !== undefined) {
       return;
     }
@@ -1119,12 +1163,13 @@ export function init() {
 
 
   let graphreq = undefined;
+
   function gf() {
     graphreq = undefined;
     _appstate.datalib.graph.exec(_appstate.ctx);
   }
 
-  window.updateDataGraph = function(force=false) {
+  window.updateDataGraph = function (force = false) {
     //console.warn("updateDataGraph called");
 
     if (force) {

@@ -7,7 +7,7 @@ import '../util/floathalf.js';
 let STRUCT = nstructjs.STRUCT;
 
 export const UVFlags = {
-  PIN : 2
+  PIN: 2
 };
 
 export class UVLayerElem extends CustomDataElem {
@@ -18,12 +18,43 @@ export class UVLayerElem extends CustomDataElem {
     this.flag = 0;
   }
 
+  static apiDefine(api, dstruct) {
+    dstruct.vec2("uv", "uv", "uv");
+  }
+
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.LOOP,
+      typeName    : "uv",
+      uiTypeName  : "UV",
+      defaultName : "UV Layer",
+      valueSize   : 2,
+      flag        : 0
+    }
+  };
+
+  clear() {
+    this.uv.zero();
+    return this;
+  }
+
   setValue(uv) {
     this.uv.load(uv);
   }
 
-  static apiDefine(api, dstruct) {
-    dstruct.vec2("uv", "uv", "uv");
+  add(b) {
+    this.uv.add(b.uv);
+    return this;
+  }
+
+  addFac(b, fac) {
+    this.uv.addFac(b.uv, fac);
+    return this;
+  }
+
+  mulScalar(b) {
+    this.uv.mulScalar(b);
+    return this;
   }
 
   getValue() {
@@ -42,31 +73,26 @@ export class UVLayerElem extends CustomDataElem {
   }
 
   interp(dest, datas, ws) {
-    dest.uv.zero();
-
     if (datas.length === 0) {
       return;
     }
 
-    for (let i=0; i<datas.length; i++) {
-      dest.uv[0] += ws[i]*datas[i].uv[0];
-      dest.uv[1] += ws[i]*datas[i].uv[1];
+    let u = 0, v = 0;
+
+    for (let i = 0; i < datas.length; i++) {
+      u += ws[i]*datas[i].uv[0];
+      v += ws[i]*datas[i].uv[1];
     }
+
+    this.uv[0] = u;
+    this.uv[1] = v;
   }
 
   validate() {
     return true;
   }
-
-  static define() {return {
-    elemTypeMask: MeshTypes.LOOP,
-    typeName    : "uv",
-    uiTypeName  : "UV",
-    defaultName : "UV Layer",
-    valueSize : 2,
-    flag     : 0
-  }};
 }
+
 UVLayerElem.STRUCT = STRUCT.inherit(UVLayerElem, CustomDataElem, "mesh.UVLayerElem") + `
   uv   : vec2;
   flag : byte;
@@ -83,6 +109,17 @@ export class OrigIndexElem extends CustomDataElem {
 
     this.i = ORIGINDEX_NONE;
   }
+
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE,
+      typeName    : "origindex",
+      uiTypeName  : "Original Index",
+      defaultName : "Original Index",
+      valueSize   : 1,
+      flag        : 0
+    }
+  };
 
   setValue(i) {
     this.i = i;
@@ -113,16 +150,8 @@ export class OrigIndexElem extends CustomDataElem {
   validate() {
     return true;
   }
-
-  static define() {return {
-    elemTypeMask: MeshTypes.VERTEX|MeshTypes.EDGE|MeshTypes.FACE,
-    typeName    : "origindex",
-    uiTypeName  : "Original Index",
-    defaultName : "Original Index",
-    valueSize : 1,
-    flag     : 0
-  }};
 }
+
 OrigIndexElem.STRUCT = STRUCT.inherit(OrigIndexElem, CustomDataElem, "mesh.OrigIndexElem") + `
   i : int;
 }
@@ -133,11 +162,37 @@ CustomDataElem.register(OrigIndexElem);
 
 
 export class FloatElem extends CustomDataElem {
-  constructor(value=0.0) {
+  constructor(value = 0.0) {
     super();
 
     this.value = value;
   }
+
+  add(b) {
+    this.value += b;
+    return this;
+  }
+
+  addFac(b, fac) {
+    this.value += b*fac;
+    return this;
+  }
+
+  clear() {
+    this.value = 0.0;
+    return this;
+  }
+
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.LOOP | MeshTypes.HANDLE | MeshTypes.FACE,
+      typeName    : "float",
+      uiTypeName  : "Float",
+      defaultName : "Float Layer",
+      valueSize   : 1,
+      flag        : 0
+    }
+  };
 
   setValue(f) {
     this.value = f;
@@ -151,6 +206,11 @@ export class FloatElem extends CustomDataElem {
     b.value = this.value;
   }
 
+  mulScalar(b) {
+    this.value *= b;
+    return this;
+  }
+
   copy() {
     let ret = new this.constructor();
     this.copyTo(ret);
@@ -158,30 +218,24 @@ export class FloatElem extends CustomDataElem {
   }
 
   interp(dest, datas, ws) {
-    dest.value = 0.0;
-
     if (datas.length === 0) {
       return;
     }
 
-    for (let i=0; i<datas.length; i++) {
-      dest.value += ws[i]*datas[i].value;
+    let f = 0.0;
+
+    for (let i = 0; i < datas.length; i++) {
+      f += ws[i]*datas[i].value;
     }
+
+    this.value = f;
   }
 
   validate() {
     return true;
   }
-
-  static define() {return {
-    elemTypeMask: MeshTypes.VERTEX|MeshTypes.EDGE|MeshTypes.LOOP|MeshTypes.HANDLE|MeshTypes.FACE,
-    typeName    : "float",
-    uiTypeName  : "Float",
-    defaultName : "Float Layer",
-    valueSize : 1,
-    flag     : 0
-  }};
 }
+
 FloatElem.STRUCT = STRUCT.inherit(FloatElem, CustomDataElem, "mesh.FloatElem") + `
   value : float;
 }
@@ -197,12 +251,27 @@ export class IntElem extends CustomDataElem {
     this.value = 0;
   }
 
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.LOOP | MeshTypes.HANDLE | MeshTypes.FACE,
+      typeName    : "int",
+      uiTypeName  : "Int",
+      defaultName : "Int Layer",
+      valueSize   : 1,
+      flag        : 0
+    }
+  };
+
   setValue(i) {
     this.value = ~~i;
   }
 
   getValue() {
     return this.value;
+  }
+
+  clear() {
+    this.value = 0;
   }
 
   copyTo(b) {
@@ -216,32 +285,24 @@ export class IntElem extends CustomDataElem {
   }
 
   interp(dest, datas, ws) {
-    dest.value = 0.0;
-
     if (datas.length === 0) {
       return;
     }
 
-    for (let i=0; i<datas.length; i++) {
-      dest.value += ws[i]*datas[i].value;
+    let f = 0;
+
+    for (let i = 0; i < datas.length; i++) {
+      f += ws[i]*datas[i].value;
     }
 
-    dest.value = ~~(dest.value + 0.5); //round?
+    dest.value = ~~(f + 0.5); //round?
   }
 
   validate() {
     return true;
   }
-
-  static define() {return {
-    elemTypeMask: MeshTypes.VERTEX|MeshTypes.EDGE|MeshTypes.LOOP|MeshTypes.HANDLE|MeshTypes.FACE,
-    typeName    : "int",
-    uiTypeName  : "Int",
-    defaultName : "Int Layer",
-    valueSize : 1,
-    flag     : 0
-  }};
 }
+
 IntElem.STRUCT = STRUCT.inherit(IntElem, CustomDataElem, "mesh.IntElem") + `
   value : int;
 }
@@ -256,6 +317,17 @@ export class NormalLayerElem extends CustomDataElem {
 
     this.no = new Vector3();
   }
+
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.LOOP,
+      typeName    : "normal",
+      uiTypeName  : "Normal",
+      defaultName : "Normal Layer",
+      valueSize   : 3,
+      flag        : 0
+    }
+  };
 
   setValue(n) {
     this.no.load(n);
@@ -276,17 +348,21 @@ export class NormalLayerElem extends CustomDataElem {
   }
 
   interp(dest, datas, ws) {
-    dest.no.zero();
-
     if (datas.length === 0) {
       return;
     }
 
-    for (let i=0; i<datas.length; i++) {
-      dest.no[0] += ws[i]*datas[i].no[0];
-      dest.no[1] += ws[i]*datas[i].no[1];
-      dest.no[2] += ws[i]*datas[i].no[2];
+    let nx = 0, ny = 0, nz = 0;
+
+    for (let i = 0; i < datas.length; i++) {
+      nx += ws[i]*datas[i].no[0];
+      ny += ws[i]*datas[i].no[1];
+      nz += ws[i]*datas[i].no[2];
     }
+
+    dest.no[0] = nx;
+    dest.no[1] = ny;
+    dest.no[2] = nz;
 
     dest.no.normalize();
   }
@@ -294,16 +370,8 @@ export class NormalLayerElem extends CustomDataElem {
   validate() {
     return true;
   }
-
-  static define() {return {
-    elemTypeMask: MeshTypes.LOOP,
-    typeName    : "normal",
-    uiTypeName  : "Normal",
-    defaultName : "Normal Layer",
-    valueSize : 3,
-    flag     : 0
-  }};
 }
+
 NormalLayerElem.STRUCT = STRUCT.inherit(NormalLayerElem, CustomDataElem, "mesh.NormalLayerElem") + `
   no : vec3;
 }
@@ -316,6 +384,22 @@ export class ColorLayerElem extends CustomDataElem {
     super();
 
     this.color = new Vector4([1, 1, 1, 1]);
+  }
+
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.VERTEX | MeshTypes.LOOP,
+      typeName    : "color",
+      uiTypeName  : "Color",
+      defaultName : "Color",
+      valueSize   : 4,
+      flag        : 0
+    }
+  };
+
+  clear() {
+    this.color.zero();
+    return this;
   }
 
   apiDefine(api, dstruct) {
@@ -334,6 +418,21 @@ export class ColorLayerElem extends CustomDataElem {
     b.color.load(this.color);
   }
 
+  add(b) {
+    this.color.add(b.color);
+    return this;
+  }
+
+  addFac(b, fac) {
+    this.color.addFac(b.color, fac);
+    return this;
+  }
+
+  mulScalar(b) {
+    this.color.mulScalar(b);
+    return this;
+  }
+
   copy() {
     let ret = new ColorLayerElem();
     this.copyTo(ret);
@@ -345,14 +444,19 @@ export class ColorLayerElem extends CustomDataElem {
       return;
     }
 
-    dest.color.zero();
+    let r = 0, g = 0, b = 0, a = 0;
 
-    for (let i=0; i<datas.length; i++) {
-      dest.color[0] += ws[i]*datas[i].color[0];
-      dest.color[1] += ws[i]*datas[i].color[1];
-      dest.color[2] += ws[i]*datas[i].color[2];
-      dest.color[3] += ws[i]*datas[i].color[3];
+    for (let i = 0; i < datas.length; i++) {
+      r += ws[i]*datas[i].color[0];
+      g += ws[i]*datas[i].color[1];
+      b += ws[i]*datas[i].color[2];
+      a += ws[i]*datas[i].color[3];
     }
+
+    dest.color[0] = r;
+    dest.color[1] = g;
+    dest.color[2] = b;
+    dest.color[3] = a;
   }
 
   validate() {
@@ -364,7 +468,7 @@ export class ColorLayerElem extends CustomDataElem {
     super.loadSTRUCT(reader);
 
     if (this.color.constructor === Array) {
-      for (let i=0; i<4; i++) {
+      for (let i = 0; i < 4; i++) {
         this.color[i] = half2float(this.color[i]);
       }
 
@@ -374,15 +478,8 @@ export class ColorLayerElem extends CustomDataElem {
     }
 
   }
-  static define() {return {
-    elemTypeMask: MeshTypes.VERTEX|MeshTypes.LOOP,
-    typeName    : "color",
-    uiTypeName  : "Color",
-    defaultName : "Color",
-    valueSize : 4,
-    flag     : 0
-  }};
 }
+
 ColorLayerElem.STRUCT = STRUCT.inherit(ColorLayerElem, CustomDataElem, "mesh.ColorLayerElem") + `
   color : array(e, short) | float2half(e);
 }
@@ -397,6 +494,17 @@ export class Vector3LayerElem extends CustomDataElem {
 
     this.value = new Vector3();
   }
+
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.VERTEX | MeshTypes.LOOP,
+      typeName    : "vec3",
+      uiTypeName  : "Vector3",
+      defaultName : "Coordinates",
+      valueSize   : 4,
+      flag        : 0
+    }
+  };
 
   setValue(val) {
     this.value.load(val);
@@ -417,17 +525,21 @@ export class Vector3LayerElem extends CustomDataElem {
   }
 
   interp(dest, datas, ws) {
-    dest.value.zero();
-
     if (datas.length === 0) {
       return;
     }
 
-    for (let i=0; i<datas.length; i++) {
-      dest.value[0] += ws[i]*datas[i].value[0];
-      dest.value[1] += ws[i]*datas[i].value[1];
-      dest.value[2] += ws[i]*datas[i].value[2];
+    let x = 0, y = 0, z = 0;
+
+    for (let i = 0; i < datas.length; i++) {
+      x += ws[i]*datas[i].value[0];
+      y += ws[i]*datas[i].value[1];
+      z += ws[i]*datas[i].value[2];
     }
+
+    dest.value[0] = x;
+    dest.value[1] = y;
+    dest.value[2] = z;
   }
 
   validate() {
@@ -438,16 +550,8 @@ export class Vector3LayerElem extends CustomDataElem {
     reader(this);
     super.loadSTRUCT(reader);
   }
-
-  static define() {return {
-    elemTypeMask: MeshTypes.VERTEX|MeshTypes.LOOP,
-    typeName    : "vec3",
-    uiTypeName  : "Vector3",
-    defaultName : "Coordinates",
-    valueSize : 4,
-    flag     : 0
-  }};
 }
+
 Vector3LayerElem.STRUCT = STRUCT.inherit(Vector3LayerElem, CustomDataElem, "mesh.Vector3LayerElem") + `
   value : vec3;
 }
@@ -460,15 +564,18 @@ export class MaskElem extends FloatElem {
     super(1.0);
   }
 
-  static define() {return {
-    elemTypeMask: MeshTypes.VERTEX,
-    typeName    : "mask",
-    uiTypeName  : "Paint Mask",
-    defaultName : "Mask Layer",
-    valueSize : 1,
-    flag     : 0
-  }};
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.VERTEX,
+      typeName    : "mask",
+      uiTypeName  : "Paint Mask",
+      defaultName : "Mask Layer",
+      valueSize   : 1,
+      flag        : 0
+    }
+  };
 }
+
 MaskElem.STRUCT = STRUCT.inherit(MaskElem, FloatElem, "mesh.MaskElem") + `
 }
 `;

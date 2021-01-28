@@ -6,10 +6,628 @@ import * as math from '../util/math.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
 
-import {MeshFlags, MeshTypes, MeshFeatures, ReusableIter, LogContext, ChangeFlags} from './mesh_base.js';
+import {MeshFlags, MeshTypes, MeshFeatures, ReusableIter, LogContext, ChangeFlags, ArrayPool} from './mesh_base.js';
 
 import {getArrayTemp} from './mesh_base.js';
 import {applyTriangulation} from './mesh_tess.js';
+
+let mvc_tmps = util.cachering.fromConstructor(Vector3, 256);
+let mvc_mats = util.cachering.fromConstructor(Matrix4, 16);
+let mvc_pool = new ArrayPool();
+
+//mean value coordinates
+export function calcMVC(co, cos, normal = undefined, cosout=undefined) {
+  let startco = co;
+  let cos2;
+  cos = ReusableIter.getSafeIter(cos);
+
+  if (cos instanceof Set) {
+    cos2 = mvc_pool.get(cos.size);
+  } else if (cos instanceof Array) {
+    cos2 = mvc_pool.get(cos.length);
+  } else {
+    let count = 0;
+
+    for (let co of cos) {
+      count++;
+    }
+
+    cos2 = mvc_pool.get(count);
+  }
+
+  let cent = mvc_tmps.next().zero();
+
+  let i = 0;
+  for (let co2 of cos) {
+    co2 = mvc_tmps.next().load(co2);
+    cos2[i++] = co2;
+    cent.add(co2);
+  }
+  cos = cos2;
+
+  let val = cos2.length;
+
+  if (val === 0) {
+    return mvc_pool.get(0);
+  } else if (val === 1) {
+    let ws = mvc_pool.get(1);
+    ws[0] = 1.0;
+    return ws;
+  } else if (val === 2) {
+    let v1 = mvc_tmps.next().load(co).sub(cos[0]);
+    let v2 = mvc_tmps.next().load(cos[1]).sub(cos[0]).normalize();
+    let d = v1.dot(v2);
+
+    let ws = mvc_pool.get(2);
+    ws[0] = d;
+    ws[1] = 1.0 - d;
+
+    return ws;
+  }
+
+  co = mvc_tmps.next().load(co);
+
+  let n = normal;
+
+  if (!n) {
+    n = mvc_tmps.next();
+    if (val > 3) {
+      n.load(math.normal_quad(cos[0], cos[1], cos[2], cos[3]));
+    } else {
+      n.load(math.normal_quad(cos[0], cos[1], cos[2]));
+    }
+  }
+
+  cent.mulScalar(1.0/val);
+
+  let mat = mvc_mats.next();
+  mat.makeIdentity();
+  mat.makeNormalMatrix(n);
+  mat.transpose(); //invert rotation matrix
+  //mat.invert();
+
+
+  let ths = mvc_pool.get(val);
+  let idxs = mvc_pool.get(val);
+
+  co.multVecMatrix(mat);
+
+  for (let i = 0; i < val; i++) {
+    let co2 = cos[i];
+
+    co2.multVecMatrix(mat);
+    co2.sub(co);
+
+    ths[i] = Math.atan2(co2[1], co2[0]);
+    idxs[i] = i;
+  }
+
+  if (cosout) {
+    for (let i=0; i<val; i++) {
+      let co = mvc_tmps.next().load(cos[i]);
+
+      co.add(startco);
+
+      cosout.push(co);
+    }
+  }
+
+  idxs.sort((a, b) => ths[a] - ths[b]);
+
+  cos2 = mvc_pool.get(val);
+  for (let i = 0; i < val; i++) {
+    cos2[i] = cos[idxs[i]];
+  }
+
+  //invert idxs
+  let idxs2 = cos;
+  for (let i = 0; i < val; i++) {
+    idxs2[idxs[i]] = i;
+    //idxs2[i] = i;
+  }
+
+  idxs = idxs2;
+  cos = cos2;
+
+  let lens = mvc_pool.get(val);
+  let ws = ths;
+
+  for (let i=0; i<val; i++) {
+    let co2 = cos[i];
+    let len = co2.vectorLength();
+
+    if (len > 0.000001) {
+      co2.mulScalar(1.0/len);
+    }
+
+    lens[i] = len;
+  }
+
+  let p = mvc_tmps.next();
+
+  let totw = 0.0;
+  let avglen = 0.0;
+
+  for (let i = 0; i < val; i++) {
+    let co1 = cos[(i + val - 1)%val];
+    let co2 = cos[i];
+    let co3 = cos[(i + 1)%val];
+
+    let l1 = lens[(i + val - 1)%val];
+    let l2 = lens[i];
+    let l3 = lens[(i + 1)%val];
+
+    avglen += l2;
+
+    let th1 = co1[0]*co2[0] + co1[1]*co2[1] + co1[2]*co2[2];
+    let th2 = co2[0]*co3[0] + co2[1]*co3[1] + co2[2]*co3[2];
+
+    th1 = Math.acos(th1*0.99999);
+    th2 = Math.acos(th2*0.99999);
+
+    let w = Math.tan(th1*0.5) + Math.tan(th2*0.5);
+    if (l2 !== 0.0) {
+      w /= l2;
+    }
+
+    console.log(th1, th2, co1, co2, co3);
+
+    ws[idxs[(i+val-1)%val]] = w;
+    totw += w;
+  }
+
+  avglen /= val;
+
+  if (totw > 0.0) {
+    for (let i = 0; i < val; i++) {
+      ws[i] *= 1.0/totw;
+    }
+  }
+
+  if (avglen === 0.0) {
+    return ws;
+  }
+
+  if (0) {
+
+    /*
+    on factor;
+
+    x := w1*x1 + w2*x2 + w3*x3 + w4*x4;
+    y := w1*y1 + w2*y2 + w3*y3 + w4*y4;
+    z := w1*z1 + w2*z2 + w3*z3 + w4*z4;
+
+    f1 := (x-goalx)**2 + (y-goaly)**2 + (z-goalz)**2;
+    f2 := w1 + w2 + w3 + w4 - 1.0;
+
+    df(f1, w1);
+    **/
+    let gs = mvc_pool.get(val);
+    let df = 0.00001;
+    let dot3 = mvc_tmps.next(), dv = mvc_tmps.next();
+
+    console.log("AVGLEN", avglen);
+
+    function error() {
+      let x = 0, y = 0, z = 0;
+      let totw = 0.0;
+
+      for (let i = 0; i < val; i++) {
+        let w = ws[idxs[i]];
+
+        x += cos[i][0]*w;
+        y += cos[i][1]*w;
+        z += cos[i][2]*w;
+
+        totw += w;
+      }
+
+      return (x**2 + y**2 + z**2);// + ((totw-1.0)**2)*15;
+    }
+
+    for (let i = 0; i < val; i++) {
+      cos[i].mulScalar(1000.0/avglen);
+    }
+
+    for (let step = 0; step < 24; step++) {
+      dot3.zero();
+
+      for (let i = 0; i < val; i++) {
+        for (let j = 0; j < 3; j++) {
+          dot3[j] += ws[idxs[i]]*cos[i][j];
+        }
+      }
+
+      dv.load(cos[i]);
+
+      let r1 = error(); //dot3.dot(dot3);
+      let totg = 0.0;
+
+      for (let i = 0; i < val; i++) {
+        dv.load(dot3).mul(cos[i]);
+        let dw = 2.0*(dv[0] + dv[1] + dv[2]);
+
+        let dw1 = dw;
+        //console.log("r1, error", r1, error());
+
+        if (0) {
+          let df = 0.0001;
+          let i2 = idxs[i];
+          let r1 = error();
+          let orig = ws[i2];
+          ws[i2] += df;
+          let r2 = error();
+          ws[i2] = orig;
+
+          dw = (r2 - r1)/df;
+
+          //console.log("dw1, dw2", dw1, dw);
+        }
+
+        totg += dw*dw;
+        gs[i] = dw;
+      }
+
+      console.log(dot3);
+      console.log("r1", r1.toFixed(5));
+
+      if (totg !== 0.0) {
+        r1 /= totg;
+      }
+
+      let gk = window.dgk || 0.999;
+      totw = 0.0;
+      for (let i = 0; i < val; i++) {
+        ws[idxs[i]] += -r1*gs[i]*gk;
+        totw += ws[idxs[i]];
+      }
+
+      r1 = (totw - 1.0)/val;
+
+      console.log("r2", r1.toFixed(5));
+
+      totw = 0.0;
+      for (let i = 0; i < val; i++) {
+        let g = 1.0;
+
+        ws[idxs[i]] += -r1*g*gk;
+        totw += ws[idxs[i]];
+      }
+    }
+
+    console.log("AVGLEN", avglen);
+
+    if (totw !== 0.0) {
+      totw = 1.0/totw;
+
+      for (let i = 0; i < ws.length; i++) {
+        ws[i] *= totw;
+      }
+    }
+  }
+
+  return ws;
+}
+
+function mul_mat_vec(mat, vec, m) {
+  let vec2 = mvc_tmps.get(vec.length);
+
+  for (let i=0; i<m; i++) {
+    for (let j=0; j<m; j++) {
+      for (let k=0; k<m; k++) {
+        mat[i*m + j] += mat[i*m + k]*vec[k*m + j];
+      }
+    }
+  }
+
+  for (let i=0; i<vec.length; i++) {
+    vec[i] = vec2[i];
+  }
+
+  return vec;
+}
+
+window._testCD = function() {
+  let cd_color;
+
+  function swap(a, b, ai, bi) {
+    let t = a[ai];
+    a[ai] = b[bi];
+    b[bi] = t;
+  }
+
+  function normal_tri(t1, t2) {
+    let ret = new Vector4();
+    let mat = new Matrix4();
+    let m = mat.$matrix;
+
+    if (Math.abs(t1.dot(t2)) > 0.999) {
+      return undefined;
+    }
+    let n = new Vector4(t1).add(t2).normalize();
+
+    m.m11 = t1[0]*t2[0];
+    m.m12 = t1[0]*t2[1];
+    m.m13 = t1[0]*t2[2];
+    m.m14 = t1[0]*t2[3];
+
+    m.m11 = t1[1]*t2[0];
+    m.m12 = t1[1]*t2[1];
+    m.m13 = t1[1]*t2[2];
+    m.m14 = t1[1]*t2[3];
+
+    m.m11 = t1[2]*t2[0];
+    m.m12 = t1[2]*t2[1];
+    m.m13 = t1[2]*t2[2];
+    m.m14 = t1[2]*t2[3];
+
+    m.m11 = t1[3]*t2[0];
+    m.m12 = t1[3]*t2[1];
+    m.m13 = t1[3]*t2[2];
+    m.m14 = t1[3]*t2[3];
+
+    swap(n, n, 0, 2);
+
+    for (let i=0; i<35; i++) {
+      n.multVecMatrix(mat);
+      n.normalize();
+      //console.log(n);
+    }
+
+
+    return n;
+    t1 = n;
+    m.m11 = t1[0]*t2[0];
+    m.m12 = t1[0]*t2[1];
+    m.m13 = t1[0]*t2[2];
+    m.m14 = t1[0]*t2[3];
+
+    m.m11 = t1[1]*t2[0];
+    m.m12 = t1[1]*t2[1];
+    m.m13 = t1[1]*t2[2];
+    m.m14 = t1[1]*t2[3];
+
+    m.m11 = t1[2]*t2[0];
+    m.m12 = t1[2]*t2[1];
+    m.m13 = t1[2]*t2[2];
+    m.m14 = t1[2]*t2[3];
+
+    m.m11 = t1[3]*t2[0];
+    m.m12 = t1[3]*t2[1];
+    m.m13 = t1[3]*t2[2];
+    m.m14 = t1[3]*t2[3];
+
+
+    n.load(t1).add(t2).normalize();
+
+    for (let i=0; i<35; i++) {
+      n.multVecMatrix(mat);
+      n.normalize();
+      //console.log(n);
+    }
+
+    return n;
+  }
+
+  function vsmooth(v, fac=0.5, proj=0.85) {
+    let co = new Vector3();
+    let co2 = new Vector3();
+    let totw = 0.0;
+
+    let vs = util.list(v.neighbors);
+    let val = vs.length;
+
+    let c = v.customData[cd_color].color;
+    let cn = new Vector4();
+    let cnfirst = new Vector4();
+    let first = true;
+
+    let nn = new Vector3();
+    let nnfirst = new Vector3(), nn2 = new Vector3();
+
+    for (let i=0; i<vs.length; i++) {
+      let v1 = vs[i], v2=v, v3 = vs[(i+1)%val];
+      let c1 = v1.customData[cd_color].color;
+      let c2 = v2.customData[cd_color].color;
+      let c3 = v3.customData[cd_color].color;
+
+      let t1 = new Vector4(c1).sub(c);
+      let t2 = new Vector4(c2).sub(c);
+
+      let v1t = new Vector4(v1).sub(v);
+      let v2t = new Vector4(v2).sub(v);
+      v1t[3] = v2t[3] = 1.0;
+
+      t1.mul(v1t);
+      t2.mul(v2t);
+
+      let cn2 = normal_tri(t1, t2);
+
+      console.log(cn2);
+
+      if (!cn2) {
+        continue;
+      }
+
+      if (first) {
+        first = false;
+        cn.load(cn2);
+        cnfirst.load(cn2);
+      } else {
+        let cn3;
+        //cn3 = new Vector2(cn);
+        //cn3.normalize();
+        cn3 = cnfirst;
+
+        if (cn2.dot(cn3) < 0) {
+          cn2.negate();
+        }
+
+        cn.add(cn2);
+      }
+      
+      v1 = new Vector4(v1);
+      v2 = new Vector4(v2);
+      v3 = new Vector4(v3);
+
+      v1[3] = v2[3] = v3[3] = 0.0;
+
+      continue;
+      let nn2 = normal_tri(v1, v2, v3);
+      if (!nn2) {
+        continue;
+      }
+
+      if (first) {
+        first = false;
+        nn.load(nn2);
+        nnfirst.load(nn2);
+      } else {
+        let nn3;
+        //nn3 = new Vector2(nn);
+        //nn3.normalize();
+        nn3 = nnfirst;
+
+        if (nn2.dot(nn3) < 0) {
+          nn2.negate();
+        }
+
+        nn.add(nn2);
+      }
+      console.log(nn2);
+    }
+
+    nn.load(v.no);
+    nn.normalize();
+    cn.normalize();
+    console.log("NN", nn);
+    console.log("NO", v.no);
+    console.log("CN", cn);
+
+    let c1 = new Vector4();
+    let c2 = new Vector4();
+
+    for (let v2 of v.neighbors) {
+      c2.load(v2.customData[cd_color].color);
+
+      co2.load(v2).sub(v);
+      let d = co2.dot(nn);
+      co2.addFac(v.no, -d*proj).add(v);
+
+      c2.sub(c);
+      let d2 = c2.dot(cn);
+      console.log("d2", d2);
+      c2.addFac(cn, -d2*proj).add(c);
+
+      co.add(co2);
+      c1.add(c2);
+      totw++;
+    }
+
+    if (totw !== 0) {
+      c1.mulScalar(1.0 / totw);
+      co.mulScalar(1.0 / totw);
+
+      v.interp(co, fac);
+      c.interp(c1, fac);
+
+      for (let i=0; i<4; i++) {
+        c[i] = Math.min(Math.max(c[i], 0.0), 1.0);
+      }
+
+      v.flag |= MeshFlags.UPDATE;
+    }
+  }
+
+  let mesh = _appstate.ctx.mesh;
+  cd_color = mesh.verts.customData.getLayerIndex("color");
+
+  let v = mesh.verts.active;
+  v.flag |= MeshFlags.UPDATE;
+
+  for (let i=0; i<4; i++) {
+    for (let v of mesh.verts.selected.editable) {
+      vsmooth(v);
+      v.flag |= MeshFlags.UPDATE;
+    }
+  }
+
+  mesh.regenAll();
+  mesh.recalcNormals();
+  mesh.graphUpdate();
+  _appstate.ctx.object.graphUpdate();
+
+  window.redraw_viewport(true);
+}
+
+window._testMVC = function() {
+  let cd_color;
+
+  function vsmooth(v, fac=0.5, proj=0.5) {
+    let co = new Vector3();
+    let co2 = new Vector3();
+    let totw = 0.0;
+
+    let cdata = {customData : []};
+    for (let cd2 of v.customData) {
+      let cd3 = cd2.copy();
+      cd3.mulScalar(0.0);
+
+      cdata.customData.push(cd3);
+    }
+
+    let vs = [];
+    let vi = 0;
+    for (let v2 of v.neighbors) {
+      vs[vi] = v2;
+      vi++;
+    }
+
+    let ws1 = calcMVC(v, v.neighbors, v.no);
+    mesh.verts.customDataInterp(cdata, vs, ws1);
+
+    let c = v.customData[cd_color].color;
+
+    let c0 = new Vector4(cdata.customData[cd_color].color);
+    c0.sub(c);
+
+    for (let v2 of v.neighbors) {
+      co2.load(v2).sub(v);
+      let d = co2.dot(v.no);
+      co2.addFac(v.no, -d*proj).add(v);
+
+      co.add(co2);
+      totw++;
+    }
+
+    if (totw !== 0) {
+      co.mulScalar(1.0 / totw);
+      v.interp(co, fac);
+      v.flag |= MeshFlags.UPDATE;
+    }
+
+    let ws = calcMVC(co, v.neighbors, v.no);
+
+    mesh.verts.customDataInterp(v, vs, ws);
+    c.add(c0);
+  }
+
+  let mesh = _appstate.ctx.mesh;
+  let v = mesh.verts.active;
+
+  cd_color = mesh.verts.customData.getLayerIndex("color");
+
+  for (let v of mesh.verts.selected.editable) {
+    vsmooth(v);
+  }
+
+  mesh.regenAll();
+  mesh.recalcNormals();
+  mesh.graphUpdate();
+  _appstate.ctx.object.graphUpdate();
+
+  window.redraw_viewport(true);
+}
 
 export function* walkFaceLoop(e) {
   let l = e.l;
@@ -114,7 +732,7 @@ export function triangulateMesh(mesh, faces = mesh.faces, lctx) {
   return ret;
 }
 
-export function triangulateFan(mesh, f, newfaces=undefined, lctx) {
+export function triangulateFan(mesh, f, newfaces = undefined, lctx) {
   let startl = f.lists[0].l;
   let l = startl.next;
 
@@ -480,7 +1098,7 @@ export function weldVerts(mesh, mergeMap) {
       }
 
       do {
-        if (l.v.flag & (flag2|flag)) {
+        if (l.v.flag & (flag2 | flag)) {
           if (!(l.v.flag & flag2)) {
             //hrm, holes are sharing verts, what to do.  the same?
           }
@@ -952,7 +1570,7 @@ export const TriQuadFlags = {
   DEFAULT   : 1 | 4
 };
 
-export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, newfaces) {
+export function trianglesToQuads(mesh, faces, flag = TriQuadFlags.DEFAULT, lctx, newfaces) {
   let es = new Set();
   let faces2 = new Set();
 
@@ -1015,21 +1633,21 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
   let t3 = new Vector3();
 
   let dot3 = (v1, v2, v3) => {
-    let dx1 = v1[0]-v2[0], dy1 = v1[1]-v2[1], dz1=v1[2]-v2[2];
-    let dx2 = v3[0]-v2[0], dy2 = v3[1]-v2[1], dz2=v3[2]-v2[2];
+    let dx1 = v1[0] - v2[0], dy1 = v1[1] - v2[1], dz1 = v1[2] - v2[2];
+    let dx2 = v3[0] - v2[0], dy2 = v3[1] - v2[1], dz2 = v3[2] - v2[2];
 
-    let l1 = Math.sqrt(dx1*dx1 + dy1*dy1 * dz1*dz1);
+    let l1 = Math.sqrt(dx1*dx1 + dy1*dy1*dz1*dz1);
     let l2 = Math.sqrt(dx2*dx2 + dy2*dy2 + dz2*dz2);
 
     if (l1 > 0.00001) {
-      l1 = 1.0 / l1;
+      l1 = 1.0/l1;
       dx1 *= l1;
       dy1 *= l1;
       dz1 *= l1;
     }
 
     if (l2 > 0.00001) {
-      l2 = 1.0 / l2;
+      l2 = 1.0/l2;
       dx2 *= l2;
       dy2 *= l2;
       dz2 *= l2;
@@ -1096,10 +1714,10 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
   }
 
   let funcs1 = {
-    [TriQuadFlags.COLOR] : errorColor,
-    [TriQuadFlags.UVS] : errorUv,
-    [TriQuadFlags.SEAM] : errorSeam,
-    [TriQuadFlags.NICE_QUADS] : errorNiceQuad
+    [TriQuadFlags.COLOR]     : errorColor,
+    [TriQuadFlags.UVS]       : errorUv,
+    [TriQuadFlags.SEAM]      : errorSeam,
+    [TriQuadFlags.NICE_QUADS]: errorNiceQuad
   };
 
   let funcs = [];
@@ -1116,7 +1734,7 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
     }
   }
 
-  let error = (e, v1, v2, v3,v4) => {
+  let error = (e, v1, v2, v3, v4) => {
     let sum = 0.0;
     for (let f of funcs) {
       sum += f(e, v1, v2, v3, v4);
@@ -1147,7 +1765,7 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
     edata.push(l3);
     edata.push(l4);
 
-    let w = error(e, edata[a+1].v, edata[a+2].v, edata[a+3].v, edata[a+4].v);
+    let w = error(e, edata[a + 1].v, edata[a + 2].v, edata[a + 3].v, edata[a + 4].v);
     edata.push(w);
   }
 
@@ -1155,8 +1773,8 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
     a *= ETOT;
     b *= ETOT;
 
-    let w1 = edata[a+5];
-    let w2 = edata[b+5];
+    let w1 = edata[a + 5];
+    let w2 = edata[b + 5];
 
     return w1 - w2;
   });
@@ -1174,7 +1792,7 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
       continue;
     }
 
-    let l1 = edata[i+1], l2 = edata[i+2], l3 = edata[i+3], l4 = edata[i+4];
+    let l1 = edata[i + 1], l2 = edata[i + 2], l3 = edata[i + 3], l4 = edata[i + 4];
 
     let f1 = e.l.f, f2 = e.l.radial_next.f;
 
@@ -1198,6 +1816,27 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
 
     fs[0] = f1;
     fs[1] = f2;
+
+    let vflag = MeshFlags.TEMP2;
+    l1.v.flag &= ~vflag;
+    l2.v.flag &= ~vflag;
+    l3.v.flag &= ~vflag;
+    l4.v.flag &= ~vflag;
+
+    let bad = false;
+
+    l1.v.flag |= vflag;
+    bad = bad || l2.v.flag & vflag;
+
+    l2.v.flag |= vflag;
+    bad = bad || l3.v.flag & vflag;
+
+    l3.v.flag |= vflag;
+    bad = bad || l4.v.flag & vflag;
+
+    if (bad) {
+      continue;
+    }
 
     let f = mesh.makeQuad(l1.v, l2.v, l3.v, l4.v);
     if (!f) {
@@ -1226,7 +1865,7 @@ export function trianglesToQuads(mesh, faces, flag=TriQuadFlags.DEFAULT, lctx, n
   }
 }
 
-export function recalcWindings(mesh, faces=mesh.faces, lctx) {
+export function recalcWindings(mesh, faces = mesh.faces, lctx) {
   faces = new Set(faces);
 
   let shells = [];
@@ -1296,7 +1935,7 @@ export function recalcWindings(mesh, faces=mesh.faces, lctx) {
       continue;
     }
 
-    cent.mulScalar(1.0 / tot);
+    cent.mulScalar(1.0/tot);
     let maxdis = undefined;
     let maxf = undefined;
 
@@ -1393,7 +2032,7 @@ export function splitNonManifoldEdge(mesh, e, l1, l2, lctx) {
   let minl = l2;
   let f2;
 
-  for (let i=0; i<count-2; i++) {
+  for (let i = 0; i < count - 2; i++) {
     let minl = e.l, _i = 0;
 
     do {
@@ -1437,7 +2076,7 @@ export function splitNonManifoldEdge(mesh, e, l1, l2, lctx) {
       }
     }
 
-    for (let i=0; i<f.lists.length; i++) {
+    for (let i = 0; i < f.lists.length; i++) {
       let list1 = f.lists[i];
       let list2 = f2.lists[i];
 
@@ -1475,8 +2114,97 @@ export function splitNonManifoldEdge(mesh, e, l1, l2, lctx) {
   }
 }
 
+export function pruneLooseGeometry(mesh, lctx, minShellVerts=5) {
+  let flag = MeshFlags.NOAPI_TEMP1;
+
+  for (let e of mesh.edges) {
+    if (!e.l) {
+      mesh.killEdge(e, lctx);
+    }
+  }
+
+  for (let v of mesh.verts) {
+    if (v.valence === 0) {
+      mesh.killVertex(v, undefined, lctx);
+    } else {
+      v.flag &= ~flag;
+    }
+  }
+
+  let shells = [];
+  let stack = [];
+
+  for (let v of mesh.verts) {
+    if (v.flag & flag) {
+      continue;
+    }
+
+    let shell = [];
+    shells.push(shell);
+
+    stack.length = 0;
+    stack.push(v);
+    v.flag |= flag;
+
+    while (stack.length > 0) {
+      let v2 = stack.pop();
+
+      shell.push(v2);
+
+      for (let v3 of v2.neighbors) {
+        if (v3.flag & flag) {
+          continue;
+        }
+
+        v3.flag |= flag;
+        stack.push(v3);
+      }
+    }
+  }
+
+  console.log("Shells:", shells);
+  for (let shell of shells) {
+    if (shell.length < minShellVerts) {
+      for (let v of shell) {
+        mesh.killVertex(v, undefined, lctx);
+      }
+    }
+  }
+
+}
 export function fixManifold(mesh, lctx) {
+  function isnan(f) {
+    return isNaN(f) || !isFinite(f);
+  }
+
+  let bad = 0;
+
+  for (let v of mesh.verts) {
+    for (let i = 0; i < 3; i++) {
+      if (isnan(v[i])) {
+        v[i] = (Math.random() - 0.5)*0.001;
+        v.flag |= MeshFlags.UPDATE;
+        mesh.verts.setSelect(v, true);
+        bad |= 1;
+      }
+    }
+
+    if (isnan(v.no.dot(v.no))) {
+      v.no.zero();
+      v.no[2] = 1.0;
+      bad |= 2;
+      v.flag |= MeshFlags.UPDATE;
+      mesh.verts.setSelect(v, true);
+    }
+  }
+
   mesh.fixLoops(lctx);
+
+  if (bad) {
+    console.log("NaN error!", bad);
+    mesh.regenTesellation();
+    mesh.recalcNormals();
+  }
 
   let es = new Set();
 
@@ -1577,7 +2305,7 @@ export function fixManifold(mesh, lctx) {
 
     let minl, minw;
 
-    for (let i=0; i<count-2; i++) {
+    for (let i = 0; i < count - 2; i++) {
       for (let l of e.loops) {
         if (minl === undefined || l.f.index < minw) {
           minl = l;
@@ -1610,7 +2338,7 @@ export function fixManifold(mesh, lctx) {
         }
       }
 
-      for (let i=0; i<f.lists.length; i++) {
+      for (let i = 0; i < f.lists.length; i++) {
         let list1 = f.lists[i];
         let list2 = f2.lists[i];
 
@@ -1659,6 +2387,7 @@ export function fixManifold(mesh, lctx) {
 }
 
 let ftmp = [];
+
 export function connectVerts(mesh, v1, v2) {
   let fs = ftmp;
   fs.length = 0;
@@ -1684,7 +2413,7 @@ let tmp1 = new Vector3();
 let tmp2 = new Vector3();
 let tmp3 = new Vector3();
 
-export function vertexSmooth(mesh, verts=mesh.verts, fac=0.5, proj=0.0) {
+export function vertexSmooth(mesh, verts = mesh.verts, fac = 0.5, proj = 0.0) {
   verts = ReusableIter.getSafeIter(verts);
 
   for (let v of verts) {
@@ -1714,7 +2443,7 @@ export function vertexSmooth(mesh, verts=mesh.verts, fac=0.5, proj=0.0) {
     }
 
     if (totw > 0.0) {
-      co.mulScalar(1.0 / totw);
+      co.mulScalar(1.0/totw);
       v.interp(co, fac);
       v.flag |= MeshFlags.UPDATE;
     }
@@ -1726,7 +2455,7 @@ let stmp1 = new Vector3();
 let stmp2 = new Vector3();
 let stmp3 = new Vector3();
 
-export function sortVertEdges(v, edges=util.list(v.edges), matout=undefined) {
+export function sortVertEdges(v, edges = util.list(v.edges), matout = undefined) {
   if (!Array.isArray(edges)) {
     edges = util.list(edges);
   }
@@ -1772,7 +2501,7 @@ export function sortVertEdges(v, edges=util.list(v.edges), matout=undefined) {
   }
 
   //if (Math.random() > 0.99) {
-    //console.log(""+ths, ths);
+  //console.log(""+ths, ths);
   //}
 
   let i = 0;
@@ -1783,7 +2512,7 @@ export function sortVertEdges(v, edges=util.list(v.edges), matout=undefined) {
 
   edges.sort((a, b) => ths[a.index] - ths[b.index]);
 
-  for (let i=0; i<idxs.length; i++) {
+  for (let i = 0; i < idxs.length; i++) {
     edges[i].index = idxs[i];
   }
 
@@ -1826,9 +2555,9 @@ const ctmp13 = new Vector3();
 const ctmp14 = new Vector3();
 const smat2 = new Matrix4();
 
-const VAREA=0, VCTAN1=1, VCTAN2=2, VW=3, VETOT = 4;
+const VAREA = 0, VCTAN1 = 1, VCTAN2 = 2, VW = 3, VETOT = 4;
 
-export function getCotanData(v, _edges=undefined, _vdata=[]) {
+export function getCotanData(v, _edges = undefined, _vdata = []) {
   let vdata = _vdata;
   let edges = _edges;
   let te;
@@ -1855,18 +2584,18 @@ export function getCotanData(v, _edges=undefined, _vdata=[]) {
     vdata.length += VETOT;
 
     vdata[vi] = Math.PI;
-    vdata[vi+1] = 0.00001;
-    vdata[vi+2] = 0.5;
-    vdata[vi+3] = 0.00001;
+    vdata[vi + 1] = 0.00001;
+    vdata[vi + 2] = 0.5;
+    vdata[vi + 3] = 0.00001;
   } else if (edges.length === 2) {
     vi = vdata.length;
     vdata.length += VETOT*2;
 
-    for (let i=0; i<2; i++) {
+    for (let i = 0; i < 2; i++) {
       vdata[vi] = Math.PI;
-      vdata[vi+1] = 0.00001;
-      vdata[vi+2] = 0.5;
-      vdata[vi+3] = 0.00001;
+      vdata[vi + 1] = 0.00001;
+      vdata[vi + 2] = 0.5;
+      vdata[vi + 3] = 0.00001;
 
       vi += VETOT;
     }
@@ -1887,7 +2616,7 @@ export function getCotanData(v, _edges=undefined, _vdata=[]) {
 
     for (let i = 0; i < edges.length; i++) {
       let i1 = i, i2 = (i + 1)%edges.length;
-      let i3 = (i + 2) % edges.length;
+      let i3 = (i + 2)%edges.length;
 
       let e1 = edges[i1], e2 = edges[i2];
       let e3 = edges[i3];
@@ -1971,7 +2700,7 @@ export function getCotanData(v, _edges=undefined, _vdata=[]) {
       }
 
       let vi2 = vi + 4 + e1.index*VETOT;
-      vdata[vi2+VAREA] = area;
+      vdata[vi2 + VAREA] = area;
 
       let cot1 = (Math.cos(angle1)/Math.sin(angle1));
       let cot2 = (Math.cos(angle2)/Math.sin(angle2));
@@ -1983,50 +2712,50 @@ export function getCotanData(v, _edges=undefined, _vdata=[]) {
         cot2 = 100000.0;
       }
 
-      let cot =cot1 + cot2;
+      let cot = cot1 + cot2;
 
       if (cot < 0) {
         //cot = Math.abs(cot)*1.5;
       }
 
-      vdata[vi2+VCTAN1] = cot1;
-      vdata[vi2+VCTAN2] = cot2;
-      vdata[vi2+VW] = cot;
+      vdata[vi2 + VCTAN1] = cot1;
+      vdata[vi2 + VCTAN2] = cot2;
+      vdata[vi2 + VW] = cot;
 
       totarea += area*area;
 
-      totw += vdata[vi2+3] * area;
+      totw += vdata[vi2 + 3]*area;
     }
 
     if (totarea !== 0.0) {
-      totarea = 1.0 / totarea;
+      totarea = 1.0/totarea;
     }
 
     totw = 0.0;
-    for (let i=0; i<edges.length; i++) {
+    for (let i = 0; i < edges.length; i++) {
       let e1 = edges[i];
       let vi2 = vi + 4 + e1.index*VETOT;
 
       //vdata[vi2+3] *= totarea;
 
-      totw += vdata[vi2+3];
+      totw += vdata[vi2 + 3];
     }
 
     if (totw !== 0.0) {
-      totw = 1.0 / totw;
+      totw = 1.0/totw;
     }
 
-    for (let i=0; i<edges.length; i++) {
+    for (let i = 0; i < edges.length; i++) {
       let e1 = edges[i];
       let vi2 = vi + 4 + e1.index*VETOT;
 
-      vdata[vi2+3] *= totw;
+      vdata[vi2 + 3] *= totw;
     }
   }
 
   //avoid reference leaks
   if (te) {
-    for (let i=0; i<te.length; i++) {
+    for (let i = 0; i < te.length; i++) {
       te[i] = undefined;
     }
   }
@@ -2062,13 +2791,13 @@ export function buildCotanVerts(mesh, verts) {
     getCotanData(v, edges, vdata);
 
     //avoid reference leaks
-    for (let i=0; i<edges.length; i++) {
+    for (let i = 0; i < edges.length; i++) {
       edges[i] = undefined;
     }
     i++;
   }
 
-  return {vertexData : vdata, allVerts : vs};
+  return {vertexData: vdata, allVerts: vs};
 }
 
 export function buildCotanMap(mesh, verts) {
@@ -2124,9 +2853,9 @@ export function cotanMeanCurvature(v, vdata, vi) {
 
   let i = 0;
   for (let v2 of v.neighbors) {
-    let cot1 = vdata[vi+VCTAN1];
-    let cot2 = vdata[vi+VCTAN2];
-    let area = vdata[vi+VAREA];
+    let cot1 = vdata[vi + VCTAN1];
+    let cot2 = vdata[vi + VCTAN2];
+    let area = vdata[vi + VAREA];
 
     let w = cot1 + cot2;
     //w = Math.abs(w);
@@ -2144,13 +2873,13 @@ export function cotanMeanCurvature(v, vdata, vi) {
 
   //let sum = sum2 !== 0.0 ? sum1 / sum2 : 10000000.0;
   if (sum2 !== 0.0) {
-    sum1.mulScalar(2.0 / sum2);
+    sum1.mulScalar(2.0/sum2);
   }
 
   return sum1;
 }
 
-export function cotanVertexSmooth(mesh, verts=mesh.verts, fac=0.5, proj=0.0) {
+export function cotanVertexSmooth(mesh, verts = mesh.verts, fac = 0.5, proj = 0.0) {
   let ret = buildCotanVerts(mesh, verts);
 
   let vdata = ret.vertexData;
@@ -2184,8 +2913,8 @@ export function cotanVertexSmooth(mesh, verts=mesh.verts, fac=0.5, proj=0.0) {
       let vi2 = v2.index;
 
       co2[0] = vdata[vi2];
-      co2[1] = vdata[vi2+1];
-      co2[2] = vdata[vi2+2];
+      co2[1] = vdata[vi2 + 1];
+      co2[2] = vdata[vi2 + 2];
 
       if (proj > 0.0) {
         co2.sub(v);
@@ -2205,7 +2934,7 @@ export function cotanVertexSmooth(mesh, verts=mesh.verts, fac=0.5, proj=0.0) {
     }
 
     if (totw !== 0.0) {
-      co1.mulScalar(1.0 / totw);
+      co1.mulScalar(1.0/totw);
       v.interp(co1, fac);
       v.flag |= MeshFlags.UPDATE;
     }
@@ -2214,7 +2943,7 @@ export function cotanVertexSmooth(mesh, verts=mesh.verts, fac=0.5, proj=0.0) {
 
 let quad_lctx = new LogContext();
 
-export function quadrilateFaces(mesh, faces, quadflag=TriQuadFlags.DEFAULT, lctx) {
+export function quadrilateFaces(mesh, faces, quadflag = TriQuadFlags.DEFAULT, lctx) {
   faces = ReusableIter.getSafeIter(faces);
 
   let flag = MeshFlags.TEMP3;
@@ -2284,7 +3013,7 @@ export function quadrilateFaces(mesh, faces, quadflag=TriQuadFlags.DEFAULT, lctx
   trianglesToQuads(mesh, newfaces, quadflag, lctx);
 }
 
-export function dissolveEdgeLoops(mesh, edges, quadrilate=false, lctx) {
+export function dissolveEdgeLoops(mesh, edges, quadrilate = false, lctx) {
   let vs = new Set();
   let fs;
 

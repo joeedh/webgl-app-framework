@@ -480,6 +480,13 @@ export class View3D extends Editor {
   }
 
   onFileLoad(is_active) {
+    //ensure toolmode has correct ctx
+    if (this.ctx && this.ctx.toolmode) {
+      this.ctx.toolmode.ctx = this.ctx;
+    }
+
+    window.redraw_viewport();
+
     window.setTimeout(() => {
       this.deleteGraphNodes();
 
@@ -864,6 +871,10 @@ export class View3D extends Editor {
   }
 
   doEvent(type, e) {
+    if (this.ctx && this.ctx.toolmode && !this.ctx.toolmode.ctx) {
+      this.ctx.toolmode.ctx = this.ctx;
+    }
+
     if (!this.gl) {
       //wait for gl
       return;
@@ -1664,6 +1675,10 @@ export class View3D extends Editor {
       if (scene.toolmode) {
         scene.toolmode.view3d = this;
 
+        if (this.ctx) {
+          scene.toolmode.ctx = this.ctx;
+        }
+
         this.threeCamera.pushUniforms(uniforms);
 
 
@@ -1817,6 +1832,9 @@ let rcbs = [];
 
 let f = () => {
   animreq = undefined;
+
+  //forcibly update datagraph
+  window.updateDataGraph(true);
 
   for (let i=0; i<drawCount; i++) {
     f2();

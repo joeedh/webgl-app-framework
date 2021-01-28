@@ -165,17 +165,18 @@ export class CurvVert extends CustomDataElem {
     no.load(v.no);
 
     for (let i=0; i<75; i++) {
-      no.normalize();
-
       if (i > 0 && no.vectorDistanceSqr(lastno) < 0.0001) {
         break;
       }
 
       lastno.load(no);
+      no.normalize();
+
       no.multVecMatrix(mat2);
     }
 
     this.k1 = no.vectorLength();
+
     if (this.k1 > 0.00001) {
       no.mulScalar(1.0 / this.k1);
     }

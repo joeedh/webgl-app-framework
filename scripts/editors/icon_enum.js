@@ -109,6 +109,9 @@ export let Icons = {
   SCULPT_COLOR_BOUNDARY: 103,
   DISABLED             : 104,
   SCULPT_WING_SCRAPE   : 105,
-  SCULPT_PINCH         : 106
+  SCULPT_PINCH         : 106,
+  SHOW_NORMALS         : 107,
+  SHOW_CURVATURE       : 108,
+  SHOW_LOOPS           : 109
 };
 setIconMap(Icons);

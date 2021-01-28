@@ -8,7 +8,6 @@ const PORT = 5007;
 const HOST = "localhost"
 
 const INDEX = "index.html"
-const SAVEPATH = "data/zelda_mm.json"
 const basedir = process.cwd();
 
 export const exports = {};

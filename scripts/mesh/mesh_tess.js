@@ -545,20 +545,47 @@ export class CDT {
   }
 }
 
+let fco1 = new Vector3();
+let fco2 = new Vector3();
+
 function fillFace(f, loopTris) {
   let m = new Matrix4();
   m.makeNormalMatrix(f.no);
   m.invert();
 
   let idmap = {};
-  let co = new Vector3();
 
+  let co = fco1;
   let cdt = new CDT();
+
+  function vsmooth(v, fac=0.5) {
+    let co = fco2;
+    let tot = 0;
+
+    co.zero();
+    for (let v2 of v.neighbors) {
+      co.add(v2);
+      tot++;
+    }
+
+    if (tot < 2) {
+      return co.load(v);
+    } else {
+      co.mulScalar(1.0 / tot);
+      co.interp(v, 1.0 - fac);
+      return co;
+    }
+  }
 
   for (let list of f.lists) {
     let vs = [];
+
+    let minx=1e17, miny=1e17;
+    let maxx=-1e17, maxy=-1e17;
+
     for (let l of list) {
-      co.load(l.v).multVecMatrix(m);
+      co.load(vsmooth(l.v));
+      co.multVecMatrix(m);
       co[2] = 0.0;
 
       idmap[l.eid] = l;
@@ -566,9 +593,22 @@ function fillFace(f, loopTris) {
       //co[0] += (Math.random()-0.5)*0.001;
       //co[1] += (Math.random()-0.5)*0.001;
 
+      minx = Math.min(minx, co[0]);
+      miny = Math.min(miny, co[1]);
+      maxx = Math.max(maxx, co[0]);
+      maxy = Math.max(maxy, co[1]);
+
       vs.push(co[0]);
       vs.push(co[1]);
       vs.push(l.eid);
+    }
+
+    let sx = maxx - minx, sy = maxy - miny;
+    if (sx > 0 && sy > 0) {
+      for (let i=0; i<vs.length; i += 3) {
+        vs[i] = (vs[i] - minx) / sx;
+        vs[i+1] = (vs[i+1] - miny) / sy;
+      }
     }
 
     cdt.addLoop(vs);

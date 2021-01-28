@@ -16,6 +16,11 @@ export class SceneObjectData extends DataBlock {
     this.usesMaterial = false;
   }
 
+  applyMatrix() {
+    console.error("applyMatrix: Implement me!");
+    return this;
+  }
+
   static dataDefine() {return {
     name       : "",
     selectMask : 0, //valid selection modes for StandardTools, see SelMask

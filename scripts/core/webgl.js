@@ -855,7 +855,7 @@ v${attr} = ${attr};
           }
 
           v.bind(gl, this.uniformloc(k), slot);
-        } else if (v instanceof Array) {
+        } else if (v instanceof Array || v instanceof Float32Array || v instanceof Float64Array) {
           switch (v.length) {
             case 2:
               var arr = _safe_arrays[2];

@@ -43,7 +43,7 @@ import {
 let _triverts = new Array(3);
 
 import {
-  DynamicsMask, SculptTools, BrushDynamics, SculptBrush,
+  SculptTools, BrushDynamics, SculptBrush,
   BrushDynChannel, DefaultBrushes, SculptIcons, PaintToolSlot, BrushFlags, DynTopoFlags, DynTopoSettings,
   DynTopoOverrides
 } from "../../../brush/brush.js";
@@ -96,7 +96,7 @@ export class BVHToolMode extends ToolMode {
     this.drawCavityMap = false;
     this.drawNodeIds = false;
     this.drawWireframe = false;
-    this.drawValidEdges = false;
+    this.drawValidEdges = true;
 
     this._last_bvh_key = "";
     this._last_hqed = "";
@@ -111,7 +111,7 @@ export class BVHToolMode extends ToolMode {
           return brush.dynTopo.overrideMask;
         }
 
-        let all = !brush || (brush.dynTopo.overrideMask & DynTopoOverrides.ALL);
+        let all = !brush || (brush.dynTopo.overrideMask & DynTopoOverrides.NONE);
 
         if (all) {
           return this.dynTopo[key];
@@ -128,13 +128,14 @@ export class BVHToolMode extends ToolMode {
           override = brush.dynTopo.overrideMask & override;
 
           if (override) {
-            return this.dynTopo[key];
-          } else {
             return brush.dynTopo[key];
+          } else {
+            return this.dynTopo[key];
           }
         } else {
           //create merged flags
           let flag = 0;
+
           let f1 = this.dynTopo.flag;
           let f2 = brush.dynTopo.flag;
           let oflag = brush.dynTopo.overrideMask;
@@ -143,9 +144,9 @@ export class BVHToolMode extends ToolMode {
             let f = DynTopoFlags[k];
 
             if (oflag & f) {
-              flag |= f1 & f ? f : 0;
-            } else {
               flag |= f2 & f ? f : 0;
+            } else {
+              flag |= f1 & f ? f : 0;
             }
           }
 
@@ -155,7 +156,7 @@ export class BVHToolMode extends ToolMode {
       set: (target, key, val) => {
         let brush = this.getBrush();
 
-        let all = !brush || (brush.dynTopo.overrideMask & DynTopoOverrides.ALL);
+        let all = !brush || (brush.dynTopo.overrideMask & DynTopoOverrides.NONE);
 
         if (brush && key === "overrideMask") {
           brush.dynTopo.overrideMask = val;
@@ -169,9 +170,9 @@ export class BVHToolMode extends ToolMode {
           let key2 = DynTopoSettings.apiKeyToOverride(key);
 
           if (key2 && (brush.dynTopo.overrideMask & DynTopoOverrides[key2])) {
-            this.dynTopo[key] = val;
-          } else {
             brush.dynTopo[key] = val;
+          } else {
+            this.dynTopo[key] = val;
           }
         } else {
           let flag = 0;
@@ -179,7 +180,7 @@ export class BVHToolMode extends ToolMode {
 
           for (let k in DynTopoFlags) {
             let f = DynTopoFlags[k];
-            let dynTopo = oflag & f ? this.dynTopo : brush.dynTopo;
+            let dynTopo = oflag & f ? brush.dynTopo : this.dynTopo;
 
             if (val & f) {
               dynTopo.flag |= f;
@@ -246,7 +247,7 @@ export class BVHToolMode extends ToolMode {
       return false;
     }
 
-    return !!(brush.dynTopo.overrideMask & DynTopoOverrides.ALL);
+    return !!(brush.dynTopo.overrideMask & DynTopoOverrides.NONE);
   }
 
   set _apiInheritDynTopo(v) {
@@ -256,9 +257,9 @@ export class BVHToolMode extends ToolMode {
     }
 
     if (v) {
-      brush.dynTopo.overrideMask |= DynTopoOverrides.ALL;
+      brush.dynTopo.overrideMask |= DynTopoOverrides.NONE;
     } else {
-      brush.dynTopo.overrideMask &= ~DynTopoOverrides.ALL;
+      brush.dynTopo.overrideMask &= ~DynTopoOverrides.NONE;
     }
   }
 
@@ -382,6 +383,7 @@ export class BVHToolMode extends ToolMode {
     p.prop(path + ".brush.flag[PLANAR_SMOOTH]");
 
     doChannel("smoothProj", p);
+    doChannel("autosmoothInflate", p);
 
     p = doChannel("rake");
     p.prop(path + ".brush.rakeCurvatureFactor");
@@ -392,18 +394,14 @@ export class BVHToolMode extends ToolMode {
     p = doChannel("concaveFilter");
     p.prop(path + ".brush.flag[INVERT_CONCAVE_FILTER]");
 
+    doChannel("sharp");
+
     col.prop(path + ".brush.spacing");
     col.prop(path + ".brush.color");
     col.prop(path + ".brush.bgcolor");
 
     col.prop(path + ".brush.planeoff");
     col.prop(path + ".brush.normalfac");
-
-    strip = col.row();
-    strip.useIcons();
-    strip.tool("mesh.add_or_subdivide_grids()");
-    strip.tool("mesh.reset_grids()");
-    strip.tool("mesh.delete_grids()");
 
     function dfield(con, key) {
       let row = con.row();
@@ -414,14 +412,27 @@ export class BVHToolMode extends ToolMode {
       strip.overrideDefault("margin", 0);
       strip.overrideDefault("BoxRadius", 5);
 
+      let opath = `${path}.dynTopo.overrides[NONE]`;
+
       let okey = DynTopoSettings.apiKeyToOverride(key);
       //let icon = row.iconcheck(`${path}.dynTopo.overrides[${okey}]`);
-      let icon = strip.iconcheck(`${path}.dynTopo.overrides[${okey}]`);
+      let icon = strip.iconcheck(opath);
       let ret = strip.prop(`${path}.dynTopo.${key}`);
 
       icon.iconsheet = 0; //use small icons
       icon.drawCheck = false;
 
+      icon.update.after(() => {
+        if (!icon.ctx) {
+          return;
+        }
+
+        let val = icon.ctx.api.getValue(icon.ctx, opath);
+
+        if (!!val !== !!icon.disabled) {
+          icon.disabled = val;
+        }
+      });
       /*
       row.update.after(() => {
         let val = !icon.checked;
@@ -447,6 +458,7 @@ export class BVHToolMode extends ToolMode {
     dfield(panel, "flag[SUBDIVIDE]");
     dfield(panel, "flag[COLLAPSE]");
 
+    dfield(panel, "edgeMode");
     dfield(panel, "spacing");
     dfield(panel, "spacingMode");
 
@@ -492,13 +504,19 @@ export class BVHToolMode extends ToolMode {
     panel2.prop(path + ".dynTopo.maxDepth").setAttribute("labelOnTop", true);
     */
 
-    strip = col.row().strip();
+    panel = col.panel("Multi Resolution");
+    panel.useIcons(false);
+
+    strip = panel.row();
+    strip.useIcons();
+    strip.tool("mesh.add_or_subdivide_grids()");
+    strip.tool("mesh.reset_grids()");
+    strip.tool("mesh.delete_grids()");
+
+    strip = panel.row().strip();
     strip.useIcons(false);
     strip.tool("mesh.smooth_grids()");
     strip.tool("mesh.grids_test()");
-
-    panel = col.panel("Multi Resolution");
-    panel.useIcons(false);
 
     strip = panel.strip();
     strip.prop(path + ".enableMaxEditDepth");

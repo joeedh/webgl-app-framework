@@ -447,7 +447,6 @@ export class EditorAccessor {
 
       this._namemap[name] = k;
 
-      console.log("NAME", name);
       define(name, areaclasses[k]);
     }
   }

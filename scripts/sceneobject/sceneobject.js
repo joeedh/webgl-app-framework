@@ -56,7 +56,31 @@ Colors[ObjectFlags.SELECT | ObjectFlags.ACTIVE | ObjectFlags.HIGHLIGHT]
 
 window._colors = Colors;
 
+export function composeObjectMatrix(loc, rot, scale, rotorder, mat=new Matrix4()) {
+  mat.makeIdentity();
 
+  if (isNaN(loc.dot(loc))) {
+    loc.zero();
+  }
+  if (isNaN(rot.dot(rot))) {
+    rot.zero();
+  }
+  if (isNaN(scale.dot(scale))) {
+    scale[0] = scale[1] = scale[2] = 1.0;
+  }
+
+  mat.euler_rotate_order(rot[0], rot[1], rot[2], rotorder);
+  mat.scale(scale[0], scale[1], scale[2]);
+
+  let m = mat.$matrix;
+  m.m41 = loc[0];
+  m.m42 = loc[1];
+  m.m43 = loc[2];
+  m.m44 = 1.0;
+  //mat.translate(loc[0], loc[1], loc[2]);
+
+  return mat;
+}
 export class SceneObject extends DataBlock {
   constructor(data = undefined) {
     super();

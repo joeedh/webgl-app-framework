@@ -8,7 +8,7 @@ import {
   Vec3Property, Vec4Property, Vector2, Vector3,
   Vector4, math, Mat4Property, Vec2Property
 } from '../../../path.ux/scripts/pathux.js';
-import {DynamicsMask, SculptTools} from '../../../brush/brush.js';
+import {SculptTools} from '../../../brush/brush.js';
 import {BVHFlags} from '../../../util/bvh.js';
 import {GridBase} from '../../../mesh/mesh_grids.js';
 import {ImageTypes} from '../../../image/image.js';

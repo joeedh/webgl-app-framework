@@ -64,6 +64,10 @@ export class CustomDataElem {
     return this;
   }
 
+  clear() {
+    return this;
+  }
+
   //used for building island meshes
   hash(snapLimit = 0.01) {
     let val = this.getValue();
@@ -104,6 +108,25 @@ export class CustomDataElem {
       cd.copyTo(dest);
       break;
     }
+  }
+
+  mulScalar() {
+    //implement me
+    return this;
+  }
+
+  add(b) {
+    //implement me
+    return this;
+  }
+
+  addFac(b, fac) {
+    //implement me
+    return this;
+  }
+
+  sub(b) {
+    return this.addFac(b, -1.0);
   }
 
   validate() {

@@ -61,7 +61,8 @@ import {Icons} from '../editors/icon_enum.js';
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 import {MaterialEditor} from "../editors/node/MaterialEditor.js";
 import {
-  BrushDynamics, BrushDynChannel, BrushFlags, BrushSpacingModes, DynTopoFlags, DynTopoOverrides, DynTopoSettings,
+  BrushDynamics, BrushDynChannel, BrushFlags, BrushSpacingModes, DynTopoFlags, DynTopoModes, DynTopoOverrides,
+  DynTopoSettings,
   SculptBrush, SculptIcons,
   SculptTools
 } from "../brush/brush.js";
@@ -789,7 +790,7 @@ export function api_define_dyntopo(api) {
 
   let tooltips = {};
   for (let k in DynTopoOverrides) {
-    if (k === "ALL") {
+    if (k === "NONE") {
       tooltips[k] = "Use Defaults For Everything";
     } else {
       tooltips[k] = "Use Local Brush Settings";
@@ -813,6 +814,8 @@ export function api_define_dyntopo(api) {
       EVEN : "Fixed distance between brush points",
       NONE : "Use raw brush points"
     });
+
+  st.enum("edgeMode", "edgeMode", DynTopoModes, "Mode");
 
   st.int("edgeCount", "edgeCount", "Edge Count")
     .range(1, 2048)
@@ -840,10 +843,14 @@ export function api_define_brush(api, cstruct) {
       NONE : "Use raw brush points"
     });
 
+  bst.float("sharp", "sharp", "Sharpening").range(0.0, 1.0).noUnits().step(0.015);
   bst.float("strength", "strength", "Strength").range(0.001, 2.0).noUnits().step(0.015);
   bst.float("radius", "radius", "Radius").range(0.1, 350.0).noUnits().step(1.0);
   bst.enum("tool", "tool", SculptTools).icons(SculptIcons);
+
   bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 1.0).noUnits();
+  bst.float("autosmoothInflate", "autosmoothInflate", "Inflation").range(0.0, 1.0).noUnits();
+
   bst.float("planeoff", "planeoff", "planeoff").range(-3.5, 3.5).noUnits();
   bst.float("spacing", "spacing", "Spacing").range(0.01, 12.0).noUnits();
   bst.color4("color", "color", "Primary Color");

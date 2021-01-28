@@ -4,7 +4,7 @@ import * as math from '../util/math.js';
 import '../util/numeric.js';
 import {applyTriangulation, triangulateFace} from './mesh_tess.js';
 
-import {getArrayTemp} from './mesh_base.js';
+import {getArrayTemp, LogTags} from './mesh_base.js';
 
 let countmap = [
   [0], [0,0], [0,0,0], [ //tris
@@ -625,6 +625,11 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx) {
 
     for (let vmap of pat.newverts) {
       let v = mesh.makeVertex();
+
+      if (lctx) {
+        lctx.newVertex(v, LogTags.SPLIT_EDGES_SMART2);
+      }
+
       v.zero();
 
       vs[vi] = v;
@@ -669,7 +674,7 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx) {
 
       //console.log("--", vs2, pat.faces[i], i);
 
-      f2 = mesh.makeFace(vs2, undefined, undefined, lctx);
+      f2 = mesh.makeFace(vs2, undefined, undefined, lctx, LogTags.SPLIT_EDGES_SMART2);
 
       mesh.copyElemData(f2, f);
 
@@ -688,7 +693,7 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx) {
       vs[i] = ls[i] = undefined;
     }
 
-    mesh.killFace(f, lctx);
+    mesh.killFace(f, lctx, LogTags.SPLIT_EDGES_SMART2);
   }
 }
 

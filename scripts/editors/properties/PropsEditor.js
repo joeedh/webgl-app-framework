@@ -208,12 +208,17 @@ export class ObjectPanel extends ColumnFrame {
     let panel;
 
     panel = this.panel("Transform");
+    panel.useIcons(false);
 
     panel.prop(`object.inputs["loc"].value`);
 
     panel.label("Rotation");
     panel.prop('object.inputs["rot"].value');
     panel.prop('object.inputs["rotOrder"].value');
+
+    panel.prop('object.inputs["scale"].value');
+
+    panel.tool("object.apply_transform()");
 
     let ob = this.ctx.object;
     if (!ob) {

@@ -9,6 +9,10 @@ export var cacheSelectBufs = config.cacheSelectBufs;
 
 export const EDGE_LINKED_LISTS = false;
 
+export const CompressionFlags = {
+  JSZIP : 1
+};
+
 export const DEBUG = {
   simplemesh : false,
   enableDebugGraphPanel : true,

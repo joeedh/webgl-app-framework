@@ -3,6 +3,14 @@ import * as util from '../util/util.js';
 import {AfterAspect, clearAspectCallbacks, initAspectClass, _setUIBase} from '../path.ux/scripts/core/aspect.js';
 import {UIBase} from '../path.ux/scripts/pathux.js';
 
+export const DEBUG_DUPLICATE_FACES = 0;
+export const DEBUG_MANIFOLD_EDGES = 0;
+
+export const SAVE_DEAD_LOOPS = true;
+export const SAVE_DEAD_FACES = true;
+
+export const WITH_EIDMAP_MAP = true;
+
 _setUIBase(UIBase);
 
 let STRUCT = nstructjs.STRUCT;
@@ -62,7 +70,9 @@ export class MeshFeatureError extends MeshError {
 
 };
 
-//inherit from this to flag iterators that are reusable *and* auto-resets
+/*
+ child classes should support nested iteration
+*/
 export class ReusableIter {
   static safeIterable(iter) {
     if (!iter || (typeof iter !== "object" && typeof iter !== "function")) {
@@ -89,8 +99,8 @@ export class ReusableIter {
     }
   }
 
-  reset() {
-    return this;
+  [Symbol.iterator]() {
+    throw new Error("implement me!");
   }
 }
 
@@ -104,6 +114,17 @@ export const ChangeFlags = {
   NO        : 2,
   CUSTOMDATA: 4,
   FLAG      : 8
+};
+
+export const LogTags = {
+  NONE              : 0,
+  COLLAPSE_EDGE     : 1,
+  DISSOLVE_EDGE     : 2,
+  DISSOLVE_VERT     : 3,
+  SPLIT_EDGE        : 4,
+  JOINTWOEDGES      : 5,
+  SPLIT_FACE        : 6,
+  SPLIT_EDGES_SMART2: 7
 };
 
 export class LogContext {
@@ -133,51 +154,51 @@ export class LogContext {
     return this;
   }
 
-  newVertex(v) {
+  newVertex(v, tag) {
     if (this.onnew) {
-      this.onnew(v);
+      this.onnew(v, tag);
     }
     //this.newVerts.add(v);
     return this;
   }
 
-  newEdge(e) {
+  newEdge(e, tag) {
     if (this.onnew) {
-      this.onnew(e);
+      this.onnew(e, tag);
     }
     //this.newEdges.add(e);
     return this;
   }
 
-  newFace(f) {
+  newFace(f, tag) {
     if (this.onnew) {
-      this.onnew(f);
+      this.onnew(f, tag);
     }
     //this.newFaces.add(f);
     return this;
   }
 
-  killVertex(v) {
+  killVertex(v, tag) {
     if (this.onkill) {
-      this.onkill(v);
+      this.onkill(v, tag);
     }
 
     //this.killVerts.add(v);
     return this;
   }
 
-  killEdge(e) {
+  killEdge(e, tag) {
     if (this.onkill) {
-      this.onkill(e);
+      this.onkill(e, tag);
     }
 
     //this.killEdges.add(e);
     return this;
   }
 
-  killFace(f) {
+  killFace(f, tag) {
     if (this.onkill) {
-      this.onkill(f);
+      this.onkill(f, tag);
     }
 
     //this.killFaces.add(f);
@@ -262,7 +283,9 @@ export const MeshFlags = {
   NOAPI_TEMP2     : (1<<25),
   NOAPI_TEMP3     : (1<<26),
   ITER_TEMP3      : (1<<27),
-  QUAD_EDGE       : (1<<28)
+  QUAD_EDGE       : (1<<28),
+  COLLAPSE_TEMP   : (1<<29),
+  MAKE_FACE_TEMP  : (1<<30)
 };
 
 export const MeshModifierFlags = {
@@ -278,35 +301,65 @@ export const RecalcFlags = {
   ALL       : 1 | 2 | 4 | 8 | 16
 };
 
-
-let atemps = {};
-window._arrcache = atemps;
-let nullarray = [];
-
-export function getArrayTemp(n) {
-  if (n === 0) {
-    if (nullarray.length !== 0) {
-      nullarray.length = n;
-    }
-
-    return nullarray;
+export class ArrayPool {
+  constructor() {
+    this.pools = new Map();
+    this.map = new Array(1024);
   }
 
-  if (n in atemps) {
-    let ret = atemps[n].next();
+  get(n, clear) {
+    let pool;
 
+    if (n < 1024) {
+      pool = this.map[n];
+    } else {
+      pool = this.pools.get(n);
+    }
+
+    if (!pool) {
+      let tot;
+
+      if (n > 512) {
+        tot = 32;
+      } else if (n > 256) {
+        tot = 64;
+      } else if (n > 128) {
+        tot = 256;
+      } else if (n > 64) {
+        tot = 512;
+      } else {
+        tot = 1024;
+      }
+
+      pool = new util.cachering(() => new Array(n), tot);
+      if (n < 1024) {
+        this.map[n] = pool;
+      }
+      this.pools.set(n, pool);
+
+      return this.get(n, clear);
+    }
+
+    let ret = pool.next();
     if (ret.length !== n) {
-      console.warn("An array temp's length was modified", ret);
+      console.warn("Array length was set", n, ret);
       ret.length = n;
+    }
+
+    if (clear) {
+      for (let i = 0; i < n; i++) {
+        ret[i] = undefined;
+      }
     }
 
     return ret;
   }
+}
 
-  let ring = new util.cachering(() => new Array(n), 64);
-  atemps[n] = ring;
+let pool = new ArrayPool();
 
-  return ring.next();
+export function getArrayTemp(n, clear) {
+  return pool.get(n, clear);
 }
 
 export function reallocArrayTemp(arr, newlen) {

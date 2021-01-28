@@ -1,5 +1,9 @@
+const SEAL = true;
+
 import {
-  MeshError, MeshFlags, MeshTypes, HandleTypes, MAX_EDGE_FACES, MAX_FACE_VERTS, MAX_VERT_EDGES
+  MeshError, MeshFlags, MeshTypes, HandleTypes,
+  MAX_EDGE_FACES, MAX_FACE_VERTS, MAX_VERT_EDGES,
+  ReusableIter
 } from "./mesh_base.js";
 import {Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import * as util from "../util/util.js";
@@ -8,12 +12,14 @@ import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 
 import {EDGE_LINKED_LISTS} from '../core/const.js';
+export {EDGE_LINKED_LISTS} from '../core/const.js';
 
 let quat_temps = util.cachering.fromConstructor(Quat, 512);
 let mat_temps = util.cachering.fromConstructor(Matrix4, 256);
 let vec3_temps = util.cachering.fromConstructor(Vector3, 1024);
 
 let vertiters_l = new Array(1024);
+
 
 export class VertLoopIter {
   constructor(v) {
@@ -154,6 +160,24 @@ vertiters_l.cur = 0;
 
 let vnistack = new Array(512);
 vnistack.cur = 0;
+
+export class VertNeighborIterR extends ReusableIter {
+  constructor() {
+    super();
+    this.v = undefined;
+  }
+
+  reset(v) {
+    this.v = v;
+    return this;
+  }
+
+  [Symbol.iterator]() {
+    return vnistack[vnistack.cur++].reset(this.v);
+  }
+}
+
+let vniring = util.cachering.fromConstructor(VertNeighborIterR, 512);
 
 export class VertNeighborIter {
   constructor() {
@@ -713,6 +737,7 @@ vedgeiters.cur = 0;
 export class Vertex extends Vector3 {
   constructor(co) {
     super();
+
     this._initElement(MeshTypes.VERTEX);
     //this.initVector3();
 
@@ -726,7 +751,11 @@ export class Vertex extends Vector3 {
     if (EDGE_LINKED_LISTS) {
       this.e = undefined;
     } else {
-      this._edges = [];
+      this.edges = [];
+    }
+
+    if (SEAL) {
+      Object.seal(this);
     }
   }
 
@@ -769,6 +798,7 @@ export class Vertex extends Vector3 {
     return this.eid;
   }
 
+  /*
   get edges() {
     if (EDGE_LINKED_LISTS && !IN_VERTEX_STRUCT) {
       return vedgeiters[vedgeiters.cur++].reset(this);
@@ -783,14 +813,15 @@ export class Vertex extends Vector3 {
     } else {
       throw new Error("cannot set .edges");
     }
-  }
+  }//*/
 
   [Symbol.keystr]() {
     return this.eid;
   }
 
   get neighbors() {
-    return vnistack[vnistack.cur++].reset(this);
+    return vniring.next().reset(this);
+    //return vnistack[vnistack.cur++].reset(this);
   }
 
   toJSON() {
@@ -975,6 +1006,10 @@ export class Handle extends Element {
     this.owner = undefined;
     this.mode = HandleTypes.AUTO;
     this.roll = 0;
+
+    if (SEAL) {
+      Object.seal(this);
+    }
   }
 
   get visible() {
@@ -1325,13 +1360,19 @@ export class Edge extends Element {
     this._arcCache = undefined;
 
     this.l = undefined;
+
     this.v1 = this.v2 = undefined;
     this.h1 = this.h2 = undefined;
+
     this.length = 0.0;
 
     if (EDGE_LINKED_LISTS) {
       this.v1next = this.v1prev = undefined;
       this.v2next = this.v2prev = undefined;
+    }
+
+    if (SEAL) {
+      Object.seal(this);
     }
   }
 
@@ -1862,12 +1903,20 @@ export class Loop extends Element {
   constructor() {
     super(MeshTypes.LOOP);
 
-    this.radial_next = this.radial_prev = undefined;
+    this.next = undefined;
+    this.prev = undefined;
+    this.radial_next = undefined;
+    this.radial_prev = undefined;
 
     this.e = undefined;
     this.f = undefined;
     this.v = undefined;
+
     this.list = undefined;
+
+    if (SEAL) {
+      Object.seal(this);
+    }
   }
   /*
     get f() {
@@ -1881,10 +1930,17 @@ export class Loop extends Element {
   //*/
 
   _free() {
-    this.e = this.f = this.v = this.list = this.next = this.prev = undefined;
-    this.radial_next = this.radial_prev = undefined;
+    this.eid = -1;
+    //this.e = this.f = this.v = this.list = this.next = this.prev = undefined;
+    //this.radial_next = this.radial_prev = undefined;
+    //let client code call this.__free;
 
     return this;
+  }
+
+  __free() {
+    this.e = this.f = this.v = this.list = this.next = this.prev = undefined;
+    this.radial_next = this.radial_prev = undefined;
   }
 
   get uv() {
@@ -2004,6 +2060,11 @@ export class LoopList {
     this.flag = 0;
     this.l = undefined;
     this.length = 0;
+    this.__loops = undefined; //used by STRUCT
+
+    if (SEAL) {
+      Object.seal(this);
+    }
   }
 
   [Symbol.iterator]() {
@@ -2022,6 +2083,10 @@ export class LoopList {
 
   _recount() {
     this.length = 0;
+
+    if (!this.l) {
+      return;
+    }
 
     for (let l of this) {
       this.length++;
@@ -2052,7 +2117,8 @@ export class LoopList {
 
       this.l = ls[0];
 
-      delete this.__loops;
+      this.__loops = undefined; //in theory it's faster to not delete this?
+      //delete this.__loops;
     }
   }
 }
@@ -2075,7 +2141,31 @@ let fiter_stack_v;
 let fiter_stack_l;
 let fiter_stack_e;
 
+let fiter_stack_v_ring;
+let fiter_stack_l_ring;
+let fiter_stack_e_ring;
+
 let codegen = `
+class $NAMEProxy extends ReusableIter {
+  constructor() {
+    super();
+    
+    this.f = undefined;
+  }
+  
+  reset(f) {
+    this.f = f;
+    
+    return this;
+  }
+  
+  [Symbol.iterator]() {
+    return $ITERSTACK[$ITERSTACK.cur++].reset(this.f);
+  }
+}
+
+$ITERSTACK_ring = util.cachering.fromConstructor($NAMEProxy, 4196);
+
 result = class $NAME {
   constructor() {
     this.ret = {done : true, value : undefined};
@@ -2098,7 +2188,8 @@ result = class $NAME {
       this.ret.value = undefined;
       this.ret.done = true;
       this.l = undefined;
-      fiterstack.cur = Math.max(fiterstack.cur-1, 0);
+      
+      $ITERSTACK.cur = Math.max($ITERSTACK.cur-1, 0);
     }
   }
 
@@ -2144,11 +2235,11 @@ result = class $NAME {
   }
 }
 
-fiterstack = new Array(1024);
-for (let i=0; i<fiterstack.length; i++) {
-  fiterstack[i] = new result();
+$ITERSTACK = new Array(1024);
+for (let i=0; i<$ITERSTACK.length; i++) {
+  $ITERSTACK[i] = new result();
 }
-fiterstack.cur = 0;
+$ITERSTACK.cur = 0;
 `;
 
 function makecls(name, stackname, ret) {
@@ -2156,7 +2247,7 @@ function makecls(name, stackname, ret) {
 
   codegen2 = codegen2.replace(/\$NAME/g, name);
   codegen2 = codegen2.replace(/\$RET/g, ret);
-  codegen2 = codegen2.replace(/fiterstack/g, stackname);
+  codegen2 = codegen2.replace(/\$ITERSTACK/g, stackname);
 
   var result;
   eval(codegen2);
@@ -2174,11 +2265,19 @@ export class Face extends Element {
 
     this.lists = [];
 
-    this.flag |= MeshFlags.FLAT;
-
     this.area = 1.0; //not guaranteed to be correct, used for weighting normals
     this.no = new Vector3();
     this.cent = new Vector3();
+
+    this.flag |= MeshFlags.FLAT;
+
+    if (SEAL) {
+      Object.seal(this);
+    }
+  }
+
+  _free() {
+
   }
 
   get length() {
@@ -2207,7 +2306,7 @@ export class Face extends Element {
     return this.lists.length === 1 && this.lists[0].length === 4;
   }
 
-  get flag() {
+  /*get flag() {
     return this._flag;
   }
 
@@ -2217,43 +2316,20 @@ export class Face extends Element {
     }
 
     this._flag = f;
-  }
+  }//*/
 
   get verts() {
-    return fiter_stack_v[fiter_stack_v.cur++].reset(this);
-    let this2 = this;
-    return (function*() {
-      for (let loop of this2.loops) {
-        yield loop.v;
-      }
-    })();
+    return fiter_stack_v_ring.next().reset(this);
+
+    //return fiter_stack_v[fiter_stack_v.cur++].reset(this);
   }
 
   get loops() {
     return fiter_stack_l[fiter_stack_l.cur++].reset(this);
-    return this.lists[0];
   }
 
   get edges() {
     return fiter_stack_e[fiter_stack_e.cur++].reset(this);
-
-    let this2 = this;
-    return (function*() {
-      for (let list of this2.lists) {
-        for (let loop of list) {
-          yield loop.e;
-        }
-      }
-    })();
-  }
-
-  get uvs() {
-    let this2 = this;
-    return (function*() {
-      for (let loop of this2.loops) {
-        yield loop.uv;
-      }
-    })();
   }
 
   calcNormal() {
@@ -2293,6 +2369,10 @@ export class Face extends Element {
     this.cent.zero();
     let tot = 0.0;
 
+    if (this.lists.length === 0) {
+      return this.cent.zero();
+    }
+
     for (let l of this.lists[0]) {
       this.cent.add(l.v);
       tot++;
@@ -2307,10 +2387,10 @@ export class Face extends Element {
     super.loadSTRUCT(reader);
   }
 }
-Face.STRUCT = STRUCT.inherit(Face, Element, "mesh.Face") + `
+Face.STRUCT = nstructjs.inherit(Face, Element, "mesh.Face") + `
   lists : array(mesh.LoopList);
   cent  : vec3;
   no    : vec3;
 }
 `;
-nstructjs.manager.add_class(Face);
+nstructjs.register(Face);

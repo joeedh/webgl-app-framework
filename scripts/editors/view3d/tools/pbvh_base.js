@@ -103,6 +103,7 @@ export class PaintSample {
     this.smoothProj = 0.0;
 
     this.pinch = 0.0;
+    this.sharp = 0.0;
 
     //screen coordinates
     this.sp = new Vector4();
@@ -123,6 +124,7 @@ export class PaintSample {
     this.vec = new Vector3();
     this.dvec = new Vector3();
 
+    this.autosmoothInflate = 0.0;
     this.concaveFilter = 0.0;
     this.strength = 0.0;
     this.radius = 0.0;
@@ -162,6 +164,7 @@ export class PaintSample {
 
     b.strokeS = this.strokeS;
     b.dstrokeS = this.dstrokeS;
+    b.sharp = this.sharp;
 
     b.viewPlane.load(this.viewPlane);
     b.viewvec.load(this.viewvec);
@@ -179,6 +182,7 @@ export class PaintSample {
 
     b.p.load(this.p);
     b.dp.load(this.dp);
+    b.autosmoothInflate = this.autosmoothInflate;
 
     b.w = this.w;
     b.esize = this.esize;
@@ -214,6 +218,7 @@ PaintSample {
   dsp            : vec4;
   origp          : vec4;
   isInterp       : bool;
+  sharp          : float;
 
   vec            : vec3;
   dvec           : vec3;
@@ -223,6 +228,7 @@ PaintSample {
   viewvec        : vec3;
   vieworigin     : vec3;
   viewPlane      : vec3;
+  autosmoothInflate : float;
 
   planeoff       : float;
   rake           : float;
