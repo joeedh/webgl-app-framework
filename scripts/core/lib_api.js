@@ -76,9 +76,21 @@ export class DataBlock extends Node {
   //deep duplicates block, except for references to other data block which aren't copied
   //(e.g. a sceneobject doesn't duplicate .data)
   //if addLibUsers is true, references to other datablocks will get lib_addUser called,
-  copy(addLibUsers=false) {
+  copy(addLibUsers=false, owner) {
     let ret = new this.constructor();
+
+    this.copyTo(ret);
     DataBlock.prototype.copyTo.call(this, ret, false);
+
+    if (addLibUsers) {
+      //ret.lib_addUser(owner);
+
+      ret.lib_users++;
+      if (owner) {
+        ret.lib_users.push(owner);
+      }
+    }
+
     return ret;
   }
 

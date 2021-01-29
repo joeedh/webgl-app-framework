@@ -68,8 +68,6 @@ export class CDT {
   }
 
   constrain(tris, verts, inedges, trimHoles) {
-    let vmap = {};
-
     let me = new Mesh();
     let verts2 = [];
 
@@ -151,13 +149,9 @@ export class CDT {
     }
 
     for (let v of verts) {
-      let id = v[2];
-
       v = me.makeVertex(v);
-      v.id = id;
       v.index = i;
 
-      vmap[v.id] = v;
       verts2.push(v);
       i++;
     }
@@ -636,7 +630,26 @@ export function triangulateQuad(mesh, f, lctx, newfaces) {
   let l1 = l, l2 = l.next;
   let l3 = l2.next, l4 = l3.next;
 
-  if (d1 <= d2) {
+  let th1 = math.dihedral_v3_sqr(l1.v, l2.v, l3.v, l4.v);
+  let th2 = math.dihedral_v3_sqr(l4.v, l1.v, l2.v, l3.v);
+  th1 = 2.0 - (th1*0.5 + 0.5);
+  th2 = 2.0 - (th2*0.5 + 0.5);
+
+  d1 *= th1;
+  d2 *= th2;
+
+  let side = d1 <= d2 || mesh.getEdge(l4.v, l2.v) !== undefined;
+
+  /*
+  let limit = 0.001;
+  side = side || math.colinear(l4.v, l1.v, l2.v, limit);
+  side = side || math.colinear(l4.v, l2.v, l3.v, limit);
+
+  side = side && !math.colinear(l1.v, l2.v, l3.v, limit);
+  side = side && !math.colinear(l1.v, l3.v, l4.v, limit);
+  */
+
+  if (side && !mesh.getEdge(l1.v, l3.v)) {
     f1 = mesh.makeTri(l1.v, l2.v, l3.v, lctx);
     f2 = mesh.makeTri(l1.v, l3.v, l4.v, lctx);
 

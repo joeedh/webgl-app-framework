@@ -4,7 +4,9 @@ import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {DataBlock, BlockFlags} from "../core/lib_api.js";
 import {GraphFlags, NodeFlags} from "../core/graph.js";
-import {ProceduralTexUser} from '../texture/proceduralTex.js';
+import {
+  CombModes, CombPattern, ProceduralTex, ProceduralTexUser, TexUserFlags, TexUserModes
+} from '../texture/proceduralTex.js';
 
 function feq(a, b) {
   return Math.abs(a - b) < 0.00001;
@@ -23,7 +25,8 @@ export const BrushFlags = {
   INVERT_CONCAVE_FILTER: 8,
   MULTIGRID_SMOOTH     : 16,
   PLANAR_SMOOTH        : 32,
-  CURVE_RAKE_ONLY_POS_X: 64 //for debugging purposes, restrict curavture raking to one side of the mesh
+  CURVE_RAKE_ONLY_POS_X: 64, //for debugging purposes, restrict curavture raking to one side of the mesh
+  INVERT               : 128,
 };
 
 export const DynTopoModes = {
@@ -812,17 +815,50 @@ export function makeDefaultBrushes() {
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
 
   brush = bmap[SculptTools.COLOR_BOUNDARY];
-  brush.autosmooth = 0.01;
+  //brush.autosmooth = 0.01;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
 
   brush = bmap[SculptTools.DRAW];
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+  brush.rake = 1.0;
+  brush.rakeCurvatureFactor = 1.0;
 
   brush = bmap[SculptTools.CLAY];
-  brush.autosmooth = 0.2;
+  brush.autosmooth = 0.3;
+  brush.strength = 0.75;
   brush.dynamics.autosmooth.useDynamics = true;
-  brush.strength = 1.0;
-  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+  brush.dynamics.strength.useDynamics = true;
+  brush.dynamics.strength.curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARP);
+  brush.rake = 1.0;
+  brush.rakeCurvatureFactor = 1.0;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+
+  brush = brush.copy();
+  brush.name = "Comb";
+  brush.flag |= BrushFlags.INVERT;
+  brush.spacing = 0.15;
+  brush.texUser.mode = TexUserModes.VIEW_REPEAT;
+  brush.texUser.flag = TexUserFlags.FANCY_RAKE | TexUserFlags.RAKE;
+
+  brush.autosmooth = 0.25;
+  brush.dynamics.autosmooth.useDynamics = true;
+  let curve = brush.dynamics.autosmooth.curve;
+  curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.LINEAR);
+
+  let tex = brush.texUser.texture = new ProceduralTex();
+  tex.lib_users++;
+  tex.lib_flag |= BlockFlags.FAKE_USER;
+  tex.name = "CombBrush";
+
+  tex.setGenerator(CombPattern);
+
+  let pat = tex.getGenerator(CombPattern);
+  pat.count = 1;
+  pat.mode = CombModes.STEP;
+  brush.flag |= BlockFlags.FAKE_USER;
+
+  brushes[brush.name] = brush;
+
 
   brush = bmap[SculptTools.FILL];
   brush.autosmooth = 0.5;
@@ -832,16 +868,22 @@ export function makeDefaultBrushes() {
   brush = bmap[SculptTools.SCRAPE];
   brush.autosmooth = 0.2;
   brush.strength = 0.5;
+  brush.rake = 1.0;
+  brush.rakeCurvatureFactor = 1.0;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
 
   brush = bmap[SculptTools.INFLATE];
   brush.strength = 0.5;
+  brush.rake = 1.0;
+  brush.rakeCurvatureFactor = 1.0;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   brush = bmap[SculptTools.SMOOTH];
   brush.strength = 0.5;
   brush.planeoff = -1.0;
   brush.normalfac = 1.0;
+  brush.rake = 1.0;
+  brush.rakeCurvatureFactor = 1.0;
 
   brush.dynTopo.overrideMask = 0;
   brush.dynTopo.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE;
@@ -860,9 +902,10 @@ export function makeDefaultBrushes() {
 
   brush = bmap[SculptTools.SHARP];
   brush.strength = 0.5;
-  brush.autosmooth = 0.1;
-  brush.rake = 0.5;
-  brush.rakeCurvatureFactor = 0.5;
+  brush.autosmooth = 0.25;
+  brush.dynamics.autosmooth.useDynamics = false;
+  brush.rake = 1.0;
+  brush.rakeCurvatureFactor = 1.0;
   brush.pinch = 0.5;
   brush.spacing = 0.09;
   brush.dynamics.strength.useDynamics = true;
@@ -872,14 +915,14 @@ export function makeDefaultBrushes() {
   brush.autosmooth = 0.15;
   brush.spacing = 0.2;
   brush.spacingMode = BrushSpacingModes.EVEN;
-  brush.rake = 0.7;
-  brush.rakeCurvatureFactor = 0.5;
+  brush.rake = 1.0;
+  brush.rakeCurvatureFactor = 1.0;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.CONSTANT);
 
   brush = bmap[SculptTools.GRAB];
   brush.autosmooth = 0.0;
   brush.rake = 0.0;
-  brush.dynTopo.overrideMask &= ~DynTopoOverrides.NONE;
+  brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED;
   brush.dynTopo.flag &= ~DynTopoFlags.ENABLED;
 
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
@@ -887,17 +930,18 @@ export function makeDefaultBrushes() {
 
   brush = bmap[SculptTools.WING_SCRAPE];
   brush.autosmooth = 0.0;
-  brush.rake = 0.5;
-  brush.rakeCurvatureFactor = 0.5;
+  brush.rake = 1.0;
+  brush.rakeCurvatureFactor = 1.0;
   brush.pinch = 0.0;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   brush = bmap[SculptTools.PINCH];
-  brush.rake = 0.5;
-  brush.rakeCurvatureFactor = 0.5;
-  brush.autosmooth = 0.0;
+  brush.rake = 1.0;
+  brush.rakeCurvatureFactor = 1.0;
+  brush.autosmooth = 0.2;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARPER);
   brush.dynamics.strength.useDynamics = true;
+  brush.dynamics.autosmooth.useDynamics = false;
 
   return brushes;
 }
@@ -966,7 +1010,7 @@ export function getBrushes(ctx, overrideDefaultBrushes = false) {
     let b = DefaultBrushes[k];
 
     for (let b2 of brushes) {
-      if (b2.tool === b.tool) {
+      if (b2.tool === b.tool && b2.name === b.name) {
         found = b2;
         break;
       }
@@ -980,8 +1024,20 @@ export function getBrushes(ctx, overrideDefaultBrushes = false) {
 
       console.log("adding", k, b);
 
+      let tex = b.texUser.texture;
+      if (tex && tex.lib_id < 0) {
+        ctx.datalib.add(tex);
+      }
+
       ctx.datalib.add(b);
     }
+
+    let tex = b.texUser.texture;
+    if (tex && tex.lib_id < 0) {
+      ctx.datalib.add(tex);
+    }
+
+    ctx.datalib.add(b);
 
     if (overrideDefaultBrushes || !found) {
       //add a hidden copy too
@@ -995,6 +1051,11 @@ export function getBrushes(ctx, overrideDefaultBrushes = false) {
         b2.name = oname;
         b2.lib_flag |= BlockFlags.HIDE;
         ctx.datalib.add(b2);
+
+        let tex = b2.texUser.texture;
+        if (tex && tex.lib_id < 0) {
+          ctx.datalib.add(tex);
+        }
       } else {
         b.copyTo(b2, false);
       }

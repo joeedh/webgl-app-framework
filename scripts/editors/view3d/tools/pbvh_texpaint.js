@@ -429,8 +429,11 @@ export class TexPaintOp extends ToolOp {
     let centuv = new Vector2();
     let duv = new Vector2();
 
+    let cd_corner = wrangler.cd_corner;
+
     function getcorner(l) {
-      return wrangler.loopMap.get(l).corner;
+      return wrangler.loopMap.get(l).customData[cd_corner].corner;
+
       let ret = l !== l.radial_next && wrangler.islandLoopMap.get(l) !== wrangler.islandLoopMap.get(l.radial_next);
 
       l = l.next;

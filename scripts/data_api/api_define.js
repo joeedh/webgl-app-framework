@@ -70,6 +70,7 @@ import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/
 import {PropModes} from '../editors/view3d/transform/transform_base.js';
 import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../image/image.js';
 import {BVHSettings} from '../util/bvh.js';
+import {AppSettings} from '../core/settings.js';
 
 
 export function api_define_rendersettings(api) {
@@ -798,7 +799,10 @@ export function api_define_dyntopo(api) {
   }
 
   st.flags("overrideMask", "overrides", DynTopoOverrides, "Overrides")
-    .descriptions(tooltips);
+    .descriptions(tooltips)
+    .uiNames({
+      NONE: "Inherit Everything"
+    });
 
   st.float("subdivideFactor", "subdivideFactor", "Subdivision Factor").range(0.0, 1.0).noUnits();
   st.float("decimateFactor", "decimateFactor", "Decimate Factor").range(0.0, 1.0).noUnits();
@@ -811,8 +815,8 @@ export function api_define_dyntopo(api) {
   st.float("spacing", "spacing", "Spacing").range(0.01, 12.0).noUnits();
   st.enum("spacingMode", "spacingMode", BrushSpacingModes, "Spacing Mode")
     .descriptions({
-      EVEN : "Fixed distance between brush points",
-      NONE : "Use raw brush points"
+      EVEN: "Fixed distance between brush points",
+      NONE: "Use raw brush points"
     });
 
   st.enum("edgeMode", "edgeMode", DynTopoModes, "Mode");
@@ -830,7 +834,7 @@ export function api_define_brush(api, cstruct) {
   api_define_dyntopo(api);
 
   bst.flags("flag", "flag", BrushFlags, "Flag").icons({
-    SHARED_SIZE : Icons.SHARED_BRUSH_SIZE
+    SHARED_SIZE: Icons.SHARED_BRUSH_SIZE
   });
 
   bst.float("rakeCurvatureFactor", "rakeCurvatureFactor", "Curvature Factor")
@@ -839,8 +843,8 @@ export function api_define_brush(api, cstruct) {
 
   bst.enum("spacingMode", "spacingMode", BrushSpacingModes, "Spacing Mode")
     .descriptions({
-      EVEN : "Fixed distance between brush points",
-      NONE : "Use raw brush points"
+      EVEN: "Fixed distance between brush points",
+      NONE: "Use raw brush points"
     });
 
   bst.float("sharp", "sharp", "Sharpening").range(0.0, 1.0).noUnits().step(0.015);
@@ -1011,8 +1015,8 @@ export function getDataAPI() {
   let def = cstruct.flags("selectMask", "selectmode", SelMask, "Selection Mode", "Selection Mode");
   def.icons({
     VERTEX: Icons.VERT_MODE,
-    EDGE: Icons.EDGE_MODE,
-    FACE: Icons.FACE_MODE,
+    EDGE  : Icons.EDGE_MODE,
+    FACE  : Icons.FACE_MODE,
     OBJECT: Icons.CIRCLE_SEL
   });
 
@@ -1021,8 +1025,8 @@ export function getDataAPI() {
   def = sstruct.flags("selectMask", "selectMaskEnum", SelMask, "Selection Mode", "Selection Mode");
   def.icons({
     VERTEX: Icons.VERT_MODE,
-    EDGE: Icons.EDGE_MODE,
-    FACE: Icons.FACE_MODE,
+    EDGE  : Icons.EDGE_MODE,
+    FACE  : Icons.FACE_MODE,
     OBJECT: Icons.CIRCLE_SEL
   });
   def.on('change', function (newv, oldv) {
@@ -1047,10 +1051,14 @@ export function getDataAPI() {
     }
   });
 
+  AppSettings.defineAPI(api);
+
   buildEditorsAPI(api, cstruct);
   buildToolSysAPI(api);
 
   cstruct.struct("propCache", "toolDefaults", "Tool Defaults", api.mapStruct(ToolPropertyCache));
+
+  cstruct.struct("settings", "settings", "Settings", api.mapStruct(AppSettings, false));
 
   _done = true;
 

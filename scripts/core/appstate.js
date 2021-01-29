@@ -680,7 +680,7 @@ export class AppState {
       filectx.datablocks.push([clsname, block]);
 
       return block;
-    } else if (args.load_settings && type == BlockTypes.SETTINGS) {
+    } else if (args.load_settings && type === BlockTypes.SETTINGS) {
       let settings = istruct.read_object(data, AppSettings);
 
       this.settings.destroy();
@@ -1058,10 +1058,7 @@ export class AppState {
   }
 
   saveSettings() {
-    let file = this.createSettingsFile();
-    file = util.btoa(file);
-
-    localStorage[cconst.APP_KEY_NAME + "_settings"] = file;
+    this.settings.save();
   }
 
   loadSettings() {
@@ -1074,21 +1071,9 @@ export class AppState {
   }
 
   loadSettings_intern() {
-    let file = localStorage[cconst.APP_KEY_NAME + "_settings"];
-    if (file === undefined) {
-      return;
-    }
+    //decided to store AppSettings in human-readable JSON
+    this.settings.load();
 
-    file = util.atob(file).buffer;
-
-    let args = {
-      load_screen    : false,
-      load_settings  : true,
-      load_library   : false,
-      reset_toolstack: false
-    }
-
-    this.loadFile(file, args);
     window.redraw_viewport();
   }
 

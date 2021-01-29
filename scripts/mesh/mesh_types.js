@@ -3,7 +3,7 @@ const SEAL = true;
 import {
   MeshError, MeshFlags, MeshTypes, HandleTypes,
   MAX_EDGE_FACES, MAX_FACE_VERTS, MAX_VERT_EDGES,
-  ReusableIter
+  ReusableIter, MeshIterFlags
 } from "./mesh_base.js";
 import {Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import * as util from "../util/util.js";
@@ -1353,6 +1353,139 @@ for (let i=0; i<eviter_stack.length; i++) {
   eviter_stack[i] = new EdgeVertIter();
 }
 
+let efiter_stack = new Array(2048);
+efiter_stack.cur = 0;
+let efiter_ring;
+
+export class EdgeFaceIterR extends ReusableIter {
+  constructor() {
+    super();
+    this.e = undefined;
+  }
+
+  reset(e) {
+    this.e = e;
+    return this;
+  }
+
+  [Symbol.iterator]() {
+    return efiter_stack[efiter_stack.cur++].reset(this.e);
+  }
+}
+
+efiter_ring = util.cachering.fromConstructor(EdgeFaceIterR, 4196);
+
+//flag in MeshIterFlags to use, is like a stack
+let efiter_flag = 0;
+
+window._get_efiter_flag = () => efiter_flag;
+
+export class EdgeFaceIter {
+  constructor() {
+    this.e = undefined;
+    this.l = undefined;
+    this.done = true;
+    this.i = 0;
+    this.ret = {done : true, value : undefined};
+  }
+
+  reset(e) {
+    this.e = e;
+    this.l = e.l;
+    this.i = 0;
+    this.done = false;
+
+    if (!e.l) {
+      return this;
+    }
+
+    this.ret.done = false;
+    this.ret.value = undefined;
+
+    let flag = this.flag = efiter_flag;
+
+    let l = e.l;
+    let _i = 0;
+
+    do {
+      if (_i++ > MAX_EDGE_FACES) {
+        console.warn("infinite loop error");
+        break;
+      }
+
+      l.f.flag &= ~flag;
+      l = l.radial_next;
+    } while (l !== e.l);
+
+    //XXX overflow possibility
+    efiter_flag = Math.min(efiter_flag+1, MeshIterFlags.EDGE_FACES_TOT);
+
+    return this;
+  }
+
+  next() {
+    if (!this.l) {
+      return this.finish();
+    }
+
+    let flag = this.flag;
+    let l = this.l;
+    let e = this.e;
+
+    while ((l.f.flag & flag) && this.i < MAX_EDGE_FACES && l !== e.l) {
+      l = l.radial_next;
+
+      if (l === e.l) {
+        return this.finish();
+      }
+      this.i++;
+    }
+
+    if (l.f.flag & flag) {
+      return this.finish();
+    }
+
+    l.f.flag |= flag;
+
+    this.ret.value = l.f;
+    this.l = l.radial_next;
+
+    if (this.l === this.e.l) {
+      this.l = undefined; //stop iterator
+    }
+
+    if (this.i++ > MAX_EDGE_FACES) {
+      console.warn("Infinite loop error in radial list", this.e, this.l);
+      this.l = undefined;
+
+      return this.finish();
+    }
+
+    return this.ret;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.done = true;
+
+      efiter_stack.cur = Math.max(efiter_stack.cur-1, 0);
+      efiter_flag = Math.max(efiter_flag-1, 0);
+
+      this.ret.done = true;
+      this.ret.value = undefined;
+    }
+
+    return this.ret;
+  }
+
+  return() {
+    return this.finish();
+  }
+}
+for (let i=0; i<efiter_stack.length; i++) {
+  efiter_stack[i] = new EdgeFaceIter();
+}
+
 export class Edge extends Element {
   constructor() {
     super(MeshTypes.EDGE);
@@ -1757,11 +1890,24 @@ export class Edge extends Element {
     })();
   }
 
+  /** iterates over faces surrounding this edge;
+      each face is guaranteed to only be returned once.
+
+      Note that edges can have the same face twice when
+      they intrude into the face.
+
+      Iteration can be up to ten levels deep.  Never, ever
+      do recursion from within a for loop over this iterator.
+   */
+  get faces() {
+    return efiter_ring.next().reset(this);
+  }
+
   /**
    be careful of this iterator, it sets ITER_TEMP1 in face flags,
    so it won't work with nested loops on the same element
    */
-  get faces() {
+  get faces_old() {
     let this2 = this;
 
     return (function*() {
@@ -2264,6 +2410,9 @@ export class Face extends Element {
     super(MeshTypes.FACE);
 
     this.lists = [];
+
+    //used by various iterators
+    this.iterflag = 0;
 
     this.area = 1.0; //not guaranteed to be correct, used for weighting normals
     this.no = new Vector3();

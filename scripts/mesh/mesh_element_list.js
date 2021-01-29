@@ -451,7 +451,7 @@ export class ElementList {
     return idx !== undefined ? idx : -1;
   }
 
-  _remove(e) {
+  _remove(e, no_error=false) {
     let i = this.indexOf(e);
 
     if (i >= 0) {
@@ -468,7 +468,11 @@ export class ElementList {
       this.length--;
       this._totRemoved++;
     } else {
-      throw new Error("element " + e.eid + " is not in array");
+      if (no_error) {
+        console.error("mesh element " + e.eid + " is not in array");
+      } else {
+        throw new Error("element " + e.eid + " is not in array");
+      }
     }
   }
 
@@ -510,7 +514,16 @@ export class ElementList {
     return this;
   }
 
-  remove(v) {
+  remove(v, no_error=false) {
+    if (v.eid < 0) {
+      if (no_error) {
+        console.error("v was already deleted");
+        return;
+      } else {
+        throw new Error("v was already deleted");
+      }
+    }
+
     if (this.selected.has(v)) {
       this.selected.remove(v);
     }
@@ -520,7 +533,7 @@ export class ElementList {
     if (this.highlight === v)
       this.highlight = undefined;
 
-    this._remove(v);
+    this._remove(v, no_error);
 
     this.local_eidMap.delete(v.eid);
     return this;
@@ -723,6 +736,8 @@ export class ElementList {
       delete this.items;
     }
 
+    this.length = 0;
+
     for (let item of this.list) {
       this.idxmap.set(item.eid, i);
       this.local_eidMap.set(item.eid, item);
@@ -736,6 +751,7 @@ export class ElementList {
       }
 
       i++;
+      this.length++;
     }
 
     this.selected.clear();

@@ -10,6 +10,14 @@ export class AppToolStack extends ToolStack {
     this._undo_branch = undefined;
   }
 
+  _syncSettings(ctx) {
+    let settings = ctx.settings;
+
+    this.enforceMemLimit = settings.limitUndoMem;
+    this.memLimit = settings.undoMemLimit*1024*1024;
+    return this;
+  }
+
   limitMemory(limit, ctx) {
     let mem = this.calcMemSize(ctx);
 
@@ -20,6 +28,8 @@ export class AppToolStack extends ToolStack {
   }
 
   execTool(ctx, toolop) {
+    this._syncSettings(ctx); //sync undo settings
+
     if (this.enforceMemLimit) {
       this.limitMemory(this.memLimit, ctx);
     }
@@ -129,42 +139,48 @@ export class AppToolStack extends ToolStack {
     }
   }
 
-  replay() {
+  replay(fromBasicFile=false) {
+    this._syncSettings(this.ctx); //sync undo settings
+
     let cur = this.cur;
 
-    this.rewind();
+    if (fromBasicFile) {
+      let toolstack = _appstate.toolstack;
+      _appstate.toolstack = new AppToolStack(this.ctx);
+      _genDefaultFile(_appstate, true);
+      _appstate.toolstack = toolstack;
+      toolstack.cur = -1;
+    } else {
+      this.rewind();
+    }
 
     let last = this.cur;
 
     let start = util.time_ms();
 
-    let timer = window.setInterval(() => {
-      //if (this.cur >= cur) {
-      //  window.clearInterval(timer);
-      //  return;
-      //}
+    return new Promise((accept, reject) => {
+      let next = () => {
+        last = this.cur;
 
-      last = this.cur;
+        this.redo();
 
-      this.redo();
-
-      window.redraw_viewport(true);
-      window.updateDataGraph(true);
-
-      if (last === this.cur) {
-        console.warn("time:", (util.time_ms()-start)/1000.0);
-        window.clearInterval(timer);
-
-        if (this.enforceMemLimit) {
-          this.limitMemory(this.memLimit);
+        if (last === this.cur) {
+          console.warn("time:", (util.time_ms() - start)/1000.0);
+          accept(this);
+        } else {
+          window.redraw_viewport_p(true).then(() => {
+            next();
+          });
         }
       }
-    }, 50);
 
-    return timer;
+      next();
+    });
   }
 
   redo() {
+    this._syncSettings(this.ctx); //sync undo settings
+
     if (this.enforceMemLimit) {
       this.limitMemory(this.memLimit);
     }

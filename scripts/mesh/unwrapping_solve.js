@@ -58,6 +58,7 @@ export function relaxUVs(mesh, cd_uv, loops=mesh.loops, doPack=false, boundaryWe
   //}
 
   let avg = new Vector3();
+  let cd_corner = wr.cd_corner;
 
   for (let island of wr.islands) {
     if (island.length < 5) {
@@ -85,7 +86,7 @@ export function relaxUVs(mesh, cd_uv, loops=mesh.loops, doPack=false, boundaryWe
           break;
         }
 
-        if (v.hasPins) {
+        if (v.customData[cd_corner].hasPins) {
           w += boundaryWeight*2.0;
         }
       }
@@ -640,6 +641,8 @@ export class UnWrapSolver {
       let df = 0.0001;
       let maxarea = 0.0;
 
+      let cd_corner = this.uvw.cd_corner;
+
       function makeAngleCon(l1, l2, l3, v1, v2, v3, wind) {
         t3.load(l1.v).sub(l2.v).normalize();
         t4.load(l3.v).sub(l2.v).normalize();
@@ -661,7 +664,7 @@ export class UnWrapSolver {
         //}
 
         let params = [v1, v2, v3, goalth, wind];
-        let klst = [v1, v2, v3].filter(v => !v.hasPins);
+        let klst = [v1, v2, v3].filter(v => !v.customData[cd_corner].hasPins);
 
         if (klst.length > 0) {
           let con = new Constraint("angle_c", angle_c, klst, params);
@@ -711,7 +714,7 @@ export class UnWrapSolver {
       for (let tri of tris) {
         let goal = tri.worldArea*ratio*wind*1.0;
         let params = [wind, tri.v1, tri.v2, tri.v3, goal, 100.0/totarea];
-        let klst = [tri.v1, tri.v2, tri.v3].filter(v => !v.hasPins);
+        let klst = [tri.v1, tri.v2, tri.v3].filter(v => !v.customData[cd_corner].hasPins);
 
         if (includeArea && klst.length > 0) {
           let con = new Constraint("area_c", area_c, klst, params);
@@ -1034,16 +1037,18 @@ export class UnWrapSolver {
       }
     }
 
+    let cd_corner = this.uvw.cd_corner;
+
     let vsmooth = (fac) => {
       for (let v of smoothvs) {
-        if (v.hasPins) {
+        if (v.customData[cd_corner].hasPins) {
           continue;
         }
 
         tmp.zero();
         let w = 1.0;
 
-        if (v.corner) {
+        if (v.customData[cd_corner].corner) {
           w = 10;
         }
 
@@ -1054,9 +1059,9 @@ export class UnWrapSolver {
           let w = 1.0;
           let v2 = e.otherVertex(v);
 
-          if (v2.hasPins) {
+          if (v2.customData[cd_corner].hasPins) {
             w = 10000.0;
-          } else if (v2.corner) {
+          } else if (v2.customData[cd_corner].corner) {
             //w = 10;
           }
 

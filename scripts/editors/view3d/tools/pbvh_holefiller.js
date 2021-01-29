@@ -166,15 +166,19 @@ export class HoleFillPaintOp extends PaintOpBase {
       uiname  : "paintop",
       toolpath: "bvh.hole_filler",
       is_modal: true,
-      inputs  : {
+      inputs  : ToolOp.inherit({
         brush: new BrushProperty(),
         samples: new PaintSampleProperty(),
         symmetryAxes: new FlagProperty(undefined, {X: 1, Y: 2, Z: 4})
-      }
+      })
     }
   }
 
   calcUndoMem(ctx) {
+    if (!this._undo) {
+      return 0;
+    }
+
     return this._undo.log.calcMemSize();
   }
 

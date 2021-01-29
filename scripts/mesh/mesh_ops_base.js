@@ -144,6 +144,8 @@ export class MeshOp extends View3DOp {
       }
     }
 
+    console.log(util.termColor("Mesh Op Finished"), "green");
+
     window.redraw_viewport();
     window.updateDataGraph();
   }

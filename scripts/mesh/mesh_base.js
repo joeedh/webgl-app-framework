@@ -6,8 +6,10 @@ import {UIBase} from '../path.ux/scripts/pathux.js';
 export const DEBUG_DUPLICATE_FACES = 0;
 export const DEBUG_MANIFOLD_EDGES = 0;
 
-export const SAVE_DEAD_LOOPS = true;
-export const SAVE_DEAD_FACES = true;
+export const ENABLE_CACHING = true;
+
+export const SAVE_DEAD_LOOPS = true && ENABLE_CACHING;
+export const SAVE_DEAD_FACES = true && ENABLE_CACHING;
 
 export const WITH_EIDMAP_MAP = true;
 
@@ -253,7 +255,7 @@ export const MeshTypes = {
   HANDLE: 16
 };
 
-export const MeshFlags = {
+export const MeshFlags = Object.freeze({
   SELECT          : (1<<0),
   HIDE            : (1<<1),
   FLAT            : (1<<2),
@@ -278,14 +280,21 @@ export const MeshFlags = {
   FACE_EXIST_FLAG : (1<<20),
   TEMP4           : (1<<21),
   TEMP5           : (1<<22),
-  TEMP6           : (1<<23),
   NOAPI_TEMP1     : (1<<24), //temp flag that's not allowed to be used by core API functions
   NOAPI_TEMP2     : (1<<25),
-  NOAPI_TEMP3     : (1<<26),
   ITER_TEMP3      : (1<<27),
   QUAD_EDGE       : (1<<28),
+
+  //these two share the same bit
   COLLAPSE_TEMP   : (1<<29),
-  MAKE_FACE_TEMP  : (1<<30)
+  MAKE_FACE_TEMP  : (1<<29)
+});
+
+export const MeshIterFlags = {
+  EDGE_FACES : 1<<0,
+  EDGE_FACES_TOT : 10,
+  VERT_FACES : 1<<10,
+  VERT_FACES_TOT : 10
 };
 
 export const MeshModifierFlags = {

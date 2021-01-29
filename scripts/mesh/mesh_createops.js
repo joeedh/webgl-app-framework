@@ -5,6 +5,7 @@ import {makeCube} from '../core/mesh_shapes.js';
 import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
+  StringProperty, StringSetProperty, ListProperty,
   PropFlags, PropTypes, PropSubTypes, ToolOp, ToolFlags, UndoFlags
 } from '../path.ux/scripts/pathux.js';
 import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
@@ -27,6 +28,7 @@ import {saveUndoMesh, loadUndoMesh} from './mesh_ops_base.js';
 import {css2matrix} from '../path.ux/scripts/path-controller/util/cssutils.js';
 import {splitEdgesSmart2} from './mesh_subdivide.js';
 import {triangulateMesh} from './mesh_utils.js';
+import {readOBJ} from '../util/objloader.js';
 
 export class MeshCreateOp extends MeshOp {
   constructor() {
@@ -245,8 +247,8 @@ export class MeshCreateOp extends MeshOp {
 
     this.internalCreate(ob, mesh, mat);
 
-    mesh.regenTesellation();
-    mesh.regenRender();
+    mesh.regenAll();
+    mesh.recalcNormals();
 
     window.redraw_viewport(true);
   }
@@ -936,3 +938,21 @@ export class ProceduralToMesh extends ToolOp {
 }
 
 ToolOp.register(ProceduralToMesh);
+
+export class ImportOBJOp extends MeshCreateOp {
+  static tooldef() {
+    return {
+      uiname  : "Import OBJ (internal)",
+      toolpath: "mesh.import_obj",
+      inputs  : ToolOp.inherit({
+        data : new StringProperty().private()
+      })
+    }
+  }
+
+  internalCreate(ob, mesh, matrix) {
+    let data = this.inputs.data.getValue();
+
+    readOBJ(data, mesh);
+  }
+}

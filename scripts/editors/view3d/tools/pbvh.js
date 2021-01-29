@@ -344,6 +344,22 @@ export class BVHToolMode extends ToolMode {
 
     tex.setAttribute("datapath", path + ".brush.texUser.texture");
 
+    strip = panel.row().strip();
+    strip.useIcons(false);
+
+    strip.prop(path + ".brush.texUser.mode");
+    strip.prop(path + ".brush.texUser.flag[RAKE]");
+    strip.prop(path + ".brush.texUser.flag[FANCY_RAKE]");
+
+    strip = panel.row().strip();
+    strip.useIcons(false);
+    strip.prop(path + ".brush.texUser.flag[ORIGINAL_CO]");
+    strip.prop(path + ".brush.texUser.flag[CONSTANT_SIZE]");
+
+    strip = panel.row().strip();
+    strip.useIcons(false);
+    strip.prop(path + ".brush.texUser.pinch");
+
     panel.add(tex);
 
     panel.closed = true;
@@ -396,6 +412,7 @@ export class BVHToolMode extends ToolMode {
 
     doChannel("sharp");
 
+    col.prop(path + ".brush.flag[INVERT]");
     col.prop(path + ".brush.spacing");
     col.prop(path + ".brush.color");
     col.prop(path + ".brush.bgcolor");
@@ -416,7 +433,7 @@ export class BVHToolMode extends ToolMode {
 
       let okey = DynTopoSettings.apiKeyToOverride(key);
       //let icon = row.iconcheck(`${path}.dynTopo.overrides[${okey}]`);
-      let icon = strip.iconcheck(opath);
+      let icon = strip.iconcheck(`${path}.dynTopo.overrides[${okey}]`);
       let ret = strip.prop(`${path}.dynTopo.${key}`);
 
       icon.iconsheet = 0; //use small icons
@@ -429,7 +446,7 @@ export class BVHToolMode extends ToolMode {
 
         let val = icon.ctx.api.getValue(icon.ctx, opath);
 
-        if (!!val !== !!icon.disabled) {
+        if ((!!val) !== (!!icon.disabled)) {
           icon.disabled = val;
         }
       });
@@ -634,7 +651,7 @@ export class BVHToolMode extends ToolMode {
     st.struct("_apiBrushHelper", "brush", "Brush", api.mapStruct(SculptBrush));
 
     st.struct("_apiDynTopo", "dynTopo", "DynTopo", api.mapStruct(DynTopoSettings));
-    st.bool("_apiInheritDynTopo", "inheritDynTopo", "Use Defaults");
+    st.bool("_apiInheritDynTopo", "inheritDynTopo", "Inherit Everything");
 
     return st;
   }

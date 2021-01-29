@@ -211,24 +211,30 @@ export class MeshLog {
   logVertex(v, subtype = 0, tag=0) {
     if (disableLog) return;
 
+    let eid = v ? v._old_eid : undefined;
+
     let li = this._newEntry(v, subtype, tag);
-    this._logAdd(li, undefined, tag);
+    this._logAdd(li, eid, tag);
     return li;
   }
 
   logEdge(e, subtype = 0, tag=0) {
     if (disableLog) return;
 
+    let eid = e ? e._old_eid : undefined;
+
     let li = this._newEntry(e, subtype, tag);
-    this._logAdd(li, undefined, tag);
+    this._logAdd(li, eid, tag);
     return li;
   }
 
   logLoop(l, subtype = 0, tag=0) {
     if (disableLog) return;
 
+    let eid = l ? l._old_eid : undefined;
+
     let li = this._newEntry(l, subtype, tag);
-    this._logAdd(li, undefined, tag);
+    this._logAdd(li, eid, tag);
     return li;
   }
 
@@ -264,6 +270,7 @@ export class MeshLog {
 
     log[li+LPARENT] = this.eidMap.get(eid);
     log[li+LTAG] = tag;
+
     this.eidMap.set(eid, li);
   }
 
@@ -272,10 +279,12 @@ export class MeshLog {
       throw new Error("_logAdd: eid was < 0");
     }
 
+    let eid = f ? f._old_eid : undefined;
+
     if (disableLog) return;
 
     let li = this._newEntry(f, subtype, tag);
-    this._logAdd(li, undefined, tag=0);
+    this._logAdd(li, eid, tag=0);
     return li;
   }
 

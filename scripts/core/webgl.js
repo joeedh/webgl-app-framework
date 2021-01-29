@@ -1301,6 +1301,7 @@ export class DrawMats {
     this.inormalmat = new Matrix4();
   }
 
+  /** aspect should be sizex / sizey */
   regen_mats(aspect=this.aspect) {
     this.aspect = aspect;
 
@@ -1500,6 +1501,7 @@ export class Camera extends DrawMats {
     return this;
   }
 
+  /** aspect should be sizex / sizey*/
   regen_mats(aspect=this.aspect) {
     this.aspect = aspect;
 

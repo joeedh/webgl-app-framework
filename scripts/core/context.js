@@ -19,12 +19,25 @@ import {Context, ContextOverlay, ContextFlags} from "./context_base.js";
 import {UIBase, Screen, SavedToolDefaults} from '../path.ux/scripts/pathux.js';
 import {PropsEditor} from '../editors/properties/PropsEditor.js';
 import {MaterialEditor} from "../editors/node/MaterialEditor.js";
+import {AppSettings} from './settings.js';
 
 let passthrus = new Set(["datalib", "gl", "graph", "last_tool", "toolstack", "api"]);
 
 export class BaseOverlay extends ContextOverlay {
   constructor(appstate) {
     super(appstate);
+  }
+
+  get settings() {
+    return this.state.settings;
+  }
+
+  settings_save() {
+    return undefined; //do nothing
+  }
+
+  settings_load(ctx, data) {
+    return ctx.state.settings;
   }
 
   get timeStart() {

@@ -1632,11 +1632,25 @@ export function trianglesToQuads(mesh, faces, flag = TriQuadFlags.DEFAULT, lctx,
   let t2 = new Vector3();
   let t3 = new Vector3();
 
-  let dot3 = (v1, v2, v3) => {
+  let dot3 = (v1, v2, v3, n) => {
     let dx1 = v1[0] - v2[0], dy1 = v1[1] - v2[1], dz1 = v1[2] - v2[2];
     let dx2 = v3[0] - v2[0], dy2 = v3[1] - v2[1], dz2 = v3[2] - v2[2];
 
-    let l1 = Math.sqrt(dx1*dx1 + dy1*dy1*dz1*dz1);
+    /*
+    let d1 = dx1*n[0] + dy1*n[1] + dz1*n[2];
+    let d2 = dx2*n[0] + dy2*n[1] + dz2*n[2];
+
+    d1 = -d1;
+    dx1 += d1*n[0];
+    dy1 += d1*n[1];
+    dz1 += d1*n[2];
+
+    d2 = -d2;
+    dx2 += d2*n[0];
+    dy2 += d2*n[1];
+    dz2 += d2*n[2];//*/
+
+    let l1 = Math.sqrt(dx1*dx1 + dy1*dy1 + dz1*dz1);
     let l2 = Math.sqrt(dx2*dx2 + dy2*dy2 + dz2*dz2);
 
     if (l1 > 0.00001) {
@@ -1654,19 +1668,28 @@ export function trianglesToQuads(mesh, faces, flag = TriQuadFlags.DEFAULT, lctx,
     }
 
     let f = dx1*dx2 + dy1*dy2 + dz1*dz2;
+    return Math.abs(Math.acos(f*0.9999) - Math.PI*0.5);
+    //return f*f;
     return Math.abs(f);
   }
 
+  let no = new Vector3();
+
   let errorNiceQuad = (e, v1, v2, v3, v4) => {
-    let th1 = dot3(v4, v1, v2);
-    let th2 = dot3(v1, v2, v3);
-    let th3 = dot3(v2, v3, v4);
-    let th4 = dot3(v3, v4, v1);
+    //no.load(v1.no).add(v2.no).add(v3.no).add(v4.no).normalize();
+
+    let th1 = dot3(v4, v1, v2, no);
+    let th2 = dot3(v1, v2, v3, no);
+    let th3 = dot3(v2, v3, v4, no);
+    let th4 = dot3(v3, v4, v1, no);
 
     //t1.load(v1.no).add(v3.no).normalize();
     //t2.load(v2.no).add(v4.no).normalize();
 
     let f = (th1 + th2 + th3 + th4)*0.25;
+
+    f += (1.0-math.dihedral_v3_sqr(v1, v2, v3, v4))*0.25;
+    f += (1.0-math.dihedral_v3_sqr(v2, v3, v4, v1))*0.25;
 
     //let th = t1.dot(t2);
     //f += th*35.0;
@@ -1676,7 +1699,7 @@ export function trianglesToQuads(mesh, faces, flag = TriQuadFlags.DEFAULT, lctx,
 
     //f += Math.abs(th)*0.25;
 
-    return f;
+    return Math.abs(f);
   }
 
   if ((flag & TriQuadFlags.UVS) && !have_uv) {

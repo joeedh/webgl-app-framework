@@ -6,6 +6,83 @@ import * as math from '../util/math.js';
 import {PaintSample} from '../editors/view3d/tools/pbvh_base.js';
 import {TestSet} from './test.js';
 
+
+window._profileSpatialSort = function(count=15) {
+  let ps = sculpt_ps;
+  let ps2 = [];
+
+  for (let p of ps) {
+    let p2 = {};
+
+    p2.viewvec = new Vector3(p.viewvec);
+    p2.viewp = new Vector3(p.viewp);
+    p2.mpos = new Vector2(p.mpos);
+    p2.rendermat = new Matrix4(p.rendermat);
+
+    ps2.push(p2);
+  }
+  ps = ps2;
+
+  let divs = 85;
+  let toSphere = 1.0;
+
+  console.log(ps);
+
+  let test = new TestSet();
+
+  test.pushAppState();
+  test.func(() => {
+    let sarea = _appstate.ctx.propsbar.owning_sarea;
+    _appstate.screen.collapseArea(sarea);
+  });
+
+  test.pathSet("scene.toolmode[mesh]", true);
+  test.tool("mesh.toggle_select_all(mode='ADD')");
+  test.redraw();
+
+  for (let i=0; i<7; i++) {
+    test.tool("mesh.subdivide_simple()");
+  }
+
+  test.tool("mesh.remesh(remesher='UNIFORM_TRI')");
+
+  test.redraw();
+  test.wait(500);
+
+  test.func(() => {
+    let ctx = _appstate.ctx;
+    let mesh = ctx.mesh;
+
+    mesh.compact();
+    mesh.compactEids();
+
+    for (let i=0; i<2; i++) {
+      let tag = i ? "sorted" : "unsorted";
+
+      if (i) {
+        mesh.bvh.spatiallySortMesh();
+      }
+
+      console.time(tag)
+
+      for (let j=0; j<count; j++) {
+        mesh.regenBVH();
+        mesh.getBVH();
+      }
+
+      console.timeEnd(tag);
+    }
+  });
+
+  test.redraw();
+  test.wait(500);
+  test.popAppState();
+  test.redraw();
+
+  return test;
+}
+
+
 window._testSculpt = function(tool=SculptTools.CLAY, args={}, toolop="bvh.paint") {
   let ps = sculpt_ps;
   let ps2 = [];

@@ -597,6 +597,16 @@ export class PropsEditor extends Editor {
     tab = this.tabs.tab("Last Command");
     let last = document.createElement("last-tool-panel-x")
     tab.add(last);
+
+    tab = this.tabs.tab("Settings");
+
+    panel = tab.panel("Undo");
+
+    let col = panel.col();
+    col.useIcons(false);
+
+    col.prop("settings.limitUndoMem");
+    col.prop("settings.undoMemLimit");
   }
 
   static defineAPI(api) {

@@ -333,6 +333,7 @@ export class Mesh extends SceneObjectData {
     }
 
     this.bvhSettings = new BVHSettings();
+    this._bvh_freelist = undefined;
 
     this.symFlag = 0; //symmetry flag;
     this.uvRecalcGen = 0;
@@ -918,7 +919,9 @@ export class Mesh extends SceneObjectData {
 
   _killLoop(loop) {
     if (loop.eid < 0) {
-      throw new Error("loop was already freed");
+      console.error("Loop was already freed");
+      return;
+      //throw new Error("loop was already freed");
     }
 
     if (loop.e) {
@@ -2900,8 +2903,8 @@ export class Mesh extends SceneObjectData {
     }
 
     let count = 0;
-    let flag = MeshFlags.TEMP5;
-    let flag2 = MeshFlags.TEMP6;
+    let flag = MeshFlags.TEMP4;
+    let flag2 = MeshFlags.TEMP5;
 
     for (let i = 0; i < 2; i++) {
       let e = i ? e2 : e1;
@@ -3157,9 +3160,9 @@ export class Mesh extends SceneObjectData {
       return;
     }
 
-    let flag1 = MeshFlags.TEMP4;
-    let flag2 = MeshFlags.TEMP5;
-    let flag3 = MeshFlags.TEMP6;
+    let flag1 = MeshFlags.TEMP3;
+    let flag2 = MeshFlags.TEMP4;
+    let flag3 = MeshFlags.TEMP5;
 
     let allflags = flag1 | flag2 | flag3;
 
@@ -3978,17 +3981,6 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  setShadeSmooth(smooth) {
-    for (let f of this.faces) {
-      if (smooth)
-        f.flag &= ~MeshFlags.FLAT;
-      else
-        f.flag |= MeshFlags.FLAT;
-    }
-
-    this.regenRender();
-  }
-
   updateGrids() {
     let cd_grid = GridBase.meshGridOffset(this);
 
@@ -4314,10 +4306,10 @@ export class Mesh extends SceneObjectData {
         console.error("BVH rebuild!");
 
         if (this.bvh) {
-          this.bvh.destroy(this);
+          this._bvh_freelist = this.bvh.destroy(this);
         }
 
-        this.bvh = BVH.create(this, true, useGrids);
+        this.bvh = BVH.create(this, true, useGrids, undefined, undefined, this._bvh_freelist);
       }
     }
 
@@ -4633,8 +4625,7 @@ export class Mesh extends SceneObjectData {
       }
     }
 
-    let eidmap = this.eidmap = {};
-
+    let eidmap = this._eidmap = {};
     let eidgen = this.eidgen = this._makeEIDGen(new util.IDGen());
 
     for (let k in this.elists) {
@@ -4645,7 +4636,7 @@ export class Mesh extends SceneObjectData {
       for (let e of elist) {
         e.eid = e._old_eid = eidgen.next();
 
-        elist.idxmap[e.eid] = i++;
+        elist.idxmap.set(e.eid, i++);
         eidmap[e.eid] = e;
         eidmap2.set(e.eid, e);
       }
@@ -4732,7 +4723,7 @@ export class Mesh extends SceneObjectData {
 
   regenBVH() {
     if (this.bvh) {
-      this.bvh.destroy(this);
+      this._bvh_freelist = this.bvh.destroy(this);
       this.bvh = undefined;
     }
 
@@ -5254,6 +5245,36 @@ export class Mesh extends SceneObjectData {
     }
   }
 
+  fixMesh() {
+    let eidMap = new Map();
+
+    let elists = this.elists;
+
+    //do a sanity check of eids
+    for (let k in elists) {
+      let elist = elists[k];
+
+      for (let elem of elist) {
+        if (elem.eid < 0) {
+          console.warn("Found dead eid tag");
+          elem.eid = this.eidgen.next();
+        } else if (eidMap.has(elem.eid)) {
+          console.warn("Duplicate eid " + elem.eid, "for", elem);
+          elem.eid = this.eidgen.next();
+        }
+
+        eidMap.set(elem.eid, elem);
+      }
+    }
+
+    for (let f of elists[MeshTypes.FACE]) {
+
+    }
+
+    this.elists = {};
+    this.makeElistAliases();
+  }
+
   validateMesh(msg_out = [0]) {
     let fix = false;
 
@@ -5559,6 +5580,11 @@ export class Mesh extends SceneObjectData {
       for (let f of this.faces) {
         for (let list of f.lists) {
           for (let l of list) {
+            if (l.eid < 0) {
+              console.error("Loaded loop with invalid eid");
+              l.eid = this.eidgen.next();
+            }
+
             eidMap.set(l.eid, l);
             this.loops.push(l);
           }

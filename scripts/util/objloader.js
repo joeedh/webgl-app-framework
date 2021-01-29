@@ -4,7 +4,7 @@ import {Mesh, MeshFlags} from '../mesh/mesh.js';
 
 let Vector3 = vectormath.Vector3;
 
-export function readOBJ(buf) {
+export function readOBJ(buf, me = new Mesh()) {
   let lines = buf.split("\n");
   let lines2 = [];
 
@@ -18,7 +18,6 @@ export function readOBJ(buf) {
   }
   lines = lines2;
   
-  let me = new Mesh();
   me._debug_id1 = -1; //prevent debug printing
 
   let vert_uvs = [];
