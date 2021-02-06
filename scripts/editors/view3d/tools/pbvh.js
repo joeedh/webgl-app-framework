@@ -53,8 +53,9 @@ import './pbvh_sculptops.js';
 import './pbvh_base.js';
 import './pbvh_texpaint.js';
 
-import {calcConcave} from './pbvh_base.js';
+import {calcConcave, getBVH} from './pbvh_base.js';
 import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js';
+import {TetMesh} from '../../../tet/tetgen.js';
 
 export class BVHToolMode extends ToolMode {
   constructor(manager) {
@@ -281,7 +282,7 @@ export class BVHToolMode extends ToolMode {
       uiname      : "Sculpt",
       icon        : Icons.SCULPT_MODE,
       flag        : 0,
-      description : "Test bvh",
+      description : "Sculpt Mode",
       selectMode  : SelMask.OBJECT | SelMask.GEOM, //if set, preferred selectmode, see SelModes
       transWidgets: []
     }
@@ -303,10 +304,13 @@ export class BVHToolMode extends ToolMode {
       return brush.tool === toolmode.tool;
     }
 
-    container.add(browser);
+    let row = container.row();
+    row.add(browser);
+    row.useIcons(true);
+    row.tool("brush.load_default(dataPath='scene.tools.sculpt.brush')");
 
     let col = container.col();
-    let strip, panel;
+    let strip, panel, panel2;
 
     let settings = col.panel("Brush Settings");
     strip = settings.row().strip().useIcons(false);
@@ -365,28 +369,17 @@ export class BVHToolMode extends ToolMode {
     panel.closed = true;
 
     panel = col.panel("Falloff");
-    let i1 = 1;
-
-    function makebutton(strip, k) {
-      let icon = strip.iconbutton(-1, ToolProperty.makeUIName(k), () => {
-        let curve = panel.ctx.toolmode.getBrush().falloff;
-        curve.setGenerator("bspline");
-
-        let bspline = curve.generators.active;
-        bspline.loadTemplate(SplineTemplates[k]);
-      });
-
-      icon.iconsheet = 0;
-      icon.customIcon = SplineTemplateIcons[k];
-    }
-
-    let bstrip = panel.row().strip();
-    for (let k in SplineTemplates) {
-
-      makebutton(bstrip, k);
-    }
-
     panel.prop(path + ".brush.falloff");
+
+    panel2 = panel.panel("Square Settings")
+    panel2.prop(path + ".brush.flag[SQUARE]");
+    strip = panel2.row().strip();
+    strip.useIcons(false);
+    strip.prop(path + ".brush.flag[LINE_FALLOFF]");
+    strip.prop(path + ".brush.flag[USE_LINE_CURVE]");
+    panel2.prop(path + ".brush.falloff2");
+    panel2.closed = true;
+
     panel.closed = true;
 
     let p;
@@ -479,7 +472,7 @@ export class BVHToolMode extends ToolMode {
     dfield(panel, "spacing");
     dfield(panel, "spacingMode");
 
-    let panel2 = panel.panel("Advanced");
+    panel2 = panel.panel("Advanced");
     dfield(panel2, "flag[FANCY_EDGE_WEIGHTS]");
     dfield(panel2, "subdivideFactor");
     dfield(panel2, "decimateFactor");
@@ -487,6 +480,8 @@ export class BVHToolMode extends ToolMode {
     dfield(panel2, "repeat");
     dfield(panel2, "valenceGoal");
     dfield(panel2, "maxDepth");
+
+    dfield(panel2, "subdivMode");
 
     dfield(panel2, "flag[QUAD_COLLAPSE]");
     dfield(panel2, "flag[ALLOW_VALENCE4]");
@@ -919,10 +914,16 @@ export class BVHToolMode extends ToolMode {
     super.onInactive();
 
     let ob = ctx.object;
-    if (ob.data instanceof Mesh && ob.data.bvh) {
+    if ((ob.data instanceof Mesh || ob.data instanceof TetMesh) && ob.data.bvh) {
       ob.data.bvh.destroy(ob.data);
       ob.data.bvh = undefined;
-      ob.data.regenTesellation();
+
+      if (ob.data instanceof Mesh) {
+        ob.data.regenTessellation();
+      } else {
+        ob.data.regenRender();
+        ob.data.regenNormals();
+      }
     }
   }
 
@@ -949,7 +950,7 @@ export class BVHToolMode extends ToolMode {
       alpha           : 1.0
     };
 
-    let program = Shaders.WidgetMeshShader;
+    let program = Shaders.ObjectLineShader;
 
 
     if (1) {
@@ -1001,22 +1002,25 @@ export class BVHToolMode extends ToolMode {
       uniforms.color[2] = Math.fract(f*Math.sqrt(2.0) + 0.8234);
       uniforms.color[3] = 1.0;
 
+      uniforms.uColor = uniforms.color;
+
       let camera = view3d.activeCamera;
+
       uniforms.aspect = camera.aspect;
       uniforms.near = camera.near;
       uniforms.far = camera.far;
       uniforms.size = view3d.glSize;
+      uniforms.polygonOffset = 0.0;
+      uniforms.opacity = uniforms.alpha = 1.0;
 
       //console.log(uniforms);
 
-      //ob.data.draw(view3d, gl, uniforms, program, ob);
       Shapes.CUBE.drawLines(gl, uniforms, program);
-
-      //console.log(matrix.toString());
+      //Shapes.CUBE.draw(gl, uniforms, program);
     }
 
     for (let ob of scene.objects.selected.editable) {
-      if (!(ob.data instanceof Mesh)) {
+      if (!(ob.data instanceof Mesh) && !(ob.data instanceof TetMesh)) {
         continue;
       }
 
@@ -1029,7 +1033,12 @@ export class BVHToolMode extends ToolMode {
 
       //console.log("BVH", bvh.nodes.length);
       if (this.drawBVH) {
-        drawNodeAABB(bvh.root, matrix);
+        for (let node of bvh.nodes) {
+          if (node.leaf) {
+            drawNodeAABB(node, matrix);
+          }
+        }
+        //drawNodeAABB(bvh.root, matrix);
       }
       //console.log("BVH", bvh, Shapes.CUBE);
     }
@@ -1042,7 +1051,7 @@ export class BVHToolMode extends ToolMode {
   */
   drawObject(gl, uniforms, program, object, mesh) {
     //return true;
-    if (!(this.ctx && this.ctx.object && mesh === this.ctx.object.data)) {
+    if (!(this.ctx && this.ctx.object && object === this.ctx.object)) {
       return false;
     }
 
@@ -1091,38 +1100,40 @@ export class BVHToolMode extends ToolMode {
 
     let hideQuadEdges = false;
 
-    hideQuadEdges = !!(dynTopo.flag & DynTopoFlags.DRAW_TRIS_AS_QUADS);
+    if (mesh instanceof Mesh) {
+      hideQuadEdges = !!(dynTopo.flag & DynTopoFlags.DRAW_TRIS_AS_QUADS);
 
-    let key = "" + mesh.lib_id + ":" + hideQuadEdges;
-    let update = false;
+      let key = "" + mesh.lib_id + ":" + hideQuadEdges;
+      let update = false;
 
-    if (this._last_hqed !== key) {
-      this._last_hqed = key;
-      update = true;
-    }
-
-    bvh.hideQuadEdges = hideQuadEdges;
-
-    if (update) {
-      console.log("hideQuadEdges:", hideQuadEdges);
-
-      let quadflag = MeshFlags.QUAD_EDGE;
-      for (let e of mesh.edges) {
-        e.flag &= ~quadflag;
+      if (this._last_hqed !== key) {
+        this._last_hqed = key;
+        update = true;
       }
 
-      trianglesToQuads(mesh, mesh.faces, TriQuadFlags.DEFAULT | TriQuadFlags.MARK_ONLY);
+      bvh.hideQuadEdges = hideQuadEdges;
 
-      for (let node of bvh.nodes) {
-        if (!node.leaf) {
-          continue;
+      if (update) {
+        console.log("hideQuadEdges:", hideQuadEdges);
+
+        let quadflag = MeshFlags.QUAD_EDGE;
+        for (let e of mesh.edges) {
+          e.flag &= ~quadflag;
         }
 
-        node.flag |= BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_INDEX_VERTS;
-        bvh.updateNodes.add(node);
-      }
+        trianglesToQuads(mesh, mesh.faces, TriQuadFlags.DEFAULT | TriQuadFlags.MARK_ONLY);
 
-      bvh.update();
+        for (let node of bvh.nodes) {
+          if (!node.leaf) {
+            continue;
+          }
+
+          node.flag |= BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_INDEX_VERTS;
+          bvh.updateNodes.add(node);
+        }
+
+        bvh.update();
+      }
     }
 
     //*
@@ -1444,6 +1455,8 @@ export class BVHToolMode extends ToolMode {
       let totvert = 0, totedge = 0, tottri = 0;
       let updateColors = false;
       let updateUvs = false;
+      let haveColors = true; //cd_color >= 0; //XXX todo: add support in shader code to handle no vcol data
+      haveColors = haveColors || drawMask || drawCavityMap;
 
       for (let n2 of nodes) {
         totedge += n2.indexEdges.length>>1;
@@ -1463,21 +1476,24 @@ export class BVHToolMode extends ToolMode {
         }
       }
 
-      let lflag = LayerTypes.LOC | LayerTypes.INDEX | LayerTypes.COLOR | LayerTypes.UV | LayerTypes.NORMAL;
+      let lflag = LayerTypes.LOC | LayerTypes.INDEX | LayerTypes.UV | LayerTypes.NORMAL;
+      if (haveColors) {
+        lflag |= LayerTypes.COLOR;
+      }
 
       let sm = node.drawData;
       if (!sm) {
         sm = node.drawData = new SimpleMesh(lflag);
         sm.indexedMode = true;
 
-        updateColors = true;
+        updateColors = haveColors;
         updateUvs = cd_uv >= 0;
       } else {
         let island = sm.islands[0];
 
         if (island.totvert !== totvert || island.tottri !== tottri || island.drawCavityMap !== drawCavityMap) {
           updateUvs = cd_uv >= 0;
-          updateColors = true;
+          updateColors = haveColors;
         }
       }
 
@@ -1501,7 +1517,10 @@ export class BVHToolMode extends ToolMode {
       island.tri_cos.bufferHint = gl.DYNAMIC_DRAW;
       island.tri_normals.bufferHint = gl.DYNAMIC_DRAW;
       island.tri_uvs.bufferHint = gl.DYNAMIC_DRAW;
-      island.tri_colors.bufferHint = gl.DYNAMIC_DRAW;
+
+      if (haveColors) {
+        island.tri_colors.bufferHint = gl.DYNAMIC_DRAW;
+      }
 
       let vcos = island.tri_cos;
       let vnos = island.tri_normals;
@@ -1521,6 +1540,7 @@ export class BVHToolMode extends ToolMode {
 
       updateColors = updateColors || island.tri_colors.dataUsed/4 !== totvert;
       updateColors = updateColors || drawCavityMap;
+      updateColors = updateColors && haveColors;
 
       if (!updateColors) {
         for (let n of nodes) {

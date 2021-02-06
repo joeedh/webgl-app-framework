@@ -1220,6 +1220,12 @@ export class ProceduralTexUser {
     b.pinch = this.pinch;
   }
 
+  copy() {
+    let ret = new ProceduralTexUser();
+    this.copyTo(ret);
+    return ret;
+  }
+
   equals(b) {
     let r = this.texture === b.texture;
 

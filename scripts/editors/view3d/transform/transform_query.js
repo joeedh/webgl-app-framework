@@ -86,3 +86,28 @@ export function calcTransCenter(ctx, selmask, transform_space, aabb_out) {
 
   return ret;
 }
+
+
+/**
+ *
+ * @param ctx
+ * @param selmask
+ * @param transform_space : integer. Constraint space.  One of transform_base.js:ConstraintSpaces.
+ * @param aabb_out : List of two Vector3s to be filled with min/max of aabb
+ */
+export function calcTransMatrix(ctx, selmask, transform_space, aabb_out) {
+  let cent = cent_rets.next().zero();
+  let tot = 0.0;
+
+  let ret = calcTransCenter_rets.next();
+  ret.spaceMatrix.makeIdentity();
+
+  for (let type of TransDataTypes) {
+    let mat = type.getOriginMatrix(ctx, [], selmask, transform_space, ret.spaceMatrix);
+    if (mat !== undefined) {
+      return mat;
+    }
+  }
+
+  return new Matrix4();
+}

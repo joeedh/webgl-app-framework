@@ -1119,7 +1119,6 @@ export function init() {
   window.addEventListener("keydown", (e) => {
     lastKey = e.keyCode;
 
-    console.log(e.keyCode);
     if (e.keyCode === keymap["C"]) {
       e.preventDefault();
       e.stopPropagation();

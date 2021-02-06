@@ -20,7 +20,8 @@ sources = [
   "./scripts/texture/**",
   "./scripts/tet/**",
   "./scripts/test/**",
-  "./scripts/trimesh/**",
+  "./scripts/trimesh/**"
+  "./scripts/hair/**",
   "./scripts/mathl/**",
   "./scripts/util/**",
   "./scripts/shaders/**",

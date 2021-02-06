@@ -273,3 +273,74 @@ export class ApplyTransformOp extends ToolOp {
   }
 }
 ToolOp.register(ApplyTransformOp);
+
+
+export class DuplicateObjectOp extends SceneObjectOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname     : "Duplicate Objects",
+      toolpath   : "object.duplicate",
+      description: "Duplicate all selected objects",
+      inputs     : {},
+      outputs    : {},
+      icon       : -1
+    }
+  }
+
+  exec(ctx) {
+    let scene = ctx.scene;
+
+    let list = [];
+
+    for (let ob of scene.objects.selected.editable) {
+      list.push(ob);
+    }
+
+    let newlist = [];
+    let act = undefined;
+
+    for (let ob of list) {
+      let data = ob.data.copy();
+
+      data.name = ob.data.name;
+      data.lib_id = -1;
+
+      ctx.datalib.add(data);
+
+      let ob2 = new SceneObject();
+      ob.copyTo(ob2, false);
+      ob2.name = ob.name;
+
+      ctx.datalib.add(ob2);
+
+      ob2.data = data;
+      data.lib_addUser(ob2);
+
+      scene.add(ob2);
+      newlist.push(ob2);
+
+      if (ob === scene.objects.active) {
+        act = ob2;
+      }
+
+      ob2.graphUpdate();
+    }
+
+    scene.objects.clearSelection();
+    for (let ob of newlist) {
+      scene.objects.setSelect(ob, true);
+    }
+
+    if (act) {
+      scene.objects.setActive(act);
+    }
+
+    window.redraw_viewport(true);
+  }
+}
+
+ToolOp.register(DuplicateObjectOp);

@@ -1135,7 +1135,7 @@ export class UniformQuadRemesher extends UniformTriRemesher {
     if (this.i === 0) {
       super.step();
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
     }
 
@@ -1175,7 +1175,7 @@ export class UniformQuadRemesher extends UniformTriRemesher {
   finish() {
     super.finish();
 
-    this.mesh.regenTesellation();
+    this.mesh.regenTessellation();
   }
 }
 

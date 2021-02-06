@@ -1091,3 +1091,100 @@ export class SelectLongestLoop extends SelectShortestLoop {
 }
 ToolOp.register(SelectLongestLoop);
 
+let SimilarModes = {
+  NUMBER_OF_EDGES : 0
+};
+
+export class SelectSimilarOp extends SelectOpBase {
+  static tooldef() {return {
+    uiname : "Select Similar",
+    toolpath : "mesh.select_similar",
+    inputs : ToolOp.inherit({
+      mode : new EnumProperty(0, SimilarModes)
+    })
+  }}
+
+  exec(ctx) {
+    let mode = this.inputs.mode.getValue();
+
+    let selmask = this.inputs.selmask.getValue();
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let vs = new Set(mesh.verts.selected.editable);
+      let hs = new Set(mesh.handles.selected.editable);
+      let es = new Set(mesh.edges.selected.editable);
+      let fs = new Set(mesh.faces.selected.editable);
+
+      if (selmask & SelMask.FACE) {
+        let counts = new Set();
+
+        switch (mode) {
+          case SimilarModes.NUMBER_OF_EDGES:
+            for (let f of fs) {
+              counts.add(f.length);
+            }
+
+            for (let f of mesh.faces) {
+              if (f.flag & MeshFlags.HIDE) {
+                continue;
+              }
+
+              if (counts.has(f.length)) {
+                mesh.faces.setSelect(f, true);
+              }
+            }
+            break;
+        }
+      } else if (selmask & SelMask.EDGE) {
+        let counts = new Set();
+
+        switch (mode) {
+          case SimilarModes.NUMBER_OF_EDGES:
+            for (let e of es) {
+              let val1 = e.v1.valence, val2 = e.v2.valence;
+              let key = "" + Math.min(val1, val2) + ":" + Math.max(val1, val2);
+              counts.add(key);
+            }
+
+            for (let e of mesh.edges) {
+              if (e.flag & MeshFlags.HIDE) {
+                continue;
+              }
+
+              let val1 = e.v1.valence, val2 = e.v2.valence;
+              let key = "" + Math.min(val1, val2) + ":" + Math.max(val1, val2);
+
+              if (counts.has(key)) {
+                mesh.edges.setSelect(e, true);
+              }
+            }
+            break;
+        }
+      } else if (selmask & SelMask.VERTEX) {
+        let counts = new Set();
+
+        switch (mode) {
+          case SimilarModes.NUMBER_OF_EDGES:
+            for (let v of vs) {
+              counts.add(v.valence);
+            }
+            for (let v of mesh.verts) {
+              if (v.flag & MeshFlags.HIDE) {
+                continue;
+              }
+
+              if (counts.has(v.valence)) {
+                mesh.verts.setSelect(v, true)
+              }
+            }
+            break;
+        }
+      }
+
+      mesh.regenRender();
+    }
+
+    window.redraw_viewport(true);
+  }
+}
+ToolOp.register(SelectSimilarOp);

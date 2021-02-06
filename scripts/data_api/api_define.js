@@ -4,29 +4,33 @@ import {
 
 import * as editors from '../editors/all.js';
 
+import '../image/image_ops.js';
 import '../image/image.js';
+import '../hair/strand.js';
+import '../hair/strand_ops.js';
+import '../hair/strand_selectops.js';
 
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js';
-import {resourceManager} from "../core/resource.js";
+import {resourceManager} from '../core/resource.js';
 import '../core/image.js';
-import {buildCDAPI, buildElementAPI, CustomData} from "../mesh/customdata.js";
-import {CameraData} from "../camera/camera.js";
+import {buildCDAPI, buildElementAPI, CustomData} from '../mesh/customdata.js';
+import {CameraData} from '../camera/camera.js';
 import {Camera} from '../core/webgl.js';
 
 import {buildProcMeshAPI} from '../mesh/mesh_gen.js';
 
-import {makeToolModeEnum, ToolModes, ToolMode} from "../editors/view3d/view3d_toolmode.js";
-import {NodeSocketClasses} from "../core/graph.js";
-import {RenderSettings} from "../renderengine/renderengine_realtime.js";
+import {makeToolModeEnum, ToolModes, ToolMode} from '../editors/view3d/view3d_toolmode.js';
+import {NodeSocketClasses} from '../core/graph.js';
+import {RenderSettings} from '../renderengine/renderengine_realtime.js';
 
 import '../mesh/mesh_createops.js';
 
-import {CurveSpline} from "../curve/curve.js";
+import {CurveSpline} from '../curve/curve.js';
 
 let STRUCT = nstructjs.STRUCT;
 import '../editors/view3d/widgets/widget_tools.js'; //ensure widget tools are all registered
 import {WidgetFlags} from '../editors/view3d/widgets/widgets.js';
-import {AddLightOp} from "../light/light_ops.js";
+import {AddLightOp} from '../light/light_ops.js';
 import {Light} from '../light/light.js';
 import {DataAPI, DataPathError} from '../path.ux/scripts/pathux.js';
 import {DataBlock, DataRef, Library, BlockTypes, BlockSet, BlockFlags} from '../core/lib_api.js'
@@ -35,8 +39,8 @@ import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js';
 import {Editor, App, buildEditorsAPI} from '../editors/editor_base.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js';
-import {MenuBarEditor} from "../editors/menu/MainMenu.js";
-import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from "../core/graphsockets.js";
+import {MenuBarEditor} from '../editors/menu/MainMenu.js';
+import {RGBASocket, Vec4Socket, Vec2Socket, Vec3Socket, FloatSocket} from '../core/graphsockets.js';
 import {VelPan, VelPanFlags} from '../editors/velpan.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {ToolContext} from '../core/context.js';
@@ -48,24 +52,26 @@ import {Material} from '../core/material.js';
 import '../shadernodes/allnodes.js';
 import {OutputNode, ShaderNode} from '../shadernodes/shader_nodes.js';
 import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph.js';
-import {SceneObject} from '../sceneobject/sceneobject.js';
+import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject.js';
 import {ObjectSelectOneOp} from '../sceneobject/selectops.js';
 import {DeleteObjectOp} from '../sceneobject/sceneobject_ops.js';
-import {Scene, EnvLight, EnvLightFlags} from "../scene/scene.js";
+import {Scene, EnvLight, EnvLightFlags} from '../scene/scene.js';
 import {api_define_graphclasses} from '../core/graph_class.js';
 import {DisplayModes} from '../editors/debug/DebugEditor_base.js';
 import {DebugEditor} from '../editors/debug/DebugEditor.js';
 
 let api = new DataAPI();
 import {Icons} from '../editors/icon_enum.js';
-import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
-import {MaterialEditor} from "../editors/node/MaterialEditor.js";
+import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
+import {MaterialEditor} from '../editors/node/MaterialEditor.js';
 import {
   BrushDynamics, BrushDynChannel, BrushFlags, BrushSpacingModes, DynTopoFlags, DynTopoModes, DynTopoOverrides,
   DynTopoSettings,
   SculptBrush, SculptIcons,
-  SculptTools
-} from "../brush/brush.js";
+  SculptTools, SubdivModes
+} from '../brush/brush.js';
+import '../brush/brush_ops.js';
+
 import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.js';
 import {PropModes} from '../editors/view3d/transform/transform_base.js';
 import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../image/image.js';
@@ -284,7 +290,7 @@ export function api_define_mesh(api, pstruct) {
 
     mesh.recalcNormals();
     mesh.regenRender();
-    mesh.regenTesellation();
+    mesh.regenTessellation();
     mesh.graphUpdate();
   });
 
@@ -515,6 +521,10 @@ function api_define_sceneobject(api, parent) {
 
   ostruct.dynamicStruct("data", "data", "data");
   ostruct.struct("material", "material", "Material", api.mapStruct(Material, false));
+
+  ostruct.flags("flag", "flag", ObjectFlags).on('change', function() {
+    window.redraw_viewport(true);
+  });
 
   return ostruct;
 }
@@ -798,6 +808,8 @@ export function api_define_dyntopo(api) {
     }
   }
 
+  st.enum("subdivMode", "subdivMode", SubdivModes);
+
   st.flags("overrideMask", "overrides", DynTopoOverrides, "Overrides")
     .descriptions(tooltips)
     .uiNames({
@@ -872,6 +884,7 @@ export function api_define_brush(api, cstruct) {
   bst.struct("dynTopo", "dynTopo", "DynTopo", api.mapStruct(DynTopoSettings));
 
   bst.curve1d("falloff", "falloff", "Falloff");
+  bst.curve1d("falloff2", "falloff2", "Falloff", "Inbetween Falloff");
 
   let dst;
 

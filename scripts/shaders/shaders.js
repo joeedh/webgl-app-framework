@@ -113,12 +113,14 @@ varying vec2 vUv;
 uniform float aspect, near, far;
 uniform vec2 size;
 ${PolygonOffset.pre}
+${SmoothLine.pre}
 
 void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
   ${PolygonOffset.vertex("p", "near", "far", "size")}
+  ${SmoothLine.vertex("p")}
   
   gl_Position = p;
   vColor = color;
@@ -133,8 +135,14 @@ uniform float alpha;
 varying vec4 vColor;
 varying vec2 vUv;
 
+${SmoothLine.fragmentPre}
+
 void main() {
-  gl_FragColor = vColor * vec4(1.0, 1.0, 1.0, alpha);
+  float alpha2 = alpha;
+  
+  ${SmoothLine.fragment("alpha2")}
+  
+  gl_FragColor = vColor * vec4(1.0, 1.0, 1.0, alpha2);
 }
   `,
 
@@ -159,6 +167,7 @@ attribute vec2 uv;
 attribute vec4 color;
 
 ${PolygonOffset.pre}
+${SmoothLine.pre}
 
 //varying vec4 vColor;
 varying vec2 vUv;
@@ -172,6 +181,7 @@ void main() {
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
   ${PolygonOffset.vertex("p", "near", "far", "size")}
+  ${SmoothLine.vertex("p")}
   
   p.xy += shift*p.w;  
   gl_Position = p;
@@ -188,8 +198,14 @@ uniform float alpha;
 varying vec2 vUv;
 uniform vec4 uColor;
 
+${SmoothLine.fragmentPre}
+
 void main() {
-  gl_FragColor = uColor * vec4(1.0, 1.0, 1.0, alpha);
+  float alpha2 = alpha;
+  
+  ${SmoothLine.fragment("alpha2")}
+  
+  gl_FragColor = uColor * vec4(1.0, 1.0, 1.0, alpha2);
 }
   `,
 
@@ -820,7 +836,6 @@ void main() {
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
   ${PolygonOffset.vertex("p", "near", "far", "size")}
-  
   ${SmoothLine.vertex("p")}
   
   gl_Position = p;
@@ -1154,12 +1169,14 @@ uniform float aspect, near, far;
 uniform vec2 size;
 
 ${PolygonOffset.pre}
+${SmoothLine.pre}
 
 void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
   ${PolygonOffset.vertex("p", "near", "far", "size")}
+  ${SmoothLine.vertex("p")}
   
   gl_Position = p;
   gl_PointSize = pointSize;
@@ -1169,10 +1186,15 @@ void main() {
 uniform vec4 color;
 
 ${PolygonOffset.pre}
+${SmoothLine.fragmentPre}
 
 void main() {
+  float alpha = color[3];
+   
   ${PolygonOffset.fragment}
-  gl_FragColor = color;
+  ${SmoothLine.fragment("alpha")};
+  
+  gl_FragColor = vec4(color.rgb, alpha);
 }
   `,
 

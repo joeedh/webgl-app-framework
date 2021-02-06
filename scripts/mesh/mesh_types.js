@@ -1,4 +1,4 @@
-const SEAL = true;
+export const SEAL = true;
 
 import {
   MeshError, MeshFlags, MeshTypes, HandleTypes,
@@ -19,7 +19,7 @@ let mat_temps = util.cachering.fromConstructor(Matrix4, 256);
 let vec3_temps = util.cachering.fromConstructor(Vector3, 1024);
 
 let vertiters_l = new Array(1024);
-
+window._vertiters_l = vertiters_l;
 
 export class VertLoopIter {
   constructor(v) {

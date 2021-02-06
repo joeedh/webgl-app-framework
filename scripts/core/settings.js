@@ -1,4 +1,5 @@
 import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
+import {BrushSets, setBrushSet} from '../brush/brush.js';
 let STRUCT = nstructjs.STRUCT;
 
 export class SavedScreen {
@@ -33,6 +34,7 @@ export class AppSettings {
     this.screens = [];
     this.limitUndoMem = true;
     this.undoMemLimit = 512; //in megabytes
+    this.brushSet = BrushSets.MEDIUM_RES;
   }
 
   static defineAPI(api) {
@@ -48,6 +50,13 @@ export class AppSettings {
       .on('change', onchange);
     st.int("undoMemLimit", "undoMemLimit", "Mem Limit", "Memory Limit in megabytes (for undo)")
       .on('change', onchange);
+    st.enum("brushSet", "brushSet", BrushSets).on('change', function() {
+      let settings = this.dataref;
+
+      setBrushSet(settings.brushSet);
+    }).descriptions({
+      MEDIUM_RES : "For 100k triangle meshes and less.\nBrushes will try to align geometry to curvature.\n (i.e. Rake and Curvature Factor are set to 1)."
+    });
 
     return st;
   }
@@ -56,13 +65,19 @@ export class AppSettings {
     return {
       screens : this.screens,
       limitUndoMem : this.limitUndoMem,
-      undoMemLimit : this.undoMemLimit
+      undoMemLimit : this.undoMemLimit,
+      brushSet : this.brushSet
     }
   }
 
   loadJSON(json) {
     this.limitUndoMem = json.limitUndoMem;
     this.undoMemLimit = json.undoMemLimit;
+
+    if (json.brushSet !== undefined) {
+      this.brushSet = json.brushSet;
+    }
+
     //this.screens = json.screens;
   }
 
@@ -82,6 +97,12 @@ export class AppSettings {
     }
 
     this.loadJSON(json);
+
+    try {
+      setBrushSet(this.brushSet);
+    } catch (error) {
+      util.print_stack(error);
+    }
   }
 
   destroy() {
@@ -93,6 +114,7 @@ AppSettings {
   screens      : array(SavedScreen);
   limitUndoMem : bool;
   undoMemLimit : int;
+  brushSet     : int;
 }
 `;
 nstructjs.manager.add_class(AppSettings);

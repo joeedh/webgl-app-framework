@@ -112,6 +112,10 @@ export let Icons = {
   SCULPT_PINCH         : 106,
   SHOW_NORMALS         : 107,
   SHOW_CURVATURE       : 108,
-  SHOW_LOOPS           : 109
+  SHOW_LOOPS           : 109,
+  TETRAHEDRON          : 110,
+  INFLATE              : 111,
+  STRANDS              : 112,
+  RELOAD               : 113
 };
 setIconMap(Icons);

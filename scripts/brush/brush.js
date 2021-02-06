@@ -27,6 +27,9 @@ export const BrushFlags = {
   PLANAR_SMOOTH        : 32,
   CURVE_RAKE_ONLY_POS_X: 64, //for debugging purposes, restrict curavture raking to one side of the mesh
   INVERT               : 128,
+  LINE_FALLOFF         : 256,
+  SQUARE               : 512,
+  USE_LINE_CURVE       : 1024
 };
 
 export const DynTopoModes = {
@@ -67,8 +70,8 @@ export const DynTopoFlags = {
 
 export const DynTopoOverrides = {
   //these are mirrored with DynTopoFlags
-  SUBDIVIDE         : 1,
-  COLLAPSE          : 2,
+  SUBDIVIDE: 1,
+  COLLAPSE : 2,
   //4 used to be INHERIT_DEFAULT, moved to DynTopoOverrides.NONE
   ENABLED           : 8,
   FANCY_EDGE_WEIGHTS: 16,
@@ -89,7 +92,13 @@ export const DynTopoOverrides = {
   SPACING_MODE    : 1<<24,
   SPACING         : 1<<25,
   EDGEMODE        : 1<<26,
-  EVERYTHING      : ((1<<26)-1) & ~(1<<22) //all flags except for NONE
+  SUBDIV_MODE     : 1<<27,
+  EVERYTHING      : ((1<<27) - 1) & ~(1<<22) //all flags except for NONE
+};
+
+export const SubdivModes = {
+  SIMPLE: 0,
+  SMART : 1
 };
 
 const apiKeyMap = {
@@ -102,7 +111,8 @@ const apiKeyMap = {
   repeat         : 'REPEAT',
   spacingMode    : 'SPACING_MODE',
   spacing        : 'SPACING',
-  edgeMode       : `EDGEMODE`
+  edgeMode       : 'EDGEMODE',
+  subdivMode     : 'SUBDIV_MODE'
 };
 
 for (let k in DynTopoOverrides) {
@@ -117,6 +127,8 @@ export class DynTopoSettings {
   constructor() {
     this.overrideMask = DynTopoOverrides.NONE;
 
+    this.subdivMode = SubdivModes.SMART;
+
     this.edgeMode = DynTopoModes.SCREEN;
 
     this.valenceGoal = 6;
@@ -126,7 +138,7 @@ export class DynTopoSettings {
     this.maxDepth = 6; //used by multigrid code
 
     this.spacing = 1.0;
-    this.spacingMode = BrushSpacingModes.NONE;
+    this.spacingMode = BrushSpacingModes.EVEN;
 
     this.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE;
     this.flag |= DynTopoFlags.FANCY_EDGE_WEIGHTS;
@@ -152,6 +164,7 @@ export class DynTopoSettings {
     d.add(this.repeat);
     d.add(this.spacingMode);
     d.add(this.edgeMode);
+    c.add(this.subdivMode);
 
     return d.get();
   }
@@ -174,6 +187,8 @@ export class DynTopoSettings {
 
     r = r && this.spacingMode === b.spacingMode;
     r = r && this.edgeMode === b.edgeMode;
+
+    r = r && this.subdivMode === b.subdivMode;
 
     return r;
   }
@@ -243,6 +258,10 @@ export class DynTopoSettings {
       this.edgeMode = b.edgeMode;
     }
 
+    if (!(mask & dyn.SUBDIV_MODE)) {
+      this.subdivMode = b.subdivMode;
+    }
+
     return this;
   }
 
@@ -262,6 +281,8 @@ export class DynTopoSettings {
     this.maxDepth = b.maxDepth;
     this.spacingMode = b.spacingMode;
     this.spacing = b.spacing;
+
+    this.subdivMode = b.subdivMode;
 
     return this;
   }
@@ -285,6 +306,7 @@ DynTopoSettings {
   repeat          : int;
   spacingMode     : int;
   spacing         : int;
+  subdivMode      : int;
 }
 `;
 nstructjs.register(DynTopoSettings);
@@ -577,7 +599,7 @@ export class SculptBrush extends DataBlock {
 
     this.sharp = 0.0;
     this.strength = 0.5;
-    this.spacing = 0.25;
+    this.spacing = 0.175;
     this.radius = 55.0;
     this.autosmooth = 0.0;
     this.autosmoothInflate = 0.0;
@@ -588,6 +610,7 @@ export class SculptBrush extends DataBlock {
     this.normalfac = 0.5;
 
     this.falloff = new Curve1D();
+    this.falloff2 = new Curve1D();
 
     this.color = new Vector4([1, 1, 1, 1]);
     this.bgcolor = new Vector4([0, 0, 0, 1]);
@@ -652,6 +675,7 @@ export class SculptBrush extends DataBlock {
     //r = r && this.dynamics.equals(b.dynamics);
     r = r && this.falloff.equals(b.falloff);
     r = r && this.dynTopo.equals(b.dynTopo);
+    r = r && this.falloff2.equals(b.falloff2);
 
     return r;
   }
@@ -694,6 +718,7 @@ export class SculptBrush extends DataBlock {
     this.dynamics.calcHashKey(d);
     this.falloff.calcHashKey(d);
     this.dynTopo.calcHashKey(d);
+    this.falloff2.calcHashKey(d);
 
     return d.get();
   }
@@ -731,6 +756,7 @@ export class SculptBrush extends DataBlock {
     b.color.load(this.color);
     b.bgcolor.load(this.bgcolor);
 
+    b.falloff2.load(this.falloff2);
     this.texUser.copyTo(b.texUser);
     b.dynTopo.load(this.dynTopo);
     b.falloff = this.falloff.copy();
@@ -780,6 +806,7 @@ SculptBrush.STRUCT = nstructjs.inherit(SculptBrush, DataBlock) + `
   dynamics   : BrushDynamics;
   flag       : int;
   falloff    : Curve1D;
+  falloff2   : Curve1D;
   texUser    : ProceduralTexUser;
   pinch      : float;
   dynTopo    : DynTopoSettings;
@@ -820,6 +847,162 @@ export function makeDefaultBrushes() {
 
   brush = bmap[SculptTools.DRAW];
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+
+  brush = bmap[SculptTools.CLAY];
+  brush.autosmooth = 0.3;
+  brush.strength = 0.75;
+  brush.dynamics.autosmooth.useDynamics = true;
+  brush.dynamics.strength.useDynamics = true;
+  brush.dynamics.strength.curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARP);
+
+  brush.flag |= BrushFlags.SQUARE|BrushFlags.LINE_FALLOFF|BrushFlags.USE_LINE_CURVE;
+  brush.spacing = 0.2;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTHER);
+  brush.falloff2.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.GUASSIAN);
+
+  brush = brush.copy();
+  brush.name = "Comb";
+  brush.flag |= BrushFlags.INVERT;
+  brush.spacing = 0.15;
+  brush.texUser.mode = TexUserModes.VIEW_REPEAT;
+  brush.texUser.flag = TexUserFlags.FANCY_RAKE | TexUserFlags.RAKE;
+
+  brush.autosmooth = 0.25;
+  brush.dynamics.autosmooth.useDynamics = true;
+  let curve = brush.dynamics.autosmooth.curve;
+  curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.LINEAR);
+
+  let tex = brush.texUser.texture = new ProceduralTex();
+  tex.lib_users++;
+  tex.lib_flag |= BlockFlags.FAKE_USER;
+  tex.name = "CombBrush";
+
+  tex.setGenerator(CombPattern);
+
+  let pat = tex.getGenerator(CombPattern);
+  pat.count = 1;
+  pat.mode = CombModes.STEP;
+  brush.flag |= BlockFlags.FAKE_USER;
+
+  brushes[brush.name] = brush;
+
+
+  brush = bmap[SculptTools.FILL];
+  brush.autosmooth = 0.5;
+  brush.strength = 0.5;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+
+  brush = bmap[SculptTools.SCRAPE];
+  brush.autosmooth = 0.2;
+  brush.strength = 0.5;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+
+  brush = bmap[SculptTools.INFLATE];
+  brush.strength = 0.5;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+
+  brush = bmap[SculptTools.SMOOTH];
+  brush.strength = 0.5;
+  brush.planeoff = -1.0;
+  brush.normalfac = 1.0;
+
+  brush.dynTopo.overrideMask = 0;
+  brush.dynTopo.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE;
+
+
+  //brush.flag |= BrushFlags.PLANAR_SMOOTH;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SPHERE);
+
+  brush.dynamics.strength.curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.LINEAR);
+  brush.dynamics.strength.useDynamics = true;
+
+  brush = bmap[SculptTools.SNAKE];
+  brush.strength = 0.5;
+  brush.autosmooth = 0.8;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+
+  brush = bmap[SculptTools.SHARP];
+  brush.strength = 0.5;
+  brush.autosmooth = 0.25;
+  brush.dynamics.autosmooth.useDynamics = false;
+  brush.pinch = 0.5;
+  brush.spacing = 0.09;
+  brush.dynamics.strength.useDynamics = true;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARP);
+
+  brush = bmap[SculptTools.TOPOLOGY];
+  brush.rake = 0.5;
+  brush.rakeCurvatureFactor = 1.0;
+  brush.autosmooth = 0.15;
+  brush.spacing = 0.2;
+  brush.spacingMode = BrushSpacingModes.EVEN;
+  brush.dynamics.autosmooth.curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.LINEAR);
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.CONSTANT);
+
+  brush = bmap[SculptTools.GRAB];
+  brush.autosmooth = 0.0;
+  brush.rake = 0.0;
+  brush.radius = 100;
+  brush.flag &= ~BrushFlags.SHARED_SIZE;
+  brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED;
+  brush.dynTopo.flag &= ~DynTopoFlags.ENABLED;
+  let curvejson = {
+    "type"                                                                        : "BSplineCurve", "points": [{
+      "0": 0, "1": 0, "eid": 16, "flag": 0, "tangent": 1, "rco": [0, 0]
+    }, {
+      "0": 0.41673, "1": -0.06794, "eid": 17, "flag": 1, "tangent": 1, "rco": [0.41673, -0.06794]
+    }, {"0": 1, "1": 1, "eid": 18, "flag": 0, "tangent": 1, "rco": [1, 1]}], "deg": 3, "interpolating": false,
+    "eidgen"                                                                      : {"_cur": 19},
+    "range"                                                                       : [[0, 1], [-0.19203, 1]]
+  };
+  brush.falloff.getGenerator("BSplineCurve").loadJSON(curvejson);
+
+  //brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+  brush.dynamics.autosmooth.useDynamics = false;
+
+  brush = bmap[SculptTools.WING_SCRAPE];
+  brush.autosmooth = 0.0;
+  brush.pinch = 0.0;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+
+  brush = bmap[SculptTools.PINCH];
+  brush.autosmooth = 0.2;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARPER);
+  brush.dynamics.strength.useDynamics = true;
+  brush.dynamics.autosmooth.useDynamics = false;
+
+  return brushes;
+}
+
+export function makeDefaultBrushes_MediumRes() {
+  let brushes = {};
+  let bmap = {};
+
+  for (let k in SculptTools) {
+    let name = k[0] + k.slice(1, k.length).toLowerCase();
+    name = name.replace(/_/g, " ").trim();
+
+    let brush = brushes[name] = new SculptBrush();
+    brush.name = name;
+    brush.tool = SculptTools[k];
+
+    bmap[SculptTools[k]] = brush;
+  }
+
+  let brush;
+  brush = bmap[SculptTools.PAINT];
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+
+  brush = bmap[SculptTools.PAINT_SMOOTH];
+  brush.autosmooth = 0.0;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+
+  brush = bmap[SculptTools.COLOR_BOUNDARY];
+  //brush.autosmooth = 0.01;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+
+  brush = bmap[SculptTools.DRAW];
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
   brush.rake = 1.0;
   brush.rakeCurvatureFactor = 1.0;
 
@@ -831,7 +1014,11 @@ export function makeDefaultBrushes() {
   brush.dynamics.strength.curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARP);
   brush.rake = 1.0;
   brush.rakeCurvatureFactor = 1.0;
-  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+
+  brush.flag |= BrushFlags.SQUARE|BrushFlags.LINE_FALLOFF|BrushFlags.USE_LINE_CURVE;
+  brush.spacing = 0.2;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTHER);
+  brush.falloff2.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.GUASSIAN);
 
   brush = brush.copy();
   brush.name = "Comb";
@@ -917,15 +1104,28 @@ export function makeDefaultBrushes() {
   brush.spacingMode = BrushSpacingModes.EVEN;
   brush.rake = 1.0;
   brush.rakeCurvatureFactor = 1.0;
+  brush.dynamics.autosmooth.curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.LINEAR);
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.CONSTANT);
 
   brush = bmap[SculptTools.GRAB];
   brush.autosmooth = 0.0;
   brush.rake = 0.0;
+  brush.radius = 100;
+  brush.flag &= ~BrushFlags.SHARED_SIZE;
   brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED;
   brush.dynTopo.flag &= ~DynTopoFlags.ENABLED;
+  let curvejson = {
+    "type"                                                                        : "BSplineCurve", "points": [{
+      "0": 0, "1": 0, "eid": 16, "flag": 0, "tangent": 1, "rco": [0, 0]
+    }, {
+      "0": 0.41673, "1": -0.06794, "eid": 17, "flag": 1, "tangent": 1, "rco": [0.41673, -0.06794]
+    }, {"0": 1, "1": 1, "eid": 18, "flag": 0, "tangent": 1, "rco": [1, 1]}], "deg": 3, "interpolating": false,
+    "eidgen"                                                                      : {"_cur": 19},
+    "range"                                                                       : [[0, 1], [-0.19203, 1]]
+  };
+  brush.falloff.getGenerator("BSplineCurve").loadJSON(curvejson);
 
-  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
+  //brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
   brush.dynamics.autosmooth.useDynamics = false;
 
   brush = bmap[SculptTools.WING_SCRAPE];
@@ -995,8 +1195,49 @@ PaintToolSlot {
 `;
 nstructjs.register(PaintToolSlot);
 
-export const DefaultBrushes = makeDefaultBrushes();
+export var BrushSets = {
+  HIGH_RES  : 0,
+  MEDIUM_RES: 1
+};
+
+export var BrushSetFactories = [
+  makeDefaultBrushes,
+  makeDefaultBrushes_MediumRes
+];
+
+export var DefaultBrushes = makeDefaultBrushes();
 window._DefaultBrushes = DefaultBrushes;
+
+export var brushSet = BrushSets.DEFAULT;
+
+export function setBrushSet(set) {
+  let update = set !== brushSet;
+
+  let found = false;
+
+  for (let k in BrushSets) {
+    if (BrushSets[k] === set) {
+      found = true;
+    } else if (k === set) {
+      set = BrushSets[k];
+      found = true;
+    }
+  }
+
+  if (!found) {
+    throw new Error("unknown brush set " + set);
+  }
+
+  brushSet = set;
+
+  if (update) {
+    console.log("Loading brush set " + set);
+
+    DefaultBrushes = window._DefaultBrushes = BrushSetFactories[set]();
+  }
+}
+
+window._setBrushSet = setBrushSet;
 
 /**
  Ensures that at least one brush instance of each brush tool type
@@ -1018,6 +1259,7 @@ export function getBrushes(ctx, overrideDefaultBrushes = false) {
 
     if (found && overrideDefaultBrushes) {
       b.copyTo(found, false);
+      found.graphUpdate();
     } else if (!found) {
       b = b.copy();
       b.lib_id = -1;
@@ -1036,8 +1278,6 @@ export function getBrushes(ctx, overrideDefaultBrushes = false) {
     if (tex && tex.lib_id < 0) {
       ctx.datalib.add(tex);
     }
-
-    ctx.datalib.add(b);
 
     if (overrideDefaultBrushes || !found) {
       //add a hidden copy too
@@ -1058,6 +1298,7 @@ export function getBrushes(ctx, overrideDefaultBrushes = false) {
         }
       } else {
         b.copyTo(b2, false);
+        b2.graphUpdate();
       }
     }
   }

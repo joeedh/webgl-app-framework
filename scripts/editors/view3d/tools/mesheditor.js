@@ -19,9 +19,9 @@ import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
   MeshFeatureError} from '../../../mesh/mesh_base.js';
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
-import {ContextOverlay, ToolMacro} from "../../../path.ux/scripts/pathux.js";
+import {ContextOverlay, ToolMacro, startMenu, createMenu} from "../../../path.ux/scripts/pathux.js";
 import {PackFlags} from "../../../path.ux/scripts/core/ui_base.js";
-import {RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
+import {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
 import {buildCotanMap} from '../../../mesh/mesh_utils.js';
 import {CurvVert, CVFlags, getCurveVerts} from '../../../mesh/mesh_curvature.js';
@@ -51,7 +51,7 @@ export class MeshEditor extends MeshToolBase {
     icon       : Icons.MESHTOOL,
     flag        : 0,
     description : "Edit vertices/edges/faces",
-    transWidgets: [TranslateWidget, ScaleWidget, RotateWidget]
+    transWidgets: [TranslateWidget, ScaleWidget, RotateWidget, InflateWidget]
   }}
 
   static buildEditMenu() {
@@ -75,6 +75,18 @@ export class MeshEditor extends MeshToolBase {
       new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
       new HotKey("J", ["ALT"], "mesh.tris_to_quads()"),
       new HotKey("J", [], "mesh.connect_verts()"),
+      new HotKey("S", ["ALT"], "view3d.inflate()"),
+      new HotKey("G", ["SHIFT"], () => {
+        let menu = [
+          "mesh.select_similar(mode='NUMBER_OF_EDGES')|Number of Edges"
+        ]
+
+        menu = createMenu(this.ctx, "Select Similar", menu);
+        let screen = this.ctx.screen;
+
+        startMenu(menu, screen.mpos[0], screen.mpos[1]);
+      }),
+
       //new HotKey("T", [], "mesh.quad_smooth()"),
 
       //new HotKey("D", [], "mesh.subdivide_smooth()"),
@@ -263,11 +275,13 @@ export class MeshEditor extends MeshToolBase {
     strip = row.strip();
     strip.tool("mesh.edgecut()");
     strip.tool("mesh.subdivide_smooth()");
+    strip.tool("mesh.vertex_smooth()");
 
     strip = row.strip();
     strip.prop("scene.tool.transformWidget[translate]");
     strip.prop("scene.tool.transformWidget[scale]");
     strip.prop("scene.tool.transformWidget[rotate]");
+    strip.prop("scene.tool.transformWidget[inflate]");
     strip.prop("scene.tool.transformWidget[NONE]");
 
 
@@ -443,11 +457,11 @@ export class MeshEditor extends MeshToolBase {
 
     for (let v of mesh.verts.selected.editable) {
       let cv = v.customData[cd_curv];
-      cv.check(v);
+      cv.check(v, true);
 
-      let size = calcNorLen(v);
+      //let size = calcNorLen(v);
 
-      let k1 = cv.k1;
+      let k1 = 1.0 / (1.0 + cv.k1);
 
       co1.load(v);
       co2.load(v).addFac(cv.tan, 0.15*k1);

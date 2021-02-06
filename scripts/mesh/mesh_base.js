@@ -8,8 +8,8 @@ export const DEBUG_MANIFOLD_EDGES = 0;
 
 export const ENABLE_CACHING = true;
 
-export const SAVE_DEAD_LOOPS = true && ENABLE_CACHING;
-export const SAVE_DEAD_FACES = true && ENABLE_CACHING;
+export const SAVE_DEAD_LOOPS = ENABLE_CACHING;
+export const SAVE_DEAD_FACES = ENABLE_CACHING;
 
 export const WITH_EIDMAP_MAP = true;
 
@@ -60,6 +60,7 @@ export const MeshFeatures = {
 
   EDGE_CURVES_ONLY: (1<<13),
   SINGLE_SHELL    : (1<<14),
+  BVH             : (1<<15),
 
   ALL  : ((1<<30) - 1) & ~((1<<13) | (1<<14)), //edge_curves_only
   BASIC: ((1<<30) - 1) & ~((1<<12) | (1<<13) | (1<<14)) //everything except handles and edge curves
@@ -286,15 +287,15 @@ export const MeshFlags = Object.freeze({
   QUAD_EDGE       : (1<<28),
 
   //these two share the same bit
-  COLLAPSE_TEMP   : (1<<29),
-  MAKE_FACE_TEMP  : (1<<29)
+  COLLAPSE_TEMP : (1<<29),
+  MAKE_FACE_TEMP: (1<<29)
 });
 
 export const MeshIterFlags = {
-  EDGE_FACES : 1<<0,
-  EDGE_FACES_TOT : 10,
-  VERT_FACES : 1<<10,
-  VERT_FACES_TOT : 10
+  EDGE_FACES    : 1<<0,
+  EDGE_FACES_TOT: 10,
+  VERT_FACES    : 1<<10,
+  VERT_FACES_TOT: 10
 };
 
 export const MeshModifierFlags = {
@@ -310,60 +311,8 @@ export const RecalcFlags = {
   ALL       : 1 | 2 | 4 | 8 | 16
 };
 
-export class ArrayPool {
-  constructor() {
-    this.pools = new Map();
-    this.map = new Array(1024);
-  }
-
-  get(n, clear) {
-    let pool;
-
-    if (n < 1024) {
-      pool = this.map[n];
-    } else {
-      pool = this.pools.get(n);
-    }
-
-    if (!pool) {
-      let tot;
-
-      if (n > 512) {
-        tot = 32;
-      } else if (n > 256) {
-        tot = 64;
-      } else if (n > 128) {
-        tot = 256;
-      } else if (n > 64) {
-        tot = 512;
-      } else {
-        tot = 1024;
-      }
-
-      pool = new util.cachering(() => new Array(n), tot);
-      if (n < 1024) {
-        this.map[n] = pool;
-      }
-      this.pools.set(n, pool);
-
-      return this.get(n, clear);
-    }
-
-    let ret = pool.next();
-    if (ret.length !== n) {
-      console.warn("Array length was set", n, ret);
-      ret.length = n;
-    }
-
-    if (clear) {
-      for (let i = 0; i < n; i++) {
-        ret[i] = undefined;
-      }
-    }
-
-    return ret;
-  }
-}
+import {ArrayPool} from '../util/util.js';
+export {ArrayPool} from '../util/util.js';
 
 let pool = new ArrayPool();
 

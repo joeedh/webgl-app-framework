@@ -6,13 +6,11 @@ import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {TetTypes, TetFlags, TetRecalcFlags} from './tetgen_base.js';
 import {CustomData, CustomDataElem} from '../mesh/customdata.js';
 import {getArrayTemp} from '../mesh/mesh_base.js';
+import {TetElement} from './tetgen_types.js';
 
 export class TetSelectSet extends Set {
   constructor() {
     super();
-
-    this.active = undefined;
-    this.highlight = undefined;
   }
 
   get editable() {
@@ -31,14 +29,6 @@ export class TetSelectSet extends Set {
     reader(this);
   }
 }
-TetSelectSet.STRUCT = `
-tet.TetSelectSet {
-  active     : int | this.active ? this.active.eid : -1;
-  highlight  : int | this.highlight ? this.highlight.eid : -1
-  _list      : iter(e, int) | e.eid;
-}
-`
-nstructjs.register(TetSelectSet);
 
 let elemiters = new Array(512);
 elemiters.cur = 0;
@@ -49,6 +39,9 @@ export class TetElementIter {
     this.ret = {done : true, value : undefined};
     this.done = true;
     this.i = 0;
+
+    this.active = undefined;
+    this.highlight = undefined;
   }
 
   reset(list) {
@@ -64,8 +57,10 @@ export class TetElementIter {
   finish() {
     if (!this.done) {
       elemiters.cur--;
+
       this.done = true;
       this.ret.done = true;
+      this.ret.value = undefined;
       this.list = undefined;
     }
 
@@ -87,11 +82,10 @@ export class TetElementIter {
       return this.finish();
     }
 
-    let ret = this.ret;
-    ret.done = false;
-    ret.value = list[i];
+    this.ret.value = list[i];
+    this.i = i + 1;
 
-    return ret;
+    return this.ret;
   }
 
   return() {
@@ -106,6 +100,7 @@ for (let i=0; i<elemiters.length; i++) {
 export class TetElementList {
   constructor(type) {
     this.type = type;
+
     this.list = [];
     this.freelist = [];
     this.selected = new TetSelectSet();
@@ -139,10 +134,47 @@ export class TetElementList {
     }
 
     this.list[i] = elem;
+
     this.local_eidmap[elem.eid] = elem;
     this.idxmap[elem.eid] = i;
 
     this.length++;
+
+    return this;
+  }
+
+  selectAll() {
+    for (let elem of this) {
+      this.selected.add(elem);
+      elem.flag |= TetFlags.SELECT|TetFlags.UPDATE;
+    }
+
+    return this;
+  }
+
+  selectNone() {
+    for (let elem of this) {
+      elem.flag &= ~TetFlags.SELECT;
+      elem.flag |= TetFlags.UPDATE;
+    }
+
+    this.selected.clear();
+
+    return this;
+  }
+
+  setSelect(elem, state) {
+    if (!!state !== !!(elem.flag & TetFlags.SELECT)) {
+      elem.flag |= TetFlags.UPDATE;
+    }
+
+    if (state) {
+      elem.flag |= TetFlags.SELECT;
+      this.selected.add(elem);
+    } else {
+      elem.flag &= ~TetFlags.SELECT;
+      this.selected.delete(elem);
+    }
 
     return this;
   }
@@ -211,8 +243,24 @@ export class TetElementList {
       throw new Error("element not in list");
     }
 
+    if (elem === this.active) {
+      this.active = undefined;
+    }
+
+    if (elem === this.highlight) {
+      this.highlight = undefined;
+    }
+
+    this.selected.delete(elem);
+
     let idx = this.idxmap[elem.eid];
+
+    if (this.list[idx] !== elem) {
+      throw new Error("element was not in list");
+    }
+
     delete this.idxmap[elem.eid];
+    delete this.local_eidmap[elem.eid];
 
     this.list[idx] = undefined;
     this.length--;
@@ -243,19 +291,43 @@ export class TetElementList {
 
   _save() {
     let ret = [];
-    for (let item of this) {
-      ret.push(item);
+
+    for (let item of this.list) {
+      if (item !== undefined) {
+        ret.push(item);
+      }
     }
 
     return ret;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+
+    let i = 0;
+
+    for (let elem of this.list) {
+      if (elem.flag & TetFlags.SELECT) {
+        this.selected.add(elem);
+      }
+
+      this.local_eidmap[elem.eid] = elem;
+      this.idxmap[elem.eid] = i++;
+    }
+
+    this.length = i;
+
+    this.highlight = this.local_eidmap[this.highlight];
+    this.active = this.local_eidmap[this.active];
   }
 }
 
 TetElementList.STRUCT = `
 tet.TetElementList {
   type          : int;
-  list          : array(abstract(tet.TetElement)) | this._save();
-  selected      : tet.TetSelectSet;
+  list          : array(abstract(Object)) | this._save();
+  active        : int | this.active !== undefined ? this.active.eid : -1;
+  highlight     : int | this.highlight !== undefined ? this.highlight.eid : -1;
   customData    : mesh.CustomData;
 }
 `;

@@ -20,6 +20,8 @@ import {UIBase, Screen, SavedToolDefaults} from '../path.ux/scripts/pathux.js';
 import {PropsEditor} from '../editors/properties/PropsEditor.js';
 import {MaterialEditor} from "../editors/node/MaterialEditor.js";
 import {AppSettings} from './settings.js';
+import {TetMesh} from '../tet/tetgen.js';
+import {StrandSet} from '../hair/strand.js';
 
 let passthrus = new Set(["datalib", "gl", "graph", "last_tool", "toolstack", "api"]);
 
@@ -154,10 +156,39 @@ export class BaseOverlay extends ContextOverlay {
     return this.datalib.scene.active;
   }
 
+  //get strandset object, for UX purposes
+  //we don't just check active object
+  get strandset_object() {
+    let ob = this.object;
+
+    if (ob && ob.data instanceof StrandSet) {
+      return ob;
+    }
+
+    for (let ob of this.scene.objects.selected.editable) {
+      if (ob.data instanceof StrandSet) {
+        return ob;
+      }
+    }
+  }
+
+  get strandset() {
+    let ob = this.strandset_object;
+
+    return ob ? ob.data : undefined;
+  }
+
   get object() {
     return this.scene ? this.scene.objects.active : undefined;
   }
 
+  get tetmesh() {
+    let ob = this.object;
+    if (ob !== undefined && ob.data instanceof TetMesh) {
+      return ob.data;
+    }
+  }
+  
   get mesh() {
     let ob = this.object;
     if (ob !== undefined && ob.data instanceof Mesh) {

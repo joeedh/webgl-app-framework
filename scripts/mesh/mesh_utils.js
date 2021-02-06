@@ -6,7 +6,9 @@ import * as math from '../util/math.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
 
-import {MeshFlags, MeshTypes, MeshFeatures, ReusableIter, LogContext, ChangeFlags, ArrayPool} from './mesh_base.js';
+import {
+  MeshFlags, MeshTypes, MeshFeatures, ReusableIter, LogContext, ChangeFlags, ArrayPool, MAX_FACE_VERTS
+} from './mesh_base.js';
 
 import {getArrayTemp} from './mesh_base.js';
 import {applyTriangulation} from './mesh_tess.js';
@@ -2225,7 +2227,7 @@ export function fixManifold(mesh, lctx) {
 
   if (bad) {
     console.log("NaN error!", bad);
-    mesh.regenTesellation();
+    mesh.regenTessellation();
     mesh.recalcNormals();
   }
 
@@ -2403,7 +2405,7 @@ export function fixManifold(mesh, lctx) {
     }
   }
 
-  mesh.regenTesellation();
+  mesh.regenTessellation();
   mesh.recalcNormals();
 
   return true;
@@ -3186,3 +3188,270 @@ export function getEdgeLoop(e) {
   return list;
 }
 
+export function dissolveFaces(mesh, faces, lctx) {
+  faces = ReusableIter.getSafeIter(faces);
+
+  let flag = MeshFlags.TEMP1;
+  let flag2 = MeshFlags.TEMP2;
+
+  for (let f of faces) {
+    f.flag &= ~flag;
+
+    if (f.lists.length > 1) {
+      f.flag |= flag;
+    }
+  }
+
+  let stack = [];
+  for (let f of faces) {
+    if (f.flag & flag) {
+      continue;
+    }
+
+    stack.length = 0;
+    stack.push(f);
+
+    f.flag |= flag;
+
+    let region = [];
+
+    while (stack.length > 0) {
+      let f2 = stack.pop();
+
+      region.push(f2);
+
+      for (let l of f2.loops) {
+        let bad = l.radial_next === l || l !== l.radial_next.radial_next;
+        bad = bad || (l.radial_next.f.flag & flag);
+        bad = bad || !faces.has(l.radial_next.f);
+
+        if (bad) {
+          continue;
+        }
+
+        let f3 = l.radial_next.f;
+        f3.flag |= flag;
+
+        stack.push(f3);
+      }
+    }
+
+    for (let f of region) {
+      for (let l of f.loops) {
+        for (let e of l.v.edges) {
+          e.flag &= ~flag;
+          e.flag |= flag2;
+        }
+      }
+    }
+
+    let startv, startl;
+    let totbound = 0;
+    let ls = new Set();
+
+    for (let f of region) {
+      for (let l of f.loops) {
+        l.v.flag &= ~flag;
+
+        let ok = l.radial_next === l;
+        ok = ok || !faces.has(l.radial_next.f);
+
+        if (ok) {
+          ls.add(l);
+
+          l.e.flag |= flag;
+          l.e.flag &= ~flag2;
+
+          totbound++;
+
+          if (!startv) {
+            startv = l.v;
+            startl = l;
+          }
+        }
+      }
+    }
+
+    if (!totbound) {
+      throw new MeshError("Dissolve face error");
+    }
+
+    let loops = [];
+
+    for (let l1 of ls) {
+      if (!(l1.e.flag & flag)) {
+        continue;
+      }
+
+      let _i = 0;
+      let v = l1.v;
+      let l = l1;
+
+      let loop = [];
+      let verts = [];
+
+      loops.push([verts, loop]);
+
+      v.flag |= flag;
+
+      do {
+        verts.push(v);
+        let l2 = l;
+
+        if (l2.next.v === v) {
+          l2 = l2.next;
+        } else if (l2.prev.v === v) {
+          l2 = l2.prev;
+        }
+        loop.push(l2);
+
+        v = l.e.otherVertex(v);
+        l.e.flag &= ~flag;
+
+        let ok = false;
+        let count = 0;
+
+        for (let e of v.edges) {
+          if (e.flag & flag) {
+            count++;
+
+            for (let l2 of e.loops) {
+              if (faces.has(l2.f)) {
+                l = l2;
+                ok = true;
+                break;
+              }
+            }
+          }
+        }
+
+        if (count > 1) {
+          throw new MeshError("could not dissolve face");
+        }
+
+        if (!ok) {
+          break;
+        }
+
+        if (_i++ > MAX_FACE_VERTS) {
+          console.log("Infinite loop error");
+          break;
+        }
+      } while (v !== startv);
+    }
+
+    let outer, maxlen;
+    let i = 0;
+
+    for (let [vs, ls] of loops) {
+      let dis = 0.0;
+      for (let i=0; i<vs.length; i++) {
+        dis += vs[i].vectorDistanceSqr(vs[(i+1)%vs.length]);
+      }
+
+      if (maxlen === undefined || dis > maxlen) {
+        outer = i;
+        maxlen = dis;
+      }
+    }
+
+    if (outer === undefined) {
+      throw new MeshError("could not dissolve face");
+    }
+
+    //move outer boundary to first
+    let t = loops[0];
+    loops[0] = loops[outer];
+    loops[outer] = t;
+
+    console.log("Loops:", loops);
+
+    outer = loops[outer];
+
+    let f2 = mesh.makeFace(outer[0], undefined, undefined, lctx);
+    mesh.copyElemData(f2, f);
+    f2.flag |= MeshFlags.UPDATE;
+
+    let totbad = 0;
+    i = 0;
+
+    for (let l of f2.loops) {
+      l.v.flag |= MeshFlags.UPDATE;
+
+      let l0 = outer[1][i];
+      mesh.copyElemData(l, l0);
+
+      let l2 = l.radial_next;
+      if (faces.has(l2.f)) {
+        l2 = l2.radial_next;
+      }
+
+      if (l2 === l) {
+        i++;
+        continue;
+      }
+
+      totbad += l2.v === l.v ? 1 : -1;
+      i++;
+    }
+
+
+    if (totbad > 0) {
+      mesh.reverseWinding(f2, lctx);
+    }
+
+    f2.calcNormal();
+
+    for (let i=1; i<loops.length; i++) {
+      //hole loops should go in opposite direction from boundary
+
+      let n = math.normal_poly(loops[i][0]);
+
+      console.log(n.dot(f2.no), n, f2.no);
+
+      if (n.dot(f2.no) > 0) {
+        loops[i][0].reverse();
+      }
+
+      let list = mesh.makeHole(f2, loops[i][0], undefined, lctx);
+
+      let li = 0;
+      let ls = loops[i][1];
+      for (let l of list) {
+        let l2 = ls[li];
+
+        mesh.copyElemData(l, l2);
+        li++;
+      }
+    }
+
+    console.log("F2", f2);
+    f2.calcNormal();
+  }
+
+  let vs = new Set();
+  let es = new Set();
+
+  for (let f of faces) {
+    for (let l of f.loops) {
+      vs.add(l.v);
+      es.add(l.e);
+    }
+  }
+
+  for (let f of faces) {
+    mesh.killFace(f, lctx);
+  }
+
+  for (let e of es) {
+    if (e.flag & flag2) {
+      mesh.killEdge(e, lctx);
+    }
+  }
+
+  for (let v of vs) {
+    if (v.valence === 0) {
+      mesh.killVertex(v, undefined, lctx);
+    }
+  }
+}

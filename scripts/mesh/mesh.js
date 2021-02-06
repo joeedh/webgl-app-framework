@@ -45,7 +45,7 @@ import {SelMask} from "../editors/view3d/selectmode.js";
 import {PrimitiveTypes} from "../core/simplemesh.js";
 import {Node} from '../core/graph.js';
 import {Colors} from '../sceneobject/sceneobject.js';
-import {BVH, BVHSettings} from "../util/bvh.js";
+import {BVH, BVHSettings, SpatialHash} from "../util/bvh.js";
 import {drawMeshElements, genRenderMesh} from "./mesh_draw.js";
 import {GridBase} from "./mesh_grids.js";
 
@@ -77,6 +77,7 @@ let debuglog = false;
 
 import {CustomData} from './customdata.js';
 import {UVWrangler} from './unwrapping.js';
+import {triangulateFace} from './mesh_tess.js';
 
 const VEID = 0, VFLAG = 1, VX = 1, VY = 2, VZ = 3, VNX = 4, VNY = 5, VNZ = 6, VTOT = 7;
 const EEID = 0, EFLAG = 1, EV1 = 2, EV2 = 3, ETOT = 4;
@@ -311,15 +312,17 @@ export class Mesh extends SceneObjectData {
   constructor(features = MeshFeatures.BASIC) {
     super();
 
+    this.haveNgons = false;
+
     if (WITH_EIDMAP_MAP) {
       this.eidMap = new Map();
       this._recalcEidMap = false;
     } else {
       this.eidMap = {
-        get: (eid) => {
+        get   : (eid) => {
           return this.eidmap[eid];
         },
-        has: (eid) => {
+        has   : (eid) => {
           return eid in this.eidmap;
         },
         delete: (eid) => {
@@ -533,7 +536,7 @@ export class Mesh extends SceneObjectData {
     return this;
   }
 
-  getElemList(type, enableFree = false) {
+  getElemList(type, enableFree = undefined) {
     if (!(type in this.elists)) {
       this.elists[type] = new ElementList(type, enableFree);
       this.elists[type].customData.on_layeradd = this._on_cdlayer_add.bind(this);
@@ -542,7 +545,9 @@ export class Mesh extends SceneObjectData {
 
     let elist = this.elists[type];
 
-    elist.storeFreedElems = enableFree;
+    if (enableFree !== undefined) {
+      elist.storeFreedElems = enableFree;
+    }
 
     return elist;
   }
@@ -1082,7 +1087,7 @@ export class Mesh extends SceneObjectData {
       this._radialInsert(l.e, l);
     }
 
-    this.regenTesellation();
+    this.regenTessellation();
 
     return f2;
   }
@@ -2041,7 +2046,7 @@ export class Mesh extends SceneObjectData {
     console.log(msgout[0]);
 
     this.regenAll();
-    this.regenTesellation();
+    this.regenTessellation();
     this.graphUpdate();
 
 
@@ -2075,7 +2080,7 @@ export class Mesh extends SceneObjectData {
       v.flag |= MeshFlags.UPDATE;
     }
 
-    this.regenTesellation();
+    this.regenTessellation();
     this.regenRender();
     this.regenBVH();
     this.recalcNormals();
@@ -2361,6 +2366,32 @@ export class Mesh extends SceneObjectData {
     return v1;
   }
 
+  reverseListWinding(list) {
+    for (let l of list) {
+      this._radialRemove(l.e, l);
+    }
+
+    let l = list.l;
+    let _i = 0;
+    do {
+      let next = l.next;
+
+      l.next = l.prev;
+      l.prev = next;
+
+      if (_i++ > 10000) {
+        console.warn("infinite loop error");
+        break;
+      }
+      l = next;
+    } while (l !== list.l);
+
+    for (let l of list) {
+      l.e = this.getEdge(l.v, l.next.v);
+      this._radialInsert(l.e, l);
+    }
+  }
+
   reverseWinding(f, lctx) {
     if (lctx) {
       lctx.killFace(f);
@@ -2408,10 +2439,62 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  makeHole(f, vs, customLoopEids = undefined) {
-    throw new Error("makeHole: implement me!");
-    console.error("makeHole: IMPLEMENT ME!");
+  makeHole(f, vs, customLoopEids = undefined, lctx = undefined) {
+    if (vs.length === 0) {
+      throw new MeshError("makeFace: vs was empty");
+    }
 
+    let flag = MeshFlags.MAKE_FACE_TEMP;
+
+    //check for duplicate verts
+    for (let v of vs) {
+      v.flag &= ~flag;
+    }
+
+    for (let v of vs) {
+      if (v.flag & flag) {
+        throw new MeshError("duplicate verts passed to makeHole");
+      }
+
+      v.flag |= flag;
+    }
+
+    //make new list
+
+    let list = new LoopList();
+    list.length = vs.length;
+
+    f.lists.push(list);
+    let lastl, firstl;
+
+    for (let i = 0; i < vs.length; i++) {
+      let l = this._makeLoop();
+
+      l.v = vs[i];
+      l.list = list;
+      l.f = f;
+
+      if (lastl) {
+        lastl.next = l;
+        l.prev = lastl;
+      } else {
+        firstl = l;
+      }
+
+      lastl = l;
+    }
+
+    firstl.prev = lastl;
+    lastl.next = firstl;
+
+    list.l = firstl;
+
+    for (let l of list) {
+      l.e = this.ensureEdge(l.v, l.next.v, lctx);
+      this._radialInsert(l.e, l);
+    }
+
+    return list;
   }
 
   /** trys to connect two verts through exactly
@@ -2840,7 +2923,7 @@ export class Mesh extends SceneObjectData {
     }
 
     if (update) {
-      this.regenTesellation();
+      this.regenTessellation();
       this.regenRender();
     }
 
@@ -3372,7 +3455,7 @@ export class Mesh extends SceneObjectData {
       }
 
       if (count > 1) {
-        console.error("NON-MANIFOLD IN DISSOLVE VERTEX!", count, v, util.list(vs));
+        util.console.error("NON-MANIFOLD IN DISSOLVE VERTEX!", count, v, util.list(vs));
         ok = false;
       }
     }
@@ -4011,6 +4094,8 @@ export class Mesh extends SceneObjectData {
       console.warn("Mesh tesselation");
     }
 
+    this.haveNgons = false;
+
     this.recalc &= ~RecalcFlags.TESSELATE;
     let ltris = this._ltris = [];
 
@@ -4020,34 +4105,26 @@ export class Mesh extends SceneObjectData {
     let lstart = this._ltrimap_start;
     let llen = this._ltrimap_len;
 
-    let visitflag = MeshFlags.TEMP2;
+    let visitflag = MeshFlags.MAKE_FACE_TEMP;
+
+    let haveNgons = false;
 
     for (let f of this.faces) {
+      if (f.isNgon()) {
+        haveNgons = true;
+      }
+
       f.area = 0;
       f.flag &= ~visitflag;
     }
 
-    for (let f of this.faces) {
-      let first = f.lists[0].l;
-      let l = f.lists[0].l.next;
-      let _i = 0;
+    this.haveNgons = haveNgons;
 
+    for (let f of this.faces) {
       lstart[f.eid] = ltris.length;
 
-      do {
-        ltris.push(first);
-        ltris.push(l);
-        ltris.push(l.next);
-
-        if (_i++ > 100000) {
-          console.warn("infinite loop detected!");
-          break;
-        }
-
-        l = l.next;
-      } while (l.next !== f.lists[0].l);
-
-      llen[f.eid] = _i;
+      triangulateFace(f, ltris);
+      llen[f.eid] = ltris.length - lstart[f.eid];
     }
 
     for (let i = 0; i < ltris.length; i += 3) {
@@ -4212,17 +4289,26 @@ export class Mesh extends SceneObjectData {
   destroy(gl) {
     super.destroy();
 
+    if (this.bvh) {
+      this.bvh.destroy(this);
+      this.bvh = undefined;
+    }
+
     if (gl === undefined) {
       //we inherit destroy() from DataBlock,
       //so we might not be called with gl
-      //I guess rely on GC?
+
+      this._fancyMeshes = {};
+      this.smesh = this.wmesh = undefined;
       return;
     }
 
-    if (this.smesh !== undefined) {
-      this.smesh.destroy(gl);
-      this.smesh = undefined;
+    for (let k in this._fancyMeshes) {
+      this._fancyMeshes[k].destroy(gl);
     }
+
+    this._fancyMeshes = {};
+    this.smesh = this.wmesh = undefined;
   }
 
   getUVWrangler(check = true, checkUvs = false) {
@@ -4309,7 +4395,10 @@ export class Mesh extends SceneObjectData {
           this._bvh_freelist = this.bvh.destroy(this);
         }
 
-        this.bvh = BVH.create(this, true, useGrids, undefined, undefined, this._bvh_freelist);
+        let bvhcls = BVH;
+        //bvhcls = SpatialHash;
+
+        this.bvh = bvhcls.create(this, true, useGrids, undefined, undefined, this._bvh_freelist);
       }
     }
 
@@ -4320,7 +4409,7 @@ export class Mesh extends SceneObjectData {
     return this.bvh;
   }
 
-  genRenderBasic(combinedWireframe = false) {
+  genRenderBasic(combinedWireframe = true) {
     let ltris = this.loopTris;
     let lf = LayerTypes;
 
@@ -4391,7 +4480,7 @@ export class Mesh extends SceneObjectData {
     this.updateGen = ~~(Math.random()*1024*1024*1024);
 
     //if (this.recalc & RecalcFlags.ELEMENTS) {
-    this._genRenderElements(gl, {});
+    this._genRenderElements(gl, {}, combinedWireframe);
     //}
 
     let meshes = this._fancyMeshes;
@@ -4513,15 +4602,14 @@ export class Mesh extends SceneObjectData {
     }
 
     this.checkPartialUpdate(gl);
-    if (program !== undefined && this.wmesh !== undefined && this.wmesh.island !== undefined) {
-      this.wmesh.program = program;
-      this.wmesh.island.program = program;
 
-      program.bind(gl);
-    }
+    uniforms.color = uniforms.color || [0, 0, 0, 1];
+    uniforms.active_color = uniforms.highlight_color = uniforms.select_color = uniforms.color;
 
-    if (this.wmesh) {
-      this.wmesh.draw(gl, uniforms);
+    if (this._fancyMeshes.edges) {
+      this._fancyMeshes.edges.draw(gl, uniforms, program);
+    } else if (this.smesh) {
+      this.smesh.draw(gl, uniforms, program);
     }
   }
 
@@ -4586,8 +4674,8 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  _genRenderElements(gl, uniforms) {
-    genRenderMesh(gl, this, uniforms);
+  _genRenderElements(gl, uniforms, combinedWireframe=false) {
+    genRenderMesh(gl, this, uniforms, combinedWireframe);
     this.updateGen = ~~(Math.random()*1024*1024*1024);
   }
 
@@ -4674,7 +4762,7 @@ export class Mesh extends SceneObjectData {
 
     console.log(oldmax, this.eidgen._cur);
 
-    this.regenTesellation();
+    this.regenTessellation();
     this.regenRender();
     window.redraw_viewport(true);
   }
@@ -4730,7 +4818,7 @@ export class Mesh extends SceneObjectData {
     return this;
   }
 
-  regenTesellation() {
+  regenTessellation() {
     this.updateGen = ~~(Math.random()*1024*1024*1024);
     this._last_elem_update_key = ""; //clear partial redraw
     this._last_bvh_key = ""; //flag bvh update
@@ -5290,21 +5378,6 @@ export class Mesh extends SceneObjectData {
         if (!list.l) {
           msg_out[0] = "Corrupted face";
 
-          for (let l of list) {
-            l.v.flag &= ~flag;
-          }
-
-          for (let l of list) {
-            if (l.v.flag & flag) {
-              msg_out[0] = "Duplicate verts in face";
-              this._fixFace(f);
-
-              break;
-            }
-
-            l.v.flag |= flag;
-          }
-
           //try to delete face
           for (let list of f.lists) {
             if (list.l) {
@@ -5325,7 +5398,22 @@ export class Mesh extends SceneObjectData {
             this._freeFace(f);
           }
 
-          return false;
+          break;
+        }
+
+        for (let l of list) {
+          l.v.flag &= ~flag;
+        }
+
+        for (let l of list) {
+          if (l.v.flag & flag) {
+            msg_out[0] = "Duplicate verts in face";
+            this._fixFace(f);
+
+            break;
+          }
+
+          l.v.flag |= flag;
         }
       }
     }

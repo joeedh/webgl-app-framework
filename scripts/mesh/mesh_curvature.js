@@ -97,8 +97,8 @@ export class CurvVert extends CustomDataElem {
     }
   }
 
-  check(v) {
-    if (v.flag & CVFlags.UPDATE) {
+  check(v, forceCheck=false) {
+    if (forceCheck || (v.flag & MeshFlags.UPDATE)) {
       let key = calcCoKey(v);
       //console.log("key", key);
 

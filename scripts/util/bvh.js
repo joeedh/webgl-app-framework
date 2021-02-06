@@ -1,3 +1,5 @@
+import {PaintOpBase} from '../editors/view3d/tools/pbvh_base.js';
+
 const DYNAMIC_SHUFFLE_NODES = false; //attempt fast debalancing of tree dynamically
 
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from './vectormath.js';
@@ -19,7 +21,7 @@ let _triverts = [new Vector3(), new Vector3(), new Vector3()];
 const HIGH_QUAL_SPLIT = true;
 
 export class BVHSettings {
-  constructor(leafLimit = 256, drawLevelOffset = 4, depthLimit = 18) {
+  constructor(leafLimit = 256, drawLevelOffset = 3, depthLimit = 18) {
     this.leafLimit = leafLimit;
     this.drawLevelOffset = drawLevelOffset;
     this.depthLimit = depthLimit;
@@ -66,7 +68,8 @@ export const BVHFlags = {
   UPDATE_INDEX_VERTS   : 128,
   UPDATE_COLORS        : 256,
   UPDATE_MASK          : 512,
-  UPDATE_BOUNDS        : 1024
+  UPDATE_BOUNDS        : 1024,
+  UPDATE_ORIGCO_VERTS  : 2048
 };
 
 export const BVHTriFlags = {
@@ -185,6 +188,8 @@ export class BVHTri {
 
     this.vs = new Array(3);
     this.nodes = [];
+
+    Object.seal(this);
   }
 
   [Symbol.keystr]() {
@@ -261,6 +266,9 @@ CDNodeInfo.STRUCT = nstructjs.inherit(CDNodeInfo, CustomDataElem) + `
 nstructjs.register(CDNodeInfo);
 CustomDataElem.register(CDNodeInfo);
 
+let cvstmps = util.cachering.fromConstructor(Vector3, 64);
+let cvstmps2 = util.cachering.fromConstructor(Vector3, 64);
+
 export class IsectRet {
   constructor() {
     this.id = 0;
@@ -291,8 +299,17 @@ let _bvh_idgen = 0;
 
 export class BVHNode {
   constructor(bvh, min, max) {
+    this.__id2 = undefined; //used by pbvh.js
+
     this.min = new Vector3(min);
     this.max = new Vector3(max);
+
+    this.omin = undefined;
+    this.omax = undefined;
+    this.ocent = undefined;
+    this.ohalfsize = undefined;
+    this.origGen = 0;
+
     this.axis = 0;
     this.depth = 0;
     this.leaf = true;
@@ -330,6 +347,77 @@ export class BVHNode {
 
     this.cent = new Vector3(min).interp(max, 0.5);
     this.halfsize = new Vector3(max).sub(min).mulScalar(0.5);
+
+    Object.seal(this);
+  }
+
+  origUpdate(force = false, updateOrigVerts=false) {
+    let ok = this.origGen !== this.bvh.origGen;
+    ok = ok || !this.omin;
+    ok = ok || force
+
+    ok = ok && this.bvh.cd_orig >= 0;
+
+    if (!ok) {
+      return false;
+    }
+
+    if (this.flag & BVHFlags.UPDATE_ORIGCO_VERTS) {
+      this.flag &= ~BVHFlags.UPDATE_ORIGCO_VERTS;
+      updateOrigVerts = true;
+    }
+
+    if (!this.omin) {
+      this.omin = new Vector3();
+      this.omax = new Vector3();
+      this.ocent = new Vector3();
+      this.ohalfsize = new Vector3();
+    }
+
+    console.warn("updating node origco bounds", this.id);
+    this.origGen = this.bvh.origGen;
+
+    this.omin.zero().addScalar(1e17);
+    this.omax.zero().addScalar(-1e17);
+
+    let cd_orig = this.bvh.cd_orig;
+
+    if (!this.leaf) {
+      for (let c of this.children) {
+        c.origUpdate(force, updateOrigVerts);
+
+        this.omin.min(c.min);
+        this.omax.max(c.max);
+      }
+    } else {
+      let omin = this.omin;
+      let omax = this.omax;
+
+      if (updateOrigVerts) {
+        for (let i=0; i<2; i++) {
+          let list = i ? this.otherVerts : this.uniqueVerts;
+
+          for (let v of list) {
+            v.customData[cd_orig].value.load(v);
+          }
+        }
+      }
+
+      for (let t of this.uniqueTris) {
+        omin.min(t.v1);
+        omin.min(t.v2);
+        omin.min(t.v3);
+
+        omax.max(t.v1);
+        omax.max(t.v2);
+        omax.max(t.v3);
+      }
+    }
+
+    this.ocent.load(this.omin).interp(this.omax, 0.5);
+    this.ohalfsize.load(this.omax).sub(this.omin).mulScalar(0.5);
+
+    return true;
   }
 
   setUpdateFlag(flag) {
@@ -498,9 +586,39 @@ export class BVHNode {
     }
   }
 
-  closestTris(co, radius, out) {
-    let radius2 = radius*radius;
+  /*gets tris based on distances to verts, instead of true tri distance*/
+  closestTrisSimple(co, radius, out) {
+    let radius_sqr = radius*radius;
 
+    if (!this.leaf) {
+      for (let c of this.children) {
+        if (!math.aabb_sphere_isect(co, radius, c.min, c.max)) {
+          continue;
+        }
+
+        c.closestTris(co, radius, out);
+      }
+
+      return;
+    }
+
+    for (let t of this.allTris) {
+      if (out.has(t)) {
+        continue;
+      }
+
+      let dis = co.vectorDistanceSqr(t.v1);
+      dis = dis > radius ? Math.min(dis, co.vectorDistanceSqr(t.v2)) : dis;
+      dis = dis > radius ? Math.min(dis, dis = co.vectorDistanceSqr(t.v3)) : dis;
+
+      if (dis < radius_sqr) {
+        out.add(t);
+      }
+    }
+  }
+
+
+  closestTris(co, radius, out) {
     if (!this.leaf) {
       for (let c of this.children) {
         if (!math.aabb_sphere_isect(co, radius, c.min, c.max)) {
@@ -529,6 +647,34 @@ export class BVHNode {
     }
   }
 
+  closestOrigVerts(co, radius, out) {
+    let radius2 = radius*radius;
+
+    this.origUpdate();
+
+    if (!this.leaf) {
+      for (let c of this.children) {
+        c.origUpdate();
+
+        if (!math.aabb_sphere_isect(co, radius, c.omin, c.omax)) {
+          continue;
+        }
+
+        c.closestOrigVerts(co, radius, out);
+      }
+
+      return;
+    }
+
+    let cd_orig = this.bvh.cd_orig;
+
+    for (let v of this.uniqueVerts) {
+      if (v.customData[cd_orig].value.vectorDistanceSqr(co) < radius2) {
+        out.add(v);
+      }
+    }
+  }
+
   closestVerts(co, radius, out) {
     let radius2 = radius*radius;
 
@@ -546,6 +692,68 @@ export class BVHNode {
 
     for (let v of this.uniqueVerts) {
       if (v.vectorDistanceSqr(co) < radius2) {
+        out.add(v);
+      }
+    }
+  }
+
+  closestVertsSquare(co, origco, radius, matrix, min, max, out) {
+    //let radius2 = radius*radius;
+
+    if (!this.leaf) {
+      for (let c of this.children) {
+        /*
+        let a = cvstmps.next().load(c.min);
+        let b = cvstmps.next().load(c.max);
+        let cmin = cvstmps.next().zero().addScalar(1e17);
+        let cmax = cvstmps.next().zero().addScalar(-1e17);
+
+        a.multVecMatrix(matrix);
+        b.multVecMatrix(matrix);
+
+        cmin.min(a);
+        cmin.min(b);
+        cmax.max(a);
+        cmax.max(b);
+
+        cmin.load(c.cent).multVecMatrix(matrix);
+        cmax.load(cmin);
+
+        cmin.addFac(c.halfsize, -4.0);
+        cmax.addFac(c.halfsize, 4.0);
+
+        if (!math.aabb_isect_3d(min, max, cmin, cmax)) {
+          continue;
+        }
+        //*/
+
+        //use 1.5 instead of sqrt(2) to add a bit of error margin
+        if (!math.aabb_sphere_isect(origco, radius*1.5, c.min, c.max)) {
+          continue;
+        }
+
+
+        c.closestVertsSquare(co, origco, radius, matrix, min, max, out);
+      }
+
+      return;
+    }
+
+    let co2 = cvstmps.next();
+
+    for (let v of this.uniqueVerts) {
+      co2.load(v).multVecMatrix(matrix);
+
+      let dx = co2[0] - co[0];
+      let dy = co2[1] - co[1];
+
+      dx = dx < 0 ? -dx : dx;
+      dy = dy < 0 ? -dy : dy;
+
+      //let dis = (dx+dy)*0.5;
+      let dis = Math.max(dx, dy);
+
+      if (dis < radius) {
         out.add(v);
       }
     }
@@ -996,8 +1204,6 @@ export class BVHNode {
 
     this.setUpdateFlag(updateflag);
 
-    this.bvh.updateNodes.add(this);
-
     return tri;
   }
 
@@ -1233,6 +1439,11 @@ export class BVHNode {
     let eidMap = this.bvh.mesh.eidMap;
 
     for (let t of this.uniqueTris) {
+      if (!t.v1) {
+        this.uniqueTris.delete(t);
+        continue;
+      }
+
       t.no.load(math.normal_tri(t.v1, t.v2, t.v3));
       t.area = math.tri_area(t.v1, t.v2, t.v3) + 0.00001;
 
@@ -1633,10 +1844,10 @@ export class BVHNode {
   update(boundsOnly = false) {
     this.flag &= ~BVHFlags.UPDATE_BOUNDS;
 
-    if (this.leaf) {
+    if (this.leaf && (this.flag & BVHFlags.UPDATE_INDEX_VERTS)) {
       for (let tri of this.uniqueTris) {
         if (!tri.v1 || !tri.v2 || !tri.v3) {
-          console.warn("Corrupted tri in bvh", tri);
+          util.console.warn("Corrupted tri in bvh", tri);
           this.uniqueTris.delete(tri);
         }
       }
@@ -1717,6 +1928,11 @@ export class BVHNode {
       max.zero().addScalar(-1e17);
 
       for (let tri of this.uniqueTris) {
+        if (!tri.v1) {
+          this.uniqueTris.delete(tri);
+          continue;
+        }
+
         min.min(tri.v1);
         max.max(tri.v1);
 
@@ -1752,12 +1968,15 @@ export class BVHNode {
 }
 
 export class BVH {
-  constructor(mesh, min, max) {
+  constructor(mesh, min, max, tottri = 0) {
     this.min = new Vector3(min);
     this.max = new Vector3(max);
 
     this.totTriAlloc = 0;
     this.totTriFreed = 0;
+
+    this.cd_orig = -1;
+    this.origGen = 0;
 
     this.dead = false;
 
@@ -1802,6 +2021,10 @@ export class BVH {
     this.verts = new Set();
     this.mesh = mesh;
     this.dirtemp = new Vector3();
+
+    if (this.constructor === BVH) {
+      Object.seal(this);
+    }
   }
 
   get leafLimit() {
@@ -1854,8 +2077,25 @@ export class BVH {
     aabb[0].subScalar(pad);
     aabb[1].addScalar(pad);
 
-    let bvh = new this(mesh, aabb[0], aabb[1]);
+    let cd_grid = useGrids ? GridBase.meshGridOffset(mesh) : -1;
+    let tottri = 0;
+
+    if (cd_grid >= 0) {
+      //estimate tottri from number of grid points
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+        tottri += grid.points.length*2;
+      }
+    } else {
+      tottri = ~~(mesh.loopTris.length/3);
+    }
+
+    //tottri is used by the SpatialHash subclass
+    let bvh = new this(mesh, aabb[0], aabb[1], tottri);
+
     //console.log("Saved tri freelist:", freelist);
+
+    bvh.cd_grid = cd_grid;
 
     if (freelist) {
       bvh.freelist = freelist;
@@ -1874,8 +2114,6 @@ export class BVH {
     }
 
     bvh.drawLevelOffset = mesh.bvhSettings.drawLevelOffset;
-
-    let cd_grid = bvh.cd_grid = useGrids ? GridBase.meshGridOffset(mesh) : -1;
 
     if (useGrids && cd_grid >= 0) {
       bvh.cd_node = mesh.loops.customData.getNamedLayerIndex(cdname, CDNodeInfo);
@@ -2015,6 +2253,17 @@ export class BVH {
     return bvh;
   }
 
+  origCoStart(cd_orig) {
+    this.cd_orig = cd_orig;
+    this.origGen++;
+
+    for (let node of this.nodes) {
+      if (node.leaf) {
+        node.flag |= BVHFlags.UPDATE_ORIGCO_VERTS;
+      }
+    }
+  }
+
   //attempt to sort mesh spatially within memory
 
   _checkCD() {
@@ -2103,7 +2352,7 @@ export class BVH {
 
     if (WITH_EIDMAP_MAP) {
       mesh.eidMap = new Map();
-      mesh._recalceidMap = true;
+      mesh._recalcEidMap = true;
     } else {
       mesh.eidmap = {};
     }
@@ -2160,6 +2409,7 @@ export class BVH {
 
           v2.eid = v.eid;
           mesh.eidMap.set(v2.eid, v2);
+          mesh.eidmap[v2.eid] = v2;
 
           v2.customData = copyCustomData(v.customData);
 
@@ -2216,6 +2466,7 @@ export class BVH {
 
           mesh.edges.push(e2);
           mesh.eidMap.set(e2.eid, e2);
+          mesh.eidmap[e2.eid] = e2;
 
           mesh._diskInsert(e2.v1, e2);
           mesh._diskInsert(e2.v2, e2);
@@ -2231,6 +2482,7 @@ export class BVH {
         f2.cent.load(f.cent);
 
         mesh.eidMap.set(f2.eid, f2);
+        mesh.eidmap[f2.eid] = f2;
         mesh.faces.push(f2);
 
         for (let list1 of f.lists) {
@@ -2257,6 +2509,7 @@ export class BVH {
             l2.f = f2;
 
             mesh.eidMap.set(l2.eid, l2);
+            mesh.eidmap[l2.eid] = l2;
             mesh.loops.push(l2);
 
             if (prevl) {
@@ -2507,6 +2760,20 @@ export class BVH {
     return freelist;
   }
 
+  preallocTris(count = 1024*128) {
+    for (let i = 0; i < count; i++) {
+      this.freelist.push(new BVHTri());
+    }
+  }
+
+  closestOrigVerts(co, radius) {
+    let ret = new Set();
+
+    this.root.closestOrigVerts(co, radius, ret);
+
+    return ret;
+  }
+
   closestVerts(co, radius) {
     let ret = new Set();
 
@@ -2515,10 +2782,37 @@ export class BVH {
     return ret;
   }
 
+  closestVertsSquare(co, radius, matrix) {
+    let ret = new Set();
+
+    let origco = co;
+
+    co = cvstmps2.next().load(co);
+    co.multVecMatrix(matrix);
+
+    let min = cvstmps2.next();
+    let max = cvstmps2.next();
+
+    min.load(co).addScalar(-radius);
+    max.load(co).addScalar(radius);
+
+    this.root.closestVertsSquare(co, origco, radius, matrix, min, max, ret);
+
+    return ret;
+  }
+
   closestTris(co, radius) {
     let ret = new Set();
 
     this.root.closestTris(co, radius, ret);
+
+    return ret;
+  }
+
+  closestTrisSimple(co, radius) {
+    let ret = new Set();
+
+    this.root.closestTrisSimple(co, radius, ret);
 
     return ret;
   }
@@ -3112,3 +3406,319 @@ window._profileBVH = function (count = 4) {
   console.profileEnd("bvh");
 }
 
+const hashsizes = [
+  /*2, 5, 11, 19, 37, 67, 127, 223, 383, 653, 1117,*/ 1901, 3251,
+                                                      5527, 9397, 15991, 27191, 46229, 78593, 133631, 227177, 38619,
+                                                      656587, 1116209, 1897561, 3225883, 5484019, 9322861, 15848867,
+                                                      26943089, 45803279, 77865577, 132371489, 225031553
+];
+
+let HNODE = 0, HKEY = 1, HTOT = 2;
+
+let addmin = new Vector3();
+let addmax = new Vector3();
+
+export class SpatialHash extends BVH {
+  constructor(mesh, min, max, tottri = 0) {
+    super(mesh, min, max);
+
+    this.dimen = this._calcDimen(tottri);
+    this.hsize = 0;
+    this.hused = 0;
+    this.htable = new Array(hashsizes[this.hsize]*HTOT);
+
+    this.depthLimit = 0;
+    this.leafLimit = 1000000;
+
+    this.hmul = new Vector3(max).sub(min);
+    this.hmul = new Vector3().addScalar(1.0).div(this.hmul);
+
+    Object.seal(this);
+  }
+
+  hashkey(co) {
+    let dimen = this.dimen;
+
+    let hmul = this.hmul;
+
+    let x = ~~((co[0] - this.min[0])*hmul[0]*dimen);
+    let y = ~~((co[1] - this.min[1])*hmul[1]*dimen);
+    let z = ~~((co[2] - this.min[2])*hmul[2]*dimen);
+
+    return z*dimen*dimen + y*dimen + x;
+  }
+
+  _resize(hsize) {
+    this.hsize = hsize;
+    let ht = this.htable;
+
+    this.htable = new Array(hashsizes[this.hsize]*HTOT);
+
+    for (let i = 0; i < ht.length; i += HTOT) {
+      if (ht[i] !== undefined) {
+        this._addNode(ht[i]);
+      }
+    }
+  }
+
+  _calcDimen(tottri) {
+    return 2 + ~~(Math.log(tottri)/Math.log(3.0));
+  }
+
+  _lookupNode(key) {
+    let ht = this.htable;
+    let size = ~~(ht.length/HTOT);
+    let probe = 0;
+    let _i = 0;
+    let idx;
+
+    while (_i++ < 100000) {
+      idx = (key + probe)%size;
+      idx *= HTOT;
+
+      if (ht[idx] === undefined) {
+        break;
+      }
+
+      if (ht[idx + 1] === key) {
+        return ht[idx];
+      }
+
+      probe = (probe + 1)*2;
+    }
+
+    return undefined;
+  }
+
+  checkJoin() {
+    return false;
+  }
+
+  addTri(id, tri_idx, v1, v2, v3, noSplit                        = false,
+         l1 = undefined, l2 = undefined, l3 = undefined, addPass = 0) {
+
+    let tottri = this.tottri;
+
+    if (this._calcDimen(tottri) > this.dimen + 4) {
+      console.log("Dimen update", this.dimen, this._calcDimen(tottri));
+
+    }
+
+    let tri = this._getTri(id, tri_idx, v1, v2, v3);
+
+    if (l1) {
+      tri.l1 = l1;
+      tri.l2 = l2;
+      tri.l3 = l3;
+    }
+
+    let min = this.min, max = this.max, dimen = this.dimen;
+    let hmul = this.hmul;
+
+    let minx = Math.min(Math.min(v1[0], v2[0]), v3[0]);
+    let miny = Math.min(Math.min(v1[1], v2[1]), v3[1]);
+    let minz = Math.min(Math.min(v1[2], v2[2]), v3[2]);
+
+    let maxx = Math.max(Math.max(v1[0], v2[0]), v3[0]);
+    let maxy = Math.max(Math.max(v1[1], v2[1]), v3[1]);
+    let maxz = Math.max(Math.max(v1[2], v2[2]), v3[2]);
+
+    let x1 = Math.floor((minx - min[0])*hmul[0]*dimen);
+    let y1 = Math.floor((miny - min[1])*hmul[1]*dimen);
+    let z1 = Math.floor((minz - min[2])*hmul[2]*dimen);
+
+    let x2 = Math.floor((maxx - min[0])*hmul[0]*dimen);
+    let y2 = Math.floor((maxy - min[1])*hmul[1]*dimen);
+    let z2 = Math.floor((maxz - min[2])*hmul[2]*dimen);
+
+    x1 = Math.min(Math.max(x1, 0), dimen - 1);
+    y1 = Math.min(Math.max(y1, 0), dimen - 1);
+    z1 = Math.min(Math.max(z1, 0), dimen - 1);
+
+    x2 = Math.min(Math.max(x2, 0), dimen - 1);
+    y2 = Math.min(Math.max(y2, 0), dimen - 1);
+    z2 = Math.min(Math.max(z2, 0), dimen - 1);
+
+    tri.node = undefined;
+
+    const updateflag = BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_INDEX_VERTS
+      | BVHFlags.UPDATE_BOUNDS | BVHFlags.UPDATE_NORMALS
+      | BVHFlags.UPDATE_TOTTRI;
+
+    for (let x = x1; x <= x2; x++) {
+      for (let y = y1; y <= y2; y++) {
+        for (let z = z1; z <= z2; z++) {
+          let key = z*dimen*dimen + y*dimen + x;
+          let node = this._lookupNode(key);
+
+          if (!node) {
+            let min = new Vector3();
+            let max = new Vector3();
+
+            let eps = 0.000001;
+
+            min[0] = (x/dimen + eps)/hmul[0] + this.min[0];
+            min[1] = (y/dimen + eps)/hmul[1] + this.min[1];
+            min[2] = (z/dimen + eps)/hmul[2] + this.min[2];
+
+            console.log("Adding node", key, this.hashkey(min), [x, y, z]);
+
+            max.load(this.max).sub(this.min).mulScalar(1.0/dimen).add(min);
+
+            node = this._newNode(min, max);
+            node.leaf = true;
+
+            this.updateNodes.add(node);
+
+            node.flag |= BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_TOTTRI;
+            node.flag |= BVHFlags.UPDATE_COLORS | BVHFlags.UPDATE_NORMALS;
+
+            this._addNode(node);
+          }
+
+          node._pushTri(tri);
+          node.setUpdateFlag(updateflag);
+        }
+      }
+    }
+
+    return tri;
+  }
+
+  castRay(origin, dir) {
+    dir = this.dirtemp.load(dir);
+    dir.normalize();
+
+    let x1 = origin[0];
+    let y1 = origin[1];
+    let z1 = origin[2];
+
+    let sz = this.min.vectorDistance(this.max)*4.0;
+
+    let x2 = x1 + dir[0]*sz;
+    let y2 = y1 + dir[1]*sz;
+    let z2 = z1 + dir[2]*sz;
+
+    let minx = Math.min(x1, x2);
+    let miny = Math.min(y1, y2);
+    let minz = Math.min(z1, z2);
+
+    let maxx = Math.max(x1, x2);
+    let maxy = Math.max(y1, y2);
+    let maxz = Math.max(z1, z2);
+
+    let minret = undefined;
+
+    let cb = (node) => {
+      let ret = node.castRay(origin, dir);
+
+      if (ret && (!minret || (ret.t >= 0 && ret.t < minret.t))) {
+        minret = ret;
+      }
+    }
+
+    this._forEachNode(cb, minx, miny, minz, maxx, maxy, maxz);
+
+    //console.log("castRay ret:", minret);
+
+    return minret;
+  }
+
+  _forEachNode(cb, minx, miny, minz, maxx, maxy, maxz) {
+    let min = this.min, max = this.max, dimen = this.dimen;
+    let hmul = this.hmul;
+
+    let x1 = Math.floor((minx - min[0])*hmul[0]*dimen);
+    let y1 = Math.floor((miny - min[1])*hmul[1]*dimen);
+    let z1 = Math.floor((minz - min[2])*hmul[2]*dimen);
+
+    let x2 = Math.ceil((maxx - min[0])*hmul[0]*dimen);
+    let y2 = Math.ceil((maxy - min[1])*hmul[1]*dimen);
+    let z2 = Math.ceil((maxz - min[2])*hmul[2]*dimen);
+
+    x1 = Math.min(Math.max(x1, 0), dimen - 1);
+    y1 = Math.min(Math.max(y1, 0), dimen - 1);
+    z1 = Math.min(Math.max(z1, 0), dimen - 1);
+
+    x2 = Math.min(Math.max(x2, 0), dimen - 1);
+    y2 = Math.min(Math.max(y2, 0), dimen - 1);
+    z2 = Math.min(Math.max(z2, 0), dimen - 1);
+
+    for (let x = x1; x <= x2; x++) {
+      for (let y = y1; y <= y2; y++) {
+        for (let z = z1; z <= z2; z++) {
+          let key = z*dimen*dimen + y*dimen + x;
+          let node = this._lookupNode(key);
+
+          if (node) {
+            cb(node);
+          }
+        }
+      }
+    }
+  }
+
+  closestVerts(co, radius) {
+    let eps = radius*0.01;
+
+    let minx = co[0] - radius - eps;
+    let miny = co[1] - radius - eps;
+    let minz = co[2] - radius - eps;
+
+    let maxx = co[0] + radius + eps;
+    let maxy = co[1] + radius + eps;
+    let maxz = co[2] + radius + eps;
+
+    let ret = new Set();
+    let rsqr = radius*radius;
+
+    let cb = (node) => {
+      for (let t of node.allTris) {
+        if (t.v1.vectorDistanceSqr(co) <= rsqr) {
+          ret.add(t.v1);
+        }
+
+        if (t.v2.vectorDistanceSqr(co) <= rsqr) {
+          ret.add(t.v2);
+        }
+
+        if (t.v3.vectorDistanceSqr(co) <= rsqr) {
+          ret.add(t.v3);
+        }
+      }
+    };
+
+    this._forEachNode(cb, minx, miny, minz, maxx, maxy, maxz);
+
+    return ret;
+  }
+
+  _addNode(node) {
+    if (this.hused > this.htable.length/3) {
+      this._resize(this.hsize + 1);
+    }
+
+    let key = this.hashkey(node.min);
+    let ht = this.htable;
+    let size = ~~(ht.length/HTOT);
+    let probe = 0;
+    let _i = 0;
+    let idx;
+
+    while (_i++ < 100000) {
+      idx = (key + probe)%size;
+      idx *= HTOT;
+
+      if (ht[idx] === undefined) {
+        break;
+      }
+
+      probe = (probe + 1)*2;
+    }
+
+    ht[idx] = node;
+    ht[idx + 1] = key;
+
+    this.hused++;
+  }
+}

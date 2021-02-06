@@ -5,6 +5,7 @@ import {Vector3} from '../util/vectormath.js';
 import {StandardTools} from './stdtools.js';
 import {Node} from "../core/graph.js";
 import {DependSocket, Matrix4Socket} from "../core/graphsockets.js";
+import {Icons} from '../editors/icon_enum.js';
 
 export const ObjectDataTypes = [];
 
@@ -24,7 +25,7 @@ export class SceneObjectData extends DataBlock {
   static dataDefine() {return {
     name       : "",
     selectMask : 0, //valid selection modes for StandardTools, see SelMask
-    tools      : StandardTools
+    tools      : StandardTools,
   }}
 
   static nodedef() {return {
@@ -128,6 +129,7 @@ export class SceneObjectData extends DataBlock {
     }
 
     let def = cls.dataDefine();
+
     if (!def.hasOwnProperty("selectMask")) {
       throw new Error("dataDefine() is missing selectMask field")
     }

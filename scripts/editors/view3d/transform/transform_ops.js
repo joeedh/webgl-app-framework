@@ -14,6 +14,7 @@ import {CastModes, castViewRay} from '../findnearest.js';
 
 import {ListProperty, StringSetProperty} from "../../../path.ux/scripts/pathux.js";
 import {ModalFlags} from "../../../core/modalflags.js";
+import {MeshFlags} from '../../../mesh/mesh_base.js';
 
 /*
 Transform refactor:
@@ -1489,9 +1490,128 @@ export class RotateOp extends TransformOp {
     //mat2.translate(off[0], off[1], off[2]);
 
     this.applyTransform(ctx, mat2);
+
+    window.redraw_viewport(true);
   }
 }
 
 ToolOp.register(RotateOp);
+
+
+export class InflateOp extends TransformOp {
+  constructor(start_mpos) {
+    super();
+
+    this.mpos = new Vector3();
+    this.last_mpos = new Vector3();
+    this.start_mpos = new Vector3();
+    this.thsum = 0;
+    this.trackball = false;
+
+    if (start_mpos !== undefined) {
+      this.mpos.load(start_mpos);
+      this.mpos[2] = 0.0;
+
+      this.first = false;
+    } else {
+      this.first = true;
+    }
+  }
+
+  static tooldef() {return {
+    uiname      : "Inflate",
+    description : "Inflate along surface normals",
+    toolpath    : "view3d.inflate",
+    is_modal    : true,
+    inputs      : ToolOp.inherit({
+      factor    : new FloatProperty(0.0),
+    }),
+    icon        : -1
+  }}
+
+  on_mousemove(e) {
+    if (this.numericVal !== undefined) {
+      return;
+    }
+
+    let ctx = this.modal_ctx;
+    let view3d = ctx.view3d;
+
+    let cent = this.center;
+    let scent = new Vector3(cent);
+
+    view3d.project(scent);
+
+    let mpos = new Vector3(view3d.getLocalMouse(e.x, e.y));
+    mpos[2] = scent[2];
+
+    let x = mpos[0], y = mpos[1];
+    this.mpos[0] = x;
+    this.mpos[1] = y;
+    this.mpos[2] = mpos[2];
+
+    if (this.first) {
+      this.last_mpos.load(this.mpos);
+      this.start_mpos.load(this.mpos);
+
+      this.first = false;
+      return;
+    }
+
+    let dx = this.start_mpos[0] - scent[0];
+    let dy = this.start_mpos[1] - scent[1];
+
+    let t1 = new Vector3([dx, dy, 0]);
+    let t2 = new Vector3(this.mpos).sub(this.start_mpos);
+    t2[2] = 0;
+
+    let sign = Math.sign(t1.dot(t2));
+
+    t1.load(this.start_mpos);
+    t2.load(this.mpos);
+    t1[2] = t2[2] = scent[2];
+    view3d.unproject(t1);
+    view3d.unproject(t2);
+
+    let dis = t1.vectorDistance(t2);
+
+    console.log(dis*sign, t1, t2, scent, this.center);
+
+    this.inputs.factor.setValue(dis*sign);
+    this.exec(ctx);
+  }
+
+  numericSet(value) {
+    this.inputs.factor.setValue(value);
+  }
+
+  exec(ctx) {
+    let tdata = this.tdata;
+
+    if (!tdata) {
+      this.genTransData(ctx);
+      tdata = this.tdata;
+    }
+
+    let factor = this.inputs.factor.getValue();
+
+    for (let list of tdata) {
+      if (list.type !== MeshTransType) {
+        continue;
+      }
+
+      for (let td of list) {
+        td.data1.load(td.data2).addFac(td.data1.no, factor);
+        td.data1.flag |= MeshFlags.UPDATE;
+        td.mesh.regenRender();
+      }
+    }
+
+    this.doUpdates(ctx);
+    window.redraw_viewport(true);
+  }
+}
+
+ToolOp.register(InflateOp);
 
 

@@ -112,7 +112,7 @@ export class BasicFileOp extends ToolOp {
     mesh.graphUpdate();
 
     mesh.regenRender();
-    mesh.regenTesellation();
+    mesh.regenTessellation();
     mesh.regenElementsDraw();
 
     window.updateDataGraph();

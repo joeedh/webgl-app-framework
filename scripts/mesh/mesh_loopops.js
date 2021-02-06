@@ -228,7 +228,7 @@ export class EdgeCutOp extends MeshOp {
       }
     }
 
-    mesh.regenTesellation();
+    mesh.regenTessellation();
     mesh.recalcNormals();
     mesh.graphUpdate();
     mesh.regenRender();

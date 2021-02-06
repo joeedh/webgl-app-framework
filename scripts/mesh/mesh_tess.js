@@ -478,6 +478,7 @@ export class CDT {
     for (let l of this.loops) {
       for (let i=0; i<l.length; i += 3) {
         let v2 = [l[i], l[i+1], l[i+2]];
+
         verts.push(v2);
         this.verts.push(v2);
       }
@@ -542,8 +543,12 @@ export class CDT {
 let fco1 = new Vector3();
 let fco2 = new Vector3();
 
+let mtmp = new Matrix4();
+
 function fillFace(f, loopTris) {
-  let m = new Matrix4();
+  let m = mtmp;
+
+  m.makeIdentity();
   m.makeNormalMatrix(f.no);
   m.invert();
 
@@ -571,14 +576,20 @@ function fillFace(f, loopTris) {
     }
   }
 
+  let loops = [];
+
+  let minx=1e17, miny=1e17;
+  let maxx=-1e17, maxy=-1e17;
+
   for (let list of f.lists) {
     let vs = [];
 
-    let minx=1e17, miny=1e17;
-    let maxx=-1e17, maxy=-1e17;
+    loops.push(vs);
 
     for (let l of list) {
-      co.load(vsmooth(l.v));
+      //co.load(l.v);
+      co.load(vsmooth(l.v, 0.15));
+
       co.multVecMatrix(m);
       co[2] = 0.0;
 
@@ -596,7 +607,10 @@ function fillFace(f, loopTris) {
       vs.push(co[1]);
       vs.push(l.eid);
     }
+    cdt.addLoop(vs);
+  }
 
+  for (let vs of loops) {
     let sx = maxx - minx, sy = maxy - miny;
     if (sx > 0 && sy > 0) {
       for (let i=0; i<vs.length; i += 3) {
@@ -604,11 +618,10 @@ function fillFace(f, loopTris) {
         vs[i+1] = (vs[i+1] - miny) / sy;
       }
     }
-
-    cdt.addLoop(vs);
   }
 
   cdt.generate();
+
   for (let eid of cdt.triangles) {
     let l = idmap[eid];
 

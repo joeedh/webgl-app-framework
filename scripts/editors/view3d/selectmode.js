@@ -38,7 +38,9 @@ export const SelMask = {
   CAMERA     : (1<<11),
   NULLOBJECT : (1<<12),
   PROCMESH   : (1<<13),
-  OBJECT     : (1<<8)|(1<<9)|(1<<10)|(1<<11)|(1<<12)|(1<<13), //all types
+  TETMESH    : (1<<14),
+  STRANDS    : (1<<15),
+  OBJECT     : (1<<8)|(1<<9)|(1<<10)|(1<<11)|(1<<12)|(1<<13)|(1<<14)|(1<<15), //all types
 };
 
 window._SelMask = SelMask;

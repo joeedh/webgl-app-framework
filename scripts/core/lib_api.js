@@ -192,7 +192,10 @@ export class DataBlock extends Node {
     if (user) {
       let bad = typeof user !== "object";
       bad = bad || !(user instanceof DataBlock);
-      bad = bad || user.lib_id < 0;
+
+      //this condition wreaks havoc in the common case
+      //of building an object graph prior to adding to a datalib
+      //bad = bad || user.lib_id < 0;
 
       if (bad) {
         console.error(`
@@ -233,10 +236,13 @@ but owner will not be added to this.lib_userlist`.trim());
     reader(this);
     super.loadSTRUCT(reader);
 
-    try {
-      this.lib_userData = JSON.parse(this.lib_userData);
-    } catch (error) {
-      console.error("Error parsing lib_userData!");
+    if (typeof this.lib_userData === "string") {
+      try {
+        this.lib_userData = JSON.parse(this.lib_userData);
+      } catch (error) {
+        util.print_stack(error);
+        console.error("Error parsing lib_userData!", this.lib_userData);
+      }
     }
 
     this.afterSTRUCT();

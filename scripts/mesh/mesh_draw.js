@@ -11,8 +11,10 @@ import {NormalLayerElem, UVLayerElem} from "./mesh_customdata.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {Grid, GridBase} from "./mesh_grids.js";
 
-export function genRenderMesh(gl, mesh, uniforms) {
+export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
   let recalc;
+
+  console.log("combinedWireframe", combinedWireframe);
 
   let times = [];
   let start = util.time_ms();
@@ -330,6 +332,24 @@ export function genRenderMesh(gl, mesh, uniforms) {
       }
     }
 
+    if (combinedWireframe) { //simplemesh_shapes.js uses this code path
+      for (let e of mesh.edges) {
+        if (e.flag & MeshFlags.HIDE) {
+          continue;
+        }
+
+        let line = sm.line(e.eid, e.v1, e.v2);
+
+        //line.ids(e.eid+1, e.eid+1);
+        line.colors(white, white);
+
+        if (haveUVs) {
+          line.uvs(lineuv1, lineuv2);
+        }
+
+        line.normals(e.v1.no, e.v2.no);
+      }
+    }
     pushtime("faces");
   }
 

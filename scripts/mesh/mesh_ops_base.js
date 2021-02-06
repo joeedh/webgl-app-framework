@@ -151,6 +151,10 @@ export class MeshOp extends View3DOp {
   }
 
   calcUndoMem(ctx) {
+    if (!this._undo) {
+      return 0;
+    }
+
     let tot = 0;
 
     for (let id in this._undo) {
@@ -184,7 +188,7 @@ export class MeshOp extends View3DOp {
 
       mesh.swapDataBlockContents(mesh2);
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenElementsDraw();
       mesh.regenRender();

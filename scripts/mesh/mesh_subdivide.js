@@ -322,6 +322,69 @@ export function splitEdgesPreserveQuads(mesh, es, testfunc, lctx) {
     }
   }
 
+  if (1) {
+    let flag = MeshFlags.TEMP1;
+    for (let f of fs) {
+      f.index = 0;
+
+      for (let l of f.loops) {
+        l.e.flag &= ~flag;
+
+        if (es.has(l.e)) {
+          l.e.flag |= flag;
+          f.index++;
+        }
+      }
+    }
+
+    for (let f of fs) {
+      if (!f.isQuad()) {
+        continue;
+      }
+
+      let count = 0;
+      let e;
+      let l;
+
+      for (let l2 of f.loops) {
+        if (l2.e.flag & flag) {
+          count++;
+          e = l2.e;
+          l = l2;
+        }
+      }
+
+      if (l && l.radial_next !== l && l.radial_next.f.index !== 1) {
+        continue;
+      }
+
+      if (count === 1) {
+        let l2 = l.radial_next;
+        let f2 = l2.f;
+
+        es.delete(e);
+        fs.delete(f);
+
+        if (f !== f2) {
+          fs.delete(f2);
+        }
+
+        let [ne, nv] = mesh.splitEdge(e, 0.5, lctx);
+        mesh.splitFace(f, l.prev.prev, l.next, lctx);
+
+        if (f !== f2) {
+          if (l2.v !== l.v) {
+            mesh.splitFace(f2, l2.prev, l2.next, lctx);
+          } else {
+            mesh.splitFace(f2, l2.prev.prev, l2.next, lctx);
+          }
+        }
+
+        mesh.dissolveEdge(e, lctx);
+      }
+    }
+  }
+
   function adde(e) {
     if (!es.has(e)) {
       for (let f of e.faces) {
@@ -694,6 +757,57 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx) {
     }
 
     mesh.killFace(f, lctx, LogTags.SPLIT_EDGES_SMART2);
+  }
+}
+
+export function splitEdgesSimple2(mesh, es, testfunc, lctx) {
+  let flag = MeshFlags.TEMP2;
+
+  for (let e of es) {
+    let [ne, nv] = mesh.splitEdge(e, 0.5, lctx);
+
+    e.v1.flag &= ~flag;
+    ne.v2.flag &= ~flag;
+    nv.flag |= flag;
+  }
+
+  for (let e of es) {
+    for (let v of e.verts) {
+      if (!(v.flag & flag)) {
+        continue;
+      }
+
+      for (let l of v.loops) {
+        l.f.flag &= ~flag;
+      }
+
+      v.flag &= ~flag;
+
+      for (let e of v.edges) {
+        for (let l of e.loops) {
+          if (l.f.flag & flag) {
+            continue;
+          }
+
+          l.f.flag |= flag;
+
+          if (l.next.v === v) {
+            l = l.next;
+          } else if (l.prev.v === v) {
+            l = l.prev;
+          }
+
+          let l2 = l.next.next;
+          if (l2 !== l.prev && l2 !== l.next && l2 !== l) {
+            let l3 = mesh.splitFace(l.f, l, l2, lctx);
+
+            if (l3) {
+              l3.f.flag |= flag;
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -1316,7 +1430,7 @@ export function meshSubdivideTest(mesh, faces = mesh.faces) {
     }
   }
 
-  mesh.regenTesellation();
+  mesh.regenTessellation();
   mesh.recalcNormals();
   mesh.regenBVH();
 
@@ -1358,7 +1472,7 @@ export function meshSubdivideTest(mesh, faces = mesh.faces) {
     }
   }
 
-  mesh.regenTesellation();
+  mesh.regenTessellation();
   mesh.recalcNormals();
 
   //mesh.regenRender();
@@ -1562,8 +1676,8 @@ export function meshSubdivideTest(mesh, faces = mesh.faces) {
     console.log("error:", err().toFixed(3), s, "val", val, "gfac", f);
   }
 
-  mesh.regenTesellation();
-  copy.regenTesellation();
+  mesh.regenTessellation();
+  copy.regenTessellation();
 
   copy.recalcNormals();
   mesh.recalcNormals();
@@ -1614,7 +1728,7 @@ export function meshSubdivideTest(mesh, faces = mesh.faces) {
     v2.flag |= MeshFlags.UPDATE;
   }
 
-  mesh.regenTesellation();
+  mesh.regenTessellation();
   mesh.recalcNormals();
 
   for (let v2 of mesh.verts) {
@@ -1633,7 +1747,7 @@ export function meshSubdivideTest(mesh, faces = mesh.faces) {
     }
   }
 
-  mesh.regenTesellation();
+  mesh.regenTessellation();
   mesh.recalcNormals();
   mesh.regenRender();
   mesh.graphUpdate();
@@ -1693,7 +1807,7 @@ export function meshSubdivideTest(mesh, faces = mesh.faces) {
   console.log("seed: ", seed);
   //mesh.debugLogCompare(copy);
 
-  mesh.regenTesellation();
+  mesh.regenTessellation();
   mesh.recalcNormals();
   mesh.regenRender();
   mesh.regenBVH();
