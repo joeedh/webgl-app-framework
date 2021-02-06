@@ -855,7 +855,7 @@ v${attr} = ${attr};
           }
 
           v.bind(gl, this.uniformloc(k), slot);
-        } else if (v instanceof Array) {
+        } else if (v instanceof Array || v instanceof Float32Array || v instanceof Float64Array) {
           switch (v.length) {
             case 2:
               var arr = _safe_arrays[2];
@@ -1301,6 +1301,7 @@ export class DrawMats {
     this.inormalmat = new Matrix4();
   }
 
+  /** aspect should be sizex / sizey */
   regen_mats(aspect=this.aspect) {
     this.aspect = aspect;
 
@@ -1500,6 +1501,7 @@ export class Camera extends DrawMats {
     return this;
   }
 
+  /** aspect should be sizex / sizey*/
   regen_mats(aspect=this.aspect) {
     this.aspect = aspect;
 

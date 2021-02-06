@@ -3,7 +3,8 @@ import {Icons} from '../icon_enum.js';
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';
 import {
-  nstructjs, ToolOp, color2css, css2color, math, KeyMap, UIBase, eventWasTouch, haveModal, saveUIData, loadUIData, EnumProperty
+  nstructjs, ToolOp, color2css, css2color, math, KeyMap, UIBase, eventWasTouch, haveModal, saveUIData, loadUIData,
+  EnumProperty, Menu
 } from '../../path.ux/scripts/pathux.js';
 import {VelPanPanOp} from '../velpan.js';
 import {Colors, ObjectFlags} from '../../sceneobject/sceneobject.js';
@@ -515,6 +516,18 @@ export class UVEditor extends UIBase {
 
     //this.matrix.multiply(tmat1);
 
+    let mat = new Matrix4();
+    let image = this.ctx.activeTexture;
+
+    if (image && image.ready) {
+      aspect = image.width / image.height;
+    } else {
+      aspect = 1.0;
+    }
+
+    mat.scale(aspect, 1.0, 1.0);
+    this.matrix.multiply(mat);
+
     this.imatrix.load(this.matrix).invert();
   }
 
@@ -541,6 +554,9 @@ export class UVEditor extends UIBase {
 
     this.updateMatrix();
 
+    let gltex;
+    let image = this.ctx.activeTexture;
+
     if (this._redraw_req || !this.smesh) {
       console.log("regenerated uveditor meshes");
       this.genMeshes(gl);
@@ -562,14 +578,8 @@ export class UVEditor extends UIBase {
     //flip y
     //matrix.multiply(wmat);
     //matrix.multiply(wsmat);
-    let mat = new Matrix4();
-    mat.scale(0.5, 0.5, 1.0);
 
     matrix.multiply(this.matrix);
-    //matrix.multiply(mat);
-
-    let gltex;
-    let image = this.ctx.activeTexture;
 
     if (image && image.ready) {
       gltex = image.getGlTex(gl);
@@ -1439,6 +1449,12 @@ export class ImageEditor extends Editor {
     let header = this.header;
     let row = header.row().strip();
 
+    let image_menu = [
+      "image.open()|Open",
+      Menu.SEP
+    ];
+
+    row.menu("Image", image_menu);
     row.menu("Edit", this.buildEditMenu());
     row.menu("View", []);
 
@@ -1560,7 +1576,6 @@ export class ImageEditor extends Editor {
     let rect2 = this.header.getBoundingClientRect();
     window.rect = rect;
     window.rect2 = rect2;
-
 
     gl.enable(gl.SCISSOR_TEST);
     gl.scissor(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1]);

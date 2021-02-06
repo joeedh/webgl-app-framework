@@ -290,7 +290,7 @@ export class CubeGenerator extends ProceduralGen {
       let f = mesh.makeQuad(v1, v2, v3, v4);
     }
 
-    mesh.regenTesellation();
+    mesh.regenTessellation();
     mesh.recalcNormals();
     mesh.regenElementsDraw();
     mesh.regenRender();

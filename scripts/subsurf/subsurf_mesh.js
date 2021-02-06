@@ -195,6 +195,7 @@ export function loopSubdivide(mesh, faces=mesh.faces) {
 
   function makeDummy(v) {
     let d = new Vector3();
+    d = Object.create(d);
 
     d.customData = v !== undefined ? v.customData.map(f => f.copy()) : [];
     d.eid = v !== undefined ? v.eid : -1;

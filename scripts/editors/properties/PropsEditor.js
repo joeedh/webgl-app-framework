@@ -208,12 +208,21 @@ export class ObjectPanel extends ColumnFrame {
     let panel;
 
     panel = this.panel("Transform");
+    panel.useIcons(false);
 
     panel.prop(`object.inputs["loc"].value`);
 
     panel.label("Rotation");
     panel.prop('object.inputs["rot"].value');
     panel.prop('object.inputs["rotOrder"].value');
+
+    panel.prop('object.inputs["scale"].value');
+
+    panel.tool("object.apply_transform()");
+
+    panel = this.panel("Draw");
+    panel.useIcons(false);
+    panel.prop("object.flag[DRAW_WIREFRAME]");
 
     let ob = this.ctx.object;
     if (!ob) {
@@ -568,9 +577,39 @@ export class PropsEditor extends Editor {
     let tab;
 
     this.workspaceTab = this.tabs.tab("Workspace");
+    let panel, strip;
 
     tab = this.tabs.tab("Scene");
-    let panel = tab.panel("Render Settings");
+    panel = tab.panel("Viewport Settings");
+    panel.useIcons(false);
+    panel.prop("view3d.cameraMode[PERSPECTIVE]");
+    panel.prop("view3d.cameraMode[ORTHOGRAPHIC]");
+
+    let viewAxis = (axis, sign) => {
+      this.ctx.view3d.viewAxis(axis, sign);
+    }
+
+    let axes = {
+      "Front" : [1, 1],
+      "Left"  : [0, 1],
+      "Back"  : [1, -1],
+      "Right" : [0, -1],
+      "Top"   : [2, 1],
+      "Bottom" : [2, -1]
+    }
+
+    function makeAxis(key, axis, sign) {
+      panel.button(key, () => {
+        viewAxis(axis, sign);
+      });
+    }
+
+    for (let k in axes) {
+      let [axis, sign] = axes[k];
+      makeAxis(k, axis, sign);
+    }
+
+    panel = tab.panel("Render Settings");
     panel.prop("scene.envlight.color");
     panel.prop("scene.envlight.power");
     panel.prop("scene.envlight.flag");
@@ -589,9 +628,31 @@ export class PropsEditor extends Editor {
 
     this._last_obj = undefined;
 
+
     tab = this.tabs.tab("Last Command");
     let last = document.createElement("last-tool-panel-x")
     tab.add(last);
+
+
+    tab = this.tabs.tab("Settings");
+
+    panel = tab.panel("Brushes");
+    strip = panel.row();
+    strip.useIcons(false);
+
+    strip.prop("settings.brushSet");
+
+    strip.useIcons(true);
+    strip.tool("brush.reload_all_defaults()");
+
+
+    panel = tab.panel("Undo");
+
+    let col = panel.col();
+    col.useIcons(false);
+
+    col.prop("settings.limitUndoMem");
+    col.prop("settings.undoMemLimit");
   }
 
   static defineAPI(api) {

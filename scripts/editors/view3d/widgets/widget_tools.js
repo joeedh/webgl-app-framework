@@ -13,7 +13,7 @@ import {SelMask} from '../selectmode.js';
 
 import {View3DFlags} from "../view3d_base.js";
 import {WidgetBase, WidgetSphere, WidgetArrow, WidgetFlags} from './widgets.js';
-import {TranslateOp, ScaleOp, RotateOp} from "../transform/transform_ops.js";
+import {TranslateOp, ScaleOp, RotateOp, InflateOp} from "../transform/transform_ops.js";
 import {calcTransCenter} from '../transform/transform_query.js';
 import {ToolMacro} from "../../../path.ux/scripts/pathux.js";
 import {Icons} from '../../icon_enum.js';
@@ -88,13 +88,53 @@ export class TransformWidget extends WidgetBase {
     return false;
   }
 
+  getTransMatrix() {
+    if (!this.ctx || !this.ctx.view3d) {
+      return new Matrix4();
+    }
+
+    return new Matrix4(this.ctx.view3d.getTransMatrix());
+  }
+
+  getTransAABB() {
+    if (!this.ctx || !this.ctx.view3d) {
+      window.redraw_viewport();
+
+      let d = 0.00001;
+      return [new Vector3([-d, -d, -d]), new Vector3([d, d, d])];
+    }
+
+    let ctx = this.ctx;
+    let view3d = this.view3d;
+    let aabb = this.ctx.view3d.getTransBounds();
+
+    //console.log(new Vector3(aabb[1]).sub(aabb[0]));
+
+    return [new Vector3(aabb[0]), new Vector3(aabb[1])];
+  }
+
   getTransCenter() {
+    if (!this.ctx || !this.ctx.view3d) {
+      window.redraw_viewport();
+      return new Vector3();
+    }
+
     let ret = this.ctx.view3d.getTransCenter();
     let aabb = this.ctx.view3d.getTransBounds();
 
+    if (!aabb) {
+      if (ret) {
+        ret.center = new Vector3();
+        return ret;
+      } else {
+        return {
+          center : new Vector3()
+        };
+      }
+    }
+
     //use aabb midpoint instead of median center
     ret.center = new Vector3(aabb[0]).interp(aabb[1], 0.5);
-    //ret.center = new Vector3(aabb[0]).interp(aabb[1], 0.5);
 
     return ret;
   }
@@ -450,19 +490,23 @@ export class RotateWidget extends TransformWidget {
     this._first = true;
   }
 
-  static widgetDefine() {return {
-    uiname    : "Rotate",
-    name      : "rotate",
-    icon      : Icons.ROTATE,
-    flag      : 0,
-  }}
+  static widgetDefine() {
+    return {
+      uiname: "Rotate",
+      name  : "rotate",
+      icon  : Icons.ROTATE,
+      flag  : 0,
+    }
+  }
 
-  static nodedef() {return {
-    name : "rotate_widget",
-    inputs : Node.inherit({
-      view3d_draw_depend : new DependSocket()
-    })
-  }}
+  static nodedef() {
+    return {
+      name  : "rotate_widget",
+      inputs: Node.inherit({
+        view3d_draw_depend: new DependSocket()
+      })
+    }
+  }
 
   create(ctx) {
     this._first = false;
@@ -486,15 +530,15 @@ export class RotateWidget extends TransformWidget {
         this.onclick(e, axis);
       }
     }
-    for (let i=0; i<this.axes.length; i++) {
-      this.axes[i].axis = i;
+
+    for (let i = 0; i < this.axes.length; i++) {
       this.axes[i].onclick = makeonclick(i);
     }
   }
 
   onclick(e, axis) {
     console.log(axis);
-    let op = RotateOp.invoke(this.ctx, {}); //new RotateOp();
+    let op = new RotateOp();
     let con = new Vector3();
     con[axis] = 1.0;
 
@@ -503,7 +547,8 @@ export class RotateWidget extends TransformWidget {
 
     this.ctx.api.execTool(this.ctx, op);
   }
-  draw(gl, manager, matrix=undefined) {
+
+  draw(gl, manager, matrix = undefined) {
     gl.depthMask(true);
     gl.enable(gl.DEPTH_TEST);
 
@@ -512,25 +557,120 @@ export class RotateWidget extends TransformWidget {
     gl.disable(gl.DEPTH_TEST);
   }
 
-  update(ctx) {
-    if (this._first) {
-      this.create(ctx)
+  update() {
+    if (!this.ctx.view3d) {
+      return;
     }
-    super.update(ctx);
+
+    if (this._first) {
+      this.create(this.ctx)
+    }
+    super.update();
 
     let cent = this.getTransCenter().center;
-
-    this.matrix.makeIdentity();
-    this.matrix.translate(cent[0], cent[1], cent[2]);
-    let scale = 1.5;
-    this.matrix.scale(scale, scale, scale);
+    let aabb = this.getTransAABB();
 
     for (let shape of this.axes) {
       shape.matrix.makeIdentity();
     }
 
-    this.axes[0].matrix.euler_rotate(0.0, Math.PI*0.5, 0.0);
+    let tmat = this.getTransMatrix();
+
+    this.matrix.makeIdentity();
+    this.matrix.translate(cent[0], cent[1], cent[2]);
+
+    let scale = 1.2;
+    this.matrix.scale(scale, scale, scale);
+    this.matrix.multiply(tmat);
+
     this.axes[1].matrix.euler_rotate(Math.PI*0.5, 0.0, 0.0);
-    this.axes[2].matrix.euler_rotate(0.0, 0.0, Math.PI*0.5);
+    this.axes[0].matrix.euler_rotate(0.0, Math.PI*0.5, 0.0);
+
+    for (let shape of this.axes) {
+      shape.matrix.preMultiply(this.matrix);
+    }
+  }
+}
+
+export class InflateWidget extends TransformWidget {
+  constructor() {
+    super();
+
+    this._first = true;
+  }
+
+  static widgetDefine() {
+    return {
+      uiname: "Inflate",
+      name  : "inflate",
+      icon  : Icons.INFLATE,
+      flag  : 0,
+    }
+  }
+
+  static nodedef() {
+    return {
+      name  : "inflate_widget",
+      inputs: Node.inherit({
+        view3d_draw_depend: new DependSocket()
+      })
+    }
+  }
+
+  create(ctx) {
+    this._first = false;
+    let manager = this.manager;
+
+    let view3d = ctx.view3d;
+    if (view3d) {
+      let node = view3d.getGraphNode();
+      node.outputs.onDrawPre.connect(this.inputs.view3d_draw_depend);
+    }
+
+    this.arrow = this.getArrow(new Matrix4(), [1, 1, 1, 1]);
+    this.arrow.onclick = (e) => {
+      this.onclick(e);
+    }
+  }
+
+  onclick(e) {
+    let op = new InflateOp();
+    op.inputs.selmask.setValue(this.ctx.selectMask);
+
+    this.ctx.api.execTool(this.ctx, op);
+  }
+
+  draw(gl, manager, matrix = undefined) {
+    gl.depthMask(true);
+    gl.enable(gl.DEPTH_TEST);
+
+    super.draw(gl, manager, matrix);
+
+    gl.disable(gl.DEPTH_TEST);
+  }
+
+  update() {
+    if (!this.ctx.view3d) {
+      return;
+    }
+
+    if (this._first) {
+      this.create(this.ctx)
+    }
+    super.update();
+
+    let cent = this.getTransCenter().center;
+    let aabb = this.getTransAABB();
+
+    let tmat = this.getTransMatrix();
+
+    this.matrix.makeIdentity();
+    this.matrix.translate(cent[0], cent[1], cent[2]);
+
+    let scale = 1.2;
+    this.matrix.scale(scale, scale, scale);
+    this.matrix.multiply(tmat);
+
+    this.arrow.matrix.load(this.matrix);
   }
 }

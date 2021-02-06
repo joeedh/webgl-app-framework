@@ -381,6 +381,20 @@ export class MeshTransType extends TransDataType {
     return count(ud.cos) + count(ud.nos) + count(ud.fnos) + count(ud.fcos);
   }
 
+  static getOriginMatrix(ctx, list, selmask, spacemode, space_matrix_out) {
+    if (!(selmask & SelMask.GEOM)) {
+      return undefined;
+    }
+
+    let cent = this.getCenter(ctx, list, selmask, spacemode, space_matrix_out);
+
+    if (cent) {
+      let mat = new Matrix4();
+
+      return mat;
+    }
+  }
+
   static undoPre(ctx, elemlist) {
     console.log("bleh");
     let cos = {};
@@ -446,6 +460,9 @@ export class MeshTransType extends TransDataType {
     }
 
     mesh.regenRender();
+    if (mesh.haveNgons) {
+      mesh.regenTessellation();
+    }
   }
 
   static getCenter(ctx, list, selmask, spacemode, space_matrix_out) {
@@ -602,6 +619,10 @@ export class MeshTransType extends TransDataType {
   static update(ctx, elemlist) {
     let mesh = ctx.mesh;
 
+    if (mesh.haveNgons) {
+      mesh.regenTessellation();
+    }
+
     if (elemlist === undefined) {
       mesh.recalcNormals();
       mesh.regenElementsDraw();
@@ -708,7 +729,7 @@ export class MeshTransType extends TransDataType {
       mesh.recalcNormals();
     }
 
-    //mesh.regenTesellation(); //slow, disables partial redraw for that frame
+    //mesh.regenTessellation(); //slow, disables partial redraw for that frame
     mesh.regenElementsDraw();
     mesh.regenRender();
     mesh.outputs.depend.graphUpdate();
@@ -858,6 +879,23 @@ export class ObjectTransType extends TransDataType {
     }
 
     window.updateDataGraph();
+  }
+
+  static getOriginMatrix(ctx, list, selmask, spacemode, space_matrix_out) {
+    let cent = this.getCenter(ctx, list, selmask, spacemode, space_matrix_out);
+
+    if (cent !== undefined) { //getCenter does validation for us
+      let tmat = new Matrix4();
+      let ob = ctx.object;
+
+      if (ob) {
+        tmat.load(ob.outputs.matrix.getValue());
+        tmat.makeRotationOnly();
+        tmat.invert();
+      }
+
+      return tmat;
+    }
   }
 
   static getCenter(ctx, list, selmask, spacemode, space_matrix_out) {

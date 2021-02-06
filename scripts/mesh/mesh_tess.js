@@ -68,8 +68,6 @@ export class CDT {
   }
 
   constrain(tris, verts, inedges, trimHoles) {
-    let vmap = {};
-
     let me = new Mesh();
     let verts2 = [];
 
@@ -151,13 +149,9 @@ export class CDT {
     }
 
     for (let v of verts) {
-      let id = v[2];
-
       v = me.makeVertex(v);
-      v.id = id;
       v.index = i;
 
-      vmap[v.id] = v;
       verts2.push(v);
       i++;
     }
@@ -484,6 +478,7 @@ export class CDT {
     for (let l of this.loops) {
       for (let i=0; i<l.length; i += 3) {
         let v2 = [l[i], l[i+1], l[i+2]];
+
         verts.push(v2);
         this.verts.push(v2);
       }
@@ -545,20 +540,57 @@ export class CDT {
   }
 }
 
+let fco1 = new Vector3();
+let fco2 = new Vector3();
+
+let mtmp = new Matrix4();
+
 function fillFace(f, loopTris) {
-  let m = new Matrix4();
+  let m = mtmp;
+
+  m.makeIdentity();
   m.makeNormalMatrix(f.no);
   m.invert();
 
   let idmap = {};
-  let co = new Vector3();
 
+  let co = fco1;
   let cdt = new CDT();
+
+  function vsmooth(v, fac=0.5) {
+    let co = fco2;
+    let tot = 0;
+
+    co.zero();
+    for (let v2 of v.neighbors) {
+      co.add(v2);
+      tot++;
+    }
+
+    if (tot < 2) {
+      return co.load(v);
+    } else {
+      co.mulScalar(1.0 / tot);
+      co.interp(v, 1.0 - fac);
+      return co;
+    }
+  }
+
+  let loops = [];
+
+  let minx=1e17, miny=1e17;
+  let maxx=-1e17, maxy=-1e17;
 
   for (let list of f.lists) {
     let vs = [];
+
+    loops.push(vs);
+
     for (let l of list) {
-      co.load(l.v).multVecMatrix(m);
+      //co.load(l.v);
+      co.load(vsmooth(l.v, 0.15));
+
+      co.multVecMatrix(m);
       co[2] = 0.0;
 
       idmap[l.eid] = l;
@@ -566,15 +598,30 @@ function fillFace(f, loopTris) {
       //co[0] += (Math.random()-0.5)*0.001;
       //co[1] += (Math.random()-0.5)*0.001;
 
+      minx = Math.min(minx, co[0]);
+      miny = Math.min(miny, co[1]);
+      maxx = Math.max(maxx, co[0]);
+      maxy = Math.max(maxy, co[1]);
+
       vs.push(co[0]);
       vs.push(co[1]);
       vs.push(l.eid);
     }
-
     cdt.addLoop(vs);
   }
 
+  for (let vs of loops) {
+    let sx = maxx - minx, sy = maxy - miny;
+    if (sx > 0 && sy > 0) {
+      for (let i=0; i<vs.length; i += 3) {
+        vs[i] = (vs[i] - minx) / sx;
+        vs[i+1] = (vs[i+1] - miny) / sy;
+      }
+    }
+  }
+
   cdt.generate();
+
   for (let eid of cdt.triangles) {
     let l = idmap[eid];
 
@@ -596,7 +643,26 @@ export function triangulateQuad(mesh, f, lctx, newfaces) {
   let l1 = l, l2 = l.next;
   let l3 = l2.next, l4 = l3.next;
 
-  if (d1 <= d2) {
+  let th1 = math.dihedral_v3_sqr(l1.v, l2.v, l3.v, l4.v);
+  let th2 = math.dihedral_v3_sqr(l4.v, l1.v, l2.v, l3.v);
+  th1 = 2.0 - (th1*0.5 + 0.5);
+  th2 = 2.0 - (th2*0.5 + 0.5);
+
+  d1 *= th1;
+  d2 *= th2;
+
+  let side = d1 <= d2 || mesh.getEdge(l4.v, l2.v) !== undefined;
+
+  /*
+  let limit = 0.001;
+  side = side || math.colinear(l4.v, l1.v, l2.v, limit);
+  side = side || math.colinear(l4.v, l2.v, l3.v, limit);
+
+  side = side && !math.colinear(l1.v, l2.v, l3.v, limit);
+  side = side && !math.colinear(l1.v, l3.v, l4.v, limit);
+  */
+
+  if (side && !mesh.getEdge(l1.v, l3.v)) {
     f1 = mesh.makeTri(l1.v, l2.v, l3.v, lctx);
     f2 = mesh.makeTri(l1.v, l3.v, l4.v, lctx);
 

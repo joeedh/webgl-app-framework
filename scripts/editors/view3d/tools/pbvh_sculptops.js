@@ -8,32 +8,55 @@ import {
   Vector4, closest_point_on_line
 } from '../../../path.ux/scripts/pathux.js';
 import {Grid, GridBase, QRecalcFlags} from '../../../mesh/mesh_grids.js';
-import {CDFlags} from '../../../mesh/customdata.js';
-import {BrushFlags, DynamicsMask, DynTopoFlags, SculptTools, BrushSpacingModes} from '../../../brush/brush.js';
-import {LogContext, Loop, Mesh, MeshFlags, MeshTypes} from '../../../mesh/mesh.js';
+import {CDFlags, CustomDataElem} from '../../../mesh/customdata.js';
+import {
+  BrushFlags, DynTopoFlags, SculptTools, BrushSpacingModes, DynTopoModes, SubdivModes
+} from '../../../brush/brush.js';
+import {getArrayTemp, LogContext, Loop, Mesh, MeshFlags, MeshTypes} from '../../../mesh/mesh.js';
 import {BVHFlags, BVHTriFlags, IsectRet} from '../../../util/bvh.js';
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js';
 import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../mesh/mesh_grids_kdtree.js';
 import {
-  splitEdgesSmart, splitEdgesSimple, splitEdgesSmart2, splitEdgesPreserveQuads, countNewSplitEdges
+  splitEdgesSmart, splitEdgesSimple, splitEdgesSimple2, splitEdgesSmart2, splitEdgesPreserveQuads, countNewSplitEdges
 } from '../../../mesh/mesh_subdivide.js';
 import {
-  BrushProperty, calcConcave, PaintOpBase, PaintSample, PaintSampleProperty, SymAxisMap
+  BrushProperty, calcConcave, PaintOpBase, PaintSample, PaintSampleProperty, SymAxisMap,
+  getBVH, regenBVH
 } from './pbvh_base.js';
 import {trianglesToQuads, triangulateFan, TriQuadFlags} from '../../../mesh/mesh_utils.js';
 import {applyTriangulation, triangulateFace, triangulateQuad} from '../../../mesh/mesh_tess.js';
 import {MeshLog} from '../../../mesh/mesh_log.js';
-
+import {TetMesh} from '../../../tet/tetgen.js';
 import {MultiGridSmoother} from '../../../mesh/multigrid_smooth.js';
 import {getCurveVerts} from '../../../mesh/mesh_curvature.js';
+import {TexUserFlags, TexUserModes} from '../../../texture/proceduralTex.js';
+import {closest_bez3_v2, dbez3_v2} from '../../../util/bezier.js';
+import {tetSolve} from '../../../tet/tet_deform.js';
 
-const GEID                                                               = 0, GEID2                                                    = 1, GDIS = 2, GSX = 3, GSY = 4, GSZ = 5,
-      GAX = 6, GAY = 7, GAZ = 8, GOFFX = 9, GOFFY = 10, GOFFZ = 11, GTOT = 12;
+//grab data field definition
+const GEID = 0, GEID2 = 1, GDIS = 2, GSX = 3, GSY = 4, GSZ = 5;
+const GAX = 6, GAY = 7, GAZ = 8, GOFFX = 9, GOFFY = 10, GOFFZ = 11, GTOT = 12;
 
 let UGTOT = 9;
 
 let ENABLE_DYNTOPO_EDGE_WEIGHTS = true;
 let DYNTOPO_T_GOAL = 7;
+
+let edist_coll_tmp1 = new Vector3();
+let edist_coll_tmp2 = new Vector3();
+let edist_coll_tmp3 = new Vector3();
+let edist_coll_tmp4 = new Vector3();
+
+let ENABLE_RAKE = true;
+let ENABLE_CURVATURE_RAKE = true;
+
+window._disableRake = function (curvatureOnly = false, mode = false) {
+  ENABLE_CURVATURE_RAKE = mode;
+
+  if (!curvatureOnly) {
+    ENABLE_RAKE = mode;
+  }
+}
 
 /*
 let GVEID = 0, GVTOT=1;
@@ -112,6 +135,9 @@ export class PaintOp extends PaintOpBase {
   constructor() {
     super();
 
+    this.edist_subd = this.edist_subd.bind(this);
+    this.edist_coll = this.edist_coll.bind(this);
+
     this._last_enable_mres = "";
 
     this.dynTopoRand = new util.MersenneRandom();
@@ -127,6 +153,7 @@ export class PaintOp extends PaintOpBase {
     this.last_vec = new Vector3();
 
     this.smoother = undefined;
+    this.task = undefined;
   }
 
   static tooldef() {
@@ -135,8 +162,10 @@ export class PaintOp extends PaintOpBase {
       toolpath: "bvh.paint",
       is_modal: true,
       inputs  : ToolOp.inherit({
-        grabData: new FloatArrayProperty(),
-        grabCo  : new Vec3Property(),
+        grabData        : new FloatArrayProperty(),
+        grabCo          : new Vec3Property(),
+        grabRadiusFactor: new FloatProperty(2.5),
+        grabTh          : new FloatProperty(0.0),
 
         dynTopoLength   : new FloatProperty(25),
         dynTopoDepth    : new IntProperty(20),
@@ -157,20 +186,31 @@ export class PaintOp extends PaintOpBase {
 
     let cd_orig;
     let haveGrids = cd_grid >= 0;
+    let initverts = false;
 
     if (haveGrids) {
       cd_orig = mesh.loops.customData.getNamedLayerIndex("__orig_co", "vec3");
+
       if (cd_orig < 0) {
         let layer = mesh.loops.addCustomDataLayer("vec3", "__orig_co");
         layer.flag |= CDFlags.TEMPORARY;
         cd_orig = layer.index;
+        initverts = true;
       }
     } else {
       cd_orig = mesh.verts.customData.getNamedLayerIndex("__orig_co", "vec3");
+
       if (cd_orig < 0) {
         let layer = mesh.verts.addCustomDataLayer("vec3", "__orig_co");
         layer.flag |= CDFlags.TEMPORARY;
         cd_orig = layer.index;
+        initverts = true;
+      }
+    }
+
+    if (initverts) {
+      for (let v of mesh.verts) {
+        v.customData[cd_orig].value.load(v);
       }
     }
 
@@ -180,6 +220,10 @@ export class PaintOp extends PaintOpBase {
   calcUndoMem(ctx) {
     let ud = this._undo;
     let tot = 0;
+
+    if (!ud) {
+      return 0;
+    }
 
     tot += ud.vmap.size*(8 + 3*8);
     tot += ud.gmap.size*(16*8); //approximate size of gmap
@@ -193,6 +237,8 @@ export class PaintOp extends PaintOpBase {
   undoPre(ctx) {
     let mesh;
     if (ctx.object && ctx.object.data instanceof Mesh) {
+      mesh = ctx.object.data;
+    } else if (ctx.object && ctx.object.data instanceof TetMesh) {
       mesh = ctx.object.data;
     }
 
@@ -238,7 +284,7 @@ export class PaintOp extends PaintOpBase {
 
     let cd_mask = undo.cd_mask;
 
-    let bvh = mesh.bvh;
+    let bvh = getBVH(ctx);
     let cd_node;
 
     if (bvh) {
@@ -254,7 +300,7 @@ export class PaintOp extends PaintOpBase {
       let log = this._undo.log;
 
       log.undo(mesh);
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.regenBVH();
       bvh = mesh.getBVH();
     }
@@ -265,7 +311,7 @@ export class PaintOp extends PaintOpBase {
       for (let i = 0; i < gd.length; i += UGTOT) {
         let l = gd[i], index = gd[i + 1], r = gd[i + 2], g = gd[i + 3], b = gd[i + 4], a = gd[i + 5];
 
-        l = mesh.eidmap[l];
+        l = mesh.eidMap.get(l);
         if (!l || !(l instanceof Loop)) {
           console.error("undo error");
           continue;
@@ -296,7 +342,7 @@ export class PaintOp extends PaintOpBase {
       }
 
       for (let eid of undo.vmap.keys()) {
-        let v = mesh.eidmap[eid];
+        let v = mesh.eidMap.get(eid);
 
         if (v) {
           v.flag |= MeshFlags.UPDATE;
@@ -328,7 +374,7 @@ export class PaintOp extends PaintOpBase {
       for (let i = 0; i < gd.length; i += UGTOT) {
         let l = gd[i], index = gd[i + 1], mask = gd[i + 2];
 
-        l = mesh.eidmap[l];
+        l = mesh.eidMap.get(l);
         if (!l || !(l instanceof Loop)) {
           console.error("undo error");
           continue;
@@ -348,7 +394,7 @@ export class PaintOp extends PaintOpBase {
       }
 
       for (let [veid, mask] of mmap) {
-        let v = mesh.eidmap[veid];
+        let v = mesh.eidMap.get(veid);
 
         if (!v) {
           continue;
@@ -369,7 +415,7 @@ export class PaintOp extends PaintOpBase {
         let l = gd[i], index = gd[i + 1], x = gd[i + 2], y = gd[i + 3], z = gd[i + 4];
         let nx = gd[i + 5], ny = gd[i + 6], nz = gd[i + 7];
 
-        l = mesh.eidmap[l];
+        l = mesh.eidMap.get(l);
         if (!l || !(l instanceof Loop)) {
           console.error("undo error");
           continue;
@@ -394,7 +440,7 @@ export class PaintOp extends PaintOpBase {
       }
 
       for (let eid of undo.vmap.keys()) {
-        let v = mesh.eidmap[eid];
+        let v = mesh.eidMap.get(eid);
 
         if (v) {
           v.flag |= MeshFlags.UPDATE;
@@ -568,12 +614,18 @@ export class PaintOp extends PaintOpBase {
   sampleViewRay(rendermat, _mpos, view, origin, pressure, invert, isInterp) {
     let ctx = this.modal_ctx;
     let view3d = ctx.view3d, mesh = ctx.mesh;
+    let tetmesh = ctx.tetmesh;
 
-    if (!mesh || !view3d) {
+    let delayMode = this.hasSampleDelay();
+
+    if ((!mesh && !tetmesh) || !view3d) {
       return;
     }
 
-    let bvh = mesh.getBVH(false);
+
+    let the_mesh = mesh || tetmesh;
+
+    let bvh = getBVH(the_mesh);
     let brush = this.inputs.brush.getValue();
     let mode = brush.tool;
 
@@ -591,30 +643,36 @@ export class PaintOp extends PaintOpBase {
     let strength = brush.strength;
     let planeoff = brush.planeoff;
     let autosmooth = brush.autosmooth;
+    let autosmoothInflate = brush.autosmoothInflate;
     let concaveFilter = brush.concaveFilter;
     let pinch = brush.pinch;
     let smoothProj = brush.smoothProj;
+    let rake = brush.rake;
+    let sharp = brush.sharp;
 
     strength = getchannel("strength", strength);
     autosmooth = getchannel("autosmooth", autosmooth);
+    autosmoothInflate = getchannel("autosmoothInflate", autosmoothInflate);
     concaveFilter = getchannel("concaveFilter", concaveFilter);
     pinch = getchannel("pinch", pinch);
     smoothProj = getchannel("smoothProj", smoothProj);
-    let rake = getchannel("rake", brush.rake);
+    rake = getchannel("rake", rake);
+    sharp = getchannel("sharp", sharp);
 
     let haveOrigData = PaintOpBase.needOrig(brush);
     let cd_orig = -1;
-    let cd_grid = GridBase.meshGridOffset(mesh);
+
+    let cd_grid = mesh ? GridBase.meshGridOffset(mesh) : -1;
 
     if (haveOrigData) {
-      cd_orig = this.initOrigData(mesh);
+      cd_orig = this.initOrigData(the_mesh);
     }
 
     let p3 = new Vector4(isect.p);
     p3[3] = 1.0;
 
     let matrix = new Matrix4(ob.outputs.matrix.getValue());
-    p3.multVecMatrix(view3d.activeCamera.rendermat);
+    p3.multVecMatrix(rendermat);
 
     if (mode !== SculptTools.SNAKE && mode !== SculptTools.GRAB) {
       vec = new Vector3(isect.tri.v1.no);
@@ -661,7 +719,7 @@ export class PaintOp extends PaintOpBase {
 
       if (mode === SculptTools.GRAB) {
         this.inputs.grabCo.setValue(isect.p);
-        this.initGrabData(mesh, isect.p, radius);
+        this.initGrabData(the_mesh, isect.p, radius*this.inputs.grabRadiusFactor.getValue());
       }
 
       return;
@@ -688,7 +746,7 @@ export class PaintOp extends PaintOpBase {
 
     //console.log("STEPS", steps, radius, spacing, this._first);
 
-    const DRAW                                                            = SculptTools.DRAW, SHARP                                  = SculptTools.SHARP, FILL = SculptTools.FILL,
+    const DRAW                                                            = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
           SMOOTH                                                          = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
           PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
           PAINT_SMOOTH                                                    = SculptTools.PAINT_SMOOTH, GRAB                   = SculptTools.GRAB;
@@ -697,110 +755,140 @@ export class PaintOp extends PaintOpBase {
       invert ^= true;
     }
 
-    let ds = 1.0 / steps;
+    let this2 = this;
 
-    for (let i = 0; i < steps; i++) {
-      let s = (i + 1)/steps;
+    let task = (function* () {
+      let ds = 1.0/steps;
 
-      let isplane = false;
+      for (let i = 0; i < steps; i++) {
+        let s = (i + 1)/steps;
 
-      switch (mode) {
-        case FILL:
-        case CLAY:
-        case SCRAPE:
-          isplane = true;
-          break;
-        default:
-          isplane = false;
-          break;
-      }
+        let isplane = false;
 
-      let sco = new Vector4(this.last_p).interp(isect.p, s);
-      sco[3] = 1.0;
-      view3d.project(sco);
+        switch (mode) {
+          case FILL:
+          case CLAY:
+          case SCRAPE:
+            isplane = true;
+            break;
+          default:
+            isplane = false;
+            break;
+        }
 
-      let p2 = new Vector3(this.last_p).interp(isect.p, s);
-      let op2 = new Vector4(this.last_origco).interp(origco, s);
+        let sco = new Vector4(this2.last_p).interp(isect.p, s);
+        sco[3] = 1.0;
+        view3d.project(sco);
 
-      p3.load(p2);
-      p3[3] = 1.0;
-      p3.multVecMatrix(view3d.activeCamera.rendermat);
+        let p2 = new Vector3(this2.last_p).interp(isect.p, s);
+        let op2 = new Vector4(this2.last_origco).interp(origco, s);
 
-      let w = p3[3]*matrix.$matrix.m11;
+        p3.load(p2);
+        p3[3] = 1.0;
+        p3.multVecMatrix(rendermat);
 
-      let vec2 = new Vector3(this.last_vec).interp(vec, s);
+        let w = p3[3]*matrix.$matrix.m11;
 
-      //view3d.makeDrawLine(isect.p, p2, [1, 0, 0, 1]);
+        let vec2 = new Vector3(this2.last_vec).interp(vec, s);
 
-      //console.log(isect, isect.tri);
+        //view3d.makeDrawLine(isect.p, p2, [1, 0, 0, 1]);
 
-      //vec.load(view);
+        //console.log(isect, isect.tri);
 
-      let esize = brush.dynTopo.edgeSize;
+        //vec.load(view);
 
-      esize /= view3d.glSize[1]; //Math.min(view3d.glSize[0], view3d.glSize[1]);
-      esize *= w;
+        let esize = brush.dynTopo.edgeSize;
+        let emode = brush.dynTopo.edgeMode;
 
-      let radius2 = radius + (this.last_radius - radius)*s;
-
-      if (invert) {
-        if (isplane) {
-          //planeoff = -planeoff;
+        if (emode === DynTopoModes.SCREEN) {
+          esize /= view3d.glSize[1]; //Math.min(view3d.glSize[0], view3d.glSize[1]);
+          esize *= w;
         } else {
-          //strength = -strength;
+          esize *= 0.1;
+        }
+
+        let radius2 = radius + (this2.last_radius - radius)*s;
+
+        if (invert) {
+          if (isplane) {
+            //planeoff = -planeoff;
+          } else {
+            //strength = -strength;
+          }
+        }
+
+        let ps = new PaintSample();
+
+        ps.smoothProj = smoothProj;
+        ps.pinch = pinch;
+        ps.sharp = sharp;
+        ps.sp.load(sco);
+        ps.rake = rake;
+        ps.invert = invert;
+        ps.origp.load(op2);
+        ps.p.load(p2);
+        ps.p[3] = w;
+        ps.viewPlane.load(view).normalize();
+        ps.viewvec.load(view).normalize();
+        ps.dstrokeS = ds;
+        ps.strokeS = 0; //will be set from lastps below
+        ps.isInterp = isInterp || (i > 0 && i < steps - 1);
+
+        ps.rendermat.load(rendermat);
+
+        ps.concaveFilter = concaveFilter;
+        ps.autosmooth = autosmooth;
+        ps.autosmoothInflate = autosmoothInflate;
+        ps.esize = esize;
+        ps.vec.load(vec2);
+        ps.planeoff = planeoff;
+        ps.radius = radius2;
+        ps.strength = strength;
+
+        let lastps;
+        let data = this2.inputs.samples.data;
+
+        if (this2.lastps1) {
+          lastps = this2.lastps1;
+
+          ps.strokeS = lastps.strokeS + ds;
+
+          ps.dsp.load(ps.sp).sub(lastps.sp);
+          ps.angle = Math.atan2(ps.dsp[1], ps.dsp[0]);
+
+          lastps.futureAngle = ps.angle;
+
+          ps.dvec.load(ps.vec).sub(lastps.vec);
+          ps.dp.load(ps.p).sub(lastps.p);
+        }
+
+        let runps = this2.lastps2;
+
+        if (runps) {
+          runps.futureAngle = lastps.angle;
+          data.push(runps);
+        }
+
+        this2.lastps2 = this2.lastps1;
+        this2.lastps1 = ps;
+
+        this2.inputs.samples.push(ps);
+
+        if (this2.modalRunning && runps) {
+          for (let iter of this2.execDotWithMirror_task(ctx, runps, lastps)) {
+            yield;
+          }
         }
       }
-
-      let ps = new PaintSample();
-
-      ps.smoothProj = smoothProj;
-      ps.pinch = pinch;
-      ps.sp.load(sco);
-      ps.rake = rake;
-      ps.invert = invert;
-      ps.origp.load(op2);
-      ps.p.load(p2);
-      ps.p[3] = w;
-      ps.viewPlane.load(view).normalize();
-      ps.dstrokeS = ds;
-      ps.strokeS = 0; //will be set from lastps below
-      ps.isInterp = isInterp || (i > 0 && i < steps-1);
-
-      ps.concaveFilter = concaveFilter;
-      ps.autosmooth = autosmooth;
-      ps.esize = esize;
-      ps.vec.load(vec2);
-      ps.planeoff = planeoff;
-      ps.radius = radius2;
-      ps.strength = strength;
-
-      let lastps;
-      let data = this.inputs.samples.data;
-
-      if (data.length > 0) {
-        lastps = data[data.length - 1];
-
-        ps.strokeS = lastps.strokeS + ds;
-
-        ps.dsp.load(ps.sp).sub(lastps.sp);
-        ps.angle = Math.atan2(ps.dsp[1], ps.dsp[0]);
-
-        ps.dvec.load(ps.vec).sub(lastps.vec);
-        ps.dp.load(ps.p).sub(lastps.p);
-      }
-
-      this.inputs.samples.push(ps);
-
-      if (this.modalRunning) {
-        this.execDotWithMirror(ctx, ps, lastps);
-      }
-    }
+    })();
 
     this.last_mpos.load(mpos);
     this.last_p.load(isect.p);
     this.last_origco.load(origco);
     this.last_vec.load(vec);
     this.last_r = radius;
+
+    return task;
   }
 
   initGrabData(mesh, co, radius) {
@@ -968,7 +1056,7 @@ export class PaintOp extends PaintOpBase {
   }
 
   _ensureGrabEidMap(ctx) {
-    let mesh = ctx.mesh;
+    let mesh = ctx.mesh || ctx.tetmesh;
 
     if (!this.grabEidMap) {
       let gdists = this.grabDists = [];
@@ -985,7 +1073,7 @@ export class PaintOp extends PaintOpBase {
 
           gdists.push(dis);
 
-          l = mesh.eidmap[l];
+          l = mesh.eidMap.get(l);
           if (!l) {
             console.error("error, missing loop " + l);
             continue;
@@ -1005,7 +1093,7 @@ export class PaintOp extends PaintOpBase {
         for (let i = 0; i < gd.length; i += GTOT) {
           let eid = gd[i], dis = gd[i + 2];
 
-          let v = mesh.eidmap[eid];
+          let v = mesh.eidMap.get(eid);
           if (!v) {
             console.warn("Missing vertex error: " + eid + " was missing");
             continue;
@@ -1019,15 +1107,24 @@ export class PaintOp extends PaintOpBase {
   }
 
   execDotWithMirror(ctx, ps, lastps) {
+    for (let iter of this.execDotWithMirror_task(ctx, ps, lastps)) {
+
+    }
+  }
+
+  * execDotWithMirror_task(ctx, ps, lastps) {
     let sym = this.inputs.symmetryAxes.getValue();
 
     if (!sym) {
-      this.execDot(ctx, ps, lastps);
+      for (let iter of this.execDot_task(ctx, ps, lastps)) {
+        yield;
+      }
       return;
     }
 
-
-    this.execDot(ctx, ps.copy(), lastps ? lastps.copy() : undefined);
+    for (let iter of this.execDot_task(ctx, ps.copy(), lastps ? lastps.copy() : undefined)) {
+      yield;
+    }
 
     let offs = SymAxisMap[sym];
 
@@ -1055,7 +1152,9 @@ export class PaintOp extends PaintOpBase {
       gco.mul(off);
       this.inputs.grabCo.setValue(gco);
 
-      this.execDot(ctx, mps, mlastps);
+      for (let iter of this.execDot_task(ctx, mps, mlastps)) {
+        yield;
+      }
 
       this.inputs.grabCo.setValue(orig);
     }
@@ -1069,13 +1168,13 @@ export class PaintOp extends PaintOpBase {
     let lastps;
 
     if (!this.modalRunning) {
-      let mesh = ctx.mesh;
+      let mesh = ctx.mesh || ctx.tetmesh;
       let brush = this.inputs.brush.getValue();
 
       let haveOrigData = PaintOpBase.needOrig(brush);
 
       if (haveOrigData) {
-        this.initOrigData(mesh);
+        this._checkOrig(ctx);
       }
 
       if (mesh) {
@@ -1103,8 +1202,8 @@ export class PaintOp extends PaintOpBase {
     let gmap = this._undo.gmap;
     let vmap = this._undo.vmap;
 
-    if (cd_grid >= 0 && mesh.eidmap[v.loopEid]) {
-      let l = mesh.eidmap[v.loopEid];
+    if (cd_grid >= 0 && mesh.eidMap.has(v.loopEid)) {
+      let l = mesh.eidMap.get(v.loopEid);
       let grid = l.customData[cd_grid];
 
       if (grid instanceof Grid) {
@@ -1133,6 +1232,49 @@ export class PaintOp extends PaintOpBase {
     return v.customData[cd_orig].value;
   }
 
+  calcNormalVariance(mesh, bvh, co, radius) {
+    let tris = bvh.closestTris(co, radius);
+
+    console.log(tris);
+    //how much do normals cancel each other out?
+    let n = new Vector3();
+    let tan = new Vector3();
+    let tot = 0;
+
+    let tan2 = new Vector3();
+
+    let cd_curv = getCurveVerts(mesh);
+
+    for (let t of tris) {
+      if (!t.v1) {
+        continue;
+      }
+
+      let cv = t.v1.customData[cd_curv];
+      cv.update(t.v1);
+
+      //tan2.load(cv.tan).normalize();
+      tan.addFac(cv.tan, t.area);
+      n.addFac(t.no, t.area);
+
+      tot += t.area;
+    }
+
+    if (!tot) {
+      return undefined;
+    }
+
+    tan.mulScalar(1.0/tot);
+    n.mulScalar(1.0/tot);
+
+    console.log(n.vectorLength(), tan.vectorLength(), tan);
+
+    return {
+      n,
+      t: tan
+    }
+  }
+
   sampleNormal(ctx, mesh, bvh, p, radius) {
     let vs = bvh.closestVerts(p, radius);
 
@@ -1146,10 +1288,18 @@ export class PaintOp extends PaintOpBase {
     return no;
   }
 
-  execDot(ctx, ps, lastps) {//ctx, p3, vec, extra, lastp3 = p3) {
+  execDot(ctx, ps, lastps) {
+    for (let iter of this.execDot_task(ctx, ps, lastps)) {
+
+    }
+  }
+
+  * execDot_task(ctx, ps, lastps) {//ctx, p3, vec, extra, lastp3 = p3) {
     let brush = this.inputs.brush.getValue();
     let falloff = brush.falloff;
+    let falloff2 = brush.flag & BrushFlags.USE_LINE_CURVE ? brush.falloff2 : brush.falloff;
     let haveTex = brush.texUser.texture !== undefined;
+    let texUser = brush.texUser;
     let texScale = 1.0;
     let tex = brush.texUser.texture;
 
@@ -1157,16 +1307,22 @@ export class PaintOp extends PaintOpBase {
       this._ensureGrabEidMap(ctx);
     }
 
-    const DRAW                                                            = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL        = SculptTools.FILL,
-          SMOOTH                                                          = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE    = SculptTools.SCRAPE,
+    const DRAW                                                            = SculptTools.DRAW,
+          SHARP                                                           = SculptTools.SHARP,
+          FILL                                                            = SculptTools.FILL,
+          SMOOTH                                                          = SculptTools.SMOOTH,
+          CLAY                                                            = SculptTools.CLAY,
+          SCRAPE                                                          = SculptTools.SCRAPE,
           PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
-          PAINT_SMOOTH                                                    = SculptTools.PAINT_SMOOTH, GRAB = SculptTools.GRAB,
+          PAINT_SMOOTH                                                    = SculptTools.PAINT_SMOOTH,
+          GRAB                                                            = SculptTools.GRAB,
           COLOR_BOUNDARY                                                  = SculptTools.COLOR_BOUNDARY,
           MASK_PAINT                                                      = SculptTools.MASK_PAINT,
           WING_SCRAPE                                                     = SculptTools.WING_SCRAPE,
-          PINCH                                                           = SculptTools.PINCH;
+          PINCH                                                           = SculptTools.PINCH,
+          TOPOLOGY                                                        = SculptTools.TOPOLOGY;
 
-    if (!ctx.object || !(ctx.object.data instanceof Mesh)) {
+    if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
       console.log("ERROR!");
       return;
     }
@@ -1246,7 +1402,6 @@ export class PaintOp extends PaintOpBase {
     let cd_mask;
     let haveQuadEdges = brush.dynTopo.flag & DynTopoFlags.DRAW_TRIS_AS_QUADS;
 
-
     let haveGrids = bvh.cd_grid >= 0;
     let cd_grid = bvh.cd_grid;
 
@@ -1254,6 +1409,27 @@ export class PaintOp extends PaintOpBase {
       cd_mask = mesh.loops.customData.getLayerIndex("mask");
     } else {
       cd_mask = mesh.verts.customData.getLayerIndex("mask");
+    }
+
+
+    let cd_curv = -1;
+
+    let rakeCurveFac = 0.0;
+
+    const doCurvRake = ENABLE_CURVATURE_RAKE && (!haveGrids && (ps.rake > 0.0 || ps.pinch > 0.0 || mode === WING_SCRAPE));
+    const rakeCurvePosXOnly = brush.flag & BrushFlags.CURVE_RAKE_ONLY_POS_X;
+
+    let sharp = ps.sharp;
+    if (ps.invert && mode === TOPOLOGY) {
+      sharp += ps.autosmooth + Math.abs(ps.strength);
+      ps.autosmooth = 0.0;
+    } else if (ps.invert && mode === SMOOTH) {
+      sharp = Math.abs(ps.strength);
+    }
+
+    if (doCurvRake || sharp !== 0.0) {
+      cd_curv = getCurveVerts(mesh);
+      rakeCurveFac = brush.rakeCurvatureFactor;
     }
 
     if (mode === MASK_PAINT && cd_mask < 0) {
@@ -1267,8 +1443,13 @@ export class PaintOp extends PaintOpBase {
       }
     }
 
-    let doTopo = mode === SculptTools.TOPOLOGY || (brush.dynTopo.flag & DynTopoFlags.ENABLED);
-    doTopo = doTopo && !this.inputs.useMultiResDepth.getValue();
+    let isPaintMode = mode === PAINT || mode === PAINT_SMOOTH;
+    let isMaskMode = mode === MASK_PAINT;
+
+    let doTopo = mode === TOPOLOGY || (brush.dynTopo.flag & DynTopoFlags.ENABLED);
+    doTopo = doTopo && (!haveGrids || !this.inputs.useMultiResDepth.getValue());
+    doTopo = doTopo && !(isPaintMode || isMaskMode);
+    doTopo = doTopo && !(mesh instanceof TetMesh);
 
     //console.error("strokeS", ps.strokeS, ps.dstrokeS);
 
@@ -1283,15 +1464,12 @@ export class PaintOp extends PaintOpBase {
       let spacing = 0.5*brush.dynTopo.spacing;
 
       p1 = ~~(p1/spacing);
-      p2 =  ~~(p2 / spacing);
+      p2 = ~~(p2/spacing);
 
       if (lastps && p1 === p2) {
         doTopo = false;
       }
     }
-
-    let isPaintMode = mode === PAINT || mode === PAINT_SMOOTH;
-    let isMaskMode = mode === MASK_PAINT;
 
     let planeoff = ps.planeoff;
     let pinchpower = 1.0;
@@ -1323,6 +1501,7 @@ export class PaintOp extends PaintOpBase {
     let wvec1 = new Vector3();
     let wvec2 = new Vector3();
     let wtan = new Vector3();
+    let wtmp0 = new Vector3();
     let wtmp1 = new Vector3();
     let wtmp2 = new Vector3();
     let wtmp3 = new Vector3();
@@ -1418,6 +1597,8 @@ export class PaintOp extends PaintOpBase {
       //strength *= 2.0;
     } else if (mode === GRAB) {
       strength *= 5.0;
+      radius *= this.inputs.grabRadiusFactor.getValue();
+
       isplane = false;
     } else if (mode === SNAKE) {
       isplane = false;
@@ -1480,6 +1661,18 @@ export class PaintOp extends PaintOpBase {
 
     let p3 = new Vector3(ps.p);
 
+    let useLinePlane = brush.flag & BrushFlags.LINE_FALLOFF;
+    if (ps.dp.dot(ps.dp) === 0.0) {
+      useLinePlane = false;
+    }
+
+    let linePlane = new Vector3(ps.dp).cross(ps.viewPlane).normalize();
+    let linePlane2 = new Vector3(ps.dp);
+
+    //move into view plane
+    let d = linePlane2.dot(ps.viewPlane);
+    linePlane2.addFac(ps.viewPlane, -d).normalize();
+
     //query bvh tree
     let vs;
     let gd;
@@ -1487,7 +1680,111 @@ export class PaintOp extends PaintOpBase {
     let goffs = [];
     let gidxs = [];
 
-    if (mode === GRAB) {
+    if (mode === GRAB && doTopo) {
+      let gdists = this.grabDists = [];
+
+      let co = this.inputs.grabCo.getValue(); //ps.origp;
+
+      vs = bvh.closestOrigVerts(co, radius);
+      console.log("VS", vs);
+      gd = [];
+
+      let axismap = SymAxisMap;
+      let sym = this.inputs.symmetryAxes.getValue();
+
+      let co2 = new Vector3();
+      let sign = new Vector3();
+      let add = new Vector3();
+
+      for (let v of vs) {
+        let dis = v.customData[cd_orig].value.vectorDistance(co);
+        let offs = axismap[sym];
+
+        add.zero();
+        sign[0] = sign[1] = sign[2] = 1.0;
+
+        if (sym && offs) {
+          for (let off of offs) {
+            for (let i = 0; i < 3; i++) {
+              if (off[i] > 0) {
+                continue;
+              }
+
+              //dis2 = Math.min(dis2, Math.abs(v[i]-co2[i]));
+              let f = Math.abs(co[i]) + 0.00001;
+              let ratio = radius/f;
+
+              //add[i] = -Math.abs(co[i]);
+              sign[i] *= ratio;
+            }
+          }
+        }
+
+        if (offs) {
+          for (let off of offs) {
+            co2.load(co).mul(off);
+
+            let dis2 = v.vectorDistance(co2);
+            if (dis2 < dis) {
+              dis = dis2;
+              sign.load(off);
+              add.zero();
+
+              for (let i = 0; i < 3; i++) {
+                if (off[i] > 0) {
+                  continue;
+                }
+
+                //dis2 = Math.min(dis2, Math.abs(v[i]-co2[i]));
+                let f = Math.abs(co2[i]) + 0.00001;
+                let ratio = radius/f;
+
+                //add[i] = -Math.abs(co[i]);
+                sign[i] *= ratio;
+              }
+
+              dis = dis2;
+            }
+          }
+        }
+
+        let i = gd.length;
+
+        gd.push(v.eid);
+        gd.push(0);
+        gd.push(dis);
+
+        gd.push(sign[0]);
+        gd.push(sign[1]);
+        gd.push(sign[2]);
+
+        gd.push(add[0]);
+        gd.push(add[1]);
+        gd.push(add[2]);
+
+        gd.push(0);
+        gd.push(0);
+        gd.push(0);
+
+        let jtot = GTOT - (gd.length - i);
+
+        for (let j = 0; j < jtot; j++) {
+          gd.push(0);
+        }
+
+        signs.push(sign[0]);
+        signs.push(sign[1]);
+        signs.push(sign[2]);
+
+        gdists.push(dis);
+
+        goffs.push(0);
+        goffs.push(0);
+        goffs.push(0);
+
+        gidxs.push(i);
+      }
+    } else if (mode === GRAB) {
       let gmap = this.grabEidMap;
       gd = this.inputs.grabData.getValue();
       vs = new Set();
@@ -1519,7 +1816,7 @@ export class PaintOp extends PaintOpBase {
         }
       } else {
         for (let i = 0; i < gd.length; i += GTOT) {
-          let v = mesh.eidmap[gd[i]];
+          let v = mesh.eidMap.get(gd[i]);
 
           if (!v) {
             console.warn("Missing vert " + gd[i]);
@@ -1546,7 +1843,30 @@ export class PaintOp extends PaintOpBase {
         }
       }
     } else {
-      vs = bvh.closestVerts(p3, radius);
+      if (brush.flag & BrushFlags.SQUARE) {
+        let mat = new Matrix4();
+
+        let linePlane3 = new Vector3(linePlane);
+        let d = linePlane3.dot(ps.viewPlane);
+        linePlane3.addFac(ps.viewPlane, -d).normalize();
+
+        let bad = ps.dp.dot(ps.dp) < 0.00001 || linePlane3.dot(linePlane3) < 0.00001;
+        bad = bad || linePlane3.vectorDistanceSqr(ps.viewPlane) < 0.0001;
+        bad = bad || Math.abs(linePlane3.dot(ps.viewPlane)) > 0.001;
+
+        if (bad) {
+          return; //do nothing
+        }
+
+        ps.viewPlane.normalize();
+
+        mat.makeNormalMatrix(ps.viewPlane, linePlane3);
+        mat.invert();
+
+        vs = bvh.closestVertsSquare(p3, radius, mat);
+      } else {
+        vs = bvh.closestVerts(p3, radius);
+      }
     }
 
     if (doTopo && !haveGrids) {
@@ -1555,6 +1875,10 @@ export class PaintOp extends PaintOpBase {
 
       for (let v of vs) {
         log.ensure(v);
+
+        for (let v2 of v.neighbors) {
+          log.ensure(v2);
+        }
       }
     }
 
@@ -1573,11 +1897,11 @@ export class PaintOp extends PaintOpBase {
       }
     }
 
-    let rmat;
+    let rmat = new Matrix4();
+
+    let firstps = this.inputs.samples.data[0];
 
     if (mode === SNAKE && lastps) {
-      rmat = new Matrix4();
-
       let t1 = new Vector3(ps.dp).normalize();
       let t2 = new Vector3(lastps.dp).normalize();
       let t3 = new Vector3(t2).cross(t1);
@@ -1611,8 +1935,177 @@ export class PaintOp extends PaintOpBase {
         tmat.makeIdentity().translate(-c[0], -c[1], -c[2]);
         rmat.multiply(tmat);
       }
-    } else if (mode === SNAKE) {
-      rmat = new Matrix4();
+    } else if (0) { //mode === GRAB && firstps && firstps !== ps && lastps) {
+      let grabco = this.inputs.grabCo.getValue();
+
+      let t1 = new Vector3(ps.p).sub(grabco);
+      let d = t1.dot(ps.viewPlane);
+      t1.addFac(ps.viewPlane, -d).normalize();
+
+      let t2 = new Vector3(lastps.p).sub(grabco);
+      d = t2.dot(ps.viewPlane);
+      t2.addFac(ps.viewPlane, -d).normalize();
+
+      let axis = new Vector3(t1).cross(t2).normalize();
+
+      let quat = new Quat();
+
+      //grabco = ps.origp;
+
+      let th = t1.dot(t2);
+      th = Math.acos(th*0.9999)*0.1;
+      if (axis.dot(ps.viewPlane) < 0.0) {
+        th = -th;
+      }
+
+      th += this.inputs.grabTh.getValue();
+
+      this.inputs.grabTh.setValue(th);
+
+      if (isNaN(th)) {
+        console.warn("NaN!", "th", th, "t1", t1, "t2", t2);
+        th = 0.0;
+      }
+
+      console.log(grabco);
+
+      axis = ps.viewPlane;
+      quat.axisAngleToQuat(axis, -th);
+      quat.toMatrix(rmat);
+
+      //let tmat = new Matrix4();
+      //tmat.translate(-grabco[0], -grabco[1], -grabco[2]);
+
+      //rmat.multiply(tmat);
+      //tmat.invert();
+      //rmat.preMultiply(tmat);
+      /*
+
+      on factor;
+      load_package avector;
+
+      procedure bez(a, b);
+        a + (b - a)*s;
+
+      lin := bez(k1, k2);
+      quad := bez(lin, sub(k2=k3, k1=k2, lin));
+      cubic := bez(quad, sub(k3=k4, k2=k3, k1=k2, quad));
+
+      dis := 1;
+
+      procedure w(x, y, z, dis);
+        sub(s=(1.0 - (x**2 + y**2 + z**2) / (dis**2)), quad);
+
+      dx := df(w(x,y,z, dis), x);
+      dy := df(w(x,y,z, dis), y);
+      dz := df(w(x,y,z, dis), z);
+
+      f1 := ((dx-1.0)*dis2)**2 + ((dy-1.0)*dis2)**2 + ((dz-1.0)*dis2)**2;
+      comment: f1 := (dx*dy*dz)**2 - vol;
+
+      f2 := int(f1, x);
+      f2 := sub(x=0.5, f2) - sub(x=-0.5, f2);
+      f3 := int(f2, y);
+      f3 := sub(y=0.5, f3) - sub(y=-0.5, f3);
+      f4 := int(f3, z);
+      f4 := sub(z=0.5, f4) - sub(z=-0.5, f4);
+
+      on fort;
+
+      f4;
+      df(f4, k1);
+      df(f4, k2);
+      df(f4, k3);
+      df(f4, k4);
+
+      off fort;
+
+      ks := {0, 0, 1, 1};
+
+      procedure test(ks);
+        sub(k1=part(ks, 1), k2=part(ks, 2), k3=part(ks, 3), k4=part(ks, 4), f4);
+       */
+
+    } else if (0 && mode === GRAB) {
+      function f4(k1, k2, k3, k4, dis2) {
+        return ((583.0*k1**2 + 860.0*k1*k2 - 2026.0*k1*k3 + 988.0*k2**2 - 2836.0*k2*k3 + 2431.0*k3**2 + 3780.0)*dis2**2)/1260.0;
+      }
+
+      function dk1(k1, k2, k3, k4, dis2) {
+        return ((430.0*k2 - 1013.0*k3 + 583.0*k1)*dis2**2)/630.0;
+      }
+
+      function dk2(k1, k2, k3, k4, dis2) {
+        return ((494.0*k2 - 709.0*k3 + 215.0*k1)*dis2**2)/315.0;
+      }
+
+      function dk3(k1, k2, k3, k4, dis2) {
+        return (-(1418.0*k2 - 2431.0*k3 + 1013.0*k1)*dis2**2)/630.0;
+      }
+
+      function dk4(k1, k2, k3, k4, dis2) {
+        //return 0.0;
+      }
+
+      let cv = brush.falloff.getGenerator("EquationCurve");
+      let cv2 = ctx.toolmode.getBrush().falloff.getGenerator("EquationCurve");
+
+      let ks = [0, 0, 1];
+      let gs = [0, 0, 0];
+
+      //console.log("concave", ps.concaveFilter);
+      let dis2 = Math.max(ps.concaveFilter, 0.0001);
+
+      //console.log("\n");
+      /*
+      for (let i=0; i<31; i++) {
+        let r1 = f4(ks[0], ks[1], ks[2], 0.0, dis2);
+        if (i % 10 === 0) {
+          console.log("ERR", r1);
+        }
+
+        gs[0] = dk1(ks[0], ks[1], ks[2], 0.0, dis2);
+        gs[1] = dk2(ks[0], ks[1], ks[2], 0.0, dis2);
+        gs[2] = dk3(ks[0], ks[1], ks[2], 0.0, dis2);
+
+        let totg = gs[0]**2 + gs[1]**2 + gs[2]**2;
+
+        if (totg === 0.0) {
+          break;
+        }
+
+        let fac = 0.1;
+        //r1 /= totg;
+
+        fac /= Math.sqrt(totg);
+
+        for (let i=0; i<3; i++) {
+          ks[i] += -gs[i]*fac;
+        }
+      }*/
+
+      let rand = new util.MersenneRandom();
+
+      function errf(k1, k2, k3, dis2) {
+
+      }
+
+      for (let i = 0; i < 31; i++) {
+        let s = Math.random();
+
+
+      }
+
+      let expr = "((k1 - k2)*x - k1 - ((k2 - k3)*x - k2))*x - ((k1 - k2)*x - k1)";
+      expr = expr.replace(/k1/g, "" + ks[0]).replace(/k2/g, "" + ks[1]).replace(/k3/g, "" + ks[2]);
+
+      cv.equation = expr;
+      cv.update();
+      cv.redraw();
+
+      cv2.equation = expr;
+      cv2.update();
+      cv2.redraw();
     }
 
 
@@ -1678,7 +2171,7 @@ export class PaintOp extends PaintOpBase {
         }
 
         if (v.loopEid !== undefined) {
-          let l = mesh.eidmap[v.loopEid];
+          let l = mesh.eidMap.get(v.loopEid);
 
           if (l && l instanceof Loop && l.eid === v.loopEid) {
             let grid = l.customData[cd_grid];
@@ -1819,6 +2312,13 @@ export class PaintOp extends PaintOpBase {
     }
 
     let colorfilter;
+    if (bvh.cd_grid >= 0) {
+      cd_color = mesh.loops.customData.getLayerIndex("color");
+    } else {
+      cd_color = mesh.verts.customData.getLayerIndex("color");
+    }
+    have_color = cd_color >= 0;
+
     let smoothmap = new Map();
 
     let _gridVertStitch = (v) => {
@@ -1897,6 +2397,8 @@ export class PaintOp extends PaintOpBase {
       }
     }
 
+    let vsharp;
+
     if (haveGrids) {
       colorfilter = colorfilterfuncs[1];
 
@@ -1908,6 +2410,10 @@ export class PaintOp extends PaintOpBase {
       }
 
       let _tmp4 = new Vector3();
+
+      vsharp = (v, fac) => {
+        //implement me!
+      }
 
       vsmooth = (v, fac) => {
         _tmp.zero();
@@ -1986,15 +2492,21 @@ export class PaintOp extends PaintOpBase {
           v2[2] = v[2];
         }//*/
       };
-    } else if (!(brush.flag & BrushFlags.MULTIGRID_SMOOTH)) {
+    } else if (ps.autosmoothInflate === 0.0 && smoothProj === 0.0 && !(brush.flag & BrushFlags.MULTIGRID_SMOOTH)) {
       colorfilter = colorfilterfuncs[0];
       let _tmp2 = new Vector3();
       let _tmp3 = new Vector3();
       let _tmp4 = new Vector3();
 
-      let velfac = window.dd !== undefined ? window.dd : 0.75;
+      let velfac; // = window.dd !== undefined ? window.dd : 0.75;
       if (mode !== GRAB) {
-        velfac *= (strength*0.5 + 0.5);
+        if (mode === SMOOTH) {
+          velfac = (strength*0.5 + 0.5);
+        } else {
+          velfac = (ps.autosmooth*0.5 + 0.5);
+        }
+
+        velfac *= 0.5;
         velfac *= (1.0 - smoothProj)*0.75 + 0.25;
       } else {
         velfac = 0.5;
@@ -2003,12 +2515,97 @@ export class PaintOp extends PaintOpBase {
 
       const quadedge = haveQuadEdges ? MeshFlags.QUAD_EDGE : 0;
 
-      vsmooth = (v, fac) => {
+      const velfac2 = velfac*0.05;
+
+      vsmooth = function(v, fac) {
+        if (mode === SMOOTH && ps.invert) {
+          vsharp(v, fac);
+          return;
+        }
+
         let vel = v.customData[cd_node].vel;
 
         _tmp2.zero();
         let count = 0;
         let totw = 0.0;
+
+        for (let e of v.edges) {
+          if (e.flag & quadedge) {
+            continue;
+          }
+
+          //let v2 = e.otherVertex(v);
+          let v2 = v === e.v1 ? e.v2 : e.v1;
+
+          _tmp2[0] += v2[0];
+          _tmp2[1] += v2[1];
+          _tmp2[2] += v2[2];
+
+          let vel2 = v2.customData[cd_node].vel;
+
+          //vel2.addFac(vel, velfac2*0.1);
+
+          vel2[0] += (vel[0] - vel2[0])*velfac2;
+          vel2[1] += (vel[1] - vel2[1])*velfac2;
+          vel2[2] += (vel[2] - vel2[2])*velfac2;
+
+          totw += 1.0;
+          count++;
+        }
+
+        if (count === 0.0) {
+          return;
+        }
+
+        _tmp2.mulScalar(1.0/totw);
+        _tmp3.load(v);
+
+        v.interp(_tmp2, fac);
+        v.addFac(vel, velfac);
+
+        _tmp3.sub(v).negate();
+        //vel.interp(_tmp3, 0.5);
+        vel.load(_tmp3);
+      }
+    } else if (!(brush.flag & BrushFlags.MULTIGRID_SMOOTH)) {
+      colorfilter = colorfilterfuncs[0];
+      let _tmp2 = new Vector3();
+      let _tmp3 = new Vector3();
+      let _tmp4 = new Vector3();
+
+      let velfac;
+
+      if (mode !== GRAB) {
+        if (mode === SMOOTH) {
+          velfac = (strength*0.5 + 0.5);
+        } else {
+          velfac = (ps.autosmooth*0.5 + 0.5);
+        }
+
+        velfac *= 0.5;
+        velfac *= (1.0 - smoothProj)*0.75 + 0.25;
+      } else {
+        velfac = 0.5;
+        velfac *= (1.0 - smoothProj)*0.75 + 0.25;
+      }
+
+      const velfac2 = velfac*0.05;
+
+      const quadedge = haveQuadEdges ? MeshFlags.QUAD_EDGE : 0;
+      const inflate = ps.autosmoothInflate;
+
+      vsmooth = (v, fac) => {
+        if (mode === SMOOTH && ps.invert) {
+          vsharp(v, fac);
+          return;
+        }
+
+        let vel = v.customData[cd_node].vel;
+
+        _tmp2.zero();
+        let count = 0;
+        let totw = 0.0;
+        let avglen = 0.0;
 
         for (let e of v.edges) {
           if (e.flag & quadedge) {
@@ -2022,6 +2619,8 @@ export class PaintOp extends PaintOpBase {
 
           if (smoothProj !== 0.0) {
             let w2 = v2.vectorDistanceSqr(v);
+            avglen += w2;
+
             w += (w2 - w)*smoothProj;
 
             let t = _tmp4.load(v2).sub(v);
@@ -2032,11 +2631,14 @@ export class PaintOp extends PaintOpBase {
             _tmp2.addFac(t, smoothProj*w);
             _tmp2.addFac(v2, (1.0 - smoothProj)*w);
           } else {
+            avglen += v2.vectorDistanceSqr(v);
             _tmp2.addFac(v2, w);
           }
+
           let vel2 = v2.customData[cd_node].vel;
 
-          vel2.interp(vel, 0.2*velfac);
+          vel2.interp(vel, velfac2);
+          //vel2.addFac(vel, 0.1*velfac);
 
           totw += w;
           count++;
@@ -2051,11 +2653,19 @@ export class PaintOp extends PaintOpBase {
         //totw += w2;
         //count++;
 
+        avglen /= count;
+
         _tmp2.mulScalar(1.0/totw);
+        //_tmp2.sub(v);
+        //let d = -_tmp2.dot(v.no);
+        //let d = _tmp2.vectorLength();
+        //_tmp2.add(v);
+        _tmp2.addFac(v.no, avglen*inflate*4.0);
+
         _tmp3.load(v);
 
         v.interp(_tmp2, fac);
-        v.addFac(vel, 0.5*velfac);
+        v.addFac(vel, velfac);
 
         _tmp3.sub(v).negate();
         vel.interp(_tmp3, 0.5);
@@ -2069,12 +2679,120 @@ export class PaintOp extends PaintOpBase {
       }
     }
 
+    if (!haveGrids) {
+      let _tmp0 = new Vector3();
+      let _tmp1 = new Vector3();
+      let _tmp2 = new Vector3();
+      let _tmp3 = new Vector3();
+      let _tmp4 = new Vector3();
+
+      vsharp = (v, fac) => {
+        let cv = v.customData[cd_curv];
+        cv.check(v);
+
+        let maxedge = 0, minedge = 1e17;
+
+        for (let v2 of v.neighbors) {
+          let dist = v2.vectorDistance(v);
+          maxedge = Math.max(maxedge, dist);
+          minedge = Math.min(minedge, dist);
+        }
+
+        let flag = MeshFlags.NOAPI_TEMP2;
+
+        //go over two vert rings
+        for (let v1 of v.neighbors) {
+          let cv1 = v1.customData[cd_curv];
+          cv1.check(v1);
+          v1.flag &= ~flag;
+
+          for (let v2 of v1.neighbors) {
+            let cv2 = v2.customData[cd_curv];
+            cv2.check(v2);
+
+            v2.flag &= ~flag;
+            maxedge = Math.max(maxedge, v2.vectorDistanceSqr(v));
+          }
+        }
+
+        maxedge = Math.sqrt(maxedge);
+
+        let totw = 0, co = _tmp2.zero();
+        let proj = smoothProj;
+
+        function add(v2) {
+          let cv2 = v2.customData[cd_curv];
+
+          v2.flag |= flag;
+          let w = 1.0;
+
+          let dist;
+          let co2 = _tmp4;
+
+          if (smoothProj > 0.0) {
+            co2.load(v2).sub(v);
+            let d = co2.dot(v.no);
+
+            co2.addFac(v.no, -d*smoothProj).add(v);
+            dist = co2.vectorDistance(v);
+          } else {
+            co2.load(v2);
+            dist = v2.vectorDistance(v);
+          }
+
+          let w2 = 1.0 - dist/maxedge;
+          //w2 *= w2*w2;
+
+          let d = 0.1;
+          //w2 = (w2 - d) / (1.0 - d);
+
+          w *= w2;
+
+          //w = 1.0;
+          w = cv2.k1;
+
+          co.addFac(co2, w);
+          totw += w;
+        }
+
+        for (let v1 of v.neighbors) {
+          if (!(v1.flag & flag)) {
+            add(v1);
+          }
+
+          continue;
+          for (let v2 of v1.neighbors) {
+            if (!(v2.flag & flag)) {
+              add(v2);
+            }
+          }
+        }
+
+        let ratio = minedge/maxedge;
+
+        if (totw !== 0.0 && ratio !== 0.0) {
+          co.mulScalar(1.0/totw);
+
+          let co2 = _tmp4.load(co).sub(v);
+          let d = co2.dot(v.no);
+          co2.addFac(v.no, -d);
+
+          //subtract horizontal movement
+          let dfac = 1.0 - ratio;
+          co.addFac(co2, -dfac);
+
+          v.interp(co, fac);
+          v.flag |= MeshFlags.UPDATE;
+        }
+      }
+    }
+
     let _rtmp = new Vector3();
     let _rtmp2 = new Vector3();
     let _rdir = new Vector3();
     _rdir.load(ps.dp).normalize();
 
-    let rakefac = ps.rake;
+    let rakefac = ps.rake*0.5;
 
     let rtmps = util.cachering.fromConstructor(Vector3, 64);
 
@@ -2147,20 +2865,138 @@ export class PaintOp extends PaintOpBase {
 
     let _rtmp3 = new Vector3();
 
-    const doCurvRake = !haveGrids;
-    let cd_curv = -1;
-    let rakeCurveFac = 0.0;
-    const rakeCurvePosXOnly = brush.flag & BrushFlags.CURVE_RAKE_ONLY_POS_X;
-
-    if (doCurvRake) {
-      cd_curv = getCurveVerts(mesh);
-      rakeCurveFac = brush.rakeCurvatureFactor;
-    }
-
     let _dir2 = new Vector3();
     const skipflag = 0; //haveQuadEdges ? MeshFlags.QUAD_EDGE : 0;
+    const _rtmp4 = new Vector3();
 
-    let rake = (v, fac = 0.5, sdis=1.0) => {
+    /*
+      on factor;
+
+      f1 := x*x1 + y*y1 + z*z1 + w*w1;
+      f2 := x*x2 + y*y2 + z*z2 + w*w2;
+      f3 := x*x3 + y*y3 + z*z3 + w*w3;
+      f4 := x**2+y**2+z**2+w**2 - 1.0;
+
+      ff := solve({f1, f2, f3, f4}, {x, y, z, w});
+      part(ff, 1, 1);
+      part(ff, 1, 2);
+      part(ff, 1, 3);
+      part(ff, 1, 4);
+
+      f1 := w1*a + w2*b + w3*c + w4*d;
+     */
+
+    const CD_DYNTOPO = doTopo && cd_color >= 0;
+
+    function makeDummyCData() {
+      let cdata = {
+        customData: [],
+        reset() {
+          for (let cd of this.customData) {
+            cd.mulScalar(0.0);
+          }
+
+          return this
+        },
+
+        add(b) {
+          for (let i = 0; i < this.customData.length; i++) {
+            this.customData[i].add(b.customData[i]);
+          }
+
+          return this;
+        },
+
+        sub(b) {
+          for (let i = 0; i < this.customData.length; i++) {
+            this.customData[i].sub(b.customData[i]);
+          }
+
+          return this;
+        },
+
+        interpSimple(b, fac) {
+          for (let i = 0; i < this.customData.length; i++) {
+            let cd1 = this.customData[i];
+            let cd2 = b.customData[i];
+
+            cd1.mulScalar(1.0 - fac);
+            cd1.addFac(cd2, fac);
+          }
+
+          return this;
+        },
+
+        interp(srcs, ws, tmp = undefined) {
+          if (!tmp) {
+            tmp = getArrayTemp(srcs.length);
+          }
+
+          for (let i = 0; i < this.customData.length; i++) {
+            let cd = this.customData[i];
+
+            for (let j = 0; j < srcs.length; j++) {
+              tmp[j] = srcs[j].customData[i];
+            }
+
+            cd.interp(cd, tmp, ws);
+          }
+
+          return this;
+        },
+
+        load(b) {
+          for (let i = 0; i < this.customData.length; i++) {
+            b.customData[i].copyTo(this.customData[i]);
+          }
+
+          return this;
+        },
+
+        addFac(b, fac) {
+          for (let i = 0; i < this.customData.length; i++) {
+            this.customData[i].addFac(b.customData[i], fac);
+          }
+
+          return this;
+        },
+
+        copyTo(b) {
+          for (let i = 0; i < this.customData.length; i++) {
+            this.customData[i].copyTo(b.customData[i]);
+          }
+        },
+
+        mulScalar(fac) {
+          for (let i = 0; i < this.customData.length; i++) {
+            this.customData[i].mulScalar(fac);
+          }
+
+          return this;
+
+        }
+      }
+
+      let clayout = haveGrids ? mesh.loops.customData : mesh.verts.customData;
+
+      for (let layer of clayout.flatlist) {
+        let cls = CustomDataElem.getTypeClass(layer.typeName);
+        cdata.customData.push(new cls());
+      }
+
+      return cdata;
+    }
+
+    let cdata1 = makeDummyCData();
+    let cdata2 = makeDummyCData();
+    let cdata3 = makeDummyCData();
+
+    //disabled for tet meshes
+    let rake = (v, fac = 0.5, sdis = 1.0) => {
+      if (!ENABLE_RAKE) {
+        return;
+      }
+
       //XXX
       if (doCurvRake && rakeCurvePosXOnly && v[0] < 0.0) {
         return;
@@ -2168,9 +3004,30 @@ export class PaintOp extends PaintOpBase {
 
       //return rake2(v, fac);
 
-      if (fac === 0.0) {
+      let val = v.valence;
+      let cdvs, cdws;
+
+      if (fac === 0.0 || val === 0.0) {
         return;
       }
+
+      if (CD_DYNTOPO) {
+        cdvs = getArrayTemp(val + 1);
+        cdws = getArrayTemp(val + 1);
+
+        cdvs[0] = v;
+        cdws[0] = 1.0 - fac;
+        let vi = 1;
+
+        for (let v2 of v.neighbors) {
+          cdvs[vi] = v2;
+          cdws[vi] = fac/val;
+          vi++;
+        }
+
+        cdata1.interp(cdvs, cdws);
+      }
+
 
       //attempt to tweak rake falloff
       /*
@@ -2205,54 +3062,240 @@ export class PaintOp extends PaintOpBase {
         d1.interp(cv.tan, rakeCurveFac).normalize();
       }
 
-
       let pad = 0.025;//5*(1.35 - fac);
 
-      for (let e of v.edges) {
-        let v2 = e.otherVertex(v);
+      if (0 && val < 5) {
+        let flag = MeshFlags.TEMP1;
 
-        if (e.flag & skipflag) {
-          continue;
+        for (let e of v.edges) {
+          for (let l of e.loops) {
+            for (let l2 of l.f.loops) {
+              l2.e.flag &= ~flag;
+              l2.v.flag &= ~flag;
+            }
+          }
         }
 
-        d2.load(v2).sub(v);
-
-        let nfac = -d2.dot(v.no);
-        d2.addFac(v.no, nfac);
-        d2.normalize();
-
-        let w;
-
-        if (0) {
-          let w2 = d1.dot(d2);
-          w = d2.cross(d1).vectorLength();
-          //let w = d1.dot(d2);
-          //w = 1.0 - Math.abs(w-0.5)*2.0;
-
-          w = 1.0 - w;
-          w *= w*w*w;
-
-          w2 = 1.0 - Math.abs(w2);
-          w2 *= w2*w2*w2;
-
-          w = w*0.5 + w2*0.5;
-        } else {
-          w = d1.dot(d2);
-          w = Math.acos(w*0.99999)/Math.PI;
-          w = 1.0 - Math.tent(w);
-          //w = Math.abs(w);
-
-          w = Math.tent(w - 0.5);
+        for (let e of v.edges) {
+          e.flag |= flag;
         }
 
-        w = w*(1.0 - pad) + pad;
-        co.addFac(v2, w);
-        co.addFac(v.no, nfac*w);
-        tot += w;
+        for (let e of v.edges) {
+          for (let l0 of e.loops) {
+            for (let l of l0.f.loops) {
+              if (l.v === v || (l.e.flag & skipflag) || (l.v.flag & flag)) {
+                continue;
+              }
+
+              l.v.flag |= flag;
+
+              let v2 = l.v;
+              d2.load(v2).sub(v);
+
+              let nfac = -d2.dot(v.no);
+              d2.addFac(v.no, nfac);
+              let len = d2.vectorLength();
+
+              let d3 = _rtmp4.load(d2);
+              /*
+              on factor;
+
+              operator tent;
+
+              forall s let df(tent(s), s) = -2;
+
+              f1 := x1*x2 + y1*y2 + z1*z2;
+              f1 := tent(f1);
+              f2 := x1*x1 + y1*y1 + z1*z2 - 1.0;
+              f3 := f1**2 + f2**2;
+
+              dx1 := df(f3, x1);
+              dy1 := df(f3, y1);
+              dz1 := df(f3, z1);
+
+              on fort;
+              dx1;
+              dy1;
+              dz1;
+              off fort;
+
+              */
+
+              if (len > 0.00001) {
+                d2.mulScalar(1.0/len);
+              }
+
+              if (l.e.flag & flag) {
+                let x1 = d2[0];
+                let y1 = d2[1];
+                let z1 = d2[2];
+                let x2 = d1[0];
+                let y2 = d1[1];
+                let z2 = d1[2];
+
+                let dx1 = 2.0*(2.0*(z1*z2 - 1.0 + y1**2 + x1**2)*x1 + (y1*y2 + z1*z2 + x1*x2)*x2);
+                let dy1 = 2.0*(2.0*(z1*z2 - 1.0 + y1**2 + x1**2)*y1 + (y1*y2 + z1*z2 + x1*x2)*y2);
+                let dz1 = 2.0*(x1**2 + x1*x2 + y1**2 + y1*y2 + 2.0*z1*z2 - 1.0)*z2;
+
+                let pi = Math.PI, sin = Math.sin, cos = Math.cos;//, tent = Math.tent;
+
+                function tent(f) {
+                  let f2 = Math.fract(f);
+
+                  return 1.0 - Math.tent(f);
+                }
+
+                dx1 = 4.0*(z1*z2 - 1.0 + y1**2 + x1**2)*x1 - (cos(2.0*(z1*z2 - 1.0 + y1*y2 + x1*x2)*pi) + 1.0)
+                  *sin(2.0*(z1*z2 - 1.0 + y1*y2 + x1*x2)*pi)*pi*x2;
+                dy1 = 4.0*(z1*z2 - 1.0 + y1**2 + x1**2)*y1 - (cos(2.0*(z1*z2 - 1.0 + y1*y2 + x1
+                  *x2)*pi) + 1.0)*sin(2.0*(z1*z2 - 1.0 + y1*y2 + x1*x2)*pi)*pi*y2;
+                dz1 = (2.0*(z1*z2 - 1.0 + y1**2 + x1**2) - (cos(2.0*(z1*z2 - 1.0 + y1*y2 + x1*
+                  x2)*pi) + 1.0)*sin(2.0*(z1*z2 - 1.0 + y1*y2 + x1*x2)*pi)*pi)*z2;
+
+                dx1 = 4.0*((z1*z2 - 1.0 + y1**2 + x1**2)*x1 - tent(y1*y2 + z1*z2 + x1*x2)*x2);
+                dy1 = 4.0*((z1*z2 - 1.0 + y1**2 + x1**2)*y1 - tent(y1*y2 + z1*z2 + x1*x2)*y2);
+                dz1 = 2.0*(z1*z2 - 1.0 + y1**2 + x1**2 - 2.0*tent(y1*y2 + z1*z2 + x1*x2))*z2;
+
+                let nfac2 = nfac;
+
+                /*if (len > 0.00001) {
+                  nfac2 /= len;
+                }
+
+                dx1 += v.no[0]*-nfac2;
+                dy1 += v.no[1]*-nfac2;
+                dz1 += v.no[2]*-nfac2;
+                //*/
+
+                let glen = Math.sqrt(dx1**2 + dy1**2 + dz1**2);
+                if (glen > 0.00001) {
+                  glen = 1.0/glen;
+                  glen *= -len*0.05;
+
+                  dx1 *= glen;
+                  dy1 *= glen;
+                  dz1 *= glen;
+                }
+
+                //v2.sub(v);
+                //let len2 = v2.vectorLength();
+                let len2 = v2.vectorDistance(v);
+
+                v2[0] += dx1;
+                v2[1] += dy1;
+                v2[2] += dz1;
+
+                v2.sub(v).normalize().mulScalar(len2).add(v);
+
+                //util.console.log(dx1, dy1, dz1);
+              }
+
+
+              w = d1.dot(d2);
+              w = Math.acos(w*0.99999)/Math.PI;
+              w = 1.0 - Math.tent(w);
+              //w = Math.abs(w);
+
+              //if (val > 4) {
+              if (1 || !(l.e.flag & flag)) {
+                w = Math.tent(w - 0.5);
+              } else {
+                //w = 1.0 - w;
+              }
+              //}
+
+              w *= w;
+              w = w*(1.0 - pad) + pad;
+              co.addFac(v2, w);
+              co.addFac(v.no, nfac*w);
+              tot += w;
+            }
+          }
+        }
+
+        return;
+      } else {
+        let vi = 1;
+
+        for (let e of v.edges) {
+          let v2 = e.otherVertex(v);
+
+          if (e.flag & skipflag) {
+            continue;
+          }
+
+          d2.load(v2).sub(v);
+
+          let nfac = -d2.dot(v.no)*0.95;
+
+          d2.addFac(v.no, nfac);
+          d2.normalize();
+
+          let w;
+
+          if (0) {
+            let w2 = d1.dot(d2);
+            w = d2.cross(d1).vectorLength();
+            //let w = d1.dot(d2);
+            //w = 1.0 - Math.abs(w-0.5)*2.0;
+
+            w = 1.0 - w;
+            w *= w*w*w;
+
+            w2 = 1.0 - Math.abs(w2);
+            w2 *= w2*w2*w2;
+
+            w = w*0.5 + w2*0.5;
+          } else {
+            w = d1.dot(d2);
+            if (0) {
+              w = 1.0 - Math.tent(Math.tent(w));
+              w = w*w*(3.0 - 2.0*w);
+            } else if (val !== 4) {
+              w = Math.acos(w*0.99999)/Math.PI;
+              w = 1.0 - Math.tent((w - 0.5)*2.0);
+              w = w*w*(3.0 - 2.0*w);
+            } else {
+              w = Math.acos(w*0.99999)/Math.PI;
+              w = Math.tent((w - 0.5));
+              w = w*w*(3.0 - 2.0*w);
+            }
+
+            //if (val > 4) {
+            //w += 0.5;
+            //w = Math.tent(w - 0.5);
+            //}
+          }
+
+          w = w*(1.0 - pad) + pad;
+
+          if (CD_DYNTOPO) {
+            cdws[vi++] = w;
+          }
+
+          co.addFac(v2, w);
+          co.addFac(v.no, nfac*w);
+          tot += w;
+        }
       }
 
       if (tot === 0.0) {
         return;
+      }
+
+      if (CD_DYNTOPO) {
+        for (let i = 1; i < cdws.length; i++) {
+          cdws[i] *= fac/tot;
+        }
+
+        cdata2.interp(cdvs, cdws);
+        cdata2.interpSimple(v, 0.85);
+
+        //cdata2.sub(cdata1);
+        //cdata2.mulScalar(-1.0);
+        //cdata2.add(v);
+
+        cdata2.copyTo(v);
       }
 
       co.mulScalar(1.0/tot);
@@ -2263,8 +3306,13 @@ export class PaintOp extends PaintOpBase {
       }
     }
 
+    if (mesh instanceof TetMesh) {
+      rake = () => {
+      };
+    }
+
     let dopinch = (v, f) => {
-      f = Math.pow(f, pinchpower);
+      f = Math.pow(f, pinchpower)*2.0;
 
       let f3 = f*Math.abs(strength);
 
@@ -2324,13 +3372,6 @@ export class PaintOp extends PaintOpBase {
     let cd_node = bvh.cd_node;
     let ws = new Array(vs.size);
 
-    if (bvh.cd_grid >= 0) {
-      cd_color = mesh.loops.customData.getLayerIndex("color");
-    } else {
-      cd_color = mesh.verts.customData.getLayerIndex("color");
-    }
-    have_color = cd_color >= 0;
-
     if (isPaintMode && !have_color) {
       cd_color = mesh.verts.addCustomDataLayer("color").index;
 
@@ -2374,29 +3415,293 @@ export class PaintOp extends PaintOpBase {
     wi = 0;
     let vi = 0;
 
-    for (let v of vs) {
-      doUndo(v);
+    //propegate undo since smooth propegates
+    //velocities to vertex ring neighborhoods now
+    if (vsw !== 0.0 || ps.rake !== 0.0) {
+      let flag = MeshFlags.TEMP1;
 
+      for (let v of vs) {
+        v.flag &= ~flag;
+
+        for (let e of v.edges) {
+          let v2 = v === e.v1 ? e.v2 : e.v1;
+          v2.flag &= ~flag;
+        }
+        //for (let v2 of v.neighbors) {
+        //  v2.flag &= ~flag;
+        //}
+      }
+
+      let log;
+      if (doTopo) {
+        log = this._undo.log;
+        log.checkStart(mesh);
+      }
+
+      for (let v of vs) {
+        if (!(v.flag & flag)) {
+          let node = v.customData[cd_node].node;
+          if (node) {
+            node.setUpdateFlag(BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_DRAW);
+          }
+
+          doUndo(v);
+
+          if (doTopo && log) {
+            log.ensure(v);
+          }
+
+          v.flag |= flag;
+        }
+
+        for (let e of v.edges) {
+          let v2 = v === e.v1 ? e.v2 : e.v1;
+
+        //for (let v2 of v.neighbors) {
+          if (!(v2.flag & flag)) {
+            v2.flag |= flag;
+
+            let node = v2.customData[cd_node].node;
+
+            if (node) {
+              node.setUpdateFlag(BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_DRAW);
+            }
+
+            if (doTopo && log) {
+              log.ensure(v2);
+            }
+
+            doUndo(v2);
+          }
+        }
+      }
+    } else {
+      for (let v of vs) {
+        doUndo(v);
+      }
+    }
+
+
+    if (1) {
+      //this.calcNormalVariance(mesh, bvh, ps.p, radius);
+    }
+
+    let texco = new Vector3();
+    let irendermat = new Matrix4(ps.rendermat);
+    let viewportSize = this.inputs.viewportSize.getValue();
+    let aspect = viewportSize[0]/viewportSize[1];
+
+    irendermat.invert();
+    let texco2 = new Vector3();
+    let texdsp = new Vector3();
+
+    let console1 = util.console.context("console1");
+    let console2 = util.console.context("console2");
+
+    let needTexDv = brush.texUser.pinch !== 0.0;
+    let texDv = needTexDv ? new Vector3() : undefined;
+
+    let rendermat2 = new Matrix4(ps.rendermat);
+    let tmat = new Matrix4();
+
+    let ba = new Vector2();
+    let bb = new Vector2();
+    let bc = new Vector2();
+    let bp = new Vector2();
+    let distmp = new Vector3();
+
+    for (let v of vs) {
       let pco = p3;
       if (mode === SHARP) {// || (mode === SMOOTH && (brush.flag & BrushFlags.MULTIGRID_SMOOTH))) {
         //vco = v.customData[cd_orig].value;
         pco = ps.origp || ps.p;
       }
 
-      let dis = mode === GRAB ? gdists[idis++] : v.vectorDistance(pco);
+      let dis, f;
 
+      if (mode === GRAB) {
+        dis = gdists[idis++];
+        f = Math.max(1.0 - dis/radius, 0.0);
+        f = falloff.evaluate(f);
+      } else if (useLinePlane) {
+        distmp.load(v).sub(pco);
 
-      let f = Math.max(1.0 - dis/radius, 0.0);
+        dis = Math.abs(distmp.dot(linePlane));
+        let dis2 = Math.abs(distmp.dot(linePlane2));
+
+        //
+
+        if (1) {
+          f = Math.max(1.0 - dis/radius, 0.0);
+          f = falloff.evaluate(f);
+
+          let f2 = Math.max(1.0 - dis2/radius, 0.0);
+          f2 = falloff2.evaluate(f2);
+
+          let dis3 = Math.abs(distmp.dot(ps.viewPlane));
+          let f3 = Math.max(1.0 - dis3/radius, 0.0);
+          f3 = falloff2.evaluate(f3);
+
+          //f = Math.min(f, f2);
+          //f = (f + f2)*0.5;
+          //f = Math.sqrt(f*f2);
+          f = Math.pow(f*f2*f3, 1.0/3.0);
+
+          //f *= Math.abs(v.no.dot(ps.viewPlane));
+        } else {
+          let curve = falloff;
+
+          if (dis2 > dis) {
+          //  dis = dis2;
+          //  curve = falloff2;
+          }
+          dis = Math.abs(dis+dis2)*0.5; //Math.sqrt(dis*dis + dis2*dis2) / Math.sqrt(2.0);
+
+          f = Math.max(1.0 - dis/radius, 0.0);
+          f = curve.evaluate(f);
+        }
+      } else {
+        dis = v.vectorDistance(pco);
+        f = Math.max(1.0 - dis/radius, 0.0);
+        f = falloff.evaluate(f);
+      }
+
       let w1 = f;
       let f2 = f;
-
-      f = falloff.evaluate(f);
 
       let texf = 1.0;
 
       if (haveTex) {
-        texf = tex.evaluate(v, texScale);
-        f *= texf;
+        if (texUser.flag & TexUserFlags.ORIGINAL_CO) {
+          texco.load(v.customData[cd_orig].value);
+        } else {
+          texco.load(v);
+        }
+
+        let scale = 1.0;
+        let texco3;
+
+        if (texUser.mode === TexUserModes.VIEW_REPEAT) {
+          texco3 = texco2.load(texco);
+          texco3.multVecMatrix(ps.rendermat);
+
+          texco3[0] = (texco3[0]*0.5 + 0.5)*viewportSize[0];
+          texco3[1] = (1.0 - (texco3[1]*0.5 + 0.5))*viewportSize[1];
+          texco3[2] = ps.sp[2];
+
+          if (texUser.flag & TexUserFlags.CONSTANT_SIZE) {
+            scale = viewportSize[1]/100.0;
+          } else {
+            scale = viewportSize[1]/(brush.radius*2.0);
+          }
+        }
+
+        let th = ps.angle;
+
+        if ((texUser.flag & TexUserFlags.FANCY_RAKE) && lastps) {
+          if (1 || !texco3) {
+            texco3 = texco2.load(texco);
+            texco3.multVecMatrix(ps.rendermat);
+            texco3[0] = (texco3[0]*0.5 + 0.5)*viewportSize[0];
+            texco3[1] = (1.0 - (texco3[1]*0.5 + 0.5))*viewportSize[1];
+          }
+
+          //console1.log("texco", texco3);
+
+          let n = texdsp.load(ps.dsp);
+          n[2] = texco3[2] = 0.0;
+          n.normalize();
+
+          texco3.sub(ps.sp);
+
+          //let tt = n[0];
+          //n[0] = n[1];
+          //n[1] = -tt;
+
+          let dx = ps.sp[0] - lastps.sp[0];
+          let dy = ps.sp[1] - lastps.sp[1];
+
+          let t = texco3.dot(n)/(0.5*Math.sqrt(dx*dx + dy*dy));
+          t /= brush.spacing;
+
+          t = t*0.5 + 0.5;
+          //t *= 2.0;
+          t = Math.min(Math.max(t, 0.0), 1.0);
+
+          ba.load(lastps.sp);
+          bb.load(lastps.dsp).add(ps.dsp).mulScalar(0.25).add(ba);
+          bc.load(ps.sp);
+
+          //let ret = closest_bez3_v2(texco3, ba, bb, bc);
+          //util.console.log(ret, texco3, ba, bb, bc);
+          //if (Math.random() > 0.995) {
+          //texf = ret.t;
+          //console.log(ret);
+          //}
+
+          if (0) {//ret) {
+            let dv = dbez3_v2(ba, bb, bc, ret.t);
+            th = Math.atan2(dv[1], dv[0]);
+            texf = 0.015*Math.sqrt(ret.distSqr)/radius;
+            texf = Math.min(Math.max(texf, 0.0), 1.0);
+          } else {
+            //th = 0;
+          }
+
+          //console2.log(t, dx.toFixed(3), dy.toFixed(3), lastps.sp, ps.sp, viewportSize);
+
+          if (isNaN(t)) {
+            //throw new Error("NaN");
+            t = 0.5;
+          }
+
+          texf = t;
+
+          let th1 = ps.angle;
+          let th2 = ps.futureAngle;
+
+          if (th1 > th2 + Math.PI) {
+            th1 -= Math.PI;
+          } else if (this < th2 - Math.PI) {
+            th1 += Math.PI;
+          }
+
+          th = th1 + (th2 - th1)*t;
+
+          //util.console.log(lastps.angle, ps.angle, t, th, ps.angle);
+
+          if (isNaN(th)) {
+            throw new Error("NaN");
+          }
+        }
+
+        texco2.load(ps.sp);
+        texco2[0] = (texco2[0]/viewportSize[0])*2.0 - 1.0;
+        texco2[1] = (1.0 - texco2[1]/viewportSize[1])*2.0 - 1.0;
+
+        th = Math.PI*0.5 - th;
+        texf = texUser.sample(texco, scale*2.0, th, ps.rendermat, texco2, aspect, texDv);
+        //texf = Math.min(Math.max(texco.vectorLength()/radius, 0.0), 1.0);
+
+        if (texDv) {
+          texDv.normalize();
+          let d = texDv.dot(v.no);
+          texDv.addFac(v.no, -d).normalize();
+          texDv.mulScalar(radius*0.25);
+
+          v.addFac(texDv, 0.1*texUser.pinch);
+        }
+        if (isplane) {
+          let sign = ps.invert ? -1 : 1;
+          if (planeoff) {
+            sign = Math.sign(planeoff);
+          }
+
+          let planeoff2 = planeoff + (texf - 0.5)*sign;
+          planep.load(ps.p).addFac(nvec, planeoff2*radius*0.5);
+        } else {
+          f *= texf;
+        }
       }
 
       if (mode !== MASK_PAINT && cd_mask >= 0) {
@@ -2416,15 +3721,73 @@ export class PaintOp extends PaintOpBase {
         //v.addFac(v.no, -vlen*d*f2*0.5*strength);
         v.addFac(vec, f);//
       } else */
-      if (mode === WING_SCRAPE) {
+
+      if (0 && mode === PINCH) {
+        let d2 = wtmp0.load(ps.dp);
+
+        let f3 = f;
+
+        if (doCurvRake) {// && (!rakeCurvePosXOnly || v[0] >= 0.0)) {
+          let cv = v.customData[cd_curv];
+          cv.check(v);
+
+          let tan = wtmp1.load(cv.tan);
+          let neg = false;
+
+          if (tan.dot(d2) < 0) {
+            //tan.negate();
+            neg = true;
+          }
+
+          d2.load(tan);
+
+          if (Math.abs(cv.k1) > 0.0001) {
+            f3 /= 1.0 + cv.k1; //Math.abs(cv.k1);
+          }
+
+          //d2.interp(tan, rakeCurveFac).normalize();
+          if (neg) {
+            //d2.negate();
+          }
+        }
+        let d;
+
+        d2.cross(v.no).normalize();
+        let sign = ps.invert ? -1 : 1;
+
+        f3 *= astrength*sign*radius*0.1;
+
+        v.addFac(v.no, -f3);
+        v.addFac(d2, f3);
+
+        //v.addFac(d2, f3);
+
+        /*
+
+        //d = d2.dot(v.no);
+        //d2.addFac(v.no, -d).normalize();
+
+        let p = wtmp2.load(ps.p);
+        let co = wtmp3.load(v).sub(p);
+
+        d = co.dot(d2);
+
+        let sign = ps.invert ? -1 : 1;
+        v.addFac(co, -d*f*astrength*sign);
+
+         */
+      } else if (mode === WING_SCRAPE) {
         f2 = f*strength;
 
         let t = wtmp1.load(v).sub(ps.p);
         let d = t.dot(wno);
         t.addFac(wno, -d).normalize();
-        t.cross(wtan);
+
+        let wtan2 = wtan;
 
         let nvec;
+
+        t.cross(wtan2);
 
         t.normalize();
         let th = t.dot(wno);
@@ -2530,7 +3893,7 @@ export class PaintOp extends PaintOpBase {
 
         c.color.interp(color, f*strength);
       } else if (mode === INFLATE) {
-        v.addFac(v.no, f*strength*0.025);
+        v.addFac(v.no, f*strength*0.1);
       } else if (mode === SNAKE) {
         v.interp(v.customData[cd_orig].value, 0.1*f);
         v.addFac(vec, f*strength);
@@ -2561,20 +3924,35 @@ export class PaintOp extends PaintOpBase {
         fy = falloff.evaluate(fy)*texf;
         fz = falloff.evaluate(fz)*texf;
 
-        if (1) { //purely delta mode
+        if (0) { //purely delta mode
           v[0] += vec[0]*fx*Math.sign(signs[i]);
           v[1] += vec[1]*fy*Math.sign(signs[i + 1]);
           v[2] += vec[2]*fz*Math.sign(signs[i + 2]);
         } else { //accumulated delta mode
           v.load(v.customData[cd_orig].value);
 
-          gd[gi + GOFFX] += vec[0]*fx*Math.sign(signs[i]);
-          gd[gi + GOFFY] += vec[1]*fy*Math.sign(signs[i + 1]);
-          gd[gi + GOFFZ] += vec[2]*fz*Math.sign(signs[i + 2]);
+          //_tmp.zero();
+          _tmp.load(vec).multVecMatrix(rmat);
+          //_tmp.sub(v);
+          //_tmp.add(vec);
 
-          v[0] += gd[gi + GOFFX];
-          v[1] += gd[gi + GOFFY];
-          v[2] += gd[gi + GOFFZ];
+          let vec2 = _tmp;
+
+          //fx = fy = fz = 1.0;
+
+          //v[0] += vec2[0]*fx*Math.sign(signs[i]);
+          //v[1] += vec2[1]*fy*Math.sign(signs[i+1]);
+          //v[2] += vec2[2]*fz*Math.sign(signs[i+2]);
+
+          //*
+          gd[gi + GOFFX] += vec2[0];
+          gd[gi + GOFFY] += vec2[1];
+          gd[gi + GOFFZ] += vec2[2];
+
+          v[0] += gd[gi + GOFFX]*fx*Math.sign(signs[i]);
+          v[1] += gd[gi + GOFFY]*fy*Math.sign(signs[i + 1]);
+          v[2] += gd[gi + GOFFZ]*fz*Math.sign(signs[i + 2]);
+          //*/
         }
 
         f = 1.0 - f; //make sure smooth uses inverse falloff
@@ -2590,7 +3968,7 @@ export class PaintOp extends PaintOpBase {
         v.flag |= MeshFlags.UPDATE;
 
         let l = v.loopEid;
-        l = l !== undefined ? mesh.eidmap[l] : undefined;
+        l = l !== undefined ? mesh.eidMap.get(l) : undefined;
 
         if (l) {
           let grid = l.customData[cd_grid];
@@ -2662,6 +4040,21 @@ export class PaintOp extends PaintOpBase {
       }
     }
 
+    /*
+    if (mode === GRAB) {
+      let vs2 = bvh.closestVerts(ps.origp, radius*4);
+
+      for (let v of vs2) {
+        doUndo(v);
+
+        vsmooth(v, vsw);
+        let node = v.customData[cd_node].node;
+        if (node) {
+          node.setUpdateFlag(BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_NORMALS);
+        }
+      }
+    }//*/
+
     for (let v of vs) {
       let node = v.customData[cd_node].node;
 
@@ -2675,7 +4068,7 @@ export class PaintOp extends PaintOpBase {
       //}
 
       if (!isPaintMode && rakefac > 0.0) {
-        rake(v, rakefac*ws[wi + WF], ws[wi+WF2]);
+        rake(v, rakefac*ws[wi + WF], ws[wi + WF2]);
       }
 
       if (vsw > 0) {
@@ -2684,6 +4077,10 @@ export class PaintOp extends PaintOpBase {
         } else {
           vsmooth(v, vsw*ws[wi]);
         }
+      }
+
+      if (!isPaintMode && sharp !== 0.0) {
+        vsharp(v, ws[wi]*sharp);
       }
 
       if (!isPaintMode && pinch !== 0.0) {
@@ -2719,6 +4116,20 @@ export class PaintOp extends PaintOpBase {
       }
     }
 
+    if (!this.smoother && vsw > 0.7) {
+      let fac = 0.3;
+      let repeat = 1; //vsw > 0.95 ? 2 : 1;
+
+      for (let i = 0; i < repeat; i++) {
+        let wi = 0;
+        for (let v of vs) {
+          vsmooth(v, fac*ws[wi]);
+
+          wi += WTOT;
+        }
+      }
+    }
+
     if (this.smoother && vsw > 0.0) {
       let update = false;
       let smoother = this.smoother;
@@ -2747,7 +4158,8 @@ export class PaintOp extends PaintOpBase {
       smoother.smooth(sverts, wfunc, wfac, smoothProj);
     }
 
-    let doDynTopo = (vs) => {
+    let this2 = this;
+    let doDynTopo = function* (vs) {
       let repeat = brush.dynTopo.repeat;
       if (mode === SNAKE) {
         repeat += 3;
@@ -2767,12 +4179,12 @@ export class PaintOp extends PaintOpBase {
             }
           }
 
-          this.doQuadTopo(mesh, bvh, esize, vs2, p3, radius, brush);
+          this2.doQuadTopo(mesh, bvh, esize, vs2, p3, radius, brush);
         }
-      } else if (!haveGrids && mode !== SMOOTH) {
+      } else if (!haveGrids) {
         let es = new Set();
 
-        let log = this._undo.log;
+        let log = this2._undo.log;
         log.checkStart(mesh);
 
         for (let step = 0; step < repeat; step++) {
@@ -2927,17 +4339,66 @@ export class PaintOp extends PaintOpBase {
             log.ensure(v);
           }
 
-          this.doTopology(mesh, maxedges, bvh, esize, vs, es, radius, brush);
+          for (let step2 of this2.doTopology(mesh, maxedges, bvh, esize, vs, es, radius, brush)) {
+            yield;
+          }
+
+          yield;
 
           if (step !== repeat - 1) {
             bvh.update();
+            yield;
           }
         }
       }
     }
 
+    yield;
+
     if (doTopo) {
-      doDynTopo(vs);
+      for (let iter of doDynTopo(vs)) {
+        yield;
+      }
+    }
+
+    if (mesh instanceof TetMesh) {
+      if (mode === GRAB) {
+        let radius3 = radius*4.0;
+        let vs2 = bvh.closestVerts(ps.origp, radius3);
+        for (let v of vs) {
+          vs2.add(v);
+        }
+        //let vs2 = new Set(mesh.verts);
+
+        for (let v of vs2) {
+          doUndo(v);
+
+          let dis = v.vectorDistance(ps.origp);
+          //*
+          let w = Math.max(1.0 - dis/(radius3), 0);
+
+          if (w > 0.75) {
+            w = 0.0;
+          } else {
+            w = falloff.evaluate(w);
+          }//*/
+
+          v.w = w;
+        }
+
+        tetSolve(mesh, vs2);
+
+        let updateflag = BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_BOUNDS;
+
+        for (let v of vs2) {
+          let node = v.customData[cd_node].node;
+          if (!node) {
+            continue;
+          }
+
+          node.setUpdateFlag(updateflag);
+        }
+      }
     }
     //*/
 
@@ -2958,17 +4419,47 @@ export class PaintOp extends PaintOpBase {
     }
 
     if (!this.modalRunning) {
-      mesh.regenTesellation();
+      mesh.regenTessellation();
     }
 
     //flag mesh to upload to gpu after exiting pbvh toolmode
     mesh.regenRender();
   }
 
-  doTopology(mesh, maxedges, bvh, esize, vs, es, radius, brush) {
-    DYNTOPO_T_GOAL = brush.dynTopo.valenceGoal;
+  _checkcurv(v, cd_curv, force = false) {
+    if (cd_curv >= 0) {
+      v.customData[cd_curv].check(v, force);
+    }
+  }
 
+  * doTopology(mesh, maxedges, bvh, esize, vs, es, radius, brush) {
+    DYNTOPO_T_GOAL = brush.dynTopo.valenceGoal;
     ENABLE_DYNTOPO_EDGE_WEIGHTS = brush.dynTopo.flag & DynTopoFlags.FANCY_EDGE_WEIGHTS;
+
+    let cd_curv = getCurveVerts(mesh); //disabled for now
+    //let cd_curv = -1;
+
+    if (cd_curv >= 0) {
+      let flag = MeshFlags.TEMP1;
+      for (let e of es) {
+        e.v1.flag &= ~flag;
+        e.v2.flag &= ~flag;
+      }
+
+      for (let e of es) {
+        if (!(e.v1.flag & flag)) {
+          e.v1.flag |= flag;
+          let cv = e.v1.customData[cd_curv];
+          cv.check(e.v1);
+        }
+
+        if (!(e.v2.flag & flag)) {
+          e.v2.flag |= flag;
+          let cv = e.v2.customData[cd_curv];
+          cv.check(e.v2);
+        }
+      }
+    }
 
     let origes;
 
@@ -2976,12 +4467,28 @@ export class PaintOp extends PaintOpBase {
       origes = new Set(es);
     }
 
+    let log = this._undo.log;
+    log.checkStart(mesh);
+
+    for (let e of es) {
+      log.ensure(e.v1);
+      log.ensure(e.v2);
+
+      for (let v of e.verts) {
+        for (let v2 of v.neighbors) {
+          log.ensure(v2);
+        }
+      }
+    }
 
     let filter4 = !(brush.dynTopo.flag & DynTopoFlags.ALLOW_VALENCE4);
-    filter4 = filter4 && (brush.dynTopo.flag & (DynTopoFlags.SUBDIVIDE|DynTopoFlags.COLLAPSE));
+    //filter4 = filter4 && (brush.dynTopo.flag & (DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE));
 
     if (filter4) {
       this.doTopologyValence4(mesh, maxedges, bvh, esize, vs, es, radius, brush);
+      es = es.filter(e => e.eid >= 0);
+
+      yield;
     }
 
     //let chunksize = 20;
@@ -3014,10 +4521,7 @@ export class PaintOp extends PaintOpBase {
 
       let max1 = Math.ceil(maxedges/ratio), max2 = Math.ceil(maxedges*ratio);
 
-      let log = this._undo.log;
-      log.checkStart(mesh);
-
-      const nosmooth = false;
+      const nosmooth = 0;
 
       let dosmooth = (vs, fac = 0.5) => {
         if (nosmooth) {
@@ -3026,6 +4530,7 @@ export class PaintOp extends PaintOpBase {
 
         let co = new Vector3();
         let co2 = new Vector3();
+        let g = new Vector3();
 
         for (let v of vs) {
           let tot = 0;
@@ -3093,8 +4598,15 @@ export class PaintOp extends PaintOpBase {
       //}
 
       if (brush.dynTopo.flag & DynTopoFlags.SUBDIVIDE) {
+        let es_out = [0];
+
         for (let i = 0; i < 1; i++) {
-          es = this.doTopologySubdivide(mesh, max1, bvh, esize, vs, es, radius, brush, newes, dosmooth2);
+          let gen = this.doTopologySubdivide(mesh, max1, bvh, esize, vs, es, radius, brush, newes, dosmooth2, cd_curv, es_out);
+          for (let iter of gen) {
+            yield;
+          }
+
+          es = es_out[0];
           es = es.filter(e => e.eid >= 0);
 
           for (let e of new Set(es)) {
@@ -3105,18 +4617,22 @@ export class PaintOp extends PaintOpBase {
               }
             }
           }
+
+          yield;
         }
       }
 
       //dosmooth(vs);
 
       if (brush.dynTopo.flag & DynTopoFlags.QUAD_COLLAPSE) {
-        this.doTopologyCollapseTris2Quads(mesh, max2, bvh, esize, vs, es, radius, brush, false);
+        this.doTopologyCollapseTris2Quads(mesh, max2, bvh, esize, vs, es, radius, brush, false, cd_curv);
         es = es.filter(e => e.eid >= 0);
+        yield;
       }
 
       if (brush.dynTopo.flag & DynTopoFlags.COLLAPSE) {
-        this.doTopologyCollapse(mesh, max2, bvh, esize, vs, es, radius, brush);
+        this.doTopologyCollapse(mesh, max2, bvh, esize, vs, es, radius, brush, cd_curv);
+        yield;
       } else if (0) {
         newes = newes.filter(e => e.eid >= 0);
         let newvs = new Set();
@@ -3155,12 +4671,14 @@ export class PaintOp extends PaintOpBase {
 
         //esize *= 2.0;
 
-        this.doTopologyCollapse(mesh, max2, bvh, esize2, newvs, newes, radius, brush);
+        this.doTopologyCollapse(mesh, max2, bvh, esize2, newvs, newes, radius, brush, cd_curv);
         for (let e of newes) {
           if (e.eid >= 0) {
             es.add(e);
           }
         }
+
+        yield;
       }
 
       es = es.filter(e => e.eid >= 0);
@@ -3195,36 +4713,38 @@ export class PaintOp extends PaintOpBase {
           }
         }
 
-        this.doTopologyCollapseTris2Quads(mesh, max2, bvh, esize, vs, es, radius, brush, true);
+        this.doTopologyCollapseTris2Quads(mesh, max2, bvh, esize, vs, es, radius, brush, true, cd_curv);
+        yield;
       }
     }
 
-    mesh.regenTesellation();
+    mesh.regenTessellation();
   }
 
-  edist_simple(e, v1, v2) {
+  edist_simple(e, v1, v2, eset, cd_curv) {
     return v1.vectorDistanceSqr(v2);
   }
 
-  edist_subd(e, v1, v2, eset) {
+  edist_subd(e, v1, v2, eset, cd_curv) {
     let dis = v1.vectorDistanceSqr(v2);
 
     if (dis === 0.0) {
       return 0.0;
     }
 
-    let rtot = 0, ratio=0;
+    let rtot = 0, ratio = 0;
 
     for (let l of e.loops) {
       l = l.next.next;
 
       let co = midtmp.load(v1).interp(v2, 0.5);
 
-      let ratio2 = l.v.vectorDistanceSqr(co) / dis;
+      let ratio2 = l.v.vectorDistanceSqr(co)/dis;
 
       if (ratio2 < 0.000001) {
+        continue;
         //eek
-        return 0.0;
+        //return 0.0;
       }
 
       ratio2 = Math.max(ratio2, 0.001);
@@ -3244,10 +4764,67 @@ export class PaintOp extends PaintOpBase {
       dis /= ratio;
     }
 
-    return dis;
+    if (cd_curv >= 0) {
+      let cv1 = v1.customData[cd_curv];
+      let cv2 = v2.customData[cd_curv];
+      let tan = edist_coll_tmp1;
+
+      cv1.check(v1);
+      cv2.check(v2);
+
+      tan.load(cv1.tan);
+      if (cv1.tan.dot(cv2.tan) < 0) {
+        tan.negate();
+      }
+
+      tan.add(cv2.tan).normalize();
+
+      let vec = edist_coll_tmp2.load(v2).sub(v1).normalize();
+
+      if (vec.dot(tan) < 0) {
+        vec.negate();
+      }
+
+      let d = tan.dot(vec);
+      d *= d;
+
+      dis /= 1.0 + d*3.0;
+    }
+
+    return dis*this.edist_curvmul(e, cd_curv);
   }
 
-  edist_coll(e, v1, v2) {
+  edist_curvmul(e, cd_curv) {
+    if (cd_curv >= 0) {
+      let cv1 = e.v1.customData[cd_curv];
+      let cv2 = e.v2.customData[cd_curv];
+
+      //cv1.check(e.v1);
+      //cv2.check(e.v2);
+
+      let k1 = Math.abs(cv1.k1 + cv2.k1)*0.5;
+
+      /*
+      const pw = window.dd7 || 0.5;
+      const add = window.dd8 || 1.0;
+      const mul = window.dd9 || 1.0;
+      //*/
+
+      //*
+      const pw = 0.5;
+      const add = 1.0;
+      const mul = 1.0;
+      //*/
+
+      k1 = add + Math.pow(k1, pw)*mul;
+      return k1*k1;
+      //return window.dd7 || 1.0;
+    }
+    return 1.0;
+    //return window.dd8 || 1.0;
+  }
+
+  edist_coll(e, v1, v2, eset, cd_curv) {
     let dis = v1.vectorDistanceSqr(v2);
 
     let val1 = v1.valence;
@@ -3260,7 +4837,34 @@ export class PaintOp extends PaintOpBase {
 
     dis *= d;
 
-    return dis;
+    if (cd_curv >= 0) {
+      let cv1 = v1.customData[cd_curv];
+      let cv2 = v2.customData[cd_curv];
+      let tan = edist_coll_tmp1;
+
+      cv1.check(v1);
+      cv2.check(v2);
+
+      tan.load(cv1.tan);
+      if (cv1.tan.dot(cv2.tan) < 0) {
+        tan.negate();
+      }
+
+      tan.add(cv2.tan).normalize();
+
+      let vec = edist_coll_tmp2.load(v2).sub(v1).normalize();
+
+      if (vec.dot(tan) < 0) {
+        vec.negate();
+      }
+
+      let d = tan.dot(vec);
+      d *= d;
+
+      dis *= 1.0 + d*3.0;
+    }
+
+    return dis*this.edist_curvmul(e, cd_curv);
   }
 
   edist_old(e, v1, v2, mode = 0) {
@@ -3376,7 +4980,7 @@ export class PaintOp extends PaintOpBase {
     return Math.sqrt(area/totedge);
   }
 
-  doTopologyCollapseTris2Quads(mesh, max, bvh, esize, vs, es, radius, brush, mark_only) {
+  doTopologyCollapseTris2Quads(mesh, max, bvh, esize, vs, es, radius, brush, mark_only, cd_curv) {
     let log = this._undo.log;
     log.checkStart(mesh);
 
@@ -3413,16 +5017,20 @@ export class PaintOp extends PaintOpBase {
     let newfs = new Set(fs);
 
     let lctx = new LogContext();
-    lctx.onnew = (e) => {
-      log.logAdd(e);
+    lctx.onnew = (e, tag) => {
+      if (e.type === MeshTypes.VERTEX) {
+        this._checkcurv(e, cd_curv, true);
+      }
+
+      log.logAdd(e, tag);
 
       if (e.type === MeshTypes.FACE) {
         newfs.add(e);
       }
     }
 
-    lctx.onkill = (e) => {
-      log.logKill(e);
+    lctx.onkill = (e, tag) => {
+      log.logKill(e, tag);
     }
 
     let splitflag = TriQuadFlags.DEFAULT;
@@ -3445,9 +5053,9 @@ export class PaintOp extends PaintOpBase {
 
         e.flag |= flag;
 
-        for (let l of e.faces) {
+        for (let l of e.loops) {
           let f = l.f;
-          let tris = bvh.getFaceTris(f);
+          let tris = bvh.getFaceTris(f._old_eid);
 
           if (!tris) {
             continue;
@@ -3471,7 +5079,7 @@ export class PaintOp extends PaintOpBase {
 
     if (mark_only) {
       for (let f of newfs) {
-        let tris = bvh.getFaceTris(f);
+        let tris = bvh.getFaceTris(f._old_eid);
         if (!tris) {
           continue;
         }
@@ -3501,70 +5109,83 @@ export class PaintOp extends PaintOpBase {
   }
 
   doTopologyValence4(mesh, max, bvh, esize, vs, es, radius, brush, lctx) {
+    let addfaces = false;
+    let newfaces = [];
+
     if (!lctx) {
+      addfaces = true;
+
       let log = this._undo.log;
       log.checkStart(mesh);
 
       lctx = new LogContext();
       //lctx callback for deleting 4-valence verts
-      lctx.onnew = (e) => {
-        log.logAdd(e);
+      lctx.onnew = (e, tag) => {
+        log.logAdd(e, tag);
 
         if (e.type === MeshTypes.FACE) {
-          let l1 = e.lists[0].l;
-          let l2 = l1.next;
-          let l3 = l2.next;
-          let l4;
-          let tri;
-
-          if (e.lists[0].length === 4) {
-            l4 = l3.next;
-
-            tri = bvh.addTri(e.eid, bvh._nextTriIdx(), l1.v, l2.v, l3.v, true, l1, l2, l3);
-            tri.flag |= BVHTriFlags.LOOPTRI_INVALID;
-
-            bvh.addTri(e.eid, bvh._nextTriIdx(), l1.v, l3.v, l4.v, true, l1, l3, l4);
-            tri.flag |= BVHTriFlags.LOOPTRI_INVALID;
-          } else {
-            tri = bvh.addTri(e.eid, bvh._nextTriIdx(), l1.v, l2.v, l3.v, true, l1, l2, l3);
-            tri.flag |= BVHTriFlags.LOOPTRI_INVALID;
-          }
-
+          newfaces.push(e);
         }
       }
 
-      lctx.onkill = (e) => {
-        log.logKill(e);
+      let updateflag = BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_UNIQUE_VERTS;
+      updateflag |= BVHFlags.UPDATE_OTHER_VERTS | BVHFlags.UPDATE_TOTTRI;
+
+      lctx.onkill = (e, tag) => {
+        log.logKill(e, tag);
+
+        if (e.type === MeshTypes.FACE) {
+          let tris = bvh.getFaceTris(e._old_eid);
+
+          if (tris) {
+            for (let t of tris) {
+              for (let node of t.nodes) {
+                if (node) {
+                  node.setUpdateFlag(updateflag);
+                }
+              }
+            }
+          }
+
+          bvh.removeFace(e._old_eid);
+        }
       }
     }
 
     //filter out 4-valence verts that are surrounded by
     //all triangles
-    for (let e of es) {
-      let val1 = e.v1.valence;
-      let val2 = e.v2.valence;
 
-      if (val1 !== 4 && val2 !== 4) {
+    for (let e of es) {
+      if (e.eid < 0) {
         continue;
       }
 
-      let v = val1 === 4 ? e.v1 : e.v2;
 
-      let bad = false;
-      let flag = MeshFlags.TEMP1;
+      for (let v of e.verts) {
+        let val = v.valence;
 
-      for (let e of v.edges) {
-        for (let l of e.loops) {
-          l.f.flag &= ~flag;
+        if (val !== 4 && val !== 3) {
+          continue;
+        }
 
-          if (!l.f.isTri()) {
-            bad = true;
-            break;
+        let bad = false;
+        let flag = MeshFlags.TEMP1;
+
+        for (let e of v.edges) {
+          for (let l of e.loops) {
+            l.f.flag &= ~flag;
+
+            if (!l.f.isTri()) {
+              bad = true;
+              break;
+            }
           }
         }
-      }
 
-      if (!bad) {
+        if (bad) {
+          continue;
+        }
+
         let node = v.customData[bvh.cd_node].node;
         if (node) {
           node.setUpdateFlag(BVHFlags.UPDATE_INDEX_VERTS);
@@ -3575,35 +5196,54 @@ export class PaintOp extends PaintOpBase {
           }
         }
 
-        for (let e2 of v.edges) {
-          for (let l of e2.loops) {
-            if (l.f.flag & flag) {
-              continue;
-            }
-
-            l.f.flag |= flag;
-            bvh.removeFace(l.f.eid);
-          }
-        }
-
         let f;
         f = mesh.dissolveVertex(v, lctx);
 
-        if (f && !f.isTri() && !(brush.dynTopo.flag & DynTopoFlags.QUAD_COLLAPSE)) {
-          if (!f.isQuad()) { //should never happen
+        if (f && !(brush.dynTopo.flag & DynTopoFlags.QUAD_COLLAPSE)) {
+          if (f.isNgon()) { //should never happen
             console.warn("Something bad happened!");
+            f.calcNormal();
             applyTriangulation(mesh, f, undefined, undefined, lctx);
-          } else {
+          } else if (f.isQuad()) {
             triangulateQuad(mesh, f, lctx);
           }
         } else if (f) {
-          lctx.onnew(f);
+          //lctx.onnew(f);
+        }
+
+        break;
+      }
+    }
+
+    if (addfaces) {
+      for (let f of newfaces) {
+        if (f.eid < 0) {
+          continue;
+        }
+
+        let l1 = f.lists[0].l;
+        let l2 = l1.next;
+        let l3 = l2.next;
+        let l4;
+        let tri;
+
+        if (f.isQuad()) {
+          l4 = l3.next;
+
+          tri = bvh.addTri(f.eid, bvh._nextTriIdx(), l1.v, l2.v, l3.v, true, l1, l2, l3);
+          tri.flag |= BVHTriFlags.LOOPTRI_INVALID;
+
+          bvh.addTri(f.eid, bvh._nextTriIdx(), l1.v, l3.v, l4.v, true, l1, l3, l4);
+          tri.flag |= BVHTriFlags.LOOPTRI_INVALID;
+        } else {
+          tri = bvh.addTri(f.eid, bvh._nextTriIdx(), l1.v, l2.v, l3.v, true, l1, l2, l3);
+          tri.flag |= BVHTriFlags.LOOPTRI_INVALID;
         }
       }
     }
   }
 
-  doTopologyCollapse(mesh, max, bvh, esize, vs, es, radius, brush) {
+  doTopologyCollapse(mesh, max, bvh, esize, vs, es, radius, brush, cd_curv) {
     let lctx = new LogContext();
 
     let rand = this.dynTopoRand;
@@ -3655,7 +5295,7 @@ export class PaintOp extends PaintOpBase {
         continue;
       }
 
-      let lensqr = edist(e, e.v1, e.v2);
+      let lensqr = edist(e, e.v1, e.v2, undefined, cd_curv);
 
       if (rand.random() > lensqr/esqr) {
         continue;
@@ -3729,7 +5369,7 @@ export class PaintOp extends PaintOpBase {
 
     let typemask = MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE;
 
-    lctx.onkill = (elem) => {
+    lctx.onkill = (elem, tag) => {
       if (!(elem.type & typemask)) {
         return;
       }
@@ -3737,16 +5377,31 @@ export class PaintOp extends PaintOpBase {
         return;
       }
 
-      log.logKill(elem);
+      if (elem.type === MeshTypes.VERTEX) {
+        let node = elem.customData[bvh.cd_node].node;
+
+        if (node && node.uniqueVerts) {
+          node.uniqueVerts.delete(elem);
+          elem.customData[bvh.cd_node].node = undefined;
+        }
+      } else if (elem.type === MeshTypes.FACE) {
+        bvh.removeFace(elem._old_eid);
+      }
+
+      log.logKill(elem, tag);
     }
 
-    lctx.onnew = (elem) => {
+    lctx.onnew = (elem, tag) => {
+      if (elem.type === MeshTypes.VERTEX) {
+        this._checkcurv(elem, cd_curv, true);
+      }
+
       if (elem.type & typemask) {
         //if (kills.has(elem)) {
         //  kills.delete(elem);
         //}
 
-        log.logAdd(elem);
+        log.logAdd(elem, tag);
       }
     }
 
@@ -3826,6 +5481,7 @@ export class PaintOp extends PaintOpBase {
       let l = startl.next;
       let _i = 0;
 
+      //cleanup wire edges
       do {
         let v1 = startl.v;
         let v2 = l.v;
@@ -3845,7 +5501,7 @@ export class PaintOp extends PaintOpBase {
           }
 
           if (!e.l) {
-            mesh.killEdge(e);
+            mesh.killEdge(e, lctx);
             i--;
           }
         }
@@ -3874,7 +5530,7 @@ export class PaintOp extends PaintOpBase {
 
         for (let e of v.edges) {
           if (!e.l) {
-            mesh.killEdge(e);
+            mesh.killEdge(e, lctx);
             ok = true;
           }
 
@@ -3883,7 +5539,7 @@ export class PaintOp extends PaintOpBase {
       } while (ok);
 
       if (!count) {
-        mesh.killVertex(v);
+        mesh.killVertex(v, undefined, lctx);
       }
     }
   }
@@ -4011,7 +5667,7 @@ export class PaintOp extends PaintOpBase {
       }
 
       let l = v.loopEid;
-      l = mesh.eidmap[l];
+      l = mesh.eidMap.get(l);
 
       if (l === undefined || !(l instanceof Loop)) {
         continue;
@@ -4515,8 +6171,12 @@ export class PaintOp extends PaintOpBase {
     }
   }
 
-  doTopologySubdivide(mesh, max, bvh, esize, vs, es, radius, brush, newes_out, dosmooth) {
+  * doTopologySubdivide(mesh, max, bvh, esize, vs, es, radius, brush, newes_out, dosmooth, cd_curv, es_out) {
     let esetin = es;
+
+    es_out[0] = es;
+
+    const useSmart = brush.dynTopo.subdivMode === SubdivModes.SMART;
 
     let esize1 = esize;
     let emin = (esize1*0.5)*(esize1*0.5);
@@ -4595,7 +6255,7 @@ export class PaintOp extends PaintOpBase {
         continue;
       }
 
-      let lensqr = edist(e, e.v1, e.v2, eset);
+      let lensqr = edist(e, e.v1, e.v2, eset, cd_curv);
 
       if (lensqr >= esqr) {
         let ok = true;
@@ -4633,7 +6293,8 @@ export class PaintOp extends PaintOpBase {
     }
 
     if (es2.length === 0) {
-      return new Set(es);
+      es_out[0] = new Set(es);
+      return;
     }
 
     es2.sort((a, b) => (lens[b.index] - lens[a.index]));
@@ -4675,7 +6336,7 @@ export class PaintOp extends PaintOpBase {
     }
 
     let test = (e) => {
-      let dis = edist(e, e.v1, e.v2, eset);
+      let dis = edist(e, e.v1, e.v2, eset, cd_curv);
       return dis >= esqr;
     }
 
@@ -4684,15 +6345,28 @@ export class PaintOp extends PaintOpBase {
     let es3 = new Set(es);
     let newvs = new Set(), newfs = new Set(), killfs = new Set(), newes = new Set();
 
-    lctx.onkill = (e) => {
-      log.logKill(e);
+    lctx.onkill = (e, tag) => {
+      log.logKill(e, tag);
 
       if (e.type === MeshTypes.FACE) {
-        killfs.add(e);
+        let tris = bvh.getFaceTris(e._old_eid);
+        if (tris) {
+          for (let t of tris) {
+            if (t.node) {
+              t.node.setUpdateFlag(BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS);
+            }
+          }
+        }
+
+        bvh.removeFace(e._old_eid);
       }
     }
 
-    lctx.onnew = (e) => {
+    lctx.onnew = (e, tag) => {
+      if (e.type === MeshTypes.VERTEX) {
+        this._checkcurv(e, cd_curv, true);
+      }
+
       if (e.type === MeshTypes.EDGE) {
         es3.add(e);
         newes.add(e);
@@ -4706,7 +6380,7 @@ export class PaintOp extends PaintOpBase {
         newvs.add(e);
       }
 
-      log.logAdd(e);
+      log.logAdd(e, tag);
     }
 
     let es4 = es2;
@@ -4716,7 +6390,7 @@ export class PaintOp extends PaintOpBase {
     updateflag = updateflag | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_TOTTRI;
     updateflag = updateflag | BVHFlags.UPDATE_INDEX_VERTS;
 
-    for (let step = 0; step < 4; step++) {
+    for (let step = 0; step < 2; step++) {
       if (es4.size === 0) {
         break;
       }
@@ -4731,36 +6405,14 @@ export class PaintOp extends PaintOpBase {
         }
       }
 
-      for (let e of es4) {
-        for (let l of e.loops) {
-          let f = l.f;
-
-          if (f.flag & flag) {
-            continue;
-          }
-          f.flag |= flag;
-
-          let tris = bvh.fmap.get(f.eid);
-          if (tris) {
-            for (let tri of tris) {
-              let node = tri.node;
-
-              if (node) {
-                node.flag |= updateflag;
-                bvh.updateNodes.add(node);
-                fmap.set(f, node);
-              }
-            }
-
-            bvh.removeFace(f.eid);
-          }
-        }
-      }
-
       let esqr3 = esize*0.15;
       esqr3 = esqr3*esqr3;
 
-      lctx.onnew = (e) => {
+      lctx.onnew = (e, tag) => {
+        if (e.type === MeshTypes.VERTEX) {
+          this._checkcurv(e, cd_curv, true);
+        }
+
         if (e.type === MeshTypes.EDGE) {
           let ok = newes2.size < max;
 
@@ -4775,7 +6427,7 @@ export class PaintOp extends PaintOpBase {
           }
         } else if (e.type === MeshTypes.FACE) {
           for (let l of e.loops) {
-            if (edist(l.e, l.e.v1, l.e.v2) >= esqr3) {
+            if (edist(l.e, l.e.v1, l.e.v2, undefined, cd_curv) >= esqr3) {
               newes2.add(l.e);
             } else {
               newes_out.add(l.e);
@@ -4783,7 +6435,7 @@ export class PaintOp extends PaintOpBase {
           }
         }
 
-        oldnew(e);
+        oldnew(e, tag);
       }
 
       //set edge set reference used to feed edist_subd
@@ -4791,14 +6443,20 @@ export class PaintOp extends PaintOpBase {
 
 
       //pattern based subdivision algo
-      let ret = splitEdgesSmart2(mesh, es4, test, lctx);
-      //let ret = splitEdgesPreserveQuads(mesh, es4, test, lctx);
+      if (useSmart) {
+        splitEdgesSmart2(mesh, es4, test, lctx);
+      } else {
+        splitEdgesSimple2(mesh, es4, test, lctx);
+      }
 
-      this.doTopologyValence4(mesh, max, bvh, esize, vs, es, radius, brush, lctx);
+      //yield;
+
+      //this.doTopologyValence4(mesh, max, bvh, esize, vs, es, radius, brush, lctx);
+      //es = es.filter(e => e.eid >= 0);
 
       let lens = [];
       let es5 = [];
-      for (let i=0; i<2; i++) {
+      for (let i = 0; i < 2; i++) {
         let list = i ? es4 : newes2;
 
         for (let e of list) {
@@ -4806,7 +6464,7 @@ export class PaintOp extends PaintOpBase {
             continue;
           }
 
-          let dist = edist(e, e.v1, e.v2);
+          let dist = edist(e, e.v1, e.v2, undefined, cd_curv);
           let step2 = Math.min(step, 3);
           let limit = esqr*(step2 + 1)*(step2 + 1);
 
@@ -4825,7 +6483,7 @@ export class PaintOp extends PaintOpBase {
       es4 = new Set(es5);
 
       /*es4 = es4.filter(e => {
-        return edist(e, e.v1, e.v2) >= esqr*(step + 1)*(step + 1);
+        return edist(e, e.v1, e.v2, undefined, cd_curv) >= esqr*(step + 1)*(step + 1);
       });//*/
 
       for (let e of es4) {
@@ -4842,28 +6500,6 @@ export class PaintOp extends PaintOpBase {
         if (!(e.v2.flag & flag2)) {
           e.v2.flag |= flag2;
           dosmooth(e.v2, 0.25);
-        }
-      }
-
-      continue;
-      for (let e of es4) {
-        if (e.flag & flag2) {
-          continue;
-        }
-
-        e.flag |= flag2;
-
-        for (let l of e.loops) {
-          for (let l2 of l.f.loops) {
-            es4.add(l2.e);
-            l2.e.flag |= flag2;
-          }
-        }
-      }
-
-      for (let e of es4) {
-        if (e.eid >= 0) {
-          newes_out.add(e);
         }
       }
     }
@@ -4923,12 +6559,17 @@ export class PaintOp extends PaintOpBase {
 
     //console.log("new", newvs.size, newes.size, newfs.size, killfs.size);
 
-    //mesh.regenTesellation();
+    //mesh.regenTessellation();
 
     for (let i = 0; i < 2; i++) {
       let fsiter = i ? fs2 : newfs;
 
       for (let f of fsiter) {
+        if (f.eid < 0) {
+          console.warn("eek!", f);
+          continue;
+        }
+
         if (0 && f.lists[0].length > 3) {
           let newfaces = new Set();
           let newedges = new Set();
@@ -4958,11 +6599,6 @@ export class PaintOp extends PaintOpBase {
         }
 
         f.calcNormal();
-
-        if (f.eid < 0) {
-          console.warn("eek!", f);
-          continue;
-        }
 
         let l = f.lists[0].l;
         let firstl = l;
@@ -5010,10 +6646,26 @@ export class PaintOp extends PaintOpBase {
       }
     }
 
-    return es3;
+    es_out[0] = es3;
+    return;
+  }
+
+  _checkOrig(ctx) {
+    let brush = this.inputs.brush.getValue();
+    let mesh = ctx.mesh;
+
+    if (PaintOpBase.needOrig(brush)) {
+      let cd_orig = this.initOrigData(mesh);
+
+      let bvh = getBVH(ctx);
+      bvh.origCoStart(cd_orig);
+    }
   }
 
   modalStart(ctx) {
+    this._checkOrig(ctx);
+
+    this.lastps1 = this.lastps2 = undefined;
     this.dynTopoRand.seed(0);
     this.rand.seed(0);
 
@@ -5021,7 +6673,24 @@ export class PaintOp extends PaintOpBase {
     return super.modalStart(ctx);
   }
 
-  modalEnd() {
+
+  modalEnd(was_cancelled) {
+    if (!this.modalRunning) {
+      return;
+    }
+
+    if (this.task) {
+      //can't end modal
+      console.log("Waiting for task to finish");
+      this.taskNext();
+
+      window.setTimeout(() => {
+        this.modalEnd(was_cancelled);
+      }, 150);
+
+      return;
+    }
+
     let ctx = this.modal_ctx;
 
     //prevent reference leaks
@@ -5042,6 +6711,8 @@ export class PaintOp extends PaintOpBase {
   }
 
   on_mouseup(e) {
+    this.mfinished = true;
+
     let ob = this.modal_ctx.object;
     let mesh = ob ? ob.data : undefined;
 

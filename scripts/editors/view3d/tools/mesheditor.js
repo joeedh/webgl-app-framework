@@ -19,9 +19,9 @@ import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
 import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
   MeshFeatureError} from '../../../mesh/mesh_base.js';
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
-import {ContextOverlay, ToolMacro} from "../../../path.ux/scripts/pathux.js";
+import {ContextOverlay, ToolMacro, startMenu, createMenu} from "../../../path.ux/scripts/pathux.js";
 import {PackFlags} from "../../../path.ux/scripts/core/ui_base.js";
-import {RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
+import {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
 import {buildCotanMap} from '../../../mesh/mesh_utils.js';
 import {CurvVert, CVFlags, getCurveVerts} from '../../../mesh/mesh_curvature.js';
@@ -31,13 +31,18 @@ export class MeshEditor extends MeshToolBase {
     super(manager);
 
     this.loopMesh = undefined;
+    this.normalMesh = undefined;
 
     this.selectMask = SelMask.VERTEX;
+
+    this.drawNormals = false;
     this.drawSelectMask = this.selectMask;
     this.drawLoops = false;
     this.drawCurvatures = false;
 
     this._last_update_loop_key = "";
+    this._last_normals_key = "";
+    this._last_update_curvature = "";
   }
 
   static toolModeDefine() {return {
@@ -46,7 +51,7 @@ export class MeshEditor extends MeshToolBase {
     icon       : Icons.MESHTOOL,
     flag        : 0,
     description : "Edit vertices/edges/faces",
-    transWidgets: [TranslateWidget, ScaleWidget, RotateWidget]
+    transWidgets: [TranslateWidget, ScaleWidget, RotateWidget, InflateWidget]
   }}
 
   static buildEditMenu() {
@@ -70,8 +75,23 @@ export class MeshEditor extends MeshToolBase {
       new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
       new HotKey("J", ["ALT"], "mesh.tris_to_quads()"),
       new HotKey("J", [], "mesh.connect_verts()"),
+      new HotKey("S", ["ALT"], "view3d.inflate()"),
+      new HotKey("G", ["SHIFT"], () => {
+        let menu = [
+          "mesh.select_similar(mode='NUMBER_OF_EDGES')|Number of Edges"
+        ]
+
+        menu = createMenu(this.ctx, "Select Similar", menu);
+        let screen = this.ctx.screen;
+
+        startMenu(menu, screen.mpos[0], screen.mpos[1]);
+      }),
+
+      //new HotKey("T", [], "mesh.quad_smooth()"),
+
       //new HotKey("D", [], "mesh.subdivide_smooth()"),
       //new HotKey("D", [], "mesh.subdivide_smooth_loop()"),
+      new HotKey("Y", [], "mesh.test_color_smooth()"),
       new HotKey("D", [], "mesh.dissolve_verts()"),
       new HotKey("K", [], "mesh.subdiv_test()"),
       //new HotKey("D", [], "mesh.test_collapse_edge()"),
@@ -106,8 +126,10 @@ export class MeshEditor extends MeshToolBase {
 
     panel = container.panel("Viewport");
     strip = panel.row().strip();
+
     strip.prop(path + ".drawLoops");
     strip.prop(path + ".drawCurvatures");
+    strip.prop(path + ".drawNormals");
 
     panel = container.panel("Tools");
     strip = panel.row().strip();
@@ -145,8 +167,8 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.rotate_edges()");
 
     strip = panel.row().strip().useIcons(false);
-    strip.tool("mesh.dissolve_edges()");
     strip.tool("mesh.collapse_edges()");
+    strip.tool("mesh.dissolve_edges()");
 
     strip = panel.row().strip().useIcons(false);
     strip.tool("mesh.random_flip_edges()");
@@ -189,6 +211,9 @@ export class MeshEditor extends MeshToolBase {
 
       ctx.api.execTool(ctx, macro);
     });
+
+    strip = panel.row().strip().useIcons(false);
+    panel.tool("mesh.flip_normals()");
 
     panel = container.panel("Transform");
 
@@ -250,11 +275,13 @@ export class MeshEditor extends MeshToolBase {
     strip = row.strip();
     strip.tool("mesh.edgecut()");
     strip.tool("mesh.subdivide_smooth()");
+    strip.tool("mesh.vertex_smooth()");
 
     strip = row.strip();
     strip.prop("scene.tool.transformWidget[translate]");
     strip.prop("scene.tool.transformWidget[scale]");
     strip.prop("scene.tool.transformWidget[rotate]");
+    strip.prop("scene.tool.transformWidget[inflate]");
     strip.prop("scene.tool.transformWidget[NONE]");
 
 
@@ -314,8 +341,9 @@ export class MeshEditor extends MeshToolBase {
     let mstruct = api.mapStruct(Mesh, false);
 
     tstruct.struct("mesh", "mesh", "Mesh", mstruct);
-    tstruct.bool("drawLoops", "drawLoops", "Draw Loops");
-    tstruct.bool("drawCurvatures", "drawCurvatures", "Draw Curvatures");
+    tstruct.bool("drawLoops", "drawLoops", "Draw Loops").icon(Icons.SHOW_LOOPS);
+    tstruct.bool("drawCurvatures", "drawCurvatures", "Draw Curvatures").icon(Icons.SHOW_CURVATURE);
+    tstruct.bool("drawNormals", "drawNormals", "Draw Normals").icon(Icons.SHOW_NORMALS);
 
     let onchange = () => {
       window.redraw_viewport();
@@ -386,7 +414,7 @@ export class MeshEditor extends MeshToolBase {
       break;
     }
 
-    if (this.curvatureMesh && key === this._last_update_loop_key) {
+    if (this.curvatureMesh && key === this._last_update_curvature) {
       return;
     }
 
@@ -394,13 +422,18 @@ export class MeshEditor extends MeshToolBase {
       this.curvatureMesh.destroy(gl);
     }
 
-    this._last_update_loop_key = key;
+    this._last_update_curvature = key;
 
     let sm = this.curvatureMesh = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV);
     sm.primflag = PrimitiveTypes.LINES;
 
     let co1 = new Vector3();
     let co2 = new Vector3();
+
+    let white = [1, 1, 1, 1];
+    let black = [0, 0, 0, 1];
+
+    let no = new Vector3();
 
     let amat = new Float64Array(16);
     let mat = new Matrix4();
@@ -421,6 +454,23 @@ export class MeshEditor extends MeshToolBase {
       return tot ? sum/tot : 1.0;
     }
 
+
+    for (let v of mesh.verts.selected.editable) {
+      let cv = v.customData[cd_curv];
+      cv.check(v, true);
+
+      //let size = calcNorLen(v);
+
+      let k1 = 1.0 / (1.0 + cv.k1);
+
+      co1.load(v);
+      co2.load(v).addFac(cv.tan, 0.15*k1);
+
+      let line = sm.line(co1, co2);
+      line.colors(white, white);
+    }
+
+    return;
     let no3 = new Vector3();
 
     let sumMat = (v, v1, amat, w=1.0) => {
@@ -568,11 +618,6 @@ export class MeshEditor extends MeshToolBase {
         amat[i] *= tot;
       }
     }
-
-    let white = [1, 1, 1, 1];
-    let black = [0, 0, 0, 1];
-
-    let no = new Vector3();
 
     let wmap = new Map();
     let nomap = new Map();
@@ -769,6 +814,103 @@ export class MeshEditor extends MeshToolBase {
     }
   }
 
+  updateNormalsMesh(gl) {
+    let mesh = this.mesh;
+    if (!mesh) {
+      return;
+    }
+
+    let key = "" + mesh.lib_id + ":" + mesh.verts.selected.length + ":" + mesh.updateGen + ":" +
+              mesh.verts.length + ":" + mesh.eidgen._cur;
+
+    if (key === this._last_normals_key) {
+      return;
+    }
+
+    this._last_normals_key = key;
+
+    if (this.normalMesh) {
+      this.normalMesh.destroy(gl);
+    }
+
+    let sm = this.normalMesh = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV);
+
+    let co1 = new Vector3();
+    let co2 = new Vector3();
+
+    let white = [1, 1, 1, 1];
+
+    for (let v of mesh.verts.selected.editable) {
+      co1.load(v);
+
+      let edist = 0.0;
+      let tot = 0;
+
+      for (let v2 of v.neighbors) {
+        edist += v2.vectorDistance(v);
+      }
+      if (tot) {
+        edist /= tot;
+      } else {
+        edist = 0.1;
+      }
+
+      co2.load(co1).addFac(v.no, edist*0.4);
+
+      let line = sm.line(co1, co2);
+      line.colors(white, white);
+    }
+  }
+
+  on_drawend(view3d, gl) {
+    super.on_drawend(view3d, gl);
+
+    let ob = this.ctx.object;
+    let color = [1, 0.8, 0.7, 1.0];
+
+    let uniforms = {
+      projectionMatrix : view3d.activeCamera.rendermat,
+      objectMatrix : ob.outputs.matrix.getValue(),
+      object_id : ob.lib_id,
+      aspect : view3d.activeCamera.aspect,
+      size : view3d.glSize,
+      near : view3d.activeCamera.near,
+      far : view3d.activeCamera.far,
+      color : color,
+      uColor : color,
+      alpha : 1.0,
+      opacity : 1.0,
+      polygonOffset : 1.0
+    };
+
+    if (this.drawCurvatures && this.mesh) {
+      this.updateCurvatureMesh(gl);
+
+      if (this.curvatureMesh) {
+        gl.enable(gl.DEPTH_TEST);
+        this.curvatureMesh.draw(gl, uniforms, Shaders.WidgetMeshShader);
+      }
+    }
+
+    if (this.drawNormals && this.mesh) {
+      this.updateNormalsMesh(gl);
+
+      if (this.normalMesh) {
+        gl.enable(gl.DEPTH_TEST);
+        this.normalMesh.draw(gl, uniforms, Shaders.WidgetMeshShader);
+      }
+    }
+
+    if (this.drawLoops && this.mesh) {
+      this.updateLoopMesh(gl);
+
+      if (this.loopMesh) {
+        gl.enable(gl.DEPTH_TEST);
+        this.loopMesh.draw(gl, uniforms, Shaders.WidgetMeshShader);
+      }
+    }
+  }
+
   on_drawstart(view3d, gl) {
     if (!this.ctx) return;
 
@@ -787,57 +929,7 @@ export class MeshEditor extends MeshToolBase {
       }
     }
 
-    if (this.drawCurvatures && this.mesh) {
-      this.updateCurvatureMesh(gl);
 
-      if (this.curvatureMesh) {
-        let ob = this.ctx.object;
-        let color = [1, 0.8, 0.7, 1.0];
-
-        let uniforms = {
-          projectionMatrix: view3d.activeCamera.rendermat,
-          objectMatrix    : ob.outputs.matrix.getValue(),
-          object_id       : ob.lib_id,
-          aspect          : view3d.activeCamera.aspect,
-          size            : view3d.glSize,
-          near            : view3d.activeCamera.near,
-          far             : view3d.activeCamera.far,
-          color           : color,
-          uColor          : color,
-          alpha           : 1.0,
-          opacity         : 1.0,
-          polygonOffset   : 5.0
-        };
-
-        this.curvatureMesh.draw(gl, uniforms, Shaders.WidgetMeshShader);
-      }
-    }
-
-    if (this.drawLoops && this.mesh) {
-      this.updateLoopMesh(gl);
-
-      if (this.loopMesh) {
-        let ob = this.ctx.object;
-        let color = [1, 0.8, 0.7, 1.0];
-
-        let uniforms = {
-          projectionMatrix : view3d.activeCamera.rendermat,
-          objectMatrix : ob.outputs.matrix.getValue(),
-          object_id : ob.lib_id,
-          aspect : view3d.activeCamera.aspect,
-          size : view3d.glSize,
-          near : view3d.activeCamera.near,
-          far : view3d.activeCamera.far,
-          color : color,
-          uColor : color,
-          alpha : 1.0,
-          opacity : 1.0,
-          polygonOffset : 5.0
-        };
-
-        this.loopMesh.draw(gl, uniforms, Shaders.WidgetMeshShader);
-      }
-    }
     super.on_drawstart(view3d, gl);
   }
 
@@ -859,10 +951,11 @@ export class MeshEditor extends MeshToolBase {
 }
 
 MeshEditor.STRUCT = STRUCT.inherit(MeshEditor, ToolMode) + `
-  mesh      : DataRef | DataRef.fromBlock(obj.mesh);
-  drawflag  : int;
-  drawLoops : bool;
-  drawCurvatures : bool;
+  mesh                : DataRef | DataRef.fromBlock(obj.mesh);
+  drawflag            : int;
+  drawLoops           : bool;
+  drawCurvatures      : bool;
+  drawNormals         : bool;
 }`;
 nstructjs.manager.add_class(MeshEditor);
 ToolMode.register(MeshEditor);

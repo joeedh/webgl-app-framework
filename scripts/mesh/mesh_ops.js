@@ -20,9 +20,11 @@ import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
 import {CustomDataElem} from "./customdata.js";
 import {
-  bisectMesh, connectVerts, cotanVertexSmooth, dissolveEdgeLoops, fixManifold, flipLongTriangles, recalcWindings,
+  bisectMesh, connectVerts, cotanVertexSmooth, dissolveEdgeLoops, dissolveFaces, fixManifold, flipLongTriangles,
+  pruneLooseGeometry,
+  recalcWindings,
   symmetrizeMesh,
-  trianglesToQuads,
+  trianglesToQuads, triangulateMesh,
   TriQuadFlags, vertexSmooth
 } from "./mesh_utils.js";
 import {QRecalcFlags} from "./mesh_grids.js";
@@ -107,7 +109,7 @@ export class DeleteOp extends MeshOp {
       }
 
       mesh.regenRender();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.graphUpdate();
     }
 
@@ -140,7 +142,7 @@ export class FlipLongTrisOp extends MeshOp {
 
       mesh.regenBVH();
       mesh.regenRender();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.graphUpdate();
     }
 
@@ -180,7 +182,7 @@ export class TriToQuadsOp extends MeshOp {
 
       mesh.regenBVH();
       mesh.regenRender();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.graphUpdate();
       mesh.recalcNormals();
     }
@@ -239,7 +241,7 @@ export class SymmetrizeOp extends MeshOp {
       //force bvh update
       mesh.bvh = undefined;
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
@@ -313,7 +315,7 @@ export class BisectOp extends MeshOp {
       //force bvh update
       mesh.bvh = undefined;
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
@@ -391,7 +393,7 @@ export class TriangulateOp extends MeshOp {
 
       */
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
@@ -438,7 +440,7 @@ export class RemeshOp extends MeshOp {
       remeshMesh(mesh, this.inputs.remesher.getValue(), lctx);
       vertexSmooth(mesh, mesh.verts, 0.5, 1.0);
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
@@ -471,7 +473,7 @@ export class LoopSubdOp extends MeshOp {
 
       loopSubdivide(mesh, mesh.faces.selected.editable);
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
@@ -539,7 +541,7 @@ export class ExtrudeOneVertexOp extends MeshOp {
       mesh.setActive(v);
     }
 
-    mesh.regenTesellation();
+    mesh.regenTessellation();
     mesh.regenRender();
   }
 }
@@ -749,7 +751,7 @@ export class ExtrudeRegionsOp extends MeshOp {
     this.outputs.normal.setValue(no);
 
     mesh.regenRender();
-    mesh.regenTesellation();
+    mesh.regenTessellation();
     mesh.recalcNormals();
     mesh.graphUpdate();
     mesh.regenBVH();
@@ -825,7 +827,7 @@ export class CatmullClarkeSubd extends MeshOp {
 
       vertexSmooth(mesh, vs);
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
@@ -856,7 +858,7 @@ export class MeshSubdTest extends MeshOp {
       meshSubdivideTest(mesh);
 
       mesh.graphUpdate();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.regenBVH();
@@ -923,7 +925,7 @@ export class SubdivideSimple extends MeshOp {
         }
       }
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
@@ -961,7 +963,7 @@ export class SplitEdgesOp extends MeshOp {
       }
 
       mesh.regenBVH();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
@@ -989,7 +991,7 @@ export function vertexSmooth_tst(mesh, verts = mesh.verts.selected.editable, fac
     }
 
     mesh.regenRender();
-    mesh.regenTesellation();
+    mesh.regenTessellation();
   }
 
   for (let i = 0; i < 5; i++) {
@@ -1096,7 +1098,7 @@ export function ccVertexSmooth(mesh, verts = mesh.verts.selected.editable, fac =
     }
 
     mesh.regenRender();
-    mesh.regenTesellation();
+    mesh.regenTessellation();
   }
 
   for (let v of verts) {
@@ -1119,15 +1121,15 @@ export class VertexSmooth extends MeshDeformOp {
   static tooldef() {
     return {
       uiname  : "Vertex Smooth",
-      icon    : -1,
+      icon    : Icons.SCULPT_SMOOTH,
       toolpath: "mesh.vertex_smooth",
       undoflag: 0,
       flag    : 0,
       inputs  : ToolOp.inherit({
-        repeat: new IntProperty(1).saveLastValue().noUnits().setRange(1, 256),
-        type: new EnumProperty(1, SmoothTypes).saveLastValue(),
-        projection : new FloatProperty(0.0).saveLastValue().setRange(0.0, 1.0).noUnits(),
-        factor: new FloatProperty(0.5).saveLastValue().setRange(0.0, 1.0).noUnits()
+        repeat    : new IntProperty(1).saveLastValue().noUnits().setRange(1, 256),
+        type      : new EnumProperty(1, SmoothTypes).saveLastValue(),
+        projection: new FloatProperty(0.0).saveLastValue().setRange(0.0, 1.0).noUnits(),
+        factor    : new FloatProperty(0.5).saveLastValue().setRange(0.0, 1.0).noUnits()
       }),
     }
   }
@@ -1171,7 +1173,7 @@ ToolOp.register(VertexSmooth);
 export class TestSplitFaceOp extends MeshOp {
   static tooldef() {
     return {
-      uiname  : "Split Edges (smart)",
+      uiname: "Split Edges (smart)",
       //icon    : Icons.SPLIT_EDGE,
       toolpath: "mesh.split_edges_smart",
       inputs  : ToolOp.inherit(),
@@ -1225,12 +1227,12 @@ export class TestSplitFaceOp extends MeshOp {
         e.flag |= MeshFlags.UPDATE;
       }
 
-      splitEdgesPreserveQuads(mesh, es, undefined, lctx);
-      //splitEdgesSmart2(mesh, es, undefined, lctx);
+      //splitEdgesPreserveQuads(mesh, es, undefined, lctx);
+      splitEdgesSmart2(mesh, es, undefined, lctx);
 
       //console.log(newvs, newfs);
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
@@ -1279,7 +1281,7 @@ export class TestCollapseOp extends MeshOp {
       //let {newvs, newfs} = splitEdgesSmart(mesh, es);
       //console.log(newvs, newfs);
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
@@ -1358,7 +1360,7 @@ export class EnsureGridsOp extends MeshOp {
       }
 
       mesh.regenBVH();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.regenRender();
       mesh.regenElementsDraw();
       mesh.graphUpdate();
@@ -1392,7 +1394,7 @@ export class VoxelUnwrapOp extends UnwrapOpBase {
       voxelUnwrap(mesh, mesh.faces.selected.editable, undefined, this.inputs.setSeams.getValue());
 
       mesh.regenBVH();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.regenRender();
       mesh.regenElementsDraw();
       mesh.graphUpdate();
@@ -1468,7 +1470,7 @@ export class RandomizeUVsOp extends MeshOpBaseUV {
       wr.finish();
 
       mesh.regenBVH();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.regenRender();
       mesh.regenElementsDraw();
       mesh.graphUpdate();
@@ -1843,7 +1845,7 @@ export class SubdivideGridsOp extends MeshOp {
       }
 
       mesh.regenBVH();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.regenRender();
       mesh.regenElementsDraw();
       mesh.graphUpdate();
@@ -1960,7 +1962,7 @@ export class SmoothGridsOp extends MeshOp {
       }
 
       mesh.regenBVH();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.regenRender();
       mesh.regenElementsDraw();
       mesh.graphUpdate();
@@ -2456,7 +2458,7 @@ export class GridsTestOp extends MeshOp {
       }
 
       mesh.regenBVH();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.regenRender();
       mesh.regenElementsDraw();
       mesh.graphUpdate();
@@ -2504,7 +2506,7 @@ export class DeleteGridsOp extends MeshOp {
       mesh.bvh = undefined;
 
       mesh.regenRender();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.regenElementsDraw();
       mesh.graphUpdate();
     }
@@ -2555,7 +2557,7 @@ export class ResetGridsOp extends MeshOp {
       }
       mesh.bvh = undefined;
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.regenElementsDraw();
@@ -2601,7 +2603,7 @@ export class ApplyGridBaseOp extends MeshOp {
       }
       mesh.bvh = undefined;
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.regenElementsDraw();
@@ -2803,7 +2805,7 @@ export class FixNormalsOp extends MeshOp {
         }
       }
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenElementsDraw();
       mesh.regenRender();
@@ -2823,7 +2825,10 @@ export class FixManifoldOp extends MeshOp {
       uiname     : "Fix Manifold",
       description: "Fix manifold errors (except for holes)",
       toolpath   : "mesh.fix_manifold",
-      inputs     : ToolOp.inherit({})
+      inputs     : ToolOp.inherit({
+        fixLooseGeometry: new BoolProperty(true).saveLastValue(),
+        minIslandVerts  : new IntProperty(5).noUnits().setRange(0, 1024*16).setStep(5).saveLastValue()
+      })
     }
   }
 
@@ -2845,6 +2850,8 @@ export class FixManifoldOp extends MeshOp {
     }
 
     for (let mesh of this.getMeshes(ctx)) {
+      mesh.validateMesh();
+
       console.log("euler-poincare:", calcEulerPoincare(mesh));
 
       let lctx = new LogContext();
@@ -2866,6 +2873,11 @@ export class FixManifoldOp extends MeshOp {
         }
       }
 
+      if (this.inputs.fixLooseGeometry.getValue()) {
+        let minverts = this.inputs.minIslandVerts.getValue();
+        pruneLooseGeometry(mesh, lctx, minverts);
+      }
+
       recalcWindings(mesh, mesh.faces, lctx);
 
       mesh.fixLoops();
@@ -2873,7 +2885,7 @@ export class FixManifoldOp extends MeshOp {
       console.log("euler-poincare:", calcEulerPoincare(mesh));
 
       mesh.regenBVH();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenElementsDraw();
       mesh.regenRender();
@@ -2913,7 +2925,7 @@ export class ConnectVertsOp extends MeshOp {
       //mesh.selectFlush();
 
       mesh.regenBVH();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
@@ -3017,7 +3029,7 @@ export class CleanupQuads extends MeshOp {
         }
       }
 
-      for (let i=0; i<5; i++) {
+      for (let i = 0; i < 5; i++) {
         vertexSmooth(mesh, vs, 0.5, 0.5);
       }
 
@@ -3055,7 +3067,7 @@ export class CleanupTris extends MeshOp {
         }
       }
 
-      for (let i=0; i<5; i++) {
+      for (let i = 0; i < 5; i++) {
         faces = new Set(mesh.faces.selected.editable);
         cleanupTris(mesh, faces, lctx);
       }
@@ -3116,7 +3128,7 @@ ToolOp.register(DissolveEdgesOp);
 
 export const RotateEdgeModes = {
   FORWARD : 0,
-  BACKWARD : 1
+  BACKWARD: 1
 };
 
 export class RotateEdgeOp extends MeshOp {
@@ -3125,7 +3137,7 @@ export class RotateEdgeOp extends MeshOp {
       uiname  : "Rotate Edges",
       toolpath: "mesh.rotate_edges",
       inputs  : ToolOp.inherit({
-        mode : new EnumProperty(0, RotateEdgeModes)
+        mode: new EnumProperty(0, RotateEdgeModes)
       })
     }
   }
@@ -3148,7 +3160,7 @@ export class RotateEdgeOp extends MeshOp {
       }
 
       mesh.regenAll();
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.graphUpdate();
 
@@ -3195,13 +3207,15 @@ export class CollapseEdgesOp extends MeshOp {
 ToolOp.register(CollapseEdgesOp);
 
 export class RandomCollapseOp extends MeshOp {
-  static tooldef() { return {
-    uiname : "Random Flip",
-    toolpath : "mesh.random_flip_edges",
-    inputs : ToolOp.inherit({
-      probability : new FloatProperty(0.85).saveLastValue()
-    })
-  }}
+  static tooldef() {
+    return {
+      uiname  : "Random Flip",
+      toolpath: "mesh.random_flip_edges",
+      inputs  : ToolOp.inherit({
+        probability: new FloatProperty(0.85).saveLastValue()
+      })
+    }
+  }
 
   exec(ctx) {
     let prob = this.inputs.probability.getValue();
@@ -3216,7 +3230,7 @@ export class RandomCollapseOp extends MeshOp {
 
         let bad = false;
 
-        for (let i=0; i<2; i++) {
+        for (let i = 0; i < 2; i++) {
           let v = i ? e.v2 : e.v1;
           for (let e2 of v.edges) {
             if (es.has(e2)) {
@@ -3253,6 +3267,7 @@ export class RandomCollapseOp extends MeshOp {
     }
   }
 }
+
 ToolOp.register(RandomCollapseOp);
 
 export class DissolveEdgeLoopsOp extends MeshOp {
@@ -3261,8 +3276,8 @@ export class DissolveEdgeLoopsOp extends MeshOp {
       uiname  : "Dissolve Loops",
       toolpath: "mesh.dissolve_edgeloops",
       inputs  : ToolOp.inherit({
-        ensureQuads : new BoolProperty(false).saveLastValue(),
-        selectFaces : new BoolProperty(false).saveLastValue()
+        ensureQuads: new BoolProperty(false).saveLastValue(),
+        selectFaces: new BoolProperty(false).saveLastValue()
       })
     }
   }
@@ -3316,3 +3331,126 @@ export class DissolveEdgeLoopsOp extends MeshOp {
 
 ToolOp.register(DissolveEdgeLoopsOp);
 
+export class FlipNormalsOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Flip Normals",
+      toolpath: "mesh.flip_normals",
+      inputs  : ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      for (let f of mesh.faces.selected.editable) {
+        mesh.reverseWinding(f);
+        f.flag |= MeshFlags.UPDATE;
+
+        for (let v of f.verts) {
+          v.flag |= MeshFlags.UPDATE;
+        }
+      }
+
+      mesh.regenAll();
+      mesh.recalcNormals();
+      mesh.graphUpdate();
+
+      window.updateDataGraph();
+      window.redraw_viewport(true);
+    }
+  }
+}
+
+ToolOp.register(FlipNormalsOp);
+
+export class QuadSmoothOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Quad Smooth Test",
+      toolpath: "mesh.quad_smooth",
+      inputs  : ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      let lctx = new LogContext();
+
+      lctx.onnew = (elem) => {
+        mesh.setSelect(elem, true);
+        elem.flag |= MeshFlags.UPDATE;
+      }
+
+      function smooth() {
+        for (let i = 0; i < 1; i++) {
+          vertexSmooth(mesh, vs);
+        }
+      }
+
+      let vs = new Set();
+      for (let f of mesh.faces.selected.editable) {
+        for (let v of f.verts) {
+          vs.add(v);
+        }
+      }
+
+      triangulateMesh(mesh, mesh.faces.selected.editable, lctx);
+      smooth();
+      mesh.recalcNormals();
+
+      trianglesToQuads(mesh, mesh.faces.selected.editable, lctx);
+      smooth();
+
+      mesh.regenAll();
+      mesh.recalcNormals();
+      mesh.graphUpdate();
+      window.redraw_viewport(true);
+    }
+  }
+}
+
+ToolOp.register(QuadSmoothOp);
+
+export class TestSmoothOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Test Color Smooth",
+      toolpath: "mesh.test_color_smooth",
+      inputs  : ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      window._testMVC();
+
+      mesh.regenAll();
+      mesh.recalcNormals();
+      window.redraw_viewport(true);
+    }
+  }
+}
+
+ToolOp.register(TestSmoothOp);
+
+export class DissolveFacesOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Dissolve Faces",
+      toolpath: "mesh.dissolve_faces",
+      inputs  : ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      let faces = mesh.faces.selected.editable;
+
+      dissolveFaces(mesh, faces);
+
+      mesh.regenAll();
+      window.redraw_viewport(true);
+    }
+  }
+}
+ToolOp.register(DissolveFacesOp);

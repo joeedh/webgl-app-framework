@@ -7,7 +7,7 @@ export function exportSTLMesh(meshes) {
     if (mesh.bvh) {
       //might be in sculpt mode, in which case tesselation may not be
       //fully up to date
-      mesh.regenTesellation();
+      mesh.regenTessellation();
     }
 
     let ltris = mesh.loopTris;

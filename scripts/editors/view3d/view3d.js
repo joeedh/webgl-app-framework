@@ -36,7 +36,7 @@ import {GPUSelectBuffer} from './view3d_select.js';
 import {KeyMap, HotKey} from "../editor_base.js";
 import {WidgetManager} from './widgets/widgets.js';
 import {MeshCache} from './view3d_toolmode.js';
-import {calcTransCenter, calcTransAABB} from './transform/transform_query.js';
+import {calcTransCenter, calcTransMatrix, calcTransAABB} from './transform/transform_query.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
 import {ConstraintSpaces} from './transform/transform_base.js';
@@ -480,6 +480,13 @@ export class View3D extends Editor {
   }
 
   onFileLoad(is_active) {
+    //ensure toolmode has correct ctx
+    if (this.ctx && this.ctx.toolmode) {
+      this.ctx.toolmode.ctx = this.ctx;
+    }
+
+    window.redraw_viewport();
+
     window.setTimeout(() => {
       this.deleteGraphNodes();
 
@@ -562,6 +569,28 @@ export class View3D extends Editor {
     ret.push(this.keymap);
 
     return ret;
+  }
+
+  viewAxis(axis, sign=1) {
+    let cam = this.activeCamera;
+
+    let ups = {
+      0 : [0, 0, 1],
+      1 : [0, 0, 1],
+      2 : [0, 1, 0]
+    };
+
+    cam.pos.sub(cam.target);
+    let len = cam.pos.vectorLength() || 0.1;
+
+    cam.pos.zero();
+    cam.pos[axis] = sign;
+    cam.pos.mulScalar(len);
+
+    cam.up.load(ups[axis]);
+    cam.pos.add(cam.target);
+
+    window.redraw_viewport(true);
   }
 
   viewSelected(ob=undefined) {
@@ -670,6 +699,30 @@ export class View3D extends Editor {
       new HotKey("S", [], "view3d.scale()"),
       new HotKey("W", [], "mesh.vertex_smooth()"),
       new HotKey(".", [], "view3d.view_selected()"),
+
+      new HotKey("1", [], () => {
+        this.viewAxis(1, 1);
+      }),
+      new HotKey("3", [], () => {
+        this.viewAxis(0, 1);
+      }),
+      new HotKey("5", [], () => {
+        this.cameraMode ^= 1;
+        window.redraw_viewport(true);
+      }),
+      new HotKey("7", [], () => {
+        this.viewAxis(2, 1);
+      }),
+      new HotKey("1", ["CTRL"], () => {
+        this.viewAxis(1, -1);
+      }),
+      new HotKey("3", ["CTRL"], () => {
+        this.viewAxis(0, -1);
+      }),
+      new HotKey("7", ["CTRL"], () => {
+        this.viewAxis(2, -1);
+      })
+
     ]);
 
 
@@ -824,6 +877,9 @@ export class View3D extends Editor {
     strip.prop("scene.toolmode[mesh]");
     strip.prop("scene.toolmode[object]");
     strip.prop("scene.toolmode[pan]");
+    strip.prop("scene.toolmode[tetmesh]");
+    strip.prop("scene.toolmode[strandset]");
+
     //header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
     //strip.tool("view3d.view_selected()", PackFlags.USE_ICONS);
     //strip.tool("view3d.center_at_mouse()", PackFlags.USE_ICONS);
@@ -864,6 +920,10 @@ export class View3D extends Editor {
   }
 
   doEvent(type, e) {
+    if (this.ctx && this.ctx.toolmode && !this.ctx.toolmode.ctx) {
+      this.ctx.toolmode.ctx = this.ctx;
+    }
+
     if (!this.gl) {
       //wait for gl
       return;
@@ -1086,6 +1146,10 @@ export class View3D extends Editor {
 
   getTransCenter() {
     return calcTransCenter(this.ctx, this.ctx.selectMask, this.transformSpace);
+  }
+
+  getTransMatrix() {
+    return calcTransMatrix(this.ctx, this.ctx.selectMask, this.transformSpace);
   }
 
   getLocalMouse(x, y) {
@@ -1664,6 +1728,10 @@ export class View3D extends Editor {
       if (scene.toolmode) {
         scene.toolmode.view3d = this;
 
+        if (this.ctx) {
+          scene.toolmode.ctx = this.ctx;
+        }
+
         this.threeCamera.pushUniforms(uniforms);
 
 
@@ -1817,6 +1885,9 @@ let rcbs = [];
 
 let f = () => {
   animreq = undefined;
+
+  //forcibly update datagraph
+  window.updateDataGraph(true);
 
   for (let i=0; i<drawCount; i++) {
     f2();

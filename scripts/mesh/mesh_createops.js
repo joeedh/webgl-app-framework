@@ -5,6 +5,7 @@ import {makeCube} from '../core/mesh_shapes.js';
 import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
+  StringProperty, StringSetProperty, ListProperty,
   PropFlags, PropTypes, PropSubTypes, ToolOp, ToolFlags, UndoFlags
 } from '../path.ux/scripts/pathux.js';
 import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
@@ -16,7 +17,7 @@ import * as math from '../util/math.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {Icons} from '../editors/icon_enum.js';
 
-import {Mesh, MeshTypes, MeshFlags} from './mesh.js';
+import {Mesh, MeshTypes, MeshFlags, LogContext} from './mesh.js';
 import {loopSubdivide, subdivide} from '../subsurf/subsurf_mesh.js';
 import {SceneObject} from "../sceneobject/sceneobject.js";
 import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
@@ -26,7 +27,8 @@ import {DefaultMat, Material} from '../core/material.js';
 import {saveUndoMesh, loadUndoMesh} from './mesh_ops_base.js';
 import {css2matrix} from '../path.ux/scripts/path-controller/util/cssutils.js';
 import {splitEdgesSmart2} from './mesh_subdivide.js';
-import {triangulateMesh} from './mesh_utils.js';
+import {dissolveFaces, triangulateMesh} from './mesh_utils.js';
+import {readOBJ} from '../util/objloader.js';
 
 export class MeshCreateOp extends MeshOp {
   constructor() {
@@ -160,7 +162,7 @@ export class MeshCreateOp extends MeshOp {
 
       mesh.swapDataBlockContents(mesh2);
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.regenBVH();
@@ -245,8 +247,8 @@ export class MeshCreateOp extends MeshOp {
 
     this.internalCreate(ob, mesh, mat);
 
-    mesh.regenTesellation();
-    mesh.regenRender();
+    mesh.regenAll();
+    mesh.recalcNormals();
 
     window.redraw_viewport(true);
   }
@@ -549,7 +551,7 @@ export class MakeIcoSphere extends MeshCreateOp {
       mesh.setSelect(f, true);
     }
 
-    mesh.regenTesellation();
+    mesh.regenTessellation();
     mesh.recalcNormals();
     mesh.regenRender();
     mesh.graphUpdate();
@@ -575,10 +577,30 @@ export class CreateFaceOp extends MeshOp {
     let vs = new Set(mesh.verts.selected.editable);
     let es = new Set(mesh.edges.selected.editable);
 
-    let makeFace = (vs) => {
-      let f2;
+    let fs = new Set(mesh.faces.selected.editable);
+    if (fs.size > 1) {
+      let lctx = new LogContext();
 
-      if (f2 = mesh.getFace(vs)) {
+      lctx.onnew = (e) => {
+        mesh.setSelect(e, true);
+
+        if (e.type === MeshTypes.FACE) {
+          mesh.faces.active = e;
+        }
+      }
+
+      dissolveFaces(mesh, fs, lctx);
+
+      mesh.regenAll();
+      mesh.recalcNormals();
+      window.redraw_viewport(true);
+      return;
+    }
+
+    let makeFace = (vs) => {
+      let f2 = mesh.getFace(vs);
+
+      if (f2) {
         console.log("Face already exists", f2, vs);
         ctx.error("Face already exists");
         return;
@@ -756,11 +778,8 @@ export class CreateFaceOp extends MeshOp {
       }
     }
 
-    mesh.regenTesellation();
-    mesh.regenBVH();
-    mesh.regenUVEditor();
-    mesh.regenRender();
-    mesh.regenElementsDraw();
+    mesh.regenAll();
+    mesh.recalcNormals();
     window.redraw_viewport(true);
   }
 
@@ -915,7 +934,7 @@ export class ProceduralToMesh extends ToolOp {
     }
 
     if (this.inputs.triangulate.getValue()) {
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       triangulateMesh(mesh);
     }
@@ -926,7 +945,7 @@ export class ProceduralToMesh extends ToolOp {
     mat.lib_addUser(mesh);
 
     mesh.regenRender();
-    mesh.regenTesellation();
+    mesh.regenTessellation();
     mesh.recalcNormals();
     mesh.regenBVH();
     mesh.regenElementsDraw();
@@ -936,3 +955,21 @@ export class ProceduralToMesh extends ToolOp {
 }
 
 ToolOp.register(ProceduralToMesh);
+
+export class ImportOBJOp extends MeshCreateOp {
+  static tooldef() {
+    return {
+      uiname  : "Import OBJ (internal)",
+      toolpath: "mesh.import_obj",
+      inputs  : ToolOp.inherit({
+        data : new StringProperty().private()
+      })
+    }
+  }
+
+  internalCreate(ob, mesh, matrix) {
+    let data = this.inputs.data.getValue();
+
+    readOBJ(data, mesh);
+  }
+}

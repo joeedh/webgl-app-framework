@@ -1842,7 +1842,7 @@ export class SimpleMesh {
     for (let island of this.islands) {
       let primflag = island.primflag;
 
-      island.primflag = PrimitiveTypes.LINES;
+      island.primflag = PrimitiveTypes.LINES|PrimitiveTypes.ADVANCED_LINES;
       island.draw(gl, uniforms, undefined, program_override);
       island.primflag = primflag;
     }

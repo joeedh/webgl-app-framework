@@ -10,7 +10,7 @@ vniters.cur = 0;
 
 export class VertNeighborIter {
   constructor() {
-    this.ret = {done : false, value : undefined};
+    this.ret = {done: false, value: undefined};
     this.done = true;
     this.v = undefined;
     this.i = 0;
@@ -63,17 +63,26 @@ export class VertNeighborIter {
     return ret;
   }
 }
-for (let i=0; i<vniters.length; i++) {
+
+for (let i = 0; i < vniters.length; i++) {
   vniters[i] = new VertNeighborIter();
 }
 
 export class TetElement {
   constructor(type) {
+    this.initTetElement(type);
+  }
+
+  initTetElement(type) {
     this.eid = -1;
     this.flag = 0;
     this.index = 0;
     this.type = type;
     this.customData = [];
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
   }
 }
 
@@ -85,21 +94,42 @@ tet.TetElement {
   index      : int;
   customData : array(abstract(mesh.CustomDataElem)); 
 }
-`
+`;
+nstructjs.register(TetElement);
 
-export class TetVertex extends TetElement {
-  constructor() {
-    super(TetTypes.VERTEX);
+export class TetVertex extends Vector3 {
+  constructor(co) {
+    super(co);
 
-    //hrm, mixing in Vector3 does play havoc with JS optimizers. . .
-    this.initVector3();
-    //this.co = new Vector3();
+    this.initTetElement(TetTypes.VERTEX);
 
+    this.oldco = new Vector3();
+    this.vel = new Vector3();
+    this.acc = new Vector3();
+
+    this.mass = 1.0;
+    this.w = 1.0;
+
+    this.no = new Vector3();
     this.edges = [];
+
+    //seal object to make js engine optimizers happier
+    Object.seal(this);
+  }
+
+  get valence() {
+    return this.edges.length;
   }
 
   get neighbors() {
     return vniters[vniters.cur++].reset(this);
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+
+    this.oldco.load(this.co);
   }
 }
 
@@ -107,10 +137,9 @@ TetVertex.STRUCT = nstructjs.inherit(TetVertex, TetElement, "tet.TetVertex") + `
   0     : float;
   1     : float;
   2     : float;
-  edges : iter(e, int) | e.eid;
 }`;
 nstructjs.register(TetVertex);
-//util.mixin(TetVertex, Vector3);
+util.mixin(TetVertex, TetElement);
 
 let etetiters = new Array(16);
 etetiters.cur = 0;
@@ -120,7 +149,7 @@ export class EdgeTetIter {
     this.e = undefined;
     this.l = undefined;
     this._i = 0;
-    this.ret = {done : true, value : undefined};
+    this.ret = {done: true, value: undefined};
     this.done = true;
   }
 
@@ -207,9 +236,11 @@ export class EdgeTetIter {
     return this.finish();
   }
 }
-for (let i=0; i<etetiters.length; i++) {
+
+for (let i = 0; i < etetiters.length; i++) {
   etetiters[i] = new EdgeTetIter();
 }
+
 export class TetEdge extends TetElement {
   constructor() {
     super(TetTypes.EDGE);
@@ -217,17 +248,23 @@ export class TetEdge extends TetElement {
     this.v1 = undefined;
     this.v2 = undefined;
 
+    this.startLength = 0.0;
+
     this.l = undefined;
   }
 
-  get tets() {
+  get cells() {
     return etetiters[etetiters.cur++].reset(this);
   }
 
   get loops() {
     let this2 = this;
 
-    return (function*() {
+    return (function* () {
+      if (!this2.l) {
+        return;
+      }
+
       let l = this2.l;
       let _i = 0;
       do {
@@ -238,7 +275,7 @@ export class TetEdge extends TetElement {
 
         yield l;
 
-        l = l.next;
+        l = l.radial_next;
       } while (l !== this2.l);
     })();
   }
@@ -257,7 +294,6 @@ export class TetEdge extends TetElement {
 TetEdge.STRUCT = nstructjs.inherit(TetEdge, TetElement, "tet.TetEdge") + `
   v1 : int | this.v1.eid;
   v2 : int | this.v2.eid;
-  l  : int | this.l !== undefined ? this.l.eid : -1;
 }`;
 nstructjs.register(TetEdge);
 
@@ -265,7 +301,7 @@ export class TetLoop extends TetElement {
   constructor() {
     super(TetTypes.LOOP);
 
-    this.v = this.e = this.f = this.t = undefined;
+    this.v = this.e = this.f = undefined;
     this.next = this.prev = undefined;
 
     this.radial_next = this.radial_prev = undefined;
@@ -284,26 +320,159 @@ export class TetFace extends TetElement {
   constructor() {
     super(TetTypes.FACE);
 
-    this.t = undefined; //tet
+    this.p = undefined; //first tet plane in plane linked list
     this.l = undefined; //start loop
 
-    this.loops = new Array(3);
+    this.no = new Vector3();
+    this.cent = new Vector3();
+    this.area = 0.0;
+
+    this.loops = [];
+  }
+
+  isTri() {
+    return this.loops.length === 3;
+  }
+
+  isQuad() {
+    return this.loops.length === 4;
+  }
+
+  calcCent() {
+    this.cent.zero();
+    let tot = 0.0;
+
+    for (let l of this.loops) {
+      this.cent.add(l.v);
+      tot++;
+    }
+
+    if (tot) {
+      this.cent.mulScalar(1.0/tot);
+    }
+
+    return this;
+  }
+
+  get planes() {
+    let this2 = this;
+
+    return (function* () {
+      if (!this2.p) {
+        return;
+      }
+
+      let l = this2.p;
+      let _i = 0;
+      do {
+        if (_i++ > 100) {
+          console.error("Infinite loop error");
+          break;
+        }
+
+        yield l;
+
+        l = l.plane_next;
+      } while (l !== this2.p);
+    })();
+  }
+
+  calcNormal() {
+    let ls = this.loops;
+
+    if (this.loops.length === 4) {
+      this.area = math.tri_area(ls[0].v, ls[1].v, ls[2].v);
+      this.area += math.tri_area(ls[0].v, ls[2].v, ls[3].v);
+      this.no.load(math.normal_quad(ls[0].v, ls[1].v, ls[2].v, ls[3].v));
+    } else {
+      this.area = math.tri_area(ls[0].v, ls[1].v, ls[2].v);
+      this.no.load(math.normal_tri(ls[0].v, ls[1].v, ls[2].v));
+    }
+
+    return this;
   }
 }
 
 TetFace.STRUCT = nstructjs.inherit(TetFace, TetElement, "tet.TetFace") + `
-  loops : iter(e, int) | e.eid;
+  loops      : iter(l, int) | l.eid;
+  no         : vec3;
+  cent       : vec3;
 }`;
 
 nstructjs.register(TetFace);
 
-export class TetTet extends TetElement {
-  constructor() {
-    super(TetTypes.TET);
+export const CellTypes = {
+  TET: 0, //tetrahedron
+  HEX: 1, //cube
+};
 
-    this.faces = new Array(4);
+//planes are to faces as loops are to edges
+export class TetPlane extends TetElement {
+  constructor() {
+    super(TetTypes.PLANE);
+
+    this.f = undefined;
+    this.c = undefined; //cell
+
+    this.no = new Vector3();
+    this.cent = new Vector3();
+
+    this.plane_next = this.plane_prev = undefined
+  }
+
+  loadSTRUCT(reader) {
+    super.loadSTRUCT(reader);
+  }
+}
+
+TetPlane.STRUCT = nstructjs.inherit(TetPlane, TetElement, "tet.TetPlane") + `
+  no          : vec3;
+  cent        : vec3;
+  f           : int | this.f.eid;
+  c           : int | this.c.eid;
+}`;
+
+nstructjs.register(TetPlane);
+
+export class TetCell extends TetElement {
+  constructor() {
+    super(TetTypes.CELL);
+
+    this.cellType = CellTypes.TET;
+
+    this.volume = 0;
+    this.startVolume = 0;
+
+    this.cent = new Vector3();
+
+    this.planes = [];
+    this.faces = [];
     this.edges = [];
-    this.verts = new Array(4);
+    this.verts = [];
+  }
+
+  isTet() {
+    return this.planes.length === 4;
+  }
+
+  isHex() {
+    return this.planes.length === 6;
+  }
+
+  calcCent() {
+    this.cent.zero();
+    let tot = 0.0;
+
+    for (let v of this.verts) {
+      this.cent.add(v);
+      tot++;
+    }
+
+    if (tot) {
+      this.cent.mulScalar(1.0 / tot);
+    }
+
+    return this.cent;
   }
 
   _regenEdges() {
@@ -320,7 +489,7 @@ export class TetTet extends TetElement {
       for (let l of f.loops) {
         if (!(l.e.flag & flag)) {
           l.e.flag |= flag;
-          this. s.push(l.e);
+          this.edges.push(l.e);
         }
       }
     }
@@ -329,8 +498,22 @@ export class TetTet extends TetElement {
   }
 }
 
-TetTet.STRUCT = nstructjs.inherit(TetTet, TetElement, "tet.TetTet") + `
-  faces : iter(f, int) | f.eid;
-  verts : iter(v, int) | v.eid;
+TetCell.STRUCT = nstructjs.inherit(TetCell, TetElement, "tet.TetCell") + `
+  faces         : iter(f, int) | f.eid;
+  verts         : iter(v, int) | v.eid;
+  planes        : iter(p, int) | p.eid;
+  cellType      : int;
+  startVolume   : float;
+  volume        : float;
+  cent          : vec3;
 }`;
-nstructjs.register(TetTet);
+nstructjs.register(TetCell);
+
+export const TetClasses = {
+  [TetTypes.VERTEX]: TetVertex,
+  [TetTypes.EDGE]  : TetEdge,
+  [TetTypes.LOOP]  : TetLoop,
+  [TetTypes.FACE]  : TetFace,
+  [TetTypes.PLANE] : TetPlane,
+  [TetTypes.CELL]  : TetCell
+};

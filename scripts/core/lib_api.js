@@ -76,9 +76,21 @@ export class DataBlock extends Node {
   //deep duplicates block, except for references to other data block which aren't copied
   //(e.g. a sceneobject doesn't duplicate .data)
   //if addLibUsers is true, references to other datablocks will get lib_addUser called,
-  copy(addLibUsers=false) {
+  copy(addLibUsers=false, owner) {
     let ret = new this.constructor();
+
+    this.copyTo(ret);
     DataBlock.prototype.copyTo.call(this, ret, false);
+
+    if (addLibUsers) {
+      //ret.lib_addUser(owner);
+
+      ret.lib_users++;
+      if (owner) {
+        ret.lib_users.push(owner);
+      }
+    }
+
     return ret;
   }
 
@@ -180,7 +192,10 @@ export class DataBlock extends Node {
     if (user) {
       let bad = typeof user !== "object";
       bad = bad || !(user instanceof DataBlock);
-      bad = bad || user.lib_id < 0;
+
+      //this condition wreaks havoc in the common case
+      //of building an object graph prior to adding to a datalib
+      //bad = bad || user.lib_id < 0;
 
       if (bad) {
         console.error(`
@@ -221,10 +236,13 @@ but owner will not be added to this.lib_userlist`.trim());
     reader(this);
     super.loadSTRUCT(reader);
 
-    try {
-      this.lib_userData = JSON.parse(this.lib_userData);
-    } catch (error) {
-      console.error("Error parsing lib_userData!");
+    if (typeof this.lib_userData === "string") {
+      try {
+        this.lib_userData = JSON.parse(this.lib_userData);
+      } catch (error) {
+        util.print_stack(error);
+        console.error("Error parsing lib_userData!", this.lib_userData);
+      }
     }
 
     this.afterSTRUCT();

@@ -17,6 +17,7 @@ import {WidgetSceneCursor} from "../editors/view3d/widgets/widget_tools.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {Collection} from "./collection.js";
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
+import {SceneBVH} from '../sceneobject/scenebvh.js';
 
 export const EnvLightFlags = {
   USE_AO : 1
@@ -310,6 +311,8 @@ export class Scene extends DataBlock {
     this.collection = undefined;
 
     //magnet transform settings
+
+    this.sbvh = new SceneBVH(this);
 
     this.propRadius = 1.0;
     this.propMode = 0;

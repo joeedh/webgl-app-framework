@@ -46,6 +46,11 @@ export class WidgetShape {
     this.flag = WidgetFlags.CAN_SELECT;
     this.owner = undefined;
 
+    this.wireframe = false;
+    this.worldscale = false;
+
+    this.wscale = 1.0;
+
     this.color = new Vector4([0.1, 0.5, 1.0, 1.0]);
     this.hcolor = new Vector4([0.9, 0.9, 0.9, 0.8]); //highlight color
 
@@ -121,7 +126,7 @@ export class WidgetShape {
     uniforms.aspect = view3d.activeCamera.aspect;
     uniforms.near = view3d.activeCamera.near;
     uniforms.far = view3d.activeCamera.far;
-    uniforms.polygonOffset = 0.25;
+    uniforms.polygonOffset = 0.0;
     uniforms.projectionMatrix = manager.ctx.view3d.activeCamera.rendermat;
     uniforms.objectMatrix = this.drawmatrix;
   }
@@ -157,6 +162,11 @@ export class WidgetShape {
     smat.makeIdentity();
 
     let scale = isMobile() ? w*0.15 : w*0.075; //Math.max(w*0.05, 0.01);
+    if (this.worldscale) {
+      scale = 1.0;
+    }
+
+    this.wscale = scale;
 
     let local = this._tempmat2.load(this.localMatrix);
     if (localMatrix !== undefined) {
@@ -185,8 +195,11 @@ export class WidgetShape {
       gl.depthMask(false);
     }
 
-    this.mesh.draw(gl);
-
+    if (this.wireframe) {
+      this.mesh.drawLines(gl, undefined, Shaders.WidgetMeshShader);
+    } else {
+      this.mesh.draw(gl);
+    }
 
     if (this.flag & WidgetFlags.HIGHLIGHT) {
       gl.enable(gl.BLEND);
@@ -224,69 +237,55 @@ export class WidgetTorus extends WidgetShape {
   draw(gl, manager, matrix, localMatrix) {
     this.mesh = manager.shapes[this.shapeid];
 
-    gl.depthMask(true);
-    gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.CULL_FACE);
-    gl.frontFace(gl.CW);
-    gl.enable(gl.BLEND);
-
-    //draw back faces of a sphere
-
-    //super.draw(gl, manager, matrix, localMatrix);
-    let mesh = manager.shapes.SPHERE;
-    mesh.program = Shaders.WidgetMeshShader;
-
-    this.setUniforms(manager, mesh.uniforms);
-    mesh.uniforms.objectMatrix = new Matrix4(mesh.uniforms.objectMatrix);
-    mesh.uniforms.objectMatrix.scale(0.9, 0.9, 0.9);
-    mesh.uniforms.color = [1, 1, 1, 0.01];
-
-    mesh.draw(gl, this.uniforms);
-
-    //draw torus transparently without writing to the depth buffer
-    gl.disable(gl.DEPTH_TEST);
-    super.draw(gl, manager, matrix, localMatrix, 0.25, true);
-    gl.enable(gl.DEPTH_TEST);
-
-    gl.frontFace(gl.CCW);
-    gl.disable(gl.CULL_FACE);
-    gl.disable(gl.BLEND);
-
-    //manager.shapes.SPHERE.draw(gl, manager, matrix, localMatrix);
-    super.draw(gl, manager, matrix, localMatrix, 1.0);
-
-    /*
-    let mat = new Matrix4();
-    let plane = manager.shapes.PLANE;
-
-    plane.program = mesh.program;
-    this.setUniforms(manager, plane.uniforms);
-
-    mat.translate(this.tco[0], this.tco[1], this.tco[2]);
-    let rmat = new Matrix4(this.drawmatrix);
-    rmat.makeRotationOnly();
-    mat.multiply(rmat);
-
-    let s = 4;
-    mat.scale(s, s, s);
-
-    gl.enable(gl.BLEND);
-
-    plane.uniforms.objectMatrix = mat;
-    plane.uniforms.color = new Vector4(this.color);
-    plane.uniforms.color[3] = 0.1;
-
-    mesh.uniforms.objectMatrix = mat;
-    mesh.uniforms.color = plane.uniforms.color;
-
-    plane.draw(gl, this.uniforms);
-    mesh.uniforms.objectMatrix.scale(0.3, 0.3, 0.3);
-    mesh.draw(gl, this.uniforms);
-
-    // */
+    return super.draw(gl, manager, matrix, localMatrix);
   }
 
   distToMouse(view3d, x, y) {
+    let mat = new Matrix4(this.drawmatrix);
+
+    let origin = dist_temps.next().zero();
+    origin.multVecMatrix(mat);
+
+    let rmat = new Matrix4(mat);
+    rmat.makeRotationOnly();
+
+    let m = rmat.$matrix;
+    let plane = dist_temps.next().zero();
+
+    plane[0] = m.m31;
+    plane[1] = m.m32;
+    plane[2] = m.m33;
+    plane.normalize();
+
+    let view = new Vector3(view3d.getViewVec(x, y));
+    view.normalize();
+    let vieworigin = view3d.activeCamera.pos;
+
+    let isect = isect_ray_plane(origin, plane, vieworigin, view);
+
+    if (!isect) {
+      return 10000.0;
+    }
+
+    let s1 = new Vector3(isect);
+    let s2 = new Vector3(origin);
+    let sr = new Vector3(isect).sub(origin).normalize();
+
+    let scale = (this.wscale)*this.matrix.$matrix;
+
+    let z = isect.vectorDistance(vieworigin);
+
+    let dis = Math.abs(isect.vectorDistance(origin) - 1.0) / this.wscale;
+
+    dis *= this.matrix.$matrix.m11;
+    dis *= view3d.size[1]*0.1;
+
+    util.console.log(dis, z, this.wscale.toFixed(4));
+
+    return [dis, -z];
+  }
+
+  distToMouseOld(view3d, x, y) {
     let mat = this.drawmatrix;
 
     let plane = dist_temps.next().zero();

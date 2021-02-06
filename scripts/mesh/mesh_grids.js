@@ -1336,6 +1336,16 @@ export class Grid extends GridBase {
     return ret;
   }
 
+  clear() {
+    this.dimen = 0;
+    this.points.length = 0;
+    this.recalcFlag = 0;
+    this.customDataLayout.length = 0;
+    this.customDatas.length = 0;
+
+    return this;
+  }
+
   init(dimen, mesh, loop, cd_grid) {
     if (dimen !== this.dimen) {
       this.points.length = 0;

@@ -21,7 +21,7 @@ import {TranslateOp} from "../transform/transform_ops.js";
 import {nstructjs} from '../../../path.ux/scripts/pathux.js';
 let STRUCT = nstructjs.STRUCT;
 import {Icons} from '../../icon_enum.js';
-import {TranslateWidget} from "../widgets/widget_tools.js";
+import {RotateWidget, ScaleWidget, TranslateWidget} from "../widgets/widget_tools.js";
 import {FlagProperty} from "../../../path.ux/scripts/pathux.js";
 
 let _shift_temp = [0, 0];
@@ -54,7 +54,7 @@ export class ObjectEditor extends ToolMode {
     icon        : Icons.CURSOR_ARROW,
     flag        : 0,
     selectMode  : SelMask.OBJECT,
-    transWidgets: [TranslateWidget]
+    transWidgets: [TranslateWidget, ScaleWidget, RotateWidget]
   }}
 
   defineKeyMap() {
@@ -80,7 +80,10 @@ export class ObjectEditor extends ToolMode {
     let strip = container.strip();
 
     strip.label("Move Tool");
+    strip.prop("scene.tool.transformWidget[NONE]");
     strip.prop("scene.tool.transformWidget[translate]");
+    strip.prop("scene.tool.transformWidget[scale]");
+    strip.prop("scene.tool.transformWidget[rotate]");
   }
 
   static buildHeader(header, addHeaderRow) {
@@ -90,7 +93,10 @@ export class ObjectEditor extends ToolMode {
     let strip;
 
     strip = row.strip();
+    strip.prop("scene.tool.transformWidget[NONE]");
     strip.prop("scene.tool.transformWidget[translate]");
+    strip.prop("scene.tool.transformWidget[scale]");
+    strip.prop("scene.tool.transformWidget[rotate]");
 
     //strip = row.strip();
     //strip.tool("mesh.toggle_select_all()");

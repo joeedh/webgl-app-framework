@@ -9,7 +9,7 @@ import {
 } from '../../../path.ux/scripts/pathux.js';
 import {Grid, GridBase, QRecalcFlags} from '../../../mesh/mesh_grids.js';
 import {CDFlags} from '../../../mesh/customdata.js';
-import {BrushFlags, DynamicsMask, DynTopoFlags, SculptTools} from '../../../brush/brush.js';
+import {BrushFlags, DynTopoFlags, SculptTools} from '../../../brush/brush.js';
 import {LogContext, Loop, Mesh, MeshFlags, MeshTypes} from '../../../mesh/mesh.js';
 import {BVHFlags, BVHTriFlags} from '../../../util/bvh.js';
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js';
@@ -166,15 +166,19 @@ export class HoleFillPaintOp extends PaintOpBase {
       uiname  : "paintop",
       toolpath: "bvh.hole_filler",
       is_modal: true,
-      inputs  : {
+      inputs  : ToolOp.inherit({
         brush: new BrushProperty(),
         samples: new PaintSampleProperty(),
         symmetryAxes: new FlagProperty(undefined, {X: 1, Y: 2, Z: 4})
-      }
+      })
     }
   }
 
   calcUndoMem(ctx) {
+    if (!this._undo) {
+      return 0;
+    }
+
     return this._undo.log.calcMemSize();
   }
 

@@ -144,11 +144,17 @@ export class MeshOp extends View3DOp {
       }
     }
 
+    console.log(util.termColor("Mesh Op Finished"), "green");
+
     window.redraw_viewport();
     window.updateDataGraph();
   }
 
   calcUndoMem(ctx) {
+    if (!this._undo) {
+      return 0;
+    }
+
     let tot = 0;
 
     for (let id in this._undo) {
@@ -182,7 +188,7 @@ export class MeshOp extends View3DOp {
 
       mesh.swapDataBlockContents(mesh2);
 
-      mesh.regenTesellation();
+      mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenElementsDraw();
       mesh.regenRender();

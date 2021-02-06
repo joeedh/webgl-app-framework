@@ -3,6 +3,16 @@ import * as util from '../util/util.js';
 import {AfterAspect, clearAspectCallbacks, initAspectClass, _setUIBase} from '../path.ux/scripts/core/aspect.js';
 import {UIBase} from '../path.ux/scripts/pathux.js';
 
+export const DEBUG_DUPLICATE_FACES = 0;
+export const DEBUG_MANIFOLD_EDGES = 0;
+
+export const ENABLE_CACHING = true;
+
+export const SAVE_DEAD_LOOPS = ENABLE_CACHING;
+export const SAVE_DEAD_FACES = ENABLE_CACHING;
+
+export const WITH_EIDMAP_MAP = true;
+
 _setUIBase(UIBase);
 
 let STRUCT = nstructjs.STRUCT;
@@ -50,6 +60,7 @@ export const MeshFeatures = {
 
   EDGE_CURVES_ONLY: (1<<13),
   SINGLE_SHELL    : (1<<14),
+  BVH             : (1<<15),
 
   ALL  : ((1<<30) - 1) & ~((1<<13) | (1<<14)), //edge_curves_only
   BASIC: ((1<<30) - 1) & ~((1<<12) | (1<<13) | (1<<14)) //everything except handles and edge curves
@@ -62,7 +73,9 @@ export class MeshFeatureError extends MeshError {
 
 };
 
-//inherit from this to flag iterators that are reusable *and* auto-resets
+/*
+ child classes should support nested iteration
+*/
 export class ReusableIter {
   static safeIterable(iter) {
     if (!iter || (typeof iter !== "object" && typeof iter !== "function")) {
@@ -89,8 +102,8 @@ export class ReusableIter {
     }
   }
 
-  reset() {
-    return this;
+  [Symbol.iterator]() {
+    throw new Error("implement me!");
   }
 }
 
@@ -104,6 +117,17 @@ export const ChangeFlags = {
   NO        : 2,
   CUSTOMDATA: 4,
   FLAG      : 8
+};
+
+export const LogTags = {
+  NONE              : 0,
+  COLLAPSE_EDGE     : 1,
+  DISSOLVE_EDGE     : 2,
+  DISSOLVE_VERT     : 3,
+  SPLIT_EDGE        : 4,
+  JOINTWOEDGES      : 5,
+  SPLIT_FACE        : 6,
+  SPLIT_EDGES_SMART2: 7
 };
 
 export class LogContext {
@@ -133,51 +157,51 @@ export class LogContext {
     return this;
   }
 
-  newVertex(v) {
+  newVertex(v, tag) {
     if (this.onnew) {
-      this.onnew(v);
+      this.onnew(v, tag);
     }
     //this.newVerts.add(v);
     return this;
   }
 
-  newEdge(e) {
+  newEdge(e, tag) {
     if (this.onnew) {
-      this.onnew(e);
+      this.onnew(e, tag);
     }
     //this.newEdges.add(e);
     return this;
   }
 
-  newFace(f) {
+  newFace(f, tag) {
     if (this.onnew) {
-      this.onnew(f);
+      this.onnew(f, tag);
     }
     //this.newFaces.add(f);
     return this;
   }
 
-  killVertex(v) {
+  killVertex(v, tag) {
     if (this.onkill) {
-      this.onkill(v);
+      this.onkill(v, tag);
     }
 
     //this.killVerts.add(v);
     return this;
   }
 
-  killEdge(e) {
+  killEdge(e, tag) {
     if (this.onkill) {
-      this.onkill(e);
+      this.onkill(e, tag);
     }
 
     //this.killEdges.add(e);
     return this;
   }
 
-  killFace(f) {
+  killFace(f, tag) {
     if (this.onkill) {
-      this.onkill(f);
+      this.onkill(f, tag);
     }
 
     //this.killFaces.add(f);
@@ -232,7 +256,7 @@ export const MeshTypes = {
   HANDLE: 16
 };
 
-export const MeshFlags = {
+export const MeshFlags = Object.freeze({
   SELECT          : (1<<0),
   HIDE            : (1<<1),
   FLAT            : (1<<2),
@@ -257,12 +281,21 @@ export const MeshFlags = {
   FACE_EXIST_FLAG : (1<<20),
   TEMP4           : (1<<21),
   TEMP5           : (1<<22),
-  TEMP6           : (1<<23),
   NOAPI_TEMP1     : (1<<24), //temp flag that's not allowed to be used by core API functions
   NOAPI_TEMP2     : (1<<25),
-  NOAPI_TEMP3     : (1<<26),
   ITER_TEMP3      : (1<<27),
-  QUAD_EDGE       : (1<<28)
+  QUAD_EDGE       : (1<<28),
+
+  //these two share the same bit
+  COLLAPSE_TEMP : (1<<29),
+  MAKE_FACE_TEMP: (1<<29)
+});
+
+export const MeshIterFlags = {
+  EDGE_FACES    : 1<<0,
+  EDGE_FACES_TOT: 10,
+  VERT_FACES    : 1<<10,
+  VERT_FACES_TOT: 10
 };
 
 export const MeshModifierFlags = {
@@ -278,35 +311,13 @@ export const RecalcFlags = {
   ALL       : 1 | 2 | 4 | 8 | 16
 };
 
+import {ArrayPool} from '../util/util.js';
+export {ArrayPool} from '../util/util.js';
 
-let atemps = {};
-window._arrcache = atemps;
-let nullarray = [];
+let pool = new ArrayPool();
 
-export function getArrayTemp(n) {
-  if (n === 0) {
-    if (nullarray.length !== 0) {
-      nullarray.length = n;
-    }
-
-    return nullarray;
-  }
-
-  if (n in atemps) {
-    let ret = atemps[n].next();
-
-    if (ret.length !== n) {
-      console.warn("An array temp's length was modified", ret);
-      ret.length = n;
-    }
-
-    return ret;
-  }
-
-  let ring = new util.cachering(() => new Array(n), 64);
-  atemps[n] = ring;
-
-  return ring.next();
+export function getArrayTemp(n, clear) {
+  return pool.get(n, clear);
 }
 
 export function reallocArrayTemp(arr, newlen) {

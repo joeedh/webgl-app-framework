@@ -1,5 +1,5 @@
 import {Edge} from "./mesh_types.js";
-import {getArrayTemp, MeshError, MeshFlags, MeshTypes} from "./mesh_base.js";
+import {getArrayTemp, MeshError, MeshFlags, MeshTypes, WITH_EIDMAP_MAP} from "./mesh_base.js";
 import * as util from "../util/util.js";
 import '../path.ux/scripts/util/struct.js';
 
@@ -14,6 +14,7 @@ window._sel_iter_stack = sel_iter_stack;
 let typemap = {
   [MeshTypes.VERTEX]: Vertex,
   [MeshTypes.EDGE]  : Edge,
+  [MeshTypes.HANDLE]: Handle,
   [MeshTypes.LOOP]  : Loop,
   [MeshTypes.FACE]  : Face
 };
@@ -177,20 +178,23 @@ export class ElementListIter {
 }
 
 export class ElementList {
-  constructor(type) {
+  constructor(type, storeFreedElems=false) {
     this.list = [];
+
+    this._totAdded = 0;
+    this._totRemoved = 0;
 
     this.length = 0;
     this.size = 0;
     this.freelist = [];
-    this.free_elems = [];
+    this.free_elems = new util.Queue(256);
 
-    this.storeFreedElems = false;
-
-    this.idxmap = {};
+    this.storeFreedElems = storeFreedElems;
 
     this.customData = new CustomData();
-    this.local_eidmap = {};
+
+    this.local_eidMap = new Map();
+    this.idxmap = new Map();
 
     this.iterstack = new Array(64);
     for (let i = 0; i < this.iterstack.length; i++) {
@@ -202,6 +206,13 @@ export class ElementList {
     this.selected = new SelectionSet();
     this.on_selected = undefined;
     this.highlight = this.active = undefined;
+  }
+
+  _getDebugTot() {
+    return {
+      added : this._totAdded,
+      removed : this._totRemoved
+    }
   }
 
   /*sanity alias to this.customData*/
@@ -374,14 +385,14 @@ export class ElementList {
       this.selected.remove(e);
     }
 
-    delete this.local_eidmap[e.eid];
-    let i = this.idxmap[e.eid];
+    this.local_eidMap.delete(e.eid);
+    let i = this.idxmap.get(e.eid);
 
     e.eid = neweid;
     e._old_eid = neweid;
 
-    this.local_eidmap[e.eid] = e;
-    this.idxmap[e.eid] = i;
+    this.local_eidMap.set(e.eid, e);
+    this.idxmap.set(e.eid, i);
 
     if (sel) {
       this.selected.add(e);
@@ -393,6 +404,18 @@ export class ElementList {
   _push(e) {
     let i;
 
+    /*
+    if (e.eid in this.idxmap) {
+      let e2 = this.idxmap.get(e.eid);
+
+      if (e2 !== undefined && this.list[e2] === e) {
+        console.warn("Attempted to add save face twice");
+        return;
+      }
+    }//*/
+
+    this._totAdded++;
+
     if (this.freelist.length > 0) {
       i = this.freelist.pop();
     } else {
@@ -401,56 +424,55 @@ export class ElementList {
       this.list.push();
     }
 
-    this.idxmap[e.eid] = i;
+    this.idxmap.set(e.eid, i);
 
     this.list[i] = e;
     this.length++;
   }
 
   push(e) {
-    if (e.eid in this.local_eidmap) {
+    if (this.local_eidMap.has(e.eid)) {
       throw new Error("element " + e.eid + " is already in list");
     }
+
     this._push(e);
 
     if (e.flag & MeshFlags.SELECT) {
       this.selected.add(e);
     }
 
-    this.local_eidmap[e.eid] = e;
+    this.local_eidMap.set(e.eid, e);
 
     return this;
   }
 
   indexOf(e) {
-    let idx = this.idxmap[e.eid];
+    let idx = this.idxmap.get(e.eid);
     return idx !== undefined ? idx : -1;
-
-    for (let i = 0; i < this.list.length; i++) {
-      if (this.list[i] === e) {
-        return i;
-      }
-    }
-
-    return -1;
   }
 
-  _remove(e) {
+  _remove(e, no_error=false) {
     let i = this.indexOf(e);
 
     if (i >= 0) {
-      delete this.idxmap[e.eid];
+      this.idxmap.delete(e.eid);
 
       this.freelist.push(i);
+
       if (this.storeFreedElems) {
-        this.free_elems.push(e);
+        this.free_elems.enqueue(e);
         e._free();
       }
 
       this.list[i] = undefined;
       this.length--;
+      this._totRemoved++;
     } else {
-      throw new Error("element " + e.eid + " is not in array");
+      if (no_error) {
+        console.error("mesh element " + e.eid + " is not in array");
+      } else {
+        throw new Error("element " + e.eid + " is not in array");
+      }
     }
   }
 
@@ -465,6 +487,8 @@ export class ElementList {
   }
 
   compact() {
+    this.clearFreeElems();
+
     let list = [];
     for (let item of this) {
       list.push(item);
@@ -473,7 +497,7 @@ export class ElementList {
     this.length = this.size = 0;
     this.freelist.length = 0;
     this.list.length = 0;
-    this.idxmap = {};
+    this.idxmap = new Map();
 
     for (let item of list) {
       this._push(item);
@@ -490,7 +514,16 @@ export class ElementList {
     return this;
   }
 
-  remove(v) {
+  remove(v, no_error=false) {
+    if (v.eid < 0) {
+      if (no_error) {
+        console.error("v was already deleted");
+        return;
+      } else {
+        throw new Error("v was already deleted");
+      }
+    }
+
     if (this.selected.has(v)) {
       this.selected.remove(v);
     }
@@ -500,9 +533,9 @@ export class ElementList {
     if (this.highlight === v)
       this.highlight = undefined;
 
-    this._remove(v);
+    this._remove(v, no_error);
 
-    delete this.local_eidmap[v.eid];
+    this.local_eidMap.delete(v.eid);
     return this;
   }
 
@@ -631,6 +664,8 @@ export class ElementList {
   }
 
   mergeCustomData(b) {
+    this.clearCustomData();
+
     let i = 0, cdmap = {};
     for (let list of this.customData.flatlist) {
       cdmap[list[Symbol.keystr]()] = i;
@@ -693,19 +728,31 @@ export class ElementList {
     this.highlight = undefined;
     this.active = undefined;
 
-    for (let item of this.items) {
-      this._push(item)
-      this.local_eidmap[item.eid] = item;
+    let i = 0;
+
+    //old file?
+    if (this.items !== undefined) {
+      this.list = this.items;
+      delete this.items;
+    }
+
+    this.length = 0;
+
+    for (let item of this.list) {
+      this.idxmap.set(item.eid, i);
+      this.local_eidMap.set(item.eid, item);
 
       if (item.eid === act) {
         this.active = item;
       }
+
       if (item.eid === high) {
         this.highlight = item;
       }
-    }
 
-    delete this.items;
+      i++;
+      this.length++;
+    }
 
     this.selected.clear();
 
@@ -717,6 +764,8 @@ export class ElementList {
   }
 
   removeCustomDataLayer(layer_i) {
+    this.clearFreeElems();
+
     if (layer_i < 0 || layer_i === undefined) {
       throw new Error("bad call to removeCustomDataLayer");
     }
@@ -761,6 +810,8 @@ export class ElementList {
   }
 
   clearCustomData() {
+    this.clearFreeElems();
+
     for (let e of this) {
       e.customData = [];
       //CD e.cd = e.customData;
@@ -769,7 +820,46 @@ export class ElementList {
     this.customData._clear();
   }
 
+  prealloc(count) {
+    let cls = typemap[this.type];
+
+    for (let i=0; i<count; i++) {
+      let elem = new cls();
+      this.customData.initElement(elem);
+      this.free_elems.enqueue(elem);
+    }
+
+    return this;
+  }
+
+  alloc(cls) {
+    //add some pad so mesh log code works properly,
+    //which keeps freed elements around briefly (but not instananeously)
+    if (this.free_elems.length > 64) {
+      let ret = this.free_elems.dequeue();
+
+      ret.flag = 0;
+      ret.eid = -1;
+      ret.index = -1;
+
+      for (let i=0; i<ret.customData.length; i++) {
+        ret.customData[i].clear();
+      }
+
+      return ret;
+    }
+
+    return new cls();
+  }
+
+  clearFreeElems() {
+    this.free_elems.clear();
+    return this;
+  }
+
   addCustomDataLayer(typecls_or_name, name) {
+    this.clearFreeElems();
+
     let typecls = typecls_or_name;
     if (typeof typecls === "string") {
       typecls = CustomDataElem.getTypeClass(typecls);
@@ -812,7 +902,7 @@ export class ElementList {
         continue;
       }
 
-      console.warn("Element was missing customdata", e, e.customData, cd.flatlist.length);
+      util.console.warn("Element was missing customdata", e.constructor.name, e.eid, e.customData, cd.flatlist.length);
 
       for (let k in cd.layers) {
         let layerset = cd.layers[k];
@@ -842,7 +932,9 @@ export class ElementList {
     }
   }
 
-  stripTempLayers(saveState = true) {
+  stripTempLayers(saveState = false) {
+    this.clearFreeElems();
+
     let state = {
       cdata: this.customData.copy(),
       elems: []
@@ -895,7 +987,7 @@ export class ElementList {
 
 ElementList.STRUCT = `
 mesh.ElementList {
-  items       : iter(abstract(Object)) | this._get_compact();
+  list        : iter(abstract(Object)) | this._get_compact();
   active      : int | this.active !== undefined ? this.active.eid : -1;
   highlight   : int | this.highlight !== undefined ? this.highlight.eid : -1;
   type        : int;

@@ -355,7 +355,8 @@ export class ResourceBrowser extends Editor {
   static define() {return {
     tagname : "resource-browser-x",
     areaname : "resbrowser",
-    uiname : "Resource Browser"
+    uiname : "Resource Browser",
+    flag : AreaFlags.HIDDEN
   }}
 
   static newSTRUCT() {

@@ -155,6 +155,7 @@ export class CurveSpline extends Mesh {
     features |= MeshFeatures.SPLIT_EDGE|MeshFeatures.JOIN_EDGE;
     features |= MeshFeatures.EDGE_HANDLES | MeshFeatures.EDGE_CURVES_ONLY;
     features |= MeshFeatures.SINGLE_SHELL;
+    features &= ~MeshFeatures.BVH;
 
     super(features);
 
@@ -675,6 +676,10 @@ export class CurveSpline extends Mesh {
     }
 
     return sm;
+  }
+
+  closestPoint(p, mode) {
+
   }
 
   checkClosed() {

@@ -23,6 +23,29 @@ export class BinaryWriter {
       this.data.push(c);
     }
   }
+
+  concat(b) {
+    if (b instanceof BinaryWriter) {
+      b = b.data;
+    }
+
+    if (Array.isArray(b) || b instanceof Uint8Array || b instanceof Uint8ClampedArray) {
+      if (b instanceof Array) {
+        this.data = this.data.concat(b);
+      } else {
+        let data = this.data;
+
+        for (let i=0; i<b.length; i++) {
+          data.push(b[i]);
+        }
+      }
+    } else {
+      console.log(b);
+      throw new Error("invalid argument to BinaryWriter.prototype.concat()");
+    }
+
+    return this;
+  }
   
   int32(c) {
     this.data.push(c & 255);

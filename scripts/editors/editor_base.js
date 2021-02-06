@@ -110,6 +110,10 @@ export class CopyDataBlockOp extends ToolOp {
 
     let ret = block.copy();
 
+    //just to be safe, add a user ref, it will be re-derived on load anyway
+    ret.lib_users++;
+    ret.name = block.name;
+
     ctx.datalib.add(ret);
 
     let path = this.inputs.dataPathToSet.getValue();
@@ -447,7 +451,6 @@ export class EditorAccessor {
 
       this._namemap[name] = k;
 
-      console.log("NAME", name);
       define(name, areaclasses[k]);
     }
   }

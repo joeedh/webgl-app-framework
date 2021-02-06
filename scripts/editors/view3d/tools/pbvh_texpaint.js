@@ -8,7 +8,7 @@ import {
   Vec3Property, Vec4Property, Vector2, Vector3,
   Vector4, math, Mat4Property, Vec2Property
 } from '../../../path.ux/scripts/pathux.js';
-import {DynamicsMask, SculptTools} from '../../../brush/brush.js';
+import {SculptTools} from '../../../brush/brush.js';
 import {BVHFlags} from '../../../util/bvh.js';
 import {GridBase} from '../../../mesh/mesh_grids.js';
 import {ImageTypes} from '../../../image/image.js';
@@ -429,8 +429,11 @@ export class TexPaintOp extends ToolOp {
     let centuv = new Vector2();
     let duv = new Vector2();
 
+    let cd_corner = wrangler.cd_corner;
+
     function getcorner(l) {
-      return wrangler.loopMap.get(l).corner;
+      return wrangler.loopMap.get(l).customData[cd_corner].corner;
+
       let ret = l !== l.radial_next && wrangler.islandLoopMap.get(l) !== wrangler.islandLoopMap.get(l.radial_next);
 
       l = l.next;

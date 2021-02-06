@@ -42,11 +42,42 @@ export class PatternGen {
     }
   }
 
+  static defineAPI(api) {
+    let st = api.mapStruct(this, true);
+
+    st.flags("flag", "flag", PatternFlags, "Flag");
+    st.string("name", "name", "Name");
+
+    return st;
+  }
+
+  //container.pathPrefix is set to point to correct location
+  static buildSettings(container) {
+
+  }
+
+  static getGeneratorClass(name) {
+    return patterns_namemap[name];
+  }
+
+  static register(cls) {
+    if (!cls.structName) {
+      throw new Error("You forgot to register " + cls.name + " with nstructjs");
+    }
+
+    if (cls.patternDefine().typeName in patterns_namemap) {
+      throw new Error("Pattern " + cls.name + " does not have a unique typeName in its patternDefine");
+    }
+
+    patterns_namemap[cls.patternDefine().typeName] = cls;
+    Patterns.push(cls);
+  }
+
   genGlsl() {
     console.error("Implement me! genGlsl!");
   }
 
-  genGlslPre(inC, outP, uniforms={}) {
+  genGlslPre(inC, outP, uniforms = {}) {
     let uniforms2 = this.constructor.patternDefine().uniforms || {};
 
     let pre = '';
@@ -87,20 +118,6 @@ export class PatternGen {
   calcUpdateHash(digest) {
   }
 
-  static defineAPI(api) {
-    let st = api.mapStruct(this, true);
-
-    st.flags("flag", "flag", PatternFlags, "Flag");
-    st.string("name", "name", "Name");
-
-    return st;
-  }
-
-  //container.pathPrefix is set to point to correct location
-  static buildSettings(container) {
-
-  }
-
   evaluate(co, color_out) {
     throw new Error("implement me!");
   }
@@ -132,23 +149,6 @@ export class PatternGen {
     co2[2] = d;
 
     return co2;
-  }
-
-  static getGeneratorClass(name) {
-    return patterns_namemap[name];
-  }
-
-  static register(cls) {
-    if (!cls.structName) {
-      throw new Error("You forgot to register " + cls.name + " with nstructjs");
-    }
-
-    if (cls.patternDefine().typeName in patterns_namemap) {
-      throw new Error("Pattern " + cls.name + " does not have a unique typeName in its patternDefine");
-    }
-
-    patterns_namemap[cls.patternDefine().typeName] = cls;
-    Patterns.push(cls);
   }
 }
 
@@ -204,22 +204,6 @@ export class SimpleNoise extends PatternGen {
     this.zoff = 0.0;
   }
 
-  copyTo(b) {
-    super.copyTo(b);
-
-    b.levels = this.levels;
-    b.levelScale = this.levelScale;
-    b.zoff = this.zoff;
-    b.factor = this.factor;
-  }
-
-  calcUpdateHash(digest) {
-    digest.add(this.levels);
-    digest.add(this.levelScale);
-    digest.add(this.zoff);
-    digest.add(this.factor);
-  }
-
   static defineAPI(api) {
     let st = super.defineAPI(api);
 
@@ -237,6 +221,30 @@ export class SimpleNoise extends PatternGen {
     container.prop("zoff");
   }
 
+  static patternDefine() {
+    return {
+      typeName   : "SimpleNoise",
+      defaultName: "noise",
+      uiName     : "Noise",
+    }
+  }
+
+  copyTo(b) {
+    super.copyTo(b);
+
+    b.levels = this.levels;
+    b.levelScale = this.levelScale;
+    b.zoff = this.zoff;
+    b.factor = this.factor;
+  }
+
+  calcUpdateHash(digest) {
+    digest.add(this.levels);
+    digest.add(this.levelScale);
+    digest.add(this.zoff);
+    digest.add(this.factor);
+  }
+
   evaluate(co) {
     co = sntmps.next().load(co);
 
@@ -247,14 +255,14 @@ export class SimpleNoise extends PatternGen {
     let f2 = f;
     let tot = 1.0;
 
-    let lscale = 1.0 / this.levelScale;
+    let lscale = 1.0/this.levelScale;
 
-    for (let i=0; i<this.levels; i++) {
-      let rf = i+1;
+    for (let i = 0; i < this.levels; i++) {
+      let rf = i + 1;
 
       co[0] += hash(rf)*1024.23432;
-      co[1] += hash(rf+0.234)*1024.523;
-      co[2] += hash(rf+0.345)*1024.234;
+      co[1] += hash(rf + 0.234)*1024.523;
+      co[2] += hash(rf + 0.345)*1024.234;
 
       scale *= lscale;
 
@@ -264,6 +272,10 @@ export class SimpleNoise extends PatternGen {
       f2 += f3;
 
       tot++;
+    }
+
+    if (tot === 0.0) {
+      return 0.0;
     }
 
     f1 = Math.pow(f1, 1.0/tot);
@@ -283,7 +295,7 @@ export class SimpleNoise extends PatternGen {
 
     function hash3(x, y, z) {
       let f = x*Math.sqrt(3.0) + y*Math.sqrt(5.0)*10.0 + z*Math.sqrt(7.0)*100.0;
-      return hash(f);
+      return Math.fract(hash(f));
       //return hash(x*y*z + x*x + y*y + z*x);
     }
 
@@ -316,14 +328,6 @@ export class SimpleNoise extends PatternGen {
 
     return r1 + (r2 - r1)*w;
   }
-
-  static patternDefine() {
-    return {
-      typeName   : "SimpleNoise",
-      defaultName: "noise",
-      uiName     : "Noise",
-    }
-  }
 }
 
 SimpleNoise.STRUCT = nstructjs.inherit(SimpleNoise, PatternGen) + `
@@ -345,6 +349,34 @@ export class MoireNoise extends PatternGen {
     this.angleOffset = 0.0;
   }
 
+  static defineAPI(api) {
+    let st = super.defineAPI(api);
+
+    st.bool("dynamicAngle", "dynamicAngle", "Rake Mode");
+    st.float("angleOffset", "angleOffset", "Angle")
+      .displayUnit("degree")
+      .baseUnit("radian")
+      .range(-Math.PI*2, Math.PI*2);
+
+    return st;
+  }
+
+  static buildSettings(container) {
+    container.prop("angleOffset");
+    container.prop("dynamicAngle");
+  }
+
+  static patternDefine() {
+    return {
+      typeName   : "MoireNoise",
+      defaultName: "Moire",
+      uiName     : "Moire",
+      uniforms   : {
+        angleOffset: "float"
+      }
+    }
+  }
+
   copyTo(b) {
     super.copyTo(b);
 
@@ -352,23 +384,9 @@ export class MoireNoise extends PatternGen {
     b.angleOffset = this.angleOffset;
   }
 
-  static defineAPI(api) {
-    let st = super.defineAPI(api);
-
-    st.bool("dynamicAngle", "dynamicAngle", "Rake Mode");
-    st.float("angleOffset", "angleOffset", "Angle").noUnits().range(-Math.PI*2, Math.PI*2);
-
-    return st;
-  }
-
   calcUpdateHash(digest) {
     digest.add(this.dynamicAngle);
     digest.add(this.angleOffset);
-  }
-
-  static buildSettings(container) {
-    container.prop("angleOffset");
-    container.prop("dynamicAngle");
   }
 
   genGlsl(inputP, outputC, uniforms) {
@@ -408,35 +426,204 @@ export class MoireNoise extends PatternGen {
 
     let fract = Math.fract, abs = Math.abs, cos = Math.cos;
 
-    const dx1 = 1.0 - abs(fract(p2[0])-0.5)*2.0;
-    const dy1 = 1.0 - abs(fract(p2[1])-0.5)*2.0;
-    const dx2 = 1.0 - abs(fract(p[0])-0.5)*2.0;
-    const dy2 = 1.0 - abs(fract(p[1])-0.5)*2.0;
+    const dx1 = 1.0 - abs(fract(p2[0]) - 0.5)*2.0;
+    const dy1 = 1.0 - abs(fract(p2[1]) - 0.5)*2.0;
+    const dx2 = 1.0 - abs(fract(p[0]) - 0.5)*2.0;
+    const dy2 = 1.0 - abs(fract(p[1]) - 0.5)*2.0;
 
     //let f = pow(dx1*dy1*dx2*dy2, 1.0/4.0);
-    let f = (dx1+dx2+dy1+dy2)*0.25;
+    let f = (dx1 + dx2 + dy1 + dy2)*0.25;
 
     f = cos(f*13.11432)*0.5 + 0.5;
 
     return f;
   }
-
-  static patternDefine() {
-    return {
-      typeName   : "MoireNoise",
-      defaultName: "Moire",
-      uiName     : "Moire",
-      uniforms   : {
-        angleOffset : "float"
-      }
-    }
-  }
 }
+
 MoireNoise.STRUCT = nstructjs.inherit(MoireNoise, PatternGen) + `
   dynamicAngle : bool;
   angleOffset  : float; 
 };`
 PatternGen.register(MoireNoise);
+
+export const CombModes = {
+  SAW     : 0,
+  TENT    : 1,
+  SIN     : 2,
+  STEP    : 3,
+  DOME    : 4,
+  RAW_STEP: 5,
+};
+
+let ModeFuncs = {
+  [CombModes.SAW]     : Math.fract,
+  [CombModes.TENT]    : Math.tent,
+  [CombModes.SIN]     : (f) => Math.sin(f*Math.PI*2.0)*0.5 + 0.5,
+  [CombModes.RAW_STEP]: (f) => Math.fract(f) > 0.5 ? 1.0 : 0.0,
+  [CombModes.DOME]    : f => Math.abs(Math.sin(f*Math.PI*2.0)),
+  [CombModes.STEP]    : (f) => {
+    f = Math.tent(f);
+    f = f*2.0;
+
+    f = Math.min(Math.max(f, 0.0), 1.0);
+
+    return f;
+  }
+};
+
+export class CombPattern extends PatternGen {
+  constructor() {
+    super();
+
+    this.count = 1;
+    this.angleOffset = 0.0;
+    this.mode = CombModes.STEP;
+    this.combWidth = 0.5;
+    this.blackPoint = 0.5;
+  }
+
+  static defineAPI(api) {
+    let st = super.defineAPI(api);
+
+    st.enum("mode", "mode", CombModes, "Mode");
+
+    st.float("angleOffset", "angleOffset", "Angle")
+      .displayUnit("degree")
+      .baseUnit("radian")
+      .range(-Math.PI*2, Math.PI*2);
+
+    st.float("combWidth", "combWidth", "Width", "Comb Width")
+      .range(0.0, 1.0)
+      .step(0.01)
+      .noUnits();
+
+    st.float("blackPoint", "blackPoint", "Black Point")
+      .range(0.0, 1.0)
+      .step(0.1)
+      .noUnits();
+
+    st.float("count", "count", "Count", "Number of strokes")
+      .range(1.0, 5.0)
+      .step(0.15)
+      .noUnits();
+
+    return st;
+  }
+
+  static buildSettings(container) {
+    container.prop("mode");
+    container.prop("count");
+    container.prop("angleOffset");
+    container.prop("combWidth");
+    container.prop("blackPoint");
+  }
+
+  static patternDefine() {
+    return {
+      typeName   : "CombPattern",
+      defaultName: "Comb",
+      uiName     : "Comb",
+      uniforms   : {
+        angleOffset : "float",
+        count       : "float",
+        combWidth   : "float",
+        blackPointer: "float"
+      }
+    }
+  }
+
+  copyTo(b) {
+    super.copyTo(b);
+
+    b.blackPoint = this.blackPoint;
+    b.count = this.count;
+    b.mode = this.mode;
+    b.combWidth = this.combWidth;
+    b.angleOffset = this.angleOffset;
+  }
+
+  calcUpdateHash(digest) {
+    digest.add(this.blackPoint);
+    digest.add(this.count);
+    digest.add(this.combWidth);
+    digest.add(this.mode);
+    digest.add(this.angleOffset);
+  }
+
+  genGlsl(inputP, outputC, uniforms) {
+    let th = this.angleOffset;
+    let line;
+
+    let pi2 = Math.PI*2.0;
+
+    switch (this.mode) {
+      case CombModes.SAW:
+        line = `float f = fract(p[0]*count);`;
+        break;
+
+      default:
+      case CombModes.TENT:
+        line = `float f = tent(p[0]*count);`;
+        break;
+      case CombModes.SIN:
+        line = `float f = sin(p[0]*count*${pi2})*0.5 + 0.5;`;
+        break;
+      case CombModes.STEP:
+        line = `float f = fract(p[0]*count) > 0.5 ? 1.0 : 0.0;`;
+        break;
+      case CombModes.DOME:
+        line = `float f = abs(sin(p[0]*count*${pi2}));`;
+        break;
+
+
+    }
+    if (uniforms.brushAngle !== undefined) {
+      th = `(${th} + brushAngle)`;
+    }
+
+    return `
+  
+  
+  vec3 p = ${inputP};
+  vec2 p2 = rot2d(p.xy, ${th});
+
+  ${line}
+  
+  ${outputC} = vec4(f, f, f, 1.0);
+`
+  }
+
+  evaluate(co, dv_out) {
+    /*
+    let d = co[0]*co[0] + co[1]*co[1];
+    d = 1.0 - Math.sqrt(d);
+    d = Math.fract(d);
+    return d;
+    //*/
+
+    let p = mevals.next().load(co);
+    p.rot2d(this.angleOffset);
+
+    let f = Math.fract(p[0]*this.count);
+    let cwid = 1.0 - this.combWidth;
+
+    f = Math.min(f*(1.0 + cwid), 1.0);
+
+    let b = this.blackPoint;
+
+    return ModeFuncs[this.mode](f)*(1.0 - b) + b;
+  }
+}
+
+CombPattern.STRUCT = nstructjs.inherit(CombPattern, PatternGen) + `
+  angleOffset  : float; 
+  count        : float;
+  mode         : int;
+  combWidth    : float;
+  blackPoint   : float;
+}`
+PatternGen.register(CombPattern);
+nstructjs.register(CombPattern);
 
 export class GaborNoise extends PatternGen {
   constructor() {
@@ -452,28 +639,6 @@ export class GaborNoise extends PatternGen {
 
     //for debugging purposes
     this.zoff = 0.0;
-  }
-
-  copyTo(b) {
-    super.copyTo(b);
-
-    b.levels = this.levels;
-    b.levelScale = this.levelScale;
-    b.zoff = this.zoff;
-    b.factor = this.factor;
-    b.randomness = this.randomness;
-    b.decayPower = this.decayPower;
-    b.decay2 = this.decay2;
-  }
-
-  calcUpdateHash(digest) {
-    digest.add(this.levels);
-    digest.add(this.levelScale);
-    digest.add(this.zoff);
-    digest.add(this.factor);
-    digest.add(this.randomness);
-    digest.add(this.decayPower);
-    digest.add(this.decay2);
   }
 
   static defineAPI(api) {
@@ -499,6 +664,36 @@ export class GaborNoise extends PatternGen {
     container.prop("zoff");
   }
 
+  static patternDefine() {
+    return {
+      typeName   : "GaborNoise",
+      defaultName: "Gabor",
+      uiName     : "Gabor",
+    }
+  }
+
+  copyTo(b) {
+    super.copyTo(b);
+
+    b.levels = this.levels;
+    b.levelScale = this.levelScale;
+    b.zoff = this.zoff;
+    b.factor = this.factor;
+    b.randomness = this.randomness;
+    b.decayPower = this.decayPower;
+    b.decay2 = this.decay2;
+  }
+
+  calcUpdateHash(digest) {
+    digest.add(this.levels);
+    digest.add(this.levelScale);
+    digest.add(this.zoff);
+    digest.add(this.factor);
+    digest.add(this.randomness);
+    digest.add(this.decayPower);
+    digest.add(this.decay2);
+  }
+
   evaluate(co) {
     co = sntmps.next().load(co);
 
@@ -510,14 +705,14 @@ export class GaborNoise extends PatternGen {
     let f2 = 0.0;
     let tot = 1.0;
 
-    let lscale = 1.0 / this.levelScale;
+    let lscale = 1.0/this.levelScale;
 
-    for (let i=0; i<this.levels; i++) {
-      let rf = i+1;
+    for (let i = 0; i < this.levels; i++) {
+      let rf = i + 1;
 
       co[0] += hash(rf)*1024.0;
-      co[1] += hash(rf+0.234)*1024.0;
-      co[2] += hash(rf+0.345)*1024.0;
+      co[1] += hash(rf + 0.234)*1024.0;
+      co[2] += hash(rf + 0.345)*1024.0;
 
       scale *= lscale;
 
@@ -555,13 +750,13 @@ export class GaborNoise extends PatternGen {
     let err = 0.1;
     let decay2 = this.decay2*2.0;
 
-    let steps = Math.log(1.0 / err) / decay2;
+    let steps = Math.log(1.0/err)/decay2;
     steps = Math.ceil(steps);
     steps = Math.min(Math.max(steps, 1), 3);
 
     let n = steps;
     let n2 = n*n*2.0;
-    let mul = 1.0 / n2;
+    let mul = 1.0/n2;
 
     let ix1 = Math.floor(x);
     let iy1 = Math.floor(y);
@@ -574,16 +769,16 @@ export class GaborNoise extends PatternGen {
     f = 0.0;
     let fmax = 0.0;
 
-    outer: for (let ix=-n; ix<=n; ix++) {
-      for (let iy=-n; iy<=n; iy++) {
-        for (let iz=-n; iz<=n; iz++) {
+    outer: for (let ix = -n; ix <= n; ix++) {
+      for (let iy = -n; iy <= n; iy++) {
+        for (let iz = -n; iz <= n; iz++) {
           let ix2 = ix1 + ix;
           let iy2 = iy1 + iy;
           let iz2 = iz1 + iz;
 
-          let rx = hash3(ix2, iy2, iz2)-0.5;
-          let ry = hash3(ix2+0.234, iy2+0.2343, iz2+0.63434)-0.5;
-          let rz = hash3(ix2-0.274, iy2+0.83432, iz2+0.123523)-0.5;
+          let rx = hash3(ix2, iy2, iz2) - 0.5;
+          let ry = hash3(ix2 + 0.234, iy2 + 0.2343, iz2 + 0.63434) - 0.5;
+          let rz = hash3(ix2 - 0.274, iy2 + 0.83432, iz2 + 0.123523) - 0.5;
 
           ix2 += rx*rfac;
           iy2 += ry*rfac;
@@ -593,7 +788,7 @@ export class GaborNoise extends PatternGen {
           let dy = y - iy2;
           let dz = z - iz2;
 
-          let dis = ((dx*dx + dy*dy + dz*dz) * mul);
+          let dis = ((dx*dx + dy*dy + dz*dz)*mul);
           //dis = Math.min(Math.min(dx*dx, dy*dy), dz*dz)*mul;
 
           //dx = Math.tent(dx);
@@ -608,7 +803,7 @@ export class GaborNoise extends PatternGen {
 
           dis = dis**efac;
 
-          let f2 = 1.0 - Math.abs(Math.fract(dis*factor)-0.5)*2.0;
+          let f2 = 1.0 - Math.abs(Math.fract(dis*factor) - 0.5)*2.0;
 
           //f2 = f2*f2*(3.0 - 2.0*f2);
 
@@ -632,14 +827,6 @@ export class GaborNoise extends PatternGen {
 
 
   }
-
-  static patternDefine() {
-    return {
-      typeName   : "GaborNoise",
-      defaultName: "Gabor",
-      uiName     : "Gabor",
-    }
-  }
 }
 
 GaborNoise.STRUCT = nstructjs.inherit(GaborNoise, PatternGen) + `
@@ -655,7 +842,8 @@ PatternGen.register(GaborNoise);
 nstructjs.register(GaborNoise);
 
 
-let evalcos = util.cachering.fromConstructor(Vector3, 64);
+let evalcos = util.cachering.fromConstructor(Vector3, 512);
+let dvcos = util.cachering.fromConstructor(Vector3, 512);
 
 export class ProceduralTex extends DataBlock {
   constructor() {
@@ -679,29 +867,6 @@ export class ProceduralTex extends DataBlock {
     this._last_update_hash = undefined;
     this._digest = new util.HashDigest();
   }
-
-  calcMemSize() {
-    return 1024; //just assume a large-ish block of memory
-  }
-
-  bindUniforms(uniforms) {
-    this.generator.bindUniforms(uniforms);
-  }
-
-  genGlsl(inP, outC, uniforms={}) {
-    uniforms = Object.assign({}, uniforms);
-    this.bindUniforms(uniforms);
-
-    return this.generator.genGlsl(inP, outC, uniforms);
-  }
-
-  genGlslPre(inP, outC, uniforms={}) {
-    uniforms = Object.assign({}, uniforms);
-    this.bindUniforms(uniforms);
-
-    return this.generator.genGlslPre(inP, outC, uniforms);
-  }
-
 
   static getPattern(index_or_typename_or_class) {
     let cls = index_or_typename_or_class;
@@ -740,7 +905,52 @@ export class ProceduralTex extends DataBlock {
     return new EnumProperty(0, enumdef).addUINames(uinames).addIcons(icons);
   }
 
-  copyTo(b, nonDataBlockMode=false) {
+  static blockDefine() {
+    return {
+      typeName   : "texture",
+      uiName     : "Texture",
+      defaultName: "Texture",
+      icon       : Icons.RENDER
+    }
+  }
+
+  static nodedef() {
+    return {
+      name   : "texture",
+      uiname : "Texture",
+      flag   : NodeFlags.SAVE_PROXY,
+      inputs : {
+        depend: new DependSocket()
+      },
+      outputs: {
+        depend: new DependSocket()
+      }
+    }
+  }
+
+  calcMemSize() {
+    return 1024; //just assume a large-ish block of memory
+  }
+
+  bindUniforms(uniforms) {
+    this.generator.bindUniforms(uniforms);
+  }
+
+  genGlsl(inP, outC, uniforms = {}) {
+    uniforms = Object.assign({}, uniforms);
+    this.bindUniforms(uniforms);
+
+    return this.generator.genGlsl(inP, outC, uniforms);
+  }
+
+  genGlslPre(inP, outC, uniforms = {}) {
+    uniforms = Object.assign({}, uniforms);
+    this.bindUniforms(uniforms);
+
+    return this.generator.genGlslPre(inP, outC, uniforms);
+  }
+
+  copyTo(b, nonDataBlockMode = false) {
     if (!nonDataBlockMode) {
       super.copyTo(b);
     }
@@ -752,17 +962,16 @@ export class ProceduralTex extends DataBlock {
       let gen2 = gen.copy();
 
       b.generators.push(gen2);
-      if (gen === this.generator) {
-        b.generator = gen2;
-      }
     }
+
+    b.setGenerator(this.generator.constructor);
 
     b.scale = this.scale;
     b.power = this.power;
     b.brightness = this.brightness;
     b.contrast = this.contrast;
 
-    b.previews = this.previews.concat([]); //reused preview instances
+    b.previews = this.previews.concat([]); //reuse preview instances
     b.recalcFlag = this.recalcFlag;
   }
 
@@ -770,9 +979,12 @@ export class ProceduralTex extends DataBlock {
     let digest = this._digest.reset();
 
     this.generator.calcUpdateHash(digest);
+
     digest.add(this.scale);
     digest.add(this.power);
     digest.add(this.updateGen);
+    digest.add(this.brightness);
+    digest.add(this.contrast);
 
     let hash = digest.get();
 
@@ -872,7 +1084,7 @@ export class ProceduralTex extends DataBlock {
     return this;
   }
 
-  evaluate(co, scale=1.0) {
+  evaluate(co, scale = 1.0) {
     co = evalcos.next().load(co);
     co.mulScalar(this.scale*scale);
 
@@ -883,31 +1095,30 @@ export class ProceduralTex extends DataBlock {
     return f;
   }
 
-  derivative(co) {
-    return this.generator.derivative;
-  }
+  derivative(co1, scale) {
+    let co = evalcos.next().load(co1);
 
-  static blockDefine() {
-    return {
-      typeName   : "texture",
-      uiName     : "Texture",
-      defaultName: "Texture",
-      icon       : Icons.RENDER
-    }
-  }
+    let a = this.evaluate(co, scale);
 
-  static nodedef() {
-    return {
-      name   : "texture",
-      uiname : "Texture",
-      flag   : NodeFlags.SAVE_PROXY,
-      inputs : {
-        depend: new DependSocket()
-      },
-      outputs: {
-        depend: new DependSocket()
-      }
-    }
+    let df = 0.00001;
+    co[0] += df;
+    let b = this.evaluate(co, scale);
+
+    co.load(co1);
+    co[1] += df;
+    let c = this.evaluate(co, scale);
+
+    co.load(co1);
+    co[2] += df;
+    let d = this.evaluate(co, scale);
+
+    let dv = dvcos.next();
+
+    dv[0] = (b - a) / df;
+    dv[1] = (c - a) / df;
+    dv[2] = (d - a) / df;
+
+    return dv;
   }
 
   loadSTRUCT(reader) {
@@ -952,21 +1163,53 @@ nstructjs.register(ProceduralTex);
 DataBlock.register(ProceduralTex);
 
 export const TexUserFlags = {
-  RAKE : 1
+  SELECT       : 1,
+  RAKE         : 2,
+  CONSTANT_SIZE: 4,
+  FANCY_RAKE   : 8,
+  ORIGINAL_CO  : 16
 };
 
 export const TexUserModes = {
-  GLOBAL : 0,
-  VIEWPLANE : 1,
+  GLOBAL     : 0,
+  VIEWPLANE  : 1,
+  VIEW_REPEAT: 2,
 };
 
 let _udigest = new util.HashDigest();
+let cotmp = new Vector3();
+
 export class ProceduralTexUser {
   constructor() {
     this.texture = undefined;
     this.scale = 1.0;
     this.mode = TexUserModes.GLOBAL;
     this.flag = 0; //see TexUserFlags
+    this.pinch = 0.0;
+  }
+
+  sample(co, texScale, angle, rendermat, screen_origin, aspect, dv_out) {
+    if (this.mode === TexUserModes.VIEWPLANE || this.mode === TexUserModes.VIEW_REPEAT) {
+      cotmp.load(co).multVecMatrix(rendermat);
+
+      if (screen_origin) {
+        cotmp.sub(screen_origin);
+      }
+
+      cotmp[0] *= aspect;
+
+      if (this.flag & TexUserFlags.RAKE) {
+        cotmp.rot2d(-angle);
+      }
+
+      co = cotmp;
+    }
+
+    if (dv_out) {
+      dv_out.load(this.texture.derivative(co, texScale));
+    }
+
+    return this.texture.evaluate(co, texScale);
   }
 
   copyTo(b) {
@@ -974,6 +1217,13 @@ export class ProceduralTexUser {
     b.scale = this.scale;
     b.mode = this.mode;
     b.flag = this.flag;
+    b.pinch = this.pinch;
+  }
+
+  copy() {
+    let ret = new ProceduralTexUser();
+    this.copyTo(ret);
+    return ret;
   }
 
   equals(b) {
@@ -986,17 +1236,19 @@ export class ProceduralTexUser {
     r = r && feq(this.scale, b.scale);
     r = r && this.mode === b.mode;
     r = r && this.flag === b.flag;
+    r = r && feq(this.pinch, b.pinch);
 
     return r;
   }
 
-  calcHashKey(digest=_udigest) {
+  calcHashKey(digest = _udigest) {
     let d = digest;
 
     d.add(this.scale);
     d.add(this.texture ? this.texture.lib_id : -1);
     d.add(this.mode);
     d.add(this.flag);
+    d.add(this.pinch);
 
     return d.get();
   }
@@ -1011,12 +1263,14 @@ export class ProceduralTexUser {
     reader(this);
   }
 }
+
 ProceduralTexUser.STRUCT = `
 ProceduralTexUser {
   texture : DataRef | DataRef.fromBlock(this.texture);
   flag    : int;
   mode    : int;
   scale   : float;
+  pinch   : float;
 }
 `
 nstructjs.register(ProceduralTexUser);
@@ -1029,20 +1283,20 @@ export function buildProcTextureAPI(api, api_define_datablock) {
 
   let st = api_define_datablock(api, ProceduralTex);
 
-  let onchange = function() {
+  let onchange = function () {
     this.dataref.updateGen++;
     this.dataref.graphUpdate();
   }
 
   let prop = ProceduralTex.buildGeneratorEnum();
-  st.enum("mode", "mode", prop, "Mode").on('change', function() {
+  st.enum("mode", "mode", prop, "Mode").on('change', function () {
     let tex = this.dataref;
     tex.recalcFlag |= PatternRecalcFlags.PREVIEW;
-  }).customGetSet(function() {
+  }).customGetSet(function () {
     let tex = this.dataref;
 
     return tex.generator.constructor.patternDefine().typeName;
-  }, function(val) {
+  }, function (val) {
     let tex = this.dataref;
 
     let cls;
@@ -1063,7 +1317,7 @@ export function buildProcTextureAPI(api, api_define_datablock) {
 
   st.dynamicStruct("generator", "generator", "Generator");
 
-  let onch = function() {
+  let onch = function () {
     let texuser = this.dataref;
 
     if (texuser.texture) {
@@ -1073,10 +1327,16 @@ export function buildProcTextureAPI(api, api_define_datablock) {
 
   let userst = api.mapStruct(ProceduralTexUser, true);
 
-  userst.flags("flag", "flag", TexUserFlags, "flag");
+  userst.flags("flag", "flag", TexUserFlags, "flag").descriptions(
+    {
+      CONSTANT_SIZE: "Use constant instead of brush size in 'View Repeat' mode"
+    }
+  );
+
   userst.enum("mode", "mode", TexUserModes, "Mode");
   userst.struct("texture", "texture", "Texture", st);
   userst.float("scale", "scale", "Scale").noUnits().range(0.0001, 1000.0).on('change', onch);
+  userst.float("pinch", "pinch", "Tex Pinch").noUnits().range(-1.0, 1.0);
 
   return st;
 }

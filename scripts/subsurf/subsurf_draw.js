@@ -133,7 +133,7 @@ export class SubsurfMesh extends MeshDrawInterface {
     subdivide(smesh);
 
     smesh.recalcNormals();
-    smesh.regenTesellation();
+    smesh.regenTessellation();
     smesh.regenRender();
 
     if (this.patches !== undefined) {

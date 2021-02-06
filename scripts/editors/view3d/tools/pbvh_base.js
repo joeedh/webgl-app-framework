@@ -1,21 +1,46 @@
-//grab data field definition
 import {
   BaseVector,
-  Curve1DProperty, EnumProperty,
-  FlagProperty, FloatProperty, keymap, Matrix4, ToolOp,
+  Curve1DProperty, EnumProperty, Vec2Property,
+  FlagProperty, FloatProperty, keymap, Mat4Property, Matrix4, ToolOp,
   ToolProperty, Vector2, Vector3, Vector4
 } from '../../../path.ux/scripts/pathux.js';
+
 import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes} from '../../../brush/brush.js';
-import {ProceduralTex} from '../../../texture/proceduralTex.js';
+import {ProceduralTex, TexUserFlags, TexUserModes} from '../../../texture/proceduralTex.js';
 import {DataRefProperty} from '../../../core/lib_api.js';
-import {BVHToolMode} from './pbvh.js';
 import {CDFlags} from '../../../mesh/customdata.js';
+import {TetMesh} from '../../../tet/tetgen.js';
 import {Mesh} from '../../../mesh/mesh.js';
 import {GridBase} from '../../../mesh/mesh_grids.js';
 import {BVHFlags, IsectRet} from '../../../util/bvh.js';
 import {MeshFlags} from '../../../mesh/mesh.js';
+
 import * as util from '../../../util/util.js';
 import * as math from '../../../util/math.js';
+
+export function getBVH(ctx) {
+  let ob = ctx.object;
+
+  if (!ob) {
+    return undefined;
+  }
+
+  if (ob.data instanceof Mesh || ob.data instanceof TetMesh) {
+    return ob.data.getBVH(false);
+  }
+}
+
+export function regenBVH(ctx) {
+  let ob = ctx.object;
+
+  if (!ob) {
+    return undefined;
+  }
+
+  if (ob.data instanceof Mesh || ob.data instanceof TetMesh) {
+    ob.data.regenBVH();
+  }
+}
 
 export const SymAxisMap = [
   [],
@@ -97,16 +122,21 @@ export class PaintSample {
     this.dp = new Vector4();
     this.viewPlane = new Vector3();
 
+    this.rendermat = new Matrix4();
+
     this.strokeS = 0.0;
     this.dstrokeS = 0.0;
 
     this.smoothProj = 0.0;
 
     this.pinch = 0.0;
+    this.sharp = 0.0;
 
     //screen coordinates
     this.sp = new Vector4();
     this.dsp = new Vector4();
+
+    this.futureAngle = 0;
 
     this.invert = false;
 
@@ -123,6 +153,7 @@ export class PaintSample {
     this.vec = new Vector3();
     this.dvec = new Vector3();
 
+    this.autosmoothInflate = 0.0;
     this.concaveFilter = 0.0;
     this.strength = 0.0;
     this.radius = 0.0;
@@ -130,12 +161,14 @@ export class PaintSample {
     this.autosmooth = 0.0;
     this.esize = 0.0;
     this.planeoff = 0.0;
+
+    this.mirrored = false;
   }
 
   static getMemSize() {
     let tot = 13*8;
     tot += 5*3*8 + 8*5;
-    tot += 5*4*8 + 8*5;
+    tot += 5*4*8 + 8*5 + 16*8;
 
     return tot;
   }
@@ -148,20 +181,26 @@ export class PaintSample {
     //this.sp.mulScalar(mul);
     this.dsp.mul(mul);
     this.viewvec.mul(mul);
+    this.viewPlane.mul(mul);
 
     this.vec.mul(mul);
     this.dvec.mul(mul);
 
     this.angle *= mul[0]*mul[1]*mul[2];
+    this.futureAngle *= mul[0]*mul[1]*mul[2];
+
+    this.mirrored ^= true;
 
     return this;
   }
 
   copyTo(b) {
     b.smoothProj = this.smoothProj;
+    b.futureAngle = this.futureAngle;
 
     b.strokeS = this.strokeS;
     b.dstrokeS = this.dstrokeS;
+    b.sharp = this.sharp;
 
     b.viewPlane.load(this.viewPlane);
     b.viewvec.load(this.viewvec);
@@ -179,12 +218,16 @@ export class PaintSample {
 
     b.p.load(this.p);
     b.dp.load(this.dp);
+    b.autosmoothInflate = this.autosmoothInflate;
 
     b.w = this.w;
     b.esize = this.esize;
 
     b.color.load(this.color);
     b.isInterp = this.isInterp;
+    b.mirrored = this.mirrored;
+
+    b.rendermat.load(this.rendermat);
 
     b.pinch = this.pinch;
     b.rake = this.rake;
@@ -214,15 +257,21 @@ PaintSample {
   dsp            : vec4;
   origp          : vec4;
   isInterp       : bool;
-
+  sharp          : float;
+  futureAngle    : float;
+  
   vec            : vec3;
   dvec           : vec3;
-
+  mirrored       : bool;
+  
   color          : vec4;
 
+  rendermat      : mat4;
+   
   viewvec        : vec3;
   vieworigin     : vec3;
   viewPlane      : vec3;
+  autosmoothInflate : float;
 
   planeoff       : float;
   rake           : float;
@@ -314,7 +363,7 @@ export class SetBrushRadius extends ToolOp {
   }
 
   static canRun(ctx) {
-    return ctx.toolmode && ctx.toolmode instanceof BVHToolMode;
+    return ctx.toolmode && ctx.toolmode.constructor.name === "BVHToolMode";
   }
 
   static tooldef() {
@@ -333,7 +382,7 @@ export class SetBrushRadius extends ToolOp {
     let tool = super.invoke(ctx, args);
 
     let toolmode = ctx.toolmode;
-    if (!toolmode || !(toolmode instanceof BVHToolMode)) {
+    if (!toolmode || toolmode.constructor.name !== "BVHToolMode") {
       return tool;
     }
 
@@ -396,7 +445,7 @@ export class SetBrushRadius extends ToolOp {
     this.makeTempLine(this.cent_mpos, this.mpos, "rgba(25,25,25,0.25)");
 
     let toolmode = ctx.toolmode;
-    if (toolmode && toolmode instanceof BVHToolMode) {
+    if (toolmode && toolmode.constructor.name === "BVHToolMode") {
       toolmode.mpos.load(this.cent_mpos);
     }
 
@@ -479,14 +528,10 @@ export class SetBrushRadius extends ToolOp {
 
   on_keydown(e) {
     switch (e.keyCode) {
+      case keymap["Escape"]:
       case keymap["Enter"]:
       case keymap["Space"]:
-      case keymap["Escape"]:
-        if (this.queue.length > 0) {
-          this.queue.push("stop");
-        } else {
-          this.modalEnd(false);
-        }
+        this.modalEnd(false);
         break;
     }
   }
@@ -552,15 +597,26 @@ export function calcConcaveLayer(mesh) {
 }
 
 import {bez4} from '../../../util/bezier.js';
+import {copyMouseEvent} from '../../../path.ux/scripts/path-controller/util/events.js';
+import {CameraModes} from '../view3d_base.js';
 
 export class PaintOpBase extends ToolOp {
   constructor() {
     super();
 
+    this.task = undefined;
+
+    this.mfinished = false;
     this.last_mpos = new Vector2();
     this.last_p = new Vector3();
     this.last_origco = new Vector4();
     this._first = true;
+
+    this.last_draw = util.time_ms();
+
+    this.lastps1 = undefined;
+    this.lastps2 = undefined;
+
     this.last_radius = 0;
     this.last_vec = new Vector3();
 
@@ -583,6 +639,8 @@ export class PaintOpBase extends ToolOp {
         samples     : new PaintSampleProperty(),
         symmetryAxes: new FlagProperty(undefined, {X: 1, Y: 2, Z: 4}),
         falloff     : new Curve1DProperty(),
+        rendermat   : new Mat4Property(),
+        viewportSize: new Vec2Property
       }
     }
   }
@@ -598,30 +656,34 @@ export class PaintOpBase extends ToolOp {
     ret = ret || (!isPaint && mode !== SculptTools.GRAB && brush.pinch !== 0.0);
     ret = ret || mode === SculptTools.PINCH;
 
+    if (brush.texUser.texture) {
+      ret = ret || (brush.texUser.flag & TexUserFlags.ORIGINAL_CO);
+    }
+
     return ret;
   }
 
   timer_on_tick() {
+    if (!this.modalRunning) {
+      this.clearInterval(this.timer);
+      this.timer = undefined;
+      return;
+    }
+
     //XXX currently disabled
     if (this.queue.length === 0) {
       return;
     }
 
-    if (util.time_ms() - this.qlast_time > 20) {
+    if (util.time_ms() - this.last_draw > 100) {
+      this.last_draw = util.time_ms();
+      this.drawPath();
+    }
+
+    if (util.time_ms() - this.qlast_time > 5) {
       let time = util.time_ms();
 
-      while (this.queue.length > 0 && util.time_ms() - time < 30) {
-        let e = this.queue.pop();
-
-        if (e === "stop") {
-          this.modalEnd();
-          return;
-        }
-
-        this.on_mousemove(e, true);
-        window.redraw_viewport(true);
-        console.log(e);
-      }
+      this.taskNext();
 
       this.qlast_time = util.time_ms();
     }
@@ -633,6 +695,7 @@ export class PaintOpBase extends ToolOp {
 
     let p = new PathPoint([x, y], dt);
     let path = this.path;
+    let dpi = devicePixelRatio;
 
     if (path.length > 0) {
       let p0 = path[path.length - 1];
@@ -645,17 +708,17 @@ export class PaintOpBase extends ToolOp {
       let l1 = p0.vel.vectorLength();
       let l2 = p.vel.vectorLength();
 
-      if (p.vel.vectorLength() > 30) {
-        let co = new Vector3();
+      if (p.vel.vectorLength() > 7/dpi) {
+        let co = new Vector2();
 
-        let a = new Vector3();
-        let b = new Vector3();
-        let c = new Vector3();
-        let d = new Vector3();
+        let a = new Vector2();
+        let b = new Vector2();
+        let c = new Vector2();
+        let d = new Vector2();
 
 
-        let vel1 = new Vector3(p0.vel).addFac(p0.acc, 0.5).mulScalar(0.5);
-        let vel2 = new Vector3(p.vel).addFac(p.acc, 0.5).mulScalar(0.5);
+        let vel1 = new Vector2(p0.vel).addFac(p0.acc, 0.5).mulScalar(0.5);
+        let vel2 = new Vector2(p.vel).addFac(p.acc, 0.5).mulScalar(0.5);
 
         a.load(p0.co);
         d.load(p.co);
@@ -666,8 +729,9 @@ export class PaintOpBase extends ToolOp {
 
         let brush = this.inputs.brush.getValue();
         let radius = brush.radius;
+        let spacing = brush.spacing;
 
-        let steps = Math.ceil(p.co.vectorDistance(p0.co)/(4*radius));
+        let steps = Math.ceil(p.co.vectorDistance(p0.co)/(4*radius*spacing));
 
         if (steps === 0) {
           this.path.push(p);
@@ -727,9 +791,17 @@ export class PaintOpBase extends ToolOp {
     this.resetTempGeom();
     let lastp;
 
-    let n = new Vector2();
+    let start = this.path.length;
+    if (this.queue.length > 0) {
+      start = this.queue[0][2];
+    }
 
-    for (let p of this.path) {
+    let n = new Vector2();
+    let color = "rgba(255, 255, 255, 0.4)";
+
+    for (let pi=start; pi<this.path.length; pi++) {
+      let p = this.path[pi];
+
       if (lastp) {
         n.load(p.co).sub(lastp.co).normalize();
         let t = n[0];
@@ -738,18 +810,47 @@ export class PaintOpBase extends ToolOp {
         n.mulScalar(15.0);
         n.add(p.origco);
 
-        this.makeTempLine(lastp.co, p.co, "yellow");
-        this.makeTempLine(lastp.origco, p.origco, p.color);
-        this.makeTempLine(p.origco, n, p.color);
+        this.makeTempLine(lastp.co, p.co, color);
+        //this.makeTempLine(lastp.origco, p.origco, p.color);
+        //this.makeTempLine(p.origco, n, p.color);
       }
       lastp = p;
     }
   }
 
+  on_keydown(e) {
+    switch (e.keyCode) {
+      case keymap["Escape"]:
+        this.modalEnd(false);
+
+        if (this.timer) {
+          window.clearInterval(this.timer);
+          this.timer = undefined;
+        }
+
+        //terminate immediately
+        this.queue.length = 0;
+        while (this.task) {
+          this.taskNext();
+        }
+        break;
+      case keymap["Enter"]:
+      case keymap["Space"]:
+        this.modalEnd(false);
+        break;
+    }
+  }
+
   on_mousemove(e, in_timer = false) {
+    if (this.mfinished) {
+      return; //wait for modalEnd
+    }
+
     let pi = this.path.length;
 
     if (this.inputs.brush.getValue().spacingMode === BrushSpacingModes.EVEN) {
+      //console.log("Even spacing mode");
+
       //try to detect janky events and interpolate with a curve
       //note that this is not the EVEN spacing mode which happens in
       //subclases, it doesn't respect brush spacing when outputting the curve
@@ -760,27 +861,63 @@ export class PaintOpBase extends ToolOp {
     }
 
     this.alast_time = util.time_ms();
-    //this.drawPath();
+    this.drawPath();
 
     for (; pi < this.path.length; pi++) {
       let p = this.path[pi];
 
-      this.on_mousemove_intern(e, p.co[0], p.co[1], in_timer, pi !== this.path.length-1);
+      let e2 = copyMouseEvent(e);
+
+      this.queue.push([e2, p, pi]);
+      //this.on_mousemove_intern(e, p.co[0], p.co[1], in_timer, pi !== this.path.length-1);
     }
+
+    if (!this.task) {
+      this.task = this.makeTask();
+    }
+  }
+
+  makeTask() {
+    let this2 = this;
+
+    return (function*() {
+      while (this2.queue.length > 0) {
+        let [e, p, pi] = this2.queue.shift();
+
+        let iter = this2.on_mousemove_intern(e, p.co[0], p.co[1], true, pi !== this2.path.length-1);
+
+        if (typeof iter === "object" && iter[Symbol.iterator]) {
+          for (let step of iter) {
+            yield;
+          }
+        }
+
+        yield;
+      }
+    })();
+  }
+
+  hasSampleDelay() {
+    let brush = this.inputs.brush.getValue();
+
+    let delayMode = false;
+    if (brush.texUser.texture) {
+      let flag = brush.texUser.flag;
+      let mode = brush.texUser.mode;
+
+      delayMode = mode === TexUserModes.VIEW_REPEAT;
+      delayMode = delayMode && (flag & TexUserFlags.FANCY_RAKE);
+    }
+
+    //console.log("delayMode:", delayMode);
   }
 
   on_mousemove_intern(e, x = e.x, y = e.y, in_timer = false, isInterp=false) {
     //this.makeTempLine()
 
-    /*
-    if (!in_timer) {// && util.time_ms() - this.qlast_time > 5) {
-      this.queue.push(e);
-      return;
-    }*/
-
     let ctx = this.modal_ctx;
 
-    if (!ctx.object || !(ctx.object.data instanceof Mesh)) {
+    if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
       return;
     }
 
@@ -801,7 +938,7 @@ export class PaintOpBase extends ToolOp {
 
     let pressure = 1.0;
 
-    if (e.was_touch && e.targetTouches && e.targetTouches.length > 0) {
+    if (e.targetTouches && e.targetTouches.length > 0) {
       let t = e.targetTouches[0];
 
       if (t.pressure !== undefined) {
@@ -810,6 +947,8 @@ export class PaintOpBase extends ToolOp {
         pressure = t.force;
       }
     }
+
+    //console.log(e.ctrlKey, view3d.size, x, y, e.targetTouches, pressure);
 
     let rendermat = view3d.activeCamera.rendermat;
     let view = view3d.getViewVec(x, y);
@@ -822,6 +961,12 @@ export class PaintOpBase extends ToolOp {
       invert = true;
     }
 
+    if (brush.flag & BrushFlags.INVERT) {
+      invert ^= true;
+    }
+
+    this.inputs.viewportSize.setValue(view3d.size);
+
     return this.sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp);
   }
 
@@ -831,7 +976,7 @@ export class PaintOpBase extends ToolOp {
 
     let ctx = this.modal_ctx;
 
-    if (!ctx.object || !(ctx.object.data instanceof Mesh)) {
+    if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
       return;
     }
 
@@ -970,6 +1115,11 @@ export class PaintOpBase extends ToolOp {
     p3.multVecMatrix(rendermat);
 
     let w = p3[3]*matrix.$matrix.m11;
+
+    if (view3d.cameraMode === CameraModes.ORTHOGRAPHIC) {
+      //w = 1.0;
+    }
+
     //let w2 = Math.cbrt(w);
 
     if (w <= 0) return;
@@ -1094,7 +1244,55 @@ export class PaintOpBase extends ToolOp {
     return myToJSON(this._savedViewPoints);
   }
 
+  taskNext() {
+    if (!this.task) {
+      return;
+    }
+
+    let time = util.time_ms();
+    while (util.time_ms() - time < 45) {
+      let ret;
+
+      try {
+        ret = this.task.next();
+      } catch (error) {
+        util.print_stack(error);
+        this.task = undefined;
+        break;
+      }
+
+      if (!ret || ret.done) {
+        this.task = undefined;
+        break;
+      }
+    }
+  }
+
   modalEnd(was_cancelled) {
+    try {
+      throw new Error();
+    } catch (error) {
+      console.log(error.stack);
+    }
+
+    this.mfinished = true;
+
+    if (!this.modalRunning) {
+      return;
+    }
+
+    if (this.task) {
+      //can't end modal
+      console.log("Waiting for task to finish");
+      this.taskNext();
+
+      window.setTimeout(() => {
+        this.modalEnd(was_cancelled);
+      }, 150);
+
+      return;
+    }
+
     super.modalEnd(was_cancelled);
 
     if (this.timer !== undefined) {
@@ -1104,11 +1302,8 @@ export class PaintOpBase extends ToolOp {
   }
 
   on_mouseup(e) {
-    if (this.queue.length > 0) {
-      this.queue.push("stop");
-    } else {
-      this.modalEnd(false);
-    }
+    this.mfinished = true;
+    this.modalEnd(false);
   }
 
   undoPre(ctx) {
@@ -1120,11 +1315,16 @@ export class PaintOpBase extends ToolOp {
   }
 
   modalStart(ctx) {
+    this.mfinished = false;
+
+    this.lastps1 = undefined;
+    this.lastps2 = undefined;
+
     if (this.timer !== undefined) {
       window.clearInterval(this.timer);
     }
 
-    //this.timer = window.setInterval(() => this.timer_on_tick(), 5);
+    this.timer = window.setInterval(() => this.timer_on_tick(), 5);
 
     this._first = true;
     super.modalStart(ctx);
@@ -1155,7 +1355,7 @@ export class MaskOpBase extends ToolOp {
   }
 
   undoPre(ctx) {
-    let mesh = ctx.mesh;
+    let mesh = ctx.mesh || ctx.tetmesh;
 
     let ud = this._undo = {mesh: -1};
 
