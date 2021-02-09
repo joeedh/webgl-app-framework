@@ -6,6 +6,8 @@ import './test/test_sculpt.js';
 import './test/test.js';
 import './test/test_sculpt_run.js';
 
+import {startAddons} from './addon/addon.js';
+
 import {nstructjs} from './path.ux/scripts/util/struct.js';
 import {cconst} from './path.ux/scripts/pathux.js';
 import config from './config/config.js';
@@ -70,17 +72,28 @@ updateIconDPI();
 window.init = () => {
   console.log("init!");
 
-  nstructjs.validateStructs();
-
-  loadShapes();
-  appstate.init();
-
-  //shortcut for console use only
-  if (typeof CTX === "undefined") {
-    Object.defineProperty(window, "CTX", {
-      get: () => {
-        return _appstate.ctx;
-      }
-    })
+  //give addons 500 ms to load
+  let timeout = config.addonLoadWaitTime;
+  if (timeout === undefined) {
+    timeout = 500;
   }
+
+  console.log("Loading addons");
+  startAddons(true); //XXX should be false
+
+  window.setTimeout(() => {
+    nstructjs.validateStructs();
+
+    loadShapes();
+    appstate.init();
+
+    //shortcut for console use only
+    if (typeof CTX === "undefined") {
+      Object.defineProperty(window, "CTX", {
+        get: () => {
+          return _appstate.ctx;
+        }
+      })
+    }
+  }, timeout);
 };

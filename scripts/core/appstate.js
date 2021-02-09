@@ -4,6 +4,8 @@ import {ViewContext} from './context.js';
 import {AppToolStack} from "./toolstack.js";
 import '../editors/node/MaterialEditor.js';
 
+import '../addon/addon.js';
+
 import {tileManager} from '../image/gpuimage.js';
 
 import './platform.js';

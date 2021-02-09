@@ -123,6 +123,10 @@ export class SceneObjectData extends DataBlock {
     this.materials = mats;
   }
 
+  static unregister(cls) {
+    ObjectDataTypes.remove(cls);
+  }
+
   static register(cls) {
     if (!cls.hasOwnProperty("dataDefine")) {
       throw new Error("missing .dataDefine static method");

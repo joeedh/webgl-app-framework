@@ -56,6 +56,8 @@ export class TetMeshTool extends ToolMode {
     panel.tool("tet.vertex_smooth()");
     panel.tool("tet.hexes_to_tets()");
     panel.tool("tet.fix_normals()");
+
+    panel.toolPanel("tet.solidify_wireframe");
   }
 
   dataLink(scene, getblock, getblock_addUser) {

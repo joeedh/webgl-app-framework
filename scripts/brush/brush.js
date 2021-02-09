@@ -65,7 +65,8 @@ export const DynTopoFlags = {
   FANCY_EDGE_WEIGHTS: 16,
   QUAD_COLLAPSE     : 32,
   ALLOW_VALENCE4    : 64,
-  DRAW_TRIS_AS_QUADS: 128
+  DRAW_TRIS_AS_QUADS: 128,
+  ADAPTIVE          : 256
 };
 
 export const DynTopoOverrides = {
@@ -855,7 +856,7 @@ export function makeDefaultBrushes() {
   brush.dynamics.strength.useDynamics = true;
   brush.dynamics.strength.curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARP);
 
-  brush.flag |= BrushFlags.SQUARE|BrushFlags.LINE_FALLOFF|BrushFlags.USE_LINE_CURVE;
+  brush.flag |= BrushFlags.SQUARE | BrushFlags.LINE_FALLOFF | BrushFlags.USE_LINE_CURVE;
   brush.spacing = 0.2;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTHER);
   brush.falloff2.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.GUASSIAN);
@@ -1015,7 +1016,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.rake = 1.0;
   brush.rakeCurvatureFactor = 1.0;
 
-  brush.flag |= BrushFlags.SQUARE|BrushFlags.LINE_FALLOFF|BrushFlags.USE_LINE_CURVE;
+  brush.flag |= BrushFlags.SQUARE | BrushFlags.LINE_FALLOFF | BrushFlags.USE_LINE_CURVE;
   brush.spacing = 0.2;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTHER);
   brush.falloff2.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.GUASSIAN);

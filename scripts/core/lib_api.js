@@ -257,6 +257,10 @@ but owner will not be added to this.lib_userlist`.trim());
     BlockTypes.push(cls);
   }
 
+  static unregister(cls) {
+    BlockTypes.remove(cls);
+  }
+
   static getClass(typeName) {
     for (let type of BlockTypes) {
       if (type.blockDefine().typeName === typeName)

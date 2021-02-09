@@ -1630,8 +1630,9 @@ ImageEditor.STRUCT = nstructjs.inherit(ImageEditor, Editor) + `
   uvEditor  : UVEditor;
   snapLimit : float;
 }`;
-Editor.register(ImageEditor);
+
 nstructjs.register(ImageEditor);
+Editor.register(ImageEditor);
 
 window.redraw_uveditors = function () {
   if (!_appstate || !_appstate.screen) {

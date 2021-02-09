@@ -409,5 +409,5 @@ MenuBarEditor.STRUCT = STRUCT.inherit(MenuBarEditor, Editor) + `
 }
 `;
 
-Editor.register(MenuBarEditor);
 nstructjs.manager.add_class(MenuBarEditor);
+Editor.register(MenuBarEditor);

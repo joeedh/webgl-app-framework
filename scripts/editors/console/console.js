@@ -1123,5 +1123,5 @@ ConsoleEditor.STRUCT = nstructjs.inherit(ConsoleEditor, Editor) + `
     head        :  int;
     scroll      :  vec2;
 }`;
-Editor.register(ConsoleEditor);
 nstructjs.register(ConsoleEditor);
+Editor.register(ConsoleEditor);

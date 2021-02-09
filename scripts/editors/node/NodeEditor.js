@@ -1471,5 +1471,5 @@ NodeEditor.STRUCT = STRUCT.inherit(NodeEditor, Editor) + `
   graphPath  : string;
 }
 `
-Editor.register(NodeEditor);
 nstructjs.register(NodeEditor);
+Editor.register(NodeEditor);

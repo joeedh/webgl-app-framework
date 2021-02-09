@@ -49,6 +49,7 @@ exports.ServerResponse = class ServerResponse extends http.ServerResponse {
       this.setHeader("Access-Control-Allow-Origin", origin);
     }
 
+    this.setHeader("Document-Policy", "js-profiling");
     this.setHeader("Cross-Origin-Opener-Policy", "same-origin");
     this.setHeader("Cross-Origin-Resource-Policy", "same-origin");
     this.setHeader("Cross-Origin-Embedder-Policy", "require-corp");

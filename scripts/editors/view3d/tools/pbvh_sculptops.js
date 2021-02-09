@@ -135,6 +135,8 @@ export class PaintOp extends PaintOpBase {
   constructor() {
     super();
 
+    this.edist_scale = () => 1.0;
+
     this.edist_subd = this.edist_subd.bind(this);
     this.edist_coll = this.edist_coll.bind(this);
 
@@ -1570,7 +1572,7 @@ export class PaintOp extends PaintOpBase {
       strength *= 0.5;
       isplane = true;
     } else if (mode === CLAY) {
-      planeoff += 0.5;
+      planeoff += 3.25;
 
       //strength *= 2.0;
 
@@ -4436,6 +4438,10 @@ export class PaintOp extends PaintOpBase {
     DYNTOPO_T_GOAL = brush.dynTopo.valenceGoal;
     ENABLE_DYNTOPO_EDGE_WEIGHTS = brush.dynTopo.flag & DynTopoFlags.FANCY_EDGE_WEIGHTS;
 
+    if (brush.dynTopo.flag & DynTopoFlags.ADAPTIVE) {
+      this.edist_scale = this.edist_curvmul;
+    }
+
     let cd_curv = getCurveVerts(mesh); //disabled for now
     //let cd_curv = -1;
 
@@ -4732,8 +4738,14 @@ export class PaintOp extends PaintOpBase {
       return 0.0;
     }
 
-    let rtot = 0, ratio = 0;
+    let val = (v1.valence + v2.valence) * 0.5;
+    let d = Math.max(val-5, 1) * 0.5;
 
+    d = Math.abs(val-6) + 1.0;
+    return dis * d * 0.5;
+
+    /*
+    let rtot = 0, ratio = 0;
     for (let l of e.loops) {
       l = l.next.next;
 
@@ -4789,9 +4801,9 @@ export class PaintOp extends PaintOpBase {
       d *= d;
 
       dis /= 1.0 + d*3.0;
-    }
+    }*/
 
-    return dis*this.edist_curvmul(e, cd_curv);
+    return dis*this.edist_scale(e, cd_curv);
   }
 
   edist_curvmul(e, cd_curv) {
@@ -4833,10 +4845,13 @@ export class PaintOp extends PaintOpBase {
     let d = (val1 + val2)*0.5;
 
     //goal is six-valence verts
-    d = Math.max(d - 5.0, 1.0);
+    //d = Math.max(d - 5.0, 1.0);
+    d = Math.abs(d - 6.0) + 1.0;
+    //d *= 0.5;
 
     dis *= d;
 
+    /*
     if (cd_curv >= 0) {
       let cv1 = v1.customData[cd_curv];
       let cv2 = v2.customData[cd_curv];
@@ -4862,9 +4877,9 @@ export class PaintOp extends PaintOpBase {
       d *= d;
 
       dis *= 1.0 + d*3.0;
-    }
+    }*/
 
-    return dis*this.edist_curvmul(e, cd_curv);
+    return dis*this.edist_scale(e, cd_curv);
   }
 
   edist_old(e, v1, v2, mode = 0) {
@@ -6222,7 +6237,7 @@ export class PaintOp extends PaintOpBase {
     let rand = this.dynTopoRand;
 
     if (max2 < 10) {
-      max2 = 32;
+      max2 = 64;
     } else {
       max2 *= 8;
     }
@@ -6231,16 +6246,23 @@ export class PaintOp extends PaintOpBase {
 
     let esqr2 = (esize*0.5)**2;
 
-    function weight(e, lensqr) {
-      let dd1 = 1, dd2 = 1;
-
-      dd1 = window.dd1 !== undefined ? window.dd1 : 1.0;
-      dd2 = window.dd2 !== undefined ? window.dd2 : 1.0;
-
-      lensqr -= (e.v1.valence + e.v2.valence)*dd1;
-      lensqr -= countNewSplitEdges(e, eset)*dd2;
+    function weight_fancy(e, lensqr) {
+      lensqr += (e.v1.valence + e.v2.valence);
+      lensqr += countNewSplitEdges(e, eset);
 
       return lensqr;
+    }
+
+    function weight_simple(e, lensqr) {
+      return lensqr;
+    }
+
+    let weight;
+
+    if (!(brush.dynTopo.flag & DynTopoFlags.FANCY_EDGE_WEIGHTS)) {
+      weight = weight_simple;
+    } else {
+      weight = weight_fancy;
     }
 
     for (let e of es) {

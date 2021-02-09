@@ -453,8 +453,8 @@ NodeViewer.STRUCT = nstructjs.inherit(NodeViewer, Editor) + `
   velpan     : VelPan;
 }`;
 
-Editor.register(NodeViewer);
 nstructjs.register(NodeViewer);
+Editor.register(NodeViewer);
 
 export function getNodeViewer(screen) {
   for (let sarea of screen.sareas) {

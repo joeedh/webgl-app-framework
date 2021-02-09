@@ -1822,8 +1822,8 @@ View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
 }
 `
 
-Editor.register(View3D);
 nstructjs.manager.add_class(View3D);
+Editor.register(View3D);
 
 let animreq = undefined;
 let resetRender = 0;

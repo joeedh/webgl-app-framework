@@ -754,6 +754,10 @@ export class Editor extends Area {
   }
 
   static register(cls) {
+    if (!nstructjs.manager.isRegistered(cls)) {
+      throw new Error("You must register editors with nstructjs: " + cls.name);
+    }
+
     Area.register(cls);
   }
 

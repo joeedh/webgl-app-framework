@@ -467,6 +467,7 @@ export class BVHToolMode extends ToolMode {
     dfield(panel, "flag[ENABLED]");
     dfield(panel, "flag[SUBDIVIDE]");
     dfield(panel, "flag[COLLAPSE]");
+    dfield(panel, "flag[ADAPTIVE]");
 
     dfield(panel, "edgeMode");
     dfield(panel, "spacing");

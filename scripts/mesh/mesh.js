@@ -3160,13 +3160,18 @@ export class Mesh extends SceneObjectData {
       do {
         let next = l.next;
 
-        if (l.v === l.next.v) {
+        if (_i++ > MAX_FACE_VERTS*2) {
+          console.warn("infinite loop error");
+          break;
+        }
+
+        while (l.v === next.v) {
           console.log("duplicate loop verts", l);
           ret = true;
 
           unlink();
 
-          if (_i++ > MAX_FACE_VERTS) {
+          if (_i++ > MAX_FACE_VERTS*2) {
             console.warn("infinite loop error");
             break;
           }
@@ -3187,6 +3192,9 @@ export class Mesh extends SceneObjectData {
           }
 
           this._killLoop(l);
+
+          l = next;
+          next = l.next;
         }
 
         l = next;

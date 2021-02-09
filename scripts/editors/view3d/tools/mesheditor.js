@@ -213,7 +213,8 @@ export class MeshEditor extends MeshToolBase {
     });
 
     strip = panel.row().strip().useIcons(false);
-    panel.tool("mesh.flip_normals()");
+    strip.tool("mesh.flip_normals()");
+    strip.tool("mesh.bevel()");
 
     panel = container.panel("Transform");
 

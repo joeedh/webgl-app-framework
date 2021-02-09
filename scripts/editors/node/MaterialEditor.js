@@ -186,5 +186,5 @@ MaterialEditor.STRUCT = STRUCT.inherit(MaterialEditor, NodeEditor) + `
 }
 `;
 
-Editor.register(MaterialEditor);
 nstructjs.register(MaterialEditor);
+Editor.register(MaterialEditor);
