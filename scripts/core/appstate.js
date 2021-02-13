@@ -12,7 +12,7 @@ import './platform.js';
 
 import {
   initSimpleController, checkForTextBox, keymap, Vector3, Vector4, Vector2, Quat, Matrix4,
-  ToolOp, UndoFlags, nstructjs
+  ToolOp, UndoFlags, nstructjs, _onEventsStart, _onEventsStop
 } from '../path.ux/scripts/pathux.js';
 
 import './polyfill.js';
@@ -1118,7 +1118,7 @@ export function init() {
 
   let lastKey = undefined;
 
-  window.addEventListener("keydown", (e) => {
+  let on_keydown = (e) => {
     lastKey = e.keyCode;
 
     if (e.keyCode === keymap["C"]) {
@@ -1133,7 +1133,7 @@ export function init() {
     //console.log("tbox", checkForTextBox(_appstate.screen, mpos[0], mpos[1]), mpos);
 
     //prevent reload hotkey, could conflict with redo
-    if (e.keyCode == keymap["R"] && e.ctrlKey) {
+    if (e.keyCode === keymap["R"] && e.ctrlKey) {
       e.preventDefault();
     }
 
@@ -1141,12 +1141,14 @@ export function init() {
     //uses it
     let mpos = _appstate.screen ? _appstate.screen.mpos : [0, 0];
     let preventdef = !(_appstate.screen && checkForTextBox(_appstate.screen, mpos[0], mpos[1]));
-    if (preventdef && e.keyCode == keymap["A"] && e.ctrlKey) {
+    if (preventdef && e.keyCode === keymap["A"] && e.ctrlKey) {
 
       e.preventDefault();
     }
-  });
+  }
 
+  _onEventsStart(() => window.addEventListener("keydown", on_keydown));
+  _onEventsStop(() => window.removeEventListener("keydown", on_keydown));
 
   let graphreq = undefined;
 

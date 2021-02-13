@@ -6,10 +6,20 @@ import {UIBase} from '../path.ux/scripts/pathux.js';
 export const DEBUG_DUPLICATE_FACES = 0;
 export const DEBUG_MANIFOLD_EDGES = 0;
 
+export const DEBUG_BAD_LOOPS = 0;
+export const DEBUG_DISK_INSERT = 0;
+export const DEBUG_FREE_STACKS = 0;
+
+//adds a field to mesh_types.Element
+export const STORE_DELAY_CACHE_INDEX = true;
+
 export const ENABLE_CACHING = true;
 
 export const SAVE_DEAD_LOOPS = ENABLE_CACHING;
 export const SAVE_DEAD_FACES = ENABLE_CACHING;
+
+export const SAVE_DEAD_VERTS = ENABLE_CACHING;
+export const SAVE_DEAD_EDGES = ENABLE_CACHING;
 
 export const WITH_EIDMAP_MAP = true;
 
@@ -20,6 +30,8 @@ let STRUCT = nstructjs.STRUCT;
 export const MAX_FACE_VERTS = 1000000;
 export const MAX_VERT_EDGES = 1000;
 export const MAX_EDGE_FACES = 100;
+
+export const EmptyCDArray = Object.seal([]);
 
 export const HandleTypes = {
   AUTO    : 0,
@@ -131,8 +143,12 @@ export const LogTags = {
 };
 
 export class LogContext {
-  constructor() {
-    initAspectClass(this, lctx_blacklist);
+  constructor(useAsAspectClass=false) {
+    if (useAsAspectClass) {
+      initAspectClass(this, lctx_blacklist);
+    }
+
+    this.haveAspect = useAsAspectClass;
 
     /*
     this.newVerts = new Set();
@@ -152,7 +168,9 @@ export class LogContext {
   reset() {
     this.onnew = this.onkill = undefined;
 
-    clearAspectCallbacks(this);
+    if (this.haveAspect) {
+      clearAspectCallbacks(this);
+    }
 
     return this;
   }

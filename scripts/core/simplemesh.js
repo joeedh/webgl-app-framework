@@ -1013,6 +1013,8 @@ export class SimpleIsland {
   constructor(mesh) {
     let lay = this.layers = new GeoLayerManager();
 
+    this._glAttrs = {};
+
     this.primflag = undefined;  //if undefined, will get from this.mesh.primflag
 
     this.mesh = mesh;
@@ -1366,6 +1368,11 @@ export class SimpleIsland {
         continue;
       }
 
+      //custom layers have their own attribute names
+      if (layer.type !== LayerTypes.CUSTOM) {
+        this._glAttrs[LayerTypeNames[layer.type]] = 1;
+      }
+
       //console.log(layer.bufferKey, layer.dataUsed, layer.data_f32.length, layer.bufferType, layer.data_f32);
 
       let vbo = this.buffer.get(gl, layer.bufferKey, layer.bufferType);
@@ -1429,6 +1436,8 @@ export class SimpleIsland {
   }
 
   _draw_line_tristrips(gl, uniforms, params, program) {
+    let attrs = this._glAttrs;
+
     if (this.totline_tristrip) {
       //program = Shaders.LineTriStripShader;
       //program.bind(gl, uniforms);
@@ -1468,7 +1477,7 @@ export class SimpleIsland {
 
       //program = Shaders.LineTriStripShader;
       program = program._smoothline;
-      program.bind(gl, uniforms);
+      program.bind(gl, uniforms, attrs);
 
       this.bindArrays(gl, uniforms, program, "line2", PrimitiveTypes.ADVANCED_LINES);
       gl.drawArrays(gl.TRIANGLES, 0, this.totline_tristrip*6);
@@ -1583,10 +1592,14 @@ export class SimpleIsland {
   }
 
   addDataLayer(primflag, type, size = TypeSizes[type], name = LayerTypeNames[type]) {
+    this._glAttrs[name] = 1;
+
     return this.layers.pushLayer(name, primflag, type, size);
   }
 
   getDataLayer(primflag, type, size = TypeSizes[type], name = LayerTypeNames[type]) {
+    this._glAttrs[name] = 1;
+
     return this.layers.get(name, primflag, type, size);
   }
 
@@ -1680,13 +1693,15 @@ export class SimpleIsland {
     if (program === undefined)
       program = gl.simple_shader;
 
+    let attrs = this._glAttrs;
+
     if (!this.layers.has_multilayers) {
-      program.bind(gl, uniforms);
+      program.bind(gl, uniforms, attrs);
     }
 
     if (this.tottri && (primflag & PrimitiveTypes.TRIS)) {
       if (this.layers.has_multilayers) {
-        program.bindMultiLayer(gl, uniforms, this.layers.attrsizes.get(PrimitiveTypes.TRIS));
+        program.bindMultiLayer(gl, uniforms, this.layers.attrsizes.get(PrimitiveTypes.TRIS), attrs);
       }
 
       this._draw_tris(gl, uniforms, params, program);
@@ -1694,21 +1709,21 @@ export class SimpleIsland {
 
     if (this.totline && (primflag & PrimitiveTypes.LINES)) {
       if (this.layers.has_multilayers) {
-        program.bindMultiLayer(gl, uniforms, this.layers.attrsizes.get(PrimitiveTypes.LINES));
+        program.bindMultiLayer(gl, uniforms, this.layers.attrsizes.get(PrimitiveTypes.LINES), attrs);
       }
       this._draw_lines(gl, uniforms, params, program);
     }
 
     if (this.totpoint && (primflag & PrimitiveTypes.POINTS)) {
       if (this.layers.has_multilayers) {
-        program.bindMultiLayer(gl, uniforms, this.layers.attrsizes.get(PrimitiveTypes.POINTS));
+        program.bindMultiLayer(gl, uniforms, this.layers.attrsizes.get(PrimitiveTypes.POINTS), attrs);
       }
       this._draw_points(gl, uniforms, params, program);
     }
 
     if (this.totline_tristrip && (primflag & PrimitiveTypes.ADVANCED_LINES)) {
       if (this.layers.has_multilayers) {
-        program.bindMultiLayer(gl, uniforms, this.layers.attrsizes.get(PrimitiveTypes.ADVANCED_LINES));
+        program.bindMultiLayer(gl, uniforms, this.layers.attrsizes.get(PrimitiveTypes.ADVANCED_LINES), attrs);
       }
       this._draw_line_tristrips(gl, uniforms, params, program);
     }

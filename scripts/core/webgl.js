@@ -729,23 +729,31 @@ v${attr} = ${attr};
     return this.attrlocs[name];
   }
 
-  calcDefKey() {
+  calcDefKey(extraDefines) {
     let key = "";
 
-    for (let k in this.defines) {
-      let v = this.defines[k];
+    for (let i=0; i<2; i++) {
+      let defs = i ? extraDefines : this.defines;
 
-      key += k;
+      if (!defs) {
+        continue;
+      }
 
-      if (v !== null && v !== undefined && v !== "") {
-        key += ":" + v;
+      for (let k in defs) {
+        let v = defs[k];
+
+        key += k;
+
+        if (v !== null && v !== undefined && v !== "") {
+          key += ":" + v;
+        }
       }
     }
 
     return key;
   }
 
-  bindMultiLayer(gl, uniforms, attrsizes) {
+  bindMultiLayer(gl, uniforms, attrsizes, attributes) {
     let key = "";
     for (let k in attrsizes) {
       key += k + ":" + attrsizes[k] + ":";
@@ -755,7 +763,7 @@ v${attr} = ${attr};
       let shader = this.multilayer_programs[key];
       shader.defines = this.defines;
 
-      return shader.bind(gl);
+      return shader.bind(gl, uniforms, attributes);
     }
 
     let shader = this.copy();
@@ -776,7 +784,7 @@ v${attr} = ${attr};
     }
 
     this.multilayer_programs[key] = shader;
-    return shader.bind(gl, uniforms);
+    return shader.bind(gl, uniforms, attributes);
   }
 
   copy() {
@@ -788,15 +796,36 @@ v${attr} = ${attr};
     return ret;
   }
 
-  bind(gl, uniforms) {
+  bind(gl, uniforms, attributes) {
     this.gl = gl;
 
+    let defines = undefined;
+
+    if (attributes && this._use_def_shaders) {
+      for (let k in attributes) {
+        let key = "HAVE_" + k.toUpperCase();
+
+        if (!defines) {
+          defines = {};
+        }
+
+        defines[key] = null;
+      }
+    }
+
     if (this._use_def_shaders) {
-      let key = this.calcDefKey();
+      let key = this.calcDefKey(defines);
 
       if (key !== "") {
         if (!(key in this._def_shaders)) {
           let shader = this.copy();
+
+          if (defines) {
+            for (let k in defines) {
+              shader.defines[k] = defines[k];
+            }
+          }
+
           shader._use_def_shaders = false;
 
           this._def_shaders[key] = shader;

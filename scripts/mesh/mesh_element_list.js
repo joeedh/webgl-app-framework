@@ -1,5 +1,8 @@
 import {Edge} from "./mesh_types.js";
-import {getArrayTemp, MeshError, MeshFlags, MeshTypes, WITH_EIDMAP_MAP} from "./mesh_base.js";
+import {
+  DEBUG_BAD_LOOPS, DEBUG_FREE_STACKS, getArrayTemp, MeshError, MeshFlags, MeshTypes, STORE_DELAY_CACHE_INDEX,
+  WITH_EIDMAP_MAP, EmptyCDArray
+} from "./mesh_base.js";
 import * as util from "../util/util.js";
 import '../path.ux/scripts/util/struct.js';
 
@@ -181,6 +184,8 @@ export class ElementList {
   constructor(type, storeFreedElems=false) {
     this.list = [];
 
+    this._update_req = undefined;
+
     this._totAdded = 0;
     this._totRemoved = 0;
 
@@ -188,6 +193,11 @@ export class ElementList {
     this.size = 0;
     this.freelist = [];
     this.free_elems = new util.Queue(256);
+    this.delayed_free_queue = [];
+
+    if (!STORE_DELAY_CACHE_INDEX) {
+      this.dqueue_idxmap = new Map();
+    }
 
     this.storeFreedElems = storeFreedElems;
 
@@ -431,8 +441,14 @@ export class ElementList {
   }
 
   push(e) {
-    if (this.local_eidMap.has(e.eid)) {
-      throw new Error("element " + e.eid + " is already in list");
+    let e2 = this.local_eidMap.get(e.eid);
+
+    if (e2) {
+      if (e === e2) {
+        throw new MeshError("element " + e.eid + " is already in list");
+      } else {
+        throw new MeshError("another element with eid " + e.eid + " is already in list");
+      }
     }
 
     this._push(e);
@@ -451,17 +467,63 @@ export class ElementList {
     return idx !== undefined ? idx : -1;
   }
 
+  _flagQueuedUpdate() {
+    if (this._update_req !== undefined) {
+      return;
+    }
+
+    this._update_req = true;
+
+    window.setTimeout(() => {
+      this._update_req = undefined;
+
+      this._runDelayedFreeQueue();
+    });
+  }
+
   _remove(e, no_error=false) {
     let i = this.indexOf(e);
 
+    if (DEBUG_FREE_STACKS) {
+      try {
+        throw new Error();
+      } catch (error) {
+        e._freeStack = error.stack;
+      }
+    }
+
+    this.local_eidMap.delete(e.eid);
+
     if (i >= 0) {
       this.idxmap.delete(e.eid);
-
       this.freelist.push(i);
 
       if (this.storeFreedElems) {
+        e.eid = -1;
+
         this.free_elems.enqueue(e);
-        e._free();
+
+        //we delay call to e._free to
+        //make mesh_log.js happy
+
+        let index = this.delayed_free_queue.length;
+
+        if (STORE_DELAY_CACHE_INDEX) {
+          e._didx = index;
+        } else {
+          this.dqueue_idxmap.set(e, index);
+        }
+
+        this.delayed_free_queue.push(e);
+        this._flagQueuedUpdate();
+
+        if (DEBUG_BAD_LOOPS && Math.random() > 0.5) {
+          this._checkFreeElems();
+        }
+
+        //e._free();
+      } else {
+        e.eid = -1;
       }
 
       this.list[i] = undefined;
@@ -470,6 +532,7 @@ export class ElementList {
     } else {
       if (no_error) {
         console.error("mesh element " + e.eid + " is not in array");
+        e.eid = -1;
       } else {
         throw new Error("element " + e.eid + " is not in array");
       }
@@ -514,28 +577,27 @@ export class ElementList {
     return this;
   }
 
-  remove(v, no_error=false) {
-    if (v.eid < 0) {
+  remove(elem, no_error=false) {
+    if (elem.eid < 0) {
       if (no_error) {
-        console.error("v was already deleted");
+        console.error("elem was already deleted");
         return;
       } else {
-        throw new Error("v was already deleted");
+        throw new Error("elem was already deleted");
       }
     }
 
-    if (this.selected.has(v)) {
-      this.selected.remove(v);
+    if (this.selected.has(elem)) {
+      this.selected.remove(elem);
     }
 
-    if (this.active === v)
+    if (this.active === elem)
       this.active = undefined;
-    if (this.highlight === v)
+    if (this.highlight === elem)
       this.highlight = undefined;
 
-    this._remove(v, no_error);
+    this._remove(elem, no_error);
 
-    this.local_eidMap.delete(v.eid);
     return this;
   }
 
@@ -825,18 +887,119 @@ export class ElementList {
 
     for (let i=0; i<count; i++) {
       let elem = new cls();
+
       this.customData.initElement(elem);
+      elem.eid = -1;
+
+      if (STORE_DELAY_CACHE_INDEX) {
+        elem._didx = -1;
+      }
+
       this.free_elems.enqueue(elem);
     }
 
     return this;
   }
 
+  _runDelayedFreeQueue() {
+    if (this.delayed_free_queue === 0) {
+      return;
+    }
+
+    for (let elem of this.delayed_free_queue) {
+      if (elem === undefined) {
+        continue;
+      }
+
+      if (elem.eid >= 0) {
+        console.error("Element in delayed_free_queue is apparently not freed");
+      }
+
+      elem._free();
+      elem.flag = 0;
+      elem.eid = -1;
+      elem._didx = -1;
+    }
+
+    if (!STORE_DELAY_CACHE_INDEX) {
+      this.dqueue_idxmap = new Map();
+    }
+
+    this.delayed_free_queue.length = 0;
+  }
+
+  _checkFreeElems() {
+    let visit = new WeakSet();
+    let i = 0;
+
+    for (let elem of this.free_elems.queue) {
+      if (!elem) {
+        continue;
+      }
+
+      if (elem.eid >= 0) {
+        console.warn("Element was somehow reused but is still in free list", i, elem);
+      }
+
+      if (visit.has(elem)) {
+        console.warn("Element in free list twice", i, elem);
+      }
+
+      visit.add(elem);
+
+      i++;
+    }
+  }
+
   alloc(cls) {
     //add some pad so mesh log code works properly,
     //which keeps freed elements around briefly (but not instananeously)
-    if (this.free_elems.length > 64) {
+    if (this.free_elems.length > 512) {
       let ret = this.free_elems.dequeue();
+
+      if (ret.eid >= 0) {
+        throw new Error("elem was somehow unfreed already");
+      }
+
+      if (DEBUG_FREE_STACKS) {
+        try {
+          throw new Error();
+        } catch (error) {
+          ret._allocStack = error.stack;
+        }
+      }
+
+      let ok;
+
+      if (STORE_DELAY_CACHE_INDEX) {
+        ok = ret._didx >= 0;
+      } else {
+        ok = ret.flag === -2;
+      }
+
+      if (ok) {
+        //element is inside of delayed_free_queue?
+        let index;
+
+        if (STORE_DELAY_CACHE_INDEX) {
+          index = ret._didx;
+        } else {
+          index = this.dqueue_idxmap.get(ret);
+        }
+
+        if (index === undefined || this.delayed_free_queue[index] !== ret) {
+          console.warn(ret, index);
+          throw new MeshError("Mesh corruption error");
+        }
+
+        this.delayed_free_queue[index] = undefined;
+
+        ret._free();
+      }
+
+      if (STORE_DELAY_CACHE_INDEX) {
+        ret._didx = -1;
+      }
 
       ret.flag = 0;
       ret.eid = -1;
@@ -849,7 +1012,18 @@ export class ElementList {
       return ret;
     }
 
-    return new cls();
+    let ret = new cls();
+    this.customData.initElement(ret);
+
+    ret.eid = -1;
+    ret.flag = 0;
+    ret.index = -1;
+
+    if (STORE_DELAY_CACHE_INDEX) {
+      ret._didx = -1;
+    }
+
+    return ret;
   }
 
   clearFreeElems() {
@@ -878,6 +1052,10 @@ export class ElementList {
     }
 
     for (let item of this) {
+      if (item.customData === EmptyCDArray) {
+        item.customData = [];
+      }
+
       item.customData.push(new typecls());
     }
 

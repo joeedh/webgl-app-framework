@@ -3,7 +3,7 @@ export const SEAL = true;
 import {
   MeshError, MeshFlags, MeshTypes, HandleTypes,
   MAX_EDGE_FACES, MAX_FACE_VERTS, MAX_VERT_EDGES,
-  ReusableIter, MeshIterFlags
+  ReusableIter, MeshIterFlags, STORE_DELAY_CACHE_INDEX, DEBUG_FREE_STACKS
 } from "./mesh_base.js";
 import {Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import * as util from "../util/util.js";
@@ -300,17 +300,28 @@ for (let i=0; i<vnistack.length; i++) {
   vnistack[i] = EDGE_LINKED_LISTS ? new VertNeighborIterLinkedList() : new VertNeighborIter();
 }
 
+import {EmptyCDArray} from './mesh_base.js';
+
 export class Element {
   constructor(type) {
     this._initElement(type);
   }
 
   _initElement(type) {
+    if (STORE_DELAY_CACHE_INDEX) {
+      this._didx = 0;
+    }
+
+    if (DEBUG_FREE_STACKS) {
+      this._freeStack = "";
+      this._allocStack = "";
+    }
+
     this._old_eid = -1;
     this.type = type;
     this.flag = this.index = 0;
     this.eid = -1;
-    this.customData =  [];
+    this.customData = EmptyCDArray;
     //CD this.cd = this.customData;
 
     return this;
@@ -358,6 +369,9 @@ export class Element {
     reader(this);
 
     this._old_eid = this.eid;
+    if (this.customData.length === 0) {
+      this.customData = EmptyCDArray;
+    }
 
     //CD this.cd = this.customData;
   }
@@ -756,6 +770,14 @@ export class Vertex extends Vector3 {
 
     if (SEAL) {
       Object.seal(this);
+    }
+  }
+
+  _free() {
+    if (EDGE_LINKED_LISTS) {
+      this.e = undefined;
+    } else {
+      this.edges.length = 0;
     }
   }
 
@@ -1509,6 +1531,21 @@ export class Edge extends Element {
     }
   }
 
+  _free() {
+    this.l = undefined;
+
+    this.v1 = undefined;
+    this.v2 = undefined;
+
+    this.h1 = undefined;
+    this.h2 = undefined;
+
+    if (EDGE_LINKED_LISTS) {
+      this.v1next = this.v1prev = undefined;
+      this.v2next = this.v2prev = undefined;
+    }
+  }
+
   get verts() {
     return eviter_stack[eviter_stack.cur++].reset(this);
   }
@@ -2076,17 +2113,10 @@ export class Loop extends Element {
   //*/
 
   _free() {
-    this.eid = -1;
-    //this.e = this.f = this.v = this.list = this.next = this.prev = undefined;
-    //this.radial_next = this.radial_prev = undefined;
-    //let client code call this.__free;
-
-    return this;
-  }
-
-  __free() {
     this.e = this.f = this.v = this.list = this.next = this.prev = undefined;
     this.radial_next = this.radial_prev = undefined;
+
+    return this;
   }
 
   get uv() {
@@ -2426,7 +2456,9 @@ export class Face extends Element {
   }
 
   _free() {
-
+    for (let list of this.lists) {
+      list.l = undefined;
+    }
   }
 
   get length() {

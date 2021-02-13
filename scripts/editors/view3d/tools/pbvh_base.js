@@ -1269,12 +1269,6 @@ export class PaintOpBase extends ToolOp {
   }
 
   modalEnd(was_cancelled) {
-    try {
-      throw new Error();
-    } catch (error) {
-      console.log(error.stack);
-    }
-
     this.mfinished = true;
 
     if (!this.modalRunning) {

@@ -14,8 +14,6 @@ import {Grid, GridBase} from "./mesh_grids.js";
 export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
   let recalc;
 
-  console.log("combinedWireframe", combinedWireframe);
-
   let times = [];
   let start = util.time_ms();
 
@@ -83,7 +81,7 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
   let updatekey = "" + trilen + ":" + mesh.verts.length + ":" + mesh.edges.length;
 
   if (updatekey !== mesh._last_elem_update_key) {
-    console.log("full element draw regen", updatekey);
+    //console.log("full element draw regen", updatekey);
 
     recalc = MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE;
 

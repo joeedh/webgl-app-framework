@@ -151,6 +151,8 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.remesh(remesher='UNIFORM_TRI')|Tri Remesh");
     strip.tool("mesh.remesh(remesher='UNIFORM_QUAD')|Quad Remesh");
 
+    panel.toolPanel("mesh.interactive_remesh()");
+
     strip = panel.row().strip();
     strip.tool("mesh.test_multigrid_smooth()");
 

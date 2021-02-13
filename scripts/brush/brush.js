@@ -79,6 +79,7 @@ export const DynTopoOverrides = {
   QUAD_COLLAPSE     : 32,
   ALLOW_VALENCE4    : 64,
   DRAW_TRIS_AS_QUADS: 128,
+  ADAPTIVE          : 256,
   //end of DynTopoFlags mirror
 
   //these mirror properties instead of flags

@@ -31,6 +31,8 @@ export const SelMask = {
   HANDLE : MeshTypes.HANDLE,
   GEOM   : MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE,
 
+  SGEOM  : MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE,
+
   //save some space for more per-SceneObjectData findnearest modes
 
   MESH       : (1<<8),

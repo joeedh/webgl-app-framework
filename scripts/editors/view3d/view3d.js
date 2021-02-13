@@ -1,5 +1,7 @@
 import "../../extern/three.js";
 
+import {spawnToolSearchMenu} from '../editor_base.js';
+
 import * as util from '../../util/util.js';
 import * as cconst from '../../core/const.js';
 
@@ -699,6 +701,12 @@ export class View3D extends Editor {
       new HotKey("S", [], "view3d.scale()"),
       new HotKey("W", [], "mesh.vertex_smooth()"),
       new HotKey(".", [], "view3d.view_selected()"),
+
+      new HotKey("Space", [], () => {
+        console.log("Space Bar!");
+
+        spawnToolSearchMenu(_appstate.ctx);
+      }),
 
       new HotKey("1", [], () => {
         this.viewAxis(1, 1);

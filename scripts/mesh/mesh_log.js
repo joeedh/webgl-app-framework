@@ -39,76 +39,6 @@ export const EdgeLayout = {
 };
 
 let LTYPE=0, LCANCEL=1, LEID=2, LPARENT=3, LTAG=4, LTOTCD=5, LTOTDATA=6, LTOT=7;
-let CTYPE=0, CLEN=1, CTOT=2;
-
-export class LogEntry {
-  constructor(type, eid, customData) {
-    this.type = type;
-    this.cancel = false;
-    this.eid = eid;
-    this.customData = customData;
-    this.data = [];
-    this.parent = undefined;
-  }
-
-  calcMemSize() {
-    let tot = 8 * 4;
-
-    for (let cd of this.customData) {
-      tot += cd.calcMemSize();
-    }
-
-    tot += this.data.length*8;
-    return tot + 32;
-  }
-
-  static newEntry(elem, subtype = 0) {
-    let cd2 = [];
-
-    for (let cd of elem.customData) {
-      cd2.push(cd.copy());
-    }
-
-    let ret = new LogEntry(elem.type | subtype, elem._old_eid, cd2);
-
-    ret.data.push(elem.flag);
-    ret.data.push(elem.index);
-
-    switch (elem.type) {
-      case MeshTypes.VERTEX:
-        ret.data.push(elem[0]);
-        ret.data.push(elem[1]);
-        ret.data.push(elem[2]);
-        ret.data.push(elem.no[0]);
-        ret.data.push(elem.no[1]);
-        ret.data.push(elem.no[2]);
-        break;
-      case MeshTypes.EDGE:
-        ret.data.push(elem.v1._old_eid);
-        ret.data.push(elem.v2._old_eid);
-        break;
-      case MeshTypes.LOOP:
-        ret.data.push(elem.v._old_eid);
-        ret.data.push(elem.e._old_eid);
-        ret.data.push(elem.f._old_eid);
-        break;
-      case MeshTypes.FACE:
-        ret.data.push(elem.lists.length);
-        for (let list of elem.lists) {
-          ret.data.push(list.length);
-          for (let l of list) {
-            ret.data.push(l._old_eid);
-            ret.data.push(l.v._old_eid);
-            ret.data.push(l.e._old_eid);
-          }
-        }
-
-        break;
-    }
-
-    return ret;
-  }
-}
 
 export class CustomDataList extends Array {
   constructor(list) {
@@ -720,6 +650,8 @@ export class MeshLog {
                   } catch (error) {
                     console.log("Tag:", tag, lasttag, gettag(i), "lasttag_i", lasttag_i);
                     throw error;
+                    //bad = true;
+                    //continue;
                   }
                 }
 

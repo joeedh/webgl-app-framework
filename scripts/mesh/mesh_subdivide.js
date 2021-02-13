@@ -596,46 +596,9 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx) {
     es = new Set(es);
   }
 
-  let flag = MeshFlags.TEMP2;
-
   for (let e of es) {
     for (let l of e.loops) {
       fs.add(l.f);
-    }
-  }
-
-
-  if (0) {
-    for (let f of fs) {
-      let tot = 0, tot2 = 0;
-      for (let l of f.loops) {
-        tot++;
-
-        if (es.has(l.e)) {
-          tot2++;
-        }
-      }
-
-      if (tot === 4 && tot2 === 1) {
-        for (let l of f.loops) {
-          let lr = l.radial_next;
-          let _i = 0;
-
-          do {
-            fs.delete(lr.f);
-
-            if (_i++ > 10) {
-              console.warn("infinite loop error");
-              break;
-            }
-
-            lr = lr.radial_next;
-          } while (lr !== l);
-          es.delete(l.e);
-        }
-
-        fs.delete(f);
-      }
     }
   }
 

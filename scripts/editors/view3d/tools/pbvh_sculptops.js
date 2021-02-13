@@ -297,6 +297,7 @@ export class PaintOp extends PaintOpBase {
     let gd = undo.gdata;
 
     console.log("CD_GRID", cd_grid);
+    console.log("LOG", this._undo.log, cd_grid < 0 && this._undo.log.log.length > 0);
 
     if (cd_grid < 0 && this._undo.log.log.length > 0) {
       let log = this._undo.log;
@@ -5176,7 +5177,11 @@ export class PaintOp extends PaintOpBase {
       }
 
 
-      for (let v of e.verts) {
+      let v1 = e.v1;
+      let v2 = e.v2;
+
+      for (let i=0; i<2; i++) {
+        let v = i ? v2 : v1;
         let val = v.valence;
 
         if (val !== 4 && val !== 3) {
@@ -5186,8 +5191,13 @@ export class PaintOp extends PaintOpBase {
         let bad = false;
         let flag = MeshFlags.TEMP1;
 
-        for (let e of v.edges) {
-          for (let l of e.loops) {
+        for (let e2 of v.edges) {
+          if (!e2.l) {
+            bad = true;
+            break;
+          }
+
+          for (let l of e2.loops) {
             l.f.flag &= ~flag;
 
             if (!l.f.isTri()) {
@@ -6385,6 +6395,8 @@ export class PaintOp extends PaintOpBase {
     }
 
     lctx.onnew = (e, tag) => {
+      log.logAdd(e, tag);
+
       if (e.type === MeshTypes.VERTEX) {
         this._checkcurv(e, cd_curv, true);
       }
@@ -6401,8 +6413,6 @@ export class PaintOp extends PaintOpBase {
       } else if (e.type === MeshTypes.VERTEX) {
         newvs.add(e);
       }
-
-      log.logAdd(e, tag);
     }
 
     let es4 = es2;
@@ -6431,6 +6441,8 @@ export class PaintOp extends PaintOpBase {
       esqr3 = esqr3*esqr3;
 
       lctx.onnew = (e, tag) => {
+        oldnew(e, tag);
+
         if (e.type === MeshTypes.VERTEX) {
           this._checkcurv(e, cd_curv, true);
         }
@@ -6456,8 +6468,6 @@ export class PaintOp extends PaintOpBase {
             }
           }
         }
-
-        oldnew(e, tag);
       }
 
       //set edge set reference used to feed edist_subd

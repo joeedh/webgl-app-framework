@@ -412,7 +412,14 @@ export class RemeshOp extends MeshOp {
       toolpath: "mesh.remesh",
       inputs  : ToolOp.inherit(
         {
-          remesher: new EnumProperty(Remeshers.UNIFORM_QUAD, Remeshers)
+          flag : new FlagProperty(DefaultRemeshFlags, RemeshFlags),
+          remesher: new EnumProperty(Remeshers.UNIFORM_TRI, Remeshers).saveLastValue(),
+          rakeFactor : new FloatProperty(0.5).noUnits().setRange(0.0, 1.0),
+          relax : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0),
+          projection : new FloatProperty(0.8).noUnits().setRange(0.0, 1.0),
+          threshold : new FloatProperty(0.5).noUnits().setRange(0.1, 0.9),
+          goalType : new EnumProperty(RemeshGoals.EDGE_AVERAGE, RemeshGoals).saveLastValue(),
+          goal: new FloatProperty(1.0).noUnits().setRange(0, 1024*1024*32).saveLastValue(),
         }
       ),
       outputs : ToolOp.inherit()
@@ -437,8 +444,17 @@ export class RemeshOp extends MeshOp {
         }
       }
 
-      remeshMesh(mesh, this.inputs.remesher.getValue(), lctx);
-      vertexSmooth(mesh, mesh.verts, 0.5, 1.0);
+      let goalType = this.inputs.goalType.getValue()
+      let goalValue = this.inputs.goal.getValue()
+      let rakeFactor = this.inputs.rakeFactor.getValue();
+      let threshold = this.inputs.threshold.getValue();
+      let relax = this.inputs.relax.getValue();
+      let project = this.inputs.projection.getValue();
+      let flag = this.inputs.flag.getValue();
+
+      remeshMesh(mesh, this.inputs.remesher.getValue(), lctx, goalType, goalValue,
+        undefined, rakeFactor, threshold, relax, project, flag);
+      //vertexSmooth(mesh, mesh.verts, 0.5, 1.0);
 
       mesh.regenTessellation();
       mesh.recalcNormals();
@@ -452,6 +468,144 @@ export class RemeshOp extends MeshOp {
 
 ToolOp.register(RemeshOp);
 
+export class InteractiveRemeshOp extends RemeshOp {
+  static tooldef() {return {
+    uiname : "Remesh (Interactive)",
+    toolpath : "mesh.interactive_remesh",
+    inputs : ToolOp.inherit({
+      steps : new IntProperty(5).private()
+    }),
+    outputs : ToolOp.inherit({}),
+    is_modal : true
+  }}
+
+  makeLogCtx(ctx, mesh) {
+    let lctx = new LogContext();
+
+    lctx.onnew = (e) => {
+      return;
+      mesh.setSelect(e, true);
+
+      if (e.type === MeshTypes.FACE) {
+        for (let l of e.loops) {
+          mesh.setSelect(l.v, true);
+          mesh.setSelect(l.e, true);
+        }
+      }
+    }
+
+    return lctx;
+  }
+
+  on_mousedown(e) {
+    this.modalEnd(false);
+  }
+
+  on_mouseup(e) {
+    this.modalEnd(false);
+  }
+
+  modalEnd(wasCancelled) {
+    this.remesher.finish();
+
+    //prevent reference leaks
+    this.remesher = undefined;
+    this.lctx = undefined;
+
+    let mesh = this.modal_ctx.mesh;
+    if (mesh) {
+      for (let v of mesh.verts) {
+        v.flag |= MeshFlags.UPDATE;
+      }
+      mesh.regenAll();
+      mesh.recalcNormals();
+      mesh.graphUpdate();
+      window.redraw_viewport(true);
+    }
+
+    super.modalEnd(wasCancelled)
+  }
+
+  modalStart(ctx) {
+    let mesh = ctx.mesh;
+
+    mesh.compact();
+
+    this.lctx = this.makeLogCtx(ctx, mesh)
+    this.remesher = this.makeRemesher(ctx, mesh, this.lctx);
+
+    this.last_time = util.time_ms();
+
+    return super.modalStart(ctx);
+  }
+
+  on_tick() {
+    if (util.time_ms() - this.last_time < 50) {
+      return;
+    }
+
+    let mesh = this.modal_ctx.mesh;
+
+    let time = util.time_ms();
+    while (util.time_ms() - time < 50 && !this.remesher.done) {
+      let i = this.inputs.steps.getValue();
+      this.inputs.steps.setValue(i + 1);
+      this.remesher.step();
+    }
+
+    mesh.regenAll();
+    mesh.graphUpdate();
+
+    this.last_time = util.time_ms();
+    window.redraw_viewport(true);
+  }
+
+  makeRemesher(ctx, mesh, lctx) {
+    let goalType = this.inputs.goalType.getValue()
+    let goalValue = this.inputs.goal.getValue()
+    let rakeFactor = this.inputs.rakeFactor.getValue();
+    let threshold = this.inputs.threshold.getValue();
+    let relax = this.inputs.relax.getValue();
+    let project = this.inputs.projection.getValue();
+
+    fixManifold(mesh, lctx);
+    let cls = RemeshMap[this.inputs.remesher.getValue()];
+
+    let remesher = new cls(mesh, lctx, goalType, goalValue);
+
+    remesher.relax = relax;
+    remesher.projection = project;
+    remesher.rakeFactor = rakeFactor;
+    remesher.threshold = threshold;
+    remesher.flag = this.inputs.flag.getValue();
+    remesher.start();
+
+    return remesher;
+  }
+
+  exec(ctx) {
+    let mesh = ctx.mesh;
+    let lctx = this.makeLogCtx(ctx, mesh);
+
+    mesh.compact();
+
+    let remesher = this.makeRemesher(ctx, mesh, lctx);
+
+    let steps = this.inputs.steps.getValue();
+
+    for (let i=0; i<steps; i++) {
+      remesher.step();
+    }
+
+    remesher.finish();
+
+    mesh.regenAll();
+    mesh.recalcNormals();
+    mesh.graphUpdate();
+    window.redraw_viewport();
+  }
+}
+ToolOp.register(InteractiveRemeshOp);
 
 export class LoopSubdOp extends MeshOp {
   static tooldef() {
@@ -773,7 +927,9 @@ import {UVWrangler, voxelUnwrap} from './unwrapping.js';
 import {relaxUVs, UnWrapSolver} from './unwrapping_solve.js';
 import {MeshOpBaseUV, UnwrapOpBase} from './mesh_uvops_base.js';
 import {MultiGridSmoother} from './multigrid_smooth.js';
-import {cleanupQuads, cleanupTris, Remeshers, remeshMesh} from './mesh_remesh.js';
+import {
+  cleanupQuads, cleanupTris, DefaultRemeshFlags, Remeshers, RemeshFlags, RemeshGoals, RemeshMap, remeshMesh
+} from './mesh_remesh.js';
 
 export class CatmullClarkeSubd extends MeshOp {
   constructor() {

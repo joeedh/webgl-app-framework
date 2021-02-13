@@ -652,6 +652,9 @@ export class Editor extends Area {
   init() {
     super.init();
 
+    this.tabIndex = 1;
+    this.setAttribute("tabindex", "-1");
+
     this.container.useDataPathUndo = this.useDataPathUndo;
 
     this.style["overflow"] = "hidden";
@@ -777,7 +780,7 @@ import {MakeMaterialOp} from "../core/material.js";
 import {SocketFlags} from "../core/graph.js";
 import {DependSocket} from "../core/graphsockets.js";
 
-function spawnToolSearchMenu(ctx) {
+export function spawnToolSearchMenu(ctx) {
   let tools = [];
   let screen = ctx.screen;
 
@@ -865,6 +868,7 @@ export class App extends Screen {
         _appstate.toolstack.redo();
         window.redraw_viewport();
       }),
+      /*
       new HotKey("T", ["ALT"], () => {
         if (window.__stest) {
           window.__stest.stop();
@@ -882,12 +886,7 @@ export class App extends Screen {
           window.__stest = window._testSculpt(undefined, {sort : 0});
           window.__stest.start();
         }
-      }),
-      new HotKey("Space", [], () => {
-        console.log("Space Bar!");
-
-        spawnToolSearchMenu(_appstate.ctx);
-      }),
+      }),*/
       new HotKey("S", ["CTRL"], "app.save(forceDialog=false)"),
       new HotKey("O", ["CTRL"], "app.open()"),
       new HotKey("N", ["CTRL"], "app.new()"),
@@ -1029,7 +1028,9 @@ window.setInterval(() => {
   if (window._appstate && _appstate.ctx && _appstate.screen) {
     window.updateDataGraph(true);
   }
-}, 75);
+
+  ToolOp.onTick();
+}, 50);
 
 App.STRUCT = STRUCT.inherit(App, Screen, 'App') + `
 }`;
@@ -1568,6 +1569,7 @@ export class DirectionChooser extends UIBase {
           this.endModal();
           this.setValue(this.start_value);
         },
+
         on_keydown    : (e) => {
           console.log(e.keyCode, this.modaldata);
 
