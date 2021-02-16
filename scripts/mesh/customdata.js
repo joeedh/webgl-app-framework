@@ -208,8 +208,8 @@ export function buildCDAPI(api) {
   for (let cls of CDElemTypes) {
     let ldef = cls.define();
 
-    //let def = st.struct
-    if (ldef.settingsClass) {
+    //settings classes can be shared among customdata types
+    if (ldef.settingsClass && !api.hasStruct(ldef.settingsClass)) {
       ldef.settingsClass.apiDefine(api);
     }
 

@@ -321,10 +321,23 @@ export class Element {
     this.type = type;
     this.flag = this.index = 0;
     this.eid = -1;
+    this._eid = -1;
     this.customData = EmptyCDArray;
     //CD this.cd = this.customData;
 
     return this;
+  }
+
+  set eid(v) {
+    if (isNaN(v)) {
+      console.error("Got NaN eid", v);
+    }
+
+    this._eid = v;
+  }
+
+  get eid() {
+    return this._eid;
   }
 
   static isElement(obj) {

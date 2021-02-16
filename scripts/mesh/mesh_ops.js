@@ -523,7 +523,7 @@ export class InteractiveRemeshOp extends RemeshOp {
       window.redraw_viewport(true);
     }
 
-    super.modalEnd(wasCancelled)
+    super.modalEnd(false)
   }
 
   modalStart(ctx) {
@@ -928,7 +928,8 @@ import {relaxUVs, UnWrapSolver} from './unwrapping_solve.js';
 import {MeshOpBaseUV, UnwrapOpBase} from './mesh_uvops_base.js';
 import {MultiGridSmoother} from './multigrid_smooth.js';
 import {
-  cleanupQuads, cleanupTris, DefaultRemeshFlags, Remeshers, RemeshFlags, RemeshGoals, RemeshMap, remeshMesh
+  cleanupQuads, cleanupTris, DefaultRemeshFlags, Remeshers, RemeshFlags, RemeshGoals, RemeshMap, remeshMesh,
+  UniformTriRemesher
 } from './mesh_remesh.js';
 
 export class CatmullClarkeSubd extends MeshOp {
@@ -3610,3 +3611,50 @@ export class DissolveFacesOp extends MeshOp {
   }
 }
 ToolOp.register(DissolveFacesOp);
+
+export class OptRemeshParams extends ToolOp {
+  constructor() {
+    super();
+
+    this.remesher = undefined;
+  }
+
+  static tooldef() {return {
+    uiname   : "Optimize Remesh Params",
+    toolpath : "mesh.opt_remesh_params",
+    undoflag : UndoFlags.NO_UNDO,
+    inputs   : {
+      edgeGoal : new FloatProperty(0.75)
+    },
+    outputs  : {},
+    is_modal : true
+  }}
+
+  on_mouseup(e) {
+    this.modalEnd(false);
+  }
+
+  modalEnd(wasCancelled) {
+    if (this.remesher) {
+      this.remesher.endOptTimer();
+      this.remesher = undefined;
+    }
+
+    super.modalEnd(wasCancelled);
+  }
+
+  modalStart(ctx) {
+    super.modalStart(ctx);
+
+    let mesh = ctx.mesh;
+    if (!mesh) {
+      this.modalEnd(true);
+    }
+
+    let goal = this.inputs.edgeGoal.getValue();
+
+    this.remesher = new UniformTriRemesher(mesh, undefined, RemeshGoals.EDGE_AVERAGE, goal);
+    this.remesher.optimizeParams(ctx);
+  }
+}
+ToolOp.register(OptRemeshParams);

@@ -62,7 +62,7 @@ export class KnotDataLayer extends CustomDataElem {
       window.redraw_viewport();
     }).range(0.0, 10.0);
 
-    dstruct.float("computedKnot", "computedKnot", "computedKnot").read_only();
+    dstruct.float("computedKnot", "computedKnot", "computedKnot").readOnly();
     dstruct.float("tilt", "tilt", "Point Tilt").range(-Math.PI*2.0, Math.PI*2.0).baseUnit("radian").displayUnit("degree").on('change', () => {
       window.redraw_viewport();
     });

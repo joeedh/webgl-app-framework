@@ -4435,6 +4435,12 @@ export class PaintOp extends PaintOpBase {
     }
   }
 
+  hasCurveVerts(brush) {
+    let ok = brush.dynTopo.flag & DynTopoFlags.ADAPTIVE;
+    ok = ok || (brush.rake > 0 && brush.rakeCurvatureFactor > 0);
+    ok = ok || (brush.sharp > 0);
+  }
+
   * doTopology(mesh, maxedges, bvh, esize, vs, es, radius, brush) {
     DYNTOPO_T_GOAL = brush.dynTopo.valenceGoal;
     ENABLE_DYNTOPO_EDGE_WEIGHTS = brush.dynTopo.flag & DynTopoFlags.FANCY_EDGE_WEIGHTS;
@@ -4443,7 +4449,8 @@ export class PaintOp extends PaintOpBase {
       this.edist_scale = this.edist_curvmul;
     }
 
-    let cd_curv = getCurveVerts(mesh); //disabled for now
+
+    let cd_curv = this.hasCurveVerts(brush) ? getCurveVerts(mesh) : -1;
     //let cd_curv = -1;
 
     if (cd_curv >= 0) {
@@ -5417,7 +5424,7 @@ export class PaintOp extends PaintOpBase {
     }
 
     lctx.onnew = (elem, tag) => {
-      if (elem.type === MeshTypes.VERTEX) {
+      if (cd_curv >= 0 && elem.type === MeshTypes.VERTEX) {
         this._checkcurv(elem, cd_curv, true);
       }
 
@@ -6397,7 +6404,7 @@ export class PaintOp extends PaintOpBase {
     lctx.onnew = (e, tag) => {
       log.logAdd(e, tag);
 
-      if (e.type === MeshTypes.VERTEX) {
+      if (cd_curv >= 0 && e.type === MeshTypes.VERTEX) {
         this._checkcurv(e, cd_curv, true);
       }
 
@@ -6443,7 +6450,7 @@ export class PaintOp extends PaintOpBase {
       lctx.onnew = (e, tag) => {
         oldnew(e, tag);
 
-        if (e.type === MeshTypes.VERTEX) {
+        if (cd_curv >= 0 && e.type === MeshTypes.VERTEX) {
           this._checkcurv(e, cd_curv, true);
         }
 

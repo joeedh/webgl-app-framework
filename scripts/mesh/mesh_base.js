@@ -3,6 +3,8 @@ import * as util from '../util/util.js';
 import {AfterAspect, clearAspectCallbacks, initAspectClass, _setUIBase} from '../path.ux/scripts/core/aspect.js';
 import {UIBase} from '../path.ux/scripts/pathux.js';
 
+export const REUSE_EIDS = true;
+
 export const DEBUG_DUPLICATE_FACES = 0;
 export const DEBUG_MANIFOLD_EDGES = 0;
 

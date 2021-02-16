@@ -3,7 +3,7 @@
 import {
   DEBUG_DUPLICATE_FACES, DEBUG_MANIFOLD_EDGES,
   SAVE_DEAD_LOOPS, SAVE_DEAD_FACES, WITH_EIDMAP_MAP,
-  DEBUG_BAD_LOOPS, DEBUG_DISK_INSERT, SAVE_DEAD_VERTS, SAVE_DEAD_EDGES
+  DEBUG_BAD_LOOPS, DEBUG_DISK_INSERT, SAVE_DEAD_VERTS, SAVE_DEAD_EDGES, REUSE_EIDS
 } from './mesh_base.js';
 
 import {NodeFlags} from '../core/graph.js';
@@ -85,6 +85,53 @@ const LEID = 0, LFLAG = 1, LV = 2, LE = 3, LTOT = 4;
 const LISTFACE = 0, LISTSTART = 1, LISTLEN = 2, LISTTOT = 3;
 const FEID = 0, FFLAG = 1, FLISTSTART = 3, FTOTLIST = 4, FTOT = 5;
 const HEID = 0, HFLAG = 1, HX = 2, HY = 3, HZ = 4, HTOT = 5;
+
+export class EIDGen extends util.IDGen {
+  constructor() {
+    super();
+
+    this.freelist = [];
+  }
+
+  copy() {
+    let ret = new EIDGen();
+
+    ret.cur = this.cur;
+    ret.freelist = this.freelist.concat([]);
+
+    return ret;
+  }
+
+  free(eid) {
+    this.freelist.push(eid);
+  }
+
+  static fromIDGen(idgen) {
+    let ret = new EIDGen();
+
+    ret._cur = idgen._cur;
+
+    return ret;
+  }
+
+  next() {
+    if (this.freelist.length > 0) {
+      return this.freelist.pop();
+    } else {
+      return super.next();
+    }
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+  }
+}
+
+EIDGen.STRUCT = nstructjs.inherit(EIDGen, util.IDGen, 'mesh.EIDGen') + `
+  freelist : array(int);
+}`;
+nstructjs.register(EIDGen);
 
 export class SavedPatch {
   constructor() {
@@ -379,7 +426,7 @@ export class Mesh extends SceneObjectData {
 
     this.drawflag = MeshDrawFlags.USE_LOOP_NORMALS;
 
-    this.eidgen = this._makeEIDGen(new util.IDGen());
+    this.eidgen = this._makeEIDGen(new EIDGen());
 
     this._eidmap = {};
     this.recalc = RecalcFlags.RENDER | RecalcFlags.TESSELATE;
@@ -501,18 +548,12 @@ export class Mesh extends SceneObjectData {
     return data;
   }
 
-  _makeEIDGen(eidgen2 = new util.IDGen()) {
-    let this2 = this;
-
-    eidgen2.next = function () {
-      if (this2._debug_id1 !== -1) {
-        //console.warn(this2._debug_id1, this2.eidgen._cur);
-      }
-
-      return util.IDGen.prototype.next.apply(this, arguments);
+  _makeEIDGen(eidgen = new EIDGen()) {
+    if (!(eidgen instanceof EIDGen)) {
+      eidgen = EIDGen.fromIDGen(eidgen);
     }
 
-    return eidgen2;
+    return eidgen;
   }
 
   hasHandles() {
@@ -944,12 +985,7 @@ export class Mesh extends SceneObjectData {
       }
     }
 
-    if (WITH_EIDMAP_MAP) {
-      this.eidMap.delete(f.eid);
-      this._recalcEidMap = true;
-    } else {
-      delete this.eidmap[f.eid];
-    }
+    this._elemRemove(f);
 
     this.faces.remove(f);
     this._totFaceFreed++;
@@ -962,15 +998,23 @@ export class Mesh extends SceneObjectData {
       //throw new Error("loop was already freed");
     }
 
-    if (WITH_EIDMAP_MAP) {
-      this.eidMap.delete(loop.eid);
-      this._recalcEidMap = true;
-    } else {
-      delete this.eidmap[loop.eid];
-    }
+    this._elemRemove(loop);
 
     this.loops.remove(loop);
     this._totLoopFreed++;
+  }
+
+  _elemRemove(elem) {
+    if (WITH_EIDMAP_MAP) {
+      this.eidMap.delete(elem.eid);
+      this._recalcEidMap = true;
+    } else {
+      delete this.eidmap[elem.eid];
+    }
+
+    if (REUSE_EIDS) {
+      this.eidgen.free(elem.eid);
+    }
   }
 
   countDuplicateFaces(vs) {
@@ -1446,13 +1490,7 @@ export class Mesh extends SceneObjectData {
       lctx.killVertex(v, logtag);
     }
 
-    if (WITH_EIDMAP_MAP) {
-      this.eidMap.delete(v.eid);
-      this._recalcEidMap = true;
-    } else {
-      delete this.eidmap[v.eid];
-    }
-
+    this._elemRemove(v);
     this.verts.remove(v);
   }
 
@@ -1474,12 +1512,7 @@ export class Mesh extends SceneObjectData {
       lctx.killEdge(e, logtag);
     }
 
-    if (WITH_EIDMAP_MAP) {
-      this.eidMap.delete(e.eid);
-      this._recalcEidMap = true;
-    } else {
-      delete this.eidmap[e.eid];
-    }
+    this._elemRemove(e);
 
     this._diskRemove(e.v1, e);
     this._diskRemove(e.v2, e);
@@ -1936,7 +1969,7 @@ export class Mesh extends SceneObjectData {
         continue;
       }
 
-      this.eidMap.delete(elem.eid);
+      this._elemRemove(elem);
       this.elists[elem.type].remove(elem);
     }
 
@@ -2249,7 +2282,7 @@ export class Mesh extends SceneObjectData {
       this._diskRemove(e.v2, e);
 
       if (ev1 === ev2) {
-        this.eidMap.delete(e.eid);
+        this._elemRemove(e);
         this.edges.remove(e);
       } else {
         e.v1 = ev1;
@@ -3423,7 +3456,94 @@ export class Mesh extends SceneObjectData {
     }
 
     let startl = undefined;
-    let boundary = 0;
+    let boundary = false;
+
+    for (let e of v.edges) {
+      if (e.l && e.l.radial_next === e.l) {
+        boundary = true;
+        break;
+      }
+    }
+
+    if (boundary && v.valence === 2) {
+      let l;
+
+      for (let e of v.edges) {
+        for (let l2 of e.loops) {
+          l = l2;
+          break;
+        }
+
+        if (l) {
+          break;
+        }
+      }
+
+      if (!l || l.f.lists[0].length < 4) {
+        //throw new MeshError("Cannot dissolve vertex");
+        console.warn("Cannot dissolve vertex");
+        return;
+      }
+
+      if (lctx) {
+        lctx.killFace(l.f);
+      }
+
+      if (l.prev.v === v) {
+        l = l.prev;
+      } else if (l.next.v === v) {
+        l = l.next;
+      }
+
+      let v1 = l.prev.v;
+      let v2 = v;
+      let v3 = l.next.v;
+      let f = l.f;
+
+      if (l === l.list.l) {
+        l.list.l = l.next;
+      }
+
+      if (l === l.list.l) {
+        l.list.l = undefined;
+        this._freeFace(f);
+        this._killLoop(l);
+        return;
+      }
+
+      this._radialRemove(l.prev.e, l.prev);
+      this._radialRemove(l.e, l);
+      this._radialRemove(l.next.e, l.next);
+
+      let e2 = this.ensureEdge(v1, v3, lctx);
+      this.copyElemData(e2, l.e);
+
+      this.killEdge(l.prev.e);
+      this.killEdge(l.e);
+
+      //unlink loop
+      l.prev.next = l.next;
+      l.next.prev = l.prev;
+
+      let l1 = l.prev;
+      let l2 = l.next;
+
+      l1.e = this.ensureEdge(l1.v, l1.next.v);
+      l2.e = this.ensureEdge(l2.v, l2.next.v);
+      this._radialInsert(l1.e, l1);
+      this._radialInsert(l2.e, l2);
+
+      this._killLoop(l);
+
+      this.killVertex(v, undefined, lctx);
+
+      if (lctx) {
+        lctx.newFace(f);
+      }
+
+      return;
+    }
+
 
     if (boundary) {
       console.warn("Cannot dissolve boundary vertex");
@@ -3803,7 +3923,6 @@ export class Mesh extends SceneObjectData {
 
     this.eidMap.delete(eid);
     elist.setEID(elem, eid);
-
     this.eidMap.set(elem.eid, elem);
 
     return this;
@@ -4901,6 +5020,72 @@ export class Mesh extends SceneObjectData {
     }
   }
 
+  _regenEidMap() {
+    let eidmap;
+
+    if (WITH_EIDMAP_MAP) {
+      eidmap = this.eidMap = new Map();
+      this._recalcEidMap = true;
+    } else {
+      eidmap = this.eidmap = {};
+    }
+
+    let elists = this.elists;
+
+    for (let k in elists) {
+      let elist = elists[k];
+
+      for (let elem of elist) {
+        if (WITH_EIDMAP_MAP) {
+          eidmap.set(elem.eid, elem);
+        } else {
+          eidmap[elem.eid] = elem;
+        }
+      }
+    }
+  }
+
+  _updateEidgen() {
+    let elists = this.elists;
+
+    let max_eid = 0;
+    let regenEidMap = false;
+
+    for (let k in elists) {
+      let elist = elists[k];
+
+      for (let elem of elist) {
+        if (isNaN(elem.eid)) {
+          console.error("Found NaN eid!", elem);
+          elem.eid = this.eidgen.next();
+          regenEidMap = true;
+        }
+
+        max_eid = Math.max(max_eid, elem.eid);
+      }
+    }
+
+    if (regenEidMap) {
+      this._regenEidMap();
+    }
+
+    max_eid++;
+
+    let eidgen = this.eidgen;
+
+    eidgen.freelist.length = 0;
+    eidgen.cur = max_eid;
+    let eidMap = this.eidMap;
+
+    if (REUSE_EIDS) {
+      for (let i=0; i<max_eid; i++) {
+        if (!eidMap.has(i)) {
+          eidgen.freelist.push(i);
+        }
+      }
+    }
+  }
+
   compactEids() {
     let oldmax = 0;
 
@@ -4916,7 +5101,7 @@ export class Mesh extends SceneObjectData {
     }
 
     let eidmap = this._eidmap = {};
-    let eidgen = this.eidgen = this._makeEIDGen(new util.IDGen());
+    let eidgen = this.eidgen = this._makeEIDGen(new EIDGen());
 
     for (let k in this.elists) {
       let elist = this.elists[k];
@@ -4963,10 +5148,35 @@ export class Mesh extends SceneObjectData {
     }
 
     console.log(oldmax, this.eidgen._cur);
+    this.eidgen.freelist.length = 0;
 
-    this.regenTessellation();
-    this.regenRender();
+    if (REUSE_EIDS) {
+      for (let i=0; i<this.eidgen._cur; i++) {
+        if (!this.eidMap.has(i)) {
+          this.eidgen.freelist.push(i);
+        }
+      }
+    }
+
+    this._clearGPUMeshes(window._gl);
+    this.regenAll();
+    this.graphUpdate();
+
     window.redraw_viewport(true);
+  }
+
+  _clearGPUMeshes(gl) {
+    let meshes = this._fancyMeshes;
+
+    this._fancyMeshes = {};
+    this.wmesh = this.smesh = undefined;
+    for (let k in meshes) {
+      meshes[k].destroy(gl);
+    }
+
+    for (let v of this.verts) {
+      v.flag |= MeshFlags.UPDATE;
+    }
   }
 
   drawElements(view3d, gl, selmask, uniforms, program, object, drawTransFaces = false) {
@@ -5325,7 +5535,7 @@ export class Mesh extends SceneObjectData {
 
       //kill offending loops
       for (let l2 of delLoops) {
-        ret.eidMap.delete(l2.eid);
+        this._elemRemove(l2);
         ret.loops.remove(l2);
       }
 
@@ -5525,7 +5735,7 @@ export class Mesh extends SceneObjectData {
         console.warn("Orphaned loop detected", l);
 
         if (l.eid >= 0) {
-          this.eidMap.delete(l.eid);
+          this._elemRemove(l);
         }
 
         this.loops.remove(l);
@@ -5971,6 +6181,10 @@ export class Mesh extends SceneObjectData {
       }
     }
 
+    if (REUSE_EIDS) {
+      this._updateEidgen();
+    }
+
     this.validateMesh();
   }
 
@@ -6027,7 +6241,7 @@ export class Mesh extends SceneObjectData {
 
 Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
   _elists         : array(mesh.ElementList) | obj._getArrays();
-  eidgen          : IDGen;
+  eidgen          : mesh.EIDGen;
   flag            : int;
   symFlag         : int;
   features        : int;

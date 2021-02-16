@@ -19,15 +19,124 @@ export const RemeshMap = {};
 
 let cls_idgen = 0;
 
+const ParamData = {};
+
+let _a = 0;
+
+let paramdata = [];
+
+function p(min, max, defval) {
+  let k = _a++;
+
+  let value = defval;
+
+  if (paramdata.length > k) {
+    value = paramdata[k];
+  } else {
+    paramdata.length = k + 1;
+    paramdata[k] = value;
+  }
+
+  ParamData[k] = {
+    min, max, value, defval
+  };
+
+  return k;
+}
+
+const PARAM_KEY = 'remesh_params';
+
+if (PARAM_KEY in localStorage) {
+  try {
+    paramdata = JSON.parse(localStorage[PARAM_KEY]);
+  } catch (error) {
+    util.print_stack(error);
+    console.warn("Failed to parse json");
+    paramdata = [];
+  }
+}
+window._paramdata = paramdata;
+
+export const RemeshParams = {
+  EDIST_P1     : p(0.1, 10.0, 1.0),
+  EDIST_P2     : p(5.5, 6.5, 6.0),
+  EDIST_P3     : p(-0.5, 1.5, 0.0),
+  SUBD_FAC     : p(0.0, 1.0, 0.35),
+  COLL_FAC     : p(0.0, 1.0, 0.35),
+  RAKE_FACTOR  : p(0.0, 1.0, 0.5),
+  SMOOTH_FACTOR: p(0.0, 1.0, 0.25),
+  PROJ_FACTOR  : p(0.0, 1.0, 0.75),
+  TOTPARAM     : p()
+};
+
+function loadParams(params) {
+  for (let i=0; i<params.length; i++) {
+    ParamData[i].value = params[i];
+    paramdata[i] = params[i];
+  }
+}
+
+window._loadParams = function(params) {
+  loadParams(params);
+  localStorage[PARAM_KEY] = JSON.stringify(util.list(paramdata));
+}
+
+window._resetParams = function() {
+  console.log(ParamData);
+
+  for (let i=0; i<TOTPARAM; i++) {
+    let p = ParamData[i];
+
+    p.value = p.defval;
+    paramdata[i] = p.value;
+  }
+
+  localStorage[PARAM_KEY] = JSON.stringify(util.list(paramdata));
+}
+
+const {
+        EDIST_P1, EDIST_P2, EDIST_P3, SUBD_FAC, COLL_FAC, RAKE_FACTOR, PROJ_FACTOR, SMOOTH_FACTOR, TOTPARAM
+      } = RemeshParams;
+
 export class Remesher {
   constructor(mesh, lctx = undefined, goalType, goalValue) {
+    this.params = new Float64Array(TOTPARAM);
+    for (let i = 0; i < this.params.length; i++) {
+      this.params[i] = ParamData[i].value;
+    }
+
+    this.excludedParams = new Set([
+      RAKE_FACTOR,
+      PROJ_FACTOR,
+      //SMOOTH_FACTOR,
+      SUBD_FAC,
+      COLL_FAC,
+      TOTPARAM]);
+
     this.mesh = mesh;
     this.lctx = lctx;
     this.done = false;
+
+    this.optData = undefined;
+
     this.goalType = goalType;
     this.goalValue = goalValue;
-    this.relax = 0.25;
-    this.projection = 0.75;
+  }
+
+  get relax() {
+    return this.params[SMOOTH_FACTOR];
+  }
+
+  set relax(v) {
+    this.params[SMOOTH_FACTOR] = v;
+  }
+
+  get projection() {
+    return this.params[PROJ_FACTOR];
+  }
+
+  set projection(v) {
+    this.params[PROJ_FACTOR] = v;
   }
 
   static remeshDefine() {
@@ -77,9 +186,27 @@ export class UniformTriRemesher extends Remesher {
     this.threshold = 0.5;
     this.i = 0;
     this.elen = 1.0;
-    this.rakeFactor = 0.5;
+
+    this.timer = undefined;
+    this.optData = undefined;
 
     this.minEdges = 5; //have at least these number of edges to continue iteration
+  }
+
+  get threshold() {
+    return this.params[SUBD_FAC]*0.5 + this.params[COLL_FAC]*0.5;
+  }
+
+  set threshold(v) {
+    this.params[SUBD_FAC] = this.params[COLL_FAC] = v;
+  }
+
+  get rakeFactor() {
+    return this.params[RAKE_FACTOR];
+  }
+
+  set rakeFactor(v) {
+    this.params[RAKE_FACTOR] = v;
   }
 
   static remeshDefine() {
@@ -90,7 +217,6 @@ export class UniformTriRemesher extends Remesher {
 
   start(max = this.mesh.edges.length>>1) {
     let mesh = this.mesh;
-    console.log("uniform remesh!");
 
     this.triangulate();
 
@@ -114,7 +240,6 @@ export class UniformTriRemesher extends Remesher {
 
     if (this.goalType === RemeshGoals.EDGE_AVERAGE) {
       elen *= goal;
-      console.log("goal", goal);
     }
 
     this.elen = elen;
@@ -230,12 +355,10 @@ export class UniformTriRemesher extends Remesher {
 
   }
 
-  step() {
+  step(vErrFunc = undefined) {
     let mesh = this.mesh;
     let elen = this.elen;
     let max = this.max;
-
-    console.log(this.goalType);
 
     let es, es2;
 
@@ -254,7 +377,9 @@ export class UniformTriRemesher extends Remesher {
       this.cleanup();
     }
 
-    this.triangulate();
+    if (!vErrFunc) {
+      this.triangulate();
+    }
 
     let co = new Vector3();
     let n = new Vector3();
@@ -262,7 +387,7 @@ export class UniformTriRemesher extends Remesher {
     let relax = this.relax;
     let project = this.projection;
 
-    console.log("RELAX", relax, "PROJECTION", project);
+    //console.log("RELAX", relax, "PROJECTION", project);
 
     function vsmooth(v) {
       let tot = 0.0;
@@ -286,6 +411,10 @@ export class UniformTriRemesher extends Remesher {
 
     for (let v of mesh.verts) {
       v.flag |= MeshFlags.UPDATE;
+
+      if (vErrFunc) {
+        vErrFunc(v);
+      }
 
       vsmooth(v);
     }
@@ -328,6 +457,10 @@ export class UniformTriRemesher extends Remesher {
 
     let op = e => split_es.add(e);
 
+    if (!lctx) {
+      lctx = new LogContext();
+    }
+
     let postop = (es2) => {
       let oldnew = lctx.onnew;
 
@@ -336,12 +469,15 @@ export class UniformTriRemesher extends Remesher {
           es2.add(e);
         }
 
-        oldnew.call(lctx, e);
+        if (oldnew) {
+          oldnew.call(lctx, e);
+        }
       }
 
       if (split_es.size < this.minEdges) {
         this.done = true;
       }
+
       console.log("split_es", split_es.size);
 
       splitEdgesSmart2(mesh, split_es, undefined, lctx);
@@ -366,20 +502,37 @@ export class UniformTriRemesher extends Remesher {
 
     let i = 0;
 
+    let ep1 = this.params[EDIST_P1];
+    let ep2 = this.params[EDIST_P2];
+    let ep3 = this.params[EDIST_P3];
+
     function edist1(e) {
       let dist = e.v1.vectorDistance(e.v2);
 
+      //XXX
       if (sign < 0) {
         return dist;
       }
       //return dist;
 
       let d = (e.v1.valence + e.v2.valence)*0.5;
-      d = Math.max((d - 5.0), 1.0);
+      d = 1.0 + Math.max(d - ep2, ep3)**ep1;
+
+      if (sign < 0) {
+        //d = 1.0 / d;
+      }
 
       dist *= d;
 
       return dist;
+    }
+
+    function edist2(e) {
+      if (sign < 0) {
+        return e.v1.vectorDistance(e.v2);
+      } else {
+        return edist1(e);
+      }
     }
 
     for (let e of es) {
@@ -405,7 +558,7 @@ export class UniformTriRemesher extends Remesher {
         continue; //edge was already deleted
       }
 
-      let w = sign < 0.0 ? ws[e.index] : edist1(e, e.v1, e.v2);
+      let w = edist2(e); //sign < 0.0 ? edist2(e) : edist1(e);
 
       let bad = (w - elen)*sign >= 0;
 
@@ -423,9 +576,15 @@ export class UniformTriRemesher extends Remesher {
       postop(es2);
     }
 
+    if (!lctx) {
+      lctx = new LogContext();
+    }
+
     let oldnew = lctx.onnew;
     lctx.onnew = (e) => {
-      oldnew.call(lctx, e);
+      if (oldnew) {
+        oldnew.call(lctx, e);
+      }
 
       if (e.type === MeshTypes.EDGE) {
         es2.add(e);
@@ -457,6 +616,181 @@ export class UniformTriRemesher extends Remesher {
 
       applyTriangulation(mesh, f, undefined, undefined, lctx);
     }
+  }
+
+  endOptTimer() {
+    if (this.timer !== undefined) {
+      console.warn("Stopping timer");
+
+      window.clearInterval(this.timer);
+      this.timer = undefined;
+    }
+  }
+
+  optimizeParams(ctx) {
+    if (this.timer !== undefined) {
+      console.warn("Stopping timer");
+
+      window.clearInterval(this.timer);
+      this.timer = undefined;
+
+      return;
+    }
+
+    let mesh = ctx.mesh;
+
+    this.optData = {
+      startMesh: mesh.copy(),
+      first    : true,
+      totvert  : -1,
+      totedge  : -1,
+      totface  : -1,
+      tottri   : -1,
+
+      error    : 0,
+      vErrorMap: new WeakMap()
+    }
+
+    console.warn("Starting timer");
+    this.timer = window.setInterval(() => {
+      this.optStep();
+      window.redraw_viewport(true);
+    }, 400);
+  }
+
+  optStep(flag = RemeshFlags.SUBDIVIDE|RemeshFlags.COLLAPSE) {
+    this.flag = flag;
+
+    let opt = this.optData;
+    let mesh;
+
+    opt.error = 0;
+    opt.vErrorMap = new Map();
+    let totv;
+
+    function verror(v) {
+      let f = v.valence;
+
+      if (f < 5) {
+        f = Math.abs(f - 6)*2.0;
+      } else {
+        f = Math.abs(f - 6);
+      }
+
+      return f;
+    }
+
+    function verrorAdd(v) {
+      let err = opt.vErrorMap.get(v);
+
+      //subtract old error
+      if (err !== undefined) {
+        opt.error -= err;
+      }
+
+      //calc and add new error
+      err = verror(v);
+      opt.vErrorMap.set(v, err);
+
+      opt.error += err;
+
+      return err;
+    }
+
+    let error = () => {
+      mesh = opt.startMesh.copy();
+
+      this.mesh = mesh;
+      this.start(Math.max(mesh.edges.length>>3, 15));
+
+      /*
+      for (let v of mesh.verts) {
+        verrorAdd(v);
+      }
+      let err1 = opt.error/mesh.verts.length;
+      //*/
+
+      this.step();
+
+      opt.error = 0.0;
+      for (let v of mesh.verts) {
+        verrorAdd(v);
+      }
+
+      let err2 = opt.error/mesh.verts.length;
+
+      return err2;// - err1;
+    }
+
+
+    if (opt.first) {
+      opt.first = false;
+      opt.lastError = error();
+      opt.lastTotVerts = mesh.verts.length;
+    }
+
+    let err1 = opt.lastError; //error();
+    totv = opt.lastTotVerts; //mesh.verts.length;
+
+    //[1.206292087774441, 6.190841042433117, 0.3695605924341646, 0.5, 0.5, 0.5, 0.25, 0.75, null]
+    //[1.9234782336477683, 6.296527722487285, 0.3278386780289788, 0.5, 0.5, 0.5, 0.25, 0.75, null]
+    //[1.9234782336477683, 6.296527722487285,0.3278386780289788,0.5,0.5,0.5,0.25,0.75]
+    //[1.3960240823509982, 5.961192145079035, 0.6228621760940662, 0.5, 0.5, 0.5, 0.1485268403024131, 0.75, null]
+
+    let start = util.list(this.params);
+
+    for (let i=0; i<this.params.length; i++) {
+      let ri = ~~(Math.random()*this.params.length*0.9999);
+      if (this.excludedParams.has(ri)) {
+        continue;
+      }
+
+      let range = ParamData[ri];
+      let df = (range.max - range.min);
+
+      let f = this.params[ri] + (Math.random()-0.5)*df*0.25;
+      f = Math.min(Math.max(f, range.min), range.max);
+
+      //console.log(range);
+
+      this.params[ri] = f;
+
+      //break;
+    }
+
+    console.log(JSON.stringify(util.list(start)));
+
+
+    let err2 = error();
+    let totv2 = mesh.verts.length;
+
+    //[0.1,6.154625519445539,0.13336385429183517,0.5,0.5,0.5,0.4397070395552094,0.75]
+
+    //err1 -= Math.abs(totv2 - totv)*0.5;
+
+    if (err2 >= err1) {
+      for (let i=0; i<this.params.length; i++) {
+        this.params[i] = start[i];
+      }
+    } else {
+      opt.lastError = err2;
+      opt.lastTotVerts = mesh.verts.length;
+      this._saveParams();
+    }
+
+    console.error(err1.toFixed(3), err2.toFixed(3));
+    //console.log("err1", err1.toFixed(3), "err2", err2.toFixed3());
+    //console.log("error2", opt.error, mesh.verts.length);
+  }
+
+  _saveParams() {
+    for (let i = 0; i < this.params.length; i++) {
+      paramdata[i] = this.params[i];
+      ParamData[i].value = this.params[i];
+    }
+
+    //XXX
+    //localStorage[PARAM_KEY] = JSON.stringify(util.list(paramdata));
   }
 
   cleanupWires() {

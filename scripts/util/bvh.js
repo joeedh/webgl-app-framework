@@ -1448,7 +1448,8 @@ export class BVHNode {
       t.area = math.tri_area(t.v1, t.v2, t.v3) + 0.00001;
 
       let f = eidMap.get(t.id);
-      if (f) {
+
+      if (f && f.no) {
         f.no.load(t.no);
       }
     }

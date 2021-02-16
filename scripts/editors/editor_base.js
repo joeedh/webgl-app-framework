@@ -247,12 +247,12 @@ export class DataBlockBrowser extends Container {
   setCSS() {
     super.setCSS();
 
-    this.background = this.getDefault("background");
+    this.background = this.getDefault("background-color");
 
-    let radius = this.getDefault("BoxRadius") ?? 10;
-    let color = this.getDefault("BoxBorder") ?? "black";
-    let wid = this.getDefault("BoxLineWidth") ?? 1;
-    let padding = this.getDefault("BoxMargin") ?? 2;
+    let radius = this.getDefault("border-radius") ?? 10;
+    let color = this.getDefault("border-color") ?? "black";
+    let wid = this.getDefault("border-width") ?? 1;
+    let padding = this.getDefault("padding") ?? 2;
 
     this.style["border"] = `${wid}px solid ${color}`;
     this.style["border-radius"] = radius + "px";
@@ -582,7 +582,7 @@ export class EditorSideBar extends Container {
   setCSS() {
     this.style["height"] = "" + this._height + "px";
     this.style["width"] = "" + this._width + "px";
-    this.background = this.getDefault("background");
+    this.background = this.getDefault("background-color");
   }
 
   saveData() {

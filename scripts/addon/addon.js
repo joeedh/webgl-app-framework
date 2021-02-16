@@ -97,7 +97,7 @@ export class AddonManager {
 
   loadAddonList(register=false) {
     fetch("addons/list.json").then(r => r.json()).then(json => {
-      console.error("json", json);
+      console.warn("json", json);
       for (let url of json) {
         this.load(url, register);
       }

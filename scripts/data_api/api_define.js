@@ -269,8 +269,6 @@ export function api_define_bvhsettings(api) {
 }
 
 export function api_define_mesh(api, pstruct) {
-  buildCDAPI(api);
-
   api_define_bvhsettings(api);
 
   let mstruct = api_define_sceneobject_data(api, Mesh);
@@ -305,6 +303,8 @@ export function api_define_mesh(api, pstruct) {
   def.on("change", (e) => {
     window.redraw_viewport();
   });
+
+  buildCDAPI(api);
 
   api_define_meshelem(api);
   api_define_meshvertex(api);

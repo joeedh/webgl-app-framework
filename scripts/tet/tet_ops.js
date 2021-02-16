@@ -326,7 +326,7 @@ function fixNormals(tm) {
   }
 }
 
-export class FixNormalsOp extends TetMeshOp {
+export class TetFixNormalsOp extends TetMeshOp {
   static tooldef() { return {
     uiname : "Fix Normals (Tet Mesh)",
     toolpath : "tet.fix_normals"
@@ -343,4 +343,4 @@ export class FixNormalsOp extends TetMeshOp {
     }
   }
 }
-ToolOp.register(FixNormalsOp)
+ToolOp.register(TetFixNormalsOp)
