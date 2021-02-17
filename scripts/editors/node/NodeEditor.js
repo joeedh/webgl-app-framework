@@ -178,8 +178,8 @@ export class NodeSocketElem extends RowFrame {
 
       let scale = this.ned.velpan.scale[1];
 
-      this.overrideDefault("defaultHeight", 20);
-      this.overrideDefault("defaultWidth", 70);
+      this.overrideDefault("height", 20);
+      this.overrideDefault("width", 70);
       /*
       let font = this.getDefault("DefaultText").copy();
       font.size = Math.ceil(21*scale+0.5);
@@ -396,7 +396,7 @@ export class NodeUI extends Container {
     if (val) {
       this.background = this.getDefault("BoxHighlight");
     } else {
-      this.background = this.getDefault("BoxSubBG");
+      this.background = this.getDefault("background-color");
     }
   }
 
@@ -597,7 +597,7 @@ export class NodeUI extends Container {
     this.style["width"] = (~~scale[0]) + "px";
     this.style["height"] = (~~scale[1]) + "px";
 
-    this.background = this.getDefault("NodeBG");
+    this.style["background-color"] = this.getDefault("background-color");
 
     let color;
     if (node.graph_flag & NodeFlags.SELECT) {
@@ -607,7 +607,7 @@ export class NodeUI extends Container {
     }
 
     this.style["border"] = `2px solid ${color}`;
-    this.style["border-radius"] = this.getDefault("BoxRadius") + "px";
+    this.style["border-radius"] = this.getDefault("border-radius") + "px";
 
     this.float(co[0], co[1] - yoff);
   }
@@ -628,7 +628,7 @@ export class NodeUI extends Container {
   }
   static define() {return {
     tagname : "nodeui-x",
-    style : "NodeEditor"
+    style : "NodeEditor.Node"
   }}
 }
 UIBase.register(NodeUI);
@@ -1162,6 +1162,8 @@ export class NodeEditor extends Editor {
     this.nodeContainer.style["width"] = this.size[0] + "px";
     this.nodeContainer.style["top"] = r.height + "px";
 
+    this.nodeContainer.style["background-color"] = this.getDefault("background-color");
+
     this.setCSS();
     for (let node of this.nodes) {
       node.setCSS();
@@ -1246,6 +1248,10 @@ export class NodeEditor extends Editor {
 
   setCSS() {
     super.setCSS();
+
+    if (this.nodeContainer) {
+      this.nodeContainer.style["background-color"] = this.getDefault("background-color");
+    }
 
     if (!this.size || !this.pos) return;
 
