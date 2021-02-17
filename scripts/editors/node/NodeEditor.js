@@ -1,6 +1,7 @@
 import {Area, AreaFlags, contextWrangler} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor, VelPan} from '../editor_base.js';
 import '../../path.ux/scripts/util/struct.js';
+
 let STRUCT = nstructjs.STRUCT;
 import {startMenu, DataPath, DataPathError, KeyMap, HotKey, haveModal} from '../../path.ux/scripts/pathux.js';
 
@@ -11,6 +12,7 @@ import * as util from '../../util/util.js';
 import {DataRef} from '../../core/lib_api.js';
 import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader_nodes.js';
 import {AddNodeOp, ConnectNodeOp} from './node_ops.js';
+
 let projcos = util.cachering.fromConstructor(Vector2, 64);
 import {VelPanPanOp} from '../velpan.js';
 import {NodeSelectOneOp, NodeSelectOpBase} from './node_selectops.js';
@@ -66,6 +68,12 @@ export class NodeSocketElem extends RowFrame {
     this._last_dpi = this.getDPI();
   }
 
+  static define() {
+    return {
+      tagname: "node-socket-elem-x"
+    }
+  }
+
   click() {
     this.updateSocketRef();
 
@@ -107,7 +115,7 @@ export class NodeSocketElem extends RowFrame {
     this.ctx.api.execTool(this.ctx, cmd);
   }
 
-  getAbsPos(center_in_circle=false) {
+  getAbsPos(center_in_circle = false) {
     let p = this._abspos;
 
     p.load(this.pos).add(this.uinode.pos);
@@ -200,14 +208,14 @@ export class NodeSocketElem extends RowFrame {
 
     this.updateSocketRef();
     this._redraw();
-    
+
     this.background = "rgba(0,0,0,0)";
   }
 
   _redraw() {
     let g = this.g;
     let dpi = this.getDPI();
-    let size = Math.ceil(this.size * dpi);
+    let size = Math.ceil(this.size*dpi);
 
     this.canvas.width = size;
     this.canvas.height = size;
@@ -276,22 +284,6 @@ export class NodeSocketElem extends RowFrame {
     this._last_update_key = key;
 
     this.setCSS();
-    return;
-    this._last_update_key = key;
-
-    if (this.type === "output") {
-      //this.style["width"] = r.width + "px";
-      let w = this.uinode.size[0];
-
-      r.width /= this.ned.velpan.scale[0];
-
-      this.pos[0] = w - r.width + 20/this.ned.velpan.scale[0];
-      console.log("update socket lines");
-
-      this.ned.doOnce(this.ned._recalcUI);
-    }
-
-    this.setCSS();
   }
 
   update() {
@@ -343,7 +335,7 @@ export class NodeSocketElem extends RowFrame {
 
 
     if (this.isOutput) {
-      this.style["left"] = (pos[0]-w) + "px";
+      this.style["left"] = (pos[0] - w) + "px";
     } else {
       this.style["left"] = pos[0] + "px";
 
@@ -361,11 +353,8 @@ export class NodeSocketElem extends RowFrame {
     this._redraw();
     this.background = "rgba(0,0,0,0)";
   }
-
-  static define() {return {
-    tagname : "node-socket-elem-x"
-  }}
 }
+
 UIBase.register(NodeSocketElem);
 
 export class NodeUI extends Container {
@@ -397,6 +386,13 @@ export class NodeUI extends Container {
       this.background = this.getDefault("BoxHighlight");
     } else {
       this.background = this.getDefault("background-color");
+    }
+  }
+
+  static define() {
+    return {
+      tagname: "nodeui-x",
+      style  : "NodeEditor.Node"
     }
   }
 
@@ -444,16 +440,16 @@ export class NodeUI extends Container {
     let y = 35;
 
     let layout = layoutNode(node, {
-      socksize : 20/this.ned.velpan.scale[0]
+      socksize: 20/this.ned.velpan.scale[0]
     });
 
     this.size.load(layout.size);
 
-    for (let i=0; i<2; i++) {
+    for (let i = 0; i < 2; i++) {
       //let row2 = row.col();
 
       if (i == 1) {
-      //  row2.style["padding-left"] = "50px";
+        //  row2.style["padding-left"] = "50px";
       }
 
       let dpi = this.getDPI();
@@ -489,7 +485,7 @@ export class NodeUI extends Container {
         uisock.ctx = this.ctx;
         uisock.socket = sock;
         uisock.uinode = this;
-        uisock.setAttribute("datapath", this.getAttribute("datapath") + "."+key+"['" + k + "']");
+        uisock.setAttribute("datapath", this.getAttribute("datapath") + "." + key + "['" + k + "']");
 
         //row2.add(uisock);
         this.ned.nodeContainer.appendChild(uisock);
@@ -526,7 +522,7 @@ export class NodeUI extends Container {
     }
 
     ui.style["position"] = "absolute";
-    ui.style["top"] = ~~((y+30)*this.ned.velpan.scale[1]) + "px";
+    ui.style["top"] = ~~((y + 30)*this.ned.velpan.scale[1]) + "px";
 
     this.setCSS();
   }
@@ -603,11 +599,17 @@ export class NodeUI extends Container {
     if (node.graph_flag & NodeFlags.SELECT) {
       color = this.getDefault("borderSelect")
     } else {
-      color = this.getDefault("borderColor")
+      color = this.getDefault("border-color")
     }
 
-    this.style["border"] = `2px solid ${color}`;
+    let r = this.getDefault("border-width");
+    let s = this.getDefault("border-style");
+
+    this.style["border"] = `${r}px ${s} ${color}`;
     this.style["border-radius"] = this.getDefault("border-radius") + "px";
+
+    this.style["padding"] = this.getDefault("padding") + "px";
+    this.style["margin"] = this.getDefault("margin") + "px";
 
     this.float(co[0], co[1] - yoff);
   }
@@ -626,12 +628,14 @@ export class NodeUI extends Container {
     }
 
   }
-  static define() {return {
-    tagname : "nodeui-x",
-    style : "NodeEditor.Node"
-  }}
 }
+
 UIBase.register(NodeUI);
+
+let NedRecalcFlags = {
+  UI     : 1,
+  REBUILD: 2
+};
 
 export class NodeEditor extends Editor {
   constructor() {
@@ -656,12 +660,14 @@ export class NodeEditor extends Editor {
 
     this.nodeContainer.inherit_packflag |= PackFlags.NO_NUMSLIDER_TEXTBOX;
 
+    this.recalc = 0;
+
     this.nodeContainer.getDPI = () => {
       return this.getNodeDPI();
     };
 
     //this.nodeContainer.getZoom = () => {
-      //return this.velpan.scale[0];
+    //return this.velpan.scale[0];
     //};
 
     this.defineKeyMap();
@@ -677,6 +683,17 @@ export class NodeEditor extends Editor {
     this.node_idmap = {};
   }
 
+  get graph() {
+    return this.ctx.api.getValue(this.ctx, this.graphPath);
+    //return this.material.graph;
+  }
+
+  //prevent context system from putting different node editor subclasses
+
+  get material() {
+    //return this.ctx.datalib.get(this.matref);
+  }
+
   static defineAPI(api) {
     let nedstruct = super.defineAPI(api);
 
@@ -686,13 +703,24 @@ export class NodeEditor extends Editor {
     return nedstruct;
   }
 
-  //prevent context system from putting different node editor subclasses
+  static define() {
+    return {
+      tagname : "node-editor-x",
+      areaname: "NodeEditor",
+      apiname : "nodeEditor",
+      uiname  : "Node Editor",
+      icon    : Icons.EDITOR_NODE,
+      flag    : AreaFlags.HIDDEN,
+      style   : "NodeEditor"
+    }
+  }
+
   //in different "active" bins
-  push_ctx_active(dontSetLastRef=false) {
+  push_ctx_active(dontSetLastRef = false) {
     contextWrangler.push(NodeEditor, this, !dontSetLastRef);
   }
 
-  pop_ctx_active(dontSetLastRef=false) {
+  pop_ctx_active(dontSetLastRef = false) {
     contextWrangler.pop(NodeEditor, this, !dontSetLastRef);
   }
 
@@ -702,8 +730,10 @@ export class NodeEditor extends Editor {
     }
 
     //console.log("velpan update 2!");
+    //this.recalc |= NedRecalcFlags.UI;
     this._recalcUI();
   }
+
 
   getNodeDPI() {
     return this.getDPI();
@@ -736,15 +766,17 @@ export class NodeEditor extends Editor {
     this.nodeContainer.clear();
   }
 
-  switchGraph(graphpath=this.graphPath) {
+  switchGraph(graphpath = this.graphPath) {
     this.graphPath = graphpath;
-    this.rebuildAll();
+    this.recalc |= NedRecalcFlags.REBUILD;
   }
 
   rebuildAll() {
     let graphpath = this.graphPath;
 
     if (this.ctx === undefined) return;
+
+    this.recalc &= ~NedRecalcFlags.REBUILD;
 
     this._last_graphpath = this.graphPath;
 
@@ -755,7 +787,7 @@ export class NodeEditor extends Editor {
     if (!graph) {
       return;
     }
-    
+
     console.warn("regenerating node editor");
 
     let api = this.ctx.api;
@@ -776,25 +808,15 @@ export class NodeEditor extends Editor {
       node2.ned = this;
       node2.ctx = this.ctx;
       this.nodeContainer.ctx = this.ctx;
-      
+
       node2.setAttribute("datapath", path);
 
       this.nodes.push(node2);
       this.nodeContainer.add(node2);
     }
 
-    this._recalcUI();
+    this.recalc |= NedRecalcFlags.UI;
     this.flushUpdate();
-  }
-
-  get graph() {
-    return this.ctx.api.getValue(this.ctx, this.graphPath);
-    //return this.material.graph;
-  }
-
-
-  get material() {
-    //return this.ctx.datalib.get(this.matref);
   }
 
   init() {
@@ -804,7 +826,7 @@ export class NodeEditor extends Editor {
       console.log(e.deltaY);
       let y = e.deltaY;
 
-      let fac = y / 500.0;
+      let fac = y/500.0;
 
       if (fac < 0.0) {
         fac = 1.0 + Math.abs(fac)
@@ -863,7 +885,7 @@ export class NodeEditor extends Editor {
     this.style["background-color"] = bgcolor;
     //header.prop("NodeEditor.selectmode");
 
-    this.doOnce(this.rebuildAll);
+    this.recalc |= NedRecalcFlags.REBUILD;
   }
 
   getUISocket(sock) {
@@ -938,6 +960,7 @@ export class NodeEditor extends Editor {
       console.log(cmd);
 
       this.ctx.api.execTool(this.ctx, cmd);
+
       if (mode === SelOneToolModes.UNIQUE) {
         for (let elem2 of this.nodes) {
           elem2.setCSS();
@@ -955,20 +978,16 @@ export class NodeEditor extends Editor {
     super.on_resize(newsize);
 
     if (!this.header || !this.ctx) {
-      this.doOnce(this.rebuildAll);
+      this.recalc |= NedRecalcFlags.REBUILD;
       return;
     }
+
+    //this.overdraw
 
     console.log("EDITOR RESIZE");
 
     //calls this.setCSS()
     this._setNodeContainerRect();
-
-    try {
-      this.doOnce(this.rebuildAll);
-    } catch (error) {
-      util.print_stack(error);
-    }
   }
 
   createOverdraw() {
@@ -986,6 +1005,8 @@ export class NodeEditor extends Editor {
     } catch (error) {
       this.overdraw = undefined;
     }
+
+    this.setCSS();
   }
 
   on_area_inactive() {
@@ -1003,7 +1024,7 @@ export class NodeEditor extends Editor {
     this.createOverdraw();
 
     this.setCSS();
-    this._recalcUI();
+    this.recalc |= NedRecalcFlags.UI|NedRecalcFlags.REBUILD;
   }
 
   onFileLoad(is_active) {
@@ -1012,15 +1033,10 @@ export class NodeEditor extends Editor {
     }
 
     this.overdraw.clear();
-
-    try {
-      this._recalcUI();
-    } catch (error) {
-      util.print_stack(error);
-    }
+    this.recalc |= NedRecalcFlags.UI|NedRecalcFlags.REBUILD;
   }
 
-  findSocket(localX, localY, limit=25) {
+  findSocket(localX, localY, limit = 25) {
     limit *= this.getNodeDPI();
 
     let pos = new Vector2();
@@ -1106,7 +1122,7 @@ export class NodeEditor extends Editor {
       this._last_dpi = dpi;
 
       console.log("dpi update");
-      this.rebuildAll();
+      this.recalc |= NedRecalcFlags.REBUILD;
     }
   }
 
@@ -1201,6 +1217,8 @@ export class NodeEditor extends Editor {
     let regen = graph && graph.nodes.length !== this.nodes.length;
     regen = regen || this._last_graphpath !== this.graphPath;
 
+    regen = regen || (this.recalc & NedRecalcFlags.REBUILD);
+
     if (regen) {
       this.rebuildAll();
     } else if (this._last_update_gen !== graph.updateGen) {
@@ -1211,8 +1229,16 @@ export class NodeEditor extends Editor {
 
       if (ok) {
         console.log("node editor got graph update signal");
-        this._recalcUI();
+        this.recalc |= NedRecalcFlags.UI;
       }
+    }
+
+    if (this.recalc & NedRecalcFlags.UI) {
+      this.recalc &= ~NedRecalcFlags.UI;
+
+      window.setTimeout(() => {
+        this._recalcUI();
+      });
     }
   }
 
@@ -1255,10 +1281,14 @@ export class NodeEditor extends Editor {
 
     if (!this.size || !this.pos) return;
 
+    if (this.overdraw) {
+      this.overdraw.style["width"] = this.size[0] + "px";
+      this.overdraw.style["height"] = this.size[1] + "px";
+    }
+
     this.container.style["width"] = (~~this.size[0]) + "px";
     this.container.style["height"] = (~~this.size[1]) + "px";
   }
-
 
   makeAddNodeMenu() {
     let menu = document.createElement("menu-x");
@@ -1303,7 +1333,7 @@ export class NodeEditor extends Editor {
       //"node.add_node(graphPath=\"material.graph\" graphClass=\"shader\" nodeClass=\"DiffuseNode\")")
     };
 
-    startMenu(menu, this.last_mpos[0]-10, this.last_mpos[1]-20, false);
+    startMenu(menu, this.last_mpos[0] - 10, this.last_mpos[1] - 20, false);
 
     /*
     menu.style["position"] = "absolute";
@@ -1322,6 +1352,8 @@ export class NodeEditor extends Editor {
         console.log("Add Node!");
         this.makeAddNodeMenu();
       }),
+      new HotKey("Delete", [], "node.delete_selected(useNodeEditorGraph=1)"),
+      new HotKey("X", [], "node.delete_selected(useNodeEditorGraph=1)"),
       new HotKey("=", [], () => {
         this.velpan.scale.mulScalar(1.1);
         this.rebuildAll();
@@ -1331,7 +1363,7 @@ export class NodeEditor extends Editor {
         this.rebuildAll();
       }),
       new HotKey("A", [], `node.toggle_select_all(useNodeEditorGraph=1 mode='AUTO')`)
-        //"node.add_node(graphPath=\"material.graph\" graphClass=\"shader\" nodeClass=\"DiffuseNode\")")
+      //"node.add_node(graphPath=\"material.graph\" graphClass=\"shader\" nodeClass=\"DiffuseNode\")")
     ]);
   }
 
@@ -1349,7 +1381,7 @@ export class NodeEditor extends Editor {
     return new Vector2([x - rect.x, y - rect.y]);
   }
 
-  project(co, useScreenSpace=false) {
+  project(co, useScreenSpace = false) {
     let p = projcos.next().load(co);
 
     p.multVecMatrix(this.velpan.mat);
@@ -1365,7 +1397,7 @@ export class NodeEditor extends Editor {
     co[1] = p[1];
   }
 
-  unproject(co, useScreenSpace=false) {
+  unproject(co, useScreenSpace = false) {
     let p = projcos.next().load(co);
 
     if (useScreenSpace) {
@@ -1383,7 +1415,7 @@ export class NodeEditor extends Editor {
 
   copy() {
     let ret = document.createElement("node-editor-x");
-    
+
     ret.velpan.load(this.velpan);
     ret.graphPath = this.graphPath;
 
@@ -1391,6 +1423,8 @@ export class NodeEditor extends Editor {
   }
 
   _recalcLines() {
+    //console.warn("_recalcLines", this.nodes);
+
     if (!this.overdraw) {
       if (!this.isDead()) {
         //wait for initialization
@@ -1403,6 +1437,7 @@ export class NodeEditor extends Editor {
     this.overdraw.clear();
 
     for (let node of this.nodes) {
+
       for (let uisock of node.inputs) {
         //sock.updateSocketRef();
         let sock = uisock.socket;
@@ -1420,9 +1455,7 @@ export class NodeEditor extends Editor {
           let p2 = new Vector2(uisock2.getAbsPos(true));
           this.project(p2);
 
-          if (this.overdraw) {
-            this.overdraw.line(p, p2, "orange");
-          }
+          this.overdraw.line(p, p2, "orange");
         }
       }
     }
@@ -1430,6 +1463,7 @@ export class NodeEditor extends Editor {
 
   _recalcUI() {
     let totsock = 0;
+    this.recalc &= ~NedRecalcFlags.UI;
 
     for (let node of this.nodes) {
       node.setCSS();
@@ -1448,7 +1482,7 @@ export class NodeEditor extends Editor {
     //in weird ways
     if (totsock !== this.sockets.length) {
       console.log("Socket length mismatch!");
-      this.rebuildAll();
+      this.recalc |= NedRecalcFlags.REBUILD;
       return;
     }
 
@@ -1461,16 +1495,6 @@ export class NodeEditor extends Editor {
 
     this.velpan.onchange = this._on_velpan_change.bind(this);
   }
-
-  static define() {return {
-    tagname : "node-editor-x",
-    areaname : "NodeEditor",
-    apiname  : "nodeEditor",
-    uiname   : "Node Editor",
-    icon     : Icons.EDITOR_NODE,
-    flag     : AreaFlags.HIDDEN,
-    style    : "NodeEditor"
-  }}
 };
 NodeEditor.STRUCT = STRUCT.inherit(NodeEditor, Editor) + `
   velpan     : VelPan;

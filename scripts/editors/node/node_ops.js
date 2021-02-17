@@ -1,6 +1,7 @@
 import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor} from '../editor_base.js';
 import '../../path.ux/scripts/util/struct.js';
+
 let STRUCT = nstructjs.STRUCT;
 import {UIBase} from '../../path.ux/scripts/core/ui_base.js';
 import {Container} from '../../path.ux/scripts/core/ui.js';
@@ -11,21 +12,68 @@ import {ShaderNodeTypes, OutputNode, DiffuseNode} from '../../shadernodes/shader
 import {AbstractGraphClass} from '../../core/graph_class.js';
 import {NodeFlags, SocketFlags, SocketTypes, NodeSocketType} from "../../core/graph.js";
 
-import {IntProperty, Vec2Property, StringProperty,
+import {
+  IntProperty, Vec2Property, StringProperty,
   PropSubTypes, PropTypes, PropFlags,
   KeyMap, HotKey, ToolOp, UndoFlags, ToolFlags,
-  DataPathError} from '../../path.ux/scripts/pathux.js';
+  DataPathError
+} from '../../path.ux/scripts/pathux.js';
 import {Icons} from '../icon_enum.js';
 import {getContextArea} from "../editor_base.js";
 import {ModalFlags} from "../../core/modalflags.js";
 import {NodeEditor} from "./NodeEditor.js";
+
+export class SavedGraph {
+  constructor(graph) {
+    this.graph = graph;
+  }
+}
+
+SavedGraph.STRUCT = `
+graph.SavedGraph {
+  graph : abstract(graph.Graph);
+}
+`;
+nstructjs.register(SavedGraph);
 
 export class NodeGraphOp extends ToolOp {
   constructor() {
     super();
   }
 
+  static invoke(ctx, args) {
+    let tool = super.invoke(ctx, args);
+
+    if (args["useNodeEditorGraph"]) {
+      tool.inputs.graphPath.setValue(ctx.nodeEditor.graphPath);
+      tool.inputs.graphClass.setValue(ctx.nodeEditor.graphClass);
+    }
+
+    if ("graphPath" in args) {
+      tool.inputs.graphPath.setValue(args["graphPath"]);
+    }
+    if ("graphClass" in args) {
+      tool.inputs.graphClass.setValue(args["graphClass"]);
+    }
+
+    return tool;
+  }
+
+  static tooldef() {
+    return {
+      inputs: {
+        graphPath : new StringProperty(),
+        graphClass: new StringProperty(), //AbstractGraphClass.graphdef().typeName, see graph_class.js.
+      }
+    }
+  }
+
   fetchGraph(ctx) {
+    if (this.inputs.graphPath.getValue() === "") {
+      console.warn("graphPath was empty string");
+      return undefined;
+    }
+
     try {
       return ctx.api.getValue(ctx, this.inputs.graphPath.getValue());
     } catch (error) {
@@ -47,30 +95,77 @@ export class NodeGraphOp extends ToolOp {
     }
   }
 
-  static invoke(ctx, args) {
-    let tool = new this();
+  undoPre(ctx) {
+    let graph = this.inputs.graphPath.getValue();
+    let undo = this._undo = {};
 
-    if (args["useNodeEditorGraph"]) {
-      tool.inputs.graphPath.setValue(ctx.nodeEditor.graphPath);
-      tool.inputs.graphClass.setValue(ctx.nodeEditor.graphClass);
+    if (graph === "") {
+      console.warn("graphPath was empty string");
+      return;
     }
 
-    if ("graphPath" in args) {
-      tool.inputs.graphPath.setValue(args["graphPath"]);
-    }
-    if ("graphClass" in args) {
-      tool.inputs.graphClass.setValue(args["graphClass"]);
+    graph = ctx.api.getValue(ctx, graph);
+    if (!graph) {
+      console.warn("could not get graph");
+      return;
     }
 
-    return tool;
+    console.log("GRAPH", graph, this.inputs.graphPath.getValue());
+
+    graph = new SavedGraph(graph);
+
+    let data = [];
+    nstructjs.writeObject(data, graph);
+    data = new Uint8Array(data);
+    data = new DataView(data.buffer);
+
+    undo.graphPath = this.inputs.graphPath.getValue();
+    undo.data = data;
   }
 
-  static tooldef() {return {
-    inputs   : {
-      graphPath : new StringProperty(),
-      graphClass : new StringProperty(), //AbstractGraphClass.graphdef().typeName, see graph_class.js.
+  calcUndoMem(ctx) {
+    if (this._undo && this._undo.data) {
+      return this._undo.data.byteLength;
     }
-  }}
+
+    return 0;
+  }
+
+  undo(ctx) {
+    if (!this._undo) {
+      return;
+    }
+
+    let data = this._undo.data;
+    let path = this._undo.graphPath;
+
+    if (!data || path === undefined) {
+      console.warn("no undo data");
+      return;
+    }
+
+    let graph = ctx.api.getValue(ctx, path);
+    if (!graph) {
+      console.warn("failed to resolve graph at path " + path);
+      return;
+    }
+
+    let savedgraph = nstructjs.readObject(data, SavedGraph);
+
+    let getblock = (ref) => {
+      let block = ctx.datalib.get(ref);
+
+      if (block) {
+        block.lib_addUser();
+      }
+
+      return block;
+    }
+
+    graph.load(savedgraph.graph);
+    graph.dataLink(undefined, getblock, getblock);
+    graph.signalUI();
+  }
 }
 
 
@@ -83,15 +178,17 @@ export class NodeTranslateOp extends NodeGraphOp {
     this.start_mpos = new Vector2();
   }
 
-  static tooldef() {return {
-    toolpath : "node.translate",
-    uiname   : "Translate (Node)",
-    icon     : Icons.TRANSLATE,
-    is_modal : true,
-    inputs   : ToolOp.inherit({
-      offset : new Vec2Property()
-    })
-  }}
+  static tooldef() {
+    return {
+      toolpath: "node.translate",
+      uiname  : "Translate (Node)",
+      icon    : Icons.TRANSLATE,
+      is_modal: true,
+      inputs  : ToolOp.inherit({
+        offset: new Vec2Property()
+      })
+    }
+  }
 
   modalStart(ctx) {
     super.modalStart(ctx);
@@ -176,6 +273,7 @@ export class NodeTranslateOp extends NodeGraphOp {
     this.modalEnd(e.button !== 0);
   }
 }
+
 ToolOp.register(NodeTranslateOp);
 
 export class AddNodeOp extends NodeGraphOp {
@@ -201,18 +299,20 @@ export class AddNodeOp extends NodeGraphOp {
     return tool;
   }
 
-  static tooldef() {return {
-    toolpath : "node.add_node",
-    uiname   : "Add Node",
+  static tooldef() {
+    return {
+      toolpath: "node.add_node",
+      uiname  : "Add Node",
 
-    inputs   : ToolOp.inherit({
-      nodeClass : new StringProperty(), //node class name, just constructor.name
-      pos       : new Vec2Property([10, 300])
-    }),
-    outputs : {
-      graph_id : new IntProperty(), //id of new node
+      inputs : ToolOp.inherit({
+        nodeClass: new StringProperty(), //node class name, just constructor.name
+        pos      : new Vec2Property([10, 300])
+      }),
+      outputs: {
+        graph_id: new IntProperty(), //id of new node
+      }
     }
-  }}
+  }
 
   exec(ctx) {
     let graph = this.inputs.graphPath.getValue();
@@ -240,6 +340,7 @@ export class AddNodeOp extends NodeGraphOp {
     console.log(graph.nodes);
   }
 }
+
 ToolOp.register(AddNodeOp);
 
 export class ConnectNodeOp extends NodeGraphOp {
@@ -276,25 +377,27 @@ export class ConnectNodeOp extends NodeGraphOp {
     return tool;
   }
 
-  static tooldef() {return {
-    toolpath    : "node.connect",
-    description : "connect node sockets",
-    uiname      : "Connect Sockets",
-    icon        : -1,
-    inputs   : ToolOp.inherit({
-      node1_id     : new IntProperty(-1),
-      sock1_id     : new IntProperty(-1),
+  static tooldef() {
+    return {
+      toolpath   : "node.connect",
+      description: "connect node sockets",
+      uiname     : "Connect Sockets",
+      icon       : -1,
+      inputs     : ToolOp.inherit({
+        node1_id: new IntProperty(-1),
+        sock1_id: new IntProperty(-1),
 
-      node2_id     : new IntProperty(-1),
-      sock2_id     : new IntProperty(-1),
+        node2_id: new IntProperty(-1),
+        sock2_id: new IntProperty(-1),
 
-      /*used for "dragging" connections between input sockets
-        which of course requires that old connection be destroyed
-       */
-      disconnectSockID : new IntProperty(-1)
-    }),
-    is_modal : true
-  }}
+        /*used for "dragging" connections between input sockets
+          which of course requires that old connection be destroyed
+         */
+        disconnectSockID: new IntProperty(-1)
+      }),
+      is_modal   : true
+    }
+  }
 
   on_mousemove(e) {
     let ctx = this.modal_ctx;
@@ -316,7 +419,7 @@ export class ConnectNodeOp extends NodeGraphOp {
     if (uisock1 === undefined) {
       return;
     }
-    
+
     let p = new Vector2(uisock1.getAbsPos(true));
     ned.project(p, true);
 
@@ -388,6 +491,7 @@ export class ConnectNodeOp extends NodeGraphOp {
       graph.signalUI();
     }
   }
+
   exec(ctx) {
     let graph = this.fetchGraph(ctx);
 
@@ -430,3 +534,30 @@ export class ConnectNodeOp extends NodeGraphOp {
 }
 
 ToolOp.register(ConnectNodeOp);
+
+export class DeleteNodeOp extends NodeGraphOp {
+  static tooldef() {
+    return {
+      uiname  : "Delete Node",
+      toolpath: "node.delete_selected",
+      inputs  : ToolOp.inherit({}),
+      outputs : ToolOp.inherit({})
+    }
+  }
+
+  exec(ctx) {
+    let graph = this.fetchGraph(ctx);
+
+    if (!graph) {
+      return;
+    }
+
+    for (let node of new Set(graph.nodes.selected.editable)) {
+      graph.remove(node);
+    }
+
+    graph.signalUI();
+  }
+}
+
+ToolOp.register(DeleteNodeOp);
