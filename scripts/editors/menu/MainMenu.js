@@ -221,6 +221,8 @@ export class MenuBarEditor extends Editor {
       "mesh.make_sphere()",
       "mesh.make_ico_sphere()",
       Menu.SEP,
+      "smesh.make_cube()",
+      Menu.SEP,
       "light.new()",
     ]);
 

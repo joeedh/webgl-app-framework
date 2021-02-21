@@ -2,8 +2,8 @@ import {AttrTypeClasses, Float3Attr, GeoAttr, Int32Attr} from './smesh_attribute
 import {nstructjs, math, Vector2, Vector3, Vector4, Quat, Matrix4, util} from '../path.ux/scripts/pathux.js';
 import {MAX_FACE_VERTS, MAX_VERT_EDGES, SMeshTypes, SMeshAttrFlags, SMeshFlags} from './smesh_base.js';
 
-function typedArrayStruct(typedclass,structType) {
-  let name = typedclass.name;
+function typedArrayStruct(typedclass, structType) {
+  let structName = typedclass.name;
 
   if (typedclass.STRUCT !== undefined) {
     return;
@@ -14,6 +14,13 @@ ${structName} {
   this : array(${structType}); 
 }
 `;
+
+  typedclass.newSTRUCT = function(reader) {
+    let dummy = [];
+    reader(dummy);
+
+    return new typedclass(dummy);
+  }
 
   nstructjs.register(typedclass);
 }
@@ -32,7 +39,6 @@ typedArrayStruct(Uint8Array, "byte");
 export class ElementAttr {
   constructor(typecls, name, elemType, index, category="", defval=undefined) {
     this.data = [];
-    this.type = type;
     this.name = name;
     this.defaultValue = defval;
     this.typeClass = typecls;
@@ -104,7 +110,6 @@ export class ElementAttr {
 ElementAttr.STRUCT = `
 smesh.ElementAttr {
   data     : abstract(Object);
-  type     : int;
   elemType : int;
   typeName : string;
   index    : int;
@@ -125,6 +130,14 @@ export class BitMap {
     this.resize(size);
   }
 
+  clear() {
+    for (let i=0; i<this.map.length; i++) {
+      this.map[i] = 0;
+    }
+
+    return this;
+  }
+
   resize(size) {
     size = Math.max(size, 8);
     let old = this.map;
@@ -138,11 +151,17 @@ export class BitMap {
       for (let i = 0; i < old.length; i++) {
         map[i] = old[i];
       }
+
+      for (let i = old.length; i < map.length; i++) {
+        map[i] = 0;
+      }
+    } else {
+      for (let i=0; i<map.length; i++) {
+        map[i] = 0;
+      }
     }
 
-    for (let i=old.length; i<map.length; i++) {
-      map[i] = 0;
-    }
+    return this;
   }
 
   test(bit) {
@@ -221,8 +240,10 @@ export class ElementList {
     this.a = [];
     this.freelist = [];
     this.freemap = new BitMap();
+
     this.length = 0;
     this._size = 0;
+
     this.type = type;
     this.attrIdGen = 0;
 
@@ -267,7 +288,7 @@ export class ElementList {
       let data = attr.data;
 
       for (let i=0; i<count; i++) {
-        data[dst++] = data[src++;
+        data[dst++] = data[src++];
       }
     }
   }
@@ -285,8 +306,10 @@ export class ElementList {
     this._size = newsize;
 
     if (setFreelist) {
-      for (let i=old; i<this._size; i++) {
+      for (let i=this._size-1; i>=old; i--) {
+      //for (let i=old; i<this._size; i++) {
         this.freelist.push(i);
+        this.freemap.set(i, true);
       }
     }
   }
@@ -310,9 +333,14 @@ export class ElementList {
 
   alloc() {
     let ei = this._alloc();
+
+    this.length++;
+
     for (let attr of this.attrs) {
       attr.setDefault(ei);
     }
+
+    return ei;
   }
 
   _alloc() {
@@ -368,8 +396,10 @@ export class ElementList {
       this.a.push(attr.typeClass.bind(attr.data));
     }
 
-    let freemap = this.freemap.resize(this._size);
+    this.freemap.clear();
+    this.freemap.resize(this._size);
 
+    let freemap = this.freemap;
     for (let i of this.freelist) {
       freemap.set(i, true);
     }
@@ -388,15 +418,17 @@ export class ElementList {
 }
 ElementList.STRUCT = `
 smesh.ElementList {
-  attrs     : array(ElementAttr);
-  freelist  : array(intattrIdGen);
+  length    : int;
   _size     : int;
+  attrs     : array(smesh.ElementAttr);
+  freelist  : array(int);
   attrIdGen : int;
   type      : int;
   active    : int;
   highlight : int;
 }
 `;
+nstructjs.register(ElementList);
 
 export class VertexList extends ElementList {
   constructor(smesh) {
@@ -409,6 +441,7 @@ export class VertexList extends ElementList {
     this.co = this.getAttr(Float3Attr, "co");
     this.no = this.getAttr(Float3Attr, "no");
     this.e = this.getAttr(Int32Attr, "e");
+    this.valence = this.getAttr(Int32Attr, "valence");
   }
 
   * neighbors(vi) {
@@ -434,8 +467,10 @@ export class VertexList extends ElementList {
 
       if (vi === es.v1[e]) {
         e = es.v1_next[e];
-      } else {
+      } else if (vi === es.v2[e]) {
         e = es.v2_next[e];
+      } else {
+        throw new Error("internal mesh error");
       }
 
       if (_i++ > MAX_VERT_EDGES) {
@@ -445,6 +480,9 @@ export class VertexList extends ElementList {
     } while (e !== this.e[vi]);
   }
 }
+VertexList.STRUCT = nstructjs.inherit(VertexList, ElementList, "smesh.VertexList") + `
+}`;
+nstructjs.register(VertexList);
 
 export class EdgeList extends ElementList {
   constructor(smesh) {
@@ -457,7 +495,8 @@ export class EdgeList extends ElementList {
     } else if (vi === this.v2[ei]) {
       return this.v1[ei];
     } else {
-      throw new Error("vertex " + vi + " is not in edge " + ei);
+      console.error("vertex " + vi + " is not in edge " + ei);
+      return undefined;
     }
   }
 
@@ -476,6 +515,9 @@ export class EdgeList extends ElementList {
     this.l = this.getAttr(Int32Attr, "l", -1);
   }
 }
+EdgeList.STRUCT = nstructjs.inherit(EdgeList, ElementList, "smesh.EdgeList") + `
+}`;
+nstructjs.register(EdgeList);
 
 export class LoopElemList extends ElementList {
   constructor(smesh) {
@@ -494,6 +536,9 @@ export class LoopElemList extends ElementList {
     this.prev = this.getAttr(Int32Attr, "prev");
   }
 }
+LoopElemList.STRUCT = nstructjs.inherit(LoopElemList, ElementList, "smesh.LoopElemList") + `
+}`;
+nstructjs.register(LoopElemList);
 
 let fliterstack = new Array(1024);
 fliterstack.cur = 0;
@@ -507,6 +552,10 @@ export class FaceLoopIter {
     this.faces = undefined;
     this.loops = undefined;
     this._i = 0;
+  }
+
+  [Symbol.iterator]() {
+    return this;
   }
 
   reset(faces, fi) {
@@ -541,6 +590,8 @@ export class FaceLoopIter {
 
     if (li === faces.l[fi]) {
       this.li = -1;
+    } else {
+      this.li = li;
     }
 
     return this.ret;
@@ -603,11 +654,12 @@ export class FaceList extends ElementList {
   }
 
   recalcNormal(fi) {
+    let loops = this.smesh.loops;
+
     let l1 = this.l[fi];
     let l2 = loops.next[l1];
     let l3 = loops.next[l2];
 
-    let loops = this.smesh.loops;
     let verts = this.smesh.verts;
 
     let v1 = loops.v[l1];
@@ -624,6 +676,7 @@ export class FaceList extends ElementList {
     for (let li of this.loops(fi)) {
       let vi = loops.v[li];
       cotmp.add(verts.co[vi]);
+      tot++;
     }
 
     if (tot > 0) {
@@ -636,6 +689,9 @@ export class FaceList extends ElementList {
     this.no[fi].load(n);
   }
 }
+FaceList.STRUCT = nstructjs.inherit(FaceList, ElementList, "smesh.FaceList") + `
+}`;
+nstructjs.register(FaceList);
 
 export const ElementLists = {
   [SMeshTypes.VERTEX] : VertexList,

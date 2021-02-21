@@ -2682,6 +2682,82 @@ export class PaintOp extends PaintOpBase {
       }
     }
 
+
+    let mat1 = new Matrix4();
+    let _tmp4 = new Vector3();
+    let _tmp5 = new Vector3();
+
+    let vsmooth_median = (v, fac=0.5) => {
+      let nmat = mat1;
+
+      mat1.makeIdentity();
+      mat1.makeNormalMatrix(v.no);
+      mat1.transpose();
+
+      let co = _tmp.zero();
+      let co2 = _tmp4.zero();
+      let co3 = _tmp5.zero();
+
+      let totw = 0.0;
+
+      let val = v.valence;
+      if (val < 2) {
+        return;
+      }
+
+      let list1 = getArrayTemp(val+1, false);
+      let list2 = getArrayTemp(val+1, false);
+      let list3 = getArrayTemp(val+1, false);
+
+      let vi = 1;
+
+      list1[0] = 0;
+      list2[0] = 0;
+      list3[0] = 0;
+
+      for (let v2 of v.neighbors) {
+        co2.load(v2).sub(v).multVecMatrix(nmat);
+        //co2.load(v2).sub(v);
+
+        list1[vi] = co2[0];
+        list2[vi] = co2[1];
+        list3[vi] = co2[2];
+        vi++;
+
+        co3.add(v2);
+        totw++;
+      }
+
+      list1.sort();
+      list2.sort();
+      list3.sort();
+
+      let len = list1.length;
+      let idx = (len-1)>>1;
+
+      if (len > 2 && (len & 1) === 0) {
+        co[0] = list1[idx]*0.5 + list1[idx+1]*0.5;
+        co[1] = list2[idx]*0.5 + list2[idx+1]*0.5;
+        co[2] = list3[idx]*0.5 + list3[idx+1]*0.5;
+      } else {
+        co[0] = list1[idx];
+        co[1] = list2[idx];
+        co[2] = list3[idx];
+      }
+
+      mat1.transpose();
+
+      co.multVecMatrix(mat1);
+      co.add(v);
+
+      co3.mulScalar(1.0 / totw);
+      co.interp(co3, 0.5);
+
+      v.interp(co, fac);
+    }
+
+    //vsmooth = vsmooth_median;
+
     if (!haveGrids) {
       let _tmp0 = new Vector3();
       let _tmp1 = new Vector3();
@@ -4742,6 +4818,8 @@ export class PaintOp extends PaintOpBase {
   edist_subd(e, v1, v2, eset, cd_curv) {
     let dis = v1.vectorDistanceSqr(v2);
 
+    return dis;
+    /*
     if (dis === 0.0) {
       return 0.0;
     }
@@ -4750,7 +4828,8 @@ export class PaintOp extends PaintOpBase {
     let d = Math.max(val-5, 1) * 0.5;
 
     d = Math.abs(val-6) + 1.0;
-    return dis * d * 0.5;
+    return dis / d;
+    //*/
 
     /*
     let rtot = 0, ratio = 0;
@@ -6265,7 +6344,7 @@ export class PaintOp extends PaintOpBase {
 
     function weight_fancy(e, lensqr) {
       lensqr += (e.v1.valence + e.v2.valence);
-      lensqr += countNewSplitEdges(e, eset);
+      //lensqr += countNewSplitEdges(e, eset);
 
       return lensqr;
     }
@@ -6480,6 +6559,13 @@ export class PaintOp extends PaintOpBase {
       //set edge set reference used to feed edist_subd
       eset = es4;
 
+      //try to avoid 4-valence verts by preventing isolated edge splits
+      for (let e of new Set(es4)) {
+        if (e.l) {
+          es4.add(e.l.next.e);
+          es4.add(e.l.prev.e);
+        }
+      }
 
       //pattern based subdivision algo
       if (useSmart) {

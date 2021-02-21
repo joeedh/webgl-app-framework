@@ -401,8 +401,8 @@ export class ElementList {
     e.eid = neweid;
     e._old_eid = neweid;
 
-    this.local_eidMap.set(e.eid, e);
-    this.idxmap.set(e.eid, i);
+    this.local_eidMap.set(neweid, e);
+    this.idxmap.set(neweid, i);
 
     if (sel) {
       this.selected.add(e);

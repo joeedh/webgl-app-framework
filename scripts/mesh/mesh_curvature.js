@@ -16,9 +16,15 @@ let ctmps_vs = util.cachering.fromConstructor(Vector3, 512);
 let ctmps_arrmats = new util.cachering(() => new Float64Array(16), 512);
 let ctmps_mats = util.cachering.fromConstructor(Matrix4, 512);
 
+const PROJECT_CURV_NORMALS = true;
+
 let addtmps = util.cachering.fromConstructor(Vector3, 16);
-function addMat(amat, v1, v2, w=1.0) {
+function addMat(amat, v1, v2, w=1.0, nmat) {
   let no = addtmps.next().load(v2.no).sub(v1.no);
+
+  if (nmat) {
+    no.multVecMatrix(nmat);
+  }
 
   amat[0] += no[0]*no[0]*w;
   amat[1] += no[0]*no[1]*w;
@@ -50,6 +56,8 @@ function calcCoKey(co) {
 window._calcCoKey = calcCoKey;
 
 let lasttime = util.time_ms();
+
+let mtmp = new Matrix4();
 
 export class CurvVert extends CustomDataElem {
   constructor() {
@@ -142,16 +150,27 @@ export class CurvVert extends CustomDataElem {
       }
     }
 
+    let nmat;
+
+    if (PROJECT_CURV_NORMALS) {
+      nmat = mtmp;
+      nmat.makeIdentity();
+      nmat.makeNormalMatrix(v.no);
+      nmat.transpose();
+    }
+
     for (let v2 of v.neighbors) {
       if (!(v2.flag & flag)) {
         v2.flag |= flag;
-        addMat(mat, v, v2);
+        addMat(mat, v, v2, undefined, nmat);
       }
-      //  continue;
+    }
+
+    for (let v2 of v.neighbors) {
       for (let v3 of v2.neighbors) {
         if (!(v3.flag & flag)) {
           v3.flag |= flag;
-          addMat(mat, v, v3);
+          addMat(mat, v, v3, undefined, nmat);
         }
       }
     }
@@ -162,7 +181,11 @@ export class CurvVert extends CustomDataElem {
     let lastno = ctmps_vs.next().zero();
     let no = ctmps_vs.next();
 
-    no.load(v.no);
+    no.load(v.no)
+
+    if (PROJECT_CURV_NORMALS) {
+      no.multVecMatrix(nmat);
+    }
 
     for (let i=0; i<75; i++) {
       if (i > 0 && no.vectorDistanceSqr(lastno) < 0.0001) {
@@ -173,6 +196,11 @@ export class CurvVert extends CustomDataElem {
       no.normalize();
 
       no.multVecMatrix(mat2);
+    }
+
+    if (PROJECT_CURV_NORMALS) {
+      nmat.transpose();
+      no.multVecMatrix(nmat);
     }
 
     this.k1 = no.vectorLength();

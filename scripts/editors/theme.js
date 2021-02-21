@@ -9,6 +9,26 @@ import {CSSFont, setTheme} from "../path.ux/scripts/core/ui_base.js";
 export const theme = {
   NodeEditor:  {
     'background-color': 'rgba(72,72,72, 1)',
+    NodeOverrides: {
+      base : {
+        width : 65
+      },
+      numslider: {
+        width : 65
+      },
+      numslider_simple: {
+        width : 65
+      },
+      numslider_textbox: {
+        width : 65
+      },
+      button : {
+        width : 65
+      },
+      panel : {
+        width:  100
+      }
+    }
   },
 
   'NodeEditor.Node':  {

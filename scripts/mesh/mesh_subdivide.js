@@ -883,7 +883,7 @@ export function splitEdgesSimple(mesh, es, testfunc, lctx) {
   return {newvs, newfs, killfs, newes};
 }
 
-export function splitEdgesSmart(mesh, es) {
+export function splitEdgesSmart(mesh, es, lctx) {
   let vs = new Set();
 
   for (let e of es) {
@@ -904,7 +904,7 @@ export function splitEdgesSmart(mesh, es) {
       fs.add(l.f);
     }
 
-    let nev = mesh.splitEdge(e, 0.5);
+    let nev = mesh.splitEdge(e, 0.5, lctx);
 
     newvs.add(nev[1]);
   }
@@ -1010,17 +1010,17 @@ export function splitEdgesSmart(mesh, es) {
       let a = l1.prev.prev;
       let b = l1.next.next;
 
-      let l2 = mesh.splitFace(f, l1, l1.next.next.next.next);
+      let l2 = mesh.splitFace(f, l1, l1.next.next.next.next, lctx);
       newfs.add(l2.f);
 
       let olde = l2.e;
-      let nev = mesh.splitEdge(l2.e, 0.5);
+      let nev = mesh.splitEdge(l2.e, 0.5, lctx);
 
       let [newe, newv] = nev;
       newvs.add(newv);
 
-      mesh.connectVerts(a.v, newv);
-      mesh.connectVerts(b.v, newv);
+      mesh.connectVerts(a.v, newv, lctx);
+      mesh.connectVerts(b.v, newv, lctx);
       //l2 = mesh.splitFaceAtVerts(l2.f, a.v, newv);
 
       continue;
@@ -1062,10 +1062,10 @@ export function splitEdgesSmart(mesh, es) {
       let l3 = l1.next.next;
       let l4 = l1.prev;
 
-      newfs.add(mesh.splitFace(l1.f, l1, l1.next.next).f);
-      newfs.add(mesh.splitFace(l3.f, l3, l3.next.next).f);
+      newfs.add(mesh.splitFace(l1.f, l1, l1.next.next, lctx).f);
+      newfs.add(mesh.splitFace(l3.f, l3, l3.next.next, lctx).f);
 
-      newfs.add(mesh.splitFace(l4.f, l4.prev, l4.next).f);
+      newfs.add(mesh.splitFace(l4.f, l4.prev, l4.next, lctx).f);
 
       continue;
     }
@@ -1082,7 +1082,7 @@ export function splitEdgesSmart(mesh, es) {
       for (let i = 1; i < ls.length - 1; i++) {
         let l1 = ls[0], l2 = ls[i], l3 = ls[i + 1];
 
-        let f2 = mesh.makeFace([l1.v, l2.v, l3.v]);
+        let f2 = mesh.makeFace([l1.v, l2.v, l3.v], undefined, undefined, lctx);
         let l = f2.lists[0].l;
 
         mesh.copyElemData(l, l1);
@@ -1127,7 +1127,7 @@ export function splitEdgesSmart(mesh, es) {
 
       if (l1.f === l2.f && l1.f === f2) {
         //console.log("splitting face", l1, l2);
-        newfs.add(mesh.splitFace(f2, l1, l2).f);
+        newfs.add(mesh.splitFace(f2, l1, l2, lctx).f);
       } else {
         //console.log("pattern error", pat, idx);
       }

@@ -138,7 +138,7 @@ export class IntSocket extends NodeSocketType {
   }
 
   static apiDefine(api, sockstruct) {
-    let def = sockstruct.int("value", "value", "value");
+    let def = sockstruct.int("value", "value", "value").noUnits();
 
     def.on('change', function() { this.dataref.graphUpdate(true)});
 
@@ -199,7 +199,7 @@ export class Vec2Socket extends NodeSocketType {
   }
 
   static apiDefine(api, sockstruct) {
-    let def = sockstruct.vec2('value', 'value', 'value');
+    let def = sockstruct.vec2('value', 'value', 'value').noUnits();
 
     def.on('change', function() { this.dataref.graphUpdate(true)});
 
@@ -273,7 +273,7 @@ export class Vec3Socket extends VecSocket {
 
   static apiDefine(api, sockstruct) {
     let cb = NodeSocketType._api_uiname;
-    let def = sockstruct.vec3('value', 'value', 'value').uiNameGetter(cb);
+    let def = sockstruct.vec3('value', 'value', 'value').uiNameGetter(cb).noUnits();
 
     def.on('change', function() { this.dataref.graphUpdate(true)});
 
@@ -342,7 +342,7 @@ export class Vec4Socket extends NodeSocketType {
   }}
 
   static apiDefine(api, sockstruct) {
-    let def = sockstruct.vec4('value', 'value', 'value');
+    let def = sockstruct.vec4('value', 'value', 'value').noUnits();
 
     def.on('change', function() { this.dataref.graphUpdate(true)});
 
@@ -410,7 +410,7 @@ export class RGBSocket extends Vec3Socket {
   }}
 
   static apiDefine(api, sockstruct) {
-    let def = sockstruct.color3('value', 'value', 'value').uiNameGetter(NodeSocketType._api_uiname);
+    let def = sockstruct.color3('value', 'value', 'value').uiNameGetter(NodeSocketType._api_uiname).noUnits();
 
     def.on('change', function() { this.dataref.graphUpdate(true)});
   }
@@ -450,7 +450,7 @@ export class RGBASocket extends Vec4Socket {
   }}
 
   static apiDefine(api, sockstruct) {
-    let def = sockstruct.color4('value', 'value', 'value').uiNameGetter(NodeSocketType._api_uiname);
+    let def = sockstruct.color4('value', 'value', 'value').uiNameGetter(NodeSocketType._api_uiname).noUnits();
 
     def.on('change', function() { this.dataref.graphUpdate(true)});
   }
@@ -490,7 +490,7 @@ export class FloatSocket extends NodeSocketType {
   }
 
   static apiDefine(api, sockstruct) {
-    let def = sockstruct.float('value', 'value', 'value');
+    let def = sockstruct.float('value', 'value', 'value').noUnits();
 
     if (this.graph_flag & SocketFlags.NO_UNITS) {
       def.noUnits();

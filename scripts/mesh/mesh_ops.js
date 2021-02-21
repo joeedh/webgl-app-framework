@@ -15,7 +15,7 @@ import {Icons} from '../editors/icon_enum.js';
 import {MeshFlags, MeshTypes, MeshFeatures, LogContext} from './mesh_base.js';
 import {MeshDeformOp, MeshOp} from './mesh_ops_base.js';
 import {ccSmooth, subdivide, loopSubdivide} from '../subsurf/subsurf_mesh.js';
-import {splitEdgesPreserveQuads, splitEdgesSmart, splitEdgesSmart2} from "./mesh_subdivide.js";
+import {splitEdgesPreserveQuads, splitEdgesSimple2, splitEdgesSmart, splitEdgesSmart2} from "./mesh_subdivide.js";
 import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
 import {CustomDataElem} from "./customdata.js";
@@ -420,6 +420,7 @@ export class RemeshOp extends MeshOp {
           threshold : new FloatProperty(0.5).noUnits().setRange(0.1, 0.9),
           goalType : new EnumProperty(RemeshGoals.EDGE_AVERAGE, RemeshGoals).saveLastValue(),
           goal: new FloatProperty(1.0).noUnits().setRange(0, 1024*1024*32).saveLastValue(),
+          edgeCountPercent : new FloatProperty(0.5).setRange(0.001, 1).noUnits().saveLastValue()
         }
       ),
       outputs : ToolOp.inherit()
@@ -451,9 +452,12 @@ export class RemeshOp extends MeshOp {
       let relax = this.inputs.relax.getValue();
       let project = this.inputs.projection.getValue();
       let flag = this.inputs.flag.getValue();
+      let count = this.inputs.edgeCountPercent.getValue();
+
+      count = Math.ceil(mesh.edges.length*count);
 
       remeshMesh(mesh, this.inputs.remesher.getValue(), lctx, goalType, goalValue,
-        undefined, rakeFactor, threshold, relax, project, flag);
+        undefined, rakeFactor, threshold, relax, project, flag, count);
       //vertexSmooth(mesh, mesh.verts, 0.5, 1.0);
 
       mesh.regenTessellation();
@@ -547,10 +551,14 @@ export class InteractiveRemeshOp extends RemeshOp {
     let mesh = this.modal_ctx.mesh;
 
     let time = util.time_ms();
-    while (util.time_ms() - time < 50 && !this.remesher.done) {
+    while (this.remesher && util.time_ms() - time < 50 && !this.remesher.done) {
       let i = this.inputs.steps.getValue();
       this.inputs.steps.setValue(i + 1);
       this.remesher.step();
+    }
+
+    if (!this.remesher) {
+      this.modalEnd();
     }
 
     mesh.regenAll();
@@ -567,6 +575,9 @@ export class InteractiveRemeshOp extends RemeshOp {
     let threshold = this.inputs.threshold.getValue();
     let relax = this.inputs.relax.getValue();
     let project = this.inputs.projection.getValue();
+    let count = this.inputs.edgeCountPercent.getValue();
+
+    count = Math.ceil(mesh.edges.length*count);
 
     fixManifold(mesh, lctx);
     let cls = RemeshMap[this.inputs.remesher.getValue()];
@@ -578,7 +589,7 @@ export class InteractiveRemeshOp extends RemeshOp {
     remesher.rakeFactor = rakeFactor;
     remesher.threshold = threshold;
     remesher.flag = this.inputs.flag.getValue();
-    remesher.start();
+    remesher.start(count);
 
     return remesher;
   }
@@ -1326,6 +1337,11 @@ export class VertexSmooth extends MeshDeformOp {
 
 ToolOp.register(VertexSmooth);
 
+let SplitMethods = {
+  SMART1 : 0,
+  SMART2 : 1,
+  SIMPLE : 2
+}
 
 export class TestSplitFaceOp extends MeshOp {
   static tooldef() {
@@ -1333,7 +1349,9 @@ export class TestSplitFaceOp extends MeshOp {
       uiname: "Split Edges (smart)",
       //icon    : Icons.SPLIT_EDGE,
       toolpath: "mesh.split_edges_smart",
-      inputs  : ToolOp.inherit(),
+      inputs  : ToolOp.inherit({
+        method : new EnumProperty(SplitMethods.SMART2, SplitMethods).saveLastValue()
+      }),
       outputs : ToolOp.inherit()
     }
   }
@@ -1384,8 +1402,20 @@ export class TestSplitFaceOp extends MeshOp {
         e.flag |= MeshFlags.UPDATE;
       }
 
+      let method = this.inputs.method.getValue();
+
+      switch (method) {
+        case SplitMethods.SMART1:
+          splitEdgesSmart(mesh, es, lctx);
+          break;
+        case SplitMethods.SMART2:
+          splitEdgesSmart2(mesh, es, undefined, lctx);
+          break;
+        case SplitMethods.SIMPLE:
+          splitEdgesSimple2(mesh, es, undefined, lctx);
+          break;
+      }
       //splitEdgesPreserveQuads(mesh, es, undefined, lctx);
-      splitEdgesSmart2(mesh, es, undefined, lctx);
 
       //console.log(newvs, newfs);
 
@@ -3316,6 +3346,11 @@ export class RotateEdgeOp extends MeshOp {
         }
       }
 
+      //rotating edges messes up partial GL update,
+      //as topology changes happen without changing the
+      //element count
+      mesh._clearGPUMeshes();
+
       mesh.regenAll();
       mesh.regenTessellation();
       mesh.recalcNormals();
@@ -3416,6 +3451,11 @@ export class RandomCollapseOp extends MeshOp {
 
         mesh.rotateEdge(e, Math.random() > 0.5 ? 1 : -1);
       }
+
+      //rotating edges messes up partial GL update,
+      //as topology changes happen without changing the
+      //element count
+      mesh._clearGPUMeshes(window._gl);
 
       mesh.regenAll();
       mesh.recalcNormals();

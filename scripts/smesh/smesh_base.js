@@ -1,7 +1,5 @@
-export const MAX_FACE_VERTS
-1024
-export const MAX_VERT_EDGES
-512
+export const MAX_FACE_VERTS = 1024;
+export const MAX_VERT_EDGES = 512;
 
 export const SMeshTypes = {
   VERTEX: 1,

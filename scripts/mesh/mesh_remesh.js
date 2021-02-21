@@ -1776,7 +1776,8 @@ export function remeshMesh(mesh, remesher = Remeshers.UNIFORM_TRI, lctx = undefi
                            rakeFactor                                   = 0.5, threshold = 0.5,
                            relax                                        = 0.25,
                            projection                                   = 0.8,
-                           flag                                         = DefaultRemeshFlags) {
+                           flag                                         = DefaultRemeshFlags,
+                           maxEdges = undefined) {
   fixManifold(mesh, lctx);
 
   let cls = RemeshMap[remesher];
@@ -1789,7 +1790,7 @@ export function remeshMesh(mesh, remesher = Remeshers.UNIFORM_TRI, lctx = undefi
   m.projection = projection;
   m.flag = flag;
 
-  m.start();
+  m.start(maxEdges);
 
   let i = 0;
 

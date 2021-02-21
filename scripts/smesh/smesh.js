@@ -5,8 +5,10 @@ import {SelMask} from '../editors/view3d/selectmode.js';
 import {NodeFlags} from '../core/graph.js';
 import {DataBlock} from '../core/lib_api.js';
 import {nstructjs} from '../path.ux/pathux.js';
-import {SimpleMesh} from '../core/simplemesh.js';
+import {LayerTypes, SimpleMesh} from '../core/simplemesh.js';
 import {getArrayTemp} from '../mesh/mesh_base.js';
+import {Node} from '../core/graph.js';
+import {BoundMesh} from './smesh_bound.js';
 
 export class EIDGen {
   constructor() {
@@ -41,9 +43,11 @@ export class SMesh extends SceneObjectData {
     this.elists = [];
     this._ltris = [];
 
+    this.binding = undefined;
+
     this.eidgen = new EIDGen();
     this.updateGen = 0;
-    this.updateFlag = SMeshRecalc.ALL;
+    this.recalcFlag = SMeshRecalc.ALL;
 
     this.bindElists();
   }
@@ -60,6 +64,40 @@ export class SMesh extends SceneObjectData {
       name      : "SMesh",
       selectMask: SelMask.SGEOM
     }
+  }
+
+  wrap() {
+    if (this.binding) {
+      return this.binding.update(this);
+    }
+
+    this.binding = new BoundMesh();
+    this.binding.bind(this);
+
+    return this.binding;
+  }
+
+  getBoundingBox(matrix) {
+    let min = new Vector3().addScalar(1e17);
+    let max = new Vector3().addScalar(-1e17);
+
+    let verts = this.verts;
+    let co = verts.co;
+
+    let tmp = new Vector3();
+
+    for (let vi of this.verts) {
+      tmp.load(co[vi]);
+
+      if (matrix) {
+        tmp.multVecMatrix(matrix);
+      }
+
+      min.min(tmp);
+      max.max(tmp);
+    }
+
+    return [min, max];
   }
 
   static blockDefine() {
@@ -109,6 +147,7 @@ export class SMesh extends SceneObjectData {
 
     this.verts.eid[vi] = this.eidgen.next();
     this.verts.flag[vi] = SMeshFlags.UPDATE;
+    this.verts.valence[vi] = 0;
 
     if (co) {
       this.verts.co[vi].load(co);
@@ -129,27 +168,54 @@ export class SMesh extends SceneObjectData {
     if (vs.e[v] === -1) {
       if (v === es.v1[e]) {
         es.v1_next[e] = es.v1_prev[e] = e;
-      } else {
+      } else if (v === es.v2[e]) {
         es.v2_next[e] = es.v2_prev[e] = e;
+      } else {
+        throw new Error("vertex " + v + " is not in edge " + e);
       }
 
       vs.e[v] = e;
     } else {
-      if (v === es.v1[e]) {
-        es.v1_prev[e] = vs.e[v];
-        es.v1_next[e] = es.v1_next[vs.e[v]];
-        es.v1_prev[es.v1_next[vs.e[v]]] = e;
-        es.v1_next[vs.e[v]] = e;
+      let ve = vs.e[v];
+
+      if (es.v1[e] === v) {
+        es.v1_prev[e] = ve;
+      } else if (es.v2[e] === v) {
+        es.v2_prev[e] = ve;
       } else {
-        es.v2_prev[e] = vs.e[v];
-        es.v2_next[e] = es.v2_next[vs.e[v]];
-        es.v2_prev[es.v2_next[vs.e[v]]] = e;
-        es.v2_next[vs.e[v]] = e;
+        throw new Error("vertex " + v + " is not in edge " + e);
+      }
+
+      let next;
+
+      if (v === es.v1[ve]) {
+        next = es.v1_next[ve];
+        es.v1_next[ve] = e;
+      } else {
+        next = es.v2_next[ve];
+        es.v2_next[ve] = e;
+      }
+
+      if (v === es.v1[next]) {
+        es.v1_prev[next] = e;
+      } else {
+        es.v2_prev[next] = e;
+      }
+
+      if (es.v1[e] === v) {
+        es.v1_next[e] = next;
+      } else {
+        es.v2_next[e] = next;
       }
     }
+
+    vs.valence[v]++;
   }
 
   _diskRemove(v, e) {
+    let vs = this.verts, es = this.edges;
+    vs.valence[v]--;
+
     throw new Error("_diskRemove: implement me!");
   }
 
@@ -193,8 +259,11 @@ export class SMesh extends SceneObjectData {
   genRender() {
     this.recalcFlag &= ~SMeshRecalc.RENDER;
 
-    let sm = this.smesh = new SimpleMesh();
-    let wm = this.wmesh = new SimpleMesh();
+    let layerflag = LayerTypes.LOC | LayerTypes.ID | LayerTypes.NORMAL | LayerTypes.COLOR;
+
+    let sm = this.smesh = new SimpleMesh(layerflag);
+    let wm = this.wmesh = new SimpleMesh(layerflag);
+    let w = [1, 1, 1, 1];
 
     let ltris = this.loopTris;
     let loops = this.loops, faces = this.faces, verts = this.verts;
@@ -208,6 +277,8 @@ export class SMesh extends SceneObjectData {
       let feid = faces.eid[loops.f[l1]] + 1;
 
       let tri = sm.tri(co1, co2, co3);
+
+      tri.colors(w, w, w);
       tri.normals(n1, n2, n3);
       tri.ids(feid, feid, feid);
     }
@@ -286,11 +357,16 @@ export class SMesh extends SceneObjectData {
   makeEdge(v1, v2, lctx) {
     let ei = this.edges.alloc();
 
+    console.log("ei", ei, v1, v2);
+
     this.edges.flag[ei] = SMeshFlags.UPDATE;
     this.edges.eid[ei] = this.eidgen.next();
     this.edges.v1[ei] = v1;
     this.edges.v2[ei] = v2;
     this.edges.l[ei] = -1;
+
+    this.edges.v1_next[ei] = this.edges.v1_prev[ei] = -1;
+    this.edges.v2_next[ei] = this.edges.v2_prev[ei] = -1;
 
     this._diskInsert(v1, ei);
     this._diskInsert(v2, ei);
@@ -353,7 +429,7 @@ export class SMesh extends SceneObjectData {
   makeFace(vs, lctx) {
     let ls = getArrayTemp(vs.length, false);
 
-    let loops = this.loop;
+    let loops = this.loops;
     let faces = this.faces;
 
     for (let i=0; i<vs.length; i++) {
@@ -400,9 +476,28 @@ export class SMesh extends SceneObjectData {
     this.wmesh.draw(gl, uniforms, program);
   }
 
+  testSave() {
+    let data = [];
+    nstructjs.writeObject(data, this);
+    data = new Uint8Array(data);
+    data = new DataView(data.buffer);
+
+    let json = JSON.stringify(nstructjs.writeJSON(this), undefined, 2);
+
+    let smesh2 = nstructjs.readObject(data, SMesh);
+
+    console.log(json);
+    console.log(smesh2);
+  }
+
   loadSTRUCT(reader) {
     reader(this);
+    super.loadSTRUCT(reader);
 
+    for (let elist of this.elists) {
+      elist.smesh = this;
+    }
+    
     this.bindElists();
   }
 }

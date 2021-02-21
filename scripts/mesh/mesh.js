@@ -86,11 +86,39 @@ const LISTFACE = 0, LISTSTART = 1, LISTLEN = 2, LISTTOT = 3;
 const FEID = 0, FFLAG = 1, FLISTSTART = 3, FTOTLIST = 4, FTOT = 5;
 const HEID = 0, HFLAG = 1, HX = 2, HY = 3, HZ = 4, HTOT = 5;
 
-export class EIDGen extends util.IDGen {
+export class EIDGen {
   constructor() {
-    super();
+    this.cur = 1;
 
     this.freelist = [];
+    //this.freemap = new Map();
+    this.freemap = undefined; //make freemap as needed
+  }
+
+  max_cur(id=0) {
+    this.cur = Math.max(this.cur, id);
+  }
+
+  toJSON() {
+    return {
+      cur : this.cur,
+      freelist : this.freelist
+    }
+  }
+
+  loadJSON(obj) {
+    this.cur = obj.cur;
+    this.freelist = obj.freelist;
+
+    if (this.freemap) {
+      this.makeFreeMap();
+    }
+
+    return this;
+  }
+
+  static fromJSON(obj) {
+    return new EIDGen().loadJSON(obj);
   }
 
   copy() {
@@ -102,7 +130,66 @@ export class EIDGen extends util.IDGen {
     return ret;
   }
 
+  reserve(eid) {
+    if (eid >= this.cur) {
+      this.cur = eid + 1;
+    }
+
+    //make freemap on demand
+    if (!this.freemap) {
+      this.makeFreeMap();
+    }
+
+    let freemap = this.freemap;
+    let freelist = this.freelist;
+    let i = freemap.get(eid);
+
+    if (i === undefined) {
+      //eid is not freed
+      return;
+    }
+
+    freemap.delete(eid);
+
+    //eid is last entry in freelist
+    if (i === freelist.length-1) {
+      freelist.length--;
+      return;
+    }
+
+    //swap in last value of freelist and update freemap
+
+    let eid2 = freelist[freelist.length-1];
+
+    freelist[i] = eid2;
+    freelist.length--;
+
+    freemap.set(eid2, i);
+  }
+
+  makeFreeMap() {
+    let freemap = this.freemap = new Map();
+    let freelist = this.freelist;
+
+    for (let i=0; i<freelist.length; i++) {
+      freemap.set(freelist[i], i);
+    }
+  }
+
+  killFreeMap() {
+    this.freemap = undefined;
+  }
+
   free(eid) {
+    if (this.freemap) {
+      if (this.freemap.has(eid)) {
+        console.error("eid was already freed");
+        return;
+      }
+
+      this.freemap.set(eid, this.freelist.length);
+    }
+
     this.freelist.push(eid);
   }
 
@@ -116,20 +203,33 @@ export class EIDGen extends util.IDGen {
 
   next() {
     if (this.freelist.length > 0) {
-      return this.freelist.pop();
+      let eid = this.freelist.pop();
+
+      if (this.freemap) {
+        this.freemap.delete(eid);
+      }
+
+      return eid;
     } else {
-      return super.next();
+      return this.cur++;
     }
   }
 
   loadSTRUCT(reader) {
     reader(this);
-    super.loadSTRUCT(reader);
+
+    //filter any accidental duplicates
+    this.freelist = util.list(new Set(this.freelist));
+
+    if (this.freemap) {
+      this.makeFreeMap();
+    }
   }
 }
 
 EIDGen.STRUCT = nstructjs.inherit(EIDGen, util.IDGen, 'mesh.EIDGen') + `
   freelist : array(int);
+  cur      : int;
 }`;
 nstructjs.register(EIDGen);
 
@@ -659,6 +759,10 @@ export class Mesh extends SceneObjectData {
 
     list.customData.initElement(e);
 
+    if (customEid !== undefined) {
+      this.eidgen.reserve(customEid);
+    }
+
     e.eid = customEid !== undefined ? customEid : this.eidgen.next();
     e._old_eid = e.eid;
 
@@ -686,6 +790,10 @@ export class Mesh extends SceneObjectData {
 
       if (co) {
         v.load(co);
+      }
+
+      if (customEid !== undefined) {
+        this.eidgen.reserve(customEid);
       }
 
       v.eid = customEid !== undefined ? customEid : this.eidgen.next();
@@ -818,6 +926,10 @@ export class Mesh extends SceneObjectData {
     let e;
 
     if (SAVE_DEAD_EDGES) {
+      if (customEid !== undefined) {
+        this.eidgen.reserve(customEid);
+      }
+
       e = this.edges.alloc(Edge);
       e.eid = customEid !== undefined ? customEid : this.eidgen.next();
       e._old_eid = e.eid;
@@ -893,6 +1005,10 @@ export class Mesh extends SceneObjectData {
     } else {
       let l = this.loops.alloc(Loop);
 
+      if (customEid !== undefined) {
+        this.eidgen.reserve(customEid);
+      }
+
       //for some reason we have to call getElemList here,
       //probably code is being executed in wrong order somewhere
       this.getElemList(l.type);
@@ -934,6 +1050,10 @@ export class Mesh extends SceneObjectData {
       for (let i = 0; i < totlist; i++) {
         f.lists.push(new LoopList());
       }
+    }
+
+    if (customEid !== undefined) {
+      this.eidgen.reserve(customEid);
     }
 
     f.eid = customEid !== undefined ? customEid : this.eidgen.next();
@@ -2636,7 +2756,7 @@ export class Mesh extends SceneObjectData {
 
   /** trys to connect two verts through exactly
    *  one face, which is split.  returns loop of new split edge*/
-  connectVerts(v1, v2) {
+  connectVerts(v1, v2, lctx) {
     for (let f of v1.faces) {
       let tot = 0;
 
@@ -2655,7 +2775,7 @@ export class Mesh extends SceneObjectData {
       if (tot === 2) {
         console.log("found face");
 
-        return this.splitFaceAtVerts(f, v1, v2);
+        return this.splitFaceAtVerts(f, v1, v2, lctx);
       }
     }
   }
@@ -3845,6 +3965,7 @@ export class Mesh extends SceneObjectData {
     bad = bad || e.l.radial_next.radial_next !== e.l;
 
     if (bad) {
+      console.warn("cannot rotate edge " + e.eid);
       return;
     }
 
@@ -3862,6 +3983,7 @@ export class Mesh extends SceneObjectData {
     }
 
     if (this.getEdge(l1b.v, l2b.v)) {
+      console.warn("cannot rotate edge: " + e.eid);
       return; //can't dissolve
     }
 
@@ -3871,6 +3993,8 @@ export class Mesh extends SceneObjectData {
       return;
     }
 
+    e = undefined;
+
     let el2 = this.splitFace(f1, l1b, l2b, lctx);
     let e2 = el2.e;
 
@@ -3878,7 +4002,7 @@ export class Mesh extends SceneObjectData {
       e2.customData = customData;
 
       if (act) {
-        this.edges.active = e;
+        this.edges.active = e2;
       }
 
       e2.flag = flag & ~MeshFlags.SELECT;
@@ -3887,7 +4011,8 @@ export class Mesh extends SceneObjectData {
         lctx.killEdge(e2);
       }
 
-      this.setEID(e2, eid);
+      //XXX this does not work, produces bug in eidgen's freelist
+      //this.setEID(e2, eid);
 
       //logctx may have selected the edge
       flag = flag & ~MeshFlags.SELECT;
@@ -3921,9 +4046,17 @@ export class Mesh extends SceneObjectData {
   setEID(elem, eid) {
     let elist = this.elists[elem.type];
 
-    this.eidMap.delete(eid);
+    if (elem.eid >= 0) {
+      this.eidgen.free(elem.eid);
+    }
+
+    this.eidgen.reserve(eid);
+
+    this.eidMap.delete(elem.eid);
     elist.setEID(elem, eid);
-    this.eidMap.set(elem.eid, elem);
+    this.eidMap.set(eid, elem);
+
+    this._recalcEidMap = true;
 
     return this;
   }
@@ -4196,6 +4329,7 @@ export class Mesh extends SceneObjectData {
       if (DEBUG_DUPLICATE_FACES) {
         this._checkFace(f, "dissolveEdge");
       }
+
       return;
     }
 
@@ -4337,6 +4471,8 @@ export class Mesh extends SceneObjectData {
 
     if (!bad) {
       this.killEdge(e, lctx);
+    } else {
+      return undefined;
     }
 
     if (DEBUG_BAD_LOOPS) {
@@ -4399,8 +4535,11 @@ export class Mesh extends SceneObjectData {
     super.exec();
 
     this._updateElists();
-
     this.updateGrids();
+
+    //we don't need eidgen's freemap most of the time,
+    //it's built for the eidgen.reserve method.
+    this.eidgen.killFreeMap();
   }
 
   tessellate() {
@@ -5147,7 +5286,8 @@ export class Mesh extends SceneObjectData {
       }
     }
 
-    console.log(oldmax, this.eidgen._cur);
+    console.log(oldmax, this.eidgen.cur);
+
     this.eidgen.freelist.length = 0;
 
     if (REUSE_EIDS) {
@@ -5170,8 +5310,11 @@ export class Mesh extends SceneObjectData {
 
     this._fancyMeshes = {};
     this.wmesh = this.smesh = undefined;
-    for (let k in meshes) {
-      meshes[k].destroy(gl);
+
+    if (gl) {
+      for (let k in meshes) {
+        meshes[k].destroy(gl);
+      }
     }
 
     for (let v of this.verts) {
@@ -5778,6 +5921,31 @@ export class Mesh extends SceneObjectData {
 
     let visit = new util.set();
     let totshell = 0;
+
+    for (let f of this.faces) {
+      let bad = false;
+
+      for (let list of f.lists) {
+        if (!list.l) {
+          bad = true;
+        }
+      }
+
+      if (bad) {
+        console.error("corrupted face " + f.eid);
+
+        for (let list of f.lists) {
+          if (list.l) {
+            for (let l of new Set(list.l)) {
+              this._radialRemove(l.e, l);
+              this._killLoop(l);
+            }
+          }
+        }
+
+        this._freeFace(f);
+      }
+    }
 
     for (let f of this.faces) {
       this._checkFaceLoops(f, "validateMesh");

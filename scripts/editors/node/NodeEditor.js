@@ -662,6 +662,8 @@ export class NodeEditor extends Editor {
 
     this.recalc = 0;
 
+    this.loadThemeOverrides();
+
     this.nodeContainer.getDPI = () => {
       return this.getNodeDPI();
     };
@@ -681,6 +683,19 @@ export class NodeEditor extends Editor {
     this.sockets = [];
     this.sockets.highlight = undefined;
     this.node_idmap = {};
+  }
+
+  loadThemeOverrides() {
+    let overrides = this.getDefault("NodeOverrides");
+
+    for (let k in overrides) {
+      let v = overrides[k];
+
+      for (let k2 in v) {
+        let v2 = v[k2];
+        this.overrideClassDefault(k, k2, v2);
+      }
+    }
   }
 
   get graph() {
@@ -711,7 +726,8 @@ export class NodeEditor extends Editor {
       uiname  : "Node Editor",
       icon    : Icons.EDITOR_NODE,
       flag    : AreaFlags.HIDDEN,
-      style   : "NodeEditor"
+      style   : "NodeEditor",
+      subclassChecksTheme : true
     }
   }
 
@@ -884,6 +900,9 @@ export class NodeEditor extends Editor {
     this.background = bgcolor;
     this.style["background-color"] = bgcolor;
     //header.prop("NodeEditor.selectmode");
+
+    let menustrip = this.menuStrip = header.row().strip();
+    menustrip.menu("Add", this.makeAddNodeMenu.bind(this));
 
     this.recalc |= NedRecalcFlags.REBUILD;
   }
@@ -1190,6 +1209,15 @@ export class NodeEditor extends Editor {
     if (!this.ctx || window.FILE_LOADING) {
       return;
     }
+
+    if (this.checkThemeUpdate()) {
+      this.loadThemeOverrides();
+
+      this.flushSetCSS();
+      this.flushUpdate();
+      this.flushUpdate();
+    }
+
     super.update();
 
     let r = this.header.getBoundingClientRect();
@@ -1290,6 +1318,11 @@ export class NodeEditor extends Editor {
     this.container.style["height"] = (~~this.size[1]) + "px";
   }
 
+  startAddNodeMenu() {
+    let menu = this.makeAddNodeMenu();
+    startMenu(menu, this.last_mpos[0] - 10, this.last_mpos[1] - 20, false);
+  }
+
   makeAddNodeMenu() {
     let menu = document.createElement("menu-x");
     menu.ctx = this.ctx;
@@ -1333,25 +1366,16 @@ export class NodeEditor extends Editor {
       //"node.add_node(graphPath=\"material.graph\" graphClass=\"shader\" nodeClass=\"DiffuseNode\")")
     };
 
-    startMenu(menu, this.last_mpos[0] - 10, this.last_mpos[1] - 20, false);
-
-    /*
-    menu.style["position"] = "absolute";
-    //this.ctx.screen.appendChild(menu);
-    document.body.appendChild(menu);
-
-    menu.start();
-    menu.float(this.last_mpos[0], this.last_mpos[1]-25, 8);
-     */
-    //menu.float(this.last_mpos[0], this.last_mpos[1]-25, 8);
+    return menu;
   }
 
   defineKeyMap() {
     this.keymap = new KeyMap([
       new HotKey("A", ["SHIFT"], () => {
         console.log("Add Node!");
-        this.makeAddNodeMenu();
+        this.startAddNodeMenu();
       }),
+      new HotKey("G", [], "node.translate(useNodeEditorGraph=1)"),
       new HotKey("Delete", [], "node.delete_selected(useNodeEditorGraph=1)"),
       new HotKey("X", [], "node.delete_selected(useNodeEditorGraph=1)"),
       new HotKey("=", [], () => {

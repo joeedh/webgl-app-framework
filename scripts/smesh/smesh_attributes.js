@@ -137,7 +137,8 @@ export class GeoAttr {
   }
 }
 
-import {F32BaseVector} from '../path.ux';
+import {F32BaseVector} from '../path.ux/pathux.js';
+
 export class BoundVector3 extends F32BaseVector {
   constructor(buf, byteOffset) {
     super(buf, byteOffset, 3);
@@ -209,7 +210,7 @@ export class BoundVector3 extends F32BaseVector {
     return this;
   }
 }
-F32BaseVector(BoundVector3, 3);
+F32BaseVector.inherit(BoundVector3, 3);
 
 export class Float3Attr extends GeoAttr {
   static attrDefine() {return {
@@ -218,7 +219,7 @@ export class Float3Attr extends GeoAttr {
     dataCount : 3
   }}
 
-  bind(array) {
+  static bind(array) {
     let ret = [];
 
     for (let i=0; i<array.length; i += 3) {
