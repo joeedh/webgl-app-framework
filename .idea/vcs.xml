@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/scripts/mathl" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/scripts/path.ux" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/scripts/renderengine" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/scripts/shadernodes" vcs="Git" />
+  </component>
+</project>

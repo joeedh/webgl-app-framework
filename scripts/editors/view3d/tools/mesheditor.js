@@ -103,7 +103,10 @@ export class MeshEditor extends MeshToolBase {
       new HotKey("-", ["CTRL"], "mesh.select_more_less(mode='SUB')"),
       new HotKey("L", ["SHIFT"], "mesh.pick_select_linked(mode=\"SUB\")"),
       new HotKey("X", [], "mesh.delete_selected()"),
+
       new HotKey("E", [], "mesh.extrude_regions(transform=true)"),
+      new HotKey("E", ["ALT"], "mesh.extrude_individual_faces(transform=true)"),
+
       new HotKey("R", ["SHIFT"], "mesh.edgecut()"),
       new HotKey("I", ["CTRL"], "mesh.select_inverse()"),
     ]);
@@ -151,6 +154,8 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.triangulate()");
 
     panel = column1.panel("Misc Tools");
+
+    panel.toolPanel("mesh.test_solver()");
 
     strip = panel.row().strip();
     strip.tool("mesh.test_multigrid_smooth()");
@@ -413,8 +418,6 @@ export class MeshEditor extends MeshToolBase {
     let key = "" + mesh.lib_id + ":" + mesh.updateGen + ":" + mesh.verts.length + ":" + mesh.eidgen._cur;
 
     let cd_curv = getCurveVerts(mesh);
-
-    console.log("cd_curve", cd_curv);
 
     //CurvVert.propegateUpdateFlags(mesh, cd_curv);
 
@@ -858,14 +861,16 @@ export class MeshEditor extends MeshToolBase {
 
       for (let v2 of v.neighbors) {
         edist += v2.vectorDistance(v);
+        tot++;
       }
+
       if (tot) {
         edist /= tot;
       } else {
-        edist = 0.1;
+        edist = 1.0;
       }
 
-      co2.load(co1).addFac(v.no, edist*0.4);
+      co2.load(co1).addFac(v.no, edist*0.5);
 
       let line = sm.line(co1, co2);
       line.colors(white, white);

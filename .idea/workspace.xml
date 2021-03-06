@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
+      <change afterPath="$PROJECT_DIR$/scripts/mesh/mesh_extrudeops.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/mesh/mesh_solver.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/data_api/api_define.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/data_api/api_define.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/selecttool.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/selecttool.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_base.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_draw.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_draw.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/smesh/smesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/smesh/smesh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/tet/tetgen_utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/tet/tetgen_utils.js" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="HTTP Request" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
+  </component>
+  <component name="GitSEFilterConfiguration">
+    <file-type-list>
+      <filtered-out-file-type name="LOCAL_BRANCH" />
+      <filtered-out-file-type name="REMOTE_BRANCH" />
+      <filtered-out-file-type name="TAG" />
+      <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
+    </file-type-list>
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/scripts/mesh/mesh_utils.js" root0="SKIP_INSPECTION" />
+  </component>
+  <component name="ProjectId" id="1hpyNTdasBxzOrcW8TK68W30Q4r" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+    <option name="showMembers" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../fluidpaint" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.detected.package.tslint" value="true" />
+    <property name="node.js.path.for.package.eslint" value="project" />
+    <property name="node.js.path.for.package.tslint" value="project" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="node.js.selected.package.tslint" value="(autodetect)" />
+    <property name="nodejs_package_manager_path" value="npm" />
+    <property name="settings.editor.selected.configurable" value="Errors" />
+    <property name="ts.external.directory.path" value="C:\Program Files\JetBrains\WebStorm 2020.1.1\plugins\JavaScriptLanguage\jsLanguageServicesImpl\external" />
+    <property name="vue.rearranger.settings.migration" value="true" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\dev\webgl-app-framework\scripts\texture" />
+      <recent name="C:\dev\webgl-app-framework\scripts\mathl\transform" />
+      <recent name="C:\dev\webgl-app-framework\scripts\mathl\core" />
+      <recent name="C:\dev\webgl-app-framework\scripts\mathl" />
+      <recent name="C:\dev\webgl-app-framework\scripts\shadernodes" />
+    </key>
+  </component>
+  <component name="RunAnythingCache">
+    <option name="myCommands">
+      <command value="propmode" />
+      <command value="killcell" />
+      <command value="node" />
+    </option>
+  </component>
+  <component name="RunManager" selected="Node.js.uv_selectops.js">
+    <configuration name="renderpass.js" type="NodeJSConfigurationType" temporary="true" nameIsGenerated="true" path-to-js-file="$PROJECT_DIR$/scripts/renderengine/renderpass.js" working-dir="$PROJECT_DIR$/scripts/renderengine">
+      <method v="2" />
+    </configuration>
+    <configuration name="uv_selectops.js" type="NodeJSConfigurationType" temporary="true" nameIsGenerated="true" path-to-js-file="$PROJECT_DIR$/scripts/editors/image/uv_selectops.js" working-dir="$PROJECT_DIR$/scripts/editors/image">
+      <method v="2" />
+    </configuration>
+    <configuration name="view3d_select.js" type="NodeJSConfigurationType" temporary="true" nameIsGenerated="true" path-to-js-file="$PROJECT_DIR$/scripts/editors/view3d/view3d_select.js" working-dir="$PROJECT_DIR$/scripts/editors/view3d">
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Node.js.uv_selectops.js" />
+        <item itemvalue="Node.js.view3d_select.js" />
+        <item itemvalue="Node.js.renderpass.js" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="" />
+      <created>1600722288108</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1600722288108</updated>
+      <workItem from="1600722289133" duration="7649000" />
+      <workItem from="1601156255117" duration="27000" />
+      <workItem from="1601156318495" duration="14425000" />
+      <workItem from="1601329550365" duration="39841000" />
+      <workItem from="1601503790549" duration="15378000" />
+      <workItem from="1601670705594" duration="455000" />
+      <workItem from="1601671173693" duration="15150000" />
+      <workItem from="1601767408261" duration="3320000" />
+      <workItem from="1601777922520" duration="7397000" />
+      <workItem from="1601787617380" duration="1786000" />
+      <workItem from="1602016553278" duration="131000" />
+      <workItem from="1602017844703" duration="5615000" />
+      <workItem from="1602139149363" duration="182000" />
+      <workItem from="1602144561972" duration="3003000" />
+      <workItem from="1602191366239" duration="1917000" />
+      <workItem from="1602206803657" duration="822000" />
+      <workItem from="1602207675527" duration="755000" />
+      <workItem from="1602220969497" duration="220000" />
+      <workItem from="1602359401668" duration="1801000" />
+      <workItem from="1605759155674" duration="7270000" />
+      <workItem from="1605829735531" duration="9552000" />
+      <workItem from="1605841120756" duration="27170000" />
+      <workItem from="1605869989793" duration="16807000" />
+      <workItem from="1606029029224" duration="905000" />
+      <workItem from="1606030049052" duration="47267000" />
+      <workItem from="1606133059250" duration="25495000" />
+      <workItem from="1606236797488" duration="10500000" />
+      <workItem from="1606250352458" duration="21608000" />
+      <workItem from="1606296009436" duration="12961000" />
+      <workItem from="1606322068613" duration="1324000" />
+      <workItem from="1606328110683" duration="12860000" />
+      <workItem from="1606408910847" duration="69124000" />
+      <workItem from="1606482974387" duration="43978000" />
+      <workItem from="1606584810722" duration="10010000" />
+      <workItem from="1606597379485" duration="28638000" />
+      <workItem from="1606662348997" duration="58426000" />
+      <workItem from="1606756363047" duration="4983000" />
+      <workItem from="1606786478451" duration="39593000" />
+      <workItem from="1606869753500" duration="18738000" />
+      <workItem from="1606960244198" duration="23155000" />
+      <workItem from="1607017493178" duration="55412000" />
+      <workItem from="1607112608546" duration="49360000" />
+      <workItem from="1607200044562" duration="36321000" />
+      <workItem from="1607241812361" duration="59443000" />
+      <workItem from="1607377743155" duration="3007000" />
+      <workItem from="1607408205798" duration="14795000" />
+      <workItem from="1607501813985" duration="133762000" />
+      <workItem from="1607721886691" duration="35242000" />
+      <workItem from="1607759481471" duration="18793000" />
+      <workItem from="1607853438481" duration="56492000" />
+      <workItem from="1607942499159" duration="639000" />
+      <workItem from="1607983420339" duration="17401000" />
+      <workItem from="1608001979507" duration="988000" />
+      <workItem from="1608004711816" duration="22067000" />
+      <workItem from="1608073313600" duration="28716000" />
+      <workItem from="1608104449687" duration="11000" />
+      <workItem from="1608105324258" duration="10926000" />
+      <workItem from="1608144202050" duration="50946000" />
+      <workItem from="1608277451494" duration="4625000" />
+      <workItem from="1608331419566" duration="6000" />
+      <workItem from="1608336666271" duration="3536000" />
+      <workItem from="1608346264390" duration="639000" />
+      <workItem from="1608547798855" duration="8291000" />
+      <workItem from="1608667325027" duration="2734000" />
+      <workItem from="1608670858508" duration="994000" />
+      <workItem from="1608721302984" duration="2183000" />
+      <workItem from="1608777183877" duration="7226000" />
+      <workItem from="1608830734230" duration="5918000" />
+      <workItem from="1608862410944" duration="19704000" />
+      <workItem from="1609070141732" duration="8000" />
+      <workItem from="1609081071005" duration="6117000" />
+      <workItem from="1609130487647" duration="6187000" />
+      <workItem from="1609153988575" duration="12319000" />
+      <workItem from="1609449153465" duration="53374000" />
+      <workItem from="1609514090593" duration="1305000" />
+      <workItem from="1609633799039" duration="33394000" />
+      <workItem from="1609719618156" duration="16121000" />
+      <workItem from="1609805075401" duration="31577000" />
+      <workItem from="1609944049439" duration="24794000" />
+      <workItem from="1610065741292" duration="6642000" />
+      <workItem from="1610079949487" duration="4155000" />
+      <workItem from="1610132220725" duration="5410000" />
+      <workItem from="1610155708618" duration="40212000" />
+      <workItem from="1610325112767" duration="69161000" />
+      <workItem from="1610585205440" duration="23388000" />
+      <workItem from="1610828317527" duration="2652000" />
+      <workItem from="1610841204110" duration="31897000" />
+      <workItem from="1610912980530" duration="12740000" />
+      <workItem from="1610937174043" duration="25635000" />
+      <workItem from="1610968145954" duration="9536000" />
+      <workItem from="1611020989841" duration="30338000" />
+      <workItem from="1611105623242" duration="36552000" />
+      <workItem from="1611184826013" duration="45357000" />
+      <workItem from="1611275650303" duration="8789000" />
+      <workItem from="1611284525337" duration="13377000" />
+      <workItem from="1611300471281" duration="3329000" />
+      <workItem from="1611307492973" duration="16469000" />
+      <workItem from="1611348774681" duration="8673000" />
+      <workItem from="1611366101743" duration="59766000" />
+      <workItem from="1611495945717" duration="624000" />
+      <workItem from="1611529070871" duration="7770000" />
+      <workItem from="1611537459430" duration="23222000" />
+      <workItem from="1611570666747" duration="9223000" />
+      <workItem from="1611632742483" duration="9741000" />
+      <workItem from="1611642527878" duration="84562000" />
+      <workItem from="1611841951903" duration="52093000" />
+      <workItem from="1612034533107" duration="31895000" />
+      <workItem from="1612071162942" duration="38828000" />
+      <workItem from="1612232317154" duration="29299000" />
+      <workItem from="1612397251215" duration="4488000" />
+      <workItem from="1612459861346" duration="8205000" />
+      <workItem from="1612478844485" duration="3644000" />
+      <workItem from="1612585531215" duration="16543000" />
+      <workItem from="1612652750326" duration="5783000" />
+      <workItem from="1612730517019" duration="29880000" />
+      <workItem from="1612831275313" duration="6075000" />
+      <workItem from="1612919584650" duration="11945000" />
+      <workItem from="1613001972562" duration="593000" />
+      <workItem from="1613003735833" duration="14014000" />
+      <workItem from="1613072654653" duration="30000" />
+      <workItem from="1613081905886" duration="19974000" />
+      <workItem from="1613204031563" duration="950000" />
+      <workItem from="1613242536713" duration="19109000" />
+      <workItem from="1613445037675" duration="3957000" />
+      <workItem from="1613451513047" duration="1366000" />
+      <workItem from="1613545117839" duration="31326000" />
+      <workItem from="1613820008095" duration="4441000" />
+      <workItem from="1613881931234" duration="28558000" />
+      <workItem from="1614062712473" duration="1298000" />
+      <workItem from="1614210404126" duration="16194000" />
+      <workItem from="1614461566030" duration="8845000" />
+      <workItem from="1614587559312" duration="1844000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <ignored-roots>
+      <path value="$PROJECT_DIR$/clean" />
+      <path value="$PROJECT_DIR$/clean/scripts/renderengine" />
+      <path value="$PROJECT_DIR$/clean/scripts/shadernodes" />
+      <path value="$PROJECT_DIR$/scripts/structcc" />
+    </ignored-roots>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scripts/texture/proceduralTex.js</url>
+          <line>70</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scripts/mesh/mesh.js</url>
+          <line>4617</line>
+          <option name="timeStamp" value="5" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scripts/tet/tetgen.js</url>
+          <line>12</line>
+          <option name="timeStamp" value="6" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>

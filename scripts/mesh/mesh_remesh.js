@@ -1,7 +1,7 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import * as math from '../util/math.js';
-import {MeshTypes, MeshFlags, LogContext, MeshError, getArrayTemp} from './mesh_base.js';
+import {MeshTypes, MeshFlags, LogContext, MeshError, getArrayTemp, ReusableIter} from './mesh_base.js';
 import {CDFlags, CustomDataElem, LayerSettingsBase} from './customdata.js';
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {applyTriangulation} from './mesh_tess.js';
@@ -117,10 +117,35 @@ export class Remesher {
     this.lctx = lctx;
     this.done = false;
 
+    this.cd_orig = -1;
+
     this.optData = undefined;
 
     this.goalType = goalType;
     this.goalValue = goalValue;
+  }
+
+  getOrigData(mesh) {
+    let idx = mesh.verts.customData.getNamedLayerIndex("__orig_co", "vec3");
+    if (idx < 0) {
+      let layer = mesh.verts.addCustomDataLayer("vec3", "__orig_co");
+      layer.flag |= CDFlags.TEMPORARY;
+
+      idx = layer.index;
+    }
+
+    this.cd_orig = idx;
+    return idx;
+  }
+
+  initOrigData(mesh) {
+    let cd_orig = this.getOrigData(mesh);
+
+    for (let v of mesh.verts) {
+      v.customData[cd_orig].value.load(v);
+    }
+
+    return cd_orig;
   }
 
   get relax() {
@@ -176,6 +201,8 @@ export const RemeshFlags = {
   CLEANUP  : 4
 };
 
+const EDGE_DIAG = MeshFlags.MAKE_FACE_TEMP;
+
 export class UniformTriRemesher extends Remesher {
   constructor(mesh, lctx = undefined, goalType, goalValue) {
     super(mesh, lctx, goalType, goalValue);
@@ -183,7 +210,8 @@ export class UniformTriRemesher extends Remesher {
     this.flag = RemeshFlags.SUBDIVIDE | RemeshFlags.COLLAPSE | RemeshFlags.CLEANUP;
 
     this.lctx = lctx;
-    this.threshold = 0.5;
+    this.subdFac = 0.5;
+    this.collFac = 0.5;
     this.i = 0;
     this.elen = 1.0;
 
@@ -193,12 +221,20 @@ export class UniformTriRemesher extends Remesher {
     this.minEdges = 5; //have at least these number of edges to continue iteration
   }
 
-  get threshold() {
-    return this.params[SUBD_FAC]*0.5 + this.params[COLL_FAC]*0.5;
+  get subdFac() {
+    return this.params[SUBD_FAC]
   }
 
-  set threshold(v) {
-    this.params[SUBD_FAC] = this.params[COLL_FAC] = v;
+  set subdFac(v) {
+    this.params[SUBD_FAC] = v;
+  }
+
+  get collFac() {
+    return this.params[COLL_FAC]
+  }
+
+  set collFac(v) {
+    this.params[COLL_FAC] = v;
   }
 
   get rakeFactor() {
@@ -215,16 +251,29 @@ export class UniformTriRemesher extends Remesher {
     }
   }
 
-  start(max = this.mesh.edges.length>>1) {
-    let mesh = this.mesh;
+  calcQuadEdges(mesh) {
+    //V + F - (L - F) - 2(S - G) = E;
 
-    this.triangulate();
+    let V = mesh.verts.length;
+    let F = mesh.faces.length;
+
+    let S = 1;
+    let G = 0;
+
+    let totquad = F*0.5;
+    let tot = V + totquad - 2*(S - G);
+
+    tot += F*0.5;
+
+    return tot;
+  }
+
+  calcEdgeLen() {
+    let mesh = this.mesh;
 
     let goal = this.goalValue;
     let elen = 0;
     let tot = 0;
-
-    this.max = max;
 
     for (let e of mesh.edges) {
       let w = e.v1.vectorDistance(e.v2);
@@ -242,7 +291,18 @@ export class UniformTriRemesher extends Remesher {
       elen *= goal;
     }
 
-    this.elen = elen;
+    return elen;
+  }
+
+  start(max = this.mesh.edges.length>>1) {
+    let mesh = this.mesh;
+
+    this.initOrigData(mesh);
+
+    this.triangulate();
+
+    this.max = max;
+    this.elen = this.calcEdgeLen();
   }
 
   rake(fac = this.rakeFactor) {
@@ -310,15 +370,19 @@ export class UniformTriRemesher extends Remesher {
         let w;
 
         w = d1.dot(d2);
+        w = Math.acos(w*0.99999)/Math.PI;
+        if (Math.abs(w-0.25) < 0.07 || Math.abs(w-0.75) < 0.07) {
+          e.flag |= EDGE_DIAG;//|MeshFlags.DRAW_DEBUG;
+        }
+
         if (0) {
           w = 1.0 - Math.tent(Math.tent(w));
           w = w*w*(3.0 - 2.0*w);
         } else if (val !== 4) {
-          w = Math.acos(w*0.99999)/Math.PI;
           w = 1.0 - Math.tent((w - 0.5)*2.0);
+          //w = Math.abs(w-0.5)*2.0;
           w = w*w*(3.0 - 2.0*w);
         } else {
-          w = Math.acos(w*0.99999)/Math.PI;
           w = Math.tent((w - 0.5));
           w = w*w*(3.0 - 2.0*w);
         }
@@ -360,7 +424,22 @@ export class UniformTriRemesher extends Remesher {
     let elen = this.elen;
     let max = this.max;
 
+    this.i++;
+
+    console.log(this.i, "quad edges", this.calcQuadEdges(mesh), mesh.edges.length);
+
+    for (let i = 0; i < 3; i++) {
+      this.rake();
+    }
+
     let es, es2;
+
+    let cd_orig = this.cd_orig;
+
+    for (let v of mesh.verts) {
+      let oco = v.customData[cd_orig].value;
+      v.interp(oco, 0.2);
+    }
 
     if (this.flag & RemeshFlags.SUBDIVIDE) {
       es = util.list(mesh.edges);
@@ -393,7 +472,13 @@ export class UniformTriRemesher extends Remesher {
       let tot = 0.0;
       co.zero();
 
-      for (let v2 of v.neighbors) {
+      for (let e of v.edges) {
+        if (e.flag & EDGE_DIAG) {
+          continue;
+        }
+
+        let v2 = e.otherVertex(v);
+
         n.load(v2).sub(v);
         let d = n.dot(v.no);
         n.addFac(v.no, -d*project).add(v);
@@ -419,18 +504,48 @@ export class UniformTriRemesher extends Remesher {
       vsmooth(v);
     }
 
-    for (let i = 0; i < 3; i++) {
-      this.rake();
+    let DRAW_DEBUG = MeshFlags.DRAW_DEBUG;
+
+    let tan = new Vector3();
+    let mid = new Vector3();
+    let elen_sqrt2 = elen * Math.sqrt(2.0);
+    let efac = this.rakeFactor;
+
+    for (let e of mesh.edges) {
+      if (1) {
+        let l1 = e.v1.vectorDistance(e.v2);
+        let elen2 = elen;
+
+        if (e.flag & EDGE_DIAG) {
+          elen2 = elen_sqrt2;
+        }
+        //mid.load(e.v1).interp(e.v2, 0.5);
+
+        tan.load(e.v2).sub(e.v1);
+        tan.normalize();
+        tan.mulScalar((l1 - elen)*0.1*efac);
+
+        if (isNaN(tan.dot(tan))) {
+          console.error("NaN!", tan);
+          break;
+        }
+
+        e.v1.addFac(tan, 1.0);
+        e.v2.addFac(tan, -1.0);
+      }
+
+      e.flag &= ~EDGE_DIAG;
+      e.flag &= ~DRAW_DEBUG;
     }
 
-    if (this.i%3 === 0) {
+    //if (this.i%3 === 0) {
       mesh.regenTessellation();
       mesh.recalcNormals();
-    }
+    //}
   }
 
   collapse(es, elen, max) {
-    elen *= 1.0 - this.threshold;
+    elen *= 1.0 - this.collFac;
 
     let mesh = this.mesh, lctx = this.ctx;
 
@@ -449,7 +564,7 @@ export class UniformTriRemesher extends Remesher {
   }
 
   subdivide(es, elen, max) {
-    elen *= 1.0 + this.threshold;
+    elen *= 1.0 + 1.5*this.subdFac;
 
     let mesh = this.mesh, lctx = this.lctx;
 
@@ -1218,7 +1333,324 @@ export function cleanupQuads2(mesh, faces, lctx) {
 
 let _lctx_ring = util.cachering.fromConstructor(LogContext, 64);
 
-export function cleanupQuads(mesh, faces, lctx) {
+//used by UniformQuadRemesher
+function _cleanupQuads(mesh, faces=mesh.faces, lctx, maxVerts=1e17) {
+  if (!(faces instanceof Set)) {
+    faces = new Set(faces);
+  }
+
+  let totv = 0;
+
+  let es = new Set();
+  let vs = new Set();
+
+  let tris = [];
+  for (let f of faces) {
+    if (f.isTri()) {
+      tris.push(f);
+    }
+  }
+
+  for (let t of tris) {
+    faces.delete(t);
+  }
+
+  mesh.regenTessellation();
+  mesh.recalcNormals();
+
+  trianglesToQuads(mesh, tris, undefined, lctx, faces);
+
+  mesh.regenTessellation();
+
+  for (let f of faces) {
+    for (let l of f.loops) {
+      vs.add(l.v);
+      es.add(l.e);
+    }
+  }
+
+  for (let v of vs) {
+    if (totv >= maxVerts) {
+      break;
+    }
+
+    if (v.eid < 0) {
+      continue;
+    }
+
+    if (v.valence !== 3) {
+      continue;
+    }
+
+    let ok;
+
+    for (let l of v.loops) {
+      if (l.v !== v) {
+        l = l.next;
+      }
+
+      ok = l.f.isQuad();
+      ok = ok && l.next.next.v.valence === 3;
+
+      if (ok) {
+        let l2 = mesh.splitFace(l.f, l, l.next.next, lctx);
+
+        for (let l of l2.f.loops) {
+          mesh.setSelect(l.v, true);
+          l.v.flag |= MeshFlags.UPDATE;
+        }
+
+        if (l2) {
+          mesh.collapseEdge(l2.e, lctx);
+
+          totv++;
+        }
+
+        //return;
+        //break;
+      }
+    }
+  }
+
+  let es2 = new Set();
+
+  for (let v of vs) {
+    v.flag |= MeshFlags.UPDATE;
+
+    if (v.eid < 0 || v.valence < 5) {
+      continue;
+    }
+
+    if (v.valence === 6) {
+      let tottri = 0;
+      let totquad = 0;
+
+      let bad = false;
+
+      for (let f of v.faces) {
+        if (f.isTri()) {
+          for (let l of f.loops) {
+            if (l !== l.radial_next && l.radial_next.f.isTri()) {
+              bad = true;
+            }
+          }
+          tottri++;
+        } else {
+          totquad++;
+        }
+      }
+
+      if (!bad && tottri === 2) {
+        for (let e of v.edges) {
+          let ok = e.l && e.l.f.isQuad();
+          if (e.l && e.l.radial_next !== e.l) {
+            ok = ok && e.l.radial_next.f.isQuad();
+          }
+
+          if (ok) {
+            es2.add(e);
+            break;
+          }
+        }
+
+        continue;
+      }
+    }
+
+    //continue;
+    let ok;
+
+    if (es2.size > maxVerts || totv > maxVerts) {
+      //break;
+    }
+
+    for (let l of v.loops) {
+      if (!l.f.isTri()) {
+        continue;
+      }
+
+      let subd = true;// Math.random() > 0.5;
+      ok = false;
+
+      for (let l2 of l.f.loops) {
+        if (0 && subd) {
+          ok = true;
+          es2.add(l2.e);
+          continue;
+        }
+
+        if (l2.v.valence === 4 && l2.next.v.valence === 4) {
+          ok = true;
+
+          if (0) { //Math.random() > 0.25) {
+            let l3 = l2.prev;
+
+            if (l3.f === l3.radial_next.f || l3.f.isTri() || (Math.random() > 0.5)) {
+              l3 = l2.next;
+            }
+            if (l3.f === l3.radial_next.f) {
+              continue;
+            }
+
+            let l4 = l3.radial_next;
+            let l5;
+
+            if (l4.v !== l3.v) {
+              l5 = l4.prev.prev;
+            } else {
+              l5 = l4.next.next;
+            }
+
+            if (l5.f.isTri()) {
+              ok = false;
+              continue;
+            }
+
+            es2.add(l5.prev.e);
+
+            if (0) {
+              console.log(l5.f.eid, l5.f.eid);
+
+              try {
+                mesh.splitFace(l5.f, l4, l5, lctx);
+              } catch (error) {
+                console.log(error.stack);
+                console.log(error.message);
+              }
+            }
+          } else {
+            mesh.collapseEdge(l2.e, lctx);
+
+            if (totv++ > maxVerts) {
+              //break;
+            }
+          }
+          break;
+        }
+      }
+
+      if (ok) {
+        break;
+      }
+    }
+  }
+
+  es2 = es2.filter(e => e.eid >= 0);
+
+  splitEdgesSmart2(mesh, es2, undefined, lctx);
+}
+
+export function cleanupQuads(mesh, faces=mesh.faces, lctx, maxVerts=1e17) {
+  if (!(faces instanceof Set)) {
+    faces = new Set(faces);
+  }
+
+  let totv = 0;
+
+  let es = new Set();
+  let vs = new Set();
+
+  let tris = [];
+  for (let f of faces) {
+    if (f.isTri()) {
+      tris.push(f);
+    }
+  }
+
+  for (let t of tris) {
+    faces.delete(t);
+  }
+
+  mesh.regenTessellation();
+  mesh.recalcNormals();
+
+  trianglesToQuads(mesh, tris, undefined, lctx);
+
+  mesh.regenTessellation();
+
+  for (let f of faces) {
+    for (let l of f.loops) {
+      vs.add(l.v);
+      es.add(l.e);
+    }
+  }
+
+  for (let v of vs) {
+    if (v.eid < 0) {
+      continue;
+    }
+
+    if (v.valence !== 3) {
+      continue;
+    }
+
+    let ok;
+
+    for (let l of v.loops) {
+      if (l.v !== v) {
+        l = l.next;
+      }
+
+      ok = l.f.isQuad();
+      ok = ok && l.next.next.v.valence === 3;
+
+      if (ok) {
+        let l2 = mesh.splitFace(l.f, l, l.next.next, lctx);
+
+        for (let l of l2.f.loops) {
+          mesh.setSelect(l.v, true);
+          l.v.flag |= MeshFlags.UPDATE;
+        }
+
+        if (l2) {
+          mesh.collapseEdge(l2.e, lctx);
+
+          if (totv++ > maxVerts) {
+            return;
+          }
+        }
+
+        //return;
+        //break;
+      }
+    }
+  }
+
+  for (let v of vs) {
+    v.flag |= MeshFlags.UPDATE;
+
+    if (v.eid < 0 || v.valence < 5) {
+      continue;
+    }
+
+    let ok;
+
+    for (let l of v.loops) {
+      if (!l.f.isTri()) {
+        continue;
+      }
+
+      for (let l2 of l.f.loops) {
+        if (l2.v.valence === 4 && l2.next.v.valence === 4) {
+          ok = true;
+          mesh.collapseEdge(l2.e, lctx);
+
+          if (totv++ > maxVerts) {
+            return;
+          }
+          break;
+        }
+      }
+
+      if (ok) {
+        break;
+      }
+    }
+  }
+}
+
+export function cleanupQuadsOld(mesh, faces, lctx) {
+
   if (0) {
     faces = mesh.faces;
 
@@ -1716,7 +2148,55 @@ export class UniformQuadRemesher extends UniformTriRemesher {
     this.i = 0;
   }
 
+
   step() {
+    let doquad = this.i % 18 === 0;
+
+    if (this.i % 2 === 0 && !doquad) {
+      this.mesh.regenTessellation();
+      this.mesh.recalcNormals();
+
+      for (let v of this.mesh.verts) {
+        v.flag |= MeshFlags.UPDATE;
+      }
+    }
+
+    if (1 || !doquad) {
+      let i = this.i;
+
+      let steps = 1;
+
+      if (!doquad) {
+        //steps = 3;
+      }
+
+      triangulateMesh(this.mesh, this.mesh.faces, this.lctx);
+      for (let j=0; j<steps; j++) {
+        super.step();
+      }
+
+      if (!doquad) {
+        trianglesToQuads(this.mesh, this.mesh.faces, undefined, this.lctx);
+      }
+
+      this.i = i;
+    }
+
+    if (doquad) {
+      _cleanupQuads(this.mesh, this.mesh.faces, this.lctx, Math.max(this.mesh.verts.length>>4, 4));
+      this.elen = this.calcEdgeLen();
+
+      for (let i=0; i<3; i++) {
+        vertexSmooth(this.mesh, this.mesh.verts, 0.5, 0.0);
+      }
+    }
+
+    this.mesh.regenRender();
+    this.mesh.graphUpdate();
+
+    this.i++;
+
+    return;
     let lctx = this.lctx;
     let mesh = this.mesh;
 
@@ -1785,7 +2265,7 @@ export function remeshMesh(mesh, remesher = Remeshers.UNIFORM_TRI, lctx = undefi
   let m = new cls(mesh, lctx, goalType, goalValue);
 
   m.rakeFactor = rakeFactor;
-  m.threshold = threshold;
+  m.collFac = m.subdFac = threshold;
   m.relax = relax;
   m.projection = projection;
   m.flag = flag;

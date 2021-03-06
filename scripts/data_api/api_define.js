@@ -7,6 +7,8 @@ import * as editors from '../editors/all.js';
 import '../tet/wiregen_ops.js';
 import '../mesh/mesh_bevel.js';
 import '../smesh/smesh_ops.js';
+import '../mesh/mesh_ops.js';
+import '../mesh/mesh_extrudeops.js';
 
 import '../image/image_ops.js';
 import '../image/image.js';
@@ -1073,7 +1075,7 @@ export function getDataAPI() {
   AppSettings.defineAPI(api);
 
   buildEditorsAPI(api, cstruct);
-  buildToolSysAPI(api);
+  buildToolSysAPI(api, true);
 
   cstruct.struct("propCache", "toolDefaults", "Tool Defaults", api.mapStruct(ToolPropertyCache));
 

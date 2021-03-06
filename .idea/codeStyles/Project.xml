@@ -1,0 +1,38 @@
+<component name="ProjectCodeStyleConfiguration">
+  <code_scheme name="Project" version="173">
+    <JSCodeStyleSettings version="0">
+      <option name="ALIGN_OBJECT_PROPERTIES" value="2" />
+      <option name="ALIGN_VAR_STATEMENTS" value="1" />
+      <option name="USE_DOUBLE_QUOTES" value="false" />
+      <option name="USE_EXPLICIT_JS_EXTENSION" value="TRUE" />
+      <option name="OBJECT_LITERAL_WRAP" value="1" />
+      <option name="IMPORTS_WRAP" value="1" />
+    </JSCodeStyleSettings>
+    <codeStyleSettings language="HTML">
+      <indentOptions>
+        <option name="INDENT_SIZE" value="2" />
+        <option name="CONTINUATION_INDENT_SIZE" value="4" />
+        <option name="TAB_SIZE" value="2" />
+      </indentOptions>
+    </codeStyleSettings>
+    <codeStyleSettings language="JavaScript">
+      <option name="ALIGN_MULTILINE_TERNARY_OPERATION" value="true" />
+      <option name="ALIGN_MULTILINE_ARRAY_INITIALIZER_EXPRESSION" value="true" />
+      <option name="SPACE_AROUND_MULTIPLICATIVE_OPERATORS" value="false" />
+      <option name="SPACE_AROUND_SHIFT_OPERATORS" value="false" />
+      <option name="METHOD_PARAMETERS_WRAP" value="1" />
+      <option name="TERNARY_OPERATION_WRAP" value="1" />
+      <option name="TERNARY_OPERATION_SIGNS_ON_NEXT_LINE" value="true" />
+      <option name="KEEP_SIMPLE_BLOCKS_IN_ONE_LINE" value="true" />
+      <option name="ARRAY_INITIALIZER_WRAP" value="1" />
+      <option name="DOWHILE_BRACE_FORCE" value="3" />
+      <option name="WHILE_BRACE_FORCE" value="3" />
+      <option name="FOR_BRACE_FORCE" value="3" />
+      <indentOptions>
+        <option name="INDENT_SIZE" value="2" />
+        <option name="CONTINUATION_INDENT_SIZE" value="2" />
+        <option name="TAB_SIZE" value="2" />
+      </indentOptions>
+    </codeStyleSettings>
+  </code_scheme>
+</component>

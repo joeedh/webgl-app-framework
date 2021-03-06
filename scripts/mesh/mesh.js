@@ -660,6 +660,14 @@ export class Mesh extends SceneObjectData {
     return this.features & MeshFeatures.EDGE_HANDLES;
   }
 
+  addHandles() {
+    this.features |= MeshFeatures.EDGE_HANDLES;
+
+    if (this.handles.customData.getLayerIndex("handle") < 0) {
+      this.handles.addCustomDataLayer("handle");
+    }
+  }
+
   getElemLists() {
     let ret = [];
 
@@ -780,7 +788,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  makeVertex(co, customEid = undefined) {
+  makeVertex(co, customEid = undefined, lctx) {
     if (!(this.features & MeshFeatures.MAKE_VERT))
       throw new MeshFeatureError("makeVertex not supported");
     let v;
@@ -812,6 +820,10 @@ export class Mesh extends SceneObjectData {
     this.verts.push(v);
 
     v.flag |= MeshFlags.UPDATE;
+
+    if (lctx) {
+      lctx.newVertex(v);
+    }
 
     return v;
   }
@@ -1283,13 +1295,13 @@ export class Mesh extends SceneObjectData {
     return f2;
   }
 
-  makeQuad(v1, v2, v3, v4) {
+  makeQuad(v1, v2, v3, v4, lctx) {
     _quad[0] = v1;
     _quad[1] = v2;
     _quad[2] = v3;
     _quad[3] = v4;
 
-    return this.makeFace(_quad);
+    return this.makeFace(_quad, undefined, undefined, lctx);
   }
 
   makeTri(v1, v2, v3, lctx, ignoreDuplicates = false) {
@@ -1443,9 +1455,18 @@ export class Mesh extends SceneObjectData {
 
       if (isNaN(n.dot(n))) {
         console.error("NaN in normal calc!", w, l1.v, l2.v, l3.v, l1, l2, l3);
+        l1.v.zero();
+        l2.v.zero();
+        l3.v.zero();
+        l1.v.addScalar(0.01);
         continue;
       }
+
       if (isNaN(w)) {
+        l1.v.zero();
+        l2.v.zero();
+        l3.v.zero();
+        l1.v.addScalar(0.01);
         console.error("NaN in normal area calc!", w, l1.v, l2.v, l3.v, l1, l2, l3);
         continue;
       }
@@ -1646,6 +1667,14 @@ export class Mesh extends SceneObjectData {
     }
 
     this.edges.remove(e);
+  }
+
+  replaceLoopEdge(l, newe) {
+    this._radialRemove(l.e, l);
+    this._radialInsert(newe, l);
+    l.e = newe;
+
+    return this;
   }
 
   killFace(f, lctx, logtag = 0) {
@@ -2401,7 +2430,7 @@ export class Mesh extends SceneObjectData {
       this._diskRemove(e.v1, e);
       this._diskRemove(e.v2, e);
 
-      if (ev1 === ev2) {
+      if (ev1 === ev2 || this.getEdge(ev1, ev2)) {
         this._elemRemove(e);
         this.edges.remove(e);
       } else {
@@ -5320,6 +5349,14 @@ export class Mesh extends SceneObjectData {
     for (let v of this.verts) {
       v.flag |= MeshFlags.UPDATE;
     }
+
+    for (let e of this.edges) {
+      e.flag |= MeshFlags.UPDATE;
+    }
+
+    for (let f of this.faces) {
+      f.flag |= MeshFlags.UPDATE;
+    }
   }
 
   drawElements(view3d, gl, selmask, uniforms, program, object, drawTransFaces = false) {
@@ -6443,3 +6480,6 @@ window._debug_recalc_all_normals = function (force = false) {
 }
 
 window.Mesh = Mesh
+
+import {setMeshClass} from './mesh_tess.js';
+setMeshClass(Mesh);

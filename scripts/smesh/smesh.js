@@ -345,13 +345,19 @@ export class SMesh extends SceneObjectData {
     }
   }
 
-  ensureEdge(v1, v2, lctx) {
+  ensureEdge(v1, v2, lctx, exampleEdge) {
     let ei = this.getEdge(v1, v2);
     if (ei !== undefined) {
       return ei;
     }
 
-    return this.makeEdge(v1, v2, lctx);
+    let e = this.makeEdge(v1, v2, lctx);
+
+    if (exampleEdge) {
+      this.copyElemData(e, exampleEdge);
+    }
+
+    return e;
   }
 
   makeEdge(v1, v2, lctx) {
@@ -497,7 +503,7 @@ export class SMesh extends SceneObjectData {
     for (let elist of this.elists) {
       elist.smesh = this;
     }
-    
+
     this.bindElists();
   }
 }

@@ -1682,6 +1682,8 @@ export function trianglesToQuads(mesh, faces, flag = TriQuadFlags.DEFAULT, lctx,
     mesh.copyElemData(l.prev, l4);
 
     mesh.killEdge(e, lctx);
+
+    f.calcNormal();
   }
 }
 

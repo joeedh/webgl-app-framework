@@ -1,5 +1,4 @@
 import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
-import {ExtrudeRegionsOp} from '../../../mesh/mesh_ops.js';
 import {ObjectFlags} from '../../../sceneobject/sceneobject.js';
 import {ToolMode} from '../view3d_toolmode.js';
 import {SelMask, SelOneToolModes, SelToolModes} from '../selectmode.js';

@@ -669,4 +669,6 @@ export function tetrahedralizeMesh(tm, cells = tm.cells, lctx) {
       tm.killVertex(v);
     }
   }
+
+  tm.flagSurfaceFaces();
 }

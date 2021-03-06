@@ -111,6 +111,21 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
   let clr = new Vector4(selcolor).interp(ecolors[MeshFlags.SEAM], 0.5);
   ecolors[MeshFlags.SELECT|MeshFlags.SEAM] = clr;
 
+  for (let k of Object.keys(ecolors)) {
+    let clr = ecolors[k];
+    k = parseInt(k);
+
+    clr = new Vector4(clr);
+    if (!k) {
+      clr[2] = 0.5;
+    } else {
+      clr.mulScalar(0.75);
+      clr[3] = 1.0;
+    }
+
+    ecolors[k | MeshFlags.DRAW_DEBUG] = clr;
+  }
+
   pushtime("start2");
 
   let axes = [-1];
@@ -225,7 +240,8 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
 
         let line = smoothline ? sm.smoothline(e.eid, e.v1, e.v2) : sm.line(e.eid, e.v1, e.v2);
 
-        let mask = e.flag & (MeshFlags.SELECT | MeshFlags.SEAM);
+        let mask = e.flag & (MeshFlags.SELECT | MeshFlags.SEAM | MeshFlags.DRAW_DEBUG);
+
         let color = ecolors[mask];
 
         line.colors(color, color);
