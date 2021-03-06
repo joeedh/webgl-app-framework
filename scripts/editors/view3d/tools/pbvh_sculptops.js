@@ -749,7 +749,7 @@ export class PaintOp extends PaintOpBase {
 
     //console.log("STEPS", steps, radius, spacing, this._first);
 
-    const DRAW                                                            = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
+    const DRAW                                                            = SculptTools.DRAW, SHARP                                  = SculptTools.SHARP, FILL = SculptTools.FILL,
           SMOOTH                                                          = SculptTools.SMOOTH, CLAY = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
           PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
           PAINT_SMOOTH                                                    = SculptTools.PAINT_SMOOTH, GRAB                   = SculptTools.GRAB;
@@ -2520,7 +2520,7 @@ export class PaintOp extends PaintOpBase {
 
       const velfac2 = velfac*0.05;
 
-      vsmooth = function(v, fac) {
+      vsmooth = function (v, fac) {
         if (mode === SMOOTH && ps.invert) {
           vsharp(v, fac);
           return;
@@ -2687,7 +2687,7 @@ export class PaintOp extends PaintOpBase {
     let _tmp4 = new Vector3();
     let _tmp5 = new Vector3();
 
-    let vsmooth_median = (v, fac=0.5) => {
+    let vsmooth_median = (v, fac = 0.5) => {
       let nmat = mat1;
 
       mat1.makeIdentity();
@@ -2705,9 +2705,9 @@ export class PaintOp extends PaintOpBase {
         return;
       }
 
-      let list1 = getArrayTemp(val+1, false);
-      let list2 = getArrayTemp(val+1, false);
-      let list3 = getArrayTemp(val+1, false);
+      let list1 = getArrayTemp(val + 1, false);
+      let list2 = getArrayTemp(val + 1, false);
+      let list3 = getArrayTemp(val + 1, false);
 
       let vi = 1;
 
@@ -2733,12 +2733,12 @@ export class PaintOp extends PaintOpBase {
       list3.sort();
 
       let len = list1.length;
-      let idx = (len-1)>>1;
+      let idx = (len - 1)>>1;
 
       if (len > 2 && (len & 1) === 0) {
-        co[0] = list1[idx]*0.5 + list1[idx+1]*0.5;
-        co[1] = list2[idx]*0.5 + list2[idx+1]*0.5;
-        co[2] = list3[idx]*0.5 + list3[idx+1]*0.5;
+        co[0] = list1[idx]*0.5 + list1[idx + 1]*0.5;
+        co[1] = list2[idx]*0.5 + list2[idx + 1]*0.5;
+        co[2] = list3[idx]*0.5 + list3[idx + 1]*0.5;
       } else {
         co[0] = list1[idx];
         co[1] = list2[idx];
@@ -2750,7 +2750,7 @@ export class PaintOp extends PaintOpBase {
       co.multVecMatrix(mat1);
       co.add(v);
 
-      co3.mulScalar(1.0 / totw);
+      co3.mulScalar(1.0/totw);
       co.interp(co3, 0.5);
 
       v.interp(co, fac);
@@ -3536,7 +3536,7 @@ export class PaintOp extends PaintOpBase {
         for (let e of v.edges) {
           let v2 = v === e.v1 ? e.v2 : e.v1;
 
-        //for (let v2 of v.neighbors) {
+          //for (let v2 of v.neighbors) {
           if (!(v2.flag & flag)) {
             v2.flag |= flag;
 
@@ -3631,10 +3631,10 @@ export class PaintOp extends PaintOpBase {
           let curve = falloff;
 
           if (dis2 > dis) {
-          //  dis = dis2;
-          //  curve = falloff2;
+            //  dis = dis2;
+            //  curve = falloff2;
           }
-          dis = Math.abs(dis+dis2)*0.5; //Math.sqrt(dis*dis + dis2*dis2) / Math.sqrt(2.0);
+          dis = Math.abs(dis + dis2)*0.5; //Math.sqrt(dis*dis + dis2*dis2) / Math.sqrt(2.0);
 
           f = Math.max(1.0 - dis/radius, 0.0);
           f = curve.evaluate(f);
@@ -4515,6 +4515,8 @@ export class PaintOp extends PaintOpBase {
     let ok = brush.dynTopo.flag & DynTopoFlags.ADAPTIVE;
     ok = ok || (brush.rake > 0 && brush.rakeCurvatureFactor > 0);
     ok = ok || (brush.sharp > 0);
+
+    return ok;
   }
 
   * doTopology(mesh, maxedges, bvh, esize, vs, es, radius, brush) {
@@ -4816,19 +4818,29 @@ export class PaintOp extends PaintOpBase {
   }
 
   edist_subd(e, v1, v2, eset, cd_curv) {
-    let dis = v1.vectorDistanceSqr(v2);
+    let dis = v1.vectorDistanceSqr(v2) * this.edist_scale(e, cd_curv);
+
+    let val = (v1.valence + v2.valence)*0.5;
+    //let mul = Math.max(Math.abs(val - 5.0)**3, 1.0);
+    let mul = Math.max((val - 5.0)**2, 1.0);
+
+    dis *= mul*0.125;
 
     return dis;
-    /*
+
+    //let dis = v1.vectorDistanceSqr(v2);
+
+    //return dis;
+    //*
     if (dis === 0.0) {
       return 0.0;
     }
 
-    let val = (v1.valence + v2.valence) * 0.5;
-    let d = Math.max(val-5, 1) * 0.5;
+    //let val = (v1.valence + v2.valence) * 0.5;
+    let d = Math.max(val - 5, 1)*0.5;
 
-    d = Math.abs(val-6) + 1.0;
-    return dis / d;
+    d = Math.abs(val - 6) + 1.0;
+    return dis/d;
     //*/
 
     /*
@@ -5266,7 +5278,7 @@ export class PaintOp extends PaintOpBase {
       let v1 = e.v1;
       let v2 = e.v2;
 
-      for (let i=0; i<2; i++) {
+      for (let i = 0; i < 2; i++) {
         let v = i ? v2 : v1;
         let val = v.valence;
 

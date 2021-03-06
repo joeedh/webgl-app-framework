@@ -5,22 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
-      <change afterPath="$PROJECT_DIR$/scripts/mesh/mesh_extrudeops.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/mesh/mesh_solver.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/data_api/api_define.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/data_api/api_define.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/selecttool.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/selecttool.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_draw.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_draw.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/smesh/smesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/smesh/smesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/tet/tetgen_utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/tet/tetgen_utils.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -246,6 +233,7 @@
       <workItem from="1614210404126" duration="16194000" />
       <workItem from="1614461566030" duration="8845000" />
       <workItem from="1614587559312" duration="1844000" />
+      <workItem from="1614992723872" duration="4591000" />
     </task>
     <servers />
   </component>
