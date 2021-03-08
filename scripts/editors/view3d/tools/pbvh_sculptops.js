@@ -1910,7 +1910,8 @@ export class PaintOp extends PaintOpBase {
       let t3 = new Vector3(t2).cross(t1);
       let c = lastps.p;
 
-      if (1 || t1.dot(t2) > 0.05) {
+      //XXX not working
+      if (0) { //(1 || t1.dot(t2) > 0.05) {
         let quat = new Quat();
 
         t1.cross(ps.viewPlane).normalize();
@@ -3070,8 +3071,96 @@ export class PaintOp extends PaintOpBase {
     let cdata2 = makeDummyCData();
     let cdata3 = makeDummyCData();
 
+    let rake = (v, fac=0.5, sdis=1.0) => {
+      if (!ENABLE_RAKE) {
+        return;
+      }
+
+      //XXX
+      if (doCurvRake && rakeCurvePosXOnly && v[0] < 0.0) {
+        return;
+      }
+
+      let val = v.valence;
+      if (fac === 0.0 || val === 0.0) {
+        return;
+      }
+
+      let co = _rtmp.zero();
+
+      let d1 = _rdir;
+      let d2 = _rtmp2;
+      //let d3 = _rtmp3;
+
+      d1.load(ps.dp);
+      let d = d1.dot(v.no);
+      d1.addFac(v.no, -d).normalize();
+
+      if (Math.abs(ps.angle) > Math.PI) {
+        //d1.negate();
+      }
+
+      if (doCurvRake && (!rakeCurvePosXOnly || v[0] >= 0.0)) {
+        let cv = v.customData[cd_curv];
+        cv.check(v);
+
+        d1.interp(cv.tan, rakeCurveFac).normalize();
+      }
+
+      let pad = 0.05;
+      let tot = 0.0;
+
+      for (let e of v.edges) {
+        let v2 = e.otherVertex(v);
+
+        if (e.flag & skipflag) {
+          continue;
+        }
+
+        d2.load(v2).sub(v);
+
+        let nfac = -d2.dot(v.no)*0.99;
+
+        d2.addFac(v.no, nfac);
+        d2.normalize();
+
+        let w;
+
+        w = Math.abs(Math.abs(d1.dot(d2)) - 0.5)*2.0;
+        w = w*w*w;
+
+        //w = w*w*(3.0 - 2.0*w)*2.0;
+        //w = Math.abs(w-0.5)*2.0;
+
+        //w = w*w*w*w*2.0;
+
+        //w = Math.abs(w);
+        //w = 1.0 - Math.tent(w - 0.5);
+        //w = Math.tent(w);
+
+        //w *= w*w;
+
+        w = w*(1.0 - pad) + pad;
+
+        co.addFac(v2, w);
+        co.addFac(v.no, nfac*w);
+        tot += w;
+      }
+
+      if (tot === 0.0) {
+        return;
+      }
+
+      co.mulScalar(1.0/tot);
+      v.interp(co, fac);
+
+      if (haveGrids) {
+        gridVertStitch(v);
+      }
+    }
+
     //disabled for tet meshes
-    let rake = (v, fac = 0.5, sdis = 1.0) => {
+    let oldrake = (v, fac = 0.5, sdis = 1.0) => {
       if (!ENABLE_RAKE) {
         return;
       }
@@ -4613,7 +4702,7 @@ export class PaintOp extends PaintOpBase {
 
       let max1 = Math.ceil(maxedges/ratio), max2 = Math.ceil(maxedges*ratio);
 
-      const nosmooth = 0;
+      const nosmooth = 1;
 
       let dosmooth = (vs, fac = 0.5) => {
         if (nosmooth) {
