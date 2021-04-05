@@ -586,6 +586,8 @@ export class SculptBrush extends DataBlock {
 
     this.flag = BrushFlags.SHARED_SIZE;
 
+    this.smoothRadiusMul = 1.0;
+
     this.smoothProj = 0.0; //how much smoothing should project to surface
     this.spacingMode = BrushSpacingModes.EVEN;
 
@@ -655,6 +657,7 @@ export class SculptBrush extends DataBlock {
       r = r && feq(this.radius, b.radius);
     }
 
+    r = r && feq(this.smoothRadiusMul, b.smoothRadiusMul);
     r = r && this.spacingMode === b.spacingMode;
     r = r && feq(this.tool, b.tool);
     r = r && feq(this.rake, b.rake);
@@ -695,6 +698,7 @@ export class SculptBrush extends DataBlock {
       d.add(this.radius);
     }
 
+    d.add(this.smoothRadiusMul);
     d.add(this.spacingMode);
     d.add(this.flag);
     d.add(this.tool);
@@ -737,6 +741,7 @@ export class SculptBrush extends DataBlock {
     b.flag = this.flag;
     b.tool = this.tool;
     b.sharp = this.sharp;
+    b.smoothRadiusMul = this.smoothRadiusMul;
 
     b.spacingMode = this.spacingMode;
     b.spacing = this.spacing;
@@ -815,6 +820,7 @@ SculptBrush.STRUCT = nstructjs.inherit(SculptBrush, DataBlock) + `
   rakeCurvatureFactor : float;
   spacingMode: int;
   sharp      : float;
+  smoothRadiusMul : float;
 }
 `;
 nstructjs.register(SculptBrush);

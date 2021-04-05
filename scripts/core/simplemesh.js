@@ -1501,6 +1501,10 @@ export class SimpleIsland {
     program = program === undefined ? this.mesh.program : program;
     let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
 
+    if (program && !program.program) {
+      program.checkCompile(gl);
+    }
+
     if (!program || !program.program) {
       return;
     }

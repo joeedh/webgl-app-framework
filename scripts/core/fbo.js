@@ -3,6 +3,7 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as simplemesh from './simplemesh.js';
 import * as webgl from './webgl.js';
 import {Texture} from "./webgl.js";
+import {PrimitiveTypes} from './simplemesh.js';
 
 let DEPTH24_STENCIL8 = 35056;
 let RGBA32F = 34836;
@@ -217,12 +218,20 @@ export class FBO {
     width = ~~width;
     height = ~~height;
 
-    if (this.smesh === undefined || this.size[0] != width || this.size[1] != height) {
+    if (this.smesh === undefined || this.size[0] !== width || this.size[1] !== height) {
       let lf = simplemesh.LayerTypes;
-      this.smesh = new simplemesh.SimpleMesh(lf.LOC | lf.UV);
+      let sm = this.smesh = new simplemesh.SimpleMesh(lf.LOC | lf.UV);
+      sm.primflag = this.smesh.island.primflag = PrimitiveTypes.TRIS;
 
-      let quad = this.smesh.quad([-1,-1,0], [-1,1,0], [1,1,0], [1,-1,0]);
-      quad.uvs([0,0,0], [0,1,0], [1,1,0], [1,0,0]);
+      let tri = sm.tri([-1, -1, 0], [-1, 1, 0], [1, 1, 0]);
+      tri.uvs([0, 0, 0], [0, 1, 0], [1, 1, 0]);
+
+      tri = sm.tri([-1, -1, 0], [1, 1, 0], [1, -1, 0]);
+      tri.uvs([0, 0, 0], [1, 1, 0], [1, 0, 0]);
+
+      //let quad = this.smesh.quad([-1,-1,0], [-1,1,0], [1,1,0], [1,-1,0]);
+      //quad.uvs([0,0,0], [0,1,0], [1,1,0], [1,0,0]);
+
     }
 
     if (program) {
@@ -293,7 +302,7 @@ export class FBO {
     quad.uniforms.valueScale = 1.0;
 
     gl.disable(gl.DEPTH_TEST);
-    gl.disable(gl.BLEND);
+    //gl.disable(gl.BLEND);
     gl.disable(gl.CULL_FACE);
 
     this.smesh.draw(gl, uniforms);
@@ -446,8 +455,6 @@ out vec4 fragColor;
 void main(void) {
   vec4 color = texture(rgba, v_Uv);
   float d = texture(depth, v_Uv)[0];
-  
-  //color[0] = color[1] = color[2] = d*0.9;
   
   fragColor = vec4(color.rgb*valueScale, color.a);
   

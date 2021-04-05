@@ -900,15 +900,20 @@ export class PaintOp extends PaintOpBase {
     let sym = this.inputs.symmetryAxes.getValue();
     let axismap = SymAxisMap;
 
+    let bvhRadius = radius;
+    let smul = this.inputs.brush.getValue().smoothRadiusMul;
+
+    bvhRadius *= smul;
+
     let bvh = mesh.getBVH(false);
-    let vs = bvh.closestVerts(co, radius);
+    let vs = bvh.closestVerts(co, bvhRadius);
     let co2 = new Vector3();
 
     let offs = axismap[sym];
     if (offs) {
       for (let off of offs) {
         co2.load(co).mul(off);
-        let vs2 = bvh.closestVerts(co2, radius);
+        let vs2 = bvh.closestVerts(co2, bvhRadius);
 
         for (let v of vs2) {
           vs.add(v);
@@ -1683,12 +1688,19 @@ export class PaintOp extends PaintOpBase {
     let goffs = [];
     let gidxs = [];
 
+    let bvhRadius = radius;
+    const smoothRadiusMul = brush.smoothRadiusMul;
+
+    if (smoothRadiusMul !== 1.0) {
+      bvhRadius *= smoothRadiusMul;
+    }
+
     if (mode === GRAB && doTopo) {
       let gdists = this.grabDists = [];
 
       let co = this.inputs.grabCo.getValue(); //ps.origp;
 
-      vs = bvh.closestOrigVerts(co, radius);
+      vs = bvh.closestOrigVerts(co, bvhRadius);
       console.log("VS", vs);
       gd = [];
 
@@ -1866,9 +1878,9 @@ export class PaintOp extends PaintOpBase {
         mat.makeNormalMatrix(ps.viewPlane, linePlane3);
         mat.invert();
 
-        vs = bvh.closestVertsSquare(p3, radius, mat);
+        vs = bvh.closestVertsSquare(p3, bvhRadius, mat);
       } else {
-        vs = bvh.closestVerts(p3, radius);
+        vs = bvh.closestVerts(p3, bvhRadius);
       }
     }
 
@@ -3678,6 +3690,8 @@ export class PaintOp extends PaintOpBase {
     let bp = new Vector2();
     let distmp = new Vector3();
 
+    let okflag = MeshFlags.NOAPI_TEMP2;
+
     for (let v of vs) {
       let pco = p3;
       if (mode === SHARP) {// || (mode === SMOOTH && (brush.flag & BrushFlags.MULTIGRID_SMOOTH))) {
@@ -3689,6 +3703,13 @@ export class PaintOp extends PaintOpBase {
 
       if (mode === GRAB) {
         dis = gdists[idis++];
+
+        if (dis > radius) {
+          v.flag &= ~okflag;
+        } else {
+          v.flag |= okflag;
+        }
+
         f = Math.max(1.0 - dis/radius, 0.0);
         f = falloff.evaluate(f);
       } else if (useLinePlane) {
@@ -3696,6 +3717,12 @@ export class PaintOp extends PaintOpBase {
 
         dis = Math.abs(distmp.dot(linePlane));
         let dis2 = Math.abs(distmp.dot(linePlane2));
+
+        if (dis > radius) {
+          v.flag &= ~okflag;
+        } else {
+          v.flag |= okflag;
+        }
 
         //
 
@@ -3730,8 +3757,28 @@ export class PaintOp extends PaintOpBase {
         }
       } else {
         dis = v.vectorDistance(pco);
+
+        if (dis > radius) {
+          v.flag &= ~okflag;
+        } else {
+          v.flag |= okflag;
+        }
+
         f = Math.max(1.0 - dis/radius, 0.0);
         f = falloff.evaluate(f);
+      }
+
+      if (!(v.flag & okflag)) {
+        let wdis = dis;
+        let wf = Math.max(1.0 - wdis / bvhRadius, 0.0);
+        wf = falloff.evaluate(wf);
+
+        ws[wi++] = wf;
+        ws[wi++] = wdis;
+        ws[wi++] = wf;
+
+        vi++;
+        continue;
       }
 
       let w1 = f;
@@ -4335,7 +4382,7 @@ export class PaintOp extends PaintOpBase {
 
       if (haveGrids && haveQuadTreeGrids) {
         for (let step = 0; step < repeat; step++) {
-          let vs2 = bvh.closestVerts(ps.p, radius);
+          let vs2 = bvh.closestVerts(ps.p, bvhRadius);
 
           if (!(vs2 instanceof Set)) {
             vs2 = new Set(vs2);
@@ -4358,7 +4405,7 @@ export class PaintOp extends PaintOpBase {
         for (let step = 0; step < repeat; step++) {
           if (1) {
             if (step > 0) {
-              vs = bvh.closestVerts(ps.p, radius);
+              vs = bvh.closestVerts(ps.p, bvhRadius);
             }
 
             const emin = (esize*0.5)*(esize*0.5);
@@ -4399,7 +4446,7 @@ export class PaintOp extends PaintOpBase {
               }
             }
           } else {
-            let tris = bvh.closestTris(ps.p, radius);
+            let tris = bvh.closestTris(ps.p, bvhRadius);
             for (let tri of tris) {
               for (let e of tri.v1.edges) {
                 es.add(e);

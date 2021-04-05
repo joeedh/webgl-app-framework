@@ -119,6 +119,42 @@ export class DeleteOp extends MeshOp {
 
 ToolOp.register(DeleteOp);
 
+
+export class DeleteOnlyFacesOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Delete Only Faces",
+      icon    : Icons.DELETE,
+      toolpath: "mesh.delete_only_faces",
+      inputs  : ToolOp.inherit(),
+      outputs : ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.delete_only_faces");
+
+    let selectmode = ctx.selectMask;
+
+    for (let mesh of this.getMeshes(ctx)) {
+      for (let f of new Set(mesh.faces.selected.editable)) {
+        mesh.killFace(f);
+      }
+
+      mesh.regenRender();
+      mesh.regenUVEditor();
+      mesh.regenUVWrangler();
+      mesh.regenBVH();
+      mesh.regenTessellation();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(DeleteOnlyFacesOp);
+
 export class FlipLongTrisOp extends MeshOp {
   static tooldef() {
     return {
@@ -1286,7 +1322,10 @@ export class VoxelUnwrapOp extends UnwrapOpBase {
       toolpath: "mesh.voxel_unwrap",
       icon    : -1,
       inputs  : ToolOp.inherit({
-        setSeams: new BoolProperty(true)
+        setSeams: new BoolProperty(true),
+        leafLimit : new IntProperty(255).setRange(1, 1024).noUnits().saveLastValue(),
+        depthLimit : new IntProperty(25).setRange(0, 75).noUnits().saveLastValue(),
+        splitVar : new FloatProperty(0.16).setRange(0.0, 5.0).noUnits().saveLastValue()
       }),
       outputs : ToolOp.inherit()
     }
@@ -1295,9 +1334,14 @@ export class VoxelUnwrapOp extends UnwrapOpBase {
   exec(ctx) {
     console.warn("mesh.voxel_unwrap");
 
+    let setSeams = this.inputs.setSeams.getValue();
+    let leafLimit = this.inputs.leafLimit.getValue();
+    let depthLimit = this.inputs.depthLimit.getValue();
+    let splitVar = this.inputs.splitVar.getValue();
 
     for (let mesh of this.getMeshes(ctx)) {
-      voxelUnwrap(mesh, mesh.faces.selected.editable, undefined, this.inputs.setSeams.getValue());
+      voxelUnwrap(mesh, mesh.faces.selected.editable, undefined,
+        setSeams, leafLimit, depthLimit, splitVar);
 
       mesh.regenBVH();
       mesh.regenTessellation();

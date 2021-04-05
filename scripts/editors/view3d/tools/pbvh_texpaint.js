@@ -432,7 +432,10 @@ export class TexPaintOp extends ToolOp {
     let cd_corner = wrangler.cd_corner;
 
     function getcorner(l) {
-      return wrangler.loopMap.get(l).customData[cd_corner].corner;
+      let ret2 = wrangler.loopMap.get(l);
+      if (ret2) {
+        return ret2.customData[cd_corner].corner;
+      }
 
       let ret = l !== l.radial_next && wrangler.islandLoopMap.get(l) !== wrangler.islandLoopMap.get(l.radial_next);
 
@@ -736,12 +739,16 @@ export class TexPaintOp extends ToolOp {
         gl.scissor(umin[0], umin[1], (umax[0] - umin[0]), (umax[1] - umin[1]));
       }
 
-      gl.clearColor(1, 0.5, 0.25, 1);
+      gl.clearColor(0.5, 0.5, 0.5, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
       gl.disable(gl.DEPTH_TEST);
+      gl.depthMask(false);
+
       fbo.drawQuad(gl, texture.width, texture.height, texture.glTex, null);
       gl.disable(gl.DEPTH_TEST);
+
+      //console.log(texture, texture.glTex, fbo.smesh);
 
       let color = new Vector4(ps.color);
       color[3] *= strength;
@@ -767,20 +774,21 @@ export class TexPaintOp extends ToolOp {
       gl.enable(gl.BLEND);
       gl.blendColor(1.0, 1.0, 1.0, 1.0);
       //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.CONSTANT_ALPHA, gl.CONSTANT_ALPHA);
-      sm.draw(gl, uniforms, Shaders.TexturePaintShader);
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.CONSTANT_ALPHA);
+      sm.draw(gl, uniforms, sm.program); //Shaders.TexturePaintShader);
 
       window.sm = sm;
 
-      //gl.readBuffer(gl.COLOR_ATTACHMENT0);
+      gl.readBuffer(gl.COLOR_ATTACHMENT0);
       gl.finish();
 
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, gltex.texture);
+      if (0) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, gltex.texture);
 
-      //gl.readBuffer(gl.COLOR_ATTACHMENT0);
-
-      //gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, texture.width, texture.height);
+        gl.readBuffer(gl.COLOR_ATTACHMENT0);
+        gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, texture.width, texture.height);
+      }
 
       fbo.unbind(gl);
 

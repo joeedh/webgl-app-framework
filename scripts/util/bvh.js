@@ -268,6 +268,10 @@ CustomDataElem.register(CDNodeInfo);
 
 let cvstmps = util.cachering.fromConstructor(Vector3, 64);
 let cvstmps2 = util.cachering.fromConstructor(Vector3, 64);
+let vttmp1 = new Vector3();
+let vttmp2 = new Vector3();
+let vttmp3 = new Vector3();
+let vttmp4 = new Vector3();
 
 export class IsectRet {
   constructor() {
@@ -329,6 +333,8 @@ export class BVHNode {
     this.uniqueVerts = new Set();
     this.uniqueTris = new Set(); //new Set();
     this.otherVerts = new Set();
+    this.wireVerts = undefined; //is created on demand
+
     this.indexVerts = [];
     this.indexLoops = [];
     this.indexTris = [];
@@ -348,10 +354,12 @@ export class BVHNode {
     this.cent = new Vector3(min).interp(max, 0.5);
     this.halfsize = new Vector3(max).sub(min).mulScalar(0.5);
 
-    Object.seal(this);
+    if (this.constructor === BVHNode) {
+      Object.seal(this);
+    }
   }
 
-  origUpdate(force = false, updateOrigVerts=false) {
+  origUpdate(force = false, updateOrigVerts = false) {
     let ok = this.origGen !== this.bvh.origGen;
     ok = ok || !this.omin;
     ok = ok || force
@@ -394,7 +402,7 @@ export class BVHNode {
       let omax = this.omax;
 
       if (updateOrigVerts) {
-        for (let i=0; i<2; i++) {
+        for (let i = 0; i < 2; i++) {
           let list = i ? this.otherVerts : this.uniqueVerts;
 
           for (let v of list) {
@@ -461,9 +469,11 @@ export class BVHNode {
 
     let uniqueVerts = this.uniqueVerts;
     let otherVerts = this.otherVerts;
+    let wireVerts = this.wireVerts;
     let uniqueTris = this.uniqueTris;
     let allTris = this.allTris;
 
+    this.wireVerts = undefined;
     this.indexVerts = undefined;
     this.indexLoops = undefined;
     this.uniqueVerts = undefined;
@@ -579,9 +589,21 @@ export class BVHNode {
       for (let tri of allTris) {
         this.bvh.addTri(tri.id, tri.tri_idx, tri.v1, tri.v2, tri.v3, undefined, tri.l1, tri.l2, tri.l3, this.bvh.addPass + 1);
       }
+
+      if (wireVerts) {
+        for (let v of wireVerts) {
+          this.bvh.addWireVert(v);
+        }
+      }
     } else {
       for (let tri of allTris) {
         this.addTri(tri.id, tri.tri_idx, tri.v1, tri.v2, tri.v3, undefined, tri.l1, tri.l2, tri.l3);
+      }
+
+      if (wireVerts) {
+        for (let v of wireVerts) {
+          this.addWireVert(v);
+        }
       }
     }
   }
@@ -759,6 +781,126 @@ export class BVHNode {
     }
   }
 
+  vertsInTube(co, ray, radius, clip, out) {
+    if (!this.leaf) {
+      for (let c of this.children) {
+        if (!aabb_ray_isect(co, ray, c.min, c.max)) {
+          continue;
+        }
+
+        c.vertsInTube(co, ray, radius, clip, out);
+      }
+
+      return;
+    }
+
+    let co2 = vttmp1.load(co).add(ray);
+    let t1 = vttmp2;
+    let t2 = vttmp3;
+    let t3 = vttmp4;
+    let rsqr = radius*radius;
+    let raylen = clip ? ray.vectorLength() : 0.0;
+    let nray = ray;
+
+    if (clip) {
+      nray = new Vector3(nray).normalize();
+    }
+
+    for (let i=0; i<2; i++) {
+      let set = i ? this.wireVerts : this.uniqueVerts;
+
+      if (!set) {
+        continue;
+      }
+
+      for (let v of set) {
+        t1.load(v).sub(co);
+        let t = t1.dot(nray);
+
+        if (t < 0) {
+          continue;
+        }
+
+        if (clip && t > raylen) {
+          continue;
+        }
+
+        co2.load(co).addFac(nray, t);
+        let dis = co2.vectorDistanceSqr(v);
+
+        if (dis < rsqr) {
+          out.add(v);
+        }
+      }
+    }
+  }
+
+  vertsInCone(co, ray, radius1, radius2, isSquare, out) {
+    if (!this.leaf) {
+      for (let c of this.children) {
+        if (!aabb_ray_isect(co, ray, c.min, c.max)) {
+          continue;
+        }
+
+        c.vertsInTube(co, ray, radius1, radius2, isSquare, out);
+      }
+
+      return;
+    }
+
+    let co2 = vttmp1;
+    let t1 = vttmp2;
+    let t2 = vttmp3;
+    let t3 = vttmp4;
+    let raylen = ray.vectorLength();
+
+    let report = Math.random() > 0.9995;
+
+    let nray = new Vector3(ray);
+    nray.normalize();
+
+    for (let i=0; i<2; i++) {
+      let set = i ? this.wireVerts : this.uniqueVerts;
+
+      if (!set) {
+        continue;
+      }
+
+      for (let v of set) {
+        t1.load(v).sub(co);
+        let t = t1.dot(nray);
+
+        if (t < 0 || t >= raylen) {
+          continue;
+        }
+
+        co2.load(co).addFac(nray, t);
+
+        t /= raylen;
+        let r = radius1*(1.0 - t) + radius2*t;
+        let rsqr = r*r;
+
+        let dis;
+
+        if (!isSquare) {
+          dis = co2.vectorDistanceSqr(v);
+        } else {
+          co2.sub(v);
+          dis = (Math.abs(co2[0]) + Math.abs(co2[1]) + Math.abs(co2[2]))/3.0;
+          dis *= dis;
+        }
+
+        if (report) {
+          //console.log("r", r, "t", t, "dis", Math.sqrt(dis), "rsqr", rsqr);
+        }
+
+        if (dis < rsqr) {
+          out.add(v);
+        }
+      }
+    }
+  }
+
   castRay(origin, dir) {
     let ret = this._castRayRets.next();
     let found = false;
@@ -883,6 +1025,26 @@ export class BVHNode {
     }
 
     return tri;
+  }
+
+  addWireVert(v) {
+    if (!this.leaf) {
+      for (let c of this.children) {
+        if (math.point_in_aabb(v, c.min, c.max)) {
+          c.addWireVert(v);
+        }
+      }
+    } else {
+      if (!this.wireVerts) {
+        this.wireVerts = new Set();
+      }
+
+      this.wireVerts.add(v);
+
+      if (this.otherVerts) {
+        this.otherVerts.add(v);
+      }
+    }
   }
 
   addTri() {
@@ -2040,7 +2202,8 @@ export class BVH {
   static create(mesh, storeVerts = true, useGrids = true,
                 leafLimit                         = undefined,
                 depthLimit                        = undefined,
-                freelist                          = undefined) {
+                freelist                          = undefined,
+                addWireVerts                      = false) {
     let times = [util.time_ms()]; //0
 
     mesh.updateMirrorTags();
@@ -2233,6 +2396,25 @@ export class BVH {
         let l1 = ltris[i], l2 = ltris[i + 1], l3 = ltris[i + 2];
 
         bvh.addTri(l1.f.eid, i, l1.v, l2.v, l3.v, undefined, l1, l2, l3);
+      }
+
+      if (addWireVerts) {
+        for (let v of mesh.verts) {
+          let wire = true;
+
+          for (let e of v.edges) {
+            if (e.l) {
+              wire = false;
+              break;
+            }
+          }
+
+          if (!wire) {
+            continue;
+          }
+
+          bvh.addWireVert(v);
+        }
       }
     }
 
@@ -2771,6 +2953,27 @@ export class BVH {
     let ret = new Set();
 
     this.root.closestOrigVerts(co, radius, ret);
+
+    return ret;
+  }
+
+  vertsInCone(origin, ray, radius1, radius2, isSquare = false) {
+    let ret = new Set();
+
+    this.root.vertsInCone(origin, ray, radius1, radius2, isSquare, ret);
+
+    return ret;
+  }
+
+  vertsInTube(origin, ray, radius, clip = false) {
+    let ret = new Set();
+
+    if (!clip) {
+      ray = new Vector3(ray);
+      ray.normalize();
+    }
+
+    this.root.vertsInTube(origin, ray, radius, clip, ret);
 
     return ret;
   }
@@ -3373,6 +3576,10 @@ export class BVH {
     this.updateNodes = new Set();
   }
 
+  addWireVert(v) {
+    return this.root.addWireVert(v);
+  }
+
   addTri(id, tri_idx, v1, v2, v3, noSplit = false, l1 = undefined, l2 = undefined, l3 = undefined, addPass = 0) {
     /*
     this.root.min.min(v1);
@@ -3674,6 +3881,14 @@ export class SpatialHash extends BVH {
     let rsqr = radius*radius;
 
     let cb = (node) => {
+      if (node.wireVerts) {
+        for (let v of node.wireVerts) {
+          if (v.vectorDistanceSqr(co) <= rsqr) {
+            ret.add(v);
+          }
+        }
+      }
+
       for (let t of node.allTris) {
         if (t.v1.vectorDistanceSqr(co) <= rsqr) {
           ret.add(t.v1);

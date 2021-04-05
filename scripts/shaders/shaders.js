@@ -1587,8 +1587,8 @@ void main() {
   //{PolygonOffset.fragment}
   vec4 c;
   
-  c = vColor;
-  c = vec4(0.0, 0.0, 0.0, 1.0);
+  //c = vColor;
+  c = vec4(0.0, 0.0, 0.0, 0.0);
   
   float dis = length(brushCo.xy - vColor.xy/vColor.w) / radius;
   dis = 1.0 - min(max(dis, 0.0), 1.0);

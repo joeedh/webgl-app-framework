@@ -857,6 +857,10 @@ export function api_define_brush(api, cstruct) {
     SHARED_SIZE: Icons.SHARED_BRUSH_SIZE
   });
 
+  bst.float("smoothRadiusMul", "smoothRadiusMul", "Smooth Radius")
+    .description("Multiply brush radius by this factor for smoothing")
+    .range(0.125, 15.0).noUnits();
+
   bst.float("rakeCurvatureFactor", "rakeCurvatureFactor", "Curvature Factor")
     .noUnits()
     .range(0.0, 1.0);
@@ -872,7 +876,7 @@ export function api_define_brush(api, cstruct) {
   bst.float("radius", "radius", "Radius").range(0.1, 350.0).noUnits().step(1.0);
   bst.enum("tool", "tool", SculptTools).icons(SculptIcons);
 
-  bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 1.0).noUnits();
+  bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 2.0).noUnits();
   bst.float("autosmoothInflate", "autosmoothInflate", "Inflation").range(0.0, 1.0).noUnits();
 
   bst.float("planeoff", "planeoff", "planeoff").range(-3.5, 3.5).noUnits();

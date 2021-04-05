@@ -390,6 +390,7 @@ export class BVHToolMode extends ToolMode {
     p = doChannel("autosmooth");
     p.prop(path + ".brush.flag[MULTIGRID_SMOOTH]");
     p.prop(path + ".brush.flag[PLANAR_SMOOTH]");
+    p.prop(path + ".brush.smoothRadiusMul");
 
     doChannel("smoothProj", p);
     doChannel("autosmoothInflate", p);
@@ -582,6 +583,10 @@ export class BVHToolMode extends ToolMode {
     strip.pathlabel("mesh.triCount", "Triangles");
 
     strip.prop(path + ".spacing");
+
+    row = addHeaderRow();
+    strip = row.strip();
+    strip.tool("mesh.edgecut()");
 
     header.flushUpdate();
 

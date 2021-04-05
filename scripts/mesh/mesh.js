@@ -95,14 +95,26 @@ export class EIDGen {
     this.freemap = undefined; //make freemap as needed
   }
 
-  max_cur(id=0) {
+  static fromJSON(obj) {
+    return new EIDGen().loadJSON(obj);
+  }
+
+  static fromIDGen(idgen) {
+    let ret = new EIDGen();
+
+    ret._cur = idgen._cur;
+
+    return ret;
+  }
+
+  max_cur(id = 0) {
     this.cur = Math.max(this.cur, id);
   }
 
   toJSON() {
     return {
-      cur : this.cur,
-      freelist : this.freelist
+      cur     : this.cur,
+      freelist: this.freelist
     }
   }
 
@@ -115,10 +127,6 @@ export class EIDGen {
     }
 
     return this;
-  }
-
-  static fromJSON(obj) {
-    return new EIDGen().loadJSON(obj);
   }
 
   copy() {
@@ -152,14 +160,14 @@ export class EIDGen {
     freemap.delete(eid);
 
     //eid is last entry in freelist
-    if (i === freelist.length-1) {
+    if (i === freelist.length - 1) {
       freelist.length--;
       return;
     }
 
     //swap in last value of freelist and update freemap
 
-    let eid2 = freelist[freelist.length-1];
+    let eid2 = freelist[freelist.length - 1];
 
     freelist[i] = eid2;
     freelist.length--;
@@ -171,7 +179,7 @@ export class EIDGen {
     let freemap = this.freemap = new Map();
     let freelist = this.freelist;
 
-    for (let i=0; i<freelist.length; i++) {
+    for (let i = 0; i < freelist.length; i++) {
       freemap.set(freelist[i], i);
     }
   }
@@ -191,14 +199,6 @@ export class EIDGen {
     }
 
     this.freelist.push(eid);
-  }
-
-  static fromIDGen(idgen) {
-    let ret = new EIDGen();
-
-    ret._cur = idgen._cur;
-
-    return ret;
   }
 
   next() {
@@ -2624,7 +2624,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  _killLoopList(list, unlink=false) {
+  _killLoopList(list, unlink = false) {
     if (!list.l) {
       return;
     }
@@ -3164,7 +3164,7 @@ export class Mesh extends SceneObjectData {
     }
 
     //prevent reference leaks
-    for (let i=0; i<count; i++) {
+    for (let i = 0; i < count; i++) {
       split_temp[i] = undefined;
     }
 
@@ -4860,9 +4860,19 @@ export class Mesh extends SceneObjectData {
   }
 
 
-  getBVH(auto_update = true, useGrids = true, force = false) {
+  getLastBVH() {
+    if (this.bvh) {
+      return this.bvh;
+    }
+
+    return this.getBVH(...arguments);
+  }
+
+  getBVH(auto_update = true, useGrids = true,
+         force                        = false, wireVerts     = false) {
     let key = this.verts.length + ":" + this.faces.length + ":" + this.edges.length + ":" + this.loops.length;
     key += ":" + this.eidgen._cur + ":" + useGrids;
+    key += ":" + wireVerts;
 
     if (useGrids) {
       key += ":" + GridBase.meshGridOffset(this);
@@ -4887,7 +4897,9 @@ export class Mesh extends SceneObjectData {
         let bvhcls = BVH;
         //bvhcls = SpatialHash;
 
-        this.bvh = bvhcls.create(this, true, useGrids, undefined, undefined, this._bvh_freelist);
+        this.bvh = bvhcls.create(this, true, useGrids,
+          undefined, undefined,
+          this._bvh_freelist, wireVerts);
       }
     }
 
@@ -5163,7 +5175,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  _genRenderElements(gl, uniforms, combinedWireframe=false) {
+  _genRenderElements(gl, uniforms, combinedWireframe = false) {
     genRenderMesh(gl, this, uniforms, combinedWireframe);
     this.updateGen = ~~(Math.random()*1024*1024*1024);
   }
@@ -5246,7 +5258,7 @@ export class Mesh extends SceneObjectData {
     let eidMap = this.eidMap;
 
     if (REUSE_EIDS) {
-      for (let i=0; i<max_eid; i++) {
+      for (let i = 0; i < max_eid; i++) {
         if (!eidMap.has(i)) {
           eidgen.freelist.push(i);
         }
@@ -5320,7 +5332,7 @@ export class Mesh extends SceneObjectData {
     this.eidgen.freelist.length = 0;
 
     if (REUSE_EIDS) {
-      for (let i=0; i<this.eidgen._cur; i++) {
+      for (let i = 0; i < this.eidgen._cur; i++) {
         if (!this.eidMap.has(i)) {
           this.eidgen.freelist.push(i);
         }
@@ -5432,7 +5444,7 @@ export class Mesh extends SceneObjectData {
   }
 
   regenUVWrangler() {
-    this.recalc |= RecalcFlacs.UVWRANGLER;
+    this.recalc |= RecalcFlags.UVWRANGLER;
     return this;
   }
 
@@ -6482,4 +6494,5 @@ window._debug_recalc_all_normals = function (force = false) {
 window.Mesh = Mesh
 
 import {setMeshClass} from './mesh_tess.js';
+
 setMeshClass(Mesh);

@@ -807,7 +807,7 @@ export class View3D extends Editor {
 
     let w = tmp[3];
 
-    if (tmp[3] != 0.0) {
+    if (tmp[3] !== 0.0) {
       tmp[0] /= tmp[3];
       tmp[1] /= tmp[3];
       tmp[2] /= tmp[3];

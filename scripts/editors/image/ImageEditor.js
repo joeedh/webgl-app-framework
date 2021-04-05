@@ -590,7 +590,7 @@ export class UVEditor extends UIBase {
     let uniforms = {
       size            : this.glSize,
       aspect          : this.glSize[0]/this.glSize[1],
-      near            : 0.0,
+      near            : 0.0001,
       far             : 1.0,
       polygonOffset   : 0.0,
       projectionMatrix: matrix,
@@ -598,7 +598,9 @@ export class UVEditor extends UIBase {
       pointSize       : 5*dpi,
       active_id       : -1,
       highlight_id    : -1,
-      texture         : gltex
+      texture         : gltex,
+      opacity : 1.0,
+      alpha : 1.0
     }
 
     gl.clearColor(0.3, 0.3, 0.3, 1.0);
@@ -609,13 +611,16 @@ export class UVEditor extends UIBase {
     gl.disable(gl.CULL_FACE);
 
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    //gl.disable(gl.BLEND);
 
     this.smesh2.islands[0].draw(gl, uniforms);
 
     if (gltex) {
       this.smesh2.islands[1].draw(gl, uniforms);
     }
+
+    console.log(this.smesh);
 
     this.smesh.draw(gl, uniforms, Shaders.MeshEditShader);
     this.drawDrawLines(gl, uniforms, Shaders.MeshEditShader);
@@ -1580,6 +1585,10 @@ export class ImageEditor extends Editor {
     gl.enable(gl.SCISSOR_TEST);
     gl.scissor(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1]);
     gl.viewport(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1]);
+
+    this.style["background-color"] = "rgba(0,0,0,0)";
+    this.container.style["background-color"] = "rgba(0,0,0,0)";
+    this.uvEditor.style["background-color"] = "rgba(0,0,0,0)";
 
     this.uvEditor.glPos = this.glPos;
     this.uvEditor.glSize = this.glSize;
