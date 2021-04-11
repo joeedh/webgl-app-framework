@@ -7,23 +7,13 @@
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/brush/brush.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/brush/brush.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/fbo.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/fbo.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/simplemesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/simplemesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/webgl.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/webgl.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/data_api/api_define.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/data_api/api_define.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/image/ImageEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/image/ImageEditor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/findnearest/findnearest_mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/findnearest/findnearest_mesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/meshtool.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/meshtool.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_texpaint.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_texpaint.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_loopops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_loopops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_curvature.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_curvature.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/unwrapping.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/unwrapping.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_subdivide.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_subdivide.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/shaders/shaders.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shaders/shaders.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/util/bvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bvh.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -90,6 +80,7 @@
       <command value="propmode" />
       <command value="killcell" />
       <command value="node" />
+      <command value="dissolvefaces" />
     </option>
   </component>
   <component name="RunManager" selected="Node.js.uv_selectops.js">
@@ -255,7 +246,9 @@
       <workItem from="1616192286742" duration="5000" />
       <workItem from="1616638131767" duration="5365000" />
       <workItem from="1617424709251" duration="2420000" />
-      <workItem from="1617654293538" duration="8919000" />
+      <workItem from="1617654293538" duration="14607000" />
+      <workItem from="1618068269968" duration="60000" />
+      <workItem from="1618102534440" duration="15422000" />
     </task>
     <servers />
   </component>
@@ -280,7 +273,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scripts/mesh/mesh.js</url>
-          <line>4617</line>
+          <line>4802</line>
           <option name="timeStamp" value="5" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">

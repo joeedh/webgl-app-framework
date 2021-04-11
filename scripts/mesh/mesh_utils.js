@@ -765,7 +765,7 @@ export function triangulateFan(mesh, f, newfaces = undefined, lctx) {
   mesh.killFace(f, lctx);
 }
 
-export function bisectMesh(mesh, faces, vec, offset = new Vector3()) {
+export function bisectMesh(mesh, faces, vec, offset = new Vector3(), threshold) {
   faces = new Set(faces);
 
   vec = new Vector3(vec);
@@ -815,7 +815,21 @@ export function bisectMesh(mesh, faces, vec, offset = new Vector3()) {
   let tris = [];
 
   let sign = (f) => f >= 0 ? 1 : -1;
-  let check = (a, b) => sign(a[2]) !== sign(b[2]) && Math.abs(a[2] - b[2]) > 0.001;
+  let check = (a, b) => {
+    let ok = sign(a[2]) !== sign(b[2]) && Math.abs(a[2] - b[2]) > threshold;
+
+    if (Math.abs(a[2]) < threshold) {
+      ok = false;
+      a[2] = 0.0;
+    }
+
+    if (Math.abs(b[2]) < threshold) {
+      ok = false;
+      b[2] = 0.0;
+    }
+
+    return ok;
+  }
 
   for (let f of faces) {
     for (let list of f.lists) {
@@ -1208,7 +1222,7 @@ export function symmetrizeMesh(mesh, faces, axis, sign, mergeThreshold = 0.0001)
   let vec = new Vector3();
   vec[axis] = sign;
 
-  bisectMesh(mesh, faces, vec);
+  bisectMesh(mesh, faces, vec, undefined, mergeThreshold);
 
   let vs2 = new Set();
   let mergeMap = new Map();
@@ -2986,7 +3000,8 @@ export function getEdgeLoop(e) {
 }
 
 export function dissolveFaces(mesh, faces, lctx) {
-  faces = ReusableIter.getSafeIter(faces);
+  //faces = ReusableIter.getSafeIter(faces);
+  faces=  new Set(faces);
 
   let flag = MeshFlags.TEMP1;
   let flag2 = MeshFlags.TEMP2;

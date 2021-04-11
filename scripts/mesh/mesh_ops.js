@@ -237,9 +237,16 @@ export class SymmetrizeOp extends MeshOp {
       toolpath: "mesh.symmetrize",
       icon    : Icons.SYMMETRIZE,
       inputs  : ToolOp.inherit({
-        axis        : new EnumProperty(0, {X: 0, Y: 1, Z: 2}),
-        side        : new EnumProperty(1, {LEFT: -1, RIGHT: 1}),
+        axis        : new EnumProperty(0, {X: 0, Y: 1, Z: 2})
+          .saveLastValue(),
+        side        : new EnumProperty(1, {LEFT: -1, RIGHT: 1})
+          .saveLastValue(),
         selectedOnly: new BoolProperty(false)
+          .saveLastValue(),
+        threshold : new FloatProperty(0.0001)
+          .setRange(0.0, 2.0)
+          .noUnits()
+          .saveLastValue()
       }),
       outputs : ToolOp.inherit()
     }
@@ -272,7 +279,8 @@ export class SymmetrizeOp extends MeshOp {
         mesh.bvh.destroy(mesh);
       }
 
-      symmetrizeMesh(mesh, fset, axis, side);
+      let threshold = this.inputs.threshold.getValue();
+      symmetrizeMesh(mesh, fset, axis, side, threshold);
 
       //force bvh update
       mesh.bvh = undefined;
@@ -754,11 +762,85 @@ export class CatmullClarkeSubd extends MeshOp {
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
+      mesh.regenBVH();
     }
   }
 }
 
 ToolOp.register(CatmullClarkeSubd);
+
+export const SymFlags = {
+  X : 1,
+  Y : 2,
+  Z : 4,
+  AUTO : 512
+};
+
+export class MeshSnapToMirror extends MeshOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname  : "Snap Verts To Mirror Line",
+      icon    : -1,
+      toolpath: "mesh.snap_to_mirror_axis",
+      inputs  : ToolOp.inherit({
+        symFlag : new FlagProperty(SymFlags.AUTO, SymFlags)
+      })
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      let axes = this.inputs.symFlag.getValue();
+
+      if (axes & SymFlags.AUTO) {
+        axes = mesh.symFlag;
+
+        //check sculpt toolmode's symmetry settings too
+        for (let mode of ctx.scene.toolmodes) {
+          if (mode.constructor === BVHToolMode) {
+            axes |= mode.symmetryAxes;
+          }
+        }
+      }
+
+      console.log("axes", axes);
+
+      for (let v of mesh.verts.selected.editable) {
+        let minaxis;
+        let mindis;
+
+        for (let i=0; i<3; i++) {
+          if (!(axes & (1<<i))) {
+            continue;
+          }
+
+          if (minaxis === undefined || Math.abs(v[i]) < mindis) {
+            minaxis = i;
+            mindis = Math.abs(v[i]);
+          }
+        }
+
+        //console.log("minaxis", minaxis, v);
+
+        if (minaxis !== undefined) {
+          v[minaxis] = 0.0;
+          v.flag |= MeshFlags.UPDATE;
+        }
+      }
+
+      mesh.regenBVH();
+      mesh.regenRender();
+      mesh.recalcNormals();
+      mesh.graphUpdate();
+      window.redraw_viewport(true);
+    }
+  }
+}
+ToolOp.register(MeshSnapToMirror);
 
 export class MeshSubdTest extends MeshOp {
   constructor() {
@@ -851,6 +933,7 @@ export class SubdivideSimple extends MeshOp {
       mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
+      mesh.regenBVH();
       mesh.graphUpdate();
     }
   }
@@ -1322,10 +1405,10 @@ export class VoxelUnwrapOp extends UnwrapOpBase {
       toolpath: "mesh.voxel_unwrap",
       icon    : -1,
       inputs  : ToolOp.inherit({
-        setSeams: new BoolProperty(true),
+        setSeams  : new BoolProperty(true),
         leafLimit : new IntProperty(255).setRange(1, 1024).noUnits().saveLastValue(),
-        depthLimit : new IntProperty(25).setRange(0, 75).noUnits().saveLastValue(),
-        splitVar : new FloatProperty(0.16).setRange(0.0, 5.0).noUnits().saveLastValue()
+        depthLimit: new IntProperty(25).setRange(0, 75).noUnits().saveLastValue(),
+        splitVar  : new FloatProperty(0.16).setRange(0.0, 5.0).noUnits().saveLastValue()
       }),
       outputs : ToolOp.inherit()
     }
@@ -3467,6 +3550,7 @@ export class OptRemeshParams extends ToolOp {
 ToolOp.register(OptRemeshParams);
 
 import {SolverElem, SolverSettings, Solver, DiffConstraint, VelConstraint} from './mesh_solver.js';
+import {BVHToolMode} from '../editors/view3d/tools/pbvh.js';
 
 export class SolverOpBase extends MeshOp {
   constructor() {
@@ -3481,7 +3565,7 @@ export class SolverOpBase extends MeshOp {
         steps        : new IntProperty(1).private(),
         dt           : new FloatProperty(0.5).noUnits().setRange(0.0001, 1.0).saveLastValue(),
         implicitSteps: new IntProperty(5).noUnits().setRange(0, 45).saveLastValue(),
-        damp : new FloatProperty(0.99).noUnits().setRange(0.0, 1.0).saveLastValue()
+        damp         : new FloatProperty(0.99).noUnits().setRange(0.0, 1.0).saveLastValue()
       }),
       is_modal: true,
       outputs : ToolOp.inherit({})
@@ -3592,8 +3676,8 @@ export class TestSolverOp extends SolverOpBase {
       uiname  : "Test Solver",
       toolpath: "mesh.test_solver",
       inputs  : ToolOp.inherit({
-        springK: new FloatProperty(5.5).noUnits().setRange(0.0, 55.0).saveLastValue(),
-        inflate: new FloatProperty(0.25).noUnits().setRange(0.0001, 2.0).saveLastValue(),
+        springK   : new FloatProperty(5.5).noUnits().setRange(0.0, 55.0).saveLastValue(),
+        inflate   : new FloatProperty(0.25).noUnits().setRange(0.0001, 2.0).saveLastValue(),
         edgeLenMul: new FloatProperty(1.85).noUnits().setRange(0.01, 5.0).saveLastValue(),
       }),
       is_modal: true,
@@ -3741,7 +3825,7 @@ export class TestSolverOp extends SolverOpBase {
       v.customData[cd_slv].mass = 1.0;
     }
 
-    for (let i=0; i<5; i++) {
+    for (let i = 0; i < 5; i++) {
       let boundary2 = new Set();
 
       for (let v of boundary) {
@@ -3782,7 +3866,8 @@ export class TestSolverOp extends SolverOpBase {
       let slst = [sv1.scratch, sv2.scratch];
 
       let params = [e.v1, e.v2, e.v1.vectorDistance(e.v2)*edgeLenMul, sk];
-      let con = new VelConstraint(spring_c, spring_c_vel, spring_c_acc, [e.v1, e.v2], params, wlst, vel_lst, flst, slst);
+      let con = new VelConstraint(spring_c, spring_c_vel, spring_c_acc, [e.v1,
+                                                                         e.v2], params, wlst, vel_lst, flst, slst);
       solver.add(con);
     }
 

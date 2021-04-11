@@ -2233,6 +2233,11 @@ export class BVH {
 
     times.push(util.time_ms()); //3
 
+    if (!aabb) {
+      let d = 1;
+      aabb = [new Vector3([-d, -d, -d]), new Vector3([d, d, d])];
+    }
+
     aabb[0] = new Vector3(aabb[0]);
     aabb[1] = new Vector3(aabb[1]);
 
@@ -2960,6 +2965,10 @@ export class BVH {
   vertsInCone(origin, ray, radius1, radius2, isSquare = false) {
     let ret = new Set();
 
+    if (!this.root) {
+      return new Set();
+    }
+
     this.root.vertsInCone(origin, ray, radius1, radius2, isSquare, ret);
 
     return ret;
@@ -3022,6 +3031,10 @@ export class BVH {
   }
 
   castRay(origin, dir) {
+    if (!this.root) {
+      return undefined;
+    }
+
     dir = this.dirtemp.load(dir);
     dir.normalize();
 

@@ -303,3 +303,232 @@ export function initCurveVerts(mesh) {
 
   return cd_curv;
 }
+
+
+//directional curvature smooth
+const dtmp1 = new Vector3();
+const dtmp2 = new Vector3();
+const dtmp3 = new Vector3();
+const dtmp4 = new Vector3();
+const dtmp5 = new Vector3();
+const dtmp6 = new Vector3();
+const dtmp7 = new Vector3();
+const dtmp8 = new Vector3();
+const dtmp9 = new Vector3();
+const dmat1 = new Matrix4();
+const dmat2 = new Matrix4();
+const dmat3 = new Matrix4();
+const dmat4 = new Matrix4();
+
+export function dirCurveSmooth(v, dir, fac=0.5, cd_curv) {
+  //implement me!
+}
+
+export function dirCurveSmooth2(v, dir, fac=0.5, cd_curv) {
+  let cv = v.customData[cd_curv];
+
+  let t1 = dtmp1;
+  let t2 = dtmp2;
+  let t3 = dtmp3;
+  let t4 = dtmp4;
+  let t5 = dtmp5;
+
+  t1.load(cv.tan);
+  t2.load(cv.tan).cross(cv.no).normalize();
+
+  cv.check(v);
+
+  let mat1 = dmat1;
+  mat1.makeIdentity();
+
+  let co = dtmp8;
+  let tot = 0.0;
+
+  co.zero();
+
+  for (let v2 of v.neighbors) {
+    let cv2 = v2.customData[cd_curv];
+
+    cv2.check(v2);
+
+    t3.load(cv2.tan);
+    t4.load(cv2.tan).cross(cv2.no).normalize();
+
+    let m = mat1.$matrix;
+
+    m.m11 = cv2.tan[0];
+    m.m21 = cv2.tan[1];
+    m.m31 = cv2.tan[2];
+
+    m.m12 = t4[0];
+    m.m22 = t4[1];
+    m.m32 = t4[2];
+
+    m.m13 = cv2.no[0];
+    m.m23 = cv2.no[1];
+    m.m33 = cv2.no[2];
+
+    let imat1 = dmat2;
+    imat1.load(mat1);
+    imat1.invert();
+
+    t1.load(v).sub(v2)
+
+    if (0) {
+      t1.multVecMatrix(imat1);
+      t1[2] *= 0.25;
+      t1.multVecMatrix(mat1);
+    }
+
+    let d = t1.dot(v2.no);
+    t1.addFac(v2.no, -d*0.5);
+
+    t1.add(v2);
+
+    let w = 1.0;
+    co.addFac(t1, w);
+    tot += w;
+  }
+
+  if (tot === 0.0) {
+    return;
+  }
+
+  co.mulScalar(1.0 / tot);
+
+  v.interp(co, fac);
+  v.flag |= MeshFlags.UPDATE;
+}
+export function dirCurveSmooth1(v, dir, fac=0.5) {
+  let w, th, llen;
+  let maxllen=0.0;
+  let avgllen = 0.0;
+  let avgllen_tot = 0.0;
+
+  function calcWeight(v, v2) {
+    let t1 = dtmp6;
+    let t2 = dtmp7;
+    
+    t1.load(v2).sub(v);
+    let d = t1.dot(v2);
+
+    t2.load(v2.no).sub(v.no);
+    llen = t2.vectorLength();
+
+    maxllen = Math.max(maxllen, llen);
+    avgllen += llen;
+    avgllen_tot++;
+
+    if (llen < 0.00001) {
+      w = 0.0;
+      th = 0.0;
+      llen = 0.0;
+
+      return;
+    }
+
+    t2.mulScalar(1.0/llen);
+
+    th = v.no.dot(v2.no);
+    th = Math.acos(th*0.999999);
+
+    w = Math.abs(t1.dot(dir)) / llen;
+  }
+
+  function calcCurv(v) {
+    let sum=0.0, count=0.0;
+
+    for (let v2 of v.neighbors) {
+      calcWeight(v, v2);
+
+      sum += Math.abs(th)*w;
+      count += 1.0;
+    }
+
+    return count ? sum / count : 0.0;
+  }
+
+  function error() {
+    let t1 = dtmp1;
+    let t2 = dtmp2;
+
+    let sum = 0.0;
+    let count = 0.0;
+
+    let flag = MeshFlags.NOAPI_TEMP1;
+    let flag2 = MeshFlags.NOAPI_TEMP2;
+
+    v.flag &= ~flag;
+    for (let v2 of v.neighbors) {
+      for (let v3 of v.neighbors) {
+        v3.flag &= ~(flag|flag2);
+      }
+    }
+
+    for (let v2 of v.neighbors) {
+      for (let v3 of v2.neighbors) {
+        if (!(v3.flag & flag)) {
+          v3.calcNormal(true);
+          v3.flag |= flag;
+        }
+      }
+    }
+
+    let k1 = calcCurv(v);
+
+    for (let v2 of v.neighbors) {
+      let k2 = calcCurv(v2);
+      //calcWeight(v, v2);
+      let dk = (k2 - k1);
+
+      sum += Math.abs(dk) * w;
+      count += 1.0;
+    }
+
+    return count ? sum / count : 0.0;
+  }
+
+  let g = dtmp5;
+  let df = 0.0005;
+
+  let r1 = error();
+  let totg = 0.0;
+
+  for (let i=0; i<3; i++) {
+    let orig = v[i];
+
+    v[i] += df;
+    let r2 = error();
+    v[i] = orig;
+
+    g[i] = (r2 - r1) / df;
+
+    totg += g[i]*g[i];
+  }
+
+  if (totg === 0.0) {
+    return;
+  }
+
+  if (avgllen_tot) {
+    avgllen /= avgllen_tot;
+  }
+
+  if (maxllen < 0.00005) {
+    return;
+  }
+
+  let limit = maxllen*0.5;
+
+  let k = fac; //r1/totg*0.1;
+
+  for (let i=0; i<3; i++) {
+    let off = -g[i]*k;
+
+    off = Math.min(Math.max(off, -limit), limit);
+
+    v[i] += off;
+  }
+
+  v.flag |= MeshFlags.UPDATE;
+}

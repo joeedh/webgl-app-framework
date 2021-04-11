@@ -587,7 +587,7 @@ export function splitEdgesPreserveQuads(mesh, es, testfunc, lctx) {
 }
 
 //like splitEdgesSmart but optimized for sculpt
-export function splitEdgesSmart2(mesh, es, testfunc, lctx) {
+export function splitEdgesSmart2(mesh, es, testfunc, lctx, smoothFac=0.0) {
   let newes = new Set();
   let newvs = new Set();
   let fs = new Set();
@@ -602,11 +602,20 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx) {
     }
   }
 
-  for (let e of es) {
-    let [ne, nv] = mesh.splitEdge(e, 0.5, lctx);
+  if (smoothFac > 0.0) {
+    for (let e of es) {
+      let [ne, nv] = mesh.splitEdgeWhileSmoothing(e, 0.5, smoothFac, lctx);
 
-    newvs.add(nv);
-    newes.add(ne);
+      newvs.add(nv);
+      newes.add(ne);
+    }
+  } else {
+    for (let e of es) {
+      let [ne, nv] = mesh.splitEdge(e, 0.5, lctx);
+
+      newvs.add(nv);
+      newes.add(ne);
+    }
   }
 
   for (let f of fs) {

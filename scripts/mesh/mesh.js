@@ -3198,6 +3198,191 @@ export class Mesh extends SceneObjectData {
     return ret;
   }
 
+  splitEdgeWhileSmoothing(e, t = 0.5, smoothFac=0.5, lctx) {
+    if (e.eid < 0) {
+      throw new MeshError("tried to split deleted edge");
+    }
+
+    if (lctx) {
+      for (let f of e.faces) {
+        lctx.killFace(f, LogTags.SPLIT_EDGE);
+      }
+    }
+
+    let ret = this._splitEdgeNoFace(e, t, lctx);
+
+    for (let i=0; i<3; i++) {
+      let v;
+
+      if (i === 0) {
+        v = e.v1;
+      } else if (i === 1) {
+        v = ret[1];
+      } else {
+        v = ret[0].v2;
+      }
+
+      let x=0.0, y=0.0, z=0.0;
+      let tot = 0.0;
+
+      for (let e2 of v.edges) {
+        let v2 = e2.otherVertex(v);
+
+        x += v2[0];
+        y += v2[1];
+        z += v2[2];
+        tot++;
+      }
+
+      if (tot) {
+        tot = 1.0 / tot;
+        x *= tot;
+        y *= tot;
+        z *= tot;
+
+        v[0] += (x - v[0]) * smoothFac;
+        v[1] += (y - v[1]) * smoothFac;
+        v[2] += (z - v[2]) * smoothFac;
+      }
+    }
+
+    if (e.l === undefined) {
+      return ret;
+    }
+
+    let ne = ret[0], nv = ret[1];
+    let v1 = e.v1, v2 = ne.v2;
+
+    let l = e.l;
+    let count = 0;
+
+    do {
+      if (count > MAX_EDGE_FACES) {
+        console.warn("infinite loop detected in splitEdge");
+        break;
+      }
+
+      split_temp[count++] = l;
+
+      l = l.radial_next;
+    } while (l !== e.l);
+
+    for (let i = 0; i < count; i++) {
+      let l = split_temp[i];
+      this._radialRemove(l.e, l);
+    }
+
+    for (let i = 0; i < count; i++) {
+      let l = split_temp[i];
+
+      let lnext = l.next;
+
+      let l2 = this._makeLoop();
+
+      l2.list = l.list;
+      l2.f = l.f;
+
+      if (l.v === v1) {
+        l2.v = nv;
+        l2.e = ne;
+
+        this._radialInsert(ne, l2);
+        this._radialInsert(e, l);
+
+        l.next.prev = l2;
+        l2.next = l.next;
+        l2.prev = l;
+        l.next = l2;
+      } else {
+        l.v = v2;
+        l.e = ne;
+
+        l2.v = nv;
+        l2.e = e;
+
+        this._radialInsert(ne, l);
+        this._radialInsert(e, l2);
+
+        l.next.prev = l2;
+        l2.next = l.next;
+        l2.prev = l;
+        l.next = l2;
+      }
+
+      let cdls = splitcd_ls;
+      let cdws = splitcd_ws;
+
+      cdws[0] = cdws[1] = 0.5;
+      cdls[0] = l;
+      cdls[1] = lnext;
+
+      this.loops.customDataInterp(l2, cdls, cdws);
+
+      if (l && l.list) {
+        l.list._recount();
+      }
+    }
+
+    if (lctx) {
+      let flag = MeshFlags.MAKE_FACE_TEMP;
+
+      for (let f of e.faces) {
+        f.flag &= ~flag;
+      }
+      for (let f of ne.faces) {
+        f.flag &= ~flag;
+      }
+
+      for (let f of e.faces) {
+        if (!(f.flag & flag)) {
+          f.flag |= flag;
+          lctx.newFace(f, LogTags.SPLIT_EDGE);
+        }
+      }
+
+      for (let f of ne.faces) {
+        if (!(f.flag & flag)) {
+          f.flag |= flag;
+          lctx.newFace(f, LogTags.SPLIT_EDGE);
+        }
+      }
+    }
+
+    //prevent reference leaks
+    for (let i = 0; i < count; i++) {
+      split_temp[i] = undefined;
+    }
+
+    if (DEBUG_DUPLICATE_FACES) {
+      for (let i = 0; i < 2; i++) {
+        let e1 = i ? ne : e;
+        for (let v of e1.verts) {
+          for (let f of v.faces) {
+            this._checkFace(f, "splitEdge");
+          }
+        }
+      }
+    }
+
+    if (DEBUG_MANIFOLD_EDGES) {
+      this._checkManifold(e, "splitEdge");
+      this._checkManifold(ne, "splitEdge");
+      this._checkManifold(v1, "splitEdge");
+      this._checkManifold(nv, "splitEdge");
+      this._checkManifold(v2, "splitEdge");
+    }
+
+    if (DEBUG_BAD_LOOPS) {
+      this._checkElemLoops(e, "splitEdge 2");
+      this._checkElemLoops(v1, "splitEdge 3");
+      this._checkElemLoops(nv, "splitEdge 4");
+      this._checkElemLoops(ne, "splitEdge 5");
+      this._checkElemLoops(v2, "splitEdge 6");
+    }
+
+    return ret;
+  }
+
   _radialInsert(e, l) {
     if (e.l === undefined) {
       e.l = l;
