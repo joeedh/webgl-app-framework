@@ -135,6 +135,10 @@ export class ToolMode extends Node {
     return undefined;
   }
 
+  static unregister(cls) {
+    ToolModes.remove(cls);
+  }
+
   static register(cls) {
     if (cls.toolModeDefine === this.toolModeDefine) {
       throw new Error("cls is missing its toolModeDefine");

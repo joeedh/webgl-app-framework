@@ -192,5 +192,5 @@ export class DataPathBrowser extends Editor {
 DataPathBrowser.STRUCT = nstructjs.inherit(DataPathBrowser, Editor) + `
 }
 `;
-Editor.register(DataPathBrowser);
 nstructjs.register(DataPathBrowser);
+Editor.register(DataPathBrowser);

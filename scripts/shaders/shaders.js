@@ -267,8 +267,13 @@ void main() {
   
   f = f*0.8 + 0.2;
   vec4 c = vec4(f, f, f, 1.0);
-  
+
+#ifdef HAVE_COLOR  
   vec4 vcolor = vColor;// * gl_FragCoord.w;
+#else
+  vec4 vcolor = vec4(1.0, 1.0, 1.0, 1.0);
+#endif
+
   //vcolor.rgb = fract(vcolor.rgb*5.0);
   
   gl_FragColor = c + (c*vcolor - c)*vcolor[3];
@@ -1582,8 +1587,8 @@ void main() {
   //{PolygonOffset.fragment}
   vec4 c;
   
-  c = vColor;
-  c = vec4(0.0, 0.0, 0.0, 1.0);
+  //c = vColor;
+  c = vec4(0.0, 0.0, 0.0, 0.0);
   
   float dis = length(brushCo.xy - vColor.xy/vColor.w) / radius;
   dis = 1.0 - min(max(dis, 0.0), 1.0);

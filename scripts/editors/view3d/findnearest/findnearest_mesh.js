@@ -6,9 +6,12 @@ import * as util from "../../../util/util.js";
 import {FindNearestRet} from "../findnearest.js";
 import {MeshTypes} from "../../../mesh/mesh_base.js";
 import {Mesh} from "../../../mesh/mesh.js";
+import * as math from '../../../util/math.js';
 
 let _findnearest_rets = util.cachering.fromConstructor(FindNearestRet, 1024);
 let _castray_rets = util.cachering.fromConstructor(FindNearestRet, 1024);
+
+let _cache = {};
 
 export class FindnearestMesh extends FindnearestClass {
   static define() {return {
@@ -106,7 +109,360 @@ export class FindnearestMesh extends FindnearestClass {
     }
   }
 
+  static getSearchOrder(n) {
+    if (n in _cache) {
+      return _cache[n];
+    }
+
+    let ret = _cache[n] = [];
+
+    for (let i=0; i<n*n; i++) {
+      ret.push(i);
+    }
+
+    ret.sort((a, b) => {
+      let x1 = a % n, y1 = ~~(a / n);
+      let x2 = b % n, y2 = ~~(b / n);
+
+      x1 -= n*0.5; y1 -= n*0.5;
+      x2 -= n*0.5; y2 -= n*0.5;
+
+      let w1 = /*Math.atan2(y1, x1) */ (x1*x1 + y1*y1);
+      let w2 = /*Math.atan2(y2, x2) */ (x2*x2 + y2*y2);
+
+      return w1-w2;
+    });
+
+    return ret;
+  }
+
+  static findnearest_pbvh(ctx, selmask, mpos, view3d, limit=25) {
+    let x = mpos[0], y = mpos[1];
+    limit = Math.max(~~limit, 1);
+
+    x = ~~x;
+    y = ~~y;
+
+    let order = this.getSearchOrder(limit);
+    let objects;
+
+    if (selmask & SelMask.GEOM) {
+      objects = new Set(ctx.selectedObjects).filter(ob => ob.data instanceof Mesh);
+    } else {
+      objects = new Set(ctx.scene.objects.editable).filter(ob => ob.data instanceof Mesh);
+      selmask |= SelMask.FACE;
+    }
+
+    let hits = [];
+
+    let cam = view3d.activeCamera;
+    let co = new Vector3(cam.position);
+    let ray = view3d.getViewVec(x, y);
+    let ray1 = new Vector3(cam.target).sub(cam.pos);
+
+    let rets = [];
+
+    let report = Math.random() > 0.998;
+
+    let minv, mine, minf;
+    let minvob, mineob, minfob;
+    let minvmat, minemat, minfmat;
+    let minvdis, minedis, minfdis;
+
+    let tmp1 = new Vector3();
+    let tmp2 = new Vector3();
+    let tmp3 = new Vector3();
+    let tmp4 = new Vector3();
+
+    let selmask2 = selmask;
+    let foundmask = 0;
+
+    function doElem(mat, ob, elem) {
+      foundmask |= elem.type;
+
+      if (!(elem.type & selmask2)) {
+        return;
+      }
+
+      if (elem.type === MeshTypes.VERTEX) {
+        tmp1.load(elem).multVecMatrix(mat);
+        view3d.project(tmp1);
+
+        tmp2.load(mpos);
+        tmp2[2] = 0.0;
+        tmp1[2] = 0.0;
+
+        let dis = tmp1.vectorDistance(tmp2);
+
+        if (dis < limit && (minvdis === undefined || dis < minvdis)) {
+          minv = elem;
+          minvdis = dis;
+          minvob = ob;
+          minvmat = mat;
+        }
+      } else if (elem.type === MeshTypes.EDGE) {
+        let e = elem;
+
+        tmp1.load(e.v1).multVecMatrix(mat);
+        tmp2.load(e.v2).multVecMatrix(mat);
+
+        view3d.project(tmp1);
+        view3d.project(tmp2);
+
+        tmp3.load(mpos);
+        tmp3[2] = 0.0;
+
+        let dis = math.dist_to_line_2d(tmp3, tmp1, tmp2, true);
+
+        if (dis < limit && (minedis === undefined || dis < minedis)) {
+          mine = elem;
+          minedis = dis;
+          mineob = ob;
+          minemat = mat;
+        }
+      } else if (elem.type === MeshTypes.FACE) {
+        let f = elem;
+        tmp1.load(f.cent).multVecMatrix(mat);
+        view3d.project(tmp1);
+
+        tmp2.load(mpos);
+        tmp2[2] = 0.0;
+        tmp1[2] = 0.0;
+
+        let dis = tmp1.vectorDistance(tmp2);
+
+        if (minfdis === undefined || dis < minfdis) {
+          minf = elem;
+          minfdis = dis;
+          minfob = ob;
+          minfmat = mat;
+        }
+      }
+    }
+    for (let i of order) {
+      let dx = (i % limit);
+      let dy = ~~(i / limit);
+
+      dx -= limit*0.5;
+      dy -= limit*0.5;
+
+      selmask2 = selmask;
+      foundmask = 0;
+
+      let x2 = dx + x;
+      let y2 = dy + y;
+
+      for (let ob of objects) {
+        let me = ob.data;
+        let bvh = me.getLastBVH(true, false, false, true);
+
+        let mat = ob.outputs.matrix.getValue();
+        let imat = new Matrix4(mat);
+        imat.invert();
+
+        let co2 = new Vector3();
+        co2[0] = x2;
+        co2[1] = y2;
+        co2[2] = 0.0000001;
+        view3d.unproject(co2);
+
+        let ray2 = view3d.getViewVec(x2, y2);
+
+        ray2 = new Vector4(ray2);
+        ray2[3] = 0.0;
+
+        co2.multVecMatrix(imat);
+        ray2.multVecMatrix(imat);
+        ray2.normalize();
+
+        let isect = bvh.castRay(co2, ray2);
+        if (isect) {
+          let tri = isect.tri;
+          let l, f;
+
+          if (tri.l1) {
+            l = tri.l1;
+            f = l.f;
+          } else {
+            f = me.eidMap.get(tri.id);
+            l = f.loops[0].l;
+          }
+
+          doElem(mat, ob, f);
+
+          for (let l of f.loops) {
+            doElem(mat, ob, l.v);
+            doElem(mat, ob, l.e);
+          }
+
+          if (Math.random() > 0.995) {
+            //console.log(f);
+          }
+        }
+      }
+
+      //clear found bits in selmask2
+      selmask2 &= ~foundmask;
+
+      if ((foundmask & MeshTypes.FACE) || selmask2 === 0 || selmask2 === MeshTypes.FACE) {
+        continue;
+      }
+
+      for (let ob of objects) {
+        let me = ob.data;
+        let bvh = me.getLastBVH(true, false, false, true);
+
+        let mat = ob.outputs.matrix.getValue();
+        let imat = new Matrix4(mat);
+        imat.invert();
+
+        let co2 = new Vector4();
+        let ray2 = view3d.getViewVec(x2, y2); //new Vector4();
+
+        co2.load(co);
+        co2[3] = 1.0;
+
+        ray2.load(ray);
+        ray2[3] = 0.0;
+
+        co2.multVecMatrix(imat);
+        ray2.multVecMatrix(imat);
+        ray2.normalize();
+
+        //set up cone tracing fallback
+        let p = new Vector3();
+        let p2 = new Vector3();
+
+        p[0] = x2;
+        p[1] = y2;
+        p[2] = 0.00000001;
+        view3d.unproject(p);
+        p.multVecMatrix(imat);
+
+        co2.load(p);
+
+        p2[0] = x2 + 1.0;
+        p2[1] = y2 + 1.0;
+        p2[2] = 0.00000001;
+        view3d.unproject(p2);
+        p2.multVecMatrix(imat);
+
+        let radius1 = p2.vectorDistance(p)*1.0;
+
+        p[0] = x2;
+        p[1] = y2;
+        p[2] = 0.99999999999;
+        view3d.unproject(p);
+        p.multVecMatrix(imat);
+
+        ray2.load(p).sub(co2);
+
+        p2[0] = x2 + 1.0;
+        p2[1] = y2 + 1.0;
+        p2[2] = 0.99999999999;
+        view3d.unproject(p2);
+        p2.multVecMatrix(imat);
+
+        let radius2 = p2.vectorDistance(p)*1.0;
+
+        //radius1 *= view3d.glSize[1];
+        //radius2 *= view3d.glSize[1];
+
+        let vs = bvh.vertsInCone(co2, ray2, radius1, radius2, false);
+
+        if (report) {
+          //console.log(limit, dx, dy, radius1, radius2);
+          console.log(vs);
+        }
+
+        for (let v of vs) {
+          let skip = false;
+
+          for (let e of v.edges) {
+            if (e.l) {
+              skip = true;
+              break;
+            }
+          }
+
+          if (skip) {
+           // continue;
+          }
+
+          doElem(mat, ob, v);
+
+          for (let e of v.edges) {
+            doElem(mat, ob, e);
+          }
+        }
+      }
+    }
+
+    if (minv) {
+      let ret = new FindNearestRet();
+
+      ret.mesh = minvob.data;
+      ret.data = minv;
+      ret.object = minvob;
+
+      let co = tmp1;
+      co.load(minv).multVecMatrix(minvmat);
+
+      ret.dis = minvdis;
+      ret.p3d.load(co);
+      ret.p2d.load(co);
+
+      view3d.project(ret.p2d);
+
+      rets.push(ret);
+    }
+
+    if (mine) {
+      let ret = new FindNearestRet();
+
+      ret.mesh = mineob.data;
+      ret.data = mine;
+      ret.object = mineob;
+
+      let co = tmp1;
+      co.load(mine.v1).interp(mine.v2, 0.5).multVecMatrix(minemat);
+
+      ret.dis = minedis;
+      ret.p3d.load(co);
+      ret.p2d.load(co);
+
+      view3d.project(ret.p2d);
+
+      rets.push(ret);
+    }
+
+    if (minf) {
+      //console.log("minf", minf);
+
+      let ret = new FindNearestRet();
+
+      ret.mesh = minfob.data;
+      ret.data = minf;
+      ret.object = minfob;
+
+      let co = tmp1;
+      co.load(minf.cent).multVecMatrix(minfmat);
+
+      ret.dis = 0.0; //minfdis;
+      ret.p3d.load(co);
+      ret.p2d.load(co);
+
+      view3d.project(ret.p2d);
+
+      rets.push(ret);
+    }
+
+    return rets;
+  }
+
   static findnearest(ctx, selmask, mpos, view3d, limit=25) {
+    return this.findnearest_pbvh(...arguments);
+
     let x = mpos[0];
     let y = mpos[1];
     let sbuf = view3d.selectbuf;

@@ -127,6 +127,10 @@ export class NodeSocketType {
     return this.dataref.uiname;
   }
 
+  graphDataLink(ownerBlock, getblock, getblock_addUser) {
+
+  }
+
   //used to load data that might change between file versions
   //e.g. EnumProperty's enumeration definitions
   onFileLoad(templateInstance) {
@@ -676,6 +680,10 @@ export class Node {
     return new InheritFlag(obj);
   }
 
+  graphDataLink(ownerBlock, getblock, getblock_addUser) {
+
+  }
+
   get allsockets() {
     let this2 = this;
     return (function*() {
@@ -1087,6 +1095,22 @@ export class Graph {
     return this;
   }
 
+  load(graph) {
+    this.graph_idgen = graph.graph_idgen;
+    this.node_idmap = graph.node_idmap;
+    this.sock_idmap = graph.sock_idmap;
+
+    this.graph_flag = graph.graph_flag;
+
+    this.sortlist = graph.sortlist;
+    this.nodes = graph.nodes;
+
+    this.max_cycle_steps = graph.max_cycle_steps;
+    this.cycle_stop_threshold = graph.cycle_stop_threshold;
+
+    return this;
+  }
+
   /**unfortunately we can't use normal event callbacks (or the graph itself)
    to send certain updates to the UI, because the sheer number of nodes
    in normal workflows would make that slow and error-prone.
@@ -1304,7 +1328,7 @@ export class Graph {
   }
 
   remove(node) {
-    if (node.graph_id == -1) {
+    if (node.graph_id === -1) {
       console.warn("Warning, twiced to remove node not in graph (double remove?)", node.graph_id, node);
       return;
     }
@@ -1320,6 +1344,8 @@ export class Graph {
           break;
         }
       }
+
+      delete this.sock_idmap[s.graph_id];
     }
 
     delete this.node_idmap[node.graph_id];
@@ -1367,6 +1393,16 @@ export class Graph {
     node.graph_flag |= NodeFlags.UPDATE;
 
     return this;
+  }
+
+  dataLink(owner, getblock, getblock_addUser) {
+    for (let node of this.nodes) {
+      node.graphDataLink(owner, getblock, getblock_addUser);
+
+      for (let sock of node.allsockets) {
+        sock.graphDataLink(owner, getblock, getblock_addUser);
+      }
+    }
   }
 
   loadSTRUCT(reader) {

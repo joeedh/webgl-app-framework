@@ -1,5 +1,7 @@
 import "../../extern/three.js";
 
+import {spawnToolSearchMenu} from '../editor_base.js';
+
 import * as util from '../../util/util.js';
 import * as cconst from '../../core/const.js';
 
@@ -700,6 +702,12 @@ export class View3D extends Editor {
       new HotKey("W", [], "mesh.vertex_smooth()"),
       new HotKey(".", [], "view3d.view_selected()"),
 
+      new HotKey("Space", [], () => {
+        console.log("Space Bar!");
+
+        spawnToolSearchMenu(_appstate.ctx);
+      }),
+
       new HotKey("1", [], () => {
         this.viewAxis(1, 1);
       }),
@@ -799,7 +807,7 @@ export class View3D extends Editor {
 
     let w = tmp[3];
 
-    if (tmp[3] != 0.0) {
+    if (tmp[3] !== 0.0) {
       tmp[0] /= tmp[3];
       tmp[1] /= tmp[3];
       tmp[2] /= tmp[3];
@@ -1822,8 +1830,8 @@ View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
 }
 `
 
-Editor.register(View3D);
 nstructjs.manager.add_class(View3D);
+Editor.register(View3D);
 
 let animreq = undefined;
 let resetRender = 0;

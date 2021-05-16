@@ -4,6 +4,12 @@ import {
 
 import * as editors from '../editors/all.js';
 
+import '../tet/wiregen_ops.js';
+import '../mesh/mesh_bevel.js';
+import '../smesh/smesh_ops.js';
+import '../mesh/mesh_ops.js';
+import '../mesh/mesh_extrudeops.js';
+
 import '../image/image_ops.js';
 import '../image/image.js';
 import '../hair/strand.js';
@@ -266,8 +272,6 @@ export function api_define_bvhsettings(api) {
 }
 
 export function api_define_mesh(api, pstruct) {
-  buildCDAPI(api);
-
   api_define_bvhsettings(api);
 
   let mstruct = api_define_sceneobject_data(api, Mesh);
@@ -302,6 +306,8 @@ export function api_define_mesh(api, pstruct) {
   def.on("change", (e) => {
     window.redraw_viewport();
   });
+
+  buildCDAPI(api);
 
   api_define_meshelem(api);
   api_define_meshvertex(api);
@@ -819,7 +825,9 @@ export function api_define_dyntopo(api) {
   st.float("subdivideFactor", "subdivideFactor", "Subdivision Factor").range(0.0, 1.0).noUnits();
   st.float("decimateFactor", "decimateFactor", "Decimate Factor").range(0.0, 1.0).noUnits();
   st.float("edgeSize", "edgeSize", "Edge Length", "Edge length (in pixels)").range(0.25, 40.0).noUnits();
-  st.flags("flag", "flag", DynTopoFlags, "Flag");
+  st.flags("flag", "flag", DynTopoFlags, "Flag").descriptions({
+    ADAPTIVE : "Subdivide based on curvature (Fancy Edge Weights only)  "
+  });
   st.int("maxDepth", "maxDepth", "Max Depth", "Maximum quad tree grid subdivision level").range(0, 15).noUnits();
   st.int("repeat", "repeat", "Repeat", "Number of times to run topology engine")
     .range(1, 25).noUnits();
@@ -849,6 +857,10 @@ export function api_define_brush(api, cstruct) {
     SHARED_SIZE: Icons.SHARED_BRUSH_SIZE
   });
 
+  bst.float("smoothRadiusMul", "smoothRadiusMul", "Smooth Radius")
+    .description("Multiply brush radius by this factor for smoothing")
+    .range(0.125, 15.0).noUnits();
+
   bst.float("rakeCurvatureFactor", "rakeCurvatureFactor", "Curvature Factor")
     .noUnits()
     .range(0.0, 1.0);
@@ -864,7 +876,7 @@ export function api_define_brush(api, cstruct) {
   bst.float("radius", "radius", "Radius").range(0.1, 350.0).noUnits().step(1.0);
   bst.enum("tool", "tool", SculptTools).icons(SculptIcons);
 
-  bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 1.0).noUnits();
+  bst.float("autosmooth", "autosmooth", "Autosmooth").range(0.0, 2.0).noUnits();
   bst.float("autosmoothInflate", "autosmoothInflate", "Inflation").range(0.0, 1.0).noUnits();
 
   bst.float("planeoff", "planeoff", "planeoff").range(-3.5, 3.5).noUnits();
@@ -1067,7 +1079,7 @@ export function getDataAPI() {
   AppSettings.defineAPI(api);
 
   buildEditorsAPI(api, cstruct);
-  buildToolSysAPI(api);
+  buildToolSysAPI(api, true);
 
   cstruct.struct("propCache", "toolDefaults", "Tool Defaults", api.mapStruct(ToolPropertyCache));
 

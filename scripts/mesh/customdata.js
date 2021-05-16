@@ -1,6 +1,8 @@
 import '../path.ux/scripts/util/struct.js';
 import * as util from '../util/util.js';
 
+import {EmptyCDArray} from './mesh_base.js';
+
 export const CDFlags = {
   SELECT             : 1,
   SINGLE_LAYER       : 2,
@@ -206,8 +208,8 @@ export function buildCDAPI(api) {
   for (let cls of CDElemTypes) {
     let ldef = cls.define();
 
-    //let def = st.struct
-    if (ldef.settingsClass) {
+    //settings classes can be shared among customdata types
+    if (ldef.settingsClass && !api.hasStruct(ldef.settingsClass)) {
       ldef.settingsClass.apiDefine(api);
     }
 
@@ -655,6 +657,14 @@ export class CustomData {
   }
 
   initElement(e) {
+    if (this.flatlist.length === 0) {
+      return;
+    }
+
+    if (e.customData === EmptyCDArray) {
+      e.customData = [];
+    }
+
     e.customData.length = 0;
 
     for (let layer of this.flatlist) {

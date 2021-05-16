@@ -1047,6 +1047,12 @@ export class VoxelNode extends BVHNode {
 
     this.avgNo = new Vector3();
     this.avgNoTot = 0.0;
+
+    this.splitVar = 0.16;
+
+    if (this.constructor === VoxelNode) {
+      Object.seal(this);
+    }
   }
 
   _pushTri(tri) {
@@ -1101,7 +1107,7 @@ export class VoxelNode extends BVHNode {
     //variance = Math.sqrt(variance);
     //console.log(variance, Math.PI*0.1)
 
-    if (variance > Math.PI*0.05) {
+    if (variance > this.splitVar) {
       return true;
     }
 
@@ -1119,7 +1125,9 @@ export class VoxelBVH extends BVH {
 }
 VoxelBVH.nodeClass = VoxelNode;
 
-export function voxelUnwrap(mesh, faces, cd_uv=undefined, setSeams=true) {
+export function voxelUnwrap(mesh, faces, cd_uv=undefined, setSeams=true,
+                            leafLimit=255, depthLimit=25,
+                            splitVar = 0.16) {
   if (cd_uv === undefined) {
     cd_uv = mesh.loops.customData.getLayerIndex("uv");
   }
@@ -1134,7 +1142,8 @@ export function voxelUnwrap(mesh, faces, cd_uv=undefined, setSeams=true) {
   //let bvh = mesh.getBVH();
   mesh.regenBVH();
 
-  let bvh = VoxelBVH.create(mesh, true, false, 255, 25);
+  let bvh = VoxelBVH.create(mesh, true, false, leafLimit, depthLimit);
+  bvh.splitVar = splitVar;
 
   let aabb = mesh.getBoundingBox();
   let p = new Vector3();

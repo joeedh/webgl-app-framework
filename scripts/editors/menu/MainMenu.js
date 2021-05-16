@@ -221,6 +221,8 @@ export class MenuBarEditor extends Editor {
       "mesh.make_sphere()",
       "mesh.make_ico_sphere()",
       Menu.SEP,
+      "smesh.make_cube()",
+      Menu.SEP,
       "light.new()",
     ]);
 
@@ -409,5 +411,5 @@ MenuBarEditor.STRUCT = STRUCT.inherit(MenuBarEditor, Editor) + `
 }
 `;
 
-Editor.register(MenuBarEditor);
 nstructjs.manager.add_class(MenuBarEditor);
+Editor.register(MenuBarEditor);

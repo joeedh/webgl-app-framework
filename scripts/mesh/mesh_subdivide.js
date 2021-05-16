@@ -587,7 +587,7 @@ export function splitEdgesPreserveQuads(mesh, es, testfunc, lctx) {
 }
 
 //like splitEdgesSmart but optimized for sculpt
-export function splitEdgesSmart2(mesh, es, testfunc, lctx) {
+export function splitEdgesSmart2(mesh, es, testfunc, lctx, smoothFac=0.0) {
   let newes = new Set();
   let newvs = new Set();
   let fs = new Set();
@@ -596,54 +596,26 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx) {
     es = new Set(es);
   }
 
-  let flag = MeshFlags.TEMP2;
-
   for (let e of es) {
     for (let l of e.loops) {
       fs.add(l.f);
     }
   }
 
+  if (smoothFac > 0.0) {
+    for (let e of es) {
+      let [ne, nv] = mesh.splitEdgeWhileSmoothing(e, 0.5, smoothFac, lctx);
 
-  if (0) {
-    for (let f of fs) {
-      let tot = 0, tot2 = 0;
-      for (let l of f.loops) {
-        tot++;
-
-        if (es.has(l.e)) {
-          tot2++;
-        }
-      }
-
-      if (tot === 4 && tot2 === 1) {
-        for (let l of f.loops) {
-          let lr = l.radial_next;
-          let _i = 0;
-
-          do {
-            fs.delete(lr.f);
-
-            if (_i++ > 10) {
-              console.warn("infinite loop error");
-              break;
-            }
-
-            lr = lr.radial_next;
-          } while (lr !== l);
-          es.delete(l.e);
-        }
-
-        fs.delete(f);
-      }
+      newvs.add(nv);
+      newes.add(ne);
     }
-  }
+  } else {
+    for (let e of es) {
+      let [ne, nv] = mesh.splitEdge(e, 0.5, lctx);
 
-  for (let e of es) {
-    let [ne, nv] = mesh.splitEdge(e, 0.5, lctx);
-
-    newvs.add(nv);
-    newes.add(ne);
+      newvs.add(nv);
+      newes.add(ne);
+    }
   }
 
   for (let f of fs) {
@@ -920,7 +892,7 @@ export function splitEdgesSimple(mesh, es, testfunc, lctx) {
   return {newvs, newfs, killfs, newes};
 }
 
-export function splitEdgesSmart(mesh, es) {
+export function splitEdgesSmart(mesh, es, lctx) {
   let vs = new Set();
 
   for (let e of es) {
@@ -941,7 +913,7 @@ export function splitEdgesSmart(mesh, es) {
       fs.add(l.f);
     }
 
-    let nev = mesh.splitEdge(e, 0.5);
+    let nev = mesh.splitEdge(e, 0.5, lctx);
 
     newvs.add(nev[1]);
   }
@@ -1047,17 +1019,17 @@ export function splitEdgesSmart(mesh, es) {
       let a = l1.prev.prev;
       let b = l1.next.next;
 
-      let l2 = mesh.splitFace(f, l1, l1.next.next.next.next);
+      let l2 = mesh.splitFace(f, l1, l1.next.next.next.next, lctx);
       newfs.add(l2.f);
 
       let olde = l2.e;
-      let nev = mesh.splitEdge(l2.e, 0.5);
+      let nev = mesh.splitEdge(l2.e, 0.5, lctx);
 
       let [newe, newv] = nev;
       newvs.add(newv);
 
-      mesh.connectVerts(a.v, newv);
-      mesh.connectVerts(b.v, newv);
+      mesh.connectVerts(a.v, newv, lctx);
+      mesh.connectVerts(b.v, newv, lctx);
       //l2 = mesh.splitFaceAtVerts(l2.f, a.v, newv);
 
       continue;
@@ -1099,10 +1071,10 @@ export function splitEdgesSmart(mesh, es) {
       let l3 = l1.next.next;
       let l4 = l1.prev;
 
-      newfs.add(mesh.splitFace(l1.f, l1, l1.next.next).f);
-      newfs.add(mesh.splitFace(l3.f, l3, l3.next.next).f);
+      newfs.add(mesh.splitFace(l1.f, l1, l1.next.next, lctx).f);
+      newfs.add(mesh.splitFace(l3.f, l3, l3.next.next, lctx).f);
 
-      newfs.add(mesh.splitFace(l4.f, l4.prev, l4.next).f);
+      newfs.add(mesh.splitFace(l4.f, l4.prev, l4.next, lctx).f);
 
       continue;
     }
@@ -1119,7 +1091,7 @@ export function splitEdgesSmart(mesh, es) {
       for (let i = 1; i < ls.length - 1; i++) {
         let l1 = ls[0], l2 = ls[i], l3 = ls[i + 1];
 
-        let f2 = mesh.makeFace([l1.v, l2.v, l3.v]);
+        let f2 = mesh.makeFace([l1.v, l2.v, l3.v], undefined, undefined, lctx);
         let l = f2.lists[0].l;
 
         mesh.copyElemData(l, l1);
@@ -1164,7 +1136,7 @@ export function splitEdgesSmart(mesh, es) {
 
       if (l1.f === l2.f && l1.f === f2) {
         //console.log("splitting face", l1, l2);
-        newfs.add(mesh.splitFace(f2, l1, l2).f);
+        newfs.add(mesh.splitFace(f2, l1, l2, lctx).f);
       } else {
         //console.log("pattern error", pat, idx);
       }

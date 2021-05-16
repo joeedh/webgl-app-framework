@@ -89,6 +89,7 @@ export class MathNode extends ShaderNode {
 
   static nodedef() {return {
     category  : "Math",
+    name      : "math",
     uiname    : "Math",
     inputs    : {
       a : new FloatSocket(),

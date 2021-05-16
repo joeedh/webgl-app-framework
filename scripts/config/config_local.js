@@ -1,4 +1,5 @@
 let exports = {
+  addonLoadWaitTime : 500,
   pathuxConfig: {
     //addHelpPickers: true,
 

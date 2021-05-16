@@ -5,7 +5,7 @@ import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property, StringProperty,
   PropFlags, PropTypes, PropSubTypes,
-  ToolOp, ToolMacro, ToolFlags, UndoFlags
+  ToolOp, ToolMacro, ToolFlags, UndoFlags, keymap
 } from '../path.ux/scripts/pathux.js';
 import {TranslateOp} from "../editors/view3d/transform/transform_ops.js";
 import * as util from '../util/util.js';
@@ -15,10 +15,10 @@ import {Icons} from '../editors/icon_enum.js';
 import {MeshFlags, MeshTypes, MeshFeatures, LogContext} from './mesh_base.js';
 import {MeshDeformOp, MeshOp} from './mesh_ops_base.js';
 import {ccSmooth, subdivide, loopSubdivide} from '../subsurf/subsurf_mesh.js';
-import {splitEdgesPreserveQuads, splitEdgesSmart, splitEdgesSmart2} from "./mesh_subdivide.js";
+import {splitEdgesPreserveQuads, splitEdgesSimple2, splitEdgesSmart, splitEdgesSmart2} from "./mesh_subdivide.js";
 import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
-import {CustomDataElem} from "./customdata.js";
+import {CDFlags, CustomDataElem} from "./customdata.js";
 import {
   bisectMesh, connectVerts, cotanVertexSmooth, dissolveEdgeLoops, dissolveFaces, fixManifold, flipLongTriangles,
   pruneLooseGeometry,
@@ -119,6 +119,42 @@ export class DeleteOp extends MeshOp {
 
 ToolOp.register(DeleteOp);
 
+
+export class DeleteOnlyFacesOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Delete Only Faces",
+      icon    : Icons.DELETE,
+      toolpath: "mesh.delete_only_faces",
+      inputs  : ToolOp.inherit(),
+      outputs : ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.delete_only_faces");
+
+    let selectmode = ctx.selectMask;
+
+    for (let mesh of this.getMeshes(ctx)) {
+      for (let f of new Set(mesh.faces.selected.editable)) {
+        mesh.killFace(f);
+      }
+
+      mesh.regenRender();
+      mesh.regenUVEditor();
+      mesh.regenUVWrangler();
+      mesh.regenBVH();
+      mesh.regenTessellation();
+      mesh.graphUpdate();
+    }
+
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(DeleteOnlyFacesOp);
+
 export class FlipLongTrisOp extends MeshOp {
   static tooldef() {
     return {
@@ -201,9 +237,16 @@ export class SymmetrizeOp extends MeshOp {
       toolpath: "mesh.symmetrize",
       icon    : Icons.SYMMETRIZE,
       inputs  : ToolOp.inherit({
-        axis        : new EnumProperty(0, {X: 0, Y: 1, Z: 2}),
-        side        : new EnumProperty(1, {LEFT: -1, RIGHT: 1}),
+        axis        : new EnumProperty(0, {X: 0, Y: 1, Z: 2})
+          .saveLastValue(),
+        side        : new EnumProperty(1, {LEFT: -1, RIGHT: 1})
+          .saveLastValue(),
         selectedOnly: new BoolProperty(false)
+          .saveLastValue(),
+        threshold   : new FloatProperty(0.0001)
+          .setRange(0.0, 2.0)
+          .noUnits()
+          .saveLastValue()
       }),
       outputs : ToolOp.inherit()
     }
@@ -236,7 +279,8 @@ export class SymmetrizeOp extends MeshOp {
         mesh.bvh.destroy(mesh);
       }
 
-      symmetrizeMesh(mesh, fset, axis, side);
+      let threshold = this.inputs.threshold.getValue();
+      symmetrizeMesh(mesh, fset, axis, side, threshold);
 
       //force bvh update
       mesh.bvh = undefined;
@@ -412,11 +456,55 @@ export class RemeshOp extends MeshOp {
       toolpath: "mesh.remesh",
       inputs  : ToolOp.inherit(
         {
-          remesher: new EnumProperty(Remeshers.UNIFORM_QUAD, Remeshers)
+          flag             : new FlagProperty(DefaultRemeshFlags, RemeshFlags),
+          remesher         : new EnumProperty(Remeshers.UNIFORM_TRI, Remeshers).saveLastValue(),
+          rakeFactor       : new FloatProperty(0.5).noUnits().setRange(0.0, 1.0),
+          relax            : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0),
+          projection       : new FloatProperty(0.8).noUnits().setRange(0.0, 1.0),
+          subdivideFac     : new FloatProperty(0.5).noUnits().setRange(0.01, 3.0).saveLastValue(),
+          collapseFac      : new FloatProperty(0.5).noUnits().setRange(0.01, 1.0).saveLastValue(),
+          goalType         : new EnumProperty(RemeshGoals.EDGE_AVERAGE, RemeshGoals).saveLastValue(),
+          goal             : new FloatProperty(1.0).noUnits().setRange(0, 1024*1024*32).saveLastValue(),
+          edgeRunPercent   : new FloatProperty(0.5).setRange(0.001, 1).noUnits().saveLastValue(),
+          curveSmoothFac   : new FloatProperty(0.0).noUnits().setRange(0.0, 1.0).saveLastValue(),
+          curveSmoothRepeat: new IntProperty(4).noUnits().setRange(0, 50).saveLastValue()
         }
       ),
       outputs : ToolOp.inherit()
     }
+  }
+
+  makeRemesher(ctx, mesh, lctx) {
+    let goalType = this.inputs.goalType.getValue()
+    let goalValue = this.inputs.goal.getValue()
+    let rakeFactor = this.inputs.rakeFactor.getValue();
+    let relax = this.inputs.relax.getValue();
+    let subdFac = this.inputs.subdivideFac.getValue();
+    let collFac = this.inputs.collapseFac.getValue();
+    let project = this.inputs.projection.getValue();
+    let count = this.inputs.edgeRunPercent.getValue();
+    let curveSmoothRepeat = this.inputs.curveSmoothRepeat.getValue();
+    let curveSmoothFac = this.inputs.curveSmoothFac.getValue();
+
+    count = Math.ceil(mesh.edges.length*count);
+
+    fixManifold(mesh, lctx);
+    let cls = RemeshMap[this.inputs.remesher.getValue()];
+
+    let remesher = new cls(mesh, lctx, goalType, goalValue);
+
+    remesher.subdFac = subdFac;
+    remesher.collFac = collFac;
+    remesher.relax = relax;
+    remesher.projection = project;
+    remesher.rakeFactor = rakeFactor;
+    remesher.flag = this.inputs.flag.getValue();
+    remesher.smoothCurveRepeat = curveSmoothRepeat;
+    remesher.smoothCurveFac = curveSmoothFac;
+
+    remesher.start(count);
+
+    return remesher;
   }
 
   exec(ctx) {
@@ -437,8 +525,14 @@ export class RemeshOp extends MeshOp {
         }
       }
 
-      remeshMesh(mesh, this.inputs.remesher.getValue(), lctx);
-      vertexSmooth(mesh, mesh.verts, 0.5, 1.0);
+      let remesher = this.makeRemesher(ctx, mesh, lctx);
+      let i = 0;
+
+      while (!remesher.done && i++ < 5) {
+        remesher.step();
+      }
+
+      remesher.finish();
 
       mesh.regenTessellation();
       mesh.recalcNormals();
@@ -452,6 +546,129 @@ export class RemeshOp extends MeshOp {
 
 ToolOp.register(RemeshOp);
 
+export class InteractiveRemeshOp extends RemeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Remesh (Interactive)",
+      toolpath: "mesh.interactive_remesh",
+      inputs  : ToolOp.inherit({
+        steps: new IntProperty(5).private()
+      }),
+      outputs : ToolOp.inherit({}),
+      is_modal: true
+    }
+  }
+
+  makeLogCtx(ctx, mesh) {
+    let lctx = new LogContext();
+
+    lctx.onnew = (e) => {
+      return;
+      mesh.setSelect(e, true);
+
+      if (e.type === MeshTypes.FACE) {
+        for (let l of e.loops) {
+          mesh.setSelect(l.v, true);
+          mesh.setSelect(l.e, true);
+        }
+      }
+    }
+
+    return lctx;
+  }
+
+  on_mousedown(e) {
+    this.modalEnd(false);
+  }
+
+  on_mouseup(e) {
+    this.modalEnd(false);
+  }
+
+  modalEnd(wasCancelled) {
+    this.remesher.finish();
+
+    //prevent reference leaks
+    this.remesher = undefined;
+    this.lctx = undefined;
+
+    let mesh = this.modal_ctx.mesh;
+    if (mesh) {
+      for (let v of mesh.verts) {
+        v.flag |= MeshFlags.UPDATE;
+      }
+      mesh.regenAll();
+      mesh.recalcNormals();
+      mesh.graphUpdate();
+      window.redraw_viewport(true);
+    }
+
+    super.modalEnd(false)
+  }
+
+  modalStart(ctx) {
+    let mesh = ctx.mesh;
+
+    mesh.compact();
+
+    this.lctx = this.makeLogCtx(ctx, mesh)
+    this.remesher = this.makeRemesher(ctx, mesh, this.lctx);
+    this.remesher.minEdges = -1;
+
+    this.last_time = util.time_ms();
+
+    return super.modalStart(ctx);
+  }
+
+  on_tick() {
+    if (util.time_ms() - this.last_time < 50) {
+      return;
+    }
+
+    let mesh = this.modal_ctx.mesh;
+
+    let time = util.time_ms();
+    while (this.remesher && util.time_ms() - time < 50 && !this.remesher.done) {
+      let i = this.inputs.steps.getValue();
+      this.inputs.steps.setValue(i + 1);
+      this.remesher.step();
+    }
+
+    if (!this.remesher) {
+      this.modalEnd();
+    }
+
+    mesh.regenAll();
+    mesh.graphUpdate();
+
+    this.last_time = util.time_ms();
+    window.redraw_viewport(true);
+  }
+
+  exec(ctx) {
+    let mesh = ctx.mesh;
+    let lctx = this.makeLogCtx(ctx, mesh);
+
+    mesh.compact();
+
+    let remesher = this.makeRemesher(ctx, mesh, lctx);
+
+    let steps = this.inputs.steps.getValue();
+
+    for (let i = 0; i < steps; i++) {
+      remesher.step();
+    }
+
+    remesher.finish();
+
+    mesh.regenAll();
+    mesh.recalcNormals();
+    mesh.graphUpdate();
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(InteractiveRemeshOp);
 
 export class LoopSubdOp extends MeshOp {
   static tooldef() {
@@ -485,295 +702,16 @@ export class LoopSubdOp extends MeshOp {
 
 ToolOp.register(LoopSubdOp);
 
-export class ExtrudeOneVertexOp extends MeshOp {
-  constructor() {
-    super();
-  }
-
-  static tooldef() {
-    return {
-      uiname     : "Extrude Vertex",
-      icon       : Icons.EXTRUDE,
-      toolpath   : "mesh.extrude_one_vertex",
-      description: "Extrude one vertex",
-      inputs     : ToolOp.inherit({
-        co       : new Vec3Property(),
-        select   : new BoolProperty(true),
-        setActive: new BoolProperty(true)
-      }),
-      outputs    : ToolOp.inherit({
-        vertex: new IntProperty(-1), //output vertex eid
-        edge  : new IntProperty(-1) //output edge eid
-      })
-    }
-  }
-
-  exec(ctx) {
-    let mesh = this.getActiveMesh(ctx);
-
-    if (!(mesh.features & MeshFeatures.MAKE_VERT)) {
-      ctx.error("Mesh doesn't support making new vertices");
-      ctx.toolstack.toolCancel(ctx, this);
-      return;
-    }
-
-    let co = this.inputs.co.getValue();
-    let v = mesh.makeVertex(co);
-
-    let ok = mesh.verts.active !== undefined;
-    ok = ok && (mesh.features & MeshFeatures.MAKE_EDGE);
-    ok = ok && v !== mesh.verts.active; //in case of auto-setting somewhere
-
-    ok = ok && (mesh.verts.active.edges.length < 2 || (mesh.features & MeshFeatures.GREATER_TWO_VALENCE));
-
-    this.outputs.vertex.setValue(v.eid);
-
-    if (ok) {
-      let e = mesh.makeEdge(mesh.verts.active, v);
-      this.outputs.edge.setValue(e.eid);
-    }
-
-    if (this.inputs.select.getValue()) {
-      mesh.setSelect(v, true);
-    }
-
-    if (this.inputs.setActive.getValue()) {
-      mesh.setActive(v);
-    }
-
-    mesh.regenTessellation();
-    mesh.regenRender();
-  }
-}
-
-ToolOp.register(ExtrudeOneVertexOp);
-
-export class ExtrudeRegionsOp extends MeshOp {
-  constructor() {
-    super();
-  }
-
-  static tooldef() {
-    return {
-      uiname  : "Extrude Regions",
-      icon    : -1,
-      toolpath: "mesh.extrude_regions",
-      undoflag: 0,
-      flag    : 0,
-      inputs  : ToolOp.inherit({}),
-      outputs : {
-        normal     : new Vec3Property(),
-        normalSpace: new Mat4Property()
-      }
-    }
-  }
-
-  static invoke(ctx, args) {
-    let tool = super.invoke(ctx, args);
-
-    if (args["transform"]) {
-      let macro = new ToolMacro();
-      macro.add(tool);
-
-      let translate = new TranslateOp();
-      translate.inputs.selmask.setValue(SelMask.GEOM);
-      translate.inputs.constraint.setValue([0, 0, 1]);
-
-      macro.add(translate);
-
-      macro.connect(tool, "normalSpace", translate, "constraint_space");
-
-      macro.connect(tool, translate, () => {
-        //  translate.inputs.constraint_space.setValue(tool.outputs.normalSpace.getValue());
-      });
-
-      return macro;
-    }
-
-    return tool;
-  }
-
-  _exec_intern(ctx, mesh) {
-    let fset = new util.set(mesh.faces.selected.editable);
-    let vset = new util.set();
-    let eset = new util.set();
-    let boundary = new util.set();
-
-    for (let f of fset) {
-      for (let list of f.lists) {
-        for (let l of list) {
-          vset.add(l.v);
-          eset.add(l.e);
-        }
-      }
-    }
-
-    for (let e of eset) {
-      let l = e.l;
-
-      if (l === undefined) {
-        continue;
-      }
-
-      let _i = 0;
-      do {
-        if (!fset.has(l.f)) {
-          boundary.add(e);
-          break;
-        }
-
-        if (_i++ > 10000) {
-          console.log("infinite loop detected");
-          break;
-        }
-        l = l.radial_next;
-      } while (l !== e.l);
-
-      if (_i === 1) {
-        boundary.add(e);
-      }
-    }
-
-    let vmap = {}, emap = {};
-
-    for (let v of vset) {
-      let v2 = vmap[v.eid] = mesh.makeVertex(v);
-      mesh.copyElemData(v2, v);
-    }
-
-    for (let e of eset) {
-      let v1 = vmap[e.v1.eid];
-      let v2 = vmap[e.v2.eid];
-
-      let e2 = emap[e.eid] = mesh.makeEdge(v1, v2);
-      mesh.copyElemData(e2, e);
-    }
-
-    for (let v of vset) {
-      mesh.verts.setSelect(v, false);
-    }
-
-    for (let e of eset) {
-      mesh.edges.setSelect(e, false);
-    }
-
-    let no = new Vector3();
-
-    for (let f of fset) {
-      no.add(f.no);
-
-      let f2 = mesh.copyFace(f, vmap);
-
-      if (f === mesh.faces.active) {
-        mesh.setActive(f2);
-      }
-
-      mesh.faces.setSelect(f2, true);
-
-      for (let list2 of f2.lists) {
-        for (let l2 of list2) {
-          mesh.edges.setSelect(l2.e, true);
-        }
-      }
-
-      let quadvs = new Array(4);
-
-      for (let i = 0; i < f2.lists.length; i++) {
-        let list1 = f.lists[i];
-        let list2 = f2.lists[i];
-
-        let l1 = list1.l;
-        let l2 = list2.l;
-        let _i = 0;
-
-        do {
-          if (boundary.has(l1.e)) {
-            quadvs[0] = l1.v;
-            quadvs[1] = l1.next.v;
-            quadvs[2] = l2.next.v;
-            quadvs[3] = l2.v;
-
-            let f3 = mesh.makeFace(quadvs);
-            let l = f3.lists[0].l;
-
-            mesh.copyElemData(l, l1);
-            mesh.copyElemData(l.next, l1.next);
-            mesh.copyElemData(l.next.next, l2.next);
-            mesh.copyElemData(l.prev, l2);
-          }
-
-          if (_i++ > 100000) {
-            console.warn("infinite loop detected");
-            break;
-          }
-
-          l2 = l2.next;
-          l1 = l1.next;
-        } while (l1 !== list1.l);
-      }
-
-      mesh.killFace(f);
-    }
-
-    for (let e of mesh.edges) {
-      e.flag &= ~MeshFlags.DRAW_DEBUG;
-    }
-
-    for (let e of boundary) {
-      //mesh.edges.setSelect(e, true);
-      e.flag |= MeshFlags.DRAW_DEBUG;
-      //mesh.verts.setSelect(e.v1, true);
-      //mesh.verts.setSelect(e.v2, true);
-    }
-
-    for (let e of eset) {
-      if (!boundary.has(e) && e.l === undefined) {
-        mesh.killEdge(e);
-      }
-    }
-
-    for (let v of vset) {
-      if (v.edges.length === 0) {
-        mesh.killVertex(v);
-      }
-    }
-
-    for (let k in vmap) {
-      mesh.verts.setSelect(vmap[k], true);
-    }
-
-    no.normalize();
-    if (no.dot(no) === 0.0) {
-      no[2] = 1.0;
-    }
-
-    this.outputs.normalSpace.setValue(new Matrix4().makeNormalMatrix(no));
-    this.outputs.normal.setValue(no);
-
-    mesh.regenRender();
-    mesh.regenTessellation();
-    mesh.recalcNormals();
-    mesh.graphUpdate();
-    mesh.regenBVH();
-
-    window.redraw_viewport();
-  }
-
-  exec(ctx) {
-    for (let mesh of this.getMeshes(ctx)) {
-      this._exec_intern(ctx, mesh);
-    }
-  }
-}
-
-ToolOp.register(ExtrudeRegionsOp);
 
 import {meshSubdivideTest} from './mesh_subdivide.js';
 import {UVWrangler, voxelUnwrap} from './unwrapping.js';
 import {relaxUVs, UnWrapSolver} from './unwrapping_solve.js';
 import {MeshOpBaseUV, UnwrapOpBase} from './mesh_uvops_base.js';
 import {MultiGridSmoother} from './multigrid_smooth.js';
-import {cleanupQuads, cleanupTris, Remeshers, remeshMesh} from './mesh_remesh.js';
+import {
+  cleanupQuads, cleanupTris, DefaultRemeshFlags, Remeshers, RemeshFlags, RemeshGoals, RemeshMap, remeshMesh,
+  UniformTriRemesher
+} from './mesh_remesh.js';
 
 export class CatmullClarkeSubd extends MeshOp {
   constructor() {
@@ -831,11 +769,86 @@ export class CatmullClarkeSubd extends MeshOp {
       mesh.recalcNormals();
       mesh.regenRender();
       mesh.graphUpdate();
+      mesh.regenBVH();
     }
   }
 }
 
 ToolOp.register(CatmullClarkeSubd);
+
+export const SymFlags = {
+  X   : 1,
+  Y   : 2,
+  Z   : 4,
+  AUTO: 512
+};
+
+export class MeshSnapToMirror extends MeshOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname  : "Snap Verts To Mirror Line",
+      icon    : -1,
+      toolpath: "mesh.snap_to_mirror_axis",
+      inputs  : ToolOp.inherit({
+        symFlag: new FlagProperty(SymFlags.AUTO, SymFlags)
+      })
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      let axes = this.inputs.symFlag.getValue();
+
+      if (axes & SymFlags.AUTO) {
+        axes = mesh.symFlag;
+
+        //check sculpt toolmode's symmetry settings too
+        for (let mode of ctx.scene.toolmodes) {
+          if (mode.constructor === BVHToolMode) {
+            axes |= mode.symmetryAxes;
+          }
+        }
+      }
+
+      console.log("axes", axes);
+
+      for (let v of mesh.verts.selected.editable) {
+        let minaxis;
+        let mindis;
+
+        for (let i = 0; i < 3; i++) {
+          if (!(axes & (1<<i))) {
+            continue;
+          }
+
+          if (minaxis === undefined || Math.abs(v[i]) < mindis) {
+            minaxis = i;
+            mindis = Math.abs(v[i]);
+          }
+        }
+
+        //console.log("minaxis", minaxis, v);
+
+        if (minaxis !== undefined) {
+          v[minaxis] = 0.0;
+          v.flag |= MeshFlags.UPDATE;
+        }
+      }
+
+      mesh.regenBVH();
+      mesh.regenRender();
+      mesh.recalcNormals();
+      mesh.graphUpdate();
+      window.redraw_viewport(true);
+    }
+  }
+}
+
+ToolOp.register(MeshSnapToMirror);
 
 export class MeshSubdTest extends MeshOp {
   constructor() {
@@ -928,6 +941,7 @@ export class SubdivideSimple extends MeshOp {
       mesh.regenTessellation();
       mesh.recalcNormals();
       mesh.regenRender();
+      mesh.regenBVH();
       mesh.graphUpdate();
     }
   }
@@ -1113,6 +1127,48 @@ export const SmoothTypes = {
   UNIFORM: 4
 };
 
+export class SmoothCurvaturesOp extends MeshDeformOp {
+  constructor() {
+    super();
+  }
+
+
+  static tooldef() {
+    return {
+      uiname  : "Smooth Curvatures",
+      icon    : Icons.SCULPT_SMOOTH,
+      toolpath: "mesh.smooth_curvature_directions",
+      undoflag: 0,
+      flag    : 0,
+      inputs  : ToolOp.inherit({
+        repeat    : new IntProperty(1).saveLastValue().noUnits().setRange(1, 256),
+        projection: new FloatProperty(0.0).saveLastValue().setRange(0.0, 1.0).noUnits(),
+        factor    : new FloatProperty(0.5).saveLastValue().setRange(0.0, 1.0).noUnits()
+      }),
+    }
+  }
+
+  exec(ctx) {
+    let fac = this.inputs.factor.getValue();
+    let repeat = this.inputs.repeat.getValue();
+    let proj = this.inputs.projection.getValue();
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let cd_curv = getCurveVerts(mesh);
+
+      for (let i = 0; i < repeat; i++) {
+        smoothCurvatures(mesh, mesh.verts.selected.editable, fac, proj);
+      }
+
+      mesh.regenRender();
+      mesh.graphUpdate();
+      window.redraw_viewport(true);
+    }
+  }
+}
+
+ToolOp.register(SmoothCurvaturesOp);
+
 export class VertexSmooth extends MeshDeformOp {
   constructor() {
     super();
@@ -1169,6 +1225,11 @@ export class VertexSmooth extends MeshDeformOp {
 
 ToolOp.register(VertexSmooth);
 
+let SplitMethods = {
+  SMART1: 0,
+  SMART2: 1,
+  SIMPLE: 2
+}
 
 export class TestSplitFaceOp extends MeshOp {
   static tooldef() {
@@ -1176,7 +1237,9 @@ export class TestSplitFaceOp extends MeshOp {
       uiname: "Split Edges (smart)",
       //icon    : Icons.SPLIT_EDGE,
       toolpath: "mesh.split_edges_smart",
-      inputs  : ToolOp.inherit(),
+      inputs  : ToolOp.inherit({
+        method: new EnumProperty(SplitMethods.SMART2, SplitMethods).saveLastValue()
+      }),
       outputs : ToolOp.inherit()
     }
   }
@@ -1227,8 +1290,20 @@ export class TestSplitFaceOp extends MeshOp {
         e.flag |= MeshFlags.UPDATE;
       }
 
+      let method = this.inputs.method.getValue();
+
+      switch (method) {
+        case SplitMethods.SMART1:
+          splitEdgesSmart(mesh, es, lctx);
+          break;
+        case SplitMethods.SMART2:
+          splitEdgesSmart2(mesh, es, undefined, lctx);
+          break;
+        case SplitMethods.SIMPLE:
+          splitEdgesSimple2(mesh, es, undefined, lctx);
+          break;
+      }
       //splitEdgesPreserveQuads(mesh, es, undefined, lctx);
-      splitEdgesSmart2(mesh, es, undefined, lctx);
 
       //console.log(newvs, newfs);
 
@@ -1380,7 +1455,10 @@ export class VoxelUnwrapOp extends UnwrapOpBase {
       toolpath: "mesh.voxel_unwrap",
       icon    : -1,
       inputs  : ToolOp.inherit({
-        setSeams: new BoolProperty(true)
+        setSeams  : new BoolProperty(true),
+        leafLimit : new IntProperty(255).setRange(1, 1024).noUnits().saveLastValue(),
+        depthLimit: new IntProperty(25).setRange(0, 75).noUnits().saveLastValue(),
+        splitVar  : new FloatProperty(0.16).setRange(0.0, 5.0).noUnits().saveLastValue()
       }),
       outputs : ToolOp.inherit()
     }
@@ -1389,9 +1467,14 @@ export class VoxelUnwrapOp extends UnwrapOpBase {
   exec(ctx) {
     console.warn("mesh.voxel_unwrap");
 
+    let setSeams = this.inputs.setSeams.getValue();
+    let leafLimit = this.inputs.leafLimit.getValue();
+    let depthLimit = this.inputs.depthLimit.getValue();
+    let splitVar = this.inputs.splitVar.getValue();
 
     for (let mesh of this.getMeshes(ctx)) {
-      voxelUnwrap(mesh, mesh.faces.selected.editable, undefined, this.inputs.setSeams.getValue());
+      voxelUnwrap(mesh, mesh.faces.selected.editable, undefined,
+        setSeams, leafLimit, depthLimit, splitVar);
 
       mesh.regenBVH();
       mesh.regenTessellation();
@@ -3159,6 +3242,11 @@ export class RotateEdgeOp extends MeshOp {
         }
       }
 
+      //rotating edges messes up partial GL update,
+      //as topology changes happen without changing the
+      //element count
+      mesh._clearGPUMeshes();
+
       mesh.regenAll();
       mesh.regenTessellation();
       mesh.recalcNormals();
@@ -3259,6 +3347,11 @@ export class RandomCollapseOp extends MeshOp {
 
         mesh.rotateEdge(e, Math.random() > 0.5 ? 1 : -1);
       }
+
+      //rotating edges messes up partial GL update,
+      //as topology changes happen without changing the
+      //element count
+      mesh._clearGPUMeshes(window._gl);
 
       mesh.regenAll();
       mesh.recalcNormals();
@@ -3453,4 +3546,384 @@ export class DissolveFacesOp extends MeshOp {
     }
   }
 }
+
 ToolOp.register(DissolveFacesOp);
+
+export class OptRemeshParams extends ToolOp {
+  constructor() {
+    super();
+
+    this.remesher = undefined;
+  }
+
+  static tooldef() {
+    return {
+      uiname  : "Optimize Remesh Params",
+      toolpath: "mesh.opt_remesh_params",
+      undoflag: UndoFlags.NO_UNDO,
+      inputs  : {
+        edgeGoal: new FloatProperty(0.75)
+      },
+      outputs : {},
+      is_modal: true
+    }
+  }
+
+  on_mouseup(e) {
+    this.modalEnd(false);
+  }
+
+  modalEnd(wasCancelled) {
+    if (this.remesher) {
+      this.remesher.endOptTimer();
+      this.remesher = undefined;
+    }
+
+    super.modalEnd(wasCancelled);
+  }
+
+  modalStart(ctx) {
+    super.modalStart(ctx);
+
+    let mesh = ctx.mesh;
+    if (!mesh) {
+      this.modalEnd(true);
+    }
+
+    let goal = this.inputs.edgeGoal.getValue();
+
+    this.remesher = new UniformTriRemesher(mesh, undefined, RemeshGoals.EDGE_AVERAGE, goal);
+    this.remesher.optimizeParams(ctx);
+  }
+}
+
+ToolOp.register(OptRemeshParams);
+
+import {SolverElem, SolverSettings, Solver, DiffConstraint, VelConstraint} from './mesh_solver.js';
+import {BVHToolMode} from '../editors/view3d/tools/pbvh.js';
+import {getCurveVerts, smoothCurvatures} from './mesh_curvature.js';
+
+export class SolverOpBase extends MeshOp {
+  constructor() {
+    super();
+
+    this.solver = undefined;
+  }
+
+  static tooldef() {
+    return {
+      inputs  : ToolOp.inherit({
+        steps        : new IntProperty(1).private(),
+        dt           : new FloatProperty(0.5).noUnits().setRange(0.0001, 1.0).saveLastValue(),
+        implicitSteps: new IntProperty(5).noUnits().setRange(0, 45).saveLastValue(),
+        damp         : new FloatProperty(0.99).noUnits().setRange(0.0, 1.0).saveLastValue()
+      }),
+      is_modal: true,
+      outputs : ToolOp.inherit({})
+    }
+  }
+
+  on_keydown(e) {
+    switch (e.keyCode) {
+      case keymap["Escape"]:
+      case keymap["Enter"]:
+      case keymap["Space"]:
+        this.modalEnd(false);
+        break;
+    }
+  }
+
+  getSolver(mesh) {
+    let solver = new Solver();
+    solver.start(mesh);
+
+    solver.implicitSteps = this.inputs.implicitSteps.getValue();
+
+    return solver;
+  }
+
+  execStep(mesh, solver) {
+    let dt = this.inputs.dt.getValue();
+
+    try {
+      solver.solve(1, dt);
+    } catch (error) {
+      console.log(error.stack);
+      console.log(error.message);
+      if (this.modalRunning) {
+        this.modalEnd(false);
+      }
+
+      return;
+    }
+
+    mesh.regenRender();
+    mesh.recalcNormals();
+    mesh.graphUpdate();
+
+    window.redraw_viewport();
+  }
+
+  on_tick() {
+    let time = util.time_ms();
+
+    let solver = this.solver, mesh = solver.mesh;
+
+    while (util.time_ms() - time < 150) {
+      this.execStep(mesh, solver);
+      this.inputs.steps.setValue(this.inputs.steps.getValue() + 1);
+
+      if (!this.modalRunning) {
+        break;
+      }
+
+      //XXX
+      //this.modalEnd(false);
+    }
+  }
+
+  modalStart(ctx) {
+    super.modalStart(ctx);
+
+    this.inputs.steps.setValue(0);
+    this.solver = this.getSolver(ctx.mesh);
+  }
+
+  exec(ctx) {
+    let steps = this.inputs.steps.getValue();
+    let mesh = ctx.mesh;
+    let solver = this.getSolver(mesh);
+
+    for (let i = 0; i < steps; i++) {
+      this.execStep(mesh, solver);
+    }
+
+    solver.finish();
+  }
+
+  on_mouseup(e) {
+    this.modalEnd(false);
+  }
+
+  modalEnd(was_cancelled) {
+    super.modalEnd(was_cancelled);
+
+    if (this.solver) {
+      this.solver.finish();
+      this.solver = undefined;
+    }
+  }
+}
+
+export class TestSolverOp extends SolverOpBase {
+  constructor() {
+    super();
+
+    this.solver = undefined;
+  }
+
+  static tooldef() {
+    return {
+      uiname  : "Test Solver",
+      toolpath: "mesh.test_solver",
+      inputs  : ToolOp.inherit({
+        springK   : new FloatProperty(5.5).noUnits().setRange(0.0, 55.0).saveLastValue(),
+        inflate   : new FloatProperty(0.25).noUnits().setRange(0.0001, 2.0).saveLastValue(),
+        edgeLenMul: new FloatProperty(1.85).noUnits().setRange(0.01, 5.0).saveLastValue(),
+      }),
+      is_modal: true,
+      outputs : ToolOp.inherit({})
+    }
+  }
+
+  execStep(mesh, solver) {
+    let vs = solver.clientData;
+    let cd_slv = solver.cd_slv;
+    let inflate = this.inputs.inflate.getValue()*0.01;
+    let dt = this.inputs.dt.getValue();
+    let damp = this.inputs.damp.getValue();
+
+    for (let v of vs) {
+      let sv = v.customData[cd_slv];
+
+      sv.oldco.load(v);
+      sv.vel.mulScalar(damp);
+
+      sv.force.zero();
+      sv.scratch.zero();
+
+      sv.force.addFac(v.no, 0.1*dt*inflate/sv.mass);
+
+      if (isNaN(sv.vel.dot(sv.vel))) {
+        console.error("NaN!");
+        if (this.modalRunning) {
+          this.modalEnd(false);
+        }
+
+        return;
+      }
+
+      //v.addFac(sv.vel, dt);
+      v.flag |= MeshFlags.UPDATE;
+    }
+
+    mesh.regenRender();
+    mesh.recalcNormals();
+    mesh.graphUpdate();
+    window.redraw_viewport(true);
+
+    super.execStep(mesh, solver);
+
+    for (let v of vs) {
+      let sv = v.customData[cd_slv];
+
+      if (sv.mass > 100) {
+        v.load(sv.oldco);
+      }
+      //sv.vel.load(v).sub(sv.oldco);
+    }
+  }
+
+  getSolver(mesh) {
+    let solver = super.getSolver(mesh);
+
+    let vs = new Set(mesh.verts.selected.editable);
+    let es = new Set();
+    let fs = new Set();
+    let tris = new Set();
+
+    solver.clientData = vs;
+
+    for (let v of vs) {
+      for (let e of v.edges) {
+        es.add(e);
+
+        for (let l of e.loops) {
+          fs.add(e.l.f);
+        }
+      }
+    }
+
+    if (0) {
+      let cdname = "__solve_idx";
+      let cd_idx = mesh.edges.customData.getNamedLayerIndex(cdname, "int");
+
+      if (cd_idx < 0) {
+        let layer = mesh.edges.addCustomDataLayer("int", cdname);
+        cd_idx = layer.index;
+        layer.flag |= CDFlags.TEMPORARY;
+      }
+    }
+
+    let sk = this.inputs.springK.getValue();
+    let cd_slv = solver.cd_slv;
+
+    function debug() {
+      //return console.log(...arguments);
+    }
+
+    function spring_c(params) {
+      let [v1, v2, rlen, sk] = params;
+
+      //let m1 = v1.customData[cd_slv].mass;
+      //let m2 = v1.customData[cd_slv].mass;
+
+      let err = Math.abs(v1.vectorDistance(v2) - rlen);
+
+      return err;
+    }
+
+    function spring_c_vel(params, klst, glst) {
+      let [v1, v2, rlen, sk] = params;
+
+      let [g1, g2] = glst;
+
+      let err = v1.vectorDistance(v2) - rlen;
+
+      for (let j = 0; j < 3; j++) {
+        g1[j] = (v2[j] - v1[j])*err*sk;
+        g2[j] = (v1[j] - v2[j])*err*sk;
+      }
+
+      debug(g1, g2);
+    }
+
+    function spring_c_acc(params, klst, hlst) {
+      let [v1, v2, rlen, sk] = params;
+
+      let [h1, h2] = hlst;
+
+      let err = v1.vectorDistance(v2) - rlen;
+
+      for (let j = 0; j < 3; j++) {
+        h1[j] = -err*sk;
+        h2[j] = err*sk;
+      }
+    }
+
+    let boundary = new Set();
+
+    for (let e of es) {
+      if (!vs.has(e.v1)) {
+        boundary.add(e.v1);
+      }
+      if (!vs.has(e.v2)) {
+        boundary.add(e.v2);
+      }
+    }
+
+    for (let v of vs) {
+      v.customData[cd_slv].mass = 1.0;
+    }
+
+    for (let i = 0; i < 5; i++) {
+      let boundary2 = new Set();
+
+      for (let v of boundary) {
+        for (let v2 of v.neighbors) {
+          if (!vs.has(v2) && !boundary.has(v2)) {
+            boundary2.add(v2);
+          }
+        }
+
+        v.customData[cd_slv].mass = 100000000.0;
+        vs.add(v);
+      }
+
+      boundary = boundary2;
+    }
+
+    for (let v of boundary) {
+      v.customData[cd_slv].mass = 100000000.0;
+      vs.add(v);
+    }
+
+    for (let v of vs) {
+      for (let e of v.edges) {
+        if (vs.has(e.v1) && vs.has(e.v2)) {
+          es.add(e);
+        }
+      }
+    }
+
+    let edgeLenMul = this.inputs.edgeLenMul.getValue();
+
+    for (let e of es) {
+      let sv1 = e.v1.customData[cd_slv];
+      let sv2 = e.v1.customData[cd_slv];
+      let wlst = [sv1.mass, sv2.mass];
+      let vel_lst = [sv1.vel, sv2.vel];
+      let flst = [sv1.force, sv2.force];
+      let slst = [sv1.scratch, sv2.scratch];
+
+      let params = [e.v1, e.v2, e.v1.vectorDistance(e.v2)*edgeLenMul, sk];
+      let con = new VelConstraint(spring_c, spring_c_vel, spring_c_acc, [e.v1,
+                                                                         e.v2], params, wlst, vel_lst, flst, slst);
+      solver.add(con);
+    }
+
+    return solver;
+  }
+}
+
+ToolOp.register(TestSolverOp);

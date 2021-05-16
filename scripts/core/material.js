@@ -21,8 +21,8 @@ export function makeDefaultMaterial() {
   mat.graph.add(diff);
   mat.graph.add(output);
 
-  geom.graph_ui_pos[0] = -geom.graph_ui_size[0] - 5;
-  output.graph_ui_pos[0] = diff.graph_ui_size[0] + 5;
+  geom.graph_ui_pos[0] = -geom.graph_ui_size[0]*2 - 5;
+  output.graph_ui_pos[0] = diff.graph_ui_size[0]*2 + 5;
 
   geom.outputs.normal.connect(diff.inputs.normal);
   diff.outputs.surface.connect(output.inputs.surface);

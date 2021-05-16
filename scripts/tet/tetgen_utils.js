@@ -7,6 +7,7 @@ import {TetTypes, TetFlags, TetRecalcFlags} from './tetgen_base.js';
 import {TetLogContext} from './tetgen_base.js';
 import {TetMesh} from './tetgen.js';
 import {triBoxOverlap, aabb_ray_isect, ray_tri_isect} from '../util/isect.js';
+import {getArrayTemp} from '../mesh/mesh_base.js';
 
 export class OcTri {
   constructor(v1, v2, v3) {
@@ -574,15 +575,54 @@ export function tetMeshToMesh(tm, mesh = new Mesh()) {
 }
 
 export function tetrahedralize(tm, cell, lctx) {
-  let [v1, v2, v3, v4, v5, v6, v7, v8] = cell.verts;
+  let vs2 = cell.verts;
 
-  tm.makeTet(v4, v2, v5, v7);
-  tm.makeTet(v1, v2, v4, v5);
-  tm.makeTet(v2, v5, v7, v6);
-  tm.makeTet(v4, v5, v7, v8);
-  tm.makeTet(v4, v7, v2, v3);
+  if (1 && (cell.flag & TetFlags.FLIP_HEX)) {
+    vs2 = getArrayTemp(8, false);
+    for (let i = 0; i < 8; i++) {
+      vs2[i] = cell.verts[(i + 4)%8];
+    }
+  }
+
+  let [v1, v2, v3, v4, v5, v6, v7, v8] = vs2;
 
   tm.killCell(cell);
+
+  let faces = cell.faces;
+  for (let f of cell.faces) {
+    if (!f.p) {
+      tm.killFace(f);
+    }
+  }
+
+  //let t3 = tm.makeTet(v2, v5, v7, v6);
+  let t1 = tm.makeTet(v4, v2, v5, v7);
+  let t2 = tm.makeTet(v5, v4, v2, v1);
+  let t3 = tm.makeTet(v6, v7, v5, v2);
+  let t4 = tm.makeTet(v8, v7, v5, v4);
+  let t5 = tm.makeTet(v4, v7, v2, v3);
+
+  return;
+  let dd2 = window.dd2 || 0;
+
+  /*
+  let t1 = tm.makeTet(v4, v2, v5, v7);
+  let t2 = tm.makeTet(v1, v2, v4, v5);
+  let t3 = tm.makeTet(v2, v5, v7, v6);
+  let t4 = tm.makeTet(v4, v5, v7, v8);
+  let t5 = tm.makeTet(v4, v7, v2, v3);
+  */
+  if (dd2 & 1)
+    tm.reverseCellWinding(t1);
+  if (dd2 & 2)
+    tm.reverseCellWinding(t2);
+  if (dd2 & 4)
+    tm.reverseCellWinding(t3);
+  if (dd2 & 8)
+    tm.reverseCellWinding(t4);
+  if (dd2 & 16)
+    tm.reverseCellWinding(t5);
+
 }
 
 export function tetrahedralizeMesh(tm, cells = tm.cells, lctx) {
@@ -592,11 +632,43 @@ export function tetrahedralizeMesh(tm, cells = tm.cells, lctx) {
       cs.add(c);
     }
   }
-  cells = cs;
 
-  console.log("cells", cells);
+  console.log("cells", cs);
 
-  for (let c of cells) {
+  let es = new Set();
+  let fs = new Set();
+  let vs = new Set();
+
+  for (let c of cs) {
+    for (let f of c.faces) {
+      fs.add(f);
+    }
+    for (let e of c.edges) {
+      es.add(e);
+    }
+    for (let v of c.verts) {
+      vs.add(v);
+    }
     tetrahedralize(tm, c, lctx);
   }
+
+  for (let f of fs) {
+    if (f.eid >= 0 && !f.p) {
+      tm.killFace(f);
+    }
+  }
+
+  for (let e of es) {
+    if (e.eid >= 0 && !e.l) {
+      tm.killEdge(e);
+    }
+  }
+
+  for (let v of vs) {
+    if (v.eid >= 0 && v.valence === 0) {
+      tm.killVertex(v);
+    }
+  }
+
+  tm.flagSurfaceFaces();
 }

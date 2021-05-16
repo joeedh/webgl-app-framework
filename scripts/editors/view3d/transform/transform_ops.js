@@ -14,7 +14,7 @@ import {CastModes, castViewRay} from '../findnearest.js';
 
 import {ListProperty, StringSetProperty} from "../../../path.ux/scripts/pathux.js";
 import {ModalFlags} from "../../../core/modalflags.js";
-import {MeshFlags} from '../../../mesh/mesh_base.js';
+import {MeshFlags, MeshTypes} from '../../../mesh/mesh_base.js';
 
 /*
 Transform refactor:
@@ -245,7 +245,6 @@ export class TransformOp extends View3DOp {
   }
 
   modalStart(ctx) {
-
     ctx.setModalFlag(ModalFlags.TRANSFORMING);
 
     let promise = super.modalStart(ctx);
@@ -1561,23 +1560,22 @@ export class InflateOp extends TransformOp {
     let dx = this.start_mpos[0] - scent[0];
     let dy = this.start_mpos[1] - scent[1];
 
-    let t1 = new Vector3([dx, dy, 0]);
+    //let t1 = new Vector3([dx, dy, 0]);
+    let t1 = new Vector3([0, -1, 0]);
     let t2 = new Vector3(this.mpos).sub(this.start_mpos);
     t2[2] = 0;
 
     let sign = Math.sign(t1.dot(t2));
 
-    t1.load(this.start_mpos);
-    t2.load(this.mpos);
-    t1[2] = t2[2] = scent[2];
-    view3d.unproject(t1);
-    view3d.unproject(t2);
+    this.resetTempGeom();
+    this.addDrawLine2D(this.mpos, this.start_mpos, "orange");
 
-    let dis = t1.vectorDistance(t2);
+    let w = view3d.project(new Vector3(this.center));
+    let dis = t2.vectorLength() / view3d.size[1];
 
-    console.log(dis*sign, t1, t2, scent, this.center);
+    //console.log(dis*sign*w, t1, t2, scent, this.center);
 
-    this.inputs.factor.setValue(dis*sign);
+    this.inputs.factor.setValue(dis*w*sign);
     this.exec(ctx);
   }
 
@@ -1595,13 +1593,44 @@ export class InflateOp extends TransformOp {
 
     let factor = this.inputs.factor.getValue();
 
+    let norSelOnly = this.inputs.selmask.getValue() & MeshTypes.FACE;
+    let n = new Vector3();
+
+    function calcNormal(v) {
+      if (!norSelOnly) {
+        return v.no;
+      } else {
+        n.zero();
+        let tot = 0;
+
+        for (let f of v.faces) {
+          if (f.flag & MeshFlags.SELECT) {
+            n.add(f.no);
+            tot++;
+          }
+        }
+
+        if (!tot) {
+          n.load(v.no);
+        } else {
+          n.normalize();
+        }
+
+        return n;
+      }
+    }
+
     for (let list of tdata) {
       if (list.type !== MeshTransType) {
         continue;
       }
 
       for (let td of list) {
-        td.data1.load(td.data2).addFac(td.data1.no, factor);
+        if (!td.no) {
+          td.no = new Vector3(calcNormal(td.data1));
+        }
+
+        td.data1.load(td.data2).addFac(td.no, factor);
         td.data1.flag |= MeshFlags.UPDATE;
         td.mesh.regenRender();
       }

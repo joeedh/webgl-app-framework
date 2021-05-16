@@ -277,8 +277,18 @@ export class MeshToolBase extends ToolMode {
     super.update();
   }
 
+  //ensure we don't have sculpt bvhs, which lack wire verts
+  //and might include grid verts
+  checkMeshBVHs(ctx=this.ctx) {
+    for (let ob of ctx.selectedMeshObjects) {
+      ob.data.getBVH(true, false, false, true);
+    }
+  }
+
   findHighlight(e, x, y, selectMask=this.selectMask) {
     let view3d = this.ctx.view3d;
+
+    this.checkMeshBVHs(this.ctx);
 
     if (e.ctrlkey && !e.altKey) {
       selectMask = SelMask.EDGE;

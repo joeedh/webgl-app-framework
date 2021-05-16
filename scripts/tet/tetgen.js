@@ -16,6 +16,7 @@ import {SimpleMesh, LayerTypes, PrimitiveTypes, ChunkedSimpleMesh} from '../core
 import {Shaders} from '../shaders/shaders.js';
 import {BVH} from '../util/bvh.js';
 import {CDFlags} from '../mesh/customdata.js';
+import {getArrayTemp} from '../mesh/mesh_base.js';
 
 /*
   on factor;
@@ -302,6 +303,17 @@ export class TetMesh extends SceneObjectData {
     }
   }
 
+  reverseCellWinding(c) {
+    for (let p of c.planes) {
+      this.reverseFaceWinding(p.f);
+    }
+
+    c.verts.reverse();
+    c.planes.reverse();
+    c.faces.reverse();
+    c.edges.reverse();
+  }
+
   reverseFaceWinding(f) {
     for (let l of f.loops) {
       this._radialRemove(l.e, l);
@@ -441,13 +453,126 @@ export class TetMesh extends SceneObjectData {
     return this.makeFace(vs, lctx);
   }
 
-  makeHex(v1, v2, v3, v4, v5, v6, v7, v8, lctx) {
-    let f1 = this.ensureFace([v1, v2, v3, v4], lctx);
+  findHex(vs) {
+    let flag = TetFlags.MAKEFACE_TEMP;
+    for (let v of vs) {
+      v.flag &= ~flag;
+    }
+
+    for (let e of vs[0].edges) {
+      if (!e.l) {
+        continue;
+      }
+
+      let l = e.l;
+      let _i = 0;
+
+      do {
+        if (_i++ > 100) {
+          console.warn("Infinite loop error");
+          break;
+        }
+
+        let f = l.f;
+        let p = f.p;
+
+        if (!p) {
+          l = l.radial_next;
+          continue;
+        }
+
+        let _j = 0;
+        do {
+          let c = p.c;
+          if (c.verts.length !== 8) {
+            continue;
+          }
+
+          for (let v of c.verts) {
+            v.flag |= flag;
+          }
+
+          let count = 0;
+          for (let v of vs) {
+            if (v.flag & flag) {
+              count++;
+            }
+          }
+
+          if (count === vs.length) {
+            return c;
+          }
+
+          for (let v of vs) {
+            v.flag &= ~flag;
+          }
+
+          if (_j++ > 100) {
+            console.warn("infinite loop error");
+            break;
+          }
+          p = p.plane_next;
+        } while (p !== f.p);
+
+        l = l.radial_next;
+      } while (l !== e.l);
+    }
+  }
+
+  makeHex(v1, v2, v3, v4, v5, v6, v7, v8, checkExist=false, lctx) {
+    if (checkExist) {
+      let vs = getArrayTemp(8, false);
+      vs[0] = v1;
+      vs[1] = v2;
+      vs[2] = v3;
+      vs[3] = v4;
+      vs[4] = v5;
+      vs[5] = v6;
+      vs[6] = v7;
+      vs[7] = v8;
+
+      let c = this.findHex(vs);
+      if (c) {
+        if (checkExist === 2) {
+          throw new Error("hex already exists");
+        } else {
+          return c;
+        }
+      }
+    }
+    /*
+    let f1 = this.ensureFace([v4, v3, v2, v1], lctx);
     let f2 = this.ensureFace([v5, v6, v7, v8], lctx);
     let f3 = this.ensureFace([v1, v2, v6, v5], lctx);
+
     let f4 = this.ensureFace([v2, v3, v7, v6], lctx);
     let f5 = this.ensureFace([v3, v4, v8, v7], lctx);
     let f6 = this.ensureFace([v4, v1, v5, v8], lctx);
+    */
+    let f1 = this.ensureFace([v1, v2, v3, v4], lctx);
+    let f2 = this.ensureFace([v8, v7, v6, v5], lctx);
+    let f3 = this.ensureFace([v5, v6, v2, v1], lctx);
+
+    let f4 = this.ensureFace([v6, v7, v3, v2], lctx);
+    let f5 = this.ensureFace([v7, v8, v4, v3], lctx);
+    let f6 = this.ensureFace([v8, v5, v1, v4], lctx);
+
+   /*
+    let dd = window.dd || 0;
+
+    if (dd & 1)
+      this.reverseFaceWinding(f1);
+    if (dd & 2)
+      this.reverseFaceWinding(f2);
+    if (dd & 4)
+      this.reverseFaceWinding(f3);
+    if (dd & 8)
+      this.reverseFaceWinding(f4);
+    if (dd & 16)
+      this.reverseFaceWinding(f5);
+    if (dd & 32)
+      this.reverseFaceWinding(f6);
+    //*/
 
     let hex = new TetCell();
     this._elementPush(hex);
@@ -483,10 +608,21 @@ export class TetMesh extends SceneObjectData {
   }
 
   makeTet(v1, v2, v3, v4, lctx) {
-    let f1 = this.ensureFace([v1, v2, v4], lctx);
-    let f2 = this.ensureFace([v2, v3, v4], lctx);
-    let f3 = this.ensureFace([v3, v1, v4], lctx);
+    let f1 = this.ensureFace([v4, v2, v1], lctx);
+    let f2 = this.ensureFace([v4, v3, v2], lctx);
+    let f3 = this.ensureFace([v4, v1, v3], lctx);
     let f4 = this.ensureFace([v1, v2, v3], lctx);
+
+    let dd3 = window.dd3 || 0;
+
+    if (dd3 & 1)
+      this.reverseFaceWinding(f1);
+    if (dd3 & 2)
+      this.reverseFaceWinding(f2);
+    if (dd3 & 4)
+      this.reverseFaceWinding(f3);
+    if (dd3 & 8)
+      this.reverseFaceWinding(f4);
 
     let tet = new TetCell();
     this._elementPush(tet);
@@ -506,8 +642,9 @@ export class TetMesh extends SceneObjectData {
     tet.verts[3] = v4;
 
     for (let i = 0; i < tet.faces.length; i++) {
-      let p = tet.planes[i] = this._makePlane(tet.faces[i], tet);
-      this._planeInsert(tet.faces[i], p);
+      let f = tet.faces[i];
+      let p = tet.planes[i] = this._makePlane(f, tet);
+      this._planeInsert(f, p);
     }
 
     tet._regenEdges();
@@ -574,7 +711,7 @@ export class TetMesh extends SceneObjectData {
         break;
       }
 
-      this.killCell(f.p);
+      this.killCell(f.p.c);
     }
 
     for (let l of f.loops) {
@@ -997,6 +1134,18 @@ export class TetMesh extends SceneObjectData {
     }
   }
 
+  flagSurfaceFaces() {
+    for (let f of this.faces) {
+      f.flag &= ~TetFlags.SURFACE;
+    }
+
+    for (let f of this.faces) {
+      if (!f.p || f.p.plane_next === f.p) {
+        f.flag |= TetFlags.SURFACE;
+      }
+    }
+  }
+
   regenNormals() {
     this.recalcFlag |= TetRecalcFlags.NORMALS;
   }
@@ -1022,8 +1171,6 @@ export class TetMesh extends SceneObjectData {
         if (c.startVolume === 0) {
           c.startVolume = c.volume;
         }
-
-        util.console.log("volume", c.volume);
       }
     }
 

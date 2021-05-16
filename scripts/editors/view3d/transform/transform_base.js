@@ -47,6 +47,7 @@ export class TransDataElem {
   constructor(typecls) {
     this.data1 = undefined; //set by client code
     this.data2 = undefined; //set by client code
+    this.no = undefined; //used by inflate
     this.mesh = undefined;
 
     this.index = -1;

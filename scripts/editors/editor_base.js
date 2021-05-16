@@ -247,12 +247,12 @@ export class DataBlockBrowser extends Container {
   setCSS() {
     super.setCSS();
 
-    this.background = this.getDefault("background");
+    this.background = this.getDefault("background-color");
 
-    let radius = this.getDefault("BoxRadius") ?? 10;
-    let color = this.getDefault("BoxBorder") ?? "black";
-    let wid = this.getDefault("BoxLineWidth") ?? 1;
-    let padding = this.getDefault("BoxMargin") ?? 2;
+    let radius = this.getDefault("border-radius") ?? 10;
+    let color = this.getDefault("border-color") ?? "black";
+    let wid = this.getDefault("border-width") ?? 1;
+    let padding = this.getDefault("padding") ?? 2;
 
     this.style["border"] = `${wid}px solid ${color}`;
     this.style["border-radius"] = radius + "px";
@@ -582,7 +582,7 @@ export class EditorSideBar extends Container {
   setCSS() {
     this.style["height"] = "" + this._height + "px";
     this.style["width"] = "" + this._width + "px";
-    this.background = this.getDefault("background");
+    this.background = this.getDefault("background-color");
   }
 
   saveData() {
@@ -651,6 +651,9 @@ export class Editor extends Area {
 
   init() {
     super.init();
+
+    this.tabIndex = 1;
+    this.setAttribute("tabindex", "-1");
 
     this.container.useDataPathUndo = this.useDataPathUndo;
 
@@ -754,6 +757,10 @@ export class Editor extends Area {
   }
 
   static register(cls) {
+    if (!nstructjs.manager.isRegistered(cls)) {
+      throw new Error("You must register editors with nstructjs: " + cls.name);
+    }
+
     Area.register(cls);
   }
 
@@ -773,7 +780,7 @@ import {MakeMaterialOp} from "../core/material.js";
 import {SocketFlags} from "../core/graph.js";
 import {DependSocket} from "../core/graphsockets.js";
 
-function spawnToolSearchMenu(ctx) {
+export function spawnToolSearchMenu(ctx) {
   let tools = [];
   let screen = ctx.screen;
 
@@ -861,6 +868,7 @@ export class App extends Screen {
         _appstate.toolstack.redo();
         window.redraw_viewport();
       }),
+      /*
       new HotKey("T", ["ALT"], () => {
         if (window.__stest) {
           window.__stest.stop();
@@ -878,12 +886,7 @@ export class App extends Screen {
           window.__stest = window._testSculpt(undefined, {sort : 0});
           window.__stest.start();
         }
-      }),
-      new HotKey("Space", [], () => {
-        console.log("Space Bar!");
-
-        spawnToolSearchMenu(_appstate.ctx);
-      }),
+      }),*/
       new HotKey("S", ["CTRL"], "app.save(forceDialog=false)"),
       new HotKey("O", ["CTRL"], "app.open()"),
       new HotKey("N", ["CTRL"], "app.new()"),
@@ -1025,7 +1028,9 @@ window.setInterval(() => {
   if (window._appstate && _appstate.ctx && _appstate.screen) {
     window.updateDataGraph(true);
   }
-}, 75);
+
+  ToolOp.onTick();
+}, 50);
 
 App.STRUCT = STRUCT.inherit(App, Screen, 'App') + `
 }`;
@@ -1564,6 +1569,7 @@ export class DirectionChooser extends UIBase {
           this.endModal();
           this.setValue(this.start_value);
         },
+
         on_keydown    : (e) => {
           console.log(e.keyCode, this.modaldata);
 

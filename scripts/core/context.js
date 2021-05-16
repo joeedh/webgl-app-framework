@@ -22,6 +22,7 @@ import {MaterialEditor} from "../editors/node/MaterialEditor.js";
 import {AppSettings} from './settings.js';
 import {TetMesh} from '../tet/tetgen.js';
 import {StrandSet} from '../hair/strand.js';
+import {SMesh} from '../smesh/smesh.js';
 
 let passthrus = new Set(["datalib", "gl", "graph", "last_tool", "toolstack", "api"]);
 
@@ -188,7 +189,14 @@ export class BaseOverlay extends ContextOverlay {
       return ob.data;
     }
   }
-  
+
+  get smesh() {
+    let ob = this.object;
+    if (ob !== undefined && ob.data instanceof SMesh) {
+      return ob.data;
+    }
+  }
+
   get mesh() {
     let ob = this.object;
     if (ob !== undefined && ob.data instanceof Mesh) {

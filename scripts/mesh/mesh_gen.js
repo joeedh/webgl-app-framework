@@ -6,7 +6,7 @@ import {MeshIDShader, Shaders} from '../shaders/shaders.js';
 import {Node, NodeFlags} from '../core/graph.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {DataBlock} from '../core/lib_api.js';
-import {LayerTypes, SimpleMesh} from '../core/simplemesh.js';
+import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../core/simplemesh.js';
 
 export const Generators = [];
 export const GenTypes = {};
@@ -201,21 +201,74 @@ export class CubeGenerator extends ProceduralGen {
     let n = new Vector3();
     let an = new Vector3();
 
-    let sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.NORMAL | LayerTypes.COLOR);
+    let layerflag = LayerTypes.LOC | LayerTypes.NORMAL; // | LayerTypes.INDEX
+    let sm = this.smesh = new SimpleMesh(layerflag);
+
+    console.error("Generating mesh");
+
     let c = new Vector4();
     let b = new Vector4();
     let n2 = new Vector4();
 
     b[3] = 1.0;
-    c.addScalar(1.0);
+    //c.addScalar(1.0);
 
     function doline(v1, v2) {
       let line = sm.line(v1, v2);
-      line.colors(b, b);
+      //line.colors(b, b);
       return line;
     }
 
     let toSphere = this.toSphere;
+    let v = new Vector3();
+
+    if (0) {
+      let idx = sm.island.getIndexBuffer(PrimitiveTypes.TRIS);
+      sm.island.indexedMode = true;
+
+      sm.island.setPrimitiveCount(PrimitiveTypes.TRIS, verts.length);
+      sm.island.tottri = quads.length*2;
+
+      let cos = sm.island.tri_cos._getWriteData();
+      let nos = sm.island.tri_normals._getWriteData();
+
+      for (let i=0; i<verts.length; i += 3) {
+        let i2 = i;
+
+
+        cos[i2] = v[0] = verts[i];
+        cos[i2+1] = v[1] = verts[i+1];
+        cos[i2+2] = v[2] = verts[i+2];
+
+        n2.load(v).normalize();
+        an.load(v).abs().normalize();
+        an.interp(n2, toSphere).normalize();
+
+        nos[i2] = an[0];
+        nos[i2+1] = an[1];
+        nos[i2+2] = an[2];
+      }
+
+      let ti = 0;
+
+      idx.setCount(quads.length*2*3);
+      idx = idx._getWriteData();
+      sm.island.regen = true;
+
+      for (let i=0; i<quads.length; i += 4) {
+        let v1 = quads[i], v2 = quads[i + 1], v3 = quads[i + 2], v4 = quads[i + 3];
+
+        idx[ti++] = ~~(v1/VTOT+0.000001);
+        idx[ti++] = ~~(v2/VTOT+0.000001);
+        idx[ti++] = ~~(v3/VTOT+0.000001);
+
+        idx[ti++] = ~~(v1/VTOT+0.000001);
+        idx[ti++] = ~~(v3/VTOT+0.000001);
+        idx[ti++] = ~~(v4/VTOT+0.000001);
+      }
+
+      return sm;
+    }
 
     for (let i=0; i<quads.length; i += 4) {
       let v1 = quads[i], v2 = quads[i+1], v3 = quads[i+2], v4 = quads[i+3];
@@ -245,12 +298,14 @@ export class CubeGenerator extends ProceduralGen {
       n.interp(n2, toSphere).normalize();
 
       quad.normals(n, n, n, n);
-      quad.colors(c, c, c, c);
+      //quad.colors(c, c, c, c);
 
+      ///*
       doline(p1, p2);
       doline(p2, p3);
       doline(p3, p4);
       doline(p4, p1);
+      //*/
     }
 
     return sm;

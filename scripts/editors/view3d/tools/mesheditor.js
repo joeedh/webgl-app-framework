@@ -103,7 +103,10 @@ export class MeshEditor extends MeshToolBase {
       new HotKey("-", ["CTRL"], "mesh.select_more_less(mode='SUB')"),
       new HotKey("L", ["SHIFT"], "mesh.pick_select_linked(mode=\"SUB\")"),
       new HotKey("X", [], "mesh.delete_selected()"),
+
       new HotKey("E", [], "mesh.extrude_regions(transform=true)"),
+      new HotKey("E", ["ALT"], "mesh.extrude_individual_faces(transform=true)"),
+
       new HotKey("R", ["SHIFT"], "mesh.edgecut()"),
       new HotKey("I", ["CTRL"], "mesh.select_inverse()"),
     ]);
@@ -119,19 +122,23 @@ export class MeshEditor extends MeshToolBase {
   static buildSettings(container) {
     container.useIcons();
 
+    let twocol = container.twocol(2);
+    let column1 = twocol.col();
+    let column2 = twocol.col();
+
     let strip;
     let panel;
 
     let path = "scene.tools." + this.toolModeDefine().name;
 
-    panel = container.panel("Viewport");
+    panel = column1.panel("Viewport");
     strip = panel.row().strip();
 
     strip.prop(path + ".drawLoops");
     strip.prop(path + ".drawCurvatures");
     strip.prop(path + ".drawNormals");
 
-    panel = container.panel("Tools");
+    panel = column1.panel("Tools");
     strip = panel.row().strip();
 
     strip.tool("mesh.edgecut()");
@@ -146,12 +153,12 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.tris_to_quads()");
     strip.tool("mesh.triangulate()");
 
-    panel = container.panel("Misc Tools");
-    strip = panel.row().strip().useIcons(false);
-    strip.tool("mesh.remesh(remesher='UNIFORM_TRI')|Tri Remesh");
-    strip.tool("mesh.remesh(remesher='UNIFORM_QUAD')|Quad Remesh");
+    panel = column1.panel("Misc Tools");
+
+    panel.toolPanel("mesh.test_solver()").closed = true;
 
     strip = panel.row().strip();
+    strip.tool("mesh.smooth_curvature_directions()");
     strip.tool("mesh.test_multigrid_smooth()");
 
     strip = panel.row().strip();
@@ -213,9 +220,10 @@ export class MeshEditor extends MeshToolBase {
     });
 
     strip = panel.row().strip().useIcons(false);
-    panel.tool("mesh.flip_normals()");
+    strip.tool("mesh.flip_normals()");
+    strip.tool("mesh.bevel()");
 
-    panel = container.panel("Transform");
+    panel = column1.panel("Transform");
 
     strip = panel.row().strip();
     strip.useIcons(true);
@@ -226,7 +234,15 @@ export class MeshEditor extends MeshToolBase {
     strip = panel.row().strip();
     strip.prop("scene.propRadius");
 
-    panel = container.panel("UV");
+    panel = column2.panel("Remeshing");
+    strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.remesh(remesher='UNIFORM_TRI')|Tri Remesh");
+    strip.tool("mesh.remesh(remesher='UNIFORM_QUAD')|Quad Remesh");
+
+    panel.toolPanel("mesh.interactive_remesh()");
+    panel.toolPanel("mesh.opt_remesh_params()").closed = true;
+
+    panel = column2.panel("UV");
 
     strip = panel.col().strip();
     strip.useIcons(false);
@@ -234,7 +250,7 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.clear_flag(elemMask='EDGE' flag='SEAM')", undefined, undefined, "Clear Seam");
     strip.tool("mesh.toggle_flag(elemMask='EDGE' flag='SEAM')", undefined, undefined, "Toggle Seam");
 
-    panel = container.panel("MultiRes");
+    panel = column2.panel("MultiRes");
 
     strip = panel.row().strip();
     strip.tool("mesh.add_or_subdivide_grids()");
@@ -246,7 +262,7 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.smooth_grids()");
     strip.tool("mesh.grids_test()");
 
-    panel = container.panel("Non-Manifold");
+    panel = column2.panel("Non-Manifold");
     strip = panel.row().strip();
     strip.tool("mesh.select_non_manifold");
     strip.tool("mesh.fix_manifold");
@@ -403,8 +419,6 @@ export class MeshEditor extends MeshToolBase {
     let key = "" + mesh.lib_id + ":" + mesh.updateGen + ":" + mesh.verts.length + ":" + mesh.eidgen._cur;
 
     let cd_curv = getCurveVerts(mesh);
-
-    console.log("cd_curve", cd_curv);
 
     //CurvVert.propegateUpdateFlags(mesh, cd_curv);
 
@@ -848,14 +862,16 @@ export class MeshEditor extends MeshToolBase {
 
       for (let v2 of v.neighbors) {
         edist += v2.vectorDistance(v);
+        tot++;
       }
+
       if (tot) {
         edist /= tot;
       } else {
-        edist = 0.1;
+        edist = 1.0;
       }
 
-      co2.load(co1).addFac(v.no, edist*0.4);
+      co2.load(co1).addFac(v.no, edist*0.5);
 
       let line = sm.line(co1, co2);
       line.colors(white, white);

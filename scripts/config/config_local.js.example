@@ -6,6 +6,7 @@ set immediately has to be changed in config.js itself.
 */
 
 let exports = {
+  addonLoadWaitTime: 500, //ms, time on startup to wait for addons to load prior to app start
   pathuxConfig: {
     //autoSizeUpdate: true,
     //showPathsInToolTips: true,

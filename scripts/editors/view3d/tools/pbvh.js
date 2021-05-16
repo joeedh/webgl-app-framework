@@ -390,6 +390,7 @@ export class BVHToolMode extends ToolMode {
     p = doChannel("autosmooth");
     p.prop(path + ".brush.flag[MULTIGRID_SMOOTH]");
     p.prop(path + ".brush.flag[PLANAR_SMOOTH]");
+    p.prop(path + ".brush.smoothRadiusMul");
 
     doChannel("smoothProj", p);
     doChannel("autosmoothInflate", p);
@@ -467,6 +468,7 @@ export class BVHToolMode extends ToolMode {
     dfield(panel, "flag[ENABLED]");
     dfield(panel, "flag[SUBDIVIDE]");
     dfield(panel, "flag[COLLAPSE]");
+    dfield(panel, "flag[ADAPTIVE]");
 
     dfield(panel, "edgeMode");
     dfield(panel, "spacing");
@@ -581,6 +583,10 @@ export class BVHToolMode extends ToolMode {
     strip.pathlabel("mesh.triCount", "Triangles");
 
     strip.prop(path + ".spacing");
+
+    row = addHeaderRow();
+    strip = row.strip();
+    strip.tool("mesh.edgecut()");
 
     header.flushUpdate();
 
@@ -1095,7 +1101,22 @@ export class BVHToolMode extends ToolMode {
     }
 
     let ob = object;//let ob = this.ctx.object;
-    let bvh = this.getBVH(mesh);
+    let bvh;
+
+    //update all normals on first bvh build
+    if (!mesh.bvh) {
+      bvh = this.getBVH(mesh);
+      for (let n of bvh.nodes) {
+        if (n.leaf) {
+          n.setUpdateFlag(BVHFlags.UPDATE_NORMALS);
+        }
+      }
+
+      bvh.update();
+    } else {
+      bvh = this.getBVH(mesh);
+    }
+
     let dynTopo = this._apiDynTopo;
 
     let hideQuadEdges = false;

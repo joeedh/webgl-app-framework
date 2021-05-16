@@ -390,5 +390,5 @@ DebugEditor.STRUCT = STRUCT.inherit(DebugEditor, Editor) + `
 }
 `;
 
-Editor.register(DebugEditor);
 nstructjs.register(DebugEditor);
+Editor.register(DebugEditor);

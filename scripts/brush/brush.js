@@ -38,24 +38,25 @@ export const DynTopoModes = {
 };
 
 export const SculptTools = {
-  CLAY          : 0,
-  FILL          : 1,
-  SCRAPE        : 2,
-  SMOOTH        : 3,
-  DRAW          : 4,
-  SHARP         : 5,
-  INFLATE       : 6,
-  SNAKE         : 7,
-  TOPOLOGY      : 8,
-  GRAB          : 9,
-  HOLE_FILLER   : 10,
-  MASK_PAINT    : 11,
-  WING_SCRAPE   : 12,
-  PINCH         : 13,
-  PAINT         : 128,
-  PAINT_SMOOTH  : 129,
-  COLOR_BOUNDARY: 130,
-  TEXTURE_PAINT : 150,
+  CLAY            : 0,
+  FILL            : 1,
+  SCRAPE          : 2,
+  SMOOTH          : 3,
+  DRAW            : 4,
+  SHARP           : 5,
+  INFLATE         : 6,
+  SNAKE           : 7,
+  TOPOLOGY        : 8,
+  GRAB            : 9,
+  HOLE_FILLER     : 10,
+  MASK_PAINT      : 11,
+  WING_SCRAPE     : 12,
+  PINCH           : 13,
+  DIRECTIONAL_FAIR: 14,
+  PAINT           : 128,
+  PAINT_SMOOTH    : 129,
+  COLOR_BOUNDARY  : 130,
+  TEXTURE_PAINT   : 150,
 };
 
 export const DynTopoFlags = {
@@ -65,7 +66,8 @@ export const DynTopoFlags = {
   FANCY_EDGE_WEIGHTS: 16,
   QUAD_COLLAPSE     : 32,
   ALLOW_VALENCE4    : 64,
-  DRAW_TRIS_AS_QUADS: 128
+  DRAW_TRIS_AS_QUADS: 128,
+  ADAPTIVE          : 256
 };
 
 export const DynTopoOverrides = {
@@ -78,6 +80,7 @@ export const DynTopoOverrides = {
   QUAD_COLLAPSE     : 32,
   ALLOW_VALENCE4    : 64,
   DRAW_TRIS_AS_QUADS: 128,
+  ADAPTIVE          : 256,
   //end of DynTopoFlags mirror
 
   //these mirror properties instead of flags
@@ -141,7 +144,7 @@ export class DynTopoSettings {
     this.spacingMode = BrushSpacingModes.EVEN;
 
     this.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE;
-    this.flag |= DynTopoFlags.FANCY_EDGE_WEIGHTS;
+    //this.flag |= DynTopoFlags.FANCY_EDGE_WEIGHTS;
 
     this.edgeCount = 150;
     this.repeat = 1;
@@ -164,7 +167,8 @@ export class DynTopoSettings {
     d.add(this.repeat);
     d.add(this.spacingMode);
     d.add(this.edgeMode);
-    c.add(this.subdivMode);
+    d.add(this.subdivMode);
+    d.add(this.spacing);
 
     return d.get();
   }
@@ -305,7 +309,7 @@ DynTopoSettings {
   valenceGoal     : int;
   repeat          : int;
   spacingMode     : int;
-  spacing         : int;
+  spacing         : float;
   subdivMode      : int;
 }
 `;
@@ -584,6 +588,8 @@ export class SculptBrush extends DataBlock {
 
     this.flag = BrushFlags.SHARED_SIZE;
 
+    this.smoothRadiusMul = 1.0;
+
     this.smoothProj = 0.0; //how much smoothing should project to surface
     this.spacingMode = BrushSpacingModes.EVEN;
 
@@ -653,6 +659,7 @@ export class SculptBrush extends DataBlock {
       r = r && feq(this.radius, b.radius);
     }
 
+    r = r && feq(this.smoothRadiusMul, b.smoothRadiusMul);
     r = r && this.spacingMode === b.spacingMode;
     r = r && feq(this.tool, b.tool);
     r = r && feq(this.rake, b.rake);
@@ -693,6 +700,7 @@ export class SculptBrush extends DataBlock {
       d.add(this.radius);
     }
 
+    d.add(this.smoothRadiusMul);
     d.add(this.spacingMode);
     d.add(this.flag);
     d.add(this.tool);
@@ -735,6 +743,7 @@ export class SculptBrush extends DataBlock {
     b.flag = this.flag;
     b.tool = this.tool;
     b.sharp = this.sharp;
+    b.smoothRadiusMul = this.smoothRadiusMul;
 
     b.spacingMode = this.spacingMode;
     b.spacing = this.spacing;
@@ -813,6 +822,7 @@ SculptBrush.STRUCT = nstructjs.inherit(SculptBrush, DataBlock) + `
   rakeCurvatureFactor : float;
   spacingMode: int;
   sharp      : float;
+  smoothRadiusMul : float;
 }
 `;
 nstructjs.register(SculptBrush);
@@ -855,7 +865,7 @@ export function makeDefaultBrushes() {
   brush.dynamics.strength.useDynamics = true;
   brush.dynamics.strength.curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARP);
 
-  brush.flag |= BrushFlags.SQUARE|BrushFlags.LINE_FALLOFF|BrushFlags.USE_LINE_CURVE;
+  brush.flag |= BrushFlags.SQUARE | BrushFlags.LINE_FALLOFF | BrushFlags.USE_LINE_CURVE;
   brush.spacing = 0.2;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTHER);
   brush.falloff2.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.GUASSIAN);
@@ -919,6 +929,12 @@ export function makeDefaultBrushes() {
   brush = bmap[SculptTools.SNAKE];
   brush.strength = 0.5;
   brush.autosmooth = 0.8;
+  brush.dynTopo.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE;
+  brush.dynTopo.overrideMask = DynTopoOverrides.COLLAPSE | DynTopoOverrides.SUBDIVIDE;
+  brush.dynTopo.overrideMask |= DynTopoOverrides.EDGE_COUNT|DynTopoOverrides.DECIMATE_FACTOR;
+  brush.dynTopo.edgeCount = 550;
+  brush.dynTopo.decimateFactor = 0.05;
+
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   brush = bmap[SculptTools.SHARP];
@@ -1015,7 +1031,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.rake = 1.0;
   brush.rakeCurvatureFactor = 1.0;
 
-  brush.flag |= BrushFlags.SQUARE|BrushFlags.LINE_FALLOFF|BrushFlags.USE_LINE_CURVE;
+  brush.flag |= BrushFlags.SQUARE | BrushFlags.LINE_FALLOFF | BrushFlags.USE_LINE_CURVE;
   brush.spacing = 0.2;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTHER);
   brush.falloff2.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.GUASSIAN);
@@ -1085,6 +1101,12 @@ export function makeDefaultBrushes_MediumRes() {
   brush = bmap[SculptTools.SNAKE];
   brush.strength = 0.5;
   brush.autosmooth = 0.8;
+  brush.dynTopo.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE;
+  brush.dynTopo.overrideMask = DynTopoOverrides.COLLAPSE | DynTopoOverrides.SUBDIVIDE;
+  brush.dynTopo.overrideMask |= DynTopoOverrides.EDGE_COUNT|DynTopoOverrides.DECIMATE_FACTOR;
+  brush.dynTopo.edgeCount = 550;
+  brush.dynTopo.decimateFactor = 0.05;
+
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   brush = bmap[SculptTools.SHARP];

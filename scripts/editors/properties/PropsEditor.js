@@ -794,5 +794,5 @@ PropsEditor.STRUCT = STRUCT.inherit(PropsEditor, Editor) + `
 }
 `;
 
+nstructjs.register(PropsEditor);
 Editor.register(PropsEditor);
-nstructjs.manager.add_class(PropsEditor);
