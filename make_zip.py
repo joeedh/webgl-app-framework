@@ -22,6 +22,7 @@ sources = [
   "./scripts/test/**",
   "./scripts/trimesh/**",
   "./scripts/smesh/**",
+  "./scripts/addon/**",
   "./scripts/hair/**",
   "./scripts/mathl/**",
   "./scripts/util/**",
