@@ -538,11 +538,10 @@ export class Mesh extends SceneObjectData {
 
     this.elists = {};
 
-    this.verts = this.getElemList(MeshTypes.VERTEX, SAVE_DEAD_VERTS);
-    this.loops = this.getElemList(MeshTypes.LOOP, SAVE_DEAD_LOOPS);
-    this.edges = this.getElemList(MeshTypes.EDGE, SAVE_DEAD_EDGES);
-    this.faces = this.getElemList(MeshTypes.FACE, SAVE_DEAD_FACES);
-    this.handles = this.getElemList(MeshTypes.HANDLE);
+    this.verts = this.loops = this.edges = this.faces = this.loops = undefined;
+    this.handles = undefined;
+
+    this.makeElistAliases();
 
     //used ex
     this.uiTriangleCount = 0;
@@ -550,6 +549,14 @@ export class Mesh extends SceneObjectData {
     if (debuglog) {
       this.debuglog = [];
     }
+  }
+
+  makeElistAliases() {
+    this.verts = this.getElemList(MeshTypes.VERTEX, SAVE_DEAD_VERTS);
+    this.loops = this.getElemList(MeshTypes.LOOP, SAVE_DEAD_LOOPS);
+    this.edges = this.getElemList(MeshTypes.EDGE, SAVE_DEAD_EDGES);
+    this.faces = this.getElemList(MeshTypes.FACE, SAVE_DEAD_FACES);
+    this.handles = this.getElemList(MeshTypes.HANDLE);
   }
 
   get eidmap() {
@@ -6120,7 +6127,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  fixMesh() {
+  fixMesh(report=true, noWire=false) {
     let eidMap = new Map();
 
     let elists = this.elists;
@@ -6142,12 +6149,97 @@ export class Mesh extends SceneObjectData {
       }
     }
 
-    for (let f of elists[MeshTypes.FACE]) {
-
-    }
-
     this.elists = {};
     this.makeElistAliases();
+
+    for (let k in elists) {
+      let e1 = elists[k];
+      let e2 = this.elists[k];
+
+      e2.customData = e1.customData.copy();
+    }
+
+    let eidMap2 = this.eidMap = new Map();
+    let add = (elem) => {
+      if (eidMap2.has(elem.eid)) {
+        if (eidMap2.get(elem.eid) !== elem) {
+          console.error("Duplicate element eid", elem);
+          elem.eid = this.eidgen.next();
+          eidMap2.set(elem.eid, elem);
+          this.elists[elem.type].push(elem);
+        }
+      } else {
+        eidMap2.set(elem.eid, elem);
+        this.elists[elem.type].push(elem);
+      }
+
+      if (elem.type === MeshTypes.EDGE && elem.h1) {
+        add(elem.h1);
+        add(elem.h2);
+      }
+    }
+
+    if (!noWire) {
+      for (let v of elists[MeshTypes.VERTEX]) {
+        if (v.valence === 0) {
+          add(v);
+        }
+      }
+
+      for (let e of elists[MeshTypes.EDGE]) {
+        if (!e.l) {
+          add(e);
+        }
+      }
+    }
+
+    for (let f of elists[MeshTypes.FACE]) {
+      add(f);
+
+      for (let list of f.lists) {
+        for (let l of list) {
+          add(l);
+          add(l.e);
+          add(l.v);
+        }
+      }
+    }
+
+    this.fixDuplicateFaces(true);
+
+    this.regenAll();
+    this.recalcNormals();
+  }
+
+  //fix e.g. obj files that store edges as colinear tris
+  killColinearTris(report=true) {
+    let fs = new Set();
+    let eps = 0.000001;
+
+    this.fixDuplicateFaces(report);
+
+    for (let f of this.faces) {
+      if (!f.isTri) {
+        continue;
+      }
+
+      let l1 = f.lists[0].l;
+      let l2 = l1.next, l3 = l1.prev;
+
+      let ok = math.colinear(l1.v, l2.v, l3.v);
+      ok = ok || l1.v.vectorDistance(l2.v) < eps;
+      ok = ok || l1.v.vectorDistance(l3.v) < eps;
+      ok = ok || l2.v.vectorDistance(l3.v) < eps;
+
+      if (ok) {
+        fs.add(f);
+      }
+    }
+
+    console.log("colinear tris:", fs);
+    for (let f of fs) {
+      this.killFace(f);
+    }
   }
 
   validateMesh(msg_out = [0]) {

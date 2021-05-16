@@ -155,9 +155,10 @@ export class MeshEditor extends MeshToolBase {
 
     panel = column1.panel("Misc Tools");
 
-    panel.toolPanel("mesh.test_solver()");
+    panel.toolPanel("mesh.test_solver()").closed = true;
 
     strip = panel.row().strip();
+    strip.tool("mesh.smooth_curvature_directions()");
     strip.tool("mesh.test_multigrid_smooth()");
 
     strip = panel.row().strip();

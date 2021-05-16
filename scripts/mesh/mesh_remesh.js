@@ -10,7 +10,7 @@ import {
   fixManifold, getEdgeLoop, trianglesToQuads, triangulateFan, triangulateMesh, vertexSmooth
 } from './mesh_utils.js';
 import {splitEdgesSmart2} from './mesh_subdivide.js';
-import {getCurveVerts} from './mesh_curvature.js';
+import {getCurveVerts, smoothCurvatures} from './mesh_curvature.js';
 
 export const Remeshers = {};
 
@@ -58,33 +58,35 @@ if (PARAM_KEY in localStorage) {
 window._paramdata = paramdata;
 
 export const RemeshParams = {
-  EDIST_P1     : p(0.1, 10.0, 1.0),
-  EDIST_P2     : p(5.5, 6.5, 6.0),
-  EDIST_P3     : p(-0.5, 1.5, 0.0),
-  SUBD_FAC     : p(0.0, 1.0, 0.35),
-  COLL_FAC     : p(0.0, 1.0, 0.35),
-  RAKE_FACTOR  : p(0.0, 1.0, 0.5),
-  SMOOTH_FACTOR: p(0.0, 1.0, 0.25),
-  PROJ_FACTOR  : p(0.0, 1.0, 0.75),
-  TOTPARAM     : p()
+  EDIST_P1      : p(0.1, 10.0, 1.0),
+  EDIST_P2      : p(5.5, 6.5, 6.0),
+  EDIST_P3      : p(-0.5, 1.5, 0.0),
+  SUBD_FAC      : p(0.0, 1.0, 0.35),
+  COLL_FAC      : p(0.0, 1.0, 0.35),
+  RAKE_FACTOR   : p(0.0, 1.0, 0.5),
+  SMOOTH_FACTOR : p(0.0, 1.0, 0.25),
+  PROJ_FACTOR   : p(0.0, 1.0, 0.75),
+  CSMOOTH_FAC   : p(0.0, 1.0, 0.0),
+  CSMOOTH_REPEAT: p(0.0, 50.0, 4.0),
+  TOTPARAM      : p()
 };
 
 function loadParams(params) {
-  for (let i=0; i<params.length; i++) {
+  for (let i = 0; i < params.length; i++) {
     ParamData[i].value = params[i];
     paramdata[i] = params[i];
   }
 }
 
-window._loadParams = function(params) {
+window._loadParams = function (params) {
   loadParams(params);
   localStorage[PARAM_KEY] = JSON.stringify(util.list(paramdata));
 }
 
-window._resetParams = function() {
+window._resetParams = function () {
   console.log(ParamData);
 
-  for (let i=0; i<TOTPARAM; i++) {
+  for (let i = 0; i < TOTPARAM; i++) {
     let p = ParamData[i];
 
     p.value = p.defval;
@@ -95,7 +97,8 @@ window._resetParams = function() {
 }
 
 const {
-        EDIST_P1, EDIST_P2, EDIST_P3, SUBD_FAC, COLL_FAC, RAKE_FACTOR, PROJ_FACTOR, SMOOTH_FACTOR, TOTPARAM
+        EDIST_P1, EDIST_P2, EDIST_P3, SUBD_FAC, COLL_FAC, RAKE_FACTOR,
+        PROJ_FACTOR, SMOOTH_FACTOR, CSMOOTH_FAC, CSMOOTH_REPEAT, TOTPARAM
       } = RemeshParams;
 
 export class Remesher {
@@ -123,29 +126,6 @@ export class Remesher {
 
     this.goalType = goalType;
     this.goalValue = goalValue;
-  }
-
-  getOrigData(mesh) {
-    let idx = mesh.verts.customData.getNamedLayerIndex("__orig_co", "vec3");
-    if (idx < 0) {
-      let layer = mesh.verts.addCustomDataLayer("vec3", "__orig_co");
-      layer.flag |= CDFlags.TEMPORARY;
-
-      idx = layer.index;
-    }
-
-    this.cd_orig = idx;
-    return idx;
-  }
-
-  initOrigData(mesh) {
-    let cd_orig = this.getOrigData(mesh);
-
-    for (let v of mesh.verts) {
-      v.customData[cd_orig].value.load(v);
-    }
-
-    return cd_orig;
   }
 
   get relax() {
@@ -178,6 +158,29 @@ export class Remesher {
 
     Remeshers[def.typeName] = code;
     RemeshMap[code] = cls;
+  }
+
+  getOrigData(mesh) {
+    let idx = mesh.verts.customData.getNamedLayerIndex("__orig_co", "vec3");
+    if (idx < 0) {
+      let layer = mesh.verts.addCustomDataLayer("vec3", "__orig_co");
+      layer.flag |= CDFlags.TEMPORARY;
+
+      idx = layer.index;
+    }
+
+    this.cd_orig = idx;
+    return idx;
+  }
+
+  initOrigData(mesh) {
+    let cd_orig = this.getOrigData(mesh);
+
+    for (let v of mesh.verts) {
+      v.customData[cd_orig].value.load(v);
+    }
+
+    return cd_orig;
   }
 
   step() {
@@ -219,6 +222,22 @@ export class UniformTriRemesher extends Remesher {
     this.optData = undefined;
 
     this.minEdges = 5; //have at least these number of edges to continue iteration
+  }
+
+  get smoothCurveRepeat() {
+    return this.params[CSMOOTH_REPEAT];
+  }
+
+  get smoothCurveFac() {
+    return this.params[CSMOOTH_FAC];
+  }
+
+  set smoothCurveRepeat(f) {
+    this.params[CSMOOTH_REPEAT] = f;
+  }
+
+  set smoothCurveFac(f) {
+    this.params[CSMOOTH_FAC] = f;
   }
 
   get subdFac() {
@@ -318,6 +337,10 @@ export class UniformTriRemesher extends Remesher {
     let _rdir = new Vector3();
     let _rtmp2 = new Vector3();
 
+    for (let v of mesh.verts) {
+      v.flag &= ~MeshFlags.NOAPI_TEMP1;
+    }
+
     let dorake = (v, fac = 0.5, sdis = 1.0) => {
       //return rake2(v, fac);
 
@@ -371,10 +394,20 @@ export class UniformTriRemesher extends Remesher {
 
         w = d1.dot(d2);
         w = Math.acos(w*0.99999)/Math.PI;
-        if (Math.abs(w-0.25) < 0.07 || Math.abs(w-0.75) < 0.07) {
-          e.flag |= EDGE_DIAG;//|MeshFlags.DRAW_DEBUG;
+        let wfac = 1.0;
+
+        if (Math.abs(w - 0.25) < 0.07 || Math.abs(w - 0.75) < 0.07) {
+          e.flag |= EDGE_DIAG | MeshFlags.DRAW_DEBUG;
+          //count diagonals less
+          wfac = 0.25;
+        } else {
+          e.flag &= ~MeshFlags.DRAW_DEBUG;
         }
 
+        //w = Math.abs(w - 0.5);
+        //w = w*w*(3.0 - 2.0*w);
+
+        //*
         if (0) {
           w = 1.0 - Math.tent(Math.tent(w));
           w = w*w*(3.0 - 2.0*w);
@@ -385,7 +418,7 @@ export class UniformTriRemesher extends Remesher {
         } else {
           w = Math.tent((w - 0.5));
           w = w*w*(3.0 - 2.0*w);
-        }
+        }//*/
 
         //if (val > 4) {
         //w += 0.5;
@@ -393,6 +426,7 @@ export class UniformTriRemesher extends Remesher {
         //}
 
         w = w*(1.0 - pad) + pad;
+        w *= wfac;
 
         co.addFac(v2, w);
         co.addFac(v.no, nfac*w);
@@ -427,6 +461,21 @@ export class UniformTriRemesher extends Remesher {
     this.i++;
 
     console.log(this.i, "quad edges", this.calcQuadEdges(mesh), mesh.edges.length);
+
+    console.log("SC", this.smoothCurveFac, this.smoothCurveRepeat);
+
+    if (this.smoothCurveFac > 0.0) {
+      let cd_curv = getCurveVerts(mesh);
+
+      for (let v of mesh.verts) {
+        let sv = v.customData[cd_curv];
+        sv.check(v);
+      }
+
+      for (let i = 0; i < this.smoothCurveRepeat; i++) {
+        smoothCurvatures(mesh, mesh.verts, this.smoothCurveFac);
+      }
+    }
 
     for (let i = 0; i < 3; i++) {
       this.rake();
@@ -508,7 +557,7 @@ export class UniformTriRemesher extends Remesher {
 
     let tan = new Vector3();
     let mid = new Vector3();
-    let elen_sqrt2 = elen * Math.sqrt(2.0);
+    let elen_sqrt2 = elen*Math.sqrt(2.0);
     let efac = this.rakeFactor;
 
     for (let e of mesh.edges) {
@@ -535,12 +584,12 @@ export class UniformTriRemesher extends Remesher {
       }
 
       e.flag &= ~EDGE_DIAG;
-      e.flag &= ~DRAW_DEBUG;
+      //e.flag &= ~DRAW_DEBUG;
     }
 
     //if (this.i%3 === 0) {
-      mesh.regenTessellation();
-      mesh.recalcNormals();
+    mesh.regenTessellation();
+    mesh.recalcNormals();
     //}
   }
 
@@ -773,7 +822,7 @@ export class UniformTriRemesher extends Remesher {
     }, 400);
   }
 
-  optStep(flag = RemeshFlags.SUBDIVIDE|RemeshFlags.COLLAPSE) {
+  optStep(flag = RemeshFlags.SUBDIVIDE | RemeshFlags.COLLAPSE) {
     this.flag = flag;
 
     let opt = this.optData;
@@ -854,7 +903,7 @@ export class UniformTriRemesher extends Remesher {
 
     let start = util.list(this.params);
 
-    for (let i=0; i<this.params.length; i++) {
+    for (let i = 0; i < this.params.length; i++) {
       let ri = ~~(Math.random()*this.params.length*0.9999);
       if (this.excludedParams.has(ri)) {
         continue;
@@ -863,7 +912,7 @@ export class UniformTriRemesher extends Remesher {
       let range = ParamData[ri];
       let df = (range.max - range.min);
 
-      let f = this.params[ri] + (Math.random()-0.5)*df*0.25;
+      let f = this.params[ri] + (Math.random() - 0.5)*df*0.25;
       f = Math.min(Math.max(f, range.min), range.max);
 
       //console.log(range);
@@ -884,7 +933,7 @@ export class UniformTriRemesher extends Remesher {
     //err1 -= Math.abs(totv2 - totv)*0.5;
 
     if (err2 >= err1) {
-      for (let i=0; i<this.params.length; i++) {
+      for (let i = 0; i < this.params.length; i++) {
         this.params[i] = start[i];
       }
     } else {
@@ -1334,7 +1383,7 @@ export function cleanupQuads2(mesh, faces, lctx) {
 let _lctx_ring = util.cachering.fromConstructor(LogContext, 64);
 
 //used by UniformQuadRemesher
-function _cleanupQuads(mesh, faces=mesh.faces, lctx, maxVerts=1e17) {
+function _cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
   if (!(faces instanceof Set)) {
     faces = new Set(faces);
   }
@@ -1540,7 +1589,7 @@ function _cleanupQuads(mesh, faces=mesh.faces, lctx, maxVerts=1e17) {
   splitEdgesSmart2(mesh, es2, undefined, lctx);
 }
 
-export function cleanupQuads(mesh, faces=mesh.faces, lctx, maxVerts=1e17) {
+export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
   if (!(faces instanceof Set)) {
     faces = new Set(faces);
   }
@@ -2150,9 +2199,9 @@ export class UniformQuadRemesher extends UniformTriRemesher {
 
 
   step() {
-    let doquad = this.i % 18 === 0;
+    let doquad = this.i%18 === 0;
 
-    if (this.i % 2 === 0 && !doquad) {
+    if (this.i%2 === 0 && !doquad) {
       this.mesh.regenTessellation();
       this.mesh.recalcNormals();
 
@@ -2171,7 +2220,7 @@ export class UniformQuadRemesher extends UniformTriRemesher {
       }
 
       triangulateMesh(this.mesh, this.mesh.faces, this.lctx);
-      for (let j=0; j<steps; j++) {
+      for (let j = 0; j < steps; j++) {
         super.step();
       }
 
@@ -2186,7 +2235,7 @@ export class UniformQuadRemesher extends UniformTriRemesher {
       _cleanupQuads(this.mesh, this.mesh.faces, this.lctx, Math.max(this.mesh.verts.length>>4, 4));
       this.elen = this.calcEdgeLen();
 
-      for (let i=0; i<3; i++) {
+      for (let i = 0; i < 3; i++) {
         vertexSmooth(this.mesh, this.mesh.verts, 0.5, 0.0);
       }
     }
@@ -2253,11 +2302,11 @@ export let DefaultRemeshFlags = RemeshFlags.SUBDIVIDE | RemeshFlags.COLLAPSE | R
 
 export function remeshMesh(mesh, remesher = Remeshers.UNIFORM_TRI, lctx = undefined, goalType, goalValue,
                            maxSteps                                     = 5,
-                           rakeFactor                                   = 0.5, threshold = 0.5,
+                           rakeFactor                                   = 0.5, threshold                  = 0.5,
                            relax                                        = 0.25,
                            projection                                   = 0.8,
                            flag                                         = DefaultRemeshFlags,
-                           maxEdges = undefined) {
+                           maxEdges                                     = undefined) {
   fixManifold(mesh, lctx);
 
   let cls = RemeshMap[remesher];

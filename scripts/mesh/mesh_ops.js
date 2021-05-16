@@ -243,7 +243,7 @@ export class SymmetrizeOp extends MeshOp {
           .saveLastValue(),
         selectedOnly: new BoolProperty(false)
           .saveLastValue(),
-        threshold : new FloatProperty(0.0001)
+        threshold   : new FloatProperty(0.0001)
           .setRange(0.0, 2.0)
           .noUnits()
           .saveLastValue()
@@ -456,16 +456,18 @@ export class RemeshOp extends MeshOp {
       toolpath: "mesh.remesh",
       inputs  : ToolOp.inherit(
         {
-          flag          : new FlagProperty(DefaultRemeshFlags, RemeshFlags),
-          remesher      : new EnumProperty(Remeshers.UNIFORM_TRI, Remeshers).saveLastValue(),
-          rakeFactor    : new FloatProperty(0.5).noUnits().setRange(0.0, 1.0),
-          relax         : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0),
-          projection    : new FloatProperty(0.8).noUnits().setRange(0.0, 1.0),
-          subdivideFac  : new FloatProperty(0.5).noUnits().setRange(0.01, 3.0).saveLastValue(),
-          collapseFac   : new FloatProperty(0.5).noUnits().setRange(0.01, 1.0).saveLastValue(),
-          goalType      : new EnumProperty(RemeshGoals.EDGE_AVERAGE, RemeshGoals).saveLastValue(),
-          goal          : new FloatProperty(1.0).noUnits().setRange(0, 1024*1024*32).saveLastValue(),
-          edgeRunPercent: new FloatProperty(0.5).setRange(0.001, 1).noUnits().saveLastValue()
+          flag             : new FlagProperty(DefaultRemeshFlags, RemeshFlags),
+          remesher         : new EnumProperty(Remeshers.UNIFORM_TRI, Remeshers).saveLastValue(),
+          rakeFactor       : new FloatProperty(0.5).noUnits().setRange(0.0, 1.0),
+          relax            : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0),
+          projection       : new FloatProperty(0.8).noUnits().setRange(0.0, 1.0),
+          subdivideFac     : new FloatProperty(0.5).noUnits().setRange(0.01, 3.0).saveLastValue(),
+          collapseFac      : new FloatProperty(0.5).noUnits().setRange(0.01, 1.0).saveLastValue(),
+          goalType         : new EnumProperty(RemeshGoals.EDGE_AVERAGE, RemeshGoals).saveLastValue(),
+          goal             : new FloatProperty(1.0).noUnits().setRange(0, 1024*1024*32).saveLastValue(),
+          edgeRunPercent   : new FloatProperty(0.5).setRange(0.001, 1).noUnits().saveLastValue(),
+          curveSmoothFac   : new FloatProperty(0.0).noUnits().setRange(0.0, 1.0).saveLastValue(),
+          curveSmoothRepeat: new IntProperty(4).noUnits().setRange(0, 50).saveLastValue()
         }
       ),
       outputs : ToolOp.inherit()
@@ -481,6 +483,8 @@ export class RemeshOp extends MeshOp {
     let collFac = this.inputs.collapseFac.getValue();
     let project = this.inputs.projection.getValue();
     let count = this.inputs.edgeRunPercent.getValue();
+    let curveSmoothRepeat = this.inputs.curveSmoothRepeat.getValue();
+    let curveSmoothFac = this.inputs.curveSmoothFac.getValue();
 
     count = Math.ceil(mesh.edges.length*count);
 
@@ -495,6 +499,9 @@ export class RemeshOp extends MeshOp {
     remesher.projection = project;
     remesher.rakeFactor = rakeFactor;
     remesher.flag = this.inputs.flag.getValue();
+    remesher.smoothCurveRepeat = curveSmoothRepeat;
+    remesher.smoothCurveFac = curveSmoothFac;
+
     remesher.start(count);
 
     return remesher;
@@ -770,10 +777,10 @@ export class CatmullClarkeSubd extends MeshOp {
 ToolOp.register(CatmullClarkeSubd);
 
 export const SymFlags = {
-  X : 1,
-  Y : 2,
-  Z : 4,
-  AUTO : 512
+  X   : 1,
+  Y   : 2,
+  Z   : 4,
+  AUTO: 512
 };
 
 export class MeshSnapToMirror extends MeshOp {
@@ -787,7 +794,7 @@ export class MeshSnapToMirror extends MeshOp {
       icon    : -1,
       toolpath: "mesh.snap_to_mirror_axis",
       inputs  : ToolOp.inherit({
-        symFlag : new FlagProperty(SymFlags.AUTO, SymFlags)
+        symFlag: new FlagProperty(SymFlags.AUTO, SymFlags)
       })
     }
   }
@@ -813,7 +820,7 @@ export class MeshSnapToMirror extends MeshOp {
         let minaxis;
         let mindis;
 
-        for (let i=0; i<3; i++) {
+        for (let i = 0; i < 3; i++) {
           if (!(axes & (1<<i))) {
             continue;
           }
@@ -840,6 +847,7 @@ export class MeshSnapToMirror extends MeshOp {
     }
   }
 }
+
 ToolOp.register(MeshSnapToMirror);
 
 export class MeshSubdTest extends MeshOp {
@@ -1118,6 +1126,48 @@ export const SmoothTypes = {
   COTAN  : 2,
   UNIFORM: 4
 };
+
+export class SmoothCurvaturesOp extends MeshDeformOp {
+  constructor() {
+    super();
+  }
+
+
+  static tooldef() {
+    return {
+      uiname  : "Smooth Curvatures",
+      icon    : Icons.SCULPT_SMOOTH,
+      toolpath: "mesh.smooth_curvature_directions",
+      undoflag: 0,
+      flag    : 0,
+      inputs  : ToolOp.inherit({
+        repeat    : new IntProperty(1).saveLastValue().noUnits().setRange(1, 256),
+        projection: new FloatProperty(0.0).saveLastValue().setRange(0.0, 1.0).noUnits(),
+        factor    : new FloatProperty(0.5).saveLastValue().setRange(0.0, 1.0).noUnits()
+      }),
+    }
+  }
+
+  exec(ctx) {
+    let fac = this.inputs.factor.getValue();
+    let repeat = this.inputs.repeat.getValue();
+    let proj = this.inputs.projection.getValue();
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let cd_curv = getCurveVerts(mesh);
+
+      for (let i = 0; i < repeat; i++) {
+        smoothCurvatures(mesh, mesh.verts.selected.editable, fac, proj);
+      }
+
+      mesh.regenRender();
+      mesh.graphUpdate();
+      window.redraw_viewport(true);
+    }
+  }
+}
+
+ToolOp.register(SmoothCurvaturesOp);
 
 export class VertexSmooth extends MeshDeformOp {
   constructor() {
@@ -3551,6 +3601,7 @@ ToolOp.register(OptRemeshParams);
 
 import {SolverElem, SolverSettings, Solver, DiffConstraint, VelConstraint} from './mesh_solver.js';
 import {BVHToolMode} from '../editors/view3d/tools/pbvh.js';
+import {getCurveVerts, smoothCurvatures} from './mesh_curvature.js';
 
 export class SolverOpBase extends MeshOp {
   constructor() {

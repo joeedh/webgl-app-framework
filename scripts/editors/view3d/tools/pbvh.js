@@ -1101,7 +1101,22 @@ export class BVHToolMode extends ToolMode {
     }
 
     let ob = object;//let ob = this.ctx.object;
-    let bvh = this.getBVH(mesh);
+    let bvh;
+
+    //update all normals on first bvh build
+    if (!mesh.bvh) {
+      bvh = this.getBVH(mesh);
+      for (let n of bvh.nodes) {
+        if (n.leaf) {
+          n.setUpdateFlag(BVHFlags.UPDATE_NORMALS);
+        }
+      }
+
+      bvh.update();
+    } else {
+      bvh = this.getBVH(mesh);
+    }
+
     let dynTopo = this._apiDynTopo;
 
     let hideQuadEdges = false;

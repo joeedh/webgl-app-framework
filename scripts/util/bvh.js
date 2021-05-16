@@ -781,14 +781,14 @@ export class BVHNode {
     }
   }
 
-  vertsInTube(co, ray, radius, clip, out) {
+  vertsInTube(co, ray, radius, clip, isSquare, out) {
     if (!this.leaf) {
       for (let c of this.children) {
         if (!aabb_ray_isect(co, ray, c.min, c.max)) {
           continue;
         }
 
-        c.vertsInTube(co, ray, radius, clip, out);
+        c.vertsInTube(co, ray, radius, clip, isSquare, out);
       }
 
       return;
@@ -1360,7 +1360,7 @@ export class BVHNode {
 
     this.allTris.add(tri);
 
-    let updateflag = BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_NORMALS;
+    let updateflag = BVHFlags.UPDATE_INDEX_VERTS;
     updateflag |= BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_BOUNDS
     updateflag |= BVHFlags.UPDATE_TOTTRI;
 
@@ -1597,7 +1597,6 @@ export class BVHNode {
       return;
     }
 
-    let doneset = new WeakSet();
     let eidMap = this.bvh.mesh.eidMap;
 
     for (let t of this.uniqueTris) {
@@ -1606,18 +1605,58 @@ export class BVHNode {
         continue;
       }
 
-      t.no.load(math.normal_tri(t.v1, t.v2, t.v3));
+      let no = math.normal_tri(t.v1, t.v2, t.v3);
+
+      t.no[0] = no[0];
+      t.no[1] = no[1];
+      t.no[2] = no[2];
+
       t.area = math.tri_area(t.v1, t.v2, t.v3) + 0.00001;
 
-      let f = eidMap.get(t.id);
+      //let d = t.no.dot(t.no);
 
-      if (f && f.no) {
-        f.no.load(t.no);
+      //let ok = Math.abs(t.area) > 0.00001 && !isNaN(t.area);
+      //ok = ok && isFinite(t.area) && d > 0.0001;
+      //ok = ok && !isNaN(d) && isFinite(d);
+
+      //ensure non-zero t.area
+      //t.area = Math.max(Math.abs(t.area), 0.00001) * Math.sign(t.area);
+
+      //if (!ok) {
+        //continue;
+      //}
+
+      let f;
+
+      if (t.l1) {
+        f = t.l1.f;
+      } else {
+        f = eidMap.get(t.id);
+      }
+
+      if (f) {
+        if (!f.no) {
+          //eek!
+
+          f.no = new Vector3();
+
+          console.warn(f, f.no);
+          throw new Error("eek!");
+        }
+
+        f.no[0] = t.no[0];
+        f.no[1] = t.no[1];
+        f.no[2] = t.no[2];
       }
     }
 
+
     for (let v of this.uniqueVerts) {
-      v.no.zero();
+      let no = v.no;
+
+      let ox = no[0], oy = no[1], oz = no[2];
+      let x = 0, y = 0, z = 0;
+      let ok = false;
 
       for (let e of v.edges) {
         if (!e.l) {
@@ -1633,9 +1672,20 @@ export class BVHNode {
           //  l.f.calcNormal();
           //}
 
-          v.no.add(l.f.no);
+          let fno = l.f.no;
+          let fx = fno[0], fy = fno[1], fz = fno[2];
 
-          if (_i++ > 10) {
+          if (fx*fx + fy*fy + fz*fz < 0.0001) {
+            l.f.calcNormal();
+          }
+
+          x += fx;
+          y += fy;
+          z += fz;
+
+          ok = true;
+
+          if (_i++ > 32) {
             console.warn("Infinite loop detected");
             break;
           }
@@ -1644,7 +1694,13 @@ export class BVHNode {
         } while (l !== e.l);
       }
 
-      v.no.normalize();
+      if (ok) {
+        no[0] = x;
+        no[1] = y;
+        no[2] = z;
+
+        no.normalize();
+      }
     }
   }
 

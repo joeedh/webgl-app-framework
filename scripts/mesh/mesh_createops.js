@@ -69,9 +69,9 @@ export class MeshCreateOp extends MeshOp {
       }),
 
       is_modal: true,
-      outputs : {
+      outputs : ToolOp.inherit({
         newObject: new DataRefProperty()
-      }
+      })
     }
   }
 
@@ -127,18 +127,18 @@ export class MeshCreateOp extends MeshOp {
       let ob = ctx.datalib.get(this.outputs.newObject.getValue());
       let scene = ctx.scene;
 
-      scene.remove(ob);
-
       if (ob) {
+        scene.remove(ob);
+
         this.inputs._objectID.setValue(ob.lib_id);
         this.inputs._meshID.setValue(ob.data.lib_id);
+
+        ctx.datalib.remove(ob);
+        ob.data.lib_remUser(ob);
+
+        ctx.datalib.remove(ob.data);
+        ctx.datalib.remove(ob);
       }
-
-      ctx.datalib.remove(ob);
-      ob.data.lib_remUser(ob);
-
-      ctx.datalib.remove(ob.data);
-      ctx.datalib.remove(ob);
 
       scene.objects.clearSelection();
 
@@ -963,7 +963,8 @@ export class ImportOBJOp extends MeshCreateOp {
       toolpath: "mesh.import_obj",
       inputs  : ToolOp.inherit({
         data : new StringProperty().private()
-      })
+      }),
+      outputs : ToolOp.inherit({})
     }
   }
 

@@ -6,13 +6,15 @@
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/brush/brush.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/brush/brush.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_createops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_createops.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_curvature.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_curvature.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_subdivide.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_subdivide.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/util/bvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bvh.js" afterDir="false" />
     </list>
@@ -249,6 +251,11 @@
       <workItem from="1617654293538" duration="14607000" />
       <workItem from="1618068269968" duration="60000" />
       <workItem from="1618102534440" duration="15422000" />
+      <workItem from="1618365214934" duration="11693000" />
+      <workItem from="1618548390173" duration="1869000" />
+      <workItem from="1618711227601" duration="20000" />
+      <workItem from="1619633705441" duration="1503000" />
+      <workItem from="1620239739934" duration="1048000" />
     </task>
     <servers />
   </component>
@@ -273,7 +280,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scripts/mesh/mesh.js</url>
-          <line>4802</line>
+          <line>4809</line>
           <option name="timeStamp" value="5" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">

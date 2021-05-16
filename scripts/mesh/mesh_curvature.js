@@ -159,18 +159,62 @@ export class CurvVert extends CustomDataElem {
       nmat.transpose();
     }
 
-    for (let v2 of v.neighbors) {
-      if (!(v2.flag & flag)) {
-        v2.flag |= flag;
-        addMat(mat, v, v2, undefined, nmat);
+
+    function rec(v2, depth=0) {
+      for (let e of v2.edges) {
+        let v3 = e.otherVertex(v2);
+
+        if (v3.flag & flag) {
+          continue;
+        }
+
+        v3.flag |= flag;
+        addMat(mat, v, v3, undefined, nmat);
+
+        if (depth > 0) {
+          rec(v3, depth-1);
+        }
       }
     }
 
-    for (let v2 of v.neighbors) {
-      for (let v3 of v2.neighbors) {
+    function unrec(v2, depth) {
+      for (let e of v2.edges) {
+        let v3 = e.otherVertex(v2);
+
         if (!(v3.flag & flag)) {
-          v3.flag |= flag;
-          addMat(mat, v, v3, undefined, nmat);
+          continue;
+        }
+
+        v3.flag &= ~flag;
+
+        if (depth > 0) {
+          unrec(v3, depth-1);
+        }
+      }
+    }
+
+    let d1 = window.d1 !== undefined ? window.d1 : 1;
+    d1 = ~~d1;
+
+    rec(v, d1);
+
+    v.flag &= ~flag;
+    unrec(v, d1);
+
+    if (0) {
+      for (let v2 of v.neighbors) {
+        if (!(v2.flag & flag)) {
+          v2.flag |= flag;
+          addMat(mat, v, v2, undefined, nmat);
+        }
+      }
+
+      for (let v2 of v.neighbors) {
+        for (let v3 of v2.neighbors) {
+          if (!(v3.flag & flag)) {
+            v3.flag |= flag;
+            addMat(mat, v, v3, undefined, nmat);
+          }
         }
       }
     }
@@ -227,7 +271,7 @@ export class CurvVert extends CustomDataElem {
     b.tan.load(this.tan);
     b.k1 = this.k1;
     b.k2 = this.k2;
-    b.no = new Vector3();
+    b.no.load(this.no);
     b.flag = this.flag;
   }
 
@@ -531,4 +575,44 @@ export function dirCurveSmooth1(v, dir, fac=0.5) {
   }
 
   v.flag |= MeshFlags.UPDATE;
+}
+
+export function smoothCurvatures(mesh, vs=mesh.verts, fac=1.0, projection=0.0) {
+  vs = new Set(vs);
+
+  let cd_curv = getCurveVerts(mesh);
+
+  let tmp1 = new Vector3();
+  let tmp2 = new Vector3();
+  let tmp3 = new Vector3();
+
+  let dosmooth = (v, fac) => {
+    let totw = 0.0;
+    let sv = v.customData[cd_curv];
+
+    let tan = tmp1.load(sv.tan);
+
+    for (let v2 of v.neighbors) {
+      let sv2 = v2.customData[cd_curv];
+      let w = 1.0;
+
+      w = Math.abs(Math.abs(sv2.k1) - Math.abs(sv2.k2));
+
+      let tan2 = tmp2.load(sv2.tan);
+      let d = tan2.dot(v.no);
+      tan2.addFac(v.no, -d).normalize();
+
+      tan.addFac(tan2, w);
+      totw += w;
+    }
+
+    if (totw > 0.0) {
+      tan.mulScalar(1.0 / totw);
+      sv.tan.interp(tan, fac).normalize();
+    }
+  }
+
+  for (let v of vs) {
+    dosmooth(v, fac);
+  }
 }
