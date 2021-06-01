@@ -886,7 +886,8 @@ export class View3D extends Editor {
     strip.prop("scene.toolmode[object]");
     strip.prop("scene.toolmode[pan]");
     strip.prop("scene.toolmode[tetmesh]");
-    strip.prop("scene.toolmode[strandset]");
+    //strip.prop("scene.toolmode[strandset]");
+    strip.prop("scene.toolmode[tanspace_tester]");
 
     //header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
     //strip.tool("view3d.view_selected()", PackFlags.USE_ICONS);

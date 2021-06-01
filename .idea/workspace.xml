@@ -5,18 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
+      <change afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/subsurf_tangent_test.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/meshtool.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/meshtool.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/tools.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/tools.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_createops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_createops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_curvature.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_curvature.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/select_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/select_ops.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/sceneobject/sceneobject_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/sceneobject/sceneobject_base.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/util/bvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bvh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/subsurf/subsurf_patch.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/subsurf/subsurf_patch.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -85,8 +85,11 @@
       <command value="dissolvefaces" />
     </option>
   </component>
-  <component name="RunManager" selected="Node.js.uv_selectops.js">
+  <component name="RunManager" selected="Node.js.subsurf_tangent_test.js">
     <configuration name="renderpass.js" type="NodeJSConfigurationType" temporary="true" nameIsGenerated="true" path-to-js-file="$PROJECT_DIR$/scripts/renderengine/renderpass.js" working-dir="$PROJECT_DIR$/scripts/renderengine">
+      <method v="2" />
+    </configuration>
+    <configuration name="subsurf_tangent_test.js" type="NodeJSConfigurationType" temporary="true" nameIsGenerated="true" path-to-js-file="$PROJECT_DIR$/scripts/editors/view3d/tools/subsurf_tangent_test.js" working-dir="$PROJECT_DIR$/scripts/editors/view3d/tools">
       <method v="2" />
     </configuration>
     <configuration name="uv_selectops.js" type="NodeJSConfigurationType" temporary="true" nameIsGenerated="true" path-to-js-file="$PROJECT_DIR$/scripts/editors/image/uv_selectops.js" working-dir="$PROJECT_DIR$/scripts/editors/image">
@@ -97,6 +100,7 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Node.js.subsurf_tangent_test.js" />
         <item itemvalue="Node.js.uv_selectops.js" />
         <item itemvalue="Node.js.view3d_select.js" />
         <item itemvalue="Node.js.renderpass.js" />
@@ -256,6 +260,8 @@
       <workItem from="1618711227601" duration="20000" />
       <workItem from="1619633705441" duration="1503000" />
       <workItem from="1620239739934" duration="1048000" />
+      <workItem from="1622177676386" duration="10566000" />
+      <workItem from="1622513608462" duration="3275000" />
     </task>
     <servers />
   </component>

@@ -3,7 +3,7 @@ import '../path.ux/scripts/util/struct.js';
 let STRUCT = nstructjs.STRUCT;
 import {Vector3} from '../util/vectormath.js';
 import {StandardTools} from './stdtools.js';
-import {Node} from "../core/graph.js";
+import {Node, NodeFlags} from "../core/graph.js";
 import {DependSocket, Matrix4Socket} from "../core/graphsockets.js";
 import {Icons} from '../editors/icon_enum.js';
 
@@ -34,7 +34,8 @@ export class SceneObjectData extends DataBlock {
     }),
     outputs : Node.inherit({
       depend : new DependSocket(),
-    })
+    }),
+    flag : Node.inherit(NodeFlags.SAVE_PROXY)
   }}
 
   exec() {

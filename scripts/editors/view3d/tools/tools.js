@@ -6,5 +6,6 @@ import './curvetool.js';
 import './pbvh.js';
 import './tetmesh.js';
 import './strandtool.js';
+import './subsurf_tangent_test.js';
 
 export {ToolModes} from '../view3d_toolmode.js';

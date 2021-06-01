@@ -871,7 +871,6 @@ export class SelectInverse extends SelectOpBase {
       icon       : Icons.SELECT_INVERSE,
       description: "Invert selection",
       inputs     : ToolOp.inherit({
-        selmask: new FlagProperty(undefined, SelMask).private(),
       })
     }
   }

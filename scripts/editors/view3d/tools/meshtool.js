@@ -32,6 +32,8 @@ export class MeshToolBase extends ToolMode {
     super(...arguments);
 
     this.transformConstraint = undefined; //string, e.g. xy
+
+    this.transparentMeshElements = false;
     this.drawOwnIds = true;
     this.meshPath = "object";
     this.selectMask = SelMask.GEOM;
@@ -538,13 +540,25 @@ export class MeshToolBase extends ToolMode {
 
       let program = Shaders.MeshEditShader;
 
-      gl.enable(gl.DEPTH_TEST);
-      gl.depthMask(true);
+      if (!this.transparentMeshElements) {
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthMask(true);
+      } else {
+        gl.depthMask(false);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.disable(gl.DEPTH_TEST);
+      }
 
       uniforms.pointSize = 8;
       uniforms.polygonOffset = 1.0;
 
       mesh.drawElements(view3d, gl, this.drawSelectMask, uniforms, program, object, true);
+
+      if (this.transparentMeshElements) {
+        gl.depthMask(true);
+        gl.enable(gl.DEPTH_TEST);
+      }
     }
 
     this.drawCursor = this.hasWidgetHighlight();

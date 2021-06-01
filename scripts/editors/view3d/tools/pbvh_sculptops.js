@@ -3087,6 +3087,11 @@ export class PaintOp extends PaintOpBase {
     let cdata3 = makeDummyCData();
 
     let rake = (v, fac = 0.5, sdis = 1.0) => {
+      if (v.valence === 4) {
+        //return; //done do 4-valence verts
+        fac *= 0.15;
+      }
+
       if (!ENABLE_RAKE) {
         return;
       }
@@ -3169,6 +3174,11 @@ export class PaintOp extends PaintOpBase {
 
     //disabled for tet meshes
     let oldrake = (v, fac = 0.5, sdis = 1.0) => {
+      if (v.valence === 4) {
+        //return; //done do 4-valence verts
+        fac *= 0.15;
+      }
+
       if (!ENABLE_RAKE) {
         return;
       }
@@ -4975,8 +4985,33 @@ export class PaintOp extends PaintOpBase {
     return v1.vectorDistanceSqr(v2);
   }
 
+  val(v) {
+    let tot = 0;
+
+    for (let e of v.edges) {
+      if (!(e.flag & MeshFlags.QUAD_EDGE)) {
+        tot++;
+      }
+    }
+
+    return tot;
+  }
+
   edist_subd(e, v1, v2, eset, cd_curv) {
     let dis = v1.vectorDistanceSqr(v2)*this.edist_scale(e, cd_curv);
+
+    let val1 = this.val(v1); //v1.valence;
+    let val2 = this.val(v2); //v2.valence;
+
+    if (val1 === 4) {
+      dis /= 1.5;
+    }
+
+    if (val2 === 4) {
+      dis /= 1.5;
+    }
+
+    return dis;
 
     //return dis; //XXX
 
@@ -5098,8 +5133,18 @@ export class PaintOp extends PaintOpBase {
   edist_coll(e, v1, v2, eset, cd_curv) {
     let dis = v1.vectorDistanceSqr(v2);
 
-    let val1 = v1.valence;
-    let val2 = v2.valence;
+    let val1 = this.val(v1); //v1.valence;
+    let val2 = this.val(v2); //v2.valence;
+
+    if (val1 === 4) {
+      dis *= 1.5;
+    }
+
+    if (val2 === 4) {
+      dis *= 1.5;
+    }
+
+    return dis;
 
     let d = (val1 + val2)*0.5;
 

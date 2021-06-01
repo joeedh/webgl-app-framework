@@ -5715,8 +5715,37 @@ export class Mesh extends SceneObjectData {
     }
   }
 
+  /** clear mesh */
+  clear(clearCustomData=false) {
+    let elists = this.elists;
+
+    this.eidgen = this._makeEIDGen();
+    this.elists = {};
+    this.eidMap = new Map();
+    this.makeElistAliases();
+
+    if (!clearCustomData) {
+      for (let k in elists) {
+        let e1 = elists[k];
+        let e2 = this.elists[k];
+
+        e2.customData = e1.customData;
+      }
+    }
+
+    return this;
+  }
+
   copy(addLibUsers = false, clearCustomData = false) {
     let ret = new this.constructor();
+
+    //derived types may have customdata set in constructors, still
+    //clear in this case if requested
+    if (clearCustomData) {
+      for (let k in ret.elists) {
+        ret.elists[k].customData = new CustomData();
+      }
+    }
 
     ret.materials = [];
     for (let mat of this.materials) {

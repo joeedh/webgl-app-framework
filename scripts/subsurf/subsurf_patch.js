@@ -194,14 +194,15 @@ export class PatchBase {
     tmat.makeIdentity();
     tmat.translate(quadco[0], quadco[1], quadco[2]);
 
-    let vx = dvv, vy = dvu;
-    //let vx = dvu, vy = dvv;
+    //let vx = dvv, vy = dvu;
+    let vx = dvu, vy = dvv;
 
     let lx = vx.vectorLength();
     let ly = vy.vectorLength();
 
     if (lx === 0.0 || ly === 0.0) {
-      return;
+      console.warn("Error!");
+      return new Matrix4();
     }
 
     let n = _btm_temp5;
