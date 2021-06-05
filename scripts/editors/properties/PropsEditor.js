@@ -615,6 +615,7 @@ export class PropsEditor extends Editor {
     panel.prop("scene.envlight.flag");
     panel.prop("scene.envlight.ao_dist");
     panel.prop("scene.envlight.ao_fac");
+    panel.prop("view3d.render.sharpen");
 
     tab = this.tabs.tab("Material");
     this.materialPanel(tab);

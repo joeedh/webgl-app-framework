@@ -396,7 +396,10 @@ export class UniformTriRemesher extends Remesher {
         w = Math.acos(w*0.99999)/Math.PI;
         let wfac = 1.0;
 
-        if (Math.abs(w - 0.25) < 0.07 || Math.abs(w - 0.75) < 0.07) {
+        //let limit = 0.07;
+        let limit = 0.14;
+
+        if (Math.abs(w - 0.25) < limit || Math.abs(w - 0.75) < limit) {
           e.flag |= EDGE_DIAG | MeshFlags.DRAW_DEBUG;
           //count diagonals less
           wfac = 0.25;

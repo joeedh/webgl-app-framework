@@ -80,6 +80,7 @@ export class DataBlock extends Node {
     let ret = new this.constructor();
 
     this.copyTo(ret);
+    //forcibly call DataBlock.ptotoype.copyTo
     DataBlock.prototype.copyTo.call(this, ret, false);
 
     if (addLibUsers) {

@@ -620,8 +620,6 @@ export class UVEditor extends UIBase {
       this.smesh2.islands[1].draw(gl, uniforms);
     }
 
-    console.log(this.smesh);
-
     this.smesh.draw(gl, uniforms, Shaders.MeshEditShader);
     this.drawDrawLines(gl, uniforms, Shaders.MeshEditShader);
   }

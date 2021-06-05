@@ -219,6 +219,7 @@ export class DataBlockBrowser extends Container {
     //if not undefined, path to "owner" of datapath
     //if undefined, will be derived via datapath api
     this.ownerPath = undefined;
+    this.vertical = false;
 
     this._owner_exists = false;
     this._path_exists = false;
@@ -236,6 +237,12 @@ export class DataBlockBrowser extends Container {
     this.duplicateOp = "datalib.default_copy";
     this.unlinkOp = "datalib.default_unlink";
     this.assignOp = "datalib.default_assign";
+  }
+
+  static define() {
+    return {
+      tagname: "data-block-browser-x"
+    }
   }
 
   init() {
@@ -264,11 +271,15 @@ export class DataBlockBrowser extends Container {
     this._needs_rebuild = true;
   }
 
+  _getDataPath() { //image user widget overrides this
+    return this.getAttribute("datapath");
+  }
+
   rebuild() {
     this._needs_rebuild = false;
 
     let ctx = this.ctx;
-    let path = this.getAttribute("datapath");
+    let path = this._getDataPath();
 
     this.clear();
 
@@ -321,7 +332,13 @@ export class DataBlockBrowser extends Container {
       update.apply(dropbox, arguments);
     };
 
-    let row = col.row();
+    let row;
+    if (!this.vertical) {
+      row = col.row();
+    } else {
+      row = col.col();
+    }
+
     row.add(dropbox);
 
     let type = this.blockClass.blockDefine().typeName;
@@ -350,7 +367,7 @@ export class DataBlockBrowser extends Container {
       return this.ctx.api.getValue(this.ownerPath);
     }
 
-    let path = this.getAttribute("datapath");
+    let path = this._getDataPath();
     let meta = this.ctx.api.resolvePath(this.ctx, path);
 
     if (meta === undefined) {
@@ -361,7 +378,7 @@ export class DataBlockBrowser extends Container {
   }
 
   update() {
-    let path = this.getAttribute("datapath");
+    let path = this._getDataPath();
 
     let exists = this.doesOwnerExist();
     let val = this.getPathValue(this.ctx, path);
@@ -381,15 +398,28 @@ export class DataBlockBrowser extends Container {
 
     super.update();
   }
-
-  static define() {
-    return {
-      tagname: "data-block-browser-x"
-    }
-  }
 }
 
 UIBase.register(DataBlockBrowser);
+
+export class ImageUserWidget extends DataBlockBrowser {
+  constructor() {
+    super();
+
+    this.blockClass = ImageBlock;
+  }
+
+  _getDataPath() {
+    return this.getAttribute("datapath") + ".image";
+  }
+
+  static define() {
+    return {
+      tagname : "image-user-x"
+    }
+  }
+}
+UIBase.register(ImageUserWidget);
 
 /**
  *
@@ -502,6 +532,42 @@ export class EditorSideBar extends Container {
     this.clear();
   }
 
+  get width() {
+    return this._width;
+  }
+
+  set width(v) {
+    this._width = v;
+    this.style["width"] = this._width + "px";
+  }
+
+  get height() {
+    return this._height;
+  }
+
+  set height(v) {
+    this._height = v;
+  }
+
+  set closed(v) {
+    if (!!v === !!this._closed) {
+      return;
+    }
+
+    if (v) {
+      this.collapse();
+    } else {
+      this.expand();
+    }
+  }
+
+  static define() {
+    return {
+      tagname: "editor-sidebar-x",
+      style  : "sidebar"
+    }
+  }
+
   clear() {
     super.clear();
 
@@ -518,23 +584,6 @@ export class EditorSideBar extends Container {
 
     //make tabs smaller
     tabs.tabFontScale = 0.75;
-  }
-
-  set width(v) {
-    this._width = v;
-    this.style["width"] = this._width + "px";
-  }
-
-  get width() {
-    return this._width;
-  }
-
-  get height() {
-    return this._height;
-  }
-
-  set height(v) {
-    this._height = v;
   }
 
   collapse() {
@@ -593,31 +642,12 @@ export class EditorSideBar extends Container {
     return ret;
   }
 
-  set closed(v) {
-    if (!!v === !!this._closed) {
-      return;
-    }
-
-    if (v) {
-      this.collapse();
-    } else {
-      this.expand();
-    }
-  }
-
   loadData(obj) {
     if (!obj) {
       return;
     }
 
     this.closed = obj.closed;
-  }
-
-  static define() {
-    return {
-      tagname: "editor-sidebar-x",
-      style  : "sidebar"
-    }
   }
 }
 
@@ -634,6 +664,31 @@ export class Editor extends Area {
     this.container.parentWidget = this;
 
     this.shadow.appendChild(this.container);
+  }
+
+  static defineAPI(api) {
+    let st = api.mapStruct(this, true);
+
+    st.vec2("pos", "pos", "Position", "Position of editor in window");
+    st.vec2("size", "size", "Size", "Size of editor");
+    st.string("type", "type", "Type", "Editor type").customGetSet(function () {
+      let obj = this.dataref;
+      return obj.constructor.define().areaname;
+    }).readOnly();
+
+    return st;
+  }
+
+  static register(cls) {
+    if (!nstructjs.manager.isRegistered(cls)) {
+      throw new Error("You must register editors with nstructjs: " + cls.name);
+    }
+
+    Area.register(cls);
+  }
+
+  static newSTRUCT() {
+    return document.createElement(this.define().tagname);
   }
 
   makeSideBar() {
@@ -671,19 +726,6 @@ export class Editor extends Area {
     this.addEventListener("focus", cb);
   }
 
-  static defineAPI(api) {
-    let st = api.mapStruct(this, true);
-
-    st.vec2("pos", "pos", "Position", "Position of editor in window");
-    st.vec2("size", "size", "Size", "Size of editor");
-    st.string("type", "type", "Type", "Editor type").customGetSet(function () {
-      let obj = this.dataref;
-      return obj.constructor.define().areaname;
-    }).readOnly();
-
-    return st;
-  }
-
   swapBack() {
     let sarea = this.owning_sarea;
 
@@ -714,16 +756,6 @@ export class Editor extends Area {
     return [this.keymap];
   }
 
-  defineKeyMap() {
-    this.keymap = new KeyMap();
-
-    return this.keymap;
-  }
-
-  getID() {
-    return this.ctx.screen.sareas.indexOf(this.owning_sarea);
-  }
-
   /*copy of code in Area clas in ScreenArea.js in path.ux.
     example of how to define an area.
 
@@ -736,6 +768,16 @@ export class Editor extends Area {
     flag : see AreaFlags
   };}
   */
+
+  defineKeyMap() {
+    this.keymap = new KeyMap();
+
+    return this.keymap;
+  }
+
+  getID() {
+    return this.ctx.screen.sareas.indexOf(this.owning_sarea);
+  }
 
   on_keydown(e) {
     this.push_ctx_active();
@@ -755,18 +797,6 @@ export class Editor extends Area {
     return this.owning_sarea !== undefined && this.owning_sarea.screen !== undefined ? this.owning_sarea.screen
                                                                                      : _appstate.screen;
   }
-
-  static register(cls) {
-    if (!nstructjs.manager.isRegistered(cls)) {
-      throw new Error("You must register editors with nstructjs: " + cls.name);
-    }
-
-    Area.register(cls);
-  }
-
-  static newSTRUCT() {
-    return document.createElement(this.define().tagname);
-  }
 };
 Editor.STRUCT = STRUCT.inherit(Editor, Area) + `
 }
@@ -779,6 +809,7 @@ import {time_ms} from "../util/util.js";
 import {MakeMaterialOp} from "../core/material.js";
 import {SocketFlags} from "../core/graph.js";
 import {DependSocket} from "../core/graphsockets.js";
+import {ImageBlock} from '../image/image.js';
 
 export function spawnToolSearchMenu(ctx) {
   let tools = [];
@@ -1122,6 +1153,12 @@ export class MeshMaterialChooser extends Container {
     this._activeMatCacheSize = 5;
   }
 
+  static define() {
+    return {
+      tagname: "mesh-material-chooser-x"
+    }
+  }
+
   init() {
     this.doOnce(this.rebuild);
   }
@@ -1261,12 +1298,6 @@ export class MeshMaterialChooser extends Container {
       this.doOnce(this.rebuild);
     }
   }
-
-  static define() {
-    return {
-      tagname: "mesh-material-chooser-x"
-    }
-  }
 }
 
 UIBase.register(MeshMaterialChooser);
@@ -1274,6 +1305,12 @@ UIBase.register(MeshMaterialChooser);
 export class MeshMaterialPanel extends Container {
   constructor() {
     super();
+  }
+
+  static define() {
+    return {
+      tagname: "mesh-material-panel-x"
+    }
   }
 
   init() {
@@ -1393,12 +1430,6 @@ export class MeshMaterialPanel extends Container {
       this.doOnce(this.rebuild);
     }
   }
-
-  static define() {
-    return {
-      tagname: "mesh-material-panel-x"
-    }
-  }
 }
 
 UIBase.register(MeshMaterialPanel);
@@ -1424,6 +1455,39 @@ export class DirectionChooser extends UIBase {
     this.value = new Vector3([0, 0.1, 1]);
 
     this.g = this.canvas.getContext("2d");
+  }
+
+  get highlight() {
+    return this._highlight;
+  }
+
+  set highlight(v) {
+    let render = !!v !== !!this._highlight;
+
+    this._highlight = v;
+    if (render) {
+      this.doOnce(this.render);
+    }
+  }
+
+  get disabled() {
+    return this._disabled;
+  }
+
+  set disabled(v) {
+    let render;
+
+    if (this._disabled !== v) {
+      this.render();
+    }
+
+    this._disabled = v;
+  }
+
+  static define() {
+    return {
+      tagname: "direction-chooser-3d-x"
+    }
   }
 
   endModal() {
@@ -1570,7 +1634,7 @@ export class DirectionChooser extends UIBase {
           this.setValue(this.start_value);
         },
 
-        on_keydown    : (e) => {
+        on_keydown: (e) => {
           console.log(e.keyCode, this.modaldata);
 
           switch (e.keyCode) {
@@ -1603,19 +1667,6 @@ export class DirectionChooser extends UIBase {
 
 
     this.tabIndex = 0;
-  }
-
-  set highlight(v) {
-    let render = !!v !== !!this._highlight;
-
-    this._highlight = v;
-    if (render) {
-      this.doOnce(this.render);
-    }
-  }
-
-  get highlight() {
-    return this._highlight;
   }
 
   _getRMat() {
@@ -1770,20 +1821,6 @@ export class DirectionChooser extends UIBase {
     g.restore();
   }
 
-  get disabled() {
-    return this._disabled;
-  }
-
-  set disabled(v) {
-    let render;
-
-    if (this._disabled !== v) {
-      this.render();
-    }
-
-    this._disabled = v;
-  }
-
   setValue(v) {
     this.value.load(v);
 
@@ -1836,12 +1873,6 @@ export class DirectionChooser extends UIBase {
 
     this.updateDPI();
     this.updateDataPath();
-  }
-
-  static define() {
-    return {
-      tagname: "direction-chooser-3d-x"
-    }
   }
 }
 

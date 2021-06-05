@@ -18,6 +18,8 @@ let ctmps_mats = util.cachering.fromConstructor(Matrix4, 512);
 
 const PROJECT_CURV_NORMALS = true;
 
+let tan_tmp = new Vector3();
+
 let addtmps = util.cachering.fromConstructor(Vector3, 16);
 function addMat(amat, v1, v2, w=1.0, nmat) {
   let no = addtmps.next().load(v2.no).sub(v1.no);
@@ -155,7 +157,15 @@ export class CurvVert extends CustomDataElem {
     if (PROJECT_CURV_NORMALS) {
       nmat = mtmp;
       nmat.makeIdentity();
-      nmat.makeNormalMatrix(v.no);
+      let tan;
+
+      if (v.edges.length > 0) {
+        let e = v.edges[0];
+        tan = tan_tmp.load(v.edges[0].otherVertex(v)).sub(v);
+        tan.normalize();
+      }
+
+      nmat.makeNormalMatrix(v.no, tan);
       nmat.transpose();
     }
 
@@ -196,12 +206,12 @@ export class CurvVert extends CustomDataElem {
     let d1 = window.d1 !== undefined ? window.d1 : 1;
     d1 = ~~d1;
 
-    rec(v, d1);
+    //rec(v, d1);
 
     v.flag &= ~flag;
-    unrec(v, d1);
+    //unrec(v, d1);
 
-    if (0) {
+    if (1) {
       for (let v2 of v.neighbors) {
         if (!(v2.flag & flag)) {
           v2.flag |= flag;

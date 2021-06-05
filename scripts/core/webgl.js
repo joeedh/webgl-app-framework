@@ -684,8 +684,6 @@ v${attr} = ${attr};
     this.attrlocs = {};
     this.uniformlocs = {};
 
-    this.uniforms = {}; //default uniforms
-
     for (var i = 0; i < attribs.length; i++) {
       this.attrlocs[attribs[i]] = i;
     }
@@ -770,7 +768,9 @@ v${attr} = ${attr};
 
     if (key in this.multilayer_programs) {
       let shader = this.multilayer_programs[key];
+
       shader.defines = this.defines;
+      shader.uniforms = this.uniforms;
 
       return shader.bind(gl, uniforms, attributes);
     }
@@ -868,6 +868,7 @@ v${attr} = ${attr};
       let shader = this._getDefShader(this.gl, defines, attributes);
 
       if (shader) {
+        shader.uniforms = this.uniforms;
         return shader.bind(gl, uniforms);
       }
     }
