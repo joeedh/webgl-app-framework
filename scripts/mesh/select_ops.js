@@ -2,7 +2,7 @@
 
 import {
   IntProperty, EnumProperty, BoolProperty,
-  FloatProperty, FlagProperty, ToolOp, UndoFlags, ReportProperty
+  FloatProperty, FlagProperty, ToolOp, UndoFlags, ReportProperty, ListProperty
 } from "../path.ux/scripts/pathux.js";
 import {MeshTypes, MeshFlags, LogContext} from './mesh_base.js';
 import * as util from '../util/util.js';
@@ -15,6 +15,7 @@ import {SceneObject} from "../sceneobject/sceneobject.js";
 import {Element} from './mesh_types.js';
 import {FindNearest} from '../editors/view3d/findnearest.js';
 import {getEdgeLoop} from './mesh_utils.js';
+import {FindnearestMesh} from '../editors/view3d/findnearest/findnearest_mesh.js';
 
 export class SelectOpBase extends MeshOp {
   constructor() {
@@ -736,7 +737,7 @@ export class SelectEdgeLoopOp extends SelectOpBase {
     let eid = this.inputs.edgeEid.getValue();
 
     let doBoundary = (mesh, e) => {
-      for (let step=0; step<2; step++) {
+      for (let step = 0; step < 2; step++) {
         let visit = new WeakSet();
         let startv = step ? e.v2 : e.v1;
         let e2 = e;
@@ -857,8 +858,6 @@ export class SelectEdgeLoopOp extends SelectOpBase {
 ToolOp.register(SelectEdgeLoopOp);
 
 
-
-
 export class SelectInverse extends SelectOpBase {
   constructor() {
     super();
@@ -870,8 +869,7 @@ export class SelectInverse extends SelectOpBase {
       toolpath   : "mesh.select_inverse",
       icon       : Icons.SELECT_INVERSE,
       description: "Invert selection",
-      inputs     : ToolOp.inherit({
-      })
+      inputs     : ToolOp.inherit({})
     }
   }
 
@@ -913,8 +911,8 @@ export class SelectNonManifold extends SelectOpBase {
       icon       : -1,
       description: "Select Non Manifold Edges",
       inputs     : ToolOp.inherit({
-        boundary : new BoolProperty(false),
-        wire     : new BoolProperty(false)
+        boundary: new BoolProperty(false),
+        wire    : new BoolProperty(false)
       })
     }
   }
@@ -972,11 +970,11 @@ export class SelectShortestLoop extends SelectOpBase {
       uiname  : "Select Shortest Loop",
       toolpath: "mesh.select_shortest_edgeloop",
       inputs  : ToolOp.inherit({
-        everything : new BoolProperty(false)
+        everything: new BoolProperty(false)
           .saveLastValue()
           .setDescription("Process all possible edges (slower)"),
-        edgeCount: new ReportProperty("0"),
-        minEdges: new IntProperty(0)
+        edgeCount : new ReportProperty("0"),
+        minEdges  : new IntProperty(0)
           .saveLastValue()
           .setDescription("Minimum edge count, ignored if 0")
           .setRange(0, 100000)
@@ -1021,7 +1019,7 @@ export class SelectShortestLoop extends SelectOpBase {
           continue;
         }
 
-        loops.push({e,  eloop});
+        loops.push({e, eloop});
 
         if (!doAll) {
           for (let e2 of eloop) {
@@ -1082,26 +1080,27 @@ export class SelectLongestLoop extends SelectShortestLoop {
     return {
       uiname  : "Select Longest Loop",
       toolpath: "mesh.select_longest_edgeloop",
-      inputs : ToolOp.inherit({
-
-      })
+      inputs  : ToolOp.inherit({})
     }
   }
 }
+
 ToolOp.register(SelectLongestLoop);
 
 let SimilarModes = {
-  NUMBER_OF_EDGES : 0
+  NUMBER_OF_EDGES: 0
 };
 
 export class SelectSimilarOp extends SelectOpBase {
-  static tooldef() {return {
-    uiname : "Select Similar",
-    toolpath : "mesh.select_similar",
-    inputs : ToolOp.inherit({
-      mode : new EnumProperty(0, SimilarModes)
-    })
-  }}
+  static tooldef() {
+    return {
+      uiname  : "Select Similar",
+      toolpath: "mesh.select_similar",
+      inputs  : ToolOp.inherit({
+        mode: new EnumProperty(0, SimilarModes)
+      })
+    }
+  }
 
   exec(ctx) {
     let mode = this.inputs.mode.getValue();
@@ -1186,4 +1185,180 @@ export class SelectSimilarOp extends SelectOpBase {
     window.redraw_viewport(true);
   }
 }
+
 ToolOp.register(SelectSimilarOp);
+
+export class CircleSelectOp extends SelectOpBase {
+  constructor() {
+    super();
+
+    this.mdown = false;
+  }
+
+  static tooldef() {
+    return {
+      uiname  : "Brush Select",
+      toolpath: "mesh.select_brush",
+      icon    : Icons.CIRCLE_SEL,
+      inputs  : ToolOp.inherit({
+        selElems  : new ListProperty(IntProperty),
+        radius    : new FloatProperty(25.0).saveLastValue().noUnits(),
+      }),
+      is_modal: true,
+      outputs : ToolOp.inherit({})
+    }
+  }
+
+  modalStart(ctx) {
+    super.modalStart(ctx);
+  }
+
+  on_keydown(e) {
+    super.on_keydown(e);
+  }
+
+  on_mousewheel(e) {
+    console.log(e);
+    let dy = e.deltaY*0.35;
+
+    let r = this.inputs.radius.getValue();
+    r += dy;
+
+    r = Math.max(r, 2);
+
+    this.inputs.radius.setValue(r);
+    this.drawCircle(e.x, e.y);
+  }
+
+  sample(e) {
+    let sel = e.button === 0;
+
+    if (e.button === 0 && e.altKey) {
+      sel = false;
+    }
+
+    let mesh = this.modal_ctx.mesh;
+    let ob = this.modal_ctx.object;
+
+    this.drawCircle(e.x, e.y);
+
+    let view3d = this.modal_ctx.view3d;
+    let mpos = view3d.getLocalMouse(e.x, e.y);
+
+    let selmask = this.inputs.selmask.getValue();
+
+    let radius = this.inputs.radius.getValue()*window.devicePixelRatio;
+
+    let x1 = mpos[0] - radius;
+    let y1 = mpos[1] - radius;
+    //let ret = view3d.selectbuf.sampleBlock(this.modal_ctx, view3d.gl, view3d, x1, y1, radius, radius, false, selmask);
+
+    let ret = FindnearestMesh.castScreenCircle(this.modal_ctx, selmask, mpos, radius, view3d);
+    //let bvh = mesh.getBVH(undefined, undefined, undefined, true);
+
+    for (let i=0; i<ret.elements.length; i++) {
+      let ob2 = ret.elementObjects[i];
+
+      if (ob2 !== ob) {
+        console.log("other object!", ob2);
+        continue;
+      }
+
+      let elem = ret.elements[i];
+
+      mesh.setSelect(elem, sel);
+      elem.flag |= MeshFlags.UPDATE;
+
+      if (elem.type === MeshFlags.EDGE) {
+        elem.v1.flag |= MeshFlags.UPDATE;
+        elem.v2.flag |= MeshFlags.UPDATE;
+      } else if (elem.type === MeshFlags.FACE) {
+        for (let v of elem.verts) {
+          v.flag |= MeshFlags.UPDATE;
+        }
+      }
+    }
+
+    mesh.selectFlush(selmask);
+    mesh.regenRender();
+    window.redraw_viewport(true);
+  }
+
+  modalEnd(wasCancelled) {
+    if (!wasCancelled) {
+      let mesh = this.modal_ctx.mesh;
+
+      let prop = this.inputs.selElems;
+
+      for (let elem of mesh.elements) {
+        if (elem.flag & MeshFlags.SELECT) {
+          prop.push(elem.eid);
+        }
+      }
+    }
+
+    return super.modalEnd(wasCancelled);
+  }
+
+  on_mousedown(e) {
+    this.mdown = true;
+    this.sample(e);
+  }
+
+  drawCircle(x, y) {
+    let view3d = this.modal_ctx.view3d;
+
+    let mpos = view3d.getLocalMouse(x, y);
+    x = mpos[0];
+    y = mpos[1];
+
+    this.resetDrawLines();
+    this.resetTempGeom();
+
+    let radius = this.inputs.radius.getValue();// * window.devicePixelRatio;
+    let p = new Vector3();
+
+    p[0] = x;
+    p[1] = y;
+
+    this.addDrawCircle2D(p, radius);
+  }
+
+  on_mouseup(e) {
+    this.mdown = false;
+
+    this.modalEnd(false);
+  }
+
+  on_mousemove(e) {
+    this.drawCircle(e.x, e.y);
+
+    if (this.mdown) {
+      this.sample(e);
+    }
+  }
+
+  exec(ctx) {
+    let mesh = ctx.mesh;
+    //don't support multiple meshes
+
+    mesh.selectNone();
+    for (let eid of this.inputs.selElems) {
+      let elem = mesh.eidMap.get(eid);
+
+      if (!elem) {
+        console.warn("Invalid element " + eid);
+        continue;
+      }
+
+      elem.flag |= MeshFlags.UPDATE;
+      mesh.setSelect(elem, true);
+
+    }
+
+    mesh.regenRender();
+    window.redraw_viewport(true);
+  }
+}
+
+ToolOp.register(CircleSelectOp);

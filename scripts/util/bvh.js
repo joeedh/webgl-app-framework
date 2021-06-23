@@ -5,7 +5,7 @@ const DYNAMIC_SHUFFLE_NODES = false; //attempt fast debalancing of tree dynamica
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from './vectormath.js';
 import * as math from './math.js';
 import * as util from './util.js';
-import {triBoxOverlap, aabb_ray_isect, ray_tri_isect} from './isect.js';
+import {triBoxOverlap, aabb_ray_isect, ray_tri_isect, aabb_cone_isect, tri_cone_isect} from './isect.js';
 
 import {Vertex, Handle, Edge, Loop, LoopList, Face} from '../mesh/mesh_types.js';
 
@@ -19,6 +19,9 @@ import {EDGE_LINKED_LISTS} from '../core/const.js';
 let _triverts = [new Vector3(), new Vector3(), new Vector3()];
 
 const HIGH_QUAL_SPLIT = true;
+
+let _fictmp1 = new Vector3();
+let _fictmpco = new Vector3();
 
 export class BVHSettings {
   constructor(leafLimit = 256, drawLevelOffset = 3, depthLimit = 18) {
@@ -835,10 +838,41 @@ export class BVHNode {
     }
   }
 
+  /** length of ray vector is length of cone*/
+  facesInCone(co, ray, radius1, radius2, isSquare, out) {
+    if (!this.leaf) {
+      for (let c of this.children) {
+        if (!aabb_cone_isect(co, ray, radius1, radius2, c.min, c.max)) {
+          continue;
+        }
+
+        c.facesInCone(co, ray, radius1, radius2, isSquare, out);
+      }
+
+      return;
+    }
+
+    let co2 = _fictmp1.load(co).add(ray);
+
+    for (let t of this.allTris) {
+      let v1 = t.v1;
+      let v2 = t.v2;
+      let v3 = t.v3;
+
+      if (tri_cone_isect(co, co2, radius1, radius2, v1, v2, v3, false)) {
+        if (t.l1) {
+          out.add(t.l1.f);
+        } else if (t.f) {
+          out.add(t.f);
+        }
+      }
+    }
+  }
+
   vertsInCone(co, ray, radius1, radius2, isSquare, out) {
     if (!this.leaf) {
       for (let c of this.children) {
-        if (!aabb_ray_isect(co, ray, c.min, c.max)) {
+        if (!aabb_cone_isect(co, ray, radius1, radius2, c.min, c.max)) {
           continue;
         }
 
@@ -3014,6 +3048,20 @@ export class BVH {
     let ret = new Set();
 
     this.root.closestOrigVerts(co, radius, ret);
+
+    return ret;
+  }
+
+  facesInCone(origin, ray, radius1, radius2, isSquare = false) {
+    origin = _fictmpco.load(origin);
+
+    let ret = new Set();
+
+    if (!this.root) {
+      return ret;
+    }
+
+    this.root.facesInCone(origin, ray, radius1, radius2, isSquare, ret);
 
     return ret;
   }

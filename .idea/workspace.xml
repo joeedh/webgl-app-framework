@@ -6,15 +6,14 @@
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/addons/code_editor/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/code_editor/main.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/addons/example.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/example.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/addons/strand/strand_main.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/strand/strand_main.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/addons/strand/strandtool.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/strand/strandtool.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/addons/subsurf_tester/subsurf_tangent_test.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/subsurf_tester/subsurf_tangent_test.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/addons/subsurf_tester/subsurf_tester.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/subsurf_tester/subsurf_tester.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/addon/addon.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/addon/addon.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/settings.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/settings.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/tools.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/tools.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/findnearest/findnearest_mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/findnearest/findnearest_mesh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_loopops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_loopops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/select_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/select_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/math.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/math.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" afterDir="false" />
@@ -22,6 +21,8 @@
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shadernetwork.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shadernetwork.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/util/bvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bvh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/util/isect.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/isect.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -269,7 +270,7 @@
       <workItem from="1622513608462" duration="6252000" />
       <workItem from="1622866672832" duration="17505000" />
       <workItem from="1624429597296" duration="50000" />
-      <workItem from="1624429796284" duration="9364000" />
+      <workItem from="1624429796284" duration="15784000" />
     </task>
     <servers />
   </component>
@@ -301,6 +302,12 @@
           <url>file://$PROJECT_DIR$/scripts/tet/tetgen.js</url>
           <line>12</line>
           <option name="timeStamp" value="6" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/scripts/mesh/mesh_loopops.js</url>
+          <line>16</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="7" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

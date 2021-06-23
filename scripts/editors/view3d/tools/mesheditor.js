@@ -109,6 +109,7 @@ export class MeshEditor extends MeshToolBase {
 
       new HotKey("R", ["SHIFT"], "mesh.edgecut()"),
       new HotKey("I", ["CTRL"], "mesh.select_inverse()"),
+      new HotKey("C", [], "mesh.select_brush()")
     ]);
 
     return this.keymap;
@@ -140,6 +141,8 @@ export class MeshEditor extends MeshToolBase {
 
     panel = column1.panel("Tools");
     strip = panel.row().strip();
+
+    strip.tool("mesh.select_brush()");
 
     strip.tool("mesh.edgecut()");
     strip.tool(`mesh.delete_selected()`);
@@ -287,6 +290,7 @@ export class MeshEditor extends MeshToolBase {
 
     strip = row.strip();
     strip.tool("mesh.toggle_select_all()");
+    strip.tool("mesh.select_brush()");
 
     strip = row.strip();
     strip.tool("mesh.edgecut()");

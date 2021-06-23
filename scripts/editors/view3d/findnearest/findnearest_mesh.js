@@ -136,6 +136,223 @@ export class FindnearestMesh extends FindnearestClass {
     return ret;
   }
 
+
+  static castScreenCircle(ctx, selmask, mpos, radius, view3d) {
+    let x = mpos[0], y = mpos[1];
+
+    x = ~~x;
+    y = ~~y;
+
+    let order = this.getSearchOrder(radius);
+    let objects;
+
+    if (selmask & SelMask.GEOM) {
+      objects = new Set(ctx.selectedObjects).filter(ob => ob.data instanceof Mesh);
+    } else {
+      objects = new Set(ctx.scene.objects.editable).filter(ob => ob.data instanceof Mesh);
+      selmask |= SelMask.FACE;
+    }
+
+    let hits = [];
+
+    let cam = view3d.activeCamera;
+    let co = new Vector3(cam.position);
+    let ray = view3d.getViewVec(x, y);
+    let ray1 = new Vector3(cam.target).sub(cam.pos);
+
+    let report = Math.random() > 0.998;
+
+    let tmp1 = new Vector3();
+    let tmp2 = new Vector3();
+    let tmp3 = new Vector3();
+    let tmp4 = new Vector3();
+
+    let selmask2 = selmask;
+    let foundmask = 0;
+
+    let ret_elems = [];
+    let ret_objects = [];
+    let visit = new WeakSet();
+
+    function doElem(mat, ob, elem) {
+      foundmask |= elem.type;
+
+      if (!(elem.type & selmask2) || visit.has(elem)) {
+        return;
+      }
+
+      visit.add(elem);
+
+      if (elem.type === MeshTypes.VERTEX) {
+        tmp1.load(elem).multVecMatrix(mat);
+        view3d.project(tmp1);
+
+        tmp2.load(mpos);
+        tmp2[2] = 0.0;
+        tmp1[2] = 0.0;
+
+        let dis = tmp1.vectorDistance(tmp2);
+
+        if (dis < radius) {
+          ret_elems.push(elem);
+          ret_objects.push(ob);
+        }
+      } else if (elem.type === MeshTypes.EDGE) {
+        let e = elem;
+
+        tmp1.load(e.v1).multVecMatrix(mat);
+        tmp2.load(e.v2).multVecMatrix(mat);
+
+        view3d.project(tmp1);
+        view3d.project(tmp2);
+
+        tmp3.load(mpos);
+        tmp3[2] = 0.0;
+
+        let dis = math.dist_to_line_2d(tmp3, tmp1, tmp2, true);
+
+        if (dis < radius) {
+          ret_elems.push(elem);
+          ret_objects.push(ob);
+        }
+      } else if (elem.type === MeshTypes.FACE) {
+        let f = elem;
+        tmp1.load(f.cent).multVecMatrix(mat);
+        view3d.project(tmp1);
+
+        tmp2.load(mpos);
+        tmp2[2] = 0.0;
+        tmp1[2] = 0.0;
+
+        let dis = tmp1.vectorDistance(tmp2);
+
+        if (dis < radius) {
+          ret_elems.push(elem);
+          ret_objects.push(ob);
+        }
+      }
+    }
+
+    for (let i=0; i<1; i++) {
+      //let dx = (i % radius);
+      //let dy = ~~(i / radius);
+      let dx = 0;
+      let dy = 0;
+
+      dx -= radius*0.5;
+      dy -= radius*0.5;
+
+      selmask2 = selmask;
+      foundmask = 0;
+
+      let x2 = dx + x;
+      let y2 = dy + y;
+
+      for (let ob of objects) {
+        let me = ob.data;
+        let bvh = me.getLastBVH(true, false, false, true);
+
+        let mat = ob.outputs.matrix.getValue();
+        let imat = new Matrix4(mat);
+        imat.invert();
+
+        let co2 = new Vector4();
+        let ray2 = view3d.getViewVec(x2, y2); //new Vector4();
+
+        co2.load(co);
+        co2[3] = 1.0;
+
+        ray2.load(ray);
+        ray2[3] = 0.0;
+
+        co2.multVecMatrix(imat);
+        ray2.multVecMatrix(imat);
+        ray2.normalize();
+
+        //set up cone tracing fallback
+        let p = new Vector3();
+        let p2 = new Vector3();
+
+        p[0] = x2;
+        p[1] = y2;
+        p[2] = 0.00000001;
+        view3d.unproject(p);
+        p.multVecMatrix(imat);
+
+        co2.load(p);
+
+        p2[0] = x2 + 1.0;
+        p2[1] = y2 + 1.0;
+        p2[2] = 0.00000001;
+        view3d.unproject(p2);
+        p2.multVecMatrix(imat);
+
+        let radius1 = p2.vectorDistance(p)*1.0;
+
+        p[0] = x2;
+        p[1] = y2;
+        p[2] = 0.99999999999;
+        view3d.unproject(p);
+        p.multVecMatrix(imat);
+
+        ray2.load(p).sub(co2);
+
+        p2[0] = x2 + 1.0;
+        p2[1] = y2 + 1.0;
+        p2[2] = 0.99999999999;
+        view3d.unproject(p2);
+        p2.multVecMatrix(imat);
+
+        let radius2 = p2.vectorDistance(p)*1.0;
+
+        //radius1 *= view3d.glSize[1];
+        //radius2 *= view3d.glSize[1];
+
+        let vs = bvh.vertsInCone(co2, ray2, radius1, radius2, false);
+        let fs;
+
+        if (selmask & SelMask.FACE) {
+          fs = bvh.facesInCone(co2, ray2, radius1, radius2, false);
+          console.log("fs", fs);
+          for (let f of fs) {
+            doElem(mat, ob, f);
+          }
+        }
+
+        if (report) {
+          //console.log(limit, dx, dy, radius1, radius2);
+          console.log(vs);
+        }
+
+        for (let v of vs) {
+          let skip = false;
+
+          for (let e of v.edges) {
+            if (e.l) {
+              skip = true;
+              break;
+            }
+          }
+
+          if (skip) {
+            // continue;
+          }
+
+          doElem(mat, ob, v);
+
+          for (let e of v.edges) {
+            doElem(mat, ob, e);
+          }
+        }
+      }
+    }
+
+    return {
+      elements : ret_elems,
+      elementObjects : ret_objects
+    };
+  }
+
   static findnearest_pbvh(ctx, selmask, mpos, view3d, limit=25) {
     let x = mpos[0], y = mpos[1];
     limit = Math.max(~~limit, 1);

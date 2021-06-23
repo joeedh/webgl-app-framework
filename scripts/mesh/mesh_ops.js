@@ -1197,8 +1197,14 @@ export class VertexSmooth extends MeshDeformOp {
       let fac = this.inputs.factor.getValue();
       let proj = this.inputs.projection.getValue();
 
+      let mirrorvs = new Set();
+
       for (let v of mesh.verts.selected.editable) {
         v.flag |= MeshFlags.UPDATE;
+
+        if (v.flag & MeshFlags.MIRROR_BOUNDARY) {
+          mirrorvs.add(v);
+        }
       }
 
       for (let i = 0; i < repeat; i++) {
@@ -1212,6 +1218,20 @@ export class VertexSmooth extends MeshDeformOp {
           case SmoothTypes.UNIFORM:
             vertexSmooth(mesh, mesh.verts.selected.editable, fac, proj);
             break;
+        }
+
+        for (let v of mirrorvs) {
+          if (v.flag & MeshFlags.MIRROREDX) {
+            v[0] = 0.0;
+          }
+
+          if (v.flag & MeshFlags.MIRROREDY) {
+            v[1] = 0.0;
+          }
+
+          if (v.flag & MeshFlags.MIRROREDZ) {
+            v[2] = 0.0;
+          }
         }
       }
 

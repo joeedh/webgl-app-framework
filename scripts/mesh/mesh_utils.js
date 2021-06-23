@@ -656,6 +656,8 @@ export function* walkFaceLoop(e) {
     l = l.radial_next;
 
     if (l === l.radial_next) {
+      yield l;
+      visit.add(l);
       break;
     }
   }

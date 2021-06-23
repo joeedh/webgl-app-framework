@@ -1885,7 +1885,7 @@ export class Mesh extends SceneObjectData {
     for (let k in this.elists) {
       let elist = this.elists[k];
 
-      if (elist.type == MeshTypes.LOOP) {
+      if (elist.type === MeshTypes.LOOP) {
         continue;
       }
 
