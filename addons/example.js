@@ -1,6 +1,12 @@
 export const addonDefine = {
-  name : "Addon Name"
-};
+  name   : "Example",
+  version : 0,
+  author : "",
+  url : "",
+  icon : -1,
+  description : "",
+  documentation : ""
+}
 
 export function register(api) {
 

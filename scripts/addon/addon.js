@@ -18,7 +18,12 @@ export class AddonRecord {
     this.key = key;
 
     if (addon.addonDefine) {
-      this.name = addon.addonDefine.name;
+      if (typeof addon.addonDefine == "function") {
+        console.error(url + ": addonDefine should not be a function");
+        this.name = this.key;
+      } else {
+        this.name = addon.addonDefine.name;
+      }
     } else {
       this.name = this.key;
     }
@@ -96,7 +101,7 @@ export class AddonManager {
     rec._enabled = true;
   }
 
-  load(url, register=true) {
+  load(url, register = true) {
     if (this.urlmap.has(url)) {
       let rec = this.urlmap.get(url);
       if (!rec._enabled && register) {
@@ -127,7 +132,7 @@ export class AddonManager {
     });
   }
 
-  loadAddonList(register=false) {
+  loadAddonList(register = false) {
     fetch("addons/list.json").then(r => r.json()).then(json => {
       console.warn("json", json);
       for (let url of json) {

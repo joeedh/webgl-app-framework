@@ -136,17 +136,14 @@ function getMonaco() {
   });
 }
 
-export function addonDefine() {
-  return {
-    name   : "addon",
-    uiname : "addon",
+export const addonDefine = {
+    name   : "Code Editor",
     version : 0,
     author : "",
     url : "",
     icon : -1,
     description : "",
     documentation : ""
-  }
 }
 
 export class MonacoContainer {

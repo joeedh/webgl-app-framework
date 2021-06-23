@@ -5,51 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
-      <change afterPath="$PROJECT_DIR$/addons/morph/morph.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/addons/morph/morphtool.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/addons/strand/strand_main.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/addons/subsurf_tester/subsurf_tester.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/core/bus.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addons/code_editor/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/code_editor/main.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/addons/example.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/example.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/addons/list.json" beforeDir="false" afterPath="$PROJECT_DIR$/addons/list.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet.svg" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet.svg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet128.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet128.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet16.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet16.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet24.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet24.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet32.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet32.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet40.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet40.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet50.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet50.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet64.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet64.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet80.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet80.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addons/strand/strand_main.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/strand/strand_main.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addons/strand/strandtool.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/strand/strandtool.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addons/subsurf_tester/subsurf_tangent_test.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/subsurf_tester/subsurf_tangent_test.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addons/subsurf_tester/subsurf_tester.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/subsurf_tester/subsurf_tester.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/addon/addon.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/addon/addon.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/addon/addon_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/addon/addon_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/brush/brush.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/brush/brush.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/context.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/context.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/core/settings.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/settings.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/webgl.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/webgl.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/editor_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/editor_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/icon_enum.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/icon_enum.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/settings/SettingsEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/settings/SettingsEditor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/strandtool.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/strand/strandtool.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/subsurf_tangent_test.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/subsurf_tester/subsurf_tangent_test.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/tools.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/tools.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_toolmode.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_toolmode.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/entry_point.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/entry_point.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/select_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/select_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/toolsys/toolprop.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/toolsys/toolprop.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/nstructjs.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/nstructjs.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/struct.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/struct.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/ScreenArea.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/ScreenArea.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/scene/scene.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/scene/scene.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" afterDir="false" />
@@ -301,7 +269,7 @@
       <workItem from="1622513608462" duration="6252000" />
       <workItem from="1622866672832" duration="17505000" />
       <workItem from="1624429597296" duration="50000" />
-      <workItem from="1624429796284" duration="8135000" />
+      <workItem from="1624429796284" duration="9364000" />
     </task>
     <servers />
   </component>

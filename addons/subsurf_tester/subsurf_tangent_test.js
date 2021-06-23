@@ -614,64 +614,65 @@ export class MakeTangentTester extends ToolOp {
 
 ToolOp.register(MakeTangentTester);
 
-export class SubsurfTangentTester extends MeshToolBase {
-  constructor() {
-    super();
+export function registerToolMode(api) {
+  class SubsurfTangentTester extends MeshToolBase {
+    constructor() {
+      super();
 
-    this.transparentMeshElements = true;
-    this.selectMask = SelMask.VERTEX;
-    this.drawSelectMask = SelMask.EDGE | SelMask.VERTEX | SelMask.HANDLE;
-  }
+      this.transparentMeshElements = true;
+      this.selectMask = SelMask.VERTEX;
+      this.drawSelectMask = SelMask.EDGE | SelMask.VERTEX | SelMask.HANDLE;
+    }
 
-  static toolModeDefine() {
-    return {
-      name        : "tanspace_tester",
-      uianme      : "Tangent Space Test",
-      icon        : Icons.SHOW_LOOPS,
-      flag        : 0,
-      selectMode  : SelMask.OBJECT,
-      description : "Subsurf Tangent Tester",
-      transWidgets: [TranslateWidget, ScaleWidget, RotateWidget, InflateWidget]
+    static toolModeDefine() {
+      return {
+        name        : "tanspace_tester",
+        uianme      : "Tangent Space Test",
+        icon        : Icons.SHOW_LOOPS,
+        flag        : 0,
+        selectMode  : SelMask.OBJECT,
+        description : "Subsurf Tangent Tester",
+        transWidgets: [TranslateWidget, ScaleWidget, RotateWidget, InflateWidget]
+      }
+    }
+
+    static buildHeader(header, addRow) {
+      let strip = header.strip();
+
+      strip.prop("scene.selectMaskEnum[VERTEX]");
+      strip.prop("scene.selectMaskEnum[EDGE]");
+      strip.prop("scene.selectMaskEnum[FACE]");
+    }
+
+    static defineAPI(api) {
+      let tstruct = super.defineAPI(api);
+
+      return tstruct;
+    }
+
+    static buildSettings(container) {
+      let panel = container.panel("Test");
+      panel.tool("tangent_tester.smooth()");
+    }
+
+    defineKeyMap() {
+      this.keymap = new KeyMap([
+        new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
+        new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
+        new HotKey("G", [], "view3d.translate(selmask=17)"),
+        new HotKey("S", [], "view3d.scale(selmask=17)"),
+        new HotKey("R", [], "view3d.rotate(selmask=17)"),
+        new HotKey("L", [], "mesh.select_linked(selmask=1)"),
+        new HotKey("I", ["CTRL"], "mesh.select_inverse(selmask=1)")
+      ]);
+
+      return this.keymap;
     }
   }
 
-  static buildHeader(header, addRow) {
-    let strip = header.strip();
 
-    strip.prop("scene.selectMaskEnum[VERTEX]");
-    strip.prop("scene.selectMaskEnum[EDGE]");
-    strip.prop("scene.selectMaskEnum[FACE]");
-  }
-
-  static defineAPI(api) {
-    let tstruct = super.defineAPI(api);
-
-    return tstruct;
-  }
-
-  static buildSettings(container) {
-    let panel = container.panel("Test");
-    panel.tool("tangent_tester.smooth()");
-  }
-
-  defineKeyMap() {
-    this.keymap = new KeyMap([
-      new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
-      new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
-      new HotKey("G", [], "view3d.translate(selmask=17)"),
-      new HotKey("S", [], "view3d.scale(selmask=17)"),
-      new HotKey("R", [], "view3d.rotate(selmask=17)"),
-      new HotKey("L", [], "mesh.select_linked(selmask=1)"),
-      new HotKey("I", ["CTRL"], "mesh.select_inverse(selmask=1)")
-    ]);
-
-    return this.keymap;
-  }
-}
-
-
-SubsurfTangentTester.STRUCT = STRUCT.inherit(SubsurfTangentTester, ToolMode) + `
+  SubsurfTangentTester.STRUCT = STRUCT.inherit(SubsurfTangentTester, ToolMode) + `
 }`;
-nstructjs.register(SubsurfTangentTester);
-ToolMode.register(SubsurfTangentTester);
 
+  api.register(SubsurfTangentTester);
+};

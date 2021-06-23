@@ -207,9 +207,9 @@ export class AppSettings {
       util.print_stack(error);
     }
 
-    window.setTimeout(() => {
+    //window.setTimeout(() => {
       this._loadAddons();
-    });
+    //});
   }
 
   syncAddonList() {
