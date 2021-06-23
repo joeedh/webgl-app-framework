@@ -2,11 +2,12 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js
 import * as math from '../../util/math.js';
 import * as util from '../../util/util.js';
 import {
-  exportTheme,
-  nstructjs, UIBase
+  exportTheme, loadUIData,
+  nstructjs, saveUIData, UIBase
 } from '../../path.ux/scripts/pathux.js';
 import {Editor} from "../editor_base.js";
 import {Icons} from "../icon_enum.js";
+import addonManager from '../../addon/addon.js';
 
 export class SettingsEditor extends Editor {
   constructor() {
@@ -18,7 +19,17 @@ export class SettingsEditor extends Editor {
     this.background = this.getDefault("DefaultPanelBG");
 
     let header = this.header;
-    let container = this.container;
+    let body = this.body = this.container.col();
+
+    this.rebuild();
+  }
+
+  rebuild() {
+    let container = this.body;
+
+    let uidata = saveUIData(container, "settings");
+
+    container.clear();
 
     let tabs = this.tabs = container.tabs("left");
     let tab;
@@ -26,7 +37,6 @@ export class SettingsEditor extends Editor {
     this.style["overflow"] = "scroll";
 
     tab = tabs.tab("General");
-
     tab = tabs.tab("Theme");
 
     tab.button("Export Theme", () => {
@@ -55,6 +65,20 @@ export class SettingsEditor extends Editor {
 
     tab.add(UIBase.createElement("theme-editor-x"));
 
+    tab = tabs.tab("Addons");
+    for (let addon of addonManager.addons) {
+      let k = addon.key;
+      let path = `settings.addons['${k}']`;
+
+      let row = tab.row();
+
+      row.useIcons("false");
+      row.prop(path + ".enabled");
+      row.label(addon.name);
+    }
+
+    loadUIData(container, uidata);
+
     this.flushUpdate();
   }
 
@@ -63,6 +87,10 @@ export class SettingsEditor extends Editor {
   }
 
   update() {
+    if (this.ctx && this.ctx.settings.syncAddonList()) {
+      this.doOnce(this.rebuild);
+    }
+
     return super.update();
   }
 

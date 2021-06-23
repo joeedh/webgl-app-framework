@@ -729,6 +729,10 @@ v${attr} = ${attr};
       }
     }
 
+    if (this.rebuild && this.gl) {
+      this.init(this.gl);
+    }
+
     if (!(name in this.attrlocs)) {
       this.attrlocs[name] = this.gl.getAttribLocation(this.program, name);
     }

@@ -79,7 +79,7 @@ window.init = () => {
   }
 
   console.log("Loading addons");
-  startAddons(true); //XXX should be false
+  startAddons(false);
 
   window.setTimeout(() => {
     nstructjs.validateStructs();

@@ -1,4 +1,6 @@
 [
-  "code_editor/main.js", "example.js"
+  "code_editor/main.js", "example.js",
+  "morph/morph.js", "subsurf_tester/subsurf_tester.js",
+  "strand/strand_main.js"
 ]
 

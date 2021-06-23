@@ -1063,6 +1063,12 @@ window.setInterval(() => {
   ToolOp.onTick();
 }, 50);
 
+window.setInterval(() => {
+  if (window._appstate && _appstate.ctx) {
+    _appstate.ctx.messagebus.validateSubscribers();
+  }
+}, 5000);
+
 App.STRUCT = STRUCT.inherit(App, Screen, 'App') + `
 }`;
 UIBase.register(App);

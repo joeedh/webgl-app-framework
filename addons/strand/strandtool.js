@@ -1,14 +1,14 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js';
-import * as util from '../../../util/util.js';
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../scripts/util/vectormath.js';
+import * as util from '../../scripts/util/util.js';
 import {
   nstructjs, FloatProperty, Vec2Property, Vec3Property,
   BoolProperty, EnumProperty, FlagProperty, KeyMap, HotKey
-} from '../../../path.ux/scripts/pathux.js';
-import {ToolMode} from '../view3d_toolmode.js';
-import {Shaders} from '../../../shaders/shaders.js';
-import {Icons} from '../../icon_enum.js';
-import {SelMask} from '../selectmode.js';
-import {StrandSet} from '../../../hair/strand.js';
+} from '../../scripts/path.ux/pathux.js';
+import {ToolMode} from '../../scripts/editors/view3d/view3d_toolmode.js';
+import {Shaders} from '../../scripts/shaders/shaders.js';
+import {Icons} from '../../scripts/editors/icon_enum.js';
+import {SelMask} from '../../scripts/editors/view3d/selectmode.js';
+import {StrandSet} from '../../scripts/hair/strand.js';
 
 export class StrandTool extends ToolMode {
   constructor() {

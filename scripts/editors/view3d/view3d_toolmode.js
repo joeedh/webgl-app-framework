@@ -13,6 +13,7 @@ import {Node, NodeFlags} from '../../core/graph.js';
 import '../../core/textsprite.js';
 
 let STRUCT = nstructjs.STRUCT;
+import messageBus from '../../core/bus.js';
 
 export class ToolMode extends Node {
   constructor(ctx) {
@@ -135,15 +136,25 @@ export class ToolMode extends Node {
     return undefined;
   }
 
+  static busDefine() {
+    return {
+      events : ["REGISTER", "UNREGISTER"]
+    }
+  }
+
   static unregister(cls) {
     ToolModes.remove(cls);
+
+    messageBus.emit(this, "UNREGISTER", cls);
   }
 
   static register(cls) {
     if (cls.toolModeDefine === this.toolModeDefine) {
       throw new Error("cls is missing its toolModeDefine");
     }
+
     ToolModes.push(cls);
+    messageBus.emit(this, "REGISTER", cls);
   }
 
   static getTransformProp() {
@@ -554,6 +565,8 @@ export function makeToolModeEnum() {
 
   return prop;
 }
+
+messageBus.register(ToolMode);
 
 window._ToolModes = ToolModes;
 window._makeToolModeEnum = makeToolModeEnum;

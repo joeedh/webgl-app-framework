@@ -1,4 +1,7 @@
-import {nstructjs, util, ToolOp, vectormath, math} from '../path.ux/scripts/pathux.js';
+import {nstructjs, util, ToolOp, vectormath, math,
+ToolProperty, IntProperty, FloatProperty, EnumProperty,
+FlagProperty, StringProperty, BoolProperty, Vec2Property,
+Vec3Property, Vec4Property, Mat4Property} from '../path.ux/scripts/pathux.js';
 import * as pathux from '../path.ux/scripts/pathux.js';
 import * as mesh from '../mesh/mesh.js';
 import * as mesh_utils from '../mesh/mesh_utils.js';
@@ -27,11 +30,21 @@ export class AddonAPI {
       SceneObjectData, SceneObject, composeObjectMatrix
     };
 
-    this.icon_enum = {Icons};
+    this.Icons = Icons; //icon_enum = {Icons};
 
     this.editor = {
       Editor, VelPan, VelPanFlags, DataBlockBrowser, DirectionChooser, EditorSideBar, makeDataBlockBrowser,
       MeshMaterialChooser, MeshMaterialPanel, NewDataBlockOp, getContextArea
+    };
+
+    this.toolmode = {
+      ToolMode
+    };
+
+    this.toolop = {
+      ToolOp, ToolProperty, IntProperty, FloatProperty, StringProperty,
+      EnumProperty, FlagProperty, Vec2Property, Vec3Property, Vec4Property,
+      Mat4Property, DataRefProperty, DataRefListProperty
     };
 
     //reference back to addon
@@ -45,6 +58,7 @@ export class AddonAPI {
     this.classes.sceneObjectDataClasses = [];
     this.classes.customDataClasses = [];
     this.classes.editorClasses = [];
+    this.classes.other = [];
 
     this._graphNodes = new Set();
 
@@ -69,7 +83,7 @@ export class AddonAPI {
   }
 
   register(cls) {
-    if (cls.STRUCT && !cls.structName) {
+    if (!nstructjs.isRegistered(cls)) {
       nstructjs.register(cls);
     }
 
@@ -83,34 +97,46 @@ export class AddonAPI {
       }
     }
 
+    let addToOther = true;
+
     if (subclassOf(ToolOp)) {
       this.classes.toolOpClasses.push(cls);
       ToolOp.register(cls);
+      addToOther = false;
     }
 
     if (subclassOf(DataBlock)) {
       this.classes.dataBlockClasses.push(cls);
       DataBlock.register(cls);
+      addToOther = false;
     }
 
     if (subclassOf(ToolMode)) {
       this.classes.toolModeClasses.push(cls);
       ToolMode.register(cls);
+      addToOther = false;
     }
 
     if (subclassOf(CustomDataElem)) {
       this.classes.customDataClasses.push(cls);
       CustomDataElem.register(cls);
+      addToOther = false;
     }
 
     if (subclassOf(Editor)) {
       this.classes.editorClasses.push(cls);
       Editor.register(cls);
+      addToOther = false;
     }
 
     if (subclassOf(SceneObjectData)) {
       SceneObjectData.register(cls);
       this.classes.sceneObjectDataClasses.push(cls);
+      addToOther = false;
+    }
+
+    if (addToOther) {
+      this.classes.other.push(cls);
     }
   }
 
@@ -159,26 +185,74 @@ export class AddonAPI {
     this._graphNodes.delete(id);
   }
 
-  unregisterAll() {
-    for (let db of this.classes.dataBlockClasses) {
-      DataBlock.unregister(db);
-    }
-    for (let tool of this.classes.toolOpClasses) {
-      ToolOp.unregister(tool);
-    }
-    for (let toolmode of this.classes.toolModeClasses) {
-      ToolMode.unregister(toolmode);
-    }
-    for (let data of this.classes.sceneObjectDataClasses) {
-      SceneObjectData.unregister(data);
+  unregister(cls) {
+    console.log("unregistered", cls.name);
+
+    if (nstructjs.isRegistered(cls)) {
+      console.log("unregister with nstructjs!", cls);
+      nstructjs.unregister(cls);
     }
 
+    function subclassof(a, b) {
+      while (a && a !== Object.__proto__) {
+        if (a === b) {
+          return true;
+        }
+        a = a.__proto__;
+      }
+
+      return false;
+    }
+
+    if (subclassof(cls, ToolMode)) {
+      console.log("unregistering a toolmode", cls);
+
+      ToolMode.unregister(cls);
+    }
+
+    if (subclassof(cls, ToolOp)) {
+      ToolOp.unregister(cls);
+    }
+
+    if (subclassof(cls, DataBlock)) {
+      DataBlock.unregister(cls);
+    }
+
+    if (subclassof(cls, SceneObjectData)) {
+      SceneObjectData.unregister(cls);
+    }
+
+    if (subclassof(cls, Editor)) {
+      Editor.unregister(cls);
+    }
+  }
+
+  unregisterAll() {
     let graph = this.ctx.graph;
+
     for (let id of this._graphNodes) {
-      let n = graph.node_idmap[id];
-      if (n) {
-        graph.remove(n);
+      let n;
+
+      try {
+        n = graph.node_idmap[id];
+
+        if (n) {
+          graph.remove(n);
+        }
+
+      } catch (error) {
+        console.error(error.stack);
+        console.error(error.message);
+        console.error("Failed to remove a graph node!", id, n);
       }
     }
+    
+    for (let k in this.classes) {
+      for (let cls of this.classes[k]) {
+        this.unregister(cls);
+      }
+    }
+    
+    return this;
   }
 }

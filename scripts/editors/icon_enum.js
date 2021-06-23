@@ -116,6 +116,7 @@ export let Icons = {
   TETRAHEDRON          : 110,
   INFLATE              : 111,
   STRANDS              : 112,
-  RELOAD               : 113
+  RELOAD               : 113,
+  SCULPT_SLIDE_RELAX   : 114
 };
 setIconMap(Icons);

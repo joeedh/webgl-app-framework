@@ -7,6 +7,8 @@ import * as cconst from '../../core/const.js';
 
 import {getBlueMask} from "../../shadernodes/shader_lib.js";
 
+import {ToolMode} from './view3d_toolmode.js';
+
 import './findnearest/all.js';
 import './tools/tools.js';
 import * as textsprite from '../../core/textsprite.js';
@@ -881,6 +883,10 @@ export class View3D extends Editor {
 
     strip = header.strip();
     strip.inherit_packflag |= PackFlags.HIDE_CHECK_MARKS;
+
+    strip.useIcons(true);
+    strip.prop("scene.toolmode");
+    /*
     strip.prop("scene.toolmode[sculpt]");
     strip.prop("scene.toolmode[mesh]");
     strip.prop("scene.toolmode[object]");
@@ -888,6 +894,7 @@ export class View3D extends Editor {
     strip.prop("scene.toolmode[tetmesh]");
     //strip.prop("scene.toolmode[strandset]");
     strip.prop("scene.toolmode[tanspace_tester]");
+    */
 
     //header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
     //strip.tool("view3d.view_selected()", PackFlags.USE_ICONS);
@@ -977,6 +984,23 @@ export class View3D extends Editor {
 
   init() {
     super.init();
+
+    let id = this.getAttribute("id");
+    let busgetter = () => {
+      //console.log("ID", id, this.getAttribute("id"), document.getElementById(id));
+
+      if (!this.isConnected) {
+        return undefined;
+      }
+
+      return this;
+      //not working!!!! -> return document.getElementById(id);
+    }
+
+    this.ctx.messagebus.subscribe(busgetter, ToolMode, (msg) => {
+      console.log("Got bus message!", this, msg);
+      this.doOnce(this.rebuildHeader);
+    }, ["REGISTER", "UNREGISTER"]);
 
     this.overdraw = document.createElement("overdraw-x");
     this.overdraw.ctx = this.ctx;

@@ -911,7 +911,7 @@ export class SelectNonManifold extends SelectOpBase {
       uiname     : "Select Non-Manifold Edges",
       toolpath   : "mesh.select_non_manifold",
       icon       : -1,
-      description: "select an element",
+      description: "Select Non Manifold Edges",
       inputs     : ToolOp.inherit({
         boundary : new BoolProperty(false),
         wire     : new BoolProperty(false)

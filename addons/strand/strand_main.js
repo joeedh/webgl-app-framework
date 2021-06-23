@@ -1,7 +1,3 @@
-export const addonDefine = {
-  name : "Addon Name"
-};
-
 export function register(api) {
 
 }

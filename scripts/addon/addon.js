@@ -1,5 +1,6 @@
 import {AddonAPI} from './addon_base.js';
 import * as util from '../util/util.js';
+import {addonDefine} from '../../addons/example.js';
 
 export var AddonPath = "../../addons/"
 
@@ -8,7 +9,38 @@ export class AddonRecord {
     this.addon = addon;
     this.addonAPI = addonAPI;
     this.url = url;
-    this.enabled = false;
+    this._enabled = false;
+
+    let key = url.replace(/\.js/g, '').replace(/\./g, '');
+    key = key.replace(/\//g, '').replace(/\\/g, '');
+    key = key.replace(/-/g, '_').replace(/[ \n\r\t]/g, '');
+
+    this.key = key;
+
+    if (addon.addonDefine) {
+      this.name = addon.addonDefine.name;
+    } else {
+      this.name = this.key;
+    }
+  }
+
+  get enabled() {
+    return this._enabled;
+  }
+
+  set enabled(val) {
+    if (!!val === !!this._enabled) {
+      return;
+    }
+
+    if (!val) {
+      this._enabled = !!val;
+      this.addonAPI.unregisterAll();
+      this.addon.unregister();
+    } else {
+      this.addon.register(this.addonAPI);
+      this._enabled = !!val;
+    }
   }
 }
 
@@ -61,13 +93,13 @@ export class AddonManager {
       return;
     }
 
-    rec.enabled = true;
+    rec._enabled = true;
   }
 
   load(url, register=true) {
     if (this.urlmap.has(url)) {
       let rec = this.urlmap.get(url);
-      if (!rec.enabled && register) {
+      if (!rec._enabled && register) {
         return new Promise((accept, reject) => {
           if (this._loadAddon(rec, reject)) {
             accept(rec.addon);

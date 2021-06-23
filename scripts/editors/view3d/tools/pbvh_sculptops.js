@@ -679,7 +679,7 @@ export class PaintOp extends PaintOpBase {
     let matrix = new Matrix4(ob.outputs.matrix.getValue());
     p3.multVecMatrix(rendermat);
 
-    if (mode !== SculptTools.SNAKE && mode !== SculptTools.GRAB) {
+    if (mode !== SculptTools.SNAKE && mode !== SculptTools.SLIDE_RELAX && mode !== SculptTools.GRAB) {
       vec = new Vector3(isect.tri.v1.no);
       vec.add(isect.tri.v2.no);
       vec.add(isect.tri.v3.no);
@@ -751,8 +751,8 @@ export class PaintOp extends PaintOpBase {
 
     //console.log("STEPS", steps, radius, spacing, this._first);
 
-    const DRAW                                                            = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
-          SMOOTH                                                          = SculptTools.SMOOTH, CLAY                               = SculptTools.CLAY, SCRAPE    = SculptTools.SCRAPE,
+    const DRAW                                                            = SculptTools.DRAW, SHARP                                  = SculptTools.SHARP, FILL = SculptTools.FILL,
+          SMOOTH                                                          = SculptTools.SMOOTH, CLAY                               = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
           PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
           PAINT_SMOOTH                                                    = SculptTools.PAINT_SMOOTH, GRAB = SculptTools.GRAB;
 
@@ -1139,7 +1139,7 @@ export class PaintOp extends PaintOpBase {
     let offs = SymAxisMap[sym];
 
     let mode = this.inputs.brush.getValue().tool;
-    if (mode === SculptTools.GRAB || mode === SculptTools.SNAKE) {
+    if (mode === SculptTools.GRAB) {// || mode === SculptTools.SNAKE) {
       return;
     }
 
@@ -1331,7 +1331,8 @@ export class PaintOp extends PaintOpBase {
           WING_SCRAPE                                                     = SculptTools.WING_SCRAPE,
           PINCH                                                           = SculptTools.PINCH,
           TOPOLOGY                                                        = SculptTools.TOPOLOGY,
-          DIRECTIONAL_FAIR                                                = SculptTools.DIRECTIONAL_FAIR;
+          DIRECTIONAL_FAIR                                                = SculptTools.DIRECTIONAL_FAIR,
+          SLIDE_RELAX                                                     = SculptTools.SLIDE_RELAX;
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
       console.log("ERROR!");
@@ -1611,7 +1612,7 @@ export class PaintOp extends PaintOpBase {
       radius *= this.inputs.grabRadiusFactor.getValue();
 
       isplane = false;
-    } else if (mode === SNAKE) {
+    } else if (mode === SNAKE || mode === SLIDE_RELAX) {
       isplane = false;
     }
 
@@ -1639,7 +1640,7 @@ export class PaintOp extends PaintOpBase {
 
     let sym = mesh.symFlag;
 
-    if (mode !== SNAKE) {
+    if (mode !== SNAKE && mode !== SLIDE_RELAX) {
       //let w2 = Math.pow(Math.abs(w), 0.5)*Math.sign(w);
       let w2 = Math.pow(Math.abs(radius), 0.5)*Math.sign(radius);
 
@@ -1901,7 +1902,7 @@ export class PaintOp extends PaintOpBase {
     }
 
 
-    if (mode === SNAKE) {
+    if (mode === SNAKE || mode === SLIDE_RELAX) {
       p3.zero();
       let tot = 0.0;
 
@@ -1919,7 +1920,7 @@ export class PaintOp extends PaintOpBase {
 
     let firstps = this.inputs.samples.data[0];
 
-    if (mode === SNAKE && lastps) {
+    if ((mode === SNAKE || mode === SLIDE_RELAX) && lastps) {
       let t1 = new Vector3(ps.dp).normalize();
       let t2 = new Vector3(lastps.dp).normalize();
       let t3 = new Vector3(t2).cross(t1);
@@ -4125,6 +4126,20 @@ export class PaintOp extends PaintOpBase {
         c.color.interp(color, f*strength);
       } else if (mode === INFLATE) {
         v.addFac(v.no, f*strength*0.1);
+      } else if (mode === SLIDE_RELAX) {
+        let co = _tmp4.load(v);
+
+        co.interp(v.customData[cd_orig].value, 0.1*f);
+        co.addFac(vec, f*strength);
+
+        _tmp.load(co).multVecMatrix(rmat);
+        co.interp(_tmp, f*strength);
+
+        co.sub(v);
+        let d = co.dot(v.no);
+        co.addFac(v.no, -d);
+
+        v.addFac(co, 0.25);
       } else if (mode === SNAKE) {
         v.interp(v.customData[cd_orig].value, 0.1*f);
         v.addFac(vec, f*strength);
@@ -4576,7 +4591,7 @@ export class PaintOp extends PaintOpBase {
             yield;
           }
 
-          for (let j=0; j<2; j++) {
+          for (let j = 0; j < 2; j++) {
             this2.doTopologyCollapse(mesh, maxedges, bvh, esize, vs, es, radius, brush);
             yield;
           }
@@ -5021,7 +5036,7 @@ export class PaintOp extends PaintOpBase {
 
     dis /= mul**0.5;
 
-    return dis * FANCY_MUL;
+    return dis*FANCY_MUL;
 
     //let dis = v1.vectorDistanceSqr(v2);
 

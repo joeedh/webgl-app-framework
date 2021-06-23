@@ -654,7 +654,7 @@ export class PaintOpBase extends ToolOp {
     let ret = mode === SculptTools.SHARP || mode === SculptTools.GRAB;
     ret = ret || mode === SculptTools.SNAKE; // || mode === SculptTools.SMOOTH;
     ret = ret || (!isPaint && mode !== SculptTools.GRAB && brush.pinch !== 0.0);
-    ret = ret || mode === SculptTools.PINCH;
+    ret = ret || mode === SculptTools.PINCH || mode === SculptTools.SLIDE_RELAX;
 
     if (brush.texUser.texture) {
       ret = ret || (brush.texUser.flag & TexUserFlags.ORIGINAL_CO);

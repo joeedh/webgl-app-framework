@@ -1,26 +1,26 @@
-import {Shapes} from '../../../core/simplemesh_shapes.js';
-import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
-import {WidgetFlags} from "../widgets/widgets.js";
-import {ToolModes, ToolMode} from "../view3d_toolmode.js";
-import {HotKey, KeyMap} from "../../editor_base.js";
-import {Icons} from '../../icon_enum.js';
-import {Unit} from "../../../path.ux/scripts/core/units.js";
-import {SelMask} from "../selectmode.js";
-import {MeshOp, resolveMeshes} from "../../../mesh/mesh_ops_base.js";
-import '../../../path.ux/scripts/util/struct.js';
-import {NodeFlags, Node} from '../../../core/graph.js';
+import {Shapes} from '../../scripts/core/simplemesh_shapes.js';
+import {FindNearest, castViewRay, CastModes} from "../../scripts/editors/view3d/findnearest.js";
+import {WidgetFlags} from "../../scripts/editors/view3d/widgets/widgets.js";
+import {ToolModes, ToolMode} from "../../scripts/editors/view3d/view3d_toolmode.js";
+import {HotKey, KeyMap} from "../../scripts/editors/editor_base.js";
+import {Icons} from '../../scripts/editors/icon_enum.js';
+import {Unit} from "../../scripts/path.ux/scripts/core/units.js";
+import {SelMask} from "../../scripts/editors/view3d/selectmode.js";
+import {MeshOp, resolveMeshes} from "../../scripts/mesh/mesh_ops_base.js";
+import '../../scripts/path.ux/scripts/util/struct.js';
+import {NodeFlags, Node} from '../../scripts/core/graph.js';
 
 let STRUCT = nstructjs.STRUCT;
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
-import {Shaders} from '../../../shaders/shaders.js';
-import {MovableWidget} from '../widgets/widget_utils.js';
-import {SnapModes, TranslateOp} from "../transform/transform_ops.js";
-import {SelOneToolModes} from "../selectmode.js";
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../scripts/util/vectormath.js";
+import {Shaders} from '../../scripts/shaders/shaders.js';
+import {MovableWidget} from '../../scripts/editors/view3d/widgets/widget_utils.js';
+import {SnapModes, TranslateOp} from "../../scripts/editors/view3d/transform/transform_ops.js";
+import {SelOneToolModes} from "../../scripts/editors/view3d/selectmode.js";
 
-import {ObjectFlags, SceneObject} from "../../../sceneobject/sceneobject.js";
-import {Mesh} from "../../../mesh/mesh.js";
-import {FindnearestMesh} from '../findnearest/findnearest_mesh.js';
-import {ToggleFlagOp} from '../../../mesh/mesh_flagops.js';
+import {ObjectFlags, SceneObject} from "../../scripts/sceneobject/sceneobject.js";
+import {Mesh} from "../../scripts/mesh/mesh.js";
+import {FindnearestMesh} from '../../scripts/editors/view3d/findnearest/findnearest_mesh.js';
+import {ToggleFlagOp} from '../../scripts/mesh/mesh_flagops.js';
 
 //import '../../../mesh/select_ops.js';
 //import '../../../mesh/mesh_ops.js';
@@ -28,17 +28,17 @@ import {ToggleFlagOp} from '../../../mesh/mesh_flagops.js';
 import {
   MeshTypes, MeshFeatures, MeshFlags, MeshError,
   MeshFeatureError
-} from '../../../mesh/mesh_base.js';
-import {SelectEdgeLoopOp} from '../../../mesh/select_ops.js';
-import {MeshToolBase} from './meshtool.js';
+} from '../../scripts/mesh/mesh_base.js';
+import {SelectEdgeLoopOp} from '../../scripts/mesh/select_ops.js';
+import {MeshToolBase} from '../../scripts/editors/view3d/tools/meshtool.js';
 
-import {DataBlock, DataRefProperty} from '../../../core/lib_api.js';
-import {CustomDataElem} from '../../../mesh/customdata.js';
-import {SceneObjectData} from '../../../sceneobject/sceneobject_base.js';
-import {ToolOp, util} from '../../../path.ux/pathux.js';
-import {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
-import {LayerTypes, SimpleMesh} from '../../../core/simplemesh.js';
-import {CubicPatch} from '../../../subsurf/subsurf_patch.js';
+import {DataBlock, DataRefProperty} from '../../scripts/core/lib_api.js';
+import {CustomDataElem} from '../../scripts/mesh/customdata.js';
+import {SceneObjectData} from '../../scripts/sceneobject/sceneobject_base.js';
+import {ToolOp, util} from '../../scripts/path.ux/pathux.js';
+import {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} from '../../scripts/editors/view3d/widgets/widget_tools.js';
+import {LayerTypes, SimpleMesh} from '../../scripts/core/simplemesh.js';
+import {CubicPatch} from '../../scripts/subsurf/subsurf_patch.js';
 
 const PVertFlags = {
   TANGENT_SPACE      : 2,

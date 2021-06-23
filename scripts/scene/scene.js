@@ -1,6 +1,6 @@
 import {DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import '../path.ux/scripts/util/struct.js';
-import {ToolModes, makeToolModeEnum} from '../editors/view3d/view3d_toolmode.js';
+import {ToolModes, makeToolModeEnum, ToolMode} from '../editors/view3d/view3d_toolmode.js';
 import {WidgetManager} from "../editors/view3d/widgets/widgets.js";
 
 let STRUCT = nstructjs.STRUCT;
@@ -304,6 +304,8 @@ export const SceneRecalcFlags = {
   OBJECTS : 1 //update flat object list
 };
 
+import messageBus from '../core/bus.js';
+
 export class Scene extends DataBlock {
   constructor(objects) {
     super();
@@ -350,6 +352,38 @@ export class Scene extends DataBlock {
 
     this.toolModeProp = makeToolModeEnum();
     this.toolmode_i = this.toolModeProp.values["object"];
+
+    let busgetter = () => {
+      if (!_appstate || !_appstate.datalib) {
+        return undefined;
+      }
+
+      //check if scene is still in datalib
+      let block = _appstate.datalib.get(this.lib_id);
+      if (block !== this) {
+        return undefined;
+      }
+
+      return this;
+    }
+
+    messageBus.subscribe(busgetter, ToolMode, () => {
+      let key = this.toolModeProp.keys[this.toolmode_i];
+
+      this.toolModeProp = makeToolModeEnum();
+      this.toolmode_i = this.toolModeProp.values[key];
+
+      if (this.toolmode_i === undefined) {
+        this.switchToolMode(0);
+      }
+
+      //update enum property in data api
+      if (_appstate && _appstate.api) {
+        let st = _appstate.api.mapStruct(Scene, false);
+
+        st.pathmap.toolmode.data.updateDefinition(this.toolModeProp);
+      }
+    }, ["REGISTER", "UNREGISTER"], 1)
   }
 
   get toolmode() {
@@ -803,4 +837,4 @@ propIslandOnly : bool;
 }
 `;
 
-nstructjs.manager.add_class(Scene);
+nstructjs.register(Scene);
