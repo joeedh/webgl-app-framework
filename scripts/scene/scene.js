@@ -736,7 +736,15 @@ export class Scene extends DataBlock {
 
     let found = 0;
 
+    //detected dead toolmodes
+    this.toolmodes = this.toolmodes.filter(mode => mode.setManager);
+
     this.toolmode_i = this.toolModeProp.values[this.toolmode_i];
+
+    //sanity check
+    if (this.toolmode_i === undefined) {
+      this.toolmode_i = 0;
+    }
 
     for (let mode of this.toolmodes) {
       mode.setManager(this.widgets);

@@ -15,6 +15,16 @@ import {CustomDataElem} from '../mesh/customdata.js';
 import {Editor, VelPan, VelPanFlags, DataBlockBrowser, DirectionChooser, EditorSideBar, makeDataBlockBrowser,
   MeshMaterialChooser, MeshMaterialPanel, NewDataBlockOp, getContextArea} from '../editors/editor_base.js';
 import {Icons} from '../editors/icon_enum.js';
+import {MeshToolBase} from '../editors/view3d/tools/meshtool.js';
+import {MeshEditor} from '../editors/view3d/tools/mesheditor.js';
+import {SelMask} from '../editors/view3d/selectmode.js';
+import {MeshOp, MeshDeformOp} from '../mesh/mesh_ops_base.js';
+import {MeshOpBaseUV} from '../mesh/mesh_uvops_base.js';
+import {TransformOp} from '../editors/view3d/transform/transform_ops.js';
+import {TransformWidget} from '../editors/view3d/widgets/widget_tools.js';
+import * as widgets from '../editors/view3d/widgets/widgets.js';
+import * as simplemesh from '../core/simplemesh.js';
+import * as paramizer from '../mesh/mesh_paramizer.js';
 
 export class AddonAPI {
   constructor(ctx) {
@@ -22,29 +32,56 @@ export class AddonAPI {
     this.util = util;
     this.vectormath = vectormath;
     this.math = math;
+    this.simplemesh = simplemesh;
     this.pathux = pathux;
     this.mesh_utils = mesh_utils;
-    this.mesh = mesh;
     this.unwrapping = unwrapping;
     this.sceneobject = {
       SceneObjectData, SceneObject, composeObjectMatrix
     };
 
+    this.mesh = {CustomDataElem, paramizer};
+    for (let k in mesh) {
+      this.mesh[k] = mesh[k];
+    }
+
     this.Icons = Icons; //icon_enum = {Icons};
+    this.SelMask = SelMask;
 
     this.editor = {
       Editor, VelPan, VelPanFlags, DataBlockBrowser, DirectionChooser, EditorSideBar, makeDataBlockBrowser,
       MeshMaterialChooser, MeshMaterialPanel, NewDataBlockOp, getContextArea
     };
 
+    this.widget3d = {TransformWidget};
+    for (let k in widgets) {
+      this.widget3d[k] = widgets[k];
+    }
+
     this.toolmode = {
-      ToolMode
+      ToolMode, MeshToolBase, MeshEditor
     };
 
     this.toolop = {
       ToolOp, ToolProperty, IntProperty, FloatProperty, StringProperty,
       EnumProperty, FlagProperty, Vec2Property, Vec3Property, Vec4Property,
-      Mat4Property, DataRefProperty, DataRefListProperty
+      Mat4Property, DataRefProperty, DataRefListProperty,
+      MeshOp, MeshDeformOp, MeshOpBaseUV, TransformOp
+    };
+
+    let this2 = this;
+
+    let dblock = class DataBlockSub extends DataBlock {
+      static register(cls) {
+        let ret = super.register(cls);
+        this2.dataBlockClasses.push(cls);
+
+        return ret;
+      }
+    }
+
+    this.lib_api = {
+      DataBlock : dblock, DataRef, DataRefProperty, DataRefListProperty
     };
 
     //reference back to addon
@@ -61,21 +98,6 @@ export class AddonAPI {
     this.classes.other = [];
 
     this._graphNodes = new Set();
-
-    let this2 = this;
-
-    let dblock = class DataBlockSub extends DataBlock {
-      static register(cls) {
-        let ret = super.register(cls);
-        this2.dataBlockClasses.push(cls);
-
-        return ret;
-      }
-    }
-
-    this.lib_api = {
-      DataBlock : dblock, DataRef, DataRefProperty, DataRefListProperty
-    };
   }
 
   get ctx() {
@@ -100,6 +122,9 @@ export class AddonAPI {
     let addToOther = true;
 
     if (subclassOf(ToolOp)) {
+      //ensure tooldef doesn't raise any errors
+      cls.tooldef();
+
       this.classes.toolOpClasses.push(cls);
       ToolOp.register(cls);
       addToOther = false;
@@ -115,6 +140,21 @@ export class AddonAPI {
       this.classes.toolModeClasses.push(cls);
       ToolMode.register(cls);
       addToOther = false;
+
+      if (window._appstate) {
+        cls.defineAPI(_appstate.api);
+      } else {
+        let cb = () => {
+          if (!window._appstate) {
+            window.setTimeout(cb, 5);
+            return;
+          }
+
+          cls.defineAPI(_appstate.api);
+        }
+
+        window.setTimeout(cb);
+      }
     }
 
     if (subclassOf(CustomDataElem)) {
@@ -186,12 +226,17 @@ export class AddonAPI {
   }
 
   unregister(cls) {
+    if (!cls) {
+      console.error("unregister called with no arguments");
+      return;
+    }
     console.log("unregistered", cls.name);
 
-    if (nstructjs.isRegistered(cls)) {
-      console.log("unregister with nstructjs!", cls);
-      nstructjs.unregister(cls);
-    }
+    //do not unregister with nstructjs
+    //if (nstructjs.isRegistered(cls)) {
+      //console.log("unregister with nstructjs!", cls);
+      //nstructjs.unregister(cls);
+    //}
 
     function subclassof(a, b) {
       while (a && a !== Object.__proto__) {
@@ -228,10 +273,18 @@ export class AddonAPI {
   }
 
   unregisterAll() {
-    let graph = this.ctx.graph;
+    let graph;
+
+    if (window._appstate) {
+      graph = this.ctx.graph;
+    }
 
     for (let id of this._graphNodes) {
       let n;
+
+      if (!graph) {
+        break;
+      }
 
       try {
         n = graph.node_idmap[id];

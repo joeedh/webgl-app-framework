@@ -2839,7 +2839,7 @@ export class Mesh extends SceneObjectData {
     console.error("Failed to split face", f, v1, v2);
   }
 
-  splitFace(f, l1, l2, lctx) {
+  splitFace(f, l1, l2, lctx, noerror=false) {
     //TODO: handle holes
 
     if (l1.eid < 0) {
@@ -2853,14 +2853,22 @@ export class Mesh extends SceneObjectData {
     }
 
     if (l1.f !== f || l2.f !== f || l1 === l2 || l2 === l1.next || l2 === l1.prev) {
-      console.log(l2 === l1.next, l2 === l1.prev, l1.f !== f, l2.f !== f, l1 === l2);
-      throw new MeshError("splitFace: l1 and l2 are bad");
+      if (noerror) {
+        return undefined;
+      } else {
+        console.log(l2 === l1.next, l2 === l1.prev, l1.f !== f, l2.f !== f, l1 === l2);
+        throw new MeshError("splitFace: l1 and l2 are bad");
+      }
     }
 
     if (l1.v === l2.v) {
-      console.log(l1, l2);
-      throw new MeshError("splitFace: l1.v and l2.v were the same");
-      return undefined;
+      if (noerror) {
+        return undefined;
+      } else {
+        console.log(l1, l2);
+        throw new MeshError("splitFace: l1.v and l2.v were the same");
+        return undefined;
+      }
     }
 
     let l = l1;

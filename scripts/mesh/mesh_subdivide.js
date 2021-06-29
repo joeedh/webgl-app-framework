@@ -71,6 +71,7 @@ export class Pattern {
 
     this.facetemps = [];
     this.facetemps2 = [];
+    this._temps3 = [];
 
     if (verts) {
       this.array1 = new Array(verts.length + newverts.length);
@@ -661,6 +662,9 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx, smoothFac=0.0) {
     for (let vmap of pat.newverts) {
       let v = mesh.makeVertex();
 
+      let vs2 = pat._temps3;
+      vs2.length = vmap.length >> 1;
+
       if (lctx) {
         lctx.newVertex(v, LogTags.SPLIT_EDGES_SMART2);
       }
@@ -685,13 +689,16 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx, smoothFac=0.0) {
 
         ls2[wi] = ls[vmap[i]];
         ws2[wi] = w;
+        vs2[wi] = v2;
 
         v.addFac(v2, w);
 
         wi++;
       }
 
+      mesh.verts.customDataInterp(v, vs2, ws2);
       mesh.loops.customDataInterp(l, ls2, ws2);
+
       ls[vi] = l;
 
       vi++;

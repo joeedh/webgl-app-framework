@@ -1096,11 +1096,13 @@ export class AppState {
   }
 };
 
+export function preinit() {
+  window._appstate = new AppState();
+}
+
 export function init() {
   loadShapes();
   initSimpleController();
-
-  window._appstate = new AppState();
 
   let animreq;
   let f = () => {

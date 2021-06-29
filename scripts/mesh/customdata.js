@@ -112,7 +112,7 @@ export class CustomDataElem {
     }
   }
 
-  mulScalar() {
+  mulScalar(f) {
     //implement me
     return this;
   }
@@ -188,10 +188,23 @@ export function buildCDAPI(api) {
 
   layerst.string("name", "name", "Name");
   layerst.dynamicStruct("typeSettings", "settings", "Settings");
+
   let def = layerst.pathmap["settings"];
-  def.customGet(function () {
-    return this.dataref.getTypeSettings();
-  });
+  def.customGetSet(function () {
+    let ret = this.dataref.getTypeSettings();
+
+    if (!ret) {
+      return undefined;
+    }
+
+    let cls = ret.constructor;
+
+    if (!api.hasStruct(cls)) {
+      cls.apiDefine(api);
+    }
+
+    return ret;
+  }, undefined);
 
   layerst.int("index", "index", "index").readOnly();
   layerst.string("typeName", "typeName", "Type").readOnly();
@@ -306,7 +319,7 @@ export class LayerSettingsBase {
   }
 
   static apiDefine(api) {
-
+    return api.mapStruct(this, true);
   }
 
   copy() {

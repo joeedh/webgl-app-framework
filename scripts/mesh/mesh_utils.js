@@ -2393,7 +2393,7 @@ const ctmp13 = new Vector3();
 const ctmp14 = new Vector3();
 const smat2 = new Matrix4();
 
-const VAREA = 0, VCTAN1 = 1, VCTAN2 = 2, VW = 3, VETOT = 4;
+export const VAREA = 0, VCTAN1 = 1, VCTAN2 = 2, VW = 3, VETOT = 4;
 
 export function getCotanData(v, _edges = undefined, _vdata = []) {
   let vdata = _vdata;
@@ -2540,8 +2540,8 @@ export function getCotanData(v, _edges = undefined, _vdata = []) {
       let vi2 = vi + 4 + e1.index*VETOT;
       vdata[vi2 + VAREA] = area;
 
-      let cot1 = (Math.cos(angle1)/Math.sin(angle1));
-      let cot2 = (Math.cos(angle2)/Math.sin(angle2));
+      let cot1 = Math.abs((Math.cos(angle1)/Math.sin(angle1)));
+      let cot2 = Math.abs((Math.cos(angle2)/Math.sin(angle2)));
 
       if (isNaN(cot1) || !isFinite(cot1)) {
         cot1 = 1000000.0;
@@ -2574,9 +2574,9 @@ export function getCotanData(v, _edges = undefined, _vdata = []) {
       let e1 = edges[i];
       let vi2 = vi + 4 + e1.index*VETOT;
 
-      //vdata[vi2+3] *= totarea;
+      //vdata[vi2+VW] *= totarea;
 
-      totw += vdata[vi2 + 3];
+      totw += vdata[vi2 + VW];
     }
 
     if (totw !== 0.0) {
@@ -2587,7 +2587,7 @@ export function getCotanData(v, _edges = undefined, _vdata = []) {
       let e1 = edges[i];
       let vi2 = vi + 4 + e1.index*VETOT;
 
-      vdata[vi2 + 3] *= totw;
+      vdata[vi2 + VW] *= totw;
     }
   }
 

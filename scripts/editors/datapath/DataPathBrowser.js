@@ -110,6 +110,8 @@ export class DataPathBrowser extends Editor {
         }
       }
 
+      let ctx = con.ctx;
+
       for (let dpath of st.members) {
         let path2 = path;
 
@@ -138,6 +140,31 @@ export class DataPathBrowser extends Editor {
 
           //console.log("PATH", path, path2);
           con.prop(path2, PackFlags.FORCE_PROP_LABELS|PackFlags.PUT_FLAG_CHECKS_IN_COLUMNS);
+        } else if (dpath.type === DataTypes.DYNAMIC_STRUCT) {
+          let panel = con.panel(ToolProperty.makeUIName(dpath.apiname));
+
+          panel._panel.overrideDefault("padding-bottom", 0.0);
+          panel._panel.overrideDefault("padding-top", 0.0);
+          panel._panel.overrideDefault("padding-left", 5.0);
+          panel._panel.overrideDefault("margin-bottom-closed", 0.0);
+          panel._panel.overrideDefault("margin-top-closed", 0.0);
+
+          let rdef;
+
+          try {
+            rdef = ctx.api.resolvePath(ctx, path2 + dpath.apiname);
+          } catch (error) {
+            console.error(error.stack);
+            console.error(error.message);
+
+            panel.label("error");
+          }
+
+          if (rdef && rdef.dstruct) {
+            panel.onchange = makeLoadPanel(rdef.dstruct, path2 + dpath.apiname, dpath);
+          }
+
+          panel.closed = true;
         }
       }
     }

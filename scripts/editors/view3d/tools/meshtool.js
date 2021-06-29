@@ -41,6 +41,8 @@ export class MeshToolBase extends ToolMode {
 
     this.start_mpos = new Vector2();
     this.last_mpos = new Vector2();
+
+    this.vertexPointSize = 8;
   }
 
   defineKeyMap() {
@@ -457,7 +459,7 @@ export class MeshToolBase extends ToolMode {
 
       let program = Shaders.MeshIDShader;
 
-      uniforms.pointSize = 15;
+      uniforms.pointSize = this.vertexPointSize*1.5;
       uniforms.polygonOffset = 1.0;
 
       gl.enable(gl.DEPTH_TEST);
@@ -550,7 +552,7 @@ export class MeshToolBase extends ToolMode {
         gl.disable(gl.DEPTH_TEST);
       }
 
-      uniforms.pointSize = 8;
+      uniforms.pointSize = this.vertexPointSize;
       uniforms.polygonOffset = 1.0;
 
       mesh.drawElements(view3d, gl, this.drawSelectMask, uniforms, program, object, true);

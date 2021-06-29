@@ -20,7 +20,8 @@ import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
 import {CDFlags, CustomDataElem} from "./customdata.js";
 import {
-  bisectMesh, connectVerts, cotanVertexSmooth, dissolveEdgeLoops, dissolveFaces, fixManifold, flipLongTriangles,
+  bisectMesh, connectVerts, cotanVertexSmooth, dissolveEdgeLoops, dissolveFaces, duplicateMesh, fixManifold,
+  flipLongTriangles,
   pruneLooseGeometry,
   recalcWindings,
   symmetrizeMesh,
@@ -467,7 +468,8 @@ export class RemeshOp extends MeshOp {
           goal             : new FloatProperty(1.0).noUnits().setRange(0, 1024*1024*32).saveLastValue(),
           edgeRunPercent   : new FloatProperty(0.5).setRange(0.001, 1).noUnits().saveLastValue(),
           curveSmoothFac   : new FloatProperty(0.0).noUnits().setRange(0.0, 1.0).saveLastValue(),
-          curveSmoothRepeat: new IntProperty(4).noUnits().setRange(0, 50).saveLastValue()
+          curveSmoothRepeat: new IntProperty(4).noUnits().setRange(0, 50).saveLastValue(),
+          rakeMode         : new EnumProperty(RakeModes.CURVATURE, RakeModes).saveLastValue()
         }
       ),
       outputs : ToolOp.inherit()
@@ -493,6 +495,7 @@ export class RemeshOp extends MeshOp {
 
     let remesher = new cls(mesh, lctx, goalType, goalValue);
 
+    remesher.rakeMode = this.inputs.rakeMode.getValue();
     remesher.subdFac = subdFac;
     remesher.collFac = collFac;
     remesher.relax = relax;
@@ -709,7 +712,7 @@ import {relaxUVs, UnWrapSolver} from './unwrapping_solve.js';
 import {MeshOpBaseUV, UnwrapOpBase} from './mesh_uvops_base.js';
 import {MultiGridSmoother} from './multigrid_smooth.js';
 import {
-  cleanupQuads, cleanupTris, DefaultRemeshFlags, Remeshers, RemeshFlags, RemeshGoals, RemeshMap, remeshMesh,
+  cleanupQuads, cleanupTris, DefaultRemeshFlags, RakeModes, Remeshers, RemeshFlags, RemeshGoals, RemeshMap, remeshMesh,
   UniformTriRemesher
 } from './mesh_remesh.js';
 
@@ -3947,3 +3950,82 @@ export class TestSolverOp extends SolverOpBase {
 }
 
 ToolOp.register(TestSolverOp);
+
+export class DuplicateMeshOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Duplicate Geometry",
+      toolpath: "mesh.duplicate",
+      inputs  : ToolOp.inherit({
+        selectMask: new FlagProperty(0, MeshTypes).private()
+      }),
+      outputs : ToolOp.inherit({})
+    }
+  }
+
+  static invoke(ctx, args) {
+    let tool = super.invoke(ctx, args);
+
+    if (!("selMask" in args)) {
+      tool.inputs.selectMask.setValue(ctx.selectMask);
+    }
+
+    let macro = new ToolMacro();
+    macro.add(tool);
+
+    let grab = new TranslateOp();
+    macro.add(grab);
+
+    return macro;
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      let selmask = this.inputs.selectMask.getValue();
+
+      let geoms = [];
+
+      if (selmask & MeshTypes.VERTEX) {
+        geoms.push(util.list(mesh.verts.selected.editable));
+      }
+      if (selmask & MeshTypes.EDGE) {
+        geoms.push(util.list(mesh.edges.selected.editable));
+      }
+      if (selmask & MeshTypes.FACE) {
+        geoms.push(util.list(mesh.faces.selected.editable));
+      }
+
+      let geom = [];
+      for (let i = 0; i < geoms.length; i++) {
+        geom = geom.concat(geoms[i]);
+      }
+
+      console.log(selmask);
+      console.log(geoms);
+      console.log("GEOM", geom);
+
+      mesh.selectNone();
+      let ret = duplicateMesh(mesh, geom);
+
+      for (let v of ret.newVerts) {
+        v.flag |= MeshFlags.UPDATE;
+        mesh.verts.setSelect(v, true);
+      }
+
+      for (let e of ret.newEdges) {
+        mesh.edges.setSelect(e, true);
+      }
+
+      for (let f of ret.newFaces) {
+        mesh.faces.setSelect(f, true);
+      }
+
+      mesh.regenTessellation();
+      mesh.regenBVH();
+      mesh.regenRender();
+      mesh.graphUpdate();
+    }
+  }
+}
+
+ToolOp.register(DuplicateMeshOp);

@@ -29,6 +29,18 @@ export class AddonRecord {
     }
   }
 
+  nstructjsRegister() {
+    let enabled = this.enabled;
+
+    //register
+    if (!this.enabled) {
+      this.enabled = true;
+    }
+
+    //deregister
+    this.enabled = enabled;
+  }
+
   get enabled() {
     return this._enabled;
   }
@@ -122,8 +134,13 @@ export class AddonManager {
         api.addon = module;
 
         let rec = new AddonRecord(url, module, api);
-        if (register) {
-          this._loadAddon(rec, reject);
+
+        this._loadAddon(rec, reject);
+
+        //addon isn't enabled? unregister, but nstructjs stuff
+        //will remain
+        if (!register) {
+          rec.enabled = false;
         }
 
         this.addons.push(rec);

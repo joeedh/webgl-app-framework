@@ -93,6 +93,7 @@ export class MeshEditor extends MeshToolBase {
       //new HotKey("D", [], "mesh.subdivide_smooth_loop()"),
       new HotKey("Y", [], "mesh.test_color_smooth()"),
       new HotKey("D", [], "mesh.dissolve_verts()"),
+      new HotKey("D", ["SHIFT"], "mesh.duplicate()"),
       new HotKey("K", [], "mesh.subdiv_test()"),
       //new HotKey("D", [], "mesh.test_collapse_edge()"),
       new HotKey("F", [], "mesh.create_face()"),
@@ -160,12 +161,15 @@ export class MeshEditor extends MeshToolBase {
 
     panel.toolPanel("mesh.test_solver()").closed = true;
 
-    strip = panel.row().strip();
+    strip = panel.row().strip().useIcons(false);
     strip.tool("mesh.smooth_curvature_directions()");
     strip.tool("mesh.test_multigrid_smooth()");
 
-    strip = panel.row().strip();
+    strip = panel.row().strip().useIcons(false);
     strip.tool("mesh.fix_normals()");
+
+    strip = panel.row().strip().useIcons(false);
+    strip.tool("mesh.split_edges()");
     strip.tool("mesh.split_edges_smart()");
 
     strip = panel.row().strip().useIcons(false);
@@ -477,12 +481,12 @@ export class MeshEditor extends MeshToolBase {
       let cv = v.customData[cd_curv];
       cv.check(v, true);
 
-      //let size = calcNorLen(v);
+      let size = calcNorLen(v);
 
       let k1 = 1.0 / (1.0 + cv.k1);
 
       co1.load(v);
-      co2.load(v).addFac(cv.tan, 0.15*k1);
+      co2.load(v).addFac(cv.tan, size*k1);
 
       let line = sm.line(co1, co2);
       line.colors(white, white);

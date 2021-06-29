@@ -57,6 +57,11 @@ if (PARAM_KEY in localStorage) {
 }
 window._paramdata = paramdata;
 
+export let RakeModes = {
+  CURVATURE : 0,
+  PARAM_VERT: 1
+};
+
 export const RemeshParams = {
   EDIST_P1      : p(0.1, 10.0, 1.0),
   EDIST_P2      : p(5.5, 6.5, 6.0),
@@ -228,12 +233,12 @@ export class UniformTriRemesher extends Remesher {
     return this.params[CSMOOTH_REPEAT];
   }
 
-  get smoothCurveFac() {
-    return this.params[CSMOOTH_FAC];
-  }
-
   set smoothCurveRepeat(f) {
     this.params[CSMOOTH_REPEAT] = f;
+  }
+
+  get smoothCurveFac() {
+    return this.params[CSMOOTH_FAC];
   }
 
   set smoothCurveFac(f) {
@@ -337,6 +342,16 @@ export class UniformTriRemesher extends Remesher {
     let _rdir = new Vector3();
     let _rtmp2 = new Vector3();
 
+    let cd_pvert = mesh.verts.customData.getLayerIndex("paramvert");
+    let pvert_settings;
+
+    const do_pvert = cd_pvert >= 0 && this.rakeMode === RakeModes.PARAM_VERT;
+
+    if (do_pvert) {
+      pvert_settings = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings();
+      pvert_settings.updateGen++;
+    }
+
     for (let v of mesh.verts) {
       v.flag &= ~MeshFlags.NOAPI_TEMP1;
     }
@@ -372,7 +387,19 @@ export class UniformTriRemesher extends Remesher {
       let cv = v.customData[cd_curv];
       cv.check(v);
 
-      d1.load(cv.tan).normalize();
+      if (do_pvert) {
+        let pv = v.customData[cd_pvert];
+
+        pv.checkTangent(pvert_settings, v, cd_pvert);
+
+        d1[0] = pv.smoothTan[0];
+        d1[1] = pv.smoothTan[1];
+        d1[2] = pv.smoothTan[2];
+
+        d1.normalize();
+      } else {
+        d1.load(cv.tan).normalize();
+      }
 
       let pad = 0.025;//5*(1.35 - fac);
 
@@ -446,6 +473,7 @@ export class UniformTriRemesher extends Remesher {
     }
 
     cd_curv = getCurveVerts(mesh);
+    cd_pvert = mesh.verts.customData.getLayerIndex("paramvert");
 
     for (let v of mesh.verts) {
       let cv = v.customData[cd_curv];
@@ -1597,6 +1625,36 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
     faces = new Set(faces);
   }
 
+  let lctx2 = new LogContext();
+  let userctx = lctx;
+
+  lctx2.onnew = (e, tag) => {
+    if (userctx) {
+      userctx.onnew(e, tag);
+    }
+
+    if (e.type === MeshTypes.FACE) {
+      faces.add(e);
+    }
+  }
+
+  lctx2.onkill = (e, tag) => {
+    if (userctx) {
+      userctx.onkill(e, tag);
+    }
+
+    if (e.type === MeshTypes.FACE) {
+      faces.delete(e);
+    }
+  }
+
+  if (userctx) {
+    lctx2.onkill = userctx.onkill;
+    lctx2.onchange = userctx.onchange;
+  }
+
+  lctx = lctx2;
+
   let totv = 0;
 
   let es = new Set();
@@ -1645,6 +1703,7 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
 
       ok = l.f.isQuad();
       ok = ok && l.next.next.v.valence === 3;
+      ok = ok && l !== l.next.next && l.next !== l.next.next && l.prev !== l.next.next;
 
       if (ok) {
         let l2 = mesh.splitFace(l.f, l, l.next.next, lctx);
@@ -1699,6 +1758,201 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
       }
     }
   }
+
+  for (let v of mesh.verts) {
+    if (v.valence === 2) {
+      mesh.joinTwoEdges(v, lctx);
+    }
+  }
+
+  //find quads with two adjacent tris on two adjacent edges
+  for (let f of faces) {
+    if (!f.isQuad()) {
+      continue;
+    }
+
+    let ok = false;
+    let l1, l2;
+    let count = 0;
+
+    for (let l of f.loops) {
+      let ok2 = l.radial_next !== l && l.radial_next.f.isTri();
+
+      count += ok2;
+
+      ok2 = ok2 && l.next.radial_next !== l.next && l.next.radial_next.f.isTri();
+
+      if (ok2) {
+        l1 = l;
+        l2 = l.next;
+        //break;
+      }
+    }
+
+    ok = l1 && l2;
+    ok = ok && count === 2;
+
+    if (!ok) {
+      continue;
+    }
+
+    let la = l2;
+    let lb = l2.next.next;
+
+    let e1 = l1.e;
+    let e2 = l2.e;
+
+    if (mesh.splitFace(f, la, lb, lctx, true)) {
+      mesh.dissolveEdge(e1, lctx);
+      mesh.dissolveEdge(e2, lctx);
+    }
+  }
+
+  //collapse diagonal quads
+  for (let f of faces) {
+    if (!f.isQuad()) {
+      continue;
+    }
+
+    let l1, l2;
+
+    for (let l of f.loops) {
+      let ok = l.v.valence === 3;
+      ok = ok && l.next.next.v.valence === 4;
+
+      ok = ok && l !== l.next.next;
+      ok = ok && l.next.next !== l.next;
+      ok = ok && l.next.next !== l.prev;
+
+      let ok2 = l.next.v.valence === 5 && l.prev.v.valence === 4;
+      ok2 = ok2 || (l.next.v.valence === 4 && l.prev.v.valence === 5);
+
+      ok = ok && ok2;
+
+      if (!ok) {
+        continue;
+      }
+
+      l1 = l;
+      l2 = l.next.next;
+
+      break;
+    }
+
+    if (!l1 || !l2) {
+      continue;
+    }
+
+    let newl = mesh.splitFace(f, l1, l2, lctx);
+    if (newl) {
+      mesh.collapseEdge(newl.e, lctx);
+    }
+  }
+
+  //collapse edges with two three valence verts
+  for (let e of mesh.edges) {
+    let ok = e.v1.valence === 3 && e.v2.valence === 3;
+
+    if (!ok) {
+      continue;
+    }
+
+    let ok2 = true;
+    for (let i = 0; i < 2; i++) {
+      let v = i ? e.v2 : e.v1;
+
+      for (let l of v.loops) {
+        if (!l.f.isQuad()) {
+          ok2 = false;
+        }
+      }
+
+      if (!ok2) {
+        break;
+      }
+    }
+
+
+    let count = 0;
+    for (let l of e.loops) {
+      count++;
+    }
+
+    //quad surrounded only by quads?
+    ok2 = ok && count === 2;
+
+    if (1 || !ok2) {
+      mesh.collapseEdge(e, lctx);
+      continue;
+    }
+
+    //case of quad surrounded by all quads
+
+    let l1 = e.l, l2 = e.l.radial_next;
+    l1 = l1.next.radial_next;
+    l2 = l2.next.radial_next;
+
+    if (l1 === l2) {
+      console.error("EEK! non-manifold?");
+      continue;
+    }
+
+    let e1 = mesh.splitFace(l1.f, l1, l1.next.next, lctx, true);
+    let v1, v2;
+
+    let e2 = mesh.splitFace(l2.f, l2, l2.next.next, lctx, true);
+
+    e1 = e1 ? e1.e : undefined;
+    e2 = e2 ? e2.e : undefined;
+
+    let v = mesh.collapseEdge(e, lctx);
+    if (v) {
+      mesh.dissolveVertex(v, lctx);
+    }
+
+    if (e1) {
+      //v1 = mesh.collapseEdge(e1, lctx);
+    }
+    if (e2) {
+      //v2 = mesh.collapseEdge(e2, lctx);
+    }
+
+
+    if (v2 && v2.valence === 2) {
+      //mesh.joinTwoEdges(v2, lctx);
+    }
+  }
+
+  //join quads with two adjacent triangles
+  for (let f of faces) {
+    if (!f.isQuad()) {
+      continue;
+    }
+
+    let startl;
+    for (let l of f.loops) {
+      let ok = l.radial_next.f.isTri();
+      ok = ok && l.next.next.radial_next.f.isTri();
+      ok = ok && l.next.radial_next.f.isQuad();
+      ok = ok && l.prev.radial_next.f.isQuad();
+
+      if (ok) {
+        startl = l;
+        break;
+      }
+    }
+
+    if (!startl) {
+      continue;
+    }
+
+    let e1 = startl.e;
+    let e2 = startl.next.next.e;
+
+    mesh.collapseEdge(e1, lctx);
+    mesh.collapseEdge(e2, lctx);
+  }
+  console.log("QUAD");
 }
 
 export function cleanupQuadsOld(mesh, faces, lctx) {
@@ -2305,11 +2559,12 @@ export let DefaultRemeshFlags = RemeshFlags.SUBDIVIDE | RemeshFlags.COLLAPSE | R
 
 export function remeshMesh(mesh, remesher = Remeshers.UNIFORM_TRI, lctx = undefined, goalType, goalValue,
                            maxSteps                                     = 5,
-                           rakeFactor                                   = 0.5, threshold                  = 0.5,
+                           rakeFactor                                   = 0.5, threshold = 0.5,
                            relax                                        = 0.25,
                            projection                                   = 0.8,
                            flag                                         = DefaultRemeshFlags,
-                           maxEdges                                     = undefined) {
+                           maxEdges                                     = undefined,
+                           rakeMode=RakeModes.CURVATURE) {
   fixManifold(mesh, lctx);
 
   let cls = RemeshMap[remesher];
@@ -2321,6 +2576,7 @@ export function remeshMesh(mesh, remesher = Remeshers.UNIFORM_TRI, lctx = undefi
   m.relax = relax;
   m.projection = projection;
   m.flag = flag;
+  m.rakeMode = rakeMode;
 
   m.start(maxEdges);
 

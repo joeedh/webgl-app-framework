@@ -78,6 +78,8 @@ window.init = () => {
     timeout = 500;
   }
 
+  appstate.preinit();
+
   console.log("Loading addons");
   startAddons(false);
 
@@ -85,6 +87,7 @@ window.init = () => {
     nstructjs.validateStructs();
 
     loadShapes();
+
     appstate.init();
 
     //shortcut for console use only

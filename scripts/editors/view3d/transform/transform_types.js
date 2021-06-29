@@ -331,6 +331,7 @@ export class MeshTransType extends TransDataType {
   static applyTransform(ctx, elem, do_prop, matrix, toolop) {
     let td = elem;
 
+    td.mesh.regenBVH();
     td.mesh.graphUpdate();
 
     let v = td.data1;
