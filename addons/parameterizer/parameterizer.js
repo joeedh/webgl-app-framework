@@ -1,4 +1,5 @@
 import {makeParamToolMode} from './paramtool.js';
+import {ParamizeModes} from '../../scripts/mesh/mesh_paramizer.js';
 
 let _api;
 
@@ -25,7 +26,8 @@ export function register(api) {
         inputs  : ToolOp.inherit({
           drawMode : new api.toolop.EnumProperty(DrawModes.GEODESIC, DrawModes).saveLastValue(),
           drawFlag : new api.toolop.FlagProperty(0, DrawFlags).saveLastValue(),
-          drawScale : new api.toolop.FloatProperty(5).noUnits().setRange(0.1, 25.0)
+          drawScale : new api.toolop.FloatProperty(5).noUnits().setRange(0.1, 25.0),
+          paramizeMode : new api.toolop.EnumProperty(ParamizeModes.SELECTED, ParamizeModes).saveLastValue()
         }),
         outputs : ToolOp.inherit({})
       }
@@ -54,7 +56,9 @@ export function register(api) {
           v.flag |= MeshFlags.UPDATE;
         }
 
-        mesh_paramizer.paramizeMesh(mesh);
+        let mode = this.inputs.paramizeMode.getValue();
+        mesh_paramizer.paramizeMesh(mesh, undefined, mode);
+
         let cd_pvert = mesh.verts.customData.getLayerIndex("paramvert");
         let maxdis = -1e17;
         let scale = this.inputs.drawScale.getValue();
@@ -108,7 +112,7 @@ export function register(api) {
         inputs  : ToolOp.inherit({
           drawMode : new api.toolop.EnumProperty(DrawModes.GEODESIC, DrawModes).saveLastValue(),
           drawFlag : new api.toolop.FlagProperty(0, DrawFlags).saveLastValue(),
-          drawScale : new api.toolop.FloatProperty(5).noUnits().setRange(0.1, 25.0)
+          drawScale : new api.toolop.FloatProperty(5).noUnits().setRange(0.1, 25.0).saveLastValue()
         }),
         outputs : ToolOp.inherit({})
       }

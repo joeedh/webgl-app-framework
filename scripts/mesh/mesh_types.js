@@ -2526,7 +2526,7 @@ export class Face extends Element {
     return fiter_stack_e[fiter_stack_e.cur++].reset(this);
   }
 
-  calcNormal() {
+  calcNormal(cd_disp) {
     let t1 = calc_normal_temps.next(), t2 = calc_normal_temps.next();
     let t3 = calc_normal_temps.next(), sum = calc_normal_temps.next();
 
@@ -2540,6 +2540,11 @@ export class Face extends Element {
     let l = this.lists[0].l;
     do {
       let v1 = l.v, v2 = l.next.v;
+
+      if (cd_disp >= 0) {
+        v1 = v1.customData[cd_disp].worldco;
+        v2 = v2.customData[cd_disp].worldco;
+      }
 
       t1.load(v1).sub(c);
       t2.load(v2).sub(c);

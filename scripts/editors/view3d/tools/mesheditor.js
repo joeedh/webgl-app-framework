@@ -7,6 +7,7 @@ import {Unit} from "../../../path.ux/scripts/core/units.js";
 import {SelMask} from "../selectmode.js";
 import '../../../path.ux/scripts/util/struct.js';
 import {MeshToolBase} from "./meshtool.js";
+import {DispVertFlags} from '../../../mesh/mesh_displacement.js';
 
 let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";

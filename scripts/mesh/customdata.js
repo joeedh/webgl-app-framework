@@ -2,12 +2,14 @@ import '../path.ux/scripts/util/struct.js';
 import * as util from '../util/util.js';
 
 import {EmptyCDArray} from './mesh_base.js';
+import {Icons} from '../editors/icon_enum.js';
 
 export const CDFlags = {
   SELECT             : 1,
   SINGLE_LAYER       : 2,
   TEMPORARY          : 4, //implies IGNORE_FOR_INDEXBUF
-  IGNORE_FOR_INDEXBUF: 8
+  IGNORE_FOR_INDEXBUF: 8,
+  DISABLED           : 16
 };
 
 export let CDElemMap = {};
@@ -50,7 +52,6 @@ export class CustomDataElem {
   */
 
   static apiDefine(api, dstruct) {
-
   }
 
   setValue(b) {
@@ -142,7 +143,7 @@ export class CustomDataElem {
       uiTypeName  : "uiTypeName",
       defaultName : "defaultName",
       valueSize   : undefined,
-      flag        : 0,
+      flag        : 0, //see CDFlags
 
       //if not undefined, a LayerSettingsBase child class defining overall settings that's not per-element
       settingsClass: undefined,
@@ -188,6 +189,9 @@ export function buildCDAPI(api) {
 
   layerst.string("name", "name", "Name");
   layerst.dynamicStruct("typeSettings", "settings", "Settings");
+  layerst.enum("flag", "flag", CDFlags, "Flags").icons({
+    DISABLED : Icons.DISABLED
+  });
 
   let def = layerst.pathmap["settings"];
   def.customGetSet(function () {
@@ -200,7 +204,7 @@ export function buildCDAPI(api) {
     let cls = ret.constructor;
 
     if (!api.hasStruct(cls)) {
-      cls.apiDefine(api);
+      cls.apiDefine(api, api.mapStruct(cls, true));
     }
 
     return ret;
@@ -358,6 +362,8 @@ export class CustomDataLayer {
     this.typeSettings = undefined;
     this.islandSnapLimit = 0.0001;
     this.index = 0; //index in flat list of layers in elements
+
+    this.layerSet = undefined;
   }
 
   getTypeSettings() {
@@ -486,6 +492,8 @@ export class LayerSet extends Array {
 
   push(layer) {
     super.push(layer);
+
+    layer.layerSet = this;
     this.idmap[layer.id] = layer;
   }
 

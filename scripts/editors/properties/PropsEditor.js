@@ -8,7 +8,7 @@ import '../../path.ux/scripts/util/struct.js';
 
 let STRUCT = nstructjs.STRUCT;
 
-import {DataPathError, saveFile, loadFile} from '../../path.ux/scripts/pathux.js';
+import {DataPathError, saveFile, loadFile, saveUIData, loadUIData} from '../../path.ux/scripts/pathux.js';
 import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
 import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';
@@ -21,6 +21,7 @@ import {Menu} from "../../path.ux/scripts/widgets/ui_menu.js";
 import {MeshTypes} from "../../mesh/mesh_base.js";
 import {ProceduralTex, ProceduralTexUser} from '../../texture/proceduralTex.js';
 import {ProceduralMesh} from '../../mesh/mesh_gen.js';
+import {CDFlags} from '../../mesh/customdata.js';
 
 export const TexturePathModes = {
   BRUSH : 0,
@@ -31,11 +32,49 @@ export class CDLayerPanel extends ColumnFrame {
   constructor() {
     super();
     this._lastUpdateKey = undefined;
+
+    this._saving = false;
+    this._saved_uidata = undefined;
+  }
+
+  get showDisableIcons() {
+    let s = this.getAttribute("show-disable-icons");
+
+    if (!s) {
+      return false;
+    }
+
+    s = s.toLowerCase();
+    return s === "true" || s === "on" || s === "yes";
+  }
+
+  set showDisableIcons(state) {
+    this.setAttribute("show-disable-icons", state ? "true" : "false");
   }
 
   init() {
     super.init();
     this.doOnce(this.rebuild);
+  }
+
+  saveData() {
+    if (this._saving) {
+      return super.saveData();
+    }
+
+    let ret = super.saveData();
+
+    this._saving = true;
+    ret.uidata = saveUIData(this, "cdlayerpanel")
+    this._saving = false;
+
+    return ret;
+  }
+
+  loadData(json) {
+    super.loadJSON(json);
+
+    this._saved_uidata = json.uidata;
   }
 
   rebuild() {
@@ -44,6 +83,14 @@ export class CDLayerPanel extends ColumnFrame {
       return;
     }
 
+    let uidata;
+
+    if (this._saved_uidata) {
+      uidata = this._saved_uidata;
+    } else {
+      uidata = saveUIData(this, "cdlayerpanel");
+
+    }
     this.clear();
 
     let meshpath = this.getAttribute("datapath");
@@ -79,6 +126,8 @@ export class CDLayerPanel extends ColumnFrame {
     let actlayer = elist.customData.getActiveLayer(layertype);
 
     let checks = [];
+    let checks2 = [];
+    let show_disabled = this.showDisableIcons;
 
     for (let layer of elist.customData.flatlist) {
       if (layer.typeName === layertype) {
@@ -106,15 +155,54 @@ export class CDLayerPanel extends ColumnFrame {
               this.onchange = chg;
             }
           }
+
+          if (check.ctx && check.ctx.mesh) {
+            check.ctx.mesh.graphUpdate();
+          }
+          if (check.ctx && check.ctx.object) {
+            check.ctx.object.graphUpdate();
+          }
+          window.redraw_viewport(true);
         }
 
+        if (show_disabled) {
+          check = item.iconcheck(undefined, Icons.DISABLED);
+          check.layerIndex = layer.index;
 
+          check.checked = !!(layer.flag & CDFlags.DISABLED);
+
+          check.onchange = function() {
+            let layer = this.layerIndex;
+            layer = elist.customData.flatlist[layer];
+
+            if (this.checked) {
+              layer.flag |= CDFlags.DISABLED;
+            } else {
+              layer.flag &= ~CDFlags.DISABLED;
+            }
+
+            if (check.ctx && check.ctx.mesh) {
+              check.ctx.mesh.graphUpdate();
+            }
+            if (check.ctx && check.ctx.object) {
+              check.ctx.object.graphUpdate();
+            }
+            window.redraw_viewport(true);
+          }
+        }
       }
     }
 
     panel.useIcons(false);
     panel.tool(`mesh.add_cd_layer(elemType=${type} layerType="${layertype}")`);
     panel.tool(`mesh.remove_cd_layer(elemType=${type} layerType="${layertype}")`);
+
+    this._saved_uidata = undefined;
+    loadUIData(this, uidata);
+
+    this.flushUpdate();
+    this.flushSetCSS();
+    this.flushUpdate();
   }
 
   updateDataPath() {
@@ -153,7 +241,7 @@ export class CDLayerPanel extends ColumnFrame {
 
     for (let layer of elist.customData.flatlist) {
       if (layer.typeName === layertype) {
-        key += layer.name + ":";
+        key += layer.name + ":" + (layer.flag & CDFlags.DISABLED);
       }
     }
 
@@ -232,7 +320,8 @@ export class ObjectPanel extends ColumnFrame {
     let cdpanels = [
       ["VERTEX", "color"],
       ["LOOP", "uv"],
-      ["VERTEX", "mask"]
+      ["VERTEX", "mask"],
+      ["VERTEX", "displace", true]
     ];
 
     let data = ob.data;
@@ -241,6 +330,13 @@ export class ObjectPanel extends ColumnFrame {
 
       for (let cdp of cdpanels) {
         let cd = UIBase.createElement("cd-layer-panel-x");
+
+        if (cdp.length > 2 && cdp[2]) {
+          cd.setAttribute("show-disable-icons", "true");
+        } else {
+          cd.setAttribute("show-disable-icons", "false");
+        }
+
         cd.setAttribute("datapath", "mesh");
         cd.setAttribute("type", cdp[0]);
         cd.setAttribute("layer", cdp[1]);

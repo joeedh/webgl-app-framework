@@ -1,9 +1,16 @@
 import {nstructjs, util, math} from '../path.ux/scripts/pathux.js';
 import {CustomDataElem, LayerSettingsBase} from './customdata.js';
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
+
 let Queue = util.Queue;
 import {MeshTypes, MeshFlags} from './mesh_base.js';
 import {buildCotanVerts, getCotanData, VAREA, VCTAN1, VCTAN2, VW, VETOT} from './mesh_utils.js';
+
+export const ParamizeModes = {
+  SELECTED : 1,
+  MAX_Z    : 2
+};
+
 
 let tmp1 = new Vector3();
 let tmp2 = new Vector3();
@@ -30,7 +37,7 @@ export function geodesic_distance_triangle(v0, v1, v2, dist1, dist2) {
     let d12 = u.vectorLength();
 
     if (d12 > eps) {
-      u.mulScalar(1.0 / d12);
+      u.mulScalar(1.0/d12);
     } else {
       d12 = 0.0;
     }
@@ -62,7 +69,7 @@ export function geodesic_distance_triangle(v0, v1, v2, dist1, dist2) {
          * the edge between v1 and v2. */
         const x_intercept = S_[0] + h*(v0_[0] - S_[0])/(v0_[1] + h);
 
-        if (x_intercept >= eps && x_intercept <= d12-eps) {
+        if (x_intercept >= eps && x_intercept <= d12 - eps) {
           return S_.vectorDistance(v0_);
         }
       }
@@ -76,9 +83,9 @@ export function geodesic_distance_triangle(v0, v1, v2, dist1, dist2) {
 }
 
 export const WeightModes = {
-  SIMPLE : 0,
-  EDGE_LENGTH : 1,
-  COTAN : 2
+  SIMPLE     : 0,
+  EDGE_LENGTH: 1,
+  COTAN      : 2
 };
 
 export class ParamVertSettings extends LayerSettingsBase {
@@ -106,6 +113,7 @@ export class ParamVertSettings extends LayerSettingsBase {
     b.weightMode = this.weightMode;
   }
 }
+
 ParamVertSettings.STRUCT = nstructjs.inherit(ParamVertSettings, LayerSettingsBase) + `
   updateGen      : int;
   smoothTangents : bool;
@@ -148,10 +156,10 @@ export class ParamVert extends CustomDataElem {
   }
 
   interp(dest, datas, ws) {
-    let x=0, y=0, z=0, w=0;
+    let x = 0, y = 0, z = 0, w = 0;
     let tx = 0, ty = 0, tz = 0;
 
-    for (let i=0; i<datas.length; i++) {
+    for (let i = 0; i < datas.length; i++) {
       let vec = datas[i].disUV;
       let weight = ws[i];
 
@@ -171,7 +179,7 @@ export class ParamVert extends CustomDataElem {
     let l = Math.sqrt(y**2 + z**2 + w**2);
 
     if (l > 0.0) {
-      l = 1.0 / l;
+      l = 1.0/l;
     }
 
     dest.disUV[0] = x;
@@ -186,7 +194,7 @@ export class ParamVert extends CustomDataElem {
     dest.smoothTan.normalize();
   }
 
-  updateWeights(ps, owning_v, cd_pvert) {
+  updateWeights(ps, owning_v, cd_pvert, cd_disp=undefined) {
     const val = owning_v.valence;
 
     if (this.wlist.length !== val) {
@@ -194,9 +202,9 @@ export class ParamVert extends CustomDataElem {
     }
 
     if (ps.weightMode === WeightModes.SIMPLE) {
-      let w = 1.0 / val;
+      let w = 1.0/val;
 
-      for (let i=0; i<val; i++) {
+      for (let i = 0; i < val; i++) {
         this.wlist[i] = w;
       }
     } else if (ps.weightMode === WeightModes.EDGE_LENGTH) {
@@ -205,17 +213,26 @@ export class ParamVert extends CustomDataElem {
       const wlist = this.wlist;
 
       for (let v2 of owning_v.neighbors) {
-        const w = v2.vectorDistance(owning_v);
+        let a = v2;
+        let b = owning_v;
+
+        if (cd_disp !== undefined) {
+          a = v2.customData[cd_disp].worldco;
+          b = owning_v.customData[cd_disp].worldco;
+        }
+
+        const w = a.vectorDistance(b);
+
 
         wlist[wi++] = w;
         tot += w;
       }
 
       if (tot) {
-        tot = 1.0 / tot;
+        tot = 1.0/tot;
       }
 
-      for (let i=0; i<val; i++) {
+      for (let i = 0; i < val; i++) {
         wlist[i] *= tot;
       }
     } else {
@@ -253,7 +270,7 @@ export class ParamVert extends CustomDataElem {
 
       //w = -(cot1 + cot2);
 
-      this.wlist[wi] = 1.0-w//*area;
+      this.wlist[wi] = 1.0 - w//*area;
 
       vi += VETOT;
       wi++;
@@ -262,7 +279,7 @@ export class ParamVert extends CustomDataElem {
     this.totarea = totarea;
   }
 
-  smooth(ps, owning_v, cd_pvert, depth=0) {
+  smooth(ps, owning_v, cd_pvert, depth = 0) {
     let v = owning_v;
 
     let tot = 0.0;
@@ -318,7 +335,7 @@ export class ParamVert extends CustomDataElem {
     }
   }
 
-  checkTangent(ps, owning_v, cd_pvert, noSmooth=false) {
+  checkTangent(ps, owning_v, cd_pvert, noSmooth = false) {
     let updateCot = owning_v.valence !== this.wlist.length;
     updateCot = updateCot || ps.updateGen !== this.updateGen;
 
@@ -335,7 +352,7 @@ export class ParamVert extends CustomDataElem {
 
   /*calculate tangent and smooth with neighbors
   * if necassary */
-  updateTangent(ps, owning_v, cd_pvert, noSmooth=false) {
+  updateTangent(ps, owning_v, cd_pvert, noSmooth = false, cd_disp=undefined) {
     let v = owning_v;
 
     this.updateGen = ps.updateGen;
@@ -364,8 +381,14 @@ export class ParamVert extends CustomDataElem {
 
       w = this.wlist[i];
 
-      let dv2 = tmp3.load(v2).sub(v).normalize();
-      dv2.mulScalar((d2 - d1) * w);
+      let dv2;
+      if (cd_disp !== undefined && cd_disp >= 0) {
+        dv2 = tmp3.load(v2.customData[cd_disp].worldco).sub(v.customData[cd_disp].worldco).normalize();
+      } else {
+        dv2 = tmp3.load(v2).sub(v).normalize();
+      }
+
+      dv2.mulScalar((d2 - d1)*w);
 
       dv.add(dv2);
 
@@ -435,6 +458,7 @@ export class ParamVert extends CustomDataElem {
     b.smoothTan.load(this.smoothTan);
   }
 }
+
 ParamVert.STRUCT = nstructjs.inherit(ParamVert, CustomDataElem) + `
     disUV        : vec4;
     updateGen    : int;
@@ -445,8 +469,7 @@ ParamVert.STRUCT = nstructjs.inherit(ParamVert, CustomDataElem) + `
 nstructjs.register(ParamVert);
 CustomDataElem.register(ParamVert);
 
-export function calcGeoDist(mesh, shell) {
-  let cd_pvert = mesh.verts.customData.getLayerIndex("paramvert");
+export function calcGeoDist(mesh, cd_pvert, shell, mode) {
   let ps = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings();
 
   let verts = new Set();
@@ -468,6 +491,39 @@ export function calcGeoDist(mesh, shell) {
       if (startv === undefined || (l.v.flag & MeshFlags.SELECT)) {
         startv = l.v;
       }
+    }
+  }
+
+  if (mode === ParamizeModes.MAX_Z) {
+    let min = new Vector3().addScalar(1e17);
+    let max = new Vector3().addScalar(1e17);
+
+    let vs = [];
+
+    for (let v of verts) {
+      min.min(v);
+      max.max(v);
+
+      vs.push(v);
+    }
+
+    let cent = max.sub(min);
+    vs.sort((a, b) => {
+      const eps = 0.00001;
+
+      let dz = a[2] - b[2];
+      if (dz > -eps && dz < eps) {
+        return b[2] - a[2];
+      }
+
+      let da = (a[1] - cent[1])**2 + (a[0] - cent[0])**2;
+      let db = (b[1] - cent[1])**2 + (b[0] - cent[0])**2;
+
+      return da - db;
+    });
+
+    if (vs.length > 0) {
+      startv = vs[0];
     }
   }
 
@@ -551,13 +607,11 @@ export function calcGeoDist(mesh, shell) {
   };
 }
 
-export function paramizeShell(mesh, shell) {
-  let cd_pvert = mesh.verts.customData.getLayerIndex("paramvert");
-
-  let {verts, edges, faces} = calcGeoDist(mesh, shell);
+export function paramizeShell(mesh, cd_pvert, shell, mode) {
+  let {verts, edges, faces} = calcGeoDist(mesh, cd_pvert, shell, mode);
 }
 
-export function smoothParam(mesh, verts=mesh.verts) {
+export function smoothParam(mesh, verts = mesh.verts) {
   if (!mesh.verts.customData.hasLayer("paramvert")) {
     console.error("No parameterization customdata layer");
     return;
@@ -586,14 +640,17 @@ export function smoothParam(mesh, verts=mesh.verts) {
   }
 }
 
-export function paramizeMesh(mesh) {
+export function paramizeMesh(mesh, cd_pvert, mode=ParamizeModes.SELECTED) {
   console.log("parameterize mesh");
 
-  if (!mesh.verts.customData.hasLayer("paramvert")) {
-    mesh.verts.addCustomDataLayer("paramvert");
+  if (cd_pvert === undefined) {
+    cd_pvert = mesh.verts.customData.getLayerIndex("paramvert");
   }
 
-  let cd_pvert = mesh.verts.customData.getLayerIndex("paramvert");
+  if (!mesh.verts.customData.hasLayer("paramvert")) {
+    cd_pvert = mesh.verts.addCustomDataLayer("paramvert").index;
+  }
+
   let ps = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings();
 
   let visit = new WeakSet();
@@ -628,7 +685,7 @@ export function paramizeMesh(mesh) {
   console.log("shells", shells);
 
   for (let shell of shells) {
-    paramizeShell(mesh, shell);
+    paramizeShell(mesh, cd_pvert, shell, mode);
   }
 
   for (let v of mesh.verts) {

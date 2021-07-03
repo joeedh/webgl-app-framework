@@ -461,6 +461,8 @@ export class Mesh extends SceneObjectData {
   constructor(features = MeshFeatures.BASIC) {
     super();
 
+    this.lastDispActive = 0;
+
     this.haveNgons = false;
 
     if (WITH_EIDMAP_MAP) {
@@ -551,14 +553,6 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  makeElistAliases() {
-    this.verts = this.getElemList(MeshTypes.VERTEX, SAVE_DEAD_VERTS);
-    this.loops = this.getElemList(MeshTypes.LOOP, SAVE_DEAD_LOOPS);
-    this.edges = this.getElemList(MeshTypes.EDGE, SAVE_DEAD_EDGES);
-    this.faces = this.getElemList(MeshTypes.FACE, SAVE_DEAD_FACES);
-    this.handles = this.getElemList(MeshTypes.HANDLE);
-  }
-
   get eidmap() {
     if (WITH_EIDMAP_MAP && this._recalcEidMap) {
       this._recalcEidMap = false;
@@ -640,6 +634,14 @@ export class Mesh extends SceneObjectData {
       selectMask: SelMask.MESH,
       tools     : MeshTools
     }
+  }
+
+  makeElistAliases() {
+    this.verts = this.getElemList(MeshTypes.VERTEX, SAVE_DEAD_VERTS);
+    this.loops = this.getElemList(MeshTypes.LOOP, SAVE_DEAD_LOOPS);
+    this.edges = this.getElemList(MeshTypes.EDGE, SAVE_DEAD_EDGES);
+    this.faces = this.getElemList(MeshTypes.FACE, SAVE_DEAD_FACES);
+    this.handles = this.getElemList(MeshTypes.HANDLE);
   }
 
   compress2() {
@@ -1426,15 +1428,19 @@ export class Mesh extends SceneObjectData {
     return f;
   }
 
-  _recalcNormals_intern() {
+  _recalcNormals_intern(cd_disp = -1) {
     for (let f of this.faces) {
-      f.calcNormal();
+      f.calcNormal(cd_disp);
     }
 
-    this._recalcVertexNormals();
+    this._recalcVertexNormals(cd_disp);
   }
 
-  _recalcVertexNormals() {
+  _recalcVertexNormals(cd_disp = -1) {
+    if (cd_disp >= 0) {
+      checkDispLayers(this);
+    }
+
     let i = 0;
     let vtots = new Array(this.verts.length);
 
@@ -1456,12 +1462,19 @@ export class Mesh extends SceneObjectData {
 
     for (let i = 0; i < ltris.length; i += 3) {
       let l1 = ltris[i], l2 = ltris[i + 1], l3 = ltris[i + 2];
+      let v1 = l1.v, v2 = l2.v, v3 = l3.v;
 
-      let n = math.normal_tri(l1.v, l2.v, l3.v);
-      let w = math.tri_area(l1.v, l2.v, l3.v);
+      if (cd_disp >= 0) {
+        v1 = v1.customData[cd_disp].worldco;
+        v2 = v2.customData[cd_disp].worldco;
+        v3 = v3.customData[cd_disp].worldco;
+      }
+
+      let n = math.normal_tri(v1, v2, v3);
+      let w = math.tri_area(v1, v2, v3);
 
       if (isNaN(n.dot(n))) {
-        console.error("NaN in normal calc!", w, l1.v, l2.v, l3.v, l1, l2, l3);
+        console.error("NaN in normal calc!", w, v1, v2, v3, l1, l2, l3);
         l1.v.zero();
         l2.v.zero();
         l3.v.zero();
@@ -1474,7 +1487,7 @@ export class Mesh extends SceneObjectData {
         l2.v.zero();
         l3.v.zero();
         l1.v.addScalar(0.01);
-        console.error("NaN in normal area calc!", w, l1.v, l2.v, l3.v, l1, l2, l3);
+        console.error("NaN in normal area calc!", w, v1, v2, v3, l1, l2, l3);
         continue;
       }
 
@@ -1510,7 +1523,11 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  recalcNormalsCustom() {
+  recalcNormalsCustom(cd_disp = -1) {
+    if (cd_disp >= 0) {
+      checkDispLayers(this);
+    }
+
     let ok = this.faces.customData.hasLayer(NormalLayerElem);
     ok = ok || this.loops.customData.hasLayer(NormalLayerElem);
     ok = ok || this.verts.customData.hasLayer(NormalLayerElem);
@@ -1524,7 +1541,7 @@ export class Mesh extends SceneObjectData {
         f.calcNormal();
       }
 
-      this._recalcVertexNormals();
+      this._recalcVertexNormals(cd_disp);
       return;
     }
 
@@ -1591,19 +1608,23 @@ export class Mesh extends SceneObjectData {
         f.no.load(f.customData[cd_no].no).normalize();
       }
 
-      this._recalcVertexNormals();
+      this._recalcVertexNormals(cd_disp);
     }
   }
 
-  recalcNormals() {
+  recalcNormals(cd_disp = -1) {
+    if (cd_disp >= 0) {
+      checkDispLayers(this);
+    }
+
     for (let f of this.faces) {
       f.calcCent();
     }
 
     if (this.hasCustomNormals) {
-      this.recalcNormalsCustom();
+      this.recalcNormalsCustom(cd_disp);
     } else {
-      this._recalcNormals_intern();
+      this._recalcNormals_intern(cd_disp);
     }
   }
 
@@ -1907,7 +1928,7 @@ export class Mesh extends SceneObjectData {
     for (let k in this.elists) {
       let elist = this.elists[k];
 
-      if (elist.type == MeshTypes.LOOP) {
+      if (elist.type === MeshTypes.LOOP) {
         continue;
       }
 
@@ -2839,7 +2860,7 @@ export class Mesh extends SceneObjectData {
     console.error("Failed to split face", f, v1, v2);
   }
 
-  splitFace(f, l1, l2, lctx, noerror=false) {
+  splitFace(f, l1, l2, lctx, noerror = false) {
     //TODO: handle holes
 
     if (l1.eid < 0) {
@@ -3213,7 +3234,7 @@ export class Mesh extends SceneObjectData {
     return ret;
   }
 
-  splitEdgeWhileSmoothing(e, t = 0.5, smoothFac=0.5, lctx) {
+  splitEdgeWhileSmoothing(e, t = 0.5, smoothFac = 0.5, lctx) {
     if (e.eid < 0) {
       throw new MeshError("tried to split deleted edge");
     }
@@ -3226,7 +3247,7 @@ export class Mesh extends SceneObjectData {
 
     let ret = this._splitEdgeNoFace(e, t, lctx);
 
-    for (let i=0; i<3; i++) {
+    for (let i = 0; i < 3; i++) {
       let v;
 
       if (i === 0) {
@@ -3237,7 +3258,7 @@ export class Mesh extends SceneObjectData {
         v = ret[0].v2;
       }
 
-      let x=0.0, y=0.0, z=0.0;
+      let x = 0.0, y = 0.0, z = 0.0;
       let tot = 0.0;
 
       for (let e2 of v.edges) {
@@ -3250,14 +3271,14 @@ export class Mesh extends SceneObjectData {
       }
 
       if (tot) {
-        tot = 1.0 / tot;
+        tot = 1.0/tot;
         x *= tot;
         y *= tot;
         z *= tot;
 
-        v[0] += (x - v[0]) * smoothFac;
-        v[1] += (y - v[1]) * smoothFac;
-        v[2] += (z - v[2]) * smoothFac;
+        v[0] += (x - v[0])*smoothFac;
+        v[1] += (y - v[1])*smoothFac;
+        v[2] += (z - v[2])*smoothFac;
       }
     }
 
@@ -4760,11 +4781,26 @@ export class Mesh extends SceneObjectData {
     }
   }
 
+  resetDispLayers() {
+    let layerset = this.verts.customData.getLayerSet("displace");
+    for (let layer of layerset) {
+      let st = layer.getTypeSettings();
+
+      st.flag |= DispLayerFlags.NEEDS_INIT;
+    }
+
+    this.graphUpdate();
+    window.redraw_viewport(true);
+  }
+
   exec(ctx) {
     super.exec();
 
     this._updateElists();
     this.updateGrids();
+
+    checkDispLayers(this);
+    updateDispLayers(this);
 
     //we don't need eidgen's freemap most of the time,
     //it's built for the eidgen.reserve method.
@@ -5724,7 +5760,7 @@ export class Mesh extends SceneObjectData {
   }
 
   /** clear mesh */
-  clear(clearCustomData=false) {
+  clear(clearCustomData = false) {
     let elists = this.elists;
 
     this.eidgen = this._makeEIDGen();
@@ -6164,7 +6200,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  fixMesh(report=true, noWire=false) {
+  fixMesh(report = true, noWire = false) {
     let eidMap = new Map();
 
     let elists = this.elists;
@@ -6249,7 +6285,7 @@ export class Mesh extends SceneObjectData {
   }
 
   //fix e.g. obj files that store edges as colinear tris
-  killColinearTris(report=true) {
+  killColinearTris(report = true) {
     let fs = new Set();
     let eps = 0.000001;
 
@@ -6778,6 +6814,7 @@ Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
   features        : int;
   uiTriangleCount : int;
   bvhSettings     : bvh.BVHSettings;
+  lastDispActive  : int;
 }
 `;
 
@@ -6808,5 +6845,6 @@ window._debug_recalc_all_normals = function (force = false) {
 window.Mesh = Mesh
 
 import {setMeshClass} from './mesh_tess.js';
+import {checkDispLayers, DispLayerFlags, updateDispLayers} from './mesh_displacement.js';
 
 setMeshClass(Mesh);
