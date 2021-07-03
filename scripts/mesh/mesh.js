@@ -1437,10 +1437,6 @@ export class Mesh extends SceneObjectData {
   }
 
   _recalcVertexNormals(cd_disp = -1) {
-    if (cd_disp >= 0) {
-      checkDispLayers(this);
-    }
-
     let i = 0;
     let vtots = new Array(this.verts.length);
 
@@ -1524,10 +1520,6 @@ export class Mesh extends SceneObjectData {
   }
 
   recalcNormalsCustom(cd_disp = -1) {
-    if (cd_disp >= 0) {
-      checkDispLayers(this);
-    }
-
     let ok = this.faces.customData.hasLayer(NormalLayerElem);
     ok = ok || this.loops.customData.hasLayer(NormalLayerElem);
     ok = ok || this.verts.customData.hasLayer(NormalLayerElem);
@@ -1613,10 +1605,6 @@ export class Mesh extends SceneObjectData {
   }
 
   recalcNormals(cd_disp = -1) {
-    if (cd_disp >= 0) {
-      checkDispLayers(this);
-    }
-
     for (let f of this.faces) {
       f.calcCent();
     }

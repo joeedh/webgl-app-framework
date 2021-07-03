@@ -73,6 +73,11 @@ const itmp1 = new Vector3();
 const itmp2 = new Vector3();
 const itmp3 = new Vector3();
 const itmp4 = new Vector3();
+const itmp5 = new Vector3();
+const itmp6 = new Vector3();
+const itmp7 = new Vector3();
+const itmp8 = new Vector3();
+
 const mtmp1 = new Vector3();
 
 const mat_temps = util.cachering.fromConstructor(Matrix4, 512);
@@ -86,6 +91,9 @@ export class DispLayerVert extends CustomDataElem {
     this.worldco = this._worldco;
 
     this.tanco = new Vector3(); //tangent
+    this.parentTan = new Vector3();
+    this.parentNo = new Vector3();
+
     this.no = new Vector3();
     this.tan = new Vector3();
 
@@ -129,7 +137,7 @@ export class DispLayerVert extends CustomDataElem {
     let mat = mat_temps.next();
 
     let m = mat.$matrix;
-    let co = this.baseco, no = this.no, tan = this.tan;
+    let co = this.baseco, no = this.parentNo, tan = this.parentTan;
 
     m.m11 = tan[0];
     m.m21 = tan[1];
@@ -181,6 +189,8 @@ export class DispLayerVert extends CustomDataElem {
       x ^= (this.worldco[i]*1024*32);
       x ^= (this.tan[i]*3024*32);
       x ^= (this.no[i]*2024*32);
+      x ^= (this.parentNo[i]*23432);
+      x ^= (this.parentTan[i]*20234);
     }
 
     return x;
@@ -191,14 +201,18 @@ export class DispLayerVert extends CustomDataElem {
     b.tanco.load(this.tanco);
     b.tan.load(this.tan);
     b.no.load(this.no);
+    b.parentNo.load(this.parentNo);
     b.flag = this.flag;
+    b.parentTan.load(this.parentTan);
   }
 
   interp(dest, srcs, ws) {
     let co = itmp1.zero();
     let no = itmp2.zero();
     let tan = itmp3.zero();
-    let co2 = itmp3.zero();
+    let co2 = itmp4.zero();
+    let pt = itmp5.zero();
+    let pn = itmp6.zero();
 
     for (let i=0; i<srcs.length; i++) {
       if (i === 0) {
@@ -211,16 +225,20 @@ export class DispLayerVert extends CustomDataElem {
       co2.addFac(srcs[i].tanco, w);
       no.addFac(srcs[i].no, w);
       tan.addFac(srcs[i].tan, w);
+      pn.addFac(srcs[i].parentNo, w);
+      pt.addFac(srcs[i].parentTan, w);
     }
 
     no.normalize();
     tan.addFac(no, -tan.dot(no));
     tan.normalize();
 
+    this.parentTan.load(pt);
     this.worldco.load(co);
     this.tanco.load(co2);
     this.tan.load(tan);
     this.no.load(no);
+    this.parentNo.load(pn);
   }
 
   loadSTRUCT(reader) {
@@ -238,6 +256,8 @@ DispLayerVert.STRUCT = nstructjs.inherit(DispLayerVert, CustomDataElem) + `
   baseco   : vec3;
   no       : vec3;
   tan      : vec3;
+  parentTan: vec3;
+  parentNo : vec3;
 }`;
 nstructjs.register(DispLayerVert);
 CustomDataElem.register(DispLayerVert);
@@ -259,7 +279,8 @@ export function initDispLayers(mesh) {
   let layerset = mesh.verts.customData.getLayerSet("displace");
   let li = 0;
 
-  mesh.recalcNormals(false);
+  let need_normals = true;
+
   let pvert_settings = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings();
 
   for (let layer of layerset) {
@@ -269,7 +290,13 @@ export function initDispLayers(mesh) {
     if (settings.flag & DispLayerFlags.NEEDS_INIT) {
       settings.flag &= ~DispLayerFlags.NEEDS_INIT;
 
+      if (need_normals) {
+        mesh.recalcNormals();
+        need_normals = false;
+      }
+
       settings.flagUpdate();
+      settings.base = li ? li - 1 : 0;
 
       for (let v of mesh.verts) {
         let dv = v.customData[cd_disp];
@@ -280,7 +307,6 @@ export function initDispLayers(mesh) {
         }
 
         dv.flag &= ~DispVertFlags.NEEDS_INIT;
-        dv.base = li ? li - 1 : 0;
 
         dv.tanco.zero();
         let pv = v.customData[cd_pvert];
@@ -290,6 +316,10 @@ export function initDispLayers(mesh) {
         dv.tan[0] = pv.disUV[1];
         dv.tan[1] = pv.disUV[2];
         dv.tan[2] = pv.disUV[3];
+
+        dv.parentTan.load(dv.tan);
+
+        dv.parentNo.load(v.no);
         dv.no.load(v.no);
       }
     }
@@ -338,6 +368,14 @@ export function updateDispLayers(mesh, activeLayerIndex=undefined) {
     for (let v of mesh.verts) {
       let dv1 = v.customData[cd_disp1];
       let dv2 = v.customData[cd_disp2];
+      let pv = v.customData[cd_pvert];
+
+      pv.updateTangent(pvert_settings, v, cd_pvert, true, cd_disp2);
+
+      dv2.tan[0] = pv.disUV[1];
+      dv2.tan[1] = pv.disUV[2];
+      dv2.tan[2] = pv.disUV[3];
+      dv2.no.load(v.no);
 
       v.flag |= MeshFlags.UPDATE;
 
@@ -351,7 +389,7 @@ export function updateDispLayers(mesh, activeLayerIndex=undefined) {
         }
         //}
       } else {
-        dv2._worldco.load(v);
+        dv2.worldco.load(v);
       }
 
       dv2._worldco.load(dv2.worldco);
@@ -359,6 +397,12 @@ export function updateDispLayers(mesh, activeLayerIndex=undefined) {
 
       if (cd_disp1 !== cd_baselayer) {
         dv1.worldco = v;
+        let cd_parent = layers[s1.base].index;
+        let dvbase = v.customData[cd_parent];
+
+        dv1.baseco.load(dvbase.worldco);
+        dv1.parentTan.load(dvbase.tan);
+        dv1.parentNo.load(dvbase.no);
 
         //if (s1.dispSpace === DispSpace.TANGENT) {
           dv1.updateWorldCo(v, cd_disp1, s1, cd_pvert, pvert_settings);
@@ -369,11 +413,16 @@ export function updateDispLayers(mesh, activeLayerIndex=undefined) {
       }
     }
 
-    mesh.regenRender();
+    //s1.updateGen++;
+    //s2.updateGen++;
 
     s1.dispSpace = DispSpace.WORLD;
     s2.dispSpace = DispSpace.TANGENT;
     mesh.lastDispActive = idx;
+
+    mesh.regenRender();
+    mesh.regenBVH();
+    mesh.recalcNormals();
   }
 
   let update = false;
@@ -415,21 +464,30 @@ export function updateDispLayers(mesh, activeLayerIndex=undefined) {
     for (let v of mesh.verts) {
       let pv = v.customData[cd_pvert];
       let dv = v.customData[cd_disp];
-      let dvbase = v.customData[layers[dv.base].index];
+      let dvbase = v.customData[layers[settings.base].index];
 
       if (li > 0) {
-        dv.baseco.load(dvbase.worldco);
-        dv.tan[0] = pv.disUV[1];
-        dv.tan[1] = pv.disUV[2];
-        dv.tan[2] = pv.disUV[3];
-        dv.no.load(v.no);
+        dv.baseco = dvbase._worldco; //.load(dvbase.worldco);
+        dv.parentTan[0] = pv.disUV[1];
+        dv.parentTan[1] = pv.disUV[2];
+        dv.parentTan[2] = pv.disUV[3];
+        dv.parentNo.load(v.no);
       }
     }
 
-    mesh.recalcNormals();
+    mesh.recalcNormals(cd_disp);
+
     for (let v of mesh.verts) {
       let pv = v.customData[cd_pvert];
+      let dv = v.customData[cd_disp];
+
       pv.updateTangent(pvert_settings, v, cd_pvert, true, cd_disp);
+
+      dv.tan[0] = pv.disUV[1];
+      dv.tan[1] = pv.disUV[2];
+      dv.tan[2] = pv.disUV[3];
+
+      dv.no.load(v.no);
     }
 
     li++;
