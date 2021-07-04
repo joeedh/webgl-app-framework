@@ -66,7 +66,7 @@ export class AddonAPI {
       ToolOp, ToolProperty, IntProperty, FloatProperty, StringProperty,
       EnumProperty, FlagProperty, Vec2Property, Vec3Property, Vec4Property,
       Mat4Property, DataRefProperty, DataRefListProperty,
-      MeshOp, MeshDeformOp, MeshOpBaseUV, TransformOp
+      MeshOp, MeshDeformOp, MeshOpBaseUV, TransformOp, BoolProperty
     };
 
     let this2 = this;

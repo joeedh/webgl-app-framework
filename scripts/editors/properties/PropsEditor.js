@@ -1,6 +1,6 @@
 import {Area, BorderMask} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Icons} from "../icon_enum.js";
-
+import {MeshFlags} from '../../mesh/mesh_base.js';
 import {NoteFrame, Note} from '../../path.ux/scripts/widgets/ui_noteframe.js';
 
 import {Editor, VelPan} from '../editor_base.js';
@@ -8,7 +8,11 @@ import '../../path.ux/scripts/util/struct.js';
 
 let STRUCT = nstructjs.STRUCT;
 
-import {DataPathError, saveFile, loadFile, saveUIData, loadUIData} from '../../path.ux/scripts/pathux.js';
+import {
+  DataPathError, saveFile, loadFile, saveUIData,
+  loadUIData, ToolOp, BoolProperty, EnumProperty, StringProperty,
+  FlagProperty, FloatProperty, IntProperty
+} from '../../path.ux/scripts/pathux.js';
 import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
 import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';
@@ -22,11 +26,182 @@ import {MeshTypes} from "../../mesh/mesh_base.js";
 import {ProceduralTex, ProceduralTexUser} from '../../texture/proceduralTex.js';
 import {ProceduralMesh} from '../../mesh/mesh_gen.js';
 import {CDFlags} from '../../mesh/customdata.js';
+import {loadUndoMesh, saveUndoMesh} from '../../mesh/mesh_ops_base.js';
 
 export const TexturePathModes = {
   BRUSH : 0,
   EDITOR: 1
 };
+
+export class ChangeActCDLayerOp extends ToolOp {
+  constructor() {
+    super();
+    this._undo = undefined;
+  }
+
+  static tooldef() {
+    return {
+      uiname  : "Change Active Layer",
+      toolpath: "mesh.change_active_cdlayer",
+      inputs  : {
+        fullMeshUndo : new BoolProperty(false).private(),
+        redrawAll    : new BoolProperty(false).private(),
+        meshPath     : new StringProperty("mesh").private(),
+        type         : new StringProperty().private(),
+        elemType     : new EnumProperty(undefined, MeshTypes).private(),
+        active       : new IntProperty(-1).private()
+      }
+    }
+  }
+
+  getMesh(ctx) {
+    return ctx.api.getValue(ctx, this.inputs.meshPath.getValue());
+  }
+
+  calcUndoMem(ctx) {
+    if (!this._undo) {
+      return 0;
+    }
+
+    let tot = 0;
+
+    if (this._undo.full) {
+      tot += this._undo.data.dview.buffer.byteLength;
+    } else {
+      return 32; //guesstimate
+    }
+
+    return tot;
+  }
+
+  undoPre(ctx) {
+    let undo = this._undo = {
+      elemtype: this.inputs.elemType.getValue(),
+      type    : this.inputs.type.getValue()
+    };
+
+    console.error("full:", this.inputs.fullMeshUndo.getValue());
+
+    let mesh = this.getMesh(ctx);
+
+    if (!mesh) {
+      console.warn("Error in undoPre.ChangeActCDLayerOp");
+      this._undo.mesh = this._undo.full = undefined;
+      return;
+    }
+
+    undo.mesh = this.inputs.meshPath.getValue();
+
+    let elemtype = this.inputs.elemType.getValue();
+    let type = this.inputs.type.getValue();
+
+    if (this.inputs.fullMeshUndo.getValue()) {
+      undo.full = true;
+      undo.data = saveUndoMesh(mesh);
+    } else {
+      let layerst = mesh.elists[elemtype].customData.getLayerSet(type, false);
+
+      undo.full = false;
+      undo.active = layerst.indexOf(layerst.active);
+    }
+  }
+
+  undo(ctx) {
+    let undo = this._undo;
+
+    console.error("full:", undo.full);
+
+    if (!undo.mesh) {
+      return;
+    }
+
+    let mesh = ctx.api.getValue(ctx, undo.mesh);
+    if (!mesh) {
+      console.error("Error in ChangeActCDLayerOp.undo", undo);
+      return;
+    }
+
+    if (undo.full) {
+      let mesh2 = loadUndoMesh(ctx, undo.data);
+
+      mesh.swapDataBlockContents(mesh2);
+      mesh.regenElementsDraw();
+
+      for (let v of mesh.verts) {
+        v.flag |= MeshFlags.UPDATE;
+      }
+    } else {
+      let layerst = mesh.elists[undo.elemtype].customData.getLayerSet(undo.type, false);
+
+      let layer = layerst[undo.active];
+      if (!layer) {
+        console.error("Error in ChangeActCDLayerOp.undo", undo);
+        return;
+      }
+
+      console.log("ACTIVE", layer.index, layerst.active.index);
+
+      mesh.elists[undo.elemtype].customData.setActiveLayer(layer.index);
+
+      if (this.inputs.redrawAll.getValue()) {
+        for (let v of mesh.verts) {
+          v.flag |= MeshFlags.UPDATE;
+        }
+      }
+    }
+
+    mesh.regenBVH();
+    mesh.regenUVEditor();
+    mesh.regenAll();
+
+    //force immediate execution of dependency graph
+    //so disp layers are properly handled
+    mesh.graphUpdate();
+    window.updateDataGraph(true);
+
+    window.redraw_viewport(true);
+  }
+
+  exec(ctx) {
+    let mesh = this.getMesh(ctx);
+    let elemtype = this.inputs.elemType.getValue();
+    let type = this.inputs.type.getValue();
+
+    let cdata = mesh.elists[elemtype].customData;
+    let layerset = cdata.getLayerSet(type, false);
+
+    if (!layerset) {
+      console.warn("No customdata layers of type", type, "exist");
+      return;
+    }
+
+    let act = this.inputs.active.getValue();
+    let layer = cdata.flatlist[act];
+
+    if (!layer || layer.typeName !== layerset.typeName) {
+      console.warn("Invalid layer; layer not of type '" + type + "'", act, layer);
+      return;
+    }
+
+    cdata.setActiveLayer(layer.index);
+
+    if (this.inputs.redrawAll.getValue()) {
+      for (let v of mesh.verts) {
+        v.flag |= MeshFlags.UPDATE;
+      }
+    }
+
+    mesh.regenAll();
+    mesh.regenBVH(); //not covered by regenAll
+    mesh.regenUVEditor(); //not covered by regenAll
+
+    mesh.graphUpdate();
+    window.updateDataGraph(true); //force immediate execution of data graph
+    window.redraw_viewport(true);
+  }
+}
+
+ToolOp.register(ChangeActCDLayerOp);
 
 export class CDLayerPanel extends ColumnFrame {
   constructor() {
@@ -50,6 +225,40 @@ export class CDLayerPanel extends ColumnFrame {
 
   set showDisableIcons(state) {
     this.setAttribute("show-disable-icons", state ? "true" : "false");
+  }
+
+  get fullMeshUndo() {
+    let s = this.getAttribute("full-mesh-undo");
+    if (!s) {
+      return false;
+    }
+
+    s = s.toLowerCase();
+    return s === "yes" || s === "true" || s === "on";
+  }
+
+  set fullMeshUndo(val) {
+    this.setAttribute("full-mesh-undo", val ? "true" : "false");
+  }
+
+  get redrawAll() {
+    let s = this.getAttribute("redraw-all-undo");
+    if (!s) {
+      return false;
+    }
+
+    s = s.toLowerCase();
+    return s === "yes" || s === "true" || s === "on";
+  }
+
+  set redrawAll(val) {
+    this.setAttribute("redraw-all-undo", val ? "true" : "false");
+  }
+
+  static define() {
+    return {
+      tagname: "cd-layer-panel-x"
+    }
   }
 
   init() {
@@ -138,10 +347,20 @@ export class CDLayerPanel extends ColumnFrame {
         check.layerIndex = layer.index;
 
         checks.push(check);
+        let this2 = this;
 
         check.onchange = function () {
           if (this.checked) {
-            elist.customData.setActiveLayer(this.layerIndex);
+            let tool = new ChangeActCDLayerOp();
+
+            tool.inputs.elemType.setValue(type);
+            tool.inputs.type.setValue(layertype);
+            tool.inputs.fullMeshUndo.setValue(this2.fullMeshUndo);
+            tool.inputs.redrawAll.setValue(this2.redrawAll);
+            tool.inputs.active.setValue(this.layerIndex);
+
+            //elist.customData.setActiveLayer(this.layerIndex);
+            this.ctx.api.execTool(this.ctx, tool);
 
             for (let c of checks) {
               if (c !== this) {
@@ -171,7 +390,7 @@ export class CDLayerPanel extends ColumnFrame {
 
           check.checked = !!(layer.flag & CDFlags.DISABLED);
 
-          check.onchange = function() {
+          check.onchange = function () {
             let layer = this.layerIndex;
             layer = elist.customData.flatlist[layer];
 
@@ -239,6 +458,11 @@ export class CDLayerPanel extends ColumnFrame {
       return;
     }
 
+    let layerset = elist.customData.getLayerSet(layertype);
+    if (layerset && layerset.active) {
+      key += layerset.active.index + "|";
+    }
+
     for (let layer of elist.customData.flatlist) {
       if (layer.typeName === layertype) {
         key += layer.name + ":" + (layer.flag & CDFlags.DISABLED);
@@ -258,12 +482,6 @@ export class CDLayerPanel extends ColumnFrame {
 
     this.updateDataPath();
   }
-
-  static define() {
-    return {
-      tagname: "cd-layer-panel-x"
-    }
-  }
 }
 
 UIBase.register(CDLayerPanel);
@@ -273,6 +491,12 @@ export class ObjectPanel extends ColumnFrame {
     super();
 
     this._last_update_key = "";
+  }
+
+  static define() {
+    return {
+      tagname: "scene-object-panel-x"
+    }
   }
 
   init() {
@@ -318,10 +542,11 @@ export class ObjectPanel extends ColumnFrame {
     }
 
     let cdpanels = [
-      ["VERTEX", "color"],
-      ["LOOP", "uv"],
+      //[elem type, layer type, show-disable-icons, full-mesh-undo]
+      ["VERTEX", "color", false, false, true],
+      ["LOOP", "uv", false, false, true],
       ["VERTEX", "mask"],
-      ["VERTEX", "displace", true]
+      ["VERTEX", "displace", true, true]
     ];
 
     let data = ob.data;
@@ -335,6 +560,18 @@ export class ObjectPanel extends ColumnFrame {
           cd.setAttribute("show-disable-icons", "true");
         } else {
           cd.setAttribute("show-disable-icons", "false");
+        }
+
+        if (cdp.length > 3 && cdp[3]) {
+          cd.fullMeshUndo = true;
+        } else {
+          cd.fullMeshUndo = false;
+        }
+
+        if (cdp.length > 4 && cdp[4]) {
+          cd.redrawAll = true;
+        } else {
+          cd.redrawAll = false;
         }
 
         cd.setAttribute("datapath", "mesh");
@@ -380,12 +617,6 @@ export class ObjectPanel extends ColumnFrame {
       this.rebuild();
     }
   }
-
-  static define() {
-    return {
-      tagname: "scene-object-panel-x"
-    }
-  }
 }
 
 UIBase.register(ObjectPanel);
@@ -416,6 +647,12 @@ export class TexturePanel extends Container {
         }
       }
     });*/
+  }
+
+  static define() {
+    return {
+      tagname: "texture-panel-x"
+    }
   }
 
   getTexture() {
@@ -537,11 +774,11 @@ export class TexturePanel extends Container {
     ];
 
     let csize = 16;
-    let steps = Math.ceil(this.previewSize / csize);
-    for (let i=0; i<steps*steps; i++) {
-      let x = i % steps, y = ~~(i / steps);
+    let steps = Math.ceil(this.previewSize/csize);
+    for (let i = 0; i < steps*steps; i++) {
+      let x = i%steps, y = ~~(i/steps);
 
-      let j = (x+y) % 2;
+      let j = (x + y)%2;
       let color = colors[j];
 
       x *= csize;
@@ -583,12 +820,6 @@ export class TexturePanel extends Container {
 
     this.redraw();
   }
-
-  static define() {
-    return {
-      tagname: "texture-panel-x"
-    }
-  }
 }
 
 UIBase.register(TexturePanel);
@@ -599,6 +830,12 @@ export class TextureSelectPanel extends TexturePanel {
 
     this.browser = document.createElement("data-block-browser-x");
     this.browser.blockClass = ProceduralTex;
+  }
+
+  static define() {
+    return {
+      tagname: "texture-select-panel-x"
+    }
   }
 
   init() {
@@ -616,13 +853,8 @@ export class TextureSelectPanel extends TexturePanel {
     super.update();
     this.browser.setAttribute("datapath", this.getAttribute("datapath"));
   }
-
-  static define() {
-    return {
-      tagname : "texture-select-panel-x"
-    }
-  }
 }
+
 UIBase.register(TextureSelectPanel);
 
 export class PropsEditor extends Editor {
@@ -635,6 +867,72 @@ export class PropsEditor extends Editor {
     this.texturePath = "";
 
     this._last_toolmode = undefined;
+  }
+
+  //used by data path api
+  get _texture() {
+    if (this.texturePath === "") {
+      return undefined;
+    }
+
+    let path = this.texturePath;
+    return this.ctx.api.getValue(this.ctx, path);
+  }
+
+  //used by data path api
+  set _texture(val) {
+    if (val !== undefined && val.lib_id < 0) {
+      throw new Error("pattern is not in the datalib");
+    }
+
+    if (this.texturePathMode === TexturePathModes.EDITOR) {
+      if (!val) {
+        this.texturePath = '';
+      } else {
+        this.texturePath = `library.texture[${val.lib_id}]`;
+      }
+    } else {
+      this.setPathValue(this.ctx, this.texturePathMode, val);
+      /*
+      let rdef = this.ctx.resolvePath(this.texturePath);
+      if (!rdef) {
+        return;
+      }
+
+      let obj = rdef.obj;
+      if (obj instanceof DataBlock && obj.lib_id >= 0) {
+        let block = val === undefined ? -1 : val.lib_id;
+        let path = this.texturePath;
+
+        let toolpath = `datalib.default_assign(block=${block} dataPathToSet=${path})`;
+        this.ctx.api.execTool(this.ctx, toolpath);
+      } else {
+        this.setPathValue(this.ctx, this.texturePathMode, val);
+      }//*/
+    }
+  }
+
+  static defineAPI(api) {
+    let st = super.defineAPI(api);
+
+    st.string("texturePath", "texturePath", "Active Texture Path");
+    st.struct("_texture", "texture", "Active Texture", api.mapStruct(ProceduralTex));
+    st.enum("texturePathMode", "texturePathMode", TexturePathModes, "Source").uiNames({
+      EDITOR: "Any",
+      BRUSH : "Brush"
+    });
+
+    return st;
+  }
+
+  static define() {
+    return {
+      tagname : "props-editor-x",
+      areaname: "props",
+      apiname : "propsEditor",
+      uiname  : "Properties",
+      icon    : Icons.EDITOR_PROPERTIES
+    }
   }
 
   on_area_active() {
@@ -658,7 +956,6 @@ export class PropsEditor extends Editor {
 
     }
   }
-
 
   init() {
     super.init();
@@ -691,7 +988,7 @@ export class PropsEditor extends Editor {
       "Back"  : [1, -1],
       "Right" : [0, -1],
       "Top"   : [2, 1],
-      "Bottom" : [2, -1]
+      "Bottom": [2, -1]
     }
 
     function makeAxis(key, axis, sign) {
@@ -750,62 +1047,6 @@ export class PropsEditor extends Editor {
 
     col.prop("settings.limitUndoMem");
     col.prop("settings.undoMemLimit");
-  }
-
-  static defineAPI(api) {
-    let st = super.defineAPI(api);
-
-    st.string("texturePath", "texturePath", "Active Texture Path");
-    st.struct("_texture", "texture", "Active Texture", api.mapStruct(ProceduralTex));
-    st.enum("texturePathMode", "texturePathMode", TexturePathModes, "Source").uiNames({
-      EDITOR : "Any",
-      BRUSH : "Brush"
-    });
-
-    return st;
-  }
-
-  //used by data path api
-  get _texture() {
-    if (this.texturePath === "") {
-      return undefined;
-    }
-
-    let path = this.texturePath;
-    return this.ctx.api.getValue(this.ctx, path);
-  }
-
-  //used by data path api
-  set _texture(val) {
-    if (val !== undefined && val.lib_id < 0) {
-      throw new Error("pattern is not in the datalib");
-    }
-
-    if (this.texturePathMode === TexturePathModes.EDITOR) {
-      if (!val) {
-        this.texturePath = '';
-      } else {
-        this.texturePath = `library.texture[${val.lib_id}]`;
-      }
-    } else {
-      this.setPathValue(this.ctx, this.texturePathMode, val);
-      /*
-      let rdef = this.ctx.resolvePath(this.texturePath);
-      if (!rdef) {
-        return;
-      }
-
-      let obj = rdef.obj;
-      if (obj instanceof DataBlock && obj.lib_id >= 0) {
-        let block = val === undefined ? -1 : val.lib_id;
-        let path = this.texturePath;
-
-        let toolpath = `datalib.default_assign(block=${block} dataPathToSet=${path})`;
-        this.ctx.api.execTool(this.ctx, toolpath);
-      } else {
-        this.setPathValue(this.ctx, this.texturePathMode, val);
-      }//*/
-    }
   }
 
   textureTab(tab) {
@@ -872,16 +1113,6 @@ export class PropsEditor extends Editor {
 
   setCSS() {
     super.setCSS();
-  }
-
-  static define() {
-    return {
-      tagname : "props-editor-x",
-      areaname: "props",
-      apiname : "propsEditor",
-      uiname  : "Properties",
-      icon    : Icons.EDITOR_PROPERTIES
-    }
   }
 }
 

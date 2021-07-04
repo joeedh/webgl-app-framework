@@ -57,6 +57,8 @@ export function makeParamToolMode(api) {
     static buildSettings(con) {
       let panel = con.panel("Tools");
 
+      panel.toolPanel("mesh.test_disp_smooth()");
+
       let strip = panel.strip();
       strip.useIcons(false);
       strip.tool("paramize.test()");

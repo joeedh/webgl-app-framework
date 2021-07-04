@@ -795,8 +795,8 @@ export class CustomData {
     return name2;
   }
 
-  getLayerSet(typename) {
-    if (!(typename in this.layers)) {
+  getLayerSet(typename, autoCreate=true) {
+    if (autoCreate && !(typename in this.layers)) {
       this.layers[typename] = new LayerSet(typename);
       this.layers[typename].active = undefined;
     }

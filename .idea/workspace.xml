@@ -6,8 +6,14 @@
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addons/parameterizer/parameterizer.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/parameterizer/parameterizer.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addons/parameterizer/paramtool.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/parameterizer/paramtool.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/addon/addon_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/addon/addon_base.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/properties/PropsEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/properties/PropsEditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/customdata.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/customdata.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_displacement.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_displacement.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_paramizer.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_paramizer.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" afterDir="false" />
@@ -270,6 +276,7 @@
       <workItem from="1624644169494" duration="1191000" />
       <workItem from="1624873052466" duration="34804000" />
       <workItem from="1625283696944" duration="13488000" />
+      <workItem from="1625351178922" duration="10351000" />
     </task>
     <servers />
   </component>
@@ -294,7 +301,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scripts/mesh/mesh.js</url>
-          <line>4841</line>
+          <line>4842</line>
           <option name="timeStamp" value="5" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">

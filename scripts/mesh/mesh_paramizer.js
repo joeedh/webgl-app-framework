@@ -383,7 +383,7 @@ export class ParamVert extends CustomDataElem {
 
       let dv2;
       if (cd_disp !== undefined && cd_disp >= 0) {
-        dv2 = tmp3.load(v2.customData[cd_disp].worldco).sub(v.customData[cd_disp].worldco).normalize();
+        dv2 = tmp3.load(v2.customData[cd_disp].smoothco).sub(v.customData[cd_disp].smoothco).normalize();
       } else {
         dv2 = tmp3.load(v2).sub(v).normalize();
       }

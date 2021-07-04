@@ -461,6 +461,7 @@ export class Mesh extends SceneObjectData {
   constructor(features = MeshFeatures.BASIC) {
     super();
 
+    this.smemo = undefined;
     this.lastDispActive = 0;
 
     this.haveNgons = false;
