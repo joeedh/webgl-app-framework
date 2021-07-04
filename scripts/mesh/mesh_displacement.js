@@ -1,3 +1,19 @@
+/*
+How sculpt layers work:
+
+Sculpt layers are stored in tangent space (except for the first one,
+which is the base layer).  This tangent space
+is generated from a geodesic distance field that's propegated over the mesh
+when the first layer is created.
+
+Each layer calculates its tangent space from the smoothed coordinates of the
+prior layer.  The tangents are calculated from derivatives using the geodesic
+distance layer (which is not smoothed) and the smoothed coordinates.
+
+In addition, a simple uniform scale is derived per-vertex by averaging the edge
+lengths using the same smoothed coordinates.
+*/
+
 import {CDFlags, LayerSettingsBase} from './customdata.js';
 import {nstructjs, util, math} from '../path.ux/scripts/pathux.js';
 import {CustomDataElem} from './customdata.js';
@@ -323,6 +339,7 @@ export class DispContext {
 }
 
 let disp_contexts = util.cachering.fromConstructor(DispContext, 32);
+let tmptmp = new Vector3();
 
 export class DispLayerVert extends CustomDataElem {
   constructor() {
@@ -376,7 +393,19 @@ export class DispLayerVert extends CustomDataElem {
       //console.warn(tanmat);
     }
 
-    this.worldco.load(this.tanco).multVecMatrix(tanmat);
+    tmptmp.load(this.tanco).multVecMatrix(tanmat);
+
+    let t = tmptmp.dot(tmptmp);
+    if (isNaN(t) || !isFinite(t)) {
+      console.warn("NaN!", this.tanco, this);
+
+      t = this.tanco.dot(this.tanco);
+      if (isNaN(t) || !isFinite(t)) {
+        this.tanco.zero();
+      }
+    } else {
+      this.worldco.load(tmptmp);
+    }
   }
 
   updateTanCo(dctx) {
@@ -385,7 +414,16 @@ export class DispLayerVert extends CustomDataElem {
     let tanmat = this.getTanMatrix(dctx);
     tanmat.invert();
 
-    this.tanco.load(this.worldco).multVecMatrix(tanmat);
+    tmptmp.load(this.worldco).multVecMatrix(tanmat);
+    let t = tmptmp.dot(tmptmp);
+
+    if (isNaN(t) || !isFinite(t)) {
+      if (Math.random() > 0.997) {
+        console.warn("NaN!", this.worldco, tanmat.toString());
+      }
+    } else {
+      this.tanco.load(tmptmp);
+    }
   }
 
   getTanMatrix(dctx) {
@@ -519,6 +557,11 @@ export class DispLayerVert extends CustomDataElem {
     this.no.load(no);
     this.smoothco.load(sco);
     this.parentNo.load(pn);
+
+    this.parentNo.normalize();
+    this.parentTan.normalize();
+    this.tan.normalize();
+    this.no.normalize();
   }
 
   loadSTRUCT(reader) {
@@ -533,12 +576,16 @@ DispLayerVert.STRUCT = nstructjs.inherit(DispLayerVert, CustomDataElem) + `
   flag        : int;
   _worldco    : vec3;
   tanco       : vec3;
-  baseco      : vec3;
+
   no          : vec3;
   tan         : vec3;
+  scale       : float;
+
+  baseco      : vec3;
   parentTan   : vec3;
   parentNo    : vec3;
-  parentScale : vec3;
+  parentScale : float;
+
   smoothco    : vec3;
 }`;
 nstructjs.register(DispLayerVert);
@@ -788,6 +835,13 @@ export function updateDispLayers(mesh, activeLayerIndex = undefined) {
         //}
       } else {
         dv1.worldCo = v;
+
+        let t = dv1._worldco.dot(dv1._worldco);
+        if (isNaN(t) || !isFinite(t)) {
+          console.warn("NaN!", v, dv1);
+          dv1._worldco.load(v);
+        }
+
         v.load(dv1._worldco);
       }
 
