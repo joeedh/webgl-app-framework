@@ -352,7 +352,7 @@ export class ParamVert extends CustomDataElem {
 
   /*calculate tangent and smooth with neighbors
   * if necassary */
-  updateTangent(ps, owning_v, cd_pvert, noSmooth = false, cd_disp=undefined) {
+  updateTangent(ps, owning_v, cd_pvert, noSmooth = false, cd_disp=undefined, noNorm=false) {
     let v = owning_v;
 
     this.updateGen = ps.updateGen;
@@ -362,7 +362,6 @@ export class ParamVert extends CustomDataElem {
 
     let dv = tmp1.zero();
 
-    let i = 0;
     if (v.valence !== this.wlist.length) {
       this.updateWeights(ps, owning_v, cd_pvert);
     }
@@ -371,6 +370,7 @@ export class ParamVert extends CustomDataElem {
     const cotan = ps.weightMode === WeightModes.COTAN;
     const edge_length = ps.weightMode === WeightModes.EDGE_LENGTH;
 
+    let i = 0;
     for (let e of v.edges) {
       let v2 = e.otherVertex(v);
       let pv2 = v2.customData[cd_pvert];
@@ -383,9 +383,13 @@ export class ParamVert extends CustomDataElem {
 
       let dv2;
       if (cd_disp !== undefined && cd_disp >= 0) {
-        dv2 = tmp3.load(v2.customData[cd_disp].smoothco).sub(v.customData[cd_disp].smoothco).normalize();
+        dv2 = tmp3.load(v2.customData[cd_disp].smoothco).sub(v.customData[cd_disp].smoothco);
       } else {
-        dv2 = tmp3.load(v2).sub(v).normalize();
+        dv2 = tmp3.load(v2).sub(v);
+      }
+
+      if (!noNorm) {
+        dv2.normalize();
       }
 
       dv2.mulScalar((d2 - d1)*w);
@@ -398,7 +402,12 @@ export class ParamVert extends CustomDataElem {
     if (cotan) {
       //norm = this.totarea**2;
       //dv.mulScalar(1.0 / norm);
-      dv.normalize();
+    }
+
+    if (noNorm) {
+      if (i) {
+        dv.mulScalar(1.0/i);
+      }
     } else {
       dv.normalize();
     }
