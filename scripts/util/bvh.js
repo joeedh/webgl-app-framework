@@ -2981,7 +2981,7 @@ export class BVH {
           let cdn = v.customData[cd_node];
 
           if (!cdn.node) {
-            console.warn("Orphaned deform vert", v);
+            //console.warn("Orphaned deform vert", v);
 
             cdn.node = n;
 

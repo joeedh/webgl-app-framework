@@ -606,6 +606,8 @@ export class PaintOpBase extends ToolOp {
 
     this.task = undefined;
 
+    this.grabMode = false;
+
     this.mfinished = false;
     this.last_mpos = new Vector2();
     this.last_p = new Vector3();
@@ -1075,7 +1077,7 @@ export class PaintOpBase extends ToolOp {
     let origco = new Vector4();
 
     if (!isect) {
-      if ((mode === SculptTools.GRAB || (mode === SculptTools.SNAKE)) && !this._first) {
+      if ((this.grabMode || mode === SculptTools.GRAB || (mode === SculptTools.SNAKE)) && !this._first) {
         let p = new Vector3(this.last_p);
         p.multVecMatrix(obmat);
 

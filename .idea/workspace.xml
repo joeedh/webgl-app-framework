@@ -5,34 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
-      <change afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_bvhdef.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet.svg" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet.svg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet128.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet128.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet16.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet16.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet24.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet24.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet32.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet32.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet40.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet40.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet50.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet50.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet64.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet64.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet80.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet80.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/brush/brush.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/brush/brush.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/webgl.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/webgl.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/icon_enum.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/icon_enum.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/properties/PropsEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/properties/PropsEditor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/customdata.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/customdata.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_customdata.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_customdata.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_displacement.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_displacement.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_element_list.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_element_list.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_paramizer.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_paramizer.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_bvhdef.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_bvhdef.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/math.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/math.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" afterDir="false" />
@@ -41,7 +18,6 @@
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shadernetwork.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shadernetwork.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/shaders/shaders.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shaders/shaders.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/util/bvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bvh.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -300,7 +276,7 @@
       <workItem from="1625283696944" duration="13488000" />
       <workItem from="1625351178922" duration="35597000" />
       <workItem from="1625439242678" duration="12107000" />
-      <workItem from="1625532772696" duration="38760000" />
+      <workItem from="1625532772696" duration="40838000" />
     </task>
     <servers />
   </component>

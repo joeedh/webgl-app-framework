@@ -57,6 +57,10 @@ export class BVHDeformPaintOp extends PaintOpBase {
   constructor() {
     super();
 
+    this.bvhfirst = true;
+    this.bGrabVerts = undefined;
+    this.grabMode = true;
+
     this.randSeed = 0;
     this.rand = new util.MersenneRandom();
     this.rand.seed(this.randSeed);
@@ -99,7 +103,7 @@ export class BVHDeformPaintOp extends PaintOpBase {
       return;
     }
 
-    let mesh = this.mesh;
+    let mesh = ctx.mesh;
 
     let {origco, p, view, vec, w, mpos, radius, getchannel} = ret;
 
@@ -118,6 +122,26 @@ export class BVHDeformPaintOp extends PaintOpBase {
     ps.autosmooth = autosmooth;
     ps.w = w;
     ps.isInterp = isInterp;
+
+    let bvh = this.getBVH(mesh);
+
+    if (this.bvhfirst) {
+      console.error("Setting grab verts!");
+
+      this.bvhfirst = false;
+      let bvs = this.bGrabVerts = new Map();
+
+      for (let node of bvh.leaves) {
+        for (let bv of node.boxverts) {
+          let dis = bv.vectorDistance(ps.p);
+          bv.origco.load(bv);
+
+          if (dis < radius) {
+            bvs.set(bv, dis);
+          }
+        }
+      }
+    }
 
     let list = this.inputs.samples.getValue();
     let lastps;
@@ -342,34 +366,46 @@ export class BVHDeformPaintOp extends PaintOpBase {
     let visit = new WeakSet();
     let bvs = [];
 
-    for (let v of bvh.nodeVerts) {
-      if (visit.has(v)) {
+    let vset = new Set();
+
+    vset = this.bGrabVerts;
+
+    /*
+    for (let n of bvh.leaves) {
+      for (let bv of n.boxverts) {
+        vset.add(bv);
+      }
+    }*/
+
+    for (let bv of vset.keys()) {
+      if (visit.has(bv)) {
         continue;
       }
 
-      visit.add(v);
+      visit.add(bv);
 
-      if (!ud.nvset.has(v)) {
-        ud.nvset.add(v);
-        v.origco.load(v);
+      if (!ud.nvset.has(bv)) {
+        ud.nvset.add(bv);
+        bv.origco.load(bv);
       }
 
-      let dis = v.vectorDistance(ps.p);
+      let dis = vset.get(bv);
       if (dis >= radius) {
-        continue;
+        //continue;
       }
 
-      dis /= radius;
-      dis = falloff.evaluate(1.0 - dis);
+      let w = 1.0 - dis / radius;
+      w = falloff.evaluate(w);
+      w = Math.min(Math.max(w, 0.0), 1.0);
 
-      v.addFac(ps.dp, dis*ps.strength);
+      bv.addFac(ps.dp, w*ps.strength);
 
-      bvs.push(v);
-      bvs.push(dis);
+      bvs.push(bv);
+      bvs.push(w);
 
-      //v[0] += (this.rand.random() - 0.25)*fac;
-      //v[1] += (this.rand.random() - 0.25)*fac;
-      //v[2] += (this.rand.random() - 0.25)*fac;
+      //bv[0] += (this.rand.random() - 0.25)*fac;
+      //bv[1] += (this.rand.random() - 0.25)*fac;
+      //bv[2] += (this.rand.random() - 0.25)*fac;
     }
 
     let tmp = new Vector3();
@@ -380,8 +416,11 @@ export class BVHDeformPaintOp extends PaintOpBase {
 
       for (let e of bv.edges){
         let bv2 = e.otherVertex(bv);
-        co.add(bv2);
-        tot++;
+
+        if (vset.has(bv2)) {
+          co.add(bv2);
+          tot++;
+        }
       }
 
       if (tot > 0.0) {
@@ -392,7 +431,7 @@ export class BVHDeformPaintOp extends PaintOpBase {
 
     for (let i=0; i<bvs.length; i += 2) {
       let bv = bvs[i];
-      let w = bv[i+1];
+      let w =  (1.0-bvs[i+1]) * ps.autosmooth;
 
       smooth(bv, w);
     }
