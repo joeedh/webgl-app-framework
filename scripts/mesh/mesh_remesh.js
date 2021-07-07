@@ -209,7 +209,7 @@ export const RemeshFlags = {
   CLEANUP  : 4
 };
 
-const EDGE_DIAG = MeshFlags.MAKE_FACE_TEMP;
+const EDGE_DIAG = MeshFlags.QUAD_EDGE; //MAKE_FACE_TEMP;
 
 export class UniformTriRemesher extends Remesher {
   constructor(mesh, lctx = undefined, goalType, goalValue) {
@@ -431,7 +431,7 @@ export class UniformTriRemesher extends Remesher {
           //count diagonals less
           wfac = 0.25;
         } else {
-          e.flag &= ~MeshFlags.DRAW_DEBUG;
+          e.flag &= ~(EDGE_DIAG | MeshFlags.DRAW_DEBUG);
         }
 
         //w = Math.abs(w - 0.5);
@@ -494,6 +494,10 @@ export class UniformTriRemesher extends Remesher {
     console.log(this.i, "quad edges", this.calcQuadEdges(mesh), mesh.edges.length);
 
     console.log("SC", this.smoothCurveFac, this.smoothCurveRepeat);
+
+    for (let e of mesh.edges) {
+      e.flag &= ~(EDGE_DIAG|MeshFlags.DRAW_DEBUG);
+    }
 
     if (this.smoothCurveFac > 0.0) {
       let cd_curv = getCurveVerts(mesh);
@@ -614,7 +618,7 @@ export class UniformTriRemesher extends Remesher {
         e.v2.addFac(tan, -1.0);
       }
 
-      e.flag &= ~EDGE_DIAG;
+      //e.flag &= ~EDGE_DIAG;
       //e.flag &= ~DRAW_DEBUG;
     }
 

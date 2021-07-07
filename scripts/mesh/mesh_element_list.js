@@ -658,8 +658,26 @@ export class ElementList {
       this._fixcd(elem);
     }
 
+    const flatlist = this.customData.flatlist;
+    const nointerp = CDFlags.NO_INTERP;
+    const copyonly = CDFlags.NO_INTERP_COPY_ONLY;
+
     for (let i = 0; i < dest.customData.length; i++) {
       let cd = dest.customData[i];
+
+      const flag = flatlist[i].flag;
+
+      if (flag & copyonly) {
+        if (sources.length > 0) {
+          sources[0].customData[i].copyTo(dest.customData[i]);
+        }
+
+        continue;
+      }
+
+      if (flag & nointerp) {
+        continue;
+      }
 
       let j = 0;
       for (let e2 of sources) {

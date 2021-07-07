@@ -2532,7 +2532,7 @@ export class Face extends Element {
 
     sum.zero();
 
-    this.calcCent();
+    this.calcCent(cd_disp);
 
     let c = this.cent;
 
@@ -2561,10 +2561,11 @@ export class Face extends Element {
 
     sum.normalize();
     this.no.load(sum);
+
     return this.no;
   }
 
-  calcCent() {
+  calcCent(cd_disp) {
     this.cent.zero();
     let tot = 0.0;
 
@@ -2573,7 +2574,13 @@ export class Face extends Element {
     }
 
     for (let l of this.lists[0]) {
-      this.cent.add(l.v);
+      let co = l.v;
+
+      if (cd_disp >= 0) {
+        co = co.customData[cd_disp].worldco;
+      }
+
+      this.cent.add(co);
       tot++;
     }
 

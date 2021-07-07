@@ -656,6 +656,8 @@ export class PaintOpBase extends ToolOp {
     ret = ret || (!isPaint && mode !== SculptTools.GRAB && brush.pinch !== 0.0);
     ret = ret || mode === SculptTools.PINCH || mode === SculptTools.SLIDE_RELAX;
 
+    //ret = ret || brush.autosmooth > 0 || brush.rake > 0 || brush.pinch > 0;
+
     if (brush.texUser.texture) {
       ret = ret || (brush.texUser.flag & TexUserFlags.ORIGINAL_CO);
     }
@@ -970,6 +972,12 @@ export class PaintOpBase extends ToolOp {
     return this.sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp);
   }
 
+  getBVH(mesh) {
+    return mesh.getBVH({
+      auto_update : false
+    });
+  }
+
   sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp) {
     let brush = this.inputs.brush.getValue();
     let mode = brush.tool;
@@ -1011,7 +1019,7 @@ export class PaintOpBase extends ToolOp {
     let ob = ctx.object;
     let mesh = ob.data;
 
-    let bvh = mesh.getBVH(false);
+    let bvh = this.getBVH(mesh);
 
     let axes = [-1];
     let sym = mesh.symFlag;

@@ -12,7 +12,7 @@ import {CDFlags, CustomDataElem} from '../../../mesh/customdata.js';
 import {
   BrushFlags, DynTopoFlags, SculptTools, BrushSpacingModes, DynTopoModes, SubdivModes
 } from '../../../brush/brush.js';
-import {getArrayTemp, LogContext, Loop, Mesh, MeshFlags, MeshTypes} from '../../../mesh/mesh.js';
+import {getArrayTemp, LogContext, Loop, Mesh, MeshFlags, MeshTypes, Vertex} from '../../../mesh/mesh.js';
 import {BVHFlags, BVHTriFlags, IsectRet} from '../../../util/bvh.js';
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js';
 import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../mesh/mesh_grids_kdtree.js';
@@ -32,6 +32,7 @@ import {getCurveVerts, dirCurveSmooth} from '../../../mesh/mesh_curvature.js';
 import {TexUserFlags, TexUserModes} from '../../../texture/proceduralTex.js';
 import {closest_bez3_v2, dbez3_v2} from '../../../util/bezier.js';
 import {tetSolve} from '../../../tet/tet_deform.js';
+import {DispContext, DispLayerVert, getSmoothMemo, SmoothMemoizer} from '../../../mesh/mesh_displacement.js';
 
 //grab data field definition
 const GEID = 0, GEID2 = 1, GDIS = 2, GSX = 3, GSY = 4, GSZ = 5;
@@ -175,6 +176,7 @@ export class PaintOp extends PaintOpBase {
         dynTopoDepth    : new IntProperty(20),
         useDynTopo      : new BoolProperty(false),
         useMultiResDepth: new BoolProperty(false),
+        reprojectCustomData : new BoolProperty(false)
       })
     }
   }
@@ -288,7 +290,7 @@ export class PaintOp extends PaintOpBase {
 
     let cd_mask = undo.cd_mask;
 
-    let bvh = getBVH(ctx);
+    let bvh = this.getBVH(mesh);
     let cd_node;
 
     if (bvh) {
@@ -307,7 +309,7 @@ export class PaintOp extends PaintOpBase {
       log.undo(mesh);
       mesh.regenTessellation();
       mesh.regenBVH();
-      bvh = mesh.getBVH();
+      bvh = this.getBVH(mesh);
     }
 
     let doColors = () => {
@@ -630,7 +632,7 @@ export class PaintOp extends PaintOpBase {
 
     let the_mesh = mesh || tetmesh;
 
-    let bvh = getBVH(the_mesh);
+    let bvh = this.getBVH(the_mesh);
     let brush = this.inputs.brush.getValue();
     let mode = brush.tool;
 
@@ -907,7 +909,7 @@ export class PaintOp extends PaintOpBase {
 
     bvhRadius *= smul;
 
-    let bvh = mesh.getBVH(false);
+    let bvh = this.getBVH(mesh);
     let vs = bvh.closestVerts(co, bvhRadius);
     let co2 = new Vector3();
 
@@ -1188,7 +1190,7 @@ export class PaintOp extends PaintOpBase {
       }
 
       if (mesh) {
-        mesh.getBVH();
+        this.getBVH(mesh);
       }
     }
 
@@ -1317,6 +1319,10 @@ export class PaintOp extends PaintOpBase {
       this._ensureGrabEidMap(ctx);
     }
 
+    let ob = ctx.object;
+    let obmat = ob.outputs.matrix.getValue();
+    let mesh = ob.data;
+
     const DRAW                                                            = SculptTools.DRAW,
           SHARP                                                           = SculptTools.SHARP,
           FILL                                                            = SculptTools.FILL,
@@ -1348,14 +1354,12 @@ export class PaintOp extends PaintOpBase {
     let gmap = undo.gmap;
     let gdata = undo.gdata;
 
-    let ob = ctx.object;
-    let obmat = ob.outputs.matrix.getValue();
-    let mesh = ob.data;
-
     let mres, oldmres;
 
-    let bvh = mesh.getBVH(false);
+    let bvh = this.getBVH(mesh);
     let vsw;
+
+    bvh.checkCD();
 
     /* test deforming base (well, level 1) of grid but displaying full thing
     if (GridBase.meshGridOffset(mesh) >= 0) {
@@ -1492,6 +1496,7 @@ export class PaintOp extends PaintOpBase {
     let vec = new Vector3(ps.vec);
     let planep = new Vector3(ps.p);
 
+    let cd_disp = mesh.verts.customData.getLayerIndex("displace");
     let esize = ps.esize;
 
     let w = ps.p[3];
@@ -1684,6 +1689,19 @@ export class PaintOp extends PaintOpBase {
     //move into view plane
     let d = linePlane2.dot(ps.viewPlane);
     linePlane2.addFac(ps.viewPlane, -d).normalize();
+
+    const useSmoothMemo = vsw < 0.75 && GridBase.meshGridOffset(mesh) < 0;
+    let smemo;
+
+    if (useSmoothMemo) {
+      smemo = new SmoothMemoizer(mesh, -1);
+      smemo.noDisp = true;
+      smemo.projection = smoothProj;
+      smemo.smoothGen = Math.random();
+      smemo.initGen = Math.random();
+      smemo.start(false, -1, true);
+      smemo.memoize = !(window.noMemoize ?? false);
+    }
 
     //query bvh tree
     let vs;
@@ -2699,7 +2717,6 @@ export class PaintOp extends PaintOpBase {
       }
     }
 
-
     let mat1 = new Matrix4();
     let _tmp4 = new Vector3();
     let _tmp5 = new Vector3();
@@ -2957,6 +2974,15 @@ export class PaintOp extends PaintOpBase {
       }
 
       v.addFac(g, 0.25*fac);
+    }
+
+    if (useSmoothMemo) {
+      vsmooth = (v, fac=0.5) => {
+        smemo.fac = fac;
+        let co = smemo.smoothco(v);
+
+        v.interp(co, fac);
+      }
     }
 
     let _rtmp3 = new Vector3();
@@ -4301,6 +4327,16 @@ export class PaintOp extends PaintOpBase {
       }
     }//*/
 
+    let origVs = [];
+    let origNs = [];
+
+    for (let v of vs) {
+      origVs.push(new Vector3(v));
+      origNs.push(new Vector3(v));
+    }
+
+    let reproject = false;
+
     for (let v of vs) {
       let node = v.customData[cd_node].node;
 
@@ -4314,6 +4350,7 @@ export class PaintOp extends PaintOpBase {
       //}
 
       if (!isPaintMode && rakefac > 0.0) {
+        reproject = true;
         rake(v, rakefac*ws[wi + WF], ws[wi + WF2]);
       }
 
@@ -4321,15 +4358,21 @@ export class PaintOp extends PaintOpBase {
         if (isPaintMode) {
           v.customData[cd_color].color.load(colorfilter(v, cd_color, vsw*ws[wi]));
         } else {
+          if (vsw*ws[wi] > 0.0) {
+            reproject = true;
+          }
+
           vsmooth(v, vsw*ws[wi]);
         }
       }
 
       if (!isPaintMode && sharp !== 0.0) {
+        reproject = true;
         vsharp(v, ws[wi]*sharp);
       }
 
       if (!isPaintMode && pinch !== 0.0) {
+        reproject = true;
         dopinch(v, ws[wi]);
       }
 
@@ -4359,6 +4402,155 @@ export class PaintOp extends PaintOpBase {
           //doGridBoundary(v);
           gridVertStitch(v);
         }
+      }
+    }
+
+    if (reproject && !haveGrids && this.inputs.reprojectCustomData.getValue()) {
+      function swap3(a, b) {
+        for (let i=0; i<3; i++) {
+          let t = a[i];
+          a[i] = b[i];
+          b[i] = t;
+        }
+      }
+
+      let ls = new Set();
+
+      let i = 0, li = 0;
+
+      for (let v of vs) {
+        let node = v.customData[cd_node].node;
+
+        for (let l of v.loops) {
+          if (l.v !== v) {
+            l = l.next;
+          }
+
+          if (!ls.has(l)) {
+            l.index = li++;
+          }
+          ls.add(l);
+        }
+
+        node.setUpdateFlag(BVHFlags.UPDATE_BOUNDS);
+
+        //XXX
+        //origVs[i].load(v);
+        //origNs[i].load(v.no);
+
+        swap3(v, origVs[i]);
+        swap3(v.no, origNs[i]);
+
+        i++;
+      }
+
+      bvh.update();
+
+      let cdblocks_loop = new Map();
+      let cdblocks = [];
+      let dummy = new Vertex();
+
+      let vlist = [0, 0, 0];
+      let wlist = [0, 0, 0];
+
+      i = 0;
+      for (let v of vs) {
+        let origco = origVs[i];
+        let origno = origNs[i];
+
+        origco.addFac(origno, -0.00001);
+
+        let r1 = bvh.castRay(origco, origno);
+        origno.negate();
+        let r2 = bvh.castRay(origco, origno);
+
+        let r;
+
+        if (r1 && r2) {
+          if (Math.abs(r1.dist) < Math.abs(r2.dist)) {
+            r = r1;
+          } else {
+            r = r2;
+          }
+        } else if (r1) {
+          r = r1;
+        } else if (r2) {
+          r = r2;
+        }
+
+        if (!r) {// || (r.tri.v1 !== v && r.tri.v2 !== v && r.tri.v3 !== v)) {
+          console.warn("Cast error", v, origco, origno);
+          cdblocks.push(undefined);
+        }
+
+        let tri = r.tri;
+        vlist[0] = tri.v1;
+        vlist[1] = tri.v2;
+        vlist[2] = tri.v3;
+
+        //let t = r.uv[0];
+        //r.uv[0] = r.uv[1];
+        //r.uv[1] = t;
+
+        wlist[0] = r.uv[0];
+        wlist[1] = r.uv[1];
+        wlist[2] = 1.0 - r.uv[0] - r.uv[1];
+
+        dummy.customData = [];
+        for (let cd of v.customData) {
+          dummy.customData.push(cd.copy());
+        }
+
+        mesh.verts.customDataInterp(dummy, vlist, wlist);
+        cdblocks.push(dummy.customData);
+
+        for (let l of v.loops) {
+          if (l.v !== v) {
+            l = l.next;
+          }
+
+          dummy.customData = [];
+          for (let cd of l.customData) {
+            dummy.customData.push(cd.copy());
+          }
+
+          vlist[0] = r.tri.l1;
+          vlist[1] = r.tri.l2;
+          vlist[2] = r.tri.l3;
+
+          mesh.loops.customDataInterp(dummy, vlist, wlist);
+          cdblocks_loop.set(l, dummy.customData);
+        }
+        i++;
+      }
+
+      //console.log("CDBLOCKS_LOOP", cdblocks_loop);
+
+      for (let l of cdblocks_loop.keys()) {
+        let block = cdblocks_loop.get(l);
+
+        for (let i=0; i<l.customData.length; i++) {
+          block[i].copyTo(l.customData[i]);
+        }
+      }
+
+      i = 0;
+      for (let v of vs) {
+        if (cdblocks[i] !== undefined) {
+          let block = cdblocks[i];
+
+          for (let j=0; j<v.customData.length; j++) {
+            block[j].copyTo(v.customData[j]);
+          }
+        }
+
+        swap3(v, origVs[i]);
+        swap3(v.no, origNs[i]);
+
+        let node = v.customData[cd_node].node;
+        node.setUpdateFlag(BVHFlags.UPDATE_COLORS|BVHFlags.UPDATE_BOUNDS|BVHFlags.UPDATE_DRAW);
+
+        i++;
       }
     }
 
@@ -4403,6 +4595,34 @@ export class PaintOp extends PaintOpBase {
       let sverts = smoother.getSuperVerts(vs);
       smoother.smooth(sverts, wfunc, wfac, smoothProj);
     }
+
+    if (useSmoothMemo) {
+      console.log("steps:", smemo.steps);
+    }
+
+    if (cd_disp >= 0) {
+      let dctx = new DispContext();
+
+      dctx.reset(mesh, cd_disp);
+
+      dctx.settings.smoothGen++;
+      dctx.settings.initGen++;
+
+      let smemo = getSmoothMemo(mesh, cd_disp);
+      dctx.smemo = smemo;
+
+      for (let v of vs) {
+        if (v.eid < 0) {
+          continue;
+        }
+
+        dctx.v = v;
+        let dv = v.customData[cd_disp];
+
+        dv.flushUpdateCo(dctx, true);
+      }
+    }
+
 
     let this2 = this;
     let doDynTopo = function* (vs) {
@@ -4657,6 +4877,44 @@ export class PaintOp extends PaintOpBase {
 
     bvh.update();
 
+    if (cd_disp >= 0) {
+      let dctx = new DispContext();
+      dctx.reset(mesh, cd_disp);
+
+      dctx.settings.smoothGen++;
+      dctx.settings.initGen++;
+
+      let smemo = getSmoothMemo(mesh, cd_disp);
+      dctx.smemo = smemo;
+
+      vs = bvh.closestVerts(ps.p, bvhRadius);
+      for (let v of vs) {
+        dctx.v = v;
+
+        let i = 0;
+        for (let cd of v.customData) {
+          if (cd instanceof DispLayerVert) {
+            dctx.pushDisp(i);
+            cd.checkInterpNew(dctx);
+            dctx.popDisp();
+          }
+
+          i++;
+        }
+      }
+
+      for (let v of vs) {
+        if (v.eid < 0) {
+          continue;
+        }
+
+        dctx.v = v;
+        let dv = v.customData[cd_disp];
+
+        dv.flushUpdateCo(dctx, true);
+      }
+    }
+
     if (mres && oldmres) {
       oldmres.copyTo(mres);
 
@@ -4668,7 +4926,7 @@ export class PaintOp extends PaintOpBase {
       }
 
       mesh.regenBVH();
-      mesh.getBVH(false).update();
+      this.getBVH(mesh).update();
     }
 
     if (!this.modalRunning) {
@@ -4993,6 +5251,7 @@ export class PaintOp extends PaintOpBase {
       }
     }
 
+    //mark tessellation as bad, will happen on switching to another mode
     mesh.regenTessellation();
   }
 
@@ -7046,7 +7305,7 @@ export class PaintOp extends PaintOpBase {
     if (PaintOpBase.needOrig(brush)) {
       let cd_orig = this.initOrigData(mesh);
 
-      let bvh = getBVH(ctx);
+      let bvh = this.getBVH(mesh);
       bvh.origCoStart(cd_orig);
     }
   }

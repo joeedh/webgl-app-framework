@@ -117,6 +117,7 @@ export let Icons = {
   INFLATE              : 111,
   STRANDS              : 112,
   RELOAD               : 113,
-  SCULPT_SLIDE_RELAX   : 114
+  SCULPT_SLIDE_RELAX   : 114,
+  SCULPT_BVH_DEFORM    : 115
 };
 setIconMap(Icons);

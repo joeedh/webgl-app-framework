@@ -197,7 +197,7 @@ export class TriToQuadsOp extends MeshOp {
       icon    : Icons.TRIS_TO_QUADS,
       toolpath: "mesh.tris_to_quads",
       inputs  : ToolOp.inherit({
-        options: new FlagProperty(TriQuadFlags.DEFAULT, TriQuadFlags)
+        options: new FlagProperty(TriQuadFlags.DEFAULT, TriQuadFlags).saveLastValue()
       }),
       outputs : ToolOp.inherit()
     }
@@ -216,6 +216,22 @@ export class TriToQuadsOp extends MeshOp {
       }
 
       trianglesToQuads(mesh, fs, this.inputs.options.getValue());
+
+      if (this.inputs.options.getValue()) {
+        for (let f of mesh.faces.selected.editable) {
+          for (let e of f.edges) {
+            if (e.flag & MeshFlags.QUAD_EDGE) {
+              e.flag |= MeshFlags.DRAW_DEBUG;
+            } else {
+              e.flag &= ~MeshFlags.DRAW_DEBUG;
+            }
+
+            e.flag |= MeshFlags.UPDATE;
+            e.v1.flag |= MeshFlags.UPDATE;
+            e.v2.flag |= MeshFlags.UPDATE;
+          }
+        }
+      }
 
       mesh.regenBVH();
       mesh.regenRender();

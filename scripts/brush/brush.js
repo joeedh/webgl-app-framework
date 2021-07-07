@@ -54,6 +54,7 @@ export const SculptTools = {
   PINCH           : 13,
   DIRECTIONAL_FAIR: 14,
   SLIDE_RELAX     : 15,
+  BVH_DEFORM      : 16,
   PAINT           : 128,
   PAINT_SMOOTH    : 129,
   COLOR_BOUNDARY  : 130,

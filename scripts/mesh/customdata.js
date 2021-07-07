@@ -9,7 +9,9 @@ export const CDFlags = {
   SINGLE_LAYER       : 2,
   TEMPORARY          : 4, //implies IGNORE_FOR_INDEXBUF
   IGNORE_FOR_INDEXBUF: 8,
-  DISABLED           : 16
+  DISABLED           : 16,
+  NO_INTERP          : 32,
+  NO_INTERP_COPY_ONLY: 64
 };
 
 export let CDElemMap = {};

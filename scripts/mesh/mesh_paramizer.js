@@ -249,16 +249,25 @@ export class ParamVert extends CustomDataElem {
 
     let vdata = getCotanData(v);
     let totarea = 0.0;
+    let totw = 0.0;
 
     let wi = 0;
     let vi = VETOT; //skip first entry
 
     for (let e of v.edges) {
+      let area = vdata[vi + VAREA];
       let cot1 = vdata[vi + VCTAN1];
       let cot2 = vdata[vi + VCTAN2];
-      let area = vdata[vi + VAREA];
 
       let w = vdata[vi + VW];
+
+      //cot1 = 1.0 / (cot1 + 0.00001);
+      //cot2 = 1.0 / (cot2 + 0.00001);
+      w = 1.0; //cot1 + cot2;
+
+      if (area !== 0.0) {
+        w *= area;
+      }
 
       if (!area) {
         vi += VETOT;
@@ -270,10 +279,16 @@ export class ParamVert extends CustomDataElem {
 
       //w = -(cot1 + cot2);
 
-      this.wlist[wi] = 1.0 - w//*area;
+      this.wlist[wi] = w//*area;
 
       vi += VETOT;
       wi++;
+    }
+
+    totw = totw ? 1.0 / totw : 0.0;
+
+    for (let i=0; i<wi; i++) {
+      this.wlist[wi] *= totw;
     }
 
     this.totarea = totarea;

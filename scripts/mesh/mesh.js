@@ -1940,6 +1940,10 @@ export class Mesh extends SceneObjectData {
     }
 
     var nv = this.makeVertex(e.v1).interp(e.v2, t);
+
+    nv.no.load(e.v1.no).interp(e.v2.no, t);
+    nv.no.normalize();
+
     var ne = this.makeEdge(nv, e.v2);
 
     this.copyElemData(ne, e);
@@ -2819,7 +2823,7 @@ export class Mesh extends SceneObjectData {
       }
 
       if (tot === 2) {
-        console.log("found face");
+        //console.log("found face");
 
         return this.splitFaceAtVerts(f, v1, v2, lctx);
       }
@@ -5093,25 +5097,44 @@ export class Mesh extends SceneObjectData {
     return this.getBVH(...arguments);
   }
 
-  getBVH(auto_update = true, useGrids = true,
-         force                        = false, wireVerts     = false) {
+  getBVH(auto_update_or_args = true, useGrids = true,
+         force                                = false, wireVerts = false) {
+    let auto_update = auto_update_or_args;
+    let deformMode;
+    let onCreate;
+
+    if (typeof auto_update_or_args === "object") {
+      let args = auto_update_or_args;
+
+      auto_update = args.auto_update ?? true;
+      useGrids = args.useGrids ?? true;
+      force = args.force;
+      wireVerts = args.wireVerts;
+      deformMode = args.deformMode;
+      onCreate = args.onCreate;
+    }
+
     let key = this.verts.length + ":" + this.faces.length + ":" + this.edges.length + ":" + this.loops.length;
-    key += ":" + this.eidgen._cur + ":" + useGrids;
-    key += ":" + wireVerts;
+    key += ":" + this.eidgen._cur + ":" + !!useGrids;
+    key += ":" + !!wireVerts + ":" + !!deformMode;
 
     if (useGrids) {
       key += ":" + GridBase.meshGridOffset(this);
     }
 
-    let bkey = this.bvhSettings.calcUpdateKey();
+    let bkey = "" + !!deformMode + ":" + !!wireVerts + ":" + useGrids;
+    bkey += ":" + this.bvhSettings.calcUpdateKey();
 
-    key += ":" + bkey;
+    key += ":" + this.bvhSettings.calcUpdateKey();
 
     if (force || !this.bvh || key !== this._last_bvh_key) {
+      console.log(this._last_bvh_key);
+      console.log(key);
+
       this._last_bvh_key = key;
 
       if (bkey !== this.bvhSettings._last_key || auto_update || !this.bvh || force) {
-        this.bvhSettings._last_key = this.bvhSettings.calcUpdateKey();
+        this.bvhSettings._last_key = bkey;
 
         console.error("BVH rebuild!");
 
@@ -5122,9 +5145,25 @@ export class Mesh extends SceneObjectData {
         let bvhcls = BVH;
         //bvhcls = SpatialHash;
 
-        this.bvh = bvhcls.create(this, true, useGrids,
-          undefined, undefined,
+        let args = {
+          deformMode,
+          addWireVerts: wireVerts,
+          useGrids,
+          freelist    : this._bvh_freelist,
+          storeVerts  : true,
+          onCreate
+        }
+
+        this.bvh = bvhcls.create(this, args);
+
+        /*
+        this.bvh = bvhcls.create(this,
+          true,
+          useGrids,
+          undefined,
+          undefined,
           this._bvh_freelist, wireVerts);
+         //*/
       }
     }
 
@@ -6487,6 +6526,52 @@ export class Mesh extends SceneObjectData {
       }
     }
 
+    let ls = [];
+
+    for (let f of this.faces) {
+      for (let list of f.lists) {
+        let l = list.l;
+        let _i = 0;
+
+        let flag = MeshFlags.MAKE_FACE_TEMP;
+        ls.length = 0;
+
+        for (let l of list) {
+          l.v.flag &= ~flag;
+          this._radialRemove(l.e, l);
+          ls.push(l);
+        }
+
+        for (let l of ls) {
+          if (l.v.flag & flag) {
+            console.warn("Duplicate verts in face", f, l.v);
+            msg_out[0] = "Duplicate verts in face";
+            fix = true;
+
+            l.prev.next = l.next;
+            l.next.prev = l.prev;
+
+            if (l === list.l) {
+              list.l = l.next;
+            }
+
+            list.length--;
+
+            this._killLoop(l);
+            l.v.flag |= MeshFlags.UPDATE;
+
+            continue;
+          }
+
+          l.v.flag |= flag;
+        }
+
+        for (let l of list) {
+          this._radialInsert(l.e, l);
+        }
+      }
+    }
+
     for (let f of this.faces) {
       for (let list of f.lists) {
         if (list.length < 3) {
@@ -6741,6 +6826,7 @@ export class Mesh extends SceneObjectData {
       this._updateEidgen();
     }
 
+    onFileLoadDispVert(this);
     this.validateMesh();
   }
 
@@ -6834,6 +6920,6 @@ window._debug_recalc_all_normals = function (force = false) {
 window.Mesh = Mesh
 
 import {setMeshClass} from './mesh_tess.js';
-import {checkDispLayers, DispLayerFlags, updateDispLayers} from './mesh_displacement.js';
+import {checkDispLayers, DispLayerFlags, onFileLoadDispVert, updateDispLayers} from './mesh_displacement.js';
 
 setMeshClass(Mesh);

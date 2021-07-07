@@ -101,6 +101,96 @@ UVLayerElem.STRUCT = STRUCT.inherit(UVLayerElem, CustomDataElem, "mesh.UVLayerEl
 nstructjs.manager.add_class(UVLayerElem);
 CustomDataElem.register(UVLayerElem);
 
+
+export class Vector2LayerElem extends CustomDataElem {
+  constructor() {
+    super();
+
+    this.value = new Vector2();
+  }
+
+  static apiDefine(api, dstruct) {
+    dstruct.vec2("value", "value", "value");
+  }
+
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.VERTEX|MeshTypes.EDGE|MeshTypes.LOOP|MeshTypes.FACE,
+      typeName    : "vec2",
+      uiTypeName  : "vec2",
+      defaultName : "Vector 2",
+      valueSize   : 2,
+      flag        : 0
+    }
+  };
+
+  clear() {
+    this.value.zero();
+    return this;
+  }
+
+  setValue(value) {
+    this.value.load(value);
+  }
+
+  add(b) {
+    this.value.add(b.value);
+    return this;
+  }
+
+  addFac(b, fac) {
+    this.value.addFac(b.value, fac);
+    return this;
+  }
+
+  mulScalar(b) {
+    this.value.mulScalar(b);
+    return this;
+  }
+
+  getValue() {
+    return this.value;
+  }
+
+  copyTo(b) {
+    b.flag = this.flag;
+    b.value.load(this.value);
+  }
+
+  copy() {
+    let ret = new Vector2LayerElem();
+    this.copyTo(ret);
+    return ret;
+  }
+
+  interp(dest, datas, ws) {
+    if (datas.length === 0) {
+      return;
+    }
+
+    let u = 0, v = 0;
+
+    for (let i = 0; i < datas.length; i++) {
+      u += ws[i]*datas[i].value[0];
+      v += ws[i]*datas[i].value[1];
+    }
+
+    this.value[0] = u;
+    this.value[1] = v;
+  }
+
+  validate() {
+    return true;
+  }
+}
+
+Vector2LayerElem.STRUCT = STRUCT.inherit(Vector2LayerElem, CustomDataElem, "mesh.Vector2LayerElem") + `
+  value   : vec2;
+}
+`;
+nstructjs.manager.add_class(Vector2LayerElem);
+CustomDataElem.register(Vector2LayerElem);
+
 export const ORIGINDEX_NONE = -1;
 
 export class OrigIndexElem extends CustomDataElem {
@@ -406,8 +496,8 @@ export class ColorLayerElem extends CustomDataElem {
     dstruct.color4("color", "color", "Color");
   }
 
-  setValue(uv) {
-    this.color.load(uv);
+  setValue(color) {
+    this.color.load(color);
   }
 
   getValue() {

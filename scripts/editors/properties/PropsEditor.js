@@ -546,7 +546,8 @@ export class ObjectPanel extends ColumnFrame {
       ["VERTEX", "color", false, false, true],
       ["LOOP", "uv", false, false, true],
       ["VERTEX", "mask"],
-      ["VERTEX", "displace", true, true]
+      ["VERTEX", "displace", true, true],
+      ["VERTEX", "paramvert"]
     ];
 
     let data = ob.data;

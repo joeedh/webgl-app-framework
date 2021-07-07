@@ -1,3 +1,5 @@
+import './pbvh_bvhdef.js';
+
 import {WidgetFlags} from "../widgets/widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {BVH, BVHFlags, BVHTriFlags} from "../../../util/bvh.js";
@@ -56,10 +58,16 @@ import './pbvh_texpaint.js';
 import {calcConcave, getBVH} from './pbvh_base.js';
 import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js';
 import {TetMesh} from '../../../tet/tetgen.js';
+import {DispContext} from '../../../mesh/mesh_displacement.js';
+import {Texture} from '../../../core/webgl.js';
 
 export class BVHToolMode extends ToolMode {
   constructor(manager) {
     super(manager);
+
+    this.editDisplaced = false;
+    this.drawDispDisField = false;
+    this.reprojectCustomData = false;
 
     this.sharedBrushRadius = 55;
 
@@ -552,9 +560,13 @@ export class BVHToolMode extends ToolMode {
     strip.prop(`scene.tools.${name}.drawFlat`);
     strip.prop(`scene.tools.${name}.drawWireframe`);
     strip.prop(`scene.tools.${name}.drawCavityMap`);
-    strip.prop(`scene.tools.${name}.drawNodeIds`);
-    strip.prop(`scene.tools.${name}.drawColPatches`);
+    //strip.prop(`scene.tools.${name}.drawNodeIds`);
+    //strip.prop(`scene.tools.${name}.drawColPatches`);
     strip.prop(`scene.tools.${name}.drawMask`);
+
+    strip = header.strip();
+    strip.prop(`scene.tools.${name}.editDisplaced`);
+    strip.prop(`scene.tools.${name}.drawDispDisField`);
 
     strip = header.strip();
     strip.useIcons(false);
@@ -587,10 +599,9 @@ export class BVHToolMode extends ToolMode {
     row = addHeaderRow();
     strip = row.strip();
     strip.tool("mesh.edgecut()");
+    strip.prop(`scene.tools.${name}.reprojectCustomData`);
 
     header.flushUpdate();
-
-
   }
 
   static defineAPI(api) {
@@ -654,6 +665,12 @@ export class BVHToolMode extends ToolMode {
     st.struct("_apiDynTopo", "dynTopo", "DynTopo", api.mapStruct(DynTopoSettings));
     st.bool("_apiInheritDynTopo", "inheritDynTopo", "Inherit Everything");
 
+    st.bool("editDisplaced", "editDisplaced", "Displaced")
+      .on('change', onchange);
+    st.bool("drawDispDisField", "drawDispDisField", "Draw Dis Field")
+      .on('change', onchange);
+    st.bool("reprojectCustomData", "reprojectCustomData", "Reproject UVs & colors");
+
     return st;
   }
 
@@ -715,7 +732,7 @@ export class BVHToolMode extends ToolMode {
   }
 
   getBVH(mesh, useGrids = true) {
-    return mesh.bvh ? mesh.bvh : mesh.getBVH(false);
+    return mesh.bvh ? mesh.bvh : mesh.getLastBVH(false)
   }
 
   on_mousemove(e, x, y, was_touch) {
@@ -766,7 +783,12 @@ export class BVHToolMode extends ToolMode {
       }
       brush.radius = radius;
 
-      if (brush.tool === SculptTools.HOLE_FILLER) {
+      if (brush.tool === SculptTools.BVH_DEFORM) {
+        this.ctx.api.execTool(this.ctx, "bvh.bvh_deform()", {
+          brush       : brush,
+          symmetryAxes: this.symmetryAxes
+        });
+      } else if (brush.tool === SculptTools.HOLE_FILLER) {
         this.ctx.api.execTool(this.ctx, "bvh.hole_filler()", {
           brush       : brush,
           symmetryAxes: this.symmetryAxes
@@ -780,9 +802,10 @@ export class BVHToolMode extends ToolMode {
         this.ctx.api.execTool(this.ctx, "bvh.paint()", {
           brush: brush,
 
-          symmetryAxes    : this.symmetryAxes,
-          dynTopoDepth    : brush.dynTopo.maxDepth,
-          useMultiResDepth: this.enableMaxEditDepth
+          symmetryAxes       : this.symmetryAxes,
+          dynTopoDepth       : brush.dynTopo.maxDepth,
+          useMultiResDepth   : this.enableMaxEditDepth,
+          reprojectCustomData: this.reprojectCustomData
         });
       }
 
@@ -897,7 +920,7 @@ export class BVHToolMode extends ToolMode {
     }
 
     let mesh = this.ctx.mesh;
-    let bvh = mesh.getBVH(false);
+    let bvh = mesh.getLastBVH(false);
 
     console.warn("Spatially sorting mesh topology for memory coherence. . .");
 
@@ -945,15 +968,15 @@ export class BVHToolMode extends ToolMode {
     let uniforms = {
       projectionMatrix: view3d.activeCamera.rendermat,
       //normalMatrix    : new Matrix4()
-      objectMatrix    : new Matrix4(),
-      object_id       : -1,
-      size            : view3d.glSize,
-      near            : view3d.activeCamera.near,
-      far             : view3d.activeCamera.far,
-      aspect          : view3d.activeCamera.aspect,
-      polygonOffset   : 0.0,
-      color           : [1, 0, 0, 1],
-      alpha           : 1.0
+      objectMatrix : new Matrix4(),
+      object_id    : -1,
+      size         : view3d.glSize,
+      near         : view3d.activeCamera.near,
+      far          : view3d.activeCamera.far,
+      aspect       : view3d.activeCamera.aspect,
+      polygonOffset: 0.0,
+      color        : [1, 0, 0, 1],
+      alpha        : 1.0
     };
 
     let program = Shaders.ObjectLineShader;
@@ -970,10 +993,10 @@ export class BVHToolMode extends ToolMode {
       uniforms.objectMatrix.makeIdentity();
     }
 
-    let drawNodeAABB = (node, matrix) => {
+    let drawNodeAABB = (bvh, node, matrix) => {
       if (!node.leaf) {
         for (let c of node.children) {
-          drawNodeAABB(c, matrix);
+          drawNodeAABB(bvh, c, matrix);
         }
 
         return;
@@ -988,19 +1011,8 @@ export class BVHToolMode extends ToolMode {
 
       let size = new Vector3(node.max).sub(node.min);
 
-      let smat = new Matrix4();
-      smat.scale(size[0], size[1], size[2]);
-
-      let tmat = new Matrix4();
-      tmat.translate(node.min[0] + size[0]*0.5, node.min[1] + size[1]*0.5, node.min[2] + size[2]*0.5);
-
-      matrix.multiply(tmat);
-      matrix.multiply(smat);
-
       gl.disable(gl.CULL_FACE);
       gl.disable(gl.BLEND);
-
-      uniforms.objectMatrix.load(matrix);
 
       let f = node.id*0.1;
       uniforms.color[0] = Math.fract(f*Math.sqrt(3.0));
@@ -1021,7 +1033,51 @@ export class BVHToolMode extends ToolMode {
 
       //console.log(uniforms);
 
-      Shapes.CUBE.drawLines(gl, uniforms, program);
+      let white = [1, 1, 1, 1];
+
+      if (bvh.isDeforming) {
+        let lf = LayerTypes;
+        let lflag = lf.LOC | lf.COLOR;
+
+        let sm = new SimpleMesh(lflag);
+        sm.primflag |= PrimitiveTypes.LINES;
+
+        for (let e of node.boxedges) {
+          let v1 = new Vector3(e.v1);
+          let v2 = new Vector3(e.v2);
+
+          //v1.interp(node.cent, 0.05);
+          //v2.interp(node.cent, 0.05);
+
+          let line = sm.line(v1, v2);
+          line.colors(white, white);
+
+          //v1.interp(v2, 0.5);
+          //line = sm.line(v1, node.cent);
+          //line.colors(white, white);
+
+          //line = sm.line(v2, node.cent);
+          //line.colors(white, white);
+        }
+
+        sm.drawLines(gl, uniforms, program);
+        sm.destroy(gl);
+      } else {
+        let smat = new Matrix4();
+        smat.scale(size[0], size[1], size[2]);
+
+        let tmat = new Matrix4();
+        tmat.translate(node.min[0] + size[0]*0.5, node.min[1] + size[1]*0.5, node.min[2] + size[2]*0.5);
+
+        matrix.multiply(tmat);
+        matrix.multiply(smat);
+
+        uniforms.objectMatrix.load(matrix);
+
+        Shapes.CUBE.drawLines(gl, uniforms, program);
+      }
+
+      //uniforms.objectMatrix = new Matrix4();
       //Shapes.CUBE.draw(gl, uniforms, program);
     }
 
@@ -1041,7 +1097,7 @@ export class BVHToolMode extends ToolMode {
       if (this.drawBVH) {
         for (let node of bvh.nodes) {
           if (node.leaf) {
-            drawNodeAABB(node, matrix);
+            drawNodeAABB(bvh, node, matrix);
           }
         }
         //drawNodeAABB(bvh.root, matrix);
@@ -1106,6 +1162,7 @@ export class BVHToolMode extends ToolMode {
     //update all normals on first bvh build
     if (!mesh.bvh) {
       bvh = this.getBVH(mesh);
+
       for (let n of bvh.nodes) {
         if (n.leaf) {
           n.setUpdateFlag(BVHFlags.UPDATE_NORMALS);
@@ -1116,6 +1173,9 @@ export class BVHToolMode extends ToolMode {
     } else {
       bvh = this.getBVH(mesh);
     }
+
+    const isDeforming = bvh.isDeforming;
+    const cd_node = bvh.cd_node;
 
     let dynTopo = this._apiDynTopo;
 
@@ -1216,10 +1276,17 @@ export class BVHToolMode extends ToolMode {
     for (let node of sortnodes) {
       let p = node;
 
-      if (node.parent && node.parent.subtreeDepth > node.depth + 1) {
+      let ok = node.parent && node.parent.subtreeDepth > node.depth + 1;
+      ok = ok || (node.leaf && bvh.isDeforming);
+
+      if (ok) {
         node.flag |= BVHFlags.TEMP_TAG;
 
         drawnodes.add(node);
+        continue;
+      }
+
+      if (bvh.isDeforming) {
         continue;
       }
 
@@ -1315,16 +1382,18 @@ export class BVHToolMode extends ToolMode {
     cubic := tbez(a1, a2, a3, w1, w2);
 
     **/
-    let nv1 = new Vector3();
-    let nv2 = new Vector3();
-    let nv3 = new Vector3();
-    let drawWireframe = this.drawWireframe;
-    let drawValidEdges = this.drawValidEdges;
-    let drawCavityMap = this.drawCavityMap;
-    let drawColPatches = this.drawColPatches;
-    let drawMask = this.drawMask;
+    const nv1 = new Vector3();
+    const nv2 = new Vector3();
+    const nv3 = new Vector3();
+    const editDisplaced = this.editDisplaced;
+    const drawDispDisField = this.drawDispDisField;
+    const drawWireframe = this.drawWireframe;
+    const drawValidEdges = this.drawValidEdges;
+    const drawCavityMap = this.drawCavityMap;
+    const drawColPatches = this.drawColPatches;
+    const drawMask = this.drawMask;
 
-    let cd_uv = mesh.loops.customData.getLayerIndex("uv");
+    const cd_uv = mesh.loops.customData.getLayerIndex("uv");
     let haveUvs = cd_uv >= 0;
 
     let tstart = util.time_ms();
@@ -1457,6 +1526,33 @@ export class BVHToolMode extends ToolMode {
       }
     }
 
+    let norvisit = new WeakSet();
+
+    if (isDeforming) {
+      let {data, dimen} = bvh.makeNodeDefTexture();
+
+      if (!bvh.glLeafTex || bvh.glLeafTex.createParams.width !== data.dimen) {
+        if (bvh.glLeafTex) {
+          bvh.glLeafTex.destroy(gl);
+        }
+
+        let tex = gl.createTexture();
+
+        bvh.glLeafTex = new Texture(undefined, tex);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+
+        bvh.glLeafTex.texParameteri(gl, gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        bvh.glLeafTex.texParameteri(gl, gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        bvh.glLeafTex.texParameteri(gl, gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        bvh.glLeafTex.texParameteri(gl, gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      }
+
+      bvh.glLeafTex.createParams.width = dimen;
+      bvh.glLeafTex.texImage2D(gl, gl.TEXTURE_2D, 0, gl.RGBA32F, dimen, dimen, 0, gl.RGBA, gl.FLOAT, data);
+
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+
     function genNodeMesh_index(node) {
       let nodes = [];
 
@@ -1477,7 +1573,8 @@ export class BVHToolMode extends ToolMode {
       let updateColors = false;
       let updateUvs = false;
       let haveColors = true; //cd_color >= 0; //XXX todo: add support in shader code to handle no vcol data
-      haveColors = haveColors || drawMask || drawCavityMap;
+
+      haveColors = haveColors || drawMask || drawCavityMap || drawDispDisField;
 
       for (let n2 of nodes) {
         totedge += n2.indexEdges.length>>1;
@@ -1502,6 +1599,10 @@ export class BVHToolMode extends ToolMode {
         lflag |= LayerTypes.COLOR;
       }
 
+      if (isDeforming) {
+        lflag |= LayerTypes.CUSTOM;
+      }
+
       let sm = node.drawData;
       if (!sm) {
         sm = node.drawData = new SimpleMesh(lflag);
@@ -1516,6 +1617,9 @@ export class BVHToolMode extends ToolMode {
           updateUvs = cd_uv >= 0;
           updateColors = haveColors;
         }
+
+        //XXX for testing purposes
+        updateUvs = cd_uv >= 0;
       }
 
       let island = sm.island;
@@ -1529,6 +1633,14 @@ export class BVHToolMode extends ToolMode {
 
       let idx = island.getIndexBuffer(PrimitiveTypes.TRIS);
 
+      let defv;
+      if (isDeforming) {
+        defv = island.getDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 2, "BVHDefVs");
+
+        defv.bufferHint = gl.DYNAMIC_DRAW;
+        defv.setCount(tottri*3, true);
+        defv = defv._getWriteData();
+      }
 
       //console.log("TOTTRI", tottri, totvert);
 
@@ -1560,7 +1672,7 @@ export class BVHToolMode extends ToolMode {
       }
 
       updateColors = updateColors || island.tri_colors.dataUsed/4 !== totvert;
-      updateColors = updateColors || drawCavityMap;
+      updateColors = updateColors || drawCavityMap || drawDispDisField;
       updateColors = updateColors && haveColors;
 
       if (!updateColors) {
@@ -1601,6 +1713,22 @@ export class BVHToolMode extends ToolMode {
       let black = [0, 0, 0, 1];
       let white = [1, 1, 1, 1];
 
+      let displayers = mesh.verts.customData.getLayerSet("displace", false);
+      let cd_disp = -1;
+      let cd_pvert = -1;
+
+      if (displayers && displayers.length > 0) {
+        cd_disp = displayers[displayers.length - 1].index;
+        let dctx = new DispContext();
+        dctx.reset(mesh, cd_disp);
+
+        cd_pvert = dctx.cd_pvert;
+        //cd_disp = mesh.verts.customData.getLayerIndex("displace");
+      }
+
+      let ntmp = new Vector3();
+      let ntmp2 = new Vector3();
+
       for (let n2 of nodes) {
         let ilen = n2.indexVerts.length;
 
@@ -1611,14 +1739,95 @@ export class BVHToolMode extends ToolMode {
           let j;
 
           j = vi*3;
-          vcos[j++] = v[0];
-          vcos[j++] = v[1];
-          vcos[j++] = v[2];
 
-          j = vi*3;
-          vnos[j++] = v.no[0]*nomul;
-          vnos[j++] = v.no[1]*nomul;
-          vnos[j++] = v.no[2]*nomul;
+          if (editDisplaced && cd_disp >= 0) {
+            let dv = v.customData[cd_disp];
+
+            let co = dv.worldco;
+            //co = dv.smoothco;
+
+            if (!norvisit.has(dv)) {
+              dv.no.zero();
+
+              for (let f of v.faces) {
+                ntmp.load(f.no);
+                ntmp2.load(f.cent);
+
+                f.calcNormal(cd_disp);
+                dv.no.add(f.no);
+
+                f.no.load(ntmp);
+                f.cent.load(ntmp2);
+              }
+
+              dv.no.normalize();
+              norvisit.add(dv);
+            }
+
+            if (isDeforming) {
+              let n3 = v.customData[cd_node].node;
+              if (!n3 || !n3.boxvdata) {
+                console.warn("eek!",v,  n3);
+                vcos[j++] = 0.0;
+                vcos[j++] = 0.0;
+                vcos[j++] = 0.0;
+              } else {
+                let uvw = n3.boxvdata.get(v);
+
+                vcos[j++] = uvw[0];
+                vcos[j++] = uvw[1];
+                vcos[j++] = uvw[2];
+
+                j = vi*2;
+
+                defv[j++] = n3.leafTexUV[0];
+                defv[j++] = n3.leafTexUV[1];
+              }
+            } else {
+              vcos[j++] = co[0];
+              vcos[j++] = co[1];
+              vcos[j++] = co[2];
+            }
+
+            j = vi*3;
+            vnos[j++] = dv.no[0]*nomul;
+            vnos[j++] = dv.no[1]*nomul;
+            vnos[j++] = dv.no[2]*nomul;
+          } else {
+            if (isDeforming) {
+              let n3 = v.customData[cd_node].node;
+
+              if (!n3 || !n3.boxvdata) {
+                if (Math.random() > 0.97) {
+                  console.warn("eek!", v, n3);
+                }
+
+                vcos[j++] = 0.0;
+                vcos[j++] = 0.0;
+                vcos[j++] = 0.0;
+              } else {
+                let uvw = n3.boxvdata.get(v);
+
+                vcos[j++] = uvw[0];
+                vcos[j++] = uvw[1];
+                vcos[j++] = uvw[2];
+
+                j = vi*2;
+
+                defv[j++] = n3.leafTexUV[0];
+                defv[j++] = n3.leafTexUV[1];
+              }
+            } else {
+              vcos[j++] = v[0];
+              vcos[j++] = v[1];
+              vcos[j++] = v[2];
+            }
+
+            j = vi*3;
+            vnos[j++] = v.no[0]*nomul;
+            vnos[j++] = v.no[1]*nomul;
+            vnos[j++] = v.no[2]*nomul;
+          }
 
           let colormul2 = colormul;
 
@@ -1636,7 +1845,19 @@ export class BVHToolMode extends ToolMode {
           }
 
           if (updateColors) {
-            if (cd_color >= 0) {
+            if (drawDispDisField && cd_pvert >= 0) {
+              let pv = v.customData[cd_pvert];
+
+              let dis = pv.disUV[0];
+              dis = Math.fract(dis*1.5);
+
+              j = vi*4;
+
+              vcolors[j++] = dis*colormul;
+              vcolors[j++] = dis*colormul;
+              vcolors[j++] = dis*colormul;
+              vcolors[j++] = 1.0;
+            } else if (cd_color >= 0) {
               let c = v.customData[cd_color].color;
 
               j = vi*4;
@@ -1888,9 +2109,9 @@ export class BVHToolMode extends ToolMode {
       let tc4 = new Vector4();
       let tc5 = new Vector4();
       tc1[3] = tc2[3] = tc3[3] = 1.0;
-      let cd_node = have_grids ? mesh.loops.customData.getLayerIndex("bvh")
-                               : mesh.verts.customData.getLayerIndex("bvh");
-
+      //let cd_node = have_grids ? mesh.loops.customData.getLayerIndex("bvh")
+      //                         : mesh.verts.customData.getLayerIndex("bvh");
+      const cd_node = bvh.cd_node;
 
       function rec(node) {
         if (!node.leaf) {
@@ -2434,10 +2655,14 @@ export class BVHToolMode extends ToolMode {
         let f = node.id*0.1*Math.sqrt(3.0);
         f = Math.fract(f*10.0);
 
-        let program2 = Shaders.SculptShaderSimple;
+        let program2;
 
-        if (drawColPatches) {
+        if (isDeforming) {
+          program2 = Shaders.SculptShaderHexDeform;
+        } else if (drawColPatches) {
           program2 = Shaders.SculptShader;
+        } else {
+          program2 = Shaders.SculptShaderSimple;
         }
 
         if (!drawBVH) {
@@ -2504,6 +2729,30 @@ export class BVHToolMode extends ToolMode {
             program2.defines.DRAW_FLAT = null;
           } else {
             delete program2.defines.DRAW_FLAT;
+          }
+
+          if (!("ddd" in window)) {
+            //window.ddd = 0;
+          }
+
+          if (isDeforming) {
+            if (!program2.defines.WITH_BOXVERTS) {
+              let dimen = bvh.glLeafTex.createParams.width;
+
+              //console.log(dimen, node.leafTexUV);
+
+              uniforms.nodeDefTex = bvh.glLeafTex;
+              uniforms.nodeDefTexDu = (1.0/dimen) + 0.00001;
+              uniforms.nodeDefTexUV = node.leafTexUV;
+            } else {
+              for (let i = 0; i < 8; i++) {
+                let key = `boxverts[${i}]`;
+                //uniforms[key] = new Vector3(node.boxverts[(i+window.ddd)%8]);
+                uniforms[key] = new Vector3(node.boxverts[i]);
+                //let loc = program2.uniformloc(key);
+                //gl.uniform3fv(loc, new Vector3(node.boxverts[i]));
+              }
+            }
           }
 
           if (drawWireframe) {
@@ -2599,9 +2848,11 @@ BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
   drawCavityMap          : bool;
   drawFlat               : bool;
   drawWireframe          : bool;
-  drawValidEdges          : bool;
+  drawValidEdges         : bool;
   drawNodeIds            : bool;
   drawMask               : bool;
+  drawDispDisField       : bool;          
+  editDisplaced          : bool;
   drawColPatches         : bool;
   symmetryAxes           : int;
   gridEditDepth          : int;
@@ -2610,6 +2861,7 @@ BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
   slots                  : iterkeys(PaintToolSlot);
   sharedBrushRadius      : float;
   dynTopo                : DynTopoSettings; 
+  reprojectCustomData    : bool;
 }`;
 nstructjs.manager.add_class(BVHToolMode);
 

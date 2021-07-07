@@ -709,7 +709,19 @@ v${attr} = ${attr};
   }
 
   uniformloc(name) {
-    if (this.uniformlocs[name] == undefined) {
+    if (this._use_def_shaders) {
+      let shader = this._getDefShader(this.gl);
+
+      if (shader) {
+        return shader.uniformloc(name);
+      }
+    }
+
+    if (this.rebuild && this.gl) {
+      this.init(this.gl);
+    }
+
+    if (this.uniformlocs[name] === undefined) {
       this.uniformlocs[name] = this.gl.getUniformLocation(this.program, name);
     }
 
@@ -949,21 +961,25 @@ v${attr} = ${attr};
 
           v.bind(gl, this.uniformloc(k), slot);
         } else if (v instanceof Array || v instanceof Float32Array || v instanceof Float64Array) {
+          let arr;
+
           switch (v.length) {
             case 2:
-              var arr = _safe_arrays[2];
+              arr = _safe_arrays[2];
               setv(arr, v, 2);
 
               gl.uniform2fv(loc, arr);
               break;
             case 3:
-              var arr = _safe_arrays[3];
+              arr = _safe_arrays[3];
               setv(arr, v, 3);
+
               gl.uniform3fv(loc, arr);
               break;
             case 4:
-              var arr = _safe_arrays[4];
+              arr = _safe_arrays[4];
               setv(arr, v, 4);
+
               gl.uniform4fv(loc, arr);
               break;
             default:
@@ -1205,7 +1221,6 @@ export class Texture {
     tex.texParameteri(gl, target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     tex.texParameteri(gl, target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     tex.texParameteri(gl, target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
   }
 
   texParameteri(gl, target, param, value) {

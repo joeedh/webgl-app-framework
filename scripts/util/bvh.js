@@ -207,6 +207,8 @@ let addtri_tempco4 = new Vector3();
 let addtri_tempco5 = new Vector3();
 let addtri_stack = new Array(2048);
 
+let lastt = util.time_ms();
+
 export class CDNodeInfo extends CustomDataElem {
   constructor() {
     super();
@@ -224,8 +226,25 @@ export class CDNodeInfo extends CustomDataElem {
     }
   }
 
+  /*
+  get node() {
+    return this._node;
+  }
+
+  set node(v) {
+    if (v === undefined && this._node !== undefined) {
+      if (util.time_ms() - lastt > 10) {
+        console.warn("clear node ref");
+        lastt = util.time_ms();
+      }
+    }
+
+    this._node = v;
+  }
+  //*/
+
   clear() {
-    this.node = undefined;
+    //this.node = undefined;
     this.vel.zero();
     return this;
   }
@@ -242,7 +261,7 @@ export class CDNodeInfo extends CustomDataElem {
     this.node = node;
   }
 
-  interp() {
+  interp(dest, srcs, ws) {
     return;
   }
 
@@ -261,6 +280,7 @@ export class CDNodeInfo extends CustomDataElem {
   */
   copyTo(b) {
     b.node = this.node;
+    b.vel.load(this.vel);
   }
 }
 
@@ -304,6 +324,41 @@ export class IsectRet {
 
 let _bvh_idgen = 0;
 
+export class BVHNodeVertex extends Vector3 {
+  constructor(arg) {
+    super(arg);
+
+    this.origco = new Vector3(arg);
+
+    this.id = -1;
+    this.nodes = [];
+    this.edges = [];
+  }
+}
+
+export class BVHNodeEdge {
+  constructor(v1, v2) {
+    this.id = -1;
+
+    this.v1 = v1;
+    this.v2 = v2;
+
+    this.nodes = [];
+  }
+
+  otherVertex(v) {
+    if (v === this.v1) {
+      return this.v2;
+    } else if (v === this.v2) {
+      return this.v1;
+    } else {
+      throw new Error("vertex not in edge (BVHNodeEdge)");
+    }
+  }
+}
+
+export const DEFORM_BRIDGE_TRIS = false;
+
 export class BVHNode {
   constructor(bvh, min, max) {
     this.__id2 = undefined; //used by pbvh.js
@@ -311,8 +366,20 @@ export class BVHNode {
     this.min = new Vector3(min);
     this.max = new Vector3(max);
 
-    this.omin = undefined;
-    this.omax = undefined;
+    this.omin = new Vector3(min);
+    this.omax = new Vector3(max);
+
+    this.leafIndex = -1;
+    this.leafTexUV = new Vector2();
+    this.boxverts = undefined;
+    this.boxedges = undefined;
+    this.boxvdata = undefined;
+
+    if (DEFORM_BRIDGE_TRIS) {
+      //cross-node triangle buffer
+      this.boxbridgetris = undefined;
+    }
+
     this.ocent = undefined;
     this.ohalfsize = undefined;
     this.origGen = 0;
@@ -359,6 +426,47 @@ export class BVHNode {
 
     if (this.constructor === BVHNode) {
       Object.seal(this);
+    }
+  }
+
+  calcBoxVerts() {
+    let min = this.min, max = this.max;
+
+    this.boxedges = [];
+
+    let boxverts = this.boxverts = [
+      [min[0], min[1], min[2]],
+      [min[0], max[1], min[2]],
+      [max[0], max[1], min[2]],
+      [max[0], min[1], min[2]],
+
+      [min[0], min[1], max[2]],
+      [min[0], max[1], max[2]],
+      [max[0], max[1], max[2]],
+      [max[0], min[1], max[2]],
+    ];
+
+    for (let i = 0; i < boxverts.length; i++) {
+      let v = this.bvh.getNodeVertex(boxverts[i]);
+      boxverts[i] = v;
+    }
+
+    for (let i = 0; i < 4; i++) {
+      let i2 = (i + 1)%4;
+      this.bvh.getNodeEdge(this, boxverts[i], boxverts[i2]);
+      this.bvh.getNodeEdge(this, boxverts[i + 4], boxverts[i2 + 4]);
+      this.bvh.getNodeEdge(this, boxverts[i], boxverts[i + 4]);
+    }
+
+    for (let e of this.boxedges) {
+      e.nodes.push(this);
+      if (e.v1.nodes.indexOf(this) < 0) {
+        e.v1.nodes.push(this);
+      }
+
+      if (e.v2.nodes.indexOf(this) < 0) {
+        e.v2.nodes.push(this);
+      }
     }
   }
 
@@ -457,7 +565,7 @@ export class BVHNode {
       console.error("bvh split called on non-leaf node", this);
       return;
     }
-    if (this.allTris.size === 0) {
+    if (this.allTris.size === 0 && !this.bvh.isDeforming) {
       console.error("split called on empty node");
       return;
     }
@@ -489,11 +597,19 @@ export class BVHNode {
 
     let axis = (this.axis + 1)%3;
 
-    let min = new Vector3(this.min), max = new Vector3(this.max);
+    let min, max;
+    if (!this.bvh.isDeforming) {
+      min = new Vector3(this.min);
+      max = new Vector3(this.max);
+    } else {
+      min = new Vector3(this.omin);
+      max = new Vector3(this.omax);
+    }
+
     let split = 0;
     let tot = 0;
 
-    if (1 || this === this.bvh.root) {
+    if (!this.bvh.isDeforming) {// || this === this.bvh.root) {
       let ax = Math.abs(max[0] - min[0]);
       let ay = Math.abs(max[1] - min[1]);
       let az = Math.abs(max[2] - min[2]);
@@ -507,7 +623,10 @@ export class BVHNode {
       }
     }
 
-    if (1) {
+    let min2 = new Vector3(min);
+    let max2 = new Vector3(max);
+
+    if (!this.bvh.isDeforming) {
       let smin = 1e17, smax = -1e17;
 
       for (let tri of uniqueTris) {
@@ -558,18 +677,25 @@ export class BVHNode {
     }
 
     for (let i = 0; i < 2; i++) {
+      min2.load(min);
+      max2.load(max);
+
       if (!i) {
-        max[axis] = split;
+        max2[axis] = split;
       } else {
-        min.load(this.min);
-        min[axis] = split;
-        max.load(this.max);
+        min2[axis] = split;
       }
 
-      let c = this.bvh._newNode(min, max);
+      let c = this.bvh._newNode(min2, max2);
+      c.omin.load(min2);
+      c.omax.load(max2);
 
-      c.min.subScalar(this.nodePad);
-      c.max.addScalar(this.nodePad);
+      if (!this.bvh.isDeforming) {
+        c.min.subScalar(this.nodePad);
+        c.max.addScalar(this.nodePad);
+      } else {
+        c.calcBoxVerts();
+      }
 
       c.axis = axis;
       c.parent = this;
@@ -809,7 +935,7 @@ export class BVHNode {
       nray = new Vector3(nray).normalize();
     }
 
-    for (let i=0; i<2; i++) {
+    for (let i = 0; i < 2; i++) {
       let set = i ? this.wireVerts : this.uniqueVerts;
 
       if (!set) {
@@ -893,7 +1019,7 @@ export class BVHNode {
     let nray = new Vector3(ray);
     nray.normalize();
 
-    for (let i=0; i<2; i++) {
+    for (let i = 0; i < 2; i++) {
       let set = i ? this.wireVerts : this.uniqueVerts;
 
       if (!set) {
@@ -1015,7 +1141,7 @@ export class BVHNode {
       if (!node.leaf) {
         let mindis = 1e17, closest;
 
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < node.children.length; i++) {
           let c = node.children[i];
 
           let dx = centx - c.cent[0];
@@ -1100,7 +1226,7 @@ export class BVHNode {
     }
 
     if (this.halfsize[0] === 0.0 || this.halfsize[1] === 0.0 || this.halfsize[2] === 0.0) {
-      if (report) {
+      if (1 || report) {
         console.warn("Malformed node detected", this.halfsize);
       }
       return 0;
@@ -1352,35 +1478,33 @@ export class BVHNode {
     return this._pushTri(tri);
   }
 
-  _pushTri(tri) {
-    let cd_node = this.bvh.cd_node;
+  _addVert(v, cd_node, isDeforming) {
+    let n = v.customData[cd_node];
 
-    //if (this.bvh.storeVerts) {
-    {
-      let n1 = tri.v1.customData[cd_node];
-      if (!n1.node) {
-        n1.node = this;
-        this.uniqueVerts.add(tri.v1);
+    if (isDeforming) {
+      if (!n.node && math.point_in_hex(v, this.boxverts)) {
+        this.uniqueVerts.add(v);
+        n.node = this;
       } else {
-        this.otherVerts.add(tri.v1);
+        this.otherVerts.add(v);
       }
-
-      let n2 = tri.v2.customData[cd_node];
-      if (!n2.node) {
-        n2.node = this;
-        this.uniqueVerts.add(tri.v2);
+    } else {
+      if (!n.node) {
+        this.uniqueVerts.add(v);
+        n.node = this;
       } else {
-        this.otherVerts.add(tri.v2);
-      }
-
-      let n3 = tri.v3.customData[cd_node];
-      if (!n3.node) {
-        n3.node = this;
-        this.uniqueVerts.add(tri.v3);
-      } else {
-        this.otherVerts.add(tri.v3);
+        this.otherVerts.add(v);
       }
     }
+  }
+
+  _pushTri(tri) {
+    const cd_node = this.bvh.cd_node;
+    const isDef = this.bvh.isDeforming;
+
+    this._addVert(tri.v1, cd_node, isDef);
+    this._addVert(tri.v2, cd_node, isDef);
+    this._addVert(tri.v3, cd_node, isDef);
 
     if (!tri.node) {
       tri.node = this;
@@ -1403,18 +1527,9 @@ export class BVHNode {
     return tri;
   }
 
-  _addVert(v) {
-    let n = v.customData[this.bvh.cd_node];
-
-    if (n.node === undefined) {
-      n.node = this;
-      this.uniqueVerts.add(v);
-    } else {
-      this.otherVerts.add(v);
-    }
-  }
-
   updateUniqueVerts() {
+    console.error("update unique verts");
+
     this.flag &= ~BVHFlags.UPDATE_UNIQUE_VERTS_2;
 
     if (!this.leaf) {
@@ -1428,7 +1543,8 @@ export class BVHNode {
     this.uniqueVerts = new Set();
     this.otherVerts = new Set();
 
-    let cd_node = this.bvh.cd_node;
+    const cd_node = this.bvh.cd_node;
+    const isDeforming = this.bvh.isDeforming;
 
     for (let tri of this.allTris) {
       for (let i = 0; i < 3; i++) {
@@ -1442,12 +1558,11 @@ export class BVHNode {
 
         let cdn = v.customData[cd_node];
 
-        if (cdn.node === undefined || cdn.node === this) {
-          cdn.node = this;
-          this.uniqueVerts.add(v);
-        } else {
-          this.otherVerts.add(v);
+        if (cdn.node === this) {
+          cdn.node = undefined;
         }
+
+        this._addVert(v, cd_node, isDeforming);
       }
     }
   }
@@ -1657,7 +1772,7 @@ export class BVHNode {
       //t.area = Math.max(Math.abs(t.area), 0.00001) * Math.sign(t.area);
 
       //if (!ok) {
-        //continue;
+      //continue;
       //}
 
       let f;
@@ -1830,12 +1945,13 @@ export class BVHNode {
     const computeValidEdges = this.bvh.computeValidEdges;
     const hideQuadEdges = this.bvh.hideQuadEdges;
     const quadflag = MeshFlags.QUAD_EDGE;
+    const isDef = this.bvh.isDeforming;
 
     this.indexVerts = [];
     this.indexLoops = [];
 
-    let tris = this.indexTris = [];
-    let edges = this.indexEdges = [];
+    this.indexTris = [];
+    this.indexEdges = [];
 
     let mesh = this.bvh.mesh;
 
@@ -1845,16 +1961,70 @@ export class BVHNode {
     }
 
     let cdlayers = mesh.loops.customData.flatlist;
-    cdlayers = cdlayers.filter(f => !(f.flag & (CDFlags.TEMPORARY | CDFlags.IGNORE_FOR_INDEXBUF)));
+    cdlayers = cdlayers.filter(cdl => !(cdl.flag & (CDFlags.TEMPORARY | CDFlags.IGNORE_FOR_INDEXBUF)));
+
+    let bridgeTris;
+    let dflag = MeshFlags.MAKE_FACE_TEMP;
+    let bridgeIdxMap;
+
+    if (isDef && DEFORM_BRIDGE_TRIS) {
+      bridgeTris = new Set();
+      bridgeIdxMap = new Map();
+
+      this.boxbridgetris = {
+        indexVerts: [],
+        indexLoops: [],
+        indexTris : [],
+        indexEdges: []
+      };
+
+      for (let v of this.uniqueVerts) {
+        v.flag &= ~dflag;
+        v.index = -1;
+      }
+
+      for (let v of this.otherVerts) {
+        v.flag |= dflag;
+        v.index = -1;
+      }
+    } else {
+      for (let v of this.uniqueVerts) {
+        v.flag &= ~dflag;
+      }
+      for (let v of this.otherVerts) {
+        v.flag &= ~dflag;
+      }
+    }
+
 
     //simple code path for if there's no cd layer to build islands out of
     if (cdlayers.length === 0) {
       let vi = 0;
 
-      for (let step = 0; step < 2; step++) {
-        let list = step ? this.otherVerts : this.uniqueVerts;
+      if (!isDef || !DEFORM_BRIDGE_TRIS) {
+        for (let step = 0; step < 2; step++) {
+          let indexVerts = this.indexVerts, indexLoops = this.indexLoops;
+          let list = step ? this.otherVerts : this.uniqueVerts;
 
-        for (let v of list) {
+          for (let v of list) {
+            let ok = false;
+
+            for (let e of v.edges) {
+              if (e.l) {
+                ok = true;
+                indexLoops.push(e.l);
+                break;
+              }
+            }
+
+            if (ok) {
+              v.index = vi++;
+              indexVerts.push(v);
+            }
+          }
+        }
+      } else {
+        for (let v of this.uniqueVerts) {
           let ok = false;
 
           for (let e of v.edges) {
@@ -1866,8 +2036,56 @@ export class BVHNode {
           }
 
           if (ok) {
-            v.index = vi++;
+            v.index = this.indexVerts.length;
             this.indexVerts.push(v);
+          }
+        }
+
+        //deal with deform bridge tris
+        for (let tri of this.allTris) {
+          let ok = false;
+          for (let i = 0; i < 3; i++) {
+            if (tri.vs[i].flag & dflag) {
+              ok = true;
+              break;
+            }
+          }
+
+          if (!ok) {
+            continue;
+          }
+
+          for (let i = 0; i < 3; i++) {
+            let v = tri.vs[i];
+            let l;
+
+            switch (i) {
+              case 0:
+                l = tri.l1;
+                break;
+              case 1:
+                l = tri.l2;
+                break;
+              case 2:
+                l = tri.l3;
+                break;
+            }
+
+            let indexLoops, indexVerts;
+
+            if (v.flag & dflag) {
+              if (v.index < 0) {
+                v.index = this.boxbridgetris.indexVerts.length;
+                this.boxbridgetris.indexVerts.push(v);
+                this.boxbridgetris.indexLoops.push(l);
+              }
+            } else if (!bridgeIdxMap.has(v)) {
+              let idx = this.boxbridgetris.indexVerts.length;
+              this.boxbridgetris.indexVerts.push(v);
+              this.boxbridgetris.indexLoops.push(l);
+
+              bridgeIdxMap.set(v, idx);
+            }
           }
         }
       }
@@ -1875,8 +2093,34 @@ export class BVHNode {
       let deadtris = new Set();
 
       for (let tri of this.uniqueTris) {
+        let indexVerts, indexLoops, indexTris, indexEdges;
+
+        let i1, i2, i3;
+
+        if ((tri.v1.flag|tri.v2.flag|tri.v3.flag) & dflag) {
+          i1 = !(tri.v1.flag & dflag) ? bridgeIdxMap.get(tri.v1) : tri.v1.index;
+          i2 = !(tri.v2.flag & dflag) ? bridgeIdxMap.get(tri.v2) : tri.v2.index;
+          i3 = !(tri.v3.flag & dflag) ? bridgeIdxMap.get(tri.v3) : tri.v3.index;
+
+          bridgeTris.add(tri);
+
+          indexVerts = this.boxbridgetris.indexVerts;
+          indexLoops = this.boxbridgetris.indexLoops;
+          indexTris = this.boxbridgetris.indexTris;
+          indexEdges = this.boxbridgetris.indexEdges;
+        } else {
+          i1 = tri.v1.index;
+          i2 = tri.v2.index;
+          i3 = tri.v3.index;
+
+          indexVerts = this.indexVerts;
+          indexLoops = this.indexLoops;
+          indexTris = this.indexTris;
+          indexEdges = this.indexEdges;
+        }
+
         if (tri.v1.index < 0 || tri.v2.index < 0 || tri.v3.index < 0) {
-          //console.warn("Tri index buffer error");
+          console.warn("Tri index buffer error");
 
           if (tri.v1.eid < 0 || tri.v2.eid < 0 || tri.v3.eid < 0) {
             util.console.warn("Tri index buffer error", tri);
@@ -1891,47 +2135,45 @@ export class BVHNode {
           }
 
           if (tri.v1.index < 0) {
-            tri.v1.index = vi++;
-            this.indexVerts.push(tri.v1);
-            this.indexLoops.push(tri.l1);
+            i1 = tri.v1.index = vi++;
+            indexVerts.push(tri.v1);
+            indexLoops.push(tri.l1);
             this.otherVerts.add(tri.v1);
           }
 
           if (tri.v2.index < 0) {
-            tri.v2.index = vi++;
-            this.indexVerts.push(tri.v2);
-            this.indexLoops.push(tri.l2);
+            i2 = tri.v2.index = vi++;
+            indexVerts.push(tri.v2);
+            indexLoops.push(tri.l2);
             this.otherVerts.add(tri.v2);
           }
 
           if (tri.v3.index < 0) {
-            tri.v3.index = vi++;
-            this.indexVerts.push(tri.v3);
-            this.indexLoops.push(tri.l3);
+            i3 = tri.v3.index = vi++;
+            indexVerts.push(tri.v3);
+            indexLoops.push(tri.l3);
             this.otherVerts.add(tri.v3);
           }
           //continue;
         }
 
-        tris.push(tri.v1.index);
-        tris.push(tri.v2.index);
-        tris.push(tri.v3.index);
-
-        let ok;
+        indexTris.push(i1);
+        indexTris.push(i2);
+        indexTris.push(i3);
 
         if (validEdge(tri.v1, tri.v2)) {
-          edges.push(tri.v1.index);
-          edges.push(tri.v2.index);
+          indexEdges.push(i1);
+          indexEdges.push(i2);
         }
 
         if (validEdge(tri.v2, tri.v3)) {
-          edges.push(tri.v2.index);
-          edges.push(tri.v3.index);
+          indexEdges.push(i2);
+          indexEdges.push(i3);
         }
 
         if (validEdge(tri.v3, tri.v1)) {
-          edges.push(tri.v3.index);
-          edges.push(tri.v1.index);
+          indexEdges.push(i3);
+          indexEdges.push(i1);
         }
       }
 
@@ -1941,6 +2183,7 @@ export class BVHNode {
             this.uniqueVerts.delete(v);
           }
         }
+
         for (let v of this.otherVerts) {
           if (v.eid < 0) {
             this.otherVerts.delete(v);
@@ -2019,8 +2262,14 @@ export class BVHNode {
           let idx;
           if (!lmap.has(key)) {
             idx = idxbase++;
-            this.indexVerts.push(l.v);
-            this.indexLoops.push(l);
+
+            if (!isDef || !DEFORM_BRIDGE_TRIS || this.uniqueVerts.has(l.v)) {
+              this.indexVerts.push(l.v);
+              this.indexLoops.push(l);
+            } else {
+              this.boxbridgetris.indexVerts.push(l.v);
+              this.boxbridgetris.indexLoops.push(l);
+            }
 
             lmap.set(key, l);
           } else {
@@ -2035,8 +2284,30 @@ export class BVHNode {
     for (let l of ls) {
       if (l.index < 0) {
         l.index = idxbase++;
-        this.indexVerts.push(l.v);
-        this.indexLoops.push(l);
+
+        if (!isDef || !DEFORM_BRIDGE_TRIS || this.uniqueVerts.has(l.v)) {
+          this.indexVerts.push(l.v);
+          this.indexLoops.push(l);
+        } else {
+          this.boxbridgetris.indexVerts.push(l.v);
+          this.boxbridgetris.indexLoops.push(l);
+        }
+      }
+    }
+
+    //make sure indices are correct in deform mode,
+    //which builds two seperate sets of triangles
+    if (isDef && DEFORM_BRIDGE_TRIS) {
+      let i = 0;
+
+      i = 0;
+      for (let l of this.indexLoops) {
+        l.index = i++;
+      }
+
+      i = 0;
+      for (let l of this.boxbridgetris.indexLoops) {
+        l.index = i++;
       }
     }
 
@@ -2047,6 +2318,14 @@ export class BVHNode {
       if (tri.l1.index < 0 || tri.l2.index < 0 || tri.l3.index < 0) {
         console.warn("Tri index buffer error");
         continue;
+      }
+
+      if ((tri.v1.flag | tri.v2.flag & tri.v3.flag) & dflag) {
+        idxmap = this.boxbridgetris.indexTris;
+        eidxmap = this.boxbridgetris.indexEdges;
+      } else {
+        idxmap = this.indexTris;
+        eidxmap = this.indexEdges;
       }
 
       idxmap.push(tri.l1.index);
@@ -2120,6 +2399,8 @@ export class BVHNode {
       if (this.flag & BVHFlags.UPDATE_UNIQUE_VERTS) {
         this.flag |= BVHFlags.UPDATE_INDEX_VERTS;
 
+        console.error("update unique verts called");
+
         for (let v of this.uniqueVerts) {
           let node = v.customData[this.bvh.cd_node];
 
@@ -2143,8 +2424,15 @@ export class BVHNode {
       }
 
       if (doidx) {
-        this.flag &= ~BVHFlags.UPDATE_INDEX_VERTS;
-        this.updateIndexVerts();
+        if (this.bvh.isDeforming && !this.boxvdata) {
+          //no bind data? delay update.
+          if (Math.random() > 0.8) {
+            console.warn("No bind data; delaying construction of gpu index buffers");
+          }
+        } else {
+          this.flag &= ~BVHFlags.UPDATE_INDEX_VERTS;
+          this.updateIndexVerts();
+        }
       }
     }
 
@@ -2210,6 +2498,12 @@ export class BVHNode {
         //this.max.addScalar(pad);
       }
 
+      if (this.max.vectorDistance(this.min) < 0.00001) {
+        //XXX
+        this.min.subScalar(0.0001);
+        this.max.addScalar(0.0001);
+      }
+
       this.cent.load(this.min).interp(this.max, 0.5);
       this.halfsize.load(this.max).sub(this.min).mulScalar(0.5);
     }
@@ -2224,6 +2518,16 @@ export class BVH {
   constructor(mesh, min, max, tottri = 0) {
     this.min = new Vector3(min);
     this.max = new Vector3(max);
+
+    this.glLeafTex = undefined;
+
+    this.nodeVerts = [];
+    this.nodeEdges = [];
+    this.nodeVertHash = new Map();
+    this.nodeEdgeHash = new Map();
+    this._node_elem_idgen = 0;
+
+    this.isDeforming = false;
 
     this.totTriAlloc = 0;
     this.totTriFreed = 0;
@@ -2280,6 +2584,18 @@ export class BVH {
     }
   }
 
+  get leaves() {
+    let this2 = this;
+
+    return (function* () {
+      for (let n of this2.nodes) {
+        if (n.leaf) {
+          yield n;
+        }
+      }
+    })();
+  }
+
   get leafLimit() {
     return this._leafLimit;
   }
@@ -2289,12 +2605,28 @@ export class BVH {
     this._leafLimit = v;
   }
 
-  static create(mesh, storeVerts = true, useGrids = true,
-                leafLimit                         = undefined,
-                depthLimit                        = undefined,
-                freelist                          = undefined,
-                addWireVerts                      = false) {
+  static create(mesh, storeVerts_or_args = true, useGrids = true,
+                leafLimit                                 = undefined,
+                depthLimit                                = undefined,
+                freelist                                  = undefined,
+                addWireVerts                              = false,
+                deformMode                                = false) {
     let times = [util.time_ms()]; //0
+    let storeVerts = storeVerts_or_args;
+    let onCreate;
+
+    if (typeof storeVerts == "object") {
+      let args = storeVerts;
+
+      storeVerts = args.storeVerts ?? true;
+      leafLimit = args.leafLimit;
+      depthLimit = args.depthLimit;
+      addWireVerts = args.addWireVerts;
+      deformMode = args.deformMode;
+      useGrids = args.useGrids ?? true;
+      freelist = args.freelist;
+      onCreate = args.onCreate;
+    }
 
     mesh.updateMirrorTags();
 
@@ -2351,10 +2683,16 @@ export class BVH {
 
     //tottri is used by the SpatialHash subclass
     let bvh = new this(mesh, aabb[0], aabb[1], tottri);
-
     //console.log("Saved tri freelist:", freelist);
 
+    console.log("isDeforming", deformMode);
+
+    bvh.isDeforming = deformMode;
     bvh.cd_grid = cd_grid;
+
+    if (deformMode) {
+      bvh.root.calcBoxVerts();
+    }
 
     if (freelist) {
       bvh.freelist = freelist;
@@ -2380,12 +2718,28 @@ export class BVH {
       bvh.cd_node = mesh.verts.customData.getNamedLayerIndex(cdname, CDNodeInfo);
     }
 
+    const cd_node = bvh.cd_node;
+
+    if (cd_grid >= 0) {
+      for (let l of mesh.loops) {
+        let grid = l.customData[cd_grid];
+
+        for (let v of grid.points) {
+          v.customData[cd_node].vel.zero();
+        }
+      }
+    } else {
+      for (let v of mesh.verts) {
+        v.customData[cd_node].vel.zero();
+      }
+    }
+
     //bvh.cd_face_node = mesh.faces.customData.getLayerIndex(CDNodeInfo);
     bvh.storeVerts = storeVerts;
 
     if (cd_grid >= 0) {
       let rand = new util.MersenneRandom(0);
-      let cd_node = bvh.cd_node;
+      const cd_node = bvh.cd_node;
 
       //we carefully randomize insertion order
       let tris = [];
@@ -2513,10 +2867,20 @@ export class BVH {
       }
     }
 
+
     times.push(util.time_ms());
 
+    //deform mode assigns verts to nodes only if they
+    //lie within the node's hexahedron. fix any orphans.
+    if (bvh.isDeforming) {
+      bvh._fixOrphanDefVerts(mesh.verts);
+    }
     //update aabbs
     bvh.update();
+
+    if (onCreate) {
+      onCreate(bvh);
+    }
 
     times.push(util.time_ms());
 
@@ -2529,6 +2893,209 @@ export class BVH {
 
     console.log("times", times);
     return bvh;
+  }
+
+  makeNodeDefTexture() {
+    let leaves = util.list(this.leaves);
+
+    let size = Math.ceil(leaves.length*8*3 / 4);
+    size = Math.max(size, 16);
+
+    let dimen = Math.ceil(Math.sqrt(size));
+    let f = Math.ceil(Math.log(dimen) / Math.log(2.0));
+    dimen = Math.pow(2.0, f);
+
+    let tex = new Float32Array(dimen*dimen*4);
+    console.log("dimen", dimen);
+
+    tex.fill(0);
+
+    let li = 0;
+    let i = 0;
+
+    let elemSize = 8*4;
+
+    //since dimen is a multiply of 8, we should be able
+    //to get away with assuming each entry lies within
+    //only one row of the texture
+
+    for (let node of this.leaves) {
+      node.leafIndex = li;
+
+      let idx = i / 4;
+      let u = idx % dimen;
+      let v = ~~(idx / dimen);
+
+      //v = dimen - 1 - v;
+
+      u = (u / dimen) + 0.00001;
+      v = (v / dimen) + 0.00001;
+
+      node.leafTexUV[0] = u;
+      node.leafTexUV[1] = v;
+
+      for (let v of node.boxverts) {
+        tex[i++] = v[0];
+        tex[i++] = v[1];
+        tex[i++] = v[2];
+        tex[i++] = 0.0;
+      }
+
+      li++;
+    }
+
+    return {
+      data : tex,
+      dimen
+    };
+  }
+
+  _fixOrphanDefVerts(vs) {
+    const cd_node = this.cd_node;
+    let ret = false;
+
+    `
+    for (let v of vs) {
+      let ok = false;
+
+      for (let e of v.edges) {
+        if (e.l) {
+          ok = true;
+          break;
+        }
+      }
+
+      if (!ok) {
+        continue;
+      }
+
+      if (!v.customData[cd_node].node) {
+        console.warn("Orphaned vertex!", v);
+      }
+    }`;
+
+    for (let n of this.leaves) {
+      for (let tri of n.allTris) {
+        for (let i=0; i<3; i++) {
+          let v = tri.vs[i];
+          let cdn = v.customData[cd_node];
+
+          if (!cdn.node) {
+            console.warn("Orphaned deform vert", v);
+
+            cdn.node = n;
+
+            n.otherVerts.delete(v);
+            n.uniqueVerts.add(v);
+            n.setUpdateFlag(BVHFlags.UPDATE_BOUNDS | BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_DRAW);
+
+            ret = true;
+          }
+        }
+      }
+    }
+
+    return ret;
+  }
+
+  splitToUniformDepth() {
+    let maxdepth = 0;
+
+    let vs = new Set();
+
+    for (let n of this.leaves) {
+      for (let tri of n.allTris) {
+        for (let v of tri.vs) {
+          vs.add(v);
+        }
+      }
+      maxdepth = Math.max(n.depth, maxdepth);
+    }
+
+    console.log("maxdepth:", maxdepth);
+    let rec = (n) => {
+      if (n.depth >= maxdepth) {
+        return;
+      }
+
+      if (n.leaf) {
+        n.split(2);
+
+        for (let child of n.children) {
+          //child.update();
+        }
+      }
+
+      for (let child of util.list(n.children)) {
+        if (child.leaf && child.allTris.size === 0) {
+          n.children.remove(child);
+          this.nodes.remove(child);
+
+          child.leaf = false;
+          continue;
+        }
+
+        rec(child);
+      }
+
+      n.children = n.children.filter(f => f);
+    }
+
+    let leaves = util.list(this.leaves);
+    for (let node of leaves) {
+      if (!node.leaf) { //node was destroyed for being empty?
+        continue;
+      }
+
+      rec(node);
+    }
+
+    this._fixOrphanDefVerts(vs);
+  }
+
+  getNodeVertex(co) {
+    let prec = 1000;
+    let x = ~~(co[0]*prec);
+    let y = ~~(co[1]*prec);
+    let z = ~~(co[2]*prec);
+
+    let key = x + ":" + y + ":" + z;
+    let v = this.nodeVertHash.get(key);
+
+    if (v) {
+      return v;
+    }
+
+    v = new BVHNodeVertex(co);
+    v.id = this._node_elem_idgen++;
+
+    this.nodeVerts.push(v);
+    this.nodeVertHash.set(key, v);
+
+    return v;
+  }
+
+  getNodeEdge(node, v1, v2) {
+    let key = Math.min(v1.id, v2.id) + ":" + Math.max(v1.id, v2.id);
+    let e = this.nodeEdgeHash.get(key);
+
+    if (e) {
+      node.boxedges.push(e);
+      return e;
+    }
+
+    e = new BVHNodeEdge(v1, v2);
+    e.id = this._node_elem_idgen++;
+
+    v1.edges.push(e);
+    v2.edges.push(e);
+
+
+    this.nodeEdges.push(e);
+    this.nodeEdgeHash.set(key, e);
+    node.boxedges.push(e);
+
+    return e;
   }
 
   origCoStart(cd_orig) {
@@ -2564,9 +3131,15 @@ export class BVH {
     }
   }
 
+  checkCD() {
+    this._checkCD();
+  }
+
   //in an attempt to improve cpu cache performance
   spatiallySortMesh() {
     let mesh = this.mesh;
+
+    console.error("spatiallySortMesh called");
 
     //first destroy node references
     let elist;
@@ -3012,6 +3585,11 @@ export class BVH {
       }
     }
 
+    if (this.glLeafTex && window._gl) { //XXX evil global ref
+      this.glLeafTex.destroy(window._gl);
+      this.glLeafTex = undefined;
+    }
+
     for (let n of this.nodes) {
       if (n.drawData) {
         n.drawData.destroy();
@@ -3178,6 +3756,9 @@ export class BVH {
 
   checkJoin(node) {
     //return;
+    if (this.isDeforming) {
+      return;
+    }
 
     if (!node.parent || node.parent === this.root) {
       return;
@@ -3274,6 +3855,11 @@ export class BVH {
 
   joinNode(node, addToRoot = false) {
     let p = node;
+
+    if (this.isDeforming) {
+      console.warn("joinNode called in deforming mode");
+      return;
+    }
 
     if (!node.parent || node.parent === this.root || node.leaf) {
       return;
@@ -3643,9 +4229,12 @@ export class BVH {
       }
     }
 
+    let check_verts = false;
+
     for (let node of this.updateNodes) {
       if (node.flag & BVHFlags.UPDATE_UNIQUE_VERTS) {
         run_again = true;
+        check_verts = true;
       }
 
       node.update();
@@ -3654,6 +4243,29 @@ export class BVH {
     if (run_again) {
       for (let node of this.updateNodes) {
         node.update();
+      }
+    }
+
+    if (check_verts) {
+      let this2 = this;
+
+      let vs = (function*() {
+        let visit = new WeakSet();
+
+        for (let node of this2.leaves) {
+          for (let v of node.otherVerts) {
+            if (!visit.has(v)) {
+              yield v;
+            }
+            visit.add(v);
+          }
+        }
+      })();
+
+      if (this._fixOrphanDefVerts(vs)) {
+        for (let node of this.updateNodes) {
+          node.update();
+        }
       }
     }
 
@@ -3892,6 +4504,10 @@ export class SpatialHash extends BVH {
 
             node = this._newNode(min, max);
             node.leaf = true;
+
+            if (this.bvh.isDeforming) {
+              node.calcBoxVerts();
+            }
 
             this.updateNodes.add(node);
 

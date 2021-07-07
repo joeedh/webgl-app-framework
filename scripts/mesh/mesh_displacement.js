@@ -64,10 +64,18 @@ export class SmoothMemoizer {
     this.cd_disp = cd_disp;
     this.cd_temps = [];
 
+    this.noDisp = false;
     this.tempKey = "__temp_sm";
 
+    this.genTemp = undefined;
+
     this.mesh = mesh;
-    this.settings = mesh.verts.customData.flatlist[cd_disp].getTypeSettings();
+
+    if (cd_disp >= 0) {
+      this.settings = mesh.verts.customData.flatlist[cd_disp].getTypeSettings();
+    } else {
+      this.settings = undefined;
+    }
 
     this.maxDepth = 3;
 
@@ -101,7 +109,7 @@ export class SmoothMemoizer {
       if (cd_temp < 0) {
         let layer = mesh.verts.addCustomDataLayer("vec3", key);
 
-        layer.flag |= CDFlags.TEMPORARY;
+        layer.flag |= CDFlags.TEMPORARY | CDFlags.NO_INTERP;
 
         cd_temp = layer.index;
       }
@@ -109,22 +117,44 @@ export class SmoothMemoizer {
       this.cd_temps.push(cd_temp);
     }
 
+    if (this.noDisp) {
+      let key = this.tempKey + "gen";
+
+      let cd_gens = this.genTemp = mesh.verts.customData.getNamedLayerIndex(key, "vec2");
+      if (cd_gens < 0) {
+        let layer = mesh.verts.addCustomDataLayer("vec2", key);
+        layer.flag |= CDFlags.TEMPORARY | CDFlags.NO_INTERP;
+
+        this.genTemp = layer.index;
+      }
+    }
   }
 
   start(setSmoothGen = true, cd_disp = undefined, checkTemps = true) {
     let mesh = this.mesh;
 
-    if (cd_disp !== undefined) {
+    if (cd_disp !== undefined && cd_disp >= 0) {
       this.cd_disp = cd_disp;
       this.settings = this.mesh.verts.customData.flatlist[cd_disp].getTypeSettings();
     } else {
       cd_disp = this.cd_disp;
+
+      if (cd_disp === undefined || cd_disp < 0) {
+        this.settings = undefined;
+      }
     }
 
     if (checkTemps) {
-      let layer = this.mesh.verts.customData.flatlist[cd_disp];
+      let layer;
+      if (cd_disp >= 0) {
+        layer = this.mesh.verts.customData.flatlist[cd_disp];
+      }
+
       this.checkTemps();
-      cd_disp = this.cd_disp = layer.index;
+
+      if (cd_disp >= 0) {
+        cd_disp = this.cd_disp = layer.index;
+      }
     }
 
     if (setSmoothGen) {
@@ -137,26 +167,38 @@ export class SmoothMemoizer {
       this.settings.initGen++;
     }
 
-    this.smoothGen = this.settings.smoothGen;
-    this.initGen = this.settings.initGen;
+    if (this.settings) {
+      this.smoothGen = this.settings.smoothGen;
+      this.initGen = this.settings.initGen;
+    }
   }
 
-  smoothco(v, maxDepth = this.maxDepth, noDisp = false) {
+  smoothco(v, maxDepth = this.maxDepth, noDisp = this.noDisp) {
     const cd_disp = this.cd_disp;
 
-    let dv = v.customData[cd_disp];
+    let dv = cd_disp >= 0 ? v.customData[cd_disp] : undefined;
 
     const cd_temp = this.cd_temps[0];
     const cd_temp2 = this.cd_temps[1];
     const cd_temp3 = this.cd_temps[2];
 
+    let cd_gens = -1;
+
+    if (this.noDisp) {
+      cd_gens = this.genTemp;
+    }
+
     //dv.smoothGen++;
 
     const co = this.vtmps.next().zero();
+    const co1 = this.vtmps.next().zero();
     const co2 = this.vtmps.next().zero();
+    const co3 = this.vtmps.next().zero();
 
     let tot = 0;
     const projection = this.projection;
+    const doProj = projection > 0.0;
+
     const fac = this.fac;
 
     //let smask = (1<<30)-1;
@@ -164,7 +206,7 @@ export class SmoothMemoizer {
 
     const initGen = this.initGen;
 
-    function checkinit(v, dv, co) {
+    function checkinit1(v, dv, co) {
       if (co === undefined) {
         co = noDisp ? v : v.customData[cd_disp].worldco;
       }
@@ -177,26 +219,69 @@ export class SmoothMemoizer {
       }
     }
 
-    checkinit(v, dv);
+    function checkinit2(v) {
+      let gens = v.customData[cd_gens].value;
+
+      if (gens[1] !== initGen) {
+        v.customData[cd_temp].value.load(v);
+        v.customData[cd_temp2].value.load(v);
+        v.customData[cd_temp3].value.load(v);
+        gens[1] = initGen;
+      }
+    }
+
+    if (cd_gens >= 0) {
+      checkinit2(v);
+    } else {
+      checkinit1(v, dv);
+    }
+
+    //if (doProj) {
+      co1.load(v.customData[cd_temp].value);
+    //}
 
     for (let v2 of v.neighbors) {
+      let dv2;
+
       if (maxDepth > 1) {
-        let dv2 = v2.customData[cd_disp];
+        if (!noDisp) {
+          dv2 = v2.customData[cd_disp];
+          checkinit1(v2, dv2);
+        } else {
+          checkinit2(v2);
+        }
 
-        checkinit(v2, dv2);
+        let sgen;
 
-        if (this.memoize && dv2.smoothGen === this.smoothGen) {
+        if (cd_gens >= 0) {
+          sgen = v.customData[cd_gens].value[0];
+        } else {
+          sgen = v.customData[cd_disp].smoothGen;
+        }
+
+        if (this.memoize && sgen === this.smoothGen) {
           co2.load(v2.customData[cd_temp3].value);
         } else {
-
           let tot2 = 0;
           co2.zero();
 
           for (let v3 of v2.neighbors) {
-            let dv3 = v3.customData[cd_disp];
-            checkinit(v3, dv3);
+            if (!noDisp) {
+              let dv3 = v3.customData[cd_disp];
+              checkinit1(v3, dv3);
+            } else {
+              checkinit2(v3);
+            }
 
-            co2.add(v3.customData[cd_temp2].value);
+            co3.load(v3.customData[cd_temp2].value);
+
+            if (doProj) {
+              co3.sub(co1);
+              co3.addFac(v2.no, -co3.dot(v2.no)*projection);
+              co3.add(co1);
+            }
+
+            co2.add(co3);
             tot2++;
             this.steps++;
           }
@@ -208,7 +293,18 @@ export class SmoothMemoizer {
           co2.mulScalar(1.0/tot2);
           co2.interp(v2.customData[cd_temp2].value, 1.0 - fac);
           v2.customData[cd_temp3].value.load(co2);
-          dv2.smoothGen = this.smoothGen;
+
+          if (cd_gens >= 0) {
+            v.customData[cd_gens].value[0] = this.smoothGen;
+          } else {
+            dv2.smoothGen = this.smoothGen;
+          }
+        }
+
+        if (doProj) {
+          co2.sub(co1);
+          co2.addFac(v.no, -co2.dot(v.no)*projection);
+          co2.add(co1);
         }
 
         //v2.customData[
@@ -245,6 +341,20 @@ export const DispLayerFlags = {
   ENABLED   : 1,
   NEEDS_INIT: 2
 };
+
+export function onFileLoadDispVert(mesh) {
+  let layerset = mesh.verts.customData.getLayerSet("displace");
+  if (!layerset || layerset.length === 0) {
+    return;
+  }
+
+  let cd_disp = layerset[0].index;
+  for (let v of mesh.verts) {
+    let dv = v.customData[cd_disp];
+
+    dv.worldco = v;
+  }
+}
 
 export class DispLayerSettings extends LayerSettingsBase {
   constructor() {
@@ -297,7 +407,8 @@ export const DispVertFlags = {
   SELECT    : 1,
   HIDE      : 2,
   NEEDS_INIT: 4,
-  UPDATE    : 8
+  UPDATE    : 8,
+  INTERP_NEW: 16
 };
 
 const itmp1 = new Vector3();
@@ -316,14 +427,67 @@ const mat_temps = util.cachering.fromConstructor(Matrix4, 512);
 export class DispContext {
   constructor() {
     this.reset();
+    this.stack = new Array(512);
+    this.scur = 0;
+  }
+
+  pushDisp(cd_disp) {
+    this.stack[this.scur++] = this.cd_disp;
+    this.stack[this.scur++] = this.settings;
+
+    this.cd_disp = cd_disp;
+    this.settings = this.mesh.verts.customData.flatlist[cd_disp].getTypeSettings();
+
+    if (this.smemo) {
+      this.stack[this.scur++] = this.smemo.cd_disp;
+      this.stack[this.scur++] = this.smemo.settings;
+      this.stack[this.scur++] = this.smemo.smoothGen;
+      this.stack[this.scur++] = this.smemo.initGen;
+      //this.smemo.start(false, cd_disp, false);
+      //this.smemo.cd_disp = this.cd_disp;
+      //this.smemo.smoothGen = this.settings.smoothGen;
+      //this.smemo.initGen = this.settings.initGen;
+    } else {
+      this.scur += 4;
+    }
+    return this;
+  }
+
+  popDisp() {
+    if (this.smemo) {
+      //this.smemo.start(false, this.cd_disp, false);
+      this.smemo.initGen = this.stack[--this.scur];
+      this.smemo.smoothGen = this.stack[--this.scur];
+      this.smemo.settings = this.stack[--this.scur];
+      this.smemo.cd_disp = this.stack[--this.scur];
+    } else {
+      this.scur -= 4;
+    }
+
+    this.settings = this.stack[--this.scur];
+    this.cd_disp = this.stack[--this.scur];
+
+    return this;
   }
 
   reset(mesh, cd_disp, cd_pvert) {
-    this.owning_v = undefined;
+    this.v = undefined;
     this.cd_disp = cd_disp;
     this.settings = cd_disp >= 0 ? mesh.verts.customData.flatlist[cd_disp].getTypeSettings() : undefined;
 
+
+    if (mesh) {
+      this.layerset = mesh.verts.customData.getLayerSet("displace", false);
+
+      if (cd_pvert === undefined) {
+        cd_pvert = mesh.verts.customData.getNamedLayerIndex("disp_pvert", "paramvert");
+      }
+    } else {
+      this.layerset = undefined;
+    }
+
     this.cd_pvert = cd_pvert;
+
     if (cd_pvert >= 0) {
       this.pvert_settings = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings();
     } else {
@@ -384,8 +548,112 @@ export class DispLayerVert extends CustomDataElem {
     return st;
   }
 
+    checkInterpNew(dctx, depth=0) {
+    let v = dctx.v;
+
+    if (!(this.flag & DispVertFlags.INTERP_NEW)) {
+      return false;
+    }
+
+    this.flag &= ~DispVertFlags.INTERP_NEW;
+
+    let cd_disp = dctx.cd_disp;
+    let cd_pvert = dctx.cd_pvert;
+    let pv = v.customData[cd_pvert];
+
+    //smoothno(v, this);
+    //this.no.normalize();
+    let tot = 1;
+
+    for (let v2 of v.neighbors) {
+      let dv2 = v2.customData[cd_disp];
+
+      if (depth < 3) {
+      //  dv2.checkInterpNew(dctx, depth+1);
+      }
+
+      this.smoothco.add(dv2.smoothco);
+      tot++;
+
+      this.no.add(dv2.no);
+    }
+
+    this.no.normalize();
+
+    this.smoothco.mulScalar(1.0 / tot);
+    if (dctx.smemo) {
+      dctx.smemo.smoothGen++;
+      dctx.smemo.initGen++;
+      dctx.settings.smoothGen++;
+      dctx.settings.initGen++;
+    }
+
+    if (dctx.smemo) {
+      this.smoothco.load(dctx.smemo.smoothco(v));
+    }
+
+    //*
+    pv.updateTangent(dctx.pvert_settings, v, dctx.cd_pvert, true, cd_disp, false);
+
+    this.tan[0] = pv.disUV[1];
+    this.tan[1] = pv.disUV[2];
+    this.tan[2] = pv.disUV[3];//*/
+
+    this.scale = getscale(v, this, cd_disp);
+
+    if (cd_disp !== dctx.layerset[0].index) {
+      let cd_base = dctx.layerset[dctx.settings.base].index;
+      let dvbase = v.customData[cd_base];
+
+      if (1) {
+        //*
+        dctx.pushDisp(cd_base);
+        dvbase.checkInterpNew(dctx);
+        dctx.popDisp();
+        //*/
+
+        //*
+        this.parentTan.load(dvbase.tan);
+        this.parentNo.load(dvbase.no);
+        this.baseco.load(dvbase.smoothco);
+        this.parentScale = dvbase.scale;
+      }
+    }
+
+    if (cd_disp === dctx.layerset.active.index) {
+      this.worldco = v;
+    } else if (cd_disp !== dctx.layerset[0].index) {
+      //*
+
+      this.updateTanCo(dctx);
+
+      if (0) {
+        let tot = 1.0;
+
+        for (let v2 of v.neighbors) {
+          let dv2 = v2.customData[cd_disp];
+          //dv2.checkInterpNew(dctx);
+
+          let tanco = itmp1.load(dv2.tanco);
+
+          if (dv2.parentScale) {
+            tanco.mulScalar(this.parentScale/dv2.parentScale);
+            this.tanco.add(tanco);
+            tot++;
+          }
+        }
+
+        this.tanco.mulScalar(1.0/tot);
+      }
+      //*/
+    }
+
+    return true;
+  }
+
   updateWorldCo(dctx) {
-    let {owning_v, cd_disp, settings, cd_pvert, pvert_settings} = dctx;
+    let {v, cd_disp, settings, cd_pvert, pvert_settings} = dctx;
+    this.checkInterpNew(dctx);
 
     let tanmat = this.getTanMatrix(dctx);
 
@@ -409,7 +677,9 @@ export class DispLayerVert extends CustomDataElem {
   }
 
   updateTanCo(dctx) {
-    let {owning_v, cd_disp, settings, cd_pvert, pvert_settings} = dctx;
+    let {v, cd_disp, settings, cd_pvert, pvert_settings} = dctx;
+
+    this.checkInterpNew(dctx);
 
     let tanmat = this.getTanMatrix(dctx);
     tanmat.invert();
@@ -426,13 +696,88 @@ export class DispLayerVert extends CustomDataElem {
     }
   }
 
+  flushUpdateCo(dctx, redoWorldCos = false, normalVisitSet) {
+    let v = dctx.v;
+
+    this.checkInterpNew(dctx);
+
+    let cd_disp = dctx.cd_disp;
+    let cd_pvert = dctx.cd_pvert;
+
+    let dv = v.customData[cd_disp];
+    let pv = v.customData[cd_pvert];
+
+    dv.smoothco.load(dctx.smemo.smoothco(v));
+
+    //smooth
+    dv.no.zero();
+    for (let v2 of v.neighbors) {
+      dv.no.add(v2.no);
+
+      let dv2 = v2.customData[cd_disp];
+      dv2.smoothco.load(dctx.smemo.smoothco(v2));
+    }
+
+    dv.no.normalize();
+    dv.no.load(v.no);
+
+    pv.updateTangent(dctx.pvert_settings, v, cd_pvert, true, cd_disp, false);
+
+    dv.tan[0] = pv.disUV[1];
+    dv.tan[1] = pv.disUV[2];
+    dv.tan[2] = pv.disUV[3];
+
+    dv.scale = getscale(v, dv, cd_disp);
+
+    for (let layer of dctx.layerset) {
+      let oldsettings = dctx.settings;
+
+      let settings = layer.getTypeSettings();
+      let dv2 = v.customData[layer.index];
+
+      dctx.pushDisp(layer.index);
+
+      if (layer.index === cd_disp || layer === dctx.layerset[0]) {
+        dctx.popDisp();
+        continue;
+      }
+
+      dv2.checkInterpNew(dctx);
+
+      let cd_base = dctx.layerset[settings.base].index;
+      if (cd_base === cd_disp) {
+        dv2.parentTan.load(dv.tan);
+        dv2.parentNo.load(dv.no);
+        dv2.parentScale = dv.scale;
+
+        dv2.baseco.load(dv.smoothco);
+        //dv2.baseco.load(dv.worldco);
+
+        /*
+        if (dv2.flag & DispVertFlags.INTERP_NEW) {
+          dv2.flag &= ~DispVertFlags.INTERP_NEW;
+          dv2.updateTanCo(dctx);
+        }*/
+
+        if (redoWorldCos) {
+          dv2.updateWorldCo(dctx);
+        }
+      }
+
+      dctx.popDisp();
+    }
+  }
+
   getTanMatrix(dctx) {
-    let {owning_v, cd_disp, settings, cd_pvert, pvert_settings} = dctx;
+    let {v, cd_disp, settings, cd_pvert, pvert_settings} = dctx;
+
+    this.checkInterpNew(dctx);
 
     let mat = mat_temps.next();
 
     let m = mat.$matrix;
     let co = this.baseco, no = this.parentNo, tan = this.parentTan;
+
     let scale = this.parentScale;
 
     m.m11 = tan[0]*scale;
@@ -474,7 +819,7 @@ export class DispLayerVert extends CustomDataElem {
   }
 
   clear() {
-    this.worldco.zero();
+
     return this;
   }
 
@@ -496,7 +841,14 @@ export class DispLayerVert extends CustomDataElem {
 
   copyTo(b) {
     b.flag = this.flag;
-    b.worldco.load(this.worldco);
+
+    //are we pointing directly to a vertex?
+    if (this.worldco !== this._worldco) {
+      b.worldco = this.worldco;
+    } else {
+      b.worldco.load(this.worldco);
+    }
+
     b.smoothco.load(this.smoothco);
 
     b.tanco.load(this.tanco);
@@ -521,6 +873,8 @@ export class DispLayerVert extends CustomDataElem {
     let pt = itmp5.zero();
     let pn = itmp6.zero();
     let sco = itmp7.zero();
+    let bco = itmp8.zero();
+
     let scale = 0.0;
     let parentScale = 0.0;
 
@@ -538,6 +892,7 @@ export class DispLayerVert extends CustomDataElem {
       pn.addFac(srcs[i].parentNo, w);
       pt.addFac(srcs[i].parentTan, w);
       sco.addFac(srcs[i].smoothco, w);
+      bco.addFac(srcs[i].baseco, w);
 
       scale += srcs[i].scale*w;
       parentScale += srcs[i].parentScale*w;
@@ -547,21 +902,24 @@ export class DispLayerVert extends CustomDataElem {
     tan.addFac(no, -tan.dot(no));
     tan.normalize();
 
-    this.parentScale = parentScale;
-    this.scale = scale;
+    pn.normalize();
+    pt.addFac(pn, -pt.dot(pn));
+    pt.normalize();
 
-    this.parentTan.load(pt);
-    this.worldco.load(co);
-    this.tanco.load(co2);
-    this.tan.load(tan);
-    this.no.load(no);
-    this.smoothco.load(sco);
-    this.parentNo.load(pn);
+    dest.parentScale = parentScale;
+    dest.scale = scale;
 
-    this.parentNo.normalize();
-    this.parentTan.normalize();
-    this.tan.normalize();
-    this.no.normalize();
+    dest.flag |= DispVertFlags.INTERP_NEW;
+
+    dest.baseco.load(bco);
+    dest.parentTan.load(pt);
+    dest.worldco.load(co);
+    dest._worldco.load(co);
+    dest.tanco.load(co2);
+    dest.tan.load(tan);
+    dest.no.load(no);
+    dest.smoothco.load(sco);
+    dest.parentNo.load(pn);
   }
 
   loadSTRUCT(reader) {
@@ -655,7 +1013,7 @@ export function initDispLayers(mesh) {
 
       for (let v of mesh.verts) {
         let dv = v.customData[cd_disp];
-        dctx.owning_v = v;
+        dctx.v = v;
 
         dv.flag &= ~DispVertFlags.NEEDS_INIT;
 
@@ -684,8 +1042,10 @@ export function initDispLayers(mesh) {
         let dvbase = v.customData[cd_base];
         if (dvbase !== dv) {
           dv.smoothco.load(dvbase.smoothco);
-          //dv.baseco.load(dvbase.smoothco);
-          dv.baseco.load(dvbase.worldco);
+          dv.baseco.load(dvbase.smoothco);
+
+          //dv.baseco.load(dvbase.worldco);
+
           dv.parentScale = dvbase.scale;
           dv.parentTan.load(dvbase.parentTan);
           dv.parentNo.load(dvbase.parentNo);
@@ -715,9 +1075,11 @@ export function getSmoothMemo(mesh, cd_disp) {
     //cd_disp = mesh.smemo.cd_disp;
   }
 
-  let settings = mesh.smemo.settings;
-  mesh.smemo.smoothGen = settings.smoothGen;
-  mesh.smemo.initGen = settings.initGen;
+  if (cd_disp >= 0) {
+    let settings = mesh.smemo.settings;
+    mesh.smemo.smoothGen = settings.smoothGen;
+    mesh.smemo.initGen = settings.initGen;
+  }
 
   return mesh.smemo;
 }
@@ -744,6 +1106,8 @@ export function updateDispLayers(mesh, activeLayerIndex = undefined) {
   } else {
     actlayer = mesh.verts.customData.flatlist[activeLayerIndex];
   }
+
+  let update = false;
 
   let dctx1 = disp_contexts.next().reset();
   let dctx2 = disp_contexts.next().reset();
@@ -823,8 +1187,8 @@ export function updateDispLayers(mesh, activeLayerIndex = undefined) {
         let cd_parent = layers[s1.base].index;
         let dvbase = v.customData[cd_parent];
 
-        //dv1.baseco.load(dvbase.smoothco);
-        dv1.baseco.load(dvbase.worldco);
+        dv1.baseco.load(dvbase.smoothco);
+        //dv1.baseco.load(dvbase.worldco);
 
         dv1.parentTan.load(dvbase.tan);
         dv1.parentNo.load(dvbase.no);
@@ -834,7 +1198,7 @@ export function updateDispLayers(mesh, activeLayerIndex = undefined) {
         dv1.updateWorldCo(dctx1);
         //}
       } else {
-        dv1.worldCo = v;
+        dv1.worldco = v;
 
         let t = dv1._worldco.dot(dv1._worldco);
         if (isNaN(t) || !isFinite(t)) {
@@ -859,8 +1223,6 @@ export function updateDispLayers(mesh, activeLayerIndex = undefined) {
     mesh.regenBVH();
     mesh.recalcNormals();
   }
-
-  let update = false;
 
   for (let layer of layers) {
     let cd_disp = layer.index;
@@ -905,8 +1267,9 @@ export function updateDispLayers(mesh, activeLayerIndex = undefined) {
       let dvbase = v.customData[layers[settings.base].index];
 
       if (li > 0) {
-        //dv.baseco.load(dvbase.smoothco); //= dvbase.smoothco; //.load(dvbase.worldco);
-        dv.baseco.load(dvbase.worldco);
+        dv.baseco.load(dvbase.smoothco); //= dvbase.smoothco; //.load(dvbase.worldco);
+        //dv.baseco.load(dvbase.worldco);
+
         dv.parentTan.load(dvbase.tan);
         dv.parentNo.load(dvbase.no);
         dv.parentScale = dvbase.scale;
