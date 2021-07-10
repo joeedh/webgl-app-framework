@@ -327,6 +327,8 @@ export class BVHDeformPaintOp extends PaintOpBase {
     //return;
     const cd_node = bvh.cd_node;
 
+    console.log("Apply Def");
+
     for (let node of bvh.leaves) {
       for (let v of node.uniqueVerts) {
         let uvw = node.boxvdata.get(v);
@@ -438,13 +440,14 @@ export class BVHDeformPaintOp extends PaintOpBase {
 
     if (!this.modalRunning) {
       this._applyDef(bvh);
+
+      for (let node of bvh.leaves) {
+        node.setUpdateFlag(BVHFlags.UPDATE_BOUNDS);
+      }
+
+      bvh.update();
     }
 
-    for (let node of bvh.leaves) {
-      node.setUpdateFlag(BVHFlags.UPDATE_DRAW);
-    }
-
-    bvh.update();
     window.redraw_viewport(true);
   }
 }

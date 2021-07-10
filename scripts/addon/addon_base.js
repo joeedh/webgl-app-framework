@@ -1,7 +1,9 @@
-import {nstructjs, util, ToolOp, vectormath, math,
-ToolProperty, IntProperty, FloatProperty, EnumProperty,
-FlagProperty, StringProperty, BoolProperty, Vec2Property,
-Vec3Property, Vec4Property, Mat4Property} from '../path.ux/scripts/pathux.js';
+import {
+  nstructjs, util, ToolOp, vectormath, math,
+  ToolProperty, IntProperty, FloatProperty, EnumProperty,
+  FlagProperty, StringProperty, BoolProperty, Vec2Property,
+  Vec3Property, Vec4Property, Mat4Property
+} from '../path.ux/scripts/pathux.js';
 import * as pathux from '../path.ux/scripts/pathux.js';
 import * as mesh from '../mesh/mesh.js';
 import * as mesh_utils from '../mesh/mesh_utils.js';
@@ -12,8 +14,10 @@ import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
 import {ToolMode} from '../editors/view3d/view3d_toolmode.js';
 import {SceneObject, ObjectFlags, composeObjectMatrix} from '../sceneobject/sceneobject.js';
 import {CustomDataElem} from '../mesh/customdata.js';
-import {Editor, VelPan, VelPanFlags, DataBlockBrowser, DirectionChooser, EditorSideBar, makeDataBlockBrowser,
-  MeshMaterialChooser, MeshMaterialPanel, NewDataBlockOp, getContextArea} from '../editors/editor_base.js';
+import {
+  Editor, VelPan, VelPanFlags, DataBlockBrowser, DirectionChooser, EditorSideBar, makeDataBlockBrowser,
+  MeshMaterialChooser, MeshMaterialPanel, NewDataBlockOp, getContextArea
+} from '../editors/editor_base.js';
 import {Icons} from '../editors/icon_enum.js';
 import {MeshToolBase} from '../editors/view3d/tools/meshtool.js';
 import {MeshEditor} from '../editors/view3d/tools/mesheditor.js';
@@ -25,6 +29,13 @@ import {TransformWidget} from '../editors/view3d/widgets/widget_tools.js';
 import * as widgets from '../editors/view3d/widgets/widgets.js';
 import * as simplemesh from '../core/simplemesh.js';
 import * as paramizer from '../mesh/mesh_paramizer.js';
+import * as displacement from '../mesh/mesh_displacement.js';
+import * as curvature from '../mesh/mesh_curvature.js';
+import * as curvature_test from '../mesh/mesh_curvature_test.js';
+import * as utils from '../mesh/mesh_utils.js';
+import * as subdivide from '../mesh/mesh_subdivide.js';
+import * as bvh from '../util/bvh.js';
+import * as bezier from '../util/bezier.js';
 
 export class AddonAPI {
   constructor(ctx) {
@@ -40,10 +51,17 @@ export class AddonAPI {
       SceneObjectData, SceneObject, composeObjectMatrix
     };
 
-    this.mesh = {CustomDataElem, paramizer};
+    this.mesh = {
+      CustomDataElem, paramizer, displacement, curvature,
+      curvature_test, utils, subdivide
+    };
+
     for (let k in mesh) {
       this.mesh[k] = mesh[k];
     }
+
+    this.bvh = bvh;
+    this.bezier = bezier;
 
     this.Icons = Icons; //icon_enum = {Icons};
     this.SelMask = SelMask;
@@ -81,7 +99,7 @@ export class AddonAPI {
     }
 
     this.lib_api = {
-      DataBlock : dblock, DataRef, DataRefProperty, DataRefListProperty
+      DataBlock: dblock, DataRef, DataRefProperty, DataRefListProperty
     };
 
     //reference back to addon
@@ -234,8 +252,8 @@ export class AddonAPI {
 
     //do not unregister with nstructjs
     //if (nstructjs.isRegistered(cls)) {
-      //console.log("unregister with nstructjs!", cls);
-      //nstructjs.unregister(cls);
+    //console.log("unregister with nstructjs!", cls);
+    //nstructjs.unregister(cls);
     //}
 
     function subclassof(a, b) {
@@ -299,13 +317,13 @@ export class AddonAPI {
         console.error("Failed to remove a graph node!", id, n);
       }
     }
-    
+
     for (let k in this.classes) {
       for (let cls of this.classes[k]) {
         this.unregister(cls);
       }
     }
-    
+
     return this;
   }
 }

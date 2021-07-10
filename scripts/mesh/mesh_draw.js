@@ -11,7 +11,7 @@ import {NormalLayerElem, UVLayerElem} from "./mesh_customdata.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {Grid, GridBase} from "./mesh_grids.js";
 
-export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
+export function genRenderMesh(gl, mesh, uniforms, combinedWireframe = false) {
   let recalc;
 
   let times = [];
@@ -47,7 +47,7 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
     c = new Vector4(c);
 
     //desaturate a bit
-    for (let i=0; i<c.length; i++) {
+    for (let i = 0; i < c.length; i++) {
       c[i] = Math.pow(c[i], 0.5);
     }
 
@@ -109,7 +109,7 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
   ecolors[MeshFlags.SEAM] = [0, 1.0, 1.0, 1.0];
 
   let clr = new Vector4(selcolor).interp(ecolors[MeshFlags.SEAM], 0.5);
-  ecolors[MeshFlags.SELECT|MeshFlags.SEAM] = clr;
+  ecolors[MeshFlags.SELECT | MeshFlags.SEAM] = clr;
 
   for (let k of Object.keys(ecolors)) {
     let clr = ecolors[k];
@@ -126,10 +126,26 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
     ecolors[k | MeshFlags.DRAW_DEBUG] = clr;
   }
 
+  for (let k of Object.keys(ecolors)) {
+    let clr = ecolors[k];
+    k = parseInt(k);
+
+    clr = new Vector4(clr);
+    if (!k) {
+      clr[0] = 0.75;
+    } else {
+      clr[1] *= 0.5;
+      clr[2] *= 0.5;
+      clr[0] += (1.0 - clr[0])*0.5;
+    }
+
+    ecolors[k | MeshFlags.DRAW_DEBUG2] = clr;
+  }
+
   pushtime("start2");
 
   let axes = [-1];
-  for (let i=0; i<3; i++) {
+  for (let i = 0; i < 3; i++) {
     if (mesh.symFlag & (1<<i)) {
       axes.push(i);
     }
@@ -240,7 +256,7 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
 
         let line = smoothline ? sm.smoothline(e.eid, e.v1, e.v2) : sm.line(e.eid, e.v1, e.v2);
 
-        let mask = e.flag & (MeshFlags.SELECT | MeshFlags.SEAM | MeshFlags.DRAW_DEBUG);
+        let mask = e.flag & (MeshFlags.SELECT | MeshFlags.SEAM | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2);
 
         let color = ecolors[mask];
 
@@ -314,7 +330,7 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
           p2[axis] = -p2[axis];
           p3[axis] = -p3[axis];
 
-          tri = sm.tri(ltris.length + i*3+axis, p1, p2, p3);
+          tri = sm.tri(ltris.length + i*3 + axis, p1, p2, p3);
         }
         tri.ids(f.eid, f.eid, f.eid);
 

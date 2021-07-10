@@ -15,6 +15,7 @@ import {GridBase} from "../mesh/mesh_grids.js";
 
 import {QRecalcFlags} from "../mesh/mesh_grids.js";
 import {EDGE_LINKED_LISTS} from '../core/const.js';
+import {aabb_sphere_dist, closest_point_on_tri, dist_to_tri_v3} from './math.js';
 
 let _triverts = [new Vector3(), new Vector3(), new Vector3()];
 
@@ -420,6 +421,7 @@ export class BVHNode {
     this.nodePad = 0.00001;
 
     this._castRayRets = util.cachering.fromConstructor(IsectRet, 64, true);
+    this._closestRets = util.cachering.fromConstructor(IsectRet, 64, true);
 
     this.cent = new Vector3(min).interp(max, 0.5);
     this.halfsize = new Vector3(max).sub(min).mulScalar(0.5);
@@ -537,6 +539,17 @@ export class BVHNode {
     this.ohalfsize.load(this.omax).sub(this.omin).mulScalar(0.5);
 
     return true;
+  }
+
+  set flag(f) {
+    this._flag = f;
+    if (f & BVHFlags.UPDATE_DRAW) {
+      //console.warn("UPDATE_DRAW");
+    }
+  }
+
+  get flag() {
+    return this._flag;
   }
 
   setUpdateFlag(flag) {
@@ -1061,6 +1074,74 @@ export class BVHNode {
     }
   }
 
+  closestPoint(p, mindis=1e17) {
+    if (!this.leaf) {
+      if (this.children.length === 2) {
+        let [c1, c2] = this.children;
+        let d1 = aabb_sphere_dist(p, c1.min, c1.max);
+        let d2 = aabb_sphere_dist(p, c2.min, c2.max);
+
+        if (c1 > c2) {
+          let t = c1;
+          c1 = c2;
+          c2 = t;
+        }
+
+        let r1, r2;
+
+        if (d1 < mindis) {
+          r1 = c1.closestPoint(p, mindis);
+          if (r1) {
+            mindis = r1.dist;
+          }
+        }
+
+        if (d2 < mindis) {
+          r2 = c2.closestPoint(p, mindis);
+          if (r2) {
+            mindis = r2.dist;
+          }
+        }
+
+        if (r1 && r2) {
+          return r1.dist <= r2.dist ? r1 : r2;
+        } else if (r1) {
+          return r1;
+        } else if (r2) {
+          return r2;
+        } else {
+          return undefined;
+        }
+      } else if (this.children.length === 1) {
+        return this.children[0].closestPoint(p, mindis);
+      }
+    }
+
+    let ret = this._closestRets.next();
+    let ok = false;
+
+    for (let tri of this.allTris) {
+      let cp = closest_point_on_tri(p, tri.v1, tri.v2, tri.v3, tri.no);
+
+      let dis = cp.dist;
+
+      if (dis < mindis) {
+        ok = true;
+        mindis = dis;
+
+        ret.dist = Math.sqrt(dis);
+        ret.uv.load(cp.uv);
+        ret.p.load(cp.co);
+        ret.tri = tri;
+        ret.id = tri.id;
+      }
+    }
+
+    if (ok) {
+      return ret;
+    }
+  }
+
   castRay(origin, dir) {
     let ret = this._castRayRets.next();
     let found = false;
@@ -1528,7 +1609,7 @@ export class BVHNode {
   }
 
   updateUniqueVerts() {
-    console.error("update unique verts");
+    //console.error("update unique verts");
 
     this.flag &= ~BVHFlags.UPDATE_UNIQUE_VERTS_2;
 
@@ -3710,6 +3791,10 @@ export class BVH {
     this.root.closestTrisSimple(co, radius, ret);
 
     return ret;
+  }
+
+  closestPoint(co) {
+    return this.root.closestPoint(co);
   }
 
   castRay(origin, dir) {

@@ -2080,7 +2080,7 @@ export class Edge extends Element {
     reader(this);
     super.loadSTRUCT(reader);
 
-    this.flag &= ~MeshFlags.DRAW_DEBUG;
+    this.flag &= ~(MeshFlags.DRAW_DEBUG|MeshFlags.DRAW_DEBUG2);
   }
 }
 Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `

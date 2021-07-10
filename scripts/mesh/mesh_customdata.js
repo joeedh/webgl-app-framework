@@ -649,6 +649,77 @@ Vector3LayerElem.STRUCT = STRUCT.inherit(Vector3LayerElem, CustomDataElem, "mesh
 nstructjs.manager.add_class(Vector3LayerElem);
 CustomDataElem.register(Vector3LayerElem);
 
+export class Vector4LayerElem extends CustomDataElem {
+  constructor() {
+    super();
+
+    this.value = new Vector4();
+  }
+
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.VERTEX | MeshTypes.LOOP,
+      typeName    : "vec4",
+      uiTypeName  : "Vector4",
+      defaultName : "Coordinates4",
+      valueSize   : 4,
+      flag        : 0
+    }
+  };
+
+  setValue(val) {
+    this.value.load(val);
+  }
+
+  getValue() {
+    return this.value;
+  }
+
+  copyTo(b) {
+    b.value.load(this.value);
+  }
+
+  copy() {
+    let ret = new Vector4LayerElem();
+    this.copyTo(ret);
+    return ret;
+  }
+
+  interp(dest, datas, ws) {
+    if (datas.length === 0) {
+      return;
+    }
+
+    let x = 0, y = 0, z = 0;
+
+    for (let i = 0; i < datas.length; i++) {
+      x += ws[i]*datas[i].value[0];
+      y += ws[i]*datas[i].value[1];
+      z += ws[i]*datas[i].value[2];
+    }
+
+    dest.value[0] = x;
+    dest.value[1] = y;
+    dest.value[2] = z;
+  }
+
+  validate() {
+    return true;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+  }
+}
+
+Vector4LayerElem.STRUCT = STRUCT.inherit(Vector4LayerElem, CustomDataElem, "mesh.Vector4LayerElem") + `
+  value : vec4;
+}
+`;
+nstructjs.manager.add_class(Vector4LayerElem);
+CustomDataElem.register(Vector4LayerElem);
+
 export class MaskElem extends FloatElem {
   constructor() {
     super(1.0);

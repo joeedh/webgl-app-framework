@@ -353,7 +353,7 @@ export class FindnearestMesh extends FindnearestClass {
     };
   }
 
-  static findnearest_pbvh(ctx, selmask, mpos, view3d, limit=25) {
+  static findnearest_pbvh(ctx, selmask, mpos, view3d, limit=25, depth=0) {
     let x = mpos[0], y = mpos[1];
     limit = Math.max(~~limit, 1);
 
@@ -503,6 +503,17 @@ export class FindnearestMesh extends FindnearestClass {
           } else {
             f = me.eidMap.get(tri.id);
             l = f.loops[0].l;
+          }
+
+          if (!f) {
+            console.warn("bvh error!");
+            me.regenBVH();
+
+            if (depth < 5) {
+              return this.findnearest_pbvh(ctx, selmask, mpos, view3d, limit, depth+1);
+            } else {
+              continue;
+            }
           }
 
           doElem(mat, ob, f);

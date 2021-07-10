@@ -22,7 +22,7 @@ import '../path.ux/scripts/util/struct.js';
 
 let STRUCT = nstructjs.STRUCT;
 
-import {CustomDataElem} from './customdata.js';
+import {CDFlags, CustomDataElem} from './customdata.js';
 import {LayerTypes, ChunkedSimpleMesh, SimpleMesh} from "../core/simplemesh.js";
 
 import {MeshTools} from './mesh_stdtools.js';
@@ -1960,10 +1960,10 @@ export class Mesh extends SceneObjectData {
       this.verts.setSelect(nv, true);
     }
 
-    _cdtemp1[0] = e;
-    _cdwtemp1[0] = 1.0;
+    //_cdtemp1[0] = e;
+    //_cdwtemp1[0] = 1.0;
 
-    this.edges.customDataInterp(ne, _cdtemp1, _cdwtemp1);
+    //this.edges.customDataInterp(ne, _cdtemp1, _cdwtemp1);
 
     _cdtemp2[0] = v1;
     _cdtemp2[1] = v2;
@@ -2942,6 +2942,8 @@ export class Mesh extends SceneObjectData {
     if (lctx) {
       lctx.newEdge(e, LogTags.SPLIT_FACE);
     }
+
+    this.copyElemData(e, l1.e);
 
     //this._radialRemove(l1.e, l1);
     //this._radialRemove(l2.e, l2);
@@ -5753,12 +5755,23 @@ export class Mesh extends SceneObjectData {
     return ret;
   }
 
-  copyElemData(dst, src) {
+  copyElemData(dst, src, ignoreNoInterp=false) {
+    let cdlayers;
+
+    if (ignoreNoInterp) {
+      let elist = this.getElemList(dst.type);
+      cdlayers = elist.customData.flatlist;
+    }
+
     if (dst.type !== src.type) {
       throw new Error("mismatched between element types in Mesh.prototype.copyElemData()");
     }
 
     for (let i = 0; i < dst.customData.length; i++) {
+      if (cdlayers && (cdlayers[i].flag & CDFlags.NO_INTERP)) {
+        continue;
+      }
+
       dst.customData[i].load(src.customData[i]);
     }
 

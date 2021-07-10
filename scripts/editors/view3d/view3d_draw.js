@@ -17,13 +17,16 @@ export const Colors = {
   HIGHLIGHT  : [1.0, 1.0, 0.3, 1.0],
   POINTSIZE  : 7,
   POLYGON_OFFSET : 1.0,
-  FACE_UNSEL : [0.75, 0.75, 0.75, 0.3]
+  FACE_UNSEL : [0.75, 0.75, 0.75, 0.3],
+  DRAW_DEBUG2 : [1.0, 0.3, 0.1, 1.0]
 };
 window._Colors = Colors; //debugging global
 
 export function elemColor(e) {
   if (e.flag & MeshFlags.DRAW_DEBUG) {
     return Colors.DRAW_DEBUG;
+  } else if (e.flag & MeshFlags.DRAW_DEBUG2) {
+    return Colors.DRAW_DEBUG2;
   } else if (e.flag & MeshFlags.SELECT) {
     return Colors.SELECT;
   } else {

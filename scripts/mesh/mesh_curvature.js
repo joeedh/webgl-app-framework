@@ -38,9 +38,9 @@ function addMat(amat, v1, v2, w=1.0, nmat) {
   amat[6] += no[1]*no[2]*w;
 
   //skip 7
-  amat[8] += no[1]*no[0]*w;
-  amat[9] += no[1]*no[1]*w;
-  amat[10] += no[1]*no[2]*w;
+  amat[8] += no[2]*no[0]*w;
+  amat[9] += no[2]*no[1]*w;
+  amat[10] += no[2]*no[2]*w;
 }
 
 function calcCoKey(co) {
@@ -168,7 +168,6 @@ export class CurvVert extends CustomDataElem {
       nmat.makeNormalMatrix(v.no, tan);
       nmat.transpose();
     }
-
 
     function rec(v2, depth=0) {
       for (let e of v2.edges) {
@@ -606,7 +605,8 @@ export function smoothCurvatures(mesh, vs=mesh.verts, fac=1.0, projection=0.0) {
       let sv2 = v2.customData[cd_curv];
       let w = 1.0;
 
-      w = Math.abs(Math.abs(sv2.k1) - Math.abs(sv2.k2));
+      //w = Math.abs(Math.abs(sv2.k1) - Math.abs(sv2.k2));
+      w = 1.0;
 
       let tan2 = tmp2.load(sv2.tan);
       let d = tan2.dot(v.no);

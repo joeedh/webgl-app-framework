@@ -1,23 +1,17 @@
 import {Shaders} from '../../scripts/shaders/shaders.js';
 import {PrimitiveTypes} from '../../scripts/core/simplemesh.js';
-import {KDrawModes} from '../../scripts/mesh/mesh_paramizer.js';
+import {KDrawModes, CurvVert2} from '../../scripts/mesh/mesh_curvature_test.js';
 
-export function makeParamToolMode(api) {
+export function makeCurvToolMode(api) {
   let exports = {};
-
-  let DrawModes = exports.DrawModes = {
-    GEODESIC      : 0,
-    UV            : 1
-  }
 
   let DrawFlags = exports.DrawFlags = {
     COLOR : 1
   };
 
-  let ParamVert = api.mesh.paramizer.ParamVert;
   let {LayerTypes, PrimitiveTypes, SimpleMesh} = api.simplemesh;
 
-  let ParamToolMode = exports.ParamToolMode = class ParamToolMode extends api.toolmode.MeshToolBase {
+  let CurvToolMode = exports.CurvToolMode = class CurvToolMode extends api.toolmode.MeshToolBase {
     constructor() {
       super();
 
@@ -28,13 +22,21 @@ export function makeParamToolMode(api) {
 
       this.drawTangents = true;
 
-      this.paramMesh = undefined;
-      this.drawMode = DrawModes.GEODESIC;
+      this.curveMesh = undefined;
       this.drawFlag = 0;
-      this.drawScale = 20.0;
+      this.drawScale = 1.0;
       this.drawVerts = true;
 
-      let _last_pmesh_key = '';
+      this._last_cmesh_key = '';
+    }
+
+    defineKeyMap() {
+      super.defineKeyMap();
+
+      let km = this.keymap;
+      km.add(new api.pathux.HotKey("R", [], "view3d.rotate(selmask=17)"));
+
+      return this.keymap;
     }
 
     static defineAPI(api) {
@@ -42,20 +44,19 @@ export function makeParamToolMode(api) {
 
       let onchange = () => window.redraw_viewport(true);
 
-      st.enum("drawMode", "drawMode", DrawModes, "Draw Mode");
       st.flags("drawFlag", "drawFlag", DrawFlags, "Draw Flags");
-      st.float("drawScale", "drawScale", "Scale").noUnits().range(0.1, 25.0);
+      st.float("drawScale", "drawScale", "Scale").noUnits().range(0.001, 25.0);
       st.bool("drawVerts", "drawVerts", "Draw Verts").on('change', onchange);
       st.bool("drawTangents", "drawTangents", "Draw Tangents").on('change', onchange);
 
-
-      st.enum("kDrawMode", "kDrawMode", KDrawModes, "Tangent Draw Mode");
+      st.enum("kDrawMode", "kDrawMode", KDrawModes, "Tangent Draw Mode").on('change', () => {
+        window.redraw_viewport(true);
+      });
 
       return st;
     }
 
     update() {
-      window.kdrawmode = this.kDrawMode;
     }
 
     static buildHeader(header, addRow) {
@@ -64,23 +65,20 @@ export function makeParamToolMode(api) {
       let strip = row.strip();
       strip.useIcons(false);
 
-      strip.tool("paramize.test()");
+      strip.tool("curvetool.test()");
       strip.prop("scene.tool.drawVerts");
     }
 
     static buildSettings(con) {
       let panel = con.panel("Tools");
 
-      panel.toolPanel("mesh.test_disp_smooth()");
-
       let strip = panel.strip();
       strip.useIcons(false);
-      strip.tool("paramize.test()");
-      strip.tool("paramize.smooth()");
+      strip.tool("curvetool.test()");
+      strip.tool("curvetool.smooth()");
 
       strip = panel.strip();
       strip.useIcons(false);
-      strip.prop("scene.tool.drawMode");
       strip.prop("scene.tool.drawFlag");
 
       panel.useIcons(false);
@@ -91,38 +89,41 @@ export function makeParamToolMode(api) {
 
       panel = con.panel("Settings");
       panel.useIcons(false);
-      panel.prop("mesh.vertsData.paramvert.settings.smoothTangents");
-      panel.prop("mesh.vertsData.paramvert.settings.weightMode");
+      panel.prop("mesh.vertsData.curvetest.settings.smoothTangents");
+      panel.prop("mesh.vertsData.curvetest.settings.weightMode");
     }
 
-    updateParamMesh(gl) {
+    updateCurveMesh(gl) {
       if (!this.mesh) {
         return;
       }
 
       let mesh = this.mesh;
-      let cd_pvert = mesh.verts.customData.getLayerIndex("paramvert");
+      let cd_curvt = mesh.verts.customData.getLayerIndex("curvetest");
 
-      let key = "" + mesh.lib_id + ":" + mesh.updateGen + ":" + cd_pvert;
+      let key = "" + mesh.lib_id + ":" + mesh.updateGen + ":" + cd_curvt;
+      key += ":" + this.kDrawMode;
 
-      if (this.paramMesh && key === this._last_pmesh_key) {
+      if (this.curveMesh && key === this._last_cmesh_key) {
         return;
       }
 
-      this._last_pmesh_key = key;
+      this._last_cmesh_key = key;
 
-      if (this.paramMesh) {
-        this.paramMesh.destroy(gl);
+      console.log("rebuild curve mesh", key);
+
+      if (this.curveMesh) {
+        this.curveMesh.destroy(gl);
       }
 
       let lf = LayerTypes;
       let lflag = lf.LOC | lf.COLOR | lf.UV;
 
-      let sm = this.paramMesh = new SimpleMesh(lflag);
+      let sm = this.curveMesh = new SimpleMesh(lflag);
       sm.primflag = PrimitiveTypes.LINES;
 
-      if (cd_pvert < 0) {
-        console.log("no param verts");
+      if (cd_curvt < 0) {
+        console.log("no curve verts");
         return;
       }
 
@@ -130,7 +131,7 @@ export function makeParamToolMode(api) {
       let tmp = new Vector3();
 
       for (let v of mesh.verts) {
-        let pv = v.customData[cd_pvert];
+        let pv = v.customData[cd_curvt];
 
         let dis = 0;
         let tot = 0;
@@ -149,11 +150,53 @@ export function makeParamToolMode(api) {
         let v1 = v;
         let v2 = tmp.zero();
 
-        v2[0] = pv.smoothTan[0];
-        v2[1] = pv.smoothTan[1];
-        v2[2] = pv.smoothTan[2];
+        let t = v2;
+        switch (this.kDrawMode) {
+          case KDrawModes.TAN:
+            t.load(pv.tan);
+            break;
+          case KDrawModes.NO:
+            t.load(pv.no);
+            break;
+          case KDrawModes.BIN:
+            t.load(pv.bin);
+            break;
+          case KDrawModes.DK1:
+            t.load(pv.dk1);
+            break;
+          case KDrawModes.D2K1:
+            t.load(pv.d2k1);
+            break;
+          case KDrawModes.D3K1:
+            t.load(pv.d3k1);
+            break;
 
-        v2.cross(v.no);
+          case KDrawModes.DK2:
+            t.load(pv.dk2);
+            break;
+          case KDrawModes.D2K2:
+            t.load(pv.d2k2);
+            break;
+          case KDrawModes.D3K2:
+            t.load(pv.d3k2);
+            break;
+
+          case KDrawModes.DK3:
+            t.load(pv.dk3);
+            break;
+          case KDrawModes.D2K3:
+            t.load(pv.d2k3);
+            break;
+          case KDrawModes.D3K3:
+            t.load(pv.d3k3);
+            break;
+          case KDrawModes.ERROR:
+            t.load(pv.errorvec);
+            break;
+          case KDrawModes.SMOOTH_TAN:
+            t.load(pv.smoothTan);
+            break;
+        }
 
         v2.normalize();
 
@@ -186,35 +229,35 @@ export function makeParamToolMode(api) {
         uColor          : color,
         alpha           : 1.0,
         opacity         : 1.0,
-        polygonOffset   : 1.0
+        polygonOffset   : 2.0
       };
 
       this.mesh = this.ctx.mesh;
 
       if (this.mesh && this.drawTangents) {
-        this.updateParamMesh(gl);
+        this.updateCurveMesh(gl);
 
-        if (this.paramMesh) {
+        if (this.curveMesh) {
           gl.enable(gl.DEPTH_TEST);
-          this.paramMesh.draw(gl, uniforms, Shaders.WidgetMeshShader);
+
+          this.curveMesh.draw(gl, uniforms, Shaders.WidgetMeshShader);
         }
       }
     }
 
     static toolModeDefine() {
       return {
-        name        : "paramtool",
-        uiname      : "Parameterizer Tool",
-        icon        : api.Icons.SHOW_LOOPS,
-        description : "Parameterizer Tool",
+        name        : "curvetest",
+        uiname      : "Curvature Tester",
+        icon        : api.Icons.CIRCLE_SEL,
+        description : "Curvature Tester Tool",
         transWidgets: [],
         flag        : 0
       }
     }
   }
 
-  ParamToolMode.STRUCT = nstructjs.inherit(ParamToolMode, api.toolmode.ToolMode) + `
-    drawMode       : int;
+  CurvToolMode.STRUCT = nstructjs.inherit(CurvToolMode, api.toolmode.ToolMode) + `
     drawFlag       : int;
     drawScale      : float;
     drawVerts      : bool;
@@ -223,7 +266,7 @@ export function makeParamToolMode(api) {
   }
   `;
 
-  api.register(ParamToolMode);
+  api.register(CurvToolMode);
 
   return exports;
 }

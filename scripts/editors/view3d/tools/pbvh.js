@@ -1920,6 +1920,8 @@ export class BVHToolMode extends ToolMode {
     }
 
     function genNodeMesh(node) {
+      console.warn("genNodeMesh");
+
       if (!drawColPatches) {
         return genNodeMesh_index(node);
       }
@@ -2646,6 +2648,7 @@ export class BVHToolMode extends ToolMode {
 
         if (update) {
           genNodeMesh(node);
+          node.flag &= ~BVHFlags.UPDATE_DRAW;
         }
 
         if (!node.drawData) {

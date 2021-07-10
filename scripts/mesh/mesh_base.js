@@ -291,12 +291,12 @@ export const MeshFlags = Object.freeze({
   UPDATE          : (1<<11),
   CURVE_FLIP      : (1<<12), //edge.evaluate goes backwards
   SMOOTH_DRAW     : (1<<13),
-  MIRROREDX       : (1<<14),
+  MIRROREDX        : (1<<14),
   MIRROREDY       : (1<<15),
   MIRROREDZ       : (1<<16),
   MIRRORED        : (1<<14) | (1<<15) | (1<<16),
   MIRROR_BOUNDARY : (1<<17), //used by mirror
-  GRID_MRES_HIDDEN: (1<<18), //used by grids to flag gridverts as not part of visible multires level
+  DRAW_DEBUG2     : (1<<18),
   SEAM            : (1<<19),
   FACE_EXIST_FLAG : (1<<20),
   TEMP4           : (1<<21),
@@ -304,11 +304,14 @@ export const MeshFlags = Object.freeze({
   NOAPI_TEMP1     : (1<<24), //temp flag that's not allowed to be used by core API functions
   NOAPI_TEMP2     : (1<<25),
   ITER_TEMP3      : (1<<27),
+
+  //these two share the same bit
   QUAD_EDGE       : (1<<28),
+  GRID_MRES_HIDDEN: (1<<28), //used by grids to flag gridverts as not part of visible multires level
 
   //these two share the same bit
   COLLAPSE_TEMP : (1<<29),
-  MAKE_FACE_TEMP: (1<<29)
+  MAKE_FACE_TEMP: (1<<29),
 });
 
 export const MeshIterFlags = {

@@ -1,4 +1,6 @@
 import './mesh_loopops.js';
+import './mesh_curvature_test.js';
+
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 import {
@@ -485,7 +487,8 @@ export class RemeshOp extends MeshOp {
           edgeRunPercent   : new FloatProperty(0.5).setRange(0.001, 1).noUnits().saveLastValue(),
           curveSmoothFac   : new FloatProperty(0.0).noUnits().setRange(0.0, 1.0).saveLastValue(),
           curveSmoothRepeat: new IntProperty(4).noUnits().setRange(0, 50).saveLastValue(),
-          rakeMode         : new EnumProperty(RakeModes.CURVATURE, RakeModes).saveLastValue()
+          rakeMode         : new EnumProperty(RakeModes.CURVATURE, RakeModes).saveLastValue(),
+          reproject        : new BoolProperty(false).saveLastValue()
         }
       ),
       outputs : ToolOp.inherit()
@@ -503,6 +506,7 @@ export class RemeshOp extends MeshOp {
     let count = this.inputs.edgeRunPercent.getValue();
     let curveSmoothRepeat = this.inputs.curveSmoothRepeat.getValue();
     let curveSmoothFac = this.inputs.curveSmoothFac.getValue();
+    let reproject = this.inputs.reproject.getValue();
 
     count = Math.ceil(mesh.edges.length*count);
 
@@ -511,6 +515,7 @@ export class RemeshOp extends MeshOp {
 
     let remesher = new cls(mesh, lctx, goalType, goalValue);
 
+    remesher.reproject = reproject;
     remesher.rakeMode = this.inputs.rakeMode.getValue();
     remesher.subdFac = subdFac;
     remesher.collFac = collFac;
@@ -576,6 +581,27 @@ export class InteractiveRemeshOp extends RemeshOp {
       outputs : ToolOp.inherit({}),
       is_modal: true
     }
+  }
+
+  redo(ctx) {
+    let undo = this._undo;
+
+    this._undo = this._redo;
+    this._redo = undefined;
+
+    super.undo(ctx);
+
+    this._undo = undo;
+  }
+
+  undo(ctx) {
+    let undo = this._undo;
+
+    this.undoPre(ctx);
+    this._redo = this._undo;
+    this._undo = undo;
+
+    super.undo(ctx);
   }
 
   makeLogCtx(ctx, mesh) {

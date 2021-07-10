@@ -1033,14 +1033,32 @@ export function applyTriangulation(mesh, f, newfaces, newedges, lctx) {
     if (newedges) {
       if (!e1) {
         newedges.add(l.e);
+
+        if (e2) {
+          mesh.copyElemData(e1, e2, true);
+        } else if (e3) {
+          mesh.copyElemData(e1, e3, true);
+        }
       }
 
       if (!e2) {
         newedges.add(l.next.e);
+
+        if (e1) {
+          mesh.copyElemData(e2, e1, true);
+        } else if (e3) {
+          mesh.copyElemData(e2, e3, true);
+        }
       }
 
       if (!e3) {
         newedges.add(l.prev.e);
+
+        if (e1) {
+          mesh.copyElemData(e3, e1, true);
+        } else if (e2) {
+          mesh.copyElemData(e3, e2, true);
+        }
       }
     }
   }
