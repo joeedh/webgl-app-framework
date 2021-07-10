@@ -3,6 +3,7 @@ import zipfile, os, os.path, sys, glob
 outfile = "./app.zip"
 
 sources = [
+  "./addons/**",
   "./scripts/*.js",
   "./scripts/core/**",
   "./scripts/config/**",
