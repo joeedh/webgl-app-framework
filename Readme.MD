@@ -12,6 +12,6 @@ bash git_pull.sh
 
 </pre>
 
-# Buildings
+# Building
 
 Run build.sh in bash

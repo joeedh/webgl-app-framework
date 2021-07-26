@@ -1,9 +1,9 @@
 {
   "devDependencies": {
-    "electron": "^11.1.0"
+    "electron": ">=11.1.0"
   },
   "dependencies": {
-    "pngjs": "^6.0.0",
-    "pngjs-nozlib": "^1.0.0"
+    "pngjs": ">=6.0.0",
+    "pngjs-nozlib": ">=1.0.0"
   }
 }
