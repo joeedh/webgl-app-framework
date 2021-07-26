@@ -2258,16 +2258,22 @@ let tmp1 = new Vector3();
 let tmp2 = new Vector3();
 let tmp3 = new Vector3();
 
-export function vertexSmooth(mesh, verts = mesh.verts, fac = 0.5, proj = 0.0) {
+export function vertexSmooth(mesh, verts = mesh.verts, fac = 0.5, proj = 0.0, useBoundary=false) {
   verts = ReusableIter.getSafeIter(verts);
 
   for (let v of verts) {
     let co = tmp1.zero();
     let totw = 0;
 
+    let bound = useBoundary ? v.flag & MeshFlags.BOUNDARY : 0;
+
     for (let v2 of v.neighbors) {
       let co2 = tmp2.load(v2);
       let w = 0.0;
+
+      if (bound && !(v2.flag & MeshFlags.BOUNDARY)) {
+        continue;
+      }
 
       if (proj !== 0.0) {
         let w2 = 1.0 - proj;

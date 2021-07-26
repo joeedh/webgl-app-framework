@@ -1468,8 +1468,7 @@ export class MaskOpBase extends ToolOp {
           let node = p.customData[cd_node].node;
 
           if (node) {
-            node.flag |= updateflag;
-            mesh.bvh.updateNodes.add(node);
+            node.setUpdateFlag(updateflag);
           }
         }
       }
@@ -1497,8 +1496,7 @@ export class MaskOpBase extends ToolOp {
         if (cd_node) {
           let node = v.customData[cd_node].node;
           if (node) {
-            node.flag |= updateflag;
-            mesh.bvh.updateNodes.add(node);
+            node.setUpdateFlag(updateflag);
           }
         }
       }
@@ -1550,8 +1548,7 @@ export class MaskOpBase extends ToolOp {
             if (updateBVHNodes) {
               let node = p.customData[cd_node].node;
               if (node) {
-                node.flag |= updateflag;
-                bvh.updateNodes.add(node);
+                node.setUpdateFlag(updateflag);
               }
             }
           }
@@ -1563,8 +1560,7 @@ export class MaskOpBase extends ToolOp {
           if (updateBVHNodes) {
             let node = v.customData[cd_node].node;
             if (node) {
-              node.flag |= updateflag;
-              bvh.updateNodes.add(node);
+              node.setUpdateFlag(updateflag);
             }
           }
         }

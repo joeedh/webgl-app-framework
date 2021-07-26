@@ -101,8 +101,7 @@ export function fillHoleFromVert(mesh, bvh, startv, visit, lctx) {
       tri.flag |= BVHTriFlags.LOOPTRI_INVALID;
 
       for (let node of tri.nodes) {
-        bvh.updateNodes.add(node);
-        node.flag |= updateflag;
+        node.setUpdateFlag(updateflag);
       }
     }
 

@@ -312,11 +312,13 @@ export class FindnearestMesh extends FindnearestClass {
         let fs;
 
         if (selmask & SelMask.FACE) {
-          fs = bvh.facesInCone(co2, ray2, radius1, radius2, false);
+          fs = bvh.facesInCone(co2, ray2, radius1, radius2, true, false);
           console.log("fs", fs);
           for (let f of fs) {
             doElem(mat, ob, f);
           }
+
+          continue;
         }
 
         if (report) {

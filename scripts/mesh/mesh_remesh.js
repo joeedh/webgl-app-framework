@@ -7,7 +7,7 @@ import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {applyTriangulation} from './mesh_tess.js';
 import {
   dissolveEdgeLoops,
-  fixManifold, getEdgeLoop, trianglesToQuads, triangulateFan, triangulateMesh, vertexSmooth
+  fixManifold, getEdgeLoop, trianglesToQuads, triangulateFan, triangulateMesh, TriQuadFlags, vertexSmooth
 } from './mesh_utils.js';
 import {splitEdgesSmart2} from './mesh_subdivide.js';
 import {getCurveVerts, smoothCurvatures} from './mesh_curvature.js';
@@ -76,6 +76,7 @@ export const RemeshParams = {
   PROJ_FACTOR   : p(0.0, 1.0, 0.75),
   CSMOOTH_FAC   : p(0.0, 1.0, 0.0),
   CSMOOTH_REPEAT: p(0.0, 50.0, 4.0),
+  ORIG_FACTOR   : p(0.0, 1.0, 0.25),
   TOTPARAM      : p()
 };
 
@@ -106,7 +107,8 @@ window._resetParams = function () {
 
 const {
         EDIST_P1, EDIST_P2, EDIST_P3, SUBD_FAC, COLL_FAC, RAKE_FACTOR,
-        PROJ_FACTOR, SMOOTH_FACTOR, CSMOOTH_FAC, CSMOOTH_REPEAT, TOTPARAM
+        PROJ_FACTOR, SMOOTH_FACTOR, CSMOOTH_FAC, CSMOOTH_REPEAT,
+        ORIG_FACTOR, TOTPARAM
       } = RemeshParams;
 
 export class Remesher {
@@ -117,7 +119,6 @@ export class Remesher {
     }
 
     this.reproject = false;
-
     this.projMesh = undefined;
 
     this.excludedParams = new Set([
@@ -138,6 +139,14 @@ export class Remesher {
 
     this.goalType = goalType;
     this.goalValue = goalValue;
+  }
+
+  get origFactor() {
+    return this.params[ORIG_FACTOR];
+  }
+
+  set origFactor(val) {
+    this.params[ORIG_FACTOR] = val;
   }
 
   get relax() {
@@ -224,7 +233,9 @@ export const RemeshFlags = {
   CLEANUP  : 4
 };
 
-const EDGE_DIAG = MeshFlags.QUAD_EDGE; //MAKE_FACE_TEMP;
+const EDGE_DIAG = MeshFlags.QUAD_EDGE;
+
+//const EDGE_DIAG = MeshFlags.MAKE_FACE_TEMP;
 
 export class UniformTriRemesher extends Remesher {
   constructor(mesh, lctx = undefined, goalType, goalValue) {
@@ -248,6 +259,7 @@ export class UniformTriRemesher extends Remesher {
     this.timer = undefined;
     this.optData = undefined;
 
+    this.istep = 0;
     this.minEdges = 5; //have at least these number of edges to continue iteration
   }
 
@@ -589,6 +601,9 @@ export class UniformTriRemesher extends Remesher {
   rake(fac = this.rakeFactor) {
     let mesh = this.mesh, lctx = this.lctx;
 
+    this.istep++;
+    const rot = (this.istep) & 1;
+
     if (fac === 0.0) {
       return;
     }
@@ -622,6 +637,7 @@ export class UniformTriRemesher extends Remesher {
     let dorake = (v, fac = 0.5, sdis = 1.0) => {
       //return rake2(v, fac);
 
+      let bound = v.flag & MeshFlags.BOUNDARY;
       let val = v.valence;
 
       if (fac === 0.0 || val === 0.0) {
@@ -661,7 +677,8 @@ export class UniformTriRemesher extends Remesher {
 
         d1.normalize();
       } else {
-        d1.load(cv.tan).normalize();
+        d1.load(cv.tan);
+        d1.normalize();
       }
 
 
@@ -677,6 +694,10 @@ export class UniformTriRemesher extends Remesher {
 
       d1.interp(d3, vtemp[0]).normalize();
 
+      if (rot) {
+        d1.cross(v.no).normalize();
+      }
+
       let pad = 0.025;//5*(1.35 - fac);
       let hadsharp = false;
 
@@ -684,6 +705,10 @@ export class UniformTriRemesher extends Remesher {
 
       for (let e of v.edges) {
         let v2 = e.otherVertex(v);
+
+        if (bound && !(v2.flag & MeshFlags.BOUNDARY)) {
+          continue;
+        }
 
         //if (e.flag & skipflag) {
         //continue;
@@ -711,18 +736,20 @@ export class UniformTriRemesher extends Remesher {
         let wfac = 1.0;
 
         //let limit = 0.07;
-        let limit = 0.14;
+        let limit = 0.115;
 
-        let diag = Math.abs(w - 0.25) < limit || Math.abs(w - 0.75) < limit;
-        diag = diag && dcount < 5;
+        if (0) {
+          let diag = Math.abs(w - 0.33) < limit || Math.abs(w - 0.66) < limit;
+          diag = diag && dcount < 5;
 
-        if (diag) {
-          e.flag |= EDGE_DIAG | MeshFlags.DRAW_DEBUG;
-          //count diagonals less
-          wfac = 0.25;
-          dcount++;
-        } else {
-          e.flag &= ~(EDGE_DIAG | MeshFlags.DRAW_DEBUG);
+          if (diag) {
+            e.flag |= EDGE_DIAG | MeshFlags.DRAW_DEBUG;
+            //count diagonals less
+            wfac = 0.25;
+            dcount++;
+          } else {
+            e.flag &= ~(EDGE_DIAG | MeshFlags.DRAW_DEBUG);
+          }
         }
 
         //w = Math.abs(w - 0.5);
@@ -780,6 +807,25 @@ export class UniformTriRemesher extends Remesher {
 
   }
 
+  updateDiagFlags() {
+    let mesh = this.mesh, lctx = this.lctx;
+
+    for (let e of mesh.edges) {
+      e.flag &= ~(MeshFlags.QUAD_EDGE | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2);
+    }
+
+    let lflag = TriQuadFlags.DEFAULT | TriQuadFlags.MARK_ONLY;
+    lflag &= ~TriQuadFlags.MARKED_EDGES;
+
+    trianglesToQuads(mesh, mesh.faces, lflag, lctx);
+
+    for (let e of mesh.edges) {
+      if (e.flag & MeshFlags.QUAD_EDGE) {
+        e.flag |= MeshFlags.DRAW_DEBUG;
+      }
+    }
+  }
+
   step(vErrFunc = undefined) {
     let mesh = this.mesh;
     let elen = this.elen;
@@ -802,12 +848,29 @@ export class UniformTriRemesher extends Remesher {
 
     let vec = new Vector3();
 
+    for (let v of mesh.verts) {
+      v.flag &= ~MeshFlags.BOUNDARY;
+    }
+
+    //update boundary flags
     for (let e of mesh.edges) {
       e.flag &= ~(EDGE_DIAG | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2);
 
       let etemp = e.customData[cd_etemp].value;
 
-      if (!liveset.has(e)) {
+      let update = !liveset.has(e);
+
+      if (!e.l || e.l === e.l.radial_next) {
+        etemp[0] = -1;
+        e.flag |= MeshFlags.BOUNDARY;
+        e.v1.flag |= MeshFlags.BOUNDARY;
+        e.v2.flag |= MeshFlags.BOUNDARY;
+      } else if (etemp[0] === -1) {
+        update = true;
+        e.flag &= ~MeshFlags.BOUNDARY;
+      }
+
+      if (update) {
         liveset.add(e);
         vec.load(e.v2).sub(e.v1).normalize();
 
@@ -835,20 +898,27 @@ export class UniformTriRemesher extends Remesher {
       }
     }
 
+
     for (let i = 0; i < 3; i++) {
       this.rake();
     }
 
     let es, es2;
 
-    let cd_orig = this.cd_orig;
-    let cd_vtemp = this.cd_temps[MeshTypes.VERTEX];
+    const cd_orig = this.cd_orig;
+    const cd_vtemp = this.cd_temps[MeshTypes.VERTEX];
+    const ofac = this.origFactor;
 
     for (let v of mesh.verts) {
       let oco = v.customData[cd_orig].value;
       let fac = v.customData[cd_vtemp].color[0];
 
-      v.interp(oco, fac*0.8 + 0.2);
+      if (v.flag & MeshFlags.BOUNDARY) {
+        fac = 0.8;
+      }
+
+      fac = fac*0.8 + 0.2;
+      v.interp(oco, fac*ofac);
     }
 
     if (this.flag & RemeshFlags.SUBDIVIDE) {
@@ -882,15 +952,21 @@ export class UniformTriRemesher extends Remesher {
       let tot = 0.0;
       co.zero();
 
+      let bound = v.flag & MeshFlags.BOUNDARY;
+
       for (let e of v.edges) {
         let w = 1.0;
 
         if (e.flag & EDGE_DIAG) {
-          w = 0.1;
+          w = 0.01;
           //continue;
         }
 
         let v2 = e.otherVertex(v);
+
+        if (bound && !(v2.flag & MeshFlags.BOUNDARY)) {
+          continue;
+        }
 
         n.load(v2).sub(v);
         let d = n.dot(v.no);
@@ -909,6 +985,8 @@ export class UniformTriRemesher extends Remesher {
         v.interp(co, relax);
       }
     }
+
+    this.updateDiagFlags();
 
     for (let v of mesh.verts) {
       v.flag |= MeshFlags.UPDATE;
@@ -1373,10 +1451,23 @@ export class UniformTriRemesher extends Remesher {
     let cd_vtemp = this.cd_temps[MeshTypes.VERTEX];
     let cd_etemp = this.cd_temps[MeshTypes.EDGE];
 
+    if (0) { //this.i%2 === 0) {
+      //cleanupQuads(mesh, mesh.faces, lctx);
+      trianglesToQuads(mesh, mesh.faces, undefined, lctx);
+      vertexSmooth(mesh);
+      vertexSmooth(mesh);
+      vertexSmooth(mesh);
+      triangulateMesh(mesh, mesh.faces, lctx);
+    }
+
     for (let i = 0; i < 55; i++) {
       let stop = true;
 
       for (let v of mesh.verts) {
+        if (v.flag & MeshFlags.BOUNDARY) {
+          continue;
+        }
+
         if (v.valence === 0) {
           mesh.killVertex(v, undefined, lctx);
           stop = false;
@@ -2064,6 +2155,7 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
 
   trianglesToQuads(mesh, tris, undefined, lctx);
 
+  mesh.updateBoundaryFlags();
   mesh.regenTessellation();
 
   for (let f of faces) {
@@ -2073,76 +2165,84 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
     }
   }
 
-  for (let v of vs) {
-    if (v.eid < 0) {
-      continue;
-    }
+  let mask = window.dd !== undefined ? window.dd : (1|2|4|16|32);
+  let stage = 0;
+  //A
 
-    if (v.valence !== 3) {
-      continue;
-    }
-
-    let ok;
-
-    for (let l of v.loops) {
-      if (l.v !== v) {
-        l = l.next;
+  if (mask & 1) {
+    for (let v of vs) {
+      if (v.eid < 0) {
+        continue;
       }
 
-      ok = l.f.isQuad();
-      ok = ok && l.next.next.v.valence === 3;
-      ok = ok && l !== l.next.next && l.next !== l.next.next && l.prev !== l.next.next;
+      if (v.valence !== 3) {
+        continue;
+      }
 
-      if (ok) {
-        let l2 = mesh.splitFace(l.f, l, l.next.next, lctx);
+      let ok;
 
-        for (let l of l2.f.loops) {
-          mesh.setSelect(l.v, true);
-          l.v.flag |= MeshFlags.UPDATE;
+      for (let l of v.loops) {
+        if (l.v !== v) {
+          l = l.next;
         }
 
-        if (l2) {
-          mesh.collapseEdge(l2.e, lctx);
+        ok = l.f.isQuad();
+        ok = ok && l.next.next.v.valence === 3;
+        ok = ok && l !== l.next.next && l.next !== l.next.next && l.prev !== l.next.next;
 
-          if (totv++ > maxVerts) {
-            return;
+        if (ok) {
+          let l2 = mesh.splitFace(l.f, l, l.next.next, lctx);
+
+          for (let l of l2.f.loops) {
+            mesh.setSelect(l.v, true);
+            l.v.flag |= MeshFlags.UPDATE;
           }
-        }
 
-        //return;
-        //break;
+          if (l2) {
+            mesh.collapseEdge(l2.e, lctx);
+
+            if (totv++ > maxVerts) {
+              return;
+            }
+          }
+
+          //return;
+          //break;
+        }
       }
     }
   }
 
-  for (let v of vs) {
-    v.flag |= MeshFlags.UPDATE;
+  if (mask & 2) {
+    for (let v of vs) {
+      v.flag |= MeshFlags.UPDATE;
 
-    if (v.eid < 0 || v.valence < 5) {
-      continue;
-    }
-
-    let ok;
-
-    for (let l of v.loops) {
-      if (!l.f.isTri()) {
+      if (v.eid < 0 || v.valence < 5) {
         continue;
       }
 
-      for (let l2 of l.f.loops) {
-        if (l2.v.valence === 4 && l2.next.v.valence === 4) {
-          ok = true;
-          mesh.collapseEdge(l2.e, lctx);
+      let ok;
 
-          if (totv++ > maxVerts) {
-            return;
+      for (let l of v.loops) {
+        if (!l.f.isTri()) {
+          continue;
+        }
+
+        for (let l2 of l.f.loops) {
+          if (l2.v.valence === 4 && l2.next.v.valence === 4) {
+            ok = true;
+            mesh.collapseEdge(l2.e, lctx);
+
+            if (totv++ > maxVerts) {
+              return;
+            }
+            break;
           }
+        }
+
+        if (ok) {
           break;
         }
-      }
-
-      if (ok) {
-        break;
       }
     }
   }
@@ -2154,191 +2254,199 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
   }
 
   //find quads with two adjacent tris on two adjacent edges
-  for (let f of faces) {
-    if (!f.isQuad()) {
-      continue;
-    }
-
-    let ok = false;
-    let l1, l2;
-    let count = 0;
-
-    for (let l of f.loops) {
-      let ok2 = l.radial_next !== l && l.radial_next.f.isTri();
-
-      count += ok2;
-
-      ok2 = ok2 && l.next.radial_next !== l.next && l.next.radial_next.f.isTri();
-
-      if (ok2) {
-        l1 = l;
-        l2 = l.next;
-        //break;
+  if (mask & 4) {
+    for (let f of faces) {
+      if (!f.isQuad()) {
+        continue;
       }
-    }
 
-    ok = l1 && l2;
-    ok = ok && count === 2;
+      let ok = false;
+      let l1, l2;
+      let count = 0;
 
-    if (!ok) {
-      continue;
-    }
+      for (let l of f.loops) {
+        let ok2 = l.radial_next !== l && l.radial_next.f.isTri();
 
-    let la = l2;
-    let lb = l2.next.next;
+        count += ok2;
 
-    let e1 = l1.e;
-    let e2 = l2.e;
+        ok2 = ok2 && l.next.radial_next !== l.next && l.next.radial_next.f.isTri();
 
-    if (mesh.splitFace(f, la, lb, lctx, true)) {
-      mesh.dissolveEdge(e1, lctx);
-      mesh.dissolveEdge(e2, lctx);
-    }
-  }
+        if (ok2) {
+          l1 = l;
+          l2 = l.next;
+          //break;
+        }
+      }
 
-  //collapse diagonal quads
-  for (let f of faces) {
-    if (!f.isQuad()) {
-      continue;
-    }
-
-    let l1, l2;
-
-    for (let l of f.loops) {
-      let ok = l.v.valence === 3;
-      ok = ok && l.next.next.v.valence === 4;
-
-      ok = ok && l !== l.next.next;
-      ok = ok && l.next.next !== l.next;
-      ok = ok && l.next.next !== l.prev;
-
-      let ok2 = l.next.v.valence === 5 && l.prev.v.valence === 4;
-      ok2 = ok2 || (l.next.v.valence === 4 && l.prev.v.valence === 5);
-
-      ok = ok && ok2;
+      ok = l1 && l2;
+      ok = ok && count === 2;
 
       if (!ok) {
         continue;
       }
 
-      l1 = l;
-      l2 = l.next.next;
+      let la = l2;
+      let lb = l2.next.next;
 
-      break;
+      let e1 = l1.e;
+      let e2 = l2.e;
+
+      if (mesh.splitFace(f, la, lb, lctx, true)) {
+        mesh.dissolveEdge(e1, lctx);
+        mesh.dissolveEdge(e2, lctx);
+      }
     }
+  }
 
-    if (!l1 || !l2) {
-      continue;
-    }
+  //collapse diagonal quads
+  if (mask & 8) {
+    for (let f of faces) {
+      if (!f.isQuad()) {
+        continue;
+      }
 
-    let newl = mesh.splitFace(f, l1, l2, lctx);
-    if (newl) {
-      mesh.collapseEdge(newl.e, lctx);
+      let l1, l2;
+
+      for (let l of f.loops) {
+        let ok = l.v.valence === 3;
+        ok = ok && l.next.next.v.valence === 4;
+
+        ok = ok && l !== l.next.next;
+        ok = ok && l.next.next !== l.next;
+        ok = ok && l.next.next !== l.prev;
+
+        let ok2 = l.next.v.valence === 5 && l.prev.v.valence === 4;
+        ok2 = ok2 || (l.next.v.valence === 4 && l.prev.v.valence === 5);
+
+        ok = ok && ok2;
+
+        if (!ok) {
+          continue;
+        }
+
+        l1 = l;
+        l2 = l.next.next;
+
+        break;
+      }
+
+      if (!l1 || !l2) {
+        continue;
+      }
+
+      let newl = mesh.splitFace(f, l1, l2, lctx);
+      if (newl) {
+        mesh.collapseEdge(newl.e, lctx);
+      }
     }
   }
 
   //collapse edges with two three valence verts
-  for (let e of mesh.edges) {
-    let ok = e.v1.valence === 3 && e.v2.valence === 3;
+  if (mask & 16) {
+    for (let e of mesh.edges) {
+      let ok = e.v1.valence === 3 && e.v2.valence === 3;
 
-    if (!ok) {
-      continue;
-    }
+      if (!ok) {
+        continue;
+      }
 
-    let ok2 = true;
-    for (let i = 0; i < 2; i++) {
-      let v = i ? e.v2 : e.v1;
+      let ok2 = true;
+      for (let i = 0; i < 2; i++) {
+        let v = i ? e.v2 : e.v1;
 
-      for (let l of v.loops) {
-        if (!l.f.isQuad()) {
-          ok2 = false;
+        for (let l of v.loops) {
+          if (!l.f.isQuad()) {
+            ok2 = false;
+          }
+        }
+
+        if (!ok2) {
+          break;
         }
       }
 
-      if (!ok2) {
-        break;
+
+      let count = 0;
+      for (let l of e.loops) {
+        count++;
       }
-    }
+
+      //quad surrounded only by quads?
+      ok2 = ok && count === 2;
+
+      if (1 || !ok2) {
+        mesh.collapseEdge(e, lctx);
+        continue;
+      }
+
+      //case of quad surrounded by all quads
+
+      let l1 = e.l, l2 = e.l.radial_next;
+      l1 = l1.next.radial_next;
+      l2 = l2.next.radial_next;
+
+      if (l1 === l2) {
+        console.error("EEK! non-manifold?");
+        continue;
+      }
+
+      let e1 = mesh.splitFace(l1.f, l1, l1.next.next, lctx, true);
+      let v1, v2;
+
+      let e2 = mesh.splitFace(l2.f, l2, l2.next.next, lctx, true);
+
+      e1 = e1 ? e1.e : undefined;
+      e2 = e2 ? e2.e : undefined;
+
+      let v = mesh.collapseEdge(e, lctx);
+      if (v) {
+        mesh.dissolveVertex(v, lctx);
+      }
+
+      if (e1) {
+        //v1 = mesh.collapseEdge(e1, lctx);
+      }
+      if (e2) {
+        //v2 = mesh.collapseEdge(e2, lctx);
+      }
 
 
-    let count = 0;
-    for (let l of e.loops) {
-      count++;
-    }
-
-    //quad surrounded only by quads?
-    ok2 = ok && count === 2;
-
-    if (1 || !ok2) {
-      mesh.collapseEdge(e, lctx);
-      continue;
-    }
-
-    //case of quad surrounded by all quads
-
-    let l1 = e.l, l2 = e.l.radial_next;
-    l1 = l1.next.radial_next;
-    l2 = l2.next.radial_next;
-
-    if (l1 === l2) {
-      console.error("EEK! non-manifold?");
-      continue;
-    }
-
-    let e1 = mesh.splitFace(l1.f, l1, l1.next.next, lctx, true);
-    let v1, v2;
-
-    let e2 = mesh.splitFace(l2.f, l2, l2.next.next, lctx, true);
-
-    e1 = e1 ? e1.e : undefined;
-    e2 = e2 ? e2.e : undefined;
-
-    let v = mesh.collapseEdge(e, lctx);
-    if (v) {
-      mesh.dissolveVertex(v, lctx);
-    }
-
-    if (e1) {
-      //v1 = mesh.collapseEdge(e1, lctx);
-    }
-    if (e2) {
-      //v2 = mesh.collapseEdge(e2, lctx);
-    }
-
-
-    if (v2 && v2.valence === 2) {
-      //mesh.joinTwoEdges(v2, lctx);
+      if (v2 && v2.valence === 2) {
+        //mesh.joinTwoEdges(v2, lctx);
+      }
     }
   }
 
   //join quads with two adjacent triangles
-  for (let f of faces) {
-    if (!f.isQuad()) {
-      continue;
-    }
-
-    let startl;
-    for (let l of f.loops) {
-      let ok = l.radial_next.f.isTri();
-      ok = ok && l.next.next.radial_next.f.isTri();
-      ok = ok && l.next.radial_next.f.isQuad();
-      ok = ok && l.prev.radial_next.f.isQuad();
-
-      if (ok) {
-        startl = l;
-        break;
+  if (mask & 32) {
+    for (let f of faces) {
+      if (!f.isQuad()) {
+        continue;
       }
+
+      let startl;
+      for (let l of f.loops) {
+        let ok = l.radial_next.f.isTri();
+        ok = ok && l.next.next.radial_next.f.isTri();
+        ok = ok && l.next.radial_next.f.isQuad();
+        ok = ok && l.prev.radial_next.f.isQuad();
+
+        if (ok) {
+          startl = l;
+          break;
+        }
+      }
+
+      if (!startl) {
+        continue;
+      }
+
+      let e1 = startl.e;
+      let e2 = startl.next.next.e;
+
+      mesh.collapseEdge(e1, lctx);
+      mesh.collapseEdge(e2, lctx);
     }
-
-    if (!startl) {
-      continue;
-    }
-
-    let e1 = startl.e;
-    let e2 = startl.next.next.e;
-
-    mesh.collapseEdge(e1, lctx);
-    mesh.collapseEdge(e2, lctx);
   }
   console.log("QUAD");
 }
@@ -2454,7 +2562,13 @@ export function cleanupQuadsOld(mesh, faces, lctx) {
     co.zero();
     let tot = 0;
 
+    let bound = v.flag & MeshFlags.BOUNDARY;
+
     for (let v2 of v.neighbors) {
+      if (bound && !(v2.flag & MeshFlags.BOUNDARY)) {
+        continue;
+      }
+
       tot++;
       co.add(v2);
     }

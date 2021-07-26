@@ -145,7 +145,7 @@ export const LogTags = {
 };
 
 export class LogContext {
-  constructor(useAsAspectClass=false) {
+  constructor(useAsAspectClass = false) {
     if (useAsAspectClass) {
       initAspectClass(this, lctx_blacklist);
     }
@@ -277,41 +277,42 @@ export const MeshTypes = {
 };
 
 export const MeshFlags = Object.freeze({
-  SELECT          : (1<<0),
-  HIDE            : (1<<1),
-  FLAT            : (1<<2),
-  ITER_TEMP1      : (1<<3), //temporary flag used by faces-around-edge iterators
-  ITER_TEMP2a     : (1<<4), //temporary flag used by faces-around-vertex iterators
-  ITER_TEMP2b     : (1<<5), //temporary flag used by faces-around-vertex iterators
-  ITER_TEMP2c     : (1<<6), //temporary flag used by faces-around-vertex iterators
-  DRAW_DEBUG      : (1<<7),
-  TEMP1           : (1<<8),
-  TEMP2           : (1<<9),
-  TEMP3           : (1<<10),
-  UPDATE          : (1<<11),
-  CURVE_FLIP      : (1<<12), //edge.evaluate goes backwards
-  SMOOTH_DRAW     : (1<<13),
-  MIRROREDX        : (1<<14),
-  MIRROREDY       : (1<<15),
-  MIRROREDZ       : (1<<16),
-  MIRRORED        : (1<<14) | (1<<15) | (1<<16),
-  MIRROR_BOUNDARY : (1<<17), //used by mirror
-  DRAW_DEBUG2     : (1<<18),
-  SEAM            : (1<<19),
-  FACE_EXIST_FLAG : (1<<20),
-  TEMP4           : (1<<21),
-  TEMP5           : (1<<22),
-  NOAPI_TEMP1     : (1<<24), //temp flag that's not allowed to be used by core API functions
-  NOAPI_TEMP2     : (1<<25),
-  ITER_TEMP3      : (1<<27),
+  SELECT         : (1<<0),
+  HIDE           : (1<<1),
+  FLAT           : (1<<2),
+  ITER_TEMP1     : (1<<3), //temporary flag used by faces-around-edge iterators
+  ITER_TEMP2a    : (1<<4), //temporary flag used by faces-around-vertex iterators
+  ITER_TEMP2b    : (1<<5), //temporary flag used by faces-around-vertex iterators
+  ITER_TEMP2c    : (1<<6), //temporary flag used by faces-around-vertex iterators
+  DRAW_DEBUG     : (1<<7),
+  TEMP1          : (1<<8),
+  TEMP2          : (1<<9),
+  TEMP3          : (1<<10),
+  UPDATE         : (1<<11),
+  BOUNDARY       : (1<<12),
+  CURVE_FLIP     : (1<<13), //edge.evaluate goes backwards, shares with SMOOTH_DRAW
+  SMOOTH_DRAW    : (1<<13),
+  MIRROREDX      : (1<<14),
+  MIRROREDY      : (1<<15),
+  MIRROREDZ      : (1<<16),
+  MIRRORED       : (1<<14) | (1<<15) | (1<<16),
+  MIRROR_BOUNDARY: (1<<17), //used by mirror
+  DRAW_DEBUG2    : (1<<18),
+  SEAM           : (1<<19),
+  COLLAPSE_TEMP  : (1<<20),
+  TEMP4          : (1<<21),
+  TEMP5          : (1<<22),
+  NOAPI_TEMP1    : (1<<24), //temp flag that's not allowed to be used by core API functions
+  NOAPI_TEMP2    : (1<<25),
+  ITER_TEMP3     : (1<<27),
 
   //these two share the same bit
   QUAD_EDGE       : (1<<28),
   GRID_MRES_HIDDEN: (1<<28), //used by grids to flag gridverts as not part of visible multires level
 
   //these two share the same bit
-  COLLAPSE_TEMP : (1<<29),
-  MAKE_FACE_TEMP: (1<<29),
+  MAKE_FACE_TEMP : (1<<29),
+  FACE_EXIST_FLAG: (1<<29),
 });
 
 export const MeshIterFlags = {
@@ -335,6 +336,7 @@ export const RecalcFlags = {
 };
 
 import {ArrayPool} from '../util/util.js';
+
 export {ArrayPool} from '../util/util.js';
 
 let pool = new ArrayPool();

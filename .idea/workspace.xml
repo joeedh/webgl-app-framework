@@ -5,35 +5,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
-      <change afterPath="$PROJECT_DIR$/addons/curvetest/curvaturetool.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/addons/curvetest/curvetest.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/mesh/mesh_curvature_test.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/addons/list.json" beforeDir="false" afterPath="$PROJECT_DIR$/addons/list.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/addons/parameterizer/paramtool.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/parameterizer/paramtool.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/addon/addon_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/addon/addon_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/toolstack.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/toolstack.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/menu/MainMenu.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/menu/MainMenu.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/image/ImageEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/image/ImageEditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/image/uv_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/image/uv_ops.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/findnearest/findnearest_mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/findnearest/findnearest_mesh.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_bvhdef.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_bvhdef.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_draw.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_draw.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_base.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_holefiller.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_holefiller.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_createops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_createops.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_curvature.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_curvature.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_customdata.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_customdata.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_draw.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_draw.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_paramizer.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_paramizer.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_subdivide.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_subdivide.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_tess.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_tess.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_uvops_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_uvops_base.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/toolsys/toolsys.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/toolsys/toolsys.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/math.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/math.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" afterDir="false" />
@@ -41,8 +30,9 @@
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shadernetwork.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shadernetwork.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/tet/tetgen.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/tet/tetgen.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/tet/tetgen_types.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/tet/tetgen_types.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/util/bvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bvh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/util/numeric.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/numeric.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -305,7 +295,13 @@
       <workItem from="1625718704758" duration="18022000" />
       <workItem from="1625766658075" duration="8214000" />
       <workItem from="1625845987427" duration="8000" />
-      <workItem from="1625864288065" duration="25127000" />
+      <workItem from="1625864288065" duration="25468000" />
+      <workItem from="1625909312159" duration="12494000" />
+      <workItem from="1626025602556" duration="13000" />
+      <workItem from="1626642403615" duration="2960000" />
+      <workItem from="1627193828537" duration="2937000" />
+      <workItem from="1627198604781" duration="5059000" />
+      <workItem from="1627293435551" duration="1316000" />
     </task>
     <servers />
   </component>

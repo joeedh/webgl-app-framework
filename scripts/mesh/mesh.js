@@ -5092,7 +5092,9 @@ export class Mesh extends SceneObjectData {
 
 
   getLastBVH() {
-    if (this.bvh) {
+    if (this.bvh && this.bvh.dead) {
+      this.bvh = undefined;
+    } else if (this.bvh) {
       return this.bvh;
     }
 
@@ -5130,15 +5132,15 @@ export class Mesh extends SceneObjectData {
     key += ":" + this.bvhSettings.calcUpdateKey();
 
     if (force || !this.bvh || key !== this._last_bvh_key) {
-      console.log(this._last_bvh_key);
-      console.log(key);
+      //console.log(this._last_bvh_key);
+      //console.log(key);
 
       this._last_bvh_key = key;
 
       if (bkey !== this.bvhSettings._last_key || auto_update || !this.bvh || force) {
         this.bvhSettings._last_key = bkey;
 
-        console.error("BVH rebuild!");
+        console.error("BVH rebuild!", this._last_bvh_key, key, "|", this.bvhSettings._last_key, bkey);
 
         if (this.bvh) {
           this._bvh_freelist = this.bvh.destroy(this);
@@ -5753,6 +5755,22 @@ export class Mesh extends SceneObjectData {
     }
 
     return ret;
+  }
+
+  updateBoundaryFlags() {
+    for (let v of this.verts) {
+      v.flag &= ~MeshFlags.BOUNDARY;
+    }
+
+    for (let e of this.edges) {
+      if (!e.l || e.l === e.l.radial_next) {
+        e.flag |= MeshFlags.BOUNDARY;
+        e.v1.flag |= MeshFlags.BOUNDARY;
+        e.v2.flag |= MeshFlags.BOUNDARY;
+      } else {
+        e.flag &= ~MeshFlags.BOUNDARY;
+      }
+    }
   }
 
   copyElemData(dst, src, ignoreNoInterp=false) {

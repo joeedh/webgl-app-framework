@@ -377,10 +377,8 @@ export class TetFace extends TetElement {
     })();
   }
 
-  calcNormal() {
+  calcNormal(cd_disp=-1) {
     let ls = this.loops;
-
-    let cd_disp = this.verts.customData.getLayerIndex("displace");
 
     function v(v) {
       if (cd_disp >= 0) {
@@ -393,7 +391,7 @@ export class TetFace extends TetElement {
     if (this.loops.length === 4) {
       this.area = math.tri_area(v(ls[0].v), v(ls[1].v), v(ls[2].v));
       this.area += math.tri_area(v(ls[0].v), v(ls[2].v), v(ls[3].v));
-      this.no.load(math.normal_quad(ls[0].v, v(ls[1].v), v(ls[2].v, ls[3].v)));
+      this.no.load(math.normal_quad(v(ls[0].v), v(ls[1].v), v(ls[2].v), v(ls[3].v)));
     } else {
       this.area = math.tri_area(v(ls[0].v), v(ls[1].v), v(ls[2].v));
       this.no.load(math.normal_tri(v(ls[0].v), v(ls[1].v), v(ls[2].v)));

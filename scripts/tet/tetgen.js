@@ -1161,8 +1161,10 @@ export class TetMesh extends SceneObjectData {
   recalcNormals() {
     this.recalcFlag &= ~TetRecalcFlags.NORMALS;
 
+    let cd_disp = this.verts.customData.getLayerIndex("displace");
+
     for (let f of this.faces) {
-      f.calcNormal();
+      f.calcNormal(cd_disp);
     }
 
     for (let c of this.cells) {

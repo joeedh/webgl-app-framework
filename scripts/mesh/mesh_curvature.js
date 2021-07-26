@@ -22,6 +22,7 @@ let tan_tmp = new Vector3();
 
 let addtmps = util.cachering.fromConstructor(Vector3, 16);
 function addMat(amat, v1, v2, w=1.0, nmat) {
+  //w = 1.0;
   let no = addtmps.next().load(v2.no).sub(v1.no);
 
   if (nmat) {
@@ -149,6 +150,12 @@ export class CurvVert extends CustomDataElem {
 
       for (let v3 of v2.neighbors) {
         v3.flag &= ~flag;
+
+        /*
+        for (let v4 of v3.neighbors) {
+          v4.flag &= ~flag;
+        }
+        //*/
       }
     }
 
@@ -210,21 +217,39 @@ export class CurvVert extends CustomDataElem {
     v.flag &= ~flag;
     //unrec(v, d1);
 
+    let co1 = ctmps_vs.next().zero();
+    let tot1 = 0.0;
+
     if (1) {
       for (let v2 of v.neighbors) {
+        co1.add(v2);
+        tot1++;
+
         if (!(v2.flag & flag)) {
           v2.flag |= flag;
-          addMat(mat, v, v2, undefined, nmat);
+          addMat(mat, v, v2, v2.vectorDistance(v), nmat);
         }
       }
 
       for (let v2 of v.neighbors) {
         for (let v3 of v2.neighbors) {
-          if (!(v3.flag & flag)) {
-            v3.flag |= flag;
-            addMat(mat, v, v3, undefined, nmat);
+          for (let v4 of v3.neighbors) {
+            if (!(v4.flag & flag)) {
+              v4.flag |= flag;
+              addMat(mat, v, v4, v4.vectorDistance(v), nmat);
+            }
           }
         }
+      }
+    }
+
+    let sign = 1.0;
+
+    if (tot1 > 0) {
+      co1.mulScalar(1.0 / tot1);
+      co1.sub(v);
+      if (co1.dot(v.no) < 0) {
+        sign = -1;
       }
     }
 
@@ -255,6 +280,8 @@ export class CurvVert extends CustomDataElem {
       nmat.transpose();
       no.multVecMatrix(nmat);
     }
+
+    no.mulScalar(sign);
 
     this.k1 = no.vectorLength();
 

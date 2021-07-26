@@ -624,8 +624,9 @@ export class BVHToolMode extends ToolMode {
       let pbvh = this.dataref;
       let mesh = pbvh.ctx.mesh;
 
-      if (mesh && mesh.bvh) {
+      if (mesh && mesh.bvh && !mesh.bvh.dead) {
         let bvh = mesh.bvh;
+
         for (let node of bvh.nodes) {
           if (node.leaf) {
             node.flag |= BVHFlags.UPDATE_DRAW;
@@ -732,7 +733,7 @@ export class BVHToolMode extends ToolMode {
   }
 
   getBVH(mesh, useGrids = true) {
-    return mesh.bvh ? mesh.bvh : mesh.getLastBVH(false)
+    return mesh.getLastBVH(false);
   }
 
   on_mousemove(e, x, y, was_touch) {
@@ -944,14 +945,15 @@ export class BVHToolMode extends ToolMode {
 
     let ob = ctx.object;
     if ((ob.data instanceof Mesh || ob.data instanceof TetMesh) && ob.data.bvh) {
-      ob.data.bvh.destroy(ob.data);
-      ob.data.bvh = undefined;
-
       if (ob.data instanceof Mesh) {
         ob.data.regenTessellation();
+        ob.data.regenBVH();
       } else {
         ob.data.regenRender();
         ob.data.regenNormals();
+
+        ob.data.bvh.destroy(ob.data);
+        ob.data.bvh = undefined;
       }
     }
   }

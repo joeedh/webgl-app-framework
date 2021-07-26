@@ -479,6 +479,7 @@ export class RemeshOp extends MeshOp {
           remesher         : new EnumProperty(Remeshers.UNIFORM_TRI, Remeshers).saveLastValue(),
           rakeFactor       : new FloatProperty(0.5).noUnits().setRange(0.0, 1.0),
           relax            : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0),
+          origFactor       : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0),
           projection       : new FloatProperty(0.8).noUnits().setRange(0.0, 1.0),
           subdivideFac     : new FloatProperty(0.5).noUnits().setRange(0.01, 3.0).saveLastValue(),
           collapseFac      : new FloatProperty(0.5).noUnits().setRange(0.01, 1.0).saveLastValue(),
@@ -500,6 +501,7 @@ export class RemeshOp extends MeshOp {
     let goalValue = this.inputs.goal.getValue()
     let rakeFactor = this.inputs.rakeFactor.getValue();
     let relax = this.inputs.relax.getValue();
+    let origFactor = this.inputs.origFactor.getValue();
     let subdFac = this.inputs.subdivideFac.getValue();
     let collFac = this.inputs.collapseFac.getValue();
     let project = this.inputs.projection.getValue();
@@ -515,6 +517,7 @@ export class RemeshOp extends MeshOp {
 
     let remesher = new cls(mesh, lctx, goalType, goalValue);
 
+    remesher.origFactor = origFactor;
     remesher.reproject = reproject;
     remesher.rakeMode = this.inputs.rakeMode.getValue();
     remesher.subdFac = subdFac;
@@ -783,6 +786,7 @@ export class CatmullClarkeSubd extends MeshOp {
       subdivide(mesh, new Set(mesh.faces.selected.editable));
 
       mesh.regenRender();
+      mesh.regenTessellation();
 
       let es = new util.set();
 
@@ -1280,10 +1284,13 @@ export class VertexSmooth extends MeshDeformOp {
         }
       }
 
+      mesh.regenTessellation();
       mesh.recalcNormals();
-      mesh.regenPartial();
+
       mesh.regenRender();
       mesh.regenElementsDraw();
+
+      mesh.graphUpdate();
     }
   }
 }
@@ -3177,8 +3184,10 @@ export class CleanupQuads extends MeshOp {
         }
       }
 
-      for (let i = 0; i < 5; i++) {
-        vertexSmooth(mesh, vs, 0.5, 0.5);
+      mesh.updateBoundaryFlags();
+
+      for (let i = 0; i < 1; i++) {
+        vertexSmooth(mesh, vs, 0.5, 0.5, true);
       }
 
       mesh.regenAll();
