@@ -2,7 +2,7 @@
   "main" : "main.js",
   
   "devDependencies": {
-    "electron": ">=11.1.0"
+    "electron": ">=13.3.0"
   },
   "dependencies": {
     "pngjs": ">=6.0.0",
