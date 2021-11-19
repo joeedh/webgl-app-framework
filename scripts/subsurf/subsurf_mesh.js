@@ -2,11 +2,12 @@ import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {PCOS, PEID, PCOLOR, PTOT, PatchData, PatchList} from './subsurf_base.js';
 import {MeshTypes, MeshFlags} from '../mesh/mesh_base.js';
+import {BVHVertFlags} from '../util/bvh.js';
 
 let eco = new Vector3();
 let ccSmoothRets = util.cachering.fromConstructor(Vector3, 64);
 
-export function ccSmooth(v, weight1, weightR, weightS) {
+export function ccSmooth(v, cd_fset, cd_dyn_vert, weight1, weightR, weightS) {
   let ret = ccSmoothRets.next();
 
   let val = v.edges.length;
@@ -29,8 +30,23 @@ export function ccSmooth(v, weight1, weightR, weightS) {
     weightS = 1.0/val;
   }
 
+  let mv = v.customData[cd_dyn_vert];
+
   for (let e of v.edges) {
+    let bflag = false;
+
     if (e.l && e.l.radial_next === e.l) {
+      bflag = true;
+    } else {
+      let v2 = e.otherVertex(v);
+      let mv2 = v2.customData[cd_dyn_vert];
+
+      if ((mv.flag & BVHVertFlags.BOUNDARY_ALL) && (mv2.flag & BVHVertFlags.BOUNDARY_ALL)) {
+        bflag = true;
+      }
+    }
+
+    if (bflag) {
       boundary++;
     }
   }
@@ -56,6 +72,13 @@ export function ccSmooth(v, weight1, weightR, weightS) {
 
       if (e.l && e.l.radial_next === e.l) {
         w2 = 10.0;
+      } else {
+        let v2 = e.otherVertex(v);
+        let mv2 = v2.customData[cd_dyn_vert];
+
+        if ((mv.flag & BVHVertFlags.BOUNDARY_ALL) && (mv2.flag & BVHVertFlags.BOUNDARY_ALL)) {
+          w2 = 10.0;
+        }
       }
 
       eco.addFac(v2, w2);

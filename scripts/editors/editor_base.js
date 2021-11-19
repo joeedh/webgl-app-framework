@@ -789,7 +789,7 @@ export class Editor extends Area {
     this.defineKeyMap();
 
     this.container.ctx = this.ctx;
-    this.makeHeader(this.container);
+    this.makeHeader(this.container, false);
     this.setCSS();
   }
 

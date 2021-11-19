@@ -5102,14 +5102,16 @@ export class Mesh extends SceneObjectData {
   }
 
   getBVH(auto_update_or_args = true, useGrids = true,
-         force                                = false, wireVerts = false) {
+         force                                = false, wireVerts             = false) {
     let auto_update = auto_update_or_args;
     let deformMode;
     let onCreate;
+    let leafLimit;
 
     if (typeof auto_update_or_args === "object") {
       let args = auto_update_or_args;
 
+      leafLimit = args.leafLimit; //default is set by bvhsettings
       auto_update = args.auto_update ?? true;
       useGrids = args.useGrids ?? true;
       force = args.force;
@@ -5151,6 +5153,7 @@ export class Mesh extends SceneObjectData {
 
         let args = {
           deformMode,
+          leafLimit,
           addWireVerts: wireVerts,
           useGrids,
           freelist    : this._bvh_freelist,
@@ -5773,7 +5776,7 @@ export class Mesh extends SceneObjectData {
     }
   }
 
-  copyElemData(dst, src, ignoreNoInterp=false) {
+  copyElemData(dst, src, ignoreNoInterp = false) {
     let cdlayers;
 
     if (ignoreNoInterp) {

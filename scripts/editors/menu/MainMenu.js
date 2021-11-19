@@ -168,6 +168,7 @@ export class MenuBarEditor extends Editor {
     super.init();
     this.background = this.getDefault("DefaultPanelBG");
 
+
     let header = this.header;
     let strip = this._strip = header.row();
 
@@ -253,6 +254,7 @@ export class MenuBarEditor extends Editor {
     }).iconsheet = 0;
 
     strip.noteframe();
+
     //this.makeScreenSwitcher(this.container);
 
     this.setCSS();

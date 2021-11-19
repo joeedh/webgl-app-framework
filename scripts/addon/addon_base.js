@@ -118,6 +118,10 @@ export class AddonAPI {
     this._graphNodes = new Set();
   }
 
+  get argv() {
+    return _appstate.arguments;
+  }
+
   get ctx() {
     return _appstate.ctx;
   }

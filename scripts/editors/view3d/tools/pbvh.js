@@ -60,10 +60,13 @@ import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js';
 import {TetMesh} from '../../../tet/tetgen.js';
 import {DispContext} from '../../../mesh/mesh_displacement.js';
 import {Texture} from '../../../core/webgl.js';
+import {getFaceSetColor, getFaceSets, getNextFaceSet} from '../../../mesh/mesh_facesets.js';
 
 export class BVHToolMode extends ToolMode {
   constructor(manager) {
     super(manager);
+
+    this.lastFaceSet = 1;
 
     this.editDisplaced = false;
     this.drawDispDisField = false;
@@ -760,6 +763,44 @@ export class BVHToolMode extends ToolMode {
 
       let isColor = brush.tool === SculptTools.PAINT || brush.tool === SculptTools.PAINT_SMOOTH;
       let smoothtool = isColor ? SculptTools.PAINT_SMOOTH : SculptTools.SMOOTH;
+      let drawFaceSet = this.lastFaceSet;
+
+      if (brush.tool === SculptTools.FACE_SET_DRAW) {
+        if (e.ctrlKey) {
+          let view3d = this.ctx.view3d;
+          let ob = this.ctx.object;
+          let mesh = this.ctx.mesh;
+
+          let bvh = mesh.getBVH(false);
+
+          let view = view3d.getViewVec(e.x, e.y);
+          let origin = view3d.activeCamera.pos;
+
+          let obmat = ob.outputs.matrix.getValue();
+          let matinv = new Matrix4(obmat);
+          matinv.invert();
+
+          origin = new Vector3(origin);
+          origin.multVecMatrix(matinv);
+
+          view = new Vector4(view);
+          view[3] = 0.0;
+          view.multVecMatrix(matinv);
+          view = new Vector3(view).normalize();
+
+          let cd_fset = getFaceSets(mesh, true);
+
+          let isect = bvh.castRay(origin, view);
+          if (isect && isect.tri.l1) {
+            let f = isect.tri.l1.f;
+            drawFaceSet = this.lastFaceSet = Math.abs(f.customData[cd_fset].value);
+          }
+
+          console.log("isect", isect, drawFaceSet);
+        } else {
+          drawFaceSet = this.lastFaceSet = getNextFaceSet(this.ctx.mesh);
+        }
+      }
 
       let dynmask = 0;
 
@@ -802,7 +843,7 @@ export class BVHToolMode extends ToolMode {
       } else {
         this.ctx.api.execTool(this.ctx, "bvh.paint()", {
           brush: brush,
-
+          drawFaceSet        : drawFaceSet,
           symmetryAxes       : this.symmetryAxes,
           dynTopoDepth       : brush.dynTopo.maxDepth,
           useMultiResDepth   : this.enableMaxEditDepth,
@@ -1128,6 +1169,7 @@ export class BVHToolMode extends ToolMode {
     }
 
     let drawFlat = this.drawFlat;
+    let brush = this.getBrush();
 
     let drawNode = (node, matrix) => {
       if (!node.leaf) {
@@ -1160,6 +1202,9 @@ export class BVHToolMode extends ToolMode {
 
     let ob = object;//let ob = this.ctx.object;
     let bvh;
+
+    let cd_fset = mesh.faces.customData.getNamedLayerIndex("face_sets", "int");
+    console.log("cd_fset", cd_fset);
 
     //update all normals on first bvh build
     if (!mesh.bvh) {
@@ -1675,6 +1720,11 @@ export class BVHToolMode extends ToolMode {
 
       updateColors = updateColors || island.tri_colors.dataUsed/4 !== totvert;
       updateColors = updateColors || drawCavityMap || drawDispDisField;
+
+      if (brush.tool === SculptTools.FACE_SET_DRAW) {
+        updateColors = true;
+      }
+
       updateColors = updateColors && haveColors;
 
       if (!updateColors) {
@@ -1737,6 +1787,12 @@ export class BVHToolMode extends ToolMode {
         for (let i = 0; i < ilen; i++) {
           let v = n2.indexVerts[i];
           let l = n2.indexLoops[i];
+
+          if (!v || v.eid < 0) {
+            vi++;
+            //debugger;
+            continue;
+          }
 
           let j;
 
@@ -1876,6 +1932,17 @@ export class BVHToolMode extends ToolMode {
               vcolors[j++] = colormul2;
               vcolors[j++] = colormul;
             }
+
+            if (cd_fset >= 0 && l.eid >= 0 && l.f) {
+              j = vi*4;
+              let fset = l.f.customData[cd_fset].value;
+              let color = getFaceSetColor(fset);
+
+              vcolors[j++] *= color[0];
+              vcolors[j++] *= color[1];
+              vcolors[j++] *= color[2];
+              vcolors[j++] *= color[3];
+            }
           }
 
           if (updateUvs) {
@@ -1922,8 +1989,6 @@ export class BVHToolMode extends ToolMode {
     }
 
     function genNodeMesh(node) {
-      console.warn("genNodeMesh");
-
       if (!drawColPatches) {
         return genNodeMesh_index(node);
       }

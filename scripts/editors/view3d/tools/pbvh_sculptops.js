@@ -13,7 +13,7 @@ import {
   BrushFlags, DynTopoFlags, SculptTools, BrushSpacingModes, DynTopoModes, SubdivModes
 } from '../../../brush/brush.js';
 import {getArrayTemp, LogContext, Loop, Mesh, MeshFlags, MeshTypes, Vertex} from '../../../mesh/mesh.js';
-import {BVHFlags, BVHTriFlags, IsectRet} from '../../../util/bvh.js';
+import {BVHFlags, BVHTriFlags, BVHVertFlags, getDynVerts, IsectRet} from '../../../util/bvh.js';
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js';
 import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../mesh/mesh_grids_kdtree.js';
 import {
@@ -33,6 +33,7 @@ import {TexUserFlags, TexUserModes} from '../../../texture/proceduralTex.js';
 import {closest_bez3_v2, dbez3_v2} from '../../../util/bezier.js';
 import {tetSolve} from '../../../tet/tet_deform.js';
 import {DispContext, DispLayerVert, getSmoothMemo, SmoothMemoizer} from '../../../mesh/mesh_displacement.js';
+import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from '../../../mesh/mesh_facesets.js';
 
 //grab data field definition
 const GEID = 0, GEID2 = 1, GDIS = 2, GSX = 3, GSY = 4, GSZ = 5;
@@ -176,7 +177,9 @@ export class PaintOp extends PaintOpBase {
         dynTopoDepth       : new IntProperty(20),
         useDynTopo         : new BoolProperty(false),
         useMultiResDepth   : new BoolProperty(false),
-        reprojectCustomData: new BoolProperty(false)
+        reprojectCustomData: new BoolProperty(false),
+
+        drawFaceSet : new IntProperty(2),
       })
     }
   }
@@ -269,7 +272,8 @@ export class PaintOp extends PaintOpBase {
       cd_mask,
       gdata: [],
       log  : new MeshLog(),
-      gset : new Set()
+      gset : new Set(),
+      fsetmap : new Map()
     };
 
     if (mesh) {
@@ -288,10 +292,13 @@ export class PaintOp extends PaintOpBase {
       return;
     }
 
+    let cd_fset = getFaceSets(mesh, false);
+
     let cd_mask = undo.cd_mask;
 
     let bvh = this.getBVH(mesh);
     let cd_node;
+    let cd_dyn_vert = getDynVerts(mesh);
 
     if (bvh) {
       cd_node = bvh.cd_node;
@@ -300,6 +307,33 @@ export class PaintOp extends PaintOpBase {
     let cd_grid = GridBase.meshGridOffset(mesh);
     let gd = undo.gdata;
 
+    console.warn("UNDO", undo);
+
+    if (cd_grid < 0 && cd_fset >= 0) {
+      for (let [eid, fset] of undo.fsetmap) {
+        let f = mesh.eidMap.get(eid);
+
+        if (!f || f.type !== MeshTypes.FACE) {
+          console.log("invalid face in undo!", eid, f);
+          continue;
+        }
+
+        f.customData[cd_fset].value = fset;
+
+        for (let v of f.verts) {
+          v.flag |= MeshFlags.UPDATE;
+
+          if (cd_node !== undefined) {
+            let mv = v.customData[cd_dyn_vert];
+
+            mv.flag |= BVHVertFlags.NEED_BOUNDARY;
+
+            let node = v.customData[cd_node].node;
+            node.setUpdateFlag(BVHFlags.UPDATE_INDEX_VERTS|BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK);
+          }
+        }
+      }
+    }
     console.log("CD_GRID", cd_grid);
     console.log("LOG", this._undo.log, cd_grid < 0 && this._undo.log.log.length > 0);
 
@@ -1239,6 +1273,8 @@ export class PaintOp extends PaintOpBase {
   calcNormalVariance(mesh, bvh, co, radius) {
     let tris = bvh.closestTris(co, radius);
 
+    let cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
+
     console.log(tris);
     //how much do normals cancel each other out?
     let n = new Vector3();
@@ -1248,6 +1284,7 @@ export class PaintOp extends PaintOpBase {
     let tan2 = new Vector3();
 
     let cd_curv = getCurveVerts(mesh);
+    let cd_fset = getFaceSets(mesh, false);
 
     for (let t of tris) {
       if (!t.v1) {
@@ -1255,7 +1292,7 @@ export class PaintOp extends PaintOpBase {
       }
 
       let cv = t.v1.customData[cd_curv];
-      cv.update(t.v1);
+      cv.update(t.v1, cd_cotan, cd_fset);
 
       //tan2.load(cv.tan).normalize();
       tan.addFac(cv.tan, t.area);
@@ -1330,7 +1367,8 @@ export class PaintOp extends PaintOpBase {
           PINCH                                                           = SculptTools.PINCH,
           TOPOLOGY                                                        = SculptTools.TOPOLOGY,
           DIRECTIONAL_FAIR                                                = SculptTools.DIRECTIONAL_FAIR,
-          SLIDE_RELAX                                                     = SculptTools.SLIDE_RELAX;
+          SLIDE_RELAX                                                     = SculptTools.SLIDE_RELAX,
+          FACE_SET_DRAW                                                   = SculptTools.FACE_SET_DRAW;
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
       console.log("ERROR!");
@@ -1339,6 +1377,9 @@ export class PaintOp extends PaintOpBase {
 
     let mode = this.inputs.brush.getValue().tool;
     let haveOrigData = PaintOpBase.needOrig(brush);
+
+    let drawFaceSet = this.inputs.drawFaceSet.getValue();
+    const cd_fset = getFaceSets(mesh, mode === FACE_SET_DRAW);
 
     let undo = this._undo;
     let vmap = undo.vmap;
@@ -1421,6 +1462,7 @@ export class PaintOp extends PaintOpBase {
 
 
     let cd_curv = -1;
+    let cd_dyn_vert = getDynVerts(mesh);
 
     let rakeCurveFac = 0.0;
 
@@ -1451,7 +1493,9 @@ export class PaintOp extends PaintOpBase {
       }
     }
 
-    let isPaintMode = mode === PAINT || mode === PAINT_SMOOTH;
+    let cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
+
+    let isPaintMode = mode === PAINT || mode === PAINT_SMOOTH || mode === FACE_SET_DRAW;
     let isMaskMode = mode === MASK_PAINT;
 
     let doTopo = mode === TOPOLOGY || (brush.dynTopo.flag & DynTopoFlags.ENABLED);
@@ -1609,7 +1653,7 @@ export class PaintOp extends PaintOpBase {
       radius *= this.inputs.grabRadiusFactor.getValue();
 
       isplane = false;
-    } else if (mode === SNAKE || mode === SLIDE_RELAX) {
+    } else if (mode === SNAKE || mode === SLIDE_RELAX || mode === FACE_SET_DRAW) {
       isplane = false;
     }
 
@@ -1682,7 +1726,8 @@ export class PaintOp extends PaintOpBase {
     let d = linePlane2.dot(ps.viewPlane);
     linePlane2.addFac(ps.viewPlane, -d).normalize();
 
-    const useSmoothMemo = vsw < 0.75 && GridBase.meshGridOffset(mesh) < 0;
+    let useSmoothMemo = vsw < 0.75 && GridBase.meshGridOffset(mesh) < 0;
+
     let smemo;
 
     if (useSmoothMemo) {
@@ -2160,14 +2205,27 @@ export class PaintOp extends PaintOpBase {
 
     let origset = new WeakSet();
     let mmap = this._undo.mmap;
+    let fsetmap = this._undo.fsetmap;
 
     function doUndo(v) {
       if (!haveGrids && mode === MASK_PAINT && cd_mask >= 0 && !mmap.has(v.eid)) {
         mmap.set(v.eid, v.customData[cd_mask].value);
       }
 
+      if (mode === FACE_SET_DRAW && !vmap.has(v.eid)) {
+        for (let f of v.faces) {
+          if (!fsetmap.has(f.eid)) {
+            let fset = f.customData[cd_fset].value;
+
+            fsetmap.set(f.eid, fset);
+          }
+        }
+
+        vmap.set(v.eid, new Vector3(v));
+      }
+
       if (doTopo && !haveGrids) {
-        if (haveOrigData && !vmap.has(v)) {
+        if (haveOrigData && !vmap.has(v.eid)) {
           let data = v.customData[cd_orig].value;
 
           data.load(v);
@@ -2790,7 +2848,7 @@ export class PaintOp extends PaintOpBase {
 
       vsharp = (v, fac) => {
         let cv = v.customData[cd_curv];
-        cv.check(v);
+        cv.check(v, cd_cotan, undefined, cd_fset);
 
         let maxedge = 0, minedge = 1e17;
 
@@ -2966,6 +3024,8 @@ export class PaintOp extends PaintOpBase {
     }
 
     if (useSmoothMemo) {
+      //console.log("USING SMOOTH MEMO");
+
       vsmooth = (v, fac = 0.5) => {
         smemo.fac = fac;
         let co = smemo.smoothco(v);
@@ -3102,7 +3162,18 @@ export class PaintOp extends PaintOpBase {
     let cdata2 = makeDummyCData();
     let cdata3 = makeDummyCData();
 
+    let cornerflag = getCornerFlag();
+
     let rake = (v, fac = 0.5, sdis = 1.0) => {
+      let mv = v.customData[cd_dyn_vert];
+
+      if (mv.flag & cornerflag) {
+        return;
+      }
+
+      let smoothboundflag = getSmoothBoundFlag();
+      let boundflag = mv.flag & BVHVertFlags.BOUNDARY_ALL;
+
       if (v.valence === 4) {
         //return; //done do 4-valence verts
         fac *= 0.15;
@@ -3138,7 +3209,7 @@ export class PaintOp extends PaintOpBase {
 
       if (doCurvRake && (!rakeCurvePosXOnly || v[0] >= 0.0)) {
         let cv = v.customData[cd_curv];
-        cv.check(v);
+        cv.check(v, cd_cotan, undefined, cd_fset);
 
         d1.interp(cv.tan, rakeCurveFac).normalize();
       }
@@ -3148,6 +3219,11 @@ export class PaintOp extends PaintOpBase {
 
       for (let e of v.edges) {
         let v2 = e.otherVertex(v);
+        let mv2 = v2.customData[cd_dyn_vert];
+
+        if (boundflag && (mv2.flag & BVHVertFlags.BOUNDARY_ALL) !== boundflag) {
+          continue;
+        }
 
         if (e.flag & skipflag) {
           continue;
@@ -3259,7 +3335,7 @@ export class PaintOp extends PaintOpBase {
 
       if (doCurvRake && (!rakeCurvePosXOnly || v[0] >= 0.0)) {
         let cv = v.customData[cd_curv];
-        cv.check(v);
+        cv.check(v, cd_cotan, undefined, cd_fset);
 
         d1.interp(cv.tan, rakeCurveFac).normalize();
       }
@@ -3976,7 +4052,7 @@ export class PaintOp extends PaintOpBase {
 
         if (doCurvRake) {// && (!rakeCurvePosXOnly || v[0] >= 0.0)) {
           let cv = v.customData[cd_curv];
-          cv.check(v);
+          cv.check(v, cd_cotan, undefined, cd_fset);
 
           let tan = wtmp1.load(cv.tan);
           let neg = false;
@@ -4222,6 +4298,21 @@ export class PaintOp extends PaintOpBase {
         //v.addFac(vec, f);
       } else if (mode === COLOR_BOUNDARY) {
         colorboundary(v, f*strength);
+      } else if (mode === FACE_SET_DRAW) {
+        for (let f of v.faces) {
+          f.customData[cd_fset].value = drawFaceSet;
+
+          for (let v2 of f.verts) {
+            let mv = v2.customData[cd_dyn_vert];
+
+            let node = v2.customData[cd_node].node;
+            node.setUpdateFlag(BVHFlags.UPDATE_INDEX_VERTS|BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_MASK);
+
+            mv.flag |= BVHVertFlags.NEED_BOUNDARY;
+          }
+        }
+
+        v.flag |= MeshFlags.UPDATE;
       }
 
       if (haveGrids) {
@@ -4583,7 +4674,7 @@ export class PaintOp extends PaintOpBase {
     }
 
     if (useSmoothMemo) {
-      console.log("steps:", smemo.steps);
+      //console.log("steps:", smemo.steps);
     }
 
     if (cd_disp >= 0) {
@@ -4925,9 +5016,9 @@ export class PaintOp extends PaintOpBase {
     mesh.regenRender();
   }
 
-  _checkcurv(v, cd_curv, force = false) {
+  _checkcurv(v, cd_curv, cd_cotan, force = false, cd_fset) {
     if (cd_curv >= 0) {
-      v.customData[cd_curv].check(v, force);
+      v.customData[cd_curv].check(v, cd_cotan, force, cd_fset);
     }
   }
 
@@ -4949,8 +5040,10 @@ export class PaintOp extends PaintOpBase {
     }
 
 
+    let cd_fset = getFaceSets(mesh, false);
     let cd_curv = this.hasCurveVerts(brush) ? getCurveVerts(mesh) : -1;
     //let cd_curv = -1;
+    let cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
 
     if (cd_curv >= 0) {
       let flag = MeshFlags.TEMP1;
@@ -4963,13 +5056,13 @@ export class PaintOp extends PaintOpBase {
         if (!(e.v1.flag & flag)) {
           e.v1.flag |= flag;
           let cv = e.v1.customData[cd_curv];
-          cv.check(e.v1);
+          cv.check(e.v1, cd_cotan, undefined, cd_fset);
         }
 
         if (!(e.v2.flag & flag)) {
           e.v2.flag |= flag;
           let cv = e.v2.customData[cd_curv];
-          cv.check(e.v2);
+          cv.check(e.v2, cd_cotan, undefined, cd_fset);
         }
       }
     }
@@ -5567,6 +5660,8 @@ export class PaintOp extends PaintOpBase {
     let log = this._undo.log;
     log.checkStart(mesh);
 
+    let cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
+
     let fs = new Set();
 
     for (let e of es) {
@@ -5598,10 +5693,12 @@ export class PaintOp extends PaintOpBase {
 
     let newfs = new Set(fs);
 
+    let cd_fset = getFaceSets(mesh, false);
+
     let lctx = new LogContext();
     lctx.onnew = (e, tag) => {
       if (e.type === MeshTypes.VERTEX) {
-        this._checkcurv(e, cd_curv, true);
+        this._checkcurv(e, cd_curv, cd_cotan, true, cd_fset);
       }
 
       log.logAdd(e, tag);
@@ -5711,7 +5808,7 @@ export class PaintOp extends PaintOpBase {
       }
 
       let updateflag = BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_UNIQUE_VERTS;
-      updateflag |= BVHFlags.UPDATE_OTHER_VERTS | BVHFlags.UPDATE_TOTTRI;
+      updateflag |= BVHFlags.UPDATE_OTHER_VERTS | BVHFlags.UPDATE_TOTTRI | BVHFlags.UPDATE_INDEX_VERTS;
 
       lctx.onkill = (e, tag) => {
         log.logKill(e, tag);
@@ -5849,6 +5946,7 @@ export class PaintOp extends PaintOpBase {
 
     const fancyWeights = brush.dynTopo.flag & DynTopoFlags.FANCY_EDGE_WEIGHTS;
 
+    let cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
 
     let edist = fancyWeights ? this.edist_coll : this.edist_simple;
 
@@ -5994,9 +6092,11 @@ export class PaintOp extends PaintOpBase {
       log.logKill(elem, tag);
     }
 
+    let cd_fset = getFaceSets(mesh, false);
+
     lctx.onnew = (elem, tag) => {
       if (cd_curv >= 0 && elem.type === MeshTypes.VERTEX) {
-        this._checkcurv(elem, cd_curv, true);
+        this._checkcurv(elem, cd_curv, cd_cotan, true, cd_fset);
       }
 
       if (elem.type & typemask) {
@@ -6073,7 +6173,7 @@ export class PaintOp extends PaintOpBase {
     }
 
     let cd_node = bvh.cd_node;
-    let updateflag = BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_UNIQUE_VERTS | BVHFlags.UPDATE_DRAW;
+    let updateflag = BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_UNIQUE_VERTS | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_INDEX_VERTS;
 
     for (let f of fs2) {
       if (f.eid < 0) {
@@ -7003,32 +7103,46 @@ export class PaintOp extends PaintOpBase {
     }
 
     let lctx = new LogContext();
+    let cd_node = bvh.cd_node;
 
     let es3 = new Set(es);
     let newvs = new Set(), newfs = new Set(), killfs = new Set(), newes = new Set();
+
+    let updateflag = BVHFlags.UPDATE_UNIQUE_VERTS | BVHFlags.UPDATE_OTHER_VERTS;
+    updateflag = updateflag | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_TOTTRI;
+    updateflag = updateflag | BVHFlags.UPDATE_INDEX_VERTS;
 
     lctx.onkill = (e, tag) => {
       log.logKill(e, tag);
 
       if (e.type === MeshTypes.FACE) {
+        newfs.delete(e);
+
         let tris = bvh.getFaceTris(e._old_eid);
         if (tris) {
           for (let t of tris) {
             if (t.node) {
-              t.node.setUpdateFlag(BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS);
+              t.node.setUpdateFlag(updateflag);
             }
           }
         }
 
         bvh.removeFace(e._old_eid);
+      } else if (e.type === MeshTypes.VERTEX) {
+        newvs.delete(e);
+      } else if (e.type === MeshTypes.EDGE) {
+        newes.delete(e);
       }
     }
+
+    let cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
+    let cd_fset = getFaceSets(mesh, false);
 
     lctx.onnew = (e, tag) => {
       log.logAdd(e, tag);
 
       if (cd_curv >= 0 && e.type === MeshTypes.VERTEX) {
-        this._checkcurv(e, cd_curv, true);
+        this._checkcurv(e, cd_curv, cd_cotan, true, cd_fset);
       }
 
       if (e.type === MeshTypes.EDGE) {
@@ -7036,11 +7150,22 @@ export class PaintOp extends PaintOpBase {
         newes.add(e);
       } else if (e.type === MeshTypes.FACE) {
         newfs.add(e);
+
         for (let l of e.loops) {
           newes.add(l.e);
           es3.add(l.e);
+
+          let node = l.v.customData[cd_node].node;
+          if (node) {
+            node.setUpdateFlag(updateflag);
+          }
         }
       } else if (e.type === MeshTypes.VERTEX) {
+        let node = e.customData[cd_node].node;
+        if (node) {
+          node.setUpdateFlag(updateflag);
+        }
+
         newvs.add(e);
       }
     }
@@ -7048,9 +7173,7 @@ export class PaintOp extends PaintOpBase {
     let es4 = es2;
 
     let oldnew = lctx.onnew;
-    let updateflag = BVHFlags.UPDATE_UNIQUE_VERTS | BVHFlags.UPDATE_OTHER_VERTS;
-    updateflag = updateflag | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_TOTTRI;
-    updateflag = updateflag | BVHFlags.UPDATE_INDEX_VERTS;
+    let oldkill = lctx.onkill;
 
     let esize3 = esize;
 
@@ -7072,11 +7195,35 @@ export class PaintOp extends PaintOpBase {
       esize3 *= 0.2;
       let esqr3 = esize3*esize3;
 
+      lctx.onkill = (e, tag) => {
+        oldkill(e, tag);
+
+        if (e.type === MeshTypes.VERTEX) {
+          let node = e.customData[cd_node].node;
+          if (node) {
+            node.setUpdateFlag(updateflag);
+          }
+        } else if (e.type === MeshTypes.EDGE) {
+          newes2.delete(e);
+          newes_out.delete(e);
+        } else if (e.type === MeshTypes.FACE) {
+          for (let l of e.loops) {
+            let node = l.v.customData[cd_node].node;
+            if (node) {
+              node.setUpdateFlag(updateflag);
+            }
+
+            newes2.delete(l.e);
+            newes_out.delete(l.e);
+          }
+        }
+      }
+
       lctx.onnew = (e, tag) => {
         oldnew(e, tag);
 
         if (cd_curv >= 0 && e.type === MeshTypes.VERTEX) {
-          this._checkcurv(e, cd_curv, true);
+          this._checkcurv(e, cd_curv, cd_cotan, true, cd_fset);
         }
 
         if (e.type === MeshTypes.EDGE) {
@@ -7100,6 +7247,12 @@ export class PaintOp extends PaintOpBase {
             } else {
               newes_out.add(l.e);
             }
+          }
+        } else if (e.type === MeshTypes.VERTEX) {
+          let node = e.customData[cd_node].node;
+
+          if (node) {
+            node.setUpdateFlag(updateflag);
           }
         }
       }
@@ -7285,6 +7438,19 @@ export class PaintOp extends PaintOpBase {
           let v1 = firstl.v;
           let v2 = l.v;
           let v3 = l.next.v;
+
+          if (isNaN(v1.dot(v1))) {
+            v1.zero();
+            console.log("v1 NaN", v1);
+          }
+          if (isNaN(v2.dot(v2))) {
+            v2.zero();
+            console.log("v2 NaN", v2);
+          }
+          if (isNaN(v3.dot(v1))) {
+            v3.zero();
+            console.log("v3 NaN", v3);
+          }
 
           //v1[0] += (Math.random()-0.5)*esize*0.2;
           //v1[1] += (Math.random()-0.5)*esize*0.2;

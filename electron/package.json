@@ -1,4 +1,6 @@
 {
+  "main" : "main.js",
+  
   "devDependencies": {
     "electron": ">=11.1.0"
   },

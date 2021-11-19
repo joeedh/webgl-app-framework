@@ -12,6 +12,8 @@ import {
 
 import {getArrayTemp} from './mesh_base.js';
 import {applyTriangulation} from './mesh_tess.js';
+import {getFaceSets} from './mesh_facesets.js';
+import {BVHVertFlags, getDynVerts} from '../util/bvh.js';
 
 let mvc_tmps = util.cachering.fromConstructor(Vector3, 256);
 let mvc_mats = util.cachering.fromConstructor(Matrix4, 16);
@@ -1381,7 +1383,8 @@ export const TriQuadFlags = {
   UVS         : 8,
   MARK_ONLY   : 16,
   MARKED_EDGES: 32,
-  DEFAULT     : 1 | 4 | 32
+  FACE_SETS   : 64,
+  DEFAULT     : 1 | 4 | 32 | 64
 };
 
 export function trianglesToQuads(mesh, faces, flag = TriQuadFlags.DEFAULT, lctx, newfaces) {
@@ -1396,6 +1399,11 @@ export function trianglesToQuads(mesh, faces, flag = TriQuadFlags.DEFAULT, lctx,
   let eflag = MeshFlags.TEMP3;
   let fflag = MeshFlags.TEMP3;
   let quadflag = MeshFlags.QUAD_EDGE;
+  let cd_fset = -1;
+
+  if (flag & TriQuadFlags.FACE_SETS) {
+    cd_fset = getFaceSets(mesh, false);
+  }
 
   for (let f of faces) {
     f.flag &= ~fflag;
@@ -1419,7 +1427,13 @@ export function trianglesToQuads(mesh, faces, flag = TriQuadFlags.DEFAULT, lctx,
   faces = faces2;
 
   for (let f of faces) {
+    const fset = f.customData[cd_fset].value;
+
     for (let l of f.loops) {
+      if (Math.abs(l.radial_next.f.customData[cd_fset].value) != fset) {
+        continue;
+      }
+
       if (mark_only) {
         //save last quadflag state in eflag
         if (l.e.flag & quadflag) {
@@ -1565,7 +1579,7 @@ export function trianglesToQuads(mesh, faces, flag = TriQuadFlags.DEFAULT, lctx,
   let funcs = [];
 
   for (let k in TriQuadFlags) {
-    if (k === "DEFAULT") {
+    if (k === "DEFAULT" || k === "FACE_SETS") {
       continue;
     }
 
@@ -2258,20 +2272,35 @@ let tmp1 = new Vector3();
 let tmp2 = new Vector3();
 let tmp3 = new Vector3();
 
-export function vertexSmooth(mesh, verts = mesh.verts, fac = 0.5, proj = 0.0, useBoundary=false) {
+export function vertexSmooth(mesh, verts = mesh.verts, fac = 0.5, proj = 0.0, useBoundary = true) {
   verts = ReusableIter.getSafeIter(verts);
+
+  const cd_dyn_vert = getDynVerts(mesh);
+  const cd_fset = getFaceSets(mesh, false);
+  useBoundary = true;
 
   for (let v of verts) {
     let co = tmp1.zero();
     let totw = 0;
 
+    let mv = v.customData[cd_dyn_vert];
+    mv.check(v, cd_fset);
+
     let bound = useBoundary ? v.flag & MeshFlags.BOUNDARY : 0;
+    bound |= mv.flag & BVHVertFlags.BOUNDARY_ALL;
 
     for (let v2 of v.neighbors) {
+      let mv2 = v2.customData[cd_dyn_vert];
+
       let co2 = tmp2.load(v2);
       let w = 0.0;
 
-      if (bound && !(v2.flag & MeshFlags.BOUNDARY)) {
+      mv2.check(v2, cd_fset);
+
+      let bound2 = v2.flag & MeshFlags.BOUNDARY;
+      bound2 |= mv2.flag & BVHVertFlags.BOUNDARY_ALL;
+
+      if (bound && bound != bound2) {
         continue;
       }
 
@@ -3279,6 +3308,34 @@ export function dissolveFaces(mesh, faces, lctx) {
   for (let v of vs) {
     if (v.valence === 0) {
       mesh.killVertex(v, undefined, lctx);
+    }
+  }
+}
+
+export function delauney3D(mesh, vs = mesh.verts, lctx) {
+  let bvh = mesh.getBVH({
+    auto_update: true,
+    wireVerts  : true,
+    deformMode : false,
+    leafLimit  : 32,
+  });
+
+  let i = 0;
+
+  for (let v of mesh.verts) {
+    let vs = bvh.nearestVertsN(v, 7);
+    console.log(vs, bvh._i);
+
+    for (let v2 of vs) {
+      if (v2 === v) {
+        continue;
+      }
+
+      mesh.ensureEdge(v, v2, lctx);
+    }
+    i++;
+    if (i > 515) {
+      break;
     }
   }
 }

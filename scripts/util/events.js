@@ -47,10 +47,10 @@ define([], function() {
       for (var k in DomEventTypes) {
         var type = DomEventTypes[k];
         
-        if (this[k] == undefined)
+        if (this[k] === undefined)
           continue;
         
-        if (this["_"+k] == undefined) {
+        if (this["_"+k] === undefined) {
           this["_"+k] = stop_prop(this[k]);
         }
         

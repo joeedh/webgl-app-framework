@@ -6,7 +6,7 @@ import './test/test_sculpt.js';
 import './test/test.js';
 import './test/test_sculpt_run.js';
 
-import {startAddons} from './addon/addon.js';
+import addon, {startAddons} from './addon/addon.js';
 
 import {nstructjs} from './path.ux/scripts/util/struct.js';
 import {cconst} from './path.ux/scripts/pathux.js';
@@ -69,6 +69,28 @@ window.updateIconDPI = () => {
 
 updateIconDPI();
 
+export function handleNodeArguments() {
+  console.error("arguments", process, process.arguments, process.argv);
+
+  //XXX stupid electron
+
+  let fs = require('fs');
+  console.error(fs.existsSync('arguments.txt'));
+
+  if (!fs.existsSync('arguments.txt')) {
+    return;
+  }
+
+  let buf = fs.readFileSync("arguments.txt", "utf8");
+  buf = buf.replace(/[ \t]+/g, ' ').trim();
+
+  let args = buf.split(" ");
+  _appstate.arguments = args;
+  console.log(args);
+
+  addon.handleArgv(args);
+}
+
 window.init = () => {
   console.log("init!");
 
@@ -89,6 +111,12 @@ window.init = () => {
     loadShapes();
 
     appstate.init();
+
+    if (window.haveElectron) {
+      window.setTimeout(() => {
+        handleNodeArguments();
+      }, 0);
+    }
 
     //shortcut for console use only
     if (typeof CTX === "undefined") {

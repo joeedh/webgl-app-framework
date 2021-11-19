@@ -17,8 +17,10 @@ import {SnapModes} from "../transform/transform_ops.js";
 import * as util from '../../../util/util.js';
 
 import {Mesh, MeshDrawFlags} from "../../../mesh/mesh.js";
-import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
-  MeshFeatureError} from '../../../mesh/mesh_base.js';
+import {
+  MeshTypes, MeshFeatures, MeshFlags, MeshError,
+  MeshFeatureError
+} from '../../../mesh/mesh_base.js';
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
 import {ContextOverlay, ToolMacro, startMenu, createMenu} from "../../../path.ux/scripts/pathux.js";
 import {PackFlags} from "../../../path.ux/scripts/core/ui_base.js";
@@ -26,6 +28,8 @@ import {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} from '../widg
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
 import {buildCotanMap} from '../../../mesh/mesh_utils.js';
 import {CurvVert, CVFlags, getCurveVerts} from '../../../mesh/mesh_curvature.js';
+import {getFaceSets} from '../../../mesh/mesh_facesets.js';
+import {UniformTriRemesher} from '../../../mesh/mesh_remesh.js';
 
 export class MeshEditor extends MeshToolBase {
   constructor(manager) {
@@ -46,14 +50,16 @@ export class MeshEditor extends MeshToolBase {
     this._last_update_curvature = "";
   }
 
-  static toolModeDefine() {return {
-    name        : "mesh",
-    uianme      : "Edit Geometry",
-    icon       : Icons.MESHTOOL,
-    flag        : 0,
-    description : "Edit vertices/edges/faces",
-    transWidgets: [TranslateWidget, ScaleWidget, RotateWidget, InflateWidget]
-  }}
+  static toolModeDefine() {
+    return {
+      name        : "mesh",
+      uianme      : "Edit Geometry",
+      icon        : Icons.MESHTOOL,
+      flag        : 0,
+      description : "Edit vertices/edges/faces",
+      transWidgets: [TranslateWidget, ScaleWidget, RotateWidget, InflateWidget]
+    }
+  }
 
   static buildEditMenu() {
     return [
@@ -68,53 +74,6 @@ export class MeshEditor extends MeshToolBase {
       "mesh.select_linked(mode='ADD')",
       "mesh.create_face()",
     ]
-  }
-
-  defineKeyMap() {
-    this.keymap = new KeyMap([
-      new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
-      new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
-      new HotKey("J", ["ALT"], "mesh.tris_to_quads()"),
-      new HotKey("J", [], "mesh.connect_verts()"),
-      new HotKey("S", ["ALT"], "view3d.inflate()"),
-      new HotKey("G", ["SHIFT"], () => {
-        let menu = [
-          "mesh.select_similar(mode='NUMBER_OF_EDGES')|Number of Edges"
-        ]
-
-        menu = createMenu(this.ctx, "Select Similar", menu);
-        let screen = this.ctx.screen;
-
-        startMenu(menu, screen.mpos[0], screen.mpos[1]);
-      }),
-
-      //new HotKey("T", [], "mesh.quad_smooth()"),
-
-      //new HotKey("D", [], "mesh.subdivide_smooth()"),
-      //new HotKey("D", [], "mesh.subdivide_smooth_loop()"),
-      new HotKey("Y", [], "mesh.test_color_smooth()"),
-      new HotKey("D", [], "mesh.dissolve_verts()"),
-      new HotKey("D", ["SHIFT"], "mesh.duplicate()"),
-      new HotKey("K", [], "mesh.subdiv_test()"),
-      //new HotKey("D", [], "mesh.test_collapse_edge()"),
-      new HotKey("F", [], "mesh.create_face()"),
-      new HotKey("G", [], "view3d.translate(selmask=17)"),
-      new HotKey("R", [], "view3d.rotate(selmask=17)"),
-      new HotKey("L", [], "mesh.pick_select_linked()"),
-      new HotKey("=", ["CTRL"], "mesh.select_more_less(mode='ADD')"),
-      new HotKey("-", ["CTRL"], "mesh.select_more_less(mode='SUB')"),
-      new HotKey("L", ["SHIFT"], "mesh.pick_select_linked(mode=\"SUB\")"),
-      new HotKey("X", [], "mesh.delete_selected()"),
-
-      new HotKey("E", [], "mesh.extrude_regions(transform=true)"),
-      new HotKey("E", ["ALT"], "mesh.extrude_individual_faces(transform=true)"),
-
-      new HotKey("R", ["SHIFT"], "mesh.edgecut()"),
-      new HotKey("I", ["CTRL"], "mesh.select_inverse()"),
-      new HotKey("C", [], "mesh.select_brush()")
-    ]);
-
-    return this.keymap;
   }
 
   static buildElementSettings(container) {
@@ -162,38 +121,53 @@ export class MeshEditor extends MeshToolBase {
 
     panel.toolPanel("mesh.test_solver()").closed = true;
 
-    strip = panel.row().strip().useIcons(false);
+    strip = panel.row().strip();
+    strip.useIcons(false);
     strip.tool("mesh.smooth_curvature_directions()");
+    strip.tool("mesh.mark_singularity()");
+
+    strip = panel.row().strip();
+    strip.useIcons(false);
+    strip.tool("mesh.unmark_singularity()");
+    strip.tool("mesh.relax_rake_uv_cells()");
+
+    strip = panel.row().strip();
+    strip.useIcons(false);
+    strip.tool("mesh.fix_normals()");
     strip.tool("mesh.test_multigrid_smooth()");
 
-    strip = panel.row().strip().useIcons(false);
-    strip.tool("mesh.fix_normals()");
-
-    strip = panel.row().strip().useIcons(false);
+    strip = panel.row().strip();
+    strip.useIcons(false);
     strip.tool("mesh.split_edges()");
     strip.tool("mesh.split_edges_smart()");
 
-    strip = panel.row().strip().useIcons(false);
+    strip = panel.row().strip();
+    strip.useIcons(false);
     strip.tool("mesh.dissolve_verts()");
     strip.tool("mesh.cleanup_quads()");
 
-    strip = panel.row().strip().useIcons(false);
+    strip = panel.row().strip();
+    strip.useIcons(false);
     strip.tool("mesh.cleanup_tris()");
     strip.tool("mesh.rotate_edges()");
 
-    strip = panel.row().strip().useIcons(false);
+    strip = panel.row().strip();
+    strip.useIcons(false);
     strip.tool("mesh.collapse_edges()");
     strip.tool("mesh.dissolve_edges()");
 
-    strip = panel.row().strip().useIcons(false);
+    strip = panel.row().strip();
+    strip.useIcons(false);
     strip.tool("mesh.random_flip_edges()");
     strip.tool("mesh.dissolve_edgeloops()");
 
-    strip = panel.row().strip().useIcons(false);
+    strip = panel.row().strip();
+    strip.useIcons(false);
     strip.tool("mesh.select_shortest_edgeloop()");
     strip.tool("mesh.select_longest_edgeloop()");
 
-    strip = panel.row().strip().useIcons(false);
+    strip = panel.row().strip();
+    strip.useIcons(false);
     strip.button("Dissolve Shortest Loop", () => {
       let ctx = strip.ctx;
 
@@ -227,7 +201,8 @@ export class MeshEditor extends MeshToolBase {
       ctx.api.execTool(ctx, macro);
     });
 
-    strip = panel.row().strip().useIcons(false);
+    strip = panel.row().strip();
+    strip.useIcons(false);
     strip.tool("mesh.flip_normals()");
     strip.tool("mesh.bevel()");
 
@@ -243,7 +218,8 @@ export class MeshEditor extends MeshToolBase {
     strip.prop("scene.propRadius");
 
     panel = column2.panel("Remeshing");
-    strip = panel.row().strip().useIcons(false);
+    strip = panel.row().strip();
+    strip.useIcons(false);
     strip.tool("mesh.remesh(remesher='UNIFORM_TRI')|Tri Remesh");
     strip.tool("mesh.remesh(remesher='UNIFORM_QUAD')|Quad Remesh");
 
@@ -334,6 +310,71 @@ export class MeshEditor extends MeshToolBase {
       return;
   }
 
+  static defineAPI(api) {
+    let tstruct = super.defineAPI(api);
+
+    let mstruct = api.mapStruct(Mesh, false);
+
+    tstruct.struct("mesh", "mesh", "Mesh", mstruct);
+    tstruct.bool("drawLoops", "drawLoops", "Draw Loops").icon(Icons.SHOW_LOOPS);
+    tstruct.bool("drawCurvatures", "drawCurvatures", "Draw Curvatures").icon(Icons.SHOW_CURVATURE);
+    tstruct.bool("drawNormals", "drawNormals", "Draw Normals").icon(Icons.SHOW_NORMALS);
+
+    let onchange = () => {
+      window.redraw_viewport();
+    };
+
+    return tstruct;
+  }
+
+  defineKeyMap() {
+    this.keymap = new KeyMap([
+      new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
+      new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
+      new HotKey("J", ["ALT"], "mesh.tris_to_quads()"),
+      new HotKey("J", [], "mesh.connect_verts()"),
+      new HotKey("S", ["ALT"], "view3d.inflate()"),
+      new HotKey("S", ["CTRL", "ALT"], "view3d.to_sphere()"),
+      new HotKey("G", ["SHIFT"], () => {
+        let menu = [
+          "mesh.select_similar(mode='NUMBER_OF_EDGES')|Number of Edges"
+        ]
+
+        menu = createMenu(this.ctx, "Select Similar", menu);
+        let screen = this.ctx.screen;
+
+        startMenu(menu, screen.mpos[0], screen.mpos[1]);
+      }),
+
+      //new HotKey("T", [], "mesh.quad_smooth()"),
+
+      //new HotKey("D", [], "mesh.subdivide_smooth()"),
+      //new HotKey("D", [], "mesh.subdivide_smooth_loop()"),
+      new HotKey("Y", [], "mesh.test_color_smooth()"),
+      new HotKey("D", [], "mesh.dissolve_verts()"),
+      new HotKey("D", ["SHIFT"], "mesh.duplicate()"),
+      new HotKey("K", [], "mesh.subdiv_test()"),
+      //new HotKey("D", [], "mesh.test_collapse_edge()"),
+      new HotKey("F", [], "mesh.create_face()"),
+      new HotKey("G", [], "view3d.translate(selmask=17)"),
+      new HotKey("R", [], "view3d.rotate(selmask=17)"),
+      new HotKey("L", [], "mesh.pick_select_linked()"),
+      new HotKey("=", ["CTRL"], "mesh.select_more_less(mode='ADD')"),
+      new HotKey("-", ["CTRL"], "mesh.select_more_less(mode='SUB')"),
+      new HotKey("L", ["SHIFT"], "mesh.pick_select_linked(mode=\"SUB\")"),
+      new HotKey("X", [], "mesh.delete_selected()"),
+
+      new HotKey("E", [], "mesh.extrude_regions(transform=true)"),
+      new HotKey("E", ["ALT"], "mesh.extrude_individual_faces(transform=true)"),
+
+      new HotKey("R", ["SHIFT"], "mesh.edgecut()"),
+      new HotKey("I", ["CTRL"], "mesh.select_inverse()"),
+      new HotKey("C", [], "mesh.select_brush()")
+    ]);
+
+    return this.keymap;
+  }
+
   getMeshPaths() {
     let rets = [];
 
@@ -358,23 +399,6 @@ export class MeshEditor extends MeshToolBase {
     }
 
     return [this.meshPath];
-  }
-
-  static defineAPI(api) {
-    let tstruct = super.defineAPI(api);
-
-    let mstruct = api.mapStruct(Mesh, false);
-
-    tstruct.struct("mesh", "mesh", "Mesh", mstruct);
-    tstruct.bool("drawLoops", "drawLoops", "Draw Loops").icon(Icons.SHOW_LOOPS);
-    tstruct.bool("drawCurvatures", "drawCurvatures", "Draw Curvatures").icon(Icons.SHOW_CURVATURE);
-    tstruct.bool("drawNormals", "drawNormals", "Draw Normals").icon(Icons.SHOW_NORMALS);
-
-    let onchange = () => {
-      window.redraw_viewport();
-    };
-
-    return tstruct;
   }
 
   on_mousedown(e, x, y, was_touch) {
@@ -430,12 +454,14 @@ export class MeshEditor extends MeshToolBase {
     let cd_curv = getCurveVerts(mesh);
 
     //CurvVert.propegateUpdateFlags(mesh, cd_curv);
+    let cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
+    let cd_fset = getFaceSets(mesh, false);
 
+    /*
     for (let v of mesh.verts) {
       let cv = v.customData[cd_curv];
-      cv.check(v);
-      break;
-    }
+      cv.check(v, cd_cotan, undefined, cd_fset);
+    }*/
 
     if (this.curvatureMesh && key === this._last_update_curvature) {
       return;
@@ -461,7 +487,27 @@ export class MeshEditor extends MeshToolBase {
     let amat = new Float64Array(16);
     let mat = new Matrix4();
 
-    for (let i=0; i<amat.length; i++) {
+    const VIS_UV_COLORS = false;
+
+    let cd_vis = -1;
+
+    if (VIS_UV_COLORS) {
+      cd_vis = mesh.verts.customData.getNamedLayerIndex("_rakevis", "color");
+
+      if (cd_vis < 0) {
+        cd_vis = mesh.verts.addCustomDataLayer("color", "_rakevis").index;
+      }
+
+      for (let v of mesh.verts.selected.editable) {
+        let cv = v.customData[cd_curv];
+        cv.check(v, cd_cotan, true, cd_fset);
+      }
+
+      let remesh = new UniformTriRemesher(mesh);
+      remesh.propRakeDirections();
+    }
+
+    for (let i = 0; i < amat.length; i++) {
       amat[i] = 0.0;
     }
 
@@ -478,293 +524,57 @@ export class MeshEditor extends MeshToolBase {
     }
 
 
+    console.warn("updating curvature lines");
+
+    no = new Vector3();
+    let tmp1 = new Vector3();
+
+    let dd3 = 1.0;
+    if (window.dd3 !== undefined) {
+      dd3 = window.dd3;
+    }
+
     for (let v of mesh.verts.selected.editable) {
       let cv = v.customData[cd_curv];
-      cv.check(v, true);
+      cv.check(v, cd_cotan, true, cd_fset);
 
-      let size = calcNorLen(v);
+      if (VIS_UV_COLORS) {
+        let visc = v.customData[cd_vis].color;
+        visc[0] = Math.fract(cv.diruv[0]);
+        visc[1] = Math.fract(cv.diruv[1]);
+        visc[2] = Math.fract(cv.diruv[2]);
+        visc[3] = 1.0;
 
-      let k1 = 1.0 / (1.0 + cv.k1);
+        //cv.relaxUvCells(v, cd_curv);
+      }
+
+      let size = calcNorLen(v)*0.5;
+
+      let k1 = cv.k1*0.1*dd3;
+
+      if (0 && cv.k1 !== 0.0) {
+        k1 = Math.abs(1.0/cv.k1);
+      }
+
+      no.load(cv.dir);
+      //no.load(cv.no);
+      no.normalize();
 
       co1.load(v);
-      co2.load(v).addFac(cv.tan, size*k1);
 
-      let line = sm.line(co1, co2);
-      line.colors(white, white);
-    }
+      for (let i = 0; i < 2; i++) {
+        co2.load(v).addFac(no, i === 0 ? size*0.5 : size*0.1); //size*k1);
 
-    return;
-    let no3 = new Vector3();
+        let line = sm.line(co1, co2);
+        line.colors(white, white);
 
-    let sumMat = (v, v1, amat, w=1.0) => {
-      //*
-      no3.load(v.no);
-      for (let v2 of v.neighbors) {
-        no3.add(v2.no);
+        co2.load(v).addFac(no, -size*0.1); //size*k1);
+
+        line = sm.line(co1, co2);
+        line.colors(white, white);
+
+        no.cross(v.no).normalize();
       }
-      no3.normalize();
-      //*/
-
-      //v = v.no;
-      //no3.load(v.n).sub(v1.no);
-      no3.sub(v1.no);
-
-      v = no3;
-
-      amat[0] += v[0]*v[0]*w;
-      amat[1] += v[0]*v[1]*w;
-      amat[2] += v[0]*v[2]*w;
-
-      //skip 3
-      amat[4] += v[1]*v[0]*w;
-      amat[5] += v[1]*v[1]*w;
-      amat[6] += v[1]*v[2]*w;
-
-      //skip 7
-      amat[8] += v[1]*v[0]*w;
-      amat[9] += v[1]*v[1]*w;
-      amat[10] += v[1]*v[2]*w;
-    }
-
-    let vs = new Set(mesh.verts.selected.editable);
-    for (let v of mesh.verts.selected.editable) {
-      for (let v2 of v.neighbors) {
-        vs.add(v2);
-        for (let v3 of v2.neighbors) {
-          vs.add(v3);
-        }
-      }
-    }
-
-    const cotanmap = buildCotanMap(mesh, vs);
-    const VETOT = cotanmap.recordSize;
-
-    let calcMat = (v, amat) => {
-      for (let i=0; i<16; i++) {
-        amat[i] = 0.0;
-      }
-
-      let tot = 0.0;
-      let cot = cotanmap.get(v);
-
-      let vi = 4;
-
-      for (let e of v.edges) {
-        let v2 = e.otherVertex(v);
-        let area = cot[vi], ctan1 = cot[vi+1], ctan2 = cot[vi+2], w = cot[vi+3];
-
-        w = area; //(ctan1 + ctan2)*area;
-        w = 1.0;
-
-        sumMat(v2, v, amat, w);
-        tot += w;
-
-        vi += VETOT;
-      }
-      return;
-      //sumMat(v, amat);
-
-      let flag = MeshFlags.TEMP2;
-      for (let f of v.faces) {
-        f.flag &= ~flag;
-      }
-
-      for (let v2 of v.neighbors) {
-        for (let e of v2.edges) {
-          for (let l of e.loops) {
-            l.f.flag &= ~flag;
-          }
-        }
-      }
-
-      for (let e of v.edges) {
-        let v2 = e.otherVertex(v);
-      //for (let l of v.loops) {//for (let v2 of v.neighbors) {
-        //let v2 = l.e.otherVertex(v);
-
-        let w = 1.0;
-
-        let l = e.l;
-        if (!l) {
-          continue;
-        }
-
-        if (l.f.flag & flag) {
-          l = l.radial_next;
-        }
-
-        if (l.f.flag & flag) {
-          continue;
-        }
-
-        l.f.flag |= flag;
-
-        w = l.f.area + 0.0000001;
-        //w=1.0;
-
-        sumMat(v2, v, amat, w);
-        tot += w;
-
-        //continue;
-
-        for (let e2 of v2.edges) {
-          let l2 = e2.l;
-          let v3 = e2.otherVertex(v2);
-
-          if (!l2) {
-            continue;
-          }
-
-          if (l2.f.flag & flag) {
-            l2 = l2.radial_next;
-          }
-          if (l2.f.flag & flag) {
-            continue;
-          }
-          l2.f.flag |= flag;
-
-
-          let w2 = l2.f.area + 0.00001;
-          //w2 = 1.0;
-
-          sumMat(v3, v, amat, w);
-          tot += w2;
-        }
-      }
-
-      if (!tot) {
-        return;
-      }
-
-      tot = 1.0 / tot;
-      for (let i=0; i<amat.length; i++) {
-        amat[i] *= tot;
-      }
-    }
-
-    let wmap = new Map();
-    let nomap = new Map();
-    let binmap = new Map();
-
-    let steps = window.ddd || 245;
-    let lastno = new Vector3();
-
-    for (let v of vs) {
-      if (v.valence === 0) {
-        continue;
-      }
-
-      calcMat(v, amat);
-
-      mat.makeIdentity();
-      mat.load(amat);
-
-      //console.log(amat);
-
-      //mat.transpose();
-
-      let e;
-      for (let e1 of v.edges) {
-        e = e1;
-        break;
-      }
-
-      //no.load(e.otherVertex(v)).sub(v).normalize();
-      no.load(v.no);
-      lastno.zero();
-
-      let i;
-      for (i=0; i<steps; i++) {
-        no.normalize();
-
-        if (i > 0 && lastno.vectorDistanceSqr(no) < 0.0001) {
-          //console.log(i);
-          no.multVecMatrix(mat);
-          break;
-        }
-
-        lastno.load(no);
-        no.multVecMatrix(mat);
-      }
-
-      //no.cross(v.no);
-
-      //no.normalize().cross(v.no).normalize();//.mulScalar(l);
-      //no.normalize();
-      nomap.set(v, new Vector3(no));
-
-      let bin = new Vector3(no).cross(v.no);
-      let lastbin = new Vector3(bin);
-
-      for (let i=0; i<steps; i++) {
-        bin.normalize();
-        //break;
-
-        if (i > 0 && lastbin.vectorDistanceSqr(bin) < 0.0001) {
-          //console.log(i);
-          break;
-        }
-
-        bin.multVecMatrix(mat);
-        lastbin.load(bin);
-      }
-
-      binmap.set(v, bin);
-    }
-
-    let no2 = new Vector3();
-
-    for (let v of mesh.verts.selected.editable) {
-      if (v.valence === 0) {
-        continue;
-      }
-      let len = calcNorLen(v);
-
-      let no = nomap.get(v);
-      let cv = v.customData[cd_curv];
-      cv.check(v);
-
-      no = cv.tan;
-
-      /*
-      no2.load(no);
-      let tot = 1;
-
-      for (let v2 of v.neighbors) {
-        no = nomap.get(v2);
-        no2.add(no);
-      }
-      no2.normalize();
-
-      no = no2;
-      //*/
-
-      //no.normalize();
-
-      co1.load(v);
-      co2.load(v).addFac(no, len);
-
-      let line = sm.line(co1, co2);
-      line.colors(white, white)
-
-      continue;
-
-      let bin = binmap.get(v);
-      bin.normalize();
-
-      co1.load(v);
-      co2.addFac(bin, len*0.55);
-
-      line = sm.line(co1, co2);
-      line.colors(black, black);
-
-      continue;
-      co1.load(v);
-      co2.load(v).addFac(v.no, len);
-
-      line = sm.line(co1, co2);
-      line.colors(black, black);
-      //line.ids(1, 1);
     }
   }
 
@@ -829,7 +639,7 @@ export class MeshEditor extends MeshToolBase {
           let t = Math.random()*0.5 + 0.5;
 
           d.load(a).interp(b, t);
-          e.load(a2).interp(b2, 1.0-t);
+          e.load(a2).interp(b2, 1.0 - t);
           line = sm.line(d, e);
           line.colors(color, color);
         }
@@ -844,7 +654,7 @@ export class MeshEditor extends MeshToolBase {
     }
 
     let key = "" + mesh.lib_id + ":" + mesh.verts.selected.length + ":" + mesh.updateGen + ":" +
-              mesh.verts.length + ":" + mesh.eidgen._cur;
+      mesh.verts.length + ":" + mesh.eidgen._cur;
 
     if (key === this._last_normals_key) {
       return;
@@ -893,19 +703,23 @@ export class MeshEditor extends MeshToolBase {
     let ob = this.ctx.object;
     let color = [1, 0.8, 0.7, 1.0];
 
+    if (!ob) {
+      return;
+    }
+
     let uniforms = {
-      projectionMatrix : view3d.activeCamera.rendermat,
-      objectMatrix : ob.outputs.matrix.getValue(),
-      object_id : ob.lib_id,
-      aspect : view3d.activeCamera.aspect,
-      size : view3d.glSize,
-      near : view3d.activeCamera.near,
-      far : view3d.activeCamera.far,
-      color : color,
-      uColor : color,
-      alpha : 1.0,
-      opacity : 1.0,
-      polygonOffset : 1.0
+      projectionMatrix: view3d.activeCamera.rendermat,
+      objectMatrix    : ob.outputs.matrix.getValue(),
+      object_id       : ob.lib_id,
+      aspect          : view3d.activeCamera.aspect,
+      size            : view3d.glSize,
+      near            : view3d.activeCamera.near,
+      far             : view3d.activeCamera.far,
+      color           : color,
+      uColor          : color,
+      alpha           : 1.0,
+      opacity         : 1.0,
+      polygonOffset   : 1.0
     };
 
     if (this.drawCurvatures && this.mesh) {

@@ -1828,7 +1828,13 @@ export class SimpleMesh {
   }
 
   destroy(gl = this.gl) {
+    //XXX use global variable
+    if (!gl && window._appstate) {
+      gl = _appstate.gl;
+    }
+
     if (!gl) {
+
       console.warn("failed to destroy a mesh");
       return;
     }

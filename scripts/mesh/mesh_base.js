@@ -280,6 +280,7 @@ export const MeshFlags = Object.freeze({
   SELECT         : (1<<0),
   HIDE           : (1<<1),
   FLAT           : (1<<2),
+  SINGULARITY    : (1<<2), //shared with FLAT
   ITER_TEMP1     : (1<<3), //temporary flag used by faces-around-edge iterators
   ITER_TEMP2a    : (1<<4), //temporary flag used by faces-around-vertex iterators
   ITER_TEMP2b    : (1<<5), //temporary flag used by faces-around-vertex iterators

@@ -116,6 +116,7 @@ export class FileData {
 
 export class AppState {
   constructor() {
+    this.arguments = []; //electron only, command line arguments
     this.saveHandle = undefined;
     this.settings = new AppSettings;
     this.ctx = new ViewContext(this);
@@ -182,6 +183,7 @@ export class AppState {
 
     this.ctx = new ViewContext(this);
 
+    /*
     window.addEventListener("mousedown", (e) => {
       if (this.ignoreEvents) {
         return;
@@ -193,6 +195,7 @@ export class AppState {
         e.preventDefault();
       }
     });
+    //*/
 
     window.addEventListener("contextmenu", (e) => {
       if (this.ignoreEvents) {

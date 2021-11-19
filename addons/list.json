@@ -3,6 +3,7 @@
   "morph/morph.js", "subsurf_tester/subsurf_tester.js",
   "strand/strand_main.js",
   "parameterizer/parameterizer.js",
-  "curvetest/curvetest.js"
+  "curvetest/curvetest.js",
+  "graphit/graphit.js"
 ]
 

@@ -328,6 +328,7 @@ export class Element {
     return this;
   }
 
+  /*
   set eid(v) {
     if (isNaN(v)) {
       console.error("Got NaN eid", v);
@@ -338,7 +339,7 @@ export class Element {
 
   get eid() {
     return this._eid;
-  }
+  }*/
 
   static isElement(obj) {
     return obj instanceof Element || obj instanceof Vertex;

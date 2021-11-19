@@ -477,12 +477,12 @@ export class RemeshOp extends MeshOp {
         {
           flag             : new FlagProperty(DefaultRemeshFlags, RemeshFlags),
           remesher         : new EnumProperty(Remeshers.UNIFORM_TRI, Remeshers).saveLastValue(),
-          rakeFactor       : new FloatProperty(0.5).noUnits().setRange(0.0, 1.0),
-          relax            : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0),
-          origFactor       : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0),
-          projection       : new FloatProperty(0.8).noUnits().setRange(0.0, 1.0),
-          subdivideFac     : new FloatProperty(0.5).noUnits().setRange(0.01, 3.0).saveLastValue(),
-          collapseFac      : new FloatProperty(0.5).noUnits().setRange(0.01, 1.0).saveLastValue(),
+          rakeFactor       : new FloatProperty(0.5).noUnits().setRange(0.0, 1.0).saveLastValue(),
+          relax            : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0).saveLastValue(),
+          origFactor       : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0).saveLastValue(),
+          projection       : new FloatProperty(0.8).noUnits().setRange(0.0, 1.0).saveLastValue(),
+          subdivideFac     : new FloatProperty(0.35).noUnits().setRange(0.01, 3.0).saveLastValue(),
+          collapseFac      : new FloatProperty(0.35).noUnits().setRange(0.01, 1.0).saveLastValue(),
           goalType         : new EnumProperty(RemeshGoals.EDGE_AVERAGE, RemeshGoals).saveLastValue(),
           goal             : new FloatProperty(1.0).noUnits().setRange(0, 1024*1024*32).saveLastValue(),
           edgeRunPercent   : new FloatProperty(0.5).setRange(0.001, 1).noUnits().saveLastValue(),
@@ -1065,11 +1065,14 @@ export function vertexSmooth_tst(mesh, verts = mesh.verts.selected.editable, fac
 export function ccVertexSmooth(mesh, verts = mesh.verts.selected.editable, fac = 0.5) {
   verts = new Set(verts);
 
+  let cd_fset = getFaceSets(mesh, false);
+  let cd_dyn_vert = getDynVerts(mesh);
+
   if (1) {
     let cos = new Map();
 
     for (let v of verts) {
-      cos.set(v, new Vector3(ccSmooth(v)));
+      cos.set(v, new Vector3(ccSmooth(v, cd_fset, cd_dyn_vert)));
     }
 
     for (let [v, co] of cos) {
@@ -1217,6 +1220,94 @@ export class SmoothCurvaturesOp extends MeshDeformOp {
 }
 
 ToolOp.register(SmoothCurvaturesOp);
+
+export class MarkSingularitiesOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : 'Mark Singularity',
+      toolpath: 'mesh.mark_singularity',
+      inputs : ToolOp.inherit({}),
+      outputs : ToolOp.inherit({})
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      for (let v of mesh.verts.selected.editable) {
+        v.flag |= MeshFlags.SINGULARITY | MeshFlags.UPDATE;
+      }
+
+      mesh.regenRender();
+      window.redraw_viewport(true);
+    }
+  }
+}
+ToolOp.register(MarkSingularitiesOp);
+
+
+export class UnmarkSingularitiesOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : 'Unmark Singularity',
+      toolpath: 'mesh.unmark_singularity',
+      inputs : ToolOp.inherit({}),
+      outputs : ToolOp.inherit({})
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      for (let v of mesh.verts.selected.editable) {
+        v.flag &= ~MeshFlags.SINGULARITY;
+        v.flag |= MeshFlags.UPDATE;
+      }
+
+      mesh.regenRender();
+      window.redraw_viewport(true);
+    }
+  }
+}
+ToolOp.register(UnmarkSingularitiesOp);
+
+export class RelaxRakeUVCells extends MeshOp {
+  static tooldef() {
+    return {
+      uiname : "Relax Rake Cells",
+      toolpath: "mesh.relax_rake_uv_cells",
+      inputs : ToolOp.inherit({}),
+      outputs : ToolOp.inherit({})
+    }
+  }
+
+  exec(ctx) {
+    let mesh = ctx.mesh;
+
+    let cd_curv = getCurveVerts(mesh);
+    //let remesh = new UniformTriRemesher(mesh);
+    let cd_fset = getFaceSets(mesh, false);
+
+    for (let v of mesh.verts) {//.selected.editable) {
+      let cv = v.customData[cd_curv];
+
+      //cv.check(v, -1, undefined, cd_fset);
+
+      cv._blendStep(v, -1, cd_fset);
+      cv.relaxUvCells(v, cd_curv);
+      v.flag |= MeshFlags.UPDATE;
+    }
+
+    for (let v of mesh.verts) {//.verts.selected.editable) {
+      let cv = v.customData[cd_curv];
+      cv._ignoreUpdate(v, -1);
+    }
+
+    mesh.regenRender();
+    mesh.recalcNormals();
+    window.redraw_viewport(true);
+  }
+}
+
+ToolOp.register(RelaxRakeUVCells);
 
 export class VertexSmooth extends MeshDeformOp {
   constructor() {
@@ -3676,6 +3767,8 @@ ToolOp.register(OptRemeshParams);
 import {SolverElem, SolverSettings, Solver, DiffConstraint, VelConstraint} from './mesh_solver.js';
 import {BVHToolMode} from '../editors/view3d/tools/pbvh.js';
 import {getCurveVerts, smoothCurvatures} from './mesh_curvature.js';
+import {getFaceSets} from './mesh_facesets.js';
+import {getDynVerts} from '../util/bvh.js';
 
 export class SolverOpBase extends MeshOp {
   constructor() {

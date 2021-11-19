@@ -118,6 +118,8 @@ export let Icons = {
   STRANDS              : 112,
   RELOAD               : 113,
   SCULPT_SLIDE_RELAX   : 114,
-  SCULPT_BVH_DEFORM    : 115
+  SCULPT_BVH_DEFORM    : 115,
+  GRAPH                : 116,
+  SCULPT_FACE_SET_DRAW : 117
 };
 setIconMap(Icons);

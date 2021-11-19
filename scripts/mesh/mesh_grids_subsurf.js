@@ -10,6 +10,8 @@ import {BinomialTable} from "../util/binomial_table.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {ccSmooth} from '../subsurf/subsurf_mesh.js';
+import {getDynVerts} from '../util/bvh.js';
+import {getFaceSets} from './mesh_facesets.js';
 
 export class PatchBuilder {
   constructor(mesh, cd_grid) {
@@ -18,12 +20,16 @@ export class PatchBuilder {
     this.cd_grid = cd_grid;
     this.patches = new Map();
     this.flens = new Map();
+
+    this.cd_dyn_vert = getDynVerts(mesh);
+    this.cd_fset = getFaceSets(mesh, false);
   }
 
   buildQuad(l, margin = 0.0) {
+    const cd_fset = this.cd_fset, cd_dyn_vert = this.cd_dyn_vert;
 
     function getv(l) {
-      return ccSmooth(l.v);
+      return ccSmooth(l.v, cd_fset, cd_dyn_vert);
       let v = new Vector3();
 
       let tot = l.v.valence;
@@ -50,7 +56,7 @@ export class PatchBuilder {
       let co = new Vector3();
 
       co.load(l.v);
-      return ccSmooth(l.v);
+      return ccSmooth(l.v, cd_fset, cd_dyn_vert);
       return l.v;
     }
 
@@ -213,8 +219,10 @@ export class PatchBuilder {
       f.calcCent();
     }
 
+    const cd_fset = this.cd_fset, cd_dyn_vert = this.cd_dyn_vert;
+
     function vsmooth(v) {
-      return ccSmooth(v);
+      return ccSmooth(v, cd_fset, cd_dyn_vert);
 
       let lco = new Vector3();
       let w1 = v.valence*0.75;

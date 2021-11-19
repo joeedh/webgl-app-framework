@@ -2,7 +2,7 @@ import {keymap, reverse_keymap} from '../../../path.ux/scripts/util/simple_event
 import {TransDataElem, TransformData, TransDataType, PropModes, TransDataTypes, TransDataList} from "./transform_base.js";
 import {MeshTransType} from "./transform_types.js";
 import {ToolOp, UndoFlags, IntProperty, FlagProperty, EnumProperty,
-  Vec3Property, Mat4Property, FloatProperty,
+  Vec3Property, Mat4Property, FloatProperty, util,
   BoolProperty, PropFlags, PropTypes, PropSubTypes
 } from "../../../path.ux/scripts/pathux.js";
 import {SelMask} from '../selectmode.js';
@@ -1642,5 +1642,175 @@ export class InflateOp extends TransformOp {
 }
 
 ToolOp.register(InflateOp);
+
+
+export class ToSphereOp extends TransformOp {
+  constructor(start_mpos) {
+    super();
+
+    this.mpos = new Vector3();
+    this.last_mpos = new Vector3();
+    this.start_mpos = new Vector3();
+    this.thsum = 0;
+    this.trackball = false;
+
+    this.radius = undefined;
+
+    if (start_mpos !== undefined) {
+      this.mpos.load(start_mpos);
+      this.mpos[2] = 0.0;
+
+      this.first = false;
+    } else {
+      this.first = true;
+    }
+  }
+
+  static tooldef() {return {
+    uiname      : "To Sphere",
+    description : "Transform Verts To Sphere Shape",
+    toolpath    : "view3d.to_sphere",
+    is_modal    : true,
+    inputs      : ToolOp.inherit({
+      factor    : new FloatProperty(0.0),
+    }),
+    icon        : -1
+  }}
+
+  static canRun(ctx) {
+    let ok = ctx.selectMask & SelMask.GEOM;
+    ok = ok && util.list(ctx.selectedMeshObjects).length > 0;
+
+    console.log(ctx.selectMask, util.list(ctx.selectedMeshObjects));
+
+    return ok;
+  }
+
+  on_mousemove(e) {
+    if (this.numericVal !== undefined) {
+      return;
+    }
+
+    let ctx = this.modal_ctx;
+    let view3d = ctx.view3d;
+
+    let cent = this.center;
+    let scent = new Vector3(cent);
+
+    view3d.project(scent);
+
+    let mpos = new Vector3(view3d.getLocalMouse(e.x, e.y));
+    mpos[2] = scent[2];
+
+    let x = mpos[0], y = mpos[1];
+    this.mpos[0] = x;
+    this.mpos[1] = y;
+    this.mpos[2] = mpos[2];
+
+    if (this.first) {
+      this.last_mpos.load(this.mpos);
+      this.start_mpos.load(this.mpos);
+
+      this.first = false;
+      return;
+    }
+
+    let dx = this.start_mpos[0] - scent[0];
+    let dy = this.start_mpos[1] - scent[1];
+
+    //let t1 = new Vector3([dx, dy, 0]);
+    let t1 = new Vector3([0, -1, 0]);
+    let t2 = new Vector3(this.mpos).sub(this.start_mpos);
+    t2[2] = 0;
+
+    let sign = Math.sign(t1.dot(t2));
+
+    this.resetTempGeom();
+    this.addDrawLine2D(this.mpos, this.start_mpos, "orange");
+
+    let w = view3d.project(new Vector3(this.center));
+    let dis = t2.vectorLength() / view3d.size[1];
+
+    //console.log(dis*sign*w, t1, t2, scent, this.center);
+
+    this.inputs.factor.setValue(dis*w*sign);
+    this.exec(ctx);
+  }
+
+  numericSet(value) {
+    this.inputs.factor.setValue(value);
+  }
+
+  modalStart(ctx) {
+    super.modalStart(ctx);
+
+    this.calcRadius(ctx);
+  }
+
+  calcRadius(ctx) {
+    let center = this.center;
+
+    let r = 0;
+    let tot = 0;
+
+    for (let ob of ctx.selectedMeshObjects) {
+      let mesh = ob.data;
+
+      for (let v of mesh.verts.selected.editable) {
+        let dis = v.vectorDistance(center);
+
+        //r = Math.max(r, dis);
+        r += dis;
+        tot++;
+      }
+    }
+
+    if (tot > 0.0) {
+      r /= tot;
+    }
+    
+    console.warn("RADIUS", r);
+    this.radius = r;
+  }
+
+  exec(ctx) {
+    let tdata = this.tdata;
+
+    if (!tdata) {
+      this.genTransData(ctx);
+      tdata = this.tdata;
+    }
+
+    if (!this.modalRunning) {
+      this.calcRadius(ctx);
+    }
+
+    let factor = Math.abs(this.inputs.factor.getValue());
+    let co = new Vector3();
+
+    factor = Math.min(Math.max(factor, 0.0), 1.0);
+    console.log("factor", factor);
+
+    for (let list of tdata) {
+      if (list.type !== MeshTransType) {
+        continue;
+      }
+
+      for (let td of list) {
+        co.load(td.data1).sub(this.center).normalize().mulScalar(this.radius);
+        co.add(this.center);
+
+        td.data1.load(td.data2).interp(co, factor);
+        td.data1.flag |= MeshFlags.UPDATE;
+        td.mesh.regenRender();
+      }
+    }
+
+    this.doUpdates(ctx);
+    window.redraw_viewport(true);
+  }
+}
+
+ToolOp.register(ToSphereOp);
 
 

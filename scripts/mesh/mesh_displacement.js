@@ -23,6 +23,8 @@ let Queue = util.Queue;
 import {MeshTypes, MeshFlags} from './mesh_base.js';
 import {buildCotanVerts, getCotanData, VAREA, VCTAN1, VCTAN2, VW, VETOT} from './mesh_utils.js';
 import {paramizeMesh, ParamizeModes} from './mesh_paramizer.js';
+import {BVHVertFlags} from '../util/bvh.js';
+import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from './mesh_facesets.js';
 
 
 function smoothno(v, dv) {
@@ -68,6 +70,8 @@ export class SmoothMemoizer {
     this.tempKey = "__temp_sm";
 
     this.genTemp = undefined;
+    this.cd_dyn_vert = -1;
+    this.cd_fset = -1;
 
     this.mesh = mesh;
 
@@ -132,6 +136,8 @@ export class SmoothMemoizer {
 
   start(setSmoothGen = true, cd_disp = undefined, checkTemps = true) {
     let mesh = this.mesh;
+    this.cd_dyn_vert = mesh.verts.customData.getLayerIndex("dynvert");
+    this.cd_fset = getFaceSets(mesh, false);
 
     if (cd_disp !== undefined && cd_disp >= 0) {
       this.cd_disp = cd_disp;
@@ -175,6 +181,8 @@ export class SmoothMemoizer {
 
   smoothco(v, maxDepth = this.maxDepth, noDisp = this.noDisp) {
     const cd_disp = this.cd_disp;
+    const cd_dyn_vert = this.cd_dyn_vert;
+    const cd_fset = this.cd_fset;
 
     let dv = cd_disp >= 0 ? v.customData[cd_disp] : undefined;
 
@@ -236,12 +244,39 @@ export class SmoothMemoizer {
       checkinit1(v, dv);
     }
 
+    let mv;
+    if (cd_dyn_vert >= 0) {
+      mv = v.customData[cd_dyn_vert];
+      mv.check(v, cd_fset);
+    }
+
+    let cornerflag = getCornerFlag();
+    let smoothbound = getSmoothBoundFlag();
+
+    if (mv && (mv.flag & cornerflag)) {
+      return;
+    }
+
     //if (doProj) {
       co1.load(v.customData[cd_temp].value);
     //}
 
+    let boundflag = mv ? mv.flag & BVHVertFlags.BOUNDARY_ALL : 0;
+
     for (let v2 of v.neighbors) {
       let dv2;
+      let mv2;
+
+      if (cd_dyn_vert >= 0) {
+        mv2 = v2.customData[cd_dyn_vert];
+        mv2.check(v2, cd_fset);
+      }
+
+      let w2 = 1.0;
+
+      if (boundflag && (mv2.flag & BVHVertFlags.BOUNDARY_ALL) !== boundflag) {
+        continue;
+      }
 
       if (maxDepth > 1) {
         if (!noDisp) {
@@ -266,6 +301,14 @@ export class SmoothMemoizer {
           co2.zero();
 
           for (let v3 of v2.neighbors) {
+            let mv3;
+            let w3 = 1.0;
+
+            if (cd_dyn_vert >= 0) {
+              mv3 = v3.customData[cd_dyn_vert];
+              mv3.check(v3, cd_fset);
+            }
+
             if (!noDisp) {
               let dv3 = v3.customData[cd_disp];
               checkinit1(v3, dv3);
@@ -281,8 +324,8 @@ export class SmoothMemoizer {
               co3.add(co1);
             }
 
-            co2.add(co3);
-            tot2++;
+            co2.addFac(co3, w3);
+            tot2 += w3;
             this.steps++;
           }
 
@@ -311,14 +354,14 @@ export class SmoothMemoizer {
 
         //co.add(v2.customData[cd_disp].worldco);
         //co.add(v2.customData[cd_temp].value);
-        co.add(co2);
+        co.addFac(co2, w2);
       } else {
-        co.add(v2.customData[cd_temp2].value);
+        co.addFac(v2.customData[cd_temp2].value, w2);
         this.steps++;
       }
 
       //co.add(v2);
-      tot++;
+      tot += w2;
     }
 
     if (tot > 0.0) {

@@ -59,6 +59,7 @@ export const SculptTools = {
   PAINT_SMOOTH    : 129,
   COLOR_BOUNDARY  : 130,
   TEXTURE_PAINT   : 150,
+  FACE_SET_DRAW   : 151
 };
 
 export const DynTopoFlags = {

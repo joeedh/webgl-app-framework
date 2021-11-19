@@ -1,6 +1,7 @@
 import {AddonAPI} from './addon_base.js';
 import * as util from '../util/util.js';
-import {addonDefine} from '../../addons/example.js';
+import {addonDefine, handleArgv} from '../../addons/example.js';
+import {validArgv} from '../../addons/graphit/graphit.js';
 
 export var AddonPath = "../../addons/"
 
@@ -10,6 +11,7 @@ export class AddonRecord {
     this.addonAPI = addonAPI;
     this.url = url;
     this._enabled = false;
+    this.forceEnabled = false; //prevent disabling of addon once enabled
 
     let key = url.replace(/\.js/g, '').replace(/\./g, '');
     key = key.replace(/\//g, '').replace(/\\/g, '');
@@ -46,6 +48,10 @@ export class AddonRecord {
   }
 
   set enabled(val) {
+    if (!val && this.forceEnabled) {
+      return;
+    }
+
     if (!!val === !!this._enabled) {
       return;
     }
@@ -56,6 +62,9 @@ export class AddonRecord {
       this.addon.unregister();
     } else {
       this.addon.register(this.addonAPI);
+      if (this.addon.handleArgv) {
+        //this.addon.handleArgv(this.addonAPI, _appstate.arguments);
+      }
       this._enabled = !!val;
     }
   }
@@ -104,7 +113,7 @@ export class AddonManager {
     } catch (error) {
       util.print_stack(error);
       console.log("error while loading addon " + rec.url, rec.addon);
-      rec.addonAPI.unregister();
+      rec.addonAPI.unregisterAll();
 
       reject("error loading addon: " + error.message + ":\n" + error.stack);
       return;
@@ -150,12 +159,31 @@ export class AddonManager {
   }
 
   loadAddonList(register = false) {
-    fetch("addons/list.json").then(r => r.json()).then(json => {
+    let url = "./addons/list.json";
+
+    if (window.haveElectron) {
+      url = "../addons/list.json";
+    }
+
+    fetch(url).then(r => r.json()).then(json => {
       console.warn("json", json);
       for (let url of json) {
         this.load(url, register);
       }
     });
+  }
+
+  handleArgv(argv) {
+    for (let addon of this.addons) {
+      if (!addon.enabled && addon.addon.validArgv && addon.addon.validArgv(addon.addonAPI, argv)) {
+        addon.enabled = true;
+        addon.forceEnabled = true;
+      }
+
+      if (addon.enabled && addon.addon.handleArgv) {
+        addon.addon.handleArgv(addon.addonAPI, argv);
+      }
+    }
   }
 }
 

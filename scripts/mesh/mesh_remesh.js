@@ -12,6 +12,8 @@ import {
 import {splitEdgesSmart2} from './mesh_subdivide.js';
 import {getCurveVerts, smoothCurvatures} from './mesh_curvature.js';
 import {Vertex} from './mesh_types.js';
+import {BVHVertFlags, getDynVerts} from '../util/bvh.js';
+import {getFaceSets} from './mesh_facesets.js';
 
 const EDGE_SHARP_LIMIT = 0.35 //percentage of PI
 
@@ -235,6 +237,9 @@ export const RemeshFlags = {
 
 const EDGE_DIAG = MeshFlags.QUAD_EDGE;
 
+const DENSITY_CD_MUL = 1.75;
+const BOUNDARY_SMOOTH_WEIGHT = 0.1;
+
 //const EDGE_DIAG = MeshFlags.MAKE_FACE_TEMP;
 
 export class UniformTriRemesher extends Remesher {
@@ -253,6 +258,7 @@ export class UniformTriRemesher extends Remesher {
     this.i = 0;
     this.elen = 1.0;
 
+    this.cd_density = -1;
     this.cd_temps = new Array(16);
     this.tempKey = '__remesher_temp';
 
@@ -526,6 +532,19 @@ export class UniformTriRemesher extends Remesher {
       }
     }
 
+    this.cd_density = mesh.verts.customData.getNamedLayerIndex("__density_", "color");
+    if (this.cd_density === -1) {
+      this.cd_density = mesh.verts.addCustomDataLayer("color", "__density_").index;
+    }
+
+    const cd_density = this.cd_density;
+    for (let v of mesh.verts) {
+      let c = v.customData[cd_density].color;
+      c[0] = 1.0 / DENSITY_CD_MUL;
+      c[1] = c[2] = 1.0;
+      c[3] = 1.0;
+    }
+
     this.initEdgeAngles();
 
     this.initOrigData(mesh);
@@ -598,6 +617,53 @@ export class UniformTriRemesher extends Remesher {
     }
   }
 
+  propRakeDirections() {
+    let stack = [];
+    let mesh = this.mesh;
+
+    const cd_dyn_vert = getDynVerts(mesh);
+    const cd_fset = getFaceSets(mesh);
+    const cd_curv = getCurveVerts(mesh);
+
+    let minv, mindis;
+    for (let v of mesh.verts) {
+      let dis = Math.abs(v[0])**2 + Math.abs(v[1])**2 - v[2];
+
+      if (minv === undefined || dis < mindis) {
+        mindis = dis;
+        minv = v;
+      }
+    }
+
+    let visit = new WeakSet();
+
+    let v = minv;
+    stack.length = 1;
+    stack[0] = v;
+
+    while (stack.length > 0) {
+      let v2 = stack.pop();
+      let cv2 = v2.customData[cd_curv];
+
+      for (let v3 of v2.neighbors) {
+        let cv3 = v3.customData[cd_curv];
+
+        cv2.transform(cv2.dir, cv3.dir, v2.no);
+
+        if (!visit.has(v3)) {
+          stack.push(v3);
+          visit.add(v3);
+        }
+      }
+    }
+
+    /*
+    for (let v of mesh.verts) {
+      let cv = v.customData[cd_curv];
+      cv.relaxUvCells(v, cd_curv);
+    }*/
+  }
+
   rake(fac = this.rakeFactor) {
     let mesh = this.mesh, lctx = this.lctx;
 
@@ -634,10 +700,27 @@ export class UniformTriRemesher extends Remesher {
       v.flag &= ~MeshFlags.NOAPI_TEMP1;
     }
 
+    const cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
+    const boundflag = BVHVertFlags.BOUNDARY_ALL;
+    const cd_dyn_vert = getDynVerts(mesh);
+    const cd_fset = getFaceSets(mesh);
+
+    let cd_vis = mesh.verts.customData.getNamedLayerIndex("_rakevis", "color");
+    if (cd_vis < 0) {
+      cd_vis = mesh.verts.addCustomDataLayer("color", "_rakevis").index;
+    }
+
     let dorake = (v, fac = 0.5, sdis = 1.0) => {
       //return rake2(v, fac);
+      const mv = v.customData[cd_dyn_vert];
+      mv.check(v, cd_fset);
 
-      let bound = v.flag & MeshFlags.BOUNDARY;
+      let bound = mv.flag & boundflag;
+
+      if (bound) {
+        fac *= BOUNDARY_SMOOTH_WEIGHT;
+      }
+
       let val = v.valence;
 
       if (fac === 0.0 || val === 0.0) {
@@ -664,7 +747,8 @@ export class UniformTriRemesher extends Remesher {
       let d3 = _rtmp3;
 
       let cv = v.customData[cd_curv];
-      cv.check(v);
+      //.check happens exclusively in step now
+      //cv.check(v, cd_cotan);
 
       if (do_pvert) {
         let pv = v.customData[cd_pvert];
@@ -677,10 +761,19 @@ export class UniformTriRemesher extends Remesher {
 
         d1.normalize();
       } else {
-        d1.load(cv.tan);
+        cv.check(v, cd_cotan, undefined, cd_fset);
+        d1.load(cv.dir);
         d1.normalize();
       }
 
+
+      let visc = v.customData[cd_vis].color;
+      let uv = cv.diruv;
+
+      visc[0] = Math.fract(uv[0]);
+      visc[1] = Math.fract(uv[1]);
+      visc[2] = 0.0;
+      visc[3] = 1.0;
 
       let vtemp = v.customData[cd_vtemp].color;
 
@@ -704,9 +797,12 @@ export class UniformTriRemesher extends Remesher {
       let dcount = 0;
 
       for (let e of v.edges) {
-        let v2 = e.otherVertex(v);
+        const v2 = e.otherVertex(v);
+        const mv2 = v2.customData[cd_dyn_vert];
 
-        if (bound && !(v2.flag & MeshFlags.BOUNDARY)) {
+        mv2.check(v2, cd_fset);
+
+        if (bound && !(mv2.flag & boundflag)) {
           continue;
         }
 
@@ -799,8 +895,9 @@ export class UniformTriRemesher extends Remesher {
     cd_pvert = mesh.verts.customData.getLayerIndex("paramvert");
 
     for (let v of mesh.verts) {
-      let cv = v.customData[cd_curv];
-      cv.update(v);
+      //cv updating happens in step now
+      //let cv = v.customData[cd_curv];
+      //cv.update(v, cd_cotan, cd_fset);
 
       dorake(v, fac);
     }
@@ -830,6 +927,9 @@ export class UniformTriRemesher extends Remesher {
     let mesh = this.mesh;
     let elen = this.elen;
     let max = this.max;
+
+    let cd_dyn_vert = getDynVerts(mesh);
+    let cd_fset = getFaceSets(mesh, true);
 
     this.i++;
 
@@ -885,19 +985,21 @@ export class UniformTriRemesher extends Remesher {
       }
     }
 
+    let cd_curv = getCurveVerts(mesh);
+    let cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
+
+    for (let v of mesh.verts) {
+      let cv = v.customData[cd_curv];
+      cv.update(v, cd_cotan, cd_fset);
+    }
+
     if (this.smoothCurveFac > 0.0) {
-      let cd_curv = getCurveVerts(mesh);
-
-      for (let v of mesh.verts) {
-        let sv = v.customData[cd_curv];
-        sv.check(v);
-      }
-
       for (let i = 0; i < this.smoothCurveRepeat; i++) {
         smoothCurvatures(mesh, mesh.verts, this.smoothCurveFac);
       }
     }
 
+    //this.propRakeDirections();
 
     for (let i = 0; i < 3; i++) {
       this.rake();
@@ -920,6 +1022,7 @@ export class UniformTriRemesher extends Remesher {
       fac = fac*0.8 + 0.2;
       v.interp(oco, fac*ofac);
     }
+
 
     if (this.flag & RemeshFlags.SUBDIVIDE) {
       es = util.list(mesh.edges);
@@ -948,23 +1051,43 @@ export class UniformTriRemesher extends Remesher {
 
     //console.log("RELAX", relax, "PROJECTION", project);
 
+    const boundflag = BVHVertFlags.BOUNDARY_ALL;
+
     function vsmooth(v) {
+      let relax2 = relax;
+
       let tot = 0.0;
       co.zero();
 
-      let bound = v.flag & MeshFlags.BOUNDARY;
+      //let bound = v.flag & MeshFlags.BOUNDARY;
+
+      let mv = v.customData[cd_dyn_vert];
+      mv.check(v, cd_fset);
+
+      let bound = mv.flag & boundflag;
+
+      if (bound) {
+        relax2 *= BOUNDARY_SMOOTH_WEIGHT;
+      }
+
+      if (mv.flag & BVHVertFlags.CORNER_ALL) {
+        return;
+      }
 
       for (let e of v.edges) {
         let w = 1.0;
 
         if (e.flag & EDGE_DIAG) {
           w = 0.01;
-          //continue;
+          continue;
         }
 
         let v2 = e.otherVertex(v);
+        let mv2 = v2.customData[cd_dyn_vert];
+        mv2.check(v2, cd_fset);
 
-        if (bound && !(v2.flag & MeshFlags.BOUNDARY)) {
+
+        if (bound && !(mv2.flag & boundflag)) {
           continue;
         }
 
@@ -982,11 +1105,12 @@ export class UniformTriRemesher extends Remesher {
       if (tot > 0.0) {
         co.mulScalar(1.0/tot);
 
-        v.interp(co, relax);
+        v.interp(co, relax2);
       }
     }
 
     this.updateDiagFlags();
+    this.updateDensities();
 
     for (let v of mesh.verts) {
       v.flag |= MeshFlags.UPDATE;
@@ -1040,18 +1164,93 @@ export class UniformTriRemesher extends Remesher {
     mesh.regenTessellation();
     mesh.recalcNormals();
     //}
+
+    for (let v of mesh.verts) {
+      let cv = v.customData[cd_curv];
+      cv._ignoreUpdate(v, cd_cotan, cd_fset);
+    }
+  }
+
+  updateDensities() {
+    let mesh = this.mesh;
+
+    //update densities
+    const cd_density = this.cd_density;
+
+    for (let v of mesh.verts) {
+      let val = 0;
+
+      for (let e of v.edges) {
+        if (!(e.flag & EDGE_DIAG)) {
+          val++;
+        }
+      }
+
+      let eps = -0.075*5;
+      let fac = val > 4 ? 1.0 - eps : 1.0 + eps; //1.0 + Math.abs(val - 5.5)*0.05;
+
+      let den = v.customData[cd_density].color[0] * DENSITY_CD_MUL;
+
+      if (val === 4) { //hit goal, degrade towards 1
+        den += (1.0 - den)*0.3;
+      } else if (fac !== 0.0) {
+        den *= fac;
+      }
+
+      den = Math.min(Math.max(den, 0.25), 2.0);
+      v.customData[cd_density].color[0] = den / DENSITY_CD_MUL;
+    }
+
+    if (1) {
+      //smooth density field a bit
+      for (let v of mesh.verts) {
+        let totd = 16.0;
+        let d = v.customData[cd_density].color[0]*totd;
+
+        for (let v2 of v.neighbors) {
+          d += v2.customData[cd_density].color[0];
+          totd += 1.0;
+        }
+
+        v.customData[cd_density].color[0] = d/totd;
+      }
+    }
   }
 
   collapse(es, elen, max) {
     elen *= 1.0 - this.collFac;
 
     let mesh = this.mesh, lctx = this.ctx;
+    const cd_dyn_vert = getDynVerts(mesh);
 
     let tot = 0;
+    const bound = BVHVertFlags.BOUNDARY_ALL;
+
+    const cd_fset = getFaceSets(mesh, false);
 
     let op = e => {
+      let mv1 = e.v1.customData[cd_dyn_vert];
+      let mv2 = e.v2.customData[cd_dyn_vert];
+
+      mv1.check(e.v1, cd_fset);
+      mv2.check(e.v2, cd_fset);
+
+      let bad = !!(mv1.flag & bound) !== !!(mv2.flag & bound);
+
+      bad = bad || (mv1.flag & BVHVertFlags.CORNER_ALL);
+      bad = bad || (mv2.flag & BVHVertFlags.CORNER_ALL);
+
+      if (bad) {
+        return;
+      }
+
       tot++;
-      mesh.collapseEdge(e, lctx);
+      let v = mesh.collapseEdge(e, lctx);
+
+      if (v) {
+        let mv = v.customData[cd_dyn_vert];
+        mv.flag |= BVHVertFlags.NEED_BOUNDARY|BVHVertFlags.NEED_VALENCE;
+      }
     }
 
     if (tot >= this.minEdges) {
@@ -1069,6 +1268,7 @@ export class UniformTriRemesher extends Remesher {
     let split_es = new Set();
 
     let op = e => split_es.add(e);
+    let cd_dyn_vert = getDynVerts(mesh);
 
     if (!lctx) {
       lctx = new LogContext();
@@ -1080,6 +1280,9 @@ export class UniformTriRemesher extends Remesher {
       lctx.onnew = (e) => {
         if (e.type === MeshTypes.EDGE) {
           es2.add(e);
+        } else if (e.type === MeshTypes.VERTEX) {
+          let mv = e.customData[cd_dyn_vert];
+          mv.flag |= BVHVertFlags.NEED_ALL;
         }
 
         if (oldnew) {
@@ -1120,6 +1323,7 @@ export class UniformTriRemesher extends Remesher {
 
     let cd_etemp = this.cd_temps[MeshTypes.EDGE];
     let cd_vtemp = this.cd_temps[MeshTypes.VERTEX];
+    let cd_density = this.cd_density;
 
     function func(t) {
       t = Math.min(t*2.0, 2.0);
@@ -1127,8 +1331,11 @@ export class UniformTriRemesher extends Remesher {
     }
 
     function escale(e) {
-      return 1.25;
+      let d1 = e.v1.customData[cd_density].color[0] * DENSITY_CD_MUL;
+      let d2 = e.v2.customData[cd_density].color[0] * DENSITY_CD_MUL;
 
+      return (d1 + d2)*0.5;
+/*
       if (sign > 0) {
         let t1 = func(e.customData[cd_etemp].value[0]);
         //let t2 = func(e.v1.customData[cd_vtemp].color[0]);
@@ -1141,37 +1348,18 @@ export class UniformTriRemesher extends Remesher {
       } else {
         return 1.25;
       }
+ */
     }
 
     function edist1(e) {
       let dist = e.v1.vectorDistance(e.v2);
 
-      //XXX
-      return escale(e)*dist;
-      //return dist;
-
-      let d = (e.v1.valence + e.v2.valence)*0.5;
-      d = 1.0 + Math.max(d - ep2, ep3)**ep1;
-
-      if (sign < 0) {
-        //d = 1.0 / d;
-      }
-
-      dist *= d;
-
       return escale(e)*dist;
     }
 
-    function edist2(e) {
-      if (sign < 0) {
-        return escale(e)*e.v1.vectorDistance(e.v2);
-      } else {
-        return edist1(e);
-      }
-    }
+    const edist2 = edist1;
 
     for (let e of es) {
-      //let w = e.v1.vectorDistance(e.v2);
       let w = edist1(e);
 
       ws.push(w);
@@ -1481,7 +1669,7 @@ export class UniformTriRemesher extends Remesher {
 
               let etemp = e.customData[cd_etemp].value;
 
-              if (etemp[0] > EDGE_SHARP_LIMIT) {
+              if (0 && etemp[0] > EDGE_SHARP_LIMIT) {
                 e.flag |= MeshFlags.DRAW_DEBUG2;
 
                 bad = true;
@@ -2165,7 +2353,7 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
     }
   }
 
-  let mask = window.dd !== undefined ? window.dd : (1|2|4|16|32);
+  let mask = window.dd !== undefined ? window.dd : (1 | 2 | 4 | 16 | 32);
   let stage = 0;
   //A
 
@@ -2563,6 +2751,10 @@ export function cleanupQuadsOld(mesh, faces, lctx) {
     let tot = 0;
 
     let bound = v.flag & MeshFlags.BOUNDARY;
+
+    if (bound) {
+      fac *= BOUNDARY_SMOOTH_WEIGHT;
+    }
 
     for (let v2 of v.neighbors) {
       if (bound && !(v2.flag & MeshFlags.BOUNDARY)) {
@@ -3061,7 +3253,7 @@ export let DefaultRemeshFlags = RemeshFlags.SUBDIVIDE | RemeshFlags.COLLAPSE | R
 
 export function remeshMesh(mesh, remesher = Remeshers.UNIFORM_TRI, lctx = undefined, goalType, goalValue,
                            maxSteps                                     = 5,
-                           rakeFactor                                   = 0.5, threshold = 0.5,
+                           rakeFactor                                   = 0.5, threshold                  = 0.5,
                            relax                                        = 0.25,
                            projection                                   = 0.8,
                            flag                                         = DefaultRemeshFlags,
