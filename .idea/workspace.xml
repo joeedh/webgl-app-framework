@@ -5,55 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
-      <change afterPath="$PROJECT_DIR$/addons/DField/dfield.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/addons/DField/dfield_toolmode.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/addons/graphit/graphit.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/addons/graphit/graphit_tool.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/electron/run.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/mesh/mesh_cotan.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/mesh/mesh_dfield.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/mesh/mesh_facesets.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/addons/example.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/example.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/addons/list.json" beforeDir="false" afterPath="$PROJECT_DIR$/addons/list.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet.svg" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet.svg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet128.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet128.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet16.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet16.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet24.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet24.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet32.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet32.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet40.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet40.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet50.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet50.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet64.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet64.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet80.png" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet80.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/electron/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/electron/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/addon/addon.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/addon/addon.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/addon/addon_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/addon/addon_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/brush/brush.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/brush/brush.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/core/appstate.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/appstate.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/simplemesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/simplemesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/data_api/api_define.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/data_api/api_define.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/editor_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/editor_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/icon_enum.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/icon_enum.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/menu/MainMenu.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/menu/MainMenu.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/theme.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/theme.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/entry_point.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/entry_point.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_base.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/meshtool.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/meshtool.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_curvature.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_curvature.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_displacement.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_displacement.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_draw.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_draw.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_grids_subsurf.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_grids_subsurf.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_facesets.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_facesets.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/core/ui_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/core/ui_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/FrameManager.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/FrameManager.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/ScreenArea.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/ScreenArea.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/core/ui.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/core/ui.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/util.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/util.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" afterDir="false" />
@@ -61,9 +24,6 @@
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shadernetwork.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shadernetwork.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/subsurf/subsurf_mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/subsurf/subsurf_mesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/util/bvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bvh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/util/events.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/events.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -78,7 +38,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/scripts/path.ux" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="GitSEFilterConfiguration">
@@ -343,6 +303,8 @@
       <workItem from="1636173502629" duration="722000" />
       <workItem from="1636480493949" duration="30000" />
       <workItem from="1637263610845" duration="5494000" />
+      <workItem from="1637338857430" duration="584000" />
+      <workItem from="1637615032726" duration="5551000" />
     </task>
     <servers />
   </component>

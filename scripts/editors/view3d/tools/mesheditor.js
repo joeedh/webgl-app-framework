@@ -224,15 +224,24 @@ export class MeshEditor extends MeshToolBase {
     strip.tool("mesh.remesh(remesher='UNIFORM_QUAD')|Quad Remesh");
 
     panel.toolPanel("mesh.interactive_remesh()");
+    strip = panel.row().strip();
+
+    strip.tool("mesh.interactive_remesh(mode='GEN_CROSSFIELD')", {
+      label: "CrossField Gen"
+    })
+    strip.tool("mesh.interactive_remesh(mode='OPT_CROSSFIELD')", {
+      label: "CrossField Opt"
+    })
+
     panel.toolPanel("mesh.opt_remesh_params()").closed = true;
 
     panel = column2.panel("UV");
 
     strip = panel.col().strip();
     strip.useIcons(false);
-    strip.tool("mesh.set_flag(elemMask='EDGE' flag='SEAM')", undefined, undefined, "Set Seam");
-    strip.tool("mesh.clear_flag(elemMask='EDGE' flag='SEAM')", undefined, undefined, "Clear Seam");
-    strip.tool("mesh.toggle_flag(elemMask='EDGE' flag='SEAM')", undefined, undefined, "Toggle Seam");
+    strip.tool("mesh.set_flag(elemMask='EDGE' flag='SEAM')", {label: "Set Seam"});
+    strip.tool("mesh.clear_flag(elemMask='EDGE' flag='SEAM')", {label: "Clear Seam"});
+    strip.tool("mesh.toggle_flag(elemMask='EDGE' flag='SEAM')", {label: "Toggle Seam"});
 
     panel = column2.panel("MultiRes");
 

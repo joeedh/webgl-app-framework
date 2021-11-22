@@ -135,6 +135,8 @@ export class MeshToolBase extends ToolMode {
   }
 
   on_mousedown(e, x, y, was_touch) {
+    console.warn(e.type, e, x, y, was_touch, e.shiftKey);
+
     let ctx = this.ctx;
 
     this.start_mpos[0] = x;

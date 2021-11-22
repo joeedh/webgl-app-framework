@@ -10,7 +10,7 @@ export function getFaceSets(mesh, autoCreate=true) {
     added = true;
   }
 
-  let cd_fset = mesh.faces.customData.getNamedLayerIndex("face_sets", "int");
+  const cd_fset = mesh.faces.customData.getNamedLayerIndex("face_sets", "int");
 
   if (added) {
     for (let f of mesh.faces) {

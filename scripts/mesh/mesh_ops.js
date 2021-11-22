@@ -468,6 +468,12 @@ export class TriangulateOp extends MeshOp {
 
 ToolOp.register(TriangulateOp);
 
+export const RemeshOpModes = {
+  REMESH        : 0,
+  GEN_CROSSFIELD: 1,
+  OPT_CROSSFIELD: 2
+};
+
 export class RemeshOp extends MeshOp {
   static tooldef() {
     return {
@@ -489,7 +495,7 @@ export class RemeshOp extends MeshOp {
           curveSmoothFac   : new FloatProperty(0.0).noUnits().setRange(0.0, 1.0).saveLastValue(),
           curveSmoothRepeat: new IntProperty(4).noUnits().setRange(0, 50).saveLastValue(),
           rakeMode         : new EnumProperty(RakeModes.CURVATURE, RakeModes).saveLastValue(),
-          reproject        : new BoolProperty(false).saveLastValue()
+          reproject        : new BoolProperty(false).saveLastValue(),
         }
       ),
       outputs : ToolOp.inherit()
@@ -579,7 +585,8 @@ export class InteractiveRemeshOp extends RemeshOp {
       uiname  : "Remesh (Interactive)",
       toolpath: "mesh.interactive_remesh",
       inputs  : ToolOp.inherit({
-        steps: new IntProperty(5).private()
+        steps: new IntProperty(5).private(),
+        mode : new EnumProperty(RemeshOpModes.REMESH, RemeshOpModes)
       }),
       outputs : ToolOp.inherit({}),
       is_modal: true
@@ -679,7 +686,8 @@ export class InteractiveRemeshOp extends RemeshOp {
     while (this.remesher && util.time_ms() - time < 50 && !this.remesher.done) {
       let i = this.inputs.steps.getValue();
       this.inputs.steps.setValue(i + 1);
-      this.remesher.step();
+
+      this._step(this.modal_ctx, this.remesher, mesh, this.lctx);
     }
 
     if (!this.remesher) {
@@ -693,6 +701,21 @@ export class InteractiveRemeshOp extends RemeshOp {
     window.redraw_viewport(true);
   }
 
+  _step(ctx, remesher, mesh, lctx) {
+
+    switch (this.inputs.mode.getValue()) {
+      case RemeshOpModes.REMESH:
+        remesher.step();
+        break;
+      case RemeshOpModes.GEN_CROSSFIELD:
+        remesher.solveRakeDirections();
+        break;
+      case RemeshOpModes.OPT_CROSSFIELD:
+        remesher.propRakeDirections();
+        break;
+    }
+  }
+
   exec(ctx) {
     let mesh = ctx.mesh;
     let lctx = this.makeLogCtx(ctx, mesh);
@@ -704,7 +727,7 @@ export class InteractiveRemeshOp extends RemeshOp {
     let steps = this.inputs.steps.getValue();
 
     for (let i = 0; i < steps; i++) {
-      remesher.step();
+      this._step(ctx, remesher, mesh, lctx);
     }
 
     remesher.finish();
@@ -1226,7 +1249,7 @@ export class MarkSingularitiesOp extends MeshOp {
     return {
       uiname  : 'Mark Singularity',
       toolpath: 'mesh.mark_singularity',
-      inputs : ToolOp.inherit({}),
+      inputs  : ToolOp.inherit({}),
       outputs : ToolOp.inherit({})
     }
   }
@@ -1242,6 +1265,7 @@ export class MarkSingularitiesOp extends MeshOp {
     }
   }
 }
+
 ToolOp.register(MarkSingularitiesOp);
 
 
@@ -1250,7 +1274,7 @@ export class UnmarkSingularitiesOp extends MeshOp {
     return {
       uiname  : 'Unmark Singularity',
       toolpath: 'mesh.unmark_singularity',
-      inputs : ToolOp.inherit({}),
+      inputs  : ToolOp.inherit({}),
       outputs : ToolOp.inherit({})
     }
   }
@@ -1267,14 +1291,15 @@ export class UnmarkSingularitiesOp extends MeshOp {
     }
   }
 }
+
 ToolOp.register(UnmarkSingularitiesOp);
 
 export class RelaxRakeUVCells extends MeshOp {
   static tooldef() {
     return {
-      uiname : "Relax Rake Cells",
+      uiname  : "Relax Rake Cells",
       toolpath: "mesh.relax_rake_uv_cells",
-      inputs : ToolOp.inherit({}),
+      inputs  : ToolOp.inherit({}),
       outputs : ToolOp.inherit({})
     }
   }

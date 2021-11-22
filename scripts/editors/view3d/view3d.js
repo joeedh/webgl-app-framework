@@ -1089,10 +1089,15 @@ export class View3D extends Editor {
 
     let on_mousedown = (e) => {
       console.log("HAVE MODAL", haveModal());
+      console.log("touch", eventWasTouch(e), e);
 
       if (uiHasFocus(e)) {
         return;
       }
+
+      /* prevent duplicate mousedown events from touch forwarding */
+      e.preventDefault();
+
       let was_touch = eventWasTouch(e);
 
       //if (was_touch) {
@@ -1129,7 +1134,8 @@ export class View3D extends Editor {
         this.mdown = false;
       }
 
-      //console.log("touch", eventWasTouch(e), e);
+      console.log("touch", eventWasTouch(e), e);
+
       if (docontrols && eventWasTouch(e) && !e.shiftKey && !e.ctrlKey && !e.altKey) {
         console.log("multitouch view tool");
 
@@ -1154,6 +1160,7 @@ export class View3D extends Editor {
       }
 
       this.pop_ctx_active();
+
       e.preventDefault();
       e.stopPropagation();
     };

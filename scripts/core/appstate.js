@@ -202,7 +202,6 @@ export class AppState {
         return;
       }
 
-      console.log(e);
       let screen = _appstate.screen;
       if (screen === undefined) {
         return;

@@ -707,7 +707,8 @@ CurvVert.STRUCT = nstructjs.inherit(CurvVert, CustomDataElem) + `
   k1        : double;
   k2        : double;
   no        : vec3;
-  weight    : double;  
+  weight    : double;
+  diruv     : vec4;  
 }
 `;
 

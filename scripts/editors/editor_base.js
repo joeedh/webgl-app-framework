@@ -409,16 +409,17 @@ export class ImageUserWidget extends DataBlockBrowser {
     this.blockClass = ImageBlock;
   }
 
+  static define() {
+    return {
+      tagname: "image-user-x"
+    }
+  }
+
   _getDataPath() {
     return this.getAttribute("datapath") + ".image";
   }
-
-  static define() {
-    return {
-      tagname : "image-user-x"
-    }
-  }
 }
+
 UIBase.register(ImageUserWidget);
 
 /**
@@ -719,11 +720,17 @@ export class Editor extends Area {
       this.pop_ctx_active();
     }
 
-    this.addEventListener("dragover", cb);
-    this.addEventListener("mouseenter", cb);
-    this.addEventListener("mouseover", cb);
-    this.addEventListener("mousein", cb);
-    this.addEventListener("focus", cb);
+    this.addEventListener("dragover", cb, {passive: true});
+    this.addEventListener("mouseenter", cb, {passive: true});
+    this.addEventListener("mouseover", cb, {passive: true});
+    this.addEventListener("mousein", cb, {passive: true});
+    this.addEventListener("focus", cb, {passive: true});
+
+    this.defineKeyMap();
+
+    this.container.ctx = this.ctx;
+    this.makeHeader(this.container, false);
+    this.setCSS();
   }
 
   swapBack() {
@@ -782,15 +789,6 @@ export class Editor extends Area {
   on_keydown(e) {
     this.push_ctx_active();
     this.pop_ctx_active();
-  }
-
-  init() {
-    super.init();
-    this.defineKeyMap();
-
-    this.container.ctx = this.ctx;
-    this.makeHeader(this.container, false);
-    this.setCSS();
   }
 
   getScreen() {

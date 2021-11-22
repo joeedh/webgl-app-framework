@@ -618,50 +618,121 @@ export class UniformTriRemesher extends Remesher {
   }
 
   propRakeDirections() {
-    let stack = [];
     let mesh = this.mesh;
 
-    const cd_dyn_vert = getDynVerts(mesh);
+    //const cd_dyn_vert = getDynVerts(mesh);
     const cd_fset = getFaceSets(mesh);
     const cd_curv = getCurveVerts(mesh);
+    const cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
 
-    let minv, mindis;
     for (let v of mesh.verts) {
-      let dis = Math.abs(v[0])**2 + Math.abs(v[1])**2 - v[2];
-
-      if (minv === undefined || dis < mindis) {
-        mindis = dis;
-        minv = v;
-      }
+      let cv = v.customData[cd_curv];
+      cv.update(v, cd_cotan, cd_fset);
     }
 
+    let verts = util.list(mesh.verts);
+    verts.sort((a, b) => {
+      return Math.random() - 0.5;
+      let d1 = Math.abs(a[0])**2 + Math.abs(a[1])**2 - a[2];
+      let d2 = Math.abs(b[0])**2 + Math.abs(b[1])**2 - b[2];
+
+      return d1 - d2;
+    });
+
     let visit = new WeakSet();
+    let queue = new util.Queue(512);
 
-    let v = minv;
-    stack.length = 1;
-    stack[0] = v;
+    for (let v of verts) {
+      if (visit.has(v)) {
+        continue;
+      }
 
-    while (stack.length > 0) {
-      let v2 = stack.pop();
-      let cv2 = v2.customData[cd_curv];
+      queue.clear(false);
+      queue.enqueue(v);
+      visit.add(v);
 
-      for (let v3 of v2.neighbors) {
-        let cv3 = v3.customData[cd_curv];
+      while (queue.length > 0) {
+        let v2 = queue.dequeue();
+        let cv2 = v2.customData[cd_curv];
 
-        cv2.transform(cv2.dir, cv3.dir, v2.no);
+        for (let v3 of v2.neighbors) {
+          let cv3 = v3.customData[cd_curv];
 
-        if (!visit.has(v3)) {
-          stack.push(v3);
-          visit.add(v3);
+          cv2.transform(cv2.dir, cv3.dir, v2.no);
+
+          if (!visit.has(v3)) {
+            queue.enqueue(v3);
+            visit.add(v3);
+          }
         }
       }
     }
+
+    this.updateRakeDirVis();
 
     /*
     for (let v of mesh.verts) {
       let cv = v.customData[cd_curv];
       cv.relaxUvCells(v, cd_curv);
     }*/
+  }
+
+  solveRakeDirections() {
+    let mesh = this.mesh;
+
+    let cd_col = mesh.verts.customData.getNamedLayerIndex("_rake_dir", "color");
+    if (cd_col < 0) {
+      cd_col = mesh.verts.addCustomDataLayer("color", "_rake_dir").index;
+    }
+
+    let cd_fset = getFaceSets(mesh, false);
+    const cd_curv = getCurveVerts(mesh);
+
+    const cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
+
+    let tan = new Vector3();
+
+    for (let v of mesh.verts) {
+      let cv = v.customData[cd_curv];
+
+      cv.update(v, cd_cotan, cd_fset);
+      tan.load(cv.tan).normalize();
+    }
+
+    this.updateRakeDirVis();
+  }
+
+  updateRakeDirVis() {
+    let mesh = this.mesh;
+
+    let cd_col = mesh.verts.customData.getNamedLayerIndex("_rake_dir", "color");
+    if (cd_col < 0) {
+      cd_col = mesh.verts.addCustomDataLayer("color", "_rake_dir").index;
+    }
+
+    let cd_fset = getFaceSets(mesh, false);
+    const cd_curv = getCurveVerts(mesh);
+
+    const cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
+
+    let tan = new Vector3();
+
+    for (let v of mesh.verts) {
+      let cv = v.customData[cd_curv];
+
+      tan.load(cv.dir).normalize();
+
+      let c = v.customData[cd_col].color;
+
+      c[0] = tan[0]*0.5 + 0.5;
+      c[1] = tan[1]*0.5 + 0.5;
+      c[2] = tan[2]*0.5 + 0.5;
+      c[3] = 1.0;
+
+      v.flag |= MeshFlags.UPDATE;
+    }
+
+    mesh.regenRender();
   }
 
   rake(fac = this.rakeFactor) {
