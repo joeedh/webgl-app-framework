@@ -1,5 +1,5 @@
 import {Matrix4, Vector2} from "../util/vectormath.js";
-import {StringProperty, Vec2Property, ToolOp, UndoFlags, keymap} from '../path.ux/scripts/pathux.js';
+import {StringProperty, nstructjs, Vec2Property, ToolOp, UndoFlags, keymap} from '../path.ux/scripts/pathux.js';
 import {Icons} from './icon_enum.js';
 import * as util from '../util/util.js';
 
@@ -156,7 +156,7 @@ VelPan {
   flag   : int;
 }
 `;
-nstructjs.manager.add_class(VelPan);
+nstructjs.register(VelPan);
 
 
 export class VelPanPanOp extends ToolOp {

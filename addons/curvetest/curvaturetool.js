@@ -5,6 +5,8 @@ import {KDrawModes, CurvVert2} from '../../scripts/mesh/mesh_curvature_test.js';
 export function makeCurvToolMode(api) {
   let exports = {};
 
+  let nstructjs = api.nstructjs;
+
   let DrawFlags = exports.DrawFlags = {
     COLOR : 1
   };

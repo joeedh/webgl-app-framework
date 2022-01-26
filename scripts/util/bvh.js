@@ -1,5 +1,7 @@
 import {PaintOpBase} from '../editors/view3d/tools/pbvh_base.js';
 
+import {nstructjs} from '../path.ux/scripts/pathux.js';
+
 const DYNAMIC_SHUFFLE_NODES = false; //attempt fast debalancing of tree dynamically
 
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from './vectormath.js';

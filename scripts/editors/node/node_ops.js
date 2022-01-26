@@ -1,8 +1,6 @@
 import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor} from '../editor_base.js';
-import '../../path.ux/scripts/util/struct.js';
-
-let STRUCT = nstructjs.STRUCT;
+import {nstructjs} from '../../path.ux/scripts/pathux.js';
 import {UIBase} from '../../path.ux/scripts/core/ui_base.js';
 import {Container} from '../../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';

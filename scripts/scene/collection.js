@@ -222,4 +222,4 @@ Collection.STRUCT = STRUCT.inherit(Collection, DataBlock)  +`
 }
 `;
 
-nstructjs.manager.add_class(Collection);
+nstructjs.register(Collection);

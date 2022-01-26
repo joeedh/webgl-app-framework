@@ -6,24 +6,69 @@
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/appstate.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/appstate.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addons/curvetest/curvaturetool.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/curvetest/curvaturetool.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addons/graphit/graphit_tool.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/graphit/graphit_tool.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addons/morph/morphtool.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/morph/morphtool.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addons/parameterizer/paramtool.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/parameterizer/paramtool.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addons/subsurf_tester/subsurf_tangent_test.js" beforeDir="false" afterPath="$PROJECT_DIR$/addons/subsurf_tester/subsurf_tangent_test.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/brush/brush.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/brush/brush.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/core/graph.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/graph.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/core/lib_api.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/lib_api.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/core/material.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/material.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/core/settings.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/settings.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/core/webgl.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/webgl.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/curve/curve.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/curve/curve.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/debug/DebugEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/debug/DebugEditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/debug/gldebug.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/debug/gldebug.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/editor_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/editor_base.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/menu/MainMenu.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/menu/MainMenu.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/node/MaterialEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/node/MaterialEditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/node/NodeEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/node/NodeEditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/node/node_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/node/node_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/node/node_selectops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/node/node_selectops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/properties/PropsEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/properties/PropsEditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/resbrowser/resbrowser.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/resbrowser/resbrowser.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/velpan.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/velpan.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/_old_mesheditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/_old_mesheditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/curvetool.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/curvetool.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/meshtool.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/meshtool.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_base.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/selecttool.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/selecttool.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/view3d_panmode.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/view3d_panmode.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_curvature.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_curvature.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_facesets.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_facesets.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_toolmode.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_toolmode.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/hair/strand_types.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/hair/strand_types.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/light/light.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/light/light.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/customdata.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/customdata.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_base.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_customdata.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_customdata.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_element_list.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_element_list.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_gen.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_gen.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_log.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_log.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/core/ui.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/core/ui.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/util.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/util.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/nullobject/nullobject.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/nullobject/nullobject.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/nstructjs.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/nstructjs.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/vectormath.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/vectormath.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/FrameManager.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/FrameManager.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/ScreenArea.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/ScreenArea.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderengine_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderengine_base.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/scene/collection.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/scene/collection.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/scene/scene.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/scene/scene.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/sceneobject/sceneobject.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/sceneobject/sceneobject.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/sceneobject/sceneobject_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/sceneobject/sceneobject_base.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shadernetwork.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shadernetwork.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/texture/texture_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/texture/texture_base.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/util/bvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bvh.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -51,6 +96,9 @@
   </component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/scripts/mesh/mesh_utils.js" root0="SKIP_INSPECTION" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectId" id="1hpyNTdasBxzOrcW8TK68W30Q4r" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
@@ -304,7 +352,12 @@
       <workItem from="1636480493949" duration="30000" />
       <workItem from="1637263610845" duration="5494000" />
       <workItem from="1637338857430" duration="584000" />
-      <workItem from="1637615032726" duration="5551000" />
+      <workItem from="1637615032726" duration="5836000" />
+      <workItem from="1638058599864" duration="1286000" />
+      <workItem from="1642381420360" duration="1466000" />
+      <workItem from="1642408691923" duration="592000" />
+      <workItem from="1642476415147" duration="82000" />
+      <workItem from="1643167102866" duration="1140000" />
     </task>
     <servers />
   </component>
@@ -329,7 +382,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scripts/mesh/mesh.js</url>
-          <line>4848</line>
+          <line>4847</line>
           <option name="timeStamp" value="5" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">

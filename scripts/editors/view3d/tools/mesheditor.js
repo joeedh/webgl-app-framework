@@ -9,7 +9,6 @@ import '../../../path.ux/scripts/util/struct.js';
 import {MeshToolBase} from "./meshtool.js";
 import {DispVertFlags} from '../../../mesh/mesh_displacement.js';
 
-let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../../../shaders/shaders.js';
 import {MovableWidget} from '../widgets/widget_utils.js';
@@ -22,7 +21,7 @@ import {
   MeshFeatureError
 } from '../../../mesh/mesh_base.js';
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
-import {ContextOverlay, ToolMacro, startMenu, createMenu} from "../../../path.ux/scripts/pathux.js";
+import {ContextOverlay, ToolMacro, startMenu, createMenu, nstructjs} from "../../../path.ux/scripts/pathux.js";
 import {PackFlags} from "../../../path.ux/scripts/core/ui_base.js";
 import {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
@@ -798,12 +797,12 @@ export class MeshEditor extends MeshToolBase {
 
 }
 
-MeshEditor.STRUCT = STRUCT.inherit(MeshEditor, ToolMode) + `
+MeshEditor.STRUCT = nstructjs.inherit(MeshEditor, ToolMode) + `
   mesh                : DataRef | DataRef.fromBlock(obj.mesh);
   drawflag            : int;
   drawLoops           : bool;
   drawCurvatures      : bool;
   drawNormals         : bool;
 }`;
-nstructjs.manager.add_class(MeshEditor);
+nstructjs.register(MeshEditor);
 ToolMode.register(MeshEditor);

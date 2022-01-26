@@ -26,7 +26,7 @@ SavedScreen {
   data : array(byte);
 }
 `
-nstructjs.manager.add_class(SavedScreen);
+nstructjs.register(SavedScreen);
 
 let SETTINGS_KEY = "webgl-app-framework-settings";
 

@@ -8,7 +8,7 @@ import {
 import {Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import * as util from "../util/util.js";
 import {UVLayerElem} from "./mesh_customdata.js";
-import '../path.ux/scripts/util/struct.js';
+import {nstructjs} from '../path.ux/pathux.js';
 let STRUCT = nstructjs.STRUCT;
 
 import {EDGE_LINKED_LISTS} from '../core/const.js';
@@ -399,7 +399,7 @@ mesh.Element {
   customData  : array(abstract(mesh.CustomDataElem));
 }
 `;
-nstructjs.manager.add_class(Element);
+nstructjs.register(Element);
 
 let vertiters_f;
 
@@ -1074,7 +1074,7 @@ Handle.STRUCT = STRUCT.inherit(Handle, Element, "mesh.Handle") + `
 }
 `;
 
-nstructjs.manager.add_class(Handle);
+nstructjs.register(Handle);
 
 var _evaluate_tmp_vs = util.cachering.fromConstructor(Vector3, 512);
 var _evaluate_vs = util.cachering.fromConstructor(Vector3, 512);
@@ -2092,7 +2092,7 @@ Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
   length  : float; 
 }
 `;
-nstructjs.manager.add_class(Edge);
+nstructjs.register(Edge);
 
 let calc_normal_temps = util.cachering.fromConstructor(Vector3, 32);
 
@@ -2157,7 +2157,7 @@ Loop.STRUCT = STRUCT.inherit(Loop, Element, "mesh.Loop") + `
   prev        : int | obj.prev.eid;
 */
 
-nstructjs.manager.add_class(Loop);
+nstructjs.register(Loop);
 
 let loopiterstack;
 

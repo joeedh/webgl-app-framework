@@ -5,6 +5,8 @@ import {KDrawModes} from '../../scripts/mesh/mesh_paramizer.js';
 export function makeGraphItToolMode(api) {
   let exports = {};
 
+  let nstructjs = api.nstructjs;
+
   let DrawModes = exports.DrawModes = {
     GEODESIC      : 0,
     UV            : 1

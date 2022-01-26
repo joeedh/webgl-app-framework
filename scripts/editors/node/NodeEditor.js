@@ -1,9 +1,10 @@
 import {Area, AreaFlags, contextWrangler} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor, VelPan} from '../editor_base.js';
-import '../../path.ux/scripts/util/struct.js';
 
-let STRUCT = nstructjs.STRUCT;
-import {startMenu, DataPath, DataPathError, KeyMap, HotKey, haveModal} from '../../path.ux/scripts/pathux.js';
+import {
+  startMenu, DataPath, DataPathError,
+  KeyMap, HotKey, haveModal, nstructjs
+} from '../../path.ux/scripts/pathux.js';
 
 import {UIBase, PackFlags, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';
@@ -685,29 +686,16 @@ export class NodeEditor extends Editor {
     this.node_idmap = {};
   }
 
-  loadThemeOverrides() {
-    let overrides = this.getDefault("NodeOverrides");
-
-    for (let k in overrides) {
-      let v = overrides[k];
-
-      for (let k2 in v) {
-        let v2 = v[k2];
-        this.overrideClassDefault(k, k2, v2);
-      }
-    }
-  }
-
   get graph() {
     return this.ctx.api.getValue(this.ctx, this.graphPath);
     //return this.material.graph;
   }
 
-  //prevent context system from putting different node editor subclasses
-
   get material() {
     //return this.ctx.datalib.get(this.matref);
   }
+
+  //prevent context system from putting different node editor subclasses
 
   static defineAPI(api) {
     let nedstruct = super.defineAPI(api);
@@ -720,14 +708,27 @@ export class NodeEditor extends Editor {
 
   static define() {
     return {
-      tagname : "node-editor-x",
-      areaname: "NodeEditor",
-      apiname : "nodeEditor",
-      uiname  : "Node Editor",
-      icon    : Icons.EDITOR_NODE,
-      flag    : AreaFlags.HIDDEN,
-      style   : "NodeEditor",
-      subclassChecksTheme : true
+      tagname            : "node-editor-x",
+      areaname           : "NodeEditor",
+      apiname            : "nodeEditor",
+      uiname             : "Node Editor",
+      icon               : Icons.EDITOR_NODE,
+      flag               : AreaFlags.HIDDEN,
+      style              : "NodeEditor",
+      subclassChecksTheme: true
+    }
+  }
+
+  loadThemeOverrides() {
+    let overrides = this.getDefault("NodeOverrides");
+
+    for (let k in overrides) {
+      let v = overrides[k];
+
+      for (let k2 in v) {
+        let v2 = v[k2];
+        this.overrideClassDefault(k, k2, v2);
+      }
     }
   }
 
@@ -1043,7 +1044,7 @@ export class NodeEditor extends Editor {
     this.createOverdraw();
 
     this.setCSS();
-    this.recalc |= NedRecalcFlags.UI|NedRecalcFlags.REBUILD;
+    this.recalc |= NedRecalcFlags.UI | NedRecalcFlags.REBUILD;
   }
 
   onFileLoad(is_active) {
@@ -1052,7 +1053,7 @@ export class NodeEditor extends Editor {
     }
 
     this.overdraw.clear();
-    this.recalc |= NedRecalcFlags.UI|NedRecalcFlags.REBUILD;
+    this.recalc |= NedRecalcFlags.UI | NedRecalcFlags.REBUILD;
   }
 
   findSocket(localX, localY, limit = 25) {
@@ -1520,7 +1521,7 @@ export class NodeEditor extends Editor {
     this.velpan.onchange = this._on_velpan_change.bind(this);
   }
 };
-NodeEditor.STRUCT = STRUCT.inherit(NodeEditor, Editor) + `
+NodeEditor.STRUCT = nstructjs.inherit(NodeEditor, Editor) + `
   velpan     : VelPan;
   graphPath  : string;
 }

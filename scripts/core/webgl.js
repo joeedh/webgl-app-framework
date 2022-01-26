@@ -1472,7 +1472,7 @@ DrawMats {
   isPerspective : int;
 }
 `;
-nstructjs.manager.add_class(DrawMats);
+nstructjs.register(DrawMats);
 
 //simplest
 export class Camera extends DrawMats {
@@ -1661,4 +1661,4 @@ Camera.STRUCT = STRUCT.inherit(Camera, DrawMats) + `
   isPerspective : bool;
 }
 `;
-nstructjs.manager.add_class(Camera);
+nstructjs.register(Camera);

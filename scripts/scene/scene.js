@@ -2,8 +2,8 @@ import {DataBlock, DataRef, BlockFlags} from '../core/lib_api.js';
 import '../path.ux/scripts/util/struct.js';
 import {ToolModes, makeToolModeEnum, ToolMode} from '../editors/view3d/view3d_toolmode.js';
 import {WidgetManager} from "../editors/view3d/widgets/widgets.js";
+import {nstructjs} from '../path.ux/scripts/pathux.js';
 
-let STRUCT = nstructjs.STRUCT;
 import {Graph} from '../core/graph.js';
 import * as util from '../util/util.js';
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject.js';
@@ -298,7 +298,7 @@ ObjectList {
   highlight  : DataRef |  DataRef.fromBlock(obj.highlight);
 }
 `;
-nstructjs.manager.add_class(ObjectList);
+nstructjs.register(ObjectList);
 
 export const SceneRecalcFlags = {
   OBJECTS : 1 //update flat object list
@@ -826,7 +826,7 @@ export class Scene extends DataBlock {
   }
 }
 DataBlock.register(Scene);
-Scene.STRUCT = STRUCT.inherit(Scene, DataBlock) + `
+Scene.STRUCT = nstructjs.inherit(Scene, DataBlock) + `
   flag         : int;
   objects      : ObjectList;
   active       : int | obj.active !== undefined ? obj.active.lib_id : -1;

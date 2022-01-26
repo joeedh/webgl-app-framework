@@ -17,8 +17,7 @@ import * as util from '../util/util.js'
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
-
-import '../path.ux/scripts/util/struct.js';
+import {nstructjs} from '../path.ux/pathux.js';
 
 let STRUCT = nstructjs.STRUCT;
 
@@ -6927,7 +6926,7 @@ Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
 }
 `;
 
-nstructjs.manager.add_class(Mesh);
+nstructjs.register(Mesh);
 DataBlock.register(Mesh);
 SceneObjectData.register(Mesh);
 

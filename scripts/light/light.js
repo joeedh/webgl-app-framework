@@ -1,5 +1,5 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
-import '../path.ux/scripts/util/struct.js';
+import {nstructjs} from '../path.ux/pathux.js';
 let STRUCT = nstructjs.STRUCT;
 import {Graph, Node, NodeFlags, SocketFlags} from '../core/graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
@@ -107,5 +107,5 @@ Light.STRUCT = STRUCT.inherit(Light, SceneObjectData) + `
 `;
 
 DataBlock.register(Light);
-nstructjs.manager.add_class(Light);
+nstructjs.register(Light);
 SceneObjectData.register(Light);

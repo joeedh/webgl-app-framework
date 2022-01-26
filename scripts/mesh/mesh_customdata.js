@@ -1,8 +1,8 @@
 import {CustomDataElem} from "./customdata.js";
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import {MeshTypes} from "./mesh_base.js";
-import '../path.ux/scripts/util/struct.js';
 import '../util/floathalf.js';
+import {nstructjs} from '../path.ux/pathux.js';
 
 let STRUCT = nstructjs.STRUCT;
 
@@ -98,7 +98,7 @@ UVLayerElem.STRUCT = STRUCT.inherit(UVLayerElem, CustomDataElem, "mesh.UVLayerEl
   flag : byte;
 }
 `;
-nstructjs.manager.add_class(UVLayerElem);
+nstructjs.register(UVLayerElem);
 CustomDataElem.register(UVLayerElem);
 
 
@@ -188,7 +188,7 @@ Vector2LayerElem.STRUCT = STRUCT.inherit(Vector2LayerElem, CustomDataElem, "mesh
   value   : vec2;
 }
 `;
-nstructjs.manager.add_class(Vector2LayerElem);
+nstructjs.register(Vector2LayerElem);
 CustomDataElem.register(Vector2LayerElem);
 
 export const ORIGINDEX_NONE = -1;
@@ -247,7 +247,7 @@ OrigIndexElem.STRUCT = STRUCT.inherit(OrigIndexElem, CustomDataElem, "mesh.OrigI
 }
 `;
 
-nstructjs.manager.add_class(OrigIndexElem);
+nstructjs.register(OrigIndexElem);
 CustomDataElem.register(OrigIndexElem);
 
 
@@ -330,7 +330,7 @@ FloatElem.STRUCT = STRUCT.inherit(FloatElem, CustomDataElem, "mesh.FloatElem") +
   value : float;
 }
 `;
-nstructjs.manager.add_class(FloatElem);
+nstructjs.register(FloatElem);
 CustomDataElem.register(FloatElem);
 
 
@@ -397,7 +397,7 @@ IntElem.STRUCT = STRUCT.inherit(IntElem, CustomDataElem, "mesh.IntElem") + `
   value : int;
 }
 `;
-nstructjs.manager.add_class(IntElem);
+nstructjs.register(IntElem);
 CustomDataElem.register(IntElem);
 
 
@@ -466,7 +466,7 @@ NormalLayerElem.STRUCT = STRUCT.inherit(NormalLayerElem, CustomDataElem, "mesh.N
   no : vec3;
 }
 `;
-nstructjs.manager.add_class(NormalLayerElem);
+nstructjs.register(NormalLayerElem);
 CustomDataElem.register(NormalLayerElem);
 
 export class ColorLayerElem extends CustomDataElem {
@@ -574,7 +574,7 @@ ColorLayerElem.STRUCT = STRUCT.inherit(ColorLayerElem, CustomDataElem, "mesh.Col
   color : array(e, short) | float2half(e);
 }
 `;
-nstructjs.manager.add_class(ColorLayerElem);
+nstructjs.register(ColorLayerElem);
 CustomDataElem.register(ColorLayerElem);
 
 
@@ -646,7 +646,7 @@ Vector3LayerElem.STRUCT = STRUCT.inherit(Vector3LayerElem, CustomDataElem, "mesh
   value : vec3;
 }
 `;
-nstructjs.manager.add_class(Vector3LayerElem);
+nstructjs.register(Vector3LayerElem);
 CustomDataElem.register(Vector3LayerElem);
 
 export class Vector4LayerElem extends CustomDataElem {
@@ -717,7 +717,7 @@ Vector4LayerElem.STRUCT = STRUCT.inherit(Vector4LayerElem, CustomDataElem, "mesh
   value : vec4;
 }
 `;
-nstructjs.manager.add_class(Vector4LayerElem);
+nstructjs.register(Vector4LayerElem);
 CustomDataElem.register(Vector4LayerElem);
 
 export class MaskElem extends FloatElem {
@@ -740,5 +740,5 @@ export class MaskElem extends FloatElem {
 MaskElem.STRUCT = STRUCT.inherit(MaskElem, FloatElem, "mesh.MaskElem") + `
 }
 `;
-nstructjs.manager.add_class(MaskElem);
+nstructjs.register(MaskElem);
 CustomDataElem.register(MaskElem);

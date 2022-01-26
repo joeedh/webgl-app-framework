@@ -4,12 +4,10 @@ import {WidgetFlags} from "../widgets/widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {HotKey, KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
-import {Unit} from "../../../path.ux/scripts/core/units.js";
 import {SelMask} from "../selectmode.js";
 import '../../../path.ux/scripts/util/struct.js';
 import {MeshToolBase} from "./meshtool.js";
 
-let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../../../shaders/shaders.js';
 import {MovableWidget} from '../widgets/widget_utils.js';
@@ -20,7 +18,7 @@ import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
         MeshFeatureError} from '../../../mesh/mesh_base.js';
 import {CurveSpline} from "../../../curve/curve.js";
 import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
-import {ContextOverlay} from "../../../path.ux/scripts/pathux.js";
+import {ContextOverlay, nstructjs} from "../../../path.ux/scripts/pathux.js";
 
 export class CurveToolOverlay extends ContextOverlay {
   constructor(state, toolmode) {
@@ -260,9 +258,9 @@ export class CurveToolBase extends MeshToolBase {
 
 }
 
-CurveToolBase.STRUCT = STRUCT.inherit(CurveToolBase, ToolMode) + `
+CurveToolBase.STRUCT = nstructjs.inherit(CurveToolBase, ToolMode) + `
   curve    : DataRef | DataRef.fromBlock(obj.curve);
   drawflag : int;
 }`;
-nstructjs.manager.add_class(CurveToolBase);
+nstructjs.register(CurveToolBase);
 ToolMode.register(CurveToolBase);

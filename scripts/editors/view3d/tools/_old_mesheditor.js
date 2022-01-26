@@ -564,6 +564,6 @@ export class MeshEditor extends ToolMode {
 MeshEditor.STRUCT = STRUCT.inherit(MeshEditor, ToolMode) + `
 }
 `;
-nstructjs.manager.add_class(MeshEditor);
+nstructjs.register(MeshEditor);
 
 ToolMode.register(MeshEditor);

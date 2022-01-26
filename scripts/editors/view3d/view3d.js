@@ -1,5 +1,7 @@
 import "../../extern/three.js";
 
+import {nstructjs} from '../../path.ux/scripts/pathux.js';
+
 import {spawnToolSearchMenu} from '../editor_base.js';
 
 import * as util from '../../util/util.js';
@@ -12,19 +14,12 @@ import {ToolMode} from './view3d_toolmode.js';
 import './findnearest/all.js';
 import './tools/tools.js';
 import * as textsprite from '../../core/textsprite.js';
-import {FindNearest} from './findnearest.js';
-import {TranslateOp} from './transform/transform_ops.js';
-import {RenderEngine} from "../../renderengine/renderengine_base.js";
 import {RealtimeEngine, RenderSettings} from "../../renderengine/renderengine_realtime.js";
-import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {PackFlags} from '../../path.ux/scripts/core/ui_base.js';
 import {Editor} from '../editor_base.js';
 import {Camera, init_webgl, ShaderProgram} from '../../core/webgl.js';
-import {SelMask} from './selectmode.js';
-import '../../path.ux/scripts/util/struct.js';
 import {DrawModes} from './drawmode.js';
 import {EnvLightFlags} from "../../scene/scene.js";
-let STRUCT = nstructjs.STRUCT;
 import {UIBase, color2css, css2color}  from '../../path.ux/scripts/core/ui_base.js';
 import * as view3d_shaders from '../../shaders/shaders.js';
 import {loadShader} from '../../shaders/shaders.js';
@@ -33,13 +28,8 @@ import {Vector3, Vector2, Vector4, Matrix4, Quat, Matrix4ToTHREE} from '../../ut
 import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js';
 import {cachering, print_stack, time_ms} from '../../util/util.js';
 import './tools/mesheditor.js';
-import {ObjectEditor} from './tools/selecttool.js';
-import {ToolModes, makeToolModeEnum} from './view3d_toolmode.js';
-import {Mesh} from '../../mesh/mesh.js';
 import {GPUSelectBuffer} from './view3d_select.js';
 import {KeyMap, HotKey} from "../editor_base.js";
-import {WidgetManager} from './widgets/widgets.js';
-import {MeshCache} from './view3d_toolmode.js';
 import {calcTransCenter, calcTransMatrix, calcTransAABB} from './transform/transform_query.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
@@ -49,8 +39,6 @@ import {CursorModes, OrbitTargetModes} from './view3d_utils.js';
 import {Icons} from '../icon_enum.js';
 import {WidgetSceneCursor, NoneWidget} from './widgets/widget_tools.js';
 import {View3DFlags, CameraModes} from './view3d_base.js';
-import {ResourceBrowser} from "../resbrowser/resbrowser.js";
-import {ObjectFlags} from '../../sceneobject/sceneobject.js';
 
 let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
@@ -1848,7 +1836,7 @@ export class View3D extends Editor {
     icon     : Icons.EDITOR_VIEW3D
   }}
 };
-View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
+View3D.STRUCT = nstructjs.inherit(View3D, Editor) + `
   camera              : Camera;
   transformSpace      : int; 
   drawmode            : int;
@@ -1862,7 +1850,7 @@ View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
 }
 `
 
-nstructjs.manager.add_class(View3D);
+nstructjs.register(View3D);
 Editor.register(View3D);
 
 let animreq = undefined;

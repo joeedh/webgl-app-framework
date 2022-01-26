@@ -2,7 +2,7 @@ import {
   BaseVector,
   Curve1DProperty, EnumProperty, Vec2Property,
   FlagProperty, FloatProperty, keymap, Mat4Property, Matrix4, ToolOp,
-  ToolProperty, Vector2, Vector3, Vector4
+  ToolProperty, Vector2, Vector3, Vector4, nstructjs
 } from '../../../path.ux/scripts/pathux.js';
 
 import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes} from '../../../brush/brush.js';

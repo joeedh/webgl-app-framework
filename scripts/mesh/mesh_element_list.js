@@ -1,12 +1,11 @@
 import {Edge} from "./mesh_types.js";
+import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {
   DEBUG_BAD_LOOPS, DEBUG_FREE_STACKS, getArrayTemp, MeshError, MeshFlags, MeshTypes, STORE_DELAY_CACHE_INDEX,
   WITH_EIDMAP_MAP, EmptyCDArray
 } from "./mesh_base.js";
 import * as util from "../util/util.js";
-import '../path.ux/scripts/util/struct.js';
 
-let STRUCT = nstructjs.STRUCT;
 import {CDFlags, CustomData, CustomDataElem} from "./customdata.js";
 import {Vertex, Loop, Face, Handle} from './mesh_types.js';
 

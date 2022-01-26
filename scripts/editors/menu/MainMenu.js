@@ -2,15 +2,13 @@ import {Area, BorderMask, AreaFlags} from '../../path.ux/scripts/screen/ScreenAr
 import {Icons} from "../icon_enum.js";
 
 import {NoteFrame, Note} from '../../path.ux/scripts/widgets/ui_noteframe.js';
-
 import {Editor, VelPan} from '../editor_base.js';
-import '../../path.ux/scripts/util/struct.js';
-let STRUCT = nstructjs.STRUCT;
 
 import {saveFile, loadFile, DataPathError, KeyMap, HotKey} from '../../path.ux/scripts/pathux.js';
 
 import "../../mesh/mesh_createops.js";
-import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
+import {UIBase, color2css, _getFont, css2color, nstructjs} from '../../path.ux/pathux.js';
+
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';
@@ -410,9 +408,9 @@ export class MenuBarEditor extends Editor {
   }}
 }
 
-MenuBarEditor.STRUCT = STRUCT.inherit(MenuBarEditor, Editor) + `
+MenuBarEditor.STRUCT = nstructjs.inherit(MenuBarEditor, Editor) + `
 }
 `;
 
-nstructjs.manager.add_class(MenuBarEditor);
+nstructjs.register(MenuBarEditor);
 Editor.register(MenuBarEditor);

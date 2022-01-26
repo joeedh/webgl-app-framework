@@ -1,4 +1,6 @@
 export function makeMorphToolMode(api) {
+  let nstructjs = api.nstructjs;
+  
   class MorphToolMode extends api.toolmode.ToolMode {
     constructor() {
       super();

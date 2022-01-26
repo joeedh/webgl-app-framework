@@ -4,11 +4,8 @@ import {WidgetFlags} from "../widgets/widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {HotKey, KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
-import {Unit} from "../../../path.ux/scripts/core/units.js";
 import {SelMask} from "../selectmode.js";
 import {resolveMeshes} from "../../../mesh/mesh_ops_base.js";
-import '../../../path.ux/scripts/util/struct.js';
-let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../../../shaders/shaders.js';
 import {MovableWidget} from '../widgets/widget_utils.js';
@@ -19,6 +16,7 @@ import {ObjectFlags, SceneObject} from "../../../sceneobject/sceneobject.js";
 import {Mesh} from "../../../mesh/mesh.js";
 import {FindnearestMesh} from '../findnearest/findnearest_mesh.js';
 import {ToggleFlagOp} from '../../../mesh/mesh_flagops.js';
+import {nstructjs} from '../../../path.ux/scripts/pathux.js';
 
 //import '../../../mesh/select_ops.js';
 //import '../../../mesh/mesh_ops.js';
@@ -603,7 +601,7 @@ export class MeshToolBase extends ToolMode {
 
 }
 
-MeshToolBase.STRUCT = STRUCT.inherit(MeshToolBase, ToolMode) + `
+MeshToolBase.STRUCT = nstructjs.inherit(MeshToolBase, ToolMode) + `
 }`;
 nstructjs.register(MeshToolBase);
 //ToolMode.register(MeshToolBase);

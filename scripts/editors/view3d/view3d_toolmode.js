@@ -9,10 +9,10 @@ import {SelMask} from "./selectmode.js";
 import '../../path.ux/scripts/util/struct.js';
 import {TranslateWidget, WidgetSceneCursor} from "./widgets/widget_tools.js";
 import {Node, NodeFlags} from '../../core/graph.js';
+import {nstructjs} from '../../path.ux/scripts/pathux.js';
 
 import '../../core/textsprite.js';
 
-let STRUCT = nstructjs.STRUCT;
 import messageBus from '../../core/bus.js';
 
 export class ToolMode extends Node {
@@ -483,7 +483,7 @@ ToolMode {
   storedSelectMask : int;
 }
 `;
-nstructjs.manager.add_class(ToolMode);
+nstructjs.register(ToolMode);
 
 export class MeshCache {
   constructor(meshid) {

@@ -6,13 +6,11 @@ import {BVH, BVHFlags, BVHTriFlags} from "../../../util/bvh.js";
 import {KeyMap, HotKey} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
-import '../../../path.ux/scripts/util/struct.js';
 import {TranslateWidget} from "../widgets/widget_tools.js";
 import * as util from '../../../util/util.js';
 
 import '../../../subsurf/subsurf_loop_stencil.js';
 
-let STRUCT = nstructjs.STRUCT;
 import {Loop, Mesh} from '../../../mesh/mesh.js';
 import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {Shaders} from "../../../shaders/shaders.js";
@@ -41,6 +39,7 @@ import {
   GridSettingFlags,
   QRecalcFlags,
 } from "../../../mesh/mesh_grids.js";
+import {nstructjs} from '../../../path.ux/scripts/pathux.js';
 
 let _triverts = new Array(3);
 
@@ -2913,7 +2912,7 @@ export class BVHToolMode extends ToolMode {
   }
 }
 
-BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
+BVHToolMode.STRUCT = nstructjs.inherit(BVHToolMode, ToolMode) + `
   drawBVH                : bool;
   drawCavityMap          : bool;
   drawFlat               : bool;
@@ -2933,6 +2932,6 @@ BVHToolMode.STRUCT = STRUCT.inherit(BVHToolMode, ToolMode) + `
   dynTopo                : DynTopoSettings; 
   reprojectCustomData    : bool;
 }`;
-nstructjs.manager.add_class(BVHToolMode);
+nstructjs.register(BVHToolMode);
 
 ToolMode.register(BVHToolMode);

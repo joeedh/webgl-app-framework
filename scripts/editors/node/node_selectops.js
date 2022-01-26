@@ -1,13 +1,12 @@
 import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor} from '../editor_base.js';
-import '../../path.ux/scripts/util/struct.js';
 
-let STRUCT = nstructjs.STRUCT;
 import {Node, NodeSocketType, Graph, NodeFlags, SocketFlags, GraphFlags, GraphNodes} from "../../core/graph.js";
 import {
   IntProperty, StringProperty, EnumProperty,
   FlagProperty, PropSubTypes, PropTypes,
-  PropFlags, ToolOp, UndoFlags, ToolFlags
+  PropFlags, ToolOp, UndoFlags, ToolFlags,
+  nstructjs
 } from '../../path.ux/scripts/pathux.js';
 import {Icons} from '../icon_enum.js';
 import {NodeGraphOp} from './node_ops.js';

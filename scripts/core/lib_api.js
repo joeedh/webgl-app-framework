@@ -278,7 +278,7 @@ DataBlock.STRUCT = STRUCT.inherit(DataBlock, Node) + `
 }
 `;
 
-nstructjs.manager.add_class(DataBlock);
+nstructjs.register(DataBlock);
 
 export class DataRef {
   constructor(lib_id = -1, lib_type = undefined) {
@@ -352,7 +352,7 @@ DataRef {
   lib_type : string;
 }
 `;
-nstructjs.manager.add_class(DataRef);
+nstructjs.register(DataRef);
 
 //this has to be in global namespace for struct scripts to work
 window.DataRef = DataRef;
@@ -811,7 +811,7 @@ Library {
   graph : graph.Graph;
 }
 `;
-nstructjs.manager.add_class(Library);
+nstructjs.register(Library);
 
 export class DataRefProperty extends ToolProperty {
   constructor(type, apiname, uiname, description, flag, icon) {

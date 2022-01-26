@@ -1,4 +1,4 @@
-import '../path.ux/scripts/util/struct.js';
+import {nstructjs} from '../path.ux/pathux.js';
 import * as util from '../util/util.js';
 
 import {EmptyCDArray} from './mesh_base.js';
@@ -184,7 +184,7 @@ CustomDataElem.STRUCT = `
 mesh.CustomDataElem {
 }
 `;
-nstructjs.manager.add_class(CustomDataElem);
+nstructjs.register(CustomDataElem);
 
 export function buildCDAPI(api) {
   let layerst = api.mapStruct(CustomDataLayer, true);
@@ -424,7 +424,7 @@ mesh.CustomDataLayer {
   typeSettings    : abstract(Object) | this.typeSettings === undefined ? this.__getNothing() : this.typeSettings;
 }
 `;
-nstructjs.manager.add_class(CustomDataLayer);
+nstructjs.register(CustomDataLayer);
 
 export class CDElemArray extends Array {
   constructor(items) {
@@ -557,7 +557,7 @@ mesh.LayerSet {
   typeName : string;
 }
 `;
-nstructjs.manager.add_class(LayerSet);
+nstructjs.register(LayerSet);
 
 export class CustomData {
   constructor() {
@@ -875,4 +875,4 @@ mesh.CustomData {
   idgen    : IDGen;
 }
 `;
-nstructjs.manager.add_class(CustomData);
+nstructjs.register(CustomData);

@@ -716,6 +716,7 @@ export class UniformTriRemesher extends Remesher {
     const cd_cotan = mesh.verts.customData.getLayerIndex("cotan");
 
     let tan = new Vector3();
+    let tan2 = new Vector3();
 
     for (let v of mesh.verts) {
       let cv = v.customData[cd_curv];
@@ -724,9 +725,26 @@ export class UniformTriRemesher extends Remesher {
 
       let c = v.customData[cd_col].color;
 
-      c[0] = tan[0]*0.5 + 0.5;
-      c[1] = tan[1]*0.5 + 0.5;
-      c[2] = tan[2]*0.5 + 0.5;
+      if (0) {
+        let totth = 0.0;
+
+        for (let v2 of v.neighbors) {
+          let cv2 = v2.customData[cd_curv];
+
+          tan2.load(cv2.dir);
+          cv2.transform(tan, tan2, v.no);
+
+          let th = Math.acos(tan2.dot(tan)*0.99999);
+          totth += th;
+        }
+
+        c[0] = c[1] = c[2] = Math.abs(totth / Math.PI);
+      } else {
+        c[0] = tan[0]*0.5 + 0.5;
+        c[1] = tan[1]*0.5 + 0.5;
+        c[2] = tan[2]*0.5 + 0.5;
+      }
+
       c[3] = 1.0;
 
       v.flag |= MeshFlags.UPDATE;

@@ -7,10 +7,9 @@ import {Icons} from '../../scripts/editors/icon_enum.js';
 import {Unit} from "../../scripts/path.ux/scripts/core/units.js";
 import {SelMask} from "../../scripts/editors/view3d/selectmode.js";
 import {MeshOp, resolveMeshes} from "../../scripts/mesh/mesh_ops_base.js";
-import '../../scripts/path.ux/scripts/util/struct.js';
 import {NodeFlags, Node} from '../../scripts/core/graph.js';
+import {nstructjs} from '../../scripts/path.ux/pathux.js';
 
-let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../scripts/util/vectormath.js";
 import {Shaders} from '../../scripts/shaders/shaders.js';
 import {MovableWidget} from '../../scripts/editors/view3d/widgets/widget_utils.js';
@@ -671,7 +670,7 @@ export function registerToolMode(api) {
   }
 
 
-  SubsurfTangentTester.STRUCT = STRUCT.inherit(SubsurfTangentTester, ToolMode) + `
+  SubsurfTangentTester.STRUCT = nstructjs.inherit(SubsurfTangentTester, ToolMode) + `
 }`;
 
   api.register(SubsurfTangentTester);

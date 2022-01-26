@@ -1,5 +1,5 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
-import '../path.ux/scripts/util/struct.js';
+import {nstructjs} from '../path.ux/pathux.js';
 import {Light} from '../light/light.js';
 
 let STRUCT = nstructjs.STRUCT;
@@ -363,6 +363,6 @@ SceneObject.STRUCT = STRUCT.inherit(SceneObject, DataBlock) + `
   data : DataRef | DataRef.fromBlock(obj.data);
 }
 `;
-nstructjs.manager.add_class(SceneObject);
+nstructjs.register(SceneObject);
 
 DataBlock.register(SceneObject);

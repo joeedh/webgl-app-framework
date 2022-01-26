@@ -1,7 +1,7 @@
 import '../path.ux/scripts/util/struct.js';
 import * as util from '../util/util.js';
 import {AfterAspect, clearAspectCallbacks, initAspectClass, _setUIBase} from '../path.ux/scripts/core/aspect.js';
-import {UIBase} from '../path.ux/scripts/pathux.js';
+import {UIBase, nstructjs} from '../path.ux/scripts/pathux.js';
 
 export const REUSE_EIDS = true;
 

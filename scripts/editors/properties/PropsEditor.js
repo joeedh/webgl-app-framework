@@ -4,9 +4,7 @@ import {MeshFlags} from '../../mesh/mesh_base.js';
 import {NoteFrame, Note} from '../../path.ux/scripts/widgets/ui_noteframe.js';
 
 import {Editor, VelPan} from '../editor_base.js';
-import '../../path.ux/scripts/util/struct.js';
-
-let STRUCT = nstructjs.STRUCT;
+import {nstructjs} from '../../path.ux/scripts/pathux.js';
 
 import {
   DataPathError, saveFile, loadFile, saveUIData,
@@ -1117,7 +1115,7 @@ export class PropsEditor extends Editor {
   }
 }
 
-PropsEditor.STRUCT = STRUCT.inherit(PropsEditor, Editor) + `
+PropsEditor.STRUCT = nstructjs.inherit(PropsEditor, Editor) + `
   texturePath     : string;
   texturePathMode : int;
 }

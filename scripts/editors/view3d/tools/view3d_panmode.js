@@ -3,9 +3,8 @@ import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
-import '../../../path.ux/scripts/util/struct.js';
 import {TranslateWidget} from "../widgets/widget_tools.js";
-let STRUCT = nstructjs.STRUCT;
+import {nstructjs} from '../../../path.ux/scripts/pathux.js';
 
 export class PanToolMode extends ToolMode {
   constructor(manager) {
@@ -54,8 +53,8 @@ export class PanToolMode extends ToolMode {
   }
 }
 
-PanToolMode.STRUCT = STRUCT.inherit(PanToolMode, ToolMode) + `
+PanToolMode.STRUCT = nstructjs.inherit(PanToolMode, ToolMode) + `
 }`;
-nstructjs.manager.add_class(PanToolMode);
+nstructjs.register(PanToolMode);
 
 ToolMode.register(PanToolMode);

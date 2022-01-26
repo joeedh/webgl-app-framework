@@ -7,6 +7,7 @@ import {GraphFlags, NodeFlags} from "../core/graph.js";
 import {
   CombModes, CombPattern, ProceduralTex, ProceduralTexUser, TexUserFlags, TexUserModes
 } from '../texture/proceduralTex.js';
+import {nstructjs} from '../path.ux/pathux.js';
 
 function feq(a, b) {
   return Math.abs(a - b) < 0.00001;

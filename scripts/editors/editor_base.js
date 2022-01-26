@@ -799,7 +799,7 @@ export class Editor extends Area {
 Editor.STRUCT = STRUCT.inherit(Editor, Area) + `
 }
 `;
-nstructjs.manager.add_class(Editor);
+nstructjs.register(Editor);
 
 import {Menu} from "../path.ux/scripts/widgets/ui_menu.js";
 import * as ui_base from "../path.ux/scripts/core/ui_base.js";
@@ -1070,7 +1070,7 @@ window.setInterval(() => {
 App.STRUCT = STRUCT.inherit(App, Screen, 'App') + `
 }`;
 UIBase.register(App);
-nstructjs.manager.add_class(App);
+nstructjs.register(App);
 
 export class ScreenBlock extends DataBlock {
   constructor() {
@@ -1109,7 +1109,7 @@ ScreenBlock.STRUCT = STRUCT.inherit(ScreenBlock, DataBlock) + `
   screen : App;
 }
 `;
-nstructjs.manager.add_class(ScreenBlock);
+nstructjs.register(ScreenBlock);
 DataBlock.register(ScreenBlock);
 
 let last_time = util.time_ms();

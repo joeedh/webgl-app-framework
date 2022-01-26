@@ -421,7 +421,7 @@ graph.NodeSocketType {
   socketType : int;
 }
 `;
-nstructjs.manager.add_class(NodeSocketType);
+nstructjs.register(NodeSocketType);
 
 export class KeyValPair {
   constructor(key, val) {
@@ -436,7 +436,7 @@ graph.KeyValPair {
   val : abstract(Object);
 }
 `;
-nstructjs.manager.add_class(KeyValPair);
+nstructjs.register(KeyValPair);
 
 /**
  Base class for all nodes
@@ -910,7 +910,7 @@ graph.Node {
 }
 `;
 
-nstructjs.manager.add_class(Node);
+nstructjs.register(Node);
 
 /*proxy nodes are stand-ins for nodes that are
   saved/loaded from outside the Graph data structure
@@ -961,7 +961,7 @@ ProxyNode.STRUCT = STRUCT.inherit(ProxyNode, Node, "graph.ProxyNode") + `
   className : string; 
 }
 `;
-nstructjs.manager.add_class(ProxyNode);
+nstructjs.register(ProxyNode);
 
 export class CallbackNode extends Node {
   constructor() {
@@ -1014,7 +1014,7 @@ export class CallbackNode extends Node {
 CallbackNode.STRUCT = STRUCT.inherit(CallbackNode, Node, "graph.CallbackNode") + `
 }
 `;
-nstructjs.manager.add_class(CallbackNode);
+nstructjs.register(CallbackNode);
 
 export class GraphNodes extends Array {
   constructor(graph, list) {
@@ -1808,7 +1808,7 @@ graph.Graph {
   nodes       : iter(abstract(graph.Node)) | obj._save_nodes();
 }
 `;
-nstructjs.manager.add_class(Graph);
+nstructjs.register(Graph);
 
 export function test(exec_cycles = true) {
   let ob1, ob2;

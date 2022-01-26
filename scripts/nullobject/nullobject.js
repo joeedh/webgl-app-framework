@@ -2,11 +2,11 @@ import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 import '../path.ux/scripts/util/struct.js';
 import {DataBlock} from "../core/lib_api.js";
 import {NodeFlags} from "../core/graph.js";
-let STRUCT = nstructjs.STRUCT;
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {Shaders} from "../shaders/shaders.js";
 import {Shapes} from "../core/simplemesh_shapes.js";
 import {Node} from "../core/graph.js";
+import {nstructjs} from '../path.ux/scripts/pathux.js';
 
 export class NullObject extends SceneObjectData {
   constructor() {
@@ -48,7 +48,7 @@ export class NullObject extends SceneObjectData {
   }}
 };
 
-NullObject.STRUCT = STRUCT.inherit(NullObject, SceneObjectData) + `
+NullObject.STRUCT = nstructjs.inherit(NullObject, SceneObjectData) + `
 }
 `;
 nstructjs.register(NullObject);
