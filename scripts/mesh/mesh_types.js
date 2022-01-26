@@ -761,6 +761,51 @@ for (let i=0; i<vedgeiters.length; i++) {
 }
 vedgeiters.cur = 0;
 
+class VertexReader {
+  constructor() {
+    this.v = undefined;
+  }
+
+  get no() {
+    return this.v.no;
+  }
+
+  set no(no) {
+    this.v.no = no;
+  }
+
+  set customData(f) {
+    this.v.customData = f;
+  }
+  get customData() {
+    return this.v.customData;
+  }
+
+  set flag(f) {
+    this.v.flag = f;
+  }
+  set type(f) {
+    this.v.type = f;
+  }
+  set index(f) {
+    this.v.index = f;
+  }
+  set eid(f) {
+    this.v.eid = f;
+  }
+  set 0(f) {
+    this.v[0] = f;
+  }
+  set 1(f) {
+    this.v[1] = f;
+  }
+  set 2(f) {
+    this.v[2] = f;
+  }
+}
+
+const vertexReader = new VertexReader();
+
 //has Element mixin
 export class Vertex extends Vector3 {
   constructor(co) {
@@ -1007,7 +1052,9 @@ export class Vertex extends Vector3 {
 
   loadSTRUCT(reader) {
     IN_VERTEX_STRUCT = true;
-    reader(this);
+    vertexReader.v = this;
+    reader(vertexReader);
+    vertexReader.v = undefined;
     IN_VERTEX_STRUCT = false;
 
     //we mixed in Element instead of inheriting from it
@@ -1527,6 +1574,7 @@ export class Edge extends Element {
     super(MeshTypes.EDGE);
 
     this._arcCache = undefined;
+    this._length = undefined;
 
     this.l = undefined;
 
