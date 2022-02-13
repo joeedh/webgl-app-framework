@@ -5,21 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/webgl.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/webgl.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_texpaint.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_texpaint.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_utils.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/realtime_passes.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderengine_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderengine_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderengine_realtime.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/renderengine/renderpass.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_lib.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shader_nodes.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/shadernodes/shadernetwork.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/shadernetwork.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/shaders/shaders.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shaders/shaders.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/entry_point.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/entry_point.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -312,7 +298,7 @@
       <workItem from="1643173654274" duration="2276000" />
       <workItem from="1643796282491" duration="10359000" />
       <workItem from="1643872921527" duration="25000" />
-      <workItem from="1644721920938" duration="2033000" />
+      <workItem from="1644721920938" duration="2269000" />
     </task>
     <servers />
   </component>

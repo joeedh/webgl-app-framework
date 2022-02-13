@@ -8,7 +8,7 @@ import './test/test_sculpt_run.js';
 
 import addon, {startAddons} from './addon/addon.js';
 
-import {nstructjs} from './path.ux/scripts/util/struct.js';
+import nstructjs from './path.ux/scripts/util/struct.js';
 import {cconst} from './path.ux/scripts/pathux.js';
 import config from './config/config.js';
 
