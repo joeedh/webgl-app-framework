@@ -385,6 +385,18 @@ export class ShaderProgram {
     this.gl = gl;
   }
 
+  static fromDef(gl, def) {
+    let shader = new ShaderProgram(gl, def.vertex, def.fragment, def.attributes);
+
+    shader.init(gl);
+
+    for (let k in def.uniforms) {
+      shader.uniforms[k] = def.uniforms[k];
+    }
+
+    return shader;
+  }
+
   static insertDefine(define, code) {
     code = code.trim().split("\n");
 

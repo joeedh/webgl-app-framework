@@ -1729,6 +1729,7 @@ varying vec2 vUv;
 varying vec4 vColor;
 varying vec3 vNormal;
 varying vec2 vParams;
+varying vec2 vScreenCo;
 
 //{PolygonOffset.pre}
 //{BRUSH_TEX_PRE}
@@ -1756,11 +1757,17 @@ varying vec2 vUv;
 varying vec4 vColor;
 varying vec3 vNormal;
 varying vec2 vParams;
+varying vec2 vScreenCo;
 
 uniform float radius;
 uniform vec3 brushCo;
 uniform float angle;
 
+uniform vec2 vboxMin, vboxMax;
+uniform vec2 screenSize;
+
+uniform sampler2D blurFBO;
+uniform sampler2D rgba1;
 //{PolygonOffset.pre}
 
 vec2 rot2d(vec2 p, float th) {
@@ -1853,7 +1860,26 @@ void main() {
   //c[2] = fract(brushCo.y*0.01);
   
   //c[3] = 1.0 - min(max(c[0], 0.0), 1.0);
-  
+
+#ifdef BLUR_MODE
+  {
+    vec2 p = (vColor.xy/vColor.w) / screenSize;
+    p.y = 1.0 - p.y;
+    
+    p -= vboxMin;
+    p *= 1.0 / (vboxMax - vboxMin);
+    p.y = 1.0 - p.y;
+    
+    vec2 uv = texture2D(blurFBO, p).xy;
+    //uv.y = 1.0 - uv.y;
+    //uv = p;
+    
+    //float f = sqrt(abs(p.x*p.y));
+    //c = vec4(uv.x, uv.y, 0.0, 1.0);
+    c = texture2D(rgba1, uv);
+  }
+#endif
+
   gl_FragColor = c;
 }
   `,

@@ -1426,11 +1426,13 @@ export function trianglesToQuads(mesh, faces, flag = TriQuadFlags.DEFAULT, lctx,
   }
   faces = faces2;
 
+  const have_fsets = cd_fset != -1;
+
   for (let f of faces) {
-    const fset = f.customData[cd_fset].value;
+    const fset = have_fsets ? f.customData[cd_fset].value : 0;
 
     for (let l of f.loops) {
-      if (Math.abs(l.radial_next.f.customData[cd_fset].value) != fset) {
+      if (have_fsets && Math.abs(l.radial_next.f.customData[cd_fset].value) != fset) {
         continue;
       }
 

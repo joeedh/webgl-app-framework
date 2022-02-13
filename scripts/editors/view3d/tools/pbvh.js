@@ -323,7 +323,8 @@ export class BVHToolMode extends ToolMode {
     let strip, panel, panel2;
 
     let settings = col.panel("Brush Settings");
-    strip = settings.row().strip().useIcons(false);
+    strip = settings.row().strip();
+    strip.useIcons(false);
     strip.label("Spacing");
     strip.prop(path + ".brush.spacingMode");
 
@@ -803,11 +804,11 @@ export class BVHToolMode extends ToolMode {
 
       let dynmask = 0;
 
-      if (e.shiftKey) {
+      let isTexPaint = brush.tool === SculptTools.TEXTURE_PAINT;
+
+      if (e.shiftKey && !isTexPaint) {
         brush = this.getBrush(smoothtool);
       }
-
-      let isTexPaint = brush.tool === SculptTools.TEXTURE_PAINT;
 
       console.log("dynmask", dynmask);
 
@@ -837,11 +838,12 @@ export class BVHToolMode extends ToolMode {
       } else if (brush.tool === SculptTools.TEXTURE_PAINT) {
         this.ctx.api.execTool(this.ctx, "bvh.texpaint()", {
           brush       : brush,
-          symmetryAxes: this.symmetryAxes
+          symmetryAxes: this.symmetryAxes,
+          doBlur      : e.shiftKey,
         });
       } else {
         this.ctx.api.execTool(this.ctx, "bvh.paint()", {
-          brush: brush,
+          brush              : brush,
           drawFaceSet        : drawFaceSet,
           symmetryAxes       : this.symmetryAxes,
           dynTopoDepth       : brush.dynTopo.maxDepth,
@@ -1824,7 +1826,7 @@ export class BVHToolMode extends ToolMode {
             if (isDeforming) {
               let n3 = v.customData[cd_node].node;
               if (!n3 || !n3.boxvdata) {
-                console.warn("eek!",v,  n3);
+                console.warn("eek!", v, n3);
                 vcos[j++] = 0.0;
                 vcos[j++] = 0.0;
                 vcos[j++] = 0.0;

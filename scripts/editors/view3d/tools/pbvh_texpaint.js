@@ -6,7 +6,7 @@ import {
   EnumProperty, FlagProperty, FloatArrayProperty,
   FloatProperty, IntProperty, Matrix4, Quat, ToolOp,
   Vec3Property, Vec4Property, Vector2, Vector3,
-  Vector4, math, Mat4Property, Vec2Property
+  Vector4, math, Mat4Property, Vec2Property, aabb_sphere_isect
 } from '../../../path.ux/scripts/pathux.js';
 import {SculptTools} from '../../../brush/brush.js';
 import {BVHFlags} from '../../../util/bvh.js';
@@ -14,9 +14,9 @@ import {GridBase} from '../../../mesh/mesh_grids.js';
 import {ImageTypes} from '../../../image/image.js';
 import {FBO} from '../../../core/fbo.js';
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
-import {Shaders, ShaderDef} from '../../../shaders/shaders.js';
+import {Shaders, ShaderDef, BasicLitMesh} from '../../../shaders/shaders.js';
 import {getFBODebug} from '../../debug/gldebug.js';
-import {Texture, getShader} from '../../../core/webgl.js';
+import {Texture, getShader, ShaderProgram} from '../../../core/webgl.js';
 import {project} from '../view3d_utils.js';
 
 let _id = 0;
@@ -26,6 +26,8 @@ import {tileManager, UNDO_TILESIZE} from '../../../image/gpuimage.js';
 export class TexPaintOp extends ToolOp {
   constructor() {
     super();
+
+    this.blurfbo = undefined;
 
     this.first = true;
     this.start_mpos = new Vector3();
@@ -40,12 +42,13 @@ export class TexPaintOp extends ToolOp {
       uiname  : "Paint Stroke (Texture)",
       toolpath: "bvh.texpaint",
       inputs  : {
-        brush    : new BrushProperty(),
-        samples  : new PaintSampleProperty(),
-        rendermat: new Mat4Property(),
-        glSize   : new Vec2Property(),
-        viewSize : new Vec2Property(),
-        symmetryAxes : new FlagProperty(undefined, {X : 1, Y : 2, Z : 4})
+        brush       : new BrushProperty(),
+        samples     : new PaintSampleProperty(),
+        rendermat   : new Mat4Property(),
+        glSize      : new Vec2Property(),
+        viewSize    : new Vec2Property(),
+        symmetryAxes: new FlagProperty(undefined, {X: 1, Y: 2, Z: 4}),
+        doBlur      : new BoolProperty()
       },
 
       is_modal: true
@@ -56,7 +59,7 @@ export class TexPaintOp extends ToolOp {
     let sdef = Object.assign({}, ShaderDef.TexturePaintShader);
 
     let uniforms = {
-      brushAngle : 0.0
+      brushAngle: 0.0
     };
 
     if (brush.texUser.texture) {
@@ -191,7 +194,7 @@ export class TexPaintOp extends ToolOp {
 
 
     let brush = this.inputs.brush.getValue();
-    let radius = brush.radius;
+    let sradius = brush.radius, radius = sradius;
 
     toolmode._radius = radius;
 
@@ -211,6 +214,20 @@ export class TexPaintOp extends ToolOp {
 
     radius /= Math.max(view3d.glSize[0], view3d.glSize[1]);
     radius *= Math.abs(w);
+
+    const doBlur = this.inputs.doBlur.getValue();
+    if (doBlur) {
+      if (!this.blurfbo) {
+        this.blurfbo = new BrushBlurFBO();
+      }
+
+      const sradius2 = Math.max(~~(sradius*window.devicePixelRatio), 4);
+      this.blurfbo.update(view3d.gl, sradius2);
+
+      console.log("SRADIUS", sradius, "RADIUS", radius);
+
+      this.blurfbo.draw(view3d.gl, this.mpos, ob, view3d, bvh, isect.p, sradius2, radius);
+    }
 
     let spacing = this.inputs.brush.getValue().spacing;
     let steps = isect.p.vectorDistance(this.last_p)/(radius*spacing);
@@ -233,7 +250,7 @@ export class TexPaintOp extends ToolOp {
     let lastw;
 
     if (list.length > 0) {
-      lastw = list[list.length-1].w;
+      lastw = list[list.length - 1].w;
     } else {
       lastw = w;
     }
@@ -243,7 +260,7 @@ export class TexPaintOp extends ToolOp {
 
       let ps = new PaintSample();
 
-      ps.w = w + (lastw - w) * t;
+      ps.w = w + (lastw - w)*t;
 
       ps.viewvec.load(view);
       ps.vieworigin.load(origin);
@@ -483,6 +500,10 @@ export class TexPaintOp extends ToolOp {
         let l1 = ltris[li];
         let l2 = ltris[li + 1];
         let l3 = ltris[li + 2];
+
+        if (!l1 || !l2 || !l3) {
+          continue;
+        }
 
         cr1 = getcorner(l1);
         cr2 = getcorner(l2);
@@ -771,6 +792,26 @@ export class TexPaintOp extends ToolOp {
       //sm.program = Shaders.TexturePaintShader;
       sm.uniforms = uniforms;
 
+      if (this.blurfbo) {
+        Texture.unbindAllTextures(gl);
+
+        console.error("BLUR");
+
+        sm.program.defines.BLUR_MODE = null;
+        texture.glTex.texture_slot = undefined;
+        this.blurfbo.fbo.texColor.texture_slot = undefined;
+
+        console.log("TEXTURE", texture.glTex);
+
+        uniforms.rgba1 = texture.glTex;
+        uniforms.blurFBO = this.blurfbo.fbo.texColor;
+        uniforms.vboxMin = this.blurfbo.vboxMin;
+        uniforms.vboxMax = this.blurfbo.vboxMax;
+        uniforms.screenSize = glSize;
+      } else if ("BLUR_MODE" in sm.program.defines) {
+        delete sm.program.defines["BLUR_MODE"];
+      }
+
       gl.enable(gl.BLEND);
       gl.blendColor(1.0, 1.0, 1.0, 1.0);
       //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -817,11 +858,11 @@ export class TexPaintOp extends ToolOp {
         c.zero().addScalar(1.0);
       }
 
-      for (let i1=0; i1<ts.length; i1++) {
+      for (let i1 = 0; i1 < ts.length; i1++) {
         let ri = ~~(Math.random()*0.99999*ts.length);
         let t = ts[ri];
 
-      //for (let t of ts) {
+        //for (let t of ts) {
         let c1 = t.v1.customData[cd_color].color;
         let c2 = t.v2.customData[cd_color].color;
         let c3 = t.v3.customData[cd_color].color;
@@ -841,7 +882,7 @@ export class TexPaintOp extends ToolOp {
         c2[0] = Math.min(c2[0], dis2);
         c3[0] = Math.min(c3[0], dis2);
 
-        for (let i=1; i<3; i++) {
+        for (let i = 1; i < 3; i++) {
           c1[i] = c2[i] = c3[i] = 0.2;
         }
 
@@ -991,3 +1032,179 @@ export class TexPaintOp extends ToolOp {
 }
 
 ToolOp.register(TexPaintOp);
+
+export const BrushBlurShader = {
+  vertex    : `precision mediump float;
+  
+uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
+uniform mat4 normalMatrix;
+uniform vec2 size;
+uniform vec2 vboxMin;
+uniform vec2 vboxMax;
+uniform float aspect;
+
+attribute vec3 position;
+attribute vec3 normal;
+attribute vec2 uv;
+attribute float id;
+
+varying vec3 vNormal;
+varying vec2 vUv;
+varying float vId;
+
+void main() {
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
+  vec4 n = normalMatrix * vec4(normal, 0.0);
+  
+#if 1
+  vec2 scale = 1.0 / (vboxMax - vboxMin);
+   
+  p.xy /= p.w;
+
+  p.xy = p.xy*0.5 + 0.5;
+  
+  p.xy -= vboxMin;
+  p.xy *= scale;
+  p.xy += vboxMin/scale;
+  
+  p.xy = p.xy*2.0 - 1.0;
+  //p.x *= aspect;
+  //p.y /= aspect;
+  p.xy *= p.w;
+#endif 
+
+  gl_Position = p;
+  
+  vUv = uv;
+  vNormal = n.xyz;
+}
+
+  `,
+  fragment  : `
+precision highp float;
+
+uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
+uniform mat4 normalMatrix;
+
+uniform float aspect, near, far;
+uniform vec2 size;
+
+varying vec3 vNormal;
+varying vec2 vUv;
+varying float vId;
+
+void main() {
+  gl_FragColor = vec4(vUv, vId, 1.0);
+  //gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0); 
+}
+  `.trim(),
+  attributes: ["position", "normal", "uv", "id"],
+  uniforms  : {}
+};
+
+export class BrushBlurFBO {
+  constructor(gl) {
+    this.fbo = new FBO(gl);
+    this.shader = undefined;
+  }
+
+  update(gl, size) {
+    this.fbo.update(gl, size, size);
+
+    if (!this.shader) {
+      this.compileShader(gl);
+    }
+  }
+
+  compileShader(gl) {
+    this.shader = ShaderProgram.fromDef(gl, BrushBlurShader);
+  }
+
+  draw(gl, mpos, ob, view3d, bvh, co, radius, worldRadius) {
+    let fbo = this.fbo;
+    let camera = view3d.activeCamera;
+
+    camera.regen_mats(view3d.glSize[0]/view3d.glSize[1]);
+
+    radius *= 1.0;
+
+    let size = ~~(radius*2.0);
+    this.update(gl, size);
+
+    let bbox = [];
+    let dpi = window.devicePixelRatio;
+
+    mpos = new Vector2(mpos).mulScalar(dpi);
+    mpos[1] = view3d.glSize[1] - mpos[1];
+
+    let vmin = new Vector2(mpos);
+    vmin.subScalar(radius).floor().div(view3d.glSize);
+
+    let vmax = new Vector2(mpos);
+    vmax.addScalar(radius).ceil().div(view3d.glSize);
+
+    console.log("VMIN", vmin);
+    console.log("VMAX", vmax);
+
+    this.vboxMin = vmin;
+    this.vboxMax = vmax;
+
+    let uniforms = {
+      projectionMatrix: camera.rendermat,
+      aspect          : camera.aspect,
+      near            : camera.near,
+      far             : camera.far,
+      objectMatrix    : ob.outputs.matrix.getValue(),
+      normalMatrix    : new Matrix4(),
+      size            : view3d.glSize,
+      vboxMin         : vmin,
+      vboxMax         : vmax,
+      alpha           : 1.0
+    };
+
+    gl.disable(gl.DITHER);
+    gl.disable(gl.BLEND);
+    gl.enable(gl.DEPTH_TEST);
+    gl.disable(gl.SCISSOR_TEST);
+
+    fbo.bind(gl);
+
+    //gl.viewport(~~vmin[0], ~~vmin[1], ~~(vmax[0]-vmin[0]), ~~(vmax[1]-vmin[1]));
+
+    gl.depthMask(true);
+
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.clearDepth(1000000.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    //gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.CULL_FACE);
+    //gl.disable(gl.DEPTH_TEST);
+
+    let ok = false;
+
+    for (let node of bvh.nodes) {
+      if (!node.drawData) {
+        continue;
+      }
+
+      ok = true;
+      //if (aabb_sphere_isect(co, worldRadius*2.0, node.min, node.max)) {
+      console.log(node.drawData, node);
+      node.drawData.draw(gl, uniforms, this.shader);
+      //}
+    }
+
+    if (!ok) {
+      console.error("NO DRAW DATA!");
+    }
+
+    gl.finish();
+    fbo.unbind(gl);
+
+    getFBODebug(gl).pushFBO("brush temp", fbo);
+  }
+}
