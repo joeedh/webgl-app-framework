@@ -4,7 +4,7 @@ import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, ListProperty,
   PropFlags, PropTypes, PropSubTypes, StringProperty, StringSetProperty,
-  ToolOp, ToolFlags, UndoFlags
+  ToolOp, ToolFlags, UndoFlags, nstructjs
 } from '../path.ux/scripts/pathux.js';
 import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";

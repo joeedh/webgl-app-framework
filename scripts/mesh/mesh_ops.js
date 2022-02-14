@@ -776,7 +776,7 @@ ToolOp.register(LoopSubdOp);
 
 import {meshSubdivideTest} from './mesh_subdivide.js';
 import {UVWrangler, voxelUnwrap} from './unwrapping.js';
-import {relaxUVs, UnWrapSolver} from './unwrapping_solve.js';
+import {relaxUVs, fixSeams, UnWrapSolver} from './unwrapping_solve.js';
 import {MeshOpBaseUV, UnwrapOpBase} from './mesh_uvops_base.js';
 import {MultiGridSmoother} from './multigrid_smooth.js';
 import {
@@ -1837,6 +1837,10 @@ export class UnwrapSolveOp extends UnwrapOpBase {
 ToolOp.register(UnwrapSolveOp)
 
 export class RelaxUVsOp extends MeshOpBaseUV {
+  constructor() {
+    super();
+  }
+
   static tooldef() {
     return {
       uiname  : "Relax UVs",
@@ -1891,6 +1895,45 @@ export class RelaxUVsOp extends MeshOpBaseUV {
 
 ToolOp.register(RelaxUVsOp)
 
+export class FixUvSeamsOp extends MeshOpBaseUV {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname  : "Fix Seams",
+      toolpath: "mesh.fix_seams",
+      icon    : -1,
+      inputs  : ToolOp.inherit({
+      }),
+      outputs : ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.fix_seams");
+
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let cd_uv = mesh.loops.customData.getLayerIndex("uv");
+
+      if (cd_uv >= 0) {
+        fixSeams(mesh, cd_uv);
+
+        mesh.regenBVH();
+        mesh.regenUVEditor();
+        mesh.regenRender();
+        mesh.regenElementsDraw();
+        mesh.graphUpdate();
+      }
+    }
+
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(FixUvSeamsOp)
 
 export class ResetUVs extends MeshOp {
   static tooldef() {

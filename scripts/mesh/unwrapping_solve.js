@@ -1321,3 +1321,96 @@ export class UnWrapSolver {
   }
 }
 
+
+export function fixSeams(mesh, cd_uv) {
+  let wrangler = new UVWrangler(mesh, mesh.faces, cd_uv);
+  wrangler.buildIslands();
+
+  let seams = new Set();
+
+  let tmp1 = new Vector2();
+  let tmp2 = new Vector2();
+  let tmp3 = new Vector2();
+  let tmp4 = new Vector2();
+  let tmp5 = new Vector2();
+
+  function error(params) {
+    let e = params[0];
+
+    let l1 = e.l, l2 = l1.radial_next;
+    let uv1a = l1.customData[cd_uv].uv;
+    let uv1b = l1.next.customData[cd_uv].uv;
+    let uv2a = l2.next.customData[cd_uv].uv;
+    let uv2b = l2.customData[cd_uv].uv;
+
+    let texSize = 1024.0;
+
+    function round(n){
+      return Math.floor(n + 0.01);
+    }
+
+    tmp1.load(uv1a).sub(uv2a);
+    tmp2.load(uv1b).sub(uv2b);
+
+    tmp1.mulScalar(texSize);
+    tmp2.mulScalar(texSize);
+
+    let len1 = uv1a.vectorDistance(uv2a)*texSize;
+    let len2 = uv1b.vectorDistance(uv2b)*texSize;
+
+    let err = 0.0;
+
+    //err += Math.abs(len1 - round(len1));
+    //err += Math.abs(len2 - round(len2));
+    err += Math.abs(tmp1[0] - round(tmp1[0]))**2;
+    err += Math.abs(tmp1[1] - round(tmp1[1]))**2;
+    err += Math.abs(tmp2[0] - round(tmp2[0]))**2;
+    err += Math.abs(tmp2[1] - round(tmp2[1]))**2;
+
+    return err;
+  }
+
+  let solver = new Solver();
+
+  for (let l1 of mesh.loops) {
+    if (l1.radial_next === l1) {
+      continue;
+    }
+
+    let l2 = l1.radial_next;
+    let uv1a = l1.customData[cd_uv].uv;
+    let uv1b = l1.next.customData[cd_uv].uv;
+    let uv2a = l2.next.customData[cd_uv].uv;
+    let uv2b = l2.customData[cd_uv].uv;
+
+    let d1 = uv1a.vectorDistance(uv2a);
+    let d2 = uv1b.vectorDistance(uv2b);
+
+    if (d1 > 0.0001 || d2 > 0.0001) {
+      let e = l1.e;
+
+      if (!seams.has(e)) {
+        let con = new Constraint("", error, [uv1a, uv1b, uv2a, uv2b], [e], 1.0);
+        solver.add(con);
+      }
+
+      seams.add(l1.e);
+    }
+  }
+
+  for (let e of seams) {
+
+    //let err = error([e]);
+    //console.log("err", err);
+  }
+
+  if (typeof window.DDK === "undefined") {
+    window.DDK = 0.000005;
+  }
+
+  solver.solve(500, DDK, true);
+  console.log(solver, DDK);
+
+  console.log("Wrangler", wrangler);
+  console.log("Seams", seams);
+}

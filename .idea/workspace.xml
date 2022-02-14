@@ -5,7 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
-      <change beforePath="$PROJECT_DIR$/scripts/entry_point.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/entry_point.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/core/toolstack.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/toolstack.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/image/ImageEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/image/ImageEditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/theme.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/theme.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_texpaint.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_texpaint.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops_base.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/unwrapping_solve.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/unwrapping_solve.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -298,7 +305,7 @@
       <workItem from="1643173654274" duration="2276000" />
       <workItem from="1643796282491" duration="10359000" />
       <workItem from="1643872921527" duration="25000" />
-      <workItem from="1644721920938" duration="2269000" />
+      <workItem from="1644721920938" duration="13898000" />
     </task>
     <servers />
   </component>

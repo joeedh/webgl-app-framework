@@ -198,6 +198,17 @@ export const theme = {
     width             : 256,
   },
 
+  label: {
+    LabelText: new CSSFont({
+      font   : 'sans-serif',
+      weight : 'normal',
+      variant: 'normal',
+      style  : 'normal',
+      size   : 12,
+      color  : 'rgba(255,255,255, 1)'
+    }),
+  },
+
   colorpickerbutton: {
     height: 24,
     width : 100,
@@ -219,7 +230,7 @@ export const theme = {
   },
 
   iconbutton: {
-    'background-color': 'rgba(168,168,168, 0.2385)',
+    'background-color': 'rgba(168,168,168, 0.75)',
     'border-color'    : 'rgba(171,171,171, 1)',
     'border-radius'   : 8,
     'border-width'    : 1,
@@ -231,12 +242,43 @@ export const theme = {
     'margin-top'      : 1,
     padding           : 2,
     width             : 32,
+    depressed: {
+      drawCheck         : true,
+      'background-color': 'rgba(48,48,48, 1)',
+      'border-color'    : 'rgb(0,0,0)',
+      'border-radius'   : 8,
+      'border-width'    : 1,
+      'border-style'    : 'solid',
+      height            : 32,
+      'margin-bottom'   : 2,
+      'margin-left'     : 2,
+      'margin-right'    : 2,
+      'margin-top'      : 1,
+      padding           : 2,
+      width             : 32,
+    },
+
+    highlight: {
+      drawCheck         : true,
+      'background-color': 'rgba(99,119,142, 1)',
+      'border-color'    : 'rgba(171,171,171, 1)',
+      'border-radius'   : 8,
+      'border-width'    : 1,
+      height            : 32,
+      'margin-bottom'   : 2,
+      'margin-left'     : 2,
+      'margin-right'    : 2,
+      'margin-top'      : 1,
+      padding           : 2,
+      width             : 32,
+    }
+
   },
 
   iconcheck: {
     drawCheck: true,
 
-    'background-color': 'rgba(168,168,168, 0.2385107302198223)',
+    'background-color': 'rgba(168,168,168, 0.75)',
     'border-color'    : 'rgba(171,171,171, 1)',
     'border-radius'   : 8,
     'border-width'    : 1,
@@ -414,7 +456,7 @@ export const theme = {
       variant: 'normal',
       style  : 'normal',
       size   : 16,
-      color  : 'rgba(35, 35, 35, 1.0)'
+      color  : 'rgb(0,0,0)'
     }),
     'background-color': 'rgb(245, 245, 245)',
   },

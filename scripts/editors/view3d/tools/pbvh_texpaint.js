@@ -436,10 +436,17 @@ export class TexPaintOp extends ToolOp {
     let uv3 = new Vector3();
 
     let size = new Vector2().loadXY(texture.width, texture.height);
+    let sizem1 = new Vector2().loadXY(texture.width - 1, texture.height - 1);
     let isize = new Vector2().addScalar(1.0).div(size);
+    let isizem1 = new Vector2().addScalar(1.0).div(sizem1);
 
-    let texelU = 1.0/texture.width;
-    let texelV = 1.0/texture.height;
+    function snaptexel(p) {
+      p[0] = (~~(p[0]*sizem1[0]))*isizem1[0];
+      p[1] = (~~(p[1]*sizem1[1]))*isizem1[1];
+    }
+
+    let texelU = 1.0/(texture.width - 1);
+    let texelV = 1.0/(texture.height - 1);
 
     let params = [new Vector4(), new Vector4(), new Vector4()];
 
@@ -468,23 +475,34 @@ export class TexPaintOp extends ToolOp {
     function processuv(uv, cent, corner) {
       //corner = false;
       let d = -0.001;
-      let fac = corner ? 3.5 : 0.0;
+      //let fac = corner ? 3.5 : 0.0;
 
-      duv.load(uv).sub(cent).normalize();
+      d = 0.0;
+
+      //duv.load(uv).sub(cent).normalize();
+
+      if (!window.DD5) {
+        window.DD5 = 0.0;
+      }
+
+      d += DD5;
 
       uv.mul(size);
-      uv.addFac(duv, fac);
-      uv.addScalar(d).floor().addScalar(0.5).mul(isize);
+      uv.addScalar(d).floor().mul(isize);
     }
-
 
     let umin = new Vector2().addScalar(1e17);
     let umax = new Vector2().addScalar(-1e17);
     let utmp = new Vector2();
     let triuv2 = new Vector2();
 
-    let radiusx = brush.radius/texture.width;
-    let radiusy = brush.radius/texture.height;
+    let ue1 = new Vector2();
+    let ue2 = new Vector2();
+    let ue3 = new Vector2();
+    let uetmp = new Vector2();
+
+    let radiusx = brush.radius/(texture.width - 1);
+    let radiusy = brush.radius/(texture.height - 1);
     let pradius = new Vector2().loadXY(radiusx, radiusy);
 
     for (let tri of ts) {
@@ -520,6 +538,36 @@ export class TexPaintOp extends ToolOp {
       processuv(uv2, centuv, cr2 && cr3);
       processuv(uv3, centuv, cr3 && cr1);
 
+      ue1.loadXY(-(uv1[1] - uv2[1]), uv1[0] - uv2[0]);
+      ue2.loadXY(-(uv2[1] - uv3[1]), uv2[0] - uv3[0]);
+      ue3.loadXY(-(uv3[1] - uv1[1]), uv3[0] - uv1[0]);
+
+      uetmp.load(uv1).sub(centuv);
+      if (ue1.dot(uetmp) < 0.0) {
+        ue1.negate();
+        ue2.negate();
+        ue3.negate();
+      }
+
+      if (!window.DD4) {
+        window.DD4 = 0.0;
+      }
+
+      let efac = isizem1[0]*DD4;
+
+      ue1.normalize().mulScalar(efac);
+      ue2.normalize().mulScalar(efac);
+      ue3.normalize().mulScalar(efac);
+
+      uv1.add(ue1);
+      uv1.add(ue3);
+
+      uv2.add(ue2);
+      uv2.add(ue1);
+
+      uv3.add(ue3);
+      uv3.add(ue2);
+
       let p1 = new Vector4(tri.v1);
       let p2 = new Vector4(tri.v2);
       let p3 = new Vector4(tri.v3);
@@ -546,11 +594,11 @@ export class TexPaintOp extends ToolOp {
       let w2 = triuv[0]*p1[3] + triuv[1]*p2[3] + (1.0 - triuv[0] - triuv[1])*p3[3];
       //w2 = w0;
 
-      let rx = (w2/texture.width)//*(glSize[1]/texture.width);
-      let ry = (w2/texture.height)//*(glSize[1]/texture.height);
+      let rx = (w2/(texture.width - 1))//*(glSize[1]/texture.width);
+      let ry = (w2/(texture.height - 1))//*(glSize[1]/texture.height);
 
-      rx = w2/glSize[1];
-      ry = w2/glSize[1];
+      rx = w2/(glSize[1] - 1);
+      ry = w2/(glSize[1] - 1);
 
       rx *= 6.0;
       ry *= 6.0;
@@ -607,20 +655,20 @@ export class TexPaintOp extends ToolOp {
     //umax.add(pradius);
 
     let margin = 8;
-    margin = new Vector2().loadXY(margin/texture.width, margin/texture.height);
+    margin = new Vector2().loadXY(margin/(texture.width - 1), margin/(texture.height - 1));
 
     umin.sub(margin);
     umax.add(margin);
 
     let usize = new Vector2(umax).sub(umin);
-    let tsize = new Vector2(usize).addScalar(0.0001).mul(size).ceil();
+    let tsize = new Vector2(usize).addScalar(0.0001).mul(sizem1).ceil();
     tsize.max([4, 4]);
 
     size[0] = texture.width;
     size[1] = texture.height;
 
-    umin.addScalar(0.00001).mul(size).floor();
-    umax.addScalar(0.00001).mul(size).ceil();
+    umin.addScalar(0.00001).mul(sizem1).floor();
+    umax.addScalar(0.00001).mul(sizem1).ceil();
 
     log(umin, umax);
 

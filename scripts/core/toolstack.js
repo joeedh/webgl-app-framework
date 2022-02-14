@@ -78,6 +78,8 @@ export class AppToolStack extends ToolStack {
         }
       }).bind(this);
 
+      toolop.saveDefaultInputs();
+
       //will handle calling .exec itself
       toolop.modalStart(ctx);
     } else {

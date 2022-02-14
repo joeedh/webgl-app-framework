@@ -1441,6 +1441,9 @@ export class ImageEditor extends Editor {
     row.tool("mesh.pack_uvs()");
     row.tool("uveditor.project_uvs()");
 
+    row = col.row();
+    row.tool("mesh.fix_seams()");
+
     loadUIData(this.sidebar, uidata);
     this.sidebar.flushUpdate();
   }
