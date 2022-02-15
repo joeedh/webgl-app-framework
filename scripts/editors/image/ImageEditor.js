@@ -229,6 +229,9 @@ export class UVEditor extends UIBase {
 
     this.velpan.scale[0] = this.velpan.scale[1] = scale;
     this.velpan.update();
+
+    e.preventDefault();
+    e.stopPropagation();
   }
 
   on_mousedown(e) {

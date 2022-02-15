@@ -4,7 +4,7 @@ import {nstructjs, math, graphPack, PackNode, PackNodeVertex} from '../path.ux/s
 import {Constraint, Solver} from '../path.ux/scripts/util/solver.js'
 import '../util/numeric.js';
 
-import {MeshTypes, MeshFlags, MeshSymFlags, MeshModifierFlags} from './mesh_base.js';
+import {MeshTypes, MeshFlags, MeshSymFlags, MeshModifierFlags, MAX_FACE_VERTS} from './mesh_base.js';
 import {UVFlags, UVLayerElem} from './mesh_customdata.js';
 import {BVH, BVHNode} from '../util/bvh.js';
 import {CustomDataElem} from './customdata.js';
@@ -23,7 +23,18 @@ export class CVElem extends CustomDataElem {
     this.tris = undefined;
     this.area = undefined;
     this.wind = undefined;
+
+    //boundary tangent;
+    this.bTangent = new Vector3();
   }
+
+  static define() {
+    return {
+      typeName   : "uvcorner",
+      uiTypeName : "uvcorner",
+      defaultName: "uvcorner",
+    }
+  };
 
   calcMemSize() {
     return 8*5;
@@ -50,15 +61,8 @@ export class CVElem extends CustomDataElem {
     this.hasPins = this.corner = false;
     this.orig.zero();
   }
-
-  static define() {
-    return {
-      typeName    : "uvcorner",
-      uiTypeName  : "uvcorner",
-      defaultName : "uvcorner",
-    }
-  };
 }
+
 CVElem.STRUCT = nstructjs.inherit(CVElem, CustomDataElem) + `
   hasPins : int;
   corner  : int;
@@ -97,30 +101,22 @@ export class UVWrangler {
     this._makeUVMesh();
 
     this.loopMap = new Map(); //maps loops in this.mesh to verts in this.uvmesh
+    this.edgeMap = new Map(); //maps loops in this.mesh to uvmesh edges
     this.vertMap = new Map();
+
     this.islandLoopMap = new Map();
+    this.islandFaceMap = new Map();
     this.islandVertMap = new Map();
 
     this.cellDimen = 1;
     this.hashBounds = [-4, 4];
     this.hashWidth = this.hashBounds[1] - this.hashBounds[0];
-    this.hashWidthMul = 1.0 / this.hashWidth;
-    this.cellSizeMul = this.cellDimen * this.hashWidthMul;
-    this.snapLimit = 0.0001;
+    this.hashWidthMul = 1.0/this.hashWidth;
+    this.cellSizeMul = this.cellDimen*this.hashWidthMul;
+    this.snapLimit = 0.001;
     this.shash = new Map();
 
     this.saved = false;
-  }
-
-  _makeUVMesh() {
-    this.uvMesh = new Mesh();
-    this.cd_corner = this.uvMesh.verts.addCustomDataLayer("uvcorner").index;
-
-    return this.uvMesh;
-  }
-
-  destroy(mesh) {
-    return this;
   }
 
   static _calcSeamHash(mesh, faces) {
@@ -141,6 +137,44 @@ export class UVWrangler {
     return digest.get();
   }
 
+  static restoreOrRebuild(mesh, faces, wrangler, buildSeams) {
+    let bad = false;
+
+
+    if (wrangler && wrangler.saved) {
+      for (let f of faces) {
+        if (!(f.eid in wrangler.faces)) {
+          bad = true;
+          break;
+        }
+      }
+    }
+
+    bad = bad || (!wrangler || !wrangler.saved || !wrangler.restore(mesh));
+
+    if (bad) {
+      console.warn("UVWrangler.restoreOrRebuild(): making new uv wrangler. . .");
+      let ret = new UVWrangler(mesh, faces);
+
+      ret.buildIslands(buildSeams);
+      return ret;
+    }
+
+    return wrangler;
+  }
+
+  _makeUVMesh() {
+    this.uvMesh = new Mesh();
+    this.cd_corner = this.uvMesh.verts.addCustomDataLayer("uvcorner").index;
+    this.cd_edge_seam = this.uvMesh.edges.addCustomDataLayer("int").index;
+
+    return this.uvMesh;
+  }
+
+  destroy(mesh) {
+    return this;
+  }
+
   save() {
     if (this.saved) {
       console.error("UVWrangler was already saved");
@@ -157,6 +191,11 @@ export class UVWrangler {
       loopMap.set(l.eid, this.loopMap.get(l));
     }
 
+    let edgeMap = new Map();
+    for (let l of this.edgeMap.keys()) {
+      edgeMap.set(l.eid, this.edgeMap.get(l));
+    }
+
     let vertMap = new Map();
 
     for (let [v, ls] of this.vertMap) {
@@ -166,9 +205,12 @@ export class UVWrangler {
 
     this.islandVertMap = undefined;
     this.islandLoopMap = undefined;
+    thsi.islandFaceMap = undefined;
+
     this.shash = undefined;
 
     this.loopMap = loopMap;
+    this.edgeMap = edgeMap;
     this.vertMap = vertMap;
 
     this.mesh = this.mesh.lib_id;
@@ -211,6 +253,18 @@ export class UVWrangler {
       loopMap.set(l, v);
     }
 
+    let edgeMap = new Map();
+    for (let [leid, e] of this.edgeMap) {
+      let l = mesh.eidmap[leid];
+
+      if (!l || l.type !== MeshTypes.LOOP) {
+        console.warn("Missing loop " + leid, l);
+        return false;
+      }
+
+      edgeMap.set(l, e);
+    }
+
     let vertMap = new Map();
     for (let [v, ls] of this.vertMap) {
       let ls2 = new Set();
@@ -231,9 +285,8 @@ export class UVWrangler {
     }
 
     this.loopMap = loopMap;
+    this.edgeMap = edgeMap;
     this.vertMap = vertMap;
-    this.islandLoopMap = new Map();
-    this.islandVertMap = new Map();
     this.needTopo = false;
 
     let seamhash = this.constructor._calcSeamHash(mesh, this.faces);
@@ -243,38 +296,36 @@ export class UVWrangler {
       return false;
     }
 
+    this.islandLoopMap = new Map();
+    this.islandFaceMap = new Map();
+    this.islandVertMap = new Map();
+
     this.buildIslands();
     return true;
   }
 
-  static restoreOrRebuild(mesh, faces, wrangler, buildSeams) {
-    let bad = false;
+  setCornerTags() {
+    const cd_corner = this.cd_corner;
+    const cd_edge_seam = this.cd_edge_seam
 
+    for (let l of this.mesh.loops) {
+      let seam = false; //(l.e.flag & MeshFlags.SEAM); //seam
+      seam = seam || l === l.radial_next; //mesh boundary
+      seam = seam || this.islandLoopMap.get(l) !== this.islandLoopMap.get(l.radial_next);
 
-    if (wrangler && wrangler.saved) {
-      for (let f of faces) {
-        if (!(f.eid in wrangler.faces)) {
-          bad = true;
-          break;
-        }
+      if (seam) {
+        let v1 = this.loopMap.get(l);
+        let v2 = this.loopMap.get(l.next);
+        let uve = this.uvMesh.getEdge(v1, v2);
+
+        uve.customData[cd_edge_seam].value = true;
+
+        this.loopMap.get(l).customData[cd_corner].corner = true;
+        this.loopMap.get(l.next).customData[cd_corner].corner = true;
       }
     }
 
-    bad = bad || (!wrangler || !wrangler.saved || !wrangler.restore(mesh));
-
-    if (bad) {
-      console.warn("UVWrangler.restoreOrRebuild(): making new uv wrangler. . .");
-      let ret = new UVWrangler(mesh, faces);
-
-      ret.buildIslands(buildSeams);
-      return ret;
-    }
-
-    return wrangler;
-  }
-
-  setCornerTags() {
-    let cd_corner = this.cd_corner;
+    return;
 
     let islandmap = new Map();
 
@@ -292,12 +343,23 @@ export class UVWrangler {
       v.customData[cd_corner].corner = false;
     }
 
+    for (let l of this.mesh.loops) {
+      let seam = false; //(l.e.flag & MeshFlags.SEAM); //seam
+      seam = seam || l === l.radial_next; //mesh boundary
+      seam = seam || this.islandLoopMap.get(l) !== this.islandLoopMap.get(l.radial_next);
+
+      if (seam) {
+        this.loopMap.get(l).customData[cd_corner].corner = true;
+        this.loopMap.get(l.next).customData[cd_corner].corner = true;
+      }
+    }
+
     for (let island of this.islands) {
       for (let v of island) {
         for (let l of this.vertMap.get(v)) {
-          let seam = (l.e.flag & MeshFlags.SEAM); //seam
+          let seam = false; //(l.e.flag & MeshFlags.SEAM); //seam
           seam = seam || l === l.radial_next; //mesh boundary
-          seam = seam || (islandmap.get(l) !== islandmap.get(v)); //island boundary
+          seam = seam || (islandmap.get(l) !== island); //island boundary
 
           if (seam) {
             v.customData[cd_corner].corner = true;
@@ -308,39 +370,59 @@ export class UVWrangler {
     }
   }
 
+  /*checks if a uv edge is a seam*/
+  seamUVEdge(e) {
+    return e.customData[this.cd_edge_seam].value;
+  }
+
+  /*checks if an edge in the base mesh is a seam*/
+  seamEdge(e) {
+    let l = e.l;
+
+    if (!l) {
+      return false; //no faces
+    }
+
+    if (l === l.radial_next) {
+      return true;
+    }
+
+    return this.islandFaceMap.get(l.f) !== this.islandFaceMap.get(l.radial_next.f);
+  }
+
   _getHashPoint(x, y) {
     let p = chp_rets.next();
 
-    p[0] = Math.floor((x - this.hashBounds[0]) * this.cellSizeMul);
-    p[1] = Math.floor((y - this.hashBounds[1]) * this.cellSizeMul);
+    p[0] = Math.floor((x - this.hashBounds[0])*this.cellSizeMul);
+    p[1] = Math.floor((y - this.hashBounds[1])*this.cellSizeMul);
 
     return p;
   }
 
   hashPoint(x, y) {
-    x = Math.floor((x - this.hashBounds[0]) * this.cellSizeMul);
-    y = Math.floor((y - this.hashBounds[1]) * this.cellSizeMul);
+    x = Math.floor((x - this.hashBounds[0])*this.cellSizeMul);
+    y = Math.floor((y - this.hashBounds[1])*this.cellSizeMul);
 
-    return y * this.cellDimen + x;
+    return y*this.cellDimen + x;
   }
 
   loadSnapLimit(limit) {
     limit = Math.max(limit, 0.00005);
 
-    let cell = Math.ceil(this.hashWidth / limit)>>2;
+    let cell = Math.ceil(this.hashWidth/limit)>>2;
 
     this.snapLimit = limit;
     this.cellDimen = cell;
-    this.cellSizeMul = this.cellDimen * this.hashWidthMul;
+    this.cellSizeMul = this.cellDimen*this.hashWidthMul;
 
     return;
     console.log(JSON.stringify({
-      cellDimen : this.cellDimen,
-      hashWidth : this.hashWidth,
-      hashWidthMul : this.hashWidthMul,
+      cellDimen   : this.cellDimen,
+      hashWidth   : this.hashWidth,
+      hashWidthMul: this.hashWidthMul,
       cellSizeMul : this.cellSizeMul,
-      snapLimit : this.snapLimit,
-      hashBounds : this.hashBounds
+      snapLimit   : this.snapLimit,
+      hashBounds  : this.hashBounds
     }, undefined, 2));
 
   }
@@ -356,7 +438,7 @@ export class UVWrangler {
     }
   }
 
-  resetSpatialHash(limit=this.snapLimit) {
+  resetSpatialHash(limit = this.snapLimit) {
     this.shash = new Map();
     this.loadSnapLimit(limit);
   }
@@ -371,7 +453,7 @@ export class UVWrangler {
     return this.shash.get(key).push(l);
   }
 
-  buildIslands(buildSeams=false) {
+  buildIslands(buildSeams = false) {
     if (this.needTopo) {
       if (buildSeams) {
         this.buildTopologySeam();
@@ -422,6 +504,7 @@ export class UVWrangler {
             island.hasSelLoops = true;
           }
 
+          this.islandFaceMap.set(l.f, island);
           this.islandLoopMap.set(l, island);
         }
 
@@ -437,11 +520,12 @@ export class UVWrangler {
         }
       }
 
+      /*
       for (let v of island) {
         for (let l of this.vertMap.get(v)) {
-          this.islandLoopMap.set(l, island);
+          //this.islandLoopMap.set(l, island);
         }
-      }
+      }//*/
 
       this.islands.push(island);
     }
@@ -451,6 +535,7 @@ export class UVWrangler {
     }
 
     this.setCornerTags();
+    this.buildBoundaryTangents();
 
     return this;
   }
@@ -464,6 +549,7 @@ export class UVWrangler {
     this.vertMap = new Map();
     this.islandLoopMap = new Map();
     this.islandVertMap = new Map();
+    this.islandFaceMap = new Map();
 
     let cd_corner = this.cd_corner;
 
@@ -516,12 +602,12 @@ export class UVWrangler {
       }
     }
 
-    function nextl(startl, cb, reverse=false) {
+    function nextl(startl, cb, reverse = false) {
       let _i = 0;
       let l = startl;
 
       //do {
-      for (let i=0; i<1; i++) {
+      for (let i = 0; i < 1; i++) {
         if (cb) {
           cb(l);
         }
@@ -578,7 +664,7 @@ export class UVWrangler {
     }
 
     function prevl(startl, cb) {
-      return nextl(startl, cb,true);
+      return nextl(startl, cb, true);
     }
 
     console.log("Islands length b:", islands.length);
@@ -586,12 +672,17 @@ export class UVWrangler {
     let imap = new Map();
 
     let li2 = 0;
+    let islandindex = 0;
     for (let island of islands) {
       for (let f of island) {
+        f.index = islandindex;
+
         for (let l of f.loops) {
           l.index = li2++;
         }
       }
+
+      islandindex++;
     }
 
     for (let island of islands) {
@@ -599,6 +690,7 @@ export class UVWrangler {
       let doneset = new WeakSet();
 
       for (let f of island) {
+
         for (let l of f.loops) {
           ls.add(l);
         }
@@ -609,33 +701,23 @@ export class UVWrangler {
           continue;
         }
 
-        ///XXX warning, n^2 (though of small numbers)
-        for (let step of l.v.edges) {
-        //for (let i=0; i<l.v.edges.length; i++) {
-          for (let e of l.v.edges) {
-            if (!e.l) {
-              continue;
-            }
-
-            let l1 = e.l;
-            let l2 = e.l.radial_next;
-
-            if (l1 === l2) {
-              continue;
-            }
-
-            if (l2.v !== l.v) {
-              l2 = l2.next;
-            }
-
-            let ok = !(e.flag & MeshFlags.SEAM);
-            ok = ok && !(l2.e.flag & MeshFlags.SEAM);
-            ok = ok && ls.has(l2) && l2.index !== l.index;
-
-            if (ok) {
-              l2.index = l.index;
-            }
+        for (let e of l.v.edges) {
+          if (!e.l) {
+            continue;
           }
+
+          let l2 = e.l;
+          let _i = 0;
+          do {
+            if (l2.v === l.v && l2.f.index === l.f.index) {
+              l2.index = l.index;
+              doneset.add(l2);
+            }
+            if (_i++ > MAX_FACE_VERTS) {
+              console.error("infinite loop error");
+              break;
+            }
+          } while ((l2 = l2.radial_next) !== e.l);
         }
       }
 
@@ -664,7 +746,8 @@ export class UVWrangler {
         let v2 = this.loopMap.get(l.next);
 
         if (v1 !== v2) {
-          uvmesh.ensureEdge(v1, v2);
+          let e = uvmesh.ensureEdge(v1, v2);
+          this.edgeMap.set(l, e);
         }
       }
       //console.log(iset, ls);
@@ -681,7 +764,113 @@ export class UVWrangler {
     }
   }
 
-  buildTopology(snap_threshold=0.0001) {
+  buildBoundaryTangents() {
+    const cd_corner = this.cd_corner;
+    const cd_uv = this.cd_uv;
+
+    let t1 = new Vector2();
+    let t2 = new Vector2();
+    let t3 = new Vector2();
+    let t4 = new Vector2();
+    let t5 = new Vector2();
+
+    for (let v of this.uvMesh.verts) {
+      let c = v.customData[cd_corner];
+
+      if (!c.corner) {
+        continue;
+      }
+
+      let v1, v2, vcent;
+
+      for (let e2 of v.edges) {
+        let v3 = e2.otherVertex(v);
+
+        if (!this.seamUVEdge(e2)) {
+          vcent = v3;
+          continue;
+        }
+
+        if (!v1) {
+          v1 = v3
+        } else {
+          v2 = v3;
+          break;
+        }
+      }
+
+      if (!v1 || !v2) {
+        console.error("Orphaned UV corner!");
+        continue;
+      }
+
+      t1.load(v1).sub(v).normalize();
+      t2.load(v2).sub(v).normalize().negate();
+
+      t3.load(t1).add(t2).normalize();
+
+      let th = Math.acos(t1.dot(t3));
+
+      let shellth = th < 0.0001 ? 1.0 : 1.0 / Math.abs(Math.cos(th));
+
+      t1.interp(t2, 0.5).normalize();
+      t1.mulScalar(shellth);
+
+      if (isNaN(t1.dot(t2))) {
+        throw new Error("NaN!");
+      }
+
+      let ok = false;
+
+      let tmp = t1[0];
+      t1[0] = -t1[1];
+      t1[1] = tmp;
+
+      if (!vcent) {
+        for (let l of this.vertMap.get(v)) {
+          if (this.seamEdge(l.e)) {
+            let uv1 = l.customData[cd_uv].uv;
+            let uv2 = l.next.customData[cd_uv].uv;
+
+            t3.zero();
+            let tot = 0.0;
+            for (let l3 of l.list) {
+              let uv3 = l3.customData[cd_uv].uv;
+              t3.add(uv3);
+              tot++;
+            }
+
+            t3.mulScalar(1.0/tot);
+            t3.sub(v).negate();
+
+            console.log("TT4", t3, t3.dot(t1));
+
+            if (t3.dot(t1) < 0.0) {
+              t1.negate();
+            }
+          }
+        }
+      }
+
+      if (vcent) {
+        t2.load(v).sub(vcent);
+
+        if (t1.dot(t2) < 0) {
+          t1.negate();
+        }
+      }
+
+      c.bTangent[0] = t1[0];
+      c.bTangent[1] = t1[1];
+      c.bTangent[2] = 0.0;
+    }
+  }
+
+  isCorner(l) {
+    return this.loopMap.get(l).customData[this.cd_corner].corner;
+  }
+
+  buildTopology(snap_threshold = 0.0001) {
     if (this.cd_uv === undefined || this.cd_uv < 0) {
       console.warn("No uvs");
       return;
@@ -778,7 +967,7 @@ export class UVWrangler {
           }
         }
 
-        uvsum.mulScalar(1.0 / tot);
+        uvsum.mulScalar(1.0/tot);
         v.load(uvsum);
         v[2] = 0.0;
       }
@@ -792,14 +981,14 @@ export class UVWrangler {
       if (doneset.has(l.next)) {
         let v2 = loopmap.get(l.next);
         if (v2 !== v1) {
-          uvmesh.ensureEdge(v1, v2);
+          this.edgeMap.set(l.next, uvmesh.ensureEdge(v1, v2));
         }
       }
 
       if (doneset.has(l.prev)) {
         let v2 = loopmap.get(l.prev);
         if (v2 !== v1) {
-          uvmesh.ensureEdge(v1, v2);
+          this.edgeMap.set(l.prev, uvmesh.ensureEdge(v1, v2));
         }
       }
     }
@@ -825,7 +1014,7 @@ export class UVWrangler {
     l.area = l.boxsize[0]*l.boxsize[1];
   }
 
-  packIslands(ignorePinnedIslands=false, islandsWithSelLoops=false) {
+  packIslands(ignorePinnedIslands = false, islandsWithSelLoops = false) {
     let uve = _appstate.ctx.editors.imageEditor;
     if (uve) {
       uve = uve.uvEditor;
@@ -833,7 +1022,7 @@ export class UVWrangler {
       uve.flagRedraw();
     }
 
-    function drawline(v1, v2, color="red") {
+    function drawline(v1, v2, color = "red") {
       if (uve) {
         return;
         uve.addDrawLine(v1, v2, color);
@@ -860,10 +1049,10 @@ export class UVWrangler {
 
       let cent = new Vector2(l.min).interp(l.max, 0.5);
       let steps = 16;
-      let th = 0.0, dth = Math.PI*0.5 / steps;
+      let th = 0.0, dth = Math.PI*0.5/steps;
 
       let min = 1e17, minth = 0.0;
-      for (let i=0; i<steps; i++, th += dth) {
+      for (let i = 0; i < steps; i++, th += dth) {
         //th += (Math.random()-0.5)*dth;
 
         for (let v of l) {
@@ -911,7 +1100,7 @@ export class UVWrangler {
     for (let island of islands) {
       this.updateAABB(island);
 
-      let ratio = 0.75 / Math.sqrt(totarea);
+      let ratio = 0.75/Math.sqrt(totarea);
 
 
       for (let v of island) {
@@ -926,7 +1115,7 @@ export class UVWrangler {
       return b.area - a.area;
     });
 
-    let rec = (uv1, uv2, axis, depth=0) => {
+    let rec = (uv1, uv2, axis, depth = 0) => {
       drawline([uv1[0], uv1[1]], [uv1[0], uv2[1]]);
       drawline([uv1[0], uv2[1]], [uv2[0], uv2[1]]);
       drawline([uv2[0], uv2[1]], [uv2[0], uv1[1]]);
@@ -969,7 +1158,7 @@ export class UVWrangler {
       let dis = new Vector2(uv2).sub(uv1);
       dis = dis[0]*dis[1];
 
-      if ((min > dis*0.5 && depth < maxdepth-1) || !island) {
+      if ((min > dis*0.5 && depth < maxdepth - 1) || !island) {
         let split = 0.5;
 
         let uv3 = new Vector2(uv1);
@@ -979,8 +1168,8 @@ export class UVWrangler {
         uv3[axis] = t;
         uv4[axis] = t;
 
-        rec(uv1, uv4, axis2, depth+1);
-        rec(uv3, uv2, axis2, depth+1);
+        rec(uv1, uv4, axis2, depth + 1);
+        rec(uv3, uv2, axis2, depth + 1);
         return;
       }
 
@@ -996,12 +1185,12 @@ export class UVWrangler {
       }
 
       islands.remove(island);
-      let ratio = island.boxsize[0] / island.boxsize[1];
+      let ratio = island.boxsize[0]/island.boxsize[1];
       let cent = new Vector2(island.min).interp(island.max, 0.5);
       size.subScalar(margin*2.0);
 
-      let ratio2 = size[0] / size[1];
-      ratio = ratio / ratio2;
+      let ratio2 = size[0]/size[1];
+      ratio = ratio/ratio2;
 
       for (let v of island) {
         v.sub(island.min).div(island.boxsize).mul(size);
@@ -1026,7 +1215,7 @@ export class UVWrangler {
       mid[axis] = split;
       mid[axis2] = uv1[axis2];
 
-      rec(mid, uv2, axis2, depth+1);
+      rec(mid, uv2, axis2, depth + 1);
 
       //mid[axis2] = uv2[axis2];
       //rec(mid, uv2, axis2, depth+1);
@@ -1081,8 +1270,8 @@ export class VoxelNode extends BVHNode {
     avg.load(this.avgNo).normalize();
 
     //did normals cancel each other out?
-    if (avg.vectorLength() < 0.0001) {
-      return false;
+    if (avg.vectorLength() < 0.00001) {
+      return true;
     }
 
     avg.normalize();
@@ -1090,7 +1279,7 @@ export class VoxelNode extends BVHNode {
     let variance = 0.0;
     let tot = 0.0;
     for (let t of this.uniqueTris) {
-      let th = Math.acos(t.no.dot(avg)*0.999999) / Math.PI;
+      let th = Math.acos(t.no.dot(avg)*0.999999)/Math.PI;
 
       let w = t.area;
       //w = math.tri_area(t.v1, t.v2, t.v3);
@@ -1102,10 +1291,10 @@ export class VoxelNode extends BVHNode {
       tot += w;
     }
 
-    variance = variance / tot;
+    variance = variance/tot;
 
     //variance = Math.sqrt(variance);
-    //console.log(variance, Math.PI*0.1)
+    console.log("V", variance)
 
     if (variance > this.splitVar) {
       return true;
@@ -1123,11 +1312,12 @@ export class VoxelBVH extends BVH {
 
   }
 }
+
 VoxelBVH.nodeClass = VoxelNode;
 
-export function voxelUnwrap(mesh, faces, cd_uv=undefined, setSeams=true,
-                            leafLimit=255, depthLimit=25,
-                            splitVar = 0.16) {
+export function voxelUnwrap(mesh, faces, cd_uv = undefined, setSeams = true,
+                            leafLimit                                = 255, depthLimit = 25,
+                            splitVar                                 = 0.16) {
   if (cd_uv === undefined) {
     cd_uv = mesh.loops.customData.getLayerIndex("uv");
   }
@@ -1265,7 +1455,7 @@ export function voxelUnwrap(mesh, faces, cd_uv=undefined, setSeams=true,
       for (let l of f.loops) {
         let uv = l.customData[cd_uv].uv;
 
-        uv.mulScalar(1.0 / totarea);
+        uv.mulScalar(1.0/totarea);
         uv[0] += rx;
         uv[1] += ry;
       }

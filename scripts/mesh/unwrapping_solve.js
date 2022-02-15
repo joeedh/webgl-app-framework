@@ -17,7 +17,7 @@ import {BVH, BVHNode} from '../util/bvh.js';
 
 import {UVWrangler} from './unwrapping.js';
 
-export function relaxUVs(mesh, cd_uv, loops=mesh.loops, doPack=false, boundaryWeight= 400.0) {
+export function relaxUVs(mesh, cd_uv, loops=mesh.loops, doPack=false, boundaryWeight= 400.0, buildFromSeams=false) {
   loops = new Set(loops);
 
   let faces = new Set();
@@ -26,7 +26,7 @@ export function relaxUVs(mesh, cd_uv, loops=mesh.loops, doPack=false, boundaryWe
   }
 
   let wr = new UVWrangler(mesh, faces, cd_uv);
-  wr.buildIslands();
+  wr.buildIslands(buildFromSeams);
 
   let cos = [];
   let vi = 0;
@@ -1399,7 +1399,6 @@ export function fixSeams(mesh, cd_uv) {
   }
 
   for (let e of seams) {
-
     //let err = error([e]);
     //console.log("err", err);
   }

@@ -359,6 +359,7 @@ export class TexPaintOp extends ToolOp {
     fbo = texture._drawFBO;
 
     let wrangler = mesh.getUVWrangler(false, false);
+    console.log(wrangler);
 
     let gltex = texture.getGlTex(gl);
     texture.gpuHasData = true;
@@ -419,16 +420,24 @@ export class TexPaintOp extends ToolOp {
     brushco.load(ps.mpos);
     brushco[2] = 0.0;
 
+    let uvring = util.cachering.fromConstructor(Vector3, 64);
+
     let radius2 = brush.radius;
     radius2 *= 0.5;
 
     //radius2 = radius;
+
+    let line_sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.CUSTOM); // | LayerTypes.COLOR | LayerTypes.NORMAL);
+    line_sm.primflag = PrimitiveTypes.LINES;
+    line_sm.island.primflag = PrimitiveTypes.LINES;
 
     let sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.CUSTOM); // | LayerTypes.COLOR | LayerTypes.NORMAL);
 
     let sm_loc = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 4, "sm_loc").index;
     let sm_params = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 2, "sm_params").index;
 
+    let sm_line_loc = line_sm.addDataLayer(PrimitiveTypes.LINES, LayerTypes.CUSTOM, 4, "sm_loc").index;
+    let sm_line_params = line_sm.addDataLayer(PrimitiveTypes.LINES, LayerTypes.CUSTOM, 2, "sm_params").index;
 
     let ltris = mesh._ltris;
     let uv1 = new Vector3();
@@ -455,19 +464,26 @@ export class TexPaintOp extends ToolOp {
 
     let cd_corner = wrangler.cd_corner;
 
+    function getisland(l) {
+      return wrangler.islandLoopMap.get(l);
+    }
+
     function getcorner(l) {
       let ret2 = wrangler.loopMap.get(l);
+
       if (ret2) {
         return ret2.customData[cd_corner].corner;
+      } else {
+        return false;
       }
 
-      let ret = l !== l.radial_next && wrangler.islandLoopMap.get(l) !== wrangler.islandLoopMap.get(l.radial_next);
+      let ret = getisland(l) !== getisland(l.radial_next);
 
-      l = l.next;
-      ret = ret || (l !== l.radial_next && wrangler.islandLoopMap.get(l) !== wrangler.islandLoopMap.get(l.radial_next));
+      l = l.prev;
+      ret = ret || getisland(l) !== getisland(l.radial_next);
 
-      l = l.prev.prev;
-      ret = ret || (l !== l.radial_next && wrangler.islandLoopMap.get(l) !== wrangler.islandLoopMap.get(l.radial_next));
+      //l = l.prev.prev;
+      //ret = ret || (l !== l.radial_next && wrangler.islandLoopMap.get(l) !== wrangler.islandLoopMap.get(l.radial_next));
 
       return ret;
     }
@@ -507,6 +523,7 @@ export class TexPaintOp extends ToolOp {
 
     for (let tri of ts) {
       let cr1, cr2, cr3;
+      let l1, l2, l3;
 
       if (haveGrids) {
         uv1.load(tri.v1.customData[cd_uv].uv);
@@ -515,9 +532,9 @@ export class TexPaintOp extends ToolOp {
         cr1 = cr2 = cr3 = false;
       } else {
         let li = tri.tri_idx;
-        let l1 = ltris[li];
-        let l2 = ltris[li + 1];
-        let l3 = ltris[li + 2];
+        l1 = ltris[li];
+        l2 = ltris[li + 1];
+        l3 = ltris[li + 2];
 
         if (!l1 || !l2 || !l3) {
           continue;
@@ -648,6 +665,49 @@ export class TexPaintOp extends ToolOp {
 
       tri2.custom(sm_params, params[0], params[1], params[2]);
 
+      let uvstmp = [uv1, uv2, uv3];
+      let pstmp = [p1, p2, p3];
+      let crs = [cr1, cr2, cr3];
+      let ls = [l1, l2, l3];
+      let uvmul = uvring.next();
+
+      uvmul[0] = 1.0 / (texture.width - 1);
+      uvmul[1] = 1.0 / (texture.height - 1);
+
+      /* draw seam guard border */
+      for (let j = 0; j < 3; j++) {
+        if ((ls[j].next === ls[(j+1)%3]) && wrangler.seamEdge(ls[j].e)) {
+          //for (let k=0; k<1; k++) {
+            let uva = uvring.next().load(uvstmp[j]);
+            let uvb = uvring.next().load(uvstmp[(j + 1)%3]);
+            uva[2] = uvb[2] = 0.0;
+
+            let c1 = wrangler.loopMap.get(ls[j]).customData[cd_corner];
+            let c2 = wrangler.loopMap.get(ls[(j + 1)%3]).customData[cd_corner];
+
+            let t1 = uvring.next().load(c1.bTangent).mul(uvmul);
+            let t2 = uvring.next().load(c2.bTangent).mul(uvmul);
+            t1[2] = t2[2] = 0.0;
+
+            //uva.addFac(t1, 0.5);
+            //uvb.addFac(t2, 0.5);
+
+            let uvc = uvring.next().load(uva);
+            let uvd = uvring.next().load(uvb);
+
+            uvc.addFac(t1, 3.0);
+            uvd.addFac(t2, 3.0);
+
+            let quad = sm.quad(uva, uvc, uvd, uvb);
+            quad.custom(sm_loc, pstmp[j], pstmp[j], pstmp[(j + 1)%3], pstmp[(j + 1)%3]);
+            quad.custom(sm_params, params[j], params[j], params[(j + 1)%3], params[(j + 1)%3]);
+
+            //let line = line_sm.line(uva, uvb);
+            //line.custom(sm_line_loc, pstmp[j], pstmp[(j + 1)%3]);
+            //line.custom(sm_line_params, params[j], params[(j + 1)%3]);
+          //}
+        }
+      }
       //tri2.normals(tri.v1.no, tri.v2.no, tri.v3.no);
     }
 
@@ -865,6 +925,8 @@ export class TexPaintOp extends ToolOp {
       //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.CONSTANT_ALPHA);
       sm.draw(gl, uniforms, sm.program); //Shaders.TexturePaintShader);
+
+      line_sm.draw(gl, uniforms, sm.program);
 
       window.sm = sm;
 

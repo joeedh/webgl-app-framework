@@ -108,8 +108,8 @@ export class VelPan {
 
   updateMatrix() {
     let s = this.scale;
-    let min = new Vector2(this.bounds[0]).div(s);
-    let max = new Vector2(this.bounds[1]).div(s);
+    let min = new Vector2(this.bounds[0]).mul(s);
+    let max = new Vector2(this.bounds[1]).mul(s);
 
     this.pos.max(min);
     this.pos.min(max);

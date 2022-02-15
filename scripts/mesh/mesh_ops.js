@@ -1767,8 +1767,9 @@ export class UnwrapSolveOp extends UnwrapOpBase {
       toolpath: "mesh.unwrap_solve",
       icon    : -1,
       inputs  : ToolOp.inherit({
-        preserveIslands: new BoolProperty(false).setFlag(PropFlags.SAVE_LAST_VALUE),
-        enableSolve    : new BoolProperty(true)
+        preserveIslands: new BoolProperty(false).saveLastValue(),
+        enableSolve    : new BoolProperty(true).saveLastValue(),
+        reset          : new BoolProperty()
       }),
       outputs : ToolOp.inherit()
     }
@@ -1803,7 +1804,7 @@ export class UnwrapSolveOp extends UnwrapOpBase {
 
       let solver;
 
-      if (this.inputs.enableSolve.getValue()) {
+      if (this.inputs.enableSolve.getValue() && !this.inputs.reset.getValue()) {
         solver = UnWrapSolver.restoreOrRebuild(mesh, faces, unwrap_solvers.get(mesh.lib_id),
           undefined, preserveIslands, false);
       } else {
@@ -1847,7 +1848,9 @@ export class RelaxUVsOp extends MeshOpBaseUV {
       toolpath: "mesh.relax_uvs",
       icon    : -1,
       inputs  : ToolOp.inherit({
-        doSolve: new BoolProperty(true).saveLastValue()
+        doSolve: new BoolProperty(true).saveLastValue(),
+        steps: new IntProperty(1).saveLastValue().setRange(1, 55).noUnits(),
+        useSeams : new BoolProperty().saveLastValue(),
       }),
       outputs : ToolOp.inherit()
     }
@@ -1856,22 +1859,25 @@ export class RelaxUVsOp extends MeshOpBaseUV {
   exec(ctx) {
     console.warn("mesh.relax_uvs");
 
-
     for (let mesh of this.getMeshes(ctx)) {
       let cd_uv = mesh.loops.customData.getLayerIndex("uv");
 
       if (cd_uv >= 0) {
-        if (this.inputs.doSolve.getValue()) {
-          let faces = mesh.faces.selected.editable;
-          let solver = UnWrapSolver.restoreOrRebuild(mesh, faces, unwrap_solvers.get(mesh.lib_id), undefined, true);
-          //let solver = new UnWrapSolver(mesh, faces, cd_uv, true);
-          solver.step();
-          solver.finish();
+        let steps = this.inputs.steps.getValue();
 
-          unwrap_solvers.set(mesh.lib_id, solver.save())
+        for (let i=0; i<steps; i++) {
+          if (this.inputs.doSolve.getValue()) {
+            let faces = mesh.faces.selected.editable;
+            let solver = UnWrapSolver.restoreOrRebuild(mesh, faces, unwrap_solvers.get(mesh.lib_id), undefined, true);
+            //let solver = new UnWrapSolver(mesh, faces, cd_uv, true);
+            solver.step();
+            solver.finish();
+
+            unwrap_solvers.set(mesh.lib_id, solver.save())
+          }
+
+          relaxUVs(mesh, cd_uv, this.getLoops(ctx), false, undefined, this.inputs.useSeams.getValue());
         }
-
-        relaxUVs(mesh, cd_uv, this.getLoops(ctx), false);
 
         /*
         let wr = new UVWrangler(mesh, mesh.faces);
