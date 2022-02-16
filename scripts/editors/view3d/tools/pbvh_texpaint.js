@@ -428,6 +428,8 @@ export class TexPaintOp extends ToolOp {
     brushco[2] = 0.0;
 
     let uvring = util.cachering.fromConstructor(Vector3, 64);
+    let v3ring = util.cachering.fromConstructor(Vector3, 64);
+    let v4ring = util.cachering.fromConstructor(Vector4, 64);
 
     let radius2 = brush.radius;
     radius2 *= 0.5;
@@ -510,7 +512,7 @@ export class TexPaintOp extends ToolOp {
       //duv.load(uv).sub(cent).normalize();
 
       if (!window.DD5) {
-        window.DD5 = 0.0;
+        window.DD5 = 0.5;
       }
 
       d += DD5;
@@ -578,11 +580,11 @@ export class TexPaintOp extends ToolOp {
         ue3.negate();
       }
 
-      if (!window.DD4) {
-        window.DD4 = 0.0;
+      if (!window.DD6) {
+        window.DD6 = 0.0;
       }
 
-      let efac = isizem1[0]*DD4;
+      let efac = isizem1[0]*DD6;
 
       ue1.normalize().mulScalar(efac);
       ue2.normalize().mulScalar(efac);
@@ -689,6 +691,10 @@ export class TexPaintOp extends ToolOp {
       uvmul[0] = 1.0/(texture.width - 1);
       uvmul[1] = 1.0/(texture.height - 1);
 
+      if (window.DDD === undefined) {
+        window.DDD = 3.0;
+      }
+
       /* draw seam guard border */
       for (let j = 0; j < 3; j++) {
         if ((ls[j].next === ls[(j + 1)%3]) && wrangler.seamEdge(ls[j].e)) {
@@ -710,13 +716,12 @@ export class TexPaintOp extends ToolOp {
           let uvc = uvring.next().load(uva);
           let uvd = uvring.next().load(uvb);
 
-          uvc.addFac(t1, 3.0);
-          uvd.addFac(t2, 3.0);
+          uvc.addFac(t1, DDD);
+          uvd.addFac(t2, DDD);
 
           let quad = sm.quad(uva, uvc, uvd, uvb);
           quad.custom(sm_loc, pstmp[j], pstmp[j], pstmp[(j + 1)%3], pstmp[(j + 1)%3]);
           quad.custom(sm_worldloc, vstmp[j], vstmp[j], vstmp[(j + 1)%3], vstmp[(j + 1)%3]);
-
           quad.custom(sm_params, params[j], params[j], params[(j + 1)%3], params[(j + 1)%3]);
 
           //let line = line_sm.line(uva, uvb);
