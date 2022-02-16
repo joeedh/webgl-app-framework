@@ -59,11 +59,11 @@ export class TexPaintOp extends ToolOp {
     let sdef = Object.assign({}, ShaderDef.TexturePaintShader);
 
     let uniforms = {
-      brushAngle: 0.0
+      angle: 0.0
     };
 
     if (brush.texUser.texture) {
-      let pre = '#define BRUSH_TEX\n';
+      let pre = '\n';//#define BRUSH_TEX\n';
 
       let tex = brush.texUser.texture;
       pre += tex.genGlslPre("inP", "outC", uniforms);
@@ -73,14 +73,21 @@ export class TexPaintOp extends ToolOp {
       //put code in new block scope
       code = `{\n${code}\n}\n`;
 
+      //console.error("CODE", code);
+
       let frag = sdef.fragment;
       frag = frag.replace(/\/\/\{BRUSH_TEX_PRE\}/, pre);
-      frag = frag.replace(/\BRUSH_TEX/, code);
+      frag = frag.replace(/BRUSH_TEX_CODE/, code);
+      sdef.fragment = frag.trim() + "\n";
 
-      sdef.fragment = frag.trim();
+      //console.log(sdef.fragment);
     }
 
-    return getShader(gl, sdef);
+    let shader = getShader(gl, sdef);
+
+    //console.error("SHADER", shader);
+
+    return shader;
   }
 
   on_keydown(e) {
@@ -141,7 +148,7 @@ export class TexPaintOp extends ToolOp {
       let origin2 = new Vector3(origin), view2 = new Vector3(view);
 
       if (axis !== -1) {
-        let obmat = ob.outputs.matrix.getValue();
+        let obmfat = ob.outputs.matrix.getValue();
         let mat = new Matrix4(ob.outputs.matrix.getValue());
         mat.invert();
 
@@ -359,7 +366,7 @@ export class TexPaintOp extends ToolOp {
     fbo = texture._drawFBO;
 
     let wrangler = mesh.getUVWrangler(false, false);
-    console.log(wrangler);
+    //console.log(wrangler);
 
     let gltex = texture.getGlTex(gl);
     texture.gpuHasData = true;
@@ -433,10 +440,15 @@ export class TexPaintOp extends ToolOp {
 
     let sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.CUSTOM); // | LayerTypes.COLOR | LayerTypes.NORMAL);
 
+    //screen position
     let sm_loc = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 4, "sm_loc").index;
+
+    let sm_worldloc = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 3, "sm_worldloc").index;
+
     let sm_params = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 2, "sm_params").index;
 
     let sm_line_loc = line_sm.addDataLayer(PrimitiveTypes.LINES, LayerTypes.CUSTOM, 4, "sm_loc").index;
+    let sm_line_worldloc = line_sm.addDataLayer(PrimitiveTypes.LINES, LayerTypes.CUSTOM, 4, "sm_worldloc").index;
     let sm_line_params = line_sm.addDataLayer(PrimitiveTypes.LINES, LayerTypes.CUSTOM, 2, "sm_params").index;
 
     let ltris = mesh._ltris;
@@ -657,6 +669,7 @@ export class TexPaintOp extends ToolOp {
       let fade = Math.abs(tri.no.dot(ps.viewvec));
 
       tri2.custom(sm_loc, p1, p2, p3);
+      tri2.custom(sm_worldloc, tri.v1, tri.v2, tri.v3);
 
       let pw = 3.0;
       params[0][0] = Math.abs(tri.v1.no.dot(ps.viewvec))**pw;
@@ -669,42 +682,46 @@ export class TexPaintOp extends ToolOp {
       let pstmp = [p1, p2, p3];
       let crs = [cr1, cr2, cr3];
       let ls = [l1, l2, l3];
+      let vstmp = [tri.v1, tri.v2, tri.v3];
+
       let uvmul = uvring.next();
 
-      uvmul[0] = 1.0 / (texture.width - 1);
-      uvmul[1] = 1.0 / (texture.height - 1);
+      uvmul[0] = 1.0/(texture.width - 1);
+      uvmul[1] = 1.0/(texture.height - 1);
 
       /* draw seam guard border */
       for (let j = 0; j < 3; j++) {
-        if ((ls[j].next === ls[(j+1)%3]) && wrangler.seamEdge(ls[j].e)) {
+        if ((ls[j].next === ls[(j + 1)%3]) && wrangler.seamEdge(ls[j].e)) {
           //for (let k=0; k<1; k++) {
-            let uva = uvring.next().load(uvstmp[j]);
-            let uvb = uvring.next().load(uvstmp[(j + 1)%3]);
-            uva[2] = uvb[2] = 0.0;
+          let uva = uvring.next().load(uvstmp[j]);
+          let uvb = uvring.next().load(uvstmp[(j + 1)%3]);
+          uva[2] = uvb[2] = 0.0;
 
-            let c1 = wrangler.loopMap.get(ls[j]).customData[cd_corner];
-            let c2 = wrangler.loopMap.get(ls[(j + 1)%3]).customData[cd_corner];
+          let c1 = wrangler.loopMap.get(ls[j]).customData[cd_corner];
+          let c2 = wrangler.loopMap.get(ls[(j + 1)%3]).customData[cd_corner];
 
-            let t1 = uvring.next().load(c1.bTangent).mul(uvmul);
-            let t2 = uvring.next().load(c2.bTangent).mul(uvmul);
-            t1[2] = t2[2] = 0.0;
+          let t1 = uvring.next().load(c1.bTangent).mul(uvmul);
+          let t2 = uvring.next().load(c2.bTangent).mul(uvmul);
+          t1[2] = t2[2] = 0.0;
 
-            //uva.addFac(t1, 0.5);
-            //uvb.addFac(t2, 0.5);
+          //uva.addFac(t1, 0.5);
+          //uvb.addFac(t2, 0.5);
 
-            let uvc = uvring.next().load(uva);
-            let uvd = uvring.next().load(uvb);
+          let uvc = uvring.next().load(uva);
+          let uvd = uvring.next().load(uvb);
 
-            uvc.addFac(t1, 3.0);
-            uvd.addFac(t2, 3.0);
+          uvc.addFac(t1, 3.0);
+          uvd.addFac(t2, 3.0);
 
-            let quad = sm.quad(uva, uvc, uvd, uvb);
-            quad.custom(sm_loc, pstmp[j], pstmp[j], pstmp[(j + 1)%3], pstmp[(j + 1)%3]);
-            quad.custom(sm_params, params[j], params[j], params[(j + 1)%3], params[(j + 1)%3]);
+          let quad = sm.quad(uva, uvc, uvd, uvb);
+          quad.custom(sm_loc, pstmp[j], pstmp[j], pstmp[(j + 1)%3], pstmp[(j + 1)%3]);
+          quad.custom(sm_worldloc, vstmp[j], vstmp[j], vstmp[(j + 1)%3], vstmp[(j + 1)%3]);
 
-            //let line = line_sm.line(uva, uvb);
-            //line.custom(sm_line_loc, pstmp[j], pstmp[(j + 1)%3]);
-            //line.custom(sm_line_params, params[j], params[(j + 1)%3]);
+          quad.custom(sm_params, params[j], params[j], params[(j + 1)%3], params[(j + 1)%3]);
+
+          //let line = line_sm.line(uva, uvb);
+          //line.custom(sm_line_loc, pstmp[j], pstmp[(j + 1)%3]);
+          //line.custom(sm_line_params, params[j], params[(j + 1)%3]);
           //}
         }
       }
@@ -888,11 +905,16 @@ export class TexPaintOp extends ToolOp {
         size            : [texture.width, texture.height],
         aspect          : texture.width/texture.height,
         projectionMatrix: matrix,
+        objectMatrix    : new Matrix4(),
         uColor          : color,
         brushCo         : brushco,
         radius          : radius2,
         brushAngle      : ps.angle
       };
+
+      if (brush.texUser.texture) {
+        brush.texUser.texture.bindUniforms(uniforms);
+      }
 
       gl.depthMask(false);
 
@@ -924,9 +946,21 @@ export class TexPaintOp extends ToolOp {
       gl.blendColor(1.0, 1.0, 1.0, 1.0);
       //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.CONSTANT_ALPHA);
-      sm.draw(gl, uniforms, sm.program); //Shaders.TexturePaintShader);
 
+      if (brush.texUser.texture) {
+        sm.program.defines.BRUSH_TEX = null;
+        sm.program.defines.BRUSH_TEX_SPACE = brush.texUser.mode;
+        brush.texUser.texture.bindUniforms(uniforms);
+      } else {
+        delete sm.program.defines.BRUSH_TEX;
+      }
+
+      sm.program.bind(gl, uniforms, sm.islands[0]._glAttrs);
+
+      sm.draw(gl, uniforms, sm.program); //Shaders.TexturePaintShader);
       line_sm.draw(gl, uniforms, sm.program);
+
+      delete sm.program.defines.BRUSH_TEX;
 
       window.sm = sm;
 

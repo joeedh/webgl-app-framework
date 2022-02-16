@@ -1517,10 +1517,12 @@ export class SimpleIsland {
     let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
 
     if (program && !program.program) {
-      program.checkCompile(gl);
+      //program.checkCompile(gl, uniforms);
+      let attrs = this._glAttrs;
+      program.bind(gl, uniforms, attrs);
     }
 
-    if (!program || !program.program) {
+    if (!program) {
       return;
     }
 

@@ -19,6 +19,8 @@ let proptypemap = {
   [PropTypes.VEC4] : "vec4",
 };
 
+export const compileCache = new Map();
+
 export function compileTexShaderJS(shader) {
   let code = shader.genCode();
 
@@ -51,6 +53,8 @@ out vec3 Normal;
 
 ${uniforms}
 
+${sdef.fragmentPre}
+
 ${code}
 
 void main() {
@@ -58,9 +62,17 @@ void main() {
 }
 `;
 
+
   console.log(code);
 
+  if (compileCache.has(code)) {
+    return compileCache.get(code);
+  }
+
   let shaderjs = mathl.compileJS(code, shader.typeName);
+
+  compileCache.set(code, shaderjs);
+
   return shaderjs;
 }
 

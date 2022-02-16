@@ -1707,7 +1707,19 @@ float snoise(vec3 v, out vec3 gradient)
 }
   `
 }
-export let TexturePaintShader = {
+
+export const TexPaintShaderLib = `
+
+vec2 rot2d(vec2 p, float th) {
+  return vec2(cos(th)*p[0] + sin(th)*p[1], cos(th)*p[1] - sin(th)*p[0]);
+}
+
+float tent(float f) {
+  return 1.0 - abs(fract(f)-0.5)*2.0;
+}
+`;
+
+export const TexturePaintShader = {
   vertex  : `precision mediump float;
   
 attribute vec3 position;
@@ -1716,23 +1728,25 @@ attribute vec2 uv;
 attribute vec4 color;
 attribute vec4 sm_loc;
 attribute vec2 sm_params;
+attribute vec3 sm_worldloc;
 
 uniform vec4 uColor;
 //uniform float pointSize;
 
 uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
 
 //uniform float aspect, near, far;
 //uniform vec2 size;
 
 varying vec2 vUv;
-varying vec4 vColor;
+varying vec4 vSmLoc;
 varying vec3 vNormal;
 varying vec2 vParams;
 varying vec2 vScreenCo;
+varying vec3 vWorldCo;
 
 //{PolygonOffset.pre}
-//{BRUSH_TEX_PRE}
 
 void main() {
   vec4 p = vec4(position, 1.0);
@@ -1740,10 +1754,13 @@ void main() {
   
   p = projectionMatrix * p;
   
-  vColor = vec4((sm_loc.xyz*sm_loc.w), sm_loc.w);
+  vWorldCo = (objectMatrix * vec4(sm_worldloc, 1.0)).xyz;
+  
+  vSmLoc = vec4((sm_loc.xyz*sm_loc.w), sm_loc.w);
   vUv = uv;
   vNormal = normal;
    
+  vScreenCo = (vSmLoc.xy/vSmLoc.w)*0.5 + 0.5;
   vParams = sm_params;
   
   gl_Position = p;
@@ -1753,11 +1770,14 @@ void main() {
   fragment: `precision mediump float;
 uniform vec4 uColor;
 
+//{BRUSH_TEX_PRE}
+
 varying vec2 vUv;
-varying vec4 vColor;
+varying vec4 vSmLoc;
 varying vec3 vNormal;
 varying vec2 vParams;
 varying vec2 vScreenCo;
+varying vec3 vWorldCo;
 
 uniform float radius;
 uniform vec3 brushCo;
@@ -1770,9 +1790,7 @@ uniform sampler2D blurFBO;
 uniform sampler2D rgba1;
 //{PolygonOffset.pre}
 
-vec2 rot2d(vec2 p, float th) {
-  return vec2(cos(th)*p[0] + sin(th)*p[1], cos(th)*p[1] - sin(th)*p[0]);
-}
+${TexPaintShaderLib}
 
 //{CellularNoiseFragment.fragment}
 ${SimplexGradientNoise.fragment}
@@ -1781,10 +1799,10 @@ void main() {
   //{PolygonOffset.fragment}
   vec4 c;
   
-  //c = vColor;
+  //c = vSmLoc;
   c = vec4(0.0, 0.0, 0.0, 0.0);
   
-  float dis = length(brushCo.xy - vColor.xy/vColor.w) / radius;
+  float dis = length(brushCo.xy - vSmLoc.xy/vSmLoc.w) / radius;
   dis = 1.0 - min(max(dis, 0.0), 1.0);
   
   c = uColor;
@@ -1795,18 +1813,22 @@ void main() {
   c[3] *= dis*fade;
   
 #if 0
-  vec2 cell = cellular(0.1*vColor.xyz/vColor.w);
+  vec2 cell = cellular(0.1*vSmLoc.xyz/vSmLoc.w);
   c[3] *= cell[0];
   c.rgb *= cell[1];
 #endif
   
 #ifdef BRUSH_TEX
 {
-  float inP = vColor.xyz/vColor.w;
+//#if BRUSH_TEX_SPACE == 0
+  //vec3 inP = vWorldCo*texScale;
+//#else
+  vec3 inP = vWorldCo*texScale; //vec3(vScreenCo, 0.0);
+//#endif
   vec4 outC;
 
 {  
-  BRUSH_TEX
+  BRUSH_TEX_CODE
 }
  
   c *= outC;
@@ -1815,7 +1837,7 @@ void main() {
 
 #if 0
 {
-  vec3 p = vColor.xyz/vColor.w*0.0875;
+  vec3 p = vSmLoc.xyz/vSmLoc.w*0.0875;
   vec2 p2 = rot2d(p.xy, angle);
   
   float dx1 = 1.0 - abs(fract(p2.x)-0.5)*2.0;
@@ -1836,7 +1858,7 @@ void main() {
 
 #if 0
 {
-  vec3 p = vColor.xyz/vColor.w*0.045;
+  vec3 p = vSmLoc.xyz/vSmLoc.w*0.045;
   vec3 grad;
   
   float f = snoise(p, grad);
@@ -1863,7 +1885,7 @@ void main() {
 
 #ifdef BLUR_MODE
   {
-    vec2 p = (vColor.xy/vColor.w) / screenSize;
+    vec2 p = (vSmLoc.xy/vSmLoc.w) / screenSize;
     p.y = 1.0 - p.y;
     
     p -= vboxMin;
@@ -1892,7 +1914,7 @@ void main() {
   },
 
   attributes: [
-    "position", "color", "uv", "normal", "sm_loc", "sm_params"
+    "position", "color", "uv", "normal", "sm_loc", "sm_params", "sm_worldloc"
   ]
 };
 export let LineTriStripShader = {

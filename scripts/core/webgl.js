@@ -219,17 +219,33 @@ export function init_webgl(canvas, params = {}) {
   return gl;
 }
 
-function format_lines(script) {
-  var i = 1;
-  var lines = script.split("\n")
-  var maxcol = Math.ceil(Math.log(lines.length)/Math.log(10)) + 1;
+function format_lines(script, errortext) {
+  let linenr = getShaderErrorLine(errortext);
 
-  var s = "";
+  let i = 1;
 
-  for (var line of lines) {
+  let lines = script.split("\n")
+  let maxcol = Math.ceil(Math.log(lines.length)/Math.log(10)) + 1;
+
+  if (typeof linenr === "number") {
+    let a = Math.max(linenr-25, 0);
+    a = 0;
+    let b = Math.min(linenr+5, lines.length);
+
+    i = a + 1;
+    lines = lines.slice(a, b);
+  }
+
+  let s = "";
+
+  for (let line of lines) {
     s += "" + i + ":";
     while (s.length < maxcol) {
       s += " "
+    }
+
+    if (i === linenr) {
+      line = util.termColor(line + " ", "red");
     }
 
     s += line + "\n";
@@ -237,6 +253,20 @@ function format_lines(script) {
   }
 
   return s;
+}
+
+function getShaderErrorLine(error) {
+  let linenr = error.match(/.*([0-9]+):([0-9]+): .*/);
+
+  if (linenr) {
+    linenr = parseInt(linenr[2]);
+  }
+
+  if (isNaN(linenr)) {
+    linenr = undefined;
+  }
+
+  return linenr;
 }
 
 export function hashShader(sdef) {
@@ -362,6 +392,8 @@ export class ShaderProgram {
     this.fragmentSource = fragment;
 
     this.attrs = [];
+
+    this._lastDefShader = undefined;
 
     this.multilayer_programs = {};
 
@@ -602,8 +634,8 @@ v${attr} = ${attr};
         vshader = this.constructor.insertDefine(defs, vshader);
         fshader = this.constructor.insertDefine(defs, fshader);
 
-        this._vertexSource = vshader;
-        this._fragmentSource = fshader;
+        this.vertexSource = vshader;
+        this.fragmentSource = fshader;
       }
     }
 
@@ -622,7 +654,7 @@ v${attr} = ${attr};
         // Something went wrong during compilation; get the error
         var error = gl.getShaderInfoLog(shader);
 
-        console.log(format_lines(code));
+        console.log(format_lines(code, error));
         console.log("\nError compiling shader: ", error);
 
         gl.deleteShader(shader);
@@ -722,7 +754,7 @@ v${attr} = ${attr};
 
   uniformloc(name) {
     if (this._use_def_shaders) {
-      let shader = this._getDefShader(this.gl);
+      let shader = this._getLastDefShader();
 
       if (shader) {
         return shader.uniformloc(name);
@@ -746,7 +778,7 @@ v${attr} = ${attr};
 
   attrLoc(name) {
     if (this._use_def_shaders) {
-      let shader = this._getDefShader(this.gl);
+      let shader = this._getLastDefShader();
 
       if (shader) {
         return shader.attrLoc(name);
@@ -841,14 +873,19 @@ v${attr} = ${attr};
     return this.program;
   }
 
+  _getLastDefShader() {
+    let shader = this._lastDefShader;
+
+    if (!shader) {
+      shader = this._getDefShader(this.gl);
+    }
+    return shader;
+  }
+
   _getDefShader(gl, defines = {}, attributes) {
     if (attributes) {
       for (let k in attributes) {
         let key = "HAVE_" + k.toUpperCase();
-
-        if (!defines) {
-          defines = {};
-        }
 
         defines[key] = null;
       }
@@ -856,11 +893,19 @@ v${attr} = ${attr};
 
     let key = this.calcDefKey(defines);
 
+    for (let k in this.defines) {
+      if (!(k in defines)) {
+        defines[k] = this.defines[k];
+      }
+    }
+
     if (key !== "") {
       if (!(key in this._def_shaders)) {
         let shader = this.copy();
 
         if (defines) {
+          shader.defines = {};
+
           for (let k in defines) {
             shader.defines[k] = defines[k];
           }
@@ -871,7 +916,9 @@ v${attr} = ${attr};
         this._def_shaders[key] = shader;
       }
 
-      return this._def_shaders[key];
+      let shader = this._def_shaders[key];
+      this._lastDefShader = shader;
+      return shader;
     }
   }
 

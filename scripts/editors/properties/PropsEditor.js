@@ -298,6 +298,7 @@ export class CDLayerPanel extends ColumnFrame {
       uidata = saveUIData(this, "cdlayerpanel");
 
     }
+
     this.clear();
 
     let meshpath = this.getAttribute("datapath");
@@ -827,7 +828,7 @@ export class TextureSelectPanel extends TexturePanel {
   constructor() {
     super();
 
-    this.browser = document.createElement("data-block-browser-x");
+    this.browser = UIBase.createElement("data-block-browser-x");
     this.browser.blockClass = ProceduralTex;
   }
 
@@ -1056,14 +1057,15 @@ export class PropsEditor extends Editor {
 
     let path = "propsEditor.texture";
 
-    tex.setAttribute("datapath", path);
-
     browser.setAttribute("datapath", path);
     browser.blockClass = ProceduralTex;
 
     let strip = tab.row().strip();
     strip.label("Source");
     strip.prop("propsEditor.texturePathMode");
+
+    tex.setAttribute("datapath", path);
+    tex.ctx = this.ctx;
 
     tab.add(browser);
     tab.add(tex);

@@ -843,7 +843,7 @@ export class UVWrangler {
             t3.mulScalar(1.0/tot);
             t3.sub(v).negate();
 
-            console.log("TT4", t3, t3.dot(t1));
+            //console.log("TT4", t3, t3.dot(t1));
 
             if (t3.dot(t1) < 0.0) {
               t1.negate();

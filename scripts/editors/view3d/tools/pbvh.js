@@ -1205,7 +1205,6 @@ export class BVHToolMode extends ToolMode {
     let bvh;
 
     let cd_fset = mesh.faces.customData.getNamedLayerIndex("face_sets", "int");
-    console.log("cd_fset", cd_fset);
 
     //update all normals on first bvh build
     if (!mesh.bvh) {

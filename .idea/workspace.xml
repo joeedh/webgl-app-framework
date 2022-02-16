@@ -7,13 +7,21 @@
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/core/simplemesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/simplemesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/image/ImageEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/image/ImageEditor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/velpan.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/velpan.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/core/webgl.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/webgl.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/properties/PropsEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/properties/PropsEditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_texpaint.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_texpaint.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mathl/core/ast.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mathl/core/ast.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mathl/core/mathl.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mathl/core/mathl.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mathl/core/types.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mathl/core/types.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mathl/parser/jscc_util.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mathl/parser/jscc_util.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mathl/transform/process_ast.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mathl/transform/process_ast.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/unwrapping.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/unwrapping.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/unwrapping_solve.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/unwrapping_solve.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/widgets/ui_panel.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/widgets/ui_panel.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/shaders/shaders.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shaders/shaders.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/texture/proceduralTex.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/texture/proceduralTex.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/texture/textureGen.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/texture/textureGen.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -309,6 +317,7 @@
       <workItem from="1644721920938" duration="13898000" />
       <workItem from="1644866924281" duration="2254000" />
       <workItem from="1644896300508" duration="11114000" />
+      <workItem from="1644951350517" duration="18423000" />
     </task>
     <servers />
   </component>
@@ -328,7 +337,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scripts/texture/proceduralTex.js</url>
-          <line>70</line>
+          <line>85</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
