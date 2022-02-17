@@ -22,6 +22,7 @@ import './uv_selectops.js';
 import './uv_transformops.js';
 import './uv_ops.js';
 import {UVFlags} from '../../mesh/mesh_customdata.js';
+import {resetUnwrapSolvers} from '../../mesh/mesh_ops.js';
 
 let _projtmp = new Vector2();
 
@@ -1446,6 +1447,9 @@ export class ImageEditor extends Editor {
 
     row = col.row();
     row.tool("mesh.fix_seams()");
+    row.button("Reset Solver", () => {
+      resetUnwrapSolvers();
+    });
 
     loadUIData(this.sidebar, uidata);
     this.sidebar.flushUpdate();

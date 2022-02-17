@@ -1760,6 +1760,10 @@ unwrap_solvers.clear = function () {
   }
 }
 
+export function resetUnwrapSolvers() {
+  unwrap_solvers = window._unwrap_solvers = new Map();
+}
+
 export class UnwrapSolveOp extends UnwrapOpBase {
   static tooldef() {
     return {
@@ -1769,7 +1773,8 @@ export class UnwrapSolveOp extends UnwrapOpBase {
       inputs  : ToolOp.inherit({
         preserveIslands: new BoolProperty(false).saveLastValue(),
         enableSolve    : new BoolProperty(true).saveLastValue(),
-        reset          : new BoolProperty()
+        reset          : new BoolProperty(),
+        solverWeight : new FloatProperty(0.4).noUnits().setRange(0.0, 1.0).saveLastValue(),
       }),
       outputs : ToolOp.inherit()
     }
@@ -1812,9 +1817,11 @@ export class UnwrapSolveOp extends UnwrapOpBase {
         solver.start();
       }
 
+      let w = this.inputs.solverWeight.getValue();
+
       if (this.inputs.enableSolve.getValue()) {
         while (util.time_ms() - time < 400) {
-          solver.step();
+          solver.step(undefined, w);
         }
       }
 
@@ -1851,6 +1858,7 @@ export class RelaxUVsOp extends MeshOpBaseUV {
         doSolve: new BoolProperty(true).saveLastValue(),
         steps: new IntProperty(1).saveLastValue().setRange(1, 55).noUnits(),
         useSeams : new BoolProperty().saveLastValue(),
+        solverWeight : new FloatProperty(0.4).noUnits().setRange(0.0, 1.0).saveLastValue(),
       }),
       outputs : ToolOp.inherit()
     }
@@ -1870,7 +1878,7 @@ export class RelaxUVsOp extends MeshOpBaseUV {
             let faces = mesh.faces.selected.editable;
             let solver = UnWrapSolver.restoreOrRebuild(mesh, faces, unwrap_solvers.get(mesh.lib_id), undefined, true);
             //let solver = new UnWrapSolver(mesh, faces, cd_uv, true);
-            solver.step();
+            solver.step(undefined, this.inputs.solverWeight.getValue());
             solver.finish();
 
             unwrap_solvers.set(mesh.lib_id, solver.save())

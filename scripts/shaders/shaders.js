@@ -1709,6 +1709,29 @@ float snoise(vec3 v, out vec3 gradient)
 }
 
 export const TexPaintShaderLib = `
+float hash(float f) {
+  float sign = f < 0.0 ? -1.0 : 1.0;
+  f *= sign;
+
+  float f2 = fract(f);
+  f2 = sign < 0.0 ? 1.0 - f2 : f2;
+
+  f = f*3.316624*128.0*f2;
+
+  bool sign2 = f < 0.0;
+  f = fract(f);
+
+  if (sign2) {
+    f = 1.0 - f;
+  }
+
+  return f;
+}
+
+float hash3(float x, float y, float z) {
+  float f = x*sqrt(3.0) + y*sqrt(5.0)*10.0 + z*sqrt(7.0)*100.0;
+  return hash(f);
+}
 
 vec2 rot2d(vec2 p, float th) {
   return vec2(cos(th)*p[0] + sin(th)*p[1], cos(th)*p[1] - sin(th)*p[0]);

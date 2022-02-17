@@ -818,7 +818,7 @@ export class TexturePanel extends Container {
     canvas.style["width"] = w2 + "px";
     canvas.style["height"] = h2 + "px";
 
-    this.redraw();
+    this.flagRedraw();
   }
 }
 

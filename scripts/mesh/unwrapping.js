@@ -150,7 +150,12 @@ export class UVWrangler {
       }
     }
 
-    bad = bad || (!wrangler || !wrangler.saved || !wrangler.restore(mesh));
+    try {
+      bad = bad || (!wrangler || !wrangler.saved || !wrangler.restore(mesh));
+    } catch (error) {
+      util.print_stack(error);
+      bad = true;
+    }
 
     if (bad) {
       console.warn("UVWrangler.restoreOrRebuild(): making new uv wrangler. . .");
@@ -205,7 +210,7 @@ export class UVWrangler {
 
     this.islandVertMap = undefined;
     this.islandLoopMap = undefined;
-    thsi.islandFaceMap = undefined;
+    this.islandFaceMap = undefined;
 
     this.shash = undefined;
 
@@ -230,7 +235,7 @@ export class UVWrangler {
     let faces = new Set();
 
     for (let eid of this.faces) {
-      let f = mesh.eidmap[eid];
+      let f = mesh.eidMap.get(eid);
       if (!f || f.type !== MeshTypes.FACE) {
         console.warn("Missing face " + eid);
         return false;
@@ -243,7 +248,7 @@ export class UVWrangler {
 
     let loopMap = new Map();
     for (let [leid, v] of this.loopMap) {
-      let l = mesh.eidmap[leid];
+      let l = mesh.eidMap.get(leid);
 
       if (!l || l.type !== MeshTypes.LOOP) {
         console.warn("Missing loop " + leid, l);
@@ -255,7 +260,7 @@ export class UVWrangler {
 
     let edgeMap = new Map();
     for (let [leid, e] of this.edgeMap) {
-      let l = mesh.eidmap[leid];
+      let l = mesh.eidMap.get(leid);
 
       if (!l || l.type !== MeshTypes.LOOP) {
         console.warn("Missing loop " + leid, l);
@@ -270,7 +275,7 @@ export class UVWrangler {
       let ls2 = new Set();
 
       for (let leid of ls) {
-        let l = mesh.eidmap[leid];
+        let l = mesh.eidMap.get(leid);
         if (!l) {
           if (!l || l.type !== MeshTypes.LOOP) {
             console.warn("Missing loop " + leid, l);
@@ -316,9 +321,17 @@ export class UVWrangler {
       if (seam) {
         let v1 = this.loopMap.get(l);
         let v2 = this.loopMap.get(l.next);
+
+        if (!v1 || !v2) {
+          console.error("error in setCornerTags, missing vertices", v1, v2);
+          continue;
+        }
+
         let uve = this.uvMesh.getEdge(v1, v2);
 
-        uve.customData[cd_edge_seam].value = true;
+        if (uve) {
+          uve.customData[cd_edge_seam].value = true;
+        }
 
         this.loopMap.get(l).customData[cd_corner].corner = true;
         this.loopMap.get(l.next).customData[cd_corner].corner = true;

@@ -658,7 +658,7 @@ export class CombPattern extends PatternGen {
     uniforms.angleOffset = this.angleOffset;
   }
 
-  calcUpdateHash(digest, recompileOnly=false) {
+  calcUpdateHash(digest, recompileOnly = false) {
     digest.add(this.angleOffset);
     digest.add(this.mode);
 
@@ -791,6 +791,10 @@ export class GaborNoise extends PatternGen {
       typeName   : "GaborNoise",
       defaultName: "Gabor",
       uiName     : "Gabor",
+      uniforms   : {
+        "levels"    : "float", "levelScale": "float", "factor": "float", "randomness": "float",
+        "decayPower": "float", "decay2": "float", "zoff": "float"
+      }
     }
   }
 
@@ -806,7 +810,7 @@ export class GaborNoise extends PatternGen {
     b.decay2 = this.decay2;
   }
 
-  calcUpdateHash(digest, recompileOnly=false) {
+  calcUpdateHash(digest, recompileOnly = false) {
     digest.add(this.levels);
     digest.add(this.levelScale);
     digest.add(this.zoff);
@@ -817,6 +821,8 @@ export class GaborNoise extends PatternGen {
   }
 
   evaluate(co) {
+    return super.evaluate(co);
+
     co = sntmps.next().load(co);
 
     let scale = 5.0;//*Math.pow(this.levelScale, this.levels);
@@ -848,6 +854,102 @@ export class GaborNoise extends PatternGen {
     f2 /= tot;
 
     return f1 + (f2 - f1)*this.factor;
+  }
+
+  genGlsl(inputP, outputC, uniforms) {
+    let u = uniforms;
+
+    return `
+    vec3 co = ${inputP} * 5.0;
+  
+    float x = co[0];
+    float y = co[1];
+    float z = co[2] + zoff;
+
+    float f = 0.0;
+    float tot = 0.0;
+
+    /*
+
+    f := exp(-decay2*r2);
+    ff := solve(f-goal, r2);
+    ff := part(ff, 1, 2);
+    ff := sub(i=0, ff);
+
+    sub(goal=0.1, decay2=1.0, ff);
+    **/
+
+    float err = 0.1;
+    float decay2 = decay2*2.0;
+
+    const int steps = 2; //int(log(10.0) / decay2);    
+    const int n = steps;
+    
+    int n2 = n*n*2;
+    float mul = 1.0/float(n2);
+
+    int ix1 = int(x);
+    int iy1 = int(y);
+    int iz1 = int(z);
+
+    float factor = factor*10.0 + 1.0;
+    float rfac = randomness;
+    float efac = decayPower;
+
+    f = 0.0;
+    float fmax = 0.0;
+
+    for (int ix = -n; ix <= n; ix++) {
+      for (int iy = -n; iy <= n; iy++) {
+        for (int iz = -n; iz <= n; iz++) {
+          float ix2 = float(ix1 + ix);
+          float iy2 = float(iy1 + iy);
+          float iz2 = float(iz1 + iz);
+
+          float rx = hash3(ix2, iy2, iz2) - 0.5;
+          float ry = hash3(ix2 + 0.234, iy2 + 0.2343, iz2 + 0.63434) - 0.5;
+          float rz = hash3(ix2 - 0.274, iy2 + 0.83432, iz2 + 0.123523) - 0.5;
+
+          ix2 += rx*rfac;
+          iy2 += ry*rfac;
+          iz2 += rz*rfac;
+
+          float dx = x - ix2;
+          float dy = y - iy2;
+          float dz = z - iz2;
+
+          float dis = ((dx*dx + dy*dy + dz*dz)*mul);
+          //dis = min(min(dx*dx, dy*dy), dz*dz)*mul;
+
+          //dx = tent(dx);
+          //dy = tent(dy);
+          //dz = tent(dz);
+          //dis = (dx+dy+dz)/3.0;
+          //dis *= dis;
+
+          float dis2 = dis;
+          float w = exp(-dis2*decay2);
+
+          dis = pow(dis, efac);
+
+          float f2 = 1.0 - abs(fract(dis*factor) - 0.5)*2.0;
+
+          //f2 = f2*f2*(3.0 - 2.0*f2);
+
+          f += f2*w;
+          tot += w;
+        }
+      }
+    }
+
+    //tot = max(tot, 0.0001);
+    f /= tot;
+    //f = fmax;
+    //f = pow(f, 1.0 / tot);
+
+    f = f*1.8;
+    ${outputC} = vec4(f, f, f, 1.0);
+    `;
   }
 
   evaluate_intern(co, scale) {
@@ -1181,7 +1283,14 @@ uniform float texPower;
       co[0] = x;
       co[1] = y;
 
-      let f = this.evaluate(co);
+      let f;
+
+      try {
+        f = this.evaluate(co);
+      } catch (error) {
+        util.print_stack(error);
+        break;
+      }
 
       idata[idx] = idata[idx + 1] = idata[idx + 2] = ~~(f*255);
       idata[idx + 3] = 255;

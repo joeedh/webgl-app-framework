@@ -7,6 +7,7 @@ import {DependSocket} from "../../core/graphsockets.js";
 import {CastModes, castViewRay} from "./findnearest.js";
 import {Shapes} from '../../core/simplemesh_shapes.js';
 import {Shaders} from "../../shaders/shaders.js";
+import {Camera} from '../../core/webgl.js';
 
 export class ViewSelected extends ToolOp {
   constructor() {
@@ -280,7 +281,9 @@ export class View3DOp extends ToolOp {
 export class OrbitTool extends ToolOp {
   constructor() {
     super();
-    
+
+    this.start_sign = 1.0;
+    this.first = true;
     this.last_mpos = new Vector2();
     this.start_mpos = new Vector2();
     this.first = true;
@@ -300,7 +303,7 @@ export class OrbitTool extends ToolOp {
     let view3d = this.modal_ctx.view3d, camera = view3d.camera;
     let mpos = view3d.getLocalMouse(e.x, e.y);
     let x = mpos[0], y = mpos[1];
-    
+
     if (this.first) {
       this.start_camera = this.modal_ctx.view3d.camera.copy();
       this.start_mpos[0] = x;
@@ -308,69 +311,64 @@ export class OrbitTool extends ToolOp {
       this.last_mpos[0] = x;
       this.last_mpos[1] = y;
       this.first = false;
+      this.start_camera = new Camera();
+      this.start_camera.load(camera);
       return;
     }
+
     
     let dx = x - this.start_mpos[0], dy = -(y - this.start_mpos[1]);
     let scale = 0.0055;
 
-    this.start_mpos[0] = x;
-    this.start_mpos[1] = y;
-    
+    let dx2 = x - this.start_mpos[0], dy2 = -(y - this.start_mpos[1]);
+    let sign = Math.sign(dx*dx2 + dy*dy2);
+
+    this.last_mpos[0] = x;
+    this.last_mpos[1] = y;
+
     dx *= scale;
     dy *= scale;
-    
-    //camera.load(this.start_camera);
-    
-    camera.pos.sub(camera.target);
-    
-    let n = new Vector4();
-    n[0] = 0; //x - this.start_mpos[0];
-    n[1] = -1; //-(y - this.start_mpos[1]);
-    n[2] = camera.near+0.01;
-    n[3] = 0.0;
-    
-    n.load(camera.pos).cross(camera.up).normalize();
-    n[3]=0.0;
-    n.normalize();
-    
-    //n.multVecMatrix(camera.irendermat);
 
-    let n2 = new Vector4();
-    n2[0] = 1; //x - this.start_mpos[0];
-    n2[1] = 0; //-(y - this.start_mpos[1]);
-    n2[2] = camera.near+0.01;
-    n2[3] = 0.0;
-      
-    n2.zero();
-    n2[2] = 1;
-    
+    let len = Math.sqrt(dx**2 + dy**2);
+
+    //camera.load(this.start_camera);
+
+    camera.load(this.start_camera);
+    camera.pos.sub(camera.target);
+
+    let n = new Vector4();
+    let nmat2 = new Matrix4(camera.cameramat);
+    nmat2.makeRotationOnly();
+    nmat2.invert();
+
+    n[0] = dy;
+    n[1] = -dx;
+    n[2] = 0.0
+    n[3] = 0.0;
+
+    n.multVecMatrix(nmat2);
+    n.normalize();
+
     let quat = new Quat();
-    quat.axisAngleToQuat(n, -dy);
+    quat.axisAngleToQuat(n, len*sign);
     let ymat = quat.toMatrix();
-    
-    quat = new Quat();
-    quat.axisAngleToQuat(n2, -dx);
-    let zmat = quat.toMatrix();
 
     let mat = new Matrix4();
     mat.multiply(ymat);
-    mat.multiply(zmat);
-    
+    //mat.multiply(zmat);
+
+    //mat.invert();
+
     camera.pos.multVecMatrix(mat);
-    
-    n = new Vector3(camera.pos);
-    n.normalize();
-    
-    if (Math.abs(n[2]) < 0.9) {
-      //camera.up.normalize();
-      camera.up.load(n).cross([0, 0, 1])
-      camera.up.cross(n).normalize()
-    } else {
-      camera.up.multVecMatrix(mat);
-      camera.up.normalize();
-    }
-    
+
+    let nmat = new Matrix4(mat);
+    nmat.makeRotationOnly();
+    camera.up.multVecMatrix(nmat);
+
+    //camera.up.normalize();
+    //camera.up.load(n).cross([0, 0, 1])
+    //camera.up.cross(n).normalize()
+
     camera.pos.add(camera.target);
     window.redraw_viewport(true);
 

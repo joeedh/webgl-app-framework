@@ -1028,7 +1028,7 @@ export class View3D extends Editor {
         return true;
       }
 
-      let node = this.getScreen().pickElement(e.x, e.y);
+      let node = this.pickElement(e.x, e.y);
 
       //console.log(node ? node.tagName : undefined);
       return node !== this && node !== this.overdraw;
