@@ -1334,7 +1334,7 @@ export class UniformTriRemesher extends Remesher {
       }
 
       tot++;
-      let v = mesh.collapseEdge(e, lctx);
+      let v = mesh.collapseEdge(e, undefined, lctx);
 
       if (v) {
         let mv = v.customData[cd_dyn_vert];
@@ -1883,9 +1883,9 @@ export function cleanupTris(mesh, faces, lctx) {
     }
 
     if (e.v1.valence < 5 || e.v2.valence < 5) {
-      mesh.collapseEdge(e, lctx);
+      mesh.collapseEdge(e, undefined, lctx);
     } else if (e.v1.valence > 6 && e.v2.valence > 6) {
-      mesh.dissolveEdge(e, lctx);
+      mesh.dissolveEdge(e, undefined, lctx);
     }
   }
 
@@ -2076,8 +2076,8 @@ export function cleanupQuads2(mesh, faces, lctx) {
       let v1 = l1.v, v2 = l1.next.v, v3 = l1.prev.v;
       co.load(v1).add(v2).add(v3).mulScalar(1.0/3.0);
 
-      mesh.collapseEdge(e1, lctx);
-      mesh.collapseEdge(e2, lctx);
+      mesh.collapseEdge(e1, undefined, lctx);
+      mesh.collapseEdge(e2, undefined, lctx);
 
       if (v1.eid >= 0) {
         v1.load(co);
@@ -2237,7 +2237,7 @@ function _cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
         }
 
         if (l2) {
-          mesh.collapseEdge(l2.e, lctx);
+          mesh.collapseEdge(l2.e, undefined, lctx);
 
           totv++;
         }
@@ -2355,7 +2355,7 @@ function _cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
               }
             }
           } else {
-            mesh.collapseEdge(l2.e, lctx);
+            mesh.collapseEdge(l2.e, undefined, lctx);
 
             if (totv++ > maxVerts) {
               //break;
@@ -2476,7 +2476,7 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
           }
 
           if (l2) {
-            mesh.collapseEdge(l2.e, lctx);
+            mesh.collapseEdge(l2.e, undefined, lctx);
 
             if (totv++ > maxVerts) {
               return;
@@ -2508,7 +2508,7 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
         for (let l2 of l.f.loops) {
           if (l2.v.valence === 4 && l2.next.v.valence === 4) {
             ok = true;
-            mesh.collapseEdge(l2.e, lctx);
+            mesh.collapseEdge(l2.e, undefined, lctx);
 
             if (totv++ > maxVerts) {
               return;
@@ -2613,7 +2613,7 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
 
       let newl = mesh.splitFace(f, l1, l2, lctx);
       if (newl) {
-        mesh.collapseEdge(newl.e, lctx);
+        mesh.collapseEdge(newl.e, undefined, lctx);
       }
     }
   }
@@ -2652,7 +2652,7 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
       ok2 = ok && count === 2;
 
       if (1 || !ok2) {
-        mesh.collapseEdge(e, lctx);
+        mesh.collapseEdge(e, undefined, lctx);
         continue;
       }
 
@@ -2675,16 +2675,16 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
       e1 = e1 ? e1.e : undefined;
       e2 = e2 ? e2.e : undefined;
 
-      let v = mesh.collapseEdge(e, lctx);
+      let v = mesh.collapseEdge(e, undefined, lctx);
       if (v) {
         mesh.dissolveVertex(v, lctx);
       }
 
       if (e1) {
-        //v1 = mesh.collapseEdge(e1, lctx);
+        //v1 = mesh.collapseEdge(e1, undefined, lctx);
       }
       if (e2) {
-        //v2 = mesh.collapseEdge(e2, lctx);
+        //v2 = mesh.collapseEdge(e2, undefined, lctx);
       }
 
 
@@ -2721,8 +2721,8 @@ export function cleanupQuads(mesh, faces = mesh.faces, lctx, maxVerts = 1e17) {
       let e1 = startl.e;
       let e2 = startl.next.next.e;
 
-      mesh.collapseEdge(e1, lctx);
-      mesh.collapseEdge(e2, lctx);
+      mesh.collapseEdge(e1, undefined, lctx);
+      mesh.collapseEdge(e2, undefined, lctx);
     }
   }
   console.log("QUAD");
@@ -2995,7 +2995,7 @@ export function cleanupQuadsOld(mesh, faces, lctx) {
           let newl = mesh.splitFace(l.f, l, l.next.next, lctx);
 
           if (newl) {
-            mesh.collapseEdge(newl.e, lctx);
+            mesh.collapseEdge(newl.e, undefined, lctx);
           }
 
           ret = false;
@@ -3105,7 +3105,7 @@ export function cleanupQuadsOld(mesh, faces, lctx) {
 
       if (minl) {// && Math.random() > 0.1) {
         stop = true;
-        mesh.collapseEdge(minl.e, lctx);
+        mesh.collapseEdge(minl.e, undefined, lctx);
         ret = false;
       }
 

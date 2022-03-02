@@ -393,6 +393,8 @@ export class TexPaintOp extends ToolOp {
     //let vs = bvh.closestVerts(co, radius);
     let ts = bvh.closestTris(co, radius);
 
+    console.log("TS", ts, radius);
+
     //log(ts, haveColor, cd_color);
     //*
     let avgno = new Vector3();

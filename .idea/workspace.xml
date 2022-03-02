@@ -6,21 +6,17 @@
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/image/ImageEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/image/ImageEditor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/properties/PropsEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/properties/PropsEditor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mathl/core/mathl.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mathl/core/mathl.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mathl/core/state.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mathl/core/state.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mathl/generators/javascript.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mathl/generators/javascript.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mathl/parser/jscc_util.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mathl/parser/jscc_util.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mathl/transform/process_ast.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mathl/transform/process_ast.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mathl/util/util.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mathl/util/util.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_texpaint.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_texpaint.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/unwrapping.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/unwrapping.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/util.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/util.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/shaders/shaders.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shaders/shaders.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/texture/proceduralTex.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/texture/proceduralTex.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops_base.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_remesh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_tess.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_tess.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/math.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/math.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -319,6 +315,11 @@
       <workItem from="1644951350517" duration="20172000" />
       <workItem from="1645023094744" duration="593000" />
       <workItem from="1645027753344" duration="15499000" />
+      <workItem from="1646024697508" duration="645000" />
+      <workItem from="1646029861084" duration="8000" />
+      <workItem from="1646031662160" duration="8830000" />
+      <workItem from="1646080518248" duration="14000" />
+      <workItem from="1646178952183" duration="3374000" />
     </task>
     <servers />
   </component>
@@ -343,7 +344,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/scripts/mesh/mesh.js</url>
-          <line>4847</line>
+          <line>5170</line>
           <option name="timeStamp" value="5" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">

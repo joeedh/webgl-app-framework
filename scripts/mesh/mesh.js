@@ -2325,6 +2325,8 @@ export class Mesh extends SceneObjectData {
 
     if (ok) {
       this._radialRemove(e, l);
+    } else {
+      console.error("could not remove loop from radial list");
     }
 
     return ok;
@@ -2344,9 +2346,16 @@ export class Mesh extends SceneObjectData {
     return this;
   }
 
-  collapseEdge(e, lctx, depth = 0) {
+  collapseEdge(e, v_keep = e.v1, lctx, snap=true, depth = 0) {
     let fi = 0, flen = 0;
     let ei = 0, elen = 0;
+
+    if (v_keep === e.v2) {
+      //swap v1/v2
+      let tmp = e.v1;
+      e.v1 = e.v2;
+      e.v2 = tmp;
+    }
 
     let v1 = e.v1;
     let v2 = e.v2;
@@ -2356,23 +2365,25 @@ export class Mesh extends SceneObjectData {
     let cdls = _collapsecd_ls;
     let cdws = _collapsecd_ws;
 
-    //snap loop customdata
-    for (let l of e.loops) {
-      cdls[0] = l;
-      cdls[1] = l.next;
+    if (snap) {
+      //snap loop customdata
+      for (let l of e.loops) {
+        cdls[0] = l;
+        cdls[1] = l.next;
+
+        cdws[0] = cdws[1] = 0.5;
+        this.loops.customDataInterp(l, cdls, cdws);
+        this.copyElemData(l.next, l);
+      }
+
+      //snap vertex customdata
+      cdls[0] = v1;
+      cdls[1] = v2;
 
       cdws[0] = cdws[1] = 0.5;
-      this.loops.customDataInterp(l, cdls, cdws);
-      this.copyElemData(l.next, l);
+
+      this.verts.customDataInterp(v1, cdls, cdws);
     }
-
-    //snap vertex customdata
-    cdls[0] = v1;
-    cdls[1] = v2;
-
-    cdws[0] = cdws[1] = 0.5;
-
-    this.verts.customDataInterp(v1, cdls, cdws);
 
     //clear flags
     for (let v of e.verts) {
@@ -2387,7 +2398,10 @@ export class Mesh extends SceneObjectData {
       }
     }
 
-    v1.interp(v2, 0.5);
+    if (snap) {
+      v1.interp(v2, 0.5);
+    }
+
     v1.flag |= MeshFlags.UPDATE;
 
     let fs = _collapsetemp;
@@ -2494,7 +2508,7 @@ export class Mesh extends SceneObjectData {
             break;
           }
 
-          let bad = l.v.flag & flag;
+          let bad = l.v === l.next.v;//l.v.flag & flag;
           l.v.flag |= flag;
 
           if (!bad) {
@@ -2606,7 +2620,7 @@ export class Mesh extends SceneObjectData {
 
           if (depth < 1) {
             e = this.eidmap[eid];
-            this.collapseEdge(e, lctx, depth + 1);
+            this.collapseEdge(e, v_keep, lctx, snap, depth + 1);
           }
         }//*/
       }
@@ -3670,7 +3684,84 @@ export class Mesh extends SceneObjectData {
     return e0;
   }
 
-  _fixFace(f, lctx, f_is_linked = true, relink = true) {
+  _fixFace2(f, lctx, is_linked=true) {
+    for (let list of f.lists) {
+      for (let l of list) {
+        this._radialRemoveSafe(l.e, l);
+      }
+    }
+
+    let tag = MeshFlags.FACE_EXIST_FLAG;
+
+    for (let i=0; i<f.lists.length; i++) {
+      let list = f.lists[i];
+
+      let l = list.l;
+
+      let _i = 0;
+      do {
+        if (l.v === l.next.v) {
+          console.warn("Duplicate verts in face 1");
+
+          if (list.l === l) {
+            list.l = l.next;
+          }
+
+          if (list.l === l) {
+            break;
+          }
+
+          l.next.prev = l.prev;
+          l.prev.next = l.next;
+
+          this._killLoop(l);
+        }
+
+        l.v.flag |= tag;
+
+        if (_i++ > 10000) {
+          console.warn("Infinite loop error!");
+          break;
+        }
+      } while ((l = l.next) !== list.l);
+
+      if (list.length < 3) {
+        f.lists.remove(list);
+        i--;
+      }
+    }
+
+    if (f.lists.length === 0) {
+      this._freeFace(f);
+      return undefined;
+    }
+
+    for (let list of f.lists) {
+      for (let l of list) {
+        let ok;
+
+        if (l.e) {
+          ok = (l.e.v1 === l.v && l.e.v2 === l.next.v);
+          ok = ok || (l.e.v2 === l.v && l.e.v1 === l.next.v)
+          ok = ok && (l.e.eid >= 0);
+        } else {
+          ok = false;
+        }
+
+        //if (!ok) {
+          l.e = this.ensureEdge(l.v, l.next.v);
+        //}
+
+        this._radialInsert(l.e, l);
+      }
+    }
+
+    return f;
+  }
+
+  _fixFace(f, lctx, f_is_linked = true, relink = true, warn = true) {
+    return this._fixFace2(f, lctx, f_is_linked);
+
     let ret = false;
 
     let _unlink = !f_is_linked;
@@ -3699,18 +3790,20 @@ export class Mesh extends SceneObjectData {
         let next = l.next;
 
         if (_i++ > MAX_FACE_VERTS*2) {
-          console.warn("infinite loop error");
+          console.warn("_fixFace: infinite loop error");
           break;
         }
 
         while (l.v === next.v) {
-          console.log("duplicate loop verts", l);
+          if (warn) {
+            console.warn("_fixFace: duplicate loop verts", l);
+          }
           ret = true;
 
           unlink();
 
           if (_i++ > MAX_FACE_VERTS*2) {
-            console.warn("infinite loop error");
+            console.warn("_fixFace: infinite loop error");
             break;
           }
 
@@ -4422,7 +4515,237 @@ export class Mesh extends SceneObjectData {
     return true;
   }
 
+
   dissolveEdge(e, lctx = undefined) {
+    //return this._dissolveEdge(e, lctx);
+
+    if (!e.l) {// || e.l === e.l.radial_next) {
+      this.killEdge(e, undefined, lctx);
+      return;
+    }
+
+    if (e.l === e.l.radial_next) {
+      console.error("cannot dissolve boundary edges");
+      return;
+    }
+
+    if (e.l.radial_prev !== e.l.radial_next) {
+      console.error("splitting non-manifold radial cycle");
+
+      /*split the radial cycle if we're non-manifold*/
+      let es = [e];
+
+      let _i = 0;
+      while (e.l.radial_prev !== e.l.radial_next) {
+        if (_i++ > 100) {
+          console.error("infinite loop error");
+          break;
+        }
+
+        let e2 = this.makeEdge(e.v1, e.v2, false);
+        es.push(e2);
+
+        let l1 = e.l;
+        let l2 = e.l.radial_next;
+
+        this._radialRemove(e, l1);
+        this._radialRemove(e, l2);
+
+        l1.e = e2;
+        l2.e = e2;
+        this._radialInsert(e2, l1);
+        this._radialInsert(e2, l2);
+      }
+
+      let f = undefined;
+
+      for (let e2 of es) {
+        let f2 = this.dissolveEdge(e2);
+        if (f2 && !f) {
+          f = f2;
+        }
+      }
+
+      return f;
+    }
+
+    let l1 = e.l;
+    let l2 = e.l.radial_next;
+
+    if (l1.f === l2.f && e.v1.valence === 1 || e.v2.valence === 1) {
+      console.warn("Intruding edge!");
+
+      let v = e.v1.valence > 1 ? e.v1 : e.v2;
+
+      this.collapseEdge(e, v, false);
+      return;
+    }
+
+    if (l2.v === l1.v) {
+      console.error("dissolveEdge: fixing winding");
+      this.reverseWinding(l2.f);
+
+      l1 = e.l;
+      l2 = e.l.radial_next;
+    }
+
+    let f1 = l1.f;
+    let f2 = l2.f;
+
+    let l2list = l2.list;
+
+    if (f1.lists.length > 1 || f2.lists.length > 1) {
+      //console.error("IMPLEMENT me: holes in dissolveEdge!");
+      //return;
+    }
+
+    /*
+    | |             ^
+    | v             |
+    | ------l2------>
+    |=================
+    | <-----l1-------
+    | |             ^
+    | v             |
+
+
+     */
+
+    for (let list of f1.lists) {
+      for (let l of list) {
+        this._radialRemove(l.e, l);
+        l.radial_next = l.radial_prev = l;
+      }
+    }
+
+    if (f2 !== f1) {
+      for (let list of f2.lists) {
+        for (let l of list) {
+          this._radialRemove(l.e, l);
+          l.radial_next = l.radial_prev = l;
+        }
+      }
+    }
+
+    if (l1 === l1.list.l) {
+      l1.list.l = l1.next;
+    }
+
+    if (l1 === l1.list.l && f1 === f2) {
+      l1.list.l = l1.next;
+    }
+
+    l1.prev.next = l2.next;
+    l1.next.prev = l2.prev;
+
+    l2.next.prev = l1.prev;
+    l2.prev.next = l1.next;
+
+    let l3 = l1.prev;
+    let l4 = l2.prev;
+
+    if (l1 === l1.list.l) {
+      this._killLoop(l1);
+      this._killLoop(l2);
+
+      console.error("Emply face is dissolveEdge");
+      this._freeFace(f1);
+      return;
+    }
+
+    let _i = 0;
+
+    let count1 = 0;
+    let lc = l3;
+    do {
+      if (_i++ > 1000) {
+        console.error("infinite loop error");
+        break;
+      }
+
+      count1++;
+    } while ((lc = lc.next) !== l3);
+
+    let count2 = 0;
+    lc = l4;
+    do {
+      if (_i++ > 1000) {
+        console.error("infinite loop error");
+        break;
+      }
+
+      count2++;
+    } while ((lc = lc.next) !== l4);
+
+    console.error("count1,2", count1, count2, l1.list.length, l2.list.length);
+
+    if (count1 !== l1.list.length + l2.list.length - 2 || count1 !== count2) {
+      console.error("Dissolving created a hole", count1, count2, l1.list.length, l2.list.length);
+
+      let list = new LoopList();
+      list.l = l4;
+
+      f1.lists.push(list);
+    }
+
+    this._killLoop(l1);
+    this._killLoop(l2);
+
+    if (f2 !== f1) {
+      for (let list of f2.lists) {
+        if (list !== l2list) {
+          f1.lists.push(list);
+        }
+      }
+
+      f2.lists.length = 0;
+      this._freeFace(f2);
+    }
+
+    for (let list of f1.lists) {
+      let count = 0;
+      let _i = 0;
+
+      for (let l of list) {
+        l.list = list;
+        l.f = f1;
+
+        if (_i++ > 100) {
+          console.error("infinite loop error");
+          debugger;
+
+          this._freeFace(f1);
+          return undefined;
+        }
+
+        count++;
+      }
+
+      list.length = count;
+    }
+
+    this.killEdge(e);
+
+    for (let list of f1.lists) {
+      for (let l of list) {
+        l.list = list;
+        l.f = f1;
+
+        if (l.v !== l.next.v) {
+          l.e = this.ensureEdge(l.v, l.next.v);
+          this._radialInsert(l.e, l);
+        }
+      }
+    }
+
+    this._fixFace(f1);
+
+    f1.ensureBoundaryFirst();
+    return f1;
+  }
+
+
+  _dissolveEdge(e, lctx = undefined) {
     if (!e.l || e.l === e.l.radial_next) {
       this.killEdge(e, undefined, lctx);
       return;
@@ -6576,7 +6899,7 @@ export class Mesh extends SceneObjectData {
         }
 
         for (let l of ls) {
-          if (l.v.flag & flag) {
+          if (l.next.v === l.v) {
             console.warn("Duplicate verts in face", f, l.v);
             msg_out[0] = "Duplicate verts in face";
             fix = true;
@@ -6785,10 +7108,17 @@ export class Mesh extends SceneObjectData {
         list.length = 0;
 
         for (let l of list) {
-          l.e = this.getEdge(l.v, l.next.v);
+          //old file?
+          if (l.e === undefined) {
+            l.e = this.getEdge(l.v, l.next.v);
+          } else {
+            l.e = this.eidMap.get(l.e);
+          }
 
           if (!l.e) {
-            console.error("Mesh corruption error; fixing...", l);
+            l.e = this.getEdge(l.v, l.next.v);
+
+            util.console.warn("Mesh corruption error; fixing...", l);
 
             if (l.next.v === l.v) {
               //bad loop!

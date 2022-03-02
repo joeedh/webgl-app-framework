@@ -3442,6 +3442,10 @@ export class DissolveEdgesOp extends MeshOp {
       }
 
       for (let e of new Set(mesh.edges.selected.editable)) {
+        if (e.eid < 0) {
+          continue;
+        }
+
         mesh.dissolveEdge(e, lctx);
       }
 
@@ -3528,7 +3532,7 @@ export class CollapseEdgesOp extends MeshOp {
           continue;
         }
 
-        mesh.collapseEdge(e, lctx);
+        mesh.collapseEdge(e, undefined, lctx);
       }
 
       mesh.regenAll();

@@ -42,10 +42,10 @@ export class CDT {
 
     let loop2 = [];
 
-    for (let i=0; i<loop.length; i += 3) {
+    for (let i = 0; i < loop.length; i += 3) {
 
       v1[0] = loop[i];
-      v1[1] = loop[i+1];
+      v1[1] = loop[i + 1];
 
       if (i > 0 && v1.vectorDistance(v2) < EPS) {
         console.log("coincident vertex");
@@ -56,8 +56,8 @@ export class CDT {
       this.max.max(v1);
 
       loop2.push(loop[i]);
-      loop2.push(loop[i+1]);
-      loop2.push(loop[i+2]);
+      loop2.push(loop[i + 1]);
+      loop2.push(loop[i + 2]);
 
       let t = v1;
       v1 = v2;
@@ -74,28 +74,41 @@ export class CDT {
     let i = 0;
 
     let _trihash = new Map();
+
     function trihash(a, b, c) {
       a = a.eid;
       b = b.eid;
       c = c.eid;
 
       if (a < b) {
-        let t = a; a = b; b = t;
+        let t = a;
+        a = b;
+        b = t;
       }
       if (a < c) {
-        let t = a; a = c; c = t;
+        let t = a;
+        a = c;
+        c = t;
       }
       if (b < a) {
-        let t = b; b = a; a = t;
+        let t = b;
+        b = a;
+        a = t;
       }
       if (b < c) {
-        let t = b; b = c; c = t;
+        let t = b;
+        b = c;
+        c = t;
       }
       if (c < a) {
-        let t = c; c = a; a = t;
+        let t = c;
+        c = a;
+        a = t;
       }
       if (c < b) {
-        let t = c; c = b; b = t;
+        let t = c;
+        c = b;
+        b = t;
       }
 
       //*
@@ -111,13 +124,13 @@ export class CDT {
       if (c !== t1 && c !== t3) {
         t2 = c;
       }
-      a=t1;
-      b=t2;
-      c=t3;
+      a = t1;
+      b = t2;
+      c = t3;
       //*/
 
       //return `${a}:${b}:${c}`;
-      return a | (b << 13) | (c << 25);
+      return a | (b<<13) | (c<<25);
     }
 
     function triexists(a, b, c) {
@@ -135,7 +148,7 @@ export class CDT {
       let f = _trihash.get(trihash(a, b, c));
 
       if (f) {
-        console.log("tri exists");
+        //console.log("tri exists");
         return f;
       }
 
@@ -160,8 +173,8 @@ export class CDT {
 
     let edges = [];
 
-    for (let i=0; i<inedges.length; i += 3) {
-      let v1 = inedges[i], v2 = inedges[i+1], is_outer = inedges[i+2];
+    for (let i = 0; i < inedges.length; i += 3) {
+      let v1 = inedges[i], v2 = inedges[i + 1], is_outer = inedges[i + 2];
       v1 = verts[v1];
       v2 = verts[v2];
 
@@ -183,8 +196,8 @@ export class CDT {
 
     let vs = [0, 0, 0];
 
-    for (let i=0; i<tris.length; i += 3) {
-      let v1 = tris[i], v2 = tris[i+1], v3 = tris[i+2];
+    for (let i = 0; i < tris.length; i += 3) {
+      let v1 = tris[i], v2 = tris[i + 1], v3 = tris[i + 2];
       v1 = verts[v1];
       v2 = verts[v2];
       v3 = verts[v3];
@@ -208,7 +221,7 @@ export class CDT {
 
     let infloop_limit = me.edges.length>>1;
     let stopiter = false;
-    for (let si=0; !stopiter && si<infloop_limit; si++) {
+    for (let si = 0; !stopiter && si < infloop_limit; si++) {
       stopiter = true;
 
       for (let e1 of me.edges) {
@@ -303,25 +316,73 @@ export class CDT {
     let w = 0;
 
     let outer = me.edges.filter(e => e.flag & OUTER);
-    for (let i=0; i<outer.length; i++) {
-      let e1 = outer[i];
-      let e2 = outer[(i+1) % outer.length]
 
-      let v1, v2, v3;
+    let cent = new Vector3();
+    let tot = 0.0;
 
-      if (e2.has(e1.v2)) {
-        v1 = e1.v1;
-        v2 = e1.v2;
-        v3 = e2.otherVertex(v2);
-      } else if (e2.has(e1.v1)) {
-        v1 = e1.v2;
-        v2 = e1.v1;
-        v3 = e2.otherVertex(v2);
-      } else {
-        console.warn("Mesh Error");
+    for (let e of outer) {
+      cent.add(e.v1);
+      cent.add(e.v2);
+      tot++;
+    }
+
+    if (tot) {
+      cent.mulScalar(1.0/tot);
+    }
+
+    for (let e of outer) {
+      let startv = e.v1;
+      let v = startv;
+      let _i = 0;
+
+      while (1) {
+        if (_i++ > 10000) {
+          console.warn("infinite loop error");
+          break;
+        }
+
+        v = e.otherVertex(v);
+        math.normal_tri(startv, v, cent);
+
+        w += cent[2] < 0.0 ? -1 : 1;
+
+        let nexte;
+        for (let e2 of v.edges) {
+          if (e2 !== e && (e2.flag & OUTER)) {
+            nexte = e2;
+            break;
+          }
+        }
+
+        e = nexte;
+
+        if (v === startv) {
+          break;
+        }
       }
+    }
 
-      w += math.winding(v1, v2, v3)*2.0 - 1.0;
+    if (0) {
+      for (let i = 0; i < outer.length; i++) {
+        let e1 = outer[i];
+        let e2 = outer[(i + 1)%outer.length]
+
+        let v1, v2, v3;
+
+        if (e2.has(e1.v2)) {
+          v1 = e1.v1;
+          v2 = e1.v2;
+          v3 = e2.otherVertex(v2);
+        } else if (e2.has(e1.v1)) {
+          v1 = e1.v2;
+          v2 = e1.v1;
+          v3 = e2.otherVertex(v2);
+        } else {
+          console.warn("Mesh Error");
+        }
+
+        w += math.winding(v1, v2, v3)*2.0 - 1.0;
+      }
     }
 
     return w >= 0.0;
@@ -438,8 +499,8 @@ export class CDT {
   unnormalize(co) {
     let scale = this._normScale;
 
-    co[0] = co[0] / scale + this.min[0];
-    co[1] = co[1] / scale + this.min[1];
+    co[0] = co[0]/scale + this.min[0];
+    co[1] = co[1]/scale + this.min[1];
 
     return co;
   }
@@ -451,14 +512,14 @@ export class CDT {
     co[0] = co[0] === 0.0 ? 1.0 : co[0];
     co[1] = co[1] === 0.0 ? 1.0 : co[1];
 
-    let scale = 100.0 / Math.max(co[0], co[1]);
+    let scale = 100.0/Math.max(co[0], co[1]);
 
     this._normScale = scale;
 
     for (let loop of this.loops) {
-      for (let i=0; i<loop.length; i += 3) {
-        loop[i] = (loop[i] - min[0]) * scale;
-        loop[i+1] = (loop[i+1] - min[1]) * scale;
+      for (let i = 0; i < loop.length; i += 3) {
+        loop[i] = (loop[i] - min[0])*scale;
+        loop[i + 1] = (loop[i + 1] - min[1])*scale;
       }
     }
   }
@@ -468,7 +529,7 @@ export class CDT {
     return this.generate_intern();
   }
 
-  generate_intern(trimHoles=true) {
+  generate_intern(trimHoles = true) {
     this.normalizeLoops();
 
     let verts = [];
@@ -476,8 +537,8 @@ export class CDT {
     let vset = new util.set();
 
     for (let l of this.loops) {
-      for (let i=0; i<l.length; i += 3) {
-        let v2 = [l[i], l[i+1], l[i+2]];
+      for (let i = 0; i < l.length; i += 3) {
+        let v2 = [l[i], l[i + 1], l[i + 2]];
 
         verts.push(v2);
         this.verts.push(v2);
@@ -487,8 +548,8 @@ export class CDT {
     let tris = Delaunay.triangulate(verts);
 
     //make consistent winding
-    for (let i=0; this.fixWinding && i<tris.length; i += 3) {
-      let v1 = tris[i], v2 = tris[i+1], v3 = tris[i+2];
+    for (let i = 0; this.fixWinding && i < tris.length; i += 3) {
+      let v1 = tris[i], v2 = tris[i + 1], v3 = tris[i + 2];
 
       v1 = verts[v1];
       v2 = verts[v2];
@@ -498,8 +559,8 @@ export class CDT {
 
       if (w) {
         let t = tris[i];
-        tris[i] = tris[i+2];
-        tris[i+2] = t;
+        tris[i] = tris[i + 2];
+        tris[i + 2] = t;
       }
     }
 
@@ -514,12 +575,12 @@ export class CDT {
     for (let l of this.loops) {
       let outer = l === this.loops[0];
 
-      for (let i=0; i<l.length; i += 3) {
-        let a = (i + 3) % l.length;
+      for (let i = 0; i < l.length; i += 3) {
+        let a = (i + 3)%l.length;
         let b = i;
 
-        a = l[a+2];
-        b = l[b+2];
+        a = l[a + 2];
+        b = l[b + 2];
 
         a = vmap[a];
         b = vmap[b];
@@ -532,7 +593,7 @@ export class CDT {
 
     tris = this.constrain(tris, verts, edges, trimHoles);
 
-    for (let i=0; i<tris.length; i++) {
+    for (let i = 0; i < tris.length; i++) {
       tris[i] = verts[tris[i]][2];
     }
 
@@ -548,6 +609,10 @@ let mtmp = new Matrix4();
 function fillFace(f, loopTris) {
   let m = mtmp;
 
+  if (f.no.dot(f.no) === 0.0) {
+    f.calcNormal();
+  }
+
   m.makeIdentity();
   m.makeNormalMatrix(f.no);
   m.invert();
@@ -557,7 +622,7 @@ function fillFace(f, loopTris) {
   let co = fco1;
   let cdt = new CDT();
 
-  function vsmooth(v, fac=0.5) {
+  function vsmooth(v, fac = 0.5) {
     let co = fco2;
     let tot = 0;
 
@@ -570,7 +635,7 @@ function fillFace(f, loopTris) {
     if (tot < 2) {
       return co.load(v);
     } else {
-      co.mulScalar(1.0 / tot);
+      co.mulScalar(1.0/tot);
       co.interp(v, 1.0 - fac);
       return co;
     }
@@ -578,8 +643,10 @@ function fillFace(f, loopTris) {
 
   let loops = [];
 
-  let minx=1e17, miny=1e17;
-  let maxx=-1e17, maxy=-1e17;
+  let minx = 1e17, miny = 1e17;
+  let maxx = -1e17, maxy = -1e17;
+
+  f.ensureBoundaryFirst();
 
   for (let list of f.lists) {
     let vs = [];
@@ -587,8 +654,8 @@ function fillFace(f, loopTris) {
     loops.push(vs);
 
     for (let l of list) {
-      //co.load(l.v);
-      co.load(vsmooth(l.v, 0.15));
+      co.load(l.v);
+      //co.load(vsmooth(l.v, 0.15));
 
       co.multVecMatrix(m);
       co[2] = 0.0;
@@ -607,20 +674,27 @@ function fillFace(f, loopTris) {
       vs.push(co[1]);
       vs.push(l.eid);
     }
+
     cdt.addLoop(vs);
   }
 
   for (let vs of loops) {
     let sx = maxx - minx, sy = maxy - miny;
     if (sx > 0 && sy > 0) {
-      for (let i=0; i<vs.length; i += 3) {
-        vs[i] = (vs[i] - minx) / sx;
-        vs[i+1] = (vs[i+1] - miny) / sy;
+      for (let i = 0; i < vs.length; i += 3) {
+        vs[i] = (vs[i] - minx)/sx;
+        vs[i + 1] = (vs[i + 1] - miny)/sy;
+
+        if (isNaN(vs[i]) | isNaN(vs[i + 1])) {
+          console.error(vs[i].toFixed(4), vs[i + 1].toFixed(4));
+          throw new Error("NaN!");
+        }
       }
     }
   }
 
   cdt.generate();
+  console.log(cdt.triangles.length/3);
 
   for (let eid of cdt.triangles) {
     let l = idmap[eid];
@@ -708,7 +782,7 @@ export function triangulateQuad(mesh, f, lctx, newfaces) {
   mesh.killFace(f, lctx);
 }
 
-export function triangulateFace(f, loopTris=[]) {
+export function triangulateFace(f, loopTris = []) {
   if (f.lists[0].length === 3 && f.lists.length === 1) {
     let l = f.lists[0].l;
 
@@ -751,12 +825,12 @@ export function triangulateFace(f, loopTris=[]) {
   return loopTris;
 }
 
-const LCMD = 0, LTOT=8;
+const LCMD = 0, LTOT = 8;
 
-const CGOTO=0, CRADIAL_NEXT=1, CNEXT=2, CPREV=3, CLIST_START=4,
-    CMARKL1=5, CMARKL2=6, CMARKL3=7, CPUSHCD_VERTEX=8,
-    CPUSHCD_LOOP=9, CRESETCD=10, CPUSHCO=11, CRESETCO=12,
-    CINTERPV=13, CINTERPL=14, CMAKETRI=15;
+const CGOTO = 0, CRADIAL_NEXT = 1, CNEXT = 2, CPREV = 3, CLIST_START = 4,
+      CMARKL1                                                        = 5, CMARKL2                                           = 6, CMARKL3 = 7, CPUSHCD_VERTEX = 8,
+      CPUSHCD_LOOP                                                   = 9, CRESETCD = 10, CPUSHCO                       = 11, CRESETCO = 12,
+      CINTERPV                                                       = 13, CINTERPL = 14, CMAKETRI                         = 15;
 
 function execCommands(mesh, lst, loop, tri, cd_color, cd_uv, maketri) {
   let l = loop;
@@ -773,7 +847,7 @@ function execCommands(mesh, lst, loop, tri, cd_color, cd_uv, maketri) {
   let vdata = mesh.verts.customData;
   let ldata = mesh.loops.customData;
 
-  for (let i=0; i<cd_regs.length; i++) {
+  for (let i = 0; i < cd_regs.length; i++) {
     let cdata = [];
 
     for (let layer of mesh.verts.customData.flatlist) {
@@ -784,10 +858,10 @@ function execCommands(mesh, lst, loop, tri, cd_color, cd_uv, maketri) {
     cd_regs[i] = [[], []];
     co_regs[i] = [new Vector3(), 0];
     cd_dst_verts[i] = {
-      no : new Vector3(),
-      co : new Vector3(),
-      cdata : cdata,
-      index : i
+      no   : new Vector3(),
+      co   : new Vector3(),
+      cdata: cdata,
+      index: i
     }
 
     cdata = [];
@@ -797,13 +871,13 @@ function execCommands(mesh, lst, loop, tri, cd_color, cd_uv, maketri) {
     }
 
     cd_dst_loops[i] = {
-      cdata : cdata,
-      v : 0,
-      index : i
+      cdata: cdata,
+      v    : 0,
+      index: i
     }
   }
 
-  for (let ci=0; ci<lst.length; ci += LTOT) {
+  for (let ci = 0; ci < lst.length; ci += LTOT) {
     let cmd = lst[ci];
 
     switch (cmd) {
@@ -878,21 +952,21 @@ function execCommands(mesh, lst, loop, tri, cd_color, cd_uv, maketri) {
 
       case CINTERPV: {
         let reg = lst[ci + 1];
-        let dstv = lst[ci+2];
+        let dstv = lst[ci + 2];
 
         let v = cd_dst_verts[dstv];
         let r = cd_regs[reg];
 
         vdata.interp(v.cdata, r[0], r[1]);
-        v.co.load(co_regs[reg][0]).mulScalar(1.0 / co_regs[reg][1]);
+        v.co.load(co_regs[reg][0]).mulScalar(1.0/co_regs[reg][1]);
 
         break;
       }
 
       case CINTERPL: {
-        let reg = lst[ci+1];
-        let dstl = lst[ci+2];
-        let v = lst[ci+3];
+        let reg = lst[ci + 1];
+        let dstl = lst[ci + 2];
+        let v = lst[ci + 3];
         let r = cd_regs[reg];
 
         let l = cd_dst_loops[dstl];
@@ -904,9 +978,9 @@ function execCommands(mesh, lst, loop, tri, cd_color, cd_uv, maketri) {
       }
 
       case CMAKETRI: {
-        let l1 = lst[ci+1];
-        let l2 = lst[ci+2];
-        let l3 = lst[ci+3];
+        let l1 = lst[ci + 1];
+        let l2 = lst[ci + 2];
+        let l3 = lst[ci + 3];
 
         let vcd, lcd, no, co, uv, color;
 
@@ -980,8 +1054,8 @@ export function applyTriangulation(mesh, f, newfaces, newedges, lctx) {
 
   let ltris = triangulateFace(f);
 
-  for (let i=0; i<ltris.length; i += 3) {
-    let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
+  for (let i = 0; i < ltris.length; i += 3) {
+    let l1 = ltris[i], l2 = ltris[i + 1], l3 = ltris[i + 2];
 
     let e1, e2, e3;
     if (newedges) {
@@ -1012,7 +1086,7 @@ export function applyTriangulation(mesh, f, newfaces, newedges, lctx) {
       mesh.reverseWinding(tri);
     }
     //if (tri.no.dot(f.no) < 0) {
-      //mesh.reverseWinding(tri);
+    //mesh.reverseWinding(tri);
     //}
 
     tri.flag |= MeshFlags.UPDATE;

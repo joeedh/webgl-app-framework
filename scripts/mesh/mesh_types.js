@@ -2195,6 +2195,7 @@ export class Loop extends Element {
 }
 Loop.STRUCT = STRUCT.inherit(Loop, Element, "mesh.Loop") + `
   v           : int | obj.v.eid;
+  e           : int | obj.e.eid;
 }
 `;
 
@@ -2531,6 +2532,32 @@ export class Face extends Element {
     }
 
     return count;
+  }
+
+  ensureBoundaryFirst() {
+    let maxlist, maxlen;
+
+    for (let list of this.lists) {
+      let len = 0.0;
+
+      for (let l of list) {
+        len += l.v.vectorDistance(l.next.v);
+      }
+
+      if (!maxlist || len > maxlen) {
+        maxlist = list;
+        maxlen = len;
+      }
+    }
+
+    let i = this.lists.indexOf(maxlist);
+
+    if (i !== 0) {
+      this.lists[i] = this.lists[0];
+      this.lists[0] = maxlist;
+    }
+
+    return this;
   }
 
   isNgon() {

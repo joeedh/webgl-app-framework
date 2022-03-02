@@ -604,25 +604,61 @@ export class MeshEditor extends MeshToolBase {
     sm.primflag = PrimitiveTypes.LINES;
 
     let a = new Vector3(), b = new Vector3(), c = new Vector3();
-    let d = new Vector3(), e = new Vector3();
+    let d = new Vector3(), e = new Vector3(), g = new Vector3();
+    let h = new Vector3();
     let color = [0, 0, 0, 1];
 
     let ctmps = util.cachering.fromConstructor(Vector3, 64);
     let rtmps = new util.cachering(() => [new Vector3(), new Vector3(), new Vector3()], 32);
 
     function calcloop(l) {
-      let fac = 0.9;
+      let fac;
       let f = l.f;
 
       let ret = rtmps.next();
       let a = ret[0], b = ret[1], c = ret[2];
 
-      a.load(l.v).sub(f.cent).mulScalar(fac).add(f.cent);
-      b.load(l.next.v).sub(f.cent).mulScalar(fac).add(f.cent);
+      if (l.f.area) {
+        let count = 0.0;
+
+        for (let list of l.f.lists) {
+          for (let l of list) {
+            count++;
+          }
+        }
+
+        fac = Math.sqrt(l.f.area)/count*0.35;
+        fac = (fac + a.vectorDistance(b)*0.2)*0.5;
+      } else {
+        fac = a.vectorDistance(b)*0.2;
+      }
+
+      g.load(b).sub(a).cross(f.no).normalize();
+      h.load(l.v).interp(l.next.v, 0.5).sub(f.cent).negate().normalize();
+
+      //if (g.dot(h) < 0.0) {
+      //  g.negate();
+      //}
+      g.load(h);
+
+      a.load(l.v).addFac(g, fac);
+      b.load(l.next.v).addFac(g, fac);
+
+
+      //a.load(l.v).sub(f.cent).mulScalar(fac).add(f.cent);
+      //b.load(l.next.v).sub(f.cent).mulScalar(fac).add(f.cent);
 
       c.load(a).interp(b, 0.5);
-      a.interp(c, 0.1);
-      b.interp(c, 0.1);
+      a.interp(c, 0.225);
+      b.interp(c, 0.225);
+
+      let scale = l.v.vectorDistance(f.cent)*0.03;
+
+      for (let i = 0; i < 3; i++) {
+        a[i] += (Math.random() - 0.5)*scale;
+        b[i] += (Math.random() - 0.5)*scale;
+        c[i] += (Math.random() - 0.5)*scale;
+      }
 
       return ret;
     }
@@ -635,6 +671,11 @@ export class MeshEditor extends MeshToolBase {
 
         let line = sm.line(a, b);
         line.colors(color, color);
+
+        if (f.no.dot(f.no) === 0.0) {
+          f.calcCent();
+          f.calcNormal();
+        }
 
         d.load(b).interp(f.cent, 0.1);
 

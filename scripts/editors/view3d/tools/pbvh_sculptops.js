@@ -6151,7 +6151,7 @@ export class PaintOp extends PaintOpBase {
         continue;
       }
 
-      mesh.collapseEdge(e, lctx);
+      mesh.collapseEdge(e, undefined, lctx);
     }
 
     for (let e of es3) {

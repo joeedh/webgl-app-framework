@@ -137,10 +137,12 @@ export class MeshOp extends View3DOp {
     //check for mesh structure errors
     let msg = [""];
     for (let mesh of this.getMeshes(ctx)) {
-      if (!mesh.validateMesh(msg)) {
-        ctx.warning("Mesh error: " + msg);
-        ctx.toolstack.toolCancel(ctx, this);
-        break;
+      if (1) {
+        if (!mesh.validateMesh(msg)) {
+          ctx.warning("Mesh error: " + msg);
+          ctx.toolstack.toolCancel(ctx, this);
+          break;
+        }
       }
     }
 
