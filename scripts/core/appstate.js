@@ -45,7 +45,6 @@ import {makeCube} from './mesh_shapes.js';
 import {NodeFlags} from "./graph.js";
 import {ShaderNetwork, makeDefaultShaderNetwork} from "../shadernodes/shadernetwork.js";
 
-cconst2.loadConstants(cconst);
 
 let STRUCT = nstructjs.STRUCT;
 

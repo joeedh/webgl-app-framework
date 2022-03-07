@@ -720,12 +720,13 @@ export class Editor extends Area {
       this.pop_ctx_active();
     }
 
+    /*
     this.addEventListener("dragover", cb, {passive: true});
     this.addEventListener("mouseenter", cb, {passive: true});
     this.addEventListener("mouseover", cb, {passive: true});
     this.addEventListener("mousein", cb, {passive: true});
     this.addEventListener("focus", cb, {passive: true});
-
+*/
     this.defineKeyMap();
 
     this.container.ctx = this.ctx;

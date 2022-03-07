@@ -1,9 +1,10 @@
 let exports = {
   addonLoadWaitTime : 500,
+  svgIcons : true,
   pathuxConfig: {
     addHelpPickers: true,
 
-    useAreaTabSwitcher: false,
+    useAreaTabSwitcher: true,
     autoSizeUpdate: true,
     showPathsInToolTips: true,
     colorSchemeType: "dark",
@@ -14,6 +15,39 @@ let exports = {
 
     //timeout for press-and-hold (touch) version of double clicking
     doubleClickHoldTime: 750
+  },
+
+  DEBUG : {
+    simplemesh : false,
+    enableDebugGraphPanel : true,
+    verboseDataPath : 0, //show verbose data path debug messages
+    gl  : 0,
+    fbo : 0,
+    doOnce : false,
+    modalEvents : true,
+
+    domEvents : false,
+    domEventAddRemove : false,
+
+    datapaths : false,
+
+    screenAreaPosSizeAccesses : false,
+    buttonEvents : false,
+
+    debugUIUpdatePerf : false,
+
+    contextSystem : 0,
+    screenborders : false,
+    allBordersMovable: false,
+
+    areaConstraintSolver: false
+
+    /*
+    customWindowSize : {
+      width : 512,
+      height :  512
+    }
+    //*/
   },
 
   cacheSelectBufs: true

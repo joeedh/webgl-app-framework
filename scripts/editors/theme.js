@@ -56,6 +56,7 @@ export const theme = {
       size   : 12,
       color  : 'rgba(255,255,255, 1)'
     }),
+    "flex-grow"         : "unset",
     Disabled            : {
       'background-color': 'rgb(72, 72, 72)',
       'background-size' : '5px 3px',
@@ -242,7 +243,7 @@ export const theme = {
     'margin-top'      : 1,
     padding           : 2,
     width             : 32,
-    depressed: {
+    depressed         : {
       drawCheck         : true,
       'background-color': 'rgba(48,48,48, 1)',
       'border-color'    : 'rgb(0,0,0)',
@@ -395,6 +396,10 @@ export const theme = {
   numslider_simple: {
     SlideHeight       : 10,
     TextBoxWidth      : 45,
+    "border-color"    : "black",
+    "border-radius"   : 5,
+    "border-width"    : 1,
+    "border-style"    : "solid",
     'background-color': 'rgba(162,162,162, 1)',
     height            : 18,
     labelOnTop        : true,
@@ -464,8 +469,8 @@ export const theme = {
   screenborder: {
     'border-inner'   : 'rgba(127,127,127, 1)',
     'border-outer'   : 'rgba(8,8,8, 1)',
-    'border-width'   : 2,
-    'mouse-threshold': 5,
+    'border-width'   : 3,
+    'mouse-threshold': 9,
   },
 
   scrollbars: {

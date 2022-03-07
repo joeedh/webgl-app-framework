@@ -1076,8 +1076,8 @@ export class View3D extends Editor {
     });
 
     let on_mousedown = (e) => {
-      console.log("HAVE MODAL", haveModal());
-      console.log("touch", eventWasTouch(e), e);
+      //console.log("HAVE MODAL", haveModal());
+      //console.log("touch", eventWasTouch(e), e);
 
       if (uiHasFocus(e)) {
         return;
@@ -1437,7 +1437,7 @@ export class View3D extends Editor {
   }
 
   viewportDraw() {
-    if (cconst.DEBUG.debugUIUpdatePerf) {
+    if (window.DEBUG.debugUIUpdatePerf) {
       return;
     }
 
