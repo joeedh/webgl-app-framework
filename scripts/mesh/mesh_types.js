@@ -5,7 +5,7 @@ import {
   MAX_EDGE_FACES, MAX_FACE_VERTS, MAX_VERT_EDGES,
   ReusableIter, MeshIterFlags, STORE_DELAY_CACHE_INDEX, DEBUG_FREE_STACKS
 } from "./mesh_base.js";
-import {Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
+import {Vector3, Vector4, Quat, Matrix4, BaseVector} from "../util/vectormath.js";
 import * as util from "../util/util.js";
 import {UVLayerElem} from "./mesh_customdata.js";
 import {nstructjs} from '../path.ux/pathux.js';
@@ -806,6 +806,110 @@ class VertexReader {
 
 const vertexReader = new VertexReader();
 
+/** used for debugging */
+export class Vector3Array extends BaseVector {
+  constructor(co) {
+    super();
+
+    this.length = 3;
+
+    if (co) {
+      this.load(co);
+    } else {
+      this[0] = this[1] = this[2] = 0.0;
+    }
+  }
+
+  loadXYZ(x,y, z) {
+    this[0] = x;
+    this[1] = y;
+    this[2] = z;
+    return this;
+  }
+
+  loadXY(x, y) {
+    this[0] = x;
+    this[1] = y;
+    return this;
+  }
+
+  initVector3() {
+    this.length = 3;
+    this[0] = this[1] = this[2] = 0.0;
+  }
+
+  load(b) {
+    this[0] = b[0];
+    this[1] = b[1];
+    this[2] = b[2];
+    return this;
+  }
+
+  dot(b) {
+    return this[0]*b[0] + this[1]*b[1] + this[2]*b[2];
+  }
+
+
+  multVecMatrix(matrix, ignore_w) {
+    if (ignore_w === undefined) {
+      ignore_w = false;
+    }
+    var x = this[0];
+    var y = this[1];
+    var z = this[2];
+    this[0] = matrix.$matrix.m41 + x*matrix.$matrix.m11 + y*matrix.$matrix.m21 + z*matrix.$matrix.m31;
+    this[1] = matrix.$matrix.m42 + x*matrix.$matrix.m12 + y*matrix.$matrix.m22 + z*matrix.$matrix.m32;
+    this[2] = matrix.$matrix.m43 + x*matrix.$matrix.m13 + y*matrix.$matrix.m23 + z*matrix.$matrix.m33;
+    var w = matrix.$matrix.m44 + x*matrix.$matrix.m14 + y*matrix.$matrix.m24 + z*matrix.$matrix.m34;
+
+    if (!ignore_w && w !== 1 && w !== 0 && matrix.isPersp) {
+      this[0] /= w;
+      this[1] /= w;
+      this[2] /= w;
+    }
+    return w;
+  }
+
+  cross(v) {
+    var x = this[1]*v[2] - this[2]*v[1];
+    var y = this[2]*v[0] - this[0]*v[2];
+    var z = this[0]*v[1] - this[1]*v[0];
+
+    this[0] = x;
+    this[1] = y;
+    this[2] = z;
+
+    return this;
+  }
+
+  //axis is optional, 0
+  rot2d(A, axis) {
+    var x = this[0];
+    var y = this[1];
+
+    if (axis === 1) {
+      this[0] = x*cos(A) + y*sin(A);
+      this[1] = y*cos(A) - x*sin(A);
+    } else {
+      this[0] = x*cos(A) - y*sin(A);
+      this[1] = y*cos(A) + x*sin(A);
+    }
+
+    return this;
+  }
+}
+
+BaseVector.inherit(Vector3Array, 3);
+
+Vector3Array.STRUCT = `
+vec3Array {
+  0 : float;
+  1 : float;
+  2 : float;
+}
+`;
+nstructjs.manager.add_class(Vector3Array);
+
 //has Element mixin
 export class Vertex extends Vector3 {
   constructor(co) {
@@ -831,6 +935,40 @@ export class Vertex extends Vector3 {
       Object.seal(this);
     }
   }
+
+  /* change parent to Vector3Array above before uncommenting
+  set 0(v) {
+    if (isNaN(v)) {
+      debugger;
+    }
+    this._zero = v;
+  }
+
+  get 0() {
+    return this._zero;
+  }
+
+  set 1(v) {
+    if (isNaN(v)) {
+      debugger;
+    }
+    this._one = v;
+  }
+
+  get 1() {
+    return this._one;
+  }
+
+  set 2(v) {
+    if (isNaN(v)) {
+      debugger;
+    }
+    this._two = v;
+  }
+
+  get 2() {
+    return this._two;
+  } //*/
 
   _free() {
     if (EDGE_LINKED_LISTS) {

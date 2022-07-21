@@ -370,6 +370,7 @@ export class BVHToolMode extends ToolMode {
     strip.useIcons(false);
     strip.prop(path + ".brush.texUser.flag[ORIGINAL_CO]");
     strip.prop(path + ".brush.texUser.flag[CONSTANT_SIZE]");
+    strip.prop(path + ".brush.texUser.flag[CURVED]");
 
     strip = panel.row().strip();
     strip.useIcons(false);

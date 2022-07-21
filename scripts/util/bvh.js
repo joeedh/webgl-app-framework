@@ -21,6 +21,18 @@ import {aabb_sphere_dist, closest_point_on_tri, dist_to_tri_v3} from './math.js'
 import {MinHeapQueue} from './util.js';
 import {getFaceSets} from '../mesh/mesh_facesets.js';
 
+let safetimes = new Array(32).map(f => 0);
+function safeprint() {
+  let id = arguments[0];
+
+  if (util.time_ms() - safetimes[id] < 200) {
+    return;
+  }
+
+  console.warn(...arguments);
+  safetimes[id] = util.time_ms();
+}
+
 let _triverts = [new Vector3(), new Vector3(), new Vector3()];
 
 let _ntmptmp = new Vector3();
@@ -2150,7 +2162,7 @@ export class BVHNode {
       bad = bad || isNaN(t.v3.dot(t.v3));
 
       if (bad) {
-        console.error("corrupted tri", t);
+        safeprint(0, "corrupted tri", t);
 
         this.uniqueTris.delete(t);
         continue;

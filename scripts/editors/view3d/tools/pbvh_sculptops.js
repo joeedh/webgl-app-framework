@@ -30,7 +30,7 @@ import {TetMesh} from '../../../tet/tetgen.js';
 import {MultiGridSmoother} from '../../../mesh/multigrid_smooth.js';
 import {getCurveVerts, dirCurveSmooth} from '../../../mesh/mesh_curvature.js';
 import {TexUserFlags, TexUserModes} from '../../../texture/proceduralTex.js';
-import {closest_bez3_v2, dbez3_v2} from '../../../util/bezier.js';
+import {Bezier, closest_bez3_v2, dbez3_v2} from '../../../util/bezier.js';
 import {tetSolve} from '../../../tet/tet_deform.js';
 import {DispContext, DispLayerVert, getSmoothMemo, SmoothMemoizer} from '../../../mesh/mesh_displacement.js';
 import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from '../../../mesh/mesh_facesets.js';
@@ -153,8 +153,17 @@ export class PaintOp extends PaintOpBase {
 
     this.last_mpos = new Vector2();
     this.last_p = new Vector3();
+    this.last_p2 = new Vector3();
+    this.last_p3 = new Vector3();
+    this.last_p4 = new Vector3();
+    this.last_p5 = new Vector3();
     this.last_origco = new Vector4();
-    this._first2 = true;
+    this.last_origco2 = new Vector4();
+    this.last_origco3 = new Vector4();
+    this.last_origco4 = new Vector4();
+    this.last_origco5 = new Vector4();
+
+    this._first2 = 4;
     this.last_radius = 0;
     this.last_vec = new Vector3();
 
@@ -179,7 +188,7 @@ export class PaintOp extends PaintOpBase {
         useMultiResDepth   : new BoolProperty(false),
         reprojectCustomData: new BoolProperty(false),
 
-        drawFaceSet : new IntProperty(2),
+        drawFaceSet: new IntProperty(2),
       })
     }
   }
@@ -264,16 +273,16 @@ export class PaintOp extends PaintOpBase {
     }
 
     this._undo = {
-      mesh : mesh ? mesh.lib_id : -1,
-      mode : this.inputs.brush.getValue().tool,
-      vmap : new Map(),
-      gmap : new Map(),
-      mmap : new Map(), //mask data for nongrid verts
+      mesh   : mesh ? mesh.lib_id : -1,
+      mode   : this.inputs.brush.getValue().tool,
+      vmap   : new Map(),
+      gmap   : new Map(),
+      mmap   : new Map(), //mask data for nongrid verts
       cd_mask,
-      gdata: [],
-      log  : new MeshLog(),
-      gset : new Set(),
-      fsetmap : new Map()
+      gdata  : [],
+      log    : new MeshLog(),
+      gset   : new Set(),
+      fsetmap: new Map()
     };
 
     if (mesh) {
@@ -329,7 +338,7 @@ export class PaintOp extends PaintOpBase {
             mv.flag |= BVHVertFlags.NEED_BOUNDARY;
 
             let node = v.customData[cd_node].node;
-            node.setUpdateFlag(BVHFlags.UPDATE_INDEX_VERTS|BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK);
+            node.setUpdateFlag(BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK);
           }
         }
       }
@@ -742,13 +751,21 @@ export class PaintOp extends PaintOpBase {
 
     window.redraw_viewport(true);
 
-    if (first) {
+    if (this._first2 === 2) {
       this.last_mpos.load(mpos);
+      this.last_p5.load(isect.p);
+      this.last_p4.load(isect.p);
+      this.last_p3.load(isect.p);
+      this.last_p2.load(isect.p);
       this.last_p.load(isect.p);
       this.last_origco.load(origco);
+      this.last_origco2.load(origco);
+      this.last_origco3.load(origco);
+      this.last_origco4.load(origco);
+      this.last_origco5.load(origco);
       this.last_vec.load(vec);
       this.last_radius = radius;
-      this._first2 = false;
+      this._first2--;
 
       if (mode === SculptTools.GRAB) {
         this.inputs.grabCo.setValue(isect.p);
@@ -756,6 +773,20 @@ export class PaintOp extends PaintOpBase {
       }
 
       return;
+    } else if (this._first2 > 0) {
+      this.last_origco5.load(this.last_origco4);
+      this.last_origco4.load(this.last_origco3);
+      this.last_origco3.load(this.last_origco2);
+      this.last_origco2.load(this.last_origco);
+      this.last_origco.load(origco);
+
+      this.last_p5.load(this.last_p4);
+      this.last_p4.load(this.last_p3);
+      this.last_p3.load(this.last_p2);
+      this.last_p2.load(this.last_p);
+      this.last_p.load(isect.p);
+
+      this._first2--;
     }
 
     let spacing = brush.spacing;
@@ -779,7 +810,7 @@ export class PaintOp extends PaintOpBase {
 
     //console.log("STEPS", steps, radius, spacing, this._first);
 
-    const DRAW                                                            = SculptTools.DRAW, SHARP                                  = SculptTools.SHARP, FILL = SculptTools.FILL,
+    const DRAW                                                            = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
           SMOOTH                                                          = SculptTools.SMOOTH, CLAY                               = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
           PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
           PAINT_SMOOTH                                                    = SculptTools.PAINT_SMOOTH, GRAB = SculptTools.GRAB;
@@ -792,6 +823,39 @@ export class PaintOp extends PaintOpBase {
 
     let task = (function* () {
       let ds = 1.0/steps;
+
+      let d1 = new Vector3(this2.last_p3).sub(this2.last_p4);
+      let d2 = new Vector3(this2.last_p2).sub(this2.last_p3);
+      let d3 = new Vector3(this2.last_p).sub(this2.last_p2);
+
+      d1.interp(d2, 0.5).mulScalar(ds);
+      d2.interp(d3, 0.5).mulScalar(ds);
+
+      let ca = new Vector3(this2.last_p3);
+      let cd = new Vector3(this2.last_p2);
+      let cb = new Vector3(ca).addFac(d1, 1.0/3.0);
+      let cc = new Vector3(cd).addFac(d2, -1.0/3.0);
+
+      let bez = new Bezier(ca, cb, cc, cd);
+
+      /* Make future curve. */
+      d1.load(this2.last_p2).sub(this2.last_p3);
+      d2.load(this2.last_p).sub(this2.last_p2);
+      d3.load(isect.p).sub(this2.last_p);
+
+      d1.interp(d2, 0.5).mulScalar(ds);
+      d2.interp(d3, 0.5).mulScalar(ds);
+
+      ca.load(this2.last_p2);
+      cd.load(this2.last_p);
+      cb.load(ca).addFac(d1, 1.0/3.0);
+      cc.load(cd).addFac(d2, -1.0/3.0);
+
+      let nextbez = new Bezier(ca, cb, cc, cd);
+
+      if (!this2.lastbez) {
+        this2.lastbez = bez;
+      }
 
       for (let i = 0; i < steps; i++) {
         let s = (i + 1)/steps;
@@ -809,12 +873,12 @@ export class PaintOp extends PaintOpBase {
             break;
         }
 
-        let sco = new Vector4(this2.last_p).interp(isect.p, s);
+        let sco = new Vector4(bez.evaluate(s));
         sco[3] = 1.0;
         view3d.project(sco);
 
-        let p2 = new Vector3(this2.last_p).interp(isect.p, s);
-        let op2 = new Vector4(this2.last_origco).interp(origco, s);
+        let p2 = bez.evaluate(s);
+        let op2 = new Vector4(this2.last_origco3).interp(this2.last_origco2, s);
 
         p3.load(p2);
         p3[3] = 1.0;
@@ -852,6 +916,31 @@ export class PaintOp extends PaintOpBase {
 
         let ps = new PaintSample();
 
+        let ca2, cb2, cc2, cd2;
+        let ds2 = ds*0.5;
+
+        let sp = s - ds2, sn = s + ds2;
+
+        if (sp <= 0) {
+          ca2 = this2.lastbez.evaluate(sp + 1.0);
+          cb2 = this2.lastbez.derivative(sp + 1.0).mulScalar(ds/3.0).add(ca2);
+          cd2 = bez.evaluate(sn);
+          cc2 = bez.derivative(sn).mulScalar(-ds/3.0).add(cd2);
+        } else if (sn >= 1.0) {
+          ca2 = bez.evaluate(sp);
+          cb2 = bez.derivative(sp).mulScalar(ds/3.0).add(ca2);
+          cd2 = nextbez.evaluate(sn - 1.0);
+          cc2 = nextbez.derivative(sn - 1.0).mulScalar(-ds/3.0).add(cd2);
+        } else {
+          ca2 = bez.evaluate(sp);
+          cb2 = bez.derivative(sp).mulScalar(ds/3.0).add(ca2);
+          cd2 = bez.evaluate(sn);
+          cc2 = bez.derivative(sn).mulScalar(-ds/3.0).add(cd2);
+        }
+
+        ps.curve = new Bezier(ca2, cb2, cc2, cd2).createQuads();
+        console.log(ps.curve);
+
         ps.smoothProj = smoothProj;
         ps.pinch = pinch;
         ps.sharp = sharp;
@@ -863,7 +952,7 @@ export class PaintOp extends PaintOpBase {
         ps.p[3] = w;
         ps.viewPlane.load(view).normalize();
         ps.viewvec.load(view).normalize();
-        ps.dstrokeS = ds;
+        ps.dstrokeS = brush.spacing;
         ps.strokeS = 0; //will be set from lastps below
         ps.isInterp = isInterp || (i > 0 && i < steps - 1);
 
@@ -884,7 +973,7 @@ export class PaintOp extends PaintOpBase {
         if (this2.lastps1) {
           lastps = this2.lastps1;
 
-          ps.strokeS = lastps.strokeS + ds;
+          ps.strokeS = lastps.strokeS + spacing;
 
           ps.dsp.load(ps.sp).sub(lastps.sp);
           ps.angle = Math.atan2(ps.dsp[1], ps.dsp[0]);
@@ -913,11 +1002,24 @@ export class PaintOp extends PaintOpBase {
           }
         }
       }
+
+      this2.lastbez = bez;
     })();
 
     this.last_mpos.load(mpos);
+
+    this.last_p5.load(this.last_p4);
+    this.last_p4.load(this.last_p3);
+    this.last_p3.load(this.last_p2);
+    this.last_p2.load(this.last_p);
     this.last_p.load(isect.p);
+
+    this.last_origco5.load(this.last_origco4);
+    this.last_origco4.load(this.last_origco3);
+    this.last_origco3.load(this.last_origco2);
+    this.last_origco2.load(this.last_origco);
     this.last_origco.load(origco);
+
     this.last_vec.load(vec);
     this.last_r = radius;
 
@@ -3030,6 +3132,11 @@ export class PaintOp extends PaintOpBase {
         smemo.fac = fac;
         let co = smemo.smoothco(v);
 
+        if (isNaN(co.dot(co))) {
+          debugger;
+          return;
+        }
+
         v.interp(co, fac);
       }
     }
@@ -3701,8 +3808,7 @@ export class PaintOp extends PaintOpBase {
       for (let v of vs) {
         v.flag &= ~flag;
 
-        for (let e of v.edges) {
-          let v2 = v === e.v1 ? e.v2 : e.v1;
+        for (let v2 of v.neighbors) {
           v2.flag &= ~flag;
         }
         //for (let v2 of v.neighbors) {
@@ -3732,9 +3838,7 @@ export class PaintOp extends PaintOpBase {
           v.flag |= flag;
         }
 
-        for (let e of v.edges) {
-          let v2 = v === e.v1 ? e.v2 : e.v1;
-
+        for (let v2 of v.neighbors) {
           //for (let v2 of v.neighbors) {
           if (!(v2.flag & flag)) {
             v2.flag |= flag;
@@ -3988,6 +4092,43 @@ export class PaintOp extends PaintOpBase {
           }
         }
 
+        if (texUser.flag & TexUserFlags.CURVED) {
+          let p1 = ps.curve.closestPoint(v);
+          let strokeS;
+
+          strokeS = ps.strokeS + brush.spacing*p1.t;
+
+          if (lastps) {
+            let p2 = lastps.curve.closestPoint(v);
+            if (p2.dist < p1.dist) {
+              //p1 = p2;
+              //strokeS = lastps.strokeS + brush.spacing*p2.t;
+            }
+          }
+
+          if (lastps) {
+            //texco[0] = lastps.strokeS + (ps.strokeS - lastps.strokeS)*p1.t;
+          } else {
+            //texco[0] = ps.strokeS;
+          }
+
+          if (Math.abs(p1.t) < 0.001 || Math.abs(p1.t) > 0.999) {
+            wi += 3;
+            vi++;
+            continue;
+          }
+
+          texco[1] = strokeS/radius*0.1;
+          //texco[0] = texco[1] = p1.t*p1.dist/radius;
+
+          texco[0] = p1.dist/radius;
+          texco[2] = 0.0;
+
+          if (texco[1] > 0.5) {
+            //continue;
+          }
+        }
+
         texco2.load(ps.sp);
         texco2[0] = (texco2[0]/viewportSize[0])*2.0 - 1.0;
         texco2[1] = (1.0 - texco2[1]/viewportSize[1])*2.0 - 1.0;
@@ -3995,6 +4136,11 @@ export class PaintOp extends PaintOpBase {
         th = Math.PI*0.5 - th;
         texf = texUser.sample(texco, scale*2.0, th, ps.rendermat, texco2, aspect, texDv);
         //texf = Math.min(Math.max(texco.vectorLength()/radius, 0.0), 1.0);
+
+        if (isNaN(texf) || !isFinite(texf)) {
+          debugger;
+          continue;
+        }
 
         if (texDv) {
           texDv.normalize();
@@ -4019,6 +4165,11 @@ export class PaintOp extends PaintOpBase {
 
       if (mode !== MASK_PAINT && cd_mask >= 0) {
         f *= v.customData[cd_mask].value;
+      }
+
+      if (f === undefined || isNaN(f) || !isFinite(f)) {
+        debugger;
+        continue;
       }
 
       /*if (mode === SHARP) {
@@ -4214,6 +4365,14 @@ export class PaintOp extends PaintOpBase {
         let c = v.customData[cd_color];
 
         c.color.interp(color, f*strength);
+
+        if (0) {
+          let u = Math.fract(texco[0]);
+          let v = Math.fract(texco[1]);
+          c.color[0] = u;
+          c.color[1] = v;
+          c.color[2] = 0.5;
+        }
       } else if (mode === INFLATE) {
         v.addFac(v.no, f*strength*0.1);
       } else if (mode === SLIDE_RELAX) {
@@ -4306,7 +4465,7 @@ export class PaintOp extends PaintOpBase {
             let mv = v2.customData[cd_dyn_vert];
 
             let node = v2.customData[cd_node].node;
-            node.setUpdateFlag(BVHFlags.UPDATE_INDEX_VERTS|BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_MASK);
+            node.setUpdateFlag(BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK);
 
             mv.flag |= BVHVertFlags.NEED_BOUNDARY;
           }
@@ -4371,9 +4530,7 @@ export class PaintOp extends PaintOpBase {
           let boundary = new Set();
 
           for (let v of vs2) {
-            for (let e of v.edges) {
-              let v2 = e.otherVertex(v);
-
+            for (let v2 of v.neighbors) {
               if (!smoothvs.has(v2)) {
                 boundary.add(v2);
                 doUndo(v2);
@@ -4425,6 +4582,10 @@ export class PaintOp extends PaintOpBase {
       //for (let e of v.edges) {
       //  es.add(e);
       //}
+
+      if (ws[wi] === undefined) {
+        continue;
+      }
 
       if (!isPaintMode && rakefac > 0.0) {
         reproject = true;
@@ -7510,7 +7671,7 @@ export class PaintOp extends PaintOpBase {
     this.dynTopoRand.seed(0);
     this.rand.seed(0);
 
-    this._first2 = true;
+    this._first2 = 4;
     return super.modalStart(ctx);
   }
 
@@ -7551,7 +7712,7 @@ export class PaintOp extends PaintOpBase {
     return ret;
   }
 
-  on_mouseup(e) {
+  on_pointerup(e) {
     this.mfinished = true;
 
     let ob = this.modal_ctx.object;

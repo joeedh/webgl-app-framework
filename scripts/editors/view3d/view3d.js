@@ -1,6 +1,6 @@
 import "../../extern/three.js";
 
-import {nstructjs} from '../../path.ux/scripts/pathux.js';
+import {loadUIData, nstructjs, saveUIData} from '../../path.ux/scripts/pathux.js';
 
 import {spawnToolSearchMenu} from '../editor_base.js';
 
@@ -999,6 +999,9 @@ export class View3D extends Editor {
     this.overdraw.remove();
     this.shadow.appendChild(this.overdraw);
 
+    this.overdraw.style["left"] = "0px";
+    this.overdraw.style["top"] = "0px";
+
     let eventdom = this; //this.overdraw;
 
     this.makeGraphNodes();
@@ -1057,9 +1060,9 @@ export class View3D extends Editor {
       this.doEvent("mousemove", e);
     };
 
-    eventdom.addEventListener("mousemove", on_mousemove);
+    eventdom.addEventListener("pointermove", on_mousemove);
 
-    eventdom.addEventListener("mouseup", (e) => {
+    eventdom.addEventListener("pointerup", (e) => {
       let was_touch = eventWasTouch(e);
 
       this.last_mpos.load(this.getLocalMouse(e.x, e.y));
@@ -1153,7 +1156,7 @@ export class View3D extends Editor {
       e.stopPropagation();
     };
 
-    eventdom.addEventListener("mousedown", on_mousedown);
+    eventdom.addEventListener("pointerdown", on_mousedown);
 
     window.redraw_viewport();
   }

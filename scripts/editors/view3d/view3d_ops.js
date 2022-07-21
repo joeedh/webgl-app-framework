@@ -91,8 +91,8 @@ export class CenterViewOp extends ToolOp {
     console.log("draw!");
   }
 
-  on_mouseup(e) {
-    this.on_mousemove(e);
+  on_pointerup(e) {
+    this.on_pointermove(e);
 
     console.log("mouse up!");
     let ctx = this.modal_ctx;
@@ -127,7 +127,7 @@ export class CenterViewOp extends ToolOp {
     }
   }
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     let ctx = this.modal_ctx;
     let view3d = ctx.view3d;
     let mpos = view3d.getLocalMouse(e.x, e.y);
@@ -299,7 +299,7 @@ export class OrbitTool extends ToolOp {
     flag     : 0,
   }}
   
-  on_mousemove(e) {
+  on_pointermove(e) {
     let view3d = this.modal_ctx.view3d, camera = view3d.camera;
     let mpos = view3d.getLocalMouse(e.x, e.y);
     let x = mpos[0], y = mpos[1];
@@ -375,7 +375,7 @@ export class OrbitTool extends ToolOp {
     view3d.onCameraChange();
   }
 
-  on_mouseup(e) {
+  on_pointerup(e) {
     e.stopPropagation();
     console.log("orbit Mouse Up");
 
@@ -442,7 +442,7 @@ export class TouchViewTool extends ToolOp {
     camera.regen_mats(camera.aspect);
   }
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     let view3d = this.modal_ctx.view3d, camera = view3d.camera;
 
     let ts = e.touches;
@@ -594,7 +594,7 @@ export class TouchViewTool extends ToolOp {
     camera.pos.add(camera.target);
   }
 
-  on_mouseup(e) {
+  on_pointerup(e) {
     if (eventWasTouch(e) && e.touches.length > 0) {
       //console.log(e.touches);
       let visit = {};
@@ -645,7 +645,7 @@ export class PanTool extends ToolOp {
     flag     : 0,
   }}
   
-  on_mousemove(e) {
+  on_pointermove(e) {
     let view3d = this.modal_ctx.view3d, camera = view3d.camera;
     let mpos = view3d.getLocalMouse(e.x, e.y);
     let x = mpos[0], y = mpos[1];
@@ -681,8 +681,8 @@ export class PanTool extends ToolOp {
     window.redraw_viewport(true);
     view3d.onCameraChange();
   }
-  
-  on_mouseup(e) {
+
+  on_pointerup(e) {
     this.modalEnd();
   }
   
@@ -715,7 +715,7 @@ export class ZoomTool extends ToolOp {
     flag     : 0,
   }}
   
-  on_mousemove(e) {
+  on_pointermove(e) {
     let view3d = this.modal_ctx.view3d, camera = view3d.camera;
     let mpos = view3d.getLocalMouse(e.x, e.y);
     let x = mpos[0], y = mpos[1];
@@ -761,8 +761,8 @@ export class ZoomTool extends ToolOp {
     window.redraw_viewport(true);
     view3d.onCameraChange();
   }
-  
-  on_mouseup(e) {
+
+  on_pointerup(e) {
     this.modalEnd();
   }
   

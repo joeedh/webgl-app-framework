@@ -1408,7 +1408,8 @@ export const TexUserFlags = {
   RAKE         : 2,
   CONSTANT_SIZE: 4,
   FANCY_RAKE   : 8,
-  ORIGINAL_CO  : 16
+  ORIGINAL_CO  : 16,
+  CURVED       : 32,
 };
 
 export const TexUserModes = {

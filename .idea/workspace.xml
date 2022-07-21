@@ -5,21 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
-      <change afterPath="$PROJECT_DIR$/scripts/setup_pathux.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/assets/iconsheet.svg" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet.svg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/git_pull.sh" beforeDir="false" afterPath="$PROJECT_DIR$/git_pull.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/config/config.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/config/config.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/appstate.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/appstate.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/const.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/const.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/editor_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/editor_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/node/NodeEditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/node/NodeEditor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/theme.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/theme.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_base.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_select.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_select.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/entry_point.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/entry_point.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/extern/three_patches.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/extern/three_patches.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/widgets/ui_button.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/widgets/ui_button.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/util/ScreenOverdraw.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/util/ScreenOverdraw.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/setup_pathux.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/setup_pathux.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/texture/proceduralTex.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/texture/proceduralTex.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/util/bezier.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bezier.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/util/bvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bvh.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -62,6 +60,7 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="exceleditor.install" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/../phongdeformation" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
@@ -324,7 +323,10 @@
       <workItem from="1646080518248" duration="14000" />
       <workItem from="1646178952183" duration="3374000" />
       <workItem from="1646610574741" duration="11779000" />
-      <workItem from="1646622658294" duration="5736000" />
+      <workItem from="1646622658294" duration="7768000" />
+      <workItem from="1647671579346" duration="15731000" />
+      <workItem from="1652761425037" duration="3400000" />
+      <workItem from="1653169213542" duration="13000" />
     </task>
     <servers />
   </component>

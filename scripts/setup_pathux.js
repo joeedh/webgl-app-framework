@@ -59,7 +59,7 @@ export function setupIconsRastered() {
 }
 
 export function setupIconsSvg() {
-  let iconsheet = document.createElement("svg");
+  let iconsheet = document.createElement("img");
   iconsheet.src = resolvePath("assets/iconsheet.svg");
 
   iconmanager = new IconManager([iconsheet, iconsheet, iconsheet, iconsheet],
