@@ -6,18 +6,12 @@
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/node/node_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/node/node_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/theme.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/theme.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_types.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/util/ScreenOverdraw.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/util/ScreenOverdraw.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/setup_pathux.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/setup_pathux.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/texture/proceduralTex.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/texture/proceduralTex.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/util/bezier.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bezier.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/util/bvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bvh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/widgets/ui_menu.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/widgets/ui_menu.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,7 +55,7 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="exceleditor.install" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../phongdeformation" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../cellular_automata" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
@@ -327,6 +321,11 @@
       <workItem from="1647671579346" duration="15731000" />
       <workItem from="1652761425037" duration="3400000" />
       <workItem from="1653169213542" duration="13000" />
+      <workItem from="1658385071811" duration="2236000" />
+      <workItem from="1658471401506" duration="16000" />
+      <workItem from="1658477481626" duration="11000" />
+      <workItem from="1658518497465" duration="1519000" />
+      <workItem from="1660871281989" duration="4348000" />
     </task>
     <servers />
   </component>

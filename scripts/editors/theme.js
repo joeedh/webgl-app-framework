@@ -56,7 +56,6 @@ export const theme = {
       size   : 12,
       color  : 'rgba(255,255,255, 1)'
     }),
-    "flex-grow"         : "unset",
     Disabled            : {
       'background-color': 'rgb(72, 72, 72)',
       'background-size' : '5px 3px',
@@ -81,6 +80,7 @@ export const theme = {
     'background-color'  : 'rgba(122,122,122, 1)',
     'border-color'      : 'rgba(163,163,163, 1)',
     'border-radius'     : 12,
+    'flex-grow'         : 'unset',
     'focus-border-color': 'rgba(55,155,255, 1)',
     'focus-border-width': 2,
     oneAxisPadding      : 2,
@@ -101,14 +101,65 @@ export const theme = {
     'border-radius'    : 7,
     'border-style'     : 'solid',
     'border-width'     : 1,
+    disabled           : {
+      DefaultText       : new CSSFont({
+        font   : 'poppins',
+        weight : 'bold',
+        variant: 'normal',
+        style  : 'normal',
+        size   : 12,
+        color  : 'rgb(109,109,109)'
+      }),
+      'background-color': 'rgb(19,19,19)',
+      'border-color'    : '#f58f8f',
+      'border-style'    : 'solid',
+      'border-width'    : 1,
+    },
     height             : 20,
+    highlight          : {
+      'background-color': 'rgb(164,190,212)',
+      'border-color'    : 'rgba(163,163,163, 1)',
+      'border-radius'   : 7,
+      'border-style'    : 'solid',
+      'border-width'    : 1,
+      height            : 20,
+      margin            : 2,
+      'margin-bottom'   : 3,
+      'margin-left'     : 3,
+      'margin-right'    : 3,
+      'margin-top'      : 3,
+      padding           : 1,
+      width             : 100,
+    },
+    'highlight-pressed': {
+      DefaultText       : new CSSFont({
+        font   : 'sans-serif',
+        weight : 'normal',
+        variant: 'normal',
+        style  : 'normal',
+        size   : 12,
+        color  : 'rgba(255,255,255, 1)'
+      }),
+      'background-color': 'rgb(43,62,75)',
+      'border-color'    : 'rgba(163,163,163, 1)',
+      'border-radius'   : 7,
+      'border-style'    : 'solid',
+      'border-width'    : 1,
+      height            : 20,
+      margin            : 2,
+      'margin-bottom'   : 3,
+      'margin-left'     : 3,
+      'margin-right'    : 3,
+      'margin-top'      : 3,
+      padding           : 1,
+      width             : 100,
+    },
     margin             : 2,
     'margin-bottom'    : 3,
     'margin-left'      : 3,
     'margin-right'     : 3,
     'margin-top'       : 3,
     padding            : 1,
-    width              : 100,
     pressed            : {
       DefaultText       : new CSSFont({
         font   : 'sans-serif',
@@ -132,45 +183,7 @@ export const theme = {
       padding           : 1,
       width             : 100,
     },
-    highlight          : {
-      'background-color': 'rgb(164,190,212)',
-      'border-color'    : 'rgba(163,163,163, 1)',
-      'border-radius'   : 7,
-      'border-style'    : 'solid',
-      'border-width'    : 1,
-      height            : 20,
-      margin            : 2,
-      'margin-bottom'   : 3,
-      'margin-left'     : 3,
-      'margin-right'    : 3,
-      'margin-top'      : 3,
-      padding           : 1,
-      width             : 100,
-    },
-    "highlight-pressed": {
-      DefaultText: new CSSFont({
-        font   : 'sans-serif',
-        weight : 'normal',
-        variant: 'normal',
-        style  : 'normal',
-        size   : 12,
-        color  : 'rgba(255,255,255, 1)'
-      }),
-
-      'background-color': 'rgb(43,62,75)',
-      'border-color'    : 'rgba(163,163,163, 1)',
-      'border-radius'   : 7,
-      'border-style'    : 'solid',
-      'border-width'    : 1,
-      height            : 20,
-      margin            : 2,
-      'margin-bottom'   : 3,
-      'margin-left'     : 3,
-      'margin-right'    : 3,
-      'margin-top'      : 3,
-      padding           : 1,
-      width             : 100,
-    },
+    width              : 100,
   },
 
   checkbox: {
@@ -199,17 +212,6 @@ export const theme = {
     width             : 256,
   },
 
-  label: {
-    LabelText: new CSSFont({
-      font   : 'sans-serif',
-      weight : 'normal',
-      variant: 'normal',
-      style  : 'normal',
-      size   : 12,
-      color  : 'rgba(255,255,255, 1)'
-    }),
-  },
-
   colorpickerbutton: {
     height: 24,
     width : 100,
@@ -223,11 +225,16 @@ export const theme = {
   },
 
   dropbox: {
-    'border-width': 1,
-    dropTextBG    : 'rgba(62,62,62, 1)',
-    height        : 20,
-    padding       : 4,
-    width         : 32,
+    'border-width'  : 1,
+    dropTextBG      : 'rgba(62,62,62, 1)',
+    height          : 20,
+    padding         : 3,
+    width           : 32,
+    margin          : 0,
+    "margin-bottom" : 0,
+    "margin-top"    : 0,
+    "padding-top"   : 0,
+    "padding-bottom": 0,
   },
 
   iconbutton: {
@@ -235,21 +242,57 @@ export const theme = {
     'border-color'    : 'rgba(171,171,171, 1)',
     'border-radius'   : 8,
     'border-width'    : 1,
+    depressed         : {
+      'background-color': 'rgba(48,48,48, 1)',
+      'border-color'    : 'rgb(0,0,0)',
+      'border-radius'   : 8,
+      'border-style'    : 'solid',
+      'border-width'    : 1,
+      drawCheck         : true,
+      height            : 32,
+      'margin-bottom'   : 2,
+      'margin-left'     : 2,
+      'margin-right'    : 2,
+      'margin-top'      : 1,
+      padding           : 2,
+      width             : 32,
+    },
     drawCheck         : true,
     height            : 32,
+    highlight         : {
+      'background-color': 'rgba(99,119,142, 1)',
+      'border-color'    : 'rgba(171,171,171, 1)',
+      'border-radius'   : 8,
+      'border-width'    : 1,
+      drawCheck         : true,
+      height            : 32,
+      'margin-bottom'   : 2,
+      'margin-left'     : 2,
+      'margin-right'    : 2,
+      'margin-top'      : 1,
+      padding           : 2,
+      width             : 32,
+    },
     'margin-bottom'   : 1,
     'margin-left'     : 2,
     'margin-right'    : 2,
     'margin-top'      : 1,
     padding           : 2,
     width             : 32,
+  },
+
+  iconcheck: {
+    'background-color': 'rgba(168,168,168, 0.75)',
+    'border-color'    : 'rgba(171,171,171, 1)',
+    'border-radius'   : 8,
+    'border-width'    : 1,
     depressed         : {
-      drawCheck         : true,
       'background-color': 'rgba(48,48,48, 1)',
       'border-color'    : 'rgb(0,0,0)',
       'border-radius'   : 8,
-      'border-width'    : 1,
       'border-style'    : 'solid',
+      'border-width'    : 1,
+      drawCheck         : true,
       height            : 32,
       'margin-bottom'   : 2,
       'margin-left'     : 2,
@@ -258,13 +301,14 @@ export const theme = {
       padding           : 2,
       width             : 32,
     },
-
-    highlight: {
-      drawCheck         : true,
+    drawCheck         : true,
+    height            : 32,
+    highlight         : {
       'background-color': 'rgba(99,119,142, 1)',
       'border-color'    : 'rgba(171,171,171, 1)',
       'border-radius'   : 8,
       'border-width'    : 1,
+      drawCheck         : true,
       height            : 32,
       'margin-bottom'   : 2,
       'margin-left'     : 2,
@@ -272,55 +316,24 @@ export const theme = {
       'margin-top'      : 1,
       padding           : 2,
       width             : 32,
-    }
-
-  },
-
-  iconcheck: {
-    drawCheck: true,
-
-    'background-color': 'rgba(168,168,168, 0.75)',
-    'border-color'    : 'rgba(171,171,171, 1)',
-    'border-radius'   : 8,
-    'border-width'    : 1,
-    height            : 32,
+    },
     'margin-bottom'   : 2,
     'margin-left'     : 2,
     'margin-right'    : 2,
     'margin-top'      : 1,
     padding           : 2,
     width             : 32,
+  },
 
-    depressed: {
-      drawCheck         : true,
-      'background-color': 'rgba(48,48,48, 1)',
-      'border-color'    : 'rgb(0,0,0)',
-      'border-radius'   : 8,
-      'border-width'    : 1,
-      'border-style'    : 'solid',
-      height            : 32,
-      'margin-bottom'   : 2,
-      'margin-left'     : 2,
-      'margin-right'    : 2,
-      'margin-top'      : 1,
-      padding           : 2,
-      width             : 32,
-    },
-
-    highlight: {
-      drawCheck         : true,
-      'background-color': 'rgba(99,119,142, 1)',
-      'border-color'    : 'rgba(171,171,171, 1)',
-      'border-radius'   : 8,
-      'border-width'    : 1,
-      height            : 32,
-      'margin-bottom'   : 2,
-      'margin-left'     : 2,
-      'margin-right'    : 2,
-      'margin-top'      : 1,
-      padding           : 2,
-      width             : 32,
-    }
+  label: {
+    LabelText: new CSSFont({
+      font   : 'sans-serif',
+      weight : 'normal',
+      variant: 'normal',
+      style  : 'normal',
+      size   : 12,
+      color  : 'rgba(255,255,255, 1)'
+    }),
   },
 
   listbox: {
@@ -333,10 +346,10 @@ export const theme = {
   },
 
   menu: {
-    MenuBG         : 'rgba(60,60,60, 1)',
-    MenuBorder     : '1px solid grey',
-    MenuHighlight  : 'rgba(74,149,255, 0.367)',
-    MenuSeparator  : `
+    MenuBG          : 'rgba(60,60,60, 1)',
+    MenuBorder      : '1px solid grey',
+    MenuHighlight   : 'rgba(74,149,255, 0.367)',
+    MenuSeparator   : `
       width : 100%;
       height : 2px;
       padding : 0px;
@@ -344,8 +357,8 @@ export const theme = {
       border : none;
       background-color : grey; 
     `,
-    MenuSpacing    : 5,
-    MenuText       : new CSSFont({
+    MenuSpacing     : 5,
+    MenuText        : new CSSFont({
       font   : 'sans-serif',
       weight : 'normal',
       variant: 'normal',
@@ -353,10 +366,16 @@ export const theme = {
       size   : 14,
       color  : 'rgba(214,214,214, 1)'
     }),
-    'border-color' : 'grey',
-    'border-radius': 5,
-    'border-style' : 'solid',
-    'border-width' : 1,
+    'border-color'  : 'grey',
+    'border-radius' : 5,
+    'border-style'  : 'solid',
+    'border-width'  : 1,
+    'box-shadow'    : '5px 5px 25px rgba(0,0,0,0.75)',
+    'item-radius'   : 0,
+    'padding-bottom': 0,
+    'padding-left'  : 0,
+    'padding-right' : 0,
+    'padding-top'   : 0,
   },
 
   noteframe: {
@@ -371,7 +390,7 @@ export const theme = {
   },
 
   notification: {
-    DefaultText  : new CSSFont({
+    DefaultText       : new CSSFont({
       font   : 'sans-serif',
       weight : 'normal',
       variant: 'normal',
@@ -379,28 +398,33 @@ export const theme = {
       size   : 12,
       color  : 'rgba(255,255,255, 1)'
     }),
-    ProgressBar  : 'rgba(75, 175, 255, 1.0)',
-    ProgressBarBG: 'rgba(110, 110, 110, 1.0)',
+    ProgressBar       : 'rgba(75, 175, 255, 1.0)',
+    ProgressBarBG     : 'rgba(110, 110, 110, 1.0)',
+    'background-color': 'rgba(72,72,72,0)',
+    'border-color'    : 'grey',
+    'border-radius'   : 5,
+    'border-style'    : 'solid',
+    'border-width'    : 1,
   },
 
   numslider: {
     'background-color': 'rgba(98,98,98, 1)',
     'border-color'    : 'rgba(227,227,227, 1)',
-    'border-radius'   : 7,
+    'border-radius'   : 4,
     'border-style'    : 'solid',
     'border-width'    : 1,
-    height            : 22,
+    height            : 20,
     width             : 80,
   },
 
   numslider_simple: {
     SlideHeight       : 10,
     TextBoxWidth      : 45,
-    "border-color"    : "black",
-    "border-radius"   : 5,
-    "border-width"    : 1,
-    "border-style"    : "solid",
     'background-color': 'rgba(162,162,162, 1)',
+    'border-color'    : 'black',
+    'border-radius'   : 5,
+    'border-style'    : 'solid',
+    'border-width'    : 1,
     height            : 18,
     labelOnTop        : true,
     width             : 100,
@@ -423,8 +447,8 @@ export const theme = {
   },
 
   panel: {
-    HeaderBorderRadius    : 5.829650280441558,
-    HeaderRadius          : 5.829650280441558,
+    HeaderBorderRadius    : 1,
+    HeaderRadius          : 1,
     TitleBackground       : 'rgba(98,98,98, 1)',
     TitleBorder           : 'rgba(85,85,85, 1)',
     TitleText             : new CSSFont({
@@ -432,22 +456,24 @@ export const theme = {
       weight : 'normal',
       variant: 'normal',
       style  : 'normal',
-      size   : 14,
+      size   : 12,
       color  : 'rgba(234,234,234, 1)'
     }),
     'background-color'    : 'rgba(52,52,52, 0.43137210023169426)',
     'border-color'        : 'rgba(0,0,0, 0.5598061397157866)',
-    'border-radius'       : 7.243125760182565,
+    'border-radius'       : 1,
     'border-style'        : 'groove',
-    'border-width'        : 1.141,
-    'margin-bottom'       : 15.762442435166511,
+    'border-width'        : 1,
+    'margin-bottom'       : 0,
     'margin-bottom-closed': 0,
+    'margin-left'         : 5,
+    'margin-right'        : 0,
     'margin-top'          : 0,
     'margin-top-closed'   : 0,
-    'padding-bottom'      : 1.9097964125268978,
+    'padding-bottom'      : 1,
     'padding-left'        : 0,
     'padding-right'       : 0,
-    'padding-top'         : 2.7584516087430044,
+    'padding-top'         : 1,
   },
 
   popup: {
@@ -488,17 +514,18 @@ export const theme = {
   strip: {
     'background-color': 'rgba(57,57,57, 0.6764705134373085)',
     'border-color'    : 'rgba(0,0,0, 0.31325409987877156)',
-    'border-radius'   : 10,
+    'border-radius'   : 1,
     'border-style'    : 'solid',
-    'border-width'    : 2,
-    margin            : 1,
+    'border-width'    : 1,
+    'flex-grow'       : 'unset',
+    margin            : 0,
     oneAxisPadding    : 2,
-    padding           : 2,
+    padding           : 0,
   },
 
   tabs: {
     TabActive         : 'rgba(79,79,79, 1)',
-    TabBarRadius      : 6,
+    TabBarRadius      : 3,
     TabHighlight      : 'rgba(50, 50, 50, 0.2)',
     TabInactive       : 'rgba(61,61,61, 1)',
     TabStrokeStyle1   : 'rgba(0,0,0, 1)',
@@ -509,9 +536,10 @@ export const theme = {
       variant: 'normal',
       style  : 'normal',
       size   : 18,
-      color  : 'rgba(187,187,187, 1)'
+      color  : 'rgba(229,229,229, 1)'
     }),
     'background-color': 'rgba(123,123,123, 0.7426724664096175)',
+    'movable-tabs'    : 'true',
   },
 
   textbox: {

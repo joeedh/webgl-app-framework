@@ -40,11 +40,19 @@ export class NodeGraphOp extends ToolOp {
   }
 
   static invoke(ctx, args) {
+    const useNodeEdtorGraph = args["useNodeEditorGraph"];
+
+    if ("useNodeEdtorGraph" in args) {
+      delete args["useNodeEdtorGraph"];
+    }
+
     let tool = super.invoke(ctx, args);
 
-    if (args["useNodeEditorGraph"]) {
+    if (useNodeEdtorGraph) {
       tool.inputs.graphPath.setValue(ctx.nodeEditor.graphPath);
       tool.inputs.graphClass.setValue(ctx.nodeEditor.graphClass);
+
+      delete args["useNodeEditorGraph"];
     }
 
     if ("graphPath" in args) {

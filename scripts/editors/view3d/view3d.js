@@ -1079,9 +1079,6 @@ export class View3D extends Editor {
     });
 
     let on_mousedown = (e) => {
-      //console.log("HAVE MODAL", haveModal());
-      //console.log("touch", eventWasTouch(e), e);
-
       if (uiHasFocus(e)) {
         return;
       }
@@ -1089,18 +1086,10 @@ export class View3D extends Editor {
       /* prevent duplicate mousedown events from touch forwarding */
       e.preventDefault();
 
-      let was_touch = eventWasTouch(e);
-
-      //if (was_touch) {
-        //on_mousemove(e, false);
-      //}
-
 
       let r = this.getLocalMouse(e.clientX, e.clientY);
       this.start_mpos.load(r);
       this.last_mpos.load(r);
-
-      let x = r[0], y = r[1];
 
       this.push_ctx_active();
 
@@ -1112,10 +1101,7 @@ export class View3D extends Editor {
       this.updateCursor();
 
       let docontrols = e.button === 1 || e.button === 2 || e.altKey;
-
       if (!docontrols && e.button === 0) {
-        let selmask = this.ctx.selectMask;
-
         docontrols = true;
 
         this.mdown = true;
