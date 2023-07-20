@@ -6,12 +6,18 @@
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/node/node_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/node/node_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/theme.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/theme.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/findnearest/findnearest_mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/findnearest/findnearest_mesh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_grids.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_grids.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_grids_kdtree.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_grids_kdtree.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_grids_subsurf.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_grids_subsurf.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/widgets/ui_menu.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/widgets/ui_menu.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/subsurf/subsurf_patch.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/subsurf/subsurf_patch.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,23 +56,18 @@
     <option name="showLibraryContents" value="true" />
     <option name="showMembers" value="true" />
   </component>
-  <component name="PropertiesComponent">
-    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
-    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="exceleditor.install" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../cellular_automata" />
-    <property name="node.js.detected.package.eslint" value="true" />
-    <property name="node.js.detected.package.tslint" value="true" />
-    <property name="node.js.path.for.package.eslint" value="project" />
-    <property name="node.js.path.for.package.tslint" value="project" />
-    <property name="node.js.selected.package.eslint" value="(autodetect)" />
-    <property name="node.js.selected.package.tslint" value="(autodetect)" />
-    <property name="nodejs_package_manager_path" value="npm" />
-    <property name="settings.editor.selected.configurable" value="Errors" />
-    <property name="ts.external.directory.path" value="C:\Program Files\JetBrains\WebStorm 2020.1.1\plugins\JavaScriptLanguage\jsLanguageServicesImpl\external" />
-    <property name="vue.rearranger.settings.migration" value="true" />
-  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/dev/sculptgl&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\dev\webgl-app-framework\addons\strand" />
@@ -326,11 +327,25 @@
       <workItem from="1658477481626" duration="11000" />
       <workItem from="1658518497465" duration="1519000" />
       <workItem from="1660871281989" duration="4348000" />
+      <workItem from="1688022219291" duration="9323000" />
+      <workItem from="1688195712972" duration="645000" />
+      <workItem from="1689892030701" duration="1605000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="VcsManagerConfiguration">
     <ignored-roots>

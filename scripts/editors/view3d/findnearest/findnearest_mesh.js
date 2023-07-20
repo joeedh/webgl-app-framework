@@ -381,7 +381,7 @@ export class FindnearestMesh extends FindnearestClass {
 
     let rets = [];
 
-    let report = Math.random() > 0.998;
+    let report = false; //Math.random() > 0.998;
 
     let minv, mine, minf;
     let minvob, mineob, minfob;

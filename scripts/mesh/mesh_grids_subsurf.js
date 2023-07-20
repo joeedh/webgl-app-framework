@@ -190,7 +190,18 @@ export class PatchBuilder {
   build() {
     let oldmesh = this.mesh;
 
+    /* Create mesh copy with no customdata layers. */
     let mesh = this.mesh = oldmesh.copy(undefined, true);
+
+    /* Copy over dyntopo verts. */
+    let cd_dyn_vert_old = this.cd_dyn_vert;
+    let cd_dyn_vert_new = this.cd_dyn_vert = getDynVerts(mesh);
+
+    for (let v of mesh.verts) {
+      let v2 = oldmesh.eidMap.get(v.eid);
+      v2.customData[cd_dyn_vert_old].copyTo(v.customData[cd_dyn_vert_new]);
+    }
+
     let lmap = subdivide(mesh).oldLoopEidsToQuads;
 
     mesh.recalcNormals();

@@ -1569,8 +1569,8 @@ export class EnsureGridsOp extends MeshOp {
       toolpath: "mesh.add_or_subdivide_grids",
       icon    : Icons.ADD_GRIDS,
       inputs  : ToolOp.inherit({
-        depth: new IntProperty(2),
-        types: new EnumProperty(GridTypes.KDTREE, GridTypes)
+        depth: new IntProperty(4),
+        types: new EnumProperty(GridTypes.SIMPLE, GridTypes)
       }),
       outputs : ToolOp.inherit()
     }

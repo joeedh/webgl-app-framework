@@ -810,7 +810,7 @@ export class PaintOp extends PaintOpBase {
 
     //console.log("STEPS", steps, radius, spacing, this._first);
 
-    const DRAW                                                            = SculptTools.DRAW, SHARP = SculptTools.SHARP, FILL = SculptTools.FILL,
+    const DRAW                                                            = SculptTools.DRAW, SHARP                                  = SculptTools.SHARP, FILL = SculptTools.FILL,
           SMOOTH                                                          = SculptTools.SMOOTH, CLAY                               = SculptTools.CLAY, SCRAPE = SculptTools.SCRAPE,
           PAINT = SculptTools.PAINT, INFLATE = SculptTools.INFLATE, SNAKE = SculptTools.SNAKE,
           PAINT_SMOOTH                                                    = SculptTools.PAINT_SMOOTH, GRAB = SculptTools.GRAB;
@@ -939,7 +939,6 @@ export class PaintOp extends PaintOpBase {
         }
 
         ps.curve = new Bezier(ca2, cb2, cc2, cd2).createQuads();
-        console.log(ps.curve);
 
         ps.smoothProj = smoothProj;
         ps.pinch = pinch;
@@ -3274,12 +3273,12 @@ export class PaintOp extends PaintOpBase {
     let rake = (v, fac = 0.5, sdis = 1.0) => {
       let mv = v.customData[cd_dyn_vert];
 
-      if (mv.flag & cornerflag) {
+      if (mv && mv.flag & cornerflag) {
         return;
       }
 
       let smoothboundflag = getSmoothBoundFlag();
-      let boundflag = mv.flag & BVHVertFlags.BOUNDARY_ALL;
+      let boundflag = mv ? mv.flag & BVHVertFlags.BOUNDARY_ALL : 0;
 
       if (v.valence === 4) {
         //return; //done do 4-valence verts
@@ -3324,16 +3323,15 @@ export class PaintOp extends PaintOpBase {
       let pad = 0.02;
       let tot = 0.0;
 
-      for (let e of v.edges) {
-        let v2 = e.otherVertex(v);
+      let dorake = (v2, e) => {
         let mv2 = v2.customData[cd_dyn_vert];
 
         if (boundflag && (mv2.flag & BVHVertFlags.BOUNDARY_ALL) !== boundflag) {
-          continue;
+          return;
         }
 
-        if (e.flag & skipflag) {
-          continue;
+        if (e && e.flag & skipflag) {
+          return;
         }
 
         d2.load(v2).sub(v);
@@ -3357,6 +3355,17 @@ export class PaintOp extends PaintOpBase {
         co.addFac(v2, w);
         co.addFac(v.no, nfac*w);
         tot += w;
+      };
+
+      if (v.edges) {
+        for (let e of v.edges) {
+          let v2 = e.otherVertex(v);
+          dorake(v2, e);
+        }
+      } else {
+        for (let v2 of v.neighbors) {
+          dorake(v2);
+        }
       }
 
       if (tot === 0.0) {

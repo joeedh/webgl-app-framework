@@ -992,10 +992,9 @@ export class View3D extends Editor {
 
     this.overdraw = document.createElement("overdraw-x");
     this.overdraw.ctx = this.ctx;
-    //this.overdraw.zindex_base = 5;
 
+    this.overdraw.startNode(this, this.ctx.screen, "absolute");
 
-    this.overdraw.startNode(this, this.ctx.screen);
     this.overdraw.remove();
     this.shadow.appendChild(this.overdraw);
 

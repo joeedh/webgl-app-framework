@@ -29,7 +29,8 @@ import {
   ListProperty,
   PackFlags,
   Curve1D, Curve1DProperty, SplineTemplates, Vec3Property,
-  SplineTemplateIcons
+  SplineTemplateIcons,
+  UIBase
 } from "../../../path.ux/scripts/pathux.js";
 import {MeshFlags} from "../../../mesh/mesh.js";
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from "../../../core/simplemesh.js";
@@ -707,6 +708,9 @@ export class BVHToolMode extends ToolMode {
       let th = -Math.PI, dth = (2.0*Math.PI)/(steps - 1);
 
       r /= devicePixelRatio;
+
+      let dpi = UIBase.getDPI();
+
       let mpos = view3d.getLocalMouse(x, y);
       x = mpos[0];
       y = mpos[1];
@@ -2875,6 +2879,16 @@ export class BVHToolMode extends ToolMode {
 
       node.flag &= ~(BVHFlags.TEMP_TAG | BVHFlags.UPDATE_DRAW);
     }
+
+
+    if (0 && have_grids) { //XXX make this an option
+      for (let loop of mesh.loops) {
+        let grid = loop.customData[grid_off];
+
+        grid.debugDraw(gl, uniforms, object);
+      }
+    }
+    
     return true;
   }
 

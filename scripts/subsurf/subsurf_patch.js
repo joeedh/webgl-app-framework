@@ -4,7 +4,7 @@ import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {BinomialTable} from "../util/binomial_table.js";
 
-let KPOINTS = 0, KTOT = KPOINTS + 16 * 3;
+let KPOINTS = 0, KTOT = KPOINTS + 16*3;
 
 export const CubicPatchFields = {
   KPOINTS, KTOT
@@ -22,7 +22,7 @@ export function bernstein(v, x, n) {
   //v++;
   let f = BinomialTable[n][v];
 
-  return f * Math.pow(x, v) * Math.pow(1.0 - x, n - v);
+  return f*Math.pow(x, v)*Math.pow(1.0 - x, n - v);
 }
 
 bernstein.derivative = function (v, x, n) {
@@ -31,8 +31,8 @@ bernstein.derivative = function (v, x, n) {
 
   let bin = BinomialTable[n][v];
 
-  let f = Math.pow(x, v) * Math.pow(1.0 - x, n) * bin * (n * x - v);
-  f /= Math.pow(1.0 - x, v) * x * (x - 1);
+  let f = Math.pow(x, v)*Math.pow(1.0 - x, n)*bin*(n*x - v);
+  f /= Math.pow(1.0 - x, v)*x*(x - 1);
 
   return f/32.0;
 }
@@ -45,13 +45,13 @@ export function bspline(i, s, degree) {
 
   let i1 = i;
 
-  return ((((s+3.0-i1)*impulse(s,i1-3.0,i1-2.0)-(s+1.0-i1)*
-     impulse(s,i1-2.0,i1-1.0))*(s+3.0-i1)+((s+2.0-i1)*
-     impulse(s,i1-2.0,i1-
-     1.0)+(i1-s)*impulse(s,i1-1.0,i1))*(i1-s))*(s+3.0-i1)-(((s+2.0-
-     i1)*impulse(s,i1-2.0,i1-1.0)+(i1-s)*impulse(s,i1-1.0,i1))*(s+
-     2.0-i1)-((s+1.0-i1)*impulse(s,i1-1.0,i1)-(s-1.0-i1)*impulse(s,
-     i1,i1+1.0))*(s-1.0-i1))*(s-1.0-i1))/6.0;
+  return ((((s + 3.0 - i1)*impulse(s, i1 - 3.0, i1 - 2.0) - (s + 1.0 - i1)*
+    impulse(s, i1 - 2.0, i1 - 1.0))*(s + 3.0 - i1) + ((s + 2.0 - i1)*
+    impulse(s, i1 - 2.0, i1 -
+      1.0) + (i1 - s)*impulse(s, i1 - 1.0, i1))*(i1 - s))*(s + 3.0 - i1) - (((s + 2.0 -
+    i1)*impulse(s, i1 - 2.0, i1 - 1.0) + (i1 - s)*impulse(s, i1 - 1.0, i1))*(s +
+    2.0 - i1) - ((s + 1.0 - i1)*impulse(s, i1 - 1.0, i1) - (s - 1.0 - i1)*impulse(s,
+    i1, i1 + 1.0))*(s - 1.0 - i1))*(s - 1.0 - i1))/6.0;
 
   let n = degree;
   s *= n - 2;
@@ -76,10 +76,10 @@ export function bspline(i, s, degree) {
     if (n === 0) {
       return s >= ti && s < ti2 ? 1 : 0;
     } else {
-      let a = (s - ti) / (tip - ti)
-      let b = (tip2 - s) / (tip2 - ti2)
+      let a = (s - ti)/(tip - ti)
+      let b = (tip2 - s)/(tip2 - ti2)
 
-      return deboor(i, n - 1) * a + deboor(i + 1, n - 1) * b;
+      return deboor(i, n - 1)*a + deboor(i + 1, n - 1)*b;
     }
   }
 
@@ -93,18 +93,18 @@ bspline.derivative = function (i, s, degree) {
     return s >= a && s < b ? 1 : 0;
   }
 
-  return  (impulse(s,i1-3.0,i1-2.0)*i1**2-2.0*impulse(s,i1-3.0,i1-2.0
-    )*i1*s-6.0*impulse(s,i1-3.0,i1-2.0)*i1+impulse(s,i1-3.0,i1-2.0
-    )*s**2+6.0*impulse(s,i1-3.0,i1-2.0)*s+9.0*impulse(s,i1-3.0,i1-
-    2.0)-3.0*impulse(s,i1-2.0,i1-1.0)*i1**2+6.0*impulse(s,i1-2.0,
-    i1-1.0)*i1*s+10.0*impulse(s,i1-2.0,i1-1.0)*i1-3.0*impulse(s,i1
-    -2.0,i1-1.0)*s**2-10.0*impulse(s,i1-2.0,i1-1.0)*s-7.0*impulse(
-    s,i1-2.0,i1-1.0)+3.0*impulse(s,i1-1.0,i1)*i1**2-6.0*impulse(s,
-    i1-1.0,i1)*i1*s-2.0*impulse(s,i1-1.0,i1)*i1+3.0*impulse(s,i1-
-    1.0,i1)*s**2+2.0*impulse(s,i1-1.0,i1)*s-impulse(s,i1-1.0,i1)-
-    impulse(s,i1,i1+1.0)*i1**2+2.0*impulse(s,i1,i1+1.0)*i1*s-2.0*
-    impulse(s,i1,i1+1.0)*i1-impulse(s,i1,i1+1.0)*s**2+2.0*impulse(
-    s,i1,i1+1.0)*s-impulse(s,i1,i1+1.0))/2.0;
+  return (impulse(s, i1 - 3.0, i1 - 2.0)*i1**2 - 2.0*impulse(s, i1 - 3.0, i1 - 2.0
+    )*i1*s - 6.0*impulse(s, i1 - 3.0, i1 - 2.0)*i1 + impulse(s, i1 - 3.0, i1 - 2.0
+    )*s**2 + 6.0*impulse(s, i1 - 3.0, i1 - 2.0)*s + 9.0*impulse(s, i1 - 3.0, i1 -
+      2.0) - 3.0*impulse(s, i1 - 2.0, i1 - 1.0)*i1**2 + 6.0*impulse(s, i1 - 2.0,
+      i1 - 1.0)*i1*s + 10.0*impulse(s, i1 - 2.0, i1 - 1.0)*i1 - 3.0*impulse(s, i1
+      - 2.0, i1 - 1.0)*s**2 - 10.0*impulse(s, i1 - 2.0, i1 - 1.0)*s - 7.0*impulse(
+      s, i1 - 2.0, i1 - 1.0) + 3.0*impulse(s, i1 - 1.0, i1)*i1**2 - 6.0*impulse(s,
+      i1 - 1.0, i1)*i1*s - 2.0*impulse(s, i1 - 1.0, i1)*i1 + 3.0*impulse(s, i1 -
+      1.0, i1)*s**2 + 2.0*impulse(s, i1 - 1.0, i1)*s - impulse(s, i1 - 1.0, i1) -
+    impulse(s, i1, i1 + 1.0)*i1**2 + 2.0*impulse(s, i1, i1 + 1.0)*i1*s - 2.0*
+    impulse(s, i1, i1 + 1.0)*i1 - impulse(s, i1, i1 + 1.0)*s**2 + 2.0*impulse(
+      s, i1, i1 + 1.0)*s - impulse(s, i1, i1 + 1.0))/2.0;
 
   /*
   on factor;
@@ -178,7 +178,7 @@ let tmptanmat = new Matrix4();
 let tanmats_rets = util.cachering.fromConstructor(Matrix4, 64);
 
 export class PatchBase {
-  buildTangentMatrix(u, v, matOut=tanmats_rets.next().makeIdentity()) {
+  buildTangentMatrix(u, v, matOut = tanmats_rets.next().makeIdentity()) {
     let eps = 0.000001;
     u = eps + u*(1.0 - eps*2.0);
     v = eps + v*(1.0 - eps*2.0);
@@ -207,7 +207,7 @@ export class PatchBase {
 
     let n = _btm_temp5;
 
-    let scale = (lx + ly) * 0.5;
+    let scale = (lx + ly)*0.5;
     //scale = lx = ly = 1.0;
     scale = Math.max(scale, 0.0001);
 
@@ -262,7 +262,7 @@ export class CubicPatch extends PatchBase {
     this.scratchv = new Vector3();
 
     this.pointTots = new Array(16);
-    for (let i=0; i<16; i++) {
+    for (let i = 0; i < 16; i++) {
       this.pointTots[i] = 0.0;
     }
 
@@ -270,7 +270,7 @@ export class CubicPatch extends PatchBase {
   }
 
   setPoint(x, y, p) {
-    let i = (y * 4 + x) * 3;
+    let i = (y*4 + x)*3;
     let ps = this._patch;
 
     ps[i] = p[0];
@@ -282,8 +282,8 @@ export class CubicPatch extends PatchBase {
     return this;
   }
 
-  addPoint(x, y, p, increment=true, fac=1.0) {
-    let i = (y * 4 + x) * 3;
+  addPoint(x, y, p, increment = true, fac = 1.0) {
+    let i = (y*4 + x)*3;
     let ps = this._patch;
 
     ps[i] += p[0]*fac;
@@ -299,17 +299,17 @@ export class CubicPatch extends PatchBase {
   }
 
   finishPoints() {
-    for (let i=0; i<16; i++) {
+    for (let i = 0; i < 16; i++) {
       let tot = this.pointTots[i];
-      let x = i % 4, y = ~~(i / 4);
+      let x = i%4, y = ~~(i/4);
       if (tot) {
-        this.mulScalarPoint(x, y, 1.0 / tot);
+        this.mulScalarPoint(x, y, 1.0/tot);
       }
     }
   }
 
   mulScalarPoint(x, y, f) {
-    let i = (y * 4 + x) * 3;
+    let i = (y*4 + x)*3;
     let ps = this._patch;
 
     ps[i] *= f;
@@ -328,8 +328,8 @@ export class CubicPatch extends PatchBase {
     let idx = (y*4 + x)*3;
 
     p[0] = ps[idx];
-    p[1] = ps[idx+1];
-    p[2] = ps[idx+2];
+    p[1] = ps[idx + 1];
+    p[2] = ps[idx + 2];
 
     return p;
   }
@@ -374,19 +374,19 @@ export class CubicPatch extends PatchBase {
 
         let w = wu*wv;
 
-        let pi = (j * 4 + i) * 3;
+        let pi = (j*4 + i)*3;
 
-        ret[0] += ps[pi] * w;
-        ret[1] += ps[pi + 1] * w;
-        ret[2] += ps[pi + 2] * w;
+        ret[0] += ps[pi]*w;
+        ret[1] += ps[pi + 1]*w;
+        ret[2] += ps[pi + 2]*w;
 
         dvu[0] += ps[pi]*dwu*wv;
-        dvu[1] += ps[pi+1]*dwu*wv;
-        dvu[2] += ps[pi+2]*dwu*wv;
+        dvu[1] += ps[pi + 1]*dwu*wv;
+        dvu[2] += ps[pi + 2]*dwu*wv;
 
         dvv[0] += ps[pi]*dwv*wu;
-        dvv[1] += ps[pi+1]*dwv*wu;
-        dvv[2] += ps[pi+2]*dwv*wu;
+        dvv[1] += ps[pi + 1]*dwv*wu;
+        dvv[2] += ps[pi + 2]*dwv*wu;
       }
     }
 
@@ -467,8 +467,8 @@ export class Patch4 extends PatchBase {
       dv_v = dv_u;
       dv_u = t;
 
-      u = 1.0 - u * 2.0;
-      v = 1.0 - v * 2.0;
+      u = 1.0 - u*2.0;
+      v = 1.0 - v*2.0;
 
       usign = -1;
       vsign = -1;
@@ -476,7 +476,7 @@ export class Patch4 extends PatchBase {
       p = this.patches[0];
     } else if (u <= 0.5 && v >= 0.5) {
       u *= 2.0;
-      v = (v - 0.5) * 2.0;
+      v = (v - 0.5)*2.0;
 
       u = 1.0 - u;
 
@@ -492,19 +492,52 @@ export class Patch4 extends PatchBase {
       dv_v = dv_u;
       dv_u = t;
 
-      u = (u - 0.5) * 2.0;
-      v = (v - 0.5) * 2.0;
+      u = (u - 0.5)*2.0;
+      v = (v - 0.5)*2.0;
 
       p = this.patches[2];
     } else {
-      u = (u - 0.5) * 2.0;
-      v = 1.0 - v * 2.0;
+      u = (u - 0.5)*2.0;
+      v = 1.0 - v*2.0;
 
       vsign = -1;
       p = this.patches[3];
     }
 
     let co = p.evaluate(v, u, dv_v, dv_u, norout);
+
+    if (0 && window.DTST2) {
+      let df = 0.1;
+      let du2, dv2;
+
+      if (u < 1.0 - df) {
+        du2 = p.evaluate(v, u + df, undefined, undefined, undefined);
+        du2.sub(p.evaluate(v, u - df, undefined, undefined, undefined));
+        du2.mulScalar(1.0/(df*2.0));
+      } else {
+        du2 = p.evaluate(v, u, undefined, undefined, undefined);
+        du2.sub(p.evaluate(v, u - df, undefined, undefined, undefined));
+        du2.mulScalar(1.0/df);
+      }
+
+      dv_u.load(du2);
+
+      if (v < 1.0 - df) {
+        dv2 = p.evaluate(v + df, u, undefined, undefined, undefined);
+        dv2.sub(p.evaluate(v - df, u, undefined, undefined, undefined));
+        dv2.mulScalar(1.0/(df*2.0));
+      } else {
+        dv2 = p.evaluate(v, u, undefined, undefined, undefined);
+        dv2.sub(p.evaluate(v - df, u, undefined, undefined, undefined));
+        dv2.mulScalar(1.0/df);
+      }
+
+      dv_v.load(dv2);
+
+      if (norout) {
+        norout.load(dv_u).cross(dv_v).normalize();
+      }
+    }
 
 
     if (dv_u) {
@@ -516,7 +549,7 @@ export class Patch4 extends PatchBase {
     }
 
     if (norout) {
-      norout.mulScalar(usign*vsign);
+      //norout.mulScalar(usign*vsign);
     }
 
     //co[2] += su*0.5;
