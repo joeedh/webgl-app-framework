@@ -82,24 +82,111 @@ export function findSlots(ctx, ast) {
 
 import {libraryCode} from './state.js';
 
+let compiledLibraryCode = undefined;
+
+const lskey = "_mathl_library_code";
+const libraryCodeVersion = 9;
+
+function saveLibraryCode() {
+  let s = JSON.stringify(compiledLibraryCode);
+  if (typeof JSZip !== "undefined") {
+    let s2 = '';
+
+    for (let b of JSZip.deflate(s)) {
+      s2 += String.fromCharCode(b);
+    }
+
+    s = btoa(s2);
+  }
+
+  localStorage[lskey] = s;
+}
+
+function loadLibraryCode() {
+  let buf = localStorage[lskey];
+
+  if (typeof JSZip !== "undefined") {
+    buf = atob(buf);
+    buf = JSZip.inflate(buf);
+
+    let s = '';
+    for (let b of buf) {
+      s += String.fromCharCode(b);
+    }
+
+    buf = s;
+  }
+
+  let json = JSON.parse(buf);
+
+  if (json.version !== libraryCodeVersion) {
+    throw new Error("Bad stdlib version; will have to recompile. . .");
+  }
+
+  let node = new ASTNode();
+
+  node.loadJSON(json);
+  compiledLibraryCode = node;
+}
+
+function getLibraryCode() {
+  const lskey = "_mathl_library_code";
+  if (lskey in localStorage) {
+    try {
+      loadLibraryCode();
+      return compiledLibraryCode;
+    } catch (error) {
+      console.error(error.stack);
+      console.error(error.message);
+      console.error("error loading saved builtin library nodes");
+    }
+  }
+
+  let parser = getParser();
+  state.pushParseState(libraryCode, "ibrary", undefined, libraryCode);
+  state.popParseState();
+
+  state.state.parser = parser;
+  parser.lexer.line_lexstart = 0;
+  state.state.lexer = parser.lexer;
+
+  compiledLibraryCode = parser.parse(libraryCode);
+  compiledLibraryCode.version = libraryCodeVersion;
+
+  saveLibraryCode();
+
+  return compiledLibraryCode;
+}
+
 export function parse(src, filename) {
   let ret;
 
-  src = libraryCode + "\n" + src;
-
   try {
     let src2 = preprocess(src);
+    let parser = getParser();
+
+    if (!compiledLibraryCode) {
+      compiledLibraryCode = getLibraryCode();
+    }
 
     state.pushParseState(src, filename, undefined, src2);
     //ret = parse_intern(src, state.state);
-
-    let parser = getParser();
 
     state.state.parser = parser;
     parser.lexer.line_lexstart = 0;
     state.state.lexer = parser.lexer;
 
     let ast = parser.parse(src2);
+    let ast2 = new ASTNode("Program");
+    for (let node of compiledLibraryCode) {
+      ast2.push(node.copy());
+    }
+
+    for (let node of ast) {
+      ast2.push(node);
+    }
+
+    ast = ast2;
 
     findSlots(state.state, ast);
 
@@ -142,13 +229,30 @@ export function genJS(ctx, args={}) {
 
 export {silence, unsilence} from '../util/util.js';
 
+window._parseGlsl = parse;
+
 export function compileJS(code, filename) {
   let ctx = parse(code, filename);
   let code2 = genJS(ctx);
 
   var program;
 
-  eval(code2);
-  return program();
+  try {
+    eval(code2);
+  } catch (error) {
+    console.log(code2);
+
+    console.error(error.stack);
+    console.error(error.message, error);
+    throw error;
+  }
+
+  let ret = program();
+
+  ret.sourceState = ctx;
+  ret.sourceCode = code2;
+  return ret;
 }
+window._compileJS = compileJS;
+
 

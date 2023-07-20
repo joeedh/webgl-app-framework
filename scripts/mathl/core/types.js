@@ -1,6 +1,43 @@
+export let VarTypeClasses = [];
+
 export class VarType {
   constructor(type) {
     this.type = type;
+  }
+
+  static fromJSON(json) {
+    for (let cls of VarTypeClasses) {
+      if (cls.name === json.Class) {
+        let ret = new cls();
+
+        ret.loadJSON(json);
+
+        return ret;
+      }
+    }
+
+    throw new Error("unknown vardecl class for " + json);
+  }
+
+  static register(cls) {
+    VarTypeClasses.push(cls);
+  }
+
+  toJSON() {
+    return {
+      type : this.type,
+      Class: this.constructor.name
+    }
+  }
+
+  loadJSON(json) {
+    if (typeof json.type === "object") {
+      this.type = VarType.fromJSON(json.type);
+    } else {
+      this.type = json.type;
+    }
+
+    return this;
   }
 
   toString() {
@@ -35,8 +72,10 @@ export class VarType {
   }
 }
 
+VarType.register(VarType);
+
 export class ArrayType extends VarType {
-  constructor(type, size, alias="") {
+  constructor(type, size, alias = "") {
     super();
 
     if (typeof type === "string") {
@@ -48,6 +87,20 @@ export class ArrayType extends VarType {
     this.size = size;
   }
 
+  toJSON() {
+    return Object.assign(super.toJSON(), {
+      alias: this.alias,
+      size : this.size
+    });
+  }
+
+  loadJSON(json) {
+    super.loadJSON(json);
+
+    this.alias = json.alias;
+    this.size = json.size;
+  }
+
   getComponents() {
     return this.size;
   }
@@ -55,7 +108,7 @@ export class ArrayType extends VarType {
   makeZero() {
     let ret = [];
 
-    for (let i=0; i<this.size; i++) {
+    for (let i = 0; i < this.size; i++) {
       ret.push(this.type.makeZero());
     }
 
@@ -90,7 +143,7 @@ export class ArrayType extends VarType {
 
 
 export class DynamicArrayType extends ArrayType {
-  constructor(type, alias="") {
+  constructor(type, alias = "") {
     super();
 
     this.alias = alias;
@@ -122,3 +175,5 @@ export class DynamicArrayType extends ArrayType {
     return `ArrayType(${this.type}, ${this.alias})`;
   }
 }
+
+VarType.register(ArrayType);

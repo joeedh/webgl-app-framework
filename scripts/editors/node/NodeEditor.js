@@ -1,9 +1,10 @@
 import {Area, AreaFlags, contextWrangler} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor, VelPan} from '../editor_base.js';
-import '../../path.ux/scripts/util/struct.js';
 
-let STRUCT = nstructjs.STRUCT;
-import {startMenu, DataPath, DataPathError, KeyMap, HotKey, haveModal} from '../../path.ux/scripts/pathux.js';
+import {
+  startMenu, DataPath, DataPathError,
+  KeyMap, HotKey, haveModal, nstructjs
+} from '../../path.ux/scripts/pathux.js';
 
 import {UIBase, PackFlags, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';
@@ -98,7 +99,7 @@ export class NodeSocketElem extends RowFrame {
 
     let cmd;
 
-    console.log(sock, sock.socketType == SocketTypes.INPUT, sock.edges.length);
+    console.log(sock, sock.socketType === SocketTypes.INPUT, sock.edges.length);
 
     if (sock.socketType === SocketTypes.INPUT && sock.edges.length === 1) {
       let srcsock = sock.edges[0];
@@ -177,7 +178,7 @@ export class NodeSocketElem extends RowFrame {
   init() {
     super.init();
 
-    if (this.type == "input") {
+    if (this.type === "input") {
       this.add(this.canvas);
     }
 
@@ -306,7 +307,7 @@ export class NodeSocketElem extends RowFrame {
     super.setCSS();
 
     this.style["position"] = "absolute"
-    this.style["overflow"] = "clip";
+    //this.style["overflow"] = "hidden";
     this.style["margin"] = this.style["padding"] = "0px";
     this.style["white-space"] = "nowrap";
 
@@ -317,12 +318,22 @@ export class NodeSocketElem extends RowFrame {
 
     let ned = this.ned;
 
+    let scale = ned.velpan.mat.$matrix.m11;
+
     let pos = new Vector2(this.pos);
+    //pos.zero();
+
     pos.add(this.uinode.pos);
+    //pos[1] += this.uinode.size[1];
+
+    let npos = new Vector2(this.uinode.pos);
 
     ned.project(pos, false);
+    ned.project(npos, false);
 
-    //this.float(pos[0], pos[1]);
+    //pos.sub(npos);
+
+    pos[1] -= ned.headerHeight;
 
     let r = this.getBoundingClientRect();
     let w = 0;
@@ -331,16 +342,12 @@ export class NodeSocketElem extends RowFrame {
       w = r.width;
     }
 
-    let yoff = ned.nodeContainer.yoff;
-
-
     if (this.isOutput) {
-      this.style["left"] = (pos[0] - w) + "px";
-    } else {
-      this.style["left"] = pos[0] + "px";
-
+      pos[0] -= w;
     }
-    this.style["top"] = (pos[1] - yoff) + "px";
+
+    this.style["left"] = pos[0] + "px";
+    this.style["top"] = pos[1] + "px";
 
     let dpi = this.getDPI();
 
@@ -349,7 +356,7 @@ export class NodeSocketElem extends RowFrame {
 
     //this.style["width"] = (this.size) + "px";
     this.style["height"] = (this.size) + "px";
-
+    this.style["z-index"] = this.uinode.zindex + 1;
     this._redraw();
     this.background = "rgba(0,0,0,0)";
   }
@@ -364,6 +371,8 @@ export class NodeUI extends Container {
     this.pos = new Vector2();
     this.size = new Vector2();
     this.rawpos = new Vector2();
+
+    this.zindex = 100;
 
     this.inputs = [];
     this.outputs = [];
@@ -448,7 +457,7 @@ export class NodeUI extends Container {
     for (let i = 0; i < 2; i++) {
       //let row2 = row.col();
 
-      if (i == 1) {
+      if (i === 1) {
         //  row2.style["padding-left"] = "50px";
       }
 
@@ -589,6 +598,8 @@ export class NodeUI extends Container {
     ned.project(co, false);
     scale.mul(ned.velpan.scale);
 
+    co[1] += ned.headerHeight;
+
     this.style["position"] = "absolute";
     this.style["width"] = (~~scale[0]) + "px";
     this.style["height"] = (~~scale[1]) + "px";
@@ -608,10 +619,11 @@ export class NodeUI extends Container {
     this.style["border"] = `${r}px ${s} ${color}`;
     this.style["border-radius"] = this.getDefault("border-radius") + "px";
 
-    this.style["padding"] = this.getDefault("padding") + "px";
-    this.style["margin"] = this.getDefault("margin") + "px";
+    //this.style["padding"] = this.getDefault("padding") + "px";
+    //this.style["margin"] = this.getDefault("margin") + "px";
+    this.noMarginsOrPadding();
 
-    this.float(co[0], co[1] - yoff);
+    this.float(co[0], co[1] - yoff, undefined, "absolute");
   }
 
   update() {
@@ -660,6 +672,8 @@ export class NodeEditor extends Editor {
 
     this.nodeContainer.inherit_packflag |= PackFlags.NO_NUMSLIDER_TEXTBOX;
 
+    this.headerHeight = 150;
+
     this.recalc = 0;
 
     this.loadThemeOverrides();
@@ -685,29 +699,16 @@ export class NodeEditor extends Editor {
     this.node_idmap = {};
   }
 
-  loadThemeOverrides() {
-    let overrides = this.getDefault("NodeOverrides");
-
-    for (let k in overrides) {
-      let v = overrides[k];
-
-      for (let k2 in v) {
-        let v2 = v[k2];
-        this.overrideClassDefault(k, k2, v2);
-      }
-    }
-  }
-
   get graph() {
     return this.ctx.api.getValue(this.ctx, this.graphPath);
     //return this.material.graph;
   }
 
-  //prevent context system from putting different node editor subclasses
-
   get material() {
     //return this.ctx.datalib.get(this.matref);
   }
+
+  //prevent context system from putting different node editor subclasses
 
   static defineAPI(api) {
     let nedstruct = super.defineAPI(api);
@@ -720,14 +721,27 @@ export class NodeEditor extends Editor {
 
   static define() {
     return {
-      tagname : "node-editor-x",
-      areaname: "NodeEditor",
-      apiname : "nodeEditor",
-      uiname  : "Node Editor",
-      icon    : Icons.EDITOR_NODE,
-      flag    : AreaFlags.HIDDEN,
-      style   : "NodeEditor",
-      subclassChecksTheme : true
+      tagname            : "node-editor-x",
+      areaname           : "NodeEditor",
+      apiname            : "nodeEditor",
+      uiname             : "Node Editor",
+      icon               : Icons.EDITOR_NODE,
+      flag               : 0,
+      style              : "NodeEditor",
+      subclassChecksTheme: true
+    }
+  }
+
+  loadThemeOverrides() {
+    let overrides = this.getDefault("NodeOverrides");
+
+    for (let k in overrides) {
+      let v = overrides[k];
+
+      for (let k2 in v) {
+        let v2 = v[k2];
+        this.overrideClassDefault(k, k2, v2);
+      }
     }
   }
 
@@ -820,15 +834,12 @@ export class NodeEditor extends Editor {
 
       let node2 = document.createElement("nodeui-x");
 
-      node2.parentWidget = this.nodeContainer;
       node2.ned = this;
       node2.ctx = this.ctx;
-      this.nodeContainer.ctx = this.ctx;
-
       node2.setAttribute("datapath", path);
 
       this.nodes.push(node2);
-      this.nodeContainer.add(node2);
+      this.shadow.appendChild(node2);
     }
 
     this.recalc |= NedRecalcFlags.UI;
@@ -839,7 +850,6 @@ export class NodeEditor extends Editor {
     super.init();
 
     this.addEventListener("mousewheel", (e) => {
-      console.log(e.deltaY);
       let y = e.deltaY;
 
       let fac = y/500.0;
@@ -850,7 +860,7 @@ export class NodeEditor extends Editor {
         fac = 1.0 - fac;
       }
 
-      if (isNaN(fac) || fac == 0.0) {
+      if (isNaN(fac) || fac === 0.0) {
         console.log("Bad scroll factor", fac);
         return;
       }
@@ -893,6 +903,7 @@ export class NodeEditor extends Editor {
     this.addEventListener("mousedown", this.on_mousedown);
 
     let header = this.header;
+    this.header.style.height = "" + this.headerHeight + "px";
 
     this.setCSS();
 
@@ -901,10 +912,24 @@ export class NodeEditor extends Editor {
     this.style["background-color"] = bgcolor;
     //header.prop("NodeEditor.selectmode");
 
-    let menustrip = this.menuStrip = header.row().strip();
-    menustrip.menu("Add", this.makeAddNodeMenu.bind(this));
-
     this.recalc |= NedRecalcFlags.REBUILD;
+  }
+
+  makeHeader(container) {
+    let header = super.makeHeader(container);
+    let menustrip = this.menuStrip = header.row();
+
+    menustrip.style["margin-left"] = "35px"; //go past mouse threshold for screen border
+
+    let button = menustrip.menu("Add", []);
+
+    let this2 = this;
+    let i = 0;
+
+    button._build_menu = function() {
+      this._menu = this2.makeAddNodeMenu();
+      console.warn("Create Menu " + this._menu._id);
+    }
   }
 
   getUISocket(sock) {
@@ -950,7 +975,6 @@ export class NodeEditor extends Editor {
       }
       n1 = n1.parentWidget;
     }
-    console.log("elem", elem, e.pageX, e.pageY);
 
     //let graph = this.get
     if (elem === this || elem === this.container || elem === this.nodeContainer || elem === this.container.dom) {
@@ -1003,8 +1027,6 @@ export class NodeEditor extends Editor {
 
     //this.overdraw
 
-    console.log("EDITOR RESIZE");
-
     //calls this.setCSS()
     this._setNodeContainerRect();
   }
@@ -1043,7 +1065,7 @@ export class NodeEditor extends Editor {
     this.createOverdraw();
 
     this.setCSS();
-    this.recalc |= NedRecalcFlags.UI|NedRecalcFlags.REBUILD;
+    this.recalc |= NedRecalcFlags.UI | NedRecalcFlags.REBUILD;
   }
 
   onFileLoad(is_active) {
@@ -1052,7 +1074,7 @@ export class NodeEditor extends Editor {
     }
 
     this.overdraw.clear();
-    this.recalc |= NedRecalcFlags.UI|NedRecalcFlags.REBUILD;
+    this.recalc |= NedRecalcFlags.UI | NedRecalcFlags.REBUILD;
   }
 
   findSocket(localX, localY, limit = 25) {
@@ -1072,7 +1094,7 @@ export class NodeEditor extends Editor {
         pos[0] = r.x;
         pos[1] = r.y;
 
-        if (sock.type == "output") {
+        if (sock.type === "output") {
           pos[0] += r.width;
         }
 
@@ -1191,11 +1213,16 @@ export class NodeEditor extends Editor {
   _setNodeContainerRect() {
     let r = this.header.getBoundingClientRect();
 
+    this.headerHeight = r.height;
+
     this.nodeContainer.yoff = r.height;
+
+    this.nodeContainer.style["overflow"] = "hidden";
     this.nodeContainer.style["position"] = "absolute";
     this.nodeContainer.style["height"] = (this.size[1] - r.height) + "px";
     this.nodeContainer.style["width"] = this.size[0] + "px";
     this.nodeContainer.style["top"] = r.height + "px";
+    //this.nodeContainer.style["left"] = this.pos[0] + "px";
 
     this.nodeContainer.style["background-color"] = this.getDefault("background-color");
 
@@ -1303,6 +1330,9 @@ export class NodeEditor extends Editor {
   setCSS() {
     super.setCSS();
 
+    this.style["overflow"] = "hidden";
+    this.nodeContainer.style["overflow"] = "hidden";
+
     if (this.nodeContainer) {
       this.nodeContainer.style["background-color"] = this.getDefault("background-color");
     }
@@ -1316,6 +1346,7 @@ export class NodeEditor extends Editor {
 
     this.container.style["width"] = (~~this.size[0]) + "px";
     this.container.style["height"] = (~~this.size[1]) + "px";
+    this.container.style["overflow"] = "hidden";
   }
 
   startAddNodeMenu() {
@@ -1520,7 +1551,7 @@ export class NodeEditor extends Editor {
     this.velpan.onchange = this._on_velpan_change.bind(this);
   }
 };
-NodeEditor.STRUCT = STRUCT.inherit(NodeEditor, Editor) + `
+NodeEditor.STRUCT = nstructjs.inherit(NodeEditor, Editor) + `
   velpan     : VelPan;
   graphPath  : string;
 }

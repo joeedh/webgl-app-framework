@@ -22,6 +22,7 @@ import './uv_selectops.js';
 import './uv_transformops.js';
 import './uv_ops.js';
 import {UVFlags} from '../../mesh/mesh_customdata.js';
+import {resetUnwrapSolvers} from '../../mesh/mesh_ops.js';
 
 let _projtmp = new Vector2();
 
@@ -229,6 +230,9 @@ export class UVEditor extends UIBase {
 
     this.velpan.scale[0] = this.velpan.scale[1] = scale;
     this.velpan.update();
+
+    e.preventDefault();
+    e.stopPropagation();
   }
 
   on_mousedown(e) {
@@ -619,8 +623,6 @@ export class UVEditor extends UIBase {
     if (gltex) {
       this.smesh2.islands[1].draw(gl, uniforms);
     }
-
-    console.log(this.smesh);
 
     this.smesh.draw(gl, uniforms, Shaders.MeshEditShader);
     this.drawDrawLines(gl, uniforms, Shaders.MeshEditShader);
@@ -1441,6 +1443,13 @@ export class ImageEditor extends Editor {
 
     row = col.row();
     row.tool("mesh.pack_uvs()");
+    row.tool("uveditor.project_uvs()");
+
+    row = col.row();
+    row.tool("mesh.fix_seams()");
+    row.button("Reset Solver", () => {
+      resetUnwrapSolvers();
+    });
 
     loadUIData(this.sidebar, uidata);
     this.sidebar.flushUpdate();

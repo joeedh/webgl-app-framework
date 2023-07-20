@@ -3,13 +3,28 @@ import * as util from '../util/util.js';
 import {CodeGenerator} from './generator_base.js';
 import {strong, indent, stronglog, log, termColor, termPrint} from '../util/util.js';
 
-export let jslib = `
-  let fract = function(f) { return f - Math.floor(f);};
-  let abs = Math.abs, sin = Math.sin, cos = Math.cos, log = Math.log, pow = Math.pow;
-  let acos = Math.acos, asin = Math.asin, atan = Math.atan, atan2 = Math.atan2;
-  let sqrt = Math.sqrt, exp = Math.exp, min = Math.min, max = Math.max, floor = Math.floor;
-  let ceil = Math.ceil;
+let keys = new Set(["abs", "sin", "cos", "acos", "asin", "log", "sqrt", "exp",
+            "tan", "min", "max", "floor", "ceil", "trunc", "fract"]);
 
+let mathcode = '';
+for (let k of keys) {
+  mathcode += `let _$_${k}_float_float = Math.${k};\n`;
+}
+
+export let jslib = `
+  ${mathcode}
+    
+  let _$_trunc_int_int = Math.trunc;
+  let _$_pow_float_floatfloat = Math.pow;
+   
+  function _$_atan_float_floatfloat(y, x) {
+    if (x !== undefined) {
+      return Math.atan2(y, x);
+    }
+    
+    return Math.atan(y);
+  }
+  
   function cachering(func, count) {
     this.list = new Array(count);
     this.length = count;
@@ -61,7 +76,7 @@ export class JSGenerator extends CodeGenerator {
     }
   }
 
-  genCode(ast=this.ctx.ast) {
+  genCode(ast = this.ctx.ast) {
     let ctx = this.ctx;
 
     let outs = '';
@@ -70,6 +85,12 @@ export class JSGenerator extends CodeGenerator {
       outs += s;
     }
 
+    function endstatement(s = ";") {
+      if (!outs.trim().endsWith(s)) {
+        outs = outs.trim();
+        out(s);
+      }
+    }
 
     let inputs = '';
     for (let k in ctx.inputs) {
@@ -248,9 +269,55 @@ ${setter}
 
           out(";");
         }
+      } else if (n.type === "PostDec") {
+        rec(n[0]);
+        out("--");
+      } else if (n.type === "PreDec") {
+        out("--");
+        rec(n[0]);
+      } else if (n.type === "PostInc") {
+        rec(n[0]);
+        out("++");
+      } else if (n.type === "PreInc") {
+        out("++");
+        rec(n[0]);
+      } else if (n.type === "ForLoop") {
+        push(n);
+        out("for (");
+
+        let tlvl2 = tlvl;
+        tlvl = 0;
+
+        rec(n[0]);
+
+        tlvl = tlvl2;
+
+        outs = outs.trim();
+        endstatement(";");
+
+        rec(n[1][0]);
+        outs = outs.trim();
+        endstatement(";");
+
+        rec(n[1][1]);
+        outs = outs.trim();
+
+        if (outs.endsWith(";")) {
+          outs = outs.slice(0, outs.length - 1);
+        }
+
+        out(") {\n");
+
+        tlvl++;
+        rec(n[2]);
+        tlvl--;
+
+        out("}\n");
+
+        pop(n);
       } else if (n.type === "Return") {
         let i1, i2, off, type, p, tname;
-        let tab = indent(tlvl+2);
+        let tab = indent(tlvl + 2);
 
         if (usestack) {
           out("{\n");
@@ -318,6 +385,9 @@ ${setter}
           out("\n");
         }
 
+      } else if (n.type === "UnaryOp") {
+        out(n.op);
+        rec(n[0]);
       } else if (n.type === "BinOp" || n.type === "Assign") {
         let paren = false;
 
@@ -347,11 +417,20 @@ ${setter}
           out(n.value);
         }
       } else if (n.type === "Call") {
+        let name;
+
         if (n[0].type === "VarType") {
-          out(n[0].value.getTypeName());
+          name = n[0].value.getTypeName();
         } else {
-          rec(n[0]);
+          name = n[0].value;
         }
+
+        if (name === "int_cast") {
+          out("~~");
+        }
+
+        out(name);
+
         out("(");
         rec(n[1])
         out(")");
@@ -368,7 +447,7 @@ ${setter}
       } else if (n.type === "FloatConstant") {
         out(n.value.toFixed(7));
       } else if (n.type === "IntConstant") {
-        out(""+n.value);
+        out("" + n.value);
       } else if (n.type === "Precision") {
         return; //do nothing
       } else if (n.type === "Function") {
@@ -389,7 +468,7 @@ ${setter}
           i++;
         }
         out(") {\n");
-        
+
         tlvl++;
 
         push(n);
@@ -491,4 +570,5 @@ ${argset}
     return outs;
   }
 }
+
 CodeGenerator.register(JSGenerator);

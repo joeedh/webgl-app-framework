@@ -7,8 +7,8 @@ import {ASTNode} from '../core/ast.js';
 import LZString from '../util/lzstring.js';
 
 const ProdSaveFlags = {
-  RHS_SINGLE : 1,
-  LHS_SINGLE : 2
+  RHS_SINGLE: 1,
+  LHS_SINGLE: 2
 };
 /*
 export class Production {
@@ -164,6 +164,72 @@ nstructjs.validateStructs();
 
 const debug = 0;
 
+class ParseStack {
+  constructor(size = 1024) {
+    this.array = new Array(size);
+    this.length = 0;
+
+    this.itop = this.ibottom = size>>1;
+  }
+
+  get top() {
+    return this.array[this.itop - 1];
+  }
+
+  get bottom() {
+    return this.array[this.ibottom];
+  }
+
+  [Symbol.iterator]() {
+    let this2 = this;
+
+    return (function* () {
+      for (let i = this2.ibottom; i < this2.itop; i++) {
+        yield this.array[i];
+      }
+    })();
+  }
+
+  get(i) {
+    return this.array[i + this.ibottom];
+  }
+
+  shiftN(n) {
+    this.ibottom += n;
+    this.length -= n;
+
+    return this;
+  }
+
+  forEach(cb) {
+    for (let i = this.ibottom; i < this.itop; i++) {
+      cb(this.array[i], i);
+    }
+
+    return this;
+  }
+
+  shift() {
+    this.length--;
+    return this.array[this.ibottom++];
+  }
+
+  unshift(item) {
+    this.length++;
+    this.array[--this.ibottom] = item;
+  }
+
+  push(item) {
+    this.length++;
+    this.array[this.itop++] = item;
+  }
+
+  pop() {
+    this.length--;
+    return this.array[--this.itop];
+  }
+}
+
 export class Parser {
   constructor(lexer, pdata, hash) {
     this.pdata = pdata;
@@ -172,7 +238,7 @@ export class Parser {
     this.onerror = undefined;
   }
 
-  save(zipTool=LZString.compressToBase64) {
+  save(zipTool = LZString.compressToBase64) {
     let data = zipTool(JSON.stringify(this));
 
     //console.log((data.length/1024/1024).toFixed(2) + "mb");
@@ -222,7 +288,7 @@ export class Parser {
     //*/
   }
 
-  load(data, actions, unzipTool=LZString.decompressFromBase64) {
+  load(data, actions, unzipTool = LZString.decompressFromBase64) {
     data = unzipTool(data);
     data = JSON.parse(data);
     this.loadJSON(data, actions);
@@ -250,7 +316,7 @@ export class Parser {
 
   compressPopTab() {
     let bits = 10;
-    let next = (1<<bits)-1;
+    let next = (1<<bits) - 1;
     let out = [];
 
     for (let p of this.pdata.act_tab) {
@@ -262,7 +328,7 @@ export class Parser {
     }
 
     //we don't stray far intonegative territory. . .
-    let half = (1<<(bits-3))-1;
+    let half = (1<<(bits - 3)) - 1;
 
     out = out.map(f => (f + half));
 
@@ -301,7 +367,7 @@ export class Parser {
 
     let s = '';
 
-    for (let i=0; i<out.length; i ++) {
+    for (let i = 0; i < out.length; i++) {
       let a = out[i];
 
       s += String.fromCharCode(a);
@@ -311,29 +377,30 @@ export class Parser {
     console.log(s.length*2/1024);
     console.log("size:", 2*out.length/1024);
   }
+
   toJSON() {
     let pdata = this.pdata;
 
 
     return {
-      pop_tab          : pdata.pop_tab,
-      act_tab          : pdata.act_tab,
-      goto_tab         : pdata.goto_tab,
-      labelmap         : pdata.labelmap,
-      labels           : pdata.labels,
-      error_symbol     : pdata.error_symbol,
-      eof_symbol       : pdata.eof_symbol,
-      whitespace_token : pdata.whitespace_token,
-      defact_tab       : pdata.defact_tab,
-      productions      : pdata.productions,
-      hash             : this.hash
+      pop_tab         : pdata.pop_tab,
+      act_tab         : pdata.act_tab,
+      goto_tab        : pdata.goto_tab,
+      labelmap        : pdata.labelmap,
+      labels          : pdata.labels,
+      error_symbol    : pdata.error_symbol,
+      eof_symbol      : pdata.eof_symbol,
+      whitespace_token: pdata.whitespace_token,
+      defact_tab      : pdata.defact_tab,
+      productions     : pdata.productions,
+      hash            : this.hash
     };
   }
 
   loadJSON(obj, actions) {
     let actions2 = {};
 
-    actions2[0] = function(p) {
+    actions2[0] = function (p) {
       p[0] = p[1];
     }
 
@@ -355,7 +422,7 @@ export class Parser {
     this.lexer.input(buf);
     while (!this.lexer.at_end()) {
       let t = this.lexer.next();
-      console.log(""+t);
+      console.log("" + t);
     }
   }
 
@@ -373,7 +440,7 @@ export class Parser {
 
     let linei = 0, coli = 0;
 
-    for (let i=0; i<buf.length; i++) {
+    for (let i = 0; i < buf.length; i++) {
       linemap[i] = linei;
       colmap[i] = coli++;
 
@@ -391,21 +458,19 @@ export class Parser {
     let goto_tab = this.pdata.goto_tab;
     let labelmap = this.pdata.labelmap
 
-    function PcbClass() {
-    }
+    class PcbClass {
+      constructor() {
+        this.line = 1;
+        this.column = 1;
+        this.offset = 0;
+        this.error_step = 0;
+        this.src = "";
+        this.att = "";
+        this.la = null;
+        this.act = null;
+      }
 
-    let actions = pdata.actions;
-
-    PcbClass.prototype = {
-      line: 1,
-      column: 1,
-      offset: 0,
-      error_step: 0,
-      src: "",
-      att: "",
-      la: null,
-      act: null,
-      lex: function () {
+      lex(){
         if (debug) {
           console.log("next token");
         }
@@ -427,23 +492,31 @@ export class Parser {
       }
     }
 
+    let actions = pdata.actions;
+
     function get_act(top, la) {
-      for (var i = 0; i < act_tab[top].length; i += 2)
+      for (let i = 0; i < act_tab[top].length; i += 2) {
         if (act_tab[top][i] === la)
           return act_tab[top][i + 1];
+      }
 
       return null;
     }
 
     function get_goto(top, pop) {
-      for (var i = 0; i < goto_tab[top].length; i += 2)
+      for (let i = 0; i < goto_tab[top].length; i += 2) {
         if (goto_tab[top][i] === pop)
           return goto_tab[top][i + 1];
+      }
       return null;
     }
 
-    let sstack = [0];
-    let vstack = [0];
+    let sstack = new ParseStack();
+    let vstack = new ParseStack();
+
+    sstack.push(0);
+    vstack.push(0);
+
     let defact_tab = pdata.defact_tab;
     let labels = pdata.labels;
     let err_cnt = 0;
@@ -470,11 +543,11 @@ export class Parser {
       let lines = buf.split("\n");
       let s = "";
 
-      for (let i=line-15; i<line+25; i++) {
+      for (let i = line - 15; i < line + 25; i++) {
         if (i < 0) continue;
         if (i >= lines.length) break;
 
-        let si = ""+i;
+        let si = "" + i;
         while (si.length < 3) {
           si = " " + si;
         }
@@ -490,30 +563,31 @@ export class Parser {
       //l = l.slice(0, col) + util.termColor(l[col], "red") + l.slice(col+1, l.length);
       message += "  " + l + "\n";
 
-      for (let i=0; i<col+2; i++) {
+      for (let i = 0; i < col + 2; i++) {
         message += " ";
       }
       message += "^\n";
 
       console.warn(message);
-      process.exit();
+      //process.exit();
 
       throw new Error(message);
     }
 
     console.log("%cPARSING!", "color : orange;");
 
-    let err_off = [];
-    let err_la = [];
+    let err_off = new ParseStack();
+    let err_la = new ParseStack();
+
     PCB.lex();
     while (1) {//!this.lexer.at_end()) {
-      PCB.act = get_act(sstack[0], PCB.la);
+      PCB.act = get_act(sstack.bottom, PCB.la);
       if (debug) {
         console.log(PCB.act, PCB.la);
       }
 
-      if (PCB.act === null && defact_tab[sstack[0]] >= 0)
-        PCB.act = -defact_tab[sstack[0]];
+      if (PCB.act === null && defact_tab[sstack.bottom] >= 0)
+        PCB.act = -defact_tab[sstack.bottom];
       if (PCB.act === null) {//Parse error? Try to recover!
         //Report errors only when error_step is 0, and this is not a
         //subsequent error from a previous parse
@@ -522,8 +596,9 @@ export class Parser {
           err_off.unshift(PCB.offset - PCB.att.length);
           err_la.unshift([]);
 
-          for (i = 0; i < act_tab[sstack[0]].length; i += 2)
-            err_la[0].push(labels[act_tab[sstack[0]][i]]);
+          for (i = 0; i < act_tab[sstack.bottom].length; i += 2) {
+            err_la.get(0).push(labels[act_tab[sstack.bottom][i]]);
+          }
 
           PCB.errorLabels = err_la;
           doerror(PCB);
@@ -534,7 +609,7 @@ export class Parser {
           sstack.shift();
           vstack.shift();
           //Try to shift on error token
-          PCB.act = get_act(sstack[0], PCB.la);
+          PCB.act = get_act(sstack.bottom, PCB.la);
           if (PCB.act === error_token) {
             sstack.unshift(PCB.act);
             vstack.unshift("");
@@ -545,9 +620,11 @@ export class Parser {
         if (sstack.length > 1 && PCB.act !== null) {
           //Ok, now try to shift on the next tokens
           while (PCB.la !== eof) {
-            PCB.act = act_tab[sstack[0]][i + 1];
+            PCB.act = act_tab[sstack.bottom][i + 1];
             if (PCB.act != null) break;
-            while (PCB.lex() != null) PCB.offset++;
+            while (PCB.lex() != null) {
+              PCB.offset++;
+            }
           }
         }
         if (PCB.act === null || PCB.la === eof) {
@@ -576,8 +653,8 @@ export class Parser {
 
         p.lexer = lexer;
 
-        for (let i=0; i<prod.length; i++) {
-          p.push(vstack[prod.length-i-1]);
+        for (let i = 0; i < prod.length; i++) {
+          p.push(vstack.get(prod.length - i - 1));
         }
 
         if (debug) {
@@ -598,10 +675,10 @@ export class Parser {
         //rval = ACTIONS(act, vstack, PCB);
 
         //vstack.shift();
-        sstack.splice(0, pop_tab[act][1]);
-        vstack.splice(0, pop_tab[act][1]);
+        sstack.shiftN(pop_tab[act][1]);
+        vstack.shiftN(pop_tab[act][1]);
 
-        PCB.act = get_goto(sstack[0], pop_tab[act][0]);
+        PCB.act = get_goto(sstack.bottom, pop_tab[act][0]);
         //Do some parse tree construction if desired
         //Goal symbol match?
         if (act === 0) break; //Don't use PCB.act here!
@@ -615,11 +692,13 @@ export class Parser {
     let ret = rval;
     globalThis.noderet = ret;
 
+    console.log("%cDone.", "color : orange;");
+
     return ret;
   }
 }
 
-export function getParser(lexer, parsedef, tokenlist, prec, parserName, force=false) {
+export function getParser(lexer, parsedef, tokenlist, prec, parserName, force = false) {
   if (parserName === undefined) {
     throw new Error("parserName cannot be undefined");
   }
@@ -640,7 +719,7 @@ export function getParser(lexer, parsedef, tokenlist, prec, parserName, force=fa
       prec = ""
 
     grammar += prec + " ";
-    for (let i=1; i<list.length; i++) {
+    for (let i = 1; i < list.length; i++) {
       if (i > 1) {
         grammar += "  ";
       }
@@ -691,7 +770,7 @@ export function getParser(lexer, parsedef, tokenlist, prec, parserName, force=fa
 
   let actions = {};
   for (let p of parsedef) {
-    actions[""+p.id] = p.func;
+    actions["" + p.id] = p.func;
     p.func.grammar = p.grammar;
   }
 
@@ -839,7 +918,7 @@ export function getParser(lexer, parsedef, tokenlist, prec, parserName, force=fa
     pdata.whitespace_token = printtab.get_whitespace_symbol_id();
 
     let labelmap = {};
-    for (let i=0; i<pdata.labels.length; i++) {
+    for (let i = 0; i < pdata.labels.length; i++) {
       labelmap[pdata.labels[i]] = i;
     }
     pdata.labelmap = labelmap;
@@ -847,7 +926,7 @@ export function getParser(lexer, parsedef, tokenlist, prec, parserName, force=fa
     pdata.productions = global.productions;
 
     let actions2 = {};
-    actions2[0] = function(p) {
+    actions2[0] = function (p) {
       p[0] = p[1];
     }
 
@@ -870,7 +949,7 @@ export function getParser(lexer, parsedef, tokenlist, prec, parserName, force=fa
 
   for (let k in actions) {
     let act = actions[k];
-    grammar2 += ""+act+"\n";
+    grammar2 += "" + act + "\n";
   }
 
   parser = new Parser(lexer, ret, hash);

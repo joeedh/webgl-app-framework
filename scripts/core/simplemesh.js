@@ -184,6 +184,11 @@ export class QuadEditor {
     return this;
   }
 
+  custom(li, v1, v2, v3, v4) {
+    this.t1.custom(li, v1, v2, v3);
+    this.t2.custom(li, v1, v3, v4);
+  }
+
   colors(u1, u2, u3, u4) {
     this.t1.colors(u1, u2, u3);
     this.t2.colors(u1, u3, u4);
@@ -224,6 +229,16 @@ export class LineEditor {
 
     data.copy(i, c1);
     data.copy(i + 1, c2);
+
+    return this;
+  }
+
+  custom(layeri, v1, v2) {
+    let layer = this.mesh.layers.layers[layeri];
+
+    let i = this.i*2;
+    layer.copy(i, v1);
+    layer.copy(i + 1, v2);
 
     return this;
   }
@@ -1502,10 +1517,12 @@ export class SimpleIsland {
     let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag;
 
     if (program && !program.program) {
-      program.checkCompile(gl);
+      //program.checkCompile(gl, uniforms);
+      let attrs = this._glAttrs;
+      program.bind(gl, uniforms, attrs);
     }
 
-    if (!program || !program.program) {
+    if (!program) {
       return;
     }
 
@@ -1828,7 +1845,13 @@ export class SimpleMesh {
   }
 
   destroy(gl = this.gl) {
+    //XXX use global variable
+    if (!gl && window._appstate) {
+      gl = _appstate.gl;
+    }
+
     if (!gl) {
+
       console.warn("failed to destroy a mesh");
       return;
     }

@@ -6,8 +6,6 @@ import {LayerTypes, SimpleMesh} from '../core/simplemesh.js';
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
-import '../path.ux/scripts/util/struct.js';
-let STRUCT = nstructjs.STRUCT;
 import {SceneObject, ObjectFlags} from '../sceneobject/sceneobject.js';
 import {RenderEngine} from "./renderengine_base.js";
 import {Mesh} from '../mesh/mesh.js';
@@ -375,6 +373,7 @@ void main(void) {
     this.uniforms.uSample = rctx.engine.uSample;
     program.uniforms.projectionMatrix = rctx.drawmats.rendermat;
     program.uniforms.iprojectionMatrix = rctx.drawmats.irendermat;
+    program.uniforms.objectMatrix = new Matrix4();
 
     program.uniforms.viewMatrix = rctx.drawmats.cameramat;
     program.uniforms.iviewMatrix = rctx.drawmats.icameramat;
@@ -383,8 +382,13 @@ void main(void) {
       program.uniforms[k] = this.uniforms[k];
     }
 
-    this.bindInputs(rctx, program);
+    //clear active textures
+    for (let i=0; i<5; i++) {
+      gl.activeTexture(gl.TEXTURE0 + i);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
 
+    this.bindInputs(rctx, program);
     rctx.drawQuad(program, this.size);
   }
 
@@ -477,6 +481,7 @@ export class RenderGraph {
         }
       }
     }
+
     //this.graph.exec(this.rctx);
   }
 

@@ -29,7 +29,7 @@ THREE.Matrix4.prototype.getInverse = function ( m, throwOnDegenerate ) {
       throw new Error( msg );
 
     } else {
-      if (cconst.DEBUG.THREE) {
+      if (window.DEBUG.THREE) {
         console.warn(msg);
       }
 

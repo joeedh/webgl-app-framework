@@ -5,10 +5,10 @@ import {
   MAX_EDGE_FACES, MAX_FACE_VERTS, MAX_VERT_EDGES,
   ReusableIter, MeshIterFlags, STORE_DELAY_CACHE_INDEX, DEBUG_FREE_STACKS
 } from "./mesh_base.js";
-import {Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
+import {Vector3, Vector4, Quat, Matrix4, BaseVector} from "../util/vectormath.js";
 import * as util from "../util/util.js";
 import {UVLayerElem} from "./mesh_customdata.js";
-import '../path.ux/scripts/util/struct.js';
+import {nstructjs} from '../path.ux/pathux.js';
 let STRUCT = nstructjs.STRUCT;
 
 import {EDGE_LINKED_LISTS} from '../core/const.js';
@@ -328,6 +328,7 @@ export class Element {
     return this;
   }
 
+  /*
   set eid(v) {
     if (isNaN(v)) {
       console.error("Got NaN eid", v);
@@ -338,7 +339,7 @@ export class Element {
 
   get eid() {
     return this._eid;
-  }
+  }*/
 
   static isElement(obj) {
     return obj instanceof Element || obj instanceof Vertex;
@@ -398,7 +399,7 @@ mesh.Element {
   customData  : array(abstract(mesh.CustomDataElem));
 }
 `;
-nstructjs.manager.add_class(Element);
+nstructjs.register(Element);
 
 let vertiters_f;
 
@@ -760,6 +761,155 @@ for (let i=0; i<vedgeiters.length; i++) {
 }
 vedgeiters.cur = 0;
 
+class VertexReader {
+  constructor() {
+    this.v = undefined;
+  }
+
+  get no() {
+    return this.v.no;
+  }
+
+  set no(no) {
+    this.v.no = no;
+  }
+
+  set customData(f) {
+    this.v.customData = f;
+  }
+  get customData() {
+    return this.v.customData;
+  }
+
+  set flag(f) {
+    this.v.flag = f;
+  }
+  set type(f) {
+    this.v.type = f;
+  }
+  set index(f) {
+    this.v.index = f;
+  }
+  set eid(f) {
+    this.v.eid = f;
+  }
+  set 0(f) {
+    this.v[0] = f;
+  }
+  set 1(f) {
+    this.v[1] = f;
+  }
+  set 2(f) {
+    this.v[2] = f;
+  }
+}
+
+const vertexReader = new VertexReader();
+
+/** used for debugging */
+export class Vector3Array extends BaseVector {
+  constructor(co) {
+    super();
+
+    this.length = 3;
+
+    if (co) {
+      this.load(co);
+    } else {
+      this[0] = this[1] = this[2] = 0.0;
+    }
+  }
+
+  loadXYZ(x,y, z) {
+    this[0] = x;
+    this[1] = y;
+    this[2] = z;
+    return this;
+  }
+
+  loadXY(x, y) {
+    this[0] = x;
+    this[1] = y;
+    return this;
+  }
+
+  initVector3() {
+    this.length = 3;
+    this[0] = this[1] = this[2] = 0.0;
+  }
+
+  load(b) {
+    this[0] = b[0];
+    this[1] = b[1];
+    this[2] = b[2];
+    return this;
+  }
+
+  dot(b) {
+    return this[0]*b[0] + this[1]*b[1] + this[2]*b[2];
+  }
+
+
+  multVecMatrix(matrix, ignore_w) {
+    if (ignore_w === undefined) {
+      ignore_w = false;
+    }
+    var x = this[0];
+    var y = this[1];
+    var z = this[2];
+    this[0] = matrix.$matrix.m41 + x*matrix.$matrix.m11 + y*matrix.$matrix.m21 + z*matrix.$matrix.m31;
+    this[1] = matrix.$matrix.m42 + x*matrix.$matrix.m12 + y*matrix.$matrix.m22 + z*matrix.$matrix.m32;
+    this[2] = matrix.$matrix.m43 + x*matrix.$matrix.m13 + y*matrix.$matrix.m23 + z*matrix.$matrix.m33;
+    var w = matrix.$matrix.m44 + x*matrix.$matrix.m14 + y*matrix.$matrix.m24 + z*matrix.$matrix.m34;
+
+    if (!ignore_w && w !== 1 && w !== 0 && matrix.isPersp) {
+      this[0] /= w;
+      this[1] /= w;
+      this[2] /= w;
+    }
+    return w;
+  }
+
+  cross(v) {
+    var x = this[1]*v[2] - this[2]*v[1];
+    var y = this[2]*v[0] - this[0]*v[2];
+    var z = this[0]*v[1] - this[1]*v[0];
+
+    this[0] = x;
+    this[1] = y;
+    this[2] = z;
+
+    return this;
+  }
+
+  //axis is optional, 0
+  rot2d(A, axis) {
+    var x = this[0];
+    var y = this[1];
+
+    if (axis === 1) {
+      this[0] = x*cos(A) + y*sin(A);
+      this[1] = y*cos(A) - x*sin(A);
+    } else {
+      this[0] = x*cos(A) - y*sin(A);
+      this[1] = y*cos(A) + x*sin(A);
+    }
+
+    return this;
+  }
+}
+
+BaseVector.inherit(Vector3Array, 3);
+
+Vector3Array.STRUCT = `
+vec3Array {
+  0 : float;
+  1 : float;
+  2 : float;
+}
+`;
+nstructjs.manager.add_class(Vector3Array);
+
 //has Element mixin
 export class Vertex extends Vector3 {
   constructor(co) {
@@ -785,6 +935,40 @@ export class Vertex extends Vector3 {
       Object.seal(this);
     }
   }
+
+  /* change parent to Vector3Array above before uncommenting
+  set 0(v) {
+    if (isNaN(v)) {
+      debugger;
+    }
+    this._zero = v;
+  }
+
+  get 0() {
+    return this._zero;
+  }
+
+  set 1(v) {
+    if (isNaN(v)) {
+      debugger;
+    }
+    this._one = v;
+  }
+
+  get 1() {
+    return this._one;
+  }
+
+  set 2(v) {
+    if (isNaN(v)) {
+      debugger;
+    }
+    this._two = v;
+  }
+
+  get 2() {
+    return this._two;
+  } //*/
 
   _free() {
     if (EDGE_LINKED_LISTS) {
@@ -1006,7 +1190,9 @@ export class Vertex extends Vector3 {
 
   loadSTRUCT(reader) {
     IN_VERTEX_STRUCT = true;
-    reader(this);
+    vertexReader.v = this;
+    reader(vertexReader);
+    vertexReader.v = undefined;
     IN_VERTEX_STRUCT = false;
 
     //we mixed in Element instead of inheriting from it
@@ -1073,7 +1259,7 @@ Handle.STRUCT = STRUCT.inherit(Handle, Element, "mesh.Handle") + `
 }
 `;
 
-nstructjs.manager.add_class(Handle);
+nstructjs.register(Handle);
 
 var _evaluate_tmp_vs = util.cachering.fromConstructor(Vector3, 512);
 var _evaluate_vs = util.cachering.fromConstructor(Vector3, 512);
@@ -1526,6 +1712,7 @@ export class Edge extends Element {
     super(MeshTypes.EDGE);
 
     this._arcCache = undefined;
+    this._length = undefined;
 
     this.l = undefined;
 
@@ -2080,7 +2267,7 @@ export class Edge extends Element {
     reader(this);
     super.loadSTRUCT(reader);
 
-    this.flag &= ~MeshFlags.DRAW_DEBUG;
+    this.flag &= ~(MeshFlags.DRAW_DEBUG|MeshFlags.DRAW_DEBUG2);
   }
 }
 Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
@@ -2091,7 +2278,7 @@ Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
   length  : float; 
 }
 `;
-nstructjs.manager.add_class(Edge);
+nstructjs.register(Edge);
 
 let calc_normal_temps = util.cachering.fromConstructor(Vector3, 32);
 
@@ -2146,6 +2333,7 @@ export class Loop extends Element {
 }
 Loop.STRUCT = STRUCT.inherit(Loop, Element, "mesh.Loop") + `
   v           : int | obj.v.eid;
+  e           : int | obj.e.eid;
 }
 `;
 
@@ -2156,7 +2344,7 @@ Loop.STRUCT = STRUCT.inherit(Loop, Element, "mesh.Loop") + `
   prev        : int | obj.prev.eid;
 */
 
-nstructjs.manager.add_class(Loop);
+nstructjs.register(Loop);
 
 let loopiterstack;
 
@@ -2484,6 +2672,32 @@ export class Face extends Element {
     return count;
   }
 
+  ensureBoundaryFirst() {
+    let maxlist, maxlen;
+
+    for (let list of this.lists) {
+      let len = 0.0;
+
+      for (let l of list) {
+        len += l.v.vectorDistance(l.next.v);
+      }
+
+      if (!maxlist || len > maxlen) {
+        maxlist = list;
+        maxlen = len;
+      }
+    }
+
+    let i = this.lists.indexOf(maxlist);
+
+    if (i !== 0) {
+      this.lists[i] = this.lists[0];
+      this.lists[0] = maxlist;
+    }
+
+    return this;
+  }
+
   isNgon() {
     if (this.lists.length === 0) {
       return false; //bad face
@@ -2526,13 +2740,13 @@ export class Face extends Element {
     return fiter_stack_e[fiter_stack_e.cur++].reset(this);
   }
 
-  calcNormal() {
+  calcNormal(cd_disp) {
     let t1 = calc_normal_temps.next(), t2 = calc_normal_temps.next();
     let t3 = calc_normal_temps.next(), sum = calc_normal_temps.next();
 
     sum.zero();
 
-    this.calcCent();
+    this.calcCent(cd_disp);
 
     let c = this.cent;
 
@@ -2540,6 +2754,11 @@ export class Face extends Element {
     let l = this.lists[0].l;
     do {
       let v1 = l.v, v2 = l.next.v;
+
+      if (cd_disp >= 0) {
+        v1 = v1.customData[cd_disp].worldco;
+        v2 = v2.customData[cd_disp].worldco;
+      }
 
       t1.load(v1).sub(c);
       t2.load(v2).sub(c);
@@ -2556,10 +2775,11 @@ export class Face extends Element {
 
     sum.normalize();
     this.no.load(sum);
+
     return this.no;
   }
 
-  calcCent() {
+  calcCent(cd_disp) {
     this.cent.zero();
     let tot = 0.0;
 
@@ -2568,7 +2788,13 @@ export class Face extends Element {
     }
 
     for (let l of this.lists[0]) {
-      this.cent.add(l.v);
+      let co = l.v;
+
+      if (cd_disp >= 0) {
+        co = co.customData[cd_disp].worldco;
+      }
+
+      this.cent.add(co);
       tot++;
     }
 

@@ -26,9 +26,23 @@ import {SMesh} from '../smesh/smesh.js';
 
 let passthrus = new Set(["datalib", "gl", "graph", "last_tool", "toolstack", "api"]);
 
+import bus from './bus.js';
+
 export class BaseOverlay extends ContextOverlay {
   constructor(appstate) {
     super(appstate);
+  }
+
+  get messagebus() {
+    return bus;
+  }
+
+  messagebus_save() {
+    return undefined;
+  }
+
+  messagebus_load() {
+    return bus;
   }
 
   get settings() {

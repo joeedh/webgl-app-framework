@@ -120,7 +120,7 @@ KnotDataLayer.STRUCT = STRUCT.inherit(KnotDataLayer, CustomDataElem, "mesh.KnotD
   tilt         : float;
 }`;
 
-nstructjs.manager.add_class(KnotDataLayer);
+nstructjs.register(KnotDataLayer);
 CustomDataElem.register(KnotDataLayer);
 
 export function getKnot(v) {
@@ -762,6 +762,6 @@ CurveSpline.STRUCT = STRUCT.inherit(CurveSpline, Mesh, "mesh.CurveSpline") + `
 }
 `;
 
-nstructjs.manager.add_class(CurveSpline);
+nstructjs.register(CurveSpline);
 DataBlock.register(CurveSpline);
 SceneObjectData.register(CurveSpline);

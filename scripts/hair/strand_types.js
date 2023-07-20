@@ -1,5 +1,6 @@
 import {CurveSpline} from '../curve/curve.js';
 import {AttachFlags, AttachTypes} from './strand_base.js';
+import {nstructjs} from '../path.ux/scripts/pathux.js';
 
 export class AttachPoint {
   constructor(mode=AttachTypes.ABSOLUTE) {

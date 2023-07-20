@@ -375,6 +375,9 @@ export class KdTreeGrid extends GridBase {
     this.subdtemps = util.cachering.fromConstructor(Vector3, 32);
   }
 
+  hash() {
+    return 0;
+  }
   static define() {
     return {
       elemTypeMask : MeshTypes.LOOP, //see MeshTypes in mesh.js

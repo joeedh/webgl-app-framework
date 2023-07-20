@@ -2708,7 +2708,7 @@ SomeClass.STRUCT = `
 SomeClass {
 }
 `
-nstructjs.manager.add_class(SomeClass);
+nstructjs.register(SomeClass);
 
 */
 let StructTypeMap$1 = StructTypeMap;

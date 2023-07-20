@@ -1,11 +1,10 @@
-import '../../path.ux/scripts/util/struct.js';
-let STRUCT = nstructjs.STRUCT;
 import {Icons} from '../icon_enum.js';
 import {warning} from "../../path.ux/scripts/widgets/ui_noteframe.js";
 import * as util from '../../util/util.js';
 import {ResourceType, resourceManager} from '../../core/resource.js';
 import {ResourcePageType, ResourcePages} from './resbrowser_types.js';
 import {genResBrowserScreen} from '../screengen.js';
+import {nstructjs} from '../../path.ux/scripts/pathux.js';
 
 import {Editor} from '../editor_base.js';
 import {KeyMap} from "../../path.ux/scripts/util/simple_events.js";
@@ -364,10 +363,10 @@ export class ResourceBrowser extends Editor {
   }
 }
 
-ResourceBrowser.STRUCT = STRUCT.inherit(ResourceBrowser, Editor) + `
+ResourceBrowser.STRUCT = nstructjs.inherit(ResourceBrowser, Editor) + `
   resourceType : string;
 }
 `;
-nstructjs.manager.add_class(ResourceBrowser);
+nstructjs.register(ResourceBrowser);
 
 Editor.register(ResourceBrowser);

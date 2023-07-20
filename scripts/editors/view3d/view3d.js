@@ -1,5 +1,7 @@
 import "../../extern/three.js";
 
+import {loadUIData, nstructjs, saveUIData} from '../../path.ux/scripts/pathux.js';
+
 import {spawnToolSearchMenu} from '../editor_base.js';
 
 import * as util from '../../util/util.js';
@@ -7,22 +9,17 @@ import * as cconst from '../../core/const.js';
 
 import {getBlueMask} from "../../shadernodes/shader_lib.js";
 
+import {ToolMode} from './view3d_toolmode.js';
+
 import './findnearest/all.js';
 import './tools/tools.js';
 import * as textsprite from '../../core/textsprite.js';
-import {FindNearest} from './findnearest.js';
-import {TranslateOp} from './transform/transform_ops.js';
-import {RenderEngine} from "../../renderengine/renderengine_base.js";
 import {RealtimeEngine, RenderSettings} from "../../renderengine/renderengine_realtime.js";
-import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {PackFlags} from '../../path.ux/scripts/core/ui_base.js';
 import {Editor} from '../editor_base.js';
 import {Camera, init_webgl, ShaderProgram} from '../../core/webgl.js';
-import {SelMask} from './selectmode.js';
-import '../../path.ux/scripts/util/struct.js';
 import {DrawModes} from './drawmode.js';
 import {EnvLightFlags} from "../../scene/scene.js";
-let STRUCT = nstructjs.STRUCT;
 import {UIBase, color2css, css2color}  from '../../path.ux/scripts/core/ui_base.js';
 import * as view3d_shaders from '../../shaders/shaders.js';
 import {loadShader} from '../../shaders/shaders.js';
@@ -31,13 +28,8 @@ import {Vector3, Vector2, Vector4, Matrix4, Quat, Matrix4ToTHREE} from '../../ut
 import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js';
 import {cachering, print_stack, time_ms} from '../../util/util.js';
 import './tools/mesheditor.js';
-import {ObjectEditor} from './tools/selecttool.js';
-import {ToolModes, makeToolModeEnum} from './view3d_toolmode.js';
-import {Mesh} from '../../mesh/mesh.js';
 import {GPUSelectBuffer} from './view3d_select.js';
 import {KeyMap, HotKey} from "../editor_base.js";
-import {WidgetManager} from './widgets/widgets.js';
-import {MeshCache} from './view3d_toolmode.js';
 import {calcTransCenter, calcTransMatrix, calcTransAABB} from './transform/transform_query.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';
@@ -47,8 +39,6 @@ import {CursorModes, OrbitTargetModes} from './view3d_utils.js';
 import {Icons} from '../icon_enum.js';
 import {WidgetSceneCursor, NoneWidget} from './widgets/widget_tools.js';
 import {View3DFlags, CameraModes} from './view3d_base.js';
-import {ResourceBrowser} from "../resbrowser/resbrowser.js";
-import {ObjectFlags} from '../../sceneobject/sceneobject.js';
 
 let proj_temps = cachering.fromConstructor(Vector4, 32);
 let unproj_temps = cachering.fromConstructor(Vector4, 32);
@@ -881,12 +871,18 @@ export class View3D extends Editor {
 
     strip = header.strip();
     strip.inherit_packflag |= PackFlags.HIDE_CHECK_MARKS;
+
+    strip.useIcons(true);
+    strip.prop("scene.toolmode");
+    /*
     strip.prop("scene.toolmode[sculpt]");
     strip.prop("scene.toolmode[mesh]");
     strip.prop("scene.toolmode[object]");
     strip.prop("scene.toolmode[pan]");
     strip.prop("scene.toolmode[tetmesh]");
-    strip.prop("scene.toolmode[strandset]");
+    //strip.prop("scene.toolmode[strandset]");
+    strip.prop("scene.toolmode[tanspace_tester]");
+    */
 
     //header.tool("mesh.subdivide_smooth()", PackFlags.USE_ICONS);
     //strip.tool("view3d.view_selected()", PackFlags.USE_ICONS);
@@ -977,14 +973,33 @@ export class View3D extends Editor {
   init() {
     super.init();
 
+    let id = this.getAttribute("id");
+    let busgetter = () => {
+      //console.log("ID", id, this.getAttribute("id"), document.getElementById(id));
+
+      if (!this.isConnected) {
+        return undefined;
+      }
+
+      return this;
+      //not working!!!! -> return document.getElementById(id);
+    }
+
+    this.ctx.messagebus.subscribe(busgetter, ToolMode, (msg) => {
+      console.log("Got bus message!", this, msg);
+      this.doOnce(this.rebuildHeader);
+    }, ["REGISTER", "UNREGISTER"]);
+
     this.overdraw = document.createElement("overdraw-x");
     this.overdraw.ctx = this.ctx;
-    //this.overdraw.zindex_base = 5;
 
+    this.overdraw.startNode(this, this.ctx.screen, "absolute");
 
-    this.overdraw.startNode(this, this.ctx.screen);
     this.overdraw.remove();
     this.shadow.appendChild(this.overdraw);
+
+    this.overdraw.style["left"] = "0px";
+    this.overdraw.style["top"] = "0px";
 
     let eventdom = this; //this.overdraw;
 
@@ -1015,7 +1030,7 @@ export class View3D extends Editor {
         return true;
       }
 
-      let node = this.getScreen().pickElement(e.x, e.y);
+      let node = this.pickElement(e.x, e.y);
 
       //console.log(node ? node.tagName : undefined);
       return node !== this && node !== this.overdraw;
@@ -1044,9 +1059,9 @@ export class View3D extends Editor {
       this.doEvent("mousemove", e);
     };
 
-    eventdom.addEventListener("mousemove", on_mousemove);
+    eventdom.addEventListener("pointermove", on_mousemove);
 
-    eventdom.addEventListener("mouseup", (e) => {
+    eventdom.addEventListener("pointerup", (e) => {
       let was_touch = eventWasTouch(e);
 
       this.last_mpos.load(this.getLocalMouse(e.x, e.y));
@@ -1063,23 +1078,17 @@ export class View3D extends Editor {
     });
 
     let on_mousedown = (e) => {
-      console.log("HAVE MODAL", haveModal());
-
       if (uiHasFocus(e)) {
         return;
       }
-      let was_touch = eventWasTouch(e);
 
-      //if (was_touch) {
-        //on_mousemove(e, false);
-      //}
+      /* prevent duplicate mousedown events from touch forwarding */
+      e.preventDefault();
 
 
       let r = this.getLocalMouse(e.clientX, e.clientY);
       this.start_mpos.load(r);
       this.last_mpos.load(r);
-
-      let x = r[0], y = r[1];
 
       this.push_ctx_active();
 
@@ -1091,10 +1100,7 @@ export class View3D extends Editor {
       this.updateCursor();
 
       let docontrols = e.button === 1 || e.button === 2 || e.altKey;
-
       if (!docontrols && e.button === 0) {
-        let selmask = this.ctx.selectMask;
-
         docontrols = true;
 
         this.mdown = true;
@@ -1104,7 +1110,8 @@ export class View3D extends Editor {
         this.mdown = false;
       }
 
-      //console.log("touch", eventWasTouch(e), e);
+      console.log("touch", eventWasTouch(e), e);
+
       if (docontrols && eventWasTouch(e) && !e.shiftKey && !e.ctrlKey && !e.altKey) {
         console.log("multitouch view tool");
 
@@ -1129,11 +1136,12 @@ export class View3D extends Editor {
       }
 
       this.pop_ctx_active();
+
       e.preventDefault();
       e.stopPropagation();
     };
 
-    eventdom.addEventListener("mousedown", on_mousedown);
+    eventdom.addEventListener("pointerdown", on_mousedown);
 
     window.redraw_viewport();
   }
@@ -1417,7 +1425,7 @@ export class View3D extends Editor {
   }
 
   viewportDraw() {
-    if (cconst.DEBUG.debugUIUpdatePerf) {
+    if (window.DEBUG.debugUIUpdatePerf) {
       return;
     }
 
@@ -1816,7 +1824,7 @@ export class View3D extends Editor {
     icon     : Icons.EDITOR_VIEW3D
   }}
 };
-View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
+View3D.STRUCT = nstructjs.inherit(View3D, Editor) + `
   camera              : Camera;
   transformSpace      : int; 
   drawmode            : int;
@@ -1830,7 +1838,7 @@ View3D.STRUCT = STRUCT.inherit(View3D, Editor) + `
 }
 `
 
-nstructjs.manager.add_class(View3D);
+nstructjs.register(View3D);
 Editor.register(View3D);
 
 let animreq = undefined;

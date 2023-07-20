@@ -78,6 +78,8 @@ export class AppToolStack extends ToolStack {
         }
       }).bind(this);
 
+      toolop.saveDefaultInputs();
+
       //will handle calling .exec itself
       toolop.modalStart(ctx);
     } else {
@@ -125,20 +127,6 @@ export class AppToolStack extends ToolStack {
     }
   }
 
-  //reruns a tool if it's at the head of the stack
-  rerun(tool) {
-    if (this.enforceMemLimit) {
-      this.limitMemory(this.memLimit);
-    }
-
-    if (tool === this[this.cur]) {
-      this.undo();
-      this.redo();
-    } else {
-      console.warn("Tool wasn't at head of stack", tool);
-    }
-  }
-
   replay(fromBasicFile=false) {
     this._syncSettings(this.ctx); //sync undo settings
 
@@ -181,32 +169,8 @@ export class AppToolStack extends ToolStack {
   redo() {
     this._syncSettings(this.ctx); //sync undo settings
 
-    if (this.enforceMemLimit) {
-      this.limitMemory(this.memLimit);
-    }
+    super.redo();
 
     console.log("redo!");
-    
-    if (this.cur >= -1 && this.cur+1 < this.length) {
-      //console.log("redo!", this.cur, this.length);
-
-      this.cur++;
-      let tool = this[this.cur];
-
-      if (!tool.execCtx) {
-        tool.execCtx = this.ctx;
-      }
-
-      tool._was_redo = true;
-
-      tool.undoPre(tool.execCtx);
-      tool.execPre(tool.execCtx);
-      tool.exec(tool.execCtx);
-      tool.execPost(tool.execCtx);
-
-      tool.saveDefaultInputs();
-
-      window.redraw_viewport();
-    }
   }
 }

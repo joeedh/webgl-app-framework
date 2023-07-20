@@ -2,8 +2,6 @@ import {DataBlock, DataRef} from '../core/lib_api.js';
 import {loadShader} from '../shaders/shaders.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
-import '../path.ux/scripts/util/struct.js';
-let STRUCT = nstructjs.STRUCT;
 import {SceneObject, ObjectFlags} from '../sceneobject/sceneobject.js';
 
 export class RenderEngine {

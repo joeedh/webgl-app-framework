@@ -6,7 +6,7 @@ import {
   EnumProperty, FlagProperty, FloatArrayProperty,
   FloatProperty, IntProperty, Matrix4, Quat, ToolOp,
   Vec3Property, Vec4Property, Vector2, Vector3,
-  Vector4, math, Mat4Property, Vec2Property
+  Vector4, math, Mat4Property, Vec2Property, aabb_sphere_isect
 } from '../../../path.ux/scripts/pathux.js';
 import {SculptTools} from '../../../brush/brush.js';
 import {BVHFlags} from '../../../util/bvh.js';
@@ -14,9 +14,9 @@ import {GridBase} from '../../../mesh/mesh_grids.js';
 import {ImageTypes} from '../../../image/image.js';
 import {FBO} from '../../../core/fbo.js';
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
-import {Shaders, ShaderDef} from '../../../shaders/shaders.js';
+import {Shaders, ShaderDef, BasicLitMesh} from '../../../shaders/shaders.js';
 import {getFBODebug} from '../../debug/gldebug.js';
-import {Texture, getShader} from '../../../core/webgl.js';
+import {Texture, getShader, ShaderProgram} from '../../../core/webgl.js';
 import {project} from '../view3d_utils.js';
 
 let _id = 0;
@@ -26,6 +26,8 @@ import {tileManager, UNDO_TILESIZE} from '../../../image/gpuimage.js';
 export class TexPaintOp extends ToolOp {
   constructor() {
     super();
+
+    this.blurfbo = undefined;
 
     this.first = true;
     this.start_mpos = new Vector3();
@@ -40,12 +42,13 @@ export class TexPaintOp extends ToolOp {
       uiname  : "Paint Stroke (Texture)",
       toolpath: "bvh.texpaint",
       inputs  : {
-        brush    : new BrushProperty(),
-        samples  : new PaintSampleProperty(),
-        rendermat: new Mat4Property(),
-        glSize   : new Vec2Property(),
-        viewSize : new Vec2Property(),
-        symmetryAxes : new FlagProperty(undefined, {X : 1, Y : 2, Z : 4})
+        brush       : new BrushProperty(),
+        samples     : new PaintSampleProperty(),
+        rendermat   : new Mat4Property(),
+        glSize      : new Vec2Property(),
+        viewSize    : new Vec2Property(),
+        symmetryAxes: new FlagProperty(undefined, {X: 1, Y: 2, Z: 4}),
+        doBlur      : new BoolProperty()
       },
 
       is_modal: true
@@ -56,11 +59,11 @@ export class TexPaintOp extends ToolOp {
     let sdef = Object.assign({}, ShaderDef.TexturePaintShader);
 
     let uniforms = {
-      brushAngle : 0.0
+      angle: 0.0
     };
 
     if (brush.texUser.texture) {
-      let pre = '#define BRUSH_TEX\n';
+      let pre = '\n';//#define BRUSH_TEX\n';
 
       let tex = brush.texUser.texture;
       pre += tex.genGlslPre("inP", "outC", uniforms);
@@ -70,14 +73,21 @@ export class TexPaintOp extends ToolOp {
       //put code in new block scope
       code = `{\n${code}\n}\n`;
 
+      //console.error("CODE", code);
+
       let frag = sdef.fragment;
       frag = frag.replace(/\/\/\{BRUSH_TEX_PRE\}/, pre);
-      frag = frag.replace(/\BRUSH_TEX/, code);
+      frag = frag.replace(/BRUSH_TEX_CODE/, code);
+      sdef.fragment = frag.trim() + "\n";
 
-      sdef.fragment = frag.trim();
+      //console.log(sdef.fragment);
     }
 
-    return getShader(gl, sdef);
+    let shader = getShader(gl, sdef);
+
+    //console.error("SHADER", shader);
+
+    return shader;
   }
 
   on_keydown(e) {
@@ -138,7 +148,7 @@ export class TexPaintOp extends ToolOp {
       let origin2 = new Vector3(origin), view2 = new Vector3(view);
 
       if (axis !== -1) {
-        let obmat = ob.outputs.matrix.getValue();
+        let obmfat = ob.outputs.matrix.getValue();
         let mat = new Matrix4(ob.outputs.matrix.getValue());
         mat.invert();
 
@@ -191,7 +201,7 @@ export class TexPaintOp extends ToolOp {
 
 
     let brush = this.inputs.brush.getValue();
-    let radius = brush.radius;
+    let sradius = brush.radius, radius = sradius;
 
     toolmode._radius = radius;
 
@@ -211,6 +221,20 @@ export class TexPaintOp extends ToolOp {
 
     radius /= Math.max(view3d.glSize[0], view3d.glSize[1]);
     radius *= Math.abs(w);
+
+    const doBlur = this.inputs.doBlur.getValue();
+    if (doBlur) {
+      if (!this.blurfbo) {
+        this.blurfbo = new BrushBlurFBO();
+      }
+
+      const sradius2 = Math.max(~~(sradius*window.devicePixelRatio), 4);
+      this.blurfbo.update(view3d.gl, sradius2);
+
+      console.log("SRADIUS", sradius, "RADIUS", radius);
+
+      this.blurfbo.draw(view3d.gl, this.mpos, ob, view3d, bvh, isect.p, sradius2, radius);
+    }
 
     let spacing = this.inputs.brush.getValue().spacing;
     let steps = isect.p.vectorDistance(this.last_p)/(radius*spacing);
@@ -233,7 +257,7 @@ export class TexPaintOp extends ToolOp {
     let lastw;
 
     if (list.length > 0) {
-      lastw = list[list.length-1].w;
+      lastw = list[list.length - 1].w;
     } else {
       lastw = w;
     }
@@ -243,7 +267,7 @@ export class TexPaintOp extends ToolOp {
 
       let ps = new PaintSample();
 
-      ps.w = w + (lastw - w) * t;
+      ps.w = w + (lastw - w)*t;
 
       ps.viewvec.load(view);
       ps.vieworigin.load(origin);
@@ -342,6 +366,7 @@ export class TexPaintOp extends ToolOp {
     fbo = texture._drawFBO;
 
     let wrangler = mesh.getUVWrangler(false, false);
+    //console.log(wrangler);
 
     let gltex = texture.getGlTex(gl);
     texture.gpuHasData = true;
@@ -367,6 +392,8 @@ export class TexPaintOp extends ToolOp {
 
     //let vs = bvh.closestVerts(co, radius);
     let ts = bvh.closestTris(co, radius);
+
+    console.log("TS", ts, radius);
 
     //log(ts, haveColor, cd_color);
     //*
@@ -402,16 +429,31 @@ export class TexPaintOp extends ToolOp {
     brushco.load(ps.mpos);
     brushco[2] = 0.0;
 
+    let uvring = util.cachering.fromConstructor(Vector3, 64);
+    let v3ring = util.cachering.fromConstructor(Vector3, 64);
+    let v4ring = util.cachering.fromConstructor(Vector4, 64);
+
     let radius2 = brush.radius;
     radius2 *= 0.5;
 
     //radius2 = radius;
 
+    let line_sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.CUSTOM); // | LayerTypes.COLOR | LayerTypes.NORMAL);
+    line_sm.primflag = PrimitiveTypes.LINES;
+    line_sm.island.primflag = PrimitiveTypes.LINES;
+
     let sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.CUSTOM); // | LayerTypes.COLOR | LayerTypes.NORMAL);
 
+    //screen position
     let sm_loc = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 4, "sm_loc").index;
+
+    let sm_worldloc = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 3, "sm_worldloc").index;
+
     let sm_params = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 2, "sm_params").index;
 
+    let sm_line_loc = line_sm.addDataLayer(PrimitiveTypes.LINES, LayerTypes.CUSTOM, 4, "sm_loc").index;
+    let sm_line_worldloc = line_sm.addDataLayer(PrimitiveTypes.LINES, LayerTypes.CUSTOM, 4, "sm_worldloc").index;
+    let sm_line_params = line_sm.addDataLayer(PrimitiveTypes.LINES, LayerTypes.CUSTOM, 2, "sm_params").index;
 
     let ltris = mesh._ltris;
     let uv1 = new Vector3();
@@ -419,10 +461,17 @@ export class TexPaintOp extends ToolOp {
     let uv3 = new Vector3();
 
     let size = new Vector2().loadXY(texture.width, texture.height);
+    let sizem1 = new Vector2().loadXY(texture.width - 1, texture.height - 1);
     let isize = new Vector2().addScalar(1.0).div(size);
+    let isizem1 = new Vector2().addScalar(1.0).div(sizem1);
 
-    let texelU = 1.0/texture.width;
-    let texelV = 1.0/texture.height;
+    function snaptexel(p) {
+      p[0] = (~~(p[0]*sizem1[0]))*isizem1[0];
+      p[1] = (~~(p[1]*sizem1[1]))*isizem1[1];
+    }
+
+    let texelU = 1.0/(texture.width - 1);
+    let texelV = 1.0/(texture.height - 1);
 
     let params = [new Vector4(), new Vector4(), new Vector4()];
 
@@ -431,19 +480,26 @@ export class TexPaintOp extends ToolOp {
 
     let cd_corner = wrangler.cd_corner;
 
+    function getisland(l) {
+      return wrangler.islandLoopMap.get(l);
+    }
+
     function getcorner(l) {
       let ret2 = wrangler.loopMap.get(l);
+
       if (ret2) {
         return ret2.customData[cd_corner].corner;
+      } else {
+        return false;
       }
 
-      let ret = l !== l.radial_next && wrangler.islandLoopMap.get(l) !== wrangler.islandLoopMap.get(l.radial_next);
+      let ret = getisland(l) !== getisland(l.radial_next);
 
-      l = l.next;
-      ret = ret || (l !== l.radial_next && wrangler.islandLoopMap.get(l) !== wrangler.islandLoopMap.get(l.radial_next));
+      l = l.prev;
+      ret = ret || getisland(l) !== getisland(l.radial_next);
 
-      l = l.prev.prev;
-      ret = ret || (l !== l.radial_next && wrangler.islandLoopMap.get(l) !== wrangler.islandLoopMap.get(l.radial_next));
+      //l = l.prev.prev;
+      //ret = ret || (l !== l.radial_next && wrangler.islandLoopMap.get(l) !== wrangler.islandLoopMap.get(l.radial_next));
 
       return ret;
     }
@@ -451,27 +507,39 @@ export class TexPaintOp extends ToolOp {
     function processuv(uv, cent, corner) {
       //corner = false;
       let d = -0.001;
-      let fac = corner ? 3.5 : 0.0;
+      //let fac = corner ? 3.5 : 0.0;
 
-      duv.load(uv).sub(cent).normalize();
+      d = 0.0;
+
+      //duv.load(uv).sub(cent).normalize();
+
+      if (!window.DD5) {
+        window.DD5 = 0.5;
+      }
+
+      d += DD5;
 
       uv.mul(size);
-      uv.addFac(duv, fac);
-      uv.addScalar(d).floor().addScalar(0.5).mul(isize);
+      uv.addScalar(d).floor().mul(isize);
     }
-
 
     let umin = new Vector2().addScalar(1e17);
     let umax = new Vector2().addScalar(-1e17);
     let utmp = new Vector2();
     let triuv2 = new Vector2();
 
-    let radiusx = brush.radius/texture.width;
-    let radiusy = brush.radius/texture.height;
+    let ue1 = new Vector2();
+    let ue2 = new Vector2();
+    let ue3 = new Vector2();
+    let uetmp = new Vector2();
+
+    let radiusx = brush.radius/(texture.width - 1);
+    let radiusy = brush.radius/(texture.height - 1);
     let pradius = new Vector2().loadXY(radiusx, radiusy);
 
     for (let tri of ts) {
       let cr1, cr2, cr3;
+      let l1, l2, l3;
 
       if (haveGrids) {
         uv1.load(tri.v1.customData[cd_uv].uv);
@@ -480,9 +548,13 @@ export class TexPaintOp extends ToolOp {
         cr1 = cr2 = cr3 = false;
       } else {
         let li = tri.tri_idx;
-        let l1 = ltris[li];
-        let l2 = ltris[li + 1];
-        let l3 = ltris[li + 2];
+        l1 = ltris[li];
+        l2 = ltris[li + 1];
+        l3 = ltris[li + 2];
+
+        if (!l1 || !l2 || !l3) {
+          continue;
+        }
 
         cr1 = getcorner(l1);
         cr2 = getcorner(l2);
@@ -498,6 +570,36 @@ export class TexPaintOp extends ToolOp {
       processuv(uv1, centuv, cr1 && cr2);
       processuv(uv2, centuv, cr2 && cr3);
       processuv(uv3, centuv, cr3 && cr1);
+
+      ue1.loadXY(-(uv1[1] - uv2[1]), uv1[0] - uv2[0]);
+      ue2.loadXY(-(uv2[1] - uv3[1]), uv2[0] - uv3[0]);
+      ue3.loadXY(-(uv3[1] - uv1[1]), uv3[0] - uv1[0]);
+
+      uetmp.load(uv1).sub(centuv);
+      if (ue1.dot(uetmp) < 0.0) {
+        ue1.negate();
+        ue2.negate();
+        ue3.negate();
+      }
+
+      if (!window.DD6) {
+        window.DD6 = 0.0;
+      }
+
+      let efac = isizem1[0]*DD6;
+
+      ue1.normalize().mulScalar(efac);
+      ue2.normalize().mulScalar(efac);
+      ue3.normalize().mulScalar(efac);
+
+      uv1.add(ue1);
+      uv1.add(ue3);
+
+      uv2.add(ue2);
+      uv2.add(ue1);
+
+      uv3.add(ue3);
+      uv3.add(ue2);
 
       let p1 = new Vector4(tri.v1);
       let p2 = new Vector4(tri.v2);
@@ -525,11 +627,11 @@ export class TexPaintOp extends ToolOp {
       let w2 = triuv[0]*p1[3] + triuv[1]*p2[3] + (1.0 - triuv[0] - triuv[1])*p3[3];
       //w2 = w0;
 
-      let rx = (w2/texture.width)//*(glSize[1]/texture.width);
-      let ry = (w2/texture.height)//*(glSize[1]/texture.height);
+      let rx = (w2/(texture.width - 1))//*(glSize[1]/texture.width);
+      let ry = (w2/(texture.height - 1))//*(glSize[1]/texture.height);
 
-      rx = w2/glSize[1];
-      ry = w2/glSize[1];
+      rx = w2/(glSize[1] - 1);
+      ry = w2/(glSize[1] - 1);
 
       rx *= 6.0;
       ry *= 6.0;
@@ -571,6 +673,7 @@ export class TexPaintOp extends ToolOp {
       let fade = Math.abs(tri.no.dot(ps.viewvec));
 
       tri2.custom(sm_loc, p1, p2, p3);
+      tri2.custom(sm_worldloc, tri.v1, tri.v2, tri.v3);
 
       let pw = 3.0;
       params[0][0] = Math.abs(tri.v1.no.dot(ps.viewvec))**pw;
@@ -579,6 +682,56 @@ export class TexPaintOp extends ToolOp {
 
       tri2.custom(sm_params, params[0], params[1], params[2]);
 
+      let uvstmp = [uv1, uv2, uv3];
+      let pstmp = [p1, p2, p3];
+      let crs = [cr1, cr2, cr3];
+      let ls = [l1, l2, l3];
+      let vstmp = [tri.v1, tri.v2, tri.v3];
+
+      let uvmul = uvring.next();
+
+      uvmul[0] = 1.0/(texture.width - 1);
+      uvmul[1] = 1.0/(texture.height - 1);
+
+      if (window.DDD === undefined) {
+        window.DDD = 3.0;
+      }
+
+      /* draw seam guard border */
+      for (let j = 0; j < 3; j++) {
+        if ((ls[j].next === ls[(j + 1)%3]) && wrangler.seamEdge(ls[j].e)) {
+          //for (let k=0; k<1; k++) {
+          let uva = uvring.next().load(uvstmp[j]);
+          let uvb = uvring.next().load(uvstmp[(j + 1)%3]);
+          uva[2] = uvb[2] = 0.0;
+
+          let c1 = wrangler.loopMap.get(ls[j]).customData[cd_corner];
+          let c2 = wrangler.loopMap.get(ls[(j + 1)%3]).customData[cd_corner];
+
+          let t1 = uvring.next().load(c1.bTangent).mul(uvmul);
+          let t2 = uvring.next().load(c2.bTangent).mul(uvmul);
+          t1[2] = t2[2] = 0.0;
+
+          //uva.addFac(t1, 0.5);
+          //uvb.addFac(t2, 0.5);
+
+          let uvc = uvring.next().load(uva);
+          let uvd = uvring.next().load(uvb);
+
+          uvc.addFac(t1, DDD);
+          uvd.addFac(t2, DDD);
+
+          let quad = sm.quad(uva, uvc, uvd, uvb);
+          quad.custom(sm_loc, pstmp[j], pstmp[j], pstmp[(j + 1)%3], pstmp[(j + 1)%3]);
+          quad.custom(sm_worldloc, vstmp[j], vstmp[j], vstmp[(j + 1)%3], vstmp[(j + 1)%3]);
+          quad.custom(sm_params, params[j], params[j], params[(j + 1)%3], params[(j + 1)%3]);
+
+          //let line = line_sm.line(uva, uvb);
+          //line.custom(sm_line_loc, pstmp[j], pstmp[(j + 1)%3]);
+          //line.custom(sm_line_params, params[j], params[(j + 1)%3]);
+          //}
+        }
+      }
       //tri2.normals(tri.v1.no, tri.v2.no, tri.v3.no);
     }
 
@@ -586,20 +739,20 @@ export class TexPaintOp extends ToolOp {
     //umax.add(pradius);
 
     let margin = 8;
-    margin = new Vector2().loadXY(margin/texture.width, margin/texture.height);
+    margin = new Vector2().loadXY(margin/(texture.width - 1), margin/(texture.height - 1));
 
     umin.sub(margin);
     umax.add(margin);
 
     let usize = new Vector2(umax).sub(umin);
-    let tsize = new Vector2(usize).addScalar(0.0001).mul(size).ceil();
+    let tsize = new Vector2(usize).addScalar(0.0001).mul(sizem1).ceil();
     tsize.max([4, 4]);
 
     size[0] = texture.width;
     size[1] = texture.height;
 
-    umin.addScalar(0.00001).mul(size).floor();
-    umax.addScalar(0.00001).mul(size).ceil();
+    umin.addScalar(0.00001).mul(sizem1).floor();
+    umax.addScalar(0.00001).mul(sizem1).ceil();
 
     log(umin, umax);
 
@@ -759,11 +912,16 @@ export class TexPaintOp extends ToolOp {
         size            : [texture.width, texture.height],
         aspect          : texture.width/texture.height,
         projectionMatrix: matrix,
+        objectMatrix    : new Matrix4(),
         uColor          : color,
         brushCo         : brushco,
         radius          : radius2,
         brushAngle      : ps.angle
       };
+
+      if (brush.texUser.texture) {
+        brush.texUser.texture.bindUniforms(uniforms);
+      }
 
       gl.depthMask(false);
 
@@ -771,11 +929,45 @@ export class TexPaintOp extends ToolOp {
       //sm.program = Shaders.TexturePaintShader;
       sm.uniforms = uniforms;
 
+      if (this.blurfbo) {
+        Texture.unbindAllTextures(gl);
+
+        console.error("BLUR");
+
+        sm.program.defines.BLUR_MODE = null;
+        texture.glTex.texture_slot = undefined;
+        this.blurfbo.fbo.texColor.texture_slot = undefined;
+
+        console.log("TEXTURE", texture.glTex);
+
+        uniforms.rgba1 = texture.glTex;
+        uniforms.blurFBO = this.blurfbo.fbo.texColor;
+        uniforms.vboxMin = this.blurfbo.vboxMin;
+        uniforms.vboxMax = this.blurfbo.vboxMax;
+        uniforms.screenSize = glSize;
+      } else if ("BLUR_MODE" in sm.program.defines) {
+        delete sm.program.defines["BLUR_MODE"];
+      }
+
       gl.enable(gl.BLEND);
       gl.blendColor(1.0, 1.0, 1.0, 1.0);
       //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.CONSTANT_ALPHA);
+
+      if (brush.texUser.texture) {
+        sm.program.defines.BRUSH_TEX = null;
+        sm.program.defines.BRUSH_TEX_SPACE = brush.texUser.mode;
+        brush.texUser.texture.bindUniforms(uniforms);
+      } else {
+        delete sm.program.defines.BRUSH_TEX;
+      }
+
+      sm.program.bind(gl, uniforms, sm.islands[0]._glAttrs);
+
       sm.draw(gl, uniforms, sm.program); //Shaders.TexturePaintShader);
+      line_sm.draw(gl, uniforms, sm.program);
+
+      delete sm.program.defines.BRUSH_TEX;
 
       window.sm = sm;
 
@@ -817,11 +1009,11 @@ export class TexPaintOp extends ToolOp {
         c.zero().addScalar(1.0);
       }
 
-      for (let i1=0; i1<ts.length; i1++) {
+      for (let i1 = 0; i1 < ts.length; i1++) {
         let ri = ~~(Math.random()*0.99999*ts.length);
         let t = ts[ri];
 
-      //for (let t of ts) {
+        //for (let t of ts) {
         let c1 = t.v1.customData[cd_color].color;
         let c2 = t.v2.customData[cd_color].color;
         let c3 = t.v3.customData[cd_color].color;
@@ -841,7 +1033,7 @@ export class TexPaintOp extends ToolOp {
         c2[0] = Math.min(c2[0], dis2);
         c3[0] = Math.min(c3[0], dis2);
 
-        for (let i=1; i<3; i++) {
+        for (let i = 1; i < 3; i++) {
           c1[i] = c2[i] = c3[i] = 0.2;
         }
 
@@ -991,3 +1183,179 @@ export class TexPaintOp extends ToolOp {
 }
 
 ToolOp.register(TexPaintOp);
+
+export const BrushBlurShader = {
+  vertex    : `precision mediump float;
+  
+uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
+uniform mat4 normalMatrix;
+uniform vec2 size;
+uniform vec2 vboxMin;
+uniform vec2 vboxMax;
+uniform float aspect;
+
+attribute vec3 position;
+attribute vec3 normal;
+attribute vec2 uv;
+attribute float id;
+
+varying vec3 vNormal;
+varying vec2 vUv;
+varying float vId;
+
+void main() {
+  vec4 p = objectMatrix * vec4(position, 1.0);
+  p = projectionMatrix * vec4(p.xyz, 1.0);
+  vec4 n = normalMatrix * vec4(normal, 0.0);
+  
+#if 1
+  vec2 scale = 1.0 / (vboxMax - vboxMin);
+   
+  p.xy /= p.w;
+
+  p.xy = p.xy*0.5 + 0.5;
+  
+  p.xy -= vboxMin;
+  p.xy *= scale;
+  p.xy += vboxMin/scale;
+  
+  p.xy = p.xy*2.0 - 1.0;
+  //p.x *= aspect;
+  //p.y /= aspect;
+  p.xy *= p.w;
+#endif 
+
+  gl_Position = p;
+  
+  vUv = uv;
+  vNormal = n.xyz;
+}
+
+  `,
+  fragment  : `
+precision highp float;
+
+uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
+uniform mat4 normalMatrix;
+
+uniform float aspect, near, far;
+uniform vec2 size;
+
+varying vec3 vNormal;
+varying vec2 vUv;
+varying float vId;
+
+void main() {
+  gl_FragColor = vec4(vUv, vId, 1.0);
+  //gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0); 
+}
+  `.trim(),
+  attributes: ["position", "normal", "uv", "id"],
+  uniforms  : {}
+};
+
+export class BrushBlurFBO {
+  constructor(gl) {
+    this.fbo = new FBO(gl);
+    this.shader = undefined;
+  }
+
+  update(gl, size) {
+    this.fbo.update(gl, size, size);
+
+    if (!this.shader) {
+      this.compileShader(gl);
+    }
+  }
+
+  compileShader(gl) {
+    this.shader = ShaderProgram.fromDef(gl, BrushBlurShader);
+  }
+
+  draw(gl, mpos, ob, view3d, bvh, co, radius, worldRadius) {
+    let fbo = this.fbo;
+    let camera = view3d.activeCamera;
+
+    camera.regen_mats(view3d.glSize[0]/view3d.glSize[1]);
+
+    radius *= 1.0;
+
+    let size = ~~(radius*2.0);
+    this.update(gl, size);
+
+    let bbox = [];
+    let dpi = window.devicePixelRatio;
+
+    mpos = new Vector2(mpos).mulScalar(dpi);
+    mpos[1] = view3d.glSize[1] - mpos[1];
+
+    let vmin = new Vector2(mpos);
+    vmin.subScalar(radius).floor().div(view3d.glSize);
+
+    let vmax = new Vector2(mpos);
+    vmax.addScalar(radius).ceil().div(view3d.glSize);
+
+    console.log("VMIN", vmin);
+    console.log("VMAX", vmax);
+
+    this.vboxMin = vmin;
+    this.vboxMax = vmax;
+
+    let uniforms = {
+      projectionMatrix: camera.rendermat,
+      aspect          : camera.aspect,
+      near            : camera.near,
+      far             : camera.far,
+      objectMatrix    : ob.outputs.matrix.getValue(),
+      normalMatrix    : new Matrix4(),
+      size            : view3d.glSize,
+      vboxMin         : vmin,
+      vboxMax         : vmax,
+      alpha           : 1.0
+    };
+
+    gl.disable(gl.DITHER);
+    gl.disable(gl.BLEND);
+    gl.enable(gl.DEPTH_TEST);
+    gl.disable(gl.SCISSOR_TEST);
+
+    fbo.bind(gl);
+
+    //gl.viewport(~~vmin[0], ~~vmin[1], ~~(vmax[0]-vmin[0]), ~~(vmax[1]-vmin[1]));
+
+    gl.depthMask(true);
+
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.clearDepth(1000000.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    //gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.CULL_FACE);
+    //gl.disable(gl.DEPTH_TEST);
+
+    let ok = false;
+
+    for (let node of bvh.nodes) {
+      if (!node.drawData) {
+        continue;
+      }
+
+      ok = true;
+      //if (aabb_sphere_isect(co, worldRadius*2.0, node.min, node.max)) {
+      console.log(node.drawData, node);
+      node.drawData.draw(gl, uniforms, this.shader);
+      //}
+    }
+
+    if (!ok) {
+      console.error("NO DRAW DATA!");
+    }
+
+    gl.finish();
+    fbo.unbind(gl);
+
+    getFBODebug(gl).pushFBO("brush temp", fbo);
+  }
+}

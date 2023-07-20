@@ -9,11 +9,15 @@ function log() {
   //console.log(...arguments);
 }
 
+let typeConv = new Set([
+  "float", "int", "bool"
+]);
+
 export const swizzlesizes = {
-  1 : "float",
-  2 : "vec2",
-  3 : "vec3",
-  4 : "vec4",
+  1: "float",
+  2: "vec2",
+  3: "vec3",
+  4: "vec4",
 };
 
 import {opnames} from '../core/state.js';
@@ -160,15 +164,15 @@ export function transformSwizzleSimple(ast, ctx) {
 }
 
 import {parse} from '../core/parser.js';
-import {ArrayType, DynamicArrayType} from '../core/types.js';
+import {ArrayType, DynamicArrayType, VarType} from '../core/types.js';
 
 export function transformSwizzleComplex(ast, ctx) {
 
   let typemap = {
-    1 : "float",
-    2 : "vec2",
-    3 : "vec3",
-    4 : "vec4"
+    1: "float",
+    2: "vec2",
+    3: "vec3",
+    4: "vec4"
   };
 
   scopeWalk(ast, ctx, {
@@ -196,6 +200,8 @@ export function transformSwizzleComplex(ast, ctx) {
       if (ASTNode.isAssign(node.parent) && node === node.parent[0]) {
         let val = node.parent[1];
 
+        let op = node.parent.op;
+
         let v = ctx.placeVarDecl(node.parent, type);
         v._istemp = true;
 
@@ -206,15 +212,15 @@ export function transformSwizzleComplex(ast, ctx) {
         let exprlist = new ASTNode("ExprList");
 
         let an = new ASTNode("Assign");
-        an.op = "=";
+        an.op = op;
         an.push(id.copy())
         an.push(val);
         exprlist.push(an);
 
-        for (let i=0; i<member.length; i++) {
+        for (let i = 0; i < member.length; i++) {
           let an = new ASTNode("Assign");
 
-          an.op = "=";
+          an.op = op;
           let base = node[0].copy();
           let lookup = new ASTNode("ArrayLookup");
           lookup.push(base);
@@ -273,9 +279,6 @@ export function transformSwizzleComplex(ast, ctx) {
 }
 
 export function transformOps(ast, ctx) {
-  let badtypes = new Set(["Assign"])
-  let typemap = new Map();
-
   function safeTypeGet(n) {
     if (n.ntype) {
       return n.ntype;
@@ -289,22 +292,34 @@ export function transformOps(ast, ctx) {
       n.ntype = ctx.resolveType("float");
     } else if (n.type === "VarType") {
       n.ntype = ctx.resolveType(n.value);
+    } else if (n.type === "BoolConstant" || n.type === "BooleanConstant") {
+      n.ntype = ctx.resolveType("bool");
     }
 
     return n.ntype;
   }
 
   let types = {
-    float : ctx.resolveType("float"),
+    float: ctx.resolveType("float"),
     vec2 : ctx.resolveType("vec2"),
     vec3 : ctx.resolveType("vec3"),
     mat4 : ctx.resolveType("mat4"),
     mat3 : ctx.resolveType("mat3"),
-    int : ctx.resolveType("int")
+    int  : ctx.resolveType("int"),
+    bool : ctx.resolveType("bool"),
   };
 
   scopeWalk(ast, ctx, {
+    Assign(node, ctx) {
+      if (node.op === "=") {
+        return;
+      }
+
+      this.BinOp(node, ctx);
+    },
     BinOp(node, ctx) {
+      let isAssign = node.type === "Assign";
+
       let p = node;
       while (p) {
         if (p.type === "Function" && p.value.startsWith("_$_$_")) {
@@ -316,7 +331,7 @@ export function transformOps(ast, ctx) {
       let t2 = safeTypeGet(node[1]);
 
       if (!t1 || !t2) {
-        log(""+node);
+        log("" + node);
         ctx.error(node, "Type system could not resolve types");
       }
 
@@ -324,12 +339,12 @@ export function transformOps(ast, ctx) {
       let isint2 = ctx.typesEqual(t2, types["int"]);
 
       if (isint1 ^ isint2) {
-        log(""+node);
+        log("" + node);
         ctx.error(node, "Cannot do mixed math on integer and floats");
       }
 
-      let isbase1 = isint1 || ctx.typesEqual(t1, types["float"]);
-      let isbase2 = isint2 || ctx.typesEqual(t2, types["float"]);
+      let isbase1 = ctx.typesEqual(t1, types["float"]) || ctx.typesEqual(t1, types["bool"]);
+      let isbase2 = ctx.typesEqual(t2, types["float"]) || ctx.typesEqual(t1, types["bool"]);
 
       if (isbase1 && isbase2) {
         return;
@@ -364,7 +379,12 @@ export function transformOps(ast, ctx) {
 
       call.push(args);
 
-      node.parent.replace(node, call);
+      if (isAssign) {
+        node.op = "=";
+        node.replace(node[1], call);
+      } else {
+        node.parent.replace(node, call);
+      }
     }
   }, false, true);
 
@@ -445,11 +465,17 @@ function getFinders(ctx, typemap, argmap) {
       typemap.set(node, type);
     } else {
       name = name.value;
-      type = findTypeUp(node);
+
+      if (node.parent) {
+        type = findTypeUp(node.parent);
+      }
 
       if (!type) {
         ctx.error(node, "Unknown type for function " + name);
       }
+    }
+    if (typeConv.has(name)) {
+      name += "_cast";
     }
 
     let args = [];
@@ -470,6 +496,7 @@ function getFinders(ctx, typemap, argmap) {
     type = ctx.resolveType(type);
 
     let key = ctx.buildPolyKey(name, type, args);
+
     if (!(key in ctx.functions)) {
       console.log("" + node.parent.parent)
       ctx.error(node, "Unknown function " + key);
@@ -480,7 +507,7 @@ function getFinders(ctx, typemap, argmap) {
   }
 
 
-  function buildPolyCandidates(p) {
+  function buildPolyCandidates(p, idx=0) {
     let type;
 
     if (argmap.has(p)) {
@@ -499,6 +526,9 @@ function getFinders(ctx, typemap, argmap) {
     }
     name = name.trim();
 
+    if (typeConv.has(name)) {
+      name += "_cast";
+    }
 
     let fs = ctx.poly_namemap[name];
     if (fs && fs.size === 1) {
@@ -509,7 +539,7 @@ function getFinders(ctx, typemap, argmap) {
 
         p.ntype = f.type;
 
-        for (let i=0; i<p[1].length; i++) {
+        for (let i = 0; i < p[1].length; i++) {
           p[1].ntype = f.args[i].ntype;
         }
 
@@ -520,7 +550,7 @@ function getFinders(ctx, typemap, argmap) {
 
     let funcs = ctx.poly_namemap[name];
     if (!funcs) {
-      console.log(""+p);
+      console.log("" + p);
       ctx.error(p, "Unknown function " + name);
     }
 
@@ -531,7 +561,7 @@ function getFinders(ctx, typemap, argmap) {
 
     let match;
 
-    if (p.ntype !== undefined ){
+    if (p.ntype !== undefined) {
       type = p.ntype;
     } else if (typemap.has(p)) {
       type = typemap.get(p);
@@ -539,8 +569,42 @@ function getFinders(ctx, typemap, argmap) {
       //all candidates return types will be returned?
     }
 
+    let resolveType = (n) => {
+      if (typeof n === "string" || n instanceof VarType) {
+        return ctx.resolveType(n);
+      }
+
+      if (n.type === "FloatConstant") {
+        return resolveType("float");
+      }
+      if (n.type === "IntConstant") {
+        return resolveType("int");
+      }
+      if (n.type === "BoolConstant" || n.type === "BooleanConstant") {
+        return resolveType("bool");
+      }
+
+      if (n.type === "VarType") {
+        return resolveType(n.value);
+      }
+
+      if (n.type === "Ident") {
+        return resolveType(ctx.getScope(n.value));
+      }
+
+      if (n.ntype) {
+        return resolveType(n.ntype);
+      }
+
+      if (n.type === "BinOp") {
+        return resolveType(n[0]) || resolveType(n[1]);
+      }
+    }
+
     if (type) {
       type = ctx.resolveType(type);
+    } else {
+      type = findType(p, true);
     }
 
     for (let c of funcs) {
@@ -580,7 +644,7 @@ function getFinders(ctx, typemap, argmap) {
   }
 
   function guessPolyFunc(p, idx) {
-    let candidates = buildPolyCandidates(p);
+    let candidates = buildPolyCandidates(p, idx);
 
     if (idx < 0 || idx === undefined) {
       ctx.error(node, "Internal parser error");
@@ -596,7 +660,7 @@ function getFinders(ctx, typemap, argmap) {
 
     if (candidates.length === 0) {
       let key = name + "(";
-      for (let i=0; i<args.length; i++) {
+      for (let i = 0; i < args.length; i++) {
         let arg = args[i];
 
         if (i > 0) {
@@ -610,7 +674,7 @@ function getFinders(ctx, typemap, argmap) {
         }
       }
 
-      console.warn(node,"No overloaded function found for " + key);
+      console.warn(node, "No overloaded function found for " + key);
     }
     if (count > 0) {
       let msg = "Ambiguous polymorphic function call; candidates are:\n"
@@ -629,17 +693,11 @@ function getFinders(ctx, typemap, argmap) {
 
     //XXX ideally we should branch the parser here and try each remaining candidate in turn
     if (!match) {
-      console.log(""+node);
+      console.log("" + node);
       ctx.error(node, "Failed to resolve polymorphic function call");
     }
 
-    type = ctx.resolveType(match.args[idx]);
-    /*
-    console.log(match);
-    console.log("name", name, candidates.length, count, type);
-    process.exit();
-
-     */
+    let type = ctx.resolveType(match.args[idx]);
 
     return type;
   }
@@ -729,6 +787,9 @@ export function transformPolymorphism(ast, ctx) {
         name = name.value;
         type = node.ntype;
       }
+      if (typeConv.has(name)) {
+        name += "_cast";
+      }
 
       if (name.startsWith("_$_")) {
         doneset.add(node);
@@ -751,12 +812,12 @@ export function transformPolymorphism(ast, ctx) {
         cs = buildPolyCandidates(node, type);
 
         if (type && cs.length > 1) {
-          bad =  true;
+          bad = true;
         } else if (!type && cs.length > 1) {
           for (let func of cs) {
             func.totmatch = 0;
 
-            for (let i=0; i<args.length; i++) {
+            for (let i = 0; i < args.length; i++) {
               let ok = args[i] !== undefined;
               ok = ok && ctx.typesEqual(args[i], func.args[i]);
 
@@ -775,9 +836,9 @@ export function transformPolymorphism(ast, ctx) {
       }
 
       if (bad) {
-        console.log(""+type);
+        console.log("" + type);
         console.log(cs);
-        console.log(""+node);
+        console.log("" + node);
         ctx.error(node, "Could not resolve polymorphic function call");
       }
 
@@ -791,11 +852,12 @@ export function transformPolymorphism(ast, ctx) {
           //console.log(""+node.parent.parent);
           ctx.error(node, "Unknown function " + name + " (" + key + ")");
         }
-        log(key, func, ""+node)
-      } else if (cs && cs.length > 0) {
+        log(key, func, "" + node)
+      } else if (cs && cs.length === 1) {
         func = cs[0];
       } else { //should not happen;
-        log(type, ""+node, cs)
+        log(type, "" + node, cs)
+        buildPolyCandidates(node, type);
         ctx.error(node, "internal parse error");
       }
 
@@ -849,7 +911,7 @@ export function initFuncKeyes(ast, ctx) {
   })
 }
 
-export function propagateTypes(ast, ctx, stage=0) {
+export function propagateTypes(ast, ctx, stage = 0) {
   let typemap = new Map();
   let argmap = new Map();
 
@@ -859,7 +921,7 @@ export function propagateTypes(ast, ctx, stage=0) {
 
   function update(node, type) {
     if (!node.ntype || !ctx.typesEqual(type, node.ntype)) {
-      log("Type update", ""+node.ntype, ""+type);
+      log("Type update", "" + node.ntype, "" + type);
       found = true;
     }
 
@@ -948,7 +1010,7 @@ export function propagateTypes(ast, ctx, stage=0) {
       }
 
       if (func) {
-        for (let i=0; i<node[1].length; i++) {
+        for (let i = 0; i < node[1].length; i++) {
           node[1].ntype = ctx.resolveType(func.args[i]);
         }
 
@@ -1009,7 +1071,7 @@ export function propagateTypes(ast, ctx, stage=0) {
     }
   }, false, true);
 
-  console.log("FOUND", found);
+  //console.log("FOUND", found);
 }
 
 export function transformAst(ast, ctx) {

@@ -2,6 +2,7 @@ import {Vector2, Vector3, Vector4, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {MeshTypes, MeshFlags, LogTags} from './mesh_base.js';
 import {Face} from './mesh_types.js';
+import {nstructjs} from '../path.ux/scripts/pathux.js';
 
 export const LogTypes = {
   VERTEX   : 1,

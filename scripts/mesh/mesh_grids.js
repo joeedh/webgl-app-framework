@@ -5,9 +5,10 @@ import * as util from '../util/util.js';
 import {MeshFlags, MeshTypes, RecalcFlags} from "./mesh_base.js";
 import {CDFlags, CustomData, CustomDataElem, LayerSettingsBase} from "./customdata.js";
 import {nstructjs} from '../path.ux/scripts/pathux.js';
-import {ChunkedSimpleMesh} from "../core/simplemesh.js";
+import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from "../core/simplemesh.js";
 import {FloatElem} from "./mesh_customdata.js";
 import {PatchBuilder} from "./mesh_grids_subsurf.js";
+import {BasicLineShader, Shaders} from '../shaders/shaders.js';
 
 let blink_rets = util.cachering.fromConstructor(Vector3, 64);
 let blink_rets4 = util.cachering.fromConstructor(Vector4, 64);
@@ -40,7 +41,7 @@ export const QRecalcFlags = {
   FIX_NEIGHBORS   : 1<<15,
   NODE_DEPTH_DELTA: 1<<16,
   ALL             : 1 | 2 | 4 | 8 | 64 | 128 | 256 | (1<<9) | (1<<10) | (1<<11),
-  EVERYTHING      : (1<<16)-1
+  EVERYTHING      : (1<<16) - 1
 };
 
 export const GridSettingFlags = {
@@ -309,6 +310,7 @@ export class GridVert extends Vector3 {
       console.warn("this.co set");
     }
   }
+
   /*
   get 0() {
     //throw new Error("gridvert access");
@@ -541,6 +543,7 @@ GridVert.STRUCT = nstructjs.inherit(GridVert, Vector3, "mesh.GridVert") + `
   co         : vec3;
   flag       : int;
   eid        : int;
+  uv         : vec2;
 }`;
 nstructjs.register(GridVert);
 
@@ -558,6 +561,7 @@ export function genGridDimens(depth = 32) {
 
 export const gridSides = genGridDimens();
 
+window.gridSides = gridSides;
 
 export class GridBase extends CustomDataElem {
   constructor() {
@@ -841,6 +845,10 @@ export class GridBase extends CustomDataElem {
 
   applyBase(mesh, l, cd_grid) {
     console.error("GridBase.applyBase: Implement me");
+  }
+
+  debugDraw(gl, uniforms, ob) {
+
   }
 
   updateMirrorFlags(mesh, loop, cd_grid) {
@@ -1298,7 +1306,7 @@ export class Grid extends GridBase {
   constructor() {
     super();
 
-    this.dimen = gridSides[2];
+    this.dimen = gridSides[7];
   }
 
   static define() {
@@ -1308,11 +1316,98 @@ export class Grid extends GridBase {
       uiTypeName   : "Grid",
       defaultName  : "grid",
       settingsClass: GridSettings,
-      //needsSubSurf : true,
+      needsSubSurf : true,
       valueSize    : undefined,
       flag         : 0
     }
   };
+
+  hash() {
+    return 0;
+  }
+
+  debugDraw(gl, uniforms, ob) {
+    let lt = LayerTypes;
+    let smesh = new SimpleMesh(lt.LOC | lt.UV | lt.COLOR);
+
+    let v1 = new Vector3();
+    let v2 = new Vector3();
+    let no = new Vector3();
+    let du = new Vector3();
+    let dv = new Vector3();
+    let color1 = [0, 0, 1, 1];
+    let color2 = [0, 1, 0, 1];
+    let color3 = [1, 0, 0, 1];
+
+    for (let p of this.points) {
+      let co = p;
+      //no.load(p.no);
+
+      co = this.subsurf.evaluate(p.uv[0], p.uv[1], du, dv, no);
+
+      if (window.DTST2) {
+        let df = 0.4;
+        let du2, dv2;
+        let [u, v] = p.uv;
+        let ss = this.subsurf;
+
+        if (v < 1.0 - df) {
+          dv2 = ss.evaluate(u, v + df, undefined, undefined, undefined);
+          dv2.sub(ss.evaluate(u, v - df, undefined, undefined, undefined));
+          dv2.mulScalar(1.0/(df*2.0));
+        } else {
+          dv2 = ss.evaluate(u, v, undefined, undefined, undefined);
+          dv2.sub(ss.evaluate(u, v - df, undefined, undefined, undefined));
+          dv2.mulScalar(1.0/df);
+        }
+
+        dv.load(dv2);
+
+        if (u < 1.0 - df) {
+          du2 = ss.evaluate(u + df, v, undefined, undefined, undefined);
+          du2.sub(ss.evaluate(u - df, v, undefined, undefined, undefined));
+          du2.mulScalar(1.0/(df*2.0));
+        } else {
+          du2 = ss.evaluate(u, v, undefined, undefined, undefined);
+          du2.sub(ss.evaluate(u - df, v, undefined, undefined, undefined));
+          du2.mulScalar(1.0/df);
+        }
+
+        du.load(du2);
+
+        no.load(dv).cross(du).normalize();
+      }
+
+      v1.load(co).addFac(no, 0.0025);
+
+      //no.load(du).cross(dv).normalize();
+
+      v2.load(v1).addFac(no, 0.025);
+
+      let line = smesh.line(v1, v2);
+      line.uvs(p.uv, p.uv);
+      line.colors(color1, color1);
+
+      du.normalize();
+      dv.normalize();
+
+      let fac = 0.1;
+      v2.load(v1).addFac(du, 0.025*fac);
+      line = smesh.line(v1, v2);
+      line.uvs(p.uv, p.uv);
+      line.colors(color2, color2);
+
+      v2.load(v1).addFac(dv, 0.025*fac);
+      line = smesh.line(v1, v2);
+      line.uvs(p.uv, p.uv);
+      line.colors(color3, color3);
+
+    }
+
+    smesh.draw(gl, uniforms, Shaders.BasicLineShader);
+
+    smesh.destroy(gl);
+  }
 
   applyBase(mesh, l, cd_grid) {
     let dimen = this.dimen;
@@ -1353,6 +1448,8 @@ export class Grid extends GridBase {
     }
     let totpoint = dimen*dimen;
 
+    console.log("Grid init!");
+
     if (loop !== undefined) {
       if (this.points.length === 0) {
         for (let i = 0; i < totpoint; i++) {
@@ -1373,11 +1470,17 @@ export class Grid extends GridBase {
           let idx = iv*dimen + iu;
 
           let p = this.points[idx];
+          p.uv[0] = u;
+          p.uv[1] = v;
 
-          a.load(quad[0]).interp(quad[1], v);
-          b.load(quad[3]).interp(quad[2], v);
+          if (0) {
+            a.load(quad[0]).interp(quad[1], v);
+            b.load(quad[3]).interp(quad[2], v);
 
-          p.load(a).interp(b, u);
+            p.load(a).interp(b, u);
+          } else {
+            p.load(this.subsurf.evaluate(u, v))
+          }
         }
       }
 
@@ -1465,7 +1568,7 @@ export class Grid extends GridBase {
 
         this.totTris += 2;
 
-        if (0 && this.subsurf) {
+        if (this.subsurf) {
           this.subsurf.evaluate(u, v, undefined, undefined, n);
         } else {
           n.load(ps[i1].no).add(ps[i2].no).add(ps[i3].no).add(ps[i4].no).normalize();

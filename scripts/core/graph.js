@@ -2,13 +2,14 @@ let _graph = undefined;
 
 
 import {Matrix4, Vector2, Vector3, Vector4, util, nstructjs} from '../path.ux/scripts/pathux.js';
+
 let STRUCT = nstructjs.STRUCT;
 
 export class GraphCycleError extends Error {};
 
 export const SocketTypes = {
-  INPUT  : 0,
-  OUTPUT : 1
+  INPUT : 0,
+  OUTPUT: 1
 };
 
 /**
@@ -23,13 +24,14 @@ export const SocketTypes = {
  };
  */
 export const SocketFlags = {
-  SELECT : 1, //for use by ui
-  UPDATE : 2,
-  MULTI  : 4, //socket can have multiple connections, enable by default for outputs
-  NO_MULTI_OUTPUTS : 8, //don't flag outputs with MULTI by default
-  PRIVATE : 16,
-  NO_UNITS : 32,
-  INSTANCE_API_DEFINE : 64
+  SELECT             : 1, //for use by ui
+  UPDATE             : 2,
+  MULTI              : 4, //socket can have multiple connections, enable by default for outputs
+  NO_MULTI_OUTPUTS   : 8, //don't flag outputs with MULTI by default
+  PRIVATE            : 16,
+  NO_UNITS           : 32,
+  INSTANCE_API_DEFINE: 64,
+  NO_UI_EDITING      : 128
 };
 
 /**
@@ -51,20 +53,20 @@ export const SocketFlags = {
  };
  */
 export const NodeFlags = {
-  SELECT    : 1,  /** for use by ui */
-  UPDATE    : 2,  /** node needs execution */
-  SORT_TAG  : 4,  /** used by internal graph sort */
-  CYCLE_TAG : 8,  /** used by internal graph sort */
-  DISABLED  : 16, /** node is disabled */
-  ZOMBIE    : 32, /** don't save this node, used for UI event handlers and stuff */
+  SELECT   : 1, /** for use by ui */
+  UPDATE   : 2, /** node needs execution */
+  SORT_TAG : 4, /** used by internal graph sort */
+  CYCLE_TAG: 8, /** used by internal graph sort */
+  DISABLED : 16, /** node is disabled */
+  ZOMBIE   : 32, /** don't save this node, used for UI event handlers and stuff */
 
   /**proxy nodes are replaced during saving with a lightwieght proxy,
    that can be replaced with real object on load.  for dealing with
    nodes that are saved outside of the Graph data structure.*/
-  SAVE_PROXY     : 64,
-  FORCE_SOCKET_INHERIT : 128,
-  FORCE_FLAG_INHERIT    : 256,
-  FORCE_INHERIT        : 128|256
+  SAVE_PROXY          : 64,
+  FORCE_SOCKET_INHERIT: 128,
+  FORCE_FLAG_INHERIT  : 256,
+  FORCE_INHERIT       : 128 | 256
 };
 
 /**
@@ -79,10 +81,10 @@ export const NodeFlags = {
  };
  */
 export const GraphFlags = {
-  SELECT : 1, //for use by ui
-  RESORT : 2,
-  CYCLIC_ALLOWED : 4, //graph may have cycles, set by user
-  CYCLIC : 8 //graph has cycles, is set in graph.sort()
+  SELECT        : 1, //for use by ui
+  RESORT        : 2,
+  CYCLIC_ALLOWED: 4, //graph may have cycles, set by user
+  CYCLIC        : 8 //graph has cycles, is set in graph.sort()
 };
 
 //used by Node.inherit
@@ -95,14 +97,13 @@ class InheritFlag {
 export let NodeSocketClasses = [];
 
 export class NodeSocketType {
-  constructor(uiname=undefined, flag=0) {
+  constructor(uiname = undefined, flag = 0) {
     if (uiname === undefined) {
       uiname = this.constructor.nodedef().uiname;
     }
 
     //XXX shouldn't this be this.graph_uiname?
     this.uiname = uiname;
-
     this.name = this.constructor.nodedef().name;
 
     let def = this.constructor.nodedef();
@@ -118,20 +119,59 @@ export class NodeSocketType {
     this.socketName = undefined;
     this.socketType = undefined;
     this.edges = [];
-    this._node = undefined;
+    this.node = undefined;
     this.graph_flag = flag;
     this.graph_id = -1;
+  }
+
+  get hasEdges() {
+    return this.edges.length > 0;
   }
 
   static _api_uiname() {
     return this.dataref.uiname;
   }
 
-  graphDataLink(ownerBlock, getblock, getblock_addUser) {
+  static apiDefine(api, sockstruct) {
 
   }
 
   //used to load data that might change between file versions
+
+  static register(cls) {
+    NodeSocketClasses.push(cls);
+  }
+
+  /**
+   Callback for defining socket types.
+   Child classes must implement this.
+
+   @example
+   static nodedef() { return {
+      name   : "name",
+      uiname : "uiname",
+      color  : [0.5, 0.5, 0.5, 1.0],
+      flag   : 0 //see SocketFlags
+   }}
+
+   */
+  static nodedef() {
+    return {
+      name  : "name",
+      uiname: "uiname",
+      color : undefined,
+      flag  : 0
+    }
+  }
+
+  graphDestory() {
+
+  }
+
+  graphDataLink(ownerBlock, getblock, getblock_addUser) {
+
+  }
+
   //e.g. EnumProperty's enumeration definitions
   onFileLoad(templateInstance) {
     this.graph_flag |= templateInstance.graph_flag;
@@ -140,33 +180,6 @@ export class NodeSocketType {
   needInstanceAPI() {
     this.graph_flag |= SocketFlags.INSTANCE_API_DEFINE;
     return this;
-  }
-
-  noUnits() {
-    this.graph_flag |= SocketFlags.NO_UNITS;
-    return this;
-  }
-
-  setAndUpdate(val, updateParentNode=false) {
-    this.setValue(val);
-    this.graphUpdate(updateParentNode);
-
-    return this;
-  }
-
-  static apiDefine(api, sockstruct) {
-
-  }
-
-  has(node_or_socket) {
-    for (let socket of this.edges) {
-      if (socket === node_or_socket)
-        return true;
-      if (socket.node === node_or_socket)
-        return true;
-    }
-
-    return false;
   }
 
   /*
@@ -182,6 +195,28 @@ export class NodeSocketType {
     this._node = node;
   }*/
 
+  noUnits() {
+    this.graph_flag |= SocketFlags.NO_UNITS;
+    return this;
+  }
+
+  setAndUpdate(val, updateParentNode = false) {
+    this.setValue(val);
+    this.graphUpdate(updateParentNode);
+
+    return this;
+  }
+
+  has(node_or_socket) {
+    for (let socket of this.edges) {
+      if (socket === node_or_socket)
+        return true;
+      if (socket.node === node_or_socket)
+        return true;
+    }
+
+    return false;
+  }
 
   /**
    Build ui for a node socket.
@@ -193,7 +228,7 @@ export class NodeSocketType {
    NOT Context as usual.
    */
   buildUI(container, onchange) {
-    if (this.edges.length === 0) {
+    if (this.edges.length === 0 && !(this.graph_flag & SocketFlags.NO_UI_EDITING)) {
       let ret = container.prop("value");
 
       if (ret) {
@@ -205,10 +240,6 @@ export class NodeSocketType {
     } else {
       container.label(this.uiname);
     }
-  }
-
-  static register(cls) {
-    NodeSocketClasses.push(cls);
   }
 
   copyValue() {
@@ -255,6 +286,10 @@ export class NodeSocketType {
     return this;
   }
 
+  //for the sake of sane, performant code,
+  //this is allowed to return a reference, but client
+  //code is *only allowed to modify that reference's data
+
   disconnect(sock) {
     if (sock === undefined) {
       let _i = 0;
@@ -281,29 +316,6 @@ export class NodeSocketType {
     return this;
   }
 
-  /**
-   Callback for defining socket types.
-   Child classes must implement this.
-
-   @example
-   static nodedef() { return {
-      name   : "name",
-      uiname : "uiname",
-      color  : [0.5, 0.5, 0.5, 1.0],
-      flag   : 0 //see SocketFlags
-   }}
-
-   */
-  static nodedef() { return {
-    name   : "name",
-    uiname : "uiname",
-    color  : undefined,
-    flag   : 0
-  }}
-
-  //for the sake of sane, performant code,
-  //this is allowed to return a reference, but client
-  //code is *only allowed to modify that reference's data
   //inside of the owning Node class's exec method*
   getValue() {
     throw new Error("implement me!");
@@ -318,12 +330,9 @@ export class NodeSocketType {
     b.name = this.name;
     b.uiname = this.uiname;
     b.socketName = this.socketName;
+    b.socketType = this.socketType;
     //b.node = this.node;
     return this;
-  }
-
-  get hasEdges() {
-    return this.edges.length > 0;
   }
 
   /*
@@ -347,7 +356,7 @@ export class NodeSocketType {
   flag the socket as updated and queue
   the datagraph for execution
   */
-  graphUpdate(updateParentNode=false, _exclude=undefined) {
+  graphUpdate(updateParentNode = false, _exclude = undefined) {
     if (this.graph_id === -1) {
       //we're not in a graph
       console.warn("graphUpdate called on non-node", this);
@@ -412,21 +421,22 @@ graph.NodeSocketType {
   socketType : int;
 }
 `;
-nstructjs.manager.add_class(NodeSocketType);
+nstructjs.register(NodeSocketType);
 
 export class KeyValPair {
- constructor(key, val) {
-   this.key = key;
-   this.val = val;
- }
+  constructor(key, val) {
+    this.key = key;
+    this.val = val;
+  }
 }
+
 KeyValPair.STRUCT = `
 graph.KeyValPair {
   key : string;
   val : abstract(Object);
 }
 `;
-nstructjs.manager.add_class(KeyValPair);
+nstructjs.register(KeyValPair);
 
 /**
  Base class for all nodes
@@ -434,7 +444,7 @@ nstructjs.manager.add_class(KeyValPair);
  method in child classes.
  */
 export class Node {
-  constructor(flag=0) {
+  constructor(flag = 0) {
     let def = this.constructor.nodedef();
 
     if (!def.name || typeof def.name !== "string") {
@@ -559,7 +569,7 @@ export class Node {
       sock.node = this;
     }
 
-    for (let i=0; i<2; i++) {
+    for (let i = 0; i < 2; i++) {
       let socks = i ? this.outputs : this.inputs;
 
       for (let k in socks) {
@@ -587,8 +597,24 @@ export class Node {
     this.icon = -1;
   }
 
-  static defineAPI(nodeStruct) {
+  get allsockets() {
+    let this2 = this;
+    return (function* () {
+      for (let k in this2.inputs) {
+        yield this2.inputs[k];
+      }
+      for (let k in this2.outputs) {
+        yield this2.outputs[k];
+      }
+    })();
+  }
 
+  static graphDefineAPI(api, nodeStruct) {
+
+  }
+
+  static defineAPI(api, nodeStruct) {
+    console.error("defineAPI called!");
   }
 
   /** get final node def with inheritance applied to input/output sockets
@@ -667,33 +693,23 @@ export class Node {
       }
     }}
    */
-  static nodedef() {return {
-    name   : "name",
-    uiname : "uiname",
-    flag   : 0,
-    inputs : {}, //can inherit from parent class by wrapping in Node.inherit({})
-    outputs : {}
-  }}
+  static nodedef() {
+    return {
+      name   : "name",
+      uiname : "uiname",
+      flag   : 0,
+      inputs : {}, //can inherit from parent class by wrapping in Node.inherit({})
+      outputs: {}
+    }
+  }
 
   /** see nodedef static method */
-  static inherit(obj={}) {
+  static inherit(obj = {}) {
     return new InheritFlag(obj);
   }
 
   graphDataLink(ownerBlock, getblock, getblock_addUser) {
 
-  }
-
-  get allsockets() {
-    let this2 = this;
-    return (function*() {
-      for (let k in this2.inputs) {
-        yield this2.inputs[k];
-      }
-      for (let k in this2.outputs) {
-        yield this2.outputs[k];
-      }
-    })();
   }
 
   copyTo(b) {
@@ -702,7 +718,7 @@ export class Node {
     b.icon = this.icon;
     b.graph_flag = this.graph_flag;
 
-    for (let i=0; i<2; i++) {
+    for (let i = 0; i < 2; i++) {
       let sockets1 = i ? this.outputs : this.inputs;
       let sockets2 = i ? b.outputs : b.inputs;
 
@@ -721,7 +737,7 @@ export class Node {
     }
   }
 
-  copy() {
+  copy(addLibUsers = false, libOwner = undefined) {
     let ret = new this.constructor();
     this.copyTo(ret);
 
@@ -746,6 +762,10 @@ export class Node {
 
     //this.graph_flag |= NodeFlags.UPDATE;
     return this;
+  }
+
+  graphDestroy() {
+
   }
 
   graphUpdate() {
@@ -790,7 +810,7 @@ export class Node {
     /*deal with any changes in sockets across file versions*/
     let def = this.constructor.getFinalNodeDef();
 
-    for (let i=0; i<2; i++) {
+    for (let i = 0; i < 2; i++) {
       let socks1 = i ? this.outputs : this.inputs;
       let socks2 = i ? def.outputs : def.inputs;
 
@@ -838,7 +858,7 @@ export class Node {
     }
 
     //load any template data that needs loading
-    for (let i=0; i<2; i++) {
+    for (let i = 0; i < 2; i++) {
       let socks1 = i ? this.outputs : this.inputs;
       let socks2 = i ? def.outputs : def.inputs;
 
@@ -875,6 +895,7 @@ export class Node {
     return ret;
   }
 }
+
 Node.STRUCT = `
 graph.Node {
   graph_name    : string;
@@ -889,7 +910,7 @@ graph.Node {
 }
 `;
 
-nstructjs.manager.add_class(Node);
+nstructjs.register(Node);
 
 /*proxy nodes are stand-ins for nodes that are
   saved/loaded from outside the Graph data structure
@@ -901,18 +922,12 @@ export class ProxyNode extends Node {
     this.className = "";
   }
 
-  nodedef() {return {
-    inputs  : {},
-    outputs : {},
-    flag    : NodeFlags.SAVE_PROXY
-  }}
-
   static fromNode(node) {
     let ret = new ProxyNode();
 
     ret.graph_id = node.graph_id;
 
-    for (let i=0; i<2; i++) {
+    for (let i = 0; i < 2; i++) {
       let socks1 = i ? node.outputs : node.inputs;
       let socks2 = i ? ret.outputs : ret.inputs;
 
@@ -932,13 +947,21 @@ export class ProxyNode extends Node {
 
     return ret;
   }
+
+  nodedef() {
+    return {
+      inputs : {},
+      outputs: {},
+      flag   : NodeFlags.SAVE_PROXY
+    }
+  }
 }
 
 ProxyNode.STRUCT = STRUCT.inherit(ProxyNode, Node, "graph.ProxyNode") + `
   className : string; 
 }
 `;
-nstructjs.manager.add_class(ProxyNode);
+nstructjs.register(ProxyNode);
 
 export class CallbackNode extends Node {
   constructor() {
@@ -948,24 +971,16 @@ export class CallbackNode extends Node {
     this.graph_flag |= NodeFlags.ZOMBIE;
   }
 
-  exec(ctx) {
-    if (this.callback !== undefined) {
-      this.callback(ctx, this);
+  static nodedef() {
+    return {
+      name   : "callback node",
+      inputs : {},
+      outputs: {},
+      flag   : NodeFlags.ZOMBIE
     }
   }
 
-  graphDisplayName() {
-    return this.constructor.name + "(" + this.name + ")" + this.graph_id;
-  }
-
-  static nodedef() {return {
-    name     : "callback node",
-    inputs   : {},
-    outputs  : {},
-    flag     : NodeFlags.ZOMBIE
-  }}
-
-  static create(name, callback, inputs={}, outputs={}) {
+  static create(name, callback, inputs = {}, outputs = {}) {
     let ret = new CallbackNode();
 
     ret.name = name;
@@ -984,12 +999,22 @@ export class CallbackNode extends Node {
 
     return ret;
   }
+
+  exec(ctx) {
+    if (this.callback !== undefined) {
+      this.callback(ctx, this);
+    }
+  }
+
+  graphDisplayName() {
+    return this.constructor.name + "(" + this.name + ")" + this.graph_id;
+  }
 }
 
 CallbackNode.STRUCT = STRUCT.inherit(CallbackNode, Node, "graph.CallbackNode") + `
 }
 `;
-nstructjs.manager.add_class(CallbackNode);
+nstructjs.register(CallbackNode);
 
 export class GraphNodes extends Array {
   constructor(graph, list) {
@@ -1006,18 +1031,10 @@ export class GraphNodes extends Array {
     this.highlight = undefined;
   }
 
-  setSelect(node, state) {
-    if (state) {
-      node.graph_flag |= GraphFlags.SELECT;
-    } else {
-      node.graph_flag &= ~GraphFlags.SELECT;
-    }
-  }
-
   get selected() {
     let this2 = this;
 
-    let ret = function*() {
+    let ret = function* () {
       for (let node of this2.graph.nodes) {
         if (node.graph_flag & NodeFlags.SELECT) {
           yield node;
@@ -1030,12 +1047,20 @@ export class GraphNodes extends Array {
     return ret;
   }
 
+  setSelect(node, state) {
+    if (state) {
+      node.graph_flag |= GraphFlags.SELECT;
+    } else {
+      node.graph_flag &= ~GraphFlags.SELECT;
+    }
+  }
+
   /**
    swap node to first element in list.
 
    a convention in shader networks is that the active "output" node is the first one found in the list.
    this way users can click different output nodes to preview different subnetworks in real time.
-  */
+   */
   pushToFront(node) {
     let i = this.indexOf(node);
 
@@ -1048,7 +1073,7 @@ export class GraphNodes extends Array {
     }
 
     while (i > 0) {
-      this[i] = this[i-1];
+      this[i] = this[i - 1];
       i--;
     }
 
@@ -1062,13 +1087,13 @@ export class GraphNodes extends Array {
 export class Graph {
   constructor() {
     /**unfortunately we can't use normal event callbacks (or the graph itself)
-      to send certain updates to the UI, because the sheer number of nodes
-      in normal workflows would make that slow and error-prone.
-      so, like with meshes, we use a random number that changes when the ui should
-      redraw things.
+     to send certain updates to the UI, because the sheer number of nodes
+     in normal workflows would make that slow and error-prone.
+     so, like with meshes, we use a random number that changes when the ui should
+     redraw things.
 
-      That said, in theory you could make the dependency graph compile into code
-      like shader graphs compile to glsl.
+     That said, in theory you could make the dependency graph compile into code
+     like shader graphs compile to glsl.
      */
     this.updateGen = Math.random();
 
@@ -1083,6 +1108,103 @@ export class Graph {
     this.graph_idgen = new util.IDGen();
     this.node_idmap = {};
     this.sock_idmap = {};
+  }
+
+  copy(addLibUsers = false, libOwner = undefined) {
+    let ret = new this.constructor();
+
+    ret.nodes.length = 0;
+    ret.node_idmap = {};
+    ret.sock_idmap = {};
+    ret.graph_idgen = this.graph_idgen.copy();
+
+    for (let node of this.nodes) {
+      let n2 = node.copy(addLibUsers, libOwner);
+
+      n2.graph_id = node.graph_id;
+      n2.graph_name = node.graph_name;
+      n2.graph_flag = node.graph_flag;
+      n2.graph_graph = ret;
+
+      n2.graph_ui_pos.load(node.graph_ui_pos);
+      n2.graph_ui_size.load(node.graph_ui_size);
+      n2.icon = node.icon;
+      n2.graph_ui_flag = node.graph_ui_flag;
+
+      ret.nodes.push(n2);
+      ret.node_idmap[n2.graph_id] = n2;
+
+      for (let i = 0; i < 2; i++) {
+        let s1 = i ? node.outputs : node.inputs;
+        let s2 = i ? n2.outputs : n2.inputs;
+
+        for (let k in s1) {
+          let sock1 = s1[k];
+          let sock2 = s2[k];
+
+          sock2.graph_id = sock1.graph_id;
+          sock2.graph_flag = sock1.graph_flag;
+          sock2.socketType = sock1.socketType;
+          sock2.socketName = sock1.socketName;
+          sock2.name = sock1.name;
+          sock2.uiname = sock1.uiname;
+
+          ret.sock_idmap[sock2.graph_id] = sock2;
+        }
+      }
+    }
+
+    for (let node of this.nodes) {
+      let n2 = ret.node_idmap[node.graph_id];
+
+      for (let i = 0; i < 2; i++) {
+        let s1 = i ? node.outputs : node.inputs;
+        let s2 = i ? n2.outputs : n2.inputs;
+
+        for (let k in s1) {
+          let sock1 = s1[k];
+          let sock2 = s2[k];
+
+          for (let sock3 of sock1.edges) {
+            let bad = (sock3.node && sock3.node.graph_graph && sock3.node.graph_graph !== this);
+
+            if (bad) {
+              console.log("bad socket", sock3);
+              continue;
+            }
+
+            let n3 = sock3.node;
+            let n4 = ret.node_idmap[n3.graph_id];
+
+            if (!n4) {
+              console.log("bad socket2", sock3);
+              continue;
+            }
+
+            let socks = i ? n4.inputs : n4.outputs;
+            let sock4 = socks[sock3.socketName];
+
+            if (!sock4) {
+              console.log("bad socket3", sock3, socks);
+              continue;
+            }
+
+            sock2.edges.push(sock4);
+          }
+        }
+      }
+    }
+
+    return ret;
+  }
+
+  destroy() {
+    for (let n of this.nodes) {
+      for (let sock of n.allsockets) {
+        sock.graphDestory();
+      }
+      n.graphDestroy();
+    }
   }
 
   clear() {
@@ -1137,7 +1259,7 @@ export class Graph {
     sortlist.length = 0;
 
     for (let n of nodes) {
-      n.graph_flag &= ~(NodeFlags.SORT_TAG|NodeFlags.CYCLE_TAG);
+      n.graph_flag &= ~(NodeFlags.SORT_TAG | NodeFlags.CYCLE_TAG);
     }
 
     let dosort = (n) => {
@@ -1273,7 +1395,7 @@ export class Graph {
       }
     }
 
-    for (let i=0; i<this.max_cycle_steps; i++) {
+    for (let i = 0; i < this.max_cycle_steps; i++) {
       let limit = this.cycle_stop_threshold;
       let change = this._cyclic_step(context);
 
@@ -1286,7 +1408,7 @@ export class Graph {
   }
 
   //context is provided by client code
-  exec(context, force_single_solve=false) {
+  exec(context, force_single_solve = false) {
     if (this.graph_flag & GraphFlags.RESORT) {
       console.log("resorting graph");
       this.sort();
@@ -1444,19 +1566,19 @@ export class Graph {
 
     for (let n of this.nodes) {
       for (let s of n.allsockets) {
-        for (let i=0; i<s.edges.length; i++) {
+        for (let i = 0; i < s.edges.length; i++) {
           s.edges[i] = sock_idmap[s.edges[i]];
 
           if (!s.edges[i]) {
             //probably a connection to a zombie node, which aren't saved?
             let j = i;
 
-            while (j < s.edges.length-1) {
-              s.edges[j] = s.edges[j+1];
+            while (j < s.edges.length - 1) {
+              s.edges[j] = s.edges[j + 1];
               j++;
             }
 
-            s.edges[s.edges.length-1] = undefined;
+            s.edges[s.edges.length - 1] = undefined;
             s.edges.length--;
 
             i--;
@@ -1476,7 +1598,7 @@ export class Graph {
 
     for (let node of this.nodes) {
       for (let sock of node.allsockets) {
-        for (let i=0; i<sock.edges.length; i++) {
+        for (let i = 0; i < sock.edges.length; i++) {
           let e = sock.edges[i];
 
           if (typeof e === "number") {
@@ -1521,8 +1643,8 @@ export class Graph {
 
     node_idmap[n2.graph_id] = n;
 
-    for (let i=0; i<2; i++) {
-      let socks1 = i ? n.outputs  : n.inputs;
+    for (let i = 0; i < 2; i++) {
+      let socks1 = i ? n.outputs : n.inputs;
       let socks2 = i ? n2.outputs : n2.inputs;
 
       for (let k in socks2) {
@@ -1581,7 +1703,7 @@ export class Graph {
     }
   }
 
-  execSubtree(startnode, context, checkStartParents=true) {
+  execSubtree(startnode, context, checkStartParents = true) {
     if (this.graph_flag & GraphFlags.RESORT) {
       console.log("resorting graph");
       this.sort();
@@ -1679,15 +1801,16 @@ export class Graph {
     return ret;
   }
 }
+
 Graph.STRUCT = `
 graph.Graph {
   graph_idgen : IDGen; 
   nodes       : iter(abstract(graph.Node)) | obj._save_nodes();
 }
 `;
-nstructjs.manager.add_class(Graph);
+nstructjs.register(Graph);
 
-export function test(exec_cycles=true) {
+export function test(exec_cycles = true) {
   let ob1, ob2;
 
   class SceneObject extends Node {
@@ -1696,20 +1819,22 @@ export function test(exec_cycles=true) {
       this.mesh = mesh;
     }
 
-    static nodedef() {return {
-      inputs : {
-        depend : new DependSocket("depend", SocketFlags.MULTI),
-        matrix : new Matrix4Socket("matrix"),
-        color  : new Vec4Socket("color"),
-        loc    : new Vec3Socket("loc")
-      },
+    static nodedef() {
+      return {
+        inputs: {
+          depend: new DependSocket("depend", SocketFlags.MULTI),
+          matrix: new Matrix4Socket("matrix"),
+          color : new Vec4Socket("color"),
+          loc   : new Vec3Socket("loc")
+        },
 
-      outputs : {
-        color : new Vec4Socket("color"),
-        matrix : new Matrix4Socket("matrix"),
-        depend : new DependSocket("depend")
+        outputs: {
+          color : new Vec4Socket("color"),
+          matrix: new Matrix4Socket("matrix"),
+          depend: new DependSocket("depend")
+        }
       }
-    }}
+    }
 
     getLoc() {
       let p = new Vector3();
@@ -1792,7 +1917,7 @@ export function test(exec_cycles=true) {
   let z = .2;
 
   //make a chain!
-  for (let i=0; i<35; i++) {
+  for (let i = 0; i < 35; i++) {
     let m2 = mesh.add_island();
 
     m2.tri([-1, -1, z], [0, 1, z], [1, -1, z]);
@@ -1802,7 +1927,7 @@ export function test(exec_cycles=true) {
     let ob = new SceneObject(m2);
     graph.add(ob);
 
-    ob.inputs.loc.setValue(new Vector3([x-0.3, i*0.01, 0.0]));
+    ob.inputs.loc.setValue(new Vector3([x - 0.3, i*0.01, 0.0]));
 
     last.inputs.color.connect(ob.outputs.color);
     last.outputs.matrix.connect(ob.inputs.matrix);
@@ -1826,7 +1951,7 @@ export function test(exec_cycles=true) {
   window.d = 0;
 
   window.setInterval(() => {
-    loc[0] = Math.cos(t+window.d)*0.95 + window.d;
+    loc[0] = Math.cos(t + window.d)*0.95 + window.d;
     loc[1] = Math.sin(t)*0.95;
 
     ob1.inputs.loc.setValue(loc);

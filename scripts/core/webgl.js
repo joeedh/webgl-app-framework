@@ -219,17 +219,33 @@ export function init_webgl(canvas, params = {}) {
   return gl;
 }
 
-function format_lines(script) {
-  var i = 1;
-  var lines = script.split("\n")
-  var maxcol = Math.ceil(Math.log(lines.length)/Math.log(10)) + 1;
+function format_lines(script, errortext) {
+  let linenr = getShaderErrorLine(errortext);
 
-  var s = "";
+  let i = 1;
 
-  for (var line of lines) {
+  let lines = script.split("\n")
+  let maxcol = Math.ceil(Math.log(lines.length)/Math.log(10)) + 1;
+
+  if (typeof linenr === "number") {
+    let a = Math.max(linenr-25, 0);
+    a = 0;
+    let b = Math.min(linenr+5, lines.length);
+
+    i = a + 1;
+    lines = lines.slice(a, b);
+  }
+
+  let s = "";
+
+  for (let line of lines) {
     s += "" + i + ":";
     while (s.length < maxcol) {
       s += " "
+    }
+
+    if (i === linenr) {
+      line = util.termColor(line + " ", "red");
     }
 
     s += line + "\n";
@@ -237,6 +253,20 @@ function format_lines(script) {
   }
 
   return s;
+}
+
+function getShaderErrorLine(error) {
+  let linenr = error.match(/.*([0-9]+):([0-9]+): .*/);
+
+  if (linenr) {
+    linenr = parseInt(linenr[2]);
+  }
+
+  if (isNaN(linenr)) {
+    linenr = undefined;
+  }
+
+  return linenr;
 }
 
 export function hashShader(sdef) {
@@ -363,6 +393,8 @@ export class ShaderProgram {
 
     this.attrs = [];
 
+    this._lastDefShader = undefined;
+
     this.multilayer_programs = {};
 
     for (var a of attributes) {
@@ -383,6 +415,18 @@ export class ShaderProgram {
 
     this.uniforms = {};
     this.gl = gl;
+  }
+
+  static fromDef(gl, def) {
+    let shader = new ShaderProgram(gl, def.vertex, def.fragment, def.attributes);
+
+    shader.init(gl);
+
+    for (let k in def.uniforms) {
+      shader.uniforms[k] = def.uniforms[k];
+    }
+
+    return shader;
   }
 
   static insertDefine(define, code) {
@@ -590,8 +634,8 @@ v${attr} = ${attr};
         vshader = this.constructor.insertDefine(defs, vshader);
         fshader = this.constructor.insertDefine(defs, fshader);
 
-        this._vertexSource = vshader;
-        this._fragmentSource = fshader;
+        this.vertexSource = vshader;
+        this.fragmentSource = fshader;
       }
     }
 
@@ -610,7 +654,7 @@ v${attr} = ${attr};
         // Something went wrong during compilation; get the error
         var error = gl.getShaderInfoLog(shader);
 
-        console.log(format_lines(code));
+        console.log(format_lines(code, error));
         console.log("\nError compiling shader: ", error);
 
         gl.deleteShader(shader);
@@ -684,8 +728,6 @@ v${attr} = ${attr};
     this.attrlocs = {};
     this.uniformlocs = {};
 
-    this.uniforms = {}; //default uniforms
-
     for (var i = 0; i < attribs.length; i++) {
       this.attrlocs[attribs[i]] = i;
     }
@@ -711,7 +753,19 @@ v${attr} = ${attr};
   }
 
   uniformloc(name) {
-    if (this.uniformlocs[name] == undefined) {
+    if (this._use_def_shaders) {
+      let shader = this._getLastDefShader();
+
+      if (shader) {
+        return shader.uniformloc(name);
+      }
+    }
+
+    if (this.rebuild && this.gl) {
+      this.init(this.gl);
+    }
+
+    if (this.uniformlocs[name] === undefined) {
       this.uniformlocs[name] = this.gl.getUniformLocation(this.program, name);
     }
 
@@ -724,11 +778,15 @@ v${attr} = ${attr};
 
   attrLoc(name) {
     if (this._use_def_shaders) {
-      let shader = this._getDefShader(this.gl);
+      let shader = this._getLastDefShader();
 
       if (shader) {
         return shader.attrLoc(name);
       }
+    }
+
+    if (this.rebuild && this.gl) {
+      this.init(this.gl);
     }
 
     if (!(name in this.attrlocs)) {
@@ -770,7 +828,9 @@ v${attr} = ${attr};
 
     if (key in this.multilayer_programs) {
       let shader = this.multilayer_programs[key];
+
       shader.defines = this.defines;
+      shader.uniforms = this.uniforms;
 
       return shader.bind(gl, uniforms, attributes);
     }
@@ -813,14 +873,19 @@ v${attr} = ${attr};
     return this.program;
   }
 
+  _getLastDefShader() {
+    let shader = this._lastDefShader;
+
+    if (!shader) {
+      shader = this._getDefShader(this.gl);
+    }
+    return shader;
+  }
+
   _getDefShader(gl, defines = {}, attributes) {
     if (attributes) {
       for (let k in attributes) {
         let key = "HAVE_" + k.toUpperCase();
-
-        if (!defines) {
-          defines = {};
-        }
 
         defines[key] = null;
       }
@@ -828,11 +893,19 @@ v${attr} = ${attr};
 
     let key = this.calcDefKey(defines);
 
+    for (let k in this.defines) {
+      if (!(k in defines)) {
+        defines[k] = this.defines[k];
+      }
+    }
+
     if (key !== "") {
       if (!(key in this._def_shaders)) {
         let shader = this.copy();
 
         if (defines) {
+          shader.defines = {};
+
           for (let k in defines) {
             shader.defines[k] = defines[k];
           }
@@ -843,7 +916,9 @@ v${attr} = ${attr};
         this._def_shaders[key] = shader;
       }
 
-      return this._def_shaders[key];
+      let shader = this._def_shaders[key];
+      this._lastDefShader = shader;
+      return shader;
     }
   }
 
@@ -868,6 +943,7 @@ v${attr} = ${attr};
       let shader = this._getDefShader(this.gl, defines, attributes);
 
       if (shader) {
+        shader.uniforms = this.uniforms;
         return shader.bind(gl, uniforms);
       }
     }
@@ -944,21 +1020,25 @@ v${attr} = ${attr};
 
           v.bind(gl, this.uniformloc(k), slot);
         } else if (v instanceof Array || v instanceof Float32Array || v instanceof Float64Array) {
+          let arr;
+
           switch (v.length) {
             case 2:
-              var arr = _safe_arrays[2];
+              arr = _safe_arrays[2];
               setv(arr, v, 2);
 
               gl.uniform2fv(loc, arr);
               break;
             case 3:
-              var arr = _safe_arrays[3];
+              arr = _safe_arrays[3];
               setv(arr, v, 3);
+
               gl.uniform3fv(loc, arr);
               break;
             case 4:
-              var arr = _safe_arrays[4];
+              arr = _safe_arrays[4];
               setv(arr, v, 4);
+
               gl.uniform4fv(loc, arr);
               break;
             default:
@@ -1200,7 +1280,6 @@ export class Texture {
     tex.texParameteri(gl, target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     tex.texParameteri(gl, target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     tex.texParameteri(gl, target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
   }
 
   texParameteri(gl, target, param, value) {
@@ -1452,7 +1531,7 @@ DrawMats {
   isPerspective : int;
 }
 `;
-nstructjs.manager.add_class(DrawMats);
+nstructjs.register(DrawMats);
 
 //simplest
 export class Camera extends DrawMats {
@@ -1641,4 +1720,4 @@ Camera.STRUCT = STRUCT.inherit(Camera, DrawMats) + `
   isPerspective : bool;
 }
 `;
-nstructjs.manager.add_class(Camera);
+nstructjs.register(Camera);

@@ -1,6 +1,4 @@
-import '../path.ux/scripts/util/struct.js';
-let STRUCT = nstructjs.STRUCT;
-
+import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {ShaderNetworkClass, ShaderNode} from "./shader_nodes.js";
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags, SocketTypes} from '../core/graph.js';
@@ -72,7 +70,7 @@ export class MathNode extends ShaderNode {
     container.prop("mathFunc");
   }
 
-  static defineAPI(nstruct) {
+  static graphDefineAPI(api, nstruct) {
     nstruct.enum("mathFunc", "mathFunc", MathNodeFuncs, "Function", "Math function to use");
   }
 
@@ -115,9 +113,9 @@ export class MathNode extends ShaderNode {
   }
 };
 
-MathNode.STRUCT = STRUCT.inherit(MathNode, ShaderNode, 'shader.MathNode') + `
+MathNode.STRUCT = nstructjs.inherit(MathNode, ShaderNode, 'shader.MathNode') + `
   mathFunc : int;
 }
 `;
-nstructjs.manager.add_class(MathNode);
+nstructjs.register(MathNode);
 ShaderNetworkClass.register(MathNode);

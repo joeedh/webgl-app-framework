@@ -4,7 +4,7 @@ import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, ListProperty,
   PropFlags, PropTypes, PropSubTypes, StringProperty, StringSetProperty,
-  ToolOp, ToolFlags, UndoFlags
+  ToolOp, ToolFlags, UndoFlags, nstructjs
 } from '../path.ux/scripts/pathux.js';
 import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
 import {CallbackNode, NodeFlags} from "../core/graph.js";
@@ -137,10 +137,12 @@ export class MeshOp extends View3DOp {
     //check for mesh structure errors
     let msg = [""];
     for (let mesh of this.getMeshes(ctx)) {
-      if (!mesh.validateMesh(msg)) {
-        ctx.warning("Mesh error: " + msg);
-        ctx.toolstack.toolCancel(ctx, this);
-        break;
+      if (1) {
+        if (!mesh.validateMesh(msg)) {
+          ctx.warning("Mesh error: " + msg);
+          ctx.toolstack.toolCancel(ctx, this);
+          break;
+        }
       }
     }
 

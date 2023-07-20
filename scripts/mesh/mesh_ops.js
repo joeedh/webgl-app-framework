@@ -1,4 +1,6 @@
 import './mesh_loopops.js';
+import './mesh_curvature_test.js';
+
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 import {
@@ -20,7 +22,8 @@ import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
 import {CDFlags, CustomDataElem} from "./customdata.js";
 import {
-  bisectMesh, connectVerts, cotanVertexSmooth, dissolveEdgeLoops, dissolveFaces, fixManifold, flipLongTriangles,
+  bisectMesh, connectVerts, cotanVertexSmooth, dissolveEdgeLoops, dissolveFaces, duplicateMesh, fixManifold,
+  flipLongTriangles,
   pruneLooseGeometry,
   recalcWindings,
   symmetrizeMesh,
@@ -196,7 +199,7 @@ export class TriToQuadsOp extends MeshOp {
       icon    : Icons.TRIS_TO_QUADS,
       toolpath: "mesh.tris_to_quads",
       inputs  : ToolOp.inherit({
-        options: new FlagProperty(TriQuadFlags.DEFAULT, TriQuadFlags)
+        options: new FlagProperty(TriQuadFlags.DEFAULT, TriQuadFlags).saveLastValue()
       }),
       outputs : ToolOp.inherit()
     }
@@ -215,6 +218,22 @@ export class TriToQuadsOp extends MeshOp {
       }
 
       trianglesToQuads(mesh, fs, this.inputs.options.getValue());
+
+      if (this.inputs.options.getValue()) {
+        for (let f of mesh.faces.selected.editable) {
+          for (let e of f.edges) {
+            if (e.flag & MeshFlags.QUAD_EDGE) {
+              e.flag |= MeshFlags.DRAW_DEBUG;
+            } else {
+              e.flag &= ~MeshFlags.DRAW_DEBUG;
+            }
+
+            e.flag |= MeshFlags.UPDATE;
+            e.v1.flag |= MeshFlags.UPDATE;
+            e.v2.flag |= MeshFlags.UPDATE;
+          }
+        }
+      }
 
       mesh.regenBVH();
       mesh.regenRender();
@@ -449,6 +468,12 @@ export class TriangulateOp extends MeshOp {
 
 ToolOp.register(TriangulateOp);
 
+export const RemeshOpModes = {
+  REMESH        : 0,
+  GEN_CROSSFIELD: 1,
+  OPT_CROSSFIELD: 2
+};
+
 export class RemeshOp extends MeshOp {
   static tooldef() {
     return {
@@ -458,16 +483,19 @@ export class RemeshOp extends MeshOp {
         {
           flag             : new FlagProperty(DefaultRemeshFlags, RemeshFlags),
           remesher         : new EnumProperty(Remeshers.UNIFORM_TRI, Remeshers).saveLastValue(),
-          rakeFactor       : new FloatProperty(0.5).noUnits().setRange(0.0, 1.0),
-          relax            : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0),
-          projection       : new FloatProperty(0.8).noUnits().setRange(0.0, 1.0),
-          subdivideFac     : new FloatProperty(0.5).noUnits().setRange(0.01, 3.0).saveLastValue(),
-          collapseFac      : new FloatProperty(0.5).noUnits().setRange(0.01, 1.0).saveLastValue(),
+          rakeFactor       : new FloatProperty(0.5).noUnits().setRange(0.0, 1.0).saveLastValue(),
+          relax            : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0).saveLastValue(),
+          origFactor       : new FloatProperty(0.25).noUnits().setRange(0.0, 1.0).saveLastValue(),
+          projection       : new FloatProperty(0.8).noUnits().setRange(0.0, 1.0).saveLastValue(),
+          subdivideFac     : new FloatProperty(0.35).noUnits().setRange(0.01, 3.0).saveLastValue(),
+          collapseFac      : new FloatProperty(0.35).noUnits().setRange(0.01, 1.0).saveLastValue(),
           goalType         : new EnumProperty(RemeshGoals.EDGE_AVERAGE, RemeshGoals).saveLastValue(),
           goal             : new FloatProperty(1.0).noUnits().setRange(0, 1024*1024*32).saveLastValue(),
           edgeRunPercent   : new FloatProperty(0.5).setRange(0.001, 1).noUnits().saveLastValue(),
           curveSmoothFac   : new FloatProperty(0.0).noUnits().setRange(0.0, 1.0).saveLastValue(),
-          curveSmoothRepeat: new IntProperty(4).noUnits().setRange(0, 50).saveLastValue()
+          curveSmoothRepeat: new IntProperty(4).noUnits().setRange(0, 50).saveLastValue(),
+          rakeMode         : new EnumProperty(RakeModes.CURVATURE, RakeModes).saveLastValue(),
+          reproject        : new BoolProperty(false).saveLastValue(),
         }
       ),
       outputs : ToolOp.inherit()
@@ -479,12 +507,14 @@ export class RemeshOp extends MeshOp {
     let goalValue = this.inputs.goal.getValue()
     let rakeFactor = this.inputs.rakeFactor.getValue();
     let relax = this.inputs.relax.getValue();
+    let origFactor = this.inputs.origFactor.getValue();
     let subdFac = this.inputs.subdivideFac.getValue();
     let collFac = this.inputs.collapseFac.getValue();
     let project = this.inputs.projection.getValue();
     let count = this.inputs.edgeRunPercent.getValue();
     let curveSmoothRepeat = this.inputs.curveSmoothRepeat.getValue();
     let curveSmoothFac = this.inputs.curveSmoothFac.getValue();
+    let reproject = this.inputs.reproject.getValue();
 
     count = Math.ceil(mesh.edges.length*count);
 
@@ -493,6 +523,9 @@ export class RemeshOp extends MeshOp {
 
     let remesher = new cls(mesh, lctx, goalType, goalValue);
 
+    remesher.origFactor = origFactor;
+    remesher.reproject = reproject;
+    remesher.rakeMode = this.inputs.rakeMode.getValue();
     remesher.subdFac = subdFac;
     remesher.collFac = collFac;
     remesher.relax = relax;
@@ -552,11 +585,33 @@ export class InteractiveRemeshOp extends RemeshOp {
       uiname  : "Remesh (Interactive)",
       toolpath: "mesh.interactive_remesh",
       inputs  : ToolOp.inherit({
-        steps: new IntProperty(5).private()
+        steps: new IntProperty(5).private(),
+        mode : new EnumProperty(RemeshOpModes.REMESH, RemeshOpModes)
       }),
       outputs : ToolOp.inherit({}),
       is_modal: true
     }
+  }
+
+  redo(ctx) {
+    let undo = this._undo;
+
+    this._undo = this._redo;
+    this._redo = undefined;
+
+    super.undo(ctx);
+
+    this._undo = undo;
+  }
+
+  undo(ctx) {
+    let undo = this._undo;
+
+    this.undoPre(ctx);
+    this._redo = this._undo;
+    this._undo = undo;
+
+    super.undo(ctx);
   }
 
   makeLogCtx(ctx, mesh) {
@@ -631,7 +686,8 @@ export class InteractiveRemeshOp extends RemeshOp {
     while (this.remesher && util.time_ms() - time < 50 && !this.remesher.done) {
       let i = this.inputs.steps.getValue();
       this.inputs.steps.setValue(i + 1);
-      this.remesher.step();
+
+      this._step(this.modal_ctx, this.remesher, mesh, this.lctx);
     }
 
     if (!this.remesher) {
@@ -645,6 +701,21 @@ export class InteractiveRemeshOp extends RemeshOp {
     window.redraw_viewport(true);
   }
 
+  _step(ctx, remesher, mesh, lctx) {
+
+    switch (this.inputs.mode.getValue()) {
+      case RemeshOpModes.REMESH:
+        remesher.step();
+        break;
+      case RemeshOpModes.GEN_CROSSFIELD:
+        remesher.solveRakeDirections();
+        break;
+      case RemeshOpModes.OPT_CROSSFIELD:
+        remesher.propRakeDirections();
+        break;
+    }
+  }
+
   exec(ctx) {
     let mesh = ctx.mesh;
     let lctx = this.makeLogCtx(ctx, mesh);
@@ -656,7 +727,7 @@ export class InteractiveRemeshOp extends RemeshOp {
     let steps = this.inputs.steps.getValue();
 
     for (let i = 0; i < steps; i++) {
-      remesher.step();
+      this._step(ctx, remesher, mesh, lctx);
     }
 
     remesher.finish();
@@ -705,11 +776,11 @@ ToolOp.register(LoopSubdOp);
 
 import {meshSubdivideTest} from './mesh_subdivide.js';
 import {UVWrangler, voxelUnwrap} from './unwrapping.js';
-import {relaxUVs, UnWrapSolver} from './unwrapping_solve.js';
+import {relaxUVs, fixSeams, UnWrapSolver} from './unwrapping_solve.js';
 import {MeshOpBaseUV, UnwrapOpBase} from './mesh_uvops_base.js';
 import {MultiGridSmoother} from './multigrid_smooth.js';
 import {
-  cleanupQuads, cleanupTris, DefaultRemeshFlags, Remeshers, RemeshFlags, RemeshGoals, RemeshMap, remeshMesh,
+  cleanupQuads, cleanupTris, DefaultRemeshFlags, RakeModes, Remeshers, RemeshFlags, RemeshGoals, RemeshMap, remeshMesh,
   UniformTriRemesher
 } from './mesh_remesh.js';
 
@@ -738,6 +809,7 @@ export class CatmullClarkeSubd extends MeshOp {
       subdivide(mesh, new Set(mesh.faces.selected.editable));
 
       mesh.regenRender();
+      mesh.regenTessellation();
 
       let es = new util.set();
 
@@ -1016,11 +1088,14 @@ export function vertexSmooth_tst(mesh, verts = mesh.verts.selected.editable, fac
 export function ccVertexSmooth(mesh, verts = mesh.verts.selected.editable, fac = 0.5) {
   verts = new Set(verts);
 
+  let cd_fset = getFaceSets(mesh, false);
+  let cd_dyn_vert = getDynVerts(mesh);
+
   if (1) {
     let cos = new Map();
 
     for (let v of verts) {
-      cos.set(v, new Vector3(ccSmooth(v)));
+      cos.set(v, new Vector3(ccSmooth(v, cd_fset, cd_dyn_vert)));
     }
 
     for (let [v, co] of cos) {
@@ -1169,6 +1244,96 @@ export class SmoothCurvaturesOp extends MeshDeformOp {
 
 ToolOp.register(SmoothCurvaturesOp);
 
+export class MarkSingularitiesOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : 'Mark Singularity',
+      toolpath: 'mesh.mark_singularity',
+      inputs  : ToolOp.inherit({}),
+      outputs : ToolOp.inherit({})
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      for (let v of mesh.verts.selected.editable) {
+        v.flag |= MeshFlags.SINGULARITY | MeshFlags.UPDATE;
+      }
+
+      mesh.regenRender();
+      window.redraw_viewport(true);
+    }
+  }
+}
+
+ToolOp.register(MarkSingularitiesOp);
+
+
+export class UnmarkSingularitiesOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : 'Unmark Singularity',
+      toolpath: 'mesh.unmark_singularity',
+      inputs  : ToolOp.inherit({}),
+      outputs : ToolOp.inherit({})
+    }
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      for (let v of mesh.verts.selected.editable) {
+        v.flag &= ~MeshFlags.SINGULARITY;
+        v.flag |= MeshFlags.UPDATE;
+      }
+
+      mesh.regenRender();
+      window.redraw_viewport(true);
+    }
+  }
+}
+
+ToolOp.register(UnmarkSingularitiesOp);
+
+export class RelaxRakeUVCells extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Relax Rake Cells",
+      toolpath: "mesh.relax_rake_uv_cells",
+      inputs  : ToolOp.inherit({}),
+      outputs : ToolOp.inherit({})
+    }
+  }
+
+  exec(ctx) {
+    let mesh = ctx.mesh;
+
+    let cd_curv = getCurveVerts(mesh);
+    //let remesh = new UniformTriRemesher(mesh);
+    let cd_fset = getFaceSets(mesh, false);
+
+    for (let v of mesh.verts) {//.selected.editable) {
+      let cv = v.customData[cd_curv];
+
+      //cv.check(v, -1, undefined, cd_fset);
+
+      cv._blendStep(v, -1, cd_fset);
+      cv.relaxUvCells(v, cd_curv);
+      v.flag |= MeshFlags.UPDATE;
+    }
+
+    for (let v of mesh.verts) {//.verts.selected.editable) {
+      let cv = v.customData[cd_curv];
+      cv._ignoreUpdate(v, -1);
+    }
+
+    mesh.regenRender();
+    mesh.recalcNormals();
+    window.redraw_viewport(true);
+  }
+}
+
+ToolOp.register(RelaxRakeUVCells);
+
 export class VertexSmooth extends MeshDeformOp {
   constructor() {
     super();
@@ -1197,8 +1362,14 @@ export class VertexSmooth extends MeshDeformOp {
       let fac = this.inputs.factor.getValue();
       let proj = this.inputs.projection.getValue();
 
+      let mirrorvs = new Set();
+
       for (let v of mesh.verts.selected.editable) {
         v.flag |= MeshFlags.UPDATE;
+
+        if (v.flag & MeshFlags.MIRROR_BOUNDARY) {
+          mirrorvs.add(v);
+        }
       }
 
       for (let i = 0; i < repeat; i++) {
@@ -1213,12 +1384,29 @@ export class VertexSmooth extends MeshDeformOp {
             vertexSmooth(mesh, mesh.verts.selected.editable, fac, proj);
             break;
         }
+
+        for (let v of mirrorvs) {
+          if (v.flag & MeshFlags.MIRROREDX) {
+            v[0] = 0.0;
+          }
+
+          if (v.flag & MeshFlags.MIRROREDY) {
+            v[1] = 0.0;
+          }
+
+          if (v.flag & MeshFlags.MIRROREDZ) {
+            v[2] = 0.0;
+          }
+        }
       }
 
+      mesh.regenTessellation();
       mesh.recalcNormals();
-      mesh.regenPartial();
+
       mesh.regenRender();
       mesh.regenElementsDraw();
+
+      mesh.graphUpdate();
     }
   }
 }
@@ -1381,8 +1569,8 @@ export class EnsureGridsOp extends MeshOp {
       toolpath: "mesh.add_or_subdivide_grids",
       icon    : Icons.ADD_GRIDS,
       inputs  : ToolOp.inherit({
-        depth: new IntProperty(2),
-        types: new EnumProperty(GridTypes.KDTREE, GridTypes)
+        depth: new IntProperty(4),
+        types: new EnumProperty(GridTypes.SIMPLE, GridTypes)
       }),
       outputs : ToolOp.inherit()
     }
@@ -1572,6 +1760,10 @@ unwrap_solvers.clear = function () {
   }
 }
 
+export function resetUnwrapSolvers() {
+  unwrap_solvers = window._unwrap_solvers = new Map();
+}
+
 export class UnwrapSolveOp extends UnwrapOpBase {
   static tooldef() {
     return {
@@ -1579,8 +1771,10 @@ export class UnwrapSolveOp extends UnwrapOpBase {
       toolpath: "mesh.unwrap_solve",
       icon    : -1,
       inputs  : ToolOp.inherit({
-        preserveIslands: new BoolProperty(false).setFlag(PropFlags.SAVE_LAST_VALUE),
-        enableSolve    : new BoolProperty(true)
+        preserveIslands: new BoolProperty(false).saveLastValue(),
+        enableSolve    : new BoolProperty(true).saveLastValue(),
+        reset          : new BoolProperty(),
+        solverWeight   : new FloatProperty(0.4).noUnits().setRange(0.0, 1.0).saveLastValue(),
       }),
       outputs : ToolOp.inherit()
     }
@@ -1615,7 +1809,7 @@ export class UnwrapSolveOp extends UnwrapOpBase {
 
       let solver;
 
-      if (this.inputs.enableSolve.getValue()) {
+      if (this.inputs.enableSolve.getValue() && !this.inputs.reset.getValue()) {
         solver = UnWrapSolver.restoreOrRebuild(mesh, faces, unwrap_solvers.get(mesh.lib_id),
           undefined, preserveIslands, false);
       } else {
@@ -1623,9 +1817,11 @@ export class UnwrapSolveOp extends UnwrapOpBase {
         solver.start();
       }
 
+      let w = this.inputs.solverWeight.getValue();
+
       if (this.inputs.enableSolve.getValue()) {
         while (util.time_ms() - time < 400) {
-          solver.step();
+          solver.step(undefined, w);
         }
       }
 
@@ -1649,13 +1845,20 @@ export class UnwrapSolveOp extends UnwrapOpBase {
 ToolOp.register(UnwrapSolveOp)
 
 export class RelaxUVsOp extends MeshOpBaseUV {
+  constructor() {
+    super();
+  }
+
   static tooldef() {
     return {
       uiname  : "Relax UVs",
       toolpath: "mesh.relax_uvs",
       icon    : -1,
       inputs  : ToolOp.inherit({
-        doSolve: new BoolProperty(true).saveLastValue()
+        doSolve     : new BoolProperty(true).saveLastValue(),
+        steps       : new IntProperty(1).saveLastValue().setRange(1, 55).noUnits(),
+        useSeams    : new BoolProperty().saveLastValue(),
+        solverWeight: new FloatProperty(0.4).noUnits().setRange(0.0, 1.0).saveLastValue(),
       }),
       outputs : ToolOp.inherit()
     }
@@ -1664,22 +1867,25 @@ export class RelaxUVsOp extends MeshOpBaseUV {
   exec(ctx) {
     console.warn("mesh.relax_uvs");
 
-
     for (let mesh of this.getMeshes(ctx)) {
       let cd_uv = mesh.loops.customData.getLayerIndex("uv");
 
       if (cd_uv >= 0) {
-        if (this.inputs.doSolve.getValue()) {
-          let faces = mesh.faces.selected.editable;
-          let solver = UnWrapSolver.restoreOrRebuild(mesh, faces, unwrap_solvers.get(mesh.lib_id), undefined, true);
-          //let solver = new UnWrapSolver(mesh, faces, cd_uv, true);
-          solver.step();
-          solver.finish();
+        let steps = this.inputs.steps.getValue();
 
-          unwrap_solvers.set(mesh.lib_id, solver.save())
+        for (let i = 0; i < steps; i++) {
+          if (this.inputs.doSolve.getValue()) {
+            let faces = mesh.faces.selected.editable;
+            let solver = UnWrapSolver.restoreOrRebuild(mesh, faces, unwrap_solvers.get(mesh.lib_id), undefined, true);
+            //let solver = new UnWrapSolver(mesh, faces, cd_uv, true);
+            solver.step(undefined, this.inputs.solverWeight.getValue());
+            solver.finish();
+
+            unwrap_solvers.set(mesh.lib_id, solver.save())
+          }
+
+          relaxUVs(mesh, cd_uv, this.getLoops(ctx), false, undefined, this.inputs.useSeams.getValue());
         }
-
-        relaxUVs(mesh, cd_uv, this.getLoops(ctx), false);
 
         /*
         let wr = new UVWrangler(mesh, mesh.faces);
@@ -1703,6 +1909,44 @@ export class RelaxUVsOp extends MeshOpBaseUV {
 
 ToolOp.register(RelaxUVsOp)
 
+export class FixUvSeamsOp extends MeshOpBaseUV {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname  : "Fix Seams",
+      toolpath: "mesh.fix_seams",
+      icon    : -1,
+      inputs  : ToolOp.inherit({}),
+      outputs : ToolOp.inherit()
+    }
+  }
+
+  exec(ctx) {
+    console.warn("mesh.fix_seams");
+
+
+    for (let mesh of this.getMeshes(ctx)) {
+      let cd_uv = mesh.loops.customData.getLayerIndex("uv");
+
+      if (cd_uv >= 0) {
+        fixSeams(mesh, cd_uv);
+
+        mesh.regenBVH();
+        mesh.regenUVEditor();
+        mesh.regenRender();
+        mesh.regenElementsDraw();
+        mesh.graphUpdate();
+      }
+    }
+
+    window.redraw_viewport();
+  }
+}
+
+ToolOp.register(FixUvSeamsOp)
 
 export class ResetUVs extends MeshOp {
   static tooldef() {
@@ -3112,8 +3356,10 @@ export class CleanupQuads extends MeshOp {
         }
       }
 
-      for (let i = 0; i < 5; i++) {
-        vertexSmooth(mesh, vs, 0.5, 0.5);
+      mesh.updateBoundaryFlags();
+
+      for (let i = 0; i < 1; i++) {
+        vertexSmooth(mesh, vs, 0.5, 0.5, true);
       }
 
       mesh.regenAll();
@@ -3195,6 +3441,10 @@ export class DissolveEdgesOp extends MeshOp {
       }
 
       for (let e of new Set(mesh.edges.selected.editable)) {
+        if (e.eid < 0) {
+          continue;
+        }
+
         mesh.dissolveEdge(e, lctx);
       }
 
@@ -3281,7 +3531,7 @@ export class CollapseEdgesOp extends MeshOp {
           continue;
         }
 
-        mesh.collapseEdge(e, lctx);
+        mesh.collapseEdge(e, undefined, lctx);
       }
 
       mesh.regenAll();
@@ -3602,6 +3852,8 @@ ToolOp.register(OptRemeshParams);
 import {SolverElem, SolverSettings, Solver, DiffConstraint, VelConstraint} from './mesh_solver.js';
 import {BVHToolMode} from '../editors/view3d/tools/pbvh.js';
 import {getCurveVerts, smoothCurvatures} from './mesh_curvature.js';
+import {getFaceSets} from './mesh_facesets.js';
+import {getDynVerts} from '../util/bvh.js';
 
 export class SolverOpBase extends MeshOp {
   constructor() {
@@ -3927,3 +4179,82 @@ export class TestSolverOp extends SolverOpBase {
 }
 
 ToolOp.register(TestSolverOp);
+
+export class DuplicateMeshOp extends MeshOp {
+  static tooldef() {
+    return {
+      uiname  : "Duplicate Geometry",
+      toolpath: "mesh.duplicate",
+      inputs  : ToolOp.inherit({
+        selectMask: new FlagProperty(0, MeshTypes).private()
+      }),
+      outputs : ToolOp.inherit({})
+    }
+  }
+
+  static invoke(ctx, args) {
+    let tool = super.invoke(ctx, args);
+
+    if (!("selMask" in args)) {
+      tool.inputs.selectMask.setValue(ctx.selectMask);
+    }
+
+    let macro = new ToolMacro();
+    macro.add(tool);
+
+    let grab = new TranslateOp();
+    macro.add(grab);
+
+    return macro;
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      let selmask = this.inputs.selectMask.getValue();
+
+      let geoms = [];
+
+      if (selmask & MeshTypes.VERTEX) {
+        geoms.push(util.list(mesh.verts.selected.editable));
+      }
+      if (selmask & MeshTypes.EDGE) {
+        geoms.push(util.list(mesh.edges.selected.editable));
+      }
+      if (selmask & MeshTypes.FACE) {
+        geoms.push(util.list(mesh.faces.selected.editable));
+      }
+
+      let geom = [];
+      for (let i = 0; i < geoms.length; i++) {
+        geom = geom.concat(geoms[i]);
+      }
+
+      console.log(selmask);
+      console.log(geoms);
+      console.log("GEOM", geom);
+
+      mesh.selectNone();
+      let ret = duplicateMesh(mesh, geom);
+
+      for (let v of ret.newVerts) {
+        v.flag |= MeshFlags.UPDATE;
+        mesh.verts.setSelect(v, true);
+      }
+
+      for (let e of ret.newEdges) {
+        mesh.edges.setSelect(e, true);
+      }
+
+      for (let f of ret.newFaces) {
+        mesh.faces.setSelect(f, true);
+      }
+
+      mesh.regenTessellation();
+      mesh.regenBVH();
+      mesh.regenRender();
+      mesh.graphUpdate();
+    }
+  }
+}
+
+ToolOp.register(DuplicateMeshOp);

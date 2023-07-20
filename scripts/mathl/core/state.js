@@ -5,11 +5,26 @@ import {PUTLParseError} from '../util/parseutil.js';
 
 export const opnames = {
   "*" : "mul",
-  "**" : "pow",
   "/" : "div",
   "-" : "sub",
   "+" : "add",
-  "%" : "mod"
+  "%" : "mod",
+  "!=": "nequals",
+  "==": "equals",
+  ">=": "gequals",
+  "<=": "lequals",
+  ">" : "greater",
+  "<" : "less",
+  "^" : "bxor",
+  "&" : "band",
+  "|" : "bor",
+  "+=" : "assign_plus",
+  "-=" : "assign_minus",
+  "*=" : "assign_mul",
+  "/=" : "assign_div",
+  "&=" : "assign_band",
+  "|=" : "assign_bor",
+  "^=" : "assign_bxor",
 };
 
 function exit(msg) {
@@ -20,16 +35,16 @@ function exit(msg) {
   }
 }
 
-export function formatLines(s, line=0, lexpos=-1, col, count=5) {
+export function formatLines(s, line = 0, lexpos = -1, col, count = 5) {
   s = s.split("\n");
   let out = '';
 
-  let maxline = Math.ceil(Math.log(s.length) / Math.log(10));
+  let maxline = Math.ceil(Math.log(s.length)/Math.log(10));
 
-  let start = Math.max(line-2, 0);
-  let end = Math.min(line+count, s.length);
+  let start = Math.max(line - 2, 0);
+  let end = Math.min(line + count, s.length);
 
-  for (let i=start; i<end; i++) {
+  for (let i = start; i < end; i++) {
     let l = s[i];
     let si = "" + (i + 1);
     while (si.length < maxline) {
@@ -41,7 +56,7 @@ export function formatLines(s, line=0, lexpos=-1, col, count=5) {
       for (let j = 0; j < l.length; j++) {
         let c = l[j];
 
-        if (j >= col-2 && j <= col+2) {
+        if (j >= col - 2 && j <= col + 2) {
           c = termColor(c, "red")
         }
         l2 += c;
@@ -65,6 +80,7 @@ export function formatLines(s, line=0, lexpos=-1, col, count=5) {
 //export const ParseFlags = {
 //  IGNORE_SEMI : 1
 //};
+let castFuncs = new Set(["float", "int", "bool"]);
 
 function isBrowser() {
   if (typeof window !== "undefined") {
@@ -77,7 +93,7 @@ function isBrowser() {
 }
 
 export class ParseState {
-  constructor(source, filename="(anonymous)", parser, preprocessed="") {
+  constructor(source, filename = "(anonymous)", parser, preprocessed = "") {
     this.parser = undefined;
     this.lexer = undefined;
 
@@ -108,19 +124,31 @@ export class ParseState {
     this.filename = filename;
 
     this.builtinFuncs = new Set([
-      "cos", "sin", "fract", "abs", "floor", "vec3", "vec2", "vec4", "mat4","mat3", "float", "int",
+      "cos", "sin", "fract", "abs", "floor", "vec3", "vec2", "vec4", "mat4", "mat3", "float", "int",
       "sqrt", "log", "pow", "exp", "acos", "asin", "tan", "atan", "atan2", "normalize",
-      "dot", "cross", "reflect", "step", "smoothstep"
+      "dot", "cross", "reflect", "step", "smoothstep", "int", "bool", "trunc"
     ]);
 
     //this.flag = 0;
+  }
+
+  get col() {
+    return this.lexer ? this.lexer.lexpos - this.lexer.line_lexstart : -1;
+  }
+
+  get lexpos() {
+    return this.lexer ? this.lexer.lexpos : -1;
+  }
+
+  get line() {
+    return this.lexer ? this.lexer.linemap[this.lexer.lexpos] : -1;
   }
 
   newTempId() {
     return `$tmp${this.temp_idgen++}`;
   }
 
-  placeVarDecl(n, type, name=this.newTempId()) {
+  placeVarDecl(n, type, name = this.newTempId()) {
     let ASTNode = n.constructor;
 
     let v = new ASTNode("VarDecl");
@@ -177,7 +205,7 @@ export class ParseState {
         name = name.getTypeNameSafe();
       }
     }
-    for (let i=0; i<args.length; i++) {
+    for (let i = 0; i < args.length; i++) {
       if (args[i] === "") {
         args[i] = type2;
       }
@@ -188,7 +216,7 @@ export class ParseState {
     let key = this.buildPolyKey(name, rtype, args, type2);
 
     this.poly_keymap[key] = {
-      name, args, type : rtype, key
+      name, args, type: rtype, key
     };
 
     if (!(name in this.poly_namemap)) {
@@ -196,7 +224,7 @@ export class ParseState {
     }
 
     this.poly_namemap[name].add({
-      type : rtype,
+      type: rtype,
       args,
       key,
       name
@@ -205,14 +233,14 @@ export class ParseState {
     this.addFunc(name, rtype, args, key);
   }
 
-  addFunc(name, rtype, args, key=name) {
+  addFunc(name, rtype, args, key = name) {
     args = args.filter(f => typeof f === "string" ? this.getType(f) : f);
     if (typeof type === "string") {
       rtype = this.getType(name);
     }
 
     this.functions[key] = {
-      type : rtype,
+      type: rtype,
       args,
       name,
       key
@@ -265,9 +293,12 @@ export class ParseState {
     }
 
     let key = `_$_${name}_${rtype.getTypeNameSafe()}_`;
-    let nonfloat = rtype.getTypeNameSafe() !== "float";
 
-    for (let i=0; i<args.length; i++) {
+    let t = rtype.getTypeNameSafe();
+
+    let nonfloat = !castFuncs.has(t);
+
+    for (let i = 0; i < args.length; i++) {
       if (typeof args[i] === "string") {
         if (args[i] === "") {
           args[i] = type2;
@@ -278,13 +309,13 @@ export class ParseState {
 
       let tname = args[i].getTypeNameSafe();
 
-      nonfloat = nonfloat || tname !== "float";
+      nonfloat = nonfloat || !castFuncs.has(tname);
 
       key += tname;
     }
 
     if (!nonfloat && !this.hasType(name)) {
-      return name;
+      //return name;
     }
     return key;
   }
@@ -335,7 +366,9 @@ export class ParseState {
     ];
 
     let sizes = {
-      "float" : 1,
+      "float": 1,
+      "int"  : 1,
+      "bool" : 1,
       "vec2" : 2,
       "vec3" : 3,
       "vec4" : 4
@@ -359,7 +392,7 @@ export class ParseState {
       return size;
     }
 
-    let rec = (a, size=a, lst=[], depth=0) => {
+    let rec = (a, size = a, lst = [], depth = 0) => {
       if (a <= 0 || a > size) {
         return [];
       }
@@ -372,7 +405,7 @@ export class ParseState {
         push(lst);
       }
 
-      for (let i=1; i<=size; i++) {
+      for (let i = 1; i <= size; i++) {
         let lst2 = lst.concat([keys[i]]);
 
         rec(i, size, lst2, depth + 1);
@@ -381,7 +414,7 @@ export class ParseState {
 
     let constructors = {};
 
-    for (let i=1; i<=4; i++) {
+    for (let i = 1; i <= 4; i++) {
       out.length = 0;
       rec(i);
 
@@ -399,7 +432,7 @@ export class ParseState {
 
     this.constructors = constructors;
 
-    for (let i=2; i<=4; i++) {
+    for (let i = 2; i <= 4; i++) {
       let key = "vec" + i;
 
       this.addPolyFunc("normalize", "", ["", ""], key);
@@ -409,7 +442,7 @@ export class ParseState {
 
     this.addPolyFunc("atan2", "float", ["float", "float"], "float");
 
-    for (let i=0; i<2; i++) {
+    for (let i = 0; i < 2; i++) {
       let key = i ? "mat4" : "mat3";
       this.addPolyFunc("invert", "", [""], key);
       this.addPolyFunc("transpose", "", [""], key);
@@ -441,19 +474,9 @@ export class ParseState {
       this.addPolyFunc("log", "", [""], key);
     }
 
+    this.addPolyFunc("trunc", "int", ["int"], "int");
+
     return this;
-  }
-
-  get col() {
-    return this.lexer ? this.lexer.lexpos - this.lexer.line_lexstart : -1;
-  }
-
-  get lexpos() {
-    return this.lexer ? this.lexer.lexpos : -1;
-  }
-
-  get line() {
-    return this.lexer ? this.lexer.linemap[this.lexer.lexpos] : -1;
   }
 
   error(node, msg) {
@@ -462,10 +485,11 @@ export class ParseState {
     if (!node) {
       console.error(`\nError: ${msg}`);
     } else {
+      console.warn(this);
+      console.warn(formatLines(this.source, node.line, node.lexpos, node.col, 45));
+
       let s = `\nError: ${this.filename}:${node.line + 1}: ${msg}`;
       console.error(s + "\n");
-
-      console.warn(formatLines(this.source, node.line, node.lexpos, node.col, 5));
     }
 
     if (this.throwError) {
@@ -497,7 +521,7 @@ export class ParseState {
       t = this.getType(t);
     }
 
-    if (!(t instanceof  VarType)) {
+    if (!(t instanceof VarType)) {
       if (typeof t === "object" && t.type === "VarType") {
         t = t.value;
       }
@@ -533,7 +557,7 @@ export class ParseState {
 
   typesEqual(a, b) {
     if (a === undefined || b === undefined) {
-      console.log("A:"+a, "B:"+b);
+      console.log("A:" + a, "B:" + b);
       throw new Error("undefined arguments to typesEqual");
     }
 
@@ -541,12 +565,12 @@ export class ParseState {
     b = this.resolveType(b);
 
     if (!a) {
-      console.log(""+a);
+      console.log("" + a);
       this.error(undefined, "bad type " + arguments[0]);
     }
 
     if (!b) {
-      console.log(""+b);
+      console.log("" + b);
       this.error(undefined, "bad type " + arguments[1]);
     }
 
@@ -584,7 +608,7 @@ let statestack = [];
 
 export let state = new ParseState();
 
-export function pushParseState(source=state.source, filename=state.filename, parser, preprocessed) {
+export function pushParseState(source = state.source, filename = state.filename, parser, preprocessed) {
   statestack.push(state);
 
   state = new ParseState(source, filename, parser, preprocessed);
@@ -602,26 +626,28 @@ export function genLibraryCode() {
   let names = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"];
 
   let builtins = {
-    cos : 1,
-    sin : 1,
+    cos  : 1,
+    sin  : 1,
     sqrt : 1,
-    exp : 1,
-    log : 1,
-    floor : 1,
+    exp  : 1,
+    log  : 1,
+    floor: 1,
     ceil : 1,
-    abs : 1,
-    min : 2,
-    max : 2,
+    abs  : 1,
+    min  : 2,
+    max  : 2,
     acos : 1,
     asin : 1,
     atan : 1,
-    fract : 1,
+    fract: 1,
   };
   let ctx = new ParseState();
 
-  let keys = ["float", "vec2", "vec3", "vec4"];
+  let keys = ["float", "vec2", "vec3", "vec4", "int", "bool"];
   let sizemap = {
-    float : 1,
+    int  : 1,
+    bool : 1,
+    float: 1,
     vec2 : 2,
     vec3 : 3,
     vec4 : 4
@@ -633,7 +659,7 @@ export function genLibraryCode() {
     let ntype = ctx.resolveType(type);
     args = [].concat(args);
 
-    for (let i=0; i<args.length; i++) {
+    for (let i = 0; i < args.length; i++) {
       if (args[i] === "") {
         args[i] = ntype;
       } else {
@@ -659,7 +685,7 @@ export function genLibraryCode() {
 
     s += `  ${tname} r;\n`;
 
-    for (let j=0; j<size; j++) {
+    for (let j = 0; j < size; j++) {
       s += `  r[${j}] = `
 
       let s2 = `${name}(`;
@@ -687,7 +713,7 @@ export function genLibraryCode() {
 
     if (typeof v === "number") {
       args = [];
-      for( let i=0; i<v; i++) {
+      for (let i = 0; i < v; i++) {
         args.push("");
       }
     } else {
@@ -695,7 +721,7 @@ export function genLibraryCode() {
     }
 
     for (let key of keys) {
-      if (key === "float") {
+      if (key === "float" || key === "int" || key === "bool") {
         continue;
       }
       genMathFunc(k, args, key);
@@ -703,7 +729,7 @@ export function genLibraryCode() {
   }
 
   for (let key of keys) {
-    if (key === "float") {
+    if (key === "float" || key === "int" || key === "bool") {
       continue;
     }
 
@@ -715,36 +741,62 @@ export function genLibraryCode() {
     genMathFunc("step", ["", "float"], key);
   }
 
+  let transformAssignOp = (op) => {
+    if (op.length === 2 && op.endsWith("=") && op !== "==" && op !== "!=" && op !== ">=" && op !== "<=") {
+      op = op[0];
+    }
+    return op;
+  }
+
+  for (let op in opnames) {
+    let name = opnames[op];
+
+    op = transformAssignOp(op);
+
+    s += `
+  int _$_$_int_${name}_int_int(int a, int b) {
+    return trunc(a ${op} b);
+  }
+  int _$_$_${name}_int_int(int a, int b) {
+    return trunc(a ${op} b);
+  }
+  
+  `;
+  }
+
+
   for (let key of keys) {
-    if (key === "float") {
+    if (key === "float" || key === "int" || key === "bool") {
       continue;
     }
 
     for (let op in opnames) {
       let name = opnames[op];
-      if (op === "**" || op === "%"){
+      if (op === "**" || op === "%") {
         continue;
       }
+
+      op = transformAssignOp(op);
 
       s += `${key} _$_$_${name}_${key}_${key}(${key} a, ${key} b) {\n`
       s += `  ${key} r;\n`;
 
       let size = sizemap[key];
 
-      for (let i=0; i<size; i++) {
+      for (let i = 0; i < size; i++) {
         s += `  r[${i}] = a[${i}] ${op} b[${i}];\n`;
       }
       s += `\n  return r;\n`;
       s += `}\n`
     }
-    
+
     for (let op in opnames) {
       let name = opnames[op];
-      if (op === "**" || op === "%"){
+      if (op === "**" || op === "%") {
         continue;
       }
 
-      for (let step=0; step<2; step++) {
+      for (let step = 0; step < 2; step++) {
         if (step) {
           s += `${key} _$_$_${name}_float_${key}(float a, ${key} b) {\n`;
         } else {
@@ -770,7 +822,7 @@ export function genLibraryCode() {
 
     s += `${type} ${k}(`;
 
-    for (let i=0; i<args.length; i++) {
+    for (let i = 0; i < args.length; i++) {
       if (i > 0) {
         s += ", ";
       }
@@ -786,8 +838,8 @@ export function genLibraryCode() {
     let aj = 0;
     let arg = args[ai];
 
-    for (let i=0; i<size; i++) {
-      if (arg === "float") {
+    for (let i = 0; i < size; i++) {
+      if (arg === "float" || arg === "int" || arg === "bool") {
         s += `  r[${i}] = ${names[ai]};\n`;
         aj++;
       } else {
@@ -806,7 +858,39 @@ export function genLibraryCode() {
   }
 
   s += `
-    
+  
+int int_cast(float f) {
+  return f;
+}
+
+int int_cast(int f) {
+  return f;
+}
+
+float float_cast(float f) {
+  return f;
+}
+
+float float_cast(int f) {
+  return f;
+}
+
+float float_cast(bool b) {
+  return b ? 1.0 : 0.0;
+}
+
+bool bool_cast(float f) {
+  return f != 0.0;
+}
+
+bool bool_cast(bool b) {
+  return b;
+}
+
+bool bool_cast(int i) {
+  return i != 0;
+}
+  
 vec4 _$_$_mul_mat4_vec4(mat4 m, vec4 v) {
   vec4 r;
   

@@ -49,7 +49,7 @@ export class EdgeCutOp extends MeshOp {
       icon: Icons.EDGECUT,
       toolpath: "mesh.edgecut",
       inputs: ToolOp.inherit({
-        edgeEid : new IntProperty(-1),
+        edgeEid : new IntProperty(-1).private(),
         mesh : new DataRefProperty("mesh")
       }),
       outputs: ToolOp.inherit()

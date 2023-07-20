@@ -1,5 +1,7 @@
 import {Icons} from "../editors/icon_enum.js";
-import {EnumProperty, Curve1D, SplineTemplates, nstructjs} from "../path.ux/scripts/pathux.js";
+import {
+  EnumProperty, Curve1D, SplineTemplates, nstructjs, Vec3Property, FloatProperty, Vec4Property, Vec2Property
+} from "../path.ux/scripts/pathux.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import * as util from '../util/util.js';
 import {DataBlock, BlockFlags} from "../core/lib_api.js";
@@ -10,6 +12,7 @@ import {RecalcFlags} from '../mesh/mesh_base.js';
 import {TextureShader, TextureShaderFlags} from './texture_base.js';
 import {compileTexShaderJS} from './textureGen.js';
 import './textures.js';
+import {TexPaintShaderLib} from '../shaders/shaders.js';
 
 export const PatternRecalcFlags = {
   PREVIEW: 1
@@ -23,6 +26,8 @@ export const PatternFlags = {
 };
 
 let _dv_rets = util.cachering.fromConstructor(Vector3, 1024);
+let out_temps = [0, 0, 0, 0, 0];
+let eval_temps = new util.cachering(() => [new Array(5), new Vector3(), new Vector3(), 0.0, new Vector4()], 64);
 
 export class PatternGen {
   constructor() {
@@ -32,13 +37,23 @@ export class PatternGen {
     this.name = def.defaultName !== undefined ? def.defaultName : "pattern";
   }
 
+  static safeFloat(f) {
+    f = "" + f;
+    if (f.search(/\./) < 0) {
+      f += ".0";
+    }
+
+    return f;
+  }
+
   static patternDefine() {
     return {
       typeName   : "",
       uiName     : "",
       defaultName: "",
       icon       : -1,
-      flag       : 0
+      flag       : 0,
+      uniforms   : {},
     }
   }
 
@@ -73,7 +88,86 @@ export class PatternGen {
     Patterns.push(cls);
   }
 
-  genGlsl() {
+  genTexShader() {
+    let base = this;
+
+    let uniforms = {
+      angle: 0.0,
+    };
+
+    this.bindUniforms(uniforms);
+
+    for (let k in uniforms) {
+      let v = uniforms[k];
+
+      if (typeof v === "number" || typeof v === "boolean") {
+        v = new FloatProperty(v);
+        uniforms[k] = v;
+      } else if (Array.isArray(v)) {
+        switch (v.length) {
+          case 2:
+            v = new Vec2Property(v);
+            break;
+          case 3:
+            v = new Vec3Property(v);
+            break;
+          case 4:
+            v = new Vec4Property(v);
+            break;
+          default:
+            console.error("Texture uniform error", k, v);
+        }
+
+        uniforms[k] = v;
+      }
+    }
+
+    class Shader extends TextureShader {
+      static textureDefine() {
+
+        return {
+          flag       : TextureShaderFlags.HAS_COLOR,
+          uniforms,
+          params     : {
+            inP: new Vec3Property()
+          },
+          fragmentPre: TexPaintShaderLib + "\n" + base.genGlslPre("Point", "Color", uniforms) + "\n"
+        }
+      }
+
+      genCode() {
+        let s = base.genGlsl("Point", "Color", uniforms);
+
+        return `
+float fsample(inout vec3 Point, inout vec3 Normal, float Time, inout vec4 Color) {
+  ${s}
+}        
+
+        `;
+      }
+    }
+
+    let shader = compileTexShaderJS(new Shader());
+    this.texShaderJS = shader;
+
+    let digest = new util.HashDigest();
+    this.calcUpdateHash(digest, true);
+
+    this.texShaderJSHash = digest.get();
+    console.log("SHADER:", shader);
+  }
+
+  checkTexShaderJS() {
+    let digest = new util.HashDigest();
+    this.calcUpdateHash(digest, true);
+    let hash = digest.get();
+
+    if (!this.texShaderJS || hash !== this.texShaderJSHash) {
+      this.genTexShader();
+    }
+  }
+
+  genGlsl(inputP, outputC, uniforms) {
     console.error("Implement me! genGlsl!");
   }
 
@@ -115,11 +209,26 @@ export class PatternGen {
     b.flag = this.flag;
   }
 
-  calcUpdateHash(digest) {
+  calcUpdateHash(digest, recompileOnly) {
   }
 
   evaluate(co, color_out) {
-    throw new Error("implement me!");
+    this.checkTexShaderJS();
+
+    let args = eval_temps.next();
+
+    //eek need to figure out time!
+    //outs[3] = window.T;
+
+    //debugger;
+
+    args[1][0] = co[0];
+    args[1][1] = co[1];
+    args[1][2] = co[2];
+
+    this.bindUniforms(this.texShaderJS);
+    this.texShaderJS.call.apply(undefined, args);
+    return args[0][this.texShaderJS.outputs.Color][0];
   }
 
   derivative(co) {
@@ -238,7 +347,7 @@ export class SimpleNoise extends PatternGen {
     b.factor = this.factor;
   }
 
-  calcUpdateHash(digest) {
+  calcUpdateHash(digest, recompileOnly) {
     digest.add(this.levels);
     digest.add(this.levelScale);
     digest.add(this.zoff);
@@ -384,13 +493,13 @@ export class MoireNoise extends PatternGen {
     b.angleOffset = this.angleOffset;
   }
 
-  calcUpdateHash(digest) {
+  calcUpdateHash(digest, recompileOnly) {
     digest.add(this.dynamicAngle);
     digest.add(this.angleOffset);
   }
 
   genGlsl(inputP, outputC, uniforms) {
-    let th = this.angleOffset;
+    let th = PatternGen.safeFloat(this.angleOffset);
 
     if (uniforms.brushAngle !== undefined) {
       th = `(${th} + brushAngle)`;
@@ -524,10 +633,10 @@ export class CombPattern extends PatternGen {
       defaultName: "Comb",
       uiName     : "Comb",
       uniforms   : {
-        angleOffset : "float",
-        count       : "float",
-        combWidth   : "float",
-        blackPointer: "float"
+        angleOffset: "float",
+        count      : "float",
+        combWidth  : "float",
+        blackPoint : "float"
       }
     }
   }
@@ -542,43 +651,55 @@ export class CombPattern extends PatternGen {
     b.angleOffset = this.angleOffset;
   }
 
-  calcUpdateHash(digest) {
-    digest.add(this.blackPoint);
-    digest.add(this.count);
-    digest.add(this.combWidth);
-    digest.add(this.mode);
+  bindUniforms(uniforms) {
+    uniforms.blackPoint = this.blackPoint;
+    uniforms.combWidth = this.combWidth;
+    uniforms.count = this.count;
+    uniforms.angleOffset = this.angleOffset;
+  }
+
+  calcUpdateHash(digest, recompileOnly = false) {
     digest.add(this.angleOffset);
+    digest.add(this.mode);
+
+    if (!recompileOnly) {
+      digest.add(this.blackPoint);
+      digest.add(this.count);
+      digest.add(this.combWidth);
+    }
   }
 
   genGlsl(inputP, outputC, uniforms) {
-    let th = this.angleOffset;
+    let th = PatternGen.safeFloat(this.angleOffset);
     let line;
 
     let pi2 = Math.PI*2.0;
 
     switch (this.mode) {
       case CombModes.SAW:
-        line = `float f = fract(p[0]*count);`;
+        line = `float f = fract(p.x*count);`;
         break;
 
       default:
       case CombModes.TENT:
-        line = `float f = tent(p[0]*count);`;
+        line = `float f = tent(p.x*count);`;
         break;
       case CombModes.SIN:
-        line = `float f = sin(p[0]*count*${pi2})*0.5 + 0.5;`;
+        line = `float f = sin(p.x*count*${pi2})*0.5 + 0.5;`;
         break;
       case CombModes.STEP:
-        line = `float f = fract(p[0]*count) > 0.5 ? 1.0 : 0.0;`;
+        line = `float f = fract(p.x*count) > 0.5 ? 1.0 : 0.0;`;
         break;
       case CombModes.DOME:
-        line = `float f = abs(sin(p[0]*count*${pi2}));`;
+        line = `float f = abs(sin(p.x*count*${pi2}));`;
         break;
 
 
     }
-    if (uniforms.brushAngle !== undefined) {
-      th = `(${th} + brushAngle)`;
+
+
+    if (uniforms.angle !== undefined) {
+      th = `(${th} + angle)`;
     }
 
     return `
@@ -594,6 +715,7 @@ export class CombPattern extends PatternGen {
   }
 
   evaluate(co, dv_out) {
+    return super.evaluate(co, dv_out);
     /*
     let d = co[0]*co[0] + co[1]*co[1];
     d = 1.0 - Math.sqrt(d);
@@ -669,6 +791,10 @@ export class GaborNoise extends PatternGen {
       typeName   : "GaborNoise",
       defaultName: "Gabor",
       uiName     : "Gabor",
+      uniforms   : {
+        "levels"    : "float", "levelScale": "float", "factor": "float", "randomness": "float",
+        "decayPower": "float", "decay2": "float", "zoff": "float"
+      }
     }
   }
 
@@ -684,7 +810,7 @@ export class GaborNoise extends PatternGen {
     b.decay2 = this.decay2;
   }
 
-  calcUpdateHash(digest) {
+  calcUpdateHash(digest, recompileOnly = false) {
     digest.add(this.levels);
     digest.add(this.levelScale);
     digest.add(this.zoff);
@@ -695,6 +821,8 @@ export class GaborNoise extends PatternGen {
   }
 
   evaluate(co) {
+    return super.evaluate(co);
+
     co = sntmps.next().load(co);
 
     let scale = 5.0;//*Math.pow(this.levelScale, this.levels);
@@ -726,6 +854,102 @@ export class GaborNoise extends PatternGen {
     f2 /= tot;
 
     return f1 + (f2 - f1)*this.factor;
+  }
+
+  genGlsl(inputP, outputC, uniforms) {
+    let u = uniforms;
+
+    return `
+    vec3 co = ${inputP} * 5.0;
+  
+    float x = co[0];
+    float y = co[1];
+    float z = co[2] + zoff;
+
+    float f = 0.0;
+    float tot = 0.0;
+
+    /*
+
+    f := exp(-decay2*r2);
+    ff := solve(f-goal, r2);
+    ff := part(ff, 1, 2);
+    ff := sub(i=0, ff);
+
+    sub(goal=0.1, decay2=1.0, ff);
+    **/
+
+    float err = 0.1;
+    float decay2 = decay2*2.0;
+
+    const int steps = 2; //int(log(10.0) / decay2);    
+    const int n = steps;
+    
+    int n2 = n*n*2;
+    float mul = 1.0/float(n2);
+
+    int ix1 = int(x);
+    int iy1 = int(y);
+    int iz1 = int(z);
+
+    float factor = factor*10.0 + 1.0;
+    float rfac = randomness;
+    float efac = decayPower;
+
+    f = 0.0;
+    float fmax = 0.0;
+
+    for (int ix = -n; ix <= n; ix++) {
+      for (int iy = -n; iy <= n; iy++) {
+        for (int iz = -n; iz <= n; iz++) {
+          float ix2 = float(ix1 + ix);
+          float iy2 = float(iy1 + iy);
+          float iz2 = float(iz1 + iz);
+
+          float rx = hash3(ix2, iy2, iz2) - 0.5;
+          float ry = hash3(ix2 + 0.234, iy2 + 0.2343, iz2 + 0.63434) - 0.5;
+          float rz = hash3(ix2 - 0.274, iy2 + 0.83432, iz2 + 0.123523) - 0.5;
+
+          ix2 += rx*rfac;
+          iy2 += ry*rfac;
+          iz2 += rz*rfac;
+
+          float dx = x - ix2;
+          float dy = y - iy2;
+          float dz = z - iz2;
+
+          float dis = ((dx*dx + dy*dy + dz*dz)*mul);
+          //dis = min(min(dx*dx, dy*dy), dz*dz)*mul;
+
+          //dx = tent(dx);
+          //dy = tent(dy);
+          //dz = tent(dz);
+          //dis = (dx+dy+dz)/3.0;
+          //dis *= dis;
+
+          float dis2 = dis;
+          float w = exp(-dis2*decay2);
+
+          dis = pow(dis, efac);
+
+          float f2 = 1.0 - abs(fract(dis*factor) - 0.5)*2.0;
+
+          //f2 = f2*f2*(3.0 - 2.0*f2);
+
+          f += f2*w;
+          tot += w;
+        }
+      }
+    }
+
+    //tot = max(tot, 0.0001);
+    f /= tot;
+    //f = fmax;
+    //f = pow(f, 1.0 / tot);
+
+    f = f*1.8;
+    ${outputC} = vec4(f, f, f, 1.0);
+    `;
   }
 
   evaluate_intern(co, scale) {
@@ -933,6 +1157,11 @@ export class ProceduralTex extends DataBlock {
   }
 
   bindUniforms(uniforms) {
+    uniforms["texScale"] = this.scale;
+    uniforms["texBrightness"] = this.brightness;
+    uniforms["texContrast"] = this.contrast;
+    uniforms["texPower"] = this.power;
+
     this.generator.bindUniforms(uniforms);
   }
 
@@ -947,7 +1176,12 @@ export class ProceduralTex extends DataBlock {
     uniforms = Object.assign({}, uniforms);
     this.bindUniforms(uniforms);
 
-    return this.generator.genGlslPre(inP, outC, uniforms);
+    return `
+uniform float texScale;
+uniform float texBrightness;
+uniform float texContrast;
+uniform float texPower;
+    ` + this.generator.genGlslPre(inP, outC, uniforms);
   }
 
   copyTo(b, nonDataBlockMode = false) {
@@ -1049,7 +1283,14 @@ export class ProceduralTex extends DataBlock {
       co[0] = x;
       co[1] = y;
 
-      let f = this.evaluate(co);
+      let f;
+
+      try {
+        f = this.evaluate(co);
+      } catch (error) {
+        util.print_stack(error);
+        break;
+      }
 
       idata[idx] = idata[idx + 1] = idata[idx + 2] = ~~(f*255);
       idata[idx + 3] = 255;
@@ -1114,9 +1355,9 @@ export class ProceduralTex extends DataBlock {
 
     let dv = dvcos.next();
 
-    dv[0] = (b - a) / df;
-    dv[1] = (c - a) / df;
-    dv[2] = (d - a) / df;
+    dv[0] = (b - a)/df;
+    dv[1] = (c - a)/df;
+    dv[2] = (d - a)/df;
 
     return dv;
   }
@@ -1167,7 +1408,8 @@ export const TexUserFlags = {
   RAKE         : 2,
   CONSTANT_SIZE: 4,
   FANCY_RAKE   : 8,
-  ORIGINAL_CO  : 16
+  ORIGINAL_CO  : 16,
+  CURVED       : 32,
 };
 
 export const TexUserModes = {

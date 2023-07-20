@@ -10,8 +10,9 @@ import {ChunkedSimpleMesh, LayerTypes, PrimitiveTypes} from "../core/simplemesh.
 import {NormalLayerElem, UVLayerElem} from "./mesh_customdata.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {Grid, GridBase} from "./mesh_grids.js";
+import {getFaceSetColor, getFaceSets} from './mesh_facesets.js';
 
-export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
+export function genRenderMesh(gl, mesh, uniforms, combinedWireframe = false) {
   let recalc;
 
   let times = [];
@@ -47,7 +48,7 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
     c = new Vector4(c);
 
     //desaturate a bit
-    for (let i=0; i<c.length; i++) {
+    for (let i = 0; i < c.length; i++) {
       c[i] = Math.pow(c[i], 0.5);
     }
 
@@ -103,13 +104,15 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
     mesh._fancyMeshes = {};
   }
 
+  let cd_fset = getFaceSets(mesh, false);
+
   let ecolors = {};
   ecolors[0] = [0, 0, 0, 1];
   ecolors[MeshFlags.SELECT] = selcolor;
   ecolors[MeshFlags.SEAM] = [0, 1.0, 1.0, 1.0];
 
   let clr = new Vector4(selcolor).interp(ecolors[MeshFlags.SEAM], 0.5);
-  ecolors[MeshFlags.SELECT|MeshFlags.SEAM] = clr;
+  ecolors[MeshFlags.SELECT | MeshFlags.SEAM] = clr;
 
   for (let k of Object.keys(ecolors)) {
     let clr = ecolors[k];
@@ -124,12 +127,34 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
     }
 
     ecolors[k | MeshFlags.DRAW_DEBUG] = clr;
+    ecolors[k | MeshFlags.SINGULARITY] = clr;
+  }
+
+  for (let k of Object.keys(ecolors)) {
+    let clr = ecolors[k];
+    k = parseInt(k);
+
+    clr = new Vector4(clr);
+    if (!k) {
+      clr[0] = 0.75;
+    } else {
+      clr[1] *= 0.5;
+      clr[2] *= 0.5;
+      clr[0] += (1.0 - clr[0])*0.5;
+    }
+
+    ecolors[k | MeshFlags.DRAW_DEBUG2] = clr;
+    ecolors[k | MeshFlags.SINGULARITY] = clr;
   }
 
   pushtime("start2");
 
+  let tempcolor = new Vector4();
+  let tempcolor2 = new Vector4();
+  let tempcolor3 = new Vector4();
+
   let axes = [-1];
-  for (let i=0; i<3; i++) {
+  for (let i = 0; i < 3; i++) {
     if (mesh.symFlag & (1<<i)) {
       axes.push(i);
     }
@@ -155,7 +180,8 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
 
       let p = sm.point(v.eid, v);
 
-      let color = v.flag & MeshFlags.SELECT ? selcolor : black;
+      let colormask = v.flag & (MeshFlags.SELECT | MeshFlags.SINGULARITY | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2);
+      let color = ecolors[colormask];
 
       for (let i = 0; i < v.edges.length; i++) {
         let e = v.edges[i];
@@ -171,13 +197,17 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
 
     sm = getmesh("handles");
     sm.primflag = PrimitiveTypes.POINTS;
+
     for (let h of mesh.handles) {
       if (!h.visible || !(h.flag & MeshFlags.UPDATE)) {
         continue;
       }
       let p = sm.point(h.eid, h);
 
-      let color = h.flag & MeshFlags.SELECT ? selcolor : black;
+      //let color = h.flag & MeshFlags.SELECT ? selcolor : black;
+      let colormask = h.flag & (MeshFlags.SELECT | MeshFlags.SINGULARITY | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2);
+      let color = ecolors[colormask];
+
 
       p.ids(h.eid);
       p.colors(color);
@@ -240,7 +270,7 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
 
         let line = smoothline ? sm.smoothline(e.eid, e.v1, e.v2) : sm.line(e.eid, e.v1, e.v2);
 
-        let mask = e.flag & (MeshFlags.SELECT | MeshFlags.SEAM | MeshFlags.DRAW_DEBUG);
+        let mask = e.flag & (MeshFlags.SELECT | MeshFlags.SEAM | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2);
 
         let color = ecolors[mask];
 
@@ -314,14 +344,36 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
           p2[axis] = -p2[axis];
           p3[axis] = -p3[axis];
 
-          tri = sm.tri(ltris.length + i*3+axis, p1, p2, p3);
+          tri = sm.tri(ltris.length + i*3 + axis, p1, p2, p3);
         }
         tri.ids(f.eid, f.eid, f.eid);
 
         if (f.flag & MeshFlags.SELECT) {
-          tri.colors(face_selcolor, face_selcolor, face_selcolor);
+          tempcolor.load(face_selcolor);
         } else {
-          tri.colors(face_unselcolor, face_unselcolor, face_unselcolor);
+          tempcolor.load(face_unselcolor);
+        }
+
+        if (cd_fset >= 0) {
+          let fset = Math.abs(ltris[i].f.customData[cd_fset].value);
+
+          let color = getFaceSetColor(fset);
+          tempcolor.interp(color, 0.5);
+        }
+
+        if (cd_color >= 0) {
+          let c1 = v1.customData[cd_color].color;
+          let c2 = v2.customData[cd_color].color;
+          let c3 = v3.customData[cd_color].color;
+
+          tempcolor2.load(c2).mul(tempcolor);
+          tempcolor3.load(c3).mul(tempcolor);
+          tempcolor.mul(c1);
+
+          tri.colors(tempcolor, tempcolor2, tempcolor3);
+        } else {
+
+          tri.colors(tempcolor, tempcolor, tempcolor);
         }
 
         if (useLoopNormals) {
@@ -334,14 +386,6 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe=false) {
 
         if (haveUVs) {
           tri.uvs(ltris[i].customData[cd_uvs].uv, ltris[i + 1].customData[cd_uvs].uv, ltris[i + 2].customData[cd_uvs].uv);
-        }
-
-        if (cd_color >= 0) {
-          let c1 = v1.customData[cd_color].color;
-          let c2 = v2.customData[cd_color].color;
-          let c3 = v3.customData[cd_color].color;
-
-          tri.colors(c1, c2, c3);
         }
       }
     }

@@ -1,8 +1,6 @@
 import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {Editor} from '../editor_base.js';
-import '../../path.ux/scripts/util/struct.js';
-
-let STRUCT = nstructjs.STRUCT;
+import {nstructjs} from '../../path.ux/scripts/pathux.js';
 import {UIBase} from '../../path.ux/scripts/core/ui_base.js';
 import {Container} from '../../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
@@ -42,11 +40,19 @@ export class NodeGraphOp extends ToolOp {
   }
 
   static invoke(ctx, args) {
+    const useNodeEdtorGraph = args["useNodeEditorGraph"];
+
+    if ("useNodeEdtorGraph" in args) {
+      delete args["useNodeEdtorGraph"];
+    }
+
     let tool = super.invoke(ctx, args);
 
-    if (args["useNodeEditorGraph"]) {
+    if (useNodeEdtorGraph) {
       tool.inputs.graphPath.setValue(ctx.nodeEditor.graphPath);
       tool.inputs.graphClass.setValue(ctx.nodeEditor.graphClass);
+
+      delete args["useNodeEditorGraph"];
     }
 
     if ("graphPath" in args) {

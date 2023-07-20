@@ -3,11 +3,124 @@ import cconst from '../core/const.js';
 import * as state from './state.js';
 import {ArrayType, VarType} from './types.js';
 
+import * as nstructjs from '../util/nstructjs_es6.js';
+
 function exit() {
   process.exit(-1);
 }
 
 let idgen = 0;
+
+export const strtable = new Map();
+export const hashtable = new Map();
+
+window.strtable = strtable;
+
+function strTableAdd(type) {
+  let hash = util.strhash(type);
+
+  /* deal with collision in a deterministic way */
+  let entry = hashtable.get(hash);
+  while (entry !== undefined && entry !== type) {
+    hash++;
+    entry = hashtable.get(hash);
+  }
+
+  hashtable.set(hash, type);
+  strtable.set(type, hash);
+
+  return hash;
+}
+
+export const AstTypes = ['Function', 'VarType', 'ExprList', 'VarDecl', 'InitDeclaratorList',
+                         'StatementList', 'Ident', 'IntConstant', 'ArrayLookup', 'Call',
+                         'Assign', 'Return', 'Program', 'BinOp', 'Precision', 'TypeQualifier',
+                         'FloatConstant', 'BasicMemberLookup', 'Trinary'];
+
+for (let key of AstTypes) {
+  strTableAdd(key);
+}
+
+window.jsonCompress = function(json) {
+  let delim = "\"',.{}[]|: ";
+  let delimMap = {};
+  let dicti = 0.0;
+
+  for (let i=0; i<delim.length; i++) {
+    delimMap[delim[i]] = dicti++;
+  }
+
+  let delimPat = /["',\\.{}[]|: ]/
+
+  json = json.replace(/[ \t]+/g, " ");
+
+  let dict = {};
+  let ret = [];
+
+  let word = '';
+
+  for (let i=0; i<json.length; i++) {
+    let c = json[i];
+
+    if (c in delimMap) {
+      if (word.length > 0) {
+        let j = dict[word];
+
+        if (j === undefined) {
+          j = dict[word] = dicti++;
+        }
+
+        ret.push(j);
+      }
+
+      word = "";
+      ret.push(delimMap[c]);
+    } else {
+      word += c;
+    }
+  }
+
+  if (word.length > 0) {
+    let j = dict[word];
+
+    if (j === undefined) {
+      j = dict[word] = dicti++;
+    }
+
+    ret.push(j);
+  }
+
+  let s = [];
+  for (let k in dict) {
+    s.push(k.length);
+    for (let i=0; i<k.length; i++) {
+      s.push(k.charCodeAt(i));
+    }
+  }
+
+  s.push(0);
+
+  for (let i of ret) {
+    let n = i;
+
+    let ok = true;
+
+    do {
+      if (n > 127) {
+        s.push((n & 127) | 128);
+        n >>= 7;
+
+        ok = false;
+      } else {
+        ok = true;
+      }
+    } while (!ok);
+
+    s.push(n);
+  }
+
+  return s;
+}
 
 export class ASTNode extends Array {
   constructor(type) {
@@ -18,9 +131,83 @@ export class ASTNode extends Array {
     this.type = type;
     this.parent = undefined;
 
+    this._getTypeId();
+
     this.line = state.state.line;
     this.lexpos = state.state.lexpos;
     this.col = state.state.col;
+  }
+
+  toJSON() {
+    let ret = Object.assign({}, this);
+
+    delete ret.parent;
+    ret.length = this.length;
+
+    for (let i=0; i<this.length; i++) {
+      ret[i] = this[i];
+    }
+
+    return ret;
+  }
+
+  loadJSON(json) {
+    this.type = json.type;
+    this.id = json.id;
+    this.ntype = json.ntype;
+    this.op = json.op;
+    this.line = json.line;
+    this.lexpos = json.lexpos;
+    this.col = json.col;
+    this.polyKey = json.polyKey;
+    this.noScope = json.noScope;
+    this.qualifier = json.qualifier;
+    this.value = json.value;
+
+    if (typeof this.ntype === "object") {
+      this.ntype = VarType.fromJSON(this.ntype);
+    }
+
+    if (typeof this.qualifier === "object") {
+      let n = new ASTNode(this.qualifier.type);
+      n.loadJSON(this.qualifier);
+      this.qualifier = n;
+    }
+
+    if (typeof this.value === "object") {
+      if (this.value.Class) {
+        this.value = VarType.fromJSON(this.value);
+      } else {
+        let n = new ASTNode(this.value.type);
+        n.loadJSON(this.value);
+        this.value = n;
+      }
+    }
+
+    for (let i=0; i<json.length; i++) {
+      let child = json[i];
+      let n2 = new ASTNode(child.type);
+
+      n2.loadJSON(child);
+      n2.parent = this;
+
+      this.push(n2);
+    }
+
+    return this;
+  }
+
+  static equalsVarRef(n, vref) {
+    let ok = false;
+
+    if (vref[0].value instanceof ArrayType && n.type === "ArrayLookup") {
+      ok = n[0].value === vref.value;
+      ok = ok && n[1].value === vref[1].value;
+    } else if (n.type === "Ident" && !(vref[0].value instanceof ArrayType)) {
+      ok = vref.value === n.value;
+    }
+
+    return ok;
   }
 
   /*
@@ -46,36 +233,6 @@ export class ASTNode extends Array {
     this._ntype = v;
   }
    */
-
-  set(idx, n) {
-    this.length = Math.max(this.length, idx+1);
-
-    if (this.idx && this.idx.parent === this) {
-      this.idx.parent = undefined;
-    }
-
-    if (n.parent) {
-      n.parent.remove(n);
-    }
-
-    this[idx] = n;
-    n.parent = this;
-
-    return this;
-  }
-
-  static equalsVarRef(n, vref) {
-    let ok = false;
-
-    if (vref[0].value instanceof ArrayType && n.type === "ArrayLookup") {
-      ok = n[0].value === vref.value;
-      ok = ok && n[1].value === vref[1].value;
-    } else if (n.type === "Ident" && !(vref[0].value instanceof ArrayType)) {
-      ok = vref.value === n.value;
-    }
-
-    return ok;
-  }
 
   static VarRef(name, type, idx) {
     let n = new ASTNode("VarRef");
@@ -113,6 +270,33 @@ export class ASTNode extends Array {
     //*/
   }
 
+  _getTypeId() {
+    let hash = strtable.get(this.type);
+
+    if (hash !== undefined) {
+      return hash;
+    }
+
+    return strTableAdd("" + this.type);
+  }
+
+  set(idx, n) {
+    this.length = Math.max(this.length, idx + 1);
+
+    if (this.idx && this.idx.parent === this) {
+      this.idx.parent = undefined;
+    }
+
+    if (n.parent) {
+      n.parent.remove(n);
+    }
+
+    this[idx] = n;
+    n.parent = this;
+
+    return this;
+  }
+
   copyPosTo(b) {
     b.line = this.line;
     b.col = this.col;
@@ -122,8 +306,8 @@ export class ASTNode extends Array {
   prepend(n) {
     this.length++;
 
-    for (let i=this.length-1; i>0; i--) {
-      this[i] = this[i-1];
+    for (let i = this.length - 1; i > 0; i--) {
+      this[i] = this[i - 1];
     }
 
     this[0] = n;
@@ -143,6 +327,7 @@ export class ASTNode extends Array {
     n.ntype = this.ntype;
 
     n.value = this.value;
+    n.op = this.op;
 
     for (let n2 of this) {
       n.push(n2.copy());
@@ -258,7 +443,7 @@ export class ASTNode extends Array {
       typestr += " <" + util.termPrint(this.ntype.getTypeNameSafe() + ">", "red");
     }
 
-    let s = tab + typestr + " { line:" + (this.line+1);
+    let s = tab + typestr + " { line:" + (this.line + 1);
 
     if (this.length === 0) {
       s += "}\n";
@@ -278,6 +463,13 @@ export class ASTNode extends Array {
   }
 }
 
+ASTNode.STRUCT = `
+ASTNode {
+  type   : int | this._getTypeId();
+}
+`;
+nstructjs.register(ASTNode, "ASTNode");
+
 export function visit(root, nodetype, handler) {
   let rec = (n) => {
     if (n.type === nodetype) {
@@ -292,12 +484,12 @@ export function visit(root, nodetype, handler) {
   rec(root);
 }
 
-export function traverse(root, state, handlers, log=false, bottomUp=false) {
+export function traverse(root, state, handlers, log = false, bottomUp = false) {
   let visitset = new Set();
 
   handlers._visitset = visitset;
 
-  let rec = (n, state, depth=0) => {
+  let rec = (n, state, depth = 0) => {
     if (visitset.has(n)) {
       return;
     }
@@ -310,10 +502,10 @@ export function traverse(root, state, handlers, log=false, bottomUp=false) {
         visitset.delete(nb);
 
         for (let n2 of nb) {
-          rec(n2, state, depth+1);
+          rec(n2, state, depth + 1);
         }
       } else {
-        rec(nb, state, depth+1);
+        rec(nb, state, depth + 1);
       }
     }
 
@@ -360,7 +552,7 @@ export function walk(root, handlers) {
 }
 
 
-export function scopeWalk(root, ctx, handlers, log=false, bottomUp=false) {
+export function scopeWalk(root, ctx, handlers, log = false, bottomUp = false) {
   ctx.pushScope();
 
   function visit(n) {

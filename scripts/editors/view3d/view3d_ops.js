@@ -7,20 +7,23 @@ import {DependSocket} from "../../core/graphsockets.js";
 import {CastModes, castViewRay} from "./findnearest.js";
 import {Shapes} from '../../core/simplemesh_shapes.js';
 import {Shaders} from "../../shaders/shaders.js";
+import {Camera} from '../../core/webgl.js';
 
 export class ViewSelected extends ToolOp {
   constructor() {
     super();
   }
 
-  static tooldef() {return {
-    uiname   : "View Selected",
-    toolpath : "view3d.view_selected",
-    description : "Zoom Out",
-    icon     : Icons.ZOOM_OUT,
-    is_modal : true,
-    undoflag : UndoFlags.NO_UNDO
-  }}
+  static tooldef() {
+    return {
+      uiname     : "View Selected",
+      toolpath   : "view3d.view_selected",
+      description: "Zoom Out",
+      icon       : Icons.ZOOM_OUT,
+      is_modal   : true,
+      undoflag   : UndoFlags.NO_UNDO
+    }
+  }
 
   modalStart(ctx) {
     super.modalStart(ctx);
@@ -29,6 +32,7 @@ export class ViewSelected extends ToolOp {
     ctx.view3d.viewSelected();
   }
 }
+
 ToolOp.register(ViewSelected);
 
 export class CenterViewOp extends ToolOp {
@@ -38,19 +42,21 @@ export class CenterViewOp extends ToolOp {
     this.p = undefined;
   }
 
-  static tooldef() {return {
-    uiname   : "Center View",
-    toolpath : "view3d.center_at_mouse",
-    description : "Recenter View At Mouse",
-    icon     : Icons.FIX_VIEW,
-    is_modal : true,
-    undoflag : UndoFlags.NO_UNDO
-  }}
+  static tooldef() {
+    return {
+      uiname     : "Center View",
+      toolpath   : "view3d.center_at_mouse",
+      description: "Recenter View At Mouse",
+      icon       : Icons.FIX_VIEW,
+      is_modal   : true,
+      undoflag   : UndoFlags.NO_UNDO
+    }
+  }
 
   modalStart(ctx) {
     super.modalStart(ctx);
     this.node = CallbackNode.create("view3d.center_at_mouse", this.draw.bind(this), {
-      onDrawPost : new DependSocket()
+      onDrawPost: new DependSocket()
     });
 
     ctx.graph.add(this.node);
@@ -75,23 +81,23 @@ export class CenterViewOp extends ToolOp {
     if (this.p === undefined) {
       return;
     }
-    
+
     mat.translate(this.p[0], this.p[1], this.p[2]);
     mat.scale(s, s, s);
-    
+
     let cam = view3d.camera;
-    
+
     Shapes.SPHERE.draw(gl, {
-      projectionMatrix : cam.rendermat,
-      objectMatrix : mat,
-      color : [1, 0.4, 0.2, 1.0],
+      projectionMatrix: cam.rendermat,
+      objectMatrix    : mat,
+      color           : [1, 0.4, 0.2, 1.0],
     }, Shaders.WidgetMeshShader)
 
     console.log("draw!");
   }
 
-  on_mouseup(e) {
-    this.on_mousemove(e);
+  on_pointerup(e) {
+    this.on_pointermove(e);
 
     console.log("mouse up!");
     let ctx = this.modal_ctx;
@@ -114,6 +120,7 @@ export class CenterViewOp extends ToolOp {
         break;
     }
   }
+
   modalEnd(was_cancelled) {
     let ctx = this.modal_ctx;
     let view3d = this.view3d;
@@ -126,7 +133,7 @@ export class CenterViewOp extends ToolOp {
     }
   }
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     let ctx = this.modal_ctx;
     let view3d = ctx.view3d;
     let mpos = view3d.getLocalMouse(e.x, e.y);
@@ -139,7 +146,7 @@ export class CenterViewOp extends ToolOp {
     overdraw.circle([e.x, e.y], 35, "red");
 
     //castViewRay(ctx, selectMask, mpos, view3d, mode=CastModes.FRAMEBUFFER) {
-    let ret = castViewRay(ctx, SelMask.OBJECT|SelMask.GEOM, mpos, view3d, CastModes.FRAMEBUFFER);
+    let ret = castViewRay(ctx, SelMask.OBJECT | SelMask.GEOM, mpos, view3d, CastModes.FRAMEBUFFER);
     console.log(ret);
 
     if (ret !== undefined) {
@@ -151,6 +158,7 @@ export class CenterViewOp extends ToolOp {
     window.redraw_viewport();
   }
 }
+
 ToolOp.register(CenterViewOp);
 
 /*
@@ -204,12 +212,12 @@ export class View3DOp extends ToolOp {
     return super.modalEnd(wasCancelled);
   }
 
-  addDrawQuad(v1, v2, v3, v4, color, useZ=true) {
+  addDrawQuad(v1, v2, v3, v4, color, useZ = true) {
     let dq = this.modal_ctx.view3d.makeDrawLine(v1, v2, v3, v4, color, useZ);
     this.drawquads.push(dq);
   }
 
-  addDrawLine(v1, v2, color, useZ=true) {
+  addDrawLine(v1, v2, color, useZ = true) {
     let dl = this.modal_ctx.view3d.makeDrawLine(v1, v2, color, useZ);
     this.drawlines.push(dl);
     return dl;
@@ -224,15 +232,15 @@ export class View3DOp extends ToolOp {
     return dl;
   }
 
-  addDrawCircle2D(p, r, color, quality=15) {
-    let steps = Math.ceil((r*2.0*Math.PI) / quality);
+  addDrawCircle2D(p, r, color, quality = 15) {
+    let steps = Math.ceil((r*2.0*Math.PI)/quality);
     steps = Math.max(steps, 6);
 
-    let t = -Math.PI, dt = (2.0 * Math.PI) / (steps - 1);
+    let t = -Math.PI, dt = (2.0*Math.PI)/(steps - 1);
     let p1 = new Vector2();
     let p2 = new Vector2();
 
-    for (let i=0; i<steps; i++, t += dt) {
+    for (let i = 0; i < steps; i++, t += dt) {
       p1[0] = Math.sin(t)*r + p[0];
       p1[1] = Math.cos(t)*r + p[1];
 
@@ -280,27 +288,31 @@ export class View3DOp extends ToolOp {
 export class OrbitTool extends ToolOp {
   constructor() {
     super();
-    
+
+    this.start_sign = 1.0;
+    this.first = true;
     this.last_mpos = new Vector2();
     this.start_mpos = new Vector2();
     this.first = true;
     this.start_camera = undefined;
   }
-  
-  static tooldef() {return {
-    uiname   : "Orbit View",
-    toolpath : "view3d.orbit",
-    description : "Orbit the view",
-    is_modal : true,
-    undoflag : UndoFlags.NO_UNDO,
-    flag     : 0,
-  }}
-  
-  on_mousemove(e) {
+
+  static tooldef() {
+    return {
+      uiname     : "Orbit View",
+      toolpath   : "view3d.orbit",
+      description: "Orbit the view",
+      is_modal   : true,
+      undoflag   : UndoFlags.NO_UNDO,
+      flag       : 0,
+    }
+  }
+
+  on_pointermove(e) {
     let view3d = this.modal_ctx.view3d, camera = view3d.camera;
     let mpos = view3d.getLocalMouse(e.x, e.y);
     let x = mpos[0], y = mpos[1];
-    
+
     if (this.first) {
       this.start_camera = this.modal_ctx.view3d.camera.copy();
       this.start_mpos[0] = x;
@@ -308,89 +320,85 @@ export class OrbitTool extends ToolOp {
       this.last_mpos[0] = x;
       this.last_mpos[1] = y;
       this.first = false;
+      this.start_camera = new Camera();
+      this.start_camera.load(camera);
       return;
     }
-    
+
+
     let dx = x - this.start_mpos[0], dy = -(y - this.start_mpos[1]);
     let scale = 0.0055;
 
-    this.start_mpos[0] = x;
-    this.start_mpos[1] = y;
-    
+    let dx2 = x - this.start_mpos[0], dy2 = -(y - this.start_mpos[1]);
+    let sign = Math.sign(dx*dx2 + dy*dy2);
+
+    this.last_mpos[0] = x;
+    this.last_mpos[1] = y;
+
     dx *= scale;
     dy *= scale;
-    
-    //camera.load(this.start_camera);
-    
-    camera.pos.sub(camera.target);
-    
-    let n = new Vector4();
-    n[0] = 0; //x - this.start_mpos[0];
-    n[1] = -1; //-(y - this.start_mpos[1]);
-    n[2] = camera.near+0.01;
-    n[3] = 0.0;
-    
-    n.load(camera.pos).cross(camera.up).normalize();
-    n[3]=0.0;
-    n.normalize();
-    
-    //n.multVecMatrix(camera.irendermat);
 
-    let n2 = new Vector4();
-    n2[0] = 1; //x - this.start_mpos[0];
-    n2[1] = 0; //-(y - this.start_mpos[1]);
-    n2[2] = camera.near+0.01;
-    n2[3] = 0.0;
-      
-    n2.zero();
-    n2[2] = 1;
-    
+    let len = Math.sqrt(dx**2 + dy**2);
+
+    //camera.load(this.start_camera);
+
+    camera.load(this.start_camera);
+    camera.pos.sub(camera.target);
+
+    let n = new Vector4();
+    let nmat2 = new Matrix4(camera.cameramat);
+    nmat2.makeRotationOnly();
+    nmat2.invert();
+
+    n[0] = dy;
+    n[1] = -dx;
+    n[2] = 0.0
+    n[3] = 0.0;
+
+    n.multVecMatrix(nmat2);
+    n.normalize();
+
     let quat = new Quat();
-    quat.axisAngleToQuat(n, -dy);
+    quat.axisAngleToQuat(n, len*sign);
     let ymat = quat.toMatrix();
-    
-    quat = new Quat();
-    quat.axisAngleToQuat(n2, -dx);
-    let zmat = quat.toMatrix();
 
     let mat = new Matrix4();
     mat.multiply(ymat);
-    mat.multiply(zmat);
-    
+    //mat.multiply(zmat);
+
+    //mat.invert();
+
     camera.pos.multVecMatrix(mat);
-    
-    n = new Vector3(camera.pos);
-    n.normalize();
-    
-    if (Math.abs(n[2]) < 0.9) {
-      //camera.up.normalize();
-      camera.up.load(n).cross([0, 0, 1])
-      camera.up.cross(n).normalize()
-    } else {
-      camera.up.multVecMatrix(mat);
-      camera.up.normalize();
-    }
-    
+
+    let nmat = new Matrix4(mat);
+    nmat.makeRotationOnly();
+    camera.up.multVecMatrix(nmat);
+
+    //camera.up.normalize();
+    //camera.up.load(n).cross([0, 0, 1])
+    //camera.up.cross(n).normalize()
+
     camera.pos.add(camera.target);
     window.redraw_viewport(true);
 
     view3d.onCameraChange();
   }
 
-  on_mouseup(e) {
+  on_pointerup(e) {
     e.stopPropagation();
     console.log("orbit Mouse Up");
 
     this.modalEnd();
   }
-  
-  
+
+
   on_keydown(e) {
     if (e.keyCode == keymap["Escape"] || e.keyCode == keymap["Enter"]) {
       this.modalEnd();
     }
   }
 }
+
 ToolOp.register(OrbitTool);
 
 class TouchData {
@@ -416,14 +424,16 @@ export class TouchViewTool extends ToolOp {
     this._touches = {};
   }
 
-  static tooldef() {return {
-    uiname   : "MultiTouch View Manipulate",
-    toolpath : "view3d.touchview",
-    description : "Orbit the view",
-    is_modal : true,
-    undoflag : UndoFlags.NO_UNDO,
-    flag     : 0,
-  }}
+  static tooldef() {
+    return {
+      uiname     : "MultiTouch View Manipulate",
+      toolpath   : "view3d.touchview",
+      description: "Orbit the view",
+      is_modal   : true,
+      undoflag   : UndoFlags.NO_UNDO,
+      flag       : 0,
+    }
+  }
 
   pan(dx, dy) {
     let view3d = this.modal_ctx.view3d, camera = view3d.camera;
@@ -444,49 +454,50 @@ export class TouchViewTool extends ToolOp {
     camera.regen_mats(camera.aspect);
   }
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     let view3d = this.modal_ctx.view3d, camera = view3d.camera;
 
-    let ts = e.touches;
-    //console.log(ts)
-    let ilen = Math.min(ts.length, 3);
-
-    let cent = new Vector2();
-    for (let i = 0; i < ilen; i++) {
-      let pos = view3d.getLocalMouse(ts[i].pageX, ts[i].pageY);
-      cent.add(pos);
-    }
-    cent.mulScalar(1.0 / ilen);
+    console.warn("TOUCH", e.pointerId, e.which);
 
     if (this.first) {
       this.start_camera = camera.copy();
       this.first = false;
     }
 
-    for (let i = 0; i < ilen; i++) {
-      let pos = view3d.getLocalMouse(ts[i].pageX, ts[i].pageY);
+    let pos = view3d.getLocalMouse(e.x, e.y);
 
-      //console.log(ts[i].identifier, "ID", this.touches);
-      if (!(ts[i].identifier in this._touches)) {
-        let touch = new TouchData(pos[0], pos[1], ts[i].identifier);
-        this._touches[ts[i].identifier] = this.touches.length;
-        this.touches.push(touch);
+    //console.log(ts[i].identifier, "ID", this.touches);
+    if (!(e.pointerId in this._touches)) {
+      let touch = new TouchData(pos[0], pos[1], e.pointerId);
+      this._touches[e.pointerId] = this.touches.length;
+      this.touches.push(touch);
+    } else {
+      let i2 = this._touches[e.pointerId];
+      if (this.touches[i2] === undefined) {
+        this.touches[i2] = new TouchData(pos[0], pos[1], i2);
       } else {
-        let i2 = this._touches[ts[i].identifier];
-        if (this.touches[i2] === undefined) {
-          this.touches[i2] = new TouchData(pos[0], pos[1], i2);
-        } else {
-          this.touches[i2].delta.load(pos).sub(this.touches[i2].pos);
+        this.touches[i2].delta.load(pos).sub(this.touches[i2].pos);
 
-          this.touches[i2].lastpos.load(this.touches[i2].pos);
-          this.touches[i2].pos.load(pos);
-        }
+        this.touches[i2].lastpos.load(this.touches[i2].pos);
+        this.touches[i2].pos.load(pos);
       }
     }
 
-    if (ilen == 1) {
+    let cent = new Vector2();
+    let tottouch = 0;
+    for (let t of this.touches) {
+      if (t !== undefined) {
+        cent.add(t.pos);
+        tottouch++;
+      }
+    }
+    if (tottouch > 0) {
+      cent.mulScalar(1.0/tottouch);
+    }
+
+    if (tottouch === 1) {
       let t = this.touches[0];
-      
+
       if (t !== undefined) {
         this.orbit(t.delta[0], t.delta[1]);
       }
@@ -497,24 +508,24 @@ export class TouchViewTool extends ToolOp {
           touch.startpos.load(touch.pos);
         }
       }
-    } else if (ilen > 1) {
+    } else if (tottouch > 1) {
       let touches = this.touches;
       let off = new Vector2();
       let cent = new Vector2();
 
-      for (let i=0; i<ilen; i++) {
+      for (let i = 0; i < tottouch; i++) {
         if (touches[i]) {
           off.add(touches[i].delta);
         }
       }
 
-      off.mulScalar(1.0 / ilen);
+      off.mulScalar(1.0/tottouch);
       this.pan(off[0], off[1]);
 
       let a = touches[0].startpos.vectorDistance(touches[1].startpos);
       let b = touches[0].pos.vectorDistance(touches[1].pos);
 
-      let scale = a / b;
+      let scale = a/b;
       //console.log("zoom fac:", scale);
 
       this.zoom(scale);
@@ -523,6 +534,40 @@ export class TouchViewTool extends ToolOp {
     window.redraw_viewport(true);
     view3d.onCameraChange();
   }
+
+  on_pointerup(e) {
+    if (eventWasTouch(e)) {
+      for (let i = 0; i < this.touches.length; i++) {
+        if (this.touches[i].id === e.pointerId) {
+          //this.touches[i] = undefined;
+          delete this._touches[e.pointerId];
+          this.touches.remove(this.touches[i]);
+          break;
+        }
+      }
+
+      this._touches = {};
+      for (let i=0; i<this.touches.length; i++) {
+        this._touches[this.touches[i].id] = i;
+      }
+
+      let ok = this.touches.length !== 0;
+      for (let t of this.touches) {
+        if (t !== undefined) {
+          ok = true;
+        }
+      }
+
+      if (ok) {
+        return;
+      }
+    }
+
+    e.stopPropagation();
+
+    this.modalEnd();
+  }
+
 
   zoom(scale) {
     let view3d = this.modal_ctx.view3d, camera = view3d.camera;
@@ -549,11 +594,11 @@ export class TouchViewTool extends ToolOp {
     let n = new Vector4();
     n[0] = 0; //x - this.start_mpos[0];
     n[1] = -1; //-(y - this.start_mpos[1]);
-    n[2] = camera.near+0.01;
+    n[2] = camera.near + 0.01;
     n[3] = 0.0;
 
     n.load(camera.pos).cross(camera.up).normalize();
-    n[3]=0.0;
+    n[3] = 0.0;
     n.normalize();
 
     //n.multVecMatrix(camera.irendermat);
@@ -561,7 +606,7 @@ export class TouchViewTool extends ToolOp {
     let n2 = new Vector4();
     n2[0] = 1; //x - this.start_mpos[0];
     n2[1] = 0; //-(y - this.start_mpos[1]);
-    n2[2] = camera.near+0.01;
+    n2[2] = camera.near + 0.01;
     n2[3] = 0.0;
 
     n2.zero();
@@ -596,58 +641,37 @@ export class TouchViewTool extends ToolOp {
     camera.pos.add(camera.target);
   }
 
-  on_mouseup(e) {
-    if (eventWasTouch(e) && e.touches.length > 0) {
-      //console.log(e.touches);
-      let visit = {};
-      for (let i=0; i<e.touches.length; i++) {
-        visit[e.touches[i].identifier] = 1;
-      }
-
-      for (let i=0; i<this.touches.length; i++) {
-        if (this.touches[i] && !(this.touches[i].id in visit)) {
-          this.touches[i] = undefined;
-        }
-      }
-
-      return;
-    }
-
-    e.stopPropagation();
-    console.trace("touchview Mouse Up", e);
-
-    this.modalEnd();
-  }
-
-
   on_keydown(e) {
     if (e.keyCode == keymap["Escape"] || e.keyCode == keymap["Enter"]) {
       this.modalEnd();
     }
   }
 }
+
 ToolOp.register(TouchViewTool);
 
 export class PanTool extends ToolOp {
   constructor() {
     super();
-    
+
     this.last_mpos = new Vector2();
     this.start_mpos = new Vector2();
     this.first = true;
     this.start_camera = undefined;
   }
-  
-  static tooldef() {return {
-    uiname   : "Pan View",
-    toolpath : "view3d.pan",
-    description : "Pan the view",
-    is_modal : true,
-    undoflag : UndoFlags.NO_UNDO,
-    flag     : 0,
-  }}
-  
-  on_mousemove(e) {
+
+  static tooldef() {
+    return {
+      uiname     : "Pan View",
+      toolpath   : "view3d.pan",
+      description: "Pan the view",
+      is_modal   : true,
+      undoflag   : UndoFlags.NO_UNDO,
+      flag       : 0,
+    }
+  }
+
+  on_pointermove(e) {
     let view3d = this.modal_ctx.view3d, camera = view3d.camera;
     let mpos = view3d.getLocalMouse(e.x, e.y);
     let x = mpos[0], y = mpos[1];
@@ -679,16 +703,16 @@ export class PanTool extends ToolOp {
     camera.pos.add(p);
     camera.target.add(p);
     camera.regen_mats(camera.aspect);
-    
+
     window.redraw_viewport(true);
     view3d.onCameraChange();
   }
-  
-  on_mouseup(e) {
+
+  on_pointerup(e) {
     this.modalEnd();
   }
-  
-  
+
+
   on_keydown(e) {
     if (e.keyCode == keymap["Escape"] || e.keyCode == keymap["Enter"]) {
       this.modalEnd();
@@ -701,23 +725,25 @@ ToolOp.register(PanTool);
 export class ZoomTool extends ToolOp {
   constructor() {
     super();
-    
+
     this.last_mpos = new Vector2();
     this.start_mpos = new Vector2();
     this.first = true;
     this.start_camera = undefined;
   }
-  
-  static tooldef() {return {
-    uiname   : "Zoom View",
-    toolpath : "view3d.zoom",
-    description : "Zoom the view",
-    is_modal : true,
-    undoflag : UndoFlags.NO_UNDO,
-    flag     : 0,
-  }}
-  
-  on_mousemove(e) {
+
+  static tooldef() {
+    return {
+      uiname     : "Zoom View",
+      toolpath   : "view3d.zoom",
+      description: "Zoom the view",
+      is_modal   : true,
+      undoflag   : UndoFlags.NO_UNDO,
+      flag       : 0,
+    }
+  }
+
+  on_pointermove(e) {
     let view3d = this.modal_ctx.view3d, camera = view3d.camera;
     let mpos = view3d.getLocalMouse(e.x, e.y);
     let x = mpos[0], y = mpos[1];
@@ -731,44 +757,32 @@ export class ZoomTool extends ToolOp {
       this.first = false;
       return;
     }
-    
+
     let dx = x - this.start_mpos[0], dy = y - this.start_mpos[1];
-    
-    //console.log(l2/l1);
-    //let ratio = l2 / l1;
-    
-    //let ratio = dy < 0.0 ? 1.0 / (-dy + 1.0) : dy;
-    //ratio *= 0.5;
+
     let len = this.start_camera.pos.vectorDistance(this.start_camera.target);
     let len2 = camera.pos.vectorDistance(camera.target);
-    
-    //len = len < 1.0 ? len**2 : len;
-    len = Math.log(len) / Math.log(2);
 
-    //if (len > 3.0) {
-      len += 0.01*dy;
-    //}
+    len = Math.log(len)/Math.log(2);
+
+    len += 0.01*dy;
     len = Math.max(len, -5.0);
     len = Math.pow(2.0, len);
     
-    //len = Math.max(len, 0.01);
-    
-    //console.log(len.toFixed(4))
-    
     camera.pos.load(this.start_camera.pos);
     camera.pos.sub(this.start_camera.target).normalize().mulScalar(len).add(this.start_camera.target);
-    
+
     camera.regen_mats(camera.aspect);
-    
+
     window.redraw_viewport(true);
     view3d.onCameraChange();
   }
-  
-  on_mouseup(e) {
+
+  on_pointerup(e) {
     this.modalEnd();
   }
-  
-  
+
+
   on_keydown(e) {
     if (e.keyCode == keymap["Escape"] || e.keyCode == keymap["Enter"]) {
       this.modalEnd();

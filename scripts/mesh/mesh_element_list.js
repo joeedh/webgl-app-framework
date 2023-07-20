@@ -1,12 +1,11 @@
 import {Edge} from "./mesh_types.js";
+import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {
   DEBUG_BAD_LOOPS, DEBUG_FREE_STACKS, getArrayTemp, MeshError, MeshFlags, MeshTypes, STORE_DELAY_CACHE_INDEX,
   WITH_EIDMAP_MAP, EmptyCDArray
 } from "./mesh_base.js";
 import * as util from "../util/util.js";
-import '../path.ux/scripts/util/struct.js';
 
-let STRUCT = nstructjs.STRUCT;
 import {CDFlags, CustomData, CustomDataElem} from "./customdata.js";
 import {Vertex, Loop, Face, Handle} from './mesh_types.js';
 
@@ -658,8 +657,26 @@ export class ElementList {
       this._fixcd(elem);
     }
 
+    const flatlist = this.customData.flatlist;
+    const nointerp = CDFlags.NO_INTERP;
+    const copyonly = CDFlags.NO_INTERP_COPY_ONLY;
+
     for (let i = 0; i < dest.customData.length; i++) {
       let cd = dest.customData[i];
+
+      const flag = flatlist[i].flag;
+
+      if (flag & copyonly) {
+        if (sources.length > 0) {
+          sources[0].customData[i].copyTo(dest.customData[i]);
+        }
+
+        continue;
+      }
+
+      if (flag & nointerp) {
+        continue;
+      }
 
       let j = 0;
       for (let e2 of sources) {

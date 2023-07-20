@@ -45,7 +45,6 @@ import {makeCube} from './mesh_shapes.js';
 import {NodeFlags} from "./graph.js";
 import {ShaderNetwork, makeDefaultShaderNetwork} from "../shadernodes/shadernetwork.js";
 
-cconst2.loadConstants(cconst);
 
 let STRUCT = nstructjs.STRUCT;
 
@@ -116,6 +115,7 @@ export class FileData {
 
 export class AppState {
   constructor() {
+    this.arguments = []; //electron only, command line arguments
     this.saveHandle = undefined;
     this.settings = new AppSettings;
     this.ctx = new ViewContext(this);
@@ -182,6 +182,7 @@ export class AppState {
 
     this.ctx = new ViewContext(this);
 
+    /*
     window.addEventListener("mousedown", (e) => {
       if (this.ignoreEvents) {
         return;
@@ -193,13 +194,13 @@ export class AppState {
         e.preventDefault();
       }
     });
+    //*/
 
     window.addEventListener("contextmenu", (e) => {
       if (this.ignoreEvents) {
         return;
       }
 
-      console.log(e);
       let screen = _appstate.screen;
       if (screen === undefined) {
         return;
@@ -1096,11 +1097,13 @@ export class AppState {
   }
 };
 
+export function preinit() {
+  window._appstate = new AppState();
+}
+
 export function init() {
   loadShapes();
   initSimpleController();
-
-  window._appstate = new AppState();
 
   let animreq;
   let f = () => {

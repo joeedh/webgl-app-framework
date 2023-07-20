@@ -34,6 +34,19 @@ export class ShadowSettings {
     this.bias = 1.0;
     this.flag = 0;
   }
+
+  copyTo(b) {
+    b.bias = this.bias;
+    b.flag = this.flag;
+  }
+
+  copy() {
+    let ret = new ShadowSettings();
+
+    this.copyTo(ret);
+
+    return ret;
+  }
 }
 
 ShadowSettings.STRUCT = `
@@ -42,7 +55,7 @@ ShadowSettings {
   flag : int;
 }
 `;
-nstructjs.manager.add_class(ShadowSettings);
+nstructjs.register(ShadowSettings);
 
 export class ShaderNetwork extends DataBlock {
   constructor() {
@@ -60,6 +73,23 @@ export class ShaderNetwork extends DataBlock {
 
     this.updateHash = 0;
     this.usedNodes = new Set(); //pruned list of nodes that contribute to shader code
+  }
+
+  copy(addLibUsers=false, owner) {
+    let ret = super.copy(addLibUsers, owner);
+
+    ret.graph = this.graph.copy(addLibUsers);
+    ret.shadow = this.shadow.copy();
+    ret.flag = this.flag;
+
+    return ret;
+  }
+
+  copyTo(b, arg) {
+    super.copyTo(b, arg);
+
+    b.flag = this.flag;
+    this.shadow.copyTo(b.shadow);
   }
 
   getUsedNodes() {
@@ -151,13 +181,14 @@ export class ShaderNetwork extends DataBlock {
 
   dataLink(getblock, getblock_addUser) {
     super.dataLink(getblock, getblock_addUser);
-    //this.graph.dataLink(getblock, getblock_addUser);
+    this.graph.dataLink(this, getblock, getblock_addUser);
   }
 
   generate(scene, rlights, defines="") {
     if (scene === undefined) {
       throw new Error("scene cannot be undefined");
     }
+
     this._regen = false;
     this.usedNodes = this.getUsedNodes();
 

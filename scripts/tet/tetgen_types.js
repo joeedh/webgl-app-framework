@@ -377,16 +377,24 @@ export class TetFace extends TetElement {
     })();
   }
 
-  calcNormal() {
+  calcNormal(cd_disp=-1) {
     let ls = this.loops;
 
+    function v(v) {
+      if (cd_disp >= 0) {
+        return v.customData[cd_disp].worldCo;
+      } else {
+        return v;
+      }
+    }
+
     if (this.loops.length === 4) {
-      this.area = math.tri_area(ls[0].v, ls[1].v, ls[2].v);
-      this.area += math.tri_area(ls[0].v, ls[2].v, ls[3].v);
-      this.no.load(math.normal_quad(ls[0].v, ls[1].v, ls[2].v, ls[3].v));
+      this.area = math.tri_area(v(ls[0].v), v(ls[1].v), v(ls[2].v));
+      this.area += math.tri_area(v(ls[0].v), v(ls[2].v), v(ls[3].v));
+      this.no.load(math.normal_quad(v(ls[0].v), v(ls[1].v), v(ls[2].v), v(ls[3].v)));
     } else {
-      this.area = math.tri_area(ls[0].v, ls[1].v, ls[2].v);
-      this.no.load(math.normal_tri(ls[0].v, ls[1].v, ls[2].v));
+      this.area = math.tri_area(v(ls[0].v), v(ls[1].v), v(ls[2].v));
+      this.no.load(math.normal_tri(v(ls[0].v), v(ls[1].v), v(ls[2].v)));
     }
 
     return this;

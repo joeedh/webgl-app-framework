@@ -1,4 +1,4 @@
-import '../path.ux/scripts/util/struct.js';
+import {nstructjs} from '../path.ux/pathux.js';
 import {Vector2, Vector3, Vector4, Matrix4} from '../path.ux/scripts/util/vectormath.js';
 import {PropTypes} from '../path.ux/scripts/pathux.js';
 

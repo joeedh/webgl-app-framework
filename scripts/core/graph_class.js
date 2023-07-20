@@ -38,7 +38,7 @@ export class AbstractGraphClass {
       let basestruct = api.getStruct(Node);
 
       api.mergeStructs(nstruct, basestruct);
-      cls.defineAPI(nstruct);
+      cls.graphDefineAPI(api, nstruct);
     }
   }
 

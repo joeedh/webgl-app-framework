@@ -4,8 +4,8 @@ import {ShaderProgram} from "../core/webgl.js";
 export let PolygonOffset = {
   //pre : '',
   //vertex : (posname) => {return '';},
-  pre  : `uniform float polygonOffset;`,
-  vertex : (posname, nearname, farname) => {
+  pre     : `uniform float polygonOffset;`,
+  vertex  : (posname, nearname, farname) => {
     if (nearname && farname) {
       return `
   {
@@ -31,12 +31,12 @@ export let PolygonOffset = {
 
     }
   },
-  fragment : `
+  fragment: `
   `
 };
 
 export let SmoothLine = {
-  pre : `
+  pre        : `
 #ifdef SMOOTH_LINE
     attribute vec2 _strip_uv;
     attribute vec4 _strip_dir;
@@ -48,7 +48,7 @@ export let SmoothLine = {
     varying vec2 vStripUv;
 #endif
   `,
-  vertex : (pname) => {
+  vertex     : (pname) => {
     let p = pname;
 
     return `
@@ -75,7 +75,7 @@ export let SmoothLine = {
 #endif
     `
   },
-  fragment : (alphaname) => {
+  fragment   : (alphaname) => {
     if (!alphaname) {
       return '';
     }
@@ -98,7 +98,7 @@ export let SmoothLine = {
 }
 
 export let BasicLineShader = {
-  vertex : `precision mediump float;
+  vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -129,7 +129,7 @@ void main() {
 
   `,
 
-  fragment : `precision mediump float;
+  fragment: `precision mediump float;
 uniform float alpha;
 
 varying vec4 vColor;
@@ -146,18 +146,18 @@ void main() {
 }
   `,
 
-  uniforms : {
-    alpha : 1.0,
-    objectMatrix : new Matrix4()
+  uniforms: {
+    alpha       : 1.0,
+    objectMatrix: new Matrix4()
   },
 
-  attributes : [
+  attributes: [
     "position", "uv", "color"
   ]
 };
 
 export let ObjectLineShader = {
-  vertex : `precision mediump float;
+  vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -191,7 +191,7 @@ void main() {
 
   `,
 
-  fragment : `precision mediump float;
+  fragment: `precision mediump float;
 uniform float alpha;
 
 //varying vec4 vColor;
@@ -209,20 +209,20 @@ void main() {
 }
   `,
 
-  uniforms : {
-    alpha : 1.0,
-    uColor : [1, 1, 1, 1],
-    shift : [0, 0],
-    objectMatrix : new Matrix4()
+  uniforms: {
+    alpha       : 1.0,
+    uColor      : [1, 1, 1, 1],
+    shift       : [0, 0],
+    objectMatrix: new Matrix4()
   },
 
-  attributes : [
+  attributes: [
     "position", "uv", "color"
   ]
 };
 
 export let BasicLitMesh = {
-  vertex : `precision mediump float;
+  vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -251,7 +251,7 @@ void main() {
 
   `,
 
-  fragment : `precision mediump float;
+  fragment: `precision mediump float;
 uniform float alpha;
 
 varying vec4 vColor;
@@ -280,18 +280,18 @@ void main() {
 }
   `,
 
-  uniforms : {
-    alpha : 1.0,
-    objectMatrix : new Matrix4()
+  uniforms: {
+    alpha       : 1.0,
+    objectMatrix: new Matrix4()
   },
 
-  attributes : [
+  attributes: [
     "position", "normal", "uv", "color"
   ]
 };
 
 export let BasicLitMeshTexture = {
-  vertex : `precision mediump float;
+  vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -320,7 +320,7 @@ void main() {
 
   `,
 
-  fragment : `precision mediump float;
+  fragment: `precision mediump float;
 uniform float alpha;
 
 varying vec4 vColor;
@@ -346,18 +346,18 @@ void main() {
 }
   `,
 
-  uniforms : {
-    alpha : 1.0,
-    objectMatrix : new Matrix4()
+  uniforms: {
+    alpha       : 1.0,
+    objectMatrix: new Matrix4()
   },
 
-  attributes : [
+  attributes: [
     "position", "normal", "uv", "color"
   ]
 };
 
 export let FlatMeshTexture = {
-  vertex : `precision mediump float;
+  vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
 
@@ -379,7 +379,7 @@ void main() {
 
   `,
 
-  fragment : `precision mediump float;
+  fragment: `precision mediump float;
 uniform float alpha;
 
 varying vec4 vColor;
@@ -394,18 +394,18 @@ void main() {
 }
   `,
 
-  uniforms : {
-    alpha : 1.0,
-    objectMatrix : new Matrix4()
+  uniforms: {
+    alpha       : 1.0,
+    objectMatrix: new Matrix4()
   },
 
-  attributes : [
+  attributes: [
     "position", "normal", "uv", "color"
   ]
 };
 
 export let SculptShader = {
-  vertex : `precision mediump float;
+  vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -503,7 +503,7 @@ void main() {
   fp := sub(k1=fk1, k2=fk2, k3=fk3, k4=fk4, k5=fk5, k6=fk6, k7=fk7, k8=fk8, k9=fk9, p);
 
   * */
-  fragment : `precision mediump float;
+  fragment: `precision mediump float;
 uniform float alpha;
 
 varying vec4 vColor;
@@ -666,14 +666,14 @@ void main() {
 }
   `,
 
-  uniforms : {
-    alpha : 1.0,
-    hasTexture : 0.0,
-    uColor : [1, 1, 1, 1],
-    objectMatrix : new Matrix4()
+  uniforms: {
+    alpha       : 1.0,
+    hasTexture  : 0.0,
+    uColor      : [1, 1, 1, 1],
+    objectMatrix: new Matrix4()
   },
 
-  attributes : [
+  attributes: [
     "position", "normal", "uv", "color", "primUV",
     "primc1", "primc2", "primc3", "primc4", "primc5",
     "primc6"
@@ -682,7 +682,7 @@ void main() {
 
 
 export let SculptShaderSimple = {
-  vertex : `#version 300 es
+  vertex: `#version 300 es
   precision mediump float;
   
 uniform mat4 projectionMatrix;
@@ -733,7 +733,7 @@ void main() {
 
   `,
 
-  fragment : `#version 300 es
+  fragment: `#version 300 es
 precision mediump float;
 uniform float alpha;
 
@@ -793,20 +793,208 @@ void main() {
 }
   `,
 
-  uniforms : {
-    alpha : 1.0,
-    hasTexture : 0.0,
-    uColor : [1, 1, 1, 1],
-    objectMatrix : new Matrix4()
+  uniforms: {
+    alpha       : 1.0,
+    hasTexture  : 0.0,
+    uColor      : [1, 1, 1, 1],
+    objectMatrix: new Matrix4()
   },
 
-  attributes : [
+  attributes: [
     "position", "normal", "uv", "color"
   ]
 };
 
+export let SculptShaderHexDeform = {
+  vertex: `#version 300 es
+  precision highp float;
+  
+uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
+uniform mat4 normalMatrix;
+
+#ifdef WITH_BOXVERTS
+uniform vec3 boxverts[8];
+#else
+uniform sampler2D nodeDefTex;
+uniform float nodeDefTexDu;
+uniform vec2 nodeDefTexUV;
+#endif
+
+in vec3 position;
+in vec3 normal;
+in vec2 uv;
+in vec4 color;
+in vec2 BVHDefVs;
+
+out vec4 vColor;
+
+out vec3 vNormal;
+
+#ifdef DRAW_FLAT
+out vec3 vWorldCo;
+#endif
+
+out vec2 vUv;
+
+${PolygonOffset.pre}
+
+uniform float aspect, near, far;
+uniform vec2 size;
+
+vec3 trilinear_v3(vec3 uvw) {
+  float u = uvw[0];
+  float v = uvw[1];
+  float w = uvw[2];
+
+#ifndef WITH_BOXVERTS
+  vec2 uv = BVHDefVs;
+  
+  vec4 v1 = texture(nodeDefTex, uv);
+  vec4 v2 = texture(nodeDefTex, uv + vec2(nodeDefTexDu, 0.0)) - v1;
+  vec4 v3 = texture(nodeDefTex, uv + vec2(nodeDefTexDu*2.0, 0.0)) - v1;
+  vec4 v4 = texture(nodeDefTex, uv + vec2(nodeDefTexDu*3.0, 0.0)) - v1;
+  vec4 v5 = texture(nodeDefTex, uv + vec2(nodeDefTexDu*4.0, 0.0)) - v1;
+  vec4 v6 = texture(nodeDefTex, uv + vec2(nodeDefTexDu*5.0, 0.0)) - v1;
+  vec4 v7 = texture(nodeDefTex, uv + vec2(nodeDefTexDu*6.0, 0.0)) - v1;
+  vec4 v8 = texture(nodeDefTex, uv + vec2(nodeDefTexDu*7.0, 0.0)) - v1;
+  
+  float a1x = v1[0], a1y = v1[1], a1z = v1[2];
+  float b1x = v2[0], b1y = v2[1], b1z = v2[2];
+  float c1x = v3[0], c1y = v3[1], c1z = v3[2];
+  float d1x = v4[0], d1y = v4[1], d1z = v4[2];
+  
+  float a2x = v5[0], a2y = v5[1], a2z = v5[2];
+  float b2x = v6[0], b2y = v6[1], b2z = v6[2];
+  float c2x = v7[0], c2y = v7[1], c2z = v7[2];
+  float d2x = v8[0], d2y = v8[1], d2z = v8[2];
+#else
+  float a1x = boxverts[0][0], a1y = boxverts[0][1], a1z = boxverts[0][2];
+
+  float b1x = boxverts[1][0] - a1x, b1y = boxverts[1][1] - a1y, b1z = boxverts[1][2] - a1z;
+  float c1x = boxverts[2][0] - a1x, c1y = boxverts[2][1] - a1y, c1z = boxverts[2][2] - a1z;
+  float d1x = boxverts[3][0] - a1x, d1y = boxverts[3][1] - a1y, d1z = boxverts[3][2] - a1z;
+
+  float a2x = boxverts[4][0] - a1x, a2y = boxverts[4][1] - a1y, a2z = boxverts[4][2] - a1z;
+  float b2x = boxverts[5][0] - a1x, b2y = boxverts[5][1] - a1y, b2z = boxverts[5][2] - a1z;
+  float c2x = boxverts[6][0] - a1x, c2y = boxverts[6][1] - a1y, c2z = boxverts[6][2] - a1z;
+  float d2x = boxverts[7][0] - a1x, d2y = boxverts[7][1] - a1y, d2z = boxverts[7][2] - a1z;
+#endif
+
+  float x = (((a2x - b2x)*v - a2x + (c2x - d2x)*v + d2x)*u - ((a2x - b2x)*v - a2x) - (
+    ((c1x - d1x)*v + d1x - b1x*v)*u + b1x*v))*w + ((c1x - d1x)*v + d1x - b1x*v)*u + b1x*v;
+  
+  float y = (((a2y - b2y)*v - a2y + (c2y - d2y)*v + d2y)*u - ((a2y - b2y)*v - a2y) - (
+    ((c1y - d1y)*v + d1y - b1y*v)*u + b1y*v))*w + ((c1y - d1y)*v + d1y - b1y*v)*u + b1y*v;
+  
+  float z = (((a2z - b2z)*v - a2z + (c2z - d2z)*v + d2z)*u - ((a2z - b2z)*v - a2z) - (
+    ((c1z - d1z)*v + d1z - b1z*v)*u + b1z*v))*w + ((c1z - d1z)*v + d1z - b1z*v)*u + b1z*v;
+
+  return vec3(
+    x + a1x,
+    y + a1y,
+    z + a1z
+  );
+}
+
+void main() {
+  vec4 p = objectMatrix * vec4(trilinear_v3(position), 1.0);
+
+#ifdef DRAW_FLAT
+  vWorldCo = p.xyz;
+#endif
+
+  p = projectionMatrix * vec4(p.xyz, 1.0);
+  //vec4 n = normalMatrix * vec4(normal, 0.0);
+  vec4 n = objectMatrix * vec4(normal, 0.0);
+  
+  n = projectionMatrix * n;
+  
+  ${PolygonOffset.vertex("p", "near", "far", "size")}
+  
+  gl_Position = p;
+  
+  vUv = uv;
+  vNormal = normalize(n.xyz);
+  vColor = color;
+}
+
+  `,
+
+  fragment: `#version 300 es
+precision highp float;
+uniform float alpha;
+
+
+#ifdef DRAW_FLAT
+uniform mat4 projectionMatrix;
+in vec3 vWorldCo;
+#endif
+
+in vec4 vColor;
+in vec3 vNormal;
+in vec2 vUv;
+
+out vec4 fragColor;
+
+uniform sampler2D text;
+uniform float hasTexture;
+
+uniform vec4 uColor;
+${PolygonOffset.pre}
+
+uniform float iTime;
+uniform float aspect, near, far;
+uniform vec2 size;
+
+void main() {
+  float f;
+  vec3 no = normalize(vNormal);
+    
+#ifdef DRAW_FLAT
+  {
+  vec3 n1 = dFdx(vWorldCo);
+  vec3 n2 = dFdy(vWorldCo);
+  
+  no = cross(n1, n2);
+  no = (projectionMatrix * vec4(no, 0.0)).xyz;
+  no = normalize(no);
+  }
+#endif
+
+  vec3 l = vec3(0.096, -0.288, 0.96);
+  f = dot(no, l);
+
+  f = f < 0.0 ? -f*0.5 : f;
+  f = f*0.8 + 0.2;
+
+  vec4 tex = texture(text, vUv);
+  tex += (vec4(1.0, 1.0, 1.0, 1.0) - tex) * (1.0 - hasTexture);
+
+  vec4 c = vec4(f, f, f, 1.0)*uColor*vColor;
+
+  c[3] *= alpha;
+
+  ${PolygonOffset.fragment}
+  
+  fragColor = c * tex;
+}
+  `,
+
+  uniforms: {
+    alpha       : 1.0,
+    hasTexture  : 0.0,
+    uColor      : [1, 1, 1, 1],
+    objectMatrix: new Matrix4()
+  },
+
+  attributes: [
+    "position", "normal", "uv", "color", "BVHDefVs"
+  ]
+};
+
 export let MeshEditShader = {
-  vertex : `precision mediump float;
+  vertex  : `precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -859,7 +1047,7 @@ void main() {
   } 
 }
 `,
-  fragment : `precision mediump float;
+  fragment: `precision mediump float;
 uniform float alpha;
 varying vec4 vColor;
 varying float vId;
@@ -878,18 +1066,18 @@ void main() {
 }
   `,
 
-  uniforms : {
-    alpha : 1.0,
-    objectMatrix : new Matrix4()
+  uniforms: {
+    alpha       : 1.0,
+    objectMatrix: new Matrix4()
   },
 
-  attributes : [
+  attributes: [
     "position", "color", "id"
   ]
 };
 
 export let MeshIDShader = {
-  vertex : `precision highp float;
+  vertex  : `precision highp float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -933,7 +1121,7 @@ void main() {
   vId = id + 1.0; // + id_offset;
 }
 `,
-  fragment : `precision highp float;
+  fragment: `precision highp float;
 
 uniform float id_offset;
 uniform float object_id;
@@ -949,18 +1137,18 @@ void main() {
 }
   `,
 
-  uniforms : {
-    objectMatrix : new Matrix4(),
-    pointSize : 5
+  uniforms: {
+    objectMatrix: new Matrix4(),
+    pointSize   : 5
   },
 
-  attributes : [
+  attributes: [
     "position", "uv", "color", "id"
   ]
 };
 
 export let MeshLinearZShader = {
-  vertex : `#version 300 es
+  vertex  : `#version 300 es
   
 precision mediump float;
   
@@ -1013,7 +1201,7 @@ void main() {
   vColor = c;
 }
 `,
-  fragment : `#version 300 es
+  fragment: `#version 300 es
 
 precision mediump float;
 
@@ -1039,17 +1227,17 @@ void main() {
 }
   `,
 
-  uniforms : {
-    objectMatrix : new Matrix4()
+  uniforms: {
+    objectMatrix: new Matrix4()
   },
 
-  attributes : [
+  attributes: [
     "position", "color", "id"
   ]
 };
 
 export let NormalPassShader = {
-  vertex : `precision mediump float;
+  vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -1083,7 +1271,7 @@ void main() {
 
   `,
 
-  fragment : `precision mediump float;
+  fragment: `precision mediump float;
 uniform float alpha;
 
 varying vec4 vColor;
@@ -1104,20 +1292,19 @@ void main() {
 }
   `,
 
-  uniforms : {
-    alpha : 1.0,
-    objectMatrix : new Matrix4()
+  uniforms: {
+    alpha       : 1.0,
+    objectMatrix: new Matrix4()
   },
 
-  attributes : [
+  attributes: [
     "position", "normal", "uv", "color"
   ]
 };
 
 
-
 export let BasicLineShader2D = {
-  vertex : `precision mediump float;
+  vertex: `precision mediump float;
   
 attribute vec3 position;
 attribute vec2 uv;
@@ -1136,7 +1323,7 @@ void main() {
 
   `,
 
-  fragment : `precision mediump float;
+  fragment: `precision mediump float;
 uniform float alpha;
 
 varying vec4 vColor;
@@ -1147,17 +1334,17 @@ void main() {
 }
   `,
 
-  uniforms : {
-    alpha : 1.0
+  uniforms: {
+    alpha: 1.0
   },
 
-  attributes : [
+  attributes: [
     "position", "uv", "color"
   ]
 };
 
 export let WidgetMeshShader = {
-  vertex : `precision mediump float;
+  vertex  : `precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -1187,7 +1374,7 @@ void main() {
   gl_PointSize = pointSize;
 }
 `,
-  fragment : `precision mediump float;
+  fragment: `precision mediump float;
 uniform vec4 color;
 
 ${PolygonOffset.pre}
@@ -1203,20 +1390,20 @@ void main() {
 }
   `,
 
-  uniforms : {
-    pointSize : 10.0,
-    objectMatrix : new Matrix4(),
-    color : [0, 0, 0, 1]
+  uniforms: {
+    pointSize   : 10.0,
+    objectMatrix: new Matrix4(),
+    color       : [0, 0, 0, 1]
   },
 
-  attributes : [
+  attributes: [
     "position", "color", "id"
   ]
 };
 
 
 export let CellularNoiseFragment = {
-  fragment : `
+  fragment: `
 // Cellular noise ("Worley noise") in 3D in GLSL.
 // Copyright (c) Stefan Gustavson 2011-04-19. All rights reserved.
 // This code is released under the conditions of the MIT license.
@@ -1406,7 +1593,7 @@ vec2 cellular(vec3 P) {
 };
 
 export let SimplexGradientNoise = {
-  fragment : `
+  fragment: `
 //
 // Description : Array and textureless GLSL 2D/3D/4D simplex 
 //               noise functions.
@@ -1520,8 +1707,43 @@ float snoise(vec3 v, out vec3 gradient)
 }
   `
 }
-export let TexturePaintShader = {
-  vertex : `precision mediump float;
+
+export const TexPaintShaderLib = `
+float hash(float f) {
+  float sign = f < 0.0 ? -1.0 : 1.0;
+  f *= sign;
+
+  float f2 = fract(f);
+  f2 = sign < 0.0 ? 1.0 - f2 : f2;
+
+  f = f*3.316624*128.0*f2;
+
+  bool sign2 = f < 0.0;
+  f = fract(f);
+
+  if (sign2) {
+    f = 1.0 - f;
+  }
+
+  return f;
+}
+
+float hash3(float x, float y, float z) {
+  float f = x*sqrt(3.0) + y*sqrt(5.0)*10.0 + z*sqrt(7.0)*100.0;
+  return hash(f);
+}
+
+vec2 rot2d(vec2 p, float th) {
+  return vec2(cos(th)*p[0] + sin(th)*p[1], cos(th)*p[1] - sin(th)*p[0]);
+}
+
+float tent(float f) {
+  return 1.0 - abs(fract(f)-0.5)*2.0;
+}
+`;
+
+export const TexturePaintShader = {
+  vertex  : `precision mediump float;
   
 attribute vec3 position;
 attribute vec3 normal;
@@ -1529,22 +1751,25 @@ attribute vec2 uv;
 attribute vec4 color;
 attribute vec4 sm_loc;
 attribute vec2 sm_params;
+attribute vec3 sm_worldloc;
 
 uniform vec4 uColor;
 //uniform float pointSize;
 
 uniform mat4 projectionMatrix;
+uniform mat4 objectMatrix;
 
 //uniform float aspect, near, far;
 //uniform vec2 size;
 
 varying vec2 vUv;
-varying vec4 vColor;
+varying vec4 vSmLoc;
 varying vec3 vNormal;
 varying vec2 vParams;
+varying vec2 vScreenCo;
+varying vec3 vWorldCo;
 
 //{PolygonOffset.pre}
-//{BRUSH_TEX_PRE}
 
 void main() {
   vec4 p = vec4(position, 1.0);
@@ -1552,33 +1777,43 @@ void main() {
   
   p = projectionMatrix * p;
   
-  vColor = vec4((sm_loc.xyz*sm_loc.w), sm_loc.w);
+  vWorldCo = (objectMatrix * vec4(sm_worldloc, 1.0)).xyz;
+  
+  vSmLoc = vec4((sm_loc.xyz*sm_loc.w), sm_loc.w);
   vUv = uv;
   vNormal = normal;
    
+  vScreenCo = (vSmLoc.xy/vSmLoc.w)*0.5 + 0.5;
   vParams = sm_params;
   
   gl_Position = p;
   //gl_PointSize = pointSize;
 }
 `,
-  fragment : `precision mediump float;
+  fragment: `precision mediump float;
 uniform vec4 uColor;
 
+//{BRUSH_TEX_PRE}
+
 varying vec2 vUv;
-varying vec4 vColor;
+varying vec4 vSmLoc;
 varying vec3 vNormal;
 varying vec2 vParams;
+varying vec2 vScreenCo;
+varying vec3 vWorldCo;
 
 uniform float radius;
 uniform vec3 brushCo;
 uniform float angle;
 
+uniform vec2 vboxMin, vboxMax;
+uniform vec2 screenSize;
+
+uniform sampler2D blurFBO;
+uniform sampler2D rgba1;
 //{PolygonOffset.pre}
 
-vec2 rot2d(vec2 p, float th) {
-  return vec2(cos(th)*p[0] + sin(th)*p[1], cos(th)*p[1] - sin(th)*p[0]);
-}
+${TexPaintShaderLib}
 
 //{CellularNoiseFragment.fragment}
 ${SimplexGradientNoise.fragment}
@@ -1587,10 +1822,10 @@ void main() {
   //{PolygonOffset.fragment}
   vec4 c;
   
-  //c = vColor;
+  //c = vSmLoc;
   c = vec4(0.0, 0.0, 0.0, 0.0);
   
-  float dis = length(brushCo.xy - vColor.xy/vColor.w) / radius;
+  float dis = length(brushCo.xy - vSmLoc.xy/vSmLoc.w) / radius;
   dis = 1.0 - min(max(dis, 0.0), 1.0);
   
   c = uColor;
@@ -1601,18 +1836,22 @@ void main() {
   c[3] *= dis*fade;
   
 #if 0
-  vec2 cell = cellular(0.1*vColor.xyz/vColor.w);
+  vec2 cell = cellular(0.1*vSmLoc.xyz/vSmLoc.w);
   c[3] *= cell[0];
   c.rgb *= cell[1];
 #endif
   
 #ifdef BRUSH_TEX
 {
-  float inP = vColor.xyz/vColor.w;
+//#if BRUSH_TEX_SPACE == 0
+  //vec3 inP = vWorldCo*texScale;
+//#else
+  vec3 inP = vWorldCo*texScale; //vec3(vScreenCo, 0.0);
+//#endif
   vec4 outC;
 
 {  
-  BRUSH_TEX
+  BRUSH_TEX_CODE
 }
  
   c *= outC;
@@ -1621,7 +1860,7 @@ void main() {
 
 #if 0
 {
-  vec3 p = vColor.xyz/vColor.w*0.0875;
+  vec3 p = vSmLoc.xyz/vSmLoc.w*0.0875;
   vec2 p2 = rot2d(p.xy, angle);
   
   float dx1 = 1.0 - abs(fract(p2.x)-0.5)*2.0;
@@ -1642,7 +1881,7 @@ void main() {
 
 #if 0
 {
-  vec3 p = vColor.xyz/vColor.w*0.045;
+  vec3 p = vSmLoc.xyz/vSmLoc.w*0.045;
   vec3 grad;
   
   float f = snoise(p, grad);
@@ -1666,24 +1905,43 @@ void main() {
   //c[2] = fract(brushCo.y*0.01);
   
   //c[3] = 1.0 - min(max(c[0], 0.0), 1.0);
-  
+
+#ifdef BLUR_MODE
+  {
+    vec2 p = (vSmLoc.xy/vSmLoc.w) / screenSize;
+    p.y = 1.0 - p.y;
+    
+    p -= vboxMin;
+    p *= 1.0 / (vboxMax - vboxMin);
+    p.y = 1.0 - p.y;
+    
+    vec2 uv = texture2D(blurFBO, p).xy;
+    //uv.y = 1.0 - uv.y;
+    //uv = p;
+    
+    //float f = sqrt(abs(p.x*p.y));
+    //c = vec4(uv.x, uv.y, 0.0, 1.0);
+    c = texture2D(rgba1, uv);
+  }
+#endif
+
   gl_FragColor = c;
 }
   `,
 
-  uniforms : {
-    pointSize : 10.0,
-    objectMatrix : new Matrix4(),
+  uniforms: {
+    pointSize       : 10.0,
+    objectMatrix    : new Matrix4(),
     projectionMatrix: new Matrix4(),
-    color : [0, 0, 0, 1]
+    color           : [0, 0, 0, 1]
   },
 
-  attributes : [
-    "position", "color", "uv", "normal", "sm_loc", "sm_params"
+  attributes: [
+    "position", "color", "uv", "normal", "sm_loc", "sm_params", "sm_worldloc"
   ]
 };
 export let LineTriStripShader = {
-  vertex : `precision mediump float;
+  vertex  : `precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -1736,7 +1994,7 @@ void main() {
   gl_PointSize = pointSize;
 }
 `,
-  fragment : `precision mediump float;
+  fragment: `precision mediump float;
 uniform vec4 color;
 
 varying vec2 vStripUv;
@@ -1758,19 +2016,19 @@ void main() {
 }
   `,
 
-  uniforms : {
-    pointSize : 10.0,
-    objectMatrix : new Matrix4(),
-    color : [0, 0, 0, 1]
+  uniforms: {
+    pointSize   : 10.0,
+    objectMatrix: new Matrix4(),
+    color       : [0, 0, 0, 1]
   },
 
-  attributes : [
+  attributes: [
     "position", "color", "id", "_strip_uv", "_strip_dir"
   ]
 };
 
 export let SubSurfPatchShader = {
-  vertex : `precision mediump float;
+  vertex: `precision mediump float;
   `
 }
 export const ShaderDef = {
@@ -1788,11 +2046,11 @@ export const ShaderDef = {
   SculptShaderSimple   : SculptShaderSimple,
   LineTriStripShader   : LineTriStripShader,
   TexturePaintShader   : TexturePaintShader,
-  FlatMeshTexture      : FlatMeshTexture
+  FlatMeshTexture      : FlatMeshTexture,
+  SculptShaderHexDeform: SculptShaderHexDeform
 };
 
-export let Shaders = {
-};
+export let Shaders = {};
 
 //global for debugging purposes only
 window._Shaders = Shaders;

@@ -13,6 +13,9 @@ if (typeof window !== "undefined") { window.numeric = numeric; }
   numeric.prevtag = Symbol("prevtag");
   numeric.pooltag = Symbol("pooltag");
   numeric.scopetag = Symbol("scopetag");
+  numeric.addblocks = Symbol("addblocks"); //add child blocks to scope, function(scope)
+  numeric.onalloc = Symbol("onalloc");
+  numeric.onfree = Symbol("onfree");
 
   numeric.cachepool = class cachepool extends Array {
     constructor(cb, initialCount = 8) {
@@ -29,24 +32,37 @@ if (typeof window !== "undefined") { window.numeric = numeric; }
       }
     }
 
-    _alloc() {
-      let ret = this.factory();
+    _alloc(existing, noPush) {
+      let ret = !existing ? this.factory() : existing;
+
+      if (ret[numeric.onalloc]) {
+        ret[numeric.onalloc]();
+      }
 
       ret[numeric.freetag] = false;
       ret[numeric.nexttag] = undefined;
       ret[numeric.prevtag] = undefined;
       ret[numeric.pooltag] = this;
 
-      this.push(ret);
+      if (!noPush) {
+        this.push(ret);
+      }
 
       return ret;
     }
 
     alloc() {
+      //XXX
+      return this._alloc();
+
       if (this.freelist.length > 0) {
         let item = this.freelist.pop();
 
         let scope = numeric.scope;
+
+        if (item[numeric.onalloc]) {
+          item[numeric.onalloc]();
+        }
 
         item[numeric.freetag] = false;
         scope.addBlock(item);
@@ -68,12 +84,19 @@ if (typeof window !== "undefined") { window.numeric = numeric; }
       }
 
       item[numeric.freetag] = true;
-      this.freelist.push(item);
+
+      //XXX
+      //this.freelist.push(item);
+
+      if (item[numeric.onfree]) {
+        item[numeric.onfree]();
+      }
 
       return this;
     }
 
     freeAll() {
+      return; //XXX
       for (let item of this) {
         if (!item[numeric.freetag]) {
           if (item[numeric.scopetag]) {
@@ -106,16 +129,28 @@ if (typeof window !== "undefined") { window.numeric = numeric; }
         let ret = new Array(m);
 
         for (let i = 0; i < m; i++) {
-          ret.push(new Array(n));
+          ret[i] = new Array(n);
         }
 
         return ret;
-      }, 8);
+      }, 4192);
 
       numeric.matpools.set(key, pool);
     }
 
-    return pool.alloc();
+    let ret = pool.alloc();
+    //XXX detect modified arrays
+
+    let bad = ret.length !== m;
+    bad = bad || ret[0] === undefined || ret[0].length !== n;
+
+    if (bad) {
+      let i = pool.indexOf(ret);
+      pool[i] = pool._alloc(pool.factory(), true);
+      return pool[i];
+    }
+
+    return ret;
   }
 
   numeric.allocarray = function allocarray(n) {
@@ -127,12 +162,18 @@ if (typeof window !== "undefined") { window.numeric = numeric; }
     if (!pool) {
       pool = new numeric.cachepool(() => {
         return new Array(n);
-      }, 8);
+      }, 4192);
 
       numeric.arraypools.set(key, pool);
     }
 
-    return pool.alloc();
+    let ret = pool.alloc();
+
+    if (ret.length !== n) {
+      ret.length = n;
+    }
+
+    return ret;
   }
 
   numeric.free = function (block) {
@@ -151,6 +192,10 @@ if (typeof window !== "undefined") { window.numeric = numeric; }
 
     //adds block b and any subblocks it contains to this scope
     addBlock(b) {
+      if (!b[numeric.pooltag]) {
+        throw new Error("block was not allocated correctly");
+      }
+
       if (b[numeric.scopetag] === this) {
         return; //block is already in this scope
       }
@@ -161,7 +206,11 @@ if (typeof window !== "undefined") { window.numeric = numeric; }
 
       b[numeric.scopetag] = this;
 
-      if (Array.isArray(b)) {
+      if (b[numeric.addblocks]) {
+        b[numeric.addblocks](this);
+      }
+
+      if (Array.isArray(b)) { //arrays are automatic
         for (let block2 of b) {
           if (typeof block2 === "object" && block2[numeric.pooltag]) {
             this.addBlock(block2);
@@ -200,7 +249,7 @@ if (typeof window !== "undefined") { window.numeric = numeric; }
       if (b === bl.first) {
         bl.first = b[numeric.nexttag];
       }
-      if (b === gl.last) {
+      if (b === bl.last) {
         bl.last = b[numeric.prevtag];
       }
 
@@ -209,7 +258,7 @@ if (typeof window !== "undefined") { window.numeric = numeric; }
       }
 
       if (b[numeric.nexttag]) {
-        b[numeric.nexttag][numeric.prevtav] = b[numeric.prevtab];
+        b[numeric.nexttag][numeric.prevtag] = b[numeric.prevtag];
       }
 
       b[numeric.scopetag] = undefined;
@@ -231,7 +280,7 @@ if (typeof window !== "undefined") { window.numeric = numeric; }
   }
 
   numeric.scope = new numeric.Scope();
-  let scopealloc = new numeric.cachepool(() => new numeric.Scope(), 8);
+  let scopealloc = new numeric.cachepool(() => new numeric.Scope(), 4192);
 
   numeric.start = function () {
     if (numeric._startdepth === 0) {
@@ -2126,8 +2175,30 @@ numeric.all = function(x) { if(typeof x.length === "undefined") return x; return
 
   numeric.epsilon = 2.220446049250313e-16;
 
-  let _qrrets = new numeric.cachering(() => {
-    return {Q: 0, B: undefined};
+  class QRRet {
+    constructor() {
+      this.Q = undefined;
+      this.B = undefined;
+    }
+
+    [numeric.onalloc]() {
+      this.Q = undefined;
+      this.B = undefined;
+    }
+
+    [numeric.addblocks](scope) {
+      if (this.Q !== undefined && typeof this.Q === "object") {
+        scope.addBlock(this.Q);
+      }
+
+      if (this.B !== undefined && typeof this.B === "object") {
+        scope.addBlock(this.B);
+      }
+    }
+  }
+
+  let _qrrets = new numeric.cachepool(() => {
+    return new QRRet();
   }, 2048);
   let _qrtemps = new Map();
 
@@ -2162,12 +2233,12 @@ numeric.all = function(x) { if(typeof x.length === "undefined") return x; return
         iter;
 
     if (m < 3) {
-      let r = _qrrets.next();
+      let r = _qrrets.alloc();
 
       r.Q = Q;
       r.B = array(array(0, m - 1));
 
-      numeric.end(r.Q, r.B[0], r.B);
+      numeric.end(r);
 
       return r;
 
@@ -2205,11 +2276,24 @@ numeric.all = function(x) { if(typeof x.length === "undefined") return x; return
             Q[i] = C[i - j - 1];
           }
 
-          let ret = _qrrets.next();
-          ret.Q = Q;
-          ret.B = QH1.B.concat(numeric.add(QH2.B, j + 1));
+          let ret = _qrrets.alloc();
 
-          numeric.end(ret.Q, ret.B);
+          let d = numeric.add(QH2.B, j + 1);
+
+          ret.B = numeric.allocarray(QH1.B.length + d.length);
+          ret.Q = Q;
+
+          let bi = 0;
+          for (let i=0; i<QH1.B.length; i++) {
+            ret.B[bi++] = QH1.B[i]
+            QH1.B[i] = undefined; //clear reference
+          }
+          for (let i=0; i<d.length; i++) {
+            ret.B[bi++] = d[i];
+            d[i] = undefined; //clear reference
+          }
+
+          numeric.end(ret);
 
           return ret;
           //return {Q: Q, B: QH1.B.concat(numeric.add(QH2.B, j + 1))};
@@ -2270,21 +2354,37 @@ numeric.all = function(x) { if(typeof x.length === "undefined") return x; return
           if (Math.abs(H[k + 1][k]) < epsilon*(Math.abs(H[k][k]) + Math.abs(H[k + 1][k + 1]))) {
             var QH1 = numeric.QRFrancis(numeric.getBlockTemp(H, [0, 0], [k, k]), maxiter);
             var QH2 = numeric.QRFrancis(numeric.getBlockTemp(H, [k + 1, k + 1], [m - 1, m - 1]), maxiter);
+
             B = Array(k + 1);
             for (i = 0; i <= k; i++) { B[i] = Q[i]; }
+
             C = numeric.dot(QH1.Q, B);
             for (i = 0; i <= k; i++) { Q[i] = C[i]; }
+
             B = Array(m - k - 1);
             for (i = k + 1; i < m; i++) { B[i - k - 1] = Q[i]; }
+
             C = numeric.dot(QH2.Q, B);
             for (i = k + 1; i < m; i++) { Q[i] = C[i - k - 1]; }
 
-            let ret = _qrrets.next();
+            let ret = _qrrets.alloc();
             ret.Q = Q;
-            ret.B = QH1.B.concat(numeric.add(QH2.B, k + 1));
 
-            numeric.end(ret.Q);
-            numeric.end(ret.B);
+            let d = numeric.add(QH2.B, k + 1);
+            ret.B = numeric.allocarray(QH1.B.length + d.length);
+
+            let bi = 0;
+            for (let i=0; i<QH1.B.length; i++) {
+              ret.B[bi++] = QH1.B[i]
+              QH1.B[i] = undefined; //clear reference
+            }
+
+            for (let i=0; i<d.length; i++) {
+              ret.B[bi++] = d[i];
+              d[i] = undefined; //clear reference;
+            }
+
+            numeric.end(ret);
 
             return ret;
           }
@@ -2330,8 +2430,16 @@ numeric.all = function(x) { if(typeof x.length === "undefined") return x; return
   }
 
   numeric.eig = function eig(A, maxiter) {
+    numeric.start();
+
     var QH = numeric.toUpperHessenberg(A);
     var QB = numeric.QRFrancis(QH.H, maxiter);
+
+    if (!QB.Q || QB.Q.length <= 1) {
+      console.log("eek!");
+      QB = numeric.QRFrancis(QH.H, maxiter);
+    }
+
     var T = numeric.T;
     var n = A.length, i, k, flag = false, B = QB.B, H = numeric.dot(QB.Q, numeric.dot(QH.H, numeric.transpose(QB.Q)));
     var Q = new T(numeric.dot(QB.Q, QH.Q)), Q0;
@@ -2419,6 +2527,8 @@ numeric.all = function(x) { if(typeof x.length === "undefined") return x; return
     };
 
     //numeric.end(ret.R, ret.E);
+
+    numeric.end();
 
     return ret;
   };

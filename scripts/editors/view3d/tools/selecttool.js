@@ -18,7 +18,6 @@ import {SubsurfDrawer} from '../../../subsurf/subsurf_draw.js';
 import {Light} from "../../../light/light.js";
 import {TranslateOp} from "../transform/transform_ops.js";
 import {nstructjs} from '../../../path.ux/scripts/pathux.js';
-let STRUCT = nstructjs.STRUCT;
 import {Icons} from '../../icon_enum.js';
 import {RotateWidget, ScaleWidget, TranslateWidget} from "../widgets/widget_tools.js";
 import {FlagProperty} from "../../../path.ux/scripts/pathux.js";
@@ -271,10 +270,10 @@ export class ObjectEditor extends ToolMode {
     }
   }
 }
-ObjectEditor.STRUCT = STRUCT.inherit(ObjectEditor, ToolMode) + `
+ObjectEditor.STRUCT = nstructjs.inherit(ObjectEditor, ToolMode) + `
 }`;
 
-nstructjs.manager.add_class(ObjectEditor);
+nstructjs.register(ObjectEditor);
 ToolMode.register(ObjectEditor);
 
 

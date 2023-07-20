@@ -3,9 +3,7 @@ import {saveFile, loadFile} from '../../path.ux/scripts/pathux.js';
 import {PackFlags} from "../../path.ux/scripts/core/ui_base.js";
 
 import {Editor, VelPan} from '../editor_base.js';
-
-import '../../path.ux/scripts/util/struct.js';
-let STRUCT = nstructjs.STRUCT;
+import {nstructjs} from '../../path.ux/scripts/pathux.js';
 import {DataPathError} from '../../path.ux/scripts/pathux.js';
 import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
 import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
@@ -384,7 +382,7 @@ export class DebugEditor extends Editor {
   }}
 }
 
-DebugEditor.STRUCT = STRUCT.inherit(DebugEditor, Editor) + `
+DebugEditor.STRUCT = nstructjs.inherit(DebugEditor, Editor) + `
   displayMode      : int;
   activeFBOHistory : string;
 }

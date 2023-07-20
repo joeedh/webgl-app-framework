@@ -1,13 +1,17 @@
-import '../path.ux/scripts/util/struct.js';
+import {nstructjs} from '../path.ux/pathux.js';
 import * as util from '../util/util.js';
 
 import {EmptyCDArray} from './mesh_base.js';
+import {Icons} from '../editors/icon_enum.js';
 
 export const CDFlags = {
   SELECT             : 1,
   SINGLE_LAYER       : 2,
   TEMPORARY          : 4, //implies IGNORE_FOR_INDEXBUF
-  IGNORE_FOR_INDEXBUF: 8
+  IGNORE_FOR_INDEXBUF: 8,
+  DISABLED           : 16,
+  NO_INTERP          : 32,
+  NO_INTERP_COPY_ONLY: 64
 };
 
 export let CDElemMap = {};
@@ -50,7 +54,6 @@ export class CustomDataElem {
   */
 
   static apiDefine(api, dstruct) {
-
   }
 
   setValue(b) {
@@ -112,7 +115,7 @@ export class CustomDataElem {
     }
   }
 
-  mulScalar() {
+  mulScalar(f) {
     //implement me
     return this;
   }
@@ -142,7 +145,7 @@ export class CustomDataElem {
       uiTypeName  : "uiTypeName",
       defaultName : "defaultName",
       valueSize   : undefined,
-      flag        : 0,
+      flag        : 0, //see CDFlags
 
       //if not undefined, a LayerSettingsBase child class defining overall settings that's not per-element
       settingsClass: undefined,
@@ -181,17 +184,33 @@ CustomDataElem.STRUCT = `
 mesh.CustomDataElem {
 }
 `;
-nstructjs.manager.add_class(CustomDataElem);
+nstructjs.register(CustomDataElem);
 
 export function buildCDAPI(api) {
   let layerst = api.mapStruct(CustomDataLayer, true);
 
   layerst.string("name", "name", "Name");
   layerst.dynamicStruct("typeSettings", "settings", "Settings");
-  let def = layerst.pathmap["settings"];
-  def.customGet(function () {
-    return this.dataref.getTypeSettings();
+  layerst.enum("flag", "flag", CDFlags, "Flags").icons({
+    DISABLED : Icons.DISABLED
   });
+
+  let def = layerst.pathmap["settings"];
+  def.customGetSet(function () {
+    let ret = this.dataref.getTypeSettings();
+
+    if (!ret) {
+      return undefined;
+    }
+
+    let cls = ret.constructor;
+
+    if (!api.hasStruct(cls)) {
+      cls.apiDefine(api, api.mapStruct(cls, true));
+    }
+
+    return ret;
+  }, undefined);
 
   layerst.int("index", "index", "index").readOnly();
   layerst.string("typeName", "typeName", "Type").readOnly();
@@ -306,7 +325,7 @@ export class LayerSettingsBase {
   }
 
   static apiDefine(api) {
-
+    return api.mapStruct(this, true);
   }
 
   copy() {
@@ -345,6 +364,8 @@ export class CustomDataLayer {
     this.typeSettings = undefined;
     this.islandSnapLimit = 0.0001;
     this.index = 0; //index in flat list of layers in elements
+
+    this.layerSet = undefined;
   }
 
   getTypeSettings() {
@@ -403,7 +424,7 @@ mesh.CustomDataLayer {
   typeSettings    : abstract(Object) | this.typeSettings === undefined ? this.__getNothing() : this.typeSettings;
 }
 `;
-nstructjs.manager.add_class(CustomDataLayer);
+nstructjs.register(CustomDataLayer);
 
 export class CDElemArray extends Array {
   constructor(items) {
@@ -473,6 +494,8 @@ export class LayerSet extends Array {
 
   push(layer) {
     super.push(layer);
+
+    layer.layerSet = this;
     this.idmap[layer.id] = layer;
   }
 
@@ -534,7 +557,7 @@ mesh.LayerSet {
   typeName : string;
 }
 `;
-nstructjs.manager.add_class(LayerSet);
+nstructjs.register(LayerSet);
 
 export class CustomData {
   constructor() {
@@ -774,8 +797,8 @@ export class CustomData {
     return name2;
   }
 
-  getLayerSet(typename) {
-    if (!(typename in this.layers)) {
+  getLayerSet(typename, autoCreate=true) {
+    if (autoCreate && !(typename in this.layers)) {
       this.layers[typename] = new LayerSet(typename);
       this.layers[typename].active = undefined;
     }
@@ -852,4 +875,4 @@ mesh.CustomData {
   idgen    : IDGen;
 }
 `;
-nstructjs.manager.add_class(CustomData);
+nstructjs.register(CustomData);

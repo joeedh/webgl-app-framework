@@ -1,8 +1,8 @@
 import {CustomDataElem} from "./customdata.js";
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import {MeshTypes} from "./mesh_base.js";
-import '../path.ux/scripts/util/struct.js';
 import '../util/floathalf.js';
+import {nstructjs} from '../path.ux/pathux.js';
 
 let STRUCT = nstructjs.STRUCT;
 
@@ -98,8 +98,98 @@ UVLayerElem.STRUCT = STRUCT.inherit(UVLayerElem, CustomDataElem, "mesh.UVLayerEl
   flag : byte;
 }
 `;
-nstructjs.manager.add_class(UVLayerElem);
+nstructjs.register(UVLayerElem);
 CustomDataElem.register(UVLayerElem);
+
+
+export class Vector2LayerElem extends CustomDataElem {
+  constructor() {
+    super();
+
+    this.value = new Vector2();
+  }
+
+  static apiDefine(api, dstruct) {
+    dstruct.vec2("value", "value", "value");
+  }
+
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.VERTEX|MeshTypes.EDGE|MeshTypes.LOOP|MeshTypes.FACE,
+      typeName    : "vec2",
+      uiTypeName  : "vec2",
+      defaultName : "Vector 2",
+      valueSize   : 2,
+      flag        : 0
+    }
+  };
+
+  clear() {
+    this.value.zero();
+    return this;
+  }
+
+  setValue(value) {
+    this.value.load(value);
+  }
+
+  add(b) {
+    this.value.add(b.value);
+    return this;
+  }
+
+  addFac(b, fac) {
+    this.value.addFac(b.value, fac);
+    return this;
+  }
+
+  mulScalar(b) {
+    this.value.mulScalar(b);
+    return this;
+  }
+
+  getValue() {
+    return this.value;
+  }
+
+  copyTo(b) {
+    b.flag = this.flag;
+    b.value.load(this.value);
+  }
+
+  copy() {
+    let ret = new Vector2LayerElem();
+    this.copyTo(ret);
+    return ret;
+  }
+
+  interp(dest, datas, ws) {
+    if (datas.length === 0) {
+      return;
+    }
+
+    let u = 0, v = 0;
+
+    for (let i = 0; i < datas.length; i++) {
+      u += ws[i]*datas[i].value[0];
+      v += ws[i]*datas[i].value[1];
+    }
+
+    this.value[0] = u;
+    this.value[1] = v;
+  }
+
+  validate() {
+    return true;
+  }
+}
+
+Vector2LayerElem.STRUCT = STRUCT.inherit(Vector2LayerElem, CustomDataElem, "mesh.Vector2LayerElem") + `
+  value   : vec2;
+}
+`;
+nstructjs.register(Vector2LayerElem);
+CustomDataElem.register(Vector2LayerElem);
 
 export const ORIGINDEX_NONE = -1;
 
@@ -157,7 +247,7 @@ OrigIndexElem.STRUCT = STRUCT.inherit(OrigIndexElem, CustomDataElem, "mesh.OrigI
 }
 `;
 
-nstructjs.manager.add_class(OrigIndexElem);
+nstructjs.register(OrigIndexElem);
 CustomDataElem.register(OrigIndexElem);
 
 
@@ -240,7 +330,7 @@ FloatElem.STRUCT = STRUCT.inherit(FloatElem, CustomDataElem, "mesh.FloatElem") +
   value : float;
 }
 `;
-nstructjs.manager.add_class(FloatElem);
+nstructjs.register(FloatElem);
 CustomDataElem.register(FloatElem);
 
 
@@ -307,7 +397,7 @@ IntElem.STRUCT = STRUCT.inherit(IntElem, CustomDataElem, "mesh.IntElem") + `
   value : int;
 }
 `;
-nstructjs.manager.add_class(IntElem);
+nstructjs.register(IntElem);
 CustomDataElem.register(IntElem);
 
 
@@ -376,7 +466,7 @@ NormalLayerElem.STRUCT = STRUCT.inherit(NormalLayerElem, CustomDataElem, "mesh.N
   no : vec3;
 }
 `;
-nstructjs.manager.add_class(NormalLayerElem);
+nstructjs.register(NormalLayerElem);
 CustomDataElem.register(NormalLayerElem);
 
 export class ColorLayerElem extends CustomDataElem {
@@ -406,8 +496,8 @@ export class ColorLayerElem extends CustomDataElem {
     dstruct.color4("color", "color", "Color");
   }
 
-  setValue(uv) {
-    this.color.load(uv);
+  setValue(color) {
+    this.color.load(color);
   }
 
   getValue() {
@@ -484,7 +574,7 @@ ColorLayerElem.STRUCT = STRUCT.inherit(ColorLayerElem, CustomDataElem, "mesh.Col
   color : array(e, short) | float2half(e);
 }
 `;
-nstructjs.manager.add_class(ColorLayerElem);
+nstructjs.register(ColorLayerElem);
 CustomDataElem.register(ColorLayerElem);
 
 
@@ -556,8 +646,79 @@ Vector3LayerElem.STRUCT = STRUCT.inherit(Vector3LayerElem, CustomDataElem, "mesh
   value : vec3;
 }
 `;
-nstructjs.manager.add_class(Vector3LayerElem);
+nstructjs.register(Vector3LayerElem);
 CustomDataElem.register(Vector3LayerElem);
+
+export class Vector4LayerElem extends CustomDataElem {
+  constructor() {
+    super();
+
+    this.value = new Vector4();
+  }
+
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.VERTEX | MeshTypes.LOOP,
+      typeName    : "vec4",
+      uiTypeName  : "Vector4",
+      defaultName : "Coordinates4",
+      valueSize   : 4,
+      flag        : 0
+    }
+  };
+
+  setValue(val) {
+    this.value.load(val);
+  }
+
+  getValue() {
+    return this.value;
+  }
+
+  copyTo(b) {
+    b.value.load(this.value);
+  }
+
+  copy() {
+    let ret = new Vector4LayerElem();
+    this.copyTo(ret);
+    return ret;
+  }
+
+  interp(dest, datas, ws) {
+    if (datas.length === 0) {
+      return;
+    }
+
+    let x = 0, y = 0, z = 0;
+
+    for (let i = 0; i < datas.length; i++) {
+      x += ws[i]*datas[i].value[0];
+      y += ws[i]*datas[i].value[1];
+      z += ws[i]*datas[i].value[2];
+    }
+
+    dest.value[0] = x;
+    dest.value[1] = y;
+    dest.value[2] = z;
+  }
+
+  validate() {
+    return true;
+  }
+
+  loadSTRUCT(reader) {
+    reader(this);
+    super.loadSTRUCT(reader);
+  }
+}
+
+Vector4LayerElem.STRUCT = STRUCT.inherit(Vector4LayerElem, CustomDataElem, "mesh.Vector4LayerElem") + `
+  value : vec4;
+}
+`;
+nstructjs.register(Vector4LayerElem);
+CustomDataElem.register(Vector4LayerElem);
 
 export class MaskElem extends FloatElem {
   constructor() {
@@ -579,5 +740,5 @@ export class MaskElem extends FloatElem {
 MaskElem.STRUCT = STRUCT.inherit(MaskElem, FloatElem, "mesh.MaskElem") + `
 }
 `;
-nstructjs.manager.add_class(MaskElem);
+nstructjs.register(MaskElem);
 CustomDataElem.register(MaskElem);

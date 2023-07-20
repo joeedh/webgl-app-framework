@@ -8,6 +8,8 @@ import {SelMask} from '../editors/view3d/selectmode.js';
 import {DataBlock} from '../core/lib_api.js';
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../core/simplemesh.js';
 
+import {nstructjs} from '../path.ux/scripts/pathux.js';
+
 export const Generators = [];
 export const GenTypes = {};
 

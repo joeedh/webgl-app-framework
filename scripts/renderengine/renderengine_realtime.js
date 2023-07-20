@@ -10,8 +10,7 @@ import {getFBODebug} from "../editors/debug/gldebug.js";
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
-import '../path.ux/scripts/util/struct.js';
-let STRUCT = nstructjs.STRUCT;
+import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {SceneObject, ObjectFlags} from '../sceneobject/sceneobject.js';
 import {RenderEngine} from "./renderengine_base.js";
 import {Mesh} from '../mesh/mesh.js';
@@ -298,7 +297,7 @@ let sdigest = new util.HashDigest();
 
 export class RenderSettings {
   constructor() {
-    this.sharpen = true;
+    this.sharpen = false;
     this.filterWidth = 1.5;
     this.sharpenWidth = 1;
     this.sharpenFac = 0.4;
@@ -392,26 +391,29 @@ export class RealtimeEngine extends RenderEngine {
 
       nor.outputs.fbo.connect(ao.inputs.fbo);
 
+      if (0) {
+        let blurx = new DenoiseBlur();
+        let blury = new DenoiseBlur();
 
-      let blurx = new DenoiseBlur();
-      let blury = new DenoiseBlur();
+        this.aoPass = blury;
 
-      this.aoPass = blury;
+        this.rendergraph.add(blurx);
+        this.rendergraph.add(blury);
 
-      this.rendergraph.add(blurx);
-      this.rendergraph.add(blury);
+        blury.inputs.axis.setValue(1);
 
-      blury.inputs.axis.setValue(1);
+        blury.inputs.samples.setValue(5);
+        blurx.inputs.samples.setValue(5);
 
-      blury.inputs.samples.setValue(5);
-      blurx.inputs.samples.setValue(5);
+        ao.outputs.fbo.connect(blurx.inputs.fbo);
+        //blurx.outputs.fbo.connect(blury.inputs.fbo);
 
-      ao.outputs.fbo.connect(blurx.inputs.fbo);
-      //blurx.outputs.fbo.connect(blury.inputs.fbo);
-
-      blurx.outputs.fbo.connect(blury.inputs.fbo);
-      blury.outputs.fbo.connect(base.inputs.ao);
-
+        blurx.outputs.fbo.connect(blury.inputs.fbo);
+        blury.outputs.fbo.connect(base.inputs.ao);
+      } else {
+        this.aoPass = ao;
+        ao.outputs.fbo.connect(base.inputs.ao);
+      }
       //ao.outputs.fbo.connect(base.inputs.ao);
       //ao.outputs.fbo.connect(base.inputs.ao);
     } else {
@@ -584,7 +586,6 @@ export class RealtimeEngine extends RenderEngine {
   }
 
   _render(camera, gl, viewbox_pos, viewbox_size, scene, extraDrawCB) {
-
     this.scene = scene;
     this.gl = gl;
     this.camera = camera;
@@ -610,8 +611,9 @@ export class RealtimeEngine extends RenderEngine {
 
     for (let node of graph.sortlist) {
       if (node instanceof OutputPass) {
-        output = node;
-        break;
+        if (output === undefined) {
+          output = node;
+        }
       } else {
         for (let k in node.outputs) {
           let sock = node.outputs[k];
@@ -638,6 +640,7 @@ export class RealtimeEngine extends RenderEngine {
       gl.disable(gl.DEPTH_TEST);
       gl.disable(gl.BLEND);
       gl.depthMask(false);
+
 
       rctx.drawFinalQuad(output.outputs.fbo.getValue());
 
@@ -923,7 +926,7 @@ export class RealtimeEngine extends RenderEngine {
 
       if (program !== undefined) {
         mat._program = program;
-        program.shaderdef.setUniforms(mat.graph, program.uniforms);
+        program.shaderdef.setUniforms(gl, mat.graph, program.uniforms);
       }
     }
 

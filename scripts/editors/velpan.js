@@ -1,5 +1,5 @@
 import {Matrix4, Vector2} from "../util/vectormath.js";
-import {StringProperty, Vec2Property, ToolOp, UndoFlags, keymap} from '../path.ux/scripts/pathux.js';
+import {StringProperty, nstructjs, Vec2Property, ToolOp, UndoFlags, keymap} from '../path.ux/scripts/pathux.js';
 import {Icons} from './icon_enum.js';
 import * as util from '../util/util.js';
 
@@ -108,8 +108,8 @@ export class VelPan {
 
   updateMatrix() {
     let s = this.scale;
-    let min = new Vector2(this.bounds[0]).div(s);
-    let max = new Vector2(this.bounds[1]).div(s);
+    let min = new Vector2(this.bounds[0]).mul(s);
+    let max = new Vector2(this.bounds[1]).mul(s);
 
     this.pos.max(min);
     this.pos.min(max);
@@ -156,7 +156,7 @@ VelPan {
   flag   : int;
 }
 `;
-nstructjs.manager.add_class(VelPan);
+nstructjs.register(VelPan);
 
 
 export class VelPanPanOp extends ToolOp {

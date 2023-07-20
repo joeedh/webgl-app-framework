@@ -1,13 +1,12 @@
 import {NodeEditor} from "./NodeEditor.js";
 import {Editor} from "../editor_base.js";
-import '../../path.ux/scripts/util/struct.js';
-let STRUCT = nstructjs.STRUCT;
 import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
 import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';
 import {MakeMaterialOp} from "../../core/material.js";
 import {Icons} from "../icon_enum.js";
+import {nstructjs} from '../../path.ux/scripts/pathux.js';
 
 export class MaterialEditor extends NodeEditor {
   constructor() {
@@ -179,7 +178,7 @@ export class MaterialEditor extends NodeEditor {
   }}
 };
 
-MaterialEditor.STRUCT = STRUCT.inherit(MaterialEditor, NodeEditor) + `
+MaterialEditor.STRUCT = nstructjs.inherit(MaterialEditor, NodeEditor) + `
   velpan       : VelPan;
   graphPath    : string;
   activeMatMap : string | JSON.stringify(this.activeMatMap);

@@ -413,6 +413,15 @@ Closure vec3toclosure(vec3 c) {
   return ret;
 }
 
+Closure vec4toclosure(vec4 c) {
+  Closure ret;
+  
+  ret.alpha = c[3];
+  ret.emission = c.rgb;
+  
+  return ret;
+}
+
 Closure floattoclosure(float c) {
   Closure ret;
   

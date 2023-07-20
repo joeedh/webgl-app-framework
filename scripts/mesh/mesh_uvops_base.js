@@ -17,7 +17,7 @@ export class MeshOpBaseUV extends MeshOp {
   static tooldef() {
     return {
       inputs: ToolOp.inherit({
-        selectedFacesOnly: new BoolProperty()
+        selectedFacesOnly: new BoolProperty().saveLastValue()
       })
     }
   }

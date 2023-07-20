@@ -240,10 +240,84 @@ export function ray_tri_isect(orig, dir, vert0, vert1, vert2) {
 }
 
 
-
 let dir = new Vector3();
 let tmps = util.cachering.fromConstructor(Vector3, 32);
 let tmp1 = new Vector3();
+
+import * as math from './math.js';
+
+export function tri_cone_isect(p1, p2, radius1, radius2, v1, v2, v3, clip=false) {
+  let ret = math.closest_point_on_tri(p1, v1, v2, v3);
+
+  if (!ret) {
+    //bad tri!
+    return false;
+  }
+
+  let d = math.closest_point_on_line(ret.co, p1, p2, clip);
+
+  let co = d[0];
+  let t = d[1]// / p1.vectorDistance(p2);
+
+  let r = radius1 + (radius2 - radius1) * t;
+  //console.log(d, "DIS", ret.co.vectorDistance(co), "R", r, t, radius1, radius2);
+
+  return ret.co.vectorDistance(co) <= r;
+}
+
+let conetmp1 = new Vector3();
+export function aabb_cone_isect(co, vector, radius1, radius2, min, max) {
+  if (point_in_aabb(co, min, max)) {
+    return true;
+  }
+
+  let rlen = vector.vectorLength();
+  let ray = conetmp1.load(vector);
+
+  if (rlen > 0.00001) {
+    ray.mulScalar(1.0 / rlen);
+    radius2 /= rlen;
+  }
+
+  let abs = Math.abs;
+
+  for (let axis=0; axis<3; axis++) {
+    let p, t1, t2;
+
+    let a1 = (axis+1)%3;
+    let a2 = (axis+2)%3;
+
+    let amin = min[axis];
+    let amax = max[axis];
+    let r;
+
+    if (Math.abs(ray[axis]) > 0.0001) {
+      t1 = (amin - co[axis]) / ray[axis];
+      t2 = (amax - co[axis]) / ray[axis];
+
+      p = tmp1.load(co).addFac(ray, t1);
+
+      r = radius1 + (radius2 - radius1) * t1;
+    } else {
+      continue;
+    }
+
+    let ok;
+
+    if (t1 > 0.0 && t1 < rlen && p[a1] >= min[a1]-r && p[a1] <= max[a1]+r && p[a2] >= min[a2]-r && p[a2] <= max[a2]+r) {
+      return true;
+    }
+
+    r = radius1 + (radius2 - radius1) * t2;
+    p.load(co).addFac(ray, t2);
+
+    if (t2 > 0.0 && t2 < rlen && p[a1] >= min[a1] && p[a1] <= max[a1] && p[a2] >= min[a2] && p[a2] <= max[a2]) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 export function aabb_ray_isect(co, indir, min, max) {
   if (point_in_aabb(co, min, max)) {

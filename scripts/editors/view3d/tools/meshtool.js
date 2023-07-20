@@ -4,11 +4,8 @@ import {WidgetFlags} from "../widgets/widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {HotKey, KeyMap} from "../../editor_base.js";
 import {Icons} from '../../icon_enum.js';
-import {Unit} from "../../../path.ux/scripts/core/units.js";
 import {SelMask} from "../selectmode.js";
 import {resolveMeshes} from "../../../mesh/mesh_ops_base.js";
-import '../../../path.ux/scripts/util/struct.js';
-let STRUCT = nstructjs.STRUCT;
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../../../util/vectormath.js";
 import {Shaders} from '../../../shaders/shaders.js';
 import {MovableWidget} from '../widgets/widget_utils.js';
@@ -19,6 +16,7 @@ import {ObjectFlags, SceneObject} from "../../../sceneobject/sceneobject.js";
 import {Mesh} from "../../../mesh/mesh.js";
 import {FindnearestMesh} from '../findnearest/findnearest_mesh.js';
 import {ToggleFlagOp} from '../../../mesh/mesh_flagops.js';
+import {nstructjs} from '../../../path.ux/scripts/pathux.js';
 
 //import '../../../mesh/select_ops.js';
 //import '../../../mesh/mesh_ops.js';
@@ -32,6 +30,8 @@ export class MeshToolBase extends ToolMode {
     super(...arguments);
 
     this.transformConstraint = undefined; //string, e.g. xy
+
+    this.transparentMeshElements = false;
     this.drawOwnIds = true;
     this.meshPath = "object";
     this.selectMask = SelMask.GEOM;
@@ -39,6 +39,8 @@ export class MeshToolBase extends ToolMode {
 
     this.start_mpos = new Vector2();
     this.last_mpos = new Vector2();
+
+    this.vertexPointSize = 8;
   }
 
   defineKeyMap() {
@@ -131,6 +133,8 @@ export class MeshToolBase extends ToolMode {
   }
 
   on_mousedown(e, x, y, was_touch) {
+    console.warn(e.type, e, x, y, was_touch, e.shiftKey);
+
     let ctx = this.ctx;
 
     this.start_mpos[0] = x;
@@ -455,7 +459,7 @@ export class MeshToolBase extends ToolMode {
 
       let program = Shaders.MeshIDShader;
 
-      uniforms.pointSize = 15;
+      uniforms.pointSize = this.vertexPointSize*1.5;
       uniforms.polygonOffset = 1.0;
 
       gl.enable(gl.DEPTH_TEST);
@@ -538,13 +542,25 @@ export class MeshToolBase extends ToolMode {
 
       let program = Shaders.MeshEditShader;
 
-      gl.enable(gl.DEPTH_TEST);
-      gl.depthMask(true);
+      if (!this.transparentMeshElements) {
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthMask(true);
+      } else {
+        gl.depthMask(false);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.disable(gl.DEPTH_TEST);
+      }
 
-      uniforms.pointSize = 8;
+      uniforms.pointSize = this.vertexPointSize;
       uniforms.polygonOffset = 1.0;
 
       mesh.drawElements(view3d, gl, this.drawSelectMask, uniforms, program, object, true);
+
+      if (this.transparentMeshElements) {
+        gl.depthMask(true);
+        gl.enable(gl.DEPTH_TEST);
+      }
     }
 
     this.drawCursor = this.hasWidgetHighlight();
@@ -585,7 +601,7 @@ export class MeshToolBase extends ToolMode {
 
 }
 
-MeshToolBase.STRUCT = STRUCT.inherit(MeshToolBase, ToolMode) + `
+MeshToolBase.STRUCT = nstructjs.inherit(MeshToolBase, ToolMode) + `
 }`;
 nstructjs.register(MeshToolBase);
 //ToolMode.register(MeshToolBase);

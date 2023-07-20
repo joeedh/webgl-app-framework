@@ -1,7 +1,6 @@
 import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 
-import '../../path.ux/scripts/util/struct.js';
-let STRUCT = nstructjs.STRUCT;
+import {nstructjs} from '../../path.ux/scripts/pathux.js';
 
 import {FBO} from '../../core/fbo.js';
 import {getShader, ShaderProgram, Texture} from "../../core/webgl.js";

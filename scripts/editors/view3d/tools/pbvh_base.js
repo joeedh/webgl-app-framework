@@ -2,7 +2,7 @@ import {
   BaseVector,
   Curve1DProperty, EnumProperty, Vec2Property,
   FlagProperty, FloatProperty, keymap, Mat4Property, Matrix4, ToolOp,
-  ToolProperty, Vector2, Vector3, Vector4
+  ToolProperty, Vector2, Vector3, Vector4, nstructjs
 } from '../../../path.ux/scripts/pathux.js';
 
 import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes} from '../../../brush/brush.js';
@@ -410,7 +410,7 @@ export class SetBrushRadius extends ToolOp {
     return super.modalStart(ctx);
   }
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     let mpos = this.mpos;
 
     mpos[0] = e.x;
@@ -472,7 +472,7 @@ export class SetBrushRadius extends ToolOp {
     this.exec(ctx);
   }
 
-  on_mouseup(e) {
+  on_pointerup(e) {
     this.modalEnd(false);
   }
 
@@ -596,7 +596,7 @@ export function calcConcaveLayer(mesh) {
   }
 }
 
-import {bez4} from '../../../util/bezier.js';
+import {bez4, dbez4} from '../../../util/bezier.js';
 import {copyMouseEvent} from '../../../path.ux/scripts/path-controller/util/events.js';
 import {CameraModes} from '../view3d_base.js';
 
@@ -605,6 +605,8 @@ export class PaintOpBase extends ToolOp {
     super();
 
     this.task = undefined;
+
+    this.grabMode = false;
 
     this.mfinished = false;
     this.last_mpos = new Vector2();
@@ -654,7 +656,9 @@ export class PaintOpBase extends ToolOp {
     let ret = mode === SculptTools.SHARP || mode === SculptTools.GRAB;
     ret = ret || mode === SculptTools.SNAKE; // || mode === SculptTools.SMOOTH;
     ret = ret || (!isPaint && mode !== SculptTools.GRAB && brush.pinch !== 0.0);
-    ret = ret || mode === SculptTools.PINCH;
+    ret = ret || mode === SculptTools.PINCH || mode === SculptTools.SLIDE_RELAX;
+
+    //ret = ret || brush.autosmooth > 0 || brush.rake > 0 || brush.pinch > 0;
 
     if (brush.texUser.texture) {
       ret = ret || (brush.texUser.flag & TexUserFlags.ORIGINAL_CO);
@@ -748,6 +752,7 @@ export class PaintOpBase extends ToolOp {
           let p2 = new PathPoint(undefined, ds);
           for (let j = 0; j < 2; j++) {
             p2.co[j] = bez4(a[j], b[j], c[j], d[j], s);
+            p2.vel[j] = dbez4(a[j], b[j], c[j], d[j], s)*ds;
           }
 
           p2.color = "orange";
@@ -760,12 +765,12 @@ export class PaintOpBase extends ToolOp {
           this.path.push(p2);
         }
 
-        p.vel.load(p.co).sub(lastp.co);
+        p.vel.load(d).sub(c).mulScalar(-3.0*ds);
+
         p.acc.load(p.vel).sub(lastp.vel);
         p.dt = dt;
 
         if (0) {
-
           let p2 = new PathPoint(co, dt*0.5);
           path.push(p2);
 
@@ -799,7 +804,7 @@ export class PaintOpBase extends ToolOp {
     let n = new Vector2();
     let color = "rgba(255, 255, 255, 0.4)";
 
-    for (let pi=start; pi<this.path.length; pi++) {
+    for (let pi = start; pi < this.path.length; pi++) {
       let p = this.path[pi];
 
       if (lastp) {
@@ -811,8 +816,9 @@ export class PaintOpBase extends ToolOp {
         n.add(p.origco);
 
         this.makeTempLine(lastp.co, p.co, color);
+
+        //this.makeTempLine(p.co, n, p.color);
         //this.makeTempLine(lastp.origco, p.origco, p.color);
-        //this.makeTempLine(p.origco, n, p.color);
       }
       lastp = p;
     }
@@ -841,7 +847,7 @@ export class PaintOpBase extends ToolOp {
     }
   }
 
-  on_mousemove(e, in_timer = false) {
+  on_pointermove(e, in_timer = false) {
     if (this.mfinished) {
       return; //wait for modalEnd
     }
@@ -869,7 +875,7 @@ export class PaintOpBase extends ToolOp {
       let e2 = copyMouseEvent(e);
 
       this.queue.push([e2, p, pi]);
-      //this.on_mousemove_intern(e, p.co[0], p.co[1], in_timer, pi !== this.path.length-1);
+      //this.on_pointermove_intern(e, p.co[0], p.co[1], in_timer, pi !== this.path.length-1);
     }
 
     if (!this.task) {
@@ -880,11 +886,11 @@ export class PaintOpBase extends ToolOp {
   makeTask() {
     let this2 = this;
 
-    return (function*() {
+    return (function* () {
       while (this2.queue.length > 0) {
         let [e, p, pi] = this2.queue.shift();
 
-        let iter = this2.on_mousemove_intern(e, p.co[0], p.co[1], true, pi !== this2.path.length-1);
+        let iter = this2.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this2.path.length - 1);
 
         if (typeof iter === "object" && iter[Symbol.iterator]) {
           for (let step of iter) {
@@ -912,7 +918,7 @@ export class PaintOpBase extends ToolOp {
     //console.log("delayMode:", delayMode);
   }
 
-  on_mousemove_intern(e, x = e.x, y = e.y, in_timer = false, isInterp=false) {
+  on_pointermove_intern(e, x = e.x, y = e.y, in_timer = false, isInterp = false) {
     //this.makeTempLine()
 
     let ctx = this.modal_ctx;
@@ -970,6 +976,12 @@ export class PaintOpBase extends ToolOp {
     return this.sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp);
   }
 
+  getBVH(mesh) {
+    return mesh.getBVH({
+      auto_update: false
+    });
+  }
+
   sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp) {
     let brush = this.inputs.brush.getValue();
     let mode = brush.tool;
@@ -1011,7 +1023,7 @@ export class PaintOpBase extends ToolOp {
     let ob = ctx.object;
     let mesh = ob.data;
 
-    let bvh = mesh.getBVH(false);
+    let bvh = this.getBVH(mesh);
 
     let axes = [-1];
     let sym = mesh.symFlag;
@@ -1067,7 +1079,7 @@ export class PaintOpBase extends ToolOp {
     let origco = new Vector4();
 
     if (!isect) {
-      if ((mode === SculptTools.GRAB || (mode === SculptTools.SNAKE)) && !this._first) {
+      if ((this.grabMode || mode === SculptTools.GRAB || (mode === SculptTools.SNAKE)) && !this._first) {
         let p = new Vector3(this.last_p);
         p.multVecMatrix(obmat);
 
@@ -1295,7 +1307,7 @@ export class PaintOpBase extends ToolOp {
     }
   }
 
-  on_mouseup(e) {
+  on_pointerup(e) {
     this.mfinished = true;
     this.modalEnd(false);
   }
@@ -1458,8 +1470,7 @@ export class MaskOpBase extends ToolOp {
           let node = p.customData[cd_node].node;
 
           if (node) {
-            node.flag |= updateflag;
-            mesh.bvh.updateNodes.add(node);
+            node.setUpdateFlag(updateflag);
           }
         }
       }
@@ -1487,8 +1498,7 @@ export class MaskOpBase extends ToolOp {
         if (cd_node) {
           let node = v.customData[cd_node].node;
           if (node) {
-            node.flag |= updateflag;
-            mesh.bvh.updateNodes.add(node);
+            node.setUpdateFlag(updateflag);
           }
         }
       }
@@ -1540,8 +1550,7 @@ export class MaskOpBase extends ToolOp {
             if (updateBVHNodes) {
               let node = p.customData[cd_node].node;
               if (node) {
-                node.flag |= updateflag;
-                bvh.updateNodes.add(node);
+                node.setUpdateFlag(updateflag);
               }
             }
           }
@@ -1553,8 +1562,7 @@ export class MaskOpBase extends ToolOp {
           if (updateBVHNodes) {
             let node = v.customData[cd_node].node;
             if (node) {
-              node.flag |= updateflag;
-              bvh.updateNodes.add(node);
+              node.setUpdateFlag(updateflag);
             }
           }
         }

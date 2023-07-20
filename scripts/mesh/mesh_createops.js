@@ -64,8 +64,8 @@ export class MeshCreateOp extends MeshOp {
       inputs: ToolOp.inherit({
         makeNewObject  : new BoolProperty(false),
         transformMatrix: new Mat4Property(),
-        _objectID : new IntProperty(-1).private(),
-        _meshID : new IntProperty(-1).private()
+        _objectID      : new IntProperty(-1).private(),
+        _meshID        : new IntProperty(-1).private()
       }),
 
       is_modal: true,
@@ -422,6 +422,72 @@ export class MakeSphere extends MeshCreateOp {
 ToolOp.register(MakeSphere);
 
 
+export class MakeCylinder extends MeshCreateOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      toolpath: "mesh.make_cylinder",
+      uiname  : "Make Cylinder",
+      is_modal: true,
+      inputs  : ToolOp.inherit({
+        size    : new FloatProperty(1.0).setRange(0.0001, 10000.0).saveLastValue(),
+        sides   : new IntProperty(32).setRange(3, 512).noUnits().saveLastValue(),
+        segments: new IntProperty(1).setRange(3, 512).noUnits().saveLastValue(),
+      }),
+      outputs : ToolOp.inherit()
+    }
+  }
+
+  internalCreate(ob, mesh, mat) {
+    let size = this.inputs.size.getValue()*0.5;
+    let tot = this.inputs.sides.getValue();
+    let segs = this.inputs.segments.getValue();
+    let z = -size, dz = 2*size/(segs);
+
+    let rings = [];
+
+    for (let step = 0; step < segs + 1; step++, z += dz) {
+      let ring = new Array(tot);
+      rings.push(ring);
+
+      let t = -Math.PI, dt = (2.0*Math.PI)/tot;
+
+      for (let i = 0; i < tot; i++, t += dt) {
+        let x = Math.cos(t)*size*0.5;
+        let y = Math.sin(t)*size*0.5;
+
+        let v1 = new Vector3();
+
+        v1[0] = x;
+        v1[1] = y;
+        v1[2] = z;
+
+        v1 = mesh.makeVertex(v1);
+        ring[i] = v1;
+      }
+    }
+
+    for (let i = 0; i < rings.length - 1; i++) {
+      let ring1 = rings[i], ring2 = rings[i + 1];
+
+      for (let j = 0; j < tot; j++) {
+        let j2 = (j + 1)%tot;
+
+        let v1 = ring1[j], v2 = ring1[j2];
+        let v3 = ring2[j2], v4 = ring2[j];
+
+        mesh.makeQuad(v1, v2, v3, v4);
+      }
+    }
+  }
+}
+
+ToolOp.register(MakeCylinder);
+
+
 export class MakeIcoSphere extends MeshCreateOp {
   constructor() {
     super();
@@ -433,7 +499,7 @@ export class MakeIcoSphere extends MeshCreateOp {
       uiname  : "Make Ico Sphere",
       is_modal: true,
       inputs  : ToolOp.inherit({
-        size     : new FloatProperty(1.0).setRange(0.0001, 10000.0).saveLastValue(),
+        size        : new FloatProperty(1.0).setRange(0.0001, 10000.0).saveLastValue(),
         subdivisions: new IntProperty(2).setRange(0, 8).saveLastValue(),
         //size2 : new FloatProperty(1.0),
         //ratio : new FloatProperty(1.0)
@@ -458,10 +524,10 @@ export class MakeIcoSphere extends MeshCreateOp {
 
     let steps = 5;
 
-    let dth = (Math.PI*2.0) / (steps);
+    let dth = (Math.PI*2.0)/(steps);
     let th = -Math.PI;
 
-    for (let i=0; i<steps; i++, th += dth) {
+    for (let i = 0; i < steps; i++, th += dth) {
       let co = new Vector3();
 
       co[0] = Math.cos(th)*size*size2;
@@ -472,14 +538,14 @@ export class MakeIcoSphere extends MeshCreateOp {
     }
 
     let cent = new Vector3();
-    for (let i=2; i<vs.length; i++) {
+    for (let i = 2; i < vs.length; i++) {
       cent.add(vs[i]);
     }
     cent.mulScalar(1.0/3.0);
 
     console.log("cent", cent);
 
-    for (let i=0; i<vs.length; i++) {
+    for (let i = 0; i < vs.length; i++) {
       vs[i] = mesh.makeVertex(vs[i]);
 
       if (i > 0) {
@@ -490,8 +556,8 @@ export class MakeIcoSphere extends MeshCreateOp {
       //vs[i].normalize().mulScalar(size);
     }
 
-    for (let i=2; i<vs.length; i++) {
-      let i2 = ((i-2) + 1) % (vs.length - 2);
+    for (let i = 2; i < vs.length; i++) {
+      let i2 = ((i - 2) + 1)%(vs.length - 2);
       i2 += 2;
 
       mesh.makeTri(vs[0], vs[i], vs[i2]);
@@ -499,7 +565,7 @@ export class MakeIcoSphere extends MeshCreateOp {
     }
 
 
-    for (let i=0; i<levels; i++) {
+    for (let i = 0; i < levels; i++) {
       //break
       splitEdgesSmart2(mesh, new Set(mesh.edges));
 
@@ -510,7 +576,7 @@ export class MakeIcoSphere extends MeshCreateOp {
         tot++;
       }
 
-      cent.mulScalar(1.0 / tot);
+      cent.mulScalar(1.0/tot);
       let co = new Vector3();
 
       for (let v of mesh.verts) {
@@ -530,11 +596,11 @@ export class MakeIcoSphere extends MeshCreateOp {
           continue;
         }
 
-        co.mulScalar(1.0 / tot);
+        co.mulScalar(1.0/tot);
         v.interp(co, 0.5);
       }
 
-      if (i === levels-1) {
+      if (i === levels - 1) {
         for (let v of mesh.verts) {
           v.sub(cent).normalize().mulScalar(size);
         }
@@ -798,7 +864,7 @@ export class CreateMeshGenOp extends ToolOp {
       uiname  : "Add Procedural",
       toolpath: "mesh.procedural_add",
       inputs  : {
-        type: new EnumProperty(0, GenTypes),
+        type     : new EnumProperty(0, GenTypes),
         setActive: new BoolProperty(true)
       },
       outputs : {
@@ -895,7 +961,7 @@ export class ProceduralToMesh extends ToolOp {
       uiname  : "Convert Procedural To Mesh",
       toolpath: "mesh.procedural_to_mesh",
       inputs  : {
-        objectId: new IntProperty(-1).private(),
+        objectId   : new IntProperty(-1).private(),
         triangulate: new BoolProperty(false)
       }
     }
@@ -962,7 +1028,7 @@ export class ImportOBJOp extends MeshCreateOp {
       uiname  : "Import OBJ (internal)",
       toolpath: "mesh.import_obj",
       inputs  : ToolOp.inherit({
-        data : new StringProperty().private()
+        data: new StringProperty().private()
       }),
       outputs : ToolOp.inherit({})
     }

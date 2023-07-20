@@ -694,11 +694,11 @@ export function print_stack(err) {
   try {
     var cs = get_callstack(err);
   } catch (err2) {
-    console.log("Could not fetch call stack.");
+    console.warn("Could not fetch call stack.");
     return;
   }
 
-  console.log("Callstack:");
+  console.warn("Callstack:");
   for (var i = 0; i < cs.length; i++) {
     console.log(cs[i]);
   }

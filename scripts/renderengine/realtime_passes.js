@@ -5,8 +5,6 @@ import {FBO} from '../core/fbo.js';
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import * as util from '../util/util.js';
-import '../path.ux/scripts/util/struct.js';
-let STRUCT = nstructjs.STRUCT;
 import {SceneObject, ObjectFlags} from '../sceneobject/sceneobject.js';
 import {RenderEngine} from "./renderengine_base.js";
 import {Mesh} from '../mesh/mesh.js';
@@ -197,6 +195,7 @@ export class BasePass extends RenderPass {
 
     let shiftx = (shift[0]+(Math.random()-0.5)*scale)*r;
     let shifty = (shift[1]+(Math.random()-0.5)*scale)*r;
+    //let projectionMatrix = rctx.drawmats.rendermat;
     let projectionMatrix = rctx.engine.render_intern(rctx.drawmats, rctx.gl, zero, rctx.size, rctx.scene, shiftx, shifty);
 
     let w = shift[2];
@@ -215,6 +214,7 @@ export class BasePass extends RenderPass {
 
     if (rctx.engine.extraDrawCB) {
       rctx.engine.extraDrawCB(new Matrix4(projectionMatrix));
+
       gl.disable(gl.DEPTH_TEST);
       gl.disable(gl.BLEND);
     }
@@ -329,6 +329,7 @@ export class AOPass extends RenderPass {
   constructor() {
     super();
     this.sizeScale = 0.25;
+
   }
 
   static nodedef() {return {
@@ -360,6 +361,7 @@ vec4 unproject(vec4 p) {
 }
 
 float rand(float x, float y, float seed) {
+#if 1
   //partially de-correlate with blue noise mask
   float sf = sampleBlue(vec2(x, y))[0];
   
@@ -372,6 +374,9 @@ float rand(float x, float y, float seed) {
 
   //calc final random value
   seed += sf*1012.23432; 
+#else  
+  seed += fract(x*y*10.23423) + fract(x*3.141432) + fract(y*4.23543);
+#endif
   
   float f = fract(fract(seed*312.23432) + seed);
   //float f = fract(seed*sqrt(3.0) + cos(seed*23.0));
@@ -381,6 +386,12 @@ float rand(float x, float y, float seed) {
 }
 
     `,
+    shader2 : `
+      vec4 color = texture2D(fbo_rgba, v_Uv);
+      gl_FragColor = color; //vec4(v_Uv[0], v_Uv[1], 1.0, 1.0);
+      gl_FragDepth = sampleDepth(fbo_depth, v_Uv);  
+    `,
+
     shader : `
   vec4 p = vec4(gl_FragCoord.xyz, 1.0);
   p.xy = (p.xy / size)*2.0 - 1.0;
@@ -435,22 +446,21 @@ float rand(float x, float y, float seed) {
   }
 
   f = tot == 0.0 ? 1.0 : f / tot;
+  f = fract(f);
   f = min(f, 1.0);
   
   f = pow(1.0 - f, factor);
 
   //f = rand(v_Uv[0], v_Uv[1], 0.0);
-  f = clamp(f, 0.0, 1.0);
+  //f = clamp(f, 0.0, 1.0);
+  
   f = isnan(f) ? 1.0 : f;
-   
+  
   float depth = sampleDepth(fbo_depth, v_Uv);
-   
-  vec4 color = texture2D(fbo_rgba, v_Uv);
   
   //f = sampleBlue(v_Uv)[0];
-  gl_FragColor = vec4(f, f, depth, 1.0);
-  gl_FragDepth = depth;
-  
+  gl_FragColor = vec4(f, f, f, 1.0);
+  gl_FragDepth = depth;  
 `
   }}
 

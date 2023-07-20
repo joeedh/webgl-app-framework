@@ -508,7 +508,7 @@ function api_define_material(api) {
     //do nothing
   }*/);
 
-  st.dynamicStruct("", "shader", "shader", "Shading Node");
+  st.dynamicStruct("", "shader", "Shading Node");
   //dynamicStruct return a struct, not the owning datapath
   def = st.pathmap.shader;
   console.log("DEF", def);

@@ -7,6 +7,7 @@ import {GraphFlags, NodeFlags} from "../core/graph.js";
 import {
   CombModes, CombPattern, ProceduralTex, ProceduralTexUser, TexUserFlags, TexUserModes
 } from '../texture/proceduralTex.js';
+import {nstructjs} from '../path.ux/pathux.js';
 
 function feq(a, b) {
   return Math.abs(a - b) < 0.00001;
@@ -53,10 +54,13 @@ export const SculptTools = {
   WING_SCRAPE     : 12,
   PINCH           : 13,
   DIRECTIONAL_FAIR: 14,
+  SLIDE_RELAX     : 15,
+  BVH_DEFORM      : 16,
   PAINT           : 128,
   PAINT_SMOOTH    : 129,
   COLOR_BOUNDARY  : 130,
   TEXTURE_PAINT   : 150,
+  FACE_SET_DRAW   : 151
 };
 
 export const DynTopoFlags = {
@@ -987,6 +991,14 @@ export function makeDefaultBrushes() {
   brush.dynamics.strength.useDynamics = true;
   brush.dynamics.autosmooth.useDynamics = false;
 
+  brush = bmap[SculptTools.SLIDE_RELAX];
+  brush.autosmooth = 0.05;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+  brush.dynamics.strength.useDynamics = false;
+  brush.dynamics.autosmooth.useDynamics = false;
+  brush.spacing = 0.04;
+  brush.smoothProj = 0.85;
+
   return brushes;
 }
 
@@ -1164,6 +1176,14 @@ export function makeDefaultBrushes_MediumRes() {
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARPER);
   brush.dynamics.strength.useDynamics = true;
   brush.dynamics.autosmooth.useDynamics = false;
+
+  brush = bmap[SculptTools.SLIDE_RELAX];
+  brush.autosmooth = 0.05;
+  brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
+  brush.dynamics.strength.useDynamics = false;
+  brush.dynamics.autosmooth.useDynamics = false;
+  brush.spacing = 0.04;
+  brush.smoothProj = 0.85;
 
   return brushes;
 }

@@ -63,7 +63,7 @@ export class GPUSelectBuffer {
   draw(ctx, gl, view3d, selmask=ctx.selectMask) {
     console.log("Selection Buffer Draw");
 
-    if (cconst.DEBUG.debugUIUpdatePerf) {
+    if (window.DEBUG.debugUIUpdatePerf) {
       return;
     }
 

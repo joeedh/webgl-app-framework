@@ -4,7 +4,46 @@ import * as math from '../util/math.js';
 import '../util/numeric.js';
 import {applyTriangulation, triangulateFace} from './mesh_tess.js';
 
-import {getArrayTemp, LogTags} from './mesh_base.js';
+import {getArrayTemp, MeshTypes, LogContext, LogTags} from './mesh_base.js';
+import {CDFlags} from './customdata.js';
+
+let lctx_tmp = new LogContext();
+let lctx_forward = undefined;
+let lctx_f_mesh = undefined;
+
+lctx_tmp.onnew = function(e, type) {
+  if (e.type !== MeshTypes.EDGE) {
+    if (lctx_forward) {
+      lctx_forward.onnew(e, type);
+    }
+    return;
+  }
+
+  let flatlist = lctx_f_mesh.edges.customData.flatlist;
+
+  for (let i=0; i<2; i++) {
+    let v = i ? e.v2 : e.v1;
+
+    for (let e2 of v.edges) {
+      if (e !== e2) {
+        for (let i=0; i<e.customData.length; i++) {
+          if (!(flatlist[i].flag & CDFlags.NO_INTERP)) {
+            e2.customData[i].copyTo(e.customData[i]);
+          }
+        }
+
+        if (lctx_forward) {
+          lctx_forward.onnew(e, type);
+        }
+        return;
+      }
+    }
+  }
+
+  if (lctx_forward) {
+    lctx_forward.onnew(e, type);
+  }
+}
 
 let countmap = [
   [0], [0,0], [0,0,0], [ //tris
@@ -71,6 +110,7 @@ export class Pattern {
 
     this.facetemps = [];
     this.facetemps2 = [];
+    this._temps3 = [];
 
     if (verts) {
       this.array1 = new Array(verts.length + newverts.length);
@@ -588,6 +628,10 @@ export function splitEdgesPreserveQuads(mesh, es, testfunc, lctx) {
 
 //like splitEdgesSmart but optimized for sculpt
 export function splitEdgesSmart2(mesh, es, testfunc, lctx, smoothFac=0.0) {
+  lctx_forward = lctx;
+  lctx = lctx_tmp;
+  lctx_f_mesh = mesh;
+
   let newes = new Set();
   let newvs = new Set();
   let fs = new Set();
@@ -601,6 +645,8 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx, smoothFac=0.0) {
       fs.add(l.f);
     }
   }
+
+
 
   if (smoothFac > 0.0) {
     for (let e of es) {
@@ -661,6 +707,9 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx, smoothFac=0.0) {
     for (let vmap of pat.newverts) {
       let v = mesh.makeVertex();
 
+      let vs2 = pat._temps3;
+      vs2.length = vmap.length >> 1;
+
       if (lctx) {
         lctx.newVertex(v, LogTags.SPLIT_EDGES_SMART2);
       }
@@ -685,13 +734,16 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx, smoothFac=0.0) {
 
         ls2[wi] = ls[vmap[i]];
         ws2[wi] = w;
+        vs2[wi] = v2;
 
         v.addFac(v2, w);
 
         wi++;
       }
 
+      mesh.verts.customDataInterp(v, vs2, ws2);
       mesh.loops.customDataInterp(l, ls2, ws2);
+
       ls[vi] = l;
 
       vi++;
@@ -730,9 +782,15 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx, smoothFac=0.0) {
 
     mesh.killFace(f, lctx, LogTags.SPLIT_EDGES_SMART2);
   }
+
+  lctx_forward = lctx_f_mesh = undefined;
 }
 
 export function splitEdgesSimple2(mesh, es, testfunc, lctx) {
+  lctx_forward = lctx;
+  lctx_f_mesh = mesh;
+  lctx = lctx_tmp;
+
   let flag = MeshFlags.TEMP2;
 
   for (let e of es) {
@@ -781,6 +839,8 @@ export function splitEdgesSimple2(mesh, es, testfunc, lctx) {
       }
     }
   }
+
+  lctx_f_mesh = lctx_forward = undefined;
 }
 
 export function splitEdgesSimple(mesh, es, testfunc, lctx) {
@@ -894,6 +954,10 @@ export function splitEdgesSimple(mesh, es, testfunc, lctx) {
 
 export function splitEdgesSmart(mesh, es, lctx) {
   let vs = new Set();
+
+  lctx_forward = lctx;
+  lctx_f_mesh = mesh;
+  lctx = lctx_tmp;
 
   for (let e of es) {
     vs.add(e.v1);
@@ -1144,6 +1208,8 @@ export function splitEdgesSmart(mesh, es, lctx) {
 
     //break;
   }
+
+  lctx_forward = lctx_f_mesh = undefined;
 
   return {
     newvs : newvs,

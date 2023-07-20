@@ -187,7 +187,7 @@ Material.STRUCT = STRUCT.inherit(Material, ShaderNetwork) + `
 }`;
 
 DataBlock.register(Material);
-nstructjs.manager.add_class(Material);
+nstructjs.register(Material);
 
 DefaultMat = Object.freeze(new Material());
 
