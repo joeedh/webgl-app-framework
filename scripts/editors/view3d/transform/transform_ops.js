@@ -316,7 +316,7 @@ export class TransformOp extends View3DOp {
     this.modalEnd(false);
   }
 
-  on_mouseup(e) {
+  on_pointerup(e) {
     console.log("mouseup!");
 
     if (e.button !== 0) {
@@ -450,7 +450,7 @@ export class TransformOp extends View3DOp {
     }
   }
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     let view3d = this.modal_ctx.view3d;
 
     this._mpos.load(view3d.getLocalMouse(e.x, e.y));
@@ -644,8 +644,8 @@ export class TranslateOp extends TransformOp {
     }
   }
 
-  on_mousemove(e) {
-    super.on_mousemove(e);
+  on_pointermove(e) {
+    super.on_pointermove(e);
 
     if (this.numericVal !== undefined) {
       return;
@@ -877,8 +877,8 @@ export class ScaleOp extends TransformOp {
     this.inputs.value.setValue(off);
   }
 
-  on_mousemove(e) {
-    super.on_mousemove(e);
+  on_pointermove(e) {
+    super.on_pointermove(e);
 
     if (this.numericVal !== undefined) {
       return;
@@ -1083,15 +1083,15 @@ export class RotateOp extends TransformOp {
     icon        : -1
   }}
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     if (this.numericVal !== undefined) {
       return;
     }
 
     if (this.trackball) {
-      return this.on_mousemove_trackball(e);
+      return this.on_pointermove_trackball(e);
     } else {
-      return this.on_mousemove_normal(e);
+      return this.on_pointermove_normal(e);
     }
 
   }
@@ -1104,8 +1104,8 @@ export class RotateOp extends TransformOp {
     }
   }
 
-  on_mousemove_normal(e) {
-    super.on_mousemove(e);
+  on_pointermove_normal(e) {
+    super.on_pointermove(e);
 
     let ctx = this.modal_ctx;
     let view3d = ctx.view3d;
@@ -1365,8 +1365,8 @@ export class RotateOp extends TransformOp {
     this._update();
   }
 
-  on_mousemove_trackball(e) {
-    super.on_mousemove(e);
+  on_pointermove_trackball(e) {
+    super.on_pointermove(e);
 
     let ctx = this.modal_ctx;
     let view3d = ctx.view3d;
@@ -1528,7 +1528,7 @@ export class InflateOp extends TransformOp {
     icon        : -1
   }}
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     if (this.numericVal !== undefined) {
       return;
     }
@@ -1686,7 +1686,7 @@ export class ToSphereOp extends TransformOp {
     return ok;
   }
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     if (this.numericVal !== undefined) {
       return;
     }

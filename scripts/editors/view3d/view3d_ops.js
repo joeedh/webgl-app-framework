@@ -768,7 +768,7 @@ export class ZoomTool extends ToolOp {
     len += 0.01*dy;
     len = Math.max(len, -5.0);
     len = Math.pow(2.0, len);
-    
+
     camera.pos.load(this.start_camera.pos);
     camera.pos.sub(this.start_camera.target).normalize().mulScalar(len).add(this.start_camera.target);
 

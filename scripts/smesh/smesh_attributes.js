@@ -12,58 +12,64 @@ export const AttrTypes = {
 }
 
 export const AttrSizes = {
-  [AttrTypes.FLOAT32] : 4,
-  [AttrTypes.FLOAT64] : 8,
-  [AttrTypes.INT32] : 4,
-  [AttrTypes.INT16] : 2,
-  [AttrTypes.INT8] : 1,
+  [AttrTypes.FLOAT32]: 4,
+  [AttrTypes.FLOAT64]: 8,
+  [AttrTypes.INT32]  : 4,
+  [AttrTypes.INT16]  : 2,
+  [AttrTypes.INT8]   : 1,
   [AttrTypes.UINT32] : 4,
   [AttrTypes.UINT16] : 2,
-  [AttrTypes.UINT8] : 1
+  [AttrTypes.UINT8]  : 1
 };
 
 export const AttrTypeClasses = {
-  [AttrTypes.FLOAT32] : Float32Array,
-  [AttrTypes.FLOAT64] : Float64Array,
-  [AttrTypes.INT32] : Int32Array,
-  [AttrTypes.INT16] : Int16Array,
-  [AttrTypes.INT8] : Int8Array,
+  [AttrTypes.FLOAT32]: Float32Array,
+  [AttrTypes.FLOAT64]: Float64Array,
+  [AttrTypes.INT32]  : Int32Array,
+  [AttrTypes.INT16]  : Int16Array,
+  [AttrTypes.INT8]   : Int8Array,
   [AttrTypes.UINT32] : Uint32Array,
   [AttrTypes.UINT16] : Uint16Array,
-  [AttrTypes.UINT8] : Uint8Array
+  [AttrTypes.UINT8]  : Uint8Array
 };
 
-export const AttrFlags = {
-
-};
+export const AttrFlags = {};
 
 export const arrayPool = new util.ArrayPool();
 
 export const AttrClasses = [];
+
+export class AttrDefineModel {
+  constructor(obj = {}) {
+    this.typeName = obj.typeName ?? "";
+    this.uiName = obj.uiName ?? this.typeName;
+    this.dataType = obj.dataType ?? 0;
+    this.dataCount = obj.dataCount ?? 1;
+    this.flag = obj.flag ?? 0;
+  }
+}
 
 export class GeoAttr {
   constructor() {
 
   }
 
-  static attrDefine() {
-    return {
-      typeName: "",
-      uiName  : "",
-      dataType : 0,//see AttrTypes
-      dataCount: 0, //number of data entries per element
-      flag : 0
-    }
+  static attrDefine = { //See AttrDefineModel
+    typeName : "",
+    uiName   : "",
+    dataType : 0,// See AttrTypes
+    dataCount: 1,// Number of data entries per element
+    flag     : 0
   }
 
-  //used to e.g. bind float3 into individual vector3's
+  // Used to e.g. bind float3 into individual vector3's
   static bind(array) {
     return array;
   }
 
   static _getAttrDef() {
     if (!this._attrDef) {
-      this._attrDef = this.attrDefine();
+      this._attrDef = new AttrDefineModel(this.attrDefine);
     }
 
     return this._attrDef;
@@ -75,23 +81,23 @@ export class GeoAttr {
     let count = def.dataCount;
     let tmp = arrayPool.get(sources.length*count);
 
-    for (let i=0; i<tmp.length; i++) {
+    for (let i = 0; i < tmp.length; i++) {
       tmp[i] = 0.0;
     }
 
-    for (let i=0; i<sources.length; i++) {
+    for (let i = 0; i < sources.length; i++) {
       let si = sources[i]*count;
       let w = ws[i];
 
-      for (let j=0; j<count; j++) {
-        tmp[i] += array[si+j]*w;
+      for (let j = 0; j < count; j++) {
+        tmp[i] += array[si + j]*w;
       }
     }
 
     let ai = desti*count;
 
-    for (let i=0; i<count; i++) {
-      array[ai+i] = tmp[i];
+    for (let i = 0; i < count; i++) {
+      array[ai + i] = tmp[i];
     }
   }
 
@@ -102,8 +108,8 @@ export class GeoAttr {
     desti *= count;
     srci *= count;
 
-    for (let i=0; i<count; i++) {
-      array[desti+i] = array[srci+i];
+    for (let i = 0; i < count; i++) {
+      array[desti + i] = array[srci + i];
     }
   }
 
@@ -121,7 +127,7 @@ export class GeoAttr {
     }
 
     if (!cls.hasOwnProperty("attrDefine") || cls.attrDefine === GeoAttr.attrDefine) {
-      throw new Error("missing attrDefine method");
+      throw new Error("missing attrDefine field");
     }
 
     let def = cls._getAttrDef();
@@ -210,41 +216,45 @@ export class BoundVector3 extends F32BaseVector {
     return this;
   }
 }
+
 F32BaseVector.inherit(BoundVector3, 3);
 
 export class Float3Attr extends GeoAttr {
-  static attrDefine() {return {
+  static attrDefine = {
     typeName : "float3",
     dataType : AttrTypes.FLOAT32,
-    dataCount : 3
-  }}
+    dataCount: 3
+  }
 
   static bind(array) {
     let ret = [];
 
-    for (let i=0; i<array.length; i += 3) {
+    for (let i = 0; i < array.length; i += 3) {
       ret.push(new BoundVector3(array.buffer, i*4));
     }
 
     return ret;
   }
 }
+
 GeoAttr.register(Float3Attr);
 
 export class Uint8Attr extends GeoAttr {
-  static attrDefine() {return {
+  static attrDefine = {
     typeName : "byte",
     dataType : AttrTypes.UINT8,
-    dataCount : 1
-  }}
+    dataCount: 1
+  }
 }
+
 GeoAttr.register(Uint8Attr);
 
 export class Int32Attr extends GeoAttr {
-  static attrDefine() {return {
+  static attrDefine = {
     typeName : "int32",
     dataType : AttrTypes.INT32,
-    dataCount : 1
-  }}
+    dataCount: 1
+  }
 }
+
 GeoAttr.register(Int32Attr);
