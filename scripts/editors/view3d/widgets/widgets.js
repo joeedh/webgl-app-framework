@@ -8,9 +8,11 @@ Widget Refactor Todo:
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js';
 import {SimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
-import {ToolOp, ToolFlags, UndoFlags, IntProperty, BoolProperty, FloatProperty, EnumProperty,
+import {
+  ToolOp, ToolFlags, UndoFlags, IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property,
-  PropFlags, PropTypes, PropSubTypes} from '../../../path.ux/scripts/pathux.js';
+  PropFlags, PropTypes, PropSubTypes
+} from '../../../path.ux/scripts/pathux.js';
 import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {Shaders} from '../../../shaders/shaders.js';
 import {dist_to_line_2d, isect_ray_plane} from '../../../path.ux/scripts/util/math.js';
@@ -21,17 +23,18 @@ import {css2color} from '../../../path.ux/scripts/core/ui_base.js';
 import * as util from '../../../util/util.js';
 import * as math from '../../../path.ux/scripts/util/math.js';
 
-let dist_temps = util.cachering.fromConstructor(Vector3, 512);
-let dist_temps4 = util.cachering.fromConstructor(Vector4, 512);
-let dist_rets = util.cachering.fromConstructor(Vector2, 512);
+const dist_temp_mats = util.cachering.fromConstructor(Matrix4, 512);
+const dist_temps = util.cachering.fromConstructor(Vector3, 512);
+const dist_temps4 = util.cachering.fromConstructor(Vector4, 512);
+const dist_rets = util.cachering.fromConstructor(Vector2, 512);
 
 export const WidgetFlags = {
-  SELECT    : 1,
+  SELECT: 1,
   //HIDE      : 2,
-  HIGHLIGHT : 4,
-  CAN_SELECT : 8,
-  IGNORE_EVENTS : 16,
-  ALL_EVENTS : 32, //widget gets event regardless of if mouse cursor is near it
+  HIGHLIGHT    : 4,
+  CAN_SELECT   : 8,
+  IGNORE_EVENTS: 16,
+  ALL_EVENTS   : 32, //widget gets event regardless of if mouse cursor is near it
 };
 
 let shape_idgen = 0;
@@ -41,6 +44,8 @@ export class WidgetShape {
     this._drawtemp = new Vector3();
 
     this._debug_id = shape_idgen++;
+
+    this.extraMouseMargin = 0; /* Adds to limit parameter of WidgetBase.findNearest*/
 
     this.destroyed = false;
     this.flag = WidgetFlags.CAN_SELECT;
@@ -55,7 +60,6 @@ export class WidgetShape {
     this.hcolor = new Vector4([0.9, 0.9, 0.9, 0.8]); //highlight color
 
     this.matrix = new Matrix4();
-    this.localMatrix = new Matrix4(); //we need a seperate local matrix for zoom correction to work
 
     this.colortemp = new Vector4();
 
@@ -131,7 +135,7 @@ export class WidgetShape {
     uniforms.objectMatrix = this.drawmatrix;
   }
 
-  draw(gl, manager, matrix, localMatrix, alpha=1.0, no_z_write=false) {
+  draw(gl, manager, matrix, alpha = 1.0, no_z_write = false) {
     if (this.destroyed) {
       console.log("Reusing widget shape");
       this.destroyed = false;
@@ -168,18 +172,12 @@ export class WidgetShape {
 
     this.wscale = scale;
 
-    let local = this._tempmat2.load(this.localMatrix);
-    if (localMatrix !== undefined) {
-      local.multiply(localMatrix);
-    }
-
     smat.scale(scale, scale, scale);
 
     mat.makeIdentity();
     mat.multiply(matrix);
     mat.multiply(this.matrix);
     mat.multiply(smat);
-    mat.multiply(local);
 
 
     gl.enable(gl.BLEND);
@@ -210,8 +208,8 @@ export class WidgetShape {
       hcolor[3] = alpha;
 
       this.mesh.draw(gl, {
-        polygonOffset : 0.1,
-        color         : hcolor
+        polygonOffset: 0.1,
+        color        : hcolor
       });
 
       if (!no_z_write) {
@@ -228,29 +226,30 @@ export class WidgetTorus extends WidgetShape {
     super();
 
     this.colortemp = new Vector4();
+    this.extraMouseMargin = 64;
 
     this.tco = new Vector3();
     this.shapeid = "TORUS";
   }
 
 
-  draw(gl, manager, matrix, localMatrix) {
+  draw(gl, manager, matrix) {
     this.mesh = manager.shapes[this.shapeid];
 
-    return super.draw(gl, manager, matrix, localMatrix);
+    return super.draw(gl, manager, matrix);
   }
 
-  distToMouse(view3d, x, y) {
-    let mat = new Matrix4(this.drawmatrix);
+  distToMouse(view3d, x, y, matrix) {
+    let mat = dist_temp_mats.next();
+    mat.load(matrix);
 
     let origin = dist_temps.next().zero();
-    origin.multVecMatrix(mat);
-
-    let rmat = new Matrix4(mat);
-    rmat.makeRotationOnly();
-
-    let m = rmat.$matrix;
     let plane = dist_temps.next().zero();
+    let m = mat.$matrix;
+
+    origin[0] = m.m41;
+    origin[1] = m.m42;
+    origin[2] = m.m43;
 
     plane[0] = m.m31;
     plane[1] = m.m32;
@@ -267,81 +266,22 @@ export class WidgetTorus extends WidgetShape {
       return 10000.0;
     }
 
-    let s1 = new Vector3(isect);
-    let s2 = new Vector3(origin);
-    let sr = new Vector3(isect).sub(origin).normalize();
-
-    let scale = (this.wscale)*this.matrix.$matrix;
-
     let z = isect.vectorDistance(vieworigin);
 
-    let dis = Math.abs(isect.vectorDistance(origin) - 1.0) / this.wscale;
+    let dis = isect.vectorDistance(origin);
+    //dis = Math.abs(dis - 1.0)/this.wscale;
 
-    dis *= this.matrix.$matrix.m11;
-    dis *= view3d.size[1]*0.1;
+    const scale = (mat.$matrix.m11**2 + mat.$matrix.m21**2 + mat.$matrix.m31**2)**0.5;
 
-    util.console.log(dis, z, this.wscale.toFixed(4));
+    dis = Math.abs(dis/this.wscale/scale - 0.5);
 
-    return [dis, -z];
-  }
+    //dis *= scale;
+    const viewsize = view3d.size[1];
 
-  distToMouseOld(view3d, x, y) {
-    let mat = this.drawmatrix;
+    dis *= viewsize;
+    z *= viewsize/this.wscale;
 
-    let plane = dist_temps.next().zero();
-    plane[2] = 1.0;
-
-    let rmat = new Matrix4(mat);
-    rmat.makeRotationOnly();
-    plane.multVecMatrix(rmat);
-
-    let origin = dist_temps4.next().zero();
-    origin[0] = mat.$matrix.m41;
-    origin[1] = mat.$matrix.m42;
-    origin[2] = mat.$matrix.m43;
-
-    let view = view3d.getViewVec(x, y);
-    view.normalize();
-
-    let isect = isect_ray_plane(origin, plane, view3d.activeCamera.pos, view);
-    if (!isect) {
-      return 10000.0;
-    }
-
-    this.tco = new Vector3(isect);
-
-    let ret = dist_rets.next();
-
-    let sisect = dist_temps4.next().load(isect);
-    view3d.project(sisect);
-
-    ret[1] = sisect[2];
-
-    let sorigin = dist_temps.next().load(origin);
-
-    view3d.project(sorigin);
-    sisect[2] = sorigin[2] = sisect[3] = 0.0;
-
-    let dis = sorigin.vectorDistance(sisect);
-
-    sisect.load(isect);
-    sisect[3] = 1.0;
-    sisect.multVecMatrix(view3d.activeCamera.rendermat);
-    let w = sisect[3];
-
-    isect.sub(origin);
-
-    let scale = Math.sqrt(mat.$matrix.m11**2 + mat.$matrix.m12**2 + mat.$matrix.m13**2);
-    let t = new Vector3(isect).normalize().mulScalar(scale*0.5);
-    t.add(origin);
-    view3d.project(t);
-
-    t[2] = 0.0;
-    let radius = t.vectorDistance(sorigin);
-
-    ret[0] = Math.abs(dis - radius);
-
-    return ret;
+    return [dis, z];
   }
 }
 
@@ -352,25 +292,31 @@ export class WidgetArrow extends WidgetShape {
     this.shapeid = "ARROW";
   }
 
-  draw(gl, manager, matrix, localMatrix) {
+  draw(gl, manager, matrix) {
     this.mesh = manager.shapes[this.shapeid];
 
-    super.draw(gl, manager, matrix, localMatrix);
+    super.draw(gl, manager, matrix);
   }
 
-  distToMouse(view3d, x, y) {
-    //measure scale
-
+  distToMouse(view3d, x, y, matrix) {
+    /* Measure scale. */
     let scale1 = dist_temps.next().zero();
     let scale2 = dist_temps.next().zero();
+
+    let mat = dist_temp_mats.next();
+    mat.load(this.matrix);
+
+    if (matrix) {
+      mat.multiply(matrix);
+    }
 
     scale2[0] = scale2[1] = scale2[2] = 1.0;
     scale2.multVecMatrix(this.drawmatrix);
     scale1.multVecMatrix(this.drawmatrix);
 
-    scale1[0] = this.drawmatrix.$matrix.m11;
-    scale1[1] = this.drawmatrix.$matrix.m12;
-    scale1[2] = this.drawmatrix.$matrix.m13;
+    scale1[0] = mat.$matrix.m11;
+    scale1[1] = mat.$matrix.m12;
+    scale1[2] = mat.$matrix.m13;
 
     let scale = scale1.vectorLength();//scale2.vectorDistance(scale1);
 
@@ -398,7 +344,7 @@ export class WidgetArrow extends WidgetShape {
 
     //get distance to fat line by subtracting from dis
 
-    ret[0] = Math.max(dis-5, 0);
+    ret[0] = Math.max(dis - 5, 0);
     ret[1] = lineco[2];
 
     return ret;
@@ -418,10 +364,11 @@ export class WidgetSphere extends WidgetShape {
 
     this.shapeid = "SPHERE";
   }
-  draw(gl, manager, matrix, localMatrix) {
+
+  draw(gl, manager, matrix) {
     this.mesh = manager.shapes[this.shapeid];
 
-    super.draw(gl, manager, matrix, localMatrix);
+    super.draw(gl, manager, matrix);
   }
 
   distToMouse(view3d, x, y) {
@@ -445,7 +392,7 @@ export class WidgetSphere extends WidgetShape {
     view3d.project(v1);
     let z = v1[2];
 
-    let dd = Math.sqrt((x-v1[0])**2 + (y-v1[1])**2);
+    let dd = Math.sqrt((x - v1[0])**2 + (y - v1[1])**2);
     let rett = dist_rets.next();
 
     rett[0] = dd;
@@ -493,10 +440,10 @@ export class WidgetPlane extends WidgetShape {
     this.shapeid = "PLANE";
   }
 
-  draw(gl, manager, matrix, localMatrix) {
+  draw(gl, manager, matrix) {
     this.mesh = manager.shapes[this.shapeid];
 
-    super.draw(gl, manager, matrix, localMatrix);
+    super.draw(gl, manager, matrix);
   }
 
   distToMouse(view3d, x, y) {
@@ -525,7 +472,9 @@ export class WidgetPlane extends WidgetShape {
     v1.multVecMatrix(this.drawmatrix);
     let mm = this.drawmatrix.$matrix;
 
-    n[0] = mm.m31; n[1] = mm.m32; n[2] = mm.m33;
+    n[0] = mm.m31;
+    n[1] = mm.m32;
+    n[2] = mm.m33;
     n.normalize();
 
     let view = view3d.getViewVec(x, y);
@@ -562,8 +511,8 @@ export class WidgetPlane extends WidgetShape {
 
       let sn = dist_temps.next().zero();
 
-      dx = Math.max(dx-scalex, 0.0);
-      dy = Math.max(dy-scaley, 0.0);
+      dx = Math.max(dx - scalex, 0.0);
+      dy = Math.max(dy - scaley, 0.0);
 
       //dx -= scalex*0.5;
       //dy -= scaley*0.5;
@@ -617,7 +566,6 @@ export class WidgetBase extends Node {
     this.manager = undefined; //is set by WidgetManager
 
     this.matrix = new Matrix4();
-    this.localMatrix = new Matrix4(); //we need a seperate local matrix for zoom correction to work
     this._tempmatrix = new Matrix4();
   }
 
@@ -668,45 +616,68 @@ export class WidgetBase extends Node {
       c.destroy(gl);
     }
   }
+
+  /* weight screen space distance by (screen space scaled) z. */
+  static _weightDisZ(view3d, dis, z) {
+    return dis + z*0.1;
+  }
+
   /**note that it's valid for containers
    * to return themselves, *if* they have
    * a shape and aren't purely containers
    * @param x view3d-local coordinate x
    * @param y view3d-local coordinate y
    */
-  findNearest(view3d, x, y, limit=8) {
-    let mindis, minz, minret;
+  findNearest(view3d, x, y, limit = 8, matrix = undefined) {
+    let mindis, minz, minret, minf, minmargin;
+
+    if (!matrix) {
+      matrix = dist_temp_mats.next();
+      matrix.load(this.matrix);
+    }
 
     if (this.shape !== undefined) {
-      let disz = this.shape.distToMouse(view3d, x, y);
+      let disz = this.shape.distToMouse(view3d, x, y, matrix);
 
       mindis = disz[0];
       minz = disz[1];
       minret = this;
+      minmargin = this.shape.extraMouseMargin;
     }
 
+    let childmat = dist_temp_mats.next();
     for (let child of this.children) {
-      let ret = child.findNearest(view3d, x, y, limit);
+      childmat.load(matrix).multiply(child.matrix);
+
+      let ret = child.findNearest(view3d, x, y, limit, childmat);
 
       if (ret === undefined) {
         continue;
       }
+      if (ret.dis > limit + ret.margin) {
+        continue;
+      }
 
-      if (mindis === undefined || ret.dis < mindis) {
+      let f = WidgetBase._weightDisZ(view3d, ret.dis, ret.z);
+
+      if (minf === undefined || f < minf) {
+        minf = f;
         mindis = ret.dis;
         minz = ret.z;
         minret = ret.data ? ret.data : child;
+        minmargin = ret.margin;
       }
     }
 
-    if (mindis !== undefined && mindis > limit) {
+    if (mindis !== undefined && mindis > limit + minmargin) {
       return undefined;
     }
 
     return {
-      data : minret,
-      dis  : mindis,
-      z    : minz
+      data  : minret,
+      dis   : mindis,
+      z     : minz,
+      margin: minmargin,
     };
   }
 
@@ -745,7 +716,7 @@ export class WidgetBase extends Node {
   }
 
   on_mousedown(e, localX, localY, was_touch) {
-    let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
+    let child = this.findNearestWidget(this.manager.ctx.view3d, localX, localY);
     let ret = false;
 
     if (this.onclick) {
@@ -765,7 +736,7 @@ export class WidgetBase extends Node {
   }
 
   on_mousemove(e, localX, localY) {
-    let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
+    let child = this.findNearestWidget(this.manager.ctx.view3d, localX, localY);
 
     if (child !== undefined && child !== this) {
       child.on_mousemove(e, localX, localY);
@@ -777,8 +748,15 @@ export class WidgetBase extends Node {
     return false;
   }
 
+  findNearestWidget(view3d, localX, localY) {
+    let ret = this.findNearest(view3d, localX, localY);
+    if (ret) {
+      return ret.data;
+    }
+  }
+
   on_mouseup(e, localX, localY, was_touch) {
-    let child = this.findNearest(this.manager.ctx.view3d, localX, localY);
+    let child = this.findNearestWidget(this.manager.ctx.view3d, localX, localY);
 
     if (child !== undefined && child !== this) {
       child.on_mouseup(e, localX, localY);
@@ -794,7 +772,7 @@ export class WidgetBase extends Node {
     return true;
   }
 
-  draw(gl, manager, matrix=undefined) {
+  draw(gl, manager, matrix = undefined) {
     let mat = this._tempmatrix;
 
     mat.makeIdentity();
@@ -818,7 +796,7 @@ export class WidgetBase extends Node {
       this.shape.flag &= ~WidgetFlags.HIGHLIGHT;
     }
 
-    this.shape.draw(gl, manager, mat, this.localMatrix);
+    this.shape.draw(gl, manager, mat);
   }
 
   _newbase(matrix, color, shape) {
@@ -909,26 +887,30 @@ export class WidgetBase extends Node {
     }
   }
 
-  static nodedef() {return {
-    name   : "widget3d",
-    uiname : "widget3d",
-    inputs : {
-      depend : new DependSocket()
-    },
-    outputs : {
-      depend : new DependSocket()
-    },
-    flag : NodeFlags.FORCE_INHERIT|NodeFlags.ZOMBIE
-  }}
+  static nodedef() {
+    return {
+      name   : "widget3d",
+      uiname : "widget3d",
+      inputs : {
+        depend: new DependSocket()
+      },
+      outputs: {
+        depend: new DependSocket()
+      },
+      flag   : NodeFlags.FORCE_INHERIT | NodeFlags.ZOMBIE
+    }
+  }
 
-  static widgetDefine() {return {
-    name        : "name",
-    uiname      : "uiname",
-    icon        : -1,
-    flag        : 0,
-    description : "",
-    selectMode  : undefined, //force selectmode to this on widget create
-  }}
+  static widgetDefine() {
+    return {
+      name       : "name",
+      uiname     : "uiname",
+      icon       : -1,
+      flag       : 0,
+      description: "",
+      selectMode : undefined, //force selectmode to this on widget create
+    }
+  }
 }
 
 export class WidgetManager {
@@ -1087,10 +1069,14 @@ export class WidgetManager {
     }
   }
 
-  findNearest(x, y, limit=8) {
+  findNearest(x, y, limit = 16) {
     let mindis = 1e17;
     let minz = 1e17;
     let minw = undefined;
+    let minmargin = 0;
+    let minf;
+
+    const view3d = this.ctx.view3d;
 
     for (let w of this.widgets) {
       let skip = w.flag & WidgetFlags.IGNORE_EVENTS;
@@ -1100,18 +1086,20 @@ export class WidgetManager {
         continue;
       }
 
-      let ret = w.findNearest(this.ctx.view3d, x, y, limit);
+      let ret = w.findNearest(view3d, x, y, limit);
 
-      if (ret === undefined || ret.dis > limit) {
+      if (ret === undefined || ret.dis > limit + ret.margin) {
         continue;
       }
 
       //console.log(ret.z);
       let dis = ret.dis;
       let z = ret.z;
+      let f = WidgetBase._weightDisZ(view3d, dis, z);
 
-      if (minw === undefined || (dis < mindis || (dis === mindis && z < minz))) {
+      if (minw === undefined || f < minf) {
         mindis = dis;
+        minf = f;
         minw = ret.data;
       }
     }
@@ -1187,6 +1175,7 @@ export class WidgetManager {
       }
     }
 
+    window.redraw_viewport(true);
     return widget;
   }
 
@@ -1359,20 +1348,61 @@ export class WidgetManager {
     for (let widget of this.widgets) {
       if (widget.graph_id < 0) {
         graph.add(widget);
+        window.redraw_viewport(true);
       }
     }
   }
 
   update(view3d) {
     this.updateGraph();
+    let oldmat = new Matrix4();
+    let update = false;
+
+    function test(m1, m2) {
+      return Math.abs(m1 - m2) > 0.001;
+    }
+
+    function testMat(m1, m2) {
+      let ret = false;
+      m1 = m1.$matrix;
+      m2 = m2.$matrix;
+
+      ret |= test(m1.m11, m2.m11);
+      ret |= test(m1.m12, m2.m12);
+      ret |= test(m1.m13, m2.m13);
+      ret |= test(m1.m14, m2.m14);
+      ret |= test(m1.m21, m2.m21);
+      ret |= test(m1.m22, m2.m22);
+      ret |= test(m1.m23, m2.m23);
+      ret |= test(m1.m24, m2.m24);
+      ret |= test(m1.m31, m2.m31);
+      ret |= test(m1.m32, m2.m32);
+      ret |= test(m1.m33, m2.m33);
+      ret |= test(m1.m34, m2.m34);
+      ret |= test(m1.m41, m2.m41);
+      ret |= test(m1.m42, m2.m42);
+      ret |= test(m1.m43, m2.m43);
+      ret |= test(m1.m44, m2.m44);
+
+      return ret;
+    }
 
     for (let widget of this.widgets) {
-      widget.update(this);
+      oldmat.load(widget.matrix);
 
       widget.manager = this;
+      widget.update(this);
+
+      update |= testMat(oldmat, widget.matrix);
+
       if (!widget.destroyed && widget.isDead) {
         widget.remove();
+        update = true;
       }
+    }
+
+    if (update) {
+      window.redraw_viewport(true);
     }
   }
 }

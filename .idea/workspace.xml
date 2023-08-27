@@ -5,19 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
+      <change beforePath="$PROJECT_DIR$/.idea/webgl-app-framework.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/webgl-app-framework.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/findnearest/findnearest_mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/findnearest/findnearest_mesh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_ops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_query.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_query.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_grids.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_grids.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_grids_kdtree.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_grids_kdtree.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_grids_subsurf.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_grids_subsurf.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_toolmode.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_toolmode.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/widgets/widget_tools.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/widgets/widget_tools.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/widgets/widgets.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/widgets/widgets.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/subsurf/subsurf_patch.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/subsurf/subsurf_patch.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/smesh/smesh_attributes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/smesh/smesh_attributes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/smesh/smesh_element_list.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/smesh/smesh_element_list.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -56,18 +55,19 @@
     <option name="showLibraryContents" value="true" />
     <option name="showMembers" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/dev/sculptgl&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "WebServerToolWindowFactoryState": "false",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "C:/dev/apss",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\dev\webgl-app-framework\addons\strand" />
@@ -329,7 +329,13 @@
       <workItem from="1660871281989" duration="4348000" />
       <workItem from="1688022219291" duration="9323000" />
       <workItem from="1688195712972" duration="645000" />
-      <workItem from="1689892030701" duration="1605000" />
+      <workItem from="1689892030701" duration="2216000" />
+      <workItem from="1690089995696" duration="683000" />
+      <workItem from="1690090967481" duration="2145000" />
+      <workItem from="1691436099227" duration="32000" />
+      <workItem from="1691536857456" duration="3089000" />
+      <workItem from="1692798937506" duration="70000" />
+      <workItem from="1693151706366" duration="9302000" />
     </task>
     <servers />
   </component>

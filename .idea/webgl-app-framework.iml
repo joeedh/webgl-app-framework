@@ -10,6 +10,7 @@
       <excludeFolder url="file://$MODULE_DIR$/scripts/path.ux/package" />
       <excludeFolder url="file://$MODULE_DIR$/scripts/path.ux/dist" />
       <excludeFolder url="file://$MODULE_DIR$/scripts/path.ux/example" />
+      <excludeFolder url="file://$MODULE_DIR$/scripts/path.ux/scripts/simple" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

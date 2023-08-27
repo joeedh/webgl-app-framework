@@ -105,7 +105,7 @@ export function calcTransMatrix(ctx, selmask, transform_space, aabb_out) {
   for (let type of TransDataTypes) {
     let mat = type.getOriginMatrix(ctx, [], selmask, transform_space, ret.spaceMatrix);
     if (mat !== undefined) {
-      return mat;
+      return ret.spaceMatrix;
     }
   }
 

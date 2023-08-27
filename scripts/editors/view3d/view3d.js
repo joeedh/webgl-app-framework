@@ -20,7 +20,7 @@ import {Editor} from '../editor_base.js';
 import {Camera, init_webgl, ShaderProgram} from '../../core/webgl.js';
 import {DrawModes} from './drawmode.js';
 import {EnvLightFlags} from "../../scene/scene.js";
-import {UIBase, color2css, css2color}  from '../../path.ux/scripts/core/ui_base.js';
+import {UIBase, color2css, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import * as view3d_shaders from '../../shaders/shaders.js';
 import {loadShader} from '../../shaders/shaders.js';
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
@@ -57,7 +57,7 @@ export function getWebGL() {
 
 if (!window.THREE) {
   window.THREE = {
-    Camera : class Camera {
+    Camera: class Camera {
 
     }
   }
@@ -187,7 +187,7 @@ export class ThreeCamera extends THREE.Camera {
   }
 }
 
-window._getShaderSource = function(shader) {
+window._getShaderSource = function (shader) {
   let gl = _appstate.ctx.view3d.gl;
   return gl.getExtension('WEBGL_debug_shaders').getTranslatedShaderSource(shader);
 };
@@ -224,13 +224,13 @@ export function initWebGL() {
   canvas.dpi = dpi;
 
   document.body.appendChild(canvas);
-  
+
   let gl = _gl = init_webgl(canvas, {
-    antialias : false,
-    alpha     : false,
-    powerPreference : "high-performance",
-    preserveDrawingBuffer : true,
-    stencil : true
+    antialias            : false,
+    alpha                : false,
+    powerPreference      : "high-performance",
+    preserveDrawingBuffer: true,
+    stencil              : true
   });
 
   if (window.THREE && window.THREE.Scene) {
@@ -255,7 +255,7 @@ export function initWebGL() {
     //*
     let extVAO = gl.getExtension('OES_vertex_array_object');
 
-    if(!extVAO){
+    if (!extVAO) {
       throw new Error("OES_vertex_array_object extension not supported");
     }
 
@@ -316,7 +316,7 @@ export class DrawQuad {
 }
 
 export class DrawLine {
-  constructor(v1, v2, color=[0,0,0,1], useZ) {
+  constructor(v1, v2, color = [0, 0, 0, 1], useZ) {
     let a = color.length > 3 ? color[3] : 1.0;
 
     this.color = new Vector4(color);
@@ -351,7 +351,7 @@ export class View3D extends Editor {
     this._last_render_draw = 0;
     this.renderEngine = undefined;
 
-    this.flag = View3DFlags.SHOW_CURSOR|View3DFlags.SHOW_GRID;
+    this.flag = View3DFlags.SHOW_CURSOR | View3DFlags.SHOW_GRID;
 
     this.orbitMode = OrbitTargetModes.FIXED;
     this.localCursor3D = new Matrix4();
@@ -382,7 +382,7 @@ export class View3D extends Editor {
     let n = new Vector3(this.camera.pos).sub(this.camera.target);
     this.camera.up = new Vector3([0, 0, -1]).cross(n).cross(n);
     this.camera.up.normalize();
-    
+
     this.camera.near = 0.01;
     this.camera.far = 10000.0;
     this.camera.fovy = 50.0;
@@ -500,9 +500,10 @@ export class View3D extends Editor {
       this.deleteGraphNodes();
     }
 
-    this._graphnode = CallbackNode.create("view3d", () => {}, {},
+    this._graphnode = CallbackNode.create("view3d", () => {
+      }, {},
       {
-        onDrawPre: new DependSocket("onDrawPre"),
+        onDrawPre : new DependSocket("onDrawPre"),
         onDrawPost: new DependSocket("onDrawPre")
       });
 
@@ -511,7 +512,7 @@ export class View3D extends Editor {
     let node = CallbackNode.create("toolmode change", () => {
       this.rebuildHeader();
     }, {
-      onToolModeChange : new DependSocket("onToolModeChange")
+      onToolModeChange: new DependSocket("onToolModeChange")
     }, {});
 
     this.addGraphNode(node);
@@ -563,13 +564,13 @@ export class View3D extends Editor {
     return ret;
   }
 
-  viewAxis(axis, sign=1) {
+  viewAxis(axis, sign = 1) {
     let cam = this.activeCamera;
 
     let ups = {
-      0 : [0, 0, 1],
-      1 : [0, 0, 1],
-      2 : [0, 1, 0]
+      0: [0, 0, 1],
+      1: [0, 0, 1],
+      2: [0, 1, 0]
     };
 
     cam.pos.sub(cam.target);
@@ -585,7 +586,7 @@ export class View3D extends Editor {
     window.redraw_viewport(true);
   }
 
-  viewSelected(ob=undefined) {
+  viewSelected(ob = undefined) {
     //let cent = this.getTransCenter();
     let cent = new Vector3();
     let aabb;
@@ -618,12 +619,12 @@ export class View3D extends Editor {
       cent.zero();
       cent.multVecMatrix(this.cursor3D);
     } else {
-      cent.load(aabb[0]).interp(aabb[1],  0.5);
+      cent.load(aabb[0]).interp(aabb[1], 0.5);
     }
 
     let dis = 0.001;
 
-    for (let i=0; i<3; i++) {
+    for (let i = 0; i < 3; i++) {
       let d = aabb[1][i] - aabb[0][i];
       dis = Math.max(dis, d);
     }
@@ -661,7 +662,7 @@ export class View3D extends Editor {
     solve(f1, dis);
     */
 
-    let fov = Math.PI * this.camera.fovy / 180;
+    let fov = Math.PI*this.camera.fovy/180;
 
     let pos = new Vector3(this.camera.pos);
     let up = new Vector3(this.camera.up);
@@ -669,7 +670,7 @@ export class View3D extends Editor {
 
 
     //dis = Math.abs(Math.tan(fov)*dis);
-    dis = Math.abs(dis / Math.tan(fov));
+    dis = Math.abs(dis/Math.tan(fov));
     //console.log("DIS", dis);
 
     dis = dis == 0.0 ? 0.005 : dis;
@@ -728,7 +729,7 @@ export class View3D extends Editor {
   }
 
   get select_transparent() {
-    if (!(this.drawmode & (DrawModes.SOLID|DrawModes.TEXTURED)))
+    if (!(this.drawmode & (DrawModes.SOLID | DrawModes.TEXTURED)))
       return true;
     return this._select_transparent;
   }
@@ -746,19 +747,19 @@ export class View3D extends Editor {
     return co;
   }
 
-  project(co, mat=undefined) {
+  project(co, mat = undefined) {
     let tmp = proj_temps.next().zero();
-    
+
     tmp[0] = co[0];
     tmp[1] = co[1];
-    
+
     if (co.length > 2) {
       tmp[2] = co[2];
     }
-    
+
     tmp[3] = 1.0;
     tmp.multVecMatrix(mat ? mat : this.activeCamera.rendermat);
-    
+
     if (tmp[3] !== 0.0) {
       tmp[0] /= tmp[3];
       tmp[1] /= tmp[3];
@@ -767,22 +768,22 @@ export class View3D extends Editor {
 
     let w = tmp[3];
 
-    tmp[0] = (tmp[0]*0.5 + 0.5) * this.size[0];
-    tmp[1] = (1.0-(tmp[1]*0.5+0.5)) * this.size[1];
-    
-    for (let i=0; i<co.length; i++) {
+    tmp[0] = (tmp[0]*0.5 + 0.5)*this.size[0];
+    tmp[1] = (1.0 - (tmp[1]*0.5 + 0.5))*this.size[1];
+
+    for (let i = 0; i < co.length; i++) {
       co[i] = tmp[i];
     }
-    
+
     return w;
   }
-  
-  unproject(co, mat=undefined) {
+
+  unproject(co, mat = undefined) {
     let tmp = unproj_temps.next().zero();
-    
+
     tmp[0] = (co[0]/this.size[0])*2.0 - 1.0;
     tmp[1] = (1.0 - co[1]/this.size[1])*2.0 - 1.0;
-     
+
     if (co.length > 2) {
       tmp[2] = co[2];
     }
@@ -802,11 +803,11 @@ export class View3D extends Editor {
       tmp[1] /= tmp[3];
       tmp[2] /= tmp[3];
     }
-    
-    for (let i=0; i<co.length; i++) {
+
+    for (let i = 0; i < co.length; i++) {
       co[i] = tmp[i];
     }
-    
+
     return w;
   }
 
@@ -939,9 +940,9 @@ export class View3D extends Editor {
 
     function exec(target, x, y) {
       if (target["on_"] + type)
-        return (target["on_"+type])(e, x, y, e.was_touch);
+        return (target["on_" + type])(e, x, y, e.was_touch);
       if (target["on"] + type)
-        return (target["on"+type])(e, x, y, e.was_touch);
+        return (target["on" + type])(e, x, y, e.was_touch);
       if (target[type])
         return (target[type])(e, x, y, e.was_touch);
     }
@@ -1007,7 +1008,7 @@ export class View3D extends Editor {
     this.rebuildHeader();
 
     let on_mousewheel = (e) => {
-      let df = e.deltaY / 100.0;
+      let df = e.deltaY/100.0;
 
       df = Math.min(Math.max(df, -0.5), 0.5);
       df = 1.0 + df*0.4;
@@ -1036,7 +1037,7 @@ export class View3D extends Editor {
       return node !== this && node !== this.overdraw;
     };
 
-    let on_mousemove = (e, was_mousemove=true) => {
+    let on_mousemove = (e, was_mousemove = true) => {
       this.last_mpos.load(this.getLocalMouse(e.x, e.y));
 
       /*
@@ -1084,7 +1085,6 @@ export class View3D extends Editor {
 
       /* prevent duplicate mousedown events from touch forwarding */
       e.preventDefault();
-
 
       let r = this.getLocalMouse(e.clientX, e.clientY);
       this.start_mpos.load(r);
@@ -1160,12 +1160,14 @@ export class View3D extends Editor {
     return calcTransAABB(this.ctx, this.ctx.selectMask);
   }
 
-  getTransCenter() {
-    return calcTransCenter(this.ctx, this.ctx.selectMask, this.transformSpace);
+  getTransCenter(transformSpace = this.transformSpace) {
+    const selectMask = this.ctx.selectMask;
+    return calcTransCenter(this.ctx, selectMask, transformSpace);
   }
 
-  getTransMatrix() {
-    return calcTransMatrix(this.ctx, this.ctx.selectMask, this.transformSpace);
+  getTransMatrix(transformSpace = this.transformSpace) {
+    const selectMask = this.ctx.selectMask;
+    return calcTransMatrix(this.ctx, selectMask, transformSpace);
   }
 
   getLocalMouse(x, y) {
@@ -1228,7 +1230,7 @@ export class View3D extends Editor {
     }
 
     let screen = this.ctx.screen;
-    if (this.pos[1] + this.size[1] > screen.size[1]+4) {
+    if (this.pos[1] + this.size[1] > screen.size[1] + 4) {
       console.log("view3d is too big", this.pos[1] + this.size[1], screen.size[1]);
       this.ctx.screen.snapScreenVerts();
       this.ctx.screen.regenBorders();
@@ -1259,43 +1261,43 @@ export class View3D extends Editor {
   }
 
   makeGrid() {
-    let mesh = new SimpleMesh(LayerTypes.LOC|LayerTypes.UV|LayerTypes.COLOR);
+    let mesh = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.COLOR);
 
     let d = 3;
     //let quad = mesh.quad([-d, -d, 0], [-d, d, 0], [d, d, 0], [d, -d, 0]);
     //quad.colors(clr, clr, clr, clr);
-    
+
     let steps = 32;
     let sz = 8.0;
-    let csize = sz / steps*2.0;
+    let csize = sz/steps*2.0;
     let t = -sz;
-    
-    for (let i=0; i<steps+1; i++, t += csize) {
-      let d=0.8;
-      if (i % 8 == 0) d = 0.3;
-      else if (i % 4 == 0.0) d = 0.6;
-      else if (i % 2 == 0.0) d = 0.7;
 
-      let clr = [1.0-d, 1.0-d, 1.0-d, 1.0];
-      
+    for (let i = 0; i < steps + 1; i++, t += csize) {
+      let d = 0.8;
+      if (i%8 == 0) d = 0.3;
+      else if (i%4 == 0.0) d = 0.6;
+      else if (i%2 == 0.0) d = 0.7;
+
+      let clr = [1.0 - d, 1.0 - d, 1.0 - d, 1.0];
+
       let line = mesh.line([-sz, t, 0.0], [sz, t, 0.0]);
-      
+
       line.colors(clr, clr);
       line.uvs([-1, -1], [1, 1]);
-      
+
       line = mesh.line([t, -sz, 0.0], [t, sz, 0.0]);
-      
+
       line.colors(clr, clr);
       line.uvs([-1, -1], [1, 1]);
     }
 
     return mesh;
   }
-  
+
   setCSS() {
     super.setCSS();
   }
-  
+
   on_resize(newsize) {
     super.on_resize(newsize);
 
@@ -1317,14 +1319,14 @@ export class View3D extends Editor {
 
   _testCamera() {
     let th = this.T;
-    
+
     this.camera.pos = new Vector3([Math.cos(th)*20, Math.sin(th)*20, Math.cos(th*2.0)*15.0]);
     this.camera.target = new Vector3([0, 0, 0.0*Math.cos(th*2.0)*5.0]);
     this.camera.up = new Vector3([0, 0, 1]);
     this.camera.up.normalize();
     this.camera.near = 0.01;
     this.camera.far = 10000.0;
-    
+
     this.T += 0.01;
   }
 
@@ -1407,7 +1409,7 @@ export class View3D extends Editor {
     gl.clearColor(0, 0, 0, 1.0);
     gl.clearDepth(camera.far);
 
-    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.depthMask(true);
     gl.enable(gl.DEPTH_TEST);
 
@@ -1553,20 +1555,20 @@ export class View3D extends Editor {
     gl.scissor(~~x, ~~y, ~~w, ~~h);
 
     //if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
-      gl.clearColor(0.15, 0.15, 0.15, 1.0);
+    gl.clearColor(0.15, 0.15, 0.15, 1.0);
     //} else {
     //  gl.clearColor(0.8, 0.8, 1.0, 1.0);
     //}
     //gl.clearColor(1.0, 1.0, 1.0, 0.0);
 
-    gl.clearDepth(this.activeCamera.far+1);
-    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-    
+    gl.clearDepth(this.activeCamera.far + 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
     gl.disable(gl.BLEND);
     gl.enable(gl.DEPTH_TEST);
     gl.depthMask(true);
 
-    let aspect = this.size[0] / this.size[1];
+    let aspect = this.size[0]/this.size[1];
     this.activeCamera.regen_mats(aspect);
 
     //this.drawThreeScene();
@@ -1608,7 +1610,7 @@ export class View3D extends Editor {
       gl.disable(gl.BLEND);
     }
 
-    if (this.flag & (View3DFlags.SHOW_RENDER|View3DFlags.ONLY_RENDER)) {
+    if (this.flag & (View3DFlags.SHOW_RENDER | View3DFlags.ONLY_RENDER)) {
       this.drawRender(finish);
       this.activeCamera.regen_mats()
     } else {
@@ -1633,8 +1635,8 @@ export class View3D extends Editor {
   }
 
   drawDrawLines(gl) {
-    let sm = new SimpleMesh(LayerTypes.LOC|LayerTypes.COLOR|LayerTypes.UV);
-    let sm2 = new SimpleMesh(LayerTypes.LOC|LayerTypes.COLOR|LayerTypes.UV);
+    let sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV);
+    let sm2 = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV);
 
     for (let dl of this.drawlines) {
       let line;
@@ -1650,14 +1652,14 @@ export class View3D extends Editor {
     }
 
     let uniforms = {
-      projectionMatrix : this.activeCamera.rendermat,
-      aspect : this.activeCamera.aspect,
-      size : this.glSize,
-      near : this.activeCamera.near,
-      far : this.activeCamera.far,
-      objectMatrix : new Matrix4(),
-      polygonOffset : 2.5,
-      alpha : 1.0
+      projectionMatrix: this.activeCamera.rendermat,
+      aspect          : this.activeCamera.aspect,
+      size            : this.glSize,
+      near            : this.activeCamera.near,
+      far             : this.activeCamera.far,
+      objectMatrix    : new Matrix4(),
+      polygonOffset   : 2.5,
+      alpha           : 1.0
     };
 
     let program = view3d_shaders.Shaders.BasicLineShader;
@@ -1676,7 +1678,7 @@ export class View3D extends Editor {
     sm.destroy(gl);
   }
 
-  makeDrawQuad(v1, v2, v3, v4, color, useZ=true) {
+  makeDrawQuad(v1, v2, v3, v4, color, useZ = true) {
     if (typeof color == "string") {
       color = css2color(color);
     }
@@ -1685,7 +1687,7 @@ export class View3D extends Editor {
 
   }
 
-  makeDrawLine(v1, v2, color=[0,0,0,1], useZ=true) {
+  makeDrawLine(v1, v2, color = [0, 0, 0, 1], useZ = true) {
     if (typeof color == "string") {
       color = css2color(color);
     }
@@ -1713,18 +1715,18 @@ export class View3D extends Editor {
     window.redraw_viewport();
   }
 
-  drawObjects(camera=this.activeCamera) {
+  drawObjects(camera = this.activeCamera) {
     let scene = this.ctx.scene, gl = this.gl;
     let program = view3d_shaders.Shaders.BasicLitMesh;
 
     let uniforms = {
-      projectionMatrix : camera.rendermat,
-      normalMatrix     : camera.normalmat,
-      near             : camera.near,
-      far              : camera.far,
-      aspect           : camera.aspect,
-      size             : this.glSize,
-      polygonOffset    : 0.0
+      projectionMatrix: camera.rendermat,
+      normalMatrix    : camera.normalmat,
+      near            : camera.near,
+      far             : camera.far,
+      aspect          : camera.aspect,
+      size            : this.glSize,
+      polygonOffset   : 0.0
     };
 
     let only_render = this.flag & (View3DFlags.ONLY_RENDER);
@@ -1787,11 +1789,11 @@ export class View3D extends Editor {
 
     vstruct.flags("flag", "flag", View3DFlags, "View3D Flags").on("change", onchange).icons({
       SHOW_RENDER: Icons.RENDER,
-      SHOW_GRID: Icons.SHOW_GRID_FLOOR
+      SHOW_GRID  : Icons.SHOW_GRID_FLOOR
     });
 
     vstruct.enum("cameraMode", "cameraMode", CameraModes, "Camera Modes").on("change", onchange).icons({
-      PERSPECTIVE: Icons.PERSPECTIVE,
+      PERSPECTIVE : Icons.PERSPECTIVE,
       ORTHOGRAPHIC: Icons.ORTHOGRAPHIC
     });
   }
@@ -1805,7 +1807,7 @@ export class View3D extends Editor {
     ret.camera.load(this.camera);
     ret.drawmode = this.drawmode;
     ret.glInit();
-    
+
     return ret;
   }
 
@@ -1816,13 +1818,15 @@ export class View3D extends Editor {
     this.threeCamera.camera = this.activeCamera;
   }
 
-  static define() {return {
-    has3D    : true,
-    tagname  : "view3d-editor-x",
-    areaname : "view3d",
-    uiname   : "Viewport",
-    icon     : Icons.EDITOR_VIEW3D
-  }}
+  static define() {
+    return {
+      has3D   : true,
+      tagname : "view3d-editor-x",
+      areaname: "view3d",
+      uiname  : "Viewport",
+      icon    : Icons.EDITOR_VIEW3D
+    }
+  }
 };
 View3D.STRUCT = nstructjs.inherit(View3D, Editor) + `
   camera              : Camera;
@@ -1875,7 +1879,7 @@ let f2 = () => {
   if (!gl) {
     return;
   }
-  
+
   //wait for gpu
   gl.finish();
 
@@ -1884,7 +1888,7 @@ let f2 = () => {
 
   //now get time
   time = util.time_ms() - time;
-  time = 1000.0 / time;
+  time = 1000.0/time;
 
   for (let sarea of screen.sareas) {
     let area = sarea.area;
@@ -1905,7 +1909,7 @@ let f = () => {
   //forcibly update datagraph
   window.updateDataGraph(true);
 
-  for (let i=0; i<drawCount; i++) {
+  for (let i = 0; i < drawCount; i++) {
     f2();
   }
 
@@ -1916,7 +1920,7 @@ let f = () => {
   rcbs.length = 0;
 };
 
-window.redraw_viewport = (ResetRender=false, DrawCount=1) => {
+window.redraw_viewport = (ResetRender = false, DrawCount = 1) => {
   resetRender |= ResetRender ? 1 : 0;
   drawCount = DrawCount;
 
@@ -1927,7 +1931,7 @@ window.redraw_viewport = (ResetRender=false, DrawCount=1) => {
   animreq = requestAnimationFrame(f);
 };
 
-window.redraw_viewport_p = (ResetRender=false, DrawCount=1) => {
+window.redraw_viewport_p = (ResetRender = false, DrawCount = 1) => {
   return new Promise((accept, reject) => {
     rcbs.push(accept);
     window.redraw_viewport(ResetRender, DrawCount);

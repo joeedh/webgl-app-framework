@@ -352,7 +352,7 @@ export class ToolMode extends Node {
     }
 
     if (this.transWidget && tcls !== this.transWidget.constructor) {
-      console.log("removign transform widget");
+      console.log("removing transform widget");
       this.removeUniqueWidget(this.transWidget);
       this.transWidget = undefined;
     }

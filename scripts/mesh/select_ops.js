@@ -568,7 +568,6 @@ export class ToggleSelectAll extends SelectOpBase {
   }
 
   exec(ctx) {
-    console.log("toggle select all!", this.inputs.mode.getValue(), this.inputs.selmask.getValue())
     let selmask = this.inputs.selmask.getValue();
     let mode = this.inputs.mode.getValue();
 
