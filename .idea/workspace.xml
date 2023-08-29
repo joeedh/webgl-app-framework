@@ -5,10 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_extrudeops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_extrudeops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_tess.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_tess.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -330,7 +326,7 @@
       <workItem from="1691536857456" duration="3089000" />
       <workItem from="1692798937506" duration="70000" />
       <workItem from="1693151706366" duration="9653000" />
-      <workItem from="1693272861437" duration="3386000" />
+      <workItem from="1693272861437" duration="10429000" />
     </task>
     <servers />
   </component>

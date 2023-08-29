@@ -924,7 +924,7 @@ export class View3D extends Editor {
     this.flushUpdate();
   }
 
-  doEvent(type, e) {
+  doEvent(type, e, docontrols) {
     if (this.ctx && this.ctx.toolmode && !this.ctx.toolmode.ctx) {
       this.ctx.toolmode.ctx = this.ctx;
     }
@@ -961,7 +961,7 @@ export class View3D extends Editor {
 
       if (exec(toolmode, x, y)) {
         return true;
-      } else if (exec(widgets, x, y)) {
+      } else if (!docontrols && exec(widgets, x, y)) {
         return true;
       }
 
@@ -1092,14 +1092,15 @@ export class View3D extends Editor {
 
       this.push_ctx_active();
 
-      if (this.doEvent("mousedown", e)) {
+      let docontrols = e.button === 1 || e.button === 2 || e.altKey;
+
+      if (this.doEvent("mousedown", e, docontrols)) {
         this.pop_ctx_active();
         return;
       }
 
       this.updateCursor();
 
-      let docontrols = e.button === 1 || e.button === 2 || e.altKey;
       if (!docontrols && e.button === 0) {
         docontrols = true;
 
