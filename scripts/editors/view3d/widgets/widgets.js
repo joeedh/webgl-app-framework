@@ -153,6 +153,7 @@ export class WidgetShape {
     this.setUniforms(manager, this.mesh.uniforms);
     this.mesh.uniforms.color[3] = alpha;
 
+    /* Derive zoom scale */
     let mat = this.drawmatrix;
     mat.load(matrix).multiply(this.matrix);
 
@@ -160,6 +161,8 @@ export class WidgetShape {
     let co = this._drawtemp;
     co.zero();
     co.multVecMatrix(mat);
+
+    /* Use w component of projected vector. */
     let w = co.multVecMatrix(camera.rendermat);
 
     let smat = this._tempmat;
@@ -170,6 +173,9 @@ export class WidgetShape {
       scale = 1.0;
     }
 
+    //XXX
+    scale = 1.0;
+
     this.wscale = scale;
 
     smat.scale(scale, scale, scale);
@@ -178,7 +184,6 @@ export class WidgetShape {
     mat.multiply(matrix);
     mat.multiply(this.matrix);
     mat.multiply(smat);
-
 
     gl.enable(gl.BLEND);
 
@@ -239,7 +244,7 @@ export class WidgetTorus extends WidgetShape {
     return super.draw(gl, manager, matrix);
   }
 
-  distToMouse(view3d, x, y, matrix) {
+  distToMouse(view3d, x, y, matrix, wscale) {
     let mat = dist_temp_mats.next();
     mat.load(matrix);
 
@@ -273,13 +278,14 @@ export class WidgetTorus extends WidgetShape {
 
     const scale = (mat.$matrix.m11**2 + mat.$matrix.m21**2 + mat.$matrix.m31**2)**0.5;
 
-    dis = Math.abs(dis/this.wscale/scale - 0.5);
+    dis = Math.abs(dis/wscale - scale*0.5)*0.25;
 
-    //dis *= scale;
     const viewsize = view3d.size[1];
 
     dis *= viewsize;
-    z *= viewsize/this.wscale;
+    z *= viewsize/wscale;
+
+    console.log("dis", dis.toFixed(4), "scale", scale, wscale);
 
     return [dis, z];
   }
@@ -298,56 +304,43 @@ export class WidgetArrow extends WidgetShape {
     super.draw(gl, manager, matrix);
   }
 
-  distToMouse(view3d, x, y, matrix) {
-    /* Measure scale. */
-    let scale1 = dist_temps.next().zero();
-    let scale2 = dist_temps.next().zero();
-
+  distToMouse(view3d, x, y, matrix, wscale) {
     let mat = dist_temp_mats.next();
-    mat.load(this.matrix);
-
-    if (matrix) {
-      mat.multiply(matrix);
-    }
-
-    scale2[0] = scale2[1] = scale2[2] = 1.0;
-    scale2.multVecMatrix(this.drawmatrix);
-    scale1.multVecMatrix(this.drawmatrix);
-
-    scale1[0] = mat.$matrix.m11;
-    scale1[1] = mat.$matrix.m12;
-    scale1[2] = mat.$matrix.m13;
-
-    let scale = scale1.vectorLength();//scale2.vectorDistance(scale1);
+    mat.load(matrix);
 
     let v1 = dist_temps.next().zero();
     let v2 = dist_temps.next().zero();
 
-    v1[2] = -scale*0.25;
-    v2[2] = scale*0.25;
+    const sz = wscale;
+    v1[2] = sz;
+    v2[2] = -sz;
 
-    v1.multVecMatrix(this.drawmatrix);
-    v2.multVecMatrix(this.drawmatrix);
+    v1.multVecMatrix(matrix);
+    v2.multVecMatrix(matrix);
 
     view3d.project(v1);
     view3d.project(v2);
 
     let tout = dist_rets.next().zero();
 
-    let dis = dist_to_line_2d(new Vector2([x, y]), v1, v2, true, undefined, tout);
     let t = tout[0];
+
+    let p = new Vector2().loadXY(x, y);
+    let t1 = new Vector2(v2).sub(v1), t2 = new Vector2(p).sub(v1);
+    t1.normalize();
+
+    t = t1.dot(t2)/v1.vectorDistance(v2);
+    t = Math.min(Math.max(t, -0.25), 1.25);
 
     let lineco = dist_temps.next();
     lineco.load(v1).interp(v2, t);
 
-    let ret = dist_rets.next();
+    let dis = p.vectorDistance(lineco);
+    let pad = t < 0.25 ? 8 : 4;
 
-    //get distance to fat line by subtracting from dis
-
-    ret[0] = Math.max(dis - 5, 0);
-    ret[1] = lineco[2];
-
-    return ret;
+    /* Get distance to fat line by subtracting from dis. */
+    dis = Math.max(dis - pad, 0);
+    return [Math.max(dis, 0), lineco[2], t];
   }
 }
 
@@ -356,6 +349,13 @@ export class WidgetBlockArrow extends WidgetArrow {
     super();
     this.shapeid = "BLOCKARROW";
   }
+
+  distToMouse(view3d, x, y, matrix, wscale) {
+    let ret = super.distToMouse(view3d, x, y, matrix, wscale);
+
+    return ret;
+  }
+
 }
 
 export class WidgetSphere extends WidgetShape {
@@ -446,79 +446,64 @@ export class WidgetPlane extends WidgetShape {
     super.draw(gl, manager, matrix);
   }
 
-  distToMouse(view3d, x, y) {
-    //measure scale
-    let scale1 = dist_temps.next().zero();
-    let scale2 = dist_temps.next().zero();
-    let scale3 = dist_temps.next().zero();
+  distToMouse(view3d, x, y, matrix, wscale) {
+    let origin = dist_temps.next().zero();
 
-    scale2[0] = 1.0;
-    scale3[1] = 1.0;
+    origin.multVecMatrix(matrix);
+    let sorigin = dist_temps.next().load(origin);
+    view3d.project(sorigin);
 
-    scale1.multVecMatrix(this.drawmatrix);
-    scale2.multVecMatrix(this.drawmatrix);
-    scale3.multVecMatrix(this.drawmatrix);
-
-    view3d.project(scale1);
-    view3d.project(scale2);
-    view3d.project(scale3);
-
-    let scalex = scale2.vectorDistance(scale1);
-    let scaley = scale3.vectorDistance(scale1);
-
-    let v1 = dist_temps.next().zero();
     let n = dist_temps.next().zero();
-
-    v1.multVecMatrix(this.drawmatrix);
-    let mm = this.drawmatrix.$matrix;
-
+    let mm = matrix.$matrix;
     n[0] = mm.m31;
     n[1] = mm.m32;
     n[2] = mm.m33;
     n.normalize();
 
+    /* Derive plane boundaries. */
+    let axisx = new Vector3();
+    let axisy = new Vector3();
+
+    axisx.loadXYZ(0.5, 0, 0).multVecMatrix(matrix);
+    axisy.loadXYZ(0, 0.5, 0).multVecMatrix(matrix);
+    view3d.project(axisx);
+    view3d.project(axisy);
+
     let view = view3d.getViewVec(x, y);
 
-    let ret = math.isect_ray_plane(v1, n, view3d.activeCamera.pos, view);
+    const scalex = axisx.vectorDistance(sorigin);
+    const scaley= axisy.vectorDistance(sorigin);
+
+    let isect = math.isect_ray_plane(origin, n, view3d.activeCamera.pos, view);
     let ret2 = dist_rets.next();
 
-    if (ret) {
-      let zco = dist_temps.next().load(ret);
+    if (isect) {
+      let zco = dist_temps.next().load(isect);
       view3d.project(zco);
 
       let imat = this._tempmat2;
-      imat.load(this.drawmatrix).invert();
+      imat.load(matrix).invert();
 
-      ret.multVecMatrix(imat);
+      isect.multVecMatrix(imat);
 
-      let vx = dist_temps.next().load(ret);
-      let vy = dist_temps.next().load(ret);
+      let sx = dist_temps.next().load(isect);
+      let sy = dist_temps.next().load(isect);
 
-      let sv1 = dist_temps.next().load(v1);
-      view3d.project(sv1);
+      sx[1] = sy[0] = 0.0;
+      sx[2] = sy[2] = 0.0;
+      sx.multVecMatrix(matrix);
+      sy.multVecMatrix(matrix);
 
-      //console.log(vx);
-      vx[1] = vy[0] = 0.0;
-      vx[2] = vy[2] = 0.0;
-      vx.multVecMatrix(this.drawmatrix);
-      vy.multVecMatrix(this.drawmatrix);
+      view3d.project(sx);
+      view3d.project(sy);
 
-      view3d.project(vx);
-      view3d.project(vy);
-
-      let dx = vx.vectorDistance(sv1);
-      let dy = vy.vectorDistance(sv1);
-
-      let sn = dist_temps.next().zero();
+      let dx = sx.vectorDistance(sorigin);
+      let dy = sy.vectorDistance(sorigin);
 
       dx = Math.max(dx - scalex, 0.0);
       dy = Math.max(dy - scaley, 0.0);
 
-      //dx -= scalex*0.5;
-      //dy -= scaley*0.5;
-
       let dis = Math.max(Math.abs(dx), Math.abs(dy));
-      //console.log(dx.toFixed(2), dy.toFixed(2), (scalex*0.5).toFixed(2), (scaley*0.5).toFixed(2));
 
       ret2[0] = dis;
       ret2[1] = zco[2];
@@ -558,6 +543,7 @@ export class WidgetBase extends Node {
     this.ctx = undefined;
     this.flag = def.flag !== 0 ? def.flag : 0;
     this.id = -1;
+    this.wscale = 1.0;
 
     this.children = [];
     this.destroyed = false;
@@ -578,6 +564,15 @@ export class WidgetBase extends Node {
   setMatrix(mat) {
     this.matrix.load(mat);
     return this;
+  }
+
+  getWscale() {
+    let widget = this;
+    while (widget.parent) {
+      widget = widget.parent;
+    }
+
+    return widget.wscale;
   }
 
   //can this widget run?
@@ -636,8 +631,10 @@ export class WidgetBase extends Node {
       matrix.load(this.matrix);
     }
 
+    const wscale = this.getWscale();
+
     if (this.shape !== undefined) {
-      let disz = this.shape.distToMouse(view3d, x, y, matrix);
+      let disz = this.shape.distToMouse(view3d, x, y, matrix, wscale);
 
       mindis = disz[0];
       minz = disz[1];
@@ -782,6 +779,18 @@ export class WidgetBase extends Node {
       mat.preMultiply(matrix);
     }
 
+    /* Apply zoom scaling. */
+    if (!this.parent) {
+      let co = new Vector3();
+      let w = this.ctx.view3d.project(co);
+      let s = w*0.075;// / this.ctx.view3d.size[1];
+
+      this.wscale = s;
+
+      let smat = new Matrix4();
+      smat.scale(s, s, s);
+      mat.multiply(smat);
+    }
     for (let w of this.children) {
       w.draw(gl, manager, mat);
     }

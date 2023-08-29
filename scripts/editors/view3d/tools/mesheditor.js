@@ -202,8 +202,9 @@ export class MeshEditor extends MeshToolBase {
 
     strip = panel.row().strip();
     strip.useIcons(false);
-    strip.tool("mesh.flip_normals()");
-    strip.tool("mesh.bevel()");
+    strip.tool("mesh.flip_normals");
+    strip.tool("mesh.bevel");
+    strip.tool("mesh.inset_regions");
 
     panel = column1.panel("Transform");
 

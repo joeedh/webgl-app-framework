@@ -315,7 +315,7 @@ export class FindnearestMesh extends FindnearestClass {
           fs = bvh.facesInCone(co2, ray2, radius1, radius2, true, false);
           console.log("fs", fs);
           for (let f of fs) {
-            doElem(mat, ob, f);
+            doElem(mat, ob, f, 0.0);
           }
 
           continue;
@@ -340,10 +340,10 @@ export class FindnearestMesh extends FindnearestClass {
             // continue;
           }
 
-          doElem(mat, ob, v);
+          doElem(mat, ob, v, 0.0);
 
           for (let e of v.edges) {
-            doElem(mat, ob, e);
+            doElem(mat, ob, e, 0.0);
           }
         }
       }
@@ -396,7 +396,7 @@ export class FindnearestMesh extends FindnearestClass {
     let selmask2 = selmask;
     let foundmask = 0;
 
-    function doElem(mat, ob, elem) {
+    function doElem(mat, ob, elem, dist) {
       foundmask |= elem.type;
 
       if (!(elem.type & selmask2)) {
@@ -448,7 +448,7 @@ export class FindnearestMesh extends FindnearestClass {
         tmp2[2] = 0.0;
         tmp1[2] = 0.0;
 
-        let dis = tmp1.vectorDistance(tmp2);
+        let dis = Math.min(dist, tmp1.vectorDistance(tmp2));
 
         if (minfdis === undefined || dis < minfdis) {
           minf = elem;
@@ -518,11 +518,11 @@ export class FindnearestMesh extends FindnearestClass {
             }
           }
 
-          doElem(mat, ob, f);
+          doElem(mat, ob, f, isect.dist);
 
           for (let l of f.loops) {
-            doElem(mat, ob, l.v);
-            doElem(mat, ob, l.e);
+            doElem(mat, ob, l.v, isect.dist);
+            doElem(mat, ob, l.e, isect.dist);
           }
 
           if (Math.random() > 0.995) {

@@ -165,52 +165,39 @@ export class ThreeAxisWidget extends TransformWidget {
 
     let ret = this.getTransCenter();
 
-    let tmat = new Matrix4();
-    let ts = 0.5;
-    tmat.translate(ret.center[0], ret.center[1], ret.center[2]);
-    tmat.scale(ts, ts, ts);
-    this.center.setMatrix(tmat);
+    this.center.matrix.makeIdentity();
+    let sz = 0.4;
+    this.center.matrix.scale(sz, sz, sz);
 
-    let co1 = new Vector3(ret.center);
-    let co2 = new Vector3(co1);
-
-    this.ctx.view3d.project(co1);
-    this.ctx.view3d.project(co2);
-
-    co1[0] += 1.0;
-
-    this.ctx.view3d.unproject(co1);
-    this.ctx.view3d.unproject(co2);
+    let p = new Vector3(ret.center);
+    const w = this.ctx.view3d.project(p);
 
     let mat = new Matrix4(); //XXX get proper matrix space transform
     mat.multiply(ret.spaceMatrix);
+    let mat2 = new Matrix4();
+    mat2.translate(ret.center[0], ret.center[1], ret.center[2]);
+
+    mat.multiply(mat2);
+    this.setMatrix(mat);
 
     let xmat = new Matrix4();
     let ymat = new Matrix4();
 
-    let scale = 0.65, scale2 = scale*1.5;
+    let scale = 1.0;
+    let toff = 1.0;
+    let scale2 = 1.0; //scale*1.5;
+
     xmat.euler_rotate(0.0, Math.PI*0.5, 0.0);
-    xmat.translate(0.0, 0.0, scale);
+    xmat.translate(0.0, 0.0, toff);
     xmat.scale(scale, scale, scale2);
 
     ymat.euler_rotate(Math.PI*0.5, 0.0, 0.0);
-    ymat.translate(0.0, 0.0, scale);
+    ymat.translate(0.0, 0.0, toff);
     ymat.scale(scale, scale, scale2);
 
     let zmat = new Matrix4();
-    zmat.translate(0.0, 0.0, scale);
+    zmat.translate(0.0, 0.0, toff);
     zmat.scale(scale, scale, scale2);
-
-    let mat2 = new Matrix4();
-    mat2.translate(ret.center[0], ret.center[1], ret.center[2]);
-
-    xmat.preMultiply(mat);
-    ymat.preMultiply(mat);
-    zmat.preMultiply(mat);
-
-    xmat.preMultiply(mat2);
-    ymat.preMultiply(mat2);
-    zmat.preMultiply(mat2);
 
     x.setMatrix(xmat);
     y.setMatrix(ymat);
@@ -229,32 +216,19 @@ export class ThreeAxisWidget extends TransformWidget {
     zmat.makeIdentity();
 
     scale *= 0.6;
-
     let fac = 0.6;
 
-    let xtmat = new Matrix4();
-    let ytmat = new Matrix4();
-    let ztmat = new Matrix4();
-
     xmat.euler_rotate(0.0, Math.PI*0.5, 0.0);
-    xmat.translate(-scale*fac, -scale*fac, 0.0);
+    xmat.translate(-toff*fac, -toff*fac, 0.0);
     xmat.scale(scale, scale, scale);
 
     ymat.euler_rotate(Math.PI*0.5, 0.0, 0.0);
-    ymat.translate(scale*fac, scale*fac, 0.0);
+    ymat.translate(toff*fac, toff*fac, 0.0);
     ymat.scale(scale, scale, scale);
 
     zmat.euler_rotate(0.0, 0.0, 0.0);
-    zmat.translate(scale*fac, -scale*fac, 0.0);
+    zmat.translate(toff*fac, -toff*fac, 0.0);
     zmat.scale(scale, scale, scale);
-
-    xmat.preMultiply(mat);
-    ymat.preMultiply(mat);
-    zmat.preMultiply(mat);
-
-    xmat.preMultiply(mat2);
-    ymat.preMultiply(mat2);
-    zmat.preMultiply(mat2);
 
     px.setMatrix(xmat);
     py.setMatrix(ymat);
@@ -343,8 +317,6 @@ export class TranslateWidget extends ThreeAxisWidget {
   }
 
   update(ctx) {
-    console.warn("translate widget update");
-
     if (this.axes === undefined) {
       this.create(ctx, this.manager);
     }
@@ -443,7 +415,7 @@ export class ScaleWidget extends ThreeAxisWidget {
     let ts = 0.5;
     tmat.translate(ret.center[0], ret.center[1], ret.center[2]);
     tmat.scale(ts, ts, ts);
-    this.center.setMatrix(tmat);
+    //this.center.setMatrix(tmat);
 
     let co1 = new Vector3(ret.center);
     let co2 = new Vector3(co1);
@@ -631,7 +603,7 @@ export class InflateWidget extends TransformWidget {
 
     super.create(ctx, manager);
 
-    this.arrow = this.getArrow(new Matrix4(), [0.7, 0.7, 0.7, 1]);
+    this.arrow = this.getBlockArrow(new Matrix4(), [0.7, 0.7, 0.7, 1]);
     this.arrow.onclick = (e) => {
       this.onclick(e);
     }
