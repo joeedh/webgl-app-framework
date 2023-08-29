@@ -5,18 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
-      <change beforePath="$PROJECT_DIR$/.idea/webgl-app-framework.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/webgl-app-framework.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_query.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_query.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_toolmode.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_toolmode.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/widgets/widget_tools.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/widgets/widget_tools.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/widgets/widgets.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/widgets/widgets.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_extrudeops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_extrudeops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_tess.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_tess.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/smesh/smesh_attributes.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/smesh/smesh_attributes.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/smesh/smesh_element_list.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/smesh/smesh_element_list.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -59,6 +52,7 @@
   "keyToString": {
     "WebServerToolWindowFactoryState": "false",
     "git-widget-placeholder": "master",
+    "ignore.virus.scanning.warn.message": "true",
     "last_opened_file_path": "C:/dev/apss",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -335,7 +329,8 @@
       <workItem from="1691436099227" duration="32000" />
       <workItem from="1691536857456" duration="3089000" />
       <workItem from="1692798937506" duration="70000" />
-      <workItem from="1693151706366" duration="9302000" />
+      <workItem from="1693151706366" duration="9653000" />
+      <workItem from="1693272861437" duration="3386000" />
     </task>
     <servers />
   </component>

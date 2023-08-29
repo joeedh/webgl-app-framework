@@ -7,6 +7,7 @@ import {LogContext, MeshFeatures, MeshFlags, ReusableIter} from './mesh_base.js'
 import {InflateOp, TranslateOp} from '../editors/view3d/transform/transform_ops.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import * as util from '../util/util.js';
+import {vertexSmooth} from './mesh_utils.js';
 
 export class ExtrudeOneVertexOp extends MeshOp {
   constructor() {
@@ -398,7 +399,7 @@ export class ExtrudeFaceIndivOp extends MeshOp {
 
       let lctx = new LogContext();
 
-      lctx.onnew = function(e) {
+      lctx.onnew = function (e) {
         e.flag |= MeshFlags.UPDATE;
       }
 
@@ -424,4 +425,247 @@ export class ExtrudeFaceIndivOp extends MeshOp {
     }
   }
 }
+
 ToolOp.register(ExtrudeFaceIndivOp);
+
+
+export class InsetHoleOp extends MeshOp {
+  constructor() {
+    super();
+  }
+
+  static tooldef() {
+    return {
+      uiname  : "Inset Faces",
+      icon    : -1,
+      toolpath: "mesh.inset_regions",
+      undoflag: 0,
+      flag    : 0,
+      inputs  : ToolOp.inherit({}),
+      outputs : {
+        normal     : new Vec3Property(),
+        normalSpace: new Mat4Property()
+      }
+    }
+  }
+
+  static invoke(ctx, args) {
+    let tool = super.invoke(ctx, args);
+
+    if (args["transform"]) {
+      let macro = new ToolMacro();
+      macro.add(tool);
+
+      let translate = new TranslateOp();
+      translate.inputs.selmask.setValue(SelMask.GEOM);
+      translate.inputs.constraint.setValue([0, 0, 1]);
+
+      macro.add(translate);
+
+      macro.connect(tool, "normalSpace", translate, "constraint_space");
+
+      macro.connect(tool, translate, () => {
+        //  translate.inputs.constraint_space.setValue(tool.outputs.normalSpace.getValue());
+      });
+
+      return macro;
+    }
+
+    return tool;
+  }
+
+  _exec_intern(ctx, mesh) {
+    const no = new Vector3();
+
+    for (let f of mesh.faces.selected.editable) {
+      no.add(f.no);
+    }
+
+    no.normalize();
+
+
+    let vset = new Set();
+    let eset = new Set();
+    let fset = new Set();
+
+    for (let f of mesh.faces.selected.editable) {
+      fset.add(f);
+    }
+
+    let loops = [];
+    let outervs = new Set();
+    let outeres = new Set();
+    let outerls = new Set();
+
+    for (let f of fset) {
+      for (let list of f.lists) {
+        for (let l of list) {
+          let ok = false;
+          vset.add(l.v);
+          eset.add(l.e);
+
+          loops.push(l);
+
+          let l2 = l;
+          do {
+            if (!fset.has(l2.f)) {
+              ok = true;
+              break;
+            }
+          } while ((l2 = l2.radial_next) !== l);
+
+          if (ok) {
+            outeres.add(l.e);
+            outervs.add(l.e.v1);
+            outervs.add(l.e.v2);
+          } 
+        }
+      }
+    }
+
+
+    console.log(outervs, outeres);
+
+    for (let e of outeres) {
+      for (let l of e.loops) {
+        if (fset.has(l.f)) {
+          outerls.add(l);
+        }
+      }
+    }
+
+    /* Disconnect faces. */
+    for (let l of loops) { //outerls
+      mesh._radialRemove(l.e, l);
+    }
+
+    let newvs = new Map();
+    let newes = new Map();
+
+    /* Split verts. */
+    for (let v of outervs) {
+      let v2 = mesh.makeVertex(v);
+      mesh.copyElemData(v2, v);
+
+      mesh.verts.setSelect(v, false);
+      mesh.verts.setSelect(v2, true);
+
+      newvs.set(v, v2);
+    }
+
+    for (let e of outeres) {
+      let v1 = newvs.get(e.v1), v2 = newvs.get(e.v2);
+
+      let e2 = mesh.makeEdge(v1, v2);
+      mesh.copyElemData(e2, e);
+
+      mesh.edges.setSelect(e, false);
+      mesh.edges.setSelect(e2, true);
+
+      newes.set(e, e2);
+    }
+
+    /* Splice edges that belongs to the region but
+       do not lie on the boundary.
+     */
+    for (let e of eset) {
+      if (outeres.has(e)) {
+        continue;
+      }
+
+      let v;
+
+      if ((v = newvs.get(e.v1))) {
+        mesh._diskRemove(e.v1, e);
+        e.v1 = v;
+        mesh._diskInsert(v, e);
+      }
+
+      if ((v = newvs.get(e.v2))) {
+        mesh._diskRemove(e.v2, e);
+        e.v2 = v;
+        mesh._diskInsert(v, e);
+      }
+    }
+
+    for (let l of loops) {
+      let v2 = newvs.get(l.v);
+      if (v2 === undefined) {
+        continue;
+      }
+
+      l.v = v2;
+    }
+
+    for (let l of loops) {
+      l.e = mesh.ensureEdge(l.v, l.next.v);
+      mesh._radialInsert(l.e, l);
+    }
+
+
+    let visit = new WeakSet();
+    for (let e of outeres) {
+      if (visit.has(e)) {
+        continue;
+      }
+
+      let bound = [];
+      let hole = [];
+
+      let v;
+      if (e.l) {
+        v = e.v1 === e.l.v1 ? e.v1 : e.v2;
+      } else {
+        v = e.v1;
+      }
+
+      let firstv = v;
+
+      do {
+        bound.push(v);
+        hole.push(newvs.get(v));
+        visit.add(e);
+
+        v = e.otherVertex(v);
+        let ok = false;
+
+        for (let e2 of v.edges) {
+          if (e2 !== e && outeres.has(e2)) {
+            ok = true;
+            e = e2;
+            break;
+          }
+        }
+
+        if (!ok) {
+          break;
+        }
+      } while (firstv !== v);
+
+      hole.reverse();
+
+      console.log("bound:", bound, hole);
+      let newf = mesh.makeFace(bound);
+      mesh.makeHole(newf, hole);
+    }
+
+    this.outputs.normalSpace.setValue(new Matrix4().makeNormalMatrix(no));
+    this.outputs.normal.setValue(no);
+
+    mesh.regenRender();
+    mesh.regenTessellation();
+    mesh.recalcNormals();
+    mesh.graphUpdate();
+    mesh.regenBVH();
+
+    window.redraw_viewport();
+  }
+
+  exec(ctx) {
+    for (let mesh of this.getMeshes(ctx)) {
+      this._exec_intern(ctx, mesh);
+    }
+  }
+}
+
+ToolOp.register(InsetHoleOp);

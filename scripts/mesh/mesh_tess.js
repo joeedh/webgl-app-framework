@@ -266,7 +266,7 @@ export class CDT {
 
         let eset2 = new util.set();
         for (let e2 of eset) {
-          if (e2.eid >= 0 && e2.eid in me.eidmap) {
+          if (e2.eid >= 0 && me.eidMap.has(e2.eid)) {
             eset2.add(e2);
           }
         }
@@ -986,7 +986,7 @@ function execCommands(mesh, lst, loop, tri, cd_color, cd_uv, maketri) {
 
         function getLoop(l) {
           if (l < 0) {
-            l = mesh.eidmap[-l];
+            l = mesh.eidMap.get(-l);
             co = l.v;
             no = l.v.no;
             vcd = l.v.customData;
