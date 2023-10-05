@@ -5,6 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="s">
+      <change afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/all.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_inset.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/widgetshapes.blend" beforeDir="false" afterPath="$PROJECT_DIR$/assets/widgetshapes.blend" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/pbvh_sculptops.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/widgets/widget_tools.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/widgets/widget_tools.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_extrudeops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_extrudeops.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -44,20 +52,20 @@
     <option name="showLibraryContents" value="true" />
     <option name="showMembers" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "master",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "C:/dev/apss",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/dev/diffblend&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\dev\webgl-app-framework\addons\strand" />
@@ -326,7 +334,13 @@
       <workItem from="1691536857456" duration="3089000" />
       <workItem from="1692798937506" duration="70000" />
       <workItem from="1693151706366" duration="9653000" />
-      <workItem from="1693272861437" duration="10429000" />
+      <workItem from="1693272861437" duration="11025000" />
+      <workItem from="1693327019155" duration="90000" />
+      <workItem from="1693594046432" duration="2882000" />
+      <workItem from="1695580923007" duration="279000" />
+      <workItem from="1695660254191" duration="65000" />
+      <workItem from="1695837469016" duration="8000" />
+      <workItem from="1696536215569" duration="406000" />
     </task>
     <servers />
   </component>
