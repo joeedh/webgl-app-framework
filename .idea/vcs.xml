@@ -2,6 +2,8 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/_site" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/_site/scripts/path.ux" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/scripts/mathl" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/scripts/path.ux" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" vcs="Git" />

@@ -5,14 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="ss">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/toolstack.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/toolstack.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/entry_point.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/entry_point.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/path.ux" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/controller/controller_abstract.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/controller/controller_abstract.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/toolsys/toolsys.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/toolsys/toolsys.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/events.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/events.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/FrameManager.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/FrameManager.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
     </list>
@@ -29,7 +23,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/scripts/path.ux" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="GitSEFilterConfiguration">
@@ -341,7 +335,7 @@
       <workItem from="1695580923007" duration="279000" />
       <workItem from="1695660254191" duration="65000" />
       <workItem from="1695837469016" duration="8000" />
-      <workItem from="1696536215569" duration="1383000" />
+      <workItem from="1696536215569" duration="1505000" />
     </task>
     <servers />
   </component>
