@@ -3,7 +3,7 @@ import {SimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
 import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property,
-  ToolOp, ToolFlags, UndoFlags,
+  ToolOp, ToolFlags, UndoFlags, ToolMacro,
   PropFlags, PropTypes, PropSubTypes
 } from '../../../path.ux/scripts/pathux.js';
 import {Shaders} from '../../../shaders/shaders.js';
@@ -17,9 +17,10 @@ import {View3DFlags} from "../view3d_base.js";
 import {WidgetBase, WidgetSphere, WidgetArrow, WidgetFlags} from './widgets.js';
 import {TranslateOp, ScaleOp, RotateOp, InflateOp} from "../transform/transform_ops.js";
 import {calcTransCenter} from '../transform/transform_query.js';
-import {ToolMacro} from "../../../path.ux/scripts/pathux.js";
 import {Icons} from '../../icon_enum.js';
 import {ConstraintSpaces} from '../transform/transform_base.js';
+import {InsetTransformOp} from '../transform/transform_inset.js';
+import {InsetHoleOp} from '../../../mesh/mesh_extrudeops.js';
 
 let update_temps = util.cachering.fromConstructor(Vector3, 64);
 let update_temps4 = util.cachering.fromConstructor(Vector4, 64);
@@ -610,10 +611,11 @@ export class InflateWidget extends TransformWidget {
   }
 
   onclick(e) {
-    let op = new InflateOp();
-    op.inputs.selmask.setValue(this.ctx.selectMask);
+    let macro = new ToolMacro();
+    macro.add(InsetHoleOp.invoke(this.ctx, {}));
+    macro.add(InsetTransformOp.invoke(this.ctx, {selmask: this.ctx.selectMask}));
 
-    this.execTool(this.ctx, op);
+    this.execTool(this.ctx, macro);
   }
 
   draw(gl, manager, matrix = undefined) {

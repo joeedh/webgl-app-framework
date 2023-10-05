@@ -5307,6 +5307,9 @@ export class PaintOp extends PaintOpBase {
 
       const nosmooth = 1;
 
+      //for future reference: An Enhanced Steepest Descent Method for Global Optimization-Based Mesh Smoothing
+      //https://www.scirp.org/journal/paperinformation.aspx?paperid=104388
+      //similar to my velocity smooth idea.
       let dosmooth = (vs, fac = 0.5) => {
         if (nosmooth) {
           return;

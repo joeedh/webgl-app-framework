@@ -11,6 +11,7 @@ import {getBlueMask} from "../../shadernodes/shader_lib.js";
 
 import {ToolMode} from './view3d_toolmode.js';
 
+import './transform/all.js';
 import './findnearest/all.js';
 import './tools/tools.js';
 import * as textsprite from '../../core/textsprite.js';
@@ -1008,6 +1009,8 @@ export class View3D extends Editor {
     this.rebuildHeader();
 
     let on_mousewheel = (e) => {
+      e.preventDefault();
+
       let df = e.deltaY/100.0;
 
       df = Math.min(Math.max(df, -0.5), 0.5);
@@ -1122,7 +1125,7 @@ export class View3D extends Editor {
       } else if (docontrols && !e.shiftKey && !e.ctrlKey) {
         console.log("orbit!");
         let tool = new OrbitTool();
-        this.ctx.state.toolstack.execTool(this.ctx, tool);
+        this.ctx.state.toolstack.execTool(this.ctx, tool, e);
         window.redraw_viewport();
       } else if (docontrols && e.shiftKey && !e.ctrlKey) {
         console.log("pan!");

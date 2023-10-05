@@ -518,7 +518,7 @@ export class InsetHoleOp extends MeshOp {
             outeres.add(l.e);
             outervs.add(l.e.v1);
             outervs.add(l.e.v2);
-          } 
+          }
         }
       }
     }
@@ -602,7 +602,6 @@ export class InsetHoleOp extends MeshOp {
       mesh._radialInsert(l.e, l);
     }
 
-
     let visit = new WeakSet();
     for (let e of outeres) {
       if (visit.has(e)) {
@@ -642,9 +641,23 @@ export class InsetHoleOp extends MeshOp {
         }
       } while (firstv !== v);
 
+      if (bound.length < 3) {
+        return;
+      }
+
+      /* Deal with winding. */
+      let bounde = mesh.getEdge(bound[0], bound[1]);
+      console.log("bounde.l", bounde.l);
+
+      if (bounde.l && bounde.l.v1 !== bound[0]) {
+        bound.reverse();
+      }
+
+      /* Hole has reverse winding. */
       hole.reverse();
 
       console.log("bound:", bound, hole);
+
       let newf = mesh.makeFace(bound);
       mesh.makeHole(newf, hole);
     }
