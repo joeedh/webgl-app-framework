@@ -104,9 +104,9 @@ export class EdgeCutOp extends MeshOp {
       }
 
       if (lastv) {
-        view3d.makeDrawLine(lastv, v, "red");
+        view3d.makeDrawLine(lastv, v, "white");
       }
-      //view3d.makeDrawLine(vco(l.e.v1), vco(l.e.v2), "red");
+      //view3d.makeDrawLine(vco(l.e.v1), vco(l.e.v2), "white");
       lastv = v;
       lastl = l;
     }
@@ -122,7 +122,7 @@ export class EdgeCutOp extends MeshOp {
     }
 
     if (connect) {
-      view3d.makeDrawLine(lastv, firstv, "red");
+      view3d.makeDrawLine(lastv, firstv, "white");
     }
   }
 

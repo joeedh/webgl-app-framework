@@ -63,7 +63,7 @@ export function setupIconsSvg() {
   iconsheet.src = resolvePath("assets/iconsheet.svg");
 
   iconmanager = new IconManager([iconsheet, iconsheet, iconsheet, iconsheet],
-  [[32, 16], [32, 24], [32, 40], [32, 32]], 16);
+  [[32, 22], [32, 42], [32, 52], [32, 64]], 16);
 
   setIconManager(iconmanager, {
     SMALL : 0,

@@ -122,6 +122,11 @@ export class MeshEditor extends MeshToolBase {
 
     strip = panel.row().strip();
     strip.useIcons(false);
+    strip.tool("mesh.subdivide_smooth()");
+    strip.tool("mesh.vertex_smooth()");
+
+    strip = panel.row().strip();
+    strip.useIcons(false);
     strip.tool("mesh.smooth_curvature_directions()");
     strip.tool("mesh.mark_singularity()");
 

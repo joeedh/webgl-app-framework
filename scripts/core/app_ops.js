@@ -90,8 +90,9 @@ export class BasicFileOp extends ToolOp {
       vertexSmooth(mesh, mesh.verts);
     }
     for (let v of mesh.verts) {
-      v.mulScalar(4.0);
+      v.mulScalar(6.0);
     }
+    mesh.selectAll();
 
     let mat = makeDefaultMaterial();
     lib.add(mat);
