@@ -27,7 +27,7 @@ export class AppToolStack extends ToolStack {
     return super.limitMemory(limit, ctx);
   }
 
-  execTool(ctx, toolop) {
+  execTool(ctx, toolop, event) {
     this._syncSettings(ctx); //sync undo settings
 
     if (this.enforceMemLimit) {
@@ -81,6 +81,7 @@ export class AppToolStack extends ToolStack {
       toolop.saveDefaultInputs();
 
       //will handle calling .exec itself
+      toolop._pointerId = event ? event.pointerId : undefined;
       toolop.modalStart(ctx);
     } else {
       toolop.execPre(tctx);

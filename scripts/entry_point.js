@@ -12,6 +12,35 @@ import config from './config/config.js';
 import {setupPathux} from './setup_pathux.js';
 import {nstructjs} from './path.ux/pathux.js';
 
+if (0) {
+  let _addEvt = window.addEventListener;
+  let cbmap = new Map();
+
+  window.addEventListener = function (type, cb, opt) {
+    let cb2 = cb;
+
+    if (type.startsWith("key")) {
+      cb2 = function (e) {
+        console.log(type, "cb", cb);
+        return cb(e);
+      }
+
+      cbmap.set(cb, cb2);
+    }
+
+    return _addEvt.call(window, type, cb2, opt);
+  }
+
+  let _remEvt = window.removeEventListener;
+  window.removeEventListener = function (type, cb, opt) {
+    let cb2 = cbmap.get(cb);
+    if (cb2) {
+      cb = cb2;
+    }
+
+    return _remEvt.call(window, type, cb, opt);
+  }
+}
 
 export function handleNodeArguments() {
   console.error("arguments", process, process.arguments, process.argv);

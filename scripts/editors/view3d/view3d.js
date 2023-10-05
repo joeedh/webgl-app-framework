@@ -1125,7 +1125,7 @@ export class View3D extends Editor {
       } else if (docontrols && !e.shiftKey && !e.ctrlKey) {
         console.log("orbit!");
         let tool = new OrbitTool();
-        this.ctx.state.toolstack.execTool(this.ctx, tool);
+        this.ctx.state.toolstack.execTool(this.ctx, tool, e);
         window.redraw_viewport();
       } else if (docontrols && e.shiftKey && !e.ctrlKey) {
         console.log("pan!");
