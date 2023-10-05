@@ -41,9 +41,9 @@ export class InsetTransformOp extends TransformOp {
 
   static tooldef() {
     return {
-      uiname     : "Translate",
-      description: "Translation tool",
-      toolpath   : "view3d.translate",
+      uiname     : "Inset Transform",
+      description: "",
+      toolpath   : "view3d.transform_inset",
       is_modal   : true,
       inputs     : ToolOp.inherit({}),
       icon       : -1

@@ -37,9 +37,6 @@ export class MeshTransType extends TransDataType {
     let faces = tdata.faces = new Set();
     let normalvs = tdata.normalvs = new Set();
 
-
-    console.log("MESH GEN", selectmode & SelMask.GEOM, selectmode, propmode, propradius);
-
     let propconnected = true;
 
     if (propmode !== undefined && !propconnected) {
@@ -397,7 +394,6 @@ export class MeshTransType extends TransDataType {
   }
 
   static undoPre(ctx, elemlist) {
-    console.log("bleh");
     let cos = {};
     let nos = {};
     let fnos = {};

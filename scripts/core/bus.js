@@ -63,7 +63,7 @@ export class MessageBus {
   }
 
   /** getter_cb is a function that returns
-   * subscriber object */
+   * subscriber object, or undefined if subscriber is dead. */
   subscribe(getter_cb, sourceClass, callback, events="ANY", priority=100000) {
     if (events === "ANY") {
       events = new Set(["ANY"]);

@@ -846,8 +846,6 @@ export class DataRefProperty extends ToolProperty {
       return;
     }
 
-    console.log("VAL", val);
-
     if (typeof val === "object" && val instanceof DataRef) {
       this.data.lib_id = val.lib_id;
       this.data.name = val.name;

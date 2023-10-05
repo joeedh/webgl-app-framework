@@ -61,21 +61,21 @@ export class EdgeCutOp extends MeshOp {
     this.first = true;
   }
 
-  on_mousemove(e) {
+  on_pointermove(e) {
     let ctx = this.modal_ctx;
     let view3d = ctx.view3d;
 
     let mpos = view3d.getLocalMouse(e.x, e.y);
     view3d.resetDrawLines();
 
-    console.log(mpos);
     let ret = FindNearest(ctx, SelMask.EDGE, mpos, view3d);
 
     if (!ret || ret.length === 0) {
       return;
     }
 
-    console.log(ret[0]);
+    //console.log(ret[0]);
+
     let e1 = ret[0].data;
     let mesh = ret[0].mesh;
     let ob = ret[0].object;
@@ -137,7 +137,13 @@ export class EdgeCutOp extends MeshOp {
     }
   }
 
-  on_mouseup(e) {
+  on_pointerdown(e) {
+    let ctx = this.modal_ctx;
+
+    this.modalEnd(e.button !== 0);
+  }
+
+  on_pointerup(e) {
     let ctx = this.modal_ctx;
 
     this.modalEnd(e.button !== 0);

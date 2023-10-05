@@ -975,6 +975,12 @@ export class View3D extends Editor {
   init() {
     super.init();
 
+    /* Prevent pinch zooming. */
+    this.addEventListener("pointerdown", (e) => {
+      console.log("this");
+      e.preventDefault();
+    });
+
     let id = this.getAttribute("id");
     let busgetter = () => {
       //console.log("ID", id, this.getAttribute("id"), document.getElementById(id));
@@ -988,7 +994,6 @@ export class View3D extends Editor {
     }
 
     this.ctx.messagebus.subscribe(busgetter, ToolMode, (msg) => {
-      console.log("Got bus message!", this, msg);
       this.doOnce(this.rebuildHeader);
     }, ["REGISTER", "UNREGISTER"]);
 
@@ -1113,8 +1118,6 @@ export class View3D extends Editor {
       if (docontrols) {
         this.mdown = false;
       }
-
-      console.log("touch", eventWasTouch(e), e);
 
       if (docontrols && eventWasTouch(e) && !e.shiftKey && !e.ctrlKey && !e.altKey) {
         console.log("multitouch view tool");
