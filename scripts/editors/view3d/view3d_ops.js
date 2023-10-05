@@ -309,6 +309,8 @@ export class OrbitTool extends ToolOp {
   }
 
   on_pointermove(e) {
+    e.preventDefault();
+
     let view3d = this.modal_ctx.view3d, camera = view3d.camera;
     let mpos = view3d.getLocalMouse(e.x, e.y);
     let x = mpos[0], y = mpos[1];

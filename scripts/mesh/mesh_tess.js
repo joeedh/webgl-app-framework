@@ -694,7 +694,6 @@ function fillFace(f, loopTris) {
   }
 
   cdt.generate();
-  console.log(cdt.triangles.length/3);
 
   for (let eid of cdt.triangles) {
     let l = idmap[eid];

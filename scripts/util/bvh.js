@@ -3062,7 +3062,7 @@ export class BVH {
     this.forceUniqueTris = false;
     this.storeVerts = false;
 
-    this._leafLimit = 256;
+    this.leafLimit = 256;
     this.drawLevelOffset = 1;
     this.depthLimit = 18;
 
@@ -3103,6 +3103,7 @@ export class BVH {
     })();
   }
 
+  /*
   get leafLimit() {
     return this._leafLimit;
   }
@@ -3111,6 +3112,7 @@ export class BVH {
     console.error("leafLimit set", v);
     this._leafLimit = v;
   }
+  //*/
 
   static create(mesh, storeVerts_or_args = true, useGrids = true,
                 leafLimit                                 = undefined,
@@ -4051,7 +4053,7 @@ export class BVH {
   }
 
   destroy(mesh) {
-    console.error("BVH.destroy called");
+    //console.error("BVH.destroy called");
 
     if (this.dead) {
       return;

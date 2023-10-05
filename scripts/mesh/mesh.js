@@ -5456,15 +5456,12 @@ export class Mesh extends SceneObjectData {
     key += ":" + this.bvhSettings.calcUpdateKey();
 
     if (force || !this.bvh || key !== this._last_bvh_key) {
-      //console.log(this._last_bvh_key);
-      //console.log(key);
-
       this._last_bvh_key = key;
 
       if (bkey !== this.bvhSettings._last_key || auto_update || !this.bvh || force) {
         this.bvhSettings._last_key = bkey;
 
-        console.warn("BVH rebuild!", this._last_bvh_key, key, "|", this.bvhSettings._last_key, bkey);
+        //console.warn("BVH rebuild!", this._last_bvh_key, key, "|", this.bvhSettings._last_key, bkey);
 
         if (this.bvh) {
           this._bvh_freelist = this.bvh.destroy(this);

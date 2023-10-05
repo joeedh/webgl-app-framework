@@ -16,6 +16,8 @@ import * as cconst from './const.js';
 import * as platform from '../core/platform.js';
 import {exportSTLMesh} from '../util/stlformat.js';
 import {ImportOBJOp} from '../mesh/mesh_createops.js';
+import {subdivide} from '../subsurf/subsurf_mesh.js';
+import {vertexSmooth} from '../mesh/mesh_utils.js';
 
 ToolOp.prototype.calcUndoMem = function(ctx) {
   if (this.undoPre !== ToolOp.prototype.undoPre) {
@@ -83,6 +85,13 @@ export class BasicFileOp extends ToolOp {
     lib.add(mesh);
 
     makeCube(mesh);
+    for (let i=0; i<2; i++) {
+      subdivide(mesh, mesh.faces);
+      vertexSmooth(mesh, mesh.verts);
+    }
+    for (let v of mesh.verts) {
+      v.mulScalar(4.0);
+    }
 
     let mat = makeDefaultMaterial();
     lib.add(mat);
