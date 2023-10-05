@@ -977,8 +977,10 @@ export class View3D extends Editor {
 
     /* Prevent pinch zooming. */
     this.addEventListener("pointerdown", (e) => {
-      console.log("this");
-      e.preventDefault();
+      if (e.pointerType !== "mouse") {
+        console.log("view3d pointerdown preventDefault for", e.pointerType, "events");
+        e.preventDefault();
+      }
     });
 
     let id = this.getAttribute("id");

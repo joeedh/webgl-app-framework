@@ -6,26 +6,14 @@
   <component name="ChangeListManager">
     <list default="true" id="02bebeee-8670-4252-8c05-4edea41a8f0b" name="Default Changelist" comment="ssssssssssssssssssssssssssssssss">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/iconsheet.svg" beforeDir="false" afterPath="$PROJECT_DIR$/assets/iconsheet.svg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/core/app_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/app_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/bus.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/bus.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/core/lib_api.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/core/lib_api.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/data_api/api_define.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/data_api/api_define.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/meshtool.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/meshtool.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_inset.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_inset.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_types.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/transform/transform_types.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/theme.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/theme.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/tools/mesheditor.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/editors/view3d/view3d_ops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/entry_point.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/entry_point.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_loopops.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_loopops.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_ops_base.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_ops_base.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/mesh/mesh_tess.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/mesh/mesh_tess.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/simple_events.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/path-controller/util/simple_events.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/FrameManager.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/screen/FrameManager.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/path.ux/scripts/widgets/ui_tabs.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/path.ux/scripts/widgets/ui_tabs.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/setup_pathux.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/setup_pathux.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/shadernodes/math_node.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/util/bvh.js" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/util/bvh.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -352,7 +340,7 @@
       <workItem from="1695580923007" duration="279000" />
       <workItem from="1695660254191" duration="65000" />
       <workItem from="1695837469016" duration="8000" />
-      <workItem from="1696536215569" duration="5752000" />
+      <workItem from="1696536215569" duration="7604000" />
     </task>
     <servers />
   </component>
