@@ -1,4 +1,5 @@
 # Logs
+.idea
 app.zip
 scripts/renderengine
 scripts/shadernodes
