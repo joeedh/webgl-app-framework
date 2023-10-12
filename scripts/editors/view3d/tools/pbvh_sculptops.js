@@ -228,7 +228,7 @@ export class PaintOp extends PaintOpBase {
 
     if (initverts) {
       for (let v of mesh.verts) {
-        v.customData[cd_orig].value.load(v);
+        v.customData[cd_orig].value.load(v.co);
       }
     }
 
@@ -1351,17 +1351,17 @@ export class PaintOp extends PaintOpBase {
 
         //let execDot set orig data
         if (!gset.has(id)) {
-          return v;
+          return v.co;
         }
       } else {
         if (!gmap.has(l)) {
-          return v;
+          return v.co;
         }
       }
     } else {
       //let execDot set orig data
       if (!vmap.has(v.eid)) {
-        return v;
+        return v.co;
         //v.customData[cd_orig].value.load(v);
         //vmap.set(v.eid, new Vector3(v));
       }
@@ -2063,7 +2063,7 @@ export class PaintOp extends PaintOpBase {
       let tot = 0.0;
 
       for (let v of vs) {
-        p3.add(v);
+        p3.add(v.co);
         tot++;
       }
 
@@ -2329,7 +2329,7 @@ export class PaintOp extends PaintOpBase {
         if (haveOrigData && !vmap.has(v.eid)) {
           let data = v.customData[cd_orig].value;
 
-          data.load(v);
+          data.load(v.co);
 
           if (isPaintMode && have_color) {
             vmap.set(v.eid, new Vector4(v.customData[cd_color].color));
@@ -2343,13 +2343,13 @@ export class PaintOp extends PaintOpBase {
 
       if (!haveGrids && !vmap.has(v.eid)) {
         if (haveOrigData) {
-          v.customData[cd_orig].value.load(v);
+          v.customData[cd_orig].value.load(v.co);
         }
 
         if (isPaintMode && have_color) {
           vmap.set(v.eid, new Vector4(v.customData[cd_color].color));
         } else if (!isPaintMode) {
-          vmap.set(v.eid, new Vector3(v));
+          vmap.set(v.eid, new Vector3(v.co));
         }
       } else if (haveQuadTreeGrids) {
         let node = v.customData[cd_node];
@@ -2394,7 +2394,7 @@ export class PaintOp extends PaintOpBase {
 
         if (!gset.has(id)) {
           if (haveOrigData) {
-            v.customData[cd_orig].value.load(v);
+            v.customData[cd_orig].value.load(v.co);
           }
 
           gset.add(id);
@@ -2473,13 +2473,13 @@ export class PaintOp extends PaintOpBase {
           c2.load(c1);
         }
       } else if (!isPaintMode) {
-        let co = v.bLink.get();
+        let co = v.bLink.get().co;
 
         if (!v.bLink.v2) {
-          v.interp(co, 0.5);
-          v.bLink.v1.load(v);
+          v.co.interp(co, 0.5);
+          v.bLink.v1.co.load(v.co);
         } else {
-          v.load(co);
+          v.co.load(co);
         }
       }
 
@@ -2542,12 +2542,12 @@ export class PaintOp extends PaintOpBase {
 
         if (first) {
           vr.interp(v, 0.5);
-          co.load(vr, true);
+          co.load(vr.co, true);
           doGridBoundary(co);
 
           first = false;
         } else {
-          vr.load(co, true);
+          vr.co.load(co, true);
         }
 
         if (1 || update) {
@@ -2608,8 +2608,8 @@ export class PaintOp extends PaintOpBase {
         /*
         for (let vr of v.bRing) {//v.neighbors) {
           doUndo(vr);
-          vr.interp(v, 0.5);
-          v.load(vr, true);
+          vr.co.interp(v.co, 0.5);
+          v.co.load(vr.co, true);
         }
 
         for (let vr of v.bRing) {
@@ -2647,18 +2647,18 @@ export class PaintOp extends PaintOpBase {
           }
 
           if (smoothProj !== 0.0) {
-            let w2 = v2.vectorDistanceSqr(v);
+            let w2 = v2.co.vectorDistanceSqr(v.co);
             w += (w2 - w)*smoothProj;
 
-            let t = _tmp4.load(v2).sub(v);
+            let t = _tmp4.load(v2.co).sub(v.co);
             let d = t.dot(v.no);
 
-            t.addFac(v.no, -d).add(v);
+            t.addFac(v.no, -d).add(v.co);
 
             _tmp.addFac(t, smoothProj*w);
-            _tmp.addFac(v2, (1.0 - smoothProj)*w);
+            _tmp.addFac(v2.co, (1.0 - smoothProj)*w);
           } else {
-            _tmp.addFac(v2, w);
+            _tmp.addFac(v2.co, w);
           }
 
           totw += w;
@@ -2666,7 +2666,7 @@ export class PaintOp extends PaintOpBase {
 
         if (totw !== 0.0) {
           _tmp.mulScalar(1.0/totw);
-          v.interp(_tmp, fac);
+          v.co.interp(_tmp, fac);
         }
 
         gridVertStitch(v);
@@ -2744,12 +2744,12 @@ export class PaintOp extends PaintOpBase {
         }
 
         _tmp2.mulScalar(1.0/totw);
-        _tmp3.load(v);
+        _tmp3.load(v.co);
 
-        v.interp(_tmp2, fac);
-        v.addFac(vel, velfac);
+        v.co.interp(_tmp2, fac);
+        v.co.addFac(vel, velfac);
 
-        _tmp3.sub(v).negate();
+        _tmp3.sub(v.co).negate();
         //vel.interp(_tmp3, 0.5);
         vel.load(_tmp3);
       }
@@ -2848,12 +2848,12 @@ export class PaintOp extends PaintOpBase {
         //_tmp2.add(v);
         _tmp2.addFac(v.no, avglen*inflate*4.0);
 
-        _tmp3.load(v);
+        _tmp3.load(v.co);
 
-        v.interp(_tmp2, fac);
-        v.addFac(vel, velfac);
+        v.co.interp(_tmp2, fac);
+        v.co.addFac(vel, velfac);
 
-        _tmp3.sub(v).negate();
+        _tmp3.sub(v.co).negate();
         vel.interp(_tmp3, 0.5);
       }
     } else {
@@ -2930,12 +2930,12 @@ export class PaintOp extends PaintOpBase {
       mat1.transpose();
 
       co.multVecMatrix(mat1);
-      co.add(v);
+      co.add(v.co);
 
       co3.mulScalar(1.0/totw);
       co.interp(co3, 0.5);
 
-      v.interp(co, fac);
+      v.co.interp(co, fac);
     }
 
     //vsmooth = vsmooth_median;
@@ -3042,7 +3042,7 @@ export class PaintOp extends PaintOpBase {
           let dfac = 1.0 - ratio;
           co.addFac(co2, -dfac);
 
-          v.interp(co, fac);
+          v.co.interp(co, fac);
           v.flag |= MeshFlags.UPDATE;
         }
       }
@@ -3136,7 +3136,7 @@ export class PaintOp extends PaintOpBase {
           return;
         }
 
-        v.interp(co, fac);
+        v.co.interp(co, fac);
       }
     }
 
@@ -3334,7 +3334,7 @@ export class PaintOp extends PaintOpBase {
           return;
         }
 
-        d2.load(v2).sub(v);
+        d2.load(v2.co).sub(v.co);
 
         let nfac = -d2.dot(v.no)*0.99;
 
@@ -3352,7 +3352,7 @@ export class PaintOp extends PaintOpBase {
 
         w = w*(1.0 - pad) + pad;
 
-        co.addFac(v2, w);
+        co.addFac(v2.co, w);
         co.addFac(v.no, nfac*w);
         tot += w;
       };
@@ -3373,7 +3373,7 @@ export class PaintOp extends PaintOpBase {
       }
 
       co.mulScalar(1.0/tot);
-      v.interp(co, fac);
+      v.co.interp(co, fac);
 
       if (haveGrids) {
         gridVertStitch(v);
@@ -3693,7 +3693,7 @@ export class PaintOp extends PaintOpBase {
       }
 
       co.mulScalar(1.0/tot);
-      v.interp(co, fac);
+      v.co.interp(co, fac);
 
       if (haveGrids) {
         gridVertStitch(v);
@@ -3719,11 +3719,11 @@ export class PaintOp extends PaintOpBase {
 
       let r = closest_point_on_line(v, conetmp, planetmp, false);
 
-      let origdis = v.vectorDistance(oco);
+      let origdis = v.co.vectorDistance(oco);
       let fac = 1.0 - Math.min(2.0*origdis/radius, 1.0);
 
-      planetmp.load(v).sub(r[0]).mulScalar(0.5).add(r[0]);
-      v.interp(planetmp, pinchmul*f3*pinch*fac);
+      planetmp.load(v.co).sub(r[0]).mulScalar(0.5).add(r[0]);
+      v.co.interp(planetmp, pinchmul*f3*pinch*fac);
 
       if (haveGrids) {
         gridVertStitch(v);
@@ -3750,7 +3750,7 @@ export class PaintOp extends PaintOpBase {
         let w = (dr*1.25 + dg*1.5 + db)*0.25;
         //w *= w;
 
-        co.addFac(v2, w);
+        co.addFac(v2.co, w);
         tot += w;
       }
 
@@ -3760,7 +3760,7 @@ export class PaintOp extends PaintOpBase {
 
       co.mulScalar(1.0/tot);
 
-      v.interp(co, fac);
+      v.co.interp(co, fac);
     };
 
     let cd_node = bvh.cd_node;
@@ -3924,7 +3924,7 @@ export class PaintOp extends PaintOpBase {
         f = Math.max(1.0 - dis/radius, 0.0);
         f = falloff.evaluate(f);
       } else if (useLinePlane) {
-        distmp.load(v).sub(pco);
+        distmp.load(v.co).sub(pco);
 
         dis = Math.abs(distmp.dot(linePlane));
         let dis2 = Math.abs(distmp.dot(linePlane2));
@@ -3967,7 +3967,7 @@ export class PaintOp extends PaintOpBase {
           f = curve.evaluate(f);
         }
       } else {
-        dis = v.vectorDistance(pco);
+        dis = v.co.vectorDistance(pco);
 
         if (dis > radius) {
           v.flag &= ~okflag;
@@ -4001,7 +4001,7 @@ export class PaintOp extends PaintOpBase {
         if (texUser.flag & TexUserFlags.ORIGINAL_CO) {
           texco.load(v.customData[cd_orig].value);
         } else {
-          texco.load(v);
+          texco.load(v.co);
         }
 
         let scale = 1.0;
@@ -4108,7 +4108,7 @@ export class PaintOp extends PaintOpBase {
           strokeS = ps.strokeS + brush.spacing*p1.t;
 
           if (lastps) {
-            let p2 = lastps.curve.closestPoint(v);
+            let p2 = lastps.curve.closestPoint(v.co);
             if (p2.dist < p1.dist) {
               //p1 = p2;
               //strokeS = lastps.strokeS + brush.spacing*p2.t;
@@ -4287,7 +4287,7 @@ export class PaintOp extends PaintOpBase {
           co.sub(wplanep1);
 
           d = co.dot(nvec);
-          v.addFac(nvec, -d*f2);
+          v.co.addFac(nvec, -d*f2);
         }
 
         if (th >= 0.0 || doboth) {
@@ -4297,7 +4297,7 @@ export class PaintOp extends PaintOpBase {
           co.sub(wplanep2);
 
           d = co.dot(nvec);
-          v.addFac(nvec, -d*f2);
+          v.co.addFac(nvec, -d*f2);
         }
       } else if (mode === MASK_PAINT) {
         let f2 = ps.invert ? astrength*0.5 : -astrength*0.5;
@@ -4318,7 +4318,7 @@ export class PaintOp extends PaintOpBase {
           node.setUpdateFlag(BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK);
         }
       } else if (mode === SHARP) {
-        v.addFac(vec, f);
+        v.co.addFac(vec, f);
       } else if (mode === SMOOTH && isplane) {
         planetmp.load(v);
         vsmooth(v, f*strength);
@@ -4344,19 +4344,19 @@ export class PaintOp extends PaintOpBase {
         let s1 = Math.sign(d);
         d = Math.max((Math.abs(d) - dist), 0)*s1;
 
-        v.addFac(n, -d*f2);
+        v.co.addFac(n, -d*f2);
       } else if (isplane) {
         f2 = f*strength;
 
-        let co = planetmp.load(v);
+        let co = planetmp.load(v.co);
         co.sub(planep);
         co.addFac(nvec, -f*radius*0.25*(ps.invert ? -1 : 1));
 
         let d = co.dot(nvec);
 
-        v.addFac(nvec2, -d*f2*0.2);
+        v.co.addFac(nvec2, -d*f2*0.2);
       } else if (mode === DRAW) {
-        v.addFac(vec, f);//
+        v.co.addFac(vec, f);//
       } else if (have_color && mode === PAINT) {
         if (concaveFilter !== 0.0) {
           let cf = calcConcave(v);
@@ -4383,9 +4383,9 @@ export class PaintOp extends PaintOpBase {
           c.color[2] = 0.5;
         }
       } else if (mode === INFLATE) {
-        v.addFac(v.no, f*strength*0.1);
+        v.co.addFac(v.no, f*strength*0.1);
       } else if (mode === SLIDE_RELAX) {
-        let co = _tmp4.load(v);
+        let co = _tmp4.load(v.co);
 
         co.interp(v.customData[cd_orig].value, 0.1*f);
         co.addFac(vec, f*strength);
@@ -4397,13 +4397,13 @@ export class PaintOp extends PaintOpBase {
         let d = co.dot(v.no);
         co.addFac(v.no, -d);
 
-        v.addFac(co, 0.25);
+        v.co.addFac(co, 0.25);
       } else if (mode === SNAKE) {
-        v.interp(v.customData[cd_orig].value, 0.1*f);
-        v.addFac(vec, f*strength);
+        v.co.interp(v.customData[cd_orig].value, 0.1*f);
+        v.co.addFac(vec, f*strength);
 
-        _tmp.load(v).multVecMatrix(rmat);
-        v.interp(_tmp, f*strength);
+        _tmp.load(v.co).multVecMatrix(rmat);
+        v.co.interp(_tmp, f*strength);
       } else if (mode === GRAB) {
         //v.load(v.customData[cd_orig].value);
 
@@ -4433,7 +4433,7 @@ export class PaintOp extends PaintOpBase {
           v[1] += vec[1]*fy*Math.sign(signs[i + 1]);
           v[2] += vec[2]*fz*Math.sign(signs[i + 2]);
         } else { //accumulated delta mode
-          v.load(v.customData[cd_orig].value);
+          v.co.load(v.customData[cd_orig].value);
 
           //_tmp.zero();
           _tmp.load(vec).multVecMatrix(rmat);
@@ -4453,9 +4453,9 @@ export class PaintOp extends PaintOpBase {
           gd[gi + GOFFY] += vec2[1];
           gd[gi + GOFFZ] += vec2[2];
 
-          v[0] += gd[gi + GOFFX]*fx*Math.sign(signs[i]);
-          v[1] += gd[gi + GOFFY]*fy*Math.sign(signs[i + 1]);
-          v[2] += gd[gi + GOFFZ]*fz*Math.sign(signs[i + 2]);
+          v.co[0] += gd[gi + GOFFX]*fx*Math.sign(signs[i]);
+          v.co[1] += gd[gi + GOFFY]*fy*Math.sign(signs[i + 1]);
+          v.co[2] += gd[gi + GOFFZ]*fz*Math.sign(signs[i + 2]);
           //*/
         }
 
@@ -4575,8 +4575,8 @@ export class PaintOp extends PaintOpBase {
     let origNs = [];
 
     for (let v of vs) {
-      origVs.push(new Vector3(v));
-      origNs.push(new Vector3(v));
+      origVs.push(new Vector3(v.co));
+      origNs.push(new Vector3(v.co));
     }
 
     let reproject = false;
@@ -4627,13 +4627,13 @@ export class PaintOp extends PaintOpBase {
 
       if ((v.flag & MeshFlags.MIRRORED) && (v.flag & MeshFlags.MIRROR_BOUNDARY)) {
         if (v.flag & MeshFlags.MIRROREDX) {
-          v[0] = 0.0;
+          v.co[0] = 0.0;
         }
         if (v.flag & MeshFlags.MIRROREDY) {
-          v[1] = 0.0;
+          v.co[1] = 0.0;
         }
         if (v.flag & MeshFlags.MIRROREDZ) {
-          v[2] = 0.0;
+          v.co[2] = 0.0;
         }
       }
 
@@ -4685,7 +4685,7 @@ export class PaintOp extends PaintOpBase {
         //origVs[i].load(v);
         //origNs[i].load(v.no);
 
-        swap3(v, origVs[i]);
+        swap3(v.co, origVs[i]);
         swap3(v.no, origNs[i]);
 
         i++;
@@ -4791,7 +4791,7 @@ export class PaintOp extends PaintOpBase {
           }
         }
 
-        swap3(v, origVs[i]);
+        swap3(v.co, origVs[i]);
         swap3(v.no, origNs[i]);
 
         let node = v.customData[cd_node].node;
@@ -4913,7 +4913,7 @@ export class PaintOp extends PaintOpBase {
               for (let e of v.edges) {
                 es.add(e);
 
-                let distsqr = e.v1.vectorDistanceSqr(e.v2);
+                let distsqr = e.v1.co.vectorDistanceSqr(e.v2.co);
 
                 //include surrounding geometry if edge size is
                 //within esize/2, esize*2
@@ -5095,7 +5095,7 @@ export class PaintOp extends PaintOpBase {
         for (let v of vs2) {
           doUndo(v);
 
-          let dis = v.vectorDistance(ps.origp);
+          let dis = v.co.vectorDistance(ps.origp);
           //*
           let w = Math.max(1.0 - dis/(radius3), 0);
 
@@ -5287,7 +5287,7 @@ export class PaintOp extends PaintOpBase {
 
       let elen = 0, tot = 0;
       for (let e of es) {
-        elen += e.v2.vectorDistance(e.v1);
+        elen += e.v2.co.vectorDistance(e.v1.co);
         tot++;
       }
 
@@ -5326,10 +5326,10 @@ export class PaintOp extends PaintOpBase {
           log.ensure(v);
 
           for (let v2 of v.neighbors) {
-            co2.load(v2).sub(v);
+            co2.load(v2.co).sub(v.co);
             let d = co2.dot(v.no);
 
-            co2.addFac(v.no, -d).add(v);
+            co2.addFac(v.no, -d).add(v.co);
             co.add(co2);
 
             //co.add(v2);
@@ -5338,7 +5338,7 @@ export class PaintOp extends PaintOpBase {
 
           if (tot > 0) {
             co.mulScalar(1.0/tot);
-            v.interp(co, fac);
+            v.co.interp(co, fac);
             v.flag |= MeshFlags.UPDATE;
           }
         }
@@ -5358,10 +5358,10 @@ export class PaintOp extends PaintOpBase {
         log.ensure(v);
 
         for (let v2 of v.neighbors) {
-          co2.load(v2).sub(v);
+          co2.load(v2.co).sub(v.co);
           let d = co2.dot(v.no);
 
-          co2.addFac(v.no, -d).add(v);
+          co2.addFac(v.no, -d).add(v.co);
           co.add(co2);
 
           //co.add(v2);
@@ -5370,7 +5370,7 @@ export class PaintOp extends PaintOpBase {
 
         if (tot > 0) {
           co.mulScalar(1.0/tot);
-          v.interp(co, fac);
+          v.co.interp(co, fac);
           v.flag |= MeshFlags.UPDATE;
         }
       }
@@ -5510,7 +5510,7 @@ export class PaintOp extends PaintOpBase {
   }
 
   edist_simple(e, v1, v2, eset, cd_curv) {
-    return v1.vectorDistanceSqr(v2);
+    return v1.co.vectorDistanceSqr(v2.co);
   }
 
   val(v) {
@@ -5526,7 +5526,7 @@ export class PaintOp extends PaintOpBase {
   }
 
   edist_subd(e, v1, v2, eset, cd_curv) {
-    let dis = v1.vectorDistanceSqr(v2)*this.edist_scale(e, cd_curv);
+    let dis = v1.co.vectorDistanceSqr(v2.co)*this.edist_scale(e, cd_curv);
 
     let val1 = this.val(v1); //v1.valence;
     let val2 = this.val(v2); //v2.valence;
@@ -7086,15 +7086,15 @@ export class PaintOp extends PaintOpBase {
 
     //*
     function edist(e, v1, v2, eset, cd_curv) {
-      let dis = v1.vectorDistance(v2);
+      let dis = v1.co.vectorDistance(v2.co);
       let w = edist0(e, v1, v2, eset, cd_curv);
 
       if (e.l && e.l.next.e && e.l.prev.e) {
         let e2 = e.l.next.e;
         let e3 = e.l.prev.e;
 
-        let dis2 = e2.v1.vectorDistance(e2.v2);
-        let dis3 = e3.v1.vectorDistance(e3.v2);
+        let dis2 = e2.v1.co.vectorDistance(e2.v2.co);
+        let dis3 = e3.v1.co.vectorDistance(e3.v2.co);
         let ratio1, ratio2;
 
         if (dis2 !== 0.0) {
@@ -7612,16 +7612,16 @@ export class PaintOp extends PaintOpBase {
           let v2 = l.v;
           let v3 = l.next.v;
 
-          if (isNaN(v1.dot(v1))) {
-            v1.zero();
+          if (isNaN(v1.co.dot(v1.co))) {
+            v1.co.zero();
             console.log("v1 NaN", v1);
           }
-          if (isNaN(v2.dot(v2))) {
-            v2.zero();
+          if (isNaN(v2.co.dot(v2.co))) {
+            v2.co.zero();
             console.log("v2 NaN", v2);
           }
-          if (isNaN(v3.dot(v1))) {
-            v3.zero();
+          if (isNaN(v3.co.dot(v1.co))) {
+            v3.co.zero();
             console.log("v3 NaN", v3);
           }
 

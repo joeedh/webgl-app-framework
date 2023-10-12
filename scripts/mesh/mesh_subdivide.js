@@ -714,7 +714,7 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx, smoothFac=0.0) {
         lctx.newVertex(v, LogTags.SPLIT_EDGES_SMART2);
       }
 
-      v.zero();
+      v.co.zero();
 
       vs[vi] = v;
 
@@ -736,7 +736,7 @@ export function splitEdgesSmart2(mesh, es, testfunc, lctx, smoothFac=0.0) {
         ws2[wi] = w;
         vs2[wi] = v2;
 
-        v.addFac(v2, w);
+        v.co.addFac(v2.co, w);
 
         wi++;
       }

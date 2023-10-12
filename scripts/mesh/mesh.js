@@ -806,7 +806,7 @@ export class Mesh extends SceneObjectData {
       v = this.verts.alloc(Vertex);
 
       if (co) {
-        v.load(co);
+        v.co.load(co);
       }
 
       if (customEid !== undefined) {
@@ -983,8 +983,8 @@ export class Mesh extends SceneObjectData {
       e.h1 = this._makeHandle(e);
       e.h2 = this._makeHandle(e);
 
-      e.h1.load(e.v1).interp(e.v2, 1.0/3.0);
-      e.h2.load(e.v1).interp(e.v2, 2.0/3.0);
+      e.h1.co.load(e.v1.co).interp(e.v2.co, 1.0/3.0);
+      e.h2.co.load(e.v1.co).interp(e.v2.co, 2.0/3.0);
     }
 
     e.flag |= MeshFlags.UPDATE;
@@ -1464,6 +1464,10 @@ export class Mesh extends SceneObjectData {
         v1 = v1.customData[cd_disp].worldco;
         v2 = v2.customData[cd_disp].worldco;
         v3 = v3.customData[cd_disp].worldco;
+      } else {
+        v1 = v1.co;
+        v2 = v2.co;
+        v3 = v3.co;
       }
 
       let n = math.normal_tri(v1, v2, v3);
@@ -1938,7 +1942,8 @@ export class Mesh extends SceneObjectData {
       lctx.killEdge(e, LogTags.SPLIT_EDGE);
     }
 
-    var nv = this.makeVertex(e.v1).interp(e.v2, t);
+    var nv = this.makeVertex(e.v1.co);
+    nv.co.interp(e.v2.co, t);
 
     nv.no.load(e.v1.no).interp(e.v2.no, t);
     nv.no.normalize();
@@ -2399,7 +2404,7 @@ export class Mesh extends SceneObjectData {
     }
 
     if (snap) {
-      v1.interp(v2, 0.5);
+      v1.co.interp(v2.co, 0.5);
     }
 
     v1.flag |= MeshFlags.UPDATE;
@@ -3054,7 +3059,7 @@ export class Mesh extends SceneObjectData {
 
   __splitEdgeSimple(e, t = 0.5) {
     let nv = this.makeVertex(e.v1);
-    nv.interp(e.v2, t);
+    nv.co.interp(e.v2.co, t);
 
     let e1 = this.makeEdge(e.v1, nv);
     let e2 = this.makeEdge(nv, e.v2);
@@ -5167,7 +5172,7 @@ export class Mesh extends SceneObjectData {
       let f = l1.f;
 
       f.flag |= visitflag;
-      f.area += math.tri_area(l1.v, l2.v, l3.v);
+      f.area += math.tri_area(l1.v.co, l2.v.co, l3.v.co);
     }
 
     for (let f of this.faces) {
@@ -5747,15 +5752,15 @@ export class Mesh extends SceneObjectData {
 
   doMirrorSnap(v, threshold = 0.0001) {
     if (v.flag & MeshFlags.MIRROREDX) {
-      v[0] = 0;
+      v.co[0] = 0;
     }
 
     if (v.flag & MeshFlags.MIRROREDY) {
-      v[1] = 0;
+      v.co[1] = 0;
     }
 
     if (v.flag & MeshFlags.MIRROREDZ) {
-      v[2] = 0;
+      v.co[2] = 0;
     }
   }
 
@@ -6124,13 +6129,13 @@ export class Mesh extends SceneObjectData {
 
     switch (dst.type) {
       case MeshTypes.HANDLE:
-        dst.load(src);
+        dst.co.load(src.co);
         dst.mode = src.mode;
         dst.color.load(src.color);
         dst.roll = src.roll;
         break;
       case MeshTypes.VERTEX:
-        dst.load(src);
+        dst.co.load(src.co);
         dst.no.load(src.no);
         break
       case MeshTypes.FACE:
@@ -7195,10 +7200,10 @@ export class Mesh extends SceneObjectData {
 
     for (let v of this.verts) {
       if (ret === undefined) {
-        ret = [new Vector3(v), new Vector3(v)]
+        ret = [new Vector3(v.co), new Vector3(v.co)]
       } else {
-        ret[0].min(v);
-        ret[1].max(v);
+        ret[0].min(v.co);
+        ret[1].max(v.co);
       }
     }
 
@@ -7215,8 +7220,8 @@ export class Mesh extends SceneObjectData {
         let grid = l.customData[cd_grid];
 
         for (let p of grid.points) {
-          ret[0].min(p);
-          ret[1].max(p);
+          ret[0].min(p.co);
+          ret[1].max(p.co);
         }
       }
     }

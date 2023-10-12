@@ -1881,9 +1881,9 @@ export class BVHToolMode extends ToolMode {
                 defv[j++] = n3.leafTexUV[1];
               }
             } else {
-              vcos[j++] = v[0];
-              vcos[j++] = v[1];
-              vcos[j++] = v[2];
+              vcos[j++] = v.co[0];
+              vcos[j++] = v.co[1];
+              vcos[j++] = v.co[2];
             }
 
             j = vi*3;

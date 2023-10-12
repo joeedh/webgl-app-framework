@@ -52,7 +52,7 @@ export function ccSmooth(v, cd_fset, cd_dyn_vert, weight1, weightR, weightS) {
   }
 
   if (boundary && v.edges.length === 2) {
-    return ret.load(v);
+    return ret.load(v.co);
   }
 
   if (boundary) {
@@ -61,7 +61,7 @@ export function ccSmooth(v, cd_fset, cd_dyn_vert, weight1, weightR, weightS) {
     let w1 = 1;
     let w2 = 2;
 
-    eco.load(v);
+    eco.load(v.co);
     eco.mulScalar(w1);
 
     tot = w1;
@@ -81,7 +81,7 @@ export function ccSmooth(v, cd_fset, cd_dyn_vert, weight1, weightR, weightS) {
         }
       }
 
-      eco.addFac(v2, w2);
+      eco.addFac(v2.co, w2);
       tot += w2;
     }
 
@@ -97,7 +97,7 @@ export function ccSmooth(v, cd_fset, cd_dyn_vert, weight1, weightR, weightS) {
 
   let w1 = weight1;
 
-  ret.load(v).mulScalar(w1);
+  ret.load(v.co).mulScalar(w1);
   tot += w1;
 
   let wR = weightR;
@@ -123,7 +123,7 @@ export function ccSmooth(v, cd_fset, cd_dyn_vert, weight1, weightR, weightS) {
   for (let e of v.edges) {
     let v2 = e.otherVertex(v);
 
-    eco.addFac(v2, 1.0);
+    eco.addFac(v2.co, 1.0);
     tot2 += 1.0;
   }
 
@@ -460,7 +460,7 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
     }
 
     v.index = i;
-    vcos[i] = new Vector3(v);
+    vcos[i] = new Vector3(v.co);
     i++;
   }
 
@@ -495,7 +495,7 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
       let cent2 = cents[e.l.radial_next.f.index];
 
       eco.load(vcos[v1.index]).add(vcos[v2.index]);
-      eco.add(cent1).add(cent2);
+      eco.add(cent1.co).add(cent2.co);
       eco.mulScalar(0.25);
 
       vlist.push(cent1);
@@ -549,10 +549,10 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
       mesh.verts.customDataInterp(nv, vlist, wlist);
 
       eco.mulScalar(1.0/(2.0 + w));
-      nv.load(eco);
+      nv.co.load(eco);
     } else {
       eco.load(vcos[v1.index]).interp(vcos[v2.index], 0.5);
-      nv.load(eco);
+      nv.co.load(eco);
     }
 
     nv.index = -1;
@@ -618,7 +618,7 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
         wlist.push(w1);
       }
 
-      v.mulScalar(w1);
+      v.co.mulScalar(w1);
 
       eco.zero();
       let tot2 = 0.0;
@@ -670,6 +670,8 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
 
         if (!splitvs.has(v2)) {
           v2 = vcos[v2.index];
+        } else {
+          v2 = v2.co;
         }
 
         eco.addFac(v2, 1.0);
@@ -678,7 +680,7 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
 
       if (tot2 > 0.0) {
         eco.mulScalar(1.0/tot2);
-        v.addFac(eco, wR);
+        v.co.addFac(eco, wR);
         tot += wR;
       }
 
@@ -697,13 +699,13 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
           wlist.push(wS/v.edges.length/f.lists[0].length);
         }
 
-        eco.addFac(cents[f.index], 1.0);
+        eco.addFac(cents[f.index].co, 1.0);
         tot2 += 1.0;
       }
 
       if (tot2) {
         eco.mulScalar(1.0/tot2);
-        v.addFac(eco, wS);
+        v.co.addFac(eco, wS);
         tot += wS;
       }
 
@@ -718,7 +720,7 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
 
       finish(v);
 
-      v.mulScalar(1.0/tot);
+      v.co.mulScalar(1.0/tot);
       mesh.doMirrorSnap(v);
     }
   }

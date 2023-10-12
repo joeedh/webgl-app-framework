@@ -227,9 +227,9 @@ export class MeshDeformOp extends MeshOp {
       for (let v of mesh.verts) {
         list.push(v.eid);
 
-        list.push(v[0]);
-        list.push(v[1]);
-        list.push(v[2]);
+        list.push(v.co[0]);
+        list.push(v.co[1]);
+        list.push(v.co[2]);
       }
     }
   }
@@ -252,9 +252,9 @@ export class MeshDeformOp extends MeshOp {
           continue;
         }
 
-        v[0] = x;
-        v[1] = y;
-        v[2] = z;
+        v.co[0] = x;
+        v.co[1] = y;
+        v.co[2] = z;
 
         v.flag |= MeshFlags.UPDATE;
       }

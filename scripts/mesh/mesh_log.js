@@ -102,9 +102,9 @@ export class MeshLog {
 
     switch (elem.type) {
       case MeshTypes.VERTEX:
-        log.push(elem[0]);
-        log.push(elem[1]);
-        log.push(elem[2]);
+        log.push(elem.co[0]);
+        log.push(elem.co[1]);
+        log.push(elem.co[2]);
         log.push(elem.no[0]);
         log.push(elem.no[1]);
         log.push(elem.no[2]);

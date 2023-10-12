@@ -178,7 +178,7 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe = false) {
         continue;
       }
 
-      let p = sm.point(v.eid, v);
+      let p = sm.point(v.eid, v.co);
 
       let colormask = v.flag & (MeshFlags.SELECT | MeshFlags.SINGULARITY | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2);
       let color = ecolors[colormask];
@@ -202,7 +202,7 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe = false) {
       if (!h.visible || !(h.flag & MeshFlags.UPDATE)) {
         continue;
       }
-      let p = sm.point(h.eid, h);
+      let p = sm.point(h.eid, h.co);
 
       //let color = h.flag & MeshFlags.SELECT ? selcolor : black;
       let colormask = h.flag & (MeshFlags.SELECT | MeshFlags.SINGULARITY | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2);
@@ -268,7 +268,7 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe = false) {
         }
 
 
-        let line = smoothline ? sm.smoothline(e.eid, e.v1, e.v2) : sm.line(e.eid, e.v1, e.v2);
+        let line = smoothline ? sm.smoothline(e.eid, e.v1.co, e.v2.co) : sm.line(e.eid, e.v1.co, e.v2.co);
 
         let mask = e.flag & (MeshFlags.SELECT | MeshFlags.SEAM | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2);
 
@@ -334,7 +334,7 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe = false) {
         let tri;
 
         if (axis === -1) {
-          tri = sm.tri(i, v1, v2, v3);
+          tri = sm.tri(i, v1.co, v2.co, v3.co);
         } else {
           p1.load(v1);
           p2.load(v2);
@@ -396,7 +396,7 @@ export function genRenderMesh(gl, mesh, uniforms, combinedWireframe = false) {
           continue;
         }
 
-        let line = sm.line(e.eid, e.v1, e.v2);
+        let line = sm.line(e.eid, e.v1.co, e.v2.co);
 
         //line.ids(e.eid+1, e.eid+1);
         line.colors(white, white);

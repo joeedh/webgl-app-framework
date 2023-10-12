@@ -2042,8 +2042,8 @@ export function fixManifold(mesh, lctx) {
 
   for (let v of mesh.verts) {
     for (let i = 0; i < 3; i++) {
-      if (isnan(v[i])) {
-        v[i] = (Math.random() - 0.5)*0.001;
+      if (isnan(v.co[i])) {
+        v.co[i] = (Math.random() - 0.5)*0.001;
         v.flag |= MeshFlags.UPDATE;
         mesh.verts.setSelect(v, true);
         bad |= 1;
@@ -2294,7 +2294,7 @@ export function vertexSmooth(mesh, verts = mesh.verts, fac = 0.5, proj = 0.0, us
     for (let v2 of v.neighbors) {
       let mv2 = v2.customData[cd_dyn_vert];
 
-      let co2 = tmp2.load(v2);
+      let co2 = tmp2.load(v2.co);
       let w = 0.0;
 
       mv2.check(v2, cd_fset);
@@ -2308,14 +2308,14 @@ export function vertexSmooth(mesh, verts = mesh.verts, fac = 0.5, proj = 0.0, us
 
       if (proj !== 0.0) {
         let w2 = 1.0 - proj;
-        w = v2.vectorDistance(v);
+        w = v2.co.vectorDistance(v.co);
 
         w += (1.0 - w)*w2;
 
-        co2.sub(v);
+        co2.sub(v.co);
         let d = co2.dot(v.no);
 
-        co2.addFac(v.no, -d).add(v);
+        co2.addFac(v.no, -d).add(v.co);
       } else {
         w = 1.0;
       }
@@ -2326,7 +2326,7 @@ export function vertexSmooth(mesh, verts = mesh.verts, fac = 0.5, proj = 0.0, us
 
     if (totw > 0.0) {
       co.mulScalar(1.0/totw);
-      v.interp(co, fac);
+      v.co.interp(co, fac);
       v.flag |= MeshFlags.UPDATE;
     }
   }

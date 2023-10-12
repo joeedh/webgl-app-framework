@@ -9,6 +9,7 @@ import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from "../core/simplemesh.js";
 import {FloatElem} from "./mesh_customdata.js";
 import {PatchBuilder} from "./mesh_grids_subsurf.js";
 import {BasicLineShader, Shaders} from '../shaders/shaders.js';
+import {Handle, traceget, traceset, Vertex} from './mesh_types.js';
 
 let blink_rets = util.cachering.fromConstructor(Vector3, 64);
 let blink_rets4 = util.cachering.fromConstructor(Vector4, 64);
@@ -270,6 +271,7 @@ export class GridVert extends Vector3 {
 
     //this.co = new Vector3();
 
+    this.co = new Vector3();
     this.no = new Vector3();
     this.tan = new Vector3(); //not saved
     this.bin = new Vector3(); //not saved
@@ -297,18 +299,39 @@ export class GridVert extends Vector3 {
     this.bNext = this.bPrev = undefined; //boundary next/prev
   }
 
-  get co() {
-    return this;
+  get length() {
+    traceget("length");
+    return 3;
   }
 
-  set co(c) {
-    this[0] = c[0];
-    this[1] = c[1];
-    this[2] = c[2];
+  get 0() {
+    traceget(1);
+    return this.co[0];
+  }
 
-    if (!_instruct) {
-      console.warn("this.co set");
-    }
+  get 1() {
+    traceget(1);
+    return this.co[1];
+  }
+
+  get 2() {
+    traceget(1);
+    return this.co[2];
+  }
+
+  set 0(f) {
+    traceset(0);
+    this.co[0] = f;
+  }
+
+  set 1(f) {
+    traceset(1);
+    this.co[1] = f;
+  }
+
+  set 2(f) {
+    traceset(2);
+    this.co[2] = f;
   }
 
   /*
@@ -504,7 +527,13 @@ export class GridVert extends Vector3 {
       return;
     }
 
-    super.load(b);
+    let bco = b;
+    if (bco instanceof GridVert || bco instanceof Vertex || bco instanceof Handle) {
+      bco = bco.co;
+    }
+
+    this.co.load(bco);
+
     //this.co.load(b);
 
     if (!coOnly && b instanceof GridVert) {

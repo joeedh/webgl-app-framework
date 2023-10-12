@@ -815,17 +815,17 @@ export class BVHNode {
       for (let tri of uniqueTris) {
         tri.nodes.remove(this);
 
-        split += tri.v1[axis];
-        split += tri.v2[axis];
-        split += tri.v3[axis];
+        split += tri.v1.co[axis];
+        split += tri.v2.co[axis];
+        split += tri.v3.co[axis];
 
-        smin = Math.min(smin, tri.v1[axis]);
-        smin = Math.min(smin, tri.v2[axis]);
-        smin = Math.min(smin, tri.v3[axis]);
+        smin = Math.min(smin, tri.v1.co[axis]);
+        smin = Math.min(smin, tri.v2.co[axis]);
+        smin = Math.min(smin, tri.v3.co[axis]);
 
-        smax = Math.max(smax, tri.v1[axis]);
-        smax = Math.max(smax, tri.v2[axis]);
-        smax = Math.max(smax, tri.v3[axis]);
+        smax = Math.max(smax, tri.v1.co[axis]);
+        smax = Math.max(smax, tri.v2.co[axis]);
+        smax = Math.max(smax, tri.v3.co[axis]);
 
         tot += 3;
       }
@@ -1129,7 +1129,7 @@ export class BVHNode {
     }
 
     for (let v of this.uniqueVerts) {
-      if (v.vectorDistanceSqr(co) < radius2) {
+      if (v.co.vectorDistanceSqr(co) < radius2) {
         out.add(v);
       }
     }
@@ -1180,7 +1180,7 @@ export class BVHNode {
     let co2 = cvstmps.next();
 
     for (let v of this.uniqueVerts) {
-      co2.load(v).multVecMatrix(matrix);
+      co2.load(v.co).multVecMatrix(matrix);
 
       let dx = co2[0] - co[0];
       let dy = co2[1] - co[1];
@@ -1230,7 +1230,7 @@ export class BVHNode {
       }
 
       for (let v of set) {
-        t1.load(v).sub(co);
+        t1.load(v.co).sub(co);
         let t = t1.dot(nray);
 
         if (t < 0) {
@@ -1242,7 +1242,7 @@ export class BVHNode {
         }
 
         co2.load(co).addFac(nray, t);
-        let dis = co2.vectorDistanceSqr(v);
+        let dis = co2.vectorDistanceSqr(v.co);
 
         if (dis < rsqr) {
           out.add(v);
@@ -1361,7 +1361,7 @@ export class BVHNode {
       }
 
       for (let v of set) {
-        t1.load(v).sub(co);
+        t1.load(v.co).sub(co);
         let t = t1.dot(nray);
 
         if (t < 0 || t >= raylen) {
@@ -1377,7 +1377,7 @@ export class BVHNode {
         let dis;
 
         if (!isSquare) {
-          dis = co2.vectorDistanceSqr(v);
+          dis = co2.vectorDistanceSqr(v.co);
         } else {
           co2.sub(v);
           dis = (Math.abs(co2[0]) + Math.abs(co2[1]) + Math.abs(co2[2]))/3.0;
@@ -1488,7 +1488,7 @@ export class BVHNode {
     }
 
     for (let t of this.allTris) {
-      let isect = ray_tri_isect(origin, dir, t.v1, t.v2, t.v3);
+      let isect = ray_tri_isect(origin, dir, t.v1.co, t.v2.co, t.v3.co);
 
       if (!isect || isect[2] < 0.0) {
         continue;
@@ -1521,9 +1521,9 @@ export class BVHNode {
     let leafLimit = this.bvh.leafLimit;
     let depthLimit = this.bvh.depthLimit;
 
-    let centx = (v1[0] + v2[0] + v3[0])/3.0;
-    let centy = (v1[1] + v2[1] + v3[1])/3.0;
-    let centz = (v1[2] + v2[2] + v3[2])/3.0;
+    let centx = (v1.co[0] + v2.co[0] + v3.co[0])/3.0;
+    let centy = (v1.co[1] + v2.co[1] + v3.co[1])/3.0;
+    let centz = (v1.co[2] + v2.co[2] + v3.co[2])/3.0;
 
     let tri = this.bvh._getTri(id, tri_idx, v1, v2, v3);
     let cd_node = this.bvh.cd_node;
@@ -2007,8 +2007,8 @@ export class BVHNode {
     }
 
     for (let tri of this.uniqueTris) {
-      tri.no.load(math.normal_tri(tri.v1, tri.v2, tri.v3));
-      tri.area = math.tri_area(tri.v1, tri.v2, tri.v3);
+      tri.no.load(math.normal_tri(tri.v1.co, tri.v2.co, tri.v3.co));
+      tri.area = math.tri_area(tri.v1.co, tri.v2.co, tri.v3.co);
     }
 
     for (let l of ls) {
@@ -2094,7 +2094,7 @@ export class BVHNode {
     let n = new Vector3();
 
     for (let tri of this.uniqueTris) {
-      let n2 = math.normal_tri(tri.v1, tri.v2, tri.v3);
+      let n2 = math.normal_tri(tri.v1.co, tri.v2.co, tri.v3.co);
 
       tri.no.load(n2);
       tri.v1.no.add(n2);
@@ -2144,7 +2144,7 @@ export class BVHNode {
     this.flag &= ~BVHFlags.UPDATE_NORMALS;
 
     //for (let tri of this.uniqueTris) {
-    //  tri.area = math.tri_area(tri.v1, tri.v2, tri.v3) + 0.00001;
+    //  tri.area = math.tri_area(tri.v1.co, tri.v2.co, tri.v3.co) + 0.00001;
     //}
 
     if (this.bvh.cd_grid >= 0) {
@@ -2157,9 +2157,9 @@ export class BVHNode {
     for (let t of this.uniqueTris) {
       let bad = !t.v1 || !t.v2 || !t.v3 || t.v1.eid < 0 || t.v2.eid < 0 || t.v3.eid < 0;
 
-      bad = bad || isNaN(t.v1.dot(t.v1));
-      bad = bad || isNaN(t.v2.dot(t.v2));
-      bad = bad || isNaN(t.v3.dot(t.v3));
+      bad = bad || isNaN(t.v1.co.dot(t.v1.co));
+      bad = bad || isNaN(t.v2.co.dot(t.v2.co));
+      bad = bad || isNaN(t.v3.co.dot(t.v3.co));
 
       if (bad) {
         safeprint(0, "corrupted tri", t);
@@ -2169,13 +2169,13 @@ export class BVHNode {
       }
 
 
-      let no = math.normal_tri(t.v1, t.v2, t.v3);
+      let no = math.normal_tri(t.v1.co, t.v2.co, t.v3.co);
 
       t.no[0] = no[0];
       t.no[1] = no[1];
       t.no[2] = no[2];
 
-      t.area = math.tri_area(t.v1, t.v2, t.v3) + 0.00001;
+      t.area = math.tri_area(t.v1.co, t.v2.co, t.v3.co) + 0.00001;
 
       //let d = t.no.dot(t.no);
 
@@ -2961,8 +2961,8 @@ export class BVHNode {
 
       if (this.wireVerts) {
         for (let v of this.wireVerts) {
-          min.min(v);
-          max.max(v);
+          min.min(v.co);
+          max.max(v.co);
           tot++;
         }
       }
@@ -2973,14 +2973,14 @@ export class BVHNode {
           continue;
         }
 
-        min.min(tri.v1);
-        max.max(tri.v1);
+        min.min(tri.v1.co);
+        max.max(tri.v1.co);
 
-        min.min(tri.v2);
-        max.max(tri.v2);
+        min.min(tri.v2.co);
+        max.max(tri.v2.co);
 
-        min.min(tri.v3);
-        max.max(tri.v3);
+        min.min(tri.v3.co);
+        max.max(tri.v3.co);
 
         tot++;
       }
@@ -4647,8 +4647,8 @@ export class BVH {
     tri.v2 = tri.vs[1] = v2;
     tri.v3 = tri.vs[2] = v3;
 
-    tri.no.load(v2).sub(v1);
-    _ntmptmp.load(v3).sub(v1);
+    tri.no.load(v2.co).sub(v1.co);
+    _ntmptmp.load(v3.co).sub(v1.co);
     tri.no.cross(_ntmptmp);
 
     if (isNaN(tri.no.dot(tri.no))) {
@@ -4658,7 +4658,7 @@ export class BVH {
       tri.area = 0.0;
     } else {
       tri.no.normalize();
-      tri.area = math.tri_area(v1, v2, v3) + 0.00001;
+      tri.area = math.tri_area(v1.co, v2.co, v3.co) + 0.00001;
     }
 
     //tri.f = this.mesh.eidMap.get(id);
@@ -5178,22 +5178,22 @@ export class SpatialHash extends BVH {
     let cb = (node) => {
       if (node.wireVerts) {
         for (let v of node.wireVerts) {
-          if (v.vectorDistanceSqr(co) <= rsqr) {
+          if (v.co.vectorDistanceSqr(co) <= rsqr) {
             ret.add(v);
           }
         }
       }
 
       for (let t of node.allTris) {
-        if (t.v1.vectorDistanceSqr(co) <= rsqr) {
+        if (t.v1.co.vectorDistanceSqr(co) <= rsqr) {
           ret.add(t.v1);
         }
 
-        if (t.v2.vectorDistanceSqr(co) <= rsqr) {
+        if (t.v2.co.vectorDistanceSqr(co) <= rsqr) {
           ret.add(t.v2);
         }
 
-        if (t.v3.vectorDistanceSqr(co) <= rsqr) {
+        if (t.v3.co.vectorDistanceSqr(co) <= rsqr) {
           ret.add(t.v3);
         }
       }

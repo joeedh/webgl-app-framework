@@ -1099,7 +1099,7 @@ export function ccVertexSmooth(mesh, verts = mesh.verts.selected.editable, fac =
     }
 
     for (let [v, co] of cos) {
-      v.interp(co, fac);
+      v.co.interp(co, fac);
       v.flag |= MeshFlags.UPDATE;
     }
     return;

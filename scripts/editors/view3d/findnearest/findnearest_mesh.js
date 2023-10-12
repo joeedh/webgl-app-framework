@@ -404,7 +404,7 @@ export class FindnearestMesh extends FindnearestClass {
       }
 
       if (elem.type === MeshTypes.VERTEX) {
-        tmp1.load(elem).multVecMatrix(mat);
+        tmp1.load(elem.co).multVecMatrix(mat);
         view3d.project(tmp1);
 
         tmp2.load(mpos);
@@ -422,8 +422,8 @@ export class FindnearestMesh extends FindnearestClass {
       } else if (elem.type === MeshTypes.EDGE) {
         let e = elem;
 
-        tmp1.load(e.v1).multVecMatrix(mat);
-        tmp2.load(e.v2).multVecMatrix(mat);
+        tmp1.load(e.v1.co).multVecMatrix(mat);
+        tmp2.load(e.v2.co).multVecMatrix(mat);
 
         view3d.project(tmp1);
         view3d.project(tmp2);
@@ -636,7 +636,7 @@ export class FindnearestMesh extends FindnearestClass {
       ret.object = minvob;
 
       let co = tmp1;
-      co.load(minv).multVecMatrix(minvmat);
+      co.load(minv.co).multVecMatrix(minvmat);
 
       ret.dis = minvdis;
       ret.p3d.load(co);
@@ -655,7 +655,7 @@ export class FindnearestMesh extends FindnearestClass {
       ret.object = mineob;
 
       let co = tmp1;
-      co.load(mine.v1).interp(mine.v2, 0.5).multVecMatrix(minemat);
+      co.load(mine.v1.co).interp(mine.v2.co, 0.5).multVecMatrix(minemat);
 
       ret.dis = minedis;
       ret.p3d.load(co);
