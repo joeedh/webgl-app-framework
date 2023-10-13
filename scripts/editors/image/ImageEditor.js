@@ -734,9 +734,9 @@ export class UVEditor extends UIBase {
 
     for (let island of wr.islands) {
       for (let v of island) {
-        v[2] = 0.0;
+        v.co[2] = 0.0;
 
-        let p = sm.point(v);
+        let p = sm.point(v.co);
         p.ids(v.eid);
 
         let sel = false, high = false, active = false;
@@ -764,9 +764,9 @@ export class UVEditor extends UIBase {
           }
 
           let v2 = wr.loopMap.get(l.next);
-          v2[3] = 0.0;
+          v2.co[3] = 0.0;
 
-          let line = sm.line(v, v2);
+          let line = sm.line(v.co, v2.co);
           line.ids(l.eid, l.eid);
         }
 
@@ -774,7 +774,7 @@ export class UVEditor extends UIBase {
         p.colors(color);
 
         if (pin) {
-          p = sm.point(v);
+          p = sm.point(v.co);
           p.ids(v.eid);
           p.colors(red);
         }

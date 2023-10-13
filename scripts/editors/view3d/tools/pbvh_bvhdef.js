@@ -91,13 +91,13 @@ export class BVHDeformPaintOp extends PaintOpBase {
     return 32;
   }
 
-  on_mousemove_intern(e, x, y, in_timer = false, isInterp = false) {
+  on_pointermove_intern(e, x, y, in_timer = false, isInterp = false) {
     let ctx = this.modal_ctx;
     if (!ctx.mesh) {
       return;
     }
 
-    let ret = super.on_mousemove_intern(e, x, y, in_timer);
+    let ret = super.on_pointermove_intern(e, x, y, in_timer);
 
     if (!ret) {
       return;
@@ -156,8 +156,8 @@ export class BVHDeformPaintOp extends PaintOpBase {
     window.redraw_viewport(true);
   }
 
-  on_mousemove(e, in_timer) {
-    return super.on_mousemove(e, in_timer);
+  on_pointermove(e, in_timer) {
+    return super.on_pointermove(e, in_timer);
   }
 
   undoPre(ctx) {
@@ -179,9 +179,9 @@ export class BVHDeformPaintOp extends PaintOpBase {
       vmap.set(v.eid, vlist.length);
       vlist.push(v.eid);
 
-      vlist.push(v[0]);
-      vlist.push(v[1]);
-      vlist.push(v[2]);
+      vlist.push(v.co[0]);
+      vlist.push(v.co[1]);
+      vlist.push(v.co[2]);
 
       vlist.push(v.no[0]);
       vlist.push(v.no[1]);
@@ -225,9 +225,9 @@ export class BVHDeformPaintOp extends PaintOpBase {
         continue;
       }
 
-      v[0] = x;
-      v[1] = y;
-      v[2] = z;
+      v.co[0] = x;
+      v.co[1] = y;
+      v.co[2] = z;
       v.no[0] = nx;
       v.no[1] = ny;
       v.no[2] = nz;
@@ -299,7 +299,7 @@ export class BVHDeformPaintOp extends PaintOpBase {
       }*/
 
       for (let v of node.uniqueVerts) {
-        node.boxvdata.set(v, new Vector3(trilinear_co(v, node.boxverts)));
+        node.boxvdata.set(v, new Vector3(trilinear_co(v.co, node.boxverts)));
       }
 
       node.setUpdateFlag(BVHFlags.UPDATE_DRAW);
@@ -335,7 +335,7 @@ export class BVHDeformPaintOp extends PaintOpBase {
 
         this._doUndo(v);
 
-        v.load(trilinear_v3(uvw, node.boxverts));
+        v.co.load(trilinear_v3(uvw, node.boxverts));
         v.flag |= MeshFlags.UPDATE;
       }
 

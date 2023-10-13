@@ -134,7 +134,7 @@ export class MeshTransType extends TransDataType {
         td.mesh = mesh;
         td.data1 = v;
         td.w = 0.0;
-        td.data2 = new Vector3(v);
+        td.data2 = new Vector3(v.co);
         td.symFlag = mesh.symFlag;
 
         tdata.push(td);
@@ -197,7 +197,7 @@ export class MeshTransType extends TransDataType {
         let vboundary = stack[stack.cur++];
         let waccum = stack[stack.cur++];
 
-        let w = v.vectorDistance(vboundary);
+        let w = v.co.vectorDistance(vboundary.co);
 
         //if (_i++ > 1000000) {
         //  console.warn("infinite loop detected");
@@ -209,7 +209,7 @@ export class MeshTransType extends TransDataType {
         let td = new TransDataElem();
 
         td.data1 = v;
-        td.data2 = new Vector3(v);
+        td.data2 = new Vector3(v.co);
         td.mesh = mesh;
         td.w = w;
         td.symFlag = mesh.symFlag;

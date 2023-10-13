@@ -1521,7 +1521,7 @@ export class BVHToolMode extends ToolMode {
 
       if (have_grids) {
         for (let v2 of v.neighbors) {
-          nv1.load(v).sub(v2).normalize();
+          nv1.load(v.co).sub(v2.co).normalize();
           let dot = -nv1.dot(v2.no);
 
           sum += dot;
@@ -1533,7 +1533,7 @@ export class BVHToolMode extends ToolMode {
         for (let e of v.edges) {
           let v2 = e.otherVertex(v);
 
-          nv1.load(v).sub(v2).normalize();
+          nv1.load(v.co).sub(v2.co).normalize();
           //nv2.load(v.no).cross(nv1);
 
           let dot;

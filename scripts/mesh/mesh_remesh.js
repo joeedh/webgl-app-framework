@@ -200,7 +200,7 @@ export class Remesher {
     let cd_orig = this.getOrigData(mesh);
 
     for (let v of mesh.verts) {
-      v.customData[cd_orig].value.load(v);
+      v.customData[cd_orig].value.load(v.co);
     }
 
     return cd_orig;
@@ -349,7 +349,7 @@ export class UniformTriRemesher extends Remesher {
     let tot = 0;
 
     for (let e of mesh.edges) {
-      let w = e.v1.vectorDistance(e.v2);
+      let w = e.v1.co.vectorDistance(e.v2.co);
       elen += w;
       tot++;
     }
@@ -386,7 +386,7 @@ export class UniformTriRemesher extends Remesher {
     for (let e of mesh.edges) {
       let etemp = e.customData[cd_etemp].value;
 
-      vec.load(e.v2).sub(e.v1).normalize();
+      vec.load(e.v2.co).sub(e.v1.co).normalize();
 
       liveset.add(e);
 
@@ -899,7 +899,7 @@ export class UniformTriRemesher extends Remesher {
         //continue;
         //}
 
-        d2.load(v2).sub(v);
+        d2.load(v2.co).sub(v.co);
 
         let nfac = -d2.dot(v.no)*0.85;
 
@@ -961,7 +961,7 @@ export class UniformTriRemesher extends Remesher {
         w = w*(1.0 - pad) + pad;
         w *= wfac;
 
-        co.addFac(v2, w);
+        co.addFac(v2.co, w);
         co.addFac(v.no, nfac*w);
 
         tot += w;
@@ -974,9 +974,9 @@ export class UniformTriRemesher extends Remesher {
       co.mulScalar(1.0/tot);
 
       if (hadsharp) {
-        v.interp(co, fac2);
+        v.co.interp(co, fac2);
       } else {
-        v.interp(co, fac);
+        v.co.interp(co, fac);
       }
     }
 
@@ -1061,7 +1061,7 @@ export class UniformTriRemesher extends Remesher {
 
       if (update) {
         liveset.add(e);
-        vec.load(e.v2).sub(e.v1).normalize();
+        vec.load(e.v2.co).sub(e.v1.co).normalize();
 
         etemp[0] = this._calcEdgeTh(e);
         etemp[1] = vec[0];
@@ -1109,7 +1109,7 @@ export class UniformTriRemesher extends Remesher {
       }
 
       fac = fac*0.8 + 0.2;
-      v.interp(oco, fac*ofac);
+      v.co.interp(oco, fac*ofac);
     }
 
 
@@ -1180,9 +1180,9 @@ export class UniformTriRemesher extends Remesher {
           continue;
         }
 
-        n.load(v2).sub(v);
+        n.load(v2.co).sub(v.co);
         let d = n.dot(v.no);
-        n.addFac(v.no, -d*project).add(v);
+        n.addFac(v.no, -d*project).add(v.co);
 
         let etemp = e.customData[cd_etemp].value;
         w = 0.01 + etemp[0];
@@ -1194,7 +1194,7 @@ export class UniformTriRemesher extends Remesher {
       if (tot > 0.0) {
         co.mulScalar(1.0/tot);
 
-        v.interp(co, relax2);
+        v.co.interp(co, relax2);
       }
     }
 
@@ -1220,7 +1220,7 @@ export class UniformTriRemesher extends Remesher {
 
     for (let e of mesh.edges) {
       if (0) { //edge distance constraint
-        let l1 = e.v1.vectorDistance(e.v2);
+        let l1 = e.co.v1.vectorDistance(e.co.v2);
         let elen2 = elen;
 
         if (e.flag & EDGE_DIAG) {
@@ -1228,7 +1228,7 @@ export class UniformTriRemesher extends Remesher {
         }
         //mid.load(e.v1).interp(e.v2, 0.5);
 
-        tan.load(e.v2).sub(e.v1);
+        tan.load(e.co.v2).sub(e.co.v1);
         tan.normalize();
         tan.mulScalar((l1 - elen)*0.1*efac);
 
@@ -1237,8 +1237,8 @@ export class UniformTriRemesher extends Remesher {
           break;
         }
 
-        e.v1.addFac(tan, 1.0);
-        e.v2.addFac(tan, -1.0);
+        e.v1.co.addFac(tan, 1.0);
+        e.v2.co.addFac(tan, -1.0);
       }
 
       //e.flag &= ~EDGE_DIAG;
@@ -1441,7 +1441,7 @@ export class UniformTriRemesher extends Remesher {
     }
 
     function edist1(e) {
-      let dist = e.v1.vectorDistance(e.v2);
+      let dist = e.v1.co.vectorDistance(e.v2.co);
 
       return escale(e)*dist;
     }

@@ -161,7 +161,7 @@ export class CurvVert extends CustomDataElem {
   }
 
   _ignoreUpdate(v, cd_cotan) {
-    this.cokey = calcCoKey(v);
+    this.cokey = calcCoKey(v.co);
     this.flag &= ~CVFlags.UPDATE;
 
     return this;

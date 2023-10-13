@@ -1888,7 +1888,7 @@ export class BVHNode {
     let n = v.customData[cd_node];
 
     if (isDeforming) {
-      if (!n.node && math.point_in_hex(v, this.boxverts)) {
+      if (!n.node && math.point_in_hex(v.co, this.boxverts)) {
         this.uniqueVerts.add(v);
         n.node = this;
       } else {

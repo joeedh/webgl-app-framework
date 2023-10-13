@@ -328,9 +328,9 @@ export class CubeGenerator extends ProceduralGen {
       let x = verts[i], y = verts[i+1], z = verts[i+2];
 
       let v = mesh.makeVertex();
-      v[0] = x;
-      v[1] = y;
-      v[2] = z;
+      v.co[0] = x;
+      v.co[1] = y;
+      v.co[2] = z;
 
       v.index = vs.length;
       vs.push(v);

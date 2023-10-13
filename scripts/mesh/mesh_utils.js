@@ -1508,18 +1508,18 @@ export function trianglesToQuads(mesh, faces, flag = TriQuadFlags.DEFAULT, lctx,
   let errorNiceQuad = (e, v1, v2, v3, v4) => {
     //no.load(v1.no).add(v2.no).add(v3.no).add(v4.no).normalize();
 
-    let th1 = dot3(v4, v1, v2, no);
-    let th2 = dot3(v1, v2, v3, no);
-    let th3 = dot3(v2, v3, v4, no);
-    let th4 = dot3(v3, v4, v1, no);
+    let th1 = dot3(v4.co, v1.co, v2.co, no);
+    let th2 = dot3(v1.co, v2.co, v3.co, no);
+    let th3 = dot3(v2.co, v3.co, v4.co, no);
+    let th4 = dot3(v3.co, v4.co, v1.co, no);
 
     //t1.load(v1.no).add(v3.no).normalize();
     //t2.load(v2.no).add(v4.no).normalize();
 
     let f = (th1 + th2 + th3 + th4)*0.25;
 
-    f += (1.0 - math.dihedral_v3_sqr(v1, v2, v3, v4))*0.25;
-    f += (1.0 - math.dihedral_v3_sqr(v2, v3, v4, v1))*0.25;
+    f += (1.0 - math.dihedral_v3_sqr(v1.co, v2.co, v3.co, v4.co))*0.25;
+    f += (1.0 - math.dihedral_v3_sqr(v2.co, v3.co, v4.co, v1.co))*0.25;
 
     //let th = t1.dot(t2);
     //f += th*35.0;
@@ -2503,13 +2503,13 @@ export function getCotanData(v, _edges = undefined, _vdata = []) {
       let e1 = edges[i1], e2 = edges[i2];
       let e3 = edges[i3];
 
-      let v1 = ctmp1.load(v);
-      let v2 = ctmp2.load(e1.otherVertex(v));
-      let v3 = ctmp3.load(e2.otherVertex(v));
-      let v4 = ctmp4.load(e3.otherVertex(v));
+      let v1 = ctmp1.load(v.co);
+      let v2 = ctmp2.load(e1.otherVertex(v).co);
+      let v3 = ctmp3.load(e2.otherVertex(v).co);
+      let v4 = ctmp4.load(e3.otherVertex(v).co);
 
-      let t1 = ctmp6.load(v2).sub(v).normalize();
-      let t2 = ctmp7.load(v3).sub(v).normalize();
+      let t1 = ctmp6.load(v2).sub(v.co).normalize();
+      let t2 = ctmp7.load(v3).sub(v.co).normalize();
 
       let angle = Math.acos(t1.dot(t2)*0.99999);
       let area = math.tri_area(v1, v2, v3);

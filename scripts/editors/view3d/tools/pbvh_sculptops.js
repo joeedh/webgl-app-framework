@@ -1077,7 +1077,7 @@ export class PaintOp extends PaintOpBase {
         if (offs) {
           for (let off of offs) {
             co2.load(co).mul(off);
-            let dis2 = v.vectorDistance(co2);
+            let dis2 = v.co.vectorDistance(co2);
             if (dis2 < dis) {
               for (let i = 0; i < 3; i++) {
                 if (off[i] < 0) {
@@ -1118,7 +1118,7 @@ export class PaintOp extends PaintOpBase {
 
         let offs = axismap[sym];
 
-        let dis = v.vectorDistance(co);
+        let dis = v.co.vectorDistance(co);
         if (sym && offs) {
           for (let off of offs) {
             for (let i = 0; i < 3; i++) {
@@ -4262,7 +4262,7 @@ export class PaintOp extends PaintOpBase {
       } else if (mode === WING_SCRAPE) {
         f2 = f*strength;
 
-        let t = wtmp1.load(v).sub(ps.p);
+        let t = wtmp1.load(v.co).sub(ps.p);
         let d = t.dot(wno);
         t.addFac(wno, -d).normalize();
 
@@ -4283,7 +4283,7 @@ export class PaintOp extends PaintOpBase {
         if (th < 0.0 || doboth) {
           nvec = wvec1;
 
-          let co = planetmp.load(v);
+          let co = planetmp.load(v.co);
           co.sub(wplanep1);
 
           d = co.dot(nvec);
@@ -4293,7 +4293,7 @@ export class PaintOp extends PaintOpBase {
         if (th >= 0.0 || doboth) {
           nvec = wvec2;
 
-          let co = planetmp.load(v);
+          let co = planetmp.load(v.co);
           co.sub(wplanep2);
 
           d = co.dot(nvec);
@@ -4320,14 +4320,14 @@ export class PaintOp extends PaintOpBase {
       } else if (mode === SHARP) {
         v.co.addFac(vec, f);
       } else if (mode === SMOOTH && isplane) {
-        planetmp.load(v);
+        planetmp.load(v.co);
         vsmooth(v, f*strength);
-        let dist = planetmp.vectorDistance(v);
+        let dist = planetmp.vectorDistance(v.co);
 
         f2 = w1*w1*(3.0 - 2.0*w1)*w1;
         f2 *= strength*0.25;
 
-        let co = planetmp.load(v);
+        let co = planetmp.load(v.co);
         co.sub(planep);
 
         let n = planetmp2.load(nvec);

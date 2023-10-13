@@ -1348,6 +1348,8 @@ export class Vertex extends BaseVector {
     var x = this[0];
     var y = this[1];
 
+    const cos = Math.cos;
+    
     if (axis === 1) {
       this[0] = x*cos(A) + y*sin(A);
       this[1] = y*cos(A) - x*sin(A);
