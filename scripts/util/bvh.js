@@ -941,9 +941,9 @@ export class BVHNode {
         continue;
       }
 
-      let dis = co.vectorDistanceSqr(t.v1);
-      dis = dis > radius ? Math.min(dis, co.vectorDistanceSqr(t.v2)) : dis;
-      dis = dis > radius ? Math.min(dis, dis = co.vectorDistanceSqr(t.v3)) : dis;
+      let dis = co.vectorDistanceSqr(t.v1.co);
+      dis = dis > radius ? Math.min(dis, co.vectorDistanceSqr(t.v2.co)) : dis;
+      dis = dis > radius ? Math.min(dis, dis = co.vectorDistanceSqr(t.v3.co)) : dis;
 
       if (dis < radius_sqr) {
         out.add(t);
@@ -971,10 +971,10 @@ export class BVHNode {
       }
 
       if (t.no.dot(t.no) < 0.999) {
-        t.no.load(math.normal_tri(t.v1, t.v2, t.v3));
+        t.no.load(math.normal_tri(t.v1.co, t.v2.co, t.v3.co));
       }
 
-      let dis = math.dist_to_tri_v3(co, t.v1, t.v2, t.v3, t.no);
+      let dis = math.dist_to_tri_v3(co, t.v1.co, t.v2.co, t.v3.co, t.no);
       if (dis < radius) {
         out.add(t);
       }

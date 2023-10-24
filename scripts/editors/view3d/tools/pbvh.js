@@ -356,6 +356,7 @@ export class BVHToolMode extends ToolMode {
     }
 
     panel = col.panel("Texture");
+    panel.closed = true;
     let tex = document.createElement("texture-select-panel-x");
 
     tex.setAttribute("datapath", path + ".brush.texUser.texture");
@@ -378,8 +379,6 @@ export class BVHToolMode extends ToolMode {
     strip.prop(path + ".brush.texUser.pinch");
 
     panel.add(tex);
-
-    panel.closed = true;
 
     panel = col.panel("Falloff");
     panel.prop(path + ".brush.falloff");
