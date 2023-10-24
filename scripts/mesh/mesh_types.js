@@ -9,9 +9,11 @@ import {Vector3, Vector4, Quat, Matrix4, BaseVector} from "../util/vectormath.js
 import * as util from "../util/util.js";
 import {UVLayerElem} from "./mesh_customdata.js";
 import {nstructjs} from '../path.ux/pathux.js';
+
 let STRUCT = nstructjs.STRUCT;
 
 import {EDGE_LINKED_LISTS} from '../core/const.js';
+
 export {EDGE_LINKED_LISTS} from '../core/const.js';
 
 let quat_temps = util.cachering.fromConstructor(Quat, 512);
@@ -24,7 +26,7 @@ window._vertiters_l = vertiters_l;
 export class VertLoopIter {
   constructor(v) {
     this.v = v;
-    this.ret = {done : true, value : undefined};
+    this.ret = {done: true, value: undefined};
     this.l = undefined;
     this.i = 0;
     this.done = true;
@@ -52,7 +54,7 @@ export class VertLoopIter {
     return this.finish();
   }
 
-  reset(v, preserve_loop_mode=false) {
+  reset(v, preserve_loop_mode = false) {
     this.v = v;
     this.preserve_loop_mode = preserve_loop_mode;
     this.done = false;
@@ -66,7 +68,7 @@ export class VertLoopIter {
 
     //clear temp flag
 
-    for (let i=0; i<v.edges.length; i++) {
+    for (let i = 0; i < v.edges.length; i++) {
       let e = v.edges[i];
 
       if (!e.l) {
@@ -80,7 +82,7 @@ export class VertLoopIter {
         l.f.flag &= ~flag;
 
         l = l.radial_next;
-      } while (l !== e.l && _i++ <10);
+      } while (l !== e.l && _i++ < 10);
     }
 
     return this;
@@ -153,7 +155,8 @@ export class VertLoopIter {
     return ret;
   }
 }
-for (let i=0; i<vertiters_l.length; i++) {
+
+for (let i = 0; i < vertiters_l.length; i++) {
   vertiters_l[i] = new VertLoopIter();
 }
 vertiters_l.cur = 0;
@@ -181,7 +184,7 @@ let vniring = util.cachering.fromConstructor(VertNeighborIterR, 512);
 
 export class VertNeighborIter {
   constructor() {
-    this.ret = {done : false, value : undefined};
+    this.ret = {done: false, value: undefined};
     this.done = true;
     this.v = undefined;
     this.i = 0;
@@ -237,7 +240,7 @@ export class VertNeighborIter {
 
 export class VertNeighborIterLinkedList {
   constructor() {
-    this.ret = {done : false, value : undefined};
+    this.ret = {done: false, value: undefined};
     this.done = true;
     this.e = undefined;
     this.v = undefined;
@@ -296,7 +299,7 @@ export class VertNeighborIterLinkedList {
   }
 }
 
-for (let i=0; i<vnistack.length; i++) {
+for (let i = 0; i < vnistack.length; i++) {
   vnistack[i] = EDGE_LINKED_LISTS ? new VertNeighborIterLinkedList() : new VertNeighborIter();
 }
 
@@ -363,10 +366,10 @@ export class Element {
 
   toJSON() {
     return {
-      type  : this.type,
-      flag  : this.flag,
-      index : this.index,
-      eid   : this.eid
+      type : this.type,
+      flag : this.flag,
+      index: this.index,
+      eid  : this.eid
     };
   }
 
@@ -406,7 +409,7 @@ let vertiters_f;
 export class VertFaceIter {
   constructor(v) {
     this.v = v;
-    this.ret = {done : true, value : undefined};
+    this.ret = {done: true, value: undefined};
     this.l = undefined;
     this.i = 0;
     this.done = true;
@@ -447,7 +450,7 @@ export class VertFaceIter {
 
     //clear temp flag
 
-    for (let i=0; i<v.edges.length; i++) {
+    for (let i = 0; i < v.edges.length; i++) {
       let e = v.edges[i];
 
       if (!e.l) {
@@ -461,7 +464,7 @@ export class VertFaceIter {
         l.f.flag &= ~flag;
 
         l = l.radial_next;
-      } while (l !== e.l && _i++ <10);
+      } while (l !== e.l && _i++ < 10);
     }
 
     return this;
@@ -534,7 +537,7 @@ export class VertFaceIter {
 export class VertFaceIterLinkedList {
   constructor(v) {
     this.v = v;
-    this.ret = {done : true, value : undefined};
+    this.ret = {done: true, value: undefined};
     this.l = undefined;
     this.i = 0;
     this.done = true;
@@ -588,7 +591,7 @@ export class VertFaceIterLinkedList {
         l.f.flag &= ~flag;
 
         l = l.radial_next;
-      } while (l !== e.l && _i++ <10);
+      } while (l !== e.l && _i++ < 10);
     }
 
     return this;
@@ -668,7 +671,7 @@ export class VertFaceIterLinkedList {
 }
 
 vertiters_f = new Array(256);
-for (let i=0; i<vertiters_f.length; i++) {
+for (let i = 0; i < vertiters_f.length; i++) {
   vertiters_f[i] = EDGE_LINKED_LISTS ? new VertFaceIterLinkedList() : new VertFaceIter();
 }
 vertiters_f.cur = 0;
@@ -676,12 +679,13 @@ vertiters_f.cur = 0;
 let vedgeiters = new Array(512);
 
 let IN_VERTEX_STRUCT = false;
+
 export class VEdgeIter {
   constructor() {
     this.v = undefined;
     this.e = undefined;
     this.i = 0;
-    this.ret = {done : false, value : undefined};
+    this.ret = {done: false, value: undefined};
     this.done = false;
   }
 
@@ -756,14 +760,22 @@ export class VEdgeIter {
   }
 }
 
-for (let i=0; i<vedgeiters.length; i++) {
+for (let i = 0; i < vedgeiters.length; i++) {
   vedgeiters[i] = new VEdgeIter();
 }
 vedgeiters.cur = 0;
 
+/* Backwards compatibility reader. */
 class VertexReader {
   constructor() {
     this.v = undefined;
+  }
+
+  get co() {
+    return this.v.co;
+  }
+  set co(co) {
+    this.v.co = co;
   }
 
   get no() {
@@ -777,6 +789,7 @@ class VertexReader {
   set customData(f) {
     this.v.customData = f;
   }
+
   get customData() {
     return this.v.customData;
   }
@@ -784,23 +797,29 @@ class VertexReader {
   set flag(f) {
     this.v.flag = f;
   }
+
   set type(f) {
     this.v.type = f;
   }
+
   set index(f) {
     this.v.index = f;
   }
+
   set eid(f) {
     this.v.eid = f;
   }
+
   set 0(f) {
-    this.v[0] = f;
+    this.v.co[0] = f;
   }
+
   set 1(f) {
-    this.v[1] = f;
+    this.v.co[1] = f;
   }
+
   set 2(f) {
-    this.v[2] = f;
+    this.v.co[2] = f;
   }
 }
 
@@ -820,7 +839,7 @@ export class Vector3Array extends BaseVector {
     }
   }
 
-  loadXYZ(x,y, z) {
+  loadXYZ(x, y, z) {
     this[0] = x;
     this[1] = y;
     this[2] = z;
@@ -910,10 +929,42 @@ vec3Array {
 `;
 nstructjs.manager.add_class(Vector3Array);
 
+let tracet = util.time_ms();
+let tracei = 0;
+
+export function tracetimer() {
+  if (tracei < 15) {
+    tracei++;
+    return true;
+  }
+
+  if (util.time_ms() - tracet > 100) {
+    tracet = util.time_ms();
+    tracei = 0;
+    return true;
+  }
+
+  return false;
+}
+
+export function traceget(i) {
+  if (tracetimer()) {
+    console.warn("VGET", i);
+  }
+}
+
+export function traceset(i) {
+  if (tracetimer()) {
+    console.warn("VSET", i);
+  }
+}
+
 //has Element mixin
-export class Vertex extends Vector3 {
+export class Vertex extends BaseVector {
   constructor(co) {
     super();
+
+    this.co = new Vector3();
 
     this._initElement(MeshTypes.VERTEX);
     //this.initVector3();
@@ -934,6 +985,47 @@ export class Vertex extends Vector3 {
     if (SEAL) {
       Object.seal(this);
     }
+  }
+
+  get length() {
+    traceget("length");
+    return 3;
+  }
+
+  get 0() {
+    traceget(1);
+    return this.co[0];
+  }
+
+  get 1() {
+    traceget(1);
+    return this.co[1];
+  }
+
+  get 2() {
+    traceget(1);
+    return this.co[2];
+  }
+
+  set 0(f) {
+    traceset(0);
+    this.co[0] = f;
+  }
+
+  set 1(f) {
+    traceset(1);
+    this.co[1] = f;
+  }
+
+  set 2(f) {
+    traceset(2);
+    this.co[2] = f;
+  }
+
+  load(co) {
+    traceset("load");
+    this.co.load(co);
+    return this;
   }
 
   /* change parent to Vector3Array above before uncommenting
@@ -982,7 +1074,7 @@ export class Vertex extends Vector3 {
    it duplicates lots of work
    compared to other methods
    */
-  calcNormal(doFaces=true) {
+  calcNormal(doFaces = true) {
     if (doFaces) {
       for (let f of this.faces) {
         f.calcNormal();
@@ -1000,7 +1092,7 @@ export class Vertex extends Vector3 {
     }
 
     if (tot) {
-      this.no.mulScalar(1.0 / tot).normalize();
+      this.no.mulScalar(1.0/tot).normalize();
     } else {
       this.no[2] = 1.0; //just have normal point upwards
     }
@@ -1050,11 +1142,11 @@ export class Vertex extends Vector3 {
     }
 
     return util.merge(super.toJSON(), {
-      0 : this[0],
-      1 : this[1],
-      2 : this[2],
-      edges : edges,
-      no : this.no
+      0    : this[0],
+      1    : this[1],
+      2    : this[2],
+      edges: edges,
+      no   : this.no
     });
   }
 
@@ -1067,8 +1159,8 @@ export class Vertex extends Vector3 {
     let i = vertiters_f.cur;
     let stack = vertiters_f;
 
-    for (let j=0; j<stack.length; j++) {
-      let i2 = (i + j) % stack.length;
+    for (let j = 0; j < stack.length; j++) {
+      let i2 = (i + j)%stack.length;
 
       if (stack[i2].done) {
         stack.cur++;
@@ -1079,16 +1171,16 @@ export class Vertex extends Vector3 {
     stack.cur++;
     stack.push(new VertFaceIter(this));
 
-    return stack[stack.length-1].reset(this);
+    return stack[stack.length - 1].reset(this);
   }
 
   get faces2() {
     let this2 = this;
 
-    return (function*() {
+    return (function* () {
       let flag = MeshFlags.ITER_TEMP2a;
 
-      for (let state=0; state<4; state++) {
+      for (let state = 0; state < 4; state++) {
         for (let e of this2.edges) {
           let l = e.l;
 
@@ -1108,7 +1200,7 @@ export class Vertex extends Vector3 {
             switch (state) {
               case 0:
                 if (l.f.flag & flag) {
-                  flag = flag << 1;
+                  flag = flag<<1;
                 }
                 break;
               case 1:
@@ -1137,7 +1229,7 @@ export class Vertex extends Vector3 {
     })();
   }
 
-  isBoundary(includeWire=false) {
+  isBoundary(includeWire = false) {
     for (let e of this.edges) {
       if (!e.l) {
         if (includeWire) {
@@ -1198,14 +1290,85 @@ export class Vertex extends Vector3 {
     //we mixed in Element instead of inheriting from it
     Element.prototype.loadSTRUCT.call(this, reader);
   }
+
+  /* ======== XXX vector funcs, remove ======= */
+  loadXYZ(x, y, z) {
+    this[0] = x;
+    this[1] = y;
+    this[2] = z;
+
+    return this;
+  }
+
+  loadXY(x, y) {
+    this[0] = x;
+    this[1] = y;
+
+    return this;
+  }
+
+  dot(b) {
+    return this[0]*b[0] + this[1]*b[1] + this[2]*b[2];
+  }
+
+  multVecMatrix(matrix, ignore_w) {
+    if (ignore_w === undefined) {
+      ignore_w = false;
+    }
+    var x = this[0];
+    var y = this[1];
+    var z = this[2];
+    this[0] = matrix.$matrix.m41 + x*matrix.$matrix.m11 + y*matrix.$matrix.m21 + z*matrix.$matrix.m31;
+    this[1] = matrix.$matrix.m42 + x*matrix.$matrix.m12 + y*matrix.$matrix.m22 + z*matrix.$matrix.m32;
+    this[2] = matrix.$matrix.m43 + x*matrix.$matrix.m13 + y*matrix.$matrix.m23 + z*matrix.$matrix.m33;
+    var w = matrix.$matrix.m44 + x*matrix.$matrix.m14 + y*matrix.$matrix.m24 + z*matrix.$matrix.m34;
+
+    if (!ignore_w && w !== 1 && w !== 0 && matrix.isPersp) {
+      this[0] /= w;
+      this[1] /= w;
+      this[2] /= w;
+    }
+    return w;
+  }
+
+  cross(v) {
+    var x = this[1]*v[2] - this[2]*v[1];
+    var y = this[2]*v[0] - this[0]*v[2];
+    var z = this[0]*v[1] - this[1]*v[0];
+
+    this[0] = x;
+    this[1] = y;
+    this[2] = z;
+
+    return this;
+  }
+
+  //axis is optional, 0
+  rot2d(A, axis) {
+    var x = this[0];
+    var y = this[1];
+
+    const cos = Math.cos;
+    
+    if (axis === 1) {
+      this[0] = x*cos(A) + y*sin(A);
+      this[1] = y*cos(A) - x*sin(A);
+    } else {
+      this[0] = x*cos(A) - y*sin(A);
+      this[1] = y*cos(A) + x*sin(A);
+    }
+
+    return this;
+  }
+
 }
+
+BaseVector.inherit(Vertex, 3);
 util.mixin(Vertex, Element);
 
 Vertex.STRUCT = STRUCT.inherit(Vertex, Element, 'mesh.Vertex') + `
-  0       : float;
-  1       : float;
-  2       : float;
-  no      : vec3 | obj.no;
+  co      : vec3;
+  no      : vec3;
 }
 `;
 /*
@@ -1233,6 +1396,11 @@ export class Handle extends Element {
     }
   }
 
+  get co() {
+    console.warn("impement handle.co properly");
+    return this;
+  }
+
   get visible() {
     let hide = this.flag & MeshFlags.HIDE;
 
@@ -1247,6 +1415,7 @@ export class Handle extends Element {
     super.loadSTRUCT(reader);
   }
 }
+
 util.mixin(Handle, Vector3);
 
 Handle.STRUCT = STRUCT.inherit(Handle, Element, "mesh.Handle") + `
@@ -1265,7 +1434,7 @@ var _evaluate_tmp_vs = util.cachering.fromConstructor(Vector3, 512);
 var _evaluate_vs = util.cachering.fromConstructor(Vector3, 512);
 var _arc_evaluate_vs = util.cachering.fromConstructor(Vector3, 512);
 
-let PS=0, PNUM=2, PTOT=3;
+let PS = 0, PNUM = 2, PTOT = 3;
 
 /* arc length derivatives
 on factor;
@@ -1296,7 +1465,7 @@ off fort;
 
 */
 class ArcLengthCache {
-  constructor(size=512, e) {
+  constructor(size = 512, e) {
     this.size = size;
     this.e = e;
     this.length = 0;
@@ -1304,30 +1473,32 @@ class ArcLengthCache {
     this.regen = 1;
   }
 
-  _calcS(t, steps=512) {
-    let dt = t / steps;
+  _calcS(t, steps = 512) {
+    let dt = t/steps;
     let e = this.e;
 
-    let x1 = e.v1[0], x2 = e.h1[0], x3 = e.h2[0], x4 = e.v2[0];
-    let y1 = e.v1[1], y2 = e.h1[1], y3 = e.h2[1], y4 = e.v2[1];
-    let z1 = e.v1[2], z2 = e.h1[2], z3 = e.h2[2], z4 = e.v2[2];
+    const v1 = e.v1.co, v2 = e.v2.co, h1 = e.h1.co, h2 = e.h2.co;
+
+    let x1 = v1[0], x2 = h1[0], x3 = h2[0], x4 = v2[0];
+    let y1 = v1[1], y2 = h1[1], y3 = h2[1], y4 = v2[1];
+    let z1 = v1[2], z2 = h1[2], z3 = h2[2], z4 = v2[2];
     let sqrt = Math.sqrt;
 
     let sum = 0.0;
     t = 0.0;
 
-    for (let i=0; i<steps; i++, t += dt) {
-      let ds = 3*sqrt((2*(2*x2-x3-x1)*t+x1-x2+(3*x3-x4-3*x2+x1)*t**2)**2+(
-        2*(2*y2-y3-y1)*t+y1-y2+(3*y3-y4-3*y2+y1)*t**2)**2+(2*(2*z2-z3-
-        z1)*t+z1-z2+(3*z3-z4-3*z2+z1)*t**2)**2);
+    for (let i = 0; i < steps; i++, t += dt) {
+      let ds = 3*sqrt((2*(2*x2 - x3 - x1)*t + x1 - x2 + (3*x3 - x4 - 3*x2 + x1)*t**2)**2 + (
+        2*(2*y2 - y3 - y1)*t + y1 - y2 + (3*y3 - y4 - 3*y2 + y1)*t**2)**2 + (2*(2*z2 - z3 -
+        z1)*t + z1 - z2 + (3*z3 - z4 - 3*z2 + z1)*t**2)**2);
 
-      let ds2 =(6*((2*(2*y2-y3-y1)*t+y1-y2+(3*y3-y4-3*y2+y1)*t**2)*((3*y3-
-        y4-3*y2+y1)*t+2*y2-y3-y1)+(2*(2*z2-z3-z1)*t+z1-z2+(3*z3-z4-3*
-        z2+z1)*t**2)*((3*z3-z4-3*z2+z1)*t+2*z2-z3-z1)+(2*(2*x2-x3-x1)*
-        t+x1-x2+(3*x3-x4-3*x2+x1)*t**2)*((3*x3-x4-3*x2+x1)*t+2*x2-x3-
-        x1)))/sqrt((2*(2*x2-x3-x1)*t+x1-x2+(3*x3-x4-3*x2+x1)*t**2)**2+
-        (2*(2*y2-y3-y1)*t+y1-y2+(3*y3-y4-3*y2+y1)*t**2)**2+(2*(2*z2-z3
-          -z1)*t+z1-z2+(3*z3-z4-3*z2+z1)*t**2)**2);
+      let ds2 = (6*((2*(2*y2 - y3 - y1)*t + y1 - y2 + (3*y3 - y4 - 3*y2 + y1)*t**2)*((3*y3 -
+        y4 - 3*y2 + y1)*t + 2*y2 - y3 - y1) + (2*(2*z2 - z3 - z1)*t + z1 - z2 + (3*z3 - z4 - 3*
+        z2 + z1)*t**2)*((3*z3 - z4 - 3*z2 + z1)*t + 2*z2 - z3 - z1) + (2*(2*x2 - x3 - x1)*
+        t + x1 - x2 + (3*x3 - x4 - 3*x2 + x1)*t**2)*((3*x3 - x4 - 3*x2 + x1)*t + 2*x2 - x3 -
+        x1)))/sqrt((2*(2*x2 - x3 - x1)*t + x1 - x2 + (3*x3 - x4 - 3*x2 + x1)*t**2)**2 +
+        (2*(2*y2 - y3 - y1)*t + y1 - y2 + (3*y3 - y4 - 3*y2 + y1)*t**2)**2 + (2*(2*z2 - z3
+          - z1)*t + z1 - z2 + (3*z3 - z4 - 3*z2 + z1)*t**2)**2);
 
       sum += ds*dt + 0.5*ds2*dt*dt;
     }
@@ -1342,55 +1513,57 @@ class ArcLengthCache {
     e._length = this.length = this._calcS(1.0);
 
     let steps = this.size*4;
-    let t = 0.0, dt = 1.0 / steps;
+    let t = 0.0, dt = 1.0/steps;
 
-    let x1 = e.v1[0], x2 = e.h1[0], x3 = e.h2[0], x4 = e.v2[0];
-    let y1 = e.v1[1], y2 = e.h1[1], y3 = e.h2[1], y4 = e.v2[1];
-    let z1 = e.v1[2], z2 = e.h1[2], z3 = e.h2[2], z4 = e.v2[2];
+    const v1 = e.v1.co, v2 = e.v2.co, h1 = e.h1.co, h2 = e.h2.co;
+
+    let x1 = v1[0], x2 = h1[0], x3 = h2[0], x4 = v2[0];
+    let y1 = v1[1], y2 = h1[1], y3 = h2[1], y4 = v2[1];
+    let z1 = v1[2], z2 = h1[2], z3 = h2[2], z4 = v2[2];
     let length = 0.0;
     let sqrt = Math.sqrt;
     let table = this.table;
 
     table.length = PTOT*this.size;
 
-    for (let i=0; i<table.length; i++) {
+    for (let i = 0; i < table.length; i++) {
       table[i] = 0.0;
     }
 
     let real_length = 0;
 
-    for (let i=0; i<steps; i++, t += dt) {
-      let ds = 3*sqrt((2*(2*x2-x3-x1)*t+x1-x2+(3*x3-x4-3*x2+x1)*t**2)**2+(
-        2*(2*y2-y3-y1)*t+y1-y2+(3*y3-y4-3*y2+y1)*t**2)**2+(2*(2*z2-z3-
-        z1)*t+z1-z2+(3*z3-z4-3*z2+z1)*t**2)**2);
+    for (let i = 0; i < steps; i++, t += dt) {
+      let ds = 3*sqrt((2*(2*x2 - x3 - x1)*t + x1 - x2 + (3*x3 - x4 - 3*x2 + x1)*t**2)**2 + (
+        2*(2*y2 - y3 - y1)*t + y1 - y2 + (3*y3 - y4 - 3*y2 + y1)*t**2)**2 + (2*(2*z2 - z3 -
+        z1)*t + z1 - z2 + (3*z3 - z4 - 3*z2 + z1)*t**2)**2);
 
-      let ds2 =(6*((2*(2*y2-y3-y1)*t+y1-y2+(3*y3-y4-3*y2+y1)*t**2)*((3*y3-
-        y4-3*y2+y1)*t+2*y2-y3-y1)+(2*(2*z2-z3-z1)*t+z1-z2+(3*z3-z4-3*
-        z2+z1)*t**2)*((3*z3-z4-3*z2+z1)*t+2*z2-z3-z1)+(2*(2*x2-x3-x1)*
-        t+x1-x2+(3*x3-x4-3*x2+x1)*t**2)*((3*x3-x4-3*x2+x1)*t+2*x2-x3-
-        x1)))/sqrt((2*(2*x2-x3-x1)*t+x1-x2+(3*x3-x4-3*x2+x1)*t**2)**2+
-        (2*(2*y2-y3-y1)*t+y1-y2+(3*y3-y4-3*y2+y1)*t**2)**2+(2*(2*z2-z3
-          -z1)*t+z1-z2+(3*z3-z4-3*z2+z1)*t**2)**2);
+      let ds2 = (6*((2*(2*y2 - y3 - y1)*t + y1 - y2 + (3*y3 - y4 - 3*y2 + y1)*t**2)*((3*y3 -
+        y4 - 3*y2 + y1)*t + 2*y2 - y3 - y1) + (2*(2*z2 - z3 - z1)*t + z1 - z2 + (3*z3 - z4 - 3*
+        z2 + z1)*t**2)*((3*z3 - z4 - 3*z2 + z1)*t + 2*z2 - z3 - z1) + (2*(2*x2 - x3 - x1)*
+        t + x1 - x2 + (3*x3 - x4 - 3*x2 + x1)*t**2)*((3*x3 - x4 - 3*x2 + x1)*t + 2*x2 - x3 -
+        x1)))/sqrt((2*(2*x2 - x3 - x1)*t + x1 - x2 + (3*x3 - x4 - 3*x2 + x1)*t**2)**2 +
+        (2*(2*y2 - y3 - y1)*t + y1 - y2 + (3*y3 - y4 - 3*y2 + y1)*t**2)**2 + (2*(2*z2 - z3
+          - z1)*t + z1 - z2 + (3*z3 - z4 - 3*z2 + z1)*t**2)**2);
 
       let df = dt;
 
-      let ti = Math.floor((length / this.length) * (this.size) * 0.9999);
-      ti = Math.min(Math.max(ti, 0), this.size-1)*PTOT;
+      let ti = Math.floor((length/this.length)*(this.size)*0.9999);
+      ti = Math.min(Math.max(ti, 0), this.size - 1)*PTOT;
 
-      table[ti+PS] += t;
-      table[ti+PNUM]++;
+      table[ti + PS] += t;
+      table[ti + PNUM]++;
 
-      if (i !== steps-1) {
+      if (i !== steps - 1) {
         length += ds*dt + 0.5*ds2*dt*dt;
       }
     }
 
-    for (let ti=0; ti<table.length; ti += PTOT) {
-      if (table[ti+PNUM] == 0.0) {
-        table[ti] = ti / steps / PTOT;
-        table[ti+1] = table[ti+2] = 0.0;
+    for (let ti = 0; ti < table.length; ti += PTOT) {
+      if (table[ti + PNUM] == 0.0) {
+        table[ti] = ti/steps/PTOT;
+        table[ti + 1] = table[ti + 2] = 0.0;
       } else {
-        table[ti] /= table[ti+PNUM];
+        table[ti] /= table[ti + PNUM];
       }
     }
 
@@ -1406,8 +1579,8 @@ class ArcLengthCache {
       this.update();
     }
 
-    let ti = (this.size-1)*s/this.e.length*0.99999;
-    ti = Math.min(Math.max(ti, 0.0), this.size-1);
+    let ti = (this.size - 1)*s/this.e.length*0.99999;
+    ti = Math.min(Math.max(ti, 0.0), this.size - 1);
 
     let u = Math.fract(ti);
     ti = Math.floor(ti)*PTOT;
@@ -1415,14 +1588,14 @@ class ArcLengthCache {
 
     if (ti < 0) {
       return 0.0;
-    } else if (ti/PTOT >= this.size-1) {
+    } else if (ti/PTOT >= this.size - 1) {
       return 1.0;
     } else {
       let dt = 50;
       let t1 = this.table[ti];
-      let t2 = this.table[ti+PTOT];
+      let t2 = this.table[ti + PTOT];
 
-      return t1 + (t2 - t1) * u;
+      return t1 + (t2 - t1)*u;
     }
   }
 
@@ -1443,7 +1616,7 @@ eliter_stack.cur = 0;
 
 class EdgeLoopIter {
   constructor() {
-    this.ret = {done : true, value : undefined};
+    this.ret = {done: true, value: undefined};
     this.done = true;
     this.e = undefined;
     this.l = undefined;
@@ -1510,7 +1683,7 @@ class EdgeLoopIter {
   }
 }
 
-for (let i=0; i<eliter_stack.length; i++) {
+for (let i = 0; i < eliter_stack.length; i++) {
   eliter_stack[i] = new EdgeLoopIter();
 }
 
@@ -1521,7 +1694,7 @@ class EdgeVertIter {
   constructor() {
     this.e = undefined;
     this.i = 0;
-    this.ret = {done : false, value : undefined};
+    this.ret = {done: false, value: undefined};
     this.done = true;
   }
 
@@ -1570,7 +1743,8 @@ class EdgeVertIter {
     return this.finish();
   }
 }
-for (let i=0; i<eviter_stack.length; i++) {
+
+for (let i = 0; i < eviter_stack.length; i++) {
   eviter_stack[i] = new EdgeVertIter();
 }
 
@@ -1607,7 +1781,7 @@ export class EdgeFaceIter {
     this.l = undefined;
     this.done = true;
     this.i = 0;
-    this.ret = {done : true, value : undefined};
+    this.ret = {done: true, value: undefined};
   }
 
   reset(e) {
@@ -1639,7 +1813,7 @@ export class EdgeFaceIter {
     } while (l !== e.l);
 
     //XXX overflow possibility
-    efiter_flag = Math.min(efiter_flag+1, MeshIterFlags.EDGE_FACES_TOT);
+    efiter_flag = Math.min(efiter_flag + 1, MeshIterFlags.EDGE_FACES_TOT);
 
     return this;
   }
@@ -1689,8 +1863,8 @@ export class EdgeFaceIter {
     if (!this.done) {
       this.done = true;
 
-      efiter_stack.cur = Math.max(efiter_stack.cur-1, 0);
-      efiter_flag = Math.max(efiter_flag-1, 0);
+      efiter_stack.cur = Math.max(efiter_stack.cur - 1, 0);
+      efiter_flag = Math.max(efiter_flag - 1, 0);
 
       this.ret.done = true;
       this.ret.value = undefined;
@@ -1703,7 +1877,8 @@ export class EdgeFaceIter {
     return this.finish();
   }
 }
-for (let i=0; i<efiter_stack.length; i++) {
+
+for (let i = 0; i < efiter_stack.length; i++) {
   efiter_stack[i] = new EdgeFaceIter();
 }
 
@@ -1863,13 +2038,13 @@ export class Edge extends Element {
 
   calcScreenLength(view3d) {
     let steps = 32;
-    let s=0, ds = 1.0 / (steps-1);
+    let s = 0, ds = 1.0/(steps - 1);
     let lastco = undefined;
     let sum = 0.0;
 
     let camera = view3d.camera;
 
-    for (let i=0; i<steps; i++, s += ds) {
+    for (let i = 0; i < steps; i++, s += ds) {
       let co = this.evaluate(s);
       view3d.project(co);
 
@@ -1884,7 +2059,7 @@ export class Edge extends Element {
     return sum;
   }
 
-  update(force=true) {
+  update(force = true) {
     if (force) {
       this.updateHandles();
       this.updateLength();
@@ -1898,7 +2073,7 @@ export class Edge extends Element {
       this._arcCache.update();
       this.length = this._arcCache._calcS(1.0);
     } else {
-      this.length = this.v1.vectorDistance(this.v2);
+      this.length = this.v1.co.vectorDistance(this.v2.co);
     }
 
     return this.length;
@@ -1981,45 +2156,45 @@ export class Edge extends Element {
 
       return this.arcCache.evaluate(s);
     } else {
-      let p = _evaluate_vs.next().load(this.v1);
+      let p = _evaluate_vs.next().load(this.v1.co);
 
-      return p.interp(this.v2, s / this.length);
+      return p.interp(this.v2.co, s/this.length);
     }
   }
 
   arcDerivative(s) {
     let df = 0.001;
 
-    if (s < 1.0-df && s > df) {
-      let a = this.arcEvaluate(s-df);
-      let b = this.arcEvaluate(s+df);
-      return a.sub(b).mulScalar(0.5 / df);
-    } else if (s < 1.0-df) {
+    if (s < 1.0 - df && s > df) {
+      let a = this.arcEvaluate(s - df);
+      let b = this.arcEvaluate(s + df);
+      return a.sub(b).mulScalar(0.5/df);
+    } else if (s < 1.0 - df) {
       let a = this.arcEvaluate(s);
-      let b = this.arcEvaluate(s+df);
-      return a.sub(b).mulScalar(1.0 / df);
+      let b = this.arcEvaluate(s + df);
+      return a.sub(b).mulScalar(1.0/df);
     } else {
-      let a = this.arcEvaluate(s-df);
+      let a = this.arcEvaluate(s - df);
       let b = this.arcEvaluate(s);
-      return a.sub(b).mulScalar(1.0 / df);
+      return a.sub(b).mulScalar(1.0/df);
     }
   }
 
   arcDerivative2(s) {
     let df = 0.001;
 
-    if (s < 1.0-df && s > df) {
-      let a = this.arcDerivative(s-df);
-      let b = this.arcDerivative(s+df);
-      return a.sub(b).mulScalar(0.5 / df);
-    } else if (s < 1.0-df) {
+    if (s < 1.0 - df && s > df) {
+      let a = this.arcDerivative(s - df);
+      let b = this.arcDerivative(s + df);
+      return a.sub(b).mulScalar(0.5/df);
+    } else if (s < 1.0 - df) {
       let a = this.arcDerivative(s);
-      let b = this.arcDerivative(s+df);
-      return a.sub(b).mulScalar(1.0 / df);
+      let b = this.arcDerivative(s + df);
+      return a.sub(b).mulScalar(1.0/df);
     } else {
-      let a = this.arcDerivative(s-df);
+      let a = this.arcDerivative(s - df);
       let b = this.arcDerivative(s);
-      return a.sub(b).mulScalar(1.0 / df);
+      return a.sub(b).mulScalar(1.0/df);
     }
   }
 
@@ -2041,13 +2216,14 @@ export class Edge extends Element {
   }
 
   arcTwist(s) {
-    return this.twist(s / this.length);
+    return this.twist(s/this.length);
   }
 
   arcNormal(s) {
     //return this.arcDerivative2(s).normalize();
 
     let flag = this.flag;
+
     function getUp(dv) {
       dv.normalize();
       let x = Math.abs(dv[0]), y = Math.abs(dv[1]), z = Math.abs(dv[2]);
@@ -2073,7 +2249,7 @@ export class Edge extends Element {
 
     let up1 = getUp(this.derivative(0));
     let up2 = getUp(this.derivative(1));
-    let up = up1.interp(up2, s / this.length).normalize();
+    let up = up1.interp(up2, s/this.length).normalize();
 
     let dv = this.arcDerivative(s);
     let nor = vec3_temps.next().load(dv);
@@ -2106,7 +2282,7 @@ export class Edge extends Element {
   get loops2() {
     let this2 = this;
 
-    return (function*() {
+    return (function* () {
       let l = this2.l;
       let i = 0;
 
@@ -2128,13 +2304,13 @@ export class Edge extends Element {
   }
 
   /** iterates over faces surrounding this edge;
-      each face is guaranteed to only be returned once.
+   each face is guaranteed to only be returned once.
 
-      Note that edges can have the same face twice when
-      they intrude into the face.
+   Note that edges can have the same face twice when
+   they intrude into the face.
 
-      Iteration can be up to ten levels deep.  Never, ever
-      do recursion from within a for loop over this iterator.
+   Iteration can be up to ten levels deep.  Never, ever
+   do recursion from within a for loop over this iterator.
    */
   get faces() {
     return efiter_ring.next().reset(this);
@@ -2147,14 +2323,14 @@ export class Edge extends Element {
   get faces_old() {
     let this2 = this;
 
-    return (function*() {
+    return (function* () {
       let l = this2.l;
       let i = 0;
-      
+
       if (l === undefined) {
         return;
       }
-      
+
       do {
         if (i++ > MAX_EDGE_FACES) {
           console.warn("infinite loop detected in Edge.prototype.[get faces]()");
@@ -2209,31 +2385,31 @@ export class Edge extends Element {
     if (this.h1) {
       let ret = _evaluate_vs.next().zero();
 
-      for (let i=0; i<3; i++) {
-        let k1 = this.v1[i], k2 = this.h1[i], k3 = this.h2[i], k4 = this.v2[i];
-        ret[i] = -(k1*t**3-3*k1*t**2+3*k1*t-k1-3*k2*t**3+6*k2*t**2-3*k2*t+3*
-                  k3*t**3-3*k3*t**2-k4*t**3);
+      for (let i = 0; i < 3; i++) {
+        let k1 = this.v1.co[i], k2 = this.h1.co[i], k3 = this.h2.co[i], k4 = this.v2.co[i];
+        ret[i] = -(k1*t**3 - 3*k1*t**2 + 3*k1*t - k1 - 3*k2*t**3 + 6*k2*t**2 - 3*k2*t + 3*
+          k3*t**3 - 3*k3*t**2 - k4*t**3);
 
       }
 
       return ret;
     } else {
-      return _evaluate_vs.next().load(this.v1).interp(this.v2, t);
+      return _evaluate_vs.next().load(this.v1.co).interp(this.v2.co, t);
     }
   }
 
   derivative(t) {
     var df = 0.0001;
-    var a = this.evaluate(t-df);
-    var b = this.evaluate(t+df);
+    var a = this.evaluate(t - df);
+    var b = this.evaluate(t + df);
 
     return b.sub(a).mulScalar(0.5/df);
   }
 
   derivative2(t) {
     var df = 0.0001;
-    var a = this.derivative(t-df);
-    var b = this.derivative(t+df);
+    var a = this.derivative(t - df);
+    var b = this.derivative(t + df);
 
     return b.sub(a).mulScalar(0.5/df);
   }
@@ -2242,7 +2418,7 @@ export class Edge extends Element {
     let dv1 = this.derivative(t);
     let dv2 = this.derivative2(t);
 
-    let ret = (dv1[0]*dv2[1] - dv1[1]*dv2[0]) / Math.pow(dv1.dot(dv1), 3.0/2.0);
+    let ret = (dv1[0]*dv2[1] - dv1[1]*dv2[0])/Math.pow(dv1.dot(dv1), 3.0/2.0);
 
     return ret;
   }
@@ -2267,9 +2443,10 @@ export class Edge extends Element {
     reader(this);
     super.loadSTRUCT(reader);
 
-    this.flag &= ~(MeshFlags.DRAW_DEBUG|MeshFlags.DRAW_DEBUG2);
+    this.flag &= ~(MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2);
   }
 }
+
 Edge.STRUCT = STRUCT.inherit(Edge, Element, 'mesh.Edge') + `
   v1      : int | obj.v1.eid;
   v2      : int | obj.v2.eid;
@@ -2301,6 +2478,7 @@ export class Loop extends Element {
       Object.seal(this);
     }
   }
+
   /*
     get f() {
       return this._f;
@@ -2331,6 +2509,7 @@ export class Loop extends Element {
     super.loadSTRUCT(reader);
   }
 }
+
 Loop.STRUCT = STRUCT.inherit(Loop, Element, "mesh.Loop") + `
   v           : int | obj.v.eid;
   e           : int | obj.e.eid;
@@ -2357,8 +2536,8 @@ class LoopIter {
     this._i = 0;
 
     this.ret = {
-      done  : true,
-      value : undefined
+      done : true,
+      value: undefined
     };
 
     this.onreturn = undefined;
@@ -2427,7 +2606,7 @@ class LoopIter {
 }
 
 loopiterstack = new Array(512);
-for (let i=0; i<loopiterstack.length; i++) {
+for (let i = 0; i < loopiterstack.length; i++) {
   loopiterstack[i] = new LoopIter();
 }
 loopiterstack.cur = 0;
@@ -2450,7 +2629,7 @@ export class LoopList {
     stack.cur++;
 
     if (stack.cur < 0 || stack.cur >= stack.length) {
-      let cur =  stack.cur;
+      let cur = stack.cur;
       stack.cur = 0;
       throw new Error("iteration depth was too deep: " + cur);
     }
@@ -2483,9 +2662,9 @@ export class LoopList {
     if (this.__loops !== undefined) {
       let ls = this.__loops;
 
-      for (let i=0; i<ls.length; i++) {
-        let i1 = (i - 1 + ls.length) % ls.length;
-        let i2 = (i + 1) % ls.length;
+      for (let i = 0; i < ls.length; i++) {
+        let i1 = (i - 1 + ls.length)%ls.length;
+        let i2 = (i + 1)%ls.length;
 
         let l = ls[i];
         l.prev = ls[i1];
@@ -2679,7 +2858,7 @@ export class Face extends Element {
       let len = 0.0;
 
       for (let l of list) {
-        len += l.v.vectorDistance(l.next.v);
+        len += l.v.co.vectorDistance(l.next.v.co);
       }
 
       if (!maxlist || len > maxlen) {
@@ -2758,6 +2937,9 @@ export class Face extends Element {
       if (cd_disp >= 0) {
         v1 = v1.customData[cd_disp].worldco;
         v2 = v2.customData[cd_disp].worldco;
+      } else {
+        v1 = v1.co;
+        v2 = v2.co;
       }
 
       t1.load(v1).sub(c);
@@ -2788,7 +2970,7 @@ export class Face extends Element {
     }
 
     for (let l of this.lists[0]) {
-      let co = l.v;
+      let co = l.v.co;
 
       if (cd_disp >= 0) {
         co = co.customData[cd_disp].worldco;
@@ -2798,7 +2980,7 @@ export class Face extends Element {
       tot++;
     }
 
-    this.cent.mulScalar(1.0 / tot);
+    this.cent.mulScalar(1.0/tot);
     return this.cent;
   }
 
@@ -2807,6 +2989,7 @@ export class Face extends Element {
     super.loadSTRUCT(reader);
   }
 }
+
 Face.STRUCT = nstructjs.inherit(Face, Element, "mesh.Face") + `
   lists : array(mesh.LoopList);
   cent  : vec3;

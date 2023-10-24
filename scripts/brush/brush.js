@@ -1031,7 +1031,7 @@ export function makeDefaultBrushes_MediumRes() {
 
   brush = bmap[SculptTools.DRAW];
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
-  brush.rake = 1.0;
+  brush.rake = 0.0;
   brush.rakeCurvatureFactor = 1.0;
 
   brush = bmap[SculptTools.CLAY];
@@ -1040,7 +1040,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.dynamics.autosmooth.useDynamics = true;
   brush.dynamics.strength.useDynamics = true;
   brush.dynamics.strength.curve.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARP);
-  brush.rake = 1.0;
+  brush.rake = 0.0;
   brush.rakeCurvatureFactor = 1.0;
 
   brush.flag |= BrushFlags.SQUARE | BrushFlags.LINE_FALLOFF | BrushFlags.USE_LINE_CURVE;
@@ -1083,13 +1083,13 @@ export function makeDefaultBrushes_MediumRes() {
   brush = bmap[SculptTools.SCRAPE];
   brush.autosmooth = 0.2;
   brush.strength = 0.5;
-  brush.rake = 1.0;
+  brush.rake = 0.0;
   brush.rakeCurvatureFactor = 1.0;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SQRT);
 
   brush = bmap[SculptTools.INFLATE];
   brush.strength = 0.5;
-  brush.rake = 1.0;
+  brush.rake = 0.0;
   brush.rakeCurvatureFactor = 1.0;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
@@ -1097,7 +1097,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.strength = 0.5;
   brush.planeoff = -1.0;
   brush.normalfac = 1.0;
-  brush.rake = 1.0;
+  brush.rake = 0.0;
   brush.rakeCurvatureFactor = 1.0;
 
   brush.dynTopo.overrideMask = 0;
@@ -1125,7 +1125,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.strength = 0.5;
   brush.autosmooth = 0.25;
   brush.dynamics.autosmooth.useDynamics = false;
-  brush.rake = 1.0;
+  brush.rake = 0.0;
   brush.rakeCurvatureFactor = 1.0;
   brush.pinch = 0.5;
   brush.spacing = 0.09;
@@ -1164,13 +1164,13 @@ export function makeDefaultBrushes_MediumRes() {
 
   brush = bmap[SculptTools.WING_SCRAPE];
   brush.autosmooth = 0.0;
-  brush.rake = 1.0;
+  brush.rake = 0.0;
   brush.rakeCurvatureFactor = 1.0;
   brush.pinch = 0.0;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SMOOTH);
 
   brush = bmap[SculptTools.PINCH];
-  brush.rake = 1.0;
+  brush.rake = 0.0;
   brush.rakeCurvatureFactor = 1.0;
   brush.autosmooth = 0.2;
   brush.falloff.getGenerator("BSplineCurve").loadTemplate(SplineTemplates.SHARPER);

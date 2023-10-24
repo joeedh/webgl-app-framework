@@ -119,9 +119,9 @@ export class CotanVert extends CustomDataElem {
     }
 
     digest.reset();
-    digest.add(v[0]);
-    digest.add(v[1]);
-    digest.add(v[2]);
+    digest.add(v.co[0]);
+    digest.add(v.co[1]);
+    digest.add(v.co[2]);
     digest.add(v.edges.length);
     digest.add(v.no[0]);
     digest.add(v.no[1]);
@@ -171,12 +171,18 @@ export class CotanVert extends CustomDataElem {
       let v2 = e.otherVertex(v);
       let v3 = enext.otherVertex(v);
 
-      let cot1_th = cotangent_tri_weight_v3(v1, v, v2);
-      let cot2_th = cotangent_tri_weight_v3(v3, v2, v);
+      let cot1_th = cotangent_tri_weight_v3(v1.co, v.co, v2.co);
+      let cot2_th = cotangent_tri_weight_v3(v3.co, v2.co, v.co);
 
-      let area = tri_voronoi_area(v, v1, v2);
+      let area = tri_voronoi_area(v.co, v1.co, v2.co);
 
       let w = (cot1_th + cot2_th);
+
+      if (isNaN(w) || isNaN(area)) {
+        console.log(v, v1, v2);
+        debugger;
+        area = tri_voronoi_area(v.co, v1.co, v2.co);
+      }
 
       ws[i] = w;
       cot1[i] = cot1_th;
@@ -189,10 +195,14 @@ export class CotanVert extends CustomDataElem {
       return;
     }
 
-    let mul = 1.0 / (2.0 * totarea);
+    let mul = 1.0/(2.0*totarea);
 
-    for (let i=0; i<val; i++) {
+    for (let i = 0; i < val; i++) {
       ws[i] *= mul;
+
+      if (isNaN(ws[i])) {
+        debugger;
+      }
     }
   }
 

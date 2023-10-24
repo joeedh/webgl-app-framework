@@ -91,7 +91,7 @@ export function relaxUVs(mesh, cd_uv, loops=mesh.loops, doPack=false, boundaryWe
         }
       }
 
-      avg.addFac(v, w);
+      avg.addFac(v.co, w);
       tot += w;
 
       for (let e of v.edges) {
@@ -102,14 +102,14 @@ export function relaxUVs(mesh, cd_uv, loops=mesh.loops, doPack=false, boundaryWe
           continue;
         }
 
-        avg.addFac(v2, w);
+        avg.addFac(v2.co, w);
         tot += w;
       }
 
       if (tot > 0) {
         avg.mulScalar(1.0/tot);
-        v.load(avg);
-        v[2] = 0.0;
+        v.co.load(avg);
+        v.co[2] = 0.0;
       }
     }
 
@@ -125,7 +125,7 @@ export function relaxUVs(mesh, cd_uv, loops=mesh.loops, doPack=false, boundaryWe
 
     for (let v of island) {
       //v.sub(cent).mulScalar(ratio).add(cent);
-      v[2] = 0.0;
+      v.co[2] = 0.0;
     }
   }
 
@@ -146,8 +146,8 @@ class SolveTri {
     this.v2 = v2;
     this.v3 = v3;
 
-    this.area = math.tri_area(this.v1, this.v2, this.v3);
-    this.worldArea = math.tri_area(l1.v, l2.v, l3.v);
+    this.area = math.tri_area(this.v1.co, this.v2.co, this.v3.co);
+    this.worldArea = math.tri_area(l1.v.co, l2.v.co, l3.v.co);
   }
 }
 
@@ -245,7 +245,7 @@ export class UnWrapSolver {
         let tot = 0.0;
 
         for (let l of wr.vertMap.get(v)) {
-          co.add(l.v);
+          co.add(l.v.co);
           tot++;
         }
 
@@ -257,7 +257,7 @@ export class UnWrapSolver {
 
         co.multVecMatrix(mat);
         co[2] = 0.0;
-        v.load(co);
+        v.co.load(co);
 
         //v.multVecMatrix(mat);
         //v.interp(co, 0.5);
@@ -266,7 +266,7 @@ export class UnWrapSolver {
       wr.updateAABB(island);
 
       for (let v of island) {
-        v.sub(island.min);
+        v.co.sub(island.min);
       }
 
       wr.updateAABB(island);
@@ -347,7 +347,7 @@ export class UnWrapSolver {
     //console.log(this.tris);
 
     for (let v of uvw.uvMesh.verts) {
-      v[2] = 0.0;
+      v.co[2] = 0.0;
     }
 
     for (let v of uvw.uvMesh.verts) {
@@ -355,10 +355,10 @@ export class UnWrapSolver {
       let totarea = 0;
 
       for (let tri of v.customData[cd_corner].tris) {
-        let w = math.winding(tri.v1, tri.v2, tri.v3);
+        let w = math.winding(tri.v1.co, tri.v2.co, tri.v3.co);
         tot += w ? 1 : -1;
 
-        totarea += math.tri_area(tri.v1, tri.v2, tri.v3);
+        totarea += math.tri_area(tri.v1.co, tri.v2.co, tri.v3.co);
       }
 
       v.customData[cd_corner].area = totarea;
@@ -572,12 +572,12 @@ export class UnWrapSolver {
       let goalth = params[3];
       let wind = params[4];
 
-      v1[2] = v2[2] = v3[2] = 0.0;
+      v1.co[2] = v2.co[2] = v3.co[2] = 0.0;
 
-      let w = math.winding(v1, v2, v3) ? 1.0 : -1.0;
+      let w = math.winding(v1.co, v2.co, v3.co) ? 1.0 : -1.0;
 
-      t1.load(v1).sub(v2).normalize();
-      t2.load(v3).sub(v2).normalize();
+      t1.load(v1.co).sub(v2.co).normalize();
+      t2.load(v3.co).sub(v2.co).normalize();
 
       let th = -(t1[1]*t2[0] - t1[0]*t2[1]);
       th = Math.asin(th*0.99999);
@@ -604,8 +604,8 @@ export class UnWrapSolver {
 
       if (ok) {
         for (let v of island) {
-          v.sub(island.min).div(island.boxsize);
-          v[2] = 0.0;
+          v.co.sub(island.min).div(island.boxsize);
+          v.co[2] = 0.0;
         }
       }
     }
@@ -633,7 +633,7 @@ export class UnWrapSolver {
       for (let tri of tris) {
         this.tottri++;
 
-        let w = math.winding(tri.v1, tri.v2, tri.v3);
+        let w = math.winding(tri.v1.co, tri.v2.co, tri.v3.co);
         totw += w ? 1 : -1;
         totarea += tri.area;
         totarea2 += tri.worldArea;
@@ -648,11 +648,11 @@ export class UnWrapSolver {
       let maxarea = 0.0;
 
       function makeAngleCon(l1, l2, l3, v1, v2, v3, wind) {
-        t3.load(l1.v).sub(l2.v).normalize();
-        t4.load(l3.v).sub(l2.v).normalize();
+        t3.load(l1.v.co).sub(l2.v.co).normalize();
+        t4.load(l3.v.co).sub(l2.v.co).normalize();
 
         //let goalth = Math.acos(t3.dot(t4));
-        let w = math.winding(v1, v2, v3) ? 1.0 : -1.0;
+        let w = math.winding(v1.co, v2.co, v3.co) ? 1.0 : -1.0;
 
         t3.cross(t4);
         let goalth = t3.vectorLength()*wind;
@@ -668,7 +668,9 @@ export class UnWrapSolver {
         //}
 
         let params = [v1, v2, v3, goalth, wind];
-        let klst = [v1, v2, v3].filter(v => !v.customData[cd_corner].hasPins);
+        let klst = [v1, v2, v3]
+            .filter(v => !v.customData[cd_corner].hasPins)
+            .map(v => v.co);
 
         if (klst.length > 0) {
           let con = new Constraint("angle_c", angle_c, klst, params);
@@ -689,21 +691,21 @@ export class UnWrapSolver {
       if (totarea === 0.0) {
         for (let tri of tris) {
           for (let j = 0; j < 2; j++) {
-            tri.v1[j] = Math.random();
-            tri.v2[j] = Math.random();
-            tri.v3[j] = Math.random();
+            tri.v1.co[j] = Math.random();
+            tri.v2.co[j] = Math.random();
+            tri.v3.co[j] = Math.random();
           }
 
-          tri.area = math.tri_area(tri.v1, tri.v2, tri.v3);
+          tri.area = math.tri_area(tri.v1.co, tri.v2.co, tri.v3.co);
           totarea += tri.area;
         }
       } else if (isNaN(totarea)) {
         console.error("UVs had NaNs in them; fixing. . .");
         for (let tri of tris) {
           for (let j = 0; j < 2; j++) {
-            tri.v1[j] = Math.random();
-            tri.v2[j] = Math.random();
-            tri.v3[j] = Math.random();
+            tri.v1.co[j] = Math.random();
+            tri.v2.co[j] = Math.random();
+            tri.v3.co[j] = Math.random();
           }
         }
       } else if (totarea2 === 0.0) {
@@ -711,15 +713,17 @@ export class UnWrapSolver {
       }
 
       for (let tri of tris) {
-        tri.area = math.tri_area(tri.v1, tri.v2, tri.v3);
+        tri.area = math.tri_area(tri.v1.co, tri.v2.co, tri.v3.co);
         maxarea = Math.max(tri.area, maxarea);
       }
 
       for (let tri of tris) {
         let goal = tri.worldArea*ratio*wind*1.0;
-        let params = [wind, tri.v1, tri.v2, tri.v3, goal, 100.0/totarea];
-        let klst = [tri.v1, tri.v2, tri.v3].filter(v => !v.customData[cd_corner].hasPins);
-
+        let params = [wind, tri.v1.co, tri.v2.co, tri.v3.co, goal, 100.0/totarea];
+        let klst = [tri.v1, tri.v2, tri.v3]
+            .filter(v => !v.customData[cd_corner].hasPins)
+            .map(v => v.co);
+        
         if (includeArea && klst.length > 0) {
           let con = new Constraint("area_c", area_c, klst, params);
           con.df = df;
@@ -972,11 +976,11 @@ export class UnWrapSolver {
     for (let v of uvmesh.verts) {
       let cv = v.customData[cd_corner];
 
-      v[0] += cv.vel[0]*damp;
-      v[1] += cv.vel[1]*damp;
+      v.co[0] += cv.vel[0]*damp;
+      v.co[1] += cv.vel[1]*damp;
 
-      cv.oldco.load(v);
-      v[2] = 0.0;
+      cv.oldco.load(v.co);
+      v.co[2] = 0.0;
     }
 
     for (let slv of this.solvers) {
@@ -993,7 +997,7 @@ export class UnWrapSolver {
     for (let v of uvmesh.verts) {
       let cv = v.customData[cd_corner];
 
-      cv.vel.load(v).sub(cv.oldco);
+      cv.vel.load(v.co).sub(cv.oldco);
       cv.vel[2] = 0.0;
     }
 
@@ -1062,7 +1066,7 @@ export class UnWrapSolver {
           w = 10;
         }
 
-        tmp.addFac(v, w);
+        tmp.addFac(v.co, w);
         let tot = w
 
         for (let e of v.edges) {
@@ -1075,7 +1079,7 @@ export class UnWrapSolver {
             //w = 10;
           }
 
-          tmp.addFac(v2, w);
+          tmp.addFac(v2.co, w);
           tot += w;
         }
 
@@ -1084,8 +1088,8 @@ export class UnWrapSolver {
         }
 
         tmp.mulScalar(1.0/tot);
-        v.interp(tmp, fac);
-        v[2] = 0.0;
+        v.co.interp(tmp, fac);
+        v.co[2] = 0.0;
       }
     }
 
@@ -1098,10 +1102,10 @@ export class UnWrapSolver {
         for (let v of uvmesh.verts) {
           let cv = v.customData[cd_corner];
 
-          v[0] += cv.vel[0]*damp;
-          v[1] += cv.vel[1]*damp;
+          v.co[0] += cv.vel[0]*damp;
+          v.co[1] += cv.vel[1]*damp;
 
-          cv.oldco.load(v);
+          cv.oldco.load(v.co);
         }
 
         err = this.solve(count, gk);
@@ -1110,7 +1114,7 @@ export class UnWrapSolver {
         for (let v of uvmesh.verts) {
           let cv = v.customData[cd_corner];
 
-          cv.vel.load(v).sub(cv.oldco);
+          cv.vel.load(v.co).sub(cv.oldco);
         }
 
         si++;
@@ -1157,7 +1161,7 @@ export class UnWrapSolver {
       let ls = this.uvw.vertMap.get(v);
 
       for (let l of ls) {
-        l.customData[cd_uv].uv.load(v);
+        l.customData[cd_uv].uv.load(v.co);
       }
     }
   }

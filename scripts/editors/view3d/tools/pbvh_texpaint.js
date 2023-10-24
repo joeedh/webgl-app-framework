@@ -389,20 +389,13 @@ export class TexPaintOp extends ToolOp {
     }
 
     let haveColor = cd_color >= 0;
-
-    //let vs = bvh.closestVerts(co, radius);
     let ts = bvh.closestTris(co, radius);
-
-    console.log("TS", ts, radius);
-
-    //log(ts, haveColor, cd_color);
-    //*
     let avgno = new Vector3();
 
     ts = ts.filter((t) => {
-      t.no.load(math.normal_tri(t.v1, t.v2, t.v3));
+      t.no.load(math.normal_tri(t.v1.co, t.v2.co, t.v3.co));
 
-      let area = t.area = math.tri_area(t.v1, t.v2, t.v3);
+      let area = t.area = math.tri_area(t.v1.co, t.v2.co, t.v3.co);
       avgno.addFac(t.no, area);
 
       let dot = t.no.dot(ps.viewvec);
@@ -601,9 +594,9 @@ export class TexPaintOp extends ToolOp {
       uv3.add(ue3);
       uv3.add(ue2);
 
-      let p1 = new Vector4(tri.v1);
-      let p2 = new Vector4(tri.v2);
-      let p3 = new Vector4(tri.v3);
+      let p1 = new Vector4(tri.v1.co);
+      let p2 = new Vector4(tri.v2.co);
+      let p3 = new Vector4(tri.v3.co);
 
       p1[3] = p2[3] = p3[3] = 1.0;
 
@@ -616,7 +609,7 @@ export class TexPaintOp extends ToolOp {
 
       if (0) {
         let [axis1, axis2] = math.calc_projection_axes(tri.no);
-        triuv = math.barycentric_v2(ps.p, tri.v1, tri.v2, tri.v3, axis1, axis2);
+        triuv = math.barycentric_v2(ps.p, tri.v1.co, tri.v2.co, tri.v3.co, axis1, axis2);
       } else {
         triuv = math.barycentric_v2(brushco, p1, p2, p3, 0, 1);
       }
@@ -673,7 +666,7 @@ export class TexPaintOp extends ToolOp {
       let fade = Math.abs(tri.no.dot(ps.viewvec));
 
       tri2.custom(sm_loc, p1, p2, p3);
-      tri2.custom(sm_worldloc, tri.v1, tri.v2, tri.v3);
+      tri2.custom(sm_worldloc, tri.v1.co, tri.v2.co, tri.v3.co);
 
       let pw = 3.0;
       params[0][0] = Math.abs(tri.v1.no.dot(ps.viewvec))**pw;
@@ -723,7 +716,7 @@ export class TexPaintOp extends ToolOp {
 
           let quad = sm.quad(uva, uvc, uvd, uvb);
           quad.custom(sm_loc, pstmp[j], pstmp[j], pstmp[(j + 1)%3], pstmp[(j + 1)%3]);
-          quad.custom(sm_worldloc, vstmp[j], vstmp[j], vstmp[(j + 1)%3], vstmp[(j + 1)%3]);
+          quad.custom(sm_worldloc, vstmp[j].co, vstmp[j].co, vstmp[(j + 1)%3].co, vstmp[(j + 1)%3].co);
           quad.custom(sm_params, params[j], params[j], params[(j + 1)%3], params[(j + 1)%3]);
 
           //let line = line_sm.line(uva, uvb);
@@ -1020,7 +1013,7 @@ export class TexPaintOp extends ToolOp {
 
         t.no.load(math.normal_tri(t.v1, t.v2, t.v3));
 
-        let dis = math.dist_to_tri_v3(ps.p, t.v1, t.v2, t.v3, t.no);
+        let dis = math.dist_to_tri_v3(ps.p, t.v1.co, t.v2.co, t.v3.co, t.no);
 
         //dis = Math.sqrt(Math.abs(dis));
 

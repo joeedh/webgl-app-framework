@@ -1099,7 +1099,7 @@ export function ccVertexSmooth(mesh, verts = mesh.verts.selected.editable, fac =
     }
 
     for (let [v, co] of cos) {
-      v.interp(co, fac);
+      v.co.interp(co, fac);
       v.flag |= MeshFlags.UPDATE;
     }
     return;
@@ -1724,16 +1724,16 @@ export class RandomizeUVsOp extends MeshOpBaseUV {
         newmin.fract();
 
         for (let v of island) {
-          if (isNaN(v[0]) || isNaN(v[1])) {
-            v[0] = Math.random();
-            v[1] = Math.random();
+          if (isNaN(v.co[0]) || isNaN(v.co[1])) {
+            v.co[0] = Math.random();
+            v.co[1] = Math.random();
           }
 
-          v[0] += (Math.random() - 0.5)*scale;
-          v[1] += (Math.random() - 0.5)*scale;
+          v.co[0] += (Math.random() - 0.5)*scale;
+          v.co[1] += (Math.random() - 0.5)*scale;
 
           //v.sub(island.min).add(newmin);
-          v[2] = 0.0;
+          v.co[2] = 0.0;
         }
       }
 

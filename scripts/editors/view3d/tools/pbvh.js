@@ -356,6 +356,7 @@ export class BVHToolMode extends ToolMode {
     }
 
     panel = col.panel("Texture");
+    panel.closed = true;
     let tex = document.createElement("texture-select-panel-x");
 
     tex.setAttribute("datapath", path + ".brush.texUser.texture");
@@ -378,8 +379,6 @@ export class BVHToolMode extends ToolMode {
     strip.prop(path + ".brush.texUser.pinch");
 
     panel.add(tex);
-
-    panel.closed = true;
 
     panel = col.panel("Falloff");
     panel.prop(path + ".brush.falloff");
@@ -1521,7 +1520,7 @@ export class BVHToolMode extends ToolMode {
 
       if (have_grids) {
         for (let v2 of v.neighbors) {
-          nv1.load(v).sub(v2).normalize();
+          nv1.load(v.co).sub(v2.co).normalize();
           let dot = -nv1.dot(v2.no);
 
           sum += dot;
@@ -1533,7 +1532,7 @@ export class BVHToolMode extends ToolMode {
         for (let e of v.edges) {
           let v2 = e.otherVertex(v);
 
-          nv1.load(v).sub(v2).normalize();
+          nv1.load(v.co).sub(v2.co).normalize();
           //nv2.load(v.no).cross(nv1);
 
           let dot;
@@ -1881,9 +1880,9 @@ export class BVHToolMode extends ToolMode {
                 defv[j++] = n3.leafTexUV[1];
               }
             } else {
-              vcos[j++] = v[0];
-              vcos[j++] = v[1];
-              vcos[j++] = v[2];
+              vcos[j++] = v.co[0];
+              vcos[j++] = v.co[1];
+              vcos[j++] = v.co[2];
             }
 
             j = vi*3;

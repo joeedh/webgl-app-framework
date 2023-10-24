@@ -161,7 +161,7 @@ export class CurvVert extends CustomDataElem {
   }
 
   _ignoreUpdate(v, cd_cotan) {
-    this.cokey = calcCoKey(v);
+    this.cokey = calcCoKey(v.co);
     this.flag &= ~CVFlags.UPDATE;
 
     return this;
@@ -208,7 +208,7 @@ export class CurvVert extends CustomDataElem {
 
   check(v, cd_cotan, forceCheck = false, cd_fset) {
     if (forceCheck || (v.flag & MeshFlags.UPDATE)) {
-      let key = calcCoKey(v);
+      let key = calcCoKey(v.co);
       //console.log("key", key);
 
       if (key !== this.cokey) {
@@ -323,7 +323,7 @@ export class CurvVert extends CustomDataElem {
       let w = cv2.weight;
 
       if (bound && bound2) {
-        let dir2 = bstmp1.load(v2).sub(v);
+        let dir2 = bstmp1.load(v2.co).sub(v.co);
         dir2.addFac(v.no, -v.no.dot(dir2));
 
         let dw = window.dw !== undefined ? window.dw : 1000.0;
@@ -343,7 +343,7 @@ export class CurvVert extends CustomDataElem {
 
       //let len = v.vectorDistance(v2);
 
-      let evec = bstmp4.load(v2).sub(v);
+      let evec = bstmp4.load(v2.co).sub(v.co);
 
       let du = dir1.dot(evec);
       let dv = dir1_t.dot(evec);
@@ -408,7 +408,7 @@ export class CurvVert extends CustomDataElem {
 
     this.v = v;
 
-    this.cokey = calcCoKey(v);
+    this.cokey = calcCoKey(v.co);
 
     let mat = this.covmat; //ctmps_arrmats.next();
     for (let i = 0; i < mat.length; i++) {
@@ -454,7 +454,7 @@ export class CurvVert extends CustomDataElem {
       let ci = 0;
 
       for (let v2 of v.neighbors) {
-        co1.add(v2);
+        co1.add(v2.co);
         tot1++;
 
         let w = cotan.ws[ci];

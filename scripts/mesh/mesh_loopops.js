@@ -83,7 +83,7 @@ export class EdgeCutOp extends MeshOp {
     let matrix = ob.outputs.matrix.getValue();
 
     function vco(v) {
-      let v2 = new Vector3(v);
+      let v2 = new Vector3(v.co);
       v2.multVecMatrix(matrix);
       return v2;
     }

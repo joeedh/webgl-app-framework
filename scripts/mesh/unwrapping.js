@@ -446,7 +446,7 @@ export class UVWrangler {
     for (let v of this.uvMesh.verts) {
       for (let l of this.vertMap.get(v)) {
         let uv = l.customData[cd_uv].uv;
-        uv.load(v);
+        uv.load(v.co);
       }
     }
   }
@@ -739,7 +739,7 @@ export class UVWrangler {
       for (let l of ls) {
         if (!imap.has(l.index)) {
           let v = uvmesh.makeVertex(l.customData[cd_uv].uv);
-          v[2] = 0.0;
+          v.co[2] = 0.0;
 
           this.vertMap.set(v, new Set([l]));
           this.loopMap.set(l, v);
@@ -817,8 +817,8 @@ export class UVWrangler {
         continue;
       }
 
-      t1.load(v1).sub(v).normalize();
-      t2.load(v2).sub(v).normalize().negate();
+      t1.load(v1.co).sub(v.co).normalize();
+      t2.load(v2.co).sub(v.co).normalize().negate();
 
       t3.load(t1).add(t2).normalize();
 
@@ -854,7 +854,7 @@ export class UVWrangler {
             }
 
             t3.mulScalar(1.0/tot);
-            t3.sub(v).negate();
+            t3.sub(v.co).negate();
 
             //console.log("TT4", t3, t3.dot(t1));
 
@@ -866,7 +866,7 @@ export class UVWrangler {
       }
 
       if (vcent) {
-        t2.load(v).sub(vcent);
+        t2.load(v.co).sub(vcent.co);
 
         if (t1.dot(t2) < 0) {
           t1.negate();
@@ -981,8 +981,8 @@ export class UVWrangler {
         }
 
         uvsum.mulScalar(1.0/tot);
-        v.load(uvsum);
-        v[2] = 0.0;
+        v.co.load(uvsum);
+        v.co[2] = 0.0;
       }
     }
 
@@ -1013,10 +1013,10 @@ export class UVWrangler {
     l.max = new Vector2().addScalar(-1e17);
 
     for (let v of l) {
-      v[2] = 0.0;
+      v.co[2] = 0.0;
 
-      l.min.min(v);
-      l.max.max(v);
+      l.min.min(v.co);
+      l.max.max(v.co);
     }
 
     l.boxsize = new Vector2(l.max).sub(l.min);
@@ -1057,7 +1057,7 @@ export class UVWrangler {
       this.updateAABB(l);
 
       for (let v of l) {
-        v.customData[cd_corner].orig = new Vector3(v);
+        v.customData[cd_corner].orig = new Vector3(v.co);
       }
 
       let cent = new Vector2(l.min).interp(l.max, 0.5);
@@ -1069,7 +1069,7 @@ export class UVWrangler {
         //th += (Math.random()-0.5)*dth;
 
         for (let v of l) {
-          v.load(v.customData[cd_corner].orig).sub(cent).rot2d(th).add(cent);
+          v.co.load(v.customData[cd_corner].orig).sub(cent).rot2d(th).add(cent);
         }
 
         this.updateAABB(l);
@@ -1081,7 +1081,7 @@ export class UVWrangler {
       }
 
       for (let v of l) {
-        v.load(v.customData[cd_corner].orig).sub(cent).rot2d(minth).add(cent);
+        v.co.load(v.customData[cd_corner].orig).sub(cent).rot2d(minth).add(cent);
       }
 
       this.updateAABB(l);
@@ -1117,8 +1117,8 @@ export class UVWrangler {
 
 
       for (let v of island) {
-        v.sub(island.min).mulScalar(ratio).add(island.min);
-        v[2] = 0.0;
+        v.co.sub(island.min).mulScalar(ratio).add(island.min);
+        v.co[2] = 0.0;
       }
 
       this.updateAABB(island);
@@ -1191,7 +1191,7 @@ export class UVWrangler {
         let cent = island.min.interp(island.max, 0.5);
 
         for (let v of island) {
-          v.sub(cent).rot2d(Math.PI*0.5).add(cent);
+          v.co.sub(cent).rot2d(Math.PI*0.5).add(cent);
         }
 
         this.updateAABB(island);
@@ -1206,16 +1206,16 @@ export class UVWrangler {
       ratio = ratio/ratio2;
 
       for (let v of island) {
-        v.sub(island.min).div(island.boxsize).mul(size);
-        v.addScalar(margin);
+        v.co.sub(island.min).div(island.boxsize).mul(size);
+        v.co.addScalar(margin);
 
         if (ratio > 1.0) {
-          v[1] /= ratio;
+          v.co[1] /= ratio;
         } else {
-          v[0] *= ratio;
+          v.co[0] *= ratio;
         }
 
-        v.add(uv1);
+        v.co.add(uv1);
       }
 
       this.updateAABB(island);
@@ -1258,10 +1258,10 @@ export class VoxelNode extends BVHNode {
   }
 
   _pushTri(tri) {
-    let no = math.normal_tri(tri.v1, tri.v2, tri.v3);
+    let no = math.normal_tri(tri.v1.co, tri.v2.co, tri.v3.co);
     tri.no.load(no);
 
-    let w = tri.area = math.tri_area(tri.v1, tri.v2, tri.v3);
+    let w = tri.area = math.tri_area(tri.v1.co, tri.v2.co, tri.v3.co);
 
     this.avgNo.addFac(no, w);
     this.avgNoTot += w;
@@ -1305,9 +1305,6 @@ export class VoxelNode extends BVHNode {
     }
 
     variance = variance/tot;
-
-    //variance = Math.sqrt(variance);
-    console.log("V", variance)
 
     if (variance > this.splitVar) {
       return true;
@@ -1426,7 +1423,7 @@ export function voxelUnwrap(mesh, faces, cd_uv = undefined, setSeams = true,
     let max = new Vector2().addScalar(-1e17);
 
     for (let l of ls) {
-      p.load(l.v).multVecMatrix(mat);
+      p.load(l.v.co).multVecMatrix(mat);
 
       min.min(p);
       max.max(p);

@@ -231,9 +231,9 @@ export class SmoothMemoizer {
       let gens = v.customData[cd_gens].value;
 
       if (gens[1] !== initGen) {
-        v.customData[cd_temp].value.load(v);
-        v.customData[cd_temp2].value.load(v);
-        v.customData[cd_temp3].value.load(v);
+        v.customData[cd_temp].value.load(v.co);
+        v.customData[cd_temp2].value.load(v.co);
+        v.customData[cd_temp3].value.load(v.co);
         gens[1] = initGen;
       }
     }

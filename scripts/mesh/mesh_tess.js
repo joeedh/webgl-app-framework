@@ -235,7 +235,7 @@ export class CDT {
             continue;
           }
 
-          if (math.line_line_cross(e1.v1, e1.v2, e2.v1, e2.v2)) {
+          if (math.line_line_cross(e1.v1.co, e1.v2.co, e2.v1.co, e2.v2.co)) {
             stopiter = false;
 
             if (e2.l) {
@@ -277,7 +277,7 @@ export class CDT {
             continue;
           }
 
-          let w = math.winding(e1.v1, e2.v1, e2.v2);
+          let w = math.winding(e1.v1.co, e2.v1.co, e2.v2.co);
 
           if (!w) {
             makeFace(e2.v2, e2.v1, e1.v1);
@@ -292,13 +292,6 @@ export class CDT {
       this.trimHoles(me);
     }
 
-    for (let f of me.faces) {
-      let v1 = f.lists[0].l.v;
-      let v2 = f.lists[0].l.next.v;
-      let v3 = f.lists[0].l.next.next.v;
-
-      //console.log(math.normal_tri(v1, v2, v3));
-    }
     //console.log("CDT DONE");
 
     let tris2 = [];
@@ -321,8 +314,8 @@ export class CDT {
     let tot = 0.0;
 
     for (let e of outer) {
-      cent.add(e.v1);
-      cent.add(e.v2);
+      cent.add(e.v1.co);
+      cent.add(e.v2.co);
       tot++;
     }
 
@@ -342,7 +335,7 @@ export class CDT {
         }
 
         v = e.otherVertex(v);
-        math.normal_tri(startv, v, cent);
+        math.normal_tri(startv.co, v.co, cent.co);
 
         w += cent[2] < 0.0 ? -1 : 1;
 
@@ -362,29 +355,6 @@ export class CDT {
       }
     }
 
-    if (0) {
-      for (let i = 0; i < outer.length; i++) {
-        let e1 = outer[i];
-        let e2 = outer[(i + 1)%outer.length]
-
-        let v1, v2, v3;
-
-        if (e2.has(e1.v2)) {
-          v1 = e1.v1;
-          v2 = e1.v2;
-          v3 = e2.otherVertex(v2);
-        } else if (e2.has(e1.v1)) {
-          v1 = e1.v2;
-          v2 = e1.v1;
-          v3 = e2.otherVertex(v2);
-        } else {
-          console.warn("Mesh Error");
-        }
-
-        w += math.winding(v1, v2, v3)*2.0 - 1.0;
-      }
-    }
-
     return w >= 0.0;
   }
 
@@ -398,7 +368,7 @@ export class CDT {
 
     //let co = new Vector2(outer[0]);
 
-    //w = outer.reduce((w2, e) => math.winding(co, e.v1, e.v2)*2.0 - 1.0);
+    //w = outer.reduce((w2, e) => math.winding(co, e.v1.co, e.v2.co)*2.0 - 1.0);
     //w = w < 0.0;
 
     if (this.calcWinding) {
@@ -434,7 +404,7 @@ export class CDT {
           throw new Error("eek");
         }
 
-        let w2 = math.winding(e.v1, e.v2, v);
+        let w2 = math.winding(e.v1.co, e.v2.co, v.co);
 
         if (w2 !== w) {
           let f = l.f;
@@ -555,6 +525,7 @@ export class CDT {
       v2 = verts[v2];
       v3 = verts[v3];
 
+      /* These are not Vertex's */
       let w = math.winding(v1, v2, v3);
 
       if (w) {
@@ -628,15 +599,15 @@ function fillFace(f, loopTris) {
 
     co.zero();
     for (let v2 of v.neighbors) {
-      co.add(v2);
+      co.add(v2.co);
       tot++;
     }
 
     if (tot < 2) {
-      return co.load(v);
+      return co.load(v.co);
     } else {
       co.mulScalar(1.0/tot);
-      co.interp(v, 1.0 - fac);
+      co.interp(v.co, 1.0 - fac);
       return co;
     }
   }
@@ -654,7 +625,7 @@ function fillFace(f, loopTris) {
     loops.push(vs);
 
     for (let l of list) {
-      co.load(l.v);
+      co.load(l.v.co);
       //co.load(vsmooth(l.v, 0.15));
 
       co.multVecMatrix(m);
@@ -709,15 +680,15 @@ export function triangulateQuad(mesh, f, lctx, newfaces) {
 
   let l = f.lists[0].l;
 
-  let d1 = l.v.vectorDistance(l.next.next.v);
-  let d2 = l.next.v.vectorDistance(l.prev.v);
+  let d1 = l.v.co.vectorDistance(l.next.next.v.co);
+  let d2 = l.next.v.co.vectorDistance(l.prev.v.co);
   let f1, f2;
 
   let l1 = l, l2 = l.next;
   let l3 = l2.next, l4 = l3.next;
 
-  let th1 = math.dihedral_v3_sqr(l1.v, l2.v, l3.v, l4.v);
-  let th2 = math.dihedral_v3_sqr(l4.v, l1.v, l2.v, l3.v);
+  let th1 = math.dihedral_v3_sqr(l1.v.co, l2.v.co, l3.v.co, l4.v.co);
+  let th2 = math.dihedral_v3_sqr(l4.v.co, l1.v.co, l2.v.co, l3.v.co);
   th1 = 2.0 - (th1*0.5 + 0.5);
   th2 = 2.0 - (th2*0.5 + 0.5);
 
@@ -795,8 +766,8 @@ export function triangulateFace(f, loopTris = []) {
   if (f.lists[0].length === 4 && f.lists.length === 1) {
     let l = f.lists[0].l;
 
-    let d1 = l.v.vectorDistance(l.next.next.v);
-    let d2 = l.next.v.vectorDistance(l.prev.v);
+    let d1 = l.v.co.vectorDistance(l.next.next.v.co);
+    let d2 = l.next.v.co.vectorDistance(l.prev.v.co);
 
     if (d1 <= d2) {
       loopTris.push(l);

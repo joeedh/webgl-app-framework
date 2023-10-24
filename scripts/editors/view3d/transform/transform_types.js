@@ -134,7 +134,7 @@ export class MeshTransType extends TransDataType {
         td.mesh = mesh;
         td.data1 = v;
         td.w = 0.0;
-        td.data2 = new Vector3(v);
+        td.data2 = new Vector3(v.co);
         td.symFlag = mesh.symFlag;
 
         tdata.push(td);
@@ -197,7 +197,7 @@ export class MeshTransType extends TransDataType {
         let vboundary = stack[stack.cur++];
         let waccum = stack[stack.cur++];
 
-        let w = v.vectorDistance(vboundary);
+        let w = v.co.vectorDistance(vboundary.co);
 
         //if (_i++ > 1000000) {
         //  console.warn("infinite loop detected");
@@ -209,7 +209,7 @@ export class MeshTransType extends TransDataType {
         let td = new TransDataElem();
 
         td.data1 = v;
-        td.data2 = new Vector3(v);
+        td.data2 = new Vector3(v.co);
         td.mesh = mesh;
         td.w = w;
         td.symFlag = mesh.symFlag;
@@ -223,10 +223,10 @@ export class MeshTransType extends TransDataType {
             continue;
           }
 
-          let dis = v2.vectorDistance(v);
-          let dx = v2[0] - v[0];
-          let dy = v2[1] - v[1];
-          let dz = v2[2] - v[2];
+          let dis = v2.co.vectorDistance(v.co);
+          let dx = v2.co[0] - v.co[0];
+          let dy = v2.co[1] - v.co[1];
+          let dz = v2.co[2] - v.co[2];
 
 
           //hackish, try to cull unrelated geometry with geometric distance
@@ -289,7 +289,7 @@ export class MeshTransType extends TransDataType {
       for (let v of mesh.verts.selected.editable) {
         let td = new TransDataElem();
         td.data1 = v;
-        td.data2 = new Vector3(v);
+        td.data2 = new Vector3(v.co);
         td.mesh = mesh;
         td.w = 1.0;
         td.symFlag = mesh.symFlag;
@@ -352,12 +352,12 @@ export class MeshTransType extends TransDataType {
     let co = meshapplytemp;
 
     co.load(td.data2).multVecMatrix(matrix);
-    v.load(td.data2).interp(co, td.w);
+    v.co.load(td.data2).interp(co, td.w);
 
     if (v.flag & MeshFlags.MIRRORED) {
       for (let i=0; i<3; i++) {
         if (td.symFlag & (1<<i)) {
-          v[i] = 0.0;
+          v.co[i] = 0.0;
         }
       }
     }
@@ -410,7 +410,7 @@ export class MeshTransType extends TransDataType {
         fcos[f.eid] = new Vector3(f.cent);
       }
 
-      cos[v.eid] = new Vector3(v);
+      cos[v.eid] = new Vector3(v.co);
       nos[v.eid] = new Vector3(v.no);
     }
 
@@ -437,7 +437,7 @@ export class MeshTransType extends TransDataType {
         continue;
       }
 
-      v.load(cos[k]);
+      v.co.load(cos[k]);
       v.no.load(nos[k]);
       v.flag |= MeshFlags.UPDATE;
     }
@@ -482,7 +482,7 @@ export class MeshTransType extends TransDataType {
       }
 
       for (let v of mesh.verts.selected.editable) {
-        c.add(v);
+        c.add(v.co);
         tot++;
       }
 
@@ -504,7 +504,7 @@ export class MeshTransType extends TransDataType {
 
           //if (v.edges.length > 0) {
           let l = f.lists[0].l;
-          up.load(l.next.v).sub(l.v).normalize();
+          up.load(l.next.v.co).sub(l.v.co).normalize();
           //  up.load(v.edges[0].otherVertex(v)).sub(v).normalize();
           //} else {
           //  up.zero();
@@ -599,8 +599,8 @@ export class MeshTransType extends TransDataType {
       let mesh = ob.data;
 
       for (let v of mesh.verts.selected.editable) {
-        min.min(v);
-        max.max(v);
+        min.min(v.co);
+        max.max(v.co);
         ok = true;
       }
     }

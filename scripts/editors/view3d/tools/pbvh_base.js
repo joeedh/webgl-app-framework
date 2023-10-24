@@ -560,8 +560,8 @@ export function calcConcave(v) {
   let elen = 0;
 
   for (let v2 of v.neighbors) {
-    co.add(v2);
-    elen += v2.vectorDistance(v);
+    co.add(v2.co);
+    elen += v2.co.vectorDistance(v.co);
 
     tot++;
   }
@@ -573,7 +573,7 @@ export function calcConcave(v) {
   elen /= tot;
 
   co.mulScalar(1.0/tot);
-  t1.load(v).sub(co).mulScalar(1.0/elen);
+  t1.load(v.co).sub(co).mulScalar(1.0/elen);
   let fac = t1.dot(v.no)*0.5 + 0.5;
 
   return 1.0 - fac;
