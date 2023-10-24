@@ -4,3 +4,9 @@
 [submodule "scripts/mathl"]
 	path = scripts/mathl
 	url = https://github.com/joeedh/mathl.git
+[submodule "scripts/shadernodes"]
+	path = scripts/shadernodes
+	url = https://github.com/joeedh/webgl-app-shadergraph.git
+[submodule "scripts/renderengine"]
+	path = scripts/renderengine
+	url = https://github.com/joeedh/wegl-app-renderer.git
