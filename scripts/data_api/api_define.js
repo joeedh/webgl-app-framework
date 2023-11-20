@@ -527,7 +527,7 @@ function api_define_sceneobject(api, parent) {
   ostruct.dynamicStruct("data", "data", "data");
   ostruct.struct("material", "material", "Material", api.mapStruct(Material, false));
 
-  ostruct.flags("flag", "flag", ObjectFlags).on('change', function() {
+  ostruct.flags("flag", "flag", ObjectFlags).on('change', function () {
     window.redraw_viewport(true);
   });
 
@@ -825,7 +825,7 @@ export function api_define_dyntopo(api) {
   st.float("decimateFactor", "decimateFactor", "Decimate Factor").range(0.0, 1.0).noUnits();
   st.float("edgeSize", "edgeSize", "Edge Length", "Edge length (in pixels)").range(0.25, 40.0).noUnits();
   st.flags("flag", "flag", DynTopoFlags, "Flag").descriptions({
-    ADAPTIVE : "Subdivide based on curvature (Fancy Edge Weights only)  "
+    ADAPTIVE: "Subdivide based on curvature (Fancy Edge Weights only)  "
   });
   st.int("maxDepth", "maxDepth", "Max Depth", "Maximum quad tree grid subdivision level").range(0, 15).noUnits();
   st.int("repeat", "repeat", "Repeat", "Number of times to run topology engine")
@@ -870,7 +870,9 @@ export function api_define_brush(api, cstruct) {
       NONE: "Use raw brush points"
     });
 
-  bst.float("sharp", "sharp", "Sharpening").range(0.0, 1.0).noUnits().step(0.015);
+  bst.float("sharp", "sharp", "Sharpening")
+    .range(0.0, 1.0).noUnits().step(0.015);
+
   bst.float("strength", "strength", "Strength").range(0.001, 2.0).noUnits().step(0.015);
   bst.float("radius", "radius", "Radius").range(0.1, 350.0).noUnits().step(1.0);
   bst.enum("tool", "tool", SculptTools).icons(SculptIcons);
