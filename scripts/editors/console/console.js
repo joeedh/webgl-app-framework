@@ -9,7 +9,7 @@ let g_screen = undefined;
 let ignore = 0;
 
 const _silence = () => ignore++;
-const _unsilence = (force=false) => {
+const _unsilence = (force = false) => {
   if (force) {
     ignore = 0;
   } else {
@@ -177,6 +177,17 @@ export class HitBox {
 }
 
 export class ConsoleEditor extends Editor {
+  static STRUCT = nstructjs.inlineRegister(this, `
+ConsoleEditor {
+    fontsize    :  float;
+    bufferSize  :  int;
+    lines       :  array(ConsoleLineEntry);
+    history     :  array(ConsoleCommand);
+    head        :  int;
+    scroll      :  vec2;
+}
+  `);
+
   constructor() {
     super();
 
@@ -1115,13 +1126,4 @@ export class ConsoleEditor extends Editor {
   }
 }
 
-ConsoleEditor.STRUCT = nstructjs.inherit(ConsoleEditor, Editor) + `
-    fontsize    :  float;
-    bufferSize  :  int;
-    lines       :  array(ConsoleLineEntry);
-    history     :  array(ConsoleCommand);
-    head        :  int;
-    scroll      :  vec2;
-}`;
-nstructjs.register(ConsoleEditor);
 Editor.register(ConsoleEditor);

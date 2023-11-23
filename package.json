@@ -1,11 +1,17 @@
 {
   "devDependencies": {
+    "esbuild": "^0.19.7",
     "esdoc": ">=1.1.0",
-    "esdoc-ecmascript-proposal-plugin": ">=1.0.0"
+    "esdoc-ecmascript-proposal-plugin": ">=1.0.0",
+    "typescript": "^5.3.2"
   },
   "type": "module",
   "dependencies": {
     "btoa": ">=1.2.1",
     "esdoc-standard-plugin": ">=1.0.0"
+  },
+  "scripts": {
+    "build": "node esbuilder.js",
+    "watch": "node esbuilder.js --watch"
   }
 }

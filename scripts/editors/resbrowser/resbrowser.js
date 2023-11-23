@@ -11,7 +11,7 @@ import {KeyMap} from "../../path.ux/scripts/util/simple_events.js";
 import {Area, AreaFlags} from "../../path.ux/scripts/screen/ScreenArea.js";
 import {UIBase} from "../../path.ux/scripts/core/ui_base.js";
 
-let ResIconStyle =`
+let ResIconStyle = `
 .resicon {
   border: 2px solid rgba(200, 200, 200, 1.0);
   border-radius: 15px;
@@ -74,14 +74,16 @@ export class ResourceIcon extends UIBase {
     this.style["height"] = cellsize + "px";
   }
 
-  static define() {return {
-    tagname : "resource-icon-x",
-    flag : AreaFlags.HIDDEN
-  }}
+  static define() {
+    return {
+      tagname: "resource-icon-x",
+      flag   : AreaFlags.HIDDEN
+    }
+  }
 
   updateCellSize() {
     if (this.getAttribute("cellsize") !== this._last_cellsize) {
-      this._last_cellsize= this.getAttribute("cellsize");
+      this._last_cellsize = this.getAttribute("cellsize");
       this.setCSS();
     }
   }
@@ -95,6 +97,12 @@ export class ResourceIcon extends UIBase {
 UIBase.register(ResourceIcon);
 
 export class ResourceBrowser extends Editor {
+  static STRUCT = nstructjs.inlineRegister(this, `
+ResourceBrowser {
+  resourceType : string;
+}
+`);
+
   constructor() {
     super();
 
@@ -239,7 +247,7 @@ export class ResourceBrowser extends Editor {
     }
 
     let width = rect.width;
-    let cells = Math.floor(width / this.cellsize);
+    let cells = Math.floor(width/this.cellsize);
     cells = Math.max(cells, 1);
 
     this.needsRebuild = false;
@@ -351,22 +359,18 @@ export class ResourceBrowser extends Editor {
     //table.style["height"] = "100%";
   }
 
-  static define() {return {
-    tagname : "resource-browser-x",
-    areaname : "resbrowser",
-    uiname : "Resource Browser",
-    flag : AreaFlags.HIDDEN
-  }}
+  static define() {
+    return {
+      tagname : "resource-browser-x",
+      areaname: "resbrowser",
+      uiname  : "Resource Browser",
+      flag    : AreaFlags.HIDDEN
+    }
+  }
 
   static newSTRUCT() {
     return document.createElement(this.define().tagname);
   }
 }
-
-ResourceBrowser.STRUCT = nstructjs.inherit(ResourceBrowser, Editor) + `
-  resourceType : string;
-}
-`;
-nstructjs.register(ResourceBrowser);
 
 Editor.register(ResourceBrowser);

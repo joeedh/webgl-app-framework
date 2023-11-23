@@ -1,7 +1,9 @@
 import {DataBlock, DataRef} from './lib_api.js';
 import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags} from './graph.js';
-import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4, UIBase,
-  PackFlags, Container, ToolOp, IntProperty, StringProperty} from '../path.ux/scripts/pathux.js';
+import {
+  util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4, UIBase,
+  PackFlags, Container, ToolOp, IntProperty, StringProperty
+} from '../path.ux/scripts/pathux.js';
 
 let STRUCT = nstructjs.STRUCT;
 import {DependSocket, Vec3Socket, Vec4Socket, Matrix4Socket, FloatSocket} from "./graphsockets.js";
@@ -35,19 +37,21 @@ export class MakeMaterialOp extends ToolOp {
     super();
   }
 
-  static tooldef() {return {
-    uiname : "Make Material",
-    toolpath : "material.new",
-    icon : Icons.SMALL_PLUS,
-    description : "Create a new material",
-    inputs : {
-      dataPathToSet : new StringProperty(),
-      name : new StringProperty("")
-    },
-    outputs : {
-      materialID : new IntProperty()
+  static tooldef() {
+    return {
+      uiname     : "Make Material",
+      toolpath   : "material.new",
+      icon       : Icons.SMALL_PLUS,
+      description: "Create a new material",
+      inputs     : {
+        dataPathToSet: new StringProperty(),
+        name         : new StringProperty("")
+      },
+      outputs    : {
+        materialID: new IntProperty()
+      }
     }
-  }}
+  }
 
   static invoke(ctx, args) {
     let ret = new MakeMaterialOp();
@@ -85,6 +89,7 @@ export class MakeMaterialOp extends ToolOp {
     this.outputs.materialID.setValue(mat.lib_id);
   }
 }
+
 ToolOp.register(MakeMaterialOp);
 
 export class UnlinkMaterialOp extends ToolOp {
@@ -92,15 +97,17 @@ export class UnlinkMaterialOp extends ToolOp {
     super();
   }
 
-  static tooldef() {return {
-    uiname : "Make Material",
-    toolpath : "material.unlink",
-    icon : Icons.DELETE,
-    description : "Create a new material",
-    inputs : {
-      dataPathToUnset : new StringProperty(),
+  static tooldef() {
+    return {
+      uiname     : "Make Material",
+      toolpath   : "material.unlink",
+      icon       : Icons.DELETE,
+      description: "Create a new material",
+      inputs     : {
+        dataPathToUnset: new StringProperty(),
+      }
     }
-  }}
+  }
 
   static invoke(ctx, args) {
     let ret = new UnlinkMaterialOp();
@@ -123,14 +130,20 @@ export class UnlinkMaterialOp extends ToolOp {
     ctx.api.setValue(ctx, this.inputs.dataPathToUnset.getValue(), undefined);
   }
 }
+
 ToolOp.register(UnlinkMaterialOp);
 
 export class MaterialFlags {
-};
+}
 
 export var DefaultMat;
 
 export class Material extends ShaderNetwork {
+  static STRUCT = nstructjs.inlineRegister(this, `
+Material {
+}
+  `);
+
   constructor() {
     super();
 
@@ -140,6 +153,7 @@ export class Material extends ShaderNetwork {
   calcSettingsHash() {
     throw new Error("implement me");
   }
+
   /**
    * Checks if a material name "Default" exists in ctx.datalib and returns it,
    * otherwise it returns a frozen Material instance.
@@ -157,17 +171,19 @@ export class Material extends ShaderNetwork {
     return mat;
   }
 
-  static blockDefine() {return {
-    typeName : "material",
-    defaultName : "Material",
-    uiName : "Material",
-    flag : 0,
-    icon : -1
-  }}
+  static blockDefine() {
+    return {
+      typeName   : "material",
+      defaultName: "Material",
+      uiName     : "Material",
+      flag       : 0,
+      icon       : -1
+    }
+  }
 
   static nodedef() {
     return {
-      name: "material",
+      name  : "material",
       uiname: "Material",
       inputs: {}, outputs: {}
     }
@@ -183,11 +199,7 @@ export class Material extends ShaderNetwork {
   }
 }
 
-Material.STRUCT = STRUCT.inherit(Material, ShaderNetwork) + `
-}`;
-
 DataBlock.register(Material);
-nstructjs.register(Material);
 
 DefaultMat = Object.freeze(new Material());
 

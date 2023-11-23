@@ -1,4 +1,5 @@
 import {nstructjs} from "../path.ux/scripts/pathux.js";
+
 let STRUCT = nstructjs.STRUCT;
 
 import {BlockFlags, DataBlock} from "../core/lib_api.js";
@@ -10,12 +11,22 @@ import * as cconst from '../core/const.js';
 
 //sceneobjet collection
 export const CollectFlags = {
-  SELECT   : 1,
-  INTERNAL : 2
+  SELECT  : 1,
+  INTERNAL: 2
 };
 
 export class Collection extends DataBlock {
-  constructor(name="Collection") {
+  static STRUCT = nstructjs.inlineRegister(this, `
+Collection {
+  parent     : DataRef | DataRef.fromBlock(obj);
+  children   : array(e, DataRef) | DataRef.fromBlock(e);
+  objects    : array(e, DataRef) | DataRef.fromBlock(e);
+  memo       : string;
+  flag       : int;  
+}
+  `);
+
+  constructor(name = "Collection") {
     super();
 
     this.name = name;
@@ -30,21 +41,23 @@ export class Collection extends DataBlock {
     this.child_idmap = {};
   }
 
-  static nodedef() {return {
-    name    : "collection",
-    uiname  : "collection",
-    outputs : {
-      onObjectAdd : new IntSocket(),
-      onObjectRem : new IntSocket(),
-      onChildAdd  : new IntSocket(),
-      onChildRem  : new IntSocket()
+  static nodedef() {
+    return {
+      name   : "collection",
+      uiname : "collection",
+      outputs: {
+        onObjectAdd: new IntSocket(),
+        onObjectRem: new IntSocket(),
+        onChildAdd : new IntSocket(),
+        onChildRem : new IntSocket()
+      }
     }
-  }}
+  }
 
   get flatChildren() {
     let this2 = this;
 
-    return (function*() {
+    return (function* () {
       let stack = [];
       let visit = new util.set();
 
@@ -179,12 +192,12 @@ export class Collection extends DataBlock {
   dataLink(getblock, getblock_us) {
     this.parent = getblock_us(this.parent);
 
-    for (let i=0; i<this.objects.length; i++) {
+    for (let i = 0; i < this.objects.length; i++) {
       this.objects[i] = getblock_us(this.objects[i]);
       this.object_idmap[this.objects[i].lib_id] = this.objects[i];
     }
 
-    for (let i=0; i<this.children.length; i++) {
+    for (let i = 0; i < this.children.length; i++) {
       this.children[i] = getblock_us(this.children[i]);
       this.child_idmap[this.children[i].lib_id] = this.children[i];
     }
@@ -203,23 +216,15 @@ export class Collection extends DataBlock {
     super.loadSTRUCT(reader);
   }
 
-  static blockDefine() {return {
-    typeName    : "collection",
-    defaultName : "Collection",
-    uiName      : "Collection",
-    flag        : BlockFlags.FAKE_USER, //always have user count > 0
-    icon        : -1
-  }}
+  static blockDefine() {
+    return {
+      typeName   : "collection",
+      defaultName: "Collection",
+      uiName     : "Collection",
+      flag       : BlockFlags.FAKE_USER, //always have user count > 0
+      icon       : -1
+    }
+  }
 };
 
 DataBlock.register(Collection);
-Collection.STRUCT = STRUCT.inherit(Collection, DataBlock)  +`
-  parent     : DataRef | DataRef.fromBlock(obj);
-  children   : array(e, DataRef) | DataRef.fromBlock(e);
-  objects    : array(e, DataRef) | DataRef.fromBlock(e);
-  memo       : string;
-  flag       : int;  
-}
-`;
-
-nstructjs.register(Collection);

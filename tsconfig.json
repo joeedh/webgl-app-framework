@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "target": "es6",
+    "module": "es6",
+    "lib": ["dom", "scripthost", "es6"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "pretty": true,
+    "esModuleInterop": true,
+    "isolatedModules": false,
+    "strictNullChecks": false,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "noEmitOnError": false,
+    "noImplicitThis": true,
+    "declaration": true
+  },
+  "files": ["scripts/typescript_entry.ts"]
+}

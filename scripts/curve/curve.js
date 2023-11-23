@@ -11,6 +11,7 @@ import {CustomDataLayer} from "../mesh/customdata.js";
 import {MeshTools} from "../mesh/mesh_stdtools.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {LayerTypes, SimpleMesh} from "../core/simplemesh.js";
+
 let STRUCT = nstructjs.STRUCT;
 import * as util from '../util/util.js';
 import {Node} from '../core/graph.js';
@@ -19,32 +20,31 @@ export function basis(ks, t, i, deg) {
   let len = ks.length;
 
   function safe_inv(n) {
-    return n === 0 ? 0 : 1.0 / n;
+    return n === 0 ? 0 : 1.0/n;
   }
 
   function bas(s, i, n) {
-    var kp = Math.min(Math.max(i-1, 0), len-1);
-    var kn = Math.min(Math.max(i+1, 0), len-1);
-    var knn = Math.min(Math.max(i+n, 0), len-1);
-    var knn1 = Math.min(Math.max(i+n+1, 0), len-1);
-    var ki = Math.min(Math.max(i, 0), len-1);
+    var kp = Math.min(Math.max(i - 1, 0), len - 1);
+    var kn = Math.min(Math.max(i + 1, 0), len - 1);
+    var knn = Math.min(Math.max(i + n, 0), len - 1);
+    var knn1 = Math.min(Math.max(i + n + 1, 0), len - 1);
+    var ki = Math.min(Math.max(i, 0), len - 1);
 
     if (n == 0) {
       return s >= ks[ki] && s < ks[kn] ? 1 : 0;
     } else {
 
-      let a = (s-ks[ki]) * safe_inv(ks[knn]-ks[ki]+0.0001);
-      let b = (ks[knn1] - s) * safe_inv(ks[knn1] - ks[kn] + 0.0001);
+      let a = (s - ks[ki])*safe_inv(ks[knn] - ks[ki] + 0.0001);
+      let b = (ks[knn1] - s)*safe_inv(ks[knn1] - ks[kn] + 0.0001);
 
-      return a*bas(s, i, n-1) + b*bas(s, i+1, n-1);
+      return a*bas(s, i, n - 1) + b*bas(s, i + 1, n - 1);
     }
   }
 
-  return bas(t, i-deg, deg);
+  return bas(t, i - deg, deg);
 }
 
-export const KnotFlags = {
-};
+export const KnotFlags = {};
 
 export class KnotDataLayer extends CustomDataElem {
   constructor() {
@@ -58,7 +58,7 @@ export class KnotDataLayer extends CustomDataElem {
   static apiDefine(api, dstruct) {
     super.apiDefine(api, dstruct);
 
-    dstruct.float("knot", "speed", "Point Speed").on("change", function() {
+    dstruct.float("knot", "speed", "Point Speed").on("change", function () {
       window.redraw_viewport();
     }).range(0.0, 10.0);
 
@@ -86,7 +86,7 @@ export class KnotDataLayer extends CustomDataElem {
 
     let sum = 0.0;
 
-    for (let i=0; i<datas.length; i++) {
+    for (let i = 0; i < datas.length; i++) {
       dest.knot += datas[i].knot*ws[i];
       dest.computedKnot += datas[i].computedKnot*ws[i];
       dest.tilt += datas[i].tilt*ws[i];
@@ -104,15 +104,18 @@ export class KnotDataLayer extends CustomDataElem {
     return true;
   }
 
-  static define() {return {
-    elemTypeMask : MeshTypes.VERTEX|MeshTypes.HANDLE, //see MeshTypes in mesh.js
-    typeName     : "knot",
-    uiTypeName   : "Knot",
-    defaultName  : "Knot Layer",
-    //elemSize     : 3,
-    flag         : 0
-  }};
+  static define() {
+    return {
+      elemTypeMask: MeshTypes.VERTEX | MeshTypes.HANDLE, //see MeshTypes in mesh.js
+      typeName    : "knot",
+      uiTypeName  : "Knot",
+      defaultName : "Knot Layer",
+      //elemSize     : 3,
+      flag: 0
+    }
+  };
 }
+
 KnotDataLayer.STRUCT = STRUCT.inherit(KnotDataLayer, CustomDataElem, "mesh.KnotDataLayer") + `
   knot         : float;
   computedKnot : float;
@@ -148,11 +151,21 @@ export class WalkRet {
 let WalkRets = util.cachering.fromConstructor(WalkRet, 1024);
 
 export class CurveSpline extends Mesh {
+  static STRUCT = nstructjs.inlineRegister(this, `
+CurveSpline {
+  _length        : float;
+  speedLength    : float;
+  degree         : int;
+  owningToolMode : string;
+  isClosed       : bool;
+}
+`);
+  
   constructor() {
-    let features = MeshFeatures.MAKE_VERT|MeshFeatures.KILL_VERT;
+    let features = MeshFeatures.MAKE_VERT | MeshFeatures.KILL_VERT;
 
-    features |= MeshFeatures.MAKE_EDGE|MeshFeatures.KILL_EDGE;
-    features |= MeshFeatures.SPLIT_EDGE|MeshFeatures.JOIN_EDGE;
+    features |= MeshFeatures.MAKE_EDGE | MeshFeatures.KILL_EDGE;
+    features |= MeshFeatures.SPLIT_EDGE | MeshFeatures.JOIN_EDGE;
     features |= MeshFeatures.EDGE_HANDLES | MeshFeatures.EDGE_CURVES_ONLY;
     features |= MeshFeatures.SINGLE_SHELL;
     features &= ~MeshFeatures.BVH;
@@ -186,7 +199,7 @@ export class CurveSpline extends Mesh {
       new Vector3([d, d, d])
     ]
   }
-  
+
   copy() {
     let ret = super.copy();
 
@@ -198,7 +211,7 @@ export class CurveSpline extends Mesh {
     return ret;
   }
 
-  *walk(all_verts=false) {
+  * walk(all_verts = false) {
     if (this.verts.length === 0 || this.verts.first.valence === 0) {
       return; //empty mesh
     }
@@ -269,11 +282,11 @@ export class CurveSpline extends Mesh {
       break;
     }
 
-    for (let i=0; i<this.knotpad; i++) {
+    for (let i = 0; i < this.knotpad; i++) {
       let k = 0.0;
 
       k = getKnot(v).knot;
-      t += e.length * k;
+      t += e.length*k;
 
       this.knots.push(k);
     }
@@ -282,7 +295,7 @@ export class CurveSpline extends Mesh {
       let knot = getKnot(v);
 
       knot.computedKnot = t;
-      t += e.length * knot.knot;
+      t += e.length*knot.knot;
       laste = e;
       lastv = v;
 
@@ -297,9 +310,9 @@ export class CurveSpline extends Mesh {
       getKnot(v2).computedKnot = t;
     }
 
-    for (let i=0; i<this.knotpad; i++) {
+    for (let i = 0; i < this.knotpad; i++) {
       if (this.isClosed) {
-        let i2 = (vs.length + i - 1) % vs.length;
+        let i2 = (vs.length + i - 1)%vs.length;
 
         let k = getKnot(vs[i2]).knot;
 
@@ -368,27 +381,33 @@ export class CurveSpline extends Mesh {
     this.update();
   }
 
-  static blockDefine() { return {
-    typeName    : "curve",
-    defaultName : "Curve",
-    uiName      : "Curve",
-    flag        : 0,
-    icon        : -1
-  }}
+  static blockDefine() {
+    return {
+      typeName   : "curve",
+      defaultName: "Curve",
+      uiName     : "Curve",
+      flag       : 0,
+      icon       : -1
+    }
+  }
 
-  static nodedef() {return {
-    name   : "curve",
-    uiname : "Curve",
-    flag   : NodeFlags.SAVE_PROXY,
-    inputs : Node.inherit(), //can inherit from parent class by wrapping in Node.inherit({})
-    outputs : Node.inherit()
-  }}
+  static nodedef() {
+    return {
+      name   : "curve",
+      uiname : "Curve",
+      flag   : NodeFlags.SAVE_PROXY,
+      inputs : Node.inherit(), //can inherit from parent class by wrapping in Node.inherit({})
+      outputs: Node.inherit()
+    }
+  }
 
-  static dataDefine() {return {
-    name       : "Curve",
-    selectMask : SelMask.MESH,
-    tools      : MeshTools
-  }}
+  static dataDefine() {
+    return {
+      name      : "Curve",
+      selectMask: SelMask.MESH,
+      tools     : MeshTools
+    }
+  }
 
   exec() {
     super.exec(...arguments);
@@ -419,7 +438,7 @@ export class CurveSpline extends Mesh {
 
     this.verts.compact();
 
-    for (let i=0; i<vs.length; i++) {
+    for (let i = 0; i < vs.length; i++) {
       this.verts.list[i] = vs[i];
     }
 
@@ -427,25 +446,25 @@ export class CurveSpline extends Mesh {
   }
 
   evaluateSpeed2(s) {
-    return s / this.length * this.speedLength*0.999999;
+    return s/this.length*this.speedLength*0.999999;
   }
 
   evaluateSpeed(s) {
     if (s < 0) return 0;
     if (s > this.length) return this.length;
 
-    s = s * this.speedLength / this.length*0.999999;
+    s = s*this.speedLength/this.length*0.999999;
 
     let vs = this.verts.list; //compacted in sortVerts
     let ks = this.knots;
     let sum = 0.0;
 
-    for (let i=0; i<ks.length; i++) {
+    for (let i = 0; i < ks.length; i++) {
       let i2;
       if (this.isClosed) {
-        i2 = (i - this.knotpad + vs.length) % vs.length;
+        i2 = (i - this.knotpad + vs.length)%vs.length;
       } else {
-        i2 = Math.min(Math.max(i - this.knotpad, 0), vs.length-1);
+        i2 = Math.min(Math.max(i - this.knotpad, 0), vs.length - 1);
       }
 
       let w = basis(ks, s, i, this.degree);
@@ -453,18 +472,18 @@ export class CurveSpline extends Mesh {
       sum += w*ks[i];
     }
 
-    return sum * this.length / this.speedLength*0.999;
+    return sum*this.length/this.speedLength*0.999;
   }
 
   /**
    *
    * @param s_out: array to hold [s, ds]
    * */
-  evaluate(s, dv_out=undefined, no_out=undefined, e_out=undefined, s_out=undefined) {
+  evaluate(s, dv_out = undefined, no_out = undefined, e_out = undefined, s_out = undefined) {
     s = Math.min(Math.max(s, 0.0), this.length);
     s = this.evaluateSpeed(s);
 
-    let laste, lastv, ok=false, firste;
+    let laste, lastv, ok = false, firste;
 
     if (this.verts.length === 0) {
       return this._evaluate_vs.next().zero();
@@ -487,7 +506,7 @@ export class CurveSpline extends Mesh {
       let v2 = e.otherVertex(v);
       let knot2 = getKnot(v2);
 
-      knotIval = t2-t;//(knot2.computedKnot - knot.computedKnot);
+      knotIval = t2 - t;//(knot2.computedKnot - knot.computedKnot);
 
       if (firstds === undefined) {
         firstds = knotIval;
@@ -496,7 +515,7 @@ export class CurveSpline extends Mesh {
 
       if (s <= t2) {//knot2.computedKnot) {
         ok = true;
-        s = ((s - t) / knotIval) * e.length;
+        s = ((s - t)/knotIval)*e.length;
         ds = lastds = knotIval;
 
         laste = e;
@@ -540,11 +559,11 @@ export class CurveSpline extends Mesh {
   }
 
   genRender_curves(gl, combinedWireframe, view3d,
-                   layers=LayerTypes.LOC|LayerTypes.UV|LayerTypes.ID) {
+                   layers = LayerTypes.LOC | LayerTypes.UV | LayerTypes.ID) {
     //let smesh
 
     let steps = 48*this.edges.length;
-    let s=0, ds = this.length / (steps - 1)*1.4;
+    let s = 0, ds = this.length/(steps - 1)*1.4;
     let drawnormals = this.drawflag & MeshDrawFlags.SHOW_NORMALS;
     let sm = new SimpleMesh(layers);
     let lastco = undefined;
@@ -552,12 +571,12 @@ export class CurveSpline extends Mesh {
     let color1 = new Vector4(), color2 = new Vector4();
     let eout = [0], sout = [0, 0];
 
-    for (let i=0; i<steps; i++, s += ds) {
+    for (let i = 0; i < steps; i++, s += ds) {
       let co = this.evaluate(s, undefined, no, eout, sout);
       let e = eout[0];
       let s2 = sout[0];
       let elen = e.length;
-      let t = s2 / elen;
+      let t = s2/elen;
 
       color2.load(e.v1.color).interp(e.v2.color, t);
 
@@ -574,7 +593,8 @@ export class CurveSpline extends Mesh {
         if (layers & LayerTypes.COLOR) {
           if (e.flag & MeshFlags.CURVE_FLIP) {
             color1[0] = color1[1] = 1.0;
-            color1[2] = 0.0; color1[3] = 1.0;
+            color1[2] = 0.0;
+            color1[3] = 1.0;
           }
           line.colors(color1, color1);
         }
@@ -613,20 +633,20 @@ export class CurveSpline extends Mesh {
         len = e.length;
       }
 
-      let steps = Math.max(Math.floor(len / 5), 8);
-      let t = 0, dt = 1.0 / (steps - 1);
-      let s = 0, ds = e.length / (steps - 1);
+      let steps = Math.max(Math.floor(len/5), 8);
+      let t = 0, dt = 1.0/(steps - 1);
+      let s = 0, ds = e.length/(steps - 1);
       let lastco = undefined;
-      let black = [0,0,0,1];
+      let black = [0, 0, 0, 1];
       let color1 = new Vector4();
       let color2 = new Vector4();
 
-      for (let i=0; i<steps; i++, t += dt, s += ds) {
+      for (let i = 0; i < steps; i++, t += dt, s += ds) {
         let co = e.arcEvaluate(s);
 
         if (layers & LayerTypes.COLOR) {
           color1.load(e.v1.color).interp(e.v2.color, t);
-          color2.load(e.v1.color).interp(e.v2.color, t+dt);
+          color2.load(e.v1.color).interp(e.v2.color, t + dt);
         }
 
         if (drawnormals) {
@@ -646,7 +666,8 @@ export class CurveSpline extends Mesh {
           if (layers & LayerTypes.COLOR) {
             if (e.flag & MeshFlags.CURVE_FLIP) {
               color1[0] = color1[1] = 1.0;
-              color1[2] = 0.0; color1[3] = 1.0;
+              color1[2] = 0.0;
+              color1[3] = 1.0;
             }
             line.colors(color1, color1);
           }
@@ -721,8 +742,8 @@ export class CurveSpline extends Mesh {
 
     for (let v of this.verts) {
       let knot = getKnot(v);
-      let key2 = knot.knot*((1<<24)-1);
-      let key3 = knot.tilt*((1<<24)-1);
+      let key2 = knot.knot*((1<<24) - 1);
+      let key3 = knot.tilt*((1<<24) - 1);
 
       key = key ^ key2;
       key = key ^ key3;
@@ -753,15 +774,5 @@ export class CurveSpline extends Mesh {
   }
 };
 
-CurveSpline.STRUCT = STRUCT.inherit(CurveSpline, Mesh, "mesh.CurveSpline") + `
-  _length        : float;
-  speedLength    : float;
-  degree         : int;
-  owningToolMode : string;
-  isClosed       : bool;
-}
-`;
-
-nstructjs.register(CurveSpline);
 DataBlock.register(CurveSpline);
 SceneObjectData.register(CurveSpline);

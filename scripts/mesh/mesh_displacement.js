@@ -16,7 +16,7 @@ lengths using the same smoothed coordinates.
 
 import {CDFlags, LayerSettingsBase} from './customdata.js';
 import {nstructjs, util, math} from '../path.ux/scripts/pathux.js';
-import {CustomDataElem} from './customdata.js';
+import {CustomDataElem} from './customdata.ts';
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 
 let Queue = util.Queue;

@@ -1,5 +1,7 @@
-import {Matrix4, Vector2, Vector3, Vector4, nstructjs, ToolProperty, PropTypes, PropFlags,
-  EnumProperty} from '../path.ux/scripts/pathux.js';
+import {
+  Matrix4, Vector2, Vector3, Vector4, nstructjs, ToolProperty, PropTypes, PropFlags,
+  EnumProperty
+} from '../path.ux/scripts/pathux.js';
 import * as util from '../util/util.js';
 
 import {IDGen} from '../util/util.js';
@@ -10,13 +12,23 @@ let STRUCT = nstructjs.STRUCT;
 
 export let BlockTypes = [];
 export const BlockFlags = {
-  SELECT    : 1,
-  HIDE      : 2,
-  FAKE_USER : 4,
-  NO_SAVE   : 8 //do not save
+  SELECT   : 1,
+  HIDE     : 2,
+  FAKE_USER: 4,
+  NO_SAVE  : 8 //do not save
 };
 
 export class DataBlock extends Node {
+  static STRUCT = nstructjs.inlineRegister(this, `
+DataBlock {
+  lib_id       : int;
+  lib_flag     : int;
+  lib_users    : int;
+  name         : string;
+  lib_userData : string | JSON.stringify(this.lib_userData);
+}
+  `);
+
   //loads contents of obj into this datablock
   //but doesn't touch the .lib_XXXX properties or .name
   swapDataBlockContents(obj) {
@@ -58,7 +70,7 @@ export class DataBlock extends Node {
     this.lib_flag = def.flag !== undefined ? def.flag : 0;
     this.lib_icon = def.icon;
     this.lib_type = def.typeName;
-    this.lib_users= 0;
+    this.lib_users = 0;
     this.lib_external_ref = undefined; //presently unused
 
     //note that this is regenerated on file load
@@ -76,7 +88,7 @@ export class DataBlock extends Node {
   //deep duplicates block, except for references to other data block which aren't copied
   //(e.g. a sceneobject doesn't duplicate .data)
   //if addLibUsers is true, references to other datablocks will get lib_addUser called,
-  copy(addLibUsers=false, owner) {
+  copy(addLibUsers = false, owner) {
     let ret = new this.constructor();
 
     this.copyTo(ret);
@@ -102,7 +114,7 @@ export class DataBlock extends Node {
   //and also copys over default socket values
   //
   //note that like swapDataBlockContents, this is a "shallow" copy
-  copyTo(b, copyContents=true) {
+  copyTo(b, copyContents = true) {
     if (copyContents) {
       b.swapDataBlockContents(this);
     }
@@ -143,13 +155,15 @@ export class DataBlock extends Node {
       icon        : -1 //some icon constant in icon_enum.js.Icons
     }}
    */
-  static blockDefine() { return {
-    typeName    : "typename",
-    defaultName : "unnamed",
-    uiName   : "uiname",
-    flag     : 0,
-    icon     : -1
-  }}
+  static blockDefine() {
+    return {
+      typeName   : "typename",
+      defaultName: "unnamed",
+      uiName     : "uiname",
+      flag       : 0,
+      icon       : -1
+    }
+  }
 
   /**
    * @param getblock: gets a block
@@ -269,18 +283,16 @@ but owner will not be added to this.lib_userlist`.trim());
     }
   }
 }
-DataBlock.STRUCT = STRUCT.inherit(DataBlock, Node) + `
-  lib_id       : int;
-  lib_flag     : int;
-  lib_users    : int;
-  name         : string;
-  lib_userData : string | JSON.stringify(this.lib_userData);
-}
-`;
-
-nstructjs.register(DataBlock);
 
 export class DataRef {
+  static STRUCT = nstructjs.inlineRegister(this, `
+DataRef {
+  lib_id   : int;
+  name     : string;
+  lib_type : string;
+}
+`);
+
   constructor(lib_id = -1, lib_type = undefined) {
     if (typeof lib_id === "object") {
       lib_id = lib_id.lib_id;
@@ -345,19 +357,20 @@ export class DataRef {
     reader(this);
   }
 }
-DataRef.STRUCT = `
-DataRef {
-  lib_id   : int;
-  name     : string;
-  lib_type : string;
-}
-`;
-nstructjs.register(DataRef);
 
 //this has to be in global namespace for struct scripts to work
 window.DataRef = DataRef;
 
 export class BlockSet extends Array {
+  //note that blocks are saved/loaded seperately
+  //to allow loading them individually
+  static STRUCT = nstructjs.inlineRegister(this, `
+BlockSet {
+  type   : string | this.type.blockDefine().typeName;
+  active : int | this.active !== undefined ? obj.active.lib_id : -1;
+}
+  `);
+
   constructor(type, datalib) {
     super();
 
@@ -376,7 +389,7 @@ export class BlockSet extends Array {
     return this;
   }
 
-  create(name=undefined) {
+  create(name = undefined) {
     let cls = this.type;
 
     name = name ?? cls.blockDefine().defaultName ?? cls.blockDefine().uiName ?? cls.blockDefine().typeName;
@@ -390,7 +403,7 @@ export class BlockSet extends Array {
     return block;
   }
 
-  uniqueName(name=this.type.blockDefine().defaultName) {
+  uniqueName(name = this.type.blockDefine().defaultName) {
     if (!(name in this.namemap)) {
       return name;
     }
@@ -419,7 +432,7 @@ export class BlockSet extends Array {
     this.active = val;
   }
 
-  add(block, _inside_file_load=false, force_unique_name=true) {
+  add(block, _inside_file_load = false, force_unique_name = true) {
     if (force_unique_name) {
       block.name = this.uniqueName(block.name);
     }
@@ -434,13 +447,13 @@ export class BlockSet extends Array {
   }
 
   rename(block, name) {
-    if (!block || block.lib_id < 0 || !(block.lib_id in this.idmap) || !name || (""+name).trim().length === 0) {
+    if (!block || block.lib_id < 0 || !(block.lib_id in this.idmap) || !name || ("" + name).trim().length === 0) {
       throw new Error("bad call to datalib rename API");
     }
 
     name = this.uniqueName(name);
 
-    for (let i=0; i<2; i++) {
+    for (let i = 0; i < 2; i++) {
       let map = i ? this.datalib.block_namemap : this.namemap;
       for (let k in map) {
         if (map[k] === block) {
@@ -598,17 +611,15 @@ export class BlockSet extends Array {
   }
 }
 
-//note that blocks are saved/loaded seperately
-//to allow loading them individually
-BlockSet.STRUCT = `
-BlockSet {
-  type   : string | this.type.blockDefine().typeName;
-  active : int | this.active !== undefined ? obj.active.lib_id : -1;
-}
-`;
-nstructjs.register(BlockSet);
-
 export class Library {
+  static STRUCT = nstructjs.inlineRegister(this, `
+Library {
+  libs  : array(BlockSet);
+  idgen : IDGen;
+  graph : graph.Graph;
+}
+`);
+
   constructor() {
     //master graph
     this.graph = new Graph();
@@ -625,11 +636,11 @@ export class Library {
       let lib = new BlockSet(cls, this);
 
       this.libs.push(lib);
-      this.libmap[cls.blockDefine().typeName] =  lib;
+      this.libmap[cls.blockDefine().typeName] = lib;
 
       let tname = cls.blockDefine().typeName;
       Object.defineProperty(this, tname, {
-        get : function() {
+        get: function () {
           return this.libmap[tname];
         }
       });
@@ -679,7 +690,7 @@ export class Library {
 
   get allBlocks() {
     let this2 = this;
-    return (function*() {
+    return (function* () {
       for (let lib of this2.libs) {
         for (let block of lib) {
           yield block;
@@ -726,7 +737,7 @@ export class Library {
     }
   }
 
-  add(block, force_unique_name=true) {
+  add(block, force_unique_name = true) {
     let typename = block.constructor.blockDefine().typeName;
 
     if (!(typename in this.libmap)) {
@@ -804,16 +815,13 @@ export class Library {
   }
 }
 
-Library.STRUCT = `
-Library {
-  libs  : array(BlockSet);
-  idgen : IDGen;
-  graph : graph.Graph;
-}
-`;
-nstructjs.register(Library);
-
 export class DataRefProperty extends ToolProperty {
+  static STRUCT = nstructjs.inlineRegister(this, `
+DataRefProperty {
+  blockType : string;
+  data      : DataRef;
+}`);
+
   constructor(type, apiname, uiname, description, flag, icon) {
     super(undefined, apiname, uiname, description, flag, icon)
 
@@ -826,7 +834,7 @@ export class DataRefProperty extends ToolProperty {
   }
 
   calcMemSize() {
-    return super.calcMemSize() + (this.blockType ? this.blockType.length*4+8 : 8) + 64;
+    return super.calcMemSize() + (this.blockType ? this.blockType.length*4 + 8 : 8) + 64;
   }
 
   setValue(val) {
@@ -893,11 +901,6 @@ export class DataRefProperty extends ToolProperty {
     }
   }
 }
-DataRefProperty.STRUCT = nstructjs.inherit(DataRefProperty, ToolProperty) + `
-  blockType : string;
-  data      : DataRef;
-}`;
-nstructjs.register(DataRefProperty);
 
 PropTypes.DATAREF = ToolProperty.register(DataRefProperty);
 
@@ -915,7 +918,7 @@ export class DataRefListProperty extends ToolProperty {
     tot += this.blockType ? this.blockType.length + 4 : 0;
     tot += 8;
 
-    tot += this.data.length * 64; //64 is probably incorrect for size of DataRef
+    tot += this.data.length*64; //64 is probably incorrect for size of DataRef
     return tot;
   }
 
@@ -958,16 +961,19 @@ export class DataRefListProperty extends ToolProperty {
     return ret;
   }
 }
-DataRefListProperty.STRUCT = nstructjs.inherit(DataRefListProperty, ToolProperty) + `
-  blockType : string;
-  data      : array(DataRef);
-}`;
-nstructjs.register(DataRefListProperty);
 
 PropTypes.DATAREFLIST = ToolProperty.register(DataRefListProperty);
 
 export class DataRefList extends Array {
-  constructor(iterable, blockTypeName="") {
+  static STRUCT = nstructjs.inlineRegister(this, `
+DataRefList {
+  _array    : array(DataRef) | obj;
+  active    : DataRef | obj;
+  highlight : DataRef | obj;
+  lib_type  : string;  
+}`);
+
+  constructor(iterable, blockTypeName = "") {
     super();
 
     this.idmap = {};
@@ -1007,6 +1013,7 @@ export class DataRefList extends Array {
   getActive(ctx) {
     return ctx.datalib.get(this.active);
   }
+
   getHighlight(ctx) {
     return ctx.datalib.get(this.active);
   }
@@ -1042,7 +1049,8 @@ export class DataRefList extends Array {
 
     if (typeof item === "number") {
       lib_id = item;
-    } if (item instanceof DataBlock) {
+    }
+    if (item instanceof DataBlock) {
       lib_id = item.lib_id;
     } else {
       throw new Error("Non-datablock passed to DataRefList: " + item);
@@ -1067,7 +1075,8 @@ export class DataRefList extends Array {
 
     if (typeof item === "number") {
       lib_id = item;
-    } if (item instanceof DataBlock) {
+    }
+    if (item instanceof DataBlock) {
       lib_id = item.lib_id;
     } else {
       throw new Error("Non-datablock passed to DataRefList: " + item);
@@ -1089,12 +1098,3 @@ export class DataRefList extends Array {
     delete this._array;
   }
 }
-DataRefList.STRUCT = `
-DataRefList {
-  _array    : array(DataRef) | obj;
-  active    : DataRef | obj;
-  highlight : DataRef | obj;
-  lib_type  : string;  
-}
-`;
-nstructjs.register(DataRefList);

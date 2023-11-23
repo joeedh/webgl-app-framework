@@ -655,6 +655,11 @@ export class EditorSideBar extends Container {
 UIBase.register(EditorSideBar);
 
 export class Editor extends Area {
+  static STRUCT = nstructjs.inlineRegister(this, `
+Editor {
+}
+  `);
+
   constructor() {
     super();
 
@@ -797,10 +802,6 @@ export class Editor extends Area {
                                                                                      : _appstate.screen;
   }
 };
-Editor.STRUCT = STRUCT.inherit(Editor, Area) + `
-}
-`;
-nstructjs.register(Editor);
 
 import {Menu} from "../path.ux/scripts/widgets/ui_menu.js";
 import * as ui_base from "../path.ux/scripts/core/ui_base.js";
@@ -872,6 +873,11 @@ export function spawnToolSearchMenu(ctx) {
 }
 
 export class App extends Screen {
+  static STRUCT = nstructjs.inlineRegister(App, `
+App {
+}
+  `);
+
   constructor() {
     super();
 
@@ -1068,12 +1074,14 @@ window.setInterval(() => {
   }
 }, 5000);
 
-App.STRUCT = STRUCT.inherit(App, Screen, 'App') + `
-}`;
 UIBase.register(App);
-nstructjs.register(App);
 
 export class ScreenBlock extends DataBlock {
+  static STRUCT = nstructjs.inlineRegister(this, `
+ScreenBlock {
+  screen : App;
+}`);
+
   constructor() {
     super();
 
@@ -1105,13 +1113,6 @@ export class ScreenBlock extends DataBlock {
     super.loadSTRUCT(reader);
   }
 }
-
-ScreenBlock.STRUCT = STRUCT.inherit(ScreenBlock, DataBlock) + `
-  screen : App;
-}
-`;
-nstructjs.register(ScreenBlock);
-DataBlock.register(ScreenBlock);
 
 let last_time = util.time_ms();
 
@@ -1147,6 +1148,7 @@ if (0) {
     }
   }, 1000.0/30.0);
 }
+DataBlock.register(ScreenBlock);
 
 export class MeshMaterialChooser extends Container {
   constructor() {

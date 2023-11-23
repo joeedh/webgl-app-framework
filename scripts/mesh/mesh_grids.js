@@ -3,7 +3,7 @@ import * as math from '../util/math.js';
 import * as util from '../util/util.js';
 
 import {MeshFlags, MeshTypes, RecalcFlags} from "./mesh_base.js";
-import {CDFlags, CustomData, CustomDataElem, LayerSettingsBase} from "./customdata.js";
+import {CDFlags, CustomData, CustomDataElem, LayerSettingsBase} from "./customdata";
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from "../core/simplemesh.js";
 import {FloatElem} from "./mesh_customdata.js";

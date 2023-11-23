@@ -1,4 +1,4 @@
-import {CustomDataElem} from "./customdata.js";
+import {CustomDataElem} from "./customdata";
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from "../util/vectormath.js";
 import {MeshTypes} from "./mesh_base.js";
 import '../util/floathalf.js';

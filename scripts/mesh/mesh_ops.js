@@ -20,7 +20,7 @@ import {ccSmooth, subdivide, loopSubdivide} from '../subsurf/subsurf_mesh.js';
 import {splitEdgesPreserveQuads, splitEdgesSimple2, splitEdgesSmart, splitEdgesSmart2} from "./mesh_subdivide.js";
 import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
-import {CDFlags, CustomDataElem} from "./customdata.js";
+import {CDFlags, CustomDataElem} from "./customdata";
 import {
   bisectMesh, connectVerts, cotanVertexSmooth, dissolveEdgeLoops, dissolveFaces, duplicateMesh, fixManifold,
   flipLongTriangles,

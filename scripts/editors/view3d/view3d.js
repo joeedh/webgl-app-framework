@@ -331,6 +331,21 @@ export class DrawLine {
 }
 
 export class View3D extends Editor {
+  static STRUCT = nstructjs.inlineRegister(this, `
+View3D {
+  camera              : Camera;
+  transformSpace      : int; 
+  drawmode            : int;
+  _select_transparent : int;
+  cursorMode          : int;
+  orbitMode           : int;
+  flag                : int;
+  subViewPortSize     : float;
+  subViewPortPos      : vec3;
+  renderSettings      : renderengine_realtime.RenderSettings;
+}
+  `);
+
   constructor() {
     super();
 
@@ -1837,21 +1852,6 @@ export class View3D extends Editor {
     }
   }
 };
-View3D.STRUCT = nstructjs.inherit(View3D, Editor) + `
-  camera              : Camera;
-  transformSpace      : int; 
-  drawmode            : int;
-  _select_transparent : int;
-  cursorMode          : int;
-  orbitMode           : int;
-  flag                : int;
-  subViewPortSize     : float;
-  subViewPortPos      : vec3;
-  renderSettings      : renderengine_realtime.RenderSettings;
-}
-`
-
-nstructjs.register(View3D);
 Editor.register(View3D);
 
 let animreq = undefined;

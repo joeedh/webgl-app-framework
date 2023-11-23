@@ -228,9 +228,9 @@ function format_lines(script, errortext) {
   let maxcol = Math.ceil(Math.log(lines.length)/Math.log(10)) + 1;
 
   if (typeof linenr === "number") {
-    let a = Math.max(linenr-25, 0);
+    let a = Math.max(linenr - 25, 0);
     a = 0;
-    let b = Math.min(linenr+5, lines.length);
+    let b = Math.min(linenr + 5, lines.length);
 
     i = a + 1;
     lines = lines.slice(a, b);
@@ -1468,6 +1468,21 @@ export class DrawMats {
     this.inormalmat = new Matrix4();
   }
 
+  static STRUCT = nstructjs.inlineRegister(this,
+    `
+DrawMats {
+  cameramat     : mat4;
+  persmat       : mat4;
+  rendermat     : mat4;
+  normalmat     : mat4;
+  icameramat    : mat4;
+  ipersmat      : mat4;
+  irendermat    : mat4;
+  inormalmat    : mat4;
+  isPerspective : int;
+}
+  `);
+
   /** aspect should be sizex / sizey */
   regen_mats(aspect = this.aspect) {
     this.aspect = aspect;
@@ -1518,23 +1533,21 @@ export class DrawMats {
   }
 }
 
-DrawMats.STRUCT = `
-DrawMats {
-  cameramat     : mat4;
-  persmat       : mat4;
-  rendermat     : mat4;
-  normalmat     : mat4;
-  icameramat    : mat4;
-  ipersmat      : mat4;
-  irendermat    : mat4;
-  inormalmat    : mat4;
-  isPerspective : int;
-}
-`;
-nstructjs.register(DrawMats);
-
 //simplest
 export class Camera extends DrawMats {
+  static STRUCT = nstructjs.inlineRegister(this, `
+Camera {
+  fovy          : float;
+  aspect        : float;
+  target        : vec3;
+  orbitTarget   : vec3;
+  pos           : vec3;
+  up            : vec3;
+  near          : float;
+  far           : float;
+  isPerspective : bool;
+}`);
+
   constructor() {
     super();
 
@@ -1707,17 +1720,3 @@ export class Camera extends DrawMats {
     reader(this);
   }
 }
-
-Camera.STRUCT = STRUCT.inherit(Camera, DrawMats) + `
-  fovy          : float;
-  aspect        : float;
-  target        : vec3;
-  orbitTarget   : vec3;
-  pos           : vec3;
-  up            : vec3;
-  near          : float;
-  far           : float;
-  isPerspective : bool;
-}
-`;
-nstructjs.register(Camera);

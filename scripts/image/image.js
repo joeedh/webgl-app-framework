@@ -25,6 +25,18 @@ export const ImageGenTypes = {
 };
 
 export class ImageBlock extends DataBlock {
+  static STRUCT = nstructjs.inlineRegister(this, `
+ImageBlock {
+  type        : int;
+  flag        : int;
+  genType     : int;
+  url         : string | this._save();
+  width       : int;
+  height      : int; 
+  genColor    : vec4;
+}
+`);
+
   constructor() {
     super();
 
@@ -663,17 +675,6 @@ export class ImageBlock extends DataBlock {
     flag : NodeFlags.SAVE_PROXY
   }}
 }
-ImageBlock.STRUCT = nstructjs.inherit(ImageBlock, DataBlock) + `
-  type        : int;
-  flag        : int;
-  genType     : int;
-  url         : string | this._save();
-  width       : int;
-  height      : int; 
-  genColor    : vec4;
-}
-`;
-nstructjs.register(ImageBlock);
 DataBlock.register(ImageBlock);
 
 export class ImageUser {

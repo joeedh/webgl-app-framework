@@ -21,7 +21,7 @@ import {nstructjs} from '../path.ux/pathux.js';
 
 let STRUCT = nstructjs.STRUCT;
 
-import {CDFlags, CustomDataElem} from './customdata.js';
+import {CDFlags, CustomDataElem} from './customdata';
 import {LayerTypes, ChunkedSimpleMesh, SimpleMesh} from "../core/simplemesh.js";
 
 import {MeshTools} from './mesh_stdtools.js';
@@ -74,7 +74,7 @@ let _idgen = 0;
 
 let debuglog = false;
 
-import {CustomData} from './customdata.js';
+import {CustomData} from './customdata';
 import {UVWrangler} from './unwrapping.js';
 import {triangulateFace} from './mesh_tess.js';
 
@@ -457,6 +457,19 @@ nstructjs.register(CompressedMesh);
 
 
 export class Mesh extends SceneObjectData {
+  static STRUCT = nstructjs.inlineRegister(this, `
+mesh.Mesh {
+  _elists         : array(mesh.ElementList) | obj._getArrays();
+  eidgen          : mesh.EIDGen;
+  flag            : int;
+  symFlag         : int;
+  features        : int;
+  uiTriangleCount : int;
+  bvhSettings     : bvh.BVHSettings;
+  lastDispActive  : int;
+}
+`)
+
   constructor(features = MeshFeatures.BASIC) {
     super();
 
@@ -7246,19 +7259,6 @@ export class Mesh extends SceneObjectData {
   }
 };
 
-Mesh.STRUCT = STRUCT.inherit(Mesh, SceneObjectData, "mesh.Mesh") + `
-  _elists         : array(mesh.ElementList) | obj._getArrays();
-  eidgen          : mesh.EIDGen;
-  flag            : int;
-  symFlag         : int;
-  features        : int;
-  uiTriangleCount : int;
-  bvhSettings     : bvh.BVHSettings;
-  lastDispActive  : int;
-}
-`;
-
-nstructjs.register(Mesh);
 DataBlock.register(Mesh);
 SceneObjectData.register(Mesh);
 

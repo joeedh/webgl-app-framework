@@ -10,6 +10,11 @@ import {Icons} from "../icon_enum.js";
 import addonManager from '../../addon/addon.js';
 
 export class SettingsEditor extends Editor {
+  static STRUCT = nstructjs.inlineRegister(this, `
+SettingsEditor {
+}
+  `);
+
   constructor() {
     super();
   }
@@ -56,7 +61,7 @@ export class SettingsEditor extends Editor {
 
       console.log(theme);
 
-      let blob = new Blob([theme], {mime : "application/javascript"});
+      let blob = new Blob([theme], {mime: "application/javascript"});
       let url = URL.createObjectURL(blob);
 
       console.log("url", url);
@@ -94,15 +99,14 @@ export class SettingsEditor extends Editor {
     return super.update();
   }
 
-  static define() {return {
-    uiname : 'Settings',
-    areaname : 'settings-editor',
-    tagname : 'settings-editor-x',
-    icon : Icons.EDITOR_SETTINGS,
-  }}
+  static define() {
+    return {
+      uiname  : 'Settings',
+      areaname: 'settings-editor',
+      tagname : 'settings-editor-x',
+      icon    : Icons.EDITOR_SETTINGS,
+    }
+  }
 }
-SettingsEditor.STRUCT = nstructjs.inherit(SettingsEditor, Editor) + `
-}`
 
-nstructjs.register(SettingsEditor);
 Editor.register(SettingsEditor);

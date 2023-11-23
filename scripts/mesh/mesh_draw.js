@@ -3,7 +3,7 @@ import * as math from '../util/math.js';
 import * as util from '../util/util.js';
 
 import {MeshDrawFlags, MeshFeatures, MeshFlags, MeshTypes, RecalcFlags} from "./mesh_base.js";
-import {CustomDataElem} from "./customdata.js";
+import {CustomDataElem} from "./customdata";
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {Colors} from "../sceneobject/sceneobject.js";
 import {ChunkedSimpleMesh, LayerTypes, PrimitiveTypes} from "../core/simplemesh.js";

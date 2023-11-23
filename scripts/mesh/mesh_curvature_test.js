@@ -1,5 +1,5 @@
 import {nstructjs, util, math} from '../path.ux/scripts/pathux.js';
-import {CustomDataElem, LayerSettingsBase} from './customdata.js';
+import {CustomDataElem, LayerSettingsBase} from './customdata.ts';
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import '../util/numeric.js';
 

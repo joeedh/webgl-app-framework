@@ -20,7 +20,7 @@ import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 import {SceneBVH} from '../sceneobject/scenebvh.js';
 
 export const EnvLightFlags = {
-  USE_AO : 1
+  USE_AO: 1
 };
 
 export class EnvLight {
@@ -56,7 +56,7 @@ export class EnvLight {
     ret.add(this.flag*1024);
     ret.add(this.power*1024);
 
-    for (let i=0; i<3; i++) {
+    for (let i = 0; i < 3; i++) {
       ret.add(this.sunDir[i]);
       ret.add(this.sunColor[i]);
     }
@@ -84,7 +84,7 @@ EnvLight {
 nstructjs.register(EnvLight);
 
 export const SceneFlags = {
-  SELECT : 1
+  SELECT: 1
 };
 
 export class ObjectSet extends util.set {
@@ -97,7 +97,7 @@ export class ObjectSet extends util.set {
   get renderable() {
     let this2 = this;
 
-    return (function*() {
+    return (function* () {
       for (let ob of this2) {
         if (ob.flag & (ObjectFlags.HIDE)) {
           continue;
@@ -111,9 +111,9 @@ export class ObjectSet extends util.set {
   get editable() {
     let this2 = this;
 
-    return (function*() {
+    return (function* () {
       for (let ob of this2) {
-        if (ob.flag & (ObjectFlags.HIDE|ObjectFlags.LOCKED)) {
+        if (ob.flag & (ObjectFlags.HIDE | ObjectFlags.LOCKED)) {
           continue;
         }
 
@@ -124,7 +124,7 @@ export class ObjectSet extends util.set {
 }
 
 export class ObjectList extends Array {
-  constructor(list=undefined, scene) {
+  constructor(list = undefined, scene) {
     super();
 
     this.scene = scene;
@@ -175,9 +175,9 @@ export class ObjectList extends Array {
   get editable() {
     let this2 = this;
 
-    return (function*() {
+    return (function* () {
       for (let ob of this2) {
-        if (ob.flag & (ObjectFlags.HIDE|Object.LOCKED)) {
+        if (ob.flag & (ObjectFlags.HIDE | Object.LOCKED)) {
           continue;
         }
 
@@ -189,7 +189,7 @@ export class ObjectList extends Array {
   get visible() {
     let this2 = this;
 
-    return (function*() {
+    return (function* () {
       for (let ob of this2) {
         if (ob.flag & (ObjectFlags.HIDE)) {
           continue;
@@ -301,12 +301,32 @@ ObjectList {
 nstructjs.register(ObjectList);
 
 export const SceneRecalcFlags = {
-  OBJECTS : 1 //update flat object list
+  OBJECTS: 1 //update flat object list
 };
 
 import messageBus from '../core/bus.js';
 
 export class Scene extends DataBlock {
+  static STRUCT = nstructjs.inlineRegister(this, `
+Scene {
+  flag         : int;
+  objects      : ObjectList;
+  active       : int | obj.active !== undefined ? obj.active.lib_id : -1;
+  time         : float;
+  selectMask   : int;
+  cursor3D     : mat4;
+  envlight     : EnvLight;
+  toolmode_i   : string | obj.toolModeProp.keys[obj.toolmode_i];
+  toolmodes    : array(abstract(ToolMode));
+  collection   : DataRef | DataRef.fromBlock(obj.collection);
+  fps          : int;
+  propMode     : int;
+propIslandOnly : bool;
+  propRadius   : float;
+  propEnabled  : bool;
+}
+  `);
+
   constructor(objects) {
     super();
 
@@ -337,7 +357,7 @@ export class Scene extends DataBlock {
     this.objects.onselect = this._onselect.bind(this);
     this.flag = 0;
     this._loading = false;
-    
+
     this.time = 0.0;
     this.fps = 30.0;
 
@@ -413,7 +433,7 @@ export class Scene extends DataBlock {
   get lights() {
     let this2 = this;
 
-    let ret = (function*() {
+    let ret = (function* () {
       for (let ob of this2.objects) {
         if (ob.data instanceof Light) {
           yield ob;
@@ -421,7 +441,7 @@ export class Scene extends DataBlock {
       }
     })();
 
-    ret.visible = (function*() {
+    ret.visible = (function* () {
       for (let ob of this2.objects) {
         if (ob.flag & ObjectFlags.HIDE) {
           continue;
@@ -491,7 +511,7 @@ export class Scene extends DataBlock {
 
       ob.data = data;
     }
-    
+
     ob.flag |= ObjectFlags.INTERNAL;
 
     if (!cl.has(ob)) {
@@ -553,7 +573,7 @@ export class Scene extends DataBlock {
     }
   }
 
-  switchToolMode(mode, _file_loading=false) {
+  switchToolMode(mode, _file_loading = false) {
     console.warn("switchToolMode called");
 
     if (mode === undefined) {
@@ -641,7 +661,7 @@ export class Scene extends DataBlock {
       console.log("object not in scene", ob);
       return;
     }
-    
+
     this.objects.remove(ob);
     this.collection.remove(ob);
   }
@@ -669,14 +689,16 @@ export class Scene extends DataBlock {
 
     this.widgets.destroy(this.widgets.gl);
   }
-  
-  static blockDefine() { return {
-    typeName    : "scene",
-    defaultName : "Scene",
-    uiName   : "Scene",
-    flag     : BlockFlags.FAKE_USER, //always have user count > 0
-    icon     : -1
-  }}
+
+  static blockDefine() {
+    return {
+      typeName   : "scene",
+      defaultName: "Scene",
+      uiName     : "Scene",
+      flag       : BlockFlags.FAKE_USER, //always have user count > 0
+      icon       : -1
+    }
+  }
 
   _onselect(obj, state) {
     if (this.outputs.onSelect.hasEdges) {
@@ -684,16 +706,18 @@ export class Scene extends DataBlock {
     }
   }
 
-  static nodedef() {return {
-    name    : "scene",
-    uiname  : "Scene",
-    flag    : 0,
-    outputs : {
-      onSelect : new DependSocket("Selection Change"),
-      onToolModeChange : new DependSocket("Toolmode Change"),
-      onTimeChange : new FloatSocket("Time Change")
+  static nodedef() {
+    return {
+      name   : "scene",
+      uiname : "Scene",
+      flag   : 0,
+      outputs: {
+        onSelect        : new DependSocket("Selection Change"),
+        onToolModeChange: new DependSocket("Toolmode Change"),
+        onTimeChange    : new FloatSocket("Time Change")
+      }
     }
-  }}
+  }
 
   changeTime(newtime) {
     let oldtime = this.time;
@@ -767,7 +791,7 @@ export class Scene extends DataBlock {
       this.switchToolMode(0, true);
     }
   }
-  
+
   dataLink(getblock, getblock_addUser) {
     super.dataLink(...arguments);
 
@@ -825,24 +849,5 @@ export class Scene extends DataBlock {
     }
   }
 }
-DataBlock.register(Scene);
-Scene.STRUCT = nstructjs.inherit(Scene, DataBlock) + `
-  flag         : int;
-  objects      : ObjectList;
-  active       : int | obj.active !== undefined ? obj.active.lib_id : -1;
-  time         : float;
-  selectMask   : int;
-  cursor3D     : mat4;
-  envlight     : EnvLight;
-  toolmode_i   : string | obj.toolModeProp.keys[obj.toolmode_i];
-  toolmodes    : array(abstract(ToolMode));
-  collection   : DataRef | DataRef.fromBlock(obj.collection);
-  fps          : int;
-  propMode     : int;
-propIslandOnly : bool;
-  propRadius   : float;
-  propEnabled  : bool;
-}
-`;
 
-nstructjs.register(Scene);
+DataBlock.register(Scene);

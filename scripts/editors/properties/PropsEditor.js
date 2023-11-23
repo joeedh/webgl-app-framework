@@ -42,12 +42,12 @@ export class ChangeActCDLayerOp extends ToolOp {
       uiname  : "Change Active Layer",
       toolpath: "mesh.change_active_cdlayer",
       inputs  : {
-        fullMeshUndo : new BoolProperty(false).private(),
-        redrawAll    : new BoolProperty(false).private(),
-        meshPath     : new StringProperty("mesh").private(),
-        type         : new StringProperty().private(),
-        elemType     : new EnumProperty(undefined, MeshTypes).private(),
-        active       : new IntProperty(-1).private()
+        fullMeshUndo: new BoolProperty(false).private(),
+        redrawAll   : new BoolProperty(false).private(),
+        meshPath    : new StringProperty("mesh").private(),
+        type        : new StringProperty().private(),
+        elemType    : new EnumProperty(undefined, MeshTypes).private(),
+        active      : new IntProperty(-1).private()
       }
     }
   }
@@ -858,6 +858,13 @@ export class TextureSelectPanel extends TexturePanel {
 UIBase.register(TextureSelectPanel);
 
 export class PropsEditor extends Editor {
+  static STRUCT = nstructjs.inlineRegister(this, `
+PropsEditor {
+  texturePath     : string;
+  texturePathMode : int;
+}
+`);
+
   constructor() {
     super();
 
@@ -1117,11 +1124,4 @@ export class PropsEditor extends Editor {
   }
 }
 
-PropsEditor.STRUCT = nstructjs.inherit(PropsEditor, Editor) + `
-  texturePath     : string;
-  texturePathMode : int;
-}
-`;
-
-nstructjs.register(PropsEditor);
 Editor.register(PropsEditor);

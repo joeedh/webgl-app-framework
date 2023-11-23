@@ -2,7 +2,7 @@ import {Matrix4, nstructjs, Vector2, Vector3, Vector4} from "../path.ux/scripts/
 import * as util from "../util/util.js";
 import {MeshFlags, MeshTypes} from "./mesh_base.js";
 import * as math from "../util/math.js";
-import {CustomDataElem} from "./customdata.js";
+import {CustomDataElem} from "./customdata";
 import {ChunkedSimpleMesh} from "../core/simplemesh.js";
 import {BLink, GridBase, GridSettingFlags, GridSettings, gridSides, GridVert, QRecalcFlags} from "./mesh_grids.js";
 import '../util/numeric.js';

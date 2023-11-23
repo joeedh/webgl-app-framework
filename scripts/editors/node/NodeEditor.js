@@ -650,6 +650,13 @@ let NedRecalcFlags = {
 };
 
 export class NodeEditor extends Editor {
+  static STRUCT = nstructjs.inlineRegister(this, `
+NodeEditor {
+  velpan     : VelPan;
+  graphPath  : string;
+}
+  `)
+
   constructor() {
     super();
 
@@ -926,7 +933,7 @@ export class NodeEditor extends Editor {
     let this2 = this;
     let i = 0;
 
-    button._build_menu = function() {
+    button._build_menu = function () {
       this._menu = this2.makeAddNodeMenu();
       console.warn("Create Menu " + this._menu._id);
     }
@@ -1551,10 +1558,4 @@ export class NodeEditor extends Editor {
     this.velpan.onchange = this._on_velpan_change.bind(this);
   }
 };
-NodeEditor.STRUCT = nstructjs.inherit(NodeEditor, Editor) + `
-  velpan     : VelPan;
-  graphPath  : string;
-}
-`
-nstructjs.register(NodeEditor);
 Editor.register(NodeEditor);

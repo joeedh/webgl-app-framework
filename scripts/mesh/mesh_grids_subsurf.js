@@ -1,5 +1,5 @@
 import {GridSettingFlags, GridBase, Grid, QRecalcFlags} from "./mesh_grids.js";
-import {CustomData, CustomDataElem, LayerSettingsBase} from "./customdata.js";
+import {CustomData, CustomDataElem, LayerSettingsBase} from "./customdata";
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {ChunkedSimpleMesh} from "../core/simplemesh.js";
 import {FloatElem} from "./mesh_customdata.js";

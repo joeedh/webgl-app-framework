@@ -444,6 +444,20 @@ nstructjs.register(KeyValPair);
  method in child classes.
  */
 export class Node {
+  static STRUCT = nstructjs.inlineRegister(this, `
+graph.Node {
+  graph_name    : string;
+  graph_uiname  : string;
+  graph_id      : int;
+  graph_flag    : int;
+  inputs        : array(graph.KeyValPair) | obj._save_map(obj.inputs);
+  outputs       : array(graph.KeyValPair) | obj._save_map(obj.outputs);
+  graph_ui_pos  : vec2;
+  graph_ui_size : vec2;
+  graph_ui_flag : int;
+}
+`);
+
   constructor(flag = 0) {
     let def = this.constructor.nodedef();
 
@@ -895,22 +909,6 @@ export class Node {
     return ret;
   }
 }
-
-Node.STRUCT = `
-graph.Node {
-  graph_name    : string;
-  graph_uiname  : string;
-  graph_id      : int;
-  graph_flag    : int;
-  inputs        : array(graph.KeyValPair) | obj._save_map(obj.inputs);
-  outputs       : array(graph.KeyValPair) | obj._save_map(obj.outputs);
-  graph_ui_pos  : vec2;
-  graph_ui_size : vec2;
-  graph_ui_flag : int;
-}
-`;
-
-nstructjs.register(Node);
 
 /*proxy nodes are stand-ins for nodes that are
   saved/loaded from outside the Graph data structure

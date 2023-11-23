@@ -32,7 +32,7 @@ import {SelectEdgeLoopOp} from '../../scripts/mesh/select_ops.js';
 import {MeshToolBase} from '../../scripts/editors/view3d/tools/meshtool.js';
 
 import {DataBlock, DataRefProperty} from '../../scripts/core/lib_api.js';
-import {CustomDataElem} from '../../scripts/mesh/customdata.js';
+import {CustomDataElem} from '../../build/entry_point.js';
 import {SceneObjectData} from '../../scripts/sceneobject/sceneobject_base.js';
 import {ToolOp, util} from '../../scripts/path.ux/pathux.js';
 import {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} from '../../scripts/editors/view3d/widgets/widget_tools.js';

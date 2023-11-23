@@ -774,6 +774,7 @@ class VertexReader {
   get co() {
     return this.v.co;
   }
+
   set co(co) {
     this.v.co = co;
   }
@@ -1349,7 +1350,7 @@ export class Vertex extends BaseVector {
     var y = this[1];
 
     const cos = Math.cos;
-    
+
     if (axis === 1) {
       this[0] = x*cos(A) + y*sin(A);
       this[1] = y*cos(A) - x*sin(A);
@@ -2701,30 +2702,29 @@ let fiter_stack_v_ring;
 let fiter_stack_l_ring;
 let fiter_stack_e_ring;
 
-let codegen = `
-class $NAMEProxy extends ReusableIter {
+class FaceLoopIterProxy extends ReusableIter {
   constructor() {
     super();
-    
+
     this.f = undefined;
   }
-  
+
   reset(f) {
     this.f = f;
-    
+
     return this;
   }
-  
+
   [Symbol.iterator]() {
-    return $ITERSTACK[$ITERSTACK.cur++].reset(this.f);
+    return fiter_stack_l[fiter_stack_l.cur++].reset(this.f);
   }
 }
 
-$ITERSTACK_ring = util.cachering.fromConstructor($NAMEProxy, 4196);
+fiter_stack_l_ring = util.cachering.fromConstructor(FaceLoopIterProxy, 4196);
 
-result = class $NAME {
+class FaceLoopIter {
   constructor() {
-    this.ret = {done : true, value : undefined};
+    this.ret = {done: true, value: undefined};
     this.done = true;
     this.f = undefined;
   }
@@ -2744,8 +2744,8 @@ result = class $NAME {
       this.ret.value = undefined;
       this.ret.done = true;
       this.l = undefined;
-      
-      $ITERSTACK.cur = Math.max($ITERSTACK.cur-1, 0);
+
+      fiter_stack_l.cur = Math.max(fiter_stack_l.cur - 1, 0);
     }
   }
 
@@ -2762,7 +2762,7 @@ result = class $NAME {
 
     let list = this.f.lists[this.listi];
 
-    ret.value = this.$RET;
+    ret.value = this.l;
     ret.done = false;
 
     if (this.l === list.l.prev) {
@@ -2791,29 +2791,202 @@ result = class $NAME {
   }
 }
 
-$ITERSTACK = new Array(1024);
-for (let i=0; i<$ITERSTACK.length; i++) {
-  $ITERSTACK[i] = new result();
+fiter_stack_l = new Array(1024);
+for (let i = 0; i < fiter_stack_l.length; i++) {
+  fiter_stack_l[i] = new FaceLoopIter();
 }
-$ITERSTACK.cur = 0;
-`;
+fiter_stack_l.cur = 0;
 
-function makecls(name, stackname, ret) {
-  let codegen2 = codegen;
 
-  codegen2 = codegen2.replace(/\$NAME/g, name);
-  codegen2 = codegen2.replace(/\$RET/g, ret);
-  codegen2 = codegen2.replace(/\$ITERSTACK/g, stackname);
+class FaceEdgeIterProxy extends ReusableIter {
+  constructor() {
+    super();
 
-  var result;
-  eval(codegen2);
+    this.f = undefined;
+  }
 
-  return result;
+  reset(f) {
+    this.f = f;
+
+    return this;
+  }
+
+  [Symbol.iterator]() {
+    return fiter_stack_e[fiter_stack_e.cur++].reset(this.f);
+  }
 }
 
-export let FaceVertIter = makecls("FaceVertIter", "fiter_stack_v", "l.v");
-export let FaceEdgeIter = makecls("FaceEdgeIter", "fiter_stack_e", "l.e");
-export let FaceLoopIter = makecls("FaceLoopIter", "fiter_stack_l", "l");
+fiter_stack_e_ring = util.cachering.fromConstructor(FaceEdgeIterProxy, 4196);
+
+class FaceEdgeIter {
+  constructor() {
+    this.ret = {done: true, value: undefined};
+    this.done = true;
+    this.f = undefined;
+  }
+
+  reset(face) {
+    this.f = face;
+    this.done = false;
+    this.listi = 0;
+    this.l = face.lists[0].l;
+
+    return this;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.done = true;
+      this.ret.value = undefined;
+      this.ret.done = true;
+      this.l = undefined;
+
+      fiter_stack_e.cur = Math.max(fiter_stack_e.cur - 1, 0);
+    }
+  }
+
+  next() {
+    let ret = this.ret;
+
+    if (this.listi >= this.f.lists.length) {
+      ret.done = true;
+      ret.value = undefined;
+      this.finish();
+
+      return ret;
+    }
+
+    let list = this.f.lists[this.listi];
+
+    ret.value = this.l.e;
+    ret.done = false;
+
+    if (this.l === list.l.prev) {
+      this.listi++;
+
+      //fetch loop for next time
+      if (this.listi < this.f.lists.length) {
+        this.l = this.f.lists[this.listi].l;
+      } else {
+        this.l = undefined;
+      }
+    } else {
+      this.l = this.l.next;
+    }
+
+    return ret;
+  }
+
+  return() {
+    this.finish();
+    return this.ret;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+}
+
+fiter_stack_e = new Array(1024);
+for (let i = 0; i < fiter_stack_e.length; i++) {
+  fiter_stack_e[i] = new FaceEdgeIter();
+}
+fiter_stack_e.cur = 0;
+
+class FaceVertIterProxy extends ReusableIter {
+  constructor() {
+    super();
+
+    this.f = undefined;
+  }
+
+  reset(f) {
+    this.f = f;
+
+    return this;
+  }
+
+  [Symbol.iterator]() {
+    return fiter_stack_v[fiter_stack_v.cur++].reset(this.f);
+  }
+}
+
+fiter_stack_v_ring = util.cachering.fromConstructor(FaceVertIterProxy, 4196);
+
+class FaceVertIter {
+  constructor() {
+    this.ret = {done: true, value: undefined};
+    this.done = true;
+    this.f = undefined;
+  }
+
+  reset(face) {
+    this.f = face;
+    this.done = false;
+    this.listi = 0;
+    this.l = face.lists[0].l;
+
+    return this;
+  }
+
+  finish() {
+    if (!this.done) {
+      this.done = true;
+      this.ret.value = undefined;
+      this.ret.done = true;
+      this.l = undefined;
+
+      fiter_stack_v.cur = Math.max(fiter_stack_v.cur - 1, 0);
+    }
+  }
+
+  next() {
+    let ret = this.ret;
+
+    if (this.listi >= this.f.lists.length) {
+      ret.done = true;
+      ret.value = undefined;
+      this.finish();
+
+      return ret;
+    }
+
+    let list = this.f.lists[this.listi];
+
+    ret.value = this.l.v;
+    ret.done = false;
+
+    if (this.l === list.l.prev) {
+      this.listi++;
+
+      //fetch loop for next time
+      if (this.listi < this.f.lists.length) {
+        this.l = this.f.lists[this.listi].l;
+      } else {
+        this.l = undefined;
+      }
+    } else {
+      this.l = this.l.next;
+    }
+
+    return ret;
+  }
+
+  return() {
+    this.finish();
+    return this.ret;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+}
+
+fiter_stack_v = new Array(1024);
+for (let i = 0; i < fiter_stack_v.length; i++) {
+  fiter_stack_v[i] = new FaceVertIter();
+}
+fiter_stack_v.cur = 0;
 
 export class Face extends Element {
   constructor() {

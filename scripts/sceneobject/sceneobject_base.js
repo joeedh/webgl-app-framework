@@ -1,5 +1,6 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import {nstructjs} from '../path.ux/pathux.js';
+
 let STRUCT = nstructjs.STRUCT;
 import {Vector3} from '../util/vectormath.js';
 import {StandardTools} from './stdtools.js';
@@ -12,7 +13,7 @@ export const ObjectDataTypes = [];
 export class SceneObjectData extends DataBlock {
   constructor() {
     super();
-    
+
     this.materials = [];
     this.usesMaterial = false;
   }
@@ -22,21 +23,30 @@ export class SceneObjectData extends DataBlock {
     return this;
   }
 
-  static dataDefine() {return {
-    name       : "",
-    selectMask : 0, //valid selection modes for StandardTools, see SelMask
-    tools      : StandardTools,
-  }}
+  static dataDefine() {
+    return {
+      name      : "",
+      selectMask: 0, //valid selection modes for StandardTools, see SelMask
+      tools     : StandardTools,
+    }
+  }
 
-  static nodedef() {return {
-    inputs : Node.inherit({
-      depend : new DependSocket(),
-    }),
-    outputs : Node.inherit({
-      depend : new DependSocket(),
-    }),
-    flag : Node.inherit(NodeFlags.SAVE_PROXY)
-  }}
+  static nodedef() {
+    return {
+      inputs : Node.inherit({
+        depend: new DependSocket(),
+      }),
+      outputs: Node.inherit({
+        depend: new DependSocket(),
+      }),
+      flag   : Node.inherit(NodeFlags.SAVE_PROXY)
+    }
+  }
+
+  static STRUCT = nstructjs.inlineRegister(this, `
+SceneObjectData {
+  materials : array(e, DataRef) | DataRef.fromBlock(e); 
+}`);
 
   exec() {
     this.outputs.depend.graphUpdate();
@@ -114,7 +124,7 @@ export class SceneObjectData extends DataBlock {
 
     //non-datablock materials are allowed
 
-    for (let i=0; i<this.materials.length; i++) {
+    for (let i = 0; i < this.materials.length; i++) {
       let mat = getblock_addUser(this.materials[i], this);
       if (mat) {
         mats.push(mat);
@@ -142,8 +152,3 @@ export class SceneObjectData extends DataBlock {
     ObjectDataTypes.push(cls);
   }
 }
-SceneObjectData.STRUCT = STRUCT.inherit(SceneObjectData, DataBlock) + `
-  materials : array(e, DataRef) | DataRef.fromBlock(e); 
-}
-`;
-nstructjs.register(SceneObjectData);

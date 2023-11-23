@@ -19,7 +19,7 @@ import {subdivide} from '../subsurf/subsurf_mesh.js';
 import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
 import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
-import {CustomDataElem} from "./customdata.js";
+import {CustomDataElem} from "./customdata";
 import {bisectMesh, symmetrizeMesh} from "./mesh_utils.js";
 import {QRecalcFlags} from "./mesh_grids.js";
 

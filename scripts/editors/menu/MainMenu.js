@@ -47,15 +47,15 @@ export class ToolHistoryConsole extends ColumnFrame {
     let lines = [];
     let count = 28;
 
-    for (let i=toolstack.length-1; i>=toolstack.length-count; i--) {
+    for (let i = toolstack.length - 1; i >= toolstack.length - count; i--) {
       if (i < 0) {
         break;
       }
 
       let l = toolstack[i].genToolString();
       l = {
-        line : l,
-        i    : i
+        line: l,
+        i   : i
       };
 
       lines = [l].concat(lines);
@@ -77,7 +77,7 @@ export class ToolHistoryConsole extends ColumnFrame {
           row.style["background-color"] = "rgb(10, 100, 75, 0.5)";
         }
 
-        row.label(""+(l.i+1));
+        row.label("" + (l.i + 1));
         row.label(l.line);
         lastrow = row;
       }
@@ -114,13 +114,21 @@ export class ToolHistoryConsole extends ColumnFrame {
     super.setCSS();
   }
 
-  static define() {return {
-    tagname : "tool-console-x"
-  }}
+  static define() {
+    return {
+      tagname: "tool-console-x"
+    }
+  }
 }
+
 UIBase.register(ToolHistoryConsole);
 
 export class MenuBarEditor extends Editor {
+  static STRUCT = nstructjs.inlineRegister(this, `
+MenuBarEditor {
+}
+  `);
+  
   constructor() {
     super();
 
@@ -133,7 +141,7 @@ export class MenuBarEditor extends Editor {
     this._ignore_tab_change = false;
     this._last_toolmode = undefined;
 
-    this.borderLock = BorderMask.TOP|BorderMask.BOTTOM;
+    this.borderLock = BorderMask.TOP | BorderMask.BOTTOM;
   }
 
   buildEditMenu() {
@@ -179,22 +187,22 @@ export class MenuBarEditor extends Editor {
     menubar.menu("File", [
       "app.new()",
       Menu.SEP,
-     /* ["Save", () => {
-        console.log("File save");
+      /* ["Save", () => {
+         console.log("File save");
 
-        platform.platform.showSaveDialog("Save File", _appstate.createFile(),{
-          filters : [
-            {
-              defaultPath : "unnamed." + cconst.FILE_EXT,
-              name : "Project Files",
-              extensions : [cconst.FILE_EXT]
-            }
-          ]
-        }).then(() => {
-          this.ctx.message("File saved");
-        });
-        //saveFile(_appstate.createFile(), "unnamed."+cconst.FILE_EXT, ["."+cconst.FILE_EXT]);
-      }],*/
+         platform.platform.showSaveDialog("Save File", _appstate.createFile(),{
+           filters : [
+             {
+               defaultPath : "unnamed." + cconst.FILE_EXT,
+               name : "Project Files",
+               extensions : [cconst.FILE_EXT]
+             }
+           ]
+         }).then(() => {
+           this.ctx.message("File saved");
+         });
+         //saveFile(_appstate.createFile(), "unnamed."+cconst.FILE_EXT, ["."+cconst.FILE_EXT]);
+       }],*/
       "app.open()",
       "app.save(forceDialog=false saveToolStack=true)|Save With Toolstack",
       "app.save(forceDialog=true)|Save As",
@@ -399,18 +407,15 @@ export class MenuBarEditor extends Editor {
     super.setCSS();
   }
 
-  static define() {return {
-    tagname : "menu-editor-x",
-    areaname : "MenuBarEditor",
-    uiname   : "Main Menu",
-    icon     : Icons.EDITOR_MENU,
-    flag     : AreaFlags.HIDDEN|AreaFlags.NO_SWITCHER
-  }}
+  static define() {
+    return {
+      tagname : "menu-editor-x",
+      areaname: "MenuBarEditor",
+      uiname  : "Main Menu",
+      icon    : Icons.EDITOR_MENU,
+      flag    : AreaFlags.HIDDEN | AreaFlags.NO_SWITCHER
+    }
+  }
 }
 
-MenuBarEditor.STRUCT = nstructjs.inherit(MenuBarEditor, Editor) + `
-}
-`;
-
-nstructjs.register(MenuBarEditor);
 Editor.register(MenuBarEditor);

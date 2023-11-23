@@ -6,7 +6,7 @@ import {
 } from "./mesh_base.js";
 import * as util from "../util/util.js";
 
-import {CDFlags, CustomData, CustomDataElem} from "./customdata.js";
+import {CDFlags, CustomData, CustomDataElem} from "./customdata";
 import {Vertex, Loop, Face, Handle} from './mesh_types.js';
 
 const sel_iter_stack = new Array(64);

@@ -1,5 +1,6 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
 import {nstructjs} from '../path.ux/pathux.js';
+
 let STRUCT = nstructjs.STRUCT;
 import {Graph, Node, NodeFlags, SocketFlags} from '../core/graph.js';
 import {Matrix4, Vector3, Vector4, Quat} from '../util/vectormath.js';
@@ -13,16 +14,16 @@ import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 
 export const LightFlags = {
-  SELECT : 1,
-  HIDE   : 2,
-  LOCKED : 4
+  SELECT: 1,
+  HIDE  : 2,
+  LOCKED: 4
 };
 
 export const LightTypes = {
-  POINT     : 1,
-  SUN       : 2,
-  AREA_DISK : 4,
-  AREA_RECT : 8,
+  POINT    : 1,
+  SUN      : 2,
+  AREA_DISK: 4,
+  AREA_RECT: 8,
   //SPOT      : 16
 };
 
@@ -33,26 +34,36 @@ export class Light extends SceneObjectData {
     this.type = LightTypes.POINT;
   }
 
-  static blockDefine() {return {
-    typeName    : "light",
-    defaultName : "Light",
-    uiName      : "Light",
-    flag        : 0,
-    icon        : -1
-  }}
+  static blockDefine() {
+    return {
+      typeName   : "light",
+      defaultName: "Light",
+      uiName     : "Light",
+      flag       : 0,
+      icon       : -1
+    }
+  }
 
-  static nodedef() {return {
-    name   : "light",
-    flag   : NodeFlags.SAVE_PROXY,
-    inputs : Node.inherit({
-      color  : new RGBSocket("color", undefined, [1, 1, 1]),
-      power  : new FloatSocket("power", undefined, 1.0),
-      radius  : new FloatSocket("radius", undefined, 0.5),
-      distance  : new FloatSocket("distance", undefined, 50.0),
-      depend : new DependSocket()
-    }),
-    outputs : Node.inherit()
-  }}
+  static nodedef() {
+    return {
+      name   : "light",
+      flag   : NodeFlags.SAVE_PROXY,
+      inputs : Node.inherit({
+        color   : new RGBSocket("color", undefined, [1, 1, 1]),
+        power   : new FloatSocket("power", undefined, 1.0),
+        radius  : new FloatSocket("radius", undefined, 0.5),
+        distance: new FloatSocket("distance", undefined, 50.0),
+        depend  : new DependSocket()
+      }),
+      outputs: Node.inherit()
+    }
+  }
+
+  static STRUCT = nstructjs.inlineRegister(this, `
+Light {
+  type     : int;
+}
+  `);
 
   getBoundingBox() {
     let r = this.inputs.radius.getValue();
@@ -94,18 +105,15 @@ export class Light extends SceneObjectData {
     this.draw(view3d, gl, uniforms, program, object);
   }
 
-  static dataDefine() {return {
-    name       : "Light",
-    selectMask : 0,
-    //tools      :
-  }}
+  static dataDefine() {
+    return {
+      name      : "Light",
+      selectMask: 0,
+      //tools      :
+    }
+  }
 }
 
-Light.STRUCT = STRUCT.inherit(Light, SceneObjectData) + `
-  type : int;
-}
-`;
 
 DataBlock.register(Light);
-nstructjs.register(Light);
 SceneObjectData.register(Light);

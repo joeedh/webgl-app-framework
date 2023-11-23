@@ -587,6 +587,34 @@ nstructjs.register(BrushDynamics);
 let ckey_digest = new util.HashDigest();
 
 export class SculptBrush extends DataBlock {
+  static STRUCT = nstructjs.inlineRegister(this, `
+SculptBrush {
+  autosmooth : float;
+  autosmoothInflate : float;
+  strength   : float;
+  tool       : int;
+  radius     : float;
+  planeoff   : float;
+  concaveFilter : float;
+  rake       : float;    
+  spacing    : float;
+  smoothProj : float;
+  color      : vec4;
+  normalfac  : float;
+  bgcolor    : vec4;
+  dynamics   : BrushDynamics;
+  flag       : int;
+  falloff    : Curve1D;
+  falloff2   : Curve1D;
+  texUser    : ProceduralTexUser;
+  pinch      : float;
+  dynTopo    : DynTopoSettings;
+  rakeCurvatureFactor : float;
+  spacingMode: int;
+  sharp      : float;
+  smoothRadiusMul : float;
+}`);
+
   constructor() {
     super();
 
@@ -802,34 +830,6 @@ export class SculptBrush extends DataBlock {
   }
 }
 
-SculptBrush.STRUCT = nstructjs.inherit(SculptBrush, DataBlock) + `
-  autosmooth : float;
-  autosmoothInflate : float;
-  strength   : float;
-  tool       : int;
-  radius     : float;
-  planeoff   : float;
-  concaveFilter : float;
-  rake       : float;    
-  spacing    : float;
-  smoothProj : float;
-  color      : vec4;
-  normalfac  : float;
-  bgcolor    : vec4;
-  dynamics   : BrushDynamics;
-  flag       : int;
-  falloff    : Curve1D;
-  falloff2   : Curve1D;
-  texUser    : ProceduralTexUser;
-  pinch      : float;
-  dynTopo    : DynTopoSettings;
-  rakeCurvatureFactor : float;
-  spacingMode: int;
-  sharp      : float;
-  smoothRadiusMul : float;
-}
-`;
-nstructjs.register(SculptBrush);
 DataBlock.register(SculptBrush);
 
 export function makeDefaultBrushes() {
@@ -935,7 +935,7 @@ export function makeDefaultBrushes() {
   brush.autosmooth = 0.8;
   brush.dynTopo.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE;
   brush.dynTopo.overrideMask = DynTopoOverrides.COLLAPSE | DynTopoOverrides.SUBDIVIDE;
-  brush.dynTopo.overrideMask |= DynTopoOverrides.EDGE_COUNT|DynTopoOverrides.DECIMATE_FACTOR;
+  brush.dynTopo.overrideMask |= DynTopoOverrides.EDGE_COUNT | DynTopoOverrides.DECIMATE_FACTOR;
   brush.dynTopo.edgeCount = 550;
   brush.dynTopo.decimateFactor = 0.05;
 
@@ -1115,7 +1115,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.autosmooth = 0.8;
   brush.dynTopo.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE;
   brush.dynTopo.overrideMask = DynTopoOverrides.COLLAPSE | DynTopoOverrides.SUBDIVIDE;
-  brush.dynTopo.overrideMask |= DynTopoOverrides.EDGE_COUNT|DynTopoOverrides.DECIMATE_FACTOR;
+  brush.dynTopo.overrideMask |= DynTopoOverrides.EDGE_COUNT | DynTopoOverrides.DECIMATE_FACTOR;
   brush.dynTopo.edgeCount = 550;
   brush.dynTopo.decimateFactor = 0.05;
 

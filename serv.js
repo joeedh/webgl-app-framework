@@ -14,6 +14,7 @@ export const exports = {};
 
 let mimemap = {
   ".js" : "application/javascript",
+  ".ts" : "application/typescript",
   ".json" : "text/json",
   ".html" : "text/html",
   ".png" : "image/png",

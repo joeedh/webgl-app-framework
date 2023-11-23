@@ -77,7 +77,7 @@
     }
 
     window.init = function () {
-      import("./scripts/entry_point.js").then(entry_point => {
+      import("./build/entry_point.js").then(entry_point => {
         entry_point.init();
       });
     }

@@ -88,19 +88,19 @@ export class CameraData extends SceneObjectData {
       this.mesh.destroy(gl);
     }
 
-    let mesh = this.mesh = new SimpleMesh(LayerTypes.LOC||LayerTypes.ID|LayerTypes.COLOR);
+    let mesh = this.mesh = new SimpleMesh(LayerTypes.LOC || LayerTypes.ID | LayerTypes.COLOR);
 
-    let th = this.camera.fovy / 180 * Math.PI;
+    let th = this.camera.fovy/180*Math.PI;
     let id = -1, ob = this.getOwningObject();
 
     if (ob) {
       id = ob.lib_id;
     }
 
-    let color = [0,0,0,1];
+    let color = [0, 0, 0, 1];
     let l;
 
-    let d1=1, d2=this.camera.aspect, z = -Math.tan(Math.PI*0.5 - th*0.5);
+    let d1 = 1, d2 = this.camera.aspect, z = -Math.tan(Math.PI*0.5 - th*0.5);
 
     function line(v1, v2) {
       let l = mesh.line(v1, v2);
@@ -119,7 +119,7 @@ export class CameraData extends SceneObjectData {
     line([d1, d2, z], [d1, -d2, z]);
     line([d1, -d2, z], [-d1, -d2, z]);
 
-    line([0, d2, z], [0, d2+1, z]);
+    line([0, d2, z], [0, d2 + 1, z]);
   }
 
   draw(view3d, gl, uniforms, program, object) {
@@ -180,7 +180,7 @@ export class CameraData extends SceneObjectData {
       let time = scene.time*this.speed/scene.fps;
       let curve = this.curvespline;
 
-      time = time % curve.length;
+      time = time%curve.length;
       if (this.pathFlipped) {
         time = curve.length - time;
       }
@@ -201,9 +201,15 @@ export class CameraData extends SceneObjectData {
       let matrix2 = new Matrix4();
       let m = matrix2.$matrix;
 
-      m.m11 = bin[0]; m.m12 = bin[1]; m.m13 = bin[2];
-      m.m21 = nor[0]; m.m22 = nor[1]; m.m23 = nor[2];
-      m.m31 = tan[0]; m.m32 = tan[1]; m.m33 = tan[2];
+      m.m11 = bin[0];
+      m.m12 = bin[1];
+      m.m13 = bin[2];
+      m.m21 = nor[0];
+      m.m22 = nor[1];
+      m.m23 = nor[2];
+      m.m31 = tan[0];
+      m.m32 = tan[1];
+      m.m33 = tan[2];
 
       //matrix2.transpose();
 
@@ -243,27 +249,43 @@ export class CameraData extends SceneObjectData {
     this.drawWireframe(...arguments);
   }
 
-  static nodedef() {return {
-    flag   : NodeFlags.SAVE_PROXY,
-    name     : "camera",
-    uiname   : "Camera",
-    inputs   : Node.inherit(),
-    outputs  : Node.inherit()
-  }}
+  static nodedef() {
+    return {
+      flag   : NodeFlags.SAVE_PROXY,
+      name   : "camera",
+      uiname : "Camera",
+      inputs : Node.inherit(),
+      outputs: Node.inherit()
+    }
+  }
 
-  static blockDefine() {return {
-    typeName     : "camera",
-    defaultName  : "Camera",
-    uiName       : "Camera",
-    flag         : 0,
-    icon         : -1
-  }}
+  static blockDefine() {
+    return {
+      typeName   : "camera",
+      defaultName: "Camera",
+      uiName     : "Camera",
+      flag       : 0,
+      icon       : -1
+    }
+  }
 
-  static dataDefine() {return {
-    name       : "",
-    selectMask : SelMask.CAMERA, //valid selection modes for StandardTools, see SelMask
-    tools      : undefined
-  }}
+  static dataDefine() {
+    return {
+      name      : "",
+      selectMask: SelMask.CAMERA, //valid selection modes for StandardTools, see SelMask
+      tools     : undefined
+    }
+  }
+
+  static STRUCT = nstructjs.inlineRegister(this, `
+CameraData {
+  camera       : Camera;
+  curvespline  : DataRef | DataRef.fromBlock(obj.curvespline);
+  type         : int;
+  speed        : float;
+  azimuth      : float;
+}
+`);
 
   dataLink(getblock, getblock_addUser) {
     super.dataLink(getblock, getblock_addUser);
@@ -273,15 +295,5 @@ export class CameraData extends SceneObjectData {
 
 }
 
-CameraData.STRUCT = nstructjs.inherit(CameraData, SceneObjectData) + `
-  camera       : Camera;
-  curvespline  : DataRef | DataRef.fromBlock(obj.curvespline);
-  type         : int;
-  speed        : float;
-  azimuth      : float;
-}
-`;
-
-nstructjs.register(CameraData);
 DataBlock.register(CameraData);
 SceneObjectData.register(CameraData);

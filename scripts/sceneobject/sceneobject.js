@@ -169,6 +169,13 @@ export class SceneObject extends DataBlock {
     }
   }
 
+  static STRUCT = nstructjs.inlineRegister(this, `
+SceneObject {
+  flag : int; 
+  data : DataRef | DataRef.fromBlock(obj.data);
+}
+`)
+
   getEditorColor() {
     let flag = this.flag & (ObjectFlags.SELECT | ObjectFlags.HIGHLIGHT | ObjectFlags.ACTIVE);
 
@@ -357,12 +364,5 @@ export class SceneObject extends DataBlock {
     this.data.drawIds(view3d, gl, selectMask, uniforms, this);
   }
 }
-
-SceneObject.STRUCT = STRUCT.inherit(SceneObject, DataBlock) + `
-  flag : int; 
-  data : DataRef | DataRef.fromBlock(obj.data);
-}
-`;
-nstructjs.register(SceneObject);
 
 DataBlock.register(SceneObject);

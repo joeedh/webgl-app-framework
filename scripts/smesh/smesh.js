@@ -11,6 +11,12 @@ import {Node} from '../core/graph.js';
 import {BoundMesh} from './smesh_bound.js';
 
 export class EIDGen {
+  static STRUCT = nstructjs.inlineRegister(this, `
+smesh.EIDGen {
+  _cur        : int;
+  freelist    : array(int);
+}`);
+
   constructor() {
     this._cur = 0;
     this.freelist = [];
@@ -28,15 +34,16 @@ export class EIDGen {
     this.freelist.push(id);
   }
 }
-EIDGen.STRUCT = `
-smesh.EIDGen {
-  _cur        : int;
-  freelist    : array(int);
-}
-`;
-nstructjs.register(EIDGen);
 
 export class SMesh extends SceneObjectData {
+
+  static STRUCT = nstructjs.inlineRegister(SMesh, `
+smesh.SMesh {
+  elists : array(abstract(smesh.ElementList));
+  eidgen : smesh.EIDGen;
+}
+`);
+
   constructor() {
     super();
 
@@ -268,8 +275,8 @@ export class SMesh extends SceneObjectData {
     let ltris = this.loopTris;
     let loops = this.loops, faces = this.faces, verts = this.verts;
 
-    for (let i=0; i<ltris.length; i += 3) {
-      let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
+    for (let i = 0; i < ltris.length; i += 3) {
+      let l1 = ltris[i], l2 = ltris[i + 1], l3 = ltris[i + 2];
 
       let v1 = loops.v[l1], v2 = loops.v[l2], v3 = loops.v[l3];
       let co1 = verts.co[v1], co2 = verts.co[v2], co3 = verts.co[v3];
@@ -438,7 +445,7 @@ export class SMesh extends SceneObjectData {
     let loops = this.loops;
     let faces = this.faces;
 
-    for (let i=0; i<vs.length; i++) {
+    for (let i = 0; i < vs.length; i++) {
       let li = this._newLoop();
 
       loops.v[li] = vs[i];
@@ -451,9 +458,9 @@ export class SMesh extends SceneObjectData {
     faces.l[fi] = ls[0];
     faces.flag[fi] = SMeshFlags.UPDATE;
 
-    for (let i=0; i<ls.length; i++) {
-      let li = ls[i], li2 = ls[(i+1) % ls.length];
-      let li0 = ls[(i-1 + ls.length) % ls.length];
+    for (let i = 0; i < ls.length; i++) {
+      let li = ls[i], li2 = ls[(i + 1)%ls.length];
+      let li0 = ls[(i - 1 + ls.length)%ls.length];
 
       let v1 = loops.v[li], v2 = loops.v[li2];
 
@@ -508,12 +515,5 @@ export class SMesh extends SceneObjectData {
   }
 }
 
-SMesh.STRUCT = nstructjs.inherit(SMesh, SceneObjectData, 'smesh.SMesh') + `
-  elists : array(abstract(smesh.ElementList));
-  eidgen : smesh.EIDGen;
-}
-`;
-
-nstructjs.register(SMesh);
 DataBlock.register(SMesh);
 SceneObjectData.register(SMesh);
