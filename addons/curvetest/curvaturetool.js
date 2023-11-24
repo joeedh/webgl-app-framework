@@ -1,17 +1,16 @@
 import {Shaders} from '../../scripts/shaders/shaders.js';
-import {PrimitiveTypes} from '../../scripts/core/simplemesh.js';
-import {KDrawModes, CurvVert2} from '../../scripts/mesh/mesh_curvature_test.js';
 
 export function makeCurvToolMode(api) {
   let exports = {};
 
-  let nstructjs = api.nstructjs;
+  const nstructjs = api.nstructjs;
 
-  let DrawFlags = exports.DrawFlags = {
+  const DrawFlags = exports.DrawFlags = {
     COLOR : 1
   };
 
-  let {LayerTypes, PrimitiveTypes, SimpleMesh} = api.simplemesh;
+  const {LayerTypes, PrimitiveTypes, SimpleMesh} = api.simplemesh;
+  const {KDrawModes} = api.mesh;
 
   let CurvToolMode = exports.CurvToolMode = class CurvToolMode extends api.toolmode.MeshToolBase {
     constructor() {

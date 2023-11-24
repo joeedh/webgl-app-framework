@@ -1,6 +1,4 @@
 import {Shaders} from '../../scripts/shaders/shaders.js';
-import {PrimitiveTypes} from '../../scripts/core/simplemesh.js';
-import {KDrawModes} from '../../scripts/mesh/mesh_paramizer.js';
 
 export function makeGraphItToolMode(api) {
   let exports = {};

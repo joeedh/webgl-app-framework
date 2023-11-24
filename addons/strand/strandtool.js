@@ -1,17 +1,8 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../scripts/util/vectormath.js';
-import * as util from '../../scripts/util/util.js';
-import {
-  nstructjs, FloatProperty, Vec2Property, Vec3Property,
-  BoolProperty, EnumProperty, FlagProperty, KeyMap, HotKey
-} from '../../scripts/path.ux/pathux.js';
-import {ToolMode} from '../../scripts/editors/view3d/view3d_toolmode.js';
-import {Shaders} from '../../scripts/shaders/shaders.js';
-import {Icons} from '../../scripts/editors/icon_enum.js';
-import {SelMask} from '../../scripts/editors/view3d/selectmode.js';
-import {StrandSet} from '../../scripts/hair/strand.js';
-
 export function registerToolMode(api) {
-  class StrandTool extends api.toolmode.ToolMode {
+  const ToolMode = api.toolmode.ToolMode;
+  const {util, nstructjs, KeyMap, Icons, SelMask} = api;
+
+  class StrandTool extends ToolMode {
     constructor() {
       super();
     }

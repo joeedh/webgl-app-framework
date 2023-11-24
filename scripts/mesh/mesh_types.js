@@ -961,14 +961,11 @@ export function traceset(i) {
 }
 
 //has Element mixin
-export class Vertex extends BaseVector {
+export class Vertex extends Element {
   constructor(co) {
-    super();
+    super(MeshTypes.VERTEX);
 
     this.co = new Vector3();
-
-    this._initElement(MeshTypes.VERTEX);
-    //this.initVector3();
 
     if (co !== undefined) {
       this.load(co);
@@ -1288,8 +1285,7 @@ export class Vertex extends BaseVector {
     vertexReader.v = undefined;
     IN_VERTEX_STRUCT = false;
 
-    //we mixed in Element instead of inheriting from it
-    Element.prototype.loadSTRUCT.call(this, reader);
+    super.loadSTRUCT(reader);
   }
 
   /* ======== XXX vector funcs, remove ======= */

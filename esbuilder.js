@@ -22,7 +22,7 @@ let options = {
                 "./scripts/extern/Math",
                 "./scripts/path.ux/*"],
   splitting  : true,
-
+  keepNames  : true,
 };
 
 const handlers = {

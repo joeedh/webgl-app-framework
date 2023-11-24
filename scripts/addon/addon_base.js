@@ -2,13 +2,15 @@ import {
   nstructjs, util, ToolOp, vectormath, math,
   ToolProperty, IntProperty, FloatProperty, EnumProperty,
   FlagProperty, StringProperty, BoolProperty, Vec2Property,
-  Vec3Property, Vec4Property, Mat4Property
+  Vec3Property, Vec4Property, Mat4Property, KeyMap, HotKey
 } from '../path.ux/scripts/pathux.js';
 import * as pathux from '../path.ux/scripts/pathux.js';
 import * as mesh from '../mesh/mesh.js';
 import * as mesh_utils from '../mesh/mesh_utils.js';
 import * as unwrapping from '../mesh/unwrapping.js';
-
+import {ParamizeModes} from '../mesh/mesh_paramizer.js';
+import {SmoothMemoizer} from '../mesh/mesh_displacement.js';
+import {KDrawModes} from '../mesh/mesh_curvature_test.js';
 import {DataBlock, DataRef, DataRefProperty, DataRefListProperty} from '../core/lib_api.js';
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
 import {ToolMode} from '../editors/view3d/view3d_toolmode.js';
@@ -36,6 +38,10 @@ import * as utils from '../mesh/mesh_utils.js';
 import * as subdivide from '../mesh/mesh_subdivide.js';
 import * as bvh from '../util/bvh.js';
 import * as bezier from '../util/bezier.js';
+import * as shaders from '../shaders/shaders.js';
+import {CubicPatch} from '../subsurf/subsurf_patch.js';
+import * as graph from '../core/graph.js';
+import * as graphsockets from '../core/graphsockets.js';
 
 export class AddonAPI {
   constructor(ctx) {
@@ -51,14 +57,21 @@ export class AddonAPI {
       SceneObjectData, SceneObject, composeObjectMatrix
     };
 
+    this.subsurf = {CubicPatch}
+
     this.mesh = {
       CustomDataElem, paramizer, displacement, curvature,
-      curvature_test, utils, subdivide
+      curvature_test, utils, subdivide, KDrawModes,
+      SmoothMemoizer, ParamizeModes
     };
 
     for (let k in mesh) {
       this.mesh[k] = mesh[k];
     }
+
+    this.KeyMap = KeyMap;
+    this.HotKey = HotKey;
+    this.shaders = shaders;
 
     this.bvh = bvh;
     this.bezier = bezier;
@@ -89,18 +102,15 @@ export class AddonAPI {
 
     let this2 = this;
 
-    let dblock = class DataBlockSub extends DataBlock {
-      static register(cls) {
-        let ret = super.register(cls);
-        this2.dataBlockClasses.push(cls);
+    const {Node, Graph, NodeSocketType} = graph;
 
-        return ret;
-      }
+    this.graph = {
+      Node, Graph, NodeSocketType
     }
 
-    this.lib_api = {
-      DataBlock: dblock, DataRef, DataRefProperty, DataRefListProperty
-    };
+    for (let k in graphsockets) {
+      this.graph[k] = graphsockets[k];
+    }
 
     //reference back to addon
     this.addon = undefined;
@@ -116,6 +126,18 @@ export class AddonAPI {
     this.classes.other = [];
 
     this._graphNodes = new Set();
+
+    let dblock = class DataBlockSub extends DataBlock {
+      static register(cls) {
+        let ret = super.register(cls);
+        this2.classes.dataBlockClasses.push(cls);
+
+        return ret;
+      }
+    }
+    this.lib_api = {
+      DataBlock: dblock, DataRef, DataRefProperty, DataRefListProperty
+    };
   }
 
   get argv() {

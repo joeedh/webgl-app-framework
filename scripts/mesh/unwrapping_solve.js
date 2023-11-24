@@ -1267,7 +1267,7 @@ export class UnWrapSolver {
       bad = true;
     } else {
       for (let f of faces) {
-        if (!f.eid in solver.faces) {
+        if (!(f.eid in solver.faces)) {
           console.warn("New face " + f.eid, f);
           bad = true;
           break;

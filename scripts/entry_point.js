@@ -9,6 +9,14 @@ import './test/test_sculpt.js';
 import './test/test.js';
 import './test/test_sculpt_run.js';
 
+import * as mesh from './mesh/mesh.js';
+import * as mesh_types from './mesh/mesh_types.js';
+import * as customdata from './mesh/customdata';
+import * as mesh_customdata from './mesh/mesh_customdata.js';
+import * as mesh_base from './mesh/mesh_base.js';
+
+export {mesh, mesh_types, customdata, mesh_customdata, mesh_base};
+
 import addon, {startAddons} from './addon/addon.js';
 
 import config from './config/config.js';

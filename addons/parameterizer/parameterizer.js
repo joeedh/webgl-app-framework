@@ -1,6 +1,4 @@
 import {makeParamToolMode} from './paramtool.js';
-import {ParamizeModes} from '../../scripts/mesh/mesh_paramizer.js';
-import {SmoothMemoizer} from '../../scripts/mesh/mesh_displacement.js';
 
 let _api;
 
@@ -14,10 +12,9 @@ export function register(api) {
 
   api.paramtool = makeParamToolMode(api);
 
-  let ToolOp = api.toolop.ToolOp;
-  let MeshFlags = api.mesh.MeshFlags;
-  let DrawModes = api.paramtool.DrawModes;
-  let DrawFlags = api.paramtool.DrawFlags;
+  const ToolOp = api.toolop.ToolOp;
+  const {ParamizeModes, SmoothMemoizer, MeshFlags} = api.mesh;
+  const {DrawModes, DrawFlags} = api.paramtool;
 
   class ParamizeMeshOp extends api.toolop.MeshOp {
     static tooldef() {

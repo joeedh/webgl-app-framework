@@ -1,7 +1,3 @@
-import {Shaders} from '../../scripts/shaders/shaders.js';
-import {PrimitiveTypes} from '../../scripts/core/simplemesh.js';
-import {KDrawModes} from '../../scripts/mesh/mesh_paramizer.js';
-
 export function makeParamToolMode(api) {
   let exports = {};
 
@@ -15,6 +11,9 @@ export function makeParamToolMode(api) {
   let DrawFlags = exports.DrawFlags = {
     COLOR : 1
   };
+
+  const Shaders = api.shaders.Shaders;
+  const KDrawModes = api.mesh.KDrawModes;
 
   let ParamVert = api.mesh.paramizer.ParamVert;
   let {LayerTypes, PrimitiveTypes, SimpleMesh} = api.simplemesh;

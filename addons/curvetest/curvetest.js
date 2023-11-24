@@ -1,5 +1,3 @@
-import {calcCurvMesh} from '../../scripts/mesh/mesh_curvature_test.js';
-import {SmoothMemoizer} from '../../scripts/mesh/mesh_displacement.js';
 import {makeCurvToolMode} from './curvaturetool.js';
 
 let _api;
