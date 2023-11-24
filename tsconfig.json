@@ -8,13 +8,16 @@
     "emitDecoratorMetadata": true,
     "pretty": true,
     "esModuleInterop": true,
-    "isolatedModules": false,
+    "isolatedModules": true,
     "strictNullChecks": false,
     "skipLibCheck": true,
     "sourceMap": true,
     "noEmitOnError": false,
+    "noEmit": true,
     "noImplicitThis": true,
-    "declaration": true
+    "listEmittedFiles": false,
+    "declaration" : false,
+    "outDir": "build/typecheck"
   },
-  "files": ["scripts/typescript_entry.ts"]
+  "files": ["scripts/typescript_entry.ts"],
 }

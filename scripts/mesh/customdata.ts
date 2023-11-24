@@ -1,4 +1,4 @@
-import {DataAPI, nstructjs, Vector3} from '../path.ux/scripts/pathux.js';
+import {DataAPI, DataPathCallBack, nstructjs, ToolProperty, Vector3} from '../path.ux/scripts/pathux';
 import * as util from '../util/util.js';
 
 import {EmptyCDArray} from './mesh_base.js';
@@ -77,7 +77,7 @@ mesh.CustomDataElem {
     }
 
     if (Array.isArray(data)) {
-      return data.length * 8 + pad;
+      return (data as unknown as Array<any>).length * 8 + pad;
     }
 
     return 64; //just assume some largish size
@@ -114,14 +114,14 @@ mesh.CustomDataElem {
 
   //used for building island meshes
   hash(snapLimit = 0.01) {
-    let val = this.getValue();
+    let value = this.getValue();
 
-    if (typeof val === "object" && Array.isArray(val)) {
+    function hashArray<type extends number[]>(array: type) {
       let f = 0;
       let dimen = 4196;
 
-      for (let i = 0; i < val.length; i++) {
-        let f2 = Math.floor(val[i] / snapLimit);
+      for (let i = 0; i < array.length; i++) {
+        let f2 = Math.floor(array[i] / snapLimit);
         //f = f ^ f2;
 
         f += f2 * Math.pow(dimen, i);
@@ -129,8 +129,14 @@ mesh.CustomDataElem {
       }
 
       return f;
-    } else if (typeof val === "number") {
-      return Math.floor(val / snapLimit);
+    }
+
+    if (typeof value === "object" && (Array.isArray(value))) {
+      hashArray<number[]>(value as number[]);
+    } else if (typeof value === "object" && ArrayBuffer.isView(value)) {
+      hashArray<number[]>(value as number[]);
+    } else if (typeof value === "number") {
+      return Math.floor(value / snapLimit);
     } else {
       throw new Error("implement me!");
     }
@@ -215,7 +221,7 @@ export function buildCDAPI(api: DataAPI) {
   });
 
   let def = layerst.pathmap["settings"];
-  def.customGetSet(function () {
+  def.customGetSet(function (this: any) {
     let ret = this.dataref.getTypeSettings();
 
     if (!ret) {
@@ -236,7 +242,7 @@ export function buildCDAPI(api: DataAPI) {
 
   let st = api.mapStruct(CustomData, true);
 
-  function makeGetter(typeName) {
+  function makeGetter(typeName): DataPathCallBack {
     return function () {
       let customData = this.dataref;
       return customData.getActiveLayer(typeName);
@@ -257,20 +263,20 @@ export function buildCDAPI(api: DataAPI) {
     def.customGetSet(makeGetter(ldef.typeName));
   }
 
-  st.list<CustomDataElem<any>[], number, CustomDataElem<any>>
+  st.list<CustomDataLayer<any>[], number, CustomDataLayer<any>>
   ("flatlist", "layers", {
-    getIter(api, list: CustomDataElem<any>[]) {
+    getIter(api, list: CustomDataLayer<any>[]) {
       return list;
     },
-    getLength(api: DataAPI, list: CustomDataElem<any>[]) {
+    getLength(api: DataAPI, list: CustomDataLayer<any>[]) {
       return list.length;
     },
 
-    get(api: DataAPI, list: CustomDataElem<any>[], key: number) {
+    get(api: DataAPI, list: CustomDataLayer<any>[], key: number) {
       return list[key];
     },
-    getKey(api: DataAPI, list: CustomDataElem<any>[], obj: CustomDataElem<any>) {
-      return obj !== undefined ? obj.list : -1;
+    getKey(api: DataAPI, list: CustomDataLayer<any>[], obj: CustomDataLayer<any>) {
+      return obj !== undefined ? obj.index : -1;
     },
     getStruct(api, list, key) {
       return api.mapStruct(CustomDataLayer, false);

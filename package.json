@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "node esbuilder.js",
-    "watch": "node esbuilder.js --watch"
+    "watch": "node esbuilder.js --watch",
+    "typecheck": "tsc"
   }
 }
