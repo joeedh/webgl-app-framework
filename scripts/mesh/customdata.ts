@@ -1,4 +1,7 @@
-import {DataAPI, DataPathCallBack, nstructjs, ToolProperty, Vector3} from '../path.ux/scripts/pathux.js';
+import {
+  DataAPI, DataPathCallBack, nstructjs,
+  ToolProperty, Vector3, DataStruct
+} from '../path.ux/scripts/pathux.js';
 import * as util from '../util/util.js';
 
 import {EmptyCDArray} from './mesh_base.js';
@@ -92,10 +95,10 @@ mesh.CustomDataElem {
   }
   */
 
-  static apiDefine(api, dstruct) {
+  static apiDefine(api: DataAPI, dstruct: DataStruct) {
   }
 
-  setValue(b): ValueType {
+  setValue(b: ValueType) {
     throw new Error("implement me");
   }
 
@@ -152,7 +155,7 @@ mesh.CustomDataElem {
     return ret;
   }
 
-  interp(dest, datas, ws): void {
+  interp(dest: this, datas: this[], ws: number[]): void {
     //for default implementation, just copy first item in datas
     for (let cd of datas) {
       cd.copyTo(dest);
