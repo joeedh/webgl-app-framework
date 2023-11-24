@@ -18,7 +18,7 @@ ij_smart_tabs = false
 ij_visual_guides = none
 ij_wrap_on_typing = false
 
-[{*.cjs,*.js,*.template}]
+[{*.cjs,*.js,*.template,*.ts}]
 indent_size = 2
 tab_width = 2
 ij_continuation_indent_size = 2

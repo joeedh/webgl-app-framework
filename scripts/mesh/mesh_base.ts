@@ -1,7 +1,5 @@
-import '../path.ux/scripts/util/struct.js';
-import * as util from '../util/util.js';
-import {AfterAspect, clearAspectCallbacks, initAspectClass, _setUIBase} from '../path.ux/scripts/core/aspect.js';
-import {UIBase, nstructjs} from '../path.ux/scripts/pathux.js';
+import {clearAspectCallbacks, initAspectClass, _setUIBase} from '../path.ux/scripts/core/aspect.js';
+import {UIBase, nstructjs, util} from '../path.ux/scripts/pathux.js';
 
 export const REUSE_EIDS = true;
 
@@ -27,25 +25,23 @@ export const WITH_EIDMAP_MAP = true;
 
 _setUIBase(UIBase);
 
-let STRUCT = nstructjs.STRUCT;
-
 export const MAX_FACE_VERTS = 1000000;
 export const MAX_VERT_EDGES = 1000;
 export const MAX_EDGE_FACES = 100;
 
 export const EmptyCDArray = Object.seal([]);
 
-export const HandleTypes = {
-  AUTO    : 0,
-  FREE    : 1,
-  STRAIGHT: 2
-};
+export enum HandleTypes {
+  AUTO = 0,
+  FREE = 1,
+  STRAIGHT = 2,
+}
 
-export const MeshSymFlags = {
-  X: 1,
-  Y: 2,
-  Z: 4
-};
+export enum MeshSymFlags {
+  X = 1,
+  Y = 2,
+  Z = 4
+}
 
 export const MeshSymMap = {
   1: 0,
@@ -53,39 +49,38 @@ export const MeshSymMap = {
   4: 2
 };
 
-export const MeshDrawFlags = {
-  SHOW_NORMALS    : 1,
-  USE_LOOP_NORMALS: 2 //use loop normals if they have a NormalElemLayer customdata layer
-};
+export enum MeshDrawFlags {
+  SHOW_NORMALS = 1,
+  USE_LOOP_NORMALS = 2 //use loop normals if they have a NormalElemLayer customdata layer
+}
 
-export const MeshFeatures = {
-  GREATER_TWO_VALENCE: (1<<1),
-  SPLIT_EDGE         : (1<<2),
-  JOIN_EDGE          : (1<<3),
-  SPLIT_FACE         : (1<<4),
-  JOIN_FACE          : (1<<5),
-  MAKE_VERT          : (1<<6),
-  KILL_VERT          : (1<<7),
-  MAKE_EDGE          : (1<<8),
-  KILL_EDGE          : (1<<9),
-  MAKE_FACE          : (1<<10),
-  KILL_FACE          : (1<<11),
-  EDGE_HANDLES       : (1<<12),
+export enum MeshFeatures {
+  GREATER_TWO_VALENCE = (1 << 1),
+  SPLIT_EDGE = (1 << 2),
+  JOIN_EDGE = (1 << 3),
+  SPLIT_FACE = (1 << 4),
+  JOIN_FACE = (1 << 5),
+  MAKE_VERT = (1 << 6),
+  KILL_VERT = (1 << 7),
+  MAKE_EDGE = (1 << 8),
+  KILL_EDGE = (1 << 9),
+  MAKE_FACE = (1 << 10),
+  KILL_FACE = (1 << 11),
+  EDGE_HANDLES = (1 << 12),
 
-  EDGE_CURVES_ONLY: (1<<13),
-  SINGLE_SHELL    : (1<<14),
-  BVH             : (1<<15),
+  EDGE_CURVES_ONLY = (1 << 13),
+  SINGLE_SHELL = (1 << 14),
+  BVH = (1 << 15),
 
-  ALL  : ((1<<30) - 1) & ~((1<<13) | (1<<14)), //edge_curves_only
-  BASIC: ((1<<30) - 1) & ~((1<<12) | (1<<13) | (1<<14)) //everything except handles and edge curves
+  ALL = ((1 << 30) - 1) & ~((1 << 13) | (1 << 14)), //edge_curves_only
+  BASIC = ((1 << 30) - 1) & ~((1 << 12) | (1 << 13) | (1 << 14)) //everything except handles and edge curves
 };
 
 export class MeshError extends Error {
 }
 
 export class MeshFeatureError extends MeshError {
-
-};
+}
 
 /*
  child classes should support nested iteration
@@ -126,25 +121,31 @@ let lctx_blacklist = new Set([
   "newFace", "newEdge", "newVertex", "onnew", "onkill"
 ]);
 
-export const ChangeFlags = {
-  CO        : 1,
-  NO        : 2,
-  CUSTOMDATA: 4,
-  FLAG      : 8
+export enum ChangeFlags {
+  CO = 1,
+  NO = 2,
+  CUSTOMDATA = 4,
+  FLAG = 8
 };
 
-export const LogTags = {
-  NONE              : 0,
-  COLLAPSE_EDGE     : 1,
-  DISSOLVE_EDGE     : 2,
-  DISSOLVE_VERT     : 3,
-  SPLIT_EDGE        : 4,
-  JOINTWOEDGES      : 5,
-  SPLIT_FACE        : 6,
-  SPLIT_EDGES_SMART2: 7
-};
+export enum LogTags {
+  NONE = 0,
+  COLLAPSE_EDGE = 1,
+  DISSOLVE_EDGE = 2,
+  DISSOLVE_VERT = 3,
+  SPLIT_EDGE = 4,
+  JOINTWOEDGES = 5,
+  SPLIT_FACE = 6,
+  SPLIT_EDGES_SMART2 = 7
+}
 
 export class LogContext {
+  onnew: (v: any, tag: any) => void | undefined;
+  onkill: (v: any, tag: any) => void | undefined;
+  onchange: (v: any, tag: any) => void | undefined;
+
+  haveAspect: boolean;
+
   constructor(useAsAspectClass = false) {
     if (useAsAspectClass) {
       initAspectClass(this, lctx_blacklist);
@@ -268,86 +269,85 @@ export class LogContext {
   }
 }
 
-export const MeshTypes = {
-  VERTEX: 1,
-  EDGE  : 2,
-  FACE  : 4,
-  LOOP  : 8,
-  HANDLE: 16
-};
-
-export const MeshFlags = Object.freeze({
-  SELECT         : (1<<0),
-  HIDE           : (1<<1),
-  FLAT           : (1<<2),
-  SINGULARITY    : (1<<2), //shared with FLAT
-  ITER_TEMP1     : (1<<3), //temporary flag used by faces-around-edge iterators
-  ITER_TEMP2a    : (1<<4), //temporary flag used by faces-around-vertex iterators
-  ITER_TEMP2b    : (1<<5), //temporary flag used by faces-around-vertex iterators
-  ITER_TEMP2c    : (1<<6), //temporary flag used by faces-around-vertex iterators
-  DRAW_DEBUG     : (1<<7),
-  TEMP1          : (1<<8),
-  TEMP2          : (1<<9),
-  TEMP3          : (1<<10),
-  UPDATE         : (1<<11),
-  BOUNDARY       : (1<<12),
-  CURVE_FLIP     : (1<<13), //edge.evaluate goes backwards, shares with SMOOTH_DRAW
-  SMOOTH_DRAW    : (1<<13),
-  MIRROREDX      : (1<<14),
-  MIRROREDY      : (1<<15),
-  MIRROREDZ      : (1<<16),
-  MIRRORED       : (1<<14) | (1<<15) | (1<<16),
-  MIRROR_BOUNDARY: (1<<17), //used by mirror
-  DRAW_DEBUG2    : (1<<18),
-  SEAM           : (1<<19),
-  COLLAPSE_TEMP  : (1<<20),
-  TEMP4          : (1<<21),
-  TEMP5          : (1<<22),
-  NOAPI_TEMP1    : (1<<24), //temp flag that's not allowed to be used by core API functions
-  NOAPI_TEMP2    : (1<<25),
-  ITER_TEMP3     : (1<<27),
-
-  //these two share the same bit
-  QUAD_EDGE       : (1<<28),
-  GRID_MRES_HIDDEN: (1<<28), //used by grids to flag gridverts as not part of visible multires level
-
-  //these two share the same bit
-  MAKE_FACE_TEMP : (1<<29),
-  FACE_EXIST_FLAG: (1<<29),
-});
-
-export const MeshIterFlags = {
-  EDGE_FACES    : 1<<0,
-  EDGE_FACES_TOT: 10,
-  VERT_FACES    : 1<<10,
-  VERT_FACES_TOT: 10
-};
-
-export const MeshModifierFlags = {
-  SUBSURF: 1
-};
-
-export const RecalcFlags = {
-  RENDER    : 1,
-  TESSELATE : 2,
-  PARTIAL   : 4,
-  ELEMENTS  : 8,
-  UVWRANGLER: 16,
-  ALL       : 1 | 2 | 4 | 8 | 16
-};
-
-import {ArrayPool} from '../util/util.js';
-
-export {ArrayPool} from '../util/util.js';
-
-let pool = new ArrayPool();
-
-export function getArrayTemp(n, clear) {
-  return pool.get(n, clear);
+export enum MeshTypes {
+  VERTEX = 1,
+  EDGE = 2,
+  FACE = 4,
+  LOOP = 8,
+  HANDLE = 16
 }
 
-export function reallocArrayTemp(arr, newlen) {
-  let ret = getArrayTemp(newlen);
+export enum MeshFlags {
+  SELECT = (1 << 0),
+  HIDE = (1 << 1),
+  FLAT = (1 << 2),
+  SINGULARITY = (1 << 2), //shared with FLAT
+  ITER_TEMP1 = (1 << 3), //temporary flag used by faces-around-edge iterators
+  ITER_TEMP2a = (1 << 4), //temporary flag used by faces-around-vertex iterators
+  ITER_TEMP2b = (1 << 5), //temporary flag used by faces-around-vertex iterators
+  ITER_TEMP2c = (1 << 6), //temporary flag used by faces-around-vertex iterators
+  DRAW_DEBUG = (1 << 7),
+  TEMP1 = (1 << 8),
+  TEMP2 = (1 << 9),
+  TEMP3 = (1 << 10),
+  UPDATE = (1 << 11),
+  BOUNDARY = (1 << 12),
+  CURVE_FLIP = (1 << 13), //edge.evaluate goes backwards, shares with SMOOTH_DRAW
+  SMOOTH_DRAW = (1 << 13),
+  MIRROREDX = (1 << 14),
+  MIRROREDY = (1 << 15),
+  MIRROREDZ = (1 << 16),
+  MIRRORED = (1 << 14) | (1 << 15) | (1 << 16),
+  MIRROR_BOUNDARY = (1 << 17), //used by mirror
+  DRAW_DEBUG2 = (1 << 18),
+  SEAM = (1 << 19),
+  COLLAPSE_TEMP = (1 << 20),
+  TEMP4 = (1 << 21),
+  TEMP5 = (1 << 22),
+  NOAPI_TEMP1 = (1 << 24), //temp flag that's not allowed to be used by core API functions
+  NOAPI_TEMP2 = (1 << 25),
+  ITER_TEMP3 = (1 << 27),
+
+  //these two share the same bit
+  QUAD_EDGE = (1 << 28),
+  GRID_MRES_HIDDEN = (1 << 28), //used by grids to flag gridverts as not part of visible multires level
+
+  //these two share the same bit
+  MAKE_FACE_TEMP = (1 << 29),
+  FACE_EXIST_FLAG = (1 << 29),
+}
+
+export enum MeshIterFlags {
+  EDGE_FACES = 1 << 0,
+  EDGE_FACES_TOT = 10,
+  VERT_FACES = 1 << 10,
+  VERT_FACES_TOT = 10
+}
+
+export enum MeshModifierFlags {
+  SUBSURF = 1
+}
+
+export enum RecalcFlags {
+  RENDER = 1,
+  TESSELATE = 2,
+  PARTIAL = 4,
+  ELEMENTS = 8,
+  UVWRANGLER = 16,
+  ALL = 1 | 2 | 4 | 8 | 16
+}
+
+const ArrayPool = util.ArrayPool;
+export {ArrayPool};
+
+let pool = new util.ArrayPool();
+
+export function getArrayTemp<type>(n, clear = false): type[] {
+  return pool.get<type>(n, clear);
+}
+
+export function reallocArrayTemp<type>(arr, newlen): type[] {
+  let ret : type[] = getArrayTemp(newlen);
 
   for (let i = 0; i < newlen; i++) {
     ret[i] = i < arr.length ? arr[i] : undefined;

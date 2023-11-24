@@ -1,4 +1,4 @@
-import {DataAPI, DataPathCallBack, nstructjs, ToolProperty, Vector3} from '../path.ux/scripts/pathux';
+import {DataAPI, DataPathCallBack, nstructjs, ToolProperty, Vector3} from '../path.ux/scripts/pathux.js';
 import * as util from '../util/util.js';
 
 import {EmptyCDArray} from './mesh_base.js';
