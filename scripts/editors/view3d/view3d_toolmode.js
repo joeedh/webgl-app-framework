@@ -209,16 +209,6 @@ export class ToolMode extends Node {
     return tstruct;
   }
 
-  addWidget(widget) {
-    this.ctx.scene.widgets.add(widget);
-    this.widgets.push(widget);
-  }
-
-  removeWidget(widget) {
-    this.ctx.scene.widgets.remove(widget);
-    this.widgets.remove(widget);
-  }
-
   hasWidgetWithKey(key) {
     return this.getWidgetWithKey(key) !== undefined;
   }

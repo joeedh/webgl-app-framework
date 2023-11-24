@@ -3,7 +3,7 @@
     "allowJs": true,
     "target": "es6",
     "module": "es6",
-    "lib": ["dom", "scripthost", "es6"],
+    "lib": ["dom", "scripthost", "es2017"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "pretty": true,

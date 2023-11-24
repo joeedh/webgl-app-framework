@@ -20,9 +20,12 @@ let options = {
                 "./scripts/util/numeric",
                 "./scripts/extern/Math.js",
                 "./scripts/extern/Math",
-                "./scripts/path.ux/*"],
+                "./scripts/path.ux/*",
+                "./scripts/extern/jszip/*",
+  ],
   splitting  : true,
   keepNames  : true,
+  logOverride: {"direct-eval": "silent"},
 };
 
 const handlers = {

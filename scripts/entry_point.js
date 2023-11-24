@@ -68,7 +68,7 @@ export function init() {
     appstate.init();
     window.setTimeout(() => {
       window._print_evt_debug = true;
-    }, 750);
+    }, 100);
 
     if (window.haveElectron) {
       window.setTimeout(() => {

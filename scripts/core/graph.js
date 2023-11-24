@@ -739,7 +739,7 @@ graph.Node {
       for (let k in sockets1) {
         let sock1 = sockets1[k];
 
-        if (!k in sockets2) {
+        if (!(k in sockets2)) {
           sockets2[k] = sock1.copy();
         }
 

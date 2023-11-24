@@ -1,0 +1,12 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["tsconfig.json"],
+  "pipeline": {
+    "build": {
+      "inputs": [
+        "scripts/entry_point.js"
+      ],
+      "outputs": ["build/**"]
+    }
+  }
+}

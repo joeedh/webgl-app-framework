@@ -821,12 +821,6 @@ export class GridBase extends CustomDataElem {
     return tot;
   }
 
-  copyTo(b, copyPointEids = false) {
-    if (!copyPointEids) {
-      this.recalcFlag |= QRecalcFlags.REGEN_IDS;
-    }
-  }
-
   regenIds(mesh, loop, cd_grid) {
     this.recalcFlag &= ~QRecalcFlags.REGEN_IDS;
 

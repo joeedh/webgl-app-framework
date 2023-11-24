@@ -55,11 +55,6 @@ export class TransformOp extends View3DOp {
     throw new Error("numericSet: implement me!");
   }
 
-  execPost(ctx) {
-    //prevent reference leaks from keeping this.tdata around
-    this.tdata = undefined;
-  }
-
   static canRun(ctx) {
     return ctx.view3d !== undefined;
   }
@@ -583,6 +578,7 @@ export class TransformOp extends View3DOp {
   }
 
   execPost(ctx) {
+    //prevent reference leaks from keeping this.tdata around
     this.tdata = undefined;
   }
 }

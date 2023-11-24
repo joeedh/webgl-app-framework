@@ -43,7 +43,7 @@ export class TextureShader {
       for (let k in list1) {
         let v = list1[k];
 
-        if (!k in slist) {
+        if (!(k in slist)) {
           if (typeof v === "object" && v instanceof Array) {
             v = v.concat([]);
           } else if (typeof v === "object" && v.copy) {

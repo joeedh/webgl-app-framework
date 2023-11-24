@@ -1,16 +1,18 @@
-import {nstructjs} from '../path.ux/pathux.js';
+import {DataAPI, nstructjs, Vector3} from '../path.ux/scripts/pathux.js';
 import * as util from '../util/util.js';
 
 import {EmptyCDArray} from './mesh_base.js';
 import {Icons} from '../editors/icon_enum.js';
+import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
+import {CDT} from "./mesh_tess";
 
 export const CDFlags = {
-  SELECT             : 1,
-  SINGLE_LAYER       : 2,
-  TEMPORARY          : 4, //implies IGNORE_FOR_INDEXBUF
+  SELECT: 1,
+  SINGLE_LAYER: 2,
+  TEMPORARY: 4, //implies IGNORE_FOR_INDEXBUF
   IGNORE_FOR_INDEXBUF: 8,
-  DISABLED           : 16,
-  NO_INTERP          : 32,
+  DISABLED: 16,
+  NO_INTERP: 32,
   NO_INTERP_COPY_ONLY: 64
 };
 
@@ -21,11 +23,48 @@ export function cdLayerKey(typeName, name) {
   return typeName + ":" + name;
 }
 
+export interface ICustomDataElemDef {
+  elemTypeMask: number, //see MeshTypes in mesh.js
+  typeName: string,
+  uiTypeName?: string,
+  defaultName?: string,
+  valueSize?: number;
+  flag?: number; //see CDFlags
 
-export class CustomDataElem {
+  //if not undefined, a LayerSettingsBase child class defining overall settings that's not per-element
+  settingsClass?: any;
+}
+
+export interface ICustomDataElem {
+  define(): ICustomDataElemDef
+}
+
+export class CustomDataElem<ValueType> {
+  static STRUCT = nstructjs.inlineRegister(this, `
+mesh.CustomDataElem {
+}`);
+
+  ['constructor']: ICustomDataElem;
+
+  static define(): ICustomDataElemDef {
+    return {
+      elemTypeMask: 0, //see MeshTypes in mesh.js
+      typeName: "typeName",
+      uiTypeName: "uiTypeName",
+      defaultName: "defaultName",
+      valueSize: undefined,
+      flag: 0, //see CDFlags
+
+      //if not undefined, a LayerSettingsBase child class defining overall settings that's not per-element
+      settingsClass: undefined,
+    }
+  };
+
+  static typeName = this.define().typeName;
+  typeName: string;
+
   constructor() {
-    this.constructor.typeName = this.constructor.define().typeName;
-    this.constructor.prototype.typeName = this.constructor.define().typeName;
+    this.typeName = this.constructor.define().typeName;
   }
 
   calcMemSize() {
@@ -56,20 +95,20 @@ export class CustomDataElem {
   static apiDefine(api, dstruct) {
   }
 
-  setValue(b) {
+  setValue(b): ValueType {
     throw new Error("implement me");
   }
 
-  getValue() {
+  getValue(): ValueType {
     throw new Error("implement me");
   }
 
-  load(b) {
+  load(b: this): this {
     b.copyTo(this);
     return this;
   }
 
-  clear() {
+  clear(): this {
     return this;
   }
 
@@ -77,37 +116,37 @@ export class CustomDataElem {
   hash(snapLimit = 0.01) {
     let val = this.getValue();
 
-    if (typeof val === "object" && typeof val[0] === "number") {
+    if (typeof val === "object" && Array.isArray(val)) {
       let f = 0;
       let dimen = 4196;
 
-      for (let i=0; i<val.length; i++) {
-        let f2 = Math.floor(val[i]/snapLimit);
+      for (let i = 0; i < val.length; i++) {
+        let f2 = Math.floor(val[i] / snapLimit);
         //f = f ^ f2;
 
-        f += f2*Math.pow(dimen, i);
-        f = f & ((1<<30)-1);
+        f += f2 * Math.pow(dimen, i);
+        f = f & ((1 << 30) - 1);
       }
 
       return f;
     } else if (typeof val === "number") {
-      return Math.floor(val/snapLimit);
+      return Math.floor(val / snapLimit);
     } else {
       throw new Error("implement me!");
     }
   }
 
-  copyTo(b) {
+  copyTo(b): void {
     throw new Error("implement me");
   }
 
-  copy() {
-    let ret = new this.constructor();
+  copy(): this {
+    let ret = new (this.constructor as unknown as (new () => this))();
     this.copyTo(ret);
     return ret;
   }
 
-  interp(dest, datas, ws) {
+  interp(dest, datas, ws): void {
     //for default implementation, just copy first item in datas
     for (let cd of datas) {
       cd.copyTo(dest);
@@ -115,44 +154,30 @@ export class CustomDataElem {
     }
   }
 
-  mulScalar(f) {
+  mulScalar(f: number): this {
     //implement me
     return this;
   }
 
-  add(b) {
+  add(b: this): this {
     //implement me
     return this;
   }
 
-  addFac(b, fac) {
+  addFac(b: this, fac: number): this {
     //implement me
     return this;
   }
 
-  sub(b) {
+  sub(b: this): this {
     return this.addFac(b, -1.0);
   }
 
-  validate() {
+  validate(): boolean {
     return true;
   }
 
-  static define() {
-    return {
-      elemTypeMask: 0, //see MeshTypes in mesh.js
-      typeName    : "typeName",
-      uiTypeName  : "uiTypeName",
-      defaultName : "defaultName",
-      valueSize   : undefined,
-      flag        : 0, //see CDFlags
-
-      //if not undefined, a LayerSettingsBase child class defining overall settings that's not per-element
-      settingsClass: undefined,
-    }
-  };
-
-  static register(cls) {
+  static register(cls: any) {
     if (!cls.hasOwnProperty("STRUCT")) {
       throw new Error("You forgot to make a STRUCT script for " + cls.name);
     }
@@ -171,7 +196,7 @@ export class CustomDataElem {
     CDElemMap[cls.define().typeName] = cls;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this);
   }
 
@@ -180,19 +205,13 @@ export class CustomDataElem {
   }
 }
 
-CustomDataElem.STRUCT = `
-mesh.CustomDataElem {
-}
-`;
-nstructjs.register(CustomDataElem);
-
-export function buildCDAPI(api) {
+export function buildCDAPI(api: DataAPI) {
   let layerst = api.mapStruct(CustomDataLayer, true);
 
   layerst.string("name", "name", "Name");
   layerst.dynamicStruct("typeSettings", "settings", "Settings");
   layerst.enum("flag", "flag", CDFlags, "Flags").icons({
-    DISABLED : Icons.DISABLED
+    DISABLED: Icons.DISABLED
   });
 
   let def = layerst.pathmap["settings"];
@@ -238,23 +257,25 @@ export function buildCDAPI(api) {
     def.customGetSet(makeGetter(ldef.typeName));
   }
 
-  st.list("flatlist", "layers", [
-    function getIter(api, list) {
+  st.list<CustomDataElem<any>[], number, CustomDataElem<any>>
+  ("flatlist", "layers", {
+    getIter(api, list: CustomDataElem<any>[]) {
       return list;
     },
-    function getLength(api, list) {
+    getLength(api: DataAPI, list: CustomDataElem<any>[]) {
       return list.length;
     },
-    function get(api, list, key) {
+
+    get(api: DataAPI, list: CustomDataElem<any>[], key: number) {
       return list[key];
     },
-    function getKey(api, list, obj) {
+    getKey(api: DataAPI, list: CustomDataElem<any>[], obj: CustomDataElem<any>) {
       return obj !== undefined ? obj.list : -1;
     },
-    function getStruct(api, list, key) {
+    getStruct(api, list, key) {
       return api.mapStruct(CustomDataLayer, false);
     }
-  ]);
+  });
 }
 
 export function buildElementAPI(api, dstruct) {
@@ -320,6 +341,10 @@ export function buildElementAPI(api, dstruct) {
 }
 
 export class LayerSettingsBase {
+  static STRUCT = nstructjs.inlineRegister(this, `
+LayerSettingsBase {
+}`);
+
   copyTo(b) {
     throw new Error("implement me");
   }
@@ -329,7 +354,7 @@ export class LayerSettingsBase {
   }
 
   copy() {
-    let ret = new this.constructor();
+    let ret = new (this.constructor as new () => this)();
 
     this.copyTo(ret);
 
@@ -341,21 +366,42 @@ export class LayerSettingsBase {
   }
 }
 
-LayerSettingsBase.STRUCT = `
-LayerSettingsBase {
-}
-`;
-nstructjs.register(LayerSettingsBase);
-
 class _Nothing extends LayerSettingsBase {
+  static STRUCT = nstructjs.inlineRegister(this, `
+_Nothing {
+}
+  `);
 }
 
-_Nothing.STRUCT = nstructjs.inherit(_Nothing, LayerSettingsBase) + `
-}`;
-nstructjs.register(_Nothing);
+export class CustomDataLayer<CDType> {
+  static STRUCT = nstructjs.inlineRegister(this, `
+mesh.CustomDataLayer {
+  typeName        : string;
+  name            : string;
+  flag            : int;
+  id              : int;
+  islandSnapLimit : float;
+  index           : int;
+  elemTypeMask    : int;
+  typeSettings    : abstract(Object) | this.typeSettings === undefined ? this.__getNothing() : this.typeSettings;
+}
+  `);
 
-export class CustomDataLayer {
-  constructor(typename, name = this.constructor.name, flag = 0, id = -1) {
+  elemTypeMask: number;
+  typeName: string;
+  name: string;
+  flag: number;
+  id: number;
+  typeSettings: any;
+  islandSnapLimit: number;
+  index: number
+  layerSet: LayerSet<CDType>
+
+  constructor(typename, name: string | undefined = undefined, flag = 0, id = -1) {
+    if (name === undefined) {
+      name = this.constructor.name;
+    }
+
     this.elemTypeMask = 0;
     this.typeName = typename;
     this.name = name;
@@ -368,7 +414,7 @@ export class CustomDataLayer {
     this.layerSet = undefined;
   }
 
-  getTypeSettings() {
+  getTypeSettings(): any {
     if (this.typeSettings === undefined) {
       let cls = CustomDataElem.getTypeClass(this.typeName);
       let def = cls.define();
@@ -381,7 +427,7 @@ export class CustomDataLayer {
     return this.typeSettings;
   }
 
-  [Symbol.keystr]() {
+  [Symbol.keystr](): string {
     return cdLayerKey(this.typeName, this.name);
   }
 
@@ -390,8 +436,8 @@ export class CustomDataLayer {
     return new _Nothing();
   }
 
-  copy() {
-    let ret = new CustomDataLayer(this.typeName, this.name, this.flag, this.id);
+  copy(): CustomDataLayer<CDType> {
+    let ret = new CustomDataLayer<CDType>(this.typeName, this.name, this.flag, this.id);
 
     if (this.typeSettings) {
       ret.typeSettings = this.typeSettings.copy();
@@ -403,7 +449,7 @@ export class CustomDataLayer {
     return ret;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this);
 
     if (this.typeSettings instanceof _Nothing) {
@@ -412,21 +458,13 @@ export class CustomDataLayer {
   }
 }
 
-CustomDataLayer.STRUCT = `
-mesh.CustomDataLayer {
-  typeName        : string;
-  name            : string;
-  flag            : int;
-  id              : int;
-  islandSnapLimit : float;
-  index           : int;
-  elemTypeMask    : int;
-  typeSettings    : abstract(Object) | this.typeSettings === undefined ? this.__getNothing() : this.typeSettings;
+export class CDElemArray<CDType> extends Array<CDType> {
+  static STRUCT = nstructjs.inlineRegister(this, `
+mesh.CDElemArray {
+  this : array(abstract(mesh.CustomDataElem)) | this;
 }
-`;
-nstructjs.register(CustomDataLayer);
+  `);
 
-export class CDElemArray extends Array {
   constructor(items) {
     super();
 
@@ -465,46 +503,57 @@ export class CDElemArray extends Array {
 
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this);
-
-    for (let item of this._items) {
-      this.push(item);
-    }
-
-    delete this._items;
   }
 }
 
-CDElemArray.STRUCT = `
-mesh.CDElemArray {
-  _items : array(abstract(mesh.CustomDataElem)) | this;
-}
-`;
-nstructjs.register(CDElemArray);
+export class LayerSet<CDType> extends Array<CustomDataLayer<CDType>> {
+  typeName: string;
+  active: CustomDataLayer<CDType>;
+  active_i: number; /* Used by STRUCT script. */
+  idmap: Map<number, CustomDataLayer<CDType>>;
 
-export class LayerSet extends Array {
+  /* Set by old files. */
+  _layers: CustomDataLayer<CDType>[]
+
+  static STRUCT = nstructjs.inlineRegister(this, ` 
+mesh.LayerSet {
+  this      : array(abstract(mesh.CustomDataLayer)) | obj;
+  active_i  : int | obj.active !== undefined ? obj.active.id : undefined;
+  typeName  : string;
+}
+`);
+
   constructor(typeName) {
     super();
 
     this.typeName = typeName;
     this.active = undefined;
-    this.idmap = {};
+    this.idmap = new Map();
   }
 
-  push(layer) {
-    super.push(layer);
-
-    layer.layerSet = this;
-    this.idmap[layer.id] = layer;
+  add(layer: CustomDataLayer<CDType>): void {
+    this.push(layer);
   }
 
-  has(layer) {
-    return layer.id in this.idmap;
+  push(...items: CustomDataLayer<CDType>[]): number {
+    super.push(...items);
+
+    for (let layer of items) {
+      layer.layerSet = this;
+      this.idmap.set(layer.id, layer);
+    }
+
+    return this.length;
   }
 
-  remove(layer) {
-    if (!(layer.id in this.idmap)) {
+  has(layer): boolean {
+    return this.idmap.has(layer);
+  }
+
+  remove(layer: CustomDataLayer<CDType>) {
+    if (this.idmap.has(layer.id)) {
       console.warn("layer already removed from set", layer.id);
       return;
     }
@@ -515,13 +564,13 @@ export class LayerSet extends Array {
       this.active = this.length > 0 ? this[0] : undefined;
     }
 
-    delete this.idmap[layer.id];
+    this.idmap.delete(layer.id);
 
     return this;
   }
 
-  copy() {
-    let ret = new LayerSet(this.typeName);
+  copy(): LayerSet<CDType> {
+    let ret = new LayerSet<CDType>(this.typeName);
 
     for (let layer of this) {
       let layer2 = layer.copy();
@@ -536,40 +585,56 @@ export class LayerSet extends Array {
     return ret;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this);
 
-    for (let layer of this._layers) {
-      this.push(layer);
+    for (let layer of this) {
+      this.idmap.set(layer.id, layer);
     }
 
-    if (this.active >= 0) {
-      this.active = this.idmap[this.active];
+    /* Detect old files. */
+    if (typeof this.active === "number") {
+      this.active = this.idmap.get(this.active as number);
     }
-    delete this._layers;
+
+    if (this.active_i >= 0) {
+      this.active = this.idmap.get(this.active_i);
+    }
+
+    if (this._layers.length > 0) {
+      this.push(...this._layers);
+      this._layers.length = 0;
+    }
   }
 }
 
-LayerSet.STRUCT = `
-mesh.LayerSet {
-  _layers  : array(abstract(mesh.CustomDataLayer)) | obj;
-  active   : int | obj.active !== undefined ? obj.active.id : undefined;
-  typeName : string;
-}
-`;
-nstructjs.register(LayerSet);
-
 export class CustomData {
+  flatlist: CustomDataLayer<any>[];
+  idgen: util.IDGen;
+  layers: Map<string, LayerSet<any>>;
+
+  on_layeradd?: (layer: CustomDataLayer<any>, lset: LayerSet<any>) => void;
+  on_layerremove?: (layer: CustomDataLayer<any>, lset: LayerSet<any>) => void;
+
+  /* Used by struct script. */
+  _layers: LayerSet<any>[];
+
+  static STRUCT = nstructjs.inlineRegister(this, `
+mesh.CustomData {
+  _layers  : array(mesh.LayerSet) | this._getLayers();
+  flatlist : array(layer, int) | layer.id;
+  idgen    : IDGen;
+}
+  `);
+
   constructor() {
-    this.layers = {};
+    this.layers = new Map();
     this.flatlist = [];
-    this.on_layeradd = undefined;
-    this.on_layerremove = undefined;
     this.idgen = new util.IDGen();
   }
 
   _clear() {
-    this.layers = {};
+    this.layers = new Map();
     this.flatlist = [];
 
     return this;
@@ -652,7 +717,7 @@ export class CustomData {
       throw new Error("Invalid customdata class " + cls.name);
     }
 
-    if (!cls.define().typeName in CDElemMap) {
+    if (!(cls.define().typeName in CDElemMap)) {
       throw new Error("Unregistered customdata class " + cls.name);
     }
 
@@ -703,7 +768,7 @@ export class CustomData {
       typename = typename.define().typeName;
     }
 
-    return this.layers[typename] && this.layers[typename].length > 0;
+    return this.layers.has(typename) && this.layers.get(typename).length > 0;
   }
 
   getLayerIndex(typename_or_cls) {
@@ -713,7 +778,7 @@ export class CustomData {
       typename = typename.define().typeName;
     }
 
-    let lset = this.layers[typename];
+    let lset = this.layers.get(typename);
     if (!lset) {
       return -1;
     }
@@ -732,7 +797,7 @@ export class CustomData {
       typeName = typeName.define().typeName;
     }
 
-    let set = this.layers[typeName];
+    let set = this.layers.get(typeName);
     if (!set) {
       return undefined;
     }
@@ -746,16 +811,16 @@ export class CustomData {
 
   setActiveLayer(layerIndex) {
     let layer = this.flatlist[layerIndex];
-    let set = this.layers[layer.typeName];
+    let set = this.layers.get(layer.typeName);
 
     set.active = layer;
   }
 
   remLayer(layer) {
-    let set = this.layers[layer.typeName];
+    let set = this.layers.get(layer.typeName);
 
     if (set.active === layer) {
-      set.active = set.length > 1 ? set[(set.indexOf(layer) + 1)%set.length] : undefined;
+      set.active = set.length > 1 ? set[(set.indexOf(layer) + 1) % set.length] : undefined;
     }
 
     set.remove(layer);
@@ -797,13 +862,13 @@ export class CustomData {
     return name2;
   }
 
-  getLayerSet(typename, autoCreate=true) {
-    if (autoCreate && !(typename in this.layers)) {
-      this.layers[typename] = new LayerSet(typename);
-      this.layers[typename].active = undefined;
+  getLayerSet<ValueType>(typename, autoCreate = true): LayerSet<ValueType> {
+    if (autoCreate && !this.layers.has(typename)) {
+      this.layers.set(typename, new LayerSet(typename));
+      this.layers.get(typename).active = undefined;
     }
 
-    return this.layers[typename];
+    return this.layers.get(typename);
   }
 
   hasNamedLayer(name, opt_cls_or_typeName = undefined) {
@@ -837,42 +902,31 @@ export class CustomData {
     }
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this);
 
-    let idmap = {};
+    let idmap = new Map<number, CustomDataLayer<any>>;
 
     for (let layerset of this._layers) {
-      this.layers[layerset.typeName] = layerset;
+      this.layers.set(layerset.typeName, layerset);
 
       for (let layer of layerset) {
-        idmap[layer.id] = layer;
+        idmap.set(layer.id, layer);
       }
     }
 
     for (let i = 0; i < this.flatlist.length; i++) {
-      this.flatlist[i] = idmap[this.flatlist[i]];
+      this.flatlist[i] = idmap.get(this.flatlist[i] as unknown as number);
     }
-
-    delete this._layers;
   }
 
   _getLayers() {
     let ret = [];
 
-    for (let k in this.layers) {
+    for (let k of this.layers.keys()) {
       ret.push(this.layers[k]);
     }
 
     return ret;
   }
 }
-
-CustomData.STRUCT = `
-mesh.CustomData {
-  _layers  : array(mesh.LayerSet) | obj._getLayers();
-  flatlist : array(layer, int) | layer.id;
-  idgen    : IDGen;
-}
-`;
-nstructjs.register(CustomData);
