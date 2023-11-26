@@ -108,7 +108,7 @@ export class BaseOverlay extends ContextOverlay {
   //used by UI code
   //refers to last executed *ToolOp*, don't confused with tool *modes*
   get last_tool() {
-    return this.state._last_tool;
+    return this.state.toolstack.head
   }
 
   copy() {

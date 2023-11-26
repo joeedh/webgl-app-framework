@@ -483,14 +483,6 @@ export class ElementList {
   _remove(e, no_error=false) {
     let i = this.indexOf(e);
 
-    if (DEBUG_FREE_STACKS) {
-      try {
-        throw new Error();
-      } catch (error) {
-        e._freeStack = error.stack;
-      }
-    }
-
     this.local_eidMap.delete(e.eid);
 
     if (i >= 0) {

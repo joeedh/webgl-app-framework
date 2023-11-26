@@ -7,8 +7,9 @@ import config from '../config/config.js';
 
 export var cacheSelectBufs = config.cacheSelectBufs;
 
+/* XXX doesn't work with typescript. */
 export const EDGE_LINKED_LISTS = false;
 
 export const CompressionFlags = {
-  JSZIP : 1
+  JSZIP: 1
 };

@@ -1,6 +1,9 @@
 import {clearAspectCallbacks, initAspectClass, _setUIBase} from '../path.ux/scripts/core/aspect.js';
 import {UIBase, nstructjs, util} from '../path.ux/scripts/pathux.js';
 
+import * as customdata from './customdata';
+import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
+
 export const REUSE_EIDS = true;
 
 export const DEBUG_DUPLICATE_FACES = 0;
@@ -28,8 +31,6 @@ _setUIBase(UIBase);
 export const MAX_FACE_VERTS = 1000000;
 export const MAX_VERT_EDGES = 1000;
 export const MAX_EDGE_FACES = 100;
-
-export const EmptyCDArray = Object.seal([]);
 
 export enum HandleTypes {
   AUTO = 0,
@@ -355,3 +356,61 @@ export function reallocArrayTemp<type>(arr, newlen): type[] {
 
   return ret;
 }
+
+
+import type {CustomDataElem} from "./customdata.ts";
+export class CDElemArray extends Array<CustomDataElem<any>> {
+  static STRUCT = nstructjs.inlineRegister(this, `
+mesh.CDElemArray {
+  this : array(abstract(mesh.CustomDataElem)) | this;
+}
+  `);
+
+  constructor(items?: CustomDataElem<any>[]) {
+    super();
+
+    if (items !== undefined) {
+      for (let item of items) {
+        this.push(item);
+      }
+    }
+  }
+
+  get<type>(idx) {
+    return this[idx] as unknown as type;
+  }
+
+  hasLayer(cls) {
+    for (let item of this) {
+      if (item instanceof cls) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  getLayer(cls, idx = 0) {
+    let j = 0;
+
+    for (let i = 0; i < this.length; i++) {
+      let item = this[i];
+      if (item instanceof cls) {
+        if (j === idx) {
+          return item;
+        }
+        j++;
+      }
+    }
+  }
+
+  updateLayout() {
+
+  }
+
+  loadSTRUCT(reader: StructReader<this>) {
+    reader(this);
+  }
+}
+
+export const EmptyCDArray = Object.seal(new CDElemArray());

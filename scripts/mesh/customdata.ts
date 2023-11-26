@@ -467,56 +467,6 @@ mesh.CustomDataLayer {
   }
 }
 
-export class CDElemArray<CDType> extends Array<CDType> {
-  static STRUCT = nstructjs.inlineRegister(this, `
-mesh.CDElemArray {
-  this : array(abstract(mesh.CustomDataElem)) | this;
-}
-  `);
-
-  constructor(items) {
-    super();
-
-    if (items !== undefined) {
-      for (let item of items) {
-        this.push(item);
-      }
-    }
-  }
-
-  hasLayer(cls) {
-    for (let item of this) {
-      if (item instanceof cls) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  getLayer(cls, idx = 0) {
-    let j = 0;
-
-    for (let i = 0; i < this.length; i++) {
-      let item = this[i];
-      if (item instanceof cls) {
-        if (j === idx) {
-          return item;
-        }
-        j++;
-      }
-    }
-  }
-
-  updateLayout() {
-
-  }
-
-  loadSTRUCT(reader: StructReader<this>) {
-    reader(this);
-  }
-}
-
 export class LayerSet<CDType> extends Array<CustomDataLayer<CDType>> {
   typeName: string;
   active: CustomDataLayer<CDType>;
@@ -933,7 +883,7 @@ mesh.CustomData {
     let ret = [];
 
     for (let k of this.layers.keys()) {
-      ret.push(this.layers[k]);
+      ret.push(this.layers.get(k));
     }
 
     return ret;
