@@ -6,12 +6,11 @@ import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstruc
 
 export const REUSE_EIDS = true;
 
-export const DEBUG_DUPLICATE_FACES = 0;
-export const DEBUG_MANIFOLD_EDGES = 0;
+export const DEBUG_DUPLICATE_FACES = false;
+export const DEBUG_MANIFOLD_EDGES = false;
 
-export const DEBUG_BAD_LOOPS = 0;
-export const DEBUG_DISK_INSERT = 0;
-export const DEBUG_FREE_STACKS = 0;
+export const DEBUG_BAD_LOOPS = false;
+export const DEBUG_DISK_INSERT = false;
 
 //adds a field to mesh_types.Element
 export const STORE_DELAY_CACHE_INDEX = true;
@@ -86,8 +85,8 @@ export class MeshFeatureError extends MeshError {
 /*
  child classes should support nested iteration
 */
-export class ReusableIter {
-  static safeIterable(iter) {
+export class ReusableIter<type> {
+  static safeIterable<type>(iter: Iterable<type>): boolean {
     if (!iter || (typeof iter !== "object" && typeof iter !== "function")) {
       return false;
     }
@@ -100,13 +99,13 @@ export class ReusableIter {
     return ret;
   }
 
-  static getSafeIter(iter) {
+  static getSafeIter<type>(iter): Iterable<type> {
     if (iter === undefined) {
       return undefined;
     }
 
-    if (!this.safeIterable(iter)) {
-      return new Set(iter);
+    if (!this.safeIterable<type>(iter)) {
+      return new Set<type>(iter);
     } else {
       return iter;
     }
@@ -141,9 +140,9 @@ export enum LogTags {
 }
 
 export class LogContext {
-  onnew: (v: any, tag: any) => void | undefined;
-  onkill: (v: any, tag: any) => void | undefined;
-  onchange: (v: any, tag: any) => void | undefined;
+  onnew: (v: any, tag?: any) => void | undefined;
+  onkill: (v: any, tag?: any) => void | undefined;
+  onchange: (v: any, tag?: any) => void | undefined;
 
   haveAspect: boolean;
 
@@ -179,7 +178,7 @@ export class LogContext {
     return this;
   }
 
-  newVertex(v, tag) {
+  newVertex(v, tag = undefined) {
     if (this.onnew) {
       this.onnew(v, tag);
     }
@@ -187,7 +186,7 @@ export class LogContext {
     return this;
   }
 
-  newEdge(e, tag) {
+  newEdge(e, tag = undefined) {
     if (this.onnew) {
       this.onnew(e, tag);
     }
@@ -195,7 +194,7 @@ export class LogContext {
     return this;
   }
 
-  newFace(f, tag) {
+  newFace(f, tag = undefined) {
     if (this.onnew) {
       this.onnew(f, tag);
     }
@@ -203,7 +202,7 @@ export class LogContext {
     return this;
   }
 
-  killVertex(v, tag) {
+  killVertex(v, tag = undefined) {
     if (this.onkill) {
       this.onkill(v, tag);
     }
@@ -212,7 +211,7 @@ export class LogContext {
     return this;
   }
 
-  killEdge(e, tag) {
+  killEdge(e, tag = undefined) {
     if (this.onkill) {
       this.onkill(e, tag);
     }
@@ -221,7 +220,7 @@ export class LogContext {
     return this;
   }
 
-  killFace(f, tag) {
+  killFace(f, tag = undefined) {
     if (this.onkill) {
       this.onkill(f, tag);
     }
@@ -348,7 +347,7 @@ export function getArrayTemp<type>(n, clear = false): type[] {
 }
 
 export function reallocArrayTemp<type>(arr, newlen): type[] {
-  let ret : type[] = getArrayTemp(newlen);
+  let ret: type[] = getArrayTemp(newlen);
 
   for (let i = 0; i < newlen; i++) {
     ret[i] = i < arr.length ? arr[i] : undefined;
@@ -359,6 +358,8 @@ export function reallocArrayTemp<type>(arr, newlen): type[] {
 
 
 import type {CustomDataElem} from "./customdata.ts";
+import {CDRef, ICustomDataElemConstructor} from "./customdata";
+
 export class CDElemArray extends Array<CustomDataElem<any>> {
   static STRUCT = nstructjs.inlineRegister(this, `
 mesh.CDElemArray {
@@ -376,11 +377,16 @@ mesh.CDElemArray {
     }
   }
 
-  get<type>(idx) {
+  clear(): this {
+    this.length = 0;
+    return this;
+  }
+
+  get<type>(idx: CDRef<type>): type {
     return this[idx] as unknown as type;
   }
 
-  hasLayer(cls) {
+  hasLayer(cls: ICustomDataElemConstructor) {
     for (let item of this) {
       if (item instanceof cls) {
         return true;
@@ -390,7 +396,7 @@ mesh.CDElemArray {
     return false;
   }
 
-  getLayer(cls, idx = 0) {
+  getLayer(cls: ICustomDataElemConstructor, idx = 0) {
     let j = 0;
 
     for (let i = 0; i < this.length; i++) {

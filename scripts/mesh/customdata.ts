@@ -9,6 +9,14 @@ import {Icons} from '../editors/icon_enum.js';
 import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
 import {CDT} from "./mesh_tess";
 
+export type CDRef<type> = number;
+
+export interface ICustomDataElemConstructor {
+  new(): CustomDataElem<any>;
+
+  define(): ICustomDataElemDef;
+}
+
 export const CDFlags = {
   SELECT: 1,
   SINGLE_LAYER: 2,
@@ -65,6 +73,8 @@ mesh.CustomDataElem {
 
   static typeName = this.define().typeName;
   typeName: string;
+  onRemoveLayer: (cls: new () => this, layer_i: number) => void;
+  onNewLayer: (cls: new () => CustomDataElem<any>, i: number) => void;
 
   constructor() {
     this.typeName = this.constructor.define().typeName;
@@ -209,7 +219,7 @@ mesh.CustomDataElem {
     reader(this);
   }
 
-  static getTypeClass(typeName) {
+  static getTypeClass(typeName): new() => CustomDataElem<any> {
     return CDElemMap[typeName];
   }
 }
@@ -671,7 +681,7 @@ mesh.CustomData {
     return this.getActiveLayer(typecls_or_name).getTypeSettings();
   }
 
-  addLayer(cls, name) {
+  addLayer(cls: ICustomDataElemConstructor, name: string | undefined = undefined) {
     if (!cls.define || !cls.define() || !cls.define().typeName) {
       throw new Error("Invalid customdata class " + cls.name);
     }
@@ -720,21 +730,28 @@ mesh.CustomData {
     }
   }
 
-  hasLayer(typename_or_cls) {
-    let typename = typename_or_cls;
+  //TODO: just pass in classes?
+  hasLayer(typename_or_cls: any): boolean {
+    let typename: string;
 
-    if (typeof typename !== "string") {
-      typename = typename.define().typeName;
+    if (typeof typename_or_cls === "string") {
+      typename = typename_or_cls as string;
+    } else {
+      let cls = typename_or_cls as unknown as ICustomDataElemConstructor;
+      typename = cls.define().typeName;
     }
 
     return this.layers.has(typename) && this.layers.get(typename).length > 0;
   }
 
-  getLayerIndex(typename_or_cls) {
-    let typename = typename_or_cls;
+  getLayerIndex(typename_or_cls: any): number {
+    let typename: string;
 
-    if (typeof typename !== "string") {
-      typename = typename.define().typeName;
+    if (typeof typename_or_cls === "string") {
+      typename = typename_or_cls as string;
+    } else {
+      let cls = typename_or_cls as unknown as ICustomDataElemConstructor;
+      typename = cls.define().typeName;
     }
 
     let lset = this.layers.get(typename);
@@ -749,12 +766,16 @@ mesh.CustomData {
     return lset.active ? lset.active.index : -1;
   }
 
-  getActiveLayer(typecls_or_name) {
-    let typeName = typecls_or_name;
+  getActiveLayer<type = any>(typecls_or_name: any): CustomDataLayer<any> {
+    let typeName: string;
 
-    if (typeof typeName !== "string") {
-      typeName = typeName.define().typeName;
+    if (typeof typecls_or_name === "string") {
+      typeName = typecls_or_name as unknown as string;
+    } else {
+      let cls = typename_or_cls as unknown as ICustomDataElemConstructor;
+      typeName = cls.define().typeName;
     }
+
 
     let set = this.layers.get(typeName);
     if (!set) {

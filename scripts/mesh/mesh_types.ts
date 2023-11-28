@@ -1,14 +1,14 @@
-import {CDElemArray, CustomDataElem} from "./customdata";
+import {CDElemArray} from "./mesh_base";
 
 export const SEAL = true;
 
 import {
   MeshError, MeshFlags, MeshTypes, HandleTypes,
   MAX_EDGE_FACES, MAX_FACE_VERTS, MAX_VERT_EDGES,
-  ReusableIter, MeshIterFlags, STORE_DELAY_CACHE_INDEX, DEBUG_FREE_STACKS
+  ReusableIter, MeshIterFlags, STORE_DELAY_CACHE_INDEX
 } from "./mesh_base";
 import {UVLayerElem} from "./mesh_customdata";
-import {nstructjs, Vector3, Vector4, Quat, Matrix4, BaseVector, util} from '../path.ux/pathux.js';
+import {nstructjs, Vector3, Vector4, Quat, Matrix4, BaseVector, util, Vector2} from '../path.ux/pathux.js';
 
 import {EDGE_LINKED_LISTS} from '../core/const.js';
 
@@ -18,7 +18,7 @@ let quat_temps = util.cachering.fromConstructor(Quat, 512);
 let mat_temps = util.cachering.fromConstructor(Matrix4, 256);
 let vec3_temps = util.cachering.fromConstructor(Vector3, 1024);
 
-class MeshIterStack<type> extends Array<type> {
+export class MeshIterStack<type> extends Array<type> {
   cur: number;
 }
 
@@ -172,10 +172,10 @@ for (let i = 0; i < vertiters_l.length; i++) {
 }
 vertiters_l.cur = 0;
 
-let vnistack = new MeshIterStack<VertNeighborIterLinkedList | VertNeighborIter>(512);
+let vnistack = new MeshIterStack<VertNeighborIter>(512);
 vnistack.cur = 0;
 
-export class VertNeighborIterR extends ReusableIter {
+export class VertNeighborIterR extends ReusableIter<Vertex> {
   v: Vertex;
 
   constructor() {
@@ -256,6 +256,7 @@ export class VertNeighborIter {
   }
 }
 
+/*
 export class VertNeighborIterLinkedList {
   constructor() {
     this.ret = {done: false, value: undefined};
@@ -320,10 +321,20 @@ export class VertNeighborIterLinkedList {
 for (let i = 0; i < vnistack.length; i++) {
   vnistack[i] = EDGE_LINKED_LISTS ? new VertNeighborIterLinkedList() : new VertNeighborIter();
 }
+*/
+
+for (let i = 0; i < vnistack.length; i++) {
+  vnistack[i] = new VertNeighborIter();
+}
 
 import {EmptyCDArray} from './mesh_base.js';
 import {Mesh} from "./mesh";
 import {undefinedForGC} from "../path.ux/scripts/path-controller/util/util";
+import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
+import {View3D} from "../editors/view3d/view3d";
+import {KnotDataLayer} from "../curve/curve_knot";
+import {DispLayerVert} from "./mesh_displacement";
+import {CDRef} from "./customdata";
 
 export class Element {
   static STRUCT = nstructjs.inlineRegister(this, `
@@ -346,6 +357,9 @@ mesh.Element {
 
   constructor(type) {
     this._initElement(type);
+  }
+
+  _free(): void {
   }
 
   _initElement(type) {
@@ -376,10 +390,10 @@ mesh.Element {
     return this.eid;
   }
 
-  findLayer(typeName) {
+  findLayer<type>(typeName): type | undefined {
     for (let data of this.customData) {
       if (data.typeName === typeName) {
-        return data;
+        return data as type;
       }
     }
   }
@@ -402,7 +416,7 @@ mesh.Element {
     return this;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this);
 
     this._old_eid = this.eid;
@@ -412,11 +426,19 @@ mesh.Element {
   }
 }
 
-let vertiters_f;
+let vertiters_f: MeshIterStack<VertFaceIter>;
 
+//XXX test me!
 export class VertFaceIter {
-  constructor(v) {
-    this.v = v;
+  v: Vertex;
+  ret: IteratorResult<Face>
+  l: Loop | undefined;
+  i: number;
+  done: boolean;
+  count: number;
+
+  constructor() {
+    (this.v as Vertex | undefined) = undefined;
     this.ret = {done: true, value: undefined};
     this.l = undefined;
     this.i = 0;
@@ -424,7 +446,7 @@ export class VertFaceIter {
     this.count = 0;
   }
 
-  finish() {
+  finish(): IteratorResult<Face> {
     if (!this.done) {
       this.done = true;
 
@@ -434,18 +456,19 @@ export class VertFaceIter {
       vertiters_f.cur--;
       vertiters_f.cur = Math.max(vertiters_f.cur, 0);
 
-      this.v = undefined;
+      /* Be nice to GC. */
+      (this.v as Vertex | undefined) = undefined;
       this.l = undefined;
     }
 
     return this.ret;
   }
 
-  return() {
+  return(): IteratorResult<Face> {
     return this.finish();
   }
 
-  reset(v) {
+  reset(v: Vertex): this {
     this.v = v;
     this.done = false;
     this.l = undefined;
@@ -478,12 +501,14 @@ export class VertFaceIter {
     return this;
   }
 
-  [Symbol.iterator]() {
+  [Symbol.iterator](): this {
     return this;
   }
 
-  next() {
+  next(): IteratorResult<Face> {
     this.count++;
+
+    let flag = MeshFlags.ITER_TEMP2a;
 
     if (this.count > MAX_VERT_EDGES) {
       console.warn("infinite loop detected");
@@ -501,7 +526,7 @@ export class VertFaceIter {
     }
 
     if (this.i >= v.edges.length) {
-      if (this.l && !(this.l.f & flag)) {
+      if (this.l && !(this.l.f.flag & flag)) {
         ret.done = false;
         ret.value = this.l;
 
@@ -542,17 +567,18 @@ export class VertFaceIter {
   }
 }
 
+/*
 export class VertFaceIterLinkedList {
-  v: Vertex | undefined;
-  e: Edge | undefined;
+  v: Vertex;
+  e: Edge;
   i: number;
   l: Loop | undefined
   done: boolean;
   count: number;
   ret: IteratorResult<Face>;
 
-  constructor(v) {
-    this.v = v;
+  constructor() {
+    this.v = undefined;
     this.ret = {done: true, value: undefined};
     this.l = undefined;
     this.i = 0;
@@ -691,12 +717,24 @@ for (let i = 0; i < vertiters_f.length; i++) {
   vertiters_f[i] = EDGE_LINKED_LISTS ? new VertFaceIterLinkedList() : new VertFaceIter();
 }
 vertiters_f.cur = 0;
+*/
 
+vertiters_f = new MeshIterStack<VertFaceIter>(256);
+for (let i = 0; i < vertiters_f.length; i++) {
+  vertiters_f[i] = new VertFaceIter();
+}
+vertiters_f.cur = 0;
+
+
+/*
 let vedgeiters = new Array(512);
-
-let IN_VERTEX_STRUCT = false;
-
 export class VEdgeIter {
+  v: Vertex;
+  e: Edge | undefined;
+  i: number;
+  ret: IteratorResult<Edge>
+  done: true;
+
   constructor() {
     this.v = undefined;
     this.e = undefined;
@@ -780,8 +818,11 @@ for (let i = 0; i < vedgeiters.length; i++) {
   vedgeiters[i] = new VEdgeIter();
 }
 vedgeiters.cur = 0;
+*/
 
 /* Backwards compatibility reader. */
+let IN_VERTEX_STRUCT = false;
+
 class VertexReader {
   v: Vertex | undefined;
 
@@ -844,110 +885,6 @@ class VertexReader {
 
 const vertexReader = new VertexReader();
 
-/** used for debugging */
-export class Vector3Array extends BaseVector {
-  constructor(co) {
-    super();
-
-    this.length = 3;
-
-    if (co) {
-      this.load(co);
-    } else {
-      this[0] = this[1] = this[2] = 0.0;
-    }
-  }
-
-  loadXYZ(x, y, z) {
-    this[0] = x;
-    this[1] = y;
-    this[2] = z;
-    return this;
-  }
-
-  loadXY(x, y) {
-    this[0] = x;
-    this[1] = y;
-    return this;
-  }
-
-  initVector3() {
-    this.length = 3;
-    this[0] = this[1] = this[2] = 0.0;
-  }
-
-  load(b) {
-    this[0] = b[0];
-    this[1] = b[1];
-    this[2] = b[2];
-    return this;
-  }
-
-  dot(b) {
-    return this[0] * b[0] + this[1] * b[1] + this[2] * b[2];
-  }
-
-
-  multVecMatrix(matrix, ignore_w) {
-    if (ignore_w === undefined) {
-      ignore_w = false;
-    }
-    var x = this[0];
-    var y = this[1];
-    var z = this[2];
-    this[0] = matrix.$matrix.m41 + x * matrix.$matrix.m11 + y * matrix.$matrix.m21 + z * matrix.$matrix.m31;
-    this[1] = matrix.$matrix.m42 + x * matrix.$matrix.m12 + y * matrix.$matrix.m22 + z * matrix.$matrix.m32;
-    this[2] = matrix.$matrix.m43 + x * matrix.$matrix.m13 + y * matrix.$matrix.m23 + z * matrix.$matrix.m33;
-    var w = matrix.$matrix.m44 + x * matrix.$matrix.m14 + y * matrix.$matrix.m24 + z * matrix.$matrix.m34;
-
-    if (!ignore_w && w !== 1 && w !== 0 && matrix.isPersp) {
-      this[0] /= w;
-      this[1] /= w;
-      this[2] /= w;
-    }
-    return w;
-  }
-
-  cross(v) {
-    var x = this[1] * v[2] - this[2] * v[1];
-    var y = this[2] * v[0] - this[0] * v[2];
-    var z = this[0] * v[1] - this[1] * v[0];
-
-    this[0] = x;
-    this[1] = y;
-    this[2] = z;
-
-    return this;
-  }
-
-  //axis is optional, 0
-  rot2d(A, axis) {
-    var x = this[0];
-    var y = this[1];
-
-    if (axis === 1) {
-      this[0] = x * cos(A) + y * sin(A);
-      this[1] = y * cos(A) - x * sin(A);
-    } else {
-      this[0] = x * cos(A) - y * sin(A);
-      this[1] = y * cos(A) + x * sin(A);
-    }
-
-    return this;
-  }
-}
-
-BaseVector.inherit(Vector3Array, 3);
-
-Vector3Array.STRUCT = `
-vec3Array {
-  0 : float;
-  1 : float;
-  2 : float;
-}
-`;
-nstructjs.manager.add_class(Vector3Array);
-
 let tracet = util.time_ms();
 let tracei = 0;
 
@@ -978,13 +915,23 @@ export function traceset(i) {
   }
 }
 
-//has Element mixin
 export class Vertex extends Element {
   co: Vector3;
   no: Vector3;
   edges: Edge[];
 
-  constructor(co) {
+  /*
+  save space by deriving these on file load:
+    edges   : array(e, int) | (e.eid);
+  */
+  static STRUCT = nstructjs.inlineRegister(this, `
+mesh.Vertex {
+  co      : vec3;
+  no      : vec3;
+}
+`);
+
+  constructor(co: Vector3 | undefined = undefined) {
     super(MeshTypes.VERTEX);
 
     this.co = new Vector3();
@@ -1044,7 +991,7 @@ export class Vertex extends Element {
     return this;
   }
 
-  _free() {
+  _free(): void {
     this.edges.length = 0;
   }
 
@@ -1052,7 +999,7 @@ export class Vertex extends Element {
    it duplicates lots of work
    compared to other methods
    */
-  calcNormal(doFaces = true) {
+  calcNormal(doFaces = true): this {
     if (doFaces) {
       for (let f of this.faces) {
         f.calcNormal();
@@ -1078,31 +1025,32 @@ export class Vertex extends Element {
     return this;
   }
 
-  get neighbors() {
+  get neighbors(): VertNeighborIterR {
     return vniring.next().reset(this);
     //return vnistack[vnistack.cur++].reset(this);
   }
 
-  toJSON() {
-    var edges = [];
-    for (var e of this.edges) {
+  toJSON(): any {
+    let edges = [];
+    for (let e of this.edges) {
       edges.push(e.eid);
     }
 
-    return util.merge(super.toJSON(), {
+    return {
       0: this[0],
       1: this[1],
       2: this[2],
       edges: edges,
-      no: this.no
-    });
+      no: this.no,
+      ...super.toJSON()
+    }
   }
 
-  get loops() {
+  get loops(): VertLoopIter {
     return vertiters_l[vertiters_l.cur++].reset(this, true);
   }
 
-  get faces() {
+  get faces(): VertFaceIter {
     //return this.faces2;
     let i = vertiters_f.cur;
     let stack = vertiters_f;
@@ -1117,12 +1065,12 @@ export class Vertex extends Element {
     }
 
     stack.cur++;
-    stack.push(new VertFaceIter(this));
+    stack.push(new VertFaceIter());
 
     return stack[stack.length - 1].reset(this);
   }
 
-  isBoundary(includeWire = false) {
+  isBoundary(includeWire = false): boolean {
     for (let e of this.edges) {
       if (!e.l) {
         if (includeWire) {
@@ -1140,11 +1088,11 @@ export class Vertex extends Element {
     return false;
   }
 
-  get valence() {
+  get valence(): number {
     return this.edges.length;
   }
 
-  otherEdge(e) {
+  otherEdge(e): Edge {
     if (this.valence !== 2) {
       throw new MeshError("otherEdge only works on 2-valence vertices");
     }
@@ -1155,10 +1103,10 @@ export class Vertex extends Element {
       return this.edges[0];
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     IN_VERTEX_STRUCT = true;
     vertexReader.v = this;
-    reader(vertexReader);
+    reader(vertexReader as unknown as this);
     vertexReader.v = undefined;
     IN_VERTEX_STRUCT = false;
 
@@ -1166,7 +1114,8 @@ export class Vertex extends Element {
   }
 
   /* ======== XXX vector funcs, remove ======= */
-  loadXYZ(x, y, z) {
+  loadXYZ(x, y, z): this {
+    traceget("loadXYZ");
     this[0] = x;
     this[1] = y;
     this[2] = z;
@@ -1174,28 +1123,26 @@ export class Vertex extends Element {
     return this;
   }
 
-  loadXY(x, y) {
+  loadXY(x, y): this {
+    traceget("loadXY");
     this[0] = x;
     this[1] = y;
 
     return this;
   }
 
-  dot(b) {
+  dot(b): number {
     return this[0] * b[0] + this[1] * b[1] + this[2] * b[2];
   }
 
-  multVecMatrix(matrix, ignore_w) {
-    if (ignore_w === undefined) {
-      ignore_w = false;
-    }
-    var x = this[0];
-    var y = this[1];
-    var z = this[2];
+  multVecMatrix(matrix: Matrix4, ignore_w: boolean = false): number {
+    let x = this[0];
+    let y = this[1];
+    let z = this[2];
     this[0] = matrix.$matrix.m41 + x * matrix.$matrix.m11 + y * matrix.$matrix.m21 + z * matrix.$matrix.m31;
     this[1] = matrix.$matrix.m42 + x * matrix.$matrix.m12 + y * matrix.$matrix.m22 + z * matrix.$matrix.m32;
     this[2] = matrix.$matrix.m43 + x * matrix.$matrix.m13 + y * matrix.$matrix.m23 + z * matrix.$matrix.m33;
-    var w = matrix.$matrix.m44 + x * matrix.$matrix.m14 + y * matrix.$matrix.m24 + z * matrix.$matrix.m34;
+    let w = matrix.$matrix.m44 + x * matrix.$matrix.m14 + y * matrix.$matrix.m24 + z * matrix.$matrix.m34;
 
     if (!ignore_w && w !== 1 && w !== 0 && matrix.isPersp) {
       this[0] /= w;
@@ -1205,10 +1152,11 @@ export class Vertex extends Element {
     return w;
   }
 
-  cross(v) {
-    var x = this[1] * v[2] - this[2] * v[1];
-    var y = this[2] * v[0] - this[0] * v[2];
-    var z = this[0] * v[1] - this[1] * v[0];
+  cross(v: Vector3): this {
+    traceget("cross");
+    let x = this[1] * v[2] - this[2] * v[1];
+    let y = this[2] * v[0] - this[0] * v[2];
+    let z = this[0] * v[1] - this[1] * v[0];
 
     this[0] = x;
     this[1] = y;
@@ -1218,11 +1166,13 @@ export class Vertex extends Element {
   }
 
   //axis is optional, 0
-  rot2d(A, axis) {
-    var x = this[0];
-    var y = this[1];
+  rot2d(A: number, axis: number = 0): this {
+    traceget("rot2d");
 
-    const cos = Math.cos;
+    let x = this[0];
+    let y = this[1];
+
+    const cos = Math.cos, sin = Math.sin;
 
     if (axis === 1) {
       this[0] = x * cos(A) + y * sin(A);
@@ -1237,22 +1187,16 @@ export class Vertex extends Element {
 
 }
 
-Vertex.STRUCT = nstructjs.inherit(Vertex, Element, 'mesh.Vertex') + `
-  co      : vec3;
-  no      : vec3;
-}
-`;
-/*
-save space by deriving these on file load:
-  edges   : array(e, int) | (e.eid);
-*/
-
-nstructjs.register(Vertex);
-
 export class Handle extends Element {
-  constructor(co) {
+  co: Vector3;
+  mode: HandleTypes;
+  owner: Edge;
+  roll: number;
+
+  constructor(co: Vector3 | undefined = undefined) {
     super(MeshTypes.HANDLE);
 
+    this.co = new Vector3();
     if (co !== undefined) {
       this.co.load(co);
     }
@@ -1266,13 +1210,23 @@ export class Handle extends Element {
     }
   }
 
-  get co() {
-    console.warn("impement handle.co properly");
-    return this;
+  get 0(): number {
+    traceget(0);
+    return this.co[0];
   }
 
-  get visible() {
-    let hide = this.flag & MeshFlags.HIDE;
+  get 1(): number {
+    traceget(1);
+    return this.co[1];
+  }
+
+  get 2(): number {
+    traceget(2);
+    return this.co[2];
+  }
+
+  get visible(): boolean {
+    let hide: boolean = (this.flag & MeshFlags.HIDE) !== 0;
 
     hide = hide || this.mode === HandleTypes.AUTO;
     hide = hide || this.mode === HandleTypes.STRAIGHT;
@@ -1280,10 +1234,10 @@ export class Handle extends Element {
     return !hide;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this);
 
-    const arr = this as array[number];
+    const arr = this as unknown as Array<number>;
     if (arr[0] !== undefined) {
       this.co[0] = arr[0];
       this.co[1] = arr[1];
@@ -1308,9 +1262,9 @@ Handle.STRUCT = nstructjs.inherit(Handle, Element, "mesh.Handle") + `
 
 nstructjs.register(Handle);
 
-var _evaluate_tmp_vs = util.cachering.fromConstructor(Vector3, 512);
-var _evaluate_vs = util.cachering.fromConstructor(Vector3, 512);
-var _arc_evaluate_vs = util.cachering.fromConstructor(Vector3, 512);
+let _evaluate_tmp_vs = util.cachering.fromConstructor(Vector3, 512);
+let _evaluate_vs = util.cachering.fromConstructor(Vector3, 512);
+let _arc_evaluate_vs = util.cachering.fromConstructor(Vector3, 512);
 
 let PS = 0, PNUM = 2, PTOT = 3;
 
@@ -1343,7 +1297,13 @@ off fort;
 
 */
 class ArcLengthCache {
-  constructor(size = 512, e) {
+  size: number;
+  e: Edge;
+  length: number;
+  table: number[];
+  regen: number;
+
+  constructor(size = 512, e: Edge) {
     this.size = size;
     this.e = e;
     this.length = 0;
@@ -1351,7 +1311,7 @@ class ArcLengthCache {
     this.regen = 1;
   }
 
-  _calcS(t, steps = 512) {
+  _calcS(t: number, steps = 512): number {
     let dt = t / steps;
     let e = this.e;
 
@@ -1448,7 +1408,7 @@ class ArcLengthCache {
     return this;
   }
 
-  arcConvert(s) {
+  arcConvert(s: number): number {
     if (this.e.length === 0) {
       return 0.0;
     }
@@ -1477,7 +1437,7 @@ class ArcLengthCache {
     }
   }
 
-  evaluate(s) {
+  evaluate(s: number): Vector3 {
     let t = this.arcConvert(s);
 
     //avoid flipping twice, we already flipped in Edge.arcEvaluate
@@ -1489,10 +1449,17 @@ class ArcLengthCache {
   }
 }
 
-let eliter_stack = new Array(1024);
+let eliter_stack = new MeshIterStack<EdgeLoopIter>(1024);
 eliter_stack.cur = 0;
 
 class EdgeLoopIter {
+  ret: IteratorResult<Loop> = {done: true, value: undefined};
+  done: boolean;
+  e: Edge;
+  l: Loop;
+  i: number;
+
+
   constructor() {
     this.ret = {done: true, value: undefined};
     this.done = true;
@@ -1501,7 +1468,7 @@ class EdgeLoopIter {
     this.i = 0;
   }
 
-  reset(e) {
+  reset(e): this {
     this.i = 0;
     this.done = false;
     this.ret.done = false;
@@ -1512,13 +1479,14 @@ class EdgeLoopIter {
     return this;
   }
 
-  finish() {
+  finish(): IteratorResult<Loop> {
     if (!this.done) {
       this.ret.done = true;
       this.ret.value = undefined;
 
-      this.e = undefined;
-      this.l = undefined;
+
+      (this.e as Edge | undefined) = undefined;
+      (this.l as Loop | undefined) = undefined;
 
       this.done = true;
       eliter_stack.cur--;
@@ -1531,7 +1499,7 @@ class EdgeLoopIter {
     return this;
   }
 
-  next() {
+  next(): IteratorResult<Loop> {
     if (!this.l) {
       return this.finish();
     }
@@ -1556,7 +1524,7 @@ class EdgeLoopIter {
     return this.ret;
   }
 
-  return() {
+  return(): IteratorResult<Loop> {
     return this.finish();
   }
 }
@@ -1635,7 +1603,7 @@ let efiter_stack = new MeshIterStack<EdgeFaceIter>(2048);
 efiter_stack.cur = 0;
 let efiter_ring;
 
-export class EdgeFaceIterR extends ReusableIter {
+export class EdgeFaceIterR extends ReusableIter<Face> {
   e: Edge;
 
   constructor() {
@@ -1658,14 +1626,13 @@ efiter_ring = util.cachering.fromConstructor(EdgeFaceIterR, 4196);
 //flag in MeshIterFlags to use, is like a stack
 let efiter_flag = 0;
 
-window._get_efiter_flag = () => efiter_flag;
-
 export class EdgeFaceIter {
   e: Edge | undefined;
   l: Loop | undefined;
   done: boolean;
   i: number;
   ret: IteratorResult<Face>;
+  flag: number = 0;
 
   constructor() {
     this.e = undefined;
@@ -1675,7 +1642,7 @@ export class EdgeFaceIter {
     this.ret = {done: true, value: undefined};
   }
 
-  reset(e: Edge) {
+  reset(e: Edge): this {
     this.e = e;
     this.l = e.l;
     this.i = 0;
@@ -1688,7 +1655,7 @@ export class EdgeFaceIter {
     this.ret.done = false;
     this.ret.value = undefined;
 
-    let flag = this.flag = efiter_flag;
+    let flag = this.flag = 1 << efiter_flag;
 
     let l = e.l;
     let _i = 0;
@@ -1703,13 +1670,12 @@ export class EdgeFaceIter {
       l = l.radial_next;
     } while (l !== e.l);
 
-    //XXX overflow possibility
     efiter_flag = Math.min(efiter_flag + 1, MeshIterFlags.EDGE_FACES_TOT);
 
     return this;
   }
 
-  next() {
+  next(): IteratorResult<Face> {
     if (!this.l) {
       return this.finish();
     }
@@ -1750,7 +1716,7 @@ export class EdgeFaceIter {
     return this.ret;
   }
 
-  finish() {
+  finish(): IteratorResult<Face> {
     if (!this.done) {
       this.done = true;
 
@@ -1764,7 +1730,7 @@ export class EdgeFaceIter {
     return this.ret;
   }
 
-  return() {
+  return(): IteratorResult<Face> {
     return this.finish();
   }
 }
@@ -1774,15 +1740,24 @@ for (let i = 0; i < efiter_stack.length; i++) {
 }
 
 export class Edge extends Element {
-  v1: Vertex | undefined;
-  v2: Vertex | undefined;
+  static STRUCT = nstructjs.inlineRegister(this, `
+mesh.Edge {
+  v1      : int | obj.v1.eid;
+  v2      : int | obj.v2.eid;
+  h1      : int | obj.h1 !== undefined ? obj.h1.eid : -1;
+  h2      : int | obj.h2 !== undefined ? obj.h2.eid : -1;
+  length  : float; 
+}`);
+
+  v1: Vertex;
+  v2: Vertex;
   h1: Handle | undefined;
   h2: Handle | undefined;
   l: Loop | undefined;
   _arcCache: ArcLengthCache | undefined;
-  _length: number | undefined;
+  _length: number = 0;
 
-  length: number;
+  length: number = 0;
 
   constructor() {
     super(MeshTypes.EDGE);
@@ -1792,7 +1767,6 @@ export class Edge extends Element {
 
     this.l = undefined;
 
-    this.v1 = this.v2 = undefined;
     this.h1 = this.h2 = undefined;
 
     this.length = 0.0;
@@ -1805,18 +1779,18 @@ export class Edge extends Element {
   _free() {
     this.l = undefined;
 
-    this.v1 = undefined;
-    this.v2 = undefined;
+    (this.v1 as Vertex | undefined) = undefined;
+    (this.v2 as Vertex | undefined) = undefined;
 
     this.h1 = undefined;
     this.h2 = undefined;
   }
 
-  get verts() {
+  get verts(): EdgeVertIter {
     return eviter_stack[eviter_stack.cur++].reset(this);
   }
 
-  get loopCount() {
+  get loopCount(): number {
     if (!this.l) {
       return 0;
     }
@@ -1837,7 +1811,7 @@ export class Edge extends Element {
     return count;
   }
 
-  get faceCount() {
+  get faceCount(): number {
     if (!this.l) {
       return 0;
     }
@@ -1879,7 +1853,7 @@ export class Edge extends Element {
     return count;
   }
 
-  loopForFace(face) {
+  loopForFace(face): Loop | undefined {
     if (!this.l) {
       return undefined;
     }
@@ -1914,7 +1888,7 @@ export class Edge extends Element {
     return this._flag;
   }//*/
 
-  get arcCache() {
+  get arcCache(): ArcLengthCache {
     if (!this._arcCache) {
       this._arcCache = new ArcLengthCache(undefined, this);
       this._arcCache.update();
@@ -1923,17 +1897,15 @@ export class Edge extends Element {
     return this._arcCache;
   }
 
-  set arcCache(val) {
+  set arcCache(val: ArcLengthCache | undefined) {
     this._arcCache = val;
   }
 
-  calcScreenLength(view3d) {
+  calcScreenLength(view3d: View3D): number {
     let steps = 32;
     let s = 0, ds = 1.0 / (steps - 1);
     let lastco = undefined;
     let sum = 0.0;
-
-    let camera = view3d.camera;
 
     for (let i = 0; i < steps; i++, s += ds) {
       let co = this.evaluate(s);
@@ -1950,7 +1922,7 @@ export class Edge extends Element {
     return sum;
   }
 
-  update(force = true) {
+  update(force = true): void {
     if (force) {
       this.updateHandles();
       this.updateLength();
@@ -1959,7 +1931,7 @@ export class Edge extends Element {
     this.flag |= MeshFlags.UPDATE;
   }
 
-  updateLength() {
+  updateLength(): number {
     if (this._arcCache !== undefined) {
       this._arcCache.update();
       this.length = this._arcCache._calcS(1.0);
@@ -1970,7 +1942,7 @@ export class Edge extends Element {
     return this.length;
   }
 
-  commonVertex(e) {
+  commonVertex(e): Vertex | undefined {
     if (e.v1 === this.v1 || e.v1 === this.v2)
       return e.v1;
 
@@ -1978,7 +1950,7 @@ export class Edge extends Element {
       return e.v2;
   }
 
-  vertex(h) {
+  vertex(h): Vertex {
     if (h === this.h1) {
       return this.v1;
     } else if (h === this.h2) {
@@ -1988,33 +1960,33 @@ export class Edge extends Element {
     }
   }
 
-  handle(v) {
+  handle(v): Handle {
     if (v === this.v1) {
-      return this.h1;
+      return this.h1 as Handle;
     } else if (v === this.v2) {
-      return this.h2;
+      return this.h2 as Handle;
     } else {
       throw new Error("invalid vertex" + v);
     }
   }
 
-  otherHandle(v_or_h) {
+  otherHandle(v_or_h): Handle {
     let h = v_or_h instanceof Vertex ? this.handle(v_or_h) : v_or_h;
     if (h === this.h1) {
-      return this.h2;
+      return this.h2 as Handle;
     } else if (h === this.h2) {
-      return this.h1;
+      return this.h1 as Handle;
     } else {
       throw new Error("invalid handle " + h);
     }
   }
 
-  updateHandles() {
+  updateHandles(): void {
     if (this.h1 === undefined) {
       return;
     }
 
-    let dohandle = (h) => {
+    let dohandle = (h: Handle) => {
       let v = this.vertex(h);
       //v = this.otherVertex(v);
 
@@ -2022,19 +1994,20 @@ export class Edge extends Element {
         let e2 = v.otherEdge(this);
         let v2 = e2.otherVertex(v);
 
-        h.load(this.otherVertex(v)).sub(v2).mulScalar(1.0 / 4.0);
-        h.add(v);
+        h.co.load(this.otherVertex(v).co).sub(v2.co).mulScalar(1.0 / 4.0);
+        h.co.add(v.co);
 
       } else if (h.mode === HandleTypes.STRAIGHT) {
-        h.load(v).interp(this.otherVertex(v), 1.0 / 3.0);
+        h.co.load(v.co).interp(this.otherVertex(v).co, 1.0 / 3.0);
       }
     };
 
-    dohandle(this.h1);
-    dohandle(this.h2);
+    /* We don't want to be too pedantic with undefined-checking handles */
+    dohandle(this.h1 as Handle);
+    dohandle(this.h2 as Handle);
   }
 
-  arcEvaluate(s) {
+  arcEvaluate(s: number): Vector3 {
     if (this.flag & MeshFlags.CURVE_FLIP) {
       s = this.length - s;
     }
@@ -2053,7 +2026,7 @@ export class Edge extends Element {
     }
   }
 
-  arcDerivative(s) {
+  arcDerivative(s: number): Vector3 {
     let df = 0.001;
 
     if (s < 1.0 - df && s > df) {
@@ -2094,8 +2067,8 @@ export class Edge extends Element {
       t = 1.0 - t;
     }
 
-    let k1 = this.v1.findLayer("knot");
-    let k2 = this.v2.findLayer("knot");
+    let k1 = this.v1.findLayer<KnotDataLayer>("knot");
+    let k2 = this.v2.findLayer<KnotDataLayer>("knot");
 
     if (k1) {
       let t1 = k1.tilt;
@@ -2106,11 +2079,11 @@ export class Edge extends Element {
     }
   }
 
-  arcTwist(s) {
+  arcTwist(s: number): number {
     return this.twist(s / this.length);
   }
 
-  arcNormal(s) {
+  arcNormal(s: number): Vector3 {
     //return this.arcDerivative2(s).normalize();
 
     let flag = this.flag;
@@ -2163,36 +2136,13 @@ export class Edge extends Element {
     }
 
     return nor;
-    return this.arcDerivative2(s).normalize();
+    //return this.arcDerivative2(s).normalize();
   }
 
-  get loops() {
+  get loops(): EdgeLoopIter {
     return eliter_stack[eliter_stack.cur++].reset(this);
   }
 
-  get loops2() {
-    let this2 = this;
-
-    return (function* () {
-      let l = this2.l;
-      let i = 0;
-
-      if (!l) {
-        return;
-      }
-
-      do {
-        if (i++ > MAX_EDGE_FACES) {
-          console.warn("infinite loop detected in Edge.prototype.[get loops]()");
-          break;
-        }
-
-        yield l;
-
-        l = l.radial_next;
-      } while (l !== this2.l);
-    })();
-  }
 
   /** iterates over faces surrounding this edge;
    each face is guaranteed to only be returned once.
@@ -2203,54 +2153,11 @@ export class Edge extends Element {
    Iteration can be up to ten levels deep.  Never, ever
    do recursion from within a for loop over this iterator.
    */
-  get faces() {
+  get faces(): EdgeFaceIter {
     return efiter_ring.next().reset(this);
   }
 
-  /**
-   be careful of this iterator, it sets ITER_TEMP1 in face flags,
-   so it won't work with nested loops on the same element
-   */
-  get faces_old() {
-    let this2 = this;
-
-    return (function* () {
-      let l = this2.l;
-      let i = 0;
-
-      if (l === undefined) {
-        return;
-      }
-
-      do {
-        if (i++ > MAX_EDGE_FACES) {
-          console.warn("infinite loop detected in Edge.prototype.[get faces]()");
-          throw new Error("infinite loop detected in Edge.prototype.[get faces]()");
-        }
-
-        l.f.flag &= ~MeshFlags.ITER_TEMP1;
-        l = l.radial_next;
-      } while (l !== this2.l);
-
-      do {
-        if (i++ > MAX_EDGE_FACES) {
-          console.warn("infinite loop detected in Edge.prototype.[get faces]()");
-          throw new Error("infinite loop detected in Edge.prototype.[get faces]()");
-          break;
-        }
-
-        if (!(l.f.flag & MeshFlags.ITER_TEMP1)) {
-          yield l.f;
-        }
-
-        l.f.flag |= MeshFlags.ITER_TEMP1;
-
-        l = l.radial_next;
-      } while (l !== this2.l);
-    })();
-  }
-
-  evaluate(t) {
+  evaluate(t: number): Vector3 {
     if (this.flag & MeshFlags.CURVE_FLIP) {
       t = 1.0 - t;
     }
@@ -2289,36 +2196,34 @@ export class Edge extends Element {
     }
   }
 
-  derivative(t) {
-    var df = 0.0001;
-    var a = this.evaluate(t - df);
-    var b = this.evaluate(t + df);
+  derivative(t: number): Vector3 {
+    let df = 0.0001;
+    let a = this.evaluate(t - df);
+    let b = this.evaluate(t + df);
 
     return b.sub(a).mulScalar(0.5 / df);
   }
 
-  derivative2(t) {
-    var df = 0.0001;
-    var a = this.derivative(t - df);
-    var b = this.derivative(t + df);
+  derivative2(t: number): Vector3 {
+    let df = 0.0001;
+    let a = this.derivative(t - df);
+    let b = this.derivative(t + df);
 
     return b.sub(a).mulScalar(0.5 / df);
   }
 
-  curvature(t) {
+  curvature(t: number): number {
     let dv1 = this.derivative(t);
     let dv2 = this.derivative2(t);
 
-    let ret = (dv1[0] * dv2[1] - dv1[1] * dv2[0]) / Math.pow(dv1.dot(dv1), 3.0 / 2.0);
-
-    return ret;
+    return (dv1[0] * dv2[1] - dv1[1] * dv2[0]) / Math.pow(dv1.dot(dv1), 3.0 / 2.0);
   }
 
-  has(v) {
+  has(v: Vertex): boolean {
     return v === this.v1 || v === this.v2;
   }
 
-  otherVertex(v) {
+  otherVertex(v: Vertex): Vertex {
     if (v === undefined)
       throw new MeshError("v cannot be undefined in Edge.prototype.otherVertex()");
 
@@ -2330,23 +2235,13 @@ export class Edge extends Element {
     throw new MeshError("vertex " + v.eid + " not in edge");
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this);
     super.loadSTRUCT(reader);
 
     this.flag &= ~(MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2);
   }
 }
-
-Edge.STRUCT = nstructjs.inherit(Edge, Element, 'mesh.Edge') + `
-  v1      : int | obj.v1.eid;
-  v2      : int | obj.v2.eid;
-  h1      : int | obj.h1 !== undefined ? obj.h1.eid : -1;
-  h2      : int | obj.h2 !== undefined ? obj.h2.eid : -1;
-  length  : float; 
-}
-`;
-nstructjs.register(Edge);
 
 let calc_normal_temps = util.cachering.fromConstructor(Vector3, 32);
 
@@ -2394,14 +2289,14 @@ mesh.Loop {
     return this;
   }
 
-  get uv() {
+  get uv(): Vector2 {
     for (let layer of this.customData) {
       if (layer instanceof UVLayerElem)
         return layer.uv;
     }
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this);
     super.loadSTRUCT(reader);
   }
@@ -2410,22 +2305,17 @@ mesh.Loop {
 let loopiterstack;
 
 class LoopIter {
+  list: LoopList;
+  l: Loop;
+  first: boolean;
+  done: boolean;
+  _i: number;
+  ret: IteratorResult<Loop> = {done: true, value: undefined};
+
   constructor() {
-    this.list = undefined;
-    this.l = undefined;
-    this.done = false;
-    this.first = undefined;
-    this._i = 0;
-
-    this.ret = {
-      done: true,
-      value: undefined
-    };
-
-    this.onreturn = undefined;
   }
 
-  init(list) {
+  init(list: LoopList): this {
     this.done = false;
     this.first = true;
     this.list = list;
@@ -2435,7 +2325,7 @@ class LoopIter {
     return this;
   }
 
-  next() {
+  next(): IteratorResult<Loop> {
     let ret = this.ret;
     let l = this.l;
 
@@ -2471,13 +2361,16 @@ class LoopIter {
     return ret;
   }
 
-  return() {
+  return(): IteratorResult<Loop> {
     //console.log("iterator return");
 
     if (!this.done) {
       this.done = true;
       loopiterstack.cur--;
-      this.l = this.list = undefined;
+
+      /* Be nice to GC. */
+      (this.l as Loop | undefined) = undefined;
+      (this.list as LoopList | undefined) = undefined;
     }
 
     this.ret.value = undefined;
@@ -2487,16 +2380,27 @@ class LoopIter {
   }
 }
 
-loopiterstack = new Array(512);
+loopiterstack = new MeshIterStack<LoopIter>(512);
 for (let i = 0; i < loopiterstack.length; i++) {
   loopiterstack[i] = new LoopIter();
 }
 loopiterstack.cur = 0;
 
 export class LoopList {
+  static STRUCT = nstructjs.inlineRegister(this, `
+mesh.LoopList {
+  __loops : iter(mesh.Loop) | this;  
+  length : int;
+}`);
+
+  flag: number;
+  l: Loop;
+  length: number;
+  __loops: Loop[] | undefined; //used by STRUCT
+
   constructor() {
     this.flag = 0;
-    this.l = undefined;
+    (this.l as Loop | undefined) = undefined;
     this.length = 0;
     this.__loops = undefined; //used by STRUCT
 
@@ -2505,7 +2409,7 @@ export class LoopList {
     }
   }
 
-  [Symbol.iterator]() {
+  [Symbol.iterator](): LoopIter {
     let stack = loopiterstack; //this.iterstack;
 
     stack.cur++;
@@ -2519,7 +2423,7 @@ export class LoopList {
     return stack[stack.cur].init(this);
   }
 
-  _recount() {
+  _recount(): number {
     this.length = 0;
 
     if (!this.l) {
@@ -2534,11 +2438,11 @@ export class LoopList {
   }
 
   //used by STRUCT script
-  get _loops() {
+  get _loops(): LoopList {
     return this;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this);
 
     if (this.__loops !== undefined) {
@@ -2554,19 +2458,11 @@ export class LoopList {
       }
 
       this.l = ls[0];
-
-      this.__loops = undefined; //in theory it's faster to not delete this?
-      //delete this.__loops;
+      this.__loops = undefined;
     }
   }
 }
 
-LoopList.STRUCT = `
-mesh.LoopList {
-  __loops : iter(mesh.Loop) | this;  
-  length : int;
-}
-`;
 /*
 store loops in LoopList to save having to store
 next pointers
@@ -2575,22 +2471,22 @@ next pointers
 */
 nstructjs.register(LoopList);
 
-let fiter_stack_v;
-let fiter_stack_l;
-let fiter_stack_e;
+let fiter_stack_v: MeshIterStack<FaceVertIter>;
+let fiter_stack_l: MeshIterStack<FaceLoopIter>;
+let fiter_stack_e: MeshIterStack<FaceEdgeIter>;
 
-let fiter_stack_v_ring;
-let fiter_stack_l_ring;
-let fiter_stack_e_ring;
+let fiter_stack_v_ring: util.cachering<FaceVertIterProxy>;
+let fiter_stack_l_ring: util.cachering<FaceLoopIterProxy>;
+let fiter_stack_e_ring: util.cachering<FaceEdgeIterProxy>;
 
-class FaceLoopIterProxy extends ReusableIter {
+class FaceLoopIterProxy extends ReusableIter<Loop> {
+  f: Face;
+
   constructor() {
     super();
-
-    this.f = undefined;
   }
 
-  reset(f) {
+  reset(f: Face) {
     this.f = f;
 
     return this;
@@ -2601,16 +2497,23 @@ class FaceLoopIterProxy extends ReusableIter {
   }
 }
 
-fiter_stack_l_ring = util.cachering.fromConstructor(FaceLoopIterProxy, 4196);
+fiter_stack_l_ring = util.cachering.fromConstructor<FaceLoopIterProxy>(FaceLoopIterProxy, 4196);
 
-class FaceLoopIter {
+class FaceLoopIter implements Iterable<Loop>, Iterator<Loop> {
+  ret: IteratorResult<Loop>
+  done: boolean;
+  f: Face;
+  l: Loop;
+  listi: number = 0;
+
   constructor() {
     this.ret = {done: true, value: undefined};
     this.done = true;
-    this.f = undefined;
+    (this.f as Face | undefined) = undefined;
+    (this.l as Loop | undefined) = undefined;
   }
 
-  reset(face) {
+  reset(face: Face): this {
     this.f = face;
     this.done = false;
     this.listi = 0;
@@ -2619,18 +2522,21 @@ class FaceLoopIter {
     return this;
   }
 
-  finish() {
+  finish(): void {
     if (!this.done) {
       this.done = true;
       this.ret.value = undefined;
       this.ret.done = true;
-      this.l = undefined;
+
+      /* Be nice to GC. */
+      (this.f as Face | undefined) = undefined;
+      (this.l as Loop | undefined) = undefined;
 
       fiter_stack_l.cur = Math.max(fiter_stack_l.cur - 1, 0);
     }
   }
 
-  next() {
+  next(): IteratorResult<Loop> {
     let ret = this.ret;
 
     if (this.listi >= this.f.lists.length) {
@@ -2653,7 +2559,7 @@ class FaceLoopIter {
       if (this.listi < this.f.lists.length) {
         this.l = this.f.lists[this.listi].l;
       } else {
-        this.l = undefined;
+        (this.l as Loop | undefined) = undefined;
       }
     } else {
       this.l = this.l.next;
@@ -2662,24 +2568,26 @@ class FaceLoopIter {
     return ret;
   }
 
-  return() {
+  return(): IteratorResult<Loop> {
     this.finish();
     return this.ret;
   }
 
-  [Symbol.iterator]() {
+  [Symbol.iterator](): this {
     return this;
   }
 }
 
-fiter_stack_l = new Array(1024);
+fiter_stack_l = new MeshIterStack<FaceLoopIter>(1024);
 for (let i = 0; i < fiter_stack_l.length; i++) {
   fiter_stack_l[i] = new FaceLoopIter();
 }
 fiter_stack_l.cur = 0;
 
 
-class FaceEdgeIterProxy extends ReusableIter {
+class FaceEdgeIterProxy extends ReusableIter<Edge> {
+  f: Face;
+
   constructor() {
     super();
 
@@ -2697,13 +2605,19 @@ class FaceEdgeIterProxy extends ReusableIter {
   }
 }
 
-fiter_stack_e_ring = util.cachering.fromConstructor(FaceEdgeIterProxy, 4196);
+fiter_stack_e_ring = util.cachering.fromConstructor<FaceEdgeIterProxy>(FaceEdgeIterProxy, 4196);
 
 class FaceEdgeIter {
+  ret: IteratorResult<Edge>;
+  done: boolean;
+  f: Face;
+  l: Loop;
+  listi: number;
+
   constructor() {
     this.ret = {done: true, value: undefined};
     this.done = true;
-    this.f = undefined;
+    (this.f as Face | undefined) = undefined;
   }
 
   reset(face) {
@@ -2715,18 +2629,19 @@ class FaceEdgeIter {
     return this;
   }
 
-  finish() {
+  finish(): void {
     if (!this.done) {
       this.done = true;
       this.ret.value = undefined;
       this.ret.done = true;
-      this.l = undefined;
+      (this.f as Face | undefined) = undefined;
+      (this.l as Loop | undefined) = undefined;
 
       fiter_stack_e.cur = Math.max(fiter_stack_e.cur - 1, 0);
     }
   }
 
-  next() {
+  next(): IteratorResult<Edge> {
     let ret = this.ret;
 
     if (this.listi >= this.f.lists.length) {
@@ -2749,7 +2664,8 @@ class FaceEdgeIter {
       if (this.listi < this.f.lists.length) {
         this.l = this.f.lists[this.listi].l;
       } else {
-        this.l = undefined;
+        /* XXX: Why is this undefined assignment here? */
+        (this.l as Loop | undefined) = undefined;
       }
     } else {
       this.l = this.l.next;
@@ -2758,50 +2674,59 @@ class FaceEdgeIter {
     return ret;
   }
 
-  return() {
+  return(): IteratorResult<Edge> {
     this.finish();
     return this.ret;
   }
 
-  [Symbol.iterator]() {
+  [Symbol.iterator](): this {
     return this;
   }
 }
 
-fiter_stack_e = new Array(1024);
+fiter_stack_e = new MeshIterStack<FaceEdgeIter>(1024);
 for (let i = 0; i < fiter_stack_e.length; i++) {
   fiter_stack_e[i] = new FaceEdgeIter();
 }
 fiter_stack_e.cur = 0;
 
-class FaceVertIterProxy extends ReusableIter {
+class FaceVertIterProxy extends ReusableIter<Vertex> {
+  f: Face;
+
   constructor() {
     super();
 
     this.f = undefined;
   }
 
-  reset(f) {
+  reset(f: Face): this {
     this.f = f;
 
     return this;
   }
 
-  [Symbol.iterator]() {
+  [Symbol.iterator](): FaceVertIter {
     return fiter_stack_v[fiter_stack_v.cur++].reset(this.f);
   }
 }
 
-fiter_stack_v_ring = util.cachering.fromConstructor(FaceVertIterProxy, 4196);
+fiter_stack_v_ring = util.cachering.fromConstructor<FaceVertIterProxy>(FaceVertIterProxy, 4196);
 
 class FaceVertIter {
+  ret: IteratorResult<Vertex> = {done: true, value: undefined};
+  done: boolean;
+  f: Face;
+  l: Loop;
+  listi: number;
+
   constructor() {
     this.ret = {done: true, value: undefined};
     this.done = true;
-    this.f = undefined;
+    (this.f as Face | undefined) = undefined;
+    (this.l as Loop | undefined) = undefined;
   }
 
-  reset(face) {
+  reset(face: Face): this {
     this.f = face;
     this.done = false;
     this.listi = 0;
@@ -2810,7 +2735,7 @@ class FaceVertIter {
     return this;
   }
 
-  finish() {
+  finish(): void {
     if (!this.done) {
       this.done = true;
       this.ret.value = undefined;
@@ -2821,7 +2746,7 @@ class FaceVertIter {
     }
   }
 
-  next() {
+  next(): IteratorResult<Vertex> {
     let ret = this.ret;
 
     if (this.listi >= this.f.lists.length) {
@@ -2840,11 +2765,12 @@ class FaceVertIter {
     if (this.l === list.l.prev) {
       this.listi++;
 
-      //fetch loop for next time
+      /* Fetch loop for next time. */
       if (this.listi < this.f.lists.length) {
         this.l = this.f.lists[this.listi].l;
       } else {
-        this.l = undefined;
+        /* XXX why? */
+        (this.l as Loop | undefined) = undefined;
       }
     } else {
       this.l = this.l.next;
@@ -2853,23 +2779,36 @@ class FaceVertIter {
     return ret;
   }
 
-  return() {
+  return(): IteratorResult<Vertex> {
     this.finish();
     return this.ret;
   }
 
-  [Symbol.iterator]() {
+  [Symbol.iterator](): this {
     return this;
   }
 }
 
-fiter_stack_v = new Array(1024);
+fiter_stack_v = new MeshIterStack<FaceVertIter>(1024);
 for (let i = 0; i < fiter_stack_v.length; i++) {
   fiter_stack_v[i] = new FaceVertIter();
 }
 fiter_stack_v.cur = 0;
 
 export class Face extends Element {
+  static STRUCT = nstructjs.inlineRegister(this, `
+mesh.Face {
+  lists : array(mesh.LoopList);
+  cent  : vec3;
+  no    : vec3;
+}`);
+
+  lists: LoopList[];
+  iterflag: number;
+  area: number;
+  no: Vector3;
+  cent: Vector3;
+
   constructor() {
     super(MeshTypes.FACE);
 
@@ -2973,7 +2912,7 @@ export class Face extends Element {
     return fiter_stack_e[fiter_stack_e.cur++].reset(this);
   }
 
-  calcNormal(cd_disp) {
+  calcNormal(cd_disp: CDRef<DispLayerVert> = -1): Vector3 {
     let t1 = calc_normal_temps.next(), t2 = calc_normal_temps.next();
     let t3 = calc_normal_temps.next(), sum = calc_normal_temps.next();
 
@@ -2987,17 +2926,18 @@ export class Face extends Element {
     let l = this.lists[0].l;
     do {
       let v1 = l.v, v2 = l.next.v;
+      let co1, co2;
 
       if (cd_disp >= 0) {
-        v1 = v1.customData[cd_disp].worldco;
-        v2 = v2.customData[cd_disp].worldco;
+        co1 = v1.customData.get<DispLayerVert>(cd_disp).worldco;
+        co2 = v2.customData.get<DispLayerVert>(cd_disp).worldco;
       } else {
-        v1 = v1.co;
-        v2 = v2.co;
+        co1 = v1.co;
+        co2 = v2.co;
       }
 
-      t1.load(v1).sub(c);
-      t2.load(v2).sub(c);
+      t1.load(co1).sub(c);
+      t2.load(co2).sub(c);
 
       t1.cross(t2).normalize();
       sum.add(t1);
@@ -3015,7 +2955,7 @@ export class Face extends Element {
     return this.no;
   }
 
-  calcCent(cd_disp) {
+  calcCent(cd_disp: CDRef<DispLayerVert> = -1): Vector3 {
     this.cent.zero();
     let tot = 0.0;
 
@@ -3027,7 +2967,7 @@ export class Face extends Element {
       let co = l.v.co;
 
       if (cd_disp >= 0) {
-        co = co.customData[cd_disp].worldco;
+        co = l.v.customData.get<DispLayerVert>(cd_disp).worldco;
       }
 
       this.cent.add(co);
@@ -3043,11 +2983,3 @@ export class Face extends Element {
     super.loadSTRUCT(reader);
   }
 }
-
-Face.STRUCT = nstructjs.inherit(Face, Element, "mesh.Face") + `
-  lists : array(mesh.LoopList);
-  cent  : vec3;
-  no    : vec3;
-}
-`;
-nstructjs.register(Face);

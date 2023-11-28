@@ -18,7 +18,7 @@ export class SceneObjectData extends DataBlock {
     this.usesMaterial = false;
   }
 
-  applyMatrix() {
+  applyMatrix(matrix = new Matrix4()) {
     console.error("applyMatrix: Implement me!");
     return this;
   }
