@@ -48,7 +48,7 @@ SceneObjectData {
   materials : array(e, DataRef) | DataRef.fromBlock(e); 
 }`);
 
-  exec() {
+  exec(ctx) {
     this.outputs.depend.graphUpdate();
   }
 

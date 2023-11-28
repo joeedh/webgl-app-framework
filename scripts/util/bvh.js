@@ -22,6 +22,7 @@ import {MinHeapQueue} from './util.js';
 import {getFaceSets} from '../mesh/mesh_facesets.js';
 
 let safetimes = new Array(32).map(f => 0);
+
 function safeprint() {
   let id = arguments[0];
 
@@ -3114,12 +3115,7 @@ export class BVH {
   }
   //*/
 
-  static create(mesh, storeVerts_or_args = true, useGrids = true,
-                leafLimit                                 = undefined,
-                depthLimit                                = undefined,
-                freelist                                  = undefined,
-                addWireVerts                              = false,
-                deformMode                                = false) {
+  static create(mesh, args) {
     let times = [util.time_ms()]; //0
     let storeVerts = storeVerts_or_args;
     let onCreate;

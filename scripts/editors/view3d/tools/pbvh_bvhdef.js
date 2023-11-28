@@ -273,7 +273,7 @@ export class BVHDeformPaintOp extends PaintOpBase {
 
   getBVH(mesh) {
     return mesh.getBVH({
-      auto_update: false,
+      autoUpdate: false,
       deformMode : true,
       onCreate   : this.onBind.bind(this)
     });

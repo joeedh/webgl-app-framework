@@ -280,7 +280,7 @@ export class HoleFillPaintOp extends PaintOpBase {
       return;
     }
 
-    let bvh = mesh.getBVH(false);
+    let bvh = mesh.getBVH({autoUpdate: false});
     let log = this._undo.log;
 
     log.checkStart(mesh);

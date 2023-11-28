@@ -775,7 +775,7 @@ export class BVHToolMode extends ToolMode {
           let ob = this.ctx.object;
           let mesh = this.ctx.mesh;
 
-          let bvh = mesh.getBVH(false);
+          let bvh = mesh.getBVH({autoUpdate: false});
 
           let view = view3d.getViewVec(e.x, e.y);
           let origin = view3d.activeCamera.pos;
@@ -2887,7 +2887,7 @@ export class BVHToolMode extends ToolMode {
         grid.debugDraw(gl, uniforms, object);
       }
     }
-    
+
     return true;
   }
 

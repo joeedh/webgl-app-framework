@@ -1535,7 +1535,7 @@ export class PaintOp extends PaintOpBase {
           grid.recalcFlag |= QRecalcFlags.NORMALS|QRecalcFlags.TOPO|QRecalcFlags.NEIGHBORS;
           grid.update(mesh, l, cd_grid);
         }
-        bvh = mesh.getBVH(false);
+        bvh = mesh.getBVH({autoUpdate: false});
       }
     }
     //*/
@@ -7735,7 +7735,7 @@ export class PaintOp extends PaintOpBase {
 
     //auto-rebuild bvh if topology changed?
     //if (mesh instanceof Mesh) {
-    //mesh.getBVH(true);
+    //mesh.getBVH({autoUpdate: true});
     //}
   }
 }

@@ -6,14 +6,11 @@ import {
   DEBUG_DUPLICATE_FACES,
   DEBUG_MANIFOLD_EDGES,
   getArrayTemp, LogContext,
-  MeshDrawFlags,
-  RecalcFlags,
   REUSE_EIDS,
   SAVE_DEAD_EDGES,
   SAVE_DEAD_FACES,
   SAVE_DEAD_LOOPS,
   SAVE_DEAD_VERTS,
-  WITH_EIDMAP_MAP
 } from './mesh_base.js';
 
 import {Node, NodeFlags} from '../core/graph.js';
@@ -26,7 +23,7 @@ import {DataBlock} from '../core/lib_api.js';
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
 import {math, Matrix4, nstructjs, util, Vector3, Vector4} from '../path.ux/pathux.js';
 
-import {CDFlags, CDRef, CustomData, CustomDataElem} from './customdata';
+import {CDFlags, CDRef, CustomData, CustomDataElem, ICustomDataElemConstructor} from './customdata';
 
 import {MeshTools} from './mesh_stdtools.js';
 import {
@@ -55,7 +52,40 @@ import {GridBase} from "./mesh_grids.js";
 import {UVWrangler} from './unwrapping.js';
 import {setMeshClass, triangulateFace} from './mesh_tess.js';
 import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
-import {DispLayerVert} from "./mesh_displacement";
+import {
+  checkDispLayers,
+  DispLayerFlags,
+  DispLayerVert,
+  onFileLoadDispVert,
+  updateDispLayers
+} from "./mesh_displacement";
+import {IGridBaseConstructor} from "../../types/scripts/mesh/mesh_grids";
+
+export interface IBVHArgs {
+  leafLimit?: number,
+  autoUpdate: boolean,
+  force: boolean,
+  wireVerts: boolean,
+  deformMode: boolean,
+  useGrids: boolean,
+  onCreate: () => void,
+}
+
+declare global {
+  interface IDEBUG {
+    simplemesh: boolean;
+  }
+
+  interface WindowOrWorkerGlobalScope {
+    redraw_all(): void;
+
+    redraw_viewport(reset?: boolean): void;
+
+    _gl: WebGL2RenderingContext;
+
+    DEBUG: IDEBUG
+  }
+}
 
 export * from "./mesh_base";
 export * from "./mesh_types";
@@ -77,7 +107,7 @@ let _collapsetemp3 = new Array(4192);
 let _collapsecd_ls = new Array(2);
 let _collapsecd_ws = [0.5, 0.5];
 
-let splitcd_ls = [0, 0];
+let splitcd_ls: Loop[] = [undefined, undefined];
 let splitcd_ws = [0.5, 0.5];
 
 let _idgen = 0;
@@ -212,7 +242,7 @@ mesh.EIDGen {
     reader(this);
 
     //filter any accidental duplicates
-    this.freelist = util.list(new Set(this.freelist));
+    this.freelist = Array.from(new Set(this.freelist));
 
     if (this.freemap) {
       this.makeFreeMap();
@@ -249,7 +279,7 @@ mesh.Mesh {
   lastDispActive = 0;
   haveNgons = false; //XXX test
 
-  eidMap: Map<number, Element>;
+  eidMap: EidElemMap;
   private _recalcEidMap: boolean;
   private _bvh_freelist: any | undefined = undefined;
   bvhSettings = new BVHSettings();
@@ -260,6 +290,7 @@ mesh.Mesh {
   _totFaceFreed = 0;
   _totFaceAlloc = 0;
   _last_bvh_key = "";
+  _last_elem_update_key = "";
   _last_wr_key = "";
   _last_wr_loophash: number | undefined;
   _debug_id1 = _idgen++;
@@ -271,6 +302,7 @@ mesh.Mesh {
   _ltris: Loop[] | undefined = undefined;
   _ltrimap_start: any = {}; //XXX
   _ltrimap_end: any = {}; //XXX
+  _ltrimap_len: any = {};
   _fancyMeshes: any = {}; //XXX
   updatelist: any = {}; //XXX
   lastUpdateList: any = {}; //XXX
@@ -279,7 +311,8 @@ mesh.Mesh {
   eidgen: EIDGen;
   drawflag: MeshDrawFlags = MeshDrawFlags.USE_LOOP_NORMALS;
   recalc: RecalcFlags = RecalcFlags.RENDER | RecalcFlags.TESSELATE;
-  smesh: any | undefined = undefined; //XXX
+  smesh?: any = undefined; //XXX
+  wmesh?: any = undefined; //XXX
   program: any | undefined = undefined; //XXX
   elists: Map<MeshTypes, ElementList<any>>;
   _elists: Array<ElementList<any>> | undefined = undefined; //used by STRUCT script
@@ -345,9 +378,7 @@ mesh.Mesh {
   get elements() {
     let this2 = this;
 
-    if (WITH_EIDMAP_MAP) {
-      return this.eidMap.values();
-    }
+    return this.eidMap.values();
 
     return (function* () {
       for (let k in this2.eidmap) {
@@ -548,13 +579,13 @@ mesh.Mesh {
   }
 
   /* TODO: make _co soley an optional Vector3 parameter. */
-  makeVertex(_co: (Vector3 & Vertex) | undefined = undefined, customEid = undefined, lctx) {
+  makeVertex(_co?: any, customEid?: number, lctx?: LogContext) {
     let co: Vector3 | undefined;
 
     if (_co && _co instanceof Vertex) {
-      co = _co.co;
+      co = (_co as Vertex).co;
     } else if (_co instanceof Vector3) {
-      co = _co;
+      co = (_co as Vector3);
     }
 
     if (!(this.features & MeshFeatures.MAKE_VERT))
@@ -575,11 +606,7 @@ mesh.Mesh {
       v.eid = customEid !== undefined ? customEid : this.eidgen.next();
       v._old_eid = v.eid;
 
-      if (WITH_EIDMAP_MAP) {
-        this.eidMap.set(v.eid, v);
-      } else {
-        this.eidmap[v.eid] = v;
-      }
+      this.eidMap.set(v.eid, v);
     } else {
       v = new Vertex(co);
       this._element_init(v, customEid);
@@ -605,7 +632,7 @@ mesh.Mesh {
     return undefined;
   }
 
-  ensureEdge(v1: Vertex, v2: Vertex, lctx: LogContext): Edge {
+  ensureEdge(v1: Vertex, v2: Vertex, lctx?: LogContext): Edge {
     if (v1 === v2) {
       throw new MeshError("mesh.ensureEdge: v1 and v2 were the same");
     }
@@ -793,12 +820,8 @@ mesh.Mesh {
       l.eid = customEid !== undefined ? customEid : this.eidgen.next();
       l._old_eid = l.eid;
 
-      if (WITH_EIDMAP_MAP) {
-        this.eidMap.set(l.eid, l);
-        this._recalcEidMap = true;
-      } else {
-        this.eidmap[l.eid] = l;
-      }
+      this.eidMap.set(l.eid, l);
+      this._recalcEidMap = true;
 
       this.loops.push(l);
 
@@ -836,12 +859,8 @@ mesh.Mesh {
     f.eid = customEid !== undefined ? customEid : this.eidgen.next();
     f._old_eid = f.eid;
 
-    if (WITH_EIDMAP_MAP) {
-      this.eidMap.set(f.eid, f);
-      this._recalcEidMap = true;
-    } else {
-      this.eidmap[f.eid] = f;
-    }
+    this.eidMap.set(f.eid, f);
+    this._recalcEidMap = true;
 
     this.faces.push(f);
 
@@ -902,13 +921,8 @@ mesh.Mesh {
   }
 
   _elemRemove(elem) {
-    if (WITH_EIDMAP_MAP) {
-      this.eidMap.delete(elem.eid);
-      this._recalcEidMap = true;
-    } else {
-      delete this.eidmap[elem.eid];
-    }
-
+    this.eidMap.delete(elem.eid);
+    this._recalcEidMap = true;
     if (REUSE_EIDS) {
       this.eidgen.free(elem.eid);
     }
@@ -1303,7 +1317,7 @@ mesh.Mesh {
 
     if (!this.faces.customData.hasLayer(NormalLayerElem)) {
       if (this.loops.customData.hasLayer(NormalLayerElem)) {
-        let cd_nor = this.loops.customData.getLayerIndex(NormalLayerElem);
+        let cd_nor = this.loops.customData.getLayerRef(NormalLayerElem);
         let have_vno = this.verts.customData.hasLayer(NormalLayerElem);
 
         let tots = [];
@@ -1321,7 +1335,7 @@ mesh.Mesh {
           f.no.zero();
 
           for (let l of f.loops) {
-            let no = l.customData[cd_nor].no;
+            let no = cd_nor.get(l).no;
             no.normalize();
 
             if (!have_vno) {
@@ -1341,14 +1355,14 @@ mesh.Mesh {
           }
         }
       } else if (this.verts.customData.hasLayer(NormalLayerElem)) {
-        let cd_nor = this.verts.customData.getLayerIndex(NormalLayerElem);
+        let cd_nor = this.verts.customData.getLayerRef(NormalLayerElem);
 
         //copy vert normals to faces
         for (let f of this.faces) {
           f.no.zero();
 
           for (let l of f.loops) {
-            let no = l.v.customData[cd_nor].no;
+            let no = cd_nor.get(l.v).no;
             no.normalize();
 
             f.no.add(no);
@@ -1358,10 +1372,10 @@ mesh.Mesh {
         }
       }
     } else {
-      let cd_no: CDRef<NormalLayerElem> = this.faces.customData.getLayerIndex(NormalLayerElem);
+      let cd_nor = this.faces.customData.getLayerRef(NormalLayerElem);
 
       for (let f of this.faces) {
-        f.no.load(f.customData.get<NormalLayerElem>(cd_no).no).normalize();
+        f.no.load(cd_nor.get(f).no).normalize();
       }
 
       this._recalcVertexNormals(cd_disp);
@@ -1597,11 +1611,11 @@ mesh.Mesh {
           continue;
         }
 
-        let sel = 1;
+        let sel = true;
 
         for (let e of f.edges) {
           if (!(e.flag & MeshFlags.SELECT)) {
-            sel = 0;
+            sel = false;
             break;
           }
         }
@@ -1765,7 +1779,7 @@ mesh.Mesh {
     return ok;
   }
 
-  applyMatrix(matrix: Matrix4): void {
+  applyMatrix(matrix: Matrix4): this {
     for (let v of this.verts) {
       v.multVecMatrix(matrix);
       v.flag |= MeshFlags.UPDATE;
@@ -2070,7 +2084,7 @@ mesh.Mesh {
     return v1;
   }
 
-  _checkElemLoops(v_or_e: Element, msg = "") {
+  _checkElemLoops(v_or_e: Vertex | Edge, msg = "") {
     if (v_or_e.eid < 0) {
       console.warn(v_or_e, msg);
       throw new MeshError("" + msg + ": v_or_e.eid < 0");
@@ -2474,7 +2488,7 @@ mesh.Mesh {
     }
 
     if (DEBUG_BAD_LOOPS && el2) {
-      this._checkElemLoops(el2, "splitFace");
+      this._checkElemLoops(el2.e, "splitFace");
 
       for (let v of el2.e.verts) {
         this._checkElemLoops(v, "splitFace");
@@ -2486,7 +2500,7 @@ mesh.Mesh {
   }
 
   __splitEdgeSimple(e, t = 0.5) {
-    let nv = this.makeVertex(e.v1);
+    let nv = this.makeVertex(e.v1.co);
     nv.co.interp(e.v2.co, t);
 
     let e1 = this.makeEdge(e.v1, nv);
@@ -2872,12 +2886,12 @@ mesh.Mesh {
     }
   }
 
-  pruneWireGeometry(verts = this.verts, lctx) {
+  pruneWireGeometry(vertices = this.verts, lctx) {
     let update = false;
 
-    verts = ReusableIter.getSafeIter(verts);
+    const verts = ReusableIter.getSafeIter<Vertex>(vertices);
 
-    let edges = new Set();
+    let edges = new Set<Edge>();
     for (let v of verts) {
       for (let e of v.edges) {
         edges.add(e);
@@ -2990,7 +3004,7 @@ mesh.Mesh {
       }
     }
 
-    let fs = getArrayTemp(count);
+    let fs = getArrayTemp<Face>(count);
     let fi = 0;
 
     for (let i = 0; i < 2; i++) {
@@ -3192,7 +3206,7 @@ mesh.Mesh {
     return f;
   }
 
-  _fixFace(f, lctx, f_is_linked = true, relink = true, warn = true) {
+  _fixFace(f, lctx?: LogContext, f_is_linked = true, relink = true, warn = true) {
     return this._fixFace2(f, lctx, f_is_linked);
 
     let ret = false;
@@ -3482,7 +3496,7 @@ mesh.Mesh {
     if (dolog) console.log("startl", startl);
 
     if (dolog) console.log("veid", v.eid, "count:", count, startl);
-    let ls = getArrayTemp(count);
+    let ls: Loop[] = getArrayTemp(count);
 
 
     let vi = 0;
@@ -3550,7 +3564,7 @@ mesh.Mesh {
       l.v.flag &= ~(flag1 | flag2);
     }
 
-    let ls2 = getArrayTemp(ls.length);
+    let ls2: Loop[] = getArrayTemp<Loop>(ls.length);
     let li = 0;
 
     for (let l of ls) {
@@ -3562,10 +3576,10 @@ mesh.Mesh {
     }
 
     if (ls2.length !== li) {
-      ls2 = reallocArrayTemp(ls2, li);
+      ls2 = reallocArrayTemp(ls2, li) as unknown as Loop[];
     }
 
-    let vs = getArrayTemp(li);
+    let vs = getArrayTemp<Vertex>(li);
 
     if (dolog) console.log("vs", vs.length);
 
@@ -3614,7 +3628,7 @@ mesh.Mesh {
       }
 
       if (count > 1) {
-        util.console.error("NON-MANIFOLD IN DISSOLVE VERTEX!", count, v, util.list(vs));
+        console.error("NON-MANIFOLD IN DISSOLVE VERTEX!", count, v, Array.from(vs));
         ok = false;
       }
     }
@@ -3849,18 +3863,18 @@ mesh.Mesh {
     for (let elem of geom) {
       switch (elem.type) {
         case MeshTypes.VERTEX:
-          for (let e of v.edges) {
+          for (let e of (elem as Vertex).edges) {
             this._checkEdge(e, msg);
           }
           break;
         case MeshTypes.EDGE:
-          this._checkEdge(elem, msg);
+          this._checkEdge(elem as Edge, msg);
           break;
         case MeshTypes.LOOP:
-          this._checkEdge(elem.e, msg);
+          this._checkEdge((elem as Loop).e, msg);
           break;
         case MeshTypes.FACE:
-          for (let e of elem.edges) {
+          for (let e of (elem as Face).edges) {
             this._checkEdge(e, msg);
           }
           break;
@@ -3915,7 +3929,7 @@ mesh.Mesh {
         vs[i++] = v;
       }
     } else {
-      vs = util.list(f_or_vs);
+      vs = Array.from(f_or_vs);
     }
     if (f !== undefined) {
       bad = this.countDuplicateFaces(vs) !== 1;
@@ -3949,10 +3963,8 @@ mesh.Mesh {
   }
 
 
-  dissolveEdge(e, lctx = undefined) {
-    //return this._dissolveEdge(e, lctx);
-
-    if (!e.l) {// || e.l === e.l.radial_next) {
+  dissolveEdge(e: Edge, lctx?: LogContext): Face | undefined {
+    if (!e.l) {
       this.killEdge(e, undefined, lctx);
       return;
     }
@@ -4010,7 +4022,7 @@ mesh.Mesh {
 
       let v = e.v1.valence > 1 ? e.v1 : e.v2;
 
-      this.collapseEdge(e, v, false);
+      this.collapseEdge(e, v, lctx);
       return;
     }
 
@@ -4506,21 +4518,19 @@ mesh.Mesh {
   }
 
   updateGrids() {
-    let cd_grid = GridBase.meshGridOffset(this);
+    let cd_grid = GridBase.meshGridRef(this);
 
-    if (cd_grid < 0) {
+    if (!cd_grid.exists) {
       return;
     }
 
-    let cls = this.loops.customData.flatlist[cd_grid].typeName;
-    cls = CustomDataElem.getTypeClass(cls);
-
-    cls.updateSubSurf(this, cd_grid, true);
+    let cls = CustomDataElem.getTypeClass(this.loops.customData.flatlist[cd_grid.i].typeName);
+    (cls as unknown as IGridBaseConstructor).updateSubSurf(this, cd_grid.i, true);
 
     for (let l of this.loops) {
-      let grid = l.customData[cd_grid];
+      let grid = cd_grid.get(l);
 
-      grid.update(this, l, cd_grid);
+      grid.update(this, l, cd_grid.i);
     }
   }
 
@@ -4542,8 +4552,8 @@ mesh.Mesh {
     window.redraw_viewport(true);
   }
 
-  exec(ctx) {
-    super.exec();
+  exec(ctx): void {
+    super.exec(ctx);
 
     this._updateElists();
     this.updateGrids();
@@ -4557,7 +4567,7 @@ mesh.Mesh {
   }
 
   tessellate() {
-    if (DEBUG.simplemesh) {
+    if (window.DEBUG.simplemesh) {
       console.warn("Mesh tesselation");
     }
 
@@ -4683,11 +4693,6 @@ mesh.Mesh {
       for (let i = 0; i < steps; i++, t += dt, s += ds) {
         let co = e.arcEvaluate(s);
 
-        if (layers & LayerTypes.COLOR) {
-          color1.load(e.v1.color).interp(e.v2.color, t);
-          color2.load(e.v1.color).interp(e.v2.color, t + dt);
-        }
-
         if (drawnormals) {
           let line;
 
@@ -4745,7 +4750,7 @@ mesh.Mesh {
       this.smesh = this.genRender_curves(gl, combinedWireframe, view3d);
       return this.smesh;
     } else {
-      return this.genRender_full(gl, combinedWireframe, view3d);
+      return this.genRender_full(gl, combinedWireframe);
     }
   }
 
@@ -4758,21 +4763,17 @@ mesh.Mesh {
     }
   }
 
-  destroy(gl) {
+  destroy(gl?: WebGL2RenderingContext): void {
     super.destroy();
+
+    if (!gl) {
+      console.warn("You forgot to pass gl to mesh.destroy()");
+      gl = window._gl;
+    }
 
     if (this.bvh) {
       this.bvh.destroy(this);
       this.bvh = undefined;
-    }
-
-    if (gl === undefined) {
-      //we inherit destroy() from DataBlock,
-      //so we might not be called with gl
-
-      this._fancyMeshes = {};
-      this.smesh = this.wmesh = undefined;
-      return;
     }
 
     for (let k in this._fancyMeshes) {
@@ -4784,7 +4785,7 @@ mesh.Mesh {
   }
 
   getUVWrangler(check = true, checkUvs = false) {
-    let update = !this.uvWrangler || (this.recalc & RecalcFlags.UVWRANGLER);
+    let update: boolean = !this.uvWrangler || !!(this.recalc & RecalcFlags.UVWRANGLER);
 
     if (!check && this.uvWrangler) {
       return this.uvWrangler;
@@ -4794,16 +4795,16 @@ mesh.Mesh {
       checkUvs = true;
     }
 
-    let cd_uv = this.loops.customData.getLayerIndex("uv");
+    let cd_uv = this.loops.customData.getLayerRef(UVLayerElem);
 
     let key = "" + this.loops.length + ":" + this.edges.length + ":" + this.faces.length;
     key += ":" + this.verts.length + ":" + cd_uv;
 
-    if (checkUvs && cd_uv >= 0) {
+    if (checkUvs && cd_uv.exists) {
       let hash = new util.HashDigest();
 
       for (let l of this.loops) {
-        let uv = l.customData[cd_uv].uv;
+        let uv = cd_uv.get(l).uv;
 
         hash.add(uv[0] * 8196);
         hash.add(uv[1] * 8196);
@@ -4826,7 +4827,7 @@ mesh.Mesh {
         this.uvWrangler.destroy(this);
       }
 
-      this.uvWrangler = new UVWrangler(this, this.faces, cd_uv);
+      this.uvWrangler = new UVWrangler(this, this.faces, cd_uv.i);
       this.uvWrangler.buildIslands();
     }
 
@@ -4853,27 +4854,17 @@ mesh.Mesh {
     return this.getBVH(...arguments);
   }
 
-  getBVH(auto_update_or_args = true, useGrids = true,
-         force = false, wireVerts = false) {
-    let auto_update = auto_update_or_args;
-    let deformMode;
-    let onCreate;
-    let leafLimit;
-
-    if (typeof auto_update_or_args === "object") {
-      let args = auto_update_or_args;
-
-      leafLimit = args.leafLimit; //default is set by bvhsettings
-      auto_update = args.auto_update ?? true;
-      useGrids = args.useGrids ?? true;
-      force = args.force;
-      wireVerts = args.wireVerts;
-      deformMode = args.deformMode;
-      onCreate = args.onCreate;
-    }
+  getBVH(args?: IBVHArgs) {
+    const autoUpdate = args?.autoUpdate ?? true;
+    const deformMode = args?.deformMode ?? false;
+    const leafLimit = args?.leafLimit;
+    const onCreate = args?.onCreate;
+    const wireVerts = args?.wireVerts ?? false;
+    const useGrids = args?.useGrids ?? true;
+    const force = args?.force ?? false;
 
     let key = this.verts.length + ":" + this.faces.length + ":" + this.edges.length + ":" + this.loops.length;
-    key += ":" + this.eidgen._cur + ":" + !!useGrids;
+    key += ":" + this.eidgen.cur + ":" + !!useGrids;
     key += ":" + !!wireVerts + ":" + !!deformMode;
 
     if (useGrids) {
@@ -4888,7 +4879,7 @@ mesh.Mesh {
     if (force || !this.bvh || key !== this._last_bvh_key) {
       this._last_bvh_key = key;
 
-      if (bkey !== this.bvhSettings._last_key || auto_update || !this.bvh || force) {
+      if (bkey !== this.bvhSettings._last_key || autoUpdate || !this.bvh || force) {
         this.bvhSettings._last_key = bkey;
 
         //console.warn("BVH rebuild!", this._last_bvh_key, key, "|", this.bvhSettings._last_key, bkey);
@@ -4937,7 +4928,7 @@ mesh.Mesh {
     let sm = new SimpleMesh(lf.LOC | lf.NORMAL | lf.UV | lf.COLOR | lf.ID);
 
     let haveuv = this.loops.customData.hasLayer("uv");
-    let cd_uv = this.loops.customData.getLayerIndex("uv");
+    let cd_uv = this.loops.customData.getLayerRef(UVLayerElem);
 
     for (let i = 0; i < ltris.length; i += 3) {
       let l1 = ltris[i], l2 = ltris[i + 1], l3 = ltris[i + 2];
@@ -4954,7 +4945,11 @@ mesh.Mesh {
       tri.ids(f.eid, f.eid, f.eid);
 
       if (haveuv) {
-        tri.uvs(l1.customData[cd_uv].uv, l2.customData[cd_uv].uv, l3.customData[cd_uv].uv);
+        tri.uvs(
+          cd_uv.get(l1).uv,
+          cd_uv.get(l2).uv,
+          cd_uv.get(l3).uv
+        );
       }
     }
 
@@ -4972,26 +4967,6 @@ mesh.Mesh {
     }
 
     return sm;
-  }
-
-  stripTempLayers(saveState = false) {
-    let state = {}
-
-    for (const elist of this.elists.values()) {
-      state[k] = elist.stripTempLayers(saveState);
-    }
-
-    return state;
-  }
-
-  unstripTempLayers(state) {
-    for (let k in state) {
-      let elist = this.elists.get(k);
-
-      elist.unstripTempLayers(state[k]);
-    }
-
-    return this;
   }
 
   _genRender_full(gl, combinedWireframe = false) {
@@ -5075,7 +5050,7 @@ mesh.Mesh {
             tri.normals(l1.v.no, l2.v.no, l3.v.no);
           }
 
-          let uvidx = -1;
+          let uvidx: CDRef<UVLayerElem> = -1;
           let j = 0;
 
           for (let data of l1.customData) {
@@ -5088,7 +5063,9 @@ mesh.Mesh {
           }
 
           if (uvidx >= 0) {
-            tri.uvs(l1.customData[uvidx].uv, l2.customData[uvidx].uv, l3.customData[uvidx].uv);
+            tri.uvs(l1.customData.get<UVLayerElem>(uvidx).uv,
+              l2.customData.get<UVLayerElem>(uvidx).uv,
+              l3.customData.get<UVLayerElem>(uvidx).uv);
           }
         }
 
@@ -5273,7 +5250,7 @@ mesh.Mesh {
   compactEids() {
     let oldmax = 0;
 
-    for (const elist of elists.values()) {
+    for (const elist of this.elists.values()) {
       elist.selected.clear();
       elist.local_eidMap = new Map();
       elist.idxmap = new Map();
@@ -5317,13 +5294,11 @@ mesh.Mesh {
       }
     }
 
-    if (WITH_EIDMAP_MAP) {
-      let eidMap = this.eidMap = new Map();
+    let eidMap = this.eidMap = new Map();
 
-      for (let elist of this.getElemLists()) {
-        for (let elem of elist) {
-          eidMap.set(elem.eid, elem);
-        }
+    for (let elist of this.getElemLists()) {
+      for (let elem of elist) {
+        eidMap.set(elem.eid, elem);
       }
     }
 
@@ -5332,7 +5307,7 @@ mesh.Mesh {
     this.eidgen.freelist.length = 0;
 
     if (REUSE_EIDS) {
-      for (let i = 0; i < this.eidgen._cur; i++) {
+      for (let i = 0; i < this.eidgen.cur; i++) {
         if (!this.eidMap.has(i)) {
           this.eidgen.freelist.push(i);
         }
@@ -5577,7 +5552,7 @@ mesh.Mesh {
     //clear in this case if requested
     if (clearCustomData) {
       for (let k in ret.elists.keys()) {
-        ret.elists.get(k).customData = new CustomData();
+        ret.elists.get(parseInt(k) as MeshTypes).customData = new CustomData();
       }
     }
 
@@ -5688,12 +5663,12 @@ mesh.Mesh {
       l2.e = eidmap.get<Edge>(l.e.eid);
       l2.v = eidmap.get<Vertex>(l.v.eid);
 
-      l2.radial_next = l.radial_next.eid;
-      l2.radial_prev = l.radial_prev.eid;
-      l2.next = l.next.eid;
-      l2.prev = l.prev.eid;
+      (l2.radial_next as unknown as number) = l.radial_next.eid;
+      (l2.radial_prev as unknown as number) = l.radial_prev.eid;
+      (l2.next as unknown as number) = l.next.eid;
+      (l2.prev as unknown as number) = l.prev.eid;
 
-      l2.f = l.f.eid;
+      (l2.f as unknown as number) = l.f.eid;
 
       if (!clearCustomData) {
         ret.copyElemData(l2, l);
@@ -5827,6 +5802,17 @@ mesh.Mesh {
 
     let flag = MeshFlags.FACE_EXIST_FLAG;
 
+    let vslength = 0;
+    if (Array.isArray(vs)) {
+      vslength = vs.length;
+    } else if (vs instanceof Set) {
+      vslength = vs.size;
+    } else {
+      for (let v of vs) {
+        vslength++;
+      }
+    }
+
     for (let v of vs) {
       v.flag &= ~flag;
 
@@ -5835,7 +5821,7 @@ mesh.Mesh {
 
         for (let l of e.loops) {
           let bad = l.f.lists.length > 0;
-          bad = bad || l.f.lists[0].length !== vs.length;
+          bad = bad || l.f.lists[0].length !== vslength;
 
           if (bad) {
             l.f.flag |= flag;
@@ -5870,13 +5856,15 @@ mesh.Mesh {
           }
 
           let count = 0;
+          let vslength = 0;
           for (let v of vs) {
             if (v.flag & flag) {
               count++;
             }
+            vslength++;
           }
 
-          if (count === vs.length) {
+          if (count === vslength) {
             return l.f;
           }
         }
@@ -6111,7 +6099,7 @@ mesh.Mesh {
 
         for (let list of f.lists) {
           if (list.l) {
-            for (let l of new Set(list.l)) {
+            for (let l of new Set<Loop>(list)) {
               this._radialRemove(l.e, l);
               this._killLoop(l);
             }
@@ -6391,7 +6379,7 @@ mesh.Mesh {
     this.loops.storeFreedElems = SAVE_DEAD_LOOPS;
     this.faces.storeFreedElems = SAVE_DEAD_FACES;
 
-    for (let elists of this.elists.values()) {
+    for (let elist of this.elists.values()) {
       elist.customData.on_layeradd = this._on_cdlayer_add.bind(this);
       elist.customData.on_layerremove = this._on_cdlayer_rem.bind(this);
     }
@@ -6400,10 +6388,8 @@ mesh.Mesh {
 
     let eidMap = new Map();
 
-    if (WITH_EIDMAP_MAP) {
-      this.eidMap = eidMap;
-      this._recalcEidMap = true;
-    }
+    this.eidMap = eidMap;
+    this._recalcEidMap = true;
 
     for (let v of this.verts) {
       eidMap.set(v.eid, v);
@@ -6502,13 +6488,13 @@ mesh.Mesh {
           if (l.e === undefined) {
             l.e = this.getEdge(l.v, l.next.v);
           } else {
-            l.e = this.eidMap.get(l.e);
+            l.e = this.eidMap.get<Edge>(l.e as unknown as number);
           }
 
           if (!l.e) {
             l.e = this.getEdge(l.v, l.next.v);
 
-            util.console.warn("Mesh corruption error; fixing...", l);
+            console.warn("Mesh corruption error; fixing...", l);
 
             if (l.next.v === l.v) {
               //bad loop!
@@ -6551,25 +6537,14 @@ mesh.Mesh {
       }
     }
 
-    if (!WITH_EIDMAP_MAP) {
-      this.eidmap = {};
-    }
-
-    for (let elists of this.elists.values()) {
+    for (let elist of this.elists.values()) {
       elist.fixCustomData();
       elist.stripTempLayers(false);
 
-      if (!WITH_EIDMAP_MAP) {
-        let eidmap = this.eidmap;
-        for (let elem of elist) {
-          eidmap[elem.eid] = elem;
-        }
-      } else {
-        let eidMap = this.eidMap;
+      let eidMap = this.eidMap;
 
-        for (let elem of elist) {
-          eidMap.set(elem.eid, elem);
-        }
+      for (let elem of elist) {
+        eidMap.set(elem.eid, elem);
       }
     }
 
@@ -6603,7 +6578,7 @@ mesh.Mesh {
           ret[1].addScalar(-1e17);
         }
 
-        let grid = l.customData[cd_grid];
+        let grid = l.customData.get<GridBase>(cd_grid);
 
         for (let p of grid.points) {
           ret[0].min(p.co);
@@ -6635,8 +6610,8 @@ mesh.Mesh {
 DataBlock.register(Mesh);
 SceneObjectData.register(Mesh);
 
-window._debug_recalc_all_normals = function (force = false) {
-  let scene = CTX.scene;
+window["_debug_recalc_all_normals"] = function (force = false) {
+  let scene = window["_appstate"]["ctx"]["scene"];
   for (let ob of scene.objects) {
     if (ob.data instanceof Mesh) {
       if (force) {
@@ -6649,12 +6624,10 @@ window._debug_recalc_all_normals = function (force = false) {
 
       ob.graphUpdate();
       ob.data.graphUpdate();
-      window.updateDataGraph();
-      window.redraw_viewport();
+      window["updateDataGraph"]();
+      window["redraw_viewport"]();
     }
   }
 }
-
-window.Mesh = Mesh
 
 setMeshClass(Mesh);

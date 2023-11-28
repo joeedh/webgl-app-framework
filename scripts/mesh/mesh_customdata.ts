@@ -8,6 +8,7 @@ import {
 import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
 
 import {half2float, float2half} from "../util/floathalf";
+import type {Element} from "./mesh_types";
 
 export enum UVFlags {
   PIN = 2
@@ -711,3 +712,23 @@ mesh.MaskElem {
 }
 
 CustomDataElem.register(MaskElem);
+
+export class AttrRef<type> {
+  public i: number = -1;
+
+  constructor(index: number) {
+    this.i = index;
+  }
+
+  static create<type>(index: number): AttrRef<type> {
+    return new AttrRef<type>(index);
+  }
+
+  get exists() {
+    return this.i >= 0;
+  }
+
+  get(elem: Element): type {
+    return elem.customData.get<type>(this.i);
+  }
+}

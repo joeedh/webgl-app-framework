@@ -5,7 +5,7 @@ import {
   WITH_EIDMAP_MAP, EmptyCDArray, CDElemArray
 } from "./mesh_base";
 
-import {CDFlags, CustomData, CustomDataElem, CustomDataLayer} from "./customdata";
+import {CDFlags, CustomData, CustomDataElem, CustomDataLayer, ICustomDataElemConstructor} from "./customdata";
 import {Vertex, Loop, Face, Handle} from './mesh_types.js';
 import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
 
@@ -204,6 +204,7 @@ mesh.ElementList {
   highlight: type | undefined;
   active: type | undefined;
   iterstack = new MeshIterStack<ElementListIter<type>>(64);
+  idxmap = new Map<number, number>();
 
   private _update_req: boolean | undefined = undefined;
   private _totAdded = 0;
@@ -212,7 +213,6 @@ mesh.ElementList {
   private free_elems = new util.Queue<type>(256);
   private delayed_free_queue: type[] = [];
   private dqueue_idxmap: Map<type, number>;
-  private idxmap = new Map<number, number>();
 
   constructor(type: MeshTypes, storeFreedElems = false) {
     if (!STORE_DELAY_CACHE_INDEX) {
@@ -946,16 +946,16 @@ mesh.ElementList {
     return this;
   }
 
-  addCustomDataLayer(cls_or_typestring: (new () => CustomDataElem<any>) & string,
-                     name: string): CustomDataLayer<any> {
+  addCustomDataLayer(cls_or_typestring: any,
+                     name?: string): CustomDataLayer<any> {
     this.clearFreeElems();
 
-    let typecls: new () => CustomDataElem<any> | undefined;
+    let typecls: ICustomDataElemConstructor | undefined;
 
     if (typeof cls_or_typestring === "string") {
       typecls = CustomDataElem.getTypeClass(typecls);
     } else {
-      typecls = cls_or_typestring as unknown as (new () => CustomDataElem<any>);
+      typecls = cls_or_typestring as unknown as ICustomDataElemConstructor;
     }
 
     if (typecls === undefined) {
@@ -1075,13 +1075,5 @@ mesh.ElementList {
 
     return state;
   }
-
-  unstripTempLayers(state: any): void {
-    this.customData = state.customData;
-
-    let i = 0;
-    for (let elem of this) {
-      elem.customData = state.elems[i++];
-    }
-  }
 }
+

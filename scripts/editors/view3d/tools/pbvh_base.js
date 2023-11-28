@@ -26,7 +26,7 @@ export function getBVH(ctx) {
   }
 
   if (ob.data instanceof Mesh || ob.data instanceof TetMesh) {
-    return ob.data.getBVH(false);
+    return ob.data.getBVH({autoUpdate: false});
   }
 }
 
@@ -977,9 +977,7 @@ export class PaintOpBase extends ToolOp {
   }
 
   getBVH(mesh) {
-    return mesh.getBVH({
-      auto_update: false
-    });
+    return mesh.getBVH({autoUpdate: false});
   }
 
   sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp) {

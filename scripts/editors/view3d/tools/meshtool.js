@@ -21,8 +21,10 @@ import {nstructjs} from '../../../path.ux/scripts/pathux.js';
 //import '../../../mesh/select_ops.js';
 //import '../../../mesh/mesh_ops.js';
 
-import {MeshTypes, MeshFeatures, MeshFlags, MeshError,
-  MeshFeatureError} from '../../../mesh/mesh_base.js';
+import {
+  MeshTypes, MeshFeatures, MeshFlags, MeshError,
+  MeshFeatureError
+} from '../../../mesh/mesh_base.js';
 import {SelectEdgeLoopOp} from '../../../mesh/select_ops.js';
 
 export class MeshToolBase extends ToolMode {
@@ -35,7 +37,7 @@ export class MeshToolBase extends ToolMode {
     this.drawOwnIds = true;
     this.meshPath = "object";
     this.selectMask = SelMask.GEOM;
-    this.drawSelectMask = SelMask.EDGE|SelMask.VERTEX|SelMask.HANDLE;
+    this.drawSelectMask = SelMask.EDGE | SelMask.VERTEX | SelMask.HANDLE;
 
     this.start_mpos = new Vector2();
     this.last_mpos = new Vector2();
@@ -89,10 +91,10 @@ export class MeshToolBase extends ToolMode {
     let selectMask = this.selectMask;
 
     return ctx.override({
-      selectedMeshObjects : getObjects,
-      selectedObjects : getObjects,
-      selectMask : () => selectMask,
-      mesh : function() {
+      selectedMeshObjects: getObjects,
+      selectedObjects    : getObjects,
+      selectMask         : () => selectMask,
+      mesh               : function () {
         return this.api.getValue(this, paths[0]);
       }
     });
@@ -117,14 +119,16 @@ export class MeshToolBase extends ToolMode {
     return ["_all_objects_"];
   }
 
-  static toolModeDefine() {return {
-    name        : "basemesh",
-    uianme      : "Edit Geometry",
-    icon        : Icons.MESHTOOL,
-    flag        : 0,
-    selectMode  : SelMask.OBJECT,
-    description : "Edit vertices/edges/faces"
-  }}
+  static toolModeDefine() {
+    return {
+      name       : "basemesh",
+      uianme     : "Edit Geometry",
+      icon       : Icons.MESHTOOL,
+      flag       : 0,
+      selectMode : SelMask.OBJECT,
+      description: "Edit vertices/edges/faces"
+    }
+  }
 
   static defineAPI(api) {
     let tstruct = super.defineAPI(api);
@@ -281,13 +285,13 @@ export class MeshToolBase extends ToolMode {
 
   //ensure we don't have sculpt bvhs, which lack wire verts
   //and might include grid verts
-  checkMeshBVHs(ctx=this.ctx) {
+  checkMeshBVHs(ctx = this.ctx) {
     for (let ob of ctx.selectedMeshObjects) {
-      ob.data.getBVH(true, false, false, true);
+      ob.data.getBVH({autoUpdate: true, wireVerts: true});
     }
   }
 
-  findHighlight(e, x, y, selectMask=this.selectMask) {
+  findHighlight(e, x, y, selectMask = this.selectMask) {
     let view3d = this.ctx.view3d;
 
     this.checkMeshBVHs(this.ctx);
@@ -323,8 +327,8 @@ export class MeshToolBase extends ToolMode {
       }
 
       return {
-        elem : elem,
-        mesh : mesh
+        elem: elem,
+        mesh: mesh
       };
     } else {
       let redraw = false;
@@ -417,7 +421,7 @@ export class MeshToolBase extends ToolMode {
     return FindNearest(this.ctx, selmask, new Vector2([x, y]), view3d);
   }
 
-  drawsObjectIdsExclusively(obj, check_mesh=false) {
+  drawsObjectIdsExclusively(obj, check_mesh = false) {
     let ret = !check_mesh || obj.data instanceof Mesh;
 
     ret = ret && ((obj.flag & ObjectFlags.SELECT) || obj === this.ctx.scene.objects.active);
@@ -426,7 +430,7 @@ export class MeshToolBase extends ToolMode {
     return ret;
   }
 
-  drawIDs(view3d, gl, uniforms, selmask=undefined) {
+  drawIDs(view3d, gl, uniforms, selmask = undefined) {
     if (selmask === undefined) {
       selmask = this.ctx.selectMask;
     }
@@ -479,23 +483,23 @@ export class MeshToolBase extends ToolMode {
     }
   }
 
-  drawSphere(gl, view3d, p, scale=0.01, color=[1, 0.4, 0.2, 1.0]) {
+  drawSphere(gl, view3d, p, scale = 0.01, color = [1, 0.4, 0.2, 1.0]) {
     let cam = this.ctx.view3d.activeCamera;
     let mat = new Matrix4();
 
     let co = new Vector4(p);
     mat.translate(co[0], co[1], co[2]);
 
-    co[3]  = 1.0;
+    co[3] = 1.0;
     co.multVecMatrix(cam.rendermat);
 
-    scale = Math.abs(co[3] * scale);
+    scale = Math.abs(co[3]*scale);
     mat.scale(scale, scale, scale);
 
     Shapes.SPHERE.draw(gl, {
-      projectionMatrix : cam.rendermat,
-      objectMatrix : mat,
-      color : color,
+      projectionMatrix: cam.rendermat,
+      objectMatrix    : mat,
+      color           : color,
     }, Shaders.WidgetMeshShader)
   }
 
@@ -507,13 +511,13 @@ export class MeshToolBase extends ToolMode {
     let cam = this.ctx.view3d.activeCamera;
 
     let uniforms = {
-      normalMatrix : cam.cameramat,
-      projectionMatrix : cam.rendermat,
-      objectMatrix : new Matrix4(),
-      size : view3d.glSize,
-      aspect : cam.aspect,
-      near : cam.near,
-      far : cam.far
+      normalMatrix    : cam.cameramat,
+      projectionMatrix: cam.rendermat,
+      objectMatrix    : new Matrix4(),
+      size            : view3d.glSize,
+      aspect          : cam.aspect,
+      near            : cam.near,
+      far             : cam.far
     };
 
     let camdist = view3d.activeCamera.pos.vectorDistance(view3d.activeCamera.target);

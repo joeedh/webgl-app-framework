@@ -1601,7 +1601,7 @@ for (let i = 0; i < eviter_stack.length; i++) {
 
 let efiter_stack = new MeshIterStack<EdgeFaceIter>(2048);
 efiter_stack.cur = 0;
-let efiter_ring;
+let efiter_ring: util.cachering<EdgeFaceIterR>;
 
 export class EdgeFaceIterR extends ReusableIter<Face> {
   e: Edge;
@@ -1626,7 +1626,7 @@ efiter_ring = util.cachering.fromConstructor(EdgeFaceIterR, 4196);
 //flag in MeshIterFlags to use, is like a stack
 let efiter_flag = 0;
 
-export class EdgeFaceIter {
+export class EdgeFaceIter implements Iterator<Face> {
   e: Edge | undefined;
   l: Loop | undefined;
   done: boolean;
@@ -2153,7 +2153,7 @@ mesh.Edge {
    Iteration can be up to ten levels deep.  Never, ever
    do recursion from within a for loop over this iterator.
    */
-  get faces(): EdgeFaceIter {
+  get faces(): EdgeFaceIterR {
     return efiter_ring.next().reset(this);
   }
 

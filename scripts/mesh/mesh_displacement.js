@@ -258,7 +258,7 @@ export class SmoothMemoizer {
     }
 
     //if (doProj) {
-      co1.load(v.customData[cd_temp].value);
+    co1.load(v.customData[cd_temp].value);
     //}
 
     let boundflag = mv ? mv.flag & BVHVertFlags.BOUNDARY_ALL : 0;
@@ -591,7 +591,7 @@ export class DispLayerVert extends CustomDataElem {
     return st;
   }
 
-    checkInterpNew(dctx, depth=0) {
+  checkInterpNew(dctx, depth = 0) {
     let v = dctx.v;
 
     if (!(this.flag & DispVertFlags.INTERP_NEW)) {
@@ -612,7 +612,7 @@ export class DispLayerVert extends CustomDataElem {
       let dv2 = v2.customData[cd_disp];
 
       if (depth < 3) {
-      //  dv2.checkInterpNew(dctx, depth+1);
+        //  dv2.checkInterpNew(dctx, depth+1);
       }
 
       this.smoothco.add(dv2.smoothco);
@@ -623,7 +623,7 @@ export class DispLayerVert extends CustomDataElem {
 
     this.no.normalize();
 
-    this.smoothco.mulScalar(1.0 / tot);
+    this.smoothco.mulScalar(1.0/tot);
     if (dctx.smemo) {
       dctx.smemo.smoothGen++;
       dctx.smemo.initGen++;

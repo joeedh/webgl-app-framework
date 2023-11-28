@@ -3316,7 +3316,7 @@ export function dissolveFaces(mesh, faces, lctx) {
 
 export function delauney3D(mesh, vs = mesh.verts, lctx) {
   let bvh = mesh.getBVH({
-    auto_update: true,
+    autoUpdate: true,
     wireVerts  : true,
     deformMode : false,
     leafLimit  : 32,

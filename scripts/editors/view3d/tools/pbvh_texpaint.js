@@ -115,7 +115,7 @@ export class TexPaintOp extends ToolOp {
     toolmode.mpos[0] = e.x;
     toolmode.mpos[1] = e.y;
 
-    let bvh = mesh.getBVH(false);
+    let bvh = mesh.getBVH({autoUpdate: false});
     //log("sample!");
 
     let axes = [-1];
@@ -361,7 +361,7 @@ export class TexPaintOp extends ToolOp {
     let strength = ps.strength;
 
     let mesh = ctx.mesh;
-    let bvh = mesh.getBVH(false);
+    let bvh = mesh.getBVH({autoUpdate: false});
 
     fbo = texture._drawFBO;
 

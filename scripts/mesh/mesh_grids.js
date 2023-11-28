@@ -6,7 +6,7 @@ import {MeshFlags, MeshTypes, RecalcFlags} from "./mesh_base.js";
 import {CDFlags, CustomData, CustomDataElem, LayerSettingsBase} from "./customdata";
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from "../core/simplemesh.js";
-import {FloatElem} from "./mesh_customdata.js";
+import {AttrRef, FloatElem} from "./mesh_customdata.js";
 import {PatchBuilder} from "./mesh_grids_subsurf.js";
 import {BasicLineShader, Shaders} from '../shaders/shaders.js';
 import {Handle, traceget, traceset, Vertex} from './mesh_types.js';
@@ -721,6 +721,10 @@ export class GridBase extends CustomDataElem {
         mesh.loops.customData.setActiveLayer(layer2.index);
       }
     }
+  }
+
+  static meshGridRef(mesh) {
+    return new AttrRef(this.meshGridOffset(mesh));
   }
 
   static meshGridOffset(mesh) {

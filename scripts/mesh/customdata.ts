@@ -8,11 +8,12 @@ import {EmptyCDArray} from './mesh_base.js';
 import {Icons} from '../editors/icon_enum.js';
 import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
 import {CDT} from "./mesh_tess";
+import {AttrRef} from "./mesh_customdata";
 
 export type CDRef<type> = number;
 
-export interface ICustomDataElemConstructor {
-  new(): CustomDataElem<any>;
+export interface ICustomDataElemConstructor<type = CustomDataElem<any>> {
+  new(): type;
 
   define(): ICustomDataElemDef;
 }
@@ -219,7 +220,7 @@ mesh.CustomDataElem {
     reader(this);
   }
 
-  static getTypeClass(typeName): new() => CustomDataElem<any> {
+  static getTypeClass(typeName): ICustomDataElemConstructor | undefined {
     return CDElemMap[typeName];
   }
 }
@@ -744,6 +745,10 @@ mesh.CustomData {
     return this.layers.has(typename) && this.layers.get(typename).length > 0;
   }
 
+  getLayerRef<type>(cls: new() => type): AttrRef<type> {
+    return AttrRef.create<type>(this.getLayerIndex(cls));
+  }
+
   getLayerIndex(typename_or_cls: any): number {
     let typename: string;
 
@@ -853,6 +858,15 @@ mesh.CustomData {
 
   hasNamedLayer(name, opt_cls_or_typeName = undefined) {
     return this.getNamedLayer(name, opt_cls_or_typeName) !== undefined;
+  }
+
+  getNamedLayerRef<type>(name, opt_cls_or_typeName): AttrRef<type> {
+    let layer = this.getNamedLayer(name, opt_cls_or_typeName);
+    if (!layer) {
+      return AttrRef.create<type>(-1);
+    }
+
+    return AttrRef.create<type>(layer.index);
   }
 
   getNamedLayerIndex(name, opt_cls_or_typeName) {
