@@ -1,0 +1,64 @@
+export class BVHToolMode extends ToolMode {
+    static buildEditMenu(): string[];
+    static toolModeDefine(): {
+        name: string;
+        uiname: string;
+        icon: number;
+        flag: number;
+        description: string;
+        selectMode: number;
+        transWidgets: any[];
+    };
+    lastFaceSet: number;
+    editDisplaced: boolean;
+    drawDispDisField: boolean;
+    reprojectCustomData: boolean;
+    sharedBrushRadius: number;
+    gridEditDepth: number;
+    enableMaxEditDepth: boolean;
+    dynTopo: DynTopoSettings;
+    mpos: Vector2;
+    _radius: any;
+    debugSphere: Vector3;
+    drawFlat: boolean;
+    drawMask: boolean;
+    _last_cd_mask: number;
+    tool: number;
+    slots: {};
+    _brush_lines: any[];
+    drawColPatches: boolean;
+    symmetryAxes: number;
+    drawBVH: boolean;
+    drawCavityMap: boolean;
+    drawNodeIds: boolean;
+    drawWireframe: boolean;
+    drawValidEdges: boolean;
+    _last_bvh_key: string;
+    _last_hqed: string;
+    view3d: any;
+    _apiDynTopo: DynTopoSettings;
+    set _brushSizeHelper(arg: any);
+    get _brushSizeHelper(): any;
+    set _apiBrushHelper(arg: any);
+    get _apiBrushHelper(): any;
+    set _apiInheritDynTopo(arg: boolean);
+    get _apiInheritDynTopo(): boolean;
+    getBrush(tool?: number): any;
+    drawBrush(view3d: any): void;
+    getBVH(mesh: any, useGrids?: boolean): any;
+    on_mousedown(e: any, x: any, y: any): boolean;
+    on_mouseup(e: any, x: any, y: any): boolean;
+    mdown: boolean;
+    getMeshMresSettings(mesh: any): any;
+    updateMeshMres(mesh: any): void;
+    _last_enable_mres: any;
+    destroy(): void;
+    _last_draw_key: any;
+}
+export namespace BVHToolMode {
+    let STRUCT: string;
+}
+import { ToolMode } from "../view3d_toolmode.js";
+import { DynTopoSettings } from "../../../brush/brush.js";
+import { Vector2 } from '../../../util/vectormath.js';
+import { Vector3 } from '../../../util/vectormath.js';

@@ -13,11 +13,11 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "noEmitOnError": false,
+    "declaration": false,
     "noEmit": true,
     "noImplicitThis": true,
     "listEmittedFiles": false,
-    "declaration" : false,
-    "outDir": "build/typecheck"
+    "outDir": "types",
   },
-  "files": ["scripts/typescript_entry.ts"],
+  "files": ["scripts/typescript_entry.ts"]
 }
