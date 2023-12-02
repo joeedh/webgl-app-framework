@@ -374,19 +374,10 @@ mesh.Mesh {
   get hasCustomNormals() {
     let ret = this.loops.customData.hasLayer(NormalLayerElem);
     return ret || this.verts.customData.hasLayer(NormalLayerElem);
-    return ret;
   }
 
   get elements() {
-    let this2 = this;
-
     return this.eidMap.values();
-
-    return (function* () {
-      for (let k in this2.eidmap) {
-        yield this2.eidmap[k];
-      }
-    })()
   }
 
   static nodedef() {

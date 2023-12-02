@@ -66,10 +66,6 @@ SceneObjectData {
     return StandardTools;
   }
 
-  copy() {
-    throw new Error("implement me");
-  }
-
   getOwningObject() {
     for (let sock of this.inputs.depend.edges) {
       if (sock.node.constructor.name === "SceneObject" && sock.node.data === this) {
