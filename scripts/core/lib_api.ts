@@ -1,24 +1,49 @@
 import {
-  Matrix4, Vector2, Vector3, Vector4, nstructjs, ToolProperty, PropTypes, PropFlags,
+  Matrix4, Vector2, Vector3, Vector4, nstructjs, ToolProperty, PropTypes,
   EnumProperty
 } from '../path.ux/scripts/pathux.js';
 import * as util from '../util/util.js';
 
 import {IDGen} from '../util/util.js';
-import {Node, Graph, NodeFlags, SocketFlags, NodeSocketType} from './graph.js';
+import {Node, Graph, NodeFlags, SocketFlags, NodeSocketType, INodeConstructor} from './graph.js';
 import {Icons} from "../editors/icon_enum.js";
-
-let STRUCT = nstructjs.STRUCT;
+import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
+import type {ToolContext} from "../../types/scripts/core/context";
 
 export let BlockTypes = [];
-export const BlockFlags = {
-  SELECT   : 1,
-  HIDE     : 2,
-  FAKE_USER: 4,
-  NO_SAVE  : 8 //do not save
-};
 
-export class DataBlock extends Node {
+export interface IBlockRef {
+  lib_id: number;
+  lib_type: string;
+  name: string;
+}
+
+export enum BlockFlags {
+  SELECT = 1,
+  HIDE = 2,
+  FAKE_USER = 4,
+  NO_SAVE = 8 //do not save
+}
+
+export interface IBlockDef {
+  typeName: string;
+  uiName?: string;
+  defaultName?: string;
+  icon?: number;
+  flag?: number;
+}
+
+export interface IDataBlockConstructor<type, InputSet, OutputSet> extends INodeConstructor<InputSet, OutputSet> {
+  new(): type;
+
+  blockDefine(): IBlockDef;
+}
+
+export interface BlockLoader {
+  <type>(ref: DataRef | number): type;
+}
+
+export class DataBlock<InputSet = {}, OutputSet = {}> extends Node<InputSet, OutputSet> {
   static STRUCT = nstructjs.inlineRegister(this, `
 DataBlock {
   lib_id       : int;
@@ -31,7 +56,7 @@ DataBlock {
 
   //loads contents of obj into this datablock
   //but doesn't touch the .lib_XXXX properties or .name
-  swapDataBlockContents(obj) {
+  swapDataBlockContents(obj: this): this {
     for (let k in obj) {
       if (k.startsWith("lib_") || k === "name") {
         continue;
@@ -55,6 +80,19 @@ DataBlock {
     return this.name;
   }
 
+  name: string;
+
+  lib_userData: {} = {};
+  lib_id: number;
+  lib_flag: number;
+  lib_icon: number;
+  lib_type: string;
+  lib_users: number;
+  lib_userlist: DataBlock[];
+  lib_external_ref: any;
+
+  ['constructor']: IDataBlockConstructor<this, InputSet, OutputSet>;
+
   constructor() {
     super();
 
@@ -66,7 +104,7 @@ DataBlock {
     let def = this.constructor.blockDefine();
 
     this.lib_id = -1;
-    this.name = def.defaultName;
+    this.name = def.defaultName ?? def.uiName ?? def.typeName;
     this.lib_flag = def.flag !== undefined ? def.flag : 0;
     this.lib_icon = def.icon;
     this.lib_type = def.typeName;
@@ -88,7 +126,7 @@ DataBlock {
   //deep duplicates block, except for references to other data block which aren't copied
   //(e.g. a sceneobject doesn't duplicate .data)
   //if addLibUsers is true, references to other datablocks will get lib_addUser called,
-  copy(addLibUsers = false, owner) {
+  copy(addLibUsers = false, owner?: DataBlock): this {
     let ret = new this.constructor();
 
     this.copyTo(ret);
@@ -100,7 +138,7 @@ DataBlock {
 
       ret.lib_users++;
       if (owner) {
-        ret.lib_users.push(owner);
+        ret.lib_userlist.push(owner);
       }
     }
 
@@ -114,7 +152,7 @@ DataBlock {
   //and also copys over default socket values
   //
   //note that like swapDataBlockContents, this is a "shallow" copy
-  copyTo(b, copyContents = true) {
+  copyTo(b: this, copyContents = true): void {
     if (copyContents) {
       b.swapDataBlockContents(this);
     }
@@ -130,7 +168,7 @@ DataBlock {
         continue;
       }
 
-      b.inputs[k].setValue(this.inputs[k].getValue());
+      (b.inputs[k] as NodeSocketType).setValue((this.inputs[k] as NodeSocketType).getValue());
     }
 
     for (let k in this.outputs) {
@@ -138,7 +176,7 @@ DataBlock {
         continue;
       }
 
-      b.outputs[k].setValue(this.outputs[k].getValue());
+      (b.outputs[k] as NodeSocketType).setValue((this.outputs[k] as NodeSocketType).getValue());
     }
   }
 
@@ -148,20 +186,20 @@ DataBlock {
    @returns {{typeName: string, defaultName: string, uiName: string, flag: number, icon: number}}
    @example
    static blockDefine() { return {
-      typeName    : "typename",
-      defaultName : "unnamed",
-      uiName      : "uiname",
-      flag        : 0,
-      icon        : -1 //some icon constant in icon_enum.js.Icons
-    }}
+   typeName    : "typename",
+   defaultName : "unnamed",
+   uiName      : "uiname",
+   flag        : 0,
+   icon        : -1 //some icon constant in icon_enum.js.Icons
+   }}
    */
   static blockDefine() {
     return {
-      typeName   : "typename",
+      typeName: "typename",
       defaultName: "unnamed",
-      uiName     : "uiname",
-      flag       : 0,
-      icon       : -1
+      uiName: "uiname",
+      flag: 0,
+      icon: -1
     }
   }
 
@@ -172,7 +210,7 @@ DataBlock {
    * note that the reference counts of all blocks are re-built at file load time,
    * so make sure to choose between these two functions correctly.
    */
-  dataLink(getblock, getblock_addUser) {
+  dataLink(getblock: BlockLoader, getblock_addUser: BlockLoader): void {
   }
 
   _validate_userlist() {
@@ -186,7 +224,7 @@ DataBlock {
         if (block.lib_id < 0) {
           console.log("Dead block in user list");
           this.lib_users--;
-          this.lib_users.remove(block);
+          this.lib_userlist.remove(block);
           stop = false;
         }
       }
@@ -203,7 +241,7 @@ DataBlock {
    * if user is not undefined and is a datablock,
    * it will be added to this.lib_userlist
    * */
-  lib_addUser(user) {
+  lib_addUser(user?: DataBlock): void {
     if (user) {
       let bad = typeof user !== "object";
       bad = bad || !(user instanceof DataBlock);
@@ -226,7 +264,7 @@ but owner will not be added to this.lib_userlist`.trim());
   }
 
   /**decrement reference count*/
-  lib_remUser(user) {
+  lib_remUser(user?: DataBlock): void {
     this.lib_users--;
 
     if (user && this.lib_userlist.indexOf(user) >= 0) {
@@ -247,7 +285,7 @@ but owner will not be added to this.lib_userlist`.trim());
     super.afterSTRUCT();
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this);
     super.loadSTRUCT(reader);
 
@@ -264,7 +302,7 @@ but owner will not be added to this.lib_userlist`.trim());
   }
 
   /**call this to register a subclass*/
-  static register(cls) {
+  static register(cls: IDataBlockConstructor<any, {}, {}>) {
     if (cls.blockDefine === DataBlock.blockDefine) {
       throw new Error(cls.name + " is missing its blockDefine static method");
     }
@@ -272,11 +310,11 @@ but owner will not be added to this.lib_userlist`.trim());
     BlockTypes.push(cls);
   }
 
-  static unregister(cls) {
+  static unregister(cls: IDataBlockConstructor<any, {}, {}>) {
     BlockTypes.remove(cls);
   }
 
-  static getClass(typeName) {
+  static getClass<type = any>(typeName: string): IDataBlockConstructor<type, {}, {}> {
     for (let type of BlockTypes) {
       if (type.blockDefine().typeName === typeName)
         return type;
@@ -284,7 +322,7 @@ but owner will not be added to this.lib_userlist`.trim());
   }
 }
 
-export class DataRef {
+export class DataRef<BlockType extends DataBlock = DataBlock> implements IBlockRef {
   static STRUCT = nstructjs.inlineRegister(this, `
 DataRef {
   lib_id   : int;
@@ -293,19 +331,23 @@ DataRef {
 }
 `);
 
+  lib_id: number;
+  lib_type: string;
+  name: string;
+  lib_external_ref?: any;
+
   constructor(lib_id = -1, lib_type = undefined) {
     if (typeof lib_id === "object") {
-      lib_id = lib_id.lib_id;
+      lib_id = (lib_id as unknown as DataRef).lib_id;
     }
 
     this.lib_type = lib_type;
     this.lib_id = lib_id;
-    this.name = undefined;
-    this.lib_external_ref = undefined;
+    this.name = "";
   }
 
-  copy() {
-    let ret = new DataRef();
+  copy(): this {
+    let ret = new (this.constructor as new() => this)();
 
     ret.lib_type = this.lib_type;
     ret.lib_id = this.lib_id;
@@ -315,7 +357,7 @@ DataRef {
     return ret;
   }
 
-  static fromBlock(block) {
+  static fromBlock(block: DataBlock): DataRef {
     if (block instanceof DataRef) {
       return block.copy();
     }
@@ -329,7 +371,6 @@ DataRef {
 
     if (!block.constructor || !block.constructor.blockDefine) {
       console.warn("Invalid block in fromBlock: ", block);
-
     } else {
       ret.lib_type = block.constructor.blockDefine().typeName;
     }
@@ -341,7 +382,11 @@ DataRef {
     return ret;
   }
 
-  set(block) {
+  set(block: BlockType) {
+    if (!this.lib_type) {
+      this.lib_type = block.constructor.blockDefine().typeName;
+    }
+
     if (!block) {
       this.lib_id = -1;
       this.name = "";
@@ -359,9 +404,9 @@ DataRef {
 }
 
 //this has to be in global namespace for struct scripts to work
-window.DataRef = DataRef;
+window.DataRef = DataRef as unknown as () => void;
 
-export class BlockSet extends Array {
+export class BlockSet<BlockType extends DataBlock> extends Array<BlockType> {
   //note that blocks are saved/loaded seperately
   //to allow loading them individually
   static STRUCT = nstructjs.inlineRegister(this, `
@@ -371,7 +416,13 @@ BlockSet {
 }
   `);
 
-  constructor(type, datalib) {
+  datalib: Library;
+  type: IDataBlockConstructor<BlockType, {}, {}>;
+  __active?: BlockType;
+  idmap: { [k: number]: BlockType };
+  namemap: { [k: string]: BlockType };
+
+  constructor(type: IDataBlockConstructor<BlockType, {}, {}>, datalib: Library) {
     super();
 
     this.datalib = datalib;
@@ -428,11 +479,11 @@ BlockSet {
     //console.trace("active set", this);
   }
 
-  setActive(val) {
+  setActive(val?: BlockType): void {
     this.active = val;
   }
 
-  add(block, _inside_file_load = false, force_unique_name = true) {
+  add(block: BlockType, _inside_file_load = false, force_unique_name = true): boolean {
     if (force_unique_name) {
       block.name = this.uniqueName(block.name);
     }
@@ -443,10 +494,10 @@ BlockSet {
       this.datalib.graph.add(block);
     }
 
-    return added;
+    return added !== 0;
   }
 
-  rename(block, name) {
+  rename(block: BlockType, name: string): string {
     if (!block || block.lib_id < 0 || !(block.lib_id in this.idmap) || !name || ("" + name).trim().length === 0) {
       throw new Error("bad call to datalib rename API");
     }
@@ -456,7 +507,7 @@ BlockSet {
     for (let i = 0; i < 2; i++) {
       let map = i ? this.datalib.block_namemap : this.namemap;
       for (let k in map) {
-        if (map[k] === block) {
+        if (map[k] as unknown as BlockType === block) {
           delete map[k];
         }
       }
@@ -470,12 +521,12 @@ BlockSet {
     return name;
   }
 
-  push(block) {
+  push(block: BlockType): number {
     block.name = this.uniqueName(block.name);
 
     if (block.lib_id >= 0 && (block.lib_id in this.idmap)) {
       console.warn("Block already in dataset");
-      return false;
+      return 0;
     }
 
     super.push(block);
@@ -490,21 +541,21 @@ BlockSet {
     this.idmap[block.lib_id] = block;
     this.namemap[block.name] = block;
 
-    return true;
+    return 1;
   }
 
   /**
    *
-   * @param name_or_id : can be a string with block name, integer with block id, or DataRef instance
+   * @param name_or_id_or_dataref : can be a string with block name, integer with block id, or DataRef instance
    * @returns boolean
    */
-  has(name_or_id) {
-    if (typeof name_or_id == "number") {
-      return name_or_id in this.idmap;
-    } else if (typeof name_or_id == "string") {
-      return name_or_id in this.namemap;
-    } else if (name_or_id instanceof DataRef) {
-      return name_or_id.lib_id in this.idmap;
+  has(name_or_id_or_dataref: any): boolean {
+    if (typeof name_or_id_or_dataref == "number") {
+      return name_or_id_or_dataref in this.idmap;
+    } else if (typeof name_or_id_or_dataref == "string") {
+      return name_or_id_or_dataref in this.namemap;
+    } else if (name_or_id_or_dataref instanceof DataRef) {
+      return name_or_id_or_dataref.lib_id in this.idmap;
     } else {
       return false;
     }
@@ -512,22 +563,22 @@ BlockSet {
 
   /**
    *
-   * @param name_or_id : can be a string with block name, integer with block id, or DataRef instance
+   * @param name_or_id_or_dataref : can be a string with block name, integer with block id, or DataRef instance
    * @returns DataBlock
    */
-  get(name_or_id) {
-    if (typeof name_or_id === "number") {
-      return this.idmap[name_or_id];
-    } else if (typeof name_or_id === "string") {
-      return this.namemap[name_or_id];
-    } else if (name_or_id instanceof DataRef) {
-      return this.idmap[name_or_id.lib_id];
+  get(name_or_id_or_dataref: any): BlockType | undefined {
+    if (typeof name_or_id_or_dataref === "number") {
+      return this.idmap[name_or_id_or_dataref];
+    } else if (typeof name_or_id_or_dataref === "string") {
+      return this.namemap[name_or_id_or_dataref];
+    } else if (name_or_id_or_dataref instanceof DataRef) {
+      return this.idmap[name_or_id_or_dataref.lib_id];
     } else {
       throw new Error("invalid value in lib_api.js:BlockSet.get")
     }
   }
 
-  remove(block) {
+  remove(block: BlockType): void {
     let bad = block === undefined || !(block instanceof DataBlock) || block.lib_id === undefined;
     bad = bad || !(block.lib_id in this.idmap);
 
@@ -584,12 +635,12 @@ BlockSet {
   dataLink(getblock, getblock_addUser) {
     let type = this.type.blockDefine().typeName;
 
-    if (DEBUG.DataLink) {
+    if (window.DEBUG["DataLink"]) {
       console.warn("Linking " + type + ". . .", this.active, this.idmap);
     }
 
-    if (this.active != -1) {
-      this.active = this.idmap[this.active];
+    if (this.active as unknown as number !== -1) {
+      this.active = this.idmap[this.active as unknown as number];
     } else {
       this.active = undefined;
     }
@@ -605,7 +656,7 @@ BlockSet {
     reader(this);
   }
 
-  afterLoad(datalib, type) {
+  afterLoad(datalib: Library, type: IDataBlockConstructor<any, any, any>) {
     this.type = type;
     this.datalib = datalib;
   }
@@ -619,6 +670,13 @@ Library {
   graph : graph.Graph;
 }
 `);
+
+  graph: Graph<ToolContext>
+  libs: BlockSet<any>[];
+  libmap: { [k: string]: BlockSet<any> };
+  idgen: IDGen;
+  block_idmap: { [k: number]: DataBlock };
+  block_namemap: { [k: string]: DataBlock };
 
   constructor() {
     //master graph
@@ -640,7 +698,7 @@ Library {
 
       let tname = cls.blockDefine().typeName;
       Object.defineProperty(this, tname, {
-        get: function () {
+        get: function (this: Library) {
           return this.libmap[tname];
         }
       });
@@ -649,7 +707,8 @@ Library {
 
   //builds enum property of active blocks
   //for path.ux.  does not include ones that are hidden.
-  getBlockListEnum(blockClass, filterfunc) {
+  getBlockListEnum(blockClass: IDataBlockConstructor<any, any, any>,
+                   filterfunc: (block: DataBlock) => boolean): EnumProperty {
     let tname = blockClass.blockDefine().typeName;
     let uiname = blockClass.blockDefine().uiName;
     let lib = this.libmap[tname];
@@ -682,7 +741,7 @@ Library {
     return prop;
   }
 
-  setActive(block) {
+  setActive(block: DataBlock) {
     let tname = block.constructor.blockDefine().typeName;
 
     this.getLibrary(tname).active = block;
@@ -699,37 +758,37 @@ Library {
     })();
   }
 
-  get(id_or_dataref_or_name) {
+  get<BlockType = DataBlock>(id_or_dataref_or_name: any): BlockType | undefined {
     let f = id_or_dataref_or_name;
+
+    if (f === undefined || f === null) {
+      return undefined;
+    }
+
+    if (typeof f === "number") {
+      return this.block_idmap[f] as unknown as BlockType | undefined;
+    } else if (typeof f === "string") {
+      return this.block_namemap[f] as unknown as BlockType | undefined;
+    } else if (typeof f === "object" && (f instanceof DataRef)) {
+      return this.block_idmap[f.lib_id] as unknown as BlockType | undefined;
+    } else {
+      throw new Error("bad parameter passed to Library.get()");
+    }
+  }
+
+  has<BlockType = DataBlock>(id_or_dataref_or_block_or_name: any): boolean {
+    let f = id_or_dataref_or_block_or_name;
 
     if (f === undefined || f === null) {
       return false;
     }
 
     if (typeof f === "number") {
-      return this.block_idmap[f];
+      return this.block_idmap[f] !== undefined;
     } else if (typeof f === "string") {
-      return this.block_namemap[f];
+      return this.block_namemap[f] !== undefined;
     } else if (typeof f === "object" && (f instanceof DataRef)) {
-      return this.block_idmap[f.lib_id];
-    } else {
-      throw new Error("bad parameter passed to Library.get()");
-    }
-  }
-
-  has(id_or_dataref_or_block_or_name) {
-    let f = id_or_dataref_or_block_or_name;
-
-    if (f === undefined | f === null) {
-      return false;
-    }
-
-    if (typeof f === "number") {
-      return this.block_idmap[f];
-    } else if (typeof f === "string") {
-      return this.block_namemap[f];
-    } else if (typeof f === "object" && (f instanceof DataRef)) {
-      return this.block_idmap[f.lib_id];
+      return this.block_idmap[f.lib_id] !== undefined;
     } else if (typeof f === "object" && (f instanceof DataBlock)) {
       return f.lib_id >= 0 && this.block_idmap[f.lib_id] === f;
     } else {
@@ -737,7 +796,7 @@ Library {
     }
   }
 
-  add(block, force_unique_name = true) {
+  add<BlockType extends DataBlock = DataBlock>(block: BlockType, force_unique_name = true): boolean {
     let typename = block.constructor.blockDefine().typeName;
 
     if (!(typename in this.libmap)) {
@@ -748,16 +807,16 @@ Library {
           this.libs.push(lib);
           this.libmap[typename] = lib;
 
-          return lib.add(block, undefined, force_unique_name);
+          return lib.add(block as unknown as DataBlock, undefined, force_unique_name);
         }
       }
       throw new Error("invalid blocktype " + typename);
     }
 
-    return this.getLibrary(typename).add(block, undefined, force_unique_name);
+    return this.getLibrary<BlockType>(typename).add(block, undefined, force_unique_name);
   }
 
-  remove(block) {
+  remove(block: DataBlock) {
     return this.getLibrary(block.constructor.blockDefine().typeName).remove(block);
   }
 
@@ -767,8 +826,8 @@ Library {
     }
   }
 
-  getLibrary(typeName) {
-    return this.libmap[typeName];
+  getLibrary<BlockType extends DataBlock = DataBlock>(typeName: string): BlockSet<BlockType> {
+    return this.libmap[typeName] as unknown as BlockSet<BlockType>;
   }
 
   afterSTRUCT() {
@@ -777,7 +836,7 @@ Library {
     }
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     this.libmap = {};
     this.libs.length = 0;
 
@@ -786,7 +845,7 @@ Library {
     for (let lib of this.libs.slice(0, this.libs.length)) {
       let type = undefined;
 
-      this.libmap[lib.type] = lib;
+      this.libmap[lib.type as unknown as string] = lib;
 
       for (let cls of BlockTypes) {
         if (cls.blockDefine().typeName == lib.type) {
@@ -815,29 +874,38 @@ Library {
   }
 }
 
-export class DataRefProperty extends ToolProperty {
+export class DataRefProperty extends ToolProperty<DataRef> {
   static STRUCT = nstructjs.inlineRegister(this, `
 DataRefProperty {
   blockType : string;
   data      : DataRef;
 }`);
 
-  constructor(type, apiname, uiname, description, flag, icon) {
-    super(undefined, apiname, uiname, description, flag, icon)
+  blockType: string;
+  data: DataRef;
 
-    if (typeof type === "object" || typeof type === "function") {
-      type = type.blockDefine().typeName;
+  constructor(type: IDataBlockConstructor<any, any, any>, apiname = "", uiname = "", description = "", flag = 0, icon = -1) {
+    super(PropTypes.DATAREF);
+
+    this.apiname = apiname;
+    this.uiname = uiname;
+    this.description = description;
+    this.flag = flag;
+    this.icon = icon;
+
+    if (typeof type === "string") {
+      type = DataBlock.getClass(type as unknown as string);
     }
 
-    this.blockType = type;
+    this.blockType = type.blockDefine().typeName;
     this.data = new DataRef();
   }
 
   calcMemSize() {
-    return super.calcMemSize() + (this.blockType ? this.blockType.length*4 + 8 : 8) + 64;
+    return super.calcMemSize() + (this.blockType ? this.blockType.length * 4 + 8 : 8) + 64;
   }
 
-  setValue(val) {
+  setValue(val: any) {
     if (val === undefined || val === -1) {
       this.data.lib_id = -1;
       return;
@@ -860,9 +928,6 @@ DataRefProperty {
       this.data.lib_type = val.lib_type;
     } else if (typeof val == "object" && val instanceof DataBlock && (val.constructor.blockDefine().typeName !== this.blockType)) {
       throw new Error("invalid block type " + val.constructor.blockDefine().typeName + "; expected" + this.blockType + ".");
-
-      this.data.lib_id = val.lib_id;
-      this.data.name = val.name;
     } else if (typeof val == "number") {
       console.warn("Warning, DataRefProperty.setValue was fed a number; can't validate it's type")
       //can't validate in this case
@@ -882,18 +947,18 @@ DataRefProperty {
     return this.data;
   }
 
-  copyTo(b) {
+  copyTo(b: this) {
     super.copyTo(b);
     b.blockType = this.blockType;
   }
 
-  copy() {
-    let ret = new DataRefProperty();
+  copy(): this {
+    let ret = new (this.constructor as new() => this)();
     this.copyTo(ret);
     return ret;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this);
 
     if (this.blockType === "undefined") {
@@ -904,9 +969,12 @@ DataRefProperty {
 
 PropTypes.DATAREF = ToolProperty.register(DataRefProperty);
 
-export class DataRefListProperty extends ToolProperty {
-  constructor(typeName, apiname, uiname, description, flag, icon) {
-    super(PropTypes.DATAREFLIST, apiname, uiname, description, flag, icon)
+export class DataRefListProperty extends ToolProperty<DataRef[]> {
+  blockType: string;
+  data: DataRef[];
+
+  constructor(typeName: string, apiname: string, uiname = "", description = "", flag = 0, icon = -1) {
+    super(PropTypes.DATAREFLIST)
 
     this.blockType = typeName;
     this.data = [];
@@ -918,7 +986,7 @@ export class DataRefListProperty extends ToolProperty {
     tot += this.blockType ? this.blockType.length + 4 : 0;
     tot += 8;
 
-    tot += this.data.length*64; //64 is probably incorrect for size of DataRef
+    tot += this.data.length * 64; //64 is probably incorrect for size of DataRef
     return tot;
   }
 
@@ -950,13 +1018,13 @@ export class DataRefListProperty extends ToolProperty {
     return this.data;
   }
 
-  copyTo(b) {
+  copyTo(b): void {
     super.copyTo(b);
     b.blockType = this.blockType;
   }
 
-  copy() {
-    let ret = new DataRefListProperty();
+  copy(): this {
+    let ret = new (this.constructor as new() => this)();
     this.copyTo(ret);
     return ret;
   }
@@ -964,7 +1032,7 @@ export class DataRefListProperty extends ToolProperty {
 
 PropTypes.DATAREFLIST = ToolProperty.register(DataRefListProperty);
 
-export class DataRefList extends Array {
+export class DataRefList extends Array<DataRef> {
   static STRUCT = nstructjs.inlineRegister(this, `
 DataRefList {
   _array    : array(DataRef) | obj;
@@ -972,6 +1040,14 @@ DataRefList {
   highlight : DataRef | obj;
   lib_type  : string;  
 }`);
+
+  idmap: { [k: number]: DataRef };
+  lib_type: string;
+  active: DataRef;
+  highlight: DataRef;
+
+  /* used by STRUCT system. */
+  _array?: DataRef[];
 
   constructor(iterable, blockTypeName = "") {
     super();
@@ -991,34 +1067,34 @@ DataRefList {
     }
   }
 
-  push(item) {
+  push(item: any) {
+    let ref: DataRef;
+
     if (typeof item === "number") {
-      item = new DataRef(item);
+      ref = new DataRef(item);
     } else if (item instanceof DataBlock) {
-      item = new DataRef(item.lib_id, item.lib_type)
+      ref = new DataRef(item.lib_id, item.lib_type)
     } else {
       throw new Error("Non-datablock passed to DataRefList: " + item);
     }
 
-    if (item.lib_id < 0) {
+    if (ref.lib_id < 0) {
       throw new Error("DataBlock hasn't been added to a datalib yet");
     }
 
-    this.idmap[item.lib_id] = item;
-    super.push(item);
-
-    return this;
+    this.idmap[ref.lib_id] = ref;
+    return super.push(ref);
   }
 
-  getActive(ctx) {
+  getActive(ctx: ToolContext) {
     return ctx.datalib.get(this.active);
   }
 
-  getHighlight(ctx) {
+  getHighlight(ctx: ToolContext) {
     return ctx.datalib.get(this.active);
   }
 
-  setActive(ctx, val) {
+  setActive(ctx: ToolContext, val?: IBlockRef): this {
     if (val === undefined) {
       this.active.lib_id = -1;
     } else {
@@ -1028,7 +1104,7 @@ DataRefList {
     return this;
   }
 
-  setHighlight(ctx, val) {
+  setHighlight(ctx: ToolContext, val?: IBlockRef): this {
     if (val === undefined) {
       this.highlight.lib_id = -1;
     } else {
@@ -1044,7 +1120,7 @@ DataRefList {
     }
   }
 
-  remove(item) {
+  remove(item: any) {
     let lib_id;
 
     if (typeof item === "number") {
@@ -1060,13 +1136,11 @@ DataRefList {
       throw new Error("Item not in list: " + lib_id);
     }
 
-    super.remove(this.lib_id[lib_id]);
-    delete this.lib_id[lib_id];
-
-    return this;
+    super.remove(this.idmap[lib_id]);
+    delete this.idmap[lib_id];
   }
 
-  has(item) {
+  has(item: any): boolean {
     if (item === undefined) {
       return false;
     }
@@ -1085,7 +1159,7 @@ DataRefList {
     return lib_id in this.idmap;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this);
 
     this.idmap = {};
@@ -1095,6 +1169,6 @@ DataRefList {
       this.idmap[ref.lib_id] = ref;
     }
 
-    delete this._array;
+    this._array = undefined;
   }
 }

@@ -1,3 +1,5 @@
+import type {Library} from "../../../scripts/core/lib_api";
+
 declare const BaseOverlay_base: {
     new (appstate: any): {
         [x: string]: any;
@@ -45,7 +47,7 @@ export class BaseOverlay extends BaseOverlay_base {
     get toolmode(): any;
     get toolstack(): any;
     get api(): any;
-    get datalib(): any;
+    get datalib() : Library;
     toolmode_save(): any;
     toolmode_load(ctx: any, data: any): any;
     get scene(): any;
@@ -108,7 +110,7 @@ export class ViewOverlay extends ViewOverlay_base {
     get editor(): any;
     get screen(): any;
 }
-export class ToolContext extends Context {
+export class ToolContext extends BaseOverlay {
     _state: any;
     play(): void;
     stop(): void;

@@ -862,7 +862,7 @@ graph.Node {
   afterSTRUCT() {
   }
 
-  loadSTRUCT(reader: StructReader<this>) {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this);
 
     if (Array.isArray(this.inputs)) {
@@ -963,8 +963,6 @@ graph.Node {
         sock.onFileLoad(socks2[k]);
       }
     }
-
-    return this;
   }
 
   graphDisplayName() {
