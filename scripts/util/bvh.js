@@ -3117,8 +3117,10 @@ export class BVH {
 
   static create(mesh, args) {
     let times = [util.time_ms()]; //0
-    let storeVerts = storeVerts_or_args;
+    let storeVerts = args;
     let onCreate;
+
+    let leafLimit, depthLimit, addWireVerts, deformMode, useGrids, freelist;
 
     if (typeof storeVerts == "object") {
       let args = storeVerts;

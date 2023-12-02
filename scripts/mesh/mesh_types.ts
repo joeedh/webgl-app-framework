@@ -1749,10 +1749,10 @@ mesh.Edge {
   length  : float; 
 }`);
 
-  v1: Vertex;
-  v2: Vertex;
-  h1: Handle | undefined;
-  h2: Handle | undefined;
+  v1: Vertex = undefined;
+  v2: Vertex = undefined;
+  h1: Handle | undefined = undefined;
+  h2: Handle | undefined = undefined;
   l: Loop | undefined;
   _arcCache: ArcLengthCache | undefined;
   _length: number = 0;

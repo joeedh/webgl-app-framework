@@ -27,7 +27,7 @@ import {SelMask} from '../editors/view3d/selectmode.js';
 import {MeshOp, MeshDeformOp} from '../mesh/mesh_ops_base.js';
 import {MeshOpBaseUV} from '../mesh/mesh_uvops_base.js';
 import {TransformOp} from '../editors/view3d/transform/transform_ops.js';
-import {TransformWidget} from '../editors/view3d/widgets/widget_tools.js';
+import * as widget_tools from '../editors/view3d/widgets/widget_tools.js';
 import * as widgets from '../editors/view3d/widgets/widgets.js';
 import * as simplemesh from '../core/simplemesh.js';
 import * as paramizer from '../mesh/mesh_paramizer.js';
@@ -84,9 +84,12 @@ export class AddonAPI {
       MeshMaterialChooser, MeshMaterialPanel, NewDataBlockOp, getContextArea
     };
 
-    this.widget3d = {TransformWidget};
+    this.widget3d = {};
     for (let k in widgets) {
       this.widget3d[k] = widgets[k];
+    }
+    for (let k in widget_tools) {
+      this.widget3d[k] = widget_tools[k];
     }
 
     this.toolmode = {

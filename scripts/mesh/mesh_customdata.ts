@@ -713,22 +713,5 @@ mesh.MaskElem {
 
 CustomDataElem.register(MaskElem);
 
-export class AttrRef<type> {
-  public i: number = -1;
+export {AttrRef} from './customdata';
 
-  constructor(index: number) {
-    this.i = index;
-  }
-
-  static create<type>(index: number): AttrRef<type> {
-    return new AttrRef<type>(index);
-  }
-
-  get exists() {
-    return this.i >= 0;
-  }
-
-  get(elem: Element): type {
-    return elem.customData.get<type>(this.i);
-  }
-}

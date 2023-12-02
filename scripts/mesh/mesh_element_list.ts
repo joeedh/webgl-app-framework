@@ -1,5 +1,5 @@
 import {Edge, Element, MeshIterStack} from "./mesh_types";
-import {nstructjs, util} from '../path.ux/scripts/pathux';
+import {nstructjs, util} from '../path.ux/scripts/pathux.js';
 import {
   DEBUG_BAD_LOOPS, getArrayTemp, MeshError, MeshFlags, MeshTypes, STORE_DELAY_CACHE_INDEX,
   WITH_EIDMAP_MAP, EmptyCDArray, CDElemArray
@@ -953,7 +953,7 @@ mesh.ElementList {
     let typecls: ICustomDataElemConstructor | undefined;
 
     if (typeof cls_or_typestring === "string") {
-      typecls = CustomDataElem.getTypeClass(typecls);
+      typecls = CustomDataElem.getTypeClass(cls_or_typestring);
     } else {
       typecls = cls_or_typestring as unknown as ICustomDataElemConstructor;
     }

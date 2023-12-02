@@ -1,5 +1,5 @@
 import {CustomDataElem, ICustomDataElemDef} from "../mesh/customdata";
-import {nstructjs} from "../path.ux/pathux";
+import {nstructjs} from "../path.ux/scripts/pathux.js";
 import {MeshTypes} from "../mesh/mesh_base";
 
 export enum KnotFlags {}

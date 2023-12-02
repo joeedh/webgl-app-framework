@@ -5,7 +5,7 @@ let _graph = undefined;
 import {
   Matrix4, Vector2, Vector3,
   Vector4, util, nstructjs, ToolProperty
-} from '../path.ux/scripts/pathux';
+} from '../path.ux/scripts/pathux.js';
 
 import '../util/polyfill.d.ts';
 import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
@@ -679,7 +679,7 @@ graph.Node {
     this.icon = -1;
   }
 
-  get allsockets() {
+  get allsockets(): Iterable<NodeSocketType> {
     let this2 = this;
     return (function* () {
       for (let k in this2.inputs) {
@@ -688,7 +688,7 @@ graph.Node {
       for (let k in this2.outputs) {
         yield this2.outputs[k];
       }
-    })();
+    })() as unknown as Iterable<NodeSocketType>;
   }
 
   static graphDefineAPI(api, nodeStruct) {
@@ -985,7 +985,7 @@ graph.Node {
  */
 export class ProxyNode<InputSet extends INodeSocketSet, OutputSet extends INodeSocketSet> extends Node<InputSet, OutputSet> {
   static STRUCT = nstructjs.inlineRegister(this, `
-graph.ProxyNode
+graph.ProxyNode {
   className : string; 
 }`);
 

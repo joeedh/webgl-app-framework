@@ -1,10 +1,11 @@
 import {DataBlock, DataRef} from '../core/lib_api.js';
-import {Vector3, Matrix4, nstructjs} from '../path.ux/pathux';
+import {Vector3, Matrix4, nstructjs} from '../path.ux/scripts/pathux.js';
 
 import {StandardTools} from './stdtools.js';
 import {Node, NodeFlags} from "../core/graph.js";
 import {DependSocket, Matrix4Socket} from "../core/graphsockets.js";
 import {Material} from "../core/material";
+import {ToolContext} from "../../types/scripts/core/context";
 
 export const ObjectDataTypes = [];
 
@@ -15,7 +16,10 @@ export interface IDataDefine {
 }
 
 // @ts-ignore
-export class SceneObjectData extends DataBlock {
+export class SceneObjectData extends DataBlock<
+  { depend: DependSocket },
+  { depend: DependSocket }
+> {
   materials: Array<Material | undefined> = [];
   usesMaterial = false;
 
@@ -53,7 +57,7 @@ SceneObjectData {
   materials : array(e, DataRef) | DataRef.fromBlock(e); 
 }`);
 
-  exec(ctx) {
+  exec(ctx: ToolContext) {
     this.outputs.depend.graphUpdate();
   }
 
@@ -68,7 +72,7 @@ SceneObjectData {
 
   getOwningObject() {
     for (let sock of this.inputs.depend.edges) {
-      if (sock.node.constructor.name === "SceneObject" && sock.node.data === this) {
+      if (sock.node.constructor.name === "SceneObject" && (sock.node as unknown as any).data === this) {
         return sock.node;
       }
     }

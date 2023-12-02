@@ -5371,7 +5371,7 @@ mesh.Mesh {
   }
 
   swapDataBlockContents(mesh) {
-    return super.swapDataBlockContents(...arguments);
+    return super.swapDataBlockContents(mesh);
   }
 
   clearCustomData() {
@@ -5538,7 +5538,11 @@ mesh.Mesh {
     return this;
   }
 
-  copy(addLibUsers = false, clearCustomData = false) {
+  copy(addLibUsers = false, owner ?: DataBlock, clearCustomData = false) {
+    if (typeof owner === "boolean" || typeof owner === "number") {
+      throw new Error("Invalid call to Mesh.prototype.copy!");
+    }
+    
     let ret = new (this.constructor as unknown as new() => this)();
 
     //derived types may have customdata set in constructors, still

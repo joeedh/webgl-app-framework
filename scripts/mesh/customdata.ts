@@ -7,8 +7,7 @@ import * as util from '../util/util.js';
 import {EmptyCDArray} from './mesh_base.js';
 import {Icons} from '../editors/icon_enum.js';
 import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
-import {CDT} from "./mesh_tess";
-import {AttrRef} from "./mesh_customdata";
+import {Element} from "./mesh_types";
 
 export type CDRef<type> = number;
 
@@ -220,7 +219,11 @@ mesh.CustomDataElem {
     reader(this);
   }
 
-  static getTypeClass(typeName): ICustomDataElemConstructor | undefined {
+  static getTypeClass(typeName: string): ICustomDataElemConstructor | undefined {
+    if (!(typeName in CDElemMap)) {
+      debugger;
+      throw new Error("Unknown customdata type " + typeName);
+    }
     return CDElemMap[typeName];
   }
 }
@@ -924,3 +927,24 @@ mesh.CustomData {
     return ret;
   }
 }
+
+export class AttrRef<type> {
+  public i: number = -1;
+
+  constructor(index: number) {
+    this.i = index;
+  }
+
+  static create<type>(index: number): AttrRef<type> {
+    return new AttrRef<type>(index);
+  }
+
+  get exists() {
+    return this.i >= 0;
+  }
+
+  get(elem: Element): type {
+    return elem.customData.get<type>(this.i);
+  }
+}
+

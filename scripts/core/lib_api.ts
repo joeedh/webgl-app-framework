@@ -884,7 +884,7 @@ DataRefProperty {
   blockType: string;
   data: DataRef;
 
-  constructor(type: IDataBlockConstructor<any, any, any>, apiname = "", uiname = "", description = "", flag = 0, icon = -1) {
+  constructor(type?: IDataBlockConstructor<any, any, any>, apiname = "", uiname = "", description = "", flag = 0, icon = -1) {
     super(PropTypes.DATAREF);
 
     this.apiname = apiname;
@@ -897,7 +897,10 @@ DataRefProperty {
       type = DataBlock.getClass(type as unknown as string);
     }
 
-    this.blockType = type.blockDefine().typeName;
+    if (type !== undefined) {
+      this.blockType = type.blockDefine().typeName;
+    }
+
     this.data = new DataRef();
   }
 
