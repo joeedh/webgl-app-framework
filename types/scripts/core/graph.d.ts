@@ -38,7 +38,6 @@ export namespace GraphFlags {
 }
 export let NodeSocketClasses: any[];
 export class NodeSocketType {
-    static _api_uiname(): any;
     static apiDefine(api: any, sockstruct: any): void;
     static register(cls: any): void;
     /**

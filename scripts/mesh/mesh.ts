@@ -20,12 +20,12 @@ import {Shaders} from '../shaders/shaders.js';
 import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../core/simplemesh.js';
 
 import {DataBlock} from '../core/lib_api.js';
-import {SceneObjectData} from '../sceneobject/sceneobject_base.js';
+import {IDataDefine, SceneObjectData} from '../sceneobject/sceneobject_base';
 import {math, Matrix4, nstructjs, util, Vector3, Vector4} from '../path.ux/pathux.js';
 
 import {CDFlags, CDRef, CustomData, CustomDataElem, ICustomDataElemConstructor} from './customdata';
 
-import {MeshTools} from './mesh_stdtools.js';
+import {MeshTools} from './mesh_stdtools';
 import {
   LogTags,
   MAX_EDGE_FACES,
@@ -256,6 +256,8 @@ export class EidElemMap extends Map<number, Element> {
   }
 }
 
+// XXX remove after porting graph.js to typescript
+// @ts-ignore
 export class Mesh extends SceneObjectData {
   static STRUCT = nstructjs.inlineRegister(this, `
 mesh.Mesh {
@@ -407,7 +409,7 @@ mesh.Mesh {
     }
   }
 
-  static dataDefine() {
+  static dataDefine(): IDataDefine {
     return {
       name: "Mesh",
       selectMask: SelMask.MESH,
@@ -5546,7 +5548,7 @@ mesh.Mesh {
   }
 
   copy(addLibUsers = false, clearCustomData = false) {
-    let ret = new (this.constructor as new() => this)();
+    let ret = new (this.constructor as unknown as new() => this)();
 
     //derived types may have customdata set in constructors, still
     //clear in this case if requested

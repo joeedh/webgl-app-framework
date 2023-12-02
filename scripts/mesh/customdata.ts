@@ -727,7 +727,7 @@ mesh.CustomData {
 
     for (let layer of this.flatlist) {
       let cls = CustomDataElem.getTypeClass(layer.typeName);
-      e.customData.push(new cls(e));
+      e.customData.push(new cls());
     }
   }
 
@@ -777,7 +777,7 @@ mesh.CustomData {
     if (typeof typecls_or_name === "string") {
       typeName = typecls_or_name as unknown as string;
     } else {
-      let cls = typename_or_cls as unknown as ICustomDataElemConstructor;
+      let cls = typecls_or_name as unknown as ICustomDataElemConstructor;
       typeName = cls.define().typeName;
     }
 

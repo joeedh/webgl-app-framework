@@ -1,5 +1,5 @@
 import {EnumKeyPair, Matrix4, Vector2, Vector3, Vector4, util, nstructjs} from '../path.ux/scripts/pathux.js';
-import {NodeSocketType, NodeFlags, SocketFlags} from './graph.js';
+import {NodeSocketType, NodeFlags, SocketFlags, nodeSocket_api_uiname} from './graph.js';
 
 export class Matrix4Socket extends NodeSocketType {
   constructor(uiname, flag, default_value) {
@@ -272,7 +272,7 @@ export class Vec3Socket extends VecSocket {
   }
 
   static apiDefine(api, sockstruct) {
-    let cb = NodeSocketType._api_uiname;
+
     let def = sockstruct.vec3('value', 'value', 'value').uiNameGetter(cb).noUnits();
 
     def.on('change', function() { this.dataref.graphUpdate(true)});
@@ -410,7 +410,7 @@ export class RGBSocket extends Vec3Socket {
   }}
 
   static apiDefine(api, sockstruct) {
-    let def = sockstruct.color3('value', 'value', 'value').uiNameGetter(NodeSocketType._api_uiname).noUnits();
+    let def = sockstruct.color3('value', 'value', 'value').uiNameGetter(nodeSocket_api_uiname).noUnits();
 
     def.on('change', function() { this.dataref.graphUpdate(true)});
   }
@@ -450,7 +450,7 @@ export class RGBASocket extends Vec4Socket {
   }}
 
   static apiDefine(api, sockstruct) {
-    let def = sockstruct.color4('value', 'value', 'value').uiNameGetter(NodeSocketType._api_uiname).noUnits();
+    let def = sockstruct.color4('value', 'value', 'value').uiNameGetter(nodeSocket_api_uiname).noUnits();
 
     def.on('change', function() { this.dataref.graphUpdate(true)});
   }

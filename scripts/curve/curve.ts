@@ -192,7 +192,7 @@ CurveSpline {
     return this._length;
   }
 
-  updateKnots(): void {
+  updateKnots(): number {
     if (this.verts.length === 0 || this.edges.length === 0.0)
       return;
 
@@ -256,11 +256,11 @@ CurveSpline {
     return this.speedLength;
   }
 
-  update(): void {
+  update(): this {
     super.update();
 
     if (this.verts.length === 0 || this.verts.first.valence === 0) {
-      return; //empty mesh
+      return this; //empty mesh
     }
 
     for (let e of this.edges) {
@@ -294,16 +294,17 @@ CurveSpline {
     }
 
     this.updateKnots();
+    return this;
   }
 
-  _genRenderElements(): void {
+  _genRenderElements(gl, uniforms, combinedWireframe = false): void {
     this.update();
-    return super._genRenderElements(...arguments);
+    return super._genRenderElements(gl, uniforms, combinedWireframe);
   }
 
-  genRender(): void {
+  genRender(gl, combinedWireframe = false, view3d = undefined) {
     this.update();
-    return super.genRender(...arguments);
+    return super.genRender(gl, combinedWireframe, view3d);
   }
 
   switchDirection(): void {
@@ -339,8 +340,8 @@ CurveSpline {
     }
   }
 
-  exec(): void {
-    super.exec(...arguments);
+  exec(ctx): void {
+    super.exec(ctx);
 
     this.checkUpdate();
   }
@@ -508,8 +509,6 @@ CurveSpline {
       let s2 = sout[0];
       let elen = e.length;
       let t = s2 / elen;
-
-      color2.load(e.v1.color).interp(e.v2.color, t);
 
       //console.log(s, co, this.speedLength);
       if (drawnormals) {
@@ -689,14 +688,14 @@ CurveSpline {
     }
   }
 
-  draw(): void {
+  draw(view3d, gl, uniforms, program, object): void {
     this.checkUpdate();
-    return super.draw(...arguments);
+    return super.draw(view3d, gl, uniforms, program, object);
   }
 
-  drawElements(): void {
+  drawElements(view3d, gl, selmask, uniforms, program, object, drawTransFaces = false): void {
     this.checkUpdate();
-    return super.drawElements(...arguments);
+    return super.drawElements(view3d, gl, selmask, uniforms, program, object, drawTransFaces);
   }
 
   loadSTRUCT(reader: StructReader<this>): void {
