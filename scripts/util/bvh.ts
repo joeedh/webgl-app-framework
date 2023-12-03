@@ -158,6 +158,11 @@ export class BVHTri {
 
     this.node = undefined;
 
+    /* Ensure v1,v2,v3 exist prior to Object.seal.*/
+    (this.v1 as unknown) = undefined;
+    (this.v2 as unknown) = undefined;
+    (this.v3 as unknown) = undefined;
+
     //only used in non grids mode
     this.l1 = this.l2 = this.l3 = undefined;
 
@@ -544,7 +549,7 @@ export class BVHNode {
   tottri: number;
   indexVerts?: IBVHVertex[];
   indexEdges?: BVHNodeEdge[];
-  indexTris?: BVHTri[];
+  indexTris?: number[];
   indexLoops?: Loop[];
   allTris: Set<BVHTri>;
   otherTris: Set<BVHTri>;
@@ -2597,7 +2602,7 @@ export class BVHNode {
       for (let tri of this.uniqueTris) {
         let indexVerts, indexLoops, indexTris, indexEdges;
 
-        let i1, i2, i3;
+        let i1: number, i2: number, i3: number;
 
         if (this.boxbridgetris && ((tri.v1.flag | tri.v2.flag | tri.v3.flag) & dflag)) {
           if (bridgeIdxMap) {

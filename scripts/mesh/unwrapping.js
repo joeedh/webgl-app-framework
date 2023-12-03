@@ -1349,8 +1349,6 @@ export function voxelUnwrap(mesh, faces, cd_uv = undefined, setSeams = true,
   let p = new Vector3();
   let scale = new Vector3(aabb[1]).sub(aabb[0]);
 
-  let cd_node = bvh.cd_node;
-
   console.log(aabb, scale);
   let patches = new Map();
 

@@ -723,7 +723,7 @@ mesh.CustomData {
     }
 
     if (e.customData === EmptyCDArray) {
-      e.customData = [];
+      e.customData = new CDElemArray();
     }
 
     e.customData.length = 0;
@@ -948,3 +948,5 @@ export class AttrRef<type> {
   }
 }
 
+
+import {CDElemArray} from "./mesh_base.js";

@@ -3143,8 +3143,6 @@ export class KdTreeGrid extends GridBase {
     let cd_color = mesh.loops.customData.getLayerIndex("color");
     let have_color = cd_color >= 0;
 
-    let cd_node = mesh.loops.customData.getLayerIndex("bvh");
-
     let idmul = this.dimen*this.dimen;
     idmul = Math.max(idmul, this.polys.length);
 

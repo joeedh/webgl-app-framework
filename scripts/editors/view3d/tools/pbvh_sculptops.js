@@ -8,7 +8,7 @@ import {
   Vector4, closest_point_on_line
 } from '../../../path.ux/scripts/pathux.js';
 import {Grid, GridBase, QRecalcFlags} from '../../../mesh/mesh_grids.js';
-import {CDFlags, CustomDataElem} from '../../../mesh/customdata.js';
+import {AttrRef, CDFlags, CustomDataElem} from '../../../mesh/customdata.js';
 import {
   BrushFlags, DynTopoFlags, SculptTools, BrushSpacingModes, DynTopoModes, SubdivModes
 } from '../../../brush/brush.js';
@@ -333,11 +333,11 @@ export class PaintOp extends PaintOpBase {
           v.flag |= MeshFlags.UPDATE;
 
           if (cd_node !== undefined) {
-            let mv = v.customData[cd_dyn_vert];
+            let mv = cd_node.get(v);
 
             mv.flag |= BVHVertFlags.NEED_BOUNDARY;
 
-            let node = v.customData[cd_node].node;
+            let node = cd_node.get(v).node;
             node.setUpdateFlag(BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK);
           }
         }
@@ -376,7 +376,7 @@ export class PaintOp extends PaintOpBase {
         c[2] = b;
         c[3] = a;
 
-        let node = p.customData[cd_node].node;
+        let node = cd_node.get(p).node;
 
         if (node) {
           node.setUpdateFlag(BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS);
@@ -397,7 +397,7 @@ export class PaintOp extends PaintOpBase {
           v.customData[cd_color].color.load(undo.vmap.get(eid));
 
           if (bvh) {
-            let node = v.customData[cd_node].node;
+            let node = cd_node.get(v).node;
             if (node) {
               node.flag |= BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS;
             }
@@ -433,7 +433,7 @@ export class PaintOp extends PaintOpBase {
 
         p.customData[cd_mask].value = mask;
 
-        let node = p.customData[cd_node].node;
+        let node = cd_node.get(p).node;
 
         if (node) {
           node.setUpdateFlag(BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS);
@@ -448,7 +448,7 @@ export class PaintOp extends PaintOpBase {
         }
 
         v.customData[cd_mask].value = mask;
-        let node = v.customData[cd_node].node;
+        let node = cd_node.get(v).node;
 
         if (node) {
           node.setUpdateFlag(BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK);
@@ -477,7 +477,7 @@ export class PaintOp extends PaintOpBase {
         p.no[1] = ny;
         p.no[2] = nz;
 
-        let node = p.customData[cd_node].node;
+        let node = cd_node.get(p).node;
 
         if (node) {
           node.setUpdateFlag(BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS);
@@ -492,7 +492,7 @@ export class PaintOp extends PaintOpBase {
           v.load(undo.vmap.get(eid));
 
           if (bvh) {
-            let node = v.customData[cd_node].node;
+            let node = cd_node.get(v).node;
 
             if (node) {
               node.setUpdateFlag(BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS);
@@ -515,7 +515,7 @@ export class PaintOp extends PaintOpBase {
       console.log("gmap:", undo.gmap);
       let gmap = undo.gmap;
 
-      let cd_node = mesh.loops.customData.getLayerIndex("bvh");
+      let cd_node = new AttrRef(mesh.loops.customData.getLayerIndex("bvh"));
       let cd_grid = GridBase.meshGridOffset(mesh);
 
       let updateloops = new Set();
@@ -530,7 +530,7 @@ export class PaintOp extends PaintOpBase {
         /*
         if (cd_node >= 0) {
           for (let p of grid1.points) {
-            let node = p.customData[cd_node];
+            let node = cd_node.get(p);
             if (node && node.node && node.node.uniqueVerts) {
               node.node.uniqueVerts.delete(p);
             }
@@ -2352,7 +2352,7 @@ export class PaintOp extends PaintOpBase {
           vmap.set(v.eid, new Vector3(v.co));
         }
       } else if (haveQuadTreeGrids) {
-        let node = v.customData[cd_node];
+        let node = cd_node.get(v);
         v.flag |= MeshFlags.UPDATE;
 
         if (node.node) {
@@ -2484,13 +2484,13 @@ export class PaintOp extends PaintOpBase {
       }
 
 
-      let node = v.bLink.v1.customData[cd_node].node;
+      let node = cd_node.get(v.bLink.v1).node;
       if (node) {
         node.setUpdateFlag(updateflag);
       }
 
       if (v.bLink.v2) {
-        node = v.bLink.v2.customData[cd_node].node;
+        node = cd_node.get(v.bLink.v2).node;
 
         if (node) {
           node.setUpdateFlag(updateflag)
@@ -2551,7 +2551,7 @@ export class PaintOp extends PaintOpBase {
         }
 
         if (1 || update) {
-          let node = vr.customData[cd_node].node;
+          let node = cd_node.get(vr.customData).node;
 
           if (node) {
             node.setUpdateFlag(updateflag);
@@ -2709,7 +2709,7 @@ export class PaintOp extends PaintOpBase {
           return;
         }
 
-        let vel = v.customData[cd_node].vel;
+        let vel = cd_node.get(v).vel;
 
         _tmp2.zero();
         let count = 0;
@@ -2727,7 +2727,7 @@ export class PaintOp extends PaintOpBase {
           _tmp2[1] += v2[1];
           _tmp2[2] += v2[2];
 
-          let vel2 = v2.customData[cd_node].vel;
+          let vel2 = cd_node.get(v2).vel;
 
           //vel2.addFac(vel, velfac2*0.1);
 
@@ -2786,7 +2786,7 @@ export class PaintOp extends PaintOpBase {
           return;
         }
 
-        let vel = v.customData[cd_node].vel;
+        let vel = cd_node.get(v).vel;
 
         _tmp2.zero();
         let count = 0;
@@ -2821,7 +2821,7 @@ export class PaintOp extends PaintOpBase {
             _tmp2.addFac(v2, w);
           }
 
-          let vel2 = v2.customData[cd_node].vel;
+          let vel2 = cd_node.get(v2).vel;
 
           vel2.interp(vel, velfac2);
           //vel2.addFac(vel, 0.1*velfac);
@@ -3833,7 +3833,7 @@ export class PaintOp extends PaintOpBase {
 
       for (let v of vs) {
         if (!(v.flag & flag)) {
-          let node = v.customData[cd_node].node;
+          let node = cd_node.get(v).node;
           if (node) {
             node.setUpdateFlag(BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_DRAW);
           }
@@ -3852,7 +3852,7 @@ export class PaintOp extends PaintOpBase {
           if (!(v2.flag & flag)) {
             v2.flag |= flag;
 
-            let node = v2.customData[cd_node].node;
+            let node = cd_node.get(v2).node;
 
             if (node) {
               node.setUpdateFlag(BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_DRAW);
@@ -4313,7 +4313,7 @@ export class PaintOp extends PaintOpBase {
 
         v.flag |= MeshFlags.UPDATE;
 
-        let node = v.customData[cd_node].node;
+        let node = cd_node.get(v).node;
         if (node) {
           node.setUpdateFlag(BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK);
         }
@@ -4473,7 +4473,7 @@ export class PaintOp extends PaintOpBase {
           for (let v2 of f.verts) {
             let mv = v2.customData[cd_dyn_vert];
 
-            let node = v2.customData[cd_node].node;
+            let node = cd_node.get(v2).node;
             node.setUpdateFlag(BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK);
 
             mv.flag |= BVHVertFlags.NEED_BOUNDARY;
@@ -4496,7 +4496,7 @@ export class PaintOp extends PaintOpBase {
           bvh.updateGridLoops.add(l);
         }
 
-        let node = v.customData[cd_node].node;
+        let node = cd_node.get(v).node;
         if (node) {
           node.setUpdateFlag(updateflag);
         }
@@ -4564,7 +4564,7 @@ export class PaintOp extends PaintOpBase {
         doUndo(v);
 
         vsmooth(v, vsw);
-        let node = v.customData[cd_node].node;
+        let node = cd_node.get(v).node;
         if (node) {
           node.setUpdateFlag(BVHFlags.UPDATE_DRAW|BVHFlags.UPDATE_NORMALS);
         }
@@ -4582,7 +4582,7 @@ export class PaintOp extends PaintOpBase {
     let reproject = false;
 
     for (let v of vs) {
-      let node = v.customData[cd_node].node;
+      let node = cd_node.get(v).node;
 
       if (node) {
         node.setUpdateFlag(updateflag);
@@ -4666,7 +4666,7 @@ export class PaintOp extends PaintOpBase {
       let i = 0, li = 0;
 
       for (let v of vs) {
-        let node = v.customData[cd_node].node;
+        let node = cd_node.get(v).node;
 
         for (let l of v.loops) {
           if (l.v !== v) {
@@ -4743,7 +4743,7 @@ export class PaintOp extends PaintOpBase {
         wlist[1] = r.uv[1];
         wlist[2] = 1.0 - r.uv[0] - r.uv[1];
 
-        dummy.customData = [];
+        dummy.customData = new CDElemArray();
         for (let cd of v.customData) {
           dummy.customData.push(cd.copy());
         }
@@ -4756,7 +4756,7 @@ export class PaintOp extends PaintOpBase {
             l = l.next;
           }
 
-          dummy.customData = [];
+          dummy.customData = new CDElemArray();
           for (let cd of l.customData) {
             dummy.customData.push(cd.copy());
           }
@@ -4794,7 +4794,7 @@ export class PaintOp extends PaintOpBase {
         swap3(v.co, origVs[i]);
         swap3(v.no, origNs[i]);
 
-        let node = v.customData[cd_node].node;
+        let node = cd_node.get(v).node;
         node.setUpdateFlag(BVHFlags.UPDATE_COLORS | BVHFlags.UPDATE_BOUNDS | BVHFlags.UPDATE_DRAW);
 
         i++;
@@ -5113,7 +5113,7 @@ export class PaintOp extends PaintOpBase {
         let updateflag = BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_BOUNDS;
 
         for (let v of vs2) {
-          let node = v.customData[cd_node].node;
+          let node = cd_node.get(v).node;
           if (!node) {
             continue;
           }
@@ -5854,7 +5854,7 @@ export class PaintOp extends PaintOpBase {
     if (!mark_only) {
       for (let f of fs) {
         for (let l of f.loops) {
-          let node = l.v.customData[cd_node].node;
+          let node = cd_node.get(l.v).node;
           if (node) {
             node.setUpdateFlag(updateflag);
           }
@@ -6047,7 +6047,7 @@ export class PaintOp extends PaintOpBase {
           continue;
         }
 
-        let node = v.customData[bvh.cd_node].node;
+        let node = bvh.cd_node.get(v).node;
         if (node) {
           node.setUpdateFlag(BVHFlags.UPDATE_INDEX_VERTS);
 
@@ -6252,11 +6252,11 @@ export class PaintOp extends PaintOpBase {
       }
 
       if (elem.type === MeshTypes.VERTEX) {
-        let node = elem.customData[bvh.cd_node].node;
+        let node = bvh.cd_node.get(elem).node;
 
         if (node && node.uniqueVerts) {
           node.uniqueVerts.delete(elem);
-          elem.customData[bvh.cd_node].node = undefined;
+          bvh.cd_node.get(elem).node = undefined;
         }
       } else if (elem.type === MeshTypes.FACE) {
         bvh.removeFace(elem._old_eid);
@@ -6366,7 +6366,7 @@ export class PaintOp extends PaintOpBase {
         for (let i = 0; i < l.v.edges.length; i++) {
           let e = l.v.edges[i];
 
-          let node = l.v.customData[cd_node];
+          let node = cd_node.get(l.v);
 
           if (node && node.node && !node.node.bvh.dead) {
             if ((node.node.flag & updateflag) !== updateflag) {
@@ -6741,7 +6741,7 @@ export class PaintOp extends PaintOpBase {
         }
 
         if (ok) {
-          let node = v.customData[cd_node].node;
+          let node = cd_node.get(v).node;
 
           if (node) {
             node.setUpdateFlag(updateflag);
@@ -6770,7 +6770,7 @@ export class PaintOp extends PaintOpBase {
 
       //forcibly unlink vert node refs
       for (let p of grid.points) {
-        let node = p.customData[cd_node];
+        let node = cd_node.get(p);
 
         if (node.node && node.node.uniqueVerts) {
           node.node.uniqueVerts.delete(p);
@@ -7328,13 +7328,13 @@ export class PaintOp extends PaintOpBase {
           newes.add(l.e);
           es3.add(l.e);
 
-          let node = l.v.customData[cd_node].node;
+          let node = cd_node.get(l.v).node;
           if (node) {
             node.setUpdateFlag(updateflag);
           }
         }
       } else if (e.type === MeshTypes.VERTEX) {
-        let node = e.customData[cd_node].node;
+        let node = cd_node.get(e).node;
         if (node) {
           node.setUpdateFlag(updateflag);
         }
@@ -7372,7 +7372,7 @@ export class PaintOp extends PaintOpBase {
         oldkill(e, tag);
 
         if (e.type === MeshTypes.VERTEX) {
-          let node = e.customData[cd_node].node;
+          let node = cd_node.get(e).node;
           if (node) {
             node.setUpdateFlag(updateflag);
           }
@@ -7381,7 +7381,7 @@ export class PaintOp extends PaintOpBase {
           newes_out.delete(e);
         } else if (e.type === MeshTypes.FACE) {
           for (let l of e.loops) {
-            let node = l.v.customData[cd_node].node;
+            let node = cd_node.get(l.v).node;
             if (node) {
               node.setUpdateFlag(updateflag);
             }
@@ -7422,7 +7422,7 @@ export class PaintOp extends PaintOpBase {
             }
           }
         } else if (e.type === MeshTypes.VERTEX) {
-          let node = e.customData[cd_node].node;
+          let node = cd_node.get(e).node;
 
           if (node) {
             node.setUpdateFlag(updateflag);
@@ -7661,7 +7661,6 @@ export class PaintOp extends PaintOpBase {
     }
 
     es_out[0] = es3;
-    return;
   }
 
   _checkOrig(ctx) {

@@ -419,6 +419,10 @@ mesh.Element {
   loadSTRUCT(reader: StructReader<this>) {
     reader(this);
 
+    if (!(this.customData instanceof CDElemArray)) {
+      this.customData = new CDElemArray(this.customData);
+    }
+    
     this._old_eid = this.eid;
     if (this.customData.length === 0) {
       this.customData = EmptyCDArray;

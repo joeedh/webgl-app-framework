@@ -8,7 +8,7 @@ import {
 import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes} from '../../../brush/brush.js';
 import {ProceduralTex, TexUserFlags, TexUserModes} from '../../../texture/proceduralTex.js';
 import {DataRefProperty} from '../../../core/lib_api.js';
-import {CDFlags} from '../../../mesh/customdata.js';
+import {AttrRef, CDFlags} from '../../../mesh/customdata.js';
 import {TetMesh} from '../../../tet/tetgen.js';
 import {Mesh} from '../../../mesh/mesh.js';
 import {GridBase} from '../../../mesh/mesh_grids.js';
@@ -1424,7 +1424,7 @@ export class MaskOpBase extends ToolOp {
 
     let cd_grid = GridBase.meshGridOffset(mesh);
     let cd_mask;
-    let cd_node = mesh.bvh ? mesh.bvh.cd_node : -1;
+    let cd_node = mesh.bvh ? mesh.bvh.cd_node : new AttrRef(-1);
 
     ud.cd_grid = cd_grid;
     let updateflag = BVHFlags.UPDATE_MASK | BVHFlags.UPDATE_DRAW;
@@ -1464,8 +1464,8 @@ export class MaskOpBase extends ToolOp {
         p.customData[cd_mask].value = mask;
         p.flag |= MeshFlags.UPDATE;
 
-        if (cd_node >= 0) {
-          let node = p.customData[cd_node].node;
+        if (cd_node.i >= 0) {
+          let node = p.customData[cd_node.i].node;
 
           if (node) {
             node.setUpdateFlag(updateflag);
@@ -1493,8 +1493,8 @@ export class MaskOpBase extends ToolOp {
         v.customData[cd_mask].value = mask;
         v.flag |= MeshFlags.UPDATE;
 
-        if (cd_node) {
-          let node = v.customData[cd_node].node;
+        if (cd_node.i >= 0) {
+          let node = v.customData[cd_node.i].node;
           if (node) {
             node.setUpdateFlag(updateflag);
           }
@@ -1524,10 +1524,10 @@ export class MaskOpBase extends ToolOp {
   getVerts(mesh, updateBVHNodes = true) {
     let this2 = this;
 
-    let cd_node = mesh.bvh ? mesh.bvh.cd_node : -1;
+    let cd_node = mesh.bvh ? mesh.bvh.cd_node : new AttrRef(-1);
     let bvh = mesh.bvh ? mesh.bvh : undefined;
 
-    updateBVHNodes = updateBVHNodes && cd_node >= 0;
+    updateBVHNodes = updateBVHNodes && cd_node.i >= 0;
 
     let updateflag = BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK;
 
@@ -1546,7 +1546,7 @@ export class MaskOpBase extends ToolOp {
             yield p;
 
             if (updateBVHNodes) {
-              let node = p.customData[cd_node].node;
+              let node = p.customData[cd_node.i].node;
               if (node) {
                 node.setUpdateFlag(updateflag);
               }
@@ -1558,7 +1558,7 @@ export class MaskOpBase extends ToolOp {
           yield v;
 
           if (updateBVHNodes) {
-            let node = v.customData[cd_node].node;
+            let node = v.customData[cd_node.i].node;
             if (node) {
               node.setUpdateFlag(updateflag);
             }

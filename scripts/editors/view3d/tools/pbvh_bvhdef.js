@@ -8,7 +8,7 @@ import {
   Vector4, closest_point_on_line, normal_quad
 } from '../../../path.ux/scripts/pathux.js';
 import {Grid, GridBase, QRecalcFlags} from '../../../mesh/mesh_grids.js';
-import {CDFlags} from '../../../mesh/customdata.js';
+import {AttrRef, CDFlags} from '../../../mesh/customdata.js';
 import {BrushFlags, DynTopoFlags, SculptTools} from '../../../brush/brush.js';
 import {LogContext, Loop, Mesh, MeshFlags, MeshTypes} from '../../../mesh/mesh.js';
 import {BVHFlags, BVHTriFlags} from '../../../util/bvh.js';
@@ -126,7 +126,7 @@ export class BVHDeformPaintOp extends PaintOpBase {
     let bvh = this.getBVH(mesh);
 
     if (this.bvhfirst) {
-      console.error("Setting grab verts!");
+      console.warn("Setting grab verts!");
 
       this.bvhfirst = false;
       let bvs = this.bGrabVerts = new Map();
@@ -204,7 +204,7 @@ export class BVHDeformPaintOp extends PaintOpBase {
     }
 
     let bvh = mesh.bvh;
-    let cd_node = bvh ? bvh.cd_node : -1;
+    let cd_node = bvh ? bvh.cd_node : new AttrRef(-1);
 
     let i = 0;
     let vlist = ud.vlist;
@@ -235,7 +235,7 @@ export class BVHDeformPaintOp extends PaintOpBase {
       v.flag |= MeshFlags.UPDATE;
 
       if (bvh) {
-        let node = v.customData[cd_node].node;
+        let node = cd_node.get(v).node;
         if (node) {
           if (node.boxverts) {
             for (let bv of node.boxverts) {

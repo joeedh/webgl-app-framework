@@ -90,7 +90,7 @@ export class SelectedEditableStack<type extends Element> {
   stack: SelectedEditableIter<type>[] = [];
 
   constructor(set) {
-    this.stack.length = 32;
+    this.stack.length = 64;
     this.cur = 0;
     this.set = set;
 
@@ -104,7 +104,7 @@ export class SelectedEditableStack<type extends Element> {
   }
 
   next(): SelectedEditableIter<type> {
-    return this[this.cur++];
+    return this.stack[this.cur++];
   }
 }
 

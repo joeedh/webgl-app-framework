@@ -1827,7 +1827,7 @@ export class BVHToolMode extends ToolMode {
             }
 
             if (isDeforming) {
-              let n3 = v.customData[cd_node].node;
+              let n3 = cd_node.get(v).node;
               if (!n3 || !n3.boxvdata) {
                 console.warn("eek!", v, n3);
                 vcos[j++] = 0.0;
@@ -1857,7 +1857,7 @@ export class BVHToolMode extends ToolMode {
             vnos[j++] = dv.no[2]*nomul;
           } else {
             if (isDeforming) {
-              let n3 = v.customData[cd_node].node;
+              let n3 = cd_node.get(v).node;
 
               if (!n3 || !n3.boxvdata) {
                 if (Math.random() > 0.97) {
@@ -2451,10 +2451,10 @@ export class BVHToolMode extends ToolMode {
             }
           }
 
-          if (drawNodeIds && cd_node >= 0) {
-            let node1 = tri.v1.customData[cd_node].node;
-            let node2 = tri.v2.customData[cd_node].node;
-            let node3 = tri.v3.customData[cd_node].node;
+          if (drawNodeIds && cd_node.i >= 0) {
+            let node1 = tri.v1.customData[cd_node.i].node;
+            let node2 = tri.v2.customData[cd_node.i].node;
+            let node3 = tri.v3.customData[cd_node.i].node;
 
             let id1 = node1 ? node1._id : 0;
             let id2 = node2 ? node2._id : 0;
@@ -2629,10 +2629,10 @@ export class BVHToolMode extends ToolMode {
             }
           }
 
-          if (drawNodeIds && cd_node >= 0) {
-            let node1 = tri.v1.customData[cd_node].node;
-            let node2 = tri.v2.customData[cd_node].node;
-            let node3 = tri.v3.customData[cd_node].node;
+          if (drawNodeIds && cd_node.i >= 0) {
+            let node1 = tri.v1.customData[cd_node.i].node;
+            let node2 = tri.v2.customData[cd_node.i].node;
+            let node3 = tri.v3.customData[cd_node.i].node;
 
             let id1 = node1 ? node1._id : 0;
             let id2 = node2 ? node2._id : 0;

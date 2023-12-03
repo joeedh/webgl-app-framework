@@ -290,7 +290,7 @@ export class GridVert extends Vector3 {
     this.index2 = index;
 
     this.loopEid = loopEid;
-    this.customData = this.cd = [];
+    this.customData = this.cd = new CDElemArray();
     this.neighbors = []; //is not saved
 
     this.bRingSet = new Set();

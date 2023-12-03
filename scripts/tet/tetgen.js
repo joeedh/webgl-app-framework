@@ -995,7 +995,7 @@ export class TetMesh extends SceneObjectData {
       cd_node = layer.index;
     }
 
-    bvh.cd_node = cd_node;
+    bvh.cd_node = new AttrRef(cd_node);
 
     let time = util.time_ms();
 
