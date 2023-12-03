@@ -22,7 +22,7 @@ import './uv_selectops.js';
 import './uv_transformops.js';
 import './uv_ops.js';
 import {UVFlags} from '../../mesh/mesh_customdata.js';
-import {resetUnwrapSolvers} from '../../mesh/mesh_ops.js';
+import {resetUnwrapSolvers} from '../../mesh/mesh_uvops.js';
 
 let _projtmp = new Vector2();
 

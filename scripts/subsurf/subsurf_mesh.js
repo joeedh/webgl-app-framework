@@ -5,9 +5,10 @@ import {MeshTypes, MeshFlags} from '../mesh/mesh_base.js';
 import {BVHVertFlags} from '../util/bvh.js';
 
 let eco = new Vector3();
-let ccSmoothRets = util.cachering.fromConstructor(Vector3, 64);
+let ccSmoothRets = util.cachering.fromConstructor(Vector3, 128);
+let ccSmoothTemps = util.cachering.fromConstructor(Vector3, 64);
 
-export function ccSmooth(v, cd_fset, cd_dyn_vert, weight1, weightR, weightS) {
+export function ccSmooth(v, cd_fset, cd_dyn_vert, projection = 0.0, weight1, weightR, weightS) {
   let ret = ccSmoothRets.next();
 
   let val = v.edges.length;
@@ -19,7 +20,7 @@ export function ccSmooth(v, cd_fset, cd_dyn_vert, weight1, weightR, weightS) {
   }
 
   if (weight1 === undefined) {
-    weight1 = (val - 3) / val;
+    weight1 = (val - 3)/val;
   }
 
   if (weightR === undefined) {
@@ -55,6 +56,8 @@ export function ccSmooth(v, cd_fset, cd_dyn_vert, weight1, weightR, weightS) {
     return ret.load(v.co);
   }
 
+  let pco = ccSmoothTemps.next();
+
   if (boundary) {
     eco.zero();
 
@@ -81,6 +84,9 @@ export function ccSmooth(v, cd_fset, cd_dyn_vert, weight1, weightR, weightS) {
         }
       }
 
+      pco.load(v2.co).sub(v.co);
+
+      eco.addFac(pco, -pco.dot(v.no)*w2);
       eco.addFac(v2.co, w2);
       tot += w2;
     }
@@ -155,7 +161,7 @@ export function createPatches(mesh, faces = mesh.faces) {
       ps.push(0.0);
     }
 
-    let v1                     = l.v, v2           = l.next.v,
+    let v1                     = l.v, v2 = l.next.v,
         v3 = l.next.next.v, v4 = l.next.next.next.v;
 
 
@@ -185,7 +191,7 @@ export function createPatches(mesh, faces = mesh.faces) {
   return patches;
 }
 
-export function loopSubdivide(mesh, faces=mesh.faces) {
+export function loopSubdivide(mesh, faces = mesh.faces) {
   let faces2 = new Set();
   for (let f of faces) {
     let ok = f.lists.length === 1;
@@ -209,7 +215,7 @@ export function loopSubdivide(mesh, faces=mesh.faces) {
 
   let vdatas = new Map();
   let edatas = new Map();
-  let vlist = [], llist=[], wlist = [];
+  let vlist = [], llist = [], wlist = [];
 
   for (let e of eset) {
     vset.add(e.v1);
@@ -291,9 +297,9 @@ export function loopSubdivide(mesh, faces=mesh.faces) {
 
     let w1 = 1, w2 = 1, w3 = 1;
 
-    wlist[0] = w1 / (w1+w2+w3);
-    wlist[1] = w2 / (w1+w2+w3);
-    wlist[2] = w3 / (w1+w2+w3);
+    wlist[0] = w1/(w1 + w2 + w3);
+    wlist[1] = w2/(w1 + w2 + w3);
+    wlist[2] = w3/(w1 + w2 + w3);
 
     dummy.load(d1).interp(d2, 0.5).interp(nv, 0.5);
 
@@ -414,7 +420,7 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
     f.lists[0]._recount();
 
     vsinterp.length = 0;
-    let fw = 1.0 / f.lists[0].length;
+    let fw = 1.0/f.lists[0].length;
 
     for (let l of f.lists[0]) {
       vsinterp.push(l.v);
@@ -502,7 +508,7 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
       vlist.push(cent2);
       vlist.push(v1);
       vlist.push(v2);
-      for (let i=0; i<4; i++) {
+      for (let i = 0; i < 4; i++) {
         wlist.push(0.25)
       }
 
@@ -542,7 +548,7 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
       vlist.push(cent1);
       vlist.push(v1);
       vlist.push(v2);
-      for (let i=0; i<4; i++) {
+      for (let i = 0; i < 4; i++) {
         wlist.push(1.0/(2.0 + w));
       }
 
@@ -572,7 +578,7 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
       for (let w of wlist) {
         totw += w;
       }
-      for (let i=0; i<wlist.length; i++) {
+      for (let i = 0; i < wlist.length; i++) {
         wlist[i] /= totw;
       }
 
@@ -609,7 +615,7 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
       wlist.length = 0;
 
       if (1) {
-        dummy = {customData : []};
+        dummy = {customData: []};
         for (let cd of v.customData) {
           dummy.customData.push(cd.copy());
         }
@@ -733,7 +739,7 @@ export function subdivide(mesh, faces = mesh.faces, linear = false) {
 
     f.lists[0]._recount();
 
-    let fw = 1.0 / f.lists[0].length;
+    let fw = 1.0/f.lists[0].length;
 
     for (let l of f.lists[0]) {
       lsinterp.push(l);

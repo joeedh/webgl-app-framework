@@ -3,7 +3,7 @@ import {
   FlagProperty, ToolProperty, Vec3Property, ListProperty,
   PropFlags, PropTypes, StringProperty,
   ToolOp, ToolFlags, UndoFlags, nstructjs,
-  Vector2, Vector3, Vector4, Matrix4, Quat,
+  Vector2, Vector3, Vector4, Matrix4, Quat, ToolDef,
 } from '../path.ux/scripts/pathux.js';
 import * as util from '../util/util.js';
 
@@ -64,7 +64,7 @@ export function* resolveMeshes(ctx: ToolContext, pathset: Iterable<string>) {
   }
 }
 
-interface IMeshUndoData {
+export interface IMeshUndoData {
   dview: DataView,
   drawflag: MeshDrawFlags
 }
@@ -111,7 +111,7 @@ export abstract class MeshOp<InputSet = {}, OutputSet = {}> extends View3DOp<
 },
   OutputSet
 > {
-  static tooldef() {
+  static tooldef(): ToolDef {
     return {
       inputs: ToolOp.inherit({
         meshPaths: new ListProperty(StringProperty, ["mesh", "_all_objects_"]).private()
@@ -123,7 +123,9 @@ export abstract class MeshOp<InputSet = {}, OutputSet = {}> extends View3DOp<
     }
   }
 
-  _undo?: { [k: number]: IMeshUndoData };
+  _undo?: {
+    [k: number]: IMeshUndoData
+  };
 
   getActiveMesh(ctx: ToolContext): Mesh {
     //returns first mesh in .getMeshes list
@@ -213,12 +215,14 @@ export abstract class MeshOp<InputSet = {}, OutputSet = {}> extends View3DOp<
   }
 }
 
-export class MeshDeformOp<InputSet, OutputSet> extends MeshOp<InputSet, OutputSet> {
+export class MeshDeformOp<InputSet = {}, OutputSet = {}> extends MeshOp<InputSet, OutputSet> {
   constructor() {
     super();
   }
 
-  _deformUndo: { [k: number]: number[] };
+  _deformUndo: {
+    [k: number]: number[]
+  };
 
   calcUndoMem() {
     let tot = 0.0;

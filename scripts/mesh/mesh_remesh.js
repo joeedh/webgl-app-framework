@@ -243,6 +243,8 @@ const BOUNDARY_SMOOTH_WEIGHT = 0.1;
 //const EDGE_DIAG = MeshFlags.MAKE_FACE_TEMP;
 
 export class UniformTriRemesher extends Remesher {
+  minEdges = 5;
+
   constructor(mesh, lctx = undefined, goalType, goalValue) {
     super(mesh, lctx, goalType, goalValue);
 

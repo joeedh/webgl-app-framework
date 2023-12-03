@@ -23,6 +23,10 @@ export class BaseOverlay extends BaseOverlay_base {
     name: string;
   };
 
+  error(message: string)
+
+  warning(message: string)
+
   get messagebus(): import("./bus.js").MessageBus;
 
   messagebus_save(): any;
@@ -108,7 +112,19 @@ export class BaseOverlay extends BaseOverlay_base {
   get selectedMeshObjects(): Generator<any, void, unknown>;
 }
 
-export class ViewOverlay extends BaseOverlay {
+export class ToolContext extends BaseOverlay {
+  _state: any;
+
+  play(): void;
+
+  stop(): void;
+
+  saveProperty_intern(val: any, owning_key: any): any;
+
+  loadProperty_intern(ctx: any, data: any): any;
+}
+
+export class ViewOverlay extends ToolContext {
   validate(): boolean;
 
   get activeTexture(): any;
@@ -157,18 +173,6 @@ export class ViewOverlay extends BaseOverlay {
   get editor(): any;
 
   get screen(): any;
-}
-
-export class ToolContext extends BaseOverlay {
-  _state: any;
-
-  play(): void;
-
-  stop(): void;
-
-  saveProperty_intern(val: any, owning_key: any): any;
-
-  loadProperty_intern(ctx: any, data: any): any;
 }
 
 export class ViewContext extends ViewOverlay {

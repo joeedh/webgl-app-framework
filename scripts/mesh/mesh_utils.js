@@ -564,7 +564,7 @@ window._testCD = function () {
   window.redraw_viewport(true);
 }
 
-window._testMVC = function () {
+export function _testMVC() {
   let cd_color;
 
   function vsmooth(v, fac = 0.5, proj = 0.5) {
@@ -3317,9 +3317,9 @@ export function dissolveFaces(mesh, faces, lctx) {
 export function delauney3D(mesh, vs = mesh.verts, lctx) {
   let bvh = mesh.getBVH({
     autoUpdate: true,
-    wireVerts  : true,
-    deformMode : false,
-    leafLimit  : 32,
+    wireVerts : true,
+    deformMode: false,
+    leafLimit : 32,
   });
 
   let i = 0;

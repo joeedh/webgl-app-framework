@@ -2521,7 +2521,7 @@ mesh.Mesh {
     return [e2, nv];
   }
 
-  splitEdge(e, t = 0.5, lctx) {
+  splitEdge(e: Edge, t = 0.5, lctx?: LogContext) {
     if (DEBUG_BAD_LOOPS) {
       this._checkElemLoops(e, "splitEdge 0");
 
@@ -3733,7 +3733,7 @@ mesh.Mesh {
     return f;
   }
 
-  rotateEdge(e, dir = 1, lctx) {
+  rotateEdge(e: Edge, dir = 1, lctx?: LogContext) {
     if (!e.l) {
       return;
     }
@@ -5314,7 +5314,7 @@ mesh.Mesh {
     window.redraw_viewport(true);
   }
 
-  _clearGPUMeshes(gl) {
+  _clearGPUMeshes(gl?) {
     let meshes = this._fancyMeshes;
 
     this._fancyMeshes = {};
@@ -5542,7 +5542,7 @@ mesh.Mesh {
     if (typeof owner === "boolean" || typeof owner === "number") {
       throw new Error("Invalid call to Mesh.prototype.copy!");
     }
-    
+
     let ret = new (this.constructor as unknown as new() => this)();
 
     //derived types may have customdata set in constructors, still

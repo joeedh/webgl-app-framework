@@ -140,9 +140,9 @@ export enum LogTags {
 }
 
 export class LogContext {
-  onnew: (v: any, tag?: any) => void | undefined;
-  onkill: (v: any, tag?: any) => void | undefined;
-  onchange: (v: any, tag?: any) => void | undefined;
+  onnew: (v: Element, tag?: any) => void | undefined;
+  onkill: (v: Element, tag?: any) => void | undefined;
+  onchange: (v: Element, tag?: any) => void | undefined;
 
   haveAspect: boolean;
 
@@ -269,13 +269,15 @@ export class LogContext {
   }
 }
 
-export enum MeshTypes {
-  VERTEX = 1,
-  EDGE = 2,
-  FACE = 4,
-  LOOP = 8,
-  HANDLE = 16
-}
+export const MeshTypes = {
+  VERTEX: 1,
+  EDGE: 2,
+  FACE: 4,
+  LOOP: 8,
+  HANDLE: 16
+};
+
+export type MeshTypes = number;
 
 export enum MeshFlags {
   SELECT = (1 << 0),
@@ -358,7 +360,8 @@ export function reallocArrayTemp<type>(arr, newlen): type[] {
 
 
 import type {CustomDataElem} from "./customdata.ts";
-import {CDRef, ICustomDataElemConstructor} from "./customdata";
+import type {CDRef, ICustomDataElemConstructor} from "./customdata";
+import type {Element} from "./mesh_types";
 
 export class CDElemArray extends Array<CustomDataElem<any>> {
   static STRUCT = nstructjs.inlineRegister(this, `

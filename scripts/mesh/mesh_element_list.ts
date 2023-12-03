@@ -108,7 +108,7 @@ export class SelectedEditableStack<type extends Element> {
   }
 }
 
-export class SelectionSet<type extends Element> extends Set {
+export class SelectionSet<type extends Element> extends Set<type> {
   eiterstack: SelectedEditableStack<type>;
 
   constructor() {
