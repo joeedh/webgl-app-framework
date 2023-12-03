@@ -70,15 +70,15 @@ export class SelectOpBaseUV extends UVOpBase {
 
     let undo = this._undo;
 
-    mesh.loops.active = mesh.eidmap[undo.active];
-    mesh.loops.highlight = mesh.eidmap[undo.highlight];
+    mesh.loops.active = mesh.eidMap.get(undo.active);
+    mesh.loops.highlight = mesh.eidMap.get(undo.highlight);
 
     let list = undo.list;
 
     for (let i = 0; i < list.length; i += 2) {
       let eid = list[i], flag = list[i + 1];
 
-      let l = mesh.eidmap[eid];
+      let l = mesh.eidMap.get(eid);
       if (!l || l.type !== MeshTypes.LOOP) {
         console.warn("Missing loop at eid", eid);
         continue;
@@ -260,7 +260,7 @@ export class SelectLinkedOpPick extends SelectOpBaseUV {
       cd_uv = mesh.loops.customData.getLayerIndex("uv");
     }
 
-    l = mesh.eidmap[l];
+    l = mesh.eidMap.get(l);
 
     if (cd_uv < 0) {
       ctx.error("No UV layers");
@@ -307,7 +307,7 @@ export class SelectOneUVOp extends SelectOpBaseUV {
     mode = mode === SelOneToolModes.UNIQUE || mode === SelOneToolModes.ADD;
 
     for (let eid of this.inputs.loopEids) {
-      let l = mesh.eidmap[eid];
+      let l = mesh.eidMap.get(eid);
       if (!l) {
         console.error("Missing loop " + eid);
         continue;

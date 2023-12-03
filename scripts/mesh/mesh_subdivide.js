@@ -1725,7 +1725,7 @@ export function meshSubdivideTest(mesh, faces = mesh.faces) {
   }
 
   for (let v2 of mesh.verts) {
-    let v = copy.eidmap[v2.eid];
+    let v = copy.eidMap.get(v2.eid);
     let val = v2.edges.length;
 
     let ws2 = wlist[val];
@@ -1770,7 +1770,7 @@ export function meshSubdivideTest(mesh, faces = mesh.faces) {
   mesh.recalcNormals();
 
   for (let v2 of mesh.verts) {
-    let v = copy.eidmap[v2.eid];
+    let v = copy.eidMap.get(v2.eid);
     let val = v2.edges.length;
 
     let ws2 = wlist[val];
@@ -1794,7 +1794,7 @@ export function meshSubdivideTest(mesh, faces = mesh.faces) {
 
   for (let v2 of mesh.verts) {
     break;
-    let v = copy.eidmap[v2.eid];
+    let v = copy.eidMap.get(v2.eid);
 
     function rand() {
       let f = util.random();

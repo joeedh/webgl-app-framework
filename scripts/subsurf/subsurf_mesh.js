@@ -155,7 +155,7 @@ export function createPatches(mesh, faces = mesh.faces) {
     let l = f.lists[0].l;
 
     let pi = ps.length;
-    patches.eidmap[f.eid] = pi;
+    patches.eidMap.set(f.eid, pi);
 
     for (let i = 0; i < PTOT; i++) {
       ps.push(0.0);

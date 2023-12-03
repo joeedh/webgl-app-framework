@@ -16,8 +16,10 @@ import {UVLayerElem} from './mesh_customdata.js';
 import {BVH, BVHNode} from '../util/bvh.js';
 
 import {UVWrangler} from './unwrapping.js';
+import {Face, Loop} from './mesh_types.js';
 
-export function relaxUVs(mesh, cd_uv, loops=mesh.loops, doPack=false, boundaryWeight= 400.0, buildFromSeams=false) {
+export function relaxUVs(mesh, cd_uv, loops = mesh.loops, doPack = false, boundaryWeight = 400.0,
+                         buildFromSeams                                                  = false) {
   loops = new Set(loops);
 
   let faces = new Set();
@@ -120,7 +122,7 @@ export function relaxUVs(mesh, cd_uv, loops=mesh.loops, doPack=false, boundaryWe
       continue;
     }
 
-    let ratio = Math.sqrt(area) / Math.sqrt(island.area);
+    let ratio = Math.sqrt(area)/Math.sqrt(island.area);
     let cent = new Vector2(island.min).interp(island.max, 0.5);
 
     for (let v of island) {
@@ -152,7 +154,7 @@ class SolveTri {
 }
 
 export class UnWrapSolver {
-  constructor(mesh, faces, cd_uv = -1, preserveIslands=false, selLoopsOnly=false) {
+  constructor(mesh, faces, cd_uv = -1, preserveIslands = false, selLoopsOnly = false) {
     if (cd_uv === -1) {
       cd_uv = mesh.loops.customData.getLayerIndex("uv");
     }
@@ -253,7 +255,7 @@ export class UnWrapSolver {
           continue;
         }
 
-        co.mulScalar(1.0 / tot);
+        co.mulScalar(1.0/tot);
 
         co.multVecMatrix(mat);
         co[2] = 0.0;
@@ -294,7 +296,7 @@ export class UnWrapSolver {
     this.uvw.packIslands(true, true);
   }
 
-  buildSolver(includeArea=true) {
+  buildSolver(includeArea = true) {
     this.solvers = [];
     let totw = 0;
 
@@ -480,14 +482,14 @@ export class UnWrapSolver {
         v3x)**2 + (v1y - v3y)**2))))
 
       ans1 = -((2.0*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)
-        **2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0) + (sqrt
+          **2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0) + (sqrt
         ((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2
         ))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y
-        - v3y)**2)))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x
+          - v3y)**2)))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x
         )**2 + (v1y - v3y)**2)) + (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt(
-        (v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) -
-        1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y -
-        v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)))*(v2x - v3x)*kmul*
+          (v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) -
+          1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y -
+          v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)))*(v2x - v3x)*kmul*
         wind
       let dv2x = ans1/(8.0*sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*sqrt(-(sqrt((v2x
         - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(
@@ -497,14 +499,14 @@ export class UnWrapSolver {
         v3x)**2 + (v1y - v3y)**2))))
 
       ans1 = -((2.0*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)
-        **2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0) + (sqrt
+          **2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0) + (sqrt
         ((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2
         ))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y
-        - v3y)**2)))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x
+          - v3y)**2)))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x
         )**2 + (v1y - v3y)**2)) + (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt(
-        (v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) -
-        1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y -
-        v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)))*(v2y - v3y)*kmul*
+          (v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) -
+          1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y -
+          v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)))*(v2y - v3y)*kmul*
         wind
       let dv2y = ans1/(8.0*sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*sqrt(-(sqrt((v2x
         - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(
@@ -514,13 +516,13 @@ export class UnWrapSolver {
         v3x)**2 + (v1y - v3y)**2))))
 
       ans1 = -((2.0*sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(sqrt((v2x - v3x)**2 +
-        (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x -
-        v3x)**2 + (v2y - v3y)**2)*v1x - sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*v2x +
-        v2x - v3x) + (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**
-        2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((
-        v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*(
-        v1x - v3x) - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(v2x - v3x)))*(sqrt((
-        v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))
+          (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x -
+            v3x)**2 + (v2y - v3y)**2)*v1x - sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*v2x +
+          v2x - v3x) + (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**
+          2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((
+          v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*(
+          v1x - v3x) - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(v2x - v3x)))*(sqrt((
+          v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))
         - (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y -
           v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)
           **2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((
@@ -534,13 +536,13 @@ export class UnWrapSolver {
         v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2))))
 
       ans1 = -((2.0*sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(sqrt((v2x - v3x)**2 +
-        (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x -
-        v3x)**2 + (v2y - v3y)**2)*v1y - sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*v2y +
-        v2y - v3y) + (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**
-        2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((
-        v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*(
-        v1y - v3y) - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(v2y - v3y)))*(sqrt((
-        v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))
+          (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x -
+            v3x)**2 + (v2y - v3y)**2)*v1y - sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*v2y +
+          v2y - v3y) + (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**
+          2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((
+          v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*(
+          v1y - v3y) - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(v2y - v3y)))*(sqrt((
+          v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))
         - (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y -
           v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)
           **2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((
@@ -664,13 +666,13 @@ export class UnWrapSolver {
         goalth = Math.asin(goalth*0.9999999);
 
         //if (w !== wind) {
-          //goalth = Math.PI - goalth;
+        //goalth = Math.PI - goalth;
         //}
 
         let params = [v1, v2, v3, goalth, wind];
         let klst = [v1, v2, v3]
-            .filter(v => !v.customData[cd_corner].hasPins)
-            .map(v => v.co);
+          .filter(v => !v.customData[cd_corner].hasPins)
+          .map(v => v.co);
 
         if (klst.length > 0) {
           let con = new Constraint("angle_c", angle_c, klst, params);
@@ -721,9 +723,9 @@ export class UnWrapSolver {
         let goal = tri.worldArea*ratio*wind*1.0;
         let params = [wind, tri.v1.co, tri.v2.co, tri.v3.co, goal, 100.0/totarea];
         let klst = [tri.v1, tri.v2, tri.v3]
-            .filter(v => !v.customData[cd_corner].hasPins)
-            .map(v => v.co);
-        
+          .filter(v => !v.customData[cd_corner].hasPins)
+          .map(v => v.co);
+
         if (includeArea && klst.length > 0) {
           let con = new Constraint("area_c", area_c, klst, params);
           con.df = df;
@@ -866,13 +868,14 @@ export class UnWrapSolver {
     window.svd = svd;
 
     let rows = matrix1.length;
-    function makeMatrix(rows, cols, setIdentity=true) {
+
+    function makeMatrix(rows, cols, setIdentity = true) {
       let ret = new Array(rows);
 
-      for (let i=0; i<rows; i++) {
+      for (let i = 0; i < rows; i++) {
         ret[i] = new Array(cols);
 
-        for (let j=0; j<cols; j++) {
+        for (let j = 0; j < cols; j++) {
           ret[i][j] = 0.0;
         }
 
@@ -890,9 +893,9 @@ export class UnWrapSolver {
 
     window.sigma = sigma;
 
-    for (let i=0; i<S.length; i++) {
+    for (let i = 0; i < S.length; i++) {
       let f = S[i];
-      f = f !== 0.0 ? 1.0 / f : 0.0;
+      f = f !== 0.0 ? 1.0/f : 0.0;
 
       sigma[i][i] = f;
     }
@@ -919,8 +922,8 @@ export class UnWrapSolver {
     let col2 = numeric.dot(c, col);
     log("result", col2);
 
-    for (let i=0; i<col2.length; i += 2) {
-      let x = col2[i], y = col2[i+1];
+    for (let i = 0; i < col2.length; i += 2) {
+      let x = col2[i], y = col2[i + 1];
       let v = vec[i>>1];
 
       v[0] += -x*gk;
@@ -1138,7 +1141,7 @@ export class UnWrapSolver {
       //solvestep(0.05, 0.0);
 
       for (let i = 0; i < count2; i++) {
-      //  vsmooth(0.5);
+        //  vsmooth(0.5);
       }
 
       this.buildSolver(false);
@@ -1181,7 +1184,8 @@ export class UnWrapSolver {
       tri.l1 = tri.l1.eid;
       tri.l2 = tri.l2.eid;
       tri.l3 = tri.l3.eid;
-    };
+    }
+    ;
 
     this.faces = this.faces.map((f) => f.eid);
 
@@ -1203,7 +1207,7 @@ export class UnWrapSolver {
 
     let fs = new Set();
     for (let feid of this.faces) {
-      let f = mesh.eidmap[feid];
+      let f = mesh.eidMap.get(feid);
       if (!f || f.type !== MeshTypes.FACE) {
         console.warn("Missing face " + feid);
         return false;
@@ -1214,9 +1218,9 @@ export class UnWrapSolver {
     this.faces = fs;
 
     for (let tri of this.tris) {
-      tri.l1 = mesh.eidmap[tri.l1];
-      tri.l2 = mesh.eidmap[tri.l2];
-      tri.l3 = mesh.eidmap[tri.l3];
+      tri.l1 = mesh.eidMap.get(tri.l1);
+      tri.l2 = mesh.eidMap.get(tri.l2);
+      tri.l3 = mesh.eidMap.get(tri.l3);
 
       if (!tri.l1 || !tri.l2 || !tri.l3) {
         console.warn("Missing tri loops");
@@ -1236,7 +1240,7 @@ export class UnWrapSolver {
     return true;
   }
 
-  static restoreOrRebuild(mesh, faces, solver, cd_uv, preserveIslands=false, selLoopsOnly=false) {
+  static restoreOrRebuild(mesh, faces, solver, cd_uv, preserveIslands = false, selLoopsOnly = false) {
     faces = new Set(faces);
 
     if (cd_uv === undefined) {
@@ -1349,7 +1353,7 @@ export function fixSeams(mesh, cd_uv) {
 
     let texSize = 1024.0;
 
-    function round(n){
+    function round(n) {
       return Math.floor(n + 0.01);
     }
 

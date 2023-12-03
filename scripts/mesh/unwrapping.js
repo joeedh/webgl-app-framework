@@ -1369,7 +1369,7 @@ export function voxelUnwrap(mesh, faces, cd_uv = undefined, setSeams = true,
     patch.color = c;
 
     for (let t of node.uniqueTris) {
-      let f = mesh.eidmap[t.id];
+      let f = mesh.eidMap.get(t.id);
 
       if (f && !doneset.has(f)) {
         doneset.add(f);

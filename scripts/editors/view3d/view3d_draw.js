@@ -237,12 +237,12 @@ export class BasicMeshDrawer extends MeshDrawInterface {
 
     let fm = mc.getMesh("faces");
     let ulist = mesh.lastUpdateList;
-    let eidmap = mesh.eidmap;
+    let eidMap = mesh.eidMap;
     let ltris = mesh._ltris;
     mc.partialGen = mesh.partialUpdateGen;
 
     for (let eid in ulist) {
-      let f = eidmap[eid];
+      let f = eidMap.get(eid);
       if (f === undefined || f.type != MeshTypes.FACE || (f.flag & MeshFlags.HIDE)) {
         continue;
       }
@@ -271,7 +271,7 @@ export class BasicMeshDrawer extends MeshDrawInterface {
 
     let em = mc.getMesh("edges");
     for (let eid in ulist) {
-      let e = eidmap[eid];
+      let e = eidMap.get(eid);
 
       if (e === undefined || e.type != MeshTypes.EDGE || (e.flag & MeshFlags.HIDE)) {
         continue;
@@ -287,7 +287,7 @@ export class BasicMeshDrawer extends MeshDrawInterface {
 
     let vm = mc.getMesh("verts");
     for (let eid in ulist) {
-      let v = eidmap[eid];
+      let v = eidMap.get(eid);
 
       if (v === undefined || v.type != MeshTypes.VERTEX || (v.flag & MeshFlags.HIDE)) {
         continue;

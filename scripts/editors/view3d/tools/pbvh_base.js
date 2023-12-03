@@ -1445,16 +1445,16 @@ export class MaskOpBase extends ToolOp {
       for (let gi = 0; gi < gd.length; gi += 3) {
         let leid = gd[gi], peid = gd[gi + 1], mask = gd[gi + 2];
 
-        let l = mesh.eidmap[leid];
+        let l = mesh.eidMap.get(leid);
         if (!l) {
           console.error("Missing loop " + leid);
           continue;
         }
 
         let grid = l.customData[cd_grid];
-        let eidmap = grid.getEIDMap(mesh);
+        let eidMap = grid.getEIDMap(mesh);
 
-        let p = eidmap[peid];
+        let p = eidMap.get(peid);
 
         if (!p) {
           console.warn("Missing grid vert:" + peid);
@@ -1483,7 +1483,7 @@ export class MaskOpBase extends ToolOp {
       for (let vi = 0; vi < vd.length; vi += 2) {
         let veid = vd[vi], mask = vd[vi + 1];
 
-        let v = mesh.eidmap[veid];
+        let v = mesh.eidMap.get(veid);
 
         if (!v) {
           console.warn("Missing vertex " + veid);

@@ -3178,7 +3178,7 @@ export class QuadTreeGrid extends GridBase {
           continue;
         }
 
-        let l2 = mesh.eidmap[p2.loopEid];
+        let l2 = mesh.eidMap.get(p2.loopEid);
         if (!l2) {
           continue;
         }

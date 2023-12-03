@@ -81,7 +81,7 @@ export class MeshFlagOpBase extends MeshOp {
       for (let i=0; i<list.length; i += 2) {
         let eid = list[i], flag = list[i+1];
 
-        let e = mesh.eidmap[eid];
+        let e = mesh.eidMap.get(eid);
         if (!e) {
           console.warn("Missing element " + eid);
           continue;

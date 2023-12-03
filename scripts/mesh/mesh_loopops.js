@@ -162,7 +162,7 @@ export class EdgeCutOp extends MeshOp {
       return;
     }
 
-    e = mesh.eidmap[e];
+    e = mesh.eidMap.get(e);
     if (!e || !e.l) {
       return;
     }

@@ -476,7 +476,7 @@ export class MeshEditor extends ToolMode {
       }
 
       let mesh = ob.data;
-      let e = mesh.eidmap[idx];
+      let e = mesh.eidMap.get(idx);
 
       if (e === undefined) {
         //console.warn("warning, invalid eid", idx);

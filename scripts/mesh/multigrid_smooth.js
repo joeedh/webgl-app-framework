@@ -200,7 +200,7 @@ export class Smoother {
     this.superVerts = [];
     this.vqueue = [];
 
-    this.eidmap = {};
+    this.eidMap = new Map();
 
     this.limitFactor = window.lf ?? 2.0;
 
@@ -316,7 +316,7 @@ export class Smoother {
   }
 
   addVert(v, eid = v.eid) {
-    if (eid in this.eidmap) {
+    if (this.eidMap.has(eid)) {
       console.warn("vertex " + eid + " already exists");
       return;
     }
@@ -324,7 +324,7 @@ export class Smoother {
     let sv = v.customData[this.cd_smooth];
     sv.flag |= SmoothVertFlags.QUEUED;
 
-    this.eidmap[eid] = v;
+    this.eidMap.set(eid, v);
     this.vqueue.push(v);
     this.verts.push(v);
 
@@ -808,7 +808,7 @@ export class MultiGridSmoother {
     this.levels = [];
     this.verts = [];
 
-    this.eidmap = {};
+    this.eidMap = new Map();
 
     let fac = 1.0;
 
@@ -868,8 +868,8 @@ export class MultiGridSmoother {
   ensureVert(v, eid=v.eid) {
     let ret = false;
 
-    if (!(eid in this.eidmap)) {
-      this.eidmap[eid] = v;
+    if (!this.eidMap.has(eid)) {
+      this.eidMap.set(eid, v);
       this.verts.push(v);
       ret = true;
     }

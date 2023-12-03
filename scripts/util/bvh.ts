@@ -3845,7 +3845,6 @@ export class BVH {
 
           v2.eid = v.eid;
           mesh.eidMap.set(v2.eid, v2);
-          mesh.eidmap[v2.eid] = v2;
 
           v2.customData = copyCustomData(v.customData);
 
@@ -3902,7 +3901,6 @@ export class BVH {
 
           mesh.edges.push(e2);
           mesh.eidMap.set(e2.eid, e2);
-          mesh.eidmap[e2.eid] = e2;
 
           mesh._diskInsert(e2.v1, e2);
           mesh._diskInsert(e2.v2, e2);
@@ -3918,7 +3916,6 @@ export class BVH {
         f2.cent.load(f.cent);
 
         mesh.eidMap.set(f2.eid, f2);
-        mesh.eidmap[f2.eid] = f2;
         mesh.faces.push(f2);
 
         for (let list1 of f.lists) {
@@ -3945,7 +3942,6 @@ export class BVH {
             l2.f = f2;
 
             mesh.eidMap.set(l2.eid, l2);
-            mesh.eidmap[l2.eid] = l2;
             mesh.loops.push(l2);
 
             if (prevl) {
@@ -4012,7 +4008,6 @@ export class BVH {
     let faces = mesh.faces;
     let loops = mesh.loops;
     let handles = mesh.handles;
-    let eidMap = mesh.eidMap;
 
     mesh.elists = {};
     mesh.verts = mesh.getElemList(MeshTypes.VERTEX);
@@ -4021,7 +4016,7 @@ export class BVH {
     mesh.loops = mesh.getElemList(MeshTypes.LOOP);
     mesh.faces = mesh.getElemList(MeshTypes.FACE);
 
-    mesh.eidMap = {};
+    mesh.eidMap = new Map();
     let idcur = mesh.eidgen._cur;
 
     verts = Array.from(verts);
@@ -4077,7 +4072,7 @@ export class BVH {
     for (let e1 of edges) {
       let eid = e1.eid;
 
-      let e2 = mesh.makeEdge(mesh.eidMap[e1.v1.eid], mesh.eidMap[e1.v2.eid], undefined, eid);
+      let e2 = mesh.makeEdge(mesh.eidMap.get(e1.v1.eid), mesh.eidMap.get(e1.v2.eid), undefined, eid);
       mesh.copyElemData(e2, e1);
     }
 
@@ -4089,7 +4084,7 @@ export class BVH {
         vs.length = 0;
 
         for (let l of list) {
-          vs.push(mesh.eidMap[l.v.eid]);
+          vs.push(mesh.eidMap.get(l.v.eid));
         }
 
         if (list === f1.lists[0]) {

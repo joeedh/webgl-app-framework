@@ -527,7 +527,7 @@ export class PatchBuilder {
     this.mesh = oldmesh;
 
     for (let [eid, f] of lmap) {
-      let l = oldmesh.eidmap[eid];
+      let l = oldmesh.eidMap.get(eid);
 
       if (!l) {
         throw new Error("l was undefined");

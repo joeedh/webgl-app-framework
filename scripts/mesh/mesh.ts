@@ -2059,7 +2059,7 @@ mesh.Mesh {
           this._debugRewind(patch);
 
           if (depth < 1) {
-            e = this.eidmap[eid];
+            e = this.eidMap.get(eid);
             this.collapseEdge(e, v_keep, lctx, snap, depth + 1);
           }
         }//*/

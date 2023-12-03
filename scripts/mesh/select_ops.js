@@ -134,11 +134,11 @@ export class SelectOpBase extends MeshOp {
       mesh.selectNone();
 
       for (let elist of mesh.getElemLists()) {
-        elist.active = mesh.eidmap[ud.actives[elist.type]];
+        elist.active = mesh.eidMap.get(ud.actives[elist.type]);
       }
 
       for (let eid of ud.data) {
-        let e = mesh.eidmap[eid];
+        let e = mesh.eidMap.get(eid);
 
         if (e === undefined) {
           console.warn("Bad eid in selectopbase undo", eid);
@@ -312,7 +312,7 @@ export class SelectLinkedPickOp extends SelectLinkedOp {
     }
 
     let eid = this.inputs.elemEid.getValue();
-    let elem = mesh.eidmap[eid];
+    let elem = mesh.eidMap.get(eid);
 
     if (!elem) {
       ctx.error("eid was bad");
@@ -497,7 +497,7 @@ export class SelectOneOp extends SelectOpBase {
   exec(ctx) {
     let mesh = this.getMeshes(ctx)[0];
 
-    let e = mesh.eidmap[this.inputs.eid.getValue()];
+    let e = mesh.eidMap.get(this.inputs.eid.getValue());
 
     if (e === undefined) {
       console.warn("invalid eid " + this.inputs.eid.getValue() + " in selectoneop.exec");
@@ -654,7 +654,7 @@ export class SetFaceSmoothOp extends ToolOp {
     }
 
     for (let eid in data) {
-      let f = mesh.eidmap[eid];
+      let f = mesh.eidMap.get(eid);
 
       if (!f || f.type !== MeshTypes.FACE) {
         console.warn("Undo reference error, missing face " + eid, f);
@@ -772,7 +772,7 @@ export class SelectEdgeLoopOp extends SelectOpBase {
     }
 
     for (let mesh of this.getMeshes(ctx)) {
-      let e = mesh.eidmap[eid];
+      let e = mesh.eidMap.get(eid);
 
       if (!e || e.type !== MeshTypes.EDGE || !e.l) {
         continue;

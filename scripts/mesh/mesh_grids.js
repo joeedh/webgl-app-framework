@@ -609,7 +609,7 @@ export class GridBase extends CustomDataElem {
     this.points = [];
     this.customDatas = [];
 
-    this.eidmap = undefined;
+    this.eidMap = undefined;
 
     this.needsSubSurf = false;
     this.subsurf = undefined; //subsurf patch
@@ -788,22 +788,22 @@ export class GridBase extends CustomDataElem {
   }
 
   getEIDMap(mesh) {
-    if (this.eidmap && !(this.recalcFlag & QRecalcFlags.REGEN_EIDMAP)) {
-      return this.eidmap;
+    if (this.eidMap && !(this.recalcFlag & QRecalcFlags.REGEN_EIDMAP)) {
+      return this.eidMap;
     }
 
     this.recalcFlag &= ~QRecalcFlags.REGEN_EIDMAP;
-    let eidmap = this.eidmap = {};
+    let eidMap = this.eidMap = new Map();
 
     for (let p of this.points) {
       if (p.eid < 0) {
         p.eid = mesh.eidgen.next();
       }
 
-      eidmap[p.eid] = p;
+      eidMap.set(p.eid, p);
     }
 
-    return eidmap;
+    return eidMap;
   }
 
   calcMemSize() {

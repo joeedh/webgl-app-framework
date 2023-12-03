@@ -322,7 +322,7 @@ export class UVTransformOp extends UVOpBase {
     for (let i=0; i<list.length; i += 3) {
       let l = list[i], u = list[i+1], v = list[i+2];
 
-      l = mesh.eidmap[l];
+      l = mesh.eidMap.get(l);
       if (!l || l.type !== MeshTypes.LOOP) {
         console.warn("Missing element " + list[i]);
         continue;

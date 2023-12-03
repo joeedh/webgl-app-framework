@@ -2228,7 +2228,7 @@ export class BVHToolMode extends ToolMode {
             tn3.load(t3.no).interp(t1.no, 0.5).normalize();
             tn4.load(t1.no).add(t2.no).add(t3.no).normalize();
 
-            let f = mesh.eidmap[tri.id];
+            let f = mesh.eidMap.get(tri.id);
 
             let w1 = window.d1 ?? 1.0/3.0;
 
@@ -2398,7 +2398,7 @@ export class BVHToolMode extends ToolMode {
                 uv2 = l2.customData[cd_uv].uv;
                 uv3 = l3.customData[cd_uv].uv;
               } else {
-                let f = mesh.eidmap[tri.id];
+                let f = mesh.eidMap.get(tri.id);
 
                 l1 = l2 = l3 = undefined;
 
@@ -2489,7 +2489,7 @@ export class BVHToolMode extends ToolMode {
               v = !v && !c3 ? tri.v3 : v;
 
               let l = v.loopEid;
-              l = mesh.eidmap[l];
+              l = mesh.eidMap.get(l);
               if (l && l.eid === v.loopEid) {
                 l.customData[bvh.cd_grid].checkCustomDataLayout(mesh);
 
@@ -2669,7 +2669,7 @@ export class BVHToolMode extends ToolMode {
               v = !v && !c3 ? tri.v3 : v;
 
               let l = v.loopEid;
-              l = mesh.eidmap[l];
+              l = mesh.eidMap.get(l);
               if (l && l.eid === v.loopEid) {
                 l.customData[bvh.cd_grid].checkCustomDataLayout(mesh);
 

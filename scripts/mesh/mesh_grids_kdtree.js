@@ -2721,7 +2721,7 @@ export class KdTreeGrid extends GridBase {
 
             for (let p2 of list) {
               if (p2.loopEid !== p.loopEid && p2.loopEid !== undefined) {
-                let l = mesh.eidmap[p2.loopEid];
+                let l = mesh.eidMap.get(p2.loopEid);
 
                 if (l && l.eid === MeshTypes.LOOP) {
                   let grid = l.customData[cd_grid];
@@ -3648,7 +3648,7 @@ export class KdTreeGrid extends GridBase {
           continue;
         }
 
-        let l2 = mesh.eidmap[p2.loopEid];
+        let l2 = mesh.eidMap.get(p2.loopEid);
         if (!l2) {
           continue;
         }

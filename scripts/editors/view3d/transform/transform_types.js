@@ -85,7 +85,7 @@ export class MeshTransType extends TransDataType {
       for (let v of boundary) {
         for (let v2 of bvh.closestVerts(v, propradius*1.1)) {
         //for (let v2 of shash.closestVerts(v, propradius)) {
-        //  v2 = mesh.eidmap[v2];
+        //  v2 = mesh.eidMap.get(v2);
 
           if (boundary.has(v2) || v === v2) {
             continue;
@@ -430,7 +430,7 @@ export class MeshTransType extends TransDataType {
     let mesh = ctx.mesh;
 
     for (let k in cos) {
-      let v = mesh.eidmap[k];
+      let v = mesh.eidMap.get(k);
 
       if (v === undefined) {
         console.warn("Mesh integrity error in Transform undo");
@@ -443,7 +443,7 @@ export class MeshTransType extends TransDataType {
     }
 
     for (let k in fcos) {
-      let f = mesh.eidmap[k];
+      let f = mesh.eidMap.get(k);
 
       if (f === undefined) {
         console.warn("Mesh integrity error in Transform undo");

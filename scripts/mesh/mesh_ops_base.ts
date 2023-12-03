@@ -7,7 +7,7 @@ import {
 } from '../path.ux/scripts/pathux.js';
 import * as util from '../util/util.js';
 
-import {Mesh, MeshDrawFlags, MeshFlags, MeshTypes} from './mesh.js';
+import {Mesh, MeshDrawFlags, MeshFlags, MeshTypes, Vertex} from './mesh.js';
 import {View3DOp} from '../editors/view3d/view3d_ops.js';
 import {SceneObject} from "../sceneobject/sceneobject.js";
 import {ToolContext} from "../../types/scripts/core/context";
@@ -265,7 +265,7 @@ export class MeshDeformOp<InputSet = {}, OutputSet = {}> extends MeshOp<InputSet
       let list = this._deformUndo[k];
       for (let i = 0; i < list.length; i += 4) {
         let eid = list[i], x = list[i + 1], y = list[i + 2], z = list[i + 3];
-        let v = mesh.eidmap[eid];
+        let v = mesh.eidMap.get<Vertex>(eid);
         if (!v || v.type !== MeshTypes.VERTEX) {
           console.error("Undo error for vertex eid", eid, "got", v);
           continue;

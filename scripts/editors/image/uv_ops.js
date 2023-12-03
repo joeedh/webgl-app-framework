@@ -160,7 +160,7 @@ export class UVSetFlagBase extends UVOpBase {
 
     for (let i = 0; i < list.length; i += 2) {
       let eid = list[i], flag = list[i + 1];
-      let l = mesh.eidmap[eid];
+      let l = mesh.eidMap.get(eid);
 
       if (!l || l.type !== MeshTypes.LOOP) {
         console.warn("Missing element " + eid, l);
