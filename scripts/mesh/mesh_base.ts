@@ -422,4 +422,8 @@ mesh.CDElemArray {
   }
 }
 
+export interface ICustomDataCapable {
+  customData: CDElemArray;
+}
+
 export const EmptyCDArray = Object.seal(new CDElemArray());

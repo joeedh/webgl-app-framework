@@ -4,7 +4,7 @@ import {
 } from '../path.ux/scripts/pathux.js';
 import * as util from '../util/util.js';
 
-import {EmptyCDArray} from './mesh_base.js';
+import {EmptyCDArray, ICustomDataCapable} from './mesh_base.js';
 import {Icons} from '../editors/icon_enum.js';
 import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
 import {Element} from "./mesh_types";
@@ -943,7 +943,7 @@ export class AttrRef<type> {
     return this.i >= 0;
   }
 
-  get(elem: Element): type {
+  get(elem: ICustomDataCapable): type {
     return elem.customData.get<type>(this.i);
   }
 }
