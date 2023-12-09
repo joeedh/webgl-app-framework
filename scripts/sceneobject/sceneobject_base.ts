@@ -1,9 +1,9 @@
-import {DataBlock, DataRef} from '../core/lib_api.js';
+import {DataBlock, DataRef} from '../core/lib_api';
 import {Vector3, Matrix4, nstructjs} from '../path.ux/scripts/pathux.js';
 
 import {StandardTools} from './stdtools.js';
-import {Node, NodeFlags} from "../core/graph.js";
-import {DependSocket, Matrix4Socket} from "../core/graphsockets.js";
+import {INodeDef, Node, NodeFlags} from "../core/graph";
+import {DependSocket, Matrix4Socket} from "../core/graphsockets";
 import {Material} from "../core/material";
 import {ToolContext} from "../../types/scripts/core/context";
 
@@ -15,11 +15,11 @@ export interface IDataDefine {
   tools: any
 }
 
-// @ts-ignore
-export class SceneObjectData extends DataBlock<
-  { depend: DependSocket },
-  { depend: DependSocket }
+export class SceneObjectData<InputSet = {}, OutputSet = {}> extends DataBlock<
+  InputSet & { depend: DependSocket },
+  OutputSet & { depend: DependSocket }
 > {
+  material?: Material = undefined;
   materials: Array<Material | undefined> = [];
   usesMaterial = false;
 
@@ -40,8 +40,9 @@ export class SceneObjectData extends DataBlock<
     }
   }
 
-  static nodedef() {
+  static nodedef(): INodeDef {
     return {
+      name: "",
       inputs: Node.inherit({
         depend: new DependSocket(),
       }),

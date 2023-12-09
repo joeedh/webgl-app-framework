@@ -12,11 +12,11 @@ import {triBoxOverlap, aabb_ray_isect, ray_tri_isect, aabb_cone_isect, tri_cone_
 
 import {Vertex, Handle, Edge, Loop, LoopList, Face, Element} from '../mesh/mesh_types.js';
 
-import {AttrRef, CDFlags, CDRef, CustomDataElem} from "../mesh/customdata";
+import {AttrRef, CDFlags, CDRef, CustomData, CustomDataElem} from "../mesh/customdata";
 import {MeshTypes, MeshFlags, WITH_EIDMAP_MAP, ENABLE_CACHING, CDElemArray} from "../mesh/mesh_base.js";
-import {Grid, GridBase} from "../mesh/mesh_grids.js";
+import {Grid, GridBase} from "../mesh/mesh_grids";
 
-import {QRecalcFlags} from "../mesh/mesh_grids.js";
+import {QRecalcFlags} from "../mesh/mesh_grids";
 import {EDGE_LINKED_LISTS} from '../core/const.js';
 import {aabb_sphere_dist, closest_point_on_tri, dist_to_tri_v3} from './math.js';
 import {getFaceSets} from '../mesh/mesh_facesets.js';
@@ -2055,7 +2055,7 @@ export class BVHNode {
     }
 
     for (let l of ls) {
-      let grid = l.customData.get<Grid>(cd_grid);
+      let grid = cd_grid.get(l);
 
       grid.flagNormalsUpdate();
       this.bvh.updateGridLoops.add(l);
@@ -2190,7 +2190,7 @@ export class BVHNode {
     //  tri.area = math.tri_area(tri.v1.co, tri.v2.co, tri.v3.co) + 0.00001;
     //}
 
-    if (this.bvh.cd_grid >= 0) {
+    if (this.bvh.cd_grid.exists) {
       this.updateNormalsGrids();
       return;
     }
@@ -2318,7 +2318,9 @@ export class BVHNode {
     let map = this.indexTris = [];
     let emap = this.indexEdges = [];
 
-    let computeValidEdges = this.bvh.computeValidEdges;
+    const computeValidEdges = this.bvh.computeValidEdges;
+
+    const cd_grid = this.bvh.cd_grid;
 
     let edgeExists = (v1, v2) => {
       if (!computeValidEdges) {
@@ -2347,10 +2349,7 @@ export class BVHNode {
               continue;
             }
 
-            let cd_grid = this.bvh.cd_grid;
-            let grid = l.customData.get<Grid>(cd_grid);
-
-            grid.flagFixNeighbors();
+            cd_grid.get(l).flagFixNeighbors();
           }
           return true;
         }
@@ -2397,7 +2396,7 @@ export class BVHNode {
   }
 
   updateIndexVerts() {
-    if (this.bvh.cd_grid >= 0) {
+    if (this.bvh.cd_grid.exists) {
       return this.updateIndexVertsGrids();
     }
 
@@ -3115,7 +3114,7 @@ export class BVH {
   root: BVHNode;
 
   tri_idgen: number;
-  cd_grid: number;
+  cd_grid: AttrRef<GridBase>;
   tris: Map<number, BVHTri>
   fmap: Map<number, BVHTri[]>
   verts: Set<BVHNodeVertex>
@@ -3178,7 +3177,7 @@ export class BVH {
     this.tri_idgen = 0;
 
     this.cd_node = new AttrRef(-1);
-    this.cd_grid = -1;
+    this.cd_grid = new AttrRef(-1);
 
     //this.cd_face_node = -1;
     this.tris = new Map();
@@ -3269,13 +3268,13 @@ export class BVH {
     aabb[0].subScalar(pad);
     aabb[1].addScalar(pad);
 
-    let cd_grid = useGrids ? GridBase.meshGridOffset(mesh) : -1;
+    let cd_grid = useGrids ? GridBase.meshGridRef(mesh) : new AttrRef<GridBase>(-1);
     let tottri = 0;
 
-    if (cd_grid >= 0) {
+    if (cd_grid.exists) {
       //estimate tottri from number of grid points
       for (let l of mesh.loops) {
-        let grid = l.customData.get<Grid>(cd_grid);
+        let grid = cd_grid.get(l);
 
         tottri += grid.points.length * 2;
       }
@@ -3314,7 +3313,7 @@ export class BVH {
 
     bvh.drawLevelOffset = mesh.bvhSettings.drawLevelOffset;
 
-    if (useGrids && cd_grid >= 0) {
+    if (useGrids && cd_grid.exists) {
       bvh.cd_node = new AttrRef(mesh.loops.customData.getNamedLayerIndex(cdname, CDNodeInfo));
     } else {
       bvh.cd_node = new AttrRef(mesh.verts.customData.getNamedLayerIndex(cdname, CDNodeInfo));
@@ -3322,9 +3321,9 @@ export class BVH {
 
     const cd_node = bvh.cd_node;
 
-    if (cd_grid >= 0) {
+    if (cd_grid.exists) {
       for (let l of mesh.loops) {
-        let grid = l.customData.get<Grid>(cd_grid);
+        let grid = cd_grid.get(l);
 
         for (let v of grid.points) {
           cd_node.get(v).vel.zero();
@@ -3341,7 +3340,7 @@ export class BVH {
     //bvh.cd_face_node = mesh.faces.customData.getLayerIndex(CDNodeInfo);
     bvh.storeVerts = storeVerts;
 
-    if (cd_grid >= 0) {
+    if (cd_grid.exists) {
       let rand = new util.MersenneRandom(0);
       const cd_node = bvh.cd_node;
 
@@ -3350,7 +3349,7 @@ export class BVH {
 
       /*
       for (let l of mesh.loops) {
-        let grid = l.customData.get<Grid>(cd_grid);
+        let grid = cd_grid.get(l);
 
         //reset any temporary data
         //we do this to prevent convergent behavior
@@ -3360,14 +3359,14 @@ export class BVH {
       */
 
       for (let l of mesh.loops) {
-        let grid = l.customData.get<Grid>(cd_grid);
+        let grid = cd_grid.get(l);
 
         grid.recalcFlag = QRecalcFlags.EVERYTHING;
         //grid.recalcFlag |= QRecalcFlags.TOPO | QRecalcFlags.NORMALS | QRecalcFlags.NEIGHBORS;
       }
 
       for (let l of mesh.loops) {
-        let grid = l.customData.get<Grid>(cd_grid);
+        let grid = cd_grid.get(l);
 
         for (let p of grid.points) {
           cd_node.get(p).node = undefined;
@@ -3702,7 +3701,7 @@ export class BVH {
     return e;
   }
 
-  origCoStart(cd_orig) {
+  origCoStart(cd_orig: number): void {
     this.cd_orig = cd_orig;
     this.origGen++;
 
@@ -3715,14 +3714,12 @@ export class BVH {
 
   //attempt to sort mesh spatially within memory
 
-  _checkCD() {
-    if (this.cd_grid >= 0) {
-      this.cd_grid = GridBase.meshGridOffset(this.mesh);
-    }
+  _checkCD(): void {
+    this.cd_grid = GridBase.meshGridRef(this.mesh);
 
-    let cdata;
+    let cdata: CustomData;
 
-    if (this.cd_grid >= 0) {
+    if (this.cd_grid.exists) {
       cdata = this.mesh.loops.customData;
     } else {
       cdata = this.mesh.verts.customData;
@@ -3735,24 +3732,24 @@ export class BVH {
     }
   }
 
-  checkCD() {
+  checkCD(): void {
     this._checkCD();
   }
 
   //in an attempt to improve cpu cache performance
-  spatiallySortMesh() {
+  spatiallySortMesh(): void {
     let mesh = this.mesh;
 
     console.error("spatiallySortMesh called");
 
-    //first destroy node references
-    let elist;
+    /* First destroy node references. */
     let cd_node = this.cd_node;
 
-    if (this.cd_grid >= 0) {
+    if (this.cd_grid.exists) {
       let cd_grid = this.cd_grid;
+
       for (let l of mesh.loops) {
-        let grid = l.customData.get<Grid>(cd_grid);
+        let grid = cd_grid.get(l);
         for (let p of grid.points) {
           cd_node.get(p).node = undefined;
         }
@@ -3766,7 +3763,6 @@ export class BVH {
     let doneflag = MeshFlags.TEMP2;
     let updateflag = MeshFlags.UPDATE;
     let allflags = doneflag;
-
 
     for (let elist of mesh.getElemLists()) {
       let i = 0;
@@ -4150,9 +4146,9 @@ export class BVH {
       return freelist;
     }
 
-    if (cd_grid >= 0) {
+    if (cd_grid.exists) {
       for (let l of mesh.loops) {
-        let grid = l.customData[cd_grid];
+        let grid = cd_grid.get(l);
 
         grid.relinkCustomData();
 
@@ -4188,7 +4184,7 @@ export class BVH {
     this.fmap = undefined;
 
     this.cd_node.i = -1;
-    this.cd_grid = -1;
+    this.cd_grid = new AttrRef(-1);
 
     //for (let f of mesh.faces) {
     //  f.customData[cd_face_node].node = undefined;
@@ -4853,10 +4849,11 @@ export class BVH {
 
     let run_again = false;
 
-    if (this.cd_grid >= 0) {
+    const cd_grid = this.cd_grid;
+    if (cd_grid.exists) {
       for (let l of this.updateGridLoops) {
-        let grid = l.customData[this.cd_grid];
-        grid.update(this.mesh, l, this.cd_grid);
+        let grid = cd_grid.get(l);
+        grid.update(this.mesh, l, cd_grid);
       }
     }
 
@@ -4900,11 +4897,11 @@ export class BVH {
       }
     }
 
-    if (this.cd_grid >= 0) {
+    if (this.cd_grid.exists) {
       let cd_grid = this.cd_grid;
 
       for (let l of this.updateGridLoops) {
-        let grid = l.customData[cd_grid];
+        let grid = cd_grid.get(l);
 
         grid.update(this.mesh, l, cd_grid);
       }

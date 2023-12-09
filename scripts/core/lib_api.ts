@@ -1,11 +1,10 @@
 import {
   Matrix4, Vector2, Vector3, Vector4, nstructjs, ToolProperty, PropTypes,
-  EnumProperty
+  EnumProperty, util
 } from '../path.ux/scripts/pathux.js';
-import * as util from '../util/util.js';
 
 import {IDGen} from '../util/util.js';
-import {Node, Graph, NodeFlags, SocketFlags, NodeSocketType, INodeConstructor} from './graph.js';
+import {Node, Graph, NodeFlags, SocketFlags, NodeSocketType, INodeConstructor} from './graph';
 import {Icons} from "../editors/icon_enum.js";
 import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
 import type {ToolContext} from "../../types/scripts/core/context";
@@ -33,7 +32,7 @@ export interface IBlockDef {
   flag?: number;
 }
 
-export interface IDataBlockConstructor<type, InputSet, OutputSet> extends INodeConstructor<InputSet, OutputSet> {
+export interface IDataBlockConstructor<type extends DataBlock<InputSet, OutputSet>, InputSet, OutputSet> extends INodeConstructor<type, InputSet, OutputSet> {
   new(): type;
 
   blockDefine(): IBlockDef;
@@ -314,7 +313,7 @@ but owner will not be added to this.lib_userlist`.trim());
     BlockTypes.remove(cls);
   }
 
-  static getClass<type = any>(typeName: string): IDataBlockConstructor<type, {}, {}> {
+  static getClass<type extends DataBlock = DataBlock>(typeName: string): IDataBlockConstructor<type, {}, {}> {
     for (let type of BlockTypes) {
       if (type.blockDefine().typeName === typeName)
         return type;

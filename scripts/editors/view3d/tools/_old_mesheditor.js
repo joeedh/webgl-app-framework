@@ -3,7 +3,7 @@ import {ToolMode} from '../view3d_toolmode.js';
 import {SelMask, SelOneToolModes, SelToolModes} from '../selectmode.js';
 import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../../mesh/mesh.js';
 import * as util from '../../../util/util.js';
-import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../../core/simplemesh.js';
+import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../../core/simplemesh.ts';
 import {Shaders} from '../../../shaders/shaders.js'
 import {FindNearestRet} from "../findnearest.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js';

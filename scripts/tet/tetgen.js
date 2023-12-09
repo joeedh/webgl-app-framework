@@ -12,7 +12,7 @@ import {Node, NodeFlags} from '../core/graph.js';
 import {DependSocket} from '../core/graphsockets.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {DataBlock} from '../core/lib_api.js';
-import {SimpleMesh, LayerTypes, PrimitiveTypes, ChunkedSimpleMesh} from '../core/simplemesh.js';
+import {SimpleMesh, LayerTypes, PrimitiveTypes, ChunkedSimpleMesh} from '../core/simplemesh.ts';
 import {Shaders} from '../shaders/shaders.js';
 import {BVH} from '../util/bvh.js';
 import {CDFlags} from '../mesh/customdata.js';

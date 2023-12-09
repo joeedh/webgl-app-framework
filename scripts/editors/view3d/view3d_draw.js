@@ -1,7 +1,7 @@
 import * as util from '../../util/util.js';
 import {Vector3} from '../../util/vectormath.js';
 import {Mesh, MeshFlags, MeshTypes} from "../../mesh/mesh.js";
-import {LayerTypes} from "../../core/simplemesh.js";
+import {LayerTypes} from "../../core/simplemesh.ts";
 import {SelMask} from "./selectmode.js";
 import {Shaders} from "../../shaders/shaders.js";
 import {View3DFlags} from './view3d_base.js';

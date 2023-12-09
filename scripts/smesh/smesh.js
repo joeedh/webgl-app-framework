@@ -5,7 +5,7 @@ import {SelMask} from '../editors/view3d/selectmode.js';
 import {NodeFlags} from '../core/graph.js';
 import {DataBlock} from '../core/lib_api.js';
 import {nstructjs} from '../path.ux/pathux.js';
-import {LayerTypes, SimpleMesh} from '../core/simplemesh.js';
+import {LayerTypes, SimpleMesh} from '../core/simplemesh.ts';
 import {getArrayTemp} from '../mesh/mesh_base.js';
 import {Node} from '../core/graph.js';
 import {BoundMesh} from './smesh_bound.js';

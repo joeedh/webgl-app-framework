@@ -11,15 +11,15 @@ import {
   SAVE_DEAD_FACES,
   SAVE_DEAD_LOOPS,
   SAVE_DEAD_VERTS,
-} from './mesh_base.js';
+} from './mesh_base';
 
-import {Node, NodeFlags} from '../core/graph.js';
+import {INodeDef, Node, NodeFlags} from '../core/graph';
 
 import {Shaders} from '../shaders/shaders.js';
 
-import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../core/simplemesh.js';
+import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../core/simplemesh';
 
-import {DataBlock} from '../core/lib_api.js';
+import {DataBlock} from '../core/lib_api';
 import {IDataDefine, SceneObjectData} from '../sceneobject/sceneobject_base';
 import {math, Matrix4, nstructjs, util, Vector3, Vector4} from '../path.ux/pathux.js';
 
@@ -59,7 +59,10 @@ import {
   onFileLoadDispVert,
   updateDispLayers
 } from "./mesh_displacement";
-import {IGridBaseConstructor} from "../../types/scripts/mesh/mesh_grids";
+import {IGridConstructor} from "./mesh_grids.js";
+import {View3D} from "../../types/scripts/editors/view3d/view3d";
+import {ShaderProgram} from "../../types/scripts/core/webgl";
+import {SceneObject} from "../sceneobject/sceneobject";
 
 export interface IBVHArgs {
   leafLimit?: number,
@@ -256,8 +259,6 @@ export class EidElemMap extends Map<number, Element> {
   }
 }
 
-// XXX remove after porting graph.js to typescript
-// @ts-ignore
 export class Mesh extends SceneObjectData {
   static STRUCT = nstructjs.inlineRegister(this, `
 mesh.Mesh {
@@ -380,7 +381,7 @@ mesh.Mesh {
     return this.eidMap.values();
   }
 
-  static nodedef() {
+  static nodedef(): INodeDef {
     return {
       name: "mesh",
       uiname: "Mesh",
@@ -4518,12 +4519,12 @@ mesh.Mesh {
     }
 
     let cls = CustomDataElem.getTypeClass(this.loops.customData.flatlist[cd_grid.i].typeName);
-    (cls as unknown as IGridBaseConstructor).updateSubSurf(this, cd_grid.i, true);
+    (cls as unknown as IGridConstructor).updateSubSurf(this, cd_grid, true);
 
     for (let l of this.loops) {
       let grid = cd_grid.get(l);
 
-      grid.update(this, l, cd_grid.i);
+      grid.update(this, l, cd_grid);
     }
   }
 
@@ -4927,7 +4928,7 @@ mesh.Mesh {
       let l1 = ltris[i], l2 = ltris[i + 1], l3 = ltris[i + 2];
       let f = l1.f;
 
-      let tri = sm.tri(l1.v, l2.v, l3.v);
+      let tri = sm.tri(l1.v.co, l2.v.co, l3.v.co);
 
       if (f.flag & MeshFlags.SMOOTH_DRAW) {
         tri.normals(l1.v.no, l2.v.no, l3.v.no);
@@ -4950,7 +4951,7 @@ mesh.Mesh {
 
     if (combinedWireframe) {
       for (let e of this.edges) {
-        let line = sm.line(e.v1, e.v2);
+        let line = sm.line(e.v1.co, e.v2.co);
 
         line.ids(e.eid, e.eid);
         line.uvs([0, 0], [1, 0]);
@@ -5314,7 +5315,7 @@ mesh.Mesh {
     window.redraw_viewport(true);
   }
 
-  _clearGPUMeshes(gl?) {
+  _clearGPUMeshes(gl?: WebGL2RenderingContext): void {
     let meshes = this._fancyMeshes;
 
     this._fancyMeshes = {};
@@ -5339,11 +5340,13 @@ mesh.Mesh {
     }
   }
 
-  drawElements(view3d, gl, selmask, uniforms, program, object, drawTransFaces = false) {
+  drawElements(view3d: View3D, gl: WebGL2RenderingContext, selmask: number,
+               uniforms: any, program: ShaderProgram, object: SceneObject, drawTransFaces = false) {
     return drawMeshElements(this, ...arguments);
   }
 
-  draw(view3d, gl, uniforms, program, object) {
+  draw(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any,
+       program: ShaderProgram, object: SceneObject): void {
     if (this.recalc & RecalcFlags.TESSELATE) {
       this.tessellate();
     }
@@ -5370,7 +5373,7 @@ mesh.Mesh {
     this.smesh.draw(gl, uniforms);
   }
 
-  swapDataBlockContents(mesh) {
+  swapDataBlockContents(mesh: this) {
     return super.swapDataBlockContents(mesh);
   }
 

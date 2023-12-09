@@ -1,20 +1,11 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
-import {SimpleMesh, LayerTypes} from '../core/simplemesh.js';
 import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property,
   PropFlags, PropTypes, PropSubTypes, ToolOp, ToolFlags, UndoFlags
 } from '../path.ux/scripts/pathux.js';
-import {dist_to_line_2d} from '../path.ux/scripts/util/math.js';
-import {CallbackNode, NodeFlags} from "../core/graph.js";
-import {DependSocket} from '../core/graphsockets.js';
-import * as util from '../util/util.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
-import {Icons} from '../editors/icon_enum.js';
 
-import {Mesh, MeshTypes, MeshFlags} from '../mesh/mesh.js';
-import {MeshOp} from '../mesh/mesh_ops_base.js';
-import {subdivide} from '../subsurf/subsurf_mesh.js';
 import {NOTEXIST, StandardTools} from "./stdtools.js";
 import {SelToolModes, SelOneToolModes} from '../editors/view3d/selectmode.js';
 import {ObjectSelectOneOp} from './selectops.js';

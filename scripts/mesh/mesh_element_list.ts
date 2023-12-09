@@ -946,8 +946,10 @@ mesh.ElementList {
     return this;
   }
 
-  addCustomDataLayer(cls_or_typestring: any,
-                     name?: string): CustomDataLayer<any> {
+  addCustomDataLayer<CDType extends CustomDataElem<any> = CustomDataElem<any>>
+  (cls_or_typestring: any,
+   name?: string
+  ): CustomDataLayer<CDType> {
     this.clearFreeElems();
 
     let typecls: ICustomDataElemConstructor | undefined;

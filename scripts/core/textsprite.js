@@ -1,6 +1,6 @@
 import {Texture} from './webgl.js'
 import {CSSFont, css2color, color2css} from "../path.ux/scripts/core/ui_base.js";
-import {SimpleMesh, LayerTypes} from "./simplemesh.js";
+import {SimpleMesh, LayerTypes} from "./simplemesh.ts";
 import {loadShader, PolygonOffset} from "../shaders/shaders.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from "../util/vectormath.js";
 

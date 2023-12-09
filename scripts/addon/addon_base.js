@@ -29,7 +29,7 @@ import {MeshOpBaseUV} from '../mesh/mesh_uvops_base.js';
 import {TransformOp} from '../editors/view3d/transform/transform_ops.js';
 import * as widget_tools from '../editors/view3d/widgets/widget_tools.js';
 import * as widgets from '../editors/view3d/widgets/widgets.js';
-import * as simplemesh from '../core/simplemesh.js';
+import * as simplemesh from '../core/simplemesh.ts';
 import * as paramizer from '../mesh/mesh_paramizer.js';
 import * as displacement from '../mesh/mesh_displacement.js';
 import * as curvature from '../mesh/mesh_curvature.js';

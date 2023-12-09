@@ -13,7 +13,7 @@ import {BVHFlags} from '../../../util/bvh.js';
 import {GridBase} from '../../../mesh/mesh_grids.js';
 import {ImageTypes} from '../../../image/image.js';
 import {FBO} from '../../../core/fbo.js';
-import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
+import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.ts';
 import {Shaders, ShaderDef, BasicLitMesh} from '../../../shaders/shaders.js';
 import {getFBODebug} from '../../debug/gldebug.js';
 import {Texture, getShader, ShaderProgram} from '../../../core/webgl.js';

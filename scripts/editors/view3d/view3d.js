@@ -24,7 +24,7 @@ import {EnvLightFlags} from "../../scene/scene.js";
 import {UIBase, color2css, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import * as view3d_shaders from '../../shaders/shaders.js';
 import {loadShader} from '../../shaders/shaders.js';
-import {SimpleMesh, LayerTypes} from '../../core/simplemesh.js';
+import {SimpleMesh, LayerTypes} from '../../core/simplemesh.ts';
 import {Vector3, Vector2, Vector4, Matrix4, Quat, Matrix4ToTHREE} from '../../util/vectormath.js';
 import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js';
 import {cachering, print_stack, time_ms} from '../../util/util.js';

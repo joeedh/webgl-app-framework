@@ -3,12 +3,9 @@ import {nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/sc
 import {Vertex, Edge} from '../mesh/mesh_types';
 import {Mesh} from "../mesh/mesh.js";
 import {MeshTypes, MeshFlags, MeshFeatures, MeshFeatureError, MeshDrawFlags, MeshError} from "../mesh/mesh_base.js";
-import {ObjectFlags} from "../sceneobject/sceneobject.js";
 import {SceneObjectData} from "../sceneobject/sceneobject_base.js";
 import {NodeFlags} from "../core/graph.js";
 import {DataBlock} from "../core/lib_api.js";
-import {CDElemMap, CDElemTypes, CustomData, CustomDataElem, ICustomDataElemDef} from "../mesh/customdata";
-import {CustomDataLayer} from "../mesh/customdata.js";
 import {MeshTools} from "../mesh/mesh_stdtools.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {LayerTypes, SimpleMesh} from "../core/simplemesh.js";

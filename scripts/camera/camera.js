@@ -8,7 +8,7 @@ import {StandardTools} from "../sceneobject/stdtools.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {Matrix4Socket} from "../core/graphsockets.js";
 import {Node, NodeFlags} from "../core/graph.js";
-import {SimpleMesh, LayerTypes, PrimitiveTypes} from "../core/simplemesh.js";
+import {SimpleMesh, LayerTypes, PrimitiveTypes} from "../core/simplemesh.ts";
 import {Shapes} from "../core/simplemesh_shapes.js";
 import {DependSocket} from "../core/graphsockets.js";
 import {CameraTypes} from "./camera_types.js";

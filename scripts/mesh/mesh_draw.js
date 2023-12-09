@@ -6,7 +6,7 @@ import {MeshDrawFlags, MeshFeatures, MeshFlags, MeshTypes, RecalcFlags} from "./
 import {CustomDataElem} from "./customdata";
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 import {Colors} from "../sceneobject/sceneobject.js";
-import {ChunkedSimpleMesh, LayerTypes, PrimitiveTypes} from "../core/simplemesh.js";
+import {ChunkedSimpleMesh, LayerTypes, PrimitiveTypes} from "../core/simplemesh.ts";
 import {NormalLayerElem, UVLayerElem} from "./mesh_customdata.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {Grid, GridBase} from "./mesh_grids.js";

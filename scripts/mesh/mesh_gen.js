@@ -6,7 +6,7 @@ import {MeshIDShader, Shaders} from '../shaders/shaders.js';
 import {Node, NodeFlags} from '../core/graph.js';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {DataBlock} from '../core/lib_api.js';
-import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../core/simplemesh.js';
+import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../core/simplemesh.ts';
 
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 

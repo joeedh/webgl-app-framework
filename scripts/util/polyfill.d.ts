@@ -1,3 +1,12 @@
+
+export interface INumberList {
+  [k: number]: number;
+
+  length: number;
+
+  slice(start: number, end: number): INumberList;
+}
+
 export declare global {
   declare function updateDataGraph(immediate?: boolean);
 
@@ -11,5 +20,22 @@ export declare global {
 
     filter(func: (item: any) => boolean);
   }
+
+  /* window.D* debug variables.
+   * These are created at the console.
+   * only.
+   **/
+  declare interface Window {
+    D1: number | undefined;
+    D2: number | undefined;
+    D3: number | undefined;
+    D4: number | undefined;
+    D5: number | undefined;
+    D6: number | undefined;
+    DTST2: number | undefined;
+    DEBUG: any;
+    _appstate: any;
+  }
 }
+
 

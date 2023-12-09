@@ -1,16 +1,14 @@
-import {DataBlock} from "../../types/scripts/core/lib_api";
-
 let _graph = undefined;
 
 import {
   Matrix4, Vector2, Vector3,
-  Vector4, util, nstructjs, ToolProperty
+  Vector4, util, nstructjs, ToolProperty,
 } from '../path.ux/scripts/pathux.js';
 
 import '../util/polyfill.d.ts';
-import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
-import {ContainerIF} from "../path.ux/scripts/widgets/ui_container";
-import {Container} from "../path.ux/scripts/types/core/ui";
+import type {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
+import type {ContainerIF} from "../path.ux/scripts/widgets/ui_container";
+import type {Container} from "../path.ux/scripts/types/core/ui";
 
 export class GraphCycleError extends Error {
 }
@@ -120,17 +118,17 @@ export interface INodeSocketDef {
 export interface INodeDef<InputSet = {}, OutputSet = {}> {
   name: string;
   uiname?: string;
-  flag?: number;
+  flag?: any;
   inputs: InputSet | InheritFlag<InputSet>;
   outputs: OutputSet | InheritFlag<OutputSet>;
 }
 
-export interface INodeConstructor<InputSet, OutputSet> {
-  new(): Node<InputSet, OutputSet>;
+export interface INodeConstructor<NodeType extends Node<InputSet, OutputSet>, InputSet, OutputSet> {
+  new(): NodeType
 
   nodedef(): INodeSocketDef;
 
-  getFinalNodeDef(): INodeDef<InputSet, OutputSet>;
+  getFinalNodeDef?(): INodeDef<InputSet, OutputSet>;
 }
 
 export interface ISocketConstructor {
@@ -240,7 +238,7 @@ graph.NodeSocketType {
 
   }
 
-  graphDataLink(ownerBlock: DataBlock, getblock: (id: any) => DataBlock, getblock_addUser: (id: any) => DataBlock): void {
+  graphDataLink(ownerBlock: any, getblock: (id: any) => any, getblock_addUser: (id: any) => any): void {
 
   }
 
@@ -526,7 +524,7 @@ graph.Node {
 }
 `);
 
-  ['constructor']: INodeConstructor<InputSet, OutputSet>;
+  ['constructor']: INodeConstructor<this, InputSet, OutputSet>;
 
   constructor(flag = 0) {
     let def = this.constructor.nodedef();
@@ -710,7 +708,7 @@ graph.Node {
     //dunno if I'm just being paranoid
     let def2 = Object.assign({}, def);
 
-    interface NodeProto extends INodeConstructor<INodeSocketSet, INodeSocketSet> {
+    interface NodeProto extends INodeConstructor<any, INodeSocketSet, INodeSocketSet> {
       __proto__?: NodeProto
     }
 
@@ -894,7 +892,7 @@ graph.Node {
     }
 
     /*deal with any changes in sockets across file versions*/
-    let def = (this.constructor as unknown as INodeConstructor<InputSet, OutputSet>).getFinalNodeDef();
+    let def = this.constructor.getFinalNodeDef();
 
     for (let i = 0; i < 2; i++) {
       let socks1 = i ? this.outputs : this.inputs;

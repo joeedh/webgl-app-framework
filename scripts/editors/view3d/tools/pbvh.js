@@ -33,7 +33,7 @@ import {
   UIBase
 } from "../../../path.ux/scripts/pathux.js";
 import {MeshFlags} from "../../../mesh/mesh.js";
-import {SimpleMesh, LayerTypes, PrimitiveTypes} from "../../../core/simplemesh.js";
+import {SimpleMesh, LayerTypes, PrimitiveTypes} from "../../../core/simplemesh.ts";
 import {splitEdgesSmart} from "../../../mesh/mesh_subdivide.js";
 import {
   GridBase,

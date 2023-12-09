@@ -11,7 +11,7 @@ compatibility functions
 export function inherit(c, p, obj) {
   c.prototype = Object.create(p.prototype);
 
-  for (var k in obj) {
+  for (let k in obj) {
     c.prototype[k] = obj[k];
   }
 
@@ -38,7 +38,7 @@ export function init_prototype(cls, obj) {
     cls.prototype = {};
   }
 
-  for (var k in obj) {
+  for (let k in obj) {
     cls.prototype[k] = obj[k];
   }
 

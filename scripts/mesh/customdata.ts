@@ -46,16 +46,12 @@ export interface ICustomDataElemDef {
   settingsClass?: any;
 }
 
-export interface ICustomDataElem {
-  define(): ICustomDataElemDef
-}
-
 export class CustomDataElem<ValueType> {
   static STRUCT = nstructjs.inlineRegister(this, `
 mesh.CustomDataElem {
 }`);
 
-  ['constructor']: ICustomDataElem;
+  ['constructor']: ICustomDataElemConstructor<this>;
 
   static define(): ICustomDataElemDef {
     return {
@@ -74,7 +70,7 @@ mesh.CustomDataElem {
   static typeName = this.define().typeName;
   typeName: string;
   onRemoveLayer: (cls: new () => this, layer_i: number) => void;
-  onNewLayer: (cls: new () => CustomDataElem<any>, i: number) => void;
+  onNewLayer: (cls: new () => CustomDataElem<any>, i?: number) => void;
 
   constructor() {
     this.typeName = this.constructor.define().typeName;
@@ -396,7 +392,7 @@ _Nothing {
   `);
 }
 
-export class CustomDataLayer<CDType> {
+export class CustomDataLayer<CDType extends CustomDataElem<any>> {
   static STRUCT = nstructjs.inlineRegister(this, `
 mesh.CustomDataLayer {
   typeName        : string;
@@ -481,7 +477,7 @@ mesh.CustomDataLayer {
   }
 }
 
-export class LayerSet<CDType> extends Array<CustomDataLayer<CDType>> {
+export class LayerSet<CDType extends CustomDataElem<any>> extends Array<CustomDataLayer<CDType>> {
   typeName: string;
   active: CustomDataLayer<CDType>;
   active_i: number; /* Used by STRUCT script. */
@@ -748,7 +744,7 @@ mesh.CustomData {
     return this.layers.has(typename) && this.layers.get(typename).length > 0;
   }
 
-  getLayerRef<type>(cls: new() => type): AttrRef<type> {
+  getLayerRef<type extends CustomDataElem<any>>(cls: new() => type): AttrRef<type> {
     return AttrRef.create<type>(this.getLayerIndex(cls));
   }
 
@@ -850,7 +846,7 @@ mesh.CustomData {
     return name2;
   }
 
-  getLayerSet<ValueType>(typename, autoCreate = true): LayerSet<ValueType> {
+  getLayerSet<CDType extends CustomDataElem<any>>(typename, autoCreate = true): LayerSet<CDType> {
     if (autoCreate && !this.layers.has(typename)) {
       this.layers.set(typename, new LayerSet(typename));
       this.layers.get(typename).active = undefined;
@@ -863,7 +859,7 @@ mesh.CustomData {
     return this.getNamedLayer(name, opt_cls_or_typeName) !== undefined;
   }
 
-  getNamedLayerRef<type>(name, opt_cls_or_typeName): AttrRef<type> {
+  getNamedLayerRef<type extends CustomDataElem<any>>(name, opt_cls_or_typeName): AttrRef<type> {
     let layer = this.getNamedLayer(name, opt_cls_or_typeName);
     if (!layer) {
       return AttrRef.create<type>(-1);
@@ -881,7 +877,7 @@ mesh.CustomData {
     return layer.index;
   }
 
-  getNamedLayer(name, opt_cls_or_typeName) {
+  getNamedLayer<CDType extends CustomDataElem<any> = CustomDataElem<any>>(name, opt_cls_or_typeName): CustomDataLayer<CDType> | undefined {
     let typeName = opt_cls_or_typeName;
 
     if (typeof typeName !== "string") {
@@ -897,6 +893,10 @@ mesh.CustomData {
         return layer;
       }
     }
+  }
+
+  getLayerFromIndex<CDType extends CustomDataElem<any>>(i: number): CustomDataLayer<CDType> {
+    return this.flatlist[i] as CustomDataLayer<CDType>;
   }
 
   loadSTRUCT(reader: StructReader<this>) {
@@ -928,14 +928,14 @@ mesh.CustomData {
   }
 }
 
-export class AttrRef<type> {
+export class AttrRef<type extends CustomDataElem<any>> {
   public i: number = -1;
 
   constructor(index: number) {
     this.i = index;
   }
 
-  static create<type>(index: number): AttrRef<type> {
+  static create<type extends CustomDataElem<any>>(index: number): AttrRef<type> {
     return new AttrRef<type>(index);
   }
 
@@ -945,6 +945,10 @@ export class AttrRef<type> {
 
   get(elem: ICustomDataCapable): type {
     return elem.customData.get<type>(this.i);
+  }
+
+  layerInfo(cdata: CustomData): CustomDataLayer<type> {
+    return cdata.getLayerFromIndex<type>(this.i);
   }
 }
 

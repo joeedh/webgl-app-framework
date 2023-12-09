@@ -24,7 +24,7 @@ import {ObjectFlags} from "../../../sceneobject/sceneobject.js";
 import {ContextOverlay, ToolMacro, startMenu, createMenu, nstructjs} from "../../../path.ux/scripts/pathux.js";
 import {PackFlags} from "../../../path.ux/scripts/core/ui_base.js";
 import {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js';
-import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.js';
+import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.ts';
 import {buildCotanMap} from '../../../mesh/mesh_utils.js';
 import {CurvVert, CVFlags, getCurveVerts} from '../../../mesh/mesh_curvature.js';
 import {getFaceSets} from '../../../mesh/mesh_facesets.js';

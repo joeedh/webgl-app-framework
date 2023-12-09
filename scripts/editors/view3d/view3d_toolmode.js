@@ -1,7 +1,7 @@
 
 import {Vector2, Vector3} from '../../util/vectormath.js';
 import {KeyMap, HotKey} from "../editor_base.js";
-import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from "../../core/simplemesh.js";
+import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from "../../core/simplemesh.ts";
 import {WidgetFlags} from "./widgets/widgets.js";
 import {EnumProperty, FlagProperty} from "../../path.ux/scripts/pathux.js";
 import {Icons} from '../icon_enum.js';

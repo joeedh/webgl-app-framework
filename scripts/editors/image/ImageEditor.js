@@ -13,7 +13,7 @@ import {snap} from '../../path.ux/scripts/screen/FrameManager_mesh.js';
 import {SelectOneUVOp} from './uv_selectops.js';
 import {SelOneToolModes} from '../view3d/selectmode.js';
 import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../../image/image.js';
-import {PrimitiveTypes, LayerTypes, SimpleMesh} from '../../core/simplemesh.js';
+import {PrimitiveTypes, LayerTypes, SimpleMesh} from '../../core/simplemesh.ts';
 import {UVWrangler} from '../../mesh/unwrapping.js';
 import {Shaders} from '../../shaders/shaders.js';
 import {DataRefProperty} from '../../core/lib_api.js';

@@ -14,7 +14,7 @@ import {DataRef} from '../../core/lib_api.js';
 import {NodeEditor} from "../node/NodeEditor.js";
 import {glDebug, Shaders} from "./gldebug.js";
 import {getWebGL} from '../view3d/view3d.js';
-import {SimpleMesh, LayerTypes} from "../../core/simplemesh.js";
+import {SimpleMesh, LayerTypes} from "../../core/simplemesh.ts";
 import {Texture} from '../../core/webgl.js';
 import {DisplayModes} from './DebugEditor_base.js';
 import {loadShader} from "../../shaders/shaders.js";

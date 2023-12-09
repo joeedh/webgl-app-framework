@@ -7,7 +7,7 @@ import {FBO} from '../core/fbo.js';
 import {Vector3, Vector4, Matrix4, Vector2} from '../util/vectormath.js';
 import * as math from '../util/math.js';
 import * as util from '../util/util.js';
-import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../core/simplemesh.js';
+import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../core/simplemesh.ts';
 
 export const GPUTileFlags = {
   UPDATE      : 1,

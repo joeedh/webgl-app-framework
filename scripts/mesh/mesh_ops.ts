@@ -1,11 +1,11 @@
 import './mesh_loopops.js';
 import './mesh_curvature_test.js';
 
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
 import {
   IntProperty, BoolProperty, FloatProperty, EnumProperty,
   FlagProperty, ToolProperty, Vec3Property, Mat4Property, StringProperty,
   PropFlags, PropTypes, PropSubTypes,
+  Vector2, Vector3, Vector4, Quat, Matrix4,
   ToolOp, ToolMacro, ToolFlags, UndoFlags, keymap, ToolDef
 } from '../path.ux/scripts/pathux.js';
 import {TranslateOp} from "../editors/view3d/transform/transform_ops.js";
@@ -19,7 +19,7 @@ import {ccSmooth, subdivide, loopSubdivide} from '../subsurf/subsurf_mesh.js';
 import {splitEdgesPreserveQuads, splitEdgesSimple2, splitEdgesSmart, splitEdgesSmart2} from "./mesh_subdivide.js";
 import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
-import {CDFlags, CustomDataElem} from "./customdata";
+import {AttrRef, CDFlags, CustomDataElem} from "./customdata";
 import {
   _testMVC,
   bisectMesh, connectVerts, cotanVertexSmooth, dissolveEdgeLoops, dissolveFaces, duplicateMesh, fixManifold,
@@ -1665,29 +1665,28 @@ export class EnsureGridsOp extends MeshOp<{
     }
 
     for (let mesh of this.getMeshes(ctx)) {
-      let off = GridBase.meshGridOffset(mesh);
+      let cd_grid = GridBase.meshGridRef(mesh);
 
-      if (off < 0) {
+      if (!cd_grid.exists) {
         console.log("Adding grids to mesh", mesh);
 
-        cls.initMesh(mesh, dimen, -1)
+        cls.initMesh(mesh, dimen, cd_grid)
         //QuadTreeGrid.initMesh(mesh, dimen, -1);
       } else {
         for (let l of mesh.loops) {
-          let grid = l.customData[off] as unknown as Grid;
-          grid.update(mesh, l, off);
+          cd_grid.get(l).update(mesh, l, cd_grid);
         }
 
         for (let l of mesh.loops) {
-          let grid = l.customData[off] as unknown as QuadTreeGrid;
+          let grid = cd_grid.get(l)
 
-          grid.subdivideAll(mesh, l, off);
+          grid.subdivideAll(mesh, l, cd_grid);
           grid.stripExtraData();
         }
 
         for (let l of mesh.loops) {
-          let grid = l.customData[off] as unknown as Grid;
-          grid.update(mesh, l, off);
+          let grid = cd_grid.get(l) as unknown as Grid;
+          grid.update(mesh, l, cd_grid as unknown as AttrRef<Grid>);
         }
       }
 
@@ -1719,11 +1718,12 @@ export class SubdivideGridsOp extends MeshOp {
     console.warn("mesh.subdivide_grids");
 
     for (let mesh of this.getMeshes(ctx)) {
-      let cd_grid = mesh.loops.customData.getLayerIndex(QuadTreeGrid);
+      let cd_grid_i = mesh.loops.customData.getLayerIndex(QuadTreeGrid);
+      let cd_grid = new AttrRef<QuadTreeGrid>(cd_grid_i);
 
-      if (cd_grid >= 0) {
+      if (cd_grid_i >= 0) {
         for (let l of mesh.loops) {
-          let grid = l.customData[cd_grid] as unknown as QuadTreeGrid;
+          let grid = cd_grid.get(l);
 
           grid.update(mesh, l, cd_grid);
           grid.subdivideAll(mesh, l, cd_grid);
@@ -1765,10 +1765,10 @@ export class SmoothGridsOp extends MeshOp<{
 
     let fac = this.inputs.factor.getValue();
 
-    function doSmooth(mesh: Mesh, cd_grid: number) {
+    function doSmooth(mesh: Mesh, cd_grid: AttrRef<Grid>) {
       for (let i = 0; i < 1; i++) {
         for (let l of mesh.loops) {
-          let grid = l.customData.get<Grid>(cd_grid);
+          let grid = cd_grid.get(l);
 
           //grid.recalcFlag |= QRecalcFlags.ALL | QRecalcFlags.NORMALS | QRecalcFlags.LEAVES | QRecalcFlags.NEIGHBORS | QRecalcFlags.POINTHASH;
           //grid.recalcFlag |= QRecalcFlags.LEAF_POINTS | QRecalcFlags.LEAF_NODES;
@@ -1780,7 +1780,7 @@ export class SmoothGridsOp extends MeshOp<{
 
       for (let i = 0; i < 3; i++) {
         for (let l of mesh.loops) {
-          let grid = l.customData.get<QuadTreeGrid>(cd_grid);
+          let grid = cd_grid.get(l) as unknown as QuadTreeGrid;
           let ps = grid.points;
 
           let p1 = ps[0];
@@ -1796,13 +1796,13 @@ export class SmoothGridsOp extends MeshOp<{
 
       for (let i = 0; i < 3; i++) {
         for (let l of mesh.loops) {
-          let grid = l.customData.get<QuadTreeGrid>(cd_grid);
+          let grid = l.customData.get<QuadTreeGrid>(cd_grid.i);
           grid.stitchBoundaries();
         }
       }
 
       for (let l of mesh.loops) {
-        let grid = l.customData.get<Grid>(cd_grid);
+        let grid = l.customData.get<Grid>(cd_grid.i);
         grid.recalcFlag |= QRecalcFlags.ALL | QRecalcFlags.NORMALS | QRecalcFlags.LEAVES | QRecalcFlags.NEIGHBORS;
         grid.update(mesh, l, cd_grid);
       }
@@ -1819,7 +1819,8 @@ export class SmoothGridsOp extends MeshOp<{
         continue;
       }
 
-      doSmooth(mesh, cd_grid);
+      doSmooth(mesh, new AttrRef<Grid>(cd_grid));
+
       if (0) {
         let depth = 0;
 
@@ -1838,7 +1839,7 @@ export class SmoothGridsOp extends MeshOp<{
           mres.flag |= GridSettingFlags.ENABLE_DEPTH_LIMIT;
           mres.depthLimit = i * 2;
 
-          doSmooth(mesh, cd_grid);
+          doSmooth(mesh, new AttrRef<Grid>(cd_grid));
         }
 
         oldmres.copyTo(mres);
@@ -2438,7 +2439,7 @@ export class ResetGridsOp extends MeshOp {
       for (let l of mesh.loops) {
         let grid = l.customData.get<Grid>(off);
 
-        grid.init(grid.dimen, mesh, l, off);
+        grid.init(grid.dimen, mesh, l, new AttrRef<Grid>(off));
       }
 
       //force bvh reload
@@ -2484,7 +2485,7 @@ export class ApplyGridBaseOp extends MeshOp {
       for (let l of mesh.loops) {
         let grid = l.customData.get<Grid>(off);
 
-        grid.applyBase(mesh, l, off);
+        grid.applyBase(mesh, l, new AttrRef<Grid>(off));
       }
 
       //force bvh reload
