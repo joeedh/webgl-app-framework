@@ -1,29 +1,41 @@
 "use strict";
 
-import {util, nstructjs} from '../path.ux/scripts/pathux.js';
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
+import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
 
-let STRUCT = nstructjs.STRUCT;
 import './const.js';
+import {ShaderDef} from "../../types/scripts/shaders/shaders";
+import {INumberList} from "../util/polyfill";
+import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
 
 export const constmap = {};
 
 let TEXTURE_2D = 3553;
 
+declare global {
+  interface WebGL2RenderingContext {
+    haveWebGL2: boolean;
+    shadercache: { [k: string]: ShaderProgram };
+  }
+}
+
 export class IntUniform {
-  constructor(val) {
+  val: number;
+
+  constructor(val: number) {
     this.val = val;
   }
 }
 
-export function initDebugGL(gl) {
+export function initDebugGL(gl: WebGL2RenderingContext): WebGL2RenderingContext {
   let addfuncs = {};
 
-  let makeDebugFunc = (k, k2) => {
+  let makeDebugFunc = (k: string, k2: string) => {
     return function () {
-      let ret = this[k2].apply(this, arguments);
+      // @ts-ignore
+      const obj = this as unknown as any;
+      let ret = obj[k2].apply(obj, arguments);
 
-      let err = this.getError();
+      let err = obj.getError();
       if (err !== 0) {
         console.warn("gl." + k + ":", constmap[err]);
       }
@@ -50,9 +62,9 @@ export function initDebugGL(gl) {
   return gl;
 }
 
-let _gl = undefined;
+let _gl: WebGL2RenderingContext = undefined;
 
-export function addFastParameterGet(gl) {
+export function addFastParameterGet(gl: { [k: string]: any }): void {
   let map = {};
 
   gl._getParameter = gl.getParameter;
@@ -147,13 +159,10 @@ export function addFastParameterGet(gl) {
 //*/
 
 export function onContextLost(e) {
-  for (let k in shapes) {
-    shapes[k].onContextLost(e);
-  }
 }
 
 //params are passed to canvas.getContext as-is
-export function init_webgl(canvas, params = {}) {
+export function init_webgl(canvas: HTMLCanvasElement, params: { webgl2?: boolean } = {}) {
   if (_gl !== undefined) {
     return _gl;
   }
@@ -192,12 +201,10 @@ export function init_webgl(canvas, params = {}) {
   for (let k in gl) {//of Object.getOwnPropertyNames(gl)) {
     let v = gl[k];
 
-    if (typeof v == "number" || typeof v == "string") {
+    if (typeof v === "number" || typeof v === "string") {
       constmap[v] = k;
     }
   }
-
-  window._constmap = constmap;
 
   gl.texture_float = gl.getExtension("OES_texture_float_linear");
   gl.float_blend = gl.getExtension("EXT_float_blend");
@@ -212,20 +219,20 @@ export function init_webgl(canvas, params = {}) {
 
   gl.shadercache = {};
 
-  if (DEBUG.gl) {
+  if (window.DEBUG.gl) {
     initDebugGL(gl);
   }
 
   return gl;
 }
 
-function format_lines(script, errortext) {
+function format_lines(script: string, errortext?: string): string {
   let linenr = getShaderErrorLine(errortext);
 
   let i = 1;
 
   let lines = script.split("\n")
-  let maxcol = Math.ceil(Math.log(lines.length)/Math.log(10)) + 1;
+  let maxcol = Math.ceil(Math.log(lines.length) / Math.log(10)) + 1;
 
   if (typeof linenr === "number") {
     let a = Math.max(linenr - 25, 0);
@@ -255,12 +262,14 @@ function format_lines(script, errortext) {
   return s;
 }
 
-function getShaderErrorLine(error) {
-  let linenr = error.match(/.*([0-9]+):([0-9]+): .*/);
+function getShaderErrorLine(error: string): number {
+  let linestr = error.match(/.*([0-9]+):([0-9]+): .*/);
 
-  if (linenr) {
-    linenr = parseInt(linenr[2]);
+  if (!linestr) {
+    return undefined;
   }
+
+  let linenr = parseInt(linestr[2]);
 
   if (isNaN(linenr)) {
     linenr = undefined;
@@ -269,13 +278,31 @@ function getShaderErrorLine(error) {
   return linenr;
 }
 
-export function hashShader(sdef) {
+
+export interface IUniformsBlock {
+  [k: string]: any
+}
+
+export interface IDefinesBlock {
+  [k: string]: any;
+}
+
+export interface IShaderDef {
+  vertex: string;
+  fragment: string;
+  uniforms: IUniformsBlock;
+  attributes: string[];
+  defines?: IDefinesBlock;
+  __hash?: string;
+}
+
+export function hashShader(sdef: IShaderDef): string {
   let hash;
 
   let clean = {
-    vertex    : sdef.vertex,
-    fragment  : sdef.fragment,
-    uniforms  : sdef.uniforms,
+    vertex: sdef.vertex,
+    fragment: sdef.fragment,
+    uniforms: sdef.uniforms,
     attributes: sdef.attributes
   };
 
@@ -295,7 +322,7 @@ shaderdef = {
 }
 */
 
-export function getShader(gl, shaderdef) {
+export function getShader(gl: WebGL2RenderingContext, shaderdef: IShaderDef): ShaderProgram {
   if (gl.shadercache === undefined) {
     gl.shadercache = {};
   }
@@ -320,9 +347,13 @@ export function getShader(gl, shaderdef) {
 // Load this shader and return the WebGLShader object corresponding to it.
 //
 function loadShader(ctx, shaderId) {
-  var shaderScript = document.getElementById(shaderId);
+  /* Is this function used anywhere? */
+  console.error("webgl.loadShader called");
+
+  let shaderScript = document.getElementById(shaderId) as HTMLScriptElement;
 
   if (!shaderScript) {
+    // @ts-ignore
     shaderScript = {text: shaderId, type: undefined};
 
     if (shaderId.trim().toLowerCase().startsWith("//vertex")) {
@@ -333,26 +364,28 @@ function loadShader(ctx, shaderId) {
       console.trace();
       console.log("Invalid shader type");
       console.log("================");
-      console.log(format_lines(shaderScript));
+      console.log(format_lines(shaderScript.text));
       console.log("================");
       throw new Error("Invalid shader type for shader script;\n script must start with //vertex or //fragment");
     }
   }
 
-  if (shaderScript.type == "x-shader/x-vertex")
-    var shaderType = ctx.VERTEX_SHADER;
-  else if (shaderScript.type == "x-shader/x-fragment")
-    var shaderType = ctx.FRAGMENT_SHADER;
+  let shaderType: number;
+
+  if (shaderScript.type === "x-shader/x-vertex")
+    shaderType = ctx.VERTEX_SHADER;
+  else if (shaderScript.type === "x-shader/x-fragment")
+    shaderType = ctx.FRAGMENT_SHADER;
   else {
-    log("*** Error: shader script '" + shaderId + "' of undefined type '" + shaderScript.type + "'");
+    console.log("*** Error: shader script '" + shaderId + "' of undefined type '" + shaderScript.type + "'");
     return null;
   }
 
   // Create the shader object
-  if (ctx == undefined || ctx == null || ctx.createShader == undefined)
+  if (ctx === undefined || ctx === null || ctx.createShader === undefined)
     console.trace();
 
-  var shader = ctx.createShader(shaderType);
+  let shader = ctx.createShader(shaderType);
 
   // Load the shader source
   ctx.shaderSource(shader, shaderScript.text);
@@ -361,10 +394,10 @@ function loadShader(ctx, shaderId) {
   ctx.compileShader(shader);
 
   // Check the compile status
-  var compiled = ctx.getShaderParameter(shader, ctx.COMPILE_STATUS);
+  let compiled = ctx.getShaderParameter(shader, ctx.COMPILE_STATUS);
   if (!compiled && !ctx.isContextLost()) {
     // Something went wrong during compilation; get the error
-    var error = ctx.getShaderInfoLog(shader);
+    let error = ctx.getShaderInfoLog(shader);
 
     console.log(format_lines(shaderScript.text));
     console.log("\nError compiling shader: ", error);
@@ -376,7 +409,7 @@ function loadShader(ctx, shaderId) {
   return shader;
 }
 
-var _safe_arrays = [
+let _safe_arrays = [
   0,
   0,
   new Float32Array(2),
@@ -386,8 +419,43 @@ var _safe_arrays = [
 
 export let use_ml_array = false;
 
+export interface IShaderProgramConstructor<type> {
+  new(gl: WebGL2RenderingContext, vertex: string, fragment: string, attributes: string[]): type;
+
+  insertDefine(defines: string, code?: string): string;
+
+  multilayerAttrSize(attr: string): string;
+
+  multilayerGet(attr: string, i: number): string;
+
+  multiLayerAttrKey(attr: string, i: number): string;
+}
+
 export class ShaderProgram {
-  constructor(gl, vertex, fragment, attributes) {
+  vertexSource: string;
+  fragmentSource: string;
+  _lastDefShader?: ShaderProgram;
+  attrs: string[]
+  multilayer_programs: { [k: string]: ShaderProgram };
+  defines: IDefinesBlock;
+  _use_def_shaders: boolean;
+  _def_shaders: { [k: string]: ShaderProgram };
+  multilayer_attrs: any;
+  rebuild: boolean;
+  uniformlocs: { [k: string]: WebGLUniformLocation };
+  attrlocs: { [k: string]: number };
+  uniform_defaults: IUniformsBlock;
+  uniforms: IUniformsBlock;
+  gl: WebGL2RenderingContext;
+  ready: boolean = false;
+
+  program: WebGLProgram;
+  vertexShader: WebGLShader;
+  fragmentShader: WebGLShader;
+
+  ['constructor']: IShaderProgramConstructor<this>;
+
+  constructor(gl: WebGL2RenderingContext, vertex: string, fragment: string, attributes: string[]) {
     this.vertexSource = vertex;
     this.fragmentSource = fragment;
 
@@ -397,7 +465,7 @@ export class ShaderProgram {
 
     this.multilayer_programs = {};
 
-    for (var a of attributes) {
+    for (let a of attributes) {
       this.attrs.push(a);
     }
 
@@ -407,7 +475,7 @@ export class ShaderProgram {
 
     this.multilayer_attrs = {};
 
-    this.rebuild = 1;
+    this.rebuild = true;
 
     this.uniformlocs = {};
     this.attrlocs = {};
@@ -417,7 +485,7 @@ export class ShaderProgram {
     this.gl = gl;
   }
 
-  static fromDef(gl, def) {
+  static fromDef(gl: WebGL2RenderingContext, def: IShaderDef): ShaderProgram {
     let shader = new ShaderProgram(gl, def.vertex, def.fragment, def.attributes);
 
     shader.init(gl);
@@ -429,27 +497,27 @@ export class ShaderProgram {
     return shader;
   }
 
-  static insertDefine(define, code) {
-    code = code.trim().split("\n");
+  static insertDefine(define: string, code = ""): string {
+    let lines = code.trim().split("\n");
 
-    if (code.length > 3) {
-      code = code.slice(0, 3).concat([define]).concat(code.slice(3, code.length));
+    if (lines.length > 3) {
+      lines = lines.slice(0, 3).concat([define]).concat(lines.slice(3, lines.length));
     } else {
-      code = code.concat([define]);
+      lines = lines.concat([define]);
     }
 
-    return code.join("\n") + "\n";
+    return lines.join("\n") + "\n";
   }
 
-  static _use_ml_array() {
+  static _use_ml_array(): boolean {
     return use_ml_array;
   }
 
-  static multilayerAttrSize(attr) {
+  static multilayerAttrSize(attr: string): string {
     return attr.toUpperCase() + "_SIZE";
   }
 
-  static multilayerGet(attr, i) {
+  static multilayerGet(attr: string, i: number): string {
     if (this._use_ml_array()) {
       return `${attr}_layers[${i}]`;
     } else {
@@ -457,11 +525,11 @@ export class ShaderProgram {
     }
   }
 
-  static maxMultilayer() {
+  static maxMultilayer(): number {
     return 8;
   }
 
-  static multilayerAttrDeclare(attr, type, is_fragment, is_glsl_300) {
+  static multilayerAttrDeclare(attr: string, type: string, is_fragment: boolean, is_glsl_300?: boolean): string {
     let keyword, keyword2;
 
     if (is_fragment) {
@@ -538,7 +606,7 @@ ${type} get_${attr}_layer(int i) {
     return ret;
   }
 
-  static multiLayerAttrKey(attr, i, use_glsl300) {
+  static multiLayerAttrKey(attr: string, i: number): string {
     if (!this._use_ml_array()) {
       return i ? `${attr}_${i}` : attr;
     } else {
@@ -546,7 +614,7 @@ ${type} get_${attr}_layer(int i) {
     }
   }
 
-  static multilayerVertexCode(attr) {
+  static multilayerVertexCode(attr: string): string {
     let size = this.multilayerAttrSize(attr);
     let ret = `
 
@@ -555,7 +623,7 @@ v${attr} = ${attr};
 
     `;
 
-    for (let i = 1; i < this.maxMultilayer; i++) {
+    for (let i = 1; i < this.maxMultilayer(); i++) {
       if (this._use_ml_array()) {
         ret += `
 #if ${size} >= ${i}
@@ -576,27 +644,28 @@ v${attr} = ${attr};
   }
 
   //this function was originally asyncrounous
-  static load_shader(scriptid, attrs) {
-    var script = document.getElementById(scriptid);
-    var text = script.text;
+  static load_shader(scriptid: string, attrs: string[]): ShaderProgram {
+    let script = document.getElementById(scriptid) as HTMLScriptElement;
+    let text = script.text;
 
-    var ret = new ShaderProgram(undefined, undefined, undefined, ["position", "normal", "uv", "color", "id"]);
+    let ret = new ShaderProgram(undefined, undefined, undefined, ["position", "normal", "uv", "color", "id"]);
 
-    var lowertext = text.toLowerCase();
-    var vshader = text.slice(0, lowertext.search("//fragment"));
-    var fshader = text.slice(lowertext.search("//fragment"), text.length);
+    let lowertext = text.toLowerCase();
+    let vshader = text.slice(0, lowertext.search("//fragment"));
+    let fshader = text.slice(lowertext.search("//fragment"), text.length);
 
     ret.vertexSource = vshader;
     ret.fragmentSource = fshader;
     ret.ready = true;
 
+    /*
     ret.promise = new Promise(function (accept, reject) {
       accept(ret);
     });
 
     ret.then = function () {
       return this.promise.then.apply(this.promise, arguments);
-    }
+    }*/
 
     return ret;
   }
@@ -611,7 +680,7 @@ v${attr} = ${attr};
     return this;
   }
 
-  init(gl) {
+  init(gl: WebGL2RenderingContext) {
     this.gl = gl;
     this.rebuild = false;
 
@@ -639,8 +708,8 @@ v${attr} = ${attr};
       }
     }
 
-    function loadShader(shaderType, code) {
-      var shader = gl.createShader(shaderType);
+    function loadShader(shaderType: number, code: string) {
+      let shader = gl.createShader(shaderType);
 
       // Load the shader source
       gl.shaderSource(shader, code);
@@ -652,7 +721,7 @@ v${attr} = ${attr};
       let compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
       if (!compiled && !gl.isContextLost()) {
         // Something went wrong during compilation; get the error
-        var error = gl.getShaderInfoLog(shader);
+        let error = gl.getShaderInfoLog(shader);
 
         console.log(format_lines(code, error));
         console.log("\nError compiling shader: ", error);
@@ -686,7 +755,7 @@ v${attr} = ${attr};
       if (attr in this.multilayer_attrs) {
         let count = this.multilayer_attrs[attr];
         for (let j = 0; j < count; j++) {
-          let key = this.constructor.multiLayerAttrKey(attr, j, gl.haveWebGL2);
+          let key = this.constructor.multiLayerAttrKey(attr, j);
           gl.bindAttribLocation(program, li++, key);
         }
       } else {
@@ -728,20 +797,20 @@ v${attr} = ${attr};
     this.attrlocs = {};
     this.uniformlocs = {};
 
-    for (var i = 0; i < attribs.length; i++) {
+    for (let i = 0; i < attribs.length; i++) {
       this.attrlocs[attribs[i]] = i;
     }
   }
 
-  on_gl_lost(newgl) {
-    this.rebuild = 1;
+  on_gl_lost(newgl: WebGL2RenderingContext): void {
+    this.rebuild = true;
     this.gl = newgl;
     this.program = undefined;
 
     this.uniformlocs = {};
   }
 
-  destroy(gl) {
+  destroy(gl: WebGL2RenderingContext): void {
     if (gl && this.program) {
       gl.deleteProgram(this.program);
       this.uniforms = {};
@@ -752,7 +821,7 @@ v${attr} = ${attr};
     //console.warn("ShaderProgram.prototype.destroy: implement me!");
   }
 
-  uniformloc(name) {
+  uniformloc(name: string): WebGLUniformLocation {
     if (this._use_def_shaders) {
       let shader = this._getLastDefShader();
 
@@ -873,7 +942,7 @@ v${attr} = ${attr};
     return this.program;
   }
 
-  _getLastDefShader() {
+  _getLastDefShader(): ShaderProgram {
     let shader = this._lastDefShader;
 
     if (!shader) {
@@ -882,9 +951,9 @@ v${attr} = ${attr};
     return shader;
   }
 
-  _getDefShader(gl, defines = {}, attributes) {
-    if (attributes) {
-      for (let k in attributes) {
+  _getDefShader(gl: WebGL2RenderingContext, defines = {}, enabledAttributes?: { [k: string]: any }): ShaderProgram {
+    if (enabledAttributes) {
+      for (let k in enabledAttributes) {
         let key = "HAVE_" + k.toUpperCase();
 
         defines[key] = null;
@@ -922,13 +991,13 @@ v${attr} = ${attr};
     }
   }
 
-  bind(gl, uniforms, attributes) {
+  bind(gl: WebGL2RenderingContext, uniforms: IUniformsBlock, enabledAttributes?: { [k: string]: any }) {
     this.gl = gl;
 
     let defines = undefined;
 
-    if (attributes && this._use_def_shaders) {
-      for (let k in attributes) {
+    if (enabledAttributes && this._use_def_shaders) {
+      for (let k in enabledAttributes) {
         let key = "HAVE_" + k.toUpperCase();
 
         if (!defines) {
@@ -940,7 +1009,7 @@ v${attr} = ${attr};
     }
 
     if (this._use_def_shaders) {
-      let shader = this._getDefShader(this.gl, defines, attributes);
+      let shader = this._getDefShader(this.gl, defines, enabledAttributes);
 
       if (shader) {
         shader.uniforms = this.uniforms;
@@ -982,7 +1051,7 @@ v${attr} = ${attr};
     }
 
     function setv(dst, src, n) {
-      for (var i = 0; i < n; i++) {
+      for (let i = 0; i < n; i++) {
         dst[i] = src[i];
       }
     }
@@ -991,16 +1060,16 @@ v${attr} = ${attr};
     gl.useProgram(this.program);
     this.gl = gl;
 
-    for (var i = 0; i < 2; i++) {
-      var us = i ? uniforms : this.uniforms;
+    for (let i = 0; i < 2; i++) {
+      let us = i ? uniforms : this.uniforms;
 
       if (uniforms === undefined) {
         continue;
       }
 
-      for (var k in us) {
-        var v = us[k];
-        var loc = this.uniformloc(k)
+      for (let k in us) {
+        let v = us[k];
+        let loc = this.uniformloc(k)
 
         if (loc === undefined) {
           //stupid gl returns null if it optimized away the uniform,
@@ -1012,11 +1081,7 @@ v${attr} = ${attr};
         if (v instanceof IntUniform) {
           gl.uniform1i(loc, v.val);
         } else if (v instanceof Texture) {
-          let slot = v.texture_slot;
-
-          if (slot === undefined) {
-            slot = slot_i++;
-          }
+          let slot = slot_i++;
 
           v.bind(gl, this.uniformloc(k), slot);
         } else if (v instanceof Array || v instanceof Float32Array || v instanceof Float64Array) {
@@ -1049,7 +1114,7 @@ v${attr} = ${attr};
         } else if (v instanceof Matrix4) {
           //console.log("found matrix");
           v.setUniform(gl, loc);
-        } else if (typeof v == "number") {
+        } else if (typeof v === "number") {
           gl.uniform1f(loc, v);
         } else if (v !== undefined && v !== null) {
           console.warn("Invalid uniform", k, v);
@@ -1062,13 +1127,20 @@ v${attr} = ${attr};
   }
 }
 
-window._ShaderProgram = ShaderProgram;
-
 const GL_ARRAY_BUFFER = 34962;
 const GL_ELEMENT_ARRAY_BUFFER = 34963;
 
 export class VBO {
-  constructor(gl, vbo, size = -1, bufferType = GL_ARRAY_BUFFER) {
+  gl: WebGL2RenderingContext;
+  vbo: WebGLBuffer;
+  size: number;
+  bufferType: number;
+  ready: boolean;
+  dead: boolean;
+  drawhint?: number;
+  lastData?: any;
+
+  constructor(gl: WebGL2RenderingContext, vbo: any, size = -1, bufferType: number = GL_ARRAY_BUFFER) {
     this.gl = gl;
     this.vbo = vbo;
     this.size = size;
@@ -1076,13 +1148,12 @@ export class VBO {
     this.bufferType = bufferType;
 
     this.ready = false;
-    this.lastData = undefined;
     this.dead = false;
     this.drawhint = undefined;
     this.lastData = undefined;
   }
 
-  get(gl) {
+  get(gl: WebGL2RenderingContext) {
     if (this.dead) {
       throw new Error("vbo is dead");
     }
@@ -1106,7 +1177,7 @@ export class VBO {
     return this.vbo;
   }
 
-  checkContextLoss(gl) {
+  checkContextLoss(gl: WebGL2RenderingContext) {
     if (gl !== undefined && gl !== this.gl) {
       this.ready = false;
       this.gl = gl;
@@ -1120,7 +1191,7 @@ export class VBO {
     }
   }
 
-  reset(gl) {
+  reset(gl: WebGL2RenderingContext): this {
     if (this.dead) {
       this.dead = false;
       this.gl = gl;
@@ -1134,7 +1205,7 @@ export class VBO {
     return this;
   }
 
-  destroy(gl) {
+  destroy(gl: WebGL2RenderingContext): void {
     if (this.dead) {
       console.warn("tried to kill vbo twice");
       return;
@@ -1150,7 +1221,8 @@ export class VBO {
     this.dead = true;
   }
 
-  uploadData(gl, dataF32, target = this.bufferType, drawhint = gl.STATIC_DRAW) {
+  uploadData(gl: WebGL2RenderingContext, dataF32: Float32Array,
+             target = this.bufferType, drawhint: number = gl.STATIC_DRAW) {
     if (gl !== this.gl) {
       //context loss
       this.gl = gl;
@@ -1172,7 +1244,7 @@ export class VBO {
     if (useSub) {
       gl.bufferSubData(target, 0, dataF32);
     } else {
-      if (DEBUG.simplemesh) {
+      if (window.DEBUG.simplemesh) {
         console.warn("bufferData");
       }
       gl.bufferData(target, dataF32, drawhint);
@@ -1183,6 +1255,9 @@ export class VBO {
 }
 
 export class RenderBuffer {
+  // @ts-ignore
+  _layers: { [k: string]: VBO };
+
   constructor() {
     this._layers = {};
   }
@@ -1197,38 +1272,34 @@ export class RenderBuffer {
     })();
   }
 
-  get(gl, name, bufferType = gl.ARRAY_BUFFER) {
-    if (this[name] !== undefined) {
-      return this[name];
+  get(gl: WebGL2RenderingContext, name: string, bufferType: number = gl.ARRAY_BUFFER): VBO {
+    if (name in this._layers) {
+      return this._layers[name];
     }
 
     //console.log("new buffer");
     let buf = gl.createBuffer();
-
     let vbo = new VBO(gl, buf, undefined, bufferType);
-
     this._layers[name] = vbo;
-    this[name] = vbo;
 
     return vbo;
   }
 
-  reset(gl) {
+  reset(gl: WebGL2RenderingContext): void {
     for (let vbo of this.buffers) {
       vbo.reset(gl);
     }
   }
 
-  destroy(gl, name) {
+  destroy(gl: WebGL2RenderingContext, name?: string): void {
     if (name === undefined) {
       for (let k in this._layers) {
         this._layers[k].destroy(gl);
 
         delete this._layers[name];
-        delete this[name];
       }
     } else {
-      if (this._layers[name] === undefined) {
+      if (!(name in this._layers)) {
         console.trace("WARNING: gl buffer not in RenderBuffer!", name, gl);
         return;
       }
@@ -1236,16 +1307,31 @@ export class RenderBuffer {
       this._layers[name].destroy(gl);
 
       delete this._layers[name];
-      delete this[name];
     }
   }
 }
 
 export class Texture {
+  texture?: WebGLTexture
+  target: number;
+  createParams: {
+    target?: number,
+    width?: number,
+    height?: number,
+    internalformat?: number,
+    format?: number,
+    level?: number,
+    type?: number,
+    source?: any,
+    border?: number
+  }
+
+  createParamsList: any[];
+  _params: { [k: number]: number };
+
   //3553 is gl.TEXTURE_2D
-  constructor(texture_slot, texture, target = 3553) {
+  constructor(unused?: number, texture?: WebGLTexture, target = 3553) {
     this.texture = texture;
-    this.texture_slot = texture_slot;
     this.target = target;
 
     this.createParams = {
@@ -1264,14 +1350,14 @@ export class Texture {
     }
   }
 
-  static load(gl, width, height, data, target = gl.TEXTURE_2D) {
-    return new Texture(0).load(...arguments);
+  static load(gl: WebGL2RenderingContext, width: number, height: number, data: any, target = gl.TEXTURE_2D): Texture {
+    return new Texture(0).load(gl, width, height, data, target);
   }
 
-  static defaultParams(gl, tex, target = gl.TEXTURE_2D) {
+  static defaultParams(gl: WebGL2RenderingContext, tex: Texture, target: number = gl.TEXTURE_2D): void {
     if (!(tex instanceof Texture)) {
       console.warn("Depracated call to Texture.defaultParams with 'tex' a raw WebGLTexture instance instance of wrapper webgl.Texture object");
-      tex = new Texture(undefined, tex);
+      tex = new Texture(undefined, tex as unknown as WebGLTexture);
     }
 
     gl.bindTexture(target, tex.texture);
@@ -1282,18 +1368,18 @@ export class Texture {
     tex.texParameteri(gl, target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   }
 
-  texParameteri(gl, target, param, value) {
+  texParameteri(gl: WebGL2RenderingContext, target: number, param: number, value: number) {
     this._params[param] = value;
 
     gl.texParameteri(target, param, value);
     return this;
   }
 
-  getParameter(gl, param) {
+  getParameter(gl: WebGL2RenderingContext, param: number): number {
     return this._params[param];
   }
 
-  _texImage2D1(gl, target, level, internalformat, format, type, source) {
+  _texImage2D1(gl: WebGL2RenderingContext, target: number, level: number, internalformat: number, format: number, type: number, source: any): this {
     gl.bindTexture(target, this.texture);
     gl.texImage2D(target, level, internalformat, format, type, source);
 
@@ -1314,7 +1400,9 @@ export class Texture {
     return this;
   }
 
-  _texImage2D2(gl, target, level, internalformat, width, height, border, format, type, source) {
+  _texImage2D2(gl: WebGL2RenderingContext, target: number, level: number,
+               internalformat: number, width: number, height: number, border: number,
+               format: number, type: number, source: any): this {
     gl.bindTexture(target, this.texture);
 
     gl.getError();
@@ -1337,21 +1425,20 @@ export class Texture {
     return this;
   }
 
-  texImage2D() {
+  texImage2D(...args: any[]) {
     if (arguments.length === 7) {
-      return this._texImage2D1(...arguments);
+      return this._texImage2D1.apply(this, args);
     } else {
-      return this._texImage2D2(...arguments);
+      return this._texImage2D2.apply(this, args);
     }
   }
 
-  copy(gl, copy_data = false) {
-    let tex = new Texture();
+  copy(gl: WebGL2RenderingContext, copy_data = false): Texture {
+    let tex = new Texture(0);
 
     tex.texture = gl.createTexture();
     tex.createParams = Object.assign({}, this.createParams);
     tex.createParamsList = this.createParamsList.concat([]);
-    tex.texture_slot = this.texture_slot;
 
     gl.bindTexture(this.createParams.target, tex.texture);
 
@@ -1375,7 +1462,7 @@ export class Texture {
     return tex;
   }
 
-  copyTexTo(gl, b) {
+  copyTexTo(gl: WebGL2RenderingContext, b: Texture): this {
     if (this.texture === undefined) {
       return;
     }
@@ -1389,11 +1476,11 @@ export class Texture {
     return this;
   }
 
-  destroy(gl) {
+  destroy(gl: WebGL2RenderingContext): void {
     gl.deleteTexture(this.texture);
   }
 
-  load(gl, width, height, data, target = gl.TEXTURE_2D) {
+  load(gl: WebGL2RenderingContext, width: number, height: number, data: any, target = gl.TEXTURE_2D): this {
     if (!this.texture) {
       this.texture = gl.createTexture();
     }
@@ -1412,7 +1499,9 @@ export class Texture {
     return this;
   }
 
-  initEmpty(gl, target, width, height, format = gl.RGBA, type = gl.FLOAT) {
+  initEmpty(gl: WebGL2RenderingContext, target: number,
+            width: number, height: number, format: number = gl.RGBA,
+            type: number = gl.FLOAT) {
     this.target = target;
     //this.width = width;
     //this.height = height;
@@ -1421,16 +1510,16 @@ export class Texture {
 
     if (!this.texture) {
       this.texture = gl.createTexture();
-      Texture.defaultParams(gl, this.texture, target);
+      Texture.defaultParams(gl, this, target);
     }
 
-    gl.bindTexture(this.texture);
+    gl.bindTexture(this.target, this.texture);
     gl.texImage2D(this.target, 0, format, width, height, 0, format, type, null);
 
     return this;
   }
 
-  bind(gl, uniformloc, slot = this.texture_slot) {
+  bind(gl: WebGL2RenderingContext, uniformloc: WebGLUniformLocation, slot: number = 0): void {
     gl.activeTexture(gl.TEXTURE0 + slot);
     gl.bindTexture(this.target, this.texture);
     gl.uniform1i(uniformloc, slot);
@@ -1438,14 +1527,13 @@ export class Texture {
 }
 
 export class CubeTexture extends Texture {
-  constructor(texture_slot, texture) {
+  constructor(texture?: WebGLTexture) {
     super();
 
     this.texture = texture;
-    this.texture_slot = texture_slot;
   }
 
-  bind(gl, uniformloc, slot = this.texture_slot) {
+  bind(gl, uniformloc, slot = 0) {
     gl.activeTexture(gl.TEXTURE0 + slot);
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.texture);
     gl.uniform1i(uniformloc, slot);
@@ -1454,20 +1542,6 @@ export class CubeTexture extends Texture {
 
 //cameras will derive from this class
 export class DrawMats {
-  constructor() {
-    this.isPerspective = true;
-
-    this.cameramat = new Matrix4();
-    this.persmat = new Matrix4();
-    this.rendermat = new Matrix4();
-    this.normalmat = new Matrix4();
-
-    this.icameramat = new Matrix4();
-    this.ipersmat = new Matrix4();
-    this.irendermat = new Matrix4();
-    this.inormalmat = new Matrix4();
-  }
-
   static STRUCT = nstructjs.inlineRegister(this,
     `
 DrawMats {
@@ -1482,6 +1556,31 @@ DrawMats {
   isPerspective : int;
 }
   `);
+
+  isPerspective: boolean
+  cameramat: Matrix4;
+  persmat: Matrix4;
+  rendermat: Matrix4;
+  normalmat: Matrix4;
+  icameramat: Matrix4;
+  ipersmat: Matrix4;
+  irendermat: Matrix4;
+  inormalmat: Matrix4;
+  aspect = 1.0;
+
+  constructor() {
+    this.isPerspective = true;
+
+    this.cameramat = new Matrix4();
+    this.persmat = new Matrix4();
+    this.rendermat = new Matrix4();
+    this.normalmat = new Matrix4();
+
+    this.icameramat = new Matrix4();
+    this.ipersmat = new Matrix4();
+    this.irendermat = new Matrix4();
+    this.inormalmat = new Matrix4();
+  }
 
   /** aspect should be sizex / sizey */
   regen_mats(aspect = this.aspect) {
@@ -1498,22 +1597,22 @@ DrawMats {
     return this;
   }
 
-  toJSON() {
+  toJSON(): any {
     return {
-      cameramat    : this.cameramat.getAsArray(),
-      persmat      : this.persmat.getAsArray(),
-      rendermat    : this.rendermat.getAsArray(),
-      normalmat    : this.normalmat.getAsArray(),
+      cameramat: this.cameramat.getAsArray(),
+      persmat: this.persmat.getAsArray(),
+      rendermat: this.rendermat.getAsArray(),
+      normalmat: this.normalmat.getAsArray(),
       isPerspective: this.isPerspective,
 
       icameramat: this.icameramat.getAsArray(),
-      ipersmat  : this.ipersmat.getAsArray(),
+      ipersmat: this.ipersmat.getAsArray(),
       irendermat: this.irendermat.getAsArray(),
       inormalmat: this.inormalmat.getAsArray()
     }
   }
 
-  loadJSON(obj) {
+  loadJSON(obj: any) {
     this.cameramat.load(obj.cameramat);
     this.persmat.load(obj.persmat);
     this.rendermat.load(obj.rendermat);
@@ -1528,13 +1627,21 @@ DrawMats {
     return this;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader): void {
     reader(this);
   }
 }
 
 //simplest
 export class Camera extends DrawMats {
+  fovy: number;
+  target: Vector3;
+  orbitTarget: Vector3;
+  pos: Vector3;
+  up: Vector3;
+  near: number;
+  far: number;
+
   static STRUCT = nstructjs.inlineRegister(this, `
 Camera {
   fovy          : float;
@@ -1568,13 +1675,13 @@ Camera {
   }
 
   generateUpdateHash(objectMatrix = undefined) {
-    let mul = 1<<18;
+    let mul = 1 << 18;
 
     let ret = 0;
 
     function add(val) {
-      val = (val*mul) & ((1<<31) - 1);
-      ret = (ret ^ val) & ((1<<31) - 1);
+      val = (val * mul) & ((1 << 31) - 1);
+      ret = (ret ^ val) & ((1 << 31) - 1);
     }
 
     add(this.near);
@@ -1609,7 +1716,7 @@ Camera {
     return ret;
   }
 
-  load(b) {
+  load(b: Camera): this {
     this.isPerspective = b.isPerspective;
     this.fovy = b.fovy;
     this.aspect = b.aspect;
@@ -1625,7 +1732,7 @@ Camera {
     return this;
   }
 
-  copy() {
+  copy(): Camera {
     let ret = new Camera();
 
     ret.isPerspective = this.isPerspective;
@@ -1645,7 +1752,7 @@ Camera {
     return ret;
   }
 
-  reset() {
+  reset(): this {
     this.pos = new Vector3([0, 0, 5]);
     this.target = new Vector3();
     this.up = new Vector3([1, 3, 0]);
@@ -1658,7 +1765,7 @@ Camera {
   }
 
   toJSON() {
-    var ret = super.toJSON();
+    let ret = super.toJSON();
 
     ret.fovy = this.fovy;
     ret.near = this.near;
@@ -1672,7 +1779,7 @@ Camera {
     return ret;
   }
 
-  loadJSON(obj) {
+  loadJSON(obj: any) {
     super.loadJSON(obj);
 
     this.fovy = obj.fovy;
@@ -1689,7 +1796,7 @@ Camera {
   }
 
   /** aspect should be sizex / sizey*/
-  regen_mats(aspect = this.aspect) {
+  regen_mats(aspect = this.aspect): this {
     this.aspect = aspect;
 
     this.persmat.makeIdentity();
@@ -1697,7 +1804,7 @@ Camera {
       this.persmat.perspective(this.fovy, aspect, this.near, this.far);
     } else {
       this.persmat.isPersp = true;
-      let scale = 1.0/this.pos.vectorDistance(this.target);
+      let scale = 1.0 / this.pos.vectorDistance(this.target);
 
       this.persmat.makeIdentity();
       this.persmat.orthographic(scale, aspect, this.near, this.far);
@@ -1714,9 +1821,10 @@ Camera {
     //this.rendermat.load(this.cameramat).multiply(this.persmat);
 
     super.regen_mats(aspect); //will calculate iXXXmat for us
+    return this;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this);
   }
 }

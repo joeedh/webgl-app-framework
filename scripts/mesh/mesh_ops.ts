@@ -17,7 +17,7 @@ import {MeshFlags, MeshTypes, MeshFeatures, LogContext} from './mesh_base.js';
 import {IMeshUndoData, MeshDeformOp, MeshOp} from './mesh_ops_base.js';
 import {ccSmooth, subdivide, loopSubdivide} from '../subsurf/subsurf_mesh.js';
 import {splitEdgesPreserveQuads, splitEdgesSimple2, splitEdgesSmart, splitEdgesSmart2} from "./mesh_subdivide.js";
-import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
+import {GridBase, Grid, gridSides, GridSettingFlags, GridVertBase} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
 import {AttrRef, CDFlags, CustomDataElem} from "./customdata";
 import {
@@ -2056,7 +2056,8 @@ export class GridsTestOp extends MeshOp<{
           return co;
         }
 
-        function makePatch(grid, ni, ns, p1, p2, p3, p4, o1, o2, o3, o4) {
+        function makePatch(grid: GridBase, ni: number, ns: number[], p1: GridVertBase<any>, p2: GridVertBase<any>, p3: GridVertBase<any>, p4: GridVertBase<any>,
+                           o1: Vector3, o2: Vector3, o3: Vector3, o4: Vector3): CubicPatch {
           let p = new CubicPatch();
 
           let depth = ns[ni + QDEPTH];
@@ -2068,17 +2069,17 @@ export class GridsTestOp extends MeshOp<{
 
           let clr = "green";
           //*
-          makeDrawLine(p1.orig, p2.orig, clr);
-          makeDrawLine(p2.orig, p3.orig, clr);
-          makeDrawLine(p3.orig, p4.orig, clr);
-          makeDrawLine(p4.orig, p1.orig, clr);
+          makeDrawLine(o1, o2, clr);
+          makeDrawLine(o2, o3, clr);
+          makeDrawLine(o3, o4, clr);
+          makeDrawLine(o4, o1, clr);
           //*/
 
           p.basis = bernstein;
           //let cent = new Vector3();
           //cent.load(o1).add(o2).add(o3).add(o4).mulScalar(1.0 / 4.0);
 
-          function set(x, y, co) {
+          function set(x: number, y: number, co: Vector3): void {
             for (let x2 = x; x2 < x + 2; x2++) {
               for (let y2 = y; y2 < y + 2; y2++) {
                 p.setPoint(x2, y2, co);
@@ -2127,12 +2128,13 @@ export class GridsTestOp extends MeshOp<{
             return new Vector3(p).mulScalar(dfac);
           }
 
-          function gn(p1, p2, t) {
+          function gn(p1: GridVertBase<any>, p2: GridVertBase<any>, t: number): Vector3 {
             let n = new Vector3();
 
-            let l = p1.vectorDistance(p2) * d2;
+            let l = p1.co.vectorDistance(p2.co) * d2;
             n.load(p1.no).interp(p2.no, t).normalize().mulScalar(l);
             return n;
+            /*
 
             let t1 = gt(p1.tan);
             let t2 = gt(p2.tan);
@@ -2147,6 +2149,7 @@ export class GridsTestOp extends MeshOp<{
 
             n.load(p1.no).interp(p2.no, t).normalize().mulScalar(l);
             return n;
+            */
           }
 
           /*
@@ -2168,16 +2171,9 @@ export class GridsTestOp extends MeshOp<{
               let mul2 = l1 + (l3 - l1) * t;
               let mul1 = l2 + (l4 - l2) * t;
 
-              //mul1 = -mul1;
-
               mul1 *= d;
               mul2 *= d;
 
-              //let mul3 = (mul1+mul2)*0.5 * (window.d3 || 1.0);
-              let mul3 = mul1 * mul2 * d2;
-              let mul4 = mul2 * mul1 * d2;
-
-              //*
               c.load(o1).interp(o2, t);
               b.load(gt(p1.tan)).sinterp(gt(p2.tan), t).mulScalar(d);
               a.load(c).addFac(b, 1.0);
@@ -2198,7 +2194,6 @@ export class GridsTestOp extends MeshOp<{
               a.load(gn(p4, p3, t));
               p.addPoint(2, i + 1, a, false);
               p.addPoint(3, i + 1, a, false);
-              //*/
 
               //*
               c.load(o1).interp(o4, t);

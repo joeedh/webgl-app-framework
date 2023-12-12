@@ -49,7 +49,7 @@ let _TypeSizes = {
 
 export const TypeSizes = {};
 
-for (var k in LayerTypes) {
+for (let k in LayerTypes) {
   TypeSizes[LayerTypes[k]] = TypeSizes[k] = _TypeSizes[k];
 }
 
@@ -68,20 +68,20 @@ function appendvec(a, b, n, defaultval) {
   if (defaultval === undefined)
     defaultval = 0.0;
 
-  for (var i = 0; i < n; i++) {
+  for (let i = 0; i < n; i++) {
     let val = b[i];
     a.push(val === undefined ? defaultval : val);
   }
 }
 
-var _ids_arrs = [[0], [0], [0], [0]];
+let _ids_arrs = [[0], [0], [0], [0]];
 let zero = new Vector3();
 
 function copyvec(a, b, starti, n, defaultval) {
   if (defaultval === undefined)
     defaultval = 0.0;
 
-  for (var i = starti; i < starti + n; i++) {
+  for (let i = starti; i < starti + n; i++) {
     let val = b[i];
     a[i] = val === undefined ? defaultval : val;
   }
@@ -724,7 +724,7 @@ export class GeoLayer extends Array {
     if (!this._useTypedData && this.dataUsed > this.data.length) {
       /*
         //v8's optimizer hates this:
-        for (var i=0; i<tot; i++) {
+        for (let i=0; i<tot; i++) {
           this.data.push(0);
         }//*/
 
@@ -1074,10 +1074,10 @@ export class GeoLayerManager {
   }
 }
 
-var _default_uv = [0, 0];
-var _default_color = [0, 0, 0, 1];
-var _default_normal = [0, 0, 1];
-var _default_id = [-1];
+let _default_uv = [0, 0];
+let _default_color = [0, 0, 0, 1];
+let _default_normal = [0, 0, 1];
+let _default_id = [-1];
 
 export class SimpleIsland {
   gl: WebGL2RenderingContext
@@ -1501,7 +1501,7 @@ export class SimpleIsland {
       //console.log(layer.bufferKey, layer.dataUsed, layer.data_f32.length, layer.bufferType, layer.data_f32);
 
       let vbo = this.buffer.get(gl, layer.bufferKey, layer.bufferType);
-      vbo.uploadData(gl, layer.data_f32, layer.bufferType, layer.bufferHint);
+      vbo.uploadData(gl, layer.data_f32 as Float32Array, layer.bufferType, layer.bufferHint);
       layer.glReady = true;
     }
   }
@@ -1697,7 +1697,7 @@ export class SimpleIsland {
             mli = count;
           }
 
-          let key = ShaderProgram.multiLayerAttrKey(name, mli, (gl as unknown as any).haveWebGL2);
+          let key = ShaderProgram.multiLayerAttrKey(name, mli);
 
           let vbo = this.buffer.get(gl, layer.bufferKey, layer.bufferType);
           let buf = vbo.get(gl);
@@ -1961,7 +1961,7 @@ export class SimpleMesh {
       console.warn("failed to destroy a mesh");
       return;
     }
-    for (var island of this.islands) {
+    for (let island of this.islands) {
       island.destroy(gl);
     }
   }
@@ -1999,7 +1999,7 @@ export class SimpleMesh {
   draw(gl: WebGL2RenderingContext, uniforms: any, program_override?: ShaderProgram): void {
     this.gl = gl;
 
-    for (var island of this.islands) {
+    for (let island of this.islands) {
       island.draw(gl, uniforms, undefined, program_override);
     }
   }
@@ -2157,13 +2157,13 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
 
   onContextLost(e) {
-    for (var island of this.islands) {
+    for (let island of this.islands) {
       island.onContextLost(e);
     }
   }
 
   destroy(gl) {
-    for (var island of this.islands) {
+    for (let island of this.islands) {
       island.destroy(gl);
     }
 
@@ -2375,7 +2375,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   draw(gl: WebGL2RenderingContext, uniforms: any, program_override?: ShaderProgram): void {
     this.gl = gl;
 
-    for (var island of this.islands) {
+    for (let island of this.islands) {
       island.draw(gl, uniforms, undefined, program_override);
     }
   }

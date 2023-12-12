@@ -43,7 +43,7 @@ import {
 import {EDGE_LINKED_LISTS} from '../core/const.js';
 
 import {NormalLayerElem, OrigIndexElem, UVLayerElem} from "./mesh_customdata.js";
-import {Edge, Element, Face, Handle, Loop, LoopList, Vertex} from "./mesh_types.js";
+import {Edge, Element, Face, Handle, Loop, LoopList, PrivateVertexConstructor, Vertex} from "./mesh_types.js";
 import {ElementList, ElementListIter} from "./mesh_element_list.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {BVH, BVHSettings} from "../util/bvh.js";
@@ -587,7 +587,7 @@ mesh.Mesh {
     let v;
 
     if (SAVE_DEAD_VERTS) {
-      v = this.verts.alloc(Vertex);
+      v = this.verts.alloc(Vertex as PrivateVertexConstructor);
 
       if (co) {
         v.co.load(co);
@@ -602,7 +602,7 @@ mesh.Mesh {
 
       this.eidMap.set(v.eid, v);
     } else {
-      v = new Vertex(co);
+      v = new (Vertex as unknown as PrivateVertexConstructor)(co);
       this._element_init(v, customEid);
     }
 
@@ -5581,7 +5581,7 @@ mesh.Mesh {
     let eidmap = ret.eidMap = new EidElemMap();
 
     for (let v of this.verts) {
-      let v2 = new Vertex(v.co);
+      let v2 = new (Vertex as unknown as PrivateVertexConstructor)(v.co);
 
       v2.no.load(v.no);
 

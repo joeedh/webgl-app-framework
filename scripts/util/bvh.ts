@@ -10,7 +10,7 @@ const DYNAMIC_SHUFFLE_NODES = false; //attempt fast debalancing of tree dynamica
 import * as math from './math.js';
 import {triBoxOverlap, aabb_ray_isect, ray_tri_isect, aabb_cone_isect, tri_cone_isect} from './isect.js';
 
-import {Vertex, Handle, Edge, Loop, LoopList, Face, Element} from '../mesh/mesh_types.js';
+import {Vertex, Handle, Edge, Loop, LoopList, Face, Element, PrivateVertexConstructor} from '../mesh/mesh_types.js';
 
 import {AttrRef, CDFlags, CDRef, CustomData, CustomDataElem} from "../mesh/customdata";
 import {MeshTypes, MeshFlags, WITH_EIDMAP_MAP, ENABLE_CACHING, CDElemArray} from "../mesh/mesh_base.js";
@@ -3837,7 +3837,7 @@ export class BVH {
             continue;
           }
 
-          let v2 = newvs[v.index] = new Vertex(v);
+          let v2 = newvs[v.index] = new (Vertex as PrivateVertexConstructor)(v);
 
           v2.eid = v.eid;
           mesh.eidMap.set(v2.eid, v2);

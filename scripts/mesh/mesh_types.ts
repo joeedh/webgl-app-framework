@@ -422,7 +422,7 @@ mesh.Element {
     if (!(this.customData instanceof CDElemArray)) {
       this.customData = new CDElemArray(this.customData);
     }
-    
+
     this._old_eid = this.eid;
     if (this.customData.length === 0) {
       this.customData = EmptyCDArray;
@@ -919,7 +919,7 @@ export function traceset(i) {
   }
 }
 
-export class Vertex extends Element {
+export class _Vertex extends Element {
   co: Vector3;
   no: Vector3;
   edges: Edge[];
@@ -1190,6 +1190,22 @@ mesh.Vertex {
   }
 
 }
+
+
+export interface IVertexConstructor {
+  STRUCT: string;
+
+  (...args: string[]): Function;
+
+  readonly prototype: Function;
+}
+
+export interface PrivateVertexConstructor extends IVertexConstructor {
+  new(co?: Vector3): _Vertex;
+}
+
+export type Vertex = _Vertex;
+export const Vertex = _Vertex as unknown as IVertexConstructor;
 
 export class Handle extends Element {
   co: Vector3;
