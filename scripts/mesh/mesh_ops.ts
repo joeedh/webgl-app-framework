@@ -3341,7 +3341,7 @@ export class TestSmoothOp extends MeshOp {
 
   exec(ctx: ToolContext) {
     for (let mesh of this.getMeshes(ctx)) {
-      _testMVC()
+      _testMVC(mesh)
 
       mesh.regenAll();
       mesh.recalcNormals();

@@ -931,7 +931,7 @@ mesh.CustomData {
 export class AttrRef<type extends CustomDataElem<any>> {
   public i: number = -1;
 
-  constructor(index: number) {
+  constructor(index: number = -1) {
     this.i = index;
   }
 

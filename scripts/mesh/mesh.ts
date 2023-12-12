@@ -2307,7 +2307,7 @@ mesh.Mesh {
     console.error("Failed to split face", f, v1, v2);
   }
 
-  splitFace(f, l1, l2, lctx, noerror = false) {
+  splitFace(f: Face, l1: Loop, l2: Loop, lctx?: LogContext, noerror = false): Loop {
     //TODO: handle holes
 
     if (l1.eid < 0) {
@@ -2522,7 +2522,7 @@ mesh.Mesh {
     return [e2, nv];
   }
 
-  splitEdge(e: Edge, t = 0.5, lctx?: LogContext) {
+  splitEdge(e: Edge, t = 0.5, lctx?: LogContext): [Edge, Vertex] {
     if (DEBUG_BAD_LOOPS) {
       this._checkElemLoops(e, "splitEdge 0");
 
