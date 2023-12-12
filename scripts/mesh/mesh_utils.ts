@@ -16,7 +16,7 @@ import {getFaceSets} from './mesh_facesets.js';
 import {BVHVertFlags, getDynVerts} from '../util/bvh.js';
 import {INumberList} from "../util/polyfill";
 import {Edge, Element, Face, Loop, Vertex} from "./mesh_types";
-import {AttrRef, ColorLayerElem, IntElem, Mesh} from "./mesh";
+import {AttrRef, ColorLayerElem, IntElem, Mesh, UVLayerElem} from "./mesh";
 
 let mvc_tmps = util.cachering.fromConstructor(Vector3, 256);
 let mvc_mats = util.cachering.fromConstructor(Matrix4, 16);
@@ -1204,16 +1204,16 @@ export function trianglesToQuads(mesh: Mesh, facesIter: Iterable<Face>, flag = T
     }
   }
 
-  let cd_color = mesh.verts.customData.getLayerIndex("color");
-  let cd_uv = mesh.loops.customData.getLayerIndex("uv");
-  let have_color = cd_color >= 0;
-  let have_uv = cd_uv >= 0;
+  let cd_color = mesh.verts.customData.getLayerRef(ColorLayerElem);
+  let cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem);
+  let have_color = cd_color.exists;
+  let have_uv = cd_uv.exists;
 
   let t1 = new Vector3();
   let t2 = new Vector3();
   let t3 = new Vector3();
 
-  let dot3 = (v1, v2, v3, n) => {
+  let dot3 = (v1: Vector3, v2: Vector3, v3: Vector3, n: Vector3): number => {
     let dx1 = v1[0] - v2[0], dy1 = v1[1] - v2[1], dz1 = v1[2] - v2[2];
     let dx2 = v3[0] - v2[0], dy2 = v3[1] - v2[1], dz2 = v3[2] - v2[2];
 
@@ -1256,7 +1256,7 @@ export function trianglesToQuads(mesh: Mesh, facesIter: Iterable<Face>, flag = T
 
   let no = new Vector3();
 
-  let errorNiceQuad = (e, v1, v2, v3, v4) => {
+  let errorNiceQuad = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex) => {
     //no.load(v1.no).add(v2.no).add(v3.no).add(v4.no).normalize();
 
     let th1 = dot3(v4.co, v1.co, v2.co, no);
@@ -1291,33 +1291,33 @@ export function trianglesToQuads(mesh: Mesh, facesIter: Iterable<Face>, flag = T
     flag &= ~TriQuadFlags.COLOR;
   }
 
-  let errorSeam = (e, v1, v2, v3, v4) => {
+  let errorSeam = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex) => {
     return e.flag & MeshFlags.SEAM ? 100000 : 0.0;
   }
 
-  let errorUv = (e, v1, v2, v3, v4) => {
+  let errorUv = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex) => {
     let l1 = e.l, l2 = e.l.radial_next;
 
-    let u1 = l1.customData[cd_uv].uv;
-    let u2 = l2.customData[cd_uv].uv;
-    let u3 = l1.next.customData[cd_uv].uv;
-    let u4 = l1.next.radial_next.customData[cd_uv].uv;
+    let u1 = cd_uv.get(l1).uv;
+    let u2 = cd_uv.get(l2).uv;
+    let u3 = cd_uv.get(l1.next).uv;
+    let u4 = cd_uv.get(l1.next.radial_next).uv;
 
     return u1.vectorDistanceSqr(u2) + u3.vectorDistanceSqr(u4);
   }
 
-  let errorColor = (e, v1, v2, v3, v4) => {
+  let errorColor = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex): number => {
     let l1 = e.l, l2 = e.l.radial_next;
 
-    let u1 = l1.v.customData[cd_color].color;
-    let u2 = l2.v.customData[cd_color].color;
-    let u3 = l1.next.v.customData[cd_color].color;
-    let u4 = l1.next.radial_next.v.customData[cd_color].color;
+    let u1 = cd_color.get(l1.v).color;
+    let u2 = cd_color.get(l2.v).color;
+    let u3 = cd_color.get(l1.next.v).color;
+    let u4 = cd_color.get(l1.next.radial_next.v).color;
 
     return u1.vectorDistanceSqr(u2) + u3.vectorDistanceSqr(u4);
   }
 
-  let errorQuadFlag = (e, v1, v2, v3, v4) => {
+  let errorQuadFlag = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex): number => {
     return e.flag & MeshFlags.QUAD_EDGE ? -100000 : 0.0;
   }
 
@@ -1605,8 +1605,8 @@ export function recalcWindings(mesh: Mesh, facesIter: Iterable<Face> = mesh.face
   }
 }
 
-//XXX untested
-export function splitNonManifoldEdge(mesh, e, l1, l2, lctx) {
+/** XXX untested */
+export function splitNonManifoldEdge(mesh: Mesh, e: Edge, l1: Loop, l2: Loop, lctx?: LogContext): void {
   if (!e.l || e.l === e.l.radial_next || e.l === e.l.radial_next.radial_next) {
     return;
   }
