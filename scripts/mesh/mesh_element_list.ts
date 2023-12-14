@@ -47,7 +47,7 @@ export class SelectedEditableIter<type extends Element> {
     return this;
   }
 
-  next() {
+  next(): IteratorResult<type> {
     if (this.done) {
       this.ret.done = true;
       this.ret.value = undefined;
@@ -78,7 +78,7 @@ export class SelectedEditableIter<type extends Element> {
     }
   }
 
-  return() {
+  return(): IteratorResult<type> {
     this.finish();
     return this.ret;
   }

@@ -254,7 +254,7 @@ mesh.EIDGen {
 }
 
 export class EidElemMap extends Map<number, Element> {
-  get<type>(id: number): type {
+  get<type = Element>(id: number): type {
     return super.get(id) as type;
   }
 }
@@ -4821,7 +4821,7 @@ mesh.Mesh {
         this.uvWrangler.destroy(this);
       }
 
-      this.uvWrangler = new UVWrangler(this, this.faces, cd_uv.i);
+      this.uvWrangler = new UVWrangler(this, this.faces, cd_uv);
       this.uvWrangler.buildIslands();
     }
 

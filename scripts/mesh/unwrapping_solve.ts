@@ -1,28 +1,28 @@
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
-import * as util from '../util/util.js';
-import {nstructjs, math, graphPack, PackNode, PackNodeVertex} from '../path.ux/scripts/pathux.js';
+import {
+  util, nstructjs, math, graphPack, PackNode, PackNodeVertex,
+  Vector2, Vector3, Vector4, Matrix4, Quat
+} from '../path.ux/scripts/pathux.js';
 import {Constraint, Solver} from '../path.ux/scripts/util/solver.js'
 import '../util/numeric.js';
 
 import '../extern/Math.js';
 
-window.MathJS = window.math;
-
 window.module = undefined;
 window.exports = undefined;
 
-import {MeshTypes, MeshFlags, MeshSymFlags, MeshModifierFlags} from './mesh_base.js';
-import {UVLayerElem} from './mesh_customdata.js';
-import {BVH, BVHNode} from '../util/bvh.js';
+import {MeshTypes, MeshFlags, MeshSymFlags, MeshModifierFlags} from './mesh_base';
+import {AttrRef, UVLayerElem} from './mesh_customdata';
+import {UVWrangler} from './unwrapping';
+import {Face, Loop, Mesh, Vertex} from "./mesh";
 
-import {UVWrangler} from './unwrapping.js';
-import {Face, Loop} from './mesh_types.js';
+export function relaxUVs(mesh: Mesh, cd_uv: AttrRef<UVLayerElem>,
+                         _loops: Iterable<Loop> = mesh.loops,
+                         doPack = false,
+                         boundaryWeight = 400.0,
+                         buildFromSeams = false) {
+  let loops = new Set<Loop>(_loops);
 
-export function relaxUVs(mesh, cd_uv, loops = mesh.loops, doPack = false, boundaryWeight = 400.0,
-                         buildFromSeams                                                  = false) {
-  loops = new Set(loops);
-
-  let faces = new Set();
+  let faces = new Set<Face>();
   for (let l of loops) {
     faces.add(l.f);
   }
@@ -63,7 +63,7 @@ export function relaxUVs(mesh, cd_uv, loops = mesh.loops, doPack = false, bounda
   let cd_corner = wr.cd_corner;
 
   for (let island of wr.islands) {
-    if (island.length < 5) {
+    if (island.size < 5) {
       continue;
     }
 
@@ -79,7 +79,7 @@ export function relaxUVs(mesh, cd_uv, loops = mesh.loops, doPack = false, bounda
       for (let l of wr.vertMap.get(v)) {
         l.f.flag |= MeshFlags.UPDATE;
 
-        let seam = (l.e.flag & MeshFlags.SEAM);
+        let seam = !!(l.e.flag & MeshFlags.SEAM);
         seam = seam || l === l.radial_next;
         seam = seam || (islandmap.get(l) !== islandmap.get(v));
 
@@ -88,8 +88,8 @@ export function relaxUVs(mesh, cd_uv, loops = mesh.loops, doPack = false, bounda
           break;
         }
 
-        if (v.customData[cd_corner].hasPins) {
-          w += boundaryWeight*2.0;
+        if (cd_corner.get(v).hasPins) {
+          w += boundaryWeight * 2.0;
         }
       }
 
@@ -109,7 +109,7 @@ export function relaxUVs(mesh, cd_uv, loops = mesh.loops, doPack = false, bounda
       }
 
       if (tot > 0) {
-        avg.mulScalar(1.0/tot);
+        avg.mulScalar(1.0 / tot);
         v.co.load(avg);
         v.co[2] = 0.0;
       }
@@ -122,7 +122,7 @@ export function relaxUVs(mesh, cd_uv, loops = mesh.loops, doPack = false, bounda
       continue;
     }
 
-    let ratio = Math.sqrt(area)/Math.sqrt(island.area);
+    let ratio = Math.sqrt(area) / Math.sqrt(island.area);
     let cent = new Vector2(island.min).interp(island.max, 0.5);
 
     for (let v of island) {
@@ -139,7 +139,18 @@ export function relaxUVs(mesh, cd_uv, loops = mesh.loops, doPack = false, bounda
 }
 
 class SolveTri {
-  constructor(l1, l2, l3, v1, v2, v3) {
+  l1: Loop;
+  l2: Loop;
+  l3: Loop;
+
+  v1: Vertex;
+  v2: Vertex;
+  v3: Vertex;
+
+  area: number;
+  worldArea: number;
+
+  constructor(l1: Loop, l2: Loop, l3: Loop, v1: Vertex, v2: Vertex, v3: Vertex) {
     this.l1 = l1;
     this.l2 = l2;
     this.l3 = l3;
@@ -154,12 +165,22 @@ class SolveTri {
 }
 
 export class UnWrapSolver {
-  constructor(mesh, faces, cd_uv = -1, preserveIslands = false, selLoopsOnly = false) {
-    if (cd_uv === -1) {
-      cd_uv = mesh.loops.customData.getLayerIndex("uv");
-    }
+  preserveIslands: boolean;
+  selLoopsOnly: boolean;
+  mesh: Mesh;
+  faces: Set<Face>;
+  cd_uv: AttrRef<UVLayerElem>;
+  uvw: UVWrangler;
+  solvers: any[];
+  tris: SolveTri[];
+  tottri: number;
+  saved = false;
 
-    window.uvsolver = this;
+  constructor(mesh: Mesh, faces: Iterable<Face>, cd_uv = new AttrRef<UVLayerElem>(),
+              preserveIslands = false, selLoopsOnly = false) {
+    if (!cd_uv.exists) {
+      cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem);
+    }
 
     this.preserveIslands = preserveIslands;
     this.selLoopsOnly = selLoopsOnly;
@@ -172,7 +193,7 @@ export class UnWrapSolver {
     this.tris = [];
   }
 
-  start(cd_uv = undefined) {
+  start(cd_uv?: AttrRef<UVLayerElem>): void {
     if (cd_uv !== undefined) {
       this.cd_uv = cd_uv;
     }
@@ -222,14 +243,14 @@ export class UnWrapSolver {
 
       for (let v of island) {
         for (let l of wr.vertMap.get(v)) {
-          let th = Math.acos(no.dot(l.f.no)*0.99999);
-          variance += th*th;
+          let th = Math.acos(no.dot(l.f.no) * 0.99999);
+          variance += th * th;
           tot++;
         }
       }
 
       if (tot !== 0.0) {
-        variance = variance/tot;
+        variance = variance / tot;
       }
 
       console.log("normal variance of island patch:", variance);
@@ -255,7 +276,7 @@ export class UnWrapSolver {
           continue;
         }
 
-        co.mulScalar(1.0/tot);
+        co.mulScalar(1.0 / tot);
 
         co.multVecMatrix(mat);
         co[2] = 0.0;
@@ -277,7 +298,7 @@ export class UnWrapSolver {
     let cd_corner = wr.cd_corner;
 
     for (let v of this.uvw.uvMesh.verts) {
-      let cv = v.customData[cd_corner];
+      let cv = cd_corner.get(v);
 
       cv.vel = new Vector2();
       cv.oldco = new Vector2();
@@ -311,7 +332,7 @@ export class UnWrapSolver {
     let cd_corner = uvw.cd_corner;
 
     for (let v of uvw.uvMesh.verts) {
-      v.customData[cd_corner].tris = [];
+      cd_corner.get(v).tris = [];
     }
 
     let faces = this.faces;
@@ -341,7 +362,7 @@ export class UnWrapSolver {
 
       for (let j = 0; j < 3; j++) {
         let v = uvw.loopMap.get(ltris[i + j]);
-        v.customData[cd_corner].tris.push(tri);
+        cd_corner.get(v).tris.push(tri);
       }
 
     }
@@ -356,15 +377,15 @@ export class UnWrapSolver {
       let tot = 0;
       let totarea = 0;
 
-      for (let tri of v.customData[cd_corner].tris) {
+      for (let tri of cd_corner.get(v).tris) {
         let w = math.winding(tri.v1.co, tri.v2.co, tri.v3.co);
         tot += w ? 1 : -1;
 
         totarea += math.tri_area(tri.v1.co, tri.v2.co, tri.v3.co);
       }
 
-      v.customData[cd_corner].area = totarea;
-      v.customData[cd_corner].wind = tot >= 0.0;
+      cd_corner.get(v).area = totarea;
+      cd_corner.get(v).wind = tot >= 0.0;
     }
 
     `
@@ -412,10 +433,8 @@ export class UnWrapSolver {
 
       v1[2] = v2[2] = v3[2] = 0.0;
 
-      let w2 = math.winding(v1, v2, v3);
-      w2 = w2 ? 1.0 : -1.0;
-
-      let ret = (math.tri_area(v1, v2, v3)*w2 - goal)*mul;
+      let w2 = math.winding(v1, v2, v3) ? 1.0 : -1.0;
+      let ret = (math.tri_area(v1, v2, v3) * w2 - goal) * mul;
 
       //ret *= ret;
       ret = Math.abs(ret);
@@ -446,114 +465,113 @@ export class UnWrapSolver {
       let v2x = v2[0], v2y = v2[1];
       let v3x = v3[0], v3y = v3[1];
 
-      let wind = math.winding(v1, v2, v3);
-      wind = wind ? 1.0 : -1.0;
+      let wind = math.winding(v1, v2, v3) ? 1.0 : -1.0;
 
-      ans1 = ((2.0*sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(sqrt((v2x - v3x)**2 + (
-        v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)) + (sqrt((v2x -
-        v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(
-        sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y
-        )**2)))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2
-        + (v1y - v3y)**2)) - (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x
-        - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 +
-        sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)
-        **2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)))*(v1x - v3x)*kmul*wind
-      let dv1x = ans1/(8.0*sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*sqrt(-(sqrt((v2x
-        - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(
-        sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y
-        )**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**2 +
-        (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x -
-        v3x)**2 + (v1y - v3y)**2))))
+      ans1 = ((2.0 * sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2) * (sqrt((v2x - v3x) ** 2 + (
+        v2y - v3y) ** 2) + 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) + (sqrt((v2x -
+        v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (
+        sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y
+        ) ** 2))) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 + sqrt((v1x - v3x) ** 2
+        + (v1y - v3y) ** 2)) - (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 - sqrt((v1x
+        - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 +
+        sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y)
+        ** 2) - 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2))) * (v1x - v3x) * kmul * wind
+      let dv1x = ans1 / (8.0 * sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2) * sqrt(-(sqrt((v2x
+        - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (
+        sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y
+        ) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x) ** 2 +
+        (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((v1x -
+        v3x) ** 2 + (v1y - v3y) ** 2))))
 
-      ans1 = ((2.0*sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(sqrt((v2x - v3x)**2 + (
-        v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)) + (sqrt((v2x -
-        v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(
-        sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y
-        )**2)))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2
-        + (v1y - v3y)**2)) - (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x
-        - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 +
-        sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)
-        **2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)))*(v1y - v3y)*kmul*wind
-      let dv1y = ans1/(8.0*sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*sqrt(-(sqrt((v2x
-        - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(
-        sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y
-        )**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**2 +
-        (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x -
-        v3x)**2 + (v1y - v3y)**2))))
+      ans1 = ((2.0 * sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2) * (sqrt((v2x - v3x) ** 2 + (
+        v2y - v3y) ** 2) + 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) + (sqrt((v2x -
+        v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (
+        sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y
+        ) ** 2))) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 + sqrt((v1x - v3x) ** 2
+        + (v1y - v3y) ** 2)) - (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 - sqrt((v1x
+        - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 +
+        sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y)
+        ** 2) - 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2))) * (v1y - v3y) * kmul * wind
+      let dv1y = ans1 / (8.0 * sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2) * sqrt(-(sqrt((v2x
+        - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (
+        sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y
+        ) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x) ** 2 +
+        (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((v1x -
+        v3x) ** 2 + (v1y - v3y) ** 2))))
 
-      ans1 = -((2.0*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)
-          **2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0) + (sqrt
-        ((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2
-        ))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y
-          - v3y)**2)))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x
-        )**2 + (v1y - v3y)**2)) + (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt(
-          (v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) -
-          1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y -
-          v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)))*(v2x - v3x)*kmul*
+      ans1 = -((2.0 * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 - sqrt((v1x - v3x)
+          ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0) + (sqrt
+        ((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2
+        )) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((v1x - v3x) ** 2 + (v1y
+          - v3y) ** 2))) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 + sqrt((v1x - v3x
+        ) ** 2 + (v1y - v3y) ** 2)) + (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 - sqrt(
+          (v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) -
+          1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y -
+          v3y) ** 2) - 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2))) * (v2x - v3x) * kmul *
         wind
-      let dv2x = ans1/(8.0*sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*sqrt(-(sqrt((v2x
-        - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(
-        sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y
-        )**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**2 +
-        (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x -
-        v3x)**2 + (v1y - v3y)**2))))
+      let dv2x = ans1 / (8.0 * sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) * sqrt(-(sqrt((v2x
+        - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (
+        sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y
+        ) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x) ** 2 +
+        (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((v1x -
+        v3x) ** 2 + (v1y - v3y) ** 2))))
 
-      ans1 = -((2.0*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)
-          **2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0) + (sqrt
-        ((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2
-        ))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y
-          - v3y)**2)))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x
-        )**2 + (v1y - v3y)**2)) + (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt(
-          (v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) -
-          1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y -
-          v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)))*(v2y - v3y)*kmul*
+      ans1 = -((2.0 * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 - sqrt((v1x - v3x)
+          ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0) + (sqrt
+        ((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2
+        )) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((v1x - v3x) ** 2 + (v1y
+          - v3y) ** 2))) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 + sqrt((v1x - v3x
+        ) ** 2 + (v1y - v3y) ** 2)) + (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 - sqrt(
+          (v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) -
+          1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y -
+          v3y) ** 2) - 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2))) * (v2y - v3y) * kmul *
         wind
-      let dv2y = ans1/(8.0*sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*sqrt(-(sqrt((v2x
-        - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(
-        sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y
-        )**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**2 +
-        (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x -
-        v3x)**2 + (v1y - v3y)**2))))
+      let dv2y = ans1 / (8.0 * sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) * sqrt(-(sqrt((v2x
+        - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (
+        sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y
+        ) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x) ** 2 +
+        (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((v1x -
+        v3x) ** 2 + (v1y - v3y) ** 2))))
 
-      ans1 = -((2.0*sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(sqrt((v2x - v3x)**2 +
-          (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x -
-            v3x)**2 + (v2y - v3y)**2)*v1x - sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*v2x +
-          v2x - v3x) + (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**
-          2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((
-          v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*(
-          v1x - v3x) - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(v2x - v3x)))*(sqrt((
-          v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))
-        - (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y -
-          v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)
-          **2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((
-          v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*(
-          v1x - v3x) + sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(v2x - v3x)))*kmul*wind
-      let dv3x = ans1/(8.0*sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*sqrt((v1x - v3x)**
-        2 + (v1y - v3y)**2)*sqrt(-(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 +
-        sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)
-        **2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (
-        v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x -
-        v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2))))
+      ans1 = -((2.0 * sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2) * (sqrt((v2x - v3x) ** 2 +
+          (v2y - v3y) ** 2) + 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x -
+            v3x) ** 2 + (v2y - v3y) ** 2) * v1x - sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) * v2x +
+          v2x - v3x) + (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x) **
+          2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((
+          v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) * (
+          v1x - v3x) - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2) * (v2x - v3x))) * (sqrt((
+          v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2))
+        - (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 - sqrt((v1x - v3x) ** 2 + (v1y -
+          v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x)
+          ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((
+          v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) * (
+          v1x - v3x) + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2) * (v2x - v3x))) * kmul * wind
+      let dv3x = ans1 / (8.0 * sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) * sqrt((v1x - v3x) **
+        2 + (v1y - v3y) ** 2) * sqrt(-(sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 +
+        sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y)
+        ** 2) + 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (
+        v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x -
+        v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2))))
 
-      ans1 = -((2.0*sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(sqrt((v2x - v3x)**2 +
-          (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x -
-            v3x)**2 + (v2y - v3y)**2)*v1y - sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*v2y +
-          v2y - v3y) + (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**
-          2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((
-          v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*(
-          v1y - v3y) - sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(v2y - v3y)))*(sqrt((
-          v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))
-        - (sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y -
-          v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)
-          **2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((
-          v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*(
-          v1y - v3y) + sqrt((v1x - v3x)**2 + (v1y - v3y)**2)*(v2y - v3y)))*kmul*wind
-      let dv3y = ans1/(8.0*sqrt((v2x - v3x)**2 + (v2y - v3y)**2)*sqrt((v1x - v3x)**
-        2 + (v1y - v3y)**2)*sqrt(-(sqrt((v2x - v3x)**2 + (v2y - v3y)**2) + 1.0 +
-        sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (v2y - v3y)
-        **2) + 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x - v3x)**2 + (
-        v2y - v3y)**2) - 1.0 + sqrt((v1x - v3x)**2 + (v1y - v3y)**2))*(sqrt((v2x -
-        v3x)**2 + (v2y - v3y)**2) - 1.0 - sqrt((v1x - v3x)**2 + (v1y - v3y)**2))))
+      ans1 = -((2.0 * sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2) * (sqrt((v2x - v3x) ** 2 +
+          (v2y - v3y) ** 2) + 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x -
+            v3x) ** 2 + (v2y - v3y) ** 2) * v1y - sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) * v2y +
+          v2y - v3y) + (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x) **
+          2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((
+          v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) * (
+          v1y - v3y) - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2) * (v2y - v3y))) * (sqrt((
+          v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2))
+        - (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 - sqrt((v1x - v3x) ** 2 + (v1y -
+          v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x)
+          ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((
+          v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) * (
+          v1y - v3y) + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2) * (v2y - v3y))) * kmul * wind
+      let dv3y = ans1 / (8.0 * sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) * sqrt((v1x - v3x) **
+        2 + (v1y - v3y) ** 2) * sqrt(-(sqrt((v2x - v3x) ** 2 + (v2y - v3y) ** 2) + 1.0 +
+        sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (v2y - v3y)
+        ** 2) + 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x - v3x) ** 2 + (
+        v2y - v3y) ** 2) - 1.0 + sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2)) * (sqrt((v2x -
+        v3x) ** 2 + (v2y - v3y) ** 2) - 1.0 - sqrt((v1x - v3x) ** 2 + (v1y - v3y) ** 2))))
 
 
       gs[0][0] = badnum(dv1x);
@@ -567,7 +585,7 @@ export class UnWrapSolver {
     let t1 = new Vector2();
     let t2 = new Vector2();
 
-    function angle_c(params) {
+    function angle_c(params: [Vertex, Vertex, Vertex, number, number]): number {
       let v1 = params[0];
       let v2 = params[1];
       let v3 = params[2];
@@ -581,8 +599,8 @@ export class UnWrapSolver {
       t1.load(v1.co).sub(v2.co).normalize();
       t2.load(v3.co).sub(v2.co).normalize();
 
-      let th = -(t1[1]*t2[0] - t1[0]*t2[1]);
-      th = Math.asin(th*0.99999);
+      let th = -(t1[1] * t2[0] - t1[0] * t2[1]);
+      th = Math.asin(th * 0.99999);
 
       //let ret = Math.acos(t1.dot(t2)*0.999999)*w - goalth;
       let ret = th - goalth;
@@ -590,7 +608,7 @@ export class UnWrapSolver {
       //ret = Math.abs(ret);
       //ret *= ret;
 
-      return ret*ret;
+      return ret * ret;
     }
 
     //console.log(this.uvw.islands);
@@ -617,13 +635,13 @@ export class UnWrapSolver {
         continue;
       }
 
-      let tris = new Set();
+      let tris = new Set<SolveTri>();
       let solver = new Solver();
 
       this.solvers.push(solver);
 
       for (let v of island) {
-        for (let tri of v.customData[cd_corner].tris) {
+        for (let tri of cd_corner.get(v).tris) {
           tris.add(tri);
         }
       }
@@ -649,7 +667,7 @@ export class UnWrapSolver {
       let df = 0.0001;
       let maxarea = 0.0;
 
-      function makeAngleCon(l1, l2, l3, v1, v2, v3, wind) {
+      function makeAngleCon(l1: Loop, l2: Loop, l3: Loop, v1: Vertex, v2: Vertex, v3: Vertex, wind: number): void {
         t3.load(l1.v.co).sub(l2.v.co).normalize();
         t4.load(l3.v.co).sub(l2.v.co).normalize();
 
@@ -657,13 +675,13 @@ export class UnWrapSolver {
         let w = math.winding(v1.co, v2.co, v3.co) ? 1.0 : -1.0;
 
         t3.cross(t4);
-        let goalth = t3.vectorLength()*wind;
+        let goalth = t3.vectorLength() * wind;
 
         if (w !== wind) {
           //goalth = -goalth;
         }
 
-        goalth = Math.asin(goalth*0.9999999);
+        goalth = Math.asin(goalth * 0.9999999);
 
         //if (w !== wind) {
         //goalth = Math.PI - goalth;
@@ -671,7 +689,7 @@ export class UnWrapSolver {
 
         let params = [v1, v2, v3, goalth, wind];
         let klst = [v1, v2, v3]
-          .filter(v => !v.customData[cd_corner].hasPins)
+          .filter(v => !cd_corner.get(v).hasPins)
           .map(v => v.co);
 
         if (klst.length > 0) {
@@ -687,7 +705,7 @@ export class UnWrapSolver {
         }
       }
 
-      let ratio = 1.0/totarea2;
+      let ratio = 1.0 / totarea2;
       //console.log("totarea", totarea, totarea2, ratio);
 
       if (totarea === 0.0) {
@@ -720,10 +738,10 @@ export class UnWrapSolver {
       }
 
       for (let tri of tris) {
-        let goal = tri.worldArea*ratio*wind*1.0;
-        let params = [wind, tri.v1.co, tri.v2.co, tri.v3.co, goal, 100.0/totarea];
+        let goal = tri.worldArea * ratio * wind * 1.0;
+        let params = [wind, tri.v1.co, tri.v2.co, tri.v3.co, goal, 100.0 / totarea];
         let klst = [tri.v1, tri.v2, tri.v3]
-          .filter(v => !v.customData[cd_corner].hasPins)
+          .filter(v => !cd_corner.get(v).hasPins)
           .map(v => v.co);
 
         if (includeArea && klst.length > 0) {
@@ -757,8 +775,8 @@ export class UnWrapSolver {
 
     //return slv.solve(count, gk);
 
-    function log() {
-      //console.log(...arguments);
+    function log(...args: any[]): void {
+      //console.log(...args);
     }
 
     let pmap = new Set();
@@ -778,7 +796,7 @@ export class UnWrapSolver {
       }
     }
 
-    log("CS", slv.constraints.length, tot*2);
+    log("CS", slv.constraints.length, tot * 2);
 
     slv.randCons = true;
     //return slv.solve(count, gk, false);
@@ -855,17 +873,17 @@ export class UnWrapSolver {
       }
     }
 
-    window._mat = matrix;
     let totrows = matrix.length;
 
     //matrix = numeric.ccsSparse(matrix);
+
+    const numeric = (window as unknown as any)["numeric"] as any;
 
     let matrixT = numeric.transpose(matrix);
     //let matrix1 = numeric.dotMMsmall(matrixT, matrix);
     let matrix1 = numeric.dot(matrixT, matrix);
 
     let svd = numeric.svd(matrix1);
-    window.svd = svd;
 
     let rows = matrix1.length;
 
@@ -891,28 +909,30 @@ export class UnWrapSolver {
     let sigma = makeMatrix(totrows, totrows, false);
     let S = svd.S;
 
-    window.sigma = sigma;
+    //window.sigma = sigma;
 
     for (let i = 0; i < S.length; i++) {
       let f = S[i];
-      f = f !== 0.0 ? 1.0/f : 0.0;
+      f = f !== 0.0 ? 1.0 / f : 0.0;
 
       sigma[i][i] = f;
     }
     //sigma = numeric.transpose(sigma);
 
-    matrix.slv = slv;
+    (matrix as unknown as any).slv = slv;
 
+    /*
     window.sigma = sigma;
     window.col = col;
     window.mat1 = matrix1;
     window.mat = matrix;
     window.matT = matrixT;
+    */
 
     let V = numeric.transpose(svd.V);
     log("psuedo inverse");
     let pinv = numeric.dotMMsmall(numeric.dotMMsmall(svd.U, sigma), V);
-    let b = numeric.dotMMsmall(pinv, mat1);
+    let b = numeric.dotMMsmall(pinv, matrix1);
 
     let c = numeric.dotMMsmall(pinv, matrixT);
 
@@ -924,17 +944,17 @@ export class UnWrapSolver {
 
     for (let i = 0; i < col2.length; i += 2) {
       let x = col2[i], y = col2[i + 1];
-      let v = vec[i>>1];
+      let v = vec[i >> 1];
 
-      v[0] += -x*gk;
-      v[1] += -y*gk;
+      v[0] += -x * gk;
+      v[1] += -y * gk;
     }
 
     log(vec);
     return toterr;
 
     return slv.solve(count, gk, false);
-    if (0) {
+    /*
       matrix = MathJS.matrix(matrix, 'sparse');
       //matrix = MathJS.transpose(matrix);
 
@@ -966,6 +986,7 @@ export class UnWrapSolver {
 
     //return this.solver.solve(count, gk, false);
     return toterr; //slv.solve(count, gk, false);
+    */
   }
 
   solve(count, gk) {
@@ -977,10 +998,10 @@ export class UnWrapSolver {
     let cd_corner = this.uvw.cd_corner;
 
     for (let v of uvmesh.verts) {
-      let cv = v.customData[cd_corner];
+      let cv = cd_corner.get(v);
 
-      v.co[0] += cv.vel[0]*damp;
-      v.co[1] += cv.vel[1]*damp;
+      v.co[0] += cv.vel[0] * damp;
+      v.co[1] += cv.vel[1] * damp;
 
       cv.oldco.load(v.co);
       v.co[2] = 0.0;
@@ -998,7 +1019,7 @@ export class UnWrapSolver {
     }
 
     for (let v of uvmesh.verts) {
-      let cv = v.customData[cd_corner];
+      let cv = cd_corner.get(v);
 
       cv.vel.load(v.co).sub(cv.oldco);
       cv.vel[2] = 0.0;
@@ -1008,7 +1029,7 @@ export class UnWrapSolver {
   }
 
   step(countUnused, gk) {
-    let flen = this.faces.length;
+    let flen = this.faces.size;
     let count, count2;
 
     if (flen > 5000) {
@@ -1028,7 +1049,7 @@ export class UnWrapSolver {
 
     let time = util.time_ms();
 
-    gk = gk ?? window.gk ?? 0.75;
+    gk = gk ?? (window as unknown as any)["gk"] ?? 0.75;
     let err;
 
     let uvmesh = this.uvw.uvMesh;
@@ -1043,7 +1064,7 @@ export class UnWrapSolver {
     let si = 0;
     let tmp = new Vector3();
 
-    let smoothvs = new Set();
+    let smoothvs = new Set<Vertex>();
     for (let island of this.uvw.islands) {
       if (this.selLoopsOnly && !island.hasSelLoops) {
         continue;
@@ -1056,16 +1077,16 @@ export class UnWrapSolver {
 
     let cd_corner = this.uvw.cd_corner;
 
-    let vsmooth = (fac) => {
+    let vsmooth = (fac: number): void => {
       for (let v of smoothvs) {
-        if (v.customData[cd_corner].hasPins) {
+        if (cd_corner.get(v).hasPins) {
           continue;
         }
 
         tmp.zero();
         let w = 1.0;
 
-        if (v.customData[cd_corner].corner) {
+        if (cd_corner.get(v).corner) {
           w = 10;
         }
 
@@ -1075,10 +1096,11 @@ export class UnWrapSolver {
         for (let e of v.edges) {
           let w = 1.0;
           let v2 = e.otherVertex(v);
+          let cv = cd_corner.get(v2);
 
-          if (v2.customData[cd_corner].hasPins) {
+          if (cv.hasPins) {
             w = 10000.0;
-          } else if (v2.customData[cd_corner].corner) {
+          } else if (cv.corner) {
             //w = 10;
           }
 
@@ -1090,7 +1112,7 @@ export class UnWrapSolver {
           continue;
         }
 
-        tmp.mulScalar(1.0/tot);
+        tmp.mulScalar(1.0 / tot);
         v.co.interp(tmp, fac);
         v.co[2] = 0.0;
       }
@@ -1103,10 +1125,10 @@ export class UnWrapSolver {
 
       for (let i = 0; i < count; i++) {
         for (let v of uvmesh.verts) {
-          let cv = v.customData[cd_corner];
+          let cv = cd_corner.get(v);
 
-          v.co[0] += cv.vel[0]*damp;
-          v.co[1] += cv.vel[1]*damp;
+          v.co[0] += cv.vel[0] * damp;
+          v.co[1] += cv.vel[1] * damp;
 
           cv.oldco.load(v.co);
         }
@@ -1115,7 +1137,7 @@ export class UnWrapSolver {
         //vsmooth(0.05);
 
         for (let v of uvmesh.verts) {
-          let cv = v.customData[cd_corner];
+          let cv = cd_corner.get(v);
 
           cv.vel.load(v.co).sub(cv.oldco);
         }
@@ -1164,7 +1186,7 @@ export class UnWrapSolver {
       let ls = this.uvw.vertMap.get(v);
 
       for (let l of ls) {
-        l.customData[cd_uv].uv.load(v.co);
+        cd_uv.get(l).uv.load(v.co);
       }
     }
   }
@@ -1176,14 +1198,14 @@ export class UnWrapSolver {
     }
 
     this.saved = true;
-    this.mesh = this.mesh.lib_id;
+    (this.mesh as unknown as number) = this.mesh.lib_id;
 
     this.uvw.save();
 
     for (let tri of this.tris) {
-      tri.l1 = tri.l1.eid;
-      tri.l2 = tri.l2.eid;
-      tri.l3 = tri.l3.eid;
+      (tri.l1 as unknown as number) = tri.l1.eid;
+      (tri.l2 as unknown as number) = tri.l2.eid;
+      (tri.l3 as unknown as number) = tri.l3.eid;
     }
     ;
 
@@ -1194,20 +1216,20 @@ export class UnWrapSolver {
     return this;
   }
 
-  restore(mesh) {
+  restore(mesh: Mesh): boolean {
     if (!this.saved) {
       console.error("UnwrapSolver is not saved");
       return false;
     }
 
-    if (this.mesh !== mesh.lib_id) {
+    if ((this.mesh as unknown as number) !== mesh.lib_id) {
       console.warn("Meshes differ");
       return false;
     }
 
-    let fs = new Set();
-    for (let feid of this.faces) {
-      let f = mesh.eidMap.get(feid);
+    let fs = new Set<Face>();
+    for (let feid of this.faces as unknown as Set<number>) {
+      let f = mesh.eidMap.get<Face>(feid);
       if (!f || f.type !== MeshTypes.FACE) {
         console.warn("Missing face " + feid);
         return false;
@@ -1215,12 +1237,13 @@ export class UnWrapSolver {
 
       fs.add(f);
     }
+
     this.faces = fs;
 
     for (let tri of this.tris) {
-      tri.l1 = mesh.eidMap.get(tri.l1);
-      tri.l2 = mesh.eidMap.get(tri.l2);
-      tri.l3 = mesh.eidMap.get(tri.l3);
+      tri.l1 = mesh.eidMap.get<Loop>(tri.l1 as unknown as number);
+      tri.l2 = mesh.eidMap.get<Loop>(tri.l2 as unknown as number);
+      tri.l3 = mesh.eidMap.get<Loop>(tri.l3 as unknown as number);
 
       if (!tri.l1 || !tri.l2 || !tri.l3) {
         console.warn("Missing tri loops");
@@ -1305,11 +1328,11 @@ export class UnWrapSolver {
       this.packIslands();
     } else {
       for (let island of wr.islands) {
-        continue;
+        /*
         let ok = this.preserveIslands;
         ok = ok || (this.selLoopsOnly && !island.hasSelLoops);
         ok = ok && !island.hasPins;
-        ok = ok && island.oldsize && island.oldmin;
+        ok = ok && island.oldsize !== undefined && island.oldmin;
 
         if (!ok) {
           continue;
@@ -1322,6 +1345,7 @@ export class UnWrapSolver {
         }
 
         wr.updateAABB(island);
+        */
       }
     }
 
@@ -1331,7 +1355,7 @@ export class UnWrapSolver {
 
 
 export function fixSeams(mesh, cd_uv) {
-  let wrangler = new UVWrangler(mesh, mesh.faces, cd_uv);
+  let wrangler = new UVWrangler(mesh, mesh.faces, new AttrRef(cd_uv));
   wrangler.buildIslands();
 
   let seams = new Set();
@@ -1363,17 +1387,17 @@ export function fixSeams(mesh, cd_uv) {
     tmp1.mulScalar(texSize);
     tmp2.mulScalar(texSize);
 
-    let len1 = uv1a.vectorDistance(uv2a)*texSize;
-    let len2 = uv1b.vectorDistance(uv2b)*texSize;
+    let len1 = uv1a.vectorDistance(uv2a) * texSize;
+    let len2 = uv1b.vectorDistance(uv2b) * texSize;
 
     let err = 0.0;
 
     //err += Math.abs(len1 - round(len1));
     //err += Math.abs(len2 - round(len2));
-    err += Math.abs(tmp1[0] - round(tmp1[0]))**2;
-    err += Math.abs(tmp1[1] - round(tmp1[1]))**2;
-    err += Math.abs(tmp2[0] - round(tmp2[0]))**2;
-    err += Math.abs(tmp2[1] - round(tmp2[1]))**2;
+    err += Math.abs(tmp1[0] - round(tmp1[0])) ** 2;
+    err += Math.abs(tmp1[1] - round(tmp1[1])) ** 2;
+    err += Math.abs(tmp2[0] - round(tmp2[0])) ** 2;
+    err += Math.abs(tmp2[1] - round(tmp2[1])) ** 2;
 
     return err;
   }
@@ -1406,17 +1430,15 @@ export function fixSeams(mesh, cd_uv) {
     }
   }
 
-  for (let e of seams) {
+  //for (let e of seams) {
     //let err = error([e]);
     //console.log("err", err);
-  }
+  //}
 
-  if (typeof window.DDK === "undefined") {
-    window.DDK = 0.000005;
-  }
-
-  solver.solve(500, DDK, true);
-  console.log(solver, DDK);
+  //XXX this is absurdly small. . .
+  const gk = 0.000005;
+  solver.solve(500, gk, true);
+  console.log(solver, gk);
 
   console.log("Wrangler", wrangler);
   console.log("Seams", seams);

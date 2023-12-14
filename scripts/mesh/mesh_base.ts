@@ -31,6 +31,8 @@ export const MAX_FACE_VERTS = 1000000;
 export const MAX_VERT_EDGES = 1000;
 export const MAX_EDGE_FACES = 100;
 
+export type EID<type> = number;
+
 export enum HandleTypes {
   AUTO = 0,
   FREE = 1,

@@ -1733,7 +1733,7 @@ export class BVHNode {
     return split ? 2 : 0;
   }
 
-  splitTest(depth = 0) {
+  splitTest(depth = 0): number {
     if (!this.leaf) {
       return 0;
     }
@@ -3216,7 +3216,7 @@ export class BVH {
   }
   //*/
 
-  static create(mesh: Mesh, args: IBVHCreateArgs = {}): BVH {
+  static create<BVHType extends BVH = BVH>(mesh: Mesh, args: IBVHCreateArgs = {}): BVHType {
     let times: (number | string)[] = [util.time_ms()]; //0
 
     let storeVerts = args.storeVerts ?? true;
@@ -3283,7 +3283,7 @@ export class BVH {
     }
 
     //tottri is used by the SpatialHash subclass
-    let bvh = new this(mesh, aabb[0], aabb[1], tottri);
+    let bvh: BVHType = (new this(mesh, aabb[0], aabb[1], tottri)) as unknown as BVHType;
     //console.log("Saved tri freelist:", freelist);
 
     console.log("isDeforming", deformMode);

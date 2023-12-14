@@ -109,7 +109,7 @@ export class ImageEditor extends Editor {
     };
     glPos: Vector2;
     glSize: Vector2;
-    uvEditor: HTMLElement;
+    uvEditor: UVEditor;
     sidebar: HTMLElement;
     subframe: any;
     rebuildLayout(): void;

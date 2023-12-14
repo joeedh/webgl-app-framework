@@ -5,6 +5,8 @@ import * as util from '../util/util.js';
 import {fixSeams, relaxUVs, UnWrapSolver} from './unwrapping_solve.js';
 import {MeshOp} from './mesh_ops_base.js';
 import {MeshFlags} from './mesh_base.js';
+import {Face} from './mesh_types.js';
+import {AttrRef} from './customdata.js';
 
 export class VoxelUnwrapOp extends UnwrapOpBase {
   static tooldef() {
@@ -85,7 +87,7 @@ export class RandomizeUVsOp extends MeshOpBaseUV {
         continue;
       }
 
-      let wr = new UVWrangler(mesh, this.getFaces(ctx), cd_uv);
+      let wr = new UVWrangler(mesh, this.getFaces(ctx), new AttrRef(cd_uv));
       wr.buildIslands();
 
       for (let island of wr.islands) {

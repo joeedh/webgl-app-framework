@@ -21,7 +21,7 @@ import {DataRefProperty} from '../../core/lib_api.js';
 import './uv_selectops.js';
 import './uv_transformops.js';
 import './uv_ops.js';
-import {UVFlags} from '../../mesh/mesh_customdata.js';
+import {AttrRef, UVFlags} from '../../mesh/mesh_customdata.js';
 import {resetUnwrapSolvers} from '../../mesh/mesh_uvops.js';
 
 let _projtmp = new Vector2();
@@ -723,7 +723,7 @@ export class UVEditor extends UIBase {
       return;
     }
 
-    let wr = new UVWrangler(mesh, mesh.faces.selected.editable, cd_uv);
+    let wr = new UVWrangler(mesh, mesh.faces.selected.editable, new AttrRef(cd_uv));
     wr.buildIslands();
     //let wr = mesh.getUVWrangler(true, true);
 
