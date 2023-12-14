@@ -570,7 +570,7 @@ mesh.LayerSet {
       this.active = this.idmap.get(this.active_i);
     }
 
-    if (this._layers.length > 0) {
+    if (this._layers !== undefined && this._layers.length > 0) {
       this.push(...this._layers);
       this._layers.length = 0;
     }
