@@ -162,7 +162,7 @@ export class ViewOverlay extends ToolContext {
 
   get nodeViewer(): any;
 
-  get editors(): import("../editors/editor_base.js").EditorAccessor;
+  get editors(): any;
 
   editors_save(): {};
 

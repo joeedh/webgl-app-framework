@@ -1,4 +1,3 @@
-
 export interface INumberList {
   [k: number]: number;
 
@@ -35,6 +34,7 @@ export declare global {
     DTST2: number | undefined;
     DEBUG: any;
     _appstate: any;
+    _unwrap_solvers: Map<any, any>;
   }
 }
 

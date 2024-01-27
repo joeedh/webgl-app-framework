@@ -1,34 +1,44 @@
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
 import {
-  math, nstructjs, ToolOp, StringProperty, Vec3Property, Vec2Property, Vec4Property,
-  EnumProperty, FlagProperty, FloatProperty, BoolProperty, IntProperty, eventWasTouch
+  util, math, nstructjs, ToolOp, StringProperty, Vec3Property, Vec2Property, Vec4Property,
+  EnumProperty, FlagProperty, FloatProperty, BoolProperty, IntProperty,
+  Vector2, Vector3, Vector4, Matrix4, Quat, ToolDef
 } from '../path.ux/scripts/pathux.js';
-import * as util from '../util/util.js';
-import {MeshTypes, MeshFlags} from './mesh_base.js';
+import {MeshTypes, MeshFlags} from './mesh_base';
 import {View3DOp} from '../editors/view3d/view3d_ops.js';
-import {MeshOp} from './mesh_ops_base.js';
+import {MeshOp} from './mesh_ops_base';
+import {ToolContext, ViewContext} from "../../types/scripts/core/context";
+import {ImageEditor} from "../../types/scripts/editors/image/ImageEditor";
+import {Loop} from "./mesh_types";
 
 
-export class MeshOpBaseUV extends MeshOp {
+export class MeshOpBaseUV<InputSet = {}, OutputSet = {}> extends MeshOp<
+  InputSet &
+  {
+    selectedFacesOnly: BoolProperty
+  },
+  OutputSet & {}
+> {
   constructor() {
     super();
   }
 
-  static tooldef() {
+  static tooldef(): ToolDef {
     return {
+      toolpath: "",
       inputs: ToolOp.inherit({
         selectedFacesOnly: new BoolProperty().saveLastValue()
-      })
+      }),
+      outputs: ToolOp.inherit({})
     }
   }
 
-  static invoke(ctx, args) {
+  static invoke(ctx: ViewContext, args) {
     let tool = super.invoke(ctx, args);
 
     if (!("selectedFacesOnly" in args)) {
-      let uve = ctx.editors.imageEditor;
-      if (uve) {
-        uve = uve.uvEditor;
+      let editor = ctx.editors.imageEditor as ImageEditor;
+      if (editor) {
+        const uve = editor.uvEditor;
 
         tool.inputs.selectedFacesOnly.setValue(uve.selectedFacesOnly);
       }
@@ -37,7 +47,7 @@ export class MeshOpBaseUV extends MeshOp {
     return tool;
   }
 
-  getFaces(ctx) {
+  getFaces(ctx: ViewContext) {
     let mesh = ctx.mesh;
 
     if (!mesh) {
@@ -48,16 +58,16 @@ export class MeshOpBaseUV extends MeshOp {
     return selFsOnly ? mesh.faces.selected.editable : mesh.faces.editable;
   }
 
-  getLoops(ctx, selOnly=false) {
+  getLoops(ctx: ViewContext, selOnly = false): Set<Loop> {
     let selFsOnly = this.inputs.selectedFacesOnly.getValue();
     let mesh = ctx.mesh;
 
     if (!mesh) {
-      return [];
+      return new Set();
     }
 
     let iter = selFsOnly ? mesh.faces.selected.editable : mesh.faces.editable;
-    let ret = new Set();
+    let ret = new Set<Loop>();
 
     for (let f of iter) {
       for (let l of f.loops) {
@@ -77,8 +87,8 @@ export class MeshOpBaseUV extends MeshOp {
   }
 }
 
-export class UnwrapOpBase extends MeshOpBaseUV {
-  execPre(ctx) {
+export class UnwrapOpBase<InputSet = {}, OutputSet = {}> extends MeshOpBaseUV<InputSet, OutputSet> {
+  execPre(ctx: ViewContext) {
     super.execPre(ctx);
 
     let mesh = ctx.mesh;
@@ -93,20 +103,28 @@ export class UnwrapOpBase extends MeshOpBaseUV {
   }
 }
 
-export class UVOpBase extends View3DOp {
+export class UVOpBase<InputSet = {}, OutputSet = {}> extends View3DOp<
+  InputSet &
+  {
+    selectedFacesOnly: BoolProperty
+  },
+  OutputSet & {}> {
+
   constructor() {
     super();
   }
 
   static tooldef() {
     return {
+      toolpath: "",
       inputs: ToolOp.inherit({
         selectedFacesOnly: new BoolProperty()
-      })
+      }),
+      outputs: ToolOp.inherit({})
     }
   }
 
-  static invoke(ctx, args) {
+  static invoke(ctx: ViewContext, args: any) {
     let tool = super.invoke(ctx, args);
 
     if (!("selectedFacesOnly" in args)) {
@@ -121,16 +139,16 @@ export class UVOpBase extends View3DOp {
     return tool;
   }
 
-  getLoops(ctx, selOnly=false) {
+  getLoops(ctx: ViewContext, selOnly = false): Iterable<Loop> {
     let selFsOnly = this.inputs.selectedFacesOnly.getValue();
     let mesh = ctx.mesh;
 
     if (!mesh) {
-      return [];
+      return new Set();
     }
 
     let iter = selFsOnly ? mesh.faces.selected.editable : mesh.faces.editable;
-    let ret = new Set();
+    let ret = new Set<Loop>();
 
     for (let f of iter) {
       for (let l of f.loops) {

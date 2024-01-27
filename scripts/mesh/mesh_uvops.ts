@@ -1,30 +1,42 @@
-import {MeshOpBaseUV, UnwrapOpBase} from './mesh_uvops_base.js';
-import {BoolProperty, FloatProperty, IntProperty, ToolOp, Vector2} from '../path.ux/pathux.js';
+import {MeshOpBaseUV, UnwrapOpBase} from './mesh_uvops_base';
+import {
+  util, BoolProperty, FloatProperty,
+  IntProperty, ToolOp, Vector2, ToolDef
+} from '../path.ux/scripts/pathux.js';
 import {UVWrangler, voxelUnwrap} from './unwrapping.js';
-import * as util from '../util/util.js';
-import {fixSeams, relaxUVs, UnWrapSolver} from './unwrapping_solve.js';
-import {MeshOp} from './mesh_ops_base.js';
-import {MeshFlags} from './mesh_base.js';
-import {Face} from './mesh_types.js';
-import {AttrRef} from './customdata.js';
+import {fixSeams, relaxUVs, UnWrapSolver} from './unwrapping_solve';
+import {MeshOp} from './mesh_ops_base';
+import {MeshFlags} from './mesh_base';
+import {Face} from './mesh_types';
+import {AttrRef} from './customdata';
+import {ViewContext} from "../../types/scripts/core/context";
+import {UVLayerElem} from "./mesh_customdata";
 
-export class VoxelUnwrapOp extends UnwrapOpBase {
-  static tooldef() {
+export class VoxelUnwrapOp<InputSet = {}, OutputSet = {}> extends UnwrapOpBase<
+  InputSet & {
+  setSeams: BoolProperty,
+  leafLimit: IntProperty,
+  depthLimit: IntProperty,
+  splitVar: FloatProperty
+},
+  OutputSet
+> {
+  static tooldef(): ToolDef {
     return {
-      uiname  : "Voxel Unwrap",
+      uiname: "Voxel Unwrap",
       toolpath: "mesh.voxel_unwrap",
-      icon    : -1,
-      inputs  : ToolOp.inherit({
-        setSeams  : new BoolProperty(true),
-        leafLimit : new IntProperty(255).setRange(1, 1024).noUnits().saveLastValue(),
+      icon: -1,
+      inputs: ToolOp.inherit({
+        setSeams: new BoolProperty(true),
+        leafLimit: new IntProperty(255).setRange(1, 1024).noUnits().saveLastValue(),
         depthLimit: new IntProperty(25).setRange(0, 75).noUnits().saveLastValue(),
-        splitVar  : new FloatProperty(0.16).setRange(0.0, 5.0).noUnits().saveLastValue()
+        splitVar: new FloatProperty(0.16).setRange(0.0, 5.0).noUnits().saveLastValue()
       }),
-      outputs : ToolOp.inherit()
+      outputs: ToolOp.inherit({})
     }
   }
 
-  exec(ctx) {
+  exec(ctx: ViewContext): void {
     console.warn("mesh.voxel_unwrap");
 
     let setSeams = this.inputs.setSeams.getValue();
@@ -50,27 +62,34 @@ export class VoxelUnwrapOp extends UnwrapOpBase {
 ToolOp.register(VoxelUnwrapOp);
 
 
-export class RandomizeUVsOp extends MeshOpBaseUV {
-  static tooldef() {
+export class RandomizeUVsOp<InputSet = {}, OutputSet = {}> extends MeshOpBaseUV<
+  InputSet &
+  {
+    setSeams: BoolProperty,
+    randAll: BoolProperty
+  },
+  OutputSet
+> {
+  static tooldef(): ToolDef {
     return {
-      uiname  : "Randomize UVs",
+      uiname: "Randomize UVs",
       toolpath: "mesh.randomize_uvs",
-      icon    : -1,
-      inputs  : ToolOp.inherit({
+      icon: -1,
+      inputs: ToolOp.inherit({
         setSeams: new BoolProperty(true),
-        randAll : new BoolProperty(false)
+        randAll: new BoolProperty(false)
       }),
-      outputs : ToolOp.inherit()
+      outputs: ToolOp.inherit({})
     }
   }
 
-  exec(ctx) {
+  exec(ctx: ViewContext) {
     console.warn("mesh.randomize_uvs");
 
 
     for (let mesh of this.getMeshes(ctx)) {
-      let cd_uv = mesh.loops.customData.getLayerIndex("uv");
-      if (cd_uv < 0) {
+      let cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem);
+      if (!cd_uv.exists) {
         continue;
       }
 
@@ -79,15 +98,15 @@ export class RandomizeUVsOp extends MeshOpBaseUV {
       let randAll = this.inputs.randAll.getValue();
       if (randAll) {
         for (let l of mesh.loops) {
-          let uv = l.customData[cd_uv].uv;
+          let uv = cd_uv.get(l).uv;
 
-          uv[0] += (Math.random() - 0.5)*scale;
-          uv[1] += (Math.random() - 0.5)*scale;
+          uv[0] += (Math.random() - 0.5) * scale;
+          uv[1] += (Math.random() - 0.5) * scale;
         }
         continue;
       }
 
-      let wr = new UVWrangler(mesh, this.getFaces(ctx), new AttrRef(cd_uv));
+      let wr = new UVWrangler(mesh, this.getFaces(ctx), cd_uv);
       wr.buildIslands();
 
       for (let island of wr.islands) {
@@ -101,8 +120,8 @@ export class RandomizeUVsOp extends MeshOpBaseUV {
             v.co[1] = Math.random();
           }
 
-          v.co[0] += (Math.random() - 0.5)*scale;
-          v.co[1] += (Math.random() - 0.5)*scale;
+          v.co[0] += (Math.random() - 0.5) * scale;
+          v.co[1] += (Math.random() - 0.5) * scale;
 
           //v.sub(island.min).add(newmin);
           v.co[2] = 0.0;
@@ -136,23 +155,32 @@ export function resetUnwrapSolvers() {
   unwrap_solvers = window._unwrap_solvers = new Map();
 }
 
-export class UnwrapSolveOp extends UnwrapOpBase {
-  static tooldef() {
+export class UnwrapSolveOp<InputSet = {}, OutputSet = {}> extends UnwrapOpBase<
+  InputSet &
+  {
+    preserveIslands: BoolProperty,
+    enableSolve: BoolProperty,
+    reset: BoolProperty,
+    solverWeight: FloatProperty
+  },
+  OutputSet
+> {
+  static tooldef(): ToolDef {
     return {
-      uiname  : "Unwrap Solve",
+      uiname: "Unwrap Solve",
       toolpath: "mesh.unwrap_solve",
-      icon    : -1,
-      inputs  : ToolOp.inherit({
+      icon: -1,
+      inputs: ToolOp.inherit({
         preserveIslands: new BoolProperty(false).saveLastValue(),
-        enableSolve    : new BoolProperty(true).saveLastValue(),
-        reset          : new BoolProperty(),
-        solverWeight   : new FloatProperty(0.4).noUnits().setRange(0.0, 1.0).saveLastValue(),
+        enableSolve: new BoolProperty(true).saveLastValue(),
+        reset: new BoolProperty(),
+        solverWeight: new FloatProperty(0.4).noUnits().setRange(0.0, 1.0).saveLastValue(),
       }),
-      outputs : ToolOp.inherit()
+      outputs: ToolOp.inherit({})
     }
   }
 
-  exec(ctx) {
+  exec(ctx: ViewContext): void {
     console.warn("mesh.unwrap_solve");
 
     let i = 0;
@@ -179,13 +207,13 @@ export class UnwrapSolveOp extends UnwrapOpBase {
         }
       }*/
 
-      let solver;
+      let solver: UnWrapSolver;
 
       if (this.inputs.enableSolve.getValue() && !this.inputs.reset.getValue()) {
         solver = UnWrapSolver.restoreOrRebuild(mesh, faces, unwrap_solvers.get(mesh.lib_id),
           undefined, preserveIslands, false);
       } else {
-        solver = new UnWrapSolver(mesh, faces, mesh.loops.customData.getLayerIndex("uv"));
+        solver = new UnWrapSolver(mesh, faces, mesh.loops.customData.getLayerRef(UVLayerElem));
         solver.start();
       }
 
@@ -216,33 +244,42 @@ export class UnwrapSolveOp extends UnwrapOpBase {
 
 ToolOp.register(UnwrapSolveOp)
 
-export class RelaxUVsOp extends MeshOpBaseUV {
+export class RelaxUVsOp<InputSet = {}, OutputSet = {}> extends MeshOpBaseUV<
+  InputSet &
+  {
+    doSolve: BoolProperty,
+    steps: IntProperty,
+    useSeams: BoolProperty,
+    solverWeight: FloatProperty
+  },
+  OutputSet
+> {
   constructor() {
     super();
   }
 
-  static tooldef() {
+  static tooldef(): ToolDef {
     return {
-      uiname  : "Relax UVs",
+      uiname: "Relax UVs",
       toolpath: "mesh.relax_uvs",
-      icon    : -1,
-      inputs  : ToolOp.inherit({
-        doSolve     : new BoolProperty(true).saveLastValue(),
-        steps       : new IntProperty(1).saveLastValue().setRange(1, 55).noUnits(),
-        useSeams    : new BoolProperty().saveLastValue(),
+      icon: -1,
+      inputs: ToolOp.inherit({
+        doSolve: new BoolProperty(true).saveLastValue(),
+        steps: new IntProperty(1).saveLastValue().setRange(1, 55).noUnits(),
+        useSeams: new BoolProperty().saveLastValue(),
         solverWeight: new FloatProperty(0.4).noUnits().setRange(0.0, 1.0).saveLastValue(),
       }),
-      outputs : ToolOp.inherit()
+      outputs: ToolOp.inherit({})
     }
   }
 
-  exec(ctx) {
+  exec(ctx: ViewContext): void {
     console.warn("mesh.relax_uvs");
 
     for (let mesh of this.getMeshes(ctx)) {
-      let cd_uv = mesh.loops.customData.getLayerIndex("uv");
+      let cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem);
 
-      if (cd_uv >= 0) {
+      if (cd_uv.exists) {
         let steps = this.inputs.steps.getValue();
 
         for (let i = 0; i < steps; i++) {
@@ -281,22 +318,22 @@ export class RelaxUVsOp extends MeshOpBaseUV {
 
 ToolOp.register(RelaxUVsOp)
 
-export class FixUvSeamsOp extends MeshOpBaseUV {
+export class FixUvSeamsOp<InputSet = {}, OutputSet = {}> extends MeshOpBaseUV<InputSet, OutputSet> {
   constructor() {
     super();
   }
 
-  static tooldef() {
+  static tooldef(): ToolDef {
     return {
-      uiname  : "Fix Seams",
+      uiname: "Fix Seams",
       toolpath: "mesh.fix_seams",
-      icon    : -1,
-      inputs  : ToolOp.inherit({}),
-      outputs : ToolOp.inherit()
+      icon: -1,
+      inputs: ToolOp.inherit({}),
+      outputs: ToolOp.inherit({})
     }
   }
 
-  exec(ctx) {
+  exec(ctx: ViewContext): void {
     console.warn("mesh.fix_seams");
 
 
@@ -320,25 +357,25 @@ export class FixUvSeamsOp extends MeshOpBaseUV {
 
 ToolOp.register(FixUvSeamsOp)
 
-export class ResetUVs extends MeshOp {
-  static tooldef() {
+export class ResetUVs<InputSet = {}, OutputSet = {}> extends MeshOp<InputSet, OutputSet> {
+  static tooldef(): ToolDef {
     return {
-      uiname  : "Reset UVs",
+      uiname: "Reset UVs",
       toolpath: "mesh.reset_uvs",
-      icon    : -1,
-      inputs  : ToolOp.inherit({}),
-      outputs : ToolOp.inherit()
+      icon: -1,
+      inputs: ToolOp.inherit({}),
+      outputs: ToolOp.inherit({})
     }
   }
 
-  exec(ctx) {
+  exec(ctx: ViewContext): void {
     console.warn("mesh.relax_uvs");
 
 
     for (let mesh of this.getMeshes(ctx)) {
-      let cd_uv = mesh.loops.customData.getLayerIndex("uv");
+      let cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem);
 
-      if (cd_uv >= 0) {
+      if (cd_uv.exists) {
         for (let f of mesh.faces.selected.editable) {
           for (let list of f.lists) {
             let count = 0;
@@ -350,12 +387,12 @@ export class ResetUVs extends MeshOp {
 
             l.f.flag |= MeshFlags.UPDATE;
 
-            l.customData[cd_uv].uv.loadXY(0, 0);
-            l.next.customData[cd_uv].uv.loadXY(0, 1);
-            l.next.next.customData[cd_uv].uv.loadXY(1, 1);
+            cd_uv.get(l).uv.loadXY(0, 0);
+            cd_uv.get(l.next).uv.loadXY(0, 1);
+            cd_uv.get(l.next.next).uv.loadXY(1, 1);
 
             if (count === 4) {
-              l.prev.customData[cd_uv].uv.loadXY(1, 0);
+              cd_uv.get(l.prev).uv.loadXY(1, 0);
             }
           }
         }
@@ -383,25 +420,25 @@ export class ResetUVs extends MeshOp {
 ToolOp.register(ResetUVs)
 
 
-export class GridUVs extends MeshOp {
-  static tooldef() {
+export class GridUVs<InputSet = {}, OutputSet = {}> extends MeshOp<InputSet, OutputSet> {
+  static tooldef(): ToolDef {
     return {
-      uiname  : "Grid UVs",
+      uiname: "Grid UVs",
       toolpath: "mesh.grid_uvs",
-      icon    : -1,
-      inputs  : ToolOp.inherit({}),
-      outputs : ToolOp.inherit()
+      icon: -1,
+      inputs: ToolOp.inherit({}),
+      outputs: ToolOp.inherit({})
     }
   }
 
-  exec(ctx) {
+  exec(ctx: ViewContext) {
     console.warn("mesh.grid_uvs");
 
 
     for (let mesh of this.getMeshes(ctx)) {
-      let cd_uv = mesh.loops.customData.getLayerIndex("uv");
+      let cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem);
 
-      if (cd_uv >= 0) {
+      if (cd_uv.exists) {
         let i = 0;
         let count = 0;
 
@@ -415,8 +452,8 @@ export class GridUVs extends MeshOp {
           }
         }
 
-        let dimen = Math.ceil(Math.sqrt(count*0.25));
-        let idimen = 1.0/dimen;
+        let dimen = Math.ceil(Math.sqrt(count * 0.25));
+        let idimen = 1.0 / dimen;
 
         for (let f of mesh.faces.selected.editable) {
           for (let list of f.lists) {
@@ -429,18 +466,18 @@ export class GridUVs extends MeshOp {
 
             l.f.flag |= MeshFlags.UPDATE;
 
-            let x = i%dimen, y = ~~(i/dimen);
+            let x = i % dimen, y = ~~(i / dimen);
             x *= idimen;
             y *= idimen;
 
-            let pad = idimen*0.025;
+            let pad = idimen * 0.025;
 
-            l.customData[cd_uv].uv.loadXY(x + pad, y + pad);
-            l.next.customData[cd_uv].uv.loadXY(x + pad, y + idimen - pad*2.0);
-            l.next.next.customData[cd_uv].uv.loadXY(x + idimen - pad*2.0, y + idimen - pad*2.0);
+            cd_uv.get(l).uv.loadXY(x + pad, y + pad);
+            cd_uv.get(l.next).uv.loadXY(x + pad, y + idimen - pad * 2.0);
+            cd_uv.get(l.next.next).uv.loadXY(x + idimen - pad * 2.0, y + idimen - pad * 2.0);
 
             if (count === 4) {
-              l.prev.customData[cd_uv].uv.loadXY(x + idimen - pad*2.0, y + pad);
+              cd_uv.get(l.prev).uv.loadXY(x + idimen - pad * 2.0, y + pad);
             }
 
             i++;
@@ -449,7 +486,7 @@ export class GridUVs extends MeshOp {
           let off = new Vector2().loadXY(Math.random(), Math.random());
 
           for (let l of f.loops) {
-            // l.customData[cd_uv].uv.add(off);
+            // cd_uv.get(l).uv.add(off);
           }
         }
 
@@ -476,39 +513,41 @@ export class GridUVs extends MeshOp {
 ToolOp.register(GridUVs)
 
 
-export class PackIslandsOp extends MeshOpBaseUV {
-  static tooldef() {
+export class PackIslandsOp<InputSet = {}, OutputSet = {}> extends MeshOpBaseUV<InputSet, OutputSet> {
+  static tooldef(): ToolDef {
     return {
-      uiname  : "Pack UVs",
+      uiname: "Pack UVs",
       toolpath: "mesh.pack_uvs",
-      icon    : -1,
-      inputs  : ToolOp.inherit({}),
-      outputs : ToolOp.inherit()
+      icon: -1,
+      inputs: ToolOp.inherit({}),
+      outputs: ToolOp.inherit({})
     }
   }
 
-  exec(ctx) {
+  exec(ctx: ViewContext): void {
     console.warn("mesh.pack_uvs");
 
 
     for (let mesh of this.getMeshes(ctx)) {
       let cd_uv = mesh.loops.customData.getLayerIndex("uv");
 
-      if (cd_uv >= 0) {
-        let iter = this.inputs.selectedFacesOnly.getValue() ? mesh.faces.selected.editable : mesh.faces;
-
-        let wr = new UVWrangler(mesh, iter);
-
-        wr.buildIslands();
-        wr.packIslands();
-        wr.finish();
-
-        mesh.regenBVH();
-        mesh.regenUVEditor();
-        mesh.regenRender();
-        mesh.regenElementsDraw();
-        mesh.graphUpdate();
+      if (cd_uv < 0) {
+        continue;
       }
+
+      let iter = this.inputs.selectedFacesOnly.getValue() ? mesh.faces.selected.editable : mesh.faces;
+
+      let wr = new UVWrangler(mesh, iter);
+
+      wr.buildIslands();
+      wr.packIslands();
+      wr.finish();
+
+      mesh.regenBVH();
+      mesh.regenUVEditor();
+      mesh.regenRender();
+      mesh.regenElementsDraw();
+      mesh.graphUpdate();
     }
 
     window.redraw_viewport();
