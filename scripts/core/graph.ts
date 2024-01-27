@@ -145,7 +145,7 @@ export abstract class NodeSocketType<ValueType = any> {
   static STRUCT = nstructjs.inlineRegister(this, `
 graph.NodeSocketType {
   graph_id   : int;
-  node       : int | obj.node !== undefined ? obj.node.graph_id : -1;
+  node       : int | this.node !== undefined ? this.node.graph_id : -1;
   edges      : array(e, int) | e.graph_id;
   uiname     : string;
   name       : string;

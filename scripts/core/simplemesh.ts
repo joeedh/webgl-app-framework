@@ -1,3 +1,7 @@
+/*
+ * Warning: this API is particularly old.
+ **/
+
 import * as webgl from './webgl.js';
 import {
   Vector2, BaseVector, Vector3, Vector4,
