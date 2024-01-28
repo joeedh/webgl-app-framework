@@ -2,7 +2,7 @@ import {
   nstructjs, Vector2, Vector3, Vector4, ToolOp, StringProperty, Quat, Matrix4,
   haveModal, keymap, KeyMap, HotKey, ToolClasses, ToolFlags, ToolMacro, DropBox,
   DataAPI, Area, ScreenArea, contextWrangler, areaclasses, IAreaConstructor, DataStruct,
-  UIBase, Container, Menu, pushModalLight, popModalLight
+  UIBase, Container, Menu, pushModalLight, popModalLight, Number3
 } from '../path.ux/scripts/pathux.js';
 
 import * as units from '../path.ux/scripts/core/units.js';
@@ -1843,11 +1843,11 @@ export class DirectionChooser extends UIBase {
 
     for (let i = 0; i < steps; i++, th += dth) {
       //break;
-      for (let j = 0; j < 3; j++) {
+      for (let j = 0 as Number3; j < 3; j++) {
         let r2 = 0.33;
         p[j] = Math.sin(th)*r2;
-        p[(j + 1)%3] = Math.cos(th)*r2;
-        p[(j + 2)%3] = 0.0;
+        p[(j + 1)%3 as Number3] = Math.cos(th)*r2;
+        p[(j + 2)%3 as Number3] = 0.0;
 
         p.multVecMatrix(rmat);
 

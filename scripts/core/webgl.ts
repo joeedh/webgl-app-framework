@@ -1772,9 +1772,9 @@ Camera {
     ret.far = this.far;
     ret.aspect = this.aspect;
 
-    ret.target = this.target.slice(0);
-    ret.pos = this.pos.slice(0);
-    ret.up = this.up.slice(0);
+    ret.target = this.target.copy()
+    ret.pos = this.pos.copy();
+    ret.up = this.up.copy();
 
     return ret;
   }

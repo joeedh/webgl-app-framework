@@ -2,7 +2,7 @@ import {PaintOpBase} from '../editors/view3d/tools/pbvh_base.js';
 
 import {
   nstructjs, util,
-  Vector2, Vector3, Vector4, Matrix4, Quat
+  Vector2, Vector3, Vector4, Matrix4, Quat, Number3
 } from '../path.ux/scripts/pathux.js';
 
 const DYNAMIC_SHUFFLE_NODES = false; //attempt fast debalancing of tree dynamically
@@ -799,7 +799,7 @@ export class BVHNode {
     this.tottri = 0; //will be regenerated later
     this.leaf = false;
 
-    let axis = (this.axis + 1) % 3;
+    let axis = ((this.axis + 1) % 3) as Number3;
 
     let min, max;
     if (!this.bvh.isDeforming) {

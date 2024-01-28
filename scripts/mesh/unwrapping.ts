@@ -54,15 +54,15 @@ CVElem {
 
   static define() {
     return {
-      typeName: "uvcorner",
-      uiTypeName: "uvcorner",
-      defaultName: "uvcorner",
+      typeName    : "uvcorner",
+      uiTypeName  : "uvcorner",
+      defaultName : "uvcorner",
       elemTypeMask: MeshTypes.LOOP,
     }
   };
 
   calcMemSize() {
-    return 8 * 5;
+    return 8*5;
   }
 
   copyTo(b) {
@@ -178,8 +178,8 @@ export class UVWrangler {
     this.cellDimen = 1;
     this.hashBounds = [-4, 4];
     this.hashWidth = this.hashBounds[1] - this.hashBounds[0];
-    this.hashWidthMul = 1.0 / this.hashWidth;
-    this.cellSizeMul = this.cellDimen * this.hashWidthMul;
+    this.hashWidthMul = 1.0/this.hashWidth;
+    this.cellSizeMul = this.cellDimen*this.hashWidthMul;
     this.snapLimit = 0.001;
     this.shash = new Map();
 
@@ -431,27 +431,27 @@ export class UVWrangler {
   _getHashPoint(x: number, y: number): Vector2 {
     let p = chp_rets.next();
 
-    p[0] = Math.floor((x - this.hashBounds[0]) * this.cellSizeMul);
-    p[1] = Math.floor((y - this.hashBounds[1]) * this.cellSizeMul);
+    p[0] = Math.floor((x - this.hashBounds[0])*this.cellSizeMul);
+    p[1] = Math.floor((y - this.hashBounds[1])*this.cellSizeMul);
 
     return p;
   }
 
   hashPoint(x: number, y: number): number {
-    x = Math.floor((x - this.hashBounds[0]) * this.cellSizeMul);
-    y = Math.floor((y - this.hashBounds[1]) * this.cellSizeMul);
+    x = Math.floor((x - this.hashBounds[0])*this.cellSizeMul);
+    y = Math.floor((y - this.hashBounds[1])*this.cellSizeMul);
 
-    return y * this.cellDimen + x;
+    return y*this.cellDimen + x;
   }
 
   loadSnapLimit(limit: number): void {
     limit = Math.max(limit, 0.00005);
 
-    let cell = Math.ceil(this.hashWidth / limit) >> 2;
+    let cell = Math.ceil(this.hashWidth/limit)>>2;
 
     this.snapLimit = limit;
     this.cellDimen = cell;
-    this.cellSizeMul = this.cellDimen * this.hashWidthMul;
+    this.cellSizeMul = this.cellDimen*this.hashWidthMul;
   }
 
   finish(): void {
@@ -808,7 +808,7 @@ export class UVWrangler {
         continue;
       }
 
-      let v1, v2, vcent;
+      let v1: Vertex, v2: Vertex, vcent: Vertex;
 
       for (let e2 of v.edges) {
         let v3 = e2.otherVertex(v);
@@ -838,7 +838,7 @@ export class UVWrangler {
 
       let th = Math.acos(t1.dot(t3));
 
-      let shellth = th < 0.0001 ? 1.0 : 1.0 / Math.abs(Math.cos(th));
+      let shellth = th < 0.0001 ? 1.0 : 1.0/Math.abs(Math.cos(th));
 
       t1.interp(t2, 0.5).normalize();
       t1.mulScalar(shellth);
@@ -867,7 +867,7 @@ export class UVWrangler {
               tot++;
             }
 
-            t3.mulScalar(1.0 / tot);
+            t3.mulScalar(1.0/tot);
             t3.sub(v.co).negate();
 
             //console.log("TT4", t3, t3.dot(t1));
@@ -942,7 +942,7 @@ export class UVWrangler {
     let vmap = new Set<Vertex>();
     let doneset = new WeakSet();
     let limit = this.snapLimit;
-    let limitsqr = limit * limit;
+    let limitsqr = limit*limit;
 
     let loops = new Set<Loop>();
 
@@ -969,7 +969,7 @@ export class UVWrangler {
         for (let off of offs) {
           let x2 = hp[0] + off[0];
           let y2 = hp[1] + off[1];
-          let key = y2 * celldimen + x2;
+          let key = y2*celldimen + x2;
 
           let list = this.shash.get(key);
 
@@ -994,7 +994,7 @@ export class UVWrangler {
           }
         }
 
-        uvsum.mulScalar(1.0 / tot);
+        uvsum.mulScalar(1.0/tot);
         v.co.load(uvsum);
         v.co[2] = 0.0;
       }
@@ -1038,7 +1038,7 @@ export class UVWrangler {
     l.boxsize[0] = Math.max(l.boxsize[0], 0.00001);
     l.boxsize[1] = Math.max(l.boxsize[1], 0.00001);
 
-    l.area = l.boxsize[0] * l.boxsize[1];
+    l.area = l.boxsize[0]*l.boxsize[1];
   }
 
   packIslands(ignorePinnedIslands = false, islandsWithSelLoops = false) {
@@ -1078,7 +1078,7 @@ export class UVWrangler {
 
       let cent = new Vector2(l.min).interp(l.max, 0.5);
       let steps = 16;
-      let th = 0.0, dth = Math.PI * 0.5 / steps;
+      let th = 0.0, dth = Math.PI*0.5/steps;
 
       let min = 1e17, minth = 0.0;
       for (let i = 0; i < steps; i++, th += dth) {
@@ -1089,7 +1089,7 @@ export class UVWrangler {
         }
 
         this.updateAABB(l);
-        let size = (l.max[0] - l.min[0]) * (l.max[1] - l.min[1]);
+        let size = (l.max[0] - l.min[0])*(l.max[1] - l.min[1]);
         if (size < min) {
           min = size;
           minth = th;
@@ -1129,7 +1129,7 @@ export class UVWrangler {
     for (let island of islands) {
       this.updateAABB(island);
 
-      let ratio = 0.75 / Math.sqrt(totarea);
+      let ratio = 0.75/Math.sqrt(totarea);
 
 
       for (let v of island) {
@@ -1144,7 +1144,7 @@ export class UVWrangler {
       return b.area - a.area;
     });
 
-    let rec = (uv1, uv2, axis, depth = 0) => {
+    let rec = (uv1: Vector2, uv2: Vector2, axis: 0 | 1, depth = 0) => {
       drawline([uv1[0], uv1[1]], [uv1[0], uv2[1]]);
       drawline([uv1[0], uv2[1]], [uv2[0], uv2[1]]);
       drawline([uv2[0], uv2[1]], [uv2[0], uv1[1]]);
@@ -1155,8 +1155,8 @@ export class UVWrangler {
       }
 
       let size = new Vector2(uv2).sub(uv1);
-      let area = size[0] * size[1];
-      let axis2 = axis ^ 1;
+      let area = size[0]*size[1];
+      let axis2 = (axis ^ 1) as 0|1;
 
       let margin = 0.001;
 
@@ -1185,14 +1185,14 @@ export class UVWrangler {
       //console.log("min", min);
 
       let vec = new Vector2(uv2).sub(uv1);
-      let dis = vec[0] * vec[1];
+      let dis = vec[0]*vec[1];
 
-      if ((min > dis * 0.5 && depth < maxdepth - 1) || !island) {
+      if ((min > dis*0.5 && depth < maxdepth - 1) || !island) {
         let split = 0.5;
 
         let uv3 = new Vector2(uv1);
         let uv4 = new Vector2(uv2);
-        let t = uv1[axis] + (uv2[axis] - uv1[axis]) * split;
+        let t = uv1[axis] + (uv2[axis] - uv1[axis])*split;
 
         uv3[axis] = t;
         uv4[axis] = t;
@@ -1207,19 +1207,19 @@ export class UVWrangler {
         let cent = island.min.interp(island.max, 0.5);
 
         for (let v of island) {
-          v.co.sub(cent).rot2d(Math.PI * 0.5).add(cent);
+          v.co.sub(cent).rot2d(Math.PI*0.5).add(cent);
         }
 
         this.updateAABB(island);
       }
 
       islands.remove(island);
-      let ratio = island.boxsize[0] / island.boxsize[1];
+      let ratio = island.boxsize[0]/island.boxsize[1];
       let cent = new Vector2(island.min).interp(island.max, 0.5);
-      size.subScalar(margin * 2.0);
+      size.subScalar(margin*2.0);
 
-      let ratio2 = size[0] / size[1];
-      ratio = ratio / ratio2;
+      let ratio2 = size[0]/size[1];
+      ratio = ratio/ratio2;
 
       for (let v of island) {
         v.co.sub(island.min).div(island.boxsize).mul(size);
@@ -1238,7 +1238,7 @@ export class UVWrangler {
       return;
 
       let split = 0.5;
-      split = uv1[axis] + (uv2[axis] - uv1[axis]) * split;
+      split = uv1[axis] + (uv2[axis] - uv1[axis])*split;
       let mid = new Vector2();
 
       mid[axis] = split;
@@ -1312,7 +1312,7 @@ export class VoxelNode extends BVHNode {
     let variance = 0.0;
     let tot = 0.0;
     for (let t of this.uniqueTris) {
-      let th = Math.acos(t.no.dot(avg) * 0.999999) / Math.PI;
+      let th = Math.acos(t.no.dot(avg)*0.999999)/Math.PI;
 
       let w = t.area;
       //w = math.tri_area(t.v1, t.v2, t.v3);
@@ -1320,11 +1320,11 @@ export class VoxelNode extends BVHNode {
       th *= th;
       //th = Math.abs(th);
 
-      variance += th * w;
+      variance += th*w;
       tot += w;
     }
 
-    variance = variance / tot;
+    variance = variance/tot;
 
     if (variance > this.splitVar) {
       return 1;
@@ -1348,8 +1348,9 @@ export class VoxelBVH extends BVH {
 VoxelBVH.nodeClass = VoxelNode;
 
 export function voxelUnwrap(mesh: Mesh, faces: Iterable<Face>, cd_uv?: AttrRef<UVLayerElem>, setSeams = true,
-                            leafLimit = 255, depthLimit = 25,
-                            splitVar = 0.16) {
+                            leafLimit                                                                 = 255,
+                            depthLimit                                                                = 25,
+                            splitVar                                                                  = 0.16) {
   if (cd_uv === undefined) {
     cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem);
   }
@@ -1365,7 +1366,7 @@ export function voxelUnwrap(mesh: Mesh, faces: Iterable<Face>, cd_uv?: AttrRef<U
   let bvh = VoxelBVH.create<VoxelBVH>(mesh, {
     leafLimit,
     depthLimit,
-    useGrids: false,
+    useGrids  : false,
     deformMode: true,
   });
   bvh.splitVar = splitVar;
@@ -1456,6 +1457,9 @@ export function voxelUnwrap(mesh: Mesh, faces: Iterable<Face>, cd_uv?: AttrRef<U
     for (let l of ls) {
       p.load(l.v.co).multVecMatrix(mat);
 
+      l.v.co[1] = 1;
+      //l.v.co[3] = 1;
+
       min.min(p);
       max.max(p);
 
@@ -1463,7 +1467,7 @@ export function voxelUnwrap(mesh: Mesh, faces: Iterable<Face>, cd_uv?: AttrRef<U
     }
 
     max.sub(min);
-    totarea += max[0] * max[1];
+    totarea += max[0]*max[1];
 
     let pnode = new MyPackNode();
     pnode.pos.load(min).mulScalar(1000);
@@ -1482,7 +1486,7 @@ export function voxelUnwrap(mesh: Mesh, faces: Iterable<Face>, cd_uv?: AttrRef<U
 
   console.log("totarea", totarea);
 
-  totarea = Math.sqrt(totarea) * 0.4;
+  totarea = Math.sqrt(totarea)*0.4;
 
   if (totarea === 0.0) {
     totarea = 1.0;
@@ -1496,7 +1500,7 @@ export function voxelUnwrap(mesh: Mesh, faces: Iterable<Face>, cd_uv?: AttrRef<U
       for (let l of f.loops) {
         let uv = cd_uv.get(l).uv;
 
-        uv.mulScalar(1.0 / totarea);
+        uv.mulScalar(1.0/totarea);
         uv[0] += rx;
         uv[1] += ry;
       }
@@ -1504,7 +1508,7 @@ export function voxelUnwrap(mesh: Mesh, faces: Iterable<Face>, cd_uv?: AttrRef<U
   }
 
   for (let pn of graph) {
-    let off = new Vector2(pn.pos).sub(pn.startpos).mulScalar(1.0 / 1000);
+    let off = new Vector2(pn.pos).sub(pn.startpos).mulScalar(1.0/1000);
 
     for (let l of pn.ls) {
       let uv = cd_uv.get(l).uv;

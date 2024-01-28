@@ -8,7 +8,7 @@ import {
   ReusableIter, MeshIterFlags, STORE_DELAY_CACHE_INDEX
 } from "./mesh_base";
 import {UVLayerElem} from "./mesh_customdata";
-import {nstructjs, Vector3, Vector4, Quat, Matrix4, BaseVector, util, Vector2} from '../path.ux/pathux.js';
+import {nstructjs, Vector3, Vector4, Quat, Matrix4, BaseVector, util, Vector2, Number3} from '../path.ux/pathux.js';
 
 import {EDGE_LINKED_LISTS} from '../core/const.js';
 
@@ -2111,7 +2111,7 @@ mesh.Edge {
     function getUp(dv) {
       dv.normalize();
       let x = Math.abs(dv[0]), y = Math.abs(dv[1]), z = Math.abs(dv[2]);
-      let axis;
+      let axis : Number3;
 
       if (x < y && x < z)
         axis = 0;
@@ -2203,7 +2203,7 @@ mesh.Edge {
     if (this.h1) {
       let ret = _evaluate_vs.next().zero();
 
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0 as Number3; i < 3; i++) {
         let k1 = this.v1.co[i], k2 = this.h1.co[i], k3 = this.h2.co[i], k4 = this.v2.co[i];
         ret[i] = -(k1 * t ** 3 - 3 * k1 * t ** 2 + 3 * k1 * t - k1 - 3 * k2 * t ** 3 + 6 * k2 * t ** 2 - 3 * k2 * t + 3 *
           k3 * t ** 3 - 3 * k3 * t ** 2 - k4 * t ** 3);

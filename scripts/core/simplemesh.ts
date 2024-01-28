@@ -5,12 +5,11 @@
 import * as webgl from './webgl.js';
 import {
   Vector2, BaseVector, Vector3, Vector4,
-  Quat, Matrix4, util, math, nstructjs
+  Quat, Matrix4, util, math, nstructjs, INumVector
 } from '../path.ux/scripts/pathux.js'
 import {ShaderProgram} from "./webgl.js";
 import './const.js';
 import {Shaders, loadShader} from '../shaders/shaders.js';
-import {INumberList} from "../util/polyfill";
 import {RenderBuffer} from "./webgl.js";
 
 export enum PrimitiveTypes {
@@ -118,7 +117,7 @@ export class TriEditor {
     return this;
   }
 
-  normals(n1: INumberList, n2: INumberList, n3: INumberList): this {
+  normals(n1: INumVector, n2: INumVector, n3: INumVector): this {
     let data = this.mesh.tri_normals
 
     let i = this.i * 3; //*3 is because triangles have three vertices
@@ -130,7 +129,7 @@ export class TriEditor {
     return this;
   }
 
-  custom(layeri: number, v1: INumberList, v2: INumberList, v3: INumberList): this {
+  custom(layeri: number, v1: INumVector, v2: INumVector, v3: INumVector): this {
     let layer = this.mesh.layers.layers[layeri];
 
     let i = this.i * 3;
@@ -141,7 +140,7 @@ export class TriEditor {
     return this;
   }
 
-  uvs(u1: INumberList, u2: INumberList, u3: INumberList): this {
+  uvs(u1: INumVector, u2: INumVector, u3: INumVector): this {
     let data = this.mesh.tri_uvs
     let i = this.i * 3; //*3 is because triangles have three vertices
 
@@ -191,26 +190,26 @@ export class QuadEditor {
     return this;
   }
 
-  uvs(u1: INumberList, u2: INumberList, u3: INumberList, u4: INumberList) {
+  uvs(u1: INumVector, u2: INumVector, u3: INumVector, u4: INumVector) {
     this.t1.uvs(u1, u2, u3);
     this.t2.uvs(u1, u3, u4);
 
     return this;
   }
 
-  custom(li: number, v1: INumberList, v2: INumberList, v3: INumberList, v4: INumberList) {
+  custom(li: number, v1: INumVector, v2: INumVector, v3: INumVector, v4: INumVector) {
     this.t1.custom(li, v1, v2, v3);
     this.t2.custom(li, v1, v3, v4);
   }
 
-  colors(u1: INumberList, u2: INumberList, u3: INumberList, u4: INumberList) {
+  colors(u1: INumVector, u2: INumVector, u3: INumVector, u4: INumVector) {
     this.t1.colors(u1, u2, u3);
     this.t2.colors(u1, u3, u4);
 
     return this;
   }
 
-  normals(u1: INumberList, u2: INumberList, u3: INumberList, u4: INumberList) {
+  normals(u1: INumVector, u2: INumVector, u3: INumVector, u4: INumVector) {
     this.t1.normals(u1, u2, u3);
     this.t2.normals(u1, u3, u4);
 
@@ -240,7 +239,7 @@ export class LineEditor {
     return this;
   }
 
-  colors(c1: INumberList, c2: INumberList): this {
+  colors(c1: INumVector, c2: INumVector): this {
     let data = this.mesh.line_colors;
     let i = this.i * 2;
 
@@ -250,7 +249,7 @@ export class LineEditor {
     return this;
   }
 
-  custom(layeri: number, v1: INumberList, v2: INumberList): this {
+  custom(layeri: number, v1: INumVector, v2: INumVector): this {
     let layer = this.mesh.layers.layers[layeri];
 
     let i = this.i * 2;
@@ -260,7 +259,7 @@ export class LineEditor {
     return this;
   }
 
-  normals(c1: INumberList, c2: INumberList): this {
+  normals(c1: INumVector, c2: INumVector): this {
     let data = this.mesh.line_normals;
     let i = this.i * 2;
 
@@ -270,7 +269,7 @@ export class LineEditor {
     return this;
   }
 
-  uvs(c1: INumberList, c2: INumberList): this {
+  uvs(c1: INumVector, c2: INumVector): this {
     let data = this.mesh.line_uvs;
     let i = this.i * 2;
 
@@ -341,7 +340,7 @@ export class LineEditor2 {
     return this;
   }
 
-  custom(layeri: number, c1: INumberList, c2: INumberList): this {
+  custom(layeri: number, c1: INumVector, c2: INumVector): this {
     let data = this.mesh.layers.layers[layeri];
 
     let i = this.i * 6;
@@ -356,7 +355,7 @@ export class LineEditor2 {
     return this;
   }
 
-  colors(c1: INumberList, c2: INumberList): this {
+  colors(c1: INumVector, c2: INumVector): this {
     let data = this.mesh.line_colors2;
     let i = this.i * 6;
 
@@ -370,7 +369,7 @@ export class LineEditor2 {
     return this;
   }
 
-  normals(c1: INumberList, c2: INumberList): this {
+  normals(c1: INumVector, c2: INumVector): this {
     let data = this.mesh.line_normals2;
     let i = this.i * 6;
 
@@ -384,7 +383,7 @@ export class LineEditor2 {
     return this;
   }
 
-  uvs(c1: INumberList, c2: INumberList): this {
+  uvs(c1: INumVector, c2: INumVector): this {
     let data = this.mesh.line_uvs2;
     let i = this.i * 6;
 
@@ -438,7 +437,7 @@ export class PointEditor {
     return this;
   }
 
-  colors(c1: INumberList): this {
+  colors(c1: INumVector): this {
     let data = this.mesh.point_colors;
     let i = this.i;
 
@@ -447,7 +446,7 @@ export class PointEditor {
     return this;
   }
 
-  normals(c1: INumberList): this {
+  normals(c1: INumVector): this {
     let data = this.mesh.point_normals;
     let i = this.i;
 
@@ -456,7 +455,7 @@ export class PointEditor {
     return this;
   }
 
-  uvs(c1: INumberList): this {
+  uvs(c1: INumVector): this {
     let data = this.mesh.point_uvs;
     let i = this.i;
 
@@ -687,13 +686,13 @@ export class GeoLayer extends Array {
     return this;
   }
 
-  extend(data: INumberList, count = 1) {
+  extend(data: INumVector, count = 1) {
     for (let i = 0; i < count; i++) {
       this.extendIntern(data, i * this.size);
     }
   }
 
-  private extendIntern(data: INumberList, dataStart: number) {
+  private extendIntern(data: INumVector, dataStart: number) {
     if (this._useTypedData && this.dataUsed >= this.data_f32.length) {
       if (window.DEBUG.simplemesh) {
         console.warn("Resizing simplemesh attribute after conversion to a typed array");
@@ -791,19 +790,19 @@ export class GeoLayer extends Array {
     }
   }
 
-  _copy2Typed(data1: INumberList, data2: INumberList, n: number, mul: number, start: number, dataStart: number) {
+  _copy2Typed(data1: INumVector, data2: INumVector, n: number, mul: number, start: number, dataStart: number) {
     for (let i = 0; i < n; i++) {
       data1[start++] = ~~(data2[dataStart + i] * mul);
     }
   }
 
-  _copy2(data1: INumberList, data2: INumberList, n: number, mul: number, start: number, dataStart: number) {
+  _copy2(data1: INumVector, data2: INumVector, n: number, mul: number, start: number, dataStart: number) {
     for (let i = 0; i < n; i++) {
       data1[start++] = ~~(data2[dataStart + i] * mul);
     }
   }
 
-  _copy_int(i: number, data: INumberList, n = 1, dataStart = 0) {
+  _copy_int(i: number, data: INumVector, n = 1, dataStart = 0) {
     let tot = n * this.size;
     this.f32Ready = false;
 
@@ -843,7 +842,7 @@ export class GeoLayer extends Array {
 
 
   /** i and n will be multiplied by .size, dataStart will not */
-  copy(i: number, data: INumberList, n = 1, dataStart = 0) {
+  copy(i: number, data: INumVector, n = 1, dataStart = 0) {
     //V8's optimizer doesn't like it if we pass floats
     //to integer typed arrays, even if we multiply them by
     //the proper range scale first.  They must be truncated.
@@ -1015,7 +1014,7 @@ export class GeoLayerManager {
     return this.layers[Symbol.iterator]();
   }
 
-  extend(primflag: PrimitiveTypes, type: number, data: INumberList, count = 1): this {
+  extend(primflag: PrimitiveTypes, type: number, data: INumVector, count = 1): this {
     let meta = this.get_meta(primflag, type);
 
     for (let i = 0; i < meta.layers.length; i++) {
@@ -1294,7 +1293,7 @@ export class SimpleIsland {
     this._regen_all |= primflag;
   }
 
-  point(v1: INumberList): PointEditor {
+  point(v1: INumVector): PointEditor {
     this.point_cos.extend(v1);
 
     this._newElem(PrimitiveTypes.POINTS, 1);
@@ -1303,7 +1302,7 @@ export class SimpleIsland {
     return this.point_editors.next().bind(this, this.totpoint - 1);
   }
 
-  smoothline(v1: INumberList, v2: INumberList, w1 = 2, w2 = 2): LineEditor2 {
+  smoothline(v1: INumVector, v2: INumVector, w1 = 2, w2 = 2): LineEditor2 {
     let dv = 0.0;
     for (let i = 0; i < 3; i++) {
       dv += (v1[i] - v2[i]) * (v1[i] - v2[i]);
@@ -1372,7 +1371,7 @@ export class SimpleIsland {
     return this.tristrip_line_editors.next().bind(this, this.totline_tristrip - 1);
   }
 
-  line(v1: INumberList, v2: INumberList): LineEditor {
+  line(v1: INumVector, v2: INumVector): LineEditor {
     //return this.smoothline(v1, v2);
 
     this.line_cos.extend(v1);
@@ -1415,7 +1414,7 @@ export class SimpleIsland {
     return start;
   }
 
-  tri(v1: INumberList, v2: INumberList, v3: INumberList): TriEditor {
+  tri(v1: INumVector, v2: INumVector, v3: INumVector): TriEditor {
     this.tri_cos.extend(v1);
     this.tri_cos.extend(v2);
     this.tri_cos.extend(v3);
@@ -1427,7 +1426,7 @@ export class SimpleIsland {
     return this.tri_editors.next().bind(this, this.tottri - 1);
   }
 
-  quad(v1: INumberList, v2: INumberList, v3: INumberList, v4: INumberList): QuadEditor {
+  quad(v1: INumVector, v2: INumVector, v3: INumVector, v4: INumVector): QuadEditor {
     let i = this.tottri;
 
     this.tri(v1, v2, v3);
@@ -1970,23 +1969,23 @@ export class SimpleMesh {
     }
   }
 
-  tri(v1: INumberList, v2: INumberList, v3: INumberList): TriEditor {
+  tri(v1: INumVector, v2: INumVector, v3: INumVector): TriEditor {
     return this.island.tri(v1, v2, v3);
   }
 
-  quad(v1: INumberList, v2: INumberList, v3: INumberList, v4: INumberList): QuadEditor {
+  quad(v1: INumVector, v2: INumVector, v3: INumVector, v4: INumVector): QuadEditor {
     return this.island.quad(v1, v2, v3, v4);
   }
 
-  line(v1: INumberList, v2: INumberList): LineEditor {
+  line(v1: INumVector, v2: INumVector): LineEditor {
     return this.island.line(v1, v2);
   }
 
-  point(v1: INumberList): PointEditor {
+  point(v1: INumVector): PointEditor {
     return this.island.point(v1);
   }
 
-  smoothline(v1: INumberList, v2: INumberList): LineEditor2 {
+  smoothline(v1: INumVector, v2: INumVector): LineEditor2 {
     return this.island.smoothline(v1, v2);
   }
 
@@ -2181,7 +2180,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   }
 
   // @ts-ignore
-  tri(id: number, v1: INumberList, v2: INumberList, v3: INumberList): TriEditor {
+  tri(id: number, v1: INumVector, v2: INumVector, v3: INumVector): TriEditor {
     if (0) {
       function isvec(v) {
         if (!v) {
@@ -2248,12 +2247,12 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     return chunk.tri_editors.next().bind(chunk, itri);
   }
 
-  quad(v1: INumberList, v2: INumberList, v3: INumberList, v4: INumberList): QuadEditor {
+  quad(v1: INumVector, v2: INumVector, v3: INumVector, v4: INumVector): QuadEditor {
     throw new Error("unsupported for chunked meshes");
   }
 
   // @ts-ignore
-  smoothline(id: number, v1: INumberList, v2: INumberList): LineEditor2 {
+  smoothline(id: number, v1: INumVector, v2: INumVector): LineEditor2 {
     let chunk = this.get_chunk(id);
     let iline = this.idmap.get(id);
 
@@ -2314,7 +2313,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   }
 
   // @ts-ignore
-  line(id: number, v1: INumberList, v2: INumberList): LineEditor {
+  line(id: number, v1: INumVector, v2: INumVector): LineEditor {
     //return this.smoothline(id, v1, v2);
 
     let chunk = this.get_chunk(id);
@@ -2348,7 +2347,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   }
 
   // @ts-ignore
-  point(id: number, v1: INumberList): PointEditor {
+  point(id: number, v1: INumVector): PointEditor {
     let chunk = this.get_chunk(id);
     let ipoint = this.idmap.get(id);
 

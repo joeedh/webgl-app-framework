@@ -3,7 +3,7 @@ import {MeshTypes} from "./mesh_base";
 import '../util/floathalf.js';
 import {
   nstructjs, util, Vector2, Vector3, Vector4,
-  Quat, Matrix4, DataAPI, DataStruct
+  Quat, Matrix4, DataAPI, DataStruct, Number4
 } from '../path.ux/scripts/pathux.js';
 import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
 
@@ -541,7 +541,7 @@ mesh.ColorLayerElem {
     super.loadSTRUCT(reader);
 
     if ((this.color.constructor as any) === Array) {
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0 as Number4; i < 4; i++) {
         this.color[i] = half2float(this.color[i]);
       }
 

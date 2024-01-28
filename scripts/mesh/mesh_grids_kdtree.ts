@@ -1,4 +1,4 @@
-import {Matrix4, nstructjs, Vector2, Vector3, Vector4, util, math} from "../path.ux/scripts/pathux.js";
+import {Matrix4, nstructjs, Vector2, Vector3, Vector4, util, math, Number2} from "../path.ux/scripts/pathux.js";
 import {CDElemArray, MeshFlags, MeshTypes} from "./mesh_base";
 import {AttrRef, CustomDataElem} from "./customdata";
 import {ChunkedSimpleMesh} from "../core/simplemesh";
@@ -30,83 +30,83 @@ export const EMapFields = {
 
 let a = 0;
 export const KdTreeFields = {
-  QFLAG: a++,
-  QCHILD1: a++,
-  QCHILD2: a++,
-  QMINU: a++,
-  QMINV: a++,
-  QMAXU: a++,
-  QMAXV: a++,
-  QCENTU: a++,
-  QCENTV: a++,
-  QDEPTH: a++,
-  QPOINT1: a++,
-  QPOINT2: a++,
-  QPOINT3: a++,
-  QPOINT4: a++,
-  QID: a++,
-  QPARENT: a++,
+  QFLAG         : a++,
+  QCHILD1       : a++,
+  QCHILD2       : a++,
+  QMINU         : a++,
+  QMINV         : a++,
+  QMAXU         : a++,
+  QMAXV         : a++,
+  QCENTU        : a++,
+  QCENTV        : a++,
+  QDEPTH        : a++,
+  QPOINT1       : a++,
+  QPOINT2       : a++,
+  QPOINT3       : a++,
+  QPOINT4       : a++,
+  QID           : a++,
+  QPARENT       : a++,
   QSUBTREE_DEPTH: a++,
-  QPARENTIDX: a++,
-  QPOLYSTART: a++,
-  QPOLYEND: a++,
-  QNX: a++,
-  QNY: a++,
-  QNZ: a++,
-  QTX: a++,
-  QTY: a++,
-  QTZ: a++,
-  QBX: a++,
-  QBY: a++,
-  QBZ: a++,
-  QCENTX: a++,
-  QCENTY: a++,
-  QCENTZ: a++,
-  QAXIS: a++,
-  QSPLIT: a++,
-  QTOT: a //reserve some space for future expansion
+  QPARENTIDX    : a++,
+  QPOLYSTART    : a++,
+  QPOLYEND      : a++,
+  QNX           : a++,
+  QNY           : a++,
+  QNZ           : a++,
+  QTX           : a++,
+  QTY           : a++,
+  QTZ           : a++,
+  QBX           : a++,
+  QBY           : a++,
+  QBZ           : a++,
+  QCENTX        : a++,
+  QCENTY        : a++,
+  QCENTZ        : a++,
+  QAXIS         : a++,
+  QSPLIT        : a++,
+  QTOT          : a //reserve some space for future expansion
 };
 
 
 const MAXCHILD = 2;
 
 
-const QFLAG = KdTreeFields.QFLAG,
-  QCHILD1 = KdTreeFields.QCHILD1,
-  QCHILD2 = KdTreeFields.QCHILD2,
-  QMINU = KdTreeFields.QMINU,
-  QMAXU = KdTreeFields.QMAXU,
-  QMINV = KdTreeFields.QMINV,
-  QCENTU = KdTreeFields.QCENTU,
-  QCENTV = KdTreeFields.QCENTV,
-  QMAXV = KdTreeFields.QMAXV,
-  QDEPTH = KdTreeFields.QDEPTH,
-  QPOINT1 = KdTreeFields.QPOINT1,
-  QPOINT2 = KdTreeFields.QPOINT2,
-  QPOINT3 = KdTreeFields.QPOINT3,
-  QPOINT4 = KdTreeFields.QPOINT4,
-  //QPOINT5 = KdTreeFields.QPOINT5,
-  QID = KdTreeFields.QID,
-  QPARENT = KdTreeFields.QPARENT,
-  QSUBTREE_DEPTH = KdTreeFields.QSUBTREE_DEPTH,
-  QPARENTIDX = KdTreeFields.QPARENTIDX,
-  QPOLYSTART = KdTreeFields.QPOLYSTART,
-  QPOLYEND = KdTreeFields.QPOLYEND,
-  QNX = KdTreeFields.QNX,
-  QNY = KdTreeFields.QNY,
-  QNZ = KdTreeFields.QNZ,
-  QTX = KdTreeFields.QTX,
-  QTY = KdTreeFields.QTY,
-  QTZ = KdTreeFields.QTZ,
-  QBX = KdTreeFields.QBX,
-  QBY = KdTreeFields.QBY,
-  QBZ = KdTreeFields.QBZ,
-  QCENTX = KdTreeFields.QCENTX,
-  QCENTY = KdTreeFields.QCENTY,
-  QCENTZ = KdTreeFields.QCENTZ,
-  QAXIS = KdTreeFields.QAXIS,
-  QSPLIT = KdTreeFields.QSPLIT,
-  QTOT = KdTreeFields.QTOT;
+const QFLAG          = KdTreeFields.QFLAG,
+      QCHILD1        = KdTreeFields.QCHILD1,
+      QCHILD2        = KdTreeFields.QCHILD2,
+      QMINU          = KdTreeFields.QMINU,
+      QMAXU          = KdTreeFields.QMAXU,
+      QMINV          = KdTreeFields.QMINV,
+      QCENTU         = KdTreeFields.QCENTU,
+      QCENTV         = KdTreeFields.QCENTV,
+      QMAXV          = KdTreeFields.QMAXV,
+      QDEPTH         = KdTreeFields.QDEPTH,
+      QPOINT1        = KdTreeFields.QPOINT1,
+      QPOINT2        = KdTreeFields.QPOINT2,
+      QPOINT3        = KdTreeFields.QPOINT3,
+      QPOINT4        = KdTreeFields.QPOINT4,
+      //QPOINT5 = KdTreeFields.QPOINT5,
+      QID            = KdTreeFields.QID,
+      QPARENT        = KdTreeFields.QPARENT,
+      QSUBTREE_DEPTH = KdTreeFields.QSUBTREE_DEPTH,
+      QPARENTIDX     = KdTreeFields.QPARENTIDX,
+      QPOLYSTART     = KdTreeFields.QPOLYSTART,
+      QPOLYEND       = KdTreeFields.QPOLYEND,
+      QNX            = KdTreeFields.QNX,
+      QNY            = KdTreeFields.QNY,
+      QNZ            = KdTreeFields.QNZ,
+      QTX            = KdTreeFields.QTX,
+      QTY            = KdTreeFields.QTY,
+      QTZ            = KdTreeFields.QTZ,
+      QBX            = KdTreeFields.QBX,
+      QBY            = KdTreeFields.QBY,
+      QBZ            = KdTreeFields.QBZ,
+      QCENTX         = KdTreeFields.QCENTX,
+      QCENTY         = KdTreeFields.QCENTY,
+      QCENTZ         = KdTreeFields.QCENTZ,
+      QAXIS          = KdTreeFields.QAXIS,
+      QSPLIT         = KdTreeFields.QSPLIT,
+      QTOT           = KdTreeFields.QTOT;
 
 
 let _quad_node_idgen = 0;
@@ -128,20 +128,20 @@ function makeCompressedNodeStruct() {
   let fields = {};
 
   let types = {
-    QFLAG: "byte",
-    QDEPTH: "byte",
-    QAXIS: "byte",
-    QSPLIT: "float",
+    QFLAG  : "byte",
+    QDEPTH : "byte",
+    QAXIS  : "byte",
+    QSPLIT : "float",
     QCHILD1: "int",
     QCHILD2: "int",
     QPOINT1: "int",
     QPOINT2: "int",
     QPOINT3: "int",
     QPOINT4: "int",
-    QMINU: "float",
-    QMAXU: "float",
-    QMINV: "float",
-    QMAXV: "float"
+    QMINU  : "float",
+    QMAXU  : "float",
+    QMINV  : "float",
+    QMAXV  : "float"
   }
 
   let s = `mesh_grid.CompressedKdNode {\n`
@@ -210,7 +210,7 @@ export class UVMap extends Array<number> {
     }
 
     //add one so we include 1.0
-    super((dimen + 1) * (dimen + 1));
+    super((dimen + 1)*(dimen + 1));
 
     this._len = this.length;
 
@@ -221,10 +221,10 @@ export class UVMap extends Array<number> {
 
   reset(dimen: number): this {
     this.dimen = dimen;
-    this._len = (dimen + 1) * (dimen + 1);
+    this._len = (dimen + 1)*(dimen + 1);
 
     if (this.length < this._len) {
-      this.length = (dimen + 1) * (dimen + 1);
+      this.length = (dimen + 1)*(dimen + 1);
     }
 
     this.size = 0;
@@ -357,10 +357,10 @@ let interptemp1 = [];
 
 export const KdTreeFlags = {
   SELECT: 1,
-  LEAF: 2,
-  DEAD: 4,
-  TEMP: 8,
-  TEMP2: 16
+  LEAF  : 2,
+  DEAD  : 4,
+  TEMP  : 8,
+  TEMP2 : 16
 };
 
 const {SELECT, LEAF, DEAD, TEMP, TEMP2} = KdTreeFlags;
@@ -422,14 +422,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
   static define() {
     return {
-      elemTypeMask: MeshTypes.LOOP, //see MeshTypes in mesh.js
-      typeName: "KdTreeGrid",
+      elemTypeMask : MeshTypes.LOOP, //see MeshTypes in mesh.js
+      typeName     : "KdTreeGrid",
       settingsClass: GridSettings,
-      uiTypeName: "KdTreeGrid",
-      defaultName: "KdTreeGrid",
+      uiTypeName   : "KdTreeGrid",
+      defaultName  : "KdTreeGrid",
       //needsSubSurf : true,
       valueSize: undefined,
-      flag: 0
+      flag     : 0
     }
   };
 
@@ -483,9 +483,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }*/
 
   calcMemSize() {
-    let tot = super.calcMemSize() + this.nodes.length * 8;
-    tot += this.freelist.length * 8 + this.subdtemps.length * 8 * 32;
-    tot += this.polys.length * 8;
+    let tot = super.calcMemSize() + this.nodes.length*8;
+    tot += this.freelist.length*8 + this.subdtemps.length*8*32;
+    tot += this.polys.length*8;
 
     return tot;
   }
@@ -542,7 +542,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     b.cdmap = this.cdmap.concat([]);
     b.cdmap_reverse = this.cdmap_reverse.concat([]);
 
-    b.recalcFlag = (1 << 20) - 1; //QRecalcFlags.ALL;
+    b.recalcFlag = (1<<20) - 1; //QRecalcFlags.ALL;
 
     b.relinkCustomData();
     b._rebuildHash();
@@ -589,7 +589,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       }
 
       if (tot) {
-        ret[0].mulScalar(1.0 / tot);
+        ret[0].mulScalar(1.0/tot);
       }
 
       ret[1].load(loop.v).interp(loop.prev.v, 0.5);
@@ -605,7 +605,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       i++;
     }
 
-    if (i % 2 === 0) {
+    if (i%2 === 0) {
       //return [ret[3], ret[0], ret[1], ret[2]];
     }
 
@@ -646,7 +646,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     if (w !== 0.0) {
-      _tmp.mulScalar(1.0 / w);
+      _tmp.mulScalar(1.0/w);
       v.interp(_tmp, fac);
     }
 
@@ -674,7 +674,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         }
       }
 
-      p.co.mulScalar(1.0 / w);
+      p.co.mulScalar(1.0/w);
 
       for (let pr of p.bRing) {
         if (pr.eid >= 0) {
@@ -685,11 +685,11 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   _hashPoint(u, v) {
-    let dimen = 1024 * 1024;
-    u = ~~(u * dimen + 0.000001);
-    v = ~~(v * dimen + 0.000001);
+    let dimen = 1024*1024;
+    u = ~~(u*dimen + 0.000001);
+    v = ~~(v*dimen + 0.000001);
 
-    return v * dimen + u;
+    return v*dimen + u;
   }
 
   _getPoint(u, v, loopEid, mesh, isNewOut) {
@@ -861,7 +861,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     return this._recalcFlag;
   }//*/
 
-  _ensureNodePoint(ni: number, pidx: number, loopEid: Loop | undefined = undefined, mesh: Mesh, isNewOut?: boolean[]): KDGridVert {
+  _ensureNodePoint(ni: number, pidx: number, loopEid: Loop | undefined = undefined, mesh: Mesh,
+                   isNewOut?: boolean[]): KDGridVert {
     let nodes = this.nodes;
 
     let u, v;
@@ -1063,14 +1064,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       emap2 = [];
     }
 
-    if (this.topo && this.topo.vmap2.length === ps.length * VTOT) {
+    if (this.topo && this.topo.vmap2.length === ps.length*VTOT) {
       vmap2 = this.topo.vmap2;
     } else {
-      vmap2 = new Float64Array(ps.length * VTOT);
+      vmap2 = new Float64Array(ps.length*VTOT);
     }
 
     for (let i = 0; i < ps.length; i++) {
-      let vi = i * VTOT;
+      let vi = i*VTOT;
 
       vmap2[vi + VINDEX] = i;
       vmap2[vi + VP] = 0;
@@ -1101,7 +1102,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       let min = Math.min(a, b);
       let max = Math.max(a, b);
 
-      return min | (max << 21);
+      return min | (max<<21);
       //return Math.min(a, b) + ":" + Math.max(a, b);
     }
 
@@ -1116,7 +1117,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         ei = emap2.length;
 
         emap2.length += ETOT;
-        emap2[ei + EINDEX] = eindex * ETOT;
+        emap2[ei + EINDEX] = eindex*ETOT;
         emap2[ei + EID] = idgen;
         emap2[ei + EV1] = a;
         emap2[ei + EV2] = b;
@@ -1128,7 +1129,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         idgen++;
       }
 
-      let vi = a * VTOT;
+      let vi = a*VTOT;
 
       if (vmap2[vi + VTOTE] < VMAXE) {
         let vi2 = vi + VTOTE + 1 + vmap2[vi + VTOTE];
@@ -1140,7 +1141,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       return ei;
     }
 
-    let dimen3 = ~~(dimen * 16);
+    let dimen3 = ~~(dimen*16);
     let uvmap;
 
     if (dimen3 <= 256) {
@@ -1158,10 +1159,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     function uvkey(u, v) {
 
-      u = ~~(u * dimen3 + 0.0001);
-      v = ~~(v * dimen3 + 0.0001);
+      u = ~~(u*dimen3 + 0.0001);
+      v = ~~(v*dimen3 + 0.0001);
 
-      return v * dimen3 + u;
+      return v*dimen3 + u;
     }
 
     function setuv(vi, u, v) {
@@ -1171,7 +1172,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     function addedge(ni, a, b, u, v) {
-      setuv(a * VTOT, u, v);
+      setuv(a*VTOT, u, v);
 
       let ei = getedge(a, b);
       //e.nodes.push(ni);
@@ -1216,7 +1217,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       for (let j = 0; j < 4; j++) {
         let ip = ns[ni + QPOINT1 + j];
 
-        let vi = ip * VTOT;
+        let vi = ip*VTOT;
 
         if (vmap2[vi + VTOTN] < VMAXN) {
           let vi2 = vi + VTOTN + vmap2[vi + VTOTN] + 1;
@@ -1233,7 +1234,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     for (let i = 0; i < ps.length; i++) {
-      let vi = i * VTOT;
+      let vi = i*VTOT;
 
       let u = vmap2[vi + VU];
       let v = vmap2[vi + VV];
@@ -1278,12 +1279,12 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     for (let i = 0; i < 3; i++) {
-      if (!(sym & (1 << i))) {
+      if (!(sym & (1<<i))) {
         continue;
       }
 
       if (Math.abs(p[i]) < threshold) {
-        p.flag |= MeshFlags.MIRROREDX << i;
+        p.flag |= MeshFlags.MIRROREDX<<i;
 
         if (isboundary) {
           p.flag |= MeshFlags.MIRROR_BOUNDARY;
@@ -1401,8 +1402,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     let p3 = ps[ns[ni + QPOINT3]];
     let p4 = ps[ns[ni + QPOINT4]];
 
-    let u2 = (u - ns[ni + QMINU]) / (ns[ni + QMAXU] - ns[ni + QMINU]);
-    let v2 = (v - ns[ni + QMINV]) / (ns[ni + QMAXV] - ns[ni + QMINV]);
+    let u2 = (u - ns[ni + QMINU])/(ns[ni + QMAXU] - ns[ni + QMINU]);
+    let v2 = (v - ns[ni + QMINV])/(ns[ni + QMAXV] - ns[ni + QMINV]);
 
     let a = eval_rets.next();
     let b = eval_rets.next();
@@ -1581,8 +1582,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     let ns = this.nodes;
     let ps = this.points;
 
-    let u = (u1 - ns[ni + QMINU]) / (ns[ni + QMAXU] - ns[ni + QMINU]);
-    let v = (v1 - ns[ni + QMINV]) / (ns[ni + QMAXV] - ns[ni + QMINV]);
+    let u = (u1 - ns[ni + QMINU])/(ns[ni + QMAXU] - ns[ni + QMINU]);
+    let v = (v1 - ns[ni + QMINV])/(ns[ni + QMAXV] - ns[ni + QMINV]);
 
     let p1 = ps[ns[ni + QPOINT1]];
     let p2 = ps[ns[ni + QPOINT2]];
@@ -1601,11 +1602,11 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
       let tot = 0.0;
       let dimen = gridSides[ns[ni + QDEPTH]] - 1;
-      let dt = 1.0 / dimen;
+      let dt = 1.0/dimen;
 
       for (let off of staroffs) {
-        let u = off[0] * dt + p.uv[0];
-        let v = off[1] * dt + p.uv[1];
+        let u = off[0]*dt + p.uv[0];
+        let v = off[1]*dt + p.uv[1];
 
         u = Math.min(Math.max(u, 0.0), 1.0);
         v = Math.min(Math.max(v, 0.0), 1.0);
@@ -1616,8 +1617,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       }
 
       if (tot) {
-        a.load(p.sco).mulScalar(1.0 / tot);
-        p.sco.load(p).interp(a, -1.0 / 3.0);
+        a.load(p.sco).mulScalar(1.0/tot);
+        p.sco.load(p).interp(a, -1.0/3.0);
       } else {
         p.sco.load(p);
       }
@@ -1852,7 +1853,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     let n = _btm_temp5;
     let n2 = _btm_temp7;
 
-    let scale = (lx + ly) * 0.5;
+    let scale = (lx + ly)*0.5;
     scale = Math.max(scale, 0.0001);
     //lx = ly = scale;
 
@@ -1952,27 +1953,27 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     m.m43 = 0;
     m.m44 = 1;
 
-    let lx = m.m11 * m.m11 + m.m21 * m.m21 + m.m31 * m.m31;
-    let ly = m.m12 * m.m12 + m.m22 * m.m22 + m.m32 * m.m32;
-    let lz = m.m13 * m.m13 + m.m23 * m.m23 + m.m33 * m.m33;
+    let lx = m.m11*m.m11 + m.m21*m.m21 + m.m31*m.m31;
+    let ly = m.m12*m.m12 + m.m22*m.m22 + m.m32*m.m32;
+    let lz = m.m13*m.m13 + m.m23*m.m23 + m.m33*m.m33;
 
     //console.log("LENS", lx.toFixed(4), ly.toFixed(4), lz.toFixed(4));
     //console.log("MT", "" + mat);
 
     if (lx > 0.0) {
-      lx = 1.0 / lx;
+      lx = 1.0/lx;
       m.m11 *= lx;
       m.m21 *= lx;
       m.m31 *= lx;
     }
     if (ly > 0.0) {
-      ly = 1.0 / ly;
+      ly = 1.0/ly;
       m.m12 *= ly;
       m.m22 *= ly;
       m.m32 *= ly;
     }
     if (lz > 0.0) {
-      lz = 1.0 / lz;
+      lz = 1.0/lz;
       m.m13 *= lz;
       m.m23 *= lz;
       m.m33 *= lz;
@@ -2500,8 +2501,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     console.log("uvmap", uvmap);
     */
 
-    let du = 1.0 / dimen;
-    let dv = 1.0 / dimen;
+    let du = 1.0/dimen;
+    let dv = 1.0/dimen;
 
     let duv = new Vector2();
     duv[0] = du;
@@ -2596,7 +2597,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       }
 
       let axis = ns[ni + QAXIS];
-      let dt = 1.0 / dimen;
+      let dt = 1.0/dimen;
 
       du = axis ? 1.0 : dt;
       dv = axis ? dt : 1.0;
@@ -2613,27 +2614,27 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
       for (let i = 0; i < 4; i++) {
         let ip1 = ns[ni + QPOINT1 + i];
-        let ip2 = ns[ni + QPOINT1 + ((i + 1) % 4)];
+        let ip2 = ns[ni + QPOINT1 + ((i + 1)%4)];
 
         //let v1 = vmap[ip1];
         //let v2 = vmap[ip2];
 
-        let vi1 = ip1 * VTOT;
-        let vi2 = ip2 * VTOT;
+        let vi1 = ip1*VTOT;
+        let vi2 = ip2*VTOT;
 
         duv1[0] = vmap2[vi2 + VU] - vmap2[vi1 + VU];
         duv1[1] = vmap2[vi2 + VV] - vmap2[vi1 + VV];
 
         //duv1.load(v2.uv).sub(v1.uv);
 
-        let axis = (i & 1) ^ 1;
+        let axis = ((i & 1) ^ 1) as Number2;
 
         let steps;
 
         if (duv[axis] === 0) { //paranoia check
           steps = 1;
         } else {
-          steps = Math.abs(duv1[axis] / duv[axis]) + 0.00001;
+          steps = Math.abs(duv1[axis]/duv[axis]) + 0.00001;
 
           steps += 1;
           steps = ~~steps;
@@ -2644,7 +2645,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         //uv2[0] = v1.uv[0];
         //uv2[1] = v1.uv[1];
 
-        let dt = duv[axis] * Math.sign(duv1[axis]);
+        let dt = duv[axis]*Math.sign(duv1[axis]);
 
         if (Math.random() > 0.99) {
           //console.log("steps", steps);
@@ -2681,8 +2682,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     return {
-      vmap: vmap,
-      emap: emap,
+      vmap : vmap,
+      emap : emap,
       dimen: dimen,
       uvmap: uvmap
     };
@@ -2891,7 +2892,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
       for (let i = 0; i < 4; i++) {
         let pi = ns[ni + QPOINT1 + i];
-        let vi = pi * VTOT;
+        let vi = pi*VTOT;
         let totn = vmap2[vi + VTOTN];
 
         for (let j = 0; j < totn; j++) {
@@ -2981,11 +2982,11 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     let tmp1 = this.subdtemps.next(), tmp2 = this.subdtemps.next();
 
     let uvs = uvstmp;
-    let axis = (nodes[ni + QAXIS] + 1) % 2;
+    let axis = (nodes[ni + QAXIS] + 1)%2;
 
-    let d1 = p1.vectorDistance(p2) * 0.5 + p3.vectorDistance(p4) * 0.5;
-    let d2 = p1.vectorDistance(p4) * 0.5 + p3.vectorDistance(p2) * 0.5;
-    let pick = Math.abs(d1 - d2) > Math.abs(d1 + d2) * 0.1;
+    let d1 = p1.vectorDistance(p2)*0.5 + p3.vectorDistance(p4)*0.5;
+    let d2 = p1.vectorDistance(p4)*0.5 + p3.vectorDistance(p2)*0.5;
+    let pick = Math.abs(d1 - d2) > Math.abs(d1 + d2)*0.1;
 
     if (pick) {
       axis = d1 < d2 ? 0 : 1;
@@ -3018,11 +3019,11 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       let su1 = u2, sv1 = v2;
       let su2 = u3, sv2 = v3;
 
-      u2 = nodes[ni + QMINU] + u2 * du;
-      v2 = nodes[ni + QMINV] + v2 * dv;
+      u2 = nodes[ni + QMINU] + u2*du;
+      v2 = nodes[ni + QMINV] + v2*dv;
 
-      u3 = nodes[ni + QMINU] + u3 * du;
-      v3 = nodes[ni + QMINV] + v3 * dv;
+      u3 = nodes[ni + QMINU] + u3*du;
+      v3 = nodes[ni + QMINV] + v3*dv;
 
       nodes[ni + QCHILD1 + i] = ni2;
 
@@ -3037,8 +3038,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       nodes[ni2 + QMAXU] = u3;
       nodes[ni2 + QMAXV] = v3;
 
-      nodes[ni2 + QCENTU] = (u2 + u3) * 0.5;
-      nodes[ni2 + QCENTV] = (v2 + v3) * 0.5;
+      nodes[ni2 + QCENTU] = (u2 + u3)*0.5;
+      nodes[ni2 + QCENTV] = (v2 + v3)*0.5;
 
       nodes[ni2 + QFLAG] = LEAF;
       nodes[ni2 + QDEPTH] = depth + 1;
@@ -3106,10 +3107,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         let pnew = bs[k];
         pnew.load(tmp1);
 
-        cdws[0] = u2 * v2 - u2 - v2 + 1.0;
-        cdws[1] = v2 * (1.0 - u2);
-        cdws[2] = u2 * v2;
-        cdws[3] = u2 * (1.0 - v2);
+        cdws[0] = u2*v2 - u2 - v2 + 1.0;
+        cdws[1] = v2*(1.0 - u2);
+        cdws[2] = u2*v2;
+        cdws[3] = u2*(1.0 - v2);
 
         let sum = cdws[0] + cdws[1] + cdws[2] + cdws[3];
         sum = sum === 0.0 ? 0.00001 : sum;
@@ -3188,7 +3189,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     let cd_color = mesh.loops.customData.getLayerIndex("color");
     let have_color = cd_color >= 0;
 
-    let idmul = this.dimen * this.dimen;
+    let idmul = this.dimen*this.dimen;
     idmul = Math.max(idmul, this.polys.length);
 
     let tc1 = new Vector4();
@@ -3205,7 +3206,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     //buildTangentMatrix
 
-    let lidgen = loop.eid * idmul * 8;
+    let lidgen = loop.eid*idmul*8;
 
     function line(v1, v2, color) {
       try {
@@ -3312,7 +3313,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         let p2 = ps[polys[i]];
         let p3 = ps[polys[i + 1]];
 
-        let id = loop.eid * idmul + i;
+        let id = loop.eid*idmul + i;
 
         let tri;
 
@@ -3413,9 +3414,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       p3.uv.load(this._getUV(ni, 2));
       p4.uv.load(this._getUV(ni, 3));
 
-      ns[ni + QCENTX] = (p1[0] + p2[0] + p3[0] + p4[0]) * 0.25;
-      ns[ni + QCENTY] = (p1[1] + p2[1] + p3[1] + p4[1]) * 0.25;
-      ns[ni + QCENTZ] = (p1[2] + p2[2] + p3[2] + p4[2]) * 0.25;
+      ns[ni + QCENTX] = (p1[0] + p2[0] + p3[0] + p4[0])*0.25;
+      ns[ni + QCENTY] = (p1[1] + p2[1] + p3[1] + p4[1])*0.25;
+      ns[ni + QCENTZ] = (p1[2] + p2[2] + p3[2] + p4[2])*0.25;
     }
 
     //update normals;
@@ -3473,7 +3474,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     for (let pi of this.getLeafPoints()) {
       let p = ps[pi];
 
-      p.sco.mulScalar(1.0 / p.totsco);
+      p.sco.mulScalar(1.0/p.totsco);
       p.totsco = 1.0;
     }
   }
@@ -3579,7 +3580,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         let w = 1.0;
 
         //let v = topo.vmap[p.index2];
-        let vi2 = p.index2 * VTOT;
+        let vi2 = p.index2*VTOT;
         let vmap2 = topo.vmap2;
         let totn = vmap2[vi2 + VTOTN];
         for (let i = 0; i < totn; i++) {
@@ -3594,13 +3595,13 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
           p.tot++;
 
-          p.tan[0] += ns[ni + QTX] * tf;
-          p.tan[1] += ns[ni + QTY] * tf;
-          p.tan[2] += ns[ni + QTZ] * tf;
+          p.tan[0] += ns[ni + QTX]*tf;
+          p.tan[1] += ns[ni + QTY]*tf;
+          p.tan[2] += ns[ni + QTZ]*tf;
 
-          p.bin[0] += ns[ni + QBX] * tf;
-          p.bin[1] += ns[ni + QBY] * tf;
-          p.bin[2] += ns[ni + QBZ] * tf;
+          p.bin[0] += ns[ni + QBX]*tf;
+          p.bin[1] += ns[ni + QBY]*tf;
+          p.bin[2] += ns[ni + QBZ]*tf;
 
           p.sco[0] += ns[ni + QCENTX];
           p.sco[1] += ns[ni + QCENTY];
@@ -3612,7 +3613,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
         p.finishTan();
 
-        p.sco.mulScalar(1.0 / p.totsco);
+        p.sco.mulScalar(1.0/p.totsco);
         p.totsco = 1.0;
       }
 
@@ -3630,7 +3631,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       p.no.zero();
       p.startTan();
 
-      let vi2 = p.index2 * VTOT;
+      let vi2 = p.index2*VTOT;
       let vmap2 = topo.vmap2;
       let totn = vmap2[vi2 + VTOTN];
       for (let i = 0; i < totn; i++) {
@@ -3645,13 +3646,13 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
         let tf = p.tanMulFac(depth);
 
-        p.tan[0] += ns[ni + QTX] * tf;
-        p.tan[1] += ns[ni + QTY] * tf;
-        p.tan[2] += ns[ni + QTZ] * tf;
+        p.tan[0] += ns[ni + QTX]*tf;
+        p.tan[1] += ns[ni + QTY]*tf;
+        p.tan[2] += ns[ni + QTZ]*tf;
 
-        p.bin[0] += ns[ni + QBX] * tf;
-        p.bin[1] += ns[ni + QBY] * tf;
-        p.bin[2] += ns[ni + QBZ] * tf;
+        p.bin[0] += ns[ni + QBX]*tf;
+        p.bin[1] += ns[ni + QBY]*tf;
+        p.bin[2] += ns[ni + QBZ]*tf;
 
         p.tot++;
 
@@ -3665,7 +3666,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         p.no.normalize();
         p.finishTan();
 
-        p.sco.mulScalar(1.0 / p.totsco);
+        p.sco.mulScalar(1.0/p.totsco);
         p.totsco = 1.0;
         continue;
       }
@@ -3700,7 +3701,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         let topo2 = grid2.getTopo(mesh, cd_grid);
 
         let ns2 = grid2.nodes, ps2 = grid2.points;
-        let vi2 = p2.index2 * VTOT;
+        let vi2 = p2.index2*VTOT;
 
         let vmap2 = topo2.vmap2;
         let totn = vmap2[vi2 + VTOTN];
@@ -3716,13 +3717,13 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
           if (l2 === l.radial_next.next) {
             let tf = p2.tanMulFac(ns2[ni + QDEPTH]);
 
-            p.tan[0] = -ns2[ni + QBX] * tf;
-            p.tan[1] = -ns2[ni + QBY] * tf;
-            p.tan[2] = -ns2[ni + QBZ] * tf;
+            p.tan[0] = -ns2[ni + QBX]*tf;
+            p.tan[1] = -ns2[ni + QBY]*tf;
+            p.tan[2] = -ns2[ni + QBZ]*tf;
 
-            p.bin[0] = ns2[ni + QTX] * tf;
-            p.bin[1] = ns2[ni + QTY] * tf;
-            p.bin[2] = ns2[ni + QTZ] * tf;
+            p.bin[0] = ns2[ni + QTX]*tf;
+            p.bin[1] = ns2[ni + QTY]*tf;
+            p.bin[2] = ns2[ni + QTZ]*tf;
 
             p.tot++;
           }
@@ -3738,7 +3739,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       p.no.normalize();
       p.finishTan();
 
-      p.sco.mulScalar(1.0 / p.totsco);
+      p.sco.mulScalar(1.0/p.totsco);
       p.totsco = 1.0;
 
       if (p.index2 < 2) {
@@ -3758,14 +3759,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
             tot2++;
           }
 
-          scotmp2.mulScalar(1.0 / tot2);
+          scotmp2.mulScalar(1.0/tot2);
 
           scotmp.add(scotmp2);
           tot++;
         }
 
         if (tot > 0) {
-          scotmp.mulScalar(1.0 / tot);
+          scotmp.mulScalar(1.0/tot);
           p.sco.load(scotmp);
         }
       }
@@ -3790,7 +3791,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     let emap2 = topo.emap2;
 
     for (let pi = 0; pi < ps.length; pi++) {
-      let vi = pi * VTOT;
+      let vi = pi*VTOT;
       let p = ps[pi];
 
       //for (let v of topo.vmap) {
@@ -3867,7 +3868,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     let uv3 = new Vector2();
 
-    function findNeighborEdge(p, l, ltopo, lps, side, u, v, axis) {
+    function findNeighborEdge(p, l: Loop, ltopo, lps, side: number, u: number, v: number, axis: Number2) {
       let dimen2 = ltopo.dimen;
 
       let uv = uv3;
@@ -3879,7 +3880,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
       let v1, v2;
 
-      let dt = 1.0 / dimen2;
+      let dt = 1.0/dimen2;
       let f1, f2;
 
       for (let i = 0; i < dimen2 + 1; i++) {
@@ -3938,7 +3939,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         if (f2 === f1) {
           t = 1.0;
         } else {
-          t = (goal - f1) / (f2 - f1);
+          t = (goal - f1)/(f2 - f1);
         }
 
         if (v1) {
@@ -3948,13 +3949,13 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     for (let i = 0; i < 4; i++) {
-      let uv1 = uvs[i], uv2 = uvs[(i + 1) % 4];
-      let axis = (i + 1) & 1;
+      let uv1 = uvs[i], uv2 = uvs[(i + 1)%4];
+      let axis = ((i + 1) & 1) as Number2;
 
       uv.load(uv1);
       duv.load(uv2).sub(uv1);
 
-      let dt = duv[axis] / dimen;
+      let dt = duv[axis]/dimen;
 
       for (let j = 0; j < dimen; j++) {
         let val = uv[axis];
@@ -3990,7 +3991,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
               p1.bRingInsert(p2);
             }
           } else {
-            findNeighborEdge(p1, lpr, lprtopo, lprps, i, u, v, axis ^ 1);
+            findNeighborEdge(p1, lpr, lprtopo, lprps, i, u, v, (axis ^ 1) as Number2);
           }
         } else if (i === 2 && lr !== l && lr.v !== l.v) {
           let u = val;
@@ -4009,7 +4010,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
               p1.bRingInsert(p2);
             }
           } else {
-            findNeighborEdge(p1, lrn, lrntopo, lrnps, i, u, v, axis ^ 1);
+            findNeighborEdge(p1, lrn, lrntopo, lrnps, i, u, v, (axis ^ 1) as Number2);
           }
         } else if (i === 3) {
           let u = 0.0;
@@ -4192,8 +4193,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     //console.log("DIMEN", this.dimen);
 
-    let idmul = (this.dimen + 2) * (this.dimen + 2) * 16;
-    idmul = this.idmul = Math.max(idmul, this.polys.length * 2);
+    let idmul = (this.dimen + 2)*(this.dimen + 2)*16;
+    idmul = this.idmul = Math.max(idmul, this.polys.length*2);
 
     let needsCDFix = false;
 
@@ -4227,7 +4228,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
         let tri;
         //let id = Math.random();
-        let id = loop.eid * idmul + i;
+        let id = loop.eid*idmul + i;
 
         if (!p1 || !p2 || !p3) {
           //console.warn("missing points", p1, p2, p3);
@@ -4272,7 +4273,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     let leaves = [];
 
-    let qtot_mul = QTOT / this.nodeFieldSize;
+    let qtot_mul = QTOT/this.nodeFieldSize;
 
     for (let n of ns1) {
       let ni = ns2.length;
@@ -4291,7 +4292,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
       if (this.nodeFieldSize !== QTOT) {
         for (let i = 0; i < MAXCHILD; i++) {
-          let ci = ~~(qtot_mul * ns2[ni + QCHILD1 + i] + 0.00001);
+          let ci = ~~(qtot_mul*ns2[ni + QCHILD1 + i] + 0.00001);
 
           ns2[ni + QCHILD1 + i] = ci;
         }
@@ -4312,8 +4313,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     let rec = (ni, depth = 0) => {
       ns2[ni + QFLAG] &= ~TEMP;
 
-      ns2[ni + QCENTU] = ns2[ni + QMINU] * 0.5 + ns2[ni + QMAXU] * 0.5;
-      ns2[ni + QCENTV] = ns2[ni + QMINV] * 0.5 + ns2[ni + QMAXV] * 0.5;
+      ns2[ni + QCENTU] = ns2[ni + QMINU]*0.5 + ns2[ni + QMAXU]*0.5;
+      ns2[ni + QCENTV] = ns2[ni + QMINV]*0.5 + ns2[ni + QMAXV]*0.5;
 
       //console.log(`ni: ${ni / QTOT} flag: ${ns2[ni + QFLAG]}`);
       //console.log(`  ${ns2[ni+QMINU]} ${ns2[ni+QMINV]} ${ns2[ni+QMAXU]} ${ns2[ni+QMAXV]}`);
@@ -4367,8 +4368,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         //console.error("Unmarked dead quad tree node detected", ni, this);
       }
 
-      ns2[ni + QCENTU] = ns2[ni + QMINU] * 0.5 + ns2[ni + QMAXU] * 0.5;
-      ns2[ni + QCENTV] = ns2[ni + QMINV] * 0.5 + ns2[ni + QMAXV] * 0.5;
+      ns2[ni + QCENTU] = ns2[ni + QMINU]*0.5 + ns2[ni + QMAXU]*0.5;
+      ns2[ni + QCENTV] = ns2[ni + QMINV]*0.5 + ns2[ni + QMAXV]*0.5;
     }
   }
 
@@ -4434,7 +4435,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
           continue;
         }
 
-        let idx = ni / QTOT;
+        let idx = ni/QTOT;
 
         ns2[ni + QCHILD1] = map[ns2[ni + QCHILD1]];
         ns2[ni + QCHILD2] = map[ns2[ni + QCHILD2]];

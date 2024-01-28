@@ -6,7 +6,7 @@ import {
   FlagProperty, ToolProperty, Vec3Property, Mat4Property, StringProperty,
   PropFlags, PropTypes, PropSubTypes,
   Vector2, Vector3, Vector4, Quat, Matrix4,
-  ToolOp, ToolMacro, ToolFlags, UndoFlags, keymap, ToolDef
+  ToolOp, ToolMacro, ToolFlags, UndoFlags, keymap, ToolDef, Number2
 } from '../path.ux/scripts/pathux.js';
 import {TranslateOp} from "../editors/view3d/transform/transform_ops.js";
 import * as util from '../util/util.js';
@@ -294,7 +294,7 @@ export class SymmetrizeOp extends MeshOp<{
       fset = new Set(fset);
 
       let vector = new Vector3();
-      let axis = this.inputs.axis.getValue();
+      let axis = this.inputs.axis.getValue() as Number2;
       let side = this.inputs.side.getValue();
 
       vector[axis] = side;
@@ -361,7 +361,7 @@ export class BisectOp extends MeshOp<
       fset = new Set(fset);
 
       let vector = new Vector3();
-      let axis = this.inputs.axis.getValue();
+      let axis = this.inputs.axis.getValue() as Number2;
       let side = this.inputs.side.getValue();
 
       vector[axis] = side;
@@ -1162,13 +1162,13 @@ export function ccVertexSmooth(mesh: Mesh,
 
   let cos = {};
   for (let v of verts) {
-    cos[v.eid] = new Vector3(v);
+    cos[v.eid] = new Vector3(v.co);
 
     for (let e of v.edges) {
       let v2 = e.otherVertex(v);
 
       if (!(v2.eid in cos)) {
-        cos[v2.eid] = new Vector3(v2);
+        cos[v2.eid] = new Vector3(v2.co);
       }
     }
   }

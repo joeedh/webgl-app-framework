@@ -1,7 +1,7 @@
 import {
   Vector2, Vector3,
   Vector4, Quat, Matrix4,
-  util, math, nstructjs
+  util, math, nstructjs, Number3
 } from '../path.ux/scripts/pathux.js';
 
 const {dist_to_line_2d, winding} = math;
@@ -229,7 +229,7 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal ?: Vect
       dot3.zero();
 
       for (let i = 0; i < val; i++) {
-        for (let j = 0; j < 3; j++) {
+        for (let j = 0 as Number3; j < 3; j++) {
           dot3[j] += ws[idxs[i]] * cos[i][j];
         }
       }
@@ -961,7 +961,7 @@ export function weldVerts(mesh: Mesh, mergeMap: Map<Vertex, Vertex>) {
 }
 
 
-export function symmetrizeMesh(mesh: Mesh, faces: Set<Face>, axis: number, sign: number, mergeThreshold = 0.0001): void {
+export function symmetrizeMesh(mesh: Mesh, faces: Set<Face>, axis: Number3, sign: number, mergeThreshold = 0.0001): void {
   let vs = new Set<Vertex>();
   let es = new Set<Edge>();
 

@@ -75,9 +75,9 @@ export class PatchBuilder {
     }
 
     let p1 = new Vector3(l.f.cent);
-    let p2 = new Vector3(l.v).interp(edgev(l.prev), 0.5);
+    let p2 = new Vector3(l.v.co).interp(edgev(l.prev), 0.5);
     let p3 = new Vector3(getv(l));
-    let p4 = new Vector3(l.v).interp(edgev(l.next), 0.5);
+    let p4 = new Vector3(l.v.co).interp(edgev(l.next), 0.5);
 
     let c = new Vector3(p1).add(p2).add(p3).add(p4).mulScalar(0.25);
     p1.sub(c).mulScalar(1.0 + margin).add(c);

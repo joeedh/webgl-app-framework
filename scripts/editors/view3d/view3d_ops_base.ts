@@ -27,7 +27,7 @@ export abstract class View3DOp<InputSet, OutputSet> extends ToolOpBase<InputSet,
   }
 
   addDrawLine(v1: Vector3, v2: Vector3, color: Vector4, useZ = true) {
-    let dl = this.modal_ctx.view3d.makeDrawLine(v1, v2, color as number[], useZ);
+    let dl = this.modal_ctx.view3d.makeDrawLine(v1, v2, color as unknown as number[], useZ);
     this.drawlines.push(dl);
     return dl;
   }
