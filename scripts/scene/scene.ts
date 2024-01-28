@@ -1,12 +1,11 @@
 import {DataBlock, DataRef, BlockFlags} from '../core/lib_api';
 import {ToolModes, makeToolModeEnum, ToolMode} from '../editors/view3d/view3d_toolmode.js';
 import {WidgetManager} from "../editors/view3d/widgets/widgets.js";
-import {EnumProperty, nstructjs, util} from '../path.ux/scripts/pathux.js';
+import {EnumProperty, nstructjs, util, Vector3, Matrix4} from '../path.ux/scripts/pathux.js';
 
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject';
 import {DependSocket, FloatSocket} from '../core/graphsockets.js';
 import {Light} from '../light/light.js';
-import {Vector3, Matrix4} from '../util/vectormath.js';
 
 //import {WidgetSceneCursor} from "../editors/view3d/widgets/widget_tools.js";
 import {SelMask} from "../editors/view3d/selectmode.js";

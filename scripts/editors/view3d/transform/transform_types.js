@@ -10,6 +10,7 @@ import {aabb_union} from '../../../util/math.js';
 import {SpatialHash} from '../../../util/spatialhash.js';
 
 import {ConstraintSpaces} from "./transform_base.js";
+
 let meshGetCenterTemps = util.cachering.fromConstructor(Vector3, 64);
 let meshGetCenterTemps2 = util.cachering.fromConstructor(Vector3, 64);
 let meshGetCenterTempsMats = util.cachering.fromConstructor(Matrix4, 16);
@@ -17,15 +18,17 @@ let meshGetCenterTempsMats = util.cachering.fromConstructor(Matrix4, 16);
 let meshapplytemp = new Vector3();
 
 export class MeshTransType extends TransDataType {
-  static transformDefine() {return {
-    name   : "mesh",
-    uiname : "Mesh",
-    flag   : 0,
-    icon   : -1
-  }}
+  static transformDefine() {
+    return {
+      name  : "mesh",
+      uiname: "Mesh",
+      flag  : 0,
+      icon  : -1
+    }
+  }
 
   /**FIXME this only handles the active mesh object, it should
-    iterate over ctx.selectedMeshObjets*/
+   iterate over ctx.selectedMeshObjets*/
   static genData(ctx, selectmode, propmode, propradius) {
     let mesh = ctx.mesh;
     let tdata = new TransDataList(this);
@@ -84,8 +87,8 @@ export class MeshTransType extends TransDataType {
       let tvs = new Map();
       for (let v of boundary) {
         for (let v2 of bvh.closestVerts(v, propradius*1.1)) {
-        //for (let v2 of shash.closestVerts(v, propradius)) {
-        //  v2 = mesh.eidMap.get(v2);
+          //for (let v2 of shash.closestVerts(v, propradius)) {
+          //  v2 = mesh.eidMap.get(v2);
 
           if (boundary.has(v2) || v === v2) {
             continue;
@@ -355,7 +358,7 @@ export class MeshTransType extends TransDataType {
     v.co.load(td.data2).interp(co, td.w);
 
     if (v.flag & MeshFlags.MIRRORED) {
-      for (let i=0; i<3; i++) {
+      for (let i = 0; i < 3; i++) {
         if (td.symFlag & (1<<i)) {
           v.co[i] = 0.0;
         }
@@ -367,12 +370,7 @@ export class MeshTransType extends TransDataType {
     let ud = undodata;
 
     function count(obj) {
-      let c = 0;
-
-      for (let k in obj) {
-        c++;
-      }
-
+      let c = obj.size
       return c*3*8;
     }
 
@@ -394,29 +392,29 @@ export class MeshTransType extends TransDataType {
   }
 
   static undoPre(ctx, elemlist) {
-    let cos = {};
-    let nos = {};
-    let fnos = {};
-    let fcos = {};
+    let cos = new Map();
+    let nos = new Map();
+    let fnos = new Map();
+    let fcos = new Map();
 
     for (let td of elemlist) {
       let v = td.data1;
 
       for (let f of v.faces) {
-        if (f.eid in fnos)
+        if (fnos.has(f.eid))
           continue;
 
-        fnos[f.eid] = new Vector3(f.no);
-        fcos[f.eid] = new Vector3(f.cent);
+        fnos.set(f.eid, new Vector3(f.no));
+        fcos.set(f.eid, new Vector3(f.cent));
       }
 
-      cos[v.eid] = new Vector3(v.co);
-      nos[v.eid] = new Vector3(v.no);
+      cos.set(v.eid, new Vector3(v.co));
+      nos.set(v.eid, new Vector3(v.no));
     }
 
     return {
-      cos: cos,
-      nos: nos,
+      cos : cos,
+      nos : nos,
       fnos: fnos,
       fcos: fcos
     };
@@ -429,7 +427,7 @@ export class MeshTransType extends TransDataType {
     let fnos = undodata.fnos;
     let mesh = ctx.mesh;
 
-    for (let k in cos) {
+    for (let [k, co] of cos) {
       let v = mesh.eidMap.get(k);
 
       if (v === undefined) {
@@ -437,12 +435,14 @@ export class MeshTransType extends TransDataType {
         continue;
       }
 
-      v.co.load(cos[k]);
-      v.no.load(nos[k]);
+      const no = nos.get(k)
+
+      v.co.load(co);
+      v.no.load(no);
       v.flag |= MeshFlags.UPDATE;
     }
 
-    for (let k in fcos) {
+    for (let [k, fno] of fnos) {
       let f = mesh.eidMap.get(k);
 
       if (f === undefined) {
@@ -450,8 +450,8 @@ export class MeshTransType extends TransDataType {
         continue;
       }
 
-      f.no.load(fnos[k]);
-      f.cent.load(fcos[k]);
+      f.no.load(fno);
+      f.cent.load(fcos.get(k));
 
       f.flag |= MeshFlags.UPDATE;
     }
@@ -580,7 +580,7 @@ export class MeshTransType extends TransDataType {
     }
 
     if (tot > 0) {
-      c.mulScalar(1.0 / tot);
+      c.mulScalar(1.0/tot);
     }
 
     return c;
@@ -733,6 +733,7 @@ export class MeshTransType extends TransDataType {
     //mesh.regenPartial();
   }
 }
+
 TransDataType.register(MeshTransType);
 
 export class ObjectTransform {
@@ -755,15 +756,17 @@ export class ObjectTransform {
 }
 
 export class ObjectTransType extends TransDataType {
-  static transformDefine() {return {
-    name   : "object",
-    uiname : "Object",
-    flag   : 0,
-    icon   : -1
-  }}
+  static transformDefine() {
+    return {
+      name  : "object",
+      uiname: "Object",
+      flag  : 0,
+      icon  : -1
+    }
+  }
 
   static genData(ctx, selectmode, propmode, propradius) {
-    let ignore_meshes = selectmode & (SelMask.VERTEX|SelMask.EDGE|SelMask.FACE);
+    let ignore_meshes = selectmode & (SelMask.VERTEX | SelMask.EDGE | SelMask.FACE);
 
     //console.warn("OBJECT GEN", selectmode, selectmode & (SelMask.OBJECT));
 
@@ -778,7 +781,7 @@ export class ObjectTransType extends TransDataType {
         let parent = ob.inputs.matrix.edges[0].node;
 
         if (parent instanceof SceneObject) {
-          if ((parent.flag & ObjectFlags.SELECT) && !(parent.flag & (ObjectFlags.HIDE|ObjectFlags.LOCKED))) {
+          if ((parent.flag & ObjectFlags.SELECT) && !(parent.flag & (ObjectFlags.HIDE | ObjectFlags.LOCKED))) {
             return parent;
           } else {
             return get_transform_parent(parent);
@@ -914,7 +917,7 @@ export class ObjectTransType extends TransDataType {
 
       let co = new Vector3(bbox[0]).interp(bbox[1], 0.5);
       cent.add(co);
-      
+
       //temp.zero();
       //temp.multVecMatrix(ob.outputs.matrix.getValue());
 
@@ -924,7 +927,7 @@ export class ObjectTransType extends TransDataType {
     }
 
     if (tot > 0) {
-      cent.mulScalar(1.0 / tot);
+      cent.mulScalar(1.0/tot);
     }
 
     return cent;
@@ -959,4 +962,5 @@ export class ObjectTransType extends TransDataType {
     window.redraw_viewport();
   }
 }
+
 TransDataType.register(ObjectTransType);
