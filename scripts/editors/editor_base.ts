@@ -857,8 +857,8 @@ import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstruc
 import {Mesh} from '../mesh/mesh.js';
 import {ListItem} from '../path.ux/scripts/types/widgets/ui_listbox.js';
 
-export function spawnToolSearchMenu(ctx) {
-  let tools = [];
+export function spawnToolSearchMenu(ctx: ViewContext) {
+  let tools: typeof ToolOp[] = [];
   let screen = ctx.screen;
 
   let menu = document.createElement("menu-x") as unknown as Menu;
