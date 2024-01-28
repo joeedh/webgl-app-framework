@@ -2,7 +2,7 @@ import {Area, BorderMask, AreaFlags} from '../../path.ux/scripts/screen/ScreenAr
 import {Icons} from "../icon_enum.js";
 
 import {NoteFrame, Note} from '../../path.ux/scripts/widgets/ui_noteframe.js';
-import {Editor, VelPan} from '../editor_base.js';
+import {Editor, VelPan} from '../editor_base.ts';
 
 import {saveFile, loadFile, DataPathError, KeyMap, HotKey} from '../../path.ux/scripts/pathux.js';
 

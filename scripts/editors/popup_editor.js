@@ -1,4 +1,4 @@
-import {Editor} from "./editor_base.js";
+import {Editor} from "./editor_base.ts";
 import {UIBase, theme, PackFlags} from "../path.ux/scripts/core/ui_base.js";
 import {keymap} from '../path.ux/scripts/util/events.js';
 

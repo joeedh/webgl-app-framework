@@ -2,7 +2,7 @@ import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
 import {saveFile, loadFile} from '../../path.ux/scripts/pathux.js';
 import {PackFlags} from "../../path.ux/scripts/core/ui_base.js";
 
-import {Editor, VelPan} from '../editor_base.js';
+import {Editor, VelPan} from '../editor_base.ts';
 import {nstructjs} from '../../path.ux/scripts/pathux.js';
 import {DataPathError} from '../../path.ux/scripts/pathux.js';
 import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';

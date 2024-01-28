@@ -1,6 +1,6 @@
 import {NodeEditor} from "./NodeEditor.js";
 import {layoutNode, sortGraphSpatially, calcGraphAABB} from '../../core/graph_spatial.js';
-import {Editor} from "../editor_base.js";
+import {Editor} from "../editor_base.ts";
 import {nstructjs, util} from '../../path.ux/scripts/pathux.js';
 import {VelPan, VelPanPanOp} from "../velpan.js";
 import {Vector2} from "../../path.ux/scripts/pathux.js";

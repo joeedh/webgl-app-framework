@@ -3,7 +3,7 @@ import './pbvh_bvhdef.js';
 import {WidgetFlags} from "../widgets/widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
 import {BVH, BVHFlags, BVHTriFlags} from "../../../util/bvh.js";
-import {KeyMap, HotKey} from "../../editor_base.js";
+import {KeyMap, HotKey} from "../../editor_base.ts";
 import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
 import {TranslateWidget} from "../widgets/widget_tools.js";

@@ -1,6 +1,6 @@
 
 import {Vector2, Vector3} from '../../util/vectormath.js';
-import {KeyMap, HotKey} from "../editor_base.js";
+import {KeyMap, HotKey} from "../editor_base.ts";
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from "../../core/simplemesh.ts";
 import {WidgetFlags} from "./widgets/widgets.js";
 import {EnumProperty, FlagProperty} from "../../path.ux/scripts/pathux.js";
@@ -13,7 +13,7 @@ import {nstructjs} from '../../path.ux/scripts/pathux.js';
 
 import '../../core/textsprite.js';
 
-import messageBus from '../../core/bus.js';
+import messageBus from '../../core/bus.ts';
 
 export class ToolMode extends Node {
   constructor(ctx) {

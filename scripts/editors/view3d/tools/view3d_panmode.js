@@ -1,6 +1,6 @@
 import {WidgetFlags} from "../widgets/widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
-import {KeyMap} from "../../editor_base.js";
+import {KeyMap} from "../../editor_base.ts";
 import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
 import {TranslateWidget} from "../widgets/widget_tools.js";

@@ -6,7 +6,7 @@ import {ResourcePageType, ResourcePages} from './resbrowser_types.js';
 import {genResBrowserScreen} from '../screengen.js';
 import {nstructjs} from '../../path.ux/scripts/pathux.js';
 
-import {Editor} from '../editor_base.js';
+import {Editor} from '../editor_base.ts';
 import {KeyMap} from "../../path.ux/scripts/util/simple_events.js";
 import {Area, AreaFlags} from "../../path.ux/scripts/screen/ScreenArea.js";
 import {UIBase} from "../../path.ux/scripts/core/ui_base.js";

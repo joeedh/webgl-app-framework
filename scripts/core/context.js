@@ -3,13 +3,13 @@ import '../path.ux/scripts/util/struct.js';
 import {View3D} from '../editors/view3d/view3d.js';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js';
-import {getContextArea, Editor, editorAccessor} from '../editors/editor_base.js';
+import {getContextArea, Editor, editorAccessor} from '../editors/editor_base.ts';
 import {ResourceBrowser} from "../editors/resbrowser/resbrowser.js";
 import * as util from '../util/util.js';
 import {Mesh} from '../mesh/mesh.js';
 import {Light} from '../light/light.js';
 import {SceneObject} from '../sceneobject/sceneobject.js';
-import {Scene} from '../scene/scene.js';
+import {Scene} from '../scene/scene.ts';
 import {DataBlock, DataRef} from './lib_api.js';
 import {DebugEditor} from "../editors/debug/DebugEditor.js";
 import * as ui_noteframe from '../path.ux/scripts/widgets/ui_noteframe.js';
@@ -26,7 +26,7 @@ import {SMesh} from '../smesh/smesh.js';
 
 let passthrus = new Set(["datalib", "gl", "graph", "last_tool", "toolstack", "api"]);
 
-import bus from './bus.js';
+import bus from './bus.ts';
 
 export class BaseOverlay extends ContextOverlay {
   constructor(appstate) {

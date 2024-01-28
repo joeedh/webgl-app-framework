@@ -2,7 +2,7 @@ import "../../extern/three.js";
 
 import {loadUIData, nstructjs, saveUIData} from '../../path.ux/scripts/pathux.js';
 
-import {spawnToolSearchMenu} from '../editor_base.js';
+import {spawnToolSearchMenu} from '../editor_base.ts';
 
 import * as util from '../../util/util.js';
 import * as cconst from '../../core/const.js';
@@ -17,10 +17,10 @@ import './tools/tools.js';
 import * as textsprite from '../../core/textsprite.js';
 import {RealtimeEngine, RenderSettings} from "../../renderengine/renderengine_realtime.js";
 import {PackFlags} from '../../path.ux/scripts/core/ui_base.js';
-import {Editor} from '../editor_base.js';
+import {Editor} from '../editor_base.ts';
 import {Camera, init_webgl, ShaderProgram} from '../../core/webgl.js';
 import {DrawModes} from './drawmode.js';
-import {EnvLightFlags} from "../../scene/scene.js";
+import {EnvLightFlags} from "../../scene/scene.ts";
 import {UIBase, color2css, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import * as view3d_shaders from '../../shaders/shaders.js';
 import {loadShader} from '../../shaders/shaders.js';
@@ -30,7 +30,7 @@ import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js';
 import {cachering, print_stack, time_ms} from '../../util/util.js';
 import './tools/mesheditor.js';
 import {GPUSelectBuffer} from './view3d_select.js';
-import {KeyMap, HotKey} from "../editor_base.js";
+import {KeyMap, HotKey} from "../editor_base.ts";
 import {calcTransCenter, calcTransMatrix, calcTransAABB} from './transform/transform_query.js';
 import {CallbackNode, NodeFlags} from "../../core/graph.js";
 import {DependSocket} from '../../core/graphsockets.js';

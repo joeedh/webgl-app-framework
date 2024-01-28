@@ -1,5 +1,5 @@
 import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
-import {Editor} from '../editor_base.js';
+import {Editor} from '../editor_base.ts';
 
 import {Node, NodeSocketType, Graph, NodeFlags, SocketFlags, GraphFlags, GraphNodes} from "../../core/graph.js";
 import {

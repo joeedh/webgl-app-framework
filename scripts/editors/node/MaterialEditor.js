@@ -1,5 +1,5 @@
 import {NodeEditor} from "./NodeEditor.js";
-import {Editor} from "../editor_base.js";
+import {Editor} from "../editor_base.ts";
 import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
 import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';

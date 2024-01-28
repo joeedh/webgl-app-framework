@@ -40,10 +40,7 @@ export enum ObjectFlags {
   ACTIVE = 16,
   INTERNAL = 32,
   DRAW_WIREFRAME = 64
-};
-
-
-let _mattemp = new Matrix4();
+}
 
 function mix(a, b, t) {
   return new Vector4(a).interp(b, t);

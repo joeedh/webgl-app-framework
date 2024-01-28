@@ -2,7 +2,7 @@ import {Shapes} from '../../../core/simplemesh_shapes.js';
 import {FindNearest, castViewRay, CastModes} from "../findnearest.js";
 import {WidgetFlags} from "../widgets/widgets.js";
 import {ToolModes, ToolMode} from "../view3d_toolmode.js";
-import {HotKey, KeyMap} from "../../editor_base.js";
+import {HotKey, KeyMap} from "../../editor_base.ts";
 import {Icons} from '../../icon_enum.js';
 import {SelMask} from "../selectmode.js";
 import {resolveMeshes} from "../../../mesh/mesh_ops_base.js";

@@ -3,9 +3,9 @@ import {
   ToolOp, BoolProperty, EnumProperty, FlagProperty, ToolFlags,
   PropFlags, UndoFlags
 } from '../path.ux/scripts/pathux.js';
-import {Scene} from '../scene/scene.js';
-import {Collection} from '../scene/collection.js';
-import {ScreenBlock} from '../editors/editor_base.js';
+import {Scene} from '../scene/scene.ts';
+import {Collection} from '../scene/collection.ts';
+import {ScreenBlock} from '../editors/editor_base.ts';
 import {Mesh} from '../mesh/mesh.js';
 import {makeCube} from './mesh_shapes.js';
 import {makeDefaultMaterial} from './material.js';

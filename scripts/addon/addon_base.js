@@ -19,7 +19,7 @@ import {CustomDataElem} from '../mesh/customdata.js';
 import {
   Editor, VelPan, VelPanFlags, DataBlockBrowser, DirectionChooser, EditorSideBar, makeDataBlockBrowser,
   MeshMaterialChooser, MeshMaterialPanel, NewDataBlockOp, getContextArea
-} from '../editors/editor_base.js';
+} from '../editors/editor_base.ts';
 import {Icons} from '../editors/icon_enum.js';
 import {MeshToolBase} from '../editors/view3d/tools/meshtool.js';
 import {MeshEditor} from '../editors/view3d/tools/mesheditor.js';

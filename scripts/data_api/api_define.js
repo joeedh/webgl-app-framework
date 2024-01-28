@@ -42,7 +42,7 @@ import {DataAPI, DataPathError} from '../path.ux/scripts/pathux.js';
 import {DataBlock, DataRef, Library, BlockTypes, BlockSet, BlockFlags} from '../core/lib_api.js'
 import {View3D} from '../editors/view3d/view3d.js';
 import {View3DFlags, CameraModes} from '../editors/view3d/view3d_base.js';
-import {Editor, App, buildEditorsAPI} from '../editors/editor_base.js';
+import {Editor, App, buildEditorsAPI} from '../editors/editor_base.ts';
 import {NodeEditor} from '../editors/node/NodeEditor.js';
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js';
 import {MenuBarEditor} from '../editors/menu/MainMenu.js';
@@ -61,7 +61,7 @@ import {Graph, Node, SocketFlags, NodeFlags, NodeSocketType} from '../core/graph
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject.js';
 import {ObjectSelectOneOp} from '../sceneobject/selectops.js';
 import {DeleteObjectOp} from '../sceneobject/sceneobject_ops.js';
-import {Scene, EnvLight, EnvLightFlags} from '../scene/scene.js';
+import {Scene, EnvLight, EnvLightFlags} from '../scene/scene.ts';
 import {api_define_graphclasses} from '../core/graph_class.js';
 import {DisplayModes} from '../editors/debug/DebugEditor_base.js';
 import {DebugEditor} from '../editors/debug/DebugEditor.js';

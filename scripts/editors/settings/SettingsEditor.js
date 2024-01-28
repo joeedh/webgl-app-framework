@@ -5,7 +5,7 @@ import {
   exportTheme, loadUIData,
   nstructjs, saveUIData, UIBase
 } from '../../path.ux/scripts/pathux.js';
-import {Editor} from "../editor_base.js";
+import {Editor} from "../editor_base.ts";
 import {Icons} from "../icon_enum.js";
 import addonManager from '../../addon/addon.js';
 

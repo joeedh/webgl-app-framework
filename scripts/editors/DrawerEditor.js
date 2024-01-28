@@ -1,5 +1,5 @@
 import {Area, AreaFlags, ScreenArea} from "../path.ux/scripts/screen/ScreenArea.js";
-import {Editor} from "./editor_base.js";
+import {Editor} from "./editor_base.ts";
 import {Vector2} from "../path.ux/scripts/util/vectormath.js";
 import * as util from '../util/util.js';
 import {UIBase} from "../path.ux/scripts/core/ui_base.js";

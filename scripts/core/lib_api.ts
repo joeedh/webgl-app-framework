@@ -11,6 +11,8 @@ import type {ToolContext} from "../../types/scripts/core/context";
 
 import type {SculptBrush} from '../brush/brush'
 import type {Mesh} from '../mesh/mesh';
+import {Collection} from '../scene/collection';
+import {SceneObject} from '../sceneobject/sceneobject.js';
 
 export let BlockTypes = [];
 
@@ -682,6 +684,8 @@ Library {
 
   brush: BlockSet<SculptBrush>
   mesh: BlockSet<Mesh>
+  collection: BlockSet<Collection>
+  object: BlockSet<SceneObject>
 
   constructor() {
     //master graph

@@ -1,4 +1,4 @@
-import {Editor, HotKey, VelPan} from '../editor_base.js';
+import {Editor, HotKey, VelPan} from '../editor_base.ts';
 import {Icons} from '../icon_enum.js';
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
 import * as util from '../../util/util.js';

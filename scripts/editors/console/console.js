@@ -1,4 +1,4 @@
-import {Editor} from '../editor_base.js';
+import {Editor} from '../editor_base.ts';
 import {
   color2css, css2color, UIBase, keymap, util, cconst, nstructjs, Vector2, Vector3, Matrix4
 } from '../../path.ux/scripts/pathux.js';

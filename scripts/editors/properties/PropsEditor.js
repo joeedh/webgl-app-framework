@@ -3,7 +3,7 @@ import {Icons} from "../icon_enum.js";
 import {MeshFlags} from '../../mesh/mesh_base.js';
 import {NoteFrame, Note} from '../../path.ux/scripts/widgets/ui_noteframe.js';
 
-import {Editor, VelPan} from '../editor_base.js';
+import {Editor, VelPan} from '../editor_base.ts';
 import {nstructjs} from '../../path.ux/scripts/pathux.js';
 
 import {

@@ -1,5 +1,5 @@
 import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
-import {Editor} from '../editor_base.js';
+import {Editor} from '../editor_base.ts';
 import {nstructjs} from '../../path.ux/scripts/pathux.js';
 import {UIBase} from '../../path.ux/scripts/core/ui_base.js';
 import {Container} from '../../path.ux/scripts/core/ui.js';
@@ -17,7 +17,7 @@ import {
   DataPathError
 } from '../../path.ux/scripts/pathux.js';
 import {Icons} from '../icon_enum.js';
-import {getContextArea} from "../editor_base.js";
+import {getContextArea} from "../editor_base.ts";
 import {ModalFlags} from "../../core/modalflags.js";
 import {NodeEditor} from "./NodeEditor.js";
 

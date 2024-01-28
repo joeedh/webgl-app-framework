@@ -9,7 +9,7 @@ import {FindNearestRet} from "../findnearest.js";
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js';
 import * as math from '../../../util/math.js';
 import {SelectOneOp} from '../../../mesh/select_ops.js';
-import {KeyMap, HotKey} from "../../editor_base.js";
+import {KeyMap, HotKey} from "../../editor_base.ts";
 import {keymap} from '../../../path.ux/scripts/util/simple_events.js';
 import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
 import {BasicMeshDrawer} from '../view3d_draw.js';

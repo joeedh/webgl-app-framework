@@ -10,7 +10,7 @@ import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath
 import * as math from '../../../util/math.js';
 import {SelectOneOp} from '../../../mesh/select_ops.js';
 import {View3DFlags} from "../view3d_base.js";
-import {KeyMap, HotKey} from "../../editor_base.js";
+import {KeyMap, HotKey} from "../../editor_base.ts";
 import {ToolOp, ToolFlags, UndoFlags, ToolMacro, keymap} from '../../../path.ux/scripts/pathux.js';
 import {BasicMeshDrawer} from '../view3d_draw.js';
 import {MeshCache} from '../view3d_toolmode.js';
