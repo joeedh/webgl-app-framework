@@ -11,7 +11,7 @@ import {Grid, GridBase, QRecalcFlags} from '../../../mesh/mesh_grids.js';
 import {AttrRef, CDFlags, CustomDataElem} from '../../../mesh/customdata.js';
 import {
   BrushFlags, DynTopoFlags, SculptTools, BrushSpacingModes, DynTopoModes, SubdivModes
-} from '../../../brush/brush.js';
+} from '../../../brush/brush.ts';
 import {getArrayTemp, LogContext, Loop, Mesh, MeshFlags, MeshTypes, Vertex} from '../../../mesh/mesh.js';
 import {BVHFlags, BVHTriFlags, BVHVertFlags, getDynVerts, IsectRet} from '../../../util/bvh.js';
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js';
@@ -29,7 +29,7 @@ import {MeshLog} from '../../../mesh/mesh_log.js';
 import {TetMesh} from '../../../tet/tetgen.js';
 import {MultiGridSmoother} from '../../../mesh/multigrid_smooth.js';
 import {getCurveVerts, dirCurveSmooth} from '../../../mesh/mesh_curvature.js';
-import {TexUserFlags, TexUserModes} from '../../../texture/proceduralTex.js';
+import {TexUserFlags, TexUserModes} from '../../../texture/proceduralTex.ts';
 import {Bezier, closest_bez3_v2, dbez3_v2} from '../../../util/bezier.js';
 import {tetSolve} from '../../../tet/tet_deform.js';
 import {DispContext, DispLayerVert, getSmoothMemo, SmoothMemoizer} from '../../../mesh/mesh_displacement.js';

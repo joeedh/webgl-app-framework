@@ -21,7 +21,7 @@ import {NodeEditor} from "../node/NodeEditor.js";
 import * as cconst from '../../core/const.js';
 import {Menu} from "../../path.ux/scripts/widgets/ui_menu.js";
 import {MeshTypes} from "../../mesh/mesh_base.js";
-import {ProceduralTex, ProceduralTexUser} from '../../texture/proceduralTex.js';
+import {ProceduralTex, ProceduralTexUser} from '../../texture/proceduralTex.ts';
 import {ProceduralMesh} from '../../mesh/mesh_gen.js';
 import {CDFlags} from '../../mesh/customdata.js';
 import {loadUndoMesh, saveUndoMesh} from '../../mesh/mesh_ops_base.js';

@@ -61,7 +61,7 @@ import {PropsEditor} from "../editors/properties/PropsEditor.js";
 import {SelMask} from "../editors/view3d/selectmode.js";
 import {Light} from "../light/light.js";
 import {GridBase} from '../mesh/mesh_grids.js';
-import {DefaultBrushes, DynTopoFlags, DynTopoOverrides, SculptBrush, SculptTools} from '../brush/brush.js';
+import {DefaultBrushes, DynTopoFlags, DynTopoOverrides, SculptBrush, SculptTools} from '../brush/brush.ts';
 import {APP_VERSION, CompressionFlags} from './const.js';
 
 export function genDefaultFile(appstate, dont_load_startup = 0) {

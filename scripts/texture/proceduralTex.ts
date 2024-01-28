@@ -1,35 +1,85 @@
 import {Icons} from "../editors/icon_enum.js";
 import {
-  EnumProperty, Curve1D, SplineTemplates, nstructjs, Vec3Property, FloatProperty, Vec4Property, Vec2Property
+  EnumProperty, Curve1D, SplineTemplates, nstructjs, Vec3Property, FloatProperty, Vec4Property,
+  Vec2Property, Vector2, Vector3, Vector4, Matrix4, Quat, util, ToolProperty, DataAPI, DataStruct
 } from "../path.ux/scripts/pathux.js";
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
-import * as util from '../util/util.js';
-import {DataBlock, BlockFlags} from "../core/lib_api.js";
-import {GraphFlags, NodeFlags} from "../core/graph.js";
-import {DependSocket} from '../core/graphsockets.js';
-import {RecalcFlags} from '../mesh/mesh_base.js';
+import {DataBlock, BlockFlags, DataRef} from "../core/lib_api";
+import {GraphFlags, NodeFlags} from "../core/graph";
+import {DependSocket} from '../core/graphsockets';
 
-import {TextureShader, TextureShaderFlags} from './texture_base.js';
+import {ITextureShaderDef, TextureShader, TextureShaderFlags} from './texture_base.js';
 import {compileTexShaderJS} from './textureGen.js';
 import './textures.js';
 import {TexPaintShaderLib} from '../shaders/shaders.js';
+import {Container} from '../path.ux/scripts/types/core/ui.js';
+import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js';
 
-export const PatternRecalcFlags = {
-  PREVIEW: 1
+
+export enum PatternRecalcFlags {
+  PREVIEW = 1
+};
+
+export enum PatternFlags {
+  SELECT = 1
+};
+
+export enum TexUserFlags {
+  SELECT        = 1,
+  RAKE          = 2,
+  CONSTANT_SIZE = 4,
+  FANCY_RAKE    = 8,
+  ORIGINAL_CO   = 16,
+  CURVED        = 32,
+};
+
+export enum TexUserModes {
+  GLOBAL      = 0,
+  VIEWPLANE   = 1,
+  VIEW_REPEAT = 2,
 };
 
 let patterns_namemap = {};
-
 export const Patterns = [];
-export const PatternFlags = {
-  SELECT: 1
-};
 
-let _dv_rets = util.cachering.fromConstructor(Vector3, 1024);
+let _dv_rets = new util.cachering(() => [new Vector3(), new Vector3(), new Vector3()], 1024);
+const _dv_cos = util.cachering.fromConstructor(Vector3, 1024)
 let out_temps = [0, 0, 0, 0, 0];
 let eval_temps = new util.cachering(() => [new Array(5), new Vector3(), new Vector3(), 0.0, new Vector4()], 64);
 
+
+export type IPatternDef = {
+  typeName: string,
+  uiName?: string,
+  defaultName?: string,
+  icon?: number,
+  flag?: number,
+  uniforms?: any,
+};
+
+export interface IPatternConstructor<T = any> {
+  new(): T;
+
+  STRUCT: String;
+
+  patternDefine(): IPatternDef;
+
+  buildSettings(container: Container);
+}
+
 export class PatternGen {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  PatternGen {
+    flag : int;
+    name : string;
+  }`);
+
+  ['constructor']: IPatternConstructor<this>
+
+  flag: number = 0;
+  name: string = "";
+  texShaderJS?: { (thisarg: any, args: any[]): void, outputs: any };
+  texShaderJSHash: number = 0;
+
   constructor() {
     let def = this.constructor.patternDefine();
 
@@ -54,10 +104,10 @@ export class PatternGen {
       icon       : -1,
       flag       : 0,
       uniforms   : {},
-    }
+    } as IPatternDef
   }
 
-  static defineAPI(api) {
+  static defineAPI(api: DataAPI) {
     let st = api.mapStruct(this, true);
 
     st.flags("flag", "flag", PatternFlags, "Flag");
@@ -67,16 +117,16 @@ export class PatternGen {
   }
 
   //container.pathPrefix is set to point to correct location
-  static buildSettings(container) {
+  static buildSettings(container: Container) {
 
   }
 
-  static getGeneratorClass(name) {
+  static getGeneratorClass(name: string): IPatternConstructor<any> {
     return patterns_namemap[name];
   }
 
-  static register(cls) {
-    if (!cls.structName) {
+  static register<T>(cls: IPatternConstructor<T>) {
+    if (!(cls as unknown as any).structName) {
       throw new Error("You forgot to register " + cls.name + " with nstructjs");
     }
 
@@ -97,42 +147,48 @@ export class PatternGen {
 
     this.bindUniforms(uniforms);
 
+    const uniformProps: { [k: string]: ToolProperty<any> } = {}
+
     for (let k in uniforms) {
       let v = uniforms[k];
 
       if (typeof v === "number" || typeof v === "boolean") {
-        v = new FloatProperty(v);
+        v = new FloatProperty(v as number);
         uniforms[k] = v;
       } else if (Array.isArray(v)) {
         switch (v.length) {
           case 2:
-            v = new Vec2Property(v);
+            v = new Vec2Property(v as unknown as Vector2);
             break;
           case 3:
-            v = new Vec3Property(v);
+            v = new Vec3Property(v as unknown as Vector3);
             break;
           case 4:
-            v = new Vec4Property(v);
+            v = new Vec4Property(v as unknown as Vector4);
             break;
           default:
             console.error("Texture uniform error", k, v);
         }
 
-        uniforms[k] = v;
+        uniformProps[k] = v;
       }
     }
+
+
+    const patternDefine = this.constructor.patternDefine();
 
     class Shader extends TextureShader {
       static textureDefine() {
 
         return {
+          typeName   : patternDefine.typeName,
           flag       : TextureShaderFlags.HAS_COLOR,
-          uniforms,
+          uniforms   : uniformProps,
           params     : {
             inP: new Vec3Property()
           },
           fragmentPre: TexPaintShaderLib + "\n" + base.genGlslPre("Point", "Color", uniforms) + "\n"
-        }
+        } as ITextureShaderDef
       }
 
       genCode() {
@@ -167,11 +223,12 @@ float fsample(inout vec3 Point, inout vec3 Normal, float Time, inout vec4 Color)
     }
   }
 
-  genGlsl(inputP, outputC, uniforms) {
+  genGlsl(inputP: string, outputC: string, uniforms: any): string {
     console.error("Implement me! genGlsl!");
+    return ""
   }
 
-  genGlslPre(inC, outP, uniforms = {}) {
+  genGlslPre(inC: string, outP: string, uniforms: any = {}) {
     let uniforms2 = this.constructor.patternDefine().uniforms || {};
 
     let pre = '';
@@ -185,7 +242,7 @@ float fsample(inout vec3 Point, inout vec3 Normal, float Time, inout vec4 Color)
     return pre;
   }
 
-  bindUniforms(uniforms) {
+  bindUniforms(uniforms: any) {
     let uniforms2 = this.constructor.patternDefine().uniforms || {};
 
     let pre = '';
@@ -205,14 +262,14 @@ float fsample(inout vec3 Point, inout vec3 Normal, float Time, inout vec4 Color)
     return ret;
   }
 
-  copyTo(b) {
+  copyTo(b: this): void {
     b.flag = this.flag;
   }
 
-  calcUpdateHash(digest, recompileOnly) {
+  calcUpdateHash(digest, recompileOnly = false): void {
   }
 
-  evaluate(co, color_out) {
+  evaluate(co: Vector3, color_out?: Vector3): number {
     this.checkTexShaderJS();
 
     let args = eval_temps.next();
@@ -231,8 +288,8 @@ float fsample(inout vec3 Point, inout vec3 Normal, float Time, inout vec4 Color)
     return args[0][this.texShaderJS.outputs.Color][0];
   }
 
-  derivative(co) {
-    let co2 = _dv_rets.next().load(co);
+  derivative(co: Vector3): Vector3 {
+    let co2 = _dv_cos.next().load(co);
     let df = 0.00015;
 
     let a = this.evaluate(co);
@@ -249,29 +306,28 @@ float fsample(inout vec3 Point, inout vec3 Normal, float Time, inout vec4 Color)
 
     df = 1.0/df;
 
+    co2[0] = (b - a)/df;
+    co2[1] = (c - a)/df;
+    co2[2] = (d - a)/df;
+
+    /*
     b.sub(a).mulScalar(df);
     c.sub(a).mulScalar(df);
     d.sub(a).mulScalar(df);
 
-    co2[0] = b;
-    co2[1] = c;
-    co2[2] = d;
+    const ret = _dv_rets.next()
+    ret[0] = b;
+    ret[1] = c;
+    ret[2] = d;
+     */
 
     return co2;
   }
 }
 
-PatternGen.STRUCT = `
-PatternGen {
-  flag : int;
-  name : string;
-}
-`;
-nstructjs.register(PatternGen);
-
 let sntmps = util.cachering.fromConstructor(Vector3, 32);
 
-function hash(f) {
+function hash(f: number): number {
   //return Math.fract(f*31.23423 + Math.fract(f*23324.2343));
   let sign = f < 0 ? -1 : 1;
   f *= sign;
@@ -294,35 +350,46 @@ function hash(f) {
   return Math.fract(1.0/Math.fract(0.00001*f + 0.00001));
 }
 
-function hash3(x, y, z) {
+function hash3(x: number, y: number, z: number) {
   let f = x*Math.sqrt(3.0) + y*Math.sqrt(5.0)*10.0 + z*Math.sqrt(7.0)*100.0;
   return hash(f);
   //return hash(x*y*z + x*x + y*y + z*x);
 }
 
+
 export class SimpleNoise extends PatternGen {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  SimpleNoise {
+    levels     : float;
+    levelScale : float;
+    zoff       : float;
+    factor     : float;
+  }`)
+
+  levels = 5;
+  levelScale = 3.0;
+
+  factor = 0.0;
+
+  //for debugging purposes
+  zoff = 0.0;
+
   constructor() {
     super();
-
-    this.levels = 5;
-    this.levelScale = 3.0;
-
-    this.factor = 0.0;
-
-    //for debugging purposes
-    this.zoff = 0.0;
   }
 
-  static defineAPI(api) {
+  static defineAPI(api: DataAPI): DataStruct {
     let st = super.defineAPI(api);
 
     st.float("zoff", "zoff", "Zoffs").noUnits().range(-100, 100);
     st.float("levels", "levels", "Levels").noUnits().range(1, 15);
     st.float("levelScale", "levelScale", "Level Scale").noUnits().range(0.001, 10.0);
     st.float("factor", "factor", "factor").noUnits().range(0.0, 1.0);
+
+    return st
   }
 
-  static buildSettings(container) {
+  static buildSettings(container: Container): void {
     container.prop("levels");
     container.prop("levelScale");
     container.prop("factor");
@@ -338,7 +405,7 @@ export class SimpleNoise extends PatternGen {
     }
   }
 
-  copyTo(b) {
+  copyTo(b: this) {
     super.copyTo(b);
 
     b.levels = this.levels;
@@ -347,14 +414,14 @@ export class SimpleNoise extends PatternGen {
     b.factor = this.factor;
   }
 
-  calcUpdateHash(digest, recompileOnly) {
+  calcUpdateHash(digest: util.HashDigest, recompileOnly?: boolean): void {
     digest.add(this.levels);
     digest.add(this.levelScale);
     digest.add(this.zoff);
     digest.add(this.factor);
   }
 
-  evaluate(co) {
+  evaluate(co: Vector3): number {
     co = sntmps.next().load(co);
 
     let scale = Math.pow(this.levelScale, this.levels);
@@ -393,7 +460,7 @@ export class SimpleNoise extends PatternGen {
     return f1 + (f2 - f1)*this.factor;
   }
 
-  evaluate_intern(co, scale) {
+  evaluate_intern(co: Vector3, scale: number): number {
     let x = co[0]*scale;
     let y = co[1]*scale;
     let z = co[2]*scale + this.zoff;
@@ -439,26 +506,25 @@ export class SimpleNoise extends PatternGen {
   }
 }
 
-SimpleNoise.STRUCT = nstructjs.inherit(SimpleNoise, PatternGen) + `
-  levels     : float;
-  levelScale : float;
-  zoff       : float;
-  factor     : float;
-}`;
 PatternGen.register(SimpleNoise);
-nstructjs.register(SimpleNoise);
 
 let mevals = util.cachering.fromConstructor(Vector3, 64);
 
 export class MoireNoise extends PatternGen {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  MoireNoise {
+    dynamicAngle : bool;
+    angleOffset  : float; 
+  }`)
+
+  dynamicAngle = false;
+  angleOffset = 0.0;
+
   constructor() {
     super();
-
-    this.dynamicAngle = false;
-    this.angleOffset = 0.0;
   }
 
-  static defineAPI(api) {
+  static defineAPI(api: DataAPI): DataStruct {
     let st = super.defineAPI(api);
 
     st.bool("dynamicAngle", "dynamicAngle", "Rake Mode");
@@ -470,7 +536,7 @@ export class MoireNoise extends PatternGen {
     return st;
   }
 
-  static buildSettings(container) {
+  static buildSettings(container: Container): void {
     container.prop("angleOffset");
     container.prop("dynamicAngle");
   }
@@ -486,19 +552,19 @@ export class MoireNoise extends PatternGen {
     }
   }
 
-  copyTo(b) {
+  copyTo(b: this) {
     super.copyTo(b);
 
     b.dynamicAngle = this.dynamicAngle;
     b.angleOffset = this.angleOffset;
   }
 
-  calcUpdateHash(digest, recompileOnly) {
+  calcUpdateHash(digest: util.HashDigest, recompileOnly?: boolean): void {
     digest.add(this.dynamicAngle);
     digest.add(this.angleOffset);
   }
 
-  genGlsl(inputP, outputC, uniforms) {
+  genGlsl(inputP: string, outputC: string, uniforms: any) {
     let th = PatternGen.safeFloat(this.angleOffset);
 
     if (uniforms.brushAngle !== undefined) {
@@ -525,7 +591,7 @@ export class MoireNoise extends PatternGen {
 `
   }
 
-  evaluate(co, dv_out) {
+  evaluate(co: Vector3): number {
     let p = mevals.next().load(co);
     let p2 = mevals.next().load(co);
 
@@ -549,10 +615,6 @@ export class MoireNoise extends PatternGen {
   }
 }
 
-MoireNoise.STRUCT = nstructjs.inherit(MoireNoise, PatternGen) + `
-  dynamicAngle : bool;
-  angleOffset  : float; 
-};`
 PatternGen.register(MoireNoise);
 
 export const CombModes = {
@@ -581,17 +643,26 @@ let ModeFuncs = {
 };
 
 export class CombPattern extends PatternGen {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  CombPattern {
+    angleOffset  : float; 
+    count        : float;
+    mode         : int;
+    combWidth    : float;
+    blackPoint   : float;
+  }`);
+
+  count = 1;
+  angleOffset = 0.0;
+  mode = CombModes.STEP;
+  combWidth = 0.5;
+  blackPoint = 0.5;
+
   constructor() {
     super();
-
-    this.count = 1;
-    this.angleOffset = 0.0;
-    this.mode = CombModes.STEP;
-    this.combWidth = 0.5;
-    this.blackPoint = 0.5;
   }
 
-  static defineAPI(api) {
+  static defineAPI(api: DataAPI): DataStruct {
     let st = super.defineAPI(api);
 
     st.enum("mode", "mode", CombModes, "Mode");
@@ -619,7 +690,7 @@ export class CombPattern extends PatternGen {
     return st;
   }
 
-  static buildSettings(container) {
+  static buildSettings(container: Container): void {
     container.prop("mode");
     container.prop("count");
     container.prop("angleOffset");
@@ -641,7 +712,7 @@ export class CombPattern extends PatternGen {
     }
   }
 
-  copyTo(b) {
+  copyTo(b: this) {
     super.copyTo(b);
 
     b.blackPoint = this.blackPoint;
@@ -651,14 +722,15 @@ export class CombPattern extends PatternGen {
     b.angleOffset = this.angleOffset;
   }
 
-  bindUniforms(uniforms) {
+  bindUniforms(uniforms: any): this {
     uniforms.blackPoint = this.blackPoint;
     uniforms.combWidth = this.combWidth;
     uniforms.count = this.count;
     uniforms.angleOffset = this.angleOffset;
+    return this
   }
 
-  calcUpdateHash(digest, recompileOnly = false) {
+  calcUpdateHash(digest: util.HashDigest, recompileOnly = false): void {
     digest.add(this.angleOffset);
     digest.add(this.mode);
 
@@ -669,7 +741,7 @@ export class CombPattern extends PatternGen {
     }
   }
 
-  genGlsl(inputP, outputC, uniforms) {
+  genGlsl(inputP: string, outputC: string, uniforms: any): string {
     let th = PatternGen.safeFloat(this.angleOffset);
     let line;
 
@@ -714,8 +786,8 @@ export class CombPattern extends PatternGen {
 `
   }
 
-  evaluate(co, dv_out) {
-    return super.evaluate(co, dv_out);
+  evaluate(co: Vector3): number {
+    return super.evaluate(co);
     /*
     let d = co[0]*co[0] + co[1]*co[1];
     d = 1.0 - Math.sqrt(d);
@@ -737,33 +809,36 @@ export class CombPattern extends PatternGen {
   }
 }
 
-CombPattern.STRUCT = nstructjs.inherit(CombPattern, PatternGen) + `
-  angleOffset  : float; 
-  count        : float;
-  mode         : int;
-  combWidth    : float;
-  blackPoint   : float;
-}`
 PatternGen.register(CombPattern);
-nstructjs.register(CombPattern);
 
 export class GaborNoise extends PatternGen {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  GaborNoise {
+    levels     : float;
+    levelScale : float;
+    zoff       : float;
+    factor     : float;
+    randomness : float;
+    decayPower : float;
+    decay2     : float;
+  }`);
+
+  levels = 5;
+  levelScale = 3.0;
+
+  factor = 0.0;
+  randomness = 0.5;
+  decayPower = 0.5;
+  decay2 = 0.5;
+
+  //for debugging purposes
+  zoff = 0.0;
+
   constructor() {
     super();
-
-    this.levels = 5;
-    this.levelScale = 3.0;
-
-    this.factor = 0.0;
-    this.randomness = 0.5;
-    this.decayPower = 0.5;
-    this.decay2 = 0.5;
-
-    //for debugging purposes
-    this.zoff = 0.0;
   }
 
-  static defineAPI(api) {
+  static defineAPI(api: DataAPI): DataStruct {
     let st = super.defineAPI(api);
 
     st.float("zoff", "zoff", "Zoffs").noUnits().range(-100, 100);
@@ -773,9 +848,11 @@ export class GaborNoise extends PatternGen {
     st.float("randomness", "randomness", "randomness").noUnits().range(0.0, 1.0);
     st.float("decayPower", "decayPower", "Decay Power").noUnits().range(0.001, 4.0);
     st.float("decay2", "decay2", "Decay 2").noUnits().range(0.001, 4.0).step(0.003);
+
+    return st;
   }
 
-  static buildSettings(container) {
+  static buildSettings(container: Container): void {
     container.prop("levels");
     container.prop("levelScale");
     container.prop("factor");
@@ -798,7 +875,7 @@ export class GaborNoise extends PatternGen {
     }
   }
 
-  copyTo(b) {
+  copyTo(b: this): void {
     super.copyTo(b);
 
     b.levels = this.levels;
@@ -820,7 +897,7 @@ export class GaborNoise extends PatternGen {
     digest.add(this.decay2);
   }
 
-  evaluate(co) {
+  evaluate(co: Vector3): number {
     return super.evaluate(co);
 
     co = sntmps.next().load(co);
@@ -856,7 +933,7 @@ export class GaborNoise extends PatternGen {
     return f1 + (f2 - f1)*this.factor;
   }
 
-  genGlsl(inputP, outputC, uniforms) {
+  genGlsl(inputP: string, outputC: string, uniforms: any): string {
     let u = uniforms;
 
     return `
@@ -1053,46 +1130,47 @@ export class GaborNoise extends PatternGen {
   }
 }
 
-GaborNoise.STRUCT = nstructjs.inherit(GaborNoise, PatternGen) + `
-  levels     : float;
-  levelScale : float;
-  zoff       : float;
-  factor     : float;
-  randomness : float;
-  decayPower : float;
-  decay2     : float;
-}`;
 PatternGen.register(GaborNoise);
-nstructjs.register(GaborNoise);
 
 
 let evalcos = util.cachering.fromConstructor(Vector3, 512);
 let dvcos = util.cachering.fromConstructor(Vector3, 512);
 
 export class ProceduralTex extends DataBlock {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  ProceduralTex {
+    scale         : float;
+    power         : float;
+    brightness    : float;
+    contrast      : float;
+    generators    : array(abstract(PatternGen));
+    generator     : string | this.generator ? this.generator.constructor.patternDefine().typeName : "";  
+  }
+  `)
+
+  updateGen = 0;
+
+  generators: PatternGen[] = []; //stored generator instances
+  generator: PatternGen
+
+  scale = 1.0;
+  power = 1.0;
+  brightness = 0.0;
+  contrast = 1.0;
+
+  recalcFlag = PatternRecalcFlags.PREVIEW;
+  previews = [];
+
+  _last_update_hash: string | undefined | number = undefined;
+  _digest = new util.HashDigest();
+
   constructor() {
     super();
 
-    this.updateGen = 0;
-
-    this.generators = []; //stored generator instances
-    this.generator = undefined;
-
-    this.scale = 1.0;
-    this.power = 1.0;
-    this.brightness = 0.0;
-    this.contrast = 1.0;
-
     this.setGenerator(SimpleNoise);
-
-    this.recalcFlag = PatternRecalcFlags.PREVIEW;
-    this.previews = [];
-
-    this._last_update_hash = undefined;
-    this._digest = new util.HashDigest();
   }
 
-  static getPattern(index_or_typename_or_class) {
+  static getPattern(index_or_typename_or_class: any): IPatternConstructor {
     let cls = index_or_typename_or_class;
 
     if (typeof cls === "string") {
@@ -1110,7 +1188,7 @@ export class ProceduralTex extends DataBlock {
     }
   }
 
-  static buildGeneratorEnum() {
+  static buildGeneratorEnum(): EnumProperty {
     let enumdef = {};
     let uinames = {};
     let icons = {};
@@ -1152,11 +1230,11 @@ export class ProceduralTex extends DataBlock {
     }
   }
 
-  calcMemSize() {
+  calcMemSize(): number {
     return 1024; //just assume a large-ish block of memory
   }
 
-  bindUniforms(uniforms) {
+  bindUniforms(uniforms: any): void {
     uniforms["texScale"] = this.scale;
     uniforms["texBrightness"] = this.brightness;
     uniforms["texContrast"] = this.contrast;
@@ -1165,14 +1243,14 @@ export class ProceduralTex extends DataBlock {
     this.generator.bindUniforms(uniforms);
   }
 
-  genGlsl(inP, outC, uniforms = {}) {
+  genGlsl(inP: string, outC: string, uniforms: any = {}): string {
     uniforms = Object.assign({}, uniforms);
     this.bindUniforms(uniforms);
 
     return this.generator.genGlsl(inP, outC, uniforms);
   }
 
-  genGlslPre(inP, outC, uniforms = {}) {
+  genGlslPre(inP: string, outC: string, uniforms: any = {}): string {
     uniforms = Object.assign({}, uniforms);
     this.bindUniforms(uniforms);
 
@@ -1184,7 +1262,7 @@ uniform float texPower;
     ` + this.generator.genGlslPre(inP, outC, uniforms);
   }
 
-  copyTo(b, nonDataBlockMode = false) {
+  copyTo(b: this, nonDataBlockMode = false): void {
     if (!nonDataBlockMode) {
       super.copyTo(b);
     }
@@ -1209,7 +1287,9 @@ uniform float texPower;
     b.recalcFlag = this.recalcFlag;
   }
 
+  //XXX why do we return a bool here?
   update() {
+    console.warn("proceduralTex.update");
     let digest = this._digest.reset();
 
     this.generator.calcUpdateHash(digest);
@@ -1225,10 +1305,13 @@ uniform float texPower;
     if (hash !== this._last_update_hash) {
       this.recalcFlag |= PatternRecalcFlags.PREVIEW;
       this._last_update_hash = hash;
-      return true;
+
+      //XXX
+      return true as unknown as this;
     }
 
-    return false;
+    //XXX
+    return false as unknown as this;
   }
 
   buildSettings(container) {
@@ -1362,11 +1445,11 @@ uniform float texPower;
     return dv;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this);
     super.loadSTRUCT(reader);
 
-    if (this.generator === "") {
+    if (this.generator as unknown as string === "") {
       console.warn("failed to read active generator");
 
       if (this.generators.length > 0) {
@@ -1375,7 +1458,7 @@ uniform float texPower;
         this.setGenerator(SimpleNoise);
       }
     } else {
-      let gen = this.generator;
+      let gen = this.generator as unknown as string;
       this.generator = undefined;
 
       for (let cls of Patterns) {
@@ -1391,46 +1474,32 @@ uniform float texPower;
   }
 }
 
-ProceduralTex.STRUCT = nstructjs.inherit(ProceduralTex, DataBlock) + `
-  scale         : float;
-  power         : float;
-  brightness    : float;
-  contrast      : float;
-  generators    : array(abstract(PatternGen));
-  generator     : string | this.generator ? this.generator.constructor.patternDefine().typeName : "";  
-}
-`;
-nstructjs.register(ProceduralTex);
 DataBlock.register(ProceduralTex);
-
-export const TexUserFlags = {
-  SELECT       : 1,
-  RAKE         : 2,
-  CONSTANT_SIZE: 4,
-  FANCY_RAKE   : 8,
-  ORIGINAL_CO  : 16,
-  CURVED       : 32,
-};
-
-export const TexUserModes = {
-  GLOBAL     : 0,
-  VIEWPLANE  : 1,
-  VIEW_REPEAT: 2,
-};
 
 let _udigest = new util.HashDigest();
 let cotmp = new Vector3();
 
 export class ProceduralTexUser {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  ProceduralTexUser {
+    texture : DataRef | DataRef.fromBlock(this.texture);
+    flag    : int;
+    mode    : int;
+    scale   : float;
+    pinch   : float;
+  }`)
+
+  texture?: ProceduralTex = undefined;
+  scale = 1.0;
+  mode = TexUserModes.GLOBAL;
+  flag = 0; //see TexUserFlags
+  pinch = 0.0;
+
   constructor() {
-    this.texture = undefined;
-    this.scale = 1.0;
-    this.mode = TexUserModes.GLOBAL;
-    this.flag = 0; //see TexUserFlags
-    this.pinch = 0.0;
   }
 
-  sample(co, texScale, angle, rendermat, screen_origin, aspect, dv_out) {
+  sample(co: Vector3, texScale: number, angle: number, rendermat: Matrix4, screen_origin: Vector3, aspect: number,
+         dv_out?: Vector3): number {
     if (this.mode === TexUserModes.VIEWPLANE || this.mode === TexUserModes.VIEW_REPEAT) {
       cotmp.load(co).multVecMatrix(rendermat);
 
@@ -1454,7 +1523,7 @@ export class ProceduralTexUser {
     return this.texture.evaluate(co, texScale);
   }
 
-  copyTo(b) {
+  copyTo(b: this): void {
     b.texture = this.texture;
     b.scale = this.scale;
     b.mode = this.mode;
@@ -1462,13 +1531,13 @@ export class ProceduralTexUser {
     b.pinch = this.pinch;
   }
 
-  copy() {
+  copy(): ProceduralTexUser {
     let ret = new ProceduralTexUser();
-    this.copyTo(ret);
+    this.copyTo(ret as this);
     return ret;
   }
 
-  equals(b) {
+  equals(b: this): boolean {
     let r = this.texture === b.texture;
 
     function feq(a, b) {
@@ -1483,7 +1552,7 @@ export class ProceduralTexUser {
     return r;
   }
 
-  calcHashKey(digest = _udigest) {
+  calcHashKey(digest: util.HashDigest = _udigest) {
     let d = digest;
 
     d.add(this.scale);
@@ -1495,7 +1564,7 @@ export class ProceduralTexUser {
     return d.get();
   }
 
-  dataLink(owner, getblock, getblock_adduser) {
+  dataLink(owner: any, getblock: any, getblock_adduser: any): void {
     if (this.texture !== undefined) {
       this.texture = getblock_adduser(this.texture, owner);
     }
@@ -1506,15 +1575,6 @@ export class ProceduralTexUser {
   }
 }
 
-ProceduralTexUser.STRUCT = `
-ProceduralTexUser {
-  texture : DataRef | DataRef.fromBlock(this.texture);
-  flag    : int;
-  mode    : int;
-  scale   : float;
-  pinch   : float;
-}
-`
 nstructjs.register(ProceduralTexUser);
 
 
@@ -1525,20 +1585,20 @@ export function buildProcTextureAPI(api, api_define_datablock) {
 
   let st = api_define_datablock(api, ProceduralTex);
 
-  let onchange = function () {
+  let onchange = function (this: { dataref: ProceduralTex }) {
     this.dataref.updateGen++;
     this.dataref.graphUpdate();
   }
 
   let prop = ProceduralTex.buildGeneratorEnum();
-  st.enum("mode", "mode", prop, "Mode").on('change', function () {
+  st.enum("mode", "mode", prop, "Mode").on('change', function (this: { dataref: ProceduralTex }) {
     let tex = this.dataref;
     tex.recalcFlag |= PatternRecalcFlags.PREVIEW;
-  }).customGetSet(function () {
+  }).customGetSet(function (this: { dataref: ProceduralTex }) {
     let tex = this.dataref;
 
     return tex.generator.constructor.patternDefine().typeName;
-  }, function (val) {
+  }, function (this: { dataref: ProceduralTex }, val) {
     let tex = this.dataref;
 
     let cls;
@@ -1559,7 +1619,7 @@ export function buildProcTextureAPI(api, api_define_datablock) {
 
   st.dynamicStruct("generator", "generator", "Generator");
 
-  let onch = function () {
+  let onch = function (this: { dataref: ProceduralTexUser }) {
     let texuser = this.dataref;
 
     if (texuser.texture) {

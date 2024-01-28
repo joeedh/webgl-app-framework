@@ -1,13 +1,17 @@
+import {
+  BSplineCurve, Curve1D, SplineTemplates, util,
+  Vector2, Vector3, Vector4, Matrix4, Quat
+} from "../path.ux/scripts/pathux.js";
 import {Icons} from "../editors/icon_enum.js";
-import {Curve1D, SplineTemplates} from "../path.ux/scripts/pathux.js";
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
-import * as util from '../util/util.js';
 import {DataBlock, BlockFlags} from "../core/lib_api.js";
 import {GraphFlags, NodeFlags} from "../core/graph.js";
 import {
   CombModes, CombPattern, ProceduralTex, ProceduralTexUser, TexUserFlags, TexUserModes
-} from '../texture/proceduralTex.js';
+} from '../texture/proceduralTex';
 import {nstructjs} from '../path.ux/pathux.js';
+import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js';
+import {Scene} from '../scene/scene.js';
+import {ToolContext} from '../../types/scripts/core/context.js';
 
 function feq(a, b) {
   return Math.abs(a - b) < 0.00001;
@@ -19,93 +23,93 @@ export const BrushSpacingModes = {
 };
 
 
-export const BrushFlags = {
-  SELECT               : 1,
-  SHARED_SIZE          : 2,
-  DYNTOPO              : 4,
-  INVERT_CONCAVE_FILTER: 8,
-  MULTIGRID_SMOOTH     : 16,
-  PLANAR_SMOOTH        : 32,
-  CURVE_RAKE_ONLY_POS_X: 64, //for debugging purposes, restrict curavture raking to one side of the mesh
-  INVERT               : 128,
-  LINE_FALLOFF         : 256,
-  SQUARE               : 512,
-  USE_LINE_CURVE       : 1024
+export enum BrushFlags {
+  SELECT                = 1,
+  SHARED_SIZE           = 2,
+  DYNTOPO               = 4,
+  INVERT_CONCAVE_FILTER = 8,
+  MULTIGRID_SMOOTH      = 16,
+  PLANAR_SMOOTH         = 32,
+  CURVE_RAKE_ONLY_POS_X = 64, //for debugging purposes, restrict curavture raking to one side of the mesh
+  INVERT                = 128,
+  LINE_FALLOFF          = 256,
+  SQUARE                = 512,
+  USE_LINE_CURVE        = 1024
 };
 
-export const DynTopoModes = {
-  SCREEN: 0,
-  WORLD : 1
+export enum DynTopoModes {
+  SCREEN = 0,
+  WORLD  = 1
 };
 
-export const SculptTools = {
-  CLAY            : 0,
-  FILL            : 1,
-  SCRAPE          : 2,
-  SMOOTH          : 3,
-  DRAW            : 4,
-  SHARP           : 5,
-  INFLATE         : 6,
-  SNAKE           : 7,
-  TOPOLOGY        : 8,
-  GRAB            : 9,
-  HOLE_FILLER     : 10,
-  MASK_PAINT      : 11,
-  WING_SCRAPE     : 12,
-  PINCH           : 13,
-  DIRECTIONAL_FAIR: 14,
-  SLIDE_RELAX     : 15,
-  BVH_DEFORM      : 16,
-  PAINT           : 128,
-  PAINT_SMOOTH    : 129,
-  COLOR_BOUNDARY  : 130,
-  TEXTURE_PAINT   : 150,
-  FACE_SET_DRAW   : 151
+export enum SculptTools {
+  CLAY             = 0,
+  FILL             = 1,
+  SCRAPE           = 2,
+  SMOOTH           = 3,
+  DRAW             = 4,
+  SHARP            = 5,
+  INFLATE          = 6,
+  SNAKE            = 7,
+  TOPOLOGY         = 8,
+  GRAB             = 9,
+  HOLE_FILLER      = 10,
+  MASK_PAINT       = 11,
+  WING_SCRAPE      = 12,
+  PINCH            = 13,
+  DIRECTIONAL_FAIR = 14,
+  SLIDE_RELAX      = 15,
+  BVH_DEFORM       = 16,
+  PAINT            = 128,
+  PAINT_SMOOTH     = 129,
+  COLOR_BOUNDARY   = 130,
+  TEXTURE_PAINT    = 150,
+  FACE_SET_DRAW    = 151
 };
 
-export const DynTopoFlags = {
-  SUBDIVIDE         : 1,
-  COLLAPSE          : 2,
-  ENABLED           : 8,
-  FANCY_EDGE_WEIGHTS: 16,
-  QUAD_COLLAPSE     : 32,
-  ALLOW_VALENCE4    : 64,
-  DRAW_TRIS_AS_QUADS: 128,
-  ADAPTIVE          : 256
+export enum DynTopoFlags {
+  SUBDIVIDE          = 1,
+  COLLAPSE           = 2,
+  ENABLED            = 8,
+  FANCY_EDGE_WEIGHTS = 16,
+  QUAD_COLLAPSE      = 32,
+  ALLOW_VALENCE4     = 64,
+  DRAW_TRIS_AS_QUADS = 128,
+  ADAPTIVE           = 256
 };
 
-export const DynTopoOverrides = {
+export enum DynTopoOverrides {
   //these are mirrored with DynTopoFlags
-  SUBDIVIDE: 1,
-  COLLAPSE : 2,
+  SUBDIVIDE          = 1,
+  COLLAPSE           = 2,
   //4 used to be INHERIT_DEFAULT, moved to DynTopoOverrides.NONE
-  ENABLED           : 8,
-  FANCY_EDGE_WEIGHTS: 16,
-  QUAD_COLLAPSE     : 32,
-  ALLOW_VALENCE4    : 64,
-  DRAW_TRIS_AS_QUADS: 128,
-  ADAPTIVE          : 256,
+  ENABLED            = 8,
+  FANCY_EDGE_WEIGHTS = 16,
+  QUAD_COLLAPSE      = 32,
+  ALLOW_VALENCE4     = 64,
+  DRAW_TRIS_AS_QUADS = 128,
+  ADAPTIVE           = 256,
   //end of DynTopoFlags mirror
 
   //these mirror properties instead of flags
-  VALENCE_GOAL    : 1<<16,
-  EDGE_SIZE       : 1<<17,
-  DECIMATE_FACTOR : 1<<18,
-  SUBDIVIDE_FACTOR: 1<<19,
-  MAX_DEPTH       : 1<<20,
-  EDGE_COUNT      : 1<<21,
-  NONE            : 1<<22,
-  REPEAT          : 1<<23,
-  SPACING_MODE    : 1<<24,
-  SPACING         : 1<<25,
-  EDGEMODE        : 1<<26,
-  SUBDIV_MODE     : 1<<27,
-  EVERYTHING      : ((1<<27) - 1) & ~(1<<22) //all flags except for NONE
+  VALENCE_GOAL       = 1<<16,
+  EDGE_SIZE          = 1<<17,
+  DECIMATE_FACTOR    = 1<<18,
+  SUBDIVIDE_FACTOR   = 1<<19,
+  MAX_DEPTH          = 1<<20,
+  EDGE_COUNT         = 1<<21,
+  NONE               = 1<<22,
+  REPEAT             = 1<<23,
+  SPACING_MODE       = 1<<24,
+  SPACING            = 1<<25,
+  EDGEMODE           = 1<<26,
+  SUBDIV_MODE        = 1<<27,
+  EVERYTHING         = ((1<<27) - 1) & ~(1<<22) //all flags except for NONE
 };
 
-export const SubdivModes = {
-  SIMPLE: 0,
-  SMART : 1
+export enum SubdivModes {
+  SIMPLE = 0,
+  SMART  = 1
 };
 
 const apiKeyMap = {
@@ -131,27 +135,44 @@ for (let k in DynTopoOverrides) {
 let _ddigest = new util.HashDigest();
 
 export class DynTopoSettings {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  DynTopoSettings {
+    flag            : int;
+    overrideMask    : int;
+    edgeSize        : float;
+    edgeMode        : int;
+    edgeCount       : int;
+    decimateFactor  : float;
+    subdivideFactor : float;
+    maxDepth        : int;
+    valenceGoal     : int;
+    repeat          : int;
+    spacingMode     : int;
+    spacing         : float;
+    subdivMode      : int;
+  }`
+  );
+
+  overrideMask = DynTopoOverrides.NONE;
+  subdivMode = SubdivModes.SMART;
+
+  edgeMode = DynTopoModes.SCREEN;
+
+  valenceGoal = 6;
+  edgeSize = 20.0;
+  decimateFactor = 0.5;
+  subdivideFactor = 0.25;
+  maxDepth = 6; //used by multigrid code
+  spacing = 1.0;
+  spacingMode = BrushSpacingModes.EVEN;
+
+  flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE;
+  //flag |= DynTopoFlags.FANCY_EDGE_WEIGHTS;
+
+  edgeCount = 150;
+  repeat = 1;
+
   constructor() {
-    this.overrideMask = DynTopoOverrides.NONE;
-
-    this.subdivMode = SubdivModes.SMART;
-
-    this.edgeMode = DynTopoModes.SCREEN;
-
-    this.valenceGoal = 6;
-    this.edgeSize = 20.0;
-    this.decimateFactor = 0.5;
-    this.subdivideFactor = 0.25;
-    this.maxDepth = 6; //used by multigrid code
-
-    this.spacing = 1.0;
-    this.spacingMode = BrushSpacingModes.EVEN;
-
-    this.flag = DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE;
-    //this.flag |= DynTopoFlags.FANCY_EDGE_WEIGHTS;
-
-    this.edgeCount = 150;
-    this.repeat = 1;
   }
 
   static apiKeyToOverride(k) {
@@ -177,7 +198,7 @@ export class DynTopoSettings {
     return d.get();
   }
 
-  equals(b) {
+  equals(b: this) {
     let r = true;
 
     r = r && this.flag === b.flag;
@@ -201,7 +222,7 @@ export class DynTopoSettings {
     return r;
   }
 
-  loadDefaults(defaults) {
+  loadDefaults(defaults: any): this {
     let b = defaults;
 
     let mask = this.overrideMask;
@@ -213,7 +234,11 @@ export class DynTopoSettings {
     }
 
     for (let k in DynTopoFlags) {
-      let f = DynTopoFlags[k];
+      let f = DynTopoFlags[k]
+
+      if (typeof f !== "number") {
+        continue;
+      }
 
       if (!(mask & f)) {
         let val = b.flag & f;
@@ -273,7 +298,7 @@ export class DynTopoSettings {
     return this;
   }
 
-  load(b) {
+  load(b: this): this {
     this.flag = b.flag;
     this.overrideMask = b.overrideMask;
     this.edgeMode = b.edgeMode;
@@ -295,29 +320,10 @@ export class DynTopoSettings {
     return this;
   }
 
-  copy() {
-    return new DynTopoSettings().load(this);
+  copy(): this {
+    return new DynTopoSettings().load(this) as unknown as this;
   }
 }
-
-DynTopoSettings.STRUCT = `
-DynTopoSettings {
-  flag            : int;
-  overrideMask    : int;
-  edgeSize        : float;
-  edgeMode        : int;
-  edgeCount       : int;
-  decimateFactor  : float;
-  subdivideFactor : float;
-  maxDepth        : int;
-  valenceGoal     : int;
-  repeat          : int;
-  spacingMode     : int;
-  spacing         : float;
-  subdivMode      : int;
-}
-`;
-nstructjs.register(DynTopoSettings);
 
 export const SculptIcons = {}
 for (let k in SculptTools) {
@@ -327,13 +333,23 @@ for (let k in SculptTools) {
 let _bdhash = new util.HashDigest();
 
 export class BrushDynChannel {
+  static STRUCT = nstructjs.inlineRegister(this, `
+BrushDynChannel {
+  name        : string;
+  useDynamics : bool;
+  curve       : Curve1D; 
+}
+`)
+
+  name: string;
+  curve = new Curve1D();
+  useDynamics = false;
+
   constructor(name = "") {
-    this.name = name;
-    this.curve = new Curve1D();
-    this.useDynamics = false;
+    this.name = name
   }
 
-  calcHashKey(digest = _bdhash.reset()) {
+  calcHashKey(digest: util.HashDigest = _bdhash.reset()): number {
     let d = digest;
 
     d.add(this.name);
@@ -343,7 +359,7 @@ export class BrushDynChannel {
     return d.get();
   }
 
-  equals(b) {
+  equals(b: this): boolean {
     let r = this.name === b.name;
 
     r = r && this.curve.equals(b.curve);
@@ -352,7 +368,7 @@ export class BrushDynChannel {
     return r;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this);
 
     if (!this.name) {
@@ -360,20 +376,12 @@ export class BrushDynChannel {
     }
   }
 
-  copyTo(b) {
+  copyTo(b: this): void {
     b.curve = this.curve.copy();
     b.useDynamics = this.useDynamics;
     b.name = this.name;
   }
 }
-
-BrushDynChannel.STRUCT = `
-BrushDynChannel {
-  name        : string;
-  useDynamics : bool;
-  curve       : Curve1D; 
-}`;
-nstructjs.register(BrushDynChannel);
 
 let radius_curve_json = {
   "generators"      : [{"type": "EquationCurve", "equation": "x"}, {
@@ -444,9 +452,14 @@ let reverse_brush_curve = {
 let _digest2 = new util.HashDigest();
 
 export class BrushDynamics {
-  constructor() {
-    this.channels = [];
+  static STRUCT = nstructjs.inlineRegister(this, `
+  BrushDynamics {
+    channels : array(BrushDynChannel);
+  }
+`);
+  channels: BrushDynChannel[] = [];
 
+  constructor() {
     let ch = this.getChannel("strength", true);
     ch.useDynamics = false;
     ch.curve.loadJSON(radius_curve_json);
@@ -488,7 +501,7 @@ export class BrushDynamics {
     return d.get();
   }
 
-  equals(b) {
+  equals(b: this): boolean {
     for (let ch1 of this.channels) {
       let ch2 = b.getChannel(ch1.name, false);
 
@@ -500,7 +513,7 @@ export class BrushDynamics {
     return true;
   }
 
-  loadDefault(name) {
+  loadDefault(name: string): void {
     let json = new BrushDynamics().getChannel(name, true).curve.toJSON();
     //let json = radius_curve_json;
     //let json2 = new BrushDynamics().radius.curve.toJSON();
@@ -508,11 +521,12 @@ export class BrushDynamics {
     this.getChannel(name, true).curve.loadJSON(json);
   }
 
-  hasChannel(name) {
+  hasChannel(name: string) {
     return this.getChannel(name, false) !== undefined;
   }
 
-  getChannel(name, autoCreate = true) {
+  getChannel<T extends true | false>(name: string, autoCreate: T = true as T): T extends true ? BrushDynChannel
+                                                                                              : BrushDynChannel | undefined {
     for (let ch of this.channels) {
       if (ch.name === name) {
         return ch;
@@ -537,7 +551,7 @@ export class BrushDynamics {
     return undefined;
   }
 
-  getCurve(channel) {
+  getCurve(channel: string): Curve1D {
     let ch = this.getChannel(channel);
 
     if (ch) {
@@ -545,7 +559,7 @@ export class BrushDynamics {
     }
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this);
 
     let defineProp = (name) => {
@@ -560,7 +574,7 @@ export class BrushDynamics {
       });
     }
 
-    if (!this.autosmooth) {
+    if (!this.hasChannel("autosmooth")) {
       this.loadDefault("autosmooth");
     }
 
@@ -576,13 +590,6 @@ export class BrushDynamics {
     }
   }
 }
-
-BrushDynamics.STRUCT = `
-BrushDynamics {
-  channels : array(BrushDynChannel);
-}
-`;
-nstructjs.register(BrushDynamics);
 
 let ckey_digest = new util.HashDigest();
 
@@ -615,45 +622,46 @@ SculptBrush {
   smoothRadiusMul : float;
 }`);
 
+
+  flag = BrushFlags.SHARED_SIZE;
+
+  smoothRadiusMul = 1.0;
+
+  smoothProj = 0.0; //how much smoothing should project to surface
+  spacingMode = BrushSpacingModes.EVEN;
+
+  texUser = new ProceduralTexUser();
+
+  concaveFilter = 0.0;
+
+  dynTopo = new DynTopoSettings();
+
+  rakeCurvatureFactor = 0.0;
+
+  tool = SculptTools.CLAY;
+
+  sharp = 0.0;
+  strength = 0.5;
+  spacing = 0.175;
+  radius = 55.0;
+  autosmooth = 0.0;
+  autosmoothInflate = 0.0;
+  planeoff = 0.0;
+  rake = 0.0;
+  pinch = 0.0;
+
+  normalfac = 0.5;
+
+  falloff = new Curve1D();
+  falloff2 = new Curve1D();
+
+  color = new Vector4([1, 1, 1, 1]);
+  bgcolor = new Vector4([0, 0, 0, 1]);
+
+  dynamics = new BrushDynamics();
+
   constructor() {
     super();
-
-    this.flag = BrushFlags.SHARED_SIZE;
-
-    this.smoothRadiusMul = 1.0;
-
-    this.smoothProj = 0.0; //how much smoothing should project to surface
-    this.spacingMode = BrushSpacingModes.EVEN;
-
-    this.texUser = new ProceduralTexUser();
-
-    this.concaveFilter = 0.0;
-
-    this.dynTopo = new DynTopoSettings();
-
-    this.rakeCurvatureFactor = 0.0;
-
-    this.tool = SculptTools.CLAY;
-
-    this.sharp = 0.0;
-    this.strength = 0.5;
-    this.spacing = 0.175;
-    this.radius = 55.0;
-    this.autosmooth = 0.0;
-    this.autosmoothInflate = 0.0;
-    this.planeoff = 0.0;
-    this.rake = 0.0;
-    this.pinch = 0.0;
-
-    this.normalfac = 0.5;
-
-    this.falloff = new Curve1D();
-    this.falloff2 = new Curve1D();
-
-    this.color = new Vector4([1, 1, 1, 1]);
-    this.bgcolor = new Vector4([0, 0, 0, 1]);
-
-    this.dynamics = new BrushDynamics();
   }
 
   static blockDefine() {
@@ -668,13 +676,15 @@ SculptBrush {
 
   static nodedef() {
     return {
-      name  : "brush",
-      uiname: "Brush",
-      flag  : NodeFlags.SAVE_PROXY
+      name   : "brush",
+      uiname : "Brush",
+      flag   : NodeFlags.SAVE_PROXY,
+      inputs : {},
+      outputs: {}
     }
   }
 
-  equals(b, fast = true, ignoreRadiusStrength = false) {
+  equals(b: this, fast = true, ignoreRadiusStrength = false): boolean {
     if (fast) {
       let key1 = this.calcHashKey();
       let key2 = b.calcHashKey();
@@ -719,7 +729,7 @@ SculptBrush {
     return r;
   }
 
-  calcHashKey(digest = ckey_digest.reset(), ignoreRadiusStrength = false) {
+  calcHashKey(digest = ckey_digest.reset(), ignoreRadiusStrength = false): number {
     let d = digest;
 
     for (let i = 0; i < 4; i++) {
@@ -763,11 +773,11 @@ SculptBrush {
     return d.get();
   }
 
-  calcMemSize() {
+  calcMemSize(): number {
     return 16*8 + 512; //is an estimation
   }
 
-  copyTo(b, copyBlockData = false) {
+  copyTo(b: this, copyBlockData = false): void {
     if (copyBlockData) {
       super.copyTo(b, false);
     }
@@ -804,15 +814,15 @@ SculptBrush {
     this.dynamics.copyTo(b.dynamics);
   }
 
-  copy(addLibUsers = false) {
-    let ret = super.copy(addLibUsers);
+  copy(addLibUsers = false): this {
+    let ret = super.copy(addLibUsers) as this;
     this.copyTo(ret, false);
     ret.name = this.name;
 
     return ret;
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this);
 
     //handle old file data
@@ -837,12 +847,16 @@ export function makeDefaultBrushes() {
   let bmap = {};
 
   for (let k in SculptTools) {
+    if (typeof k !== "string") {
+      continue;
+    }
+
     let name = k[0] + k.slice(1, k.length).toLowerCase();
     name = name.replace(/_/g, " ").trim();
 
     let brush = brushes[name] = new SculptBrush();
     brush.name = name;
-    brush.tool = SculptTools[k];
+    brush.tool = SculptTools[k] as unknown as SculptTools;
 
     bmap[SculptTools[k]] = brush;
   }
@@ -1007,12 +1021,16 @@ export function makeDefaultBrushes_MediumRes() {
   let bmap = {};
 
   for (let k in SculptTools) {
+    if (typeof k !== "string") {
+      continue;
+    }
+
     let name = k[0] + k.slice(1, k.length).toLowerCase();
     name = name.replace(/_/g, " ").trim();
 
     let brush = brushes[name] = new SculptBrush();
     brush.name = name;
-    brush.tool = SculptTools[k];
+    brush.tool = SculptTools[k] as unknown as SculptTools;
 
     bmap[SculptTools[k]] = brush;
   }
@@ -1189,16 +1207,25 @@ export function makeDefaultBrushes_MediumRes() {
 }
 
 export class PaintToolSlot {
-  constructor(tool) {
-    this.brush = undefined;
+  static STRUCT = nstructjs.inlineRegister(this, `
+  PaintToolSlot {
+    brush : DataRef | DataRef.fromBlock(this.brush);
+    tool  : int;
+  }
+`)
+
+  brush?: SculptBrush = undefined
+  tool: SculptTools
+
+  constructor(tool: SculptTools) {
     this.tool = tool;
   }
 
-  dataLink(owner, getblock, getblock_addUser) {
+  dataLink(owner: DataBlock, getblock: any, getblock_addUser: any) {
     this.brush = getblock_addUser(this.brush, owner);
   }
 
-  setBrush(brush, scene) {
+  setBrush(brush: SculptBrush, scene: Scene) {
     if (brush === this.brush) {
       return;
     }
@@ -1211,7 +1238,7 @@ export class PaintToolSlot {
     this.brush = brush;
   }
 
-  resolveBrush(ctx) {
+  resolveBrush(ctx: ToolContext) {
     if (!this.brush) {
       let scene = ctx.scene;
 
@@ -1224,41 +1251,36 @@ export class PaintToolSlot {
     return this.brush;
   }
 
-  getBrushList(ctx) {
+  getBrushList(ctx: ToolContext) {
     return getBrushes(ctx).filter(f => f.tool === this.tool);
   }
 }
 
-PaintToolSlot.STRUCT = `
-PaintToolSlot {
-  brush : DataRef | DataRef.fromBlock(this.brush);
-  tool  : int;
-}
-`;
-nstructjs.register(PaintToolSlot);
-
-export var BrushSets = {
-  HIGH_RES  : 0,
-  MEDIUM_RES: 1
+export enum BrushSets {
+  HIGH_RES   = 0,
+  MEDIUM_RES = 1,
+  DEFAULT    = 1
 };
 
-export var BrushSetFactories = [
+export const BrushSetFactories = [
   makeDefaultBrushes,
   makeDefaultBrushes_MediumRes
 ];
 
 export var DefaultBrushes = makeDefaultBrushes();
-window._DefaultBrushes = DefaultBrushes;
+(window as unknown as any)._DefaultBrushes = DefaultBrushes;
 
 export var brushSet = BrushSets.DEFAULT;
 
-export function setBrushSet(set) {
+export function setBrushSet(set: BrushSets | string) {
   let update = set !== brushSet;
 
   let found = false;
 
   for (let k in BrushSets) {
-    if (BrushSets[k] === set) {
+    const v = BrushSets[k] as unknown as BrushSets
+
+    if (v === set) {
       found = true;
     } else if (k === set) {
       set = BrushSets[k];
@@ -1270,26 +1292,26 @@ export function setBrushSet(set) {
     throw new Error("unknown brush set " + set);
   }
 
-  brushSet = set;
+  brushSet = set as unknown as BrushSets;
 
   if (update) {
     console.log("Loading brush set " + set);
 
-    DefaultBrushes = window._DefaultBrushes = BrushSetFactories[set]();
+    DefaultBrushes = (window as unknown as any)._DefaultBrushes = BrushSetFactories[set]();
   }
 }
 
-window._setBrushSet = setBrushSet;
+(window as unknown as any)._setBrushSet = setBrushSet;
 
 /**
  Ensures that at least one brush instance of each brush tool type
  exists in the datalib
  * */
-export function getBrushes(ctx, overrideDefaultBrushes = false) {
+export function getBrushes(ctx: ToolContext, overrideDefaultBrushes = false) {
   let brushes = ctx.datalib.brush;
 
   for (let k in DefaultBrushes) {
-    let found = false;
+    let found: SculptBrush | undefined = undefined;
     let b = DefaultBrushes[k];
 
     for (let b2 of brushes) {
@@ -1324,7 +1346,7 @@ export function getBrushes(ctx, overrideDefaultBrushes = false) {
     if (overrideDefaultBrushes || !found) {
       //add a hidden copy too
       let oname = "__original_brush_" + b.name;
-      let b2 = ctx.datalib.get(oname);
+      let b2 = ctx.datalib.get<SculptBrush>(oname);
 
       if (!b2) {
         b2 = b.copy();
@@ -1353,4 +1375,4 @@ export function getBrushes(ctx, overrideDefaultBrushes = false) {
   return ret;
 }
 
-window._getBrushes = getBrushes;
+(window as unknown as any)._getBrushes = getBrushes;

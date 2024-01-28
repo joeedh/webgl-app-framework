@@ -4,7 +4,7 @@ import {
 } from '../path.ux/scripts/pathux.js';
 import * as util from '../util/util.js';
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js';
-import {SculptBrush, DefaultBrushes, getBrushes} from './brush.js';
+import {SculptBrush, DefaultBrushes, getBrushes} from './brush.ts';
 import {Icons} from '../editors/icon_enum.js';
 
 export class BrushOp extends ToolOp {

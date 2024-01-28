@@ -1,5 +1,5 @@
 import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js';
-import {BrushSets, setBrushSet} from '../brush/brush.js';
+import {BrushSets, setBrushSet} from '../brush/brush.ts';
 let STRUCT = nstructjs.STRUCT;
 import addonManager from '../addon/addon.js';
 

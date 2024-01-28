@@ -9,6 +9,9 @@ import {Icons} from "../editors/icon_enum.js";
 import {StructReader} from "../path.ux/scripts/path-controller/types/util/nstructjs";
 import type {ToolContext} from "../../types/scripts/core/context";
 
+import type {SculptBrush} from '../brush/brush'
+import type {Mesh} from '../mesh/mesh';
+
 export let BlockTypes = [];
 
 export interface IBlockRef {
@@ -18,10 +21,10 @@ export interface IBlockRef {
 }
 
 export enum BlockFlags {
-  SELECT = 1,
-  HIDE = 2,
+  SELECT    = 1,
+  HIDE      = 2,
   FAKE_USER = 4,
-  NO_SAVE = 8 //do not save
+  NO_SAVE   = 8 //do not save
 }
 
 export interface IBlockDef {
@@ -126,7 +129,7 @@ DataBlock {
   //(e.g. a sceneobject doesn't duplicate .data)
   //if addLibUsers is true, references to other datablocks will get lib_addUser called,
   copy(addLibUsers = false, owner?: DataBlock): this {
-    let ret = new this.constructor();
+    let ret = (new this.constructor()) as this;
 
     this.copyTo(ret);
     //forcibly call DataBlock.ptotoype.copyTo
@@ -194,17 +197,17 @@ DataBlock {
    */
   static blockDefine() {
     return {
-      typeName: "typename",
+      typeName   : "typename",
       defaultName: "unnamed",
-      uiName: "uiname",
-      flag: 0,
-      icon: -1
-    }
+      uiName     : "uiname",
+      flag       : 0,
+      icon       : -1
+    } as IBlockDef
   }
 
   /**
-   * @param getblock: gets a block
-   * @param getblock_addUser:  gets a block but increments reference count
+   * @param getblock gets a block
+   * @param getblock_addUser  gets a block but increments reference count
    *
    * note that the reference counts of all blocks are re-built at file load time,
    * so make sure to choose between these two functions correctly.
@@ -677,6 +680,9 @@ Library {
   block_idmap: { [k: number]: DataBlock };
   block_namemap: { [k: string]: DataBlock };
 
+  brush: BlockSet<SculptBrush>
+  mesh: BlockSet<Mesh>
+
   constructor() {
     //master graph
     this.graph = new Graph();
@@ -883,7 +889,8 @@ DataRefProperty {
   blockType: string;
   data: DataRef;
 
-  constructor(type?: IDataBlockConstructor<any, any, any>, apiname = "", uiname = "", description = "", flag = 0, icon = -1) {
+  constructor(type?: IDataBlockConstructor<any, any, any>, apiname = "", uiname = "", description = "", flag = 0,
+              icon = -1) {
     super(PropTypes.DATAREF);
 
     this.apiname = apiname;
@@ -904,7 +911,7 @@ DataRefProperty {
   }
 
   calcMemSize() {
-    return super.calcMemSize() + (this.blockType ? this.blockType.length * 4 + 8 : 8) + 64;
+    return super.calcMemSize() + (this.blockType ? this.blockType.length*4 + 8 : 8) + 64;
   }
 
   setValue(val: any) {
@@ -988,7 +995,7 @@ export class DataRefListProperty extends ToolProperty<DataRef[]> {
     tot += this.blockType ? this.blockType.length + 4 : 0;
     tot += 8;
 
-    tot += this.data.length * 64; //64 is probably incorrect for size of DataRef
+    tot += this.data.length*64; //64 is probably incorrect for size of DataRef
     return tot;
   }
 

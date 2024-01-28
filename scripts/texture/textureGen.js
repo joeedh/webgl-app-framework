@@ -9,7 +9,7 @@ import {DependSocket} from '../core/graphsockets.js';
 import {RecalcFlags} from '../mesh/mesh_base.js';
 import * as mathl from '../mathl/core/mathl.js';
 
-import {TextureShader, TextureShaderFlags} from './texture_base.js';
+import {TextureShader, TextureShaderFlags} from './texture_base.ts';
 
 let proptypemap = {
   [PropTypes.INT] : "int",

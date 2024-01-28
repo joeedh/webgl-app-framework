@@ -5,8 +5,8 @@ import {
   ToolProperty, Vector2, Vector3, Vector4, nstructjs
 } from '../../../path.ux/scripts/pathux.js';
 
-import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes} from '../../../brush/brush.js';
-import {ProceduralTex, TexUserFlags, TexUserModes} from '../../../texture/proceduralTex.js';
+import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes} from '../../../brush/brush.ts';
+import {ProceduralTex, TexUserFlags, TexUserModes} from '../../../texture/proceduralTex.ts';
 import {DataRefProperty} from '../../../core/lib_api.js';
 import {AttrRef, CDFlags} from '../../../mesh/customdata.js';
 import {TetMesh} from '../../../tet/tetgen.js';

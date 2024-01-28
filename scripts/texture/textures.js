@@ -1,4 +1,4 @@
-import {TextureShader} from './texture_base.js';
+import {TextureShader} from './texture_base.ts';
 import {FloatProperty, IntProperty, BoolProperty, EnumProperty, FlagProperty} from '../path.ux/scripts/pathux.js';
 
 export const WorleyTypes = {};

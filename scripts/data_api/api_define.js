@@ -75,10 +75,10 @@ import {
   DynTopoSettings,
   SculptBrush, SculptIcons,
   SculptTools, SubdivModes
-} from '../brush/brush.js';
+} from '../brush/brush.ts';
 import '../brush/brush_ops.js';
 
-import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.js';
+import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/proceduralTex.ts';
 import {PropModes} from '../editors/view3d/transform/transform_base.js';
 import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../image/image.js';
 import {BVHSettings} from '../util/bvh.js';

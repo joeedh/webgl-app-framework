@@ -48,7 +48,7 @@ import {
   SculptTools, BrushDynamics, SculptBrush,
   BrushDynChannel, DefaultBrushes, SculptIcons, PaintToolSlot, BrushFlags, DynTopoFlags, DynTopoSettings,
   DynTopoOverrides
-} from "../../../brush/brush.js";
+} from "../../../brush/brush.ts";
 
 import './pbvh_holefiller.js';
 import './pbvh_sculptops.js';

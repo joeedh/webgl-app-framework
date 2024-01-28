@@ -9,7 +9,7 @@ import {
 } from '../../../path.ux/scripts/pathux.js';
 import {Grid, GridBase, QRecalcFlags} from '../../../mesh/mesh_grids.js';
 import {AttrRef, CDFlags} from '../../../mesh/customdata.js';
-import {BrushFlags, DynTopoFlags, SculptTools} from '../../../brush/brush.js';
+import {BrushFlags, DynTopoFlags, SculptTools} from '../../../brush/brush.ts';
 import {LogContext, Loop, Mesh, MeshFlags, MeshTypes} from '../../../mesh/mesh.js';
 import {BVHFlags, BVHTriFlags} from '../../../util/bvh.js';
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js';
