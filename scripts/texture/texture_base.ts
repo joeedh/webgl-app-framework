@@ -1,6 +1,5 @@
-import {DataAPI, DataStruct, nstructjs, ToolProperty} from '../path.ux/pathux.js';
-import {Vector2, Vector3, Vector4, Matrix4} from '../path.ux/scripts/util/vectormath.js';
-import {PropTypes} from '../path.ux/scripts/pathux.js';
+import {DataAPI, DataStruct, INumVector, INumVectorLimited, nstructjs, ToolProperty} from '../path.ux/pathux.js';
+import {PropTypes, Vector2, Vector3, Vector4, Matrix4} from '../path.ux/scripts/pathux.js';
 import {Container} from '../path.ux/scripts/core/ui.js';
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js';
 
@@ -181,7 +180,7 @@ float fsample(vec3 co, vec3 colorOut) {
       let list = (i ? this.uniforms : this.params) as unknown as any;
 
       for (let k in list) {
-        let v = list[k];
+        let v = list[k] as INumVector | Matrix4;
 
         if (!(v instanceof Array)) {
           continue;
@@ -198,7 +197,7 @@ float fsample(vec3 co, vec3 colorOut) {
             v = new Vector4(v);
             break;
           case 16:
-            v = new Matrix4(v);
+            v = new Matrix4(v as unknown as number[]);
         }
 
         list[k] = v;
