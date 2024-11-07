@@ -547,6 +547,7 @@ CurveSpline {
     }
 
     return sm;
+    /*
     for (let {v, e} of this.walk()) {
       if (e.flag & MeshFlags.HIDE) {
         continue;
@@ -624,6 +625,7 @@ CurveSpline {
     }
 
     return sm;
+    */
   }
 
   closestPoint(p: Vector3, mode: number): void {

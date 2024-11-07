@@ -6,7 +6,8 @@ import {
   FlagProperty, ToolProperty, Vec3Property, Mat4Property, StringProperty,
   PropFlags, PropTypes, PropSubTypes,
   Vector2, Vector3, Vector4, Quat, Matrix4,
-  ToolOp, ToolMacro, ToolFlags, UndoFlags, keymap, ToolDef, Number2
+  ToolOp, ToolMacro, ToolFlags, UndoFlags, keymap, ToolDef, Number2,
+  PropertySlots
 } from '../path.ux/scripts/pathux.js';
 import {TranslateOp} from "../editors/view3d/transform/transform_ops.js";
 import * as util from '../util/util.js';
@@ -3437,7 +3438,7 @@ import {getDynVerts} from '../util/bvh.js';
 import {ToolContext} from "../../types/scripts/core/context";
 import {View3D} from "../../types/scripts/editors/view3d/view3d";
 
-export class SolverOpBase<InputSet = {}, OutputSet = {}> extends MeshOp<InputSet & {
+export class SolverOpBase<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends MeshOp<InputSet & {
   steps: IntProperty,
   dt: FloatProperty,
   implicitSteps: IntProperty,

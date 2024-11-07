@@ -1,5 +1,7 @@
 {
   "devDependencies": {
+    "@pathtx/prettier": "^3.3.0-dev",
+    "@typescript-eslint/eslint-plugin": "^6.19.1",
     "esbuild": "^0.19.7",
     "esdoc": ">=1.1.0",
     "esdoc-ecmascript-proposal-plugin": ">=1.0.0",
@@ -13,6 +15,7 @@
   "scripts": {
     "build": "node esbuilder.js",
     "watch": "node esbuilder.js --watch",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "watch-typecheck": "tsc --watch"
   }
 }
