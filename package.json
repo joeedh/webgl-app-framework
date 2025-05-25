@@ -1,6 +1,5 @@
 {
   "devDependencies": {
-    "@mui/docs": "^7.1.0",
     "@mui/x-tree-view": "^8.4.0",
     "@pathtx/prettier": "^3.3.0-dev",
     "@types/react": "^19.1.5",
