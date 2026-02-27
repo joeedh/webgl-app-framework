@@ -21,7 +21,7 @@ import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../core/simplemesh';
 
 import {DataBlock} from '../core/lib_api';
 import {IDataDefine, SceneObjectData} from '../sceneobject/sceneobject_base';
-import {math, Matrix4, nstructjs, util, Vector3, Vector4} from '../path.ux/pathux.js';
+import {INumVector, math, Matrix4, nstructjs, util, Vector3, Vector4} from '../path.ux/pathux.js';
 
 import {CDFlags, CDRef, CustomData, CustomDataElem, ICustomDataElemConstructor} from './customdata';
 
@@ -4713,7 +4713,7 @@ mesh.Mesh {
           let line = sm.line(lastco, co);
 
           if (layers & LayerTypes.COLOR) {
-            line.colors(color1, color2);
+            line.colors(color1 as unknown as INumVector, color2 as unknown as INumVector);
           }
 
           if (layers & LayerTypes.UV) {
