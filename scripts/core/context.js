@@ -19,7 +19,7 @@ import {Context, ContextOverlay, ContextFlags} from "./context_base.js";
 import {UIBase, Screen, SavedToolDefaults} from '../path.ux/scripts/pathux.js';
 import {PropsEditor} from '../editors/properties/PropsEditor.js';
 import {MaterialEditor} from "../editors/node/MaterialEditor.js";
-import {AppSettings} from './settings.js';
+import {AppSettings} from './settings.ts';
 import {TetMesh} from '../tet/tetgen.js';
 import {StrandSet} from '../hair/strand.js';
 import {SMesh} from '../smesh/smesh.js';

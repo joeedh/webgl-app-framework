@@ -82,7 +82,7 @@ import {buildProcTextureAPI, ProceduralTex, ProceduralTexUser} from '../texture/
 import {PropModes} from '../editors/view3d/transform/transform_base.js';
 import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../image/image.js';
 import {BVHSettings} from '../util/bvh.js';
-import {AppSettings} from '../core/settings.js';
+import {AppSettings} from '../core/settings.ts';
 
 
 export function api_define_rendersettings(api) {

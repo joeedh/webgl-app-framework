@@ -98,7 +98,7 @@ export class AppState {
     destroy(): void;
     draw(): void;
 }
-import { AppSettings } from './settings.js';
+import { AppSettings } from './settings.ts';
 import { ViewContext } from './context.js';
 import { AppToolStack } from "./toolstack.js";
 import { Library } from '../core/lib_api.js';

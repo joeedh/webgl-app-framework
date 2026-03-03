@@ -1,4 +1,5 @@
 import './mesh/customdata'
 import './mesh/mesh_base'
 import './mesh/mesh_customdata'
+import './core/settings'
 import './mesh/mesh_types'

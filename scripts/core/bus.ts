@@ -185,8 +185,8 @@ export class MessageBus {
         owner = sb.getter();
       } catch (error) {
         owner = undefined;
-        console.log(error.stack);
-        console.log(error.message);
+        console.log((error as Error).stack);
+        console.log((error as Error).message);
       }
 
       if (!owner) {
@@ -207,8 +207,8 @@ export class MessageBus {
       try {
         sb.callback(msg);
       } catch (error) {
-        console.log(error.stack);
-        console.log(error.message);
+        console.log((error as Error).stack);
+        console.log((error as Error).message);
       }
     }
 

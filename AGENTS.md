@@ -12,6 +12,8 @@
 
 - Typescript strict mode
 - Single quotes, no semicolons
+- Use `git mv` when renaming files, such as
+  JS files to TS ones.
 
 ## Testing instructions
 

@@ -38,7 +38,7 @@ import {MenuBarEditor} from "../editors/menu/MainMenu.js";
 import {Scene} from '../scene/scene.ts';
 import {BinaryReader, BinaryWriter} from '../util/binarylib.js';
 import * as cconst from './const.js';
-import {AppSettings} from './settings.js';
+import {AppSettings} from './settings.ts';
 import {SceneObject} from '../sceneobject/sceneobject.js';
 import {Mesh} from '../mesh/mesh.js';
 import {makeCube} from './mesh_shapes.js';
