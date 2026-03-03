@@ -1,11 +1,11 @@
-import {Matrix4} from '../util/vectormath.js';
-import {ShaderProgram} from "../core/webgl.js";
+import {Matrix4} from '../util/vectormath.js'
+import {ShaderProgram} from '../core/webgl'
 
 export let PolygonOffset = {
   //pre : '',
   //vertex : (posname) => {return '';},
   pre     : `uniform float polygonOffset;`,
-  vertex  : (posname, nearname, farname) => {
+  vertex: (posname: string, nearname: string, farname: string, sizename: string) => {
     if (nearname && farname) {
       return `
   {
@@ -19,7 +19,7 @@ export let PolygonOffset = {
     z -= off;
     
     ${posname}[2] = z;
-  }`;
+  }`
     } else {
       return `
   {
@@ -27,16 +27,15 @@ export let PolygonOffset = {
     z -= polygonOffset*0.00001;
     
     ${posname}[2] = z;
-  }`;
-
+  }`
     }
   },
   fragment: `
-  `
-};
+  `,
+}
 
 export let SmoothLine = {
-  pre        : `
+  pre: `
 #ifdef SMOOTH_LINE
     attribute vec2 _strip_uv;
     attribute vec4 _strip_dir;
@@ -48,8 +47,8 @@ export let SmoothLine = {
     varying vec2 vStripUv;
 #endif
   `,
-  vertex     : (pname) => {
-    let p = pname;
+  vertex: (pname: string) => {
+    let p = pname
 
     return `
 #ifdef SMOOTH_LINE
@@ -75,9 +74,9 @@ export let SmoothLine = {
 #endif
     `
   },
-  fragment   : (alphaname) => {
+  fragment: (alphaname?: string) => {
     if (!alphaname) {
-      return '';
+      return ''
     }
 
     return `
@@ -93,8 +92,8 @@ export let SmoothLine = {
 }
 #endif
     
-    `;
-  }
+    `
+  },
 }
 
 export let BasicLineShader = {
@@ -119,8 +118,8 @@ void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
-  ${PolygonOffset.vertex("p", "near", "far", "size")}
-  ${SmoothLine.vertex("p")}
+  ${PolygonOffset.vertex('p', 'near', 'far', 'size')}
+  ${SmoothLine.vertex('p')}
   
   gl_Position = p;
   vColor = color;
@@ -140,7 +139,7 @@ ${SmoothLine.fragmentPre}
 void main() {
   float alpha2 = alpha;
   
-  ${SmoothLine.fragment("alpha2")}
+  ${SmoothLine.fragment('alpha2')}
   
   gl_FragColor = vColor * vec4(1.0, 1.0, 1.0, alpha2);
 }
@@ -148,13 +147,11 @@ void main() {
 
   uniforms: {
     alpha       : 1.0,
-    objectMatrix: new Matrix4()
+    objectMatrix: new Matrix4(),
   },
 
-  attributes: [
-    "position", "uv", "color"
-  ]
-};
+  attributes: ['position', 'uv', 'color'],
+}
 
 export let ObjectLineShader = {
   vertex: `precision mediump float;
@@ -180,8 +177,8 @@ void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
-  ${PolygonOffset.vertex("p", "near", "far", "size")}
-  ${SmoothLine.vertex("p")}
+  ${PolygonOffset.vertex('p', 'near', 'far', 'size')}
+  ${SmoothLine.vertex('p')}
   
   p.xy += shift*p.w;  
   gl_Position = p;
@@ -203,7 +200,7 @@ ${SmoothLine.fragmentPre}
 void main() {
   float alpha2 = alpha;
   
-  ${SmoothLine.fragment("alpha2")}
+  ${SmoothLine.fragment('alpha2')}
   
   gl_FragColor = uColor * vec4(1.0, 1.0, 1.0, alpha2);
 }
@@ -213,13 +210,11 @@ void main() {
     alpha       : 1.0,
     uColor      : [1, 1, 1, 1],
     shift       : [0, 0],
-    objectMatrix: new Matrix4()
+    objectMatrix: new Matrix4(),
   },
 
-  attributes: [
-    "position", "uv", "color"
-  ]
-};
+  attributes: ['position', 'uv', 'color'],
+}
 
 export let BasicLitMesh = {
   vertex: `precision mediump float;
@@ -282,13 +277,11 @@ void main() {
 
   uniforms: {
     alpha       : 1.0,
-    objectMatrix: new Matrix4()
+    objectMatrix: new Matrix4(),
   },
 
-  attributes: [
-    "position", "normal", "uv", "color"
-  ]
-};
+  attributes: ['position', 'normal', 'uv', 'color'],
+}
 
 export let BasicLitMeshTexture = {
   vertex: `precision mediump float;
@@ -348,13 +341,11 @@ void main() {
 
   uniforms: {
     alpha       : 1.0,
-    objectMatrix: new Matrix4()
+    objectMatrix: new Matrix4(),
   },
 
-  attributes: [
-    "position", "normal", "uv", "color"
-  ]
-};
+  attributes: ['position', 'normal', 'uv', 'color'],
+}
 
 export let FlatMeshTexture = {
   vertex: `precision mediump float;
@@ -396,13 +387,11 @@ void main() {
 
   uniforms: {
     alpha       : 1.0,
-    objectMatrix: new Matrix4()
+    objectMatrix: new Matrix4(),
   },
 
-  attributes: [
-    "position", "normal", "uv", "color"
-  ]
-};
+  attributes: ['position', 'normal', 'uv', 'color'],
+}
 
 export let SculptShader = {
   vertex: `precision mediump float;
@@ -446,7 +435,7 @@ void main() {
   p = projectionMatrix * vec4(p.xyz, 1.0);
   vec4 n = normalMatrix * vec4(normal, 0.0);
 
-  ${PolygonOffset.vertex("p", "near", "far", "size")}
+  ${PolygonOffset.vertex('p', 'near', 'far', 'size')}
   
   gl_Position = p;
   
@@ -670,16 +659,23 @@ void main() {
     alpha       : 1.0,
     hasTexture  : 0.0,
     uColor      : [1, 1, 1, 1],
-    objectMatrix: new Matrix4()
+    objectMatrix: new Matrix4(),
   },
 
   attributes: [
-    "position", "normal", "uv", "color", "primUV",
-    "primc1", "primc2", "primc3", "primc4", "primc5",
-    "primc6"
-  ]
-};
-
+    'position',
+    'normal',
+    'uv',
+    'color',
+    'primUV',
+    'primc1',
+    'primc2',
+    'primc3',
+    'primc4',
+    'primc5',
+    'primc6',
+  ],
+}
 
 export let SculptShaderSimple = {
   vertex: `#version 300 es
@@ -722,7 +718,7 @@ void main() {
   
   n = projectionMatrix * n;
   
-  ${PolygonOffset.vertex("p", "near", "far", "size")}
+  ${PolygonOffset.vertex('p', 'near', 'far', 'size')}
   
   gl_Position = p;
   
@@ -797,13 +793,11 @@ void main() {
     alpha       : 1.0,
     hasTexture  : 0.0,
     uColor      : [1, 1, 1, 1],
-    objectMatrix: new Matrix4()
+    objectMatrix: new Matrix4(),
   },
 
-  attributes: [
-    "position", "normal", "uv", "color"
-  ]
-};
+  attributes: ['position', 'normal', 'uv', 'color'],
+}
 
 export let SculptShaderHexDeform = {
   vertex: `#version 300 es
@@ -910,7 +904,7 @@ void main() {
   
   n = projectionMatrix * n;
   
-  ${PolygonOffset.vertex("p", "near", "far", "size")}
+  ${PolygonOffset.vertex('p', 'near', 'far', 'size')}
   
   gl_Position = p;
   
@@ -985,16 +979,14 @@ void main() {
     alpha       : 1.0,
     hasTexture  : 0.0,
     uColor      : [1, 1, 1, 1],
-    objectMatrix: new Matrix4()
+    objectMatrix: new Matrix4(),
   },
 
-  attributes: [
-    "position", "normal", "uv", "color", "BVHDefVs"
-  ]
-};
+  attributes: ['position', 'normal', 'uv', 'color', 'BVHDefVs'],
+}
 
 export let MeshEditShader = {
-  vertex  : `precision mediump float;
+  vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -1028,8 +1020,8 @@ void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
-  ${PolygonOffset.vertex("p", "near", "far", "size")}
-  ${SmoothLine.vertex("p")}
+  ${PolygonOffset.vertex('p', 'near', 'far', 'size')}
+  ${SmoothLine.vertex('p')}
   
   gl_Position = p;
   gl_PointSize = pointSize;
@@ -1060,7 +1052,7 @@ void main() {
   float alpha2 = alpha;
   
   ${PolygonOffset.fragment}
-  ${SmoothLine.fragment("alpha2")};
+  ${SmoothLine.fragment('alpha2')};
   
   gl_FragColor = c * vec4(1.0, 1.0, 1.0, alpha2);
 }
@@ -1068,16 +1060,14 @@ void main() {
 
   uniforms: {
     alpha       : 1.0,
-    objectMatrix: new Matrix4()
+    objectMatrix: new Matrix4(),
   },
 
-  attributes: [
-    "position", "color", "id"
-  ]
-};
+  attributes: ['position', 'color', 'id'],
+}
 
 export let MeshIDShader = {
-  vertex  : `precision highp float;
+  vertex: `precision highp float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -1112,8 +1102,8 @@ void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
-  ${PolygonOffset.vertex("p", "near", "far", "size")}
-  ${SmoothLine.vertex("p")}
+  ${PolygonOffset.vertex('p', 'near', 'far', 'size')}
+  ${SmoothLine.vertex('p')}
   
   gl_Position = p;
   gl_PointSize = pointSize;
@@ -1139,16 +1129,14 @@ void main() {
 
   uniforms: {
     objectMatrix: new Matrix4(),
-    pointSize   : 5
+    pointSize   : 5,
   },
 
-  attributes: [
-    "position", "uv", "color", "id"
-  ]
-};
+  attributes: ['position', 'uv', 'color', 'id'],
+}
 
 export let MeshLinearZShader = {
-  vertex  : `#version 300 es
+  vertex: `#version 300 es
   
 precision mediump float;
   
@@ -1228,13 +1216,11 @@ void main() {
   `,
 
   uniforms: {
-    objectMatrix: new Matrix4()
+    objectMatrix: new Matrix4(),
   },
 
-  attributes: [
-    "position", "color", "id"
-  ]
-};
+  attributes: ['position', 'color', 'id'],
+}
 
 export let NormalPassShader = {
   vertex: `precision mediump float;
@@ -1294,14 +1280,11 @@ void main() {
 
   uniforms: {
     alpha       : 1.0,
-    objectMatrix: new Matrix4()
+    objectMatrix: new Matrix4(),
   },
 
-  attributes: [
-    "position", "normal", "uv", "color"
-  ]
-};
-
+  attributes: ['position', 'normal', 'uv', 'color'],
+}
 
 export let BasicLineShader2D = {
   vertex: `precision mediump float;
@@ -1335,16 +1318,14 @@ void main() {
   `,
 
   uniforms: {
-    alpha: 1.0
+    alpha: 1.0,
   },
 
-  attributes: [
-    "position", "uv", "color"
-  ]
-};
+  attributes: ['position', 'uv', 'color'],
+}
 
 export let WidgetMeshShader = {
-  vertex  : `precision mediump float;
+  vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -1367,8 +1348,8 @@ void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
-  ${PolygonOffset.vertex("p", "near", "far", "size")}
-  ${SmoothLine.vertex("p")}
+  ${PolygonOffset.vertex('p', 'near', 'far', 'size')}
+  ${SmoothLine.vertex('p')}
   
   gl_Position = p;
   gl_PointSize = pointSize;
@@ -1384,7 +1365,7 @@ void main() {
   float alpha = color[3];
    
   ${PolygonOffset.fragment}
-  ${SmoothLine.fragment("alpha")};
+  ${SmoothLine.fragment('alpha')};
   
   gl_FragColor = vec4(color.rgb, alpha);
 }
@@ -1393,14 +1374,11 @@ void main() {
   uniforms: {
     pointSize   : 10.0,
     objectMatrix: new Matrix4(),
-    color       : [0, 0, 0, 1]
+    color       : [0, 0, 0, 1],
   },
 
-  attributes: [
-    "position", "color", "id"
-  ]
-};
-
+  attributes: ['position', 'color', 'id'],
+}
 
 export let CellularNoiseFragment = {
   fragment: `
@@ -1589,8 +1567,8 @@ vec2 cellular(vec3 P) {
   return sqrt(d11.xy); // F1, F2
 #endif
 }
-`
-};
+`,
+}
 
 export let SimplexGradientNoise = {
   fragment: `
@@ -1705,7 +1683,7 @@ float snoise(vec3 v, out vec3 gradient)
 
   return 105.0 * dot(m4, pdotx)*0.5 + 0.5;
 }
-  `
+  `,
 }
 
 export const TexPaintShaderLib = `
@@ -1740,10 +1718,10 @@ vec2 rot2d(vec2 p, float th) {
 float tent(float f) {
   return 1.0 - abs(fract(f)-0.5)*2.0;
 }
-`;
+`
 
 export const TexturePaintShader = {
-  vertex  : `precision mediump float;
+  vertex: `precision mediump float;
   
 attribute vec3 position;
 attribute vec3 normal;
@@ -1933,15 +1911,13 @@ void main() {
     pointSize       : 10.0,
     objectMatrix    : new Matrix4(),
     projectionMatrix: new Matrix4(),
-    color           : [0, 0, 0, 1]
+    color           : [0, 0, 0, 1],
   },
 
-  attributes: [
-    "position", "color", "uv", "normal", "sm_loc", "sm_params", "sm_worldloc"
-  ]
-};
+  attributes: ['position', 'color', 'uv', 'normal', 'sm_loc', 'sm_params', 'sm_worldloc'],
+}
 export let LineTriStripShader = {
-  vertex  : `precision mediump float;
+  vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
 uniform mat4 objectMatrix;
@@ -1970,7 +1946,7 @@ void main() {
   vec4 p = objectMatrix * vec4(position, 1.0);
   p = projectionMatrix * vec4(p.xyz, 1.0);
   
-  ${PolygonOffset.vertex("p", "near", "far", "size")}
+  ${PolygonOffset.vertex('p', 'near', 'far', 'size')}
   
   {
     vec4 dir = objectMatrix * vec4(_strip_dir.xyz, 0.0);
@@ -2019,17 +1995,15 @@ void main() {
   uniforms: {
     pointSize   : 10.0,
     objectMatrix: new Matrix4(),
-    color       : [0, 0, 0, 1]
+    color       : [0, 0, 0, 1],
   },
 
-  attributes: [
-    "position", "color", "id", "_strip_uv", "_strip_dir"
-  ]
-};
+  attributes: ['position', 'color', 'id', '_strip_uv', '_strip_dir'],
+}
 
 export let SubSurfPatchShader = {
   vertex: `precision mediump float;
-  `
+  `,
 }
 export const ShaderDef = {
   BasicLineShader      : BasicLineShader,
@@ -2047,22 +2021,36 @@ export const ShaderDef = {
   LineTriStripShader   : LineTriStripShader,
   TexturePaintShader   : TexturePaintShader,
   FlatMeshTexture      : FlatMeshTexture,
-  SculptShaderHexDeform: SculptShaderHexDeform
-};
+  SculptShaderHexDeform: SculptShaderHexDeform,
+}
 
-export let Shaders = {};
+export type IDefinesBlock = {[k: string]: string}
+export type IUniformsBlock = {[k: string]: any}
 
-//global for debugging purposes only
-window._Shaders = Shaders;
+export type IShaderDef = {
+  vertex: string
+  fragment: string
+  attributes: string[]
+  defines?: IDefinesBlock
+  uniforms: IUniformsBlock
+}
 
-export function loadShader(gl, sdef) {
-  let shader = new ShaderProgram(gl, sdef.vertex, sdef.fragment, sdef.attributes);
+export function loadShader(gl: WebGL2RenderingContext, sdef: IShaderDef) {
+  let shader = new ShaderProgram(gl, sdef.vertex, sdef.fragment, sdef.attributes)
 
-  shader.init(gl);
+  shader.init(gl)
 
   for (let k in sdef.uniforms) {
-    shader.uniforms[k] = sdef.uniforms[k];
+    shader.uniforms[k] = sdef.uniforms[k]
   }
 
-  return shader;
+  return shader
 }
+
+export type Shaders = {[k in keyof typeof ShaderDef]: ShaderProgram}
+// shaders are delay loaded
+export let Shaders: Shaders = {} as unknown as Shaders
+
+//global for debugging purposes only
+const g = globalThis as unknown as any
+g._Shaders = Shaders

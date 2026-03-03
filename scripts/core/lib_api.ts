@@ -42,7 +42,10 @@ export interface IDataBlockConstructor<type extends DataBlock<InputSet, OutputSe
 }
 
 export interface BlockLoader {
-  <type>(ref: DataRef | number): type
+  <type>(ref: DataBlock | DataRef | number): type
+}
+export interface BlockLoaderAddUser {
+  <type>(ref: DataBlock | DataRef | number, user: DataBlock): type
 }
 
 export class DataBlock<InputSet = {}, OutputSet = {}> extends Node<InputSet, OutputSet> {
@@ -214,7 +217,7 @@ DataBlock {
    * note that the reference counts of all blocks are re-built at file load time,
    * so make sure to choose between these two functions correctly.
    */
-  dataLink(getblock: BlockLoader, getblock_addUser: BlockLoader): void {}
+  dataLink(getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser): void {}
 
   _validate_userlist() {
     let stop = false
