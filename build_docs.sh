@@ -1,4 +1,4 @@
 #!/usr/bin/sh
-cd docs_src
+cd documentation
 ../node_modules/.bin/esdoc
 

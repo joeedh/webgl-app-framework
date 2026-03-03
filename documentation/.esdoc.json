@@ -4,8 +4,8 @@
     ".*extern.*"
   ],
   "outputAST" : false,
-  "destination": "../docs",
-  "index": "../docs/index.html",
+  "destination": "../esdocs",
+  "index": "../esdocs/index.html",
   "plugins": [
     {
       "name": "esdoc-ecmascript-proposal-plugin", 
