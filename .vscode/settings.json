@@ -1,4 +1,12 @@
 {
     "prettier.configPath": ".prettierrc",
-    "prettier.prettierPath": "./node_modules/@pathtx/prettier/index.cjs"
+    "prettier.prettierPath": "./node_modules/@pathtx/prettier/index.cjs",
+    "cSpell.words": [
+      "datalib",
+      "getblock",
+      "namemap",
+      "nodedef",
+      "nstructjs",
+      "superdef"
+    ]
 }

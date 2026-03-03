@@ -25,6 +25,7 @@
     "build": "node esbuilder.js",
     "watch": "node esbuilder.js --watch",
     "typecheck": "tsc",
-    "watch-typecheck": "tsc --watch"
+    "watch-typecheck": "tsc --watch",
+    "serv": "node serv.js"
   }
 }
