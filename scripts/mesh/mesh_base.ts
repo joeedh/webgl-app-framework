@@ -99,11 +99,7 @@ export class ReusableIter<type> {
     return ret
   }
 
-  static getSafeIter<type>(iter): Iterable<type> {
-    if (iter === undefined) {
-      return undefined
-    }
-
+  static getSafeIter<type>(iter: Iterable<type>): Iterable<type> {
     if (!this.safeIterable<type>(iter)) {
       return new Set<type>(iter)
     } else {
@@ -148,9 +144,9 @@ export enum LogTags {
 }
 
 export class LogContext {
-  onnew: (v: Element, tag?: any) => void | undefined
-  onkill: (v: Element, tag?: any) => void | undefined
-  onchange: (v: Element, tag?: any) => void | undefined
+  onnew?: (v: Element, tag?: any) => void
+  onkill?: (v: Element, tag?: any) => void
+  onchange?: (v: Element, tag?: any) => void
 
   haveAspect: boolean
 
@@ -170,10 +166,6 @@ export class LogContext {
     this.killEdges = new Set();
     this.killFaces = new Set();
      */
-
-    this.onnew = null
-    this.onkill = null
-    this.onchange = null //function onchange(elem, changemask)
   }
 
   reset() {
@@ -186,7 +178,7 @@ export class LogContext {
     return this
   }
 
-  newVertex(v, tag = undefined) {
+  newVertex(v: Vertex, tag?: number) {
     if (this.onnew) {
       this.onnew(v, tag)
     }
@@ -194,7 +186,7 @@ export class LogContext {
     return this
   }
 
-  newEdge(e, tag = undefined) {
+  newEdge(e: Edge, tag?: number) {
     if (this.onnew) {
       this.onnew(e, tag)
     }
@@ -202,7 +194,7 @@ export class LogContext {
     return this
   }
 
-  newFace(f, tag = undefined) {
+  newFace(f: Face, tag?: number) {
     if (this.onnew) {
       this.onnew(f, tag)
     }
@@ -210,7 +202,7 @@ export class LogContext {
     return this
   }
 
-  killVertex(v, tag = undefined) {
+  killVertex(v: Vertex, tag?: number) {
     if (this.onkill) {
       this.onkill(v, tag)
     }
@@ -219,7 +211,7 @@ export class LogContext {
     return this
   }
 
-  killEdge(e, tag = undefined) {
+  killEdge(e: Edge, tag?: number) {
     if (this.onkill) {
       this.onkill(e, tag)
     }
@@ -228,7 +220,7 @@ export class LogContext {
     return this
   }
 
-  killFace(f, tag = undefined) {
+  killFace(f: Face, tag?: number) {
     if (this.onkill) {
       this.onkill(f, tag)
     }
@@ -236,7 +228,7 @@ export class LogContext {
     //this.killFaces.add(f);
   }
 
-  changeVertex(v, flag) {
+  changeVertex(v: Vertex, flag?: number) {
     if (this.onchange) {
       this.onchange(v, flag)
     }
@@ -244,7 +236,7 @@ export class LogContext {
     return this
   }
 
-  changeEdge(e, flag) {
+  changeEdge(e: Edge, flag?: number) {
     if (this.onchange) {
       this.onchange(e, flag)
     }
@@ -252,7 +244,7 @@ export class LogContext {
     return this
   }
 
-  changeHandle(h, flag) {
+  changeHandle(h: Handle, flag?: number) {
     if (this.onchange) {
       this.onchange(h, flag)
     }
@@ -260,7 +252,7 @@ export class LogContext {
     return this
   }
 
-  changeLoop(l, flag) {
+  changeLoop(l: Loop, flag?: number) {
     if (this.onchange) {
       this.onchange(l, flag)
     }
@@ -268,7 +260,7 @@ export class LogContext {
     return this
   }
 
-  changeFace(f, flag) {
+  changeFace(f: Face, flag?: number) {
     if (this.onchange) {
       this.onchange(f, flag)
     }
@@ -283,7 +275,7 @@ export const MeshTypes = {
   FACE  : 4,
   LOOP  : 8,
   HANDLE: 16,
-}
+} as const
 
 export type MeshTypes = number
 
@@ -352,23 +344,23 @@ export {ArrayPool}
 
 let pool = new util.ArrayPool()
 
-export function getArrayTemp<type>(n, clear = false): type[] {
+export function getArrayTemp<type>(n: number, clear = false): type[] {
   return pool.get<type>(n, clear)
 }
 
-export function reallocArrayTemp<type>(arr, newlen): type[] {
-  let ret: type[] = getArrayTemp(newlen)
+export function reallocArrayTemp<type>(arr: Array<type>, newSize: number): type[] {
+  let result: type[] = getArrayTemp(newSize)
 
-  for (let i = 0; i < newlen; i++) {
-    ret[i] = i < arr.length ? arr[i] : undefined
+  for (let i = 0; i < newSize; i++) {
+    result[i] = i < arr.length ? arr[i] : (undefined as unknown as type)
   }
 
-  return ret
+  return result
 }
 
 import type {CustomDataElem} from './customdata.ts'
 import type {CDRef, ICustomDataElemConstructor} from './customdata'
-import type {Element} from './mesh_types'
+import type {Edge, Element, Face, Handle, Loop, Vertex} from './mesh_types'
 
 export class CDElemArray extends Array<CustomDataElem<any>> {
   static STRUCT = nstructjs.inlineRegister(

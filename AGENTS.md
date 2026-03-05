@@ -14,6 +14,7 @@
 - Single quotes, no semicolons
 - Use `git mv` when renaming files, such as
   JS files to TS ones.
+- Read contents of `documentation/codeStyle.md`
 
 ## Testing instructions
 

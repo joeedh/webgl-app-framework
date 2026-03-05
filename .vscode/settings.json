@@ -3,16 +3,28 @@
     "prettier.prettierPath": "./node_modules/@pathtx/prettier/index.cjs",
     "cSpell.words": [
       "appstate",
+      "cachering",
+      "customdata",
       "datalib",
+      "emap",
       "getblock",
+      "graphsockets",
       "idmap",
+      "lctx",
+      "lvmap",
       "messagebus",
       "namemap",
       "nodedef",
       "nstructjs",
+      "onkill",
+      "onnew",
       "pathux",
+      "sceneobject",
+      "stdtools",
       "superdef",
       "toolmode",
-      "toolstack"
+      "toolstack",
+      "vertiters",
+      "VERTS"
     ]
 }
