@@ -16,7 +16,7 @@ import {Icons} from '../editors/icon_enum.js';
 import {MeshFlags, MeshTypes, MeshFeatures} from './mesh_base.js';
 import {MeshOp} from './mesh_ops_base.js';
 import {subdivide} from '../subsurf/subsurf_mesh.js';
-import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
+import {MeshToolBase} from "../editors/view3d/tools/meshtool.ts";
 import {GridBase, Grid, gridSides, GridSettingFlags} from "./mesh_grids.js";
 import {QuadTreeGrid, QuadTreeFields} from "./mesh_grids_quadtree.js";
 import {CustomDataElem} from "./customdata";

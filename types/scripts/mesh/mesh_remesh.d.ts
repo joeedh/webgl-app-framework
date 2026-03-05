@@ -3,7 +3,7 @@ export function cleanupQuads2(mesh: any, faces: any, lctx: any): boolean;
 export function cleanupQuads(mesh: any, faces: any, lctx: any, maxVerts?: number): void;
 export function cleanupQuadsOld(mesh: any, faces: any, lctx: any): boolean;
 export function remeshMesh(mesh: any, remesher: any, lctx: any, goalType: any, goalValue: any, maxSteps?: number, rakeFactor?: number, threshold?: number, relax?: number, projection?: number, flag?: number, maxEdges?: any, rakeMode?: number): void;
-export const Remeshers: {};
+export const Remeshers: {UNIFORM_TRI: number, UNIFORM_QUAD: number};
 export const RemeshClasses: any[];
 export const RemeshMap: {};
 export namespace RakeModes {

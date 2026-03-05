@@ -25,7 +25,7 @@ import '../editors/resbrowser/resbrowser.js';
 import '../editors/resbrowser/resbrowser_ops.js';
 import '../editors/resbrowser/resbrowser_types.js';
 
-import '../editors/view3d/tools/tools.js';
+import '../editors/view3d/tools/tools.ts';
 import cconst2 from "../path.ux/scripts/config/const.js";
 import {Material, makeDefaultMaterial} from './material.js';
 import {App, ScreenBlock} from '../editors/editor_base.ts';

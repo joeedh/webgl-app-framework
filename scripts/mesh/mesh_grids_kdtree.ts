@@ -1015,7 +1015,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     this.recalcFlag |= QRecalcFlags.NEIGHBORS;
   }
 
-  applyBase(mesh, l, cd_grid) {
+  applyBase(mesh: Mesh, l: Loop, cd_grid: AttrRef<this>) {
     if (this.points.length === 0) {
       return;
     }

@@ -2,12 +2,17 @@
     "prettier.configPath": ".prettierrc",
     "prettier.prettierPath": "./node_modules/@pathtx/prettier/index.cjs",
     "cSpell.words": [
+      "appstate",
       "datalib",
       "getblock",
       "idmap",
+      "messagebus",
       "namemap",
       "nodedef",
       "nstructjs",
-      "superdef"
+      "pathux",
+      "superdef",
+      "toolmode",
+      "toolstack"
     ]
 }

@@ -506,6 +506,9 @@ export let getContextArea = <T extends Area = Area>(cls: IAreaConstructor<T>) =>
 
 //used by datapath system
 export class EditorAccessor {
+  /* @ts-ignore */
+  imageEditor: ImageEditor
+  
   _defined: Set<any> = new Set()
   _namemap: {[k: string]: any} = {}
 
@@ -890,6 +893,7 @@ import {ToolContext, ViewContext} from '../../types/scripts/core/context.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
 import {Mesh} from '../mesh/mesh.js'
 import {ListItem} from '../path.ux/scripts/types/widgets/ui_listbox.js'
+import { ImageEditor } from '../../types/scripts/editors/image/ImageEditor.js'
 
 export function spawnToolSearchMenu(ctx: ViewContext) {
   let tools: (typeof ToolOp)[] = []

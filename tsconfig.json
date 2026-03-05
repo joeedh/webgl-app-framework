@@ -9,7 +9,7 @@
     "pretty": true,
     "esModuleInterop": true,
     "isolatedModules": true,
-    "strictNullChecks": false,
+    "strictNullChecks": true,
     "skipLibCheck": true,
     "sourceMap": true,
     "noEmitOnError": false,

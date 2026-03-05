@@ -1,4 +1,4 @@
-import {BlockLoader, DataBlock, DataRef} from './lib_api'
+import {BlockLoader, BlockLoaderAddUser, DataBlock, DataRef} from './lib_api'
 import {nstructjs, ToolOp, IntProperty, StringProperty} from '../path.ux/scripts/pathux.js'
 
 import {Icons} from '../editors/icon_enum.js'
@@ -171,7 +171,7 @@ Material {
     }
   }
 
-  dataLink(getblock: BlockLoader, getblock_addUser: BlockLoader) {
+  dataLink(getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
     super.dataLink(getblock, getblock_addUser)
   }
 

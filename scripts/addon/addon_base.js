@@ -21,8 +21,8 @@ import {
   MeshMaterialChooser, MeshMaterialPanel, NewDataBlockOp, getContextArea
 } from '../editors/editor_base.ts';
 import {Icons} from '../editors/icon_enum.js';
-import {MeshToolBase} from '../editors/view3d/tools/meshtool.js';
-import {MeshEditor} from '../editors/view3d/tools/mesheditor.js';
+import {MeshToolBase} from '../editors/view3d/tools/meshtool.ts';
+import {MeshEditor} from '../editors/view3d/tools/mesheditor.ts';
 import {SelMask} from '../editors/view3d/selectmode.js';
 import {MeshOp, MeshDeformOp} from '../mesh/mesh_ops_base.js';
 import {MeshOpBaseUV} from '../mesh/mesh_uvops_base.js';

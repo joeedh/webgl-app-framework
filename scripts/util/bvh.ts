@@ -1,4 +1,4 @@
-import {PaintOpBase} from '../editors/view3d/tools/pbvh_base.js';
+import {PaintOpBase} from '../editors/view3d/tools/pbvh_base.ts';
 
 import {
   nstructjs, util,

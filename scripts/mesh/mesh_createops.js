@@ -20,7 +20,7 @@ import {Icons} from '../editors/icon_enum.js';
 import {Mesh, MeshTypes, MeshFlags, LogContext} from './mesh.js';
 import {loopSubdivide, subdivide} from '../subsurf/subsurf_mesh.js';
 import {SceneObject} from "../sceneobject/sceneobject.js";
-import {MeshToolBase} from "../editors/view3d/tools/meshtool.js";
+import {MeshToolBase} from "../editors/view3d/tools/meshtool.ts";
 import {MeshOp} from "./mesh_ops_base.js";
 import {GenTypes, ProceduralMesh} from './mesh_gen.js';
 import {DefaultMat, Material} from '../core/material.js';

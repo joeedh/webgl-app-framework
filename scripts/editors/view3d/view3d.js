@@ -13,7 +13,7 @@ import {ToolMode} from './view3d_toolmode.js';
 
 import './transform/all.js';
 import './findnearest/all.js';
-import './tools/tools.js';
+import './tools/tools.ts';
 import * as textsprite from '../../core/textsprite.js';
 import {RealtimeEngine, RenderSettings} from "../../renderengine/renderengine_realtime.js";
 import {PackFlags} from '../../path.ux/scripts/core/ui_base.js';
@@ -28,7 +28,7 @@ import {SimpleMesh, LayerTypes} from '../../core/simplemesh.ts';
 import {Vector3, Vector2, Vector4, Matrix4, Quat, Matrix4ToTHREE} from '../../util/vectormath.js';
 import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js';
 import {cachering, print_stack, time_ms} from '../../util/util.js';
-import './tools/mesheditor.js';
+import './tools/mesheditor.ts';
 import {GPUSelectBuffer} from './view3d_select.js';
 import {KeyMap, HotKey} from "../editor_base.ts";
 import {calcTransCenter, calcTransMatrix, calcTransAABB} from './transform/transform_query.js';
