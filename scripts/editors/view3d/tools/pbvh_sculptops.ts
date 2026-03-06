@@ -1,9 +1,6 @@
 import * as util from '../../../util/util.js'
 import {
   BoolProperty,
-  Curve1DProperty,
-  EnumProperty,
-  FlagProperty,
   FloatArrayProperty,
   FloatProperty,
   IntProperty,
@@ -11,7 +8,6 @@ import {
   Quat,
   ToolOp,
   Vec3Property,
-  Vec4Property,
   Vector2,
   Vector3,
   Vector4,
@@ -42,37 +38,28 @@ import {
   CDNodeInfo,
   getDynVerts,
   IBVHVertex,
-  IsectRet,
   MDynVert,
 } from '../../../util/bvh.js'
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js'
 import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../mesh/mesh_grids_kdtree.js'
 import {
-  splitEdgesSmart,
-  splitEdgesSimple,
   splitEdgesSimple2,
   splitEdgesSmart2,
-  splitEdgesPreserveQuads,
-  countNewSplitEdges,
 } from '../../../mesh/mesh_subdivide.js'
 import {
-  BrushProperty,
   calcConcave,
   PaintOpBase,
   PaintSample,
-  PaintSampleProperty,
   SymAxisMap,
-  getBVH,
-  regenBVH,
 } from './pbvh_base'
-import {trianglesToQuads, triangulateFan, TriQuadFlags} from '../../../mesh/mesh_utils.js'
+import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
 import {applyTriangulation, triangulateFace, triangulateQuad} from '../../../mesh/mesh_tess.js'
 import {MeshLog} from '../../../mesh/mesh_log.js'
 import {TetMesh} from '../../../tet/tetgen.js'
 import {MultiGridSmoother} from '../../../mesh/multigrid_smooth.js'
 import {getCurveVerts, dirCurveSmooth, CurvVert} from '../../../mesh/mesh_curvature.js'
 import {TexUserFlags, TexUserModes} from '../../../texture/proceduralTex'
-import {Bezier, closest_bez3_v2, dbez3_v2} from '../../../util/bezier.js'
+import {Bezier} from '../../../util/bezier.js'
 import {tetSolve} from '../../../tet/tet_deform.js'
 import {DispContext, DispLayerVert, getSmoothMemo, SmoothMemoizer} from '../../../mesh/mesh_displacement.js'
 import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from '../../../mesh/mesh_facesets.js'
