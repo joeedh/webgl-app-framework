@@ -268,6 +268,19 @@ export class Bezier {
     this.quads = [];
   }
 
+  copyTo(b) {
+    b.a.load(this.a)
+    b.b.load(this.b)
+    b.c.load(this.c)
+    b.d.load(this.d)
+  }
+
+  clone() {
+    let b = new Bezier()
+    this.copyTo(b);
+    return b
+  }
+  
   derivative(s) {
     let dv = dv_rets.next();
     let a = this.a, b = this.b, c = this.c, d = this.d;

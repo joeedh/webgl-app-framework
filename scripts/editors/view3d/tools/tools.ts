@@ -1,9 +1,9 @@
-import './meshtool.ts';
-import './mesheditor.ts';
-import './selecttool.ts';
-import './view3d_panmode.ts';
-import './curvetool.ts';
-import './pbvh.ts';
-import './tetmesh.ts';
+import './meshtool'
+import './mesheditor'
+import './selecttool'
+import './view3d_panmode'
+import './curvetool'
+import './pbvh'
+import './tetmesh'
 
-export {ToolModes} from '../view3d_toolmode.js';
+export {ToolModes} from '../view3d_toolmode.js'

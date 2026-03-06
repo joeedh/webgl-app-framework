@@ -131,6 +131,8 @@ export interface IBVHVertex {
   no: Vector3;
   neighbors: Iterable<IBVHVertex>;
   customData: CDElemArray;
+  // exists in GridVertBase
+  loopEid?: number
 }
 
 export class BVHTri {
@@ -1010,7 +1012,7 @@ export class BVHNode {
     }
   }
 
-  closestOrigVerts(co, radius, out) {
+  closestOrigVerts(co: Vector3, radius: number, out: Set<IBVHVertex>) {
     let radius2 = radius * radius;
 
     this.origUpdate();
@@ -3100,7 +3102,7 @@ export class BVH {
   addPass: number;
   flag: number;
   updateNodes: Set<BVHNode>;
-  updateGridLoops: Set<any>;
+  updateGridLoops: Set<Loop>;
   mesh: Mesh;
   node_idgen: number;
 
@@ -4199,8 +4201,8 @@ export class BVH {
     }
   }
 
-  closestOrigVerts(co, radius) {
-    let ret = new Set();
+  closestOrigVerts(co: Vector3, radius: number) {
+    let ret = new Set<IBVHVertex>();
 
     this.root.closestOrigVerts(co, radius, ret);
 
@@ -4275,16 +4277,16 @@ export class BVH {
     return ret;
   }
 
-  closestVerts(co, radius) {
-    let ret = new Set();
+  closestVerts(co: Vector3, radius: number) {
+    let ret = new Set<IBVHVertex>();
 
     this.root.closestVerts(co, radius, ret);
 
     return ret;
   }
 
-  closestVertsSquare(co, radius, matrix) {
-    let ret = new Set();
+  closestVertsSquare(co: Vector3, radius: number, matrix: Matrix4) {
+    let ret = new Set<IBVHVertex>();
 
     let origco = co;
 

@@ -14,22 +14,23 @@ import {
   Vector3,
   Vector4,
   nstructjs,
+  IndexRange,
 } from '../../../path.ux/scripts/pathux.js'
 
 import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes, DynTopoSettings} from '../../../brush/brush'
 import {ProceduralTex, TexUserFlags, TexUserModes} from '../../../texture/proceduralTex'
-import {DataRefProperty} from '../../../core/lib_api.js'
+import {DataRefProperty, DataRef} from '../../../core/lib_api.js'
 import {AttrRef, CDFlags} from '../../../mesh/customdata.js'
 import {TetMesh} from '../../../tet/tetgen.js'
-import {Mesh} from '../../../mesh/mesh.js'
+import {Mesh, Vertex} from '../../../mesh/mesh.js'
 import {GridBase} from '../../../mesh/mesh_grids.js'
-import {BVHFlags, IsectRet} from '../../../util/bvh.js'
+import {BVH, BVHFlags, IsectRet} from '../../../util/bvh.js'
 import {MeshFlags} from '../../../mesh/mesh.js'
 
 import * as util from '../../../util/util.js'
 import * as math from '../../../util/math.js'
 
-export function getBVH(ctx: any): any | undefined {
+export function getBVH(ctx: any): BVH | undefined {
   let ob = ctx.object
 
   if (!ob) {
@@ -53,7 +54,7 @@ export function regenBVH(ctx: any): void {
   }
 }
 
-export const SymAxisMap: number[][][] = [
+export const SymAxisMap: Vector3[][] = [
   [],
   [[-1, 1, 1]], //x
   [[1, -1, 1]], //y
@@ -84,7 +85,7 @@ export const SymAxisMap: number[][][] = [
     [-1, 1, -1],
     [1, -1, -1],
   ], //x+y+z
-]
+].map((v) => v.map((v) => new Vector3(v)))
 
 export let BRUSH_PROP_TYPE: any
 
@@ -195,6 +196,7 @@ PaintSample {
   concaveFilter  : float;
   invert         : bool;
   esize          : float;
+  curve          : optional(Bezier);
 }`
   )
 
@@ -229,6 +231,7 @@ PaintSample {
   esize: number
   planeoff: number
   mirrored: boolean
+  curve: Bezier | undefined
 
   constructor() {
     this.origp = new Vector4()
@@ -311,7 +314,8 @@ PaintSample {
   copyTo(b: PaintSample): void {
     b.smoothProj = this.smoothProj
     b.futureAngle = this.futureAngle
-
+    b.curve = this.curve?.clone()
+    
     b.strokeS = this.strokeS
     b.dstrokeS = this.dstrokeS
     b.sharp = this.sharp
@@ -429,7 +433,7 @@ PaintSampleProperty {
 
 PAINT_SAMPLE_TYPE = ToolProperty.register(PaintSampleProperty)
 
-export class SetBrushRadius extends ToolOp {
+export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRefProperty}> {
   last_mpos: Vector2
   mpos: Vector2
   start_mpos: Vector2
@@ -469,7 +473,7 @@ export class SetBrushRadius extends ToolOp {
   static invoke(ctx: ViewContext, args: any) {
     let tool = super.invoke(ctx, args)
 
-    let toolmode = ctx.toolmode
+    let toolmode = ctx.toolmode as BVHToolMode
     if (!toolmode || toolmode.constructor.name !== 'BVHToolMode') {
       return tool
     }
@@ -689,12 +693,23 @@ export function calcConcaveLayer(mesh: any): void {
   }
 }
 
-import {bez4, dbez4} from '../../../util/bezier.js'
+import {bez4, Bezier, dbez4} from '../../../util/bezier.js'
 import {copyMouseEvent} from '../../../path.ux/scripts/path-controller/util/events.js'
 import {CameraModes} from '../view3d_base.js'
-import {ToolContext, ViewContext} from '../../../core/context.js'
+import type {ToolContext, ViewContext} from '../../../core/context.js'
+import type {BVHToolMode} from './pbvh'
 
-export class PaintOpBase extends ToolOp<{brush: BrushProperty}> {
+export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends ToolOp<
+  {
+    brush: BrushProperty //
+    samples: PaintSampleProperty //
+    symmetryAxes: FlagProperty //
+    falloff: any //
+    rendermat: any //
+    viewportSize: Vec2Property
+  } & Inputs,
+  Outputs
+> {
   task: any | undefined
   grabMode: boolean
   mfinished: boolean
@@ -775,7 +790,7 @@ export class PaintOpBase extends ToolOp<{brush: BrushProperty}> {
     //ret = ret || brush.autosmooth > 0 || brush.rake > 0 || brush.pinch > 0;
 
     if (brush.texUser.texture) {
-      ret = ret || brush.texUser.flag & TexUserFlags.ORIGINAL_CO
+      ret = ret || !!(brush.texUser.flag & TexUserFlags.ORIGINAL_CO)
     }
 
     return ret
@@ -783,7 +798,7 @@ export class PaintOpBase extends ToolOp<{brush: BrushProperty}> {
 
   timer_on_tick(): void {
     if (!this.modalRunning) {
-      this.clearInterval(this.timer)
+      window.clearInterval(this.timer)
       this.timer = undefined
       return
     }
@@ -1031,7 +1046,7 @@ export class PaintOpBase extends ToolOp<{brush: BrushProperty}> {
       let mode = brush.texUser.mode
 
       delayMode = mode === TexUserModes.VIEW_REPEAT
-      delayMode = delayMode && flag & TexUserFlags.FANCY_RAKE
+      delayMode = delayMode && !!(flag & TexUserFlags.FANCY_RAKE)
     }
 
     //console.log("delayMode:", delayMode);
@@ -1093,7 +1108,7 @@ export class PaintOpBase extends ToolOp<{brush: BrushProperty}> {
     }
 
     if (brush.flag & BrushFlags.INVERT) {
-      invert ^= true
+      invert = !invert
     }
 
     this.inputs.viewportSize.setValue(view3d.size)
@@ -1101,9 +1116,12 @@ export class PaintOpBase extends ToolOp<{brush: BrushProperty}> {
     return this.sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp)
   }
 
-  getBVH(mesh: any): any {
+  getBVH(mesh: any): BVH {
     return mesh.getBVH({autoUpdate: false})
   }
+
+  abstract initOrigData(mesh: any): number
+  abstract getOrigCo(mesh: Mesh, vertex: Vertex, cd_grid: number, cd_orig: number): Vector3
 
   sampleViewRay(
     rendermat: any,
@@ -1191,8 +1209,8 @@ export class PaintOpBase extends ToolOp<{brush: BrushProperty}> {
       let origin2 = new Vector3(origin)
 
       if (axis !== -1) {
-        origin2[axis] = -origin2[axis]
-        view2[axis] = -view2[axis]
+        origin2[axis as Vector2['LEN']] = -origin2[axis]
+        view2[axis as Vector2['LEN']] = -view2[axis]
       }
 
       origin2 = new Vector3(origin2)
@@ -1240,8 +1258,9 @@ export class PaintOpBase extends ToolOp<{brush: BrushProperty}> {
         let o2 = this.getOrigCo(mesh, tri.v2, cd_grid, cd_orig)
         let o3 = this.getOrigCo(mesh, tri.v3, cd_grid, cd_orig)
 
-        for (let i = 0; i < 3; i++) {
-          origco[i] = o1[i] * isect.uv[0] + o2[i] * isect.uv[1] + o3[i] * (1.0 - isect.uv[0] - isect.uv[1])
+        for (const i of IndexRange(3)) {
+          origco[i as Vector3['LEN']] =
+            o1[i] * isect.uv[0] + o2[i] * isect.uv[1] + o3[i] * (1.0 - isect.uv[0] - isect.uv[1])
         }
 
         origco[3] = 1.0
@@ -1481,8 +1500,9 @@ export class PaintOpBase extends ToolOp<{brush: BrushProperty}> {
   }
 }
 
-export class MaskOpBase extends ToolOp {
+export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends ToolOp<Inputs, Outputs> {
   _undo: any
+  rand = new util.MersenneRandom()
 
   constructor() {
     super()
@@ -1720,7 +1740,7 @@ export class MaskOpBase extends ToolOp {
   }
 }
 
-export class ClearMaskOp extends MaskOpBase {
+export class ClearMaskOp extends MaskOpBase<{value: FloatProperty}> {
   static tooldef(): any {
     return {
       uiname  : 'Clear Mask',
