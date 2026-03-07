@@ -15,6 +15,8 @@ ENV PATH=/usr/local/bin:$PATH
 # try to speed up chown'ing a bit by selectively recursing
 RUN sudo chown vscode:vscode /usr/local/bin -R
 RUN sudo chown vscode:vscode /usr/local/lib -R
+RUN sudo chown vscode:vscode /usr/local/libexec -R
+RUN sudo chown vscode:vscode /usr/local/include -R
 RUN sudo chown vscode:vscode /usr/local/share -R
 RUN sudo chown vscode:vscode /usr/local
 
