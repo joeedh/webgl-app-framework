@@ -1,9 +1,9 @@
 {
   "name" : "Docker in Docker",
   "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
       //        "version"            : "${templateOption:dockerVersion}",
-      //"enableNonRootDocker": true,
+      // "enableNonRootDocker": true,
       "moby"               : false
     }
     //"ghcr.io/devcontainers-extra/features/vscode-server:1": {},
