@@ -4,8 +4,12 @@ import fs from 'fs';
 import http from 'http';
 import path from 'path';
 
-const PORT = 5007;
-const HOST = "localhost"
+// set by devconainer
+const envPort = (process.env["SERVER_PORT"] ?? '').trim()
+const SERVER_HOST = (process.env["SERVER_HOST"] ?? '').trim()
+
+const PORT = envPort.length > 0 ? parseInt(envPort) : 5007;
+const HOST = SERVER_HOST.length > 0 ? SERVER_HOST : "localhost"
 
 const INDEX = "index.html"
 const basedir = process.cwd();

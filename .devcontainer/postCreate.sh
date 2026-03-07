@@ -17,3 +17,5 @@ su vscode -c "bash git_pull.sh"
 
 su vscode -c "pnpm approve-builds @swc/core@1.15.18, core-js@2.6.12, esbuild@0.19.12,            │
 │   unrs-resolver@1.11.1"
+
+echo "export SERVER_HOST=0.0.0.0" >> ~/.bashrc
