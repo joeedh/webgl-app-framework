@@ -301,7 +301,7 @@ export function getNeighborMap(dimen: number) {
   return maps[dimen]
 }
 
-export class GridVertBase<NeighborList> {
+export abstract class GridVertBase<NeighborList> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -333,7 +333,7 @@ mesh.GridVert {
 
   /* @ts-ignore */
   neighbors: NeighborList
-  
+
   bRingSet: Set<GridVertBase<NeighborList>>
   bLink?: BLink<this>
   bNext?: GridVertBase<NeighborList>
@@ -371,6 +371,8 @@ mesh.GridVert {
   }
 
   createNeighborList() {}
+
+  public abstract get valence(): number
 
   get bRing(): Iterable<GridVertBase<NeighborList>> {
     return this.bRingSet
@@ -590,6 +592,13 @@ export class GridVert extends GridVertBase<GridVert[]> {
   createNeighborList() {
     this.neighbors = []
   }
+  get valence(): number {
+    return this.neighbors.length
+  }
+}
+
+export abstract class GenericGridVert extends GridVertBase<Iterable<GenericGridVert>> {
+  //
 }
 
 export class GridBase<GridVertType extends GridVertBase<any> = GridVert> extends CustomDataElem<any> {
@@ -1155,7 +1164,16 @@ mesh.GridBase {
     throw new Error('implement me')
   }
 
-  makeBVHTris(mesh: Mesh, bvh: BVH, loop: Loop, cd_grid: AttrRef<this>, trisout: any[]): void {
+  /** Trisout is an encoded array of format:
+   * 
+   *  0: loop eid
+   *  1: tri id
+   *  2: gridvert1
+   *  3: gridvert2
+   *  4: gridvert3
+   *  repeat
+   */
+  makeBVHTris(mesh: Mesh, bvh: BVH, loop: Loop, cd_grid: AttrRef<this>, trisout: (GridVertType | number)[]): void {
     //, randmap, bridgeEdges = false) {
     throw new Error('implement me')
   }

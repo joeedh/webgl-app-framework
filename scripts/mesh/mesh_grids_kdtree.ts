@@ -301,6 +301,10 @@ export class KDGridVert extends GridVertBase<Set<KDGridVert>> {
   createNeighborList() {
     this.neighbors = new Set();
   }
+
+  get valence(): number {
+    return this.neighbors.size;
+  }
 }
 
 export class CompressedKdNode {

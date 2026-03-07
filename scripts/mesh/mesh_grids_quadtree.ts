@@ -318,6 +318,10 @@ export class QTGridVert extends GridVertBase<Set<QTGridVert>> {
   createNeighborList() {
     return new Set()
   }
+
+  get valence(): number {
+    return this.neighbors.size
+  }
 }
 
 export class QuadTreeGrid extends GridBase<QTGridVert> {

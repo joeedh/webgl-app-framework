@@ -13,5 +13,5 @@ npm update
 echo "Building icon sheets. . ."
 
 cd assets
-python render_icons.py
+python render_icons.py  
 cd ..

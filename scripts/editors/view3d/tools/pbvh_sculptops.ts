@@ -17,6 +17,7 @@ import {Grid, GridBase, GridVertBase, QRecalcFlags} from '../../../mesh/mesh_gri
 import {AttrRef, CDFlags, CustomDataElem} from '../../../mesh/customdata.js'
 import {BrushFlags, DynTopoFlags, SculptTools, BrushSpacingModes, DynTopoModes, SubdivModes} from '../../../brush/brush'
 import {
+  CDElemArray,
   ColorLayerElem,
   Edge,
   FloatElem,
@@ -42,16 +43,8 @@ import {
 } from '../../../util/bvh.js'
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js'
 import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../mesh/mesh_grids_kdtree.js'
-import {
-  splitEdgesSimple2,
-  splitEdgesSmart2,
-} from '../../../mesh/mesh_subdivide.js'
-import {
-  calcConcave,
-  PaintOpBase,
-  PaintSample,
-  SymAxisMap,
-} from './pbvh_base'
+import {splitEdgesSimple2, splitEdgesSmart2} from '../../../mesh/mesh_subdivide.js'
+import {calcConcave, PaintOpBase, PaintSample, SymAxisMap} from './pbvh_base'
 import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
 import {applyTriangulation, triangulateFace, triangulateQuad} from '../../../mesh/mesh_tess.js'
 import {MeshLog} from '../../../mesh/mesh_log.js'
@@ -94,6 +87,11 @@ let ENABLE_CURVATURE_RAKE = true
 
 const FANCY_MUL = 1.0
 
+declare global {
+  interface Window {
+    noMemoize?: boolean
+  }
+}
 const _g = globalThis as any
 _g._disableRake = function (curvatureOnly: boolean = false, mode: boolean = false): void {
   ENABLE_CURVATURE_RAKE = mode
@@ -3095,15 +3093,15 @@ export class PaintOp extends PaintOpBase<
       let _tmp3 = new Vector3()
       let _tmp4 = new Vector3()
 
-      vsharp = (v: any, fac: number): void => {
-        let cv = v.customData[cd_curv]
+      vsharp = (v: IBVHVertex, fac: number): void => {
+        let cv = v.customData[cd_curv] as CurvVert
         cv.check(v, cd_cotan, undefined, cd_fset)
 
         let maxedge = 0,
           minedge = 1e17
 
         for (let v2 of v.neighbors) {
-          let dist = v2.vectorDistance(v)
+          let dist = v2.co.vectorDistance(v.co)
           maxedge = Math.max(maxedge, dist)
           minedge = Math.min(minedge, dist)
         }
@@ -3112,16 +3110,16 @@ export class PaintOp extends PaintOpBase<
 
         //go over two vert rings
         for (let v1 of v.neighbors) {
-          let cv1 = v1.customData[cd_curv]
+          let cv1 = v1.customData[cd_curv] as CurvVert
           cv1.check(v1)
           v1.flag &= ~flag
 
           for (let v2 of v1.neighbors) {
-            let cv2 = v2.customData[cd_curv]
+            let cv2 = v2.customData[cd_curv] as CurvVert
             cv2.check(v2)
 
             v2.flag &= ~flag
-            maxedge = Math.max(maxedge, v2.vectorDistanceSqr(v))
+            maxedge = Math.max(maxedge, v2.co.vectorDistanceSqr(v.co))
           }
         }
 
@@ -3131,8 +3129,8 @@ export class PaintOp extends PaintOpBase<
           co = _tmp2.zero()
         let proj = smoothProj
 
-        function add(v2: any): void {
-          let cv2 = v2.customData[cd_curv]
+        function add(v2: IBVHVertex): void {
+          let cv2 = v2.customData[cd_curv] as CurvVert
 
           v2.flag |= flag
           let w = 1.0
@@ -3141,14 +3139,14 @@ export class PaintOp extends PaintOpBase<
           let co2 = _tmp4
 
           if (smoothProj > 0.0) {
-            co2.load(v2).sub(v)
+            co2.load(v2.co).sub(v.co)
             let d = co2.dot(v.no)
 
-            co2.addFac(v.no, -d * smoothProj).add(v)
-            dist = co2.vectorDistance(v)
+            co2.addFac(v.no, -d * smoothProj).add(v.co)
+            dist = co2.vectorDistance(v.co)
           } else {
-            co2.load(v2)
-            dist = v2.vectorDistance(v)
+            co2.load(v2.co)
+            dist = v2.co.vectorDistance(v.co)
           }
 
           let w2 = 1.0 - dist / maxedge
@@ -3184,7 +3182,7 @@ export class PaintOp extends PaintOpBase<
         if (totw !== 0.0 && ratio !== 0.0) {
           co.mulScalar(1.0 / totw)
 
-          let co2 = _tmp4.load(co).sub(v)
+          let co2 = _tmp4.load(co).sub(v.co)
           let d = co2.dot(v.no)
           co2.addFac(v.no, -d)
 
@@ -3419,7 +3417,7 @@ export class PaintOp extends PaintOpBase<
 
     let cornerflag = getCornerFlag()
 
-    let rake = (v: Vertex, fac: number = 0.5, sdis: number = 1.0): void => {
+    let rake = (v: IBVHVertex, fac: number = 0.5, sdis: number = 1.0): void => {
       let mv = v.customData[cd_dyn_vert] as MDynVert
 
       if (mv && mv.flag & cornerflag) {
@@ -3439,7 +3437,7 @@ export class PaintOp extends PaintOpBase<
       }
 
       //XXX
-      if (doCurvRake && rakeCurvePosXOnly && v[0] < 0.0) {
+      if (doCurvRake && rakeCurvePosXOnly && v.co[0] < 0.0) {
         return
       }
 
@@ -3462,7 +3460,7 @@ export class PaintOp extends PaintOpBase<
         //d1.negate();
       }
 
-      if (doCurvRake && (!rakeCurvePosXOnly || v[0] >= 0.0)) {
+      if (doCurvRake && (!rakeCurvePosXOnly || v.co[0] >= 0.0)) {
         let cv = v.customData[cd_curv] as CurvVert
         cv.check(v, cd_cotan, undefined, cd_fset)
 
@@ -3472,7 +3470,7 @@ export class PaintOp extends PaintOpBase<
       let pad = 0.02
       let tot = 0.0
 
-      let dorake = (v2: Vertex, e?: Edge): void => {
+      let dorake = (v2: IBVHVertex, e?: Edge): void => {
         let mv2 = v2.customData[cd_dyn_vert] as MDynVert
 
         if (boundflag && (mv2.flag & BVHVertFlags.BOUNDARY_ALL) !== boundflag) {
@@ -3506,12 +3504,12 @@ export class PaintOp extends PaintOpBase<
         tot += w
       }
 
-      if (v.edges) {
+      if (v instanceof Vertex) {
         for (let e of v.edges) {
           let v2 = e.otherVertex(v)
           dorake(v2, e)
         }
-      } else {
+      } else if (v instanceof GridBase) {
         for (let v2 of v.neighbors) {
           dorake(v2)
         }
@@ -4774,7 +4772,7 @@ export class PaintOp extends PaintOpBase<
 
       if (vsw > 0) {
         if (isPaintMode) {
-          v.customData[cd_color].color.load(colorfilter(v, cd_color, vsw * ws[wi]))
+          ;(v.customData[cd_color] as ColorLayerElem).color.load(colorfilter(v, cd_color, vsw * ws[wi]))
         } else {
           if (vsw * ws[wi] > 0.0) {
             reproject = true
@@ -4824,6 +4822,8 @@ export class PaintOp extends PaintOpBase<
     }
 
     if (reproject && !haveGrids && this.inputs.reprojectCustomData.getValue()) {
+      const vertexVs = vs as Set<Vertex>
+
       function swap3(a: any, b: any): void {
         for (let i = 0; i < 3; i++) {
           let t = a[i]
@@ -4837,8 +4837,8 @@ export class PaintOp extends PaintOpBase<
       let i = 0,
         li = 0
 
-      for (let v of vs) {
-        let node = cd_node.get(v).node
+      for (let v of vertexVs) {
+        let node = cd_node.get(v).node!
 
         for (let l of v.loops) {
           if (l.v !== v) {
@@ -4869,11 +4869,11 @@ export class PaintOp extends PaintOpBase<
       let cdblocks = []
       let dummy = new Vertex()
 
-      let vlist = [0, 0, 0]
-      let wlist = [0, 0, 0]
+      let vstmp = new Array<Vertex>(3)
+      let wstmp = [0, 0, 0]
 
       i = 0
-      for (let v of vs) {
+      for (let v of vertexVs) {
         let origco = origVs[i]
         let origno = origNs[i]
 
@@ -4897,31 +4897,25 @@ export class PaintOp extends PaintOpBase<
           r = r2
         }
 
-        if (!r) {
-          // || (r.tri.v1 !== v && r.tri.v2 !== v && r.tri.v3 !== v)) {
-          console.warn('Cast error', v, origco, origno)
-          cdblocks.push(undefined)
+        if (r === undefined) {
+          throw new Error('no ray')
         }
 
-        let tri = r.tri
-        vlist[0] = tri.v1
-        vlist[1] = tri.v2
-        vlist[2] = tri.v3
+        let tri = r.tri!
+        vstmp[0] = tri.v1 as Vertex
+        vstmp[1] = tri.v2 as Vertex
+        vstmp[2] = tri.v3 as Vertex
 
-        //let t = r.uv[0];
-        //r.uv[0] = r.uv[1];
-        //r.uv[1] = t;
-
-        wlist[0] = r.uv[0]
-        wlist[1] = r.uv[1]
-        wlist[2] = 1.0 - r.uv[0] - r.uv[1]
+        wstmp[0] = r.uv[0]
+        wstmp[1] = r.uv[1]
+        wstmp[2] = 1.0 - r.uv[0] - r.uv[1]
 
         dummy.customData = new CDElemArray()
         for (let cd of v.customData) {
           dummy.customData.push(cd.copy())
         }
 
-        mesh.verts.customDataInterp(dummy, vlist, wlist)
+        mesh.verts.customDataInterp(dummy, vstmp, wstmp)
         cdblocks.push(dummy.customData)
 
         for (let l of v.loops) {
@@ -4934,11 +4928,12 @@ export class PaintOp extends PaintOpBase<
             dummy.customData.push(cd.copy())
           }
 
-          vlist[0] = r.tri.l1
-          vlist[1] = r.tri.l2
-          vlist[2] = r.tri.l3
+          const lstmp = vstmp as unknown as Loop[]
+          lstmp[0] = r.tri!.l1!
+          lstmp[1] = r.tri!.l2!
+          lstmp[2] = r.tri!.l3!
 
-          mesh.loops.customDataInterp(dummy, vlist, wlist)
+          mesh.loops.customDataInterp(dummy as unknown as Loop, lstmp, wstmp)
           cdblocks_loop.set(l, dummy.customData)
         }
         i++
@@ -4955,7 +4950,7 @@ export class PaintOp extends PaintOpBase<
       }
 
       i = 0
-      for (let v of vs) {
+      for (let v of vertexVs) {
         if (cdblocks[i] !== undefined) {
           let block = cdblocks[i]
 
@@ -4993,14 +4988,14 @@ export class PaintOp extends PaintOpBase<
       let smoother = this.smoother
 
       for (let v of vs) {
-        update |= smoother.ensureVert(v)
+        update ||= smoother.ensureVert(v)
       }
 
       if (update) {
         smoother.update()
       }
 
-      let wfunc = function (v) {
+      let wfunc = function (v: Vertex) {
         let w = smoothmap.get(v)
 
         if (w === undefined) {
@@ -5037,14 +5032,14 @@ export class PaintOp extends PaintOpBase<
         }
 
         dctx.v = v
-        let dv = v.customData[cd_disp]
+        let dv = v.customData[cd_disp] as DispLayerVert
 
         dv.flushUpdateCo(dctx, true)
       }
     }
 
     let this2 = this
-    let doDynTopo = function* (vs) {
+    let doDynTopo = function* (vs: Iterable<IBVHVertex>) {
       let repeat = brush.dynTopo.repeat
       if (mode === SNAKE) {
         repeat += 3
@@ -5068,6 +5063,7 @@ export class PaintOp extends PaintOpBase<
         }
       } else if (!haveGrids) {
         let es = new Set()
+        let vertexVs = vs as Iterable<Vertex>
 
         let log = this2._undo.log
         log.checkStart(mesh)
@@ -5075,13 +5071,13 @@ export class PaintOp extends PaintOpBase<
         for (let step = 0; step < repeat; step++) {
           if (1) {
             if (step > 0) {
-              vs = bvh.closestVerts(ps.p, bvhRadius)
+              vertexVs = bvh.closestVerts(ps.p, bvhRadius) as Iterable<Vertex>
             }
 
             const emin = esize * 0.5 * (esize * 0.5)
             const emax = esize * 2.0 * (esize * 2.0)
 
-            for (let v of vs) {
+            for (let v of vertexVs) {
               for (let e of v.edges) {
                 es.add(e)
 
@@ -5216,23 +5212,23 @@ export class PaintOp extends PaintOpBase<
           //*/
 
           for (let e of es) {
-            vs.add(e.v1)
-            vs.add(e.v2)
+            vertexVs.add(e.v1)
+            vertexVs.add(e.v2)
           }
 
-          for (let v of vs) {
+          for (let v of vertexVs) {
             if (v) {
               log.ensure(v)
             }
           }
 
-          for (let step2 of this2.doTopology(mesh, maxedges, bvh, esize, vs, es, radius, brush)) {
+          for (let step2 of this2.doTopology(mesh, maxedges, bvh, esize, vertexVs, es, radius, brush)) {
             yield
           }
 
           for (let j = 0; j < 2; j++) {
             if (brush.dynTopo.flag & DynTopoFlags.COLLAPSE) {
-              this2.doTopologyCollapse(mesh, maxedges, bvh, esize, vs, es, radius, brush)
+              this2.doTopologyCollapse(mesh, maxedges, bvh, esize, vertexVs, es, radius, brush)
               yield
             }
           }

@@ -6576,7 +6576,7 @@ mesh.Mesh {
     this.validateMesh()
   }
 
-  getBoundingBox() {
+  getBoundingBox(useGrids = true) {
     let ret: [Vector3, Vector3] | undefined
 
     for (let v of this.verts) {
@@ -6590,7 +6590,7 @@ mesh.Mesh {
 
     let cd_grid = GridBase.meshGridOffset(this)
 
-    if (cd_grid >= 0) {
+    if (useGrids && cd_grid >= 0) {
       for (let l of this.loops) {
         if (ret === undefined) {
           ret = [new Vector3(), new Vector3()]
