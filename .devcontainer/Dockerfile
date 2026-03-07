@@ -25,7 +25,7 @@ RUN sudo chown vscode:vscode /usr/local/share -R
 RUN sudo chown vscode:vscode /usr/local
 
 # remove any existing nodejs from apt
-#RUN sudo apt-get -y remove nodejs 2> /dev/null
+RUN sudo apt-get -y remove nodejs 2> /dev/null
 
 # install nodejs
 RUN wget https://nodejs.org/dist/v24.14.0/node-v24.14.0-linux-x64.tar.xz
