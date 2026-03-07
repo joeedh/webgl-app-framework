@@ -2,9 +2,9 @@
 
 # fix vscode server
 cat <<EOF >> ~/.bashrc
-export VSCODE_SERVER=`echo \$BROWSER | sed "s/bin\/helpers\/browser.sh/bin/g"`
+export VSCODE_SERVER=\`echo \$BROWSER | sed "s/bin\/helpers\/browser.sh/bin/g"\`
 echo Found vscode server at \$VSCODE_SERVER
-echo "export PATH=\$VSCODE_SERVER/remote-cli:\$PATH" >> ~/.bashrc
+export PATH=\$VSCODE_SERVER/remote-cli:\$PATH
 EOF
 
 # delete vscode's password, whatever it is
