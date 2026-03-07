@@ -10,6 +10,7 @@ EOF
 # delete vscode's password, whatever it is
 sudo passwd -d vscode
 
+su vscode -c "git config --global set config.editor vim"
 su vscode -c "pnpm i"
 su vscode -c "bash git_pull.sh"
 su vscode -c "bash git_pull.sh"
