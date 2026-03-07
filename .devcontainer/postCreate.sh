@@ -5,3 +5,4 @@ sudo passwd -d vscode
 su vscode -c "pnpm i"
 su vscode -c "bash git_pull.sh"
 su vscode -c "bash git_pull.sh"
+su vscode -c "git config --global core.editor \"vim\""
