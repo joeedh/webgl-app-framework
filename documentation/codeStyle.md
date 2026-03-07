@@ -3,6 +3,7 @@
 <!-- toc -->
 
 - [Code Style and Standard Practices Guide](#code-style-and-standard-practices-guide)
+  * [Prettier](#prettier)
   * [Type assumptions](#type-assumptions)
   * [Static properties should come first in classes](#static-properties-should-come-first-in-classes)
   * [Imports](#imports)
@@ -12,6 +13,11 @@
 <!-- tocstop -->
 
 # Code Style and Standard Practices Guide
+
+## Prettier
+
+We use a fork of prettier for code formatting (it formats
+object literals a bit nicer).
 
 ## Type assumptions
 
@@ -33,13 +39,16 @@ class Bleh {
 We can make this a lot nicer with an "assumptions" pattern:
 
 ```typescript
+// adds `| undefined` to T if a condition is met
 type OptionalIf<T, D extends true | false | undefined> = D extends true ? T | undefined : T
+
 class Bleh<OPT extends {dead?: true | false} = {}> {
   bleh2: OptionalIf<Bleh2, OPT['dead']>
 
   constructor(b: Bleh2) {
     this.bleh2 = b
   }
+  
   // note: you can restrict methods to certain attributes
   onDead = function(this: Bleh<OPT & {dead: true}>) {
     this.bleh2 = undefined

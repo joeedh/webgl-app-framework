@@ -3,6 +3,7 @@
 <!-- toc -->
 
 - [Introduction](#introduction)
+  * [Code Style](#code-style)
 - [Architecture](#architecture)
   * [Model](#model)
   * [View](#view)
@@ -16,9 +17,12 @@
 Webgl-app-framework is a small app framework based on the Blender's architecture.
 It uses path.ux, a UI framework that is also based on Blender.
 
+## Code Style
+See [the code style guide](codeStyle.md)
+
 # Architecture
 
-[Overview](manual/architecture.html)
+See [Path.UX Architecture](../scripts/path.ux/docs_src/architecture.md)
 
 ## Model
 
