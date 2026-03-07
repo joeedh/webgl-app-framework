@@ -1,3 +1,16 @@
+
+
+<!-- toc -->
+
+- [Data Graph](#data-graph)
+  * [Declaration](#declaration)
+  * [Cycles](#cycles)
+  * [Data Blocks](#data-blocks)
+  * [Zombie Nodes](#zombie-nodes)
+<!-- regenerate with pnpm markdown-toc -->
+
+<!-- tocstop -->
+
 # Data Graph
 
 The data graph is a generic execution graph.  It's used for (some) event handling,

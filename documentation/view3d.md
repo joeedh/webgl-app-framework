@@ -1,3 +1,12 @@
+
+
+<!-- toc -->
+
+- [3D Viewport](#3d-viewport)
+<!-- regenerate with pnpm markdown-toc -->
+
+<!-- tocstop -->
+
 # 3D Viewport
 
 This is where the fun happens.  The main class is View3D, which is an Editor subclass.
@@ -18,4 +27,4 @@ View3D has a few important properties and methods:
 
 Viewport redraws are queued by window.redraw_viewport().  Only one draw request
 is allowed at a time, so calling redraw_viewport multiple times in a row will
-only draw once.  
+only draw once.

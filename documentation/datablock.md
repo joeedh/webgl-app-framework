@@ -1,6 +1,18 @@
+
+
+<!-- toc -->
+
+- [Database Library](#database-library)
+  * [Rules](#rules)
+  * [Struct scripts](#struct-scripts)
+  * [Linking](#linking)
+<!-- regenerate with pnpm markdown-toc -->
+
+<!-- tocstop -->
+
 # Database Library
 
-![Datablock class diagrams](image/datablock_illustration.png)
+![Datablock class diagrams](assets/datablock_illustration.png)
 
 The core abstract class is DataBlock (note that not everything subclasses from it).  DataBlocks are 
 inspired by Blender's library blocks, and work in a similar way.  
@@ -28,11 +40,15 @@ Datablocks all inherit from graph.Node, and as such can participate in the depen
 
 Datablocks must save references to other datablocks as DataRefs; for example:
 
-```
-SomeDataBlock.STRUCT = STRUCT.inherit(SomeDataBlock, DataBlock, "SomeDataBlock") + `
-  anotherBlock : DataRef | DataRef.fromBlock(obj.anotherBlock);
+```typescript
+class SomeDataBlock {
+  static STRUCT = nstructjs.inlineRegister(this, `
+  SomeDataBlock {
+    anotherBlock : DataRef | DataRef.fromBlock(obj.anotherBlock);
+  }
+  `)
+  ...
 }
-`
 ```
 
 ## Linking
@@ -41,19 +57,22 @@ Additionally, datablocks must implement the dataLink method to re-link DataRefs 
 call the .afterSTRUCT method inside fromSTRUCT (this behavior is inherited from graph.Node and may become automatic
 in the future).  Here's a complete example:
 
-```
+```typescript
 class SomeDataBlock extends DataBlock {
-  dataLink(getblock, getblock_add_user) {
+  static STRUCT = nstructjs.inlineRegister(SomeDataBlock, `
+  SomeDataBlock {
+    anotherBlock : DataRef | DataRef.fromBlock(obj.anotherBlock);
+  }`)
+
+  dataLink(getblock: BlockLoader, getblock_add_user: BlockLoaderAddUser) {
     this.anotherBlock = getblock_add_user(this.anotherBlock);
   }
   
-  static fromSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(ret);
     ret.afterSTRUCT();
   }
 }
-SomeDataBlock.STRUCT = STRUCT.inherit(SomeDataBlock, DataBlock, "SomeDataBlock") + `
-  anotherBlock : DataRef | DataRef.fromBlock(obj.anotherBlock);
 }
 `
 ```

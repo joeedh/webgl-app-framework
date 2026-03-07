@@ -1,3 +1,13 @@
+
+
+<!-- toc -->
+
+- [Tool Modes](#tool-modes)
+- [Measure ToolMode](#measure-toolmode)
+<!-- regenerate with pnpm markdown-toc -->
+
+<!-- tocstop -->
+
 # Tool Modes
 
 Make sure to read [widgets](widgets.html) page first.
@@ -18,4 +28,3 @@ the object model.
 # Measure ToolMode
 
 Measurement toolmodes are subclassed from scripts/editors/view3d/tools/measuretool.js:MeasureToolBase.
-

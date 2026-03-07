@@ -1,3 +1,12 @@
+
+
+<!-- toc -->
+
+- [Context](#context)
+<!-- regenerate with pnpm markdown-toc -->
+
+<!-- tocstop -->
+
 For a general overview, see [Context](manual/context.html).
 
 # Context

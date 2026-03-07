@@ -1,3 +1,16 @@
+
+
+<!-- toc -->
+
+- [Code Style and Standard Practices Guide](#code-style-and-standard-practices-guide)
+  * [Type assumptions](#type-assumptions)
+  * [Static properties should come first in classes](#static-properties-should-come-first-in-classes)
+  * [Imports](#imports)
+  * [nstructjs pattern](#nstructjs-pattern)
+<!-- regenerate with pnpm markdown-toc -->
+
+<!-- tocstop -->
+
 # Code Style and Standard Practices Guide
 
 ## Type assumptions
