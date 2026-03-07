@@ -8,6 +8,8 @@ RUN sudo apt-get install -y gh vim
 RUN sudo apt-get update
 RUN git config --global core.editor vim
 
+WORKDIR /home/vscode
+
 ENV PATH=/usr/local/bin:$PATH
 
 # try to speed up chown'ing a bit by selectively recursing
