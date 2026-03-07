@@ -364,6 +364,11 @@ mesh.Element {
 }`
   )
 
+  v1next?: typeof EDGE_LINKED_LISTS extends true ? Vertex : never
+  v1prev?: typeof EDGE_LINKED_LISTS extends true ? Vertex : never
+  v2next?: typeof EDGE_LINKED_LISTS extends true ? Vertex : never
+  v2prev?: typeof EDGE_LINKED_LISTS extends true ? Vertex : never
+
   type: TYPE = -1 as unknown as TYPE
   eid: number = -1
   index: number = -1

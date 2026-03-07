@@ -3,9 +3,9 @@ import {nstructjs, util, Vector2, Vector3, Vector4, Matrix4, Quat, Number3} from
 const DYNAMIC_SHUFFLE_NODES = false //attempt fast debalancing of tree dynamically
 
 import * as math from './math.js'
-import {triBoxOverlap, aabb_ray_isect, ray_tri_isect, aabb_cone_isect, tri_cone_isect} from './isect.js'
+import {aabb_ray_isect, ray_tri_isect, aabb_cone_isect, tri_cone_isect} from './isect.js'
 
-import {Vertex, Handle, Edge, Loop, LoopList, Face, Element, PrivateVertexConstructor} from '../mesh/mesh_types.js'
+import {Vertex, Handle, Edge, Loop, LoopList, Face, Element} from '../mesh/mesh_types.js'
 
 import {AttrRef, CDFlags, CDRef, CustomData, CustomDataElem} from '../mesh/customdata'
 import {MeshTypes, MeshFlags, ENABLE_CACHING, CDElemArray} from '../mesh/mesh_base.js'
@@ -13,7 +13,7 @@ import {GenericGridVert, GridBase, GridVert} from '../mesh/mesh_grids'
 
 import {QRecalcFlags} from '../mesh/mesh_grids'
 import {EDGE_LINKED_LISTS} from '../core/const.js'
-import {aabb_sphere_dist, closest_point_on_tri, dist_to_tri_v3} from './math.js'
+import {aabb_sphere_dist, closest_point_on_tri} from './math.js'
 import {getFaceSets} from '../mesh/mesh_facesets.js'
 import {FaceSetElem, IntElem, Vector3LayerElem} from '../mesh/mesh_customdata'
 import {Mesh} from '../mesh/mesh'
@@ -134,22 +134,22 @@ export interface IBVHVertex {
   readonly valence?: number
 }
 
-export class BVHTri<OPT extends {grid?: true | false} = {}> {
+export class BVHTri<OPT extends {grid?: true | false; dead?: true | false} = {}> {
   seti: number
   node?: BVHNode
-  v1: IBVHVertex = undefined as unknown as IBVHVertex
-  v2: IBVHVertex = undefined as unknown as IBVHVertex
-  v3: IBVHVertex = undefined as unknown as IBVHVertex
-  l1: OptionalIf<Loop, OPT['grid']>
-  l2: OptionalIf<Loop, OPT['grid']>
-  l3: OptionalIf<Loop, OPT['grid']>
+  v1: OptionalIf<IBVHVertex, OPT['dead']> = undefined as unknown as IBVHVertex
+  v2: OptionalIf<IBVHVertex, OPT['dead']> = undefined as unknown as IBVHVertex
+  v3: OptionalIf<IBVHVertex, OPT['dead']> = undefined as unknown as IBVHVertex
+  l1: OptionalIf<Loop, BoolOr<OPT['dead'], OPT['grid']>>
+  l2: OptionalIf<Loop, BoolOr<OPT['dead'], OPT['grid']>>
+  l3: OptionalIf<Loop, BoolOr<OPT['dead'], OPT['grid']>>
   id: number
   flag: number
   no: Vector3
   area: number
   f?: Face
-  vs: IBVHVertex[]
-  nodes: BVHNode[]
+  vs: OptionalIf<IBVHVertex, OPT['dead']>[]
+  nodes: OptionalIf<OptionalIf<BVHNode, OPT['dead']>[], OPT['dead']>
   _id1: number
   tri_idx: number
   removed: boolean
@@ -522,6 +522,8 @@ export const DEFORM_BRIDGE_TRIS = false
 
 export type OrigCoType = Vector3LayerElem
 
+type BoolOr<A extends true | false | undefined, B extends true | false | undefined> = A extends true ? true : B
+
 type OptionalIf<T, D extends true | false | undefined> = D extends true ? T | undefined : T
 type OptionalIfNot<T, D extends true | false | undefined> = D extends false | undefined ? T | undefined : T
 
@@ -530,6 +532,7 @@ export class BVHNode<
     leaf?: true | false
     dead?: true | false //
     grid?: true | false
+    boxedges?: true | false
   } = {},
 > {
   __id2: any
@@ -548,9 +551,9 @@ export class BVHNode<
 
   leafIndex: number
   leafTexUV: Vector2
-  boxverts?: BVHNodeVertex[]
-  boxedges?: BVHNodeEdge[]
-  boxvdata?: any[]
+  boxverts: OptionalIfNot<BVHNodeVertex[], OPT['boxedges']>
+  boxedges: OptionalIfNot<BVHNodeEdge[], OPT['boxedges']>
+  boxvdata: OptionalIfNot<any[], OPT['boxedges']>
   boxbridgetris?: any
 
   origGen: number
@@ -591,9 +594,9 @@ export class BVHNode<
 
     this.leafIndex = -1
     this.leafTexUV = new Vector2()
-    this.boxverts = undefined
-    this.boxedges = undefined
-    this.boxvdata = undefined
+    this.boxverts = undefined as unknown as this['boxverts']
+    this.boxedges = undefined as unknown as this['boxedges']
+    this.boxvdata = undefined as unknown as this['boxvdata']
 
     if (DEFORM_BRIDGE_TRIS) {
       //cross-node triangle buffer
@@ -608,7 +611,7 @@ export class BVHNode<
     this.depth = 0
     this.leaf = true
     this.parent = undefined
-    this.bvh = bvh
+    this.bvh = bvh as unknown as (typeof this)['bvh']
     this.index = -1
 
     this.flag = BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_OTHER_VERTS
@@ -650,7 +653,7 @@ export class BVHNode<
     }
   }
 
-  calcBoxVerts() {
+  calcBoxVerts = function (this: BVHNode<OPT & {boxedges: true}>) {
     let min = this.min,
       max = this.max
 
@@ -756,7 +759,7 @@ export class BVHNode<
     return true
   }
 
-  setUpdateFlag(flag: number) {
+  setUpdateFlag = function (this: BVHNode<OPT & {dead: false}>, flag: number) {
     if (!this.bvh || this.bvh.dead) {
       console.warn('Dead BVH!')
       return
@@ -770,13 +773,13 @@ export class BVHNode<
     return this
   }
 
-  split(test?: number) {
+  split = function (this: BVHNode<OPT & {dead: false}>, test?: number) {
     if (test === undefined) {
       throw new Error('test was undefined')
     }
     if (test === 3) {
       console.warn('joining node from split()')
-      this.bvh.joinNode(this.parent, true)
+      this.bvh.joinNode(this.parent!, true)
       //abort;
       return
     }
@@ -794,7 +797,7 @@ export class BVHNode<
 
     //this.update();
 
-    let n: this | undefined = this
+    let n: BVHNode | undefined = this
     while (n !== undefined) {
       n.subtreeDepth = Math.max(n.subtreeDepth, this.depth + 1)
       n = n.parent
@@ -1892,7 +1895,7 @@ export class BVHNode<
     }
   }
 
-  updateNormalsGrids() {
+  updateNormalsGrids = function (this: BVHNode<OPT & {dead: false}>) {
     let mesh = this.bvh.mesh
     let cd_grid = this.bvh.cd_grid
 
@@ -2182,7 +2185,7 @@ export class BVHNode<
     }
   }
 
-  updateIndexVertsGrids() {
+  updateIndexVertsGrids = function (this: BVHNode<OPT & {dead: false}>) {
     this.indexVerts = []
     this.indexLoops = []
     this.indexTris = []
@@ -2946,7 +2949,12 @@ export interface BVHConstructor<BVHType> {
   nodeClass: BVHNode
 }
 
-export class BVH<OPT extends {grid?: true | false} = {}> {
+export class BVH<
+  OPT extends {
+    grid?: true | false //
+    dead?: true | false
+  } = {dead: false},
+> {
   cd_node: AttrRef<CDNodeInfo>
   min: Vector3
   max: Vector3
@@ -2967,7 +2975,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
   cd_orig: number
   origGen: number
   dead: boolean
-  freelist: BVHTri<OPT>[]
+  freelist: BVHTri<OPT & {dead: true}>[]
 
   needsIndexRebuild: boolean
   hideQuadEdges: boolean
@@ -2976,9 +2984,9 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
   tottri: number
   addPass: number
   flag: number
-  updateNodes: Set<BVHNode<OPT>>
+  updateNodes: OptionalIf<Set<BVHNode<OPT>>, OPT['dead']>
   updateGridLoops: Set<Loop>
-  mesh: Mesh
+  mesh: OptionalIf<Mesh, OPT['dead']>
   node_idgen: number
 
   forceUniqueTris: boolean
@@ -2986,14 +2994,14 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
   leafLimit: number
   drawLevelOffset: number
   depthLimit: number
-  nodes: BVHNode[]
-  node_idmap: Map<number, BVHNode>
-  root: BVHNode
+  nodes: OptionalIf<BVHNode[], OPT['dead']>
+  node_idmap: OptionalIf<Map<number, BVHNode>, OPT['dead']>
+  root: OptionalIf<BVHNode, OPT['dead']>
 
   tri_idgen: number
   cd_grid: AttrRef<GridBase>
-  tris: Map<number, BVHTri<OPT>>
-  fmap: Map<number, BVHTri<OPT>[]>
+  tris: OptionalIf<Map<number, BVHTri<OPT>>, OPT['dead']>
+  fmap: OptionalIf<Map<number, BVHTri<OPT>[]>, OPT['dead']>
   dirtemp: Vector3
   _i: number
 
@@ -3070,7 +3078,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
   }
 
   get leaves() {
-    let this2 = this
+    let this2 = this as BVH<OPT & {dead: false}>
 
     return (function* () {
       for (let n of this2.nodes) {
@@ -3364,7 +3372,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     //deform mode assigns verts to nodes only if they
     //lie within the node's hexahedron. fix any orphans.
     if (bvh.isDeforming) {
-      bvh._fixOrphanDefVerts(mesh.verts)
+      bvh._fixOrphanDefVerts()
     }
     //update aabbs
     bvh.update()
@@ -3441,7 +3449,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     }
   }
 
-  _fixOrphanDefVerts(vs: Set<IBVHVertex>) {
+  _fixOrphanDefVerts() {
     const cd_node = this.cd_node
     let ret = false
 
@@ -3489,7 +3497,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return ret
   }
 
-  splitToUniformDepth() {
+  splitToUniformDepth = function (this: BVH<OPT & {dead: false}>) {
     let maxdepth = 0
 
     let vs = new Set()
@@ -3540,10 +3548,10 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
       rec(node)
     }
 
-    this._fixOrphanDefVerts(vs)
+    this._fixOrphanDefVerts()
   }
 
-  getNodeVertex(co) {
+  getNodeVertex(co: Vector3) {
     let prec = 1000
     let x = ~~(co[0] * prec)
     let y = ~~(co[1] * prec)
@@ -3565,7 +3573,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return v
   }
 
-  getNodeEdge(node, v1, v2) {
+  getNodeEdge(node: BVHNode<{boxedges: true}>, v1: BVHNodeVertex, v2: BVHNodeVertex) {
     let key = Math.min(v1.id, v2.id) + ':' + Math.max(v1.id, v2.id)
     let e = this.nodeEdgeHash.get(key)
 
@@ -3587,7 +3595,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return e
   }
 
-  origCoStart(cd_orig: number): void {
+  origCoStart = function (this: BVH<OPT & {dead: false}>, cd_orig: number): void {
     this.cd_orig = cd_orig
     this.origGen++
 
@@ -3600,7 +3608,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
 
   //attempt to sort mesh spatially within memory
 
-  _checkCD(): void {
+  _checkCD = function (this: BVH<OPT & {dead: false}>): void {
     this.cd_grid = GridBase.meshGridRef(this.mesh)
 
     let cdata: CustomData
@@ -3623,7 +3631,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
   }
 
   //in an attempt to improve cpu cache performance
-  spatiallySortMesh(): void {
+  spatiallySortMesh = function (this: BVH<OPT & {dead: false}>): void {
     let mesh = this.mesh
 
     console.error('spatiallySortMesh called')
@@ -3637,12 +3645,12 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
       for (let l of mesh.loops) {
         let grid = cd_grid.get(l)
         for (let p of grid.points) {
-          cd_node.get(p).node = undefined
+          cd_node.get(p).node = undefined as unknown as BVHNode
         }
       }
     } else {
       for (let v of mesh.verts) {
-        cd_node.get(v).node = undefined
+        cd_node.get(v).node = undefined as unknown as BVHNode
       }
     }
 
@@ -3705,7 +3713,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
 
     console.log(fleaves)
 
-    function copyCustomData(cd): CDElemArray {
+    function copyCustomData(cd: CDElemArray): CDElemArray {
       let ret = new CDElemArray()
       for (let i = 0; i < ret.length; i++) {
         ret.push(cd[i].copy())
@@ -3723,7 +3731,8 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
             continue
           }
 
-          let v2 = (newvs[v.index] = new (Vertex as PrivateVertexConstructor)(v))
+          let v2 = new Vertex(v.co)
+          newvs[v.index] = v2
 
           v2.eid = v.eid
           mesh.eidMap.set(v2.eid, v2)
@@ -3746,8 +3755,9 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
           let e2 = (newes[e.index] = new Edge())
 
           if (EDGE_LINKED_LISTS) {
-            e.v1next = e.v1prev = e
-            e.v2next = e.v2prev = e
+            // XXX kind of weird having to cast to typeof e['v1next'] here
+            e.v1next = e.v1prev = e as unknown as (typeof e)['v1next']
+            e.v2next = e.v2prev = e as unknown as (typeof e)['v1next']
           }
 
           e2.eid = e.eid
@@ -3761,7 +3771,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
           if (e.h1 && !e2.h1) {
             for (let step = 0; step < 2; step++) {
               let h1 = step ? e.h2 : e.h1
-              let h2 = new Handle(h1)
+              let h2 = new Handle(h1.co)
 
               h2.owner = e2
               h2.roll = h1.roll
@@ -3854,7 +3864,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     }
 
     for (let elist of mesh.getElemLists()) {
-      let oelist = elists[elist.type]
+      let oelist = elists.get(elist.type)!
 
       let i = 0
       let act = oelist.active
@@ -3884,14 +3894,12 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     this.nodes = []
   }
 
-  oldspatiallySortMesh(mesh) {
-    let verts = mesh.verts
-    let edges = mesh.edges
-    let faces = mesh.faces
-    let loops = mesh.loops
-    let handles = mesh.handles
+  oldspatiallySortMesh(mesh: Mesh) {
+    let verts = Array.from(mesh.verts)
+    let edges = Array.from(mesh.edges)
+    let faces = Array.from(mesh.faces)
 
-    mesh.elists = {}
+    mesh.elists = new Map()
     mesh.verts = mesh.getElemList(MeshTypes.VERTEX)
     mesh.edges = mesh.getElemList(MeshTypes.EDGE)
     mesh.handles = mesh.getElemList(MeshTypes.HANDLE)
@@ -3899,12 +3907,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     mesh.faces = mesh.getElemList(MeshTypes.FACE)
 
     mesh.eidMap = new Map()
-    let idcur = mesh.eidgen._cur
-
-    verts = Array.from(verts)
-    faces = Array.from(faces)
-    edges = Array.from(edges)
-
+    let idcur = mesh.eidgen.cur
     let cd_node = this.cd_node
 
     for (let f of faces) {
@@ -3960,7 +3963,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
 
     let vs = []
     for (let f1 of faces) {
-      let f2
+      let f2: Face | undefined
 
       for (let list of f1.lists) {
         vs.length = 0
@@ -3972,14 +3975,18 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
         if (list === f1.lists[0]) {
           f2 = mesh.makeFace(vs, f1.eid)
           mesh.copyElemData(f2, f1)
-        } else {
+        } else if (f2) {
           mesh.makeHole(f2, vs)
         }
       }
 
+      if (f2 === undefined) {
+        throw new Error('f2 was undefined')
+      }
+
       for (let i = 0; i < f1.lists.length; i++) {
-        let list1 = f1.lists[i],
-          list2 = f2.lists[i]
+        let list1 = f1.lists[i]
+        let list2 = f2.lists[i]
 
         let l1 = list1.l,
           l2 = list2.l
@@ -4004,7 +4011,8 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     mesh.graphUpdate()
   }
 
-  destroy(mesh) {
+  destroy(mesh: Mesh) {
+    const deadThis = this as unknown as BVH<{dead: true}>
     //console.error("BVH.destroy called");
 
     if (this.dead) {
@@ -4014,18 +4022,22 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     this.dead = true
 
     let freelist = this.freelist
+    this.freelist = undefined as unknown as this['freelist']
 
-    this.freelist = undefined
-    for (let tri of this.tris.values()) {
-      tri.v1 = tri.v2 = tri.v3 = tri.l1 = tri.l2 = tri.l3 = tri.f = undefined
-      tri.vs[0] = tri.vs[1] = tri.vs[2] = undefined
+    for (let tri of this.tris!.values()) {
+      let deadtri = tri as unknown as BVHTri<{dead: true}>
+      deadtri.v1 = undefined
+      deadtri.v2 = deadtri.v3 = undefined
+      deadtri.l1 = deadtri.l2 = deadtri.l3 = undefined
+      deadtri.f = undefined
+      deadtri.vs[0] = deadtri.vs[1] = deadtri.vs[2] = undefined
 
-      freelist.push(tri)
+      freelist.push(deadtri)
     }
 
     this._checkCD()
 
-    let cd_node = this.cd_node
+    let cd_node = this.cd_node as AttrRef<CDNodeInfo<{dead: true}>>
     let cd_grid = this.cd_grid
 
     //let cd_face_node = this.cd_face_node;
@@ -4057,23 +4069,23 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
       this.glLeafTex = undefined
     }
 
-    for (let n of this.nodes) {
+    for (let n of this.nodes!) {
       if (n.drawData) {
         n.drawData.destroy()
         n.drawData = undefined
       }
     }
 
-    this.root = undefined
-    this.nodes = undefined
-    this.mesh = undefined
-    this.node_idmap = undefined
-    this.updateNodes = undefined
-    this.tris = undefined
-    this.fmap = undefined
+    deadThis.root = undefined
+    deadThis.nodes = undefined
+    deadThis.mesh = undefined
+    deadThis.node_idmap = undefined
+    deadThis.updateNodes = undefined
+    deadThis.tris = undefined
+    deadThis.fmap = undefined
 
-    this.cd_node.i = -1
-    this.cd_grid = new AttrRef(-1)
+    deadThis.cd_node.i = -1
+    deadThis.cd_grid = new AttrRef(-1)
 
     //for (let f of mesh.faces) {
     //  f.customData[cd_face_node].node = undefined;
@@ -4088,7 +4100,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     }
   }
 
-  closestOrigVerts(co: Vector3, radius: number) {
+  closestOrigVerts = function (this: BVH<OPT & {dead: false}>, co: Vector3, radius: number) {
     let ret = new Set<IBVHVertex>()
 
     this.root.closestOrigVerts(co, radius, ret)
@@ -4110,8 +4122,15 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return ret
   }
 
-  vertsInCone(origin, ray, radius1, radius2, isSquare = false) {
-    let ret = new Set()
+  vertsInCone = function (
+    this: BVH<OPT & {dead: false}>,
+    origin: Vector3,
+    ray: Vector3,
+    radius1: number,
+    radius2: number,
+    isSquare = false
+  ): Set<IBVHVertex> {
+    let ret = new Set<IBVHVertex>()
 
     if (!this.root) {
       return new Set()
@@ -4122,7 +4141,14 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return ret
   }
 
-  vertsInTube(origin: Vector3, ray: Vector3, radius: number, clip = false, isSquare = false) {
+  vertsInTube = function (
+    this: BVH<OPT & {dead: false}>,
+    origin: Vector3,
+    ray: Vector3,
+    radius: number,
+    clip = false,
+    isSquare = false
+  ) {
     let ret = new Set<Vertex>()
 
     if (!clip) {
@@ -4135,14 +4161,14 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return ret
   }
 
-  nearestVertsN(co, n) {
+  nearestVertsN = function (this: BVH<OPT & {dead: false}>, co: Vector3, n: number) {
     let ret = new Set()
     let heap = new util.MinHeapQueue<IBVHVertex>()
     let visit = new WeakSet()
-    let mindis = [undefined]
+    let mindis = [undefined] as [number | undefined]
 
     this._i = 0
-    this.root.nearestVertsN(co, n, heap, mindis)
+    this.root.nearestVertsN(co, n, heap, mindis as number[])
 
     n = Math.min(n, heap.length)
     console.log('HEAP LEN', heap.length)
@@ -4163,7 +4189,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return ret
   }
 
-  closestVerts(co: Vector3, radius: number) {
+  closestVerts = function (this: BVH<OPT & {dead: false}>, co: Vector3, radius: number) {
     let ret = new Set<IBVHVertex>()
 
     this.root.closestVerts(co, radius, ret)
@@ -4171,7 +4197,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return ret
   }
 
-  closestVertsSquare(co: Vector3, radius: number, matrix: Matrix4) {
+  closestVertsSquare = function (this: BVH<OPT & {dead: false}>, co: Vector3, radius: number, matrix: Matrix4) {
     let ret = new Set<IBVHVertex>()
 
     let origco = co
@@ -4190,27 +4216,27 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return ret
   }
 
-  closestTris(co: Vector3, radius: number) {
-    let ret = new Set()
+  closestTris = function (this: BVH<OPT & {dead: false}>, co: Vector3, radius: number) {
+    let ret = new Set<BVHTri<OPT>>()
 
     this.root.closestTris(co, radius, ret)
 
     return ret
   }
 
-  closestTrisSimple(co: Vector3, radius: number) {
-    let ret = new Set()
+  closestTrisSimple = function (this: BVH<OPT & {dead: false}>, co: Vector3, radius: number) {
+    let ret = new Set<BVHTri<OPT>>()
 
     this.root.closestTrisSimple(co, radius, ret)
 
     return ret
   }
 
-  closestPoint(co: Vector3) {
+  closestPoint = function (this: BVH<OPT & {dead: false}>, co: Vector3) {
     return this.root.closestPoint(co)
   }
 
-  castRay(origin: Vector3, dir: Vector3) {
+  castRay = function (this: BVH<OPT & {dead: false}>, origin: Vector3, dir: Vector3) {
     if (!this.root) {
       return undefined
     }
@@ -4221,11 +4247,11 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return this.root.castRay(origin, dir)
   }
 
-  getFaceTris(id: number) {
+  getFaceTris = function (this: BVH<OPT & {dead: false}>, id: number) {
     return this.fmap.get(id)
   }
 
-  removeFace(id: number, unlinkVerts = false, joinNodes = false) {
+  removeFace = function (this: BVH<OPT & {dead: false}>, id: number, unlinkVerts = false, joinNodes = false) {
     if (!this.fmap.has(id)) {
       return
     }
@@ -4252,7 +4278,9 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return this.tri_idgen
   }
 
-  checkJoin(node) {
+  checkJoin = function (this: BVH<OPT & {dead: false}>, _node: BVHNode<OPT & {dead: false}>) {
+    let node: typeof _node | undefined = _node
+
     //return;
     if (this.isDeforming) {
       return
@@ -4262,7 +4290,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
       return
     }
 
-    let p = node
+    let p: typeof node | undefined = node
     let join = false
     let lastp
     let lastp2
@@ -4290,7 +4318,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
       //console.log("EMPTY node!", p.children);
       let allTris = new Set<BVHTri>()
 
-      let rec = (n) => {
+      let rec = (n: BVHNode<OPT & {dead: false}>) => {
         if (n.id >= 0) {
           this._remNode(n)
         }
@@ -4303,10 +4331,10 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
           return
         }
 
-        for (let v of n.uniqueVerts) {
+        for (let v of n.uniqueVerts!) {
           let node = cd_node.get(v)
           if (node.node === n) {
-            node.node = undefined
+            node.node = undefined as unknown as BVHNode
           }
         }
 
@@ -4319,6 +4347,10 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
           }
           allTris.add(tri)
         }
+      }
+
+      if (p === undefined) {
+        throw new Error('p was undefined')
       }
 
       for (let n2 of p.children) {
@@ -4351,7 +4383,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     }
   }
 
-  joinNode(node, addToRoot = false) {
+  joinNode = function (this: BVH<OPT & {dead: false}>, node: BVHNode, addToRoot = false) {
     let p = node
 
     if (this.isDeforming) {
@@ -4368,7 +4400,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     //console.log("EMPTY node!", p.children);
     let allTris = new Set<BVHTri>()
 
-    let rec = (n) => {
+    let rec = (n: BVHNode) => {
       if (n.id >= 0) {
         this._remNode(n)
       }
@@ -4384,7 +4416,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
       for (let v of n.uniqueVerts) {
         let node = cd_node.get(v)
         if (node.node === n) {
-          node.node = undefined
+          node.node = undefined as unknown as BVHNode
         }
       }
 
@@ -4418,7 +4450,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     p.indexTris = []
     p.indexEdges = []
 
-    let addp = addToRoot ? this.root : p
+    let addp = addToRoot ? this.root! : p
 
     for (let tri of allTris) {
       addp.addTri(tri.id, tri.tri_idx, tri.v1, tri.v2, tri.v3, undefined, tri.l1, tri.l2, tri.l3)
@@ -4430,7 +4462,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     this.updateNodes.add(p)
   }
 
-  removeTri(tri) {
+  removeTri = function (this: BVH<OPT & {dead: false}>, tri: BVHTri<OPT & {dead: false}>) {
     this._removeTri(tri, false, false)
     this.tris.delete(tri.tri_idx)
   }
@@ -4442,7 +4474,13 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     }
   }
 
-  _removeTri(tri, partial = false, unlinkVerts, joinNodes = false) {
+  _removeTri = function (
+    this: BVH<OPT & {dead: false}>,
+    tri: BVHTri<OPT & {dead: false}>,
+    partial = false,
+    unlinkVerts = false,
+    joinNodes = false
+  ) {
     if (tri.removed) {
       return
     }
@@ -4462,18 +4500,21 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
       let n3 = cd_node.get(tri.v3)
 
       if (n1.node && n1.node.uniqueVerts) {
-        n1.node.uniqueVerts.delete(tri.v1)
-        n1.node = undefined
+        const deadn1 = n1 as CDNodeInfo<{dead: true}>
+        deadn1.node!.uniqueVerts.delete(tri.v1)
+        deadn1.node = undefined
       }
 
       if (n2.node && n2.node.uniqueVerts) {
-        n2.node.uniqueVerts.delete(tri.v2)
-        n2.node = undefined
+        const deadn2 = n2 as CDNodeInfo<{dead: true}>
+        deadn2.node!.uniqueVerts.delete(tri.v2)
+        deadn2.node = undefined
       }
 
       if (n3.node && n3.node.uniqueVerts) {
-        n3.node.uniqueVerts.delete(tri.v3)
-        n3.node = undefined
+        const deadn3 = n3 as CDNodeInfo<{dead: true}>
+        deadn3.node!.uniqueVerts.delete(tri.v3)
+        deadn3.node = undefined
       }
 
       for (let node of tri.nodes) {
@@ -4522,18 +4563,20 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     tri.node = undefined
 
     if (!partial) {
-      let tris = this.fmap.get(tri.id)
+      let tris = this.fmap.get(tri.id)!
       tris.remove(tri)
-      this.tris.delete(tri)
+      this.tris.delete(tri.id)
     }
+
+    const deadtri = tri as BVHTri<{dead: true}>
 
     for (let i = 0; i < tri.nodes.length; i++) {
-      tri.nodes[i] = undefined
+      deadtri.nodes![i] = undefined
     }
 
-    tri.v1 = tri.v2 = tri.v3 = undefined
-    tri.l1 = tri.l2 = tri.l3 = undefined
-    tri.vs[0] = tri.vs[1] = tri.vs[2] = undefined
+    deadtri.v1 = deadtri.v2 = deadtri.v3 = undefined
+    deadtri.l1 = deadtri.l2 = deadtri.l3 = undefined
+    deadtri.vs[0] = deadtri.vs[1] = deadtri.vs[2] = undefined
     tri.f = undefined
 
     if (ENABLE_CACHING) {
@@ -4541,13 +4584,13 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     }
   }
 
-  hasTri(id, tri_idx) {
+  hasTri(id: number, tri_idx: number) {
     //, v1, v2, v3) {
-    let tri = this.tris.get(tri_idx)
+    let tri = this.tris!.get(tri_idx)
     return tri && !tri.removed
   }
 
-  _getTri1(id, tri_idx, v1, v2, v3) {
+  _getTri1(id: number, tri_idx: number, v1: IBVHVertex, v2: IBVHVertex, v3: IBVHVertex) {
     let tri = new BVHTri(id, tri_idx)
 
     tri.area = math.tri_area(v1, v2, v3) + 0.00001
@@ -4559,7 +4602,14 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return tri
   }
 
-  _getTri(id: number, tri_idx: number, v1: IBVHVertex, v2: IBVHVertex, v3: IBVHVertex) {
+  _getTri = function (
+    this: BVH<OPT & {dead: false}>,
+    id: number,
+    tri_idx: number,
+    v1: IBVHVertex,
+    v2: IBVHVertex,
+    v3: IBVHVertex
+  ) {
     this.tri_idgen = Math.max(this.tri_idgen, tri_idx + 1)
 
     let tri = this.tris.get(tri_idx)
@@ -4618,7 +4668,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return tri
   }
 
-  _newNode(min: Vector3, max: Vector3): BVHNode {
+  _newNode = function (this: BVH<OPT & {dead: false}>, min: Vector3, max: Vector3): BVHNode {
     //let node = new this.constructor.nodeClass(this, min, max);
     let node = new BVHNode(this, min, max)
 
@@ -4635,7 +4685,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     return node
   }
 
-  ensureIndices() {
+  ensureIndices = function (this: BVH<OPT & {dead: false}>) {
     if (!this.needsIndexRebuild) {
       return
     }
@@ -4648,7 +4698,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     }
   }
 
-  _remNode(node: BVHNode) {
+  _remNode = function (this: BVH<OPT & {dead: false}>, node: BVHNode) {
     if (node.id < 0) {
       console.error('node already removed', node)
       return
@@ -4674,10 +4724,10 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     }
   }
 
-  updateTriCounts() {
+  updateTriCounts = function (this: BVH<OPT & {dead: false}>) {
     this.flag &= ~BVHFlags.UPDATE_TOTTRI
 
-    let rec = (n: BVHNode) => {
+    let rec = (n: BVHNode<{dead: false}>) => {
       if (!n.leaf) {
         n.tottri = 0
 
@@ -4696,7 +4746,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     rec(this.root)
   }
 
-  update() {
+  update = function (this: BVH<OPT & {dead: false}>) {
     if (this.dead) {
       console.error('BVH is dead!')
       return
@@ -4717,7 +4767,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
         if (test === 2) {
           node.split(test)
         } else if (test === 3) {
-          this.joinNode(node.parent)
+          this.joinNode(node.parent!)
         }
       }
 
@@ -4778,7 +4828,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
         }
       })()
 
-      if (this._fixOrphanDefVerts(vs)) {
+      if (this._fixOrphanDefVerts()) {
         for (let node of this.updateNodes) {
           node.update()
         }
@@ -4821,11 +4871,12 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     this.updateNodes = new Set()
   }
 
-  addWireVert(v: IBVHVertex) {
+  addWireVert = function (this: BVH<OPT & {dead: false}>, v: IBVHVertex) {
     return this.root.addWireVert(v)
   }
 
-  addTri(
+  addTri = function (
+    this: BVH<OPT & {dead: false}>,
     id: number,
     tri_idx: number,
     v1: IBVHVertex,
@@ -4837,7 +4888,7 @@ export class BVH<OPT extends {grid?: true | false} = {}> {
     l3?: Loop,
     addPass = 0
   ) {
-    let ret = this.root.addTri(id, tri_idx, v1, v2, v3, noSplit, l1, l2, l3)
+    let ret = this.root.addTri(id, tri_idx, v1, v2, v3, noSplit, l1!, l2!, l3!)
     this.addPass = addPass
 
     return ret
@@ -4948,20 +4999,21 @@ export class SpatialHash extends BVH {
     return undefined
   }
 
-  checkJoin() {
+  checkJoin = function (this: BVH<{dead: false}>) {
     return false
   }
 
-  addTri(
+  addTr = function (
+    this: SpatialHash,
     id: number,
     tri_idx: number,
     v1: IBVHVertex,
     v2: IBVHVertex,
     v3: IBVHVertex,
     noSplit = false,
-    l1 = undefined,
-    l2 = undefined,
-    l3 = undefined,
+    l1?: Loop,
+    l2?: Loop,
+    l3?: Loop,
     addPass = 0
   ) {
     let tottri = this.tottri
@@ -4973,9 +5025,9 @@ export class SpatialHash extends BVH {
     let tri = this._getTri(id, tri_idx, v1, v2, v3)
 
     if (l1) {
-      tri.l1 = l1
-      tri.l2 = l2
-      tri.l3 = l3
+      tri.l1 = l1 as unknown as Loop
+      tri.l2 = l2 as unknown as Loop
+      tri.l3 = l3 as unknown as Loop
     }
 
     let min = this.min,
@@ -5064,7 +5116,7 @@ export class SpatialHash extends BVH {
     return tri
   }
 
-  castRay(origin: Vector3, dir: Vector3) {
+  castRay = function (this: BVH<{dead: false}>, origin: Vector3, dir: Vector3) {
     dir = this.dirtemp.load(dir)
     dir.normalize()
 
@@ -5096,7 +5148,7 @@ export class SpatialHash extends BVH {
       }
     }
 
-    this._forEachNode(cb, minx, miny, minz, maxx, maxy, maxz)
+    ;(this as unknown as SpatialHash)._forEachNode(cb, minx, miny, minz, maxx, maxy, maxz)
     return minret
   }
 
@@ -5143,7 +5195,7 @@ export class SpatialHash extends BVH {
     }
   }
 
-  closestVerts(co: Vector3, radius: number) {
+  closestVerts = function (this: BVH<{dead: false}>, co: Vector3, radius: number) {
     let eps = radius * 0.01
 
     let minx = co[0] - radius - eps
@@ -5181,7 +5233,7 @@ export class SpatialHash extends BVH {
       }
     }
 
-    this._forEachNode(cb, minx, miny, minz, maxx, maxy, maxz)
+    ;(this as unknown as SpatialHash)._forEachNode(cb, minx, miny, minz, maxx, maxy, maxz)
     return ret
   }
 

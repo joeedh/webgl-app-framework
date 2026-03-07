@@ -780,7 +780,7 @@ mesh.Mesh {
     */
   }
 
-  makeEdge(v1: Vertex, v2: Vertex, checkExist = false, customEid = undefined) {
+  makeEdge(v1: Vertex, v2: Vertex, checkExist = false, customEid?: number) {
     if (v1 === v2) {
       throw new MeshError('mesh.makeEdge: v1 and v2 were the same')
     }
