@@ -1,4 +1,4 @@
-import {BrushProperty, PaintSample, PaintSampleProperty} from './pbvh_base.ts';
+import {BrushProperty, PaintSample, PaintSampleProperty} from './pbvh_base';
 import * as util from '../../../util/util.js';
 import {
   BoolProperty,
@@ -8,12 +8,12 @@ import {
   Vec3Property, Vec4Property, Vector2, Vector3,
   Vector4, math, Mat4Property, Vec2Property, aabb_sphere_isect
 } from '../../../path.ux/scripts/pathux.js';
-import {SculptTools} from '../../../brush/brush.ts';
+import {SculptTools} from '../../../brush/brush';
 import {BVHFlags} from '../../../util/bvh.js';
 import {GridBase} from '../../../mesh/mesh_grids.js';
 import {ImageTypes} from '../../../image/image.js';
 import {FBO} from '../../../core/fbo.js';
-import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.ts';
+import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh';
 import {Shaders, ShaderDef, BasicLitMesh} from '../../../shaders/shaders.js';
 import {getFBODebug} from '../../debug/gldebug.js';
 import {Texture, getShader, ShaderProgram} from '../../../core/webgl.js';
@@ -22,8 +22,9 @@ import {project} from '../view3d_utils.js';
 let _id: number = 0;
 
 import {tileManager, UNDO_TILESIZE} from '../../../image/gpuimage.js';
+import { ToolContext, ViewContext } from '../../../core/context';
 
-export class TexPaintOp extends ToolOp {
+export class TexPaintOp extends ToolOp<{}, {}, ToolContext, ViewContext {
   blurfbo: BrushBlurFBO | undefined;
   first: boolean;
   start_mpos: Vector3;
@@ -47,7 +48,7 @@ export class TexPaintOp extends ToolOp {
     this.mpos = new Vector3();
   }
 
-  static tooldef(): object {
+  static tooldef() {
     return {
       uiname  : "Paint Stroke (Texture)",
       toolpath: "bvh.texpaint",

@@ -133,11 +133,11 @@ BrushProperty {
     return this
   }
 
-  getValue(): any {
+  getValue(): SculptBrush {
     return this.brush
   }
 
-  loadSTRUCT(reader: any): void {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
     super.loadSTRUCT(reader)
 
@@ -315,7 +315,7 @@ PaintSample {
     b.smoothProj = this.smoothProj
     b.futureAngle = this.futureAngle
     b.curve = this.curve?.clone()
-    
+
     b.strokeS = this.strokeS
     b.dstrokeS = this.dstrokeS
     b.sharp = this.sharp
@@ -697,7 +697,8 @@ import {bez4, Bezier, dbez4} from '../../../util/bezier.js'
 import {copyMouseEvent} from '../../../path.ux/scripts/path-controller/util/events.js'
 import {CameraModes} from '../view3d_base.js'
 import type {ToolContext, ViewContext} from '../../../core/context.js'
-import type {BVHToolMode} from './pbvh'
+import {BVHToolMode} from './pbvh'
+import { StructReader } from '../../../path.ux/scripts/path-controller/types/util/nstructjs.js'
 
 export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends ToolOp<
   {
@@ -708,12 +709,14 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     rendermat: any //
     viewportSize: Vec2Property
   } & Inputs,
-  Outputs
+  Outputs,
+  ToolContext,
+  ViewContext
 > {
   task: any | undefined
   grabMode: boolean
   mfinished: boolean
-  last_mpos: Vector2
+  last_mpos: Vector2 | Vector3
   last_p: Vector3
   last_origco: Vector4
   _first: boolean
@@ -1024,7 +1027,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
       while (this2.queue.length > 0) {
         let [e, p, pi] = this2.queue.shift()
 
-        let iter = this2.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this2.path.length - 1)
+        let iter = this2.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this2.path.length - 1) as any
 
         if (typeof iter === 'object' && iter[Symbol.iterator]) {
           for (let step of iter) {
@@ -1058,10 +1061,10 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     y: number = e.y,
     in_timer: boolean = false,
     isInterp: boolean = false
-  ): any {
+  ) {
     //this.makeTempLine()
 
-    let ctx = this.modal_ctx
+    let ctx = this.modal_ctx!
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
       return
@@ -1071,7 +1074,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     let view3d = ctx.view3d
     let brush = this.inputs.brush.getValue()
 
-    if (toolmode) {
+    if (toolmode instanceof BVHToolMode) {
       //the pbvh toolmode is responsible for drawing brush circle,
       //make sure it has up to date info for that
       toolmode.mpos[0] = x
@@ -1131,11 +1134,11 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     pressure: number,
     invert: boolean,
     isInterp: boolean
-  ): any | undefined {
+  ) {
     let brush = this.inputs.brush.getValue()
     let mode = brush.tool
 
-    let ctx = this.modal_ctx
+    let ctx = this.modal_ctx!
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
       return
@@ -1151,7 +1154,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
 
     let getchannel = (key: string, val: number): number => {
       let ch = brush.dynamics.getChannel(key)
-      if (ch.useDynamics) {
+      if (ch?.useDynamics) {
         return val * ch.curve.evaluate(pressure)
       } else {
         return val
@@ -1163,14 +1166,14 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     let toolmode = ctx.toolmode
     let view3d = ctx.view3d
 
-    if (toolmode) {
+    if (toolmode instanceof BVHToolMode) {
       toolmode._radius = radius
     }
 
     //console.log("pressure", pressure, strength, dynmask);
 
     let ob = ctx.object
-    let mesh = ob.data
+    let mesh = ob.data as Mesh
 
     let bvh = this.getBVH(mesh)
 
@@ -1328,8 +1331,8 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
 
     return {
       origco,
-      p    : isect.p,
-      isect: isect.copy(),
+      p    : isect.p as Vector3,
+      isect: isect.copy() as IsectRet,
       radius,
       ob,
       vec,

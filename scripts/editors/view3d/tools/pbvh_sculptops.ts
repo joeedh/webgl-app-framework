@@ -59,6 +59,7 @@ import {tetSolve} from '../../../tet/tet_deform.js'
 import {DispContext, DispLayerVert, getSmoothMemo, SmoothMemoizer} from '../../../mesh/mesh_displacement.js'
 import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from '../../../mesh/mesh_facesets.js'
 import {TetVertex} from '../../../tet/tetgen_types.js'
+import { BVHToolMode } from './pbvh.js'
 
 //grab data field definition
 const GEID = 0,
@@ -79,11 +80,6 @@ let UGTOT = 9
 
 let ENABLE_DYNTOPO_EDGE_WEIGHTS = true
 let DYNTOPO_T_GOAL = 7
-
-let edist_coll_tmp1 = new Vector3()
-let edist_coll_tmp2 = new Vector3()
-let edist_coll_tmp3 = new Vector3()
-let edist_coll_tmp4 = new Vector3()
 
 let ENABLE_RAKE = true
 let ENABLE_CURVATURE_RAKE = true
@@ -760,9 +756,9 @@ export class PaintOp extends PaintOpBase<
     invert: boolean,
     isInterp: boolean
   ): any {
-    let ctx = this.modal_ctx
-    let view3d = ctx.view3d,
-      mesh = ctx.mesh
+    let ctx = this.modal_ctx!
+    let view3d = ctx.view3d
+    let mesh = ctx.mesh
     let tetmesh = ctx.tetmesh
 
     let delayMode = this.hasSampleDelay()
@@ -816,16 +812,16 @@ export class PaintOp extends PaintOpBase<
       cd_orig = this.initOrigData(the_mesh)
     }
 
-    let p3 = new Vector4(isect.p)
+    let p3 = new Vector4(isect.p as unknown as Vector4)
     p3[3] = 1.0
 
     let matrix = new Matrix4(ob.outputs.matrix.getValue())
     p3.multVecMatrix(rendermat)
 
     if (mode !== SculptTools.SNAKE && mode !== SculptTools.SLIDE_RELAX && mode !== SculptTools.GRAB) {
-      vec = new Vector3(isect.tri.v1.no)
-      vec.add(isect.tri.v2.no)
-      vec.add(isect.tri.v3.no)
+      vec = new Vector3(isect.tri!.v1.no)
+      vec.add(isect.tri!.v2.no)
+      vec.add(isect.tri!.v3.no)
       vec.normalize()
 
       view.negate()
@@ -7389,11 +7385,11 @@ export class PaintOp extends PaintOpBase<
 
     let es2 = [] as Edge[]
     let es0 = [] as Edge[]
-    
+
     for (let e of es) {
       es0.push(e)
     }
-  
+
     const workEs = es0
 
     let log = this._undo.log
@@ -7968,7 +7964,7 @@ export class PaintOp extends PaintOpBase<
       return
     }
 
-    let ctx = this.modal_ctx
+    let ctx = this.modal_ctx!
 
     //prevent reference leaks
     this.grabEidMap = undefined
@@ -7979,7 +7975,7 @@ export class PaintOp extends PaintOpBase<
 
     let ret = super.modalEnd(was_cancelled)
 
-    if (ctx.toolmode) {
+    if (ctx.toolmode instanceof BVHToolMode) {
       //stop custom radius drawing for brush circle
       ctx.toolmode._radius = undefined
     }
@@ -7990,10 +7986,10 @@ export class PaintOp extends PaintOpBase<
   on_pointerup(e: any): void {
     this.mfinished = true
 
-    let ob = this.modal_ctx.object
+    let ob = this.modal_ctx!.object
     let mesh = ob ? ob.data : undefined
 
-    this.modal_ctx.view3d.resetDrawLines()
+    this.modal_ctx!.view3d.resetDrawLines()
     this.modalEnd(false)
 
     //auto-rebuild bvh if topology changed?
