@@ -70,7 +70,7 @@ export class ParamVert extends CustomDataElem<any> {
     updateCotan(ps: any, owning_v: any, cd_pvert: any): void;
     smooth(ps: any, owning_v: any, cd_pvert: any, depth?: number): void;
     checkTangent(ps: any, owning_v: any, cd_pvert: any, noSmooth?: boolean): void;
-    updateTangent(ps: any, owning_v: any, cd_pvert: any, noSmooth?: boolean, cd_disp?: any, noNorm?: boolean): void;
+    updateTangent(ps: any, owning_v: any, cd_pvert: any, noSmooth?: boolean, cd_disp?: number, noNorm?: boolean): void;
     mulScalar(f: any): this;
     clear(): this;
     add(b: any): this;

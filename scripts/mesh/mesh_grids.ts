@@ -852,6 +852,10 @@ mesh.GridBase {
     return eidMap
   }
 
+  getTopo(mesh?: Mesh, cd_grid?: AttrRef<this>): any {
+    return undefined
+  }
+
   calcMemSize(): number {
     let tot = 128 * 8 + 10 * 8
 

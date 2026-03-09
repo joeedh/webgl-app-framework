@@ -360,6 +360,9 @@ export function buildElementAPI(api, dstruct) {
 }
 
 export class LayerSettingsBase {
+  smoothGen = 0
+  initGen = 0
+  
   static STRUCT = nstructjs.inlineRegister(
     this,
     `

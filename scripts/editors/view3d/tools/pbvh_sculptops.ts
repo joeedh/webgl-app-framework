@@ -13,13 +13,14 @@ import {
   Vector4,
   closest_point_on_line,
 } from '../../../path.ux/scripts/pathux.js'
-import {Grid, GridBase, GridVertBase, QRecalcFlags} from '../../../mesh/mesh_grids.js'
+import {Grid, GridBase, GridVert, GridVertBase, QRecalcFlags} from '../../../mesh/mesh_grids.js'
 import {AttrRef, CDFlags, CustomDataElem} from '../../../mesh/customdata.js'
 import {BrushFlags, DynTopoFlags, SculptTools, BrushSpacingModes, DynTopoModes, SubdivModes} from '../../../brush/brush'
 import {
   CDElemArray,
   ColorLayerElem,
   Edge,
+  Face,
   FloatElem,
   getArrayTemp,
   LogContext,
@@ -34,6 +35,7 @@ import {
 import {
   BVH,
   BVHFlags,
+  BVHNode,
   BVHTriFlags,
   BVHVertFlags,
   CDNodeInfo,
@@ -56,6 +58,7 @@ import {Bezier} from '../../../util/bezier.js'
 import {tetSolve} from '../../../tet/tet_deform.js'
 import {DispContext, DispLayerVert, getSmoothMemo, SmoothMemoizer} from '../../../mesh/mesh_displacement.js'
 import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from '../../../mesh/mesh_facesets.js'
+import {TetVertex} from '../../../tet/tetgen_types.js'
 
 //grab data field definition
 const GEID = 0,
@@ -684,7 +687,7 @@ export class PaintOp extends PaintOpBase<
       }
 
       if (0 && bvh !== undefined) {
-        let trisout = [] as number[]
+        let trisout = [] as (number | GridVert)[]
 
         for (let l of killloops) {
           let grid = l.customData[cd_grid] as GridBase
@@ -695,11 +698,11 @@ export class PaintOp extends PaintOpBase<
           let ri = ~~(((this.rand.random() * trisout.length) / 5.0) * 0.99999) * 5
           let ri2 = trisout.length - 5
 
-          let eid = trisout[ri]
-          let id = trisout[ri + 1]
-          let v1 = trisout[ri + 2]
-          let v2 = trisout[ri + 3]
-          let v3 = trisout[ri + 4]
+          let eid = trisout[ri] as number
+          let id = trisout[ri + 1] as number
+          let v1 = trisout[ri + 2] as GridVert
+          let v2 = trisout[ri + 3] as GridVert
+          let v3 = trisout[ri + 4] as GridVert
 
           bvh.addTri(eid, id, v1, v2, v3)
 
@@ -1622,7 +1625,7 @@ export class PaintOp extends PaintOpBase<
     let gmap = undo.gmap
     let gdata = undo.gdata
 
-    let mres, oldmres
+    let mres: GridBase | undefined, oldmres: GridBase | undefined
 
     let bvh = this.getBVH(mesh)
     let vsw
@@ -3275,9 +3278,9 @@ export class PaintOp extends PaintOpBase<
     if (useSmoothMemo) {
       //console.log("USING SMOOTH MEMO");
 
-      vsmooth = (v: any, fac: number = 0.5): void => {
-        smemo.fac = fac
-        let co = smemo.smoothco(v)
+      vsmooth = (v: Vertex, fac: number = 0.5): void => {
+        smemo!.fac = fac
+        let co = smemo!.smoothco(v)
 
         if (isNaN(co.dot(co))) {
           debugger
@@ -5031,7 +5034,7 @@ export class PaintOp extends PaintOpBase<
           continue
         }
 
-        dctx.v = v
+        dctx.v = v as Vertex
         let dv = v.customData[cd_disp] as DispLayerVert
 
         dv.flushUpdateCo(dctx, true)
@@ -5062,8 +5065,8 @@ export class PaintOp extends PaintOpBase<
           this2.doQuadTopo(mesh, bvh, esize, vs2, p3, radius, brush)
         }
       } else if (!haveGrids) {
-        let es = new Set()
-        let vertexVs = vs as Iterable<Vertex>
+        let es = new Set<Edge>()
+        let vertexVs = vs as Set<Vertex>
 
         let log = this2._undo.log
         log.checkStart(mesh)
@@ -5071,7 +5074,7 @@ export class PaintOp extends PaintOpBase<
         for (let step = 0; step < repeat; step++) {
           if (1) {
             if (step > 0) {
-              vertexVs = bvh.closestVerts(ps.p, bvhRadius) as Iterable<Vertex>
+              vertexVs = bvh.closestVerts(ps.p, bvhRadius) as Set<Vertex>
             }
 
             const emin = esize * 0.5 * (esize * 0.5)
@@ -5114,13 +5117,17 @@ export class PaintOp extends PaintOpBase<
           } else {
             let tris = bvh.closestTris(ps.p, bvhRadius)
             for (let tri of tris) {
-              for (let e of tri.v1.edges) {
+              const v1 = tri.v1 as Vertex
+              const v2 = tri.v2 as Vertex
+              const v3 = tri.v3 as Vertex
+
+              for (let e of v1.edges) {
                 es.add(e)
               }
-              for (let e of tri.v2.edges) {
+              for (let e of v2.edges) {
                 es.add(e)
               }
-              for (let e of tri.v3.edges) {
+              for (let e of v3.edges) {
                 es.add(e)
               }
             }
@@ -5251,10 +5258,12 @@ export class PaintOp extends PaintOpBase<
       }
     }
 
+    /*
+    
     if (mesh instanceof TetMesh) {
       if (mode === GRAB) {
         let radius3 = radius * 4.0
-        let vs2 = bvh.closestVerts(ps.origp, radius3)
+        let vs2 = bvh.closestVerts(ps.origp, radius3) as unknown as Set<TetVertex>
         for (let v of vs) {
           vs2.add(v)
         }
@@ -5264,14 +5273,13 @@ export class PaintOp extends PaintOpBase<
           doUndo(v)
 
           let dis = v.co.vectorDistance(ps.origp)
-          //*
           let w = Math.max(1.0 - dis / radius3, 0)
 
           if (w > 0.75) {
             w = 0.0
           } else {
             w = falloff.evaluate(w)
-          } //*/
+          } 
 
           v.w = w
         }
@@ -5290,7 +5298,7 @@ export class PaintOp extends PaintOpBase<
         }
       }
     }
-    //*/
+    */
 
     bvh.update()
 
@@ -5306,7 +5314,7 @@ export class PaintOp extends PaintOpBase<
 
       vs = bvh.closestVerts(ps.p, bvhRadius)
       for (let v of vs) {
-        dctx.v = v
+        dctx.v = v as Vertex
 
         let i = 0
         for (let cd of v.customData) {
@@ -5325,14 +5333,13 @@ export class PaintOp extends PaintOpBase<
           continue
         }
 
-        dctx.v = v
-        let dv = v.customData[cd_disp]
-
+        dctx.v = v as Vertex
+        let dv = v.customData[cd_disp] as DispLayerVert
         dv.flushUpdateCo(dctx, true)
       }
     }
 
-    if (mres && oldmres) {
+    if (mres !== undefined && oldmres) {
       oldmres.copyTo(mres)
 
       for (let l of mesh.loops) {
@@ -5361,7 +5368,7 @@ export class PaintOp extends PaintOpBase<
   }
 
   hasCurveVerts(brush: any): any {
-    let ok = brush.dynTopo.flag & DynTopoFlags.ADAPTIVE
+    let ok = !!(brush.dynTopo.flag & DynTopoFlags.ADAPTIVE)
     ok = ok || (brush.rake > 0 && brush.rakeCurvatureFactor > 0)
     ok = ok || brush.sharp > 0
     ok = ok || brush.tool === SculptTools.DIRECTIONAL_FAIR
@@ -5374,13 +5381,13 @@ export class PaintOp extends PaintOpBase<
     maxedges: number,
     bvh: any,
     esize: number,
-    vs: any,
-    es: any,
+    vs: Set<Vertex>,
+    es: Set<Edge>,
     radius: number,
     brush: any
   ): Generator<void> {
     DYNTOPO_T_GOAL = brush.dynTopo.valenceGoal
-    ENABLE_DYNTOPO_EDGE_WEIGHTS = brush.dynTopo.flag & DynTopoFlags.FANCY_EDGE_WEIGHTS
+    ENABLE_DYNTOPO_EDGE_WEIGHTS = !!(brush.dynTopo.flag & DynTopoFlags.FANCY_EDGE_WEIGHTS)
 
     if (brush.dynTopo.flag & DynTopoFlags.ADAPTIVE) {
       this.edist_scale = this.edist_curvmul
@@ -5401,19 +5408,19 @@ export class PaintOp extends PaintOpBase<
       for (let e of es) {
         if (!(e.v1.flag & flag)) {
           e.v1.flag |= flag
-          let cv = e.v1.customData[cd_curv]
+          let cv = e.v1.customData[cd_curv] as CurvVert
           cv.check(e.v1, cd_cotan, undefined, cd_fset)
         }
 
         if (!(e.v2.flag & flag)) {
           e.v2.flag |= flag
-          let cv = e.v2.customData[cd_curv]
+          let cv = e.v2.customData[cd_curv] as CurvVert
           cv.check(e.v2, cd_cotan, undefined, cd_fset)
         }
       }
     }
 
-    let origes
+    let origes: Set<Edge> | undefined
 
     if (brush.dynTopo.flag & DynTopoFlags.DRAW_TRIS_AS_QUADS) {
       origes = new Set(es)
@@ -5422,7 +5429,7 @@ export class PaintOp extends PaintOpBase<
     let log = this._undo.log
     log.checkStart(mesh)
 
-    es = es.filter((e) => e.eid >= 0)
+    es = es.filter((e: Edge) => e.eid >= 0)
 
     for (let e of es) {
       if (!e || !e.v1 || !e.v2 || e.eid < 0) {
@@ -5477,7 +5484,9 @@ export class PaintOp extends PaintOpBase<
       ratio = Math.min(Math.max(ratio, 0.05), 20.0)
 
       let dflag = brush.dynTopo.flag & (DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE)
-      if ((dflag !== DynTopoFlags.SUBDIVIDE) | DynTopoFlags.COLLAPSE) {
+
+      // XXX check this
+      if (dflag !== (DynTopoFlags.SUBDIVIDE | DynTopoFlags.COLLAPSE)) {
         ratio = 1.0
       }
 
@@ -5526,7 +5535,7 @@ export class PaintOp extends PaintOpBase<
       let co = new Vector3()
       let co2 = new Vector3()
 
-      let dosmooth2 = (v: any, fac: number = 0.5): void => {
+      let dosmooth2 = (v: Vertex, fac: number = 0.5): void => {
         if (nosmooth) {
           return
         }
@@ -5556,7 +5565,7 @@ export class PaintOp extends PaintOpBase<
 
       //this._runLogUndo(mesh, bvh);
 
-      let newes = new Set()
+      let newes = new Set<Edge>()
 
       //if (brush.dynTopo.flag & DynTopoFlags.COLLAPSE) {
       //  this.doTopologyCollapse(mesh, max2, bvh, esize, vs, es, radius, brush);
@@ -5564,7 +5573,7 @@ export class PaintOp extends PaintOpBase<
       //}
 
       if (brush.dynTopo.flag & DynTopoFlags.SUBDIVIDE) {
-        let es_out = [0]
+        let es_out = new Array<Set<Edge>>(1)
 
         for (let i = 0; i < 1; i++) {
           let gen = this.doTopologySubdivide(
@@ -5620,7 +5629,7 @@ export class PaintOp extends PaintOpBase<
         let tot = 0
 
         for (let e of new Set(newes)) {
-          esize2 += e.v1.vectorDistance(e.v2)
+          esize2 += e.v1.co.vectorDistance(e.v2.co)
           tot++
 
           for (let i = 0; i < 2; i++) {
@@ -5670,7 +5679,7 @@ export class PaintOp extends PaintOpBase<
       dosmooth(vs, 0.15 * (1.0 - brush.rake))
 
       if (brush.dynTopo.flag & DynTopoFlags.DRAW_TRIS_AS_QUADS) {
-        for (let e of origes) {
+        for (let e of origes!) {
           if (e.eid >= 0) {
             es.add(e)
           }
@@ -6041,7 +6050,7 @@ export class PaintOp extends PaintOpBase<
 
     let cd_cotan = mesh.verts.customData.getLayerIndex('cotan')
 
-    let fs = new Set()
+    let fs = new Set<Face>()
 
     for (let e of es) {
       for (let l of e.loops) {
@@ -6150,7 +6159,7 @@ export class PaintOp extends PaintOpBase<
       return
     }
 
-    let looptris = []
+    let looptris = [] as Loop[]
 
     for (let f of newfs) {
       triangulateFace(f, looptris)
@@ -6176,10 +6185,10 @@ export class PaintOp extends PaintOpBase<
     es: any,
     radius: number,
     brush: any,
-    lctx: any
+    lctx?: any
   ): void {
     let addfaces = false
-    let newfaces = []
+    let newfaces = [] as Face[]
 
     if (!lctx) {
       addfaces = true
@@ -6333,7 +6342,7 @@ export class PaintOp extends PaintOpBase<
     es: any,
     radius: number,
     brush: any,
-    cd_curv: number
+    cd_curv?: number
   ): void {
     let lctx = new LogContext()
 
@@ -6395,7 +6404,7 @@ export class PaintOp extends PaintOpBase<
         continue
       }
 
-      let lensqr = edist(e, e.v1, e.v2, undefined, cd_curv)
+      let lensqr = edist(e, e.v1, e.v2, undefined, cd_curv!)
 
       if (rand.random() > lensqr / esqr) {
         continue
@@ -6414,8 +6423,8 @@ export class PaintOp extends PaintOpBase<
       }
     }
 
-    let fs2 = new Set()
-    let es3 = new Set()
+    let fs2 = new Set<Face>()
+    let es3 = new Set<Edge>()
 
     for (let e1 of es2) {
       es3.add(e1)
@@ -6494,8 +6503,8 @@ export class PaintOp extends PaintOpBase<
     let cd_fset = getFaceSets(mesh, false)
 
     lctx.onnew = (elem: any, tag: any): void => {
-      if (cd_curv >= 0 && elem.type === MeshTypes.VERTEX) {
-        this._checkcurv(elem, cd_curv, cd_cotan, true, cd_fset)
+      if (cd_curv! >= 0 && elem.type === MeshTypes.VERTEX) {
+        this._checkcurv(elem, cd_curv!, cd_cotan, true, cd_fset)
       }
 
       if (elem.type & typemask) {
@@ -6736,13 +6745,13 @@ export class PaintOp extends PaintOpBase<
     let {VTOT, VTOTE, VTOTN, VINDEX, VV, VU} = VMapFields
     let {ETOT, ETOTN, EINDEX, EID, EV1, EV2} = EMapFields
 
-    let vs2 = new Set()
-    let grids = new Set()
-    let gridmap = new Map()
+    let vs2 = new Set<Vertex>()
+    let grids = new Set<GridBase>()
+    let gridmap = new Map<GridBase, Loop>()
 
     let visit = new Set()
-    let updateloops = new Set()
-    let bnodes = new Set()
+    let updateloops = new Set<Loop>()
+    let bnodes = new Set<BVHNode>()
 
     let maxDepth = brush.dynTopo.maxDepth //this.inputs.dynTopoDepth.getValue();
 
@@ -6823,14 +6832,14 @@ export class PaintOp extends PaintOpBase<
       if (ok) {
         vs2.add(v)
 
-        let grid = l.customData[cd_grid]
+        let grid = l.customData[cd_grid] as QuadTreeGrid | KdTreeGrid
 
-        if (!grids.has(grid)) {
+        if (!grids.has(grid as unknown as GridBase)) {
           grid.recalcPointIndices()
           visits.set(grid, new Set())
-          gridmap.set(grid, l)
+          gridmap.set(grid as unknown as GridBase, l)
 
-          grids.add(grid)
+          grids.add(grid as unknown as GridBase)
           grid.update(mesh, l, cd_grid)
         }
 
@@ -6879,28 +6888,28 @@ export class PaintOp extends PaintOpBase<
               continue
             }
 
-            let dist = p.vectorDistanceSqr(brushco)
+            let dist = p.co.vectorDistanceSqr(brushco)
 
             if (dist <= rsqr) {
               found = true
               break
             }
 
-            let t = dn1.load(p2).sub(p)
+            let t = dn1.load(p2.co).sub(p.co)
             let len = t.vectorLength()
 
             if (len > 0.000001) {
               t.mulScalar(1.0 / len)
             }
 
-            let co = dn2.load(brushco).sub(p)
+            let co = dn2.load(brushco).sub(p.co)
 
             let dt = t.dot(co) / len
 
             dt = Math.min(Math.max(dt, 0.0), 1.0)
 
-            co.load(p).interp(p2, dt)
-            dist = p.vectorDistanceSqr(co)
+            co.load(p.co).interp(p2.co, dt)
+            dist = p.co.vectorDistanceSqr(co)
 
             if (dist < rsqr) {
               found = true
@@ -6999,7 +7008,7 @@ export class PaintOp extends PaintOpBase<
     cd_node = mesh.loops.customData.getLayerIndex('bvh')
 
     for (let l of updateloops) {
-      let grid = l.customData[cd_grid]
+      let grid = l.customData[cd_grid] as GridBase
 
       //forcibly unlink vert node refs
       for (let p of grid.points) {
@@ -7052,18 +7061,15 @@ export class PaintOp extends PaintOpBase<
       //grid.relinkCustomData();
     }
 
-    let compactgrids = new Set()
+    let compactgrids = new Set<QuadTreeGrid | KdTreeGrid>()
 
     for (let di = 0; di < data.length; di += DTOT) {
-      let grid = data[di],
-        ni = data[di + 1],
-        l = data[di + 2]
+      let grid = data[di] as QuadTreeGrid | KdTreeGrid
+      let ni = data[di + 1] as number
+      let l = data[di + 2] as Loop
       let mode = data[di + 3]
-
-      let ns = grid.nodes,
-        ps = grid.points
-
       let key = l.eid * idmul + ni
+
       if (visit.has(key) || grid.nodes[ni + QFLAG] & DEAD) {
         continue
       }
@@ -7096,11 +7102,11 @@ export class PaintOp extends PaintOpBase<
 
     //console.log(bvh.nodes.length, bvh.root.tottri);
 
-    let trisout = []
+    let trisout = [] as (number | GridVert)[]
 
     let visit2 = new Set()
 
-    let updateloops2 = new Set()
+    let updateloops2 = new Set<Loop>()
 
     for (let l of updateloops) {
       let grid = l.customData[cd_grid]
@@ -7142,8 +7148,7 @@ export class PaintOp extends PaintOpBase<
       QRecalcFlags.POINTHASH
 
     for (let l of updateloops2) {
-      let grid = l.customData[cd_grid]
-
+      let grid = l.customData[cd_grid] as GridBase
       grid.recalcFlag |= updateflag2 // | QRecalcFlags.ALL;
     }
 
@@ -7152,12 +7157,12 @@ export class PaintOp extends PaintOpBase<
     }
 
     for (let l of updateloops) {
-      let grid = l.customData[cd_grid]
+      let grid = l.customData[cd_grid] as GridBase
       grid.update(mesh, l, cd_grid)
     }
 
     for (let l of updateloops2) {
-      let grid = l.customData[cd_grid]
+      let grid = l.customData[cd_grid] as GridBase
       grid.update(mesh, l, cd_grid)
     }
 
@@ -7171,7 +7176,7 @@ export class PaintOp extends PaintOpBase<
     //XXX
 
     for (let l of updateloops) {
-      let grid = l.customData[cd_grid]
+      let grid = l.customData[cd_grid] as GridBase
 
       if (visit2.has(grid)) {
         throw new Error('eek!')
@@ -7306,25 +7311,20 @@ export class PaintOp extends PaintOpBase<
     max: number,
     bvh: any,
     esize: number,
-    vs: any,
-    es: any,
+    vs: Set<Vertex>,
+    es: Set<Edge>,
     radius: number,
     brush: any,
-    newes_out: any[],
-    dosmooth: boolean,
+    newes_out: Set<Edge>,
+    dosmooth: (v: Vertex, number: number) => void,
     cd_curv: number,
-    es_out: any[]
+    es_out: Set<Edge>[]
   ): Generator<void> {
-    let esetin = es
-
     es_out[0] = es
 
     const useSmart = brush.dynTopo.subdivMode === SubdivModes.SMART
 
     let esize1 = esize
-    let emin = esize1 * 0.5 * (esize1 * 0.5)
-    let emax = esize1 * 2.0 * (esize1 * 2.0)
-
     esize *= this._calcEsizeScale(esize, brush.dynTopo.subdivideFactor)
 
     let esize2
@@ -7347,9 +7347,9 @@ export class PaintOp extends PaintOpBase<
     let edist0 = fancyWeights ? this.edist_subd : this.edist_simple
 
     //*
-    function edist(e: any, v1: any, v2: any, eset: any, cd_curv: number): number {
+    function edist(e: Edge, v1: Vertex, v2: Vertex, eset: any, cd_curv?: number): number {
       let dis = v1.co.vectorDistance(v2.co)
-      let w = edist0(e, v1, v2, eset, cd_curv)
+      let w = edist0(e, v1, v2, eset, cd_curv!)
 
       if (e.l && e.l.next.e && e.l.prev.e) {
         let e2 = e.l.next.e
@@ -7357,7 +7357,8 @@ export class PaintOp extends PaintOpBase<
 
         let dis2 = e2.v1.co.vectorDistance(e2.v2.co)
         let dis3 = e3.v1.co.vectorDistance(e3.v2.co)
-        let ratio1, ratio2
+        let ratio1 = 0
+        let ratio2 = 0
 
         if (dis2 !== 0.0) {
           ratio1 = dis > dis2 ? dis / dis2 : dis2 / dis
@@ -7366,7 +7367,7 @@ export class PaintOp extends PaintOpBase<
           ratio2 = dis > dis3 ? dis / dis3 : dis3 / dis
         }
 
-        let ratio
+        let ratio: number
         if (dis2 !== 0.0 && dis3 !== 0.0) {
           ratio = Math.max(ratio1, ratio2)
         } else if (dis2 !== 0.0) {
@@ -7386,21 +7387,21 @@ export class PaintOp extends PaintOpBase<
 
     let eset = es
 
-    let es2 = []
-
-    let es0 = []
+    let es2 = [] as Edge[]
+    let es0 = [] as Edge[]
+    
     for (let e of es) {
       es0.push(e)
     }
-    es = es0
+  
+    const workEs = es0
 
     let log = this._undo.log
 
     log.checkStart(mesh)
 
     let esqr = esize * esize
-    let fs = new Set()
-    let fmap = new Map()
+    let fs = new Set<Face>()
 
     //let cd_face_node = bvh.cd_face_node;
 
@@ -7438,9 +7439,9 @@ export class PaintOp extends PaintOpBase<
       weight = weight_fancy
     }
 
-    for (let e of es) {
-      let ri = ~~(rand.random() * 0.9999 * es.length)
-      e = es[ri]
+    for (let e of workEs) {
+      let ri = ~~(rand.random() * 0.9999 * workEs.length)
+      e = workEs[ri]
 
       if (es2.length >= max2) {
         break
@@ -7488,7 +7489,7 @@ export class PaintOp extends PaintOpBase<
     }
 
     if (es2.length === 0) {
-      es_out[0] = new Set(es)
+      es_out[0] = new Set(workEs)
       return
     }
 
@@ -7504,17 +7505,17 @@ export class PaintOp extends PaintOpBase<
 
     //let heap = new util.MinHeapQueue(es2, ws);
 
-    es2 = new Set(es2)
+    const es2Set = new Set(es2)
 
     let flag2 = MeshFlags.TEMP2
 
     //expand
     if (0) {
-      for (let e of es2) {
+      for (let e of es2Set) {
         e.flag &= ~flag2
       }
 
-      for (let e of es2) {
+      for (let e of es2Set) {
         if (e.flag & flag2) {
           continue
         }
@@ -7524,7 +7525,7 @@ export class PaintOp extends PaintOpBase<
         for (let l of e.loops) {
           for (let l2 of l.f.loops) {
             l2.e.flag |= flag2
-            es2.add(l2.e)
+            es2Set.add(l2.e)
           }
         }
       }
@@ -7538,11 +7539,11 @@ export class PaintOp extends PaintOpBase<
     let lctx = new LogContext()
     let cd_node = bvh.cd_node
 
-    let es3 = new Set(es)
-    let newvs = new Set(),
-      newfs = new Set(),
-      killfs = new Set(),
-      newes = new Set()
+    let es3 = new Set(workEs)
+    let newvs = new Set<Vertex>(),
+      newfs = new Set<Face>(),
+      killfs = new Set<Face>(),
+      newes = new Set<Edge>()
 
     let updateflag = BVHFlags.UPDATE_UNIQUE_VERTS | BVHFlags.UPDATE_OTHER_VERTS
     updateflag = updateflag | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_TOTTRI
@@ -7606,7 +7607,7 @@ export class PaintOp extends PaintOpBase<
       }
     }
 
-    let es4 = es2
+    let es4 = es2Set
 
     let oldnew = lctx.onnew
     let oldkill = lctx.onkill
@@ -7618,7 +7619,7 @@ export class PaintOp extends PaintOpBase<
         break
       }
 
-      let newes2 = new Set()
+      let newes2 = new Set<Edge>()
 
       let flag = MeshFlags.TEMP2
 
@@ -7808,7 +7809,7 @@ export class PaintOp extends PaintOpBase<
     //let newfs = new Set();
     //let killfs = new Set();
 
-    let fs2 = new Set()
+    let fs2 = new Set<Face>()
 
     fs = fs.filter((f) => f.eid >= 0)
     newfs = newfs.filter((f) => f.eid >= 0)
@@ -7835,8 +7836,8 @@ export class PaintOp extends PaintOpBase<
         }
 
         if (0 && f.lists[0].length > 3) {
-          let newfaces = new Set()
-          let newedges = new Set()
+          let newfaces = new Set<Face>()
+          let newedges = new Set<Edge>()
 
           //log.logKillFace(f);
 
@@ -7976,7 +7977,7 @@ export class PaintOp extends PaintOpBase<
       this.smoother = undefined
     }
 
-    let ret = super.modalEnd(...arguments)
+    let ret = super.modalEnd(was_cancelled)
 
     if (ctx.toolmode) {
       //stop custom radius drawing for brush circle
@@ -7993,7 +7994,7 @@ export class PaintOp extends PaintOpBase<
     let mesh = ob ? ob.data : undefined
 
     this.modal_ctx.view3d.resetDrawLines()
-    this.modalEnd()
+    this.modalEnd(false)
 
     //auto-rebuild bvh if topology changed?
     //if (mesh instanceof Mesh) {

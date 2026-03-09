@@ -1,8 +1,8 @@
-import {CustomDataElem} from './customdata.js';
+import {CustomDataElem, AttrRef} from './customdata.js';
 import {util, Vector4} from '../path.ux/scripts/pathux.js';
 import {BVHVertFlags} from '../util/bvh.js';
 
-export function getFaceSets(mesh, autoCreate=true) {
+export function getFaceSetsAttr(mesh, autoCreate=true) {
   let added = false;
 
   if (autoCreate && !mesh.faces.customData.hasNamedLayer("face_sets", "int")) {
@@ -18,7 +18,11 @@ export function getFaceSets(mesh, autoCreate=true) {
     }
   }
 
-  return cd_fset;
+  return new AttrRef(cd_fset);
+}
+
+export function getFaceSets(mesh, autoCreate=true) {
+  return getFaceSetsAttr(mesh, autoCreate).i;
 }
 
 export function getNextFaceSet(mesh) {
