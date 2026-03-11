@@ -7,7 +7,7 @@ import {DependSocket} from '../core/graphsockets'
 import {Material} from '../core/material'
 import type {ToolContext} from '../core/context'
 import type {SceneObject} from './sceneobject'
-import type {View3D} from '../editors/view3d/view3d'
+import {View3D} from '../../types/scripts/editors/view3d/view3d'
 import {ShaderProgram} from '../core/webgl'
 
 export interface IDataDefine {
@@ -83,12 +83,14 @@ SceneObjectData {
 
   getOwningObject() {
     for (let sock of this.inputs.depend.edges) {
-      if (sock.node.constructor.name === 'SceneObject' && (sock.node as unknown as any).data === this) {
-        return sock.node
+      // XXX fixme: cannot use instanceof here because of circular dependency
+      // but this is still a hack
+      if ((sock.node as any).constructor.name === 'SceneObject' && (sock.node as unknown as any).data === this) {
+        return sock.node as SceneObject
       }
     }
 
-    console.warn('orphaned sceneobjectdata?')
+    console.warn('Orphaned sceneobjectdata!')
   }
 
   copyAddUsers() {

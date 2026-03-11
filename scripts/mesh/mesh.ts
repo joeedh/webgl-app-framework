@@ -74,13 +74,13 @@ import {setMeshClass, triangulateFace} from './mesh_tess.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 import {checkDispLayers, DispLayerFlags, DispLayerVert, onFileLoadDispVert, updateDispLayers} from './mesh_displacement'
 import {IGridConstructor} from './mesh_grids.js'
-//import {View3D} from '../../types/scripts/editors/view3d/view3d'
-import type {View3D} from '../editors/view3d/view3d'
-import {ShaderProgram} from '../../types/scripts/core/webgl'
+import {View3D} from '../../types/scripts/editors/view3d/view3d'
+//import type {View3D} from '../editors/view3d/view3d'
 import type {SceneObject} from '../sceneobject/sceneobject'
 import {Utf8DecodeWorker} from '../extern/jszip/jszip'
 import {ToolContext} from '../core/context'
 import {Material} from '../core/material'
+import { ShaderProgram } from '../core/webgl'
 
 export interface IBVHArgs {
   leafLimit?: number
@@ -89,7 +89,7 @@ export interface IBVHArgs {
   wireVerts: boolean
   deformMode: boolean
   useGrids: boolean
-  onCreate: () => void
+  onCreate?: () => void
 }
 
 declare global {
@@ -1147,7 +1147,14 @@ mesh.Mesh {
     return this.makeFace(_quad, undefined, undefined, lctx)
   }
 
-  makeTri(v1: Vertex, v2: Vertex, v3: Vertex, lctx: LogContext | undefined = undefined, ignoreDuplicates = false) {
+  
+  makeTri<D extends boolean | true | undefined = undefined>(
+    v1: Vertex,
+    v2: Vertex,
+    v3: Vertex,
+    lctx: LogContext | undefined = undefined,
+    ignoreDuplicates?: D
+  ) : D extends true ? Face | undefined : Face{
     if (!v1 || !v2 || !v3) {
       console.log('missing verts', v1, v2, v3)
       throw new MeshError('Missing verts in makeTri')
@@ -1158,7 +1165,8 @@ mesh.Mesh {
       if (!ignoreDuplicates) {
         throw new MeshError('Duplicate verts in makeTri')
       } else {
-        return undefined
+        // type inference is failing to detect ignoreDuplicates condition above
+        return undefined as unknown as Face
       }
     }
 

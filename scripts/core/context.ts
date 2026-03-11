@@ -1,6 +1,6 @@
 //import {ContextOverlay, Context} from "./context2.js";
 import '../path.ux/scripts/util/struct.js'
-import {View3D} from '../editors/view3d/view3d.js'
+import {View3D} from '../editors/view3d/view3d'
 import {NodeEditor} from '../editors/node/NodeEditor.js'
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js'
 import {getContextArea, Editor, editorAccessor} from '../editors/editor_base'
@@ -283,7 +283,6 @@ export class BaseOverlay extends ContextOverlay<AppState> {
       }
     })()
   }
-  
 
   get selectMask() {
     const scene = (this.state.datalib as AppLibrary).scene.active
@@ -364,7 +363,7 @@ export class ViewOverlay extends ContextOverlay<AppState> {
     return new ViewOverlay(this.state)
   }
 
-  get view3d() {
+  get view3d(): View3D {
     // TODO: remove casting after TS-ification
     return getContextArea(View3D as unknown as IAreaConstructor)
   }

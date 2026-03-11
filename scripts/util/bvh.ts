@@ -3680,14 +3680,14 @@ export class BVH<
     mesh.clear()
 
     let visit = new WeakSet<Element>()
-    let fleaves = []
+    let fleaves = [] as Face[][]
 
     for (let n of this.nodes) {
       if (!n.leaf) {
         continue
       }
 
-      let fs = []
+      let fs = [] as Face[]
 
       for (let t of n.uniqueTris) {
         let f: Face = mesh.eidMap.get<Face>(t.id) ?? t.f ?? (t.l1 ? t.l1.f : undefined)
@@ -3813,7 +3813,7 @@ export class BVH<
           f2.lists.push(list2)
 
           let l1 = list1.l
-          let prevl = undefined
+          let prevl: Loop | undefined = undefined
           let _i = 0
 
           do {

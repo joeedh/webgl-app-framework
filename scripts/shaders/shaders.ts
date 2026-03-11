@@ -1,5 +1,5 @@
 import {Matrix4} from '../util/vectormath.js'
-import {ShaderProgram} from '../core/webgl'
+import {IDefinesBlock, IUniformsBlock, ShaderProgram} from '../core/webgl'
 
 export let PolygonOffset = {
   //pre : '',
@@ -2023,9 +2023,6 @@ export const ShaderDef = {
   FlatMeshTexture      : FlatMeshTexture,
   SculptShaderHexDeform: SculptShaderHexDeform,
 }
-
-export type IDefinesBlock = {[k: string]: string}
-export type IUniformsBlock = {[k: string]: any}
 
 export type IShaderDef = {
   vertex: string

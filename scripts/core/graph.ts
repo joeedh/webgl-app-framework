@@ -801,7 +801,7 @@ graph.Node {
   }
 
   /** see nodedef static method */
-  static inherit<SocketSetType extends INodeSocketSet = {}>(obj?: SocketSetType): InheritFlag<SocketSetType> {
+  static inherit<SocketSetType extends INodeSocketSet | number = {}>(obj?: SocketSetType): InheritFlag<SocketSetType> {
     return new InheritFlag<SocketSetType>(obj)
   }
 

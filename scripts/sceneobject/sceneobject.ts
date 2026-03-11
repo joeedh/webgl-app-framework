@@ -6,9 +6,9 @@ import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket, EnumSocket} from '.
 import {Shaders} from '../shaders/shaders'
 import {SceneObjectData} from './sceneobject_base'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
-import {ShaderProgram} from '../../types/scripts/core/webgl'
 import {View3D} from '../../types/scripts/editors/view3d/view3d'
 import {Material} from '../core/material'
+import {ShaderProgram} from '../core/webgl.js'
 
 let loc_rets = util.cachering.fromConstructor(Vector3, 256)
 
@@ -86,7 +86,7 @@ export function composeObjectMatrix(
   return mat
 }
 
-export class SceneObject<InputSet = {}, OutputSet = {}> extends DataBlock<
+export class SceneObject<InputSet extends {} = {}, OutputSet extends {} = {}> extends DataBlock<
   InputSet & {
     depend: DependSocket
     rot: Vec3Socket
@@ -105,10 +105,11 @@ export class SceneObject<InputSet = {}, OutputSet = {}> extends DataBlock<
   data: SceneObjectData<any, any>
   flag: ObjectFlags
 
-  constructor(data: SceneObjectData<any, any> = undefined) {
+  constructor(data?: SceneObjectData<any, any>) {
     super()
 
-    this.data = data
+    // is assigned after datablock instantiation
+    this.data = data as unknown as SceneObjectData
     this.flag = 0
 
     if (data) {
@@ -339,7 +340,7 @@ SceneObject {
     this.data = getblock_addUser(this.data, this)
   }
 
-  draw(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program?: ShaderProgram): void {
+  draw(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program: ShaderProgram = Shaders.BasicLitMesh): void {
     uniforms.objectMatrix = this.outputs.matrix.getValue()
     uniforms.object_id = this.lib_id
 
@@ -363,14 +364,24 @@ SceneObject {
     }
   }
 
-  drawWireframe(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program?: ShaderProgram): void {
+  drawWireframe(
+    view3d: View3D,
+    gl: WebGL2RenderingContext,
+    uniforms: any,
+    program: ShaderProgram = Shaders.ObjectLineShader
+  ): void {
     uniforms.objectMatrix = this.outputs.matrix.getValue()
     uniforms.object_id = this.lib_id
 
     this.data.drawWireframe(view3d, gl, uniforms, program, this)
   }
 
-  drawOutline(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program?: ShaderProgram): void {
+  drawOutline(
+    view3d: View3D,
+    gl: WebGL2RenderingContext,
+    uniforms: any,
+    program: ShaderProgram = Shaders.ObjectLineShader
+  ): void {
     uniforms.objectMatrix = this.outputs.matrix.getValue()
     uniforms.object_id = this.lib_id
 
@@ -383,6 +394,8 @@ SceneObject {
 
     this.data.drawIds(view3d, gl, selectMask, uniforms, this)
   }
+
+  onContextLost(e: Event) {}
 }
 
 DataBlock.register(SceneObject)
