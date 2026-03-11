@@ -521,11 +521,7 @@ export class BVHNodeEdge {
 export const DEFORM_BRIDGE_TRIS = false
 
 export type OrigCoType = Vector3LayerElem
-
-type BoolOr<A extends true | false | undefined, B extends true | false | undefined> = A extends true ? true : B
-
-type OptionalIf<T, D extends true | false | undefined> = D extends true ? T | undefined : T
-type OptionalIfNot<T, D extends true | false | undefined> = D extends false | undefined ? T | undefined : T
+import {BoolOr, OptionalIf, OptionalIfNot} from './optionalIf'
 
 export class BVHNode<
   OPT extends {

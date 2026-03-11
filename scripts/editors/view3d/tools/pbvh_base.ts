@@ -473,7 +473,7 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
   static invoke(ctx: ViewContext, args: any) {
     let tool = super.invoke(ctx, args)
 
-    let toolmode = ctx.toolmode as BVHToolMode
+    let toolmode = ctx.toolmode as unknown as BVHToolMode
     if (!toolmode || toolmode.constructor.name !== 'BVHToolMode') {
       return tool
     }

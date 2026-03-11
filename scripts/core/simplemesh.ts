@@ -1899,7 +1899,7 @@ export class SimpleIsland {
 }
 
 export class SimpleMesh {
-  program: ShaderProgram
+  program?: ShaderProgram
   layerflag: LayerTypes
   primflag: PrimitiveTypes
   indexedMode: boolean
@@ -1920,6 +1920,12 @@ export class SimpleMesh {
 
     this.add_island()
     this.island = this.islands[0]
+  }
+
+  onContextLost(e: WebGLContextEvent) {
+    for (let island of this.islands) {
+      island.onContextLost(e)
+    }
   }
 
   reset(gl: WebGL2RenderingContext) {
@@ -2045,7 +2051,7 @@ export class SimpleMesh {
     }
   }
 
-  draw(gl: WebGL2RenderingContext, uniforms: any, program_override?: ShaderProgram): void {
+  draw(gl: WebGL2RenderingContext, uniforms?: any, program_override?: ShaderProgram): void {
     this.gl = gl
 
     for (let island of this.islands) {
@@ -2201,12 +2207,6 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     }
 
     return this.get_chunk(id)
-  }
-
-  onContextLost(e) {
-    for (let island of this.islands) {
-      island.onContextLost(e)
-    }
   }
 
   destroy(gl) {

@@ -11,44 +11,23 @@ import * as util from '../../../util/util.js'
 
 import '../../../subsurf/subsurf_loop_stencil.js'
 
-import {Loop, Mesh} from '../../../mesh/mesh.js'
+import {Mesh} from '../../../mesh/mesh.js'
 import {Shapes} from '../../../core/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js'
 import {
-  ToolOp,
-  Vec4Property,
-  FloatProperty,
-  ToolProperty,
-  IntProperty,
-  BoolProperty,
-  EnumProperty,
-  FlagProperty,
-  FloatArrayProperty,
   math,
-  ListProperty,
   PackFlags,
-  Curve1D,
-  Curve1DProperty,
-  SplineTemplates,
-  Vec3Property,
-  SplineTemplateIcons,
   UIBase,
 } from '../../../path.ux/scripts/pathux.js'
 import {MeshFlags} from '../../../mesh/mesh.js'
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../../../core/simplemesh'
-import {splitEdgesSmart} from '../../../mesh/mesh_subdivide.js'
-import {GridBase, GridSettingFlags, QRecalcFlags} from '../../../mesh/mesh_grids.js'
+import {GridBase, GridSettingFlags} from '../../../mesh/mesh_grids.js'
 import {nstructjs} from '../../../path.ux/scripts/pathux.js'
-
-let _triverts = new Array(3)
 
 import {
   SculptTools,
-  BrushDynamics,
   SculptBrush,
-  BrushDynChannel,
-  DefaultBrushes,
   SculptIcons,
   PaintToolSlot,
   BrushFlags,
