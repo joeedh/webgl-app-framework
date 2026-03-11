@@ -1,8 +1,6 @@
-import {nstructjs} from '../../path.ux/scripts/pathux.js'
+import {DataAPI, IVector3, IVector4, nstructjs, util} from '../../path.ux/scripts/pathux.js'
 
 import {spawnToolSearchMenu} from '../editor_base'
-
-import * as util from '../../util/util.js'
 
 import {getBlueMask} from '../../shadernodes/shader_lib.js'
 
@@ -24,12 +22,11 @@ import {loadShader} from '../../shaders/shaders.js'
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh'
 import {Vector3, Vector2, Vector4, Matrix4, Matrix4ToTHREE} from '../../util/vectormath.js'
 import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js'
-import {cachering, time_ms} from '../../util/util.js'
 import './tools/mesheditor'
 import {GPUSelectBuffer} from './view3d_select.js'
 import {KeyMap, HotKey} from '../editor_base'
 import {calcTransCenter, calcTransMatrix, calcTransAABB} from './transform/transform_query.js'
-import {CallbackNode} from '../../core/graph.js'
+import {CallbackNode, Node} from '../../core/graph.js'
 import {DependSocket} from '../../core/graphsockets.js'
 import {ConstraintSpaces} from './transform/transform_base.js'
 import {eventWasTouch, haveModal} from '../../path.ux/scripts/util/simple_events.js'
@@ -39,17 +36,20 @@ import {NoneWidget} from './widgets/widget_tools.js'
 import {View3DFlags, CameraModes} from './view3d_base.js'
 import type {AppState} from '../../core/appstate.js'
 import {Library} from '../../core/lib_api.js'
+import {RenderEngine} from '../../renderengine/renderengine_base.js'
+import {SceneObject} from '../../sceneobject/sceneobject.js'
+import { Overdraw } from '../../path.ux/scripts/util/ScreenOverdraw.js'
 
-let proj_temps = cachering.fromConstructor(Vector4, 32)
-let unproj_temps = cachering.fromConstructor(Vector4, 32)
-let curtemps = cachering.fromConstructor(Vector3, 32)
+let proj_temps = util.cachering.fromConstructor(Vector4, 32)
+let unproj_temps = util.cachering.fromConstructor(Vector4, 32)
+let curtemps = util.cachering.fromConstructor(Vector3, 32)
 
 declare global {
   interface Window {
     _gl: WebGL2RenderingContext | undefined
     _getShaderSource: (shader: string) => string
   }
-  const _gl: WebGL2RenderingContext | undefined
+  let _gl: WebGL2RenderingContext | undefined
 }
 window._gl = undefined
 
@@ -131,7 +131,7 @@ export function initWebGL() {
   canvas.addEventListener(
     'webglcontextrestored',
     (e) => {
-      loadShaders(_gl)
+      loadShaders(_gl!)
 
       let datalib = (_appstate.ctx as any).datalib as Library
 
@@ -190,7 +190,17 @@ export class DrawQuad {
 }
 
 export class DrawLine {
-  constructor(v1, v2, color = [0, 0, 0, 1], useZ) {
+  v1: Vector3
+  v2: Vector3
+  color: Vector4
+  useZ: boolean
+
+  constructor(
+    v1: Vector3 | number[],
+    v2: Vector3 | number[],
+    color: IVector4 | number[] = [0, 0, 0, 1],
+    useZ?: boolean
+  ) {
     let a = color.length > 3 ? color[3] : 1.0
 
     this.color = new Vector4(color)
@@ -204,8 +214,48 @@ export class DrawLine {
 }
 
 export class View3D extends Editor {
+  gl?: WebGL2RenderingContext
   glSize: Vector2
-  
+  glPos: Vector2
+  camera: Camera
+  activeCamera: Camera
+  selectbuf: GPUSelectBuffer
+  _last_selectmode: number
+  transformSpace: number
+  renderEngine?: RenderEngine
+  fps: number
+  subViewPortSize: number
+  subViewPortPos: Vector2
+  renderSettings: RenderSettings
+  overdraw?: Overdraw
+
+  drawHash: number
+
+  _last_camera_hash?: number
+  _nodes: Node[]
+  _pobj_map: any
+  _last_render_draw: number
+
+  _select_transparent: boolean
+  orbitMode: OrbitTargetModes
+
+  localCursor3D: Matrix4
+  cursorMode: CursorModes
+  _viewvec_temps: util.cachering<Vector3>
+  T: number
+  start_mpos: Vector2
+  end_mpos: Vector2 = new Vector2()
+  last_mpos: Vector2
+  drawlines: DrawLine[] = []
+  drawquads: DrawQuad[] = []
+  drawmode: DrawModes
+  _graphnode?: CallbackNode<
+    {},
+    {
+      onDrawPre: DependSocket
+      onDrawPost: DependSocket
+    }
+  >
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -251,10 +301,10 @@ View3D {
     this.localCursor3D = new Matrix4()
     this.cursorMode = CursorModes.TRANSFORM_CENTER
 
-    this._viewvec_temps = cachering.fromConstructor(Vector3, 32)
+    this._viewvec_temps = util.cachering.fromConstructor(Vector3, 32)
 
-    this.glPos = [0, 0]
-    this.glSize = [512, 512]
+    this.glPos = new Vector2([0, 0])
+    this.glSize = new Vector2([512, 512])
 
     this.T = 0.0
     this.camera = this.activeCamera = new Camera()
@@ -364,7 +414,7 @@ View3D {
     return this.ctx.scene.widgets
   }
 
-  onFileLoad(is_active) {
+  onFileLoad(is_active: boolean) {
     //ensure toolmode has correct ctx
     if (this.ctx && this.ctx.toolmode) {
       this.ctx.toolmode.ctx = this.ctx
@@ -399,7 +449,7 @@ View3D {
       {},
       {
         onDrawPre : new DependSocket('onDrawPre'),
-        onDrawPost: new DependSocket('onDrawPre'),
+        onDrawPost: new DependSocket('onDrawPost'),
       }
     )
 
@@ -421,12 +471,12 @@ View3D {
     node.inputs.onToolModeChange.connect(scene.outputs.onToolModeChange)
   }
 
-  addGraphNode(node) {
+  addGraphNode(node: Node) {
     this._nodes.push(node)
     this.ctx.graph.add(node)
   }
 
-  remGraphNode(node) {
+  remGraphNode(node: Node) {
     if (this._nodes.indexOf(node) >= 0) {
       this._nodes.remove(node)
       this.ctx.graph.remove(node)
@@ -445,7 +495,7 @@ View3D {
           graph.remove(node)
         }
       } catch (error) {
-        util.print_stack(error)
+        util.print_stack(error as Error)
         console.log('failed to delete graph node')
       }
     }
@@ -454,18 +504,18 @@ View3D {
   }
 
   getKeyMaps() {
-    let ret = []
+    let ret = [] as KeyMap[]
 
     if (this.ctx.toolmode !== undefined) {
       ret = ret.concat(this.ctx.toolmode.getKeyMaps())
     }
 
-    ret.push(this.keymap)
+    ret.push(this.keymap!)
 
     return ret
   }
 
-  viewAxis(axis, sign = 1) {
+  viewAxis(axis: 0 | 1 | 2, sign = 1) {
     let cam = this.activeCamera
 
     let ups = {
@@ -487,7 +537,7 @@ View3D {
     window.redraw_viewport(true)
   }
 
-  viewSelected(ob = undefined) {
+  viewSelected(ob?: SceneObject) {
     //let cent = this.getTransCenter();
     let cent = new Vector3()
     let aabb
@@ -631,7 +681,7 @@ View3D {
     return this._select_transparent
   }
 
-  getViewVec(localX, localY) {
+  getViewVec(localX: number, localY: number) {
     let co = this._viewvec_temps.next()
 
     co[0] = localX
@@ -644,7 +694,7 @@ View3D {
     return co
   }
 
-  project(co, mat = undefined) {
+  project(co: Vector2 | Vector3 | Vector4, mat = undefined) {
     let tmp = proj_temps.next().zero()
 
     tmp[0] = co[0]
@@ -675,7 +725,7 @@ View3D {
     return w
   }
 
-  unproject(co, mat = undefined) {
+  unproject(co: Vector2 | Vector3 | Vector4, mat = undefined) {
     let tmp = unproj_temps.next().zero()
 
     tmp[0] = (co[0] / this.size[0]) * 2.0 - 1.0
@@ -708,7 +758,7 @@ View3D {
     return w
   }
 
-  setCursor(mat) {
+  setCursor(mat: Matrix4) {
     this.cursor3D.load(mat)
 
     let p = curtemps.next().zero()
@@ -820,7 +870,7 @@ View3D {
     this.flushUpdate()
   }
 
-  doEvent(type, e, docontrols) {
+  doEvent(type: string, e: any, docontrols?: boolean) {
     if (this.ctx && this.ctx.toolmode && !this.ctx.toolmode.ctx) {
       this.ctx.toolmode.ctx = this.ctx
     }
@@ -834,7 +884,7 @@ View3D {
       return
     }
 
-    function exec(target, x, y) {
+    function exec(target: any, x: number, y: number) {
       if (target['on_'] + type) return target['on_' + type](e, x, y, e.was_touch)
       if (target['on'] + type) return target['on' + type](e, x, y, e.was_touch)
       if (target[type]) return target[type](e, x, y, e.was_touch)
@@ -848,8 +898,8 @@ View3D {
     if (ismouse) {
       let ret = this.getLocalMouse(e.x, e.y)
 
-      let x = ret[0],
-        y = ret[1]
+      let x = ret[0]
+      let y = ret[1]
 
       widgets.updateHighlight(e, x, y, e.was_touch)
 
@@ -861,7 +911,7 @@ View3D {
 
       return false
     } else {
-      return exec(widgets, x, y) || exec(toolmode, x, y)
+      return exec(widgets, e.x, e.y) || exec(toolmode, e.x, e.y)
     }
   }
 
@@ -891,19 +941,19 @@ View3D {
     this.ctx.messagebus.subscribe(
       busgetter,
       ToolMode,
-      (msg) => {
+      (msg: string) => {
         this.doOnce(this.rebuildHeader)
       },
       ['REGISTER', 'UNREGISTER']
     )
 
-    this.overdraw = document.createElement('overdraw-x')
+    this.overdraw = document.createElement('overdraw-x') as Overdraw
     this.overdraw.ctx = this.ctx
 
     this.overdraw.startNode(this, this.ctx.screen, 'absolute')
 
     this.overdraw.remove()
-    this.shadow.appendChild(this.overdraw)
+    this.shadow.appendChild(this.overdraw as HTMLElement)
 
     this.overdraw.style['left'] = '0px'
     this.overdraw.style['top'] = '0px'
@@ -913,7 +963,7 @@ View3D {
     this.makeGraphNodes()
     this.rebuildHeader()
 
-    let on_mousewheel = (e) => {
+    let on_mousewheel = (e: WheelEvent) => {
       e.preventDefault()
 
       let df = e.deltaY / 100.0
@@ -1076,7 +1126,7 @@ View3D {
     return calcTransMatrix(this.ctx, selectMask, transformSpace)
   }
 
-  getLocalMouse(x, y) {
+  getLocalMouse(x: number, y: number): Vector2 {
     let r = this.getClientRects()[0]
     let dpi = UIBase.getDPI()
 
@@ -1091,7 +1141,7 @@ View3D {
       y -= this.pos[1]
     }
 
-    return [x, y]
+    return new Vector2().loadXY(x, y)
   }
 
   _showCursor() {
@@ -1145,9 +1195,9 @@ View3D {
     this.checkCamera()
 
     //TODO have limits for how many samplers to render
-    if (time_ms() - this._last_render_draw > 100) {
+    if (util.time_ms() - this._last_render_draw > 100) {
       //window.redraw_viewport();
-      //this._last_render_draw = time_ms();
+      //this._last_render_draw = util.time_ms();
     }
 
     this.push_ctx_active()
@@ -1652,7 +1702,7 @@ View3D {
     }
   }
 
-  static defineAPI(api) {
+  static defineAPI(api: DataAPI) {
     let vstruct = super.defineAPI(api)
 
     vstruct.float('subViewPortSize', 'subViewPortSize', 'View Size').range(1, 2048)
@@ -1673,6 +1723,7 @@ View3D {
       PERSPECTIVE : Icons.PERSPECTIVE,
       ORTHOGRAPHIC: Icons.ORTHOGRAPHIC,
     })
+    return vstruct
   }
 
   copy() {
