@@ -47,7 +47,7 @@ import {Icons} from './icon_enum.js'
 import {PackFlags} from '../path.ux/scripts/core/ui_base.js'
 
 export {keymap, KeyMap, HotKey} from '../path.ux/scripts/pathux.js'
-import {DataBlock, BlockFlags, DataRefProperty} from '../core/lib_api.js'
+import {DataBlock, BlockFlags, DataRefProperty, IDataBlockConstructor} from '../core/lib_api.js'
 
 export {VelPanFlags, VelPan} from './velpan.js'
 
@@ -264,8 +264,8 @@ ToolOp.register(UnlinkDataBlockOp)
  * \prop unlinkOp toolpath for op to unlink a block from its owner (defualts to "datalib.default_unlink")
  */
 
-export class DataBlockBrowser extends Container<ViewContext> {
-  blockClass = undefined
+export class DataBlockBrowser<BlockType extends DataBlock> extends Container<ViewContext> {
+  blockClass?: IDataBlockConstructor<BlockType, {}, {}>
 
   //if not undefined, path to "owner" of datapath
   //if undefined, will be derived via datapath api
@@ -279,7 +279,7 @@ export class DataBlockBrowser extends Container<ViewContext> {
 
   /* if not undefined, is a function that filters blocks for visibility
    *  in menu*/
-  filterFunc = undefined
+  filterFunc?: (block: DataBlock) => boolean
   onValidData = undefined
 
   newOp = 'datalib.default_new'

@@ -33,6 +33,7 @@ import {
   Face,
   FloatElem,
   getArrayTemp,
+  IntElem,
   LogContext,
   Loop,
   MaskElem,
@@ -386,7 +387,7 @@ export class PaintOp extends PaintOpBase<
     console.log('BVH UNDO!')
 
     let undo = this._undo
-    let mesh = ctx.datalib.get(undo.mesh)
+    let mesh = ctx.datalib.get(undo.mesh) as Mesh
 
     if (!mesh) {
       console.warn('eek! no mesh!')
@@ -403,6 +404,12 @@ export class PaintOp extends PaintOpBase<
 
     if (bvh) {
       cd_node = bvh.cd_node
+    } else {
+      cd_node = mesh.verts.customData.getLayerRef('bvh')
+    }
+
+    if (cd_node?.i === -1) {
+      cd_node = undefined
     }
 
     let cd_grid = GridBase.meshGridOffset(mesh)
@@ -412,14 +419,14 @@ export class PaintOp extends PaintOpBase<
 
     if (cd_grid < 0 && cd_fset >= 0) {
       for (let [eid, fset] of undo.fsetmap) {
-        let f = mesh.eidMap.get(eid)
+        let f = mesh.eidMap.get<Face>(eid)
 
         if (!f || f.type !== MeshTypes.FACE) {
           console.log('invalid face in undo!', eid, f)
           continue
         }
 
-        f.customData[cd_fset].value = fset
+        ;(f.customData[cd_fset] as IntElem).value = fset
 
         for (let v of f.verts) {
           v.flag |= MeshFlags.UPDATE
@@ -492,7 +499,7 @@ export class PaintOp extends PaintOpBase<
 
         if (v) {
           v.flag |= MeshFlags.UPDATE
-          v.customData[cd_color].color.load(undo.vmap.get(eid))
+          ;(v.customData[cd_color] as ColorLayerElem).color.load(undo.vmap.get(eid))
 
           if (bvh) {
             let node = cd_node ? cd_node.get(v)?.node : undefined
@@ -548,7 +555,7 @@ export class PaintOp extends PaintOpBase<
           continue
         }
 
-        v.customData[cd_mask].value = mask
+        ;(v.customData[cd_mask] as FloatElem).value = mask
         let node = cd_node!.get(v).node
 
         if (node) {
@@ -558,6 +565,11 @@ export class PaintOp extends PaintOpBase<
     }
 
     let doCoords = (): void => {
+      let cd_node = bvh?.cd_node
+      if (cd_node?.i === -1) {
+        cd_node = undefined
+      }
+
       for (let i = 0; i < gd.length; i += UGTOT) {
         let l = gd[i],
           index = gd[i + 1],
@@ -592,7 +604,7 @@ export class PaintOp extends PaintOpBase<
       }
 
       for (let eid of undo.vmap.keys()) {
-        let v = mesh.eidMap.get(eid)
+        let v = mesh.eidMap.get<Vertex>(eid)
 
         if (v) {
           v.flag |= MeshFlags.UPDATE
@@ -684,7 +696,7 @@ export class PaintOp extends PaintOpBase<
 
       //now do neightboring grids
       for (let l of mesh.loops) {
-        let grid = l.customData[cd_grid]
+        let grid = l.customData[cd_grid] as GridBase
 
         grid.update(mesh, l, gridAttr)
       }

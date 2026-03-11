@@ -4808,22 +4808,9 @@ export class BVH<
       }
     }
 
-    if (check_verts) {
-      let this2 = this
-
-      let vs = (function* () {
-        let visit = new WeakSet()
-
-        for (let node of this2.leaves) {
-          for (let v of node.otherVerts) {
-            if (!visit.has(v)) {
-              yield v
-            }
-            visit.add(v)
-          }
-        }
-      })()
-
+    // XXX fixOrphanDefVerts is way overkill
+    // it iterates over every single triangle in the bvh 
+    if (false && check_verts) {
       if (this._fixOrphanDefVerts()) {
         for (let node of this.updateNodes) {
           node.update()

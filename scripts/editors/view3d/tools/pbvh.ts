@@ -3,7 +3,7 @@ import './pbvh_bvhdef'
 import {WidgetFlags} from '../widgets/widgets.js'
 import {ToolModes, ToolMode} from '../view3d_toolmode.js'
 import {BVH, BVHFlags, BVHNode, BVHTriFlags} from '../../../util/bvh.js'
-import {KeyMap, HotKey} from '../../editor_base'
+import {KeyMap, HotKey, DataBlockBrowser} from '../../editor_base'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
 import {TranslateWidget} from '../widgets/widget_tools.js'
@@ -112,7 +112,7 @@ export class BVHToolMode extends ToolMode {
 
     for (let k in SculptTools) {
       let tool = SculptTools[k]
-      this.slots[tool] = new PaintToolSlot(tool)
+      this.slots[tool] = new PaintToolSlot(tool as unknown as SculptTools)
     }
 
     this.drawColPatches = false
@@ -143,13 +143,13 @@ export class BVHToolMode extends ToolMode {
         }
 
         if (key !== 'flag') {
-          let key2 = DynTopoSettings.apiKeyToOverride(key)
+          let key2 = DynTopoSettings.apiKeyToOverride(key as string)
 
           if (!key2) {
             return brush.dynTopo[key]
           }
 
-          let override = DynTopoOverrides[key2]
+          let override = DynTopoOverrides[key2 as any] as unknown as number
           override = brush.dynTopo.overrideMask & override
 
           if (override) {
@@ -166,7 +166,7 @@ export class BVHToolMode extends ToolMode {
           let oflag = brush.dynTopo.overrideMask
 
           for (let k in DynTopoFlags) {
-            let f = DynTopoFlags[k]
+            let f = DynTopoFlags[k] as unknown as number
 
             if (oflag & f) {
               flag |= f2 & f ? f : 0
@@ -192,9 +192,9 @@ export class BVHToolMode extends ToolMode {
         }
 
         if (key !== 'flag') {
-          let key2 = DynTopoSettings.apiKeyToOverride(key)
+          let key2 = DynTopoSettings.apiKeyToOverride(key as string)
 
-          if (key2 && brush.dynTopo.overrideMask & DynTopoOverrides[key2]) {
+          if (key2 && brush.dynTopo.overrideMask & (DynTopoOverrides[key2 as any] as unknown as number)) {
             brush.dynTopo[key] = val
           } else {
             this.dynTopo[key] = val
@@ -204,7 +204,7 @@ export class BVHToolMode extends ToolMode {
           let oflag = brush.dynTopo.overrideMask
 
           for (let k in DynTopoFlags) {
-            let f = DynTopoFlags[k]
+            let f = DynTopoFlags[k] as unknown as number
             let dynTopo = oflag & f ? brush.dynTopo : this.dynTopo
 
             if (val & f) {
@@ -238,7 +238,7 @@ export class BVHToolMode extends ToolMode {
     let brush = this.getBrush()
 
     if (!brush) {
-      return 55
+      return
     }
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
@@ -313,7 +313,7 @@ export class BVHToolMode extends ToolMode {
     let name = this.toolModeDefine().name
     let path = `scene.tools.${name}`
 
-    let browser = document.createElement('data-block-browser-x')
+    let browser = document.createElement('data-block-browser-x') as DataBlockBrowser
     browser.blockClass = SculptBrush
     browser.setAttribute('datapath', path + '.brush')
     browser.filterFunc = function (brush: any): boolean {

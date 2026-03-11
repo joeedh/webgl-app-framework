@@ -482,9 +482,9 @@ export class MeshLog {
 
       switch (elem.type) {
         case MeshTypes.VERTEX:
-          elem[0] = log[i++];
-          elem[1] = log[i++];
-          elem[2] = log[i++];
+          elem.co[0] = log[i++];
+          elem.co[1] = log[i++];
+          elem.co[2] = log[i++];
 
           elem.no[0] = log[i++];
           elem.no[1] = log[i++];
@@ -576,9 +576,9 @@ export class MeshLog {
             elem.flag = log[di++];
             elem.index = log[di++];
 
-            elem[0] = log[di++];
-            elem[1] = log[di++];
-            elem[2] = log[di++];
+            elem.co[0] = log[di++];
+            elem.co[1] = log[di++];
+            elem.co[2] = log[di++];
             elem.no[0] = log[di++];
             elem.no[1] = log[di++];
             elem.no[2] = log[di++];
