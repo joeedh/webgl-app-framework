@@ -362,7 +362,7 @@ export function buildElementAPI(api, dstruct) {
 export class LayerSettingsBase {
   smoothGen = 0
   initGen = 0
-  
+
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -759,11 +759,11 @@ mesh.CustomData {
       typename = cls.define().typeName
     }
 
-    return this.layers.has(typename) && this.layers.get(typename).length > 0
+    return this.layers.has(typename) && this.layers.get(typename)!.length > 0
   }
 
-  getLayerRef<type extends CustomDataElem<any>>(cls: new () => type): AttrRef<type> {
-    return AttrRef.create<type>(this.getLayerIndex(cls))
+  getLayerRef<type extends CustomDataElem<any>>(cls_or_str: (new () => type) | string): AttrRef<type> {
+    return AttrRef.create<type>(this.getLayerIndex(cls_or_str))
   }
 
   getLayerIndex(typename_or_cls: any): number {

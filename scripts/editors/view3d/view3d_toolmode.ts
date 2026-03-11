@@ -529,10 +529,10 @@ export class MeshCache {
 export let ToolModes = [] as (typeof ToolMode)[]
 
 export function makeToolModeEnum() {
-  let map = {}
-  let icons = {}
-  let descr = {}
-  let uinames = {}
+  let map = {} as {[k: string]: number}
+  let icons = {} as {[k: string]: number}
+  let descr = {} as {[k: string]: string}
+  let uinames = {} as {[k: string]: string}
   let i = 0
 
   for (let cls of ToolModes) {

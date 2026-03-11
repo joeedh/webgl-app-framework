@@ -15,11 +15,21 @@ import {
 } from '../../../path.ux/scripts/pathux.js'
 import {Grid, GridBase, GridVert, GridVertBase, QRecalcFlags} from '../../../mesh/mesh_grids.js'
 import {AttrRef, CDFlags, CustomDataElem} from '../../../mesh/customdata.js'
-import {BrushFlags, DynTopoFlags, SculptTools, BrushSpacingModes, DynTopoModes, SubdivModes} from '../../../brush/brush'
+import {
+  BrushFlags,
+  DynTopoFlags,
+  SculptTools,
+  BrushSpacingModes,
+  DynTopoModes,
+  SubdivModes,
+  SculptBrush,
+} from '../../../brush/brush'
 import {
   CDElemArray,
   ColorLayerElem,
   Edge,
+  Element,
+  ElementType,
   Face,
   FloatElem,
   getArrayTemp,
@@ -42,6 +52,7 @@ import {
   getDynVerts,
   IBVHVertex,
   MDynVert,
+  OrigCoType,
 } from '../../../util/bvh.js'
 import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js'
 import {EMapFields, KdTreeFields, KdTreeFlags, KdTreeGrid, VMapFields} from '../../../mesh/mesh_grids_kdtree.js'
@@ -59,7 +70,8 @@ import {tetSolve} from '../../../tet/tet_deform.js'
 import {DispContext, DispLayerVert, getSmoothMemo, SmoothMemoizer} from '../../../mesh/mesh_displacement.js'
 import {getCornerFlag, getFaceSets, getSmoothBoundFlag} from '../../../mesh/mesh_facesets.js'
 import {TetVertex} from '../../../tet/tetgen_types.js'
-import { BVHToolMode } from './pbvh.js'
+import {BVHToolMode} from './pbvh.js'
+import {ViewContext} from '../../../core/context.js'
 
 //grab data field definition
 const GEID = 0,
@@ -3862,19 +3874,19 @@ export class PaintOp extends PaintOpBase<
       rake = (): void => {}
     }
 
-    let dopinch = (v: any, f: number): void => {
+    let dopinch = (v: IBVHVertex, f: number): void => {
       f = Math.pow(f, pinchpower) * 2.0
 
       let f3 = f * Math.abs(strength)
 
       let height = radius * 2.0
 
-      let oco = v.customData[cd_orig].value
+      let oco = (v.customData[cd_orig] as OrigCoType).value
 
       conetmp.load(ps.p).addFac(nvec, planeoff * radius * 0.25 + 0.5)
       planetmp.load(conetmp).addFac(nvec, height)
 
-      let r = closest_point_on_line(v, conetmp, planetmp, false)
+      let r = closest_point_on_line(v.co, conetmp, planetmp, false)
 
       let origdis = v.co.vectorDistance(oco)
       let fac = 1.0 - Math.min((2.0 * origdis) / radius, 1.0)
@@ -3890,15 +3902,15 @@ export class PaintOp extends PaintOpBase<
     let _ctmp = new Vector3()
     let abs = Math.abs
 
-    let colorboundary = (v: any, fac: number): void => {
+    let colorboundary = (v: IBVHVertex, fac: number): void => {
       let co = _ctmp.zero()
-      let c1 = v.customData[cd_color].color
+      let c1 = (v.customData[cd_color] as ColorLayerElem).color
 
-      co.add(v)
+      co.add(v.co)
       let tot = 1.0
 
       for (let v2 of v.neighbors) {
-        let c2 = v2.customData[cd_color].color
+        let c2 = (v2.customData[cd_color] as ColorLayerElem).color
 
         let dr = abs(c1[0] - c2[0])
         let dg = abs(c1[1] - c2[1])
@@ -5058,7 +5070,7 @@ export class PaintOp extends PaintOpBase<
             }
           }
 
-          this2.doQuadTopo(mesh, bvh, esize, vs2, p3, radius, brush)
+          this2.doQuadTopo(mesh, bvh, esize, vs2 as Set<GridVertBase<any>>, p3, radius, brush)
         }
       } else if (!haveGrids) {
         let es = new Set<Edge>()
@@ -5357,13 +5369,14 @@ export class PaintOp extends PaintOpBase<
     mesh.regenRender()
   }
 
-  _checkcurv(v: any, cd_curv: number, cd_cotan: number, force: boolean = false, cd_fset: number): void {
+  _checkcurv(v: IBVHVertex, cd_curv: number, cd_cotan: number, force: boolean = false, cd_fset: number): void {
     if (cd_curv >= 0) {
-      v.customData[cd_curv].check(v, cd_cotan, force, cd_fset)
+      const curvVert = v.customData[cd_curv] as CurvVert
+      curvVert.check(v, cd_cotan, force, cd_fset)
     }
   }
 
-  hasCurveVerts(brush: any): any {
+  hasCurveVerts(brush: SculptBrush): boolean {
     let ok = !!(brush.dynTopo.flag & DynTopoFlags.ADAPTIVE)
     ok = ok || (brush.rake > 0 && brush.rakeCurvatureFactor > 0)
     ok = ok || brush.sharp > 0
@@ -5373,14 +5386,14 @@ export class PaintOp extends PaintOpBase<
   }
 
   *doTopology(
-    mesh: any,
+    mesh: Mesh,
     maxedges: number,
-    bvh: any,
+    bvh: BVH,
     esize: number,
     vs: Set<Vertex>,
     es: Set<Edge>,
     radius: number,
-    brush: any
+    brush: SculptBrush
   ): Generator<void> {
     DYNTOPO_T_GOAL = brush.dynTopo.valenceGoal
     ENABLE_DYNTOPO_EDGE_WEIGHTS = !!(brush.dynTopo.flag & DynTopoFlags.FANCY_EDGE_WEIGHTS)
@@ -5494,7 +5507,7 @@ export class PaintOp extends PaintOpBase<
       //for future reference: An Enhanced Steepest Descent Method for Global Optimization-Based Mesh Smoothing
       //https://www.scirp.org/journal/paperinformation.aspx?paperid=104388
       //similar to my velocity smooth idea.
-      let dosmooth = (vs: any, fac: number = 0.5): void => {
+      let dosmooth = (vs: Iterable<IBVHVertex>, fac: number = 0.5): void => {
         if (nosmooth) {
           return
         }
@@ -5619,7 +5632,7 @@ export class PaintOp extends PaintOpBase<
         yield
       } else if (0) {
         newes = newes.filter((e) => e.eid >= 0)
-        let newvs = new Set()
+        let newvs = new Set<Vertex>()
 
         let esize2 = 0
         let tot = 0
@@ -5706,11 +5719,11 @@ export class PaintOp extends PaintOpBase<
     mesh.regenTessellation()
   }
 
-  edist_simple(e: any, v1: any, v2: any, eset: any, cd_curv: number): number {
+  edist_simple(e: Edge, v1: Vertex, v2: Vertex, eset?: Set<Edge>, cd_curv?: number): number {
     return v1.co.vectorDistanceSqr(v2.co)
   }
 
-  val(v: any): number {
+  val(v: Vertex): number {
     let tot = 0
 
     for (let e of v.edges) {
@@ -5722,7 +5735,7 @@ export class PaintOp extends PaintOpBase<
     return tot
   }
 
-  edist_subd(e: any, v1: any, v2: any, eset: any, cd_curv: number): number {
+  edist_subd(e: Edge, v1: Vertex, v2: Vertex, eset?: Set<Edge>, cd_curv?: number): number {
     let dis = v1.co.vectorDistanceSqr(v2.co) * this.edist_scale(e, cd_curv)
 
     let val1 = this.val(v1) //v1.valence;
@@ -5825,10 +5838,10 @@ export class PaintOp extends PaintOpBase<
     return dis * this.edist_scale(e, cd_curv)
   }
 
-  edist_curvmul(e: any, cd_curv: number): number {
+  edist_curvmul(e: Edge, cd_curv: number): number {
     if (cd_curv >= 0) {
-      let cv1 = e.v1.customData[cd_curv]
-      let cv2 = e.v2.customData[cd_curv]
+      let cv1 = e.v1.customData[cd_curv] as CurvVert
+      let cv2 = e.v2.customData[cd_curv] as CurvVert
 
       //cv1.check(e.v1);
       //cv2.check(e.v2);
@@ -5855,8 +5868,8 @@ export class PaintOp extends PaintOpBase<
     //return window.dd8 || 1.0;
   }
 
-  edist_coll(e: any, v1: any, v2: any, eset: any, cd_curv: number): number {
-    let dis = v1.vectorDistanceSqr(v2)
+  edist_coll(e: Edge, v1: Vertex, v2: Vertex, eset?: Set<Edge>, cd_curv?: number): number {
+    let dis = v1.co.vectorDistanceSqr(v2.co)
 
     let val1 = this.val(v1) //v1.valence;
     let val2 = this.val(v2) //v2.valence;
@@ -5913,8 +5926,8 @@ export class PaintOp extends PaintOpBase<
     return dis * this.edist_scale(e, cd_curv) * FANCY_MUL
   }
 
-  edist_old(e: any, v1: any, v2: any, mode: number = 0): number {
-    let dis = v1.vectorDistanceSqr(v2)
+  edist_old(e: Edge, v1: Vertex, v2: Vertex, mode: number = 0): number {
+    let dis = v1.co.vectorDistanceSqr(v2.co)
     //return dis;
 
     let val1 = v1.valence
@@ -5982,10 +5995,10 @@ export class PaintOp extends PaintOpBase<
       for (let i = 0; i < 2; i++) {
         let v = i ? v2 : v1
         for (let e of v.edges) {
-          minsize = Math.min(minsize, e.v1.vectorDistance(e.v2))
+          minsize = Math.min(minsize, e.v1.co.vectorDistance(e.v2.co))
         }
       }
-      let dist = v1.vectorDistance(v2)
+      let dist = v1.co.vectorDistance(v2.co)
 
       minsize = Math.min(minsize, dist)
       let ratio = dist / (minsize + 0.00001)
@@ -6030,14 +6043,14 @@ export class PaintOp extends PaintOpBase<
   }
 
   doTopologyCollapseTris2Quads(
-    mesh: any,
+    mesh: Mesh,
     max: number,
-    bvh: any,
+    bvh: BVH,
     esize: number,
-    vs: any,
-    es: any,
+    vs: Set<Vertex>,
+    es: Set<Edge>,
     radius: number,
-    brush: any,
+    brush: SculptBrush,
     mark_only: boolean,
     cd_curv: number
   ): void {
@@ -6080,7 +6093,7 @@ export class PaintOp extends PaintOpBase<
     let cd_fset = getFaceSets(mesh, false)
 
     let lctx = new LogContext()
-    lctx.onnew = (e: any, tag: any): void => {
+    lctx.onnew = (e: ElementType, tag: number): void => {
       if (e.type === MeshTypes.VERTEX) {
         this._checkcurv(e, cd_curv, cd_cotan, true, cd_fset)
       }
@@ -6092,7 +6105,7 @@ export class PaintOp extends PaintOpBase<
       }
     }
 
-    lctx.onkill = (e: any, tag: any): void => {
+    lctx.onkill = (e: ElementType, tag: number): void => {
       log.logKill(e, tag)
     }
 
@@ -6109,7 +6122,11 @@ export class PaintOp extends PaintOpBase<
         }
       }
 
-      lctx.onchange = (e: any): void => {
+      lctx.onchange = (e: ElementType): void => {
+        if (e.type !== MeshTypes.EDGE) {
+          return
+        }
+
         if (e.flag & flag) {
           return
         }
@@ -6173,15 +6190,15 @@ export class PaintOp extends PaintOpBase<
   }
 
   doTopologyValence4(
-    mesh: any,
+    mesh: Mesh,
     max: number,
-    bvh: any,
+    bvh: BVH,
     esize: number,
-    vs: any,
-    es: any,
+    vs: Set<Vertex>,
+    es: Set<Edge>,
     radius: number,
-    brush: any,
-    lctx?: any
+    brush: SculptBrush,
+    lctx?: LogContext
   ): void {
     let addfaces = false
     let newfaces = [] as Face[]
@@ -6194,7 +6211,7 @@ export class PaintOp extends PaintOpBase<
 
       lctx = new LogContext()
       //lctx callback for deleting 4-valence verts
-      lctx.onnew = (e: any, tag: any): void => {
+      lctx.onnew = (e: ElementType, tag: number): void => {
         log.logAdd(e, tag)
 
         if (e.type === MeshTypes.FACE) {
@@ -6205,7 +6222,7 @@ export class PaintOp extends PaintOpBase<
       let updateflag = BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_UNIQUE_VERTS
       updateflag |= BVHFlags.UPDATE_OTHER_VERTS | BVHFlags.UPDATE_TOTTRI | BVHFlags.UPDATE_INDEX_VERTS
 
-      lctx.onkill = (e: any, tag: any): void => {
+      lctx.onkill = (e: ElementType, tag: number): void => {
         log.logKill(e, tag)
 
         if (e.type === MeshTypes.FACE) {
@@ -6330,14 +6347,14 @@ export class PaintOp extends PaintOpBase<
   }
 
   doTopologyCollapse(
-    mesh: any,
+    mesh: Mesh,
     max: number,
-    bvh: any,
+    bvh: BVH,
     esize: number,
-    vs: any,
-    es: any,
+    vs: Set<Vertex>,
+    es: Set<Edge>,
     radius: number,
-    brush: any,
+    brush: SculptBrush,
     cd_curv?: number
   ): void {
     let lctx = new LogContext()
@@ -6359,9 +6376,6 @@ export class PaintOp extends PaintOpBase<
     log.checkStart(mesh)
 
     let fs = new Set()
-    let fmap = new Map()
-
-    let cd_face_node = bvh.cd_face_node
 
     if (es.size === 0) {
       return
@@ -6379,18 +6393,18 @@ export class PaintOp extends PaintOpBase<
     }
 
     let esqr = esize * esize
+    let es0 = [] as Edge[]
 
-    let es0 = []
     for (let e of es) {
       if (e.eid >= 0) {
         es0.push(e)
       }
     }
-    es = es0
+    const elist = es0
 
-    for (let e of es) {
-      let ri = ~~(rand.random() * es.length * 0.9999)
-      e = es[ri]
+    for (let e of elist) {
+      let ri = ~~(rand.random() * elist.length * 0.9999)
+      e = elist[ri]
 
       if (es2.length >= max) {
         break
@@ -6474,7 +6488,7 @@ export class PaintOp extends PaintOpBase<
 
     let typemask = MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE
 
-    lctx.onkill = (elem: any, tag: any): void => {
+    lctx.onkill = (elem: ElementType, tag: number): void => {
       if (!(elem.type & typemask)) {
         return
       }
@@ -6487,7 +6501,8 @@ export class PaintOp extends PaintOpBase<
 
         if (node && node.uniqueVerts) {
           node.uniqueVerts.delete(elem)
-          bvh.cd_node.get(elem).node = undefined
+          const nodeinfo = bvh.cd_node.get(elem) as CDNodeInfo<{dead: true}>
+          nodeinfo.node = undefined
         }
       } else if (elem.type === MeshTypes.FACE) {
         bvh.removeFace(elem._old_eid)
@@ -6498,7 +6513,7 @@ export class PaintOp extends PaintOpBase<
 
     let cd_fset = getFaceSets(mesh, false)
 
-    lctx.onnew = (elem: any, tag: any): void => {
+    lctx.onnew = (elem: ElementType, tag: number): void => {
       if (cd_curv! >= 0 && elem.type === MeshTypes.VERTEX) {
         this._checkcurv(elem, cd_curv!, cd_cotan, true, cd_fset)
       }
@@ -6681,7 +6696,15 @@ export class PaintOp extends PaintOpBase<
 
   * */
 
-  doQuadTopo(mesh: any, bvh: any, esize: number, vs: any, brushco: Vector3, brushradius: number, brush: any): void {
+  doQuadTopo<GV extends GridVertBase<any> = GridVert>(
+    mesh: Mesh,
+    bvh: BVH,
+    esize: number,
+    vs: Set<GV>,
+    brushco: Vector3,
+    brushradius: number,
+    brush: SculptBrush
+  ): void {
     //console.log("quadtree topo!")
     //if (util.time_ms() - this._last_time < 15) {
     //  return;
@@ -6693,7 +6716,7 @@ export class PaintOp extends PaintOpBase<
     let docol = brush.dynTopo.flag & DynTopoFlags.COLLAPSE
     let dosub = brush.dynTopo.flag & DynTopoFlags.SUBDIVIDE
 
-    let cd_grid = bvh.cd_grid
+    let cd_grid = bvh.cd_grid as unknown as AttrRef<QuadTreeGrid | KdTreeGrid>
     let cd_node = bvh.cd_node
 
     const esize1 = esize * (1.0 + 0.75 * brush.dynTopo.subdivideFactor)
@@ -6703,7 +6726,7 @@ export class PaintOp extends PaintOpBase<
     const esqr2 = esize2 * esize2
 
     let haveKdTree = false
-    let layer = mesh.loops.customData.flatlist[bvh.cd_grid]
+    let layer = mesh.loops.customData.flatlist[bvh.cd_grid.i]
     if (layer.typeName === 'KdTreeGrid') {
       haveKdTree = true
     }
@@ -6741,7 +6764,7 @@ export class PaintOp extends PaintOpBase<
     let {VTOT, VTOTE, VTOTN, VINDEX, VV, VU} = VMapFields
     let {ETOT, ETOTN, EINDEX, EID, EV1, EV2} = EMapFields
 
-    let vs2 = new Set<Vertex>()
+    let vs2 = new Set<GV>()
     let grids = new Set<GridBase>()
     let gridmap = new Map<GridBase, Loop>()
 
@@ -6758,11 +6781,12 @@ export class PaintOp extends PaintOpBase<
     let visits = new Map()
     let tot = 0
 
-    let vs3 = []
+    let vs3 = [] as GV[]
     for (let v of vs) {
       vs3.push(v)
     }
-    vs = vs3
+
+    const vlist = vs3
 
     let dn1 = new Vector3()
     let dn2 = new Vector3()
@@ -6776,17 +6800,16 @@ export class PaintOp extends PaintOpBase<
 
     let limit = brush.dynTopo.edgeCount
 
-    for (let _i = 0; _i < vs.length; _i++) {
-      let ri = ~~(this.dynTopoRand.random() * vs.length * 0.99999)
-      let v = vs[ri]
+    for (let _i = 0; _i < vlist.length; _i++) {
+      let ri = ~~(this.dynTopoRand.random() * vlist.length * 0.99999)
+      let v = vlist[ri]
 
       //for (let v of vs) {
       if (tot >= limit) {
         break
       }
 
-      let l = v.loopEid
-      l = mesh.eidMap.get(l)
+      let l = mesh.eidMap.get(v.loopEid)
 
       if (l === undefined || !(l instanceof Loop)) {
         continue
@@ -6804,7 +6827,7 @@ export class PaintOp extends PaintOpBase<
           continue
         }
 
-        let distsqr = v.vectorDistanceSqr(v2)
+        let distsqr = v.co.vectorDistanceSqr(v2.co)
 
         maxlen = Math.max(maxlen, distsqr)
         minlen = Math.min(minlen, distsqr)
@@ -6828,7 +6851,7 @@ export class PaintOp extends PaintOpBase<
       if (ok) {
         vs2.add(v)
 
-        let grid = l.customData[cd_grid] as QuadTreeGrid | KdTreeGrid
+        let grid = cd_grid.get(l)
 
         if (!grids.has(grid as unknown as GridBase)) {
           grid.recalcPointIndices()
@@ -6836,11 +6859,15 @@ export class PaintOp extends PaintOpBase<
           gridmap.set(grid as unknown as GridBase, l)
 
           grids.add(grid as unknown as GridBase)
+          // XXX strange type inference error with cd_grid
+          /* @ts-ignore */
           grid.update(mesh, l, cd_grid)
         }
 
         let visit2 = visits.get(grid)
 
+        // XXX strange type inference error with cd_grid
+        /* @ts-ignore */
         let topo = grid.getTopo(mesh, cd_grid)
         let ns = grid.nodes
 
@@ -7001,19 +7028,18 @@ export class PaintOp extends PaintOpBase<
     //console.log(data);
     //updateloops = new Set(mesh.loops);
 
-    cd_node = mesh.loops.customData.getLayerIndex('bvh')
+    cd_node = mesh.loops.customData.getLayerRef('bvh')
 
     for (let l of updateloops) {
-      let grid = l.customData[cd_grid] as GridBase
+      let grid = l.customData[cd_grid.i] as GridBase
 
       //forcibly unlink vert node refs
       for (let p of grid.points) {
-        let node = cd_node.get(p)
+        let node = cd_node.get(p) as CDNodeInfo<{dead: true}>
 
         if (node.node && node.node.uniqueVerts) {
           node.node.uniqueVerts.delete(p)
         }
-
         node.node = undefined
       }
 
@@ -7105,8 +7131,6 @@ export class PaintOp extends PaintOpBase<
     let updateloops2 = new Set<Loop>()
 
     for (let l of updateloops) {
-      let grid = l.customData[cd_grid]
-
       let l2 = l.radial_next
       updateloops2.add(l2)
 
@@ -7144,7 +7168,7 @@ export class PaintOp extends PaintOpBase<
       QRecalcFlags.POINTHASH
 
     for (let l of updateloops2) {
-      let grid = l.customData[cd_grid] as GridBase
+      let grid = l.customData[cd_grid.i] as GridBase
       grid.recalcFlag |= updateflag2 // | QRecalcFlags.ALL;
     }
 
@@ -7153,26 +7177,26 @@ export class PaintOp extends PaintOpBase<
     }
 
     for (let l of updateloops) {
-      let grid = l.customData[cd_grid] as GridBase
-      grid.update(mesh, l, cd_grid)
+      let grid = l.customData[cd_grid.i] as GridBase
+      grid.update(mesh, l, cd_grid as unknown as AttrRef<GridBase>)
     }
 
     for (let l of updateloops2) {
-      let grid = l.customData[cd_grid] as GridBase
-      grid.update(mesh, l, cd_grid)
+      let grid = l.customData[cd_grid.i] as GridBase
+      grid.update(mesh, l, cd_grid as unknown as AttrRef<GridBase>)
     }
 
     for (let l of mesh.loops) {
-      let grid = l.customData[cd_grid]
+      let grid = l.customData[cd_grid.i] as GridBase
       //if (grids.has(grid)) {
-      grid.update(mesh, l, cd_grid)
+      grid.update(mesh, l, cd_grid as unknown as AttrRef<GridBase>)
       //}
     }
 
     //XXX
 
     for (let l of updateloops) {
-      let grid = l.customData[cd_grid] as GridBase
+      let grid = l.customData[cd_grid.i] as GridBase
 
       if (visit2.has(grid)) {
         throw new Error('eek!')
@@ -7181,20 +7205,9 @@ export class PaintOp extends PaintOpBase<
 
       let a = trisout.length
 
-      grid.makeBVHTris(mesh, bvh, l, cd_grid, trisout)
-      //console.log("tris", (trisout.length-a)/5);
+      // XXX the type inference errors with cd_grid are annoying
+      grid.makeBVHTris(mesh, bvh, l, cd_grid as any, trisout)
     }
-
-    for (let l of mesh.loops) {
-      let grid = l.customData[cd_grid]
-
-      //if (grids.has(grid)) {
-      //grid.update(mesh, l, cd_grid);
-      //}
-    }
-
-    //console.log("bnodes", bnodes);
-    //console.log("trisout", trisout.length/5, updateloops, updateloops.size);
 
     let _tmp = [0, 0, 0]
 
@@ -7212,11 +7225,11 @@ export class PaintOp extends PaintOpBase<
       let ri = ~~(((this.rand.random() * trisout.length) / 5) * 0.999999) * 5
       //let ri = 0;
 
-      let feid = trisout[ri]
-      let id = trisout[ri + 1]
-      let v1 = trisout[ri + 2]
-      let v2 = trisout[ri + 3]
-      let v3 = trisout[ri + 4]
+      let feid = trisout[ri] as number
+      let id = trisout[ri + 1] as number
+      let v1 = trisout[ri + 2] as GridVert
+      let v2 = trisout[ri + 3] as GridVert
+      let v3 = trisout[ri + 4] as GridVert
 
       //let sort = sort3(v1.index, v2.index, v3.index);
       //let key = `${feid}:${id}:${sort[0]}:${sort[1]}:${sort[2]}`
@@ -7249,14 +7262,15 @@ export class PaintOp extends PaintOpBase<
 
     for (let i = 0; i < 3; i++) {
       for (let l of mesh.loops) {
-        let grid = l.customData[cd_grid]
-        grid.updateFlag = QRecalcFlags.EVERYTHING & ~QRecalcFlags.NODE_DEPTH_DELTA
-        grid.updateFlag |= QRecalcFlags.FIX_NEIGHBORS | QRecalcFlags.POINT_PRUNE
+        let grid = l.customData[cd_grid.i] as GridBase
+        grid.recalcFlag = QRecalcFlags.EVERYTHING & ~QRecalcFlags.NODE_DEPTH_DELTA
+        grid.recalcFlag |= QRecalcFlags.FIX_NEIGHBORS | QRecalcFlags.POINT_PRUNE
       }
 
       for (let l of mesh.loops) {
-        let grid = l.customData[cd_grid]
-        grid.update(mesh, l, cd_grid)
+        let grid = l.customData[cd_grid.i] as GridBase
+        // XXX TS really doesn't like AttrRef<QuadTreeGrid | KDTreeGrid>
+        grid.update(mesh, l, cd_grid as any)
       }
     }
 
@@ -7269,13 +7283,13 @@ export class PaintOp extends PaintOpBase<
     * */
   }
 
-  _runLogUndo(mesh: any, bvh: any): void {
+  _runLogUndo(mesh: Mesh, bvh: BVH): void {
     let log = this._undo.log
 
     if (!log.checkStart(mesh)) {
       log.undo(
         mesh,
-        (f: any): void => {
+        (f: Face): void => {
           if (f.lists[0].length === 3 && f.lists.length === 1) {
             let l = f.lists[0].l
             let tri2 = bvh.addTri(f.eid, bvh._nextTriIdx(), l.v, l.next.v, l.prev.v, undefined, l, l.next, l.prev)
@@ -7292,7 +7306,7 @@ export class PaintOp extends PaintOpBase<
             }
           }
         },
-        (f: any): void => {
+        (f: Face): void => {
           bvh.removeFace(f.eid)
         }
       )
@@ -7303,14 +7317,14 @@ export class PaintOp extends PaintOpBase<
   }
 
   *doTopologySubdivide(
-    mesh: any,
+    mesh: Mesh,
     max: number,
-    bvh: any,
+    bvh: BVH,
     esize: number,
     vs: Set<Vertex>,
     es: Set<Edge>,
     radius: number,
-    brush: any,
+    brush: SculptBrush,
     newes_out: Set<Edge>,
     dosmooth: (v: Vertex, number: number) => void,
     cd_curv: number,
@@ -7343,7 +7357,7 @@ export class PaintOp extends PaintOpBase<
     let edist0 = fancyWeights ? this.edist_subd : this.edist_simple
 
     //*
-    function edist(e: Edge, v1: Vertex, v2: Vertex, eset: any, cd_curv?: number): number {
+    function edist(e: Edge, v1: Vertex, v2: Vertex, eset?: Set<Edge>, cd_curv?: number): number {
       let dis = v1.co.vectorDistance(v2.co)
       let w = edist0(e, v1, v2, eset, cd_curv!)
 
@@ -7416,14 +7430,14 @@ export class PaintOp extends PaintOpBase<
 
     let esqr2 = (esize * 0.5) ** 2
 
-    function weight_fancy(e: any, lensqr: number): number {
+    function weight_fancy(e: Edge, lensqr: number): number {
       lensqr += -(e.v1.valence + e.v2.valence)
       //lensqr += countNewSplitEdges(e, eset);
 
       return lensqr
     }
 
-    function weight_simple(e: any, lensqr: number): number {
+    function weight_simple(e: Edge, lensqr: number): number {
       return lensqr
     }
 
@@ -7527,7 +7541,7 @@ export class PaintOp extends PaintOpBase<
       }
     }
 
-    let test = (e: any): boolean => {
+    let test = (e: Edge): boolean => {
       let dis = edist(e, e.v1, e.v2, eset, cd_curv)
       return dis >= esqr
     }
@@ -7545,7 +7559,7 @@ export class PaintOp extends PaintOpBase<
     updateflag = updateflag | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_TOTTRI
     updateflag = updateflag | BVHFlags.UPDATE_INDEX_VERTS
 
-    lctx.onkill = (e: any, tag: any): void => {
+    lctx.onkill = (e: ElementType, tag: number): void => {
       log.logKill(e, tag)
 
       if (e.type === MeshTypes.FACE) {
@@ -7571,7 +7585,7 @@ export class PaintOp extends PaintOpBase<
     let cd_cotan = mesh.verts.customData.getLayerIndex('cotan')
     let cd_fset = getFaceSets(mesh, false)
 
-    lctx.onnew = (e: any, tag: any): void => {
+    lctx.onnew = (e: ElementType, tag: number): void => {
       log.logAdd(e, tag)
 
       if (cd_curv >= 0 && e.type === MeshTypes.VERTEX) {
@@ -7628,7 +7642,7 @@ export class PaintOp extends PaintOpBase<
       esize3 *= 0.2
       let esqr3 = esize3 * esize3
 
-      lctx.onkill = (e: any, tag: any): void => {
+      lctx.onkill = (e: ElementType, tag: number): void => {
         oldkill(e, tag)
 
         if (e.type === MeshTypes.VERTEX) {
@@ -7652,7 +7666,7 @@ export class PaintOp extends PaintOpBase<
         }
       }
 
-      lctx.onnew = (e: any, tag: any): void => {
+      lctx.onnew = (e: ElementType, tag: number): void => {
         oldnew(e, tag)
 
         if (cd_curv >= 0 && e.type === MeshTypes.VERTEX) {
@@ -7924,9 +7938,9 @@ export class PaintOp extends PaintOpBase<
     es_out[0] = es3
   }
 
-  _checkOrig(ctx: any): void {
+  _checkOrig(ctx: ViewContext): void {
     let brush = this.inputs.brush.getValue()
-    let mesh = ctx.mesh
+    let mesh = ctx.mesh!
 
     if (PaintOpBase.needOrig(brush)) {
       let cd_orig = this.initOrigData(mesh)
@@ -7936,7 +7950,7 @@ export class PaintOp extends PaintOpBase<
     }
   }
 
-  modalStart(ctx: any): any {
+  modalStart(ctx: ViewContext) {
     this._checkOrig(ctx)
 
     this.lastps1 = this.lastps2 = undefined
@@ -7947,7 +7961,7 @@ export class PaintOp extends PaintOpBase<
     return super.modalStart(ctx)
   }
 
-  modalEnd(was_cancelled: boolean): any {
+  modalEnd(was_cancelled: boolean) {
     if (!this.modalRunning) {
       return
     }
@@ -7983,7 +7997,7 @@ export class PaintOp extends PaintOpBase<
     return ret
   }
 
-  on_pointerup(e: any): void {
+  on_pointerup(): void {
     this.mfinished = true
 
     let ob = this.modal_ctx!.object

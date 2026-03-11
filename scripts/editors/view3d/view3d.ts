@@ -204,6 +204,8 @@ export class DrawLine {
 }
 
 export class View3D extends Editor {
+  glSize: Vector2
+  
   static STRUCT = nstructjs.inlineRegister(
     this,
     `

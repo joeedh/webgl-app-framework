@@ -15,11 +15,7 @@ import {Mesh} from '../../../mesh/mesh.js'
 import {Shapes} from '../../../core/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js'
-import {
-  math,
-  PackFlags,
-  UIBase,
-} from '../../../path.ux/scripts/pathux.js'
+import {math, PackFlags, UIBase} from '../../../path.ux/scripts/pathux.js'
 import {MeshFlags} from '../../../mesh/mesh.js'
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../../../core/simplemesh'
 import {GridBase, GridSettingFlags} from '../../../mesh/mesh_grids.js'
@@ -669,7 +665,7 @@ export class BVHToolMode extends ToolMode {
 
     st.bool('drawNodeIds', 'drawNodeIds', 'Draw BVH Vertex IDs').on('change', onchange)
     st.bool('drawFlat', 'drawFlat', 'Draw Flat').on('change', onchange).icon(Icons.DRAW_SCULPT_FLAT)
-    st.enum('tool', 'tool', SculptTools).icons(SculptIcons)
+    st.enum('tool', 'tool', util.deleteTsEnumIntegers(SculptTools)).icons(SculptIcons)
 
     st.bool('enableMaxEditDepth', 'enableMaxEditDepth', 'Multi Resolution Editing')
     st.int('gridEditDepth', 'gridEditDepth', 'Edit Depth', 'Maximum quad tree grid edit level').range(0, 15).noUnits()
@@ -1215,7 +1211,7 @@ export class BVHToolMode extends ToolMode {
     }
 
     let ob = object //let ob = this.ctx.object;
-    let bvh
+    let bvh: BVH
 
     let cd_fset = mesh.faces.customData.getNamedLayerIndex('face_sets', 'int')
 
@@ -1298,7 +1294,7 @@ export class BVHToolMode extends ToolMode {
     let red = [1, 0, 0, 1]
 
     let cd_color = -1
-    let have_color
+    let have_color: boolean | undefined
 
     let drawkey = ''
 
@@ -1328,10 +1324,10 @@ export class BVHToolMode extends ToolMode {
       }
     }
 
-    let drawnodes = new Set()
+    let drawnodes = new Set<BVHNode>()
 
-    let sortnodes = bvh.nodes.filter((n) => n.leaf)
-    sortnodes.sort((a, b) => b.depth - a.depth)
+    let sortnodes = bvh.nodes.filter((n: BVHNode) => n.leaf)
+    sortnodes.sort((a: BVHNode, b: BVHNode) => b.depth - a.depth)
 
     for (let node of sortnodes) {
       let p = node
