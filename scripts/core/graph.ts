@@ -1,15 +1,15 @@
-let _graph = undefined
+const _graph = undefined
 
 import {
+  DataAPI,
+  DataStruct,
   Matrix4,
+  ToolProperty,
   Vector2,
   Vector3,
   Vector4,
-  util,
   nstructjs,
-  ToolProperty,
-  DataAPI,
-  DataStruct,
+  util,
 } from '../path.ux/scripts/pathux.js'
 
 import '../util/polyfill.d.ts'
@@ -116,7 +116,7 @@ class InheritFlag<SocketSet extends {} = {}> {
   }
 }
 
-export let NodeSocketClasses = [] as (typeof NodeSocketType)[]
+export const NodeSocketClasses = [] as (typeof NodeSocketType)[]
 
 export interface INodeSocketDef {
   name: string
@@ -194,7 +194,7 @@ graph.NodeSocketType {
     //XXX shouldn't this be this.graph_uiname?
     this.uiname = uiname
 
-    let def = this.constructor!.nodedef()
+    const def = this.constructor!.nodedef()
 
     //TODO: should this be typeName?
     this.name = def.name
@@ -290,7 +290,7 @@ graph.NodeSocketType {
   }
 
   has(node_or_socket: GenericNode<any> | this) {
-    for (let socket of this.edges) {
+    for (const socket of this.edges) {
       if (socket === node_or_socket) return true
       if (socket.node === node_or_socket) return true
     }
@@ -309,7 +309,7 @@ graph.NodeSocketType {
    */
   buildUI(container: Container, onchange?: () => void) {
     if (this.edges.length === 0 && !(this.graph_flag & SocketFlags.NO_UI_EDITING)) {
-      let ret = container.prop('value')
+      const ret = container.prop('value')
 
       if (ret) {
         ret.setAttribute('name', this.uiname)
@@ -341,7 +341,7 @@ graph.NodeSocketType {
       return
     }
 
-    for (let s of this.edges) {
+    for (const s of this.edges) {
       if (s.node === sock.node && s.name === sock.name) {
         console.warn('Possible duplicate socket add', s, sock)
       }
@@ -456,7 +456,7 @@ graph.NodeSocketType {
     //via setTimeout
     window.updateDataGraph()
 
-    for (let sock of this.edges) {
+    for (const sock of this.edges) {
       sock.setValue(this.getValue())
 
       if (sock.node) sock.node.graphUpdate()
@@ -466,7 +466,7 @@ graph.NodeSocketType {
   }
 
   copy(): this {
-    let ret = new (this.constructor as unknown as new () => this)()
+    const ret = new (this.constructor as unknown as new () => this)()
 
     this.copyTo(ret)
     ret.graph_flag = this.graph_flag
@@ -542,7 +542,7 @@ graph.Node {
   ['constructor']: INodeConstructor<this, InputSet, OutputSet> | undefined
 
   constructor(flag = 0) {
-    let def = this.constructor!.nodedef()
+    const def = this.constructor!.nodedef()
 
     if (!def.name || typeof def.name !== 'string') {
       throw new Error('nodedef must have a .name member')
@@ -558,7 +558,7 @@ graph.Node {
     this.graph_id = -1
     this.graph_graph = undefined
 
-    let getflag = () => {
+    const getflag = () => {
       let inherit = typeof def.flag === 'object' && def.flag !== null && (def.flag as any) instanceof InheritFlag
 
       //walk up class hiearchy andd see if NodeFlags.FORCE_SOCKET_INHERIT
@@ -598,9 +598,9 @@ graph.Node {
 
     this.graph_flag = flag | getflag() | NodeFlags.UPDATE
 
-    let getsocks = (key: 'inputs' | 'outputs') => {
-      let obj = def[key] as {[k: string]: NodeSocketType}
-      let ret = {} as {[k: string]: NodeSocketType}
+    const getsocks = (key: 'inputs' | 'outputs') => {
+      const obj = def[key] as {[k: string]: NodeSocketType}
+      const ret = {} as {[k: string]: NodeSocketType}
 
       let inherit = obj instanceof InheritFlag
       inherit = inherit || (flag & NodeFlags.FORCE_SOCKET_INHERIT) !== 0
@@ -610,7 +610,7 @@ graph.Node {
       let p = this.constructor as any
       while (p !== null && p !== undefined && p !== Object && p !== Node) {
         if (p.nodedef) {
-          let def = p.nodedef()
+          const def = p.nodedef()
 
           inherit = inherit || (def.flag & NodeFlags.FORCE_SOCKET_INHERIT) !== 0
         }
@@ -629,7 +629,7 @@ graph.Node {
           }
 
           if (obj2 !== undefined) {
-            for (let k in obj2) {
+            for (const k in obj2) {
               let sock2 = obj2[k]
 
               if (sock2 instanceof InheritFlag) {
@@ -645,12 +645,12 @@ graph.Node {
           p = p.prototype.__proto__.constructor
         }
       } else if (obj !== undefined) {
-        for (let k in obj) {
+        for (const k in obj) {
           ret[k] = obj[k].copy()
         }
       }
 
-      for (let k in ret) {
+      for (const k in ret) {
         ret[k].node = this
       }
 
@@ -660,15 +660,15 @@ graph.Node {
     this.inputs = getsocks('inputs') as InputSet
     this.outputs = getsocks('outputs') as OutputSet
 
-    for (let sock of this.allsockets) {
+    for (const sock of this.allsockets) {
       ;(sock as NodeSocketType).node = this as unknown as GenericNode<ExecContextType>
     }
 
     for (let i = 0; i < 2; i++) {
-      let socks = i ? this.outputs : this.inputs
+      const socks = i ? this.outputs : this.inputs
 
-      for (let k in socks as unknown as {}) {
-        let sock = socks[k] as NodeSocketType
+      for (const k in socks as unknown as {}) {
+        const sock = socks[k] as NodeSocketType
 
         sock.socketType = i ? SocketTypes.OUTPUT : SocketTypes.INPUT
         sock.node = this as unknown as GenericNode<ExecContextType>
@@ -681,8 +681,8 @@ graph.Node {
       }
     }
 
-    for (let k in this.outputs) {
-      let sock = this.outputs[k] as NodeSocketType
+    for (const k in this.outputs) {
+      const sock = this.outputs[k] as NodeSocketType
 
       if (!(sock.graph_flag & SocketFlags.NO_MULTI_OUTPUTS)) {
         sock.graph_flag |= SocketFlags.MULTI
@@ -693,12 +693,12 @@ graph.Node {
   }
 
   get allsockets(): Iterable<NodeSocketType> {
-    let this2 = this
+    const this2 = this
     return (function* () {
-      for (let k in this2.inputs) {
+      for (const k in this2.inputs) {
         yield this2.inputs[k]
       }
-      for (let k in this2.outputs) {
+      for (const k in this2.outputs) {
         yield this2.outputs[k]
       }
     })() as unknown as Iterable<NodeSocketType>
@@ -715,19 +715,19 @@ graph.Node {
    * @returns {{} & {name, uiname, flag, inputs, outputs}}
    */
   static getFinalNodeDef(): INodeDef<any, any> {
-    let def = this.nodedef()
+    const def = this.nodedef()
 
     //I'm a little nervous about using Object.create,
     //dunno if I'm just being paranoid
-    let def2 = Object.assign({}, def)
+    const def2 = Object.assign({}, def)
 
     interface NodeProto extends INodeConstructor<any, INodeSocketSet, INodeSocketSet> {
       __proto__?: NodeProto
     }
 
-    let getsocks = (key: 'inputs' | 'outputs') => {
-      let obj = def[key]
-      let ret = {} as INodeSocketSet
+    const getsocks = (key: 'inputs' | 'outputs') => {
+      const obj = def[key]
+      const ret = {} as INodeSocketSet
 
       if (obj instanceof InheritFlag) {
         let p = this as unknown as NodeProto
@@ -736,13 +736,13 @@ graph.Node {
           if (p.nodedef === undefined) continue
           let obj2 = p.nodedef()[key]
 
-          let inherit = obj2 && obj2 instanceof InheritFlag
+          const inherit = obj2 && obj2 instanceof InheritFlag
           if (inherit) {
             obj2 = obj2.data as INodeSocketSet
           }
 
           if (obj2) {
-            for (let k in obj2) {
+            for (const k in obj2) {
               if (!(k in ret)) {
                 ret[k] = (obj2 as INodeSocketSet)[k]
               }
@@ -756,7 +756,7 @@ graph.Node {
           p = p.prototype.__proto__.constructor
         }
       } else if (obj !== undefined) {
-        for (let k in obj) {
+        for (const k in obj) {
           ret[k] = (obj as INodeSocketSet)[k]
         }
       }
@@ -814,17 +814,17 @@ graph.Node {
     b.graph_flag = this.graph_flag
 
     for (let i = 0; i < 2; i++) {
-      let sockets1 = i ? this.outputs : this.inputs
-      let sockets2 = i ? b.outputs : b.inputs
+      const sockets1 = i ? this.outputs : this.inputs
+      const sockets2 = i ? b.outputs : b.inputs
 
-      for (let k in sockets1 as unknown as {}) {
-        let sock1 = sockets1[k]
+      for (const k in sockets1 as unknown as {}) {
+        const sock1 = sockets1[k]
 
         if (!(k in (sockets2 as unknown as {}))) {
           ;(sockets2[k] as any) = sock1.copy()
         }
 
-        let sock2 = sockets2[k]
+        const sock2 = sockets2[k]
         sock2.node = b as unknown as GenericNode<ExecContextType>
 
         sock2.setValue(sock1.getValue())
@@ -833,7 +833,7 @@ graph.Node {
   }
 
   copy(addLibUsers = false, libOwner = undefined): this {
-    let ret = new this.constructor!()
+    const ret = new this.constructor!()
     this.copyTo(ret as this)
 
     return ret as unknown as this
@@ -846,7 +846,7 @@ graph.Node {
    */
   exec(state: ExecContextType): void {
     //default implementation simply flags all output sockets
-    for (let k in this.outputs) {
+    for (const k in this.outputs) {
       ;(this.outputs[k] as unknown as NodeSocketType).graphUpdate()
     }
   }
@@ -872,9 +872,9 @@ graph.Node {
     reader(this)
 
     if (Array.isArray(this.inputs)) {
-      let ins = {} as any
+      const ins = {} as any
 
-      for (let pair of this.inputs) {
+      for (const pair of this.inputs) {
         ins[pair.key] = pair.val
 
         pair.val.socketType = SocketTypes.INPUT
@@ -886,9 +886,9 @@ graph.Node {
     }
 
     if (Array.isArray(this.outputs)) {
-      let outs = {} as any
+      const outs = {} as any
 
-      for (let pair of this.outputs) {
+      for (const pair of this.outputs) {
         outs[pair.key] = pair.val
 
         pair.val.socketType = SocketTypes.OUTPUT
@@ -900,13 +900,13 @@ graph.Node {
     }
 
     /*deal with any changes in sockets across file versions*/
-    let def = this.constructor!.getFinalNodeDef!()
+    const def = this.constructor!.getFinalNodeDef!()
 
     for (let i = 0; i < 2; i++) {
-      let socks1 = (i ? this.outputs : this.inputs) as INodeSocketSet
-      let socks2 = (i ? def.outputs : def.inputs) as INodeSocketSet
+      const socks1 = (i ? this.outputs : this.inputs) as INodeSocketSet
+      const socks2 = (i ? def.outputs : def.inputs) as INodeSocketSet
 
-      for (let k in socks2) {
+      for (const k in socks2) {
         //there's a new socket?
         if (!(k in socks1)) {
           socks1[k] = socks2[k].copy()
@@ -914,7 +914,7 @@ graph.Node {
         }
       }
 
-      for (let k in socks1) {
+      for (const k in socks1) {
         //does the socket exist in this version?
         //note that this can happend with nodes with dynamic sockets,
         //which is why we don't delete s1 in this case
@@ -922,7 +922,7 @@ graph.Node {
           continue
         }
 
-        let s1 = socks1[k]
+        const s1 = socks1[k]
         let s2 = socks2[k]
 
         if (s1.constructor !== s2.constructor) {
@@ -950,11 +950,11 @@ graph.Node {
 
     //load any template data that needs loading
     for (let i = 0; i < 2; i++) {
-      let socks1 = (i ? this.outputs : this.inputs) as INodeSocketSet
-      let socks2 = (i ? def.outputs : def.inputs) as INodeSocketSet
+      const socks1 = (i ? this.outputs : this.inputs) as INodeSocketSet
+      const socks2 = (i ? def.outputs : def.inputs) as INodeSocketSet
 
-      for (let k in socks1 as unknown as {}) {
-        let sock = socks1[k]
+      for (const k in socks1 as unknown as {}) {
+        const sock = socks1[k]
 
         //ensure socketName is corret
         if (!sock.socketName) {
@@ -975,9 +975,9 @@ graph.Node {
   }
 
   _save_map(map: INodeSocketSet) {
-    let ret = []
+    const ret = []
 
-    for (let k in map) {
+    for (const k in map) {
       ret.push(new KeyValPair(k, map[k]))
     }
 
@@ -1009,20 +1009,20 @@ graph.ProxyNode {
   }
 
   static fromNode(node: Node) {
-    let ret = new ProxyNode()
+    const ret = new ProxyNode()
 
     ret.graph_id = node.graph_id
 
     for (let i = 0; i < 2; i++) {
-      let socks1 = i ? node.outputs : node.inputs
-      let socks2 = i ? ret.outputs : ret.inputs
+      const socks1 = i ? node.outputs : node.inputs
+      const socks2 = i ? ret.outputs : ret.inputs
 
-      for (let k in socks1) {
-        let s1 = socks1[k]
-        let s2 = s1.copy()
+      for (const k in socks1) {
+        const s1 = socks1[k]
+        const s2 = s1.copy()
 
         s2.graph_id = s1.graph_id
-        for (let e of s1.edges) {
+        for (const e of s1.edges) {
           s2.edges.push(e)
         }
 
@@ -1082,7 +1082,7 @@ graph.CallbackNode {
     inputs: InputSet,
     outputs: OutputSet
   ) {
-    let ret = new CallbackNode<InputSet, OutputSet, ExecContextType>()
+    const ret = new CallbackNode<InputSet, OutputSet, ExecContextType>()
 
     if (inputs === undefined) {
       ;(inputs as unknown as {}) = {}
@@ -1097,13 +1097,13 @@ graph.CallbackNode {
     ret.inputs = inputs
     ret.outputs = outputs
 
-    for (let k in inputs) {
+    for (const k in inputs) {
       if (typeof k === 'string') {
         ;((ret.inputs as unknown as any)[k] as NodeSocketType).node = ret as unknown as GenericNode<ExecContextType>
       }
     }
 
-    for (let k in outputs) {
+    for (const k in outputs) {
       if (typeof k === 'string') {
         ;((ret.outputs as unknown as any)[k] as NodeSocketType).node = ret as unknown as GenericNode<ExecContextType>
       }
@@ -1146,7 +1146,7 @@ export class GraphNodes<ExecContextType> extends Array {
     this.selected = new NodeSelectedSet()
 
     if (list !== undefined) {
-      for (let l of list) {
+      for (const l of list) {
         this.push(l)
       }
     }
@@ -1156,7 +1156,7 @@ export class GraphNodes<ExecContextType> extends Array {
   }
 
   replace(olditem: GenericNode<ExecContextType>, newitem: GenericNode<ExecContextType>) {
-    let i = this.indexOf(olditem)
+    const i = this.indexOf(olditem)
     if (i >= 0) {
       this[i] = newitem
     } else {
@@ -1184,7 +1184,7 @@ export class GraphNodes<ExecContextType> extends Array {
    this way users can click different output nodes to preview different subnetworks in real time.
    */
   pushToFront<NodeType extends Node<any, any>>(frontNode: NodeType) {
-    let node = frontNode as unknown as GenericNode<ExecContextType>
+    const node = frontNode as unknown as GenericNode<ExecContextType>
     let i = this.indexOf(node)
 
     if (i < 0) {
@@ -1253,15 +1253,15 @@ graph.Graph {
   }
 
   copy(addLibUsers = false, libOwner = undefined) {
-    let ret = new (this.constructor as new () => this)()
+    const ret = new (this.constructor as new () => this)()
 
     ret.nodes.length = 0
     ret.node_idmap = new Map()
     ret.sock_idmap = new Map()
     ret.graph_idgen = this.graph_idgen.copy()
 
-    for (let node of this.nodes) {
-      let n2 = node.copy(addLibUsers, libOwner)
+    for (const node of this.nodes) {
+      const n2 = node.copy(addLibUsers, libOwner)
 
       n2.graph_id = node.graph_id
       n2.graph_name = node.graph_name
@@ -1277,12 +1277,12 @@ graph.Graph {
       ret.node_idmap.set(n2.graph_id, n2)
 
       for (let i = 0; i < 2; i++) {
-        let s1 = i ? node.outputs : node.inputs
-        let s2 = i ? n2.outputs : n2.inputs
+        const s1 = i ? node.outputs : node.inputs
+        const s2 = i ? n2.outputs : n2.inputs
 
-        for (let k in s1) {
-          let sock1 = s1[k]
-          let sock2 = s2[k]
+        for (const k in s1) {
+          const sock1 = s1[k]
+          const sock2 = s2[k]
 
           sock2.graph_id = sock1.graph_id
           sock2.graph_flag = sock1.graph_flag
@@ -1296,35 +1296,35 @@ graph.Graph {
       }
     }
 
-    for (let node of this.nodes) {
-      let n2 = ret.node_idmap.get(node.graph_id)!
+    for (const node of this.nodes) {
+      const n2 = ret.node_idmap.get(node.graph_id)!
 
       for (let i = 0; i < 2; i++) {
-        let s1 = i ? node.outputs : node.inputs
-        let s2 = i ? n2.outputs : n2.inputs
+        const s1 = i ? node.outputs : node.inputs
+        const s2 = i ? n2.outputs : n2.inputs
 
-        for (let k in s1) {
-          let sock1 = s1[k]
-          let sock2 = s2[k]
+        for (const k in s1) {
+          const sock1 = s1[k]
+          const sock2 = s2[k]
 
-          for (let sock3 of sock1.edges) {
-            let bad = sock3.node && sock3.node.graph_graph && sock3.node.graph_graph !== this
+          for (const sock3 of sock1.edges) {
+            const bad = sock3.node && sock3.node.graph_graph && sock3.node.graph_graph !== this
 
             if (bad) {
               console.log('bad socket', sock3)
               continue
             }
 
-            let n3 = sock3.node
-            let n4 = ret.node_idmap.get(n3.graph_id)
+            const n3 = sock3.node
+            const n4 = ret.node_idmap.get(n3.graph_id)
 
             if (!n4) {
               console.log('bad socket2', sock3)
               continue
             }
 
-            let socks = i ? n4.inputs : n4.outputs
-            let sock4 = socks[sock3.socketName]
+            const socks = i ? n4.inputs : n4.outputs
+            const sock4 = socks[sock3.socketName]
 
             if (!sock4) {
               console.log('bad socket3', sock3, socks)
@@ -1341,8 +1341,8 @@ graph.Graph {
   }
 
   destroy() {
-    for (let n of this.nodes) {
-      for (let sock of n.allsockets) {
+    for (const n of this.nodes) {
+      for (const sock of n.allsockets) {
         sock.graphDestory()
       }
       n.graphDestroy()
@@ -1350,9 +1350,9 @@ graph.Graph {
   }
 
   clear() {
-    let nodes = this.nodes.concat([])
+    const nodes = this.nodes.concat([])
 
-    for (let n of nodes) {
+    for (const n of nodes) {
       this.remove(n)
     }
 
@@ -1393,18 +1393,18 @@ graph.Graph {
   }
 
   sort(): void {
-    let sortlist = this.sortlist
-    let nodes = this.nodes
+    const sortlist = this.sortlist
+    const nodes = this.nodes
 
     this.graph_flag &= ~GraphFlags.CYCLIC
 
     sortlist.length = 0
 
-    for (let n of nodes) {
+    for (const n of nodes) {
       n.graph_flag &= ~(NodeFlags.SORT_TAG | NodeFlags.CYCLE_TAG)
     }
 
-    let dosort = (n: GenericNode<ExecContextType>) => {
+    const dosort = (n: GenericNode<ExecContextType>) => {
       if (n.graph_flag & NodeFlags.CYCLE_TAG) {
         console.warn('Warning: graph cycle detected!')
         this.graph_flag |= GraphFlags.CYCLIC
@@ -1420,11 +1420,11 @@ graph.Graph {
       n.graph_flag |= NodeFlags.SORT_TAG
       n.graph_flag |= NodeFlags.CYCLE_TAG
 
-      for (let k in n.inputs) {
-        let s1 = n.inputs[k]
+      for (const k in n.inputs) {
+        const s1 = n.inputs[k]
 
-        for (let s2 of s1.edges) {
-          let n2 = s2.node
+        for (const s2 of s1.edges) {
+          const n2 = s2.node
 
           if (!(n2.graph_flag & NodeFlags.SORT_TAG)) {
             dosort(n2)
@@ -1437,30 +1437,30 @@ graph.Graph {
       n.graph_flag &= ~NodeFlags.CYCLE_TAG
     }
 
-    for (let n of nodes) {
+    for (const n of nodes) {
       dosort(n)
     }
 
     //we may not have caught all cycle cases
 
-    let cyclesearch = (n: GenericNode<ExecContextType>): boolean => {
+    const cyclesearch = (n: GenericNode<ExecContextType>): boolean => {
       if (n.graph_flag & NodeFlags.CYCLE_TAG) {
         console.warn('Warning: graph cycle detected!')
         this.graph_flag |= GraphFlags.CYCLIC
         return true
       }
 
-      for (let k in n.outputs) {
-        let s1 = n.outputs[k]
+      for (const k in n.outputs) {
+        const s1 = n.outputs[k]
 
         n.graph_flag |= NodeFlags.CYCLE_TAG
-        for (let s2 of s1.edges) {
+        for (const s2 of s1.edges) {
           if (s2.node === undefined) {
             console.warn('Dependency graph corruption detected', s1, s2, n)
             continue
           }
 
-          let ret = cyclesearch(s2.node)
+          const ret = cyclesearch(s2.node)
 
           if (ret) {
             n.graph_flag &= ~NodeFlags.CYCLE_TAG
@@ -1472,7 +1472,7 @@ graph.Graph {
       return false
     }
 
-    for (let n of this.nodes) {
+    for (const n of this.nodes) {
       if (cyclesearch(n)) break
     }
 
@@ -1480,9 +1480,9 @@ graph.Graph {
   }
 
   _cyclic_step(context: ExecContextType) {
-    let sortlist = this.sortlist
+    const sortlist = this.sortlist
 
-    for (let n of sortlist) {
+    for (const n of sortlist) {
       if (n.graph_flag & NodeFlags.DISABLED) {
         continue
       }
@@ -1496,7 +1496,7 @@ graph.Graph {
 
     let change = 0.0 //, tot = 0.0;
 
-    for (let n of sortlist) {
+    for (const n of sortlist) {
       if (n.graph_flag & NodeFlags.DISABLED) {
         continue
       }
@@ -1504,8 +1504,8 @@ graph.Graph {
         continue
       }
 
-      for (let sock of n.allsockets) {
-        let diff = Math.abs(sock.diffValue(sock._old))
+      for (const sock of n.allsockets) {
+        const diff = Math.abs(sock.diffValue(sock._old))
 
         if (isNaN(diff)) {
           console.warn("Got NaN from a socket's diffValue method!", sock)
@@ -1525,21 +1525,21 @@ graph.Graph {
   _cyclic_exec(context: ExecContextType) {
     //console.log("cycle exec", this.sortlist.length, this.nodes.length);
 
-    let sortlist = this.sortlist
+    const sortlist = this.sortlist
 
-    for (let n of sortlist) {
+    for (const n of sortlist) {
       if (n.graph_flag & NodeFlags.DISABLED) {
         continue
       }
 
-      for (let sock of n.allsockets) {
+      for (const sock of n.allsockets) {
         sock._old = sock.copyValue()
       }
     }
 
     for (let i = 0; i < this.max_cycle_steps; i++) {
-      let limit = this.cycle_stop_threshold
-      let change = this._cyclic_step(context)
+      const limit = this.cycle_stop_threshold
+      const change = this._cyclic_step(context)
 
       //console.log("change", change.toFixed(5), limit);
 
@@ -1562,9 +1562,9 @@ graph.Graph {
       return this._cyclic_exec(context)
     }
 
-    let sortlist = this.sortlist
+    const sortlist = this.sortlist
 
-    for (let node of sortlist) {
+    for (const node of sortlist) {
       if (node.graph_flag & NodeFlags.DISABLED) {
         continue
       }
@@ -1597,7 +1597,7 @@ graph.Graph {
       return
     }
 
-    for (let s of node.allsockets) {
+    for (const s of node.allsockets) {
       let _i = 0
 
       while (s.edges.length > 0) {
@@ -1634,16 +1634,16 @@ graph.Graph {
     node.graph_graph = this
     node.graph_id = this.graph_idgen.next()
 
-    for (let k in node.inputs) {
-      let sock = node.inputs[k]
+    for (const k in node.inputs) {
+      const sock = node.inputs[k]
 
       sock.node = node
       sock.graph_id = this.graph_idgen.next()
       this.sock_idmap.set(sock.graph_id, sock)
     }
 
-    for (let k in node.outputs) {
-      let sock = node.outputs[k]
+    for (const k in node.outputs) {
+      const sock = node.outputs[k]
 
       sock.node = node
       sock.graph_id = this.graph_idgen.next()
@@ -1660,10 +1660,10 @@ graph.Graph {
   }
 
   dataLink(owner: DataBlock, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
-    for (let node of this.nodes) {
+    for (const node of this.nodes) {
       node.graphDataLink(owner, getblock, getblock_addUser)
 
-      for (let sock of node.allsockets) {
+      for (const sock of node.allsockets) {
         sock.graphDataLink(owner, getblock, getblock_addUser)
       }
     }
@@ -1683,18 +1683,18 @@ graph.Graph {
     console.log(buf);
     //*/
 
-    let node_idmap = this.node_idmap
-    let sock_idmap = this.sock_idmap
+    const node_idmap = this.node_idmap
+    const sock_idmap = this.sock_idmap
 
-    for (let n of this.nodes) {
+    for (const n of this.nodes) {
       n.afterSTRUCT()
     }
 
-    for (let n of this.nodes) {
+    for (const n of this.nodes) {
       node_idmap.set(n.graph_id, n)
       n.graph_graph = this
 
-      for (let s of n.allsockets) {
+      for (const s of n.allsockets) {
         if (s.graph_id === -1) {
           console.warn('Found patched socket from old file; fixing.', s)
           //old file, didn't have socket
@@ -1706,8 +1706,8 @@ graph.Graph {
       }
     }
 
-    for (let n of this.nodes) {
-      for (let s of n.allsockets) {
+    for (const n of this.nodes) {
+      for (const s of n.allsockets) {
         for (let i = 0; i < s.edges.length; i++) {
           s.edges[i] = sock_idmap.get(s.edges[i] as unknown as number)
 
@@ -1731,16 +1731,16 @@ graph.Graph {
     }
 
     //paranoia check, prune any surviving zombie nodes
-    for (let node of this.nodes.slice(0, this.nodes.length)) {
+    for (const node of this.nodes.slice(0, this.nodes.length)) {
       if (node.graph_flag & NodeFlags.ZOMBIE) {
         this.remove(node)
       }
     }
 
-    for (let node of this.nodes) {
-      for (let sock of node.allsockets) {
+    for (const node of this.nodes) {
+      for (const sock of node.allsockets) {
         for (let i = 0; i < sock.edges.length; i++) {
-          let sock_id = sock.edges[i]
+          const sock_id = sock.edges[i]
           let e: NodeSocketType | undefined
 
           if (typeof sock_id === 'number') {
@@ -1784,10 +1784,10 @@ graph.Graph {
       return
     }
 
-    let n2 = this.node_idmap.get(n.graph_id)!
+    const n2 = this.node_idmap.get(n.graph_id)!
 
-    let node_idmap = this.node_idmap
-    let sock_idmap = this.sock_idmap
+    const node_idmap = this.node_idmap
+    const sock_idmap = this.sock_idmap
 
     n.graph_graph = this
 
@@ -1795,17 +1795,17 @@ graph.Graph {
     node_idmap.set(n2.graph_id, n)
 
     for (let i = 0; i < 2; i++) {
-      let socks1 = i ? n.outputs : n.inputs
-      let socks2 = i ? n2.outputs : n2.inputs
+      const socks1 = i ? n.outputs : n.inputs
+      const socks2 = i ? n2.outputs : n2.inputs
 
-      for (let k in socks2) {
+      for (const k in socks2) {
         if (typeof socks2[k] === 'number') {
           socks2[k] = sock_idmap.get(socks2[k] as unknown as number)!
         }
 
         //deal with socket type changes
-        let s1 = socks1[k]
-        let s2 = socks2[k]
+        const s1 = socks1[k]
+        const s2 = socks2[k]
 
         if (s1.constructor !== s2.constructor) {
           try {
@@ -1817,7 +1817,7 @@ graph.Graph {
 
           s1.edges = s2.edges
 
-          for (let s3 of s2.edges) {
+          for (const s3 of s2.edges) {
             if (s3.edges.indexOf(s2) >= 0) {
               //paranoia check
               if (s3.edges.indexOf(s1) >= 0) {
@@ -1870,15 +1870,15 @@ graph.Graph {
       node.graph_flag |= NodeFlags.CYCLE_TAG
       let found_parent = false
 
-      for (let k in node.inputs) {
+      for (const k in node.inputs) {
         if (node === startnode && !checkStartParents) {
           break
         }
 
-        let sock = node.inputs[k]
+        const sock = node.inputs[k]
 
-        for (let e of sock.edges) {
-          let n = e.node
+        for (const e of sock.edges) {
+          const n = e.node
 
           if (n.graph_flag & NodeFlags.UPDATE) {
             node.graph_flag &= ~NodeFlags.CYCLE_TAG
@@ -1902,11 +1902,11 @@ graph.Graph {
           throw error
         }
 
-        for (let k in node.outputs) {
-          let sock = node.outputs[k]
+        for (const k in node.outputs) {
+          const sock = node.outputs[k]
 
-          for (let e of sock.edges) {
-            let n = e.node
+          for (const e of sock.edges) {
+            const n = e.node
 
             if (n.graph_flag & NodeFlags.UPDATE) {
               visit(n)
@@ -1922,11 +1922,11 @@ graph.Graph {
   }
 
   _save_nodes() {
-    let ret = []
+    const ret = []
 
     //ensure node socket id sanity
-    for (let n of this.nodes) {
-      for (let s of n.allsockets) {
+    for (const n of this.nodes) {
+      for (const s of n.allsockets) {
         if (s.graph_id < 0) {
           console.warn('graph corruption', s)
           s.graph_id = this.graph_idgen.next()

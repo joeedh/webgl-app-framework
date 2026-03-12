@@ -84,11 +84,11 @@ import { ShaderProgram } from '../core/webgl'
 
 export interface IBVHArgs {
   leafLimit?: number
-  autoUpdate: boolean
-  force: boolean
-  wireVerts: boolean
-  deformMode: boolean
-  useGrids: boolean
+  autoUpdate?: boolean
+  force?: boolean
+  wireVerts?: boolean
+  deformMode?: boolean
+  useGrids?: boolean
   onCreate?: () => void
 }
 
@@ -113,27 +113,27 @@ export * from './mesh_types'
 export * from './mesh_customdata'
 export * from './mesh_element_list.js'
 
-let split_temp = new Array(512)
+const split_temp = new Array(512)
 
-let _quad = new Array(4)
-let _tri = new Array(3)
-let _cdtemp1 = new Array<Vertex>(1)
-let _cdtemp2 = new Array<Vertex>(2)
-let _cdwtemp1 = new Array<number>(1)
-let _cdwtemp2 = new Array<number>(2)
+const _quad = new Array(4)
+const _tri = new Array(3)
+const _cdtemp1 = new Array<Vertex>(1)
+const _cdtemp2 = new Array<Vertex>(2)
+const _cdwtemp1 = new Array<number>(1)
+const _cdwtemp2 = new Array<number>(2)
 
-let _collapsetemp = new Array<Face>(4192)
-let _collapsetemp2 = new Array<Edge>(4192)
-let _collapsetemp3 = new Array(4192)
-let _collapsecd_ls = new Array(2)
-let _collapsecd_ws = [0.5, 0.5]
+const _collapsetemp = new Array<Face>(4192)
+const _collapsetemp2 = new Array<Edge>(4192)
+const _collapsetemp3 = new Array(4192)
+const _collapsecd_ls = new Array(2)
+const _collapsecd_ws = [0.5, 0.5]
 
-let splitcd_ls: Loop[] = [undefined, undefined] as unknown as Loop[]
-let splitcd_ws = [0.5, 0.5]
+const splitcd_ls: Loop[] = [undefined, undefined] as unknown as Loop[]
+const splitcd_ws = [0.5, 0.5]
 
 let _idgen = 0
 
-let debuglog = false
+const debuglog = false
 
 const VEID = 0,
   VFLAG = 1,
@@ -193,7 +193,7 @@ mesh.EIDGen {
   }
 
   static fromIDGen(idgen: util.IDGen): EIDGen {
-    let ret = new EIDGen()
+    const ret = new EIDGen()
 
     ret.cur = idgen._cur
 
@@ -205,7 +205,7 @@ mesh.EIDGen {
   }
 
   copy(): EIDGen {
-    let ret = new EIDGen()
+    const ret = new EIDGen()
 
     ret.cur = this.cur
     ret.freelist = this.freelist.concat([])
@@ -223,9 +223,9 @@ mesh.EIDGen {
       this.makeFreeMap()
     }
 
-    let freemap = this.freemap!
-    let freelist = this.freelist!
-    let i = freemap.get(eid)
+    const freemap = this.freemap!
+    const freelist = this.freelist!
+    const i = freemap.get(eid)
 
     if (i === undefined) {
       //eid is not freed
@@ -242,7 +242,7 @@ mesh.EIDGen {
 
     //swap in last value of freelist and update freemap
 
-    let eid2 = freelist[freelist.length - 1]
+    const eid2 = freelist[freelist.length - 1]
 
     freelist[i] = eid2
     freelist.length--
@@ -251,8 +251,8 @@ mesh.EIDGen {
   }
 
   makeFreeMap(): void {
-    let freemap = (this.freemap = new Map())
-    let freelist = this.freelist
+    const freemap = (this.freemap = new Map())
+    const freelist = this.freelist
 
     for (let i = 0; i < freelist.length; i++) {
       freemap.set(freelist[i], i)
@@ -278,7 +278,7 @@ mesh.EIDGen {
 
   next(): number {
     if (this.freelist.length > 0) {
-      let eid = this.freelist.pop()!
+      const eid = this.freelist.pop()!
 
       if (this.freemap) {
         this.freemap.delete(eid)
@@ -433,7 +433,7 @@ mesh.Mesh {
   }
 
   get hasCustomNormals() {
-    let ret = this.loops.customData.hasLayer(NormalLayerElem)
+    const ret = this.loops.customData.hasLayer(NormalLayerElem)
     return ret || this.verts.customData.hasLayer(NormalLayerElem)
   }
 
@@ -478,7 +478,7 @@ mesh.Mesh {
   }
 
   compress(): number[] {
-    let data: number[] = []
+    const data: number[] = []
 
     nstructjs.writeObject(data, this)
 
@@ -500,7 +500,7 @@ mesh.Mesh {
         return EIDGen.fromIDGen(eidgen)
       }
     } else if (typeof eidgen === 'number') {
-      let eidgen2 = new EIDGen()
+      const eidgen2 = new EIDGen()
       eidgen2.cur = eidgen
       return eidgen2
     }
@@ -558,8 +558,8 @@ mesh.Mesh {
   }
 
   debugLogCompare(mesh2: this) {
-    let log1 = this.debuglog!
-    let log2 = mesh2.debuglog!
+    const log1 = this.debuglog!
+    const log2 = mesh2.debuglog!
 
     function pad(s: '') {
       while (s.length < 10) {
@@ -572,14 +572,14 @@ mesh.Mesh {
     let buf = ''
     let buf2 = ''
 
-    let len = Math.min(log1.length, log2.length)
-    let lines = []
+    const len = Math.min(log1.length, log2.length)
+    const lines = []
 
     for (let i = 0; i < len; i++) {
-      let l1 = log1[i],
+      const l1 = log1[i],
         l2 = log2[i]
 
-      let line = `${pad(l1.e.constructor.name)} ${l1.eid} ${pad(l2.e.constructor.name)} ${l2.eid}\n`
+      const line = `${pad(l1.e.constructor.name)} ${l1.eid} ${pad(l2.e.constructor.name)} ${l2.eid}\n`
       lines.push(line)
 
       buf += line
@@ -588,7 +588,7 @@ mesh.Mesh {
     buf += '\n\n'
 
     for (let i = 0; i < len; i++) {
-      let l1 = log1[i],
+      const l1 = log1[i],
         l2 = log2[i]
 
       if (l1.e.constructor !== l2.e.constructor || l1.eid !== l2.eid) {
@@ -605,7 +605,7 @@ mesh.Mesh {
 
     console.log(buf)
 
-    for (let l of buf2.split('\n')) {
+    for (const l of buf2.split('\n')) {
       console.log(l)
       buf = l + '\n' + buf2
     }
@@ -613,7 +613,7 @@ mesh.Mesh {
   }
 
   _element_init(e: Element, customEid?: number) {
-    let list = this.getElemList<Element>(e.type)
+    const list = this.getElemList<Element>(e.type)
 
     list.customData.initElement(e)
 
@@ -689,7 +689,7 @@ mesh.Mesh {
   }
 
   getEdge(v1: Vertex, v2: Vertex): Edge | undefined {
-    for (let e of v1.edges) {
+    for (const e of v1.edges) {
       if (e.otherVertex(v1) === v2) return e
     }
 
@@ -715,7 +715,7 @@ mesh.Mesh {
   }
 
   private _makeHandle(e: Edge): Handle {
-    let h = new Handle()
+    const h = new Handle()
     h.owner = e
 
     this._element_init(h)
@@ -786,7 +786,7 @@ mesh.Mesh {
     }
 
     if (checkExist) {
-      let e = this.getEdge(v1, v2)
+      const e = this.getEdge(v1, v2)
       if (e) {
         return e
       }
@@ -851,7 +851,7 @@ mesh.Mesh {
     this.min[0] = this.min[1] = this.min[2] = 1e17
     this.max[0] = this.max[1] = this.max[2] = -1e17
 
-    for (let v of this.verts) {
+    for (const v of this.verts) {
       this.min.min(v.co)
       this.max.max(v.co)
     }
@@ -863,7 +863,7 @@ mesh.Mesh {
     this._totLoopAlloc++
 
     if (!SAVE_DEAD_LOOPS) {
-      let loop = new Loop()
+      const loop = new Loop()
 
       loop.radial_next = loop.radial_prev = loop
 
@@ -872,7 +872,7 @@ mesh.Mesh {
 
       return loop
     } else {
-      let l = this.loops.alloc(Loop)
+      const l = this.loops.alloc(Loop)
 
       if (customEid !== undefined) {
         this.eidgen.reserve(customEid)
@@ -938,7 +938,7 @@ mesh.Mesh {
     }
 
     if (DEBUG_BAD_LOOPS) {
-      for (let list of f.lists) {
+      for (const list of f.lists) {
         if (!list.l) {
           continue
         }
@@ -951,7 +951,7 @@ mesh.Mesh {
             continue
           }
 
-          for (let l2 of l.e.loops) {
+          for (const l2 of l.e.loops) {
             if (l2 === l) {
               throw new MeshError('_freeFace called on face that still has loops linked to edges')
             }
@@ -994,23 +994,23 @@ mesh.Mesh {
   }
 
   countDuplicateFaces(vs: Iterable<Vertex>): number {
-    let flag = MeshFlags.FACE_EXIST_FLAG
+    const flag = MeshFlags.FACE_EXIST_FLAG
     let retcount = 0
 
     vs = ReusableIter.getSafeIter(vs)
 
     let vlen = 0
-    for (let v of vs) {
+    for (const v of vs) {
       vlen++
     }
 
-    for (let v of vs) {
+    for (const v of vs) {
       v.flag &= ~flag
 
-      for (let e of v.edges) {
+      for (const e of v.edges) {
         e.flag &= ~flag
 
-        for (let l of e.loops) {
+        for (const l of e.loops) {
           let bad = l.f.lists.length > 1
           bad = bad || l.f.lists[0].length !== vlen
 
@@ -1023,31 +1023,31 @@ mesh.Mesh {
       }
     }
 
-    for (let v of vs) {
-      for (let e of v.edges) {
+    for (const v of vs) {
+      for (const e of v.edges) {
         if (e.flag & flag) {
           continue
         }
 
         e.flag |= flag
 
-        for (let l of e.loops) {
+        for (const l of e.loops) {
           if (l.f.flag & flag) {
             continue
           }
 
           l.f.flag |= flag
 
-          for (let v of vs) {
+          for (const v of vs) {
             v.flag &= ~flag
           }
 
-          for (let v2 of l.f.verts) {
+          for (const v2 of l.f.verts) {
             v2.flag |= flag
           }
 
           let count = 0
-          for (let v of vs) {
+          for (const v of vs) {
             if (v.flag & flag) {
               count++
             }
@@ -1067,15 +1067,15 @@ mesh.Mesh {
 
   //new_vmap is an object mapping old vertex eid's to new vertices
   copyFace(f: Face, new_vmap: {[key: number]: Vertex}): Face {
-    let f2 = this._allocFace(0)
+    const f2 = this._allocFace(0)
     this.copyElemData(f2, f)
 
-    for (let l of f.loops) {
+    for (const l of f.loops) {
       this._radialRemove(l.e, l)
     }
 
-    for (let list of f.lists) {
-      let list2 = new LoopList()
+    for (const list of f.lists) {
+      const list2 = new LoopList()
 
       list2.flag = list.flag
       list2.length = list.length
@@ -1119,7 +1119,7 @@ mesh.Mesh {
       l2.next = startl2!
       startl2!.prev = l2
 
-      for (let l of list2) {
+      for (const l of list2) {
         l.e = this.ensureEdge(l.v, l.next.v)
         l.f = f2
 
@@ -1129,7 +1129,7 @@ mesh.Mesh {
       f2.lists.push(list2)
     }
 
-    for (let l of f.loops) {
+    for (const l of f.loops) {
       this._radialInsert(l.e, l)
     }
 
@@ -1185,7 +1185,7 @@ mesh.Mesh {
     logtag = 0
   ) {
     if (DEBUG_DUPLICATE_FACES) {
-      let f = this.getFace(verts)
+      const f = this.getFace(verts)
 
       if (f) {
         console.log(verts, f)
@@ -1193,12 +1193,12 @@ mesh.Mesh {
       }
     }
 
-    let flag = MeshFlags.MAKE_FACE_TEMP
-    for (let v of verts) {
+    const flag = MeshFlags.MAKE_FACE_TEMP
+    for (const v of verts) {
       v.flag &= ~flag
     }
 
-    for (let v of verts) {
+    for (const v of verts) {
       if (v.flag & flag) {
         throw new MeshError('duplicate vert passed to makeFace')
       }
@@ -1212,23 +1212,23 @@ mesh.Mesh {
       throw new MeshError('need at least two verts')
     }
 
-    let f = this._allocFace(0, customEid)
+    const f = this._allocFace(0, customEid)
 
     f.flag |= MeshFlags.UPDATE
 
     let firstl, prevl
 
-    let list = new LoopList()
+    const list = new LoopList()
     f.lists.push(list)
 
     list.length = verts.length
 
     let i = 0
 
-    for (let v of verts) {
-      let eid = customLoopEids !== undefined ? customLoopEids[i] : undefined
+    for (const v of verts) {
+      const eid = customLoopEids !== undefined ? customLoopEids[i] : undefined
 
-      let l = this._makeLoop(eid)
+      const l = this._makeLoop(eid)
 
       l.list = list
       l.v = v
@@ -1249,7 +1249,7 @@ mesh.Mesh {
     firstl!.prev = prevl!
     prevl!.next = firstl!
 
-    for (let l of list) {
+    for (const l of list) {
       const e = this.getEdge(l.v, l.next.v)
       let wasnew = false
 
@@ -1278,7 +1278,7 @@ mesh.Mesh {
   }
 
   _recalcNormals_intern(cd_disp: CDRef<DispLayerVert> = -1): void {
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       f.calcNormal(cd_disp)
     }
 
@@ -1287,29 +1287,29 @@ mesh.Mesh {
 
   _recalcVertexNormals(cd_disp: CDRef<DispLayerVert> = -1) {
     let i = 0
-    let vtots = new Array<number>(this.verts.length)
+    const vtots = new Array<number>(this.verts.length)
 
-    for (let v of this.verts) {
+    for (const v of this.verts) {
       v.index = i++
       v.no.zero()
       vtots[v.index] = 0
     }
 
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       e.updateLength()
     }
 
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       f.area = 0
     }
 
-    let ltris = this.loopTris!
+    const ltris = this.loopTris!
 
     for (let i = 0; i < ltris.length; i += 3) {
-      let l1 = ltris[i],
+      const l1 = ltris[i],
         l2 = ltris[i + 1],
         l3 = ltris[i + 2]
-      let v1 = l1.v,
+      const v1 = l1.v,
         v2 = l2.v,
         v3 = l3.v
       let p1: Vector3, p2: Vector3, p3: Vector3
@@ -1324,8 +1324,8 @@ mesh.Mesh {
         p3 = v3.co
       }
 
-      let n = math.normal_tri(p1, p2, p3)
-      let w = math.tri_area(p1, p2, p3)
+      const n = math.normal_tri(p1, p2, p3)
+      const w = math.tri_area(p1, p2, p3)
 
       if (isNaN(n.dot(n))) {
         console.error('NaN in normal calc!', w, v1, v2, v3, l1, l2, l3)
@@ -1356,7 +1356,7 @@ mesh.Mesh {
       vtots[l3.v.index] += w
     }
 
-    for (let v of this.verts) {
+    for (const v of this.verts) {
       if (vtots[v.index] > 0 && v.no.dot(v.no) > 0) {
         v.no.normalize()
       }
@@ -1364,15 +1364,15 @@ mesh.Mesh {
   }
 
   *allGeometry() {
-    for (let v of this.verts) {
+    for (const v of this.verts) {
       yield v
     }
 
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       yield e
     }
 
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       yield f
     }
   }
@@ -1382,12 +1382,12 @@ mesh.Mesh {
     ok = ok || this.loops.customData.hasLayer(NormalLayerElem)
     ok = ok || this.verts.customData.hasLayer(NormalLayerElem)
 
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       e.updateLength()
     }
 
     if (!ok) {
-      for (let f of this.faces) {
+      for (const f of this.faces) {
         f.calcNormal()
       }
 
@@ -1397,13 +1397,13 @@ mesh.Mesh {
 
     if (!this.faces.customData.hasLayer(NormalLayerElem)) {
       if (this.loops.customData.hasLayer(NormalLayerElem)) {
-        let cd_nor = this.loops.customData.getLayerRef(NormalLayerElem)
-        let have_vno = this.verts.customData.hasLayer(NormalLayerElem)
+        const cd_nor = this.loops.customData.getLayerRef(NormalLayerElem)
+        const have_vno = this.verts.customData.hasLayer(NormalLayerElem)
 
-        let tots = []
+        const tots = []
 
         if (!have_vno) {
-          for (let v of this.verts) {
+          for (const v of this.verts) {
             v.index = tots.length
             v.no.zero()
             tots.push(0)
@@ -1411,11 +1411,11 @@ mesh.Mesh {
         }
 
         //copy loop normals to verts and faces
-        for (let f of this.faces) {
+        for (const f of this.faces) {
           f.no.zero()
 
-          for (let l of f.loops) {
-            let no = cd_nor.get(l).no
+          for (const l of f.loops) {
+            const no = cd_nor.get(l).no
             no.normalize()
 
             if (!have_vno) {
@@ -1430,19 +1430,19 @@ mesh.Mesh {
         }
 
         if (!have_vno) {
-          for (let v of this.verts) {
+          for (const v of this.verts) {
             v.no.normalize()
           }
         }
       } else if (this.verts.customData.hasLayer(NormalLayerElem)) {
-        let cd_nor = this.verts.customData.getLayerRef(NormalLayerElem)
+        const cd_nor = this.verts.customData.getLayerRef(NormalLayerElem)
 
         //copy vert normals to faces
-        for (let f of this.faces) {
+        for (const f of this.faces) {
           f.no.zero()
 
-          for (let l of f.loops) {
-            let no = cd_nor.get(l.v).no
+          for (const l of f.loops) {
+            const no = cd_nor.get(l.v).no
             no.normalize()
 
             f.no.add(no)
@@ -1452,9 +1452,9 @@ mesh.Mesh {
         }
       }
     } else {
-      let cd_nor = this.faces.customData.getLayerRef(NormalLayerElem)
+      const cd_nor = this.faces.customData.getLayerRef(NormalLayerElem)
 
-      for (let f of this.faces) {
+      for (const f of this.faces) {
         f.no.load(cd_nor.get(f).no).normalize()
       }
 
@@ -1463,7 +1463,7 @@ mesh.Mesh {
   }
 
   recalcNormals(cd_disp: CDRef<DispLayerVert> = -1) {
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       f.calcCent()
     }
 
@@ -1553,7 +1553,7 @@ mesh.Mesh {
     let oldvs: Set<Vertex> | undefined
 
     if (DEBUG_BAD_LOOPS) {
-      for (let v of f.verts) {
+      for (const v of f.verts) {
         this._checkElemLoops(v, 'killFace 1')
       }
 
@@ -1572,12 +1572,12 @@ mesh.Mesh {
       lctx.killFace(f, (logtag = 0))
     }
 
-    for (let list of f.lists) {
+    for (const list of f.lists) {
       let l = list.l
       let _i = 0
 
       do {
-        let next = l.next
+        const next = l.next
 
         if (l.e) {
           this._radialRemove(l.e, l)
@@ -1599,7 +1599,7 @@ mesh.Mesh {
     this._freeFace(f)
 
     if (DEBUG_BAD_LOOPS && oldvs) {
-      for (let v of oldvs) {
+      for (const v of oldvs) {
         this._checkElemLoops(v, 'killFace 2')
       }
     }
@@ -1627,7 +1627,7 @@ mesh.Mesh {
   }
 
   clearHighlight(): void {
-    for (let list of this.getElemLists()) {
+    for (const list of this.getElemLists()) {
       list.highlight = undefined
     }
   }
@@ -1639,7 +1639,7 @@ mesh.Mesh {
   /** flushes MeshFlags.UPDATE from faces/edges to vertices*/
   flushUpdateFlags(typemask: MeshTypes = MeshTypes.EDGE | MeshTypes.FACE): void {
     if (typemask & MeshTypes.EDGE) {
-      for (let e of this.edges) {
+      for (const e of this.edges) {
         if (!(e.flag & MeshFlags.UPDATE)) {
           continue
         }
@@ -1650,12 +1650,12 @@ mesh.Mesh {
     }
 
     if (typemask & MeshTypes.FACE) {
-      for (let f of this.faces) {
+      for (const f of this.faces) {
         if (!(f.flag & MeshFlags.UPDATE)) {
           continue
         }
 
-        for (let v of f.verts) {
+        for (const v of f.verts) {
           v.flag |= MeshFlags.UPDATE
         }
       }
@@ -1674,7 +1674,7 @@ mesh.Mesh {
 
       setActive = setActive || !(activeFlag & MeshFlags.SELECT)
 
-      for (let e of this.edges) {
+      for (const e of this.edges) {
         if (e.flag & MeshFlags.HIDE) {
           continue
         }
@@ -1688,14 +1688,14 @@ mesh.Mesh {
         }
       }
 
-      for (let f of this.faces) {
+      for (const f of this.faces) {
         if (f.flag & MeshFlags.HIDE) {
           continue
         }
 
         let sel = true
 
-        for (let e of f.edges) {
+        for (const e of f.edges) {
           if (!(e.flag & MeshFlags.SELECT)) {
             sel = false
             break
@@ -1708,16 +1708,16 @@ mesh.Mesh {
       this.verts.selectNone()
       this.faces.selectNone()
 
-      for (let e of this.edges.selected) {
+      for (const e of this.edges.selected) {
         this.verts.setSelect(e.v1, true)
         this.verts.setSelect(e.v2, true)
 
-        for (let l of e.loops) {
-          let f = l.f
+        for (const l of e.loops) {
+          const f = l.f
 
           let ok = true
 
-          for (let e of f.edges) {
+          for (const e of f.edges) {
             if (!(e.flag & MeshFlags.SELECT)) {
               ok = false
               break
@@ -1733,13 +1733,13 @@ mesh.Mesh {
       this.verts.selectNone()
       this.edges.selectNone()
 
-      for (let f of this.faces) {
+      for (const f of this.faces) {
         if (!(f.flag & MeshFlags.SELECT)) {
           continue
         }
 
-        for (let list of f.lists) {
-          for (let l of list) {
+        for (const list of f.lists) {
+          for (const l of list) {
             this.verts.setSelect(l.v, true)
             this.edges.setSelect(l.e, true)
           }
@@ -1757,8 +1757,8 @@ mesh.Mesh {
       }
 
       let i = 0
-      for (let e of elist) {
-        for (let cd of e.customData) {
+      for (const e of elist) {
+        for (const cd of e.customData) {
           if (cd instanceof OrigIndexElem) {
             cd.i = i
           }
@@ -1785,7 +1785,7 @@ mesh.Mesh {
   }
 
   _splitEdgeNoFace(e: Edge, t = 0.5, lctx?: LogContext): [Edge, Vertex] {
-    let v1 = e.v1,
+    const v1 = e.v1,
       v2 = e.v2
 
     t = t === undefined ? 0.5 : t
@@ -1795,13 +1795,13 @@ mesh.Mesh {
       lctx.killEdge(e, LogTags.SPLIT_EDGE)
     }
 
-    let nv = this.makeVertex(e.v1.co)
+    const nv = this.makeVertex(e.v1.co)
     nv.co.interp(e.v2.co, t)
 
     nv.no.load(e.v1.no).interp(e.v2.no, t)
     nv.no.normalize()
 
-    let ne = this.makeEdge(nv, e.v2)
+    const ne = this.makeEdge(nv, e.v2)
 
     this.copyElemData(ne, e)
 
@@ -1846,7 +1846,7 @@ mesh.Mesh {
 
     let ok = false
 
-    for (let l2 of e.loops) {
+    for (const l2 of e.loops) {
       if (l2 === l) {
         ok = true
         break
@@ -1863,7 +1863,7 @@ mesh.Mesh {
   }
 
   applyMatrix(matrix: Matrix4): this {
-    for (let v of this.verts) {
+    for (const v of this.verts) {
       v.co.multVecMatrix(matrix)
       v.flag |= MeshFlags.UPDATE
     }
@@ -1884,22 +1884,22 @@ mesh.Mesh {
 
     if (v_keep === e.v2) {
       //swap v1/v2
-      let tmp = e.v1
+      const tmp = e.v1
       e.v1 = e.v2
       e.v2 = tmp
     }
 
-    let v1 = e.v1
-    let v2 = e.v2
+    const v1 = e.v1
+    const v2 = e.v2
 
-    let flag = MeshFlags.COLLAPSE_TEMP
+    const flag = MeshFlags.COLLAPSE_TEMP
 
-    let cdls = _collapsecd_ls
-    let cdws = _collapsecd_ws
+    const cdls = _collapsecd_ls
+    const cdws = _collapsecd_ws
 
     if (snap) {
       //snap loop customdata
-      for (let l of e.loops) {
+      for (const l of e.loops) {
         cdls[0] = l
         cdls[1] = l.next
 
@@ -1918,9 +1918,9 @@ mesh.Mesh {
     }
 
     //clear flags
-    for (let v of e.verts) {
-      for (let e2 of v.edges) {
-        for (let l of e2.loops) {
+    for (const v of e.verts) {
+      for (const e2 of v.edges) {
+        for (const l of e2.loops) {
           l.flag &= ~flag
           l.e.flag &= ~flag
           l.e.flag |= MeshFlags.UPDATE
@@ -1936,17 +1936,17 @@ mesh.Mesh {
 
     v1.flag |= MeshFlags.UPDATE
 
-    let fs: Face[] = _collapsetemp
-    let es: Edge[] = _collapsetemp2
+    const fs: Face[] = _collapsetemp
+    const es: Edge[] = _collapsetemp2
 
-    for (let v of e.verts) {
-      for (let e2 of v.edges) {
+    for (const v of e.verts) {
+      for (const e2 of v.edges) {
         if (!(e2.flag & flag)) {
           es[elen++] = e2
           e2.flag |= flag
         }
 
-        for (let l of e2.loops) {
+        for (const l of e2.loops) {
           if (!(l.f.flag & flag)) {
             fs[flen++] = l.f
             l.f.flag |= flag
@@ -1956,7 +1956,7 @@ mesh.Mesh {
     }
 
     for (let i = 0; i < flen; i++) {
-      let f = fs[i]
+      const f = fs[i]
 
       if (f.eid < 0) {
         continue
@@ -1966,13 +1966,13 @@ mesh.Mesh {
         lctx.killFace(f, LogTags.SPLIT_EDGE)
       }
 
-      for (let l of f.loops) {
+      for (const l of f.loops) {
         this._radialRemove(l.e, l)
       }
     }
 
     for (let i = 0; i < elen; i++) {
-      let e = es[i]
+      const e = es[i]
 
       let ev1 = e.v1
       let ev2 = e.v2
@@ -2012,35 +2012,35 @@ mesh.Mesh {
     }
 
     for (let i = 0; i < flen; i++) {
-      let f = fs[i]
+      const f = fs[i]
 
-      for (let list of f.lists) {
-        for (let l of list) {
+      for (const list of f.lists) {
+        for (const l of list) {
           if (l.v === v2) {
             l.v = v1
           }
         }
 
-        let count = 0
+        const count = 0
 
-        let startl = list.l
+        const startl = list.l
         let l = list.l
         let _i = 0
 
-        for (let l of list) {
+        for (const l of list) {
           l.v.flag &= ~flag
           l.flag &= ~flag
         }
 
         do {
-          let next = l.next
+          const next = l.next
 
           if (_i++ > MAX_FACE_VERTS) {
             console.error('Infinite loop error')
             break
           }
 
-          let bad = l.v === l.next.v //l.v.flag & flag;
+          const bad = l.v === l.next.v //l.v.flag & flag;
           l.v.flag |= flag
 
           if (!bad) {
@@ -2075,7 +2075,7 @@ mesh.Mesh {
       let killface = false
 
       for (let j = 0; j < f.lists.length; j++) {
-        let list = f.lists[j]
+        const list = f.lists[j]
 
         if (list.length > 2 && list.l) {
           f.lists[li++] = list
@@ -2099,7 +2099,7 @@ mesh.Mesh {
       killface = killface || li === 0
 
       if (killface) {
-        for (let list of f.lists) {
+        for (const list of f.lists) {
           this._killLoopList(list, false)
         }
 
@@ -2108,13 +2108,13 @@ mesh.Mesh {
     }
 
     for (let i = 0; i < flen; i++) {
-      let f = fs[i]
+      const f = fs[i]
 
       if (f.eid < 0) {
         continue
       }
 
-      for (let l of f.loops) {
+      for (const l of f.loops) {
         l.e = this.ensureEdge(l.v, l.next.v, lctx)
         this._radialInsert(l.e, l)
       }
@@ -2145,7 +2145,7 @@ mesh.Mesh {
     v1.flag |= MeshFlags.UPDATE
 
     if (DEBUG_DUPLICATE_FACES) {
-      for (let f of v1.faces) {
+      for (const f of v1.faces) {
         this._checkFace(f, `collapseEdge(e=${e._old_eid}, v1=${v1.eid})`)
         /*
         if (!this._checkFace(f, f.verts, `collapseEdge(e=${e._old_eid}, v1=${v1.eid})`, REWIND_DEBUG)) {
@@ -2176,7 +2176,7 @@ mesh.Mesh {
       throw new MeshError('' + msg + ': v_or_e.eid < 0')
     }
 
-    for (let l of v_or_e.loops) {
+    for (const l of v_or_e.loops) {
       if (l.f.eid < 0) {
         console.warn(l.f)
         throw new MeshError('' + msg + ': l.f.eid < 0')
@@ -2200,7 +2200,7 @@ mesh.Mesh {
     let _i = 0
 
     do {
-      let next = l.next
+      const next = l.next
 
       if (_i++ > MAX_FACE_VERTS) {
         console.error('infinite loop error')
@@ -2220,14 +2220,14 @@ mesh.Mesh {
   }
 
   reverseListWinding(list: LoopList) {
-    for (let l of list) {
+    for (const l of list) {
       this._radialRemove(l.e, l)
     }
 
     let l = list.l
     let _i = 0
     do {
-      let next = l.next
+      const next = l.next
 
       l.next = l.prev
       l.prev = next
@@ -2239,7 +2239,7 @@ mesh.Mesh {
       l = next
     } while (l !== list.l)
 
-    for (let l of list) {
+    for (const l of list) {
       l.e = this.assertEdge(l.v, l.next.v)
       this._radialInsert(l.e, l)
     }
@@ -2250,15 +2250,15 @@ mesh.Mesh {
       lctx.killFace(f)
     }
 
-    for (let list of f.lists) {
-      for (let l of list) {
+    for (const list of f.lists) {
+      for (const l of list) {
         this._radialRemove(l.e, l)
       }
 
       let l = list.l
       let _i = 0
       do {
-        let next = l.next
+        const next = l.next
 
         l.next = l.prev
         l.prev = next
@@ -2270,7 +2270,7 @@ mesh.Mesh {
         l = next
       } while (l !== list.l)
 
-      for (let l of list) {
+      for (const l of list) {
         l.e = this.assertEdge(l.v, l.next.v)
         this._radialInsert(l.e, l)
       }
@@ -2297,14 +2297,14 @@ mesh.Mesh {
       throw new MeshError('makeFace: vs was empty')
     }
 
-    let flag = MeshFlags.MAKE_FACE_TEMP
+    const flag = MeshFlags.MAKE_FACE_TEMP
 
     //check for duplicate verts
-    for (let v of vs) {
+    for (const v of vs) {
       v.flag &= ~flag
     }
 
-    for (let v of vs) {
+    for (const v of vs) {
       if (v.flag & flag) {
         throw new MeshError('duplicate verts passed to makeHole')
       }
@@ -2314,14 +2314,14 @@ mesh.Mesh {
 
     //make new list
 
-    let list = new LoopList()
+    const list = new LoopList()
     list.length = vs.length
 
     f.lists.push(list)
     let lastl: Loop | undefined, firstl: Loop | undefined
 
     for (let i = 0; i < vs.length; i++) {
-      let l = this._makeLoop()
+      const l = this._makeLoop()
 
       l.v = vs[i]
       l.list = list
@@ -2342,7 +2342,7 @@ mesh.Mesh {
 
     list.l = firstl!
 
-    for (let l of list) {
+    for (const l of list) {
       l.e = this.ensureEdge(l.v, l.next.v, lctx)
       this._radialInsert(l.e, l)
     }
@@ -2353,10 +2353,10 @@ mesh.Mesh {
   /** trys to connect two verts through exactly
    *  one face, which is split.  returns loop of new split edge*/
   connectVerts(v1: Vertex, v2: Vertex, lctx?: LogContext) {
-    for (let f of v1.faces) {
+    for (const f of v1.faces) {
       let tot = 0
 
-      for (let l of f.lists[0]) {
+      for (const l of f.lists[0]) {
         if (l.v === v1) {
           tot++
         } else if (l.v === v2) {
@@ -2377,10 +2377,10 @@ mesh.Mesh {
   }
 
   splitFaceAtVerts(f: Face, v1: Vertex, v2: Vertex, lctx?: LogContext) {
-    for (let list of f.lists) {
+    for (const list of f.lists) {
       let l1, l2
 
-      for (let l of list) {
+      for (const l of list) {
         if (l.v === v1 || l.v === v2) {
           if (!l1) {
             l1 = l
@@ -2452,7 +2452,7 @@ mesh.Mesh {
       l = l.next
     } while (l !== l2)
 
-    let f2 = this._allocFace(0)
+    const f2 = this._allocFace(0)
 
     l = l1
     _i = 0
@@ -2466,8 +2466,8 @@ mesh.Mesh {
       l = l.next
     } while (l !== l2)
 
-    let list1 = f.lists[0]
-    let list2 = new LoopList()
+    const list1 = f.lists[0]
+    const list2 = new LoopList()
     f2.lists.push(list2)
 
     list2.flag = list1.flag
@@ -2483,7 +2483,7 @@ mesh.Mesh {
 
     //l1 goes to new face, l2 stays behind
 
-    let e = this.makeEdge(l1.v, l2.v)
+    const e = this.makeEdge(l1.v, l2.v)
 
     if (lctx) {
       lctx.newEdge(e, LogTags.SPLIT_FACE)
@@ -2495,18 +2495,18 @@ mesh.Mesh {
     //this._radialRemove(l2.e, l2);
 
     // clear references
-    let el1 = this._makeLoop()
+    const el1 = this._makeLoop()
     el1.radial_next = el1.radial_prev = undefined as unknown as Loop
-    let el2 = this._makeLoop()
+    const el2 = this._makeLoop()
     el2.radial_next = el2.radial_prev = undefined as unknown as Loop
 
     el1.v = l1.v
     el1.f = f
     el1.e = e
 
-    let l1next = l1.next,
+    const l1next = l1.next,
       l1prev = l1.prev
-    let l2next = l2.next,
+    const l2next = l2.next,
       l2prev = l2.prev
 
     l1.prev.next = el1
@@ -2536,16 +2536,16 @@ mesh.Mesh {
     l1.e = this.assertEdge(l1.v, l1.next.v)
     l2.e = this.assertEdge(l2.v, l2.next.v)
 
-    for (let list of f.lists) {
-      for (let l of list) {
+    for (const list of f.lists) {
+      for (const l of list) {
         l.e = this.assertEdge(l.v, l.next.v)
         this._radialInsert(l.e, l)
       }
       list._recount()
     }
 
-    for (let list of f2.lists) {
-      for (let l of list) {
+    for (const list of f2.lists) {
+      for (const l of list) {
         l.e = this.assertEdge(l.v, l.next.v)
         this._radialInsert(l.e, l)
       }
@@ -2558,8 +2558,8 @@ mesh.Mesh {
     }
 
     if (DEBUG_DUPLICATE_FACES) {
-      for (let v of el2.e.verts) {
-        for (let f of v.faces) {
+      for (const v of el2.e.verts) {
+        for (const f of v.faces) {
           this._checkFace(f, 'splitFace')
         }
       }
@@ -2572,7 +2572,7 @@ mesh.Mesh {
     if (DEBUG_BAD_LOOPS && el2) {
       this._checkElemLoops(el2.e, 'splitFace')
 
-      for (let v of el2.e.verts) {
+      for (const v of el2.e.verts) {
         this._checkElemLoops(v, 'splitFace')
       }
     }
@@ -2581,17 +2581,17 @@ mesh.Mesh {
   }
 
   __splitEdgeSimple(e: Edge, t = 0.5) {
-    let nv = this.makeVertex(e.v1.co)
+    const nv = this.makeVertex(e.v1.co)
     nv.co.interp(e.v2.co, t)
 
-    let e1 = this.makeEdge(e.v1, nv)
-    let e2 = this.makeEdge(nv, e.v2)
+    const e1 = this.makeEdge(e.v1, nv)
+    const e2 = this.makeEdge(nv, e.v2)
 
-    for (let l of e.loops) {
-      let vs = []
-      let ls = []
+    for (const l of e.loops) {
+      const vs = []
+      const ls = []
 
-      for (let l2 of l.f.lists[0]) {
+      for (const l2 of l.f.lists[0]) {
         vs.push(l2.v)
         ls.push(l2)
 
@@ -2613,7 +2613,7 @@ mesh.Mesh {
     if (DEBUG_BAD_LOOPS) {
       this._checkElemLoops(e, 'splitEdge 0')
 
-      for (let v of e.verts) {
+      for (const v of e.verts) {
         this._checkElemLoops(v, 'splitEdge 1')
       }
     }
@@ -2625,20 +2625,20 @@ mesh.Mesh {
     }
 
     if (lctx) {
-      for (let f of e.faces) {
+      for (const f of e.faces) {
         lctx.killFace(f, LogTags.SPLIT_EDGE)
       }
     }
 
-    let ret = this._splitEdgeNoFace(e, t, lctx)
+    const ret = this._splitEdgeNoFace(e, t, lctx)
 
     if (e.l === undefined) {
       return ret
     }
 
-    let ne = ret[0],
+    const ne = ret[0],
       nv = ret[1]
-    let v1 = e.v1,
+    const v1 = e.v1,
       v2 = ne.v2
 
     let l = e.l
@@ -2656,16 +2656,16 @@ mesh.Mesh {
     } while (l !== e.l)
 
     for (let i = 0; i < count; i++) {
-      let l = split_temp[i]
+      const l = split_temp[i]
       this._radialRemove(l.e, l)
     }
 
     for (let i = 0; i < count; i++) {
-      let l = split_temp[i]
+      const l = split_temp[i]
 
-      let lnext = l.next
+      const lnext = l.next
 
-      let l2 = this._makeLoop()
+      const l2 = this._makeLoop()
 
       l2.list = l.list
       l2.f = l.f
@@ -2697,8 +2697,8 @@ mesh.Mesh {
         l.next = l2
       }
 
-      let cdls = splitcd_ls
-      let cdws = splitcd_ws
+      const cdls = splitcd_ls
+      const cdws = splitcd_ws
 
       cdws[0] = cdws[1] = 0.5
       cdls[0] = l
@@ -2712,23 +2712,23 @@ mesh.Mesh {
     }
 
     if (lctx) {
-      let flag = MeshFlags.MAKE_FACE_TEMP
+      const flag = MeshFlags.MAKE_FACE_TEMP
 
-      for (let f of e.faces) {
+      for (const f of e.faces) {
         f.flag &= ~flag
       }
-      for (let f of ne.faces) {
+      for (const f of ne.faces) {
         f.flag &= ~flag
       }
 
-      for (let f of e.faces) {
+      for (const f of e.faces) {
         if (!(f.flag & flag)) {
           f.flag |= flag
           lctx.newFace(f, LogTags.SPLIT_EDGE)
         }
       }
 
-      for (let f of ne.faces) {
+      for (const f of ne.faces) {
         if (!(f.flag & flag)) {
           f.flag |= flag
           lctx.newFace(f, LogTags.SPLIT_EDGE)
@@ -2743,9 +2743,9 @@ mesh.Mesh {
 
     if (DEBUG_DUPLICATE_FACES) {
       for (let i = 0; i < 2; i++) {
-        let e1 = i ? ne : e
-        for (let v of e1.verts) {
-          for (let f of v.faces) {
+        const e1 = i ? ne : e
+        for (const v of e1.verts) {
+          for (const f of v.faces) {
             this._checkFace(f, 'splitEdge')
           }
         }
@@ -2777,12 +2777,12 @@ mesh.Mesh {
     }
 
     if (lctx) {
-      for (let f of e.faces) {
+      for (const f of e.faces) {
         lctx.killFace(f, LogTags.SPLIT_EDGE)
       }
     }
 
-    let ret = this._splitEdgeNoFace(e, t, lctx)
+    const ret = this._splitEdgeNoFace(e, t, lctx)
 
     for (let i = 0; i < 3; i++) {
       let v
@@ -2800,8 +2800,8 @@ mesh.Mesh {
         z = 0.0
       let tot = 0.0
 
-      for (let e2 of v.edges) {
-        let v2 = e2.otherVertex(v)
+      for (const e2 of v.edges) {
+        const v2 = e2.otherVertex(v)
 
         x += v2[0]
         y += v2[1]
@@ -2825,9 +2825,9 @@ mesh.Mesh {
       return ret
     }
 
-    let ne = ret[0],
+    const ne = ret[0],
       nv = ret[1]
-    let v1 = e.v1,
+    const v1 = e.v1,
       v2 = ne.v2
 
     let l = e.l
@@ -2845,16 +2845,16 @@ mesh.Mesh {
     } while (l !== e.l)
 
     for (let i = 0; i < count; i++) {
-      let l = split_temp[i]
+      const l = split_temp[i]
       this._radialRemove(l.e, l)
     }
 
     for (let i = 0; i < count; i++) {
-      let l = split_temp[i]
+      const l = split_temp[i]
 
-      let lnext = l.next
+      const lnext = l.next
 
-      let l2 = this._makeLoop()
+      const l2 = this._makeLoop()
 
       l2.list = l.list
       l2.f = l.f
@@ -2886,8 +2886,8 @@ mesh.Mesh {
         l.next = l2
       }
 
-      let cdls = splitcd_ls
-      let cdws = splitcd_ws
+      const cdls = splitcd_ls
+      const cdws = splitcd_ws
 
       cdws[0] = cdws[1] = 0.5
       cdls[0] = l
@@ -2901,23 +2901,23 @@ mesh.Mesh {
     }
 
     if (lctx) {
-      let flag = MeshFlags.MAKE_FACE_TEMP
+      const flag = MeshFlags.MAKE_FACE_TEMP
 
-      for (let f of e.faces) {
+      for (const f of e.faces) {
         f.flag &= ~flag
       }
-      for (let f of ne.faces) {
+      for (const f of ne.faces) {
         f.flag &= ~flag
       }
 
-      for (let f of e.faces) {
+      for (const f of e.faces) {
         if (!(f.flag & flag)) {
           f.flag |= flag
           lctx.newFace(f, LogTags.SPLIT_EDGE)
         }
       }
 
-      for (let f of ne.faces) {
+      for (const f of ne.faces) {
         if (!(f.flag & flag)) {
           f.flag |= flag
           lctx.newFace(f, LogTags.SPLIT_EDGE)
@@ -2932,9 +2932,9 @@ mesh.Mesh {
 
     if (DEBUG_DUPLICATE_FACES) {
       for (let i = 0; i < 2; i++) {
-        let e1 = i ? ne : e
-        for (let v of e1.verts) {
-          for (let f of v.faces) {
+        const e1 = i ? ne : e
+        for (const v of e1.verts) {
+          for (const f of v.faces) {
             this._checkFace(f, 'splitEdge')
           }
         }
@@ -2977,21 +2977,21 @@ mesh.Mesh {
 
     const verts = ReusableIter.getSafeIter<Vertex>(vertices)
 
-    let edges = new Set<Edge>()
-    for (let v of verts) {
-      for (let e of v.edges) {
+    const edges = new Set<Edge>()
+    for (const v of verts) {
+      for (const e of v.edges) {
         edges.add(e)
       }
     }
 
-    for (let e of edges) {
+    for (const e of edges) {
       if (!e.l) {
         this.killEdge(e, lctx)
         update = true
       }
     }
 
-    for (let v of verts) {
+    for (const v of verts) {
       if (v.valence === 0) {
         this.killVertex(v, undefined, lctx)
         update = true
@@ -3022,7 +3022,7 @@ mesh.Mesh {
 
     let e1: Edge | undefined, e2: Edge | undefined
 
-    for (let e of v.edges) {
+    for (const e of v.edges) {
       if (!e1) e1 = e
       else if (!e2) e2 = e
     }
@@ -3031,8 +3031,8 @@ mesh.Mesh {
       throw new Error('error in joinTwoEdges')
     }
 
-    let v1 = e1.otherVertex(v)
-    let v2 = e2.otherVertex(v)
+    const v1 = e1.otherVertex(v)
+    const v2 = e2.otherVertex(v)
 
     v1.flag |= MeshFlags.UPDATE
     v2.flag |= MeshFlags.UPDATE
@@ -3065,7 +3065,7 @@ mesh.Mesh {
       if (DEBUG_BAD_LOOPS) {
         this._checkElemLoops(e1, 'joinTwoEdges')
 
-        for (let v of e1.verts) {
+        for (const v of e1.verts) {
           this._checkElemLoops(v, 'joinTwoEdges')
         }
       }
@@ -3074,18 +3074,18 @@ mesh.Mesh {
     }
 
     let count = 0
-    let flag = MeshFlags.TEMP4
-    let flag2 = MeshFlags.TEMP5
+    const flag = MeshFlags.TEMP4
+    const flag2 = MeshFlags.TEMP5
 
     for (let i = 0; i < 2; i++) {
-      let e = i ? e2 : e1
-      for (let l of e.loops) {
+      const e = i ? e2 : e1
+      for (const l of e.loops) {
         l.f.flag &= ~(flag | flag2)
       }
     }
     for (let i = 0; i < 2; i++) {
-      let e = i ? e2 : e1
-      for (let l of e.loops) {
+      const e = i ? e2 : e1
+      for (const l of e.loops) {
         if (!(l.f.flag & flag)) {
           l.f.flag |= flag
           count++
@@ -3093,12 +3093,12 @@ mesh.Mesh {
       }
     }
 
-    let fs = getArrayTemp<Face>(count)
+    const fs = getArrayTemp<Face>(count)
     let fi = 0
 
     for (let i = 0; i < 2; i++) {
-      let e = i ? e2 : e1
-      for (let l of e.loops) {
+      const e = i ? e2 : e1
+      for (const l of e.loops) {
         if (!(l.f.flag & flag2)) {
           l.f.flag |= flag2
           fs[fi++] = l.f
@@ -3106,7 +3106,7 @@ mesh.Mesh {
       }
     }
 
-    for (let f of fs) {
+    for (const f of fs) {
       if (f.isTri()) {
         this.killFace(f)
         continue
@@ -3114,7 +3114,7 @@ mesh.Mesh {
 
       f.flag |= MeshFlags.UPDATE
 
-      for (let l of f.loops) {
+      for (const l of f.loops) {
         l.v.flag |= MeshFlags.UPDATE
         l.e.flag |= MeshFlags.UPDATE
 
@@ -3122,13 +3122,13 @@ mesh.Mesh {
       }
     }
 
-    for (let f of fs) {
+    for (const f of fs) {
       if (f.eid < 0) {
         continue
       }
 
       for (let i = 0; i < f.lists.length; i++) {
-        let list = f.lists[i]
+        const list = f.lists[i]
         let l = list.l
         let _i = 0
 
@@ -3138,7 +3138,7 @@ mesh.Mesh {
             break
           }
 
-          let next = l.next
+          const next = l.next
 
           if (l.v === v) {
             if (list.l === l) {
@@ -3191,7 +3191,7 @@ mesh.Mesh {
 
     this.killEdge(e2, lctx)
 
-    for (let f of fs) {
+    for (const f of fs) {
       if (f.eid < 0) {
         continue
       }
@@ -3206,8 +3206,8 @@ mesh.Mesh {
     this.killVertex(v)
 
     if (DEBUG_DUPLICATE_FACES) {
-      for (let v of e0.verts) {
-        for (let f of v.faces) {
+      for (const v of e0.verts) {
+        for (const f of v.faces) {
           this._checkFace(f, 'joinTwoVerts')
         }
       }
@@ -3221,16 +3221,16 @@ mesh.Mesh {
   }
 
   _fixFace(f: Face, lctx?: LogContext, is_linked = true) {
-    for (let list of f.lists) {
-      for (let l of list) {
+    for (const list of f.lists) {
+      for (const l of list) {
         this._radialRemoveSafe(l.e, l)
       }
     }
 
-    let tag = MeshFlags.FACE_EXIST_FLAG
+    const tag = MeshFlags.FACE_EXIST_FLAG
 
     for (let i = 0; i < f.lists.length; i++) {
-      let list = f.lists[i]
+      const list = f.lists[i]
 
       let l = list.l
 
@@ -3272,8 +3272,8 @@ mesh.Mesh {
       return undefined
     }
 
-    for (let list of f.lists) {
-      for (let l of list) {
+    for (const list of f.lists) {
+      for (const l of list) {
         let ok
 
         if (l.e) {
@@ -3302,7 +3302,7 @@ mesh.Mesh {
 
     //handle case of two-valence vert with no surrounding faces
     let e1, e2
-    for (let e of v.edges) {
+    for (const e of v.edges) {
       if (!e1) {
         e1 = e
       } else {
@@ -3315,37 +3315,37 @@ mesh.Mesh {
     }
 
     if (v.valence === 2 && !e1.l && !e2.l) {
-      let v1 = e1.otherVertex(v)
-      let v2 = e2.otherVertex(v)
+      const v1 = e1.otherVertex(v)
+      const v2 = e2.otherVertex(v)
 
-      let e = this.ensureEdge(v1, v2)
+      const e = this.ensureEdge(v1, v2)
       this.copyElemData(e, e1)
 
       this.killVertex(v, undefined, lctx, LogTags.DISSOLVE_VERT)
       return
     }
 
-    let flag1 = MeshFlags.TEMP3
-    let flag2 = MeshFlags.TEMP4
-    let flag3 = MeshFlags.TEMP5
+    const flag1 = MeshFlags.TEMP3
+    const flag2 = MeshFlags.TEMP4
+    const flag3 = MeshFlags.TEMP5
 
-    let allflags = flag1 | flag2 | flag3
+    const allflags = flag1 | flag2 | flag3
 
-    for (let e of v.edges) {
+    for (const e of v.edges) {
       e.flag &= ~allflags
 
-      for (let l of e.loops) {
+      for (const l of e.loops) {
         l.f.flag &= ~allflags
 
-        for (let l2 of l.f.loops) {
+        for (const l2 of l.f.loops) {
           l2.v.flag &= ~allflags
           l2.e.flag &= ~allflags
           l2.flag &= ~allflags
 
-          for (let e2 of l2.v.edges) {
+          for (const e2 of l2.v.edges) {
             e2.flag &= ~allflags
 
-            for (let l3 of e2.loops) {
+            for (const l3 of e2.loops) {
               l3.flag &= ~allflags
               l3.v.flag &= ~allflags
               l3.f.flag &= ~allflags
@@ -3358,7 +3358,7 @@ mesh.Mesh {
     let startl = undefined
     let boundary = false
 
-    for (let e of v.edges) {
+    for (const e of v.edges) {
       if (e.l && e.l.radial_next === e.l) {
         boundary = true
         break
@@ -3368,8 +3368,8 @@ mesh.Mesh {
     if (boundary && v.valence === 2) {
       let l
 
-      for (let e of v.edges) {
-        for (let l2 of e.loops) {
+      for (const e of v.edges) {
+        for (const l2 of e.loops) {
           l = l2
           break
         }
@@ -3395,10 +3395,10 @@ mesh.Mesh {
         l = l.next
       }
 
-      let v1 = l.prev.v
-      let v2 = v
-      let v3 = l.next.v
-      let f = l.f
+      const v1 = l.prev.v
+      const v2 = v
+      const v3 = l.next.v
+      const f = l.f
 
       if (l === l.list.l) {
         l.list.l = l.next
@@ -3415,7 +3415,7 @@ mesh.Mesh {
       this._radialRemove(l.e, l)
       this._radialRemove(l.next.e, l.next)
 
-      let e2 = this.ensureEdge(v1, v3, lctx)
+      const e2 = this.ensureEdge(v1, v3, lctx)
       this.copyElemData(e2, l.e)
 
       this.killEdge(l.prev.e)
@@ -3425,8 +3425,8 @@ mesh.Mesh {
       l.prev.next = l.next
       l.next.prev = l.prev
 
-      let l1 = l.prev
-      let l2 = l.next
+      const l1 = l.prev
+      const l2 = l.next
 
       l1.e = this.ensureEdge(l1.v, l1.next.v)
       l2.e = this.ensureEdge(l2.v, l2.next.v)
@@ -3453,11 +3453,11 @@ mesh.Mesh {
 
     let count = 0
     //for (let f of v.faces) {
-    for (let e1 of v.edges) {
-      for (let l1 of e1.loops) {
-        let f = l1.f
+    for (const e1 of v.edges) {
+      for (const l1 of e1.loops) {
+        const f = l1.f
 
-        for (let l of f.loops) {
+        for (const l of f.loops) {
           if (!startl && l.e.v1 !== v && l.e.v2 !== v) {
             startl = l
           }
@@ -3498,7 +3498,7 @@ mesh.Mesh {
 
     startl.e.flag |= flag2
 
-    for (let e of v.edges) {
+    for (const e of v.edges) {
       e.flag |= flag2
     }
 
@@ -3509,7 +3509,7 @@ mesh.Mesh {
 
       let nexte = undefined
 
-      for (let e of l.v.edges) {
+      for (const e of l.v.edges) {
         if (dolog) console.log('  ' + l.e.eid, e.eid, '  ', !!e.l, e.flag & flag1, e.flag & flag2)
 
         if (!e.l) {
@@ -3556,14 +3556,14 @@ mesh.Mesh {
       ls = reallocArrayTemp(ls, vi)
     }
 
-    for (let l of ls) {
+    for (const l of ls) {
       l.v.flag &= ~(flag1 | flag2)
     }
 
     let ls2: Loop[] = getArrayTemp<Loop>(ls.length)
     let li = 0
 
-    for (let l of ls) {
+    for (const l of ls) {
       if (!(l.v.flag & flag1)) {
         ls2[li++] = l
       }
@@ -3575,51 +3575,51 @@ mesh.Mesh {
       ls2 = reallocArrayTemp(ls2, li) as unknown as Loop[]
     }
 
-    let vs = getArrayTemp<Vertex>(li)
+    const vs = getArrayTemp<Vertex>(li)
 
     if (dolog) console.log('vs', vs.length)
 
     vi = 0
 
-    for (let l of ls2) {
+    for (const l of ls2) {
       vs[vi++] = l.v
     }
 
     let f
     let ok = vs.length > 2
-    let flag = MeshFlags.COLLAPSE_TEMP
+    const flag = MeshFlags.COLLAPSE_TEMP
 
     //set up flags to detect non-manifold error
     for (let i = 0; ok && i < vs.length; i++) {
-      let v1 = vs[i],
+      const v1 = vs[i],
         v2 = vs[(i + 1) % vs.length]
-      let e = this.getEdge(v1, v2)
+      const e = this.getEdge(v1, v2)
 
       if (!e) {
         continue
       }
 
-      for (let l of e.loops) {
+      for (const l of e.loops) {
         l.f.flag &= ~flag
       }
     }
 
     //flag the faces we are going to delete with killVertex. . .
-    for (let f of v.faces) {
+    for (const f of v.faces) {
       f.flag |= flag
     }
 
     for (let i = 0; ok && i < vs.length; i++) {
-      let v1 = vs[i],
+      const v1 = vs[i],
         v2 = vs[(i + 1) % vs.length]
-      let e = this.getEdge(v1, v2)
+      const e = this.getEdge(v1, v2)
 
       if (!e) {
         continue
       }
 
       let count = 0
-      for (let f of e.faces) {
+      for (const f of e.faces) {
         if (!(f.flag & flag)) {
           count++
         }
@@ -3640,7 +3640,7 @@ mesh.Mesh {
       f = this.makeFace(vs, undefined, undefined, lctx, LogTags.DISSOLVE_VERT)
       li = 0
 
-      for (let l of f.loops) {
+      for (const l of f.loops) {
         if (li === 0) {
           this.copyElemData(f, ls[li].f)
         }
@@ -3674,13 +3674,13 @@ mesh.Mesh {
       //check winding
       let totbad = 0
       let checkexist = false
-      let deletef = false
+      const deletef = false
 
       let totm1 = 0,
         totm2 = 0,
         totm3 = 0
 
-      for (let l of f.loops) {
+      for (const l of f.loops) {
         if (l.radial_next === l) {
           totm1++
         } else if (l.radial_next.radial_next === l) {
@@ -3698,7 +3698,7 @@ mesh.Mesh {
       }
 
       if (0 && checkexist) {
-        let f2 = this.getFace(f.verts)
+        const f2 = this.getFace(f.verts)
         if (f2) {
           this.killFace(f, lctx, LogTags.DISSOLVE_VERT)
           f = f2
@@ -3717,14 +3717,14 @@ mesh.Mesh {
       if (DEBUG_MANIFOLD_EDGES) {
         this._checkManifold(f, 'dissolveVertex')
 
-        for (let v of f.verts) {
+        for (const v of f.verts) {
           this._checkManifold(v, 'dissolveVertex')
         }
       }
     }
 
     if (DEBUG_BAD_LOOPS && f) {
-      for (let v of f.verts) {
+      for (const v of f.verts) {
         this._checkElemLoops(v, 'dissolveVertex')
       }
 
@@ -3747,16 +3747,16 @@ mesh.Mesh {
       return
     }
 
-    let eid = e.eid
+    const eid = e.eid
     let flag = e.flag
-    let act = e === this.edges.active
+    const act = e === this.edges.active
 
-    let l1 = e.l,
+    const l1 = e.l,
       l2 = e.l.radial_next
-    let l1b = l1.prev,
+    const l1b = l1.prev,
       l2b = l2.prev
 
-    let customData = e.customData
+    const customData = e.customData
 
     if (l1b.v === l2b.v || l1b === l2b) {
       return
@@ -3767,14 +3767,14 @@ mesh.Mesh {
       return //can't dissolve
     }
 
-    let f1 = this.dissolveEdge(e, lctx)
+    const f1 = this.dissolveEdge(e, lctx)
 
     if (!f1) {
       return
     }
 
-    let el2 = this.splitFace(f1, l1b, l2b, lctx)
-    let e2 = el2?.e
+    const el2 = this.splitFace(f1, l1b, l2b, lctx)
+    const e2 = el2?.e
 
     if (e2) {
       e2.customData = customData
@@ -3806,7 +3806,7 @@ mesh.Mesh {
     }
 
     if (DEBUG_DUPLICATE_FACES && e2 !== undefined) {
-      for (let f of e2.faces) {
+      for (const f of e2.faces) {
         this._checkFace(f, 'rotateEdge')
       }
     }
@@ -3822,7 +3822,7 @@ mesh.Mesh {
   }
 
   setEID(elem: Element, eid: number) {
-    let elist = this.elists.get(elem.type)!
+    const elist = this.elists.get(elem.type)!
 
     if (elem.eid >= 0) {
       this.eidgen.free(elem.eid)
@@ -3853,10 +3853,10 @@ mesh.Mesh {
       geom = tmparray
     }
 
-    for (let elem of geom) {
+    for (const elem of geom) {
       switch (elem.type) {
         case MeshTypes.VERTEX:
-          for (let e of (elem as Vertex).edges) {
+          for (const e of (elem as Vertex).edges) {
             this._checkEdge(e, msg)
           }
           break
@@ -3867,7 +3867,7 @@ mesh.Mesh {
           this._checkEdge((elem as Loop).e, msg)
           break
         case MeshTypes.FACE:
-          for (let e of (elem as Face).edges) {
+          for (const e of (elem as Face).edges) {
             this._checkEdge(e, msg)
           }
           break
@@ -3884,8 +3884,8 @@ mesh.Mesh {
       throw new MeshError('f was freed?')
     }
 
-    for (let list of f.lists) {
-      for (let l of list) {
+    for (const list of f.lists) {
+      for (const l of list) {
         if (l.eid < 0) {
           console.log(list, l)
 
@@ -3911,14 +3911,14 @@ mesh.Mesh {
       f = f_or_vs
       let count = 0
 
-      for (let v of f.verts) {
+      for (const v of f.verts) {
         count++
       }
 
       vs = getArrayTemp(count)
       let i = 0
 
-      for (let v of f.verts) {
+      for (const v of f.verts) {
         vs[i++] = v
       }
     } else {
@@ -3943,7 +3943,7 @@ mesh.Mesh {
     }
 
     if (bad) {
-      let count = this.countDuplicateFaces(vs)
+      const count = this.countDuplicateFaces(vs)
 
       if (noerror) {
         end()
@@ -3974,7 +3974,7 @@ mesh.Mesh {
       console.error('splitting non-manifold radial cycle')
 
       /*split the radial cycle if we're non-manifold*/
-      let es = [e]
+      const es = [e]
 
       let _i = 0
       while (e.l.radial_prev !== e.l.radial_next) {
@@ -3983,11 +3983,11 @@ mesh.Mesh {
           break
         }
 
-        let e2 = this.makeEdge(e.v1, e.v2, false)
+        const e2 = this.makeEdge(e.v1, e.v2, false)
         es.push(e2)
 
-        let l1 = e.l
-        let l2 = e.l.radial_next
+        const l1 = e.l
+        const l2 = e.l.radial_next
 
         this._radialRemove(e, l1)
         this._radialRemove(e, l2)
@@ -4000,8 +4000,8 @@ mesh.Mesh {
 
       let f = undefined
 
-      for (let e2 of es) {
-        let f2 = this.dissolveEdge(e2)
+      for (const e2 of es) {
+        const f2 = this.dissolveEdge(e2)
         if (f2 && !f) {
           f = f2
         }
@@ -4016,7 +4016,7 @@ mesh.Mesh {
     if ((l1.f === l2.f && e.v1.valence === 1) || e.v2.valence === 1) {
       console.warn('Intruding edge!')
 
-      let v = e.v1.valence > 1 ? e.v1 : e.v2
+      const v = e.v1.valence > 1 ? e.v1 : e.v2
 
       this.collapseEdge(e, v, lctx)
       return
@@ -4030,10 +4030,10 @@ mesh.Mesh {
       l2 = e.l.radial_next
     }
 
-    let f1 = l1.f
-    let f2 = l2.f
+    const f1 = l1.f
+    const f2 = l2.f
 
-    let l2list = l2.list
+    const l2list = l2.list
 
     if (f1.lists.length > 1 || f2.lists.length > 1) {
       //console.error("IMPLEMENT me: holes in dissolveEdge!");
@@ -4052,16 +4052,16 @@ mesh.Mesh {
 
      */
 
-    for (let list of f1.lists) {
-      for (let l of list) {
+    for (const list of f1.lists) {
+      for (const l of list) {
         this._radialRemove(l.e, l)
         l.radial_next = l.radial_prev = l
       }
     }
 
     if (f2 !== f1) {
-      for (let list of f2.lists) {
-        for (let l of list) {
+      for (const list of f2.lists) {
+        for (const l of list) {
           this._radialRemove(l.e, l)
           l.radial_next = l.radial_prev = l
         }
@@ -4082,8 +4082,8 @@ mesh.Mesh {
     l2.next.prev = l1.prev
     l2.prev.next = l1.next
 
-    let l3 = l1.prev
-    let l4 = l2.prev
+    const l3 = l1.prev
+    const l4 = l2.prev
 
     if (l1 === l1.list.l) {
       this._killLoop(l1)
@@ -4123,7 +4123,7 @@ mesh.Mesh {
     if (count1 !== l1.list.length + l2.list.length - 2 || count1 !== count2) {
       console.error('Dissolving created a hole', count1, count2, l1.list.length, l2.list.length)
 
-      let list = new LoopList()
+      const list = new LoopList()
       list.l = l4
 
       f1.lists.push(list)
@@ -4133,7 +4133,7 @@ mesh.Mesh {
     this._killLoop(l2)
 
     if (f2 !== f1) {
-      for (let list of f2.lists) {
+      for (const list of f2.lists) {
         if (list !== l2list) {
           f1.lists.push(list)
         }
@@ -4143,11 +4143,11 @@ mesh.Mesh {
       this._freeFace(f2)
     }
 
-    for (let list of f1.lists) {
+    for (const list of f1.lists) {
       let count = 0
       let _i = 0
 
-      for (let l of list) {
+      for (const l of list) {
         l.list = list
         l.f = f1
 
@@ -4167,8 +4167,8 @@ mesh.Mesh {
 
     this.killEdge(e)
 
-    for (let list of f1.lists) {
-      for (let l of list) {
+    for (const list of f1.lists) {
+      for (const l of list) {
         l.list = list
         l.f = f1
 
@@ -4203,10 +4203,10 @@ mesh.Mesh {
     if (l1.f === l2.f) {
       console.warn('Intruding edge!')
 
-      let f = l1.f
+      const f = l1.f
 
-      for (let list of f.lists) {
-        for (let l of list) {
+      for (const list of f.lists) {
+        for (const l of list) {
           this._radialRemove(l.e, l)
           l.list = list
         }
@@ -4223,7 +4223,7 @@ mesh.Mesh {
       l2.list.length--
 
       for (let i = 0; i < f.lists.length; i++) {
-        let list = f.lists[i]
+        const list = f.lists[i]
         if (list.length < 3) {
           f.lists.remove(list)
           i--
@@ -4257,7 +4257,7 @@ mesh.Mesh {
       }
 
       //filter out any bad loops
-      for (let list of f.lists) {
+      for (const list of f.lists) {
         let l = list.l
         let _i = 0
 
@@ -4297,13 +4297,13 @@ mesh.Mesh {
         return undefined
       }
 
-      for (let l of f.loops) {
+      for (const l of f.loops) {
         if (l === l.next) {
           console.warn('Dissolve error', l)
 
-          for (let list of l.f.lists) {
+          for (const list of l.f.lists) {
             if (list !== l.list) {
-              for (let l2 of list) {
+              for (const l2 of list) {
                 if (l2.eid >= 0) {
                   this._killLoop(l2)
                 }
@@ -4326,7 +4326,7 @@ mesh.Mesh {
         }
       }
 
-      for (let l of f.loops) {
+      for (const l of f.loops) {
         l.e = this.ensureEdge(l.v, l.next.v, lctx)
         this._radialInsert(l.e, l)
       }
@@ -4346,38 +4346,38 @@ mesh.Mesh {
       l2 = e.l.radial_next
     }
 
-    let f1 = l1.f
-    let f2 = l2.f
+    const f1 = l1.f
+    const f2 = l2.f
 
     if (f1 === f2) {
       console.warn('Dissolve error')
       return
     }
 
-    for (let l of f1.loops) {
+    for (const l of f1.loops) {
       this._radialRemove(l.e, l)
     }
-    for (let l of f2.loops) {
+    for (const l of f2.loops) {
       this._radialRemove(l.e, l)
     }
 
-    for (let list of f1.lists) {
+    for (const list of f1.lists) {
       if (list.l === l1) {
         list.l = list.l.next
       }
     }
 
     //f1 is kept
-    for (let list of f2.lists) {
+    for (const list of f2.lists) {
       if (list.l === l2) {
         list.l = l2.next
       }
-      for (let l of list) {
+      for (const l of list) {
         l.f = f1
       }
 
       if (list === f2.lists[0]) {
-        for (let l of list) {
+        for (const l of list) {
           l.list = f1.lists[0]
         }
 
@@ -4415,8 +4415,8 @@ mesh.Mesh {
     this._freeFace(f2)
 
     //filter out any bad loops
-    for (let list of f1.lists) {
-      let l = list.l
+    for (const list of f1.lists) {
+      const l = list.l
       let _i = 0
 
       do {
@@ -4442,7 +4442,7 @@ mesh.Mesh {
     }
 
     for (let i = 0; i < f1.lists.length; i++) {
-      let list = f1.lists[i]
+      const list = f1.lists[i]
       list._recount()
 
       if (list.length < 3) {
@@ -4460,7 +4460,7 @@ mesh.Mesh {
 
     let bad = false
 
-    for (let l of f1.loops) {
+    for (const l of f1.loops) {
       if (l.next.v === l.v) {
         console.error('Dissolve error', l)
         continue
@@ -4501,31 +4501,31 @@ mesh.Mesh {
   }
 
   selectNone() {
-    for (let e of this.getElemLists()) {
+    for (const e of this.getElemLists()) {
       e.selectNone()
     }
   }
 
   selectAll() {
-    for (let e of this.getElemLists()) {
+    for (const e of this.getElemLists()) {
       e.selectAll()
     }
   }
 
   updateGrids() {
-    let cd_grid = GridBase.meshGridRef(this)
+    const cd_grid = GridBase.meshGridRef(this)
 
     if (!cd_grid.exists) {
       return
     }
 
-    let cls = CustomDataElem.getTypeClass(
+    const cls = CustomDataElem.getTypeClass(
       this.loops.customData.flatlist[cd_grid.i].typeName
     ) as unknown as IGridConstructor
     cls.updateSubSurf(this, cd_grid, true)
 
-    for (let l of this.loops) {
-      let grid = cd_grid.get(l)
+    for (const l of this.loops) {
+      const grid = cd_grid.get(l)
 
       grid.update(this, l, cd_grid)
     }
@@ -4538,9 +4538,9 @@ mesh.Mesh {
   }
 
   resetDispLayers() {
-    let layerset = this.verts.customData.getLayerSet('displace')
-    for (let layer of layerset) {
-      let st = layer.getTypeSettings()
+    const layerset = this.verts.customData.getLayerSet('displace')
+    for (const layer of layerset) {
+      const st = layer.getTypeSettings()
 
       st.flag |= DispLayerFlags.NEEDS_INIT
     }
@@ -4578,14 +4578,14 @@ mesh.Mesh {
     this._ltrimap_start = {}
     this._ltrimap_len = {}
 
-    let lstart = this._ltrimap_start
-    let llen = this._ltrimap_len
+    const lstart = this._ltrimap_start
+    const llen = this._ltrimap_len
 
-    let visitflag = MeshFlags.MAKE_FACE_TEMP
+    const visitflag = MeshFlags.MAKE_FACE_TEMP
 
     let haveNgons = false
 
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       if (f.isNgon()) {
         haveNgons = true
       }
@@ -4596,7 +4596,7 @@ mesh.Mesh {
 
     this.haveNgons = haveNgons
 
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       lstart[f.eid] = ltris.length
 
       triangulateFace(f, ltris)
@@ -4613,7 +4613,7 @@ mesh.Mesh {
       f.area += math.tri_area(l1.v.co, l2.v.co, l3.v.co)
     }
 
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       if (f.area === 0) {
         //for the case of tesselation failure,
         //ensure we don't have zero area.  Otherwise
@@ -4626,7 +4626,7 @@ mesh.Mesh {
       }
     }
 
-    let haveGrid = GridBase.meshGridOffset(this) >= 0
+    const haveGrid = GridBase.meshGridOffset(this) >= 0
 
     if (!haveGrid) {
       this.uiTriangleCount = ltris.length / 3
@@ -4665,16 +4665,16 @@ mesh.Mesh {
   ) {
     //let smesh
 
-    let sm = new SimpleMesh(layers)
+    const sm = new SimpleMesh(layers)
 
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       e.update()
       e.updateHandles()
     }
 
-    let drawnormals = this.drawflag & MeshDrawFlags.SHOW_NORMALS
+    const drawnormals = this.drawflag & MeshDrawFlags.SHOW_NORMALS
 
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       if (e.flag & MeshFlags.HIDE) {
         continue
       }
@@ -4687,25 +4687,25 @@ mesh.Mesh {
         len = e.length
       }
 
-      let steps = Math.max(Math.floor(len / 5), 8)
+      const steps = Math.max(Math.floor(len / 5), 8)
       let t = 0,
         dt = 1.0 / (steps - 1)
       let s = 0,
         ds = e.length / (steps - 1)
       let lastco = undefined
-      let black = [0, 0, 0, 1]
-      let color1 = new Vector4()
-      let color2 = new Vector4()
+      const black = [0, 0, 0, 1]
+      const color1 = new Vector4()
+      const color2 = new Vector4()
 
       for (let i = 0; i < steps; i++, t += dt, s += ds) {
-        let co = e.arcEvaluate(s)
+        const co = e.arcEvaluate(s)
 
         if (drawnormals) {
           let line
 
-          let n = e.arcNormal(s)
+          const n = e.arcNormal(s)
 
-          let co2 = new Vector3(co)
+          const co2 = new Vector3(co)
           co2.addFac(n, e.length * 0.05)
 
           line = sm.line(co, co2)
@@ -4723,7 +4723,7 @@ mesh.Mesh {
         }
 
         if (i > 0) {
-          let line = sm.line(lastco!, co)
+          const line = sm.line(lastco!, co)
 
           if (layers & LayerTypes.COLOR) {
             line.colors(color1 as unknown as INumVector, color2 as unknown as INumVector)
@@ -4783,7 +4783,7 @@ mesh.Mesh {
       this.bvh = undefined
     }
 
-    for (let k in this._fancyMeshes) {
+    for (const k in this._fancyMeshes) {
       this._fancyMeshes[k].destroy(gl)
     }
 
@@ -4802,16 +4802,16 @@ mesh.Mesh {
       checkUvs = true
     }
 
-    let cd_uv = this.loops.customData.getLayerRef(UVLayerElem)
+    const cd_uv = this.loops.customData.getLayerRef(UVLayerElem)
 
     let key = '' + this.loops.length + ':' + this.edges.length + ':' + this.faces.length
     key += ':' + this.verts.length + ':' + cd_uv
 
     if (checkUvs && cd_uv.exists) {
-      let hash = new util.HashDigest()
+      const hash = new util.HashDigest()
 
-      for (let l of this.loops) {
-        let uv = cd_uv.get(l).uv
+      for (const l of this.loops) {
+        const uv = cd_uv.get(l).uv
 
         hash.add(uv[0] * 8196)
         hash.add(uv[1] * 8196)
@@ -4894,10 +4894,10 @@ mesh.Mesh {
           this._bvh_freelist = this.bvh.destroy(this)
         }
 
-        let bvhcls = BVH
+        const bvhcls = BVH
         //bvhcls = SpatialHash;
 
-        let args = {
+        const args = {
           deformMode,
           leafLimit,
           addWireVerts: wireVerts,
@@ -4928,21 +4928,21 @@ mesh.Mesh {
   }
 
   genRenderBasic(combinedWireframe = true) {
-    let ltris = this.loopTris!
-    let lf = LayerTypes
+    const ltris = this.loopTris!
+    const lf = LayerTypes
 
-    let sm = new SimpleMesh(lf.LOC | lf.NORMAL | lf.UV | lf.COLOR | lf.ID)
+    const sm = new SimpleMesh(lf.LOC | lf.NORMAL | lf.UV | lf.COLOR | lf.ID)
 
-    let haveuv = this.loops.customData.hasLayer('uv')
-    let cd_uv = this.loops.customData.getLayerRef(UVLayerElem)
+    const haveuv = this.loops.customData.hasLayer('uv')
+    const cd_uv = this.loops.customData.getLayerRef(UVLayerElem)
 
     for (let i = 0; i < ltris.length; i += 3) {
-      let l1 = ltris[i],
+      const l1 = ltris[i],
         l2 = ltris[i + 1],
         l3 = ltris[i + 2]
-      let f = l1.f
+      const f = l1.f
 
-      let tri = sm.tri(l1.v.co, l2.v.co, l3.v.co)
+      const tri = sm.tri(l1.v.co, l2.v.co, l3.v.co)
 
       if (f.flag & MeshFlags.SMOOTH_DRAW) {
         tri.normals(l1.v.no, l2.v.no, l3.v.no)
@@ -4957,11 +4957,11 @@ mesh.Mesh {
       }
     }
 
-    let white = [1, 1, 1, 1]
+    const white = [1, 1, 1, 1]
 
     if (combinedWireframe) {
-      for (let e of this.edges) {
-        let line = sm.line(e.v1.co, e.v2.co)
+      for (const e of this.edges) {
+        const line = sm.line(e.v1.co, e.v2.co)
 
         line.ids(e.eid, e.eid)
         line.uvs([0, 0], [1, 0])
@@ -4981,7 +4981,7 @@ mesh.Mesh {
     this._genRenderElements(gl, {}, combinedWireframe)
     //}
 
-    let meshes = this._fancyMeshes
+    const meshes = this._fancyMeshes
     if (meshes.faces) {
       this.smesh = meshes.faces
     } else {
@@ -4998,10 +4998,10 @@ mesh.Mesh {
 
   rescale() {
     this.minMax()
-    let min = this.min
-    let max = this.max
+    const min = this.min
+    const max = this.max
 
-    for (let v of this.verts) {
+    for (const v of this.verts) {
       for (let i = 0; i < 3; i++) {
         v.co[i as 0 | 1 | 2] = ((v.co[i] - min[i]) / (max[i] - min[i]) - 0.5) * 2.0
       }
@@ -5026,27 +5026,27 @@ mesh.Mesh {
 
     console.warn('partial update')
 
-    let sm = this.smesh
+    const sm = this.smesh
     this.recalc &= ~RecalcFlags.PARTIAL
 
-    let w = [1, 1, 1, 1]
+    const w = [1, 1, 1, 1]
 
-    let ltris = this._ltris!
-    for (let eid in this.updatelist) {
-      let e = this.updatelist[eid]
+    const ltris = this._ltris!
+    for (const eid in this.updatelist) {
+      const e = this.updatelist[eid]
       if (e.type === MeshTypes.FACE) {
-        let f = e
+        const f = e
         let li = this._ltrimap_start[f.eid]
-        let len = this._ltrimap_len[f.eid]
+        const len = this._ltrimap_len[f.eid]
 
         for (let i = 0; i < len; i++) {
-          let idx = li
+          const idx = li
 
-          let l1 = ltris[li++]
-          let l2 = ltris[li++]
-          let l3 = ltris[li++]
+          const l1 = ltris[li++]
+          const l2 = ltris[li++]
+          const l3 = ltris[li++]
 
-          let tri = sm.tri(idx, l1.v, l2.v, l3.v)
+          const tri = sm.tri(idx, l1.v, l2.v, l3.v)
           tri.colors(w, w, w)
 
           if (l1.f.flag & MeshFlags.FLAT) {
@@ -5058,7 +5058,7 @@ mesh.Mesh {
           let uvidx: CDRef<UVLayerElem> = -1
           let j = 0
 
-          for (let data of l1.customData) {
+          for (const data of l1.customData) {
             if (data instanceof UVLayerElem) {
               uvidx = j
               break
@@ -5128,14 +5128,14 @@ mesh.Mesh {
   }
 
   drawIds(view3d: View3D, gl: WebGL2RenderingContext, selectMask: number, uniforms: any, object: SceneObject) {
-    let program = Shaders.MeshIDShader
+    const program = Shaders.MeshIDShader
     uniforms.pointSize = 10
 
     this.draw(view3d, gl, uniforms, program, object)
   }
 
   updateMirrorTag(v: Vertex, threshold = 0.0001) {
-    let sym = this.symFlag
+    const sym = this.symFlag
 
     v.flag &= ~(MeshFlags.MIRRORED | MeshFlags.MIRROR_BOUNDARY)
 
@@ -5151,7 +5151,7 @@ mesh.Mesh {
       if (Math.abs(v.co[i]) < threshold) {
         v.flag |= MeshFlags.MIRROREDX << i
 
-        for (let e of v.edges) {
+        for (const e of v.edges) {
           if (!e.l || e.l.radial_next === e.l) {
             v.flag |= MeshFlags.MIRROR_BOUNDARY
             break
@@ -5176,7 +5176,7 @@ mesh.Mesh {
   }
 
   updateMirrorTags(threshold = 0.0001) {
-    for (let v of this.verts) {
+    for (const v of this.verts) {
       this.updateMirrorTag(v, threshold)
     }
   }
@@ -5187,19 +5187,19 @@ mesh.Mesh {
   }
 
   clearUpdateFlags(typemask: number) {
-    for (let list of this.elists.values()) {
+    for (const list of this.elists.values()) {
       if (typemask !== undefined && !(list.type & typemask)) {
         continue
       }
 
-      for (let e of list) {
+      for (const e of list) {
         e.flag &= ~MeshFlags.UPDATE
       }
     }
   }
 
   updateHandles() {
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       e.updateHandles()
     }
   }
@@ -5210,23 +5210,23 @@ mesh.Mesh {
     eidmap = this.eidMap = new Map()
     this._recalcEidMap = true
 
-    let elists = this.elists
+    const elists = this.elists
 
-    for (let elist of elists.values()) {
-      for (let elem of elist) {
+    for (const elist of elists.values()) {
+      for (const elem of elist) {
         eidmap.set(elem.eid, elem)
       }
     }
   }
 
   _updateEidgen() {
-    let elists = this.elists
+    const elists = this.elists
 
     let max_eid = 0
     let regenEidMap = false
 
     for (const elist of elists.values()) {
-      for (let elem of elist) {
+      for (const elem of elist) {
         if (isNaN(elem.eid)) {
           console.error('Found NaN eid!', elem)
           elem.eid = this.eidgen.next()
@@ -5243,11 +5243,11 @@ mesh.Mesh {
 
     max_eid++
 
-    let eidgen = this.eidgen
+    const eidgen = this.eidgen
 
     eidgen.freelist.length = 0
     eidgen.cur = max_eid
-    let eidMap = this.eidMap
+    const eidMap = this.eidMap
 
     if (REUSE_EIDS) {
       for (let i = 0; i < max_eid; i++) {
@@ -5266,20 +5266,20 @@ mesh.Mesh {
       elist.local_eidMap = new Map()
       elist.idxmap = new Map()
 
-      for (let e of elist) {
+      for (const e of elist) {
         oldmax = Math.max(oldmax, e.eid)
       }
     }
 
-    let eidmap = {} as {[key: number]: Element}
-    let eidgen = (this.eidgen = this._makeEIDGen(new EIDGen()))
+    const eidmap = {} as {[key: number]: Element}
+    const eidgen = (this.eidgen = this._makeEIDGen(new EIDGen()))
 
     for (const elist of this.elists.values()) {
       elist.local_eidMap = new Map()
       const eidmap2 = elist.local_eidMap
       let i = 0
 
-      for (let e of elist) {
+      for (const e of elist) {
         e.eid = e._old_eid = eidgen.next()
 
         elist.idxmap.set(e.eid, i++)
@@ -5289,27 +5289,27 @@ mesh.Mesh {
     }
 
     for (const elist of this.elists.values()) {
-      for (let e of elist) {
+      for (const e of elist) {
         if (e.flag & MeshFlags.SELECT) {
           elist.selected.add(e)
         }
       }
     }
 
-    for (let l of this.loops) {
-      for (let cd of l.customData) {
+    for (const l of this.loops) {
+      for (const cd of l.customData) {
         if (cd instanceof GridBase) {
-          for (let p of cd.points) {
+          for (const p of cd.points) {
             p.loopEid = l.eid
           }
         }
       }
     }
 
-    let eidMap = (this.eidMap = new Map())
+    const eidMap = (this.eidMap = new Map())
 
-    for (let elist of this.getElemLists()) {
-      for (let elem of elist) {
+    for (const elist of this.getElemLists()) {
+      for (const elem of elist) {
         eidMap.set(elem.eid, elem)
       }
     }
@@ -5334,26 +5334,26 @@ mesh.Mesh {
   }
 
   _clearGPUMeshes(gl?: WebGL2RenderingContext): void {
-    let meshes = this._fancyMeshes
+    const meshes = this._fancyMeshes
 
     this._fancyMeshes = {}
     this.wmesh = this.smesh = undefined
 
     if (gl) {
-      for (let k in meshes) {
+      for (const k in meshes) {
         meshes[k].destroy(gl)
       }
     }
 
-    for (let v of this.verts) {
+    for (const v of this.verts) {
       v.flag |= MeshFlags.UPDATE
     }
 
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       e.flag |= MeshFlags.UPDATE
     }
 
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       f.flag |= MeshFlags.UPDATE
     }
   }
@@ -5465,12 +5465,12 @@ mesh.Mesh {
   }
 
   _getArrays() {
-    let ret = []
-    for (let k of this.elists.keys()) {
+    const ret = []
+    for (const k of this.elists.keys()) {
       //we no longer save this.loops in struct data directly, but we still
       //have to save customdata layout
       if (k === MeshTypes.LOOP) {
-        let template = new ElementList(MeshTypes.LOOP)
+        const template = new ElementList(MeshTypes.LOOP)
         template.customData = this.loops.customData
 
         ret.push(template)
@@ -5484,11 +5484,11 @@ mesh.Mesh {
   }
 
   updateBoundaryFlags() {
-    for (let v of this.verts) {
+    for (const v of this.verts) {
       v.flag &= ~MeshFlags.BOUNDARY
     }
 
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       if (!e.l || e.l === e.l.radial_next) {
         e.flag |= MeshFlags.BOUNDARY
         e.v1.flag |= MeshFlags.BOUNDARY
@@ -5503,7 +5503,7 @@ mesh.Mesh {
     let cdlayers
 
     if (ignoreNoInterp) {
-      let elist = this.getElemList(dst.type)
+      const elist = this.getElemList(dst.type)
       cdlayers = elist.customData.flatlist
     }
 
@@ -5545,7 +5545,7 @@ mesh.Mesh {
 
   /** clear mesh */
   clear(clearCustomData = false) {
-    let elists = this.elists
+    const elists = this.elists
 
     this.eidgen = this._makeEIDGen()
     this.elists = new Map()
@@ -5554,8 +5554,8 @@ mesh.Mesh {
 
     if (!clearCustomData) {
       for (const k of this.elists.keys()) {
-        let e1 = elists.get(k)!
-        let e2 = this.elists.get(k)!
+        const e1 = elists.get(k)!
+        const e2 = this.elists.get(k)!
         e2.customData = e1.customData
       }
     }
@@ -5568,18 +5568,18 @@ mesh.Mesh {
       throw new Error('Invalid call to Mesh.prototype.copy!')
     }
 
-    let ret = new (this.constructor as unknown as new () => this)()
+    const ret = new (this.constructor as unknown as new () => this)()
 
     //derived types may have customdata set in constructors, still
     //clear in this case if requested
     if (clearCustomData) {
-      for (let k in ret.elists.keys()) {
+      for (const k in ret.elists.keys()) {
         ret.elists.get(parseInt(k) as MeshTypes)!.customData = new CustomData()
       }
     }
 
     ret.materials = []
-    for (let mat of this.materials) {
+    for (const mat of this.materials) {
       ret.materials.push(mat)
 
       if (addLibUsers) {
@@ -5587,7 +5587,7 @@ mesh.Mesh {
       }
     }
 
-    for (let elist of ret.getElemLists()) {
+    for (const elist of ret.getElemLists()) {
       if (this.elists.get(elist.type)?.customData === undefined) {
         continue
       }
@@ -5600,10 +5600,10 @@ mesh.Mesh {
     }
 
     ret.eidgen = this.eidgen.copy()
-    let eidmap = (ret.eidMap = new EidElemMap())
+    const eidmap = (ret.eidMap = new EidElemMap())
 
-    for (let v of this.verts) {
-      let v2 = new (Vertex as unknown as PrivateVertexConstructor)(v.co)
+    for (const v of this.verts) {
+      const v2 = new (Vertex as unknown as PrivateVertexConstructor)(v.co)
 
       v2.no.load(v.no)
 
@@ -5620,8 +5620,8 @@ mesh.Mesh {
       }
     }
 
-    for (let h of this.handles) {
-      let h2 = new Handle(h.co)
+    for (const h of this.handles) {
+      const h2 = new Handle(h.co)
 
       h2.flag = h.flag
       h2.index = h.index
@@ -5639,11 +5639,11 @@ mesh.Mesh {
       }
     }
 
-    for (let e of this.edges) {
-      let v1 = eidmap.get<Vertex>(e.v1.eid)
-      let v2 = eidmap.get<Vertex>(e.v2.eid)
+    for (const e of this.edges) {
+      const v1 = eidmap.get<Vertex>(e.v1.eid)
+      const v2 = eidmap.get<Vertex>(e.v2.eid)
 
-      let e2 = new Edge()
+      const e2 = new Edge()
 
       e2.eid = e2._old_eid = e.eid
       e2.flag = e.flag
@@ -5673,8 +5673,8 @@ mesh.Mesh {
       }
     }
 
-    for (let l of this.loops) {
-      let l2 = ret._makeLoop(l.eid)
+    for (const l of this.loops) {
+      const l2 = ret._makeLoop(l.eid)
 
       l2.flag = l.flag
       l2.eid = l2._old_eid = l.eid
@@ -5697,23 +5697,23 @@ mesh.Mesh {
       }
     }
 
-    for (let e of this.edges) {
-      let e2 = eidmap.get<Edge>(e.eid)
+    for (const e of this.edges) {
+      const e2 = eidmap.get<Edge>(e.eid)
 
       if (e.l !== undefined) {
         e2.l = eidmap.get<Loop>(e.l.eid)
       }
     }
 
-    for (let l2 of ret.loops) {
+    for (const l2 of ret.loops) {
       l2.radial_next = eidmap.get<Loop>(l2.radial_next as unknown as number)
       l2.radial_prev = eidmap.get<Loop>(l2.radial_prev as unknown as number)
       l2.next = eidmap.get<Loop>(l2.next as unknown as number)
       l2.prev = eidmap.get<Loop>(l2.prev as unknown as number)
     }
 
-    for (let f of this.faces) {
-      let f2 = ret._allocFace(0, f.eid)
+    for (const f of this.faces) {
+      const f2 = ret._allocFace(0, f.eid)
 
       f2.eid = f2._old_eid = f.eid
       f2.index = f.index
@@ -5724,8 +5724,8 @@ mesh.Mesh {
       f2.cent.load(f.cent)
       f2.no.load(f.no)
 
-      for (let list of f.lists) {
-        let list2 = new LoopList()
+      for (const list of f.lists) {
+        const list2 = new LoopList()
 
         list2.flag = list.flag
         list2.l = eidmap.get<Loop>(list.l.eid)
@@ -5738,8 +5738,8 @@ mesh.Mesh {
       }
     }
 
-    for (let f2 of ret.faces) {
-      for (let list of f2.lists) {
+    for (const f2 of ret.faces) {
+      for (const list of f2.lists) {
         let l = list.l
         let _i = 0
 
@@ -5757,9 +5757,9 @@ mesh.Mesh {
       }
     }
 
-    let delLoops = []
+    const delLoops = []
 
-    for (let l2 of ret.loops) {
+    for (const l2 of ret.loops) {
       if (!l2.f || typeof l2.f === 'number') {
         console.warn('Mesh error', l2)
         delLoops.push(l2)
@@ -5768,23 +5768,23 @@ mesh.Mesh {
 
     if (delLoops.length > 0) {
       //to ensure mesh integrity, first clear edge radial lists
-      for (let l of ret.loops) {
+      for (const l of ret.loops) {
         l.radial_next = l.radial_prev = undefined as unknown as Loop
       }
 
-      for (let e of ret.edges) {
+      for (const e of ret.edges) {
         e.l = undefined
       }
 
       //kill offending loops
-      for (let l2 of delLoops) {
+      for (const l2 of delLoops) {
         this._elemRemove(l2)
         ret.loops.remove(l2)
       }
 
       //rebuild radial lists
-      for (let f of ret.faces) {
-        for (let l of f.loops) {
+      for (const f of ret.faces) {
+        for (const l of f.loops) {
           ret._radialInsert(l.e, l)
         }
       }
@@ -5821,7 +5821,7 @@ mesh.Mesh {
   getFace(verts: Iterable<Vertex>) {
     const vs: Iterable<Vertex> = ReusableIter.getSafeIter<Vertex>(verts)
 
-    let flag = MeshFlags.FACE_EXIST_FLAG
+    const flag = MeshFlags.FACE_EXIST_FLAG
 
     let vslength = 0
     if (Array.isArray(vs)) {
@@ -5829,18 +5829,18 @@ mesh.Mesh {
     } else if (vs instanceof Set) {
       vslength = vs.size
     } else {
-      for (let v of vs) {
+      for (const v of vs) {
         vslength++
       }
     }
 
-    for (let v of vs) {
+    for (const v of vs) {
       v.flag &= ~flag
 
-      for (let e of v.edges) {
+      for (const e of v.edges) {
         e.flag &= ~flag
 
-        for (let l of e.loops) {
+        for (const l of e.loops) {
           let bad = l.f.lists.length > 0
           bad = bad || l.f.lists[0].length !== vslength
 
@@ -5853,32 +5853,32 @@ mesh.Mesh {
       }
     }
 
-    for (let v of vs) {
-      for (let e of v.edges) {
+    for (const v of vs) {
+      for (const e of v.edges) {
         if (e.flag & flag) {
           continue
         }
 
         e.flag |= flag
 
-        for (let l of e.loops) {
+        for (const l of e.loops) {
           if (l.f.flag & flag) {
             continue
           }
 
-          for (let v of vs) {
+          for (const v of vs) {
             v.flag &= ~flag
           }
 
           l.f.flag |= flag
 
-          for (let v2 of l.f.verts) {
+          for (const v2 of l.f.verts) {
             v2.flag |= flag
           }
 
           let count = 0
           let vslength = 0
-          for (let v of vs) {
+          for (const v of vs) {
             if (v.flag & flag) {
               count++
             }
@@ -5896,22 +5896,22 @@ mesh.Mesh {
   }
 
   fixDuplicateFaces(report = true, lctx?: LogContext) {
-    let flag = MeshFlags.TEMP3
+    const flag = MeshFlags.TEMP3
 
-    let checkFace = (f1: Face, f2: Face): boolean => {
-      for (let l of f1.loops) {
+    const checkFace = (f1: Face, f2: Face): boolean => {
+      for (const l of f1.loops) {
         l.v.flag &= ~flag
         l.e.flag &= ~flag
       }
 
-      for (let l of f2.loops) {
+      for (const l of f2.loops) {
         l.v.flag |= flag
         l.e.flag |= flag
       }
 
       let ok = true
 
-      for (let l of f1.loops) {
+      for (const l of f1.loops) {
         if (!(l.v.flag & flag) || !(l.e.flag & flag)) {
           ok = false
           break
@@ -5921,13 +5921,13 @@ mesh.Mesh {
       return ok
     }
 
-    for (let f of this.faces) {
-      outer: for (let l of f.loops) {
+    for (const f of this.faces) {
+      outer: for (const l of f.loops) {
         if (l.radial_next === l) {
           continue
         }
 
-        for (let l2 of l.e.loops) {
+        for (const l2 of l.e.loops) {
           if (l2 === l) {
             continue
           }
@@ -5948,20 +5948,20 @@ mesh.Mesh {
   fixLoops(lctx?: LogContext): void {
     this.fixDuplicateFaces(undefined, lctx)
 
-    let flag = MeshFlags.TEMP3
+    const flag = MeshFlags.TEMP3
 
-    for (let l of this.loops) {
+    for (const l of this.loops) {
       l.flag &= ~flag
     }
 
-    for (let f of this.faces) {
-      for (let l of f.loops) {
+    for (const f of this.faces) {
+      for (const l of f.loops) {
         l.flag |= flag
         this._radialRemove(l.e, l)
       }
     }
 
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       if (e.l) {
         console.error('Edge still had a loop assigned to it', e, e.l)
 
@@ -5969,13 +5969,13 @@ mesh.Mesh {
       }
     }
 
-    for (let f of this.faces) {
-      for (let l of f.loops) {
+    for (const f of this.faces) {
+      for (const l of f.loops) {
         this._radialInsert(l.e, l)
       }
     }
 
-    for (let l of this.loops) {
+    for (const l of this.loops) {
       if (!(l.flag & flag)) {
         console.warn('Orphaned loop detected', l)
 
@@ -5989,12 +5989,12 @@ mesh.Mesh {
   }
 
   fixMesh(report = true, noWire = false) {
-    let eidMap = new EidElemMap()
-    let elists = this.elists
+    const eidMap = new EidElemMap()
+    const elists = this.elists
 
     //do a sanity check of eids
     for (const elist of elists.values()) {
-      for (let elem of elist) {
+      for (const elem of elist) {
         if (elem.eid < 0) {
           console.warn('Found dead eid tag')
           elem.eid = this.eidgen.next()
@@ -6010,15 +6010,15 @@ mesh.Mesh {
     this.elists = new Map()
     this.makeElistAliases()
 
-    for (let k of elists.keys()) {
-      let e1 = elists.get(k)!
-      let e2 = this.elists.get(k)!
+    for (const k of elists.keys()) {
+      const e1 = elists.get(k)!
+      const e2 = this.elists.get(k)!
 
       e2.customData = e1.customData.copy()
     }
 
-    let eidMap2 = (this.eidMap = new Map())
-    let add = (elem: ElementType) => {
+    const eidMap2 = (this.eidMap = new Map())
+    const add = (elem: ElementType) => {
       if (eidMap2.has(elem.eid)) {
         if (eidMap2.get(elem.eid) !== elem) {
           console.error('Duplicate element eid', elem)
@@ -6038,24 +6038,24 @@ mesh.Mesh {
     }
 
     if (!noWire) {
-      for (let v of elists.get(MeshTypes.VERTEX)! as Iterable<Vertex>) {
+      for (const v of elists.get(MeshTypes.VERTEX)! as Iterable<Vertex>) {
         if (v.valence === 0) {
           add(v)
         }
       }
 
-      for (let e of elists.get(MeshTypes.EDGE)! as Iterable<Edge>) {
+      for (const e of elists.get(MeshTypes.EDGE)! as Iterable<Edge>) {
         if (!e.l) {
           add(e)
         }
       }
     }
 
-    for (let f of elists.get(MeshTypes.FACE)! as Iterable<Face>) {
+    for (const f of elists.get(MeshTypes.FACE)! as Iterable<Face>) {
       add(f)
 
-      for (let list of f.lists) {
-        for (let l of list) {
+      for (const list of f.lists) {
+        for (const l of list) {
           add(l)
           add(l.e)
           add(l.v)
@@ -6071,18 +6071,18 @@ mesh.Mesh {
 
   //fix e.g. obj files that store edges as colinear tris
   killColinearTris(report = true): void {
-    let fs = new Set<Face>()
-    let eps = 0.000001
+    const fs = new Set<Face>()
+    const eps = 0.000001
 
     this.fixDuplicateFaces(report)
 
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       if (!f.isTri) {
         continue
       }
 
-      let l1 = f.lists[0].l
-      let l2 = l1.next,
+      const l1 = f.lists[0].l
+      const l2 = l1.next,
         l3 = l1.prev
 
       let ok = math.colinear(l1.v.co, l2.v.co, l3.v.co)
@@ -6096,7 +6096,7 @@ mesh.Mesh {
     }
 
     console.log('colinear tris:', fs)
-    for (let f of fs) {
+    for (const f of fs) {
       this.killFace(f)
     }
   }
@@ -6104,13 +6104,13 @@ mesh.Mesh {
   validateMesh(msg_out: [string | undefined] = [undefined]) {
     let fix = false
 
-    let visit = new Set<Element>()
+    const visit = new Set<Element>()
     let totshell = 0
 
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       let bad = false
 
-      for (let list of f.lists) {
+      for (const list of f.lists) {
         if (!list.l) {
           bad = true
         }
@@ -6119,9 +6119,9 @@ mesh.Mesh {
       if (bad) {
         console.error('corrupted face ' + f.eid)
 
-        for (let list of f.lists) {
+        for (const list of f.lists) {
           if (list.l) {
-            for (let l of new Set<Loop>(list)) {
+            for (const l of new Set<Loop>(list)) {
               this._radialRemove(l.e, l)
               this._killLoop(l)
             }
@@ -6132,27 +6132,27 @@ mesh.Mesh {
       }
     }
 
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       this._checkFaceLoops(f, 'validateMesh')
 
       for (let i = 0; i < f.lists.length; i++) {
-        let list = f.lists[i]
+        const list = f.lists[i]
 
-        let flag = MeshFlags.TEMP1
+        const flag = MeshFlags.TEMP1
 
         if (!list.l) {
           msg_out[0] = 'Corrupted face'
 
           //try to delete face
-          for (let list of f.lists) {
+          for (const list of f.lists) {
             if (list.l) {
-              for (let l of list) {
+              for (const l of list) {
                 this._radialRemove(l.e, l)
               }
             }
           }
 
-          for (let l of this.loops) {
+          for (const l of this.loops) {
             if (l.f === f) {
               this._killLoop(l)
             }
@@ -6165,11 +6165,11 @@ mesh.Mesh {
           break
         }
 
-        for (let l of list) {
+        for (const l of list) {
           l.v.flag &= ~flag
         }
 
-        for (let l of list) {
+        for (const l of list) {
           if (l.v.flag & flag) {
             msg_out[0] = 'Duplicate verts in face'
             this._fixFace(f)
@@ -6182,20 +6182,20 @@ mesh.Mesh {
       }
     }
 
-    for (let v of this.verts) {
+    for (const v of this.verts) {
       if (visit.has(v)) {
         //} || v.edges.length === 0) {
         continue
       }
 
-      let stack = [v]
+      const stack = [v]
       visit.add(v)
 
       while (stack.length > 0) {
-        let v2 = stack.pop()!
+        const v2 = stack.pop()!
 
-        for (let e of v2.edges) {
-          let v3 = e.otherVertex(v2)
+        for (const e of v2.edges) {
+          const v3 = e.otherVertex(v2)
 
           if (!visit.has(v3)) {
             stack.push(v3)
@@ -6215,7 +6215,7 @@ mesh.Mesh {
     function count_edges(v1: Vertex, v2: Vertex) {
       let count = 0
 
-      for (let e of v1.edges) {
+      for (const e of v1.edges) {
         if (e.otherVertex(v1) === v2) {
           count++
         }
@@ -6224,8 +6224,8 @@ mesh.Mesh {
       return count
     }
 
-    for (let e of this.edges) {
-      let count = count_edges(e.v1, e.v2)
+    for (const e of this.edges) {
+      const count = count_edges(e.v1, e.v2)
 
       if (count !== 1) {
         console.warn('Edge corruption in edge', e.eid, count_edges(e.v1, e.v2))
@@ -6238,7 +6238,7 @@ mesh.Mesh {
         console.warn('Fixing...')
 
         //fix
-        for (let e2 of e.v1.edges) {
+        for (const e2 of e.v1.edges) {
           if (e === e2 || e2.otherVertex(e.v1) !== e.v2) {
             continue
           }
@@ -6246,7 +6246,7 @@ mesh.Mesh {
           let _i = 0
 
           while (e2.l) {
-            let l = e2.l
+            const l = e2.l
 
             this._radialRemove(e2, l)
             this._radialInsert(e, l)
@@ -6267,15 +6267,15 @@ mesh.Mesh {
       e.index = 0
     }
 
-    for (let f of this.faces) {
-      for (let l of f.loops) {
+    for (const f of this.faces) {
+      for (const l of f.loops) {
         l.e.index++
       }
     }
 
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       let count = 0
-      for (let l of e.loops) {
+      for (const l of e.loops) {
         count++
       }
 
@@ -6285,23 +6285,23 @@ mesh.Mesh {
       }
     }
 
-    let ls = []
+    const ls = []
 
-    for (let f of this.faces) {
-      for (let list of f.lists) {
-        let l = list.l
-        let _i = 0
+    for (const f of this.faces) {
+      for (const list of f.lists) {
+        const l = list.l
+        const _i = 0
 
-        let flag = MeshFlags.MAKE_FACE_TEMP
+        const flag = MeshFlags.MAKE_FACE_TEMP
         ls.length = 0
 
-        for (let l of list) {
+        for (const l of list) {
           l.v.flag &= ~flag
           this._radialRemove(l.e, l)
           ls.push(l)
         }
 
-        for (let l of ls) {
+        for (const l of ls) {
           if (l.next.v === l.v) {
             console.warn('Duplicate verts in face', f, l.v)
             msg_out[0] = 'Duplicate verts in face'
@@ -6325,14 +6325,14 @@ mesh.Mesh {
           l.v.flag |= flag
         }
 
-        for (let l of list) {
+        for (const l of list) {
           this._radialInsert(l.e, l)
         }
       }
     }
 
-    for (let f of this.faces) {
-      for (let list of f.lists) {
+    for (const f of this.faces) {
+      for (const list of f.lists) {
         if (list.length < 3) {
           list._recount()
         }
@@ -6341,10 +6341,10 @@ mesh.Mesh {
           console.warn('1 or 2-vertex face detected', f.eid, f, list)
         }
 
-        for (let l of list) {
+        for (const l of list) {
           l.list = list
 
-          let v1 = l.v,
+          const v1 = l.v,
             v2 = l.next.v
           let bad = !(v1 === l.e.v1 && v2 === l.e.v2)
           bad = bad && !(v2 === l.e.v1 && v1 === l.e.v2)
@@ -6363,13 +6363,13 @@ mesh.Mesh {
     }
 
     //fix edge->loop links
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       e.l = undefined
     }
 
-    for (let f of this.faces) {
-      for (let list of f.lists) {
-        for (let l of list) {
+    for (const f of this.faces) {
+      for (const list of f.lists) {
+        for (const l of list) {
           this._radialInsert(l.e, l)
         }
       }
@@ -6386,7 +6386,7 @@ mesh.Mesh {
 
     this.elists = new Map()
 
-    for (let elist of this._elists!) {
+    for (const elist of this._elists!) {
       this.elists.set(elist.type, elist)
     }
 
@@ -6403,19 +6403,19 @@ mesh.Mesh {
     this.loops.storeFreedElems = SAVE_DEAD_LOOPS
     this.faces.storeFreedElems = SAVE_DEAD_FACES
 
-    for (let elist of this.elists.values()) {
+    for (const elist of this.elists.values()) {
       elist.customData.on_layeradd = this._on_cdlayer_add.bind(this)
       elist.customData.on_layerremove = this._on_cdlayer_rem.bind(this)
     }
 
     this.regenRender()
 
-    let eidMap = new Map()
+    const eidMap = new Map()
 
     this.eidMap = eidMap
     this._recalcEidMap = true
 
-    for (let v of this.verts) {
+    for (const v of this.verts) {
       eidMap.set(v.eid, v)
 
       //old files might have data in vert.edges, clear it
@@ -6424,11 +6424,11 @@ mesh.Mesh {
       }
     }
 
-    for (let h of this.handles) {
+    for (const h of this.handles) {
       eidMap.set(h.eid, h)
     }
 
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       eidMap.set(e.eid, e)
 
       e.v1 = eidMap.get(e.v1)
@@ -6443,27 +6443,27 @@ mesh.Mesh {
       e.h2 = eidMap.get(e.h2)
     }
 
-    for (let h of this.handles) {
+    for (const h of this.handles) {
       h.owner = eidMap.get(h.owner)
     }
 
     //are we an old file that stored this.loops directly?
     if (this.loops.length > 0) {
-      for (let l of this.loops) {
+      for (const l of this.loops) {
         eidMap.set(l.eid, l)
       }
 
-      for (let l of this.loops) {
+      for (const l of this.loops) {
         l.next = eidMap.get(l.next)
       }
 
-      for (let f of this.faces) {
+      for (const f of this.faces) {
         let prev = undefined
 
-        for (let list of f.lists) {
+        for (const list of f.lists) {
           list.l = eidMap.get(list.l)
 
-          for (let l of list) {
+          for (const l of list) {
             if (prev) {
               l.prev = prev
             }
@@ -6474,9 +6474,9 @@ mesh.Mesh {
         }
       }
     } else {
-      for (let f of this.faces) {
-        for (let list of f.lists) {
-          for (let l of list) {
+      for (const f of this.faces) {
+        for (const list of f.lists) {
+          for (const l of list) {
             if (l.eid < 0) {
               console.error('Loaded loop with invalid eid')
               l.eid = this.eidgen.next()
@@ -6489,24 +6489,24 @@ mesh.Mesh {
       }
     }
 
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       eidMap.set(f.eid, f)
     }
 
-    for (let l of this.loops) {
+    for (const l of this.loops) {
       l.v = eidMap.get(l.v)
     }
 
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       e.updateLength()
     }
 
-    for (let f of this.faces) {
+    for (const f of this.faces) {
       for (let i = 0; i < f.lists.length; i++) {
-        let list = f.lists[i]
+        const list = f.lists[i]
         list.length = 0
 
-        for (let l of list) {
+        for (const l of list) {
           //old file?
           let loopE: Edge | undefined = undefined
           if (loopE === undefined) {
@@ -6553,7 +6553,7 @@ mesh.Mesh {
           continue
         }
 
-        for (let l of list) {
+        for (const l of list) {
           l.radial_next = l.radial_prev = l
           this._radialInsert(l.e, l)
         }
@@ -6565,13 +6565,13 @@ mesh.Mesh {
       }
     }
 
-    for (let elist of this.elists.values()) {
+    for (const elist of this.elists.values()) {
       elist.fixCustomData()
       elist.stripTempLayers(false)
 
-      let eidMap = this.eidMap
+      const eidMap = this.eidMap
 
-      for (let elem of elist) {
+      for (const elem of elist) {
         eidMap.set(elem.eid, elem)
       }
     }
@@ -6587,7 +6587,7 @@ mesh.Mesh {
   getBoundingBox(useGrids = true) {
     let ret: [Vector3, Vector3] | undefined
 
-    for (let v of this.verts) {
+    for (const v of this.verts) {
       if (ret === undefined) {
         ret = [new Vector3(v.co), new Vector3(v.co)]
       } else {
@@ -6596,19 +6596,19 @@ mesh.Mesh {
       }
     }
 
-    let cd_grid = GridBase.meshGridOffset(this)
+    const cd_grid = GridBase.meshGridOffset(this)
 
     if (useGrids && cd_grid >= 0) {
-      for (let l of this.loops) {
+      for (const l of this.loops) {
         if (ret === undefined) {
           ret = [new Vector3(), new Vector3()]
           ret[0].addScalar(1e17)
           ret[1].addScalar(-1e17)
         }
 
-        let grid = l.customData.get<GridBase>(cd_grid)
+        const grid = l.customData.get<GridBase>(cd_grid)
 
-        for (let p of grid.points) {
+        for (const p of grid.points) {
           ret[0].min(p.co)
           ret[1].max(p.co)
         }
@@ -6619,11 +6619,11 @@ mesh.Mesh {
   }
 
   copyAddUsers() {
-    let ret = this.copy()
+    const ret = this.copy()
 
     this.copyTo(ret)
 
-    for (let mat of ret.materials) {
+    for (const mat of ret.materials) {
       if (mat === undefined) {
         continue
       }
@@ -6641,8 +6641,8 @@ setMeshClass(Mesh)
 
 const g = window as unknown as any
 g['_debug_recalc_all_normals'] = function (force = false) {
-  let scene = window['_appstate']['ctx']['scene']
-  for (let ob of scene.objects) {
+  const scene = window['_appstate']['ctx']['scene']
+  for (const ob of scene.objects) {
     if (ob.data instanceof Mesh) {
       if (force) {
         ob.data._recalcNormals_intern()

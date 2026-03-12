@@ -3,7 +3,7 @@ import '../path.ux/scripts/util/struct.js'
 import {View3D} from '../editors/view3d/view3d'
 import {NodeEditor} from '../editors/node/NodeEditor.js'
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js'
-import {getContextArea, Editor, editorAccessor} from '../editors/editor_base'
+import {Editor, editorAccessor, getContextArea} from '../editors/editor_base'
 import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js'
 import * as util from '../util/util.js'
 import {Mesh} from '../mesh/mesh.js'
@@ -15,8 +15,8 @@ import {DebugEditor} from '../editors/debug/DebugEditor.js'
 import * as ui_noteframe from '../path.ux/scripts/widgets/ui_noteframe.js'
 import {Matrix4} from '../util/vectormath.js'
 import {MenuBarEditor} from '../editors/menu/MainMenu.js'
-import {Context, ContextOverlay, ContextFlags, IAreaConstructor, MakeContextType} from '../path.ux/scripts/pathux.js'
-import {UIBase, Screen, SavedToolDefaults} from '../path.ux/scripts/pathux.js'
+import {Context, ContextFlags, ContextOverlay, IAreaConstructor, MakeContextType} from '../path.ux/scripts/pathux.js'
+import {SavedToolDefaults, Screen, UIBase} from '../path.ux/scripts/pathux.js'
 import {PropsEditor} from '../editors/properties/PropsEditor.js'
 import {MaterialEditor} from '../editors/node/MaterialEditor.js'
 import {AppSettings} from './settings'
@@ -24,7 +24,7 @@ import {TetMesh} from '../tet/tetgen.js'
 import {StrandSet} from '../hair/strand.js'
 import {SMesh} from '../smesh/smesh.js'
 
-let passthrus = new Set<string | number | symbol>(['datalib', 'gl', 'graph', 'last_tool', 'toolstack', 'api'])
+const passthrus = new Set<string | number | symbol>(['datalib', 'gl', 'graph', 'last_tool', 'toolstack', 'api'])
 
 import bus from './bus'
 import type {AppState} from './appstate.js'
@@ -121,7 +121,7 @@ export class BaseOverlay extends ContextOverlay<AppState> {
   }
 
   get material() {
-    let ob = this.object
+    const ob = this.object
 
     if (ob) {
       if (ob.data instanceof Mesh && ob.data.materials.length > 0) {
@@ -140,7 +140,7 @@ export class BaseOverlay extends ContextOverlay<AppState> {
   }
 
   get toolmode() {
-    let scene = this.scene
+    const scene = this.scene
 
     return scene !== undefined ? scene.toolmode : undefined
   }
@@ -166,7 +166,7 @@ export class BaseOverlay extends ContextOverlay<AppState> {
   }
 
   get scene(): Scene {
-    let ret = this.datalib.scene.active
+    const ret = this.datalib.scene.active
 
     if (ret === undefined && this.datalib.scene.length > 0) {
       console.warn('Something happened to active scene; fixing...')
@@ -179,13 +179,13 @@ export class BaseOverlay extends ContextOverlay<AppState> {
   //get strandset object, for UX purposes
   //we don't just check active object
   get strandset_object() {
-    let ob = this.object
+    const ob = this.object
 
     if (ob && ob.data instanceof StrandSet) {
       return ob
     }
 
-    for (let ob of this.scene.objects.selected.editable) {
+    for (const ob of this.scene.objects.selected.editable) {
       if (ob.data instanceof StrandSet) {
         return ob
       }
@@ -193,7 +193,7 @@ export class BaseOverlay extends ContextOverlay<AppState> {
   }
 
   get strandset() {
-    let ob = this.strandset_object
+    const ob = this.strandset_object
 
     return ob ? ob.data : undefined
   }
@@ -203,28 +203,28 @@ export class BaseOverlay extends ContextOverlay<AppState> {
   }
 
   get tetmesh() {
-    let ob = this.object
+    const ob = this.object
     if (ob !== undefined && ob.data instanceof TetMesh) {
       return ob.data
     }
   }
 
   get smesh() {
-    let ob = this.object
+    const ob = this.object
     if (ob !== undefined && ob.data instanceof SMesh) {
       return ob.data
     }
   }
 
   get mesh() {
-    let ob = this.object
+    const ob = this.object
     if (ob !== undefined && ob.data instanceof Mesh) {
       return ob.data
     }
   }
 
   get light() {
-    let ob = this.object
+    const ob = this.object
 
     if (ob !== undefined) {
       return ob.data instanceof Light ? ob.data : undefined
@@ -240,14 +240,14 @@ export class BaseOverlay extends ContextOverlay<AppState> {
   /* unlike selectedMeshObjects, this returns all light objects
    * even if they share .data Light instances*/
   get selectedLightObjects() {
-    let this2 = this
+    const this2 = this
 
     if (this.scene === undefined) {
       return []
     }
 
     return (function* () {
-      for (let ob of this2.scene.objects) {
+      for (const ob of this2.scene.objects) {
         if (ob.data.type instanceof Light) {
           yield ob.data
         }
@@ -266,11 +266,11 @@ export class BaseOverlay extends ContextOverlay<AppState> {
    instance (only one will get yielded in that case)
    */
   get selectedMeshObjects() {
-    let this2 = this
+    const this2 = this
     return (function* () {
-      let visit = new util.set()
+      const visit = new util.set()
 
-      for (let ob of this2.selectedObjects) {
+      for (const ob of this2.selectedObjects) {
         let bad = ob.data === undefined
         bad = bad || !(ob.data instanceof Mesh)
         bad = bad || visit.has(ob.data)
@@ -319,7 +319,7 @@ export class ViewOverlay extends ContextOverlay<AppState> {
   }
 
   get activeTexture() {
-    let editor = this.editors.imageEditor
+    const editor = this.editors.imageEditor
 
     if (!editor) {
       return undefined
@@ -338,7 +338,7 @@ export class ViewOverlay extends ContextOverlay<AppState> {
   }
 
   activeTexture_save() {
-    let block = this.activeTexture
+    const block = this.activeTexture
 
     return block ? block.lib_id : -1
   }
@@ -412,17 +412,17 @@ export class ViewOverlay extends ContextOverlay<AppState> {
   }
 
   editors_save() {
-    let editors = this.editors as unknown as any
+    const editors = this.editors as unknown as Record<string, this>
+    const ret = {} as Record<string, this>
 
-    let ret = {} as any
-
-    for (let k in editors._namemap) {
+    for (const k in editors._namemap) {
       ret[k] = editors[k]
     }
 
     return ret
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   editors_load(ctx: this, data: any) {
     return data
   }
@@ -479,7 +479,7 @@ class _ToolContext<
   }
 
   saveProperty(key: keyof this) {
-    let val = this[key]
+    const val = this[key]
 
     if (passthrus.has(key) || val instanceof UIBase || val instanceof Screen) {
       return new KeyPassThruProp<keyof this>(key)
@@ -509,9 +509,9 @@ class _ToolContext<
     isiter = isiter && val[Symbol.iterator]
 
     if (isiter) {
-      let ret = []
+      const ret = []
 
-      for (let item of val) {
+      for (const item of val) {
         ret.push(this.saveProperty_intern(item, owning_key))
       }
 
@@ -536,7 +536,7 @@ class _ToolContext<
     } else if (data instanceof DataRef) {
       return ctx.state.datalib.get(data)
     } else if (data.constructor === Array) {
-      let ret = new Array(data.length)
+      const ret = new Array(data.length)
 
       for (let i = 0; i < data.length; i++) {
         ret[i] = this.loadProperty_intern(ctx, data[i])

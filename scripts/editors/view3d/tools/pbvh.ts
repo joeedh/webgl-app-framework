@@ -11,7 +11,7 @@ import * as util from '../../../util/util.js'
 
 import '../../../subsurf/subsurf_loop_stencil.js'
 
-import {Mesh} from '../../../mesh/mesh.js'
+import {IntElem, Mesh} from '../../../mesh/mesh.js'
 import {Shapes} from '../../../core/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js'
@@ -43,8 +43,10 @@ import {TetMesh} from '../../../tet/tetgen.js'
 import {DispContext} from '../../../mesh/mesh_displacement.js'
 import {Texture} from '../../../core/webgl.js'
 import {getFaceSetColor, getFaceSets, getNextFaceSet} from '../../../mesh/mesh_facesets.js'
+import {eventWasTouch} from '../../../path.ux/scripts/util/simple_events.js'
 
 export class BVHToolMode extends ToolMode {
+  mdown = false
   lastFaceSet: number
   editDisplaced: boolean
   drawDispDisField: boolean
@@ -313,7 +315,7 @@ export class BVHToolMode extends ToolMode {
     let name = this.toolModeDefine().name
     let path = `scene.tools.${name}`
 
-    let browser = document.createElement('data-block-browser-x') as DataBlockBrowser
+    let browser = document.createElement('data-block-browser-x') as DataBlockBrowser<SculptBrush>
     browser.blockClass = SculptBrush
     browser.setAttribute('datapath', path + '.brush')
     browser.filterFunc = function (brush: any): boolean {
@@ -762,7 +764,7 @@ export class BVHToolMode extends ToolMode {
   }
 
   on_mousedown(e: any, x: number, y: number): boolean {
-    super.on_mousedown(e, x, y)
+    super.on_mousedown(e, x, y, eventWasTouch(e))
 
     this.mpos[0] = e.x
     this.mpos[1] = e.y
@@ -777,8 +779,8 @@ export class BVHToolMode extends ToolMode {
       if (brush.tool === SculptTools.FACE_SET_DRAW) {
         if (e.ctrlKey) {
           let view3d = this.ctx.view3d
-          let ob = this.ctx.object
-          let mesh = this.ctx.mesh
+          let ob = this.ctx.object!
+          let mesh = this.ctx.mesh!
 
           let bvh = mesh.getBVH({autoUpdate: false})
 
@@ -792,20 +794,18 @@ export class BVHToolMode extends ToolMode {
           origin = new Vector3(origin)
           origin.multVecMatrix(matinv)
 
-          view = new Vector4(view)
-          view[3] = 0.0
-          view.multVecMatrix(matinv)
-          view = new Vector3(view).normalize()
+          const view4 = new Vector4().loadXYZ(view[0], view[1], view[2])
+          view4[3] = 0.0
+          view4.multVecMatrix(matinv)
+          view.load(view4).normalize()
 
           let cd_fset = getFaceSets(mesh, true)
 
           let isect = bvh.castRay(origin, view)
-          if (isect && isect.tri.l1) {
+          if (isect && isect.tri && isect.tri.l1) {
             let f = isect.tri.l1.f
-            drawFaceSet = this.lastFaceSet = Math.abs(f.customData[cd_fset].value)
+            drawFaceSet = this.lastFaceSet = Math.abs((f.customData[cd_fset] as IntElem).value)
           }
-
-          console.log('isect', isect, drawFaceSet)
         } else {
           drawFaceSet = this.lastFaceSet = getNextFaceSet(this.ctx.mesh)
         }
@@ -869,8 +869,8 @@ export class BVHToolMode extends ToolMode {
     return false
   }
 
-  on_mouseup(e: any, x: number, y: number): boolean {
-    super.on_mouseup(e, x, y)
+  on_mouseup(e: any, x: number, y: number, wasTouch: boolean): boolean {
+    super.on_mouseup(e, x, y, wasTouch)
 
     this.mdown = false
 
@@ -924,19 +924,19 @@ export class BVHToolMode extends ToolMode {
     }
   }
 
-  update(): void {
+  update(): this {
     super.update()
 
     //hackishly update triangle count
     //in the UI
-    if (this.ctx.mesh && this.ctx.mesh.bvh && this.ctx.mesh.bvh.cd_grid >= 0) {
-      let mesh = this.ctx.mesh,
-        bvh = mesh.bvh
+    if (this.ctx.mesh && this.ctx.mesh.bvh && this.ctx.mesh.bvh.cd_grid.i >= 0) {
+      let mesh = this.ctx.mesh
+      let bvh = this.ctx.mesh.bvh
       let tottri = 0
-      let cd_grid = bvh.cd_grid
+      let gridAttr = bvh.cd_grid
 
       for (let l of mesh.loops) {
-        let grid = l.customData[cd_grid]
+        let grid = gridAttr.get(l)
 
         tottri += grid.totTris
       }
@@ -945,7 +945,7 @@ export class BVHToolMode extends ToolMode {
     }
 
     if (!this.ctx || !this.ctx.object || !(this.ctx.object.data instanceof Mesh)) {
-      return
+      return this
     }
 
     let key = '' + this.enableMaxEditDepth
@@ -961,6 +961,7 @@ export class BVHToolMode extends ToolMode {
 
       this.updateMeshMres(this.ctx.object.data)
     }
+    return this
   }
 
   destroy(): void {}

@@ -1,0 +1,26 @@
+diff --git a/package.json b/package.json
+index 1fb0ab4cd3a19d2be49e22d6b50628f76776077e..ef9f1bc78b3142501e2502cc01e9d0d6b71d1ead 100644
+--- a/package.json
++++ b/package.json
+@@ -43,7 +43,7 @@
+     "@types/eslint": ">=8.0.0",
+     "eslint": ">=8.0.0",
+     "eslint-config-prettier": ">= 7.0.0 <10.0.0 || >=10.1.0",
+-    "prettier": ">=3.0.0"
++    "@pathtx/prettier": ">=3.0.0"
+   },
+   "peerDependenciesMeta": {
+     "@types/eslint": {
+diff --git a/worker.mjs b/worker.mjs
+index 1451209f44b626ef3e6f0b8c3e719db99fb791f8..17e67104fbe85d9a03e36d998557023281b7ddb8 100644
+--- a/worker.mjs
++++ b/worker.mjs
+@@ -11,7 +11,7 @@
+  * @import {ESLint} from 'eslint'
+  */
+ 
+-import prettier from 'prettier';
++import prettier from '@pathtx/prettier';
+ import { runAsWorker } from 'synckit';
+ 
+ runAsWorker(
