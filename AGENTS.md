@@ -21,6 +21,8 @@
 - Run tests with `pnpm test`
 - Run specific test with `pnpm test [test name]`
 - Update snapshots with `pnpm test -u`
+- Run eslint with `pnpm eslint --fix [path]` it will
+  lint code and fix some problems
 
 ## PR instructions
 
