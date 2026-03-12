@@ -1371,7 +1371,7 @@ export class ImageEditor extends Editor {
     bus.removeEmitter(this, ImageEditor)
   }
   on_destroy() {
-    if (bus.hasEmitter(this)) {
+    if (bus.hasEmitter(this, ImageEditor)) {
       bus.removeEmitter(this, ImageEditor)
     }
   }

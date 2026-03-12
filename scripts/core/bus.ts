@@ -1,29 +1,40 @@
 /*
-message bus system.  it's for more fundamental cases
-then the dependency graph can (or should) handle.
+# Message bus system.  
+
+This system is a kind of global event bus.  It's for more fundamental 
+cases then what the dependency graph might handle (e.g. informing
+any open uv editors to refresh themselves).
 
 the system used pseudo-weak-references by, instead of
 passing subscriber owner references directly, a callback
 function that returns owners is passed instead; if it
 returns undefined owner is assumed to be unreferenced.
 
-We strongly enforce event type names.  Emitter classes
-must register themselves, and include a list of valid
-events in their busDefine static method:
+We strongly enforce event type names. 
+
+
+import messageBus from 'core/bus'
 
 class EmitterClass {
   static busDefine() {
     return {
+      // events that go from emitters
       events : ["REGISTER", "BLEH", "UNREGISTER"]
-    }
+      // events that go to emitters
+      triggers: ['TRIGGER1', 'TRIGGER2']
+    } as const
+  }
+
+  constructor() {
+    messageBus.addEmitter(this, EmitterClass)
+  }
+
+  onDestroy() {
+    messageBus.removeEmitter(this, EmitterClass)
   }
 }
-
-import messageBus from 'core/bus.js'
-
-messageBug.register(EmitterClass)
-
 */
+
 export type EventCallback = (msg: BusMessage) => void
 
 export class Subscriber<CLS extends IBusEmitterClass, T = any> {
@@ -48,11 +59,11 @@ export class Subscriber<CLS extends IBusEmitterClass, T = any> {
   }
 }
 
-export class BusMessage<T = any, D = any> {
+export class BusMessage<T = any, D = any, CLS extends IBusEmitterClass = IBusEmitterClass> {
   event: string
   data: D
   sourceClass: any
-  emitter: any
+  emitter?: IBusEmitter<CLS>
   target?: T
 
   constructor(sourceClass: any, key: string, data: D) {
@@ -64,7 +75,7 @@ export class BusMessage<T = any, D = any> {
 }
 
 export interface IBusEmitter<EmitterClass extends IBusEmitterClass> {
-  onTrigger(event: BusTriggers<EmitterClass>, data?: any): void
+  onTrigger?(event: BusTriggers<EmitterClass>, data?: any): void
 }
 
 export interface IBusEmitterClass {
@@ -219,14 +230,14 @@ export class MessageBus {
 
   sendTrigger<CLS extends IBusEmitterClass>(sourceClass: CLS, messageType: BusTriggers<CLS>, data?: any): void {
     for (const emitter of this.emitters) {
-      if (emitter.emitterClass === sourceClass) {
-        emitter.emitter.trigger(messageType, data)
+      if (emitter.emitterClass === sourceClass && emitter.emitter.onTrigger !== undefined) {
+        emitter.emitter.onTrigger(messageType, data)
       }
     }
   }
 
   emitSync<CLS extends IBusEmitterClass>(
-    sourceEmitter: IBusEmitter<CLS>,
+    sourceEmitter: IBusEmitter<CLS> | undefined,
     sourceClass: CLS,
     messageType: BusEvents<CLS>,
     data: any

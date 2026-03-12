@@ -9,7 +9,7 @@ import {nstructjs} from '../../path.ux/scripts/pathux.js'
 
 import '../../core/textsprite.js'
 
-import messageBus from '../../core/bus'
+import messageBus, {BusTriggers} from '../../core/bus'
 import {ToolContext, ViewContext} from '../../core/context'
 import {SceneObject} from '../../sceneobject/sceneobject'
 import {Scene} from '../../scene/scene'
@@ -155,14 +155,24 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
 
   static busDefine() {
     return {
-      events: ['REGISTER', 'UNREGISTER'],
+      events  : ['REGISTER', 'UNREGISTER'],
       triggers: [],
     } as const
   }
 
+  onTrigger(trigger: BusTriggers<typeof ToolMode>, data: any) {
+    // no triggers currently
+    switch (
+      trigger
+      //
+      // eslint-disable-next-line no-empty
+    ) {
+    }
+  }
+
   static unregister(cls: any) {
     ToolModes.remove(cls)
-    messageBus.emitSync(this, 'UNREGISTER', cls)
+    messageBus.emitSync(undefined, ToolMode, 'UNREGISTER', cls)
   }
 
   static register(cls: any) {
@@ -171,7 +181,7 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
     }
 
     ToolModes.push(cls)
-    messageBus.emit(this, 'REGISTER', cls)
+    messageBus.emitSync(undefined, ToolMode, 'REGISTER', cls)
   }
 
   static getTransformProp() {
@@ -556,8 +566,6 @@ export function makeToolModeEnum() {
 
   return prop
 }
-
-//messageBus.register(ToolMode)
 
 window._ToolModes = ToolModes
 window._makeToolModeEnum = makeToolModeEnum

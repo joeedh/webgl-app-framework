@@ -22,10 +22,11 @@ import {Edge, Face, Loop, Mesh, Vertex} from './mesh'
 import {INumberList} from '../util/polyfill'
 import bus from '../core/bus.js'
 import {ImageEditor, UVEditor} from '../editors/image/ImageEditor'
+import {OptionalIf} from '../util/optionalIf.js'
 
 const chp_rets = util.cachering.fromConstructor(Vector2, 64)
 
-export class CVElem extends CustomDataElem<any> {
+export class CVElem<OPT extends {dead?: true | false} = {}> extends CustomDataElem<any> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -42,7 +43,6 @@ CVElem {
   vel: Vector2
   oldco: Vector2
   oldvel: Vector2
-  tris: any[]
   area?: number
   wind?: boolean
   bTangent: Vector3
@@ -55,7 +55,6 @@ CVElem {
     this.vel = new Vector2()
     this.oldco = new Vector2()
     this.oldvel = new Vector2()
-    this.tris = undefined
     this.area = undefined
     this.wind = undefined
 
@@ -76,16 +75,17 @@ CVElem {
     return 8 * 5
   }
 
-  copyTo(b) {
+  copyTo(b: this): this {
     b.hasPins = this.hasPins
     b.corner = this.corner
     b.orig = this.orig
     b.vel.load(this.vel)
     b.oldco.load(this.oldco)
     b.oldvel.load(this.oldvel)
+    return this
   }
 
-  setValue(b) {
+  setValue(b: this) {
     b.copyTo(this)
   }
 
@@ -123,6 +123,7 @@ export class UVIsland extends Set {
     this.hasSelLoops = false
 
     this.boxcenter = new Vector2()
+    this.boxsize = new Vector2()
     this.area = 0.0
     this.min = new Vector2()
     this.max = new Vector2()
@@ -138,7 +139,7 @@ export interface IUVWranglerConstructor<type> {
 }
 
 export class UVWrangler {
-  islands: UVIsland[]
+  islands: UVIsland[] = []
   mesh: Mesh
   uvMesh?: Mesh
   faces: Set<Face>
@@ -1052,6 +1053,7 @@ export class UVWrangler {
 
     function drawline(v1: INumberList, v2: INumberList, color = 'red'): void {
       bus.sendTrigger(ImageEditor, 'addDrawLine', [v1, v2, color])
+      bus.sendTrigger(ImageEditor, 'flagRedraw')
     }
 
     const cd_corner = this.cd_corner
@@ -1387,7 +1389,7 @@ export function voxelUnwrap(
   const doneset = new WeakSet()
 
   class ColorSet extends Set<Face> {
-    color: Vector4
+    color: Vector4 = new Vector4()
   }
 
   for (const node of bvh.nodes) {
@@ -1425,6 +1427,11 @@ export function voxelUnwrap(
 
   class MyPackNode extends PackNode {
     ls: Set<Loop>
+
+    constructor(ls: Set<Loop> = new Set()) {
+      super()
+      this.ls = ls
+    }
   }
 
   for (const patch of patches.values()) {
@@ -1472,11 +1479,10 @@ export function voxelUnwrap(
     max.sub(min)
     totarea += max[0] * max[1]
 
-    const pnode = new MyPackNode()
+    const pnode = new MyPackNode(ls)
     pnode.pos.load(min).mulScalar(1000)
     pnode.size.load(max).mulScalar(1000)
     pnode.startpos = new Vector2(pnode.pos)
-    pnode.ls = ls
 
     for (const l of ls) {
       const uv = cd_uv.get(l).uv
