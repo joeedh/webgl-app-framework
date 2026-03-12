@@ -112,8 +112,8 @@ export class BVHToolMode extends ToolMode {
 
     this._brush_lines = []
 
-    for (let k in SculptTools) {
-      let tool = SculptTools[k]
+    for (const k in SculptTools) {
+      const tool = SculptTools[k]
       this.slots[tool] = new PaintToolSlot(tool as unknown as SculptTools)
     }
 
@@ -132,20 +132,20 @@ export class BVHToolMode extends ToolMode {
 
     this._apiDynTopo = new Proxy(this.dynTopo, {
       get: (target: any, key: string | symbol): any => {
-        let brush = this.getBrush()
+        const brush = this.getBrush()
 
         if (brush && key === 'overrideMask') {
           return brush.dynTopo.overrideMask
         }
 
-        let all = !brush || brush.dynTopo.overrideMask & DynTopoOverrides.NONE
+        const all = !brush || brush.dynTopo.overrideMask & DynTopoOverrides.NONE
 
         if (all) {
           return this.dynTopo[key]
         }
 
         if (key !== 'flag') {
-          let key2 = DynTopoSettings.apiKeyToOverride(key as string)
+          const key2 = DynTopoSettings.apiKeyToOverride(key as string)
 
           if (!key2) {
             return brush.dynTopo[key]
@@ -163,12 +163,12 @@ export class BVHToolMode extends ToolMode {
           //create merged flags
           let flag = 0
 
-          let f1 = this.dynTopo.flag
-          let f2 = brush.dynTopo.flag
-          let oflag = brush.dynTopo.overrideMask
+          const f1 = this.dynTopo.flag
+          const f2 = brush.dynTopo.flag
+          const oflag = brush.dynTopo.overrideMask
 
-          for (let k in DynTopoFlags) {
-            let f = DynTopoFlags[k] as unknown as number
+          for (const k in DynTopoFlags) {
+            const f = DynTopoFlags[k] as unknown as number
 
             if (oflag & f) {
               flag |= f2 & f ? f : 0
@@ -181,9 +181,9 @@ export class BVHToolMode extends ToolMode {
         }
       },
       set: (target: any, key: string | symbol, val: any): boolean => {
-        let brush = this.getBrush()
+        const brush = this.getBrush()
 
-        let all = !brush || brush.dynTopo.overrideMask & DynTopoOverrides.NONE
+        const all = !brush || brush.dynTopo.overrideMask & DynTopoOverrides.NONE
 
         if (brush && key === 'overrideMask') {
           brush.dynTopo.overrideMask = val
@@ -194,7 +194,7 @@ export class BVHToolMode extends ToolMode {
         }
 
         if (key !== 'flag') {
-          let key2 = DynTopoSettings.apiKeyToOverride(key as string)
+          const key2 = DynTopoSettings.apiKeyToOverride(key as string)
 
           if (key2 && brush.dynTopo.overrideMask & (DynTopoOverrides[key2 as any] as unknown as number)) {
             brush.dynTopo[key] = val
@@ -202,12 +202,12 @@ export class BVHToolMode extends ToolMode {
             this.dynTopo[key] = val
           }
         } else {
-          let flag = 0
-          let oflag = brush.dynTopo.overrideMask
+          const flag = 0
+          const oflag = brush.dynTopo.overrideMask
 
-          for (let k in DynTopoFlags) {
-            let f = DynTopoFlags[k] as unknown as number
-            let dynTopo = oflag & f ? brush.dynTopo : this.dynTopo
+          for (const k in DynTopoFlags) {
+            const f = DynTopoFlags[k] as unknown as number
+            const dynTopo = oflag & f ? brush.dynTopo : this.dynTopo
 
             if (val & f) {
               dynTopo.flag |= f
@@ -223,7 +223,7 @@ export class BVHToolMode extends ToolMode {
   }
 
   get _brushSizeHelper(): number {
-    let brush = this.getBrush()
+    const brush = this.getBrush()
 
     if (!brush) {
       return 55.0
@@ -237,7 +237,7 @@ export class BVHToolMode extends ToolMode {
   }
 
   set _brushSizeHelper(val: number) {
-    let brush = this.getBrush()
+    const brush = this.getBrush()
 
     if (!brush) {
       return
@@ -259,17 +259,17 @@ export class BVHToolMode extends ToolMode {
       return
     }
 
-    let oldbrush = this.getBrush()
+    const oldbrush = this.getBrush()
     if (oldbrush === brush) {
       return
     }
 
-    let scene = this.ctx ? this.ctx.scene : undefined
+    const scene = this.ctx ? this.ctx.scene : undefined
     this.slots[this.tool].setBrush(brush, scene)
   }
 
   get _apiInheritDynTopo(): boolean {
-    let brush = this.getBrush()
+    const brush = this.getBrush()
     if (!brush) {
       return false
     }
@@ -278,7 +278,7 @@ export class BVHToolMode extends ToolMode {
   }
 
   set _apiInheritDynTopo(v: boolean) {
-    let brush = this.getBrush()
+    const brush = this.getBrush()
     if (!brush) {
       return
     }
@@ -312,10 +312,10 @@ export class BVHToolMode extends ToolMode {
   }
 
   static buildSettings(container: any): void {
-    let name = this.toolModeDefine().name
-    let path = `scene.tools.${name}`
+    const name = this.toolModeDefine().name
+    const path = `scene.tools.${name}`
 
-    let browser = document.createElement('data-block-browser-x') as DataBlockBrowser<SculptBrush>
+    const browser = document.createElement('data-block-browser-x') as DataBlockBrowser<SculptBrush>
     browser.blockClass = SculptBrush
     browser.setAttribute('datapath', path + '.brush')
     browser.filterFunc = function (brush: any): boolean {
@@ -323,26 +323,26 @@ export class BVHToolMode extends ToolMode {
         return false
       }
 
-      let toolmode = browser.ctx.toolmode
+      const toolmode = browser.ctx.toolmode
       return brush.tool === toolmode.tool
     }
 
-    let row = container.row()
+    const row = container.row()
     row.add(browser)
     row.useIcons(true)
     row.tool("brush.load_default(dataPath='scene.tools.sculpt.brush')")
 
-    let col = container.col()
+    const col = container.col()
     let strip, panel, panel2
 
-    let settings = col.panel('Brush Settings')
+    const settings = col.panel('Brush Settings')
     strip = settings.row().strip()
     strip.useIcons(false)
     strip.label('Spacing')
     strip.prop(path + '.brush.spacingMode')
 
     function doChannel(name: string, panel: any = settings): any {
-      let col2 = panel.col().strip()
+      const col2 = panel.col().strip()
 
       //col2.style["padding"] = "7px";
       //col2.style["margin"] = "2px";
@@ -369,7 +369,7 @@ export class BVHToolMode extends ToolMode {
 
     panel = col.panel('Texture')
     panel.closed = true
-    let tex = document.createElement('texture-select-panel-x')
+    const tex = document.createElement('texture-select-panel-x')
 
     tex.setAttribute('datapath', path + '.brush.texUser.texture')
 
@@ -439,20 +439,20 @@ export class BVHToolMode extends ToolMode {
     col.prop(path + '.brush.normalfac')
 
     function dfield(con: any, key: string): any {
-      let row = con.row()
-      let strip = row.strip(undefined, 4, 0)
+      const row = con.row()
+      const strip = row.strip(undefined, 4, 0)
 
       strip.overrideDefault('labelOnTop', false)
       strip.overrideDefault('BoxMargin', 0)
       strip.overrideDefault('margin', 0)
       strip.overrideDefault('BoxRadius', 5)
 
-      let opath = `${path}.dynTopo.overrides[NONE]`
+      const opath = `${path}.dynTopo.overrides[NONE]`
 
-      let okey = DynTopoSettings.apiKeyToOverride(key)
+      const okey = DynTopoSettings.apiKeyToOverride(key)
       //let icon = row.iconcheck(`${path}.dynTopo.overrides[${okey}]`);
-      let icon = strip.iconcheck(`${path}.dynTopo.overrides[${okey}]`)
-      let ret = strip.prop(`${path}.dynTopo.${key}`)
+      const icon = strip.iconcheck(`${path}.dynTopo.overrides[${okey}]`)
+      const ret = strip.prop(`${path}.dynTopo.${key}`)
 
       icon.iconsheet = 0 //use small icons
       icon.drawCheck = false
@@ -462,7 +462,7 @@ export class BVHToolMode extends ToolMode {
           return
         }
 
-        let val = icon.ctx.api.getValue(icon.ctx, opath)
+        const val = icon.ctx.api.getValue(icon.ctx, opath)
 
         if (!!val !== !!icon.disabled) {
           icon.disabled = val
@@ -569,7 +569,7 @@ export class BVHToolMode extends ToolMode {
   static buildHeader(header: any, addHeaderRow: any): void {
     super.buildHeader(header, addHeaderRow)
 
-    let name = this.toolModeDefine().name
+    const name = this.toolModeDefine().name
 
     let strip = header.strip()
     strip.prop(`scene.tools.${name}.drawBVH`)
@@ -589,7 +589,7 @@ export class BVHToolMode extends ToolMode {
     strip.prop(`scene.tools.${name}.drawValidEdges`)
 
     let row = addHeaderRow()
-    let path = `scene.tools.${name}.brush`
+    const path = `scene.tools.${name}.brush`
 
     strip = row.strip()
     //strip.listenum(path + ".tool");
@@ -620,7 +620,7 @@ export class BVHToolMode extends ToolMode {
   }
 
   static defineAPI(api: any): any {
-    let st = super.defineAPI(api)
+    const st = super.defineAPI(api)
 
     st.flags('symmetryAxes', 'symmetryAxes', {
       X: 1,
@@ -636,13 +636,13 @@ export class BVHToolMode extends ToolMode {
     st.float('_brushSizeHelper', 'brushRadius', 'Radius').noUnits().range(0, 450).step(1.0)
 
     function onchange(this: any): void {
-      let pbvh = this.dataref
-      let mesh = pbvh.ctx.mesh
+      const pbvh = this.dataref
+      const mesh = pbvh.ctx.mesh
 
       if (mesh && mesh.bvh && !mesh.bvh.dead) {
-        let bvh = mesh.bvh
+        const bvh = mesh.bvh
 
-        for (let node of bvh.nodes) {
+        for (const node of bvh.nodes) {
           if (node.leaf) {
             node.flag |= BVHFlags.UPDATE_DRAW
             bvh.updateNodes.add(node)
@@ -701,23 +701,23 @@ export class BVHToolMode extends ToolMode {
   }
 
   drawBrush(view3d: any): void {
-    for (let l of this._brush_lines) {
+    for (const l of this._brush_lines) {
       l.remove()
     }
     this._brush_lines.length = 0
 
-    let drawCircle = (x: number, y: number, r: number, mat: Matrix4 = new Matrix4(), z: number = 0.0): void => {
-      let p = new Vector3(),
+    const drawCircle = (x: number, y: number, r: number, mat: Matrix4 = new Matrix4(), z: number = 0.0): void => {
+      const p = new Vector3(),
         lastp = new Vector3()
-      let steps = Math.max(Math.ceil((Math.PI * r * 2) / 20), 8)
+      const steps = Math.max(Math.ceil((Math.PI * r * 2) / 20), 8)
       let th = -Math.PI,
         dth = (2.0 * Math.PI) / (steps - 1)
 
       r /= devicePixelRatio
 
-      let dpi = UIBase.getDPI()
+      const dpi = UIBase.getDPI()
 
-      let mpos = view3d.getLocalMouse(x, y)
+      const mpos = view3d.getLocalMouse(x, y)
       x = mpos[0]
       y = mpos[1]
       //y -= r * 0.5;
@@ -735,14 +735,14 @@ export class BVHToolMode extends ToolMode {
       }
     }
 
-    let brush = this.getBrush()
+    const brush = this.getBrush()
     if (!brush) {
       return
     }
 
-    let radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
+    const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
 
-    let r = this._radius !== undefined ? this._radius : radius
+    const r = this._radius !== undefined ? this._radius : radius
     drawCircle(this.mpos[0], this.mpos[1], r)
   }
 
@@ -751,7 +751,7 @@ export class BVHToolMode extends ToolMode {
   }
 
   on_mousemove(e: any, x: number, y: number, was_touch: boolean): any {
-    let ret = super.on_mousemove(e, x, y, was_touch)
+    const ret = super.on_mousemove(e, x, y, was_touch)
 
     this.mpos[0] = e.x
     this.mpos[1] = e.y
@@ -772,23 +772,23 @@ export class BVHToolMode extends ToolMode {
     if (e.button === 0 && !e.altKey) {
       let brush = this.getBrush()
 
-      let isColor = brush.tool === SculptTools.PAINT || brush.tool === SculptTools.PAINT_SMOOTH
-      let smoothtool = isColor ? SculptTools.PAINT_SMOOTH : SculptTools.SMOOTH
+      const isColor = brush.tool === SculptTools.PAINT || brush.tool === SculptTools.PAINT_SMOOTH
+      const smoothtool = isColor ? SculptTools.PAINT_SMOOTH : SculptTools.SMOOTH
       let drawFaceSet = this.lastFaceSet
 
       if (brush.tool === SculptTools.FACE_SET_DRAW) {
         if (e.ctrlKey) {
-          let view3d = this.ctx.view3d
-          let ob = this.ctx.object!
-          let mesh = this.ctx.mesh!
+          const view3d = this.ctx.view3d
+          const ob = this.ctx.object!
+          const mesh = this.ctx.mesh!
 
-          let bvh = mesh.getBVH({autoUpdate: false})
+          const bvh = mesh.getBVH({autoUpdate: false})
 
-          let view = view3d.getViewVec(e.x, e.y)
+          const view = view3d.getViewVec(e.x, e.y)
           let origin = view3d.activeCamera.pos
 
-          let obmat = ob.outputs.matrix.getValue()
-          let matinv = new Matrix4(obmat)
+          const obmat = ob.outputs.matrix.getValue()
+          const matinv = new Matrix4(obmat)
           matinv.invert()
 
           origin = new Vector3(origin)
@@ -799,11 +799,11 @@ export class BVHToolMode extends ToolMode {
           view4.multVecMatrix(matinv)
           view.load(view4).normalize()
 
-          let cd_fset = getFaceSets(mesh, true)
+          const cd_fset = getFaceSets(mesh, true)
 
-          let isect = bvh.castRay(origin, view)
+          const isect = bvh.castRay(origin, view)
           if (isect && isect.tri && isect.tri.l1) {
-            let f = isect.tri.l1.f
+            const f = isect.tri.l1.f
             drawFaceSet = this.lastFaceSet = Math.abs((f.customData[cd_fset] as IntElem).value)
           }
         } else {
@@ -811,9 +811,9 @@ export class BVHToolMode extends ToolMode {
         }
       }
 
-      let dynmask = 0
+      const dynmask = 0
 
-      let isTexPaint = brush.tool === SculptTools.TEXTURE_PAINT
+      const isTexPaint = brush.tool === SculptTools.TEXTURE_PAINT
 
       if (e.shiftKey && !isTexPaint) {
         brush = this.getBrush(smoothtool)
@@ -821,14 +821,14 @@ export class BVHToolMode extends ToolMode {
 
       console.log('dynmask', dynmask)
 
-      let radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
+      const radius = brush.flag & BrushFlags.SHARED_SIZE ? this.sharedBrushRadius : brush.radius
 
       brush = brush.copy()
 
       brush.dynTopo.loadDefaults(this.dynTopo)
 
       if (e.ctrlKey && !isTexPaint) {
-        let t = brush.color
+        const t = brush.color
         brush.color = brush.bgcolor
         brush.bgcolor = t
       }
@@ -878,7 +878,7 @@ export class BVHToolMode extends ToolMode {
   }
 
   getMeshMresSettings(mesh: any): any {
-    let cd_grid = GridBase.meshGridOffset(mesh)
+    const cd_grid = GridBase.meshGridOffset(mesh)
 
     if (cd_grid >= 0) {
       return mesh.loops.customData.flatlist[cd_grid].getTypeSettings()
@@ -888,13 +888,13 @@ export class BVHToolMode extends ToolMode {
   }
 
   updateMeshMres(mesh: any): void {
-    let cd_grid = GridBase.meshGridOffset(mesh)
+    const cd_grid = GridBase.meshGridOffset(mesh)
 
     if (cd_grid < 0) {
       return
     }
 
-    let mres = this.getMeshMresSettings(mesh)
+    const mres = this.getMeshMresSettings(mesh)
     let flag = mres.flag
 
     if (this.enableMaxEditDepth) {
@@ -903,7 +903,7 @@ export class BVHToolMode extends ToolMode {
       flag &= ~GridSettingFlags.ENABLE_DEPTH_LIMIT
     }
 
-    let update = flag !== mres.flag || this.gridEditDepth !== mres.depthLimit
+    const update = flag !== mres.flag || this.gridEditDepth !== mres.depthLimit
 
     mres.depthLimit = this.gridEditDepth
     mres.flag = flag
@@ -911,8 +911,8 @@ export class BVHToolMode extends ToolMode {
     if (update) {
       console.log('MRES SETTINGS UPDATE')
 
-      for (let l of mesh.loops) {
-        let grid = l.customData[cd_grid]
+      for (const l of mesh.loops) {
+        const grid = l.customData[cd_grid]
         grid.update(mesh, l, cd_grid)
       }
 
@@ -930,13 +930,13 @@ export class BVHToolMode extends ToolMode {
     //hackishly update triangle count
     //in the UI
     if (this.ctx.mesh && this.ctx.mesh.bvh && this.ctx.mesh.bvh.cd_grid.i >= 0) {
-      let mesh = this.ctx.mesh
-      let bvh = this.ctx.mesh.bvh
+      const mesh = this.ctx.mesh
+      const bvh = this.ctx.mesh.bvh
       let tottri = 0
-      let gridAttr = bvh.cd_grid
+      const gridAttr = bvh.cd_grid
 
-      for (let l of mesh.loops) {
-        let grid = gridAttr.get(l)
+      for (const l of mesh.loops) {
+        const grid = gridAttr.get(l)
 
         tottri += grid.totTris
       }
@@ -983,7 +983,7 @@ export class BVHToolMode extends ToolMode {
   }
 
   onInactive(): void {
-    for (let l of this._brush_lines) {
+    for (const l of this._brush_lines) {
       l.remove()
     }
     this._brush_lines = []
@@ -991,11 +991,11 @@ export class BVHToolMode extends ToolMode {
     if (!this.ctx || !this.ctx.object) {
       return
     }
-    let ctx = this.ctx
+    const ctx = this.ctx
 
     super.onInactive()
 
-    let ob = ctx.object
+    const ob = ctx.object
     if ((ob.data instanceof Mesh || ob.data instanceof TetMesh) && ob.data.bvh) {
       if (ob.data instanceof Mesh) {
         ob.data.regenTessellation()
@@ -1017,10 +1017,10 @@ export class BVHToolMode extends ToolMode {
 
     this.drawBrush(view3d)
 
-    let ctx = this.ctx,
+    const ctx = this.ctx,
       scene = ctx.scene
 
-    let uniforms = {
+    const uniforms = {
       projectionMatrix: view3d.activeCamera.rendermat,
       //normalMatrix    : new Matrix4()
       objectMatrix    : new Matrix4(),
@@ -1034,11 +1034,11 @@ export class BVHToolMode extends ToolMode {
       alpha           : 1.0,
     }
 
-    let program = Shaders.ObjectLineShader
+    const program = Shaders.ObjectLineShader
 
     if (1) {
-      let co = this.debugSphere
-      let s = 0.1
+      const co = this.debugSphere
+      const s = 0.1
 
       uniforms.objectMatrix.translate(co[0], co[1], co[2])
       uniforms.objectMatrix.scale(s, s, s)
@@ -1047,9 +1047,9 @@ export class BVHToolMode extends ToolMode {
       uniforms.objectMatrix.makeIdentity()
     }
 
-    let drawNodeAABB = (bvh: any, node: any, matrix: Matrix4): void => {
+    const drawNodeAABB = (bvh: any, node: any, matrix: Matrix4): void => {
       if (!node.leaf) {
-        for (let c of node.children) {
+        for (const c of node.children) {
           drawNodeAABB(bvh, c, matrix)
         }
 
@@ -1063,12 +1063,12 @@ export class BVHToolMode extends ToolMode {
       matrix = new Matrix4(matrix)
       uniforms.objectMatrix = matrix
 
-      let size = new Vector3(node.max).sub(node.min)
+      const size = new Vector3(node.max).sub(node.min)
 
       gl.disable(gl.CULL_FACE)
       gl.disable(gl.BLEND)
 
-      let f = node.id * 0.1
+      const f = node.id * 0.1
       uniforms.color[0] = Math.fract(f * Math.sqrt(3.0))
       uniforms.color[1] = Math.fract(f * Math.sqrt(5.0) + 0.234)
       uniforms.color[2] = Math.fract(f * Math.sqrt(2.0) + 0.8234)
@@ -1076,7 +1076,7 @@ export class BVHToolMode extends ToolMode {
 
       uniforms.uColor = uniforms.color
 
-      let camera = view3d.activeCamera
+      const camera = view3d.activeCamera
 
       uniforms.aspect = camera.aspect
       uniforms.near = camera.near
@@ -1087,23 +1087,23 @@ export class BVHToolMode extends ToolMode {
 
       //console.log(uniforms);
 
-      let white = [1, 1, 1, 1]
+      const white = [1, 1, 1, 1]
 
       if (bvh.isDeforming) {
-        let lf = LayerTypes
-        let lflag = lf.LOC | lf.COLOR
+        const lf = LayerTypes
+        const lflag = lf.LOC | lf.COLOR
 
-        let sm = new SimpleMesh(lflag)
+        const sm = new SimpleMesh(lflag)
         sm.primflag |= PrimitiveTypes.LINES
 
-        for (let e of node.boxedges) {
-          let v1 = new Vector3(e.v1)
-          let v2 = new Vector3(e.v2)
+        for (const e of node.boxedges) {
+          const v1 = new Vector3(e.v1)
+          const v2 = new Vector3(e.v2)
 
           //v1.interp(node.cent, 0.05);
           //v2.interp(node.cent, 0.05);
 
-          let line = sm.line(v1, v2)
+          const line = sm.line(v1, v2)
           line.colors(white, white)
 
           //v1.interp(v2, 0.5);
@@ -1117,10 +1117,10 @@ export class BVHToolMode extends ToolMode {
         sm.drawLines(gl, uniforms, program)
         sm.destroy(gl)
       } else {
-        let smat = new Matrix4()
+        const smat = new Matrix4()
         smat.scale(size[0], size[1], size[2])
 
-        let tmat = new Matrix4()
+        const tmat = new Matrix4()
         tmat.translate(node.min[0] + size[0] * 0.5, node.min[1] + size[1] * 0.5, node.min[2] + size[2] * 0.5)
 
         matrix.multiply(tmat)
@@ -1135,21 +1135,21 @@ export class BVHToolMode extends ToolMode {
       //Shapes.CUBE.draw(gl, uniforms, program);
     }
 
-    for (let ob of scene.objects.selected.editable) {
+    for (const ob of scene.objects.selected.editable) {
       if (!(ob.data instanceof Mesh) && !(ob.data instanceof TetMesh)) {
         continue
       }
 
-      let matrix = new Matrix4(ob.outputs.matrix.getValue())
+      const matrix = new Matrix4(ob.outputs.matrix.getValue())
 
       uniforms.object_id = ob.lib_id
 
-      let mesh = ob.data
-      let bvh = this.getBVH(mesh)
+      const mesh = ob.data
+      const bvh = this.getBVH(mesh)
 
       //console.log("BVH", bvh.nodes.length);
       if (this.drawBVH) {
-        for (let node of bvh.nodes) {
+        for (const node of bvh.nodes) {
           if (node.leaf) {
             drawNodeAABB(bvh, node, matrix)
           }
@@ -1171,20 +1171,20 @@ export class BVHToolMode extends ToolMode {
       return false
     }
 
-    let symflag = mesh.symFlag
-    let axes = [-1]
+    const symflag = mesh.symFlag
+    const axes = [-1]
     for (let i = 0; i < 3; i++) {
       if (symflag & (1 << i)) {
         axes.push(i)
       }
     }
 
-    let drawFlat = this.drawFlat
-    let brush = this.getBrush()
+    const drawFlat = this.drawFlat
+    const brush = this.getBrush()
 
-    let drawNode = (node: any, matrix: Matrix4): void => {
+    const drawNode = (node: any, matrix: Matrix4): void => {
       if (!node.leaf) {
-        for (let c of node.children) {
+        for (const c of node.children) {
           drawNode(c, matrix)
         }
 
@@ -1194,12 +1194,12 @@ export class BVHToolMode extends ToolMode {
       matrix = new Matrix4(matrix)
       uniforms.objectMatrix = matrix
 
-      let size = new Vector3(node.max).sub(node.min)
+      const size = new Vector3(node.max).sub(node.min)
 
-      let smat = new Matrix4()
+      const smat = new Matrix4()
       smat.scale(size[0], size[1], size[2])
 
-      let tmat = new Matrix4()
+      const tmat = new Matrix4()
       tmat.translate(node.min[0] + size[0] * 0.5, node.min[1] + size[1] * 0.5, node.min[2] + size[2] * 0.5)
 
       matrix.multiply(tmat)
@@ -1211,16 +1211,16 @@ export class BVHToolMode extends ToolMode {
       uniforms.objectMatrix.load(matrix)
     }
 
-    let ob = object //let ob = this.ctx.object;
+    const ob = object //let ob = this.ctx.object;
     let bvh: BVH
 
-    let cd_fset = mesh.faces.customData.getNamedLayerIndex('face_sets', 'int')
+    const cd_fset = mesh.faces.customData.getNamedLayerIndex('face_sets', 'int')
 
     //update all normals on first bvh build
     if (!mesh.bvh) {
       bvh = this.getBVH(mesh)
 
-      for (let n of bvh.nodes) {
+      for (const n of bvh.nodes) {
         if (n.leaf) {
           n.setUpdateFlag(BVHFlags.UPDATE_NORMALS)
         }
@@ -1234,14 +1234,14 @@ export class BVHToolMode extends ToolMode {
     const isDeforming = bvh.isDeforming
     const cd_node = bvh.cd_node
 
-    let dynTopo = this._apiDynTopo
+    const dynTopo = this._apiDynTopo
 
     let hideQuadEdges = false
 
     if (mesh instanceof Mesh) {
       hideQuadEdges = !!(dynTopo.flag & DynTopoFlags.DRAW_TRIS_AS_QUADS)
 
-      let key = '' + mesh.lib_id + ':' + hideQuadEdges
+      const key = '' + mesh.lib_id + ':' + hideQuadEdges
       let update = false
 
       if (this._last_hqed !== key) {
@@ -1254,14 +1254,14 @@ export class BVHToolMode extends ToolMode {
       if (update) {
         console.log('hideQuadEdges:', hideQuadEdges)
 
-        let quadflag = MeshFlags.QUAD_EDGE
-        for (let e of mesh.edges) {
+        const quadflag = MeshFlags.QUAD_EDGE
+        for (const e of mesh.edges) {
           e.flag &= ~quadflag
         }
 
         trianglesToQuads(mesh, mesh.faces, TriQuadFlags.DEFAULT | TriQuadFlags.MARK_ONLY)
 
-        for (let node of bvh.nodes) {
+        for (const node of bvh.nodes) {
           if (!node.leaf) {
             continue
           }
@@ -1275,7 +1275,7 @@ export class BVHToolMode extends ToolMode {
     }
 
     //*
-    for (let node of new Set(bvh.nodes)) {
+    for (const node of new Set(bvh.nodes)) {
       if (!node || node.id < 0) {
         continue
       }
@@ -1285,14 +1285,14 @@ export class BVHToolMode extends ToolMode {
     //bvh.update();
     //*/
 
-    let parentoff = bvh.drawLevelOffset
+    const parentoff = bvh.drawLevelOffset
 
     let fullDraw = false
 
-    let grid_off = GridBase.meshGridOffset(mesh)
-    let have_grids = grid_off >= 0
-    let white = [1, 1, 1, 1]
-    let red = [1, 0, 0, 1]
+    const grid_off = GridBase.meshGridOffset(mesh)
+    const have_grids = grid_off >= 0
+    const white = [1, 1, 1, 1]
+    const red = [1, 0, 0, 1]
 
     let cd_color = -1
     let have_color: boolean | undefined
@@ -1317,7 +1317,7 @@ export class BVHToolMode extends ToolMode {
       fullDraw = true
     }
 
-    for (let node of bvh.nodes) {
+    for (const node of bvh.nodes) {
       node.flag &= ~BVHFlags.TEMP_TAG
 
       if (fullDraw && node.leaf) {
@@ -1325,12 +1325,12 @@ export class BVHToolMode extends ToolMode {
       }
     }
 
-    let drawnodes = new Set<BVHNode>()
+    const drawnodes = new Set<BVHNode>()
 
-    let sortnodes = bvh.nodes.filter((n: BVHNode) => n.leaf)
+    const sortnodes = bvh.nodes.filter((n: BVHNode) => n.leaf)
     sortnodes.sort((a: BVHNode, b: BVHNode) => b.depth - a.depth)
 
-    for (let node of sortnodes) {
+    for (const node of sortnodes) {
       let p = node
 
       let ok = node.parent && node.parent.subtreeDepth > node.depth + 1
@@ -1386,7 +1386,7 @@ export class BVHToolMode extends ToolMode {
       }
     }
 
-    for (let node of new Set(drawnodes)) {
+    for (const node of new Set(drawnodes)) {
       let p2 = node.parent
       while (p2) {
         if (p2.flag & BVHFlags.TEMP_TAG) {
@@ -1402,11 +1402,11 @@ export class BVHToolMode extends ToolMode {
     let t2 = new Vector3()
     let t3 = new Vector3()
 
-    let drawBVH = this.drawBVH
-    let drawNodeIds = this.drawNodeIds
-    let puv3 = [0, 0, 0, 0]
-    let puv2 = [0, 1, 0, 0]
-    let puv1 = [1, 0, 0, 0]
+    const drawBVH = this.drawBVH
+    const drawNodeIds = this.drawNodeIds
+    const puv3 = [0, 0, 0, 0]
+    const puv2 = [0, 1, 0, 0]
+    const puv1 = [1, 0, 0, 0]
 
     /*
     on factor;
@@ -1451,12 +1451,12 @@ export class BVHToolMode extends ToolMode {
     const drawMask = this.drawMask
 
     const cd_uv = mesh.loops.customData.getLayerIndex('uv')
-    let haveUvs = cd_uv >= 0
+    const haveUvs = cd_uv >= 0
 
-    let tstart = util.time_ms()
+    const tstart = util.time_ms()
 
     if (bvh.computeValidEdges !== drawValidEdges) {
-      for (let node of bvh.nodes) {
+      for (const node of bvh.nodes) {
         node.flag |= BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_DRAW
         bvh.updateNodes.add(node)
       }
@@ -1465,17 +1465,17 @@ export class BVHToolMode extends ToolMode {
     bvh.computeValidEdges = drawValidEdges
     bvh.update()
 
-    let vn1 = new Vector3()
+    const vn1 = new Vector3()
 
     let nsmooth
-    let nsmooth_rets = util.cachering.fromConstructor(Vector3, 16)
+    const nsmooth_rets = util.cachering.fromConstructor(Vector3, 16)
 
     if (have_grids) {
       nsmooth = function (v: any, fac: number = 1.0): Vector3 {
         let tot = 0
-        let n = nsmooth_rets.next().zero()
+        const n = nsmooth_rets.next().zero()
 
-        for (let v2 of v.neighbors) {
+        for (const v2 of v.neighbors) {
           n.add(v2.no)
           tot++
         }
@@ -1493,14 +1493,14 @@ export class BVHToolMode extends ToolMode {
     } else {
       nsmooth = function (v: any, fac: number = 1.0): Vector3 {
         let tot = 0
-        let n = nsmooth_rets.next().zero()
+        const n = nsmooth_rets.next().zero()
 
-        for (let e of v.edges) {
-          let v2 = e.otherVertex(v)
+        for (const e of v.edges) {
+          const v2 = e.otherVertex(v)
 
-          let w = v.vectorDistanceSqr(v2)
+          const w = v.vectorDistanceSqr(v2)
 
-          for (let l of e.loops) {
+          for (const l of e.loops) {
             n.addFac(l.f.no, w)
             tot += w
           }
@@ -1526,9 +1526,9 @@ export class BVHToolMode extends ToolMode {
         tot = 0.0
 
       if (have_grids) {
-        for (let v2 of v.neighbors) {
+        for (const v2 of v.neighbors) {
           nv1.load(v.co).sub(v2.co).normalize()
-          let dot = -nv1.dot(v2.no)
+          const dot = -nv1.dot(v2.no)
 
           sum += dot
           tot++
@@ -1536,8 +1536,8 @@ export class BVHToolMode extends ToolMode {
       } else {
         nv1.zero()
 
-        for (let e of v.edges) {
-          let v2 = e.otherVertex(v)
+        for (const e of v.edges) {
+          const v2 = e.otherVertex(v)
 
           nv1.load(v.co).sub(v2.co).normalize()
           //nv2.load(v.no).cross(nv1);
@@ -1578,23 +1578,23 @@ export class BVHToolMode extends ToolMode {
     if (this.drawMask && cd_mask !== this._last_cd_mask) {
       this._last_cd_mask = cd_mask
 
-      for (let node of bvh.nodes) {
+      for (const node of bvh.nodes) {
         bvh.updateNodes.add(node)
         node.flag |= BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK
       }
     }
 
-    let norvisit = new WeakSet()
+    const norvisit = new WeakSet()
 
     if (isDeforming) {
-      let {data, dimen} = bvh.makeNodeDefTexture()
+      const {data, dimen} = bvh.makeNodeDefTexture()
 
       if (!bvh.glLeafTex || bvh.glLeafTex.createParams.width !== data.dimen) {
         if (bvh.glLeafTex) {
           bvh.glLeafTex.destroy(gl)
         }
 
-        let tex = gl.createTexture()
+        const tex = gl.createTexture()
 
         bvh.glLeafTex = new Texture(undefined, tex)
         gl.bindTexture(gl.TEXTURE_2D, tex)
@@ -1612,7 +1612,7 @@ export class BVHToolMode extends ToolMode {
     }
 
     function genNodeMesh_index(node: BVHNode): void {
-      let nodes: BVHNode[] = []
+      const nodes: BVHNode[] = []
 
       //count verts
       function buildNodes(n: BVHNode): void {
@@ -1620,7 +1620,7 @@ export class BVHToolMode extends ToolMode {
           nodes.push(n)
         }
 
-        for (let n2 of n.children) {
+        for (const n2 of n.children) {
           buildNodes(n2)
         }
       }
@@ -1636,7 +1636,7 @@ export class BVHToolMode extends ToolMode {
 
       haveColors = haveColors || drawMask || drawCavityMap || drawDispDisField
 
-      for (let n2 of nodes) {
+      for (const n2 of nodes) {
         totedge += (n2.indexEdges?.length ?? 0) >> 1
         totvert += n2.indexVerts?.length ?? 0
         tottri += ~~((n2.indexTris.length ?? 0) / 3 + 0.00001)
@@ -1648,8 +1648,8 @@ export class BVHToolMode extends ToolMode {
       }
 
       let i = 0
-      for (let n2 of nodes) {
-        for (let l of n2.indexLoops!) {
+      for (const n2 of nodes) {
+        for (const l of n2.indexLoops!) {
           l.index = i++
         }
       }
@@ -1671,7 +1671,7 @@ export class BVHToolMode extends ToolMode {
         updateColors = haveColors
         updateUvs = cd_uv >= 0
       } else {
-        let island = sm.islands[0]
+        const island = sm.islands[0]
 
         if (island.totvert !== totvert || island.tottri !== tottri || island.drawCavityMap !== drawCavityMap) {
           updateUvs = cd_uv >= 0
@@ -1682,7 +1682,7 @@ export class BVHToolMode extends ToolMode {
         updateUvs = cd_uv >= 0
       }
 
-      let island = sm.island
+      const island = sm.island
 
       island.totvert = totvert
       island.tottri = tottri
@@ -1741,7 +1741,7 @@ export class BVHToolMode extends ToolMode {
       updateColors = updateColors && haveColors
 
       if (!updateColors) {
-        for (let n of nodes) {
+        for (const n of nodes) {
           if (n.flag & BVHFlags.UPDATE_COLORS) {
             updateColors = true
 
@@ -1762,7 +1762,7 @@ export class BVHToolMode extends ToolMode {
       vcos = vcos._getWriteData()
 
       vnos.setCount(totvert, true)
-      let nomul = vnos.glSizeMul
+      const nomul = vnos.glSizeMul
       vnos = vnos._getWriteData()
 
       let vi = 0
@@ -1775,31 +1775,31 @@ export class BVHToolMode extends ToolMode {
         lineidx = lineidx._getWriteData()
       }
 
-      let black = [0, 0, 0, 1]
-      let white = [1, 1, 1, 1]
+      const black = [0, 0, 0, 1]
+      const white = [1, 1, 1, 1]
 
-      let displayers = mesh.verts.customData.getLayerSet('displace', false)
+      const displayers = mesh.verts.customData.getLayerSet('displace', false)
       let cd_disp = -1
       let cd_pvert = -1
 
       if (displayers && displayers.length > 0) {
         cd_disp = displayers[displayers.length - 1].index
-        let dctx = new DispContext()
+        const dctx = new DispContext()
         dctx.reset(mesh, cd_disp)
 
         cd_pvert = dctx.cd_pvert
         //cd_disp = mesh.verts.customData.getLayerIndex("displace");
       }
 
-      let ntmp = new Vector3()
-      let ntmp2 = new Vector3()
+      const ntmp = new Vector3()
+      const ntmp2 = new Vector3()
 
-      for (let n2 of nodes) {
-        let ilen = n2.indexVerts!.length
+      for (const n2 of nodes) {
+        const ilen = n2.indexVerts!.length
 
         for (let i = 0; i < ilen; i++) {
-          let v = n2.indexVerts[i]
-          let l = n2.indexLoops[i]
+          const v = n2.indexVerts[i]
+          const l = n2.indexLoops[i]
 
           if (!v || v.eid < 0) {
             vi++
@@ -1812,15 +1812,15 @@ export class BVHToolMode extends ToolMode {
           j = vi * 3
 
           if (editDisplaced && cd_disp >= 0) {
-            let dv = v.customData[cd_disp]
+            const dv = v.customData[cd_disp]
 
-            let co = dv.worldco
+            const co = dv.worldco
             //co = dv.smoothco;
 
             if (!norvisit.has(dv)) {
               dv.no.zero()
 
-              for (let f of v.faces) {
+              for (const f of v.faces) {
                 ntmp.load(f.no)
                 ntmp2.load(f.cent)
 
@@ -1836,14 +1836,14 @@ export class BVHToolMode extends ToolMode {
             }
 
             if (isDeforming) {
-              let n3 = cd_node.get(v).node
+              const n3 = cd_node.get(v).node
               if (!n3 || !n3.boxvdata) {
                 console.warn('eek!', v, n3)
                 vcos[j++] = 0.0
                 vcos[j++] = 0.0
                 vcos[j++] = 0.0
               } else {
-                let uvw = n3.boxvdata.get(v)
+                const uvw = n3.boxvdata.get(v)
 
                 vcos[j++] = uvw[0]
                 vcos[j++] = uvw[1]
@@ -1866,7 +1866,7 @@ export class BVHToolMode extends ToolMode {
             vnos[j++] = dv.no[2] * nomul
           } else {
             if (isDeforming) {
-              let n3 = cd_node.get(v).node
+              const n3 = cd_node.get(v).node
 
               if (!n3 || !n3.boxvdata) {
                 if (Math.random() > 0.97) {
@@ -1877,7 +1877,7 @@ export class BVHToolMode extends ToolMode {
                 vcos[j++] = 0.0
                 vcos[j++] = 0.0
               } else {
-                let uvw = n3.boxvdata.get(v)
+                const uvw = n3.boxvdata.get(v)
 
                 vcos[j++] = uvw[0]
                 vcos[j++] = uvw[1]
@@ -1903,7 +1903,7 @@ export class BVHToolMode extends ToolMode {
           let colormul2 = colormul
 
           if (drawMask && cd_mask >= 0) {
-            let mask = v.customData[cd_mask].value
+            const mask = v.customData[cd_mask].value
             colormul2 *= mask * 0.8 + 0.2
           }
 
@@ -1917,7 +1917,7 @@ export class BVHToolMode extends ToolMode {
 
           if (updateColors) {
             if (drawDispDisField && cd_pvert >= 0) {
-              let pv = v.customData[cd_pvert]
+              const pv = v.customData[cd_pvert]
 
               let dis = pv.disUV[0]
               dis = Math.fract(dis * 1.5)
@@ -1929,7 +1929,7 @@ export class BVHToolMode extends ToolMode {
               vcolors[j++] = dis * colormul
               vcolors[j++] = 1.0
             } else if (cd_color >= 0) {
-              let c = v.customData[cd_color].color
+              const c = v.customData[cd_color].color
 
               j = vi * 4
 
@@ -1948,8 +1948,8 @@ export class BVHToolMode extends ToolMode {
 
             if (cd_fset >= 0 && l.eid >= 0 && l.f) {
               j = vi * 4
-              let fset = l.f.customData[cd_fset].value
-              let color = getFaceSetColor(fset)
+              const fset = l.f.customData[cd_fset].value
+              const color = getFaceSetColor(fset)
 
               vcolors[j++] *= color[0]
               vcolors[j++] *= color[1]
@@ -1959,7 +1959,7 @@ export class BVHToolMode extends ToolMode {
           }
 
           if (updateUvs) {
-            let uv = l.customData[cd_uv].uv
+            const uv = l.customData[cd_uv].uv
             j = vi * 2
 
             vuvs[j++] = uv[0] * uvmul
@@ -1974,12 +1974,12 @@ export class BVHToolMode extends ToolMode {
       let ei = 0
       let base = 0
 
-      for (let n of nodes) {
-        let lmap = n.indexTris
-        let li = 0
+      for (const n of nodes) {
+        const lmap = n.indexTris
+        const li = 0
 
         for (let i = 0; i < lmap.length; i += 3) {
-          let i1 = lmap[i] + base,
+          const i1 = lmap[i] + base,
             i2 = lmap[i + 1] + base,
             i3 = lmap[i + 2] + base
 
@@ -1989,7 +1989,7 @@ export class BVHToolMode extends ToolMode {
         }
 
         if (drawWireframe) {
-          let emap = n.indexEdges
+          const emap = n.indexEdges
 
           for (let i = 0; i < emap.length; i++) {
             lineidx[ei++] = emap[i] + base
@@ -2015,7 +2015,7 @@ export class BVHToolMode extends ToolMode {
         node.drawData.reset(gl)
       }
 
-      let vpatch = false
+      const vpatch = false
       let vpatch2 = drawColPatches //drawColPatches;
       let vpatch3 = false
 
@@ -2068,7 +2068,7 @@ export class BVHToolMode extends ToolMode {
         }
       }
 
-      let island = sm.island
+      const island = sm.island
 
       island.tri_cos.bufferHint = gl.DYNAMIC_DRAW
       island.tri_normals.bufferHint = gl.DYNAMIC_DRAW
@@ -2082,7 +2082,7 @@ export class BVHToolMode extends ToolMode {
         if (node.leaf) {
           tottri += node.uniqueTris.size
         } else {
-          for (let c of node.children) {
+          for (const c of node.children) {
             countrec(c)
           }
         }
@@ -2109,31 +2109,31 @@ export class BVHToolMode extends ToolMode {
         primuv = primuv._getWriteData()
       }
 
-      let nmul = sm.island.tri_normals.glSizeMul
-      let cmul = sm.island.tri_colors.glSizeMul
-      let uvmul = sm.island.tri_uvs.glSizeMul
+      const nmul = sm.island.tri_normals.glSizeMul
+      const cmul = sm.island.tri_colors.glSizeMul
+      const uvmul = sm.island.tri_uvs.glSizeMul
 
-      let tri_cos = sm.island.tri_cos._getWriteData()
-      let tri_nos = sm.island.tri_normals._getWriteData()
-      let tri_cls = sm.island.tri_colors._getWriteData()
-      let tri_ids = sm.island.tri_ids._getWriteData()
-      let tri_uvs = sm.island.tri_uvs._getWriteData()
+      const tri_cos = sm.island.tri_cos._getWriteData()
+      const tri_nos = sm.island.tri_normals._getWriteData()
+      const tri_cls = sm.island.tri_colors._getWriteData()
+      const tri_ids = sm.island.tri_ids._getWriteData()
+      const tri_uvs = sm.island.tri_uvs._getWriteData()
 
       let ti = 0
 
       let colorfilter
-      let cfrets = util.cachering.fromConstructor(Vector4, 16)
+      const cfrets = util.cachering.fromConstructor(Vector4, 16)
 
       if (have_grids) {
         colorfilter = function (v, fac = 0.5) {
-          let ret = cfrets.next().zero()
+          const ret = cfrets.next().zero()
           let tot = 0.0
 
           fac = 1.0 - fac
 
-          for (let v2 of v.neighbors) {
-            let clr = v2.customData[cd_color].color
-            let w = 1.0
+          for (const v2 of v.neighbors) {
+            const clr = v2.customData[cd_color].color
+            const w = 1.0
 
             tot += w
             ret.addFac(clr, w)
@@ -2150,14 +2150,14 @@ export class BVHToolMode extends ToolMode {
         }
       } else {
         colorfilter = function (v, fac = 0.5) {
-          let ret = cfrets.next().zero()
+          const ret = cfrets.next().zero()
           let tot = 0.0
           fac = 1.0 - fac
 
-          for (let e of v.edges) {
-            let v2 = e.otherVertex(v)
-            let clr = v2.customData[cd_color].color
-            let w = 1.0
+          for (const e of v.edges) {
+            const v2 = e.otherVertex(v)
+            const clr = v2.customData[cd_color].color
+            const w = 1.0
 
             tot += w
             ret.addFac(clr, w)
@@ -2174,23 +2174,23 @@ export class BVHToolMode extends ToolMode {
         }
       }
 
-      let tv1 = new Vector3()
-      let tv2 = new Vector3()
-      let tv3 = new Vector3()
-      let tv4 = new Vector3()
-      let tvt = new Vector3()
-      let tvn = new Vector3()
+      const tv1 = new Vector3()
+      const tv2 = new Vector3()
+      const tv3 = new Vector3()
+      const tv4 = new Vector3()
+      const tvt = new Vector3()
+      const tvn = new Vector3()
 
-      let tn1 = new Vector3()
-      let tn2 = new Vector3()
-      let tn3 = new Vector3()
-      let tn4 = new Vector3()
+      const tn1 = new Vector3()
+      const tn2 = new Vector3()
+      const tn3 = new Vector3()
+      const tn4 = new Vector3()
 
-      let tc1 = new Vector4()
-      let tc2 = new Vector4()
-      let tc3 = new Vector4()
-      let tc4 = new Vector4()
-      let tc5 = new Vector4()
+      const tc1 = new Vector4()
+      const tc2 = new Vector4()
+      const tc3 = new Vector4()
+      const tc4 = new Vector4()
+      const tc5 = new Vector4()
       tc1[3] = tc2[3] = tc3[3] = 1.0
       //let cd_node = have_grids ? mesh.loops.customData.getLayerIndex("bvh")
       //                         : mesh.verts.customData.getLayerIndex("bvh");
@@ -2198,15 +2198,15 @@ export class BVHToolMode extends ToolMode {
 
       function rec(node: any): void {
         if (!node.leaf) {
-          for (let c of node.children) {
+          for (const c of node.children) {
             rec(c)
           }
 
           return
         }
 
-        let n = new Vector3()
-        let id = object.lib_id
+        const n = new Vector3()
+        const id = object.lib_id
 
         tc1.zero().addScalar(1.0)
         tc2.zero().addScalar(1.0)
@@ -2222,11 +2222,11 @@ export class BVHToolMode extends ToolMode {
           }
         }
 
-        for (let tri of node.uniqueTris) {
+        for (const tri of node.uniqueTris) {
           if (vpatch2) {
-            let t1 = tri.v1
-            let t2 = tri.v2
-            let t3 = tri.v3
+            const t1 = tri.v1
+            const t2 = tri.v2
+            const t3 = tri.v3
 
             tv1.load(t1).interp(t2, 0.5)
             tv2.load(t2).interp(t3, 0.5)
@@ -2242,9 +2242,9 @@ export class BVHToolMode extends ToolMode {
             tn3.load(t3.no).interp(t1.no, 0.5).normalize()
             tn4.load(t1.no).add(t2.no).add(t3.no).normalize()
 
-            let f = mesh.eidMap.get(tri.id)
+            const f = mesh.eidMap.get(tri.id)
 
-            let w1 = window.d1 ?? 1.0 / 3.0
+            const w1 = window.d1 ?? 1.0 / 3.0
 
             let c1 = t1.customData[cd_color].color
             let c2 = t2.customData[cd_color].color
@@ -2267,19 +2267,19 @@ export class BVHToolMode extends ToolMode {
 
             tc5.zero()
             let tot = 0.0
-            for (let l of f.lists[0]) {
+            for (const l of f.lists[0]) {
               tc5.add(colorfilter(l.v, w1))
               tot++
             }
             tc5.mulScalar(1.0 / tot)
 
-            let ca = t1.customData[cd_color].color
-            let cb = t2.customData[cd_color].color
-            let cc = t3.customData[cd_color].color
+            const ca = t1.customData[cd_color].color
+            const cb = t2.customData[cd_color].color
+            const cc = t3.customData[cd_color].color
 
-            let startl = f.lists[0].l
+            const startl = f.lists[0].l
 
-            let w2 = window.d2 ?? 1.0 / 6.0
+            const w2 = window.d2 ?? 1.0 / 6.0
 
             ///*
             if (f.lists[0].length > 3) {
@@ -2304,19 +2304,19 @@ export class BVHToolMode extends ToolMode {
             tc5.load(cc).interp(ca, 0.5)
             tc3.interp(tc5, w2)
 
-            let n = math.normal_tri(t1, t2, t3)
+            const n = math.normal_tri(t1, t2, t3)
 
-            let q1 = sm.quad(tv4, tv3, t1, tv1)
+            const q1 = sm.quad(tv4, tv3, t1, tv1)
             q1.normals(tn4, tn3, t1.no, tn1)
             q1.colors(tc4, tc3, c1, tc1)
             //q1.id(id, id, id, id);
 
-            let q2 = sm.quad(tv4, tv1, t2, tv2)
+            const q2 = sm.quad(tv4, tv1, t2, tv2)
             q2.normals(tn4, tn1, t2.no, tn2)
             q2.colors(tc4, tc1, c2, tc2)
             //q2.id(id, id, id, id);
 
-            let q3 = sm.quad(tv4, tv2, t3, tv3)
+            const q3 = sm.quad(tv4, tv2, t3, tv3)
             q3.normals(tn4, tn2, t3.no, tn3)
             q3.colors(tc4, tc2, c3, tc3)
             //q3.id(id, id, id, id);
@@ -2393,7 +2393,7 @@ export class BVHToolMode extends ToolMode {
               uv2 = t2.customData[cd_uv].uv
               uv3 = t3.customData[cd_uv].uv
             } else {
-              let ltris = mesh._ltris
+              const ltris = mesh._ltris
 
               let l1,
                 l2,
@@ -2419,11 +2419,11 @@ export class BVHToolMode extends ToolMode {
                 uv2 = l2.customData[cd_uv].uv
                 uv3 = l3.customData[cd_uv].uv
               } else {
-                let f = mesh.eidMap.get(tri.id)
+                const f = mesh.eidMap.get(tri.id)
 
                 l1 = l2 = l3 = undefined
 
-                for (let l of f.loops) {
+                for (const l of f.loops) {
                   if (l.v === tri.v1) {
                     l1 = l
                   } else if (l.v === tri.v2) {
@@ -2475,13 +2475,13 @@ export class BVHToolMode extends ToolMode {
           }
 
           if (drawNodeIds && cd_node.i >= 0) {
-            let node1 = tri.v1.customData[cd_node.i].node
-            let node2 = tri.v2.customData[cd_node.i].node
-            let node3 = tri.v3.customData[cd_node.i].node
+            const node1 = tri.v1.customData[cd_node.i].node
+            const node2 = tri.v2.customData[cd_node.i].node
+            const node3 = tri.v3.customData[cd_node.i].node
 
-            let id1 = node1 ? node1._id : 0
-            let id2 = node2 ? node2._id : 0
-            let id3 = node3 ? node3._id : 0
+            const id1 = node1 ? node1._id : 0
+            const id2 = node2 ? node2._id : 0
+            const id3 = node3 ? node3._id : 0
 
             tc1[0] = Math.fract(id1 * 13.234344)
             tc2[0] = Math.fract(id2 * 13.234344)
@@ -2490,9 +2490,9 @@ export class BVHToolMode extends ToolMode {
             tc1[1] = tc2[1] = tc3[1] = 0.5
           } else if (have_color) {
             //*
-            let c1 = tri.v1.customData[cd_color].color
-            let c2 = tri.v2.customData[cd_color].color
-            let c3 = tri.v3.customData[cd_color].color
+            const c1 = tri.v1.customData[cd_color].color
+            const c2 = tri.v2.customData[cd_color].color
+            const c3 = tri.v3.customData[cd_color].color
             //*/
 
             tc1.load(c1)
@@ -2533,9 +2533,9 @@ export class BVHToolMode extends ToolMode {
           }
 
           if (vpatch) {
-            let c1 = colorfilter(tri.v1, 1)
-            let c2 = colorfilter(tri.v2, 1)
-            let c3 = colorfilter(tri.v3, 1)
+            const c1 = colorfilter(tri.v1, 1)
+            const c2 = colorfilter(tri.v2, 1)
+            const c3 = colorfilter(tri.v3, 1)
 
             i = ti * 4
             primuv[i++] = puv1[0]
@@ -2550,9 +2550,9 @@ export class BVHToolMode extends ToolMode {
 
             i = ti * 4
 
-            let ca = tri.v1.customData[cd_color].color
-            let cb = tri.v2.customData[cd_color].color
-            let cc = tri.v3.customData[cd_color].color
+            const ca = tri.v1.customData[cd_color].color
+            const cb = tri.v2.customData[cd_color].color
+            const cc = tri.v3.customData[cd_color].color
 
             for (let j = 0; j < 12; j++) {
               primc1[i + j] = ca[j % 4]
@@ -2593,7 +2593,7 @@ export class BVHToolMode extends ToolMode {
           //*/
           continue
 
-          let tri2 = sm.tri(t1, t2, t3)
+          const tri2 = sm.tri(t1, t2, t3)
 
           if (haveUvs) {
             let uv1, uv2, uv3
@@ -2603,11 +2603,11 @@ export class BVHToolMode extends ToolMode {
               uv2 = t2.customData[cd_uv].uv
               uv3 = t3.customData[cd_uv].uv
             } else {
-              let ltris = mesh.loopTris
+              const ltris = mesh.loopTris
 
-              let l1 = ltris[tri.tri_idx]
-              let l2 = ltris[tri.tri_idx + 1]
-              let l3 = ltris[tri.tri_idx + 2]
+              const l1 = ltris[tri.tri_idx]
+              const l2 = ltris[tri.tri_idx + 1]
+              const l3 = ltris[tri.tri_idx + 2]
 
               uv1 = l1.customData[cd_uv].uv
               uv2 = l2.customData[cd_uv].uv
@@ -2651,13 +2651,13 @@ export class BVHToolMode extends ToolMode {
           }
 
           if (drawNodeIds && cd_node.i >= 0) {
-            let node1 = tri.v1.customData[cd_node.i].node
-            let node2 = tri.v2.customData[cd_node.i].node
-            let node3 = tri.v3.customData[cd_node.i].node
+            const node1 = tri.v1.customData[cd_node.i].node
+            const node2 = tri.v2.customData[cd_node.i].node
+            const node3 = tri.v3.customData[cd_node.i].node
 
-            let id1 = node1 ? node1._id : 0
-            let id2 = node2 ? node2._id : 0
-            let id3 = node3 ? node3._id : 0
+            const id1 = node1 ? node1._id : 0
+            const id2 = node2 ? node2._id : 0
+            const id3 = node3 ? node3._id : 0
 
             tc1[0] = Math.fract(id1 * 3.234344)
             tc2[0] = Math.fract(id2 * 3.234344)
@@ -2668,9 +2668,9 @@ export class BVHToolMode extends ToolMode {
             tri2.colors(tc1, tc2, tc3)
           } else if (have_color) {
             //*
-            let c1 = tri.v1.customData[cd_color].color
-            let c2 = tri.v2.customData[cd_color].color
-            let c3 = tri.v3.customData[cd_color].color
+            const c1 = tri.v1.customData[cd_color].color
+            const c2 = tri.v2.customData[cd_color].color
+            const c3 = tri.v3.customData[cd_color].color
             //*/
 
             tc1.load(c1)
@@ -2725,9 +2725,9 @@ export class BVHToolMode extends ToolMode {
       node.drawData = sm
     }
 
-    let axismat = new Matrix4()
+    const axismat = new Matrix4()
 
-    for (let node of bvh.nodes) {
+    for (const node of bvh.nodes) {
       if (node.drawData && !(node.flag & BVHFlags.TEMP_TAG)) {
         node.drawData.destroy(gl)
         node.drawData = undefined
@@ -2777,9 +2777,9 @@ export class BVHToolMode extends ToolMode {
 
         uniforms.alpha = 1.0
 
-        let tex = this.ctx.activeTexture
+        const tex = this.ctx.activeTexture
         if (tex) {
-          let gltex = tex.getGlTex(gl)
+          const gltex = tex.getGlTex(gl)
           if (gltex) {
             uniforms.text = gltex
             uniforms.hasTexture = 1.0
@@ -2798,11 +2798,11 @@ export class BVHToolMode extends ToolMode {
           //  uniforms.uColor = [f, f, f, 1.0];
         }
 
-        for (let axis of axes) {
-          let oldmat = uniforms.objectMatrix
+        for (const axis of axes) {
+          const oldmat = uniforms.objectMatrix
 
           if (axis !== -1) {
-            let scale = [1, 1, 1]
+            const scale = [1, 1, 1]
             scale[axis] = -1
 
             //let imat = new Matrix4(object.outputs.matrix.getValue());
@@ -2811,7 +2811,7 @@ export class BVHToolMode extends ToolMode {
             //imat.invert();
             //mat2.multiply(imat);
 
-            let mat2 = new Matrix4()
+            const mat2 = new Matrix4()
             mat2.scale(scale[0], scale[1], scale[2])
 
             mat2.preMultiply(object.outputs.matrix.getValue())
@@ -2831,7 +2831,7 @@ export class BVHToolMode extends ToolMode {
 
           if (isDeforming) {
             if (!program2.defines.WITH_BOXVERTS) {
-              let dimen = bvh.glLeafTex.createParams.width
+              const dimen = bvh.glLeafTex.createParams.width
 
               //console.log(dimen, node.leafTexUV);
 
@@ -2840,7 +2840,7 @@ export class BVHToolMode extends ToolMode {
               uniforms.nodeDefTexUV = node.leafTexUV
             } else {
               for (let i = 0; i < 8; i++) {
-                let key = `boxverts[${i}]`
+                const key = `boxverts[${i}]`
                 //uniforms[key] = new Vector3(node.boxverts[(i+window.ddd)%8]);
                 uniforms[key] = new Vector3(node.boxverts[i])
                 //let loc = program2.uniformloc(key);
@@ -2856,7 +2856,7 @@ export class BVHToolMode extends ToolMode {
             off = off !== 0.0 ? off * 2.0 : 0.2
 
             uniforms.polygonOffset = off
-            let clr = uniforms.uColor
+            const clr = uniforms.uColor
             uniforms.uColor = [0, 0, 0, 1]
             node.drawData.drawLines(gl, uniforms, program2)
             uniforms.uColor = clr
@@ -2901,8 +2901,8 @@ export class BVHToolMode extends ToolMode {
 
     if (0 && have_grids) {
       //XXX make this an option
-      for (let loop of mesh.loops) {
-        let grid = loop.customData[grid_off]
+      for (const loop of mesh.loops) {
+        const grid = loop.customData[grid_off]
 
         grid.debugDraw(gl, uniforms, object)
       }
@@ -2912,12 +2912,12 @@ export class BVHToolMode extends ToolMode {
   }
 
   dataLink(scene: any, getblock: any, getblock_addUser: any): void {
-    for (let k in this.slots) {
+    for (const k in this.slots) {
       this.slots[k].dataLink(scene, getblock, getblock_addUser)
     }
 
-    for (let k in SculptTools) {
-      let tool = SculptTools[k]
+    for (const k in SculptTools) {
+      const tool = SculptTools[k]
 
       if (!(tool in this.slots)) {
         this.slots[tool] = new PaintToolSlot(tool)
@@ -2931,10 +2931,10 @@ export class BVHToolMode extends ToolMode {
 
     //deal with old files
     if (Array.isArray(this.slots)) {
-      let slots = this.slots
+      const slots = this.slots
       this.slots = {}
 
-      for (let slot of slots) {
+      for (const slot of slots) {
         this.slots[slot.tool] = slot
       }
     }

@@ -13,7 +13,7 @@ import {
 import {vertexSmooth} from './mesh_utils'
 import {getArrayTemp, MAX_FACE_VERTS, MeshFlags, MeshTypes} from './mesh_base'
 import {Edge, EID, Element, Face, LogContext, Loop, Mesh, Vertex} from './mesh'
-import { ToolContext } from '../core/context'
+import {ToolContext} from '../core/context'
 
 export function splitEdgeLoops_pre(
   mesh: Mesh,
@@ -24,55 +24,55 @@ export function splitEdgeLoops_pre(
 ) {
   const edges = edgesIter instanceof Set ? edgesIter : new Set(edgesIter)
 
-  let vs = new Set<Vertex>()
-  let fs = new Set<Face>()
+  const vs = new Set<Vertex>()
+  const fs = new Set<Face>()
 
-  for (let e of edges) {
+  for (const e of edges) {
     vs.add(e.v1)
     vs.add(e.v2)
 
-    for (let l of e.loops) {
+    for (const l of e.loops) {
       fs.add(l.f)
     }
   }
 
-  let lvmap = new Map<Loop, Vertex>()
+  const lvmap = new Map<Loop, Vertex>()
 
-  let alledges = new Set<Edge>()
+  const alledges = new Set<Edge>()
 
-  let cornerMap = new Map<EID<Vertex>, Loop[]>()
-  let origVertMap = new Map<Loop, Vertex>()
-  let dirMap = new Map<Vertex, Vector3>()
-  let origEdgeMap = new Map<EID<Edge>, Loop[]>()
+  const cornerMap = new Map<EID<Vertex>, Loop[]>()
+  const origVertMap = new Map<Loop, Vertex>()
+  const dirMap = new Map<Vertex, Vector3>()
+  const origEdgeMap = new Map<EID<Edge>, Loop[]>()
 
-  let flag = MeshFlags.MAKE_FACE_TEMP
-  let visit = new Set<string>()
+  const flag = MeshFlags.MAKE_FACE_TEMP
+  const visit = new Set<string>()
 
-  let fs2 = new Set<Face>(fs)
+  const fs2 = new Set<Face>(fs)
 
-  for (let e of edges) {
+  for (const e of edges) {
     visit.add(e)
   }
 
-  let delvs = new Set()
-  for (let e of edges) {
+  const delvs = new Set()
+  for (const e of edges) {
     delvs.add(e.v1)
     delvs.add(e.v2)
   }
 
-  for (let e of edges) {
-    for (let v of e.verts) {
-      for (let e2 of v.edges) {
+  for (const e of edges) {
+    for (const v of e.verts) {
+      for (const e2 of v.edges) {
         alledges.add(e2)
       }
     }
   }
 
-  for (let v of vs) {
+  for (const v of vs) {
     visit.clear()
 
-    for (let e2 of new Set(v.edges)) {
-      for (let l of e2.loops) {
+    for (const e2 of new Set(v.edges)) {
+      for (const l of e2.loops) {
         fs2.add(l.f)
       }
 
@@ -82,13 +82,13 @@ export function splitEdgeLoops_pre(
         continue
       }
 
-      let v1 = e2.v1,
+      const v1 = e2.v1,
         v2 = e2.v2
 
-      let t = v === e2.v1 ? 0.1 : 0.9
-      let [ne, nv] = mesh.splitEdge(e2, t, lctx)
+      const t = v === e2.v1 ? 0.1 : 0.9
+      const [ne, nv] = mesh.splitEdge(e2, t, lctx)
 
-      let e3 = v === e2.v1 ? e2 : ne
+      const e3 = v === e2.v1 ? e2 : ne
       for (let l of e3.loops) {
         if (l.next.v === v) {
           l = l.next
@@ -111,31 +111,31 @@ export function splitEdgeLoops_pre(
     }
   }
 
-  for (let e of edges) {
-    for (let v of e.verts) {
-      for (let e2 of v.edges) {
-        for (let l of e2.loops) {
+  for (const e of edges) {
+    for (const v of e.verts) {
+      for (const e2 of v.edges) {
+        for (const l of e2.loops) {
           fs2.add(l.f)
         }
       }
     }
   }
 
-  for (let f of fs2) {
-    for (let l of f.loops) {
+  for (const f of fs2) {
+    for (const l of f.loops) {
       mesh._radialRemove(l.e, l)
     }
   }
 
   for (let i = 0; i < 0; i++) {
-    for (let f of fs2) {
+    for (const f of fs2) {
       // break;
-      for (let list of f.lists) {
+      for (const list of f.lists) {
         let l = list.l
         let _i = 0
 
         do {
-          let next = l.next
+          const next = l.next
 
           if (_i++ > MAX_FACE_VERTS) {
             console.error('Infinite loop error')
@@ -166,7 +166,7 @@ export function splitEdgeLoops_pre(
 
       let fi = 0
       for (let i = 0; i < f.lists.length; i++) {
-        let list = f.lists[i]
+        const list = f.lists[i]
         if (list.l) {
           f.lists[fi++] = list
           list._recount()
@@ -180,9 +180,9 @@ export function splitEdgeLoops_pre(
     }
   }
 
-  for (let f of fs2) {
-    for (let l of f.loops) {
-      let olde = l.e
+  for (const f of fs2) {
+    for (const l of f.loops) {
+      const olde = l.e
       l.e = mesh.ensureEdge(l.v, l.next.v, lctx)
       mesh._radialInsert(l.e, l)
 
@@ -210,35 +210,35 @@ export function splitEdgeLoops(
 ) {
   const edges = edgeIter instanceof Set ? edgeIter : new Set(edgeIter)
 
-  let {lvmap} = splitEdgeLoops_pre(mesh, edgeIter, vertWidthMap, width, lctx)
+  const {lvmap} = splitEdgeLoops_pre(mesh, edgeIter, vertWidthMap, width, lctx)
 
-  let vs = new Set()
-  let fs = new Set()
+  const vs = new Set()
+  const fs = new Set()
 
-  for (let e of edges) {
+  for (const e of edges) {
     vs.add(e.v1)
     vs.add(e.v2)
 
-    for (let l of e.loops) {
+    for (const l of e.loops) {
       fs.add(l.f)
     }
   }
 
-  let vmap = new Map<string, Vertex>()
-  let vmap2 = new Map<string, Vertex>()
-  let vlmap = new Set<Vertex>()
+  const vmap = new Map<string, Vertex>()
+  const vmap2 = new Map<string, Vertex>()
+  const vlmap = new Set<Vertex>()
 
-  for (let [l, v] of lvmap) {
+  for (const [l, v] of lvmap) {
     vlmap.add(v)
   }
 
-  let dirmap = new Map<Vertex, Vector3>()
-  let origmap = new Map<Loop, Vertex>()
+  const dirmap = new Map<Vertex, Vector3>()
+  const origmap = new Map<Loop, Vertex>()
 
-  let t1 = new Vector3()
-  let t2 = new Vector3()
-  let t3 = new Vector3()
-  let n = new Vector3()
+  const t1 = new Vector3()
+  const t2 = new Vector3()
+  const t3 = new Vector3()
+  const n = new Vector3()
 
   function getv(v: Vertex, e: Edge, l: Loop) {
     if (lvmap.has(l)) {
@@ -249,7 +249,7 @@ export function splitEdgeLoops(
     t1.zero()
 
     if (v.valence === 2) {
-      let ei = 0
+      const ei = 0
 
       if (l.v === v) {
         t2.load(l.v).sub(l.prev.v.co).normalize()
@@ -267,7 +267,7 @@ export function splitEdgeLoops(
       t1.cross(l.f.no).normalize()
 
       //let key = "" + Math.min(l.eid, l.prev.eid) + ":" + Math.max(l.eid, l.prev.eid);
-      let key = v.eid + ':' + l.f.eid
+      const key = v.eid + ':' + l.f.eid
       v2 = vmap2.get(key)
 
       if (!v2) {
@@ -278,12 +278,12 @@ export function splitEdgeLoops(
         dirmap.set(v2, new Vector3(t1))
       }
     } else if (e === l.e && !edges.has(l.prev.e)) {
-      let l1 = l.prev,
+      const l1 = l.prev,
         l2 = l.prev.radial_next
-      let l3 = l.next,
+      const l3 = l.next,
         l4 = l.next.radial_next
 
-      let ls = [l1.eid, l2.eid, l3.eid, l4.eid]
+      const ls = [l1.eid, l2.eid, l3.eid, l4.eid]
       ls.sort()
       let key = '' + ls[0] + ':' + ls[1] + ':' + ls[2] + ':' + ls[3]
       //let key = "" + Math.min(l1.f.eid, l2.f.eid) + ":" + Math.max(l1.f.eid, l2.f.eid);
@@ -301,7 +301,7 @@ export function splitEdgeLoops(
         dirmap.set(v2, new Vector3(t2))
       }
     } else if (e !== l.e && !edges.has(l.e)) {
-      let key = '' + v.eid + ':' + l.e.eid
+      const key = '' + v.eid + ':' + l.e.eid
 
       console.log(key)
       v2 = vmap.get(key)
@@ -343,14 +343,14 @@ export function splitEdgeLoops(
     return v2
   }
 
-  let fs2 = new Set<Face>()
-  let ls = new Set<Loop>()
+  const fs2 = new Set<Face>()
+  const ls = new Set<Loop>()
 
-  let origEdgeMap = new Map<EID<Edge>, Loop[]>()
-  let emap = new Map<Loop, Edge>()
+  const origEdgeMap = new Map<EID<Edge>, Loop[]>()
+  const emap = new Map<Loop, Edge>()
 
-  for (let e of edges) {
-    for (let l of e.loops) {
+  for (const e of edges) {
+    for (const l of e.loops) {
       fs2.add(l.f)
 
       emap.set(l, e)
@@ -360,8 +360,8 @@ export function splitEdgeLoops(
       //getv(l.next.v, e, l.next);
     }
 
-    for (let v of e.verts) {
-      for (let e2 of v.edges) {
+    for (const v of e.verts) {
+      for (const e2 of v.edges) {
         if (edges.has(e2)) {
           continue
         }
@@ -383,9 +383,9 @@ export function splitEdgeLoops(
   const edges2 = new Set(edges)
   const flag = MeshFlags.MAKE_FACE_TEMP
 
-  for (let f of fs2) {
+  for (const f of fs2) {
     let count = 0
-    for (let l of f.loops) {
+    for (const l of f.loops) {
       count++
 
       if (lvmap.has(l)) {
@@ -395,13 +395,13 @@ export function splitEdgeLoops(
       }
     }
 
-    let ls = getArrayTemp<Loop>(count, false)
+    const ls = getArrayTemp<Loop>(count, false)
     let i = 0
-    for (let l of f.loops) {
+    for (const l of f.loops) {
       ls[i++] = l
     }
 
-    for (let l of ls) {
+    for (const l of ls) {
       if (lvmap.has(l)) {
         continue
       }
@@ -412,7 +412,7 @@ export function splitEdgeLoops(
 
       l.flag |= flag
 
-      let v = l.v
+      const v = l.v
 
       let l1 = l.radial_next
       let l2 = l.prev.radial_next
@@ -429,8 +429,8 @@ export function splitEdgeLoops(
         l2 = l2.prev
       }
 
-      let v1 = lvmap.get(l1)
-      let v2 = lvmap.get(l2)
+      const v1 = lvmap.get(l1)
+      const v2 = lvmap.get(l2)
 
       let s1 = v1 && l1.f !== l.f
       let s2 = v2 && l2.f !== l.f
@@ -463,9 +463,9 @@ export function splitEdgeLoops(
       console.log('S1, S2:', s1, s2, l1, l2, l)
 
       if (s1 && s2) {
-        let e = l.e
+        const e = l.e
 
-        let l2 = mesh._makeLoop()
+        const l2 = mesh._makeLoop()
 
         l2.v = lvmap.get(l1)!
         l2.e = mesh.ensureEdge(v1!, v2!, lctx)
@@ -499,13 +499,13 @@ export function splitEdgeLoops(
     }
   }
 
-  let cflag = MeshFlags.TEMP1
-  let fs3 = new Set<Face>()
-  let delvs = new Set<Vertex>()
+  const cflag = MeshFlags.TEMP1
+  const fs3 = new Set<Face>()
+  const delvs = new Set<Vertex>()
 
-  for (let e of edges) {
-    for (let v of e.verts) {
-      for (let e2 of v.edges) {
+  for (const e of edges) {
+    for (const v of e.verts) {
+      for (const e2 of v.edges) {
         let split = false
 
         for (let l2 of e2.loops) {
@@ -543,7 +543,7 @@ export function splitEdgeLoops(
           }
 
           for (let l3 of e2.loops) {
-            let l4 = l3
+            const l4 = l3
 
             if (l3.next.v === v) {
               l3 = l3.next
@@ -566,8 +566,8 @@ export function splitEdgeLoops(
           const v2 = e2.v2
           const [ne, nv] = mesh.splitEdge(e2, e2.v1 === v ? 0.1 : 0.9)
 
-          for (let l2 of e2.loops) {
-            for (let l3 of l2.f.loops) {
+          for (const l2 of e2.loops) {
+            for (const l3 of l2.f.loops) {
               if (l3.v !== nv) {
                 l3.flag &= ~cflag
               } else {
@@ -583,7 +583,7 @@ export function splitEdgeLoops(
     }
   }
 
-  for (let [l, e] of emap) {
+  for (const [l, e] of emap) {
     let arr = origEdgeMap.get(e.eid)
 
     if (!arr) {
@@ -594,10 +594,10 @@ export function splitEdgeLoops(
     arr.push(l)
   }
 
-  let origmap2 = new Map<EID<Vertex>, Loop[]>()
-  let origVertMap = new Map<Loop, EID<Vertex>>()
+  const origmap2 = new Map<EID<Vertex>, Loop[]>()
+  const origVertMap = new Map<Loop, EID<Vertex>>()
 
-  for (let [l, v] of origmap) {
+  for (const [l, v] of origmap) {
     origVertMap.set(l, v.eid)
 
     let arr = origmap2.get(v.eid)
@@ -609,23 +609,23 @@ export function splitEdgeLoops(
     arr.push(l)
   }
 
-  for (let f of fs2) {
-    for (let l of f.loops) {
+  for (const f of fs2) {
+    for (const l of f.loops) {
       if (l.e) {
         mesh._radialRemove(l.e, l)
       }
     }
   }
 
-  for (let f of fs3) {
+  for (const f of fs3) {
     fs2.add(f)
 
-    for (let list of f.lists) {
+    for (const list of f.lists) {
       let l = list.l
       let _i = 0
 
       do {
-        let next = l.next
+        const next = l.next
 
         if (_i++ > MAX_FACE_VERTS) {
           console.error('Infinite loop error')
@@ -653,7 +653,7 @@ export function splitEdgeLoops(
 
     let fi = 0
     for (let i = 0; i < f.lists.length; i++) {
-      let list = f.lists[i]
+      const list = f.lists[i]
       if (list.l) {
         f.lists[fi++] = list
         list._recount()
@@ -666,9 +666,9 @@ export function splitEdgeLoops(
     }
   }
 
-  for (let f of fs2) {
-    for (let l of f.loops) {
-      let v = lvmap.get(l)
+  for (const f of fs2) {
+    for (const l of f.loops) {
+      const v = lvmap.get(l)
 
       if (v) {
         l.v = v
@@ -676,9 +676,9 @@ export function splitEdgeLoops(
     }
   }
 
-  for (let f of fs2) {
-    for (let l of f.loops) {
-      let olde = l.e
+  for (const f of fs2) {
+    for (const l of f.loops) {
+      const olde = l.e
 
       if (l.v === l.next.v) {
         mesh._fixFace(f, lctx)
@@ -694,7 +694,7 @@ export function splitEdgeLoops(
     }
   }
 
-  for (let e of edges2) {
+  for (const e of edges2) {
     if (!e.l) {
       mesh.killEdge(e)
     }
@@ -706,33 +706,33 @@ export function splitEdgeLoops(
 export function bevelEdges(mesh: Mesh, edges: Iterable<Edge>, width = 0.5, lctx?: LogContext) {
   edges = new Set(edges)
 
-  let {dirMap, cornerMap, origEdgeMap, origVertMap} = splitEdgeLoops(mesh, edges, undefined, width, lctx)
+  const {dirMap, cornerMap, origEdgeMap, origVertMap} = splitEdgeLoops(mesh, edges, undefined, width, lctx)
 
   console.log('dirMap', dirMap)
   console.log('cornerMap', cornerMap)
   console.log('origEdgeMap', origEdgeMap)
   console.log('origVertMap', origVertMap)
 
-  for (let [v, dir] of dirMap) {
+  for (const [v, dir] of dirMap) {
     //console.log(v, dir);
 
     v.co.addFac(dir, 0.5)
     v.flag |= MeshFlags.UPDATE
   }
 
-  for (let [eid, ls] of origEdgeMap) {
+  for (const [eid, ls] of origEdgeMap) {
     if (ls.length < 2) {
       continue
     }
 
-    let len = ls.length === 2 ? 1 : ls.length
+    const len = ls.length === 2 ? 1 : ls.length
 
     for (let i = 0; i < len; i++) {
-      let l1 = ls[i]
-      let l2 = ls[(i + 1) % ls.length]
+      const l1 = ls[i]
+      const l2 = ls[(i + 1) % ls.length]
 
-      let v1 = origVertMap.get(l1)
-      let v2 = origVertMap.get(l2)
+      const v1 = origVertMap.get(l1)
+      const v2 = origVertMap.get(l2)
 
       if (l1.f === l2.f) {
         continue
@@ -761,7 +761,7 @@ export class BevelOp extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       bevelEdges(mesh, mesh.edges.selected.editable)
 
       mesh.regenAll()

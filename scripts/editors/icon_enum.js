@@ -1,6 +1,6 @@
-"use strict";
+'use strict'
 
-import {setIconMap} from '../path.ux/scripts/core/ui_base.js';
+import {setIconMap} from '../path.ux/scripts/core/ui_base.js'
 
 export let Icons = {
   HFLIP                : 0,
@@ -120,6 +120,6 @@ export let Icons = {
   SCULPT_SLIDE_RELAX   : 114,
   SCULPT_BVH_DEFORM    : 115,
   GRAPH                : 116,
-  SCULPT_FACE_SET_DRAW : 117
-};
-setIconMap(Icons);
+  SCULPT_FACE_SET_DRAW : 117,
+}
+setIconMap(Icons)

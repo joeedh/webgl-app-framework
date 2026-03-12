@@ -74,37 +74,37 @@ export class DeleteOp extends MeshOp<{}, {}> {
   exec(ctx: ViewContext) {
     console.warn('mesh.delete_selected')
 
-    let selectmode = ctx.selectMask
+    const selectmode = ctx.selectMask
     console.log('selectmode:', selectmode)
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let del = [] as Vertex[]
+    for (const mesh of this.getMeshes(ctx)) {
+      const del = [] as Vertex[]
 
       if (selectmode & SelMask.VERTEX) {
-        for (let v of new Set(mesh.verts.selected.editable)) {
+        for (const v of new Set(mesh.verts.selected.editable)) {
           mesh.killVertex(v)
         }
       } else if (selectmode & SelMask.EDGE) {
-        let vset = new Set<Vertex>()
+        const vset = new Set<Vertex>()
 
-        for (let e of new Set(mesh.edges.selected.editable)) {
+        for (const e of new Set(mesh.edges.selected.editable)) {
           vset.add(e.v1)
           vset.add(e.v2)
 
           mesh.killEdge(e)
         }
 
-        for (let v of vset) {
+        for (const v of vset) {
           if (v.edges.length === 0) {
             mesh.killVertex(v)
           }
         }
       } else if (selectmode & SelMask.FACE) {
-        let vset = new Set<Vertex>()
-        let eset = new Set<Edge>()
+        const vset = new Set<Vertex>()
+        const eset = new Set<Edge>()
 
-        for (let f of new Set(mesh.faces.selected.editable)) {
-          for (let l of f.loops) {
+        for (const f of new Set(mesh.faces.selected.editable)) {
+          for (const l of f.loops) {
             eset.add(l.e)
             vset.add(l.v)
           }
@@ -112,20 +112,20 @@ export class DeleteOp extends MeshOp<{}, {}> {
           mesh.killFace(f)
         }
 
-        for (let e of eset) {
+        for (const e of eset) {
           if (!e.l) {
             mesh.killEdge(e)
           }
         }
 
-        for (let v of vset) {
+        for (const v of vset) {
           if (v.edges.length === 0) {
             mesh.killVertex(v)
           }
         }
       }
 
-      for (let v of del) {
+      for (const v of del) {
         mesh.killVertex(v)
       }
 
@@ -154,10 +154,10 @@ export class DeleteOnlyFacesOp extends MeshOp {
   exec(ctx: ViewContext): void {
     console.warn('mesh.delete_only_faces')
 
-    let selectmode = ctx.selectMask
+    const selectmode = ctx.selectMask
 
-    for (let mesh of this.getMeshes(ctx)) {
-      for (let f of new Set(mesh.faces.selected.editable)) {
+    for (const mesh of this.getMeshes(ctx)) {
+      for (const f of new Set(mesh.faces.selected.editable)) {
         mesh.killFace(f)
       }
 
@@ -189,10 +189,10 @@ export class FlipLongTrisOp extends MeshOp {
   exec(ctx: ViewContext) {
     console.warn('mesh.delete_selected')
 
-    let selectmode = ctx.selectMask
+    const selectmode = ctx.selectMask
     console.log('selectmode:', selectmode)
 
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       flipLongTriangles(mesh, mesh.faces.selected.editable)
 
       mesh.regenBVH()
@@ -225,11 +225,11 @@ export class TriToQuadsOp extends MeshOp<{
   exec(ctx: ToolContext): void {
     console.warn('mesh.tris_to_quads')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let fs = new Set(mesh.faces.selected.editable)
+    for (const mesh of this.getMeshes(ctx)) {
+      const fs = new Set(mesh.faces.selected.editable)
 
-      for (let e of mesh.edges.selected.editable) {
-        for (let l of e.loops) {
+      for (const e of mesh.edges.selected.editable) {
+        for (const l of e.loops) {
           fs.add(l.f)
         }
       }
@@ -237,8 +237,8 @@ export class TriToQuadsOp extends MeshOp<{
       trianglesToQuads(mesh, fs, this.inputs.options.getValue())
 
       if (this.inputs.options.getValue()) {
-        for (let f of mesh.faces.selected.editable) {
-          for (let e of f.edges) {
+        for (const f of mesh.faces.selected.editable) {
+          for (const e of f.edges) {
             if (e.flag & MeshFlags.QUAD_EDGE) {
               e.flag |= MeshFlags.DRAW_DEBUG
             } else {
@@ -289,8 +289,8 @@ export class SymmetrizeOp extends MeshOp<{
   exec(ctx: ToolContext): void {
     console.warn('mesh.symmetrize')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let del = []
+    for (const mesh of this.getMeshes(ctx)) {
+      const del = []
 
       let fset
 
@@ -302,9 +302,9 @@ export class SymmetrizeOp extends MeshOp<{
 
       fset = new Set(fset)
 
-      let vector = new Vector3()
-      let axis = this.inputs.axis.getValue() as Number2
-      let side = this.inputs.side.getValue()
+      const vector = new Vector3()
+      const axis = this.inputs.axis.getValue() as Number2
+      const side = this.inputs.side.getValue()
 
       vector[axis] = side
 
@@ -313,7 +313,7 @@ export class SymmetrizeOp extends MeshOp<{
         mesh.bvh.destroy(mesh)
       }
 
-      let threshold = this.inputs.threshold.getValue()
+      const threshold = this.inputs.threshold.getValue()
       symmetrizeMesh(mesh, fset, axis, side, threshold)
 
       //force bvh update
@@ -353,8 +353,8 @@ export class BisectOp extends MeshOp<{
   exec(ctx: ToolContext) {
     console.warn('mesh.bisect')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let del = []
+    for (const mesh of this.getMeshes(ctx)) {
+      const del = []
 
       let fset: Iterable<Face>
 
@@ -366,9 +366,9 @@ export class BisectOp extends MeshOp<{
 
       fset = new Set(fset)
 
-      let vector = new Vector3()
-      let axis = this.inputs.axis.getValue() as Number2
-      let side = this.inputs.side.getValue()
+      const vector = new Vector3()
+      const axis = this.inputs.axis.getValue() as Number2
+      const side = this.inputs.side.getValue()
 
       vector[axis] = side
 
@@ -377,17 +377,17 @@ export class BisectOp extends MeshOp<{
         mesh.bvh.destroy(mesh)
       }
 
-      let vs = new Set<Vertex>()
+      const vs = new Set<Vertex>()
 
-      for (let f of fset) {
-        for (let l of f.loops) {
+      for (const f of fset) {
+        for (const l of f.loops) {
           vs.add(l.v)
         }
       }
 
-      let ret = bisectMesh(mesh, fset, vector)
+      const ret = bisectMesh(mesh, fset, vector)
 
-      for (let v of vs) {
+      for (const v of vs) {
         if (Math.sign(v[axis]) !== Math.sign(side) && Math.abs(v[axis]) > 0.0001) {
           mesh.killVertex(v)
         }
@@ -421,26 +421,26 @@ export class TriangulateOp extends MeshOp {
   exec(ctx: ToolContext): void {
     console.warn('mesh.triangulate')
 
-    let tri = [0, 0, 0]
+    const tri = [0, 0, 0]
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let del = []
+    for (const mesh of this.getMeshes(ctx)) {
+      const del = []
 
-      let fs = new Set(mesh.faces.selected.editable)
+      const fs = new Set(mesh.faces.selected.editable)
 
-      let lctx = new LogContext()
+      const lctx = new LogContext()
       lctx.onnew = (e) => {
         mesh.setSelect(e, true)
 
         if (e.type === MeshTypes.FACE) {
-          for (let l of (e as Face).loops) {
+          for (const l of (e as Face).loops) {
             mesh.setSelect(l.v, true)
             mesh.setSelect(l.e, true)
           }
         }
       }
 
-      for (let f of fs) {
+      for (const f of fs) {
         f.calcNormal()
         applyTriangulation(mesh, f, undefined, undefined, lctx)
       }
@@ -541,25 +541,25 @@ export class RemeshOp<InputSlots = {}> extends MeshOp<
   remesher?: Remesher
 
   makeRemesher(ctx: ToolContext, mesh: Mesh, lctx: LogContext): Remesher {
-    let goalType = this.inputs.goalType.getValue()
-    let goalValue = this.inputs.goal.getValue()
-    let rakeFactor = this.inputs.rakeFactor.getValue()
-    let relax = this.inputs.relax.getValue()
-    let origFactor = this.inputs.origFactor.getValue()
-    let subdFac = this.inputs.subdivideFac.getValue()
-    let collFac = this.inputs.collapseFac.getValue()
-    let project = this.inputs.projection.getValue()
+    const goalType = this.inputs.goalType.getValue()
+    const goalValue = this.inputs.goal.getValue()
+    const rakeFactor = this.inputs.rakeFactor.getValue()
+    const relax = this.inputs.relax.getValue()
+    const origFactor = this.inputs.origFactor.getValue()
+    const subdFac = this.inputs.subdivideFac.getValue()
+    const collFac = this.inputs.collapseFac.getValue()
+    const project = this.inputs.projection.getValue()
     let count = this.inputs.edgeRunPercent.getValue()
-    let curveSmoothRepeat = this.inputs.curveSmoothRepeat.getValue()
-    let curveSmoothFac = this.inputs.curveSmoothFac.getValue()
-    let reproject = this.inputs.reproject.getValue()
+    const curveSmoothRepeat = this.inputs.curveSmoothRepeat.getValue()
+    const curveSmoothFac = this.inputs.curveSmoothFac.getValue()
+    const reproject = this.inputs.reproject.getValue()
 
     count = Math.ceil(mesh.edges.length * count)
 
     fixManifold(mesh, lctx)
-    let cls = RemeshMap[this.inputs.remesher.getValue()]
+    const cls = RemeshMap[this.inputs.remesher.getValue()]
 
-    let remesher = new cls(mesh, lctx, goalType, goalValue)
+    const remesher = new cls(mesh, lctx, goalType, goalValue)
 
     remesher.origFactor = origFactor
     remesher.reproject = reproject
@@ -581,22 +581,22 @@ export class RemeshOp<InputSlots = {}> extends MeshOp<
   exec(ctx: ToolContext) {
     console.warn('mesh.remesh')
 
-    let tri = [0, 0, 0]
+    const tri = [0, 0, 0]
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let lctx = new LogContext()
+    for (const mesh of this.getMeshes(ctx)) {
+      const lctx = new LogContext()
 
       lctx.onnew = (e) => {
         mesh.setSelect(e, true)
         if (e.type === MeshTypes.FACE) {
-          for (let l of (e as Face).loops) {
+          for (const l of (e as Face).loops) {
             mesh.setSelect(l.v, true)
             mesh.setSelect(l.e, true)
           }
         }
       }
 
-      let remesher = this.makeRemesher(ctx, mesh, lctx)
+      const remesher = this.makeRemesher(ctx, mesh, lctx)
       let i = 0
 
       while (!remesher.done && i++ < 5) {
@@ -641,7 +641,7 @@ export class InteractiveRemeshOp extends RemeshOp<{
   last_time = 0
 
   redo(ctx: ToolContext) {
-    let undo = this._undo
+    const undo = this._undo
 
     this._undo = this._redo
     this._redo = undefined
@@ -652,7 +652,7 @@ export class InteractiveRemeshOp extends RemeshOp<{
   }
 
   undo(ctx: ToolContext) {
-    let undo = this._undo
+    const undo = this._undo
 
     this.undoPre(ctx)
     this._redo = this._undo
@@ -662,7 +662,7 @@ export class InteractiveRemeshOp extends RemeshOp<{
   }
 
   makeLogCtx(ctx: ToolContext, mesh: Mesh): LogContext {
-    let lctx = new LogContext()
+    const lctx = new LogContext()
 
     lctx.onnew = (e: Element, tag?: any) => {
       /*
@@ -695,9 +695,9 @@ export class InteractiveRemeshOp extends RemeshOp<{
     this.remesher = undefined
     this.lctx = undefined
 
-    let mesh = this.modal_ctx.mesh
+    const mesh = this.modal_ctx.mesh
     if (mesh) {
-      for (let v of mesh.verts) {
+      for (const v of mesh.verts) {
         v.flag |= MeshFlags.UPDATE
       }
       mesh.regenAll()
@@ -710,7 +710,7 @@ export class InteractiveRemeshOp extends RemeshOp<{
   }
 
   modalStart(ctx: ToolContext): void {
-    let mesh = ctx.mesh
+    const mesh = ctx.mesh
 
     if (mesh === undefined) {
       console.warn('Mesh was undefined in tool', this)
@@ -733,11 +733,11 @@ export class InteractiveRemeshOp extends RemeshOp<{
       return
     }
 
-    let mesh = this.modal_ctx.mesh
+    const mesh = this.modal_ctx.mesh
 
-    let time = util.time_ms()
+    const time = util.time_ms()
     while (this.remesher && util.time_ms() - time < 50 && !this.remesher.done) {
-      let i = this.inputs.steps.getValue()
+      const i = this.inputs.steps.getValue()
       this.inputs.steps.setValue(i + 1)
 
       this._step(this.modal_ctx, this.remesher, mesh, this.lctx!)
@@ -769,14 +769,14 @@ export class InteractiveRemeshOp extends RemeshOp<{
   }
 
   exec(ctx: ToolContext): void {
-    let mesh = ctx.mesh!
-    let lctx = this.makeLogCtx(ctx, mesh)
+    const mesh = ctx.mesh!
+    const lctx = this.makeLogCtx(ctx, mesh)
 
     mesh.compact()
 
-    let remesher = this.makeRemesher(ctx, mesh, lctx)
+    const remesher = this.makeRemesher(ctx, mesh, lctx)
 
-    let steps = this.inputs.steps.getValue()
+    const steps = this.inputs.steps.getValue()
 
     for (let i = 0; i < steps; i++) {
       this._step(ctx, remesher, mesh, lctx)
@@ -806,10 +806,10 @@ export class LoopSubdOp extends MeshOp {
   exec(ctx: ToolContext) {
     console.warn('mesh.subdivide_smooth_loop')
 
-    let tri = [0, 0, 0]
+    const tri = [0, 0, 0]
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let del = []
+    for (const mesh of this.getMeshes(ctx)) {
+      const del = []
 
       loopSubdivide(mesh, mesh.faces.selected.editable)
 
@@ -864,7 +864,7 @@ export class CatmullClarkeSubd extends MeshOp {
   exec(ctx: ToolContext) {
     console.log('subdivide smooth!')
 
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       console.log('doing mesh', mesh.lib_id)
 
       subdivide(mesh, new Set(mesh.faces.selected.editable))
@@ -872,22 +872,22 @@ export class CatmullClarkeSubd extends MeshOp {
       mesh.regenRender()
       mesh.regenTessellation()
 
-      let es = new Set<Edge>()
+      const es = new Set<Edge>()
 
-      for (let e of mesh.edges.selected.editable) {
+      for (const e of mesh.edges.selected.editable) {
         if (!e.l) {
           es.add(e)
         }
       }
 
       //handle wire edges
-      let vs = new Set<Vertex>()
+      const vs = new Set<Vertex>()
 
-      for (let e of es) {
+      for (const e of es) {
         vs.add(e.v1)
         vs.add(e.v2)
 
-        let ret = mesh.splitEdge(e, 0.5)
+        const ret = mesh.splitEdge(e, 0.5)
 
         if (ret.length > 0) {
           vs.add(ret[1])
@@ -935,14 +935,14 @@ export class MeshSnapToMirror extends MeshOp<{
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       let axes = this.inputs.symFlag.getValue()
 
       if (axes & SymFlags.AUTO) {
         axes = mesh.symFlag
 
         //check sculpt toolmode's symmetry settings too
-        for (let mode of ctx.scene.toolmodes) {
+        for (const mode of ctx.scene.toolmodes) {
           if (mode instanceof BVHToolMode) {
             axes |= mode.symmetryAxes
           }
@@ -951,7 +951,7 @@ export class MeshSnapToMirror extends MeshOp<{
 
       console.log('axes', axes)
 
-      for (let v of mesh.verts.selected.editable) {
+      for (const v of mesh.verts.selected.editable) {
         let minaxis: (0 | 1 | 2) | undefined
         let mindis = Number.MAX_SAFE_INTEGER
 
@@ -1002,7 +1002,7 @@ export class MeshSubdTest extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       meshSubdivideTest(mesh)
 
       mesh.graphUpdate()
@@ -1037,7 +1037,7 @@ export class SubdivideSimple extends MeshOp {
   exec(ctx: ToolContext) {
     console.log('subdivide simple!')
 
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       console.log('doing mesh', mesh.lib_id)
 
       mesh.updateMirrorTags()
@@ -1046,25 +1046,25 @@ export class SubdivideSimple extends MeshOp {
 
       mesh.regenRender()
 
-      let es = new Set<Edge>()
+      const es = new Set<Edge>()
 
-      for (let e of mesh.edges.selected.editable) {
+      for (const e of mesh.edges.selected.editable) {
         if (!e.l) {
           es.add(e)
         }
       }
 
       //handle wire edges
-      let vs = new Set<Vertex>()
+      const vs = new Set<Vertex>()
 
-      for (let e of es) {
+      for (const e of es) {
         vs.add(e.v1)
         vs.add(e.v2)
 
         e.v1.flag |= MeshFlags.UPDATE
         e.v2.flag |= MeshFlags.UPDATE
 
-        let ret = mesh.splitEdge(e, 0.5)
+        const ret = mesh.splitEdge(e, 0.5)
 
         if (ret.length > 0) {
           vs.add(ret[1])
@@ -1101,12 +1101,12 @@ export class SplitEdgesOp extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       mesh.updateMirrorTags()
 
-      let es = new Set(mesh.edges.selected.editable)
+      const es = new Set(mesh.edges.selected.editable)
 
-      for (let e of es) {
+      for (const e of es) {
         mesh.splitEdge(e)
       }
 
@@ -1125,16 +1125,16 @@ export function vertexSmooth_tst(mesh: Mesh, vertsInput = mesh.verts.selected.ed
   const verts = new Set<Vertex>(vertsInput)
 
   if (1) {
-    let faces = new Set()
+    const faces = new Set()
 
-    for (let v of verts) {
-      for (let f of v.faces) {
+    for (const v of verts) {
+      for (const f of v.faces) {
         faces.add(f)
       }
     }
 
-    let ret = subdivide(mesh, faces, true)
-    for (let v of ret.newVerts as unknown as Iterable<Vertex>) {
+    const ret = subdivide(mesh, faces, true)
+    for (const v of ret.newVerts as unknown as Iterable<Vertex>) {
       verts.add(v)
     }
 
@@ -1155,29 +1155,29 @@ export function ccVertexSmooth(
 ): void {
   const verts = new Set<Vertex>(vertsInput)
 
-  let cd_fset = getFaceSets(mesh, false)
-  let cd_dyn_vert = getDynVerts(mesh)
+  const cd_fset = getFaceSets(mesh, false)
+  const cd_dyn_vert = getDynVerts(mesh)
 
   if (1) {
-    let cos = new Map()
+    const cos = new Map()
 
-    for (let v of verts) {
+    for (const v of verts) {
       cos.set(v, new Vector3(ccSmooth(v, cd_fset, cd_dyn_vert, projection)))
     }
 
-    for (let [v, co] of cos) {
+    for (const [v, co] of cos) {
       v.co.interp(co, fac)
       v.flag |= MeshFlags.UPDATE
     }
     return
   }
 
-  let cos = {} as {[k: number]: Vector3}
-  for (let v of verts) {
+  const cos = {} as {[k: number]: Vector3}
+  for (const v of verts) {
     cos[v.eid] = new Vector3(v.co)
 
-    for (let e of v.edges) {
-      let v2 = e.otherVertex(v)
+    for (const e of v.edges) {
+      const v2 = e.otherVertex(v)
 
       if (!(v2.eid in cos)) {
         cos[v2.eid] = new Vector3(v2.co)
@@ -1185,27 +1185,27 @@ export function ccVertexSmooth(
     }
   }
 
-  let sym = mesh.symFlag
+  const sym = mesh.symFlag
 
-  let c1 = new Vector3()
-  let c2 = new Vector3()
+  const c1 = new Vector3()
+  const c2 = new Vector3()
 
-  for (let v of verts) {
+  for (const v of verts) {
     v.co.zero()
     let tot = 0.0
 
     c1.load(cos[v.eid])
     //v.zero().addScalar(1.0);
 
-    for (let e of v.edges) {
-      let v2 = e.otherVertex(v)
+    for (const e of v.edges) {
+      const v2 = e.otherVertex(v)
 
       if (!(v2.eid in cos)) {
         //console.error("Mesh corruption error!!", v, v2, e);
         continue
       }
 
-      let w = 1.0
+      const w = 1.0
       v.co.addFac(cos[v2.eid], w)
       tot += w
     }
@@ -1240,16 +1240,16 @@ export function ccVertexSmooth(
   }
 
   if (0) {
-    let faces = new Set()
+    const faces = new Set()
 
-    for (let v of verts) {
-      for (let f of v.faces) {
+    for (const v of verts) {
+      for (const f of v.faces) {
         faces.add(f)
       }
     }
 
-    let ret = subdivide(mesh, faces, true)
-    for (let v of ret.newVerts) {
+    const ret = subdivide(mesh, faces, true)
+    for (const v of ret.newVerts) {
       verts.add(v)
     }
 
@@ -1257,7 +1257,7 @@ export function ccVertexSmooth(
     mesh.regenTessellation()
   }
 
-  for (let v of verts) {
+  for (const v of verts) {
     //mesh.flagElemUpdate(v);
     v.flag |= MeshFlags.UPDATE
   }
@@ -1294,12 +1294,12 @@ export class SmoothCurvaturesOp extends MeshDeformOp<{
   }
 
   exec(ctx: ToolContext) {
-    let fac = this.inputs.factor.getValue()
-    let repeat = this.inputs.repeat.getValue()
-    let proj = this.inputs.projection.getValue()
+    const fac = this.inputs.factor.getValue()
+    const repeat = this.inputs.repeat.getValue()
+    const proj = this.inputs.projection.getValue()
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let cd_curv = getCurveVerts(mesh)
+    for (const mesh of this.getMeshes(ctx)) {
+      const cd_curv = getCurveVerts(mesh)
 
       for (let i = 0; i < repeat; i++) {
         smoothCurvatures(mesh, mesh.verts.selected.editable, fac, proj)
@@ -1325,8 +1325,8 @@ export class MarkSingularitiesOp extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
-      for (let v of mesh.verts.selected.editable) {
+    for (const mesh of this.getMeshes(ctx)) {
+      for (const v of mesh.verts.selected.editable) {
         v.flag |= MeshFlags.SINGULARITY | MeshFlags.UPDATE
       }
 
@@ -1349,8 +1349,8 @@ export class UnmarkSingularitiesOp extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
-      for (let v of mesh.verts.selected.editable) {
+    for (const mesh of this.getMeshes(ctx)) {
+      for (const v of mesh.verts.selected.editable) {
         v.flag &= ~MeshFlags.SINGULARITY
         v.flag |= MeshFlags.UPDATE
       }
@@ -1374,15 +1374,15 @@ export class RelaxRakeUVCells extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    let mesh = ctx.mesh!
+    const mesh = ctx.mesh!
 
-    let cd_curv = getCurveVerts(mesh)
+    const cd_curv = getCurveVerts(mesh)
     //let remesh = new UniformTriRemesher(mesh);
-    let cd_fset = getFaceSets(mesh, false)
+    const cd_fset = getFaceSets(mesh, false)
 
-    for (let v of mesh.verts) {
+    for (const v of mesh.verts) {
       //.selected.editable) {
-      let cv = v.customData[cd_curv] as unknown as CurvVert
+      const cv = v.customData[cd_curv] as unknown as CurvVert
 
       //cv.check(v, -1, undefined, cd_fset);
 
@@ -1391,9 +1391,9 @@ export class RelaxRakeUVCells extends MeshOp {
       v.flag |= MeshFlags.UPDATE
     }
 
-    for (let v of mesh.verts) {
+    for (const v of mesh.verts) {
       //.verts.selected.editable) {
-      let cv = v.customData[cd_curv] as unknown as CurvVert
+      const cv = v.customData[cd_curv] as unknown as CurvVert
       cv._ignoreUpdate(v, -1)
     }
 
@@ -1432,15 +1432,15 @@ export class VertexSmooth extends MeshDeformOp<{
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
-      let repeat = this.inputs.repeat.getValue()
+    for (const mesh of this.getMeshes(ctx)) {
+      const repeat = this.inputs.repeat.getValue()
 
-      let fac = this.inputs.factor.getValue()
-      let proj = this.inputs.projection.getValue()
+      const fac = this.inputs.factor.getValue()
+      const proj = this.inputs.projection.getValue()
 
-      let mirrorvs = new Set<Vertex>()
+      const mirrorvs = new Set<Vertex>()
 
-      for (let v of mesh.verts.selected.editable) {
+      for (const v of mesh.verts.selected.editable) {
         v.flag |= MeshFlags.UPDATE
 
         if (v.flag & MeshFlags.MIRROR_BOUNDARY) {
@@ -1461,7 +1461,7 @@ export class VertexSmooth extends MeshDeformOp<{
             break
         }
 
-        for (let v of mirrorvs) {
+        for (const v of mirrorvs) {
           if (v.flag & MeshFlags.MIRROREDX) {
             v[0] = 0.0
           }
@@ -1489,7 +1489,7 @@ export class VertexSmooth extends MeshDeformOp<{
 
 ToolOp.register(VertexSmooth)
 
-let SplitMethods = {
+const SplitMethods = {
   SMART1: 0,
   SMART2: 1,
   SIMPLE: 2,
@@ -1513,8 +1513,8 @@ export class TestSplitFaceOp extends MeshOp<{
   exec(ctx: ToolContext) {
     console.warn('mesh.test_split_face')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let vs = new Set()
+    for (const mesh of this.getMeshes(ctx)) {
+      const vs = new Set()
       let es = new Set()
 
       /*
@@ -1528,13 +1528,13 @@ export class TestSplitFaceOp extends MeshOp<{
 
       es = new Set(mesh.edges.selected.editable)
 
-      let lctx = new LogContext()
+      const lctx = new LogContext()
 
       lctx.onnew = (e) => {
         mesh.setSelect(e, true)
 
         if (e.type === MeshTypes.FACE) {
-          for (let l of (e as Face).loops) {
+          for (const l of (e as Face).loops) {
             l.v.flag |= MeshFlags.UPDATE
             l.e.flag |= MeshFlags.UPDATE
 
@@ -1548,7 +1548,7 @@ export class TestSplitFaceOp extends MeshOp<{
           mesh.setSelect(e.v1, true)
           mesh.setSelect(e.v2, true)
 
-          for (let l2 of e.loops) {
+          for (const l2 of e.loops) {
             mesh.setSelect(l2.f, true)
           }
         }
@@ -1556,7 +1556,7 @@ export class TestSplitFaceOp extends MeshOp<{
         e.flag |= MeshFlags.UPDATE
       }
 
-      let method = this.inputs.method.getValue()
+      const method = this.inputs.method.getValue()
 
       switch (method) {
         case SplitMethods.SMART1:
@@ -1599,23 +1599,23 @@ export class TestCollapseOp extends MeshOp {
   exec(ctx: ToolContext) {
     console.warn('mesh.test_collapse_edge')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let vs = new Set<Vertex>()
-      let es = new Set<Edge>()
+    for (const mesh of this.getMeshes(ctx)) {
+      const vs = new Set<Vertex>()
+      const es = new Set<Edge>()
 
-      for (let v of mesh.verts.selected.editable) {
+      for (const v of mesh.verts.selected.editable) {
         vs.add(v)
       }
 
-      for (let v of vs) {
-        for (let e of v.edges) {
+      for (const v of vs) {
+        for (const e of v.edges) {
           if (vs.has(e.otherVertex(v))) {
             es.add(e)
           }
         }
       }
 
-      for (let e of es) {
+      for (const e of es) {
         mesh.collapseEdge(e)
       }
       //let {newvs, newfs} = splitEdgesSmart(mesh, es);
@@ -1633,7 +1633,7 @@ export class TestCollapseOp extends MeshOp {
 
 ToolOp.register(TestCollapseOp)
 
-let GridTypes = {
+const GridTypes = {
   SIMPLE  : 0,
   QUADTREE: 1,
   KDTREE  : 2,
@@ -1659,12 +1659,12 @@ export class EnsureGridsOp extends MeshOp<{
   exec(ctx: ToolContext) {
     console.warn('mesh.ensure_grids')
 
-    let depth = this.inputs.depth.getValue()
-    let dimen = gridSides[depth]
+    const depth = this.inputs.depth.getValue()
+    const dimen = gridSides[depth]
 
     console.log('DIMEN', dimen)
 
-    let type = this.inputs.types.getValue()
+    const type = this.inputs.types.getValue()
     let cls
 
     if (type === GridTypes.SIMPLE) {
@@ -1675,8 +1675,8 @@ export class EnsureGridsOp extends MeshOp<{
       cls = KdTreeGrid
     }
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let cd_grid = GridBase.meshGridRef(mesh)
+    for (const mesh of this.getMeshes(ctx)) {
+      const cd_grid = GridBase.meshGridRef(mesh)
 
       if (!cd_grid.exists) {
         console.log('Adding grids to mesh', mesh)
@@ -1684,19 +1684,19 @@ export class EnsureGridsOp extends MeshOp<{
         cls.initMesh(mesh, dimen, cd_grid)
         //QuadTreeGrid.initMesh(mesh, dimen, -1);
       } else {
-        for (let l of mesh.loops) {
+        for (const l of mesh.loops) {
           cd_grid.get(l).update(mesh, l, cd_grid)
         }
 
-        for (let l of mesh.loops) {
-          let grid = cd_grid.get(l)
+        for (const l of mesh.loops) {
+          const grid = cd_grid.get(l)
 
           grid.subdivideAll(mesh, l, cd_grid)
           grid.stripExtraData()
         }
 
-        for (let l of mesh.loops) {
-          let grid = cd_grid.get(l) as unknown as Grid
+        for (const l of mesh.loops) {
+          const grid = cd_grid.get(l) as unknown as Grid
           grid.update(mesh, l, cd_grid as unknown as AttrRef<Grid>)
         }
       }
@@ -1727,13 +1727,13 @@ export class SubdivideGridsOp extends MeshOp {
   exec(ctx: ToolContext) {
     console.warn('mesh.subdivide_grids')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let cd_grid_i = mesh.loops.customData.getLayerIndex(QuadTreeGrid)
-      let cd_grid = new AttrRef<QuadTreeGrid>(cd_grid_i)
+    for (const mesh of this.getMeshes(ctx)) {
+      const cd_grid_i = mesh.loops.customData.getLayerIndex(QuadTreeGrid)
+      const cd_grid = new AttrRef<QuadTreeGrid>(cd_grid_i)
 
       if (cd_grid_i >= 0) {
-        for (let l of mesh.loops) {
-          let grid = cd_grid.get(l)
+        for (const l of mesh.loops) {
+          const grid = cd_grid.get(l)
 
           grid.update(mesh, l, cd_grid)
           grid.subdivideAll(mesh, l, cd_grid)
@@ -1772,12 +1772,12 @@ export class SmoothGridsOp extends MeshOp<{
   exec(ctx: ToolContext) {
     console.warn('mesh.smooth_grids')
 
-    let fac = this.inputs.factor.getValue()
+    const fac = this.inputs.factor.getValue()
 
     function doSmooth(mesh: Mesh, cd_grid: AttrRef<Grid>) {
       for (let i = 0; i < 1; i++) {
-        for (let l of mesh.loops) {
-          let grid = cd_grid.get(l)
+        for (const l of mesh.loops) {
+          const grid = cd_grid.get(l)
 
           //grid.recalcFlag |= QRecalcFlags.ALL | QRecalcFlags.NORMALS | QRecalcFlags.LEAVES | QRecalcFlags.NEIGHBORS | QRecalcFlags.POINTHASH;
           //grid.recalcFlag |= QRecalcFlags.LEAF_POINTS | QRecalcFlags.LEAF_NODES;
@@ -1788,36 +1788,36 @@ export class SmoothGridsOp extends MeshOp<{
       }
 
       for (let i = 0; i < 3; i++) {
-        for (let l of mesh.loops) {
-          let grid = cd_grid.get(l) as unknown as QuadTreeGrid
-          let ps = grid.points
+        for (const l of mesh.loops) {
+          const grid = cd_grid.get(l) as unknown as QuadTreeGrid
+          const ps = grid.points
 
-          let p1 = ps[0]
-          let p2 = ps[1]
-          let p3 = ps[2]
-          let p4 = ps[3]
+          const p1 = ps[0]
+          const p2 = ps[1]
+          const p3 = ps[2]
+          const p4 = ps[3]
 
-          for (let p of grid.points) {
+          for (const p of grid.points) {
             grid.smoothPoint(p, fac)
           }
         }
       }
 
       for (let i = 0; i < 3; i++) {
-        for (let l of mesh.loops) {
-          let grid = l.customData.get<QuadTreeGrid>(cd_grid.i)
+        for (const l of mesh.loops) {
+          const grid = l.customData.get<QuadTreeGrid>(cd_grid.i)
           grid.stitchBoundaries()
         }
       }
 
-      for (let l of mesh.loops) {
-        let grid = l.customData.get<Grid>(cd_grid.i)
+      for (const l of mesh.loops) {
+        const grid = l.customData.get<Grid>(cd_grid.i)
         grid.recalcFlag |= QRecalcFlags.ALL | QRecalcFlags.NORMALS | QRecalcFlags.LEAVES | QRecalcFlags.NEIGHBORS
         grid.update(mesh, l, cd_grid)
       }
     }
 
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       let cd_grid = mesh.loops.customData.getLayerIndex(QuadTreeGrid)
 
       if (cd_grid < 0) {
@@ -1833,16 +1833,16 @@ export class SmoothGridsOp extends MeshOp<{
       if (0) {
         let depth = 0
 
-        for (let l of mesh.loops) {
-          let grid = l.customData.get<QuadTreeGrid>(cd_grid)
+        for (const l of mesh.loops) {
+          const grid = l.customData.get<QuadTreeGrid>(cd_grid)
           depth = Math.max(depth, grid.nodes[QuadTreeFields.QSUBTREE_DEPTH])
         }
         console.log('MRES DEPTH', depth)
 
-        let mres = mesh.loops.customData.getLayerSettings(QuadTreeGrid)
-        let oldmres = mres.copy()
+        const mres = mesh.loops.customData.getLayerSettings(QuadTreeGrid)
+        const oldmres = mres.copy()
 
-        let start = depth === 0 ? 0 : 1
+        const start = depth === 0 ? 0 : 1
 
         for (let i = 1; i <= Math.ceil(depth / 2); i++) {
           mres.flag |= GridSettingFlags.ENABLE_DEPTH_LIMIT
@@ -1882,7 +1882,7 @@ const staroffs_origin = [
   [0, 0],
 ]
 
-let boxoffs = []
+const boxoffs = []
 
 for (let ix = -1; ix <= 1; ix++) {
   for (let iy = -1; iy <= 1; iy++) {
@@ -1908,33 +1908,33 @@ export class GridsTestOp2 extends MeshOp<{
   }
 
   exec(ctx: ToolContext) {
-    let mesh = ctx.mesh!
+    const mesh = ctx.mesh!
 
-    let gridAttr = mesh.loops.customData.getLayerRef(QuadTreeGrid)
-    let cd_grid = mesh.loops.customData.getLayerIndex(QuadTreeGrid)
+    const gridAttr = mesh.loops.customData.getLayerRef(QuadTreeGrid)
+    const cd_grid = mesh.loops.customData.getLayerIndex(QuadTreeGrid)
     if (cd_grid < 0) {
       return
     }
 
-    for (let l of mesh.loops) {
-      let grid = l.customData[cd_grid] as unknown as QuadTreeGrid
+    for (const l of mesh.loops) {
+      const grid = l.customData[cd_grid] as unknown as QuadTreeGrid
 
       grid.recalcFlag |= QRecalcFlags.TOPO | QRecalcFlags.POLYS
       grid.update(mesh, l, gridAttr)
     }
 
-    for (let l of mesh.loops) {
-      let grid = l.customData[cd_grid] as QuadTreeGrid
+    for (const l of mesh.loops) {
+      const grid = l.customData[cd_grid] as QuadTreeGrid
 
       grid.recalcFlag |= QRecalcFlags.NEIGHBORS
       grid.update(mesh, l, gridAttr)
     }
 
-    for (let l of mesh.loops) {
-      let grid = l.customData[cd_grid] as QuadTreeGrid
+    for (const l of mesh.loops) {
+      const grid = l.customData[cd_grid] as QuadTreeGrid
 
-      for (let pi of grid.getLeafPoints()) {
-        let p = grid.points[pi]
+      for (const pi of grid.getLeafPoints()) {
+        const p = grid.points[pi]
 
         p.load(p.sco)
       }
@@ -1942,8 +1942,8 @@ export class GridsTestOp2 extends MeshOp<{
       grid.recalcFlag |= QRecalcFlags.NORMALS
     }
 
-    for (let l of mesh.loops) {
-      let grid = l.customData[cd_grid] as QuadTreeGrid
+    for (const l of mesh.loops) {
+      const grid = l.customData[cd_grid] as QuadTreeGrid
 
       grid.update(mesh, l, gridAttr)
     }
@@ -1978,10 +1978,10 @@ export class GridsTestOp extends MeshOp<{
   exec(ctx: ToolContext) {
     console.warn('mesh.grids_test')
 
-    let fac = this.inputs.factor.getValue()
+    const fac = this.inputs.factor.getValue()
 
     /* XXX hack access of view context! */
-    let view3d = (ctx.state.ctx as any).view3d
+    const view3d = (ctx.state.ctx as any).view3d
     view3d.resetDrawLines()
 
     function makeDrawLine(a: Vector3, b: Vector3, color?: Vector4 | string) {
@@ -2001,7 +2001,7 @@ export class GridsTestOp extends MeshOp<{
 
     if (1) {
       //for (let mesh of this.getMeshes(ctx)) {
-      let mesh = ctx.mesh!
+      const mesh = ctx.mesh!
       let gridAttr = mesh.loops.customData.getLayerRef(Grid) as AttrRef<any>
 
       if (gridAttr.i >= 0) {
@@ -2010,49 +2010,49 @@ export class GridsTestOp extends MeshOp<{
 
       gridAttr = mesh.loops.customData.getLayerRef(QuadTreeGrid)
       if (gridAttr.i >= 0) {
-        let p1 = new Vector3()
-        let p2 = new Vector3()
-        let temps = util.cachering.fromConstructor(Vector3, 64)
+        const p1 = new Vector3()
+        const p2 = new Vector3()
+        const temps = util.cachering.fromConstructor(Vector3, 64)
 
         const cd_grid = gridAttr.i
 
-        for (let l of mesh.loops) {
-          let grid = l.customData[cd_grid] as QuadTreeGrid
+        for (const l of mesh.loops) {
+          const grid = l.customData[cd_grid] as QuadTreeGrid
 
           grid.recalcFlag |= QRecalcFlags.TOPO
           grid.update(mesh, l, gridAttr)
         }
 
-        for (let l of mesh.loops) {
-          let grid = l.customData[cd_grid] as QuadTreeGrid
+        for (const l of mesh.loops) {
+          const grid = l.customData[cd_grid] as QuadTreeGrid
           grid.update(mesh, l, gridAttr)
           grid.recalcNeighbors(mesh, l, gridAttr)
         }
 
-        for (let l of mesh.loops) {
-          let grid = l.customData[cd_grid] as QuadTreeGrid
+        for (const l of mesh.loops) {
+          const grid = l.customData[cd_grid] as QuadTreeGrid
           grid.update(mesh, l, gridAttr)
 
-          for (let p of grid.points) {
+          for (const p of grid.points) {
             p.orig = new Vector3(p.co)
           }
         }
 
         function getp(p: QTGridVert, o: Vector3, depth: number, grid: QuadTreeGrid) {
-          let co = new Vector3()
+          const co = new Vector3()
 
           let tot = 0.0
 
-          let dimen = gridSides[depth] - 1
-          let dt = 1.0 / dimen
+          const dimen = gridSides[depth] - 1
+          const dt = 1.0 / dimen
 
-          let uv = p.uv
+          const uv = p.uv
 
-          for (let off of staroffs) {
-            let u = uv[0] + off[0] * dt
-            let v = uv[1] + off[1] * dt
+          for (const off of staroffs) {
+            const u = uv[0] + off[0] * dt
+            const v = uv[1] + off[1] * dt
 
-            let co2 = grid.evaluate(u, v)
+            const co2 = grid.evaluate(u, v)
             co.add(co2)
             tot++
           }
@@ -2080,9 +2080,9 @@ export class GridsTestOp extends MeshOp<{
           o3: Vector3,
           o4: Vector3
         ): CubicPatch {
-          let p = new CubicPatch()
+          const p = new CubicPatch()
 
-          let depth = ns[ni + QDEPTH]
+          const depth = ns[ni + QDEPTH]
 
           o1 = getp(p1 as QTGridVert, o1, depth, grid as unknown as QuadTreeGrid)
           o2 = getp(p2 as QTGridVert, o2, depth, grid as unknown as QuadTreeGrid)
@@ -2109,17 +2109,17 @@ export class GridsTestOp extends MeshOp<{
             }
           }
 
-          let a = new Vector3()
-          let b = new Vector3()
-          let c = new Vector3()
+          const a = new Vector3()
+          const b = new Vector3()
+          const c = new Vector3()
 
-          let disable = 0
+          const disable = 0
 
           for (let x = 0; x < 4; x++) {
-            let u = x / 3
+            const u = x / 3
 
             for (let y = 0; y < 4; y++) {
-              let v = y / 3
+              const v = y / 3
 
               if (!disable && x >= 1 && x <= 2 && y >= 1 && y <= 2) {
                 continue
@@ -2135,25 +2135,25 @@ export class GridsTestOp extends MeshOp<{
             return p
           }
 
-          let l1 = o1.vectorDistance(o2)
-          let l3 = o3.vectorDistance(o4)
+          const l1 = o1.vectorDistance(o2)
+          const l3 = o3.vectorDistance(o4)
 
-          let l2 = o2.vectorDistance(o3)
-          let l4 = o4.vectorDistance(o1)
+          const l2 = o2.vectorDistance(o3)
+          const l4 = o4.vectorDistance(o1)
 
-          let d = 1.0 / 3.0 //window.d2 ?? 1.0 / 3.0;
-          let d2 = 0.0 //window.d3 ?? 0.0;
+          const d = 1.0 / 3.0 //window.d2 ?? 1.0 / 3.0;
+          const d2 = 0.0 //window.d3 ?? 0.0;
 
-          let dfac = 1.0 / Math.pow(2, depth)
+          const dfac = 1.0 / Math.pow(2, depth)
 
           function gt(p: Vector3 | number[]): Vector3 {
             return new Vector3(p).mulScalar(dfac)
           }
 
           function gn(p1: GridVertBase<any>, p2: GridVertBase<any>, t: number): Vector3 {
-            let n = new Vector3()
+            const n = new Vector3()
 
-            let l = p1.co.vectorDistance(p2.co) * d2
+            const l = p1.co.vectorDistance(p2.co) * d2
             n.load(p1.no).interp(p2.no, t).normalize().mulScalar(l)
             return n
             /*
@@ -2188,7 +2188,7 @@ export class GridsTestOp extends MeshOp<{
 
           if (!disable) {
             for (let i = 0; i < 2; i++) {
-              let t = (i + 1.0) / 3.0
+              const t = (i + 1.0) / 3.0
 
               let mul2 = l1 + (l3 - l1) * t
               let mul1 = l2 + (l4 - l2) * t
@@ -2260,10 +2260,10 @@ export class GridsTestOp extends MeshOp<{
           clr = 'orange'
           for (let i = 0; i < 3; i++) {
             for (let j = 0; j < 3; j++) {
-              let a = p.getPoint(i, j)
-              let b = p.getPoint(i, j + 1)
-              let c = p.getPoint(i + 1, j + 1)
-              let d = p.getPoint(i, j + 1)
+              const a = p.getPoint(i, j)
+              const b = p.getPoint(i, j + 1)
+              const c = p.getPoint(i + 1, j + 1)
+              const d = p.getPoint(i, j + 1)
 
               makeDrawLine(a, b, clr)
               makeDrawLine(b, c, clr)
@@ -2274,34 +2274,34 @@ export class GridsTestOp extends MeshOp<{
           return p
         }
 
-        for (let l of mesh.loops) {
-          let doneset = new WeakSet()
+        for (const l of mesh.loops) {
+          const doneset = new WeakSet()
 
-          let grid = l.customData[cd_grid] as QuadTreeGrid
-          let ns = grid.nodes,
+          const grid = l.customData[cd_grid] as QuadTreeGrid
+          const ns = grid.nodes,
             ps = grid.points
 
-          let patches = new Map()
+          const patches = new Map()
 
-          let origco = new Map()
-          for (let p of grid.points) {
+          const origco = new Map()
+          for (const p of grid.points) {
             origco.set(p, new Vector3(p.co))
           }
 
-          for (let ni of grid.getLeafNodes()) {
+          for (const ni of grid.getLeafNodes()) {
             if (ni === 0) {
               continue
             }
 
             for (let i = 0; i < 4; i++) {
-              let pi = ns[ni + QPOINT1 + i]
-              let p = ps[pi]
+              const pi = ns[ni + QPOINT1 + i]
+              const p = ps[pi]
 
               if (doneset.has(p)) {
                 continue
               }
 
-              let uv = grid._getUV(ni, i)
+              const uv = grid._getUV(ni, i)
               doneset.add(p)
 
               let ni2 = ns[ni + QPARENT]
@@ -2312,21 +2312,21 @@ export class GridsTestOp extends MeshOp<{
                 }
               }
 
-              let u = (uv[0] - ns[ni2 + QMINU]) / (ns[ni2 + QMAXU] - ns[ni2 + QMINU])
-              let v = (uv[1] - ns[ni2 + QMINV]) / (ns[ni2 + QMAXV] - ns[ni2 + QMINV])
+              const u = (uv[0] - ns[ni2 + QMINU]) / (ns[ni2 + QMAXU] - ns[ni2 + QMINU])
+              const v = (uv[1] - ns[ni2 + QMINV]) / (ns[ni2 + QMAXV] - ns[ni2 + QMINV])
 
-              let p1 = ps[ns[ni2 + QPOINT1]]
-              let p2 = ps[ns[ni2 + QPOINT1 + 1]]
-              let p3 = ps[ns[ni2 + QPOINT1 + 2]]
-              let p4 = ps[ns[ni2 + QPOINT1 + 3]]
+              const p1 = ps[ns[ni2 + QPOINT1]]
+              const p2 = ps[ns[ni2 + QPOINT1 + 1]]
+              const p3 = ps[ns[ni2 + QPOINT1 + 2]]
+              const p4 = ps[ns[ni2 + QPOINT1 + 3]]
 
-              let p1b = origco.get(p1)
-              let p2b = origco.get(p2)
-              let p3b = origco.get(p3)
-              let p4b = origco.get(p4)
+              const p1b = origco.get(p1)
+              const p2b = origco.get(p2)
+              const p3b = origco.get(p3)
+              const p4b = origco.get(p4)
 
-              let a = temps.next()
-              let b = temps.next()
+              const a = temps.next()
+              const b = temps.next()
 
               a.load(p1b).interp(p2b, v)
               b.load(p4b).interp(p3b, v)
@@ -2354,8 +2354,8 @@ export class GridsTestOp extends MeshOp<{
           */
         }
 
-        for (let l of mesh.loops) {
-          let grid = l.customData[cd_grid] as QuadTreeGrid
+        for (const l of mesh.loops) {
+          const grid = l.customData[cd_grid] as QuadTreeGrid
           grid.recalcFlag |= QRecalcFlags.ALL
           grid.update(mesh, l, gridAttr)
         }
@@ -2375,7 +2375,7 @@ export class GridsTestOp extends MeshOp<{
     super.undo(ctx)
 
     // XXX hackish! accessing view context here!!
-    let view3d = (ctx.state.ctx as any).view3d as unknown as View3D
+    const view3d = (ctx.state.ctx as any).view3d as unknown as View3D
     if (view3d) {
       view3d.resetDrawLines()
     }
@@ -2398,8 +2398,8 @@ export class DeleteGridsOp extends MeshOp {
   exec(ctx: ToolContext) {
     console.warn('mesh.delete_grids')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let off = GridBase.meshGridOffset(mesh)
+    for (const mesh of this.getMeshes(ctx)) {
+      const off = GridBase.meshGridOffset(mesh)
 
       if (off >= 0) {
         console.log('Deleting grids from mesh', mesh)
@@ -2436,20 +2436,20 @@ export class ResetGridsOp extends MeshOp {
   exec(ctx: ToolContext) {
     console.warn('mesh.reset_grids')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let off = GridBase.meshGridOffset(mesh)
+    for (const mesh of this.getMeshes(ctx)) {
+      const off = GridBase.meshGridOffset(mesh)
       if (off < 0) {
         continue
       }
 
       console.log('resetting grids')
 
-      for (let f of mesh.faces) {
+      for (const f of mesh.faces) {
         f.calcCent()
       }
 
-      for (let l of mesh.loops) {
-        let grid = l.customData.get<Grid>(off)
+      for (const l of mesh.loops) {
+        const grid = l.customData.get<Grid>(off)
 
         grid.init(grid.dimen, mesh, l, new AttrRef<Grid>(off))
       }
@@ -2487,14 +2487,14 @@ export class ApplyGridBaseOp extends MeshOp {
   exec(ctx: ToolContext) {
     console.warn('mesh.apply_grid_base')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let off = GridBase.meshGridOffset(mesh)
+    for (const mesh of this.getMeshes(ctx)) {
+      const off = GridBase.meshGridOffset(mesh)
       if (off < 0) {
         continue
       }
 
-      for (let l of mesh.loops) {
-        let grid = l.customData.get<Grid>(off)
+      for (const l of mesh.loops) {
+        const grid = l.customData.get<Grid>(off)
 
         grid.applyBase(mesh, l, new AttrRef<Grid>(off))
       }
@@ -2547,22 +2547,22 @@ export class AddCDLayerOp extends MeshOp<
   exec(ctx: ToolContext) {
     console.warn('mesh.add_cd_layer')
 
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       let name = this.inputs.name.getValue().trim() as string | undefined
       if (name === '') {
         name = undefined
       }
 
-      let type = this.inputs.elemType.getValue()
-      let elist = mesh.getElemList(type)
+      const type = this.inputs.elemType.getValue()
+      const elist = mesh.getElemList(type)
 
-      let typecls = CustomDataElem.getTypeClass(this.inputs.layerType.getValue())
+      const typecls = CustomDataElem.getTypeClass(this.inputs.layerType.getValue())
       if (!typecls) {
         ctx.error('Unknown layer type ' + this.inputs.layerType.getValue())
         return
       }
 
-      let ret = elist.addCustomDataLayer(typecls, name)
+      const ret = elist.addCustomDataLayer(typecls, name)
 
       if (ret) {
         this.outputs.layerIndex.setValue(ret.index)
@@ -2599,22 +2599,22 @@ export class RemCDLayerOp extends MeshOp<{
   exec(ctx: ToolContext) {
     console.warn('mesh.remove_cd_layer')
 
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       let name = this.inputs.name.getValue().trim() as string | undefined
       if (name === '') {
         name = undefined
       }
 
-      let type = this.inputs.elemType.getValue()
-      let elist = mesh.getElemList(type)
+      const type = this.inputs.elemType.getValue()
+      const elist = mesh.getElemList(type)
 
-      let typecls = CustomDataElem.getTypeClass(this.inputs.layerType.getValue())
+      const typecls = CustomDataElem.getTypeClass(this.inputs.layerType.getValue())
       if (!typecls) {
         ctx.error('Unknown layer type ' + this.inputs.layerType.getValue())
         continue
       }
 
-      let off = elist.customData.getLayerIndex(typecls)
+      const off = elist.customData.getLayerIndex(typecls)
 
       if (off < 0) {
         ctx.error('no cd layers')
@@ -2645,24 +2645,24 @@ export class TestMultiGridSmoothOp extends MeshOp {
   exec(ctx: ToolContext) {
     console.log('mesh.test_multigrid_smooth()')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let ms = new MultiGridSmoother(mesh)
+    for (const mesh of this.getMeshes(ctx)) {
+      const ms = new MultiGridSmoother(mesh)
 
-      for (let v of mesh.verts) {
+      for (const v of mesh.verts) {
         ms.addVert(v)
       }
       ms.update()
 
       mesh.selectNone()
 
-      for (let v of ms.levels[0].superVerts) {
+      for (const v of ms.levels[0].superVerts) {
         mesh.verts.setSelect(v, true)
         v.flag |= MeshFlags.UPDATE
 
         //v.addFac(v.no, 0.5);
       }
 
-      let supers = ms.getSuperVerts(mesh.verts) as Set<Vertex>
+      const supers = ms.getSuperVerts(mesh.verts) as Set<Vertex>
 
       ms.smooth(
         supers as unknown as any[],
@@ -2711,11 +2711,11 @@ export class FixNormalsOp extends MeshOp<{
   exec(ctx: ToolContext) {
     console.log('mesh.test_multigrid_smooth()')
 
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       recalcWindings(mesh, mesh.faces.selected.editable)
 
       if (!this.inputs.outside.getValue()) {
-        for (let f of mesh.faces.selected.editable) {
+        for (const f of mesh.faces.selected.editable) {
           mesh.reverseWinding(f)
         }
       }
@@ -2757,31 +2757,31 @@ export class FixManifoldOp extends MeshOp<{
     console.log('mesh.test_multigrid_smooth()')
 
     function calcEulerPoincare(mesh: Mesh) {
-      let v = mesh.verts.length
+      const v = mesh.verts.length
       let l = 0
-      for (let f of mesh.faces) {
+      for (const f of mesh.faces) {
         l += f.lists.length
       }
-      let e = mesh.edges.length
-      let s = 1
-      let g = 0
-      let f = mesh.faces.length
+      const e = mesh.edges.length
+      const s = 1
+      const g = 0
+      const f = mesh.faces.length
 
       return v - e + f - (l - f) - 2 * (s - g)
     }
 
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       mesh.validateMesh()
 
       console.log('euler-poincare:', calcEulerPoincare(mesh))
 
-      let lctx = new LogContext()
+      const lctx = new LogContext()
 
       lctx.onnew = (e) => {
         mesh.setSelect(e, true)
 
         if (e.type === MeshTypes.FACE) {
-          for (let l of (e as Face).loops) {
+          for (const l of (e as Face).loops) {
             mesh.setSelect(l.v, true)
             mesh.setSelect(l.e, true)
           }
@@ -2795,7 +2795,7 @@ export class FixManifoldOp extends MeshOp<{
       }
 
       if (this.inputs.fixLooseGeometry.getValue()) {
-        let minverts = this.inputs.minIslandVerts.getValue()
+        const minverts = this.inputs.minIslandVerts.getValue()
         pruneLooseGeometry(mesh, lctx, minverts)
       }
 
@@ -2829,15 +2829,15 @@ export class ConnectVertsOp extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
-      let vs = util.list(mesh.verts.selected.editable)
+    for (const mesh of this.getMeshes(ctx)) {
+      const vs = util.list(mesh.verts.selected.editable)
 
       if (vs.length === 2) {
-        let v1 = vs[0],
+        const v1 = vs[0],
           v2 = vs[1]
 
         connectVerts(mesh, v1, v2)
-        let e = mesh.getEdge(v1, v2)
+        const e = mesh.getEdge(v1, v2)
 
         if (e) {
           mesh.setSelect(e, true)
@@ -2867,18 +2867,18 @@ export class DissolveVertOp extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
-      let vs = new Set(mesh.verts.selected.editable)
+    for (const mesh of this.getMeshes(ctx)) {
+      const vs = new Set(mesh.verts.selected.editable)
       if (vs.size === 0) {
         continue
       }
 
-      let lctx = new LogContext()
+      const lctx = new LogContext()
       lctx.onnew = (e) => {
         e.flag |= MeshFlags.UPDATE
 
         if (e.type === MeshTypes.FACE) {
-          for (let l of (e as Face).loops) {
+          for (const l of (e as Face).loops) {
             mesh.setSelect(l.v, true)
             mesh.setSelect(l.e, true)
           }
@@ -2887,7 +2887,7 @@ export class DissolveVertOp extends MeshOp {
         mesh.setSelect(e, true)
       }
 
-      for (let v of vs) {
+      for (const v of vs) {
         if (v.valence === 2) {
           mesh.joinTwoEdges(v, lctx)
         } else {
@@ -2915,10 +2915,10 @@ export class CleanupQuads extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
-      let faces = new Set(mesh.faces.selected.editable)
+    for (const mesh of this.getMeshes(ctx)) {
+      const faces = new Set(mesh.faces.selected.editable)
 
-      let lctx = new LogContext()
+      const lctx = new LogContext()
       let newfs = new Set<Face>()
 
       lctx.onnew = (e) => {
@@ -2931,7 +2931,7 @@ export class CleanupQuads extends MeshOp {
 
       trianglesToQuads(mesh, faces, undefined, lctx)
 
-      for (let f of faces) {
+      for (const f of faces) {
         if (f.eid >= 0) {
           newfs.add(f)
         }
@@ -2940,13 +2940,13 @@ export class CleanupQuads extends MeshOp {
       newfs = newfs.filter((f: Face) => f.eid >= 0)
       cleanupQuads(mesh, new Set(newfs), lctx)
 
-      let vs = new Set()
-      for (let f of newfs) {
+      const vs = new Set()
+      for (const f of newfs) {
         if (f.eid < 0) {
           continue
         }
 
-        for (let l of f.loops) {
+        for (const l of f.loops) {
           vs.add(l.v)
         }
       }
@@ -2977,11 +2977,11 @@ export class CleanupTris extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       let faces = new Set(mesh.faces.selected.editable)
 
-      let lctx = new LogContext()
-      let newfs = new Set<Face>()
+      const lctx = new LogContext()
+      const newfs = new Set<Face>()
 
       lctx.onnew = (e: Element): void => {
         mesh.setSelect(e, true)
@@ -2996,13 +2996,13 @@ export class CleanupTris extends MeshOp {
         cleanupTris(mesh, faces, lctx)
       }
 
-      let vs = new Set<Vertex>()
-      for (let f of newfs) {
+      const vs = new Set<Vertex>()
+      for (const f of newfs) {
         if (f.eid < 0) {
           continue
         }
 
-        for (let l of f.loops) {
+        for (const l of f.loops) {
           vs.add(l.v)
         }
       }
@@ -3029,13 +3029,13 @@ export class DissolveEdgesOp extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
-      let lctx = new LogContext()
+    for (const mesh of this.getMeshes(ctx)) {
+      const lctx = new LogContext()
       lctx.onnew = (e) => {
         mesh.setSelect(e, true)
       }
 
-      for (let e of new Set(mesh.edges.selected.editable)) {
+      for (const e of new Set(mesh.edges.selected.editable)) {
         if (e.eid < 0) {
           continue
         }
@@ -3072,17 +3072,17 @@ export class RotateEdgeOp extends MeshOp<{
   }
 
   exec(ctx: ToolContext) {
-    let mode = this.inputs.mode.getValue()
+    const mode = this.inputs.mode.getValue()
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let lctx = new LogContext()
+    for (const mesh of this.getMeshes(ctx)) {
+      const lctx = new LogContext()
       lctx.onnew = (e) => {
         if (e.type !== MeshTypes.FACE) {
           mesh.setSelect(e, true)
         }
       }
 
-      for (let e of new Set(mesh.edges.selected.editable)) {
+      for (const e of new Set(mesh.edges.selected.editable)) {
         if (e.eid >= 0) {
           mesh.rotateEdge(e, !mode ? 1 : -1, lctx)
         }
@@ -3115,13 +3115,13 @@ export class CollapseEdgesOp extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
-      let lctx = new LogContext()
+    for (const mesh of this.getMeshes(ctx)) {
+      const lctx = new LogContext()
       lctx.onnew = (e) => {
         mesh.setSelect(e, true)
       }
 
-      for (let e of new Set(mesh.edges.selected.editable)) {
+      for (const e of new Set(mesh.edges.selected.editable)) {
         if (e.eid < 0) {
           continue
         }
@@ -3153,12 +3153,12 @@ export class RandomCollapseOp extends MeshOp<{
   }
 
   exec(ctx: ToolContext) {
-    let prob = this.inputs.probability.getValue()
+    const prob = this.inputs.probability.getValue()
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let es = new Set<Edge>()
+    for (const mesh of this.getMeshes(ctx)) {
+      const es = new Set<Edge>()
 
-      for (let e of mesh.edges.selected.editable) {
+      for (const e of mesh.edges.selected.editable) {
         if (Math.random() > 0.8) {
           continue
         }
@@ -3166,8 +3166,8 @@ export class RandomCollapseOp extends MeshOp<{
         let bad = false
 
         for (let i = 0; i < 2; i++) {
-          let v = i ? e.v2 : e.v1
-          for (let e2 of v.edges) {
+          const v = i ? e.v2 : e.v1
+          for (const e2 of v.edges) {
             if (es.has(e2)) {
               bad = true
             }
@@ -3179,7 +3179,7 @@ export class RandomCollapseOp extends MeshOp<{
         }
       }
 
-      for (let e of es) {
+      for (const e of es) {
         if (e.eid < 0) {
           continue
         }
@@ -3226,20 +3226,20 @@ export class DissolveEdgeLoopsOp extends MeshOp<{
   }
 
   exec(ctx: ToolContext) {
-    let ensureQuads = this.inputs.ensureQuads.getValue()
-    let selmask = ctx.selectMask
+    const ensureQuads = this.inputs.ensureQuads.getValue()
+    const selmask = ctx.selectMask
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let lctx = new LogContext()
+    for (const mesh of this.getMeshes(ctx)) {
+      const lctx = new LogContext()
 
-      let es = new Set(mesh.edges.selected.editable)
+      const es = new Set(mesh.edges.selected.editable)
 
       if (this.inputs.selectFaces.getValue()) {
-        for (let e of es) {
-          for (let l of e.loops) {
+        for (const e of es) {
+          for (const l of e.loops) {
             mesh.setSelect(l.f, true)
 
-            for (let l2 of l.f.loops) {
+            for (const l2 of l.f.loops) {
               if (selmask & MeshTypes.EDGE) {
                 l2.e.flag |= MeshFlags.UPDATE
                 l2.v.flag |= MeshFlags.UPDATE
@@ -3284,12 +3284,12 @@ export class FlipNormalsOp extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
-      for (let f of mesh.faces.selected.editable) {
+    for (const mesh of this.getMeshes(ctx)) {
+      for (const f of mesh.faces.selected.editable) {
         mesh.reverseWinding(f)
         f.flag |= MeshFlags.UPDATE
 
-        for (let v of f.verts) {
+        for (const v of f.verts) {
           v.flag |= MeshFlags.UPDATE
         }
       }
@@ -3316,8 +3316,8 @@ export class QuadSmoothOp extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
-      let lctx = new LogContext()
+    for (const mesh of this.getMeshes(ctx)) {
+      const lctx = new LogContext()
 
       lctx.onnew = (elem) => {
         mesh.setSelect(elem, true)
@@ -3330,9 +3330,9 @@ export class QuadSmoothOp extends MeshOp {
         }
       }
 
-      let vs = new Set()
-      for (let f of mesh.faces.selected.editable) {
-        for (let v of f.verts) {
+      const vs = new Set()
+      for (const f of mesh.faces.selected.editable) {
+        for (const v of f.verts) {
           vs.add(v)
         }
       }
@@ -3364,7 +3364,7 @@ export class TestSmoothOp extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       _testMVC(mesh)
 
       mesh.regenAll()
@@ -3386,8 +3386,8 @@ export class DissolveFacesOp extends MeshOp {
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
-      let faces = mesh.faces.selected.editable
+    for (const mesh of this.getMeshes(ctx)) {
+      const faces = mesh.faces.selected.editable
 
       dissolveFaces(mesh, faces)
 
@@ -3439,12 +3439,12 @@ export class OptRemeshParams extends ToolOp<{
   modalStart(ctx: ToolContext) {
     super.modalStart(ctx)
 
-    let mesh = ctx.mesh
+    const mesh = ctx.mesh
     if (!mesh) {
       this.modalEnd(true)
     }
 
-    let goal = this.inputs.edgeGoal.getValue()
+    const goal = this.inputs.edgeGoal.getValue()
 
     this.remesher = new UniformTriRemesher(mesh, undefined, RemeshGoals.EDGE_AVERAGE, goal)
     ;(this.remesher as unknown as any).optimizeParams(ctx)
@@ -3503,7 +3503,7 @@ export class SolverOpBase<InputSet extends PropertySlots = {}, OutputSet extends
   }
 
   getSolver(mesh: Mesh) {
-    let solver = new Solver()
+    const solver = new Solver()
     solver.start(mesh)
 
     solver.implicitSteps = this.inputs.implicitSteps.getValue()
@@ -3512,7 +3512,7 @@ export class SolverOpBase<InputSet extends PropertySlots = {}, OutputSet extends
   }
 
   execStep(mesh: Mesh, solver: Solver) {
-    let dt = this.inputs.dt.getValue()
+    const dt = this.inputs.dt.getValue()
 
     try {
       solver.solve(1, dt)
@@ -3534,10 +3534,10 @@ export class SolverOpBase<InputSet extends PropertySlots = {}, OutputSet extends
   }
 
   on_tick() {
-    let time = util.time_ms()
+    const time = util.time_ms()
 
-    let solver = this.solver!
-    let mesh = solver.mesh
+    const solver = this.solver!
+    const mesh = solver.mesh
 
     while (util.time_ms() - time < 150) {
       this.execStep(mesh, solver)
@@ -3560,9 +3560,9 @@ export class SolverOpBase<InputSet extends PropertySlots = {}, OutputSet extends
   }
 
   exec(ctx: ToolContext) {
-    let steps = this.inputs.steps.getValue()
-    let mesh = ctx.mesh!
-    let solver = this.getSolver(mesh)
+    const steps = this.inputs.steps.getValue()
+    const mesh = ctx.mesh!
+    const solver = this.getSolver(mesh)
 
     for (let i = 0; i < steps; i++) {
       this.execStep(mesh, solver)
@@ -3611,14 +3611,14 @@ export class TestSolverOp extends SolverOpBase<{
   }
 
   execStep(mesh: Mesh, solver: Solver) {
-    let vs = solver.clientData
-    let cd_slv = solver.cd_slv
-    let inflate = this.inputs.inflate.getValue() * 0.01
-    let dt = this.inputs.dt.getValue()
-    let damp = this.inputs.damp.getValue()
+    const vs = solver.clientData
+    const cd_slv = solver.cd_slv
+    const inflate = this.inputs.inflate.getValue() * 0.01
+    const dt = this.inputs.dt.getValue()
+    const damp = this.inputs.damp.getValue()
 
-    for (let v of vs) {
-      let sv = v.customData[cd_slv]
+    for (const v of vs) {
+      const sv = v.customData[cd_slv]
 
       sv.oldco.load(v)
       sv.vel.mulScalar(damp)
@@ -3648,8 +3648,8 @@ export class TestSolverOp extends SolverOpBase<{
 
     super.execStep(mesh, solver)
 
-    for (let v of vs) {
-      let sv = v.customData[cd_slv]
+    for (const v of vs) {
+      const sv = v.customData[cd_slv]
 
       if (sv.mass > 100) {
         v.load(sv.oldco)
@@ -3659,37 +3659,37 @@ export class TestSolverOp extends SolverOpBase<{
   }
 
   getSolver(mesh: Mesh): Solver {
-    let solver = super.getSolver(mesh)
+    const solver = super.getSolver(mesh)
 
-    let vs = new Set(mesh.verts.selected.editable)
-    let es = new Set<Edge>()
-    let fs = new Set<Face>()
+    const vs = new Set(mesh.verts.selected.editable)
+    const es = new Set<Edge>()
+    const fs = new Set<Face>()
 
     solver.clientData = vs
 
-    for (let v of vs) {
-      for (let e of v.edges) {
+    for (const v of vs) {
+      for (const e of v.edges) {
         es.add(e)
 
-        for (let l of e.loops) {
+        for (const l of e.loops) {
           fs.add(e.l!.f)
         }
       }
     }
 
     if (0) {
-      let cdname = '__solve_idx'
+      const cdname = '__solve_idx'
       let cd_idx = mesh.edges.customData.getNamedLayerIndex(cdname, 'int')
 
       if (cd_idx < 0) {
-        let layer = mesh.edges.addCustomDataLayer('int', cdname)
+        const layer = mesh.edges.addCustomDataLayer('int', cdname)
         cd_idx = layer.index
         layer.flag |= CDFlags.TEMPORARY
       }
     }
 
-    let sk = this.inputs.springK.getValue()
-    let cd_slv = solver.cd_slv
+    const sk = this.inputs.springK.getValue()
+    const cd_slv = solver.cd_slv
 
     function debug(...args: any[]) {
       //return console.log(...arguments);
@@ -3697,7 +3697,7 @@ export class TestSolverOp extends SolverOpBase<{
 
     function spring_c(_params: any): number {
       const params: [Vertex, Vertex, number, number] = _params
-      let [v1, v2, rlen, sk] = params
+      const [v1, v2, rlen, sk] = params
 
       //let m1 = v1.customData[cd_slv].mass;
       //let m2 = v1.customData[cd_slv].mass;
@@ -3706,11 +3706,11 @@ export class TestSolverOp extends SolverOpBase<{
     }
 
     function spring_c_vel(_params: any, klst: number[][], glst: number[][]): void {
-      let [v1, v2, rlen, sk] = _params as [Vertex, Vertex, number, number]
+      const [v1, v2, rlen, sk] = _params as [Vertex, Vertex, number, number]
 
-      let [g1, g2] = glst
+      const [g1, g2] = glst
 
-      let err = v1.co.vectorDistance(v2.co) - rlen
+      const err = v1.co.vectorDistance(v2.co) - rlen
 
       for (let j = 0; j < 3; j++) {
         g1[j] = (v2.co[j] - v1.co[j]) * err * sk
@@ -3721,11 +3721,11 @@ export class TestSolverOp extends SolverOpBase<{
     }
 
     function spring_c_acc(_params: any, klst: number, hlst: Array<Array<number>>): void {
-      let [v1, v2, rlen, sk] = _params as [Vertex, Vertex, number, number]
+      const [v1, v2, rlen, sk] = _params as [Vertex, Vertex, number, number]
 
-      let [h1, h2] = hlst
+      const [h1, h2] = hlst
 
-      let err = v1.co.vectorDistance(v2.co) - rlen
+      const err = v1.co.vectorDistance(v2.co) - rlen
 
       for (let j = 0; j < 3; j++) {
         h1[j] = -err * sk
@@ -3735,7 +3735,7 @@ export class TestSolverOp extends SolverOpBase<{
 
     let boundary = new Set<Vertex>()
 
-    for (let e of es) {
+    for (const e of es) {
       if (!vs.has(e.v1)) {
         boundary.add(e.v1)
       }
@@ -3744,15 +3744,15 @@ export class TestSolverOp extends SolverOpBase<{
       }
     }
 
-    for (let v of vs) {
+    for (const v of vs) {
       v.customData.get<SolverElem>(cd_slv).mass = 1.0
     }
 
     for (let i = 0; i < 5; i++) {
-      let boundary2 = new Set<Vertex>()
+      const boundary2 = new Set<Vertex>()
 
-      for (let v of boundary) {
-        for (let v2 of v.neighbors) {
+      for (const v of boundary) {
+        for (const v2 of v.neighbors) {
           if (!vs.has(v2) && !boundary.has(v2)) {
             boundary2.add(v2)
           }
@@ -3765,31 +3765,41 @@ export class TestSolverOp extends SolverOpBase<{
       boundary = boundary2
     }
 
-    for (let v of boundary) {
+    for (const v of boundary) {
       v.customData.get<SolverElem>(cd_slv).mass = 100000000.0
       vs.add(v)
     }
 
-    for (let v of vs) {
-      for (let e of v.edges) {
+    for (const v of vs) {
+      for (const e of v.edges) {
         if (vs.has(e.v1) && vs.has(e.v2)) {
           es.add(e)
         }
       }
     }
 
-    let edgeLenMul = this.inputs.edgeLenMul.getValue()
+    const edgeLenMul = this.inputs.edgeLenMul.getValue()
 
-    for (let e of es) {
-      let sv1 = e.v1.customData.get<SolverElem>(cd_slv)
-      let sv2 = e.v1.customData.get<SolverElem>(cd_slv)
-      let wlst = [sv1.mass, sv2.mass]
-      let vel_lst = [sv1.vel, sv2.vel]
-      let flst = [sv1.force, sv2.force]
-      let slst = [sv1.scratch, sv2.scratch]
+    for (const e of es) {
+      const sv1 = e.v1.customData.get<SolverElem>(cd_slv)
+      const sv2 = e.v1.customData.get<SolverElem>(cd_slv)
+      const wlst = [sv1.mass, sv2.mass]
+      const vel_lst = [sv1.vel, sv2.vel]
+      const flst = [sv1.force, sv2.force]
+      const slst = [sv1.scratch, sv2.scratch]
 
-      let params = [e.v1, e.v2, e.v1.co.vectorDistance(e.v2.co) * edgeLenMul, sk]
-      let con = new VelConstraint(spring_c, spring_c_vel, spring_c_acc, [e.v1, e.v2], params, wlst, vel_lst, flst, slst)
+      const params = [e.v1, e.v2, e.v1.co.vectorDistance(e.v2.co) * edgeLenMul, sk]
+      const con = new VelConstraint(
+        spring_c,
+        spring_c_vel,
+        spring_c_acc,
+        [e.v1, e.v2],
+        params,
+        wlst,
+        vel_lst,
+        flst,
+        slst
+      )
       solver.add(con)
     }
 
@@ -3814,26 +3824,26 @@ export class DuplicateMeshOp extends MeshOp<{
   }
 
   static invoke(ctx: ViewContext, args: any) {
-    let tool = super.invoke(ctx, args) as unknown as DuplicateMeshOp
+    const tool = super.invoke(ctx, args) as unknown as DuplicateMeshOp
 
     if (!('selMask' in args)) {
       tool.inputs.selectMask.setValue(ctx.selectMask)
     }
 
-    let macro = new ToolMacro()
+    const macro = new ToolMacro()
     macro.add(tool)
 
-    let grab = new TranslateOp()
+    const grab = new TranslateOp()
     macro.add(grab)
 
     return macro
   }
 
   exec(ctx: ToolContext) {
-    for (let mesh of this.getMeshes(ctx)) {
-      let selmask = this.inputs.selectMask.getValue()
+    for (const mesh of this.getMeshes(ctx)) {
+      const selmask = this.inputs.selectMask.getValue()
 
-      let geoms = []
+      const geoms = []
 
       if (selmask & MeshTypes.VERTEX) {
         geoms.push(util.list(mesh.verts.selected.editable))
@@ -3855,18 +3865,18 @@ export class DuplicateMeshOp extends MeshOp<{
       console.log('GEOM', geom)
 
       mesh.selectNone()
-      let ret = duplicateMesh(mesh, geom)
+      const ret = duplicateMesh(mesh, geom)
 
-      for (let v of ret.newVerts) {
+      for (const v of ret.newVerts) {
         v.flag |= MeshFlags.UPDATE
         mesh.verts.setSelect(v, true)
       }
 
-      for (let e of ret.newEdges) {
+      for (const e of ret.newEdges) {
         mesh.edges.setSelect(e, true)
       }
 
-      for (let f of ret.newFaces) {
+      for (const f of ret.newFaces) {
         mesh.faces.setSelect(f, true)
       }
 

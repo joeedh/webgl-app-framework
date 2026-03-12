@@ -1,223 +1,234 @@
-import {Editor, HotKey, VelPan} from '../editor_base.ts';
-import {Icons} from '../icon_enum.js';
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js';
-import * as util from '../../util/util.js';
+import {Editor, HotKey, VelPan} from '../editor_base.ts'
+import {Icons} from '../icon_enum.js'
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js'
+import * as util from '../../util/util.js'
 import {
-  nstructjs, color2css, css2color, DataTypes, math, KeyMap, UIBase, eventWasTouch, haveModal, saveUIData, loadUIData,
-  PackFlags
-} from '../../path.ux/scripts/pathux.js';
+  nstructjs,
+  color2css,
+  css2color,
+  DataTypes,
+  math,
+  KeyMap,
+  UIBase,
+  eventWasTouch,
+  haveModal,
+  saveUIData,
+  loadUIData,
+  PackFlags,
+} from '../../path.ux/scripts/pathux.js'
 
 export class DataPathBrowser extends Editor {
   constructor() {
-    super();
+    super()
 
-    this.needsRebuild = true;
+    this.needsRebuild = true
   }
 
   init() {
-    super.init();
-    this.setCSS();
+    super.init()
+    this.setCSS()
   }
 
   rebuild() {
     if (!this.ctx) {
-      return;
+      return
     }
 
     if (!this.isConnected || this.parentWidget === undefined) {
-      return;
+      return
     }
 
-    this.needsRebuild = false;
-    this.container.clear();
-    this.makeHeader(this.container, false);
+    this.needsRebuild = false
+    this.container.clear()
+    this.makeHeader(this.container, false)
 
-    let dstruct = this.ctx.api.rootContextStruct;
+    let dstruct = this.ctx.api.rootContextStruct
 
     function makeDataListPanel(dpath, path2, con) {
-      let ctx = _appstate.ctx;
+      let ctx = _appstate.ctx
 
-      let panel = con.panel(dpath.apiname);
-      panel.closed = true;
+      let panel = con.panel(dpath.apiname)
+      panel.closed = true
 
       function load() {
         try {
-          let ctx = _appstate.ctx;
-          let api = ctx.api;
+          let ctx = _appstate.ctx
+          let api = ctx.api
 
-          let list = dpath.data;
-          let ldata = api.getValue(ctx, path2);
+          let list = dpath.data
+          let ldata = api.getValue(ctx, path2)
 
-          let iter = list.getIter(api, ldata);
+          let iter = list.getIter(api, ldata)
 
-          let max = 35;
+          let max = 35
 
           for (let item of iter) {
             if (max-- === 0) {
-              break;
+              break
             }
 
-            let key = list.getKey(api, ldata, item);
-            let pathkey = key;
+            let key = list.getKey(api, ldata, item)
+            let pathkey = key
 
-            if (typeof key === "string" && key !== parseInt(key)) {
-              pathkey = `'${key}'`;
+            if (typeof key === 'string' && key !== parseInt(key)) {
+              pathkey = `'${key}'`
             }
 
-            let path3 = `${path2}[${pathkey}]`;
+            let path3 = `${path2}[${pathkey}]`
 
-            let panel2 = panel.panel(key);
-            panel2.closed = true;
+            let panel2 = panel.panel(key)
+            panel2.closed = true
 
             try {
-              let st2 = list.getStruct(api, ldata, key);
+              let st2 = list.getStruct(api, ldata, key)
 
-              rec(st2, panel2, path3);
+              rec(st2, panel2, path3)
             } catch (error2) {
-              util.print_stack(error2);
+              util.print_stack(error2)
             }
           }
         } catch (error) {
-          util.print_stack(error);
-          console.log("error iterating over list at " + path2);
+          util.print_stack(error)
+          console.log('error iterating over list at ' + path2)
         }
       }
 
-      panel.onchange = function(isClosed) {
+      panel.onchange = function (isClosed) {
         if (!isClosed) {
-          load();
+          load()
         } else {
-          panel.clear();
+          panel.clear()
         }
       }
     }
 
     var rec = (st, con, path) => {
       let makeLoadPanel = (st2, path2, dpath) => {
-        return function(isClosed) {
+        return function (isClosed) {
           if (!isClosed) {
-            this.label(st2.name);
+            this.label(st2.name)
 
             try {
-              rec(st2, this, path2);
-              this.flushUpdate();
+              rec(st2, this, path2)
+              this.flushUpdate()
             } catch (error) {
-              util.print_stack(error);
+              util.print_stack(error)
             }
           } else {
-            this.clear();
+            this.clear()
           }
         }
       }
 
-      let ctx = con.ctx;
+      let ctx = con.ctx
 
       for (let dpath of st.members) {
-        let path2 = path;
+        let path2 = path
 
         if (path2.length !== 0) {
           path2 += '.'
         }
 
         if (dpath.type === DataTypes.ARRAY) {
-          path2 += dpath.apiname;
+          path2 += dpath.apiname
 
-          makeDataListPanel(dpath, path2, con);
+          makeDataListPanel(dpath, path2, con)
         } else if (dpath.type === DataTypes.STRUCT) {
-          let panel = con.panel(ToolProperty.makeUIName(dpath.apiname));
+          let panel = con.panel(ToolProperty.makeUIName(dpath.apiname))
 
-          panel._panel.overrideDefault("padding-bottom", 0.0);
-          panel._panel.overrideDefault("padding-top", 0.0);
-          panel._panel.overrideDefault("padding-left", 5.0);
-          panel._panel.overrideDefault("margin-bottom-closed", 0.0);
-          panel._panel.overrideDefault("margin-top-closed", 0.0);
+          panel._panel.overrideDefault('padding-bottom', 0.0)
+          panel._panel.overrideDefault('padding-top', 0.0)
+          panel._panel.overrideDefault('padding-left', 5.0)
+          panel._panel.overrideDefault('margin-bottom-closed', 0.0)
+          panel._panel.overrideDefault('margin-top-closed', 0.0)
 
-
-          panel.onchange = makeLoadPanel(dpath.data, path2 + dpath.apiname, dpath);
-          panel.closed = true;
+          panel.onchange = makeLoadPanel(dpath.data, path2 + dpath.apiname, dpath)
+          panel.closed = true
         } else if (dpath.type === DataTypes.PROP) {
-          path2 += dpath.apiname;
+          path2 += dpath.apiname
 
           //console.log("PATH", path, path2);
-          con.prop(path2, PackFlags.FORCE_PROP_LABELS|PackFlags.PUT_FLAG_CHECKS_IN_COLUMNS);
+          con.prop(path2, PackFlags.FORCE_PROP_LABELS | PackFlags.PUT_FLAG_CHECKS_IN_COLUMNS)
         } else if (dpath.type === DataTypes.DYNAMIC_STRUCT) {
-          let panel = con.panel(ToolProperty.makeUIName(dpath.apiname));
+          let panel = con.panel(ToolProperty.makeUIName(dpath.apiname))
 
-          panel._panel.overrideDefault("padding-bottom", 0.0);
-          panel._panel.overrideDefault("padding-top", 0.0);
-          panel._panel.overrideDefault("padding-left", 5.0);
-          panel._panel.overrideDefault("margin-bottom-closed", 0.0);
-          panel._panel.overrideDefault("margin-top-closed", 0.0);
+          panel._panel.overrideDefault('padding-bottom', 0.0)
+          panel._panel.overrideDefault('padding-top', 0.0)
+          panel._panel.overrideDefault('padding-left', 5.0)
+          panel._panel.overrideDefault('margin-bottom-closed', 0.0)
+          panel._panel.overrideDefault('margin-top-closed', 0.0)
 
-          let rdef;
+          let rdef
 
           try {
-            rdef = ctx.api.resolvePath(ctx, path2 + dpath.apiname);
+            rdef = ctx.api.resolvePath(ctx, path2 + dpath.apiname)
           } catch (error) {
-            console.error(error.stack);
-            console.error(error.message);
+            console.error(error.stack)
+            console.error(error.message)
 
-            panel.label("error");
+            panel.label('error')
           }
 
           if (rdef && rdef.dstruct) {
-            panel.onchange = makeLoadPanel(rdef.dstruct, path2 + dpath.apiname, dpath);
+            panel.onchange = makeLoadPanel(rdef.dstruct, path2 + dpath.apiname, dpath)
           }
 
-          panel.closed = true;
+          panel.closed = true
         }
       }
     }
 
-    let panel = this.container.panel("Root Context");
-    panel.closed = false;
+    let panel = this.container.panel('Root Context')
+    panel.closed = false
 
-    rec(dstruct, panel, '');
+    rec(dstruct, panel, '')
   }
 
   update() {
-    super.update();
+    super.update()
 
     if (this.needsRebuild) {
-      this.doOnce(this.rebuild);
+      this.doOnce(this.rebuild)
     }
   }
 
   defineKeyMap() {
-    this.keymap = new KeyMap([]);
+    this.keymap = new KeyMap([])
   }
 
   setCSS() {
-    super.setCSS();
+    super.setCSS()
 
-    this.background = this.getDefault("DefaultPanelBG");
-    this.container.background = this.background;
+    this.background = this.getDefault('DefaultPanelBG')
+    this.container.background = this.background
 
-    this.style["overflow"] = "scroll";
+    this.style['overflow'] = 'scroll'
     //this.container.style["overflow"] = "scroll";
   }
 
   static defineAPI(api) {
-    let st = super.defineAPI(api);
+    let st = super.defineAPI(api)
 
-    return st;
+    return st
   }
 
   static define() {
     return {
-      tagname : "data-path-browser-editor-x",
-      areaname : "dataPathBrowser",
-      uiname : "Data Path Browser"
+      tagname : 'data-path-browser-editor-x',
+      areaname: 'dataPathBrowser',
+      uiname  : 'Data Path Browser',
     }
   }
 
   loadSTRUCT(reader) {
-    reader(this);
-    super.loadSTRUCT(reader);
+    reader(this)
+    super.loadSTRUCT(reader)
   }
 }
-DataPathBrowser.STRUCT = nstructjs.inherit(DataPathBrowser, Editor) + `
+DataPathBrowser.STRUCT =
+  nstructjs.inherit(DataPathBrowser, Editor) +
+  `
 }
-`;
-nstructjs.register(DataPathBrowser);
-Editor.register(DataPathBrowser);
+`
+nstructjs.register(DataPathBrowser)
+Editor.register(DataPathBrowser)

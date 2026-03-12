@@ -1,110 +1,112 @@
-import {ExtrudeRegionsOp} from '../../../mesh/mesh_ops.js';
-import {ToolMode} from '../view3d_toolmode.js';
-import {SelMask, SelOneToolModes, SelToolModes} from '../selectmode.js';
-import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../../mesh/mesh.js';
-import * as util from '../../../util/util.js';
-import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../../core/simplemesh.ts';
+import {ExtrudeRegionsOp} from '../../../mesh/mesh_ops.js'
+import {ToolMode} from '../view3d_toolmode.js'
+import {SelMask, SelOneToolModes, SelToolModes} from '../selectmode.js'
+import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../../mesh/mesh.js'
+import * as util from '../../../util/util.js'
+import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../../core/simplemesh.ts'
 import {Shaders} from '../../../shaders/shaders.js'
-import {FindNearestRet} from "../findnearest.js";
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js';
-import * as math from '../../../util/math.js';
-import {SelectOneOp} from '../../../mesh/select_ops.js';
-import {KeyMap, HotKey} from "../../editor_base.ts";
-import {keymap} from '../../../path.ux/scripts/util/simple_events.js';
-import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../../path.ux/scripts/toolsys/simple_toolsys.js';
-import {BasicMeshDrawer} from '../view3d_draw.js';
-import {MeshCache} from '../view3d_toolmode.js';
-import {SubsurfDrawer} from '../../../subsurf/subsurf_draw.js';
-let STRUCT = nstructjs.STRUCT;
+import {FindNearestRet} from '../findnearest.js'
+import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js'
+import * as math from '../../../util/math.js'
+import {SelectOneOp} from '../../../mesh/select_ops.js'
+import {KeyMap, HotKey} from '../../editor_base.ts'
+import {keymap} from '../../../path.ux/scripts/util/simple_events.js'
+import {ToolOp, ToolFlags, UndoFlags, ToolMacro} from '../../../path.ux/scripts/toolsys/simple_toolsys.js'
+import {BasicMeshDrawer} from '../view3d_draw.js'
+import {MeshCache} from '../view3d_toolmode.js'
+import {SubsurfDrawer} from '../../../subsurf/subsurf_draw.js'
+const STRUCT = nstructjs.STRUCT
 
 //each subeditor should fill in these tools
 export const MeshTools = {
-  SELECTONE         : SelectOneOp,
-  TOGGLE_SELECT_ALL : undefined,
-  CIRCLE_SELECT     : undefined,
-  BOX_SELECT        : undefined,
-  SELECT_LINKED     : undefined,
-  DELETE            : undefined,
-  DUPLICATE         : undefined
-};
+  SELECTONE        : SelectOneOp,
+  TOGGLE_SELECT_ALL: undefined,
+  CIRCLE_SELECT    : undefined,
+  BOX_SELECT       : undefined,
+  SELECT_LINKED    : undefined,
+  DELETE           : undefined,
+  DUPLICATE        : undefined,
+}
 
-import {Colors, elemColor} from '../view3d_draw.js';
+import {Colors, elemColor} from '../view3d_draw.js'
 
 export class MeshEditor extends ToolMode {
   constructor(manager: any) {
-    super(manager);
+    super(manager)
 
-    this._findnearest_rets = util.cachering.fromConstructor(FindNearestRet, 64);
+    this._findnearest_rets = util.cachering.fromConstructor(FindNearestRet, 64)
 
-    this.drawvisit = new util.set();
-    this.meshcache = new util.hashtable();
+    this.drawvisit = new util.set()
+    this.meshcache = new util.hashtable()
 
-    this.defineKeyMap();
+    this.defineKeyMap()
   }
 
-  static define(): object {return {
-    apiname  : "mesh",
-    uiname   : "Mesh",
-    icon     : -1,
-    selmask  : SelMask.VERTEX|SelMask.FACE|SelMask.EDGE,
-    stdtools : MeshTools //see StandardTools
-  }}
+  static define(): object {
+    return {
+      apiname : 'mesh',
+      uiname  : 'Mesh',
+      icon    : -1,
+      selmask : SelMask.VERTEX | SelMask.FACE | SelMask.EDGE,
+      stdtools: MeshTools, //see StandardTools
+    }
+  }
 
   defineKeyMap(): any {
     this.keymap = new KeyMap([
-      new HotKey("A", [], "mesh.toggle_select_all(mode='AUTO')"),
-      new HotKey("A", ["ALT"], "mesh.toggle_select_all(mode='SUB')"),
-      new HotKey("D", [], "mesh.subdivide_smooth()")
-    ]);
+      new HotKey('A', [], "mesh.toggle_select_all(mode='AUTO')"),
+      new HotKey('A', ['ALT'], "mesh.toggle_select_all(mode='SUB')"),
+      new HotKey('D', [], 'mesh.subdivide_smooth()'),
+    ])
 
-    return this.keymap;
+    return this.keymap
   }
 
   clickselect(evt: any, x: number, y: number, selmask: number): boolean | undefined {
-    let ret = this.findnearest(this.ctx, x, y, selmask);
+    const ret = this.findnearest(this.ctx, x, y, selmask)
 
     if (ret !== undefined) {
-      console.log("click select", ret);
+      console.log('click select', ret)
 
-      let ob = ret.object;
-      let mesh = ob.data;
-      let e = ret.data;
+      const ob = ret.object
+      const mesh = ob.data
+      const e = ret.data
 
-      let tool = new SelectOneOp();
-      tool.inputs.object.setValue(ob);
-      tool.inputs.eid.setValue(e.eid);
-      tool.inputs.selmask.setValue(selmask);
+      const tool = new SelectOneOp()
+      tool.inputs.object.setValue(ob)
+      tool.inputs.eid.setValue(e.eid)
+      tool.inputs.selmask.setValue(selmask)
 
-      let mode;
+      let mode
 
       if (evt.shiftKey) {
-        mode = (e.flag & MeshFlags.SELECT) ? SelOneToolModes.SUB : SelOneToolModes.ADD;
+        mode = e.flag & MeshFlags.SELECT ? SelOneToolModes.SUB : SelOneToolModes.ADD
       } else {
-        mode = SelOneToolModes.UNIQUE;
+        mode = SelOneToolModes.UNIQUE
       }
 
-      tool.inputs.mode.setValue(mode);
-      this.ctx.toolstack.execTool(this.ctx, tool);
+      tool.inputs.mode.setValue(mode)
+      this.ctx.toolstack.execTool(this.ctx, tool)
 
-      window.redraw_viewport();
-      return true;
+      window.redraw_viewport()
+      return true
     }
 
-    return undefined;
+    return undefined
   }
 
   clearHighlight(ctx: any): void {
-    window.redraw_viewport();
+    window.redraw_viewport()
 
-    for (let ob of ctx.selectedMeshObjects) {
-      let mesh = ob.data;
+    for (const ob of ctx.selectedMeshObjects) {
+      const mesh = ob.data
 
-      for (let k in mesh.elists) {
-        let list = mesh.elists[k];
+      for (const k in mesh.elists) {
+        const list = mesh.elists[k]
 
         if (list.highlight !== undefined) {
-          list.highlight = undefined;
-          window.redraw_viewport();
+          list.highlight = undefined
+          window.redraw_viewport()
         }
       }
     }
@@ -119,451 +121,455 @@ export class MeshEditor extends ToolMode {
     }
     //*/
 
-    let ret = this.findnearest(ctx, x, y);
+    const ret = this.findnearest(ctx, x, y)
 
     if (ret !== undefined) {
-      let ob = ret.object;
-      let mesh = ob.data;
-      let list = mesh.getElemList(ret.data.type);
+      const ob = ret.object
+      const mesh = ob.data
+      const list = mesh.getElemList(ret.data.type)
 
       if (list.highlight !== ret.data) {
-        this.clearHighlight(ctx);
+        this.clearHighlight(ctx)
 
-        list.highlight = ret.data;
-        window.redraw_viewport();
+        list.highlight = ret.data
+        window.redraw_viewport()
       }
 
       //console.log(ret.data.eid, ret.data);
     } else {
-      this.clearHighlight(ctx);
+      this.clearHighlight(ctx)
     }
   }
 
   on_drawstart(gl: WebGL2RenderingContext): void {
-    this.drawvisit.clear();
+    this.drawvisit.clear()
   }
 
   resyncMeshCache(gl: WebGL2RenderingContext, object: any, mesh: any): void {
-    console.log("syncing");
-    let mc = this.meshcache.get(mesh.lib_id);
+    console.log('syncing')
+    const mc = this.meshcache.get(mesh.lib_id)
 
-    mc.partialGen = mesh.partialUpdateGen;
-    mc.drawer.sync(this.view3d, gl, object);
+    mc.partialGen = mesh.partialUpdateGen
+    mc.drawer.sync(this.view3d, gl, object)
   }
 
   getMeshCache(gl: WebGL2RenderingContext, object: any, mesh: any): any {
-    let regen = !this.meshcache.has(mesh.lib_id);
-    regen = regen || this.meshcache.get(mesh.lib_id).gen != mesh.updateGen;
+    let regen = !this.meshcache.has(mesh.lib_id)
+    regen = regen || this.meshcache.get(mesh.lib_id).gen != mesh.updateGen
 
     if (!regen) {
-      let mc = this.meshcache.get(mesh.lib_id);
+      const mc = this.meshcache.get(mesh.lib_id)
 
       if (!!(mesh.flag & MeshModifierFlags.SUBSURF) != !!(mc.drawer instanceof SubsurfDrawer)) {
-        regen = true;
-        console.log("REGEN");
+        regen = true
+        console.log('REGEN')
       }
     }
 
-    let resync = !regen && (this.meshcache.get(mesh.lib_id).partialGen != mesh.partialUpdateGen);
+    const resync = !regen && this.meshcache.get(mesh.lib_id).partialGen != mesh.partialUpdateGen
 
     if (regen) {
-      this.rebuildMeshCache(gl, object, mesh);
+      this.rebuildMeshCache(gl, object, mesh)
     } else if (resync) {
-      this.resyncMeshCache(gl, object, mesh);
+      this.resyncMeshCache(gl, object, mesh)
     }
 
-    return this.meshcache.get(mesh.lib_id);
+    return this.meshcache.get(mesh.lib_id)
   }
 
   rebuildMeshCache(gl: WebGL2RenderingContext, object: any, mesh: any): any {
-    let mc;
+    let mc
 
-    console.log("rebuilding mesh cache");
+    console.log('rebuilding mesh cache')
 
     if (!this.meshcache.has(mesh.lib_id)) {
-      mc = new MeshCache(mesh.lib_id);
-      this.meshcache.set(mesh.lib_id, mc);
+      mc = new MeshCache(mesh.lib_id)
+      this.meshcache.set(mesh.lib_id, mc)
     } else {
-      this.meshcache.get(mesh.lib_id).destroy(gl);
+      this.meshcache.get(mesh.lib_id).destroy(gl)
 
-      mc = new MeshCache(mesh.lib_id);
-      this.meshcache.set(mesh.lib_id, mc);
+      mc = new MeshCache(mesh.lib_id)
+      this.meshcache.set(mesh.lib_id, mc)
     }
 
     if (mesh.flag & MeshModifierFlags.SUBSURF) {
-      mc.drawer = new SubsurfDrawer(mesh, mc);
+      mc.drawer = new SubsurfDrawer(mesh, mc)
     } else {
-      mc.drawer = new BasicMeshDrawer(mesh, mc);
+      mc.drawer = new BasicMeshDrawer(mesh, mc)
     }
 
-    mc.gen = mesh.updateGen;
+    mc.gen = mesh.updateGen
 
-    return;
-    let layerTypes = LayerTypes.LOC|LayerTypes.COLOR|LayerTypes.ID;
+    return
+    const layerTypes = LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.ID
 
-    let vm = mc.makeChunkedMesh("verts", layerTypes);
+    const vm = mc.makeChunkedMesh('verts', layerTypes)
 
-    for (let v of mesh.verts) {
-      if (v.flag & MeshFlags.HIDE)
-        continue;
+    for (const v of mesh.verts) {
+      if (v.flag & MeshFlags.HIDE) continue
 
-      let p = vm.point(v.eid, v);
+      const p = vm.point(v.eid, v)
 
-      p.ids(v.eid);
-      p.colors(elemColor(v));
+      p.ids(v.eid)
+      p.colors(elemColor(v))
     }
 
-    let em = mc.makeChunkedMesh("edges", layerTypes);
-    for (let e of mesh.edges) {
-      if (e.flag & MeshFlags.HIDE)
-        continue;
+    const em = mc.makeChunkedMesh('edges', layerTypes)
+    for (const e of mesh.edges) {
+      if (e.flag & MeshFlags.HIDE) continue
 
-      let l = em.line(e.eid, e.v1, e.v2);
+      const l = em.line(e.eid, e.v1, e.v2)
 
-      let c = elemColor(e);
+      const c = elemColor(e)
 
-      l.ids(e.eid, e.eid);
-      l.colors(c, c);
+      l.ids(e.eid, e.eid)
+      l.colors(c, c)
     }
 
-    let fm = mc.makeChunkedMesh("faces", layerTypes);
+    const fm = mc.makeChunkedMesh('faces', layerTypes)
 
-    let ltris = mesh.loopTris;
+    const ltris = mesh.loopTris
 
-    for (let i=0; i<ltris.length; i += 3) {
-      let l1 = ltris[i], l2 = ltris[i+1], l3 = ltris[i+2];
-      let f = l1.f;
+    for (let i = 0; i < ltris.length; i += 3) {
+      const l1 = ltris[i],
+        l2 = ltris[i + 1],
+        l3 = ltris[i + 2]
+      const f = l1.f
 
       if (f.flag & MeshFlags.HIDE) {
-        continue;
+        continue
       }
 
-      let c = elemColor(f);
+      let c = elemColor(f)
       if (!(f.flag & MeshFlags.SELECT)) {
-        c = Colors.FACE_UNSEL;
+        c = Colors.FACE_UNSEL
       }
 
-      let tri = fm.tri(i, l1.v, l2.v, l3.v);
+      const tri = fm.tri(i, l1.v, l2.v, l3.v)
 
-      tri.colors(c, c, c);
-      tri.ids(f.eid, f.eid, f.eid);
+      tri.colors(c, c, c)
+      tri.ids(f.eid, f.eid, f.eid)
     }
-    return mc;
+    return mc
   }
 
   /*
-  * called for all objects;  returns true
-  * if an object is valid for this editor (and was drawn)*/
+   * called for all objects;  returns true
+   * if an object is valid for this editor (and was drawn)*/
   draw(gl: WebGL2RenderingContext, uniforms: any, program: any, object: any, mesh: any): void {
-    if (object.data === undefined || !(object.data instanceof Mesh))
-      return false;
+    if (object.data === undefined || !(object.data instanceof Mesh)) return false
 
-    this.drawvisit.add(mesh);
+    this.drawvisit.add(mesh)
 
-    let mc = this.getMeshCache(gl, object, mesh);
-    mc.drawer.draw(this.view3d, gl, object, uniforms, program);
+    const mc = this.getMeshCache(gl, object, mesh)
+    mc.drawer.draw(this.view3d, gl, object, uniforms, program)
   }
 
   on_drawend(gl: WebGL2RenderingContext): void {
-    let drawvisit = this.drawvisit;
+    const drawvisit = this.drawvisit
 
-    for (let mesh_id of list(this.meshcache)) {
-      let mesh = this.ctx.datalib.get(mesh_id);
+    for (const mesh_id of list(this.meshcache)) {
+      const mesh = this.ctx.datalib.get(mesh_id)
       if (mesh === undefined) {
-        console.log("mesh was deleted: " + mesh_id);
-        continue;
+        console.log('mesh was deleted: ' + mesh_id)
+        continue
       }
 
       if (!drawvisit.has(mesh)) {
-        console.log("pruning unneeded mesh cache for", mesh.name);
+        console.log('pruning unneeded mesh cache for', mesh.name)
 
-        let val = this.meshcache.get(mesh_id);
-        console.log(mesh);
-        this.meshcache.remove(mesh_id);
+        const val = this.meshcache.get(mesh_id)
+        console.log(mesh)
+        this.meshcache.remove(mesh_id)
 
-        val.destroy(gl);
+        val.destroy(gl)
       }
     }
   }
 
   destroy(): void {
-    let gl = this.view3d.gl;
+    const gl = this.view3d.gl
 
-    for (let key of this.meshcache) {
-      let val = this.meshcache.get(key);
-      val.destroy(gl);
+    for (const key of this.meshcache) {
+      const val = this.meshcache.get(key)
+      val.destroy(gl)
     }
 
-    this.meshcache = new util.hashtable();
+    this.meshcache = new util.hashtable()
   }
 
   findnearestVertex(ctx: any, x: number, y: number, limit: number): any {
-    let p = new Vector2();
-    let p2 = new Vector3();
+    const p = new Vector2()
+    const p2 = new Vector3()
 
-    let view3d = this.view3d;
+    const view3d = this.view3d
 
-    p[0] = x;
-    p[1] = y;
+    p[0] = x
+    p[1] = y
 
-    let mindis, minob, minv;
-    let minp2 = new Vector2(), minp3 = new Vector3();
+    let mindis, minob, minv
+    const minp2 = new Vector2(),
+      minp3 = new Vector3()
 
-    for (let ob of ctx.selectedMeshObjects) {
-      let mesh = ob.data;
+    for (const ob of ctx.selectedMeshObjects) {
+      const mesh = ob.data
 
-      for (let v of mesh.verts.editable) {
-        p2.load(v);
-        view3d.project(p2);
+      for (const v of mesh.verts.editable) {
+        p2.load(v)
+        view3d.project(p2)
 
-        let dis = p.vectorDistance(p2);
+        const dis = p.vectorDistance(p2)
         if (dis < limit && (mindis === undefined || dis < mindis)) {
-          mindis = dis;
-          minv = v;
-          minob = ob;
+          mindis = dis
+          minv = v
+          minob = ob
 
-          minp3.load(v);
-          minp2.load(p2);
+          minp3.load(v)
+          minp2.load(p2)
         }
       }
     }
 
     if (mindis !== undefined) {
-      let ret = this._findnearest_rets.next();
+      const ret = this._findnearest_rets.next()
 
-      ret.dis = mindis;
-      ret.data = minv;
-      ret.object = minob;
-      ret.p2d.load(minp2);
-      ret.p3d.load(minp3);
+      ret.dis = mindis
+      ret.data = minv
+      ret.object = minob
+      ret.p2d.load(minp2)
+      ret.p3d.load(minp3)
 
-      return ret;
+      return ret
     }
   }
 
   findnearestEdge(ctx: any, x: number, y: number, limit: number): any {
-    let p = new Vector2();
-    let p1 = new Vector3();
-    let p2 = new Vector3();
+    const p = new Vector2()
+    const p1 = new Vector3()
+    const p2 = new Vector3()
 
-    let view3d = this.view3d;
+    const view3d = this.view3d
 
-    p[0] = x;
-    p[1] = y;
+    p[0] = x
+    p[1] = y
 
-    let mindis, minob, mine;
-    let minp2 = new Vector2(), minp3 = new Vector3();
+    let mindis, minob, mine
+    const minp2 = new Vector2(),
+      minp3 = new Vector3()
 
-    for (let ob of ctx.selectedMeshObjects) {
-      let mesh = ob.data;
+    for (const ob of ctx.selectedMeshObjects) {
+      const mesh = ob.data
 
-      for (let e of mesh.edges.editable) {
-        p1.load(e.v1);
-        p2.load(e.v2);
+      for (const e of mesh.edges.editable) {
+        p1.load(e.v1)
+        p2.load(e.v2)
 
-        view3d.project(p1);
-        view3d.project(p2);
+        view3d.project(p1)
+        view3d.project(p2)
 
-        let dis = math.default.dist_to_line_2d(p, p1, p2, true);
+        const dis = math.default.dist_to_line_2d(p, p1, p2, true)
         //let dis = 1000.0;
 
         if (dis < limit && (mindis === undefined || dis < mindis)) {
-          mindis = dis;
-          mine = e;
-          minob = ob;
+          mindis = dis
+          mine = e
+          minob = ob
 
-          minp2.load(p1).interp(p2, 0.5);
-          minp3.load(e.v1).interp(e.v2, 0.5);
+          minp2.load(p1).interp(p2, 0.5)
+          minp3.load(e.v1).interp(e.v2, 0.5)
         }
       }
     }
 
     if (mindis !== undefined) {
-      let ret = this._findnearest_rets.next();
+      const ret = this._findnearest_rets.next()
 
-      ret.dis = mindis;
-      ret.data = mine;
-      ret.object = minob;
-      ret.p2d.load(minp2);
-      ret.p3d.load(minp3);
+      ret.dis = mindis
+      ret.data = mine
+      ret.object = minob
+      ret.p2d.load(minp2)
+      ret.p3d.load(minp3)
 
-      return ret;
+      return ret
     }
   }
 
   findnearestFace(ctx: any, x: number, y: number, limit: number): any {
-    let p = new Vector2();
-    let p2 = new Vector3();
+    const p = new Vector2()
+    const p2 = new Vector3()
 
-    let view3d = this.view3d;
+    const view3d = this.view3d
 
-    p[0] = x;
-    p[1] = y;
+    p[0] = x
+    p[1] = y
 
-    let mindis, minob, minf;
-    let minp2 = new Vector2(), minp3 = new Vector3();
+    let mindis, minob, minf
+    const minp2 = new Vector2(),
+      minp3 = new Vector3()
 
-    for (let ob of ctx.selectedMeshObjects) {
-      let mesh = ob.data;
+    for (const ob of ctx.selectedMeshObjects) {
+      const mesh = ob.data
 
-      for (let f of mesh.faces.editable) {
-        p2.load(f.cent);
-        view3d.project(p2);
+      for (const f of mesh.faces.editable) {
+        p2.load(f.cent)
+        view3d.project(p2)
 
-        let dis = p.vectorDistance(p2);
+        const dis = p.vectorDistance(p2)
         if (dis < limit && (mindis === undefined || dis < mindis)) {
-          mindis = dis;
-          minf = f;
-          minob = ob;
+          mindis = dis
+          minf = f
+          minob = ob
 
-          minp3.load(f.cent);
-          minp2.load(p2);
+          minp3.load(f.cent)
+          minp2.load(p2)
         }
       }
     }
 
     if (mindis !== undefined) {
-      let ret = this._findnearest_rets.next();
+      const ret = this._findnearest_rets.next()
 
-      ret.dis = mindis;
-      ret.data = minf;
-      ret.object = minob;
-      ret.p2d.load(minp2);
-      ret.p3d.load(minp3);
+      ret.dis = mindis
+      ret.data = minf
+      ret.object = minob
+      ret.p2d.load(minp2)
+      ret.p3d.load(minp3)
 
-      return ret;
+      return ret
     }
   }
 
   findnearestSolid(ctx: any, x: number, y: number, selmask: number, limit: number = 75): any {
-    let view3d = this.view3d;
-    let sbuf = view3d.selectbuf;
+    const view3d = this.view3d
+    const sbuf = view3d.selectbuf
 
-    limit = Math.max(~~limit, 1);
+    limit = Math.max(~~limit, 1)
 
-    x = ~~x;
-    y = ~~y;
+    x = ~~x
+    y = ~~y
 
-    x -= limit >> 1;
-    y -= limit >> 1;
+    x -= limit >> 1
+    y -= limit >> 1
 
-    let sample = sbuf.sampleBlock(ctx, this.view3d.gl, this.view3d, x, y, limit, limit);
+    const sample = sbuf.sampleBlock(ctx, this.view3d.gl, this.view3d, x, y, limit, limit)
     if (sample === undefined) {
-      return;
+      return
     }
 
     //console.log(sample.data);
 
-    let block = sample.data;
-    let order = sample.order;
+    const block = sample.data
+    const order = sample.order
 
     for (let i of order) {
-      let x2 = i % limit, y2 = ~~(i / limit);
-      i *= 4;
+      const x2 = i % limit,
+        y2 = ~~(i / limit)
+      i *= 4
 
-      let idx = ~~(block[i]+0.5), ob = ~~(block[i+1]+0.5);
-      idx--;
+      let idx = ~~(block[i] + 0.5),
+        ob = ~~(block[i + 1] + 0.5)
+      idx--
 
-      if (idx < 0)
-        continue;
+      if (idx < 0) continue
 
-      let id = ob;
-      ob = ctx.datalib.get(ob);
+      const id = ob
+      ob = ctx.datalib.get(ob)
 
       if (ob === undefined || ob.data === undefined || !(ob.data instanceof Mesh)) {
         //console.warn("warning, invalid object", id);
-        continue;
+        continue
       }
 
-      let mesh = ob.data;
-      let e = mesh.eidMap.get(idx);
+      const mesh = ob.data
+      const e = mesh.eidMap.get(idx)
 
       if (e === undefined) {
         //console.warn("warning, invalid eid", idx);
-        continue;
+        continue
       }
 
       if (selmask & e.type) {
-        let ret = this._findnearest_rets.next();
+        const ret = this._findnearest_rets.next()
 
         //x2 -= limit*0.5;
         //y2 -= limit*0.5;
 
-        ret.object = ob;
-        ret.data = e;
-        ret.dis = Math.sqrt(x2*x2 + y2*y2);
-        ret.p2d.zero();
-        ret.p2d[0] = y + y2;
-        ret.p2d[1] = y + y2;
+        ret.object = ob
+        ret.data = e
+        ret.dis = Math.sqrt(x2 * x2 + y2 * y2)
+        ret.p2d.zero()
+        ret.p2d[0] = y + y2
+        ret.p2d[1] = y + y2
 
         //console.log(ret.data);
-        return ret;
+        return ret
       }
     }
   }
 
   findnearest(ctx: any, x: number, y: number, selmask: number | undefined = undefined, limit: number = 75): any {
     if (selmask === undefined) {
-      selmask = this.view3d.ctx.selectMask;
+      selmask = this.view3d.ctx.selectMask
     }
 
     if (!this.view3d.select_transparent) {
-      return this.findnearestSolid(ctx, x, y, selmask, limit);
+      return this.findnearestSolid(ctx, x, y, selmask, limit)
     }
     //console.log(sbuf.sampleBlock(ctx, this.view3d.gl, this.view3d, x, y, 2, 2));
 
-    let ret = undefined;
+    let ret = undefined
 
     if (selmask & SelMask.VERTEX) {
-      ret = this.findnearestVertex(ctx, x, y, limit);
+      ret = this.findnearestVertex(ctx, x, y, limit)
     }
 
     if (selmask & SelMask.EDGE) {
-      let ret2 = this.findnearestEdge(ctx, x, y, limit);
+      const ret2 = this.findnearestEdge(ctx, x, y, limit)
       if (ret !== undefined && ret2 !== undefined) {
-        ret = ret2.dis < ret.dis ? ret2 : ret;
+        ret = ret2.dis < ret.dis ? ret2 : ret
       } else if (ret === undefined) {
-        ret = ret2;
+        ret = ret2
       }
     }
 
     if (selmask & SelMask.FACE) {
-      let ret2 = this.findnearestFace(ctx, x, y, limit);
+      const ret2 = this.findnearestFace(ctx, x, y, limit)
       if (ret !== undefined && ret2 !== undefined) {
-        ret = ret2.dis < ret.dis ? ret2 : ret;
+        ret = ret2.dis < ret.dis ? ret2 : ret
       } else if (ret === undefined) {
-        ret = ret2;
+        ret = ret2
       }
     }
 
-    return ret;
+    return ret
   }
 
   /*
-  * called for all objects;  returns true
-  * if an object is valid for this editor (and was drawn)
-  *
-  * id_offset offsets the ids.  note that I might not need it.
-  * since if I use 16-bit textures I can pack a source object id
-  * along with the element id
-  * */
+   * called for all objects;  returns true
+   * if an object is valid for this editor (and was drawn)
+   *
+   * id_offset offsets the ids.  note that I might not need it.
+   * since if I use 16-bit textures I can pack a source object id
+   * along with the element id
+   * */
   drawIDs(gl: WebGL2RenderingContext, uniforms: any, object: any, mesh: any, id_offset: number): any {
     if (!(this.view3d.ctx.selectMask & SelMask.GEOM)) {
-      return;
+      return
     }
 
-    if (object.data === undefined || !(object.data instanceof Mesh))
-      return false;
+    if (object.data === undefined || !(object.data instanceof Mesh)) return false
 
-    let mc = this.getMeshCache(gl, object, mesh);
+    const mc = this.getMeshCache(gl, object, mesh)
 
-    return mc.drawer.drawIDs(this.view3d, gl, object, uniforms);
+    return mc.drawer.drawIDs(this.view3d, gl, object, uniforms)
   }
 }
 
-MeshEditor.STRUCT = STRUCT.inherit(MeshEditor, ToolMode) + `
+MeshEditor.STRUCT =
+  STRUCT.inherit(MeshEditor, ToolMode) +
+  `
 }
-`;
-nstructjs.register(MeshEditor);
+`
+nstructjs.register(MeshEditor)
 
-ToolMode.register(MeshEditor);
+ToolMode.register(MeshEditor)

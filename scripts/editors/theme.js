@@ -4,27 +4,27 @@
  * Copy to scripts/editors/theme.js
  */
 
-import {CSSFont, setTheme} from "../path.ux/scripts/core/ui_base.js";
+import {CSSFont, setTheme} from '../path.ux/scripts/core/ui_base.js'
 
 export const theme = {
   NodeEditor: {
-    NodeOverrides     : {
-      base             : {
+    NodeOverrides: {
+      base: {
         width: 65,
       },
-      button           : {
+      button: {
         width: 65,
       },
-      numslider        : {
+      numslider: {
         width: 65,
       },
-      numslider_simple : {
+      numslider_simple: {
         width: 65,
       },
       numslider_textbox: {
         width: 65,
       },
-      panel            : {
+      panel: {
         width: 100,
       },
     },
@@ -48,34 +48,34 @@ export const theme = {
     BasePackFlag        : 0,
     BoxDepressed        : 'rgba(52,52,52, 1)',
     BoxHighlight        : 'rgba(99,119,142, 1)',
-    DefaultText         : new CSSFont({
+    DefaultText: new CSSFont({
       font   : 'sans-serif',
       weight : 'normal',
       variant: 'normal',
       style  : 'normal',
       size   : 12,
-      color  : 'rgba(255,255,255, 1)'
+      color  : 'rgba(255,255,255, 1)',
     }),
-    Disabled            : {
+    Disabled: {
       'background-color': 'rgb(72, 72, 72)',
       'background-size' : '5px 3px',
       'border-radius'   : '15px',
     },
-    LabelText           : new CSSFont({
+    LabelText: new CSSFont({
       font   : 'sans-serif',
       weight : 'normal',
       variant: 'normal',
       style  : 'normal',
       size   : 12,
-      color  : 'rgba(255,255,255, 1)'
+      color  : 'rgba(255,255,255, 1)',
     }),
-    TitleText           : new CSSFont({
+    TitleText: new CSSFont({
       font   : 'sans-serif',
       weight : 'normal',
       variant: 'normal',
       style  : 'normal',
       size   : 12,
-      color  : 'rgba(250,250,250, 1)'
+      color  : 'rgba(250,250,250, 1)',
     }),
     'background-color'  : 'rgba(122,122,122, 1)',
     'border-color'      : 'rgba(163,163,163, 1)',
@@ -89,27 +89,27 @@ export const theme = {
   },
 
   button: {
-    DefaultText        : new CSSFont({
+    DefaultText: new CSSFont({
       font   : 'sans-serif',
       weight : 'normal',
       variant: 'normal',
       style  : 'normal',
       size   : 12,
-      color  : 'rgb(252,252,252)'
+      color  : 'rgb(252,252,252)',
     }),
     'background-color' : 'rgba(93,93,93, 1)',
     'border-color'     : 'rgba(163,163,163, 1)',
     'border-radius'    : 4,
     'border-style'     : 'solid',
     'border-width'     : 1,
-    disabled           : {
-      DefaultText       : new CSSFont({
+    disabled: {
+      DefaultText: new CSSFont({
         font   : 'poppins',
         weight : 'bold',
         variant: 'normal',
         style  : 'normal',
         size   : 12,
-        color  : 'rgb(109,109,109)'
+        color  : 'rgb(109,109,109)',
       }),
       'background-color': 'rgb(19,19,19)',
       'border-color'    : '#f58f8f',
@@ -117,14 +117,14 @@ export const theme = {
       'border-width'    : 1,
     },
     height             : 20,
-    highlight          : {
-      DefaultText       : new CSSFont({
+    highlight: {
+      DefaultText: new CSSFont({
         font   : undefined,
         weight : 'normal',
         variant: 'normal',
         style  : 'normal',
         size   : 12,
-        color  : 'rgba(99,99,99, 1)'
+        color  : 'rgba(99,99,99, 1)',
       }),
       'background-color': 'rgb(164,190,212)',
       'border-color'    : 'rgba(163,163,163, 1)',
@@ -132,13 +132,13 @@ export const theme = {
       'border-width'    : 1,
     },
     'highlight-pressed': {
-      DefaultText       : new CSSFont({
+      DefaultText: new CSSFont({
         font   : 'sans-serif',
         weight : 'normal',
         variant: 'normal',
         style  : 'normal',
         size   : 12,
-        color  : 'rgba(255,255,255, 1)'
+        color  : 'rgba(255,255,255, 1)',
       }),
       'background-color': 'rgb(43,62,75)',
       'border-color'    : 'rgba(163,163,163, 1)',
@@ -156,14 +156,14 @@ export const theme = {
     'padding-left'     : 6,
     'padding-right'    : 6,
     'padding-top'      : 0,
-    pressed            : {
-      DefaultText       : new CSSFont({
+    pressed: {
+      DefaultText: new CSSFont({
         font   : 'sans-serif',
         weight : 'normal',
         variant: 'normal',
         style  : 'normal',
         size   : 12,
-        color  : 'rgba(255,255,255, 1)'
+        color  : 'rgba(255,255,255, 1)',
       }),
       'background-color': 'rgb(31,31,31)',
       'border-color'    : 'rgba(163,163,163, 1)',
@@ -229,7 +229,7 @@ export const theme = {
     'border-color'    : 'rgba(171,171,171, 1)',
     'border-radius'   : 8,
     'border-width'    : 1,
-    depressed         : {
+    depressed: {
       'background-color': 'rgba(48,48,48, 1)',
       'border-color'    : 'rgb(0,0,0)',
       'border-radius'   : 8,
@@ -246,7 +246,7 @@ export const theme = {
     },
     drawCheck         : true,
     height            : 32,
-    highlight         : {
+    highlight: {
       'background-color': 'rgba(99,119,142, 1)',
       'border-color'    : 'rgba(171,171,171, 1)',
       'border-radius'   : 8,
@@ -273,7 +273,7 @@ export const theme = {
     'border-color'    : 'rgba(171,171,171, 1)',
     'border-radius'   : 8,
     'border-width'    : 1,
-    depressed         : {
+    depressed: {
       'background-color': 'rgba(48,48,48, 1)',
       'border-color'    : 'rgb(0,0,0)',
       'border-radius'   : 8,
@@ -290,7 +290,7 @@ export const theme = {
     },
     drawCheck         : true,
     height            : 32,
-    highlight         : {
+    highlight: {
       'background-color': 'rgba(99,119,142, 1)',
       'border-color'    : 'rgba(171,171,171, 1)',
       'border-radius'   : 8,
@@ -319,7 +319,7 @@ export const theme = {
       variant: 'normal',
       style  : 'normal',
       size   : 12,
-      color  : 'rgba(255,255,255, 1)'
+      color  : 'rgba(255,255,255, 1)',
     }),
   },
 
@@ -336,7 +336,7 @@ export const theme = {
     MenuBG          : 'rgba(60,60,60, 1)',
     MenuBorder      : '1px solid grey',
     MenuHighlight   : 'rgba(74,149,255, 0.367)',
-    MenuSeparator   : `
+    MenuSeparator: `
       width : 100%;
       height : 2px;
       padding : 0px;
@@ -345,13 +345,13 @@ export const theme = {
       background-color : grey; 
     `,
     MenuSpacing     : 5,
-    MenuText        : new CSSFont({
+    MenuText: new CSSFont({
       font   : 'sans-serif',
       weight : 'normal',
       variant: 'normal',
       style  : 'normal',
       size   : 14,
-      color  : 'rgba(214,214,214, 1)'
+      color  : 'rgba(214,214,214, 1)',
     }),
     'border-color'  : 'grey',
     'border-radius' : 5,
@@ -377,13 +377,13 @@ export const theme = {
   },
 
   notification: {
-    DefaultText       : new CSSFont({
+    DefaultText: new CSSFont({
       font   : 'sans-serif',
       weight : 'normal',
       variant: 'normal',
       style  : 'normal',
       size   : 12,
-      color  : 'rgba(255,255,255, 1)'
+      color  : 'rgba(255,255,255, 1)',
     }),
     ProgressBar       : 'rgba(75, 175, 255, 1.0)',
     ProgressBarBG     : 'rgba(110, 110, 110, 1.0)',
@@ -440,13 +440,13 @@ export const theme = {
     HeaderRadius          : 1,
     TitleBackground       : 'rgba(98,98,98, 1)',
     TitleBorder           : 'rgba(85,85,85, 1)',
-    TitleText             : new CSSFont({
+    TitleText: new CSSFont({
       font   : 'sans-serif',
       weight : 'normal',
       variant: 'normal',
       style  : 'normal',
       size   : 12,
-      color  : 'rgba(234,234,234, 1)'
+      color  : 'rgba(234,234,234, 1)',
     }),
     'background-color'    : 'rgba(52,52,52, 0.43137210023169426)',
     'border-color'        : 'rgba(0,0,0, 0.5598061397157866)',
@@ -470,13 +470,13 @@ export const theme = {
   },
 
   richtext: {
-    DefaultText       : new CSSFont({
+    DefaultText: new CSSFont({
       font   : 'sans-serif',
       weight : 'normal',
       variant: 'normal',
       style  : 'normal',
       size   : 16,
-      color  : 'rgb(0,0,0)'
+      color  : 'rgb(0,0,0)',
     }),
     'background-color': 'rgb(245, 245, 245)',
   },
@@ -521,13 +521,13 @@ export const theme = {
     TabPadding_mobile   : 20,
     TabStrokeStyle1     : 'rgba(0,0,0, 1)',
     TabStrokeStyle2     : 'rgba(0,0,0, 1)',
-    TabText             : new CSSFont({
+    TabText: new CSSFont({
       font   : 'sans-serif',
       weight : 'normal',
       variant: 'normal',
       style  : 'normal',
       size   : 18,
-      color  : 'rgba(229,229,229, 1)'
+      color  : 'rgba(229,229,229, 1)',
     }),
     'background-color'  : 'rgba(123,123,123, 0.7426724664096175)',
     'focus-on-tab-click': 'false',
@@ -535,25 +535,25 @@ export const theme = {
   },
 
   textbox: {
-    DefaultText       : new CSSFont({
+    DefaultText: new CSSFont({
       font   : 'sans-serif',
       weight : 'normal',
       variant: 'normal',
       style  : 'normal',
       size   : 14,
-      color  : 'rgba(231,231,231, 1)'
+      color  : 'rgba(231,231,231, 1)',
     }),
     'background-color': 'rgba(61,61,61, 1)',
   },
 
   tooltip: {
-    ToolTipText       : new CSSFont({
+    ToolTipText: new CSSFont({
       font   : 'sans-serif',
       weight : 'bold',
       variant: 'normal',
       style  : 'normal',
       size   : 12,
-      color  : 'rgba(225, 225, 225, 1.0)'
+      color  : 'rgba(225, 225, 225, 1.0)',
     }),
     'background-color': 'rgba(55,55,55, 1)',
     'border-color'    : 'rgba(139,139,139, 1)',
@@ -574,7 +574,6 @@ export const theme = {
     padding: 3,
     width  : 100,
   },
+}
 
-};
-
-setTheme(theme);
+setTheme(theme)

@@ -46,4 +46,3 @@ export declare global {
     dpi: number
   }
 }
-

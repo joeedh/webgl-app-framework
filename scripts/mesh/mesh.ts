@@ -80,7 +80,7 @@ import type {SceneObject} from '../sceneobject/sceneobject'
 import {Utf8DecodeWorker} from '../extern/jszip/jszip'
 import {ToolContext} from '../core/context'
 import {Material} from '../core/material'
-import { ShaderProgram } from '../core/webgl'
+import {ShaderProgram} from '../core/webgl'
 
 export interface IBVHArgs {
   leafLimit?: number
@@ -1147,14 +1147,13 @@ mesh.Mesh {
     return this.makeFace(_quad, undefined, undefined, lctx)
   }
 
-  
   makeTri<D extends boolean | true | undefined = undefined>(
     v1: Vertex,
     v2: Vertex,
     v3: Vertex,
     lctx: LogContext | undefined = undefined,
     ignoreDuplicates?: D
-  ) : D extends true ? Face | undefined : Face{
+  ): D extends true ? Face | undefined : Face {
     if (!v1 || !v2 || !v3) {
       console.log('missing verts', v1, v2, v3)
       throw new MeshError('Missing verts in makeTri')

@@ -162,20 +162,20 @@ const QFLAG = QuadTreeFields.QFLAG,
 
 let _quad_node_idgen = 0
 
-let eval_rets = util.cachering.fromConstructor(Vector3, 1024)
+const eval_rets = util.cachering.fromConstructor(Vector3, 1024)
 
 function makeCompressedNodeStruct() {
   const CompressFields = [QFLAG, QCHILD1, QCHILD2, QCHILD3, QCHILD4, QPOINT1, QPOINT2, QPOINT3, QPOINT4, QID]
 
-  let revmap = {} as {[key: number]: string}
-  for (let k in QuadTreeFields) {
+  const revmap = {} as {[key: number]: string}
+  for (const k in QuadTreeFields) {
     /* @ts-ignore idiot thing*/
     revmap[QuadTreeFields[k] as number] = k
   }
 
-  let fields = {} as {[key: string]: number}
+  const fields = {} as {[key: string]: number}
 
-  let types = {
+  const types = {
     QFLAG  : 'byte',
     QDEPTH : 'byte',
     QCHILD1: 'int',
@@ -189,11 +189,11 @@ function makeCompressedNodeStruct() {
   } as any
 
   let s = `mesh_grid.CompressedQuadNode {\n`
-  for (let i of CompressFields) {
-    let k = revmap[i]
+  for (const i of CompressFields) {
+    const k = revmap[i]
     fields[k] = i
 
-    let type = k in types ? types[k] : 'float'
+    const type = k in types ? types[k] : 'float'
 
     s += `  ${k} : ${type};\n`
   }
@@ -203,21 +203,21 @@ function makeCompressedNodeStruct() {
   return {nstruct: s, fields: fields}
 }
 
-let _btm_temp1 = new Vector3()
-let _btm_temp2 = new Vector3()
-let _btm_temp3 = new Vector3()
-let _btm_temp4 = new Vector3()
-let _btm_temp5 = new Vector3()
-let _btm_temp6 = new Vector3()
-let _btm_temp7 = new Vector3()
-let _btm_temp8 = new Vector3()
-let _btm_temp9 = new Vector3()
-let _btm_temp10 = new Vector3()
-let _btm_temp11 = new Vector3()
-let _btm_temp12 = new Vector3()
-let _btm_temp13 = new Vector3()
-let imattemp = new Matrix4()
-let imattemp2 = new Matrix4()
+const _btm_temp1 = new Vector3()
+const _btm_temp2 = new Vector3()
+const _btm_temp3 = new Vector3()
+const _btm_temp4 = new Vector3()
+const _btm_temp5 = new Vector3()
+const _btm_temp6 = new Vector3()
+const _btm_temp7 = new Vector3()
+const _btm_temp8 = new Vector3()
+const _btm_temp9 = new Vector3()
+const _btm_temp10 = new Vector3()
+const _btm_temp11 = new Vector3()
+const _btm_temp12 = new Vector3()
+const _btm_temp13 = new Vector3()
+const imattemp = new Matrix4()
+const imattemp2 = new Matrix4()
 
 const staroffs = [
   [-1, 0],
@@ -234,7 +234,7 @@ const staroffs_origin = [
   [0, 0],
 ]
 
-let boxoffs = []
+const boxoffs = []
 
 for (let ix = -1; ix <= 1; ix++) {
   for (let iy = -1; iy <= 1; iy++) {
@@ -247,28 +247,28 @@ export class CompressedQuadNode {
   static STRUCT = makeCompressedNodeStruct().nstruct
 
   constructor() {
-    let def = this as unknown as any
-    for (let k in CompressedQuadNode.fields) {
+    const def = this as unknown as any
+    for (const k in CompressedQuadNode.fields) {
       def[k] = 0
     }
   }
 
   static fromNodes(ns: number[]): CompressedQuadNode[] {
-    let fields = CompressedQuadNode.fields
-    let ret = [] as CompressedQuadNode[]
+    const fields = CompressedQuadNode.fields
+    const ret = [] as CompressedQuadNode[]
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
-      let n = new CompressedQuadNode()
+      const n = new CompressedQuadNode()
       ret.push(n)
 
-      for (let k in fields) {
-        let i = fields[k]
+      for (const k in fields) {
+        const i = fields[k]
 
-        let d = n as unknown as any
+        const d = n as unknown as any
         d[k] = ns[ni + i]
       }
 
-      let parent = ns[ni + QPARENT]
+      const parent = ns[ni + QPARENT]
 
       //n.QCHILD1 = Math.max(n.QCHILD1 - ni, 0);
       //n.QCHILD2 = Math.max(n.QCHILD2 - ni, 0);
@@ -280,26 +280,26 @@ export class CompressedQuadNode {
   }
 }
 
-let tanmats = util.cachering.fromConstructor(Matrix4, 64)
-let tanvecs4 = util.cachering.fromConstructor(Vector4, 64)
-let tanvecs3 = util.cachering.fromConstructor(Vector3, 64)
+const tanmats = util.cachering.fromConstructor(Matrix4, 64)
+const tanvecs4 = util.cachering.fromConstructor(Vector4, 64)
+const tanvecs3 = util.cachering.fromConstructor(Vector3, 64)
 
 CompressedQuadNode.fields = makeCompressedNodeStruct().fields
 CompressedQuadNode.STRUCT = makeCompressedNodeStruct().nstruct
 nstructjs.register(CompressedQuadNode)
 
-let blink_rets = util.cachering.fromConstructor(Vector3, 64)
-let blink_rets4 = util.cachering.fromConstructor(Vector4, 64)
-let tmptanmat = new Matrix4()
-let uvstmp = new Array(4)
+const blink_rets = util.cachering.fromConstructor(Vector3, 64)
+const blink_rets4 = util.cachering.fromConstructor(Vector4, 64)
+const tmptanmat = new Matrix4()
+const uvstmp = new Array(4)
 for (let i = 0; i < 4; i++) {
   uvstmp[i] = new Vector2()
 }
 
-let stmp1 = new Vector3(),
+const stmp1 = new Vector3(),
   stmp2 = new Vector3()
-let recttemps = new util.cachering(() => [new Vector3(), new Vector3(), new Vector3(), new Vector3()], 64)
-let interptemp1 = []
+const recttemps = new util.cachering(() => [new Vector3(), new Vector3(), new Vector3(), new Vector3()], 64)
+const interptemp1 = []
 
 export const QuadTreeFlags = {
   SELECT: 1,
@@ -310,7 +310,7 @@ export const QuadTreeFlags = {
 
 const {SELECT, LEAF, DEAD, TEMP} = QuadTreeFlags
 
-let _getuv_rets = util.cachering.fromConstructor(Vector2, 32)
+const _getuv_rets = util.cachering.fromConstructor(Vector2, 32)
 
 export class QTGridVert extends GridVertBase<Set<QTGridVert>> {
   orig: Vector3 | undefined = undefined
@@ -443,8 +443,8 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       this.recalcFlag |= QRecalcFlags.REGEN_IDS
     }
 
-    for (let p of this.points) {
-      let p2 = new QTGridVert(p.index)
+    for (const p of this.points) {
+      const p2 = new QTGridVert(p.index)
 
       if (copy_eids) {
         p2.eid = p.eid
@@ -467,11 +467,11 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     b.customDatas = []
 
     for (let i = 0; i < this.customDatas.length; i++) {
-      let cd1 = this.customDatas[i]
-      let cd2 = new CDElemArray()
+      const cd1 = this.customDatas[i]
+      const cd2 = new CDElemArray()
       b.customDatas.push(cd2)
 
-      for (let c of cd1) {
+      for (const c of cd1) {
         cd2.push(c.copy())
       }
     }
@@ -486,19 +486,19 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   getNormalQuad(loop: Loop): Vector3[] {
-    let ret = recttemps.next()
+    const ret = recttemps.next()
 
     ret[0].load(loop.f.no)
     ret[2].load(loop.v.no)
 
     ret[1].zero()
-    for (let l of loop.prev.e.loops) {
+    for (const l of loop.prev.e.loops) {
       ret[1].add(l.f.no)
     }
     ret[1].normalize()
 
     ret[3].zero()
-    for (let l of loop.e.loops) {
+    for (const l of loop.e.loops) {
       ret[3].add(l.f.no)
     }
     ret[3].normalize()
@@ -507,11 +507,11 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   getQuad(loop: Loop): Vector3[] {
-    let ret = recttemps.next()
+    const ret = recttemps.next()
 
     //XXX todo: handle symmetry flags for this branch
     if (0 && this.subsurf) {
-      let p = this.subsurf
+      const p = this.subsurf
       ret[0].load(p.evaluate(0, 0))
       ret[1].load(p.evaluate(0, 1))
       ret[2].load(p.evaluate(1, 1))
@@ -520,7 +520,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       ret[0].zero()
       let tot = 0.0
 
-      for (let l of loop.f.lists[0]) {
+      for (const l of loop.f.lists[0]) {
         ret[0].add(l.v.co)
         tot++
       }
@@ -535,7 +535,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     }
 
     let i = 0
-    for (let l of loop.list) {
+    for (const l of loop.list) {
       if (l === loop) {
         break
       }
@@ -551,30 +551,30 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   smoothPoint(v: QTGridVert, fac = 1.0): void {
-    let _tmp = stmp1
+    const _tmp = stmp1
 
     _tmp.zero()
     let w = 0.0
 
-    for (let vr of v.bRing) {
+    for (const vr of v.bRing) {
       //v.neighbors) {
       vr.co.interp(v.co, 0.5)
       v.co.load(vr.co)
     }
 
-    for (let vr of v.bRing) {
-      for (let v2 of vr.neighbors) {
+    for (const vr of v.bRing) {
+      for (const v2 of vr.neighbors) {
         if (v2 === vr || v2.loopEid !== vr.loopEid) {
           continue
         }
 
-        let w2 = 1.0
+        const w2 = 1.0
         _tmp.addFac(v2.co, w2)
         w += w2
       }
     }
 
-    for (let v2 of v.neighbors) {
+    for (const v2 of v.neighbors) {
       if (v2.loopEid !== v.loopEid) {
         continue
       }
@@ -597,24 +597,24 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   stitchBoundaries(): void {
-    for (let p of this.points) {
+    for (const p of this.points) {
       let w = 1.0
 
-      for (let pr of p.bRing) {
+      for (const pr of p.bRing) {
         p.co.add(pr.co)
         w++
       }
 
       p.co.mulScalar(1.0 / w)
 
-      for (let pr of p.bRing) {
+      for (const pr of p.bRing) {
         pr.co.load(p.co)
       }
     }
   }
 
   _hashPoint(u: number, v: number): number {
-    let dimen = 1024 * 1024
+    const dimen = 1024 * 1024
     u = ~~(u * dimen + 0.000001)
     v = ~~(v * dimen + 0.000001)
 
@@ -627,7 +627,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       this._rebuildHash()
     }
 
-    let key = this._hashPoint(u, v)
+    const key = this._hashPoint(u, v)
 
     if (key in this.pmap) {
       if (isNewOut) {
@@ -641,14 +641,14 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     }
 
     this.pmap[key] = this.points.length
-    let p = new QTGridVert(this.points.length, loopEid)
+    const p = new QTGridVert(this.points.length, loopEid)
 
     p.neighbors = new Set()
     p.eid = mesh.eidgen.next()
 
     for (let i = 0; i < this.customDataLayout.length; i++) {
-      let cls = this.customDataLayout[i]
-      let cd = new cls()
+      const cls = this.customDataLayout[i]
+      const cd = new cls()
 
       p.customData.length = this._max_cd_i
       p.customData[this.cdmap_reverse[i]] = cd
@@ -662,8 +662,8 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   _getUV(ni: number, pidx: number): Vector2 {
-    let uv = _getuv_rets.next()
-    let ns = this.nodes
+    const uv = _getuv_rets.next()
+    const ns = this.nodes
 
     if (pidx === 5) {
       throw new Error('_getUV')
@@ -696,17 +696,17 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   _rebuildHash(): void {
     this.recalcFlag &= ~QRecalcFlags.POINTHASH
 
-    let nodes = this.nodes
+    const nodes = this.nodes
 
     this.pmap = {}
 
-    let donode = (ni: number, a: number, b: number, pi: number) => {
+    const donode = (ni: number, a: number, b: number, pi: number) => {
       let u, v
 
       u = nodes[ni + a]
       v = nodes[ni + b]
 
-      let key = this._hashPoint(u, v)
+      const key = this._hashPoint(u, v)
       this.pmap[key] = nodes[ni + QPOINT1 + pi]
     }
 
@@ -728,14 +728,14 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       return
     }
 
-    let ns = this.nodes
+    const ns = this.nodes
 
     if (ns[ni + QFLAG] & DEAD) {
       console.warn('Tried to free same quadtree node twice', ni)
       return
     }
 
-    let pi = ns[ni + QPARENT]
+    const pi = ns[ni + QPARENT]
     let ok = true
 
     for (let i = 0; i < 4; i++) {
@@ -755,7 +755,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   _newNode(): number {
-    let ns = this.nodes
+    const ns = this.nodes
     let ni: number
 
     if (this.freelist.length > 0) {
@@ -776,7 +776,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   _ensureNodePoint(ni: number, pidx: number, loopEid: number, mesh: Mesh, isNewOut?: boolean[]): QTGridVert {
-    let nodes = this.nodes
+    const nodes = this.nodes
 
     let u, v
     switch (pidx) {
@@ -798,7 +798,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         break
     }
 
-    let p = this._getPoint(u!, v!, loopEid, mesh, isNewOut)
+    const p = this._getPoint(u!, v!, loopEid, mesh, isNewOut)
 
     this.nodes[ni + QPOINT1 + pidx] = p.index
 
@@ -840,9 +840,9 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     this.leafPoints = new Set()
 
     if (loop !== undefined) {
-      let nodes = this.nodes
+      const nodes = this.nodes
 
-      let ni = this._newNode()
+      const ni = this._newNode()
 
       if (ni !== 0) {
         throw new Error('root must be zero')
@@ -853,12 +853,12 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       nodes[ni + QCENTU] = nodes[ni + QCENTV] = 0.5
       nodes[ni + QFLAG] = LEAF
 
-      let p1 = this._ensureNodePoint(ni, 0, loop.eid, mesh)
-      let p2 = this._ensureNodePoint(ni, 1, loop.eid, mesh)
-      let p3 = this._ensureNodePoint(ni, 2, loop.eid, mesh)
-      let p4 = this._ensureNodePoint(ni, 3, loop.eid, mesh)
+      const p1 = this._ensureNodePoint(ni, 0, loop.eid, mesh)
+      const p2 = this._ensureNodePoint(ni, 1, loop.eid, mesh)
+      const p3 = this._ensureNodePoint(ni, 2, loop.eid, mesh)
+      const p4 = this._ensureNodePoint(ni, 3, loop.eid, mesh)
 
-      let quad = this.getQuad(loop)
+      const quad = this.getQuad(loop)
 
       p1.load(quad[0])
       p2.load(quad[1])
@@ -867,9 +867,9 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
       //console.log(this.subsurf);
 
-      let rand = new util.MersenneRandom(loop.eid)
+      const rand = new util.MersenneRandom(loop.eid)
 
-      let rec = (ni: number, depth: number) => {
+      const rec = (ni: number, depth: number) => {
         if (depth === 0) {
           return
         }
@@ -899,20 +899,20 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
   printNodes() {
     let s = ''
-    let ns = this.nodes
+    const ns = this.nodes
 
     let alignlen = 0
-    for (let k in QuadTreeFields) {
+    for (const k in QuadTreeFields) {
       alignlen = Math.max(alignlen, k.length + 1)
     }
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       s += `==========${ni}=========\n`
 
-      for (let k in QuadTreeFields) {
+      for (const k in QuadTreeFields) {
         let k2 = k
         /* @ts-ignore idiot ts */
-        let v = QuadTreeFields[k]
+        const v = QuadTreeFields[k]
 
         while (k2.length < alignlen) {
           k2 = ' ' + k2
@@ -944,10 +944,10 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     //let p2 = this._getPoint(0, 1, l.eid);
     //let p3 = this._getPoint(1, 1, l.eid);
     //let p4 = this._getPoint(1, 0, l.eid);
-    let ni = 0,
+    const ni = 0,
       ns = this.nodes,
       ps = this.points
-    let p3 = ps[ns[ni + QPOINT3]]
+    const p3 = ps[ns[ni + QPOINT3]]
 
     l.v.load(p3.co)
     mesh.doMirrorSnap(l.v)
@@ -965,10 +965,10 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     this.topo = undefined
     this.recalcFlag &= ~QRecalcFlags.TOPO
 
-    let ns = this.nodes
-    let ps = this.points
+    const ns = this.nodes
+    const ps = this.points
 
-    let vmap = [] as {
+    const vmap = [] as {
       //
       edges: any[]
       nodes: number[]
@@ -1000,24 +1000,24 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       maxdepth = Math.min(maxdepth, this.depthLimit)
     }
 
-    let dimen = (this.dimen = gridSides[maxdepth] - 1)
+    const dimen = (this.dimen = gridSides[maxdepth] - 1)
 
-    let emap = new Map()
+    const emap = new Map()
     let idgen = 0
 
     function ekey(a: number, b: number) {
-      let min = Math.min(a, b)
-      let max = Math.max(a, b)
+      const min = Math.min(a, b)
+      const max = Math.max(a, b)
 
       return min | (max << 21)
       //return Math.min(a, b) + ":" + Math.max(a, b);
     }
 
     function getedge(a: number, b: number) {
-      let key = ekey(a, b)
+      const key = ekey(a, b)
 
       if (!emap.has(key)) {
-        let e = {
+        const e = {
           v1   : a,
           v2   : b,
           p1   : ps[a],
@@ -1036,10 +1036,10 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       return emap.get(key)
     }
 
-    let uvmap = {} as {[key: number]: number}
+    const uvmap = {} as {[key: number]: number}
 
     function uvkey(u: number, v: number) {
-      let dimen2 = dimen * 16
+      const dimen2 = dimen * 16
 
       u = ~~(u * dimen2 + 0.0001)
       v = ~~(v * dimen2 + 0.0001)
@@ -1047,9 +1047,9 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     }
 
     function setuv(v1: {uv: IVector2}, u: number, v: number): void {
-      let was_set = v1.uv[0] >= 0
+      const was_set = v1.uv[0] >= 0
 
-      let eps = 0.0000001
+      const eps = 0.0000001
 
       if (was_set && (Math.abs(u - v1.uv[0]) > eps || Math.abs(v - v1.uv[1]) > eps)) {
         //console.log(v1, v1.uv[0], v1.uv[1], u, v);
@@ -1061,19 +1061,19 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     }
 
     function addedge(ni: number, a: number, b: number, u: number, v: number) {
-      let v1 = vmap[a],
+      const v1 = vmap[a],
         v2 = vmap[b]
 
       setuv(v1, u, v)
 
-      let e = getedge(a, b)
+      const e = getedge(a, b)
       e.nodes.push(ni)
     }
 
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
-      let depth = ns[ni + QDEPTH]
+      const depth = ns[ni + QDEPTH]
 
       if (ns[ni + QFLAG] & LEAF && depth > depthLimit) {
         continue
@@ -1086,21 +1086,21 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         continue
       }
 
-      let ip1 = ns[ni + QPOINT1]
-      let ip2 = ns[ni + QPOINT2]
-      let ip3 = ns[ni + QPOINT3]
-      let ip4 = ns[ni + QPOINT4]
+      const ip1 = ns[ni + QPOINT1]
+      const ip2 = ns[ni + QPOINT2]
+      const ip3 = ns[ni + QPOINT3]
+      const ip4 = ns[ni + QPOINT4]
 
-      let minu = ns[ni + QMINU]
-      let minv = ns[ni + QMINV]
-      let maxu = ns[ni + QMAXU]
-      let maxv = ns[ni + QMAXV]
+      const minu = ns[ni + QMINU]
+      const minv = ns[ni + QMINV]
+      const maxu = ns[ni + QMAXU]
+      const maxv = ns[ni + QMAXV]
 
-      let du = maxu - minu
-      let dv = maxv - minv
+      const du = maxu - minu
+      const dv = maxv - minv
 
       for (let j = 0; j < 4; j++) {
-        let ip = ns[ni + QPOINT1 + j]
+        const ip = ns[ni + QPOINT1 + j]
 
         vmap[ip].nodes.push(ni)
       }
@@ -1112,8 +1112,8 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     }
 
     for (let i = 0; i < ps.length; i++) {
-      let v = vmap[i]
-      let key = uvkey(v.uv[0], v.uv[1])
+      const v = vmap[i]
+      const key = uvkey(v.uv[0], v.uv[1])
 
       uvmap[key] = i
     }
@@ -1134,7 +1134,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   stripExtraData() {
     this.topo = undefined
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.bRingRemove()
       p.bLink = undefined
     }
@@ -1153,8 +1153,8 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   updateMirrorFlag(mesh: Mesh, p: QTGridVert, isboundary = false) {
-    let threshold = 0.001
-    let sym = mesh.symFlag
+    const threshold = 0.001
+    const sym = mesh.symFlag
 
     p.flag &= ~(MeshFlags.MIRRORED | MeshFlags.MIRROR_BOUNDARY)
 
@@ -1182,9 +1182,9 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     this.topo = undefined
 
-    let ns = this.nodes
-    let nmap = new Array(ns.length)
-    let ns2 = []
+    const ns = this.nodes
+    const nmap = new Array(ns.length)
+    const ns2 = []
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       nmap[ni] = ns2.length
@@ -1217,13 +1217,13 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   updateMirrorFlags(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>) {
     this.recalcFlag &= ~QRecalcFlags.MIRROR
 
-    let doneset = new Array(this.points.length)
+    const doneset = new Array(this.points.length)
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
 
-    let bound1 = loop.prev.e.l === loop.prev.e.l!.radial_next
-    let bound2 = loop.e.l === loop.e.l!.radial_next
+    const bound1 = loop.prev.e.l === loop.prev.e.l!.radial_next
+    const bound2 = loop.e.l === loop.e.l!.radial_next
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
@@ -1232,14 +1232,14 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       }
 
       for (let i = 0; i < 4; i++) {
-        let ip = ns[ni + QPOINT1 + i]
+        const ip = ns[ni + QPOINT1 + i]
         if (!doneset[ip]) {
           doneset[ip] = true
 
-          let p = ps[ip]
-          let uv = this._getUV(ni, i)
+          const p = ps[ip]
+          const uv = this._getUV(ni, i)
 
-          let eps = 0.00001
+          const eps = 0.00001
           let mask = 0
 
           if (uv[0] <= eps) {
@@ -1278,20 +1278,20 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   evaluate(u: number, v: number, startNi = 0, depthLimit?: number) {
-    let ni = this.findNode(u, v, startNi, depthLimit)
+    const ni = this.findNode(u, v, startNi, depthLimit)
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
-    let p1 = ps[ns[ni + QPOINT1]]
-    let p2 = ps[ns[ni + QPOINT2]]
-    let p3 = ps[ns[ni + QPOINT3]]
-    let p4 = ps[ns[ni + QPOINT4]]
+    const p1 = ps[ns[ni + QPOINT1]]
+    const p2 = ps[ns[ni + QPOINT2]]
+    const p3 = ps[ns[ni + QPOINT3]]
+    const p4 = ps[ns[ni + QPOINT4]]
 
-    let u2 = (u - ns[ni + QMINU]) / (ns[ni + QMAXU] - ns[ni + QMINU])
-    let v2 = (v - ns[ni + QMINV]) / (ns[ni + QMAXV] - ns[ni + QMINV])
+    const u2 = (u - ns[ni + QMINU]) / (ns[ni + QMAXU] - ns[ni + QMINU])
+    const v2 = (v - ns[ni + QMINV]) / (ns[ni + QMAXV] - ns[ni + QMINV])
 
-    let a = eval_rets.next()
-    let b = eval_rets.next()
+    const a = eval_rets.next()
+    const b = eval_rets.next()
 
     a.load(p1.co).interp(p2.co, v2)
     b.load(p4.co).interp(p3.co, v2)
@@ -1302,7 +1302,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
   findNode(u: number, v: number, startNi = 0, depthLimit?: number): number {
     let ni = startNi
-    let ns = this.nodes
+    const ns = this.nodes
 
     if (depthLimit === undefined) {
       depthLimit = this.depthLimitEnabled ? this.depthLimit : 1000
@@ -1322,7 +1322,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       ni = ns[ni + QPARENT]
     }
 
-    let maxdepth = ns[QSUBTREE_DEPTH] + 1
+    const maxdepth = ns[QSUBTREE_DEPTH] + 1
 
     for (let i = 0; i < maxdepth; i++) {
       let isleaf = !!(ns[ni + QFLAG] & LEAF)
@@ -1335,7 +1335,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       let found = false
 
       for (let j = 0; j < 4; j++) {
-        let ni2 = ns[ni + QCHILD1 + j]
+        const ni2 = ns[ni + QCHILD1 + j]
 
         let ok = u >= ns[ni2 + QMINU] && u < ns[ni2 + QMAXU]
         ok = ok && v >= ns[ni2 + QMINV] && v < ns[ni2 + QMAXV]
@@ -1459,43 +1459,43 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   buildTangentMatrix1(ni: number, u1: number, v1: number, matOut: Matrix4): void {
-    let m = matOut.$matrix
+    const m = matOut.$matrix
 
     matOut.makeIdentity()
 
-    let ns = this.nodes
-    let ps = this.points
+    const ns = this.nodes
+    const ps = this.points
 
-    let u = (u1 - ns[ni + QMINU]) / (ns[ni + QMAXU] - ns[ni + QMINU])
-    let v = (v1 - ns[ni + QMINV]) / (ns[ni + QMAXV] - ns[ni + QMINV])
+    const u = (u1 - ns[ni + QMINU]) / (ns[ni + QMAXU] - ns[ni + QMINU])
+    const v = (v1 - ns[ni + QMINV]) / (ns[ni + QMAXV] - ns[ni + QMINV])
 
-    let p1 = ps[ns[ni + QPOINT1]]
-    let p2 = ps[ns[ni + QPOINT2]]
-    let p3 = ps[ns[ni + QPOINT3]]
-    let p4 = ps[ns[ni + QPOINT4]]
+    const p1 = ps[ns[ni + QPOINT1]]
+    const p2 = ps[ns[ni + QPOINT2]]
+    const p3 = ps[ns[ni + QPOINT3]]
+    const p4 = ps[ns[ni + QPOINT4]]
 
-    let quadco = _btm_temp9
-    let a = _btm_temp1
-    let b = _btm_temp2
+    const quadco = _btm_temp9
+    const a = _btm_temp1
+    const b = _btm_temp2
 
-    let vx = _btm_temp3
-    let vy = _btm_temp4
+    const vx = _btm_temp3
+    const vy = _btm_temp4
 
-    let calcsco = (p: QTGridVert) => {
+    const calcsco = (p: QTGridVert) => {
       p.sco.zero()
 
       let tot = 0.0
-      let dimen = gridSides[ns[ni + QDEPTH]] - 1
-      let dt = 1.0 / dimen
+      const dimen = gridSides[ns[ni + QDEPTH]] - 1
+      const dt = 1.0 / dimen
 
-      for (let off of staroffs) {
+      for (const off of staroffs) {
         let u = off[0] * dt + p.uv[0]
         let v = off[1] * dt + p.uv[1]
 
         u = Math.min(Math.max(u, 0.0), 1.0)
         v = Math.min(Math.max(v, 0.0), 1.0)
 
-        let co = this.evaluate(u, v, undefined, ns[ni + QDEPTH])
+        const co = this.evaluate(u, v, undefined, ns[ni + QDEPTH])
         p.sco.add(co)
         tot++
       }
@@ -1518,10 +1518,10 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     //*/
 
     if (0 && this.subsurf) {
-      let m1 = this.subsurf.buildTangentMatrix(ns[ni + QMINU], ns[ni + QMINV])
-      let m2 = this.subsurf.buildTangentMatrix(ns[ni + QMINU], ns[ni + QMAXV])
-      let m3 = this.subsurf.buildTangentMatrix(ns[ni + QMAXU], ns[ni + QMAXV])
-      let m4 = this.subsurf.buildTangentMatrix(ns[ni + QMAXU], ns[ni + QMINV])
+      const m1 = this.subsurf.buildTangentMatrix(ns[ni + QMINU], ns[ni + QMINV])
+      const m2 = this.subsurf.buildTangentMatrix(ns[ni + QMINU], ns[ni + QMAXV])
+      const m3 = this.subsurf.buildTangentMatrix(ns[ni + QMAXU], ns[ni + QMAXV])
+      const m4 = this.subsurf.buildTangentMatrix(ns[ni + QMAXU], ns[ni + QMINV])
 
       //this.subsurf.buildTangentMatrix(u1, v1, matOut);
       //return matOut;
@@ -1677,10 +1677,10 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       */
 
       if (0 && this.subsurf) {
-        let r1 = ps[ns[QPOINT1]]
-        let r2 = ps[ns[QPOINT2]]
-        let r3 = ps[ns[QPOINT3]]
-        let r4 = ps[ns[QPOINT4]]
+        const r1 = ps[ns[QPOINT1]]
+        const r2 = ps[ns[QPOINT2]]
+        const r3 = ps[ns[QPOINT3]]
+        const r4 = ps[ns[QPOINT4]]
 
         a.load(r1.co).interp(r2.co, v1)
         b.load(r4.co).interp(r3.co, v1)
@@ -1719,12 +1719,12 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     }
 
     if (1) {
-      let b1 = _btm_temp10.load(p1.co)
-      let b2 = _btm_temp11.load(p2.co)
-      let b3 = _btm_temp12.load(p3.co)
-      let b4 = _btm_temp13.load(p4.co)
+      const b1 = _btm_temp10.load(p1.co)
+      const b2 = _btm_temp11.load(p2.co)
+      const b3 = _btm_temp12.load(p3.co)
+      const b4 = _btm_temp13.load(p4.co)
 
-      let f = 1.5
+      const f = 1.5
       b1.interp(p1.sco, f)
       b2.interp(p2.sco, f)
       b3.interp(p3.sco, f)
@@ -1745,15 +1745,15 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       vy.load(p2.sco).sub(p1.sco)
     }
 
-    let lx = vx.vectorLength()
-    let ly = vy.vectorLength()
+    const lx = vx.vectorLength()
+    const ly = vy.vectorLength()
 
     if (lx === 0.0 || ly === 0.0) {
       return
     }
 
-    let n = _btm_temp5
-    let n2 = _btm_temp7
+    const n = _btm_temp5
+    const n2 = _btm_temp7
 
     let scale = (lx + ly) * 0.5
     scale = Math.max(scale, 0.0001)
@@ -1806,7 +1806,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     n.mulScalar(scale)
 
-    let tmat = tmptanmat
+    const tmat = tmptanmat
     tmat.makeIdentity()
     tmat.translate(quadco[0], quadco[1], quadco[2])
 
@@ -1833,19 +1833,19 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   invertTangentMatrix(mat: Matrix4) {
-    let tmat = imattemp
+    const tmat = imattemp
 
     tmat.makeIdentity()
 
     //let start = imattemp2;
     //start.load(mat);
 
-    let m = mat.$matrix
-    let x = m.m41
-    let y = m.m42
-    let z = m.m43
+    const m = mat.$matrix
+    const x = m.m41
+    const y = m.m42
+    const z = m.m43
 
-    let tm = tmat.$matrix
+    const tm = tmat.$matrix
     tm.m41 = -x
     tm.m42 = -y
     tm.m43 = -z
@@ -1889,16 +1889,16 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   tangentToGlobalSS(inverse = false): void {
-    let mat = new Matrix4()
+    const mat = new Matrix4()
 
     if (!this.subsurf) {
       return
     }
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
-    let doneset = new Array(ps.length)
-    let subsurf = this.subsurf
+    const doneset = new Array(ps.length)
+    const subsurf = this.subsurf
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
@@ -1906,7 +1906,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       }
 
       for (let i = 0; i < 4; i++) {
-        let pi = ns[ni + QPOINT1 + i]
+        const pi = ns[ni + QPOINT1 + i]
 
         if (doneset[pi]) {
           continue
@@ -1914,8 +1914,8 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
         doneset[pi] = 1
 
-        let uv = this._getUV(ni, i)
-        let p = ps[pi]
+        const uv = this._getUV(ni, i)
+        const p = ps[pi]
 
         subsurf.buildTangentMatrix(uv[0], uv[1], mat)
         if (inverse) {
@@ -1948,9 +1948,9 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   subdivideAll_intern(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>): void {
-    let ns = this.nodes
-    let nodes = []
-    let loopEid = loop.eid
+    const ns = this.nodes
+    const nodes = []
+    const loopEid = loop.eid
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (!(ns[ni + QFLAG] & LEAF) || ns[ni + QFLAG] & DEAD) {
@@ -1963,7 +1963,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     this.dimen++
     this._rebuildHash()
 
-    for (let ni of nodes) {
+    for (const ni of nodes) {
       this.subdivide(ni, loopEid, mesh)
     }
 
@@ -1972,33 +1972,33 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   tangentToGlobal(level = this.depthLimit, inverse = false) {
-    let tmp1 = new Vector3()
-    let tmp2 = new Vector3()
-    let tmp3 = new Vector3()
-    let tmp4 = new Vector3()
-    let tmp5 = new Vector3()
+    const tmp1 = new Vector3()
+    const tmp2 = new Vector3()
+    const tmp3 = new Vector3()
+    const tmp4 = new Vector3()
+    const tmp5 = new Vector3()
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
 
-    let doneset = new WeakSet()
-    let plvls = new Map()
-    for (let p of this.points) {
+    const doneset = new WeakSet()
+    const plvls = new Map()
+    for (const p of this.points) {
       plvls.set(p, 100000)
       p.flag |= MeshFlags.GRID_MRES_HIDDEN
     }
 
-    let levelps = new Map()
+    const levelps = new Map()
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
-      let depth = ns[ni + QDEPTH]
+      const depth = ns[ni + QDEPTH]
 
       if (ns[ni + QFLAG] & DEAD) {
         continue
       }
 
       for (let i = 0; i < 4; i++) {
-        let p = ps[ns[ni + QPOINT1 + i]]
+        const p = ps[ns[ni + QPOINT1 + i]]
 
         let lvl = plvls.get(p)
         lvl = Math.min(lvl, depth)
@@ -2007,8 +2007,8 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       }
     }
 
-    for (let p of this.points) {
-      let lvl = plvls.get(p)
+    for (const p of this.points) {
+      const lvl = plvls.get(p)
 
       if (!levelps.has(lvl)) {
         levelps.set(lvl, [])
@@ -2017,13 +2017,13 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       levelps.get(lvl).push(p)
     }
 
-    let tanMat = new Matrix4()
-    let mat2 = new Matrix4()
+    const tanMat = new Matrix4()
+    const mat2 = new Matrix4()
 
-    let depthLimit = this.depthLimitEnabled ? level : 10000
+    const depthLimit = this.depthLimitEnabled ? level : 10000
 
-    for (let p of this.points) {
-      let lvl = plvls.get(p)
+    for (const p of this.points) {
+      const lvl = plvls.get(p)
       if (lvl <= depthLimit) {
         p.flag &= ~MeshFlags.GRID_MRES_HIDDEN
         doneset.add(p)
@@ -2035,23 +2035,23 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     }
 
     //update root level normals
-    let nq = this.normalQuad
+    const nq = this.normalQuad
 
     for (let i = 0; i < 4; i++) {
-      let p = ps[ns[QPOINT1 + i]]
+      const p = ps[ns[QPOINT1 + i]]
       p.no.load(nq[i])
     }
 
-    let si = 1
-    let cur = 0
+    const si = 1
+    const cur = 0
 
     const STACKSIZE = 256
-    let stack = new Array(STACKSIZE)
+    const stack = new Array(STACKSIZE)
     stack[0] = 0
 
     //console.log("Level", level, "Inverse", inverse);
 
-    let nodes = []
+    const nodes = []
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
         continue
@@ -2067,13 +2067,13 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     //console.log(nodes);
     let lastdepth = 0
-    let tmpco = new Vector3()
+    const tmpco = new Vector3()
 
-    for (let ni of nodes) {
-      let depth = ns[ni + QDEPTH]
+    for (const ni of nodes) {
+      const depth = ns[ni + QDEPTH]
 
       if (!inverse && depth !== lastdepth) {
-        for (let p of ps) {
+        for (const p of ps) {
           //levelps.get(lastdepth)) {
           if (plvls.get(p) > lastdepth) {
             continue
@@ -2088,12 +2088,12 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         continue
       }
 
-      let pi = ns[ni + QPARENT]
+      const pi = ns[ni + QPARENT]
       //console.log("pi", pi, ni);
 
       for (let i = 0; i < 4; i++) {
-        let p = ps[ns[ni + QPOINT1 + i]]
-        let lvl = plvls.get(p)
+        const p = ps[ns[ni + QPOINT1 + i]]
+        const lvl = plvls.get(p)
 
         if (lvl !== ns[ni + QDEPTH] || doneset.has(p)) {
           continue
@@ -2102,7 +2102,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         //console.log(lvl);
         doneset.add(p)
 
-        let uv = this._getUV(ni, i)
+        const uv = this._getUV(ni, i)
 
         tanMat.makeIdentity()
         this.buildTangentMatrix(pi, uv[0], uv[1], tanMat)
@@ -2112,7 +2112,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
           tanMat.invert()
         }
 
-        let co = tmpco.load(p.co)
+        const co = tmpco.load(p.co)
 
         //console.log(ni, ""+tanMat);
         p.co.multVecMatrix(tanMat)
@@ -2124,15 +2124,15 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       }
 
       if (!inverse) {
-        let p1 = ps[ns[ni + QPOINT1]]
-        let p2 = ps[ns[ni + QPOINT2]]
-        let p3 = ps[ns[ni + QPOINT3]]
-        let p4 = ps[ns[ni + QPOINT4]]
+        const p1 = ps[ns[ni + QPOINT1]]
+        const p2 = ps[ns[ni + QPOINT2]]
+        const p3 = ps[ns[ni + QPOINT3]]
+        const p4 = ps[ns[ni + QPOINT4]]
 
-        let n = math.normal_quad(p1.co, p2.co, p3.co, p4.co)
+        const n = math.normal_quad(p1.co, p2.co, p3.co, p4.co)
 
         for (let i = 0; i < 4; i++) {
-          let p = ps[ns[ni + QPOINT1 + i]]
+          const p = ps[ns[ni + QPOINT1 + i]]
           //let lvl = plvls.get(p);
 
           //if (lvl === ns[ni + QDEPTH]) {
@@ -2183,9 +2183,9 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
   checkMultiRes(mesh: Mesh, loop: Loop, gridAttr: AttrRef<this>) {
     const cd_grid = gridAttr.i
-    let mres = mesh.loops.customData.flatlist[cd_grid].getTypeSettings()
-    let limitDepth = !!(mres.flag & GridSettingFlags.ENABLE_DEPTH_LIMIT)
-    let changed = limitDepth !== !!this.depthLimitEnabled || mres.depthLimit !== this.depthLimit
+    const mres = mesh.loops.customData.flatlist[cd_grid].getTypeSettings()
+    const limitDepth = !!(mres.flag & GridSettingFlags.ENABLE_DEPTH_LIMIT)
+    const changed = limitDepth !== !!this.depthLimitEnabled || mres.depthLimit !== this.depthLimit
 
     if (!changed) {
       return
@@ -2197,9 +2197,9 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     console.warn('Grid settings changed!')
 
     let maxdepth = 0
-    for (let l of mesh.loops) {
-      let grid2 = l.customData[cd_grid] as unknown as this
-      let ns = grid2.nodes
+    for (const l of mesh.loops) {
+      const grid2 = l.customData[cd_grid] as unknown as this
+      const ns = grid2.nodes
 
       for (let ni = 0; ni < ns.length; ni += QTOT) {
         if (ns[ni + QFLAG] & DEAD) {
@@ -2209,10 +2209,10 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         maxdepth = Math.max(maxdepth, ns[ni + QDEPTH])
       }
     }
-    let oldlevel = this.depthLimitEnabled ? this.depthLimit : maxdepth
-    let newlevel = limitDepth ? mres.depthLimit : maxdepth
+    const oldlevel = this.depthLimitEnabled ? this.depthLimit : maxdepth
+    const newlevel = limitDepth ? mres.depthLimit : maxdepth
 
-    let dl = newlevel > oldlevel ? 1 : -1
+    const dl = newlevel > oldlevel ? 1 : -1
     let level = oldlevel + dl
 
     let diff = Math.abs(oldlevel - newlevel)
@@ -2220,17 +2220,17 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     diff = Math.min(diff, 10)
 
     for (let i = 0; i < diff; i++, level += dl) {
-      let last = i === diff - 1
+      const last = i === diff - 1
 
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid] as this
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid] as this
 
         grid2.updateNormalQuad(l)
         grid2._changeMresSettings(level, limitDepth || !last)
       }
 
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid] as this
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid] as this
 
         //update topology for all grids first
         grid2.getLeafNodes()
@@ -2238,31 +2238,31 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         grid2.getTopo()
       }
 
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid] as this
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid] as this
 
         //first general update
         grid2.update(mesh, l, gridAttr, true)
       }
 
       //stitch boundaries
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid] as this
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid] as this
         grid2.stitchBoundaries()
       }
 
       //now do node normals
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid] as this
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid] as this
         grid2.checkNodeNormals()
       }
 
       //smooth if going down a level
       if (dl > 0) {
-        for (let l of mesh.loops) {
-          let grid2 = l.customData[cd_grid] as this
-          for (let pi of grid2.getLeafPoints()) {
-            let p = grid2.points[pi]
+        for (const l of mesh.loops) {
+          const grid2 = l.customData[cd_grid] as this
+          for (const pi of grid2.getLeafPoints()) {
+            const p = grid2.points[pi]
             //grid2.smoothPoint(p, 0.25);
             p.co.interp(p.sco, 0.5)
           }
@@ -2270,20 +2270,20 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       }
 
       //boundaries again
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid] as this
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid] as this
         grid2.stitchBoundaries()
       }
 
       //and final update
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid] as this
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid] as this
         grid2.update(mesh, l, gridAttr, true)
       }
     }
 
-    for (let l of mesh.loops) {
-      let grid2 = l.customData[cd_grid] as this
+    for (const l of mesh.loops) {
+      const grid2 = l.customData[cd_grid] as this
       grid2.depthLimit = mres.depthLimit
     }
   }
@@ -2293,12 +2293,12 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       GridBase.hasPatchUVLayer(mesh, cd_grid as unknown as AttrRef<GridBase>) &&
       this.recalcFlag & QRecalcFlags.PATCH_UVS
     ) {
-      let cd_uv = GridBase.getPatchUVLayer(mesh, cd_grid as unknown as AttrRef<GridBase>)
+      const cd_uv = GridBase.getPatchUVLayer(mesh, cd_grid as unknown as AttrRef<GridBase>)
       this.initPatchUVLayer(mesh, loop, cd_grid, cd_uv)
     }
 
     if (this.loopEid !== loop.eid) {
-      for (let p of this.points) {
+      for (const p of this.points) {
         p.loopEid = loop.eid
       }
 
@@ -2332,7 +2332,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     }
 
     if (this.recalcFlag & QRecalcFlags.TOPO) {
-      for (let p of this.points) {
+      for (const p of this.points) {
         p.loopEid = loop.eid
       }
       this.getTopo()
@@ -2368,9 +2368,9 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     this.recalcFlag &= ~QRecalcFlags.POLYS
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
-    let {maxdepth, vmap, emap, uvmap, dimen, uvkey} = this.getTopo()
+    const {maxdepth, vmap, emap, uvmap, dimen, uvkey} = this.getTopo()
 
     /*
     for (let ni = 0; ni < ns.length; ni += QTOT) {
@@ -2385,29 +2385,29 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     console.log("uvmap", uvmap);
     */
 
-    let du = 1.0 / dimen
-    let dv = 1.0 / dimen
+    const du = 1.0 / dimen
+    const dv = 1.0 / dimen
 
-    let duv = new Vector2()
+    const duv = new Vector2()
     duv[0] = du
     duv[1] = dv
 
-    let duv1 = new Vector2()
-    let uv2 = new Vector2()
+    const duv1 = new Vector2()
+    const uv2 = new Vector2()
 
     this.polys.length = 0
-    let polys = this.polys
-    let poly = []
+    const polys = this.polys
+    const poly = []
 
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
 
-    let rec = (ni: number) => {
-      let isleaf = ns[ni + QFLAG] & LEAF || ns[ni + QDEPTH] === depthLimit
+    const rec = (ni: number) => {
+      const isleaf = ns[ni + QFLAG] & LEAF || ns[ni + QDEPTH] === depthLimit
 
       if (!isleaf) {
         if (!(ns[ni + QFLAG] & LEAF)) {
           for (let i = 0; i < 4; i++) {
-            let ni2 = ns[ni + QCHILD1 + i]
+            const ni2 = ns[ni + QCHILD1 + i]
             rec(ni2)
           }
         }
@@ -2423,35 +2423,35 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       //poly.push(ip5);
 
       for (let i = 0; i < 4; i++) {
-        let ip1 = ns[ni + QPOINT1 + i]
-        let ip2 = ns[ni + QPOINT1 + ((i + 1) % 4)]
-        let v1 = vmap[ip1]
-        let v2 = vmap[ip2]
+        const ip1 = ns[ni + QPOINT1 + i]
+        const ip2 = ns[ni + QPOINT1 + ((i + 1) % 4)]
+        const v1 = vmap[ip1]
+        const v2 = vmap[ip2]
 
         duv1.load(v2.uv).sub(v1.uv)
 
-        let axis = ((i & 1) ^ 1) as Number2
+        const axis = ((i & 1) ^ 1) as Number2
 
         let steps = Math.abs(duv1[axis] / duv[axis]) + 0.00001
         steps += 1
 
-        let sign1 = Math.sign(duv1[0])
-        let sign2 = Math.sign(duv1[1])
+        const sign1 = Math.sign(duv1[0])
+        const sign2 = Math.sign(duv1[1])
 
         steps = ~~steps
 
         uv2[0] = v1.uv[0]
         uv2[1] = v1.uv[1]
 
-        let dt = duv[axis] * Math.sign(duv1[axis])
+        const dt = duv[axis] * Math.sign(duv1[axis])
 
         for (let j = 0; j < steps; j++) {
           if (uv2[axis] < 0 || uv2[axis] > 1) {
             continue
           }
 
-          let key = uvkey(uv2[0], uv2[1])
-          let p = uvmap[key]
+          const key = uvkey(uv2[0], uv2[1])
+          const p = uvmap[key]
 
           if (p !== undefined && (poly.length === 0 || p !== poly[poly.length - 1])) {
             poly.push(uvmap[key])
@@ -2464,7 +2464,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       poly.pop()
 
       if (poly.length > 2) {
-        for (let p of poly) {
+        for (const p of poly) {
           polys.push(p)
         }
       }
@@ -2484,10 +2484,10 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   pruneDeadPoints() {
-    let ps = this.points
-    let ns = this.nodes
-    let newps = []
-    let pmap = new Array(ps.length)
+    const ps = this.points
+    const ns = this.nodes
+    const newps = []
+    const pmap = new Array(ps.length)
 
     this.recalcFlag &= ~QRecalcFlags.POINT_PRUNE
 
@@ -2497,8 +2497,8 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       }
 
       for (let i = 0; i < 4; i++) {
-        let ip = ns[ni + QPOINT1 + i]
-        let p = ps[ip]
+        const ip = ns[ni + QPOINT1 + i]
+        const p = ps[ip]
 
         if (pmap[ip] === undefined) {
           pmap[ip] = p.index = newps.length
@@ -2512,8 +2512,8 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     this.points = newps
 
     for (let i = 0; i < this.customDatas.length; i++) {
-      let cd1 = this.customDatas[i]
-      let cd2 = new CDElemArray()
+      const cd1 = this.customDatas[i]
+      const cd2 = new CDElemArray()
       cd2.length = newps.length
 
       for (let j = 0; j < cd1.length; j++) {
@@ -2530,11 +2530,11 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   collapse(ni: number) {
-    let ns = this.nodes
+    const ns = this.nodes
 
-    let rec2 = (ni2: number) => {
+    const rec2 = (ni2: number) => {
       for (let i = 0; i < 4; i++) {
-        let ni3 = ns[ni2 + QCHILD1 + i]
+        const ni3 = ns[ni2 + QCHILD1 + i]
 
         if (ni3) {
           rec2(ni3)
@@ -2553,7 +2553,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   subdivide(ni: number, loopEid: number, mesh: Mesh) {
-    let nodes = this.nodes
+    const nodes = this.nodes
 
     if (nodes[ni + QFLAG] & DEAD) {
       console.error('cannot subdivide a deleted node')
@@ -2577,43 +2577,43 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     //not a leaf anymore
     nodes[ni + QFLAG] &= ~LEAF
 
-    let depth = nodes[ni + QDEPTH]
+    const depth = nodes[ni + QDEPTH]
 
-    let dimen2 = gridSides[depth + 1] - 1
+    const dimen2 = gridSides[depth + 1] - 1
     this.dimen = Math.max(this.dimen, dimen2)
 
-    let du = (nodes[ni + QMAXU] - nodes[ni + QMINU]) * 0.5
-    let dv = (nodes[ni + QMAXV] - nodes[ni + QMINV]) * 0.5
+    const du = (nodes[ni + QMAXU] - nodes[ni + QMINU]) * 0.5
+    const dv = (nodes[ni + QMAXV] - nodes[ni + QMINV]) * 0.5
 
-    let ps = this.points
+    const ps = this.points
 
-    let np1 = ps[nodes[ni + QPOINT1]]
-    let np2 = ps[nodes[ni + QPOINT2]]
-    let np3 = ps[nodes[ni + QPOINT3]]
-    let np4 = ps[nodes[ni + QPOINT4]]
+    const np1 = ps[nodes[ni + QPOINT1]]
+    const np2 = ps[nodes[ni + QPOINT2]]
+    const np3 = ps[nodes[ni + QPOINT3]]
+    const np4 = ps[nodes[ni + QPOINT4]]
 
-    let cdps = new Array<any>(4)
-    let cdws = new Array<any>(4)
+    const cdps = new Array<any>(4)
+    const cdws = new Array<any>(4)
 
-    let news = [[false], [false], [false], [false], [false]]
-    let bs = new Array(5)
+    const news = [[false], [false], [false], [false], [false]]
+    const bs = new Array(5)
 
-    let p1 = this.subdtemps.next().load(np1.co)
-    let p2 = this.subdtemps.next().load(np2.co)
-    let p3 = this.subdtemps.next().load(np3.co)
-    let p4 = this.subdtemps.next().load(np4.co)
+    const p1 = this.subdtemps.next().load(np1.co)
+    const p2 = this.subdtemps.next().load(np2.co)
+    const p3 = this.subdtemps.next().load(np3.co)
+    const p4 = this.subdtemps.next().load(np4.co)
 
-    let tmp1 = this.subdtemps.next(),
+    const tmp1 = this.subdtemps.next(),
       tmp2 = this.subdtemps.next()
 
-    let uvs = uvstmp
+    const uvs = uvstmp
 
     for (let i = 0; i < 2; i++) {
       for (let j = 0; j < 2; j++) {
         let u = i * 0.5,
           v = j * 0.5
 
-        let ni2 = this._newNode()
+        const ni2 = this._newNode()
 
         nodes[ni + QCHILD1 + (j * 2 + i)] = ni2
 
@@ -2632,10 +2632,10 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         nodes[ni2 + QFLAG] = LEAF
         nodes[ni2 + QDEPTH] = depth + 1
 
-        let b1 = this._ensureNodePoint(ni2, 0, loopEid, mesh, news[0])
-        let b2 = this._ensureNodePoint(ni2, 1, loopEid, mesh, news[1])
-        let b3 = this._ensureNodePoint(ni2, 2, loopEid, mesh, news[2])
-        let b4 = this._ensureNodePoint(ni2, 3, loopEid, mesh, news[3])
+        const b1 = this._ensureNodePoint(ni2, 0, loopEid, mesh, news[0])
+        const b2 = this._ensureNodePoint(ni2, 1, loopEid, mesh, news[1])
+        const b3 = this._ensureNodePoint(ni2, 2, loopEid, mesh, news[2])
+        const b4 = this._ensureNodePoint(ni2, 3, loopEid, mesh, news[3])
 
         bs[0] = b1
         bs[1] = b2
@@ -2686,14 +2686,14 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
           */
 
-          let u2 = uvs[k][0]
-          let v2 = uvs[k][1]
+          const u2 = uvs[k][0]
+          const v2 = uvs[k][1]
 
           tmp1.load(p1).interp(p2, v2)
           tmp2.load(p4).interp(p3, v2)
           tmp1.interp(tmp2, u2)
 
-          let pnew = bs[k]
+          const pnew = bs[k]
           pnew.load(tmp1)
 
           cdws[0] = u2 * v2 - u2 - v2 + 1.0
@@ -2748,8 +2748,8 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
       this.customDatas.length = 0
 
-      for (let layer of mesh.loops.customData.flatlist) {
-        let cls = CustomDataElem.getTypeClass(layer.typeName)
+      for (const layer of mesh.loops.customData.flatlist) {
+        const cls = CustomDataElem.getTypeClass(layer.typeName)
 
         if (GridBase.isGridClass(cls)) {
           layeri++
@@ -2773,44 +2773,44 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     this.update(mesh, loop, cd_grid)
 
-    let nodes = this.nodes
-    let ps = this.points
+    const nodes = this.nodes
+    const ps = this.points
 
     for (let i = 0; i < ps.length; i++) {
       ps[i].index = i
     }
 
-    let polys = this.polys
+    const polys = this.polys
 
-    let ischunk = smesh instanceof ChunkedSimpleMesh
-    let feid = loop.f.eid
+    const ischunk = smesh instanceof ChunkedSimpleMesh
+    const feid = loop.f.eid
 
-    let cd_color = mesh.loops.customData.getLayerIndex('color')
-    let have_color = cd_color >= 0
+    const cd_color = mesh.loops.customData.getLayerIndex('color')
+    const have_color = cd_color >= 0
 
-    let cd_node = mesh.loops.customData.getLayerIndex('bvh')
+    const cd_node = mesh.loops.customData.getLayerIndex('bvh')
 
     let idmul = this.dimen * this.dimen
     idmul = Math.max(idmul, this.polys.length)
 
-    let tc1 = new Vector4()
-    let tc2 = new Vector4()
-    let tc3 = new Vector4()
+    const tc1 = new Vector4()
+    const tc2 = new Vector4()
+    const tc3 = new Vector4()
     tc1[3] = tc2[3] = tc3[3] = 1.0
 
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
-    let depthLimitEnabled = this.depthLimitEnabled
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimitEnabled = this.depthLimitEnabled
 
-    let co1 = new Vector3()
-    let co2 = new Vector3()
-    let white = new Vector4([1, 1, 1, 1])
+    const co1 = new Vector3()
+    const co2 = new Vector3()
+    const white = new Vector4([1, 1, 1, 1])
 
     //buildTangentMatrix
 
     let lidgen = loop.eid * idmul * 8
 
     function line(v1: Vector3, v2: Vector3, color?: Vector4 | number[]) {
-      let id = lidgen++
+      const id = lidgen++
       let line2
 
       if (ischunk) {
@@ -2828,33 +2828,33 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       return line2
     }
 
-    let doneset = new WeakSet()
+    const doneset = new WeakSet()
 
-    let greyFac = 0.25
-    let grey = [greyFac, greyFac, greyFac, 1.0]
-    let mat = new Matrix4()
-    let n1 = new Vector3()
+    const greyFac = 0.25
+    const grey = [greyFac, greyFac, greyFac, 1.0]
+    const mat = new Matrix4()
+    const n1 = new Vector3()
 
-    let ff = 1.0
-    let colors = [
+    const ff = 1.0
+    const colors = [
       [ff, 0.0, 0.0, 1],
       [0.0, ff, 0.0, 1],
       [0.0, 0.0, ff, 1],
     ]
 
-    for (let ni of this.getLeafNodes()) {
-      let depth = nodes[ni + QDEPTH]
+    for (const ni of this.getLeafNodes()) {
+      const depth = nodes[ni + QDEPTH]
 
       for (let i = 0; i < 4; i++) {
-        let p1 = ps[nodes[ni + QPOINT1 + i]]
-        let p2 = ps[nodes[ni + QPOINT1 + ((i + 1) & 3)]]
+        const p1 = ps[nodes[ni + QPOINT1 + i]]
+        const p2 = ps[nodes[ni + QPOINT1 + ((i + 1) & 3)]]
 
         co1.load(p1.co)
         co2.load(p2.co)
         //line(co1, co2, grey);
 
-        let uv = this._getUV(ni, i)
-        let ni2 = ni ? nodes[ni + QPARENT] : 0
+        const uv = this._getUV(ni, i)
+        const ni2 = ni ? nodes[ni + QPARENT] : 0
 
         co1.addFac(p1.no, p1.co.vectorDistance(p2.co) * 0.1)
 
@@ -2881,7 +2881,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
           mat.copyColumnTo(j, n1)
           n1.normalize()
 
-          let color = colors[j]
+          const color = colors[j]
 
           co2.load(co1).addFac(n1, disfac)
           line(co1, co2, color)
@@ -2890,17 +2890,17 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     }
 
     for (let ni = 0; ni < nodes.length; ni += QTOT) {
-      let depth = nodes[ni + QDEPTH]
-      let isleaf = nodes[ni + QFLAG] & LEAF || depth === depthLimit
+      const depth = nodes[ni + QDEPTH]
+      const isleaf = nodes[ni + QFLAG] & LEAF || depth === depthLimit
 
       if (!isleaf || depth > depthLimit || nodes[ni + QFLAG] & DEAD) {
         continue
       }
 
-      let start = nodes[ni + QPOLYSTART]
-      let end = nodes[ni + QPOLYEND]
+      const start = nodes[ni + QPOLYSTART]
+      const end = nodes[ni + QPOLYEND]
 
-      let p1 = ps[polys[start]]
+      const p1 = ps[polys[start]]
 
       if (end - start < 3) {
         continue
@@ -2910,10 +2910,10 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       smesh.primflag |= 2
 
       for (let i = start + 1; i < end - 1; i++) {
-        let p2 = ps[polys[i]]
-        let p3 = ps[polys[i + 1]]
+        const p2 = ps[polys[i]]
+        const p3 = ps[polys[i + 1]]
 
-        let id = loop.eid * idmul + i
+        const id = loop.eid * idmul + i
 
         let tri
 
@@ -2928,9 +2928,9 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         this.totTris++
 
         if (have_color) {
-          let c1 = p1.customData.get<ColorLayerElem>(cd_color).color
-          let c2 = p2.customData.get<ColorLayerElem>(cd_color).color
-          let c3 = p3.customData.get<ColorLayerElem>(cd_color).color
+          const c1 = p1.customData.get<ColorLayerElem>(cd_color).color
+          const c2 = p2.customData.get<ColorLayerElem>(cd_color).color
+          const c3 = p3.customData.get<ColorLayerElem>(cd_color).color
           tri.colors(c1, c2, c3)
         }
 
@@ -2941,12 +2941,12 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   _updateNormal(ni: number) {
-    let nodes = this.nodes,
+    const nodes = this.nodes,
       ps = this.points
-    let p1 = ps[nodes[ni + QPOINT1]]
-    let p2 = ps[nodes[ni + QPOINT2]]
-    let p3 = ps[nodes[ni + QPOINT3]]
-    let p4 = ps[nodes[ni + QPOINT4]]
+    const p1 = ps[nodes[ni + QPOINT1]]
+    const p2 = ps[nodes[ni + QPOINT2]]
+    const p3 = ps[nodes[ni + QPOINT3]]
+    const p4 = ps[nodes[ni + QPOINT4]]
 
     let n
 
@@ -2977,7 +2977,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       return
     }
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       if (!p.orig) {
         p.orig = new Vector3()
       }
@@ -2987,21 +2987,21 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     this.recalcFlag &= ~QRecalcFlags.NODE_NORMALS
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
 
-    for (let pi of this.getLeafPoints()) {
-      let p = ps[pi]
+    for (const pi of this.getLeafPoints()) {
+      const p = ps[pi]
 
       p.sco.load(p.co)
       p.totsco = 1
     }
 
-    let t1 = new Vector3()
-    let t2 = new Vector3()
+    const t1 = new Vector3()
+    const t2 = new Vector3()
 
     //update centers
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 1000
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 1000
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QDEPTH] > depthLimit) {
         continue
@@ -3011,10 +3011,10 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         continue
       }
 
-      let p1 = ps[ns[ni + QPOINT1]]
-      let p2 = ps[ns[ni + QPOINT2]]
-      let p3 = ps[ns[ni + QPOINT3]]
-      let p4 = ps[ns[ni + QPOINT4]]
+      const p1 = ps[ns[ni + QPOINT1]]
+      const p2 = ps[ns[ni + QPOINT2]]
+      const p3 = ps[ns[ni + QPOINT3]]
+      const p4 = ps[ns[ni + QPOINT4]]
 
       p1.uv.load(this._getUV(ni, 0))
       p2.uv.load(this._getUV(ni, 1))
@@ -3027,13 +3027,13 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     }
 
     //update normals;
-    for (let ni of this.getLeafNodes()) {
-      let p1 = ps[ns[ni + QPOINT1]]
-      let p2 = ps[ns[ni + QPOINT2]]
-      let p3 = ps[ns[ni + QPOINT3]]
-      let p4 = ps[ns[ni + QPOINT4]]
+    for (const ni of this.getLeafNodes()) {
+      const p1 = ps[ns[ni + QPOINT1]]
+      const p2 = ps[ns[ni + QPOINT2]]
+      const p3 = ps[ns[ni + QPOINT3]]
+      const p4 = ps[ns[ni + QPOINT4]]
 
-      let n = math.normal_quad(p1.co, p2.co, p3.co, p4.co)
+      const n = math.normal_quad(p1.co, p2.co, p3.co, p4.co)
 
       t1.load(p4.co).sub(p1.co) //.normalize();
       t2.load(p3.co).sub(p2.co) //.normalize();
@@ -3045,20 +3045,20 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       ns[ni + QTZ] = t1[2]
 
       for (let i = 0; i < 4; i++) {
-        let p = ps[ns[ni + QPOINT1 + i]]
+        const p = ps[ns[ni + QPOINT1 + i]]
         p.sco[0] += ns[ni + QCENTX]
         p.sco[1] += ns[ni + QCENTY]
         p.sco[2] += ns[ni + QCENTZ]
         p.totsco++
         break
 
-        let i1 = (i + 3) & 3
-        let i2 = i
-        let i3 = (i + 1) & 3
+        const i1 = (i + 3) & 3
+        const i2 = i
+        const i3 = (i + 1) & 3
 
-        let a = ps[ns[ni + QPOINT1 + i1]]
-        let b = ps[ns[ni + QPOINT1 + i2]]
-        let c = ps[ns[ni + QPOINT1 + i3]]
+        const a = ps[ns[ni + QPOINT1 + i1]]
+        const b = ps[ns[ni + QPOINT1 + i2]]
+        const c = ps[ns[ni + QPOINT1 + i3]]
 
         b.sco.add(a.co)
         b.sco.add(c.co)
@@ -3081,8 +3081,8 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       ns[ni + QNZ] = n[2]
     }
 
-    for (let pi of this.getLeafPoints()) {
-      let p = ps[pi]
+    for (const pi of this.getLeafPoints()) {
+      const p = ps[pi]
 
       p.sco.mulScalar(1.0 / p.totsco)
       p.totsco = 1.0
@@ -3094,22 +3094,22 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       return this.leafPoints
     }
 
-    let ret = (this.leafPoints = new Set())
-    let ns = this.nodes,
+    const ret = (this.leafPoints = new Set())
+    const ns = this.nodes,
       ps = this.points
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
         continue
       }
 
-      let depth = ns[ni + QDEPTH]
-      let isleaf = depth <= depthLimit && (ns[ni + QFLAG] & LEAF || depth === depthLimit)
+      const depth = ns[ni + QDEPTH]
+      const isleaf = depth <= depthLimit && (ns[ni + QFLAG] & LEAF || depth === depthLimit)
 
       if (isleaf) {
         for (let i = 0; i < 4; i++) {
-          let pi = ns[ni + QPOINT1 + i]
+          const pi = ns[ni + QPOINT1 + i]
           ret.add(pi)
         }
       }
@@ -3124,19 +3124,19 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     }
 
     this.leafNodes = []
-    let ret = this.leafNodes
+    const ret = this.leafNodes
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
         continue
       }
 
-      let depth = ns[ni + QDEPTH]
-      let isleaf = depth <= depthLimit && (ns[ni + QFLAG] & LEAF || depth === depthLimit)
+      const depth = ns[ni + QDEPTH]
+      const isleaf = depth <= depthLimit && (ns[ni + QFLAG] & LEAF || depth === depthLimit)
 
       if (isleaf) {
         ret.push(ni)
@@ -3157,14 +3157,14 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     this.recalcFlag &= ~QRecalcFlags.VERT_NORMALS
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
 
-    let ps2 = new Set<QTGridVert>()
+    const ps2 = new Set<QTGridVert>()
 
-    for (let ni of this.getLeafNodes()) {
+    for (const ni of this.getLeafNodes()) {
       for (let i = 0; i < 4; i++) {
-        let p = ps[ns[ni + QPOINT1 + i]]
+        const p = ps[ns[ni + QPOINT1 + i]]
 
         if (!ps2.has(p)) {
           ps2.add(p)
@@ -3183,17 +3183,17 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     if (!mesh) {
       this.recalcFlag |= QRecalcFlags.VERT_NORMALS
 
-      for (let p of ps2) {
-        let topo = this.getTopo()
+      for (const p of ps2) {
+        const topo = this.getTopo()
 
         p.no.zero()
         p.startTan()
 
-        let w = 1.0
+        const w = 1.0
 
-        let v = topo.vmap[p.index]
-        for (let ni of v.nodes) {
-          let tf = p.tanMulFac(ns[ni + QDEPTH])
+        const v = topo.vmap[p.index]
+        for (const ni of v.nodes) {
+          const tf = p.tanMulFac(ns[ni + QDEPTH])
 
           p.no[0] += ns[ni + QNX]
           p.no[1] += ns[ni + QNY]
@@ -3226,26 +3226,26 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       return
     }
 
-    let scotmp = new Vector3()
-    let scotmp2 = new Vector3()
-    let scotmp3 = new Vector3()
-    let scotmp4 = new Vector3()
+    const scotmp = new Vector3()
+    const scotmp2 = new Vector3()
+    const scotmp3 = new Vector3()
+    const scotmp4 = new Vector3()
 
-    for (let p of ps2) {
-      let topo = this.getTopo()
+    for (const p of ps2) {
+      const topo = this.getTopo()
 
       p.no.zero()
       p.startTan()
 
-      let v = topo.vmap[p.index]
-      for (let ni of v.nodes) {
-        let depth = ns[ni + QDEPTH]
+      const v = topo.vmap[p.index]
+      for (const ni of v.nodes) {
+        const depth = ns[ni + QDEPTH]
 
         p.no[0] += ns[ni + QNX]
         p.no[1] += ns[ni + QNY]
         p.no[2] += ns[ni + QNZ]
 
-        let tf = p.tanMulFac(depth)
+        const tf = p.tanMulFac(depth)
 
         p.tan[0] += ns[ni + QTX] * tf
         p.tan[1] += ns[ni + QTY] * tf
@@ -3272,9 +3272,9 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         continue
       }
 
-      let ti = 0
+      const ti = 0
 
-      for (let p2 of p.bRing) {
+      for (const p2 of p.bRing) {
         //for (let p2 of p.neighbors) {
         //for (let step=0; step<1; step++) {
         //  let p2 = step ? p.bLink.v2 : p.bLink.v1;
@@ -3286,12 +3286,12 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
           continue
         }
 
-        let l2 = mesh.eidMap.get(p2.loopEid)
+        const l2 = mesh.eidMap.get(p2.loopEid)
         if (!l2) {
           continue
         }
 
-        let grid2 = l2.customData[cd_grid] as this
+        const grid2 = l2.customData[cd_grid] as this
 
         grid2.checkNodeNormals()
 
@@ -3299,23 +3299,23 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
           grid2.recalcPointIndices()
         }
 
-        let topo2 = grid2.getTopo()
+        const topo2 = grid2.getTopo()
 
-        let ns2 = grid2.nodes,
+        const ns2 = grid2.nodes,
           ps2 = grid2.points
-        let vm = topo2.vmap[p2.index]
+        const vm = topo2.vmap[p2.index]
         if (!vm) {
           continue
         }
 
-        for (let ni of vm.nodes) {
+        for (const ni of vm.nodes) {
           p.no[0] += ns2[ni + QNX]
           p.no[1] += ns2[ni + QNY]
           p.no[2] += ns2[ni + QNZ]
 
           //*
           if (l2 === l.radial_next.next) {
-            let tf = p2.tanMulFac(ns2[ni + QDEPTH])
+            const tf = p2.tanMulFac(ns2[ni + QDEPTH])
 
             p.tan[0] = -ns2[ni + QBX] * tf
             p.tan[1] = -ns2[ni + QBY] * tf
@@ -3346,11 +3346,11 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         scotmp.zero()
         let tot = 0.0
 
-        for (let p2 of p.bRing) {
+        for (const p2 of p.bRing) {
           scotmp2.load(p2.co)
           let tot2 = 1.0
 
-          for (let p3 of p2.neighbors) {
+          for (const p3 of p2.neighbors) {
             if (p3 === p2) {
               //p3.loopEid !== p2.loopEid || p3 === p2) {
               continue
@@ -3378,18 +3378,18 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     const cd_grid = gridAttr.i
     this.recalcFlag &= ~QRecalcFlags.NEIGHBORS
 
-    let topo = this.getTopo()
-    let ps = this.points
+    const topo = this.getTopo()
+    const ps = this.points
 
     for (let i = 0; i < ps.length; i++) {
       ps[i].index = i
     }
 
-    for (let v of topo.vmap) {
-      let p = v.p
+    for (const v of topo.vmap) {
+      const p = v.p
       p.neighbors = new Set()
 
-      for (let e of v.edges) {
+      for (const e of v.edges) {
         let v2 = e.v1 === v.index ? e.v2 : e.v1
         v2 = topo.vmap[v2]
 
@@ -3397,29 +3397,29 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       }
     }
 
-    let uvs = [
+    const uvs = [
       [0, 0],
       [0, 1],
       [1, 1],
       [1, 0],
     ].map((uv) => new Vector2(uv))
 
-    let uv = new Vector2()
-    let duv = new Vector2()
+    const uv = new Vector2()
+    const duv = new Vector2()
 
-    let dimen = topo.dimen
-    let uvmap = topo.uvmap
-    let uvkey = topo.uvkey
+    const dimen = topo.dimen
+    const uvmap = topo.uvmap
+    const uvkey = topo.uvkey
 
-    let l = loop
-    let lr = loop.radial_next
-    let lrn = loop.radial_next.next
+    const l = loop
+    const lr = loop.radial_next
+    const lrn = loop.radial_next.next
 
     let lrtopo
-    let lrps = (lr.customData[cd_grid] as this).points
+    const lrps = (lr.customData[cd_grid] as this).points
 
     let lrntopo
-    let lrnps = (lrn.customData[cd_grid] as this).points
+    const lrnps = (lrn.customData[cd_grid] as this).points
 
     let lpr = l.prev.radial_next
     let lprtopo, lprps
@@ -3439,14 +3439,14 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       lrntopo = (lrn.customData[cd_grid] as this).getTopo()
     }
 
-    let ln = l.next,
+    const ln = l.next,
       lp = l.prev
-    let lntopo = (ln.customData[cd_grid] as this).getTopo()
-    let lptopo = (lp.customData[cd_grid] as this).getTopo()
-    let lnps = (ln.customData[cd_grid] as this).points
-    let lpps = (lp.customData[cd_grid] as this).points
+    const lntopo = (ln.customData[cd_grid] as this).getTopo()
+    const lptopo = (lp.customData[cd_grid] as this).getTopo()
+    const lnps = (ln.customData[cd_grid] as this).points
+    const lpps = (lp.customData[cd_grid] as this).points
 
-    let uv3 = new Vector2()
+    const uv3 = new Vector2()
 
     function findNeighborEdge(
       p: QTGridVert,
@@ -3458,23 +3458,23 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       v: number,
       axis: Number2
     ) {
-      let dimen2 = ltopo.dimen
+      const dimen2 = ltopo.dimen
 
-      let uv = uv3
+      const uv = uv3
       uv[0] = u
       uv[1] = v
 
-      let goal = uv[axis]
+      const goal = uv[axis]
       uv[axis] = 0.0
 
       let v1: number | undefined, v2: number | undefined
 
-      let dt = 1.0 / dimen2
+      const dt = 1.0 / dimen2
       let f1, f2
 
       for (let i = 0; i < dimen2 + 1; i++) {
-        let key = ltopo.uvkey(uv[0], uv[1])
-        let v = ltopo.uvmap[key]
+        const key = ltopo.uvkey(uv[0], uv[1])
+        const v = ltopo.uvmap[key]
 
         if (v === undefined) {
           uv[axis] += dt
@@ -3499,14 +3499,14 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       //console.log(u, v, uv, "dt", dt, "goal", goal, "axis", axis);
 
       if (v1 === v2 && v1 !== undefined) {
-        let p1 = lps[v1]
+        const p1 = lps[v1]
 
         p.neighbors.add(p1)
         p.bLink = new BLink(p1)
         p.bRingInsert(p1)
       } else if (v1 !== undefined && v2 !== undefined) {
-        let p1 = lps[v1]
-        let p2 = lps[v2]
+        const p1 = lps[v1]
+        const p2 = lps[v2]
 
         p.neighbors.add(p1)
         p.neighbors.add(p2)
@@ -3523,19 +3523,19 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     }
 
     for (let i = 0; i < 4; i++) {
-      let uv1 = uvs[i],
+      const uv1 = uvs[i],
         uv2 = uvs[(i + 1) % 4]
-      let axis = ((i + 1) & 1) as Number2
+      const axis = ((i + 1) & 1) as Number2
 
       uv.load(uv1)
       duv.load(uv2).sub(uv1)
 
-      let dt = duv[axis] / dimen
+      const dt = duv[axis] / dimen
 
       for (let j = 0; j < dimen; j++) {
-        let val = uv[axis]
-        let key = uvkey(uv[0], uv[1])
-        let v1 = uvmap[key]
+        const val = uv[axis]
+        const key = uvkey(uv[0], uv[1])
+        const v1 = uvmap[key]
 
         if (!(val < 0.00001 || val > 0.9999)) {
           //uv[axis] += dt;
@@ -3550,12 +3550,12 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         const p1 = ps[v1]
 
         if (i === 1 && !lprbad) {
-          let u = 1.0
-          let v = val
+          const u = 1.0
+          const v = val
 
-          let key = lprtopo.uvkey(u, v)
+          const key = lprtopo.uvkey(u, v)
 
-          let v2 = lprtopo.uvmap[key]
+          const v2 = lprtopo.uvmap[key]
           if (v2 !== undefined) {
             const p2 = lprps[v2]
 
@@ -3567,14 +3567,14 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
             findNeighborEdge(p1, lpr, lprtopo, lprps, i, u, v, (axis ^ 1) as Number2)
           }
         } else if (i === 2 && lr !== l && lr.v !== l.v) {
-          let u = val
-          let v = 1.0
+          const u = val
+          const v = 1.0
 
-          let key = lrntopo!.uvkey(u, v)
+          const key = lrntopo!.uvkey(u, v)
 
-          let v2 = lrntopo!.uvmap[key]
+          const v2 = lrntopo!.uvmap[key]
           if (v2 !== undefined) {
-            let p2 = lrnps[v2]
+            const p2 = lrnps[v2]
 
             //console.log("found", axis, uv[0], uv[1], u, v, key in lrntopo.uvmap);
             p1.neighbors.add(p2)
@@ -3584,14 +3584,14 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
             findNeighborEdge(p1, lrn, lrntopo!, lrnps, i, u, v, (axis ^ 1) as Number2)
           }
         } else if (i === 3) {
-          let u = 0.0
-          let v = val
+          const u = 0.0
+          const v = val
 
-          let key = lntopo.uvkey(u, v)
-          let v2 = lntopo.uvmap[key]
+          const key = lntopo.uvkey(u, v)
+          const v2 = lntopo.uvmap[key]
 
           if (v2 !== undefined) {
-            let p2 = lnps[v2]
+            const p2 = lnps[v2]
 
             //console.log("found", axis, uv[0], uv[1], u, v, key in lntopo.uvmap);
             p1.neighbors.add(p2)
@@ -3601,14 +3601,14 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
             findNeighborEdge(p1, ln, lntopo, lnps, i, u, v, 1)
           }
         } else if (i === 0) {
-          let u = val
-          let v = 0
+          const u = val
+          const v = 0
 
-          let key = lptopo.uvkey(u, v)
-          let v2 = lptopo.uvmap[key]
+          const key = lptopo.uvkey(u, v)
+          const v2 = lptopo.uvmap[key]
 
           if (v2 !== undefined) {
-            let p2 = lpps[v2]
+            const p2 = lpps[v2]
 
             //console.log("found", axis, uv[0], uv[1], u, v, key in lptopo.uvmap);
             p1.neighbors.add(p2)
@@ -3625,29 +3625,29 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   updateNormalQuad(loop: Loop) {
-    let quad = this.getNormalQuad(loop)
+    const quad = this.getNormalQuad(loop)
     for (let i = 0; i < 4; i++) {
       this.normalQuad[i].load(quad[i])
     }
   }
 
   uvColorTest(mesh: Mesh, loop: Loop, cd_grid: number) {
-    let cd_col = mesh.loops.customData.getLayerIndex('color')
+    const cd_col = mesh.loops.customData.getLayerIndex('color')
 
     if (cd_col < 0) {
       return
     }
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
 
-    for (let ni of this.getLeafNodes()) {
+    for (const ni of this.getLeafNodes()) {
       for (let i = 0; i < 4; i++) {
-        let p = ps[ns[ni + QPOINT1 + i]]
+        const p = ps[ns[ni + QPOINT1 + i]]
 
-        let color = p.customData.get<ColorLayerElem>(cd_col).color
+        const color = p.customData.get<ColorLayerElem>(cd_col).color
 
-        let uv = this._getUV(ni, i)
+        const uv = this._getUV(ni, i)
 
         color[0] = uv[0]
         color[1] = uv[1]
@@ -3664,41 +3664,41 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     //this.uvColorTest(mesh, loop, cd_grid);
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.loopEid = loop.eid
     }
 
     this.update(mesh, loop, cd_grid)
 
-    let ps = this.points
-    let nodes = this.nodes
-    let polys = this.polys
+    const ps = this.points
+    const nodes = this.nodes
+    const polys = this.polys
     //let feid = loop.f.eid;
-    let leid = loop.eid
+    const leid = loop.eid
 
     //console.log("DIMEN", this.dimen);
 
     let idmul = (this.dimen + 2) * (this.dimen + 2) * 16
     idmul = this.idmul = Math.max(idmul, this.polys.length * 2)
 
-    let needsCDFix = false
+    const needsCDFix = false
 
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
-    let depthLimitEnabled = this.depthLimitEnabled
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimitEnabled = this.depthLimitEnabled
 
     for (let ni = 0; ni < nodes.length; ni += QTOT) {
-      let depth = nodes[ni + QDEPTH]
+      const depth = nodes[ni + QDEPTH]
 
-      let isleaf = nodes[ni + QFLAG] & LEAF || depth === depthLimit
+      const isleaf = nodes[ni + QFLAG] & LEAF || depth === depthLimit
 
       if (!isleaf || depth > depthLimit || nodes[ni + QFLAG] & DEAD) {
         continue
       }
 
-      let start = nodes[ni + QPOLYSTART]
-      let end = nodes[ni + QPOLYEND]
+      const start = nodes[ni + QPOLYSTART]
+      const end = nodes[ni + QPOLYEND]
 
-      let p1 = ps[polys[start]]
+      const p1 = ps[polys[start]]
 
       if (end - start < 3) {
         continue
@@ -3707,12 +3707,12 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       //console.log("fan:", end-start);
 
       for (let i = start + 1; i < end - 1; i++) {
-        let p2 = ps[polys[i]]
-        let p3 = ps[polys[i + 1]]
+        const p2 = ps[polys[i]]
+        const p3 = ps[polys[i + 1]]
 
         let tri
         //let id = Math.random();
-        let id = loop.eid * idmul + i
+        const id = loop.eid * idmul + i
 
         if (!p1 || !p2 || !p3) {
           //console.warn("missing points", p1, p2, p3);
@@ -3732,15 +3732,15 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   _loadCompressedNodes(ns1 = this.nodes as unknown as any) {
-    let ns2 = [] as number[]
+    const ns2 = [] as number[]
 
     if (ns1.length === 0) {
       return
     }
     this.nodes = ns2
 
-    let fields = {} as {[k: string]: number}
-    for (let k in ns1[0]) {
+    const fields = {} as {[k: string]: number}
+    for (const k in ns1[0]) {
       if (typeof k === 'symbol' || !k.startsWith('Q')) {
         continue
       }
@@ -3754,12 +3754,12 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       fields[k] = QuadTreeFields[k]
     }
 
-    let leaves = [] as number[]
+    const leaves = [] as number[]
 
-    let qtot_mul = QTOT / this.nodeFieldSize
+    const qtot_mul = QTOT / this.nodeFieldSize
 
-    for (let n of ns1) {
-      let ni = ns2.length
+    for (const n of ns1) {
+      const ni = ns2.length
 
       ns2.length += QTOT
 
@@ -3767,15 +3767,15 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         ns2[ni + i] = 0.0
       }
 
-      for (let k in fields) {
-        let i = fields[k]
+      for (const k in fields) {
+        const i = fields[k]
 
         ns2[ni + i] = n[k]
       }
 
       if (this.nodeFieldSize !== QTOT) {
         for (let i = 0; i < 4; i++) {
-          let ci = ~~(qtot_mul * ns2[ni + QCHILD1 + i] + 0.00001)
+          const ci = ~~(qtot_mul * ns2[ni + QCHILD1 + i] + 0.00001)
 
           ns2[ni + QCHILD1 + i] = ci
         }
@@ -3792,7 +3792,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       ns2[ni + QFLAG] |= TEMP
     }
 
-    let rec = (ni: number, depth = 0) => {
+    const rec = (ni: number, depth = 0) => {
       ns2[ni + QFLAG] &= ~TEMP
 
       ns2[ni + QCENTU] = ns2[ni + QMINU] * 0.5 + ns2[ni + QMAXU] * 0.5
@@ -3809,17 +3809,17 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
       if (!(ns2[ni + QFLAG] & LEAF)) {
         for (let i = 0; i < 4; i++) {
-          let ni2 = ns2[ni + QCHILD1 + i]
+          const ni2 = ns2[ni + QCHILD1 + i]
 
           if (!ni2) {
             continue
           }
 
-          let du = (ns2[ni + QMAXU] - ns2[ni + QMINU]) * 0.5
-          let dv = (ns2[ni + QMAXV] - ns2[ni + QMINV]) * 0.5
+          const du = (ns2[ni + QMAXU] - ns2[ni + QMINU]) * 0.5
+          const dv = (ns2[ni + QMAXV] - ns2[ni + QMINV]) * 0.5
 
-          let x = i & 1
-          let y = i >> 1
+          const x = i & 1
+          const y = i >> 1
 
           //console.log(`  a: ${ns2[ni2+QMINU]} ${ns2[ni2+QMINV]} ${ns2[ni2+QMAXU]} ${ns2[ni2+QMAXV]}`);
 
@@ -3844,9 +3844,9 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     rec(0)
 
-    for (let ni of leaves) {
+    for (const ni of leaves) {
       let p = ns2[ni + QPARENT]
-      let depth = ns2[ni + QDEPTH]
+      const depth = ns2[ni + QDEPTH]
 
       ns2[ni + QSUBTREE_DEPTH] = depth
 
@@ -3869,7 +3869,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   }
 
   _testNodeCompression() {
-    let ns = this._saveNodes()
+    const ns = this._saveNodes()
     this._loadCompressedNodes(ns)
 
     this.polys.length = 0
@@ -3898,7 +3898,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     this.recalcFlag |= QRecalcFlags.MIRROR
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.loopEid = this.loopEid
       p.orig = new Vector3(p.orig)
     }
@@ -3908,11 +3908,11 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     } else if (this.nodes.length > 0 && this.nodeFieldSize !== QTOT) {
       console.warn('Old quadtree structure detected; converting. . .')
 
-      let ns1 = this.nodes
-      let qtot_old = this.nodeFieldSize
-      let cpylen = Math.min(qtot_old, QTOT)
-      let extra = Math.max(QTOT - cpylen, 0)
-      let ns2 = []
+      const ns1 = this.nodes
+      const qtot_old = this.nodeFieldSize
+      const cpylen = Math.min(qtot_old, QTOT)
+      const extra = Math.max(QTOT - cpylen, 0)
+      const ns2 = []
       let map = [],
         mapi = 0
 
@@ -3934,7 +3934,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
           continue
         }
 
-        let idx = ni / QTOT
+        const idx = ni / QTOT
 
         ns2[ni + QCHILD1] = map[ns2[ni + QCHILD1]]
         ns2[ni + QCHILD2] = map[ns2[ni + QCHILD2]]

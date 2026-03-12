@@ -112,7 +112,7 @@ export class ReusableIter<type> {
   }
 }
 
-let lctx_blacklist = new Set([
+const lctx_blacklist = new Set([
   'reset',
   'newVertex',
   'killVertex',
@@ -342,14 +342,14 @@ export enum RecalcFlags {
 const ArrayPool = util.ArrayPool
 export {ArrayPool}
 
-let pool = new util.ArrayPool()
+const pool = new util.ArrayPool()
 
 export function getArrayTemp<type>(n: number, clear = false): type[] {
   return pool.get<type>(n, clear)
 }
 
 export function reallocArrayTemp<type>(arr: Array<type>, newSize: number): type[] {
-  let result: type[] = getArrayTemp(newSize)
+  const result: type[] = getArrayTemp(newSize)
 
   for (let i = 0; i < newSize; i++) {
     result[i] = i < arr.length ? arr[i] : (undefined as unknown as type)
@@ -376,7 +376,7 @@ mesh.CDElemArray {
     super()
 
     if (items !== undefined) {
-      for (let item of items) {
+      for (const item of items) {
         this.push(item)
       }
     }
@@ -392,7 +392,7 @@ mesh.CDElemArray {
   }
 
   hasLayer(cls: ICustomDataElemConstructor) {
-    for (let item of this) {
+    for (const item of this) {
       if (item instanceof cls) {
         return true
       }
@@ -405,7 +405,7 @@ mesh.CDElemArray {
     let j = 0
 
     for (let i = 0; i < this.length; i++) {
-      let item = this[i]
+      const item = this[i]
       if (item instanceof cls) {
         if (j === idx) {
           return item

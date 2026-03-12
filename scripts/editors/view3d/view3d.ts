@@ -38,11 +38,11 @@ import type {AppState} from '../../core/appstate.js'
 import {Library} from '../../core/lib_api.js'
 import {RenderEngine} from '../../renderengine/renderengine_base.js'
 import {SceneObject} from '../../sceneobject/sceneobject.js'
-import { Overdraw } from '../../path.ux/scripts/util/ScreenOverdraw.js'
+import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw.js'
 
-let proj_temps = util.cachering.fromConstructor(Vector4, 32)
-let unproj_temps = util.cachering.fromConstructor(Vector4, 32)
-let curtemps = util.cachering.fromConstructor(Vector3, 32)
+const proj_temps = util.cachering.fromConstructor(Vector4, 32)
+const unproj_temps = util.cachering.fromConstructor(Vector4, 32)
+const curtemps = util.cachering.fromConstructor(Vector3, 32)
 
 declare global {
   interface Window {
@@ -68,8 +68,8 @@ window._getShaderSource = function (shader: string) {
 export function initWebGL() {
   console.warn('initWebGL called')
 
-  let canvas = document.createElement('canvas')
-  let dpi = UIBase.getDPI()
+  const canvas = document.createElement('canvas')
+  const dpi = UIBase.getDPI()
   let w: number, h: number
 
   canvas.style['opacity'] = '1.0'
@@ -98,7 +98,7 @@ export function initWebGL() {
 
   document.body.appendChild(canvas)
 
-  let gl = init_webgl(canvas, {
+  const gl = init_webgl(canvas, {
     antialias            : false,
     alpha                : false,
     powerPreference      : 'high-performance',
@@ -109,7 +109,7 @@ export function initWebGL() {
 
   if (!('createVertexArray' in (gl as any))) {
     //*
-    let extVAO = gl.getExtension('OES_vertex_array_object')
+    const extVAO = gl.getExtension('OES_vertex_array_object')
 
     if (!extVAO) {
       throw new Error('OES_vertex_array_object extension not supported')
@@ -133,14 +133,14 @@ export function initWebGL() {
     (e) => {
       loadShaders(_gl!)
 
-      let datalib = (_appstate.ctx as any).datalib as Library
+      const datalib = (_appstate.ctx as any).datalib as Library
 
-      for (let ob of datalib.object) {
+      for (const ob of datalib.object) {
         ob.onContextLost(e)
       }
 
-      for (let sarea of _appstate.screen.sareas) {
-        for (let area of sarea.editors) {
+      for (const sarea of _appstate.screen.sareas) {
+        for (const area of sarea.editors) {
           if (area instanceof View3D) {
             area.onContextLost(e)
           }
@@ -155,7 +155,7 @@ export function initWebGL() {
 }
 
 export function loadShaders(gl: WebGL2RenderingContext) {
-  for (let k in view3d_shaders.ShaderDef) {
+  for (const k in view3d_shaders.ShaderDef) {
     const key = k as keyof typeof view3d_shaders.ShaderDef
     view3d_shaders.Shaders[key] = loadShader(gl, view3d_shaders.ShaderDef[key])
   }
@@ -184,7 +184,7 @@ export class DrawQuad {
     this.color = new Vector4(color)
     this.useZ = !!useZ
 
-    let a = color.length > 3 ? color[3] : 1.0
+    const a = color.length > 3 ? color[3] : 1.0
     this.color[3] = a
   }
 }
@@ -201,7 +201,7 @@ export class DrawLine {
     color: IVector4 | number[] = [0, 0, 0, 1],
     useZ?: boolean
   ) {
-    let a = color.length > 3 ? color[3] : 1.0
+    const a = color.length > 3 ? color[3] : 1.0
 
     this.color = new Vector4(color)
     this.color[3] = a
@@ -323,7 +323,7 @@ View3D {
     this._last_selectmode = -1
     this.transformSpace = ConstraintSpaces.WORLD
 
-    let n = new Vector3(this.camera.pos).sub(this.camera.target)
+    const n = new Vector3(this.camera.pos).sub(this.camera.target)
     this.camera.up = new Vector3([0, 0, -1]).cross(n).cross(n)
     this.camera.up.normalize()
 
@@ -335,12 +335,12 @@ View3D {
   }
 
   get cameraMode() {
-    let cam = this.activeCamera
+    const cam = this.activeCamera
     return cam.isPerspective ? CameraModes.PERSPECTIVE : CameraModes.ORTHOGRAPHIC
   }
 
   set cameraMode(val) {
-    let cam = this.activeCamera
+    const cam = this.activeCamera
 
     cam.isPerspective = val === CameraModes.PERSPECTIVE
     cam.regen_mats()
@@ -372,12 +372,12 @@ View3D {
       return
     }
 
-    let min = new Vector3()
-    let max = new Vector3()
-    let first = true
+    const min = new Vector3()
+    const max = new Vector3()
+    const first = true
 
-    for (let ob of this.ctx.scene.objects) {
-      let bbox = ob.getBoundingBox()
+    for (const ob of this.ctx.scene.objects) {
+      const bbox = ob.getBoundingBox()
       if (bbox === undefined) {
         continue
       }
@@ -396,8 +396,8 @@ View3D {
     let size = Math.max(Math.max(Math.abs(max[0]), Math.abs(max[1])), Math.abs(max[2]))
     size = Math.max(size, this.camera.pos.vectorDistance(this.camera.target))
 
-    let clipend = Math.max(size * 15, 5000)
-    let clipstart = clipend * 0.0001 + 0.001
+    const clipend = Math.max(size * 15, 5000)
+    const clipstart = clipend * 0.0001 + 0.001
 
     console.log(clipstart, clipend)
 
@@ -432,8 +432,8 @@ View3D {
   }
 
   makeGraphNodes() {
-    let ctx = this.ctx
-    let scene = ctx.scene
+    const ctx = this.ctx
+    const scene = ctx.scene
 
     if (scene === undefined) {
       return
@@ -455,7 +455,7 @@ View3D {
 
     this.addGraphNode(this._graphnode)
 
-    let node = CallbackNode.create(
+    const node = CallbackNode.create(
       'toolmode change',
       () => {
         this.rebuildHeader()
@@ -488,9 +488,9 @@ View3D {
   }
 
   deleteGraphNodes() {
-    for (let node of this._nodes) {
+    for (const node of this._nodes) {
       try {
-        let graph = this.ctx.graph
+        const graph = this.ctx.graph
         if (graph.has(node)) {
           graph.remove(node)
         }
@@ -516,16 +516,16 @@ View3D {
   }
 
   viewAxis(axis: 0 | 1 | 2, sign = 1) {
-    let cam = this.activeCamera
+    const cam = this.activeCamera
 
-    let ups = {
+    const ups = {
       0: [0, 0, 1],
       1: [0, 0, 1],
       2: [0, 1, 0],
     }
 
     cam.pos.sub(cam.target)
-    let len = cam.pos.vectorLength() || 0.1
+    const len = cam.pos.vectorLength() || 0.1
 
     cam.pos.zero()
     cam.pos[axis] = sign
@@ -544,7 +544,7 @@ View3D {
 
     if (ob === undefined) {
       if (this.ctx.scene !== undefined) {
-        let toolmode = this.ctx.scene.toolmode
+        const toolmode = this.ctx.scene.toolmode
 
         if (toolmode !== undefined) {
           aabb = toolmode.getViewCenter()
@@ -564,7 +564,7 @@ View3D {
 
     console.log('v3d aabb ret', aabb[0], aabb[1])
 
-    let is_point = aabb[0].vectorDistance(aabb[1]) === 0.0
+    const is_point = aabb[0].vectorDistance(aabb[1]) === 0.0
 
     if (aabb[0].vectorDistance(aabb[1]) === 0.0 && aabb[0].dot(aabb[0]) === 0.0) {
       cent.zero()
@@ -576,7 +576,7 @@ View3D {
     let dis = 0.001
 
     for (let i = 0; i < 3; i++) {
-      let d = aabb[1][i] - aabb[0][i]
+      const d = aabb[1][i] - aabb[0][i]
       dis = Math.max(dis, d)
     }
 
@@ -587,7 +587,7 @@ View3D {
       cent.multVecMatrix(this.cursor3D)
     }
 
-    let off = new Vector3(cent).sub(this.camera.target)
+    const off = new Vector3(cent).sub(this.camera.target)
 
     this.camera.target.add(off)
     this.camera.pos.add(off)
@@ -613,11 +613,11 @@ View3D {
     solve(f1, dis);
     */
 
-    let fov = (Math.PI * this.camera.fovy) / 180
+    const fov = (Math.PI * this.camera.fovy) / 180
 
-    let pos = new Vector3(this.camera.pos)
-    let up = new Vector3(this.camera.up)
-    let target = new Vector3(this.camera.target)
+    const pos = new Vector3(this.camera.pos)
+    const up = new Vector3(this.camera.up)
+    const target = new Vector3(this.camera.target)
 
     //dis = Math.abs(Math.tan(fov)*dis);
     dis = Math.abs(dis / Math.tan(fov))
@@ -682,7 +682,7 @@ View3D {
   }
 
   getViewVec(localX: number, localY: number) {
-    let co = this._viewvec_temps.next()
+    const co = this._viewvec_temps.next()
 
     co[0] = localX
     co[1] = localY
@@ -695,7 +695,7 @@ View3D {
   }
 
   project(co: Vector2 | Vector3 | Vector4, mat = undefined) {
-    let tmp = proj_temps.next().zero()
+    const tmp = proj_temps.next().zero()
 
     tmp[0] = co[0]
     tmp[1] = co[1]
@@ -713,7 +713,7 @@ View3D {
       tmp[2] /= tmp[3]
     }
 
-    let w = tmp[3]
+    const w = tmp[3]
 
     tmp[0] = (tmp[0] * 0.5 + 0.5) * this.size[0]
     tmp[1] = (1.0 - (tmp[1] * 0.5 + 0.5)) * this.size[1]
@@ -726,7 +726,7 @@ View3D {
   }
 
   unproject(co: Vector2 | Vector3 | Vector4, mat = undefined) {
-    let tmp = unproj_temps.next().zero()
+    const tmp = unproj_temps.next().zero()
 
     tmp[0] = (co[0] / this.size[0]) * 2.0 - 1.0
     tmp[1] = (1.0 - co[1] / this.size[1]) * 2.0 - 1.0
@@ -743,7 +743,7 @@ View3D {
 
     tmp.multVecMatrix(mat ? mat : this.activeCamera.irendermat)
 
-    let w = tmp[3]
+    const w = tmp[3]
 
     if (tmp[3] !== 0.0) {
       tmp[0] /= tmp[3]
@@ -761,11 +761,11 @@ View3D {
   setCursor(mat: Matrix4) {
     this.cursor3D.load(mat)
 
-    let p = curtemps.next().zero()
+    const p = curtemps.next().zero()
     p.multVecMatrix(mat)
 
     if (this.orbitMode === OrbitTargetModes.CURSOR) {
-      let redraw = this.camera.target.vectorDistance(p) > 0.0
+      const redraw = this.camera.target.vectorDistance(p) > 0.0
 
       this.camera.target.load(p)
 
@@ -793,18 +793,18 @@ View3D {
 
     let header = this.header
 
-    let rows = header.col()
+    const rows = header.col()
 
     header = rows.row()
-    let row1 = header.row()
+    const row1 = header.row()
 
     //row2.prop("view3d.flag[ONLY_RENDER]");
 
-    let makeRow = () => {
+    const makeRow = () => {
       return rows.row()
     }
 
-    let toolmode = this.ctx.toolmode
+    const toolmode = this.ctx.toolmode
 
     if (toolmode !== undefined) {
       toolmode.constructor.buildHeader(header, makeRow)
@@ -890,16 +890,16 @@ View3D {
       if (target[type]) return target[type](e, x, y, e.was_touch)
     }
 
-    let toolmode = this.ctx.toolmode
-    let widgets = this.ctx.scene.widgets
+    const toolmode = this.ctx.toolmode
+    const widgets = this.ctx.scene.widgets
 
-    let ismouse = type.search('mouse') >= 0 || type.search('touch') >= 0 || type.search('pointer') >= 0
+    const ismouse = type.search('mouse') >= 0 || type.search('touch') >= 0 || type.search('pointer') >= 0
 
     if (ismouse) {
-      let ret = this.getLocalMouse(e.x, e.y)
+      const ret = this.getLocalMouse(e.x, e.y)
 
-      let x = ret[0]
-      let y = ret[1]
+      const x = ret[0]
+      const y = ret[1]
 
       widgets.updateHighlight(e, x, y, e.was_touch)
 
@@ -926,8 +926,8 @@ View3D {
       }
     })
 
-    let id = this.getAttribute('id')
-    let busgetter = () => {
+    const id = this.getAttribute('id')
+    const busgetter = () => {
       //console.log("ID", id, this.getAttribute("id"), document.getElementById(id));
 
       if (!this.isConnected) {
@@ -958,12 +958,12 @@ View3D {
     this.overdraw.style['left'] = '0px'
     this.overdraw.style['top'] = '0px'
 
-    let eventdom = this //this.overdraw;
+    const eventdom = this //this.overdraw;
 
     this.makeGraphNodes()
     this.rebuildHeader()
 
-    let on_mousewheel = (e: WheelEvent) => {
+    const on_mousewheel = (e: WheelEvent) => {
       e.preventDefault()
 
       let df = e.deltaY / 100.0
@@ -971,9 +971,9 @@ View3D {
       df = Math.min(Math.max(df, -0.5), 0.5)
       df = 1.0 + df * 0.4
 
-      let cam = this.camera
+      const cam = this.camera
 
-      let dis = cam.pos.vectorDistance(cam.target)
+      const dis = cam.pos.vectorDistance(cam.target)
       if (df < 1.0 && dis * df < cam.near * 5.0) {
         return
       }
@@ -984,18 +984,18 @@ View3D {
 
     this.addEventListener('wheel', on_mousewheel)
 
-    let uiHasFocus = (e) => {
+    const uiHasFocus = (e) => {
       if (haveModal()) {
         return true
       }
 
-      let node = this.pickElement(e.x, e.y)
+      const node = this.pickElement(e.x, e.y)
 
       //console.log(node ? node.tagName : undefined);
       return node !== this && node !== this.overdraw
     }
 
-    let on_mousemove = (e, was_mousemove = true) => {
+    const on_mousemove = (e, was_mousemove = true) => {
       this.last_mpos.load(this.getLocalMouse(e.x, e.y))
 
       /*
@@ -1010,7 +1010,7 @@ View3D {
         return
       }
 
-      let was_touch = eventWasTouch(e)
+      const was_touch = eventWasTouch(e)
 
       if (this.canvas === undefined) return
 
@@ -1020,13 +1020,13 @@ View3D {
     eventdom.addEventListener('pointermove', on_mousemove)
 
     eventdom.addEventListener('pointerup', (e) => {
-      let was_touch = eventWasTouch(e)
+      const was_touch = eventWasTouch(e)
 
       this.last_mpos.load(this.getLocalMouse(e.x, e.y))
 
       this.doEvent('mouseup', e)
 
-      let ctx = this.ctx
+      const ctx = this.ctx
       this.push_ctx_active(ctx)
 
       if (this.mdown) {
@@ -1035,7 +1035,7 @@ View3D {
       this.pop_ctx_active(ctx)
     })
 
-    let on_mousedown = (e) => {
+    const on_mousedown = (e) => {
       if (uiHasFocus(e)) {
         return
       }
@@ -1043,7 +1043,7 @@ View3D {
       /* prevent duplicate mousedown events from touch forwarding */
       e.preventDefault()
 
-      let r = this.getLocalMouse(e.clientX, e.clientY)
+      const r = this.getLocalMouse(e.clientX, e.clientY)
       this.start_mpos.load(r)
       this.last_mpos.load(r)
 
@@ -1071,22 +1071,22 @@ View3D {
       if (docontrols && eventWasTouch(e) && !e.shiftKey && !e.ctrlKey && !e.altKey) {
         console.log('multitouch view tool')
 
-        let tool = new TouchViewTool()
+        const tool = new TouchViewTool()
         this.ctx.state.toolstack.execTool(this.ctx, tool)
         window.redraw_viewport()
       } else if (docontrols && !e.shiftKey && !e.ctrlKey) {
         console.log('orbit!')
-        let tool = new OrbitTool()
+        const tool = new OrbitTool()
         this.ctx.state.toolstack.execTool(this.ctx, tool, e)
         window.redraw_viewport()
       } else if (docontrols && e.shiftKey && !e.ctrlKey) {
         console.log('pan!')
-        let tool = new PanTool()
+        const tool = new PanTool()
         this.ctx.state.toolstack.execTool(this.ctx, tool)
         window.redraw_viewport()
       } else if (docontrols && e.ctrlKey && !e.shiftKey) {
         console.log('zoom!')
-        let tool = new ZoomTool()
+        const tool = new ZoomTool()
         this.ctx.state.toolstack.execTool(this.ctx, tool)
         window.redraw_viewport()
       }
@@ -1127,8 +1127,8 @@ View3D {
   }
 
   getLocalMouse(x: number, y: number): Vector2 {
-    let r = this.getClientRects()[0]
-    let dpi = UIBase.getDPI()
+    const r = this.getClientRects()[0]
+    const dpi = UIBase.getDPI()
 
     //x -= this.pos[0];
     //y -= this.pos[1];
@@ -1168,10 +1168,10 @@ View3D {
   }
 
   checkCamera() {
-    let cam = this.activeCamera
+    const cam = this.activeCamera
 
     if (cam) {
-      let hash = cam.generateUpdateHash()
+      const hash = cam.generateUpdateHash()
 
       if (hash !== this._last_camera_hash && this.renderEngine) {
         this._last_camera_hash = hash
@@ -1185,7 +1185,7 @@ View3D {
       this.ctx.scene.updateWidgets()
     }
 
-    let screen = this.ctx.screen
+    const screen = this.ctx.screen
     if (this.pos[1] + this.size[1] > screen.size[1] + 4) {
       console.log('view3d is too big', this.pos[1] + this.size[1], screen.size[1])
       this.ctx.screen.snapScreenVerts()
@@ -1216,15 +1216,15 @@ View3D {
   }
 
   makeGrid() {
-    let mesh = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.COLOR)
+    const mesh = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.COLOR)
 
-    let d = 3
+    const d = 3
     //let quad = mesh.quad([-d, -d, 0], [-d, d, 0], [d, d, 0], [d, -d, 0]);
     //quad.colors(clr, clr, clr, clr);
 
-    let steps = 32
-    let sz = 8.0
-    let csize = (sz / steps) * 2.0
+    const steps = 32
+    const sz = 8.0
+    const csize = (sz / steps) * 2.0
     let t = -sz
 
     for (let i = 0; i < steps + 1; i++, t += csize) {
@@ -1233,7 +1233,7 @@ View3D {
       else if (i % 4 == 0.0) d = 0.6
       else if (i % 2 == 0.0) d = 0.7
 
-      let clr = [1.0 - d, 1.0 - d, 1.0 - d, 1.0]
+      const clr = [1.0 - d, 1.0 - d, 1.0 - d, 1.0]
 
       let line = mesh.line([-sz, t, 0.0], [sz, t, 0.0])
 
@@ -1258,7 +1258,7 @@ View3D {
 
     //trigger rebuild of renderEngine, if necessary
     if (this.renderEngine !== undefined) {
-      let engine = this.renderEngine
+      const engine = this.renderEngine
       this.renderEngine = undefined
 
       this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null)
@@ -1273,7 +1273,7 @@ View3D {
   }
 
   _testCamera() {
-    let th = this.T
+    const th = this.T
 
     this.camera.pos = new Vector3([Math.cos(th) * 20, Math.sin(th) * 20, Math.cos(th * 2.0) * 15.0])
     this.camera.target = new Vector3([0, 0, 0.0 * Math.cos(th * 2.0) * 5.0])
@@ -1292,8 +1292,8 @@ View3D {
     this.selectbuf.dirty()
     return this.selectbuf
 
-    for (let ob of ctx.selectedMeshObjects) {
-      let mesh = ob.mesh
+    for (const ob of ctx.selectedMeshObjects) {
+      const mesh = ob.mesh
 
       if (!this.meshcache.has(mesh.lib_id) || this.meshcache.get(mesh.lib_id).gen !== mesh.updateGen) {
         this.selectbuf.dirty()
@@ -1338,7 +1338,7 @@ View3D {
   }
 
   drawCameraView() {
-    let gl = this.gl
+    const gl = this.gl
 
     let camera = this.ctx.camera
 
@@ -1347,9 +1347,9 @@ View3D {
     }
 
     gl.enable(gl.SCISSOR_TEST)
-    let pos = new Vector2(this.subViewPortPos)
-    let scale = this.subViewPortSize
-    let size = new Vector2([scale, scale])
+    const pos = new Vector2(this.subViewPortPos)
+    const scale = this.subViewPortSize
+    const size = new Vector2([scale, scale])
 
     size[0] /= camera.aspect
 
@@ -1368,7 +1368,7 @@ View3D {
     gl.depthMask(true)
     gl.enable(gl.DEPTH_TEST)
 
-    let scene = this.scene
+    const scene = this.scene
 
     try {
       this.drawObjects(camera)
@@ -1413,7 +1413,7 @@ View3D {
   }
 
   drawRender(extraDrawCB) {
-    let gl = this.gl
+    const gl = this.gl
 
     gl.enable(gl.DEPTH_TEST)
     gl.depthMask(true)
@@ -1473,19 +1473,19 @@ View3D {
 
     this._graphnode.outputs.onDrawPre.immediateUpdate()
 
-    let scene = this.ctx.scene
+    const scene = this.ctx.scene
 
-    let gl = this.gl
-    let dpi = this.canvas.dpi //UIBase.getDPI();
+    const gl = this.gl
+    const dpi = this.canvas.dpi //UIBase.getDPI();
 
     let x = this.owning_sarea.pos[0] * dpi,
       y = this.owning_sarea.pos[1] * dpi
-    let w = this.owning_sarea.size[0] * dpi,
+    const w = this.owning_sarea.size[0] * dpi,
       h = this.owning_sarea.size[1] * dpi
     //console.log("DPI", dpi);
 
-    let screen = this.ctx.screen
-    let rect = screen.getBoundingClientRect()
+    const screen = this.ctx.screen
+    const rect = screen.getBoundingClientRect()
 
     y = screen.size[1] * dpi - y - h
     //y += h;
@@ -1511,18 +1511,18 @@ View3D {
     gl.enable(gl.DEPTH_TEST)
     gl.depthMask(true)
 
-    let aspect = this.size[0] / this.size[1]
+    const aspect = this.size[0] / this.size[1]
     this.activeCamera.regen_mats(aspect)
 
     //this.drawThreeScene();
 
-    let finish = (projmat) => {
+    const finish = (projmat) => {
       this.activeCamera.regen_mats(aspect)
       if (projmat) {
         this.activeCamera.rendermat = projmat
       }
 
-      let drawgrid = this.flag & View3DFlags.SHOW_GRID
+      const drawgrid = this.flag & View3DFlags.SHOW_GRID
 
       gl.depthMask(true)
       gl.enable(gl.DEPTH_TEST)
@@ -1578,10 +1578,10 @@ View3D {
   }
 
   drawDrawLines(gl) {
-    let sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
-    let sm2 = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
+    const sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
+    const sm2 = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
 
-    for (let dl of this.drawlines) {
+    for (const dl of this.drawlines) {
       let line
 
       if (!dl.useZ) {
@@ -1594,7 +1594,7 @@ View3D {
       line.colors(dl.color, dl.color)
     }
 
-    let uniforms = {
+    const uniforms = {
       projectionMatrix: this.activeCamera.rendermat,
       aspect          : this.activeCamera.aspect,
       size            : this.glSize,
@@ -1605,7 +1605,7 @@ View3D {
       alpha           : 1.0,
     }
 
-    let program = view3d_shaders.Shaders.BasicLineShader
+    const program = view3d_shaders.Shaders.BasicLineShader
 
     gl.depthMask(false)
     gl.disable(gl.DEPTH_TEST)
@@ -1626,7 +1626,7 @@ View3D {
       color = css2color(color)
     }
 
-    let dq = new DrawQuad(v1, v2, v3, v4, color)
+    const dq = new DrawQuad(v1, v2, v3, v4, color)
   }
 
   makeDrawLine(v1, v2, color = [0, 0, 0, 1], useZ = true) {
@@ -1634,7 +1634,7 @@ View3D {
       color = css2color(color)
     }
 
-    let dl = new DrawLine(v1, v2, color)
+    const dl = new DrawLine(v1, v2, color)
 
     this.drawlines.push(dl)
     window.redraw_viewport()
@@ -1658,11 +1658,11 @@ View3D {
   }
 
   drawObjects(camera = this.activeCamera) {
-    let scene = this.ctx.scene,
+    const scene = this.ctx.scene,
       gl = this.gl
-    let program = view3d_shaders.Shaders.BasicLitMesh
+    const program = view3d_shaders.Shaders.BasicLitMesh
 
-    let uniforms = {
+    const uniforms = {
       projectionMatrix: camera.rendermat,
       normalMatrix    : camera.normalmat,
       near            : camera.near,
@@ -1672,9 +1672,9 @@ View3D {
       polygonOffset   : 0.0,
     }
 
-    let only_render = this.flag & View3DFlags.ONLY_RENDER
+    const only_render = this.flag & View3DFlags.ONLY_RENDER
 
-    for (let ob of scene.objects.visible) {
+    for (const ob of scene.objects.visible) {
       uniforms.objectMatrix = ob.outputs.matrix.getValue()
       uniforms.object_id = ob.lib_id
 
@@ -1703,7 +1703,7 @@ View3D {
   }
 
   static defineAPI(api: DataAPI) {
-    let vstruct = super.defineAPI(api)
+    const vstruct = super.defineAPI(api)
 
     vstruct.float('subViewPortSize', 'subViewPortSize', 'View Size').range(1, 2048)
     vstruct.vec2('subViewPortPos', 'subViewPortPos', 'View Pos').range(1, 2048)
@@ -1727,7 +1727,7 @@ View3D {
   }
 
   copy() {
-    let ret = document.createElement('view3d-editor-x')
+    const ret = document.createElement('view3d-editor-x')
 
     ret.widgettool = this.widgettool
 
@@ -1761,10 +1761,10 @@ let animreq = undefined
 let resetRender = 0
 let drawCount = 1
 
-let f2 = () => {
-  let screen = _appstate.screen
-  let resetrender = resetRender
-  let gl = _gl
+const f2 = () => {
+  const screen = _appstate.screen
+  const resetrender = resetRender
+  const gl = _gl
 
   resetRender = 0
 
@@ -1772,8 +1772,8 @@ let f2 = () => {
 
   let time = util.time_ms()
 
-  for (let sarea of screen.sareas) {
-    let sdef = sarea.area.constructor.define()
+  for (const sarea of screen.sareas) {
+    const sdef = sarea.area.constructor.define()
 
     if (sdef.has3D) {
       sarea.area._init()
@@ -1802,8 +1802,8 @@ let f2 = () => {
   time = util.time_ms() - time
   time = 1000.0 / time
 
-  for (let sarea of screen.sareas) {
-    let area = sarea.area
+  for (const sarea of screen.sareas) {
+    const area = sarea.area
 
     if (!area) continue
 
@@ -1813,9 +1813,9 @@ let f2 = () => {
   }
 }
 
-let rcbs = []
+const rcbs = []
 
-let f = () => {
+const f = () => {
   animreq = undefined
 
   //forcibly update datagraph
@@ -1825,7 +1825,7 @@ let f = () => {
     f2()
   }
 
-  for (let cb of rcbs) {
+  for (const cb of rcbs) {
     cb()
   }
 

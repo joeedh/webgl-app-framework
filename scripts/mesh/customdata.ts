@@ -24,8 +24,8 @@ export const CDFlags = {
   NO_INTERP_COPY_ONLY: 64,
 }
 
-export let CDElemMap = {}
-export let CDElemTypes = []
+export const CDElemMap = {}
+export const CDElemTypes = []
 
 export function cdLayerKey(typeName, name) {
   return typeName + ':' + name
@@ -74,14 +74,14 @@ mesh.CustomDataElem {
 
   constructor() {
     // XXX typescript is giving weird errors here
-    let a = this as unknown as any
+    const a = this as unknown as any
     this.typeName = a.constructor.define().typeName
   }
 
   calcMemSize() {
-    let data = this.getValue()
+    const data = this.getValue()
 
-    let pad = 16 //assume some padding
+    const pad = 16 //assume some padding
 
     if (typeof data === 'number') {
       return 8 + pad
@@ -124,14 +124,14 @@ mesh.CustomDataElem {
 
   //used for building island meshes
   hash(snapLimit = 0.01) {
-    let value = this.getValue()
+    const value = this.getValue()
 
     function hashArray<type extends number[]>(array: type) {
       let f = 0
-      let dimen = 4196
+      const dimen = 4196
 
       for (let i = 0; i < array.length; i++) {
-        let f2 = Math.floor(array[i] / snapLimit)
+        const f2 = Math.floor(array[i] / snapLimit)
         //f = f ^ f2;
 
         f += f2 * Math.pow(dimen, i)
@@ -157,14 +157,14 @@ mesh.CustomDataElem {
   }
 
   copy(): this {
-    let ret = new (this.constructor as unknown as new () => this)()
+    const ret = new (this.constructor as unknown as new () => this)()
     this.copyTo(ret)
     return ret
   }
 
   interp(dest: this, datas: this[], ws: number[]): void {
     //for default implementation, just copy first item in datas
-    for (let cd of datas) {
+    for (const cd of datas) {
       cd.copyTo(dest)
       break
     }
@@ -226,7 +226,7 @@ mesh.CustomDataElem {
 }
 
 export function buildCDAPI(api: DataAPI) {
-  let layerst = api.mapStruct(CustomDataLayer, true)
+  const layerst = api.mapStruct(CustomDataLayer, true)
 
   layerst.string('name', 'name', 'Name')
   layerst.dynamicStruct('typeSettings', 'settings', 'Settings')
@@ -234,15 +234,15 @@ export function buildCDAPI(api: DataAPI) {
     DISABLED: Icons.DISABLED,
   })
 
-  let def = layerst.pathmap['settings']
+  const def = layerst.pathmap['settings']
   def.customGetSet(function (this: any) {
-    let ret = this.dataref.getTypeSettings()
+    const ret = this.dataref.getTypeSettings()
 
     if (!ret) {
       return undefined
     }
 
-    let cls = ret.constructor
+    const cls = ret.constructor
 
     if (!api.hasStruct(cls)) {
       cls.apiDefine(api, api.mapStruct(cls, true))
@@ -254,17 +254,17 @@ export function buildCDAPI(api: DataAPI) {
   layerst.int('index', 'index', 'index').readOnly()
   layerst.string('typeName', 'typeName', 'Type').readOnly()
 
-  let st = api.mapStruct(CustomData, true)
+  const st = api.mapStruct(CustomData, true)
 
   function makeGetter(typeName): DataPathCallBack {
     return function () {
-      let customData = this.dataref
+      const customData = this.dataref
       return customData.getActiveLayer(typeName)
     }
   }
 
-  for (let cls of CDElemTypes) {
-    let ldef = cls.define()
+  for (const cls of CDElemTypes) {
+    const ldef = cls.define()
 
     //settings classes can be shared among customdata types
     if (ldef.settingsClass && !api.hasStruct(ldef.settingsClass)) {
@@ -272,7 +272,7 @@ export function buildCDAPI(api: DataAPI) {
     }
 
     st.struct(ldef.typeName, ldef.typeName, 'Active ' + ldef.typeName + ' layer', layerst)
-    let def = st.pathmap[ldef.typeName]
+    const def = st.pathmap[ldef.typeName]
 
     def.customGetSet(makeGetter(ldef.typeName))
   }
@@ -298,8 +298,8 @@ export function buildCDAPI(api: DataAPI) {
 }
 
 export function buildElementAPI(api, dstruct) {
-  for (let cls of CDElemTypes) {
-    let cstruct = api.mapStruct(cls, true)
+  for (const cls of CDElemTypes) {
+    const cstruct = api.mapStruct(cls, true)
     cls.apiDefine(api, cstruct)
   }
 
@@ -379,7 +379,7 @@ LayerSettingsBase {
   }
 
   copy() {
-    let ret = new (this.constructor as new () => this)()
+    const ret = new (this.constructor as new () => this)()
 
     this.copyTo(ret)
 
@@ -447,8 +447,8 @@ mesh.CustomDataLayer {
 
   getTypeSettings(): any {
     if (this.typeSettings === undefined) {
-      let cls = CustomDataElem.getTypeClass(this.typeName)
-      let def = cls.define()
+      const cls = CustomDataElem.getTypeClass(this.typeName)
+      const def = cls.define()
 
       if (def.settingsClass) {
         this.typeSettings = new def.settingsClass()
@@ -468,7 +468,7 @@ mesh.CustomDataLayer {
   }
 
   copy(): CustomDataLayer<CDType> {
-    let ret = new CustomDataLayer<CDType>(this.typeName, this.name, this.flag, this.id)
+    const ret = new CustomDataLayer<CDType>(this.typeName, this.name, this.flag, this.id)
 
     if (this.typeSettings) {
       ret.typeSettings = this.typeSettings.copy()
@@ -524,7 +524,7 @@ mesh.LayerSet {
   push(...items: CustomDataLayer<CDType>[]): number {
     super.push(...items)
 
-    for (let layer of items) {
+    for (const layer of items) {
       layer.layerSet = this
       this.idmap.set(layer.id, layer)
     }
@@ -554,10 +554,10 @@ mesh.LayerSet {
   }
 
   copy(): LayerSet<CDType> {
-    let ret = new LayerSet<CDType>(this.typeName)
+    const ret = new LayerSet<CDType>(this.typeName)
 
-    for (let layer of this) {
-      let layer2 = layer.copy()
+    for (const layer of this) {
+      const layer2 = layer.copy()
 
       if (layer === this.active) {
         ret.active = layer2
@@ -572,7 +572,7 @@ mesh.LayerSet {
   loadSTRUCT(reader: StructReader<this>) {
     reader(this)
 
-    for (let layer of this) {
+    for (const layer of this) {
       this.idmap.set(layer.id, layer)
     }
 
@@ -628,10 +628,10 @@ mesh.CustomData {
   }
 
   stripTempLayers() {
-    let newlist = []
+    const newlist = []
 
-    for (let layer of new Set(this.flatlist)) {
-      let lset = this.getLayerSet(layer.typeName)
+    for (const layer of new Set(this.flatlist)) {
+      const lset = this.getLayerSet(layer.typeName)
 
       if (layer.flag & CDFlags.TEMPORARY) {
         lset.remove(layer)
@@ -648,18 +648,18 @@ mesh.CustomData {
   }
 
   copy() {
-    let ret = new CustomData()
+    const ret = new CustomData()
 
     ret.idgen = this.idgen.copy()
 
-    for (let layer of this.flatlist) {
-      let layer2 = layer.copy()
-      let lset = ret.getLayerSet(layer.typeName)
+    for (const layer of this.flatlist) {
+      const layer2 = layer.copy()
+      const lset = ret.getLayerSet(layer.typeName)
 
       layer2.index = ret.flatlist.length
       ret.flatlist.push(layer2)
 
-      let oldlset = this.getLayerSet(layer.typeName)
+      const oldlset = this.getLayerSet(layer.typeName)
 
       lset.push(layer2)
       if (layer === oldlset.active) {
@@ -671,24 +671,24 @@ mesh.CustomData {
   }
 
   merge(cd) {
-    let cdmap = {}
+    const cdmap = {}
 
     this._updateFlatList()
 
-    for (let list of cd.flatlist) {
-      let ok = this.hasNamedLayer(list.name, list.typeName)
+    for (const list of cd.flatlist) {
+      const ok = this.hasNamedLayer(list.name, list.typeName)
 
       if (!ok) {
-        let cls = CDElemMap[list.typeName]
+        const cls = CDElemMap[list.typeName]
         if (!cls) {
           throw new Error('unregistered CustomData detected')
         }
 
-        let list2 = this.addLayer(cls, list.name)
+        const list2 = this.addLayer(cls, list.name)
       }
     }
 
-    for (let list of this.flatlist) {
+    for (const list of this.flatlist) {
       cdmap[cdLayerKey(list.typeName, list.name)] = list.index
     }
 
@@ -712,9 +712,9 @@ mesh.CustomData {
     name = !name ? cls.name : name
     name = this._getUniqueName(name)
 
-    let type = cls.define().typeName
-    let layer = new CustomDataLayer(type, name, undefined, this.idgen.next())
-    let lset = this.getLayerSet(type)
+    const type = cls.define().typeName
+    const layer = new CustomDataLayer(type, name, undefined, this.idgen.next())
+    const lset = this.getLayerSet(type)
 
     layer.index = this.flatlist.length
     layer.elemTypeMask = cls.define().elemTypeMask
@@ -742,8 +742,8 @@ mesh.CustomData {
 
     e.customData.length = 0
 
-    for (let layer of this.flatlist) {
-      let cls = CustomDataElem.getTypeClass(layer.typeName)
+    for (const layer of this.flatlist) {
+      const cls = CustomDataElem.getTypeClass(layer.typeName)
       e.customData.push(new cls())
     }
   }
@@ -755,7 +755,7 @@ mesh.CustomData {
     if (typeof typename_or_cls === 'string') {
       typename = typename_or_cls as string
     } else {
-      let cls = typename_or_cls as unknown as ICustomDataElemConstructor
+      const cls = typename_or_cls as unknown as ICustomDataElemConstructor
       typename = cls.define().typeName
     }
 
@@ -772,11 +772,11 @@ mesh.CustomData {
     if (typeof typename_or_cls === 'string') {
       typename = typename_or_cls as string
     } else {
-      let cls = typename_or_cls as unknown as ICustomDataElemConstructor
+      const cls = typename_or_cls as unknown as ICustomDataElemConstructor
       typename = cls.define().typeName
     }
 
-    let lset = this.layers.get(typename)
+    const lset = this.layers.get(typename)
     if (!lset) {
       return -1
     }
@@ -794,11 +794,11 @@ mesh.CustomData {
     if (typeof typecls_or_name === 'string') {
       typeName = typecls_or_name as unknown as string
     } else {
-      let cls = typecls_or_name as unknown as ICustomDataElemConstructor
+      const cls = typecls_or_name as unknown as ICustomDataElemConstructor
       typeName = cls.define().typeName
     }
 
-    let set = this.layers.get(typeName)
+    const set = this.layers.get(typeName)
     if (!set) {
       return undefined
     }
@@ -811,14 +811,14 @@ mesh.CustomData {
   }
 
   setActiveLayer(layerIndex) {
-    let layer = this.flatlist[layerIndex]
-    let set = this.layers.get(layer.typeName)
+    const layer = this.flatlist[layerIndex]
+    const set = this.layers.get(layer.typeName)
 
     set.active = layer
   }
 
   remLayer(layer) {
-    let set = this.layers.get(layer.typeName)
+    const set = this.layers.get(layer.typeName)
 
     if (set.active === layer) {
       set.active = set.length > 1 ? set[(set.indexOf(layer) + 1) % set.length] : undefined
@@ -842,8 +842,8 @@ mesh.CustomData {
   }
 
   _getUniqueName(name) {
-    let taken = (name) => {
-      for (let layer of this.flatlist) {
+    const taken = (name) => {
+      for (const layer of this.flatlist) {
         if (layer.name === name) {
           return true
         }
@@ -877,7 +877,7 @@ mesh.CustomData {
   }
 
   getNamedLayerRef<type extends CustomDataElem<any>>(name: string, opt_cls_or_typeName?: string | any): AttrRef<type> {
-    let layer = this.getNamedLayer(name, opt_cls_or_typeName)
+    const layer = this.getNamedLayer(name, opt_cls_or_typeName)
     if (!layer) {
       return AttrRef.create<type>(-1)
     }
@@ -886,7 +886,7 @@ mesh.CustomData {
   }
 
   getNamedLayerIndex(name: string, opt_cls_or_typeName?: string | any): number {
-    let layer = this.getNamedLayer(name, opt_cls_or_typeName)
+    const layer = this.getNamedLayer(name, opt_cls_or_typeName)
     if (!layer) {
       return -1
     }
@@ -904,7 +904,7 @@ mesh.CustomData {
       typeName = typeName.define().typeName
     }
 
-    for (let layer of this.flatlist) {
+    for (const layer of this.flatlist) {
       if (typeName && layer.typeName !== typeName) {
         continue
       }
@@ -922,12 +922,12 @@ mesh.CustomData {
   loadSTRUCT(reader: StructReader<this>) {
     reader(this)
 
-    let idmap = new Map<number, CustomDataLayer<any>>()
+    const idmap = new Map<number, CustomDataLayer<any>>()
 
-    for (let layerset of this._layers) {
+    for (const layerset of this._layers) {
       this.layers.set(layerset.typeName, layerset)
 
-      for (let layer of layerset) {
+      for (const layer of layerset) {
         idmap.set(layer.id, layer)
       }
     }
@@ -938,9 +938,9 @@ mesh.CustomData {
   }
 
   _getLayers() {
-    let ret = []
+    const ret = []
 
-    for (let k of this.layers.keys()) {
+    for (const k of this.layers.keys()) {
       ret.push(this.layers.get(k))
     }
 

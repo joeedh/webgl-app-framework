@@ -18,7 +18,7 @@ import {getFaceSets} from '../mesh/mesh_facesets.js'
 import {FaceSetElem, IntElem, Vector3LayerElem} from '../mesh/mesh_customdata'
 import {Mesh} from '../mesh/mesh'
 
-let safetimes = new Array(32).map((f) => 0)
+const safetimes = new Array(32).map((f) => 0)
 
 export interface IBVHCreateArgs {
   storeVerts?: boolean
@@ -32,7 +32,7 @@ export interface IBVHCreateArgs {
 }
 
 function safeprint(...args: any[]) {
-  let id = arguments[0]
+  const id = arguments[0]
 
   if (util.time_ms() - safetimes[id] < 200) {
     return
@@ -42,17 +42,17 @@ function safeprint(...args: any[]) {
   safetimes[id] = util.time_ms()
 }
 
-let _triverts = [new Vector3(), new Vector3(), new Vector3()]
+const _triverts = [new Vector3(), new Vector3(), new Vector3()]
 
-let _ntmptmp = new Vector3()
+const _ntmptmp = new Vector3()
 
 const HIGH_QUAL_SPLIT = true
 
-let _fictmp1 = new Vector3()
-let _fictmp2 = new Vector3()
-let _fictmp3 = new Vector3()
-let _fictmp4 = new Vector3()
-let _fictmpco = new Vector3()
+const _fictmp1 = new Vector3()
+const _fictmp2 = new Vector3()
+const _fictmp3 = new Vector3()
+const _fictmp4 = new Vector3()
+const _fictmpco = new Vector3()
 
 export class BVHSettings {
   static STRUCT = nstructjs.inlineRegister(
@@ -189,14 +189,14 @@ export class BVHTri<OPT extends {grid?: true | false; dead?: true | false} = {}>
   }
 }
 
-let addtri_tempco1 = new Vector3()
-let addtri_tempco2 = new Vector3()
-let addtri_tempco3 = new Vector3()
-let addtri_tempco4 = new Vector3()
-let addtri_tempco5 = new Vector3()
-let addtri_stack = new Array(2048)
+const addtri_tempco1 = new Vector3()
+const addtri_tempco2 = new Vector3()
+const addtri_tempco3 = new Vector3()
+const addtri_tempco4 = new Vector3()
+const addtri_tempco5 = new Vector3()
+const addtri_stack = new Array(2048)
 
-let lastt = util.time_ms()
+const lastt = util.time_ms()
 
 export const BVHVertFlags = {
   BOUNDARY_MESH: 1 << 1,
@@ -248,9 +248,9 @@ MDynVert {
     )
 
     let flag = 0
-    let fsets = new Set()
+    const fsets = new Set()
 
-    for (let e of v.edges) {
+    for (const e of v.edges) {
       if (!e.l || e.l.radial_next === e.l) {
         flag |= BVHVertFlags.BOUNDARY_MESH
       }
@@ -262,7 +262,7 @@ MDynVert {
       let l = e.l
       let _i = 0
       do {
-        let fset = Math.abs(fsetAt.get(l.f).value)
+        const fset = Math.abs(fsetAt.get(l.f).value)
         fsets.add(fset)
 
         if (_i++ > 100) {
@@ -295,7 +295,7 @@ MDynVert {
     if (this.flag & BVHVertFlags.NEED_VALENCE) {
       let i = 0
 
-      for (let v2 of v.neighbors) {
+      for (const v2 of v.neighbors) {
         i++
       }
 
@@ -433,12 +433,12 @@ CDNodeInfo {
 
 CustomDataElem.register(CDNodeInfo)
 
-let cvstmps = util.cachering.fromConstructor<Vector3>(Vector3, 64)
-let cvstmps2 = util.cachering.fromConstructor<Vector3>(Vector3, 64)
-let vttmp1 = new Vector3()
-let vttmp2 = new Vector3()
-let vttmp3 = new Vector3()
-let vttmp4 = new Vector3()
+const cvstmps = util.cachering.fromConstructor<Vector3>(Vector3, 64)
+const cvstmps2 = util.cachering.fromConstructor<Vector3>(Vector3, 64)
+const vttmp1 = new Vector3()
+const vttmp2 = new Vector3()
+const vttmp3 = new Vector3()
+const vttmp4 = new Vector3()
 
 export class IsectRet {
   id: number
@@ -650,12 +650,12 @@ export class BVHNode<
   }
 
   calcBoxVerts = function (this: BVHNode<OPT & {boxedges: true}>) {
-    let min = this.min,
+    const min = this.min,
       max = this.max
 
     this.boxedges = []
 
-    let boxverts = (this.boxverts = [
+    const boxverts = (this.boxverts = [
       [min[0], min[1], min[2]],
       [min[0], max[1], min[2]],
       [max[0], max[1], min[2]],
@@ -668,13 +668,13 @@ export class BVHNode<
     ].map((v) => this.bvh.getNodeVertex(new Vector3(v))))
 
     for (let i = 0; i < 4; i++) {
-      let i2 = (i + 1) % 4
+      const i2 = (i + 1) % 4
       this.bvh.getNodeEdge(this, boxverts[i], boxverts[i2])
       this.bvh.getNodeEdge(this, boxverts[i + 4], boxverts[i2 + 4])
       this.bvh.getNodeEdge(this, boxverts[i], boxverts[i + 4])
     }
 
-    for (let e of this.boxedges) {
+    for (const e of this.boxedges) {
       e.nodes.push(this)
       if (e.v1.nodes.indexOf(this) < 0) {
         e.v1.nodes.push(this)
@@ -715,30 +715,30 @@ export class BVHNode<
     this.omin.zero().addScalar(1e17)
     this.omax.zero().addScalar(-1e17)
 
-    let cd_orig = this.bvh.cd_orig
+    const cd_orig = this.bvh.cd_orig
 
     if (!this.leaf) {
-      for (let c of this.children!) {
+      for (const c of this.children!) {
         c.origUpdate(force, updateOrigVerts)
 
         this.omin.min(c.min)
         this.omax.max(c.max)
       }
     } else {
-      let omin = this.omin
-      let omax = this.omax
+      const omin = this.omin
+      const omax = this.omax
 
       if (updateOrigVerts) {
         for (let i = 0; i < 2; i++) {
-          let list = i ? this.otherVerts! : this.uniqueVerts!
+          const list = i ? this.otherVerts! : this.uniqueVerts!
 
-          for (let v of list) {
+          for (const v of list) {
             v.customData.get<OrigCoType>(cd_orig).value.load(v.co)
           }
         }
       }
 
-      for (let t of this.uniqueTris!) {
+      for (const t of this.uniqueTris!) {
         omin.min(t.v1.co)
         omin.min(t.v2.co)
         omin.min(t.v3.co)
@@ -780,7 +780,7 @@ export class BVHNode<
       return
     }
 
-    let addToRoot = test > 1
+    const addToRoot = test > 1
 
     if (!this.leaf) {
       console.error('bvh split called on non-leaf node', this)
@@ -799,11 +799,11 @@ export class BVHNode<
       n = n.parent
     }
 
-    let uniqueVerts = this.uniqueVerts!
-    let otherVerts = this.otherVerts!
-    let wireVerts = this.wireVerts!
-    let uniqueTris = this.uniqueTris!
-    let allTris = this.allTris!
+    const uniqueVerts = this.uniqueVerts!
+    const otherVerts = this.otherVerts!
+    const wireVerts = this.wireVerts!
+    const uniqueTris = this.uniqueTris!
+    const allTris = this.allTris!
 
     this.wireVerts = undefined as unknown as Set<IBVHVertex>
     this.indexVerts = undefined as unknown as (typeof this)['indexVerts']
@@ -832,9 +832,9 @@ export class BVHNode<
 
     if (!this.bvh.isDeforming) {
       // || this === this.bvh.root) {
-      let ax = Math.abs(max[0] - min[0])
-      let ay = Math.abs(max[1] - min[1])
-      let az = Math.abs(max[2] - min[2])
+      const ax = Math.abs(max[0] - min[0])
+      const ay = Math.abs(max[1] - min[1])
+      const az = Math.abs(max[2] - min[2])
 
       if (ax > ay && ax > az) {
         axis = 0
@@ -845,22 +845,22 @@ export class BVHNode<
       }
     }
 
-    let min2 = new Vector3(min)
-    let max2 = new Vector3(max)
+    const min2 = new Vector3(min)
+    const max2 = new Vector3(max)
 
     if (!this.bvh.isDeforming) {
       let smin = 1e17,
         smax = -1e17
 
       if (wireVerts) {
-        for (let v of wireVerts) {
+        for (const v of wireVerts) {
           split += v.co[axis]
           smin = Math.min(smin, v.co[axis])
           smax = Math.min(smax, v.co[axis])
         }
       }
 
-      for (let tri of uniqueTris!) {
+      for (const tri of uniqueTris!) {
         tri.nodes.remove(this)
 
         split += tri.v1.co[axis]
@@ -887,11 +887,11 @@ export class BVHNode<
       //try to handle teapot in a stadium situations
 
       split = (min[axis] + max[axis]) * 0.5
-      let mid = (smin + smax) * 0.5
+      const mid = (smin + smax) * 0.5
 
       split = (split + mid) * 0.5
 
-      let dd = Math.abs(max[axis] - min[axis]) * 0.1
+      const dd = Math.abs(max[axis] - min[axis]) * 0.1
 
       if (split < min[axis] + dd) {
         split = min[axis] + dd
@@ -900,7 +900,7 @@ export class BVHNode<
         split = max[axis] - dd
       }
     } else {
-      for (let tri of allTris) {
+      for (const tri of allTris) {
         tri.nodes.remove(this)
       }
 
@@ -917,7 +917,7 @@ export class BVHNode<
         min2[axis] = split
       }
 
-      let c = this.bvh._newNode(min2, max2)
+      const c = this.bvh._newNode(min2, max2)
       c.omin.load(min2)
       c.omax.load(max2)
 
@@ -935,18 +935,18 @@ export class BVHNode<
       this.children!.push(c)
     }
 
-    for (let tri of uniqueTris!) {
+    for (const tri of uniqueTris!) {
       tri.node = undefined
     }
 
-    let cd_node = this.bvh.cd_node
+    const cd_node = this.bvh.cd_node
 
-    for (let v of uniqueVerts) {
+    for (const v of uniqueVerts) {
       cd_node.get(v).node = undefined as unknown as BVHNode
     }
 
     if (addToRoot) {
-      for (let tri of allTris) {
+      for (const tri of allTris) {
         this.bvh.addTri(
           tri.id,
           tri.tri_idx,
@@ -962,17 +962,17 @@ export class BVHNode<
       }
 
       if (wireVerts) {
-        for (let v of wireVerts) {
+        for (const v of wireVerts) {
           this.bvh.addWireVert(v)
         }
       }
     } else {
-      for (let tri of allTris) {
+      for (const tri of allTris) {
         this.addTri(tri.id, tri.tri_idx, tri.v1, tri.v2, tri.v3, undefined, tri.l1, tri.l2, tri.l3)
       }
 
       if (wireVerts) {
-        for (let v of wireVerts) {
+        for (const v of wireVerts) {
           this.addWireVert(v)
         }
       }
@@ -981,10 +981,10 @@ export class BVHNode<
 
   /*gets tris based on distances to verts, instead of true tri distance*/
   closestTrisSimple(co: Vector3, radius: number, out: Set<BVHTri>) {
-    let radius_sqr = radius * radius
+    const radius_sqr = radius * radius
 
     if (!this.leaf) {
-      for (let c of this.children!) {
+      for (const c of this.children!) {
         if (!math.aabb_sphere_isect(co, radius, c.min, c.max)) {
           continue
         }
@@ -995,7 +995,7 @@ export class BVHNode<
       return
     }
 
-    for (let t of this.allTris) {
+    for (const t of this.allTris) {
       if (out.has(t)) {
         continue
       }
@@ -1012,7 +1012,7 @@ export class BVHNode<
 
   closestTris(co: Vector3, radius: number, out: Set<BVHTri>) {
     if (!this.leaf) {
-      for (let c of this.children!) {
+      for (const c of this.children!) {
         if (!math.aabb_sphere_isect(co, radius, c.min, c.max)) {
           continue
         }
@@ -1023,7 +1023,7 @@ export class BVHNode<
       return
     }
 
-    for (let t of this.allTris) {
+    for (const t of this.allTris) {
       if (out.has(t)) {
         continue
       }
@@ -1032,7 +1032,7 @@ export class BVHNode<
         t.no.load(math.normal_tri(t.v1.co, t.v2.co, t.v3.co))
       }
 
-      let dis = math.dist_to_tri_v3(co, t.v1.co, t.v2.co, t.v3.co, t.no)
+      const dis = math.dist_to_tri_v3(co, t.v1.co, t.v2.co, t.v3.co, t.no)
       if (dis < radius) {
         out.add(t)
       }
@@ -1040,12 +1040,12 @@ export class BVHNode<
   }
 
   closestOrigVerts(co: Vector3, radius: number, out: Set<IBVHVertex>) {
-    let radius2 = radius * radius
+    const radius2 = radius * radius
 
     this.origUpdate()
 
     if (!this.leaf) {
-      for (let c of this.children!) {
+      for (const c of this.children!) {
         c.origUpdate()
 
         if (!math.aabb_sphere_isect(co, radius, c.omin, c.omax)) {
@@ -1058,9 +1058,9 @@ export class BVHNode<
       return
     }
 
-    let cd_orig = this.bvh.cd_orig
+    const cd_orig = this.bvh.cd_orig
 
-    for (let v of this.uniqueVerts!) {
+    for (const v of this.uniqueVerts!) {
       if (v.customData.get<OrigCoType>(cd_orig).value.vectorDistanceSqr(co) < radius2) {
         out.add(v)
       }
@@ -1084,8 +1084,8 @@ export class BVHNode<
       let mina = 0,
         minb = 0
 
-      for (let c of this.children!) {
-        let dis = math.aabb_sphere_dist(co, c.min, c.max)
+      for (const c of this.children!) {
+        const dis = math.aabb_sphere_dist(co, c.min, c.max)
 
         if (mindis2 === undefined || dis < mindis2) {
           mindis2 = dis
@@ -1106,7 +1106,7 @@ export class BVHNode<
       if (minc === this.children![1]) {
         a = 1
         b = 0
-        let t = mina
+        const t = mina
         mina = minb
         minb = t
       }
@@ -1139,14 +1139,14 @@ export class BVHNode<
       let minv: IBVHVertex | undefined
 
       for (let i = 0; i < 2; i++) {
-        let set = i ? this.wireVerts : this.uniqueVerts
+        const set = i ? this.wireVerts : this.uniqueVerts
         this.bvh._i++
 
         if (!set) {
           continue
         }
 
-        for (let v of set) {
+        for (const v of set) {
           if (j === 0) {
             v.flag &= ~flag
           } else {
@@ -1155,7 +1155,7 @@ export class BVHNode<
             }
           }
 
-          let dis = v.co.vectorDistanceSqr(co)
+          const dis = v.co.vectorDistanceSqr(co)
 
           if (mindis2 === undefined || dis <= mindis2) {
             mindis2 = dis
@@ -1180,10 +1180,10 @@ export class BVHNode<
   }
 
   closestVerts(co: Vector3, radius: number, out: Set<IBVHVertex>) {
-    let radius2 = radius * radius
+    const radius2 = radius * radius
 
     if (!this.leaf) {
-      for (let c of this.children!) {
+      for (const c of this.children!) {
         if (!math.aabb_sphere_isect(co, radius, c.min, c.max)) {
           continue
         }
@@ -1194,7 +1194,7 @@ export class BVHNode<
       return
     }
 
-    for (let v of this.uniqueVerts!) {
+    for (const v of this.uniqueVerts!) {
       if (v.co.vectorDistanceSqr(co) < radius2) {
         out.add(v)
       }
@@ -1211,7 +1211,7 @@ export class BVHNode<
     out: Set<IBVHVertex>
   ) {
     if (!this.leaf) {
-      for (let c of this.children!) {
+      for (const c of this.children!) {
         /*
         XXX 
         let a = cvstmps.next().load(c.min);
@@ -1249,9 +1249,9 @@ export class BVHNode<
       return
     }
 
-    let co2 = cvstmps.next()
+    const co2 = cvstmps.next()
 
-    for (let v of this.uniqueVerts!) {
+    for (const v of this.uniqueVerts!) {
       co2.load(v.co).multVecMatrix(matrix)
 
       let dx = co2[0] - co[0]
@@ -1261,7 +1261,7 @@ export class BVHNode<
       dy = dy < 0 ? -dy : dy
 
       //let dis = (dx+dy)*0.5;
-      let dis = Math.max(dx, dy)
+      const dis = Math.max(dx, dy)
 
       if (dis < radius) {
         out.add(v)
@@ -1271,7 +1271,7 @@ export class BVHNode<
 
   vertsInTube(co: Vector3, ray: Vector3, radius: number, clip: boolean, isSquare = false, out: Set<IBVHVertex>) {
     if (!this.leaf) {
-      for (let c of this.children!) {
+      for (const c of this.children!) {
         if (!aabb_ray_isect(co, ray, c.min, c.max)) {
           continue
         }
@@ -1282,12 +1282,12 @@ export class BVHNode<
       return
     }
 
-    let co2 = vttmp1.load(co).add(ray)
-    let t1 = vttmp2
-    let t2 = vttmp3
-    let t3 = vttmp4
-    let rsqr = radius * radius
-    let raylen = clip ? ray.vectorLength() : 0.0
+    const co2 = vttmp1.load(co).add(ray)
+    const t1 = vttmp2
+    const t2 = vttmp3
+    const t3 = vttmp4
+    const rsqr = radius * radius
+    const raylen = clip ? ray.vectorLength() : 0.0
     let nray = ray
 
     if (clip) {
@@ -1295,15 +1295,15 @@ export class BVHNode<
     }
 
     for (let i = 0; i < 2; i++) {
-      let set = i ? this.wireVerts : this.uniqueVerts
+      const set = i ? this.wireVerts : this.uniqueVerts
 
       if (!set) {
         continue
       }
 
-      for (let v of set) {
+      for (const v of set) {
         t1.load(v.co).sub(co)
-        let t = t1.dot(nray)
+        const t = t1.dot(nray)
 
         if (t < 0) {
           continue
@@ -1314,7 +1314,7 @@ export class BVHNode<
         }
 
         co2.load(co).addFac(nray, t)
-        let dis = co2.vectorDistanceSqr(v.co)
+        const dis = co2.vectorDistanceSqr(v.co)
 
         if (dis < rsqr) {
           out.add(v)
@@ -1335,7 +1335,7 @@ export class BVHNode<
     tris?: Set<BVHTri>
   ) {
     if (!this.leaf) {
-      for (let c of this.children!) {
+      for (const c of this.children!) {
         if (!aabb_cone_isect(co, ray, radius1, radius2, c.min, c.max)) {
           continue
         }
@@ -1346,13 +1346,13 @@ export class BVHNode<
       return
     }
 
-    let co2 = _fictmp1.load(co).add(ray)
-    let ray2 = _fictmp2
+    const co2 = _fictmp1.load(co).add(ray)
+    const ray2 = _fictmp2
 
-    for (let t of this.allTris) {
-      let v1 = t.v1
-      let v2 = t.v2
-      let v3 = t.v3
+    for (const t of this.allTris) {
+      const v1 = t.v1
+      const v2 = t.v2
+      const v3 = t.v3
 
       let ok = tri_cone_isect(co, co2, radius1, radius2, v1, v2, v3, false)
       if (visibleOnly) {
@@ -1378,8 +1378,8 @@ export class BVHNode<
           ray2.load(ray).negate()
           co2.addFac(ray2, 0.0001)
 
-          let maxdis = co2.vectorDistance(co)
-          let isect = this.bvh.castRay(co2, ray2)
+          const maxdis = co2.vectorDistance(co)
+          const isect = this.bvh.castRay(co2, ray2)
 
           if (Math.random() > 0.9975) {
             console.log(co2, ray2, maxdis, isect, t, isect ? isect.dist : undefined)
@@ -1413,7 +1413,7 @@ export class BVHNode<
 
   vertsInCone(co: Vector3, ray: Vector3, radius1: number, radius2: number, isSquare: boolean, out: Set<IBVHVertex>) {
     if (!this.leaf) {
-      for (let c of this.children!) {
+      for (const c of this.children!) {
         if (!aabb_cone_isect(co, ray, radius1, radius2, c.min, c.max)) {
           continue
         }
@@ -1424,25 +1424,25 @@ export class BVHNode<
       return
     }
 
-    let co2 = vttmp1
-    let t1 = vttmp2
-    let t2 = vttmp3
-    let t3 = vttmp4
-    let raylen = ray.vectorLength()
+    const co2 = vttmp1
+    const t1 = vttmp2
+    const t2 = vttmp3
+    const t3 = vttmp4
+    const raylen = ray.vectorLength()
 
-    let report = Math.random() > 0.9995
+    const report = Math.random() > 0.9995
 
-    let nray = new Vector3(ray)
+    const nray = new Vector3(ray)
     nray.normalize()
 
     for (let i = 0; i < 2; i++) {
-      let set = i ? this.wireVerts : this.uniqueVerts
+      const set = i ? this.wireVerts : this.uniqueVerts
 
       if (!set) {
         continue
       }
 
-      for (let v of set) {
+      for (const v of set) {
         t1.load(v.co).sub(co)
         let t = t1.dot(nray)
 
@@ -1453,8 +1453,8 @@ export class BVHNode<
         co2.load(co).addFac(nray, t)
 
         t /= raylen
-        let r = radius1 * (1.0 - t) + radius2 * t
-        let rsqr = r * r
+        const r = radius1 * (1.0 - t) + radius2 * t
+        const rsqr = r * r
 
         let dis
 
@@ -1481,11 +1481,11 @@ export class BVHNode<
     if (!this.leaf) {
       if (this.children!.length === 2) {
         let [c1, c2] = this.children!
-        let d1 = aabb_sphere_dist(p, c1.min, c1.max)
-        let d2 = aabb_sphere_dist(p, c2.min, c2.max)
+        const d1 = aabb_sphere_dist(p, c1.min, c1.max)
+        const d2 = aabb_sphere_dist(p, c2.min, c2.max)
 
         if (c1 > c2) {
-          let t = c1
+          const t = c1
           c1 = c2
           c2 = t
         }
@@ -1520,13 +1520,13 @@ export class BVHNode<
       }
     }
 
-    let ret = this._closestRets.next()
+    const ret = this._closestRets.next()
     let ok = false
 
-    for (let tri of this.allTris) {
-      let cp = closest_point_on_tri(p, tri.v1, tri.v2, tri.v3, tri.no)
+    for (const tri of this.allTris) {
+      const cp = closest_point_on_tri(p, tri.v1, tri.v2, tri.v3, tri.no)
 
-      let dis = cp.dist
+      const dis = cp.dist
 
       if (dis < mindis) {
         ok = true
@@ -1546,16 +1546,16 @@ export class BVHNode<
   }
 
   castRay(origin: Vector3, dir: Vector3): IsectRet | undefined {
-    let ret = this._castRayRets.next()
+    const ret = this._castRayRets.next()
     let found = false
 
     if (!this.leaf) {
-      for (let c of this.children!) {
+      for (const c of this.children!) {
         if (!aabb_ray_isect(origin, dir, c.min, c.max)) {
           continue
         }
 
-        let ret2 = c.castRay(origin, dir)
+        const ret2 = c.castRay(origin, dir)
         if (ret2 && (!found || ret2.dist < ret.dist)) {
           found = true
           ret.load(ret2)
@@ -1569,8 +1569,8 @@ export class BVHNode<
       }
     }
 
-    for (let t of this.allTris) {
-      let isect = ray_tri_isect(origin, dir, t.v1.co, t.v2.co, t.v3.co)
+    for (const t of this.allTris) {
+      const isect = ray_tri_isect(origin, dir, t.v1.co, t.v2.co, t.v3.co)
 
       if (!isect || isect[2] < 0.0) {
         continue
@@ -1605,23 +1605,23 @@ export class BVHNode<
     l2: OptionalIf<Loop, OPT['grid']>,
     l3: OptionalIf<Loop, OPT['grid']>
   ): BVHTri {
-    let stack = addtri_stack
+    const stack = addtri_stack
     let si = 0
 
     stack[si++] = this
 
-    let centx = (v1.co[0] + v2.co[0] + v3.co[0]) / 3.0
-    let centy = (v1.co[1] + v2.co[1] + v3.co[1]) / 3.0
-    let centz = (v1.co[2] + v2.co[2] + v3.co[2]) / 3.0
+    const centx = (v1.co[0] + v2.co[0] + v3.co[0]) / 3.0
+    const centy = (v1.co[1] + v2.co[1] + v3.co[1]) / 3.0
+    const centz = (v1.co[2] + v2.co[2] + v3.co[2]) / 3.0
 
-    let tri = this.bvh._getTri(id, tri_idx, v1, v2, v3)
+    const tri = this.bvh._getTri(id, tri_idx, v1, v2, v3)
 
     tri.l1 = l1
     tri.l2 = l2
     tri.l3 = l3
 
     while (si > 0) {
-      let node = stack[--si]
+      const node = stack[--si]
 
       if (!node) {
         break
@@ -1633,13 +1633,13 @@ export class BVHNode<
           closest
 
         for (let i = 0; i < node.children.length; i++) {
-          let c = node.children[i]
+          const c = node.children[i]
 
-          let dx = centx - c.cent[0]
-          let dy = centy - c.cent[1]
-          let dz = centz - c.cent[2]
+          const dx = centx - c.cent[0]
+          const dy = centy - c.cent[1]
+          const dz = centz - c.cent[2]
 
-          let dis = dx * dx + dy * dy + dz * dz
+          const dis = dx * dx + dy * dy + dz * dz
           if (dis < mindis) {
             closest = c
             mindis = dis
@@ -1680,7 +1680,7 @@ export class BVHNode<
 
   addWireVert(v: IBVHVertex) {
     if (!this.leaf) {
-      for (let c of this.children!) {
+      for (const c of this.children!) {
         if (math.point_in_aabb(v, c.min, c.max)) {
           c.addWireVert(v)
         }
@@ -1725,7 +1725,7 @@ export class BVHNode<
       return 0
     }
 
-    let p = this.parent
+    const p = this.parent
     if (p.tottri < this.bvh.leafLimit * 1.75) {
       return 0
     }
@@ -1739,9 +1739,9 @@ export class BVHNode<
 
     if (1) {
       //aspect ratio test
-      let ax = this.halfsize[0] / this.halfsize[1]
-      let ay = this.halfsize[1] / this.halfsize[2]
-      let az = this.halfsize[2] / this.halfsize[0]
+      const ax = this.halfsize[0] / this.halfsize[1]
+      const ay = this.halfsize[1] / this.halfsize[2]
+      const az = this.halfsize[2] / this.halfsize[0]
 
       const l2 = 2.0,
         l1 = 1.0 / l2
@@ -1761,17 +1761,17 @@ export class BVHNode<
 
     if (0) {
       //area test
-      let area1 = this.halfsize[0] * 2 * (this.halfsize[1] * 2) * (this.halfsize[2] * 2)
-      let side = 2.25
-      let limit = area1 * side * side
+      const area1 = this.halfsize[0] * 2 * (this.halfsize[1] * 2) * (this.halfsize[2] * 2)
+      const side = 2.25
+      const limit = area1 * side * side
 
-      let p = this.parent
-      for (let c of p.children!) {
+      const p = this.parent
+      for (const c of p.children!) {
         if (c.tottri < this.bvh.leafLimit >> 2) {
           continue
         }
 
-        let area2 = (c.halfsize[0] * 2) ** 2 + (c.halfsize[1] * 2) ** 2 + (c.halfsize[2] * 2) ** 2
+        const area2 = (c.halfsize[0] * 2) ** 2 + (c.halfsize[1] * 2) ** 2 + (c.halfsize[2] * 2) ** 2
         if (area2 >= limit) {
           split = true
 
@@ -1791,7 +1791,7 @@ export class BVHNode<
       return 0
     }
 
-    let split = this.leaf && this.uniqueTris!.size >= this.bvh.leafLimit && this.depth <= this.bvh.depthLimit
+    const split = this.leaf && this.uniqueTris!.size >= this.bvh.leafLimit && this.depth <= this.bvh.depthLimit
 
     if (split) {
       return 1
@@ -1803,7 +1803,7 @@ export class BVHNode<
   }
 
   _addVert(v: IBVHVertex, cd_node: AttrRef<CDNodeInfo>, isDeforming: boolean) {
-    let n = cd_node.get(v)
+    const n = cd_node.get(v)
 
     if (isDeforming) {
       if (!n.node && math.point_in_hex(v.co, this.boxverts)) {
@@ -1857,7 +1857,7 @@ export class BVHNode<
     this.flag &= ~BVHFlags.UPDATE_UNIQUE_VERTS_2
 
     if (!this.leaf) {
-      for (let c of this.children!) {
+      for (const c of this.children!) {
         c.updateUniqueVerts()
       }
 
@@ -1870,9 +1870,9 @@ export class BVHNode<
     const cd_node = this.bvh.cd_node
     const isDeforming = this.bvh.isDeforming
 
-    for (let tri of this.allTris) {
+    for (const tri of this.allTris) {
       for (let i = 0; i < 3; i++) {
-        let v = tri.vs[i]
+        const v = tri.vs[i]
 
         if (!v) {
           console.warn('Tri error!')
@@ -1880,7 +1880,7 @@ export class BVHNode<
           break
         }
 
-        let cdn = cd_node.get(v)
+        const cdn = cd_node.get(v)
 
         if (cdn.node === this) {
           cdn.node = undefined as unknown as BVHNode
@@ -1892,15 +1892,15 @@ export class BVHNode<
   }
 
   updateNormalsGrids = function (this: BVHNode<OPT & {dead: false}>) {
-    let mesh = this.bvh.mesh
-    let cd_grid = this.bvh.cd_grid
+    const mesh = this.bvh.mesh
+    const cd_grid = this.bvh.cd_grid
 
-    let ls = new Set<Loop>()
+    const ls = new Set<Loop>()
 
     let hasBoundary = false
-    for (let v of this.uniqueVerts!) {
-      let lEid = (v as unknown as any).loopEid as number | undefined
-      let l = lEid !== undefined ? mesh.eidMap.get(lEid) : undefined
+    for (const v of this.uniqueVerts!) {
+      const lEid = (v as unknown as any).loopEid as number | undefined
+      const l = lEid !== undefined ? mesh.eidMap.get(lEid) : undefined
 
       hasBoundary = hasBoundary || (v as unknown as any).bLink !== undefined
 
@@ -1912,7 +1912,7 @@ export class BVHNode<
     }
 
     if (0 && hasBoundary) {
-      for (let l of new Set(ls)) {
+      for (const l of new Set(ls)) {
         ls.add(l)
         ls.add(l.radial_next)
         ls.add(l.radial_next.next)
@@ -1924,13 +1924,13 @@ export class BVHNode<
       }
     }
 
-    for (let tri of this.uniqueTris!) {
+    for (const tri of this.uniqueTris!) {
       tri.no.load(math.normal_tri(tri.v1.co, tri.v2.co, tri.v3.co))
       tri.area = math.tri_area(tri.v1.co, tri.v2.co, tri.v3.co)
     }
 
-    for (let l of ls) {
-      let grid = cd_grid.get(l)
+    for (const l of ls) {
+      const grid = cd_grid.get(l)
 
       grid.flagNormalsUpdate()
       this.bvh.updateGridLoops.add(l)
@@ -1957,10 +1957,10 @@ export class BVHNode<
     //*/
 
     return
-    let vs = new Set<Vertex>()
-    let fs = new Set<Face>()
+    const vs = new Set<Vertex>()
+    const fs = new Set<Face>()
 
-    for (let tri of this.uniqueTris!) {
+    for (const tri of this.uniqueTris!) {
       //stupid hack to get better normals along grid seams
       /*
       let d = 4;
@@ -1975,9 +1975,9 @@ export class BVHNode<
       tri.v3.no.zero()
       //*/
 
-      let l1 = mesh.eidMap.get((tri.v1 as any).loopEid as number) as Loop
-      let l2 = mesh.eidMap.get((tri.v2 as any).loopEid as number) as Loop
-      let l3 = mesh.eidMap.get((tri.v3 as any).loopEid as number) as Loop
+      const l1 = mesh.eidMap.get((tri.v1 as any).loopEid as number) as Loop
+      const l2 = mesh.eidMap.get((tri.v2 as any).loopEid as number) as Loop
+      const l3 = mesh.eidMap.get((tri.v3 as any).loopEid as number) as Loop
 
       if (l1) {
         vs.add(l1.v)
@@ -1993,25 +1993,25 @@ export class BVHNode<
       }
     }
 
-    for (let v of vs) {
+    for (const v of vs) {
       v.no.zero()
     }
 
-    for (let f of fs) {
+    for (const f of fs) {
       f.calcNormal()
-      for (let v of f.verts) {
+      for (const v of f.verts) {
         v.no.add(f.no)
       }
     }
 
-    for (let v of vs) {
+    for (const v of vs) {
       v.no.normalize()
     }
 
-    let n = new Vector3()
+    const n = new Vector3()
 
-    for (let tri of this.uniqueTris!) {
-      let n2 = math.normal_tri(tri.v1.co, tri.v2.co, tri.v3.co)
+    for (const tri of this.uniqueTris!) {
+      const n2 = math.normal_tri(tri.v1.co, tri.v2.co, tri.v3.co)
 
       tri.no.load(n2)
       tri.v1.no.add(n2)
@@ -2038,7 +2038,7 @@ export class BVHNode<
       }
     }
 
-    for (let tri of this.uniqueTris!) {
+    for (const tri of this.uniqueTris!) {
       tri.v1.no.normalize()
       tri.v2.no.normalize()
       tri.v3.no.normalize()
@@ -2069,9 +2069,9 @@ export class BVHNode<
       return
     }
 
-    let eidMap = this.bvh.mesh.eidMap
+    const eidMap = this.bvh.mesh.eidMap
 
-    for (let t of this.uniqueTris) {
+    for (const t of this.uniqueTris) {
       let bad = !t.v1 || !t.v2 || !t.v3 || t.v1.eid < 0 || t.v2.eid < 0 || t.v3.eid < 0
 
       bad = bad || isNaN(t.v1.co.dot(t.v1.co))
@@ -2085,7 +2085,7 @@ export class BVHNode<
         continue
       }
 
-      let no = math.normal_tri(t.v1.co, t.v2.co, t.v3.co)
+      const no = math.normal_tri(t.v1.co, t.v2.co, t.v3.co)
 
       t.no[0] = no[0]
       t.no[1] = no[1]
@@ -2130,15 +2130,15 @@ export class BVHNode<
       }
     }
 
-    for (let bvhv of this.uniqueVerts) {
+    for (const bvhv of this.uniqueVerts) {
       const v = bvhv as Vertex
-      let no = v.no
+      const no = v.no
       let x = 0,
         y = 0,
         z = 0
       let ok = false
 
-      for (let e of v.edges) {
+      for (const e of v.edges) {
         if (!e.l) {
           continue
         }
@@ -2147,8 +2147,8 @@ export class BVHNode<
         let _i = 0
 
         do {
-          let fno = l.f.no
-          let fx = fno[0],
+          const fno = l.f.no
+          const fx = fno[0],
             fy = fno[1],
             fz = fno[2]
 
@@ -2186,37 +2186,37 @@ export class BVHNode<
     this.indexLoops = []
     this.indexTris = []
     this.indexEdges = []
-    let vlist = this.indexVerts!
-    let llist = this.indexLoops!
-    let trimap = this.indexTris!
-    let emap = this.indexEdges!
+    const vlist = this.indexVerts!
+    const llist = this.indexLoops!
+    const trimap = this.indexTris!
+    const emap = this.indexEdges!
 
     const computeValidEdges = this.bvh.computeValidEdges
 
     const cd_grid = this.bvh.cd_grid
 
-    let edgeExists = (v1: GenericGridVert, v2: GenericGridVert) => {
+    const edgeExists = (v1: GenericGridVert, v2: GenericGridVert) => {
       if (!computeValidEdges) {
         return true
       }
 
-      for (let v3 of v1.neighbors) {
+      for (const v3 of v1.neighbors) {
         if (v3 === v2) {
           return true
         }
       }
 
-      for (let v3 of v2.neighbors) {
+      for (const v3 of v2.neighbors) {
         if (v3 === v1) {
           console.warn('Neighbor error!')
           for (let i = 0; i < 2; i++) {
-            let v = i ? v2 : v1
+            const v = i ? v2 : v1
             if (v.loopEid === undefined) {
               console.warn('Missing loop!', v.loopEid, v)
               continue
             }
 
-            let l = this.bvh.mesh.eidMap.get<Loop>(v.loopEid)
+            const l = this.bvh.mesh.eidMap.get<Loop>(v.loopEid)
             if (!l || l.type !== MeshTypes.LOOP) {
               console.warn('Missing loop', v.loopEid, v)
               continue
@@ -2231,20 +2231,20 @@ export class BVHNode<
       return false
     }
 
-    for (let v of this.uniqueVerts!) {
+    for (const v of this.uniqueVerts!) {
       v.index = vlist.length
 
       vlist.push(v)
       llist.push(v)
     }
 
-    for (let v of this.otherVerts!) {
+    for (const v of this.otherVerts!) {
       v.index = vlist.length
       vlist.push(v)
       llist.push(v)
     }
 
-    for (let tri of this.uniqueTris!) {
+    for (const tri of this.uniqueTris!) {
       trimap.push(tri.v1.index)
       trimap.push(tri.v2.index)
       trimap.push(tri.v3.index)
@@ -2282,20 +2282,20 @@ export class BVHNode<
     this.indexTris = []
     this.indexEdges = []
 
-    let mesh = this.bvh.mesh
+    const mesh = this.bvh.mesh
 
-    for (let tri of this.uniqueTris! as Set<BVHTri<{grid: false}>>) {
+    for (const tri of this.uniqueTris! as Set<BVHTri<{grid: false}>>) {
       tri.v1.index = tri.v2.index = tri.v3.index = -1
       tri.l1.index = tri.l2.index = tri.l3.index = -1
     }
 
-    let cd_fset = getFaceSets(mesh, false)
+    const cd_fset = getFaceSets(mesh, false)
 
     let cdlayers = mesh.loops.customData.flatlist
     cdlayers = cdlayers.filter((cdl) => !(cdl.flag & (CDFlags.TEMPORARY | CDFlags.IGNORE_FOR_INDEXBUF)))
 
     let bridgeTris
-    let dflag = MeshFlags.MAKE_FACE_TEMP
+    const dflag = MeshFlags.MAKE_FACE_TEMP
     let bridgeIdxMap
 
     if (isDef && DEFORM_BRIDGE_TRIS) {
@@ -2309,20 +2309,20 @@ export class BVHNode<
         indexEdges: [],
       }
 
-      for (let v of this.uniqueVerts!) {
+      for (const v of this.uniqueVerts!) {
         v.flag &= ~dflag
         v.index = -1
       }
 
-      for (let v of this.otherVerts!) {
+      for (const v of this.otherVerts!) {
         v.flag |= dflag
         v.index = -1
       }
     } else {
-      for (let v of this.uniqueVerts!) {
+      for (const v of this.uniqueVerts!) {
         v.flag &= ~dflag
       }
-      for (let v of this.otherVerts!) {
+      for (const v of this.otherVerts!) {
         v.flag &= ~dflag
       }
     }
@@ -2336,18 +2336,18 @@ export class BVHNode<
           const indexVerts = this.indexVerts!
           const indexLoops = this.indexLoops!
 
-          for (let tri of this.uniqueTris!) {
+          for (const tri of this.uniqueTris!) {
             tri.v1.index = tri.v2.index = tri.v3.index = -1
           }
-          for (let tri of this.uniqueTris!) {
+          for (const tri of this.uniqueTris!) {
             for (let i = 0; i < 3; i++) {
-              let v = tri.vs[i] as Vertex
+              const v = tri.vs[i] as Vertex
 
               if (v.index !== -1) {
                 continue
               }
 
-              for (let e of v.edges) {
+              for (const e of v.edges) {
                 if (e.l) {
                   indexLoops.push(e.l)
                   break
@@ -2360,13 +2360,13 @@ export class BVHNode<
           }
 
           if (0) {
-            let list = step ? this.otherVerts! : this.uniqueVerts!
+            const list = step ? this.otherVerts! : this.uniqueVerts!
 
-            for (let bvhv of list) {
+            for (const bvhv of list) {
               const v = bvhv as Vertex
               let ok = false
 
-              for (let e of v.edges) {
+              for (const e of v.edges) {
                 if (e.l) {
                   ok = true
                   indexLoops.push(e.l)
@@ -2392,7 +2392,7 @@ export class BVHNode<
 
           let ok = false
 
-          for (let e of v.edges) {
+          for (const e of v.edges) {
             if (e.l) {
               ok = true
               this.indexLoops.push(e.l)
@@ -2407,7 +2407,7 @@ export class BVHNode<
         }
 
         //deal with deform bridge tris
-        for (let tri of this.allTris) {
+        for (const tri of this.allTris) {
           let ok = false
 
           for (let i = 0; i < 3; i++) {
@@ -2427,7 +2427,7 @@ export class BVHNode<
           }
 
           for (let i = 0; i < 3; i++) {
-            let v = tri.vs[i]
+            const v = tri.vs[i]
             let l
 
             switch (i) {
@@ -2451,7 +2451,7 @@ export class BVHNode<
                 this.boxbridgetris.indexLoops.push(l)
               }
             } else if (!bridgeIdxMap!.has(v)) {
-              let idx = this.boxbridgetris.indexVerts.length
+              const idx = this.boxbridgetris.indexVerts.length
               this.boxbridgetris.indexVerts.push(v)
               this.boxbridgetris.indexLoops.push(l)
 
@@ -2461,7 +2461,7 @@ export class BVHNode<
         }
       }
 
-      let deadtris = new Set<BVHTri>()
+      const deadtris = new Set<BVHTri>()
 
       /*
       this.indexTris.length = 0;
@@ -2470,7 +2470,7 @@ export class BVHNode<
       this.indexEdges.length = 0;
       //*/
 
-      for (let tri of this.uniqueTris!) {
+      for (const tri of this.uniqueTris!) {
         let indexVerts, indexLoops, indexTris, indexEdges
 
         let i1: number, i2: number, i3: number
@@ -2564,20 +2564,20 @@ export class BVHNode<
       }
 
       if (deadtris.size > 0) {
-        for (let v of this.uniqueVerts!) {
+        for (const v of this.uniqueVerts!) {
           if (v.eid < 0) {
             this.uniqueVerts!.delete(v)
           }
         }
 
-        for (let v of this.otherVerts!) {
+        for (const v of this.otherVerts!) {
           if (v.eid < 0) {
             this.otherVerts.delete(v)
           }
         }
       }
 
-      for (let tri of deadtris) {
+      for (const tri of deadtris) {
         this.uniqueTris.delete(tri)
         this.bvh.removeTri(tri)
       }
@@ -2585,8 +2585,8 @@ export class BVHNode<
       return
     }
 
-    let ls = new Set<Loop>()
-    let vs = new Set<Vertex>()
+    const ls = new Set<Loop>()
+    const vs = new Set<Vertex>()
 
     function validEdge(v1: IBVHVertex, v2: IBVHVertex) {
       if (v1.eid < 0 || v2.eid < 0) {
@@ -2597,7 +2597,7 @@ export class BVHNode<
         return true
       }
 
-      let e = v1 instanceof Vertex && v2 instanceof Vertex && mesh.getEdge(v1 as Vertex, v2 as Vertex)
+      const e = v1 instanceof Vertex && v2 instanceof Vertex && mesh.getEdge(v1 as Vertex, v2 as Vertex)
       if (!e) {
         return false
       }
@@ -2609,7 +2609,7 @@ export class BVHNode<
       return true
     }
 
-    for (let tri of this.uniqueTris) {
+    for (const tri of this.uniqueTris) {
       if (tri.l1.eid >= 0 && tri.l2.eid >= 0 && tri.l3.eid >= 0) {
         vs.add(tri.v1 as Vertex)
         vs.add(tri.v2 as Vertex)
@@ -2621,15 +2621,15 @@ export class BVHNode<
       }
     }
 
-    let lmap = new Map()
-    let lmap2 = new Map()
+    const lmap = new Map()
+    const lmap2 = new Map()
 
     let idxbase = 0
 
-    for (let v of vs) {
+    for (const v of vs) {
       let hash, cdata
 
-      for (let e of v.edges) {
+      for (const e of v.edges) {
         for (let l of e.loops) {
           if (l.eid < 0 || l.v.eid < 0) {
             console.warn('bvh corruption', l)
@@ -2643,9 +2643,9 @@ export class BVHNode<
           //let key = "" + v.eid;
           let key = v.eid
 
-          for (let layer of cdlayers) {
-            let data = l.customData[layer.index]
-            let hash2 = data.hash(layer.islandSnapLimit) ?? 0
+          for (const layer of cdlayers) {
+            const data = l.customData[layer.index]
+            const hash2 = data.hash(layer.islandSnapLimit) ?? 0
 
             key = ~~(key ^ hash2)
 
@@ -2681,7 +2681,7 @@ export class BVHNode<
       }
     }
 
-    for (let l of ls) {
+    for (const l of ls) {
       if (l.eid < 0 || l.v.eid < 0) {
         console.error('BVH loop corruption', l, l.eid, l.v.eid)
         continue
@@ -2706,12 +2706,12 @@ export class BVHNode<
       let i = 0
 
       i = 0
-      for (let l of this.indexLoops) {
+      for (const l of this.indexLoops) {
         l.index = i++
       }
 
       i = 0
-      for (let l of this.boxbridgetris.indexLoops) {
+      for (const l of this.boxbridgetris.indexLoops) {
         l.index = i++
       }
     }
@@ -2721,7 +2721,7 @@ export class BVHNode<
     let idxmap = this.indexTris
     let eidxmap = this.indexEdges
 
-    for (let tri of this.uniqueTris) {
+    for (const tri of this.uniqueTris) {
       let bad = tri.l1.index < 0 || tri.l2.index < 0 || tri.l3.index < 0
       bad = bad || tri.l1.eid < 0 || tri.l2.eid < 0 || tri.l3.eid < 0
       bad = bad || tri.v1.eid < 0 || tri.v2.eid < 0 || tri.v3.eid < 0
@@ -2765,11 +2765,11 @@ export class BVHNode<
   updateOtherVerts = function (this: BVHNode<{leaf: true}>) {
     this.flag &= ~BVHFlags.UPDATE_OTHER_VERTS
 
-    let othervs = (this.otherVerts = new Set())
+    const othervs = (this.otherVerts = new Set())
 
     //just do uniqueTris, otherVerts is used to calculate index
     //buffers for gl
-    for (let tri of this.uniqueTris) {
+    for (const tri of this.uniqueTris) {
       if (!this.uniqueVerts.has(tri.v1)) {
         othervs.add(tri.v1)
       }
@@ -2790,7 +2790,7 @@ export class BVHNode<
     if (this.leaf && this.flag & BVHFlags.UPDATE_INDEX_VERTS) {
       const leafThis = this as BVHNode<{leaf: true; grid: OPT['grid']}>
 
-      for (let tri of leafThis.uniqueTris) {
+      for (const tri of leafThis.uniqueTris) {
         if (!tri.v1 || !tri.v2 || !tri.v3) {
           console.warn('Corrupted tri in bvh', tri)
           leafThis.uniqueTris.delete(tri)
@@ -2814,8 +2814,8 @@ export class BVHNode<
       if (this.flag & BVHFlags.UPDATE_UNIQUE_VERTS) {
         this.flag |= BVHFlags.UPDATE_INDEX_VERTS
 
-        for (let v of leafThis.uniqueVerts) {
-          let node = this.bvh!.cd_node.get(v) as CDNodeInfo<{dead: true}>
+        for (const v of leafThis.uniqueVerts) {
+          const node = this.bvh!.cd_node.get(v) as CDNodeInfo<{dead: true}>
           node.node = undefined
         }
 
@@ -2854,7 +2854,7 @@ export class BVHNode<
     //}
 
     if (!this.leaf && this.children.length > 0) {
-      for (let c of this.children) {
+      for (const c of this.children) {
         c.update()
 
         this.min.min(c.min)
@@ -2870,11 +2870,11 @@ export class BVHNode<
       this.halfsize.load(this.max).sub(this.min).mulScalar(0.5)
     } else if (this.leaf) {
       const leafThis = this as BVHNode<OPT & {leaf: true}>
-      let min = this.min
-      let max = this.max
+      const min = this.min
+      const max = this.max
 
-      let omin = new Vector3(min)
-      let omax = new Vector3(max)
+      const omin = new Vector3(min)
+      const omax = new Vector3(max)
       let size = max[0] - min[0] + (max[1] - min[1]) + (max[2] - min[2])
       size /= 3.0
 
@@ -2884,14 +2884,14 @@ export class BVHNode<
       let tot = 0
 
       if (leafThis.wireVerts) {
-        for (let v of leafThis.wireVerts) {
+        for (const v of leafThis.wireVerts) {
           min.min(v.co)
           max.max(v.co)
           tot++
         }
       }
 
-      for (let tri of leafThis.uniqueTris) {
+      for (const tri of leafThis.uniqueTris) {
         if (!tri.v1) {
           leafThis.uniqueTris.delete(tri)
           continue
@@ -3074,10 +3074,10 @@ export class BVH<
   }
 
   get leaves() {
-    let this2 = this as BVH<OPT & {dead: false}>
+    const this2 = this as BVH<OPT & {dead: false}>
 
     return (function* () {
-      for (let n of this2.nodes) {
+      for (const n of this2.nodes) {
         if (n.leaf) {
           yield n
         }
@@ -3097,22 +3097,22 @@ export class BVH<
   //*/
 
   static create<BVHType extends BVH = BVH>(mesh: Mesh, args: IBVHCreateArgs = {}): BVHType {
-    let times: (number | string)[] = [util.time_ms()] //0
+    const times: (number | string)[] = [util.time_ms()] //0
 
-    let storeVerts = args.storeVerts ?? true
-    let leafLimit = args.leafLimit
-    let depthLimit = args.depthLimit
-    let addWireVerts = args.addWireVerts
-    let deformMode = args.deformMode
-    let useGrids = args.useGrids ?? true
-    let freelist = args.freelist
-    let onCreate = args.onCreate
+    const storeVerts = args.storeVerts ?? true
+    const leafLimit = args.leafLimit
+    const depthLimit = args.depthLimit
+    const addWireVerts = args.addWireVerts
+    const deformMode = args.deformMode
+    const useGrids = args.useGrids ?? true
+    const freelist = args.freelist
+    const onCreate = args.onCreate
 
     mesh.updateMirrorTags()
 
     times.push(util.time_ms()) //1
 
-    let cdname = this.name
+    const cdname = this.name
 
     if (!mesh.verts.customData.hasNamedLayer(cdname, CDNodeInfo)) {
       mesh.verts.addCustomDataLayer(CDNodeInfo, cdname).flag |= CDFlags.TEMPORARY
@@ -3136,25 +3136,25 @@ export class BVH<
     times.push(util.time_ms()) //3
 
     if (!aabb) {
-      let d = 1
+      const d = 1
       aabb = [new Vector3([-d, -d, -d]), new Vector3([d, d, d])]
     }
 
     aabb[0] = new Vector3(aabb[0])
     aabb[1] = new Vector3(aabb[1])
 
-    let pad = Math.max(aabb[0].vectorDistance(aabb[1]) * 0.001, 0.001)
+    const pad = Math.max(aabb[0].vectorDistance(aabb[1]) * 0.001, 0.001)
 
     aabb[0].subScalar(pad)
     aabb[1].addScalar(pad)
 
-    let cd_grid = useGrids ? GridBase.meshGridRef(mesh) : new AttrRef<GridBase>(-1)
+    const cd_grid = useGrids ? GridBase.meshGridRef(mesh) : new AttrRef<GridBase>(-1)
     let tottri = 0
 
     if (cd_grid.exists) {
       //estimate tottri from number of grid points
-      for (let l of mesh.loops) {
-        let grid = cd_grid.get(l)
+      for (const l of mesh.loops) {
+        const grid = cd_grid.get(l)
 
         tottri += grid.points.length * 2
       }
@@ -3163,7 +3163,7 @@ export class BVH<
     }
 
     //tottri is used by the SpatialHash subclass
-    let bvh: BVHType = new this(mesh, aabb[0], aabb[1], tottri) as unknown as BVHType
+    const bvh: BVHType = new this(mesh, aabb[0], aabb[1], tottri) as unknown as BVHType
     //console.log("Saved tri freelist:", freelist);
 
     console.log('isDeforming', deformMode)
@@ -3202,17 +3202,17 @@ export class BVH<
     const cd_node = bvh.cd_node
 
     if (cd_grid.exists) {
-      for (let l of mesh.loops) {
-        let grid = cd_grid.get(l)
+      for (const l of mesh.loops) {
+        const grid = cd_grid.get(l)
 
-        for (let v of grid.points) {
+        for (const v of grid.points) {
           const vnode = cd_node.get(v) as CDNodeInfo<{dead: true}>
           vnode.vel.zero()
           vnode.node = undefined
         }
       }
     } else {
-      for (let v of mesh.verts) {
+      for (const v of mesh.verts) {
         const vnode = cd_node.get(v) as CDNodeInfo<{dead: true}>
         vnode.vel.zero()
         vnode.node = undefined
@@ -3223,11 +3223,11 @@ export class BVH<
     bvh.storeVerts = storeVerts
 
     if (cd_grid.exists) {
-      let rand = new util.MersenneRandom(0)
+      const rand = new util.MersenneRandom(0)
       const cd_node = bvh.cd_node
 
       //we carefully randomize insertion order
-      let tris = [] as (GridVert | number)[]
+      const tris = [] as (GridVert | number)[]
 
       /*
       for (let l of mesh.loops) {
@@ -3240,17 +3240,17 @@ export class BVH<
       }
       */
 
-      for (let l of mesh.loops) {
-        let grid = cd_grid.get(l)
+      for (const l of mesh.loops) {
+        const grid = cd_grid.get(l)
 
         grid.recalcFlag = QRecalcFlags.EVERYTHING
         //grid.recalcFlag |= QRecalcFlags.TOPO | QRecalcFlags.NORMALS | QRecalcFlags.NEIGHBORS;
       }
 
-      for (let l of mesh.loops) {
-        let grid = cd_grid.get(l)
+      for (const l of mesh.loops) {
+        const grid = cd_grid.get(l)
 
-        for (let p of grid.points) {
+        for (const p of grid.points) {
           const vnode = cd_node.get(p) as CDNodeInfo<{dead: true}>
           vnode.node = undefined
         }
@@ -3258,7 +3258,7 @@ export class BVH<
         grid.update(mesh, l, cd_grid)
         //grid.recalcNeighbors(mesh, l, cd_grid);
 
-        let a = tris.length
+        const a = tris.length
         grid.makeBVHTris(mesh, bvh, l, cd_grid, tris)
         grid.updateMirrorFlags(mesh, l, cd_grid)
       }
@@ -3266,8 +3266,8 @@ export class BVH<
       times.push(util.time_ms()) //4
 
       while (tris.length > 0) {
-        let i = ~~(((rand.random() * tris.length) / 5) * 0.99999) * 5
-        let i2 = tris.length - 5
+        const i = ~~(((rand.random() * tris.length) / 5) * 0.99999) * 5
+        const i2 = tris.length - 5
 
         bvh.addTri(
           tris[i] as number,
@@ -3286,7 +3286,7 @@ export class BVH<
 
       times.push(util.time_ms()) //5
 
-      for (let node of bvh.nodes) {
+      for (const node of bvh.nodes) {
         if (node.leaf) {
           node.flag |= BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_DRAW
           bvh.updateNodes.add(node)
@@ -3299,17 +3299,17 @@ export class BVH<
 
       times.push(util.time_ms()) //7
     } else {
-      let ltris = mesh.loopTris!
+      const ltris = mesh.loopTris!
 
-      let order = new Array(ltris.length / 3)
+      const order = new Array(ltris.length / 3)
 
       for (let i = 0; i < ltris.length; i += 3) {
         order[~~(i / 3)] = i
       }
 
       for (let i = 0; i < order.length >> 1; i++) {
-        let ri = ~~(util.random() * order.length * 0.99999)
-        let t = order[ri]
+        const ri = ~~(util.random() * order.length * 0.99999)
+        const t = order[ri]
 
         order[ri] = order[i]
         order[i] = t
@@ -3334,9 +3334,9 @@ export class BVH<
         return f;
       }) //*/
 
-      for (let ri of order) {
-        let i = ri
-        let l1 = ltris[i],
+      for (const ri of order) {
+        const i = ri
+        const l1 = ltris[i],
           l2 = ltris[i + 1],
           l3 = ltris[i + 2]
 
@@ -3344,10 +3344,10 @@ export class BVH<
       }
 
       if (addWireVerts) {
-        for (let v of mesh.verts) {
+        for (const v of mesh.verts) {
           let wire = true
 
-          for (let e of v.edges) {
+          for (const e of v.edges) {
             if (e.l) {
               wire = false
               break
@@ -3391,16 +3391,16 @@ export class BVH<
   }
 
   makeNodeDefTexture() {
-    let leaves = Array.from(this.leaves)
+    const leaves = Array.from(this.leaves)
 
     let size = Math.ceil((leaves.length * 8 * 3) / 4)
     size = Math.max(size, 16)
 
     let dimen = Math.ceil(Math.sqrt(size))
-    let f = Math.ceil(Math.log(dimen) / Math.log(2.0))
+    const f = Math.ceil(Math.log(dimen) / Math.log(2.0))
     dimen = Math.pow(2.0, f)
 
-    let tex = new Float32Array(dimen * dimen * 4)
+    const tex = new Float32Array(dimen * dimen * 4)
     console.log('dimen', dimen)
 
     tex.fill(0)
@@ -3408,16 +3408,16 @@ export class BVH<
     let li = 0
     let i = 0
 
-    let elemSize = 8 * 4
+    const elemSize = 8 * 4
 
     //since dimen is a multiply of 8, we should be able
     //to get away with assuming each entry lies within
     //only one row of the texture
 
-    for (let node of this.leaves) {
+    for (const node of this.leaves) {
       node.leafIndex = li
 
-      let idx = i / 4
+      const idx = i / 4
       let u = idx % dimen
       let v = ~~(idx / dimen)
 
@@ -3429,7 +3429,7 @@ export class BVH<
       node.leafTexUV[0] = u
       node.leafTexUV[1] = v
 
-      for (let v of node.boxverts!) {
+      for (const v of node.boxverts!) {
         tex[i++] = v[0]
         tex[i++] = v[1]
         tex[i++] = v[2]
@@ -3469,11 +3469,11 @@ export class BVH<
       }
     }`
 
-    for (let n of this.leaves) {
-      for (let tri of n.allTris) {
+    for (const n of this.leaves) {
+      for (const tri of n.allTris) {
         for (let i = 0; i < 3; i++) {
-          let v = tri.vs[i]
-          let cdn = cd_node.get(v)
+          const v = tri.vs[i]
+          const cdn = cd_node.get(v)
 
           if (!cdn.node) {
             //console.warn("Orphaned deform vert", v);
@@ -3496,11 +3496,11 @@ export class BVH<
   splitToUniformDepth = function (this: BVH<OPT & {dead: false}>) {
     let maxdepth = 0
 
-    let vs = new Set()
+    const vs = new Set()
 
-    for (let n of this.leaves) {
-      for (let tri of n.allTris) {
-        for (let v of tri.vs) {
+    for (const n of this.leaves) {
+      for (const tri of n.allTris) {
+        for (const v of tri.vs) {
           vs.add(v)
         }
       }
@@ -3508,7 +3508,7 @@ export class BVH<
     }
 
     console.log('maxdepth:', maxdepth)
-    let rec = (n: BVHNode): void => {
+    const rec = (n: BVHNode): void => {
       if (n.depth >= maxdepth) {
         return
       }
@@ -3516,12 +3516,12 @@ export class BVH<
       if (n.leaf) {
         n.split(2)
 
-        for (let child of n.children) {
+        for (const child of n.children) {
           //child.update();
         }
       }
 
-      for (let child of Array.from(n.children)) {
+      for (const child of Array.from(n.children)) {
         if (child.leaf && child.allTris.size === 0) {
           n.children.remove(child)
           this.nodes.remove(child)
@@ -3534,8 +3534,8 @@ export class BVH<
       }
     }
 
-    let leaves = Array.from(this.leaves)
-    for (let node of leaves) {
+    const leaves = Array.from(this.leaves)
+    for (const node of leaves) {
       if (!node.leaf) {
         //node was destroyed for being empty?
         continue
@@ -3548,12 +3548,12 @@ export class BVH<
   }
 
   getNodeVertex(co: Vector3) {
-    let prec = 1000
-    let x = ~~(co[0] * prec)
-    let y = ~~(co[1] * prec)
-    let z = ~~(co[2] * prec)
+    const prec = 1000
+    const x = ~~(co[0] * prec)
+    const y = ~~(co[1] * prec)
+    const z = ~~(co[2] * prec)
 
-    let key = x + ':' + y + ':' + z
+    const key = x + ':' + y + ':' + z
     let v = this.nodeVertHash.get(key)
 
     if (v) {
@@ -3570,7 +3570,7 @@ export class BVH<
   }
 
   getNodeEdge(node: BVHNode<{boxedges: true}>, v1: BVHNodeVertex, v2: BVHNodeVertex) {
-    let key = Math.min(v1.id, v2.id) + ':' + Math.max(v1.id, v2.id)
+    const key = Math.min(v1.id, v2.id) + ':' + Math.max(v1.id, v2.id)
     let e = this.nodeEdgeHash.get(key)
 
     if (e) {
@@ -3595,7 +3595,7 @@ export class BVH<
     this.cd_orig = cd_orig
     this.origGen++
 
-    for (let node of this.nodes) {
+    for (const node of this.nodes) {
       if (node.leaf) {
         node.flag |= BVHFlags.UPDATE_ORIGCO_VERTS
       }
@@ -3615,7 +3615,7 @@ export class BVH<
       cdata = this.mesh.verts.customData
     }
 
-    let layer = cdata.flatlist[this.cd_node.i]
+    const layer = cdata.flatlist[this.cd_node.i]
 
     if (!layer || layer.typeName !== 'bvh') {
       this.cd_node = new AttrRef(cdata.getLayerIndex('bvh'))
@@ -3628,69 +3628,69 @@ export class BVH<
 
   //in an attempt to improve cpu cache performance
   spatiallySortMesh = function (this: BVH<OPT & {dead: false}>): void {
-    let mesh = this.mesh
+    const mesh = this.mesh
 
     console.error('spatiallySortMesh called')
 
     /* First destroy node references. */
-    let cd_node = this.cd_node
+    const cd_node = this.cd_node
 
     if (this.cd_grid.exists) {
-      let cd_grid = this.cd_grid
+      const cd_grid = this.cd_grid
 
-      for (let l of mesh.loops) {
-        let grid = cd_grid.get(l)
-        for (let p of grid.points) {
+      for (const l of mesh.loops) {
+        const grid = cd_grid.get(l)
+        for (const p of grid.points) {
           cd_node.get(p).node = undefined as unknown as BVHNode
         }
       }
     } else {
-      for (let v of mesh.verts) {
+      for (const v of mesh.verts) {
         cd_node.get(v).node = undefined as unknown as BVHNode
       }
     }
 
-    let doneflag = MeshFlags.TEMP2
-    let updateflag = MeshFlags.UPDATE
-    let allflags = doneflag
+    const doneflag = MeshFlags.TEMP2
+    const updateflag = MeshFlags.UPDATE
+    const allflags = doneflag
 
-    for (let elist of mesh.getElemLists()) {
+    for (const elist of mesh.getElemLists()) {
       let i = 0
 
-      for (let elem of elist) {
+      for (const elem of elist) {
         elem.flag &= ~allflags
         elem.index = i++
       }
     }
 
-    let verts = Array.from(mesh.verts)
-    let edges = Array.from(mesh.edges)
-    let faces = Array.from(mesh.faces)
-    let loops = Array.from(mesh.loops)
-    let handles = Array.from(mesh.handles)
+    const verts = Array.from(mesh.verts)
+    const edges = Array.from(mesh.edges)
+    const faces = Array.from(mesh.faces)
+    const loops = Array.from(mesh.loops)
+    const handles = Array.from(mesh.handles)
 
-    let newvs = new Array(verts.length)
-    let newhs = new Array(handles.length)
-    let newes = new Array(edges.length)
-    let newls = new Array(loops.length)
-    let newfs = new Array(faces.length)
+    const newvs = new Array(verts.length)
+    const newhs = new Array(handles.length)
+    const newes = new Array(edges.length)
+    const newls = new Array(loops.length)
+    const newfs = new Array(faces.length)
 
-    let elists = new Map(mesh.elists)
+    const elists = new Map(mesh.elists)
 
     mesh.clear()
 
-    let visit = new WeakSet<Element>()
-    let fleaves = [] as Face[][]
+    const visit = new WeakSet<Element>()
+    const fleaves = [] as Face[][]
 
-    for (let n of this.nodes) {
+    for (const n of this.nodes) {
       if (!n.leaf) {
         continue
       }
 
-      let fs = [] as Face[]
+      const fs = [] as Face[]
 
-      for (let t of n.uniqueTris) {
-        let f: Face = mesh.eidMap.get<Face>(t.id) ?? t.f ?? (t.l1 ? t.l1.f : undefined)
+      for (const t of n.uniqueTris) {
+        const f: Face = mesh.eidMap.get<Face>(t.id) ?? t.f ?? (t.l1 ? t.l1.f : undefined)
 
         if (f === undefined) {
           continue
@@ -3710,7 +3710,7 @@ export class BVH<
     console.log(fleaves)
 
     function copyCustomData(cd: CDElemArray): CDElemArray {
-      let ret = new CDElemArray()
+      const ret = new CDElemArray()
       for (let i = 0; i < ret.length; i++) {
         ret.push(cd[i].copy())
       }
@@ -3718,16 +3718,16 @@ export class BVH<
       return ret
     }
 
-    for (let fs of fleaves) {
-      for (let f of fs) {
-        for (let l of f.loops) {
-          let v = l.v
+    for (const fs of fleaves) {
+      for (const f of fs) {
+        for (const l of f.loops) {
+          const v = l.v
 
           if (newvs[v.index]) {
             continue
           }
 
-          let v2 = new Vertex(v.co)
+          const v2 = new Vertex(v.co)
           newvs[v.index] = v2
 
           v2.eid = v.eid
@@ -3741,14 +3741,14 @@ export class BVH<
           mesh.verts.push(v2)
         }
 
-        for (let l of f.loops) {
-          let e = l.e
+        for (const l of f.loops) {
+          const e = l.e
 
           if (newes[e.index]) {
             continue
           }
 
-          let e2 = (newes[e.index] = new Edge())
+          const e2 = (newes[e.index] = new Edge())
 
           if (EDGE_LINKED_LISTS) {
             // XXX kind of weird having to cast to typeof e['v1next'] here
@@ -3766,8 +3766,8 @@ export class BVH<
 
           if (e.h1 && !e2.h1) {
             for (let step = 0; step < 2; step++) {
-              let h1 = step ? e.h2 : e.h1
-              let h2 = new Handle(h1.co)
+              const h1 = step ? e.h2 : e.h1
+              const h2 = new Handle(h1.co)
 
               h2.owner = e2
               h2.roll = h1.roll
@@ -3794,7 +3794,7 @@ export class BVH<
           mesh._diskInsert(e2.v2, e2)
         }
 
-        let f2 = (newfs[f.index] = new Face())
+        const f2 = (newfs[f.index] = new Face())
 
         f2.eid = f.eid
         f2.flag = f.flag | updateflag
@@ -3806,8 +3806,8 @@ export class BVH<
         mesh.eidMap.set(f2.eid, f2)
         mesh.faces.push(f2)
 
-        for (let list1 of f.lists) {
-          let list2 = new LoopList()
+        for (const list1 of f.lists) {
+          const list2 = new LoopList()
           list2.flag = list1.flag
 
           f2.lists.push(list2)
@@ -3817,7 +3817,7 @@ export class BVH<
           let _i = 0
 
           do {
-            let l2 = new Loop()
+            const l2 = new Loop()
 
             l2.customData = copyCustomData(l1.customData)
             l2.eid = l1.eid
@@ -3853,19 +3853,19 @@ export class BVH<
           list2._recount()
         }
 
-        for (let l of f2.loops) {
+        for (const l of f2.loops) {
           mesh._radialInsert(l.e, l)
         }
       }
     }
 
-    for (let elist of mesh.getElemLists()) {
-      let oelist = elists.get(elist.type)!
+    for (const elist of mesh.getElemLists()) {
+      const oelist = elists.get(elist.type)!
 
       let i = 0
-      let act = oelist.active
+      const act = oelist.active
 
-      for (let elem of elist) {
+      for (const elem of elist) {
         if (elem.flag & MeshFlags.SELECT) {
           elist.setSelect(elem, true)
         }
@@ -3891,9 +3891,9 @@ export class BVH<
   }
 
   oldspatiallySortMesh(mesh: Mesh) {
-    let verts = Array.from(mesh.verts)
-    let edges = Array.from(mesh.edges)
-    let faces = Array.from(mesh.faces)
+    const verts = Array.from(mesh.verts)
+    const edges = Array.from(mesh.edges)
+    const faces = Array.from(mesh.faces)
 
     mesh.elists = new Map()
     mesh.verts = mesh.getElemList(MeshTypes.VERTEX)
@@ -3903,19 +3903,19 @@ export class BVH<
     mesh.faces = mesh.getElemList(MeshTypes.FACE)
 
     mesh.eidMap = new Map()
-    let idcur = mesh.eidgen.cur
-    let cd_node = this.cd_node
+    const idcur = mesh.eidgen.cur
+    const cd_node = this.cd_node
 
-    for (let f of faces) {
+    for (const f of faces) {
       f.index = -1
     }
 
-    for (let e of edges) {
+    for (const e of edges) {
       e.index = -1
     }
 
-    for (let v of verts) {
-      let node = cd_node.get(v).node
+    for (const v of verts) {
+      const node = cd_node.get(v).node
 
       if (!node) {
         v.index = -1
@@ -3928,12 +3928,12 @@ export class BVH<
         console.log(v, node.id)
       }
 
-      for (let e of v.edges) {
+      for (const e of v.edges) {
         if (e.index === -1) {
           e.index = v.index
         }
 
-        for (let l of e.loops) {
+        for (const l of e.loops) {
           if (l.f.index === -1) {
             l.f.index = v.index
           }
@@ -3945,26 +3945,26 @@ export class BVH<
     edges.sort((a, b) => a.index - b.index)
     faces.sort((a, b) => a.index - b.index)
 
-    for (let v1 of verts) {
-      let v2 = mesh.makeVertex(v1, v1.eid)
+    for (const v1 of verts) {
+      const v2 = mesh.makeVertex(v1, v1.eid)
       mesh.copyElemData(v2, v1)
     }
 
-    for (let e1 of edges) {
-      let eid = e1.eid
+    for (const e1 of edges) {
+      const eid = e1.eid
 
-      let e2 = mesh.makeEdge(mesh.eidMap.get(e1.v1.eid), mesh.eidMap.get(e1.v2.eid), undefined, eid)
+      const e2 = mesh.makeEdge(mesh.eidMap.get(e1.v1.eid), mesh.eidMap.get(e1.v2.eid), undefined, eid)
       mesh.copyElemData(e2, e1)
     }
 
-    let vs = []
-    for (let f1 of faces) {
+    const vs = []
+    for (const f1 of faces) {
       let f2: Face | undefined
 
-      for (let list of f1.lists) {
+      for (const list of f1.lists) {
         vs.length = 0
 
-        for (let l of list) {
+        for (const l of list) {
           vs.push(mesh.eidMap.get(l.v.eid))
         }
 
@@ -3981,8 +3981,8 @@ export class BVH<
       }
 
       for (let i = 0; i < f1.lists.length; i++) {
-        let list1 = f1.lists[i]
-        let list2 = f2.lists[i]
+        const list1 = f1.lists[i]
+        const list2 = f2.lists[i]
 
         let l1 = list1.l,
           l2 = list2.l
@@ -4017,11 +4017,11 @@ export class BVH<
 
     this.dead = true
 
-    let freelist = this.freelist
+    const freelist = this.freelist
     this.freelist = undefined as unknown as this['freelist']
 
-    for (let tri of this.tris!.values()) {
-      let deadtri = tri as unknown as BVHTri<{dead: true}>
+    for (const tri of this.tris!.values()) {
+      const deadtri = tri as unknown as BVHTri<{dead: true}>
       deadtri.v1 = undefined
       deadtri.v2 = deadtri.v3 = undefined
       deadtri.l1 = deadtri.l2 = deadtri.l3 = undefined
@@ -4033,8 +4033,8 @@ export class BVH<
 
     this._checkCD()
 
-    let cd_node = this.cd_node as AttrRef<CDNodeInfo<{dead: true}>>
-    let cd_grid = this.cd_grid
+    const cd_node = this.cd_node as AttrRef<CDNodeInfo<{dead: true}>>
+    const cd_grid = this.cd_grid
 
     //let cd_face_node = this.cd_face_node;
 
@@ -4043,18 +4043,18 @@ export class BVH<
     }
 
     if (cd_grid.exists) {
-      for (let l of mesh.loops) {
-        let grid = cd_grid.get(l)
+      for (const l of mesh.loops) {
+        const grid = cd_grid.get(l)
 
         grid.relinkCustomData()
 
-        for (let p of grid.points) {
+        for (const p of grid.points) {
           //console.log(p.customData, cd_node);
           cd_node.get(p).node = undefined
         }
       }
     } else {
-      for (let v of mesh.verts) {
+      for (const v of mesh.verts) {
         cd_node.get(v).node = undefined
       }
     }
@@ -4065,7 +4065,7 @@ export class BVH<
       this.glLeafTex = undefined
     }
 
-    for (let n of this.nodes!) {
+    for (const n of this.nodes!) {
       if (n.drawData) {
         n.drawData.destroy()
         n.drawData = undefined
@@ -4097,7 +4097,7 @@ export class BVH<
   }
 
   closestOrigVerts = function (this: BVH<OPT & {dead: false}>, co: Vector3, radius: number) {
-    let ret = new Set<IBVHVertex>()
+    const ret = new Set<IBVHVertex>()
 
     this.root.closestOrigVerts(co, radius, ret)
 
@@ -4107,7 +4107,7 @@ export class BVH<
   facesInCone(origin: Vector3, ray: Vector3, radius1: number, radius2: number, visibleOnly = true, isSquare = false) {
     origin = _fictmpco.load(origin)
 
-    let ret = new Set<Face>()
+    const ret = new Set<Face>()
 
     if (!this.root) {
       return ret
@@ -4126,7 +4126,7 @@ export class BVH<
     radius2: number,
     isSquare = false
   ): Set<IBVHVertex> {
-    let ret = new Set<IBVHVertex>()
+    const ret = new Set<IBVHVertex>()
 
     if (!this.root) {
       return new Set()
@@ -4145,7 +4145,7 @@ export class BVH<
     clip = false,
     isSquare = false
   ) {
-    let ret = new Set<Vertex>()
+    const ret = new Set<Vertex>()
 
     if (!clip) {
       ray = new Vector3(ray)
@@ -4158,10 +4158,10 @@ export class BVH<
   }
 
   nearestVertsN = function (this: BVH<OPT & {dead: false}>, co: Vector3, n: number) {
-    let ret = new Set()
-    let heap = new util.MinHeapQueue<IBVHVertex>()
-    let visit = new WeakSet()
-    let mindis = [undefined] as [number | undefined]
+    const ret = new Set()
+    const heap = new util.MinHeapQueue<IBVHVertex>()
+    const visit = new WeakSet()
+    const mindis = [undefined] as [number | undefined]
 
     this._i = 0
     this.root.nearestVertsN(co, n, heap, mindis as number[])
@@ -4174,7 +4174,7 @@ export class BVH<
     // }
 
     for (let i = 0; i < n; i++) {
-      let item = heap.pop()
+      const item = heap.pop()
 
       if (item) {
         //console.log(item.eid);
@@ -4186,7 +4186,7 @@ export class BVH<
   }
 
   closestVerts = function (this: BVH<OPT & {dead: false}>, co: Vector3, radius: number) {
-    let ret = new Set<IBVHVertex>()
+    const ret = new Set<IBVHVertex>()
 
     this.root.closestVerts(co, radius, ret)
 
@@ -4194,15 +4194,15 @@ export class BVH<
   }
 
   closestVertsSquare = function (this: BVH<OPT & {dead: false}>, co: Vector3, radius: number, matrix: Matrix4) {
-    let ret = new Set<IBVHVertex>()
+    const ret = new Set<IBVHVertex>()
 
-    let origco = co
+    const origco = co
 
     co = cvstmps2.next().load(co)
     co.multVecMatrix(matrix)
 
-    let min = cvstmps2.next()
-    let max = cvstmps2.next()
+    const min = cvstmps2.next()
+    const max = cvstmps2.next()
 
     min.load(co).addScalar(-radius)
     max.load(co).addScalar(radius)
@@ -4213,7 +4213,7 @@ export class BVH<
   }
 
   closestTris = function (this: BVH<OPT & {dead: false}>, co: Vector3, radius: number) {
-    let ret = new Set<BVHTri<OPT>>()
+    const ret = new Set<BVHTri<OPT>>()
 
     this.root.closestTris(co, radius, ret)
 
@@ -4221,7 +4221,7 @@ export class BVH<
   }
 
   closestTrisSimple = function (this: BVH<OPT & {dead: false}>, co: Vector3, radius: number) {
-    let ret = new Set<BVHTri<OPT>>()
+    const ret = new Set<BVHTri<OPT>>()
 
     this.root.closestTrisSimple(co, radius, ret)
 
@@ -4252,9 +4252,9 @@ export class BVH<
       return
     }
 
-    let tris = this.fmap.get(id)!
+    const tris = this.fmap.get(id)!
 
-    for (let t of tris) {
+    for (const t of tris) {
       if (t.node) {
         t.node.flag |= BVHFlags.UPDATE_UNIQUE_VERTS | BVHFlags.UPDATE_TOTTRI | BVHFlags.UPDATE_INDEX_VERTS
       }
@@ -4301,7 +4301,7 @@ export class BVH<
       lastp = p
       p = p.parent
     }
-    let tot = 0
+    const tot = 0
 
     if (lastp && !lastp.leaf && !lastp.shapeTest(false) && lastp.tottri < this.leafLimit / 1.5) {
       join = true
@@ -4309,32 +4309,32 @@ export class BVH<
     }
 
     if (join) {
-      let cd_node = this.cd_node
+      const cd_node = this.cd_node
 
       //console.log("EMPTY node!", p.children);
-      let allTris = new Set<BVHTri>()
+      const allTris = new Set<BVHTri>()
 
-      let rec = (n: BVHNode<OPT & {dead: false}>) => {
+      const rec = (n: BVHNode<OPT & {dead: false}>) => {
         if (n.id >= 0) {
           this._remNode(n)
         }
 
         if (!n.leaf) {
-          for (let c of n.children) {
+          for (const c of n.children) {
             rec(c)
           }
 
           return
         }
 
-        for (let v of n.uniqueVerts!) {
-          let node = cd_node.get(v)
+        for (const v of n.uniqueVerts!) {
+          const node = cd_node.get(v)
           if (node.node === n) {
             node.node = undefined as unknown as BVHNode
           }
         }
 
-        for (let tri of n.allTris) {
+        for (const tri of n.allTris) {
           if (tri.nodes.indexOf(n) >= 0) {
             tri.nodes.remove(n)
           }
@@ -4349,7 +4349,7 @@ export class BVH<
         throw new Error('p was undefined')
       }
 
-      for (let n2 of p.children) {
+      for (const n2 of p.children) {
         rec(n2)
       }
 
@@ -4368,7 +4368,7 @@ export class BVH<
       p.indexTris = []
       p.indexEdges = []
 
-      for (let tri of allTris) {
+      for (const tri of allTris) {
         p.addTri(tri.id, tri.tri_idx, tri.v1, tri.v2, tri.v3, undefined, tri.l1, tri.l2, tri.l3)
       }
 
@@ -4380,7 +4380,7 @@ export class BVH<
   }
 
   joinNode = function (this: BVH<OPT & {dead: false}>, node: BVHNode, addToRoot = false) {
-    let p = node
+    const p = node
 
     if (this.isDeforming) {
       console.warn('joinNode called in deforming mode')
@@ -4391,32 +4391,32 @@ export class BVH<
       return
     }
 
-    let cd_node = this.cd_node
+    const cd_node = this.cd_node
 
     //console.log("EMPTY node!", p.children);
-    let allTris = new Set<BVHTri>()
+    const allTris = new Set<BVHTri>()
 
-    let rec = (n: BVHNode) => {
+    const rec = (n: BVHNode) => {
       if (n.id >= 0) {
         this._remNode(n)
       }
 
       if (!n.leaf) {
-        for (let c of n.children) {
+        for (const c of n.children) {
           rec(c)
         }
 
         return
       }
 
-      for (let v of n.uniqueVerts) {
-        let node = cd_node.get(v)
+      for (const v of n.uniqueVerts) {
+        const node = cd_node.get(v)
         if (node.node === n) {
           node.node = undefined as unknown as BVHNode
         }
       }
 
-      for (let tri of n.allTris) {
+      for (const tri of n.allTris) {
         if (tri.nodes.indexOf(n) >= 0) {
           tri.nodes.remove(n)
         }
@@ -4427,7 +4427,7 @@ export class BVH<
       }
     }
 
-    for (let n2 of p.children) {
+    for (const n2 of p.children) {
       rec(n2)
     }
 
@@ -4446,9 +4446,9 @@ export class BVH<
     p.indexTris = []
     p.indexEdges = []
 
-    let addp = addToRoot ? this.root! : p
+    const addp = addToRoot ? this.root! : p
 
-    for (let tri of allTris) {
+    for (const tri of allTris) {
       addp.addTri(tri.id, tri.tri_idx, tri.v1, tri.v2, tri.v3, undefined, tri.l1, tri.l2, tri.l3)
     }
 
@@ -4484,16 +4484,16 @@ export class BVH<
     this.totTriFreed++
     this.tottri--
 
-    let cd_node = this.cd_node
+    const cd_node = this.cd_node
 
     let updateflag = BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS
     updateflag |= BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_UNIQUE_VERTS
     updateflag |= BVHFlags.UPDATE_OTHER_VERTS | BVHFlags.UPDATE_COLORS
 
     if (unlinkVerts) {
-      let n1 = cd_node.get(tri.v1)
-      let n2 = cd_node.get(tri.v2)
-      let n3 = cd_node.get(tri.v3)
+      const n1 = cd_node.get(tri.v1)
+      const n2 = cd_node.get(tri.v2)
+      const n3 = cd_node.get(tri.v3)
 
       if (n1.node && n1.node.uniqueVerts) {
         const deadn1 = n1 as CDNodeInfo<{dead: true}>
@@ -4513,7 +4513,7 @@ export class BVH<
         deadn3.node = undefined
       }
 
-      for (let node of tri.nodes) {
+      for (const node of tri.nodes) {
         node.otherVerts.delete(tri.v1)
         node.otherVerts.delete(tri.v2)
         node.otherVerts.delete(tri.v3)
@@ -4527,7 +4527,7 @@ export class BVH<
 
     //console.log("tri.nodes", tri.nodes.concat([]));
 
-    for (let node of tri.nodes) {
+    for (const node of tri.nodes) {
       if (!node.allTris || !node.allTris.has(tri)) {
         //throw new Error("bvh error");
         console.warn('bvh error')
@@ -4549,7 +4549,7 @@ export class BVH<
     }
 
     if (joinNodes) {
-      for (let node of tri.nodes) {
+      for (const node of tri.nodes) {
         this.checkJoin(node)
       }
     }
@@ -4559,7 +4559,7 @@ export class BVH<
     tri.node = undefined
 
     if (!partial) {
-      let tris = this.fmap.get(tri.id)!
+      const tris = this.fmap.get(tri.id)!
       tris.remove(tri)
       this.tris.delete(tri.id)
     }
@@ -4582,12 +4582,12 @@ export class BVH<
 
   hasTri(id: number, tri_idx: number) {
     //, v1, v2, v3) {
-    let tri = this.tris!.get(tri_idx)
+    const tri = this.tris!.get(tri_idx)
     return tri && !tri.removed
   }
 
   _getTri1(id: number, tri_idx: number, v1: IBVHVertex, v2: IBVHVertex, v3: IBVHVertex) {
-    let tri = new BVHTri(id, tri_idx)
+    const tri = new BVHTri(id, tri_idx)
 
     tri.area = math.tri_area(v1, v2, v3) + 0.00001
 
@@ -4666,7 +4666,7 @@ export class BVH<
 
   _newNode = function (this: BVH<OPT & {dead: false}>, min: Vector3, max: Vector3): BVHNode {
     //let node = new this.constructor.nodeClass(this, min, max);
-    let node = new BVHNode(this, min, max)
+    const node = new BVHNode(this, min, max)
 
     node.flag |= BVHFlags.UPDATE_OTHER_VERTS | BVHFlags.UPDATE_INDEX_VERTS | BVHFlags.UPDATE_COLORS
 
@@ -4687,7 +4687,7 @@ export class BVH<
     }
 
     this.needsIndexRebuild = false
-    let nodes = this.nodes
+    const nodes = this.nodes
 
     for (let i = 0; i < nodes.length; i++) {
       nodes[i].index = i
@@ -4710,8 +4710,8 @@ export class BVH<
     this.node_idmap.delete(node.id)
     node.id = -1
 
-    let ni = this.nodes.indexOf(node)
-    let last = this.nodes.length - 1
+    const ni = this.nodes.indexOf(node)
+    const last = this.nodes.length - 1
 
     if (ni >= 0) {
       this.nodes[ni] = this.nodes[last]
@@ -4723,11 +4723,11 @@ export class BVH<
   updateTriCounts = function (this: BVH<OPT & {dead: false}>) {
     this.flag &= ~BVHFlags.UPDATE_TOTTRI
 
-    let rec = (n: BVHNode<{dead: false}>) => {
+    const rec = (n: BVHNode<{dead: false}>) => {
       if (!n.leaf) {
         n.tottri = 0
 
-        for (let c of n.children) {
+        for (const c of n.children) {
           n.tottri += rec(c)
         }
 
@@ -4749,8 +4749,8 @@ export class BVH<
     }
 
     if (DYNAMIC_SHUFFLE_NODES) {
-      let prune = false
-      for (let node of this.updateNodes) {
+      const prune = false
+      for (const node of this.updateNodes) {
         if (node.id < 0) {
           continue
         }
@@ -4759,7 +4759,7 @@ export class BVH<
           continue
         }
 
-        let test = node.shapeTest(true)
+        const test = node.shapeTest(true)
         if (test === 2) {
           node.split(test)
         } else if (test === 3) {
@@ -4785,15 +4785,15 @@ export class BVH<
 
     const cd_grid = this.cd_grid
     if (cd_grid.exists) {
-      for (let l of this.updateGridLoops) {
-        let grid = cd_grid.get(l)
+      for (const l of this.updateGridLoops) {
+        const grid = cd_grid.get(l)
         grid.update(this.mesh, l, cd_grid)
       }
     }
 
     let check_verts = false
 
-    for (let node of this.updateNodes) {
+    for (const node of this.updateNodes) {
       if (node.flag & BVHFlags.UPDATE_UNIQUE_VERTS) {
         run_again = true
         check_verts = true
@@ -4803,26 +4803,26 @@ export class BVH<
     }
 
     if (run_again) {
-      for (let node of this.updateNodes) {
+      for (const node of this.updateNodes) {
         node.update()
       }
     }
 
     // XXX fixOrphanDefVerts is way overkill
-    // it iterates over every single triangle in the bvh 
+    // it iterates over every single triangle in the bvh
     if (false && check_verts) {
       if (this._fixOrphanDefVerts()) {
-        for (let node of this.updateNodes) {
+        for (const node of this.updateNodes) {
           node.update()
         }
       }
     }
 
     if (this.cd_grid.exists) {
-      let cd_grid = this.cd_grid
+      const cd_grid = this.cd_grid
 
-      for (let l of this.updateGridLoops) {
-        let grid = cd_grid.get(l)
+      for (const l of this.updateGridLoops) {
+        const grid = cd_grid.get(l)
 
         grid.update(this.mesh, l, cd_grid)
       }
@@ -4832,14 +4832,14 @@ export class BVH<
       this.updateGridLoops = new Set()
     }
 
-    for (let node of this.updateNodes) {
+    for (const node of this.updateNodes) {
       let p = node.parent
 
       while (p) {
         p.min.zero().addScalar(1e17)
         p.max.zero().addScalar(-1e17)
 
-        for (let c of p.children) {
+        for (const c of p.children) {
           p.min.min(c.min)
           p.max.max(c.max)
         }
@@ -4871,7 +4871,7 @@ export class BVH<
     l3?: Loop,
     addPass = 0
   ) {
-    let ret = this.root.addTri(id, tri_idx, v1, v2, v3, noSplit, l1!, l2!, l3!)
+    const ret = this.root.addTri(id, tri_idx, v1, v2, v3, noSplit, l1!, l2!, l3!)
     this.addPass = addPass
 
     return ret
@@ -4897,8 +4897,8 @@ const hashsizes = [
   225031553,
 ]
 
-let addmin = new Vector3()
-let addmax = new Vector3()
+const addmin = new Vector3()
+const addmax = new Vector3()
 
 export class SpatialHash extends BVH {
   dimen: number
@@ -4927,21 +4927,21 @@ export class SpatialHash extends BVH {
   }
 
   hashkey(co: Vector3) {
-    let dimen = this.dimen
+    const dimen = this.dimen
 
-    let hmul = this.hmul
+    const hmul = this.hmul
 
-    let x = ~~((co[0] - this.min[0]) * hmul[0] * dimen)
-    let y = ~~((co[1] - this.min[1]) * hmul[1] * dimen)
-    let z = ~~((co[2] - this.min[2]) * hmul[2] * dimen)
+    const x = ~~((co[0] - this.min[0]) * hmul[0] * dimen)
+    const y = ~~((co[1] - this.min[1]) * hmul[1] * dimen)
+    const z = ~~((co[2] - this.min[2]) * hmul[2] * dimen)
 
     return z * dimen * dimen + y * dimen + x
   }
 
   _resize(hsize: number) {
     this.hsize = hsize
-    let ht = this.htable
-    let kt = this.ktable
+    const ht = this.htable
+    const kt = this.ktable
 
     this.htable = new Array(hashsizes[this.hsize])
     this.ktable = new Array(hashsizes[this.hsize])
@@ -4958,9 +4958,9 @@ export class SpatialHash extends BVH {
   }
 
   _lookupNode(key: number): BVHNode | undefined {
-    let ht = this.htable
-    let kt = this.ktable
-    let size = ht.length
+    const ht = this.htable
+    const kt = this.ktable
+    const size = ht.length
     let probe = 0
     let _i = 0
     let idx
@@ -4999,13 +4999,13 @@ export class SpatialHash extends BVH {
     l3?: Loop,
     addPass = 0
   ) {
-    let tottri = this.tottri
+    const tottri = this.tottri
 
     if (this._calcDimen(tottri) > this.dimen + 4) {
       console.log('Dimen update', this.dimen, this._calcDimen(tottri))
     }
 
-    let tri = this._getTri(id, tri_idx, v1, v2, v3)
+    const tri = this._getTri(id, tri_idx, v1, v2, v3)
 
     if (l1) {
       tri.l1 = l1 as unknown as Loop
@@ -5013,18 +5013,18 @@ export class SpatialHash extends BVH {
       tri.l3 = l3 as unknown as Loop
     }
 
-    let min = this.min,
+    const min = this.min,
       max = this.max,
       dimen = this.dimen
-    let hmul = this.hmul
+    const hmul = this.hmul
 
-    let minx = Math.min(Math.min(v1.co[0], v2.co[0]), v3.co[0])
-    let miny = Math.min(Math.min(v1.co[1], v2.co[1]), v3.co[1])
-    let minz = Math.min(Math.min(v1.co[2], v2.co[2]), v3.co[2])
+    const minx = Math.min(Math.min(v1.co[0], v2.co[0]), v3.co[0])
+    const miny = Math.min(Math.min(v1.co[1], v2.co[1]), v3.co[1])
+    const minz = Math.min(Math.min(v1.co[2], v2.co[2]), v3.co[2])
 
-    let maxx = Math.max(Math.max(v1.co[0], v2.co[0]), v3.co[0])
-    let maxy = Math.max(Math.max(v1.co[1], v2.co[1]), v3.co[1])
-    let maxz = Math.max(Math.max(v1.co[2], v2.co[2]), v3.co[2])
+    const maxx = Math.max(Math.max(v1.co[0], v2.co[0]), v3.co[0])
+    const maxy = Math.max(Math.max(v1.co[1], v2.co[1]), v3.co[1])
+    const maxz = Math.max(Math.max(v1.co[2], v2.co[2]), v3.co[2])
 
     let x1 = Math.floor((minx - min[0]) * hmul[0] * dimen)
     let y1 = Math.floor((miny - min[1]) * hmul[1] * dimen)
@@ -5054,14 +5054,14 @@ export class SpatialHash extends BVH {
     for (let x = x1; x <= x2; x++) {
       for (let y = y1; y <= y2; y++) {
         for (let z = z1; z <= z2; z++) {
-          let key = z * dimen * dimen + y * dimen + x
+          const key = z * dimen * dimen + y * dimen + x
           let node = this._lookupNode(key)
 
           if (!node) {
-            let min = new Vector3()
-            let max = new Vector3()
+            const min = new Vector3()
+            const max = new Vector3()
 
-            let eps = 0.000001
+            const eps = 0.000001
 
             min[0] = (x / dimen + eps) / hmul[0] + this.min[0]
             min[1] = (y / dimen + eps) / hmul[1] + this.min[1]
@@ -5103,28 +5103,28 @@ export class SpatialHash extends BVH {
     dir = this.dirtemp.load(dir)
     dir.normalize()
 
-    let x1 = origin[0]
-    let y1 = origin[1]
-    let z1 = origin[2]
+    const x1 = origin[0]
+    const y1 = origin[1]
+    const z1 = origin[2]
 
-    let sz = this.min.vectorDistance(this.max) * 4.0
+    const sz = this.min.vectorDistance(this.max) * 4.0
 
-    let x2 = x1 + dir[0] * sz
-    let y2 = y1 + dir[1] * sz
-    let z2 = z1 + dir[2] * sz
+    const x2 = x1 + dir[0] * sz
+    const y2 = y1 + dir[1] * sz
+    const z2 = z1 + dir[2] * sz
 
-    let minx = Math.min(x1, x2)
-    let miny = Math.min(y1, y2)
-    let minz = Math.min(z1, z2)
+    const minx = Math.min(x1, x2)
+    const miny = Math.min(y1, y2)
+    const minz = Math.min(z1, z2)
 
-    let maxx = Math.max(x1, x2)
-    let maxy = Math.max(y1, y2)
-    let maxz = Math.max(z1, z2)
+    const maxx = Math.max(x1, x2)
+    const maxy = Math.max(y1, y2)
+    const maxz = Math.max(z1, z2)
 
     let minret: IsectRet | undefined = undefined
 
-    let cb = (node: BVHNode) => {
-      let ret = node.castRay(origin, dir)
+    const cb = (node: BVHNode) => {
+      const ret = node.castRay(origin, dir)
 
       if (ret && (!minret || (ret.dist >= 0 && ret.dist < minret.dist))) {
         minret = ret
@@ -5144,9 +5144,9 @@ export class SpatialHash extends BVH {
     maxy: number,
     maxz: number
   ) {
-    let min = this.min
-    let dimen = this.dimen
-    let hmul = this.hmul
+    const min = this.min
+    const dimen = this.dimen
+    const hmul = this.hmul
 
     let x1 = Math.floor((minx - min[0]) * hmul[0] * dimen)
     let y1 = Math.floor((miny - min[1]) * hmul[1] * dimen)
@@ -5167,8 +5167,8 @@ export class SpatialHash extends BVH {
     for (let x = x1; x <= x2; x++) {
       for (let y = y1; y <= y2; y++) {
         for (let z = z1; z <= z2; z++) {
-          let key = z * dimen * dimen + y * dimen + x
-          let node = this._lookupNode(key)
+          const key = z * dimen * dimen + y * dimen + x
+          const node = this._lookupNode(key)
 
           if (node) {
             cb(node)
@@ -5179,29 +5179,29 @@ export class SpatialHash extends BVH {
   }
 
   closestVerts = function (this: BVH<{dead: false}>, co: Vector3, radius: number) {
-    let eps = radius * 0.01
+    const eps = radius * 0.01
 
-    let minx = co[0] - radius - eps
-    let miny = co[1] - radius - eps
-    let minz = co[2] - radius - eps
+    const minx = co[0] - radius - eps
+    const miny = co[1] - radius - eps
+    const minz = co[2] - radius - eps
 
-    let maxx = co[0] + radius + eps
-    let maxy = co[1] + radius + eps
-    let maxz = co[2] + radius + eps
+    const maxx = co[0] + radius + eps
+    const maxy = co[1] + radius + eps
+    const maxz = co[2] + radius + eps
 
-    let ret = new Set<IBVHVertex>()
-    let rsqr = radius * radius
+    const ret = new Set<IBVHVertex>()
+    const rsqr = radius * radius
 
-    let cb = (node: BVHNode) => {
+    const cb = (node: BVHNode) => {
       if (node.wireVerts) {
-        for (let v of node.wireVerts) {
+        for (const v of node.wireVerts) {
           if (v.co.vectorDistanceSqr(co) <= rsqr) {
             ret.add(v)
           }
         }
       }
 
-      for (let t of node.allTris) {
+      for (const t of node.allTris) {
         if (t.v1.co.vectorDistanceSqr(co) <= rsqr) {
           ret.add(t.v1)
         }
@@ -5225,10 +5225,10 @@ export class SpatialHash extends BVH {
       this._resize(this.hsize + 1)
     }
 
-    let key = this.hashkey(node.min)
-    let ht = this.htable
-    let kt = this.ktable
-    let size = ht.length
+    const key = this.hashkey(node.min)
+    const ht = this.htable
+    const kt = this.ktable
+    const size = ht.length
     let probe = 0
     let _i = 0
     let idx = 0

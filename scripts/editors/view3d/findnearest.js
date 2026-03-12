@@ -1,71 +1,71 @@
 /*view picking functionality*/
 
-import {Vector2, Vector3} from "../../util/vectormath.js";
-import {SelMask} from "./selectmode.js";
+import {Vector2, Vector3} from '../../util/vectormath.js'
+import {SelMask} from './selectmode.js'
 
 export const CastModes = {
-  FRAMEBUFFER : 0, //castViewRay p parameter is in screen space (through view3d.getLocalMouse)
+  FRAMEBUFFER: 0, //castViewRay p parameter is in screen space (through view3d.getLocalMouse)
   GEOMETRIC  : 1, //implement me! castRay p parameter is in world space
-};
+}
 
-export const FindNearestTypes = [];
+export const FindNearestTypes = []
 
 export class FindNearestRet {
   constructor() {
-    this.data = undefined;
-    this._object = -1;
-    this._mesh = -1;
+    this.data = undefined
+    this._object = -1
+    this._mesh = -1
 
-    this.p2d = new Vector2();
-    this.p3d = new Vector3();
-    this.dis = undefined;
+    this.p2d = new Vector2()
+    this.p3d = new Vector3()
+    this.dis = undefined
   }
 
   //avoid reference leaks in cacherings
   get object() {
-    return _appstate.datalib.get(this._object);
+    return _appstate.datalib.get(this._object)
   }
 
   set object(ob) {
     if (!ob) {
-      this._object = -1;
-      return;
+      this._object = -1
+      return
     }
 
-    this._object = ob.lib_id;
+    this._object = ob.lib_id
   }
 
   get mesh() {
-    return _appstate.datalib.get(this._mesh);
+    return _appstate.datalib.get(this._mesh)
   }
 
   set mesh(ob) {
     if (!ob) {
-      this._mesh = -1;
-      return;
+      this._mesh = -1
+      return
     }
 
-    this._mesh = ob.lib_id;
+    this._mesh = ob.lib_id
   }
 
   reset() {
-    this.p2d.zero();
-    this.p3d.zero();
-    this.dis = undefined;
-    this.object = undefined;
-    this.data = undefined;
+    this.p2d.zero()
+    this.p3d.zero()
+    this.dis = undefined
+    this.object = undefined
+    this.data = undefined
 
-    return this;
+    return this
   }
 }
 
 function getDefine(cls) {
   if (cls._define) {
-    return cls._define;
+    return cls._define
   }
 
-  cls._define = cls.define();
-  return cls._define;
+  cls._define = cls.define()
+  return cls._define
 }
 
 /**
@@ -80,62 +80,64 @@ function getDefine(cls) {
  */
 //if view3d is undefined, will use ctx.view3d
 //mpos is assumed to already have view3d.getLocalMouse called on it
-export function FindNearest(ctx, selectMask, mpos, view3d=undefined, limit=25) {
-  view3d = view3d === undefined ? ctx.view3d : view3d;
+export function FindNearest(ctx, selectMask, mpos, view3d = undefined, limit = 25) {
+  view3d = view3d === undefined ? ctx.view3d : view3d
 
-  let ret = [];
+  let ret = []
 
   for (let cls of FindNearestTypes) {
-    let def = getDefine(cls);
+    let def = getDefine(cls)
 
     if (def.selectMask & selectMask) {
-      let ret2 = cls.findnearest(ctx, selectMask, mpos, view3d, limit);
+      let ret2 = cls.findnearest(ctx, selectMask, mpos, view3d, limit)
       if (ret2 !== undefined) {
-        ret = ret.concat(ret2);
+        ret = ret.concat(ret2)
       }
     }
   }
 
-  return ret;
+  return ret
 }
 
-export function castViewRay(ctx, selectMask, mpos, view3d, mode=CastModes.FRAMEBUFFER) {
-  view3d = view3d === undefined ? ctx.view3d : view3d;
+export function castViewRay(ctx, selectMask, mpos, view3d, mode = CastModes.FRAMEBUFFER) {
+  view3d = view3d === undefined ? ctx.view3d : view3d
 
-  let ret = [];
+  let ret = []
 
   for (let cls of FindNearestTypes) {
-    let def = getDefine(cls);
+    let def = getDefine(cls)
 
     if (def.selectMask & selectMask) {
-      let ret2 = cls.castViewRay(ctx, selectMask, mpos, view3d, mode);
+      let ret2 = cls.castViewRay(ctx, selectMask, mpos, view3d, mode)
       if (ret2 !== undefined) {
-        ret = ret.concat(ret2);
+        ret = ret.concat(ret2)
       }
     }
   }
 
   //return closest item
-  let mindis = 1e17;
-  let ret2 = undefined;
+  let mindis = 1e17
+  let ret2 = undefined
 
   for (let item of ret) {
     if (ret2 === undefined || (item.dis > 0 && item.dis < mindis)) {
-      mindis = item.dis;
-      ret2 = item;
+      mindis = item.dis
+      ret2 = item
     }
   }
 
-  return ret2;
+  return ret2
 }
 
 export class FindnearestClass {
-  static define() {return {
-    selectMask : 0
-  }}
+  static define() {
+    return {
+      selectMask: 0,
+    }
+  }
 
   static drawsObjectExclusively(view3d, object) {
-    return false;
+    return false
   }
 
   /**
@@ -148,29 +150,24 @@ export class FindnearestClass {
    *
    * @return array of 1 or more FindNearestRet instances
    */
-  static findnearest(ctx, selectMask, mpos, view3d, limit=25) {
-  }
+  static findnearest(ctx, selectMask, mpos, view3d, limit = 25) {}
 
   /**
    *
    * @return array of 1 or more FindNearestRet instances
    */
-  static castViewRay(ctx, selectMask, p, view3d, mode=CastModes.FRAMEBUFFER) {
-
-  }
+  static castViewRay(ctx, selectMask, p, view3d, mode = CastModes.FRAMEBUFFER) {}
 
   /*
-  * called for all objects;  returns true
-  * if an object is valid for this class (and was drawn)
-  *
-  * When drawing pass the object id to red and any subdata
-  * to green.
-  * */
-  drawIDs(view3d, gl, uniforms, object, mesh) {
-  }
+   * called for all objects;  returns true
+   * if an object is valid for this class (and was drawn)
+   *
+   * When drawing pass the object id to red and any subdata
+   * to green.
+   * */
+  drawIDs(view3d, gl, uniforms, object, mesh) {}
 
   static register(cls) {
-    FindNearestTypes.push(cls);
+    FindNearestTypes.push(cls)
   }
 }
-

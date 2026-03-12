@@ -5,7 +5,7 @@ import addonManager from '../addon/addon.js'
 
 import '../util/polyfill.d.ts'
 
-declare var _appstate: any
+declare let _appstate: any
 
 export class SavedScreen {
   static STRUCT = nstructjs.inlineRegister(
@@ -26,7 +26,7 @@ SavedScreen {
   }
 
   static create(name = 'Screen'): SavedScreen {
-    let file = _appstate.createFile({save_screen: true, save_library: false, save_settings: false})
+    const file = _appstate.createFile({save_screen: true, save_library: false, save_settings: false})
     return new SavedScreen(name, file)
   }
 
@@ -132,9 +132,9 @@ AppSettings {
   }
 
   static defineAPI(api: any): any {
-    let st = api.mapStruct(this, true)
+    const st = api.mapStruct(this, true)
 
-    let onchange = function (this: {dataref: AppSettings}) {
+    const onchange = function (this: {dataref: AppSettings}) {
       if (this.dataref === _appstate.settings) {
         this.dataref.save()
       }
@@ -144,7 +144,7 @@ AppSettings {
     st.int('undoMemLimit', 'undoMemLimit', 'Mem Limit', 'Memory Limit in megabytes (for undo)').on('change', onchange)
     st.enum('brushSet', 'brushSet', BrushSets)
       .on('change', function (this: {dataref: AppSettings}) {
-        let settings = this.dataref
+        const settings = this.dataref
 
         setBrushSet(settings.brushSet)
       })
@@ -153,9 +153,9 @@ AppSettings {
           'For 100k triangle meshes and less.\nBrushes will try to align geometry to curvature.\n (i.e. Rake and Curvature Factor are set to 1).',
       })
 
-    let ast = api.mapStruct(AddonSettings, true)
+    const ast = api.mapStruct(AddonSettings, true)
     ast.bool('enabled', 'enabled', 'Enabled').on('change', function (this: {dataref: AddonSettings}, val: boolean) {
-      for (let addon of addonManager.addons) {
+      for (const addon of addonManager.addons) {
         if (addon.key === this.dataref.name) {
           console.log('found addon', addon)
           addon.enabled = val
@@ -184,7 +184,7 @@ AppSettings {
 
       getIter(api: any, list: Record<string, AddonSettings>) {
         return (function* () {
-          for (let k in list) {
+          for (const k in list) {
             yield list[k]
           }
         })()
@@ -213,8 +213,8 @@ AppSettings {
 
     this.addonSettings = (json.addonSettings as any) || {}
 
-    for (let k in this.addonSettings) {
-      let json2 = this.addonSettings[k] as any as AddonSettingsJSON
+    for (const k in this.addonSettings) {
+      const json2 = this.addonSettings[k] as any as AddonSettingsJSON
       this.addonSettings[k] = new AddonSettings().loadJSON(json2)
     }
 
@@ -229,8 +229,8 @@ AppSettings {
   _loadAddons(): void {
     this.syncAddonList()
 
-    for (let addon of addonManager.addons) {
-      let addon2 = this.addonSettings[addon.key]
+    for (const addon of addonManager.addons) {
+      const addon2 = this.addonSettings[addon.key]
 
       if (!!addon2.enabled !== !!addon.enabled) {
         addon.enabled = addon2.enabled
@@ -264,7 +264,7 @@ AppSettings {
   syncAddonList(): boolean {
     let ret = false
 
-    for (let addon of addonManager.addons) {
+    for (const addon of addonManager.addons) {
       if (!(addon.key in this.addonSettings)) {
         this.addonSettings[addon.key] = new AddonSettings(addon.key)
 
@@ -284,7 +284,7 @@ AppSettings {
   loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
 
-    let addonSettings = this.addonSettings as any
+    const addonSettings = this.addonSettings as any
 
     console.error('addonSettings', addonSettings)
 
@@ -294,7 +294,7 @@ AppSettings {
 
     this.addonSettings = {}
 
-    for (let addon of addonSettings as AddonSettings[]) {
+    for (const addon of addonSettings as AddonSettings[]) {
       this.addonSettings[addon.name] = addon
     }
   }

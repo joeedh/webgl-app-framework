@@ -24,36 +24,35 @@ import messageBus from 'core/bus.js'
 messageBug.register(EmitterClass)
 
 */
-export type EventCallback = (msg: BusMessage) => void;
+export type EventCallback = (msg: BusMessage) => void
 
 export class Subscriber<T = any> {
-  getter: () => T;
-  events: Set<string>;
-  callback: EventCallback;
-  sourceClass: any;
-  priority: number;
+  getter: () => T
+  events: Set<string>
+  callback: EventCallback
+  sourceClass: any
+  priority: number
 
-  constructor(getter_cb: () => T, sourceClass: any, events: Set<string>, callback: EventCallback,
-              priority: number) {
-    this.getter = getter_cb;
-    this.events = events;
-    this.callback = callback;
-    this.sourceClass = sourceClass;
-    this.priority = priority;
+  constructor(getter_cb: () => T, sourceClass: any, events: Set<string>, callback: EventCallback, priority: number) {
+    this.getter = getter_cb
+    this.events = events
+    this.callback = callback
+    this.sourceClass = sourceClass
+    this.priority = priority
   }
 }
 
 export class BusMessage<T = any, D = any> {
-  event: string;
-  data: D;
-  sourceClass: any;
-  target?: T;
+  event: string
+  data: D
+  sourceClass: any
+  target?: T
 
   constructor(sourceClass: any, key: string, data: D) {
-    this.event = key;
-    this.data = data;
-    this.sourceClass = sourceClass;
-    this.target = undefined;
+    this.event = key
+    this.data = data
+    this.sourceClass = sourceClass
+    this.target = undefined
   }
 }
 
@@ -68,158 +67,162 @@ export interface EmitterClassIF {
 }
 
 export class MessageBus {
-  subscribers: Subscriber[];
-  emitters: EmitterClassIF[];
+  subscribers: Subscriber[]
+  emitters: EmitterClassIF[]
 
   constructor() {
-    this.subscribers = [];
-    this.emitters = []; //list of classes
+    this.subscribers = []
+    this.emitters = [] //list of classes
   }
 
   register(emitter: EmitterClassIF) {
-    let def = emitter.busDefine();
-    this.emitters.push(emitter);
+    const def = emitter.busDefine()
+    this.emitters.push(emitter)
   }
 
   /** getter_cb is a function that returns
    * subscriber object, or undefined if subscriber is dead. */
-  subscribe<T = any>(getter_cb: () => T, sourceClass: any, callback: EventCallback, _events: string | string[] = "ANY",
-                     priority                                                                                  = 100000) {
-    let events: Set<string>;
+  subscribe<T = any>(
+    getter_cb: () => T,
+    sourceClass: any,
+    callback: EventCallback,
+    _events: string | string[] = 'ANY',
+    priority = 100000
+  ) {
+    let events: Set<string>
 
-    if (typeof _events === "string" && _events === "ANY") {
-      events = new Set(["ANY"]);
+    if (typeof _events === 'string' && _events === 'ANY') {
+      events = new Set(['ANY'])
     } else {
-      if (typeof events === "string") {
-        events = new Set([events]);
+      if (typeof events === 'string') {
+        events = new Set([events])
       } else {
-        events = new Set(events);
+        events = new Set(events)
       }
     }
 
-    for (let event of events) {
-      if (event === "ANY") {
-        continue;
+    for (const event of events) {
+      if (event === 'ANY') {
+        continue
       }
 
       if (!this.isValidEvent(sourceClass, event)) {
-        throw new Error("invalid message type " + event);
+        throw new Error('invalid message type ' + event)
       }
     }
 
-    let sub = new Subscriber(getter_cb, sourceClass, events, callback, priority);
-    this.subscribers.push(sub);
+    const sub = new Subscriber(getter_cb, sourceClass, events, callback, priority)
+    this.subscribers.push(sub)
 
-    this.sortSubscribers();
+    this.sortSubscribers()
 
-    return sub;
+    return sub
   }
 
   validateSubscribers(): void {
-    for (let sb of new Set(this.subscribers)) {
+    for (const sb of new Set(this.subscribers)) {
       if (!sb.getter()) {
-        console.warn("Dead subscriber", sb);
-        this.subscribers.remove(sb);
+        console.warn('Dead subscriber', sb)
+        this.subscribers.remove(sb)
       }
     }
   }
 
   unsubscribe(sub: Subscriber): this {
     if (this.subscribers.indexOf(sub) >= 0) {
-      this.subscribers.remove(sub);
+      this.subscribers.remove(sub)
     }
 
-    this.sortSubscribers();
+    this.sortSubscribers()
 
-    return this;
+    return this
   }
 
   sortSubscribers(): this {
-    this.subscribers.sort((a, b) => a.priority - b.priority);
-    return this;
+    this.subscribers.sort((a, b) => a.priority - b.priority)
+    return this
   }
 
   isValidEvent(sourceClass: EmitterClassIF, messageType: string): boolean {
-    let types = sourceClass.busDefine().events;
+    const types = sourceClass.busDefine().events
 
-    let ok = false;
-    for (let type of types) {
+    let ok = false
+    for (const type of types) {
       if (type === messageType) {
-        ok = true;
+        ok = true
       }
     }
 
     if (!ok) {
-      console.warn("Invalid message type " + messageType, "valid ones are", types);
+      console.warn('Invalid message type ' + messageType, 'valid ones are', types)
     }
 
-    return ok;
+    return ok
   }
 
   emit(sourceClass: any, messageType: string, data: any): void {
     if (!this.isValidEvent(sourceClass, messageType)) {
-      throw new Error("invalid message type " + messageType);
+      throw new Error('invalid message type ' + messageType)
     }
 
     window.setTimeout(() => {
-      this.emitSync(sourceClass, messageType, data);
-    }, 0);
+      this.emitSync(sourceClass, messageType, data)
+    }, 0)
   }
 
   emitSync(sourceClass: any, messageType: string, data: any): void {
-    let msg = new BusMessage(sourceClass, messageType, data);
+    const msg = new BusMessage(sourceClass, messageType, data)
 
-    let del = undefined;
+    let del = undefined
 
-    for (let sb of this.subscribers) {
-      let ok = sb.sourceClass === sourceClass;
-      ok = ok && (sb.events.has("ALL") || sb.events.has(messageType));
+    for (const sb of this.subscribers) {
+      let ok = sb.sourceClass === sourceClass
+      ok = ok && (sb.events.has('ALL') || sb.events.has(messageType))
 
       if (!ok) {
-        continue;
+        continue
       }
 
-      let owner: any;
+      let owner: any
 
       try {
-        owner = sb.getter();
+        owner = sb.getter()
       } catch (error) {
-        owner = undefined;
-        console.log((error as Error).stack);
-        console.log((error as Error).message);
+        owner = undefined
+        console.log((error as Error).stack)
+        console.log((error as Error).message)
       }
 
       if (!owner) {
         //dead owner
-        console.warn("Dead subscriber", sb);
+        console.warn('Dead subscriber', sb)
         if (!del) {
-          del = [sb];
+          del = [sb]
         } else {
-          del.push(sb);
+          del.push(sb)
         }
 
-        continue;
+        continue
       }
 
-
-      msg.target = owner;
+      msg.target = owner
 
       try {
-        sb.callback(msg);
+        sb.callback(msg)
       } catch (error) {
-        console.log((error as Error).stack);
-        console.log((error as Error).message);
+        console.log((error as Error).stack)
+        console.log((error as Error).message)
       }
     }
 
-    msg.target = undefined;
+    msg.target = undefined
 
     if (del) {
-      for (let sb of del) {
-        this.subscribers.remove(sb);
+      for (const sb of del) {
+        this.subscribers.remove(sb)
       }
     }
   }
 }
 
-export default new MessageBus();
+export default new MessageBus()

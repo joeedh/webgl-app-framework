@@ -1,10 +1,10 @@
 //handle to module.  never access in code; for debug console use only.
-var _math = undefined;
+var _math = undefined
 
-export * from '../path.ux/scripts/util/math.js';
+export * from '../path.ux/scripts/util/math.js'
 
 /*TODO: clean up this module*/
-`
+;`
 import * as vectormath from './vectormath.js';
 import * as util from './util.js';
 

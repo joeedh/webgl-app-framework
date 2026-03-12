@@ -51,7 +51,7 @@ export const LayerTypeNames = {
   [LayerTypes.CUSTOM]: 'custom',
 }
 
-let _TypeSizes = {
+const _TypeSizes = {
   LOC   : 3,
   UV    : 2,
   COLOR : 4,
@@ -63,12 +63,12 @@ let _TypeSizes = {
 
 export const TypeSizes = {}
 
-for (let k in LayerTypes) {
+for (const k in LayerTypes) {
   TypeSizes[LayerTypes[k]] = TypeSizes[k] = _TypeSizes[k]
 }
 
-let line2_temp4s = util.cachering.fromConstructor(Vector4, 64)
-let line2_stripuvs = [
+const line2_temp4s = util.cachering.fromConstructor(Vector4, 64)
+const line2_stripuvs = [
   [1, 0],
   [-1, 0],
   [-1, 1],
@@ -82,19 +82,19 @@ function appendvec(a, b, n, defaultval) {
   if (defaultval === undefined) defaultval = 0.0
 
   for (let i = 0; i < n; i++) {
-    let val = b[i]
+    const val = b[i]
     a.push(val === undefined ? defaultval : val)
   }
 }
 
-let _ids_arrs = [[0], [0], [0], [0]]
-let zero = new Vector3()
+const _ids_arrs = [[0], [0], [0], [0]]
+const zero = new Vector3()
 
 function copyvec(a, b, starti, n, defaultval) {
   if (defaultval === undefined) defaultval = 0.0
 
   for (let i = starti; i < starti + n; i++) {
-    let val = b[i]
+    const val = b[i]
     a[i] = val === undefined ? defaultval : val
   }
 }
@@ -116,8 +116,8 @@ export class TriEditor {
   }
 
   colors(c1, c2, c3): this {
-    let data = this.mesh.tri_colors
-    let i = this.i * 3 //*3 is because triangles have three vertices
+    const data = this.mesh.tri_colors
+    const i = this.i * 3 //*3 is because triangles have three vertices
 
     data.copy(i, c1)
     data.copy(i + 1, c2)
@@ -127,9 +127,9 @@ export class TriEditor {
   }
 
   normals(n1: INumVector, n2: INumVector, n3: INumVector): this {
-    let data = this.mesh.tri_normals
+    const data = this.mesh.tri_normals
 
-    let i = this.i * 3 //*3 is because triangles have three vertices
+    const i = this.i * 3 //*3 is because triangles have three vertices
 
     data.copy(i, n1)
     data.copy(i + 1, n2)
@@ -139,9 +139,9 @@ export class TriEditor {
   }
 
   custom(layeri: number, v1: INumVector, v2: INumVector, v3: INumVector): this {
-    let layer = this.mesh.layers.layers[layeri]
+    const layer = this.mesh.layers.layers[layeri]
 
-    let i = this.i * 3
+    const i = this.i * 3
     layer.copy(i, v1)
     layer.copy(i + 1, v2)
     layer.copy(i + 2, v3)
@@ -150,8 +150,8 @@ export class TriEditor {
   }
 
   uvs(u1: INumVector, u2: INumVector, u3: INumVector): this {
-    let data = this.mesh.tri_uvs
-    let i = this.i * 3 //*3 is because triangles have three vertices
+    const data = this.mesh.tri_uvs
+    const i = this.i * 3 //*3 is because triangles have three vertices
 
     data.copy(i, u1)
     data.copy(i + 1, u2)
@@ -165,15 +165,15 @@ export class TriEditor {
       throw new Error('i1/i2/i3 cannot be undefined')
     }
 
-    let data = this.mesh.tri_ids
-    let i = this.i * 3 //*3 is because triangles have three vertices
+    const data = this.mesh.tri_ids
+    const i = this.i * 3 //*3 is because triangles have three vertices
 
     _ids_arrs[0][0] = i1
-    let a1 = _ids_arrs[0]
+    const a1 = _ids_arrs[0]
     _ids_arrs[1][0] = i2
-    let a2 = _ids_arrs[1]
+    const a2 = _ids_arrs[1]
     _ids_arrs[2][0] = i3
-    let a3 = _ids_arrs[2]
+    const a3 = _ids_arrs[2]
 
     data.copy(i, a1 as unknown as INumVector)
     data.copy(i + 1, a2 as unknown as INumVector)
@@ -249,8 +249,8 @@ export class LineEditor {
   }
 
   colors(c1: INumVector, c2: INumVector): this {
-    let data = this.mesh.line_colors
-    let i = this.i * 2
+    const data = this.mesh.line_colors
+    const i = this.i * 2
 
     data.copy(i, c1)
     data.copy(i + 1, c2)
@@ -259,9 +259,9 @@ export class LineEditor {
   }
 
   custom(layeri: number, v1: INumVector, v2: INumVector): this {
-    let layer = this.mesh.layers.layers[layeri]
+    const layer = this.mesh.layers.layers[layeri]
 
-    let i = this.i * 2
+    const i = this.i * 2
     layer.copy(i, v1)
     layer.copy(i + 1, v2)
 
@@ -269,8 +269,8 @@ export class LineEditor {
   }
 
   normals(c1: INumVector, c2: INumVector): this {
-    let data = this.mesh.line_normals
-    let i = this.i * 2
+    const data = this.mesh.line_normals
+    const i = this.i * 2
 
     data.copy(i, c1)
     data.copy(i + 1, c2)
@@ -279,8 +279,8 @@ export class LineEditor {
   }
 
   uvs(c1: INumVector, c2: INumVector): this {
-    let data = this.mesh.line_uvs
-    let i = this.i * 2
+    const data = this.mesh.line_uvs
+    const i = this.i * 2
 
     data.copy(i, c1)
     data.copy(i + 1, c2)
@@ -293,8 +293,8 @@ export class LineEditor {
       throw new Error('i1 i2 cannot be undefined')
     }
 
-    let data = this.mesh.line_ids
-    let i = this.i * 2
+    const data = this.mesh.line_ids
+    const i = this.i * 2
 
     _ids_arrs[0][0] = i1
     _ids_arrs[1][0] = i2
@@ -332,7 +332,7 @@ class DummyEditor {
   }
 }
 
-let dummyeditor = new DummyEditor()
+const dummyeditor = new DummyEditor()
 
 export class LineEditor2 {
   mesh: SimpleIsland
@@ -350,9 +350,9 @@ export class LineEditor2 {
   }
 
   custom(layeri: number, c1: INumVector, c2: INumVector): this {
-    let data = this.mesh.layers.layers[layeri]
+    const data = this.mesh.layers.layers[layeri]
 
-    let i = this.i * 6
+    const i = this.i * 6
 
     data.copy(i + 0, c1)
     data.copy(i + 1, c1)
@@ -365,8 +365,8 @@ export class LineEditor2 {
   }
 
   colors(c1: INumVector, c2: INumVector): this {
-    let data = this.mesh.line_colors2
-    let i = this.i * 6
+    const data = this.mesh.line_colors2
+    const i = this.i * 6
 
     data.copy(i + 0, c1)
     data.copy(i + 1, c1)
@@ -379,8 +379,8 @@ export class LineEditor2 {
   }
 
   normals(c1: INumVector, c2: INumVector): this {
-    let data = this.mesh.line_normals2
-    let i = this.i * 6
+    const data = this.mesh.line_normals2
+    const i = this.i * 6
 
     data.copy(i + 0, c1)
     data.copy(i + 1, c1)
@@ -393,8 +393,8 @@ export class LineEditor2 {
   }
 
   uvs(c1: INumVector, c2: INumVector): this {
-    let data = this.mesh.line_uvs2
-    let i = this.i * 6
+    const data = this.mesh.line_uvs2
+    const i = this.i * 6
 
     data.copy(i + 0, c1)
     data.copy(i + 1, c1)
@@ -411,11 +411,11 @@ export class LineEditor2 {
       throw new Error('i1 i2 cannot be undefined')
     }
 
-    let data = this.mesh.line_ids2
-    let i = this.i * 6
+    const data = this.mesh.line_ids2
+    const i = this.i * 6
 
-    let c1 = _ids_arrs[0]
-    let c2 = _ids_arrs[1]
+    const c1 = _ids_arrs[0]
+    const c2 = _ids_arrs[1]
 
     c1[0] = i1
     c2[0] = i2
@@ -447,8 +447,8 @@ export class PointEditor {
   }
 
   colors(c1: INumVector): this {
-    let data = this.mesh.point_colors
-    let i = this.i
+    const data = this.mesh.point_colors
+    const i = this.i
 
     data.copy(i, c1)
 
@@ -456,8 +456,8 @@ export class PointEditor {
   }
 
   normals(c1: INumVector): this {
-    let data = this.mesh.point_normals
-    let i = this.i
+    const data = this.mesh.point_normals
+    const i = this.i
 
     data.copy(i, c1)
 
@@ -465,8 +465,8 @@ export class PointEditor {
   }
 
   uvs(c1: INumVector): this {
-    let data = this.mesh.point_uvs
-    let i = this.i
+    const data = this.mesh.point_uvs
+    const i = this.i
 
     data.copy(i, c1)
 
@@ -478,8 +478,8 @@ export class PointEditor {
       throw new Error('i1 cannot be undefined')
     }
 
-    let data = this.mesh.point_ids
-    let i = this.i
+    const data = this.mesh.point_ids
+    const i = this.i
 
     _ids_arrs[0][0] = i1
     data.copy(i, _ids_arrs[0] as unknown as INumVector)
@@ -536,7 +536,7 @@ const glRanges = {
   [glSizes.INT]           : [-((1 << 31) - 1), (1 << 31) - 1],
 }
 
-let dmap = new WeakSet()
+const dmap = new WeakSet()
 
 function debugproxy(data, min = -1e17, max = 1e17, isint) {
   if (dmap.has(data)) {
@@ -565,13 +565,13 @@ function debugproxy(data, min = -1e17, max = 1e17, isint) {
     return prop
   }
 
-  let debug = {
+  const debug = {
     min,
     max,
     isint,
   }
 
-  let proxy = new Proxy(data, {
+  const proxy = new Proxy(data, {
     get(target, prop, rc) {
       prop = validate(target, prop)
 
@@ -713,8 +713,8 @@ export class GeoLayer extends Array {
       this._useTypedData = false
       this.data = new Array(this.data_f32.length)
 
-      let a = this.data
-      let b = this.data_f32
+      const a = this.data
+      const b = this.data_f32
 
       for (let i = 0; i < a.length; i++) {
         a[i] = b[i]
@@ -730,8 +730,8 @@ export class GeoLayer extends Array {
       throw new Error('dataUsed NaN error ' + this.dataUsed)
     }
 
-    let size = this.size
-    let starti = this.dataUsed
+    const size = this.size
+    const starti = this.dataUsed
 
     this.f32Ready = this._useTypedData
     this.dataUsed += size
@@ -767,7 +767,7 @@ export class GeoLayer extends Array {
     }
 
     this.dataUsed = count
-    let data = this._useTypedData ? this.data_f32 : this.data
+    const data = this._useTypedData ? this.data_f32 : this.data
 
     if (this.dataUsed !== data.length) {
       if (!this._useTypedData) {
@@ -782,12 +782,12 @@ export class GeoLayer extends Array {
           console.log('simpleisland is converting back to simple array', count, this.data_f32.length, this.dataUsed)
         }
 
-        let len = this.dataUsed
+        const len = this.dataUsed
 
         this.data = new Array(len)
 
-        let a = this.data
-        let b = this.data_f32
+        const a = this.data
+        const b = this.data_f32
 
         for (let i = 0; i < b.length; i++) {
           a[i] = b[i]
@@ -815,12 +815,12 @@ export class GeoLayer extends Array {
   }
 
   _copy_int(i: number, data: INumVector, n = 1, dataStart = 0) {
-    let tot = n * this.size
+    const tot = n * this.size
     this.f32Ready = false
 
     i *= this.size
     let thisdata
-    let mul = this.glSizeMul
+    const mul = this.glSizeMul
 
     //let di = 0;
     //let end = i + tot;
@@ -832,7 +832,7 @@ export class GeoLayer extends Array {
     }
 
     if (window.DEBUG.simplemesh) {
-      let range = glRanges[this.glSize]
+      const range = glRanges[this.glSize]
       thisdata = debugproxy(thisdata, range[0], range[1], this.glSize !== glSizes.FLOAT)
     }
 
@@ -861,7 +861,7 @@ export class GeoLayer extends Array {
       return this._copy_int(i, data, n, dataStart)
     }
 
-    let tot = n * this.size
+    const tot = n * this.size
 
     this.f32Ready = this._useTypedData
 
@@ -885,7 +885,7 @@ export class GeoLayer extends Array {
     }
 
     let di = dataStart
-    let end = i + tot
+    const end = i + tot
 
     while (i < end) {
       thisdata[i] = data[di]
@@ -957,8 +957,8 @@ export class GeoLayerManager {
   }
 
   reset() {
-    for (let [key, meta] of this.layer_meta) {
-      for (let l of meta.layers) {
+    for (const [key, meta] of this.layer_meta) {
+      for (const l of meta.layers) {
         l.reset()
       }
     }
@@ -967,17 +967,17 @@ export class GeoLayerManager {
   }
 
   copy() {
-    let ret = new GeoLayerManager()
+    const ret = new GeoLayerManager()
 
     ret.layer_idgen = this.layer_idgen.copy()
     ret.has_multilayers = this.has_multilayers
 
-    for (let key of this.layer_meta.keys()) {
-      let meta = this.layer_meta.get(key)
-      let meta2 = ret.get_meta(meta.primflag, meta.type)
+    for (const key of this.layer_meta.keys()) {
+      const meta = this.layer_meta.get(key)
+      const meta2 = ret.get_meta(meta.primflag, meta.type)
 
-      for (let layer of meta.layers) {
-        let layer2 = new GeoLayer(layer.size, layer.name, layer.primflag, layer.type, layer.idx)
+      for (const layer of meta.layers) {
+        const layer2 = new GeoLayer(layer.size, layer.name, layer.primflag, layer.type, layer.idx)
 
         layer2.data.length = layer.data.length
         layer2.dataUsed = layer.dataUsed
@@ -991,9 +991,9 @@ export class GeoLayerManager {
         layer2.bufferKey = layer.bufferKey
         layer2.normalized = layer.normalized
 
-        let a = layer.data
-        let b = layer2.data
-        let len = layer.dataUsed
+        const a = layer.data
+        const b = layer2.data
+        const len = layer.dataUsed
 
         if (layer._useTypedData) {
           layer2.data_f32 = layer.data_f32.slice(0, layer.data_f32.length)
@@ -1010,10 +1010,10 @@ export class GeoLayerManager {
   }
 
   get_meta(primflag: number, type: number): GeoLayerMeta {
-    let mask = get_meta_mask(primflag, type)
+    const mask = get_meta_mask(primflag, type)
 
     if (!this.layer_meta.has(mask)) {
-      let attrsizes = {}
+      const attrsizes = {}
       this.attrsizes.set(primflag, attrsizes)
 
       this.layer_meta.set(mask, new GeoLayerMeta(primflag, type, attrsizes))
@@ -1027,7 +1027,7 @@ export class GeoLayerManager {
   }
 
   extend(primflag: PrimitiveTypes, type: number, data: INumVector, count = 1): this {
-    let meta = this.get_meta(primflag, type)
+    const meta = this.get_meta(primflag, type)
 
     for (let i = 0; i < meta.layers.length; i++) {
       meta.layers[i].extend(data, count)
@@ -1041,10 +1041,10 @@ export class GeoLayerManager {
   }
 
   pushLayer(name: string, primflag: number, type: number, size: number): GeoLayer {
-    let meta = this.get_meta(primflag, type)
-    let idx = meta.layers.length
+    const meta = this.get_meta(primflag, type)
+    const idx = meta.layers.length
 
-    let layer = new GeoLayer(size, name, primflag, type, idx)
+    const layer = new GeoLayer(size, name, primflag, type, idx)
 
     layer.id = this.layer_idgen.next()
     layer.index = this.layers.length
@@ -1068,10 +1068,10 @@ export class GeoLayerManager {
       this.has_multilayers = true
     }
 
-    let meta = this.get_meta(primflag, type)
+    const meta = this.get_meta(primflag, type)
 
     if (type === LayerTypes.CUSTOM) {
-      for (let layer of meta.layers) {
+      for (const layer of meta.layers) {
         if (layer.name === name) {
           return layer
         }
@@ -1088,10 +1088,10 @@ export class GeoLayerManager {
   }
 }
 
-let _default_uv = [0, 0]
-let _default_color = [0, 0, 0, 1]
-let _default_normal = [0, 0, 1]
-let _default_id = [-1]
+const _default_uv = [0, 0]
+const _default_color = [0, 0, 0, 1]
+const _default_normal = [0, 0, 1]
+const _default_id = [-1]
 
 export class SimpleIsland {
   gl: WebGL2RenderingContext
@@ -1123,7 +1123,7 @@ export class SimpleIsland {
   _uniforms_temp: any
 
   constructor(mesh: SimpleMesh) {
-    let lay = (this.layers = new GeoLayerManager())
+    const lay = (this.layers = new GeoLayerManager())
 
     this._glAttrs = {}
 
@@ -1194,9 +1194,9 @@ export class SimpleIsland {
         break
     }
 
-    let lf = this.layerflag ? this.layerflag : this.mesh.layerflag
+    const lf = this.layerflag ? this.layerflag : this.mesh.layerflag
 
-    for (let layer of this.layers.layers) {
+    for (const layer of this.layers.layers) {
       if (layer.primflag !== primtype || !(layer.type & lf)) {
         continue
       }
@@ -1235,7 +1235,7 @@ export class SimpleIsland {
   line_stripdirs: GeoLayer
 
   makeBufferAliases(): void {
-    let lay = this.layers
+    const lay = this.layers
 
     let pflag = PrimitiveTypes.TRIS
     this.tri_cos = lay.get('tri_cos', pflag, LayerTypes.LOC) //array
@@ -1289,7 +1289,7 @@ export class SimpleIsland {
   }
 
   copy(): SimpleIsland {
-    let ret = new SimpleIsland(this.mesh)
+    const ret = new SimpleIsland(this.mesh)
 
     ret.primflag = this.primflag
     ret.layerflag = this.layerflag
@@ -1298,11 +1298,11 @@ export class SimpleIsland {
     ret.tottri = this.tottri
     ret.totpoint = this.totpoint
 
-    for (let k in this.uniforms) {
+    for (const k in this.uniforms) {
       ret.uniforms[k] = this.uniforms[k]
     }
 
-    for (let tex of this.textures) {
+    for (const tex of this.textures) {
       ret.textures.push(tex)
     }
 
@@ -1357,7 +1357,7 @@ export class SimpleIsland {
     this.line_cos2.extend(v2)
     this.line_cos2.extend(v2)
 
-    let data = this.line_cos2._getWriteData()
+    const data = this.line_cos2._getWriteData()
     if (dv === 0.0) {
       while (li < this.line_cos2.dataUsed) {
         data[li++] += Math.random() * 0.001
@@ -1366,7 +1366,7 @@ export class SimpleIsland {
 
     this._newElem(PrimitiveTypes.ADVANCED_LINES, 6)
 
-    let i = this.totline_tristrip * 6
+    const i = this.totline_tristrip * 6
 
     this.line_stripuvs.copy(i, line2_stripuvs[0] as unknown as INumVector)
     this.line_stripuvs.copy(i + 1, line2_stripuvs[1] as unknown as INumVector)
@@ -1375,7 +1375,7 @@ export class SimpleIsland {
     this.line_stripuvs.copy(i + 4, line2_stripuvs[4] as unknown as INumVector)
     this.line_stripuvs.copy(i + 5, line2_stripuvs[5] as unknown as INumVector)
 
-    let d = line2_temp4s
+    const d = line2_temp4s
       .next()
       .load(v2)
       .sub(v1 as unknown as Vector4)
@@ -1412,10 +1412,10 @@ export class SimpleIsland {
   }
 
   _newElem(primtype: PrimitiveTypes, primcount: number): number {
-    let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag
+    const layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag
 
-    let meta = this.layers.get_meta(primtype, LayerTypes.LOC)
-    let start = meta.layers[0].dataUsed / meta.layers[0].size
+    const meta = this.layers.get_meta(primtype, LayerTypes.LOC)
+    const start = meta.layers[0].dataUsed / meta.layers[0].size
 
     for (let j = 0; j < primcount; j++) {
       if (layerflag & LayerTypes.UV) {
@@ -1455,7 +1455,7 @@ export class SimpleIsland {
   }
 
   quad(v1: INumVector, v2: INumVector, v3: INumVector, v4: INumVector): QuadEditor {
-    let i = this.tottri
+    const i = this.tottri
 
     this.tri(v1, v2, v3)
     this.tri(v1, v3, v4)
@@ -1469,13 +1469,13 @@ export class SimpleIsland {
   }
 
   gen_buffers(gl: WebGL2RenderingContext): void {
-    let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag
+    const layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag
 
-    let allflag = this._regen_all
+    const allflag = this._regen_all
     this._regen_all = 0
 
     //convert all layers to final typedarrays to save memory, even ones that aren't used
-    for (let layer of this.layers) {
+    for (const layer of this.layers) {
       if (layer.dataUsed === 0) {
         continue
       }
@@ -1487,7 +1487,7 @@ export class SimpleIsland {
       if (!layer.f32Ready) {
         layer.f32Ready = true
 
-        let typedarray = glTypeArrays[layer.glSize]
+        const typedarray = glTypeArrays[layer.glSize]
 
         if (!layer.data_f32 || layer.data_f32.length !== layer.dataUsed) {
           if (window.DEBUG.simplemesh) {
@@ -1497,10 +1497,10 @@ export class SimpleIsland {
           layer.data_f32 = new typedarray(layer.dataUsed)
         }
 
-        let a = layer.data
-        let b = layer.data_f32
+        const a = layer.data
+        const b = layer.data_f32
 
-        let count = layer.dataUsed
+        const count = layer.dataUsed
 
         layer.data.length = layer.dataUsed
         ;(layer.data_f32 as unknown as Float32Array).set(layer.data)
@@ -1515,7 +1515,7 @@ export class SimpleIsland {
       }
     }
 
-    for (let layer of this.layers) {
+    for (const layer of this.layers) {
       if (layer.glReady && !(allflag & layer.primflag)) {
         continue
       }
@@ -1531,7 +1531,7 @@ export class SimpleIsland {
 
       //console.log(layer.bufferKey, layer.dataUsed, layer.data_f32.length, layer.bufferType, layer.data_f32);
 
-      let vbo = this.buffer.get(gl, layer.bufferKey, layer.bufferType)
+      const vbo = this.buffer.get(gl, layer.bufferKey, layer.bufferType)
       vbo.uploadData(gl, layer.data_f32 as Float32Array, layer.bufferType, layer.bufferHint)
       layer.glReady = true
     }
@@ -1555,7 +1555,7 @@ export class SimpleIsland {
     key += '_indices'
 
     if (!this[key]) {
-      let layer = (this[key] = this.layers.get(key, ptype, LayerTypes.INDEX))
+      const layer = (this[key] = this.layers.get(key, ptype, LayerTypes.INDEX))
 
       layer.size = 1
       layer.glSizeMul = 1
@@ -1572,15 +1572,15 @@ export class SimpleIsland {
       this.bindArrays(gl, uniforms, program, 'tri', PrimitiveTypes.TRIS)
 
       if (this.getIndexedMode()) {
-        let idx = this.getIndexBuffer(PrimitiveTypes.TRIS)
+        const idx = this.getIndexBuffer(PrimitiveTypes.TRIS)
 
         if (!idx) {
           console.warn('Missing index layer', this)
           return
         }
 
-        let vbo = this.buffer.get(gl, idx.bufferKey, idx.bufferType)
-        let buf = vbo.get(gl)
+        const vbo = this.buffer.get(gl, idx.bufferKey, idx.bufferType)
+        const buf = vbo.get(gl)
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf)
         gl.drawElements(gl.TRIANGLES, this.tottri * 3, gl.UNSIGNED_SHORT, 0)
@@ -1592,15 +1592,15 @@ export class SimpleIsland {
   }
 
   _draw_line_tristrips(gl: WebGL2RenderingContext, uniforms: any, params: any, program?: ShaderProgram): void {
-    let attrs = this._glAttrs
+    const attrs = this._glAttrs
 
     if (this.totline_tristrip) {
       //program = Shaders.LineTriStripShader;
       //program.bind(gl, uniforms);
 
       if (!(program as unknown as any)._smoothline) {
-        let uniforms2 = Object.assign({}, uniforms)
-        let attributes = new Set(program.attrs)
+        const uniforms2 = Object.assign({}, uniforms)
+        const attributes = new Set(program.attrs)
 
         attributes.add('_strip_dir')
         attributes.add('_strip_uv')
@@ -1625,7 +1625,7 @@ export class SimpleIsland {
           fragment
         )
 
-        let sdef = {
+        const sdef = {
           vertex,
           fragment,
           uniforms: uniforms2,
@@ -1652,7 +1652,7 @@ export class SimpleIsland {
   }
 
   flagRecalc(): this {
-    for (let layer of this.layers) {
+    for (const layer of this.layers) {
       layer.f32Ready = false
     }
 
@@ -1670,11 +1670,11 @@ export class SimpleIsland {
   ): void {
     program = program === undefined ? this.program : program
     program = program === undefined ? this.mesh.program : program
-    let layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag
+    const layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag
 
     if (program && !program.program) {
       //program.checkCompile(gl, uniforms);
-      let attrs = this._glAttrs
+      const attrs = this._glAttrs
       program.bind(gl, uniforms, attrs)
     }
 
@@ -1682,22 +1682,22 @@ export class SimpleIsland {
       return
     }
 
-    let maxattrib = gl.getParameter(gl.MAX_VERTEX_ATTRIBS)
+    const maxattrib = gl.getParameter(gl.MAX_VERTEX_ATTRIBS)
 
     for (let i = 0; i < maxattrib; i++) {
       gl.disableVertexAttribArray(i)
     }
 
     let li = 0
-    let layer = this.layers.get_meta(primflag, LayerTypes.LOC).layers[0]
+    const layer = this.layers.get_meta(primflag, LayerTypes.LOC).layers[0]
 
     if (layer.dataUsed === 0) {
       return
     }
 
-    let buf = this.buffer.get(gl, layer.bufferKey, layer.bufferType).get(gl)
+    const buf = this.buffer.get(gl, layer.bufferKey, layer.bufferType).get(gl)
 
-    let btype = gl.ARRAY_BUFFER
+    const btype = gl.ARRAY_BUFFER
     if (this.getIndexedMode()) {
       //btype = gl.ELEMENT_ARRAY_BUFFER;
     }
@@ -1706,19 +1706,19 @@ export class SimpleIsland {
     gl.vertexAttribPointer(0, layer.size, layer.glSize, false, 0, 0)
     gl.enableVertexAttribArray(0)
 
-    let bindArray = (name, type) => {
+    const bindArray = (name, type) => {
       if (!(layerflag & type) || type & LayerTypes.INDEX) {
         return
       }
 
-      let meta = this.layers.get_meta(primflag, type)
+      const meta = this.layers.get_meta(primflag, type)
       if (!meta.layers.length) {
         //gl.disableVertexAttribArray(li);
         li++
         return
       } else {
         for (let i = 0; i < meta.layers.length; i++) {
-          let layer = meta.layers[i]
+          const layer = meta.layers[i]
           let count
           let mli = i
 
@@ -1743,10 +1743,10 @@ export class SimpleIsland {
             mli = count
           }
 
-          let key = ShaderProgram.multiLayerAttrKey(name, mli)
+          const key = ShaderProgram.multiLayerAttrKey(name, mli)
 
-          let vbo = this.buffer.get(gl, layer.bufferKey, layer.bufferType)
-          let buf = vbo.get(gl)
+          const vbo = this.buffer.get(gl, layer.bufferKey, layer.bufferType)
+          const buf = vbo.get(gl)
 
           li = program.attrLoc(key)
           if (li < 0) {
@@ -1796,7 +1796,7 @@ export class SimpleIsland {
     }
 
     if (this.getIndexedMode()) {
-      let idx = this.getIndexBuffer(PrimitiveTypes.LINES)
+      const idx = this.getIndexBuffer(PrimitiveTypes.LINES)
       //reuse tri vert arrays in indexed mode
       this.bindArrays(gl, uniforms, program, 'tris', PrimitiveTypes.TRIS)
 
@@ -1805,8 +1805,8 @@ export class SimpleIsland {
         return
       }
 
-      let vbo = this.buffer.get(gl, idx.bufferKey, idx.bufferType)
-      let buf = vbo.get(gl)
+      const vbo = this.buffer.get(gl, idx.bufferKey, idx.bufferType)
+      const buf = vbo.get(gl)
 
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf)
       gl.drawElements(gl.LINES, this.totline * 2, gl.UNSIGNED_SHORT, 0)
@@ -1824,7 +1824,7 @@ export class SimpleIsland {
     this.gl = gl
 
     let program = this.program === undefined ? this.mesh.program : this.program
-    let primflag = this.primflag === undefined ? this.mesh.primflag : this.primflag
+    const primflag = this.primflag === undefined ? this.mesh.primflag : this.primflag
 
     if (program_override !== undefined) {
       program = program_override
@@ -1836,20 +1836,20 @@ export class SimpleIsland {
     }
 
     if (uniforms === undefined) {
-      for (let k in this._uniforms_temp) {
+      for (const k in this._uniforms_temp) {
         delete this._uniforms_temp[k]
       }
 
       uniforms = this._uniforms_temp
     }
 
-    for (let k in this.uniforms) {
+    for (const k in this.uniforms) {
       if (!(k in uniforms)) {
         uniforms[k] = this.uniforms[k]
       }
     }
 
-    for (let k in this.mesh.uniforms) {
+    for (const k in this.mesh.uniforms) {
       if (!(k in uniforms)) {
         uniforms[k] = this.mesh.uniforms[k]
       }
@@ -1857,7 +1857,7 @@ export class SimpleIsland {
 
     if (program === undefined) program = (gl as unknown as any).simple_shader as ShaderProgram
 
-    let attrs = this._glAttrs
+    const attrs = this._glAttrs
 
     if (!this.layers.has_multilayers) {
       program.bind(gl, uniforms, attrs)
@@ -1923,19 +1923,19 @@ export class SimpleMesh {
   }
 
   onContextLost(e: WebGLContextEvent) {
-    for (let island of this.islands) {
+    for (const island of this.islands) {
       island.onContextLost(e)
     }
   }
 
   reset(gl: WebGL2RenderingContext) {
-    for (let island of this.islands) {
+    for (const island of this.islands) {
       island.reset(gl)
     }
   }
 
   flagRecalc() {
-    for (let island of this.islands) {
+    for (const island of this.islands) {
       island.flagRecalc()
     }
   }
@@ -1948,8 +1948,8 @@ export class SimpleMesh {
   ): GeoLayer | undefined {
     let ret
 
-    for (let island of this.islands) {
-      let ret2 = island.getDataLayer(primflag, type, size, name)
+    for (const island of this.islands) {
+      const ret2 = island.getDataLayer(primflag, type, size, name)
 
       if (island === this.island) {
         ret = ret2
@@ -1962,8 +1962,8 @@ export class SimpleMesh {
   addDataLayer(primflag: PrimitiveTypes, type: number, size = TypeSizes[type], name = LayerTypeNames[type]): GeoLayer {
     let ret
 
-    for (let island of this.islands) {
-      let ret2 = island.addDataLayer(primflag, type, size, name)
+    for (const island of this.islands) {
+      const ret2 = island.addDataLayer(primflag, type, size, name)
 
       if (island === this.island) {
         ret = ret2
@@ -1974,17 +1974,17 @@ export class SimpleMesh {
   }
 
   copy(): SimpleMesh {
-    let ret = new SimpleMesh()
+    const ret = new SimpleMesh()
 
     ret.primflag = this.primflag
     ret.layerflag = this.layerflag
 
-    for (let k in this.uniforms) {
+    for (const k in this.uniforms) {
       ret.uniforms[k] = this.uniforms[k]
     }
 
-    for (let island of this.islands) {
-      let island2 = island.copy()
+    for (const island of this.islands) {
+      const island2 = island.copy()
 
       island2.mesh = ret
       ret.islands.push(island2)
@@ -1998,7 +1998,7 @@ export class SimpleMesh {
   }
 
   add_island(): SimpleIsland {
-    let island = new SimpleIsland(this)
+    const island = new SimpleIsland(this)
 
     this.island = island
 
@@ -2016,7 +2016,7 @@ export class SimpleMesh {
       console.warn('failed to destroy a mesh')
       return
     }
-    for (let island of this.islands) {
+    for (const island of this.islands) {
       island.destroy(gl)
     }
   }
@@ -2042,8 +2042,8 @@ export class SimpleMesh {
   }
 
   drawLines(gl: WebGL2RenderingContext, uniforms: any, program_override?: ShaderProgram): void {
-    for (let island of this.islands) {
-      let primflag = island.primflag
+    for (const island of this.islands) {
+      const primflag = island.primflag
 
       island.primflag = PrimitiveTypes.LINES | PrimitiveTypes.ADVANCED_LINES
       island.draw(gl, uniforms, undefined, program_override)
@@ -2054,7 +2054,7 @@ export class SimpleMesh {
   draw(gl: WebGL2RenderingContext, uniforms?: any, program_override?: ShaderProgram): void {
     this.gl = gl
 
-    for (let island of this.islands) {
+    for (const island of this.islands) {
       island.draw(gl, uniforms, undefined, program_override)
     }
   }
@@ -2114,13 +2114,13 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     this.freelist.length = 0
     this.freeset = new Set()
 
-    for (let island of this.islands) {
+    for (const island of this.islands) {
       island.reset(gl)
     }
   }
 
   free(id: number): void {
-    let chunk = this.chunkmap.get(id)
+    const chunk = this.chunkmap.get(id)
 
     if (chunk === undefined || this.freeset.has(id)) {
       return
@@ -2131,8 +2131,8 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
     this.freeset.add(id)
 
-    let island = this.islands[chunk]
-    let i = this.idmap.get(id)
+    const island = this.islands[chunk]
+    const i = this.idmap.get(id)
     //console.log("free", id, chunk);
 
     //if (this.primflag & PrimitiveTypes.POINTS) {
@@ -2153,16 +2153,16 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
   get_chunk(id) {
     if (id > 1 << 18 && this.idmap instanceof util.IDMap) {
-      let idmap = new Map()
+      const idmap = new Map()
 
-      for (let [k, v] of this.idmap) {
+      for (const [k, v] of this.idmap) {
         idmap.set(k, v)
       }
 
       this.idmap = idmap
 
-      let chunkmap = new Map()
-      for (let [k, v] of this.chunkmap) {
+      const chunkmap = new Map()
+      for (const [k, v] of this.chunkmap) {
         chunkmap.set(k, v)
       }
 
@@ -2187,8 +2187,8 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     }
 
     if (this.freelist.length > 0) {
-      let id2 = this.freelist.pop()
-      let chunk = this.freelist.pop()
+      const id2 = this.freelist.pop()
+      const chunk = this.freelist.pop()
 
       this.chunkmap.set(id, chunk)
       this.idmap.set(id, id2)
@@ -2196,8 +2196,8 @@ export class ChunkedSimpleMesh extends SimpleMesh {
       return this.islands[chunk]
     }
 
-    let chunki = this.islands.length
-    let chunk = this.add_island()
+    const chunki = this.islands.length
+    const chunk = this.add_island()
     chunk.primflag = this.primflag
 
     for (let i = 0; i < this.chunksize; i++) {
@@ -2210,7 +2210,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   }
 
   destroy(gl) {
-    for (let island of this.islands) {
+    for (const island of this.islands) {
       island.destroy(gl)
     }
 
@@ -2251,8 +2251,8 @@ export class ChunkedSimpleMesh extends SimpleMesh {
       }
     }
 
-    let chunk = this.get_chunk(id)
-    let itri = this.idmap.get(id)
+    const chunk = this.get_chunk(id)
+    const itri = this.idmap.get(id)
 
     chunk.flagRecalc()
     chunk.glFlagUploadAll(PrimitiveTypes.TRIS)
@@ -2297,7 +2297,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
   // @ts-ignore
   smoothline(id: number, v1: INumVector, v2: INumVector): LineEditor2 {
-    let chunk = this.get_chunk(id)
+    const chunk = this.get_chunk(id)
     let iline = this.idmap.get(id)
 
     chunk.flagRecalc()
@@ -2313,7 +2313,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     let i = iline * 18
 
     if (line_cos.dataUsed < i + 18) {
-      let ret = chunk.smoothline(v1, v2)
+      const ret = chunk.smoothline(v1, v2)
 
       iline = ret.i
       this.idmap.set(id, iline)
@@ -2360,8 +2360,8 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   line(id: number, v1: INumVector, v2: INumVector): LineEditor {
     //return this.smoothline(id, v1, v2);
 
-    let chunk = this.get_chunk(id)
-    let iline = this.idmap.get(id)
+    const chunk = this.get_chunk(id)
+    const iline = this.idmap.get(id)
 
     chunk.flagRecalc()
     chunk.glFlagUploadAll(PrimitiveTypes.LINES)
@@ -2392,8 +2392,8 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
   // @ts-ignore
   point(id: number, v1: INumVector): PointEditor {
-    let chunk = this.get_chunk(id)
-    let ipoint = this.idmap.get(id)
+    const chunk = this.get_chunk(id)
+    const ipoint = this.idmap.get(id)
 
     chunk.flagRecalc()
     chunk.glFlagUploadAll(PrimitiveTypes.POINTS)
@@ -2422,7 +2422,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   draw(gl: WebGL2RenderingContext, uniforms: any, program_override?: ShaderProgram): void {
     this.gl = gl
 
-    for (let island of this.islands) {
+    for (const island of this.islands) {
       island.draw(gl, uniforms, undefined, program_override)
     }
   }

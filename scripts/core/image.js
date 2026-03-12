@@ -1,84 +1,86 @@
-import {ResourceType, resourceManager} from "./resource.js";
+import {ResourceType, resourceManager} from './resource.js'
 
 export const ImageExtensions = {
-  "png" : "image/png",
-  "jpg" : "image/jpeg",
-  "tiff" : "image/tiff",
-  "svg"  : "image/svg",
-  "gif" : "image/gif"
-};
+  png : 'image/png',
+  jpg : 'image/jpeg',
+  tiff: 'image/tiff',
+  svg : 'image/svg',
+  gif : 'image/gif',
+}
 
 class ImageResource extends ResourceType {
   constructor(url) {
-    super(url);
+    super(url)
 
-    this.image = undefined;
-    this.ready = false;
+    this.image = undefined
+    this.ready = false
   }
 
   static handlesURL(url) {
-    if (url.search(/data\:image/) >= 0)
-      return true;
+    if (url.search(/data\:image/) >= 0) return true
 
-    url = url.toLowerCase();
+    url = url.toLowerCase()
     for (let k in ImageExtensions) {
-      k = "\\." + k;
+      k = '\\.' + k
 
       if (url.search(k) >= 0) {
-        return true;
+        return true
       }
     }
 
-    return false;
+    return false
   }
 
   static createFromURL(url) {
-    return new ImageResource(url);
+    return new ImageResource(url)
   }
 
-  static resourceDefine() {return {
-    name : "image",
-    uiName : "Image"
-  }}
+  static resourceDefine() {
+    return {
+      name  : 'image',
+      uiName: 'Image',
+    }
+  }
 
   clone() {
-    let ret = new ImageResource();
-    ret.url = this.url;
-    ret.image = this.image;
-    return ret;
+    let ret = new ImageResource()
+    ret.url = this.url
+    ret.image = this.image
+    return ret
   }
 
   load() {
     if (this.ready) {
-      return;
+      return
     }
 
-    this.image = new Image();
-    this.image.src = this.url;
+    this.image = new Image()
+    this.image.src = this.url
     this.image.onload = (e) => {
-      this.ready = true;
-      this.fire("load", this.image);
+      this.ready = true
+      this.fire('load', this.image)
     }
   }
 
   unload() {
     if (this.ready) {
-      let image = this.image;
+      let image = this.image
 
-      this.ready = false;
-      this.image = undefined;
+      this.ready = false
+      this.image = undefined
 
-      this.fire("unload", image);
+      this.fire('unload', image)
     }
   }
 
   isReady() {
-    return this.ready;
+    return this.ready
   }
 
-  getThumbnail() { //returns an Image, or undefined
-    return undefined;
+  getThumbnail() {
+    //returns an Image, or undefined
+    return undefined
   }
 }
 
-resourceManager.register(ImageResource);
+resourceManager.register(ImageResource)

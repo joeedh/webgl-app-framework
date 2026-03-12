@@ -131,7 +131,7 @@ const QFLAG = KdTreeFields.QFLAG,
 
 let _quad_node_idgen = 0
 
-let eval_rets = util.cachering.fromConstructor(Vector3, 1024)
+const eval_rets = util.cachering.fromConstructor(Vector3, 1024)
 
 function makeCompressedNodeStruct() {
   const CompressFields = [
@@ -151,14 +151,14 @@ function makeCompressedNodeStruct() {
     QMAXV,
   ]
 
-  let revmap = {}
-  for (let k in KdTreeFields) {
+  const revmap = {}
+  for (const k in KdTreeFields) {
     revmap[KdTreeFields[k]] = k
   }
 
-  let fields = {}
+  const fields = {}
 
-  let types = {
+  const types = {
     QFLAG  : 'byte',
     QDEPTH : 'byte',
     QAXIS  : 'byte',
@@ -176,11 +176,11 @@ function makeCompressedNodeStruct() {
   }
 
   let s = `mesh_grid.CompressedKdNode {\n`
-  for (let i of CompressFields) {
-    let k = revmap[i]
+  for (const i of CompressFields) {
+    const k = revmap[i]
     fields[k] = i
 
-    let type = k in types ? types[k] : 'float'
+    const type = k in types ? types[k] : 'float'
 
     s += `  ${k} : ${type};\n`
   }
@@ -192,17 +192,17 @@ function makeCompressedNodeStruct() {
 
 //window.makeCompressedNodeStruct = makeCompressedNodeStruct;
 
-let _btm_temp1 = new Vector3()
-let _btm_temp2 = new Vector3()
-let _btm_temp3 = new Vector3()
-let _btm_temp4 = new Vector3()
-let _btm_temp5 = new Vector3()
-let _btm_temp6 = new Vector3()
-let _btm_temp7 = new Vector3()
-let _btm_temp8 = new Vector3()
-let _btm_temp9 = new Vector3()
-let imattemp = new Matrix4()
-let imattemp2 = new Matrix4()
+const _btm_temp1 = new Vector3()
+const _btm_temp2 = new Vector3()
+const _btm_temp3 = new Vector3()
+const _btm_temp4 = new Vector3()
+const _btm_temp5 = new Vector3()
+const _btm_temp6 = new Vector3()
+const _btm_temp7 = new Vector3()
+const _btm_temp8 = new Vector3()
+const _btm_temp9 = new Vector3()
+const imattemp = new Matrix4()
+const imattemp2 = new Matrix4()
 
 const staroffs = [
   [-1, 0],
@@ -219,7 +219,7 @@ const staroffs_origin = [
   [0, 0],
 ]
 
-let boxoffs = []
+const boxoffs = []
 
 for (let ix = -1; ix <= 1; ix++) {
   for (let iy = -1; iy <= 1; iy++) {
@@ -227,7 +227,7 @@ for (let ix = -1; ix <= 1; ix++) {
   }
 }
 
-let polystack = new Array(2048)
+const polystack = new Array(2048)
 
 export class UVMap extends Array<number> {
   _len: number
@@ -290,7 +290,7 @@ export class UVMap extends Array<number> {
       return false
     }
 
-    let ret = this[i] !== undefined
+    const ret = this[i] !== undefined
     this[i] = val
 
     if (ret) {
@@ -309,7 +309,7 @@ export class UVMap extends Array<number> {
       return false
     }
 
-    let ret = this[i] !== undefined
+    const ret = this[i] !== undefined
     this[i] = undefined
 
     if (ret) {
@@ -344,26 +344,26 @@ export class CompressedKdNode {
   static STRUCT = nstructjs.inlineRegister(this, makeCompressedNodeStruct().nstruct)
 
   constructor() {
-    for (let k in CompressedKdNode.fields) {
+    for (const k in CompressedKdNode.fields) {
       this[k] = 0
     }
   }
 
   static fromNodes(ns: number[]): CompressedKdNode[] {
-    let fields = CompressedKdNode.fields
-    let ret = []
+    const fields = CompressedKdNode.fields
+    const ret = []
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
-      let n = new CompressedKdNode()
+      const n = new CompressedKdNode()
       ret.push(n)
 
-      for (let k in fields) {
-        let i = fields[k]
+      for (const k in fields) {
+        const i = fields[k]
 
         n[k] = ns[ni + i]
       }
 
-      let parent = ns[ni + QPARENT]
+      const parent = ns[ni + QPARENT]
 
       //n.QCHILD1 = Math.max(n.QCHILD1 - ni, 0);
       //n.QCHILD2 = Math.max(n.QCHILD2 - ni, 0);
@@ -375,22 +375,22 @@ export class CompressedKdNode {
   }
 }
 
-let tanmats = util.cachering.fromConstructor(Matrix4, 64)
-let tanvecs4 = util.cachering.fromConstructor(Vector4, 64)
-let tanvecs3 = util.cachering.fromConstructor(Vector3, 64)
+const tanmats = util.cachering.fromConstructor(Matrix4, 64)
+const tanvecs4 = util.cachering.fromConstructor(Vector4, 64)
+const tanvecs3 = util.cachering.fromConstructor(Vector3, 64)
 
-let blink_rets = util.cachering.fromConstructor(Vector3, 64)
-let blink_rets4 = util.cachering.fromConstructor(Vector4, 64)
-let tmptanmat = new Matrix4()
-let uvstmp = new Array(4)
+const blink_rets = util.cachering.fromConstructor(Vector3, 64)
+const blink_rets4 = util.cachering.fromConstructor(Vector4, 64)
+const tmptanmat = new Matrix4()
+const uvstmp = new Array(4)
 for (let i = 0; i < 4; i++) {
   uvstmp[i] = new Vector2()
 }
 
-let stmp1 = new Vector3(),
+const stmp1 = new Vector3(),
   stmp2 = new Vector3()
-let recttemps = new util.cachering(() => [new Vector3(), new Vector3(), new Vector3(), new Vector3()], 64)
-let interptemp1 = []
+const recttemps = new util.cachering(() => [new Vector3(), new Vector3(), new Vector3(), new Vector3()], 64)
+const interptemp1 = []
 
 export const KdTreeFlags = {
   SELECT: 1,
@@ -402,7 +402,7 @@ export const KdTreeFlags = {
 
 const {SELECT, LEAF, DEAD, TEMP, TEMP2} = KdTreeFlags
 
-let _getuv_rets = util.cachering.fromConstructor(Vector2, 32)
+const _getuv_rets = util.cachering.fromConstructor(Vector2, 32)
 
 export class KdTreeGrid extends GridBase<KDGridVert> {
   leafPoints: number[]
@@ -542,8 +542,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       this.recalcFlag |= QRecalcFlags.REGEN_IDS
     }
 
-    for (let p of this.points) {
-      let p2 = new KDGridVert(p.index)
+    for (const p of this.points) {
+      const p2 = new KDGridVert(p.index)
       p2.index2 = p.index2
 
       p2.load(p)
@@ -567,11 +567,11 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     b.customDatas = []
 
     for (let i = 0; i < this.customDatas.length; i++) {
-      let cd1 = this.customDatas[i]
-      let cd2 = new CDElemArray()
+      const cd1 = this.customDatas[i]
+      const cd2 = new CDElemArray()
       b.customDatas.push(cd2)
 
-      for (let c of cd1) {
+      for (const c of cd1) {
         cd2.push(c.copy())
       }
     }
@@ -586,19 +586,19 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   getNormalQuad(loop) {
-    let ret = recttemps.next()
+    const ret = recttemps.next()
 
     ret[0].load(loop.f.no)
     ret[2].load(loop.v.no)
 
     ret[1].zero()
-    for (let l of loop.prev.e.loops) {
+    for (const l of loop.prev.e.loops) {
       ret[1].add(l.f.no)
     }
     ret[1].normalize()
 
     ret[3].zero()
-    for (let l of loop.e.loops) {
+    for (const l of loop.e.loops) {
       ret[3].add(l.f.no)
     }
     ret[3].normalize()
@@ -607,11 +607,11 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   getQuad(loop) {
-    let ret = recttemps.next()
+    const ret = recttemps.next()
 
     //XXX todo: handle symmetry flags for this branch
     if (0 && this.subsurf) {
-      let p = this.subsurf
+      const p = this.subsurf
       ret[0].load(p.evaluate(0, 0))
       ret[1].load(p.evaluate(0, 1))
       ret[2].load(p.evaluate(1, 1))
@@ -620,7 +620,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       ret[0].zero()
       let tot = 0.0
 
-      for (let l of loop.f.lists[0]) {
+      for (const l of loop.f.lists[0]) {
         ret[0].add(l.v)
         tot++
       }
@@ -635,7 +635,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     let i = 0
-    for (let l of loop.list) {
+    for (const l of loop.list) {
       if (l === loop) {
         break
       }
@@ -651,30 +651,30 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   smoothPoint(v, fac = 1.0) {
-    let _tmp = stmp1
+    const _tmp = stmp1
 
     _tmp.zero()
     let w = 0.0
 
-    for (let vr of v.bRing) {
+    for (const vr of v.bRing) {
       //v.neighbors) {
       vr.co.interp(v.co, 0.5)
       v.co.load(vr.co, true)
     }
 
-    for (let vr of v.bRing) {
-      for (let v2 of vr.neighbors) {
+    for (const vr of v.bRing) {
+      for (const v2 of vr.neighbors) {
         if (v2 === vr || v2.loopEid !== vr.loopEid) {
           continue
         }
 
-        let w2 = 1.0
+        const w2 = 1.0
         _tmp.addFac(v2, w2)
         w += w2
       }
     }
 
-    for (let v2 of v.neighbors) {
+    for (const v2 of v.neighbors) {
       if (v2.loopEid !== v.loopEid) {
         continue
       }
@@ -698,14 +698,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
   stitchBoundaries() {
     return
-    for (let p of this.points) {
+    for (const p of this.points) {
       if (p.eid < 0) {
         console.error('Error!')
       }
 
       let w = 1.0
 
-      for (let pr of p.bRing) {
+      for (const pr of p.bRing) {
         if (pr.eid >= 0) {
           p.co.add(pr.co)
           w++
@@ -714,7 +714,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
       p.co.mulScalar(1.0 / w)
 
-      for (let pr of p.bRing) {
+      for (const pr of p.bRing) {
         if (pr.eid >= 0) {
           pr.co.load(p.co)
         }
@@ -723,7 +723,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   _hashPoint(u, v) {
-    let dimen = 1024 * 1024
+    const dimen = 1024 * 1024
     u = ~~(u * dimen + 0.000001)
     v = ~~(v * dimen + 0.000001)
 
@@ -736,8 +736,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       this._rebuildHash()
     }
 
-    let pmap = this.pmap
-    let key = this._hashPoint(u, v)
+    const pmap = this.pmap
+    const key = this._hashPoint(u, v)
 
     if (pmap.has(key)) {
       if (isNewOut) {
@@ -751,14 +751,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     pmap.set(key, this.points.length)
-    let p = new KDGridVert(this.points.length, loopEid)
+    const p = new KDGridVert(this.points.length, loopEid)
 
     p.neighbors = new Set()
     p.eid = mesh.eidgen.next()
 
     for (let i = 0; i < this.customDataLayout.length; i++) {
-      let cls = this.customDataLayout[i]
-      let cd = new cls()
+      const cls = this.customDataLayout[i]
+      const cd = new cls()
 
       p.customData.length = this._max_cd_i
       p.customData[this.cdmap_reverse[i]] = cd
@@ -772,8 +772,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   _getUV(ni, pidx) {
-    let uv = _getuv_rets.next()
-    let ns = this.nodes
+    const uv = _getuv_rets.next()
+    const ns = this.nodes
 
     if (pidx === 5) {
       throw new Error('_getUV')
@@ -806,17 +806,17 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   _rebuildHash() {
     this.recalcFlag &= ~QRecalcFlags.POINTHASH
 
-    let nodes = this.nodes
+    const nodes = this.nodes
 
     this.pmap = new Map()
 
-    let donode = (ni, a, b, pi) => {
+    const donode = (ni, a, b, pi) => {
       let u, v
 
       u = nodes[ni + a]
       v = nodes[ni + b]
 
-      let key = this._hashPoint(u, v)
+      const key = this._hashPoint(u, v)
       this.pmap.set(key, nodes[ni + QPOINT1 + pi])
     }
 
@@ -838,14 +838,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       return
     }
 
-    let ns = this.nodes
+    const ns = this.nodes
 
     if (ns[ni + QFLAG] & DEAD) {
       console.warn('Tried to free same quadtree node twice', ni)
       return
     }
 
-    let pi = ns[ni + QPARENT]
+    const pi = ns[ni + QPARENT]
     let ok = true
 
     for (let i = 0; i < MAXCHILD; i++) {
@@ -865,7 +865,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   _newNode() {
-    let ns = this.nodes
+    const ns = this.nodes
     let ni
 
     if (this.freelist.length > 0) {
@@ -907,7 +907,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     mesh: Mesh,
     isNewOut?: boolean[]
   ): KDGridVert {
-    let nodes = this.nodes
+    const nodes = this.nodes
 
     let u, v
     switch (pidx) {
@@ -929,7 +929,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         break
     }
 
-    let p = this._getPoint(u, v, loopEid, mesh, isNewOut)
+    const p = this._getPoint(u, v, loopEid, mesh, isNewOut)
 
     this.nodes[ni + QPOINT1 + pidx] = p.index2
 
@@ -958,9 +958,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     this.leafPoints.length = 0
 
     if (loop !== undefined) {
-      let nodes = this.nodes
+      const nodes = this.nodes
 
-      let ni = this._newNode()
+      const ni = this._newNode()
 
       if (ni !== 0) {
         throw new Error('root must be zero')
@@ -972,12 +972,12 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       nodes[ni + QCENTU] = nodes[ni + QCENTV] = 0.5
       nodes[ni + QFLAG] = LEAF
 
-      let p1 = this._ensureNodePoint(ni, 0, loop.eid, mesh)
-      let p2 = this._ensureNodePoint(ni, 1, loop.eid, mesh)
-      let p3 = this._ensureNodePoint(ni, 2, loop.eid, mesh)
-      let p4 = this._ensureNodePoint(ni, 3, loop.eid, mesh)
+      const p1 = this._ensureNodePoint(ni, 0, loop.eid, mesh)
+      const p2 = this._ensureNodePoint(ni, 1, loop.eid, mesh)
+      const p3 = this._ensureNodePoint(ni, 2, loop.eid, mesh)
+      const p4 = this._ensureNodePoint(ni, 3, loop.eid, mesh)
 
-      let quad = this.getQuad(loop)
+      const quad = this.getQuad(loop)
 
       p1.load(quad[0])
       p2.load(quad[1])
@@ -986,9 +986,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
       //console.log(this.subsurf);
 
-      let rand = new util.MersenneRandom(loop.eid)
+      const rand = new util.MersenneRandom(loop.eid)
 
-      let rec = (ni, depth) => {
+      const rec = (ni, depth) => {
         if (depth === 0) {
           return
         }
@@ -1024,19 +1024,19 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
   printNodes() {
     let s = ''
-    let ns = this.nodes
+    const ns = this.nodes
 
     let alignlen = 0
-    for (let k in KdTreeFields) {
+    for (const k in KdTreeFields) {
       alignlen = Math.max(alignlen, k.length + 1)
     }
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       s += `==========${ni}=========\n`
 
-      for (let k in KdTreeFields) {
+      for (const k in KdTreeFields) {
         let k2 = k
-        let v = KdTreeFields[k]
+        const v = KdTreeFields[k]
 
         while (k2.length < alignlen) {
           k2 = ' ' + k2
@@ -1068,10 +1068,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     //let p2 = this._getPoint(0, 1, l.eid);
     //let p3 = this._getPoint(1, 1, l.eid);
     //let p4 = this._getPoint(1, 0, l.eid);
-    let ni = 0,
+    const ni = 0,
       ns = this.nodes,
       ps = this.points
-    let p3 = ps[ns[ni + QPOINT3]]
+    const p3 = ps[ns[ni + QPOINT3]]
 
     l.v.load(p3)
     mesh.doMirrorSnap(l.v)
@@ -1097,8 +1097,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     this.recalcFlag &= ~QRecalcFlags.TOPO
 
-    let ns = this.nodes
-    let ps = this.points
+    const ns = this.nodes
+    const ps = this.points
 
     let vmap2
     let emap2
@@ -1117,7 +1117,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     for (let i = 0; i < ps.length; i++) {
-      let vi = i * VTOT
+      const vi = i * VTOT
 
       vmap2[vi + VINDEX] = i
       vmap2[vi + VP] = 0
@@ -1139,14 +1139,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       maxdepth = Math.min(maxdepth, this.depthLimit)
     }
 
-    let dimen = (this.dimen = gridSides[maxdepth] - 1)
+    const dimen = (this.dimen = gridSides[maxdepth] - 1)
 
-    let emap = new Map()
+    const emap = new Map()
     let idgen = 0
 
     function ekey(a, b) {
-      let min = Math.min(a, b)
-      let max = Math.max(a, b)
+      const min = Math.min(a, b)
+      const max = Math.max(a, b)
 
       return min | (max << 21)
       //return Math.min(a, b) + ":" + Math.max(a, b);
@@ -1155,7 +1155,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     let eindex = 0
 
     function getedge(a, b) {
-      let key = ekey(a, b)
+      const key = ekey(a, b)
 
       let ei = emap.get(key)
 
@@ -1175,10 +1175,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         idgen++
       }
 
-      let vi = a * VTOT
+      const vi = a * VTOT
 
       if (vmap2[vi + VTOTE] < VMAXE) {
-        let vi2 = vi + VTOTE + 1 + vmap2[vi + VTOTE]
+        const vi2 = vi + VTOTE + 1 + vmap2[vi + VTOTE]
 
         vmap2[vi + VTOTE]++
         vmap2[vi2] = ei
@@ -1187,7 +1187,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       return ei
     }
 
-    let dimen3 = ~~(dimen * 16)
+    const dimen3 = ~~(dimen * 16)
     let uvmap
 
     if (dimen3 <= 256) {
@@ -1219,21 +1219,21 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     function addedge(ni, a, b, u, v) {
       setuv(a * VTOT, u, v)
 
-      let ei = getedge(a, b)
+      const ei = getedge(a, b)
       //e.nodes.push(ni);
 
       if (emap2[ei + ETOTN] < EMAXN) {
-        let ei2 = ei + ETOTN + emap2[ei + ETOTN] + 1
+        const ei2 = ei + ETOTN + emap2[ei + ETOTN] + 1
 
         emap2[ei + ETOTN]++
         emap2[ei2] = ei
       }
     }
 
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
-      let depth = ns[ni + QDEPTH]
+      const depth = ns[ni + QDEPTH]
 
       if (ns[ni + QFLAG] & LEAF && depth > depthLimit) {
         continue
@@ -1246,26 +1246,26 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         continue
       }
 
-      let ip1 = ns[ni + QPOINT1]
-      let ip2 = ns[ni + QPOINT2]
-      let ip3 = ns[ni + QPOINT3]
-      let ip4 = ns[ni + QPOINT4]
+      const ip1 = ns[ni + QPOINT1]
+      const ip2 = ns[ni + QPOINT2]
+      const ip3 = ns[ni + QPOINT3]
+      const ip4 = ns[ni + QPOINT4]
 
-      let minu = ns[ni + QMINU]
-      let minv = ns[ni + QMINV]
-      let maxu = ns[ni + QMAXU]
-      let maxv = ns[ni + QMAXV]
+      const minu = ns[ni + QMINU]
+      const minv = ns[ni + QMINV]
+      const maxu = ns[ni + QMAXU]
+      const maxv = ns[ni + QMAXV]
 
-      let du = maxu - minu
-      let dv = maxv - minv
+      const du = maxu - minu
+      const dv = maxv - minv
 
       for (let j = 0; j < 4; j++) {
-        let ip = ns[ni + QPOINT1 + j]
+        const ip = ns[ni + QPOINT1 + j]
 
-        let vi = ip * VTOT
+        const vi = ip * VTOT
 
         if (vmap2[vi + VTOTN] < VMAXN) {
-          let vi2 = vi + VTOTN + vmap2[vi + VTOTN] + 1
+          const vi2 = vi + VTOTN + vmap2[vi + VTOTN] + 1
 
           vmap2[vi + VTOTN]++
           vmap2[vi2] = ni
@@ -1279,12 +1279,12 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     for (let i = 0; i < ps.length; i++) {
-      let vi = i * VTOT
+      const vi = i * VTOT
 
-      let u = vmap2[vi + VU]
-      let v = vmap2[vi + VV]
+      const u = vmap2[vi + VU]
+      const v = vmap2[vi + VV]
 
-      let key = uvkey(u, v)
+      const key = uvkey(u, v)
 
       uvmap.set(key, i)
     }
@@ -1304,7 +1304,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   stripExtraData() {
     this.topo = undefined
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.bRingRemove()
       p.bLink = undefined
     }
@@ -1323,8 +1323,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   updateMirrorFlag(mesh, p, isboundary = false) {
-    let threshold = 0.001
-    let sym = mesh.symFlag
+    const threshold = 0.001
+    const sym = mesh.symFlag
 
     p.flag &= ~(MeshFlags.MIRRORED | MeshFlags.MIRROR_BOUNDARY)
 
@@ -1354,9 +1354,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     this.topo = undefined
 
-    let ns = this.nodes
-    let nmap = new Array(ns.length)
-    let ns2 = []
+    const ns = this.nodes
+    const nmap = new Array(ns.length)
+    const ns2 = []
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       nmap[ni] = ns2.length
@@ -1389,13 +1389,13 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   updateMirrorFlags(mesh, loop, cd_grid) {
     this.recalcFlag &= ~QRecalcFlags.MIRROR
 
-    let doneset = new Array(this.points.length)
+    const doneset = new Array(this.points.length)
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
 
-    let bound1 = loop.prev.e.l === loop.prev.e.l.radial_next
-    let bound2 = loop.e.l === loop.e.l.radial_next
+    const bound1 = loop.prev.e.l === loop.prev.e.l.radial_next
+    const bound2 = loop.e.l === loop.e.l.radial_next
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
@@ -1404,14 +1404,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       }
 
       for (let i = 0; i < 4; i++) {
-        let ip = ns[ni + QPOINT1 + i]
+        const ip = ns[ni + QPOINT1 + i]
         if (!doneset[ip]) {
           doneset[ip] = true
 
-          let p = ps[ip]
-          let uv = this._getUV(ni, i)
+          const p = ps[ip]
+          const uv = this._getUV(ni, i)
 
-          let eps = 0.00001
+          const eps = 0.00001
           let mask = 0
 
           if (uv[0] <= eps) {
@@ -1450,20 +1450,20 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   evaluate(u, v, startNi = 0, depthLimit = undefined) {
-    let ni = this.findNode(u, v, startNi, depthLimit)
+    const ni = this.findNode(u, v, startNi, depthLimit)
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
-    let p1 = ps[ns[ni + QPOINT1]]
-    let p2 = ps[ns[ni + QPOINT2]]
-    let p3 = ps[ns[ni + QPOINT3]]
-    let p4 = ps[ns[ni + QPOINT4]]
+    const p1 = ps[ns[ni + QPOINT1]]
+    const p2 = ps[ns[ni + QPOINT2]]
+    const p3 = ps[ns[ni + QPOINT3]]
+    const p4 = ps[ns[ni + QPOINT4]]
 
-    let u2 = (u - ns[ni + QMINU]) / (ns[ni + QMAXU] - ns[ni + QMINU])
-    let v2 = (v - ns[ni + QMINV]) / (ns[ni + QMAXV] - ns[ni + QMINV])
+    const u2 = (u - ns[ni + QMINU]) / (ns[ni + QMAXU] - ns[ni + QMINU])
+    const v2 = (v - ns[ni + QMINV]) / (ns[ni + QMAXV] - ns[ni + QMINV])
 
-    let a = eval_rets.next()
-    let b = eval_rets.next()
+    const a = eval_rets.next()
+    const b = eval_rets.next()
 
     a.load(p1.co).interp(p2.co, v2)
     b.load(p4.co).interp(p3.co, v2)
@@ -1474,7 +1474,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
   findNode(u, v, startNi = 0, depthLimit = undefined) {
     let ni = startNi
-    let ns = this.nodes
+    const ns = this.nodes
 
     if (depthLimit === undefined) {
       depthLimit = this.depthLimitEnabled ? this.depthLimit : 1000
@@ -1494,7 +1494,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       ni = ns[ni + QPARENT]
     }
 
-    let maxdepth = ns[QSUBTREE_DEPTH] + 1
+    const maxdepth = ns[QSUBTREE_DEPTH] + 1
 
     for (let i = 0; i < maxdepth; i++) {
       let isleaf = !!(ns[ni + QFLAG] & LEAF)
@@ -1507,7 +1507,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       let found = false
 
       for (let j = 0; j < MAXCHILD; j++) {
-        let ni2 = ns[ni + QCHILD1 + j]
+        const ni2 = ns[ni + QCHILD1 + j]
 
         let ok = u >= ns[ni2 + QMINU] && u < ns[ni2 + QMAXU]
         ok = ok && v >= ns[ni2 + QMINV] && v < ns[ni2 + QMAXV]
@@ -1631,43 +1631,43 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   buildTangentMatrix1(ni: number, u1: number, v1: number, matOut: Matrix4) {
-    let m = matOut.$matrix
+    const m = matOut.$matrix
 
     matOut.makeIdentity()
 
-    let ns = this.nodes
-    let ps = this.points
+    const ns = this.nodes
+    const ps = this.points
 
-    let u = (u1 - ns[ni + QMINU]) / (ns[ni + QMAXU] - ns[ni + QMINU])
-    let v = (v1 - ns[ni + QMINV]) / (ns[ni + QMAXV] - ns[ni + QMINV])
+    const u = (u1 - ns[ni + QMINU]) / (ns[ni + QMAXU] - ns[ni + QMINU])
+    const v = (v1 - ns[ni + QMINV]) / (ns[ni + QMAXV] - ns[ni + QMINV])
 
-    let p1 = ps[ns[ni + QPOINT1]]
-    let p2 = ps[ns[ni + QPOINT2]]
-    let p3 = ps[ns[ni + QPOINT3]]
-    let p4 = ps[ns[ni + QPOINT4]]
+    const p1 = ps[ns[ni + QPOINT1]]
+    const p2 = ps[ns[ni + QPOINT2]]
+    const p3 = ps[ns[ni + QPOINT3]]
+    const p4 = ps[ns[ni + QPOINT4]]
 
-    let quadco = _btm_temp9
-    let a = _btm_temp1
-    let b = _btm_temp2
+    const quadco = _btm_temp9
+    const a = _btm_temp1
+    const b = _btm_temp2
 
-    let vx = _btm_temp3
-    let vy = _btm_temp4
+    const vx = _btm_temp3
+    const vy = _btm_temp4
 
-    let calcsco = (p) => {
+    const calcsco = (p) => {
       p.sco.zero()
 
       let tot = 0.0
-      let dimen = gridSides[ns[ni + QDEPTH]] - 1
-      let dt = 1.0 / dimen
+      const dimen = gridSides[ns[ni + QDEPTH]] - 1
+      const dt = 1.0 / dimen
 
-      for (let off of staroffs) {
+      for (const off of staroffs) {
         let u = off[0] * dt + p.uv[0]
         let v = off[1] * dt + p.uv[1]
 
         u = Math.min(Math.max(u, 0.0), 1.0)
         v = Math.min(Math.max(v, 0.0), 1.0)
 
-        let co = this.evaluate(u, v, undefined, ns[ni + QDEPTH])
+        const co = this.evaluate(u, v, undefined, ns[ni + QDEPTH])
         p.sco.add(co)
         tot++
       }
@@ -1690,10 +1690,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     //*/
 
     if (0 && this.subsurf) {
-      let m1 = this.subsurf.buildTangentMatrix(ns[ni + QMINU], ns[ni + QMINV])
-      let m2 = this.subsurf.buildTangentMatrix(ns[ni + QMINU], ns[ni + QMAXV])
-      let m3 = this.subsurf.buildTangentMatrix(ns[ni + QMAXU], ns[ni + QMAXV])
-      let m4 = this.subsurf.buildTangentMatrix(ns[ni + QMAXU], ns[ni + QMINV])
+      const m1 = this.subsurf.buildTangentMatrix(ns[ni + QMINU], ns[ni + QMINV])
+      const m2 = this.subsurf.buildTangentMatrix(ns[ni + QMINU], ns[ni + QMAXV])
+      const m3 = this.subsurf.buildTangentMatrix(ns[ni + QMAXU], ns[ni + QMAXV])
+      const m4 = this.subsurf.buildTangentMatrix(ns[ni + QMAXU], ns[ni + QMINV])
 
       //this.subsurf.buildTangentMatrix(u1, v1, matOut);
       //return matOut;
@@ -1849,10 +1849,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       */
 
       if (0 && this.subsurf) {
-        let r1 = ps[ns[QPOINT1]]
-        let r2 = ps[ns[QPOINT2]]
-        let r3 = ps[ns[QPOINT3]]
-        let r4 = ps[ns[QPOINT4]]
+        const r1 = ps[ns[QPOINT1]]
+        const r2 = ps[ns[QPOINT2]]
+        const r3 = ps[ns[QPOINT3]]
+        const r4 = ps[ns[QPOINT4]]
 
         a.load(r1.co).interp(r2.co, v1)
         b.load(r4.co).interp(r3.co, v1)
@@ -1897,15 +1897,15 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     vx.load(p4.sco).sub(p1.sco)
     vy.load(p2.sco).sub(p1.sco)
 
-    let lx = vx.vectorLength()
-    let ly = vy.vectorLength()
+    const lx = vx.vectorLength()
+    const ly = vy.vectorLength()
 
     if (lx === 0.0 || ly === 0.0) {
       return
     }
 
-    let n = _btm_temp5
-    let n2 = _btm_temp7
+    const n = _btm_temp5
+    const n2 = _btm_temp7
 
     let scale = (lx + ly) * 0.5
     scale = Math.max(scale, 0.0001)
@@ -1958,7 +1958,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     n.mulScalar(scale)
 
-    let tmat = tmptanmat
+    const tmat = tmptanmat
     tmat.makeIdentity()
     tmat.translate(quadco[0], quadco[1], quadco[2])
 
@@ -1985,19 +1985,19 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   invertTangentMatrix(mat) {
-    let tmat = imattemp
+    const tmat = imattemp
 
     tmat.makeIdentity()
 
     //let start = imattemp2;
     //start.load(mat);
 
-    let m = mat.$matrix
-    let x = m.m41
-    let y = m.m42
-    let z = m.m43
+    const m = mat.$matrix
+    const x = m.m41
+    const y = m.m42
+    const z = m.m43
 
-    let tm = tmat.$matrix
+    const tm = tmat.$matrix
     tm.m41 = -x
     tm.m42 = -y
     tm.m43 = -z
@@ -2041,16 +2041,16 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   tangentToGlobalSS(inverse = false) {
-    let mat = new Matrix4()
+    const mat = new Matrix4()
 
     if (!this.subsurf) {
       return
     }
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
-    let doneset = new Array(ps.length)
-    let subsurf = this.subsurf
+    const doneset = new Array(ps.length)
+    const subsurf = this.subsurf
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
@@ -2058,7 +2058,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       }
 
       for (let i = 0; i < 4; i++) {
-        let pi = ns[ni + QPOINT1 + i]
+        const pi = ns[ni + QPOINT1 + i]
 
         if (doneset[pi]) {
           continue
@@ -2066,8 +2066,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
         doneset[pi] = 1
 
-        let uv = this._getUV(ni, i)
-        let p = ps[pi]
+        const uv = this._getUV(ni, i)
+        const p = ps[pi]
 
         subsurf.buildTangentMatrix(uv[0], uv[1], mat)
         if (inverse) {
@@ -2102,9 +2102,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   subdivideAll_intern(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>): void {
-    let ns = this.nodes
-    let nodes = []
-    let loopEid = loop.eid
+    const ns = this.nodes
+    const nodes = []
+    const loopEid = loop.eid
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (!(ns[ni + QFLAG] & LEAF) || ns[ni + QFLAG] & DEAD) {
@@ -2117,7 +2117,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     this.dimen++
     this._rebuildHash()
 
-    for (let ni of nodes) {
+    for (const ni of nodes) {
       this.subdivide(ni, loopEid, mesh)
     }
 
@@ -2126,33 +2126,33 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   tangentToGlobal(level = this.depthLimit, inverse = false) {
-    let tmp1 = new Vector3()
-    let tmp2 = new Vector3()
-    let tmp3 = new Vector3()
-    let tmp4 = new Vector3()
-    let tmp5 = new Vector3()
+    const tmp1 = new Vector3()
+    const tmp2 = new Vector3()
+    const tmp3 = new Vector3()
+    const tmp4 = new Vector3()
+    const tmp5 = new Vector3()
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
 
-    let doneset = new WeakSet()
-    let plvls = new Map()
-    for (let p of this.points) {
+    const doneset = new WeakSet()
+    const plvls = new Map()
+    for (const p of this.points) {
       plvls.set(p, 100000)
       p.flag |= MeshFlags.GRID_MRES_HIDDEN
     }
 
-    let levelps = new Map()
+    const levelps = new Map()
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
-      let depth = ns[ni + QDEPTH]
+      const depth = ns[ni + QDEPTH]
 
       if (ns[ni + QFLAG] & DEAD) {
         continue
       }
 
       for (let i = 0; i < 4; i++) {
-        let p = ps[ns[ni + QPOINT1 + i]]
+        const p = ps[ns[ni + QPOINT1 + i]]
 
         let lvl = plvls.get(p)
         lvl = Math.min(lvl, depth)
@@ -2161,8 +2161,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       }
     }
 
-    for (let p of this.points) {
-      let lvl = plvls.get(p)
+    for (const p of this.points) {
+      const lvl = plvls.get(p)
 
       if (!levelps.has(lvl)) {
         levelps.set(lvl, [])
@@ -2171,13 +2171,13 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       levelps.get(lvl).push(p)
     }
 
-    let tanMat = new Matrix4()
-    let mat2 = new Matrix4()
+    const tanMat = new Matrix4()
+    const mat2 = new Matrix4()
 
-    let depthLimit = this.depthLimitEnabled ? level : 10000
+    const depthLimit = this.depthLimitEnabled ? level : 10000
 
-    for (let p of this.points) {
-      let lvl = plvls.get(p)
+    for (const p of this.points) {
+      const lvl = plvls.get(p)
       if (lvl <= depthLimit) {
         p.flag &= ~MeshFlags.GRID_MRES_HIDDEN
         doneset.add(p)
@@ -2189,23 +2189,23 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     //update root level normals
-    let nq = this.normalQuad
+    const nq = this.normalQuad
 
     for (let i = 0; i < 4; i++) {
-      let p = ps[ns[QPOINT1 + i]]
+      const p = ps[ns[QPOINT1 + i]]
       p.no.load(nq[i])
     }
 
-    let si = 1
-    let cur = 0
+    const si = 1
+    const cur = 0
 
     const STACKSIZE = 256
-    let stack = new Array(STACKSIZE)
+    const stack = new Array(STACKSIZE)
     stack[0] = 0
 
     //console.log("Level", level, "Inverse", inverse);
 
-    let nodes = []
+    const nodes = []
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
         continue
@@ -2221,13 +2221,13 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     //console.log(nodes);
     let lastdepth = 0
-    let tmpco = new Vector3()
+    const tmpco = new Vector3()
 
-    for (let ni of nodes) {
-      let depth = ns[ni + QDEPTH]
+    for (const ni of nodes) {
+      const depth = ns[ni + QDEPTH]
 
       if (!inverse && depth !== lastdepth) {
-        for (let p of ps) {
+        for (const p of ps) {
           //levelps.get(lastdepth)) {
           if (plvls.get(p) > lastdepth) {
             continue
@@ -2242,12 +2242,12 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         continue
       }
 
-      let pi = ns[ni + QPARENT]
+      const pi = ns[ni + QPARENT]
       //console.log("pi", pi, ni);
 
       for (let i = 0; i < 4; i++) {
-        let p = ps[ns[ni + QPOINT1 + i]]
-        let lvl = plvls.get(p)
+        const p = ps[ns[ni + QPOINT1 + i]]
+        const lvl = plvls.get(p)
 
         if (lvl !== ns[ni + QDEPTH] || doneset.has(p)) {
           continue
@@ -2256,7 +2256,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         //console.log(lvl);
         doneset.add(p)
 
-        let uv = this._getUV(ni, i)
+        const uv = this._getUV(ni, i)
 
         tanMat.makeIdentity()
         this.buildTangentMatrix(pi, uv[0], uv[1], tanMat)
@@ -2266,7 +2266,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
           tanMat.invert()
         }
 
-        let co = tmpco.load(p.co)
+        const co = tmpco.load(p.co)
 
         //console.log(ni, ""+tanMat);
         p.co.multVecMatrix(tanMat)
@@ -2278,15 +2278,15 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       }
 
       if (!inverse) {
-        let p1 = ps[ns[ni + QPOINT1]]
-        let p2 = ps[ns[ni + QPOINT2]]
-        let p3 = ps[ns[ni + QPOINT3]]
-        let p4 = ps[ns[ni + QPOINT4]]
+        const p1 = ps[ns[ni + QPOINT1]]
+        const p2 = ps[ns[ni + QPOINT2]]
+        const p3 = ps[ns[ni + QPOINT3]]
+        const p4 = ps[ns[ni + QPOINT4]]
 
-        let n = math.normal_quad(p1.co, p2.co, p3.co, p4.co)
+        const n = math.normal_quad(p1.co, p2.co, p3.co, p4.co)
 
         for (let i = 0; i < 4; i++) {
-          let p = ps[ns[ni + QPOINT1 + i]]
+          const p = ps[ns[ni + QPOINT1 + i]]
           //let lvl = plvls.get(p);
 
           //if (lvl === ns[ni + QDEPTH]) {
@@ -2339,9 +2339,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   mresDown() {}
 
   checkMultiRes(mesh, loop, cd_grid) {
-    let mres = mesh.loops.customData.flatlist[cd_grid].getTypeSettings()
-    let limitDepth = !!(mres.flag & GridSettingFlags.ENABLE_DEPTH_LIMIT)
-    let changed = limitDepth !== !!this.depthLimitEnabled || mres.depthLimit !== this.depthLimit
+    const mres = mesh.loops.customData.flatlist[cd_grid].getTypeSettings()
+    const limitDepth = !!(mres.flag & GridSettingFlags.ENABLE_DEPTH_LIMIT)
+    const changed = limitDepth !== !!this.depthLimitEnabled || mres.depthLimit !== this.depthLimit
 
     if (!changed) {
       return
@@ -2353,9 +2353,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     console.warn('Grid settings changed!')
 
     let maxdepth = 0
-    for (let l of mesh.loops) {
-      let grid2 = l.customData[cd_grid]
-      let ns = grid2.nodes
+    for (const l of mesh.loops) {
+      const grid2 = l.customData[cd_grid]
+      const ns = grid2.nodes
 
       for (let ni = 0; ni < ns.length; ni += QTOT) {
         if (ns[ni + QFLAG] & DEAD) {
@@ -2365,10 +2365,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         maxdepth = Math.max(maxdepth, ns[ni + QDEPTH])
       }
     }
-    let oldlevel = this.depthLimitEnabled ? this.depthLimit : maxdepth
-    let newlevel = limitDepth ? mres.depthLimit : maxdepth
+    const oldlevel = this.depthLimitEnabled ? this.depthLimit : maxdepth
+    const newlevel = limitDepth ? mres.depthLimit : maxdepth
 
-    let dl = newlevel > oldlevel ? 1 : -1
+    const dl = newlevel > oldlevel ? 1 : -1
     let level = oldlevel + dl
 
     let diff = Math.abs(oldlevel - newlevel)
@@ -2376,17 +2376,17 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     diff = Math.min(diff, 10)
 
     for (let i = 0; i < diff; i++, level += dl) {
-      let last = i === diff - 1
+      const last = i === diff - 1
 
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid]
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid]
 
         grid2.updateNormalQuad(l)
         grid2._changeMresSettings(level, limitDepth || !last)
       }
 
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid]
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid]
 
         //update topology for all grids first
         grid2.getLeafNodes()
@@ -2394,31 +2394,31 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         grid2.getTopo(mesh, cd_grid)
       }
 
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid]
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid]
 
         //first general update
         grid2.update(mesh, l, cd_grid, true)
       }
 
       //stitch boundaries
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid]
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid]
         grid2.stitchBoundaries()
       }
 
       //now do node normals
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid]
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid]
         grid2.checkNodeNormals()
       }
 
       //smooth if going down a level
       if (dl > 0) {
-        for (let l of mesh.loops) {
-          let grid2 = l.customData[cd_grid]
-          for (let pi of grid2.getLeafPoints()) {
-            let p = grid2.points[pi]
+        for (const l of mesh.loops) {
+          const grid2 = l.customData[cd_grid]
+          for (const pi of grid2.getLeafPoints()) {
+            const p = grid2.points[pi]
             //grid2.smoothPoint(p, 0.25);
             p.interp(p.sco, 0.5)
           }
@@ -2426,20 +2426,20 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       }
 
       //boundaries again
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid]
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid]
         //grid2.stitchBoundaries();
       }
 
       //and final update
-      for (let l of mesh.loops) {
-        let grid2 = l.customData[cd_grid]
+      for (const l of mesh.loops) {
+        const grid2 = l.customData[cd_grid]
         grid2.update(mesh, l, cd_grid, true)
       }
     }
 
-    for (let l of mesh.loops) {
-      let grid2 = l.customData[cd_grid]
+    for (const l of mesh.loops) {
+      const grid2 = l.customData[cd_grid]
       grid2.depthLimit = mres.depthLimit
     }
   }
@@ -2463,12 +2463,12 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     if (GridBase.hasPatchUVLayer(mesh, cd_grid) && this.recalcFlag & QRecalcFlags.PATCH_UVS) {
-      let cd_uv = GridBase.getPatchUVLayer(mesh, cd_grid)
+      const cd_uv = GridBase.getPatchUVLayer(mesh, cd_grid)
       this.initPatchUVLayer(mesh, loop, cd_grid, cd_uv)
     }
 
     if (this.loopEid !== loop.eid) {
-      for (let p of this.points) {
+      for (const p of this.points) {
         p.loopEid = loop.eid
       }
 
@@ -2501,7 +2501,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     if (this.recalcFlag & QRecalcFlags.TOPO) {
-      for (let p of this.points) {
+      for (const p of this.points) {
         p.loopEid = loop.eid
       }
 
@@ -2544,9 +2544,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     //console.log("Rebuilding polygon map for quadtree node");
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
-    let {maxdepth, vmap, emap, vmap2, emap2, uvmap, dimen, uvkey} = this.getTopo(mesh, cd_grid)
+    const {maxdepth, vmap, emap, vmap2, emap2, uvmap, dimen, uvkey} = this.getTopo(mesh, cd_grid)
 
     this.recalcFlag &= ~QRecalcFlags.POLYS
 
@@ -2566,20 +2566,20 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     let du = 1.0 / dimen
     let dv = 1.0 / dimen
 
-    let duv = new Vector2()
+    const duv = new Vector2()
     duv[0] = du
     duv[1] = dv
 
-    let duv1 = new Vector2()
-    let uv2 = new Vector2()
+    const duv1 = new Vector2()
+    const uv2 = new Vector2()
 
     this.polys.length = 0
-    let polys = this.polys
-    let poly = []
+    const polys = this.polys
+    const poly = []
 
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
 
-    let stack = polystack
+    const stack = polystack
 
     /*
     for (let ni=0; ni<ns.length; ni += QTOT) {
@@ -2610,13 +2610,13 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     stack[cur++] = 0
 
     while (cur > 0) {
-      let ni = stack[--cur]
-      let isleaf = ns[ni + QFLAG] & LEAF || ns[ni + QDEPTH] === depthLimit
+      const ni = stack[--cur]
+      const isleaf = ns[ni + QFLAG] & LEAF || ns[ni + QDEPTH] === depthLimit
 
       if (!isleaf) {
         if (!(ns[ni + QFLAG] & LEAF)) {
           for (let i = 0; i < MAXCHILD; i++) {
-            let ni2 = ns[ni + QCHILD1 + i]
+            const ni2 = ns[ni + QCHILD1 + i]
             if (!ni2) {
               continue
             }
@@ -2633,13 +2633,13 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     stack[cur++] = 0
 
     while (cur > 0) {
-      let ni = stack[--cur]
-      let isleaf = ns[ni + QFLAG] & LEAF || ns[ni + QDEPTH] === depthLimit
+      const ni = stack[--cur]
+      const isleaf = ns[ni + QFLAG] & LEAF || ns[ni + QDEPTH] === depthLimit
 
       if (!isleaf) {
         if (!(ns[ni + QFLAG] & LEAF)) {
           for (let i = 0; i < MAXCHILD; i++) {
-            let ni2 = ns[ni + QCHILD1 + i]
+            const ni2 = ns[ni + QCHILD1 + i]
             if (!ni2) {
               continue
             }
@@ -2658,8 +2658,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         split = ns[ns[ni + QPARENT] + QSPLIT]
       }
 
-      let axis = ns[ni + QAXIS]
-      let dt = 1.0 / dimen
+      const axis = ns[ni + QAXIS]
+      const dt = 1.0 / dimen
 
       du = axis ? 1.0 : dt
       dv = axis ? dt : 1.0
@@ -2675,21 +2675,21 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       //poly.push(ip5);
 
       for (let i = 0; i < 4; i++) {
-        let ip1 = ns[ni + QPOINT1 + i]
-        let ip2 = ns[ni + QPOINT1 + ((i + 1) % 4)]
+        const ip1 = ns[ni + QPOINT1 + i]
+        const ip2 = ns[ni + QPOINT1 + ((i + 1) % 4)]
 
         //let v1 = vmap[ip1];
         //let v2 = vmap[ip2];
 
-        let vi1 = ip1 * VTOT
-        let vi2 = ip2 * VTOT
+        const vi1 = ip1 * VTOT
+        const vi2 = ip2 * VTOT
 
         duv1[0] = vmap2[vi2 + VU] - vmap2[vi1 + VU]
         duv1[1] = vmap2[vi2 + VV] - vmap2[vi1 + VV]
 
         //duv1.load(v2.uv).sub(v1.uv);
 
-        let axis = ((i & 1) ^ 1) as Number2
+        const axis = ((i & 1) ^ 1) as Number2
 
         let steps
 
@@ -2708,7 +2708,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         //uv2[0] = v1.uv[0];
         //uv2[1] = v1.uv[1];
 
-        let dt = duv[axis] * Math.sign(duv1[axis])
+        const dt = duv[axis] * Math.sign(duv1[axis])
 
         if (Math.random() > 0.99) {
           //console.log("steps", steps);
@@ -2720,8 +2720,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
             continue
           }
 
-          let key = uvkey(uv2[0], uv2[1])
-          let p = uvmap.get(key)
+          const key = uvkey(uv2[0], uv2[1])
+          const p = uvmap.get(key)
 
           if (p !== undefined && (poly.length === 0 || p !== poly[poly.length - 1])) {
             poly.push(p)
@@ -2735,7 +2735,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       //poly.pop();
 
       if (poly.length > 2) {
-        for (let p of poly) {
+        for (const p of poly) {
           polys.push(p)
         }
       }
@@ -2753,13 +2753,13 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   pruneDeadPoints(mesh, l, cd_grid) {
-    let ps = this.points
-    let ns = this.nodes
+    const ps = this.points
+    const ns = this.nodes
     this.recalcFlag &= ~QRecalcFlags.POINT_PRUNE
 
     let pi = 0
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.flag &= ~(TEMP | TEMP2)
     }
 
@@ -2769,8 +2769,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       }
 
       for (let i = 0; i < 4; i++) {
-        let ip = ns[ni + QPOINT1 + i]
-        let p = ps[ip]
+        const ip = ns[ni + QPOINT1 + i]
+        const p = ps[ip]
 
         if (!(p.flag & TEMP2)) {
           pi++
@@ -2784,7 +2784,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       return
     }
 
-    let newps = []
+    const newps = []
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
@@ -2792,8 +2792,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       }
 
       for (let i = 0; i < 4; i++) {
-        let ip = ns[ni + QPOINT1 + i]
-        let p = ps[ip]
+        const ip = ns[ni + QPOINT1 + i]
+        const p = ps[ip]
 
         if (!(p.flag & TEMP)) {
           p.flag |= TEMP
@@ -2810,28 +2810,28 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     this.topo = undefined
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.flag &= ~TEMP
     }
 
-    for (let p of newps) {
+    for (const p of newps) {
       p.flag |= TEMP
     }
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       if (!(p.flag & TEMP)) {
         p.eid = -1
 
         if (1 || p.bLink) {
           for (let step = 0; step < 2; step++) {
-            let list = step ? p.neighbors : p.bRing
+            const list = step ? p.neighbors : p.bRing
 
-            for (let p2 of list) {
+            for (const p2 of list) {
               if (p2.loopEid !== p.loopEid && p2.loopEid !== undefined) {
-                let l = mesh.eidMap.get(p2.loopEid)
+                const l = mesh.eidMap.get(p2.loopEid)
 
                 if (l && l.eid === MeshTypes.LOOP) {
-                  let grid = l.customData[cd_grid]
+                  const grid = l.customData[cd_grid]
 
                   grid.flag |= QRecalcFlags.NEIGHBORS | QRecalcFlags.TOPO
                 }
@@ -2858,12 +2858,12 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     for (let i = 0; i < this.customDatas.length; i++) {
-      let cd1 = this.customDatas[i]
-      let cd2 = new CDElemArray()
+      const cd1 = this.customDatas[i]
+      const cd2 = new CDElemArray()
       cd2.length = newps.length
 
       for (let j = 0; j < cd1.length; j++) {
-        let p = this.points[j]
+        const p = this.points[j]
 
         if (p.flag & TEMP) {
           cd2[p.index2] = cd1[j]
@@ -2880,11 +2880,11 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   collapse(ni) {
-    let ns = this.nodes
+    const ns = this.nodes
 
-    let rec2 = (ni2) => {
+    const rec2 = (ni2) => {
       for (let i = 0; i < MAXCHILD; i++) {
-        let ni3 = ns[ni2 + QCHILD1 + i]
+        const ni3 = ns[ni2 + QCHILD1 + i]
 
         if (ni3) {
           rec2(ni3)
@@ -2935,17 +2935,17 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     this.recalcFlag &= ~QRecalcFlags.NODE_DEPTH_DELTA
 
-    let ns = this.nodes
-    let ps = this.points
+    const ns = this.nodes
+    const ps = this.points
 
     let ret = false
 
-    let topo = this.getTopo(mesh, cd_grid)
-    let vmap = topo.vmap
-    let vmap2 = topo.vmap2
+    const topo = this.getTopo(mesh, cd_grid)
+    const vmap = topo.vmap
+    const vmap2 = topo.vmap2
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
-      let flag = ns[ni + QFLAG]
+      const flag = ns[ni + QFLAG]
       if (flag & DEAD || !(flag & LEAF)) {
         continue
       }
@@ -2954,19 +2954,19 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
-      let flag = ns[ni + QFLAG]
+      const flag = ns[ni + QFLAG]
       if (flag & DEAD || !(flag & LEAF)) {
         continue
       }
 
       for (let i = 0; i < 4; i++) {
-        let pi = ns[ni + QPOINT1 + i]
-        let vi = pi * VTOT
-        let totn = vmap2[vi + VTOTN]
+        const pi = ns[ni + QPOINT1 + i]
+        const vi = pi * VTOT
+        const totn = vmap2[vi + VTOTN]
 
         for (let j = 0; j < totn; j++) {
-          let vi2 = vi + VTOTN + 1 + j
-          let ni2 = vmap2[vi2]
+          const vi2 = vi + VTOTN + 1 + j
+          const ni2 = vmap2[vi2]
           //}
           //for (let ni2 of vmap[pi].nodes) {
           if (ns[ni2 + QDEPTH] > ns[ni + QDEPTH] + 2) {
@@ -2979,7 +2979,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
-      let flag = ns[ni + QFLAG]
+      const flag = ns[ni + QFLAG]
       if (flag & DEAD || !(flag & LEAF)) {
         continue
       }
@@ -2997,7 +2997,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   _subdivide_intern(ni, loopEid, mesh) {
-    let nodes = this.nodes
+    const nodes = this.nodes
 
     if (nodes[ni + QFLAG] & DEAD) {
       console.error('cannot subdivide a deleted node')
@@ -3021,41 +3021,41 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     //not a leaf anymore
     nodes[ni + QFLAG] &= ~LEAF
 
-    let depth = nodes[ni + QDEPTH]
+    const depth = nodes[ni + QDEPTH]
 
-    let dimen2 = gridSides[depth + 1] - 1
+    const dimen2 = gridSides[depth + 1] - 1
     this.dimen = Math.max(this.dimen, dimen2)
 
-    let du = nodes[ni + QMAXU] - nodes[ni + QMINU]
-    let dv = nodes[ni + QMAXV] - nodes[ni + QMINV]
+    const du = nodes[ni + QMAXU] - nodes[ni + QMINU]
+    const dv = nodes[ni + QMAXV] - nodes[ni + QMINV]
 
-    let ps = this.points
+    const ps = this.points
 
-    let np1 = ps[nodes[ni + QPOINT1]]
-    let np2 = ps[nodes[ni + QPOINT2]]
-    let np3 = ps[nodes[ni + QPOINT3]]
-    let np4 = ps[nodes[ni + QPOINT4]]
+    const np1 = ps[nodes[ni + QPOINT1]]
+    const np2 = ps[nodes[ni + QPOINT2]]
+    const np3 = ps[nodes[ni + QPOINT3]]
+    const np4 = ps[nodes[ni + QPOINT4]]
 
-    let cdps = new Array<any>(4)
-    let cdws = [0, 0, 0, 0]
+    const cdps = new Array<any>(4)
+    const cdws = [0, 0, 0, 0]
 
-    let news = [[false], [false], [false], [false], [false]]
-    let bs = new Array(5)
+    const news = [[false], [false], [false], [false], [false]]
+    const bs = new Array(5)
 
-    let p1 = this.subdtemps.next().load(np1.co)
-    let p2 = this.subdtemps.next().load(np2.co)
-    let p3 = this.subdtemps.next().load(np3.co)
-    let p4 = this.subdtemps.next().load(np4.co)
+    const p1 = this.subdtemps.next().load(np1.co)
+    const p2 = this.subdtemps.next().load(np2.co)
+    const p3 = this.subdtemps.next().load(np3.co)
+    const p4 = this.subdtemps.next().load(np4.co)
 
-    let tmp1 = this.subdtemps.next(),
+    const tmp1 = this.subdtemps.next(),
       tmp2 = this.subdtemps.next()
 
-    let uvs = uvstmp
+    const uvs = uvstmp
     let axis = (nodes[ni + QAXIS] + 1) % 2
 
-    let d1 = p1.vectorDistance(p2) * 0.5 + p3.vectorDistance(p4) * 0.5
-    let d2 = p1.vectorDistance(p4) * 0.5 + p3.vectorDistance(p2) * 0.5
-    let pick = Math.abs(d1 - d2) > Math.abs(d1 + d2) * 0.1
+    const d1 = p1.vectorDistance(p2) * 0.5 + p3.vectorDistance(p4) * 0.5
+    const d2 = p1.vectorDistance(p4) * 0.5 + p3.vectorDistance(p2) * 0.5
+    const pick = Math.abs(d1 - d2) > Math.abs(d1 + d2) * 0.1
 
     if (pick) {
       axis = d1 < d2 ? 0 : 1
@@ -3063,12 +3063,12 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     //axis = ~~(Math.random()*1.9999);
 
-    let split = 0.5
+    const split = 0.5
 
     nodes[ni + QSPLIT] = split
 
     for (let i = 0; i < 2; i++) {
-      let ni2 = this._newNode()
+      const ni2 = this._newNode()
 
       let u2, v2, u3, v3
       if (axis) {
@@ -3085,9 +3085,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         v3 = 1.0
       }
 
-      let su1 = u2,
+      const su1 = u2,
         sv1 = v2
-      let su2 = u3,
+      const su2 = u3,
         sv2 = v3
 
       u2 = nodes[ni + QMINU] + u2 * du
@@ -3115,10 +3115,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       nodes[ni2 + QFLAG] = LEAF
       nodes[ni2 + QDEPTH] = depth + 1
 
-      let b1 = this._ensureNodePoint(ni2, 0, loopEid, mesh, news[0])
-      let b2 = this._ensureNodePoint(ni2, 1, loopEid, mesh, news[1])
-      let b3 = this._ensureNodePoint(ni2, 2, loopEid, mesh, news[2])
-      let b4 = this._ensureNodePoint(ni2, 3, loopEid, mesh, news[3])
+      const b1 = this._ensureNodePoint(ni2, 0, loopEid, mesh, news[0])
+      const b2 = this._ensureNodePoint(ni2, 1, loopEid, mesh, news[1])
+      const b3 = this._ensureNodePoint(ni2, 2, loopEid, mesh, news[2])
+      const b4 = this._ensureNodePoint(ni2, 3, loopEid, mesh, news[3])
 
       bs[0] = b1
       bs[1] = b2
@@ -3168,14 +3168,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
         */
 
-        let u2 = uvs[k][0]
-        let v2 = uvs[k][1]
+        const u2 = uvs[k][0]
+        const v2 = uvs[k][1]
 
         tmp1.load(p1).interp(p2, v2)
         tmp2.load(p4).interp(p3, v2)
         tmp1.interp(tmp2, u2)
 
-        let pnew = bs[k]
+        const pnew = bs[k]
         pnew.load(tmp1)
 
         cdws[0] = u2 * v2 - u2 - v2 + 1.0
@@ -3226,8 +3226,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
       this.customDatas.length = 0
 
-      for (let layer of mesh.loops.customData.flatlist) {
-        let cls = CustomDataElem.getTypeClass(layer.typeName)
+      for (const layer of mesh.loops.customData.flatlist) {
+        const cls = CustomDataElem.getTypeClass(layer.typeName)
 
         if (GridBase.isGridClass(cls)) {
           layeri++
@@ -3251,35 +3251,35 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     this.update(mesh, loop, cd_grid)
 
-    let nodes = this.nodes
-    let ps = this.points
+    const nodes = this.nodes
+    const ps = this.points
 
     for (let i = 0; i < ps.length; i++) {
       ps[i].index2 = i
     }
 
-    let polys = this.polys
+    const polys = this.polys
 
-    let ischunk = smesh instanceof ChunkedSimpleMesh
-    let feid = loop.f.eid
+    const ischunk = smesh instanceof ChunkedSimpleMesh
+    const feid = loop.f.eid
 
-    let cd_color = mesh.loops.customData.getLayerIndex('color')
-    let have_color = cd_color >= 0
+    const cd_color = mesh.loops.customData.getLayerIndex('color')
+    const have_color = cd_color >= 0
 
     let idmul = this.dimen * this.dimen
     idmul = Math.max(idmul, this.polys.length)
 
-    let tc1 = new Vector4()
-    let tc2 = new Vector4()
-    let tc3 = new Vector4()
+    const tc1 = new Vector4()
+    const tc2 = new Vector4()
+    const tc3 = new Vector4()
     tc1[3] = tc2[3] = tc3[3] = 1.0
 
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
-    let depthLimitEnabled = this.depthLimitEnabled
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimitEnabled = this.depthLimitEnabled
 
-    let co1 = new Vector3()
-    let co2 = new Vector3()
-    let white = new Vector4([1, 1, 1, 1])
+    const co1 = new Vector3()
+    const co2 = new Vector3()
+    const white = new Vector4([1, 1, 1, 1])
 
     //buildTangentMatrix
 
@@ -3287,7 +3287,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     function line(v1, v2, color) {
       try {
-        let id = lidgen++
+        const id = lidgen++
         let line2
 
         if (ischunk) {
@@ -3309,14 +3309,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       }
     }
 
-    let doneset = new WeakSet()
+    const doneset = new WeakSet()
 
-    let grey = [0.25, 0.25, 0.25, 1.0]
-    let mat = new Matrix4()
-    let n1 = new Vector3()
+    const grey = [0.25, 0.25, 0.25, 1.0]
+    const mat = new Matrix4()
+    const n1 = new Vector3()
 
-    let ff = 1.0
-    let colors = [
+    const ff = 1.0
+    const colors = [
       [ff, 0.0, 0.0, 1],
       [0.0, ff, 0.0, 1],
       [0.0, 0.0, ff, 1],
@@ -3366,17 +3366,17 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     */
 
     for (let ni = 0; ni < nodes.length; ni += QTOT) {
-      let depth = nodes[ni + QDEPTH]
-      let isleaf = nodes[ni + QFLAG] & LEAF || depth === depthLimit
+      const depth = nodes[ni + QDEPTH]
+      const isleaf = nodes[ni + QFLAG] & LEAF || depth === depthLimit
 
       if (!isleaf || depth > depthLimit || nodes[ni + QFLAG] & DEAD) {
         continue
       }
 
-      let start = nodes[ni + QPOLYSTART]
-      let end = nodes[ni + QPOLYEND]
+      const start = nodes[ni + QPOLYSTART]
+      const end = nodes[ni + QPOLYEND]
 
-      let p1 = ps[polys[start]]
+      const p1 = ps[polys[start]]
 
       if (end - start < 3) {
         continue
@@ -3386,10 +3386,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       smesh.primflag |= 2
 
       for (let i = start + 1; i < end - 1; i++) {
-        let p2 = ps[polys[i]]
-        let p3 = ps[polys[i + 1]]
+        const p2 = ps[polys[i]]
+        const p3 = ps[polys[i + 1]]
 
-        let id = loop.eid * idmul + i
+        const id = loop.eid * idmul + i
 
         let tri
 
@@ -3402,9 +3402,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         }
 
         if (have_color) {
-          let c1 = p1.customData.get<ColorLayerElem>(cd_color).color
-          let c2 = p2.customData.get<ColorLayerElem>(cd_color).color
-          let c3 = p3.customData.get<ColorLayerElem>(cd_color).color
+          const c1 = p1.customData.get<ColorLayerElem>(cd_color).color
+          const c2 = p2.customData.get<ColorLayerElem>(cd_color).color
+          const c3 = p3.customData.get<ColorLayerElem>(cd_color).color
           tri.colors(c1, c2, c3)
         }
 
@@ -3416,12 +3416,12 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   _updateNormal(ni) {
-    let nodes = this.nodes,
+    const nodes = this.nodes,
       ps = this.points
-    let p1 = ps[nodes[ni + QPOINT1]]
-    let p2 = ps[nodes[ni + QPOINT2]]
-    let p3 = ps[nodes[ni + QPOINT3]]
-    let p4 = ps[nodes[ni + QPOINT4]]
+    const p1 = ps[nodes[ni + QPOINT1]]
+    const p2 = ps[nodes[ni + QPOINT2]]
+    const p3 = ps[nodes[ni + QPOINT3]]
+    const p4 = ps[nodes[ni + QPOINT4]]
 
     let n
 
@@ -3452,7 +3452,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       return
     }
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       if (!p.orig) {
         p.orig = new Vector3()
       }
@@ -3462,30 +3462,30 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     this.recalcFlag &= ~QRecalcFlags.NODE_NORMALS
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
 
-    for (let pi of this.getLeafPoints()) {
-      let p = ps[pi]
+    for (const pi of this.getLeafPoints()) {
+      const p = ps[pi]
 
       p.sco.load(p.co)
       p.totsco = 1
     }
 
-    let t1 = new Vector3()
-    let t2 = new Vector3()
+    const t1 = new Vector3()
+    const t2 = new Vector3()
 
     //update centers
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 1000
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 1000
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD || ns[ni + QDEPTH] > depthLimit) {
         continue
       }
 
-      let p1 = ps[ns[ni + QPOINT1]]
-      let p2 = ps[ns[ni + QPOINT2]]
-      let p3 = ps[ns[ni + QPOINT3]]
-      let p4 = ps[ns[ni + QPOINT4]]
+      const p1 = ps[ns[ni + QPOINT1]]
+      const p2 = ps[ns[ni + QPOINT2]]
+      const p3 = ps[ns[ni + QPOINT3]]
+      const p4 = ps[ns[ni + QPOINT4]]
 
       p1.uv.load(this._getUV(ni, 0))
       p2.uv.load(this._getUV(ni, 1))
@@ -3498,13 +3498,13 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     //update normals;
-    for (let ni of this.getLeafNodes()) {
-      let p1 = ps[ns[ni + QPOINT1]]
-      let p2 = ps[ns[ni + QPOINT2]]
-      let p3 = ps[ns[ni + QPOINT3]]
-      let p4 = ps[ns[ni + QPOINT4]]
+    for (const ni of this.getLeafNodes()) {
+      const p1 = ps[ns[ni + QPOINT1]]
+      const p2 = ps[ns[ni + QPOINT2]]
+      const p3 = ps[ns[ni + QPOINT3]]
+      const p4 = ps[ns[ni + QPOINT4]]
 
-      let n = math.normal_quad(p1.co, p2.co, p3.co, p4.co)
+      const n = math.normal_quad(p1.co, p2.co, p3.co, p4.co)
 
       t1.load(p4.co).sub(p1.co) //.normalize();
       t2.load(p3.co).sub(p2.co) //.normalize();
@@ -3516,20 +3516,20 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       ns[ni + QTZ] = t1[2]
 
       for (let i = 0; i < 4; i++) {
-        let p = ps[ns[ni + QPOINT1 + i]]
+        const p = ps[ns[ni + QPOINT1 + i]]
         p.sco[0] += ns[ni + QCENTX]
         p.sco[1] += ns[ni + QCENTY]
         p.sco[2] += ns[ni + QCENTZ]
         p.totsco++
         break
 
-        let i1 = (i + 3) & 3
-        let i2 = i
-        let i3 = (i + 1) & 3
+        const i1 = (i + 3) & 3
+        const i2 = i
+        const i3 = (i + 1) & 3
 
-        let a = ps[ns[ni + QPOINT1 + i1]]
-        let b = ps[ns[ni + QPOINT1 + i2]]
-        let c = ps[ns[ni + QPOINT1 + i3]]
+        const a = ps[ns[ni + QPOINT1 + i1]]
+        const b = ps[ns[ni + QPOINT1 + i2]]
+        const c = ps[ns[ni + QPOINT1 + i3]]
 
         b.sco.add(a.co)
         b.sco.add(c.co)
@@ -3549,8 +3549,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       ns[ni + QNZ] = n[2]
     }
 
-    for (let pi of this.getLeafPoints()) {
-      let p = ps[pi]
+    for (const pi of this.getLeafPoints()) {
+      const p = ps[pi]
 
       p.sco.mulScalar(1.0 / p.totsco)
       p.totsco = 1.0
@@ -3562,22 +3562,22 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       return this.leafPoints
     }
 
-    let set = new Set<number>()
-    let ns = this.nodes,
+    const set = new Set<number>()
+    const ns = this.nodes,
       ps = this.points
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
         continue
       }
 
-      let depth = ns[ni + QDEPTH]
-      let isleaf = depth <= depthLimit && (ns[ni + QFLAG] & LEAF || depth === depthLimit)
+      const depth = ns[ni + QDEPTH]
+      const isleaf = depth <= depthLimit && (ns[ni + QFLAG] & LEAF || depth === depthLimit)
 
       if (isleaf) {
         for (let i = 0; i < 4; i++) {
-          let pi = ns[ni + QPOINT1 + i]
+          const pi = ns[ni + QPOINT1 + i]
           set.add(pi)
         }
       }
@@ -3592,18 +3592,18 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       return this.leafNodes
     }
 
-    let ret = (this.leafNodes = [])
-    let ns = this.nodes,
+    const ret = (this.leafNodes = [])
+    const ns = this.nodes,
       ps = this.points
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
         continue
       }
 
-      let depth = ns[ni + QDEPTH]
-      let isleaf = depth <= depthLimit && (ns[ni + QFLAG] & LEAF || depth === depthLimit)
+      const depth = ns[ni + QDEPTH]
+      const isleaf = depth <= depthLimit && (ns[ni + QFLAG] & LEAF || depth === depthLimit)
 
       if (isleaf) {
         ret.push(ni)
@@ -3626,14 +3626,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     this.recalcFlag &= ~QRecalcFlags.VERT_NORMALS
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
 
-    let ps2 = new Set<KDGridVert>()
+    const ps2 = new Set<KDGridVert>()
 
-    for (let ni of this.getLeafNodes()) {
+    for (const ni of this.getLeafNodes()) {
       for (let i = 0; i < 4; i++) {
-        let p = ps[ns[ni + QPOINT1 + i]]
+        const p = ps[ns[ni + QPOINT1 + i]]
 
         if (!ps2.has(p)) {
           ps2.add(p)
@@ -3652,23 +3652,23 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     if (!mesh) {
       //this.recalcFlag |= QRecalcFlags.VERT_NORMALS;
 
-      for (let p of ps2) {
-        let topo = this.getTopo(undefined, cd_grid)
+      for (const p of ps2) {
+        const topo = this.getTopo(undefined, cd_grid)
 
         p.no.zero()
         p.startTan()
 
-        let w = 1.0
+        const w = 1.0
 
         //let v = topo.vmap[p.index2];
-        let vi2 = p.index2 * VTOT
-        let vmap2 = topo.vmap2
-        let totn = vmap2[vi2 + VTOTN]
+        const vi2 = p.index2 * VTOT
+        const vmap2 = topo.vmap2
+        const totn = vmap2[vi2 + VTOTN]
         for (let i = 0; i < totn; i++) {
           let ni = vi2 + VTOTN + 1 + i
           ni = vmap2[ni]
 
-          let tf = p.tanMulFac(ns[ni + QDEPTH])
+          const tf = p.tanMulFac(ns[ni + QDEPTH])
 
           p.no[0] += ns[ni + QNX]
           p.no[1] += ns[ni + QNY]
@@ -3701,31 +3701,31 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       return
     }
 
-    let scotmp = new Vector3()
-    let scotmp2 = new Vector3()
-    let scotmp3 = new Vector3()
-    let scotmp4 = new Vector3()
+    const scotmp = new Vector3()
+    const scotmp2 = new Vector3()
+    const scotmp3 = new Vector3()
+    const scotmp4 = new Vector3()
 
-    for (let p of ps2) {
-      let topo = this.getTopo(mesh, cd_grid)
+    for (const p of ps2) {
+      const topo = this.getTopo(mesh, cd_grid)
 
       p.no.zero()
       p.startTan()
 
-      let vi2 = p.index2 * VTOT
-      let vmap2 = topo.vmap2
-      let totn = vmap2[vi2 + VTOTN]
+      const vi2 = p.index2 * VTOT
+      const vmap2 = topo.vmap2
+      const totn = vmap2[vi2 + VTOTN]
       for (let i = 0; i < totn; i++) {
         let ni = vi2 + VTOTN + 1 + i
         ni = vmap2[ni]
 
-        let depth = ns[ni + QDEPTH]
+        const depth = ns[ni + QDEPTH]
 
         p.no[0] += ns[ni + QNX]
         p.no[1] += ns[ni + QNY]
         p.no[2] += ns[ni + QNZ]
 
-        let tf = p.tanMulFac(depth)
+        const tf = p.tanMulFac(depth)
 
         p.tan[0] += ns[ni + QTX] * tf
         p.tan[1] += ns[ni + QTY] * tf
@@ -3752,9 +3752,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         continue
       }
 
-      let ti = 0
+      const ti = 0
 
-      for (let p2 of p.bRing) {
+      for (const p2 of p.bRing) {
         //for (let p2 of p.neighbors) {
         //for (let step=0; step<1; step++) {
         //  let p2 = step ? p.bLink.v2 : p.bLink.v1;
@@ -3766,12 +3766,12 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
           continue
         }
 
-        let l2 = mesh.eidMap.get(p2.loopEid)
+        const l2 = mesh.eidMap.get(p2.loopEid)
         if (!l2) {
           continue
         }
 
-        let grid2 = l2.customData[cd_grid]
+        const grid2 = l2.customData[cd_grid]
 
         grid2.checkNodeNormals()
 
@@ -3779,14 +3779,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
           grid2.recalcPointIndices()
         }
 
-        let topo2 = grid2.getTopo(mesh, cd_grid)
+        const topo2 = grid2.getTopo(mesh, cd_grid)
 
-        let ns2 = grid2.nodes,
+        const ns2 = grid2.nodes,
           ps2 = grid2.points
-        let vi2 = p2.index2 * VTOT
+        const vi2 = p2.index2 * VTOT
 
-        let vmap2 = topo2.vmap2
-        let totn = vmap2[vi2 + VTOTN]
+        const vmap2 = topo2.vmap2
+        const totn = vmap2[vi2 + VTOTN]
         for (let i = 0; i < totn; i++) {
           let ni = vi2 + VTOTN + 1 + i
           ni = vmap2[ni]
@@ -3797,7 +3797,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
           //*
           if (l2 === l.radial_next.next) {
-            let tf = p2.tanMulFac(ns2[ni + QDEPTH])
+            const tf = p2.tanMulFac(ns2[ni + QDEPTH])
 
             p.tan[0] = -ns2[ni + QBX] * tf
             p.tan[1] = -ns2[ni + QBY] * tf
@@ -3828,11 +3828,11 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         scotmp.zero()
         let tot = 0.0
 
-        for (let p2 of p.bRing) {
+        for (const p2 of p.bRing) {
           scotmp2.load(p2.co)
           let tot2 = 1.0
 
-          for (let p3 of p2.neighbors) {
+          for (const p3 of p2.neighbors) {
             if (p3 === p2) {
               //p3.loopEid !== p2.loopEid || p3 === p2) {
               continue
@@ -3859,35 +3859,35 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   recalcNeighbors(mesh, loop, cd_grid) {
     this.recalcFlag &= ~QRecalcFlags.NEIGHBORS
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.bRingRemove()
     }
 
-    let topo = this.getTopo(mesh, cd_grid)
-    let ps = this.points
+    const topo = this.getTopo(mesh, cd_grid)
+    const ps = this.points
 
     for (let i = 0; i < ps.length; i++) {
       ps[i].index2 = i
     }
 
-    let vmap2 = topo.vmap2
-    let emap2 = topo.emap2
+    const vmap2 = topo.vmap2
+    const emap2 = topo.emap2
 
     for (let pi = 0; pi < ps.length; pi++) {
-      let vi = pi * VTOT
-      let p = ps[pi]
+      const vi = pi * VTOT
+      const p = ps[pi]
 
       //for (let v of topo.vmap) {
       //let p = v.p;
       p.neighbors = new Set()
 
-      let tote = vmap2[vi + VTOTE]
+      const tote = vmap2[vi + VTOTE]
 
       for (let i = 0; i < tote; i++) {
         let ei = vi + VTOTE + 1 + i
         ei = vmap2[ei]
 
-        let v1 = emap2[ei + EV1]
+        const v1 = emap2[ei + EV1]
         let v2 = emap2[ei + EV2]
 
         if (v2 === pi) {
@@ -3900,29 +3900,29 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       }
     }
 
-    let uvs = [
+    const uvs = [
       [0, 0],
       [0, 1],
       [1, 1],
       [1, 0],
     ].map((v) => new Vector2(v))
 
-    let uv = new Vector2()
-    let duv = new Vector2()
+    const uv = new Vector2()
+    const duv = new Vector2()
 
-    let dimen = topo.dimen
-    let uvmap = topo.uvmap
-    let uvkey = topo.uvkey
+    const dimen = topo.dimen
+    const uvmap = topo.uvmap
+    const uvkey = topo.uvkey
 
-    let l = loop
-    let lr = loop.radial_next
-    let lrn = loop.radial_next.next
+    const l = loop
+    const lr = loop.radial_next
+    const lrn = loop.radial_next.next
 
     let lrtopo
-    let lrps = lr.customData[cd_grid].points
+    const lrps = lr.customData[cd_grid].points
 
     let lrntopo
-    let lrnps = lrn.customData[cd_grid].points
+    const lrnps = lrn.customData[cd_grid].points
 
     let lpr = l.prev.radial_next
     let lprtopo, lprps
@@ -3942,33 +3942,33 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       lrntopo = lrn.customData[cd_grid].getTopo(mesh, cd_grid)
     }
 
-    let ln = l.next,
+    const ln = l.next,
       lp = l.prev
-    let lntopo = ln.customData[cd_grid].getTopo(mesh, cd_grid)
-    let lptopo = lp.customData[cd_grid].getTopo(mesh, cd_grid)
-    let lnps = ln.customData[cd_grid].points
-    let lpps = lp.customData[cd_grid].points
+    const lntopo = ln.customData[cd_grid].getTopo(mesh, cd_grid)
+    const lptopo = lp.customData[cd_grid].getTopo(mesh, cd_grid)
+    const lnps = ln.customData[cd_grid].points
+    const lpps = lp.customData[cd_grid].points
 
-    let uv3 = new Vector2()
+    const uv3 = new Vector2()
 
     function findNeighborEdge(p, l: Loop, ltopo, lps, side: number, u: number, v: number, axis: Number2) {
-      let dimen2 = ltopo.dimen
+      const dimen2 = ltopo.dimen
 
-      let uv = uv3
+      const uv = uv3
       uv[0] = u
       uv[1] = v
 
-      let goal = uv[axis]
+      const goal = uv[axis]
       uv[axis] = 0.0
 
       let v1, v2
 
-      let dt = 1.0 / dimen2
+      const dt = 1.0 / dimen2
       let f1, f2
 
       for (let i = 0; i < dimen2 + 1; i++) {
-        let key = ltopo.uvkey(uv[0], uv[1])
-        let v = ltopo.uvmap.get(key)
+        const key = ltopo.uvkey(uv[0], uv[1])
+        const v = ltopo.uvmap.get(key)
 
         if (v === undefined) {
           uv[axis] += dt
@@ -4032,18 +4032,18 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     for (let i = 0; i < 4; i++) {
-      let uv1 = uvs[i],
+      const uv1 = uvs[i],
         uv2 = uvs[(i + 1) % 4]
-      let axis = ((i + 1) & 1) as Number2
+      const axis = ((i + 1) & 1) as Number2
 
       uv.load(uv1)
       duv.load(uv2).sub(uv1)
 
-      let dt = duv[axis] / dimen
+      const dt = duv[axis] / dimen
 
       for (let j = 0; j < dimen; j++) {
-        let val = uv[axis]
-        let key = uvkey(uv[0], uv[1])
+        const val = uv[axis]
+        const key = uvkey(uv[0], uv[1])
         let p1 = uvmap.get(key)
 
         if (!(val < 0.00001 || val > 0.9999)) {
@@ -4059,10 +4059,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         p1 = ps[p1]
 
         if (i === 1 && !lprbad) {
-          let u = 1.0
-          let v = val
+          const u = 1.0
+          const v = val
 
-          let key = lprtopo.uvkey(u, v)
+          const key = lprtopo.uvkey(u, v)
 
           let p2 = lprtopo.uvmap.get(key)
           if (p2 !== undefined) {
@@ -4078,10 +4078,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
             findNeighborEdge(p1, lpr, lprtopo, lprps, i, u, v, (axis ^ 1) as Number2)
           }
         } else if (i === 2 && lr !== l && lr.v !== l.v) {
-          let u = val
-          let v = 1.0
+          const u = val
+          const v = 1.0
 
-          let key = lrntopo.uvkey(u, v)
+          const key = lrntopo.uvkey(u, v)
 
           let p2 = lrntopo.uvmap.get(key)
           if (p2 !== undefined) {
@@ -4097,10 +4097,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
             findNeighborEdge(p1, lrn, lrntopo, lrnps, i, u, v, (axis ^ 1) as Number2)
           }
         } else if (i === 3) {
-          let u = 0.0
-          let v = val
+          const u = 0.0
+          const v = val
 
-          let key = lntopo.uvkey(u, v)
+          const key = lntopo.uvkey(u, v)
           let p2 = lntopo.uvmap.get(key)
 
           if (p2 !== undefined) {
@@ -4116,10 +4116,10 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
             findNeighborEdge(p1, ln, lntopo, lnps, i, u, v, 1)
           }
         } else if (i === 0) {
-          let u = val
-          let v = 0
+          const u = val
+          const v = 0
 
-          let key = lptopo.uvkey(u, v)
+          const key = lptopo.uvkey(u, v)
           let p2 = lptopo.uvmap.get(key)
 
           if (p2 !== undefined) {
@@ -4161,14 +4161,14 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   addTriNeighbors() {
-    let nodes = this.nodes
-    let ps = this.points
-    let polys = this.polys
+    const nodes = this.nodes
+    const ps = this.points
+    const polys = this.polys
 
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
 
     function isEdge(p1, p2) {
-      for (let p of p1.neighbors) {
+      for (const p of p1.neighbors) {
         if (p === p2) {
           return true
         }
@@ -4178,18 +4178,18 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     }
 
     for (let ni = 0; ni < nodes.length; ni += QTOT) {
-      let depth = nodes[ni + QDEPTH]
+      const depth = nodes[ni + QDEPTH]
 
-      let isleaf = nodes[ni + QFLAG] & LEAF || depth === depthLimit
+      const isleaf = nodes[ni + QFLAG] & LEAF || depth === depthLimit
 
       if (!isleaf || depth > depthLimit || nodes[ni + QFLAG] & DEAD) {
         continue
       }
 
-      let start = nodes[ni + QPOLYSTART]
-      let end = nodes[ni + QPOLYEND]
+      const start = nodes[ni + QPOLYSTART]
+      const end = nodes[ni + QPOLYEND]
 
-      let p1 = ps[polys[start]]
+      const p1 = ps[polys[start]]
 
       if (end - start < 3) {
         continue
@@ -4198,8 +4198,8 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       //console.log("fan:", end-start);
 
       for (let i = start + 1; i < end - 1; i++) {
-        let p2 = ps[polys[i]]
-        let p3 = ps[polys[i + 1]]
+        const p2 = ps[polys[i]]
+        const p3 = ps[polys[i + 1]]
 
         if (!p1 || !p2 || !p3) {
           //console.warn("missing points", p1, p2, p3);
@@ -4223,29 +4223,29 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   updateNormalQuad(loop) {
-    let quad = this.getNormalQuad(loop)
+    const quad = this.getNormalQuad(loop)
     for (let i = 0; i < 4; i++) {
       this.normalQuad[i].load(quad[i])
     }
   }
 
   uvColorTest(mesh, loop, cd_grid) {
-    let cd_col = mesh.loops.customData.getLayerIndex('color')
+    const cd_col = mesh.loops.customData.getLayerIndex('color')
 
     if (cd_col < 0) {
       return
     }
 
-    let ns = this.nodes,
+    const ns = this.nodes,
       ps = this.points
 
-    for (let ni of this.getLeafNodes()) {
+    for (const ni of this.getLeafNodes()) {
       for (let i = 0; i < 4; i++) {
-        let p = ps[ns[ni + QPOINT1 + i]]
+        const p = ps[ns[ni + QPOINT1 + i]]
 
-        let color = p.customData.get<ColorLayerElem>(cd_col).color
+        const color = p.customData.get<ColorLayerElem>(cd_col).color
 
-        let uv = this._getUV(ni, i)
+        const uv = this._getUV(ni, i)
 
         color[0] = uv[0]
         color[1] = uv[1]
@@ -4262,41 +4262,41 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     //this.uvColorTest(mesh, loop, cd_grid);
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.loopEid = loop.eid
     }
 
     this.update(mesh, loop, cd_grid)
 
-    let ps = this.points
-    let nodes = this.nodes
-    let polys = this.polys
+    const ps = this.points
+    const nodes = this.nodes
+    const polys = this.polys
     //let feid = loop.f.eid;
-    let leid = loop.eid
+    const leid = loop.eid
 
     //console.log("DIMEN", this.dimen);
 
     let idmul = (this.dimen + 2) * (this.dimen + 2) * 16
     idmul = this.idmul = Math.max(idmul, this.polys.length * 2)
 
-    let needsCDFix = false
+    const needsCDFix = false
 
-    let depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
-    let depthLimitEnabled = this.depthLimitEnabled
+    const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
+    const depthLimitEnabled = this.depthLimitEnabled
 
     for (let ni = 0; ni < nodes.length; ni += QTOT) {
-      let depth = nodes[ni + QDEPTH]
+      const depth = nodes[ni + QDEPTH]
 
-      let isleaf = nodes[ni + QFLAG] & LEAF || depth === depthLimit
+      const isleaf = nodes[ni + QFLAG] & LEAF || depth === depthLimit
 
       if (!isleaf || depth > depthLimit || nodes[ni + QFLAG] & DEAD) {
         continue
       }
 
-      let start = nodes[ni + QPOLYSTART]
-      let end = nodes[ni + QPOLYEND]
+      const start = nodes[ni + QPOLYSTART]
+      const end = nodes[ni + QPOLYEND]
 
-      let p1 = ps[polys[start]]
+      const p1 = ps[polys[start]]
 
       if (end - start < 3) {
         continue
@@ -4305,12 +4305,12 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       //console.log("fan:", end-start);
 
       for (let i = start + 1; i < end - 1; i++) {
-        let p2 = ps[polys[i]]
-        let p3 = ps[polys[i + 1]]
+        const p2 = ps[polys[i]]
+        const p3 = ps[polys[i + 1]]
 
         let tri
         //let id = Math.random();
-        let id = loop.eid * idmul + i
+        const id = loop.eid * idmul + i
 
         if (!p1 || !p2 || !p3) {
           //console.warn("missing points", p1, p2, p3);
@@ -4331,16 +4331,16 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   _loadCompressedNodes(_ns1?: any): void {
-    let ns1 = (_ns1 ?? this.nodes[0]) as unknown as Array<{[k: string]: number}>
-    let ns2 = []
+    const ns1 = (_ns1 ?? this.nodes[0]) as unknown as Array<{[k: string]: number}>
+    const ns2 = []
 
     if (ns1.length === 0) {
       return
     }
     this.nodes = ns2
 
-    let fields = {}
-    for (let k in ns1[0]) {
+    const fields = {}
+    for (const k in ns1[0]) {
       if (typeof k === 'symbol' || !k.startsWith('Q')) {
         continue
       }
@@ -4353,12 +4353,12 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       fields[k] = KdTreeFields[k]
     }
 
-    let leaves = []
+    const leaves = []
 
-    let qtot_mul = QTOT / this.nodeFieldSize
+    const qtot_mul = QTOT / this.nodeFieldSize
 
-    for (let n of ns1) {
-      let ni = ns2.length
+    for (const n of ns1) {
+      const ni = ns2.length
 
       ns2.length += QTOT
 
@@ -4366,15 +4366,15 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         ns2[ni + i] = 0.0
       }
 
-      for (let k in fields) {
-        let i = fields[k]
+      for (const k in fields) {
+        const i = fields[k]
 
         ns2[ni + i] = n[k]
       }
 
       if (this.nodeFieldSize !== QTOT) {
         for (let i = 0; i < MAXCHILD; i++) {
-          let ci = ~~(qtot_mul * ns2[ni + QCHILD1 + i] + 0.00001)
+          const ci = ~~(qtot_mul * ns2[ni + QCHILD1 + i] + 0.00001)
 
           ns2[ni + QCHILD1 + i] = ci
         }
@@ -4391,7 +4391,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       ns2[ni + QFLAG] |= TEMP
     }
 
-    let rec = (ni, depth = 0) => {
+    const rec = (ni, depth = 0) => {
       ns2[ni + QFLAG] &= ~TEMP
 
       ns2[ni + QCENTU] = ns2[ni + QMINU] * 0.5 + ns2[ni + QMAXU] * 0.5
@@ -4408,7 +4408,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
       if (!(ns2[ni + QFLAG] & LEAF)) {
         for (let i = 0; i < MAXCHILD; i++) {
-          let ni2 = ns2[ni + QCHILD1 + i]
+          const ni2 = ns2[ni + QCHILD1 + i]
 
           if (!ni2) {
             continue
@@ -4430,9 +4430,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     rec(0)
 
-    for (let ni of leaves) {
+    for (const ni of leaves) {
       let p = ns2[ni + QPARENT]
-      let depth = ns2[ni + QDEPTH]
+      const depth = ns2[ni + QDEPTH]
 
       ns2[ni + QSUBTREE_DEPTH] = depth
 
@@ -4455,7 +4455,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   _testNodeCompression() {
-    let ns = this._saveNodes()
+    const ns = this._saveNodes()
     this._loadCompressedNodes(ns)
 
     this.polys.length = 0
@@ -4485,7 +4485,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     //this.recalcFlag |= QRecalcFlags.MIRROR + QRecalcFlags.ALL | QRecalcFlags.POINT_PRUNE | QRecalcFlags.INDICES;
     this.recalcFlag = QRecalcFlags.ALL
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.loopEid = this.loopEid
       p.orig = new Vector3(p.orig)
     }
@@ -4495,11 +4495,11 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     } else if (this.nodes.length > 0 && this.nodeFieldSize !== QTOT) {
       console.warn('Old quadtree structure detected; converting. . .')
 
-      let ns1 = this.nodes
-      let qtot_old = this.nodeFieldSize
-      let cpylen = Math.min(qtot_old, QTOT)
-      let extra = Math.max(QTOT - cpylen, 0)
-      let ns2 = []
+      const ns1 = this.nodes
+      const qtot_old = this.nodeFieldSize
+      const cpylen = Math.min(qtot_old, QTOT)
+      const extra = Math.max(QTOT - cpylen, 0)
+      const ns2 = []
       let map = [],
         mapi = 0
 
@@ -4521,7 +4521,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
           continue
         }
 
-        let idx = ni / QTOT
+        const idx = ni / QTOT
 
         ns2[ni + QCHILD1] = map[ns2[ni + QCHILD1]]
         ns2[ni + QCHILD2] = map[ns2[ni + QCHILD2]]

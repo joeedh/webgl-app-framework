@@ -1,548 +1,555 @@
 import {
-  nstructjs, math, graphPack, PackNode,
-  PackNodeVertex, Vector2, Vector3, Vector4, Matrix4, Quat,
-  util
-} from '../path.ux/scripts/pathux.js';
+  nstructjs,
+  math,
+  graphPack,
+  PackNode,
+  PackNodeVertex,
+  Vector2,
+  Vector3,
+  Vector4,
+  Matrix4,
+  Quat,
+  util,
+} from '../path.ux/scripts/pathux.js'
 import {Constraint, Solver} from '../path.ux/scripts/util/solver.js'
-import '../util/numeric.js';
+import '../util/numeric.js'
 
-import {MeshTypes, MeshFlags, MeshSymFlags, MeshModifierFlags, MAX_FACE_VERTS, EID} from './mesh_base.js';
-import {AttrRef, ColorLayerElem, IntElem, UVFlags, UVLayerElem} from './mesh_customdata.js';
-import {BVH, BVHNode, BVHTri} from '../util/bvh.js';
-import {CustomDataElem} from './customdata.js';
-import {Edge, Face, Loop, Mesh, Vertex} from "./mesh";
-import type {ImageEditor} from "../../types/scripts/editors/image/ImageEditor";
-import {UVEditor} from "../../types/scripts/editors/image/ImageEditor";
-import {INumberList} from "../util/polyfill";
+import {MeshTypes, MeshFlags, MeshSymFlags, MeshModifierFlags, MAX_FACE_VERTS, EID} from './mesh_base.js'
+import {AttrRef, ColorLayerElem, IntElem, UVFlags, UVLayerElem} from './mesh_customdata.js'
+import {BVH, BVHNode, BVHTri} from '../util/bvh.js'
+import {CustomDataElem} from './customdata.js'
+import {Edge, Face, Loop, Mesh, Vertex} from './mesh'
+import type {ImageEditor} from '../../types/scripts/editors/image/ImageEditor'
+import {UVEditor} from '../../types/scripts/editors/image/ImageEditor'
+import {INumberList} from '../util/polyfill'
 
-let chp_rets = util.cachering.fromConstructor(Vector2, 64);
+const chp_rets = util.cachering.fromConstructor(Vector2, 64)
 
 export class CVElem extends CustomDataElem<any> {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
 CVElem {
   hasPins : int;
   corner  : int;
   orig    : vec3;
-}`);
+}`
+  )
 
-  hasPins: boolean;
-  corner: boolean;
-  orig: Vector3;
-  vel: Vector2;
-  oldco: Vector2;
-  oldvel: Vector2;
-  tris: any[];
-  area?: number;
-  wind?: boolean;
-  bTangent: Vector3;
+  hasPins: boolean
+  corner: boolean
+  orig: Vector3
+  vel: Vector2
+  oldco: Vector2
+  oldvel: Vector2
+  tris: any[]
+  area?: number
+  wind?: boolean
+  bTangent: Vector3
 
   constructor() {
-    super();
-    this.hasPins = false;
-    this.corner = false;
-    this.orig = new Vector3();
-    this.vel = new Vector2();
-    this.oldco = new Vector2();
-    this.oldvel = new Vector2();
-    this.tris = undefined;
-    this.area = undefined;
-    this.wind = undefined;
+    super()
+    this.hasPins = false
+    this.corner = false
+    this.orig = new Vector3()
+    this.vel = new Vector2()
+    this.oldco = new Vector2()
+    this.oldvel = new Vector2()
+    this.tris = undefined
+    this.area = undefined
+    this.wind = undefined
 
     //boundary tangent;
-    this.bTangent = new Vector3();
+    this.bTangent = new Vector3()
   }
 
   static define() {
     return {
-      typeName    : "uvcorner",
-      uiTypeName  : "uvcorner",
-      defaultName : "uvcorner",
+      typeName    : 'uvcorner',
+      uiTypeName  : 'uvcorner',
+      defaultName : 'uvcorner',
       elemTypeMask: MeshTypes.LOOP,
     }
-  };
+  }
 
   calcMemSize() {
-    return 8*5;
+    return 8 * 5
   }
 
   copyTo(b) {
-    b.hasPins = this.hasPins;
-    b.corner = this.corner;
-    b.orig = this.orig;
-    b.vel.load(this.vel);
-    b.oldco.load(this.oldco);
-    b.oldvel.load(this.oldvel);
+    b.hasPins = this.hasPins
+    b.corner = this.corner
+    b.orig = this.orig
+    b.vel.load(this.vel)
+    b.oldco.load(this.oldco)
+    b.oldvel.load(this.oldvel)
   }
 
   setValue(b) {
-    b.copyTo(this);
+    b.copyTo(this)
   }
 
   getValue() {
-    return this;
+    return this
   }
 
   clear(): this {
-    this.hasPins = this.corner = false;
-    this.orig.zero();
+    this.hasPins = this.corner = false
+    this.orig.zero()
 
-    return this;
+    return this
   }
 }
 
-CustomDataElem.register(CVElem);
+CustomDataElem.register(CVElem)
 
 export class UVIsland extends Set {
-  hasPins: boolean;
-  hasSelLoops: boolean;
-  boxcenter: Vector2;
-  boxsize: Vector2;
-  area: number;
-  min: Vector2;
-  max: Vector2;
+  hasPins: boolean
+  hasSelLoops: boolean
+  boxcenter: Vector2
+  boxsize: Vector2
+  area: number
+  min: Vector2
+  max: Vector2
 
   oldmin?: Vector2 = undefined
   oldmax?: Vector2 = undefined
   oldsize?: Vector2 = undefined
 
   constructor() {
-    super();
+    super()
 
-    this.hasPins = false;
-    this.hasSelLoops = false;
+    this.hasPins = false
+    this.hasSelLoops = false
 
-    this.boxcenter = new Vector2();
-    this.area = 0.0;
-    this.min = new Vector2();
-    this.max = new Vector2();
+    this.boxcenter = new Vector2()
+    this.area = 0.0
+    this.min = new Vector2()
+    this.max = new Vector2()
   }
 }
 
 export interface IUVWranglerConstructor<type> {
-  new(mesh: Mesh, faces?: Iterable<Face>, cd_uv?: AttrRef<UVLayerElem>): type;
+  new (mesh: Mesh, faces?: Iterable<Face>, cd_uv?: AttrRef<UVLayerElem>): type
 
-  _calcSeamHash(mesh: Mesh, faces?: Iterable<Face>): number;
+  _calcSeamHash(mesh: Mesh, faces?: Iterable<Face>): number
 
-  restoreOrRebuild(mesh: Mesh, faces: Iterable<Face>, wrangler: UVWrangler, buildSeams?: boolean): UVWrangler;
+  restoreOrRebuild(mesh: Mesh, faces: Iterable<Face>, wrangler: UVWrangler, buildSeams?: boolean): UVWrangler
 }
 
 export class UVWrangler {
   islands: UVIsland[]
-  mesh: Mesh;
-  uvMesh?: Mesh;
-  faces: Set<Face>;
-  cd_uv: AttrRef<UVLayerElem>;
-  needTopo: boolean;
-  loopMap: Map<Loop, Vertex>;
-  edgeMap: Map<Loop, Edge>;
-  vertMap: Map<Vertex, Set<Loop>>;
-  islandLoopMap: Map<Loop, UVIsland>;
-  islandFaceMap: Map<Face, UVIsland>;
-  islandVertMap: Map<Vertex, UVIsland>;
-  cellDimen: number;
-  hashBounds: number[];
-  hashWidth: number;
-  hashWidthMul: number;
-  cellSizeMul: number;
-  snapLimit: number;
-  shash: Map<number, Loop[]>;
-  saved: boolean;
-  cd_corner: AttrRef<CVElem>;
+  mesh: Mesh
+  uvMesh?: Mesh
+  faces: Set<Face>
+  cd_uv: AttrRef<UVLayerElem>
+  needTopo: boolean
+  loopMap: Map<Loop, Vertex>
+  edgeMap: Map<Loop, Edge>
+  vertMap: Map<Vertex, Set<Loop>>
+  islandLoopMap: Map<Loop, UVIsland>
+  islandFaceMap: Map<Face, UVIsland>
+  islandVertMap: Map<Vertex, UVIsland>
+  cellDimen: number
+  hashBounds: number[]
+  hashWidth: number
+  hashWidthMul: number
+  cellSizeMul: number
+  snapLimit: number
+  shash: Map<number, Loop[]>
+  saved: boolean
+  cd_corner: AttrRef<CVElem>
   cd_edge_seam: AttrRef<IntElem>
   _seamHash: number;
 
-  ['constructor']: IUVWranglerConstructor<this>;
+  ['constructor']: IUVWranglerConstructor<this>
 
   constructor(mesh: Mesh, faces?: Iterable<Face>, cd_uv?: AttrRef<UVLayerElem>) {
-    this.mesh = mesh;
+    this.mesh = mesh
 
-    this.needTopo = true;
+    this.needTopo = true
 
     if (cd_uv === undefined) {
-      cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem);
+      cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
     }
 
-    this.cd_uv = cd_uv !== undefined ? cd_uv : new AttrRef(-1);
-    this.faces = new Set(faces);
+    this.cd_uv = cd_uv !== undefined ? cd_uv : new AttrRef(-1)
+    this.faces = new Set(faces)
 
-    this._makeUVMesh();
+    this._makeUVMesh()
 
-    this.loopMap = new Map(); //maps loops in this.mesh to verts in this.uvmesh
-    this.edgeMap = new Map(); //maps loops in this.mesh to uvmesh edges
-    this.vertMap = new Map();
+    this.loopMap = new Map() //maps loops in this.mesh to verts in this.uvmesh
+    this.edgeMap = new Map() //maps loops in this.mesh to uvmesh edges
+    this.vertMap = new Map()
 
-    this.islandLoopMap = new Map();
-    this.islandFaceMap = new Map();
-    this.islandVertMap = new Map();
+    this.islandLoopMap = new Map()
+    this.islandFaceMap = new Map()
+    this.islandVertMap = new Map()
 
-    this.cellDimen = 1;
-    this.hashBounds = [-4, 4];
-    this.hashWidth = this.hashBounds[1] - this.hashBounds[0];
-    this.hashWidthMul = 1.0/this.hashWidth;
-    this.cellSizeMul = this.cellDimen*this.hashWidthMul;
-    this.snapLimit = 0.001;
-    this.shash = new Map();
+    this.cellDimen = 1
+    this.hashBounds = [-4, 4]
+    this.hashWidth = this.hashBounds[1] - this.hashBounds[0]
+    this.hashWidthMul = 1.0 / this.hashWidth
+    this.cellSizeMul = this.cellDimen * this.hashWidthMul
+    this.snapLimit = 0.001
+    this.shash = new Map()
 
-    this.saved = false;
+    this.saved = false
   }
 
   static _calcSeamHash(mesh: Mesh, faces: Iterable<Face>): number {
-    let digest = new util.HashDigest();
-    let es = new Set<Edge>();
+    const digest = new util.HashDigest()
+    const es = new Set<Edge>()
 
-    for (let f of faces) {
-      for (let e of f.edges) {
-        es.add(e);
+    for (const f of faces) {
+      for (const e of f.edges) {
+        es.add(e)
       }
     }
 
-    for (let e of es) {
-      digest.add(e.eid);
-      digest.add(e.flag & MeshFlags.SEAM);
+    for (const e of es) {
+      digest.add(e.eid)
+      digest.add(e.flag & MeshFlags.SEAM)
     }
 
-    return digest.get();
+    return digest.get()
   }
 
   static restoreOrRebuild(mesh: Mesh, faces: Iterable<Face>, wrangler: UVWrangler, buildSeams?: boolean): UVWrangler {
-    let bad = false;
-
+    let bad = false
 
     if (wrangler && wrangler.saved) {
-      for (let f of faces) {
+      for (const f of faces) {
         if (!(f.eid in wrangler.faces)) {
-          bad = true;
-          break;
+          bad = true
+          break
         }
       }
     }
 
     try {
-      bad = bad || (!wrangler || !wrangler.saved || !wrangler.restore(mesh));
+      bad = bad || !wrangler || !wrangler.saved || !wrangler.restore(mesh)
     } catch (error) {
-      util.print_stack(error);
-      bad = true;
+      util.print_stack(error)
+      bad = true
     }
 
     if (bad) {
-      console.warn("UVWrangler.restoreOrRebuild(): making new uv wrangler. . .");
-      let ret = new UVWrangler(mesh, faces);
+      console.warn('UVWrangler.restoreOrRebuild(): making new uv wrangler. . .')
+      const ret = new UVWrangler(mesh, faces)
 
-      ret.buildIslands(buildSeams);
-      return ret;
+      ret.buildIslands(buildSeams)
+      return ret
     }
 
-    return wrangler;
+    return wrangler
   }
 
   _makeUVMesh(): Mesh {
-    this.uvMesh = new Mesh();
+    this.uvMesh = new Mesh()
     this.uvMesh.verts.addCustomDataLayer(CVElem)
     this.uvMesh.edges.addCustomDataLayer(IntElem)
-    this.cd_corner = this.uvMesh.verts.customData.getLayerRef(CVElem);
-    this.cd_edge_seam = this.uvMesh.edges.customData.getLayerRef(IntElem);
+    this.cd_corner = this.uvMesh.verts.customData.getLayerRef(CVElem)
+    this.cd_edge_seam = this.uvMesh.edges.customData.getLayerRef(IntElem)
 
-    return this.uvMesh;
+    return this.uvMesh
   }
 
   destroy(mesh?: Mesh) {
-    return this;
+    return this
   }
 
   save(): void {
     if (this.saved) {
-      console.error("UVWrangler was already saved");
-      return;
+      console.error('UVWrangler was already saved')
+      return
     }
 
-    this._seamHash = this.constructor._calcSeamHash(this.mesh, this.faces);
+    this._seamHash = this.constructor._calcSeamHash(this.mesh, this.faces)
+    ;(this.faces as unknown as Set<number>) = this.faces.map((f) => f.eid)
 
-    (this.faces as unknown as Set<number>) = this.faces.map(f => f.eid);
+    const loopMap = new Map()
 
-    let loopMap = new Map();
-
-    for (let l of this.loopMap.keys()) {
-      loopMap.set(l.eid, this.loopMap.get(l));
+    for (const l of this.loopMap.keys()) {
+      loopMap.set(l.eid, this.loopMap.get(l))
     }
 
-    let edgeMap = new Map();
-    for (let l of this.edgeMap.keys()) {
-      edgeMap.set(l.eid, this.edgeMap.get(l));
+    const edgeMap = new Map()
+    for (const l of this.edgeMap.keys()) {
+      edgeMap.set(l.eid, this.edgeMap.get(l))
     }
 
-    let vertMap = new Map();
+    const vertMap = new Map()
 
-    for (let [v, ls] of this.vertMap) {
-      const ls2 = ls.map(l => l.eid);
-      vertMap.set(v, ls);
+    for (const [v, ls] of this.vertMap) {
+      const ls2 = ls.map((l) => l.eid)
+      vertMap.set(v, ls)
     }
 
-    this.islandVertMap = undefined;
-    this.islandLoopMap = undefined;
-    this.islandFaceMap = undefined;
+    this.islandVertMap = undefined
+    this.islandLoopMap = undefined
+    this.islandFaceMap = undefined
 
-    this.shash = undefined;
-
-    (this.loopMap as unknown as Map<any, any>) = loopMap;
-    (this.edgeMap as unknown as Map<any, any>) = edgeMap;
-    (this.vertMap as unknown as Map<any, any>) = vertMap;
-
-    (this.mesh as unknown as number) = this.mesh.lib_id;
-    this.saved = true;
+    this.shash = undefined
+    ;(this.loopMap as unknown as Map<any, any>) = loopMap
+    ;(this.edgeMap as unknown as Map<any, any>) = edgeMap
+    ;(this.vertMap as unknown as Map<any, any>) = vertMap
+    ;(this.mesh as unknown as number) = this.mesh.lib_id
+    this.saved = true
   }
 
   /*returns true if restore succeeded*/
   restore(mesh: Mesh): boolean {
     if (!this.saved) {
-      console.error("UVWrangler is not saved");
-      return false;
+      console.error('UVWrangler is not saved')
+      return false
     }
 
-    this.mesh = mesh;
-    this.saved = false;
+    this.mesh = mesh
+    this.saved = false
 
-    let faces = new Set<Face>();
+    const faces = new Set<Face>()
 
-    for (let eid of (this.faces as unknown as Set<number>)) {
-      let f = mesh.eidMap.get<Face>(eid);
+    for (const eid of this.faces as unknown as Set<number>) {
+      const f = mesh.eidMap.get<Face>(eid)
       if (!f || f.type !== MeshTypes.FACE) {
-        console.warn("Missing face " + eid);
-        return false;
+        console.warn('Missing face ' + eid)
+        return false
       }
 
-      faces.add(f);
+      faces.add(f)
     }
 
-    this.faces = faces;
+    this.faces = faces
 
-    let loopMap = new Map();
-    for (let [leid, v] of (this.loopMap as unknown as Map<number, Vertex>)) {
-      let l = mesh.eidMap.get(leid);
+    const loopMap = new Map()
+    for (const [leid, v] of this.loopMap as unknown as Map<number, Vertex>) {
+      const l = mesh.eidMap.get(leid)
 
       if (!l || l.type !== MeshTypes.LOOP) {
-        console.warn("Missing loop " + leid, l);
-        return false;
+        console.warn('Missing loop ' + leid, l)
+        return false
       }
 
-      loopMap.set(l, v);
+      loopMap.set(l, v)
     }
 
-    let edgeMap = new Map();
-    for (let [leid, e] of (this.edgeMap as unknown as Map<number, Edge>)) {
-      let l = mesh.eidMap.get(leid);
+    const edgeMap = new Map()
+    for (const [leid, e] of this.edgeMap as unknown as Map<number, Edge>) {
+      const l = mesh.eidMap.get(leid)
 
       if (!l || l.type !== MeshTypes.LOOP) {
-        console.warn("Missing loop " + leid, l);
-        return false;
+        console.warn('Missing loop ' + leid, l)
+        return false
       }
 
-      edgeMap.set(l, e);
+      edgeMap.set(l, e)
     }
 
-    let vertMap = new Map();
-    for (let [v, ls] of (this.vertMap as unknown as Map<number, number[]>)) {
-      let ls2 = new Set<Loop>();
+    const vertMap = new Map()
+    for (const [v, ls] of this.vertMap as unknown as Map<number, number[]>) {
+      const ls2 = new Set<Loop>()
 
-      for (let leid of ls) {
-        let l = mesh.eidMap.get<Loop>(leid);
+      for (const leid of ls) {
+        const l = mesh.eidMap.get<Loop>(leid)
         if (!l) {
           if (!l || l.type !== MeshTypes.LOOP) {
-            console.warn("Missing loop " + leid, l);
-            return false;
+            console.warn('Missing loop ' + leid, l)
+            return false
           }
         } else {
-          ls2.add(l);
+          ls2.add(l)
         }
       }
 
-      vertMap.set(v, ls2);
+      vertMap.set(v, ls2)
     }
 
-    this.loopMap = loopMap;
-    this.edgeMap = edgeMap;
-    this.vertMap = vertMap;
-    this.needTopo = false;
+    this.loopMap = loopMap
+    this.edgeMap = edgeMap
+    this.vertMap = vertMap
+    this.needTopo = false
 
-    let seamhash = this.constructor._calcSeamHash(mesh, this.faces);
-    console.warn("Seam hash:", seamhash);
+    const seamhash = this.constructor._calcSeamHash(mesh, this.faces)
+    console.warn('Seam hash:', seamhash)
 
     if (seamhash !== this._seamHash) {
-      return false;
+      return false
     }
 
-    this.islandLoopMap = new Map();
-    this.islandFaceMap = new Map();
-    this.islandVertMap = new Map();
+    this.islandLoopMap = new Map()
+    this.islandFaceMap = new Map()
+    this.islandVertMap = new Map()
 
-    this.buildIslands();
-    return true;
+    this.buildIslands()
+    return true
   }
 
   setCornerTags() {
-    const cd_corner = this.cd_corner;
+    const cd_corner = this.cd_corner
     const cd_edge_seam = this.cd_edge_seam
 
-    for (let l of this.mesh.loops) {
-      let seam = false; //(l.e.flag & MeshFlags.SEAM); //seam
-      seam = seam || l === l.radial_next; //mesh boundary
-      seam = seam || this.islandLoopMap.get(l) !== this.islandLoopMap.get(l.radial_next);
+    for (const l of this.mesh.loops) {
+      let seam = false //(l.e.flag & MeshFlags.SEAM); //seam
+      seam = seam || l === l.radial_next //mesh boundary
+      seam = seam || this.islandLoopMap.get(l) !== this.islandLoopMap.get(l.radial_next)
 
       if (seam) {
-        let v1 = this.loopMap.get(l);
-        let v2 = this.loopMap.get(l.next);
+        const v1 = this.loopMap.get(l)
+        const v2 = this.loopMap.get(l.next)
 
         if (!v1 || !v2) {
-          console.error("error in setCornerTags, missing vertices", v1, v2);
-          continue;
+          console.error('error in setCornerTags, missing vertices', v1, v2)
+          continue
         }
 
-        let uve = this.uvMesh.getEdge(v1, v2);
+        const uve = this.uvMesh.getEdge(v1, v2)
 
         if (uve) {
-          cd_edge_seam.get(uve).value = 1;
+          cd_edge_seam.get(uve).value = 1
         }
 
-        cd_corner.get(this.loopMap.get(l)).corner = true;
-        cd_corner.get(this.loopMap.get(l.next)).corner = true;
+        cd_corner.get(this.loopMap.get(l)).corner = true
+        cd_corner.get(this.loopMap.get(l.next)).corner = true
       }
     }
   }
 
   /*checks if a uv edge is a seam*/
   seamUVEdge(e: Edge): number {
-    return this.cd_edge_seam.get(e).value;
+    return this.cd_edge_seam.get(e).value
   }
 
   /*checks if an edge in the base mesh is a seam*/
-  seamEdge(e: Edge): Boolean {
-    let l = e.l;
+  seamEdge(e: Edge): boolean {
+    const l = e.l
 
     if (!l) {
-      return false; //no faces
+      return false //no faces
     }
 
     if (l === l.radial_next) {
-      return true;
+      return true
     }
 
-    return this.islandFaceMap.get(l.f) !== this.islandFaceMap.get(l.radial_next.f);
+    return this.islandFaceMap.get(l.f) !== this.islandFaceMap.get(l.radial_next.f)
   }
 
   _getHashPoint(x: number, y: number): Vector2 {
-    let p = chp_rets.next();
+    const p = chp_rets.next()
 
-    p[0] = Math.floor((x - this.hashBounds[0])*this.cellSizeMul);
-    p[1] = Math.floor((y - this.hashBounds[1])*this.cellSizeMul);
+    p[0] = Math.floor((x - this.hashBounds[0]) * this.cellSizeMul)
+    p[1] = Math.floor((y - this.hashBounds[1]) * this.cellSizeMul)
 
-    return p;
+    return p
   }
 
   hashPoint(x: number, y: number): number {
-    x = Math.floor((x - this.hashBounds[0])*this.cellSizeMul);
-    y = Math.floor((y - this.hashBounds[1])*this.cellSizeMul);
+    x = Math.floor((x - this.hashBounds[0]) * this.cellSizeMul)
+    y = Math.floor((y - this.hashBounds[1]) * this.cellSizeMul)
 
-    return y*this.cellDimen + x;
+    return y * this.cellDimen + x
   }
 
   loadSnapLimit(limit: number): void {
-    limit = Math.max(limit, 0.00005);
+    limit = Math.max(limit, 0.00005)
 
-    let cell = Math.ceil(this.hashWidth/limit)>>2;
+    const cell = Math.ceil(this.hashWidth / limit) >> 2
 
-    this.snapLimit = limit;
-    this.cellDimen = cell;
-    this.cellSizeMul = this.cellDimen*this.hashWidthMul;
+    this.snapLimit = limit
+    this.cellDimen = cell
+    this.cellSizeMul = this.cellDimen * this.hashWidthMul
   }
 
   finish(): void {
-    let cd_uv = this.cd_uv;
+    const cd_uv = this.cd_uv
 
-    for (let v of this.uvMesh.verts) {
-      for (let l of this.vertMap.get(v)) {
-        let uv = cd_uv.get(l);
-        uv.uv.load(v.co as unknown as Vector2);
+    for (const v of this.uvMesh.verts) {
+      for (const l of this.vertMap.get(v)) {
+        const uv = cd_uv.get(l)
+        uv.uv.load(v.co as unknown as Vector2)
       }
     }
   }
 
   resetSpatialHash(limit = this.snapLimit): void {
-    this.shash = new Map();
-    this.loadSnapLimit(limit);
+    this.shash = new Map()
+    this.loadSnapLimit(limit)
   }
 
   shashAdd(l: Loop, uv: Vector2): number {
-    let key = this.hashPoint(uv[0], uv[1]);
+    const key = this.hashPoint(uv[0], uv[1])
 
     if (!this.shash.has(key)) {
-      this.shash.set(key, []);
+      this.shash.set(key, [])
     }
 
-    return this.shash.get(key).push(l);
+    return this.shash.get(key).push(l)
   }
 
   buildIslands(buildSeams = false) {
     if (this.needTopo) {
       if (buildSeams) {
-        this.buildTopologySeam();
+        this.buildTopologySeam()
       } else {
-        this.buildTopology();
+        this.buildTopology()
       }
     }
 
-    let cd_uv = this.cd_uv;
-    let cd_corner = this.cd_corner;
+    const cd_uv = this.cd_uv
+    const cd_corner = this.cd_corner
 
-    for (let v of this.uvMesh.verts) {
-      cd_corner.get(v).hasPins = false;
+    for (const v of this.uvMesh.verts) {
+      cd_corner.get(v).hasPins = false
 
-      for (let l of this.vertMap.get(v)) {
+      for (const l of this.vertMap.get(v)) {
         if (cd_uv.get(l).flag & UVFlags.PIN) {
-          cd_corner.get(v).hasPins = true;
-          break;
+          cd_corner.get(v).hasPins = true
+          break
         }
       }
     }
 
-    this.islands = [];
-    let doneset = new Set();
+    this.islands = []
+    const doneset = new Set()
 
-    for (let v of this.uvMesh.verts) {
+    for (const v of this.uvMesh.verts) {
       if (doneset.has(v)) {
-        continue;
+        continue
       }
 
-      doneset.add(v);
-      let stack = [v];
+      doneset.add(v)
+      const stack = [v]
 
-      let island = new UVIsland();
-      island.hasPins = false;
+      const island = new UVIsland()
+      island.hasPins = false
 
       while (stack.length > 0) {
-        let v2 = stack.pop();
+        const v2 = stack.pop()
 
-        this.islandVertMap.set(v2, island);
+        this.islandVertMap.set(v2, island)
 
-        for (let l of this.vertMap.get(v2)) {
+        for (const l of this.vertMap.get(v2)) {
           if (cd_uv.get(l).flag & UVFlags.PIN) {
-            island.hasPins = true;
+            island.hasPins = true
           }
 
-          if ((l.flag & MeshFlags.SELECT) && !(l.flag & MeshFlags.HIDE)) {
-            island.hasSelLoops = true;
+          if (l.flag & MeshFlags.SELECT && !(l.flag & MeshFlags.HIDE)) {
+            island.hasSelLoops = true
           }
 
-          this.islandFaceMap.set(l.f, island);
-          this.islandLoopMap.set(l, island);
+          this.islandFaceMap.set(l.f, island)
+          this.islandLoopMap.set(l, island)
         }
 
-        island.add(v2);
+        island.add(v2)
 
-        for (let e of v2.edges) {
-          let v3 = e.otherVertex(v2);
+        for (const e of v2.edges) {
+          const v3 = e.otherVertex(v2)
 
           if (!doneset.has(v3)) {
-            doneset.add(v3);
-            stack.push(v3);
+            doneset.add(v3)
+            stack.push(v3)
           }
         }
       }
@@ -554,127 +561,126 @@ export class UVWrangler {
         }
       }//*/
 
-      this.islands.push(island);
+      this.islands.push(island)
     }
 
-    for (let island of this.islands) {
-      this.updateAABB(island);
+    for (const island of this.islands) {
+      this.updateAABB(island)
     }
 
-    this.setCornerTags();
-    this.buildBoundaryTangents();
+    this.setCornerTags()
+    this.buildBoundaryTangents()
 
-    return this;
+    return this
   }
 
   buildTopologySeam() {
-    let mesh = this.mesh;
-    let uvmesh = this._makeUVMesh();
-    let cd_uv = this.cd_uv;
+    const mesh = this.mesh
+    const uvmesh = this._makeUVMesh()
+    const cd_uv = this.cd_uv
 
-    this.loopMap = new Map();
-    this.vertMap = new Map();
-    this.islandLoopMap = new Map();
-    this.islandVertMap = new Map();
-    this.islandFaceMap = new Map();
+    this.loopMap = new Map()
+    this.vertMap = new Map()
+    this.islandLoopMap = new Map()
+    this.islandVertMap = new Map()
+    this.islandFaceMap = new Map()
 
-    let cd_corner = this.cd_corner;
+    const cd_corner = this.cd_corner
 
-    let doneset = new WeakSet();
+    const doneset = new WeakSet()
 
     function hasSeam(v) {
-      for (let e of v.edges) {
+      for (const e of v.edges) {
         if (e.flag & MeshFlags.SEAM) {
-          return true;
+          return true
         }
       }
 
-      return false;
+      return false
     }
 
-    let islands = [];
+    const islands = []
 
-    let faces = this.faces;
+    const faces = this.faces
 
-    for (let f of faces) {
+    for (const f of faces) {
       if (doneset.has(f)) {
-        continue;
+        continue
       }
 
-      let island = new Set();
-      let stack = [f];
+      const island = new Set()
+      const stack = [f]
 
-      islands.push(island);
-      doneset.add(f);
+      islands.push(island)
+      doneset.add(f)
 
       while (stack.length > 0) {
-        let f2 = stack.pop();
+        const f2 = stack.pop()
 
-        island.add(f2);
+        island.add(f2)
 
-        for (let l of f2.loops) {
-          if (l === l.radial_next || (l.e.flag & MeshFlags.SEAM)) {
-            continue;
+        for (const l of f2.loops) {
+          if (l === l.radial_next || l.e.flag & MeshFlags.SEAM) {
+            continue
           }
 
-          let l2 = l.radial_next;
+          const l2 = l.radial_next
 
-          if ((l2.f.flag & MeshFlags.HIDE) || doneset.has(l2.f)) {
-            continue;
+          if (l2.f.flag & MeshFlags.HIDE || doneset.has(l2.f)) {
+            continue
           }
 
-          doneset.add(l2.f);
-          stack.push(l2.f);
+          doneset.add(l2.f)
+          stack.push(l2.f)
         }
       }
     }
 
     function nextl(startl, cb, reverse = false) {
-      let _i = 0;
-      let l = startl;
+      let _i = 0
+      let l = startl
 
       //do {
       for (let i = 0; i < 1; i++) {
         if (cb) {
-          cb(l);
+          cb(l)
         }
 
         if (reverse) {
-          let lr = l.prev.radial_next;
+          const lr = l.prev.radial_next
 
           if (lr === l.prev) {
-            l = lr;
-            break;
+            l = lr
+            break
           }
 
           //don't allow bad winding
           if (l.v === lr.v) {
-            l = lr;
+            l = lr
           } else {
-            l = lr;
-            break; //l = lr.next;
+            l = lr
+            break //l = lr.next;
           }
-
         } else {
-          let lr = l.radial_next;
+          const lr = l.radial_next
 
           if (lr === l) {
-            break;
+            break
           }
 
           //don't allow bad winding
           if (lr.v !== l.v) {
-            l = lr.next;
+            l = lr.next
           } else {
-            l = lr;
-            break;
+            l = lr
+            break
             //l = lr.prev;
           }
         }
 
         if (_i++ > 100) {
-          console.error("infinite loop detected");
-          break;
+          console.error('infinite loop detected')
+          break
         }
       }
       //} while (l !== startl && !(l.e.flag & MeshFlags.SEAM));
@@ -687,243 +693,242 @@ export class UVWrangler {
       //  cb(l);
       //}
 
-      return l;
+      return l
     }
 
     function prevl(startl, cb) {
-      return nextl(startl, cb, true);
+      return nextl(startl, cb, true)
     }
 
-    console.log("Islands length b:", islands.length);
+    console.log('Islands length b:', islands.length)
 
-    let imap = new Map();
+    const imap = new Map()
 
-    let li2 = 0;
-    let islandindex = 0;
-    for (let island of islands) {
-      for (let f of island) {
-        f.index = islandindex;
+    let li2 = 0
+    let islandindex = 0
+    for (const island of islands) {
+      for (const f of island) {
+        f.index = islandindex
 
-        for (let l of f.loops) {
-          l.index = li2++;
+        for (const l of f.loops) {
+          l.index = li2++
         }
       }
 
-      islandindex++;
+      islandindex++
     }
 
-    for (let island of islands) {
-      let ls = new Set<Loop>();
-      let doneset = new WeakSet<Loop>();
+    for (const island of islands) {
+      const ls = new Set<Loop>()
+      const doneset = new WeakSet<Loop>()
 
-      for (let f of island) {
-
-        for (let l of f.loops) {
-          ls.add(l);
+      for (const f of island) {
+        for (const l of f.loops) {
+          ls.add(l)
         }
       }
 
-      for (let l of ls) {
+      for (const l of ls) {
         if (doneset.has(l)) {
-          continue;
+          continue
         }
 
-        for (let e of l.v.edges) {
+        for (const e of l.v.edges) {
           if (!e.l) {
-            continue;
+            continue
           }
 
-          let l2 = e.l;
-          let _i = 0;
+          let l2 = e.l
+          let _i = 0
           do {
             if (l2.v === l.v && l2.f.index === l.f.index) {
-              l2.index = l.index;
-              doneset.add(l2);
+              l2.index = l.index
+              doneset.add(l2)
             }
             if (_i++ > MAX_FACE_VERTS) {
-              console.error("infinite loop error");
-              break;
+              console.error('infinite loop error')
+              break
             }
-          } while ((l2 = l2.radial_next) !== e.l);
+          } while ((l2 = l2.radial_next) !== e.l)
         }
       }
 
-      let iset = new Set();
+      const iset = new Set()
 
-      for (let l of ls) {
+      for (const l of ls) {
         if (!imap.has(l.index)) {
-          let v = uvmesh.makeVertex(cd_uv.get(l).uv);
-          v.co[2] = 0.0;
+          const v = uvmesh.makeVertex(cd_uv.get(l).uv)
+          v.co[2] = 0.0
 
-          this.vertMap.set(v, new Set([l]));
-          this.loopMap.set(l, v);
+          this.vertMap.set(v, new Set([l]))
+          this.loopMap.set(l, v)
 
-          imap.set(l.index, v);
-          doneset.add(l);
+          imap.set(l.index, v)
+          doneset.add(l)
         } else {
-          let v = imap.get(l.index);
-          this.loopMap.set(l, v);
-          this.vertMap.get(v).add(l);
+          const v = imap.get(l.index)
+          this.loopMap.set(l, v)
+          this.vertMap.get(v).add(l)
         }
-        iset.add(l.index);
+        iset.add(l.index)
       }
 
-      for (let l of ls) {
-        let v1 = this.loopMap.get(l);
-        let v2 = this.loopMap.get(l.next);
+      for (const l of ls) {
+        const v1 = this.loopMap.get(l)
+        const v2 = this.loopMap.get(l.next)
 
         if (v1 !== v2) {
-          let e = uvmesh.ensureEdge(v1, v2);
-          this.edgeMap.set(l, e);
+          const e = uvmesh.ensureEdge(v1, v2)
+          this.edgeMap.set(l, e)
         }
       }
       //console.log(iset, ls);
     }
 
-    for (let v of uvmesh.verts) {
-      cd_corner.get(v).corner = false;
+    for (const v of uvmesh.verts) {
+      cd_corner.get(v).corner = false
 
-      for (let l of this.vertMap.get(v)) {
+      for (const l of this.vertMap.get(v)) {
         if (l.e.flag & MeshFlags.SEAM) {
-          cd_corner.get(v).corner = true;
+          cd_corner.get(v).corner = true
         }
       }
     }
   }
 
   buildBoundaryTangents() {
-    const cd_corner = this.cd_corner;
-    const cd_uv = this.cd_uv;
+    const cd_corner = this.cd_corner
+    const cd_uv = this.cd_uv
 
-    let t1 = new Vector2();
-    let t2 = new Vector2();
-    let t3 = new Vector2();
-    let t4 = new Vector2();
-    let t5 = new Vector2();
+    const t1 = new Vector2()
+    const t2 = new Vector2()
+    const t3 = new Vector2()
+    const t4 = new Vector2()
+    const t5 = new Vector2()
 
-    for (let v of this.uvMesh.verts) {
-      let c = cd_corner.get(v);
+    for (const v of this.uvMesh.verts) {
+      const c = cd_corner.get(v)
 
       if (!c.corner) {
-        continue;
+        continue
       }
 
-      let v1: Vertex, v2: Vertex, vcent: Vertex;
+      let v1: Vertex, v2: Vertex, vcent: Vertex
 
-      for (let e2 of v.edges) {
-        let v3 = e2.otherVertex(v);
+      for (const e2 of v.edges) {
+        const v3 = e2.otherVertex(v)
 
         if (!this.seamUVEdge(e2)) {
-          vcent = v3;
-          continue;
+          vcent = v3
+          continue
         }
 
         if (!v1) {
           v1 = v3
         } else {
-          v2 = v3;
-          break;
+          v2 = v3
+          break
         }
       }
 
       if (!v1 || !v2) {
-        console.error("Orphaned UV corner!");
-        continue;
+        console.error('Orphaned UV corner!')
+        continue
       }
 
-      t1.load(v1.co).sub(v.co).normalize();
-      t2.load(v2.co).sub(v.co).normalize().negate();
+      t1.load(v1.co).sub(v.co).normalize()
+      t2.load(v2.co).sub(v.co).normalize().negate()
 
-      t3.load(t1).add(t2).normalize();
+      t3.load(t1).add(t2).normalize()
 
-      let th = Math.acos(t1.dot(t3));
+      const th = Math.acos(t1.dot(t3))
 
-      let shellth = th < 0.0001 ? 1.0 : 1.0/Math.abs(Math.cos(th));
+      const shellth = th < 0.0001 ? 1.0 : 1.0 / Math.abs(Math.cos(th))
 
-      t1.interp(t2, 0.5).normalize();
-      t1.mulScalar(shellth);
+      t1.interp(t2, 0.5).normalize()
+      t1.mulScalar(shellth)
 
       if (isNaN(t1.dot(t2))) {
-        throw new Error("NaN!");
+        throw new Error('NaN!')
       }
 
-      let ok = false;
+      const ok = false
 
-      let tmp = t1[0];
-      t1[0] = -t1[1];
-      t1[1] = tmp;
+      const tmp = t1[0]
+      t1[0] = -t1[1]
+      t1[1] = tmp
 
       if (!vcent) {
-        for (let l of this.vertMap.get(v)) {
+        for (const l of this.vertMap.get(v)) {
           if (this.seamEdge(l.e)) {
-            let uv1 = cd_uv.get(l).uv;
-            let uv2 = cd_uv.get(l.next).uv;
+            const uv1 = cd_uv.get(l).uv
+            const uv2 = cd_uv.get(l.next).uv
 
-            t3.zero();
-            let tot = 0.0;
-            for (let l3 of l.list) {
-              let uv3 = cd_uv.get(l3).uv;
-              t3.add(uv3);
-              tot++;
+            t3.zero()
+            let tot = 0.0
+            for (const l3 of l.list) {
+              const uv3 = cd_uv.get(l3).uv
+              t3.add(uv3)
+              tot++
             }
 
-            t3.mulScalar(1.0/tot);
-            t3.sub(v.co).negate();
+            t3.mulScalar(1.0 / tot)
+            t3.sub(v.co).negate()
 
             //console.log("TT4", t3, t3.dot(t1));
 
             if (t3.dot(t1) < 0.0) {
-              t1.negate();
+              t1.negate()
             }
           }
         }
       }
 
       if (vcent) {
-        t2.load(v.co).sub(vcent.co);
+        t2.load(v.co).sub(vcent.co)
 
         if (t1.dot(t2) < 0) {
-          t1.negate();
+          t1.negate()
         }
       }
 
-      c.bTangent[0] = t1[0];
-      c.bTangent[1] = t1[1];
-      c.bTangent[2] = 0.0;
+      c.bTangent[0] = t1[0]
+      c.bTangent[1] = t1[1]
+      c.bTangent[2] = 0.0
     }
   }
 
   isCorner(l: Loop): boolean {
-    return this.cd_corner.get(this.loopMap.get(l)).corner;
+    return this.cd_corner.get(this.loopMap.get(l)).corner
   }
 
   buildTopology(snap_threshold = 0.0001): void {
     if (!this.cd_uv.exists) {
-      console.warn("No uvs");
-      return;
+      console.warn('No uvs')
+      return
     }
 
-    let cd_uv = this.cd_uv;
-    this.resetSpatialHash(snap_threshold);
+    const cd_uv = this.cd_uv
+    this.resetSpatialHash(snap_threshold)
 
-    this._makeUVMesh();
+    this._makeUVMesh()
 
-    let mesh = this.mesh;
-    let faces = this.faces;
-    let uvmesh = this.uvMesh;
+    const mesh = this.mesh
+    const faces = this.faces
+    const uvmesh = this.uvMesh
 
-    let shash = this.shash;
+    const shash = this.shash
 
-    for (let f of faces) {
-      for (let l of f.loops) {
-        let uv = cd_uv.get(l).uv;
-        this.shashAdd(l, uv);
+    for (const f of faces) {
+      for (const l of f.loops) {
+        const uv = cd_uv.get(l).uv
+        this.shashAdd(l, uv)
       }
     }
 
-    let tmp = new Vector3();
+    const tmp = new Vector3()
 
-    let offs = [
+    const offs = [
       [0, 0],
       [-1, -1],
       [-1, 0],
@@ -933,619 +938,627 @@ export class UVWrangler {
       [1, 0],
       [1, -1],
       [0, -1],
-    ];
+    ]
 
-    let celldimen = this.cellDimen;
-    let hp = new Vector2();
-    let uvsum = new Vector2();
+    const celldimen = this.cellDimen
+    const hp = new Vector2()
+    const uvsum = new Vector2()
 
-    let vmap = new Set<Vertex>();
-    let doneset = new WeakSet();
-    let limit = this.snapLimit;
-    let limitsqr = limit*limit;
+    const vmap = new Set<Vertex>()
+    const doneset = new WeakSet()
+    const limit = this.snapLimit
+    const limitsqr = limit * limit
 
-    let loops = new Set<Loop>();
+    const loops = new Set<Loop>()
 
-    for (let f of this.faces) {
-      for (let l of f.loops) {
-        loops.add(l);
+    for (const f of this.faces) {
+      for (const l of f.loops) {
+        loops.add(l)
 
         if (doneset.has(l)) {
-          continue;
+          continue
         }
 
-        let uv = cd_uv.get(l).uv;
-        let tot = 1;
+        const uv = cd_uv.get(l).uv
+        let tot = 1
 
-        uvsum.load(uv);
-        hp.load(this._getHashPoint(uv[0], uv[1]));
+        uvsum.load(uv)
+        hp.load(this._getHashPoint(uv[0], uv[1]))
 
-        let lset = new Set([l]);
-        let v = uvmesh.makeVertex();
+        const lset = new Set([l])
+        const v = uvmesh.makeVertex()
 
-        this.loopMap.set(l, v);
-        this.vertMap.set(v, lset);
+        this.loopMap.set(l, v)
+        this.vertMap.set(v, lset)
 
-        for (let off of offs) {
-          let x2 = hp[0] + off[0];
-          let y2 = hp[1] + off[1];
-          let key = y2*celldimen + x2;
+        for (const off of offs) {
+          const x2 = hp[0] + off[0]
+          const y2 = hp[1] + off[1]
+          const key = y2 * celldimen + x2
 
-          let list = this.shash.get(key);
+          const list = this.shash.get(key)
 
           if (!list) {
-            continue;
+            continue
           }
 
-          for (let l2 of list) {
+          for (const l2 of list) {
             if (doneset.has(l2)) {
               continue
             }
 
-            let uv2 = cd_uv.get(l2).uv;
+            const uv2 = cd_uv.get(l2).uv
 
             if (uv2.vectorDistanceSqr(uv) < limitsqr) {
-              doneset.add(l2);
-              lset.add(l2);
-              uvsum.add(uv2);
-              tot++;
-              this.loopMap.set(l2, v);
+              doneset.add(l2)
+              lset.add(l2)
+              uvsum.add(uv2)
+              tot++
+              this.loopMap.set(l2, v)
             }
           }
         }
 
-        uvsum.mulScalar(1.0/tot);
-        v.co.load(uvsum);
-        v.co[2] = 0.0;
+        uvsum.mulScalar(1.0 / tot)
+        v.co.load(uvsum)
+        v.co[2] = 0.0
       }
     }
 
-    let loopmap = this.loopMap;
+    const loopmap = this.loopMap
 
-    for (let l of loops) {
-      let v1 = loopmap.get(l);
+    for (const l of loops) {
+      const v1 = loopmap.get(l)
 
       if (doneset.has(l.next)) {
-        let v2 = loopmap.get(l.next);
+        const v2 = loopmap.get(l.next)
         if (v2 !== v1) {
-          this.edgeMap.set(l.next, uvmesh.ensureEdge(v1, v2));
+          this.edgeMap.set(l.next, uvmesh.ensureEdge(v1, v2))
         }
       }
 
       if (doneset.has(l.prev)) {
-        let v2 = loopmap.get(l.prev);
+        const v2 = loopmap.get(l.prev)
         if (v2 !== v1) {
-          this.edgeMap.set(l.prev, uvmesh.ensureEdge(v1, v2));
+          this.edgeMap.set(l.prev, uvmesh.ensureEdge(v1, v2))
         }
       }
     }
   }
 
   updateAABB(island: UVIsland): void {
-    let l = island;
-    l.min = new Vector2().addScalar(1e17);
-    l.max = new Vector2().addScalar(-1e17);
+    const l = island
+    l.min = new Vector2().addScalar(1e17)
+    l.max = new Vector2().addScalar(-1e17)
 
-    for (let v of l) {
-      v.co[2] = 0.0;
+    for (const v of l) {
+      v.co[2] = 0.0
 
-      l.min.min(v.co);
-      l.max.max(v.co);
+      l.min.min(v.co)
+      l.max.max(v.co)
     }
 
-    l.boxsize = new Vector2(l.max).sub(l.min);
+    l.boxsize = new Vector2(l.max).sub(l.min)
 
-    l.boxsize[0] = Math.max(l.boxsize[0], 0.00001);
-    l.boxsize[1] = Math.max(l.boxsize[1], 0.00001);
+    l.boxsize[0] = Math.max(l.boxsize[0], 0.00001)
+    l.boxsize[1] = Math.max(l.boxsize[1], 0.00001)
 
-    l.area = l.boxsize[0]*l.boxsize[1];
+    l.area = l.boxsize[0] * l.boxsize[1]
   }
 
   packIslands(ignorePinnedIslands = false, islandsWithSelLoops = false) {
-    let editor = (window._appstate.ctx.editors as unknown as any).imageEditor as ImageEditor;
-    let uve: UVEditor | undefined = editor?.uvEditor;
+    const editor = (window._appstate.ctx.editors as unknown as any).imageEditor as ImageEditor
+    const uve: UVEditor | undefined = editor?.uvEditor
 
     if (uve) {
-      uve.resetDrawLines();
-      uve.flagRedraw();
+      uve.resetDrawLines()
+      uve.flagRedraw()
     }
 
-    function drawline(v1: INumberList, v2: INumberList, color = "red"): void {
+    function drawline(v1: INumberList, v2: INumberList, color = 'red'): void {
       if (uve) {
         //XXX
-        return;
-        uve.addDrawLine(v1, v2, color);
-        uve.flagRedraw();
+        //return
+        //uve.addDrawLine(v1, v2, color)
+        //uve.flagRedraw()
       }
     }
 
-    let cd_corner = this.cd_corner;
+    const cd_corner = this.cd_corner
 
-    let islands = [];
-    for (let l of this.islands) {
+    let islands = []
+    for (const l of this.islands) {
       if (ignorePinnedIslands && l.hasPins) {
-        continue;
+        continue
       }
       if (islandsWithSelLoops && !l.hasSelLoops) {
-        continue;
+        continue
       }
 
-      this.updateAABB(l);
+      this.updateAABB(l)
 
-      for (let v of l) {
-        cd_corner.get(v).orig = new Vector3(v.co);
+      for (const v of l) {
+        cd_corner.get(v).orig = new Vector3(v.co)
       }
 
-      let cent = new Vector2(l.min).interp(l.max, 0.5);
-      let steps = 16;
-      let th = 0.0, dth = Math.PI*0.5/steps;
+      const cent = new Vector2(l.min).interp(l.max, 0.5)
+      const steps = 16
+      let th = 0.0,
+        dth = (Math.PI * 0.5) / steps
 
-      let min = 1e17, minth = 0.0;
+      let min = 1e17,
+        minth = 0.0
       for (let i = 0; i < steps; i++, th += dth) {
         //th += (Math.random()-0.5)*dth;
 
-        for (let v of l) {
-          v.co.load(cd_corner.get(v).orig).sub(cent).rot2d(th).add(cent);
+        for (const v of l) {
+          v.co.load(cd_corner.get(v).orig).sub(cent).rot2d(th).add(cent)
         }
 
-        this.updateAABB(l);
-        let size = (l.max[0] - l.min[0])*(l.max[1] - l.min[1]);
+        this.updateAABB(l)
+        const size = (l.max[0] - l.min[0]) * (l.max[1] - l.min[1])
         if (size < min) {
-          min = size;
-          minth = th;
+          min = size
+          minth = th
         }
       }
 
-      for (let v of l) {
-        v.co.load(cd_corner.get(v).orig).sub(cent).rot2d(minth).add(cent);
+      for (const v of l) {
+        v.co.load(cd_corner.get(v).orig).sub(cent).rot2d(minth).add(cent)
       }
 
-      this.updateAABB(l);
+      this.updateAABB(l)
     }
 
-    let totarea = 0.0;
+    let totarea = 0.0
 
-    islands = [];
-    for (let island of this.islands) {
+    islands = []
+    for (const island of this.islands) {
       if (ignorePinnedIslands && island.hasPins) {
-        continue;
+        continue
       }
       if (islandsWithSelLoops && !island.hasSelLoops) {
-        continue;
+        continue
       }
 
-      this.updateAABB(island);
-      islands.push(island);
-      totarea += island.area;
+      this.updateAABB(island)
+      islands.push(island)
+      totarea += island.area
     }
 
     if (totarea === 0.0 || isNaN(totarea)) {
       if (isNaN(totarea)) {
-        throw new Error("NaN!");
+        throw new Error('NaN!')
       }
-      return;
+      return
     }
 
-    for (let island of islands) {
-      this.updateAABB(island);
+    for (const island of islands) {
+      this.updateAABB(island)
 
-      let ratio = 0.75/Math.sqrt(totarea);
+      const ratio = 0.75 / Math.sqrt(totarea)
 
-
-      for (let v of island) {
-        v.co.sub(island.min).mulScalar(ratio).add(island.min);
-        v.co[2] = 0.0;
+      for (const v of island) {
+        v.co.sub(island.min).mulScalar(ratio).add(island.min)
+        v.co[2] = 0.0
       }
 
-      this.updateAABB(island);
+      this.updateAABB(island)
     }
 
     islands.sort((a, b) => {
-      return b.area - a.area;
-    });
+      return b.area - a.area
+    })
 
-    let rec = (uv1: Vector2, uv2: Vector2, axis: 0 | 1, depth = 0) => {
-      drawline([uv1[0], uv1[1]], [uv1[0], uv2[1]]);
-      drawline([uv1[0], uv2[1]], [uv2[0], uv2[1]]);
-      drawline([uv2[0], uv2[1]], [uv2[0], uv1[1]]);
-      drawline([uv2[0], uv1[1]], [uv1[0], uv1[1]]);
+    const rec = (uv1: Vector2, uv2: Vector2, axis: 0 | 1, depth = 0) => {
+      drawline([uv1[0], uv1[1]], [uv1[0], uv2[1]])
+      drawline([uv1[0], uv2[1]], [uv2[0], uv2[1]])
+      drawline([uv2[0], uv2[1]], [uv2[0], uv1[1]])
+      drawline([uv2[0], uv1[1]], [uv1[0], uv1[1]])
 
       if (islands.length === 0) {
-        return;
+        return
       }
 
-      let size = new Vector2(uv2).sub(uv1);
-      let area = size[0]*size[1];
-      let axis2 = (axis ^ 1) as 0|1;
+      const size = new Vector2(uv2).sub(uv1)
+      const area = size[0] * size[1]
+      const axis2 = (axis ^ 1) as 0 | 1
 
-      let margin = 0.001;
+      const margin = 0.001
 
-      let min = 1e17, island;
-      for (let island2 of islands) {
-        this.updateAABB(island2);
+      let min = 1e17,
+        island
+      for (const island2 of islands) {
+        this.updateAABB(island2)
 
-        let pass = Math.random() > 0.85;
+        const pass = Math.random() > 0.85
 
-        if (!pass && (island2.area < area && Math.abs(area - island2.area) < min)) {
-          min = Math.abs(area - island2.area);
-          island = island2;
+        if (!pass && island2.area < area && Math.abs(area - island2.area) < min) {
+          min = Math.abs(area - island2.area)
+          island = island2
         }
       }
 
       if (!island && islands.length === 0) {
-        return;
+        return
       }
 
-      let maxdepth = 10;
+      const maxdepth = 10
 
       if (depth > maxdepth) {
-        return;
+        return
       }
 
       //console.log("min", min);
 
-      let vec = new Vector2(uv2).sub(uv1);
-      let dis = vec[0]*vec[1];
+      const vec = new Vector2(uv2).sub(uv1)
+      const dis = vec[0] * vec[1]
 
-      if ((min > dis*0.5 && depth < maxdepth - 1) || !island) {
-        let split = 0.5;
+      if ((min > dis * 0.5 && depth < maxdepth - 1) || !island) {
+        const split = 0.5
 
-        let uv3 = new Vector2(uv1);
-        let uv4 = new Vector2(uv2);
-        let t = uv1[axis] + (uv2[axis] - uv1[axis])*split;
+        const uv3 = new Vector2(uv1)
+        const uv4 = new Vector2(uv2)
+        const t = uv1[axis] + (uv2[axis] - uv1[axis]) * split
 
-        uv3[axis] = t;
-        uv4[axis] = t;
+        uv3[axis] = t
+        uv4[axis] = t
 
-        rec(uv1, uv4, axis2, depth + 1);
-        rec(uv3, uv2, axis2, depth + 1);
-        return;
+        rec(uv1, uv4, axis2, depth + 1)
+        rec(uv3, uv2, axis2, depth + 1)
+        return
       }
 
-      let axis3 = island.boxsize[1] > island.boxsize[0] ? 1 : 0;
+      const axis3 = island.boxsize[1] > island.boxsize[0] ? 1 : 0
       if (axis3 !== axis) {
-        let cent = island.min.interp(island.max, 0.5);
+        const cent = island.min.interp(island.max, 0.5)
 
-        for (let v of island) {
-          v.co.sub(cent).rot2d(Math.PI*0.5).add(cent);
+        for (const v of island) {
+          v.co
+            .sub(cent)
+            .rot2d(Math.PI * 0.5)
+            .add(cent)
         }
 
-        this.updateAABB(island);
+        this.updateAABB(island)
       }
 
-      islands.remove(island);
-      let ratio = island.boxsize[0]/island.boxsize[1];
-      let cent = new Vector2(island.min).interp(island.max, 0.5);
-      size.subScalar(margin*2.0);
+      islands.remove(island)
+      let ratio = island.boxsize[0] / island.boxsize[1]
+      const cent = new Vector2(island.min).interp(island.max, 0.5)
+      size.subScalar(margin * 2.0)
 
-      let ratio2 = size[0]/size[1];
-      ratio = ratio/ratio2;
+      const ratio2 = size[0] / size[1]
+      ratio = ratio / ratio2
 
-      for (let v of island) {
-        v.co.sub(island.min).div(island.boxsize).mul(size);
-        v.co.addScalar(margin);
+      for (const v of island) {
+        v.co.sub(island.min).div(island.boxsize).mul(size)
+        v.co.addScalar(margin)
 
         if (ratio > 1.0) {
-          v.co[1] /= ratio;
+          v.co[1] /= ratio
         } else {
-          v.co[0] *= ratio;
+          v.co[0] *= ratio
         }
 
-        v.co.add(uv1);
+        v.co.add(uv1)
       }
 
-      this.updateAABB(island);
-      return;
+      this.updateAABB(island)
+      return
 
-      let split = 0.5;
-      split = uv1[axis] + (uv2[axis] - uv1[axis])*split;
-      let mid = new Vector2();
+      let split = 0.5
+      split = uv1[axis] + (uv2[axis] - uv1[axis]) * split
+      const mid = new Vector2()
 
-      mid[axis] = split;
-      mid[axis2] = uv1[axis2];
+      mid[axis] = split
+      mid[axis2] = uv1[axis2]
 
-      rec(mid, uv2, axis2, depth + 1);
+      rec(mid, uv2, axis2, depth + 1)
 
       //mid[axis2] = uv2[axis2];
       //rec(mid, uv2, axis2, depth+1);
     }
 
-    let minuv = new Vector2([0, 0]);
-    let maxuv = new Vector2([1, 1]);
+    const minuv = new Vector2([0, 0])
+    const maxuv = new Vector2([1, 1])
 
-    rec(minuv, maxuv, 0);
+    rec(minuv, maxuv, 0)
   }
 }
 
-let splitTemps = util.cachering.fromConstructor(Vector3, 32);
+const splitTemps = util.cachering.fromConstructor(Vector3, 32)
 
 export class VoxelNode extends BVHNode {
-  avgNo: Vector3;
-  avgNoTot: number;
-  splitVar: number;
+  avgNo: Vector3
+  avgNoTot: number
+  splitVar: number
 
   constructor(bvh: BVH, min: Vector3, max: Vector3) {
-    super(bvh, min, max);
+    super(bvh, min, max)
 
-    this.avgNo = new Vector3();
-    this.avgNoTot = 0.0;
+    this.avgNo = new Vector3()
+    this.avgNoTot = 0.0
 
-    this.splitVar = 0.16;
+    this.splitVar = 0.16
 
     if (this.constructor === VoxelNode) {
-      Object.seal(this);
+      Object.seal(this)
     }
   }
 
   _pushTri(tri: BVHTri) {
-    let no = math.normal_tri(tri.v1.co, tri.v2.co, tri.v3.co);
-    tri.no.load(no);
+    const no = math.normal_tri(tri.v1.co, tri.v2.co, tri.v3.co)
+    tri.no.load(no)
 
-    let w = tri.area = math.tri_area(tri.v1.co, tri.v2.co, tri.v3.co);
+    const w = (tri.area = math.tri_area(tri.v1.co, tri.v2.co, tri.v3.co))
 
-    this.avgNo.addFac(no, w);
-    this.avgNoTot += w;
+    this.avgNo.addFac(no, w)
+    this.avgNoTot += w
 
-    return super._pushTri(tri);
+    return super._pushTri(tri)
   }
 
   splitTest(depth = 0): number {
     if (this.depth >= this.bvh.depthLimit) {
-      return 0;
+      return 0
     }
 
-    let avg = splitTemps.next().zero();
+    const avg = splitTemps.next().zero()
 
     if (this.avgNoTot === 0) {
-      return 0;
+      return 0
     }
 
-    avg.load(this.avgNo).normalize();
+    avg.load(this.avgNo).normalize()
 
     //did normals cancel each other out?
     if (avg.vectorLength() < 0.00001) {
-      return 1;
+      return 1
     }
 
-    avg.normalize();
+    avg.normalize()
 
-    let variance = 0.0;
-    let tot = 0.0;
-    for (let t of this.uniqueTris) {
-      let th = Math.acos(t.no.dot(avg)*0.999999)/Math.PI;
+    let variance = 0.0
+    let tot = 0.0
+    for (const t of this.uniqueTris) {
+      let th = Math.acos(t.no.dot(avg) * 0.999999) / Math.PI
 
-      let w = t.area;
+      const w = t.area
       //w = math.tri_area(t.v1, t.v2, t.v3);
 
-      th *= th;
+      th *= th
       //th = Math.abs(th);
 
-      variance += th*w;
-      tot += w;
+      variance += th * w
+      tot += w
     }
 
-    variance = variance/tot;
+    variance = variance / tot
 
     if (variance > this.splitVar) {
-      return 1;
+      return 1
     }
 
-    return 0;
+    return 0
   }
 }
 
 export class VoxelBVH extends BVH {
-  splitVar = 0.15;
+  splitVar = 0.15
 
   constructor(mesh: Mesh, min: Vector3, max: Vector3, tottri = 0) {
-    super(mesh, min, max, tottri);
+    super(mesh, min, max, tottri)
 
-    this.leafLimit = 15;
-
+    this.leafLimit = 15
   }
 }
 
-VoxelBVH.nodeClass = VoxelNode;
+VoxelBVH.nodeClass = VoxelNode
 
-export function voxelUnwrap(mesh: Mesh, faces: Iterable<Face>, cd_uv?: AttrRef<UVLayerElem>, setSeams = true,
-                            leafLimit                                                                 = 255,
-                            depthLimit                                                                = 25,
-                            splitVar                                                                  = 0.16) {
+export function voxelUnwrap(
+  mesh: Mesh,
+  faces: Iterable<Face>,
+  cd_uv?: AttrRef<UVLayerElem>,
+  setSeams = true,
+  leafLimit = 255,
+  depthLimit = 25,
+  splitVar = 0.16
+) {
   if (cd_uv === undefined) {
-    cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem);
+    cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
   }
 
   if (!cd_uv.exists) {
-    console.log("no uv layers");
-    return;
+    console.log('no uv layers')
+    return
   }
 
-  let cd_color = mesh.verts.customData.getLayerRef(ColorLayerElem);
-  mesh.regenBVH();
+  const cd_color = mesh.verts.customData.getLayerRef(ColorLayerElem)
+  mesh.regenBVH()
 
-  let bvh = VoxelBVH.create<VoxelBVH>(mesh, {
+  const bvh = VoxelBVH.create<VoxelBVH>(mesh, {
     leafLimit,
     depthLimit,
     useGrids  : false,
     deformMode: true,
-  });
-  bvh.splitVar = splitVar;
+  })
+  bvh.splitVar = splitVar
 
-  let aabb = mesh.getBoundingBox();
-  let p = new Vector3();
-  let scale = new Vector3(aabb[1]).sub(aabb[0]);
+  const aabb = mesh.getBoundingBox()
+  const p = new Vector3()
+  const scale = new Vector3(aabb[1]).sub(aabb[0])
 
-  console.log(aabb, scale);
-  let patches = new Map();
+  console.log(aabb, scale)
+  const patches = new Map()
 
-  let idgen = 0;
-  let rand = new util.MersenneRandom();
-  let doneset = new WeakSet();
+  let idgen = 0
+  const rand = new util.MersenneRandom()
+  const doneset = new WeakSet()
 
   class ColorSet extends Set<Face> {
     color: Vector4
   }
 
-  for (let node of bvh.nodes) {
+  for (const node of bvh.nodes) {
     if (!node.leaf) {
-      continue;
+      continue
     }
 
-    rand.seed(idgen);
-    let c = new Vector4([rand.random(), rand.random(), rand.random(), 1.0]);
-    idgen++;
+    rand.seed(idgen)
+    const c = new Vector4([rand.random(), rand.random(), rand.random(), 1.0])
+    idgen++
 
-    let patch = new ColorSet();
-    patch.color = c;
+    const patch = new ColorSet()
+    patch.color = c
 
-    for (let t of node.uniqueTris) {
-      let f = mesh.eidMap.get<Face>(t.id);
+    for (const t of node.uniqueTris) {
+      const f = mesh.eidMap.get<Face>(t.id)
 
       if (f && !doneset.has(f)) {
-        doneset.add(f);
-        patch.add(f);
+        doneset.add(f)
+        patch.add(f)
       }
     }
 
     if (patch.size > 0) {
       //console.log(patch.color, cd_color)
-      patches.set(node, patch);
+      patches.set(node, patch)
     }
   }
 
-  console.log("patches", patches);
+  console.log('patches', patches)
 
-  let graph = [];
+  const graph = []
 
-  let totarea = 0.0;
-
+  let totarea = 0.0
 
   class MyPackNode extends PackNode {
-    ls: Set<Loop>;
+    ls: Set<Loop>
   }
 
-  for (let patch of patches.values()) {
-    let p = new Vector3();
-    let no = new Vector3();
+  for (const patch of patches.values()) {
+    const p = new Vector3()
+    const no = new Vector3()
 
-    let li = 0;
-    let ls = new Set<Loop>();
+    let li = 0
+    const ls = new Set<Loop>()
 
-    for (let f of patch) {
-      no.add(f.no);
+    for (const f of patch) {
+      no.add(f.no)
 
-      for (let l of f.loops) {
-        ls.add(l);
+      for (const l of f.loops) {
+        ls.add(l)
         if (cd_color.exists) {
           //l.v.customData[cd_color].color.load(patch.color);
         }
       }
     }
 
-    for (let l of ls) {
-      l.index = li++;
+    for (const l of ls) {
+      l.index = li++
     }
 
-    no.normalize();
+    no.normalize()
 
-    let mat = new Matrix4();
-    mat.makeNormalMatrix(no);
+    const mat = new Matrix4()
+    mat.makeNormalMatrix(no)
 
-    let min = new Vector2().addScalar(1e17);
-    let max = new Vector2().addScalar(-1e17);
+    const min = new Vector2().addScalar(1e17)
+    const max = new Vector2().addScalar(-1e17)
 
-    for (let l of ls) {
-      p.load(l.v.co).multVecMatrix(mat);
+    for (const l of ls) {
+      p.load(l.v.co).multVecMatrix(mat)
 
-      l.v.co[1] = 1;
+      l.v.co[1] = 1
       //l.v.co[3] = 1;
 
-      min.min(p);
-      max.max(p);
+      min.min(p)
+      max.max(p)
 
-      cd_uv.get(l).uv.load(p);
+      cd_uv.get(l).uv.load(p)
     }
 
-    max.sub(min);
-    totarea += max[0]*max[1];
+    max.sub(min)
+    totarea += max[0] * max[1]
 
-    let pnode = new MyPackNode();
-    pnode.pos.load(min).mulScalar(1000);
-    pnode.size.load(max).mulScalar(1000);
-    pnode.startpos = new Vector2(pnode.pos);
-    pnode.ls = ls;
+    const pnode = new MyPackNode()
+    pnode.pos.load(min).mulScalar(1000)
+    pnode.size.load(max).mulScalar(1000)
+    pnode.startpos = new Vector2(pnode.pos)
+    pnode.ls = ls
 
-    for (let l of ls) {
-      let uv = cd_uv.get(l).uv;
+    for (const l of ls) {
+      const uv = cd_uv.get(l).uv
 
-      uv.sub(min).div(max);
+      uv.sub(min).div(max)
     }
 
-    graph.push(pnode);
+    graph.push(pnode)
   }
 
-  console.log("totarea", totarea);
+  console.log('totarea', totarea)
 
-  totarea = Math.sqrt(totarea)*0.4;
+  totarea = Math.sqrt(totarea) * 0.4
 
   if (totarea === 0.0) {
-    totarea = 1.0;
+    totarea = 1.0
   }
 
-  for (let patch of patches.values()) {
-    let rx = rand.random();
-    let ry = rand.random();
+  for (const patch of patches.values()) {
+    const rx = rand.random()
+    const ry = rand.random()
 
-    for (let f of patch) {
-      for (let l of f.loops) {
-        let uv = cd_uv.get(l).uv;
+    for (const f of patch) {
+      for (const l of f.loops) {
+        const uv = cd_uv.get(l).uv
 
-        uv.mulScalar(1.0/totarea);
-        uv[0] += rx;
-        uv[1] += ry;
+        uv.mulScalar(1.0 / totarea)
+        uv[0] += rx
+        uv[1] += ry
       }
     }
   }
 
-  for (let pn of graph) {
-    let off = new Vector2(pn.pos).sub(pn.startpos).mulScalar(1.0/1000);
+  for (const pn of graph) {
+    const off = new Vector2(pn.pos).sub(pn.startpos).mulScalar(1.0 / 1000)
 
-    for (let l of pn.ls) {
-      let uv = cd_uv.get(l).uv;
-      uv.add(off);
+    for (const l of pn.ls) {
+      const uv = cd_uv.get(l).uv
+      uv.add(off)
     }
   }
 
-  let min = new Vector2().addScalar(1e17);
-  let max = new Vector2().addScalar(-1e17);
-  for (let patch of patches.values()) {
-    for (let f of patch) {
-      for (let l of f.loops) {
-        let uv = cd_uv.get(l).uv;
-        min.min(uv);
-        max.max(uv);
+  const min = new Vector2().addScalar(1e17)
+  const max = new Vector2().addScalar(-1e17)
+  for (const patch of patches.values()) {
+    for (const f of patch) {
+      for (const l of f.loops) {
+        const uv = cd_uv.get(l).uv
+        min.min(uv)
+        max.max(uv)
       }
     }
   }
 
   if (!setSeams) {
-    return;
+    return
   }
 
-  for (let patch of patches.values()) {
-    for (let f of patch) {
-      for (let l of f.loops) {
+  for (const patch of patches.values()) {
+    for (const f of patch) {
+      for (const l of f.loops) {
         if (!patch.has(l.radial_next.f)) {
-          l.e.flag |= MeshFlags.SEAM;
+          l.e.flag |= MeshFlags.SEAM
         }
       }
     }
   }
   //bvh.destroy(mesh);
 
-  let wn = new UVWrangler(mesh, faces);
+  const wn = new UVWrangler(mesh, faces)
 
-  wn.buildIslands();
-  wn.packIslands();
-  wn.finish();
+  wn.buildIslands()
+  wn.packIslands()
+  wn.finish()
 }

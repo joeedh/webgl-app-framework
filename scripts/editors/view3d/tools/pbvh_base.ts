@@ -31,7 +31,7 @@ import * as util from '../../../util/util.js'
 import * as math from '../../../util/math.js'
 
 export function getBVH(ctx: any): BVH | undefined {
-  let ob = ctx.object
+  const ob = ctx.object
 
   if (!ob) {
     return undefined
@@ -43,7 +43,7 @@ export function getBVH(ctx: any): BVH | undefined {
 }
 
 export function regenBVH(ctx: any): void {
-  let ob = ctx.object
+  const ob = ctx.object
 
   if (!ob) {
     return undefined
@@ -143,7 +143,7 @@ BrushProperty {
 
     const structThis = this as typeof this & {hasTex?: boolean}
 
-    let texuser = this.brush.texUser
+    const texuser = this.brush.texUser
     if (structThis.hasTex) {
       delete structThis.hasTex
       this.brush.texUser.texture = this._texture
@@ -357,7 +357,7 @@ PaintSample {
   }
 
   copy(): PaintSample {
-    let ret = new PaintSample()
+    const ret = new PaintSample()
 
     this.copyTo(ret)
 
@@ -404,7 +404,7 @@ PaintSampleProperty {
     super.setValue(b instanceof Array ? b : Array.from(b))
 
     this.data.length = 0
-    for (let item of b) {
+    for (const item of b) {
       this.data.push(item)
     }
 
@@ -412,9 +412,9 @@ PaintSampleProperty {
   }
 
   copy(): this {
-    let ret = new PaintSampleProperty()
+    const ret = new PaintSampleProperty()
 
-    for (let item of this) {
+    for (const item of this) {
       ret.push(item.copy())
     }
 
@@ -471,14 +471,14 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
   }
 
   static invoke(ctx: ViewContext, args: any) {
-    let tool = super.invoke(ctx, args)
+    const tool = super.invoke(ctx, args)
 
-    let toolmode = ctx.toolmode as unknown as BVHToolMode
+    const toolmode = ctx.toolmode as unknown as BVHToolMode
     if (!toolmode || toolmode.constructor.name !== 'BVHToolMode') {
       return tool
     }
 
-    let brush = toolmode.getBrush()
+    const brush = toolmode.getBrush()
     if (!brush) {
       return tool
     }
@@ -488,7 +488,7 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
     }
 
     if (!('radius' in args)) {
-      let radius = brush.flag & BrushFlags.SHARED_SIZE ? toolmode.sharedBrushRadius : brush.radius
+      const radius = brush.flag & BrushFlags.SHARED_SIZE ? toolmode.sharedBrushRadius : brush.radius
       tool.inputs.radius.setValue(radius)
     }
 
@@ -503,14 +503,14 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
   }
 
   on_pointermove(e: any): void {
-    let mpos = this.mpos
+    const mpos = this.mpos
 
     mpos[0] = e.x
     mpos[1] = e.y
 
-    let ctx = this.modal_ctx
+    const ctx = this.modal_ctx
 
-    let brush = ctx.datalib.get(this.inputs.brush.getValue())
+    const brush = ctx.datalib.get(this.inputs.brush.getValue())
     if (!brush) {
       return
     }
@@ -524,8 +524,8 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
       return
     }
 
-    let l1 = mpos.vectorDistance(this.cent_mpos)
-    let l2 = this.last_mpos.vectorDistance(this.cent_mpos)
+    const l1 = mpos.vectorDistance(this.cent_mpos)
+    const l2 = this.last_mpos.vectorDistance(this.cent_mpos)
 
     if (l2 === 0.0 || l1 === 0.0) {
       return
@@ -534,16 +534,16 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
     this.resetTempGeom()
     this.makeTempLine(this.cent_mpos, this.mpos, 'rgba(25,25,25,0.25)')
 
-    let toolmode = ctx.toolmode
+    const toolmode = ctx.toolmode
     if (toolmode && toolmode.constructor.name === 'BVHToolMode') {
       toolmode.mpos.load(this.cent_mpos)
     }
 
-    let ratio = l1 / l2
+    const ratio = l1 / l2
     let radius: number
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
-      let bvhtool = ctx.scene.toolmode_namemap.bvh
+      const bvhtool = ctx.scene.toolmode_namemap.bvh
       if (bvhtool) {
         radius = bvhtool.sharedBrushRadius
       } else {
@@ -567,11 +567,11 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
   }
 
   exec(ctx: any): void {
-    let brush = ctx.datalib.get(this.inputs.brush.getValue())
+    const brush = ctx.datalib.get(this.inputs.brush.getValue())
 
     if (brush) {
       if (brush.flag & BrushFlags.SHARED_SIZE) {
-        let toolmode = ctx.scene.toolmode_namemap.bvh
+        const toolmode = ctx.scene.toolmode_namemap.bvh
 
         if (toolmode) {
           toolmode.sharedBrushRadius = this.inputs.radius.getValue()
@@ -583,7 +583,7 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
   }
 
   undoPre(ctx: any): void {
-    let brush = ctx.datalib.get(this.inputs.brush.getValue())
+    const brush = ctx.datalib.get(this.inputs.brush.getValue())
 
     this._undo = {}
 
@@ -594,19 +594,19 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
   }
 
   undo(ctx: any): void {
-    let undo = this._undo
+    const undo = this._undo
 
     if (!undo.brushref) {
       return
     }
 
-    let brush = ctx.datalib.get(undo.brushref)
+    const brush = ctx.datalib.get(undo.brushref)
     if (!brush) {
       return
     }
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
-      let toolmode = ctx.scene.toolmode_namemap.bvh
+      const toolmode = ctx.scene.toolmode_namemap.bvh
 
       if (toolmode) {
         toolmode.sharedBrushRadius = undo.radius
@@ -629,9 +629,9 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
 
 ToolOp.register(SetBrushRadius)
 
-let co = new Vector3()
-let t1 = new Vector3()
-let t2 = new Vector3()
+const co = new Vector3()
+const t1 = new Vector3()
+const t2 = new Vector3()
 
 export class PathPoint {
   color: string
@@ -656,7 +656,7 @@ export function calcConcave(v: any): number {
   let tot = 0.0
   let elen = 0
 
-  for (let v2 of v.neighbors) {
+  for (const v2 of v.neighbors) {
     co.add(v2.co)
     elen += v2.co.vectorDistance(v.co)
 
@@ -673,23 +673,23 @@ export function calcConcave(v: any): number {
   t1.load(v.co)
     .sub(co)
     .mulScalar(1.0 / elen)
-  let fac = t1.dot(v.no) * 0.5 + 0.5
+  const fac = t1.dot(v.no) * 0.5 + 0.5
 
   return 1.0 - fac
 }
 
 export function calcConcaveLayer(mesh: any): void {
-  let name = '_paint_concave'
+  const name = '_paint_concave'
 
   let cd_concave = mesh.verts.customData.getNamedLayerIndex(name, 'float')
   if (cd_concave < 0) {
-    let layer = mesh.verts.addCustomDataLayer('float', name)
+    const layer = mesh.verts.addCustomDataLayer('float', name)
     layer.flag |= CDFlags.TEMPORARY
 
     cd_concave = layer.index
   }
 
-  for (let v of mesh.verts) {
+  for (const v of mesh.verts) {
   }
 }
 
@@ -698,7 +698,7 @@ import {copyMouseEvent} from '../../../path.ux/scripts/path-controller/util/even
 import {CameraModes} from '../view3d_base.js'
 import type {ToolContext, ViewContext} from '../../../core/context.js'
 import {BVHToolMode} from './pbvh'
-import { StructReader } from '../../../path.ux/scripts/path-controller/types/util/nstructjs.js'
+import {StructReader} from '../../../path.ux/scripts/path-controller/types/util/nstructjs.js'
 
 export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends ToolOp<
   {
@@ -780,7 +780,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
   }
 
   static needOrig(brush: any): boolean {
-    let mode = brush.tool
+    const mode = brush.tool
 
     let isPaint = mode === SculptTools.MASK_PAINT || mode === SculptTools.TEXTURE_PAINT
     isPaint = isPaint || mode === SculptTools.PAINT || mode === SculptTools.PAINT_SMOOTH
@@ -817,7 +817,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     }
 
     if (util.time_ms() - this.qlast_time > 5) {
-      let time = util.time_ms()
+      const time = util.time_ms()
 
       this.taskNext()
 
@@ -829,31 +829,31 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     let dt = util.time_ms() - this.alast_time
     dt = Math.max(dt, 1.0)
 
-    let p = new PathPoint([x, y], dt)
-    let path = this.path
-    let dpi = devicePixelRatio
+    const p = new PathPoint([x, y], dt)
+    const path = this.path
+    const dpi = devicePixelRatio
 
     if (path.length > 0) {
-      let p0 = path[path.length - 1]
+      const p0 = path[path.length - 1]
       p.vel.load(p.co).sub(p0.co)
       p.acc.load(p.vel).sub(p0.vel)
 
       let vel: Vector2
       //vel = new Vector3(p.vel).add(p0.vel).mulScalar(0.5);
       vel = p.vel
-      let l1 = p0.vel.vectorLength()
-      let l2 = p.vel.vectorLength()
+      const l1 = p0.vel.vectorLength()
+      const l2 = p.vel.vectorLength()
 
       if (p.vel.vectorLength() > 7 / dpi) {
-        let co = new Vector2()
+        const co = new Vector2()
 
-        let a = new Vector2()
-        let b = new Vector2()
-        let c = new Vector2()
-        let d = new Vector2()
+        const a = new Vector2()
+        const b = new Vector2()
+        const c = new Vector2()
+        const d = new Vector2()
 
-        let vel1 = new Vector2(p0.vel).addFac(p0.acc, 0.5).mulScalar(0.5)
-        let vel2 = new Vector2(p.vel).addFac(p.acc, 0.5).mulScalar(0.5)
+        const vel1 = new Vector2(p0.vel).addFac(p0.acc, 0.5).mulScalar(0.5)
+        const vel2 = new Vector2(p.vel).addFac(p.acc, 0.5).mulScalar(0.5)
 
         a.load(p0.co)
         d.load(p.co)
@@ -864,11 +864,11 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
           .addFac(p.vel, 0.5)
           .addFac(p.acc, 1.0 / 6.0)
 
-        let brush = this.inputs.brush.getValue()
-        let radius = brush.radius
-        let spacing = brush.spacing
+        const brush = this.inputs.brush.getValue()
+        const radius = brush.radius
+        const spacing = brush.spacing
 
-        let steps = Math.ceil(p.co.vectorDistance(p0.co) / (4 * radius * spacing))
+        const steps = Math.ceil(p.co.vectorDistance(p0.co) / (4 * radius * spacing))
 
         if (steps === 0) {
           this.path.push(p)
@@ -880,10 +880,10 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
           ds = 1.0 / steps
         dt *= ds
 
-        let lastp = p0
+        const lastp = p0
 
         for (let i = 0; i < steps; i++, s += ds) {
-          let p2 = new PathPoint(undefined, ds)
+          const p2 = new PathPoint(undefined, ds)
           for (let j = 0; j < 2; j++) {
             p2.co[j as 0 | 1] = bez4(a[j], b[j], c[j], d[j], s)
             p2.vel[j as 0 | 1] = dbez4(a[j], b[j], c[j], d[j], s) * ds
@@ -908,7 +908,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
         p.dt = dt
 
         if (0) {
-          let p2 = new PathPoint(co, dt * 0.5)
+          const p2 = new PathPoint(co, dt * 0.5)
           path.push(p2)
 
           p2.dt = dt * 0.5
@@ -938,15 +938,15 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
       start = this.queue[0][2]
     }
 
-    let n = new Vector2()
-    let color = 'rgba(255, 255, 255, 0.4)'
+    const n = new Vector2()
+    const color = 'rgba(255, 255, 255, 0.4)'
 
     for (let pi = start; pi < this.path.length; pi++) {
-      let p = this.path[pi]
+      const p = this.path[pi]
 
       if (lastp) {
         n.load(p.co).sub(lastp.co).normalize()
-        let t = n[0]
+        const t = n[0]
         n[0] = n[1]
         n[1] = -t
         n.mulScalar(15.0)
@@ -999,7 +999,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
       //subclases, it doesn't respect brush spacing when outputting the curve
       this.appendPath(e.x, e.y)
     } else {
-      let p = new PathPoint([e.x, e.y], util.time_ms() - this.alast_time)
+      const p = new PathPoint([e.x, e.y], util.time_ms() - this.alast_time)
       this.path.push(p)
     }
 
@@ -1007,9 +1007,9 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     this.drawPath()
 
     for (; pi < this.path.length; pi++) {
-      let p = this.path[pi]
+      const p = this.path[pi]
 
-      let e2 = copyMouseEvent(e)
+      const e2 = copyMouseEvent(e)
 
       this.queue.push([e2, p, pi])
       //this.on_pointermove_intern(e, p.co[0], p.co[1], in_timer, pi !== this.path.length-1);
@@ -1021,16 +1021,16 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
   }
 
   makeTask(): Generator<void, void, unknown> {
-    let this2 = this
+    const this2 = this
 
     return (function* () {
       while (this2.queue.length > 0) {
-        let [e, p, pi] = this2.queue.shift()
+        const [e, p, pi] = this2.queue.shift()
 
-        let iter = this2.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this2.path.length - 1) as any
+        const iter = this2.on_pointermove_intern(e, p.co[0], p.co[1], true, pi !== this2.path.length - 1) as any
 
         if (typeof iter === 'object' && iter[Symbol.iterator]) {
-          for (let step of iter) {
+          for (const step of iter) {
             yield
           }
         }
@@ -1041,12 +1041,12 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
   }
 
   hasSampleDelay(): void {
-    let brush = this.inputs.brush.getValue()
+    const brush = this.inputs.brush.getValue()
 
     let delayMode = false
     if (brush.texUser.texture) {
-      let flag = brush.texUser.flag
-      let mode = brush.texUser.mode
+      const flag = brush.texUser.flag
+      const mode = brush.texUser.mode
 
       delayMode = mode === TexUserModes.VIEW_REPEAT
       delayMode = delayMode && !!(flag & TexUserFlags.FANCY_RAKE)
@@ -1064,15 +1064,15 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
   ) {
     //this.makeTempLine()
 
-    let ctx = this.modal_ctx!
+    const ctx = this.modal_ctx!
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
       return
     }
 
-    let toolmode = ctx.toolmode
-    let view3d = ctx.view3d
-    let brush = this.inputs.brush.getValue()
+    const toolmode = ctx.toolmode
+    const view3d = ctx.view3d
+    const brush = this.inputs.brush.getValue()
 
     if (toolmode instanceof BVHToolMode) {
       //the pbvh toolmode is responsible for drawing brush circle,
@@ -1081,14 +1081,14 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
       toolmode.mpos[1] = y
     }
 
-    let mpos = view3d.getLocalMouse(x, y)
+    const mpos = view3d.getLocalMouse(x, y)
     x = mpos[0]
     y = mpos[1]
 
     let pressure = 1.0
 
     if (e.targetTouches && e.targetTouches.length > 0) {
-      let t = e.targetTouches[0]
+      const t = e.targetTouches[0]
 
       if (t.pressure !== undefined) {
         pressure = t.pressure
@@ -1099,12 +1099,12 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
 
     //console.log(e.ctrlKey, view3d.size, x, y, e.targetTouches, pressure);
 
-    let rendermat = view3d.activeCamera.rendermat
-    let view = view3d.getViewVec(x, y)
-    let origin = view3d.activeCamera.pos
+    const rendermat = view3d.activeCamera.rendermat
+    const view = view3d.getViewVec(x, y)
+    const origin = view3d.activeCamera.pos
 
     let invert = false
-    let mode = brush.tool
+    const mode = brush.tool
 
     if (e.ctrlKey && mode !== SculptTools.PAINT && mode !== SculptTools.PAINT_SMOOTH) {
       invert = true
@@ -1135,10 +1135,10 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     invert: boolean,
     isInterp: boolean
   ) {
-    let brush = this.inputs.brush.getValue()
-    let mode = brush.tool
+    const brush = this.inputs.brush.getValue()
+    const mode = brush.tool
 
-    let ctx = this.modal_ctx!
+    const ctx = this.modal_ctx!
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
       return
@@ -1152,8 +1152,8 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
 
     let radius = brush.radius
 
-    let getchannel = (key: string, val: number): number => {
-      let ch = brush.dynamics.getChannel(key)
+    const getchannel = (key: string, val: number): number => {
+      const ch = brush.dynamics.getChannel(key)
       if (ch?.useDynamics) {
         return val * ch.curve.evaluate(pressure)
       } else {
@@ -1163,8 +1163,8 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
 
     radius = getchannel('radius', radius)
 
-    let toolmode = ctx.toolmode
-    let view3d = ctx.view3d
+    const toolmode = ctx.toolmode
+    const view3d = ctx.view3d
 
     if (toolmode instanceof BVHToolMode) {
       toolmode._radius = radius
@@ -1172,13 +1172,13 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
 
     //console.log("pressure", pressure, strength, dynmask);
 
-    let ob = ctx.object
-    let mesh = ob.data as Mesh
+    const ob = ctx.object
+    const mesh = ob.data as Mesh
 
-    let bvh = this.getBVH(mesh)
+    const bvh = this.getBVH(mesh)
 
-    let axes: number[] = [-1]
-    let sym = mesh.symFlag
+    const axes: number[] = [-1]
+    const sym = mesh.symFlag
 
     for (let i = 0; i < 3; i++) {
       if (mesh.symFlag & (1 << i)) {
@@ -1186,17 +1186,17 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
       }
     }
 
-    let haveOrigData = PaintOpBase.needOrig(brush)
+    const haveOrigData = PaintOpBase.needOrig(brush)
     let cd_orig = -1
-    let cd_grid = GridBase.meshGridOffset(mesh)
+    const cd_grid = GridBase.meshGridOffset(mesh)
 
     if (haveOrigData) {
       cd_orig = this.initOrigData(mesh)
     }
 
     let isect: any
-    let obmat = ob.outputs.matrix.getValue()
-    let matinv = new Matrix4(obmat)
+    const obmat = ob.outputs.matrix.getValue()
+    const matinv = new Matrix4(obmat)
     matinv.invert()
 
     origin = new Vector3(origin)
@@ -1207,7 +1207,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     view.multVecMatrix(matinv)
     view = new Vector3(view).normalize()
 
-    for (let axis of axes) {
+    for (const axis of axes) {
       let view2 = new Vector3(view)
       let origin2 = new Vector3(origin)
 
@@ -1219,7 +1219,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
       origin2 = new Vector3(origin2)
       view2 = new Vector3(view2)
 
-      let isect2 = bvh.castRay(origin2, view2)
+      const isect2 = bvh.castRay(origin2, view2)
 
       if (isect2 && (!isect || isect2.dist < isect.dist)) {
         isect = isect2.copy()
@@ -1228,11 +1228,11 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
       }
     }
 
-    let origco = new Vector4()
+    const origco = new Vector4()
 
     if (!isect) {
       if ((this.grabMode || mode === SculptTools.GRAB || mode === SculptTools.SNAKE) && !this._first) {
-        let p = new Vector3(this.last_p)
+        const p = new Vector3(this.last_p)
         p.multVecMatrix(obmat)
 
         view3d.project(p, rendermat)
@@ -1243,7 +1243,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
         view3d.unproject(p, rendermat.clone().invert())
         p.multVecMatrix(matinv)
 
-        let dis = p.vectorDistance(origin)
+        const dis = p.vectorDistance(origin)
 
         isect = new IsectRet()
 
@@ -1254,12 +1254,12 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
         return
       }
     } else {
-      let tri = isect.tri
+      const tri = isect.tri
 
       if (haveOrigData) {
-        let o1 = this.getOrigCo(mesh, tri.v1, cd_grid, cd_orig)
-        let o2 = this.getOrigCo(mesh, tri.v2, cd_grid, cd_orig)
-        let o3 = this.getOrigCo(mesh, tri.v3, cd_grid, cd_orig)
+        const o1 = this.getOrigCo(mesh, tri.v1, cd_grid, cd_orig)
+        const o2 = this.getOrigCo(mesh, tri.v2, cd_grid, cd_orig)
+        const o3 = this.getOrigCo(mesh, tri.v3, cd_grid, cd_orig)
 
         for (const i of IndexRange(3)) {
           origco[i as Vector3['LEN']] =
@@ -1273,13 +1273,13 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
       }
     }
 
-    let p3 = new Vector4(isect.p)
+    const p3 = new Vector4(isect.p)
     p3[3] = 1.0
 
-    let matrix = new Matrix4(ob.outputs.matrix.getValue())
+    const matrix = new Matrix4(ob.outputs.matrix.getValue())
     p3.multVecMatrix(rendermat)
 
-    let w = p3[3] * matrix.$matrix.m11
+    const w = p3[3] * matrix.$matrix.m11
 
     if (view3d.cameraMode === CameraModes.ORTHOGRAPHIC) {
       //w = 1.0;
@@ -1292,7 +1292,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     radius /= Math.max(view3d.glSize[0], view3d.glSize[1])
     radius *= Math.abs(w)
 
-    let vec = new Vector3()
+    const vec = new Vector3()
 
     if (isect.tri) {
       vec.load(isect.tri.v1.no)
@@ -1381,10 +1381,10 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
           return myToJSON(obj.getAsArray())
         } else {
           let s = '{'
-          let keys = Object.keys(obj)
+          const keys = Object.keys(obj)
 
           for (let i = 0; i < keys.length; i++) {
-            let k = keys[i]
+            const k = keys[i]
             let v: any
 
             try {
@@ -1423,7 +1423,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
       return
     }
 
-    let time = util.time_ms()
+    const time = util.time_ms()
     while (util.time_ms() - time < 45) {
       let ret: any
 
@@ -1512,7 +1512,7 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
   }
 
   calcUndoMem(ctx: any): number {
-    let ud = this._undo
+    const ud = this._undo
 
     if (ud.gridData) {
       return ud.gridData.length * 8
@@ -1526,9 +1526,9 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
   }
 
   undoPre(ctx: any): void {
-    let mesh = ctx.mesh || ctx.tetmesh
+    const mesh = ctx.mesh || ctx.tetmesh
 
-    let ud: any = (this._undo = {mesh: -1})
+    const ud: any = (this._undo = {mesh: -1})
 
     if (!mesh) {
       return
@@ -1536,23 +1536,23 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
 
     ud.mesh = mesh.lib_id
 
-    let cd_grid = GridBase.meshGridOffset(mesh)
+    const cd_grid = GridBase.meshGridOffset(mesh)
     let cd_mask: number
 
     ud.cd_grid = cd_grid
 
     if (cd_grid >= 0) {
-      let gd: number[] = (ud.gridData = [])
+      const gd: number[] = (ud.gridData = [])
       cd_mask = ud.cd_mask = mesh.loops.customData.getLayerIndex('mask')
 
       if (cd_mask < 0) {
         return
       }
 
-      for (let l of mesh.loops) {
-        let grid = l.customData[cd_grid]
+      for (const l of mesh.loops) {
+        const grid = l.customData[cd_grid]
 
-        for (let p of grid.points) {
+        for (const p of grid.points) {
           if (p.flag & MeshFlags.HIDE) {
             continue
           }
@@ -1568,9 +1568,9 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
       if (cd_mask < 0) {
         return
       }
-      let vd: number[] = (ud.vertData = [])
+      const vd: number[] = (ud.vertData = [])
 
-      for (let v of mesh.verts) {
+      for (const v of mesh.verts) {
         if (v.flag & MeshFlags.HIDE) {
           continue
         }
@@ -1582,27 +1582,27 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
   }
 
   undo(ctx: any): void {
-    let ud = this._undo
-    let mesh = ctx.datalib.get(ud.mesh)
+    const ud = this._undo
+    const mesh = ctx.datalib.get(ud.mesh)
 
     if (!mesh) {
       return
     }
 
-    let cd_grid = GridBase.meshGridOffset(mesh)
+    const cd_grid = GridBase.meshGridOffset(mesh)
     let cd_mask: number
-    let cd_node = mesh.bvh ? mesh.bvh.cd_node : new AttrRef(-1)
+    const cd_node = mesh.bvh ? mesh.bvh.cd_node : new AttrRef(-1)
 
     ud.cd_grid = cd_grid
-    let updateflag = BVHFlags.UPDATE_MASK | BVHFlags.UPDATE_DRAW
+    const updateflag = BVHFlags.UPDATE_MASK | BVHFlags.UPDATE_DRAW
 
     if (cd_grid >= 0) {
-      for (let l of mesh.loops) {
-        let grid = l.customData[cd_grid]
+      for (const l of mesh.loops) {
+        const grid = l.customData[cd_grid]
         grid.regenEIDMap()
       }
 
-      let gd = ud.gridData
+      const gd = ud.gridData
       cd_mask = ud.cd_mask = mesh.loops.customData.getLayerIndex('mask')
 
       if (cd_mask < 0) {
@@ -1610,20 +1610,20 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
       }
 
       for (let gi = 0; gi < gd.length; gi += 3) {
-        let leid = gd[gi],
+        const leid = gd[gi],
           peid = gd[gi + 1],
           mask = gd[gi + 2]
 
-        let l = mesh.eidMap.get(leid)
+        const l = mesh.eidMap.get(leid)
         if (!l) {
           console.error('Missing loop ' + leid)
           continue
         }
 
-        let grid = l.customData[cd_grid]
-        let eidMap = grid.getEIDMap(mesh)
+        const grid = l.customData[cd_grid]
+        const eidMap = grid.getEIDMap(mesh)
 
-        let p = eidMap.get(peid)
+        const p = eidMap.get(peid)
 
         if (!p) {
           console.warn('Missing grid vert:' + peid)
@@ -1634,7 +1634,7 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
         p.flag |= MeshFlags.UPDATE
 
         if (cd_node.i >= 0) {
-          let node = p.customData[cd_node.i].node
+          const node = p.customData[cd_node.i].node
 
           if (node) {
             node.setUpdateFlag(updateflag)
@@ -1647,13 +1647,13 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
       if (cd_mask < 0) {
         return
       }
-      let vd = ud.vertData
+      const vd = ud.vertData
 
       for (let vi = 0; vi < vd.length; vi += 2) {
-        let veid = vd[vi],
+        const veid = vd[vi],
           mask = vd[vi + 1]
 
-        let v = mesh.eidMap.get(veid)
+        const v = mesh.eidMap.get(veid)
 
         if (!v) {
           console.warn('Missing vertex ' + veid)
@@ -1664,7 +1664,7 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
         v.flag |= MeshFlags.UPDATE
 
         if (cd_node.i >= 0) {
-          let node = v.customData[cd_node.i].node
+          const node = v.customData[cd_node.i].node
           if (node) {
             node.setUpdateFlag(updateflag)
           }
@@ -1678,7 +1678,7 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
   }
 
   getCDMask(mesh: any): number {
-    let cd_grid = GridBase.meshGridOffset(mesh)
+    const cd_grid = GridBase.meshGridOffset(mesh)
 
     if (cd_grid >= 0) {
       return mesh.loops.customData.getLayerIndex('mask')
@@ -1692,31 +1692,31 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
   }
 
   getVerts(mesh: any, updateBVHNodes: boolean = true): Generator<any, void, unknown> {
-    let this2 = this
+    const this2 = this
 
-    let cd_node = mesh.bvh ? mesh.bvh.cd_node : new AttrRef(-1)
-    let bvh = mesh.bvh ? mesh.bvh : undefined
+    const cd_node = mesh.bvh ? mesh.bvh.cd_node : new AttrRef(-1)
+    const bvh = mesh.bvh ? mesh.bvh : undefined
 
     updateBVHNodes = updateBVHNodes && cd_node.i >= 0
 
-    let updateflag = BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK
+    const updateflag = BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_MASK
 
     return (function* () {
-      let cd_mask = this2.getCDMask(mesh)
-      let cd_grid = GridBase.meshGridOffset(mesh)
+      const cd_mask = this2.getCDMask(mesh)
+      const cd_grid = GridBase.meshGridOffset(mesh)
 
       if (cd_mask < 0) {
         return
       }
 
       if (cd_grid >= 0) {
-        for (let l of mesh.loops) {
-          let grid = l.customData[cd_grid]
-          for (let p of grid.points) {
+        for (const l of mesh.loops) {
+          const grid = l.customData[cd_grid]
+          for (const p of grid.points) {
             yield p
 
             if (updateBVHNodes) {
-              let node = p.customData[cd_node.i].node
+              const node = p.customData[cd_node.i].node
               if (node) {
                 node.setUpdateFlag(updateflag)
               }
@@ -1724,11 +1724,11 @@ export class MaskOpBase<Inputs extends {} = {}, Outputs extends {} = {}> extends
           }
         }
       } else {
-        for (let v of mesh.verts) {
+        for (const v of mesh.verts) {
           yield v
 
           if (updateBVHNodes) {
-            let node = v.customData[cd_node.i].node
+            const node = v.customData[cd_node.i].node
             if (node) {
               node.setUpdateFlag(updateflag)
             }
@@ -1755,19 +1755,19 @@ export class ClearMaskOp extends MaskOpBase<{value: FloatProperty}> {
   }
 
   exec(ctx: any): void {
-    let mesh = ctx.mesh
+    const mesh = ctx.mesh
     if (!mesh) {
       return
     }
 
-    let cd_mask = this.getCDMask(mesh)
+    const cd_mask = this.getCDMask(mesh)
     if (cd_mask < 0) {
       return
     }
 
-    let value = this.inputs.value.getValue()
+    const value = this.inputs.value.getValue()
 
-    for (let v of this.getVerts(mesh, true)) {
+    for (const v of this.getVerts(mesh, true)) {
       v.customData[cd_mask].value = value
     }
   }

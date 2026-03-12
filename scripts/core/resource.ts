@@ -1,5 +1,5 @@
-import {EventBase} from '../core/eventbase.js';
-import {EnumProperty, ToolProperty} from "../path.ux/scripts/pathux.js";
+import {EventBase} from '../core/eventbase.js'
+import {EnumProperty, ToolProperty} from '../path.ux/scripts/pathux.js'
 
 /**
 
@@ -9,77 +9,74 @@ import {EnumProperty, ToolProperty} from "../path.ux/scripts/pathux.js";
 export const ResourceFlags = {
   SELECT: 1,
   LOCKED: 2,
-  HIDE: 4
-};
-
+  HIDE  : 4,
+}
 
 export interface IResDef {
-  name: string,
-  uiName?: string,
-  flag?: number,
+  name: string
+  uiName?: string
+  flag?: number
   icon?: number
 }
 
 export interface IResConstructor<final> {
-  new(url: string): final;
+  new (url: string): final
 
-  resourceDefine(): IResDef;
+  resourceDefine(): IResDef
 
-  handlesURL(url: string): boolean;
+  handlesURL(url: string): boolean
 
-  createFromURL(url: string): final;
+  createFromURL(url: string): final
 }
 
 export class ResourceType extends EventBase {
-  url: string;
-  flag: number;
-  name: string;
+  url: string
+  flag: number
+  name: string
   users: number;
 
-  ['constructor']: IResConstructor<this>;
+  ['constructor']: IResConstructor<this>
 
   constructor(url: string) {
-    super();
+    super()
 
-    let def = this.constructor.resourceDefine();
+    const def = this.constructor.resourceDefine()
 
-    this.url = url;
-    this.flag = def.flag ? def.flag : 0;
-    this.name = undefined;
-    this.users = 0;
+    this.url = url
+    this.flag = def.flag ? def.flag : 0
+    this.name = undefined
+    this.users = 0
   }
 
   addUser() {
-    this.users++;
+    this.users++
   }
 
   remUser() {
-    this.users--;
+    this.users--
 
     if (this.users <= 0) {
       if (this.users < 0) {
-        console.warn("Negative users detected", this);
-        this.users = 0;
+        console.warn('Negative users detected', this)
+        this.users = 0
       }
 
-      this.unload();
+      this.unload()
     }
   }
 
-  unload() {
-
-  }
+  unload() {}
 
   static handlesURL(url: string): boolean {
-    return false;
+    return false
   }
 
   static resourceDefine(): IResDef {
     return {
-      name: "",
-      uiName: "",
-      flag: 0, //default flag, see ResourceFlags
-      icon: -1 //icon for the resource type in general, not specific resources
+      name  : '',
+      uiName: '',
+      flag  : 0, //default flag, see ResourceFlags
+      icon  : -1, //icon for the resource type in general, not specific resources
     }
   }
 
@@ -87,120 +84,115 @@ export class ResourceType extends EventBase {
     //clone this resource
   }
 
-  load(): void {
+  load(): void {}
 
-  }
+  isReady(): void {}
 
-  isReady(): void {
-
-  }
-
-  getThumbnail(): void { //returns an Image, or undefined
-
+  getThumbnail(): void {
+    //returns an Image, or undefined
   }
 }
 
 export class ResourceManager {
-  private _cls_idgen: number;
-  lists: { [k: number]: ResourceType[] };
-  classes: IResConstructor<any>[];
-  url_res_map: { [k: string]: ResourceType };
+  private _cls_idgen: number
+  lists: {[k: number]: ResourceType[]}
+  classes: IResConstructor<any>[]
+  url_res_map: {[k: string]: ResourceType}
 
   constructor() {
-    this._cls_idgen = 0;
-    this.lists = {};
-    this.classes = [];
-    this.url_res_map = {};
+    this._cls_idgen = 0
+    this.lists = {}
+    this.classes = []
+    this.url_res_map = {}
   }
 
   makeEnum() {
-    let e = {};
-    let ui_value_names = {};
-    let icons = {};
+    const e = {}
+    const ui_value_names = {}
+    const icons = {}
 
-    let name = "";
+    let name = ''
 
-    for (let cls of this.classes) {
-      let def = cls.resourceDefine();
+    for (const cls of this.classes) {
+      const def = cls.resourceDefine()
 
-      name = def.name;
+      name = def.name
 
-      e[def.name] = def.name;
-      ui_value_names[def.name] = def.uiName ?? ToolProperty.makeUIName(def.name);
-      icons[def.name] = (def.icon !== undefined && def.icon !== null) ? def.icon : -1;
+      e[def.name] = def.name
+      ui_value_names[def.name] = def.uiName ?? ToolProperty.makeUIName(def.name)
+      icons[def.name] = def.icon !== undefined && def.icon !== null ? def.icon : -1
     }
 
-    let prop = new EnumProperty(name, e);
-    prop.addUINames(ui_value_names);
-    prop.addIcons(icons);
+    const prop = new EnumProperty(name, e)
+    prop.addUINames(ui_value_names)
+    prop.addIcons(icons)
 
-    return prop;
+    return prop
   }
 
   classFromURL(url: string) {
-    for (let cls of this.classes) {
+    for (const cls of this.classes) {
       if (cls.handlesURL(url)) {
-        return cls;
+        return cls
       }
     }
   }
 
   getList(cls) {
-    return this.lists[cls._restype_id];
+    return this.lists[cls._restype_id]
   }
 
   has(resource_or_url: any): boolean {
-    if (typeof resource_or_url == "object") {
-      let resource = resource_or_url as unknown as ResourceType;
-      let list = this.getList(resource.constructor);
+    if (typeof resource_or_url == 'object') {
+      const resource = resource_or_url as unknown as ResourceType
+      const list = this.getList(resource.constructor)
 
-      return list.indexOf(resource) >= 0;
-    } else if (typeof resource_or_url === "string") {
-      return resource_or_url in this.url_res_map;
+      return list.indexOf(resource) >= 0
+    } else if (typeof resource_or_url === 'string') {
+      return resource_or_url in this.url_res_map
     } else {
-      throw new Error("Invalid resource " + resource_or_url);
+      throw new Error('Invalid resource ' + resource_or_url)
     }
   }
 
   add(resource: ResourceType) {
-    let list = this.getList(resource.constructor);
-    list.push(resource);
+    const list = this.getList(resource.constructor)
+    list.push(resource)
 
-    this.url_res_map[resource.url] = resource;
+    this.url_res_map[resource.url] = resource
   }
 
   get(url, resclass, autoload = false) {
     if (url in this.url_res_map) {
-      return this.url_res_map[url];
+      return this.url_res_map[url]
     }
 
     if (resclass === undefined) {
-      resclass = this.classFromURL(url);
+      resclass = this.classFromURL(url)
     }
 
     if (resclass === undefined) {
-      throw new Error("unknown resource type for url " + url);
+      throw new Error('unknown resource type for url ' + url)
     }
 
-    let res = resclass.createFromURL(url);
+    const res = resclass.createFromURL(url)
 
-    let list = this.getList(resclass);
+    const list = this.getList(resclass)
 
-    list.push(res);
-    this.url_res_map[url] = res;
+    list.push(res)
+    this.url_res_map[url] = res
 
-    if (autoload)
-      res.load();
+    if (autoload) res.load()
 
-    return res;
+    return res
   }
 
   register(cls) {
-    cls._restype_id = this._cls_idgen++;
-    this.lists[cls._restype_id] = [];
+    cls._restype_id = this._cls_idgen++
+    this.lists[cls._restype_id] = []
 
-    this.classes.push(cls);
+    this.classes.push(cls)
   }
 }
 
-export const resourceManager = new ResourceManager();
+export const resourceManager = new ResourceManager()

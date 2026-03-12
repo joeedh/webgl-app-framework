@@ -11,7 +11,7 @@ import type {Mesh} from '../mesh/mesh'
 import {Collection} from '../scene/collection'
 import {SceneObject} from '../sceneobject/sceneobject.js'
 
-export let BlockTypes = [] as IDataBlockConstructor<any, {}, {}>[]
+export const BlockTypes = [] as IDataBlockConstructor<any, {}, {}>[]
 
 export interface IBlockRef {
   lib_id: number
@@ -65,7 +65,7 @@ DataBlock {
   //loads contents of obj into this datablock
   //but doesn't touch the .lib_XXXX properties or .name
   swapDataBlockContents(obj: this): this {
-    for (let k in obj) {
+    for (const k in obj) {
       if (k.startsWith('lib_') || k === 'name') {
         continue
       }
@@ -109,7 +109,7 @@ DataBlock {
     //make sure we're not saving the whole block inside of Library.graph
     this.graph_flag |= NodeFlags.SAVE_PROXY
 
-    let def = this.constructor.blockDefine()
+    const def = this.constructor.blockDefine()
 
     this.lib_id = -1
     this.name = def.defaultName ?? def.uiName ?? def.typeName
@@ -135,7 +135,7 @@ DataBlock {
   //(e.g. a sceneobject doesn't duplicate .data)
   //if addLibUsers is true, references to other datablocks will get lib_addUser called,
   copy(addLibUsers = false, owner?: DataBlock): this {
-    let ret = new this.constructor() as this
+    const ret = new this.constructor() as this
 
     this.copyTo(ret)
     //forcibly call DataBlock.ptotoype.copyTo
@@ -170,7 +170,7 @@ DataBlock {
     b.lib_external_ref = this.lib_external_ref
 
     //load default graph socket values
-    for (let k in this.inputs) {
+    for (const k in this.inputs) {
       if (!b.inputs[k]) {
         continue
       }
@@ -178,7 +178,7 @@ DataBlock {
       ;(b.inputs[k] as NodeSocketType).setValue((this.inputs[k] as NodeSocketType).getValue())
     }
 
-    for (let k in this.outputs) {
+    for (const k in this.outputs) {
       if (!b.outputs[k]) {
         continue
       }
@@ -226,7 +226,7 @@ DataBlock {
     while (!stop && _i++ < 10000) {
       stop = true
 
-      for (let block of this.lib_userlist) {
+      for (const block of this.lib_userlist) {
         if (block.lib_id < 0) {
           console.log('Dead block in user list')
           this.lib_users--
@@ -323,7 +323,7 @@ but owner will not be added to this.lib_userlist`.trim()
   }
 
   static getClass<type extends DataBlock = DataBlock>(typeName: string): IDataBlockConstructor<type, {}, {}> {
-    for (let type of BlockTypes) {
+    for (const type of BlockTypes) {
       if (type.blockDefine().typeName === typeName) return type
     }
   }
@@ -357,7 +357,7 @@ DataRef {
   }
 
   copy(): this {
-    let ret = new (this.constructor as new () => this)()
+    const ret = new (this.constructor as new () => this)()
 
     ret.lib_type = this.lib_type
     ret.lib_id = this.lib_id
@@ -372,7 +372,7 @@ DataRef {
       return block.copy()
     }
 
-    let ret = new DataRef()
+    const ret = new DataRef()
 
     if (block === undefined) {
       ret.lib_id = -1
@@ -446,7 +446,7 @@ BlockSet {
   }
 
   clear() {
-    for (let block of new Set(this)) {
+    for (const block of new Set(this)) {
       this.datalib.remove(block)
     }
 
@@ -454,12 +454,12 @@ BlockSet {
   }
 
   create<Block extends DataBlock>(name?: string): Block {
-    let cls = this.type
+    const cls = this.type
 
     name = name ?? cls.blockDefine().defaultName ?? cls.blockDefine().uiName ?? cls.blockDefine().typeName
     name = name ?? cls.name
 
-    let block = new cls() as unknown as Block
+    const block = new cls() as unknown as Block
     block.name = name
 
     this.datalib.add(block)
@@ -501,7 +501,7 @@ BlockSet {
       block.name = this.uniqueName(block.name)
     }
 
-    let added = this.push(block)
+    const added = this.push(block)
 
     if (added && !_inside_file_load) {
       this.datalib.graph.add(block)
@@ -518,8 +518,8 @@ BlockSet {
     name = this.uniqueName(name)
 
     for (let i = 0; i < 2; i++) {
-      let map = i ? this.datalib.block_namemap : this.namemap
-      for (let k in map) {
+      const map = i ? this.datalib.block_namemap : this.namemap
+      for (const k in map) {
         if ((map[k] as unknown as BlockType) === block) {
           delete map[k]
         }
@@ -605,13 +605,13 @@ BlockSet {
       delete this.namemap[block.name];
     }//*/
 
-    for (let k in this.namemap) {
+    for (const k in this.namemap) {
       if (this.namemap[k] === block) {
         delete this.namemap[k]
       }
     }
 
-    for (let k in this.datalib.block_namemap) {
+    for (const k in this.datalib.block_namemap) {
       if (this.datalib.block_namemap[k] === block) {
         delete this.datalib.block_namemap[k]
       }
@@ -640,13 +640,13 @@ BlockSet {
   }
 
   destroy() {
-    for (let block of this) {
+    for (const block of this) {
       block.destroy()
     }
   }
 
   dataLink(getblock: BlockLoader, getblock_addUser: BlockLoader) {
-    let type = this.type.blockDefine().typeName
+    const type = this.type.blockDefine().typeName
 
     if (window.DEBUG['DataLink']) {
       console.warn('Linking ' + type + '. . .', this.active, this.idmap)
@@ -658,7 +658,7 @@ BlockSet {
       this.active = undefined
     }
 
-    for (let block of this) {
+    for (const block of this) {
       block.dataLink(getblock, getblock_addUser)
     }
 
@@ -711,13 +711,13 @@ Library {
     this.block_idmap = {}
     this.block_namemap = {}
 
-    for (let cls of BlockTypes) {
-      let lib = new BlockSet(cls, this)
+    for (const cls of BlockTypes) {
+      const lib = new BlockSet(cls, this)
 
       this.libs.push(lib)
       this.libmap[cls.blockDefine().typeName] = lib
 
-      let tname = cls.blockDefine().typeName
+      const tname = cls.blockDefine().typeName
       Object.defineProperty(this, tname, {
         get: function (this: Library) {
           return this.libmap[tname]
@@ -732,14 +732,14 @@ Library {
     blockClass: IDataBlockConstructor<any, any, any>,
     filterfunc: (block: DataBlock) => boolean
   ): EnumProperty {
-    let tname = blockClass.blockDefine().typeName
-    let uiname = blockClass.blockDefine().uiName
-    let lib = this.libmap[tname]
+    const tname = blockClass.blockDefine().typeName
+    const uiname = blockClass.blockDefine().uiName
+    const lib = this.libmap[tname]
 
-    let ret: {[k: string]: number} = {}
-    let icons: {[k: string]: number} = {}
+    const ret: {[k: string]: number} = {}
+    const icons: {[k: string]: number} = {}
 
-    for (let block of lib) {
+    for (const block of lib) {
       if (filterfunc && !filterfunc(block)) {
         continue
       }
@@ -756,23 +756,23 @@ Library {
       icons[block.name] = icon
     }
 
-    let prop = new EnumProperty(undefined, ret, tname, uiname + 's', uiname + 's')
+    const prop = new EnumProperty(undefined, ret, tname, uiname + 's', uiname + 's')
     prop.addIcons(icons)
 
     return prop
   }
 
   setActive(block: DataBlock) {
-    let tname = block.constructor.blockDefine().typeName
+    const tname = block.constructor.blockDefine().typeName
 
     this.getLibrary(tname).active = block
   }
 
   get allBlocks() {
-    let this2 = this
+    const this2 = this
     return (function* () {
-      for (let lib of this2.libs) {
-        for (let block of lib) {
+      for (const lib of this2.libs) {
+        for (const block of lib) {
           yield block
         }
       }
@@ -780,7 +780,7 @@ Library {
   }
 
   get<BlockType = DataBlock>(id_or_dataref_or_name: any): BlockType | undefined {
-    let f = id_or_dataref_or_name
+    const f = id_or_dataref_or_name
 
     if (f === undefined || f === null) {
       return undefined
@@ -798,7 +798,7 @@ Library {
   }
 
   has<BlockType = DataBlock>(id_or_dataref_or_block_or_name: any): boolean {
-    let f = id_or_dataref_or_block_or_name
+    const f = id_or_dataref_or_block_or_name
 
     if (f === undefined || f === null) {
       return false
@@ -818,13 +818,13 @@ Library {
   }
 
   add<BlockType extends DataBlock = DataBlock>(block: BlockType, force_unique_name = true): boolean {
-    let typename = block.constructor.blockDefine().typeName
+    const typename = block.constructor.blockDefine().typeName
 
     if (!(typename in this.libmap)) {
       //see if we're missing a legitimate block type
-      for (let cls of BlockTypes) {
+      for (const cls of BlockTypes) {
         if (cls.blockDefine().typeName === typename) {
-          let lib = new BlockSet(cls, this)
+          const lib = new BlockSet(cls, this)
           this.libs.push(lib)
           this.libmap[typename] = lib
 
@@ -842,7 +842,7 @@ Library {
   }
 
   destroy() {
-    for (let lib of this.libs) {
+    for (const lib of this.libs) {
       lib.destroy()
     }
   }
@@ -852,7 +852,7 @@ Library {
   }
 
   afterSTRUCT() {
-    for (let block of this.allBlocks) {
+    for (const block of this.allBlocks) {
       this.graph.relinkProxyOwner(block)
     }
   }
@@ -863,7 +863,7 @@ Library {
 
     reader(this)
 
-    for (let lib of this.libs.slice(0, this.libs.length)) {
+    for (const lib of this.libs.slice(0, this.libs.length)) {
       let type = undefined
 
       // lib.type temporarily has the string type name instead
@@ -872,7 +872,7 @@ Library {
 
       this.libmap[blockType] = lib
 
-      for (let cls of BlockTypes) {
+      for (const cls of BlockTypes) {
         if (cls.blockDefine().typeName == blockType) {
           type = cls
         }
@@ -888,8 +888,8 @@ Library {
       lib.afterLoad(this, type)
     }
 
-    for (let cls of BlockTypes) {
-      let type = cls.blockDefine().typeName
+    for (const cls of BlockTypes) {
+      const type = cls.blockDefine().typeName
 
       if (!(type in this.libmap)) {
         this.libmap[type] = new BlockSet(cls, this)
@@ -997,7 +997,7 @@ DataRefProperty {
   }
 
   copy(): this {
-    let ret = new (this.constructor as new () => this)()
+    const ret = new (this.constructor as new () => this)()
     this.copyTo(ret)
     return ret
   }
@@ -1046,7 +1046,7 @@ export class DataRefListProperty extends ToolProperty<DataRef[]> {
       if (block instanceof DataBlock) {
         block = DataRef.fromBlock(block)
       } else if (typeof block == 'number') {
-        let ref = new DataRef()
+        const ref = new DataRef()
 
         ref.lib_id = block
         block = ref
@@ -1068,7 +1068,7 @@ export class DataRefListProperty extends ToolProperty<DataRef[]> {
   }
 
   copy(): this {
-    let ret = new (this.constructor as new () => this)()
+    const ret = new (this.constructor as new () => this)()
     this.copyTo(ret)
     return ret
   }
@@ -1110,7 +1110,7 @@ DataRefList {
     this.highlight = new DataRef()
 
     if (iterable !== undefined) {
-      for (let item of iterable) {
+      for (const item of iterable) {
         this.push(item)
       }
     }
@@ -1166,7 +1166,7 @@ DataRefList {
   }
 
   *blocks(ctx: ToolContext) {
-    for (let ref of this) {
+    for (const ref of this) {
       yield ctx.datalib.get(ref)
     }
   }
@@ -1214,7 +1214,7 @@ DataRefList {
 
     this.idmap = {}
 
-    for (let ref of this._array) {
+    for (const ref of this._array) {
       super.push(ref)
       this.idmap[ref.lib_id] = ref
     }

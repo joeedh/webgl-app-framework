@@ -14,13 +14,13 @@ import * as util from '../../util/util.js'
 import {Matrix4, Vector2, Vector3, Vector4} from '../../util/vectormath.js'
 import type {View3D} from './view3d'
 
-let thehash = new util.HashDigest()
+const thehash = new util.HashDigest()
 
-let proj_temps = util.cachering.fromConstructor(Vector4, 128)
+const proj_temps = util.cachering.fromConstructor(Vector4, 128)
 
 //viewSize is a copy of view3d.size, not .glSize
 export function project(co: Vector3, rendermat: Matrix4, viewSize: Vector2) {
-  let tmp = proj_temps.next().zero()
+  const tmp = proj_temps.next().zero()
 
   tmp[0] = co[0]
   tmp[1] = co[1]
@@ -38,7 +38,7 @@ export function project(co: Vector3, rendermat: Matrix4, viewSize: Vector2) {
     tmp[2] /= tmp[3]
   }
 
-  let w = tmp[3]
+  const w = tmp[3]
 
   tmp[0] = (tmp[0] * 0.5 + 0.5) * viewSize[0]
   tmp[1] = (1.0 - (tmp[1] * 0.5 + 0.5)) * viewSize[1]
@@ -54,7 +54,7 @@ export function calcUpdateHash(view3d: View3D, do_objects = true) {
   thehash.reset()
 
   if (do_objects) {
-    for (let ob of view3d.sortedObjects) {
+    for (const ob of view3d.sortedObjects) {
       thehash.add(ob.lib_id)
 
       if (ob.updateGen !== undefined) {
@@ -64,7 +64,7 @@ export function calcUpdateHash(view3d: View3D, do_objects = true) {
       //console.log("UPDATEGEN:", ob.updateGen, ob.data.updateGen);
 
       if (ob.data instanceof Mesh) {
-        let mesh = ob.data
+        const mesh = ob.data
 
         thehash.add(mesh.verts.length)
         thehash.add(mesh.faces.length)

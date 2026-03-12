@@ -74,22 +74,22 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
 
   /** easy line drawing (in 3d)*/
   makeTempLine(v1: Vector3, v2: Vector3, color: Vector4) {
-    let dl = this.ctx.view3d.makeTempLine(v1, v2, color)
+    const dl = this.ctx.view3d.makeTempLine(v1, v2, color)
     this.drawlines.push(dl)
     return dl
   }
 
   makeTempText(co: Vector3, string: string, color: Vector4) {
-    let dt = this.ctx.view3d.makeTempText(co, string, color)
+    const dt = this.ctx.view3d.makeTempText(co, string, color)
     this.drawtexts.push(dt)
     return dt
   }
 
   resetTempGeom(ctx = this.ctx) {
-    for (let dl of this.drawlines) {
+    for (const dl of this.drawlines) {
       ctx.view3d.removeTempLine(dl)
     }
-    for (let dt of this.drawtexts) {
+    for (const dt of this.drawtexts) {
       ctx.view3d.removeTempText(dt)
     }
 
@@ -178,10 +178,10 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
     let classes = this.toolModeDefine().transWidgets
     classes = classes === undefined ? [] : classes
 
-    let enumdef = {} as {[key: string]: number}
-    let uinames = {} as {[key: string]: string}
-    let icons = {} as {[key: string]: number}
-    let descr = {} as {[key: string]: string}
+    const enumdef = {} as {[key: string]: number}
+    const uinames = {} as {[key: string]: string}
+    const icons = {} as {[key: string]: number}
+    const descr = {} as {[key: string]: string}
 
     enumdef.NONE = 0
     icons.NONE = Icons.DISABLED
@@ -190,10 +190,10 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
 
     let i = 1
 
-    for (let cls of classes) {
-      let def = cls.widgetDefine()
+    for (const cls of classes) {
+      const def = cls.widgetDefine()
 
-      let k = def.name || cls.name
+      const k = def.name || cls.name
 
       enumdef[k] = i++
       uinames[k] = def.uiname ? def.uiname : k
@@ -201,7 +201,7 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
       icons[k] = def.icon ? def.icon : -1
     }
 
-    let prop = new EnumProperty(undefined, enumdef)
+    const prop = new EnumProperty(undefined, enumdef)
     prop.addIcons(icons)
     prop.addUINames(uinames)
     prop.addDescriptions(descr)
@@ -210,14 +210,14 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
     //return WidgetTool.getToolEnum(classes, FlagProperty, true);
   }
 
-  static defineAPI(api : DataAPI) {
-    let cls = this
+  static defineAPI(api: DataAPI) {
+    const cls = this
 
-    let tstruct = api.mapStruct(cls, true)
+    const tstruct = api.mapStruct(cls, true)
     tstruct.name = this.name !== undefined ? this.name : this.toolModeDefine().name
     tstruct.string('typeName', 'type', 'Type', 'Tool Mode Type')
 
-    let prop = this.getTransformProp()
+    const prop = this.getTransformProp()
     if (prop !== undefined) {
       tstruct.enum('transformWidget', 'transformWidget', prop, 'Transform Widget', 'Current transformation widget')
     }
@@ -230,7 +230,7 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
   }
 
   getWidgetWithKey(key: string) {
-    let widget = this.ctx.scene.widgets.getWidgetWithKey(key)
+    const widget = this.ctx.scene.widgets.getWidgetWithKey(key)
 
     if (widget && !widget.isDead && this.widgets.indexOf(widget) >= 0) {
       return widget
@@ -246,12 +246,12 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
   ensureUniqueWidget(widgetclass: typeof WidgetBase) {
     if (this.ctx === undefined) return
 
-    let ctx = this.ctx
-    let view3d = this.ctx.view3d
-    let manager = this.ctx.scene.widgets
+    const ctx = this.ctx
+    const view3d = this.ctx.view3d
+    const manager = this.ctx.scene.widgets
 
-    let valid = widgetclass.validate(this.ctx)
-    let def = widgetclass.widgetDefine()
+    const valid = widgetclass.validate(this.ctx)
+    const def = widgetclass.widgetDefine()
 
     if (def.name in this._uniqueWidgets && this._uniqueWidgets[def.name].isDead) {
       this.removeUniqueWidget(this.getUniqueWidget(widgetclass))
@@ -265,7 +265,7 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
     } else if (valid && !(def.name in this._uniqueWidgets)) {
       console.log('adding new widget', def.name)
 
-      let widget = new widgetclass(manager)
+      const widget = new widgetclass(manager)
       manager.add(widget)
 
       this.widgets.push(widget)
@@ -288,7 +288,7 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
   }
 
   removeWidget(widget) {
-    for (let k in this._uniqueWidgets) {
+    for (const k in this._uniqueWidgets) {
       if (this._uniqueWidgets[k] === widget) {
         delete thie._uniqueWidgets[k]
       }
@@ -303,12 +303,12 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
   }
 
   getUniqueWidget(cls) {
-    let def = cls.widgetDefine()
+    const def = cls.widgetDefine()
     return this._uniqueWidgets[def.name]
   }
 
   removeUniqueWidget(widget) {
-    let def = widget.constructor.widgetDefine()
+    const def = widget.constructor.widgetDefine()
 
     if (this.widgets.indexOf(widget) >= 0) {
       this.widgets.remove(widget)
@@ -331,24 +331,24 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
       return this
     }
 
-    let cls = this.constructor.getContextOverlayClass()
+    const cls = this.constructor.getContextOverlayClass()
     if (cls !== undefined && !this.ctx.hasOverlay(cls)) {
       this.ctx.pushOverlay(new cls(this.ctx.state, this))
     }
 
-    let del = []
+    const del = []
 
-    for (let widget of this.widgets) {
+    for (const widget of this.widgets) {
       if (widget.isDead) {
         del.push(widget)
       }
     }
 
-    for (let widget of del) {
+    for (const widget of del) {
       this.widgets.remove(widget)
     }
 
-    let tws = this.constructor.toolModeDefine().transWidgets || []
+    const tws = this.constructor.toolModeDefine().transWidgets || []
     let tcls,
       ti = this.transformWidget - 1
 
@@ -382,9 +382,9 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
       return
     }
 
-    let manager = this.ctx.scene.widgets
+    const manager = this.ctx.scene.widgets
 
-    for (let widget of this.widgets) {
+    for (const widget of this.widgets) {
       manager.remove(widget)
     }
 
@@ -395,7 +395,7 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
   }
 
   onInactive() {
-    let cls = this.constructor.getContextOverlayClass()
+    const cls = this.constructor.getContextOverlayClass()
 
     if (this.ctx && cls && this.ctx.hasOverlay(cls)) {
       this.ctx.removeOverlay(this.ctx.getOverlay(cls))
@@ -409,7 +409,7 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
   }
 
   graphDisconnect() {
-    for (let sock of this.allsockets) {
+    for (const sock of this.allsockets) {
       sock.disconnect()
     }
   }
@@ -518,7 +518,7 @@ export class MeshCache {
   destroy(gl) {
     this.drawer.destroy(gl)
 
-    for (let k in this.meshes) {
+    for (const k in this.meshes) {
       this.meshes[k].destroy(gl)
     }
 
@@ -526,19 +526,19 @@ export class MeshCache {
   }
 }
 
-export let ToolModes = [] as (typeof ToolMode)[]
+export const ToolModes = [] as (typeof ToolMode)[]
 
 export function makeToolModeEnum() {
-  let map = {} as {[k: string]: number}
-  let icons = {} as {[k: string]: number}
-  let descr = {} as {[k: string]: string}
-  let uinames = {} as {[k: string]: string}
+  const map = {} as {[k: string]: number}
+  const icons = {} as {[k: string]: number}
+  const descr = {} as {[k: string]: string}
+  const uinames = {} as {[k: string]: string}
   let i = 0
 
-  for (let cls of ToolModes) {
-    let def = cls.toolModeDefine()
+  for (const cls of ToolModes) {
+    const def = cls.toolModeDefine()
 
-    let key = def.name || cls.name
+    const key = def.name || cls.name
 
     map[key] = i
     icons[key] = def.icon !== undefined ? def.icon : -1
@@ -548,7 +548,7 @@ export function makeToolModeEnum() {
     i++
   }
 
-  let prop = new EnumProperty(undefined, map, 'toolmode', 'Tool Mode', 'Active tool mode')
+  const prop = new EnumProperty(undefined, map, 'toolmode', 'Tool Mode', 'Active tool mode')
 
   prop.addIcons(icons)
   prop.addDescriptions(descr)

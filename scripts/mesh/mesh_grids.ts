@@ -19,17 +19,17 @@ import {Mesh} from './mesh'
 import type {SceneObject} from '../sceneobject/sceneobject'
 import {BVH, IBVHVertex} from '../util/bvh'
 
-let blink_rets = util.cachering.fromConstructor(Vector3, 64)
-let blink_rets4 = util.cachering.fromConstructor(Vector4, 64)
-let tmptanmat = new Matrix4()
-let uvstmp = new Array(4)
+const blink_rets = util.cachering.fromConstructor(Vector3, 64)
+const blink_rets4 = util.cachering.fromConstructor(Vector4, 64)
+const tmptanmat = new Matrix4()
+const uvstmp = new Array(4)
 for (let i = 0; i < 4; i++) {
   uvstmp[i] = new Vector2()
 }
 import '../util/polyfill.d.ts'
 import {WebGLUniforms} from '../../types/scripts/core/webgl'
 
-let stmp1 = new Vector3(),
+const stmp1 = new Vector3(),
   stmp2 = new Vector3()
 
 export enum QRecalcFlags {
@@ -89,10 +89,10 @@ mesh.GridSettings {
   }
 
   static apiDefine(api: DataAPI) {
-    let st = api.mapStruct(GridSettings, true)
+    const st = api.mapStruct(GridSettings, true)
 
     st.flags('flag', 'flag', GridSettingFlags, 'Flag', 'Flags')
-    let lvl = st.int('depthLimit', 'depthLimit', 'Limit', 'Maximum subdivision level')
+    const lvl = st.int('depthLimit', 'depthLimit', 'Limit', 'Maximum subdivision level')
 
     lvl.range(0, 10)
   }
@@ -115,7 +115,7 @@ export class BLink<GridVertType extends GridVertBase<any>> {
   }
 
   get() {
-    let ret = blink_rets.next()
+    const ret = blink_rets.next()
 
     if (this.v2) {
       ret.load(this.v1.co).interp(this.v2.co, this.t)
@@ -127,11 +127,11 @@ export class BLink<GridVertType extends GridVertBase<any>> {
   }
 
   getColor(cd_color: number): Vector4 {
-    let ret = blink_rets4.next()
+    const ret = blink_rets4.next()
 
-    let c1 = this.v1.customData.get<ColorLayerElem>(cd_color).color
+    const c1 = this.v1.customData.get<ColorLayerElem>(cd_color).color
     if (this.v2) {
-      let c2 = this.v2.customData.get<ColorLayerElem>(cd_color).color
+      const c2 = this.v2.customData.get<ColorLayerElem>(cd_color).color
 
       ret.load(c1).interp(c2, this.t)
     } else {
@@ -147,7 +147,7 @@ okay, so turned out my idea of having grids
 overlap on two edges is problematic, as it requires
 non-quads for joining corners on extroidinary vertices
 */
-let interptemp1 = []
+const interptemp1 = []
 
 const IDX = -1,
   IDXINV = -2
@@ -170,7 +170,7 @@ export class ResolveValue {
   y2 = 0
 }
 
-let resolve_rets = util.cachering.fromConstructor(ResolveValue, 512)
+const resolve_rets = util.cachering.fromConstructor(ResolveValue, 512)
 
 export class NeighborMap {
   dimen: number
@@ -184,7 +184,7 @@ export class NeighborMap {
   constructor(dimen: number) {
     this.dimen = dimen
 
-    let masks = {
+    const masks = {
       l  : 1,
       lp : 2,
       ln : 4,
@@ -220,7 +220,7 @@ export class NeighborMap {
         ];
     */
 
-    let maps = {
+    const maps = {
       /*
       [bitmask, [
           [x1, y1], l1.v==l2.v([x2, y2]), l1.v!=l2.v([x2, y2])
@@ -241,7 +241,7 @@ export class NeighborMap {
       ],
     }
 
-    let cases = [
+    const cases = [
       {mask: lmask('l', 'lp'), l1: masks.l, l2: masks.lp},
       {mask: lmask('l', 'lpr'), l1: masks.l, l2: masks.lpr},
     ]
@@ -261,10 +261,10 @@ export class NeighborMap {
   }
 
   resolve(i1: number, l1: Loop, l2: Loop, l1mask: number, l2mask: number, i2 = i1) {
-    let mask = l1mask | l2mask
-    let dimen = this.dimen
+    const mask = l1mask | l2mask
+    const dimen = this.dimen
 
-    let map = this.maps[mask]
+    const map = this.maps[mask]
     let x1, y1, x2, y2
 
     x1 = this.getmap(map[0][0]!, i1)
@@ -279,7 +279,7 @@ export class NeighborMap {
       y2 = this.getmap(map[2][1]!, i2)
     }
 
-    let ret = resolve_rets.next()
+    const ret = resolve_rets.next()
 
     ret.x1 = x1
     ret.y1 = y1
@@ -290,8 +290,8 @@ export class NeighborMap {
   }
 }
 
-let maps: {[k: number]: NeighborMap} = {}
-let shortNormalRet = [0, 0, 0]
+const maps: {[k: number]: NeighborMap} = {}
+const shortNormalRet = [0, 0, 0]
 
 export function getNeighborMap(dimen: number) {
   if (!(dimen in maps)) {
@@ -396,7 +396,7 @@ mesh.GridVert {
   }
 
   tanMulFac(depth: number): number {
-    let dimen = gridSides[depth] - 1
+    const dimen = gridSides[depth] - 1
 
     return Math.pow(2.0, depth)
   }
@@ -485,7 +485,7 @@ mesh.GridVert {
   }
 
   bRingRemove(): void {
-    for (let v2 of this.bRingSet) {
+    for (const v2 of this.bRingSet) {
       v2.bRingSet.delete(this)
     }
     this.bRingSet = new Set()
@@ -516,7 +516,7 @@ mesh.GridVert {
        checking if b is an instance of Vertex/Handle but
        not GridVert or Vector3?
      */
-    let erased = b as unknown as any
+    const erased = b as unknown as any
     if (erased instanceof GridVertBase || erased instanceof Vertex || erased instanceof Handle) {
       bco = erased.co
     } else if (b instanceof Vector3) {
@@ -537,8 +537,8 @@ mesh.GridVert {
   }
 
   _saveShortNormal(): number[] {
-    let n1 = this.no
-    let n2 = shortNormalRet
+    const n1 = this.no
+    const n2 = shortNormalRet
 
     n2[0] = ~~(n1[0] * 32765)
     n2[1] = ~~(n1[1] * 32765)
@@ -557,7 +557,7 @@ mesh.GridVert {
 
 export function genGridDimens(depth = 32) {
   let dimen = 2
-  let ret = [2]
+  const ret = [2]
 
   for (let i = 0; i < depth; i++) {
     dimen = (dimen - 1) * 2 + 1
@@ -662,14 +662,14 @@ mesh.GridBase {
       return
     }
 
-    let mres = cd_grid.layerInfo(mesh.loops.customData).getTypeSettings() as GridSettings
+    const mres = cd_grid.layerInfo(mesh.loops.customData).getTypeSettings() as GridSettings
     let key = '' + mesh.eidgen.cur
 
     key += ':' + mesh.verts.length + ':' + mesh.edges.length + ':' + mesh.faces.length
 
     if (check_coords || mres._last_coords_hash.length === 0) {
-      let hash = new util.HashDigest()
-      for (let v of mesh.verts) {
+      const hash = new util.HashDigest()
+      for (const v of mesh.verts) {
         hash.add(v[0])
         hash.add(v[1])
         hash.add(v[2])
@@ -689,11 +689,11 @@ mesh.GridBase {
   }
 
   static recalcSubSurf(mesh: Mesh, cd_grid: AttrRef<GridBase>): void {
-    let builder = new PatchBuilder(mesh, cd_grid)
+    const builder = new PatchBuilder(mesh, cd_grid)
     builder.build()
 
-    for (let l of mesh.loops) {
-      let grid = cd_grid.get(l)
+    for (const l of mesh.loops) {
+      const grid = cd_grid.get(l)
       grid.subsurf = builder.patches.get(l)
     }
   }
@@ -707,7 +707,7 @@ mesh.GridBase {
   }
 
   static getPatchUVLayer(mesh: Mesh, cd_grid: AttrRef<GridBase>): number {
-    let name = this.patchUVLayerName(mesh, cd_grid)
+    const name = this.patchUVLayerName(mesh, cd_grid)
 
     let layer = mesh.loops.customData.getNamedLayer(name, 'uv')
     if (layer !== undefined) {
@@ -717,9 +717,9 @@ mesh.GridBase {
     layer = mesh.loops.addCustomDataLayer('uv', name)
     layer.flag |= CDFlags.TEMPORARY
 
-    let cd_uv = layer.index
-    for (let l of mesh.loops) {
-      let grid = cd_grid.get(l)
+    const cd_uv = layer.index
+    for (const l of mesh.loops) {
+      const grid = cd_grid.get(l)
 
       grid.initPatchUVLayer(mesh, l, cd_grid, cd_uv)
     }
@@ -749,20 +749,20 @@ mesh.GridBase {
       return //no grid data
     }
 
-    let validtypes = new Set(['normal', 'color'])
+    const validtypes = new Set(['normal', 'color'])
 
-    for (let layer of mesh.verts.customData.flatlist) {
+    for (const layer of mesh.verts.customData.flatlist) {
       if (!validtypes.has(layer.typeName)) {
         continue
       }
 
-      let name2 = '_v_' + layer.name
+      const name2 = '_v_' + layer.name
       if (!mesh.loops.customData.hasNamedLayer(name2, layer.typeName)) {
         console.log('Adding grid data layer', name2)
         mesh.loops.addCustomDataLayer(layer.typeName, name2)
       }
 
-      let layer2 = mesh.loops.customData.getNamedLayer(name2, layer.typeName)
+      const layer2 = mesh.loops.customData.getNamedLayer(name2, layer.typeName)
       if (layer2 && layer === mesh.verts.customData.getActiveLayer(layer.typeName)) {
         mesh.loops.customData.setActiveLayer(layer2.index)
       }
@@ -776,8 +776,8 @@ mesh.GridBase {
   static meshGridOffset(mesh: Mesh): number {
     let i = 0
 
-    for (let layer of mesh.loops.customData.flatlist) {
-      let cls = CustomDataElem.getTypeClass(layer.typeName)
+    for (const layer of mesh.loops.customData.flatlist) {
+      const cls = CustomDataElem.getTypeClass(layer.typeName)
 
       if (GridBase.isGridClass(cls)) {
         return i
@@ -790,11 +790,11 @@ mesh.GridBase {
   }
 
   static calcCDLayout(mesh: Mesh) {
-    let cdlayers: [number, ICustomDataElemConstructor][] = []
+    const cdlayers: [number, ICustomDataElemConstructor][] = []
     let i = 0
 
-    for (let layer of mesh.loops.customData.flatlist) {
-      let cls = CustomDataElem.getTypeClass(layer.typeName)
+    for (const layer of mesh.loops.customData.flatlist) {
+      const cls = CustomDataElem.getTypeClass(layer.typeName)
       let ok = cls !== undefined
 
       ok = ok && !GridBase.isGridClass(cls)
@@ -819,8 +819,8 @@ mesh.GridBase {
 
     this.updateSubSurf(mesh, cd_grid, true)
 
-    for (let l of mesh.loops) {
-      let grid = cd_grid.get(l)
+    for (const l of mesh.loops) {
+      const grid = cd_grid.get(l)
 
       grid.init(dimen, mesh, l, cd_grid)
     }
@@ -839,9 +839,9 @@ mesh.GridBase {
     }
 
     this.recalcFlag &= ~QRecalcFlags.REGEN_EIDMAP
-    let eidMap = (this.eidMap = new Map())
+    const eidMap = (this.eidMap = new Map())
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       if (p.eid < 0) {
         p.eid = mesh.eidgen.next()
       }
@@ -863,12 +863,12 @@ mesh.GridBase {
       return tot
     }
 
-    let p = this.points[0]
-    for (let cd of p.customData) {
+    const p = this.points[0]
+    for (const cd of p.customData) {
       tot += cd.calcMemSize() * this.points.length
     }
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       tot += GridVert.getMemSize.call(p.constructor as unknown as any, p)
     }
 
@@ -878,7 +878,7 @@ mesh.GridBase {
   regenIds(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>): void {
     this.recalcFlag &= ~QRecalcFlags.REGEN_IDS
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.eid = mesh.eidgen.next()
     }
   }
@@ -906,7 +906,7 @@ mesh.GridBase {
   recalcPointIndices(): this {
     this.recalcFlag &= ~QRecalcFlags.INDICES
 
-    let ps = this.points
+    const ps = this.points
 
     for (let i = 0; i < ps.length; i++) {
       ps[i].index = i
@@ -945,8 +945,8 @@ mesh.GridBase {
 
     let i = 0
 
-    for (let cd of loop.customData) {
-      let cls = cd.constructor
+    for (const cd of loop.customData) {
+      const cls = cd.constructor
 
       this.onNewLayer!(cls, i)
       i++
@@ -975,14 +975,14 @@ mesh.GridBase {
     }
 
     if (GridBase.hasPatchUVLayer(mesh, cd_grid) && this.recalcFlag & QRecalcFlags.PATCH_UVS) {
-      let cd_uv = GridBase.getPatchUVLayer(mesh, cd_grid)
+      const cd_uv = GridBase.getPatchUVLayer(mesh, cd_grid)
       this.initPatchUVLayer(mesh, loop, cd_grid, cd_uv)
     }
 
     if (this.recalcFlag & QRecalcFlags.INDICES) {
       this.recalcFlag &= ~QRecalcFlags.INDICES
 
-      let ps = this.points
+      const ps = this.points
 
       for (let i = 0; i < ps.length; i++) {
         ps[i].index = i
@@ -1011,7 +1011,7 @@ mesh.GridBase {
   }
 
   private _onRemoveLayer(layercls: new () => this, layer_i: number): void {
-    let i = this.cdmap[layer_i]
+    const i = this.cdmap[layer_i]
 
     let i2 = i
     while (i2 < this.customDatas.length - 1) {
@@ -1025,12 +1025,12 @@ mesh.GridBase {
     this.customDatas[i2] = undefined as unknown as CDElemArray
     this.customDatas.length--
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       let i2 = i
 
       while (i2 < p.customData.length - 1) {
         p.customData[i2] = p.customData[i2 + 1]
-        let li = this.cdmap_reverse[i2 + 1]
+        const li = this.cdmap_reverse[i2 + 1]
 
         if (li !== undefined) {
           this.cdmap[li] = i2
@@ -1046,7 +1046,7 @@ mesh.GridBase {
 
   /* We kind of abuse the onNewLayer callback for non-grid attributes */
   private _onNewLayer(_layercls: new () => this, layer_i?: number) {
-    let totpoint = this.points.length
+    const totpoint = this.points.length
 
     if (layer_i !== undefined) {
       this._max_cd_i = Math.max(this._max_cd_i, layer_i)
@@ -1063,13 +1063,13 @@ mesh.GridBase {
     this.cdmap[layer_i] = this.customDatas.length
     this.cdmap_reverse[this.customDatas.length] = layer_i
 
-    let cd = new CDElemArray()
+    const cd = new CDElemArray()
     this.customDatas.push(cd)
     this.customDataLayout.push(layercls)
 
-    let ps = this.points
+    const ps = this.points
     for (let i = 0; i < totpoint; i++) {
-      let data = new layercls()
+      const data = new layercls()
 
       cd.push(data)
 
@@ -1087,10 +1087,10 @@ mesh.GridBase {
   }
 
   copyTo(b: this, copy_eids = false): void {
-    let totpoint = this.points.length
+    const totpoint = this.points.length
 
     if (b.points.length === 0) {
-      for (let p of this.points) {
+      for (const p of this.points) {
         b.points.push(this.createPoint())
       }
     }
@@ -1110,9 +1110,9 @@ mesh.GridBase {
       b.customDataLayout = this.customDataLayout.concat([])
 
       let i = 0
-      for (let cl of this.customDatas) {
+      for (const cl of this.customDatas) {
         let cls = this.customDataLayout[i]
-        let cl2 = new CDElemArray()
+        const cl2 = new CDElemArray()
 
         if (!cls) {
           cls = this.customDataLayout[i] = cl[0].constructor
@@ -1121,7 +1121,7 @@ mesh.GridBase {
         b.customDatas.push(cl2)
 
         for (let j = 0; j < cl.length; j++) {
-          let data = new cls()
+          const data = new cls()
 
           cl2.push(data)
           cl[i].copyTo(data)
@@ -1133,12 +1133,12 @@ mesh.GridBase {
       b.relinkCustomData()
     }
 
-    let ps1 = this.points,
+    const ps1 = this.points,
       ps2 = b.points
 
     for (let i = 0; i < totpoint; i++) {
-      let p1 = ps1[i]
-      let p2 = ps2[i]
+      const p1 = ps1[i]
+      const p2 = ps2[i]
 
       p2.load(p1, false)
 
@@ -1148,11 +1148,11 @@ mesh.GridBase {
       }
     }
 
-    let cd1 = this.customDatas,
+    const cd1 = this.customDatas,
       cd2 = b.customDatas
     for (let i = 0; i < cd1.length; i++) {
-      let c1 = cd1[i]
-      let c2 = cd2[i]
+      const c1 = cd1[i]
+      const c2 = cd2[i]
 
       for (let j = 0; j < cd1.length; j++) {
         c1[j].copyTo(c2[j])
@@ -1169,7 +1169,7 @@ mesh.GridBase {
   }
 
   /** Trisout is an encoded array of format:
-   * 
+   *
    *  0: loop eid
    *  1: tri id
    *  2: gridvert1
@@ -1185,11 +1185,11 @@ mesh.GridBase {
   fixNeighbors(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>): void {
     this.recalcFlag &= ~QRecalcFlags.FIX_NEIGHBORS
 
-    for (let p1 of this.points) {
-      for (let p2 of p1.neighbors) {
+    for (const p1 of this.points) {
+      for (const p2 of p1.neighbors) {
         let ok = false
 
-        for (let p3 of p2.neighbors) {
+        for (const p3 of p2.neighbors) {
           if (p3 === p1) {
             ok = true
             break
@@ -1212,18 +1212,18 @@ mesh.GridBase {
   }
 
   checkCustomDataLayout(mesh: Mesh): void {
-    let namemap = {}
+    const namemap = {}
 
     let layeri = 0,
       i = 0
     let bad = false
 
-    let buckets = new Map()
+    const buckets = new Map()
 
     i = 0
-    let i2 = 0
+    const i2 = 0
 
-    for (let cls of this.customDataLayout.concat([])) {
+    for (const cls of this.customDataLayout.concat([])) {
       if (GridBase.isGridClass(cls)) {
         console.log('eek, grid class was included in itself')
         bad = true
@@ -1231,13 +1231,13 @@ mesh.GridBase {
       i++
     }
 
-    let newcds = []
+    const newcds = []
 
-    for (let cd of this.customDatas) {
+    for (const cd of this.customDatas) {
       if (!cd || cd.length === 0) {
         continue
       }
-      let cls = cd[0].constructor
+      const cls = cd[0].constructor
 
       if (GridBase.isGridClass(cls)) {
         bad = true
@@ -1252,13 +1252,13 @@ mesh.GridBase {
       newcds.push(cd)
     }
 
-    let layout = [] as (typeof this)['customDataLayout']
+    const layout = [] as (typeof this)['customDataLayout']
     this.customDataLayout = layout
 
     i = 0
     layeri = 0
-    for (let layer of mesh.loops.customData.flatlist) {
-      let cls = CustomDataElem.getTypeClass(layer.typeName)
+    for (const layer of mesh.loops.customData.flatlist) {
+      const cls = CustomDataElem.getTypeClass(layer.typeName)
 
       if (cls && !GridBase.isGridClass(cls)) {
         this.cdmap_reverse[layout.length] = layeri
@@ -1271,15 +1271,15 @@ mesh.GridBase {
       layeri++
     }
 
-    let newcds2 = new Array(layout.length)
+    const newcds2 = new Array(layout.length)
 
     i = 0
     layeri = 0
-    for (let cls of this.customDataLayout) {
-      let bucket = buckets.get(cls)
+    for (const cls of this.customDataLayout) {
+      const bucket = buckets.get(cls)
 
       if (!bucket || !bucket.length) {
-        let cds = []
+        const cds = []
         bad = true
 
         for (let j = 0; j < this.points.length; j++) {
@@ -1291,7 +1291,7 @@ mesh.GridBase {
         continue
       }
 
-      let bi = bucket.shift()
+      const bi = bucket.shift()
 
       newcds2[i] = newcds[bi]
       i++
@@ -1307,15 +1307,15 @@ mesh.GridBase {
   relinkCustomData(): void {
     let pi = 0
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.customData.length = this._max_cd_i
       for (let i = 0; i < p.customData.length; i++) {
         p.customData[i] = undefined as unknown as CustomDataElem<any>
       }
 
       let i = 0
-      for (let cd of this.customDatas) {
-        let li = this.cdmap_reverse[i]
+      for (const cd of this.customDatas) {
+        const li = this.cdmap_reverse[i]
 
         p.customData[li] = cd[pi]
         i++
@@ -1329,7 +1329,7 @@ mesh.GridBase {
     reader(this)
     super.loadSTRUCT(reader)
 
-    let ps = this.points
+    const ps = this.points
     for (let i = 0; i < ps.length; i++) {
       ps[i].index = i
       ps[i].index2 = i
@@ -1348,17 +1348,17 @@ mesh.GridBase {
     }
 
     this._max_cd_i = 0
-    for (let idx of this.cdmap) {
+    for (const idx of this.cdmap) {
       if (idx !== undefined && idx >= 0) {
         this._max_cd_i = Math.max(this._max_cd_i, idx + 1)
       }
     }
 
-    let layout = []
-    let i = 0
+    const layout = []
+    const i = 0
 
     for (let i = 0; i < this.customDatas.length; i++) {
-      let name = this.customDataLayout[i] as unknown as string
+      const name = this.customDataLayout[i] as unknown as string
 
       let cls = name ? CustomDataElem.getTypeClass(name) : undefined
 
@@ -1382,7 +1382,7 @@ mesh.GridBase {
   }
 }
 
-let recttemps = new util.cachering(() => [new Vector3(), new Vector3(), new Vector3(), new Vector3()], 64)
+const recttemps = new util.cachering(() => [new Vector3(), new Vector3(), new Vector3(), new Vector3()], 64)
 
 export class Grid extends GridBase {
   static STRUCT = nstructjs.inlineRegister(
@@ -1416,29 +1416,29 @@ mesh.Grid {
   }
 
   debugDraw(gl: WebGL2RenderingContext, uniforms: WebGLUniforms, ob: SceneObject): void {
-    let lt = LayerTypes
-    let smesh = new SimpleMesh(lt.LOC | lt.UV | lt.COLOR)
+    const lt = LayerTypes
+    const smesh = new SimpleMesh(lt.LOC | lt.UV | lt.COLOR)
 
-    let v1 = new Vector3()
-    let v2 = new Vector3()
-    let no = new Vector3()
-    let du = new Vector3()
-    let dv = new Vector3()
-    let color1 = [0, 0, 1, 1]
-    let color2 = [0, 1, 0, 1]
-    let color3 = [1, 0, 0, 1]
+    const v1 = new Vector3()
+    const v2 = new Vector3()
+    const no = new Vector3()
+    const du = new Vector3()
+    const dv = new Vector3()
+    const color1 = [0, 0, 1, 1]
+    const color2 = [0, 1, 0, 1]
+    const color3 = [1, 0, 0, 1]
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       let co = p.co
       //no.load(p.no);
 
       co = this.subsurf.evaluate(p.uv[0], p.uv[1], du, dv, no)
 
       if (window.DTST2) {
-        let df = 0.4
+        const df = 0.4
         let du2: Vector3, dv2: Vector3
-        let [u, v] = p.uv
-        let ss = this.subsurf
+        const [u, v] = p.uv
+        const ss = this.subsurf
 
         if (v < 1.0 - df) {
           dv2 = ss.evaluate(u, v + df, undefined, undefined, undefined)
@@ -1480,7 +1480,7 @@ mesh.Grid {
       du.normalize()
       dv.normalize()
 
-      let fac = 0.1
+      const fac = 0.1
       v2.load(v1).addFac(du, 0.025 * fac)
       line = smesh.line(v1, v2)
       line.uvs(p.uv, p.uv)
@@ -1498,18 +1498,18 @@ mesh.Grid {
   }
 
   applyBase(mesh: Mesh, l: Loop, cd_grid: AttrRef<this>): void {
-    let dimen = this.dimen
-    let x = dimen - 1,
+    const dimen = this.dimen
+    const x = dimen - 1,
       y = dimen - 1
 
-    let idx = y * dimen + x
+    const idx = y * dimen + x
     l.v.load(this.points[idx].co)
   }
 
   updateMirrorFlags(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>) {}
 
   getQuad(loop: Loop): Vector3[] {
-    let ret = recttemps.next()
+    const ret = recttemps.next()
 
     ret[0].load(loop.f.cent)
     ret[1].load(loop.v.co).interp(loop.prev.v.co, 0.5)
@@ -1534,7 +1534,7 @@ mesh.Grid {
       this.points.length = 0
       this.dimen = dimen
     }
-    let totpoint = dimen * dimen
+    const totpoint = dimen * dimen
 
     console.log('Grid init!')
 
@@ -1545,19 +1545,19 @@ mesh.Grid {
         }
       }
 
-      let quad = this.getQuad(loop)
+      const quad = this.getQuad(loop)
 
-      let a = new Vector3()
-      let b = new Vector3()
+      const a = new Vector3()
+      const b = new Vector3()
 
       for (let iu = 0; iu < dimen; iu++) {
-        let u = iu / (dimen - 1)
+        const u = iu / (dimen - 1)
 
         for (let iv = 0; iv < dimen; iv++) {
-          let v = iv / (dimen - 1)
-          let idx = iv * dimen + iu
+          const v = iv / (dimen - 1)
+          const idx = iv * dimen + iu
 
-          let p = this.points[idx]
+          const p = this.points[idx]
           p.uv[0] = u
           p.uv[1] = v
 
@@ -1585,9 +1585,9 @@ mesh.Grid {
   _ensure(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>): void {
     if (this.points.length === 0) {
       //try to get grid dimen
-      for (let l of mesh.loops) {
+      for (const l of mesh.loops) {
         if (l !== loop) {
-          let grid = cd_grid.get(l)
+          const grid = cd_grid.get(l)
           this.dimen = grid.dimen
           break
         }
@@ -1601,8 +1601,8 @@ mesh.Grid {
 
       this.customDatas.length = 0
 
-      for (let layer of mesh.loops.customData.flatlist) {
-        let cls = CustomDataElem.getTypeClass(layer.typeName)
+      for (const layer of mesh.loops.customData.flatlist) {
+        const cls = CustomDataElem.getTypeClass(layer.typeName)
 
         this.onNewLayer!(cls, layeri++)
       }
@@ -1616,33 +1616,33 @@ mesh.Grid {
 
     this.totTris = 0
 
-    let quad = this.getQuad(loop)
-    let dimen = this.dimen
+    const quad = this.getQuad(loop)
+    const dimen = this.dimen
 
-    let chunkmode = smesh instanceof ChunkedSimpleMesh
+    const chunkmode = smesh instanceof ChunkedSimpleMesh
 
-    let cd_uv = mesh.loops.customData.getLayerIndex('uv')
-    let have_uvs = cd_uv >= 0
+    const cd_uv = mesh.loops.customData.getLayerIndex('uv')
+    const have_uvs = cd_uv >= 0
 
-    let ps = this.points
-    let uvs = have_uvs ? (this.customDatas[this.cdmap[cd_uv]] as unknown as UVLayerElem[]) : undefined
-    let eid = loop.f.eid
+    const ps = this.points
+    const uvs = have_uvs ? (this.customDatas[this.cdmap[cd_uv]] as unknown as UVLayerElem[]) : undefined
+    const eid = loop.f.eid
 
-    let id = loop.eid * dimen * dimen * 2
+    const id = loop.eid * dimen * dimen * 2
 
-    let n = new Vector3()
+    const n = new Vector3()
 
-    let dt = 1.0 / (dimen - 1)
+    const dt = 1.0 / (dimen - 1)
 
     for (let x = 0; x < dimen - 1; x++) {
       for (let y = 0; y < dimen - 1; y++) {
-        let u = x / (dimen - 1) + dt * 0.5
-        let v = y / (dimen - 1) + dt * 0.5
+        const u = x / (dimen - 1) + dt * 0.5
+        const v = y / (dimen - 1) + dt * 0.5
 
-        let i1 = y * dimen + x
-        let i2 = (y + 1) * dimen + x
-        let i3 = (y + 1) * dimen + x + 1
-        let i4 = y * dimen + x + 1
+        const i1 = y * dimen + x
+        const i2 = (y + 1) * dimen + x
+        const i3 = (y + 1) * dimen + x + 1
+        const i4 = y * dimen + x + 1
 
         let tri
 
@@ -1687,39 +1687,39 @@ mesh.Grid {
   }
 
   recalcNormals(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>): void {
-    let dimen = this.dimen
-    let ps = this.points
-    let n = new Vector3()
+    const dimen = this.dimen
+    const ps = this.points
+    const n = new Vector3()
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.no.zero()
     }
 
     for (let x = 0; x < dimen - 1; x++) {
       for (let y = 0; y < dimen - 1; y++) {
-        let i1 = y * dimen + x
-        let i2 = (y + 1) * dimen + x
-        let i3 = (y + 1) * dimen + x + 1
-        let i4 = y * dimen + x + 1
+        const i1 = y * dimen + x
+        const i2 = (y + 1) * dimen + x
+        const i3 = (y + 1) * dimen + x + 1
+        const i4 = y * dimen + x + 1
 
-        let p1 = ps[i1]
-        let p2 = ps[i2]
-        let p3 = ps[i3]
-        let p4 = ps[i4]
+        const p1 = ps[i1]
+        const p2 = ps[i2]
+        const p3 = ps[i3]
+        const p4 = ps[i4]
 
-        let dx1 = p2.co[0] - p1.co[0]
-        let dy1 = p2.co[1] - p1.co[1]
-        let dz1 = p2.co[2] - p1.co[2]
+        const dx1 = p2.co[0] - p1.co[0]
+        const dy1 = p2.co[1] - p1.co[1]
+        const dz1 = p2.co[2] - p1.co[2]
 
-        let dx2 = p3.co[0] - p1.co[0]
-        let dy2 = p3.co[1] - p1.co[1]
-        let dz2 = p3.co[2] - p1.co[2]
+        const dx2 = p3.co[0] - p1.co[0]
+        const dy2 = p3.co[1] - p1.co[1]
+        const dz2 = p3.co[2] - p1.co[2]
 
         let nx = dy1 * dz2 - dz1 * dy2
         let ny = dz1 * dx2 - dx1 * dz2
         let nz = dx1 * dy2 - dy1 * dx2
 
-        let l = Math.sqrt(nx * nx + ny * ny + nz * nz)
+        const l = Math.sqrt(nx * nx + ny * ny + nz * nz)
         if (l > 0.0001) {
           nx /= l
           ny /= l
@@ -1745,13 +1745,13 @@ mesh.Grid {
       }
     }
 
-    for (let p of this.points) {
+    for (const p of this.points) {
       p.no.normalize()
     }
   }
 
   recalcNeighbors(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>): void {
-    for (let p of this.points) {
+    for (const p of this.points) {
       if (p.neighbors !== undefined) {
         p.neighbors.length = 0
       }
@@ -1760,19 +1760,19 @@ mesh.Grid {
       p.bRingRemove()
     }
 
-    let ps = this.points,
+    const ps = this.points,
       dimen = this.dimen
 
-    let l = loop
-    let lp = l.prev,
+    const l = loop
+    const lp = l.prev,
       ln = l.next
-    let lr = l.radial_next
-    let lrp = lr.prev,
+    const lr = l.radial_next
+    const lrp = lr.prev,
       lrn = lr.next
-    let lpr = l.prev.radial_next,
+    const lpr = l.prev.radial_next,
       lnr = l.next.radial_next
 
-    let lmap = {
+    const lmap = {
       [NeighborKeys.L]  : l,
       [NeighborKeys.LP] : lp,
       [NeighborKeys.LN] : ln,
@@ -1783,24 +1783,24 @@ mesh.Grid {
       [NeighborKeys.LNR]: lnr,
     }
 
-    let map = getNeighborMap(this.dimen)
+    const map = getNeighborMap(this.dimen)
     for (let i = 0; i < this.dimen; i++) {
-      for (let c of map.cases) {
-        let l1mask = c.l1,
+      for (const c of map.cases) {
+        const l1mask = c.l1,
           l2mask = c.l2
-        let l1 = lmap[l1mask]
-        let l2 = lmap[l2mask]
+        const l1 = lmap[l1mask]
+        const l2 = lmap[l2mask]
 
-        let ret = map.resolve(i, l1, l2, l1mask, l2mask)
-        let x1 = ret.x1,
+        const ret = map.resolve(i, l1, l2, l1mask, l2mask)
+        const x1 = ret.x1,
           y1 = ret.y1,
           x2 = ret.x2,
           y2 = ret.y2
 
-        let ps2 = cd_grid.get(l2).points
+        const ps2 = cd_grid.get(l2).points
 
-        let i1 = y1 * dimen + x1
-        let i2 = y2 * dimen + x2
+        const i1 = y1 * dimen + x1
+        const i2 = y2 * dimen + x2
 
         if (!ps2 || !ps2[i2]) {
           continue
@@ -1824,25 +1824,25 @@ mesh.Grid {
 
     for (let i = 0; i < dimen; i++) {
       for (let j = 0; j < dimen; j++) {
-        let i1 = j * dimen + i
+        const i1 = j * dimen + i
 
         if (j < dimen - 1) {
-          let i2 = (j + 1) * dimen + i
+          const i2 = (j + 1) * dimen + i
           ps[i1].neighbors!.push(ps[i2])
         }
 
         if (j > 0) {
-          let i3 = (j - 1) * dimen + i
+          const i3 = (j - 1) * dimen + i
           ps[i1].neighbors!.push(ps[i3])
         }
 
         if (i < dimen - 1) {
-          let i4 = j * dimen + i + 1
+          const i4 = j * dimen + i + 1
           ps[i1].neighbors!.push(ps[i4])
         }
 
         if (i > 0) {
-          let i5 = j * dimen + i - 1
+          const i5 = j * dimen + i - 1
           ps[i1].neighbors!.push(ps[i5])
         }
       }
@@ -1856,25 +1856,25 @@ mesh.Grid {
 
     this.update(mesh, loop, cd_grid)
 
-    let dimen = this.dimen
+    const dimen = this.dimen
 
     let id = loop.eid * ((this.dimen + 1) * (this.dimen + 1)) * 2 //+4*this.dimen)*2;
 
-    let feid = loop.f.eid
-    let ps = this.points
+    const feid = loop.f.eid
+    const ps = this.points
 
-    let map = getNeighborMap(this.dimen)
+    const map = getNeighborMap(this.dimen)
 
-    let l = loop
-    let lp = l.prev,
+    const l = loop
+    const lp = l.prev,
       ln = l.next
-    let lr = l.radial_next
-    let lrp = lr.prev,
+    const lr = l.radial_next
+    const lrp = lr.prev,
       lrn = lr.next
-    let lpr = l.prev.radial_next,
+    const lpr = l.prev.radial_next,
       lnr = l.next.radial_next
 
-    let lmap = {
+    const lmap = {
       [NeighborKeys.L]  : l,
       [NeighborKeys.LP] : lp,
       [NeighborKeys.LN] : ln,
@@ -1890,7 +1890,7 @@ mesh.Grid {
     //}
     if (0) {
       //bridgeEdges) {
-      let cases = [
+      const cases = [
         {l1: NeighborKeys.L, l2: NeighborKeys.LP},
         {l1: NeighborKeys.L, l2: NeighborKeys.LPR},
       ]
@@ -1898,23 +1898,23 @@ mesh.Grid {
       id += dimen * dimen * 2
       let ci = 0
 
-      for (let c of cases) {
+      for (const c of cases) {
         for (let i = 0; i < dimen - 1; i++) {
-          let l1 = lmap[c.l1]
-          let l2 = lmap[c.l2]
+          const l1 = lmap[c.l1]
+          const l2 = lmap[c.l2]
 
-          let ps1 = cd_grid.get(l1).points
-          let ps2 = cd_grid.get(l2).points
+          const ps1 = cd_grid.get(l1).points
+          const ps2 = cd_grid.get(l2).points
 
           let ret = map.resolve(i, l1, l2, c.l1, c.l2)
-          let i1 = ret.y1 * dimen + ret.x1
-          let i2 = ret.y2 * dimen + ret.x2
+          const i1 = ret.y1 * dimen + ret.x1
+          const i2 = ret.y2 * dimen + ret.x2
 
           ret = map.resolve(i + 1, l1, l2, c.l1, c.l2)
-          let i3 = ret.y1 * dimen + ret.x1
-          let i4 = ret.y2 * dimen + ret.x2
+          const i3 = ret.y1 * dimen + ret.x1
+          const i4 = ret.y2 * dimen + ret.x2
 
-          let id2 = id + i * 2
+          const id2 = id + i * 2
 
           //id2 = Math.random();
 
@@ -1967,18 +1967,18 @@ mesh.Grid {
 
     //return;
 
-    let rilen = (dimen - 1) * (dimen - 1)
+    const rilen = (dimen - 1) * (dimen - 1)
 
     for (let ri = 0; ri < rilen; ri++) {
-      let x = ri % (dimen - 1)
-      let y = ~~(ri / (dimen - 1))
+      const x = ri % (dimen - 1)
+      const y = ~~(ri / (dimen - 1))
 
-      let i1 = y * dimen + x
-      let i2 = (y + 1) * dimen + x
-      let i3 = (y + 1) * dimen + x + 1
-      let i4 = y * dimen + x + 1
+      const i1 = y * dimen + x
+      const i2 = (y + 1) * dimen + x
+      const i3 = (y + 1) * dimen + x + 1
+      const i4 = y * dimen + x + 1
 
-      let id2 = id + i1 * 2
+      const id2 = id + i1 * 2
 
       //id2 = Math.random();
 

@@ -66,24 +66,24 @@ Collection {
   }
 
   get flatChildren(): Iterable<Collection> {
-    let this2 = this
+    const this2 = this
 
     return (function* () {
-      let stack = [] as Collection[]
-      let visit = new util.set<Collection>()
+      const stack = [] as Collection[]
+      const visit = new util.set<Collection>()
 
-      for (let c of this2.children) {
+      for (const c of this2.children) {
         stack.push(c)
       }
 
       while (stack.length > 0) {
-        let c = stack.pop()
+        const c = stack.pop()
 
         yield c
 
         visit.add(c)
 
-        for (let c2 of c.children) {
+        for (const c2 of c.children) {
           if (!visit.has(c2)) {
             stack.push(c2)
           }
@@ -94,7 +94,7 @@ Collection {
 
   add(ob_or_collection: SceneObject | Collection): boolean {
     if (ob_or_collection instanceof Collection) {
-      let cl = ob_or_collection
+      const cl = ob_or_collection
 
       if (cl.lib_id in this.child_idmap) {
         console.warn('Tried to add same collection twice')
@@ -103,17 +103,17 @@ Collection {
 
       let ok = true
 
-      let rec = (cl2: Collection, test: Collection) => {
+      const rec = (cl2: Collection, test: Collection) => {
         if (cl2 === test) {
           ok = false
           return
         }
-        for (let cl3 of cl2.children) {
+        for (const cl3 of cl2.children) {
           rec(cl3, test)
         }
       }
 
-      for (let cl2 of cl.children) {
+      for (const cl2 of cl.children) {
         rec(cl2, this)
         rec(this, cl2)
       }
@@ -134,7 +134,7 @@ Collection {
 
       return true
     } else if (ob_or_collection instanceof SceneObject) {
-      let ob = ob_or_collection
+      const ob = ob_or_collection
 
       if (ob.lib_id in this.object_idmap) {
         console.warn('Tried to add same object to collection twice')
@@ -155,7 +155,7 @@ Collection {
   }
 
   getChild(name: string) {
-    for (let child of this.children) {
+    for (const child of this.children) {
       if (child.name === name) {
         return child
       }
@@ -164,7 +164,7 @@ Collection {
 
   remove(ob_or_collection: SceneObject | Collection): boolean {
     if (ob_or_collection instanceof Collection) {
-      let cl = ob_or_collection
+      const cl = ob_or_collection
 
       if (cl.lib_id in this.child_idmap) {
         delete this.child_idmap[cl.lib_id]
@@ -180,7 +180,7 @@ Collection {
         return false
       }
     } else if (ob_or_collection instanceof SceneObject) {
-      let ob = ob_or_collection
+      const ob = ob_or_collection
 
       if (ob.lib_id in this.object_idmap) {
         delete this.object_idmap[ob.lib_id]

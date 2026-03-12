@@ -32,17 +32,17 @@ import {ViewContext} from '../../../core/context.js'
 
   boxverts = boxverts.map((b) => new Vector3(b))
 
-  let rand = new util.MersenneRandom(seed)
+  const rand = new util.MersenneRandom(seed)
 
   for (let i = 0; i < 5; i++) {
-    let co = new Vector3()
+    const co = new Vector3()
 
     for (const j of IndexRange(3)) {
       co[j] = (rand.random() - 0.5) * 2.0 * d
     }
 
-    let a = trilinear_co(co, boxverts)
-    let b = trilinear_v3(a, boxverts)
+    const a = trilinear_co(co, boxverts)
+    const b = trilinear_v3(a, boxverts)
     console.log(co.vectorDistance(b))
     console.log('\n')
   }
@@ -124,26 +124,26 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
         w: number
       }
     | undefined {
-    let ctx = this.modal_ctx!
+    const ctx = this.modal_ctx!
     if (!ctx.mesh) {
       return
     }
 
-    let ret = super.on_pointermove_intern(e, x, y, in_timer)
+    const ret = super.on_pointermove_intern(e, x, y, in_timer)
 
     if (!ret) {
       return
     }
 
-    let mesh = ctx.mesh
+    const mesh = ctx.mesh
 
-    let {origco, p, view, vec, w, mpos, radius, getchannel} = ret
+    const {origco, p, view, vec, w, mpos, radius, getchannel} = ret
 
-    let brush = this.inputs.brush.getValue()
-    let strength: number = getchannel('strength', brush.strength)
-    let autosmooth: number = getchannel('autosmooth', brush.autosmooth)
+    const brush = this.inputs.brush.getValue()
+    const strength: number = getchannel('strength', brush.strength)
+    const autosmooth: number = getchannel('autosmooth', brush.autosmooth)
 
-    let ps = new PaintSample()
+    const ps = new PaintSample()
 
     ps.p.load(p)
     ps.dp.load(p).sub(this.last_p as unknown as Vector4)
@@ -155,17 +155,17 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
     ps.w = w
     ps.isInterp = !!isInterp
 
-    let bvh: any = this.getBVH(mesh)
+    const bvh: any = this.getBVH(mesh)
 
     if (this.bvhfirst) {
       console.warn('Setting grab verts!')
 
       this.bvhfirst = false
-      let bvs: Map<any, number> = (this.bGrabVerts = new Map())
+      const bvs: Map<any, number> = (this.bGrabVerts = new Map())
 
-      for (let node of bvh.leaves) {
-        for (let bv of node.boxverts) {
-          let dis: number = bv.vectorDistance(ps.p)
+      for (const node of bvh.leaves) {
+        for (const bv of node.boxverts) {
+          const dis: number = bv.vectorDistance(ps.p)
           bv.origco.load(bv)
 
           if (dis < radius) {
@@ -175,7 +175,7 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
       }
     }
 
-    let list: any[] = this.inputs.samples.getValue()
+    const list: any[] = this.inputs.samples.getValue()
     let lastps: PaintSample | undefined
 
     if (list.length > 0) {
@@ -193,20 +193,20 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
   }
 
   undoPre(ctx: any): void {
-    let ud = (this._undo = {
+    const ud = (this._undo = {
       vmap : new Map(),
       nvset: new WeakSet(),
       vlist: [] as number[],
       mesh : -1,
     })
 
-    let mesh: any = ctx.mesh
+    const mesh: any = ctx.mesh
     ud.mesh = mesh ? mesh.lib_id : -1
   }
 
   _doUndo(v: any): void {
-    let vmap: Map<number, number> = this._undo.vmap
-    let vlist: number[] = this._undo.vlist
+    const vmap: Map<number, number> = this._undo.vmap
+    const vlist: number[] = this._undo.vlist
 
     if (!vmap.has(v.eid)) {
       vmap.set(v.eid, vlist.length)
@@ -223,36 +223,36 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
   }
 
   undo(ctx: any): void {
-    let ud = this._undo
+    const ud = this._undo
 
     if (ud.mesh === undefined) {
       return
     }
 
-    let mesh: any = ctx.datalib.get(ud.mesh)
+    const mesh: any = ctx.datalib.get(ud.mesh)
 
     if (!mesh) {
       console.error('Could not find mesh ' + ud.mesh)
       return
     }
 
-    let bvh: any = mesh.bvh
-    let cd_node: AttrRef<CDNodeInfo> = bvh ? bvh.cd_node : new AttrRef(-1)
+    const bvh: any = mesh.bvh
+    const cd_node: AttrRef<CDNodeInfo> = bvh ? bvh.cd_node : new AttrRef(-1)
 
     let i: number = 0
-    let vlist: number[] = ud.vlist
+    const vlist: number[] = ud.vlist
     while (i < vlist.length) {
-      let eid: number = vlist[i++]
+      const eid: number = vlist[i++]
 
-      let x: number = vlist[i++]
-      let y: number = vlist[i++]
-      let z: number = vlist[i++]
+      const x: number = vlist[i++]
+      const y: number = vlist[i++]
+      const z: number = vlist[i++]
 
-      let nx: number = vlist[i++]
-      let ny: number = vlist[i++]
-      let nz: number = vlist[i++]
+      const nx: number = vlist[i++]
+      const ny: number = vlist[i++]
+      const nz: number = vlist[i++]
 
-      let v: any = mesh.eidMap.get(eid)
+      const v: any = mesh.eidMap.get(eid)
       if (!v) {
         console.error('Could not find vertex ' + eid, v)
         continue
@@ -268,10 +268,10 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
       v.flag |= MeshFlags.UPDATE
 
       if (bvh) {
-        let node: any = cd_node.get(v).node
+        const node: any = cd_node.get(v).node
         if (node) {
           if (node.boxverts) {
-            for (let bv of node.boxverts) {
+            for (const bv of node.boxverts) {
               bv.load(bv.origco)
             }
           }
@@ -295,7 +295,7 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
       return
     }
 
-    for (let ps of this.inputs.samples.getValue()) {
+    for (const ps of this.inputs.samples.getValue()) {
       this.execDot(ctx, ps, lastps)
 
       lastps = ps
@@ -319,7 +319,7 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
     //abuse the velocity field of BVHNodeElem
     const cd_node: any = bvh.cd_node
 
-    for (let node of bvh.leaves) {
+    for (const node of bvh.leaves) {
       node.boxvdata = new Map()
 
       /*
@@ -331,7 +331,7 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
         }
       }*/
 
-      for (let v of node.uniqueVerts) {
+      for (const v of node.uniqueVerts) {
         node.boxvdata.set(v, new Vector3(trilinear_co(v.co, node.boxverts)))
       }
 
@@ -343,11 +343,11 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
   }
 
   modalEnd(wascanceled: boolean): void {
-    let ctx = this.modal_ctx ?? ((globalThis as any)._appstate.ctx as ViewContext)
+    const ctx = this.modal_ctx ?? ((globalThis as any)._appstate.ctx as ViewContext)
     super.modalEnd(wascanceled)
 
     if (!wascanceled) {
-      let bvh: any = this.getBVH(ctx.mesh)
+      const bvh: any = this.getBVH(ctx.mesh)
 
       this._applyDef(bvh)
 
@@ -362,9 +362,9 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
 
     console.log('Apply Def')
 
-    for (let node of bvh.leaves) {
-      for (let v of node.uniqueVerts) {
-        let uvw: any = node.boxvdata.get(v)
+    for (const node of bvh.leaves) {
+      for (const v of node.uniqueVerts) {
+        const uvw: any = node.boxvdata.get(v)
 
         this._doUndo(v)
 
@@ -380,26 +380,26 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
   }
 
   execDot(ctx: any, ps: PaintSample, lastps: PaintSample | undefined): void {
-    let ob: any = ctx.object
-    let mesh: any = ctx.mesh
+    const ob: any = ctx.object
+    const mesh: any = ctx.mesh
 
     if (!mesh) {
       console.warn('No mesh!')
       return
     }
 
-    let ud: any = this._undo
+    const ud: any = this._undo
 
-    let fac: number = 0.1
+    const fac: number = 0.1
 
-    let bvh: any = this.getBVH(mesh)
+    const bvh: any = this.getBVH(mesh)
 
-    let radius: number = ps.radius
-    let brush: any = this.inputs.brush.getValue()
-    let falloff: any = brush.falloff
+    const radius: number = ps.radius
+    const brush: any = this.inputs.brush.getValue()
+    const falloff: any = brush.falloff
 
-    let visit: WeakSet<any> = new WeakSet()
-    let bvs: any[] = []
+    const visit: WeakSet<any> = new WeakSet()
+    const bvs: any[] = []
 
     let vset: any = new Set()
 
@@ -412,7 +412,7 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
       }
     }*/
 
-    for (let bv of vset.keys()) {
+    for (const bv of vset.keys()) {
       if (visit.has(bv)) {
         continue
       }
@@ -424,7 +424,7 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
         bv.origco.load(bv)
       }
 
-      let dis: number = vset.get(bv)
+      const dis: number = vset.get(bv)
       if (dis >= radius) {
         //continue;
       }
@@ -443,14 +443,14 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
       //bv[2] += (this.rand.random() - 0.25)*fac;
     }
 
-    let tmp: Vector3 = new Vector3()
+    const tmp: Vector3 = new Vector3()
 
-    let smooth = (bv: any, fac: number = 0.5): void => {
-      let co: Vector3 = tmp.zero()
+    const smooth = (bv: any, fac: number = 0.5): void => {
+      const co: Vector3 = tmp.zero()
       let tot: number = 0.0
 
-      for (let e of bv.edges) {
-        let bv2: any = e.otherVertex(bv)
+      for (const e of bv.edges) {
+        const bv2: any = e.otherVertex(bv)
 
         if (vset.has(bv2)) {
           co.add(bv2)
@@ -465,8 +465,8 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
     }
 
     for (let i: number = 0; i < bvs.length; i += 2) {
-      let bv: any = bvs[i]
-      let w: number = (1.0 - bvs[i + 1]) * ps.autosmooth
+      const bv: any = bvs[i]
+      const w: number = (1.0 - bvs[i + 1]) * ps.autosmooth
 
       smooth(bv, w)
     }
@@ -474,7 +474,7 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
     if (!this.modalRunning) {
       this._applyDef(bvh)
 
-      for (let node of bvh.leaves) {
+      for (const node of bvh.leaves) {
         node.setUpdateFlag(BVHFlags.UPDATE_BOUNDS)
       }
 

@@ -8,11 +8,11 @@ import {ToolContext} from '../../types/scripts/core/context'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 
 export function makeDefaultMaterial() {
-  let mat = new Material()
+  const mat = new Material()
 
-  let diff = new DiffuseNode()
-  let output = new OutputNode()
-  let geom = new GeometryNode()
+  const diff = new DiffuseNode()
+  const output = new OutputNode()
+  const geom = new GeometryNode()
 
   mat.graph.add(geom)
   mat.graph.add(diff)
@@ -53,24 +53,24 @@ export class MakeMaterialOp extends ToolOp<
   }
 
   exec(ctx: ToolContext) {
-    let mat = makeDefaultMaterial()
-    let name = this.inputs.name.getValue()
+    const mat = makeDefaultMaterial()
+    const name = this.inputs.name.getValue()
 
     mat.name = name && name !== '' ? name : mat.name
     ctx.datalib.add(mat)
 
-    let path = this.inputs.dataPathToSet.getValue()
+    const path = this.inputs.dataPathToSet.getValue()
     if (path) {
-      let val = ctx.api.getValue(ctx, path)
+      const val = ctx.api.getValue(ctx, path)
 
       if (val !== undefined) {
-        let meta = ctx.api.resolvePath(ctx, path)
+        const meta = ctx.api.resolvePath(ctx, path)
         val.lib_remUser(meta.obj)
       }
 
       ctx.api.setValue(ctx, path, mat)
 
-      let meta = ctx.api.resolvePath(ctx, path)
+      const meta = ctx.api.resolvePath(ctx, path)
       mat.lib_addUser(meta.obj)
     }
 
@@ -98,8 +98,8 @@ export class UnlinkMaterialOp extends ToolOp<{dataPathToUnset: StringProperty}, 
   }
 
   exec(ctx: ToolContext) {
-    let meta = ctx.api.resolvePath(ctx, this.inputs.dataPathToUnset.getValue())
-    let val = ctx.api.getValue(ctx, this.inputs.dataPathToUnset.getValue())
+    const meta = ctx.api.resolvePath(ctx, this.inputs.dataPathToUnset.getValue())
+    const val = ctx.api.getValue(ctx, this.inputs.dataPathToUnset.getValue())
 
     if (val !== undefined) {
       val.lib_remUser(meta.obj)
@@ -142,7 +142,7 @@ Material {
    * */
   static getDefaultMaterial(ctx: ToolContext): Material {
     //look for material named Default
-    let mat = ctx.datalib.getLibrary<Material>('material').get('Default')
+    const mat = ctx.datalib.getLibrary<Material>('material').get('Default')
 
     if (mat === undefined) {
       return DefaultMat

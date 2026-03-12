@@ -78,11 +78,11 @@ export class NewDataBlockOp<InputSet = {}, OutputSet = {}> extends ToolOp<
   }
 
   exec(ctx: ToolContext): void {
-    let type = this.inputs.blockType.getValue()
-    let cls = DataBlock.getClass(type)
+    const type = this.inputs.blockType.getValue()
+    const cls = DataBlock.getClass(type)
 
-    let ret = new cls()
-    let name = this.inputs.name.getValue()
+    const ret = new cls()
+    const name = this.inputs.name.getValue()
 
     if (name !== '') {
       ret.name = name
@@ -90,12 +90,12 @@ export class NewDataBlockOp<InputSet = {}, OutputSet = {}> extends ToolOp<
 
     ctx.datalib.add(ret)
 
-    let path = this.inputs.dataPathToSet.getValue()
+    const path = this.inputs.dataPathToSet.getValue()
     let addUser = true
 
     if (path !== '') {
       //try to intelligently add reference count with owner block ref. . .
-      let rdef = ctx.api.resolvePath(ctx, path)
+      const rdef = ctx.api.resolvePath(ctx, path)
 
       if (rdef && rdef.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
         if (rdef.obj !== ctx.api.getValue(ctx, path)) {
@@ -143,14 +143,14 @@ export class CopyDataBlockOp<InputSet = {}, OutputSet = {}> extends ToolOp<
   }
 
   exec(ctx) {
-    let block = ctx.datalib.get(this.inputs.block.getValue())
+    const block = ctx.datalib.get(this.inputs.block.getValue())
 
     if (!block) {
       ctx.warning('failed to duplicated block', block)
       return
     }
 
-    let ret = block.copy()
+    const ret = block.copy()
 
     //just to be safe, add a user ref, it will be re-derived on load anyway
     ret.lib_users++
@@ -158,7 +158,7 @@ export class CopyDataBlockOp<InputSet = {}, OutputSet = {}> extends ToolOp<
 
     ctx.datalib.add(ret)
 
-    let path = this.inputs.dataPathToSet.getValue()
+    const path = this.inputs.dataPathToSet.getValue()
     if (path !== '') {
       ctx.api.setValue(ctx, path, ret)
     }
@@ -188,14 +188,14 @@ export class AssignDataBlock<InputSet extends PropertySlots = {}, OutputSet exte
   }
 
   exec(ctx: ToolContext): void {
-    let block = ctx.datalib.get(this.inputs.block.getValue())
+    const block = ctx.datalib.get(this.inputs.block.getValue())
 
-    let path = this.inputs.dataPathToSet.getValue()
-    let rdef = ctx.api.resolvePath(path)
+    const path = this.inputs.dataPathToSet.getValue()
+    const rdef = ctx.api.resolvePath(path)
 
     if (rdef && rdef.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
-      let obj = rdef.obj
-      let old = ctx.api.getValue(ctx, path)
+      const obj = rdef.obj
+      const old = ctx.api.getValue(ctx, path)
 
       if (old) {
         old.lib_remUser(obj)
@@ -237,10 +237,10 @@ export class UnlinkDataBlockOp<
   }
 
   exec(ctx: ToolContext) {
-    let block = ctx.datalib.get(this.inputs.block.getValue())
+    const block = ctx.datalib.get(this.inputs.block.getValue())
 
-    let path = this.inputs.dataPathToUnset.getValue()
-    let rdef = ctx.api.resolvePath(ctx, path)
+    const path = this.inputs.dataPathToUnset.getValue()
+    const rdef = ctx.api.resolvePath(ctx, path)
 
     if (block && rdef && rdef.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
       rdef.obj.lib_remUser(block)
@@ -311,10 +311,10 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
 
     this.background = this.getDefault('background-color') as string
 
-    let radius = this.getDefault('border-radius') ?? 10
-    let color = this.getDefault('border-color') ?? 'black'
-    let wid = this.getDefault('border-width') ?? 1
-    let padding = this.getDefault('padding') ?? 2
+    const radius = this.getDefault('border-radius') ?? 10
+    const color = this.getDefault('border-color') ?? 'black'
+    const wid = this.getDefault('border-width') ?? 1
+    const padding = this.getDefault('padding') ?? 2
 
     this.style['border'] = `${wid}px solid ${color}`
     this.style['border-radius'] = radius + 'px'
@@ -334,8 +334,8 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
   rebuild() {
     this._needs_rebuild = false
 
-    let ctx = this.ctx
-    let path = this._getDataPath()
+    const ctx = this.ctx
+    const path = this._getDataPath()
 
     this.clear()
 
@@ -346,23 +346,23 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
 
     console.warn('Data block browser recalc')
 
-    let col = this.col()
+    const col = this.col()
 
-    let val = this.getPathValue(ctx, path)
-    let meta = this.ctx.api.resolvePath(this.ctx, path)
+    const val = this.getPathValue(ctx, path)
+    const meta = this.ctx.api.resolvePath(this.ctx, path)
 
     this._last_mat_name = val === undefined ? undefined : val.name
 
-    let prop = ctx.datalib.getBlockListEnum(this.blockClass, this.filterFunc)
-    let dropbox = document.createElement('dropbox-x') as unknown as DropBox<ViewContext>
+    const prop = ctx.datalib.getBlockListEnum(this.blockClass, this.filterFunc)
+    const dropbox = document.createElement('dropbox-x') as unknown as DropBox<ViewContext>
 
     dropbox.prop = prop
     dropbox.setAttribute('name', val !== undefined ? val.name : '')
 
     //listenum(inpath, name, enummap, defaultval, callback, iconmap, packflag=0) {
     ;(dropbox as unknown as any).onselect = (id: string): void => {
-      let val = this.getPathValue(ctx, path)
-      let meta = this.ctx.api.resolvePath(this.ctx, path)
+      const val = this.getPathValue(ctx, path)
+      const meta = this.ctx.api.resolvePath(this.ctx, path)
 
       if (val !== undefined && val.lib_id === id) {
         return
@@ -372,7 +372,7 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
         val.lib_remUser(meta.obj)
       }
 
-      let block = ctx.datalib.get(id)
+      const block = ctx.datalib.get(id)
       block.lib_addUser(meta.obj)
 
       console.log('Assigning block')
@@ -382,7 +382,7 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
       this.flagRebuild()
     }
 
-    let update = dropbox.update
+    const update = dropbox.update
     dropbox.update = () => {
       dropbox.prop = ctx.datalib.getBlockListEnum(this.blockClass, this.filterFunc)
       update.apply(dropbox, arguments)
@@ -397,7 +397,7 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
 
     row.add(dropbox)
 
-    let type = this.blockClass.blockDefine().typeName
+    const type = this.blockClass.blockDefine().typeName
 
     if (val) {
       row.tool(`${this.duplicateOp}(block=${val.lib_id} dataPathToSet="${path}")`, PackFlags.USE_ICONS)
@@ -422,8 +422,8 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
       return this.ctx.api.getValue(this.ownerPath)
     }
 
-    let path = this._getDataPath()
-    let meta = this.ctx.api.resolvePath(this.ctx, path)
+    const path = this._getDataPath()
+    const meta = this.ctx.api.resolvePath(this.ctx, path)
 
     if (meta === undefined) {
       return false
@@ -433,11 +433,11 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
   }
 
   update() {
-    let path = this._getDataPath()
+    const path = this._getDataPath()
 
-    let exists = this.doesOwnerExist()
-    let val = this.getPathValue(this.ctx, path)
-    let name = val === undefined ? undefined : val.name
+    const exists = this.doesOwnerExist()
+    const val = this.getPathValue(this.ctx, path)
+    const name = val === undefined ? undefined : val.name
 
     let rebuild = exists !== this._owner_exists || !!val !== this._path_exists
     rebuild = rebuild || this._needs_rebuild
@@ -486,8 +486,8 @@ UIBase.register(ImageUserWidget)
  * @returns {*}
  */
 export function makeDataBlockBrowser(container, cls, path, onValidData) {
-  let row = container.row()
-  let ret = document.createElement('data-block-browser-x') as any
+  const row = container.row()
+  const ret = document.createElement('data-block-browser-x') as any
 
   ret.inherit_packflag = container.inherit_packflag
 
@@ -500,7 +500,7 @@ export function makeDataBlockBrowser(container, cls, path, onValidData) {
   return row
 }
 
-export let getContextArea = <T extends Area = Area>(cls: IAreaConstructor<T>) => {
+export const getContextArea = <T extends Area = Area>(cls: IAreaConstructor<T>) => {
   return Area.getActiveArea(cls)
 }
 
@@ -508,7 +508,7 @@ export let getContextArea = <T extends Area = Area>(cls: IAreaConstructor<T>) =>
 export class EditorAccessor {
   /* @ts-ignore */
   imageEditor: ImageEditor
-  
+
   _defined: Set<any> = new Set()
   _namemap: {[k: string]: any} = {}
 
@@ -517,7 +517,7 @@ export class EditorAccessor {
   }
 
   update() {
-    let define = (k: string, cls: any): void => {
+    const define = (k: string, cls: any): void => {
       Object.defineProperty(this, k, {
         get() {
           return getContextArea(cls)
@@ -525,15 +525,15 @@ export class EditorAccessor {
       })
     }
 
-    for (let k in areaclasses) {
+    for (const k in areaclasses) {
       if (this._defined.has(k)) {
         continue
       }
 
       this._defined.add(k)
 
-      let cls = areaclasses[k]
-      let def = cls.define()
+      const cls = areaclasses[k]
+      const def = cls.define()
 
       let name = def.apiname ?? def.areaname
       name = name.replace(/[\- \t]/g, '_')
@@ -545,7 +545,7 @@ export class EditorAccessor {
   }
 }
 
-export let editorAccessor = new EditorAccessor()
+export const editorAccessor = new EditorAccessor()
 
 export function rebuildEditorAccessor() {
   editorAccessor.update()
@@ -556,13 +556,13 @@ export function buildEditorsAPI(api, ctxStruct) {
 
   editorAccessor.update()
 
-  let st = api.mapStruct(EditorAccessor, true)
+  const st = api.mapStruct(EditorAccessor, true)
 
   const editorclasses = areaclasses as unknown as {[k: string]: IEditorConstructor<any>}
 
   //let st = api.mapStruct(
-  for (let k in editorclasses) {
-    let cls = editorclasses[k]
+  for (const k in editorclasses) {
+    const cls = editorclasses[k]
 
     cls.defineAPI(api)
 
@@ -647,7 +647,7 @@ export class EditorSideBar extends Container<ViewContext> {
       PackFlags.SMALL_ICON
     )
 
-    let tabs = (this.tabpanel = this.tabs('left'))
+    const tabs = (this.tabpanel = this.tabs('left'))
 
     //make tabs smaller
     tabs.tabFontScale = 0.75
@@ -689,7 +689,7 @@ export class EditorSideBar extends Container<ViewContext> {
       return
     }
 
-    let h = this.editor.size[1]
+    const h = this.editor.size[1]
 
     if (h !== this._height) {
       this._height = h
@@ -706,7 +706,7 @@ export class EditorSideBar extends Container<ViewContext> {
   }
 
   saveData() {
-    let ret = super.saveData()
+    const ret = super.saveData()
 
     ret.closed = this._closed
 
@@ -754,13 +754,13 @@ Editor {
   }
 
   static defineAPI(api: DataAPI): DataStruct {
-    let st = api.mapStruct(this, true)
+    const st = api.mapStruct(this, true)
 
     st.vec2('pos', 'pos', 'Position', 'Position of editor in window')
     st.vec2('size', 'size', 'Size', 'Size of editor')
     st.string('type', 'type', 'Type', 'Editor type')
       .customGetSet(function (this: {dataref: Editor}) {
-        let obj = this.dataref
+        const obj = this.dataref
         return obj.constructor.define().areaname
       })
       .readOnly()
@@ -781,7 +781,7 @@ Editor {
   }
 
   makeSideBar() {
-    let sidebar = document.createElement('editor-sidebar-x') as unknown as EditorSideBar
+    const sidebar = document.createElement('editor-sidebar-x') as unknown as EditorSideBar
     sidebar.editor = this
 
     this.container.add(sidebar)
@@ -801,7 +801,7 @@ Editor {
 
     this.style['overflow'] = 'hidden'
 
-    let cb = () => {
+    const cb = () => {
       this.push_ctx_active()
       this.pop_ctx_active()
     }
@@ -821,7 +821,7 @@ Editor {
   }
 
   swapBack() {
-    let sarea = this.owning_sarea
+    const sarea = this.owning_sarea
 
     if (this.swapParent) {
       this.swap(this.swapParent.constructor)
@@ -832,7 +832,7 @@ Editor {
   }
 
   swap(editor_cls, storeSwapParent = true) {
-    let sarea = this.owning_sarea
+    const sarea = this.owning_sarea
 
     sarea.switchEditor(editor_cls)
     if (storeSwapParent) {
@@ -893,15 +893,15 @@ import {ToolContext, ViewContext} from '../../types/scripts/core/context.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
 import {Mesh} from '../mesh/mesh.js'
 import {ListItem} from '../path.ux/scripts/types/widgets/ui_listbox.js'
-import { ImageEditor } from '../../types/scripts/editors/image/ImageEditor.js'
+import {ImageEditor} from '../../types/scripts/editors/image/ImageEditor.js'
 
 export function spawnToolSearchMenu(ctx: ViewContext) {
-  let tools: (typeof ToolOp)[] = []
-  let screen = ctx.screen
+  const tools: (typeof ToolOp)[] = []
+  const screen = ctx.screen
 
-  let menu = document.createElement('menu-x') as unknown as Menu
+  const menu = document.createElement('menu-x') as unknown as Menu
 
-  for (let cls of ToolClasses) {
+  for (const cls of ToolClasses) {
     let ok = !(cls.tooldef().flag & ToolFlags.PRIVATE)
 
     try {
@@ -915,7 +915,7 @@ export function spawnToolSearchMenu(ctx: ViewContext) {
       continue
     }
 
-    let tdef = cls.tooldef()
+    const tdef = cls.tooldef()
     let hotkey = undefined
 
     if (tdef.toolpath) {
@@ -942,8 +942,8 @@ export function spawnToolSearchMenu(ctx: ViewContext) {
   ;(menu.onselect as unknown as (item: string) => void) = (item: string) => {
     console.log(item, 'got item')
 
-    let cls = tools[item]
-    let tool = cls.invoke(ctx, {})
+    const cls = tools[item]
+    const tool = cls.invoke(ctx, {})
 
     if (tool === undefined) {
       warning('Tool failed')
@@ -1019,11 +1019,11 @@ App {
       new HotKey('N', ['CTRL', 'ALT'], 'app.new()'),
 
       new HotKey('Left', [], () => {
-        let time = this.ctx.scene.time
+        const time = this.ctx.scene.time
         this.ctx.scene.changeTime(Math.max(time - 1, 0))
       }),
       new HotKey('Right', [], () => {
-        let time = this.ctx.scene.time
+        const time = this.ctx.scene.time
         this.ctx.scene.changeTime(time + 1)
       }),
     ])
@@ -1045,19 +1045,19 @@ App {
   }
 
   updateCanvasSize() {
-    let dpi = this.getDPI()
+    const dpi = this.getDPI()
 
-    let size = this.size,
+    const size = this.size,
       canvas = document.getElementById('webgl') as HTMLCanvasElement
 
     if (!canvas || size === undefined) {
       return
     }
 
-    let w = size[0],
+    const w = size[0],
       h = size[1]
-    let w2 = ~~(w * dpi)
-    let h2 = ~~(h * dpi)
+    const w2 = ~~(w * dpi)
+    const h2 = ~~(h * dpi)
 
     if (canvas.width === w2 && canvas.height === h2) {
       return
@@ -1066,7 +1066,7 @@ App {
     canvas.width = w2
     canvas.height = h2
 
-    let renderer = window._appstate.three_render
+    const renderer = window._appstate.three_render
 
     if (renderer) {
       renderer.setSize(canvas.width, canvas.height)
@@ -1098,7 +1098,7 @@ App {
     }
 
     this._last_wutime = time_ms()
-    let scene = this.ctx.scene
+    const scene = this.ctx.scene
 
     if (scene !== undefined && typeof scene === 'object') {
       scene.updateWidgets()
@@ -1110,16 +1110,16 @@ App {
 
     if (this.ctx === undefined) return
 
-    let menu = this.ctx.menubar
-    let view3d = this.ctx.view3d
+    const menu = this.ctx.menubar
+    const view3d = this.ctx.view3d
 
     if (menu === undefined || view3d === undefined) return
 
-    let x = Math.floor(menu.pos[0])
-    let y = Math.floor(menu.pos[0] + menu.size[1])
+    const x = Math.floor(menu.pos[0])
+    const y = Math.floor(menu.pos[0] + menu.size[1])
 
-    let w = Math.ceil(this.size[0])
-    let h = Math.ceil(this.size[1] - menu.size[1])
+    const w = Math.ceil(this.size[0])
+    const h = Math.ceil(this.size[1] - menu.size[1])
 
     let update = view3d.pos[0] !== x || view3d.pos[1] !== y
     update = update || view3d.size[0] !== w || view3d.size[1] !== h
@@ -1193,7 +1193,7 @@ ScreenBlock {
   }
 
   copy(): this {
-    let ret = new ScreenBlock()
+    const ret = new ScreenBlock()
 
     ret.screen = this.screen.copy()
     ret.name = this.name
@@ -1322,7 +1322,7 @@ export class MeshMaterialChooser extends Container<ViewContext> {
   }
 
   rebuild() {
-    let uidata = saveUIData(this, 'material chooser')
+    const uidata = saveUIData(this, 'material chooser')
 
     this.clear()
     let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
@@ -1339,8 +1339,8 @@ export class MeshMaterialChooser extends Container<ViewContext> {
 
     if (mesh.materials.length === 0) {
       this.button('Add Material', () => {
-        let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
-        let op = new MakeMaterialOp()
+        const mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
+        const op = new MakeMaterialOp()
 
         this.ctx.toolstack.execTool(this.ctx, op)
         let mat = op.outputs.materialID.getValue()
@@ -1357,9 +1357,9 @@ export class MeshMaterialChooser extends Container<ViewContext> {
       return
     }
 
-    let box = this.listbox()
+    const box = this.listbox()
     let i = 0
-    for (let mat of mesh.materials) {
+    for (const mat of mesh.materials) {
       box.addItem(mat.name, i)
       i++
     }
@@ -1384,13 +1384,13 @@ export class MeshMaterialChooser extends Container<ViewContext> {
       return
     }
 
-    let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
+    const mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
     let key = ''
 
     if (mesh) {
       key += mesh.lib_id + ':' + mesh.name + ':' + mesh.materials.length
 
-      for (let mat of mesh.materials) {
+      for (const mat of mesh.materials) {
         key += ':' + mat.lib_id
       }
     }
@@ -1439,11 +1439,11 @@ export class MeshMaterialPanel extends Container<ViewContext> {
       return
     }
 
-    let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
+    const mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
 
     console.log('Material panel rebuild')
 
-    let uidata = saveUIData(this.subpanel, 'mesh material panel')
+    const uidata = saveUIData(this.subpanel, 'mesh material panel')
     this.subpanel.clear()
 
     if (!mesh) {
@@ -1451,26 +1451,26 @@ export class MeshMaterialPanel extends Container<ViewContext> {
       return
     }
 
-    let mati = this.chooser.getActive(mesh)
-    let datapath = this.getAttribute('datapath')
-    let mat = mesh.materials[mati]
+    const mati = this.chooser.getActive(mesh)
+    const datapath = this.getAttribute('datapath')
+    const mat = mesh.materials[mati]
 
     if (!mat) {
       loadUIData(this.subpanel, uidata)
       return
     }
 
-    let dataPrefix = (this.subpanel.dataPrefix = `${datapath}.materials[${mati}].`)
+    const dataPrefix = (this.subpanel.dataPrefix = `${datapath}.materials[${mati}].`)
 
     console.warn('PREFIX', this.subpanel.dataPrefix, 'yay', mesh)
 
     this.subpanel.prop('has_shader')
 
     if (this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix + 'has_shader')) {
-      let node = this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix + 'shader')
+      const node = this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix + 'shader')
 
-      for (let k in node.inputs) {
-        let sock = node.inputs[k]
+      for (const k in node.inputs) {
+        const sock = node.inputs[k]
         let bad = sock.edges.length > 0
         bad = bad || !!(sock.graph_flag & SocketFlags.PRIVATE)
         bad = bad || sock instanceof DependSocket
@@ -1479,7 +1479,7 @@ export class MeshMaterialPanel extends Container<ViewContext> {
           continue
         }
 
-        let subpath = dataPrefix + `shader.inputs["${k}"].`
+        const subpath = dataPrefix + `shader.inputs["${k}"].`
         this.subpanel.dataPrefix = subpath
         this.subpanel.inherit_packflag |= PackFlags.NO_NUMSLIDER_TEXTBOX
 
@@ -1497,12 +1497,12 @@ export class MeshMaterialPanel extends Container<ViewContext> {
       return
     }
 
-    let mesh = this.getPathValue(this.ctx, this.getAttribute('datapath'))
+    const mesh = this.getPathValue(this.ctx, this.getAttribute('datapath'))
     if (!mesh) {
       return
     }
 
-    let mat = this.chooser.getActive(mesh)
+    const mat = this.chooser.getActive(mesh)
     return this.getPathValue(this.ctx, this.getAttribute('datapath') + `.materials[${mat}].shader`)
   }
 
@@ -1522,8 +1522,8 @@ export class MeshMaterialPanel extends Container<ViewContext> {
       }
     }
 
-    let node = this.getShadingNode()
-    let name = node ? node.constructor.name : 'undefined'
+    const node = this.getShadingNode()
+    const name = node ? node.constructor.name : 'undefined'
 
     if (name !== this._lastnode_name) {
       this._lastnode_name = name
@@ -1573,7 +1573,7 @@ export class DirectionChooser extends UIBase {
   }
 
   set highlight(v) {
-    let render = !!v !== !!this._highlight
+    const render = !!v !== !!this._highlight
 
     this._highlight = v
     if (render) {
@@ -1638,7 +1638,7 @@ export class DirectionChooser extends UIBase {
       this.mdown = false
     })
 
-    let mousedown = (e, x, y) => {
+    const mousedown = (e, x, y) => {
       this.mdown = true
       this.last_th = 0
       this.first = true
@@ -1650,16 +1650,16 @@ export class DirectionChooser extends UIBase {
 
       this.flip = [1, 1]
 
-      let table = [-1, 1, -1, -1]
+      const table = [-1, 1, -1, -1]
 
-      let a = this.value[0] >= 0.0 ? 1 : 0
-      let b = this.value[1] >= 0.0 ? 1 : 0
-      let m = a | (b << 1)
+      const a = this.value[0] >= 0.0 ? 1 : 0
+      const b = this.value[1] >= 0.0 ? 1 : 0
+      const m = a | (b << 1)
 
-      let r = this.getBoundingClientRect()
-      let dx2 = x - (r.x + r.width * 0.5),
+      const r = this.getBoundingClientRect()
+      const dx2 = x - (r.x + r.width * 0.5),
         dy2 = y - r.y - r.height * 0.5
-      let s = dx2 * this.value[1] - dy2 * this.value[0]
+      const s = dx2 * this.value[1] - dy2 * this.value[0]
 
       //this.flip[0] = s < 0.0 ? -1.0 : 1.0;
       //this.flip[0] = table[m];
@@ -1680,16 +1680,16 @@ export class DirectionChooser extends UIBase {
 
           //mat.multiply(rmat);
 
-          let r = this.canvas.getBoundingClientRect()
-          let rx = r.x + r.width * 0.5
-          let ry = r.y + r.height * 0.5
+          const r = this.canvas.getBoundingClientRect()
+          const rx = r.x + r.width * 0.5
+          const ry = r.y + r.height * 0.5
 
           let dx2 = e.x - rx,
             dy2 = e.y - ry
           let sdx2 = this.start_mpos[0] - rx,
             sdy2 = this.start_mpos[1] - ry
 
-          let scale = 1.0 / (0.5 * this.size * Math.sqrt(3.0))
+          const scale = 1.0 / (0.5 * this.size * Math.sqrt(3.0))
           let rawlen = Math.sqrt(dx2 * dx2 + dy2 * dy2) / (Math.sqrt(2.0) * this.size)
 
           sdx2 = Math.min(Math.max(sdx2, -this.size), this.size)
@@ -1697,8 +1697,8 @@ export class DirectionChooser extends UIBase {
           dx2 = Math.min(Math.max(dx2, -this.size), this.size)
           dy2 = Math.min(Math.max(dy2, -this.size), this.size)
 
-          let v1 = new Vector3([sdx2 * scale, sdy2 * scale, 0])
-          let v2 = new Vector3([dx2 * scale, dy2 * scale, 0])
+          const v1 = new Vector3([sdx2 * scale, sdy2 * scale, 0])
+          const v2 = new Vector3([dx2 * scale, dy2 * scale, 0])
 
           v1[2] = 1.0 - (v1[0] + v1[1])
           v2[2] = 1.0 - (v2[0] + v2[1])
@@ -1710,13 +1710,13 @@ export class DirectionChooser extends UIBase {
             return
           }
 
-          let axis = new Vector3(v1).cross(v2).normalize()
+          const axis = new Vector3(v1).cross(v2).normalize()
           rawlen *= 4.0
 
           let th = Math.acos(v1.dot(v2) * 0.999999)
           th += rawlen * Math.sign(th)
 
-          let quat = new Quat()
+          const quat = new Quat()
           quat.axisAngleToQuat(axis, th)
           quat.normalize()
           mat = quat.toMatrix()
@@ -1782,10 +1782,10 @@ export class DirectionChooser extends UIBase {
   }
 
   _getRMat() {
-    let quat = new Quat()
-    let axis = new Vector3()
-    let av = new Vector3(this.value)
-    let value = new Vector3(this.value).normalize()
+    const quat = new Quat()
+    const axis = new Vector3()
+    const av = new Vector3(this.value)
+    const value = new Vector3(this.value).normalize()
 
     av.abs()
 
@@ -1797,10 +1797,10 @@ export class DirectionChooser extends UIBase {
 
     axis.cross(value).normalize()
 
-    let vth = Math.acos(value[2] * 0.99999)
+    const vth = Math.acos(value[2] * 0.99999)
     quat.axisAngleToQuat(axis, vth)
     quat.normalize()
-    let rmat = quat.toMatrix()
+    const rmat = quat.toMatrix()
 
     return rmat
   }
@@ -1808,11 +1808,11 @@ export class DirectionChooser extends UIBase {
   setCSS() {
     super.setCSS()
 
-    let dpi = UIBase.getDPI()
+    const dpi = UIBase.getDPI()
 
     this._last_dpi = dpi
 
-    let w = ~~(this.size * dpi)
+    const w = ~~(this.size * dpi)
     this.canvas.width = w
     this.canvas.height = w
 
@@ -1828,7 +1828,7 @@ export class DirectionChooser extends UIBase {
   render() {
     //console.log("rendering direction chooser");
 
-    let g = this.g,
+    const g = this.g,
       canvas = this.canvas,
       size = canvas.width
 
@@ -1847,12 +1847,12 @@ export class DirectionChooser extends UIBase {
     g.beginPath()
 
     let steps
-    let p = new Vector4()
+    const p = new Vector4()
     let r = 0.04
 
-    let mat = new Matrix4()
+    const mat = new Matrix4()
 
-    let rmat = this._getRMat()
+    const rmat = this._getRMat()
 
     mat.perspective(25, 1.0, 0.01, 10.0)
 
@@ -1862,7 +1862,7 @@ export class DirectionChooser extends UIBase {
       p[2] -= 4.0
 
       p.multVecMatrix(mat)
-      let w = p[3]
+      const w = p[3]
 
       if (Math.abs(w) > 0.00001) {
         p.mulScalar(1.0 / w)
@@ -1886,14 +1886,14 @@ export class DirectionChooser extends UIBase {
     for (let i = 0; i < steps; i++, th += dth) {
       //break;
       for (let j = 0 as Number3; j < 3; j++) {
-        let r2 = 0.33
+        const r2 = 0.33
         p[j] = Math.sin(th) * r2
         p[((j + 1) % 3) as Number3] = Math.cos(th) * r2
         p[((j + 2) % 3) as Number3] = 0.0
 
         p.multVecMatrix(rmat)
 
-        let w = proj(p)
+        const w = proj(p)
 
         if (w < 0) continue
 
@@ -1922,10 +1922,10 @@ export class DirectionChooser extends UIBase {
     for (let i = 0; i < steps; i++, s += ds) {
       p.zero().interp(value4, s).mulScalar(1.5)
 
-      let w = proj(p)
+      const w = proj(p)
 
-      let x = p[0]
-      let y = p[1]
+      const x = p[0]
+      const y = p[1]
 
       if (w < 0.0) {
         continue
@@ -1957,7 +1957,7 @@ export class DirectionChooser extends UIBase {
       return
     }
 
-    let val = this.getPathValue(this.ctx, this.getAttribute('datapath'))
+    const val = this.getPathValue(this.ctx, this.getAttribute('datapath'))
 
     if (val === undefined) {
       this.disabled = true
@@ -1978,7 +1978,7 @@ export class DirectionChooser extends UIBase {
   }
 
   updateDPI() {
-    let dpi = UIBase.getDPI()
+    const dpi = UIBase.getDPI()
 
     if (this._last_dpi !== dpi) {
       this._last_dpi = dpi

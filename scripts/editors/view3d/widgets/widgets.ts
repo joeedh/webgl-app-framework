@@ -134,7 +134,7 @@ export class WidgetShape<OPT extends {dead?: true | false | undefined} = {}> {
   }
 
   copy() {
-    let ret = new (this as any).constructor()
+    const ret = new (this as any).constructor()
     this.copyTo(ret)
     return ret
   }
@@ -152,7 +152,7 @@ export class WidgetShape<OPT extends {dead?: true | false | undefined} = {}> {
   }
 
   setUniforms(manager: WidgetManager, uniforms: any) {
-    let view3d = manager.ctx.view3d
+    const view3d = manager.ctx.view3d
 
     uniforms.color = this.colortemp.load(this.color)
     uniforms.size = view3d.glSize
@@ -175,7 +175,7 @@ export class WidgetShape<OPT extends {dead?: true | false | undefined} = {}> {
       return
     }
 
-    let view3d = manager.ctx.view3d
+    const view3d = manager.ctx.view3d
 
     this.mesh.program = Shaders.WidgetMeshShader
 
@@ -183,11 +183,11 @@ export class WidgetShape<OPT extends {dead?: true | false | undefined} = {}> {
     this.mesh.uniforms.color[3] = alpha
 
     /* Derive zoom scale */
-    let mat = this.drawmatrix
+    const mat = this.drawmatrix
     mat.load(matrix).multiply(this.matrix)
 
-    let camera = manager.ctx.view3d.activeCamera
-    let co = this._drawtemp4
+    const camera = manager.ctx.view3d.activeCamera
+    const co = this._drawtemp4
     co.zero()
     co[3] = 1.0
     co.multVecMatrix(mat)
@@ -195,9 +195,9 @@ export class WidgetShape<OPT extends {dead?: true | false | undefined} = {}> {
     /* Use w component of projected vector. */
     co[3] = 1.0
     co.multVecMatrix(camera.rendermat)
-    let w = co[3]
+    const w = co[3]
 
-    let smat = this._tempmat
+    const smat = this._tempmat
     smat.makeIdentity()
 
     let scale = isMobile() ? w * 0.15 : w * 0.075 //Math.max(w*0.05, 0.01);
@@ -241,7 +241,7 @@ export class WidgetShape<OPT extends {dead?: true | false | undefined} = {}> {
       gl.disable(gl.DEPTH_TEST)
       //this.mesh.draw(gl);
 
-      let hcolor = this.colortemp.load(this.hcolor)
+      const hcolor = this.colortemp.load(this.hcolor)
       hcolor[3] = alpha
 
       this.mesh.draw(gl, {
@@ -278,12 +278,12 @@ export class WidgetTorus extends WidgetShape {
   }
 
   distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0) {
-    let mat = dist_temp_mats.next()
+    const mat = dist_temp_mats.next()
     mat.load(matrix)
 
-    let origin = dist_temps.next().zero()
-    let plane = dist_temps.next().zero()
-    let m = mat.$matrix
+    const origin = dist_temps.next().zero()
+    const plane = dist_temps.next().zero()
+    const m = mat.$matrix
 
     origin[0] = m.m41
     origin[1] = m.m42
@@ -294,11 +294,11 @@ export class WidgetTorus extends WidgetShape {
     plane[2] = m.m33
     plane.normalize()
 
-    let view = new Vector3(view3d.getViewVec(x, y))
+    const view = new Vector3(view3d.getViewVec(x, y))
     view.normalize()
-    let vieworigin = view3d.activeCamera.pos
+    const vieworigin = view3d.activeCamera.pos
 
-    let isect = isect_ray_plane(origin, plane, vieworigin, view)
+    const isect = isect_ray_plane(origin, plane, vieworigin, view)
 
     if (!isect) {
       return 10000.0
@@ -337,11 +337,11 @@ export class WidgetArrow extends WidgetShape {
   }
 
   distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0) {
-    let mat = dist_temp_mats.next()
+    const mat = dist_temp_mats.next()
     mat.load(matrix)
 
-    let v1 = dist_temps.next().zero()
-    let v2 = dist_temps.next().zero()
+    const v1 = dist_temps.next().zero()
+    const v2 = dist_temps.next().zero()
 
     const sz = wscale
     v1[2] = sz
@@ -353,23 +353,23 @@ export class WidgetArrow extends WidgetShape {
     view3d.project(v1)
     view3d.project(v2)
 
-    let tout = dist_rets.next().zero()
+    const tout = dist_rets.next().zero()
 
     let t = tout[0]
 
-    let p = new Vector2().loadXY(x, y)
-    let t1 = new Vector2(v2).sub(v1),
+    const p = new Vector2().loadXY(x, y)
+    const t1 = new Vector2(v2).sub(v1),
       t2 = new Vector2(p).sub(v1)
     t1.normalize()
 
     t = t1.dot(t2) / v1.vectorDistance(v2)
     t = Math.min(Math.max(t, -0.25), 1.25)
 
-    let lineco = dist_temps.next()
+    const lineco = dist_temps.next()
     lineco.load(v1).interp(v2, t)
 
     let dis = p.vectorDistance(lineco)
-    let pad = t < 0.25 ? 8 : 4
+    const pad = t < 0.25 ? 8 : 4
 
     /* Get distance to fat line by subtracting from dis. */
     dis = Math.max(dis - pad, 0)
@@ -384,7 +384,7 @@ export class WidgetBlockArrow extends WidgetArrow {
   }
 
   distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0) {
-    let ret = super.distToMouse(view3d, x, y, matrix, wscale)
+    const ret = super.distToMouse(view3d, x, y, matrix, wscale)
 
     return ret
   }
@@ -402,25 +402,25 @@ export class WidgetSphere extends WidgetShape {
   }
 
   distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0) {
-    let v = new Vector3()
+    const v = new Vector3()
     //measure scale
 
-    let v1 = dist_temps.next().zero()
-    let v2 = dist_temps.next().zero()
+    const v1 = dist_temps.next().zero()
+    const v2 = dist_temps.next().zero()
 
-    let mat = this.drawmatrix
-    let mm = mat.$matrix
+    const mat = this.drawmatrix
+    const mm = mat.$matrix
 
     v1.multVecMatrix(mat)
     v1.multVecMatrix(matrix)
 
-    let r = 0.5 * Math.sqrt(mm.m11 * mm.m11 + mm.m12 * mm.m12 + mm.m13 * mm.m13)
+    const r = 0.5 * Math.sqrt(mm.m11 * mm.m11 + mm.m12 * mm.m12 + mm.m13 * mm.m13)
 
     view3d.project(v1)
-    let z = v1[2]
+    const z = v1[2]
 
-    let dd = Math.sqrt((x - v1[0]) ** 2 + (y - v1[1]) ** 2)
-    let rett = dist_rets.next()
+    const dd = Math.sqrt((x - v1[0]) ** 2 + (y - v1[1]) ** 2)
+    const rett = dist_rets.next()
 
     rett[0] = dd
     rett[1] = v1[2]
@@ -435,23 +435,23 @@ export class WidgetSphere extends WidgetShape {
     view3d.unproject(v2)
 
     //get point on boundary
-    let rco = dist_temps.next().zero()
+    const rco = dist_temps.next().zero()
     rco.load(v2).sub(v1).normalize().mulScalar(r).add(v1)
 
-    let t1 = dist_temps.next()
-    let t2 = dist_temps.next()
+    const t1 = dist_temps.next()
+    const t2 = dist_temps.next()
 
     t1.load(v2).sub(rco)
     t2.load(v2).sub(v1)
 
-    let sign = t1.dot(t2) < 0.0 ? -1.0 : 1.0
+    const sign = t1.dot(t2) < 0.0 ? -1.0 : 1.0
 
     view3d.project(v2)
     view3d.project(rco)
 
-    let dis = v2.vectorDistance(rco)
+    const dis = v2.vectorDistance(rco)
 
-    let ret = dist_rets.next()
+    const ret = dist_rets.next()
 
     ret[0] = sign > 0.0 ? dis : -1 //XXX fixme: why is -1 necassary?
     ret[1] = rco[2]
@@ -472,47 +472,47 @@ export class WidgetPlane extends WidgetShape {
   }
 
   distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0) {
-    let origin = dist_temps.next().zero()
+    const origin = dist_temps.next().zero()
 
     origin.multVecMatrix(matrix)
-    let sorigin = dist_temps.next().load(origin)
+    const sorigin = dist_temps.next().load(origin)
     view3d.project(sorigin)
 
-    let n = dist_temps.next().zero()
-    let mm = matrix.$matrix
+    const n = dist_temps.next().zero()
+    const mm = matrix.$matrix
     n[0] = mm.m31
     n[1] = mm.m32
     n[2] = mm.m33
     n.normalize()
 
     /* Derive plane boundaries. */
-    let axisx = new Vector3()
-    let axisy = new Vector3()
+    const axisx = new Vector3()
+    const axisy = new Vector3()
 
     axisx.loadXYZ(0.5, 0, 0).multVecMatrix(matrix)
     axisy.loadXYZ(0, 0.5, 0).multVecMatrix(matrix)
     view3d.project(axisx)
     view3d.project(axisy)
 
-    let view = view3d.getViewVec(x, y)
+    const view = view3d.getViewVec(x, y)
 
     const scalex = axisx.vectorDistance(sorigin)
     const scaley = axisy.vectorDistance(sorigin)
 
-    let isect = math.isect_ray_plane(origin, n, view3d.activeCamera.pos, view)
-    let ret2 = dist_rets.next()
+    const isect = math.isect_ray_plane(origin, n, view3d.activeCamera.pos, view)
+    const ret2 = dist_rets.next()
 
     if (isect) {
-      let zco = dist_temps.next().load(isect)
+      const zco = dist_temps.next().load(isect)
       view3d.project(zco)
 
-      let imat = this._tempmat2
+      const imat = this._tempmat2
       imat.load(matrix).invert()
 
       isect.multVecMatrix(imat)
 
-      let sx = dist_temps.next().load(isect)
-      let sy = dist_temps.next().load(isect)
+      const sx = dist_temps.next().load(isect)
+      const sy = dist_temps.next().load(isect)
 
       sx[1] = sy[0] = 0.0
       sx[2] = sy[2] = 0.0
@@ -528,7 +528,7 @@ export class WidgetPlane extends WidgetShape {
       dx = Math.max(dx - scalex, 0.0)
       dy = Math.max(dy - scaley, 0.0)
 
-      let dis = Math.max(Math.abs(dx), Math.abs(dy))
+      const dis = Math.max(Math.abs(dx), Math.abs(dy))
 
       ret2[0] = dis
       ret2[1] = zco[2]
@@ -563,7 +563,7 @@ export class WidgetBase extends Node {
   constructor() {
     super()
 
-    let def = this.constructor!.widgetDefine()
+    const def = this.constructor!.widgetDefine()
 
     this.ctx = undefined
     this.flag = def.flag !== 0 ? def.flag : 0
@@ -632,7 +632,7 @@ export class WidgetBase extends Node {
 
     this.destroyed = true
 
-    for (let c of this.children) {
+    for (const c of this.children) {
       c.destroy(gl)
     }
   }
@@ -659,7 +659,7 @@ export class WidgetBase extends Node {
     const wscale = this.getWscale()
 
     if (this.shape !== undefined) {
-      let disz = this.shape.distToMouse(view3d, x, y, matrix, wscale)
+      const disz = this.shape.distToMouse(view3d, x, y, matrix, wscale)
 
       mindis = disz[0]
       minz = disz[1]
@@ -667,11 +667,11 @@ export class WidgetBase extends Node {
       minmargin = this.shape.extraMouseMargin
     }
 
-    let childmat = dist_temp_mats.next()
-    for (let child of this.children) {
+    const childmat = dist_temp_mats.next()
+    for (const child of this.children) {
       childmat.load(matrix).multiply(child.matrix)
 
-      let ret = child.findNearest(view3d, x, y, limit, childmat)
+      const ret = child.findNearest(view3d, x, y, limit, childmat)
 
       if (ret === undefined) {
         continue
@@ -680,7 +680,7 @@ export class WidgetBase extends Node {
         continue
       }
 
-      let f = WidgetBase._weightDisZ(view3d, ret.dis, ret.z)
+      const f = WidgetBase._weightDisZ(view3d, ret.dis, ret.z)
 
       if (minf === undefined || f < minf) {
         minf = f
@@ -738,7 +738,7 @@ export class WidgetBase extends Node {
   }
 
   on_mousedown(e, localX, localY, was_touch) {
-    let child = this.findNearestWidget(this.manager.ctx.view3d, localX, localY)
+    const child = this.findNearestWidget(this.manager.ctx.view3d, localX, localY)
     let ret = false
 
     if (this.onclick) {
@@ -758,7 +758,7 @@ export class WidgetBase extends Node {
   }
 
   on_mousemove(e, localX, localY) {
-    let child = this.findNearestWidget(this.manager.ctx.view3d, localX, localY)
+    const child = this.findNearestWidget(this.manager.ctx.view3d, localX, localY)
 
     if (child !== undefined && child !== this) {
       child.on_mousemove(e, localX, localY)
@@ -771,14 +771,14 @@ export class WidgetBase extends Node {
   }
 
   findNearestWidget(view3d, localX, localY) {
-    let ret = this.findNearest(view3d, localX, localY)
+    const ret = this.findNearest(view3d, localX, localY)
     if (ret) {
       return ret.data
     }
   }
 
   on_mouseup(e, localX, localY, was_touch) {
-    let child = this.findNearestWidget(this.manager.ctx.view3d, localX, localY)
+    const child = this.findNearestWidget(this.manager.ctx.view3d, localX, localY)
 
     if (child !== undefined && child !== this) {
       child.on_mouseup(e, localX, localY)
@@ -795,7 +795,7 @@ export class WidgetBase extends Node {
   }
 
   draw(gl, manager, matrix = undefined) {
-    let mat = this._tempmatrix
+    const mat = this._tempmatrix
 
     mat.makeIdentity()
     mat.load(this.matrix)
@@ -806,17 +806,17 @@ export class WidgetBase extends Node {
 
     /* Apply zoom scaling. */
     if (!this.parent) {
-      let co = new Vector3()
-      let w = this.ctx.view3d.project(co)
-      let s = w * 0.075 // / this.ctx.view3d.size[1];
+      const co = new Vector3()
+      const w = this.ctx.view3d.project(co)
+      const s = w * 0.075 // / this.ctx.view3d.size[1];
 
       this.wscale = s
 
-      let smat = new Matrix4()
+      const smat = new Matrix4()
       smat.scale(s, s, s)
       mat.multiply(smat)
     }
-    for (let w of this.children) {
+    for (const w of this.children) {
       w.draw(gl, manager, mat)
     }
 
@@ -834,7 +834,7 @@ export class WidgetBase extends Node {
   }
 
   _newbase(matrix, color, shape) {
-    let ret = new WidgetBase()
+    const ret = new WidgetBase()
 
     ret.shape = shape
 
@@ -900,13 +900,13 @@ export class WidgetBase extends Node {
    * draw callbacks to execute this.update() as appropriate
    * */
   execTool(ctx, tool) {
-    let view3d = this.ctx.view3d
+    const view3d = this.ctx.view3d
 
     if (!this.inputs.depend.has(view3d._graphnode.outputs.onDrawPre)) {
       this.inputs.depend.connect(view3d._graphnode.outputs.onDrawPre)
     }
 
-    let toolstack = this.ctx.toolstack
+    const toolstack = this.ctx.toolstack
     toolstack.execTool(ctx, tool)
 
     if (tool._promise !== undefined) {
@@ -990,12 +990,12 @@ export class WidgetManager {
   }
 
   haveCallbackNode(id: number, name: string) {
-    let key = id + ':' + name
+    const key = id + ':' + name
     return key in this.nodes
   }
 
   hasWidget(cls: any) {
-    for (let w of this.widgets) {
+    for (const w of this.widgets) {
       if (w instanceof cls) return w
     }
   }
@@ -1008,16 +1008,16 @@ export class WidgetManager {
   onContextLost(e: WebGLContextEvent) {
     this._init = false
 
-    for (let w of this.widgets) {
+    for (const w of this.widgets) {
       w.onContextLost(e)
     }
   }
 
   clearNodes() {
-    let graph = this.ctx.graph
+    const graph = this.ctx.graph
 
-    for (let k in this.nodes) {
-      let n = this.nodes[k]
+    for (const k in this.nodes) {
+      const n = this.nodes[k]
 
       if (n.graph !== graph) {
         console.log('prune zombie node')
@@ -1044,7 +1044,7 @@ export class WidgetManager {
   }
 
   removeCallbackNode(n: CallbackNode) {
-    let key = n._key
+    const key = n._key
 
     if (this.nodes[key]) {
       this.ctx.graph.remove(this.nodes[key])
@@ -1052,7 +1052,7 @@ export class WidgetManager {
   }
 
   createCallbackNode(id, name, callback, inputs, outputs) {
-    let key = id + ':' + name
+    const key = id + ':' + name
 
     if (this.nodes[key]) {
       this.ctx.graph.remove(this.nodes[key])
@@ -1065,8 +1065,8 @@ export class WidgetManager {
   }
 
   loadShapes() {
-    for (let k in Shapes) {
-      let smesh = Shapes[k].copy()
+    for (const k in Shapes) {
+      const smesh = Shapes[k].copy()
 
       this.shapes[k] = smesh
     }
@@ -1081,7 +1081,7 @@ export class WidgetManager {
   _fireAllEventWidgets(e, key, localX, localY, was_touch) {
     let ret = 0
 
-    for (let w of this.widgets) {
+    for (const w of this.widgets) {
       if (w.flag & WidgetFlags.ALL_EVENTS) {
         ret |= w[key](e, localX, localY, was_touch)
       }
@@ -1109,7 +1109,7 @@ export class WidgetManager {
     }
 
     if (this.widgets.highlight !== undefined) {
-      let flag = this.widgets.highlight.flag
+      const flag = this.widgets.highlight.flag
       if (!(flag & WidgetFlags.IGNORE_EVENTS)) {
         this.widgets.highlight.on_mousedown(e, localX, localY, was_touch)
 
@@ -1120,14 +1120,14 @@ export class WidgetManager {
 
   findNearest(x, y, limit = 16) {
     let mindis = 1e17
-    let minz = 1e17
+    const minz = 1e17
     let minw = undefined
-    let minmargin = 0
+    const minmargin = 0
     let minf
 
     const view3d = this.ctx.view3d
 
-    for (let w of this.widgets) {
+    for (const w of this.widgets) {
       let skip = w.flag & WidgetFlags.IGNORE_EVENTS
       skip = skip || w.parent !== undefined
 
@@ -1135,16 +1135,16 @@ export class WidgetManager {
         continue
       }
 
-      let ret = w.findNearest(view3d, x, y, limit)
+      const ret = w.findNearest(view3d, x, y, limit)
 
       if (ret === undefined || ret.dis > limit + ret.margin) {
         continue
       }
 
       //console.log(ret.z);
-      let dis = ret.dis
-      let z = ret.z
-      let f = WidgetBase._weightDisZ(view3d, dis, z)
+      const dis = ret.dis
+      const z = ret.z
+      const f = WidgetBase._weightDisZ(view3d, dis, z)
 
       if (minw === undefined || f < minf) {
         mindis = dis
@@ -1157,7 +1157,7 @@ export class WidgetManager {
   }
 
   updateHighlight(e, localX, localY, was_touch) {
-    let w = this.findNearest(localX, localY, this._picklimit(was_touch))
+    const w = this.findNearest(localX, localY, this._picklimit(was_touch))
 
     if (this.widgets.highlight !== w) {
       if (this.widgets.highlight !== undefined) {
@@ -1176,7 +1176,7 @@ export class WidgetManager {
   }
 
   on_mousemove(e, localX, localY, was_touch) {
-    let ret = this.updateHighlight(e, localX, localY, was_touch)
+    const ret = this.updateHighlight(e, localX, localY, was_touch)
 
     //console.log(w);
     if (this._fireAllEventWidgets(e, 'on_mousemove', localX, localY, was_touch)) {
@@ -1218,7 +1218,7 @@ export class WidgetManager {
     this.widgets.push(widget)
 
     //add children too
-    for (let child of widget.children) {
+    for (const child of widget.children) {
       if (!(child.id in this.widget_idmap)) {
         this.add(child)
       }
@@ -1270,9 +1270,9 @@ export class WidgetManager {
   }
 
   clear() {
-    let ws = this.widgets.slice(0, this.widgets.length)
+    const ws = this.widgets.slice(0, this.widgets.length)
 
-    for (let widget of ws) {
+    for (const widget of ws) {
       this.remove(widget)
     }
   }
@@ -1285,8 +1285,8 @@ export class WidgetManager {
       this.nodes = {}
     }
 
-    for (let k in this.shapes) {
-      let shape = this.shapes[k]
+    for (const k in this.shapes) {
+      const shape = this.shapes[k]
       shape.destroy(gl)
     }
 
@@ -1297,7 +1297,7 @@ export class WidgetManager {
     }
 
     gl = this.gl
-    let widgets = this.widgets
+    const widgets = this.widgets
 
     this.widgets = []
     this.widget_idmap = {}
@@ -1308,7 +1308,7 @@ export class WidgetManager {
       return
     }
 
-    for (let w of widgets) {
+    for (const w of widgets) {
       w.ctx = this.ctx
       w.manager = this
 
@@ -1327,13 +1327,13 @@ export class WidgetManager {
       this.glInit(gl)
     }
 
-    let pushctx = view3d !== undefined && view3d !== this.ctx.view3d
+    const pushctx = view3d !== undefined && view3d !== this.ctx.view3d
 
     if (pushctx) {
       view3d.push_ctx_active()
     }
 
-    for (let widget of this.widgets) {
+    for (const widget of this.widgets) {
       if (!widget.parent) {
         widget.draw(gl, this)
       }
@@ -1345,7 +1345,7 @@ export class WidgetManager {
   }
 
   _newbase(matrix, color, shape) {
-    let ret = new WidgetBase()
+    const ret = new WidgetBase()
 
     ret.shape = shape
 
@@ -1391,9 +1391,9 @@ export class WidgetManager {
       return
     }
 
-    let graph = this.ctx.graph
+    const graph = this.ctx.graph
 
-    for (let widget of this.widgets) {
+    for (const widget of this.widgets) {
       if (widget.graph_id < 0) {
         graph.add(widget)
         window.redraw_viewport(true)
@@ -1403,7 +1403,7 @@ export class WidgetManager {
 
   update(view3d) {
     this.updateGraph()
-    let oldmat = new Matrix4()
+    const oldmat = new Matrix4()
     let update = false
 
     function test(m1, m2) {
@@ -1435,7 +1435,7 @@ export class WidgetManager {
       return ret
     }
 
-    for (let widget of this.widgets) {
+    for (const widget of this.widgets) {
       oldmat.load(widget.matrix)
 
       widget.manager = this

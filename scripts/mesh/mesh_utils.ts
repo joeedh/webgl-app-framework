@@ -22,43 +22,43 @@ import {INumberList} from '../util/polyfill'
 import {Edge, Element, Face, Loop, Vertex} from './mesh_types'
 import {AttrRef, ColorLayerElem, IntElem, Mesh, UVLayerElem} from './mesh'
 
-let mvc_tmps = util.cachering.fromConstructor(Vector3, 256)
-let mvc_mats = util.cachering.fromConstructor(Matrix4, 16)
-let mvc_pool = new ArrayPool()
+const mvc_tmps = util.cachering.fromConstructor(Vector3, 256)
+const mvc_mats = util.cachering.fromConstructor(Matrix4, 16)
+const mvc_pool = new ArrayPool()
 
 //mean value coordinates
 export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vector3, cosout?: Vector3[]): number[] {
   neighbors = ReusableIter.getSafeIter<Vertex>(neighbors)
 
   let val = 0
-  for (let v2 of neighbors) {
+  for (const v2 of neighbors) {
     val++
   }
 
   let cos: Vector3[] = mvc_pool.get<Vector3>(val)
-  let cent = mvc_tmps.next().zero()
+  const cent = mvc_tmps.next().zero()
 
   let i = 0
-  for (let v2 of neighbors) {
+  for (const v2 of neighbors) {
     cos[i++] = mvc_tmps.next().load(v2.co)
     cent.add(v2.co)
   }
 
-  let startco = co
+  const startco = co
   let cos2: Vector3[]
 
   if (val === 0) {
     return mvc_pool.get(0)
   } else if (val === 1) {
-    let ws = mvc_pool.get<number>(1)
+    const ws = mvc_pool.get<number>(1)
     ws[0] = 1.0
     return ws
   } else if (val === 2) {
-    let v1 = mvc_tmps.next().load(co).sub(cos[0])
-    let v2 = mvc_tmps.next().load(cos[1]).sub(cos[0]).normalize()
-    let d = v1.dot(v2)
+    const v1 = mvc_tmps.next().load(co).sub(cos[0])
+    const v2 = mvc_tmps.next().load(cos[1]).sub(cos[0]).normalize()
+    const d = v1.dot(v2)
 
-    let ws = mvc_pool.get<number>(2)
+    const ws = mvc_pool.get<number>(2)
     ws[0] = d
     ws[1] = 1.0 - d
 
@@ -80,19 +80,19 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
 
   cent.mulScalar(1.0 / val)
 
-  let mat = mvc_mats.next()
+  const mat = mvc_mats.next()
   mat.makeIdentity()
   mat.makeNormalMatrix(n)
   mat.transpose() //invert rotation matrix
   //mat.invert();
 
-  let ths = mvc_pool.get<number>(val)
+  const ths = mvc_pool.get<number>(val)
   let idxs = mvc_pool.get<number>(val)
 
   co.multVecMatrix(mat)
 
   for (let i = 0; i < val; i++) {
-    let co2 = cos[i]
+    const co2 = cos[i]
 
     co2.multVecMatrix(mat)
     co2.sub(co)
@@ -103,7 +103,7 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
 
   if (cosout) {
     for (let i = 0; i < val; i++) {
-      let co = mvc_tmps.next().load(cos[i])
+      const co = mvc_tmps.next().load(cos[i])
 
       co.add(startco)
 
@@ -119,7 +119,7 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
   }
 
   //invert idxs
-  let idxs2 = mvc_pool.get<number>(val)
+  const idxs2 = mvc_pool.get<number>(val)
   for (let i = 0; i < val; i++) {
     idxs2[idxs[i]] = i
     //idxs2[i] = i;
@@ -128,12 +128,12 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
   idxs = idxs2
   cos = cos2
 
-  let lens = mvc_pool.get<number>(val)
-  let ws = ths
+  const lens = mvc_pool.get<number>(val)
+  const ws = ths
 
   for (let i = 0; i < val; i++) {
-    let co2 = cos[i]
-    let len = co2.vectorLength()
+    const co2 = cos[i]
+    const len = co2.vectorLength()
 
     if (len > 0.000001) {
       co2.mulScalar(1.0 / len)
@@ -142,19 +142,19 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
     lens[i] = len
   }
 
-  let p = mvc_tmps.next()
+  const p = mvc_tmps.next()
 
   let totw = 0.0
   let avglen = 0.0
 
   for (let i = 0; i < val; i++) {
-    let co1 = cos[(i + val - 1) % val]
-    let co2 = cos[i]
-    let co3 = cos[(i + 1) % val]
+    const co1 = cos[(i + val - 1) % val]
+    const co2 = cos[i]
+    const co3 = cos[(i + 1) % val]
 
-    let l1 = lens[(i + val - 1) % val]
-    let l2 = lens[i]
-    let l3 = lens[(i + 1) % val]
+    const l1 = lens[(i + val - 1) % val]
+    const l2 = lens[i]
+    const l3 = lens[(i + 1) % val]
 
     avglen += l2
 
@@ -200,9 +200,9 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
 
     df(f1, w1);
     **/
-    let gs = mvc_pool.get<number>(val)
-    let df = 0.00001
-    let dot3 = mvc_tmps.next(),
+    const gs = mvc_pool.get<number>(val)
+    const df = 0.00001
+    const dot3 = mvc_tmps.next(),
       dv = mvc_tmps.next()
 
     console.log('AVGLEN', avglen)
@@ -214,7 +214,7 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
       let totw = 0.0
 
       for (let i = 0; i < val; i++) {
-        let w = ws[idxs[i]]
+        const w = ws[idxs[i]]
 
         x += cos[i][0] * w
         y += cos[i][1] * w
@@ -248,16 +248,16 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
         dv.load(dot3).mul(cos[i])
         let dw = 2.0 * (dv[0] + dv[1] + dv[2])
 
-        let dw1 = dw
+        const dw1 = dw
         //console.log("r1, error", r1, error());
 
         if (0) {
-          let df = 0.0001
-          let i2 = idxs[i]
-          let r1 = error()
-          let orig = ws[i2]
+          const df = 0.0001
+          const i2 = idxs[i]
+          const r1 = error()
+          const orig = ws[i2]
           ws[i2] += df
-          let r2 = error()
+          const r2 = error()
           ws[i2] = orig
 
           dw = (r2 - r1) / df
@@ -276,7 +276,7 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
         r1 /= totg
       }
 
-      let gk = 0.999
+      const gk = 0.999
       totw = 0.0
       for (let i = 0; i < val; i++) {
         ws[idxs[i]] += -r1 * gs[i] * gk
@@ -289,7 +289,7 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
 
       totw = 0.0
       for (let i = 0; i < val; i++) {
-        let g = 1.0
+        const g = 1.0
 
         ws[idxs[i]] += -r1 * g * gk
         totw += ws[idxs[i]]
@@ -311,7 +311,7 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
 }
 
 function mul_mat_vec(mat: INumberList, vec: INumberList, m: number) {
-  let vec2 = mvc_tmps.next()
+  const vec2 = mvc_tmps.next()
 
   for (let i = 0; i < m; i++) {
     for (let j = 0; j < m; j++) {
@@ -332,36 +332,36 @@ export function _testMVC(mesh: Mesh): void {
   let cd_color: AttrRef<ColorLayerElem>
 
   function vsmooth(v: Vertex, fac = 0.5, proj = 0.5) {
-    let co = new Vector3()
-    let co2 = new Vector3()
+    const co = new Vector3()
+    const co2 = new Vector3()
     let totw = 0.0
 
-    let cdata = new (Vertex as unknown as new () => Vertex)()
-    for (let cd2 of v.customData) {
-      let cd3 = cd2.copy()
+    const cdata = new (Vertex as unknown as new () => Vertex)()
+    for (const cd2 of v.customData) {
+      const cd3 = cd2.copy()
       cd3.mulScalar(0.0)
 
       cdata.customData.push(cd3)
     }
 
-    let vs = []
+    const vs = []
     let vi = 0
-    for (let v2 of v.neighbors) {
+    for (const v2 of v.neighbors) {
       vs[vi] = v2
       vi++
     }
 
-    let ws1 = calcMVC(v.co, v.neighbors, v.no)
+    const ws1 = calcMVC(v.co, v.neighbors, v.no)
     mesh.verts.customDataInterp(cdata, vs, ws1)
 
-    let c = cd_color.get(v).color
+    const c = cd_color.get(v).color
 
-    let c0 = new Vector4(cd_color.get(cdata).color)
+    const c0 = new Vector4(cd_color.get(cdata).color)
     c0.sub(c)
 
-    for (let v2 of v.neighbors) {
+    for (const v2 of v.neighbors) {
       co2.load(v2.co).sub(v.co)
-      let d = co2.dot(v.no)
+      const d = co2.dot(v.no)
       co2.addFac(v.no, -d * proj).add(v.co)
 
       co.add(co2)
@@ -374,17 +374,17 @@ export function _testMVC(mesh: Mesh): void {
       v.flag |= MeshFlags.UPDATE
     }
 
-    let ws = calcMVC(co, v.neighbors, v.no)
+    const ws = calcMVC(co, v.neighbors, v.no)
 
     mesh.verts.customDataInterp(v, vs, ws)
     c.add(c0)
   }
 
-  let v = mesh.verts.active
+  const v = mesh.verts.active
 
   cd_color = mesh.verts.customData.getLayerRef(ColorLayerElem)
 
-  for (let v of mesh.verts.selected.editable) {
+  for (const v of mesh.verts.selected.editable) {
     vsmooth(v)
   }
 
@@ -453,28 +453,28 @@ export function* walkFaceLoop(e: Edge) {
   } while (_i++ < 1000000)
 }
 
-let _tritemp = new Array(3)
+const _tritemp = new Array(3)
 
 export function triangulateMesh(mesh: Mesh, facesIn: Iterable<Face> = mesh.faces, lctx?: LogContext) {
-  let tri = _tritemp
-  let faces: Set<Face> = facesIn instanceof Set ? facesIn : new Set(facesIn)
+  const tri = _tritemp
+  const faces: Set<Face> = facesIn instanceof Set ? facesIn : new Set(facesIn)
 
-  for (let f of faces) {
+  for (const f of faces) {
     applyTriangulation(mesh, f, undefined, undefined, lctx)
   }
 }
 
 export function triangulateFan(mesh: Mesh, f: Face, newfaces?: Set<Face> | Face[], lctx?: LogContext) {
-  let startl = f.lists[0].l
+  const startl = f.lists[0].l
   let l = startl.next
 
   do {
-    let v1 = startl.v
-    let v2 = l.v
-    let v3 = l.next.v
+    const v1 = startl.v
+    const v2 = l.v
+    const v3 = l.next.v
 
-    let tri = mesh.makeTri(v1, v2, v3, lctx)
-    let l2 = tri.lists[0].l
+    const tri = mesh.makeTri(v1, v2, v3, lctx)
+    const l2 = tri.lists[0].l
 
     mesh.copyElemData(l2, startl)
     mesh.copyElemData(l2.next, l)
@@ -507,10 +507,10 @@ export function bisectMesh(
   vec = new Vector3(vec)
   vec.normalize()
 
-  let mat = new Matrix4()
+  const mat = new Matrix4()
 
   let up = new Vector3()
-  let ax = Math.abs(vec[0]),
+  const ax = Math.abs(vec[0]),
     ay = Math.abs(vec[1]),
     az = Math.abs(vec[2])
   if (ax >= ay && ax >= az) {
@@ -530,24 +530,24 @@ export function bisectMesh(
   mat.makeNormalMatrix(vec, up)
   mat.translate(offset[0], offset[1], offset[2])
 
-  let imat = new Matrix4(mat)
+  const imat = new Matrix4(mat)
 
   mat.invert()
 
   console.log('' + mat)
 
-  let p1 = new Vector3()
-  let p2 = new Vector3()
-  let p3 = new Vector3()
+  const p1 = new Vector3()
+  const p2 = new Vector3()
+  const p3 = new Vector3()
 
-  let edges = new Set<Edge>()
-  let emap = new Map<Edge, Vertex>()
-  let edges2 = new Set<Edge>()
+  const edges = new Set<Edge>()
+  const emap = new Map<Edge, Vertex>()
+  const edges2 = new Set<Edge>()
 
-  let tris = []
+  const tris = []
 
-  let sign = (f: number) => (f >= 0 ? 1 : -1)
-  let check = (a: Vector3, b: Vector3) => {
+  const sign = (f: number) => (f >= 0 ? 1 : -1)
+  const check = (a: Vector3, b: Vector3) => {
     let ok = sign(a[2]) !== sign(b[2]) && Math.abs(a[2] - b[2]) > threshold
 
     if (Math.abs(a[2]) < threshold) {
@@ -563,9 +563,9 @@ export function bisectMesh(
     return ok
   }
 
-  for (let f of faces) {
-    for (let list of f.lists) {
-      for (let l of list) {
+  for (const f of faces) {
+    for (const list of f.lists) {
+      for (const l of list) {
         p1.load(l.v.co).multVecMatrix(mat)
         p2.load(l.next.v.co).multVecMatrix(mat)
 
@@ -578,26 +578,26 @@ export function bisectMesh(
 
   //faces2 = new Set(triangulateMesh(mesh, faces2));
 
-  let tmp1 = [0, 0, 0]
-  let tmp2 = [0, 1, 2]
-  let tmp3 = [0, 0, 0]
-  let vtmp = [0, 0, 0]
-  let vtmp2 = [0, 0, 0, 0]
+  const tmp1 = [0, 0, 0]
+  const tmp2 = [0, 1, 2]
+  const tmp3 = [0, 0, 0]
+  const vtmp = [0, 0, 0]
+  const vtmp2 = [0, 0, 0, 0]
 
-  for (let l of mesh.loops) {
-    let v1 = l.v,
+  for (const l of mesh.loops) {
+    const v1 = l.v,
       v2 = l.next.v
-    let e = l.e
+    const e = l.e
 
     if ((v1 !== e.v1 || v2 !== e.v2) && (v1 !== e.v2 || v2 !== e.v1)) {
       console.log('loop error!', l.eid)
     }
   }
 
-  let verts2 = new Set<Vertex>()
+  const verts2 = new Set<Vertex>()
 
   //*
-  for (let e of edges) {
+  for (const e of edges) {
     p1.load(e.v1.co).multVecMatrix(mat)
     p2.load(e.v2.co).multVecMatrix(mat)
 
@@ -608,25 +608,25 @@ export function bisectMesh(
     //console.log(p1[2], p2[2]);
 
     p2.sub(p1)
-    let t = -p1[2] / p2[2]
+    const t = -p1[2] / p2[2]
 
     p1.addFac(p2, t)
     p1[2] = 0.0
     p1.multVecMatrix(imat)
 
     //let v = mesh.makeVertex(p1);
-    let nev = mesh.splitEdge(e, t)
+    const nev = mesh.splitEdge(e, t)
     emap.set(e, nev[1])
 
     verts2.add(nev[1])
     edges2.add(nev[0])
   }
 
-  for (let f of faces) {
-    for (let list of f.lists) {
+  for (const f of faces) {
+    for (const list of f.lists) {
       let l1, l2
 
-      for (let l of list) {
+      for (const l of list) {
         if (verts2.has(l.v)) {
           if (!l1) {
             l1 = l
@@ -651,17 +651,17 @@ export function bisectMesh(
 }
 
 export function duplicateMesh(mesh: Mesh, geom: Iterable<Element>) {
-  let vs = new Set<Vertex>()
-  let fs = new Set<Face>()
-  let es = new Set<Edge>()
+  const vs = new Set<Vertex>()
+  const fs = new Set<Face>()
+  const es = new Set<Edge>()
 
-  let sets = {
+  const sets = {
     [MeshTypes.VERTEX]: vs as Set<Element>,
     [MeshTypes.EDGE]  : es as Set<Element>,
     [MeshTypes.FACE]  : fs as Set<Element>,
   }
 
-  for (let e of geom) {
+  for (const e of geom) {
     if (e.type === MeshTypes.LOOP) {
       continue
     }
@@ -669,28 +669,28 @@ export function duplicateMesh(mesh: Mesh, geom: Iterable<Element>) {
     sets[e.type as keyof typeof sets].add(e)
   }
 
-  let newvs = []
-  let newmap = new Map()
-  let oldmap = new Map()
+  const newvs = []
+  const newmap = new Map()
+  const oldmap = new Map()
 
-  for (let f of fs) {
-    for (let list of f.lists) {
-      for (let l of list) {
+  for (const f of fs) {
+    for (const list of f.lists) {
+      for (const l of list) {
         vs.add(l.v)
         es.add(l.e)
       }
     }
   }
 
-  for (let e of es) {
+  for (const e of es) {
     vs.add(e.v1)
     vs.add(e.v2)
   }
 
-  for (let v of vs) {
+  for (const v of vs) {
     v.index = newvs.length
 
-    let v2 = mesh.makeVertex(v)
+    const v2 = mesh.makeVertex(v)
     mesh.copyElemData(v2, v)
 
     newvs.push(v2)
@@ -698,15 +698,15 @@ export function duplicateMesh(mesh: Mesh, geom: Iterable<Element>) {
     oldmap.set(v2, v)
   }
 
-  let newes = [] as Edge[]
+  const newes = [] as Edge[]
 
-  for (let e of es) {
-    let v1 = newvs[e.v1.index]
-    let v2 = newvs[e.v2.index]
+  for (const e of es) {
+    const v1 = newvs[e.v1.index]
+    const v2 = newvs[e.v2.index]
 
     e.index = newes.length
 
-    let e2 = mesh.makeEdge(v1, v2)
+    const e2 = mesh.makeEdge(v1, v2)
     mesh.copyElemData(e2, e)
 
     newmap.set(e, e2)
@@ -714,20 +714,20 @@ export function duplicateMesh(mesh: Mesh, geom: Iterable<Element>) {
     newes.push(e2)
   }
 
-  let newfs = [] as Face[]
+  const newfs = [] as Face[]
 
-  for (let f of fs) {
-    let vs = []
-    let ls = []
+  for (const f of fs) {
+    const vs = []
+    const ls = []
 
     let listi = 0
     let f2
 
-    for (let list of f.lists) {
+    for (const list of f.lists) {
       vs.length = 0
       ls.length = 0
 
-      for (let l of list) {
+      for (const l of list) {
         vs.push(newvs[l.v.index])
         ls.push(l)
       }
@@ -770,58 +770,58 @@ export function duplicateMesh(mesh: Mesh, geom: Iterable<Element>) {
 
  */
 export function weldVerts(mesh: Mesh, mergeMap: Map<Vertex, Vertex>) {
-  let vs = new Set<Vertex>(mergeMap.keys())
-  let es = new Set<Edge>()
-  let fs = new Set<Face>()
+  const vs = new Set<Vertex>(mergeMap.keys())
+  const es = new Set<Edge>()
+  const fs = new Set<Face>()
 
-  for (let v of mergeMap.values()) {
+  for (const v of mergeMap.values()) {
     v.flag |= MeshFlags.UPDATE
     vs.add(v)
   }
 
-  for (let v of vs) {
-    for (let e of v.edges) {
+  for (const v of vs) {
+    for (const e of v.edges) {
       es.add(e)
 
-      for (let l of e.loops) {
+      for (const l of e.loops) {
         fs.add(l.f)
       }
     }
   }
 
   //unlink loops from edges;
-  for (let f of fs) {
-    for (let l of f.loops) {
+  for (const f of fs) {
+    for (const l of f.loops) {
       mesh._radialRemove(l.e, l)
     }
   }
 
-  let killes = new Set<Edge>()
+  const killes = new Set<Edge>()
 
   //substitute merge verts into edges
-  for (let e of es) {
-    let v1 = mergeMap.get(e.v1)
-    let v2 = mergeMap.get(e.v2)
+  for (const e of es) {
+    const v1 = mergeMap.get(e.v1)
+    const v2 = mergeMap.get(e.v2)
 
     if (v1 && v2) {
       killes.add(e)
     } else if (v1) {
       killes.add(e)
 
-      let e2 = mesh.ensureEdge(v1, e.v2)
+      const e2 = mesh.ensureEdge(v1, e.v2)
       mesh.copyElemData(e2, e)
     } else if (v2) {
       killes.add(e)
 
-      let e2 = mesh.ensureEdge(e.v1, v2)
+      const e2 = mesh.ensureEdge(e.v1, v2)
       mesh.copyElemData(e2, e)
     }
   }
 
   //substitute merge verts into faces
-  for (let f of fs) {
-    for (let l of f.loops) {
-      let v2 = mergeMap.get(l.v)
+  for (const f of fs) {
+    for (const l of f.loops) {
+      const v2 = mergeMap.get(l.v)
       if (v2) {
         l.v = v2
       }
@@ -829,20 +829,20 @@ export function weldVerts(mesh: Mesh, mergeMap: Map<Vertex, Vertex>) {
   }
 
   //eliminate duplicate verts
-  for (let f of fs) {
-    let flag = MeshFlags.TEMP2
-    let flag2 = MeshFlags.TEMP3
+  for (const f of fs) {
+    const flag = MeshFlags.TEMP2
+    const flag2 = MeshFlags.TEMP3
 
-    for (let l of f.loops) {
+    for (const l of f.loops) {
       l.flag &= ~flag
       l.v.flag &= ~flag
     }
 
-    for (let list of new Set(f.lists)) {
+    for (const list of new Set(f.lists)) {
       let l = list.l,
         _i = 0
 
-      for (let l of list) {
+      for (const l of list) {
         l.v.flag &= ~flag2
       }
 
@@ -894,13 +894,13 @@ export function weldVerts(mesh: Mesh, mergeMap: Map<Vertex, Vertex>) {
   }
 
   //remove deleted faces
-  for (let f of fs) {
+  for (const f of fs) {
     if (f.eid < 0) {
       continue
     }
 
     let bad = f.lists.length === 0
-    for (let list of f.lists) {
+    for (const list of f.lists) {
       list._recount()
       bad = bad || list.length < 3
     }
@@ -912,25 +912,25 @@ export function weldVerts(mesh: Mesh, mergeMap: Map<Vertex, Vertex>) {
   }
 
   //relink face loops to edges
-  for (let f of fs) {
+  for (const f of fs) {
     if (f.eid < 0) {
       continue
     }
 
-    for (let l of f.loops) {
+    for (const l of f.loops) {
       l.e = mesh.ensureEdge(l.v, l.next.v)
       mesh._radialInsert(l.e, l)
     }
   }
 
   //remove deleted edges
-  for (let e of killes) {
+  for (const e of killes) {
     if (e.eid >= 0) {
       mesh.killEdge(e)
     }
   }
 
-  for (let v of mergeMap.keys()) {
+  for (const v of mergeMap.keys()) {
     if (v.eid >= 0) {
       mesh.killVertex(v)
     }
@@ -946,29 +946,29 @@ export function symmetrizeMesh(
   sign: number,
   mergeThreshold = 0.0001
 ): void {
-  let vs = new Set<Vertex>()
-  let es = new Set<Edge>()
+  const vs = new Set<Vertex>()
+  const es = new Set<Edge>()
 
-  for (let f of faces) {
-    for (let list of f.lists) {
-      for (let l of list) {
+  for (const f of faces) {
+    for (const list of f.lists) {
+      for (const l of list) {
         vs.add(l.v)
         es.add(l.e)
       }
     }
   }
 
-  let vec = new Vector3()
+  const vec = new Vector3()
   vec[axis] = sign
 
   bisectMesh(mesh, faces, vec, undefined, mergeThreshold)
 
-  let vs2 = new Set<Vertex>()
-  let mergeMap = new Map<Vertex, Vertex>()
+  const vs2 = new Set<Vertex>()
+  const mergeMap = new Map<Vertex, Vertex>()
 
-  for (let v of vs) {
+  for (const v of vs) {
     if (Math.sign(v[axis]) !== Math.sign(sign) && Math.abs(v[axis]) > 0.0001) {
-      for (let f of v.faces) {
+      for (const f of v.faces) {
         faces.delete(f)
       }
 
@@ -978,20 +978,20 @@ export function symmetrizeMesh(
     }
   }
 
-  let geom = new Set<Element>()
+  const geom = new Set<Element>()
 
-  for (let v of vs2) {
-    for (let e of v.edges) {
+  for (const v of vs2) {
+    for (const e of v.edges) {
       geom.add(e)
 
-      for (let l of e.loops) {
+      for (const l of e.loops) {
         geom.add(l.f)
       }
     }
   }
 
-  let ret = duplicateMesh(mesh, geom)
-  for (let v of ret.newVerts) {
+  const ret = duplicateMesh(mesh, geom)
+  for (const v of ret.newVerts) {
     v[axis] = -v[axis]
 
     if (Math.abs(v[axis]) < mergeThreshold) {
@@ -999,7 +999,7 @@ export function symmetrizeMesh(
     }
   }
 
-  for (let f of ret.newFaces) {
+  for (const f of ret.newFaces) {
     mesh.reverseWinding(f)
   }
 
@@ -1012,12 +1012,12 @@ export function symmetrizeMesh(
 //}
 
 export function flipLongTriangles(mesh: Mesh, facesIterable: Iterable<Face>, lctx?: LogContext): void {
-  let es = new Set<Edge>()
-  let faces = new Set<Face>()
+  const es = new Set<Edge>()
+  const faces = new Set<Face>()
 
-  for (let f of facesIterable) {
+  for (const f of facesIterable) {
     let count = 0
-    for (let l of f.loops) {
+    for (const l of f.loops) {
       count++
     }
 
@@ -1028,8 +1028,8 @@ export function flipLongTriangles(mesh: Mesh, facesIterable: Iterable<Face>, lct
     faces.add(f)
   }
 
-  for (let f of faces) {
-    for (let l of f.loops) {
+  for (const f of faces) {
+    for (const l of f.loops) {
       if (l.radial_next !== l && faces.has(l.radial_next.f)) {
         es.add(l.e)
       }
@@ -1037,20 +1037,20 @@ export function flipLongTriangles(mesh: Mesh, facesIterable: Iterable<Face>, lct
   }
 
   console.log(es, faces)
-  let deles = new Set<Edge>()
+  const deles = new Set<Edge>()
 
-  for (let e of es) {
+  for (const e of es) {
     if (e.eid < 0) {
       continue
     }
 
-    let l1 = e.l!
-    let l2 = e.l!.radial_next
+    const l1 = e.l!
+    const l2 = e.l!.radial_next
 
     let ok = true
 
-    let w1 = winding(l1.v.co, l2.prev.v.co, l1.prev.v.co)
-    let w2 = winding(l1.prev.v.co, l2.prev.v.co, l1.next.v.co)
+    const w1 = winding(l1.v.co, l2.prev.v.co, l1.prev.v.co)
+    const w2 = winding(l1.prev.v.co, l2.prev.v.co, l1.next.v.co)
 
     ok = ok && w1 === w2
     ok = ok && l1.prev.v.co.vectorDistanceSqr(l2.prev.v.co) < e.v1.co.vectorDistanceSqr(e.v2.co)
@@ -1059,17 +1059,17 @@ export function flipLongTriangles(mesh: Mesh, facesIterable: Iterable<Face>, lct
     if (ok) {
       es.delete(e)
 
-      let f1 = mesh.makeTri(l1.v, l2.prev.v, l1.prev.v, lctx, true)
-      let f2 = mesh.makeTri(l1.prev.v, l2.prev.v, l1.next.v, lctx, true)
+      const f1 = mesh.makeTri(l1.v, l2.prev.v, l1.prev.v, lctx, true)
+      const f2 = mesh.makeTri(l1.prev.v, l2.prev.v, l1.next.v, lctx, true)
 
-      let e2 = mesh.ensureEdge(l1.prev.v, l2.prev.v, lctx)
+      const e2 = mesh.ensureEdge(l1.prev.v, l2.prev.v, lctx)
 
       mesh.copyElemData(e2, e)
 
       deles.add(e)
 
       if (f1) {
-        let lb1 = f1.lists[0].l
+        const lb1 = f1.lists[0].l
         mesh.copyElemData(f1, l1.f)
         mesh.copyElemData(lb1, lb1)
         mesh.copyElemData(lb1.next, l2.prev)
@@ -1080,7 +1080,7 @@ export function flipLongTriangles(mesh: Mesh, facesIterable: Iterable<Face>, lct
 
       if (f2) {
         mesh.copyElemData(f2, l2.f)
-        let lb2 = f2.lists[0].l
+        const lb2 = f2.lists[0].l
         mesh.copyElemData(lb2, l1.prev)
         mesh.copyElemData(lb2.next, l2.prev)
         mesh.copyElemData(lb2.prev, l1.next)
@@ -1095,7 +1095,7 @@ export function flipLongTriangles(mesh: Mesh, facesIterable: Iterable<Face>, lct
     }
   }
 
-  for (let e of deles) {
+  for (const e of deles) {
     if (e.eid < 0) {
       continue
     }
@@ -1128,34 +1128,34 @@ export function trianglesToQuads(
   newfaces?: Set<Face>
 ): void {
   let faces = facesIter instanceof Set ? facesIter : new Set(facesIter)
-  let es = new Set<Edge>()
-  let faces2 = new Set<Face>()
+  const es = new Set<Edge>()
+  const faces2 = new Set<Face>()
 
-  let mark_only = flag & TriQuadFlags.MARK_ONLY
+  const mark_only = flag & TriQuadFlags.MARK_ONLY
   if (mark_only) {
     flag &= ~TriQuadFlags.MARK_ONLY
   }
 
-  let eflag = MeshFlags.TEMP3
-  let fflag = MeshFlags.TEMP3
-  let quadflag = MeshFlags.QUAD_EDGE
-  let cd_fset = new AttrRef<IntElem>()
+  const eflag = MeshFlags.TEMP3
+  const fflag = MeshFlags.TEMP3
+  const quadflag = MeshFlags.QUAD_EDGE
+  const cd_fset = new AttrRef<IntElem>()
 
   if (flag & TriQuadFlags.FACE_SETS) {
     cd_fset.i = getFaceSets(mesh, false)
   }
 
-  for (let f of faces) {
+  for (const f of faces) {
     f.flag &= ~fflag
 
     let count = 0
-    for (let l of f.loops) {
+    for (const l of f.loops) {
       count++
     }
 
     if (count !== 3 || f.lists.length > 1) {
       if (mark_only) {
-        for (let l of f.loops) {
+        for (const l of f.loops) {
           l.e.flag &= ~quadflag
         }
       }
@@ -1168,10 +1168,10 @@ export function trianglesToQuads(
 
   const have_fsets = cd_fset.exists
 
-  for (let f of faces) {
+  for (const f of faces) {
     const fset = have_fsets ? cd_fset.get(f).value : 0
 
-    for (let l of f.loops) {
+    for (const l of f.loops) {
       if (have_fsets && Math.abs(cd_fset.get(l.radial_next.f).value) !== fset) {
         continue
       }
@@ -1193,16 +1193,16 @@ export function trianglesToQuads(
     }
   }
 
-  let cd_color = mesh.verts.customData.getLayerRef(ColorLayerElem)
-  let cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
-  let have_color = cd_color.exists
-  let have_uv = cd_uv.exists
+  const cd_color = mesh.verts.customData.getLayerRef(ColorLayerElem)
+  const cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
+  const have_color = cd_color.exists
+  const have_uv = cd_uv.exists
 
-  let t1 = new Vector3()
-  let t2 = new Vector3()
-  let t3 = new Vector3()
+  const t1 = new Vector3()
+  const t2 = new Vector3()
+  const t3 = new Vector3()
 
-  let dot3 = (v1: Vector3, v2: Vector3, v3: Vector3, n: Vector3): number => {
+  const dot3 = (v1: Vector3, v2: Vector3, v3: Vector3, n: Vector3): number => {
     let dx1 = v1[0] - v2[0],
       dy1 = v1[1] - v2[1],
       dz1 = v1[2] - v2[2]
@@ -1241,21 +1241,21 @@ export function trianglesToQuads(
       dz2 *= l2
     }
 
-    let f = dx1 * dx2 + dy1 * dy2 + dz1 * dz2
+    const f = dx1 * dx2 + dy1 * dy2 + dz1 * dz2
     return Math.abs(Math.acos(f * 0.9999) - Math.PI * 0.5)
     //return f*f;
     return Math.abs(f)
   }
 
-  let no = new Vector3()
+  const no = new Vector3()
 
-  let errorNiceQuad = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex) => {
+  const errorNiceQuad = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex) => {
     //no.load(v1.no).add(v2.no).add(v3.no).add(v4.no).normalize();
 
-    let th1 = dot3(v4.co, v1.co, v2.co, no)
-    let th2 = dot3(v1.co, v2.co, v3.co, no)
-    let th3 = dot3(v2.co, v3.co, v4.co, no)
-    let th4 = dot3(v3.co, v4.co, v1.co, no)
+    const th1 = dot3(v4.co, v1.co, v2.co, no)
+    const th2 = dot3(v1.co, v2.co, v3.co, no)
+    const th3 = dot3(v2.co, v3.co, v4.co, no)
+    const th4 = dot3(v3.co, v4.co, v1.co, no)
 
     //t1.load(v1.no).add(v3.no).normalize();
     //t2.load(v2.no).add(v4.no).normalize();
@@ -1284,11 +1284,11 @@ export function trianglesToQuads(
     flag &= ~TriQuadFlags.COLOR
   }
 
-  let errorSeam = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex) => {
+  const errorSeam = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex) => {
     return e.flag & MeshFlags.SEAM ? 100000 : 0.0
   }
 
-  let errorUv = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex) => {
+  const errorUv = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex) => {
     const l1 = e.l!
     const l2 = e.l!.radial_next
 
@@ -1300,7 +1300,7 @@ export function trianglesToQuads(
     return u1.vectorDistanceSqr(u2) + u3.vectorDistanceSqr(u4)
   }
 
-  let errorColor = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex): number => {
+  const errorColor = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex): number => {
     const l1 = e.l!
     const l2 = l1.radial_next
 
@@ -1312,11 +1312,11 @@ export function trianglesToQuads(
     return u1.vectorDistanceSqr(u2) + u3.vectorDistanceSqr(u4)
   }
 
-  let errorQuadFlag = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex): number => {
+  const errorQuadFlag = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex): number => {
     return e.flag & MeshFlags.QUAD_EDGE ? -100000 : 0.0
   }
 
-  let funcs1 = {
+  const funcs1 = {
     [TriQuadFlags.COLOR]       : errorColor,
     [TriQuadFlags.UVS]         : errorUv,
     [TriQuadFlags.SEAM]        : errorSeam,
@@ -1324,23 +1324,23 @@ export function trianglesToQuads(
     [TriQuadFlags.MARKED_EDGES]: errorQuadFlag,
   }
 
-  let funcs = [] as (typeof funcs1)[keyof typeof funcs1][]
+  const funcs = [] as (typeof funcs1)[keyof typeof funcs1][]
 
-  for (let k in TriQuadFlags) {
+  for (const k in TriQuadFlags) {
     if (k === 'DEFAULT' || k === 'FACE_SETS') {
       continue
     }
 
-    let v = TriQuadFlags[k as keyof typeof TriQuadFlags]
+    const v = TriQuadFlags[k as keyof typeof TriQuadFlags]
 
     if (flag & v) {
       funcs.push(funcs1[v])
     }
   }
 
-  let error = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex) => {
+  const error = (e: Edge, v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex) => {
     let sum = 0.0
-    for (let f of funcs) {
+    for (const f of funcs) {
       sum += f(e, v1, v2, v3, v4)
     }
 
@@ -1348,15 +1348,15 @@ export function trianglesToQuads(
   }
 
   let i = 0
-  let edges = []
-  for (let e of es) {
+  const edges = []
+  for (const e of es) {
     edges.push(i++)
   }
 
-  let ETOT = 6
+  const ETOT = 6
 
-  let edata = [] as (Edge | Loop | number)[]
-  for (let e of es) {
+  const edata = [] as (Edge | Loop | number)[]
+  for (const e of es) {
     const la = e.l!
     const lb = la.radial_next
 
@@ -1365,7 +1365,7 @@ export function trianglesToQuads(
     const l2 = lb.prev
     const l1 = la
 
-    let a = edata.length
+    const a = edata.length
 
     edata.push(e)
     edata.push(l1)
@@ -1373,7 +1373,7 @@ export function trianglesToQuads(
     edata.push(l3)
     edata.push(l4)
 
-    let w = error(
+    const w = error(
       e,
       (edata[a + 1] as Loop).v,
       (edata[a + 2] as Loop).v,
@@ -1387,20 +1387,20 @@ export function trianglesToQuads(
     a *= ETOT
     b *= ETOT
 
-    let w1 = edata[a + 5] as number
-    let w2 = edata[b + 5] as number
+    const w1 = edata[a + 5] as number
+    const w2 = edata[b + 5] as number
 
     return w1 - w2
   })
 
-  let ws = [0.5, 0.5]
-  let fs: Face[] = new Array(2)
+  const ws = [0.5, 0.5]
+  const fs: Face[] = new Array(2)
   const chflag = ChangeFlags.FLAG
 
   for (let i of edges) {
     i *= ETOT
 
-    let e = edata[i] as Edge
+    const e = edata[i] as Edge
 
     if (!e.l || !faces.has(e.l.f) || !faces.has(e.l.radial_next.f)) {
       continue
@@ -1435,7 +1435,7 @@ export function trianglesToQuads(
     fs[0] = f1
     fs[1] = f2
 
-    let vflag = MeshFlags.TEMP2
+    const vflag = MeshFlags.TEMP2
     l1.v.flag &= ~vflag
     l2.v.flag &= ~vflag
     l3.v.flag &= ~vflag
@@ -1456,7 +1456,7 @@ export function trianglesToQuads(
       continue
     }
 
-    let f = mesh.makeQuad(l1.v, l2.v, l3.v, l4.v)
+    const f = mesh.makeQuad(l1.v, l2.v, l3.v, l4.v)
     if (!f) {
       continue
     }
@@ -1469,7 +1469,7 @@ export function trianglesToQuads(
       lctx.newFace(f)
     }
 
-    let l = f.lists[0].l
+    const l = f.lists[0].l
 
     mesh.copyElemData(f, f1)
     mesh.faces.customDataInterp(f, fs, ws)
@@ -1486,17 +1486,17 @@ export function trianglesToQuads(
 }
 
 export function recalcWindings(mesh: Mesh, facesIter: Iterable<Face> = mesh.faces, lctx?: LogContext): void {
-  let faces = new Set(facesIter)
+  const faces = new Set(facesIter)
 
-  let shells: Set<Face>[] = []
-  let stack: Face[] = []
-  let flag = MeshFlags.TEMP3
+  const shells: Set<Face>[] = []
+  const stack: Face[] = []
+  const flag = MeshFlags.TEMP3
 
-  for (let f of faces) {
+  for (const f of faces) {
     f.flag &= ~flag
   }
 
-  for (let f of faces) {
+  for (const f of faces) {
     if (f.flag & flag) {
       continue
     }
@@ -1505,15 +1505,15 @@ export function recalcWindings(mesh: Mesh, facesIter: Iterable<Face> = mesh.face
     stack.push(f)
     f.flag |= flag
 
-    let shell: Face[] = []
+    const shell: Face[] = []
 
     while (stack.length > 0) {
-      let f2 = stack.pop()!
+      const f2 = stack.pop()!
 
       shell.push(f2)
       f2.flag |= flag
 
-      for (let l of f2.loops) {
+      for (const l of f2.loops) {
         let lr = l.radial_next
         let _i = 0
 
@@ -1538,11 +1538,11 @@ export function recalcWindings(mesh: Mesh, facesIter: Iterable<Face> = mesh.face
 
   console.log('shells:', shells)
 
-  for (let shell of shells) {
-    let cent = new Vector3()
+  for (const shell of shells) {
+    const cent = new Vector3()
     let tot = 0.0
 
-    for (let f of shell) {
+    for (const f of shell) {
       cent.add(f.cent)
 
       tot++
@@ -1556,8 +1556,8 @@ export function recalcWindings(mesh: Mesh, facesIter: Iterable<Face> = mesh.face
     let maxdis: number | undefined = undefined
     let maxf: Face | undefined = undefined
 
-    for (let f of shell) {
-      let dis = f.cent.vectorDistance(cent)
+    for (const f of shell) {
+      const dis = f.cent.vectorDistance(cent)
 
       if (maxdis === undefined || dis > maxdis) {
         maxf = f
@@ -1574,7 +1574,7 @@ export function recalcWindings(mesh: Mesh, facesIter: Iterable<Face> = mesh.face
     stack.length = 0
 
     maxf.calcNormal()
-    let n = new Vector3(maxf.cent).sub(cent).normalize()
+    const n = new Vector3(maxf.cent).sub(cent).normalize()
 
     if (maxf.no.dot(n) < 0) {
       mesh.reverseWinding(maxf)
@@ -1584,9 +1584,9 @@ export function recalcWindings(mesh: Mesh, facesIter: Iterable<Face> = mesh.face
     maxf.flag |= flag
 
     while (stack.length > 0) {
-      let f = stack.pop()!
+      const f = stack.pop()!
 
-      for (let l of f.loops) {
+      for (const l of f.loops) {
         let lr = l.radial_next
 
         let _i = 0
@@ -1595,7 +1595,7 @@ export function recalcWindings(mesh: Mesh, facesIter: Iterable<Face> = mesh.face
           let ok = lr !== l && shell.has(lr.f)
           ok = ok && !(lr.f.flag & flag)
 
-          let next = lr.radial_next
+          const next = lr.radial_next
 
           if (ok) {
             lr.f.flag |= flag
@@ -1625,12 +1625,12 @@ export function splitNonManifoldEdge(mesh: Mesh, e: Edge, l1: Loop, l2: Loop, lc
   }
 
   let count = 0
-  for (let l of e.loops) {
+  for (const l of e.loops) {
     count++
   }
 
-  let v1 = mesh.makeVertex(e.v1)
-  let v2 = mesh.makeVertex(e.v2)
+  const v1 = mesh.makeVertex(e.v1)
+  const v2 = mesh.makeVertex(e.v2)
 
   if (lctx) {
     lctx.newVertex(v1)
@@ -1643,7 +1643,7 @@ export function splitNonManifoldEdge(mesh: Mesh, e: Edge, l1: Loop, l2: Loop, lc
   mesh.copyElemData(v1, e.v1)
   mesh.copyElemData(v2, e.v2)
 
-  let e2 = mesh.makeEdge(v1, v2)
+  const e2 = mesh.makeEdge(v1, v2)
   mesh.copyElemData(e2, e)
 
   if (lctx) {
@@ -1674,12 +1674,12 @@ export function splitNonManifoldEdge(mesh: Mesh, e: Edge, l1: Loop, l2: Loop, lc
       break
     }
 
-    let f = minl.f
+    const f = minl.f
 
-    for (let list of f.lists) {
-      let vs = []
+    for (const list of f.lists) {
+      const vs = []
 
-      for (let l of list) {
+      for (const l of list) {
         if (l.v === e.v1) {
           vs.push(v1)
         } else if (l.v === e.v2) {
@@ -1699,8 +1699,8 @@ export function splitNonManifoldEdge(mesh: Mesh, e: Edge, l1: Loop, l2: Loop, lc
     }
 
     for (let i = 0; i < f.lists.length; i++) {
-      let list1 = f.lists[i]
-      let list2 = f2!.lists[i]
+      const list1 = f.lists[i]
+      const list2 = f2!.lists[i]
 
       let l1 = list1.l
       let l2 = list2.l
@@ -1719,8 +1719,8 @@ export function splitNonManifoldEdge(mesh: Mesh, e: Edge, l1: Loop, l2: Loop, lc
     }
 
     //make sure we nuke any wire edges
-    let es2 = []
-    for (let l of f.loops) {
+    const es2 = []
+    for (const l of f.loops) {
       if (l.radial_next === l) {
         es2.push(l.e)
       }
@@ -1730,22 +1730,22 @@ export function splitNonManifoldEdge(mesh: Mesh, e: Edge, l1: Loop, l2: Loop, lc
       mesh.killFace(f, lctx)
     }
 
-    for (let e of es2) {
+    for (const e of es2) {
       mesh.killEdge(e, lctx)
     }
   }
 }
 
 export function pruneLooseGeometry(mesh: Mesh, lctx?: LogContext, minShellVerts = 5) {
-  let flag = MeshFlags.NOAPI_TEMP1
+  const flag = MeshFlags.NOAPI_TEMP1
 
-  for (let e of mesh.edges) {
+  for (const e of mesh.edges) {
     if (!e.l) {
       mesh.killEdge(e, lctx)
     }
   }
 
-  for (let v of mesh.verts) {
+  for (const v of mesh.verts) {
     if (v.valence === 0) {
       mesh.killVertex(v, undefined, lctx)
     } else {
@@ -1753,15 +1753,15 @@ export function pruneLooseGeometry(mesh: Mesh, lctx?: LogContext, minShellVerts 
     }
   }
 
-  let shells: Vertex[][] = []
-  let stack: Vertex[] = []
+  const shells: Vertex[][] = []
+  const stack: Vertex[] = []
 
-  for (let v of mesh.verts) {
+  for (const v of mesh.verts) {
     if (v.flag & flag) {
       continue
     }
 
-    let shell = [] as Vertex[]
+    const shell = [] as Vertex[]
     shells.push(shell)
 
     stack.length = 0
@@ -1769,10 +1769,10 @@ export function pruneLooseGeometry(mesh: Mesh, lctx?: LogContext, minShellVerts 
     v.flag |= flag
 
     while (stack.length > 0) {
-      let v2 = stack.pop()!
+      const v2 = stack.pop()!
       shell.push(v2)
 
-      for (let v3 of v2.neighbors) {
+      for (const v3 of v2.neighbors) {
         if (v3.flag & flag) {
           continue
         }
@@ -1784,9 +1784,9 @@ export function pruneLooseGeometry(mesh: Mesh, lctx?: LogContext, minShellVerts 
   }
 
   console.log('Shells:', shells)
-  for (let shell of shells) {
+  for (const shell of shells) {
     if (shell.length < minShellVerts) {
-      for (let v of shell) {
+      for (const v of shell) {
         mesh.killVertex(v, undefined, lctx)
       }
     }
@@ -1800,7 +1800,7 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
 
   let bad = 0
 
-  for (let v of mesh.verts) {
+  for (const v of mesh.verts) {
     for (let i = 0; i < 3; i++) {
       if (isnan(v.co[i])) {
         v.co[i as 0 | 1 | 2] = (Math.random() - 0.5) * 0.001
@@ -1827,11 +1827,11 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
     mesh.recalcNormals()
   }
 
-  let es = new Set<Edge>()
+  const es = new Set<Edge>()
 
-  for (let e of mesh.edges) {
+  for (const e of mesh.edges) {
     let c = 0
-    for (let l of e.loops) {
+    for (const l of e.loops) {
       c++
     }
 
@@ -1840,20 +1840,20 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
     }
   }
 
-  let stack = [] as Face[]
-  let flag = MeshFlags.TEMP3
-  for (let f of mesh.faces) {
+  const stack = [] as Face[]
+  const flag = MeshFlags.TEMP3
+  for (const f of mesh.faces) {
     f.flag &= ~flag
   }
 
-  let shells = []
+  const shells = []
 
-  for (let f of mesh.faces) {
+  for (const f of mesh.faces) {
     if (f.flag & flag) {
       continue
     }
 
-    let shell = [] as Face[]
+    const shell = [] as Face[]
 
     stack.length = 0
     stack.push(f)
@@ -1862,12 +1862,12 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
     f.flag |= flag
 
     while (stack.length > 0) {
-      let f2 = stack.pop()!
+      const f2 = stack.pop()!
       shell.push(f2)
 
-      for (let l of f2.loops) {
+      for (const l of f2.loops) {
         let count = 0
-        for (let l2 of l.e.loops) {
+        for (const l2 of l.e.loops) {
           count++
         }
 
@@ -1884,8 +1884,8 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
     shells.push(shell)
   }
 
-  for (let shell of shells) {
-    for (let f of shell) {
+  for (const shell of shells) {
+    for (const f of shell) {
       f.index = shell.length
     }
   }
@@ -1897,14 +1897,14 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
     return false
   }
 
-  for (let e of es) {
+  for (const e of es) {
     let count = 0
-    for (let l of e.loops) {
+    for (const l of e.loops) {
       count++
     }
 
-    let v1 = mesh.makeVertex(e.v1)
-    let v2 = mesh.makeVertex(e.v2)
+    const v1 = mesh.makeVertex(e.v1)
+    const v2 = mesh.makeVertex(e.v2)
 
     v1.no.load(e.v1.no)
     v2.no.load(e.v2.no)
@@ -1927,7 +1927,7 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
     let minl: Loop | undefined, minw: number | undefined
 
     for (let i = 0; i < count - 2; i++) {
-      for (let l of e.loops) {
+      for (const l of e.loops) {
         if (minl === undefined || l.f.index < minw!) {
           minl = l
           minw = l.f.index
@@ -1935,12 +1935,12 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
       }
 
       let f2
-      let f = minl!.f
+      const f = minl!.f
 
-      for (let list of f.lists) {
-        let vs = []
+      for (const list of f.lists) {
+        const vs = []
 
-        for (let l of list) {
+        for (const l of list) {
           if (l.v === e.v1) {
             vs.push(v1)
           } else if (l.v === e.v2) {
@@ -1960,8 +1960,8 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
       }
 
       for (let i = 0; i < f.lists.length; i++) {
-        let list1 = f.lists[i]
-        let list2 = f2!.lists[i]
+        const list1 = f.lists[i]
+        const list2 = f2!.lists[i]
 
         let l1 = list1.l
         let l2 = list2.l
@@ -1984,8 +1984,8 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
       }
 
       //make sure we nuke any wire edges
-      let es2 = []
-      for (let l of f.loops) {
+      const es2 = []
+      for (const l of f.loops) {
         if (l.radial_next === l) {
           es2.push(l.e)
         }
@@ -1995,7 +1995,7 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
         mesh.killFace(f, lctx)
       }
 
-      for (let e of es2) {
+      for (const e of es2) {
         mesh.killEdge(e, lctx)
       }
     }
@@ -2007,19 +2007,19 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
   return true
 }
 
-let ftmp = [] as Face[]
+const ftmp = [] as Face[]
 
 export function connectVerts(mesh: Mesh, v1: Vertex, v2: Vertex) {
-  let fs = ftmp
+  const fs = ftmp
   fs.length = 0
 
-  for (let f of v1.faces) {
+  for (const f of v1.faces) {
     fs.push(f)
   }
 
-  for (let f of fs) {
-    outer: for (let list of f.lists) {
-      for (let l of list) {
+  for (const f of fs) {
+    outer: for (const list of f.lists) {
+      for (const l of list) {
         if (l.v === v2) {
           mesh.splitFaceAtVerts(f, v1, v2)
           break outer
@@ -2030,9 +2030,9 @@ export function connectVerts(mesh: Mesh, v1: Vertex, v2: Vertex) {
   //let heap = new util.MinHeapQueue();
 }
 
-let tmp1 = new Vector3()
-let tmp2 = new Vector3()
-let tmp3 = new Vector3()
+const tmp1 = new Vector3()
+const tmp2 = new Vector3()
+const tmp3 = new Vector3()
 
 export function vertexSmooth(
   mesh: Mesh,
@@ -2047,20 +2047,20 @@ export function vertexSmooth(
   const fsetsAttr = getFaceSetsAttr(mesh, false) as AttrRef<IntElem>
   useBoundary = true
 
-  for (let v of verts) {
-    let co = tmp1.zero()
+  for (const v of verts) {
+    const co = tmp1.zero()
     let totw = 0
 
-    let mv = v.customData[cd_dyn_vert] as MDynVert
+    const mv = v.customData[cd_dyn_vert] as MDynVert
     mv.check(v, fsetsAttr)
 
     let bound = useBoundary ? v.flag & MeshFlags.BOUNDARY : 0
     bound |= mv.flag & BVHVertFlags.BOUNDARY_ALL
 
-    for (let v2 of v.neighbors) {
-      let mv2 = v2.customData[cd_dyn_vert] as MDynVert
+    for (const v2 of v.neighbors) {
+      const mv2 = v2.customData[cd_dyn_vert] as MDynVert
 
-      let co2 = tmp2.load(v2.co)
+      const co2 = tmp2.load(v2.co)
       let w = 0.0
 
       mv2.check(v2, fsetsAttr)
@@ -2073,13 +2073,13 @@ export function vertexSmooth(
       }
 
       if (proj !== 0.0) {
-        let w2 = 1.0 - proj
+        const w2 = 1.0 - proj
         w = v2.co.vectorDistance(v.co)
 
         w += (1.0 - w) * w2
 
         co2.sub(v.co)
-        let d = co2.dot(v.no)
+        const d = co2.dot(v.no)
 
         co2.addFac(v.no, -d).add(v.co)
       } else {
@@ -2098,24 +2098,24 @@ export function vertexSmooth(
   }
 }
 
-let smat = new Matrix4()
-let stmp1 = new Vector3()
-let stmp2 = new Vector3()
-let stmp3 = new Vector3()
+const smat = new Matrix4()
+const stmp1 = new Vector3()
+const stmp2 = new Vector3()
+const stmp3 = new Vector3()
 
 export function sortVertEdges(v: Vertex, edges = Array.from(v.edges), matout?: Matrix4): Edge[] {
   if (!Array.isArray(edges)) {
     edges = Array.from(edges)
   }
 
-  let d = v.no.dot(v.no)
+  const d = v.no.dot(v.no)
   if (d === 0.0 || isNaN(d) || !isFinite(d)) {
     v.calcNormal(true)
   }
 
   let ok = false
 
-  for (let v2 of v.neighbors) {
+  for (const v2 of v.neighbors) {
     stmp1.load(v2.co).sub(v.co)
 
     if (stmp1.dot(stmp1) > 0.0) {
@@ -2124,26 +2124,26 @@ export function sortVertEdges(v: Vertex, edges = Array.from(v.edges), matout?: M
     }
   }
 
-  let tan = ok ? stmp1 : undefined
+  const tan = ok ? stmp1 : undefined
 
   smat.makeIdentity()
   smat.makeNormalMatrix(v.no, tan)
   smat.invert()
 
-  let co1 = stmp1.load(v.co)
+  const co1 = stmp1.load(v.co)
   co1.multVecMatrix(smat)
 
-  let ths = getArrayTemp<number>(edges.length)
-  let idxs = getArrayTemp<number>(edges.length)
+  const ths = getArrayTemp<number>(edges.length)
+  const idxs = getArrayTemp<number>(edges.length)
 
   let thi = 0
 
-  for (let v2 of v.neighbors) {
-    let co2 = stmp2.load(v2.co)
+  for (const v2 of v.neighbors) {
+    const co2 = stmp2.load(v2.co)
     co2.multVecMatrix(smat)
 
     co2.sub(co1)
-    let th = Math.atan2(co2[1], co2[0])
+    const th = Math.atan2(co2[1], co2[0])
 
     ths[thi++] = th
   }
@@ -2153,7 +2153,7 @@ export function sortVertEdges(v: Vertex, edges = Array.from(v.edges), matout?: M
   //}
 
   let i = 0
-  for (let e of edges) {
+  for (const e of edges) {
     idxs[i] = e.index
     e.index = i++
   }
@@ -2212,7 +2212,7 @@ export const VAREA = 0,
 export type CotanData = number[]
 
 export function getCotanData(v: Vertex, _edges?: Edge[], _vdata: CotanData = []): CotanData {
-  let vdata: CotanData = _vdata
+  const vdata: CotanData = _vdata
   let edges = _edges
   let te
 
@@ -2220,7 +2220,7 @@ export function getCotanData(v: Vertex, _edges?: Edge[], _vdata: CotanData = [])
     edges = te = getArrayTemp<Edge>(v.valence)
 
     edges.length = 0
-    for (let e of v.edges) {
+    for (const e of v.edges) {
       edges.push(e)
     }
   }
@@ -2254,13 +2254,13 @@ export function getCotanData(v: Vertex, _edges?: Edge[], _vdata: CotanData = [])
       vi += VETOT
     }
   } else {
-    let mat = smat2
+    const mat = smat2
     mat.makeIdentity()
 
     sortVertEdges(v, edges, mat)
 
     let i = 0
-    for (let e of v.edges) {
+    for (const e of v.edges) {
       e.index = i++
     }
 
@@ -2269,23 +2269,23 @@ export function getCotanData(v: Vertex, _edges?: Edge[], _vdata: CotanData = [])
     let totarea = 0.0
 
     for (let i = 0; i < edges.length; i++) {
-      let i1 = i,
+      const i1 = i,
         i2 = (i + 1) % edges.length
-      let i3 = (i + 2) % edges.length
+      const i3 = (i + 2) % edges.length
 
-      let e1 = edges[i1],
+      const e1 = edges[i1],
         e2 = edges[i2]
-      let e3 = edges[i3]
+      const e3 = edges[i3]
 
-      let v1 = ctmp1.load(v.co)
-      let v2 = ctmp2.load(e1.otherVertex(v).co)
-      let v3 = ctmp3.load(e2.otherVertex(v).co)
-      let v4 = ctmp4.load(e3.otherVertex(v).co)
+      const v1 = ctmp1.load(v.co)
+      const v2 = ctmp2.load(e1.otherVertex(v).co)
+      const v3 = ctmp3.load(e2.otherVertex(v).co)
+      const v4 = ctmp4.load(e3.otherVertex(v).co)
 
-      let t1 = ctmp6.load(v2).sub(v.co).normalize()
-      let t2 = ctmp7.load(v3).sub(v.co).normalize()
+      const t1 = ctmp6.load(v2).sub(v.co).normalize()
+      const t2 = ctmp7.load(v3).sub(v.co).normalize()
 
-      let angle = Math.acos(t1.dot(t2) * 0.99999)
+      const angle = Math.acos(t1.dot(t2) * 0.99999)
       let area = math.tri_area(v1, v2, v3)
 
       v1.multVecMatrix(mat)
@@ -2295,17 +2295,17 @@ export function getCotanData(v: Vertex, _edges?: Edge[], _vdata: CotanData = [])
 
       //v1[2] = v2[2] = v3[2] = v4[2] = 0.0;
 
-      let angle1 = Vector3.normalizedDot3(v1, v2, v3)
-      let angle2 = Vector3.normalizedDot3(v1, v4, v3)
+      const angle1 = Vector3.normalizedDot3(v1, v2, v3)
+      const angle2 = Vector3.normalizedDot3(v1, v4, v3)
 
       //build voronoi area
       if (1) {
         //angle < Math.PI*0.5) {
-        let l1 = ctmp8.load(v2).sub(v1)
-        let l2 = ctmp9.load(v3).sub(v1)
+        const l1 = ctmp8.load(v2).sub(v1)
+        const l2 = ctmp9.load(v3).sub(v1)
 
-        let c1 = ctmp10.load(v2).interp(v1, 0.5)
-        let c2 = ctmp11.load(v3).interp(v1, 0.5)
+        const c1 = ctmp10.load(v2).interp(v1, 0.5)
+        const c2 = ctmp11.load(v3).interp(v1, 0.5)
 
         l1.load(c1).sub(v1).swapAxes(0, 1)
         l2.load(c2).sub(v1).swapAxes(0, 1)
@@ -2315,7 +2315,7 @@ export function getCotanData(v: Vertex, _edges?: Edge[], _vdata: CotanData = [])
         l1.add(c1)
         l2.add(c2)
 
-        let oldarea = area
+        const oldarea = area
         area = 0
         let ok = false
 
@@ -2356,7 +2356,7 @@ export function getCotanData(v: Vertex, _edges?: Edge[], _vdata: CotanData = [])
         area = 0.000001
       }
 
-      let vi2 = vi + 4 + e1.index * VETOT
+      const vi2 = vi + 4 + e1.index * VETOT
       vdata[vi2 + VAREA] = area
 
       let cot1 = Math.abs(Math.cos(angle1) / Math.sin(angle1))
@@ -2369,7 +2369,7 @@ export function getCotanData(v: Vertex, _edges?: Edge[], _vdata: CotanData = [])
         cot2 = 100000.0
       }
 
-      let cot = cot1 + cot2
+      const cot = cot1 + cot2
 
       if (cot < 0) {
         //cot = Math.abs(cot)*1.5;
@@ -2390,8 +2390,8 @@ export function getCotanData(v: Vertex, _edges?: Edge[], _vdata: CotanData = [])
 
     totw = 0.0
     for (let i = 0; i < edges.length; i++) {
-      let e1 = edges[i]
-      let vi2 = vi + 4 + e1.index * VETOT
+      const e1 = edges[i]
+      const vi2 = vi + 4 + e1.index * VETOT
 
       //vdata[vi2+VW] *= totarea;
 
@@ -2403,8 +2403,8 @@ export function getCotanData(v: Vertex, _edges?: Edge[], _vdata: CotanData = [])
     }
 
     for (let i = 0; i < edges.length; i++) {
-      let e1 = edges[i]
-      let vi2 = vi + 4 + e1.index * VETOT
+      const e1 = edges[i]
+      const vi2 = vi + 4 + e1.index * VETOT
 
       vdata[vi2 + VW] *= totw
     }
@@ -2421,24 +2421,24 @@ export function getCotanData(v: Vertex, _edges?: Edge[], _vdata: CotanData = [])
 }
 
 export function buildCotanVerts(mesh: Mesh, vertsIter: Iterable<Vertex>) {
-  let verts = ReusableIter.getSafeIter<Vertex>(vertsIter)
+  const verts = ReusableIter.getSafeIter<Vertex>(vertsIter)
 
   let i = 0
-  let vdata = [] as CotanData
+  const vdata = [] as CotanData
 
-  let vs = new Set<Vertex>()
-  for (let v of verts) {
+  const vs = new Set<Vertex>()
+  for (const v of verts) {
     vs.add(v)
-    for (let v2 of v.neighbors) {
+    for (const v2 of v.neighbors) {
       vs.add(v2)
     }
   }
 
-  for (let v of vs) {
-    let edges = getArrayTemp<Edge>(v.valence)
+  for (const v of vs) {
+    const edges = getArrayTemp<Edge>(v.valence)
 
     let j = 0
-    for (let e of v.edges) {
+    for (const e of v.edges) {
       edges[j++] = e
     }
 
@@ -2460,17 +2460,17 @@ export class CotanMap extends Map<Vertex, number[]> {
 }
 
 export function buildCotanMap(mesh: Mesh, verts: Iterable<Vertex>): CotanMap {
-  let map = new CotanMap()
+  const map = new CotanMap()
 
-  let vs = new Set<Vertex>(verts)
+  const vs = new Set<Vertex>(verts)
 
-  for (let v of verts) {
-    for (let v2 of v.neighbors) {
+  for (const v of verts) {
+    for (const v2 of v.neighbors) {
       vs.add(v2)
     }
   }
 
-  for (let v of vs) {
+  for (const v of vs) {
     let list = getCotanData(v)
     list = list.slice(0, list.length)
     map.set(v, list)
@@ -2479,11 +2479,11 @@ export function buildCotanMap(mesh: Mesh, verts: Iterable<Vertex>): CotanMap {
   return map
 }
 
-let cvtmp1 = new Vector3()
-let cvtmp2 = new Vector3()
-let cvtmp3 = new Vector3()
-let ccrets = util.cachering.fromConstructor(Vector3, 512)
-let cctmps = util.cachering.fromConstructor(Vector3, 16)
+const cvtmp1 = new Vector3()
+const cvtmp2 = new Vector3()
+const cvtmp3 = new Vector3()
+const ccrets = util.cachering.fromConstructor(Vector3, 512)
+const cctmps = util.cachering.fromConstructor(Vector3, 16)
 
 export function cotanMeanCurvature(v: Vertex, vdata: any, vi: number): Vector3 {
   if (!vdata) {
@@ -2494,28 +2494,28 @@ export function cotanMeanCurvature(v: Vertex, vdata: any, vi: number): Vector3 {
   vi += 4
 
   let totarea = 0
-  let totw = 0.0
+  const totw = 0.0
 
-  let sum1 = ccrets.next().zero()
+  const sum1 = ccrets.next().zero()
   let sum2 = 0.0
 
-  for (let v2 of v.neighbors) {
-    let cot1 = vdata[vi + VCTAN1]
-    let cot2 = vdata[vi + VCTAN2]
-    let area = vdata[vi + VAREA]
+  for (const v2 of v.neighbors) {
+    const cot1 = vdata[vi + VCTAN1]
+    const cot2 = vdata[vi + VCTAN2]
+    const area = vdata[vi + VAREA]
 
     totarea += area * area
   }
 
-  let n = cctmps.next()
+  const n = cctmps.next()
 
   let i = 0
-  for (let v2 of v.neighbors) {
-    let cot1 = vdata[vi + VCTAN1]
-    let cot2 = vdata[vi + VCTAN2]
-    let area = vdata[vi + VAREA]
+  for (const v2 of v.neighbors) {
+    const cot1 = vdata[vi + VCTAN1]
+    const cot2 = vdata[vi + VCTAN2]
+    const area = vdata[vi + VAREA]
 
-    let w = cot1 + cot2
+    const w = cot1 + cot2
     //w = Math.abs(w);
 
     n.load(v.no).add(v2.no).normalize()
@@ -2538,28 +2538,28 @@ export function cotanMeanCurvature(v: Vertex, vdata: any, vi: number): Vector3 {
 }
 
 export function cotanVertexSmooth(mesh: Mesh, verts: Iterable<Vertex> = mesh.verts, fac = 0.5, proj = 0.0) {
-  let ret = buildCotanVerts(mesh, verts)
+  const ret = buildCotanVerts(mesh, verts)
 
-  let vdata = ret.vertexData
-  let vs = ret.allVerts
+  const vdata = ret.vertexData
+  const vs = ret.allVerts
 
   console.log(vs, vdata)
 
-  for (let v of verts) {
+  for (const v of verts) {
     let totw = 0.0
-    let co1 = cvtmp1.zero()
+    const co1 = cvtmp1.zero()
 
     let vi = v.index + 4
     //let etot = vdata[vi];
 
-    let report = Math.random() > 0.99
+    const report = Math.random() > 0.99
     if (report) {
       console.log('start')
     }
 
-    for (let v2 of v.neighbors) {
-      let cot = vdata[vi + VW]
-      let area = vdata[vi + VAREA]
+    for (const v2 of v.neighbors) {
+      const cot = vdata[vi + VW]
+      const area = vdata[vi + VAREA]
 
       let w = cot * 0.5 + 0.5
 
@@ -2567,8 +2567,8 @@ export function cotanVertexSmooth(mesh: Mesh, verts: Iterable<Vertex> = mesh.ver
         w = Math.abs(w)
       }
 
-      let co2 = cvtmp2
-      let vi2 = v2.index
+      const co2 = cvtmp2
+      const vi2 = v2.index
 
       co2[0] = vdata[vi2]
       co2[1] = vdata[vi2 + 1]
@@ -2577,7 +2577,7 @@ export function cotanVertexSmooth(mesh: Mesh, verts: Iterable<Vertex> = mesh.ver
       if (proj > 0.0) {
         co2.sub(v.co)
 
-        let d = co2.dot(v.no)
+        const d = co2.dot(v.no)
         co2.addFac(v.no, -d).add(v.co)
       }
 
@@ -2599,14 +2599,14 @@ export function cotanVertexSmooth(mesh: Mesh, verts: Iterable<Vertex> = mesh.ver
   }
 }
 
-let quad_lctx = new LogContext()
+const quad_lctx = new LogContext()
 
 export function quadrilateFaces(mesh: Mesh, faces: Iterable<Face>, quadflag = TriQuadFlags.DEFAULT, lctx?: LogContext) {
   faces = ReusableIter.getSafeIter(faces)
 
-  let flag = MeshFlags.TEMP3
+  const flag = MeshFlags.TEMP3
 
-  for (let f of faces) {
+  for (const f of faces) {
     f.flag &= ~flag
 
     if (!f.isQuad() && !f.isTri()) {
@@ -2634,7 +2634,7 @@ export function quadrilateFaces(mesh: Mesh, faces: Iterable<Face>, quadflag = Tr
     }
   }
 
-  for (let f of faces) {
+  for (const f of faces) {
     if (f.eid < 0) {
       continue
     }
@@ -2645,13 +2645,13 @@ export function quadrilateFaces(mesh: Mesh, faces: Iterable<Face>, quadflag = Tr
   lctx.onnew = oldnew
 
   if (newfaces) {
-    for (let f of faces) {
+    for (const f of faces) {
       if (f.eid >= 0) {
         newfaces.add(f)
       }
     }
 
-    for (let f of newfaces) {
+    for (const f of newfaces) {
       if (f.eid < 0) {
         console.error('Eek!')
         newfaces.delete(f)
@@ -2660,7 +2660,7 @@ export function quadrilateFaces(mesh: Mesh, faces: Iterable<Face>, quadflag = Tr
   } else {
     newfaces = new Set()
 
-    for (let f of faces) {
+    for (const f of faces) {
       if (f.eid >= 0) {
         newfaces.add(f)
       }
@@ -2671,14 +2671,14 @@ export function quadrilateFaces(mesh: Mesh, faces: Iterable<Face>, quadflag = Tr
 }
 
 export function dissolveEdgeLoops(mesh: Mesh, edges: Iterable<Edge>, quadrilate = false, lctx?: LogContext): void {
-  let vs = new Set<Vertex>()
+  const vs = new Set<Vertex>()
   let fs
 
   if (quadrilate) {
     fs = new Set()
 
-    for (let e of edges) {
-      for (let l of e.loops) {
+    for (const e of edges) {
+      for (const l of e.loops) {
         fs.add(l.f)
         l.v.flag |= MeshFlags.UPDATE
         l.e.flag |= MeshFlags.UPDATE
@@ -2689,7 +2689,7 @@ export function dissolveEdgeLoops(mesh: Mesh, edges: Iterable<Edge>, quadrilate 
 
   edges = ReusableIter.getSafeIter(edges)
 
-  let flag1 = MeshFlags.TEMP2
+  const flag1 = MeshFlags.TEMP2
 
   /*
   for (let e of edges) {
@@ -2706,16 +2706,16 @@ export function dissolveEdgeLoops(mesh: Mesh, edges: Iterable<Edge>, quadrilate 
     e.flag |= flag1;
   }*/
 
-  for (let e of edges) {
+  for (const e of edges) {
     vs.add(e.v1)
     vs.add(e.v2)
   }
 
-  for (let e of edges) {
+  for (const e of edges) {
     mesh.dissolveEdge(e, lctx)
   }
 
-  for (let v of vs) {
+  for (const v of vs) {
     if (v.valence === 2) {
       mesh.joinTwoEdges(v, lctx)
     } else if (v.valence === 0) {
@@ -2740,7 +2740,7 @@ export function getEdgeLoop(e: Edge) {
     startl = startl.radial_next
   }
 
-  let list = []
+  const list = []
 
   let l = startl
   let _i = 0
@@ -2796,13 +2796,13 @@ export function getEdgeLoop(e: Edge) {
     }
   } while (l !== e.l)
 
-  let flag = MeshFlags.TEMP1
+  const flag = MeshFlags.TEMP1
 
-  for (let e of list) {
+  for (const e of list) {
     e.flag &= ~flag
   }
   let ei = 0
-  for (let e of list) {
+  for (const e of list) {
     if (!(e.flag & flag)) {
       list[ei++] = e
     }
@@ -2821,12 +2821,12 @@ export function getEdgeLoop(e: Edge) {
 
 export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogContext): void {
   //faces = ReusableIter.getSafeIter(faces);
-  let faces = facesIter instanceof Set ? facesIter : new Set(facesIter)
+  const faces = facesIter instanceof Set ? facesIter : new Set(facesIter)
 
-  let flag = MeshFlags.TEMP1
-  let flag2 = MeshFlags.TEMP2
+  const flag = MeshFlags.TEMP1
+  const flag2 = MeshFlags.TEMP2
 
-  for (let f of faces) {
+  for (const f of faces) {
     f.flag &= ~flag
 
     if (f.lists.length > 1) {
@@ -2834,8 +2834,8 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
     }
   }
 
-  let stack = [] as Face[]
-  for (let f of faces) {
+  const stack = [] as Face[]
+  for (const f of faces) {
     if (f.flag & flag) {
       continue
     }
@@ -2845,14 +2845,14 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
 
     f.flag |= flag
 
-    let region = [] as Face[]
+    const region = [] as Face[]
 
     while (stack.length > 0) {
-      let f2 = stack.pop()!
+      const f2 = stack.pop()!
 
       region.push(f2)
 
-      for (let l of f2.loops) {
+      for (const l of f2.loops) {
         let bad = l.radial_next === l || l !== l.radial_next.radial_next
         bad = bad || !!(l.radial_next.f.flag & flag)
         bad = bad || !faces.has(l.radial_next.f)
@@ -2861,16 +2861,16 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
           continue
         }
 
-        let f3 = l.radial_next.f
+        const f3 = l.radial_next.f
         f3.flag |= flag
 
         stack.push(f3)
       }
     }
 
-    for (let f of region) {
-      for (let l of f.loops) {
-        for (let e of l.v.edges) {
+    for (const f of region) {
+      for (const l of f.loops) {
+        for (const e of l.v.edges) {
           e.flag &= ~flag
           e.flag |= flag2
         }
@@ -2879,10 +2879,10 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
 
     let startv: Vertex | undefined, startl: Loop | undefined
     let totbound = 0
-    let ls = new Set<Loop>()
+    const ls = new Set<Loop>()
 
-    for (let f of region) {
-      for (let l of f.loops) {
+    for (const f of region) {
+      for (const l of f.loops) {
         l.v.flag &= ~flag
 
         let ok = l.radial_next === l
@@ -2908,9 +2908,9 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
       throw new MeshError('Dissolve face error')
     }
 
-    let loops: Array<[Vertex[], Loop[]]> = []
+    const loops: Array<[Vertex[], Loop[]]> = []
 
-    for (let l1 of ls) {
+    for (const l1 of ls) {
       if (!(l1.e.flag & flag)) {
         continue
       }
@@ -2919,8 +2919,8 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
       let v = l1.v
       let l = l1
 
-      let loop: Loop[] = []
-      let verts: Vertex[] = []
+      const loop: Loop[] = []
+      const verts: Vertex[] = []
 
       loops.push([verts, loop])
 
@@ -2943,11 +2943,11 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
         let ok = false
         let count = 0
 
-        for (let e of v.edges) {
+        for (const e of v.edges) {
           if (e.flag & flag) {
             count++
 
-            for (let l2 of e.loops) {
+            for (const l2 of e.loops) {
               if (faces.has(l2.f)) {
                 l = l2
                 ok = true
@@ -2975,7 +2975,7 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
     let outer: number | undefined, maxlen: number | undefined
     let i = 0
 
-    for (let [vs, ls] of loops) {
+    for (const [vs, ls] of loops) {
       let dis = 0.0
       for (let i = 0; i < vs.length; i++) {
         dis += vs[i].co.vectorDistanceSqr(vs[(i + 1) % vs.length].co)
@@ -2992,7 +2992,7 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
     }
 
     //move outer boundary to first
-    let t = loops[0]
+    const t = loops[0]
     loops[0] = loops[outer]
     loops[outer] = t
 
@@ -3000,17 +3000,17 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
 
     const outerLoop = loops[outer]
 
-    let f2 = mesh.makeFace(outerLoop[0], undefined, undefined, lctx)
+    const f2 = mesh.makeFace(outerLoop[0], undefined, undefined, lctx)
     mesh.copyElemData(f2, f)
     f2.flag |= MeshFlags.UPDATE
 
     let totbad = 0
     i = 0
 
-    for (let l of f2.loops) {
+    for (const l of f2.loops) {
       l.v.flag |= MeshFlags.UPDATE
 
-      let l0 = outerLoop[1][i]
+      const l0 = outerLoop[1][i]
       mesh.copyElemData(l, l0)
 
       let l2 = l.radial_next
@@ -3036,7 +3036,7 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
     for (let i = 1; i < loops.length; i++) {
       //hole loops should go in opposite direction from boundary
 
-      let n = math.normal_poly(loops[i][0].map((v) => v.co))
+      const n = math.normal_poly(loops[i][0].map((v) => v.co))
 
       console.log(n.dot(f2.no), n, f2.no)
 
@@ -3044,12 +3044,12 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
         loops[i][0].reverse()
       }
 
-      let list = mesh.makeHole(f2, loops[i][0], undefined, lctx)
+      const list = mesh.makeHole(f2, loops[i][0], undefined, lctx)
 
       let li = 0
-      let ls = loops[i][1]
-      for (let l of list) {
-        let l2 = ls[li]
+      const ls = loops[i][1]
+      for (const l of list) {
+        const l2 = ls[li]
 
         mesh.copyElemData(l, l2)
         li++
@@ -3060,27 +3060,27 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
     f2.calcNormal()
   }
 
-  let vs = new Set<Vertex>()
-  let es = new Set<Edge>()
+  const vs = new Set<Vertex>()
+  const es = new Set<Edge>()
 
-  for (let f of faces) {
-    for (let l of f.loops) {
+  for (const f of faces) {
+    for (const l of f.loops) {
       vs.add(l.v)
       es.add(l.e)
     }
   }
 
-  for (let f of faces) {
+  for (const f of faces) {
     mesh.killFace(f, lctx)
   }
 
-  for (let e of es) {
+  for (const e of es) {
     if (e.flag & flag2) {
       mesh.killEdge(e, lctx)
     }
   }
 
-  for (let v of vs) {
+  for (const v of vs) {
     if (v.valence === 0) {
       mesh.killVertex(v, undefined, lctx)
     }
@@ -3088,20 +3088,20 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
 }
 
 export function delauney3D(mesh: Mesh, vs: Iterable<Vertex> = mesh.verts, lctx?: LogContext) {
-  let bvh = mesh.getBVH({
+  const bvh = mesh.getBVH({
     autoUpdate: true,
     wireVerts : true,
     deformMode: false,
     leafLimit : 32,
-    force: false,
-    useGrids: false
+    force     : false,
+    useGrids  : false,
   })
 
   let i = 0
 
-  for (let v of mesh.verts) {
-    let nearestVs = bvh.nearestVertsN(v.co, 7) as Set<Vertex>
-    for (let v2 of nearestVs) {
+  for (const v of mesh.verts) {
+    const nearestVs = bvh.nearestVertsN(v.co, 7) as Set<Vertex>
+    for (const v2 of nearestVs) {
       if (v2 === v) {
         continue
       }

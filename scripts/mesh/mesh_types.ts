@@ -1,11 +1,11 @@
 /**
- * 
+ *
  * @module mesh
- * 
+ *
  * A fair number of classes in this file temporarily assigns undefined
  * to non-undefined-able properties for optimization purposes. Such a technique
  * should be use sparingly despite its prevalence in this file.
- * 
+ *
  * There are a bunch of low-lever cached iterators that are optimized
  * for GC.
  */
@@ -32,9 +32,9 @@ import {EDGE_LINKED_LISTS} from '../core/const.js'
 
 export {EDGE_LINKED_LISTS} from '../core/const.js'
 
-let quat_temps = util.cachering.fromConstructor(Quat, 512)
-let mat_temps = util.cachering.fromConstructor(Matrix4, 256)
-let vec3_temps = util.cachering.fromConstructor(Vector3, 1024)
+const quat_temps = util.cachering.fromConstructor(Quat, 512)
+const mat_temps = util.cachering.fromConstructor(Matrix4, 256)
+const vec3_temps = util.cachering.fromConstructor(Vector3, 1024)
 
 export class MeshIterStack<type> extends Array<type> {
   cur: number = 0
@@ -91,12 +91,12 @@ export class VertLoopIter {
     this.ret.value = undefined
     this.ret.done = false
 
-    let flag = MeshFlags.ITER_TEMP2a
+    const flag = MeshFlags.ITER_TEMP2a
 
     //clear temp flag
 
     for (let i = 0; i < v.edges.length; i++) {
-      let e = v.edges[i]
+      const e = v.edges[i]
 
       if (!e.l) {
         continue
@@ -127,17 +127,17 @@ export class VertLoopIter {
       return this.finish()
     }
 
-    let ret = this.ret
+    const ret = this.ret
     ret.done = false
 
-    let v = this.v!
+    const v = this.v!
 
     while (this.i < v.edges.length && !v.edges[this.i].l) {
       this.l = undefined
       this.i++
     }
 
-    let flag = MeshFlags.ITER_TEMP2a
+    const flag = MeshFlags.ITER_TEMP2a
 
     if (this.i >= v.edges.length) {
       if (this.l && !(this.l.flag & flag)) {
@@ -152,7 +152,7 @@ export class VertLoopIter {
       return this.finish()
     }
 
-    let e = this.v!.edges[this.i]
+    const e = this.v!.edges[this.i]
 
     if (this.l === undefined) {
       this.l = e.l
@@ -160,7 +160,7 @@ export class VertLoopIter {
 
     let l = this.l!
 
-    let skip = l.f.flag & MeshFlags.ITER_TEMP2a
+    const skip = l.f.flag & MeshFlags.ITER_TEMP2a
     l.f.flag |= MeshFlags.ITER_TEMP2a
 
     if (this.l === e.l!.radial_prev || this.l === this.l!.radial_next) {
@@ -190,7 +190,7 @@ for (let i = 0; i < vertiters_l.length; i++) {
 }
 vertiters_l.cur = 0
 
-let vnistack = new MeshIterStack<VertNeighborIter>(512)
+const vnistack = new MeshIterStack<VertNeighborIter>(512)
 vnistack.cur = 0
 
 export class VertNeighborIterR extends ReusableIter<Vertex> {
@@ -211,7 +211,7 @@ export class VertNeighborIterR extends ReusableIter<Vertex> {
   }
 }
 
-let vniring = util.cachering.fromConstructor(VertNeighborIterR, 512)
+const vniring = util.cachering.fromConstructor(VertNeighborIterR, 512)
 
 export class VertNeighborIter {
   ret: IteratorResult<Vertex>
@@ -258,15 +258,15 @@ export class VertNeighborIter {
   }
 
   next(): IteratorResult<Vertex> {
-    let ret = this.ret
-    let v = this.v!
+    const ret = this.ret
+    const v = this.v!
 
     if (this.i >= v.valence) {
       this.finish()
       return this.ret
     }
 
-    let e = v.edges[this.i]
+    const e = v.edges[this.i]
     this.i++
 
     ret.value = e.otherVertex(v)
@@ -351,7 +351,7 @@ import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstruc
 import {KnotDataLayer} from '../curve/curve_knot'
 import {DispLayerVert} from './mesh_displacement'
 import {CDRef} from './customdata'
-import { View3D } from '../../types/scripts/editors/view3d/view3d'
+import {View3D} from '../../types/scripts/editors/view3d/view3d'
 
 export class Element<TYPE extends number = number> {
   static STRUCT = nstructjs.inlineRegister(
@@ -415,7 +415,7 @@ mesh.Element {
   }
 
   findLayer<type>(typeName: string): type | undefined {
-    for (let data of this.customData) {
+    for (const data of this.customData) {
       if (data.typeName === typeName) {
         return data as type
       }
@@ -505,12 +505,12 @@ export class VertFaceIter {
     this.ret.value = undefined
     this.ret.done = false
 
-    let flag = MeshFlags.ITER_TEMP2a
+    const flag = MeshFlags.ITER_TEMP2a
 
     //clear temp flag
 
     for (let i = 0; i < v.edges.length; i++) {
-      let e = v.edges[i]
+      const e = v.edges[i]
 
       if (!e.l) {
         continue
@@ -536,17 +536,17 @@ export class VertFaceIter {
   next(): IteratorResult<Face> {
     this.count++
 
-    let flag = MeshFlags.ITER_TEMP2a
+    const flag = MeshFlags.ITER_TEMP2a
 
     if (this.count > MAX_VERT_EDGES) {
       console.warn('infinite loop detected')
       return this.finish()
     }
 
-    let ret = this.ret
+    const ret = this.ret
     ret.done = false
 
-    let v = this.v!
+    const v = this.v!
 
     while (this.i < v.edges.length && !v.edges[this.i].l) {
       this.l = undefined
@@ -566,15 +566,15 @@ export class VertFaceIter {
       return this.finish()
     }
 
-    let e = this.v!.edges[this.i]
+    const e = this.v!.edges[this.i]
 
     if (this.l === undefined) {
       this.l = e.l
     }
 
-    let l = this.l!
+    const l = this.l!
 
-    let skip = l.f.flag & MeshFlags.ITER_TEMP2a
+    const skip = l.f.flag & MeshFlags.ITER_TEMP2a
     l.f.flag |= MeshFlags.ITER_TEMP2a
 
     if (this.l === e.l!.radial_prev || this.l === this.l!.radial_next) {
@@ -892,7 +892,7 @@ class VertexReader {
   }
 
   set type(f: number) {
-    this.v.type = f as typeof MeshTypes['VERTEX']
+    this.v.type = f as (typeof MeshTypes)['VERTEX']
   }
 
   set index(f: number) {
@@ -948,7 +948,7 @@ export function traceset(i: any) {
   }
 }
 
-export class Vertex extends Element<typeof MeshTypes['VERTEX']> {
+export class Vertex extends Element<(typeof MeshTypes)['VERTEX']> {
   co: Vector3
   no: Vector3
   edges: Edge[]
@@ -1037,7 +1037,7 @@ mesh.Vertex {
    */
   calcNormal(doFaces = true): this {
     if (doFaces) {
-      for (let f of this.faces) {
+      for (const f of this.faces) {
         f.calcNormal()
       }
     }
@@ -1045,8 +1045,8 @@ mesh.Vertex {
     let tot = 0.0
     this.no.zero()
 
-    for (let e of this.edges) {
-      for (let l of e.loops) {
+    for (const e of this.edges) {
+      for (const l of e.loops) {
         this.no.addFac(l.f.no, l.f.area)
         tot += l.f.area
       }
@@ -1067,8 +1067,8 @@ mesh.Vertex {
   }
 
   toJSON(): any {
-    let edges = []
-    for (let e of this.edges) {
+    const edges = []
+    for (const e of this.edges) {
       edges.push(e.eid)
     }
 
@@ -1088,11 +1088,11 @@ mesh.Vertex {
 
   get faces(): VertFaceIter {
     //return this.faces2;
-    let i = vertiters_f.cur
-    let stack = vertiters_f
+    const i = vertiters_f.cur
+    const stack = vertiters_f
 
     for (let j = 0; j < stack.length; j++) {
-      let i2 = (i + j) % stack.length
+      const i2 = (i + j) % stack.length
 
       if (stack[i2].done) {
         stack.cur++
@@ -1107,7 +1107,7 @@ mesh.Vertex {
   }
 
   isBoundary(includeWire = false): boolean {
-    for (let e of this.edges) {
+    for (const e of this.edges) {
       if (!e.l) {
         if (includeWire) {
           return true
@@ -1162,7 +1162,7 @@ export interface PrivateVertexConstructor extends IVertexConstructor {
   new (co?: Vector3): Vertex
 }
 
-export class Handle extends Element<typeof MeshTypes['HANDLE']> {
+export class Handle extends Element<(typeof MeshTypes)['HANDLE']> {
   co: Vector3
   mode: HandleTypes
   owner: Edge
@@ -1240,11 +1240,11 @@ Handle.STRUCT =
 
 nstructjs.register(Handle)
 
-let _evaluate_tmp_vs = util.cachering.fromConstructor(Vector3, 512)
-let _evaluate_vs = util.cachering.fromConstructor(Vector3, 512)
-let _arc_evaluate_vs = util.cachering.fromConstructor(Vector3, 512)
+const _evaluate_tmp_vs = util.cachering.fromConstructor(Vector3, 512)
+const _evaluate_vs = util.cachering.fromConstructor(Vector3, 512)
+const _arc_evaluate_vs = util.cachering.fromConstructor(Vector3, 512)
 
-let PS = 0,
+const PS = 0,
   PNUM = 2,
   PTOT = 3
 
@@ -1292,33 +1292,33 @@ class ArcLengthCache {
   }
 
   _calcS(t: number, steps = 512): number {
-    let dt = t / steps
-    let e = this.e
+    const dt = t / steps
+    const e = this.e
 
     const v1 = e.v1.co,
       v2 = e.v2.co,
       h1 = e.h1.co,
       h2 = e.h2.co
 
-    let x1 = v1[0],
+    const x1 = v1[0],
       x2 = h1[0],
       x3 = h2[0],
       x4 = v2[0]
-    let y1 = v1[1],
+    const y1 = v1[1],
       y2 = h1[1],
       y3 = h2[1],
       y4 = v2[1]
-    let z1 = v1[2],
+    const z1 = v1[2],
       z2 = h1[2],
       z3 = h2[2],
       z4 = v2[2]
-    let sqrt = Math.sqrt
+    const sqrt = Math.sqrt
 
     let sum = 0.0
     t = 0.0
 
     for (let i = 0; i < steps; i++, t += dt) {
-      let ds =
+      const ds =
         3 *
         sqrt(
           (2 * (2 * x2 - x3 - x1) * t + x1 - x2 + (3 * x3 - x4 - 3 * x2 + x1) * t ** 2) ** 2 +
@@ -1326,7 +1326,7 @@ class ArcLengthCache {
             (2 * (2 * z2 - z3 - z1) * t + z1 - z2 + (3 * z3 - z4 - 3 * z2 + z1) * t ** 2) ** 2
         )
 
-      let ds2 =
+      const ds2 =
         (6 *
           ((2 * (2 * y2 - y3 - y1) * t + y1 - y2 + (3 * y3 - y4 - 3 * y2 + y1) * t ** 2) *
             ((3 * y3 - y4 - 3 * y2 + y1) * t + 2 * y2 - y3 - y1) +
@@ -1349,10 +1349,10 @@ class ArcLengthCache {
   update() {
     this.regen = 0
 
-    let e = this.e
+    const e = this.e
     e._length = this.length = this._calcS(1.0)
 
-    let steps = this.size * 4
+    const steps = this.size * 4
     let t = 0.0,
       dt = 1.0 / steps
 
@@ -1361,21 +1361,21 @@ class ArcLengthCache {
       h1 = e.h1.co,
       h2 = e.h2.co
 
-    let x1 = v1[0],
+    const x1 = v1[0],
       x2 = h1[0],
       x3 = h2[0],
       x4 = v2[0]
-    let y1 = v1[1],
+    const y1 = v1[1],
       y2 = h1[1],
       y3 = h2[1],
       y4 = v2[1]
-    let z1 = v1[2],
+    const z1 = v1[2],
       z2 = h1[2],
       z3 = h2[2],
       z4 = v2[2]
     let length = 0.0
-    let sqrt = Math.sqrt
-    let table = this.table
+    const sqrt = Math.sqrt
+    const table = this.table
 
     table.length = PTOT * this.size
 
@@ -1383,10 +1383,10 @@ class ArcLengthCache {
       table[i] = 0.0
     }
 
-    let real_length = 0
+    const real_length = 0
 
     for (let i = 0; i < steps; i++, t += dt) {
-      let ds =
+      const ds =
         3 *
         sqrt(
           (2 * (2 * x2 - x3 - x1) * t + x1 - x2 + (3 * x3 - x4 - 3 * x2 + x1) * t ** 2) ** 2 +
@@ -1394,7 +1394,7 @@ class ArcLengthCache {
             (2 * (2 * z2 - z3 - z1) * t + z1 - z2 + (3 * z3 - z4 - 3 * z2 + z1) * t ** 2) ** 2
         )
 
-      let ds2 =
+      const ds2 =
         (6 *
           ((2 * (2 * y2 - y3 - y1) * t + y1 - y2 + (3 * y3 - y4 - 3 * y2 + y1) * t ** 2) *
             ((3 * y3 - y4 - 3 * y2 + y1) * t + 2 * y2 - y3 - y1) +
@@ -1408,7 +1408,7 @@ class ArcLengthCache {
             (2 * (2 * z2 - z3 - z1) * t + z1 - z2 + (3 * z3 - z4 - 3 * z2 + z1) * t ** 2) ** 2
         )
 
-      let df = dt
+      const df = dt
 
       let ti = Math.floor((length / this.length) * this.size * 0.9999)
       ti = Math.min(Math.max(ti, 0), this.size - 1) * PTOT
@@ -1445,7 +1445,7 @@ class ArcLengthCache {
     let ti = (((this.size - 1) * s) / this.e.length) * 0.99999
     ti = Math.min(Math.max(ti, 0.0), this.size - 1)
 
-    let u = Math.fract(ti)
+    const u = Math.fract(ti)
     ti = Math.floor(ti) * PTOT
     let t
 
@@ -1454,9 +1454,9 @@ class ArcLengthCache {
     } else if (ti / PTOT >= this.size - 1) {
       return 1.0
     } else {
-      let dt = 50
-      let t1 = this.table[ti]
-      let t2 = this.table[ti + PTOT]
+      const dt = 50
+      const t1 = this.table[ti]
+      const t2 = this.table[ti + PTOT]
 
       return t1 + (t2 - t1) * u
     }
@@ -1474,7 +1474,7 @@ class ArcLengthCache {
   }
 }
 
-let eliter_stack = new MeshIterStack<EdgeLoopIter>(1024)
+const eliter_stack = new MeshIterStack<EdgeLoopIter>(1024)
 eliter_stack.cur = 0
 
 class EdgeLoopIter {
@@ -1533,7 +1533,7 @@ class EdgeLoopIter {
       return this.finish()
     }
 
-    let l = this.l
+    const l = this.l
 
     this.l = this.l.radial_next
     if (this.l === this.e.l) {
@@ -1555,7 +1555,7 @@ for (let i = 0; i < eliter_stack.length; i++) {
   eliter_stack[i] = new EdgeLoopIter()
 }
 
-let eviter_stack = new MeshIterStack<EdgeVertIter>(4192)
+const eviter_stack = new MeshIterStack<EdgeVertIter>(4192)
 eviter_stack.cur = 0
 
 class EdgeVertIter {
@@ -1595,7 +1595,7 @@ class EdgeVertIter {
 
     this.i++
 
-    let ret = this.ret
+    const ret = this.ret
     ret.value = v
 
     return ret
@@ -1621,7 +1621,7 @@ for (let i = 0; i < eviter_stack.length; i++) {
   eviter_stack[i] = new EdgeVertIter()
 }
 
-let efiter_stack = new MeshIterStack<EdgeFaceIter>(2048)
+const efiter_stack = new MeshIterStack<EdgeFaceIter>(2048)
 efiter_stack.cur = 0
 let efiter_ring: util.cachering<EdgeFaceIterR>
 
@@ -1676,7 +1676,7 @@ export class EdgeFaceIter implements Iterator<Face> {
     this.ret.done = false
     this.ret.value = undefined
 
-    let flag = (this.flag = 1 << efiter_flag)
+    const flag = (this.flag = 1 << efiter_flag)
 
     let l = e.l
     let _i = 0
@@ -1701,9 +1701,9 @@ export class EdgeFaceIter implements Iterator<Face> {
       return this.finish()
     }
 
-    let flag = this.flag
+    const flag = this.flag
     let l = this.l
-    let e = this.e!
+    const e = this.e!
 
     while (l.f.flag & flag && this.i < MAX_EDGE_FACES && l !== e.l) {
       l = l.radial_next
@@ -1760,7 +1760,7 @@ for (let i = 0; i < efiter_stack.length; i++) {
   efiter_stack[i] = new EdgeFaceIter()
 }
 
-export class Edge extends Element<typeof MeshTypes['EDGE']> {
+export class Edge extends Element<(typeof MeshTypes)['EDGE']> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -1835,7 +1835,7 @@ mesh.Edge {
       return 0
     }
 
-    let flag = MeshFlags.ITER_TEMP3
+    const flag = MeshFlags.ITER_TEMP3
 
     let l = this.l
     let _i = 0
@@ -1921,14 +1921,14 @@ mesh.Edge {
   }
 
   calcScreenLength(view3d: View3D): number {
-    let steps = 32
+    const steps = 32
     let s = 0,
       ds = 1.0 / (steps - 1)
     let lastco: Vector3 | undefined = undefined
     let sum = 0.0
 
     for (let i = 0; i < steps; i++, s += ds) {
-      let co = this.evaluate(s)
+      const co = this.evaluate(s)
       view3d.project(co)
 
       if (lastco !== undefined) {
@@ -1989,7 +1989,7 @@ mesh.Edge {
   }
 
   otherHandle(v_or_h: Vertex | Handle): Handle {
-    let h = v_or_h instanceof Vertex ? this.handle(v_or_h) : v_or_h
+    const h = v_or_h instanceof Vertex ? this.handle(v_or_h) : v_or_h
     if (h === this.h1) {
       return this.h2 as Handle
     } else if (h === this.h2) {
@@ -2004,13 +2004,13 @@ mesh.Edge {
       return
     }
 
-    let dohandle = (h: Handle) => {
-      let v = this.vertex(h)
+    const dohandle = (h: Handle) => {
+      const v = this.vertex(h)
       //v = this.otherVertex(v);
 
       if (h.mode === HandleTypes.AUTO && v.valence === 2) {
-        let e2 = v.otherEdge(this)
-        let v2 = e2.otherVertex(v)
+        const e2 = v.otherEdge(this)
+        const v2 = e2.otherVertex(v)
 
         h.co
           .load(this.otherVertex(v).co)
@@ -2040,44 +2040,44 @@ mesh.Edge {
 
       return this.arcCache.evaluate(s)
     } else {
-      let p = _evaluate_vs.next().load(this.v1.co)
+      const p = _evaluate_vs.next().load(this.v1.co)
 
       return p.interp(this.v2.co, s / this.length)
     }
   }
 
   arcDerivative(s: number): Vector3 {
-    let df = 0.001
+    const df = 0.001
 
     if (s < 1.0 - df && s > df) {
-      let a = this.arcEvaluate(s - df)
-      let b = this.arcEvaluate(s + df)
+      const a = this.arcEvaluate(s - df)
+      const b = this.arcEvaluate(s + df)
       return a.sub(b).mulScalar(0.5 / df)
     } else if (s < 1.0 - df) {
-      let a = this.arcEvaluate(s)
-      let b = this.arcEvaluate(s + df)
+      const a = this.arcEvaluate(s)
+      const b = this.arcEvaluate(s + df)
       return a.sub(b).mulScalar(1.0 / df)
     } else {
-      let a = this.arcEvaluate(s - df)
-      let b = this.arcEvaluate(s)
+      const a = this.arcEvaluate(s - df)
+      const b = this.arcEvaluate(s)
       return a.sub(b).mulScalar(1.0 / df)
     }
   }
 
   arcDerivative2(s: number) {
-    let df = 0.001
+    const df = 0.001
 
     if (s < 1.0 - df && s > df) {
-      let a = this.arcDerivative(s - df)
-      let b = this.arcDerivative(s + df)
+      const a = this.arcDerivative(s - df)
+      const b = this.arcDerivative(s + df)
       return a.sub(b).mulScalar(0.5 / df)
     } else if (s < 1.0 - df) {
-      let a = this.arcDerivative(s)
-      let b = this.arcDerivative(s + df)
+      const a = this.arcDerivative(s)
+      const b = this.arcDerivative(s + df)
       return a.sub(b).mulScalar(1.0 / df)
     } else {
-      let a = this.arcDerivative(s - df)
-      let b = this.arcDerivative(s)
+      const a = this.arcDerivative(s - df)
+      const b = this.arcDerivative(s)
       return a.sub(b).mulScalar(1.0 / df)
     }
   }
@@ -2087,12 +2087,12 @@ mesh.Edge {
       t = 1.0 - t
     }
 
-    let k1 = this.v1.findLayer<KnotDataLayer>('knot')!
-    let k2 = this.v2.findLayer<KnotDataLayer>('knot')!
+    const k1 = this.v1.findLayer<KnotDataLayer>('knot')!
+    const k2 = this.v2.findLayer<KnotDataLayer>('knot')!
 
     if (k1) {
-      let t1 = k1.tilt
-      let t2 = k2.tilt
+      const t1 = k1.tilt
+      const t2 = k2.tilt
       return t1 + (t2 - t1) * t
     } else {
       return 0.0
@@ -2106,11 +2106,11 @@ mesh.Edge {
   arcNormal(s: number): Vector3 {
     //return this.arcDerivative2(s).normalize();
 
-    let flag = this.flag
+    const flag = this.flag
 
     function getUp(dv: Vector3) {
       dv.normalize()
-      let x = Math.abs(dv[0]),
+      const x = Math.abs(dv[0]),
         y = Math.abs(dv[1]),
         z = Math.abs(dv[2])
       let axis: Number3
@@ -2119,7 +2119,7 @@ mesh.Edge {
       else if (y < x && y < z) axis = 1
       else axis = 2
 
-      let up = _evaluate_tmp_vs.next().zero()
+      const up = _evaluate_tmp_vs.next().zero()
       up[axis] = 1.0
 
       //if (flag & MeshFlags.CURVE_FLIP) {
@@ -2128,21 +2128,21 @@ mesh.Edge {
       return up
     }
 
-    let t = flag & MeshFlags.CURVE_FLIP ? 1.0 : 0.0
+    const t = flag & MeshFlags.CURVE_FLIP ? 1.0 : 0.0
 
-    let up1 = getUp(this.derivative(0))
-    let up2 = getUp(this.derivative(1))
-    let up = up1.interp(up2, s / this.length).normalize()
+    const up1 = getUp(this.derivative(0))
+    const up2 = getUp(this.derivative(1))
+    const up = up1.interp(up2, s / this.length).normalize()
 
-    let dv = this.arcDerivative(s)
-    let nor = vec3_temps.next().load(dv)
+    const dv = this.arcDerivative(s)
+    const nor = vec3_temps.next().load(dv)
 
     nor.cross(up).normalize()
 
-    let twist = this.arcTwist(s)
+    const twist = this.arcTwist(s)
     if (twist !== 0.0) {
-      let q = quat_temps.next()
-      let mat = mat_temps.next()
+      const q = quat_temps.next()
+      const mat = mat_temps.next()
 
       mat.makeIdentity()
 
@@ -2199,10 +2199,10 @@ mesh.Edge {
     */
 
     if (this.h1) {
-      let ret = _evaluate_vs.next().zero()
+      const ret = _evaluate_vs.next().zero()
 
       for (let i = 0 as Number3; i < 3; i++) {
-        let k1 = this.v1.co[i],
+        const k1 = this.v1.co[i],
           k2 = this.h1.co[i],
           k3 = this.h2.co[i],
           k4 = this.v2.co[i]
@@ -2227,24 +2227,24 @@ mesh.Edge {
   }
 
   derivative(t: number): Vector3 {
-    let df = 0.0001
-    let a = this.evaluate(t - df)
-    let b = this.evaluate(t + df)
+    const df = 0.0001
+    const a = this.evaluate(t - df)
+    const b = this.evaluate(t + df)
 
     return b.sub(a).mulScalar(0.5 / df)
   }
 
   derivative2(t: number): Vector3 {
-    let df = 0.0001
-    let a = this.derivative(t - df)
-    let b = this.derivative(t + df)
+    const df = 0.0001
+    const a = this.derivative(t - df)
+    const b = this.derivative(t + df)
 
     return b.sub(a).mulScalar(0.5 / df)
   }
 
   curvature(t: number): number {
-    let dv1 = this.derivative(t)
-    let dv2 = this.derivative2(t)
+    const dv1 = this.derivative(t)
+    const dv2 = this.derivative2(t)
 
     return (dv1[0] * dv2[1] - dv1[1] * dv2[0]) / Math.pow(dv1.dot(dv1), 3.0 / 2.0)
   }
@@ -2270,9 +2270,9 @@ mesh.Edge {
   }
 }
 
-let calc_normal_temps = util.cachering.fromConstructor(Vector3, 32)
+const calc_normal_temps = util.cachering.fromConstructor(Vector3, 32)
 
-export class Loop extends Element<typeof MeshTypes['LOOP']> {
+export class Loop extends Element<(typeof MeshTypes)['LOOP']> {
   /*  save space by deriving these values on file load:
     e           : int | obj.e.eid;
     radial_next : int | obj.radial_next.eid;
@@ -2319,7 +2319,7 @@ mesh.Loop {
   }
 
   get uv(): Vector2 | undefined {
-    for (let layer of this.customData) {
+    for (const layer of this.customData) {
       if (layer instanceof UVLayerElem) return layer.uv
     }
   }
@@ -2353,8 +2353,8 @@ class LoopIter {
   }
 
   next(): IteratorResult<Loop> {
-    let ret = this.ret
-    let l = this.l
+    const ret = this.ret
+    const l = this.l
 
     if (this._i++ > MAX_FACE_VERTS) {
       ret.done = true
@@ -2442,12 +2442,12 @@ mesh.LoopList {
   }
 
   [Symbol.iterator](): LoopIter {
-    let stack = loopiterstack //this.iterstack;
+    const stack = loopiterstack //this.iterstack;
 
     stack.cur++
 
     if (stack.cur < 0 || stack.cur >= stack.length) {
-      let cur = stack.cur
+      const cur = stack.cur
       stack.cur = 0
       throw new Error('iteration depth was too deep: ' + cur)
     }
@@ -2462,7 +2462,7 @@ mesh.LoopList {
       return 0
     }
 
-    for (let l of this) {
+    for (const l of this) {
       this.length++
     }
 
@@ -2478,13 +2478,13 @@ mesh.LoopList {
     reader(this)
 
     if (this.__loops !== undefined) {
-      let ls = this.__loops
+      const ls = this.__loops
 
       for (let i = 0; i < ls.length; i++) {
-        let i1 = (i - 1 + ls.length) % ls.length
-        let i2 = (i + 1) % ls.length
+        const i1 = (i - 1 + ls.length) % ls.length
+        const i2 = (i + 1) % ls.length
 
-        let l = ls[i]
+        const l = ls[i]
         l.prev = ls[i1]
         l.next = ls[i2]
       }
@@ -2569,7 +2569,7 @@ class FaceLoopIter implements Iterable<Loop>, Iterator<Loop> {
   }
 
   next(): IteratorResult<Loop> {
-    let ret = this.ret
+    const ret = this.ret
 
     if (this.listi >= this.f.lists.length) {
       ret.done = true
@@ -2579,7 +2579,7 @@ class FaceLoopIter implements Iterable<Loop>, Iterator<Loop> {
       return ret
     }
 
-    let list = this.f.lists[this.listi]
+    const list = this.f.lists[this.listi]
 
     ret.value = this.l
     ret.done = false
@@ -2673,7 +2673,7 @@ class FaceEdgeIter {
   }
 
   next(): IteratorResult<Edge> {
-    let ret = this.ret
+    const ret = this.ret
 
     if (this.listi >= this.f.lists.length) {
       ret.done = true
@@ -2683,7 +2683,7 @@ class FaceEdgeIter {
       return ret
     }
 
-    let list = this.f.lists[this.listi]
+    const list = this.f.lists[this.listi]
 
     ret.value = this.l.e
     ret.done = false
@@ -2776,7 +2776,7 @@ class FaceVertIter {
   }
 
   next(): IteratorResult<Vertex> {
-    let ret = this.ret
+    const ret = this.ret
 
     if (this.listi >= this.f.lists.length) {
       ret.done = true
@@ -2786,7 +2786,7 @@ class FaceVertIter {
       return ret
     }
 
-    let list = this.f.lists[this.listi]
+    const list = this.f.lists[this.listi]
 
     ret.value = this.l.v
     ret.done = false
@@ -2824,7 +2824,7 @@ for (let i = 0; i < fiter_stack_v.length; i++) {
 }
 fiter_stack_v.cur = 0
 
-export class Face extends Element<typeof MeshTypes['FACE']> {
+export class Face extends Element<(typeof MeshTypes)['FACE']> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -2861,7 +2861,7 @@ mesh.Face {
   }
 
   _free() {
-    for (let list of this.lists) {
+    for (const list of this.lists) {
       list.l = undefined as unknown as Loop
     }
   }
@@ -2869,7 +2869,7 @@ mesh.Face {
   get length() {
     let count = 0
 
-    for (let list of this.lists) {
+    for (const list of this.lists) {
       count += list.length
     }
 
@@ -2879,10 +2879,10 @@ mesh.Face {
   ensureBoundaryFirst() {
     let maxlist: LoopList | undefined, maxlen: number | undefined
 
-    for (let list of this.lists) {
+    for (const list of this.lists) {
       let len = 0.0
 
-      for (let l of list) {
+      for (const l of list) {
         len += l.v.co.vectorDistance(l.next.v.co)
       }
 
@@ -2892,7 +2892,7 @@ mesh.Face {
       }
     }
 
-    let i = this.lists.indexOf(maxlist!)
+    const i = this.lists.indexOf(maxlist!)
 
     if (i !== 0) {
       this.lists[i] = this.lists[0]
@@ -2945,21 +2945,21 @@ mesh.Face {
   }
 
   calcNormal(cd_disp: CDRef<DispLayerVert> = -1): Vector3 {
-    let t1 = calc_normal_temps.next(),
+    const t1 = calc_normal_temps.next(),
       t2 = calc_normal_temps.next()
-    let t3 = calc_normal_temps.next(),
+    const t3 = calc_normal_temps.next(),
       sum = calc_normal_temps.next()
 
     sum.zero()
 
     this.calcCent(cd_disp)
 
-    let c = this.cent
+    const c = this.cent
 
     let _i = 0
     let l = this.lists[0].l
     do {
-      let v1 = l.v,
+      const v1 = l.v,
         v2 = l.next.v
       let co1, co2
 
@@ -2998,7 +2998,7 @@ mesh.Face {
       return this.cent.zero()
     }
 
-    for (let l of this.lists[0]) {
+    for (const l of this.lists[0]) {
       let co = l.v.co
 
       if (cd_disp >= 0) {

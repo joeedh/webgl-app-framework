@@ -1,15 +1,15 @@
-import {Icons} from '../icon_enum.js';
-import {warning} from "../../path.ux/scripts/widgets/ui_noteframe.js";
-import * as util from '../../util/util.js';
-import {ResourceType, resourceManager} from '../../core/resource.js';
-import {ResourcePageType, ResourcePages} from './resbrowser_types.js';
-import {genResBrowserScreen} from '../screengen.js';
-import {nstructjs} from '../../path.ux/scripts/pathux.js';
+import {Icons} from '../icon_enum.js'
+import {warning} from '../../path.ux/scripts/widgets/ui_noteframe.js'
+import * as util from '../../util/util.js'
+import {ResourceType, resourceManager} from '../../core/resource.js'
+import {ResourcePageType, ResourcePages} from './resbrowser_types.js'
+import {genResBrowserScreen} from '../screengen.js'
+import {nstructjs} from '../../path.ux/scripts/pathux.js'
 
-import {Editor} from '../editor_base.ts';
-import {KeyMap} from "../../path.ux/scripts/util/simple_events.js";
-import {Area, AreaFlags} from "../../path.ux/scripts/screen/ScreenArea.js";
-import {UIBase} from "../../path.ux/scripts/core/ui_base.js";
+import {Editor} from '../editor_base.ts'
+import {KeyMap} from '../../path.ux/scripts/util/simple_events.js'
+import {Area, AreaFlags} from '../../path.ux/scripts/screen/ScreenArea.js'
+import {UIBase} from '../../path.ux/scripts/core/ui_base.js'
 
 let ResIconStyle = `
 .resicon {
@@ -36,324 +36,326 @@ let ResIconStyle = `
   background-color : rgba(180, 200, 255, 1.0);
 }
 
-`.trim();
+`.trim()
 
 export class ResourceIcon extends UIBase {
   constructor() {
-    super();
-    this._last_cellsize = undefined;
+    super()
+    this._last_cellsize = undefined
   }
 
   init() {
-    super.init();
+    super.init()
 
     // border-radius: 5px;
 
-    let span = this.span = document.createElement("span");
-    span.setAttribute("class", "DefaultText");
-    span.textContent = this.getAttribute("name");
+    let span = (this.span = document.createElement('span'))
+    span.setAttribute('class', 'DefaultText')
+    span.textContent = this.getAttribute('name')
 
-    this.shadow.appendChild(span);
+    this.shadow.appendChild(span)
 
-    this.setAttribute("class", "resicon");
-    this.setCSS();
+    this.setAttribute('class', 'resicon')
+    this.setCSS()
   }
 
   setCSS() {
-    super.setCSS();
+    super.setCSS()
 
-    let cellsize = parseFloat(this.getAttribute("cellsize"));
+    let cellsize = parseFloat(this.getAttribute('cellsize'))
 
-    let span = this.span;
+    let span = this.span
 
-    span.style["position"] = "absolute";
-    span.style["top"] = (cellsize - 35) + "px";
+    span.style['position'] = 'absolute'
+    span.style['top'] = cellsize - 35 + 'px'
 
-    this.style["position"] = "absolute";
-    this.style["width"] = cellsize + "px";
-    this.style["height"] = cellsize + "px";
+    this.style['position'] = 'absolute'
+    this.style['width'] = cellsize + 'px'
+    this.style['height'] = cellsize + 'px'
   }
 
   static define() {
     return {
-      tagname: "resource-icon-x",
-      flag   : AreaFlags.HIDDEN
+      tagname: 'resource-icon-x',
+      flag   : AreaFlags.HIDDEN,
     }
   }
 
   updateCellSize() {
-    if (this.getAttribute("cellsize") !== this._last_cellsize) {
-      this._last_cellsize = this.getAttribute("cellsize");
-      this.setCSS();
+    if (this.getAttribute('cellsize') !== this._last_cellsize) {
+      this._last_cellsize = this.getAttribute('cellsize')
+      this.setCSS()
     }
   }
 
   update() {
-    super.update();
-    this.updateCellSize();
+    super.update()
+    this.updateCellSize()
   }
 }
 
-UIBase.register(ResourceIcon);
+UIBase.register(ResourceIcon)
 
 export class ResourceBrowser extends Editor {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
 ResourceBrowser {
   resourceType : string;
 }
-`);
+`
+  )
 
   constructor() {
-    super();
+    super()
 
-    this.resourceType = undefined;
-    this.needsRebuild = true;
-    this.icons = [];
-    this.icons.active = undefined;
-    this.swapCallback = undefined;
-    this.swapCancelled = undefined;
-    this._swapEnd = undefined;
-    this.cellsize = 128;
+    this.resourceType = undefined
+    this.needsRebuild = true
+    this.icons = []
+    this.icons.active = undefined
+    this.swapCallback = undefined
+    this.swapCancelled = undefined
+    this._swapEnd = undefined
+    this.cellsize = 128
   }
 
   static defineAPI(api) {
-    let rstruct = super.defineAPI(api);
-    let types = resourceManager.makeEnum();
+    let rstruct = super.defineAPI(api)
+    let types = resourceManager.makeEnum()
 
     function rebuild() {
-      let resbrowser = this.dataref;
+      let resbrowser = this.dataref
 
       if (resbrowser !== undefined) {
-        resbrowser.rebuild();
+        resbrowser.rebuild()
       }
     }
 
-    let prop = rstruct.enum("resourceType", "resourceType", types, "Mode");
-    prop.on("change", rebuild);
+    let prop = rstruct.enum('resourceType', 'resourceType', types, 'Mode')
+    prop.on('change', rebuild)
 
-    return rstruct;
+    return rstruct
   }
 
   static openResourceBrowser(area, resourceType, oncancel) {
     return new Promise((accept, reject) => {
-      let ctx = area.ctx;
+      let ctx = area.ctx
 
-      let screen = genResBrowserScreen(ctx.state, ResourceBrowser);
-      ctx.state.swapScreen(screen);
+      let screen = genResBrowserScreen(ctx.state, ResourceBrowser)
+      ctx.state.swapScreen(screen)
 
-      let resarea = screen.sareas[0].area;
+      let resarea = screen.sareas[0].area
 
-      console.log(resarea);
+      console.log(resarea)
       resarea._swapEnd = () => {
-        _appstate.unswapScreen();
-      };
+        _appstate.unswapScreen()
+      }
 
-      resarea.swapCallback = accept;
-      resarea.resourceType = resourceType;
-      resarea.needsRebuild = true;
-      resarea.swapCancelled = oncancel;
-    });
+      resarea.swapCallback = accept
+      resarea.resourceType = resourceType
+      resarea.needsRebuild = true
+      resarea.swapCancelled = oncancel
+    })
 
     return new Promise((accept, reject) => {
+      let newarea = area.swap(ResourceBrowser)
 
-      let newarea = area.swap(ResourceBrowser);
-
-      newarea.swapCallback = accept;
-      newarea.resourceType = resourceType;
-      newarea.needsRebuild = true;
-      newarea.swapCancelled = oncancel;
-    });
+      newarea.swapCallback = accept
+      newarea.resourceType = resourceType
+      newarea.needsRebuild = true
+      newarea.swapCancelled = oncancel
+    })
   }
 
   init() {
-    super.init();
+    super.init()
 
-    let header = this.header;
+    let header = this.header
     //this.typeWidget = header.prop("resbrowser.resourceType");
 
-    header.button("Load", () => {
-      let res = this.icons.active;
+    header.button('Load', () => {
+      let res = this.icons.active
 
-      console.log("res", res);
+      console.log('res', res)
 
       if (res === undefined) {
-        return;
+        return
       }
 
-      this.end();
+      this.end()
 
       if (this.swapCallback !== undefined) {
-        this.swapCallback(res.res);
+        this.swapCallback(res.res)
       }
-    });
+    })
 
-    header.button("Cancel", () => {
-      console.log("Cancel");
+    header.button('Cancel', () => {
+      console.log('Cancel')
 
-      this.end();
+      this.end()
 
       if (this.swapCancelled !== undefined) {
-        this.swapCancelled();
+        this.swapCancelled()
       }
-    });
+    })
 
-    this.table = this.container.table();
-    this.rebuild();
+    this.table = this.container.table()
+    this.rebuild()
   }
 
   end() {
-    console.log(this._swapEnd);
+    console.log(this._swapEnd)
 
     if (this._swapEnd !== undefined) {
-      this._swapEnd();
+      this._swapEnd()
     }
 
-    this._swapEnd = undefined;
+    this._swapEnd = undefined
   }
 
   makeResIcon() {
-    let ret = document.createElement("resource-icon-x");
-    ret.setAttribute("cellsize", this.cellsize);
-    return ret;
+    let ret = document.createElement('resource-icon-x')
+    ret.setAttribute('cellsize', this.cellsize)
+    return ret
   }
 
   on_area_inactive() {
-    super.on_area_inactive();
+    super.on_area_inactive()
 
-    this.table.clear();
-    this.icons = [];
-    this.icons.active = undefined;
-    this.needsRebuild = false;
+    this.table.clear()
+    this.icons = []
+    this.icons.active = undefined
+    this.needsRebuild = false
   }
 
   on_area_active() {
-    super.on_area_active();
-    this.needsRebuild = true;
+    super.on_area_active()
+    this.needsRebuild = true
   }
 
   rebuild() {
     if (this.table === undefined) {
-      return;
+      return
     }
 
-    this.setCSS();
+    this.setCSS()
 
-    let rect = this.getClientRects()[0];
+    let rect = this.getClientRects()[0]
 
     //probably been disconnected from the dom
     if (rect === undefined) {
-      this.needsRebuild = true;
-      return;
+      this.needsRebuild = true
+      return
     }
 
-    let width = rect.width;
-    let cells = Math.floor(width/this.cellsize);
-    cells = Math.max(cells, 1);
+    let width = rect.width
+    let cells = Math.floor(width / this.cellsize)
+    cells = Math.max(cells, 1)
 
-    this.needsRebuild = false;
+    this.needsRebuild = false
 
-    console.log("rebuilding resource browser", width)
+    console.log('rebuilding resource browser', width)
 
-    this.icons = [];
-    this.icons.active = undefined;
+    this.icons = []
+    this.icons.active = undefined
 
-    let table = this.table;
-    table.clear();
+    let table = this.table
+    table.clear()
 
     if (!(this.resourceType in ResourcePages)) {
-      console.log("Invalid resource type", this.resourceType);
-      return;
+      console.log('Invalid resource type', this.resourceType)
+      return
     }
 
-    let page = ResourcePages[this.resourceType];
+    let page = ResourcePages[this.resourceType]
 
     let setActive = (icon) => {
       if (this.icons.active !== undefined) {
-        this.icons.active.setAttribute("class", "resicon");
+        this.icons.active.setAttribute('class', 'resicon')
       }
 
-      icon.setAttribute("class", "resicon_active");
-      this.icons.active = icon;
-    };
+      icon.setAttribute('class', 'resicon_active')
+      this.icons.active = icon
+    }
 
     let icon_click = (e) => {
       //console.log(e.target, e.srcElement);
-      setActive(e.target);
-    };
+      setActive(e.target)
+    }
 
-    let i = 0;
-    let row = table.row();
+    let i = 0
+    let row = table.row()
 
     for (let res of page.getResources()) {
-      let cell = row.cell();
+      let cell = row.cell()
 
-      cell.style["background-color"] = "rgba(0,0,0,0.0)";
-      cell.style["padding"] = "5px";
+      cell.style['background-color'] = 'rgba(0,0,0,0.0)'
+      cell.style['padding'] = '5px'
 
-      cell.overrideDefault("DefaultPanelBG", "rgba(0,0,0,0.0)");
+      cell.overrideDefault('DefaultPanelBG', 'rgba(0,0,0,0.0)')
 
-      cell.style["width"] = this.cellsize + "px";
-      cell.style["height"] = this.cellsize + "px";
+      cell.style['width'] = this.cellsize + 'px'
+      cell.style['height'] = this.cellsize + 'px'
 
       /*this is the stupidest thing.
-      * why do I have to insert the stylesheet node *here*?*/
-      let style = document.createElement("style");
-      style.textContent = ResIconStyle;
-      cell.shadow.prepend(style);
+       * why do I have to insert the stylesheet node *here*?*/
+      let style = document.createElement('style')
+      style.textContent = ResIconStyle
+      cell.shadow.prepend(style)
 
-      let name = res.name !== undefined ? res.name : res.url;
+      let name = res.name !== undefined ? res.name : res.url
 
-      let icon = this.makeResIcon();
-      icon.setAttribute("name", name);
-      icon.res = res;
+      let icon = this.makeResIcon()
+      icon.setAttribute('name', name)
+      icon.res = res
 
-      cell.shadow.appendChild(icon);
+      cell.shadow.appendChild(icon)
 
-      this.icons.push(icon);
+      this.icons.push(icon)
 
-      icon.addEventListener("click", icon_click);
-      icon.addEventListener("mousedown", icon_click);
-      icon.addEventListener("touchstart", icon_click);
+      icon.addEventListener('click', icon_click)
+      icon.addEventListener('mousedown', icon_click)
+      icon.addEventListener('touchstart', icon_click)
 
-      i++;
+      i++
       if (i == cells) {
-        row = table.row();
-        i = 0;
+        row = table.row()
+        i = 0
       }
     }
   }
 
   update() {
-    super.update();
+    super.update()
 
     if (this.needsRebuild) {
-      this.rebuild();
+      this.rebuild()
     }
   }
 
   copy() {
-    let ret = document.createElement("resource-browser-x");
-    ret.resourceType = this.resourceType;
-    return ret;
+    let ret = document.createElement('resource-browser-x')
+    ret.resourceType = this.resourceType
+    return ret
   }
 
   defineKeyMap() {
-    this.keymap = new KeyMap();
+    this.keymap = new KeyMap()
 
-    return this.keymap;
+    return this.keymap
   }
 
   setCSS() {
-    super.setCSS();
+    super.setCSS()
 
     if (this.table === undefined) {
-      return;
+      return
     }
 
-    let table = this.table;
+    let table = this.table
 
-    table.style["background-color"] = "rgba(100, 100, 100, 1.0)";
-    this.background = "rgba(100, 100, 100, 1.0)";
+    table.style['background-color'] = 'rgba(100, 100, 100, 1.0)'
+    this.background = 'rgba(100, 100, 100, 1.0)'
     //table.style["position"] = "absolute";
     //table.style["width"] = "100%";
     //table.style["height"] = "100%";
@@ -361,16 +363,16 @@ ResourceBrowser {
 
   static define() {
     return {
-      tagname : "resource-browser-x",
-      areaname: "resbrowser",
-      uiname  : "Resource Browser",
-      flag    : AreaFlags.HIDDEN
+      tagname : 'resource-browser-x',
+      areaname: 'resbrowser',
+      uiname  : 'Resource Browser',
+      flag    : AreaFlags.HIDDEN,
     }
   }
 
   static newSTRUCT() {
-    return document.createElement(this.define().tagname);
+    return document.createElement(this.define().tagname)
   }
 }
 
-Editor.register(ResourceBrowser);
+Editor.register(ResourceBrowser)

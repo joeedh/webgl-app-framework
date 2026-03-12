@@ -127,13 +127,13 @@ const apiKeyMap: any = {
   subdivMode     : 'SUBDIV_MODE',
 }
 
-for (let k in DynTopoOverrides) {
-  let k2 = `flag[${k}]`
+for (const k in DynTopoOverrides) {
+  const k2 = `flag[${k}]`
   apiKeyMap[k] = k
   apiKeyMap[k2] = k
 }
 
-let _ddigest = new util.HashDigest()
+const _ddigest = new util.HashDigest()
 
 export class DynTopoSettings {
   static STRUCT = nstructjs.inlineRegister(
@@ -225,25 +225,25 @@ export class DynTopoSettings {
   }
 
   loadDefaults(defaults: any): this {
-    let b = defaults
+    const b = defaults
 
-    let mask = this.overrideMask
-    let dyn = DynTopoOverrides
+    const mask = this.overrideMask
+    const dyn = DynTopoOverrides
 
     if (mask & dyn.NONE) {
       this.load(b)
       return this
     }
 
-    for (let k in DynTopoFlags) {
-      let f = DynTopoFlags[k]
+    for (const k in DynTopoFlags) {
+      const f = DynTopoFlags[k]
 
       if (typeof f !== 'number') {
         continue
       }
 
       if (!(mask & f)) {
-        let val = b.flag & f
+        const val = b.flag & f
 
         if (val) {
           this.flag |= f
@@ -328,11 +328,11 @@ export class DynTopoSettings {
 }
 
 export const SculptIcons = {} as {[k: string]: number}
-for (let k in SculptTools) {
+for (const k in SculptTools) {
   SculptIcons[k] = (Icons as any)['SCULPT_' + k]
 }
 
-let _bdhash = new util.HashDigest()
+const _bdhash = new util.HashDigest()
 
 export class BrushDynChannel {
   static STRUCT = nstructjs.inlineRegister(
@@ -355,7 +355,7 @@ BrushDynChannel {
   }
 
   calcHashKey(digest: util.HashDigest = _bdhash.reset()): number {
-    let d = digest
+    const d = digest
 
     d.add(this.name)
     d.add(this.useDynamics)
@@ -388,7 +388,7 @@ BrushDynChannel {
   }
 }
 
-let radius_curve_json = {
+const radius_curve_json = {
   generators: [
     {type: 'EquationCurve', equation: 'x'},
     {
@@ -430,7 +430,7 @@ let radius_curve_json = {
   active_generator: 'BSplineCurve',
 }
 
-let reverse_brush_curve = {
+const reverse_brush_curve = {
   generators: [
     {type: 'EquationCurve', equation: 'x'},
     {
@@ -479,7 +479,7 @@ let reverse_brush_curve = {
   active_generator: 'BSplineCurve',
 }
 
-let _digest2 = new util.HashDigest()
+const _digest2 = new util.HashDigest()
 
 export class BrushDynamics {
   static STRUCT = nstructjs.inlineRegister(
@@ -547,7 +547,7 @@ export class BrushDynamics {
   }
 
   calcHashKey(d = _digest2.reset()) {
-    for (let ch of this.channels) {
+    for (const ch of this.channels) {
       ch.calcHashKey(d)
     }
 
@@ -555,8 +555,8 @@ export class BrushDynamics {
   }
 
   equals(b: this): boolean {
-    for (let ch1 of this.channels) {
-      let ch2 = b.getChannel(ch1.name, false)
+    for (const ch1 of this.channels) {
+      const ch2 = b.getChannel(ch1.name, false)
 
       if (!ch2 || !ch2.equals(ch1)) {
         return false
@@ -567,7 +567,7 @@ export class BrushDynamics {
   }
 
   loadDefault(name: string): void {
-    let json = new BrushDynamics().getChannel(name, true).curve.toJSON()
+    const json = new BrushDynamics().getChannel(name, true).curve.toJSON()
     //let json = radius_curve_json;
     //let json2 = new BrushDynamics().radius.curve.toJSON();
 
@@ -582,14 +582,14 @@ export class BrushDynamics {
     name: string,
     autoCreate: T = true as T
   ): T extends true ? BrushDynChannel : BrushDynChannel | undefined {
-    for (let ch of this.channels) {
+    for (const ch of this.channels) {
       if (ch.name === name) {
         return ch
       }
     }
 
     if (autoCreate) {
-      let ch = new BrushDynChannel(name)
+      const ch = new BrushDynChannel(name)
       this.channels.push(ch)
 
       if (!this.hasOwnProperty(name)) {
@@ -616,7 +616,7 @@ export class BrushDynamics {
   loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
 
-    let defineProp = (name: string) => {
+    const defineProp = (name: string) => {
       if (this.hasOwnProperty(name)) {
         return
       }
@@ -632,20 +632,20 @@ export class BrushDynamics {
       this.loadDefault('autosmooth')
     }
 
-    for (let ch of this.channels) {
+    for (const ch of this.channels) {
       defineProp(ch.name)
     }
   }
 
   copyTo(b: this) {
-    for (let ch1 of this.channels) {
-      let ch2 = b.getChannel(ch1.name, true)
+    for (const ch1 of this.channels) {
+      const ch2 = b.getChannel(ch1.name, true)
       ch1.copyTo(ch2)
     }
   }
 }
 
-let ckey_digest = new util.HashDigest()
+const ckey_digest = new util.HashDigest()
 
 export class SculptBrush extends DataBlock {
   static STRUCT = nstructjs.inlineRegister(
@@ -742,8 +742,8 @@ SculptBrush {
 
   equals(b: this, fast = true, ignoreRadiusStrength = false): boolean {
     if (fast) {
-      let key1 = this.calcHashKey()
-      let key2 = b.calcHashKey()
+      const key1 = this.calcHashKey()
+      const key2 = b.calcHashKey()
 
       return key1 === key2
     }
@@ -786,7 +786,7 @@ SculptBrush {
   }
 
   calcHashKey(digest = ckey_digest.reset(), ignoreRadiusStrength = false): number {
-    let d = digest
+    const d = digest
 
     for (let i = 0; i < 4; i++) {
       d.add(this.color[i])
@@ -871,7 +871,7 @@ SculptBrush {
   }
 
   copy(addLibUsers = false): this {
-    let ret = super.copy(addLibUsers) as this
+    const ret = super.copy(addLibUsers) as this
     this.copyTo(ret, false)
     ret.name = this.name
 
@@ -897,10 +897,10 @@ SculptBrush {
 DataBlock.register(SculptBrush)
 
 export function makeDefaultBrushes() {
-  let brushes = {} as {[k: string]: SculptBrush}
-  let bmap = {} as {[k: string]: SculptBrush}
+  const brushes = {} as {[k: string]: SculptBrush}
+  const bmap = {} as {[k: string]: SculptBrush}
 
-  for (let k in SculptTools) {
+  for (const k in SculptTools) {
     if (typeof k !== 'string') {
       continue
     }
@@ -908,7 +908,7 @@ export function makeDefaultBrushes() {
     let name = k[0] + k.slice(1, k.length).toLowerCase()
     name = name.replace(/_/g, ' ').trim()
 
-    let brush = (brushes[name] = new SculptBrush())
+    const brush = (brushes[name] = new SculptBrush())
     brush.name = name
     brush.tool = SculptTools[k] as unknown as SculptTools
 
@@ -951,17 +951,17 @@ export function makeDefaultBrushes() {
 
   brush.autosmooth = 0.25
   brush.dynamics.autosmooth.useDynamics = true
-  let curve = brush.dynamics.autosmooth.curve
+  const curve = brush.dynamics.autosmooth.curve
   curve.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.LINEAR)
 
-  let tex = (brush.texUser.texture = new ProceduralTex())
+  const tex = (brush.texUser.texture = new ProceduralTex())
   tex.lib_users++
   tex.lib_flag |= BlockFlags.FAKE_USER
   tex.name = 'CombBrush'
 
   tex.setGenerator(CombPattern)
 
-  let pat = tex.getGenerator(CombPattern)
+  const pat = tex.getGenerator(CombPattern)
   pat.count = 1
   pat.mode = CombModes.STEP
   brush.flag |= BlockFlags.FAKE_USER
@@ -1032,7 +1032,7 @@ export function makeDefaultBrushes() {
   brush.flag &= ~BrushFlags.SHARED_SIZE
   brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED
   brush.dynTopo.flag &= ~DynTopoFlags.ENABLED
-  let curvejson = {
+  const curvejson = {
     type         : 'BSplineCurve',
     points: [
       {
@@ -1089,10 +1089,10 @@ export function makeDefaultBrushes() {
 }
 
 export function makeDefaultBrushes_MediumRes() {
-  let brushes = {} as {[k: string]: SculptBrush}
-  let bmap = {} as {[k: string]: SculptBrush}
+  const brushes = {} as {[k: string]: SculptBrush}
+  const bmap = {} as {[k: string]: SculptBrush}
 
-  for (let k in SculptTools) {
+  for (const k in SculptTools) {
     if (typeof k !== 'string') {
       continue
     }
@@ -1148,17 +1148,17 @@ export function makeDefaultBrushes_MediumRes() {
 
   brush.autosmooth = 0.25
   brush.dynamics.autosmooth.useDynamics = true
-  let curve = brush.dynamics.autosmooth.curve
+  const curve = brush.dynamics.autosmooth.curve
   curve.getGenerator('BSplineCurve').loadTemplate(SplineTemplates.LINEAR)
 
-  let tex = (brush.texUser.texture = new ProceduralTex())
+  const tex = (brush.texUser.texture = new ProceduralTex())
   tex.lib_users++
   tex.lib_flag |= BlockFlags.FAKE_USER
   tex.name = 'CombBrush'
 
   tex.setGenerator(CombPattern)
 
-  let pat = tex.getGenerator(CombPattern)
+  const pat = tex.getGenerator(CombPattern)
   pat.count = 1
   pat.mode = CombModes.STEP
   brush.flag |= BlockFlags.FAKE_USER
@@ -1237,7 +1237,7 @@ export function makeDefaultBrushes_MediumRes() {
   brush.flag &= ~BrushFlags.SHARED_SIZE
   brush.dynTopo.overrideMask = DynTopoOverrides.ENABLED
   brush.dynTopo.flag &= ~DynTopoFlags.ENABLED
-  let curvejson = {
+  const curvejson = {
     type         : 'BSplineCurve',
     points: [
       {
@@ -1334,7 +1334,7 @@ export class PaintToolSlot {
 
   resolveBrush(ctx: ToolContext) {
     if (!this.brush) {
-      let scene = ctx.scene
+      const scene = ctx.scene
 
       //there should always be at least one brush (we enforce this in getBrushes)
       //for each tool type
@@ -1364,11 +1364,11 @@ export var DefaultBrushes = makeDefaultBrushes()
 export var brushSet = BrushSets.DEFAULT
 
 export function setBrushSet(set: BrushSets | string) {
-  let update = set !== brushSet
+  const update = set !== brushSet
 
   let found = false
 
-  for (let k in BrushSets) {
+  for (const k in BrushSets) {
     const v = BrushSets[k] as unknown as BrushSets
 
     if (v === set) {
@@ -1399,13 +1399,13 @@ export function setBrushSet(set: BrushSets | string) {
  exists in the datalib
  * */
 export function getBrushes(ctx: ToolContext, overrideDefaultBrushes = false) {
-  let brushes = ctx.datalib.brush
+  const brushes = ctx.datalib.brush
 
-  for (let k in DefaultBrushes) {
+  for (const k in DefaultBrushes) {
     let found: SculptBrush | undefined = undefined
     let b = DefaultBrushes[k]
 
-    for (let b2 of brushes) {
+    for (const b2 of brushes) {
       if (b2.tool === b.tool && b2.name === b.name) {
         found = b2
         break
@@ -1421,7 +1421,7 @@ export function getBrushes(ctx: ToolContext, overrideDefaultBrushes = false) {
 
       console.log('adding', k, b)
 
-      let tex = b.texUser.texture
+      const tex = b.texUser.texture
       if (tex && tex.lib_id < 0) {
         ctx.datalib.add(tex)
       }
@@ -1429,14 +1429,14 @@ export function getBrushes(ctx: ToolContext, overrideDefaultBrushes = false) {
       ctx.datalib.add(b)
     }
 
-    let tex = b.texUser.texture
+    const tex = b.texUser.texture
     if (tex && tex.lib_id < 0) {
       ctx.datalib.add(tex)
     }
 
     if (overrideDefaultBrushes || !found) {
       //add a hidden copy too
-      let oname = '__original_brush_' + b.name
+      const oname = '__original_brush_' + b.name
       let b2 = ctx.datalib.get<SculptBrush>(oname)
 
       if (!b2) {
@@ -1447,7 +1447,7 @@ export function getBrushes(ctx: ToolContext, overrideDefaultBrushes = false) {
         b2.lib_flag |= BlockFlags.HIDE
         ctx.datalib.add(b2)
 
-        let tex = b2.texUser.texture
+        const tex = b2.texUser.texture
         if (tex && tex.lib_id < 0) {
           ctx.datalib.add(tex)
         }
@@ -1458,8 +1458,8 @@ export function getBrushes(ctx: ToolContext, overrideDefaultBrushes = false) {
     }
   }
 
-  let ret = []
-  for (let b of brushes) {
+  const ret = []
+  for (const b of brushes) {
     ret.push(b)
   }
 

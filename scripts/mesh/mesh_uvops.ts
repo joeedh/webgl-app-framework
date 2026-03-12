@@ -48,12 +48,12 @@ export class VoxelUnwrapOp<
   exec(ctx: ViewContext): void {
     console.warn('mesh.voxel_unwrap')
 
-    let setSeams = this.inputs.setSeams.getValue()
-    let leafLimit = this.inputs.leafLimit.getValue()
-    let depthLimit = this.inputs.depthLimit.getValue()
-    let splitVar = this.inputs.splitVar.getValue()
+    const setSeams = this.inputs.setSeams.getValue()
+    const leafLimit = this.inputs.leafLimit.getValue()
+    const depthLimit = this.inputs.depthLimit.getValue()
+    const splitVar = this.inputs.splitVar.getValue()
 
-    for (let mesh of this.getMeshes(ctx)) {
+    for (const mesh of this.getMeshes(ctx)) {
       voxelUnwrap(mesh, mesh.faces.selected.editable, undefined, setSeams, leafLimit, depthLimit, splitVar)
 
       mesh.regenBVH()
@@ -95,18 +95,18 @@ export class RandomizeUVsOp<
   exec(ctx: ViewContext) {
     console.warn('mesh.randomize_uvs')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
+    for (const mesh of this.getMeshes(ctx)) {
+      const cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
       if (!cd_uv.exists) {
         continue
       }
 
-      let scale = 0.1
+      const scale = 0.1
 
-      let randAll = this.inputs.randAll.getValue()
+      const randAll = this.inputs.randAll.getValue()
       if (randAll) {
-        for (let l of mesh.loops) {
-          let uv = cd_uv.get(l).uv
+        for (const l of mesh.loops) {
+          const uv = cd_uv.get(l).uv
 
           uv[0] += (Math.random() - 0.5) * scale
           uv[1] += (Math.random() - 0.5) * scale
@@ -114,15 +114,15 @@ export class RandomizeUVsOp<
         continue
       }
 
-      let wr = new UVWrangler(mesh, this.getFaces(ctx), cd_uv)
+      const wr = new UVWrangler(mesh, this.getFaces(ctx), cd_uv)
       wr.buildIslands()
 
-      for (let island of wr.islands) {
+      for (const island of wr.islands) {
         //scale = Math.min(island.boxsize[0], island.boxsize[1]) + 0.1;
-        let newmin = new Vector2(island.min)
+        const newmin = new Vector2(island.min)
         newmin.fract()
 
-        for (let v of island) {
+        for (const v of island) {
           if (isNaN(v.co[0]) || isNaN(v.co[1])) {
             v.co[0] = Math.random()
             v.co[1] = Math.random()
@@ -154,7 +154,7 @@ ToolOp.register(RandomizeUVsOp)
 
 let unwrap_solvers = (window._unwrap_solvers = new Map())
 unwrap_solvers.clear = function () {
-  for (let k of new Set(unwrap_solvers.keys())) {
+  for (const k of new Set(unwrap_solvers.keys())) {
     unwrap_solvers.delete(k)
   }
 }
@@ -193,18 +193,18 @@ export class UnwrapSolveOp<
   exec(ctx: ViewContext): void {
     console.warn('mesh.unwrap_solve')
 
-    let i = 0
-    let meshes = new Set(this.getMeshes(ctx))
+    const i = 0
+    const meshes = new Set(this.getMeshes(ctx))
 
     if (unwrap_solvers.size > 5) {
       unwrap_solvers = new Map()
     }
 
-    let preserveIslands = this.inputs.preserveIslands.getValue()
+    const preserveIslands = this.inputs.preserveIslands.getValue()
 
-    let time = util.time_ms()
-    for (let mesh of meshes) {
-      let faces = mesh.faces.selected.editable
+    const time = util.time_ms()
+    for (const mesh of meshes) {
+      const faces = mesh.faces.selected.editable
 
       /* not working
       let faces2 = new Set();
@@ -233,7 +233,7 @@ export class UnwrapSolveOp<
         solver.start()
       }
 
-      let w = this.inputs.solverWeight.getValue()
+      const w = this.inputs.solverWeight.getValue()
 
       if (this.inputs.enableSolve.getValue()) {
         while (util.time_ms() - time < 400) {
@@ -291,16 +291,16 @@ export class RelaxUVsOp<InputSet extends PropertySlots = {}, OutputSet extends P
   exec(ctx: ViewContext): void {
     console.warn('mesh.relax_uvs')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
+    for (const mesh of this.getMeshes(ctx)) {
+      const cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
 
       if (cd_uv.exists) {
-        let steps = this.inputs.steps.getValue()
+        const steps = this.inputs.steps.getValue()
 
         for (let i = 0; i < steps; i++) {
           if (this.inputs.doSolve.getValue()) {
-            let faces = mesh.faces.selected.editable
-            let solver = UnWrapSolver.restoreOrRebuild(mesh, faces, unwrap_solvers.get(mesh.lib_id), undefined, true)
+            const faces = mesh.faces.selected.editable
+            const solver = UnWrapSolver.restoreOrRebuild(mesh, faces, unwrap_solvers.get(mesh.lib_id), undefined, true)
             //let solver = new UnWrapSolver(mesh, faces, cd_uv, true);
             solver.step(undefined, this.inputs.solverWeight.getValue())
             solver.finish()
@@ -354,8 +354,8 @@ export class FixUvSeamsOp<
   exec(ctx: ViewContext): void {
     console.warn('mesh.fix_seams')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let cd_uv = mesh.loops.customData.getLayerIndex('uv')
+    for (const mesh of this.getMeshes(ctx)) {
+      const cd_uv = mesh.loops.customData.getLayerIndex('uv')
 
       if (cd_uv >= 0) {
         fixSeams(mesh, cd_uv)
@@ -391,18 +391,18 @@ export class ResetUVs<InputSet extends PropertySlots = {}, OutputSet extends Pro
   exec(ctx: ViewContext): void {
     console.warn('mesh.relax_uvs')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
+    for (const mesh of this.getMeshes(ctx)) {
+      const cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
 
       if (cd_uv.exists) {
-        for (let f of mesh.faces.selected.editable) {
-          for (let list of f.lists) {
+        for (const f of mesh.faces.selected.editable) {
+          for (const list of f.lists) {
             let count = 0
-            for (let l of list) {
+            for (const l of list) {
               count++
             }
 
-            let l = list.l
+            const l = list.l
 
             l.f.flag |= MeshFlags.UPDATE
 
@@ -455,16 +455,16 @@ export class GridUVs<InputSet extends PropertySlots = {}, OutputSet extends Prop
   exec(ctx: ViewContext) {
     console.warn('mesh.grid_uvs')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
+    for (const mesh of this.getMeshes(ctx)) {
+      const cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
 
       if (cd_uv.exists) {
         let i = 0
         let count = 0
 
-        for (let f of mesh.faces.selected.editable) {
-          for (let list of f.lists) {
-            for (let l of list) {
+        for (const f of mesh.faces.selected.editable) {
+          for (const list of f.lists) {
+            for (const l of list) {
               //if ((l.flag & MeshFlags.SELECT) && !(l.flag & MeshFlags.HIDE)) {
               count++
               //}
@@ -472,17 +472,17 @@ export class GridUVs<InputSet extends PropertySlots = {}, OutputSet extends Prop
           }
         }
 
-        let dimen = Math.ceil(Math.sqrt(count * 0.25))
-        let idimen = 1.0 / dimen
+        const dimen = Math.ceil(Math.sqrt(count * 0.25))
+        const idimen = 1.0 / dimen
 
-        for (let f of mesh.faces.selected.editable) {
-          for (let list of f.lists) {
+        for (const f of mesh.faces.selected.editable) {
+          for (const list of f.lists) {
             let count = 0
-            for (let l of list) {
+            for (const l of list) {
               count++
             }
 
-            let l = list.l
+            const l = list.l
 
             l.f.flag |= MeshFlags.UPDATE
 
@@ -491,7 +491,7 @@ export class GridUVs<InputSet extends PropertySlots = {}, OutputSet extends Prop
             x *= idimen
             y *= idimen
 
-            let pad = idimen * 0.025
+            const pad = idimen * 0.025
 
             cd_uv.get(l).uv.loadXY(x + pad, y + pad)
             cd_uv.get(l.next).uv.loadXY(x + pad, y + idimen - pad * 2.0)
@@ -504,9 +504,9 @@ export class GridUVs<InputSet extends PropertySlots = {}, OutputSet extends Prop
             i++
           }
 
-          let off = new Vector2().loadXY(Math.random(), Math.random())
+          const off = new Vector2().loadXY(Math.random(), Math.random())
 
-          for (let l of f.loops) {
+          for (const l of f.loops) {
             // cd_uv.get(l).uv.add(off);
           }
         }
@@ -550,16 +550,16 @@ export class PackIslandsOp<
   exec(ctx: ViewContext): void {
     console.warn('mesh.pack_uvs')
 
-    for (let mesh of this.getMeshes(ctx)) {
-      let cd_uv = mesh.loops.customData.getLayerIndex('uv')
+    for (const mesh of this.getMeshes(ctx)) {
+      const cd_uv = mesh.loops.customData.getLayerIndex('uv')
 
       if (cd_uv < 0) {
         continue
       }
 
-      let iter = this.inputs.selectedFacesOnly.getValue() ? mesh.faces.selected.editable : mesh.faces
+      const iter = this.inputs.selectedFacesOnly.getValue() ? mesh.faces.selected.editable : mesh.faces
 
-      let wr = new UVWrangler(mesh, iter)
+      const wr = new UVWrangler(mesh, iter)
 
       wr.buildIslands()
       wr.packIslands()

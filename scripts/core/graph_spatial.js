@@ -1,164 +1,169 @@
-import {Matrix4, Vector2, Vector3, Vector4, util, nstructjs, math,
-        PackNode, PackNodeVertex, graphPack} from '../path.ux/scripts/pathux.js';
+import {
+  Matrix4,
+  Vector2,
+  Vector3,
+  Vector4,
+  util,
+  nstructjs,
+  math,
+  PackNode,
+  PackNodeVertex,
+  graphPack,
+} from '../path.ux/scripts/pathux.js'
 
 export function calcGraphAABB(graph) {
-  let found = 0;
-  let min = new Vector2([1e17, 1e17]);
-  let max = new Vector2([-1e17, -1e17]);
+  let found = 0
+  let min = new Vector2([1e17, 1e17])
+  let max = new Vector2([-1e17, -1e17])
 
-  let p = new Vector2();
+  let p = new Vector2()
 
   for (let node of graph.nodes) {
-    min.min(node.graph_ui_pos);
-    max.max(node.graph_ui_pos);
+    min.min(node.graph_ui_pos)
+    max.max(node.graph_ui_pos)
 
-    p.load(node.graph_ui_pos).add(node.graph_ui_size);
+    p.load(node.graph_ui_pos).add(node.graph_ui_size)
 
-    min.min(p);
-    min.max(p);
+    min.min(p)
+    min.max(p)
 
-    found++;
+    found++
   }
 
   if (!found) {
-    min.zero();
-    max.zero();
+    min.zero()
+    max.zero()
   }
 
-  return [min, max];
+  return [min, max]
 }
 
-export function layoutNode(node, args={}) {
+export function layoutNode(node, args = {}) {
   let ret = {
-    pos  : new Vector2(node.graph_ui_pos),
-    size : new Vector2(node.graph_ui_size),
-    inputs : {
-
-    },
-    outputs : {
-
-    }
-  };
+    pos    : new Vector2(node.graph_ui_pos),
+    size   : new Vector2(node.graph_ui_size),
+    inputs : {},
+    outputs: {},
+  }
 
   if (args.extraWidth) {
-    ret.size[0] += args.extraWidth;
+    ret.size[0] += args.extraWidth
   }
 
-  let socksize = args.socksize || 35;
+  let socksize = args.socksize || 35
 
-  ret.socksize = socksize;
+  ret.socksize = socksize
 
-  let maxsocks = 0;
+  let maxsocks = 0
 
-  for (let i=0; i<2; i++) {
-    let socks = !i ? node.inputs : node.outputs;
-    maxsocks = Math.max(maxsocks, Object.keys(socks).length);
+  for (let i = 0; i < 2; i++) {
+    let socks = !i ? node.inputs : node.outputs
+    maxsocks = Math.max(maxsocks, Object.keys(socks).length)
   }
 
-  let minsize = maxsocks*socksize + 15;
-  ret.size[1] = Math.max(ret.size[1], minsize);
+  let minsize = maxsocks * socksize + 15
+  ret.size[1] = Math.max(ret.size[1], minsize)
 
-  let wid = 100;
+  let wid = 100
 
-  for (let i=0; i<2; i++) {
-    let socks = !i ? node.inputs : node.outputs;
-    let def = !i ? ret.inputs : ret.outputs;
+  for (let i = 0; i < 2; i++) {
+    let socks = !i ? node.inputs : node.outputs
+    let def = !i ? ret.inputs : ret.outputs
 
-    let x = i ? ret.size[0] : 0;
-    let y = 35;
+    let x = i ? ret.size[0] : 0
+    let y = 35
 
     for (let k in socks) {
-      let sock = socks[k];
+      let sock = socks[k]
 
-      let p = new Vector2();
+      let p = new Vector2()
 
-      p[0] = x;
-      p[1] = y;
+      p[0] = x
+      p[1] = y
 
-      y += socksize;
+      y += socksize
 
-      def[k] = p;
+      def[k] = p
     }
   }
 
-  return ret;
+  return ret
 }
 
 class NodeEdge {
   constructor(a, b) {
-    this.v1 = a;
-    this.v2 = b;
+    this.v1 = a
+    this.v2 = b
   }
 
   [Symbol.keystr]() {
-    let i1 = this.v1.graph_id, i2 = this.v2.graph_id;
+    let i1 = this.v1.graph_id,
+      i2 = this.v2.graph_id
 
-    return Math.min(i1, i2) + ":" + Math.max(i1, i2);
+    return Math.min(i1, i2) + ':' + Math.max(i1, i2)
   }
 }
 
-function sortGraphSpatially_intern(graph, args) {
+function sortGraphSpatially_intern(graph, args) {}
 
-}
+export function sortGraphSpatially(graph, args = {}) {
+  let nodes = []
+  let sock_idmap = {}
 
-export function sortGraphSpatially(graph, args={}) {
-  let nodes = [];
-  let sock_idmap = {};
+  args.steps = args.steps || 35
 
-  args.steps = args.steps || 35;
-
-  args.headerHeight = args.headerHeight || 5;
-  args.extraWidth = args.extraWidth || 0;
+  args.headerHeight = args.headerHeight || 5
+  args.extraWidth = args.extraWidth || 0
 
   for (let node of graph.nodes) {
-    let n = new PackNode();
+    let n = new PackNode()
     let layout = layoutNode(node, args)
 
-    n.pos.load(layout.pos);
-    n.size.load(layout.size);
+    n.pos.load(layout.pos)
+    n.size.load(layout.size)
 
-    n.node = node;
+    n.node = node
 
-    n.size[0] += args.extraWidth;
-    n.size[1] += args.headerHeight;
+    n.size[0] += args.extraWidth
+    n.size[1] += args.headerHeight
 
-    for (let i=0; i<2; i++) {
-      let socks = i ? node.outputs : node.inputs;
-      let lsocks = i ? layout.outputs : layout.inputs;
+    for (let i = 0; i < 2; i++) {
+      let socks = i ? node.outputs : node.inputs
+      let lsocks = i ? layout.outputs : layout.inputs
 
       for (let k in socks) {
-        let sock = socks[k];
-        let p = lsocks[k];
+        let sock = socks[k]
+        let p = lsocks[k]
 
-        let v = new PackNodeVertex(n, p);
-        sock_idmap[sock.graph_id] = v;
+        let v = new PackNodeVertex(n, p)
+        sock_idmap[sock.graph_id] = v
       }
     }
 
-    nodes.push(n);
+    nodes.push(n)
   }
 
   for (let node of graph.nodes) {
-    for (let i=0; i<2; i++) {
-      let socks = i ? node.outputs : node.inputs;
+    for (let i = 0; i < 2; i++) {
+      let socks = i ? node.outputs : node.inputs
 
       for (let k in socks) {
-        let sock = socks[k];
-        let v1 = sock_idmap[sock.graph_id];
+        let sock = socks[k]
+        let v1 = sock_idmap[sock.graph_id]
 
         for (let sock2 of sock.edges) {
-          let v2 = sock_idmap[sock2.graph_id];
+          let v2 = sock_idmap[sock2.graph_id]
 
-          v1.edges.push(v2);
-          v2.edges.push(v1);
+          v1.edges.push(v2)
+          v2.edges.push(v1)
         }
       }
     }
   }
 
-  graphPack(nodes, undefined, args.steps);
+  graphPack(nodes, undefined, args.steps)
 
   for (let n of nodes) {
-    n.node.graph_ui_pos.load(n.pos);
+    n.node.graph_ui_pos.load(n.pos)
   }
 }

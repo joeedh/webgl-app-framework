@@ -1,32 +1,39 @@
-import {Area} from '../../path.ux/scripts/screen/ScreenArea.js';
-import {Editor} from '../editor_base.ts';
+import {Area} from '../../path.ux/scripts/screen/ScreenArea.js'
+import {Editor} from '../editor_base.ts'
 
-import {Node, NodeSocketType, Graph, NodeFlags, SocketFlags, GraphFlags, GraphNodes} from "../../core/graph.js";
+import {Node, NodeSocketType, Graph, NodeFlags, SocketFlags, GraphFlags, GraphNodes} from '../../core/graph.js'
 import {
-  IntProperty, StringProperty, EnumProperty,
-  FlagProperty, PropSubTypes, PropTypes,
-  PropFlags, ToolOp, UndoFlags, ToolFlags,
-  nstructjs
-} from '../../path.ux/scripts/pathux.js';
-import {Icons} from '../icon_enum.js';
-import {NodeGraphOp} from './node_ops.js';
-import {SelToolModes, SelOneToolModes} from '../view3d/selectmode.js';
+  IntProperty,
+  StringProperty,
+  EnumProperty,
+  FlagProperty,
+  PropSubTypes,
+  PropTypes,
+  PropFlags,
+  ToolOp,
+  UndoFlags,
+  ToolFlags,
+  nstructjs,
+} from '../../path.ux/scripts/pathux.js'
+import {Icons} from '../icon_enum.js'
+import {NodeGraphOp} from './node_ops.js'
+import {SelToolModes, SelOneToolModes} from '../view3d/selectmode.js'
 
 export class NodeSelectOpBase extends NodeGraphOp {
   constructor() {
-    super();
+    super()
 
-    this._undo = undefined;
+    this._undo = undefined
   }
 
   static tooldef() {
     return {
-      inputs: ToolOp.inherit()
+      inputs: ToolOp.inherit(),
     }
   }
 
   static canRun(ctx) {
-    return ctx.nodeEditor !== undefined;
+    return ctx.nodeEditor !== undefined
   }
 
   //canRun(ctx) {
@@ -34,196 +41,197 @@ export class NodeSelectOpBase extends NodeGraphOp {
   //}
 
   undoPre(ctx) {
-    let graph = this.fetchGraph(ctx);
+    let graph = this.fetchGraph(ctx)
 
     if (graph === undefined) {
-      return;
+      return
     }
 
-    let ud = this._undo = {
+    let ud = (this._undo = {
       sel  : {},
-      order: {}
-    };
+      order: {},
+    })
 
-    let sel = ud.sel, order = ud.order;
+    let sel = ud.sel,
+      order = ud.order
 
-    let i = 0;
+    let i = 0
     for (let node of graph.nodes) {
-      sel[node.graph_id] = node.graph_flag & NodeFlags.SELECT;
-      order[node.graph_id] = i++;
+      sel[node.graph_id] = node.graph_flag & NodeFlags.SELECT
+      order[node.graph_id] = i++
     }
   }
 
   undo(ctx) {
-    let ud = this._undo;
-    let sel = ud.sel, order = ud.order;
-    let graph = this.fetchGraph(ctx);
+    let ud = this._undo
+    let sel = ud.sel,
+      order = ud.order
+    let graph = this.fetchGraph(ctx)
 
     for (let k in sel) {
-      let state = sel[k];
-      let node = graph.node_idmap[k];
+      let state = sel[k]
+      let node = graph.node_idmap[k]
 
       if (node === undefined) {
-        console.warn("Warning: missing node " + k + " in graph " + this.inputs.graphPath.getValue());
-        continue;
+        console.warn('Warning: missing node ' + k + ' in graph ' + this.inputs.graphPath.getValue())
+        continue
       }
 
-      graph.nodes.setSelect(node, !!state);
+      graph.nodes.setSelect(node, !!state)
     }
 
     //restore original node order, which can be changed by some selection ops
     //this is distinct from the calculated toplogical sort order
 
-    let nodes = graph.nodes.slice(0, graph.nodes.length);
-    let donemap = {};
+    let nodes = graph.nodes.slice(0, graph.nodes.length)
+    let donemap = {}
 
     for (let i = 0; i < nodes.length; i++) {
-      graph.nodes[i] = undefined;
+      graph.nodes[i] = undefined
     }
 
     for (let k in order) {
-      let node = graph.node_idmap[k];
-      let i = order[k];
+      let node = graph.node_idmap[k]
+      let i = order[k]
 
       if (node === undefined) {
-        console.warn("Warning: missing node " + k + " in graph " + this.inputs.graphPath.getValue());
-        continue;
+        console.warn('Warning: missing node ' + k + ' in graph ' + this.inputs.graphPath.getValue())
+        continue
       }
 
-      donemap[k] = 1;
-      graph.nodes[i] = node;
+      donemap[k] = 1
+      graph.nodes[i] = node
     }
 
     //do a sanity check that we've re-added all nodes
     for (let node of nodes) {
       if (!(node.graph_id in donemap)) {
-        console.warn("orphan node found in node_selectops.NodeSelectOpBase.prototype.undo");
+        console.warn('orphan node found in node_selectops.NodeSelectOpBase.prototype.undo')
         for (let i = 0; i < nodes.length; i++) {
           if (graph.nodes[i] === undefined) {
-            graph.nodes[i] = node;
+            graph.nodes[i] = node
           }
         }
       }
     }
 
-    graph.signalUI();
+    graph.signalUI()
   }
 }
 
 export class NodeSelectOneOp extends NodeSelectOpBase {
   static tooldef() {
     return {
-      toolpath: "node.selectone",
-      inputs  : ToolOp.inherit({
+      toolpath: 'node.selectone',
+      inputs: ToolOp.inherit({
         nodeId: new IntProperty(),
-        mode  : new EnumProperty("UNIQUE", SelOneToolModes)
-      })
+        mode  : new EnumProperty('UNIQUE', SelOneToolModes),
+      }),
     }
   }
 
   static invoke(ctx, args) {
-    let tool = super.invoke(ctx, args);
+    let tool = super.invoke(ctx, args)
 
-    if ("nodeId" in args) {
-      tool.inputs.nodeId.setValue(args.nodeId);
+    if ('nodeId' in args) {
+      tool.inputs.nodeId.setValue(args.nodeId)
     }
 
-    if ("mode" in args) {
-      tool.inputs.mode.setValue(args.mode);
+    if ('mode' in args) {
+      tool.inputs.mode.setValue(args.mode)
     }
 
-    return tool;
+    return tool
   }
 
   exec(ctx) {
-    let mode = this.inputs.mode.getValue();
-    let graph = this.fetchGraph(ctx);
+    let mode = this.inputs.mode.getValue()
+    let graph = this.fetchGraph(ctx)
 
     if (graph === undefined) {
-      console.warn("error in node_selectops.NodeSelectOneOp");
-      return;
+      console.warn('error in node_selectops.NodeSelectOneOp')
+      return
     }
 
-    console.log("mode", mode);
+    console.log('mode', mode)
 
-    let node = graph.node_idmap[this.inputs.nodeId.getValue()];
+    let node = graph.node_idmap[this.inputs.nodeId.getValue()]
 
     if (mode == SelOneToolModes.UNIQUE) {
       for (let node2 of graph.nodes) {
-        graph.nodes.setSelect(node2, false);
+        graph.nodes.setSelect(node2, false)
       }
 
-      graph.nodes.setSelect(node, true);
+      graph.nodes.setSelect(node, true)
     } else {
-      let state = this.inputs.mode.getValue() == SelOneToolModes.ADD;
+      let state = this.inputs.mode.getValue() == SelOneToolModes.ADD
 
-      graph.nodes.setSelect(node, state);
+      graph.nodes.setSelect(node, state)
     }
 
     //change order, shader networks rely on this to
     //tell which output nodes is "active", so user can
     //interactively select different subnetworks to preview in real time
-    graph.nodes.pushToFront(node);
+    graph.nodes.pushToFront(node)
   }
 }
 
-ToolOp.register(NodeSelectOneOp);
-
+ToolOp.register(NodeSelectOneOp)
 
 export class NodeToggleSelectAll extends NodeSelectOpBase {
   static tooldef() {
     return {
-      toolpath: "node.toggle_select_all",
-      inputs  : ToolOp.inherit({
-        mode: new EnumProperty("AUTO", SelToolModes)
-      })
+      toolpath: 'node.toggle_select_all',
+      inputs: ToolOp.inherit({
+        mode: new EnumProperty('AUTO', SelToolModes),
+      }),
     }
   }
 
   static invoke(ctx, args) {
-    let tool = super.invoke(ctx, args);
+    let tool = super.invoke(ctx, args)
 
-    if ("nodeId" in args) {
-      tool.inputs.nodeId.setValue(args.nodeId);
+    if ('nodeId' in args) {
+      tool.inputs.nodeId.setValue(args.nodeId)
     }
 
-    if ("mode" in args) {
-      tool.inputs.mode.setValue(args.mode);
+    if ('mode' in args) {
+      tool.inputs.mode.setValue(args.mode)
     }
 
-    return tool;
+    return tool
   }
 
   exec(ctx) {
-    let mode = this.inputs.mode.getValue();
-    let graph = this.fetchGraph(ctx);
+    let mode = this.inputs.mode.getValue()
+    let graph = this.fetchGraph(ctx)
 
-    console.log("toggle select all", graph);
+    console.log('toggle select all', graph)
 
     if (graph === undefined) {
-      console.warn("error in node_selectops.NodeToggleSelectAll");
-      return;
+      console.warn('error in node_selectops.NodeToggleSelectAll')
+      return
     }
 
     if (mode == SelToolModes.AUTO) {
-      mode = SelToolModes.ADD;
+      mode = SelToolModes.ADD
 
       for (let node of graph.nodes) {
         if (node.graph_flag & NodeFlags.SELECT) {
-          mode = SelToolModes.SUB;
-          break;
+          mode = SelToolModes.SUB
+          break
         }
       }
     }
 
-    console.log("mode", mode);
+    console.log('mode', mode)
 
     for (let node of graph.nodes) {
-      graph.nodes.setSelect(node, mode === SelToolModes.ADD);
+      graph.nodes.setSelect(node, mode === SelToolModes.ADD)
     }
 
-    graph.signalUI();
+    graph.signalUI()
   }
 }
 
-ToolOp.register(NodeToggleSelectAll);
+ToolOp.register(NodeToggleSelectAll)

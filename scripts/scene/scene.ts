@@ -51,7 +51,7 @@ export class EnvLight {
   constructor() {}
 
   calcUpdateHash(): number {
-    let ret = this._digest
+    const ret = this._digest
 
     ret.reset()
 
@@ -89,10 +89,10 @@ export class ObjectSet extends util.set<SceneObject> {
   }
 
   get renderable(): Iterable<SceneObject> {
-    let this2 = this
+    const this2 = this
 
     return (function* () {
-      for (let ob of this2) {
+      for (const ob of this2) {
         if (ob.flag & ObjectFlags.HIDE) {
           continue
         }
@@ -103,10 +103,10 @@ export class ObjectSet extends util.set<SceneObject> {
   }
 
   get editable(): Iterable<SceneObject> {
-    let this2 = this
+    const this2 = this
 
     return (function* () {
-      for (let ob of this2) {
+      for (const ob of this2) {
         if (ob.flag & (ObjectFlags.HIDE | ObjectFlags.LOCKED)) {
           continue
         }
@@ -143,7 +143,7 @@ export class ObjectList extends Array {
     this.selected = new ObjectSet(this, scene)
 
     if (list !== undefined) {
-      for (let ob of list) {
+      for (const ob of list) {
         super.push(ob)
       }
     }
@@ -154,7 +154,7 @@ export class ObjectList extends Array {
   }
 
   clearSelection(): void {
-    for (let ob of this) {
+    for (const ob of this) {
       this.setSelect(ob, false)
     }
   }
@@ -181,10 +181,10 @@ export class ObjectList extends Array {
   }
 
   get editable(): Iterable<SceneObject> {
-    let this2 = this
+    const this2 = this
 
     return (function* () {
-      for (let ob of this2) {
+      for (const ob of this2) {
         if (ob.flag & (ObjectFlags.HIDE | ObjectFlags.LOCKED)) {
           continue
         }
@@ -195,10 +195,10 @@ export class ObjectList extends Array {
   }
 
   get visible(): Iterable<SceneObject> {
-    let this2 = this
+    const this2 = this
 
     return (function* () {
-      for (let ob of this2) {
+      for (const ob of this2) {
         if (ob.flag & ObjectFlags.HIDE) {
           continue
         }
@@ -261,8 +261,8 @@ export class ObjectList extends Array {
       this.highlight = getblock(this.highlight, scene)
     }
 
-    for (let ob of (this as unknown as any).refs as any[]) {
-      let ob2 = getblock_addUser(ob, scene)
+    for (const ob of (this as unknown as any).refs as any[]) {
+      const ob2 = getblock_addUser(ob, scene)
 
       if (ob2 === undefined) {
         console.warn('Warning: missing SceneObject in scene')
@@ -280,9 +280,9 @@ export class ObjectList extends Array {
   }
 
   _getDataRefs(): DataRef[] {
-    let ret: DataRef[] = []
+    const ret: DataRef[] = []
 
-    for (let ob of this) {
+    for (const ob of this) {
       ret.push(DataRef.fromBlock(ob))
     }
 
@@ -388,20 +388,20 @@ propIslandOnly : bool;
     this.objects.onselect = this._onselect.bind(this)
 
     if (objects !== undefined) {
-      for (let ob of objects) {
+      for (const ob of objects) {
         this.add(ob)
       }
     }
 
     this.toolmode_i = this.toolModeProp.values['object'] as number
 
-    let busgetter = () => {
+    const busgetter = () => {
       if (!window._appstate || !window._appstate.datalib) {
         return undefined
       }
 
       //check if scene is still in datalib
-      let block = window._appstate.datalib.get(this.lib_id)
+      const block = window._appstate.datalib.get(this.lib_id)
       if (block !== this) {
         return undefined
       }
@@ -413,7 +413,7 @@ propIslandOnly : bool;
       busgetter,
       ToolMode,
       () => {
-        let key = this.toolModeProp.keys[this.toolmode_i]
+        const key = this.toolModeProp.keys[this.toolmode_i]
 
         this.toolModeProp = makeToolModeEnum()
         this.toolmode_i = this.toolModeProp.values[key] as number
@@ -424,7 +424,7 @@ propIslandOnly : bool;
 
         //update enum property in data api
         if (window._appstate && window._appstate.api) {
-          let st = window._appstate.api.mapStruct(Scene, false)
+          const st = window._appstate.api.mapStruct(Scene, false)
 
           st.pathmap.toolmode.data.updateDefinition(this.toolModeProp)
         }
@@ -447,10 +447,10 @@ propIslandOnly : bool;
   }
 
   get lights() {
-    let this2 = this
+    const this2 = this
 
-    let ret = (function* () {
-      for (let ob of this2.objects) {
+    const ret = (function* () {
+      for (const ob of this2.objects) {
         if (ob.data instanceof Light) {
           yield ob
         }
@@ -458,7 +458,7 @@ propIslandOnly : bool;
     })() as unknown as Iterable<Light> & {visible: Iterable<Light>; renderable: Iterable<Light>}
 
     ret.visible = (function* () {
-      for (let ob of this2.objects) {
+      for (const ob of this2.objects) {
         if (ob.flag & ObjectFlags.HIDE) {
           continue
         }
@@ -483,7 +483,7 @@ propIslandOnly : bool;
   getCollection(ctx: ToolContext, name: string): Collection {
     let cl = this.collection.getChild(name)
 
-    let add = cl === undefined
+    const add = cl === undefined
 
     //check if it exists in the datalib somewhere
     cl = cl === undefined ? ctx.datalib.collection.get(name) : cl
@@ -505,12 +505,12 @@ propIslandOnly : bool;
     key: string | number,
     dataclass_or_instance: SceneObjectData['constructor'] | SceneObjectData
   ): SceneObject {
-    let cname = '[Internal ' + this.lib_id + ']'
-    let name = cname + ' ' + key
+    const cname = '[Internal ' + this.lib_id + ']'
+    const name = cname + ' ' + key
 
     console.warn('getInternalObject called')
 
-    let cl = this.getCollection(ctx, cname)
+    const cl = this.getCollection(ctx, cname)
 
     let ob = ctx.datalib.object.get(name)
 
@@ -550,27 +550,27 @@ propIslandOnly : bool;
       return
     }
 
-    let set = new Set<SceneObject>()
+    const set = new Set<SceneObject>()
 
-    let rec = (cl: Collection): void => {
-      for (let ob of cl.objects) {
+    const rec = (cl: Collection): void => {
+      for (const ob of cl.objects) {
         set.add(ob)
       }
 
-      for (let child of cl.children) {
+      for (const child of cl.children) {
         rec(child)
       }
     }
 
     rec(this.collection)
 
-    for (let ob of this.objects) {
+    for (const ob of this.objects) {
       if (!set.has(ob)) {
         this.objects.remove(ob)
       }
     }
 
-    for (let ob of set) {
+    for (const ob of set) {
       if (!this.objects.has(ob)) {
         this.objects.push(ob)
         ob.lib_addUser(this)
@@ -604,14 +604,14 @@ propIslandOnly : bool;
       mode = mode ? 1 : 0
     }
 
-    let i = typeof mode == 'number' ? mode : (this.toolModeProp.values[mode] as number)
+    const i = typeof mode == 'number' ? mode : (this.toolModeProp.values[mode] as number)
 
     if (i === undefined) {
       throw new Error('invalid tool mode ' + mode)
     }
 
     let old: ToolMode
-    let cls = ToolModes[i]
+    const cls = ToolModes[i]
     let ret: ToolMode
 
     if (this.toolmode_i in this.toolmode_map) {
@@ -622,7 +622,7 @@ propIslandOnly : bool;
       }
     }
 
-    for (let mode of this.toolmodes) {
+    for (const mode of this.toolmodes) {
       if (mode.constructor === cls) {
         ret = mode
         break
@@ -637,7 +637,7 @@ propIslandOnly : bool;
     if (ret === undefined) {
       ret = new cls(this.widgets)
 
-      let def = cls.toolModeDefine()
+      const def = cls.toolModeDefine()
 
       this.toolmodes.push(ret)
       this.toolmode_map[i] = ret
@@ -648,7 +648,7 @@ propIslandOnly : bool;
     this.toolmode_i = i
 
     if (ret.storedSelectMask === -1 || ret.storedSelectMask === undefined) {
-      let def = cls.toolModeDefine()
+      const def = cls.toolModeDefine()
 
       if (def.selectMode !== undefined) {
         ret.storedSelectMask = def.selectMode
@@ -696,14 +696,14 @@ propIslandOnly : bool;
   }
 
   destroyIntern() {
-    for (let ob of this.objects) {
+    for (const ob of this.objects) {
       ob.lib_remUser()
     }
 
     this.objects = new ObjectList(undefined, this)
     this.objects.onselect = this._onselect.bind(this)
 
-    for (let tool of this.toolmodes) {
+    for (const tool of this.toolmodes) {
       //tool.
     }
 
@@ -741,18 +741,18 @@ propIslandOnly : bool;
   }
 
   changeTime(newtime: number): void {
-    let oldtime = this.time
+    const oldtime = this.time
 
     console.log('time change!', newtime)
 
     this.time = newtime
-    for (let ob of this.objects) {
+    for (const ob of this.objects) {
       ob.graphUpdate()
     }
 
     if (this.collection) {
       this.collection.update()
-      for (let c of this.collection.flatChildren) {
+      for (const c of this.collection.flatChildren) {
         c.graphUpdate()
       }
     }
@@ -790,11 +790,11 @@ propIslandOnly : bool;
       this.toolmode_i = 0
     }
 
-    for (let mode of this.toolmodes) {
+    for (const mode of this.toolmodes) {
       mode.setManager(this.widgets)
 
-      let def = (mode.constructor as unknown as {toolModeDefine(): {name: string}}).toolModeDefine()
-      let i = this.toolModeProp.values[def.name]
+      const def = (mode.constructor as unknown as {toolModeDefine(): {name: string}}).toolModeDefine()
+      const i = this.toolModeProp.values[def.name]
 
       if (i === this.toolmode_i) {
         found = 1
@@ -805,7 +805,7 @@ propIslandOnly : bool;
     }
 
     if (!found) {
-      let i = this.toolmode_i
+      const i = this.toolmode_i
       this.toolmode_i = -1
 
       this.switchToolMode(0, true)
@@ -830,19 +830,19 @@ propIslandOnly : bool;
     this.#loading = false
     this.regenObjectList()
 
-    for (let tool of this.toolmodes) {
+    for (const tool of this.toolmodes) {
       tool.dataLink(this, getblock, getblock_addUser)
     }
   }
 
   updateWidgets() {
-    let ctx = this.widgets.ctx
+    const ctx = this.widgets.ctx
 
     if (ctx === undefined || ctx.scene === undefined) {
       return
     }
 
-    let toolmode = this.toolmode
+    const toolmode = this.toolmode
     if (toolmode) {
       toolmode.ctx = ctx
     }
@@ -856,7 +856,7 @@ propIslandOnly : bool;
   }
 
   updateWidgets_intern() {
-    let ctx = this.widgets.ctx
+    const ctx = this.widgets.ctx
     if (ctx === undefined) return
 
     this.ctx = ctx

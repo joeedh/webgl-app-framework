@@ -48,10 +48,10 @@ export class MeshOpBaseUV<InputSet extends PropertySlots = {}, OutputSet extends
   }
 
   static invoke(ctx: ViewContext, args) {
-    let tool = super.invoke(ctx, args)
+    const tool = super.invoke(ctx, args)
 
     if (!('selectedFacesOnly' in args)) {
-      let editor = ctx.editors.imageEditor as ImageEditor
+      const editor = ctx.editors.imageEditor as ImageEditor
       if (editor) {
         const uve = editor.uvEditor
 
@@ -63,29 +63,29 @@ export class MeshOpBaseUV<InputSet extends PropertySlots = {}, OutputSet extends
   }
 
   getFaces(ctx: ViewContext) {
-    let mesh = ctx.mesh
+    const mesh = ctx.mesh
 
     if (!mesh) {
       return []
     }
 
-    let selFsOnly = this.inputs.selectedFacesOnly.getValue()
+    const selFsOnly = this.inputs.selectedFacesOnly.getValue()
     return selFsOnly ? mesh.faces.selected.editable : mesh.faces.editable
   }
 
   getLoops(ctx: ViewContext, selOnly = false): Set<Loop> {
-    let selFsOnly = this.inputs.selectedFacesOnly.getValue()
-    let mesh = ctx.mesh
+    const selFsOnly = this.inputs.selectedFacesOnly.getValue()
+    const mesh = ctx.mesh
 
     if (!mesh) {
       return new Set()
     }
 
-    let iter = selFsOnly ? mesh.faces.selected.editable : mesh.faces.editable
-    let ret = new Set<Loop>()
+    const iter = selFsOnly ? mesh.faces.selected.editable : mesh.faces.editable
+    const ret = new Set<Loop>()
 
-    for (let f of iter) {
-      for (let l of f.loops) {
+    for (const f of iter) {
+      for (const l of f.loops) {
         if (l.flag & MeshFlags.HIDE) {
           continue
         }
@@ -109,7 +109,7 @@ export class UnwrapOpBase<
   execPre(ctx: ViewContext) {
     super.execPre(ctx)
 
-    let mesh = ctx.mesh
+    const mesh = ctx.mesh
 
     if (!mesh) {
       return
@@ -142,7 +142,7 @@ export class UVOpBase<InputSet extends PropertySlots = {}, OutputSet extends Pro
   }
 
   static invoke(ctx: ViewContext, args: any) {
-    let tool = super.invoke(ctx, args)
+    const tool = super.invoke(ctx, args)
 
     if (!('selectedFacesOnly' in args)) {
       let uve = ctx.editors.imageEditor
@@ -157,18 +157,18 @@ export class UVOpBase<InputSet extends PropertySlots = {}, OutputSet extends Pro
   }
 
   getLoops(ctx: ViewContext, selOnly = false): Iterable<Loop> {
-    let selFsOnly = this.inputs.selectedFacesOnly.getValue()
-    let mesh = ctx.mesh
+    const selFsOnly = this.inputs.selectedFacesOnly.getValue()
+    const mesh = ctx.mesh
 
     if (!mesh) {
       return new Set()
     }
 
-    let iter = selFsOnly ? mesh.faces.selected.editable : mesh.faces.editable
-    let ret = new Set<Loop>()
+    const iter = selFsOnly ? mesh.faces.selected.editable : mesh.faces.editable
+    const ret = new Set<Loop>()
 
-    for (let f of iter) {
-      for (let l of f.loops) {
+    for (const f of iter) {
+      for (const l of f.loops) {
         if (l.flag & MeshFlags.HIDE) {
           continue
         }

@@ -24,21 +24,21 @@ export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends
   }
 
   addDrawQuad(v1: Vector3, v2: Vector3, v3: Vector3, v4: Vector3, color: Vector4, useZ = true) {
-    let dq = this.modal_ctx.view3d.makeDrawQuad(v1, v2, v3, v4, color, useZ)
+    const dq = this.modal_ctx.view3d.makeDrawQuad(v1, v2, v3, v4, color, useZ)
     this.drawquads.push(dq)
     return dq
   }
 
   addDrawLine(v1: Vector3, v2: Vector3, color: Vector4, useZ = true) {
-    let dl = this.modal_ctx.view3d.makeDrawLine(v1, v2, color as unknown as number[], useZ)
+    const dl = this.modal_ctx.view3d.makeDrawLine(v1, v2, color as unknown as number[], useZ)
     this.drawlines.push(dl)
     return dl
   }
 
   addDrawLine2D(v1: Vector2, v2: Vector2, color: Vector4) {
-    let overdraw: any = this.modal_ctx.view3d.overdraw as unknown as any
+    const overdraw: any = this.modal_ctx.view3d.overdraw as unknown as any
 
-    let dl = overdraw.line(v1, v2, color)
+    const dl = overdraw.line(v1, v2, color)
     this.drawlines2d.push(dl)
 
     return dl
@@ -50,8 +50,8 @@ export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends
 
     let t = -Math.PI,
       dt = (2.0 * Math.PI) / (steps - 1)
-    let p1 = new Vector2()
-    let p2 = new Vector2()
+    const p1 = new Vector2()
+    const p2 = new Vector2()
 
     for (let i = 0; i < steps; i++, t += dt) {
       p1[0] = Math.sin(t) * r + p[0]
@@ -70,15 +70,15 @@ export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends
   }
 
   resetDrawLines() {
-    for (let dl of this.drawlines) {
+    for (const dl of this.drawlines) {
       this.modal_ctx.view3d.removeDrawLine(dl)
     }
 
-    for (let dl of this.drawlines2d) {
+    for (const dl of this.drawlines2d) {
       dl.remove()
     }
 
-    for (let dq of this.drawquads) {
+    for (const dq of this.drawquads) {
       this.modal_ctx.view3d.removeDrawQuad(dq)
     }
 

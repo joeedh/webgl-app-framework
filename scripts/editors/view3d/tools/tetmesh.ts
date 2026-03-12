@@ -1,98 +1,95 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js';
-import * as util from '../../../util/util.js';
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js'
+import * as util from '../../../util/util.js'
 import {
-  nstructjs, FloatProperty, Vec2Property, Vec3Property,
-  BoolProperty, EnumProperty, FlagProperty, KeyMap, HotKey
-} from '../../../path.ux/scripts/pathux.js';
-import {ToolMode} from '../view3d_toolmode.js';
-import {Shaders} from '../../../shaders/shaders.js';
-import {TetMesh} from '../../../tet/tetgen.js';
-import {Icons} from '../../icon_enum.js';
-import {SelMask} from '../selectmode.js';
+  nstructjs,
+  FloatProperty,
+  Vec2Property,
+  Vec3Property,
+  BoolProperty,
+  EnumProperty,
+  FlagProperty,
+  KeyMap,
+  HotKey,
+} from '../../../path.ux/scripts/pathux.js'
+import {ToolMode} from '../view3d_toolmode.js'
+import {Shaders} from '../../../shaders/shaders.js'
+import {TetMesh} from '../../../tet/tetgen.js'
+import {Icons} from '../../icon_enum.js'
+import {SelMask} from '../selectmode.js'
 
-import '../../../tet/tet_ops.js';
-import '../../../tet/tet_selectops.js';
+import '../../../tet/tet_ops.js'
+import '../../../tet/tet_selectops.js'
 
 export class TetMeshTool extends ToolMode {
   constructor() {
-    super();
+    super()
   }
 
   drawsObjectIdsExclusively(ob: any): boolean {
-    return false;
+    return false
   }
 
   defineKeyMap(): any {
-    this.keymap = new KeyMap([
-      new HotKey("W", [], "tet.vertex_smooth()"),
-      new HotKey("D", [], "tet.test()")
-    ]);
+    this.keymap = new KeyMap([new HotKey('W', [], 'tet.vertex_smooth()'), new HotKey('D', [], 'tet.test()')])
   }
 
   static buildEditMenu(): string[] {
-    return [
-      "tet.from_mesh()",
-      "tet.vertex_smooth()",
-      "tet.hexes_to_tets()",
-      "tet.fix_normals()",
-    ];
+    return ['tet.from_mesh()', 'tet.vertex_smooth()', 'tet.hexes_to_tets()', 'tet.fix_normals()']
   }
 
-  static buildElementSettings(container: any): void {
-
-  }
+  static buildElementSettings(container: any): void {}
 
   static buildSettings(container: any): void {
-    let panel, strip;
+    let panel, strip
 
-    panel = container.panel("Conversion");
-    panel.useIcons(false);
-    panel.prop("toolDefaults.tet.from_mesh.maxDepth");
-    panel.prop("toolDefaults.tet.from_mesh.leafLimit");
-    panel.tool("tet.from_mesh()");
-    panel.tool("tet.to_mesh()");
+    panel = container.panel('Conversion')
+    panel.useIcons(false)
+    panel.prop('toolDefaults.tet.from_mesh.maxDepth')
+    panel.prop('toolDefaults.tet.from_mesh.leafLimit')
+    panel.tool('tet.from_mesh()')
+    panel.tool('tet.to_mesh()')
 
-    panel = container.panel("Tools");
-    panel.tool("tet.vertex_smooth()");
-    panel.tool("tet.hexes_to_tets()");
-    panel.tool("tet.fix_normals()");
+    panel = container.panel('Tools')
+    panel.tool('tet.vertex_smooth()')
+    panel.tool('tet.hexes_to_tets()')
+    panel.tool('tet.fix_normals()')
 
-    panel.toolPanel("tet.solidify_wireframe");
+    panel.toolPanel('tet.solidify_wireframe')
   }
 
-  dataLink(scene: any, getblock: any, getblock_addUser: any): void {
+  dataLink(scene: any, getblock: any, getblock_addUser: any): void {}
 
-  }
-
-  static buildHeader (header: any, addHeaderRow: any): void {
-
-  }
+  static buildHeader(header: any, addHeaderRow: any): void {}
 
   static toolModeDefine(): object {
     return {
-      name: "tetmesh",
-      uiname: "Tetrahedron",
-      icon: Icons.TETRAHEDRON,
-      flag: 0,
-      description: "Tetrahedral Mesh Tool",
-      selectMode: SelMask.TETMESH, //if set, preferred selectmode, see SelModes
+      name        : 'tetmesh',
+      uiname      : 'Tetrahedron',
+      icon        : Icons.TETRAHEDRON,
+      flag        : 0,
+      description : 'Tetrahedral Mesh Tool',
+      selectMode  : SelMask.TETMESH, //if set, preferred selectmode, see SelModes
       transWidgets: [], //list of widget classes tied to this.transformWidget
     }
   }
 
-  static nodedef(): object {return {
-    name    : "tetmesh",
-    uiname  : "tetmesh",
-    inputs  : {},
-    outputs : {}
-  }}
+  static nodedef(): object {
+    return {
+      name   : 'tetmesh',
+      uiname : 'tetmesh',
+      inputs : {},
+      outputs: {},
+    }
+  }
 
   loadSTRUCT(reader: any): void {
-    super.loadSTRUCT(reader);
+    super.loadSTRUCT(reader)
   }
 }
 
-TetMeshTool.STRUCT = nstructjs.inherit(TetMeshTool, ToolMode) + `
-}`;
-nstructjs.register(TetMeshTool);
-ToolMode.register(TetMeshTool);
+TetMeshTool.STRUCT =
+  nstructjs.inherit(TetMeshTool, ToolMode) +
+  `
+}`
+nstructjs.register(TetMeshTool)
+ToolMode.register(TetMeshTool)

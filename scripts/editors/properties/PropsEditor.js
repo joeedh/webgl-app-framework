@@ -1,638 +1,643 @@
-import {Area, BorderMask} from '../../path.ux/scripts/screen/ScreenArea.js';
-import {Icons} from "../icon_enum.js";
-import {MeshFlags} from '../../mesh/mesh_base.js';
-import {NoteFrame, Note} from '../../path.ux/scripts/widgets/ui_noteframe.js';
+import {Area, BorderMask} from '../../path.ux/scripts/screen/ScreenArea.js'
+import {Icons} from '../icon_enum.js'
+import {MeshFlags} from '../../mesh/mesh_base.js'
+import {NoteFrame, Note} from '../../path.ux/scripts/widgets/ui_noteframe.js'
 
-import {Editor, VelPan} from '../editor_base.ts';
-import {nstructjs} from '../../path.ux/scripts/pathux.js';
+import {Editor, VelPan} from '../editor_base.ts'
+import {nstructjs} from '../../path.ux/scripts/pathux.js'
 
 import {
-  DataPathError, saveFile, loadFile, saveUIData,
-  loadUIData, ToolOp, BoolProperty, EnumProperty, StringProperty,
-  FlagProperty, FloatProperty, IntProperty
-} from '../../path.ux/scripts/pathux.js';
-import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js';
-import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js';
-import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js';
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js';
-import * as util from '../../util/util.js';
-import {DataBlock, DataRef} from '../../core/lib_api.js';
-import {NodeEditor} from "../node/NodeEditor.js";
-import * as cconst from '../../core/const.js';
-import {Menu} from "../../path.ux/scripts/widgets/ui_menu.js";
-import {MeshTypes} from "../../mesh/mesh_base.js";
-import {ProceduralTex, ProceduralTexUser} from '../../texture/proceduralTex.ts';
-import {ProceduralMesh} from '../../mesh/mesh_gen.js';
-import {CDFlags} from '../../mesh/customdata.js';
-import {loadUndoMesh, saveUndoMesh} from '../../mesh/mesh_ops_base.js';
+  DataPathError,
+  saveFile,
+  loadFile,
+  saveUIData,
+  loadUIData,
+  ToolOp,
+  BoolProperty,
+  EnumProperty,
+  StringProperty,
+  FlagProperty,
+  FloatProperty,
+  IntProperty,
+} from '../../path.ux/scripts/pathux.js'
+import {KeyMap, HotKey} from '../../path.ux/scripts/util/simple_events.js'
+import {UIBase, color2css, _getFont, css2color} from '../../path.ux/scripts/core/ui_base.js'
+import {Container, RowFrame, ColumnFrame} from '../../path.ux/scripts/core/ui.js'
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../util/vectormath.js'
+import * as util from '../../util/util.js'
+import {DataBlock, DataRef} from '../../core/lib_api.js'
+import {NodeEditor} from '../node/NodeEditor.js'
+import * as cconst from '../../core/const.js'
+import {Menu} from '../../path.ux/scripts/widgets/ui_menu.js'
+import {MeshTypes} from '../../mesh/mesh_base.js'
+import {ProceduralTex, ProceduralTexUser} from '../../texture/proceduralTex.ts'
+import {ProceduralMesh} from '../../mesh/mesh_gen.js'
+import {CDFlags} from '../../mesh/customdata.js'
+import {loadUndoMesh, saveUndoMesh} from '../../mesh/mesh_ops_base.js'
 
 export const TexturePathModes = {
   BRUSH : 0,
-  EDITOR: 1
-};
+  EDITOR: 1,
+}
 
 export class ChangeActCDLayerOp extends ToolOp {
   constructor() {
-    super();
-    this._undo = undefined;
+    super()
+    this._undo = undefined
   }
 
   static tooldef() {
     return {
-      uiname  : "Change Active Layer",
-      toolpath: "mesh.change_active_cdlayer",
-      inputs  : {
+      uiname  : 'Change Active Layer',
+      toolpath: 'mesh.change_active_cdlayer',
+      inputs: {
         fullMeshUndo: new BoolProperty(false).private(),
         redrawAll   : new BoolProperty(false).private(),
-        meshPath    : new StringProperty("mesh").private(),
+        meshPath    : new StringProperty('mesh').private(),
         type        : new StringProperty().private(),
         elemType    : new EnumProperty(undefined, MeshTypes).private(),
-        active      : new IntProperty(-1).private()
-      }
+        active      : new IntProperty(-1).private(),
+      },
     }
   }
 
   getMesh(ctx) {
-    return ctx.api.getValue(ctx, this.inputs.meshPath.getValue());
+    return ctx.api.getValue(ctx, this.inputs.meshPath.getValue())
   }
 
   calcUndoMem(ctx) {
     if (!this._undo) {
-      return 0;
+      return 0
     }
 
-    let tot = 0;
+    let tot = 0
 
     if (this._undo.full) {
-      tot += this._undo.data.dview.buffer.byteLength;
+      tot += this._undo.data.dview.buffer.byteLength
     } else {
-      return 32; //guesstimate
+      return 32 //guesstimate
     }
 
-    return tot;
+    return tot
   }
 
   undoPre(ctx) {
-    let undo = this._undo = {
+    let undo = (this._undo = {
       elemtype: this.inputs.elemType.getValue(),
-      type    : this.inputs.type.getValue()
-    };
+      type    : this.inputs.type.getValue(),
+    })
 
-    console.error("full:", this.inputs.fullMeshUndo.getValue());
+    console.error('full:', this.inputs.fullMeshUndo.getValue())
 
-    let mesh = this.getMesh(ctx);
+    let mesh = this.getMesh(ctx)
 
     if (!mesh) {
-      console.warn("Error in undoPre.ChangeActCDLayerOp");
-      this._undo.mesh = this._undo.full = undefined;
-      return;
+      console.warn('Error in undoPre.ChangeActCDLayerOp')
+      this._undo.mesh = this._undo.full = undefined
+      return
     }
 
-    undo.mesh = this.inputs.meshPath.getValue();
+    undo.mesh = this.inputs.meshPath.getValue()
 
-    let elemtype = this.inputs.elemType.getValue();
-    let type = this.inputs.type.getValue();
+    let elemtype = this.inputs.elemType.getValue()
+    let type = this.inputs.type.getValue()
 
     if (this.inputs.fullMeshUndo.getValue()) {
-      undo.full = true;
-      undo.data = saveUndoMesh(mesh);
+      undo.full = true
+      undo.data = saveUndoMesh(mesh)
     } else {
-      let layerst = mesh.elists[elemtype].customData.getLayerSet(type, false);
+      let layerst = mesh.elists[elemtype].customData.getLayerSet(type, false)
 
-      undo.full = false;
-      undo.active = layerst.indexOf(layerst.active);
+      undo.full = false
+      undo.active = layerst.indexOf(layerst.active)
     }
   }
 
   undo(ctx) {
-    let undo = this._undo;
+    let undo = this._undo
 
-    console.error("full:", undo.full);
+    console.error('full:', undo.full)
 
     if (!undo.mesh) {
-      return;
+      return
     }
 
-    let mesh = ctx.api.getValue(ctx, undo.mesh);
+    let mesh = ctx.api.getValue(ctx, undo.mesh)
     if (!mesh) {
-      console.error("Error in ChangeActCDLayerOp.undo", undo);
-      return;
+      console.error('Error in ChangeActCDLayerOp.undo', undo)
+      return
     }
 
     if (undo.full) {
-      let mesh2 = loadUndoMesh(ctx, undo.data);
+      let mesh2 = loadUndoMesh(ctx, undo.data)
 
-      mesh.swapDataBlockContents(mesh2);
-      mesh.regenElementsDraw();
+      mesh.swapDataBlockContents(mesh2)
+      mesh.regenElementsDraw()
 
       for (let v of mesh.verts) {
-        v.flag |= MeshFlags.UPDATE;
+        v.flag |= MeshFlags.UPDATE
       }
     } else {
-      let layerst = mesh.elists[undo.elemtype].customData.getLayerSet(undo.type, false);
+      let layerst = mesh.elists[undo.elemtype].customData.getLayerSet(undo.type, false)
 
-      let layer = layerst[undo.active];
+      let layer = layerst[undo.active]
       if (!layer) {
-        console.error("Error in ChangeActCDLayerOp.undo", undo);
-        return;
+        console.error('Error in ChangeActCDLayerOp.undo', undo)
+        return
       }
 
-      console.log("ACTIVE", layer.index, layerst.active.index);
+      console.log('ACTIVE', layer.index, layerst.active.index)
 
-      mesh.elists[undo.elemtype].customData.setActiveLayer(layer.index);
+      mesh.elists[undo.elemtype].customData.setActiveLayer(layer.index)
 
       if (this.inputs.redrawAll.getValue()) {
         for (let v of mesh.verts) {
-          v.flag |= MeshFlags.UPDATE;
+          v.flag |= MeshFlags.UPDATE
         }
       }
     }
 
-    mesh.regenBVH();
-    mesh.regenUVEditor();
-    mesh.regenAll();
+    mesh.regenBVH()
+    mesh.regenUVEditor()
+    mesh.regenAll()
 
     //force immediate execution of dependency graph
     //so disp layers are properly handled
-    mesh.graphUpdate();
-    window.updateDataGraph(true);
+    mesh.graphUpdate()
+    window.updateDataGraph(true)
 
-    window.redraw_viewport(true);
+    window.redraw_viewport(true)
   }
 
   exec(ctx) {
-    let mesh = this.getMesh(ctx);
-    let elemtype = this.inputs.elemType.getValue();
-    let type = this.inputs.type.getValue();
+    let mesh = this.getMesh(ctx)
+    let elemtype = this.inputs.elemType.getValue()
+    let type = this.inputs.type.getValue()
 
-    let cdata = mesh.elists[elemtype].customData;
-    let layerset = cdata.getLayerSet(type, false);
+    let cdata = mesh.elists[elemtype].customData
+    let layerset = cdata.getLayerSet(type, false)
 
     if (!layerset) {
-      console.warn("No customdata layers of type", type, "exist");
-      return;
+      console.warn('No customdata layers of type', type, 'exist')
+      return
     }
 
-    let act = this.inputs.active.getValue();
-    let layer = cdata.flatlist[act];
+    let act = this.inputs.active.getValue()
+    let layer = cdata.flatlist[act]
 
     if (!layer || layer.typeName !== layerset.typeName) {
-      console.warn("Invalid layer; layer not of type '" + type + "'", act, layer);
-      return;
+      console.warn("Invalid layer; layer not of type '" + type + "'", act, layer)
+      return
     }
 
-    cdata.setActiveLayer(layer.index);
+    cdata.setActiveLayer(layer.index)
 
     if (this.inputs.redrawAll.getValue()) {
       for (let v of mesh.verts) {
-        v.flag |= MeshFlags.UPDATE;
+        v.flag |= MeshFlags.UPDATE
       }
     }
 
-    mesh.regenAll();
-    mesh.regenBVH(); //not covered by regenAll
-    mesh.regenUVEditor(); //not covered by regenAll
+    mesh.regenAll()
+    mesh.regenBVH() //not covered by regenAll
+    mesh.regenUVEditor() //not covered by regenAll
 
-    mesh.graphUpdate();
-    window.updateDataGraph(true); //force immediate execution of data graph
-    window.redraw_viewport(true);
+    mesh.graphUpdate()
+    window.updateDataGraph(true) //force immediate execution of data graph
+    window.redraw_viewport(true)
   }
 }
 
-ToolOp.register(ChangeActCDLayerOp);
+ToolOp.register(ChangeActCDLayerOp)
 
 export class CDLayerPanel extends ColumnFrame {
   constructor() {
-    super();
-    this._lastUpdateKey = undefined;
+    super()
+    this._lastUpdateKey = undefined
 
-    this._saving = false;
-    this._saved_uidata = undefined;
+    this._saving = false
+    this._saved_uidata = undefined
   }
 
   get showDisableIcons() {
-    let s = this.getAttribute("show-disable-icons");
+    let s = this.getAttribute('show-disable-icons')
 
     if (!s) {
-      return false;
+      return false
     }
 
-    s = s.toLowerCase();
-    return s === "true" || s === "on" || s === "yes";
+    s = s.toLowerCase()
+    return s === 'true' || s === 'on' || s === 'yes'
   }
 
   set showDisableIcons(state) {
-    this.setAttribute("show-disable-icons", state ? "true" : "false");
+    this.setAttribute('show-disable-icons', state ? 'true' : 'false')
   }
 
   get fullMeshUndo() {
-    let s = this.getAttribute("full-mesh-undo");
+    let s = this.getAttribute('full-mesh-undo')
     if (!s) {
-      return false;
+      return false
     }
 
-    s = s.toLowerCase();
-    return s === "yes" || s === "true" || s === "on";
+    s = s.toLowerCase()
+    return s === 'yes' || s === 'true' || s === 'on'
   }
 
   set fullMeshUndo(val) {
-    this.setAttribute("full-mesh-undo", val ? "true" : "false");
+    this.setAttribute('full-mesh-undo', val ? 'true' : 'false')
   }
 
   get redrawAll() {
-    let s = this.getAttribute("redraw-all-undo");
+    let s = this.getAttribute('redraw-all-undo')
     if (!s) {
-      return false;
+      return false
     }
 
-    s = s.toLowerCase();
-    return s === "yes" || s === "true" || s === "on";
+    s = s.toLowerCase()
+    return s === 'yes' || s === 'true' || s === 'on'
   }
 
   set redrawAll(val) {
-    this.setAttribute("redraw-all-undo", val ? "true" : "false");
+    this.setAttribute('redraw-all-undo', val ? 'true' : 'false')
   }
 
   static define() {
     return {
-      tagname: "cd-layer-panel-x"
+      tagname: 'cd-layer-panel-x',
     }
   }
 
   init() {
-    super.init();
-    this.doOnce(this.rebuild);
+    super.init()
+    this.doOnce(this.rebuild)
   }
 
   saveData() {
     if (this._saving) {
-      return super.saveData();
+      return super.saveData()
     }
 
-    let ret = super.saveData();
+    let ret = super.saveData()
 
-    this._saving = true;
-    ret.uidata = saveUIData(this, "cdlayerpanel")
-    this._saving = false;
+    this._saving = true
+    ret.uidata = saveUIData(this, 'cdlayerpanel')
+    this._saving = false
 
-    return ret;
+    return ret
   }
 
   loadData(json) {
-    super.loadJSON(json);
+    super.loadJSON(json)
 
-    this._saved_uidata = json.uidata;
+    this._saved_uidata = json.uidata
   }
 
   rebuild() {
     if (!this.ctx) {
-      this._lastUpdateKey = undefined;
-      return;
+      this._lastUpdateKey = undefined
+      return
     }
 
-    let uidata;
+    let uidata
 
     if (this._saved_uidata) {
-      uidata = this._saved_uidata;
+      uidata = this._saved_uidata
     } else {
-      uidata = saveUIData(this, "cdlayerpanel");
-
+      uidata = saveUIData(this, 'cdlayerpanel')
     }
 
-    this.clear();
+    this.clear()
 
-    let meshpath = this.getAttribute("datapath");
-    let type = this.getAttribute("type");
-    let layertype = this.getAttribute("layer");
+    let meshpath = this.getAttribute('datapath')
+    let type = this.getAttribute('type')
+    let layertype = this.getAttribute('layer')
 
-    if (!this.hasAttribute("datapath") || !this.hasAttribute("type") || !this.hasAttribute("layer")) {
-      this.ctx.error("Expected 'datapath' 'type' and 'layer' attributes'");
-      return;
+    if (!this.hasAttribute('datapath') || !this.hasAttribute('type') || !this.hasAttribute('layer')) {
+      this.ctx.error("Expected 'datapath' 'type' and 'layer' attributes'")
+      return
     }
-    type = type.toUpperCase().trim();
-    type = MeshTypes[type];
+    type = type.toUpperCase().trim()
+    type = MeshTypes[type]
 
     if (!type) {
-      this.ctx.error("Bad mesh type " + this.getAttribute("type"));
-      return;
+      this.ctx.error('Bad mesh type ' + this.getAttribute('type'))
+      return
     }
 
-    let mesh = this.ctx.api.getValue(this.ctx, meshpath);
+    let mesh = this.ctx.api.getValue(this.ctx, meshpath)
     if (!mesh) {
-      this.ctx.error("data api error", meshpath);
-      return;
+      this.ctx.error('data api error', meshpath)
+      return
     }
-    let elist = mesh.getElemList(type);
+    let elist = mesh.getElemList(type)
     if (!elist) {
-      this.ctx.error("Mesh api error " + type);
-      return;
+      this.ctx.error('Mesh api error ' + type)
+      return
     }
 
-    let panel = this.panel(layertype + " Layers");
+    let panel = this.panel(layertype + ' Layers')
 
-    this.list = panel.listbox();
-    let actlayer = elist.customData.getActiveLayer(layertype);
+    this.list = panel.listbox()
+    let actlayer = elist.customData.getActiveLayer(layertype)
 
-    let checks = [];
-    let checks2 = [];
-    let show_disabled = this.showDisableIcons;
+    let checks = []
+    let checks2 = []
+    let show_disabled = this.showDisableIcons
 
     for (let layer of elist.customData.flatlist) {
       if (layer.typeName === layertype) {
-        let item = this.list.addItem(layer.name);
+        let item = this.list.addItem(layer.name)
 
-        let check = item.iconcheck(undefined, Icons.CIRCLE_SEL);
-        check.checked = layer === actlayer;
-        check.layerIndex = layer.index;
+        let check = item.iconcheck(undefined, Icons.CIRCLE_SEL)
+        check.checked = layer === actlayer
+        check.layerIndex = layer.index
 
-        checks.push(check);
-        let this2 = this;
+        checks.push(check)
+        let this2 = this
 
         check.onchange = function () {
           if (this.checked) {
-            let tool = new ChangeActCDLayerOp();
+            let tool = new ChangeActCDLayerOp()
 
-            tool.inputs.elemType.setValue(type);
-            tool.inputs.type.setValue(layertype);
-            tool.inputs.fullMeshUndo.setValue(this2.fullMeshUndo);
-            tool.inputs.redrawAll.setValue(this2.redrawAll);
-            tool.inputs.active.setValue(this.layerIndex);
+            tool.inputs.elemType.setValue(type)
+            tool.inputs.type.setValue(layertype)
+            tool.inputs.fullMeshUndo.setValue(this2.fullMeshUndo)
+            tool.inputs.redrawAll.setValue(this2.redrawAll)
+            tool.inputs.active.setValue(this.layerIndex)
 
             //elist.customData.setActiveLayer(this.layerIndex);
-            this.ctx.api.execTool(this.ctx, tool);
+            this.ctx.api.execTool(this.ctx, tool)
 
             for (let c of checks) {
               if (c !== this) {
-                c.checked = false;
+                c.checked = false
               }
             }
           } else {
             if (elist.customData.getActiveLayer(layertype).index === this.layerIndex) {
-              let chg = this.onchange;
-              this.checked = true;
-              this.onchange = chg;
+              let chg = this.onchange
+              this.checked = true
+              this.onchange = chg
             }
           }
 
           if (check.ctx && check.ctx.mesh) {
-            check.ctx.mesh.graphUpdate();
+            check.ctx.mesh.graphUpdate()
           }
           if (check.ctx && check.ctx.object) {
-            check.ctx.object.graphUpdate();
+            check.ctx.object.graphUpdate()
           }
-          window.redraw_viewport(true);
+          window.redraw_viewport(true)
         }
 
         if (show_disabled) {
-          check = item.iconcheck(undefined, Icons.DISABLED);
-          check.layerIndex = layer.index;
+          check = item.iconcheck(undefined, Icons.DISABLED)
+          check.layerIndex = layer.index
 
-          check.checked = !!(layer.flag & CDFlags.DISABLED);
+          check.checked = !!(layer.flag & CDFlags.DISABLED)
 
           check.onchange = function () {
-            let layer = this.layerIndex;
-            layer = elist.customData.flatlist[layer];
+            let layer = this.layerIndex
+            layer = elist.customData.flatlist[layer]
 
             if (this.checked) {
-              layer.flag |= CDFlags.DISABLED;
+              layer.flag |= CDFlags.DISABLED
             } else {
-              layer.flag &= ~CDFlags.DISABLED;
+              layer.flag &= ~CDFlags.DISABLED
             }
 
             if (check.ctx && check.ctx.mesh) {
-              check.ctx.mesh.graphUpdate();
+              check.ctx.mesh.graphUpdate()
             }
             if (check.ctx && check.ctx.object) {
-              check.ctx.object.graphUpdate();
+              check.ctx.object.graphUpdate()
             }
-            window.redraw_viewport(true);
+            window.redraw_viewport(true)
           }
         }
       }
     }
 
-    panel.useIcons(false);
-    panel.tool(`mesh.add_cd_layer(elemType=${type} layerType="${layertype}")`);
-    panel.tool(`mesh.remove_cd_layer(elemType=${type} layerType="${layertype}")`);
+    panel.useIcons(false)
+    panel.tool(`mesh.add_cd_layer(elemType=${type} layerType="${layertype}")`)
+    panel.tool(`mesh.remove_cd_layer(elemType=${type} layerType="${layertype}")`)
 
-    this._saved_uidata = undefined;
-    loadUIData(this, uidata);
+    this._saved_uidata = undefined
+    loadUIData(this, uidata)
 
-    this.flushUpdate();
-    this.flushSetCSS();
-    this.flushUpdate();
+    this.flushUpdate()
+    this.flushSetCSS()
+    this.flushUpdate()
   }
 
   updateDataPath() {
     if (!this.ctx) {
-      return;
+      return
     }
 
-    let meshpath = this.getAttribute("datapath");
-    let type = this.getAttribute("type");
-    let layertype = this.getAttribute("layer");
+    let meshpath = this.getAttribute('datapath')
+    let type = this.getAttribute('type')
+    let layertype = this.getAttribute('layer')
 
-    if (!this.hasAttribute("datapath")
-      || !this.hasAttribute("type")
-      || !this.hasAttribute("layer")) {
-      return;
+    if (!this.hasAttribute('datapath') || !this.hasAttribute('type') || !this.hasAttribute('layer')) {
+      return
     }
 
-    type = type.toUpperCase().trim();
-    type = MeshTypes[type];
+    type = type.toUpperCase().trim()
+    type = MeshTypes[type]
 
     if (!type) {
-      return;
+      return
     }
 
-    let mesh = this.ctx.api.getValue(this.ctx, meshpath);
+    let mesh = this.ctx.api.getValue(this.ctx, meshpath)
     if (!mesh) {
-      return;
+      return
     }
 
-    let key = mesh.lib_id + ":";
-    let elist = mesh.getElemList(type);
+    let key = mesh.lib_id + ':'
+    let elist = mesh.getElemList(type)
 
     if (!elist) {
-      return;
+      return
     }
 
-    let layerset = elist.customData.getLayerSet(layertype);
+    let layerset = elist.customData.getLayerSet(layertype)
     if (layerset && layerset.active) {
-      key += layerset.active.index + "|";
+      key += layerset.active.index + '|'
     }
 
     for (let layer of elist.customData.flatlist) {
       if (layer.typeName === layertype) {
-        key += layer.name + ":" + (layer.flag & CDFlags.DISABLED);
+        key += layer.name + ':' + (layer.flag & CDFlags.DISABLED)
       }
     }
 
     if (key !== this._lastUpdateKey) {
-      this._lastUpdateKey = key;
+      this._lastUpdateKey = key
 
       //console.log("rebuilding mesh layers list");
-      this.rebuild();
+      this.rebuild()
     }
   }
 
   update() {
-    super.update();
+    super.update()
 
-    this.updateDataPath();
+    this.updateDataPath()
   }
 }
 
-UIBase.register(CDLayerPanel);
+UIBase.register(CDLayerPanel)
 
 export class ObjectPanel extends ColumnFrame {
   constructor() {
-    super();
+    super()
 
-    this._last_update_key = "";
+    this._last_update_key = ''
   }
 
   static define() {
     return {
-      tagname: "scene-object-panel-x"
+      tagname: 'scene-object-panel-x',
     }
   }
 
   init() {
-    super.init();
-    this.rebuild();
+    super.init()
+    this.rebuild()
     //this.doOnce(this.rebuild);
   }
 
   rebuild() {
     if (!this.ctx) {
       if (!this.isDead()) {
-        this.doOnce(this.rebuild);
+        this.doOnce(this.rebuild)
       }
 
-      return;
+      return
     }
 
-    this.clear();
-    this.pathlabel("object.name");
+    this.clear()
+    this.pathlabel('object.name')
 
-    let panel;
+    let panel
 
-    panel = this.panel("Transform");
-    panel.useIcons(false);
+    panel = this.panel('Transform')
+    panel.useIcons(false)
 
-    panel.prop(`object.inputs["loc"].value`);
+    panel.prop(`object.inputs["loc"].value`)
 
-    panel.label("Rotation");
-    panel.prop('object.inputs["rot"].value');
-    panel.prop('object.inputs["rotOrder"].value');
+    panel.label('Rotation')
+    panel.prop('object.inputs["rot"].value')
+    panel.prop('object.inputs["rotOrder"].value')
 
-    panel.prop('object.inputs["scale"].value');
+    panel.prop('object.inputs["scale"].value')
 
-    panel.tool("object.apply_transform()");
+    panel.tool('object.apply_transform()')
 
-    panel = this.panel("Draw");
-    panel.useIcons(false);
-    panel.prop("object.flag[DRAW_WIREFRAME]");
+    panel = this.panel('Draw')
+    panel.useIcons(false)
+    panel.prop('object.flag[DRAW_WIREFRAME]')
 
-    let ob = this.ctx.object;
+    let ob = this.ctx.object
     if (!ob) {
-      return;
+      return
     }
 
     let cdpanels = [
       //[elem type, layer type, show-disable-icons, full-mesh-undo]
-      ["VERTEX", "color", false, false, true],
-      ["LOOP", "uv", false, false, true],
-      ["VERTEX", "mask"],
-      ["VERTEX", "displace", true, true],
-      ["VERTEX", "paramvert"]
-    ];
+      ['VERTEX', 'color', false, false, true],
+      ['LOOP', 'uv', false, false, true],
+      ['VERTEX', 'mask'],
+      ['VERTEX', 'displace', true, true],
+      ['VERTEX', 'paramvert'],
+    ]
 
-    let data = ob.data;
+    let data = ob.data
     if (data instanceof Mesh) {
-      let panel = this.panel("Data Layers");
+      let panel = this.panel('Data Layers')
 
       for (let cdp of cdpanels) {
-        let cd = UIBase.createElement("cd-layer-panel-x");
+        let cd = UIBase.createElement('cd-layer-panel-x')
 
         if (cdp.length > 2 && cdp[2]) {
-          cd.setAttribute("show-disable-icons", "true");
+          cd.setAttribute('show-disable-icons', 'true')
         } else {
-          cd.setAttribute("show-disable-icons", "false");
+          cd.setAttribute('show-disable-icons', 'false')
         }
 
         if (cdp.length > 3 && cdp[3]) {
-          cd.fullMeshUndo = true;
+          cd.fullMeshUndo = true
         } else {
-          cd.fullMeshUndo = false;
+          cd.fullMeshUndo = false
         }
 
         if (cdp.length > 4 && cdp[4]) {
-          cd.redrawAll = true;
+          cd.redrawAll = true
         } else {
-          cd.redrawAll = false;
+          cd.redrawAll = false
         }
 
-        cd.setAttribute("datapath", "mesh");
-        cd.setAttribute("type", cdp[0]);
-        cd.setAttribute("layer", cdp[1]);
-        panel.add(cd);
+        cd.setAttribute('datapath', 'mesh')
+        cd.setAttribute('type', cdp[0])
+        cd.setAttribute('layer', cdp[1])
+        panel.add(cd)
       }
 
-      panel = this.panel("BVH");
+      panel = this.panel('BVH')
 
-      panel.prop("mesh.bvhSettings.leafLimit");
-      panel.prop("mesh.bvhSettings.drawLevelOffset");
-      panel.prop("mesh.bvhSettings.depthLimit");
+      panel.prop('mesh.bvhSettings.leafLimit')
+      panel.prop('mesh.bvhSettings.drawLevelOffset')
+      panel.prop('mesh.bvhSettings.depthLimit')
     } else if (data instanceof ProceduralMesh) {
-      let panel = this.panel("Procedural");
-      let strip;
+      let panel = this.panel('Procedural')
+      let strip
 
-      strip = panel.col().strip();
+      strip = panel.col().strip()
 
-      strip.prop('toolDefaults.mesh.procedural_to_mesh.triangulate');
-      strip.tool(`mesh.procedural_to_mesh(objectId=${ob.lib_id})`);
+      strip.prop('toolDefaults.mesh.procedural_to_mesh.triangulate')
+      strip.tool(`mesh.procedural_to_mesh(objectId=${ob.lib_id})`)
 
-      strip = panel.col().strip();
+      strip = panel.col().strip()
 
-      strip.dataPrefix = "object.data.generator";
-      data.generator.constructor.buildSettings(strip);
+      strip.dataPrefix = 'object.data.generator'
+      data.generator.constructor.buildSettings(strip)
     }
   }
 
   update() {
-    super.update();
+    super.update()
 
     if (!this.ctx || !this.ctx.object) {
-      return;
+      return
     }
 
-
-    let ob = this.ctx.object;
-    let key = "" + ob.lib_id + ":" + ob.data.lib_id;
+    let ob = this.ctx.object
+    let key = '' + ob.lib_id + ':' + ob.data.lib_id
 
     if (key !== this._last_update_key) {
-      this._last_update_key = key;
-      this.rebuild();
+      this._last_update_key = key
+      this.rebuild()
     }
   }
 }
 
-UIBase.register(ObjectPanel);
+UIBase.register(ObjectPanel)
 
 export class TexturePanel extends Container {
   constructor() {
-    super();
+    super()
 
-    this.canvas = document.createElement("canvas");
-    this.g = this.canvas.getContext("2d");
-    this.previewSize = 100;
+    this.canvas = document.createElement('canvas')
+    this.g = this.canvas.getContext('2d')
+    this.previewSize = 100
 
-    this._lastkey = undefined;
+    this._lastkey = undefined
 
-    this._drawreq = undefined;
-    this._rebuildReq = undefined;
+    this._drawreq = undefined
+    this._rebuildReq = undefined
 
     /*
     this.modebox = this.listenum(undefined, {
@@ -651,255 +656,256 @@ export class TexturePanel extends Container {
 
   static define() {
     return {
-      tagname: "texture-panel-x"
+      tagname: 'texture-panel-x',
     }
   }
 
   getTexture() {
-    let path = this.getAttribute("datapath");
+    let path = this.getAttribute('datapath')
     if (!path) {
-      return undefined;
+      return undefined
     }
 
-    return this.getPathValue(this.ctx, path);
+    return this.getPathValue(this.ctx, path)
   }
 
   init() {
-    super.init();
+    super.init()
 
-    this.mode = this.listenum(undefined, "Type", {});
-    this.preview = this.panel("Preview");
-    this.settings = this.panel("Settings");
-    this.preview.add(this.canvas);
+    this.mode = this.listenum(undefined, 'Type', {})
+    this.preview = this.panel('Preview')
+    this.settings = this.panel('Settings')
+    this.preview.add(this.canvas)
 
-    this.flagRebuild();
+    this.flagRebuild()
 
-    this.flagRedraw();
+    this.flagRedraw()
   }
 
   rebuild() {
     if (!this.ctx || !this.settings) {
-      this.flagRedraw();
-      return;
+      this.flagRedraw()
+      return
     }
 
-    this._rebuildReq = false;
+    this._rebuildReq = false
 
-    let panel = this.settings;
-    panel.clear();
+    let panel = this.settings
+    panel.clear()
 
-    let tex = this.getTexture();
+    let tex = this.getTexture()
 
     if (!tex) {
-      return;
+      return
     }
 
-    this.mode.ctx = this.ctx;
+    this.mode.ctx = this.ctx
 
-    let cls = tex.generator.constructor;
+    let cls = tex.generator.constructor
 
-    let path = this.getAttribute("datapath");
+    let path = this.getAttribute('datapath')
 
-    this.mode.setAttribute("datapath", path + ".mode");
+    this.mode.setAttribute('datapath', path + '.mode')
 
-    panel.dataPrefix = path;
+    panel.dataPrefix = path
 
-    console.log("Path prefix", path);
-    tex.buildSettings(panel);
+    console.log('Path prefix', path)
+    tex.buildSettings(panel)
 
-    this.flagRedraw();
-    this.flushUpdate();
+    this.flagRedraw()
+    this.flushUpdate()
   }
 
   flagRebuild() {
     if (this._rebuildReq) {
-      return;
+      return
     }
 
-    this._rebuildReq = 1;
+    this._rebuildReq = 1
     window.setTimeout(() => {
-      this.rebuild();
-    });
+      this.rebuild()
+    })
   }
 
   update() {
     if (!this.preview) {
-      return;
+      return
     }
 
-    let tex = this.getTexture();
-    let texid = tex !== undefined ? tex.lib_id : -1;
+    let tex = this.getTexture()
+    let texid = tex !== undefined ? tex.lib_id : -1
 
-    let key = "" + texid;
+    let key = '' + texid
     if (tex) {
-      key += ":" + tex.generator.constructor.name;
+      key += ':' + tex.generator.constructor.name
     }
 
     if (key !== this._lastkey) {
-      this._lastkey = key;
-      this.flagRebuild();
-      this.flagRedraw();
+      this._lastkey = key
+      this.flagRebuild()
+      this.flagRedraw()
     }
 
     if (tex && tex.update()) {
-      this.flagRedraw();
+      this.flagRedraw()
     }
   }
 
   flagRedraw() {
     if (this._drawreq) {
-      return;
+      return
     }
 
-    this._drawreq = 1;
+    this._drawreq = 1
     window.setTimeout(() => {
-      this.redraw();
-    });
+      this.redraw()
+    })
   }
 
   redraw() {
-    this._drawreq = undefined;
+    this._drawreq = undefined
 
-    let g = this.g;
-    let canvas = this.canvas;
+    let g = this.g
+    let canvas = this.canvas
 
-    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.clearRect(0, 0, canvas.width, canvas.height)
 
-    let f1 = 200;
-    let f2 = 135;
+    let f1 = 200
+    let f2 = 135
 
-    let colors = [
-      `rgb(${f1},${f1},${f1})`,
-      `rgb(${f2},${f2},${f2})`
-    ];
+    let colors = [`rgb(${f1},${f1},${f1})`, `rgb(${f2},${f2},${f2})`]
 
-    let csize = 16;
-    let steps = Math.ceil(this.previewSize/csize);
-    for (let i = 0; i < steps*steps; i++) {
-      let x = i%steps, y = ~~(i/steps);
+    let csize = 16
+    let steps = Math.ceil(this.previewSize / csize)
+    for (let i = 0; i < steps * steps; i++) {
+      let x = i % steps,
+        y = ~~(i / steps)
 
-      let j = (x + y)%2;
-      let color = colors[j];
+      let j = (x + y) % 2
+      let color = colors[j]
 
-      x *= csize;
-      y *= csize;
+      x *= csize
+      y *= csize
 
-      g.fillStyle = color;
+      g.fillStyle = color
 
       g.beginPath()
-      g.rect(x, y, csize, csize);
-      g.fill();
+      g.rect(x, y, csize, csize)
+      g.fill()
     }
 
-    let tex = this.getTexture();
+    let tex = this.getTexture()
     if (!tex) {
-      return;
+      return
     }
 
-    let size = this.previewSize;
-    let image = tex.getPreview(size, size);
+    let size = this.previewSize
+    let image = tex.getPreview(size, size)
 
-    g.drawImage(image, 0, 0);
+    g.drawImage(image, 0, 0)
   }
 
   setCSS() {
-    super.setCSS();
+    super.setCSS()
 
-    let dpi = UIBase.getDPI();
-    let w = ~~(this.previewSize*dpi);
+    let dpi = UIBase.getDPI()
+    let w = ~~(this.previewSize * dpi)
 
-    let canvas = this.canvas;
-    canvas.width = w;
-    canvas.height = w;
+    let canvas = this.canvas
+    canvas.width = w
+    canvas.height = w
 
-    let w2 = w/dpi;
-    let h2 = w/dpi;
+    let w2 = w / dpi
+    let h2 = w / dpi
 
-    canvas.style["width"] = w2 + "px";
-    canvas.style["height"] = h2 + "px";
+    canvas.style['width'] = w2 + 'px'
+    canvas.style['height'] = h2 + 'px'
 
-    this.flagRedraw();
+    this.flagRedraw()
   }
 }
 
-UIBase.register(TexturePanel);
+UIBase.register(TexturePanel)
 
 export class TextureSelectPanel extends TexturePanel {
   constructor() {
-    super();
+    super()
 
-    this.browser = UIBase.createElement("data-block-browser-x");
-    this.browser.blockClass = ProceduralTex;
+    this.browser = UIBase.createElement('data-block-browser-x')
+    this.browser.blockClass = ProceduralTex
   }
 
   static define() {
     return {
-      tagname: "texture-select-panel-x"
+      tagname: 'texture-select-panel-x',
     }
   }
 
   init() {
-    super.init();
-    this.browser.setAttribute("datapath", this.getAttribute("datapath"));
+    super.init()
+    this.browser.setAttribute('datapath', this.getAttribute('datapath'))
 
-    this.prepend(this.browser);
+    this.prepend(this.browser)
   }
 
   update() {
     if (!this.ctx) {
-      return;
+      return
     }
 
-    super.update();
-    this.browser.setAttribute("datapath", this.getAttribute("datapath"));
+    super.update()
+    this.browser.setAttribute('datapath', this.getAttribute('datapath'))
   }
 }
 
-UIBase.register(TextureSelectPanel);
+UIBase.register(TextureSelectPanel)
 
 export class PropsEditor extends Editor {
-  static STRUCT = nstructjs.inlineRegister(this, `
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
 PropsEditor {
   texturePath     : string;
   texturePathMode : int;
 }
-`);
+`
+  )
 
   constructor() {
-    super();
+    super()
 
-    this.texUser = new ProceduralTexUser();
+    this.texUser = new ProceduralTexUser()
 
-    this.texturePathMode = TexturePathModes.EDITOR;
-    this.texturePath = "";
+    this.texturePathMode = TexturePathModes.EDITOR
+    this.texturePath = ''
 
-    this._last_toolmode = undefined;
+    this._last_toolmode = undefined
   }
 
   //used by data path api
   get _texture() {
-    if (this.texturePath === "") {
-      return undefined;
+    if (this.texturePath === '') {
+      return undefined
     }
 
-    let path = this.texturePath;
-    return this.ctx.api.getValue(this.ctx, path);
+    let path = this.texturePath
+    return this.ctx.api.getValue(this.ctx, path)
   }
 
   //used by data path api
   set _texture(val) {
     if (val !== undefined && val.lib_id < 0) {
-      throw new Error("pattern is not in the datalib");
+      throw new Error('pattern is not in the datalib')
     }
 
     if (this.texturePathMode === TexturePathModes.EDITOR) {
       if (!val) {
-        this.texturePath = '';
+        this.texturePath = ''
       } else {
-        this.texturePath = `library.texture[${val.lib_id}]`;
+        this.texturePath = `library.texture[${val.lib_id}]`
       }
     } else {
-      this.setPathValue(this.ctx, this.texturePathMode, val);
+      this.setPathValue(this.ctx, this.texturePathMode, val)
       /*
       let rdef = this.ctx.resolvePath(this.texturePath);
       if (!rdef) {
@@ -920,185 +926,180 @@ PropsEditor {
   }
 
   static defineAPI(api) {
-    let st = super.defineAPI(api);
+    let st = super.defineAPI(api)
 
-    st.string("texturePath", "texturePath", "Active Texture Path");
-    st.struct("_texture", "texture", "Active Texture", api.mapStruct(ProceduralTex));
-    st.enum("texturePathMode", "texturePathMode", TexturePathModes, "Source").uiNames({
-      EDITOR: "Any",
-      BRUSH : "Brush"
-    });
+    st.string('texturePath', 'texturePath', 'Active Texture Path')
+    st.struct('_texture', 'texture', 'Active Texture', api.mapStruct(ProceduralTex))
+    st.enum('texturePathMode', 'texturePathMode', TexturePathModes, 'Source').uiNames({
+      EDITOR: 'Any',
+      BRUSH : 'Brush',
+    })
 
-    return st;
+    return st
   }
 
   static define() {
     return {
-      tagname : "props-editor-x",
-      areaname: "props",
-      apiname : "propsEditor",
-      uiname  : "Properties",
-      icon    : Icons.EDITOR_PROPERTIES
+      tagname : 'props-editor-x',
+      areaname: 'props',
+      apiname : 'propsEditor',
+      uiname  : 'Properties',
+      icon    : Icons.EDITOR_PROPERTIES,
     }
   }
 
   on_area_active() {
-    super.on_area_active();
+    super.on_area_active()
 
     if (!this.ctx) {
-      return;
+      return
     }
 
     //check that init has been called
-    this._init();
-    this.setCSS();
+    this._init()
+    this.setCSS()
 
-    console.log("Area active!");
+    console.log('Area active!')
 
     //on_area_active could be called during file load, so put flushUpdate in a try block
 
     try {
-      this.flushUpdate();
-    } catch (error) {
-
-    }
+      this.flushUpdate()
+    } catch (error) {}
   }
 
   init() {
-    super.init();
-    this.background = this.getDefault("DefaultPanelBG");
+    super.init()
+    this.background = this.getDefault('DefaultPanelBG')
 
-    this.style["overflow"] = "scroll";
+    this.style['overflow'] = 'scroll'
 
-    let header = this.header;
-    let container = this.container;
+    let header = this.header
+    let container = this.container
 
-    this.tabs = container.tabs("left");
-    let tab;
+    this.tabs = container.tabs('left')
+    let tab
 
-    this.workspaceTab = this.tabs.tab("Workspace");
-    let panel, strip;
+    this.workspaceTab = this.tabs.tab('Workspace')
+    let panel, strip
 
-    tab = this.tabs.tab("Scene");
-    panel = tab.panel("Viewport Settings");
-    panel.useIcons(false);
-    panel.prop("view3d.cameraMode[PERSPECTIVE]");
-    panel.prop("view3d.cameraMode[ORTHOGRAPHIC]");
+    tab = this.tabs.tab('Scene')
+    panel = tab.panel('Viewport Settings')
+    panel.useIcons(false)
+    panel.prop('view3d.cameraMode[PERSPECTIVE]')
+    panel.prop('view3d.cameraMode[ORTHOGRAPHIC]')
 
     let viewAxis = (axis, sign) => {
-      this.ctx.view3d.viewAxis(axis, sign);
+      this.ctx.view3d.viewAxis(axis, sign)
     }
 
     let axes = {
-      "Front" : [1, 1],
-      "Left"  : [0, 1],
-      "Back"  : [1, -1],
-      "Right" : [0, -1],
-      "Top"   : [2, 1],
-      "Bottom": [2, -1]
+      Front : [1, 1],
+      Left  : [0, 1],
+      Back  : [1, -1],
+      Right : [0, -1],
+      Top   : [2, 1],
+      Bottom: [2, -1],
     }
 
     function makeAxis(key, axis, sign) {
       panel.button(key, () => {
-        viewAxis(axis, sign);
-      });
+        viewAxis(axis, sign)
+      })
     }
 
     for (let k in axes) {
-      let [axis, sign] = axes[k];
-      makeAxis(k, axis, sign);
+      let [axis, sign] = axes[k]
+      makeAxis(k, axis, sign)
     }
 
-    panel = tab.panel("Render Settings");
-    panel.prop("scene.envlight.color");
-    panel.prop("scene.envlight.power");
-    panel.prop("scene.envlight.flag");
-    panel.prop("scene.envlight.ao_dist");
-    panel.prop("scene.envlight.ao_fac");
-    panel.prop("view3d.render.sharpen");
+    panel = tab.panel('Render Settings')
+    panel.prop('scene.envlight.color')
+    panel.prop('scene.envlight.power')
+    panel.prop('scene.envlight.flag')
+    panel.prop('scene.envlight.ao_dist')
+    panel.prop('scene.envlight.ao_fac')
+    panel.prop('view3d.render.sharpen')
 
-    tab = this.tabs.tab("Material");
-    this.materialPanel(tab);
+    tab = this.tabs.tab('Material')
+    this.materialPanel(tab)
 
-    tab = this.objTab = this.tabs.tab("Object");
-    let obpanel = UIBase.createElement("scene-object-panel-x");
-    tab.add(obpanel);
+    tab = this.objTab = this.tabs.tab('Object')
+    let obpanel = UIBase.createElement('scene-object-panel-x')
+    tab.add(obpanel)
 
-    tab = this.texTab = this.tabs.tab("Texture");
-    this.textureTab(tab);
+    tab = this.texTab = this.tabs.tab('Texture')
+    this.textureTab(tab)
 
-    this._last_obj = undefined;
+    this._last_obj = undefined
 
+    tab = this.tabs.tab('Last Command')
+    let last = document.createElement('last-tool-panel-x')
+    tab.add(last)
 
-    tab = this.tabs.tab("Last Command");
-    let last = document.createElement("last-tool-panel-x")
-    tab.add(last);
+    tab = this.tabs.tab('Settings')
 
+    panel = tab.panel('Brushes')
+    strip = panel.row()
+    strip.useIcons(false)
 
-    tab = this.tabs.tab("Settings");
+    strip.prop('settings.brushSet')
 
-    panel = tab.panel("Brushes");
-    strip = panel.row();
-    strip.useIcons(false);
+    strip.useIcons(true)
+    strip.tool('brush.reload_all_defaults()')
 
-    strip.prop("settings.brushSet");
+    panel = tab.panel('Undo')
 
-    strip.useIcons(true);
-    strip.tool("brush.reload_all_defaults()");
+    let col = panel.col()
+    col.useIcons(false)
 
-
-    panel = tab.panel("Undo");
-
-    let col = panel.col();
-    col.useIcons(false);
-
-    col.prop("settings.limitUndoMem");
-    col.prop("settings.undoMemLimit");
+    col.prop('settings.limitUndoMem')
+    col.prop('settings.undoMemLimit')
   }
 
   textureTab(tab) {
     //let tex = document.createElement("texture-panel-x");
-    let tex = this.texPanel = document.createElement("texture-panel-x");
+    let tex = (this.texPanel = document.createElement('texture-panel-x'))
 
-    let browser = document.createElement("data-block-browser-x");
+    let browser = document.createElement('data-block-browser-x')
 
-    let path = "propsEditor.texture";
+    let path = 'propsEditor.texture'
 
-    browser.setAttribute("datapath", path);
-    browser.blockClass = ProceduralTex;
+    browser.setAttribute('datapath', path)
+    browser.blockClass = ProceduralTex
 
-    let strip = tab.row().strip();
-    strip.label("Source");
-    strip.prop("propsEditor.texturePathMode");
+    let strip = tab.row().strip()
+    strip.label('Source')
+    strip.prop('propsEditor.texturePathMode')
 
-    tex.setAttribute("datapath", path);
-    tex.ctx = this.ctx;
+    tex.setAttribute('datapath', path)
+    tex.ctx = this.ctx
 
-    tab.add(browser);
-    tab.add(tex);
+    tab.add(browser)
+    tab.add(tex)
   }
 
   materialPanel(tab) {
-    let panel = document.createElement("mesh-material-panel-x");
-    panel.setAttribute("datapath", "mesh");
-    tab.add(panel);
+    let panel = document.createElement('mesh-material-panel-x')
+    panel.setAttribute('datapath', 'mesh')
+    tab.add(panel)
   }
 
   updateToolMode() {
     if (!this.ctx || !this.ctx.toolmode || !this.workspaceTab) {
-      return;
+      return
     }
 
-    let toolmode = this.ctx.toolmode;
+    let toolmode = this.ctx.toolmode
 
     if (toolmode === this._last_toolmode) {
-      return;
+      return
     }
 
-    this._last_toolmode = toolmode;
+    this._last_toolmode = toolmode
 
-    this.workspaceTab.clear();
-    toolmode.constructor.buildSettings(this.workspaceTab);
+    this.workspaceTab.clear()
+    toolmode.constructor.buildSettings(this.workspaceTab)
   }
 
   update() {
@@ -1107,21 +1108,21 @@ PropsEditor {
       this.texPanel._init()
     }
 
-    this.updateToolMode();
+    this.updateToolMode()
 
-    super.update();
+    super.update()
   }
 
   copy() {
-    let ret = document.createElement("props-editor-x");
-    ret.ctx = this.ctx;
+    let ret = document.createElement('props-editor-x')
+    ret.ctx = this.ctx
 
-    return ret;
+    return ret
   }
 
   setCSS() {
-    super.setCSS();
+    super.setCSS()
   }
 }
 
-Editor.register(PropsEditor);
+Editor.register(PropsEditor)

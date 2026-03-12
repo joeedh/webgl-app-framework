@@ -508,7 +508,11 @@ interface INodeSocketSet {
  It's required to implement the nodedef() static
  method in child classes.
  */
-export class Node<InputSet extends INodeSocketSet = INodeSocketSet, OutputSet extends INodeSocketSet = INodeSocketSet, ExecContextType = any> {
+export class Node<
+  InputSet extends INodeSocketSet = INodeSocketSet,
+  OutputSet extends INodeSocketSet = INodeSocketSet,
+  ExecContextType = any,
+> {
   inputs: InputSet
   outputs: OutputSet
   graph_uiname: string
