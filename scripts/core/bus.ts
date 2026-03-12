@@ -26,14 +26,20 @@ messageBug.register(EmitterClass)
 */
 export type EventCallback = (msg: BusMessage) => void
 
-export class Subscriber<T = any> {
+export class Subscriber<CLS extends IBusEmitterClass, T = any> {
   getter: () => T
-  events: Set<string>
+  events: BusEvents<CLS>[]
   callback: EventCallback
-  sourceClass: any
+  sourceClass: CLS
   priority: number
 
-  constructor(getter_cb: () => T, sourceClass: any, events: Set<string>, callback: EventCallback, priority: number) {
+  constructor(
+    getter_cb: () => T,
+    sourceClass: any,
+    events: BusEvents<CLS>[],
+    callback: EventCallback,
+    priority: number
+  ) {
     this.getter = getter_cb
     this.events = events
     this.callback = callback
@@ -46,6 +52,7 @@ export class BusMessage<T = any, D = any> {
   event: string
   data: D
   sourceClass: any
+  emitter: any
   target?: T
 
   constructor(sourceClass: any, key: string, data: D) {
@@ -56,30 +63,65 @@ export class BusMessage<T = any, D = any> {
   }
 }
 
-export interface IBusEmitterDef {
-  events: string[]
+export interface IBusEmitter<EmitterClass extends IBusEmitterClass> {
+  onTrigger(event: BusTriggers<EmitterClass>, data?: any): void
 }
 
-export interface EmitterClassIF {
+export interface IBusEmitterClass {
   busDefine(): {
-    events: [] //e.g. ["REGISTER", "UNREGISTER"
+    events: readonly string[] //e.g. ["REGISTER", "UNREGISTER"
+    triggers: readonly string[]
   }
 }
 
+export type BusTriggers<EmitterClass extends IBusEmitterClass> = ReturnType<
+  EmitterClass['busDefine']
+>['triggers'][number]
+export type BusEvents<EmitterClass extends IBusEmitterClass> = ReturnType<EmitterClass['busDefine']>['events'][number]
+
 export class MessageBus {
-  subscribers: Subscriber[]
-  emitters: EmitterClassIF[]
+  subscribers: Subscriber<IBusEmitterClass>[]
+  emitters: {emitter: any; emitterClass: IBusEmitterClass}[]
 
   constructor() {
     this.subscribers = []
     this.emitters = [] //list of classes
   }
 
-  register(emitter: EmitterClassIF) {
-    const def = emitter.busDefine()
-    this.emitters.push(emitter)
+  private findEmitter<T extends boolean, CLS extends IBusEmitterClass>(
+    emitter: IBusEmitter<CLS>,
+    emitterClass: CLS,
+    createSpace?: T
+  ): T extends true ? number : number | undefined {
+    const index = this.emitters.findIndex((e) => e.emitter === emitter && e.emitterClass === emitterClass)
+    if (index === -1 && createSpace) {
+      this.emitters.length++
+      return this.emitters.length - 1
+    }
+
+    // TS's inference isn't quite smart enough for the undefined here
+    return index === -1 ? (undefined as unknown as number) : index
   }
 
+  addEmitter<CLS extends IBusEmitterClass>(emitter: IBusEmitter<CLS>, emitterClass: CLS) {
+    let index = this.findEmitter(emitter, emitterClass, true)
+    this.emitters[index] = {emitter, emitterClass}
+    return this
+  }
+  hasEmitter<CLS extends IBusEmitterClass>(emitter: IBusEmitter<CLS>, emitterClass: CLS) {
+    return this.findEmitter(emitter, emitterClass) !== undefined
+  }
+
+  removeEmitter<CLS extends IBusEmitterClass>(emitter: IBusEmitter<CLS>, emitterClass: CLS) {
+    let i = this.findEmitter(emitter, emitterClass)
+    if (i === undefined) {
+      //throw new Error('emitter not found')
+      console.warn('emitter not found', this, i)
+      return
+    }
+    this.emitters.splice(i, 1)
+    return this
+  }
   /** getter_cb is a function that returns
    * subscriber object, or undefined if subscriber is dead. */
   subscribe<T = any>(
@@ -94,10 +136,10 @@ export class MessageBus {
     if (typeof _events === 'string' && _events === 'ANY') {
       events = new Set(['ANY'])
     } else {
-      if (typeof events === 'string') {
-        events = new Set([events])
+      if (typeof _events === 'string') {
+        events = new Set([_events])
       } else {
-        events = new Set(events)
+        events = new Set(_events)
       }
     }
 
@@ -111,7 +153,7 @@ export class MessageBus {
       }
     }
 
-    const sub = new Subscriber(getter_cb, sourceClass, events, callback, priority)
+    const sub = new Subscriber(getter_cb, sourceClass, Array.from(events), callback, priority)
     this.subscribers.push(sub)
 
     this.sortSubscribers()
@@ -128,7 +170,7 @@ export class MessageBus {
     }
   }
 
-  unsubscribe(sub: Subscriber): this {
+  unsubscribe(sub: Subscriber<IBusEmitterClass>): this {
     if (this.subscribers.indexOf(sub) >= 0) {
       this.subscribers.remove(sub)
     }
@@ -143,7 +185,7 @@ export class MessageBus {
     return this
   }
 
-  isValidEvent(sourceClass: EmitterClassIF, messageType: string): boolean {
+  isValidEvent(sourceClass: IBusEmitterClass, messageType: string): boolean {
     const types = sourceClass.busDefine().events
 
     let ok = false
@@ -160,40 +202,58 @@ export class MessageBus {
     return ok
   }
 
-  emit(sourceClass: any, messageType: string, data: any): void {
+  emit<CLS extends IBusEmitterClass>(
+    sourceEmitter: IBusEmitter<CLS>,
+    sourceClass: CLS,
+    messageType: BusEvents<CLS>,
+    data: any
+  ): void {
     if (!this.isValidEvent(sourceClass, messageType)) {
       throw new Error('invalid message type ' + messageType)
     }
 
     window.setTimeout(() => {
-      this.emitSync(sourceClass, messageType, data)
+      this.emitSync(sourceEmitter, sourceClass, messageType, data)
     }, 0)
   }
 
-  emitSync(sourceClass: any, messageType: string, data: any): void {
+  sendTrigger<CLS extends IBusEmitterClass>(sourceClass: CLS, messageType: BusTriggers<CLS>, data?: any): void {
+    for (const emitter of this.emitters) {
+      if (emitter.emitterClass === sourceClass) {
+        emitter.emitter.trigger(messageType, data)
+      }
+    }
+  }
+
+  emitSync<CLS extends IBusEmitterClass>(
+    sourceEmitter: IBusEmitter<CLS>,
+    sourceClass: CLS,
+    messageType: BusEvents<CLS>,
+    data: any
+  ): void {
     const msg = new BusMessage(sourceClass, messageType, data)
 
     let del = undefined
 
     for (const sb of this.subscribers) {
       let ok = sb.sourceClass === sourceClass
-      ok = ok && (sb.events.has('ALL') || sb.events.has(messageType))
+      ok = ok && (sb.events.includes('ALL') || sb.events.includes(messageType))
 
       if (!ok) {
         continue
       }
 
-      let owner: any
+      let subscriber: any
 
       try {
-        owner = sb.getter()
+        subscriber = sb.getter()
       } catch (error) {
-        owner = undefined
+        subscriber = undefined
         console.log((error as Error).stack)
         console.log((error as Error).message)
       }
 
-      if (!owner) {
+      if (!subscriber) {
         //dead owner
         console.warn('Dead subscriber', sb)
         if (!del) {
@@ -205,7 +265,9 @@ export class MessageBus {
         continue
       }
 
-      msg.target = owner
+      msg.target = subscriber
+      msg.emitter = sourceEmitter
+      msg.sourceClass = sourceClass
 
       try {
         sb.callback(msg)

@@ -715,7 +715,7 @@ ImageUser {
 
   image: ImageBlock | undefined;
 
-  constructor(image: ImageBlock) {
+  constructor(image?: ImageBlock) {
     this.image = image;
   }
 

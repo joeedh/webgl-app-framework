@@ -19,9 +19,9 @@ import {AttrRef, ColorLayerElem, IntElem, UVFlags, UVLayerElem} from './mesh_cus
 import {BVH, BVHNode, BVHTri} from '../util/bvh.js'
 import {CustomDataElem} from './customdata.js'
 import {Edge, Face, Loop, Mesh, Vertex} from './mesh'
-import type {ImageEditor} from '../../types/scripts/editors/image/ImageEditor'
-import {UVEditor} from '../../types/scripts/editors/image/ImageEditor'
 import {INumberList} from '../util/polyfill'
+import bus from '../core/bus.js'
+import {ImageEditor, UVEditor} from '../editors/image/ImageEditor'
 
 const chp_rets = util.cachering.fromConstructor(Vector2, 64)
 
@@ -1047,21 +1047,11 @@ export class UVWrangler {
   }
 
   packIslands(ignorePinnedIslands = false, islandsWithSelLoops = false) {
-    const editor = (window._appstate.ctx.editors as unknown as any).imageEditor as ImageEditor
-    const uve: UVEditor | undefined = editor?.uvEditor
-
-    if (uve) {
-      uve.resetDrawLines()
-      uve.flagRedraw()
-    }
+    bus.sendTrigger(ImageEditor, 'resetDrawLines')
+    bus.sendTrigger(ImageEditor, 'flagRedraw')
 
     function drawline(v1: INumberList, v2: INumberList, color = 'red'): void {
-      if (uve) {
-        //XXX
-        //return
-        //uve.addDrawLine(v1, v2, color)
-        //uve.flagRedraw()
-      }
+      bus.sendTrigger(ImageEditor, 'addDrawLine', [v1, v2, color])
     }
 
     const cd_corner = this.cd_corner

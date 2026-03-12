@@ -392,7 +392,14 @@ DataRef {
     return ret
   }
 
-  set(block: BlockType) {
+  set(block: BlockType | this) {
+    if (block instanceof DataRef) {
+      this.lib_type = block.lib_type
+      this.lib_id = block.lib_id
+      this.name = block.name
+      return
+    }
+
     if (!this.lib_type) {
       this.lib_type = block.constructor.blockDefine().typeName
     }
@@ -779,7 +786,9 @@ Library {
     })()
   }
 
-  get<BlockType = DataBlock>(id_or_dataref_or_name: any): BlockType | undefined {
+  get<BlockType extends DataBlock = DataBlock>(
+    id_or_dataref_or_name: string | DataRef<BlockType> | number
+  ): BlockType | undefined {
     const f = id_or_dataref_or_name
 
     if (f === undefined || f === null) {
@@ -899,7 +908,7 @@ Library {
   }
 }
 
-export class DataRefProperty extends ToolProperty<DataRef> {
+export class DataRefProperty<BlockType extends DataBlock> extends ToolProperty<DataRef<BlockType>> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -909,8 +918,8 @@ DataRefProperty {
 }`
   )
 
-  blockType: string
-  data: DataRef
+  blockType?: string
+  data: DataRef<BlockType>
 
   constructor(
     type?: IDataBlockConstructor<any, any, any>,
@@ -943,7 +952,7 @@ DataRefProperty {
     return super.calcMemSize() + (this.blockType ? this.blockType.length * 4 + 8 : 8) + 64
   }
 
-  setValue(val: any) {
+  setValue(val: BlockType | undefined | number | DataRef<BlockType>) {
     if (val === undefined || val === -1) {
       this.data.lib_id = -1
       return

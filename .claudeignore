@@ -1,2 +1,7 @@
 build/**
 **/build/**
+eslint.config.js
+.prettierrc
+.editorconfig
+.clang-format
+

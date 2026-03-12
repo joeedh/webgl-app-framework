@@ -558,7 +558,7 @@ class _ToolContext<
 export const ToolContext = _ToolContext
 export type ToolContext = MakeContextType<_ToolContext, BaseOverlay>
 
-class _ViewContext extends ToolContext<ViewOverlay> {
+class _ViewContext extends _ToolContext<ViewOverlay> {
   constructor(state: AppState) {
     super(state) //ToolContext constructor will call .reset() for us
   }

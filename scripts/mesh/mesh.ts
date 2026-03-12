@@ -74,13 +74,14 @@ import {setMeshClass, triangulateFace} from './mesh_tess.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 import {checkDispLayers, DispLayerFlags, DispLayerVert, onFileLoadDispVert, updateDispLayers} from './mesh_displacement'
 import {IGridConstructor} from './mesh_grids.js'
-import {View3D} from '../../types/scripts/editors/view3d/view3d'
+import {View3D} from '../editors/view3d/view3d'
 //import type {View3D} from '../editors/view3d/view3d'
 import type {SceneObject} from '../sceneobject/sceneobject'
 import {Utf8DecodeWorker} from '../extern/jszip/jszip'
 import {ToolContext} from '../core/context'
 import {Material} from '../core/material'
 import {ShaderProgram} from '../core/webgl'
+import type {Scene} from '../scene/scene'
 
 export interface IBVHArgs {
   leafLimit?: number
@@ -6640,7 +6641,7 @@ setMeshClass(Mesh)
 
 const g = window as unknown as any
 g['_debug_recalc_all_normals'] = function (force = false) {
-  const scene = window['_appstate']['ctx']['scene']
+  const scene = (window._appstate.ctx as any).scene as Scene
   for (const ob of scene.objects) {
     if (ob.data instanceof Mesh) {
       if (force) {

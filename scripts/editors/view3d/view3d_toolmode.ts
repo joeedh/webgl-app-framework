@@ -156,13 +156,13 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
   static busDefine() {
     return {
       events: ['REGISTER', 'UNREGISTER'],
-    }
+      triggers: [],
+    } as const
   }
 
   static unregister(cls: any) {
     ToolModes.remove(cls)
-
-    messageBus.emit(this, 'UNREGISTER', cls)
+    messageBus.emitSync(this, 'UNREGISTER', cls)
   }
 
   static register(cls: any) {
@@ -557,7 +557,7 @@ export function makeToolModeEnum() {
   return prop
 }
 
-messageBus.register(ToolMode)
+//messageBus.register(ToolMode)
 
 window._ToolModes = ToolModes
 window._makeToolModeEnum = makeToolModeEnum
