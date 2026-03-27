@@ -14,18 +14,16 @@ In addition, a simple uniform scale is derived per-vertex by averaging the edge
 lengths using the same smoothed coordinates.
 */
 
-import {CDFlags, LayerSet, LayerSettingsBase} from './customdata.js'
-import {nstructjs, util, math, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
+import {CDFlags, CustomDataLayer, LayerSet, LayerSettingsBase} from './customdata.js'
+import {nstructjs, util, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
 import {CustomDataElem} from './customdata'
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js'
+import {Vector3, Matrix4} from '../util/vectormath.js'
 
-const Queue = util.Queue
 import {MeshTypes, MeshFlags} from './mesh_base.js'
 import {paramizeMesh, ParamizeModes, ParamVert} from './mesh_paramizer'
 import {BVHVertFlags, MDynVert} from '../util/bvh.js'
-import {getCornerFlag, getFaceSets, getFaceSetsAttr, getSmoothBoundFlag} from './mesh_facesets.js'
-import {AttrRef, FloatElem, IntElem, Mesh, Vector2LayerElem, Vector3LayerElem, Vertex} from './mesh'
-import {get} from 'http'
+import {getCornerFlag, getFaceSetsAttr, getSmoothBoundFlag} from './mesh_facesets.js'
+import {AttrRef, IntElem, Mesh, Vector2LayerElem, Vector3LayerElem, Vertex} from './mesh'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
 
 function smoothno(v: Vertex, dv: DispLayerVert) {
@@ -525,7 +523,7 @@ export class DispContext {
   stack: (number | DispLayerSettings | LayerSettingsBase)[]
   scur: 0
   cd_disp?: number
-  settings = new DispLayerSettings()
+  settings: DispLayerSettings = new DispLayerSettings()
   smemo?: SmoothMemoizer
   mesh?: Mesh
   layerset?: LayerSet<DispLayerVert>
@@ -583,8 +581,11 @@ export class DispContext {
   reset(mesh?: Mesh, cd_disp?: number, cd_pvert?: number) {
     this.v = undefined
     this.cd_disp = cd_disp
-    this.settings =
-      cd_disp !== undefined && cd_disp >= 0 ? mesh!.verts.customData.flatlist[cd_disp].getTypeSettings() : undefined
+    const settings =
+      cd_disp !== undefined && cd_disp >= 0
+        ? mesh!.verts.customData.flatlist[cd_disp].getTypeSettings<DispLayerSettings>()
+        : undefined
+    this.settings = settings ?? this.settings
 
     if (mesh) {
       this.layerset = mesh.verts.customData.getLayerSet('displace', false)
@@ -746,7 +747,7 @@ export class DispLayerVert extends CustomDataElem<Vector3> {
       }
     }
 
-    if (cd_disp === dctx.layerset!.active.index) {
+    if (cd_disp === dctx.layerset!.active!.index) {
       this.worldco = v.co
     } else if (cd_disp !== dctx.layerset![0].index) {
       //*
@@ -856,7 +857,7 @@ export class DispLayerVert extends CustomDataElem<Vector3> {
     dv.scale = getscale(v, dv, cd_disp)
 
     for (const layer of dctx.layerset!) {
-      const settings = layer.getTypeSettings()
+      const settings = layer.getTypeSettings<DispLayerSettings>()
       const dv2 = v.customData[layer.index] as DispLayerVert
 
       dctx.pushDisp(layer.index)
@@ -1100,7 +1101,7 @@ export function initDispLayers(mesh: Mesh) {
   const pvert_settings = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings()
 
   for (const layer of layerset) {
-    const settings = layer.getTypeSettings()
+    const settings = layer.getTypeSettings<DispLayerSettings>()
     let cd_disp = layer.index
 
     dctx.reset(mesh, cd_disp, cd_pvert)
@@ -1222,13 +1223,13 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
   const cd_pvert = mesh.verts.customData.getNamedLayerIndex('disp_pvert', 'paramvert')
   const pvert_settings = mesh.verts.customData.flatlist[cd_pvert].getTypeSettings()
 
-  const layers = mesh.verts.customData.getLayerSet('displace')
-  let actlayer = undefined
+  const layers = mesh.verts.customData.getLayerSet<DispLayerVert>('displace')
+  let actlayer: CustomDataLayer<DispLayerVert>
 
   const cd_baselayer = layers[0].index
 
   if (activeLayerIndex === undefined) {
-    actlayer = layers.active
+    actlayer = layers.active!
   } else {
     actlayer = mesh.verts.customData.flatlist[activeLayerIndex]
   }
@@ -1242,8 +1243,8 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
   if (idx !== mesh.lastDispActive && mesh.lastDispActive < layers.length) {
     console.error('lastDispActive changed!', idx, mesh.lastDispActive)
 
-    const s1 = actlayer.getTypeSettings()
-    const s2 = layers[mesh.lastDispActive].getTypeSettings()
+    const s1 = actlayer.getTypeSettings<DispLayerSettings>()
+    const s2 = layers[mesh.lastDispActive].getTypeSettings<DispLayerSettings>()
 
     let next: number | undefined = mesh.lastDispActive + 1
     if (next >= layers.length) {
@@ -1349,7 +1350,7 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
 
   for (const layer of layers) {
     const cd_disp = layer.index
-    const settings = layer.getTypeSettings()
+    const settings = layer.getTypeSettings<DispLayerSettings>()
 
     if (cd_disp === cd_baselayer) {
       continue
@@ -1379,7 +1380,7 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
   let li = 0
   for (const layer of layers) {
     const cd_disp = layer.index
-    const settings = layer.getTypeSettings()
+    const settings = layer.getTypeSettings<DispLayerSettings>()
 
     settings.lastUpdateGen = settings.updateGen
 
@@ -1420,7 +1421,7 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
 
   for (const layer of layers) {
     const cd_disp = layer.index
-    const settings = layer.getTypeSettings()
+    const settings = layer.getTypeSettings<DispLayerSettings>()
 
     settings.lastUpdateGen = settings.updateGen
   }

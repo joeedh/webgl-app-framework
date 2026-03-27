@@ -2792,7 +2792,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       return
     }
 
-    const newps = [] as number[]
+    const newps = [] as KDGridVert[]
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {

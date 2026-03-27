@@ -7,8 +7,8 @@ import {DependSocket} from '../core/graphsockets'
 import {Material} from '../core/material'
 import type {ToolContext} from '../core/context'
 import type {SceneObject} from './sceneobject'
-import {View3D} from '../../types/scripts/editors/view3d/view3d'
 import {ShaderProgram} from '../core/webgl'
+import type {View3D} from '../editors/all'
 
 export interface IDataDefine {
   name: string
@@ -28,7 +28,7 @@ export class SceneObjectData<InputSet = {}, OutputSet = {}> extends DataBlock<
   OutputSet & {depend: DependSocket}
 > {
   material?: Material = undefined
-  materials: Array<Material | undefined> = []
+  materials: (Material | undefined)[] = []
   usesMaterial = false
 
   constructor() {
@@ -74,7 +74,7 @@ SceneObjectData {
   }
 
   static getTools() {
-    let def = this.dataDefine()
+    const def = this.dataDefine()
 
     if (def.tools) return def.tools
 
@@ -82,7 +82,7 @@ SceneObjectData {
   }
 
   getOwningObject() {
-    for (let sock of this.inputs.depend.edges) {
+    for (const sock of this.inputs.depend.edges) {
       // XXX fixme: cannot use instanceof here because of circular dependency
       // but this is still a hack
       if ((sock.node as any).constructor.name === 'SceneObject' && (sock.node as unknown as any).data === this) {
@@ -98,7 +98,7 @@ SceneObjectData {
   }
 
   getBoundingBox(): [Vector3, Vector3] {
-    let d = 5
+    const d = 5
 
     console.warn('getBoundingBox: implement me!')
 
@@ -135,12 +135,12 @@ SceneObjectData {
   dataLink(getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
     super.dataLink(getblock, getblock_addUser)
 
-    let mats = []
+    const mats = [] as Material[]
 
     //non-datablock materials are allowed
 
     for (let i = 0; i < this.materials.length; i++) {
-      let mat = getblock_addUser<Material>(this.materials[i] as unknown as number, this)
+      const mat = getblock_addUser<Material>(this.materials[i] as unknown as number, this)
       if (mat) {
         mats.push(mat)
       }
@@ -161,7 +161,7 @@ SceneObjectData {
       throw new Error('missing .dataDefine static method')
     }
 
-    let def = (cls as unknown as IObjectDataConstructor).dataDefine()
+    const def = (cls as unknown as IObjectDataConstructor).dataDefine()
 
     if (!def.hasOwnProperty('selectMask')) {
       throw new Error('dataDefine() is missing selectMask field')

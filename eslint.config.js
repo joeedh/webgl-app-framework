@@ -31,11 +31,16 @@ export default defineConfig([
   },
   {
     rules: {
-      'no-unused-vars'                                            : 'error',
+      'no-unused-vars': [
+        'error',
+        {
+          args: 'none',
+        },
+      ],
       'sort-imports'                                              : 'off',
       'no-constant-condition'                                     : 'off',
       'no-unassigned-vars'                                        : 'error',
-      'no-unreachable-loop'                                       : 'error',
+      'no-unreachable-loop'                                       : 'off',
       'no-unreachable'                                            : 'error',
       'no-unsafe-negation'                                        : 'error',
       'no-useless-assignment'                                     : 'error',

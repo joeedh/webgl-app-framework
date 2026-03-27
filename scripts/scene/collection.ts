@@ -1,10 +1,10 @@
 import {nstructjs, util} from '../path.ux/scripts/pathux.js'
 
-import {BlockFlags, BlockLoader, BlockLoaderAddUser, DataBlock} from '../core/lib_api'
+import {BlockFlags, BlockLoader, BlockLoaderAddUser, DataBlock, DataRef} from '../core/lib_api'
 import {SceneObject} from '../sceneobject/sceneobject'
 import {IntSocket} from '../core/graphsockets'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
-import {Scene} from './scene.js'
+import {INodeSocketSet} from '../core/graph.js'
 
 //sceneobjet collection
 export enum CollectFlags {
@@ -12,7 +12,7 @@ export enum CollectFlags {
   INTERNAL = 2,
 }
 
-export class Collection<InputSet = {}, OutputSet = {}> extends DataBlock<
+export class Collection<InputSet extends INodeSocketSet = {}, OutputSet extends INodeSocketSet = {}> extends DataBlock<
   InputSet & {},
   OutputSet & {
     onObjectAdd: IntSocket
@@ -77,7 +77,7 @@ Collection {
       }
 
       while (stack.length > 0) {
-        const c = stack.pop()
+        const c = stack.pop()!
 
         yield c
 
@@ -201,7 +201,7 @@ Collection {
   }
 
   dataLink(getblock: BlockLoader, getblock_us: BlockLoaderAddUser): void {
-    this.parent = getblock_us(this.parent, this)
+    this.parent = getblock_us(this.parent as unknown as DataRef, this)
 
     for (let i = 0; i < this.objects.length; i++) {
       this.objects[i] = getblock_us(this.objects[i], this)
@@ -217,7 +217,7 @@ Collection {
   has(ob_or_collection: SceneObject | Collection): boolean {
     if (ob_or_collection instanceof Collection) {
       return ob_or_collection.lib_id in this.child_idmap
-    } else if (ob_or_collection instanceof SceneObject) {
+    } else {
       return ob_or_collection.lib_id in this.object_idmap
     }
   }

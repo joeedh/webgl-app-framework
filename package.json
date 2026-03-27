@@ -2,8 +2,8 @@
   "scripts": {
     "build": "node esbuilder.js",
     "watch": "node esbuilder.js --watch",
-    "typecheck": "tsc",
-    "watch-typecheck": "tsc --watch",
+    "typecheck": "npx tsc",
+    "watch-typecheck": "npx tsc --watch",
     "serv": "node serv.js",
     "test": "jest",
     "eslint": "npx eslint",

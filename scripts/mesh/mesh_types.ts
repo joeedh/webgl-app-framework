@@ -347,11 +347,10 @@ for (let i = 0; i < vnistack.length; i++) {
 
 import {EmptyCDArray} from './mesh_base.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
-//import type {View3D} from '../editors/view3d/view3d'
 import {KnotDataLayer} from '../curve/curve_knot'
 import {DispLayerVert} from './mesh_displacement'
 import {CDRef} from './customdata'
-import {View3D} from '../../types/scripts/editors/view3d/view3d'
+import type { View3D } from '../editors/all'
 
 export class Element<TYPE extends number = number> {
   static STRUCT = nstructjs.inlineRegister(
@@ -1067,7 +1066,7 @@ mesh.Vertex {
   }
 
   toJSON(): any {
-    const edges = []
+    const edges = [] as number[]
     for (const e of this.edges) {
       edges.push(e.eid)
     }

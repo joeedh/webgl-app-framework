@@ -44,7 +44,7 @@ export interface ICustomDataElemDef {
   settingsClass?: any
 }
 
-export class CustomDataElem<ValueType, ChildCls extends {} = never> {
+export class CustomDataElem<ValueType = unknown, ChildCls extends {} = never> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -446,7 +446,7 @@ mesh.CustomDataLayer {
     this.layerSet = undefined as unknown as typeof this.layerSet
   }
 
-  getTypeSettings<T extends any>(): T {
+  getTypeSettings<T extends LayerSettingsBase | unknown = unknown>(): T {
     if (this.typeSettings === undefined) {
       const cls = CustomDataElem.getTypeClass(this.typeName)!
       const def = cls.define()

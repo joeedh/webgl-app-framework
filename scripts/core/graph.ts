@@ -135,8 +135,8 @@ export interface INodeDef<InputSet extends {} = {}, OutputSet extends {} = {}> {
 
 export interface INodeConstructor<
   NodeType extends Node<InputSet, OutputSet>,
-  InputSet extends {},
-  OutputSet extends {},
+  InputSet extends INodeSocketSet = {},
+  OutputSet extends INodeSocketSet = {},
 > {
   new (): NodeType
 

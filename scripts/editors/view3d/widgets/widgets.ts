@@ -12,14 +12,20 @@ import {Shapes} from '../../../core/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {isect_ray_plane} from '../../../path.ux/scripts/util/math.js'
 import {isMobile} from '../../../path.ux/scripts/util/util.js'
-import {CallbackNode, Node, NodeFlags} from '../../../core/graph.js'
+import {CallbackNode, INodeConstructor, INodeSocketSet, Node, NodeFlags} from '../../../core/graph.js'
 import {DependSocket} from '../../../core/graphsockets.js'
 import {css2color} from '../../../path.ux/scripts/core/ui_base.js'
-import * as util from '../../../util/util.js'
-import * as math from '../../../path.ux/scripts/util/math.js'
 import {View3D} from '../view3d.js'
 import {OptionalIf} from '../../../util/optionalIf.js'
 import {ViewContext} from '../../../core/context.js'
+import {util, math} from '../../../path.ux/pathux.js'
+
+export interface IFindNearestResult {
+  data: any
+  dis: number
+  z: number
+  margin: number
+}
 
 const dist_temp_mats = util.cachering.fromConstructor(Matrix4, 512)
 const dist_temps = util.cachering.fromConstructor(Vector3, 512)
@@ -358,7 +364,7 @@ export class WidgetArrow extends WidgetShape {
     let t = tout[0]
 
     const p = new Vector2().loadXY(x, y)
-    const t1 = new Vector2(v2).sub(v1),
+    const t1 = new Vector2(v2 as unknown as Vector2).sub(v1),
       t2 = new Vector2(p).sub(v1)
     t1.normalize()
 
@@ -559,14 +565,49 @@ export class WidgetDoubleChevron extends WidgetPlane {
   }
 }
 
-export class WidgetBase extends Node {
+export interface IWidgetConstructor<
+  Inputs extends INodeSocketSet = {},
+  Outputs extends INodeSocketSet = {},
+  T extends WidgetBase<Inputs, Outputs> = WidgetBase<Inputs, Outputs>,
+> {
+  new (...args: unknown[]): T
+  widgetDefine(): {
+    name: string
+    uiname: string
+    icon: number
+    description: string
+    selectMode?: number
+    flag?: number
+  }
+  nodedef: INodeConstructor<T, Inputs, Outputs>['nodedef']
+}
+
+export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INodeSocketSet = {}> extends Node<
+  Inputs,
+  Outputs,
+  ViewContext
+> {
+  ctx: ViewContext | undefined
+  flag: number
+  id: number
+  wscale: number
+  children: WidgetBase[]
+  destroyed: boolean
+  shape: WidgetShape | undefined
+  manager: WidgetManager | undefined
+  matrix: Matrix4
+  _tempmatrix: Matrix4
+  parent?: WidgetBase;
+
+  ['constructor']: IWidgetConstructor<Inputs, Outputs, this> = this['constructor']
+
   constructor() {
     super()
 
     const def = this.constructor!.widgetDefine()
 
     this.ctx = undefined
-    this.flag = def.flag !== 0 ? def.flag : 0
+    this.flag = def.flag ?? 0
     this.id = -1
     this.wscale = 1.0
 
@@ -586,13 +627,13 @@ export class WidgetBase extends Node {
     return ''
   }
 
-  setMatrix(mat) {
+  setMatrix(mat: Matrix4) {
     this.matrix.load(mat)
     return this
   }
 
   getWscale() {
-    let widget = this
+    let widget = this as WidgetBase
     while (widget.parent) {
       widget = widget.parent
     }
@@ -601,8 +642,9 @@ export class WidgetBase extends Node {
   }
 
   //can this widget run?
-  static ctxValid(ctx) {
-    return ctx.selectMask & this.constructor.widgetDefine().selectMode
+  static ctxValid(ctx: ViewContext) {
+    const mask = this.widgetDefine().selectMode
+    return mask !== undefined ? !!(ctx.selectMask & mask) : true
   }
 
   get isDead() {
@@ -611,7 +653,7 @@ export class WidgetBase extends Node {
   }
 
   onRemove() {
-    this.manager.remove(this)
+    this.manager?.remove(this)
 
     if (this.graph_graph) {
       this.graph_graph.remove(this)
@@ -619,13 +661,13 @@ export class WidgetBase extends Node {
     }
   }
 
-  onContextLost(e) {
+  onContextLost(e: WebGLContextEvent) {
     if (this.shape !== undefined) {
       this.shape.onContextLost(e)
     }
   }
 
-  destroy(gl) {
+  destroy(gl: WebGL2RenderingContext) {
     if (this.destroyed) {
       return
     }
@@ -638,7 +680,7 @@ export class WidgetBase extends Node {
   }
 
   /* weight screen space distance by (screen space scaled) z. */
-  static _weightDisZ(view3d, dis, z) {
+  static _weightDisZ(view3d: View3D, dis: number, z: number) {
     return dis + z * 0.1
   }
 
@@ -648,7 +690,7 @@ export class WidgetBase extends Node {
    * @param x view3d-local coordinate x
    * @param y view3d-local coordinate y
    */
-  findNearest(view3d, x, y, limit = 8, matrix = undefined) {
+  findNearest(view3d: View3D, x: number, y: number, limit = 8, matrix?: Matrix4): IFindNearestResult | undefined {
     let mindis, minz, minret, minf, minmargin
 
     if (!matrix) {
@@ -717,10 +759,12 @@ export class WidgetBase extends Node {
     return child
   }
 
-  update(manager) {
+  // XXX delete this
+  update(): this {
     if (this.isDead) {
       this.remove()
     }
+    return this
   }
 
   remove() {
@@ -888,8 +932,8 @@ export class WidgetBase extends Node {
     this.ctx = manager.ctx
   }
 
-  exec(ctx) {
-    super.exec()
+  exec(ctx: ViewContext) {
+    super.exec(ctx)
 
     this.update()
     this.outputs.depend.graphUpdate()
@@ -1401,36 +1445,36 @@ export class WidgetManager {
     }
   }
 
-  update(view3d) {
+  update() {
     this.updateGraph()
     const oldmat = new Matrix4()
     let update = false
 
-    function test(m1, m2) {
+    function test(m1: number, m2: number): boolean {
       return Math.abs(m1 - m2) > 0.001
     }
 
-    function testMat(m1, m2) {
+    function testMat(mat1: Matrix4, mat2: Matrix4) {
       let ret = false
-      m1 = m1.$matrix
-      m2 = m2.$matrix
+      const m1 = mat1.$matrix
+      const m2 = mat2.$matrix
 
-      ret |= test(m1.m11, m2.m11)
-      ret |= test(m1.m12, m2.m12)
-      ret |= test(m1.m13, m2.m13)
-      ret |= test(m1.m14, m2.m14)
-      ret |= test(m1.m21, m2.m21)
-      ret |= test(m1.m22, m2.m22)
-      ret |= test(m1.m23, m2.m23)
-      ret |= test(m1.m24, m2.m24)
-      ret |= test(m1.m31, m2.m31)
-      ret |= test(m1.m32, m2.m32)
-      ret |= test(m1.m33, m2.m33)
-      ret |= test(m1.m34, m2.m34)
-      ret |= test(m1.m41, m2.m41)
-      ret |= test(m1.m42, m2.m42)
-      ret |= test(m1.m43, m2.m43)
-      ret |= test(m1.m44, m2.m44)
+      ret ||= test(m1.m11, m2.m11)
+      ret ||= test(m1.m12, m2.m12)
+      ret ||= test(m1.m13, m2.m13)
+      ret ||= test(m1.m14, m2.m14)
+      ret ||= test(m1.m21, m2.m21)
+      ret ||= test(m1.m22, m2.m22)
+      ret ||= test(m1.m23, m2.m23)
+      ret ||= test(m1.m24, m2.m24)
+      ret ||= test(m1.m31, m2.m31)
+      ret ||= test(m1.m32, m2.m32)
+      ret ||= test(m1.m33, m2.m33)
+      ret ||= test(m1.m34, m2.m34)
+      ret ||= test(m1.m41, m2.m41)
+      ret ||= test(m1.m42, m2.m42)
+      ret ||= test(m1.m43, m2.m43)
+      ret ||= test(m1.m44, m2.m44)
 
       return ret
     }
@@ -1439,7 +1483,7 @@ export class WidgetManager {
       oldmat.load(widget.matrix)
 
       widget.manager = this
-      widget.update(this)
+      widget.update()
 
       update |= testMat(oldmat, widget.matrix)
 

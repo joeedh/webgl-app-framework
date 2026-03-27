@@ -72,7 +72,14 @@ import {GridBase} from './mesh_grids.js'
 import {UVWrangler} from './unwrapping.js'
 import {setMeshClass, triangulateFace} from './mesh_tess.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
-import {checkDispLayers, DispLayerFlags, DispLayerVert, onFileLoadDispVert, updateDispLayers} from './mesh_displacement'
+import {
+  checkDispLayers,
+  DispLayerFlags,
+  DispLayerSettings,
+  DispLayerVert,
+  onFileLoadDispVert,
+  updateDispLayers,
+} from './mesh_displacement'
 import {IGridConstructor} from './mesh_grids.js'
 import {View3D} from '../editors/view3d/view3d'
 //import type {View3D} from '../editors/view3d/view3d'
@@ -357,9 +364,9 @@ mesh.Mesh {
   bvh: BVH | undefined = undefined
   uvWrangler: UVWrangler | undefined = undefined
   _ltris: Loop[] | undefined = undefined
-  _ltrimap_start: any = {} //XXX
-  _ltrimap_end: any = {} //XXX
-  _ltrimap_len: any = {}
+  _ltrimap_start: {[key: number]: number} = {} //XXX
+  _ltrimap_end: {[key: number]: number} = {} //XXX
+  _ltrimap_len: {[key: number]: number} = {}
   _fancyMeshes: any = {} //XXX
   updatelist: any = {} //XXX
   lastUpdateList: any = {} //XXX
@@ -373,8 +380,8 @@ mesh.Mesh {
   program: any | undefined = undefined //XXX
 
   /** The element lists, there is one for each element type. */
-  elists: Map<MeshTypes, ElementList<any>>
-  _elists: Array<ElementList<any>> | undefined = undefined //used by STRUCT script
+  elists: Map<MeshTypes, ElementList<ElementType>>
+  _elists: ElementList<ElementType>[] | undefined = undefined //used by STRUCT script
 
   // these are actually not allowed to be defined in the constructor,
   // thus the hackish assignment to undefined
@@ -535,21 +542,21 @@ mesh.Mesh {
     return this
   }
 
-  getElemList<type extends Element>(type: MeshTypes, enableFree?: boolean): ElementList<type> {
-    let elist = this.elists.get(type)
+  getElemList<Type extends Element>(type: MeshTypes, enableFree?: boolean): ElementList<Type> {
+    let elist = this.elists.get(type) as ElementList<Type> | undefined
     if (elist === undefined) {
-      elist = new ElementList<type>(type, enableFree)
+      elist = new ElementList<Type>(type, enableFree)
       elist.customData.on_layeradd = this._on_cdlayer_add.bind(this)
       elist.customData.on_layerremove = this._on_cdlayer_rem.bind(this)
 
-      this.elists.set(type, elist)
+      this.elists.set(type, elist as unknown as ElementList<ElementType>)
     }
 
     if (enableFree !== undefined) {
       elist.storeFreedElems = enableFree
     }
 
-    return elist as ElementList<type>
+    return elist as ElementList<Type>
   }
 
   debugLogClear() {
@@ -574,7 +581,7 @@ mesh.Mesh {
     let buf2 = ''
 
     const len = Math.min(log1.length, log2.length)
-    const lines = []
+    const lines = [] as string[]
 
     for (let i = 0; i < len; i++) {
       const l1 = log1[i],
@@ -727,7 +734,7 @@ mesh.Mesh {
 
   _diskInsert(v: Vertex, e: Edge) {
     if (DEBUG_DISK_INSERT) {
-      if (v.edges.indexOf(e) >= 0) {
+      if (v.edges.includes(e)) {
         throw new MeshError('edge already in vertex .edges list')
       }
     }
@@ -860,7 +867,7 @@ mesh.Mesh {
     return this
   }
 
-  _makeLoop(customEid: number | undefined = undefined): Loop {
+  _makeLoop(customEid?: number | undefined): Loop {
     this._totLoopAlloc++
 
     if (!SAVE_DEAD_LOOPS) {
@@ -895,7 +902,7 @@ mesh.Mesh {
     }
   }
 
-  _allocFace(totlist = 0, customEid: number | undefined = undefined): Face {
+  _allocFace(totlist = 0, customEid?: number | undefined): Face {
     let f
 
     if (SAVE_DEAD_FACES) {
@@ -1139,7 +1146,7 @@ mesh.Mesh {
     return f2
   }
 
-  makeQuad(v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex, lctx: LogContext | undefined = undefined) {
+  makeQuad(v1: Vertex, v2: Vertex, v3: Vertex, v4: Vertex, lctx?: LogContext | undefined) {
     _quad[0] = v1
     _quad[1] = v2
     _quad[2] = v3
@@ -1152,7 +1159,7 @@ mesh.Mesh {
     v1: Vertex,
     v2: Vertex,
     v3: Vertex,
-    lctx: LogContext | undefined = undefined,
+    lctx?: LogContext | undefined,
     ignoreDuplicates?: D
   ): D extends true ? Face | undefined : Face {
     if (!v1 || !v2 || !v3) {
@@ -1179,9 +1186,9 @@ mesh.Mesh {
 
   makeFace(
     verts: Vertex[],
-    customEid: number | undefined = undefined,
-    customLoopEids: number[] | undefined = undefined,
-    lctx: LogContext | undefined = undefined,
+    customEid?: number | undefined,
+    customLoopEids?: number[] | undefined,
+    lctx?: LogContext | undefined,
     logtag = 0
   ) {
     if (DEBUG_DUPLICATE_FACES) {
@@ -1400,7 +1407,7 @@ mesh.Mesh {
         const cd_nor = this.loops.customData.getLayerRef(NormalLayerElem)
         const have_vno = this.verts.customData.hasLayer(NormalLayerElem)
 
-        const tots = []
+        const tots = [] as number[]
 
         if (!have_vno) {
           for (const v of this.verts) {
@@ -2588,8 +2595,8 @@ mesh.Mesh {
     const e2 = this.makeEdge(nv, e.v2)
 
     for (const l of e.loops) {
-      const vs = []
-      const ls = []
+      const vs = [] as Vertex[]
+      const ls = [] as Loop[]
 
       for (const l2 of l.f.lists[0]) {
         vs.push(l2.v)
@@ -2706,7 +2713,7 @@ mesh.Mesh {
 
       this.loops.customDataInterp(l2, cdls, cdws)
 
-      if (l && l.list) {
+      if (l?.list) {
         l.list._recount()
       }
     }
@@ -2895,7 +2902,7 @@ mesh.Mesh {
 
       this.loops.customDataInterp(l2, cdls, cdws)
 
-      if (l && l.list) {
+      if (l?.list) {
         l.list._recount()
       }
     }
@@ -3355,11 +3362,11 @@ mesh.Mesh {
       }
     }
 
-    let startl = undefined
+    let startl: Loop | undefined
     let boundary = false
 
     for (const e of v.edges) {
-      if (e.l && e.l.radial_next === e.l) {
+      if (e.l?.radial_next === e.l) {
         boundary = true
         break
       }
@@ -3507,7 +3514,7 @@ mesh.Mesh {
 
       l.v.flag |= flag2
 
-      let nexte = undefined
+      let nexte: Edge | undefined
 
       for (const e of l.v.edges) {
         if (dolog) console.log('  ' + l.e.eid, e.eid, '  ', !!e.l, e.flag & flag1, e.flag & flag2)
@@ -3831,7 +3838,7 @@ mesh.Mesh {
     this.eidgen.reserve(eid)
 
     this.eidMap.delete(elem.eid)
-    elist.setEID(elem, eid)
+    elist.setEID(elem as ElementType, eid)
     this.eidMap.set(eid, elem)
 
     this._recalcEidMap = true
@@ -4540,8 +4547,7 @@ mesh.Mesh {
   resetDispLayers() {
     const layerset = this.verts.customData.getLayerSet('displace')
     for (const layer of layerset) {
-      const st = layer.getTypeSettings()
-
+      const st = layer.getTypeSettings<DispLayerSettings>()
       st.flag |= DispLayerFlags.NEEDS_INIT
     }
 
@@ -4641,8 +4647,8 @@ mesh.Mesh {
   }
 
   compact() {
-    const lens1 = []
-    const lens2 = []
+    const lens1 = [] as number[]
+    const lens2 = [] as number[]
 
     for (const elist of this.elists.values()) {
       lens1.push(elist.list.length)
@@ -4851,7 +4857,7 @@ mesh.Mesh {
   }
 
   getLastBVH() {
-    if (this.bvh && this.bvh.dead) {
+    if (this.bvh?.dead) {
       this.bvh = undefined
     } else if (this.bvh) {
       return this.bvh
@@ -5464,20 +5470,21 @@ mesh.Mesh {
     return this
   }
 
-  _getArrays() {
-    const ret = []
+  _getArrays(): ElementList<ElementType>[] {
+    const ret = [] as ElementList<ElementType>[]
+
     for (const k of this.elists.keys()) {
       //we no longer save this.loops in struct data directly, but we still
       //have to save customdata layout
       if (k === MeshTypes.LOOP) {
-        const template = new ElementList(MeshTypes.LOOP)
+        const template = new ElementList<Loop>(MeshTypes.LOOP)
         template.customData = this.loops.customData
 
         ret.push(template)
         continue
       }
 
-      ret.push(this.elists.get(k))
+      ret.push(this.elists.get(k) as ElementList<ElementType>)
     }
 
     return ret
@@ -5757,7 +5764,7 @@ mesh.Mesh {
       }
     }
 
-    const delLoops = []
+    const delLoops = [] as Loop[]
 
     for (const l2 of ret.loops) {
       if (!l2.f || typeof l2.f === 'number') {
@@ -5797,9 +5804,9 @@ mesh.Mesh {
     return ret
   }
 
-  _on_cdlayer_add<T extends CustomDataElem<any> = CustomDataElem<any>>(layer: CustomDataLayer<T>, set: LayerSet<T>) {}
+  _on_cdlayer_add<T extends CustomDataElem = CustomDataElem>(layer: CustomDataLayer<T>, set: LayerSet<T>) {}
 
-  _on_cdlayer_rem<T extends CustomDataElem<any> = CustomDataElem<any>>(layer: CustomDataLayer<T>, set: LayerSet<T>) {
+  _on_cdlayer_rem<T extends CustomDataElem = CustomDataElem>(layer: CustomDataLayer<T>, set: LayerSet<T>) {
     /*
     let cls = CustomDataElem.getTypeClass(set.typeName);
     let mask = layer.elemTypeMask;
@@ -6285,7 +6292,7 @@ mesh.Mesh {
       }
     }
 
-    const ls = []
+    const ls = [] as Loop[]
 
     for (const f of this.faces) {
       for (const list of f.lists) {
