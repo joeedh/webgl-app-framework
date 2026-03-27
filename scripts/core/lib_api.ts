@@ -1,15 +1,15 @@
 import {nstructjs, ToolProperty, PropTypes, EnumProperty, util} from '../path.ux/scripts/pathux.js'
 
 import {IDGen} from '../util/util.js'
-import {Node, Graph, NodeFlags, NodeSocketType, INodeConstructor} from './graph'
+import {Node, Graph, NodeFlags, NodeSocketType, INodeConstructor, INodeSocketSet} from './graph'
 import {Icons} from '../editors/icon_enum.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
-import type {ToolContext} from '../../types/scripts/core/context'
 
 import type {SculptBrush} from '../brush/brush'
 import type {Mesh} from '../mesh/mesh'
 import {Collection} from '../scene/collection'
 import {SceneObject} from '../sceneobject/sceneobject.js'
+import {ToolContext} from './context.js'
 
 export const BlockTypes = [] as IDataBlockConstructor<any, {}, {}>[]
 
@@ -34,8 +34,11 @@ export interface IBlockDef {
   flag?: number
 }
 
-export interface IDataBlockConstructor<type extends DataBlock<InputSet, OutputSet>, InputSet, OutputSet>
-  extends INodeConstructor<type, InputSet, OutputSet> {
+export interface IDataBlockConstructor<
+  type extends DataBlock<InputSet, OutputSet>,
+  InputSet extends INodeSocketSet,
+  OutputSet extends INodeSocketSet,
+> extends INodeConstructor<type, InputSet, OutputSet> {
   new (): type
 
   blockDefine(): IBlockDef
@@ -48,7 +51,10 @@ export interface BlockLoaderAddUser {
   <type>(ref: DataBlock | DataRef | number, user: DataBlock): type
 }
 
-export class DataBlock<InputSet = {}, OutputSet = {}> extends Node<InputSet, OutputSet> {
+export class DataBlock<InputSet extends INodeSocketSet = {}, OutputSet extends INodeSocketSet = {}> extends Node<
+  InputSet,
+  OutputSet
+> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -99,7 +105,7 @@ DataBlock {
   lib_userlist: DataBlock[]
   lib_external_ref: any;
 
-  ['constructor']: IDataBlockConstructor<this, InputSet, OutputSet>
+  ['constructor']: IDataBlockConstructor<this, InputSet, OutputSet> = this['constructor']
 
   constructor() {
     super()
@@ -114,7 +120,7 @@ DataBlock {
     this.lib_id = -1
     this.name = def.defaultName ?? def.uiName ?? def.typeName
     this.lib_flag = def.flag !== undefined ? def.flag : 0
-    this.lib_icon = def.icon
+    this.lib_icon = def.icon ?? -1
     this.lib_type = def.typeName
     this.lib_users = 0
     this.lib_external_ref = undefined //presently unused
@@ -322,7 +328,9 @@ but owner will not be added to this.lib_userlist`.trim()
     BlockTypes.remove(cls)
   }
 
-  static getClass<type extends DataBlock = DataBlock>(typeName: string): IDataBlockConstructor<type, {}, {}> {
+  static getClass<type extends DataBlock = DataBlock>(
+    typeName: string
+  ): IDataBlockConstructor<type, {}, {}> | undefined {
     for (const type of BlockTypes) {
       if (type.blockDefine().typeName === typeName) return type
     }
@@ -346,7 +354,7 @@ DataRef {
   name: string
   lib_external_ref?: any
 
-  constructor(lib_id = -1, lib_type: string = undefined) {
+  constructor(lib_id = -1, lib_type: string = '') {
     if (typeof lib_id === 'object') {
       lib_id = (lib_id as unknown as DataRef).lib_id
     }
@@ -474,7 +482,7 @@ BlockSet {
     return block
   }
 
-  uniqueName(name = this.type.blockDefine().defaultName) {
+  uniqueName(name = this.type.blockDefine().defaultName ?? this.type.blockDefine().typeName) {
     if (!(name in this.namemap)) {
       return name
     }
@@ -717,6 +725,12 @@ Library {
 
     this.block_idmap = {}
     this.block_namemap = {}
+
+    // make TS happy even though we programatically create getters/setters later
+    this.brush = this.libmap.brush!
+    this.mesh = this.libmap.brush!
+    this.collection = this.libmap.brush!
+    this.object = this.libmap.object!
 
     for (const cls of BlockTypes) {
       const lib = new BlockSet(cls, this)
@@ -1146,11 +1160,11 @@ DataRefList {
     return super.push(ref)
   }
 
-  getActive(ctx: ToolContext): DataBlock {
+  getActive(ctx: ToolContext): DataBlock | undefined {
     return ctx.datalib.get(this.active)
   }
 
-  getHighlight(ctx: ToolContext): DataBlock {
+  getHighlight(ctx: ToolContext): DataBlock | undefined {
     return ctx.datalib.get(this.active)
   }
 
@@ -1223,9 +1237,11 @@ DataRefList {
 
     this.idmap = {}
 
-    for (const ref of this._array) {
-      super.push(ref)
-      this.idmap[ref.lib_id] = ref
+    if (this._array !== undefined) {
+      for (const ref of this._array) {
+        super.push(ref)
+        this.idmap[ref.lib_id] = ref
+      }
     }
 
     this._array = undefined

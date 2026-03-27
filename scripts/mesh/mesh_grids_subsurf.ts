@@ -1,18 +1,14 @@
-import {GridSettingFlags, GridBase, Grid, QRecalcFlags} from './mesh_grids.js'
-import {AttrRef, CDRef, CustomData, CustomDataElem, LayerSettingsBase} from './customdata'
-import {nstructjs} from '../path.ux/scripts/pathux.js'
-import {ChunkedSimpleMesh} from '../core/simplemesh.js'
-import {FloatElem, IntElem} from './mesh_customdata.js'
+import {Grid, GridVert, QRecalcFlags} from './mesh_grids.js'
+import {AttrRef, CDRef} from './customdata'
+import {ColorLayerElem, IntElem} from './mesh_customdata.js'
 import {MeshError} from './mesh_base.js'
-import {Patch4, CubicPatch, bernstein, bspline, PatchBase} from '../subsurf/subsurf_patch.js'
+import {Patch4, CubicPatch, bernstein, PatchBase} from '../subsurf/subsurf_patch.js'
 import {subdivide} from '../subsurf/subsurf_mesh.js'
-import {BinomialTable} from '../util/binomial_table.js'
-import {Vector2, Vector3, Vector4, Matrix4, Quat, util, math} from '../path.ux/scripts/pathux.js'
+import {Vector2, Vector3, util} from '../path.ux/scripts/pathux.js'
 import {ccSmooth} from '../subsurf/subsurf_mesh.js'
 import {getDynVerts, MDynVert} from '../util/bvh'
 import {getFaceSets} from './mesh_facesets.js'
 import {Loop, Mesh, Vertex} from './mesh'
-import {QTGridVert} from './mesh_grids_quadtree'
 
 export class PatchBuilder {
   mesh: Mesh
@@ -23,7 +19,7 @@ export class PatchBuilder {
   cd_dyn_vert: CDRef<MDynVert>
   cd_fset: CDRef<IntElem>
 
-  constructor(mesh, cd_grid) {
+  constructor(mesh: Mesh, cd_grid: AttrRef<Grid>) {
     this.mesh = mesh
     this.quads = new Map()
     this.cd_grid = cd_grid
@@ -106,8 +102,6 @@ export class PatchBuilder {
       console.warn(l, l.eid)
 
       throw new Error('eek')
-      quad = this.buildQuad(l)
-      this.quads.set(l, quad)
     }
 
     return quad
@@ -253,24 +247,24 @@ export class PatchBuilder {
     const cd_fset = this.cd_fset,
       cd_dyn_vert = this.cd_dyn_vert
 
-    function vsmooth(v) {
+    function vsmooth(v: Vertex) {
       return ccSmooth(v, cd_fset, cd_dyn_vert)
-
+      ;`
       const lco = new Vector3()
       const w1 = v.valence * 0.75
       const w2 = 1.0
       let tot = w1
 
-      lco.zero().addFac(v, w1)
+      lco.zero().addFac(v.co, w1)
 
       for (const e of v.edges) {
         const v2 = e.otherVertex(v)
-        lco.addFac(v2, w2)
+        lco.addFac(v2.co, w2)
         tot += w2
       }
       lco.mulScalar(1.0 / tot)
 
-      return lco
+      return lco`
     }
 
     for (const l of mesh.loops) {
@@ -278,7 +272,7 @@ export class PatchBuilder {
         continue
       }
 
-      const p = this.patches.get(l)
+      const p = this.patches.get(l)!
 
       //XXX
       if (p.basis === bernstein) {
@@ -288,10 +282,10 @@ export class PatchBuilder {
       const lco = vsmooth(l.v)
 
       const l2 = l.radial_next.next
-      const p2 = this.patches.get(l2)
+      const p2 = this.patches.get(l2)!
 
       const l3 = l.prev.radial_next
-      const p3 = this.patches.get(l3)
+      //const p3 = this.patches.get(l3)!
 
       let w1, w2, w3
       w1 = 1
@@ -322,7 +316,7 @@ export class PatchBuilder {
     const bt1 = new Vector3()
     const bt2 = new Vector3()
 
-    function bilinear(v1, v2, v3, v4, u, v) {
+    function bilinear(v1: Vector3, v2: Vector3, v3: Vector3, v4: Vector3, u: number, v: number) {
       bt1.load(v1).interp(v2, v)
       bt2.load(v4).interp(v3, v)
       const ret = brets.next()
@@ -336,7 +330,7 @@ export class PatchBuilder {
         continue
       }
 
-      const p = this.patches.get(l)
+      const p = this.patches.get(l)!
 
       //XXX
       if (p.basis === bernstein) {
@@ -364,7 +358,7 @@ export class PatchBuilder {
         continue
       }
 
-      const p = this.patches.get(l)
+      const p = this.patches.get(l)!
 
       //XXX
       if (p.basis === bernstein) {
@@ -372,10 +366,10 @@ export class PatchBuilder {
       }
 
       const l2 = l.radial_next.next
-      const p2 = this.patches.get(l2)
+      const p2 = this.patches.get(l2)!
 
       const l3 = l.prev.radial_next
-      const p3 = this.patches.get(l3)
+      //const p3 = this.patches.get(l3)
 
       const a = p.getPoint(3, 1)
       const b = p.getPoint(3, 2)
@@ -403,10 +397,7 @@ export class PatchBuilder {
     }
 
     for (const l of mesh.loops) {
-      //XXX
-      //break;
-
-      const p = this.patches.get(l)
+      const p = this.patches.get(l)!
 
       if (p.basis !== bernstein || l.v.isBoundary()) {
         continue
@@ -420,7 +411,7 @@ export class PatchBuilder {
       ].map((f) => new Vector2(f))
 
       let l2 = l.next
-      let p2 = this.patches.get(l2)
+      let p2 = this.patches.get(l2)!
 
       if (l.v.valence !== 4) {
         function findClosest(u: number, v: number, dt: number, steps: number) {
@@ -474,7 +465,7 @@ export class PatchBuilder {
         //console.log("=", findClosest(1.0, 0.0, 1.0 / 6.0, 5));
 
         l2 = l.prev
-        p2 = this.patches.get(l2)
+        p2 = this.patches.get(l2)!
 
         /*
         console.log("1", findClosest(0.0, 0.0, 1.0 / 6.0, 5));
@@ -560,10 +551,10 @@ export class PatchBuilder {
       }
 
       const l2 = f.lists[0].l
-      const p1 = patches.get(l2)
-      const p2 = patches.get(l2.next)
-      const p3 = patches.get(l2.next.next)
-      const p4 = patches.get(l2.prev)
+      const p1 = patches.get(l2)!
+      const p2 = patches.get(l2.next)!
+      const p3 = patches.get(l2.next.next)!
+      const p4 = patches.get(l2.prev)!
 
       //this.patches.set(l, p2);
       this.patches.set(l, new Patch4(p1, p2, p3, p4))
@@ -572,24 +563,24 @@ export class PatchBuilder {
   }
 }
 
-export function buildGridsSubSurf(mesh, setColor) {
+export function buildGridsSubSurf(mesh: Mesh, setColor = false) {
   //let cd_grid = GridBase.meshGridOffset(mesh);
-  const cd_grid = mesh.loops.customData.getLayerIndex(Grid)
+  const gridAttr = mesh.loops.customData.getLayerRef(Grid)
 
-  if (cd_grid < 0) {
+  if (gridAttr.i < 0) {
     throw new MeshError('No grids')
   }
 
-  const builder = new PatchBuilder(mesh, cd_grid)
+  const builder = new PatchBuilder(mesh, gridAttr)
 
   builder.build()
 
   console.log('patches', builder.patches)
 
   for (const l of mesh.loops) {
-    const grid = l.customData[cd_grid]
+    const grid = l.customData[gridAttr.i] as Grid
     grid.recalcFlag |= QRecalcFlags.ALL
-    grid.update(mesh, l, cd_grid)
+    grid.update(mesh, l, gridAttr)
   }
 
   let cd_color = mesh.loops.customData.getLayerIndex('color')
@@ -598,13 +589,13 @@ export function buildGridsSubSurf(mesh, setColor) {
   }
 
   for (const l of mesh.loops) {
-    const grid = l.customData[cd_grid]
-    grid.update(mesh, l, cd_grid)
+    const grid = l.customData[gridAttr.i] as Grid
+    grid.update(mesh, l, gridAttr)
 
     const ps = grid.points
     const dimen = grid.dimen
 
-    const patch = builder.patches.get(l)
+    const patch = builder.patches.get(l)!
 
     for (let x = 0; x < dimen; x++) {
       const u = x / (dimen - 1)
@@ -616,7 +607,7 @@ export function buildGridsSubSurf(mesh, setColor) {
         const p = ps[pi]
 
         if (cd_color >= 0) {
-          const color = p.customData[cd_color].color
+          const color = (p.customData[cd_color] as ColorLayerElem).color
           color[0] = u
           color[1] = v
         }
@@ -630,7 +621,7 @@ export function buildGridsSubSurf(mesh, setColor) {
   }
 
   for (const l of mesh.loops) {
-    const grid = l.customData[cd_grid]
-    grid.update(mesh, l, cd_grid)
+    const grid = l.customData[gridAttr.i] as Grid
+    grid.update(mesh, l, gridAttr)
   }
 }

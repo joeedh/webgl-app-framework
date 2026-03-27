@@ -2183,7 +2183,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
   checkMultiRes(mesh: Mesh, loop: Loop, gridAttr: AttrRef<this>) {
     const cd_grid = gridAttr.i
-    const mres = mesh.loops.customData.flatlist[cd_grid].getTypeSettings()
+    const mres = mesh.loops.customData.flatlist[cd_grid].getTypeSettings<GridSettings>()
     const limitDepth = !!(mres.flag & GridSettingFlags.ENABLE_DEPTH_LIMIT)
     const changed = limitDepth !== !!this.depthLimitEnabled || mres.depthLimit !== this.depthLimit
 
@@ -2397,7 +2397,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     this.polys.length = 0
     const polys = this.polys
-    const poly = []
+    const poly = [] as number[]
 
     const depthLimit = this.depthLimitEnabled ? this.depthLimit : 10000
 

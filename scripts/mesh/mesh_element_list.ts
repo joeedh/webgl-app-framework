@@ -34,9 +34,9 @@ export class SelectedEditableIter<type extends Element> {
 
   constructor(set: SelectionSet<type> | undefined) {
     this.ret = {done: true, value: undefined}
-    this.listiter = undefined
+    this.listiter = undefined as unknown as typeof this.listiter
     this.done = true
-    ;(this.set as SelectionSet<type> | undefined) = set
+    this.set = set ?? new SelectionSet()
   }
 
   reset(set: SelectionSet<type>): this {
@@ -81,7 +81,7 @@ export class SelectedEditableIter<type extends Element> {
       this.set.eiterstack.cur = Math.max(this.set.eiterstack.cur, 0)
       this.ret.done = true
       this.ret.value = undefined
-      this.listiter = undefined
+      this.listiter = undefined as unknown as typeof this.listiter
     }
   }
 
@@ -96,7 +96,7 @@ export class SelectedEditableStack<type extends Element> {
   set: SelectionSet<type>
   stack: SelectedEditableIter<type>[] = []
 
-  constructor(set) {
+  constructor(set: SelectionSet<type>) {
     this.stack.length = 64
     this.cur = 0
     this.set = set
@@ -134,12 +134,12 @@ export class SelectionSet<type extends Element> extends Set<type> {
 }
 
 export class ElementListIter<type extends Element> {
-  ret: IteratorResult<type>
+  ret: IteratorReturnResult<type> | IteratorYieldResult<type>
   i: number
   elist: ElementList<type>
 
   constructor(elist: ElementList<type>) {
-    this.ret = {done: false, value: undefined}
+    this.ret = {done: false, value: undefined as unknown as type}
     this.i = 0
     this.elist = elist
   }
@@ -163,12 +163,12 @@ export class ElementListIter<type extends Element> {
 
     if (this.i >= list.length) {
       ret.done = true
-      ret.value = undefined
+      ret.value = undefined as unknown as type
 
       elist.iterstack.cur--
       return ret
     } else {
-      ret.value = list[this.i]
+      ret.value = list[this.i]!
     }
 
     this.i++
@@ -180,9 +180,13 @@ export class ElementListIter<type extends Element> {
     if (!this.ret.done) {
       this.elist.iterstack.cur--
       this.elist.iterstack.cur = Math.max(this.elist.iterstack.cur, 0)
+      // how does TS's iterator typings not violate the ES6 spec
+      // @ts-ignore
       this.ret.done = true
     }
 
+    // how does TS's iterator typings not violate the ES6 spec
+    // @ts-ignore
     this.ret.value = undefined
 
     return this.ret
@@ -222,7 +226,7 @@ mesh.ElementList {
   private freelist: number[] = []
   private free_elems = new util.Queue<type>(256)
   private delayed_free_queue: type[] = []
-  private dqueue_idxmap: Map<type, number>
+  private dqueue_idxmap: Map<type, number> = new Map()
 
   constructor(type: MeshTypes, storeFreedElems = false) {
     if (!STORE_DELAY_CACHE_INDEX) {
@@ -359,7 +363,7 @@ mesh.ElementList {
     }
 
     this.local_eidMap.delete(e.eid)
-    const i = this.idxmap.get(e.eid)
+    const i = this.idxmap.get(e.eid)!
 
     e.eid = neweid
     e._old_eid = neweid
@@ -397,9 +401,9 @@ mesh.ElementList {
       this.list.push()
     }
 
-    this.idxmap.set(e.eid, i)
+    this.idxmap.set(e.eid, i!)
 
-    this.list[i] = e
+    this.list[i!] = e
     this.length++
   }
 
@@ -536,7 +540,7 @@ mesh.ElementList {
     if (elem.eid < 0) {
       if (no_error) {
         console.error('elem was already deleted')
-        return
+        return this
       } else {
         throw new Error('elem was already deleted')
       }
@@ -642,7 +646,7 @@ mesh.ElementList {
     }
 
     for (let i = 0; i < sources2.length; i++) {
-      sources2[i] = undefined
+      sources2[i] = undefined as unknown as typeof sources2[typeof i]
     }
   }
 
@@ -730,6 +734,9 @@ mesh.ElementList {
     this.length = 0
 
     for (const item of this.list) {
+      if (item === undefined) {
+        continue
+      }
       this.idxmap.set(item.eid, i)
       this.local_eidMap.set(item.eid, item)
 
@@ -769,7 +776,7 @@ mesh.ElementList {
     let haveOnRemoveLayer = false
 
     for (const layer of this.customData.flatlist) {
-      const cls = CustomDataElem.getTypeClass(layer.typeName)
+      const cls = CustomDataElem.getTypeClass(layer.typeName)!
 
       if (new cls().onRemoveLayer) {
         haveOnRemoveLayer = true
@@ -785,7 +792,7 @@ mesh.ElementList {
         i++
       }
 
-      cd[i] = undefined
+      cd[i] = undefined as unknown as CustomDataElem<any>
       cd.length--
 
       if (haveOnRemoveLayer) {
@@ -809,6 +816,8 @@ mesh.ElementList {
   }
 
   prealloc(count: number): this {
+    // this is also a bit stupid for TS
+    // @ts-ignore
     const cls = typemap[this.type] as unknown as new () => type
 
     for (let i = 0; i < count; i++) {
@@ -881,7 +890,7 @@ mesh.ElementList {
     //add some pad so mesh log code works properly,
     //which keeps freed elements around briefly (but not instananeously)
     if (this.free_elems.length > 512) {
-      const ret = this.free_elems.dequeue()
+      const ret = this.free_elems.dequeue()!
 
       if (ret.eid >= 0) {
         throw new Error('elem was somehow unfreed already')
@@ -910,7 +919,7 @@ mesh.ElementList {
           throw new MeshError('Mesh corruption error')
         }
 
-        this.delayed_free_queue[index] = undefined
+        this.delayed_free_queue[index] = undefined as unknown as type
 
         ret._free()
       }
@@ -972,7 +981,7 @@ mesh.ElementList {
     let haveOnNewLayer = false
 
     for (const layer of this.customData.flatlist) {
-      const cls = CustomDataElem.getTypeClass(layer.typeName)
+      const cls = CustomDataElem.getTypeClass(layer.typeName)!
 
       if (new cls().onNewLayer) {
         haveOnNewLayer = true
@@ -1011,7 +1020,7 @@ mesh.ElementList {
       console.warn('Element was missing customdata', e.constructor.name, e.eid, e.customData, cd.flatlist.length)
 
       for (const k in cd.layers) {
-        const layerset = cd.layers[k]
+        const layerset = cd.layers.get(k)!
         if (layerset.length === 0) {
           continue
         }
@@ -1043,7 +1052,7 @@ mesh.ElementList {
 
     const state = {
       cdata: this.customData.copy(),
-      elems: [],
+      elems: [] as CustomDataElem<any>[][],
     }
 
     const cdata = this.customData

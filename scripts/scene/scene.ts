@@ -276,7 +276,8 @@ export class ObjectList extends Array {
       }
     }
 
-    delete (this as unknown as {refs: any[]}).refs
+    const typeErased = this as unknown as {refs?: any[]}
+    delete typeErased.refs
   }
 
   _getDataRefs(): DataRef[] {
@@ -300,9 +301,10 @@ export const SceneRecalcFlags = {
 
 import messageBus from '../core/bus.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
-import {ToolContext} from '../../types/scripts/core/context.js'
+import {INodeSocketSet} from '../core/graph'
+import { ToolContext, ViewContext } from '../core/context'
 
-export class Scene<InputSet = {}, OutputSet = {}> extends DataBlock<
+export class Scene<InputSet extends INodeSocketSet = {}, OutputSet extends INodeSocketSet = {}> extends DataBlock<
   InputSet & {},
   OutputSet & {
     onSelect: DependSocket
@@ -335,8 +337,13 @@ propIslandOnly : bool;
 
   #linked?: boolean
 
-  ctx: ToolContext
-  collection?: Collection = undefined
+  // XXX hack!
+  ctx: ViewContext = _appstate.ctx as ViewContext
+
+  // note: we can't create the collection here, since that requires the
+  // data lib
+  collection: Collection = undefined as unknown as Collection
+
   sbvh: SceneBVH
   //magnet transform settings
   propRadius = 1.0
@@ -344,7 +351,7 @@ propIslandOnly : bool;
   propEnabled = false
   propIslandOnly = true
 
-  widgets = new WidgetManager()
+  widgets: WidgetManager
   cursor3D = new Matrix4()
 
   selectMask = SelMask.OBJECT
@@ -357,7 +364,8 @@ propIslandOnly : bool;
   envlight = new EnvLight()
   recalc = 0
 
-  _objects: ObjectList
+  _objects: ObjectList = new ObjectList(undefined, this)
+
   get objects() {
     return this._objects
   }
@@ -382,7 +390,7 @@ propIslandOnly : bool;
     this.sbvh = new SceneBVH(this)
 
     //XXX hack!
-    this.widgets.ctx = window._appstate.ctx
+    this.widgets = new WidgetManager(window._appstate.ctx as ViewContext)
 
     this.objects = new ObjectList(undefined, this)
     this.objects.onselect = this._onselect.bind(this)
@@ -478,7 +486,7 @@ propIslandOnly : bool;
     return ret
   }
 
-  //get a child collection, or may
+  //get a child collection, or create
   //a new one if necassary
   getCollection(ctx: ToolContext, name: string): Collection {
     let cl = this.collection.getChild(name)
@@ -612,7 +620,7 @@ propIslandOnly : bool;
 
     let old: ToolMode
     const cls = ToolModes[i]
-    let ret: ToolMode
+    let ret: ToolMode | undefined
 
     if (this.toolmode_i in this.toolmode_map) {
       console.log('calling old tool inactive', this.toolmode, this.toolmode.onInactive)
@@ -635,8 +643,7 @@ propIslandOnly : bool;
     }
 
     if (ret === undefined) {
-      ret = new cls(this.widgets)
-
+      ret = new cls(this.widgets.ctx)
       const def = cls.toolModeDefine()
 
       this.toolmodes.push(ret)
@@ -776,7 +783,7 @@ propIslandOnly : bool;
     this.objects.scene = this
     this.objects.onselect = this._onselect.bind(this)
 
-    this.widgets.ctx = window._appstate.ctx
+    this.widgets.ctx = window._appstate.ctx as ViewContext
     this.widgets.clear()
 
     let found = 0

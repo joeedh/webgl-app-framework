@@ -499,7 +499,7 @@ graph.KeyValPair {
   }
 }
 
-interface INodeSocketSet {
+export interface INodeSocketSet {
   [k: string]: NodeSocketType
 }
 

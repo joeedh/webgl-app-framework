@@ -955,7 +955,7 @@ export class WidgetManager {
   // Core properties
   public ctx: ViewContext
   protected _init: boolean
-  protected gl: WebGL2RenderingContext | undefined
+  public gl: WebGL2RenderingContext | undefined
   public ready: boolean
 
   // Widget collections and management

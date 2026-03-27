@@ -13,7 +13,18 @@ import {PatchBuilder} from './mesh_grids_subsurf.js'
 import {BasicLineShader, Shaders} from '../shaders/shaders.js'
 import {Handle, Loop, traceget, traceset, Vertex} from './mesh_types.js'
 
-import {Vector2, Vector3, Vector4, Quat, Matrix4, util, math, nstructjs, DataAPI} from '../path.ux/scripts/pathux.js'
+import {
+  Vector2,
+  Vector3,
+  Vector4,
+  Quat,
+  Matrix4,
+  util,
+  math,
+  nstructjs,
+  DataAPI,
+  DataStruct,
+} from '../path.ux/scripts/pathux.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 import {Mesh} from './mesh'
 import type {SceneObject} from '../sceneobject/sceneobject'
@@ -95,6 +106,7 @@ mesh.GridSettings {
     const lvl = st.int('depthLimit', 'depthLimit', 'Limit', 'Maximum subdivision level')
 
     lvl.range(0, 10)
+    return st
   }
 
   copyTo(b: this) {
@@ -584,8 +596,8 @@ export interface IGridConstructor<GridClass = any> {
   new (): GridClass
 
   define(): IGridDef
-
   updateSubSurf(mesh: Mesh, cd_grid: AttrRef<GridBase>, checkCoords?: boolean): void
+  apiDefine(api: DataAPI, st: DataStruct): void
 }
 
 export class GridVert extends GridVertBase<GridVert[]> {
@@ -689,7 +701,7 @@ mesh.GridBase {
   }
 
   static recalcSubSurf(mesh: Mesh, cd_grid: AttrRef<GridBase>): void {
-    const builder = new PatchBuilder(mesh, cd_grid)
+    const builder = new PatchBuilder(mesh, cd_grid as AttrRef<Grid>)
     builder.build()
 
     for (const l of mesh.loops) {
@@ -1231,7 +1243,7 @@ mesh.GridBase {
       i++
     }
 
-    const newcds = []
+    const newcds = [] as CDElemArray[]
 
     for (const cd of this.customDatas) {
       if (!cd || cd.length === 0) {
@@ -1279,7 +1291,7 @@ mesh.GridBase {
       const bucket = buckets.get(cls)
 
       if (!bucket || !bucket.length) {
-        const cds = []
+        const cds = [] as CustomDataElem<any>[]
         bad = true
 
         for (let j = 0; j < this.points.length; j++) {
@@ -1354,8 +1366,7 @@ mesh.GridBase {
       }
     }
 
-    const layout = []
-    const i = 0
+    const layout = [] as ICustomDataElemConstructor[]
 
     for (let i = 0; i < this.customDatas.length; i++) {
       const name = this.customDataLayout[i] as unknown as string

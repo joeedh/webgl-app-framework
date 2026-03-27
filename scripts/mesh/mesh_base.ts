@@ -387,7 +387,8 @@ mesh.CDElemArray {
     return this
   }
 
-  get<type>(idx: CDRef<type>): type {
+  get<type extends CustomDataElem<any, type>>(attr: CDRef<type> | customdata.AttrRef<type>): type {
+    const idx = typeof attr === 'number' ? attr : attr.i
     return this[idx] as unknown as type
   }
 
