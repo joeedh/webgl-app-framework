@@ -14,6 +14,7 @@ import {
   ToolProperty,
   DataAPI,
   DataStruct,
+  IVector3,
 } from '../path.ux/scripts/pathux.js'
 import {DataBlock} from '../core/lib_api'
 import {NodeFlags} from '../core/graph'
@@ -34,7 +35,7 @@ import {Container} from '../path.ux/scripts/types/core/ui.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
 import {IUniformsBlock} from '../core/webgl'
 import {HashDigest} from '../path.ux/scripts/path-controller/types/util/util.js'
-import { ICompiledCode } from '../mathl/core/mathl.js'
+import {ICompiledCode} from '../mathl/core/mathl.js'
 
 export enum PatternRecalcFlags {
   PREVIEW = 1,
@@ -117,6 +118,8 @@ export interface IPatternConstructor<T = unknown> {
   new (): T
 
   STRUCT: string
+
+  defineAPI(api: DataAPI): DataStruct
 
   patternDefine(): IPatternDef
 
@@ -304,20 +307,22 @@ export class PatternGen {
   evaluate(co: Vector3, color_out?: Vector3): number {
     this.checkTexShaderJS()
 
+    const texShaderJS = this.texShaderJS!
+
     const args = eval_temps.next()
 
-    //eek need to figure out time!
-    //outs[3] = window.T;
+    texShaderJS.setInput(texShaderJS.inputTypes.Time.index, performance.now() / 1000.0)
 
-    //debugger;
+    const pointIdx = texShaderJS.inputTypes.Point.index
+    const point = texShaderJS.getInput<number[]>(pointIdx)
 
-    args[1][0] = co[0]
-    args[1][1] = co[1]
-    args[1][2] = co[2]
+    point[0] = co[0]
+    point[1] = co[1]
+    point[2] = co[2]
 
-    this.bindUniforms(this.texShaderJS)
-    this.texShaderJS.call.apply(undefined, args)
-    return args[0][this.texShaderJS.outputs.Color][0]
+    this.bindUniforms(texShaderJS.uniforms)
+    texShaderJS.call()
+    return texShaderJS.outputs[texShaderJS.outputTypes.Value.index] as number
   }
 
   derivative(co: Vector3): Vector3 {
@@ -503,7 +508,7 @@ export class SimpleNoise extends PatternGen {
     let v = Math.fract(y)
     let w = Math.fract(z)
 
-    function hash3(x, y, z) {
+    function hash3(x: number, y: number, z: number) {
       const f = x * Math.sqrt(3.0) + y * Math.sqrt(5.0) * 10.0 + z * Math.sqrt(7.0) * 100.0
       return Math.fract(hash(f))
       //return hash(x*y*z + x*x + y*y + z*x);
@@ -668,10 +673,10 @@ export const CombModes = {
 const ModeFuncs = {
   [CombModes.SAW]     : Math.fract,
   [CombModes.TENT]    : Math.tent,
-  [CombModes.SIN]     : (f) => Math.sin(f * Math.PI * 2.0) * 0.5 + 0.5,
-  [CombModes.RAW_STEP]: (f) => (Math.fract(f) > 0.5 ? 1.0 : 0.0),
-  [CombModes.DOME]    : (f) => Math.abs(Math.sin(f * Math.PI * 2.0)),
-  [CombModes.STEP]: (f) => {
+  [CombModes.SIN]     : (f: number) => Math.sin(f * Math.PI * 2.0) * 0.5 + 0.5,
+  [CombModes.RAW_STEP]: (f: number) => (Math.fract(f) > 0.5 ? 1.0 : 0.0),
+  [CombModes.DOME]    : (f: number) => Math.abs(Math.sin(f * Math.PI * 2.0)),
+  [CombModes.STEP]: (f: number) => {
     f = Math.tent(f)
     f = f * 2.0
 
@@ -800,8 +805,8 @@ export class CombPattern extends PatternGen {
         break
     }
 
-    if (uniforms.angle !== undefined) {
-      th = `(${th} + angle)`
+    if (uniforms.angleOffset !== undefined) {
+      th = `(${th} + angleOffset)`
     }
 
     return `
@@ -925,7 +930,7 @@ export class GaborNoise extends PatternGen {
     b.decay2 = this.decay2
   }
 
-  calcUpdateHash(digest, recompileOnly = false) {
+  calcUpdateHash(digest: HashDigest, recompileOnly = false) {
     digest.add(this.levels)
     digest.add(this.levelScale)
     digest.add(this.zoff)
@@ -938,6 +943,7 @@ export class GaborNoise extends PatternGen {
   evaluate(co: Vector3): number {
     return super.evaluate(co)
 
+    ;`
     co = sntmps.next().load(co)
 
     let scale = 5.0 //*Math.pow(this.levelScale, this.levels);
@@ -969,6 +975,7 @@ export class GaborNoise extends PatternGen {
     f2 /= tot
 
     return f1 + (f2 - f1) * this.factor
+    `
   }
 
   genGlsl(inputP: string, outputC: string, uniforms: any): string {
@@ -1067,7 +1074,7 @@ export class GaborNoise extends PatternGen {
     `
   }
 
-  evaluate_intern(co, scale) {
+  evaluate_intern(co: number[], scale: number) {
     const x = co[0] * scale
     const y = co[1] * scale
     const z = co[2] * scale + this.zoff
@@ -1196,7 +1203,7 @@ export class ProceduralTex extends DataBlock {
   contrast = 1.0
 
   recalcFlag = PatternRecalcFlags.PREVIEW
-  previews = []
+  previews = [] as HTMLCanvasElement[]
 
   _last_update_hash: string | undefined | number = undefined
   _digest = new util.HashDigest()
@@ -1204,10 +1211,10 @@ export class ProceduralTex extends DataBlock {
   constructor() {
     super()
 
-    this.setGenerator(SimpleNoise)
+    this.generator = this.setGenerator(SimpleNoise)
   }
 
-  static getPattern(index_or_typename_or_class: any): IPatternConstructor {
+  static getPattern(index_or_typename_or_class: any): IPatternConstructor | undefined {
     const cls = index_or_typename_or_class
 
     if (typeof cls === 'string') {
@@ -1226,17 +1233,21 @@ export class ProceduralTex extends DataBlock {
   }
 
   static buildGeneratorEnum(): EnumProperty {
-    const enumdef = {}
-    const uinames = {}
-    const icons = {}
+    const enumdef = {} as Record<string, number>
+    const uinames = {} as Record<string, string>
+    const icons = {} as Record<string, number>
     let i = 0
 
     for (const cls of Patterns) {
       const def = cls.patternDefine()
 
       enumdef[def.typeName] = i
-      uinames[def.typeName] = def.uiName
-      icons[def.typeName] = def.icon
+      if (def.uiName !== undefined) {
+        uinames[def.typeName] = def.uiName
+      }
+      if (def.icon !== undefined) {
+        icons[def.typeName] = def.icon
+      }
 
       i++
     }
@@ -1307,11 +1318,10 @@ uniform float texPower;
     }
 
     b.generators.length = 0
-    b.generator = undefined
+    b.generator = undefined as unknown as PatternGen
 
     for (const gen of this.generators) {
       const gen2 = gen.copy()
-
       b.generators.push(gen2)
     }
 
@@ -1353,7 +1363,7 @@ uniform float texPower;
     return false as unknown as this
   }
 
-  buildSettings(container) {
+  buildSettings(container: Container) {
     container.prop('scale')
     container.prop('brightness')
     container.prop('contrast')
@@ -1369,7 +1379,7 @@ uniform float texPower;
     }
   }
 
-  getPreview(width, height) {
+  getPreview(width: number, height: number) {
     if (this.recalcFlag & PatternRecalcFlags.PREVIEW) {
       this.previews.length = 0
       this.recalcFlag &= ~PatternRecalcFlags.PREVIEW
@@ -1387,7 +1397,7 @@ uniform float texPower;
     return p
   }
 
-  genPreview(width, height) {
+  genPreview(width: number, height: number): HTMLCanvasElement {
     console.log('generating texture preview')
 
     const image = new ImageData(width, height)
@@ -1412,7 +1422,7 @@ uniform float texPower;
       try {
         f = this.evaluate(co)
       } catch (error) {
-        util.print_stack(error)
+        util.print_stack(error as Error)
         break
       }
 
@@ -1421,7 +1431,7 @@ uniform float texPower;
     }
 
     const canvas = document.createElement('canvas')
-    const g = canvas.getContext('2d')
+    const g = canvas.getContext('2d')!
     canvas.width = width
     canvas.height = height
 
@@ -1430,7 +1440,7 @@ uniform float texPower;
     return canvas
   }
 
-  getGenerator(cls) {
+  getGenerator(cls: any) {
     for (const gen of this.generators) {
       if (gen.constructor === cls) {
         return gen
@@ -1443,14 +1453,13 @@ uniform float texPower;
     return gen
   }
 
-  setGenerator(cls) {
+  setGenerator(cls: any) {
     this.generator = this.getGenerator(cls)
-
-    return this
+    return this.generator
   }
 
-  evaluate(co, scale = 1.0) {
-    co = evalcos.next().load(co)
+  evaluate(co_: IVector3, scale = 1.0) {
+    const co = evalcos.next().load(co_)
     co.mulScalar(this.scale * scale)
 
     let f = this.generator.evaluate(co)
@@ -1460,7 +1469,7 @@ uniform float texPower;
     return f
   }
 
-  derivative(co1, scale) {
+  derivative(co1: IVector3, scale: number) {
     const co = evalcos.next().load(co1)
 
     const a = this.evaluate(co, scale)
@@ -1500,7 +1509,7 @@ uniform float texPower;
       }
     } else {
       const gen = this.generator as unknown as string
-      this.generator = undefined
+      this.generator = undefined as unknown as PatternGen
 
       for (const cls of Patterns) {
         if (cls.patternDefine().typeName === gen) {
@@ -1567,10 +1576,10 @@ export class ProceduralTexUser {
     }
 
     if (dv_out) {
-      dv_out.load(this.texture.derivative(co, texScale))
+      dv_out.load(this.texture!.derivative(co, texScale))
     }
 
-    return this.texture.evaluate(co, texScale)
+    return this.texture!.evaluate(co, texScale)
   }
 
   copyTo(b: this): void {
@@ -1590,7 +1599,7 @@ export class ProceduralTexUser {
   equals(b: this): boolean {
     let r = this.texture === b.texture
 
-    function feq(a, b) {
+    function feq(a: number, b: number) {
       return Math.abs(a - b) < 0.00001
     }
 
@@ -1620,14 +1629,14 @@ export class ProceduralTexUser {
     }
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this)
   }
 }
 
 nstructjs.register(ProceduralTexUser)
 
-export function buildProcTextureAPI(api, api_define_datablock) {
+export function buildProcTextureAPI(api: DataAPI, api_define_datablock: (api: DataAPI, cls: any) => DataStruct) {
   for (const cls of Patterns) {
     cls.defineAPI(api)
   }

@@ -10,7 +10,7 @@ let proptypemap = {
   [PropTypes.VEC4] : 'vec4',
 } as const
 
-export const compileCache = new Map()
+export const compileCache = new Map<string, mathl.ICompiledCode>()
 
 export function compileTexShaderJS(shader: TextureShader): mathl.ICompiledCode {
   let code = shader.genCode()
@@ -55,13 +55,11 @@ void main() {
   console.log(code)
 
   if (compileCache.has(code)) {
-    return compileCache.get(code)
+    return compileCache.get(code)!
   }
 
-  let shaderjs = mathl.compileJS(code, shader.typeName)
-
+  const shaderjs = mathl.compileJS(code, shader.typeName)
   compileCache.set(code, shaderjs)
-
   return shaderjs
 }
 
