@@ -2,7 +2,7 @@ function gen(): Array<number[]> {
   const ret: Array<number[]> = []
 
   for (let i = 1; i < 10; i++) {
-    const list = []
+    const list = [] as number[]
     let n = i
     let prod = 1.0
 
@@ -35,7 +35,8 @@ function gen(): Array<number[]> {
 export const BinomialTable = gen()
 
 export function printTable(): void {
-  const rows = []
+  const rows = [] as string[]
+
   let maxlen = 0
   for (const row of BinomialTable) {
     let s = ''

@@ -1,4 +1,14 @@
 {
+  "scripts": {
+    "build": "node esbuilder.js",
+    "watch": "node esbuilder.js --watch",
+    "typecheck": "tsc",
+    "watch-typecheck": "tsc --watch",
+    "serv": "node serv.js",
+    "test": "jest",
+    "eslint": "npx eslint",
+    "markdown-toc": "bash run_markdown_toc.sh"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@mui/x-tree-view": "^8.4.0",
@@ -31,15 +41,5 @@
   "dependencies": {
     "btoa": ">=1.2.1",
     "esdoc-standard-plugin": ">=1.0.0"
-  },
-  "scripts": {
-    "build": "node esbuilder.js",
-    "watch": "node esbuilder.js --watch",
-    "typecheck": "tsc",
-    "watch-typecheck": "tsc --watch",
-    "serv": "node serv.js",
-    "test": "jest",
-    "eslint": "npx eslint",
-    "markdown-toc": "bash run_markdown_toc.sh"
   }
 }
