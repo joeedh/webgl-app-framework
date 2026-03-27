@@ -16,7 +16,7 @@
     "@swc/jest": "^0.2.39",
     "@types/react": "^19.1.5",
     "@typescript-eslint/eslint-plugin": "^6.19.1",
-    "esbuild": "^0.19.7",
+    "esbuild": "^0.25.0",
     "esdoc": ">=1.1.0",
     "esdoc-ecmascript-proposal-plugin": ">=1.0.0",
     "eslint": "^10.0.3",
