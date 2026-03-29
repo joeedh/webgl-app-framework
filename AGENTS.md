@@ -8,8 +8,22 @@
 - Typecheck: `pnpm typecheck`
 - Start web server: `pnpm serv`
 
+## Generating type annotations
+
+When generating type annotations:
+- Do not add annotations if type can be inferred, e.g.
+  + Assignment to known typed variables
+  + Assignment to new operator
+- Do not use the any type
+- Do not use single-line control blocks, e.g. `if (test) action()` is bad,
+  `if (test) { action() }` is good.
+
 ## Code style
 
+- We have a polyfilter for `Set.filter` and `Set.map`.  These are okay to use.
+- Do not transform the `Set.filter` to a spread-to-array-then-filter pattern,
+  e.g. do not turn `set.filter(n => n.test(0))` into `[...set].filter(n => n.test(0))`
+  Also do not transform into a `Array.from` pattern either.
 - Typescript strict mode
 - Single quotes, no semicolons
 - Use `git mv` when renaming files, such as

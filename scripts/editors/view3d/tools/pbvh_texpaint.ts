@@ -1,4 +1,5 @@
 import {BrushProperty, PaintSample, PaintSampleProperty} from './pbvh_base'
+import {BVHToolMode} from './pbvh'
 import * as util from '../../../util/util.js'
 import {
   BoolProperty,
@@ -11,24 +12,28 @@ import {
   math,
   Mat4Property,
   Vec2Property,
+  IVectorOrHigher,
 } from '../../../path.ux/scripts/pathux.js'
-import {BVH, BVHFlags} from '../../../util/bvh.js'
+import {BVH, BVHFlags, BVHTri, IsectRet} from '../../../util/bvh.js'
 import {GridBase} from '../../../mesh/mesh_grids'
-import {ImageTypes} from '../../../image/image.js'
+import {ImageBlock, ImageTypes} from '../../../image/image.js'
 import {FBO} from '../../../core/fbo.js'
-import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh'
+import {LayerTypes, PrimitiveTypes, SimpleMesh, TriEditor, QuadEditor} from '../../../core/simplemesh'
 import {ShaderDef} from '../../../shaders/shaders.js'
 import {getFBODebug} from '../../debug/gldebug.js'
 import {Texture, getShader, ShaderProgram} from '../../../core/webgl.js'
 import {project} from '../view3d_utils.js'
+import {SculptBrush} from '../../../brush/brush'
+import {ProceduralTex} from '../../../texture/proceduralTex'
 
 const _id: number = 0
 
-import {tileManager, UNDO_TILESIZE} from '../../../image/gpuimage.js'
+import {GPUTile, tileManager, UNDO_TILESIZE} from '../../../image/gpuimage.js'
 import {ToolContext, ViewContext} from '../../../core/context'
 import {SceneObject} from '../../../sceneobject/sceneobject'
 import {View3D} from '../view3d'
 import {Loop, Mesh, UVLayerElem} from '../../../mesh/mesh'
+import {AttrRef, ColorLayerElem} from '../../../mesh/mesh_customdata'
 
 declare global {
   let DDD: number
@@ -64,8 +69,8 @@ export class TexPaintOp extends ToolOp<
   last_radius: number | undefined
   last_mpos: Vector3
   mpos: Vector3
-  _tiles: any[] = []
-  _tilemap: {[key: number]: any} = {}
+  _tiles: GPUTile[] = []
+  _tilemap: {[key: number]: GPUTile} = {}
 
   constructor() {
     super()
@@ -98,17 +103,17 @@ export class TexPaintOp extends ToolOp<
     }
   }
 
-  getShader(gl: WebGL2RenderingContext, brush: any): any {
+  getShader(gl: WebGL2RenderingContext, brush: SculptBrush): ShaderProgram {
     const sdef = Object.assign({}, ShaderDef.TexturePaintShader)
 
-    const uniforms: any = {
+    const uniforms: Record<string, unknown> = {
       angle: 0.0,
     }
 
     if (brush.texUser.texture) {
       let pre: string = '\n' //#define BRUSH_TEX\n';
 
-      const tex: any = brush.texUser.texture
+      const tex: ProceduralTex = brush.texUser.texture
       pre += tex.genGlslPre('inP', 'outC', uniforms)
 
       let code: string = tex.genGlsl('inP', 'outC', uniforms)
@@ -126,7 +131,7 @@ export class TexPaintOp extends ToolOp<
       //console.log(sdef.fragment);
     }
 
-    const shader: any = getShader(gl, sdef)
+    const shader = getShader(gl, sdef)
 
     //console.error("SHADER", shader);
 
@@ -146,20 +151,20 @@ export class TexPaintOp extends ToolOp<
       return
     }
 
-    const mpos: any = view3d.getLocalMouse(e.x, e.y)
+    const mpos: Vector2 = view3d.getLocalMouse(e.x, e.y)
     const x: number = mpos[0],
       y: number = mpos[1]
 
     this.mpos.load(mpos)
 
-    const toolmode: any = ctx.toolmode
+    const toolmode = ctx.toolmode as BVHToolMode
 
     //the bvh toolmode is responsible for drawing brush circle,
     //make sure it has up to date info for that
     toolmode.mpos[0] = e.x
     toolmode.mpos[1] = e.y
 
-    const bvh: any = mesh.getBVH({autoUpdate: false})
+    const bvh: BVH = mesh.getBVH({autoUpdate: false})
     //log("sample!");
 
     const axes: number[] = [-1]
@@ -171,8 +176,8 @@ export class TexPaintOp extends ToolOp<
       }
     }
 
-    let view = new Vector3(view3d.getViewVec(x, y))
-    let origin = new Vector3(view3d.activeCamera.pos)
+    const view = new Vector3(view3d.getViewVec(x, y))
+    const origin = new Vector3(view3d.activeCamera.pos)
 
     const cam = view3d.activeCamera
     const rendermat = cam.rendermat
@@ -183,7 +188,7 @@ export class TexPaintOp extends ToolOp<
 
     const ob = ctx.object!
 
-    let isect: ReturnType<typeof bvh.castRay> | undefined
+    let isect: IsectRet | undefined
     //isect = bvh.castRay(origin, view);
 
     for (const axis of axes) {
@@ -242,7 +247,7 @@ export class TexPaintOp extends ToolOp<
       return
     }
 
-    const brush: any = this.inputs.brush.getValue()
+    const brush: SculptBrush = this.inputs.brush.getValue()
     let sradius: number = brush.radius,
       radius: number = sradius
 
@@ -250,9 +255,9 @@ export class TexPaintOp extends ToolOp<
 
     //log("isect:", isect);
 
-    const color: any = e.ctrlKey ? brush.bgcolor : brush.color
+    const color: Vector4 = e.ctrlKey ? brush.bgcolor : brush.color
 
-    const p4: Vector4 = new Vector4(isect.p)
+    const p4: Vector4 = new Vector4().load3(isect.p)
     p4[3] = 1.0
 
     p4.multVecMatrix(rendermat)
@@ -296,7 +301,7 @@ export class TexPaintOp extends ToolOp<
 
     const th: number = Math.atan2(dy, dx)
 
-    const list: any = this.inputs.samples.getValue()
+    const list: PaintSample[] = this.inputs.samples.getValue()
     let lastw: number
 
     if (list.length > 0) {
@@ -304,6 +309,8 @@ export class TexPaintOp extends ToolOp<
     } else {
       lastw = w
     }
+
+    const interpTmp = new Vector4()
 
     for (let i = 0; i < steps; i++) {
       const t: number = i / (steps - 1)
@@ -319,7 +326,7 @@ export class TexPaintOp extends ToolOp<
       ps.color.load(color)
       ps.angle = th
 
-      ps.p.load(this.last_p).interp(isect.p, t)
+      ps.p.load(this.last_p).interp(interpTmp.load3(isect.p), t)
 
       ps.mpos = new Vector2().loadXY(this.last_mpos[0], this.last_mpos[1]).interp(this.mpos, t)
       ps.radius = radius
@@ -336,8 +343,8 @@ export class TexPaintOp extends ToolOp<
     window.redraw_viewport()
   }
 
-  exec(ctx: any): void {
-    const mesh: any = ctx.mesh
+  exec(ctx: ViewContext): void {
+    const mesh = ctx.mesh
 
     if (!mesh) {
       return
@@ -392,7 +399,7 @@ export class TexPaintOp extends ToolOp<
       return
     }
 
-    let fbo: any
+    let fbo: FBO
 
     texture.getDrawFBO(gl)
 
@@ -404,7 +411,7 @@ export class TexPaintOp extends ToolOp<
     const mesh: Mesh = ctx.mesh
     const bvh: BVH = mesh.getBVH({autoUpdate: false})
 
-    fbo = texture._drawFBO
+    fbo = texture._drawFBO!
 
     const wrangler = mesh.getUVWrangler(false, false)!
     //console.log(wrangler);
@@ -415,26 +422,24 @@ export class TexPaintOp extends ToolOp<
     const cd_grid: number = GridBase.meshGridOffset(mesh)
     const haveGrids: boolean = cd_grid >= 0
 
-    let cd_color: number, cd_uv: number
-
-    cd_uv = mesh.loops.customData.getLayerIndex('uv')
-    const uvAttr = mesh.loops.customData.getLayerRef<UVLayerElem>('uv')
-    if (cd_uv < 0) {
+    const cd_uv = mesh.loops.customData.getLayerRef<UVLayerElem>('uv')
+    if (cd_uv.i < 0) {
       console.error('no uvs')
       return
     }
 
+    let cd_color: AttrRef<ColorLayerElem>
     if (haveGrids) {
-      cd_color = mesh.loops.customData.getLayerIndex('color')
+      cd_color = mesh.loops.customData.getLayerRef('color')
     } else {
-      cd_color = mesh.verts.customData.getLayerIndex('color')
+      cd_color = mesh.verts.customData.getLayerRef('color')
     }
 
-    const haveColor: boolean = cd_color >= 0
-    let ts: any = bvh.closestTris(co, radius)
+    const haveColor: boolean = cd_color.i >= 0
+    const tsSet: Set<BVHTri> = bvh.closestTris(co, radius)
     const avgno: Vector3 = new Vector3()
 
-    ts = ts.filter((t: any) => {
+    let ts = [...tsSet].filter((t: BVHTri) => {
       t.no.load(math.normal_tri(t.v1.co, t.v2.co, t.v3.co))
 
       const area: number = (t.area = math.tri_area(t.v1.co, t.v2.co, t.v3.co))
@@ -447,104 +452,84 @@ export class TexPaintOp extends ToolOp<
 
     avgno.normalize()
 
-    if (ts.size === 0) {
+    if (ts.length === 0) {
       return
     }
 
     // */
 
-    const rendermat: any = this.inputs.rendermat.getValue() //view3d.activeCamera.rendermat;
-    const glSize: any = this.inputs.glSize.getValue()
-    const viewSize: any = this.inputs.viewSize.getValue()
+    const rendermat: Matrix4 = this.inputs.rendermat.getValue() //view3d.activeCamera.rendermat;
+    const glSize: Vector2 = this.inputs.glSize.getValue()
+    const viewSize: Vector2 = this.inputs.viewSize.getValue()
 
-    const brush: any = this.inputs.brush.getValue()
+    const brush: SculptBrush = this.inputs.brush.getValue()
     const brushco: Vector3 = new Vector3(ps.p)
 
     const w0: number = project(brushco, rendermat, viewSize)
     brushco.load(ps.mpos)
     brushco[2] = 0.0
 
-    const uvring: any = util.cachering.fromConstructor(Vector3, 64)
-    const v3ring: any = util.cachering.fromConstructor(Vector3, 64)
-    const v4ring: any = util.cachering.fromConstructor(Vector4, 64)
+    const uvring = util.cachering.fromConstructor(Vector3, 64)
+    const v3ring = util.cachering.fromConstructor(Vector3, 64)
+    const v4ring = util.cachering.fromConstructor(Vector4, 64)
 
     let radius2: number = brush.radius
     radius2 *= 0.5
 
     //radius2 = radius;
 
-    const line_sm: any = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.CUSTOM) // | LayerTypes.COLOR | LayerTypes.NORMAL);
+    const line_sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.CUSTOM) // | LayerTypes.COLOR | LayerTypes.NORMAL);
     line_sm.primflag = PrimitiveTypes.LINES
     line_sm.island.primflag = PrimitiveTypes.LINES
 
-    const sm: any = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.CUSTOM) // | LayerTypes.COLOR | LayerTypes.NORMAL);
+    const sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.CUSTOM) // | LayerTypes.COLOR | LayerTypes.NORMAL);
 
     //screen position
-    const sm_loc: number = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 4, 'sm_loc').index
+    const sm_loc: number = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 4, 'sm_loc').index!
 
-    const sm_worldloc: number = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 3, 'sm_worldloc').index
+    const sm_worldloc: number = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 3, 'sm_worldloc').index!
 
-    const sm_params: number = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 2, 'sm_params').index
+    const sm_params: number = sm.addDataLayer(PrimitiveTypes.TRIS, LayerTypes.CUSTOM, 2, 'sm_params').index!
 
-    const sm_line_loc: number = line_sm.addDataLayer(PrimitiveTypes.LINES, LayerTypes.CUSTOM, 4, 'sm_loc').index
+    const sm_line_loc: number = line_sm.addDataLayer(PrimitiveTypes.LINES, LayerTypes.CUSTOM, 4, 'sm_loc').index!
     const sm_line_worldloc: number = line_sm.addDataLayer(
       PrimitiveTypes.LINES,
       LayerTypes.CUSTOM,
       4,
       'sm_worldloc'
-    ).index
-    const sm_line_params: number = line_sm.addDataLayer(PrimitiveTypes.LINES, LayerTypes.CUSTOM, 2, 'sm_params').index
+    ).index!
+    const sm_line_params: number = line_sm.addDataLayer(PrimitiveTypes.LINES, LayerTypes.CUSTOM, 2, 'sm_params').index!
 
-    const ltris: any = mesh._ltris
-    const uv1: Vector3 = new Vector3()
-    const uv2: Vector3 = new Vector3()
-    const uv3: Vector3 = new Vector3()
+    const ltris = mesh._ltris!
+    const uv1 = new Vector3()
+    const uv2 = new Vector3()
+    const uv3 = new Vector3()
 
     const size = new Vector2().loadXY(texture.width, texture.height)
     const sizem1 = new Vector2().loadXY(texture.width - 1, texture.height - 1)
     const isize = new Vector2().addScalar(1.0).div(size)
     const isizem1 = new Vector2().addScalar(1.0).div(sizem1)
 
-    function snaptexel(p: any): void {
-      p[0] = ~~(p[0] * sizem1[0]) * isizem1[0]
-      p[1] = ~~(p[1] * sizem1[1]) * isizem1[1]
-    }
-
-    const texelU: number = 1.0 / (texture.width - 1)
-    const texelV: number = 1.0 / (texture.height - 1)
-
     const params: Vector4[] = [new Vector4(), new Vector4(), new Vector4()]
 
-    const centuv = new Vector3()
-    const duv = new Vector2()
-
+    const centuv = new Vector2()
     const cd_corner = wrangler.cd_corner
 
-    function getisland(l: any): any {
+    function getisland(l: Loop) {
       return wrangler.islandLoopMap.get(l)
     }
 
-    function getcorner(l: any): any {
-      const ret2: any = wrangler.loopMap.get(l)
+    function getcorner(l: Loop) {
+      const ret2 = wrangler.loopMap.get(l)
 
       if (ret2) {
         return ret2.customData.get(cd_corner).corner
       } else {
         return false
       }
-
-      let ret: boolean = getisland(l) !== getisland(l.radial_next)
-
-      l = l.prev
-      ret = ret || getisland(l) !== getisland(l.radial_next)
-
-      //l = l.prev.prev;
-      //ret = ret || (l !== l.radial_next && wrangler.islandLoopMap.get(l) !== wrangler.islandLoopMap.get(l.radial_next));
-
-      return ret
     }
 
-    function processuv(uv: any, cent: any, corner: boolean): void {
+    function processuv(uv: IVectorOrHigher<2, Vector2>, cent: IVectorOrHigher<2, Vector2>, corner: boolean): void {
       //corner = false;
       let d: number = -0.001
       //let fac = corner ? 3.5 : 0.0;
@@ -572,6 +557,7 @@ export class TexPaintOp extends ToolOp<
     const ue2 = new Vector3()
     const ue3 = new Vector3()
     const uetmp = new Vector3()
+    const tmp2 = new Vector3()
 
     const radiusx: number = brush.radius / (texture.width - 1)
     const radiusy: number = brush.radius / (texture.height - 1)
@@ -582,9 +568,9 @@ export class TexPaintOp extends ToolOp<
       let l1: Loop | undefined, l2: Loop | undefined, l3: Loop | undefined
 
       if (haveGrids) {
-        uv1.load(tri.v1.customData.get(uvAttr).uv)
-        uv2.load(tri.v2.customData.get(uvAttr).uv)
-        uv3.load(tri.v3.customData.get(uvAttr).uv)
+        uv1.load(tri.v1.customData.get(cd_uv).uv)
+        uv2.load(tri.v2.customData.get(cd_uv).uv)
+        uv3.load(tri.v3.customData.get(cd_uv).uv)
         cr1 = cr2 = cr3 = false
       } else {
         const li: number = tri.tri_idx
@@ -600,9 +586,9 @@ export class TexPaintOp extends ToolOp<
         cr2 = getcorner(l2)
         cr3 = getcorner(l3)
 
-        uv1.load(l1.customData.get(uvAttr).uv)
-        uv2.load(l2.customData.get(uvAttr).uv)
-        uv3.load(l3.customData.get(uvAttr).uv)
+        uv1.load(l1.customData.get(cd_uv).uv)
+        uv2.load(l2.customData.get(cd_uv).uv)
+        uv3.load(l3.customData.get(cd_uv).uv)
       }
 
       centuv
@@ -619,7 +605,7 @@ export class TexPaintOp extends ToolOp<
       ue2.loadXY(-(uv2[1] - uv3[1]), uv2[0] - uv3[0])
       ue3.loadXY(-(uv3[1] - uv1[1]), uv3[0] - uv1[0])
 
-      uetmp.load(uv1).sub(centuv)
+      uetmp.load(uv1).sub(tmp2.load2(centuv))
       if (ue1.dot(uetmp) < 0.0) {
         ue1.negate()
         ue2.negate()
@@ -645,9 +631,9 @@ export class TexPaintOp extends ToolOp<
       uv3.add(ue3)
       uv3.add(ue2)
 
-      const p1: Vector4 = new Vector4(tri.v1.co)
-      const p2: Vector4 = new Vector4(tri.v2.co)
-      const p3: Vector4 = new Vector4(tri.v3.co)
+      const p1 = new Vector4().load3(tri.v1.co)
+      const p2 = new Vector4().load3(tri.v2.co)
+      const p3 = new Vector4().load3(tri.v3.co)
 
       p1[3] = p2[3] = p3[3] = 1.0
 
@@ -670,8 +656,10 @@ export class TexPaintOp extends ToolOp<
       const w2: number = triuv[0] * p1[3] + triuv[1] * p2[3] + (1.0 - triuv[0] - triuv[1]) * p3[3]
       //w2 = w0;
 
-      let rx: number = w2 / (texture.width - 1) //*(glSize[1]/texture.width);
-      let ry: number = w2 / (texture.height - 1) //*(glSize[1]/texture.height);
+      let rx: number, ry: number
+
+      //rx = w2 / (texture.width - 1) //*(glSize[1]/texture.width);
+      //ry = w2 / (texture.height - 1) //*(glSize[1]/texture.height);
 
       rx = w2 / (glSize[1] - 1)
       ry = w2 / (glSize[1] - 1)
@@ -711,7 +699,7 @@ export class TexPaintOp extends ToolOp<
 
       uv1[2] = uv2[2] = uv3[2] = 0.0
 
-      const tri2: any = sm.tri(uv1, uv2, uv3)
+      const tri2: TriEditor = sm.tri(uv1, uv2, uv3)
 
       const fade: number = Math.abs(tri.no.dot(ps.viewvec))
 
@@ -803,7 +791,7 @@ export class TexPaintOp extends ToolOp<
 
     log(umin, umax)
 
-    const saveUndoTile_intern = (tx: number, ty: number): any => {
+    const saveUndoTile_intern = (tx: number, ty: number): GPUTile => {
       const smin: Vector2 = new Vector2([tx * UNDO_TILESIZE, ty * UNDO_TILESIZE])
       smin[0] /= texture.width
       smin[1] /= texture.height
@@ -817,16 +805,16 @@ export class TexPaintOp extends ToolOp<
       console.log(ssize, smin, smax)
 
       //let gldebug = getFBODebug(gl);
-      const tile: any = tileManager.alloc(gl)
+      const tile: GPUTile = tileManager.alloc(gl)
 
-      const savetile: any = tile.fbo //new FBO(gl, ssize[0], ssize[1]);
+      const savetile: FBO = tile.fbo //new FBO(gl, ssize[0], ssize[1]);
       savetile.update(gl, ssize[0], ssize[1])
 
-      const sm: any = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV)
+      const sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV)
       sm.primflag = PrimitiveTypes.TRIS
       sm.island.primflag = PrimitiveTypes.TRIS
 
-      const quad: any = sm.quad([-1, -1, 0], [-1, 1, 0], [1, 1, 0], [1, -1, 0])
+      const quad: QuadEditor = sm.quad([-1, -1, 0], [-1, 1, 0], [1, 1, 0], [1, -1, 0])
 
       Texture.unbindAllTextures(gl)
 
@@ -870,7 +858,7 @@ export class TexPaintOp extends ToolOp<
       return tile
     }
 
-    const saveUndoTile = (smin: any, smax: any): void => {
+    const saveUndoTile = (smin: Vector2, smax: Vector2): void => {
       smin[0] = Math.min(Math.max(smin[0], 0), texture.width - 1)
       smin[1] = Math.min(Math.max(smin[1], 0), texture.height - 1)
 
@@ -891,7 +879,7 @@ export class TexPaintOp extends ToolOp<
         for (let ix: number = smin[0]; ix < smax[0]; ix++) {
           const idx: number = iy * rowsize + ix
           if (!(idx in this._tilemap)) {
-            const t: any = saveUndoTile_intern(ix, iy)
+            const t: GPUTile = saveUndoTile_intern(ix, iy)
 
             this._tilemap[idx] = t
             this._tiles.push(t)
@@ -905,7 +893,7 @@ export class TexPaintOp extends ToolOp<
     if (1) {
       const smin: Vector2 = new Vector2(umin),
         smax: Vector2 = new Vector2(umax)
-      if (!fbo.__first) {
+      if (!(fbo as FBO & {__first?: boolean}).__first) {
         smin.zero()
         smax[0] = texture.width
         smax[1] = texture.height
@@ -920,10 +908,9 @@ export class TexPaintOp extends ToolOp<
       gl.depthMask(false)
       gl.disable(gl.DEPTH_TEST)
 
-      if (!fbo.__first) {
+      if (!(fbo as FBO & {__first?: boolean}).__first) {
         gl.disable(gl.SCISSOR_TEST)
-
-        fbo.__first = true
+        ;(fbo as FBO & {__first?: boolean}).__first = true
       } else {
         gl.enable(gl.SCISSOR_TEST)
         gl.scissor(umin[0], umin[1], umax[0] - umin[0], umax[1] - umin[1])
@@ -935,7 +922,7 @@ export class TexPaintOp extends ToolOp<
       gl.disable(gl.DEPTH_TEST)
       gl.depthMask(false)
 
-      fbo.drawQuad(gl, texture.width, texture.height, texture.glTex, null)
+      fbo.drawQuad(gl, texture.width, texture.height, texture.glTex, undefined)
       gl.disable(gl.DEPTH_TEST)
 
       //console.log(texture, texture.glTex, fbo.smesh);
@@ -945,7 +932,7 @@ export class TexPaintOp extends ToolOp<
 
       const matrix: Matrix4 = new Matrix4()
 
-      const uniforms: any = {
+      const uniforms: Record<string, unknown> = {
         size            : [texture.width, texture.height],
         aspect          : texture.width / texture.height,
         projectionMatrix: matrix,
@@ -1009,13 +996,13 @@ export class TexPaintOp extends ToolOp<
       gl.readBuffer(gl.COLOR_ATTACHMENT0)
       gl.finish()
 
-      if (0) {
+      /*if (0) {
         gl.activeTexture(gl.TEXTURE0)
-        gl.bindTexture(gl.TEXTURE_2D, gltex.texture)
+        gl.bindTexture(gl.TEXTURE_2D, gltex!.texture!)
 
         gl.readBuffer(gl.COLOR_ATTACHMENT0)
         gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, texture.width, texture.height)
-      }
+      */
 
       fbo.unbind(gl)
 
@@ -1023,12 +1010,12 @@ export class TexPaintOp extends ToolOp<
     }
 
     if (haveColor && 0) {
-      const ts2: any[] = []
+      const ts2: BVHTri[] = []
 
       for (const t of ts) {
-        const c1: any = t.v1.customData[cd_color].color
-        const c2: any = t.v2.customData[cd_color].color
-        const c3: any = t.v3.customData[cd_color].color
+        const c1 = t.v1.customData.get(cd_color).color
+        const c2 = t.v2.customData.get(cd_color).color
+        const c3 = t.v3.customData.get(cd_color).color
 
         c1.zero().addScalar(1.0)
         c2.zero().addScalar(1.0)
@@ -1039,8 +1026,7 @@ export class TexPaintOp extends ToolOp<
       ts = ts2
 
       for (const v of mesh.verts) {
-        const c = v.customData[cd_color].color
-
+        const c = v.customData.get(cd_color).color
         c.zero().addScalar(1.0)
       }
 
@@ -1049,11 +1035,11 @@ export class TexPaintOp extends ToolOp<
         const t = ts[ri]
 
         //for (let t of ts) {
-        const c1 = t.v1.customData[cd_color].color
-        const c2 = t.v2.customData[cd_color].color
-        const c3 = t.v3.customData[cd_color].color
+        const c1 = t.v1.customData.get(cd_color).color
+        const c2 = t.v2.customData.get(cd_color).color
+        const c3 = t.v3.customData.get(cd_color).color
 
-        t.no.load(math.normal_tri(t.v1, t.v2, t.v3))
+        t.no.load(math.normal_tri(t.v1.co, t.v2.co, t.v3.co))
 
         const dis = math.dist_to_tri_v3(ps.p, t.v1.co, t.v2.co, t.v3.co, t.no)
 
@@ -1069,7 +1055,7 @@ export class TexPaintOp extends ToolOp<
         c3[0] = Math.min(c3[0], dis2)
 
         for (let i = 1; i < 3; i++) {
-          c1[i] = c2[i] = c3[i] = 0.2
+          c1[i as 1 | 2 | 3] = c2[i as 1 | 2 | 3] = c3[i as 1 | 2 | 3] = 0.2
         }
 
         if (t.node) {
@@ -1086,10 +1072,10 @@ export class TexPaintOp extends ToolOp<
     //console.log(vs);
   }
 
-  modalStart(ctx: any): any {
+  modalStart(ctx: ViewContext) {
     this.first = true
 
-    const mesh: any = ctx.mesh
+    const mesh = ctx.mesh
     if (mesh) {
       //check that UV island mesh is up to date
       mesh.getUVWrangler(true, true)
@@ -1098,14 +1084,14 @@ export class TexPaintOp extends ToolOp<
     return super.modalStart(ctx)
   }
 
-  undoPre(ctx: any): void {
+  undoPre(ctx: ViewContext): void {
     this._tiles = []
     this._tilemap = {}
 
     console.warn('undoPre: implement me!')
   }
 
-  undo(ctx: any): void {
+  undo(ctx: ViewContext): void {
     console.warn('undo: implement me!')
     console.log(this._tiles)
 
@@ -1113,7 +1099,7 @@ export class TexPaintOp extends ToolOp<
       return
     }
 
-    const texture: any = ctx.activeTexture
+    const texture: ImageBlock = ctx.activeTexture
 
     //check texture is in proper float buffer state
     if (texture.type !== ImageTypes.FLOAT_BUFFER) {
@@ -1151,10 +1137,10 @@ export class TexPaintOp extends ToolOp<
 
     console.log('texture paint undo!')
 
-    const dbuf: any = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING)
-    const rbuf: any = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING)
+    const dbuf = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING) as WebGLFramebuffer | null
+    const rbuf = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING) as WebGLFramebuffer | null
 
-    const fbo: any = texture.getDrawFBO(gl)
+    const fbo: FBO = texture.getDrawFBO(gl)
 
     fbo.bind(gl)
 
@@ -1165,11 +1151,11 @@ export class TexPaintOp extends ToolOp<
     gl.disable(gl.BLEND)
     gl.disable(gl.DITHER)
 
-    fbo.drawQuad(gl, texture.width, texture.height, texture.glTex, null)
+    fbo.drawQuad(gl, texture.width, texture.height, texture.glTex, undefined)
     fbo.unbind(gl)
 
     for (const tile of this._tiles) {
-      const tilefbo: any = tile.fbo
+      const tilefbo: FBO = tile.fbo
 
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, tilefbo.fbo)
       gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo.fbo)
@@ -1189,8 +1175,7 @@ export class TexPaintOp extends ToolOp<
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, rbuf)
 
     gl.enable(gl.DITHER)
-
-    fbo.__first = true
+    ;(fbo as FBO & {__first?: boolean}).__first = true
 
     texture.swapWithFBO(gl)
     texture.freeDrawFBO(gl)
@@ -1291,8 +1276,8 @@ void main() {
 }
 
 export class BrushBlurFBO {
-  fbo: any
-  shader: any | undefined
+  fbo: FBO
+  shader: ShaderProgram | undefined
   vboxMin: Vector2 | undefined
   vboxMax: Vector2 | undefined
 

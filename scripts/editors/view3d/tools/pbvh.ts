@@ -2,20 +2,19 @@ import './pbvh_bvhdef'
 
 import {WidgetFlags} from '../widgets/widgets.js'
 import {ToolModes, ToolMode} from '../view3d_toolmode.js'
-import {BVH, BVHFlags, BVHNode, BVHTriFlags} from '../../../util/bvh.js'
+import {BVH, BVHFlags, BVHNode} from '../../../util/bvh.js'
 import {KeyMap, HotKey, DataBlockBrowser} from '../../editor_base'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
-import {TranslateWidget} from '../widgets/widget_tools.js'
 import * as util from '../../../util/util.js'
 
 import '../../../subsurf/subsurf_loop_stencil.js'
 
-import {IntElem, Mesh} from '../../../mesh/mesh.js'
+import {AttrRef, ColorLayerElem, IntElem, Mesh, Vertex} from '../../../mesh/mesh.js'
 import {Shapes} from '../../../core/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js'
-import {math, PackFlags, UIBase} from '../../../path.ux/scripts/pathux.js'
+import {Vector2, Vector3, Vector4, Matrix4} from '../../../util/vectormath.js'
+import {IndexRange, math, PackFlags, UIBase} from '../../../path.ux/scripts/pathux.js'
 import {MeshFlags} from '../../../mesh/mesh.js'
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../../../core/simplemesh'
 import {GridBase, GridSettingFlags} from '../../../mesh/mesh_grids.js'
@@ -40,10 +39,13 @@ import './pbvh_texpaint'
 import {calcConcave, getBVH} from './pbvh_base'
 import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
 import {TetMesh} from '../../../tet/tetgen.js'
-import {DispContext} from '../../../mesh/mesh_displacement.js'
+import {DispContext, DispLayerVert} from '../../../mesh/mesh_displacement.js'
 import {Texture} from '../../../core/webgl.js'
 import {getFaceSetColor, getFaceSets, getNextFaceSet} from '../../../mesh/mesh_facesets.js'
 import {eventWasTouch} from '../../../path.ux/scripts/util/simple_events.js'
+import {enumKeys, enumValues} from '../../../util/enum-utils'
+import {StructReader} from '../../../path.ux/scripts/path-controller/types/util/nstructjs'
+import { ParamVert } from '../../../mesh/mesh_paramizer'
 
 export class BVHToolMode extends ToolMode {
   mdown = false
@@ -107,7 +109,6 @@ export class BVHToolMode extends ToolMode {
     this.flag |= WidgetFlags.ALL_EVENTS
 
     this.tool = SculptTools.CLAY
-    //this.brush = new SculptBrush();
     this.slots = {}
 
     this._brush_lines = []
@@ -323,7 +324,7 @@ export class BVHToolMode extends ToolMode {
         return false
       }
 
-      const toolmode = browser.ctx.toolmode
+      const toolmode = browser.ctx.toolmode! as BVHToolMode
       return brush.tool === toolmode.tool
     }
 
@@ -1294,21 +1295,21 @@ export class BVHToolMode extends ToolMode {
     const white = [1, 1, 1, 1]
     const red = [1, 0, 0, 1]
 
-    let cd_color = -1
+    let cd_color = new AttrRef<ColorLayerElem>()
     let have_color: boolean | undefined
 
     let drawkey = ''
 
     if (have_grids) {
       GridBase.syncVertexLayers(mesh)
-      cd_color = mesh.loops.customData.getLayerIndex('color')
-      have_color = cd_color >= 0
+      cd_color = mesh.loops.customData.getLayerRef('color')
+      have_color = cd_color.i >= 0
     } else {
-      cd_color = mesh.verts.customData.getLayerIndex('color')
-      have_color = cd_color >= 0
+      cd_color = mesh.verts.customData.getLayerRef('color')
+      have_color = cd_color.i >= 0
     }
 
-    drawkey += ':' + cd_color + ':' + object.lib_id + ':' + mesh.lib_id
+    drawkey += ':' + cd_color.i + ':' + object.lib_id + ':' + mesh.lib_id
 
     if (drawkey !== this._last_draw_key) {
       console.log('Full draw:', drawkey)
@@ -1632,7 +1633,7 @@ export class BVHToolMode extends ToolMode {
         tottri = 0
       let updateColors = false
       let updateUvs = false
-      let haveColors = true //cd_color >= 0; //XXX todo: add support in shader code to handle no vcol data
+      let haveColors = true //cd_color.i >= 0; //XXX todo: add support in shader code to handle no vcol data
 
       haveColors = haveColors || drawMask || drawCavityMap || drawDispDisField
 
@@ -1779,15 +1780,15 @@ export class BVHToolMode extends ToolMode {
       const white = [1, 1, 1, 1]
 
       const displayers = mesh.verts.customData.getLayerSet('displace', false)
-      let cd_disp = -1
-      let cd_pvert = -1
+      let cd_disp = new AttrRef<DispLayerVert>()
+      let cd_pvert = new AttrRef<ParamVert>()
 
       if (displayers && displayers.length > 0) {
         cd_disp = displayers[displayers.length - 1].index
         const dctx = new DispContext()
-        dctx.reset(mesh, cd_disp)
+        dctx.reset(mesh, cd_disp.i)
 
-        cd_pvert = dctx.cd_pvert
+        cd_pvert.i = dctx.cd_pvert ?? -1
         //cd_disp = mesh.verts.customData.getLayerIndex("displace");
       }
 
@@ -1811,8 +1812,8 @@ export class BVHToolMode extends ToolMode {
 
           j = vi * 3
 
-          if (editDisplaced && cd_disp >= 0) {
-            const dv = v.customData[cd_disp]
+          if (editDisplaced && cd_disp.i >= 0) {
+            const dv = v.customData.get(cd_disp)
 
             const co = dv.worldco
             //co = dv.smoothco;
@@ -1820,11 +1821,11 @@ export class BVHToolMode extends ToolMode {
             if (!norvisit.has(dv)) {
               dv.no.zero()
 
-              for (const f of v.faces) {
+              for (const f of (v as Vertex).faces) {
                 ntmp.load(f.no)
                 ntmp2.load(f.cent)
 
-                f.calcNormal(cd_disp)
+                f.calcNormal(cd_disp.i)
                 dv.no.add(f.no)
 
                 f.no.load(ntmp)
@@ -1928,8 +1929,8 @@ export class BVHToolMode extends ToolMode {
               vcolors[j++] = dis * colormul
               vcolors[j++] = dis * colormul
               vcolors[j++] = 1.0
-            } else if (cd_color >= 0) {
-              const c = v.customData[cd_color].color
+            } else if (cd_color.i >= 0) {
+              const c = v.customData.get(cd_color).color
 
               j = vi * 4
 
@@ -2121,7 +2122,7 @@ export class BVHToolMode extends ToolMode {
 
       let ti = 0
 
-      let colorfilter
+      let colorfilter: (v: Vertex, fac?: number) => Vector4
       const cfrets = util.cachering.fromConstructor(Vector4, 16)
 
       if (have_grids) {
@@ -2132,7 +2133,7 @@ export class BVHToolMode extends ToolMode {
           fac = 1.0 - fac
 
           for (const v2 of v.neighbors) {
-            const clr = v2.customData[cd_color].color
+            const clr = v2.customData.get(cd_color).color
             const w = 1.0
 
             tot += w
@@ -2140,10 +2141,10 @@ export class BVHToolMode extends ToolMode {
           }
 
           if (tot === 0.0) {
-            ret.load(v.customData[cd_color].color)
+            ret.load(v.customData.get(cd_color).color)
           } else {
             ret.mulScalar(1.0 / tot)
-            ret.interp(v.customData[cd_color].color, fac)
+            ret.interp(v.customData.get(cd_color).color, fac)
           }
 
           return ret
@@ -2156,7 +2157,7 @@ export class BVHToolMode extends ToolMode {
 
           for (const e of v.edges) {
             const v2 = e.otherVertex(v)
-            const clr = v2.customData[cd_color].color
+            const clr = v2.customData.get(cd_color).color
             const w = 1.0
 
             tot += w
@@ -2164,10 +2165,10 @@ export class BVHToolMode extends ToolMode {
           }
 
           if (tot === 0.0) {
-            ret.load(v.customData[cd_color].color)
+            ret.load(v.customData.get(cd_color).color)
           } else {
             ret.mulScalar(1.0 / tot)
-            ret.interp(v.customData[cd_color].color, fac)
+            ret.interp(v.customData.get(cd_color).color, fac)
           }
 
           return ret
@@ -2246,9 +2247,9 @@ export class BVHToolMode extends ToolMode {
 
             const w1 = window.d1 ?? 1.0 / 3.0
 
-            let c1 = t1.customData[cd_color].color
-            let c2 = t2.customData[cd_color].color
-            let c3 = t3.customData[cd_color].color
+            let c1 = t1.customData.get(cd_color).color
+            let c2 = t2.customData.get(cd_color).color
+            let c3 = t3.customData.get(cd_color).color
             if (1) {
               c1 = colorfilter(t1, w1)
               c2 = colorfilter(t2, w1)
@@ -2273,9 +2274,9 @@ export class BVHToolMode extends ToolMode {
             }
             tc5.mulScalar(1.0 / tot)
 
-            const ca = t1.customData[cd_color].color
-            const cb = t2.customData[cd_color].color
-            const cc = t3.customData[cd_color].color
+            const ca = t1.customData.get(cd_color).color
+            const cb = t2.customData.get(cd_color).color
+            const cc = t3.customData.get(cd_color).color
 
             const startl = f.lists[0].l
 
@@ -2490,16 +2491,16 @@ export class BVHToolMode extends ToolMode {
             tc1[1] = tc2[1] = tc3[1] = 0.5
           } else if (have_color) {
             //*
-            const c1 = tri.v1.customData[cd_color].color
-            const c2 = tri.v2.customData[cd_color].color
-            const c3 = tri.v3.customData[cd_color].color
+            const c1 = tri.v1.customData.get(cd_color).color
+            const c2 = tri.v2.customData.get(cd_color).color
+            const c3 = tri.v3.customData.get(cd_color).color
             //*/
 
             tc1.load(c1)
             tc2.load(c2)
             tc3.load(c3)
 
-            for (let j = 0; j < 3; j++) {
+            for (let j of IndexRange(3)) {
               tc1[j] *= cv1
               tc2[j] *= cv2
               tc3[j] *= cv3
@@ -2514,7 +2515,7 @@ export class BVHToolMode extends ToolMode {
               let l = v.loopEid
               l = mesh.eidMap.get(l)
               if (l && l.eid === v.loopEid) {
-                l.customData[bvh.cd_grid].checkCustomDataLayout(mesh)
+                l.customData.get(bvh.cd_grid).checkCustomDataLayout(mesh)
 
                 //console.log(l, l.customData[bvh.cd_grid]);
               }
@@ -2550,9 +2551,9 @@ export class BVHToolMode extends ToolMode {
 
             i = ti * 4
 
-            const ca = tri.v1.customData[cd_color].color
-            const cb = tri.v2.customData[cd_color].color
-            const cc = tri.v3.customData[cd_color].color
+            const ca = tri.v1.customData.get(cd_color).color
+            const cb = tri.v2.customData.get(cd_color).color
+            const cc = tri.v3.customData.get(cd_color).color
 
             for (let j = 0; j < 12; j++) {
               primc1[i + j] = ca[j % 4]
@@ -2591,6 +2592,7 @@ export class BVHToolMode extends ToolMode {
             doline(sm, t3, t1, tri.v3, tri.v1)
           }
           //*/
+          /*
           continue
 
           const tri2 = sm.tri(t1, t2, t3)
@@ -2667,12 +2669,10 @@ export class BVHToolMode extends ToolMode {
 
             tri2.colors(tc1, tc2, tc3)
           } else if (have_color) {
-            //*
-            const c1 = tri.v1.customData[cd_color].color
-            const c2 = tri.v2.customData[cd_color].color
-            const c3 = tri.v3.customData[cd_color].color
-            //*/
-
+            //const c1 = tri.v1.customData[cd_color].color
+            //const c2 = tri.v2.customData[cd_color].color
+            //const c3 = tri.v3.customData[cd_color].color
+            
             tc1.load(c1)
             tc2.load(c2)
             tc3.load(c3)
@@ -2701,11 +2701,10 @@ export class BVHToolMode extends ToolMode {
               tri2.colors(red, red, red)
               continue
             }
-            /*
-            let c1 = colorfilter(tri.v1);
-            let c2 = colorfilter(tri.v2);
-            let c3 = colorfilter(tri.v3);
-            //*/
+            
+            //let c1 = colorfilter(tri.v1);
+            //let c2 = colorfilter(tri.v2);
+            //let c3 = colorfilter(tri.v3);
 
             //tri2.custom(primc1, c1, c1, c1);
             //tri2.custom(primc2, c2, c2, c2);
@@ -2715,9 +2714,9 @@ export class BVHToolMode extends ToolMode {
           } else {
             tri2.colors(white, white, white)
           }
+          */
         }
       }
-
       //console.log("updating draw data for bvh node", node.id);
 
       rec(node)
@@ -2735,7 +2734,7 @@ export class BVHToolMode extends ToolMode {
       }
 
       if (node.flag & BVHFlags.TEMP_TAG) {
-        let update = node.flag & BVHFlags.UPDATE_DRAW
+        let update = !!(node.flag & BVHFlags.UPDATE_DRAW)
         update = update || !node.drawData
 
         if (update) {
@@ -2916,16 +2915,14 @@ export class BVHToolMode extends ToolMode {
       this.slots[k].dataLink(scene, getblock, getblock_addUser)
     }
 
-    for (const k in SculptTools) {
-      const tool = SculptTools[k]
-
+    for (const tool of enumValues(SculptTools)) {
       if (!(tool in this.slots)) {
-        this.slots[tool] = new PaintToolSlot(tool)
+        this.slots[tool] = new PaintToolSlot(tool as SculptTools)
       }
     }
   }
 
-  loadSTRUCT(reader: any): void {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
     super.loadSTRUCT(reader)
 
@@ -2939,9 +2936,9 @@ export class BVHToolMode extends ToolMode {
       }
     }
 
-    //also happens in old files
-    if (this.brush) {
-      this.tool = this.brush.tool
+    // also happens in old files
+    if ('brush' in this) {
+      this.tool = (this as unknown as any)['brush'].tool
       delete this.brush
     }
   }

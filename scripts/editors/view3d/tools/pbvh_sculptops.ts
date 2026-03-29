@@ -29,7 +29,6 @@ import {
   ColorLayerElem,
   Edge,
   Element,
-  Element,
   Face,
   FloatElem,
   getArrayTemp,
@@ -1204,7 +1203,7 @@ export class PaintOp extends PaintOpBase<
       }
     }
 
-    const gd = []
+    const gd = [] as number[]
     const cd_grid = GridBase.meshGridOffset(mesh)
     const haveGrids = cd_grid >= 0
     this.grabDists = []
@@ -2013,7 +2012,7 @@ export class PaintOp extends PaintOpBase<
       const co = this.inputs.grabCo.getValue() //ps.origp;
 
       vs = bvh.closestOrigVerts(co, bvhRadius)
-      gd = []
+      gd = [] as number[]
 
       const axismap = SymAxisMap
       const sym = this.inputs.symmetryAxes.getValue()
@@ -4763,8 +4762,8 @@ export class PaintOp extends PaintOpBase<
       }
     }//*/
 
-    const origVs = []
-    const origNs = []
+    const origVs = [] as Vector3[]
+    const origNs = [] as Vector3[]
 
     for (const v of vs) {
       origVs.push(new Vector3(v.co))
@@ -4888,8 +4887,8 @@ export class PaintOp extends PaintOpBase<
 
       bvh.update()
 
-      const cdblocks_loop = new Map()
-      const cdblocks = []
+      const cdblocks_loop = new Map<Loop, CDElemArray>()
+      const cdblocks = [] as CDElemArray[]
       const dummy = new Vertex()
 
       const vstmp = new Array<Vertex>(3)
@@ -4965,7 +4964,7 @@ export class PaintOp extends PaintOpBase<
       //console.log("CDBLOCKS_LOOP", cdblocks_loop);
 
       for (const l of cdblocks_loop.keys()) {
-        const block = cdblocks_loop.get(l)
+        const block = cdblocks_loop.get(l)!
 
         for (let i = 0; i < l.customData.length; i++) {
           block[i].copyTo(l.customData[i])
@@ -6374,16 +6373,13 @@ export class PaintOp extends PaintOpBase<
     const rand = this.dynTopoRand
 
     //return;
-    const es2 = []
+    const es2 = [] as Edge[]
 
     esize /= this._calcEsizeScale(esize, brush.dynTopo.decimateFactor)
 
     const fancyWeights = brush.dynTopo.flag & DynTopoFlags.FANCY_EDGE_WEIGHTS
-
     const cd_cotan = mesh.verts.customData.getLayerIndex('cotan')
-
     const edist = fancyWeights ? this.edist_coll : this.edist_simple
-
     const log = this._undo.log
     log.checkStart(mesh)
 
@@ -6744,7 +6740,7 @@ export class PaintOp extends PaintOpBase<
     }
 
     const MAXCHILD = haveKdTree ? 2 : 4
-    const data = []
+    const data = [] as any[]
     const DGRID = 0,
       DNODE = 1,
       DLOOP = 2,
@@ -7424,9 +7420,6 @@ export class PaintOp extends PaintOpBase<
 
     const esqr = esize * esize
     let fs = new Set<Face>()
-
-    //let cd_face_node = bvh.cd_face_node;
-
     let max2 = max
 
     //let rand = Math;
@@ -7438,8 +7431,7 @@ export class PaintOp extends PaintOpBase<
       max2 *= 8
     }
 
-    const lens = []
-
+    const lens = [] as number[]
     const esqr2 = (esize * 0.5) ** 2
 
     function weight_fancy(e: Edge, lensqr: number): number {
@@ -7520,7 +7512,7 @@ export class PaintOp extends PaintOpBase<
       es2 = es2.slice(0, ~~max)
     }
 
-    const ws = []
+    const ws = [] as number[]
     for (const e of es2) {
       ws.push(-lens[e.index])
     }
@@ -7741,8 +7733,8 @@ export class PaintOp extends PaintOpBase<
       //this.doTopologyValence4(mesh, max, bvh, esize, vs, es, radius, brush, lctx);
       //es = es.filter(e => e.eid >= 0);
 
-      const lens = []
-      const es5 = []
+      const lens = [] as number[]
+      const es5 = [] as Edge[]
       for (let i = 0; i < 2; i++) {
         const list = i ? es4 : newes2
 

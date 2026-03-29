@@ -46,10 +46,10 @@ export interface IDataBlockConstructor<
 }
 
 export interface BlockLoader {
-  <type>(ref: DataBlock | DataRef | number): type
+  <type extends DataBlock>(ref: type | DataRef<type> | number): type | undefined
 }
 export interface BlockLoaderAddUser {
-  <type>(ref: DataBlock | DataRef | number, user: DataBlock): type
+  <type extends DataBlock>(ref: type | DataRef<type> | number, user: DataBlock): type | undefined
 }
 
 export class DataBlock<InputSet extends INodeSocketSet = {}, OutputSet extends INodeSocketSet = {}> extends Node<

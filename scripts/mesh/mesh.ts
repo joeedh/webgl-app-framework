@@ -333,6 +333,10 @@ mesh.Mesh {
 `
   )
 
+  ownerMatrix?: Matrix4
+  ownerId?: number | string
+  meshDataPath?: string
+
   min: Vector3 = new Vector3()
   max: Vector3 = new Vector3()
 

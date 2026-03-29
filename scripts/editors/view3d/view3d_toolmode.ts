@@ -137,7 +137,7 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
     return undefined
   }
 
-  static buildEditMenu() {
+  static buildEditMenu(): string[] {
     return []
   }
 

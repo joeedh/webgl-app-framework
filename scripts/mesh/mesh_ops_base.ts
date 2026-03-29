@@ -1,34 +1,11 @@
-import {
-  IntProperty,
-  BoolProperty,
-  FloatProperty,
-  EnumProperty,
-  FlagProperty,
-  ToolProperty,
-  Vec3Property,
-  ListProperty,
-  PropFlags,
-  PropTypes,
-  StringProperty,
-  ToolOp,
-  ToolFlags,
-  UndoFlags,
-  nstructjs,
-  Vector2,
-  Vector3,
-  Vector4,
-  Matrix4,
-  Quat,
-  ToolDef,
-  PropertySlots,
-} from '../path.ux/scripts/pathux.js'
+import {ListProperty, StringProperty, ToolOp, nstructjs, ToolDef, PropertySlots} from '../path.ux/scripts/pathux.js'
 import * as util from '../util/util.js'
 
 import {Mesh, MeshDrawFlags, MeshFlags, MeshTypes, Vertex} from './mesh.js'
 import {View3DOp} from '../editors/view3d/view3d_ops.js'
 import {SceneObject} from '../sceneobject/sceneobject.js'
-import {ToolContext} from '../../types/scripts/core/context'
-import {DataBlock, DataRef} from '../core/lib_api'
+import {BlockLoader, DataBlock, DataRef} from '../core/lib_api'
+import {ToolContext} from '../core/context.js'
 
 /**
  *
@@ -47,7 +24,7 @@ export function* resolveMeshes(ctx: ToolContext, pathset: Iterable<string>) {
   for (const key of pathset) {
     if (key === '_all_objects_') {
       for (const ob of ctx.selectedMeshObjects) {
-        const mesh = ob.data
+        const mesh = ob.data as Mesh
 
         mesh.ownerMatrix = ob.outputs.matrix.getValue()
         mesh.ownerId = ob.lib_id
@@ -56,27 +33,29 @@ export function* resolveMeshes(ctx: ToolContext, pathset: Iterable<string>) {
         yield mesh
       }
     } else {
-      let mesh = ctx.api.getValue(ctx, key)
+      let value = ctx.api.getValue(ctx, key)
 
-      if (!mesh) {
-        console.warn('Bad mesh', key, mesh)
+      if (!value) {
+        console.warn('Bad mesh', key, value)
         continue
       }
 
-      if (mesh instanceof SceneObject) {
-        const ob = mesh
-        mesh = mesh.data
+      if (value instanceof SceneObject) {
+        const ob = value
+        value = value.data
 
-        mesh.ownerMatrix = ob.outputs.matrix.getValue()
-        mesh.ownerId = ob.lib_id
-        mesh.meshDataPath = key
+        value.ownerMatrix = ob.outputs.matrix.getValue()
+        value.ownerId = ob.lib_id
+        value.meshDataPath = key
+      } else if (value instanceof Mesh) {
+        value.ownerMatrix = undefined
+        value.ownerId = undefined
+        value.meshDataPath = key
       } else {
-        mesh.ownerMatrix = undefined
-        mesh.ownerId = undefined
-        mesh.meshDataPath = key
+        continue
       }
 
-      yield mesh
+      yield value
     }
   }
 }
@@ -87,7 +66,7 @@ export interface IMeshUndoData {
 }
 
 export function saveUndoMesh(mesh: Mesh): IMeshUndoData {
-  const data = []
+  const data = [] as number[]
 
   nstructjs.writeObject(data, mesh)
 
@@ -104,18 +83,18 @@ export function loadUndoMesh(ctx: ToolContext, data: IMeshUndoData) {
   mesh.drawflag = data.drawflag
 
   //XXX hackish! getblock[_us] copy/pasted code!
-  const getblock = <BlockType extends DataBlock>(ref: DataRef | number): BlockType => {
-    return datalib.get<BlockType>(ref)
+  const getblock: BlockLoader = <BlockType extends DataBlock>(
+    ref: DataRef | DataBlock | number
+  ): BlockType | undefined => {
+    return ref instanceof DataBlock ? (ref as BlockType) : datalib.get<BlockType>(ref)
   }
 
-  const getblock_us = <BlockType extends DataBlock>(ref: DataRef | number): BlockType => {
-    const ret = datalib.get<BlockType>(ref)
-
+  const getblock_us = <BlockType extends DataBlock>(ref: DataRef | number | DataBlock): BlockType | undefined => {
+    const ret = ref instanceof DataBlock ? ref : datalib.get<BlockType>(ref)
     if (ret !== undefined) {
       ret.lib_addUser(mesh)
     }
-
-    return ret
+    return ret as BlockType
   }
 
   mesh.dataLink(getblock, getblock_us)
@@ -153,13 +132,15 @@ export abstract class MeshOp<
   }
 
   getMeshes(ctx: ToolContext): Mesh[] {
-    const ret = new util.set()
+    const ret = new Set<Mesh>()
 
     for (const item of resolveMeshes(ctx, this.inputs.meshPaths)) {
-      if (item) ret.add(item)
+      if (item) {
+        ret.add(item)
+      }
     }
 
-    const ret2 = []
+    const ret2 = [] as Mesh[]
     for (const mesh of ret) {
       ret2.push(mesh)
     }
@@ -201,7 +182,8 @@ export abstract class MeshOp<
   }
 
   undoPre(ctx: ToolContext) {
-    const undo = (this._undo = {})
+    this._undo = {}
+    const undo = this._undo
 
     for (const mesh of this.getMeshes(ctx)) {
       undo[mesh.lib_id] = saveUndoMesh(mesh)
@@ -209,7 +191,7 @@ export abstract class MeshOp<
   }
 
   undo(ctx: ToolContext) {
-    const undo = this._undo
+    const undo = this._undo!
 
     for (const mesh of this.getMeshes(ctx)) {
       const data = undo[mesh.lib_id]
@@ -242,26 +224,29 @@ export class MeshDeformOp<InputSet extends PropertySlots = {}, OutputSet extends
     super()
   }
 
-  _deformUndo: {
+  _deformUndo?: {
     [k: number]: number[]
   }
 
   calcUndoMem() {
     let tot = 0.0
 
-    for (const k in this._deformUndo) {
-      const data = this._deformUndo[k]
-      tot += data.length * 8
+    if (this._deformUndo !== undefined) {
+      for (const k in this._deformUndo) {
+        const data = this._deformUndo[k]
+        tot += data.length * 8
+      }
     }
 
     return tot
   }
 
   undoPre(ctx: ToolContext) {
-    const undo = (this._deformUndo = {})
+    this._deformUndo = {}
+    const undo = this._deformUndo
 
     for (const mesh of this.getMeshes(ctx)) {
-      const list = []
+      const list = [] as number[]
 
       undo[mesh.lib_id] = list
 
@@ -276,7 +261,10 @@ export class MeshDeformOp<InputSet extends PropertySlots = {}, OutputSet extends
   }
 
   undo(ctx: ToolContext) {
-    for (const k in this._deformUndo) {
+    for (const k of Reflect.ownKeys(this._deformUndo!)) {
+      if (typeof k === 'symbol') {
+        continue
+      }
       const mesh = ctx.datalib.get<Mesh>(parseInt(k))
 
       if (!mesh) {
@@ -284,14 +272,14 @@ export class MeshDeformOp<InputSet extends PropertySlots = {}, OutputSet extends
         continue
       }
 
-      const list = this._deformUndo[k]
+      const list = this._deformUndo![k as unknown as keyof typeof this._deformUndo]
       for (let i = 0; i < list.length; i += 4) {
         const eid = list[i],
           x = list[i + 1],
           y = list[i + 2],
           z = list[i + 3]
         const v = mesh.eidMap.get<Vertex>(eid)
-        if (!v || v.type !== MeshTypes.VERTEX) {
+        if (v?.type !== MeshTypes.VERTEX) {
           console.error('Undo error for vertex eid', eid, 'got', v)
           continue
         }

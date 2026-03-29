@@ -1,4 +1,14 @@
-import {nstructjs, util, Vector2, Vector3, Vector4, Matrix4, Quat, Number3} from '../path.ux/scripts/pathux.js'
+import {
+  nstructjs,
+  util,
+  Vector2,
+  Vector3,
+  Vector4,
+  Matrix4,
+  Quat,
+  Number3,
+  IVectorOrHigher,
+} from '../path.ux/scripts/pathux.js'
 
 const DYNAMIC_SHUFFLE_NODES = false //attempt fast debalancing of tree dynamically
 
@@ -1545,7 +1555,7 @@ export class BVHNode<
     }
   }
 
-  castRay(origin: Vector3, dir: Vector3): IsectRet | undefined {
+  castRay(origin: IVectorOrHigher<3, Vector3>, dir: IVectorOrHigher<3, Vector3>): IsectRet | undefined {
     const ret = this._castRayRets.next()
     let found = false
 
@@ -4232,7 +4242,11 @@ export class BVH<
     return this.root.closestPoint(co)
   }
 
-  castRay = function (this: BVH<OPT & {dead: false}>, origin: Vector3, dir: Vector3) {
+  castRay = function (
+    this: BVH<OPT & {dead: false}>,
+    origin: IVectorOrHigher<3, Vector3>,
+    dir: IVectorOrHigher<3, Vector3>
+  ) {
     if (!this.root) {
       return undefined
     }
@@ -5099,7 +5113,7 @@ export class SpatialHash extends BVH {
     return tri
   }
 
-  castRay = function (this: BVH<{dead: false}>, origin: Vector3, dir: Vector3) {
+  castRay = function (this: BVH<{dead: false}>, origin: IVectorOrHigher<3, Vector3>, dir: IVectorOrHigher<3, Vector3>) {
     dir = this.dirtemp.load(dir)
     dir.normalize()
 

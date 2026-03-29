@@ -434,7 +434,7 @@ PaintSampleProperty {
 
 PAINT_SAMPLE_TYPE = ToolProperty.register(PaintSampleProperty)
 
-export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRefProperty}> {
+export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRefProperty<SculptBrush>}> {
   last_mpos: Vector2
   mpos: Vector2
   start_mpos: Vector2

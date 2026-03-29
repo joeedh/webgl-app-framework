@@ -1,19 +1,8 @@
-/** Used to make ts enums compatible with path.ux */
-export function deleteTsEnumIntegers(obj) {
-  const r = {}
-  for (let k in obj) {
-    if (typeof k !== 'number' && isNaN(parseInt(k))) {
-      r[k] = obj[k]
-    }
-  }
-  return r
-}
+export {deleteTsEnumIntegers} from './enum-utils.js'
 
 if (Math.fract === undefined) {
   Math.fract = (f) => f - Math.floor(f)
 }
-
-window.deleteTsEnumIntegers = deleteTsEnumIntegers
 
 export * from '../path.ux/scripts/util/util.js'
 
