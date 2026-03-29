@@ -350,9 +350,9 @@ import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstruc
 import {KnotDataLayer} from '../curve/curve_knot'
 import {DispLayerVert} from './mesh_displacement'
 import {CDRef} from './customdata'
-import type { View3D } from '../editors/all'
+import type {View3D} from '../editors/all'
 
-export class Element<TYPE extends number = number> {
+class ElementBase<TYPE extends number = -1> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -401,7 +401,7 @@ mesh.Element {
     return this
   }
 
-  static isElement(obj: any) {
+  static isElement(obj: unknown) {
     return obj instanceof Element || obj instanceof Vertex
   }
 
@@ -430,6 +430,7 @@ mesh.Element {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   loadJSON(obj: any) {
     this.type = obj.type
     this.flag = obj.flag
@@ -947,7 +948,7 @@ export function traceset(i: any) {
   }
 }
 
-export class Vertex extends Element<(typeof MeshTypes)['VERTEX']> {
+export class Vertex extends ElementBase<(typeof MeshTypes)['VERTEX']> {
   co: Vector3
   no: Vector3
   edges: Edge[]
@@ -966,7 +967,7 @@ mesh.Vertex {
 `
   )
 
-  constructor(co: Vector3 | undefined = undefined) {
+  constructor(co?: Vector3 | undefined) {
     super(MeshTypes.VERTEX)
 
     this.co = new Vector3()
@@ -1161,13 +1162,25 @@ export interface PrivateVertexConstructor extends IVertexConstructor {
   new (co?: Vector3): Vertex
 }
 
-export class Handle extends Element<(typeof MeshTypes)['HANDLE']> {
+export class Handle extends ElementBase<(typeof MeshTypes)['HANDLE']> {
+  static STRUCT = nstructjs.inlineRegister(
+    this,
+    `
+    Mesh.Handle {
+      co       : vec3; 
+      mode     : byte;
+      owner    : int | obj.owner !== undefined ? obj.owner.eid : -1;
+      roll     : float;
+    }
+  `
+  )
+
   co: Vector3
   mode: HandleTypes
   owner: Edge
   roll: number
 
-  constructor(co: Vector3 | undefined = undefined) {
+  constructor(co?: Vector3 | undefined) {
     super(MeshTypes.HANDLE)
 
     this.co = new Vector3()
@@ -1212,7 +1225,7 @@ export class Handle extends Element<(typeof MeshTypes)['HANDLE']> {
   loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
 
-    const arr = this as unknown as Array<number>
+    const arr = this as unknown as number[]
     if (arr[0] !== undefined) {
       this.co[0] = arr[0]
       this.co[1] = arr[1]
@@ -1226,18 +1239,6 @@ export class Handle extends Element<(typeof MeshTypes)['HANDLE']> {
     super.loadSTRUCT(reader)
   }
 }
-
-Handle.STRUCT =
-  nstructjs.inherit(Handle, Element, 'mesh.Handle') +
-  `
-  co       : vec3; 
-  mode     : byte;
-  owner    : int | obj.owner !== undefined ? obj.owner.eid : -1;
-  roll     : float;
-}
-`
-
-nstructjs.register(Handle)
 
 const _evaluate_tmp_vs = util.cachering.fromConstructor(Vector3, 512)
 const _evaluate_vs = util.cachering.fromConstructor(Vector3, 512)
@@ -1759,7 +1760,7 @@ for (let i = 0; i < efiter_stack.length; i++) {
   efiter_stack[i] = new EdgeFaceIter()
 }
 
-export class Edge extends Element<(typeof MeshTypes)['EDGE']> {
+export class Edge extends ElementBase<(typeof MeshTypes)['EDGE']> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -2271,7 +2272,7 @@ mesh.Edge {
 
 const calc_normal_temps = util.cachering.fromConstructor(Vector3, 32)
 
-export class Loop extends Element<(typeof MeshTypes)['LOOP']> {
+export class Loop extends ElementBase<(typeof MeshTypes)['LOOP']> {
   /*  save space by deriving these values on file load:
     e           : int | obj.e.eid;
     radial_next : int | obj.radial_next.eid;
@@ -2823,7 +2824,7 @@ for (let i = 0; i < fiter_stack_v.length; i++) {
 }
 fiter_stack_v.cur = 0
 
-export class Face extends Element<(typeof MeshTypes)['FACE']> {
+export class Face extends ElementBase<(typeof MeshTypes)['FACE']> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -3018,5 +3019,8 @@ mesh.Face {
   }
 }
 
-/** Type union of all element types for type inference purposes. */
-export type ElementType = Vertex | Edge | Handle | Loop | Face
+/** Type union of all element types, supports type inferring from the type field */
+export type Element = Vertex | Edge | Handle | Loop | Face
+
+/** Export the constructor too. */
+export const Element = ElementBase

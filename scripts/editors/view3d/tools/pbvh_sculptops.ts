@@ -29,7 +29,7 @@ import {
   ColorLayerElem,
   Edge,
   Element,
-  ElementType,
+  Element,
   Face,
   FloatElem,
   getArrayTemp,
@@ -6105,7 +6105,7 @@ export class PaintOp extends PaintOpBase<
     const cd_fset = getFaceSets(mesh, false)
 
     const lctx = new LogContext()
-    lctx.onnew = (e: ElementType, tag: number): void => {
+    lctx.onnew = (e: Element, tag: number): void => {
       if (e.type === MeshTypes.VERTEX) {
         this._checkcurv(e, cd_curv, cd_cotan, true, cd_fset)
       }
@@ -6117,7 +6117,7 @@ export class PaintOp extends PaintOpBase<
       }
     }
 
-    lctx.onkill = (e: ElementType, tag: number): void => {
+    lctx.onkill = (e: Element, tag: number): void => {
       log.logKill(e, tag)
     }
 
@@ -6134,7 +6134,7 @@ export class PaintOp extends PaintOpBase<
         }
       }
 
-      lctx.onchange = (e: ElementType): void => {
+      lctx.onchange = (e: Element): void => {
         if (e.type !== MeshTypes.EDGE) {
           return
         }
@@ -6223,7 +6223,7 @@ export class PaintOp extends PaintOpBase<
 
       lctx = new LogContext()
       //lctx callback for deleting 4-valence verts
-      lctx.onnew = (e: ElementType, tag: number): void => {
+      lctx.onnew = (e: Element, tag: number): void => {
         log.logAdd(e, tag)
 
         if (e.type === MeshTypes.FACE) {
@@ -6234,7 +6234,7 @@ export class PaintOp extends PaintOpBase<
       let updateflag = BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_NORMALS | BVHFlags.UPDATE_UNIQUE_VERTS
       updateflag |= BVHFlags.UPDATE_OTHER_VERTS | BVHFlags.UPDATE_TOTTRI | BVHFlags.UPDATE_INDEX_VERTS
 
-      lctx.onkill = (e: ElementType, tag: number): void => {
+      lctx.onkill = (e: Element, tag: number): void => {
         log.logKill(e, tag)
 
         if (e.type === MeshTypes.FACE) {
@@ -6500,7 +6500,7 @@ export class PaintOp extends PaintOpBase<
 
     const typemask = MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE
 
-    lctx.onkill = (elem: ElementType, tag: number): void => {
+    lctx.onkill = (elem: Element, tag: number): void => {
       if (!(elem.type & typemask)) {
         return
       }
@@ -6525,7 +6525,7 @@ export class PaintOp extends PaintOpBase<
 
     const cd_fset = getFaceSets(mesh, false)
 
-    lctx.onnew = (elem: ElementType, tag: number): void => {
+    lctx.onnew = (elem: Element, tag: number): void => {
       if (cd_curv! >= 0 && elem.type === MeshTypes.VERTEX) {
         this._checkcurv(elem, cd_curv!, cd_cotan, true, cd_fset)
       }
@@ -7571,7 +7571,7 @@ export class PaintOp extends PaintOpBase<
     updateflag = updateflag | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_TOTTRI
     updateflag = updateflag | BVHFlags.UPDATE_INDEX_VERTS
 
-    lctx.onkill = (e: ElementType, tag: number): void => {
+    lctx.onkill = (e: Element, tag: number): void => {
       log.logKill(e, tag)
 
       if (e.type === MeshTypes.FACE) {
@@ -7597,7 +7597,7 @@ export class PaintOp extends PaintOpBase<
     const cd_cotan = mesh.verts.customData.getLayerIndex('cotan')
     const cd_fset = getFaceSets(mesh, false)
 
-    lctx.onnew = (e: ElementType, tag: number): void => {
+    lctx.onnew = (e: Element, tag: number): void => {
       log.logAdd(e, tag)
 
       if (cd_curv >= 0 && e.type === MeshTypes.VERTEX) {
@@ -7654,7 +7654,7 @@ export class PaintOp extends PaintOpBase<
       esize3 *= 0.2
       const esqr3 = esize3 * esize3
 
-      lctx.onkill = (e: ElementType, tag: number): void => {
+      lctx.onkill = (e: Element, tag: number): void => {
         oldkill(e, tag)
 
         if (e.type === MeshTypes.VERTEX) {
@@ -7678,7 +7678,7 @@ export class PaintOp extends PaintOpBase<
         }
       }
 
-      lctx.onnew = (e: ElementType, tag: number): void => {
+      lctx.onnew = (e: Element, tag: number): void => {
         oldnew(e, tag)
 
         if (cd_curv >= 0 && e.type === MeshTypes.VERTEX) {

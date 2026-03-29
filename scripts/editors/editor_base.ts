@@ -30,6 +30,7 @@ import {
   Number3,
   PropertySlots,
   ToolDef,
+  IVector2,
 } from '../path.ux/scripts/pathux.js'
 
 import * as units from '../path.ux/scripts/core/units.js'
@@ -97,7 +98,7 @@ export class NewDataBlockOp<InputSet = {}, OutputSet = {}> extends ToolOp<
       //try to intelligently add reference count with owner block ref. . .
       const rdef = ctx.api.resolvePath(ctx, path)
 
-      if (rdef && rdef.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
+      if (rdef?.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
         if (rdef.obj !== ctx.api.getValue(ctx, path)) {
           ret.lib_addUser(rdef.obj as DataBlock)
           addUser = false
@@ -193,7 +194,7 @@ export class AssignDataBlock<InputSet extends PropertySlots = {}, OutputSet exte
     const path = this.inputs.dataPathToSet.getValue()
     const rdef = ctx.api.resolvePath(path)
 
-    if (rdef && rdef.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
+    if (rdef?.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
       const obj = rdef.obj
       const old = ctx.api.getValue(ctx, path)
 
@@ -242,7 +243,7 @@ export class UnlinkDataBlockOp<
     const path = this.inputs.dataPathToUnset.getValue()
     const rdef = ctx.api.resolvePath(ctx, path)
 
-    if (block && rdef && rdef.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
+    if (block && rdef?.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
       rdef.obj.lib_remUser(block)
     }
 
@@ -877,9 +878,7 @@ Editor {
   }
 
   getScreen() {
-    return this.owning_sarea !== undefined && this.owning_sarea.screen !== undefined
-      ? this.owning_sarea.screen
-      : window._appstate.screen
+    return this.owning_sarea?.screen !== undefined ? this.owning_sarea.screen : window._appstate.screen
   }
 }
 
@@ -889,11 +888,11 @@ import {MakeMaterialOp, Material} from '../core/material.js'
 import {SocketFlags} from '../core/graph.js'
 import {DependSocket} from '../core/graphsockets.js'
 import {ImageBlock} from '../image/image.js'
-import {ToolContext, ViewContext} from '../../types/scripts/core/context.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
 import {Mesh} from '../mesh/mesh.js'
 import {ListItem} from '../path.ux/scripts/types/widgets/ui_listbox.js'
-import {ImageEditor} from '../../types/scripts/editors/image/ImageEditor.js'
+import type {ImageEditor} from './all.js'
+import type {ViewContext, ToolContext} from '../core/context.js'
 
 export function spawnToolSearchMenu(ctx: ViewContext) {
   const tools: (typeof ToolOp)[] = []
@@ -902,7 +901,7 @@ export function spawnToolSearchMenu(ctx: ViewContext) {
   const menu = document.createElement('menu-x') as unknown as Menu
 
   for (const cls of ToolClasses) {
-    let ok = !(cls.tooldef().flag & ToolFlags.PRIVATE)
+    let ok = !(cls.tooldef().flag! & ToolFlags.PRIVATE)
 
     try {
       ok = cls.canRun(ctx)
@@ -928,7 +927,7 @@ export function spawnToolSearchMenu(ctx: ViewContext) {
       }
     }
 
-    menu.addItemExtra(tdef.uiname, tools.length, hotkey)
+    menu.addItemExtra(tdef.uiname ?? tdef.toolpath, tools.length, hotkey)
     tools.push(cls)
   }
 
@@ -939,10 +938,10 @@ export function spawnToolSearchMenu(ctx: ViewContext) {
 
   menu.float(screen.mpos[0], screen.mpos[1], 8)
   menu.style['width'] = '500px'
-  ;(menu.onselect as unknown as (item: string) => void) = (item: string) => {
+  menu.onselect = (item: number | string) => {
     console.log(item, 'got item')
 
-    const cls = tools[item]
+    const cls = tools[item as number]
     const tool = cls.invoke(ctx, {})
 
     if (tool === undefined) {
@@ -1066,21 +1065,14 @@ App {
     canvas.width = w2
     canvas.height = h2
 
-    const renderer = window._appstate.three_render
-
-    if (renderer) {
-      renderer.setSize(canvas.width, canvas.height)
-      window.redraw_viewport()
-    }
-
     canvas.style['width'] = w + 'px'
     canvas.style['height'] = h + 'px'
     canvas.style['position'] = 'absolute'
-    canvas.style['z-index'] = '-2'
-    ;(canvas as unknown as any).dpi = dpi
+    canvas.style.zIndex = '-2'
+    canvas.dpi = dpi
   }
 
-  on_resize(oldsize, newsize) {
+  on_resize(oldsize: IVector2, newsize: IVector2) {
     super.on_resize(oldsize, newsize)
     this.setCSS()
   }

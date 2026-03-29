@@ -153,7 +153,7 @@ export class BaseOverlay extends ContextOverlay<AppState> {
     return this.state.api
   }
 
-  get datalib(): AppLibrary {
+  get datalib() {
     return this.state.datalib
   }
 
@@ -343,7 +343,7 @@ export class ViewOverlay extends ContextOverlay<AppState> {
     return block ? block.lib_id : -1
   }
 
-  activeTexture_load(ctx: this, data: any) {
+  activeTexture_load(ctx: this, data: number) {
     return ctx.state.datalib.get(data)
   }
 

@@ -27,7 +27,7 @@ import {buildProcMeshAPI} from '../mesh/mesh_gen.js';
 
 import {makeToolModeEnum, ToolModes, ToolMode} from '../editors/view3d/view3d_toolmode.js';
 import {NodeSocketClasses} from '../core/graph.js';
-import {RenderSettings} from '../renderengine/renderengine_realtime.js';
+import {RenderSettings} from '../renderengine/renderengine_base';
 
 import '../mesh/mesh_createops.js';
 
@@ -52,7 +52,7 @@ import {SelMask} from '../editors/view3d/selectmode.js';
 import {ToolContext} from '../core/context.js';
 import {MeshModifierFlags, MeshFlags, MeshTypes, MeshDrawFlags, MeshFeatures, MeshSymFlags} from '../mesh/mesh_base.js';
 import {Mesh} from '../mesh/mesh.js';
-import {Vertex, Edge, Element, Loop, Face, Handle} from '../mesh/mesh_types.js';
+import {Vertex} from '../mesh/mesh_types.js';
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js';
 import {Material} from '../core/material.js';
 import '../shadernodes/allnodes.js';

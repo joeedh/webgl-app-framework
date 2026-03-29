@@ -1,31 +1,10 @@
-import {
-  util,
-  math,
-  nstructjs,
-  ToolOp,
-  StringProperty,
-  Vec3Property,
-  Vec2Property,
-  Vec4Property,
-  EnumProperty,
-  FlagProperty,
-  FloatProperty,
-  BoolProperty,
-  IntProperty,
-  Vector2,
-  Vector3,
-  Vector4,
-  Matrix4,
-  Quat,
-  ToolDef,
-  PropertySlots,
-} from '../path.ux/scripts/pathux.js'
-import {MeshTypes, MeshFlags} from './mesh_base'
+import {ToolOp, BoolProperty, ToolDef, PropertySlots} from '../path.ux/scripts/pathux.js'
+import {MeshFlags} from './mesh_base'
 import {View3DOp} from '../editors/view3d/view3d_ops.js'
 import {MeshOp} from './mesh_ops_base'
-import {ToolContext, ViewContext} from '../../types/scripts/core/context'
-import {ImageEditor} from '../../types/scripts/editors/image/ImageEditor'
 import {Loop} from './mesh_types'
+import type {ViewContext} from '../core/context.js'
+import type {ImageEditor} from '../editors/all.js'
 
 export class MeshOpBaseUV<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends MeshOp<
   InputSet & {
@@ -47,7 +26,7 @@ export class MeshOpBaseUV<InputSet extends PropertySlots = {}, OutputSet extends
     }
   }
 
-  static invoke(ctx: ViewContext, args) {
+  static invoke(ctx: ViewContext, args: unknown[]) {
     const tool = super.invoke(ctx, args)
 
     if (!('selectedFacesOnly' in args)) {
@@ -141,7 +120,7 @@ export class UVOpBase<InputSet extends PropertySlots = {}, OutputSet extends Pro
     }
   }
 
-  static invoke(ctx: ViewContext, args: any) {
+  static invoke(ctx: ViewContext, args: unknown[]) {
     const tool = super.invoke(ctx, args)
 
     if (!('selectedFacesOnly' in args)) {

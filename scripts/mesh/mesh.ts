@@ -1,7 +1,6 @@
 // let _mesh = undefined;
 
 import {
-  CDElemArray,
   DEBUG_BAD_LOOPS,
   DEBUG_DISK_INSERT,
   DEBUG_DUPLICATE_FACES,
@@ -56,7 +55,7 @@ import {NormalLayerElem, OrigIndexElem, UVLayerElem} from './mesh_customdata.js'
 import {
   Edge,
   Element,
-  ElementType,
+  Element,
   Face,
   Handle,
   Loop,
@@ -380,8 +379,8 @@ mesh.Mesh {
   program: any | undefined = undefined //XXX
 
   /** The element lists, there is one for each element type. */
-  elists: Map<MeshTypes, ElementList<ElementType>>
-  _elists: ElementList<ElementType>[] | undefined = undefined //used by STRUCT script
+  elists: Map<MeshTypes, ElementList<Element>>
+  _elists: ElementList<Element>[] | undefined = undefined //used by STRUCT script
 
   // these are actually not allowed to be defined in the constructor,
   // thus the hackish assignment to undefined
@@ -549,7 +548,7 @@ mesh.Mesh {
       elist.customData.on_layeradd = this._on_cdlayer_add.bind(this)
       elist.customData.on_layerremove = this._on_cdlayer_rem.bind(this)
 
-      this.elists.set(type, elist as unknown as ElementList<ElementType>)
+      this.elists.set(type, elist as unknown as ElementList<Element>)
     }
 
     if (enableFree !== undefined) {
@@ -3838,7 +3837,7 @@ mesh.Mesh {
     this.eidgen.reserve(eid)
 
     this.eidMap.delete(elem.eid)
-    elist.setEID(elem as ElementType, eid)
+    elist.setEID(elem as Element, eid)
     this.eidMap.set(eid, elem)
 
     this._recalcEidMap = true
@@ -5470,8 +5469,8 @@ mesh.Mesh {
     return this
   }
 
-  _getArrays(): ElementList<ElementType>[] {
-    const ret = [] as ElementList<ElementType>[]
+  _getArrays(): ElementList<Element>[] {
+    const ret = [] as ElementList<Element>[]
 
     for (const k of this.elists.keys()) {
       //we no longer save this.loops in struct data directly, but we still
@@ -5484,7 +5483,7 @@ mesh.Mesh {
         continue
       }
 
-      ret.push(this.elists.get(k) as ElementList<ElementType>)
+      ret.push(this.elists.get(k) as ElementList<Element>)
     }
 
     return ret
@@ -5506,7 +5505,7 @@ mesh.Mesh {
     }
   }
 
-  copyElemData<E extends ElementType>(dst: E, src: E, ignoreNoInterp = false) {
+  copyElemData<E extends Element>(dst: E, src: E, ignoreNoInterp = false) {
     let cdlayers
 
     if (ignoreNoInterp) {
@@ -6025,7 +6024,7 @@ mesh.Mesh {
     }
 
     const eidMap2 = (this.eidMap = new Map())
-    const add = (elem: ElementType) => {
+    const add = (elem: Element) => {
       if (eidMap2.has(elem.eid)) {
         if (eidMap2.get(elem.eid) !== elem) {
           console.error('Duplicate element eid', elem)

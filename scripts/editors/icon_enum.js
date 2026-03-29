@@ -121,5 +121,7 @@ export let Icons = {
   SCULPT_BVH_DEFORM    : 115,
   GRAPH                : 116,
   SCULPT_FACE_SET_DRAW : 117,
+  PERSPECTIVE          : 118,
+  ORTHOGRAPHIC         : 119,
 }
 setIconMap(Icons)

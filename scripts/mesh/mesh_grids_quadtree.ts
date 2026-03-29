@@ -3287,7 +3287,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         }
 
         const l2 = mesh.eidMap.get(p2.loopEid)
-        if (!l2) {
+        if (l2?.type !== MeshTypes.LOOP) {
           continue
         }
 
@@ -3300,9 +3300,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         }
 
         const topo2 = grid2.getTopo()
-
-        const ns2 = grid2.nodes,
-          ps2 = grid2.points
+        const ns2 = grid2.nodes
         const vm = topo2.vmap[p2.index]
         if (!vm) {
           continue

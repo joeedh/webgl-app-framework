@@ -144,9 +144,9 @@ export enum LogTags {
 }
 
 export class LogContext {
-  onnew?: (v: ElementType, tag?: any) => void
-  onkill?: (v: ElementType, tag?: any) => void
-  onchange?: (v: ElementType, tag?: any) => void
+  onnew?: (v: Element, tag?: any) => void
+  onkill?: (v: Element, tag?: any) => void
+  onchange?: (v: Element, tag?: any) => void
 
   haveAspect: boolean
 
@@ -360,7 +360,7 @@ export function reallocArrayTemp<type>(arr: Array<type>, newSize: number): type[
 
 import type {CustomDataElem} from './customdata.ts'
 import type {CDRef, ICustomDataElemConstructor} from './customdata'
-import type {Edge, Element, ElementType, Face, Handle, Loop, Vertex} from './mesh_types'
+import type {Edge, Element, Element, Face, Handle, Loop, Vertex} from './mesh_types'
 
 export class CDElemArray extends Array<CustomDataElem<any>> {
   static STRUCT = nstructjs.inlineRegister(

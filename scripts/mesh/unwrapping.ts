@@ -1,32 +1,20 @@
-import {
-  nstructjs,
-  math,
-  graphPack,
-  PackNode,
-  PackNodeVertex,
-  Vector2,
-  Vector3,
-  Vector4,
-  Matrix4,
-  Quat,
-  util,
-} from '../path.ux/scripts/pathux.js'
-import {Constraint, Solver} from '../path.ux/scripts/util/solver.js'
+import {nstructjs, math, PackNode, Vector2, Vector3, Vector4, Matrix4, util} from '../path.ux/scripts/pathux.js'
 import '../util/numeric.js'
 
-import {MeshTypes, MeshFlags, MeshSymFlags, MeshModifierFlags, MAX_FACE_VERTS, EID} from './mesh_base.js'
+import {MeshTypes, MeshFlags, MAX_FACE_VERTS} from './mesh_base.js'
 import {AttrRef, ColorLayerElem, IntElem, UVFlags, UVLayerElem} from './mesh_customdata.js'
 import {BVH, BVHNode, BVHTri} from '../util/bvh.js'
 import {CustomDataElem} from './customdata.js'
 import {Edge, Face, Loop, Mesh, Vertex} from './mesh'
 import {INumberList} from '../util/polyfill'
 import bus from '../core/bus.js'
-import {ImageEditor, UVEditor} from '../editors/image/ImageEditor'
-import {OptionalIf} from '../util/optionalIf.js'
+import {ImageEditor} from '../editors/image/ImageEditor'
+import type {SolveTri} from './unwrapping_solve.js'
+import {OptionalIf, OptionalIfNot} from '../util/optionalIf.js'
 
 const chp_rets = util.cachering.fromConstructor(Vector2, 64)
 
-export class CVElem<OPT extends {dead?: true | false} = {}> extends CustomDataElem<any> {
+export class CVElem<OPT extends {dead?: true | false} = {}> extends CustomDataElem<CVElem> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -46,6 +34,7 @@ CVElem {
   area?: number
   wind?: boolean
   bTangent: Vector3
+  tris?: SolveTri[]
 
   constructor() {
     super()
@@ -138,32 +127,32 @@ export interface IUVWranglerConstructor<type> {
   restoreOrRebuild(mesh: Mesh, faces: Iterable<Face>, wrangler: UVWrangler, buildSeams?: boolean): UVWrangler
 }
 
-export class UVWrangler {
+export class UVWrangler<OPT extends {dead?: true | false; hasUVMesh?: true | false} = {}> {
   islands: UVIsland[] = []
   mesh: Mesh
-  uvMesh?: Mesh
+  uvMesh: OptionalIfNot<Mesh, OPT['hasUVMesh']> = undefined as unknown as Mesh
   faces: Set<Face>
   cd_uv: AttrRef<UVLayerElem>
   needTopo: boolean
   loopMap: Map<Loop, Vertex>
   edgeMap: Map<Loop, Edge>
   vertMap: Map<Vertex, Set<Loop>>
-  islandLoopMap: Map<Loop, UVIsland>
-  islandFaceMap: Map<Face, UVIsland>
-  islandVertMap: Map<Vertex, UVIsland>
+  islandLoopMap: OptionalIf<Map<Loop, UVIsland>, OPT['dead']>
+  islandFaceMap: OptionalIf<Map<Face, UVIsland>, OPT['dead']>
+  islandVertMap: OptionalIf<Map<Vertex, UVIsland>, OPT['dead']>
   cellDimen: number
   hashBounds: number[]
   hashWidth: number
   hashWidthMul: number
   cellSizeMul: number
   snapLimit: number
-  shash: Map<number, Loop[]>
+  shash: OptionalIf<Map<number, Loop[]>, OPT['dead']>
   saved: boolean
-  cd_corner: AttrRef<CVElem>
-  cd_edge_seam: AttrRef<IntElem>
-  _seamHash: number;
+  cd_corner: AttrRef<CVElem> = new AttrRef(-1)
+  cd_edge_seam: AttrRef<IntElem> = new AttrRef(-1)
+  _seamHash: number = 0;
 
-  ['constructor']: IUVWranglerConstructor<this>
+  ['constructor']: IUVWranglerConstructor<this> = this['constructor']
 
   constructor(mesh: Mesh, faces?: Iterable<Face>, cd_uv?: AttrRef<UVLayerElem>) {
     this.mesh = mesh
@@ -231,7 +220,7 @@ export class UVWrangler {
     try {
       bad = bad || !wrangler || !wrangler.saved || !wrangler.restore(mesh)
     } catch (error) {
-      util.print_stack(error)
+      util.print_stack(error as Error)
       bad = true
     }
 
@@ -287,11 +276,11 @@ export class UVWrangler {
       vertMap.set(v, ls)
     }
 
-    this.islandVertMap = undefined
-    this.islandLoopMap = undefined
-    this.islandFaceMap = undefined
-
-    this.shash = undefined
+    const deadThis = this as UVWrangler<{dead: true}>
+    deadThis.islandVertMap = undefined
+    deadThis.islandLoopMap = undefined
+    deadThis.islandFaceMap = undefined
+    deadThis.shash = undefined
     ;(this.loopMap as unknown as Map<any, any>) = loopMap
     ;(this.edgeMap as unknown as Map<any, any>) = edgeMap
     ;(this.vertMap as unknown as Map<any, any>) = vertMap
@@ -313,7 +302,7 @@ export class UVWrangler {
 
     for (const eid of this.faces as unknown as Set<number>) {
       const f = mesh.eidMap.get<Face>(eid)
-      if (!f || f.type !== MeshTypes.FACE) {
+      if (f?.type !== MeshTypes.FACE) {
         console.warn('Missing face ' + eid)
         return false
       }
@@ -327,7 +316,7 @@ export class UVWrangler {
     for (const [leid, v] of this.loopMap as unknown as Map<number, Vertex>) {
       const l = mesh.eidMap.get(leid)
 
-      if (!l || l.type !== MeshTypes.LOOP) {
+      if (l?.type !== MeshTypes.LOOP) {
         console.warn('Missing loop ' + leid, l)
         return false
       }
@@ -339,7 +328,7 @@ export class UVWrangler {
     for (const [leid, e] of this.edgeMap as unknown as Map<number, Edge>) {
       const l = mesh.eidMap.get(leid)
 
-      if (!l || l.type !== MeshTypes.LOOP) {
+      if (l?.type !== MeshTypes.LOOP) {
         console.warn('Missing loop ' + leid, l)
         return false
       }
@@ -352,12 +341,10 @@ export class UVWrangler {
       const ls2 = new Set<Loop>()
 
       for (const leid of ls) {
-        const l = mesh.eidMap.get<Loop>(leid)
-        if (!l) {
-          if (!l || l.type !== MeshTypes.LOOP) {
-            console.warn('Missing loop ' + leid, l)
-            return false
-          }
+        const l = mesh.eidMap.get(leid)
+        if (l?.type !== MeshTypes.LOOP) {
+          console.warn('Missing loop ' + leid, l)
+          return false
         } else {
           ls2.add(l)
         }
@@ -382,18 +369,19 @@ export class UVWrangler {
     this.islandFaceMap = new Map()
     this.islandVertMap = new Map()
 
-    this.buildIslands()
+    const liveThis = this as UVWrangler<{dead: false; hasUVMesh: false}>
+    liveThis.buildIslands()
     return true
   }
 
-  setCornerTags() {
+  setCornerTags = function (this: UVWrangler<{dead: false; hasUVMesh: true}>) {
     const cd_corner = this.cd_corner
     const cd_edge_seam = this.cd_edge_seam
 
     for (const l of this.mesh.loops) {
       let seam = false //(l.e.flag & MeshFlags.SEAM); //seam
       seam = seam || l === l.radial_next //mesh boundary
-      seam = seam || this.islandLoopMap.get(l) !== this.islandLoopMap.get(l.radial_next)
+      seam = seam || this.islandLoopMap!.get(l) !== this.islandLoopMap!.get(l.radial_next)
 
       if (seam) {
         const v1 = this.loopMap.get(l)
@@ -410,8 +398,8 @@ export class UVWrangler {
           cd_edge_seam.get(uve).value = 1
         }
 
-        cd_corner.get(this.loopMap.get(l)).corner = true
-        cd_corner.get(this.loopMap.get(l.next)).corner = true
+        cd_corner.get(this.loopMap!.get(l)!).corner = true
+        cd_corner.get(this.loopMap!.get(l.next)!).corner = true
       }
     }
   }
@@ -433,7 +421,7 @@ export class UVWrangler {
       return true
     }
 
-    return this.islandFaceMap.get(l.f) !== this.islandFaceMap.get(l.radial_next.f)
+    return this.islandFaceMap!.get(l.f) !== this.islandFaceMap!.get(l.radial_next.f)
   }
 
   _getHashPoint(x: number, y: number): Vector2 {
@@ -462,11 +450,11 @@ export class UVWrangler {
     this.cellSizeMul = this.cellDimen * this.hashWidthMul
   }
 
-  finish(): void {
+  finish = function (this: UVWrangler<{dead: false; hasUVMesh: true}>): void {
     const cd_uv = this.cd_uv
 
-    for (const v of this.uvMesh.verts) {
-      for (const l of this.vertMap.get(v)) {
+    for (const v of this.uvMesh!.verts) {
+      for (const l of this.vertMap.get(v)!) {
         const uv = cd_uv.get(l)
         uv.uv.load(v.co as unknown as Vector2)
       }
@@ -478,17 +466,17 @@ export class UVWrangler {
     this.loadSnapLimit(limit)
   }
 
-  shashAdd(l: Loop, uv: Vector2): number {
+  shashAdd = function (this: UVWrangler<OPT & {dead: false | undefined}>, l: Loop, uv: Vector2): number {
     const key = this.hashPoint(uv[0], uv[1])
 
     if (!this.shash.has(key)) {
       this.shash.set(key, [])
     }
 
-    return this.shash.get(key).push(l)
+    return this.shash.get(key)!.push(l)
   }
 
-  buildIslands(buildSeams = false) {
+  buildIslands = function (this: UVWrangler<{dead: false}>, buildSeams = false) {
     if (this.needTopo) {
       if (buildSeams) {
         this.buildTopologySeam()
@@ -503,7 +491,7 @@ export class UVWrangler {
     for (const v of this.uvMesh.verts) {
       cd_corner.get(v).hasPins = false
 
-      for (const l of this.vertMap.get(v)) {
+      for (const l of this.vertMap.get(v)!) {
         if (cd_uv.get(l).flag & UVFlags.PIN) {
           cd_corner.get(v).hasPins = true
           break
@@ -526,11 +514,11 @@ export class UVWrangler {
       island.hasPins = false
 
       while (stack.length > 0) {
-        const v2 = stack.pop()
+        const v2 = stack.pop()!
 
-        this.islandVertMap.set(v2, island)
+        this.islandVertMap!.set(v2, island)
 
-        for (const l of this.vertMap.get(v2)) {
+        for (const l of this.vertMap.get(v2)!) {
           if (cd_uv.get(l).flag & UVFlags.PIN) {
             island.hasPins = true
           }
@@ -539,8 +527,8 @@ export class UVWrangler {
             island.hasSelLoops = true
           }
 
-          this.islandFaceMap.set(l.f, island)
-          this.islandLoopMap.set(l, island)
+          this.islandFaceMap!.set(l.f, island)
+          this.islandLoopMap!.set(l, island)
         }
 
         island.add(v2)
@@ -569,14 +557,14 @@ export class UVWrangler {
       this.updateAABB(island)
     }
 
+    const uvMeshThis = this as unknown as UVWrangler<{dead: false; hasUVMesh: true}>
     this.setCornerTags()
-    this.buildBoundaryTangents()
+    uvMeshThis.buildBoundaryTangents()
 
     return this
   }
 
   buildTopologySeam() {
-    const mesh = this.mesh
     const uvmesh = this._makeUVMesh()
     const cd_uv = this.cd_uv
 
@@ -590,7 +578,7 @@ export class UVWrangler {
 
     const doneset = new WeakSet()
 
-    function hasSeam(v) {
+    function hasSeam(v: Vertex) {
       for (const e of v.edges) {
         if (e.flag & MeshFlags.SEAM) {
           return true
@@ -600,7 +588,7 @@ export class UVWrangler {
       return false
     }
 
-    const islands = []
+    const islands = [] as Set<Face>[]
 
     const faces = this.faces
 
@@ -609,14 +597,14 @@ export class UVWrangler {
         continue
       }
 
-      const island = new Set()
+      const island = new Set<Face>()
       const stack = [f]
 
       islands.push(island)
       doneset.add(f)
 
       while (stack.length > 0) {
-        const f2 = stack.pop()
+        const f2 = stack.pop()!
 
         island.add(f2)
 
@@ -637,7 +625,7 @@ export class UVWrangler {
       }
     }
 
-    function nextl(startl, cb, reverse = false) {
+    function nextl(startl: Loop, cb: (l: Loop) => void, reverse = false) {
       let _i = 0
       let l = startl
 
@@ -697,7 +685,7 @@ export class UVWrangler {
       return l
     }
 
-    function prevl(startl, cb) {
+    function prevl(startl: Loop, cb: (l: Loop) => void) {
       return nextl(startl, cb, true)
     }
 
@@ -769,14 +757,14 @@ export class UVWrangler {
         } else {
           const v = imap.get(l.index)
           this.loopMap.set(l, v)
-          this.vertMap.get(v).add(l)
+          this.vertMap.get(v)!.add(l)
         }
         iset.add(l.index)
       }
 
       for (const l of ls) {
-        const v1 = this.loopMap.get(l)
-        const v2 = this.loopMap.get(l.next)
+        const v1 = this.loopMap.get(l)!
+        const v2 = this.loopMap.get(l.next)!
 
         if (v1 !== v2) {
           const e = uvmesh.ensureEdge(v1, v2)
@@ -789,7 +777,7 @@ export class UVWrangler {
     for (const v of uvmesh.verts) {
       cd_corner.get(v).corner = false
 
-      for (const l of this.vertMap.get(v)) {
+      for (const l of this.vertMap.get(v)!) {
         if (l.e.flag & MeshFlags.SEAM) {
           cd_corner.get(v).corner = true
         }
@@ -797,15 +785,13 @@ export class UVWrangler {
     }
   }
 
-  buildBoundaryTangents() {
+  buildBoundaryTangents = function (this: UVWrangler<{hasUVMesh: true}>): void {
     const cd_corner = this.cd_corner
     const cd_uv = this.cd_uv
 
     const t1 = new Vector2()
     const t2 = new Vector2()
     const t3 = new Vector2()
-    const t4 = new Vector2()
-    const t5 = new Vector2()
 
     for (const v of this.uvMesh.verts) {
       const c = cd_corner.get(v)
@@ -814,7 +800,7 @@ export class UVWrangler {
         continue
       }
 
-      let v1: Vertex, v2: Vertex, vcent: Vertex
+      let v1: Vertex | undefined, v2: Vertex | undefined, vcent: Vertex | undefined
 
       for (const e2 of v.edges) {
         const v3 = e2.otherVertex(v)
@@ -853,14 +839,12 @@ export class UVWrangler {
         throw new Error('NaN!')
       }
 
-      const ok = false
-
       const tmp = t1[0]
       t1[0] = -t1[1]
       t1[1] = tmp
 
       if (!vcent) {
-        for (const l of this.vertMap.get(v)) {
+        for (const l of this.vertMap.get(v)!) {
           if (this.seamEdge(l.e)) {
             const uv1 = cd_uv.get(l).uv
             const uv2 = cd_uv.get(l.next).uv
@@ -900,10 +884,10 @@ export class UVWrangler {
   }
 
   isCorner(l: Loop): boolean {
-    return this.cd_corner.get(this.loopMap.get(l)).corner
+    return this.cd_corner.get(this.loopMap.get(l)!).corner
   }
 
-  buildTopology(snap_threshold = 0.0001): void {
+  buildTopology = function (this: UVWrangler<OPT & {dead: false | undefined}>, snap_threshold = 0.0001): void {
     if (!this.cd_uv.exists) {
       console.warn('No uvs')
       return
@@ -911,14 +895,10 @@ export class UVWrangler {
 
     const cd_uv = this.cd_uv
     this.resetSpatialHash(snap_threshold)
-
     this._makeUVMesh()
 
-    const mesh = this.mesh
     const faces = this.faces
-    const uvmesh = this.uvMesh
-
-    const shash = this.shash
+    const uvmesh = this.uvMesh!
 
     for (const f of faces) {
       for (const l of f.loops) {
@@ -926,8 +906,6 @@ export class UVWrangler {
         this.shashAdd(l, uv)
       }
     }
-
-    const tmp = new Vector3()
 
     const offs = [
       [0, 0],
@@ -1009,17 +987,17 @@ export class UVWrangler {
     const loopmap = this.loopMap
 
     for (const l of loops) {
-      const v1 = loopmap.get(l)
+      const v1 = loopmap.get(l)!
 
       if (doneset.has(l.next)) {
-        const v2 = loopmap.get(l.next)
+        const v2 = loopmap.get(l.next)!
         if (v2 !== v1) {
           this.edgeMap.set(l.next, uvmesh.ensureEdge(v1, v2))
         }
       }
 
       if (doneset.has(l.prev)) {
-        const v2 = loopmap.get(l.prev)
+        const v2 = loopmap.get(l.prev)!
         if (v2 !== v1) {
           this.edgeMap.set(l.prev, uvmesh.ensureEdge(v1, v2))
         }
@@ -1058,7 +1036,7 @@ export class UVWrangler {
 
     const cd_corner = this.cd_corner
 
-    let islands = []
+    let islands = [] as UVIsland[]
     for (const l of this.islands) {
       if (ignorePinnedIslands && l.hasPins) {
         continue
@@ -1075,8 +1053,8 @@ export class UVWrangler {
 
       const cent = new Vector2(l.min).interp(l.max, 0.5)
       const steps = 16
-      let th = 0.0,
-        dth = (Math.PI * 0.5) / steps
+      let th = 0.0
+      const dth = (Math.PI * 0.5) / steps
 
       let min = 1e17,
         minth = 0.0
@@ -1104,7 +1082,7 @@ export class UVWrangler {
 
     let totarea = 0.0
 
-    islands = []
+    islands = [] as UVIsland[]
     for (const island of this.islands) {
       if (ignorePinnedIslands && island.hasPins) {
         continue
@@ -1217,7 +1195,6 @@ export class UVWrangler {
 
       islands.remove(island)
       let ratio = island.boxsize[0] / island.boxsize[1]
-      const cent = new Vector2(island.min).interp(island.max, 0.5)
       size.subScalar(margin * 2.0)
 
       const ratio2 = size[0] / size[1]
@@ -1421,7 +1398,7 @@ export function voxelUnwrap(
 
   console.log('patches', patches)
 
-  const graph = []
+  const graph = [] as MyPackNode[]
 
   let totarea = 0.0
 

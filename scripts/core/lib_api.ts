@@ -7,9 +7,10 @@ import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstruc
 
 import type {SculptBrush} from '../brush/brush'
 import type {Mesh} from '../mesh/mesh'
-import {Collection} from '../scene/collection'
-import {SceneObject} from '../sceneobject/sceneobject.js'
-import {ToolContext} from './context.js'
+import type {Collection} from '../scene/collection'
+import type {SceneObject} from '../sceneobject/sceneobject.js'
+import type {ToolContext} from './context.js'
+import type {Scene} from '../scene/scene.js'
 
 export const BlockTypes = [] as IDataBlockConstructor<any, {}, {}>[]
 
@@ -713,6 +714,7 @@ Library {
   mesh: BlockSet<Mesh>
   collection: BlockSet<Collection>
   object: BlockSet<SceneObject>
+  scene: BlockSet<Scene>
 
   constructor() {
     //master graph
@@ -731,6 +733,7 @@ Library {
     this.mesh = this.libmap.brush!
     this.collection = this.libmap.brush!
     this.object = this.libmap.object!
+    this.scene = this.libmap.scene!
 
     for (const cls of BlockTypes) {
       const lib = new BlockSet(cls, this)

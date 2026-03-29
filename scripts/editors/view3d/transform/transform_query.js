@@ -1,35 +1,8 @@
 import * as util from '../../../util/util.js'
-import {keymap} from '../../../path.ux/scripts/util/simple_events.js'
-import {
-  TransDataElem,
-  TransformData,
-  TransDataType,
-  PropModes,
-  TransDataTypes,
-  TransDataList,
-} from './transform_base.js'
-import {MeshTransType} from './transform_types.js'
-import {
-  ToolOp,
-  UndoFlags,
-  IntProperty,
-  FlagProperty,
-  EnumProperty,
-  Vec3Property,
-  Mat4Property,
-  FloatProperty,
-  BoolProperty,
-  PropFlags,
-  PropTypes,
-  PropSubTypes,
-} from '../../../path.ux/scripts/pathux.js'
-import {SelMask} from '../selectmode.js'
+import {TransDataTypes} from './transform_base.js'
 import {aabb_union} from '../../../util/math.js'
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js'
-import {View3DOp} from '../view3d_ops.js'
-import {isect_ray_plane} from '../../../path.ux/scripts/util/math.js'
+import {Vector3, Matrix4} from '../../../util/vectormath.js'
 import {cachering} from '../../../util/util.js'
-import {ConstraintSpaces} from './transform_base.js'
 
 let cent_rets = cachering.fromConstructor(Vector3, 64)
 
@@ -68,7 +41,7 @@ export function calcTransAABB(ctx, selmode) {
  * @param transform_space : integer. Constraint space.  One of transform_base.js:ConstraintSpaces.
  * @param aabb_out : List of two Vector3s to be filled with min/max of aabb
  */
-export function calcTransCenter(ctx, selmask, transform_space, aabb_out) {
+export function calcTransCenter(ctx, selmask, transform_space, aabb_out = undefined) {
   let cent = cent_rets.next().zero()
   let tot = 0.0
 
@@ -111,10 +84,7 @@ export function calcTransCenter(ctx, selmask, transform_space, aabb_out) {
  * @param transform_space : integer. Constraint space.  One of transform_base.js:ConstraintSpaces.
  * @param aabb_out : List of two Vector3s to be filled with min/max of aabb
  */
-export function calcTransMatrix(ctx, selmask, transform_space, aabb_out) {
-  let cent = cent_rets.next().zero()
-  let tot = 0.0
-
+export function calcTransMatrix(ctx, selmask, transform_space) {
   let ret = calcTransCenter_rets.next()
   ret.spaceMatrix.makeIdentity()
 

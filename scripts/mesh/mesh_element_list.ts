@@ -1,4 +1,4 @@
-import {Edge, Element, MeshIterStack} from './mesh_types'
+import {Edge, Element, Element, MeshIterStack} from './mesh_types'
 import {nstructjs, util} from '../path.ux/scripts/pathux.js'
 import {
   DEBUG_BAD_LOOPS,

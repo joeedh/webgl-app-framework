@@ -1,14 +1,14 @@
-import {BlockLoader, BlockLoaderAddUser, DataBlock, DataRef} from '../core/lib_api.js'
-import {nstructjs, util, math, Matrix4, EulerOrders, Vector3, Vector4, Quat, IVector4} from '../path.ux/pathux.js'
+import {BlockLoader, BlockLoaderAddUser, DataBlock} from '../core/lib_api.js'
+import {nstructjs, util, Matrix4, EulerOrders, Vector3, Vector4, IVector4} from '../path.ux/pathux.js'
 
-import {Graph, SocketFlags} from '../core/graph.js'
+import {SocketFlags} from '../core/graph.js'
 import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket, EnumSocket} from '../core/graphsockets.js'
 import {Shaders} from '../shaders/shaders'
 import {SceneObjectData} from './sceneobject_base'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
-import {View3D} from '../../types/scripts/editors/view3d/view3d'
 import {Material} from '../core/material'
 import {ShaderProgram} from '../core/webgl.js'
+import type {View3D} from '../editors/all.js'
 
 let loc_rets = util.cachering.fromConstructor(Vector3, 256)
 

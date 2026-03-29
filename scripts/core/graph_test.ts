@@ -1,6 +1,6 @@
 import {Graph, INodeDef, Node, NodeSocketType} from './graph.js'
 import {FloatSocket, BoolSocket, IntSocket, Vec3Socket} from './graphsockets.js'
-import {util, math, Vector2, Vector3, Vector4, Matrix4, Quat, nstructjs} from '../path.ux/scripts/pathux'
+import {util, math, Vector2, Vector3, Vector4, Matrix4, Quat, nstructjs} from '../path.ux/scripts/pathux.js'
 
 export class TestContext {
   prop1 = 0

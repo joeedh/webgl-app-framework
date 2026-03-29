@@ -1,11 +1,8 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4, util, math, nstructjs, Number3} from '../path.ux/scripts/pathux.js'
-
-const {dist_to_line_2d, winding} = math
-
+import {Vector3, Vector4, Matrix4, util, math, Number3} from '../path.ux/scripts/pathux.js'
+const {winding} = math
 import {
   MeshFlags,
   MeshTypes,
-  MeshFeatures,
   ReusableIter,
   LogContext,
   ChangeFlags,
@@ -31,6 +28,7 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
   neighbors = ReusableIter.getSafeIter<Vertex>(neighbors)
 
   let val = 0
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
   for (const v2 of neighbors) {
     val++
   }
@@ -91,19 +89,19 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
 
   co.multVecMatrix(mat)
 
-  for (let i = 0; i < val; i++) {
-    const co2 = cos[i]
+  for (let i2 = 0; i2 < val; i2++) {
+    const co2 = cos[i2]
 
     co2.multVecMatrix(mat)
     co2.sub(co)
 
-    ths[i] = Math.atan2(co2[1], co2[0])
-    idxs[i] = i
+    ths[i2] = Math.atan2(co2[1], co2[0])
+    idxs[i2] = i2
   }
 
   if (cosout) {
-    for (let i = 0; i < val; i++) {
-      const co = mvc_tmps.next().load(cos[i])
+    for (let j = 0; j < val; j++) {
+      const co = mvc_tmps.next().load(cos[j])
 
       co.add(startco)
 
@@ -114,14 +112,14 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
   idxs.sort((a, b) => ths[a] - ths[b])
 
   cos2 = mvc_pool.get<Vector3>(val)
-  for (let i = 0; i < val; i++) {
-    cos2[i] = cos[idxs[i]]
+  for (let j = 0; j < val; j++) {
+    cos2[j] = cos[idxs[j]]
   }
 
   //invert idxs
   const idxs2 = mvc_pool.get<number>(val)
-  for (let i = 0; i < val; i++) {
-    idxs2[idxs[i]] = i
+  for (let j = 0; j < val; j++) {
+    idxs2[idxs[j]] = j
     //idxs2[i] = i;
   }
 
@@ -131,15 +129,15 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
   const lens = mvc_pool.get<number>(val)
   const ws = ths
 
-  for (let i = 0; i < val; i++) {
-    const co2 = cos[i]
+  for (let j = 0; j < val; j++) {
+    const co2 = cos[j]
     const len = co2.vectorLength()
 
     if (len > 0.000001) {
       co2.mulScalar(1.0 / len)
     }
 
-    lens[i] = len
+    lens[j] = len
   }
 
   const p = mvc_tmps.next()
@@ -147,14 +145,14 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
   let totw = 0.0
   let avglen = 0.0
 
-  for (let i = 0; i < val; i++) {
-    const co1 = cos[(i + val - 1) % val]
-    const co2 = cos[i]
-    const co3 = cos[(i + 1) % val]
+  for (let j = 0; j < val; j++) {
+    const co1 = cos[(j + val - 1) % val]
+    const co2 = cos[j]
+    const co3 = cos[(j + 1) % val]
 
-    const l1 = lens[(i + val - 1) % val]
-    const l2 = lens[i]
-    const l3 = lens[(i + 1) % val]
+    const l1 = lens[(j + val - 1) % val]
+    const l2 = lens[j]
+    const l3 = lens[(j + 1) % val]
 
     avglen += l2
 
@@ -171,7 +169,7 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
 
     console.log(th1, th2, co1, co2, co3)
 
-    ws[idxs[(i + val - 1) % val]] = w
+    ws[idxs[(j + val - 1) % val]] = w
     totw += w
   }
 
@@ -344,7 +342,7 @@ export function _testMVC(mesh: Mesh): void {
       cdata.customData.push(cd3)
     }
 
-    const vs = []
+    const vs = [] as Vertex[]
     let vi = 0
     for (const v2 of v.neighbors) {
       vs[vi] = v2
@@ -544,8 +542,6 @@ export function bisectMesh(
   const emap = new Map<Edge, Vertex>()
   const edges2 = new Set<Edge>()
 
-  const tris = []
-
   const sign = (f: number) => (f >= 0 ? 1 : -1)
   const check = (a: Vector3, b: Vector3) => {
     let ok = sign(a[2]) !== sign(b[2]) && Math.abs(a[2] - b[2]) > threshold
@@ -669,9 +665,9 @@ export function duplicateMesh(mesh: Mesh, geom: Iterable<Element>) {
     sets[e.type as keyof typeof sets].add(e)
   }
 
-  const newvs = []
-  const newmap = new Map()
-  const oldmap = new Map()
+  const newvs = [] as Vertex[]
+  const newmap = new Map<Element, Element>()
+  const oldmap = new Map<Element, Element>()
 
   for (const f of fs) {
     for (const list of f.lists) {
@@ -717,8 +713,8 @@ export function duplicateMesh(mesh: Mesh, geom: Iterable<Element>) {
   const newfs = [] as Face[]
 
   for (const f of fs) {
-    const vs = []
-    const ls = []
+    const vs = [] as Vertex[]
+    const ls = [] as Loop[]
 
     let listi = 0
     let f2
@@ -1348,7 +1344,7 @@ export function trianglesToQuads(
   }
 
   let i = 0
-  const edges = []
+  const edges = [] as number[]
   for (const e of es) {
     edges.push(i++)
   }
@@ -1488,8 +1484,8 @@ export function trianglesToQuads(
 export function recalcWindings(mesh: Mesh, facesIter: Iterable<Face> = mesh.faces, lctx?: LogContext): void {
   const faces = new Set(facesIter)
 
-  const shells: Set<Face>[] = []
-  const stack: Face[] = []
+  const shells = [] as Set<Face>[]
+  const stack = [] as Face[]
   const flag = MeshFlags.TEMP3
 
   for (const f of faces) {
@@ -1677,7 +1673,7 @@ export function splitNonManifoldEdge(mesh: Mesh, e: Edge, l1: Loop, l2: Loop, lc
     const f = minl.f
 
     for (const list of f.lists) {
-      const vs = []
+      const vs = [] as Vertex[]
 
       for (const l of list) {
         if (l.v === e.v1) {
@@ -1719,7 +1715,7 @@ export function splitNonManifoldEdge(mesh: Mesh, e: Edge, l1: Loop, l2: Loop, lc
     }
 
     //make sure we nuke any wire edges
-    const es2 = []
+    const es2 = [] as Edge[]
     for (const l of f.loops) {
       if (l.radial_next === l) {
         es2.push(l.e)
@@ -1753,8 +1749,8 @@ export function pruneLooseGeometry(mesh: Mesh, lctx?: LogContext, minShellVerts 
     }
   }
 
-  const shells: Vertex[][] = []
-  const stack: Vertex[] = []
+  const shells = [] as Vertex[][]
+  const stack = [] as Vertex[]
 
   for (const v of mesh.verts) {
     if (v.flag & flag) {
@@ -1846,7 +1842,7 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
     f.flag &= ~flag
   }
 
-  const shells = []
+  const shells = [] as Face[][]
 
   for (const f of mesh.faces) {
     if (f.flag & flag) {
@@ -1938,7 +1934,7 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
       const f = minl!.f
 
       for (const list of f.lists) {
-        const vs = []
+        const vs = [] as Vertex[]
 
         for (const l of list) {
           if (l.v === e.v1) {
@@ -1984,7 +1980,7 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
       }
 
       //make sure we nuke any wire edges
-      const es2 = []
+      const es2 = [] as Edge[]
       for (const l of f.loops) {
         if (l.radial_next === l) {
           es2.push(l.e)
@@ -2740,7 +2736,7 @@ export function getEdgeLoop(e: Edge) {
     startl = startl.radial_next
   }
 
-  const list = []
+  const list = [] as Edge[]
 
   let l = startl
   let _i = 0
@@ -2908,7 +2904,7 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
       throw new MeshError('Dissolve face error')
     }
 
-    const loops: Array<[Vertex[], Loop[]]> = []
+    const loops = [] as [Vertex[], Loop[]][]
 
     for (const l1 of ls) {
       if (!(l1.e.flag & flag)) {
@@ -2919,8 +2915,8 @@ export function dissolveFaces(mesh: Mesh, facesIter: Iterable<Face>, lctx?: LogC
       let v = l1.v
       let l = l1
 
-      const loop: Loop[] = []
-      const verts: Vertex[] = []
+      const loop = [] as Loop[]
+      const verts = [] as Vertex[]
 
       loops.push([verts, loop])
 

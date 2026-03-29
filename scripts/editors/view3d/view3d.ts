@@ -1,4 +1,4 @@
-import {DataAPI, IVector3, IVector4, nstructjs, util} from '../../path.ux/scripts/pathux.js'
+import {DataAPI, IVector, IVector4, nstructjs, util} from '../../path.ux/scripts/pathux.js'
 
 import {spawnToolSearchMenu} from '../editor_base'
 
@@ -10,17 +10,17 @@ import './transform/all.js'
 import './findnearest/all.js'
 import './tools/tools'
 import * as textsprite from '../../core/textsprite.js'
-import {RealtimeEngine, RenderSettings} from '../../renderengine/renderengine_realtime.js'
+import {RealtimeEngine} from '../../renderengine/renderengine_realtime.js'
 import {PackFlags} from '../../path.ux/scripts/core/ui_base.js'
 import {Editor} from '../editor_base'
-import {Camera, init_webgl, IUniformsBlock} from '../../core/webgl.js'
+import {Camera, init_webgl} from '../../core/webgl.js'
 import {DrawModes} from './drawmode.js'
 import {EnvLightFlags} from '../../scene/scene'
 import {UIBase, css2color} from '../../path.ux/scripts/core/ui_base.js'
 import * as view3d_shaders from '../../shaders/shaders.js'
 import {loadShader} from '../../shaders/shaders.js'
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh'
-import {Vector3, Vector2, Vector4, Matrix4, Matrix4ToTHREE} from '../../util/vectormath.js'
+import {Vector3, Vector2, Vector4, Matrix4} from '../../util/vectormath.js'
 import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js'
 import './tools/mesheditor'
 import {GPUSelectBuffer} from './view3d_select.js'
@@ -34,11 +34,14 @@ import {CursorModes, OrbitTargetModes} from './view3d_utils.js'
 import {Icons} from '../icon_enum.js'
 import {NoneWidget} from './widgets/widget_tools.js'
 import {View3DFlags, CameraModes} from './view3d_base.js'
-import type {AppState} from '../../core/appstate.js'
 import {Library} from '../../core/lib_api.js'
-import {RenderEngine} from '../../renderengine/renderengine_base.js'
+import {RenderEngine, RenderSettings} from '../../renderengine/renderengine_base'
 import {SceneObject} from '../../sceneobject/sceneobject.js'
 import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw.js'
+import {WidgetBase} from './widgets/widgets.js'
+import {OptionalIf, OptionalIfNot} from '../../util/optionalIf.js'
+import {ViewContext} from '../../core/context.js'
+import {StructReader} from '../../path.ux/scripts/path-controller/types/util/nstructjs.js'
 
 const proj_temps = util.cachering.fromConstructor(Vector4, 32)
 const unproj_temps = util.cachering.fromConstructor(Vector4, 32)
@@ -142,7 +145,7 @@ export function initWebGL() {
       for (const sarea of _appstate.screen.sareas) {
         for (const area of sarea.editors) {
           if (area instanceof View3D) {
-            area.onContextLost(e)
+            area.onContextLost(e as WebGLContextEvent)
           }
         }
       }
@@ -213,8 +216,16 @@ export class DrawLine {
   }
 }
 
-export class View3D extends Editor {
-  gl?: WebGL2RenderingContext
+type CanvasWithExtra = (HTMLCanvasElement | OffscreenCanvas) & {dpi: number}
+
+export class View3D<OPT extends {started?: true | false} = {}> extends Editor {
+  widgettool?: WidgetBase
+  widget?: WidgetBase
+  drawline_mesh?: SimpleMesh
+  canvas: OptionalIfNot<CanvasWithExtra, OPT['started']> = undefined as unknown as HTMLCanvasElement
+  grid: OptionalIfNot<SimpleMesh, OPT['started']> = undefined as unknown as SimpleMesh
+  mdown?: boolean
+  gl: OptionalIfNot<WebGL2RenderingContext, OPT['started']> = undefined as unknown as WebGL2RenderingContext
   glSize: Vector2
   glPos: Vector2
   camera: Camera
@@ -222,7 +233,7 @@ export class View3D extends Editor {
   selectbuf: GPUSelectBuffer
   _last_selectmode: number
   transformSpace: number
-  renderEngine?: RenderEngine
+  renderEngine: OptionalIfNot<RenderEngine, OPT['started']>
   fps: number
   subViewPortSize: number
   subViewPortPos: Vector2
@@ -293,7 +304,7 @@ View3D {
 
     this._pobj_map = {}
     this._last_render_draw = 0
-    this.renderEngine = undefined
+    this.renderEngine = undefined as unknown as RenderEngine
 
     this.flag = View3DFlags.SHOW_CURSOR | View3DFlags.SHOW_GRID
 
@@ -984,7 +995,7 @@ View3D {
 
     this.addEventListener('wheel', on_mousewheel)
 
-    const uiHasFocus = (e) => {
+    const uiHasFocus = (e: PointerEvent) => {
       if (haveModal()) {
         return true
       }
@@ -995,7 +1006,7 @@ View3D {
       return node !== this && node !== this.overdraw
     }
 
-    const on_mousemove = (e, was_mousemove = true) => {
+    const on_mousemove = (e: PointerEvent, was_mousemove = true) => {
       this.last_mpos.load(this.getLocalMouse(e.x, e.y))
 
       /*
@@ -1026,16 +1037,15 @@ View3D {
 
       this.doEvent('mouseup', e)
 
-      const ctx = this.ctx
-      this.push_ctx_active(ctx)
+      this.push_ctx_active()
 
       if (this.mdown) {
         this.mdown = false
       }
-      this.pop_ctx_active(ctx)
+      this.pop_ctx_active()
     })
 
-    const on_mousedown = (e) => {
+    const on_mousedown = (e: PointerEvent) => {
       if (uiHasFocus(e)) {
         return
       }
@@ -1107,9 +1117,15 @@ View3D {
       return
     }
 
-    this.gl = getWebGL()
-    this.canvas = this.gl.canvas
+    this.gl = getWebGL()!
+    if (this.gl === undefined) {
+      throw new Error('no webgl')
+    }
+
+    this.canvas = this.gl.canvas as CanvasWithExtra
     this.grid = this.makeGrid()
+
+    return this as View3D<{started: true}>
   }
 
   getTransBounds() {
@@ -1145,7 +1161,7 @@ View3D {
   }
 
   _showCursor() {
-    let ok = this.flag & View3DFlags.SHOW_CURSOR
+    let ok = !!(this.flag & View3DFlags.SHOW_CURSOR)
     ok = ok && (this.widget === undefined || this.widget instanceof NoneWidget)
 
     return ok
@@ -1210,8 +1226,8 @@ View3D {
 
     this.pop_ctx_active()
 
-    if (this.renderEngine !== undefined) {
-      this.renderEngine.update(this.gl)
+    if (this.renderEngine !== undefined && this.gl !== undefined) {
+      this.renderEngine.update(this.gl, this)
     }
   }
 
@@ -1253,16 +1269,20 @@ View3D {
     super.setCSS()
   }
 
-  on_resize(newsize) {
+  on_resize(newsize: IVector) {
     super.on_resize(newsize)
+
+    if (this.gl === undefined) {
+      return
+    }
 
     //trigger rebuild of renderEngine, if necessary
     if (this.renderEngine !== undefined) {
       const engine = this.renderEngine
-      this.renderEngine = undefined
-
-      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null)
-      engine.destroy(this.gl)
+      const nonStarted = this as View3D<{started: false}>
+      nonStarted.renderEngine = undefined
+      nonStarted.gl!.bindFramebuffer(nonStarted.gl!.FRAMEBUFFER, null)
+      engine.destroy(nonStarted.gl!)
     }
 
     this.setCSS()
@@ -1285,13 +1305,13 @@ View3D {
     this.T += 0.01
   }
 
-  getSelectBuffer(ctx) {
+  getSelectBuffer(ctx: ViewContext) {
     //XXX should make use of scene's onSelect output slot to trigger
     //updates for this
 
     this.selectbuf.dirty()
     return this.selectbuf
-
+    /*
     for (const ob of ctx.selectedMeshObjects) {
       const mesh = ob.mesh
 
@@ -1301,28 +1321,32 @@ View3D {
       }
     }
     return this.selectbuf
+    */
   }
 
   destroy() {
-    this.deleteGraphNodes()
+    const nonStarted = this as View3D<{started: false}>
+    nonStarted.deleteGraphNodes()
 
-    if (this.renderEngine !== undefined) {
-      this.renderEngine.destroy(this.gl)
-      this.renderEngine = undefined
+    if (nonStarted.renderEngine !== undefined) {
+      nonStarted.renderEngine.destroy(nonStarted.gl!)
+      nonStarted.renderEngine = undefined
     }
 
-    if (this.grid !== undefined) {
-      this.grid.destroy(this.gl)
-      this.grid = undefined
+    if (nonStarted.grid !== undefined) {
+      nonStarted.grid.destroy(nonStarted.gl)
+      nonStarted.grid = undefined
     }
 
-    this.gl = undefined
+    nonStarted.gl = undefined
+    return nonStarted
   }
 
   on_area_inactive() {
     this.deleteGraphNodes()
     this.destroy()
-    this.gl = undefined
+    const nonStarted = this as View3D<{started: false}>
+    nonStarted.gl = undefined
   }
 
   onCameraChange() {
@@ -1337,7 +1361,7 @@ View3D {
     this.makeGraphNodes()
   }
 
-  drawCameraView() {
+  drawCameraView = function (this: View3D<OPT & {started: true}>) {
     const gl = this.gl
 
     let camera = this.ctx.camera
@@ -1368,12 +1392,10 @@ View3D {
     gl.depthMask(true)
     gl.enable(gl.DEPTH_TEST)
 
-    const scene = this.scene
-
     try {
       this.drawObjects(camera)
     } catch (error) {
-      util.print_stack(error)
+      util.print_stack(error as Error)
       console.warn('Draw error')
     }
   }
@@ -1396,14 +1418,16 @@ View3D {
       this.glInit()
     }
 
-    this.push_ctx_active()
-    this.viewportDraw_intern()
+    const startedThis = this as View3D<{started: true}>
 
-    if (this.flag & View3DFlags.SHOW_CAMERA_VIEW) {
-      this.drawCameraView()
+    startedThis.push_ctx_active()
+    startedThis.viewportDraw_intern()
+
+    if (startedThis.flag & View3DFlags.SHOW_CAMERA_VIEW) {
+      startedThis.drawCameraView()
     }
 
-    this.pop_ctx_active()
+    startedThis.pop_ctx_active()
   }
 
   resetRender() {
@@ -1412,7 +1436,7 @@ View3D {
     }
   }
 
-  drawRender(extraDrawCB) {
+  drawRender = function (this: View3D<OPT & {started: true}>, extraDrawCB: (matrix: Matrix4) => void) {
     const gl = this.gl
 
     gl.enable(gl.DEPTH_TEST)
@@ -1424,7 +1448,7 @@ View3D {
     }
 
     this.renderEngine.renderSettings = this.renderSettings
-    this.renderEngine.renderSettings.ao = this.ctx.scene.envlight.flag & EnvLightFlags.USE_AO
+    this.renderEngine.renderSettings.ao = !!(this.ctx.scene.envlight.flag & EnvLightFlags.USE_AO)
 
     this.renderEngine.render(this.activeCamera, this.gl, this.glPos, this.glSize, this.ctx.scene, extraDrawCB)
   }
@@ -1446,19 +1470,13 @@ View3D {
     //*/
   }
 
-  onContextLost(e) {
-    if (this.drawline_mesh !== undefined) {
-      this.drawline_mesh.onContextLost(e)
-    }
-
-    this.widget.onContextLost(e)
-
-    if (this.grid !== undefined) {
-      this.grid.onContextLost(e)
-    }
+  onContextLost(e: WebGLContextEvent) {
+    this.drawline_mesh?.onContextLost(e)
+    this.widget?.onContextLost(e)
+    this.grid?.onContextLost(e)
   }
 
-  viewportDraw_intern() {
+  viewportDraw_intern = function (this: View3D<{started: true}>) {
     if (!this.owning_sarea) {
       return
     }
@@ -1471,7 +1489,8 @@ View3D {
       this.makeGraphNodes()
     }
 
-    this._graphnode.outputs.onDrawPre.immediateUpdate()
+    const graphnode = this._graphnode!
+    graphnode.outputs.onDrawPre.immediateUpdate()
 
     const scene = this.ctx.scene
 
@@ -1516,7 +1535,7 @@ View3D {
 
     //this.drawThreeScene();
 
-    const finish = (projmat) => {
+    const finish = (projmat?: Matrix4) => {
       this.activeCamera.regen_mats(aspect)
       if (projmat) {
         this.activeCamera.rendermat = projmat
@@ -1567,7 +1586,7 @@ View3D {
     gl.depthMask(true)
     gl.enable(gl.DEPTH_TEST)
 
-    this._graphnode.outputs.onDrawPost.immediateUpdate()
+    graphnode.outputs.onDrawPost.immediateUpdate()
 
     if (scene.toolmode) {
       scene.toolmode.on_drawend(this, gl)
@@ -1577,7 +1596,7 @@ View3D {
     this.widgets.draw(this, this.gl)
   }
 
-  drawDrawLines(gl) {
+  drawDrawLines(gl: WebGL2RenderingContext) {
     const sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
     const sm2 = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV)
 
@@ -1621,15 +1640,16 @@ View3D {
     sm.destroy(gl)
   }
 
-  makeDrawQuad(v1, v2, v3, v4, color, useZ = true) {
+  makeDrawQuad(v1: Vector3, v2: Vector3, v3: Vector3, v4: Vector3, color: Vector4 | number[], useZ = true) {
     if (typeof color == 'string') {
       color = css2color(color)
     }
 
-    const dq = new DrawQuad(v1, v2, v3, v4, color)
+    //const dq = new DrawQuad(v1, v2, v3, v4, color)
+    throw new Error('implement me!')
   }
 
-  makeDrawLine(v1, v2, color = [0, 0, 0, 1], useZ = true) {
+  makeDrawLine(v1: Vector3, v2: Vector3, color: Vector4 | number[] = [0, 0, 0, 1], useZ = true) {
     if (typeof color == 'string') {
       color = css2color(color)
     }
@@ -1642,8 +1662,8 @@ View3D {
     return dl
   }
 
-  removeDrawLine(dl) {
-    if (this.drawlines.indexOf(dl) >= 0) {
+  removeDrawLine(dl: DrawLine) {
+    if (this.drawlines.includes(dl)) {
       this.drawlines.remove(dl)
     }
   }
@@ -1670,9 +1690,11 @@ View3D {
       aspect          : camera.aspect,
       size            : this.glSize,
       polygonOffset   : 0.0,
+      objectMatrix    : new Matrix4(),
+      object_id       : 0,
     }
 
-    const only_render = this.flag & View3DFlags.ONLY_RENDER
+    //const only_render = this.flag & View3DFlags.ONLY_RENDER
 
     for (const ob of scene.objects.visible) {
       uniforms.objectMatrix = ob.outputs.matrix.getValue()
@@ -1727,7 +1749,7 @@ View3D {
   }
 
   copy() {
-    const ret = document.createElement('view3d-editor-x')
+    const ret = document.createElement('view3d-editor-x') as View3D
 
     ret.widgettool = this.widgettool
 
@@ -1739,7 +1761,7 @@ View3D {
     return ret
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this)
 
     this.activeCamera = this.camera
@@ -1757,7 +1779,7 @@ View3D {
 }
 Editor.register(View3D)
 
-let animreq = undefined
+let animreq: number | undefined
 let resetRender = 0
 let drawCount = 1
 
@@ -1813,7 +1835,7 @@ const f2 = () => {
   }
 }
 
-const rcbs = []
+const rcbs = [] as (() => void)[]
 
 const f = () => {
   animreq = undefined
@@ -1843,9 +1865,13 @@ window.redraw_viewport = (ResetRender = false, DrawCount = 1) => {
   animreq = requestAnimationFrame(f)
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 window.redraw_viewport_p = (ResetRender = false, DrawCount = 1) => {
   return new Promise((accept, reject) => {
-    rcbs.push(accept)
+    rcbs.push(accept as () => void)
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     window.redraw_viewport(ResetRender, DrawCount)
   })
 }

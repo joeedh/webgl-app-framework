@@ -232,6 +232,7 @@ PaintSample {
   planeoff: number
   mirrored: boolean
   curve: Bezier | undefined
+  mpos = new Vector2()
 
   constructor() {
     this.origp = new Vector4()

@@ -1,30 +1,12 @@
-import {
-  util,
-  nstructjs,
-  math,
-  graphPack,
-  PackNode,
-  PackNodeVertex,
-  Vector2,
-  Vector3,
-  Vector4,
-  Matrix4,
-  Quat,
-  Number2,
-  Number3,
-} from '../path.ux/scripts/pathux.js'
-import {Constraint, Solver} from '../path.ux/scripts/util/solver.js'
+import {util, math, Vector2, Vector3, Matrix4, Number2, Solver, Constraint} from '../path.ux/scripts/pathux.js'
 import '../util/numeric.js'
 
 import '../extern/Math.js'
 
-window.module = undefined
-window.exports = undefined
-
-import {MeshTypes, MeshFlags, MeshSymFlags, MeshModifierFlags} from './mesh_base'
+import {MeshTypes, MeshFlags} from './mesh_base'
 import {AttrRef, UVLayerElem} from './mesh_customdata'
 import {UVWrangler} from './unwrapping'
-import {Face, Loop, Mesh, Vertex} from './mesh'
+import {Edge, Face, Loop, Mesh, Vertex} from './mesh'
 
 export function relaxUVs(
   mesh: Mesh,
@@ -44,9 +26,6 @@ export function relaxUVs(
   const wr = new UVWrangler(mesh, faces, cd_uv)
   wr.buildIslands(buildFromSeams)
 
-  const cos = []
-  const vi = 0
-
   const islandmap = new Map()
   const badset = new WeakSet()
 
@@ -55,7 +34,7 @@ export function relaxUVs(
       islandmap.set(v, island)
       let bad = true
 
-      for (const l of wr.vertMap.get(v)) {
+      for (const l of wr.vertMap.get(v)!) {
         islandmap.set(l, island)
         if (bad && loops.has(l)) {
           bad = false
@@ -90,7 +69,7 @@ export function relaxUVs(
       let tot = 0.0
       avg.zero()
 
-      for (const l of wr.vertMap.get(v)) {
+      for (const l of wr.vertMap.get(v)!) {
         l.f.flag |= MeshFlags.UPDATE
 
         let seam = !!(l.e.flag & MeshFlags.SEAM)
@@ -152,7 +131,7 @@ export function relaxUVs(
   wr.finish()
 }
 
-class SolveTri {
+export class SolveTri {
   l1: Loop
   l2: Loop
   l3: Loop
@@ -187,7 +166,7 @@ export class UnWrapSolver {
   uvw: UVWrangler
   solvers: any[]
   tris: SolveTri[]
-  tottri: number
+  tottri: number = 0
   saved = false
 
   constructor(
@@ -246,7 +225,7 @@ export class UnWrapSolver {
       let tot = 0.0
 
       for (const v of island) {
-        for (const l of wr.vertMap.get(v)) {
+        for (const l of wr.vertMap.get(v)!) {
           no.add(l.f.no)
         }
       }
@@ -261,7 +240,7 @@ export class UnWrapSolver {
       tot = 0.0
 
       for (const v of island) {
-        for (const l of wr.vertMap.get(v)) {
+        for (const l of wr.vertMap.get(v)!) {
           const th = Math.acos(no.dot(l.f.no) * 0.99999)
           variance += th * th
           tot++
@@ -286,7 +265,7 @@ export class UnWrapSolver {
         co.zero()
         let tot = 0.0
 
-        for (const l of wr.vertMap.get(v)) {
+        for (const l of wr.vertMap.get(v)!) {
           co.add(l.v.co)
           tot++
         }
@@ -316,7 +295,7 @@ export class UnWrapSolver {
 
     const cd_corner = wr.cd_corner
 
-    for (const v of this.uvw.uvMesh.verts) {
+    for (const v of this.uvw.uvMesh!.verts) {
       const cv = cd_corner.get(v)
 
       cv.vel = new Vector2()
@@ -338,20 +317,18 @@ export class UnWrapSolver {
 
   buildSolver(includeArea = true) {
     this.solvers = []
-    const totw = 0
+    this.tris.length = 0
 
     const mesh = this.mesh
-    const cd_uv = this.cd_uv
 
-    const ltris = mesh.loopTris
-    this.tris.length = 0
+    const ltris = mesh.loopTris!
     const trimap = new Map()
     const uvw = this.uvw
 
     const cd_corner = uvw.cd_corner
 
-    for (const v of uvw.uvMesh.verts) {
-      cd_corner.get(v).tris = []
+    for (const v of uvw.uvMesh!.verts) {
+      cd_corner.get(v)!.tris = []
     }
 
     const faces = this.faces
@@ -366,9 +343,9 @@ export class UnWrapSolver {
         continue
       }
 
-      const v1 = uvw.loopMap.get(l1)
-      const v2 = uvw.loopMap.get(l2)
-      const v3 = uvw.loopMap.get(l3)
+      const v1 = uvw.loopMap.get(l1)!
+      const v2 = uvw.loopMap.get(l2)!
+      const v3 = uvw.loopMap.get(l3)!
 
       if (v1 === v2 || v1 === v3 || v2 === v3) {
         continue
@@ -382,22 +359,20 @@ export class UnWrapSolver {
       trimap.set(l3, tri)
 
       for (let j = 0; j < 3; j++) {
-        const v = uvw.loopMap.get(ltris[i + j])
-        cd_corner.get(v).tris.push(tri)
+        const v = uvw.loopMap.get(ltris[i + j])!
+        cd_corner.get(v).tris!.push(tri)
       }
     }
 
-    //console.log(this.tris);
-
-    for (const v of uvw.uvMesh.verts) {
+    for (const v of uvw.uvMesh!.verts) {
       v.co[2] = 0.0
     }
 
-    for (const v of uvw.uvMesh.verts) {
+    for (const v of uvw.uvMesh!.verts) {
       let tot = 0
       let totarea = 0
 
-      for (const tri of cd_corner.get(v).tris) {
+      for (const tri of cd_corner.get(v).tris!) {
         const w = math.winding(tri.v1.co, tri.v2.co, tri.v3.co)
         tot += w ? 1 : -1
 
@@ -408,7 +383,7 @@ export class UnWrapSolver {
       cd_corner.get(v).wind = tot >= 0.0
     }
 
-    ;`
+    /*
     on factor;
     
     load_package "avector";
@@ -440,10 +415,9 @@ export class UnWrapSolver {
     dv3x := trigsimp df(f, v3x);
     dv3y := trigsimp df(f, v3y);
     off fort;
-    
-    `
+    */
 
-    function area_c(params) {
+    function area_c(params: [number, Vector3, Vector3, Vector3, number, number]): number {
       const w1 = params[0]
       const v1 = params[1]
       const v2 = params[2]
@@ -463,11 +437,11 @@ export class UnWrapSolver {
       //return Math.abs(ret);
     }
 
-    function badnum(n) {
+    function badnum(n: number) {
       return isNaN(n) || !isFinite(n) ? 0.0 : n
     }
 
-    function area_c_df(params, gs) {
+    function area_c_df(params: [number, Vector3, Vector3, Vector3, number, number], gs: number[][]) {
       let ans1, ans2, ans3, ans4, ans5
 
       const sqrt = Math.sqrt
@@ -725,7 +699,7 @@ export class UnWrapSolver {
       this.solvers.push(solver)
 
       for (const v of island) {
-        for (const tri of cd_corner.get(v).tris) {
+        for (const tri of cd_corner.get(v)!.tris!) {
           tris.add(tri)
         }
       }
@@ -771,7 +745,7 @@ export class UnWrapSolver {
         //goalth = Math.PI - goalth;
         //}
 
-        const params = [v1, v2, v3, goalth, wind]
+        const params = [v1, v2, v3, goalth, wind] as const
         const klst = [v1, v2, v3].filter((v) => !cd_corner.get(v).hasPins).map((v) => v.co)
 
         if (klst.length > 0) {
@@ -821,7 +795,7 @@ export class UnWrapSolver {
 
       for (const tri of tris) {
         const goal = tri.worldArea * ratio * wind * 1.0
-        const params = [wind, tri.v1.co, tri.v2.co, tri.v3.co, goal, 100.0 / totarea]
+        const params = [wind, tri.v1.co, tri.v2.co, tri.v3.co, goal, 100.0 / totarea] as const
         const klst = [tri.v1, tri.v2, tri.v3].filter((v) => !cd_corner.get(v).hasPins).map((v) => v.co)
 
         if (includeArea && klst.length > 0) {
@@ -847,7 +821,7 @@ export class UnWrapSolver {
     //console.log(slv);
   }
 
-  solveIntern(slv, count, gk) {
+  solveIntern(slv: Solver, count: number, gk = 1.0) {
     const doneset = new WeakSet()
     const idxmap = new Map()
 
@@ -855,13 +829,14 @@ export class UnWrapSolver {
 
     //return slv.solve(count, gk);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
     function log(...args: any[]): void {
       //console.log(...args);
     }
 
     const pmap = new Set()
     let tot = 0
-    const vec = []
+    const vec = [] as Vector2[]
 
     if (slv.constraints.length === 0) {
       return 0.0
@@ -888,7 +863,7 @@ export class UnWrapSolver {
         if (!doneset.has(uv)) {
           idxmap.set(uv, ki)
           doneset.add(uv)
-          vec.push(uv)
+          vec.push(uv as Vector2)
           ki += 2
         }
       }
@@ -914,7 +889,7 @@ export class UnWrapSolver {
       }
     }
 
-    const col = []
+    const col = [] as number[]
 
     let toterr = 0.0
 
@@ -953,10 +928,9 @@ export class UnWrapSolver {
       }
     }
 
-    let totrows = matrix.length
-
     //matrix = numeric.ccsSparse(matrix);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const numeric = (window as unknown as any)['numeric'] as any
 
     const matrixT = numeric.transpose(matrix)
@@ -964,10 +938,7 @@ export class UnWrapSolver {
     const matrix1 = numeric.dot(matrixT, matrix)
 
     const svd = numeric.svd(matrix1)
-
-    const rows = matrix1.length
-
-    function makeMatrix(rows, cols, setIdentity = true) {
+    function makeMatrix(rows: number, cols: number, setIdentity = true) {
       const ret = new Array(rows)
 
       for (let i = 0; i < rows; i++) {
@@ -985,7 +956,7 @@ export class UnWrapSolver {
       return ret
     }
 
-    totrows = svd.S.length
+    const totrows = svd.S.length
     const sigma = makeMatrix(totrows, totrows, false)
     const S = svd.S
 
@@ -999,6 +970,7 @@ export class UnWrapSolver {
     }
     //sigma = numeric.transpose(sigma);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(matrix as unknown as any).slv = slv
 
     /*
@@ -1034,7 +1006,7 @@ export class UnWrapSolver {
     log(vec)
     return toterr
 
-    return slv.solve(count, gk, false)
+    //return slv.solve(count, gk, false)
     /*
       matrix = MathJS.matrix(matrix, 'sparse');
       //matrix = MathJS.transpose(matrix);
@@ -1070,10 +1042,10 @@ export class UnWrapSolver {
     */
   }
 
-  solve(count, gk) {
+  solve(count: number, gk = 1.0) {
     const err = 0.0
 
-    const uvmesh = this.uvw.uvMesh
+    const uvmesh = this.uvw.uvMesh!
     const damp = 0.95
 
     const cd_corner = this.uvw.cd_corner
@@ -1108,40 +1080,14 @@ export class UnWrapSolver {
     return err
   }
 
-  step(countUnused, gk) {
-    const flen = this.faces.size
-    let count, count2
-
-    if (flen > 5000) {
-      count = 1
-      count2 = 1
-    } else if (flen > 1000) {
-      count = 5
-      count2 = 3
-    } else {
-      count = 5
-      count2 = 3
-    }
-
-    //XXX
-    count = 1
-    count2 = 3
+  step(extraCount = 0, gk = 1.0) {
+    const count = 1 + extraCount
+    const count2 = 3
 
     let time = util.time_ms()
+    let err: number | undefined
 
-    gk = gk ?? (window as unknown as any)['gk'] ?? 0.75
-    let err
-
-    const uvmesh = this.uvw.uvMesh
-
-    console.log('Islands', this.uvw.islands.length)
-
-    for (const v of uvmesh.verts) {
-      //v[0] += (Math.random()-0.5)*0.1;
-      //v[1] += (Math.random()-0.5)*0.1;
-    }
-
-    let si = 0
+    const uvmesh = this.uvw.uvMesh!
     const tmp = new Vector3()
 
     const smoothvs = new Set<Vertex>()
@@ -1174,18 +1120,18 @@ export class UnWrapSolver {
         let tot = w
 
         for (const e of v.edges) {
-          let w = 1.0
+          let w2 = 1.0
           const v2 = e.otherVertex(v)
           const cv = cd_corner.get(v2)
 
           if (cv.hasPins) {
-            w = 10000.0
+            w2 = 10000.0
           } else if (cv.corner) {
             //w = 10;
           }
 
-          tmp.addFac(v2.co, w)
-          tot += w
+          tmp.addFac(v2.co, w2)
+          tot += w2
         }
 
         if (tot === 0) {
@@ -1198,7 +1144,8 @@ export class UnWrapSolver {
       }
     }
 
-    const solvestep = (gk, damp = 0.95) => {
+    let si = 0
+    const solvestep = (gk = 1.0, damp = 0.95) => {
       //this.buildSolver();
 
       const cd_corner = this.uvw.cd_corner
@@ -1262,8 +1209,8 @@ export class UnWrapSolver {
 
     const cd_uv = this.cd_uv
 
-    for (const v of this.uvw.uvMesh.verts) {
-      const ls = this.uvw.vertMap.get(v)
+    for (const v of this.uvw.uvMesh!.verts) {
+      const ls = this.uvw.vertMap.get(v)!
 
       for (const l of ls) {
         cd_uv.get(l).uv.load(v.co)
@@ -1308,7 +1255,7 @@ export class UnWrapSolver {
     const fs = new Set<Face>()
     for (const feid of this.faces as unknown as Set<number>) {
       const f = mesh.eidMap.get<Face>(feid)
-      if (!f || f.type !== MeshTypes.FACE) {
+      if (f?.type !== MeshTypes.FACE) {
         console.warn('Missing face ' + feid)
         return false
       }
@@ -1341,16 +1288,22 @@ export class UnWrapSolver {
     return true
   }
 
-  static restoreOrRebuild(mesh, faces, solver, cd_uv, preserveIslands = false, selLoopsOnly = false) {
-    faces = new Set(faces)
+  static restoreOrRebuild(
+    mesh: Mesh,
+    facesIn: Iterable<Face>,
+    solver: UnWrapSolver,
+    cd_uv?: AttrRef<UVLayerElem>,
+    preserveIslands = false,
+    selLoopsOnly = false
+  ) {
+    const faces = new Set(facesIn)
 
     if (cd_uv === undefined) {
-      cd_uv = mesh.loops.customData.getLayerIndex('uv')
+      cd_uv = mesh.loops.customData.getLayerRef<UVLayerElem>('uv')
     }
 
-    let count = 0
-    for (const f of faces) {
-      count++
+    if (cd_uv.i === -1) {
+      throw new Error('no UV layer')
     }
 
     let bad = false
@@ -1431,8 +1384,8 @@ export class UnWrapSolver {
   }
 }
 
-export function fixSeams(mesh, cd_uv) {
-  const wrangler = new UVWrangler(mesh, mesh.faces, new AttrRef(cd_uv))
+export function fixSeams(mesh: Mesh, cd_uv: AttrRef<UVLayerElem>) {
+  const wrangler = new UVWrangler(mesh, mesh.faces, cd_uv)
   wrangler.buildIslands()
 
   const seams = new Set()
@@ -1440,19 +1393,23 @@ export function fixSeams(mesh, cd_uv) {
   const tmp1 = new Vector2()
   const tmp2 = new Vector2()
 
-  function error(params) {
+  function error(params: [Edge]) {
     const e = params[0]
+
+    if (e.l === undefined) {
+      return 0
+    }
 
     const l1 = e.l,
       l2 = l1.radial_next
-    const uv1a = l1.customData[cd_uv].uv
-    const uv1b = l1.next.customData[cd_uv].uv
-    const uv2a = l2.next.customData[cd_uv].uv
-    const uv2b = l2.customData[cd_uv].uv
+    const uv1a = l1.customData.get(cd_uv).uv
+    const uv1b = l1.next.customData.get(cd_uv).uv
+    const uv2a = l2.next.customData.get(cd_uv).uv
+    const uv2b = l2.customData.get(cd_uv).uv
 
     const texSize = 1024.0
 
-    function round(n) {
+    function round(n: number) {
       return Math.floor(n + 0.01)
     }
 
@@ -1482,10 +1439,10 @@ export function fixSeams(mesh, cd_uv) {
     }
 
     const l2 = l1.radial_next
-    const uv1a = l1.customData[cd_uv].uv
-    const uv1b = l1.next.customData[cd_uv].uv
-    const uv2a = l2.next.customData[cd_uv].uv
-    const uv2b = l2.customData[cd_uv].uv
+    const uv1a = l1.customData.get(cd_uv).uv
+    const uv1b = l1.next.customData.get(cd_uv).uv
+    const uv2a = l2.next.customData.get(cd_uv).uv
+    const uv2b = l2.customData.get(cd_uv).uv
 
     const d1 = uv1a.vectorDistance(uv2a)
     const d2 = uv1b.vectorDistance(uv2b)

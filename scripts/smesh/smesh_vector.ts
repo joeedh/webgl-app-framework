@@ -1,7 +1,7 @@
 import {
   F32BaseVector, IVectorConstructor, makeVector2, makeVector3, makeVector4,
   Vector2, Vector3, nstructjs, util, INumVector, IBaseVector, IVectorOrHigher, NumLitHigher
-} from '../path.ux/scripts/pathux'
+} from '../path.ux/scripts/pathux.js'
 
 interface FVectorBase<LEN extends 2 | 3 | 4> extends IBaseVector<LEN, Array[number]> {
   constructor(a?: this | INumVector | IBaseVector<NumLitHigher<LEN>>, offset?: number, len?: number);

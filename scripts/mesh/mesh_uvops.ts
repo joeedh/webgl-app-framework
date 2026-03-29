@@ -13,10 +13,8 @@ import {UVWrangler, voxelUnwrap} from './unwrapping.js'
 import {fixSeams, relaxUVs, UnWrapSolver} from './unwrapping_solve'
 import {MeshOp} from './mesh_ops_base'
 import {MeshFlags} from './mesh_base'
-import {Face} from './mesh_types'
-import {AttrRef} from './customdata'
-import {ViewContext} from '../../types/scripts/core/context'
 import {UVLayerElem} from './mesh_customdata'
+import type {ViewContext} from '../core/context'
 
 export class VoxelUnwrapOp<
   InputSet extends PropertySlots = {},
@@ -355,9 +353,9 @@ export class FixUvSeamsOp<
     console.warn('mesh.fix_seams')
 
     for (const mesh of this.getMeshes(ctx)) {
-      const cd_uv = mesh.loops.customData.getLayerIndex('uv')
+      const cd_uv = mesh.loops.customData.getLayerRef<UVLayerElem>('uv')
 
-      if (cd_uv >= 0) {
+      if (cd_uv.i >= 0) {
         fixSeams(mesh, cd_uv)
 
         mesh.regenBVH()

@@ -868,7 +868,7 @@ propIslandOnly : bool;
 
     this.ctx = ctx
 
-    this.widgets.update(this)
+    this.widgets.update()
     if (this.toolmode !== undefined) {
       this.toolmode.ctx = ctx
       this.toolmode.update()

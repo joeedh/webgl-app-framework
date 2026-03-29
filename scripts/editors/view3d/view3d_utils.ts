@@ -11,7 +11,7 @@ export enum OrbitTargetModes {
 
 import {Mesh} from '../../mesh/mesh'
 import * as util from '../../util/util.js'
-import {Matrix4, Vector2, Vector3, Vector4} from '../../util/vectormath.js'
+import {IVectorOrHigher, Matrix4, Vector2, Vector3, Vector4} from '../../util/vectormath.js'
 import type {View3D} from './view3d'
 
 const thehash = new util.HashDigest()
@@ -19,7 +19,7 @@ const thehash = new util.HashDigest()
 const proj_temps = util.cachering.fromConstructor(Vector4, 128)
 
 //viewSize is a copy of view3d.size, not .glSize
-export function project(co: Vector3, rendermat: Matrix4, viewSize: Vector2) {
+export function project(co: IVectorOrHigher<2, Vector2>, rendermat: Matrix4, viewSize: Vector2) {
   const tmp = proj_temps.next().zero()
 
   tmp[0] = co[0]
