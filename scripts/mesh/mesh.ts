@@ -52,17 +52,7 @@ import {
 import {EDGE_LINKED_LISTS} from '../core/const.js'
 
 import {NormalLayerElem, OrigIndexElem, UVLayerElem} from './mesh_customdata.js'
-import {
-  Edge,
-  Element,
-  Element,
-  Face,
-  Handle,
-  Loop,
-  LoopList,
-  PrivateVertexConstructor,
-  Vertex,
-} from './mesh_types.js'
+import {Edge, Element, Element, Face, Handle, Loop, LoopList, PrivateVertexConstructor, Vertex} from './mesh_types.js'
 import {ElementList, ElementListIter} from './mesh_element_list.js'
 import {SelMask} from '../editors/view3d/selectmode.js'
 import {BVH, BVHSettings} from '../util/bvh.js'
@@ -86,7 +76,7 @@ import type {SceneObject} from '../sceneobject/sceneobject'
 import {Utf8DecodeWorker} from '../extern/jszip/jszip'
 import {ToolContext} from '../core/context'
 import {Material} from '../core/material'
-import {ShaderProgram} from '../core/webgl'
+import {IUniformsBlock, ShaderProgram} from '../core/webgl'
 import type {Scene} from '../scene/scene'
 
 export interface IBVHArgs {
@@ -370,7 +360,7 @@ mesh.Mesh {
   _ltrimap_start: {[key: number]: number} = {} //XXX
   _ltrimap_end: {[key: number]: number} = {} //XXX
   _ltrimap_len: {[key: number]: number} = {}
-  _fancyMeshes: any = {} //XXX
+  _fancyMeshes: {[k: string]: ChunkedSimpleMesh} = {} //XXX
   updatelist: any = {} //XXX
   lastUpdateList: any = {} //XXX
   updateGen = 0
@@ -4667,7 +4657,7 @@ mesh.Mesh {
   }
 
   genRender_curves(
-    gl: WebGL2RenderingContext,
+    gl: WebGL2RenderingContext | undefined,
     combinedWireframe: boolean,
     view3d: View3D,
     layers = LayerTypes.LOC | LayerTypes.UV | LayerTypes.ID
@@ -4759,10 +4749,13 @@ mesh.Mesh {
    * @param combinedWireframe: add wireframe layer (but unset simplemesh.PrimitiveTypes.LINES in primflag)
    * @param view3d: View3D instance, optional, used when drawing edges in curve mode
    * */
-  genRender(gl: WebGL2RenderingContext, combinedWireframe = false, view3d: View3D) {
+  genRender(gl?: WebGL2RenderingContext, combinedWireframe = false, view3d?: View3D) {
     this.recalc &= ~(RecalcFlags.RENDER | RecalcFlags.PARTIAL)
 
     if (this.features & MeshFeatures.EDGE_CURVES_ONLY) {
+      if (view3d === undefined) {
+        throw new Error('view3d mus not be undefined when genRender is called on a curve mesh')
+      }
       this.smesh = this.genRender_curves(gl, combinedWireframe, view3d)
       return this.smesh
     } else {
@@ -4770,7 +4763,7 @@ mesh.Mesh {
     }
   }
 
-  genRender_full(gl: WebGL2RenderingContext, combinedWireframe: boolean) {
+  genRender_full(gl: WebGL2RenderingContext | undefined, combinedWireframe: boolean) {
     try {
       return this._genRender_full(gl, combinedWireframe)
     } catch (error) {
@@ -4982,7 +4975,7 @@ mesh.Mesh {
     return sm
   }
 
-  _genRender_full(gl: WebGL2RenderingContext, combinedWireframe = false) {
+  _genRender_full(gl: WebGL2RenderingContext | undefined, combinedWireframe = false) {
     this.recalc &= ~RecalcFlags.RENDER
     this.updateGen = ~~(Math.random() * 1024 * 1024 * 1024)
 
@@ -5190,7 +5183,7 @@ mesh.Mesh {
     }
   }
 
-  _genRenderElements(gl: WebGL2RenderingContext, uniforms: any, combinedWireframe = false) {
+  _genRenderElements(gl: WebGL2RenderingContext | undefined, uniforms: IUniformsBlock, combinedWireframe = false) {
     genRenderMesh(gl, this, uniforms, combinedWireframe)
     this.updateGen = ~~(Math.random() * 1024 * 1024 * 1024)
   }

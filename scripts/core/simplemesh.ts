@@ -2,26 +2,12 @@
  * Warning: this API is particularly old.
  **/
 
-import * as webgl from './webgl.js'
-import {
-  Vector2,
-  BaseVector,
-  Vector3,
-  Vector4,
-  Quat,
-  Matrix4,
-  util,
-  math,
-  nstructjs,
-  INumVector,
-  IVector2,
-  IVector3,
-  IVector4,
-} from '../path.ux/scripts/pathux.js'
-import {ShaderProgram} from './webgl.js'
+import {Vector3, Vector4, util, IOpenNumVector} from '../path.ux/scripts/pathux.js'
+import {IUniformsBlock, ShaderProgram} from './webgl.js'
 import './const.js'
-import {Shaders, loadShader} from '../shaders/shaders.js'
+import {loadShader, Shaders} from '../shaders/shaders.js'
 import {RenderBuffer} from './webgl.js'
+import {OptionalIf} from '../util/optionalIf'
 
 export enum PrimitiveTypes {
   NONE = 0,
@@ -51,20 +37,14 @@ export const LayerTypeNames = {
   [LayerTypes.CUSTOM]: 'custom',
 }
 
-const _TypeSizes = {
-  LOC   : 3,
-  UV    : 2,
-  COLOR : 4,
-  NORMAL: 3,
-  ID    : 1,
-  CUSTOM: 4,
-  INDEX : 1,
-}
-
-export const TypeSizes = {}
-
-for (const k in LayerTypes) {
-  TypeSizes[LayerTypes[k]] = TypeSizes[k] = _TypeSizes[k]
+export const TypeSizes = {
+  [LayerTypes.LOC]   : 3,
+  [LayerTypes.UV]    : 2,
+  [LayerTypes.COLOR] : 4,
+  [LayerTypes.NORMAL]: 3,
+  [LayerTypes.ID]    : 1,
+  [LayerTypes.CUSTOM]: 4,
+  [LayerTypes.INDEX] : 1,
 }
 
 const line2_temp4s = util.cachering.fromConstructor(Vector4, 64)
@@ -78,44 +58,40 @@ const line2_stripuvs = [
   [1, 1],
 ]
 
-function appendvec(a, b, n, defaultval) {
-  if (defaultval === undefined) defaultval = 0.0
-
-  for (let i = 0; i < n; i++) {
-    const val = b[i]
-    a.push(val === undefined ? defaultval : val)
-  }
+const getSmoothLineProgram = (p: ShaderProgram) => {
+  const p2 = p as ShaderProgram & {_smoothline?: ShaderProgram}
+  return p2._smoothline
+}
+const setSmoothLineProgram = (p: ShaderProgram, sp: ShaderProgram) => {
+  const p2 = p as ShaderProgram & {_smoothline?: ShaderProgram}
+  p2._smoothline = sp
 }
 
 const _ids_arrs = [[0], [0], [0], [0]]
 const zero = new Vector3()
 
-function copyvec(a, b, starti, n, defaultval) {
-  if (defaultval === undefined) defaultval = 0.0
-
+function copyvec(a: number[], b: number[], starti: number, n: number, defaultval = 0) {
   for (let i = starti; i < starti + n; i++) {
     const val = b[i]
     a[i] = val === undefined ? defaultval : val
   }
 }
 
-export class TriEditor {
-  mesh: SimpleIsland
+export class TriEditor<OPT extends {dead?: true | false} = {dead: true}> {
+  mesh: OptionalIf<SimpleIsland<{dead: false}>, OPT['dead']> = undefined as unknown as SimpleIsland<{dead: false}>
   i: number
 
   constructor() {
-    this.mesh = undefined
     this.i = 0
   }
 
-  bind(mesh: SimpleIsland, i: number): this {
+  bind(mesh: SimpleIsland<{dead: false}>, i: number): TriEditor<OPT & {dead: false}> {
     this.mesh = mesh
     this.i = i
-
-    return this
+    return this as TriEditor<OPT & {dead: false}>
   }
 
-  colors(c1, c2, c3): this {
+  colors(this: TriEditor<{dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector, c3: IOpenNumVector) {
     const data = this.mesh.tri_colors
     const i = this.i * 3 //*3 is because triangles have three vertices
 
@@ -126,7 +102,7 @@ export class TriEditor {
     return this
   }
 
-  normals(n1: INumVector, n2: INumVector, n3: INumVector): this {
+  normals(this: TriEditor<{dead: false}>, n1: IOpenNumVector, n2: IOpenNumVector, n3: IOpenNumVector) {
     const data = this.mesh.tri_normals
 
     const i = this.i * 3 //*3 is because triangles have three vertices
@@ -138,7 +114,7 @@ export class TriEditor {
     return this
   }
 
-  custom(layeri: number, v1: INumVector, v2: INumVector, v3: INumVector): this {
+  custom(this: TriEditor<{dead: false}>, layeri: number, v1: IOpenNumVector, v2: IOpenNumVector, v3: IOpenNumVector) {
     const layer = this.mesh.layers.layers[layeri]
 
     const i = this.i * 3
@@ -149,7 +125,7 @@ export class TriEditor {
     return this
   }
 
-  uvs(u1: INumVector, u2: INumVector, u3: INumVector): this {
+  uvs(this: TriEditor<{dead: false}>, u1: IOpenNumVector, u2: IOpenNumVector, u3: IOpenNumVector) {
     const data = this.mesh.tri_uvs
     const i = this.i * 3 //*3 is because triangles have three vertices
 
@@ -160,7 +136,7 @@ export class TriEditor {
     return this
   }
 
-  ids(i1: number, i2: number, i3: number): this {
+  ids(this: TriEditor<{dead: false}>, i1: number, i2: number, i3: number) {
     if (i1 === undefined || i2 === undefined || i3 === undefined) {
       throw new Error('i1/i2/i3 cannot be undefined')
     }
@@ -175,57 +151,75 @@ export class TriEditor {
     _ids_arrs[2][0] = i3
     const a3 = _ids_arrs[2]
 
-    data.copy(i, a1 as unknown as INumVector)
-    data.copy(i + 1, a2 as unknown as INumVector)
-    data.copy(i + 2, a3 as unknown as INumVector)
+    data.copy(i, a1)
+    data.copy(i + 1, a2)
+    data.copy(i + 2, a3)
 
     return this
   }
 }
 
-export class QuadEditor {
-  t1: TriEditor
-  t2: TriEditor
+export class QuadEditor<OPT extends {dead?: true | false} = {dead: true}> {
+  t1: TriEditor<{dead: OPT['dead']}>
+  t2: TriEditor<{dead: OPT['dead']}>
 
   constructor() {
     this.t1 = new TriEditor()
     this.t2 = new TriEditor()
   }
 
-  bind(island: SimpleIsland, i: number, i2: number): this {
+  bind(island: SimpleIsland<{dead: false}>, i: number, i2: number): QuadEditor<{dead: false}> {
     this.t1.bind(island, i)
     this.t2.bind(island, i2)
-
-    return this
+    return this as QuadEditor<{dead: false}>
   }
 
-  uvs(u1: INumVector, u2: INumVector, u3: INumVector, u4: INumVector) {
+  uvs(this: QuadEditor<{dead: false}>, u1: IOpenNumVector, u2: IOpenNumVector, u3: IOpenNumVector, u4: IOpenNumVector) {
     this.t1.uvs(u1, u2, u3)
     this.t2.uvs(u1, u3, u4)
 
     return this
   }
 
-  custom(li: number, v1: INumVector, v2: INumVector, v3: INumVector, v4: INumVector) {
+  custom(
+    this: QuadEditor<{dead: false}>,
+    li: number,
+    v1: IOpenNumVector,
+    v2: IOpenNumVector,
+    v3: IOpenNumVector,
+    v4: IOpenNumVector
+  ) {
     this.t1.custom(li, v1, v2, v3)
     this.t2.custom(li, v1, v3, v4)
   }
 
-  colors(u1: INumVector, u2: INumVector, u3: INumVector, u4: INumVector) {
+  colors(
+    this: QuadEditor<{dead: false}>,
+    u1: IOpenNumVector,
+    u2: IOpenNumVector,
+    u3: IOpenNumVector,
+    u4: IOpenNumVector
+  ) {
     this.t1.colors(u1, u2, u3)
     this.t2.colors(u1, u3, u4)
 
     return this
   }
 
-  normals(u1: INumVector, u2: INumVector, u3: INumVector, u4: INumVector) {
+  normals(
+    this: QuadEditor<{dead: false}>,
+    u1: IOpenNumVector,
+    u2: IOpenNumVector,
+    u3: IOpenNumVector,
+    u4: IOpenNumVector
+  ) {
     this.t1.normals(u1, u2, u3)
     this.t2.normals(u1, u3, u4)
 
     return this
   }
 
-  ids(u1: number, u2: number, u3: number, u4: number) {
+  ids(this: QuadEditor<{dead: false}>, u1: number, u2: number, u3: number, u4: number) {
     this.t1.ids(u1, u2, u3)
     this.t2.ids(u1, u3, u4)
 
@@ -233,22 +227,21 @@ export class QuadEditor {
   }
 }
 
-export class LineEditor {
-  mesh: SimpleIsland
+export class LineEditor<OPT extends {dead?: true | false} = {dead: true}> {
+  mesh: OptionalIf<SimpleIsland<{dead: false}>, OPT['dead']> = undefined as unknown as SimpleIsland<{dead: false}>
   i: number
 
   constructor() {
-    this.mesh = undefined
     this.i = 0
   }
 
-  bind(mesh: SimpleIsland, i: number): this {
+  bind(mesh: SimpleIsland<{dead: false}>, i: number): LineEditor<OPT & {dead: false}> {
     this.mesh = mesh
     this.i = i
-    return this
+    return this as LineEditor<OPT & {dead: false}>
   }
 
-  colors(c1: INumVector, c2: INumVector): this {
+  colors(this: LineEditor<{dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector) {
     const data = this.mesh.line_colors
     const i = this.i * 2
 
@@ -258,7 +251,7 @@ export class LineEditor {
     return this
   }
 
-  custom(layeri: number, v1: INumVector, v2: INumVector): this {
+  custom(this: LineEditor<{dead: false}>, layeri: number, v1: IOpenNumVector, v2: IOpenNumVector) {
     const layer = this.mesh.layers.layers[layeri]
 
     const i = this.i * 2
@@ -268,7 +261,7 @@ export class LineEditor {
     return this
   }
 
-  normals(c1: INumVector, c2: INumVector): this {
+  normals(this: LineEditor<{dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector) {
     const data = this.mesh.line_normals
     const i = this.i * 2
 
@@ -278,7 +271,7 @@ export class LineEditor {
     return this
   }
 
-  uvs(c1: INumVector, c2: INumVector): this {
+  uvs(this: LineEditor<{dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector) {
     const data = this.mesh.line_uvs
     const i = this.i * 2
 
@@ -288,7 +281,7 @@ export class LineEditor {
     return this
   }
 
-  ids(i1: number, i2: number): this {
+  ids(this: LineEditor<{dead: false}>, i1: number, i2: number) {
     if (i1 === undefined || i2 === undefined) {
       throw new Error('i1 i2 cannot be undefined')
     }
@@ -299,57 +292,28 @@ export class LineEditor {
     _ids_arrs[0][0] = i1
     _ids_arrs[1][0] = i2
 
-    data.copy(i, _ids_arrs[0] as unknown as INumVector)
-    data.copy(i + 1, _ids_arrs[1] as unknown as INumVector)
+    data.copy(i, _ids_arrs[0])
+    data.copy(i + 1, _ids_arrs[1])
 
     return this
   }
 }
 
-class DummyEditor {
-  colors() {
-    return this
-  }
-
-  ids() {
-    return this
-  }
-
-  normals() {
-    return this
-  }
-
-  custom() {
-    return this
-  }
-
-  tangent() {
-    return this
-  }
-
-  uvs() {
-    return this
-  }
-}
-
-const dummyeditor = new DummyEditor()
-
-export class LineEditor2 {
-  mesh: SimpleIsland
+export class LineEditor2<OPT extends {dead?: true | false} = {dead: true}> {
+  mesh: OptionalIf<SimpleIsland<{dead: false}>, OPT['dead']> = undefined as unknown as SimpleIsland<{dead: false}>
   i: number
 
   constructor() {
-    this.mesh = undefined
     this.i = 0
   }
 
-  bind(mesh: SimpleIsland, i: number): this {
+  bind(this: LineEditor2<OPT & {dead: false}>, mesh: SimpleIsland<{dead: false}>, i: number) {
     this.mesh = mesh
     this.i = i
     return this
   }
 
-  custom(layeri: number, c1: INumVector, c2: INumVector): this {
+  custom(this: LineEditor2<OPT & {dead: false}>, layeri: number, c1: IOpenNumVector, c2: IOpenNumVector) {
     const data = this.mesh.layers.layers[layeri]
 
     const i = this.i * 6
@@ -364,7 +328,7 @@ export class LineEditor2 {
     return this
   }
 
-  colors(c1: INumVector, c2: INumVector): this {
+  colors(this: LineEditor2<OPT & {dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector) {
     const data = this.mesh.line_colors2
     const i = this.i * 6
 
@@ -378,7 +342,7 @@ export class LineEditor2 {
     return this
   }
 
-  normals(c1: INumVector, c2: INumVector): this {
+  normals(this: LineEditor2<OPT & {dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector) {
     const data = this.mesh.line_normals2
     const i = this.i * 6
 
@@ -392,7 +356,7 @@ export class LineEditor2 {
     return this
   }
 
-  uvs(c1: INumVector, c2: INumVector): this {
+  uvs(this: LineEditor2<OPT & {dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector) {
     const data = this.mesh.line_uvs2
     const i = this.i * 6
 
@@ -406,7 +370,7 @@ export class LineEditor2 {
     return this
   }
 
-  ids(i1: number, i2: number): this {
+  ids(this: LineEditor2<OPT & {dead: false}>, i1: number, i2: number) {
     if (i1 === undefined || i2 === undefined) {
       throw new Error('i1 i2 cannot be undefined')
     }
@@ -420,33 +384,33 @@ export class LineEditor2 {
     c1[0] = i1
     c2[0] = i2
 
-    data.copy(i + 0, c1 as unknown as INumVector)
-    data.copy(i + 1, c1 as unknown as INumVector)
-    data.copy(i + 2, c2 as unknown as INumVector)
-    data.copy(i + 3, c1 as unknown as INumVector)
-    data.copy(i + 4, c2 as unknown as INumVector)
-    data.copy(i + 5, c2 as unknown as INumVector)
+    data.copy(i + 0, c1)
+    data.copy(i + 1, c1)
+    data.copy(i + 2, c2)
+    data.copy(i + 3, c1)
+    data.copy(i + 4, c2)
+    data.copy(i + 5, c2)
 
     return this
   }
 }
 
-export class PointEditor {
-  mesh: SimpleIsland
+export class PointEditor<OPT extends {dead?: true | false} = {dead: true}> {
+  mesh: OptionalIf<SimpleIsland<{dead: false}>, OPT['dead']>
   i: number
 
   constructor() {
-    this.mesh = undefined
+    this.mesh = undefined as unknown as SimpleIsland<{dead: false}>
     this.i = 0
   }
 
-  bind(mesh: SimpleIsland, i: number): this {
+  bind(this: PointEditor<OPT & {dead: false}>, mesh: SimpleIsland<{dead: false}>, i: number) {
     this.mesh = mesh
     this.i = i
     return this
   }
 
-  colors(c1: INumVector): this {
+  colors(this: PointEditor<OPT & {dead: false}>, c1: IOpenNumVector) {
     const data = this.mesh.point_colors
     const i = this.i
 
@@ -455,7 +419,7 @@ export class PointEditor {
     return this
   }
 
-  normals(c1: INumVector): this {
+  normals(this: PointEditor<OPT & {dead: false}>, c1: IOpenNumVector) {
     const data = this.mesh.point_normals
     const i = this.i
 
@@ -464,7 +428,7 @@ export class PointEditor {
     return this
   }
 
-  uvs(c1: INumVector): this {
+  uvs(this: PointEditor<OPT & {dead: false}>, c1: IOpenNumVector) {
     const data = this.mesh.point_uvs
     const i = this.i
 
@@ -473,7 +437,7 @@ export class PointEditor {
     return this
   }
 
-  ids(i1: number): this {
+  ids(this: PointEditor<OPT & {dead: false}>, i1: number) {
     if (i1 === undefined) {
       throw new Error('i1 cannot be undefined')
     }
@@ -482,7 +446,7 @@ export class PointEditor {
     const i = this.i
 
     _ids_arrs[0][0] = i1
-    data.copy(i, _ids_arrs[0] as unknown as INumVector)
+    data.copy(i, _ids_arrs[0])
 
     return this
   }
@@ -616,13 +580,13 @@ export class GeoLayer extends Array {
   _useTypedData: boolean
   data: number[]
   data_f32: Float32Array | number[]
-  dataUsed: number
+  dataUsed: number = 0
   f32Ready: boolean
   normalized: boolean
   size: number
   name: string
   primflag: number
-  bufferKey?: string
+  bufferKey: string = ''
   idx: number
   id?: number
 
@@ -656,7 +620,7 @@ export class GeoLayer extends Array {
     this.name = name
 
     this.primflag = primflag
-    this.bufferKey = undefined
+    this.bufferKey = ''
     this.idx = idx
     this.id = undefined
   }
@@ -698,13 +662,13 @@ export class GeoLayer extends Array {
     return this
   }
 
-  extend(data: INumVector, count = 1) {
+  extend(data: IOpenNumVector, count = 1) {
     for (let i = 0; i < count; i++) {
       this.extendIntern(data, i * this.size)
     }
   }
 
-  private extendIntern(data: INumVector, dataStart: number) {
+  private extendIntern(data: IOpenNumVector, dataStart: number) {
     if (this._useTypedData && this.dataUsed >= this.data_f32.length) {
       if (window.DEBUG.simplemesh) {
         console.warn('Resizing simplemesh attribute after conversion to a typed array')
@@ -778,7 +742,7 @@ export class GeoLayer extends Array {
 
         this.f32Ready = false
       } else {
-        if (window.DEBUG && window.DEBUG.simplemesh) {
+        if (window.DEBUG?.simplemesh) {
           console.log('simpleisland is converting back to simple array', count, this.data_f32.length, this.dataUsed)
         }
 
@@ -802,19 +766,19 @@ export class GeoLayer extends Array {
     }
   }
 
-  _copy2Typed(data1: INumVector, data2: INumVector, n: number, mul: number, start: number, dataStart: number) {
+  _copy2Typed(data1: IOpenNumVector, data2: IOpenNumVector, n: number, mul: number, start: number, dataStart: number) {
     for (let i = 0; i < n; i++) {
       data1[start++] = ~~(data2[dataStart + i] * mul)
     }
   }
 
-  _copy2(data1: INumVector, data2: INumVector, n: number, mul: number, start: number, dataStart: number) {
+  _copy2(data1: IOpenNumVector, data2: IOpenNumVector, n: number, mul: number, start: number, dataStart: number) {
     for (let i = 0; i < n; i++) {
       data1[start++] = ~~(data2[dataStart + i] * mul)
     }
   }
 
-  _copy_int(i: number, data: INumVector, n = 1, dataStart = 0) {
+  _copy_int(i: number, data: IOpenNumVector, n = 1, dataStart = 0) {
     const tot = n * this.size
     this.f32Ready = false
 
@@ -853,7 +817,7 @@ export class GeoLayer extends Array {
   }
 
   /** i and n will be multiplied by .size, dataStart will not */
-  copy(i: number, data: INumVector, n = 1, dataStart = 0) {
+  copy(i: number, data: IOpenNumVector, n = 1, dataStart = 0) {
     //V8's optimizer doesn't like it if we pass floats
     //to integer typed arrays, even if we multiply them by
     //the proper range scale first.  They must be truncated.
@@ -973,7 +937,7 @@ export class GeoLayerManager {
     ret.has_multilayers = this.has_multilayers
 
     for (const key of this.layer_meta.keys()) {
-      const meta = this.layer_meta.get(key)
+      const meta = this.layer_meta.get(key)!
       const meta2 = ret.get_meta(meta.primflag, meta.type)
 
       for (const layer of meta.layers) {
@@ -990,10 +954,6 @@ export class GeoLayerManager {
         layer2.index = layer.index
         layer2.bufferKey = layer.bufferKey
         layer2.normalized = layer.normalized
-
-        const a = layer.data
-        const b = layer2.data
-        const len = layer.dataUsed
 
         if (layer._useTypedData) {
           layer2.data_f32 = layer.data_f32.slice(0, layer.data_f32.length)
@@ -1019,15 +979,15 @@ export class GeoLayerManager {
       this.layer_meta.set(mask, new GeoLayerMeta(primflag, type, attrsizes))
     }
 
-    return this.layer_meta.get(mask)
+    return this.layer_meta.get(mask)!
   }
 
   [Symbol.iterator]() {
     return this.layers[Symbol.iterator]()
   }
 
-  extend(primflag: PrimitiveTypes, type: number, data: INumVector, count = 1): this {
-    const meta = this.get_meta(primflag, type)
+  extend(primflag: PrimitiveTypes, type: number, data: IOpenNumVector, count = 1): this {
+    const meta = this.get_meta(primflag, type)!
 
     for (let i = 0; i < meta.layers.length; i++) {
       meta.layers[i].extend(data, count)
@@ -1037,7 +997,7 @@ export class GeoLayerManager {
   }
 
   layerCount(primflag: PrimitiveTypes, type: number): number {
-    return this.get_meta(primflag, type).layers.length
+    return this.get_meta(primflag, type)?.layers?.length ?? 0
   }
 
   pushLayer(name: string, primflag: number, type: number, size: number): GeoLayer {
@@ -1064,7 +1024,11 @@ export class GeoLayerManager {
       size = TypeSizes[type]
     }
 
-    if (idx > 0) {
+    if (size === undefined) {
+      throw new Error('invalid type ' + type)
+    }
+
+    if (idx !== undefined && idx > 0) {
       this.has_multilayers = true
     }
 
@@ -1093,11 +1057,12 @@ const _default_color = [0, 0, 0, 1]
 const _default_normal = [0, 0, 1]
 const _default_id = [-1]
 
-export class SimpleIsland {
-  gl: WebGL2RenderingContext
+export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
+  gl: OptionalIf<WebGL2RenderingContext, OPT['dead']>
   layers: GeoLayerManager
   _glAttrs: {[k: string]: number}
-  primflag: number
+  /** If undefined, will get from owning simplemesh's primflag. */
+  primflag?: number
   mesh: SimpleMesh
   totpoint: number
   totline: number
@@ -1113,24 +1078,24 @@ export class SimpleIsland {
   regen: boolean
   _regen_all: PrimitiveTypes
 
-  indexedMode: boolean
-  layerflag: LayerTypes
+  /** If undefined, will get from owning simplemesh's primflag. */
+  indexedMode?: boolean
+  /** If undefined, will get from owning simplemesh's primflag. */
+  _layerflag?: LayerTypes
 
   buffer: RenderBuffer
-  program: any
+  program: OptionalIf<ShaderProgram, OPT['dead']>
   textures: any[]
-  uniforms: any
+  uniforms: IUniformsBlock
   _uniforms_temp: any
+  private extraLayerFlag: number = 0
 
   constructor(mesh: SimpleMesh) {
-    const lay = (this.layers = new GeoLayerManager())
-
+    this.layers = new GeoLayerManager()
     this._glAttrs = {}
-
     this.primflag = undefined //if undefined, will get from this.mesh.primflag
 
     this.mesh = mesh
-
     this.makeBufferAliases()
 
     this.totpoint = 0
@@ -1139,7 +1104,6 @@ export class SimpleIsland {
     this.totline_tristrip = 0
 
     this.indexedMode = undefined //inherited from mesh
-    this.layerflag = undefined
 
     this.regen = true
     this._regen_all = 0
@@ -1152,11 +1116,14 @@ export class SimpleIsland {
     this.tristrip_line_editors = util.cachering.fromConstructor(LineEditor2, 32, true)
 
     this.buffer = new RenderBuffer()
-    this.program = undefined
 
     this.textures = []
     this.uniforms = {}
     this._uniforms_temp = {}
+  }
+
+  public get layerflag() {
+    return (this._layerflag ?? this.mesh.layerflag) | this.extraLayerFlag
   }
 
   reset(gl: WebGL2RenderingContext): void {
@@ -1207,32 +1174,33 @@ export class SimpleIsland {
     return this
   }
 
-  tri_cos: GeoLayer
-  tri_normals: GeoLayer
-  tri_uvs: GeoLayer
-  tri_colors: GeoLayer
-  tri_ids: GeoLayer
+  tri_cos: OptionalIf<GeoLayer, OPT['dead']>
+  tri_normals: OptionalIf<GeoLayer, OPT['dead']>
+  tri_uvs: OptionalIf<GeoLayer, OPT['dead']>
+  tri_colors: OptionalIf<GeoLayer, OPT['dead']>
+  tri_ids: OptionalIf<GeoLayer, OPT['dead']>
 
-  line_cos: GeoLayer
-  line_normals: GeoLayer
-  line_uvs: GeoLayer
-  line_colors: GeoLayer
-  line_ids: GeoLayer
+  line_cos: OptionalIf<GeoLayer, OPT['dead']>
+  line_normals: OptionalIf<GeoLayer, OPT['dead']>
+  line_uvs: OptionalIf<GeoLayer, OPT['dead']>
+  line_colors: OptionalIf<GeoLayer, OPT['dead']>
+  line_ids: OptionalIf<GeoLayer, OPT['dead']>
 
-  line_cos2: GeoLayer
-  line_normals2: GeoLayer
-  line_uvs2: GeoLayer
-  line_colors2: GeoLayer
-  line_ids2: GeoLayer
+  line_cos2: OptionalIf<GeoLayer, OPT['dead']>
+  line_normals2: OptionalIf<GeoLayer, OPT['dead']>
+  line_uvs2: OptionalIf<GeoLayer, OPT['dead']>
+  line_colors2: OptionalIf<GeoLayer, OPT['dead']>
+  line_ids2: OptionalIf<GeoLayer, OPT['dead']>
 
-  point_cos: GeoLayer
-  point_normals: GeoLayer
-  point_uvs: GeoLayer
-  point_colors: GeoLayer
-  point_ids: GeoLayer
+  point_cos: OptionalIf<GeoLayer, OPT['dead']>
+  point_normals: OptionalIf<GeoLayer, OPT['dead']>
+  point_uvs: OptionalIf<GeoLayer, OPT['dead']>
+  point_colors: OptionalIf<GeoLayer, OPT['dead']>
+  point_ids: OptionalIf<GeoLayer, OPT['dead']>
 
-  line_stripuvs: GeoLayer
-  line_stripdirs: GeoLayer
+  line_stripuvs: OptionalIf<GeoLayer, OPT['dead']>
+  line_stripdirs: OptionalIf<GeoLayer, OPT['dead']>
+  line_dirs2: OptionalIf<GeoLayer, OPT['dead']>
 
   makeBufferAliases(): void {
     const lay = this.layers
@@ -1267,7 +1235,8 @@ export class SimpleIsland {
       .setNormalized(true) //array
     this.point_ids = lay.get('point_ids', pflag, LayerTypes.ID) //array
 
-    if (this.primflag & PrimitiveTypes.ADVANCED_LINES) {
+    const primflag = this.primflag ?? this.mesh.primflag
+    if (primflag & PrimitiveTypes.ADVANCED_LINES) {
       pflag = PrimitiveTypes.ADVANCED_LINES
 
       this.line_cos2 = lay.get('line_cos2', pflag, LayerTypes.LOC) //array
@@ -1288,11 +1257,12 @@ export class SimpleIsland {
     }
   }
 
-  copy(): SimpleIsland {
-    const ret = new SimpleIsland(this.mesh)
+  copy(): SimpleIsland<OPT> {
+    const ret = new SimpleIsland<OPT>(this.mesh)
 
     ret.primflag = this.primflag
-    ret.layerflag = this.layerflag
+    ret._layerflag = this._layerflag
+    ret.extraLayerFlag = this.extraLayerFlag
 
     ret.totline = this.totline
     ret.tottri = this.tottri
@@ -1319,7 +1289,7 @@ export class SimpleIsland {
     this._regen_all |= primflag
   }
 
-  point(v1: INumVector): PointEditor {
+  point(this: SimpleIsland<OPT & {dead: false}>, v1: IOpenNumVector): PointEditor<{dead: false}> {
     this.point_cos.extend(v1)
 
     this._newElem(PrimitiveTypes.POINTS, 1)
@@ -1328,22 +1298,26 @@ export class SimpleIsland {
     return this.point_editors.next().bind(this, this.totpoint - 1)
   }
 
-  smoothline(v1: INumVector, v2: INumVector, w1 = 2, w2 = 2): LineEditor2 {
+  smoothline(
+    this: SimpleIsland<OPT & {dead: false}>,
+    v1: IOpenNumVector,
+    v2: IOpenNumVector,
+    w1 = 2,
+    w2 = 2
+  ): LineEditor2<{dead: false}> {
     let dv = 0.0
     for (let i = 0; i < 3; i++) {
       dv += (v1[i] - v2[i]) * (v1[i] - v2[i])
     }
 
-    if (!this.line_cos2) {
+    this.extraLayerFlag |= LayerTypes.CUSTOM
+
+    if (!this.line_cos2 || !(this.extraLayerFlag & LayerTypes.CUSTOM)) {
       this.regen = true
-      this.primflag |= PrimitiveTypes.ADVANCED_LINES
-
-      if (this.layerflag !== undefined) {
-        this.layerflag |= LayerTypes.CUSTOM
-      } else {
-        this.mesh.layerflag |= LayerTypes.CUSTOM
+      if (this.primflag === undefined) {
+        this.primflag = this.mesh.primflag
       }
-
+      this.primflag |= PrimitiveTypes.ADVANCED_LINES
       this.makeBufferAliases()
     }
 
@@ -1368,12 +1342,12 @@ export class SimpleIsland {
 
     const i = this.totline_tristrip * 6
 
-    this.line_stripuvs.copy(i, line2_stripuvs[0] as unknown as INumVector)
-    this.line_stripuvs.copy(i + 1, line2_stripuvs[1] as unknown as INumVector)
-    this.line_stripuvs.copy(i + 2, line2_stripuvs[2] as unknown as INumVector)
-    this.line_stripuvs.copy(i + 3, line2_stripuvs[3] as unknown as INumVector)
-    this.line_stripuvs.copy(i + 4, line2_stripuvs[4] as unknown as INumVector)
-    this.line_stripuvs.copy(i + 5, line2_stripuvs[5] as unknown as INumVector)
+    this.line_stripuvs.copy(i + 0, line2_stripuvs[0])
+    this.line_stripuvs.copy(i + 1, line2_stripuvs[1])
+    this.line_stripuvs.copy(i + 2, line2_stripuvs[2])
+    this.line_stripuvs.copy(i + 3, line2_stripuvs[3])
+    this.line_stripuvs.copy(i + 4, line2_stripuvs[4])
+    this.line_stripuvs.copy(i + 5, line2_stripuvs[5])
 
     const d = line2_temp4s
       .next()
@@ -1383,23 +1357,23 @@ export class SimpleIsland {
     d.normalize()
 
     d[3] = w1
-    this.line_stripdirs.copy(i, d as unknown as INumVector)
-    this.line_stripdirs.copy(i + 1, d as unknown as INumVector)
+    this.line_stripdirs.copy(i, d)
+    this.line_stripdirs.copy(i + 1, d)
     d[3] = w2
-    this.line_stripdirs.copy(i + 2, d as unknown as INumVector)
+    this.line_stripdirs.copy(i + 2, d)
 
     d[3] = w1
-    this.line_stripdirs.copy(i + 3, d as unknown as INumVector)
+    this.line_stripdirs.copy(i + 3, d)
     d[3] = w2
-    this.line_stripdirs.copy(i + 4, d as unknown as INumVector)
-    this.line_stripdirs.copy(i + 5, d as unknown as INumVector)
+    this.line_stripdirs.copy(i + 4, d)
+    this.line_stripdirs.copy(i + 5, d)
 
     this.totline_tristrip++
 
     return this.tristrip_line_editors.next().bind(this, this.totline_tristrip - 1)
   }
 
-  line(v1: INumVector, v2: INumVector): LineEditor {
+  line(this: SimpleIsland<OPT & {dead: false}>, v1: IOpenNumVector, v2: IOpenNumVector): LineEditor<{dead: false}> {
     //return this.smoothline(v1, v2);
 
     this.line_cos.extend(v1)
@@ -1412,37 +1386,42 @@ export class SimpleIsland {
   }
 
   _newElem(primtype: PrimitiveTypes, primcount: number): number {
-    const layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag
+    const layerflag = this.layerflag
 
     const meta = this.layers.get_meta(primtype, LayerTypes.LOC)
     const start = meta.layers[0].dataUsed / meta.layers[0].size
 
     for (let j = 0; j < primcount; j++) {
       if (layerflag & LayerTypes.UV) {
-        this.layers.extend(primtype, LayerTypes.UV, _default_uv as unknown as INumVector)
+        this.layers.extend(primtype, LayerTypes.UV, _default_uv)
       }
 
       if (layerflag & LayerTypes.CUSTOM) {
-        this.layers.extend(primtype, LayerTypes.CUSTOM, _default_uv as unknown as INumVector)
+        this.layers.extend(primtype, LayerTypes.CUSTOM, _default_uv)
       }
 
       if (layerflag & LayerTypes.COLOR) {
-        this.layers.extend(primtype, LayerTypes.COLOR, _default_color as unknown as INumVector)
+        this.layers.extend(primtype, LayerTypes.COLOR, _default_color)
       }
 
       if (layerflag & LayerTypes.NORMAL) {
-        this.layers.extend(primtype, LayerTypes.NORMAL, _default_normal as unknown as INumVector)
+        this.layers.extend(primtype, LayerTypes.NORMAL, _default_normal)
       }
 
       if (layerflag & LayerTypes.ID) {
-        this.layers.extend(primtype, LayerTypes.ID, _default_id as unknown as INumVector)
+        this.layers.extend(primtype, LayerTypes.ID, _default_id)
       }
     }
 
     return start
   }
 
-  tri(v1: INumVector, v2: INumVector, v3: INumVector): TriEditor {
+  tri(
+    this: SimpleIsland<OPT & {dead: false}>,
+    v1: IOpenNumVector,
+    v2: IOpenNumVector,
+    v3: IOpenNumVector
+  ): TriEditor<{dead: false}> {
     this.tri_cos.extend(v1)
     this.tri_cos.extend(v2)
     this.tri_cos.extend(v3)
@@ -1454,7 +1433,13 @@ export class SimpleIsland {
     return this.tri_editors.next().bind(this, this.tottri - 1)
   }
 
-  quad(v1: INumVector, v2: INumVector, v3: INumVector, v4: INumVector): QuadEditor {
+  quad(
+    this: SimpleIsland<OPT & {dead: false}>,
+    v1: IOpenNumVector,
+    v2: IOpenNumVector,
+    v3: IOpenNumVector,
+    v4: IOpenNumVector
+  ): QuadEditor<{dead: false}> {
     const i = this.tottri
 
     this.tri(v1, v2, v3)
@@ -1463,13 +1448,18 @@ export class SimpleIsland {
     return this.quad_editors.next().bind(this, i, i + 1)
   }
 
-  destroy(gl: WebGL2RenderingContext): void {
-    this.buffer.destroy(gl)
+  destroy(gl = this.gl): void {
+    if (gl === undefined) {
+      console.warn('failed to destroy a mesh')
+    } else {
+      this.buffer.destroy(gl)
+    }
     this.regen = true
   }
 
   gen_buffers(gl: WebGL2RenderingContext): void {
-    const layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag
+    this.gl = gl
+    const layerflag = this.layerflag
 
     const allflag = this._regen_all
     this._regen_all = 0
@@ -1489,7 +1479,7 @@ export class SimpleIsland {
 
         const typedarray = glTypeArrays[layer.glSize]
 
-        if (!layer.data_f32 || layer.data_f32.length !== layer.dataUsed) {
+        if (layer.data_f32?.length !== layer.dataUsed) {
           if (window.DEBUG.simplemesh) {
             console.warn('new layer data', layer.data_f32, layer)
           }
@@ -1594,11 +1584,12 @@ export class SimpleIsland {
   _draw_line_tristrips(gl: WebGL2RenderingContext, uniforms: any, params: any, program?: ShaderProgram): void {
     const attrs = this._glAttrs
 
-    if (this.totline_tristrip) {
-      //program = Shaders.LineTriStripShader;
-      //program.bind(gl, uniforms);
+    program = program ?? Shaders.LineTriStripShader
 
-      if (!(program as unknown as any)._smoothline) {
+    if (this.totline_tristrip) {
+      let _smoothline = getSmoothLineProgram(program)
+
+      if (_smoothline === undefined) {
         const uniforms2 = Object.assign({}, uniforms)
         const attributes = new Set(program.attrs)
 
@@ -1628,11 +1619,12 @@ export class SimpleIsland {
         const sdef = {
           vertex,
           fragment,
-          uniforms: uniforms2,
-          attributes,
+          uniforms  : uniforms2,
+          attributes: Array.from(attributes),
         }
 
-        ;(program as unknown as any)._smoothline = loadShader(gl, sdef)
+        _smoothline = loadShader(gl, sdef)
+        setSmoothLineProgram(program, _smoothline)
         //console.warn("Auto-generating smooth line shader");
         //let sdef = {
         //vertexProgram :
@@ -1670,7 +1662,7 @@ export class SimpleIsland {
   ): void {
     program = program === undefined ? this.program : program
     program = program === undefined ? this.mesh.program : program
-    const layerflag = this.layerflag === undefined ? this.mesh.layerflag : this.layerflag
+    const layerflag = this.layerflag
 
     if (program && !program.program) {
       //program.checkCompile(gl, uniforms);
@@ -1904,9 +1896,9 @@ export class SimpleMesh {
   primflag: PrimitiveTypes
   indexedMode: boolean
   gl: WebGL2RenderingContext | undefined
-  islands: SimpleIsland[]
-  uniforms: any
-  island: SimpleIsland
+  islands: SimpleIsland<{dead: false}>[]
+  uniforms: IUniformsBlock
+  island: SimpleIsland<{dead: false}>
 
   constructor(layerflag = LayerTypes.LOC | LayerTypes.NORMAL | LayerTypes.UV) {
     this.layerflag = layerflag
@@ -1997,51 +1989,40 @@ export class SimpleMesh {
     return ret
   }
 
-  add_island(): SimpleIsland {
-    const island = new SimpleIsland(this)
-
+  add_island(): SimpleIsland<{dead: false}> {
+    const island = new SimpleIsland<{dead: false}>(this)
     this.island = island
-
     this.islands.push(island)
     return island
   }
 
-  destroy(gl = this.gl!) {
-    //XXX bad use of global variable
-    if (this.gl === undefined && window._appstate) {
-      gl = window._appstate.gl
-    }
-
-    if (!gl) {
-      console.warn('failed to destroy a mesh')
-      return
-    }
+  destroy(gl = this.gl) {
     for (const island of this.islands) {
       island.destroy(gl)
     }
   }
 
-  tri(v1: INumVector, v2: INumVector, v3: INumVector): TriEditor {
+  tri(v1: IOpenNumVector, v2: IOpenNumVector, v3: IOpenNumVector): TriEditor<{dead: false}> {
     return this.island.tri(v1, v2, v3)
   }
 
-  quad(v1: INumVector, v2: INumVector, v3: INumVector, v4: INumVector): QuadEditor {
+  quad(v1: IOpenNumVector, v2: IOpenNumVector, v3: IOpenNumVector, v4: IOpenNumVector): QuadEditor<{dead: false}> {
     return this.island.quad(v1, v2, v3, v4)
   }
 
-  line(v1: INumVector, v2: INumVector): LineEditor {
+  line(v1: IOpenNumVector, v2: IOpenNumVector): LineEditor<{dead: false}> {
     return this.island.line(v1, v2)
   }
 
-  point(v1: INumVector): PointEditor {
+  point(v1: IOpenNumVector): PointEditor<{dead: false}> {
     return this.island.point(v1)
   }
 
-  smoothline(v1: INumVector, v2: INumVector): LineEditor2 {
+  smoothline(v1: IOpenNumVector, v2: IOpenNumVector): LineEditor2<{dead: false}> {
     return this.island.smoothline(v1, v2)
   }
 
-  drawLines(gl: WebGL2RenderingContext, uniforms: any, program_override?: ShaderProgram): void {
+  drawLines(gl: WebGL2RenderingContext, uniforms: IUniformsBlock, program_override?: ShaderProgram): void {
     for (const island of this.islands) {
       const primflag = island.primflag
 
@@ -2051,7 +2032,7 @@ export class SimpleMesh {
     }
   }
 
-  draw(gl: WebGL2RenderingContext, uniforms?: any, program_override?: ShaderProgram): void {
+  draw(gl: WebGL2RenderingContext, uniforms?: IUniformsBlock, program_override?: ShaderProgram): void {
     this.gl = gl
 
     for (const island of this.islands) {
@@ -2096,7 +2077,8 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
     this.primflag = PrimitiveTypes.TRIS
 
-    this.island = undefined
+    // XXX could use an assumption tag here
+    this.island = undefined as unknown as typeof this.island
 
     this.quad_editors = util.cachering.fromConstructor(QuadEditor, 32, true)
 
@@ -2132,7 +2114,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     this.freeset.add(id)
 
     const island = this.islands[chunk]
-    const i = this.idmap.get(id)
+    const i = this.idmap.get(id)!
     //console.log("free", id, chunk);
 
     //if (this.primflag & PrimitiveTypes.POINTS) {
@@ -2183,12 +2165,12 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     */
 
     if (this.chunkmap.has(id)) {
-      return this.islands[this.chunkmap.get(id)]
+      return this.islands[this.chunkmap.get(id)!]
     }
 
-    if (this.freelist.length > 0) {
-      const id2 = this.freelist.pop()
-      const chunk = this.freelist.pop()
+    if (this.freelist.length > 1) {
+      const id2 = this.freelist.pop()!
+      const chunk = this.freelist.pop()!
 
       this.chunkmap.set(id, chunk)
       this.idmap.set(id, id2)
@@ -2224,7 +2206,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   }
 
   // @ts-ignore
-  tri(id: number, v1: INumVector, v2: INumVector, v3: INumVector): TriEditor {
+  tri(id: number, v1: IOpenNumVector, v2: IOpenNumVector, v3: IOpenNumVector): TriEditor {
     if (0) {
       function isvec(v) {
         if (!v) {
@@ -2251,8 +2233,8 @@ export class ChunkedSimpleMesh extends SimpleMesh {
       }
     }
 
-    const chunk = this.get_chunk(id)
-    const itri = this.idmap.get(id)
+    const chunk = this.get_chunk(id)!
+    const itri = this.idmap.get(id)!
 
     chunk.flagRecalc()
     chunk.glFlagUploadAll(PrimitiveTypes.TRIS)
@@ -2291,14 +2273,14 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     return chunk.tri_editors.next().bind(chunk, itri)
   }
 
-  quad(v1: INumVector, v2: INumVector, v3: INumVector, v4: INumVector): QuadEditor {
+  quad(v1: IOpenNumVector, v2: IOpenNumVector, v3: IOpenNumVector, v4: IOpenNumVector): QuadEditor<{dead: false}> {
     throw new Error('unsupported for chunked meshes')
   }
 
   // @ts-ignore
-  smoothline(id: number, v1: INumVector, v2: INumVector): LineEditor2 {
+  smoothline(id: number, v1: IOpenNumVector, v2: IOpenNumVector): LineEditor2 {
     const chunk = this.get_chunk(id)
-    let iline = this.idmap.get(id)
+    let iline = this.idmap.get(id)!
 
     chunk.flagRecalc()
     chunk.glFlagUploadAll(PrimitiveTypes.ADVANCED_LINES)
@@ -2357,11 +2339,11 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   }
 
   // @ts-ignore
-  line(id: number, v1: INumVector, v2: INumVector): LineEditor {
+  line(id: number, v1: IOpenNumVector, v2: IOpenNumVector): LineEditor {
     //return this.smoothline(id, v1, v2);
 
     const chunk = this.get_chunk(id)
-    const iline = this.idmap.get(id)
+    const iline = this.idmap.get(id)!
 
     chunk.flagRecalc()
     chunk.glFlagUploadAll(PrimitiveTypes.LINES)
@@ -2391,9 +2373,9 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   }
 
   // @ts-ignore
-  point(id: number, v1: INumVector): PointEditor {
+  point(id: number, v1: IOpenNumVector): PointEditor {
     const chunk = this.get_chunk(id)
-    const ipoint = this.idmap.get(id)
+    const ipoint = this.idmap.get(id)!
 
     chunk.flagRecalc()
     chunk.glFlagUploadAll(PrimitiveTypes.POINTS)

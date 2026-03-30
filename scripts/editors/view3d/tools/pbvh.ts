@@ -10,7 +10,7 @@ import * as util from '../../../util/util.js'
 
 import '../../../subsurf/subsurf_loop_stencil.js'
 
-import {AttrRef, ColorLayerElem, IntElem, Mesh, Vertex} from '../../../mesh/mesh.js'
+import {AttrRef, ColorLayerElem, IntElem, MaskElem, Mesh, Vertex} from '../../../mesh/mesh.js'
 import {Shapes} from '../../../core/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {Vector2, Vector3, Vector4, Matrix4} from '../../../util/vectormath.js'
@@ -996,7 +996,7 @@ export class BVHToolMode extends ToolMode {
 
     super.onInactive()
 
-    const ob = ctx.object
+    const ob = ctx.object!
     if ((ob.data instanceof Mesh || ob.data instanceof TetMesh) && ob.data.bvh) {
       if (ob.data instanceof Mesh) {
         ob.data.regenTessellation()
@@ -1005,7 +1005,7 @@ export class BVHToolMode extends ToolMode {
         ob.data.regenRender()
         ob.data.regenNormals()
 
-        ob.data.bvh.destroy(ob.data)
+        ob.data.bvh.destroy(ob.data as unknown as Mesh)
         ob.data.bvh = undefined
       }
     }
@@ -1523,61 +1523,18 @@ export class BVHToolMode extends ToolMode {
 
     function vcavity(v: any): number {
       return 1.0 - calcConcave(v)
-      let sum = 0.0,
-        tot = 0.0
-
-      if (have_grids) {
-        for (const v2 of v.neighbors) {
-          nv1.load(v.co).sub(v2.co).normalize()
-          const dot = -nv1.dot(v2.no)
-
-          sum += dot
-          tot++
-        }
-      } else {
-        nv1.zero()
-
-        for (const e of v.edges) {
-          const v2 = e.otherVertex(v)
-
-          nv1.load(v.co).sub(v2.co).normalize()
-          //nv2.load(v.no).cross(nv1);
-
-          let dot
-          //dot = 2.0 - v.no.dot(v2.no);
-
-          dot = -nv1.dot(v2.no)
-
-          sum += dot
-          tot++
-        }
-      }
-
-      if (tot) {
-        let f = sum / tot
-        f = Math.min(Math.max(f, -0.9999), 0.99999)
-
-        f = 0.5 + f * 0.5
-        f *= 1.8
-
-        f = Math.min(Math.max(f, 0.0), 1.0)
-        f = Math.pow(f, 9.0)
-        return f * 0.5 + 0.5
-      }
-
-      return 1.0
     }
 
-    let cd_mask
+    let cd_mask: AttrRef<MaskElem>
 
     if (have_grids) {
-      cd_mask = mesh.loops.customData.getLayerIndex('mask')
+      cd_mask = mesh.loops.customData.getLayerRef('mask')
     } else {
-      cd_mask = mesh.verts.customData.getLayerIndex('mask')
+      cd_mask = mesh.verts.customData.getLayerRef('mask')
     }
 
-    if (this.drawMask && cd_mask !== this._last_cd_mask) {
-      this._last_cd_mask = cd_mask
+    if (this.drawMask && cd_mask.i !== this._last_cd_mask) {
+      this._last_cd_mask = cd_mask.i
 
       for (const node of bvh.nodes) {
         bvh.updateNodes.add(node)
@@ -1642,7 +1599,7 @@ export class BVHToolMode extends ToolMode {
         totvert += n2.indexVerts?.length ?? 0
         tottri += ~~((n2.indexTris.length ?? 0) / 3 + 0.00001)
 
-        if (drawMask && cd_mask >= 0 && n2.flag & BVHFlags.UPDATE_MASK) {
+        if (drawMask && cd_mask.i >= 0 && n2.flag & BVHFlags.UPDATE_MASK) {
           n2.flag &= ~BVHFlags.UPDATE_MASK
           updateColors = true
         }
@@ -1903,8 +1860,8 @@ export class BVHToolMode extends ToolMode {
 
           let colormul2 = colormul
 
-          if (drawMask && cd_mask >= 0) {
-            const mask = v.customData[cd_mask].value
+          if (drawMask && cd_mask.i >= 0) {
+            const mask = v.customData.get(cd_mask).value
             colormul2 *= mask * 0.8 + 0.2
           }
 

@@ -19,7 +19,7 @@
 We use a fork of prettier for code formatting (it formats
 object literals a bit nicer).
 
-## Type assumptions
+## Type assumption tags
 
 Optimization often leads us to break the type system by assigning undefined to non-optional properties (e.g. a pooled object in the 'dead' state):
 
@@ -49,7 +49,7 @@ class Bleh<OPT extends {dead?: true | false} = {}> {
     this.bleh2 = b
   }
   
-  // note: you can restrict methods to certain attributes
+  // note: you can restrict methods to certain tags
   onDead = function(this: Bleh<OPT & {dead: true}>) {
     this.bleh2 = undefined
   }

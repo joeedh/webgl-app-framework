@@ -1,5 +1,3 @@
-import {Shaders} from '../../scripts/shaders/shaders.js';
-
 export function makeCurvToolMode(api) {
   let exports = {};
 
@@ -241,7 +239,7 @@ export function makeCurvToolMode(api) {
         if (this.curveMesh) {
           gl.enable(gl.DEPTH_TEST);
 
-          this.curveMesh.draw(gl, uniforms, Shaders.WidgetMeshShader);
+          this.curveMesh.draw(gl, uniforms, api.Shaders.WidgetMeshShader);
         }
       }
     }

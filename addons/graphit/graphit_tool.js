@@ -1,5 +1,3 @@
-import {Shaders} from '../../scripts/shaders/shaders.js';
-
 export function makeGraphItToolMode(api) {
   let exports = {};
 
@@ -162,7 +160,7 @@ export function makeGraphItToolMode(api) {
 
         if (this.paramMesh) {
           gl.enable(gl.DEPTH_TEST);
-          this.paramMesh.draw(gl, uniforms, Shaders.WidgetMeshShader);
+          this.paramMesh.draw(gl, uniforms, api.Shaders.WidgetMeshShader);
         }
       }
     }
