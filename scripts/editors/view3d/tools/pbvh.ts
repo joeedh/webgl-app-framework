@@ -10,11 +10,22 @@ import * as util from '../../../util/util.js'
 
 import '../../../subsurf/subsurf_loop_stencil.js'
 
-import {AttrRef, ColorLayerElem, IntElem, MaskElem, Mesh, Vertex} from '../../../mesh/mesh.js'
+import {
+  AttrRef,
+  ColorLayerElem,
+  Face,
+  FaceSetElem,
+  IntElem,
+  Loop,
+  MaskElem,
+  Mesh,
+  UVLayerElem,
+  Vertex,
+} from '../../../mesh/mesh.js'
 import {Shapes} from '../../../core/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {Vector2, Vector3, Vector4, Matrix4} from '../../../util/vectormath.js'
-import {IndexRange, math, PackFlags, UIBase} from '../../../path.ux/scripts/pathux.js'
+import {IndexRange, math, Number3, PackFlags, UIBase} from '../../../path.ux/scripts/pathux.js'
 import {MeshFlags} from '../../../mesh/mesh.js'
 import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../../../core/simplemesh'
 import {GridBase, GridSettingFlags} from '../../../mesh/mesh_grids.js'
@@ -40,12 +51,15 @@ import {calcConcave, getBVH} from './pbvh_base'
 import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
 import {TetMesh} from '../../../tet/tetgen.js'
 import {DispContext, DispLayerVert} from '../../../mesh/mesh_displacement.js'
-import {Texture} from '../../../core/webgl.js'
-import {getFaceSetColor, getFaceSets, getNextFaceSet} from '../../../mesh/mesh_facesets.js'
+import {IUniformsBlock, ShaderProgram, Texture} from '../../../core/webgl.js'
+import {getFaceSetColor, getFaceSets, getFaceSetsAttr, getNextFaceSet} from '../../../mesh/mesh_facesets.js'
 import {eventWasTouch} from '../../../path.ux/scripts/util/simple_events.js'
 import {enumKeys, enumValues} from '../../../util/enum-utils'
 import {StructReader} from '../../../path.ux/scripts/path-controller/types/util/nstructjs'
-import { ParamVert } from '../../../mesh/mesh_paramizer'
+import {ParamVert} from '../../../mesh/mesh_paramizer'
+import {SceneObject} from '../../../sceneobject/sceneobject'
+import {BlockLoader, BlockLoaderAddUser} from '../../../core/lib_api'
+import {Scene} from '../../../scene/scene'
 
 export class BVHToolMode extends ToolMode {
   mdown = false
@@ -1021,7 +1035,7 @@ export class BVHToolMode extends ToolMode {
     const ctx = this.ctx,
       scene = ctx.scene
 
-    const uniforms = {
+    const uniforms: IUniformsBlock = {
       projectionMatrix: view3d.activeCamera.rendermat,
       //normalMatrix    : new Matrix4()
       objectMatrix    : new Matrix4(),
@@ -1166,7 +1180,13 @@ export class BVHToolMode extends ToolMode {
    * if an object if the toolmode drew the object
    * itself
    */
-  drawObject(gl: WebGL2RenderingContext, uniforms: any, program: any, object: any, mesh: any): boolean {
+  drawObject(
+    gl: WebGL2RenderingContext,
+    uniforms: IUniformsBlock,
+    program: ShaderProgram,
+    object: SceneObject,
+    mesh: Mesh
+  ): boolean {
     //return true;
     if (!(this.ctx && this.ctx.object && object === this.ctx.object)) {
       return false
@@ -1183,7 +1203,7 @@ export class BVHToolMode extends ToolMode {
     const drawFlat = this.drawFlat
     const brush = this.getBrush()
 
-    const drawNode = (node: any, matrix: Matrix4): void => {
+    const drawNode = (node: BVHNode, matrix: Matrix4): void => {
       if (!node.leaf) {
         for (const c of node.children) {
           drawNode(c, matrix)
@@ -1215,7 +1235,7 @@ export class BVHToolMode extends ToolMode {
     const ob = object //let ob = this.ctx.object;
     let bvh: BVH
 
-    const cd_fset = mesh.faces.customData.getNamedLayerIndex('face_sets', 'int')
+    const cd_fset = getFaceSetsAttr(mesh) as AttrRef<FaceSetElem>
 
     //update all normals on first bvh build
     if (!mesh.bvh) {
@@ -1451,8 +1471,8 @@ export class BVHToolMode extends ToolMode {
     const drawColPatches = this.drawColPatches
     const drawMask = this.drawMask
 
-    const cd_uv = mesh.loops.customData.getLayerIndex('uv')
-    const haveUvs = cd_uv >= 0
+    const cd_uv = mesh.loops.customData.getLayerRef(UVLayerElem)
+    const haveUvs = cd_uv.i >= 0
 
     const tstart = util.time_ms()
 
@@ -1468,7 +1488,7 @@ export class BVHToolMode extends ToolMode {
 
     const vn1 = new Vector3()
 
-    let nsmooth
+    let nsmooth: ((v: any, fac?: number) => Vector3) | undefined
     const nsmooth_rets = util.cachering.fromConstructor(Vector3, 16)
 
     if (have_grids) {
@@ -1547,7 +1567,7 @@ export class BVHToolMode extends ToolMode {
     if (isDeforming) {
       const {data, dimen} = bvh.makeNodeDefTexture()
 
-      if (!bvh.glLeafTex || bvh.glLeafTex.createParams.width !== data.dimen) {
+      if (!bvh.glLeafTex || bvh.glLeafTex.createParams.width !== dimen) {
         if (bvh.glLeafTex) {
           bvh.glLeafTex.destroy(gl)
         }
@@ -1627,17 +1647,17 @@ export class BVHToolMode extends ToolMode {
         sm.indexedMode = true
 
         updateColors = haveColors
-        updateUvs = cd_uv >= 0
+        updateUvs = cd_uv.i >= 0
       } else {
         const island = sm.islands[0]
 
         if (island.totvert !== totvert || island.tottri !== tottri || island.drawCavityMap !== drawCavityMap) {
-          updateUvs = cd_uv >= 0
+          updateUvs = cd_uv.i >= 0
           updateColors = haveColors
         }
 
         //XXX for testing purposes
-        updateUvs = cd_uv >= 0
+        updateUvs = cd_uv.i >= 0
       }
 
       const island = sm.island
@@ -1677,7 +1697,7 @@ export class BVHToolMode extends ToolMode {
       let vnos = island.tri_normals
       let vuvs, vcolors, colormul, uvmul
 
-      if (cd_uv >= 0) {
+      if (cd_uv.i >= 0) {
         updateUvs = updateUvs || island.tri_uvs.dataUsed / 2 !== totvert
       }
 
@@ -1741,7 +1761,7 @@ export class BVHToolMode extends ToolMode {
       let cd_pvert = new AttrRef<ParamVert>()
 
       if (displayers && displayers.length > 0) {
-        cd_disp = displayers[displayers.length - 1].index
+        cd_disp.i = displayers[displayers.length - 1].index
         const dctx = new DispContext()
         dctx.reset(mesh, cd_disp.i)
 
@@ -1874,8 +1894,8 @@ export class BVHToolMode extends ToolMode {
           }
 
           if (updateColors) {
-            if (drawDispDisField && cd_pvert >= 0) {
-              const pv = v.customData[cd_pvert]
+            if (drawDispDisField && cd_pvert.i >= 0) {
+              const pv = v.customData.get(cd_pvert)
 
               let dis = pv.disUV[0]
               dis = Math.fract(dis * 1.5)
@@ -1904,9 +1924,9 @@ export class BVHToolMode extends ToolMode {
               vcolors[j++] = colormul
             }
 
-            if (cd_fset >= 0 && l.eid >= 0 && l.f) {
+            if (cd_fset.i >= 0 && l.eid >= 0 && l instanceof Loop && l.f) {
               j = vi * 4
-              const fset = l.f.customData[cd_fset].value
+              const fset = l.f.customData.get(cd_fset).value
               const color = getFaceSetColor(fset)
 
               vcolors[j++] *= color[0]
@@ -1917,7 +1937,7 @@ export class BVHToolMode extends ToolMode {
           }
 
           if (updateUvs) {
-            const uv = l.customData[cd_uv].uv
+            const uv = l.customData.get(cd_uv).uv
             j = vi * 2
 
             vuvs[j++] = uv[0] * uvmul
@@ -1974,8 +1994,8 @@ export class BVHToolMode extends ToolMode {
       }
 
       const vpatch = false
-      let vpatch2 = drawColPatches //drawColPatches;
-      let vpatch3 = false
+      let vpatch2: boolean | undefined = drawColPatches //drawColPatches;
+      let vpatch3: boolean | undefined = false
 
       vpatch2 = vpatch2 && have_color
       vpatch2 = vpatch2 && !have_grids
@@ -2132,10 +2152,10 @@ export class BVHToolMode extends ToolMode {
         }
       }
 
-      const tv1 = new Vector3()
-      const tv2 = new Vector3()
-      const tv3 = new Vector3()
-      const tv4 = new Vector3()
+      const tmp1 = new Vector3()
+      const tmp2 = new Vector3()
+      const tmp3 = new Vector3()
+      const tmp4 = new Vector3()
       const tvt = new Vector3()
       const tvn = new Vector3()
 
@@ -2186,10 +2206,10 @@ export class BVHToolMode extends ToolMode {
             const t2 = tri.v2
             const t3 = tri.v3
 
-            tv1.load(t1).interp(t2, 0.5)
-            tv2.load(t2).interp(t3, 0.5)
-            tv3.load(t3).interp(t1, 0.5)
-            tv4
+            tmp1.load(t1).interp(t2, 0.5)
+            tmp2.load(t2).interp(t3, 0.5)
+            tmp3.load(t3).interp(t1, 0.5)
+            tmp4
               .load(t1)
               .add(t2)
               .add(t3)
@@ -2200,9 +2220,9 @@ export class BVHToolMode extends ToolMode {
             tn3.load(t3.no).interp(t1.no, 0.5).normalize()
             tn4.load(t1.no).add(t2.no).add(t3.no).normalize()
 
-            const f = mesh.eidMap.get(tri.id)
+            const f = mesh.eidMap.get<Face>(tri.id)
 
-            const w1 = window.d1 ?? 1.0 / 3.0
+            const w1 = 1.0 / 3.0
 
             let c1 = t1.customData.get(cd_color).color
             let c2 = t2.customData.get(cd_color).color
@@ -2237,19 +2257,19 @@ export class BVHToolMode extends ToolMode {
 
             const startl = f.lists[0].l
 
-            const w2 = window.d2 ?? 1.0 / 6.0
+            const w2 = 1.0 / 6.0
 
             ///*
             if (f.lists[0].length > 3) {
               if (startl.next.v === tri.v2) {
                 tc3.load(tc5)
-                tv3.load(f.cent)
+                tmp3.load(f.cent)
               } else if (startl.next.v === tri.v3) {
                 tc2.load(tc5)
-                tv2.load(f.cent)
+                tmp2.load(f.cent)
               } else {
                 tc1.load(tc5)
-                tv1.load(f.cent)
+                tmp1.load(f.cent)
               } //*/
             }
 
@@ -2264,17 +2284,17 @@ export class BVHToolMode extends ToolMode {
 
             const n = math.normal_tri(t1, t2, t3)
 
-            const q1 = sm.quad(tv4, tv3, t1, tv1)
+            const q1 = sm.quad(tmp4, tmp3, t1, tmp1)
             q1.normals(tn4, tn3, t1.no, tn1)
             q1.colors(tc4, tc3, c1, tc1)
             //q1.id(id, id, id, id);
 
-            const q2 = sm.quad(tv4, tv1, t2, tv2)
+            const q2 = sm.quad(tmp4, tmp1, t2, tmp2)
             q2.normals(tn4, tn1, t2.no, tn2)
             q2.colors(tc4, tc1, c2, tc2)
             //q2.id(id, id, id, id);
 
-            const q3 = sm.quad(tv4, tv2, t3, tv3)
+            const q3 = sm.quad(tmp4, tmp2, t3, tmp3)
             q3.normals(tn4, tn2, t3.no, tn3)
             q3.colors(tc4, tc2, c3, tc3)
             //q3.id(id, id, id, id);
@@ -2295,9 +2315,12 @@ export class BVHToolMode extends ToolMode {
           }//*/
 
           //*
-          t1 = tri.v1
-          t2 = tri.v2
-          t3 = tri.v3
+          const tv1 = tri.v1
+          const tv2 = tri.v2
+          const tv3 = tri.v3
+          t1 = tv1.co
+          t2 = tv2.co
+          t3 = tv3.co
           //*/
 
           let i = ti * 3
@@ -2315,7 +2338,7 @@ export class BVHToolMode extends ToolMode {
 
           let no1, no2, no3
 
-          if (!drawFlat) {
+          if (!drawFlat && nsmooth !== undefined) {
             no1 = nsmooth(t1)
             no2 = nsmooth(t2)
             no3 = nsmooth(t3)
@@ -2347,9 +2370,9 @@ export class BVHToolMode extends ToolMode {
             let uv1, uv2, uv3
 
             if (have_grids) {
-              uv1 = t1.customData[cd_uv].uv
-              uv2 = t2.customData[cd_uv].uv
-              uv3 = t3.customData[cd_uv].uv
+              uv1 = tv1.customData.get(cd_uv).uv
+              uv2 = tv2.customData.get(cd_uv).uv
+              uv3 = tv3.customData.get(cd_uv).uv
             } else {
               const ltris = mesh._ltris
 
@@ -2363,9 +2386,9 @@ export class BVHToolMode extends ToolMode {
                 l2 = tri.l2
                 l3 = tri.l3
               } else if (tri.tri_idx % 3 === 0) {
-                l1 = ltris[tri.tri_idx]
-                l2 = ltris[tri.tri_idx + 1]
-                l3 = ltris[tri.tri_idx + 2]
+                l1 = ltris![tri.tri_idx]
+                l2 = ltris![tri.tri_idx + 1]
+                l3 = ltris![tri.tri_idx + 2]
               } else {
                 bad = true
               }
@@ -2373,11 +2396,11 @@ export class BVHToolMode extends ToolMode {
               bad = bad || !l1 || !l2 || !l3
 
               if (!bad) {
-                uv1 = l1.customData[cd_uv].uv
-                uv2 = l2.customData[cd_uv].uv
-                uv3 = l3.customData[cd_uv].uv
+                uv1 = l1.customData.get(cd_uv).uv
+                uv2 = l2.customData.get(cd_uv).uv
+                uv3 = l3.customDat.geta(cd_uv).uv
               } else {
-                const f = mesh.eidMap.get(tri.id)
+                const f = mesh.eidMap.get<Face>(tri.id)
 
                 l1 = l2 = l3 = undefined
 
@@ -2392,9 +2415,9 @@ export class BVHToolMode extends ToolMode {
                 }
 
                 if (l1 && l2 && l3) {
-                  uv1 = l1.customData[cd_uv].uv
-                  uv2 = l2.customData[cd_uv].uv
-                  uv3 = l3.customData[cd_uv].uv
+                  uv1 = l1.customData.get(cd_uv).uv
+                  uv2 = l2.customData.get(cd_uv).uv
+                  uv3 = l3.customData.get(cd_uv).uv
                 } else {
                   uv1 = uv2 = uv3 = undefined
                 }
@@ -2424,9 +2447,9 @@ export class BVHToolMode extends ToolMode {
 
             if (!have_color) {
               for (let j = 0; j < 3; j++) {
-                tc1[j] = cv1
-                tc2[j] = cv2
-                tc3[j] = cv3
+                tc1[j as Number3] = cv1
+                tc2[j as Number3] = cv2
+                tc3[j as Number3] = cv3
               }
               tc1[3] = tc2[3] = tc3[3] = 1.0
             }
@@ -2858,8 +2881,7 @@ export class BVHToolMode extends ToolMode {
     if (0 && have_grids) {
       //XXX make this an option
       for (const loop of mesh.loops) {
-        const grid = loop.customData[grid_off]
-
+        const grid = loop.customData[grid_off] as GridBase
         grid.debugDraw(gl, uniforms, object)
       }
     }
@@ -2867,7 +2889,7 @@ export class BVHToolMode extends ToolMode {
     return true
   }
 
-  dataLink(scene: any, getblock: any, getblock_addUser: any): void {
+  dataLink(scene: Scene, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser): void {
     for (const k in this.slots) {
       this.slots[k].dataLink(scene, getblock, getblock_addUser)
     }

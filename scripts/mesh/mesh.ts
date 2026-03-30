@@ -52,7 +52,7 @@ import {
 import {EDGE_LINKED_LISTS} from '../core/const.js'
 
 import {NormalLayerElem, OrigIndexElem, UVLayerElem} from './mesh_customdata.js'
-import {Edge, Element, Element, Face, Handle, Loop, LoopList, PrivateVertexConstructor, Vertex} from './mesh_types.js'
+import {Edge, Element, Face, Handle, Loop, LoopList, PrivateVertexConstructor, Vertex} from './mesh_types.js'
 import {ElementList, ElementListIter} from './mesh_element_list.js'
 import {SelMask} from '../editors/view3d/selectmode.js'
 import {BVH, BVHSettings} from '../util/bvh.js'
@@ -360,7 +360,7 @@ mesh.Mesh {
   _ltrimap_start: {[key: number]: number} = {} //XXX
   _ltrimap_end: {[key: number]: number} = {} //XXX
   _ltrimap_len: {[key: number]: number} = {}
-  _fancyMeshes: {[k: string]: ChunkedSimpleMesh} = {} //XXX
+  _fancyMeshes: {[k: string]: ChunkedSimpleMesh | SimpleMesh} = {} //XXX
   updatelist: any = {} //XXX
   lastUpdateList: any = {} //XXX
   updateGen = 0

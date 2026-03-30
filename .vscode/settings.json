@@ -67,5 +67,6 @@
     "**/bower_components"    : true,
     "**/*.code-search"       : true,
     "**/.dart_tool"          : true
-  }
+  },
+  "typescript.tsdk": "node_modules\\typescript\\lib"
 }

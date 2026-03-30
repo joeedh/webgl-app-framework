@@ -1,23 +1,9 @@
-const _graph = undefined
-
-import {
-  DataAPI,
-  DataStruct,
-  Matrix4,
-  ToolProperty,
-  Vector2,
-  Vector3,
-  Vector4,
-  nstructjs,
-  util,
-} from '../path.ux/scripts/pathux.js'
+import {DataAPI, DataStruct, ToolProperty, Vector2, nstructjs, util} from '../path.ux/scripts/pathux.js'
 
 import '../util/polyfill.d.ts'
 import type {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
-import type {ContainerIF} from '../path.ux/scripts/widgets/ui_container'
 import type {Container} from '../path.ux/scripts/types/core/ui'
 import {ViewContext} from './context'
-import {Input} from 'electron'
 import {BlockLoader, BlockLoaderAddUser, DataBlock} from './lib_api.js'
 
 export class GraphCycleError extends Error {}
@@ -979,7 +965,7 @@ graph.Node {
   }
 
   _save_map(map: INodeSocketSet) {
-    const ret = []
+    const ret = [] as KeyValPair[]
 
     for (const k in map) {
       ret.push(new KeyValPair(k, map[k]))
@@ -1048,8 +1034,8 @@ graph.ProxyNode {
 }
 
 export class CallbackNode<
-  InputSet extends INodeSocketSet = {},
-  OutputSet extends INodeSocketSet = {},
+  InputSet extends INodeSocketSet = any,
+  OutputSet extends INodeSocketSet = any,
   ExecContextType = ViewContext,
 > extends Node<InputSet, OutputSet, ExecContextType> {
   callback?: (ctx: ExecContextType, node: this) => void
@@ -1926,7 +1912,7 @@ graph.Graph {
   }
 
   _save_nodes() {
-    const ret = []
+    const ret = [] as Node[]
 
     //ensure node socket id sanity
     for (const n of this.nodes) {

@@ -124,10 +124,9 @@ export class UVOpBase<InputSet extends PropertySlots = {}, OutputSet extends Pro
     const tool = super.invoke(ctx, args)
 
     if (!('selectedFacesOnly' in args)) {
-      let uve = ctx.editors.imageEditor
-      if (uve) {
-        uve = uve.uvEditor
-
+      const imageEditor = ctx.editors.imageEditor
+      if (imageEditor) {
+        const uve = imageEditor.uvEditor
         tool.inputs.selectedFacesOnly.setValue(uve.selectedFacesOnly)
       }
     }

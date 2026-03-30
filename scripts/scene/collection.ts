@@ -201,15 +201,15 @@ Collection {
   }
 
   dataLink(getblock: BlockLoader, getblock_us: BlockLoaderAddUser): void {
-    this.parent = getblock_us(this.parent as unknown as DataRef, this)
+    this.parent = getblock_us(this.parent as unknown as DataRef, this) as Collection | undefined
 
     for (let i = 0; i < this.objects.length; i++) {
-      this.objects[i] = getblock_us(this.objects[i], this)
+      this.objects[i] = getblock_us(this.objects[i], this) as SceneObject
       this.object_idmap[this.objects[i].lib_id] = this.objects[i]
     }
 
     for (let i = 0; i < this.children.length; i++) {
-      this.children[i] = getblock_us(this.children[i], this)
+      this.children[i] = getblock_us(this.children[i], this) as Collection
       this.child_idmap[this.children[i].lib_id] = this.children[i]
     }
   }

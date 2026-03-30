@@ -337,7 +337,7 @@ SceneObject {
   }
 
   dataLink(getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
-    this.data = getblock_addUser(this.data, this)
+    this.data = getblock_addUser(this.data, this) as SceneObjectData
   }
 
   draw(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program: ShaderProgram = Shaders.BasicLitMesh): void {

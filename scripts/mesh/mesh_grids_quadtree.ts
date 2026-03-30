@@ -234,7 +234,7 @@ const staroffs_origin = [
   [0, 0],
 ]
 
-const boxoffs = []
+const boxoffs = [] as number[][]
 
 for (let ix = -1; ix <= 1; ix++) {
   for (let iy = -1; iy <= 1; iy++) {
@@ -1184,7 +1184,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     const ns = this.nodes
     const nmap = new Array(ns.length)
-    const ns2 = []
+    const ns2 = [] as number[]
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       nmap[ni] = ns2.length
@@ -1949,7 +1949,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
   subdivideAll_intern(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>): void {
     const ns = this.nodes
-    const nodes = []
+    const nodes = [] as number[]
     const loopEid = loop.eid
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
@@ -2051,7 +2051,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     //console.log("Level", level, "Inverse", inverse);
 
-    const nodes = []
+    const nodes = [] as number[]
     for (let ni = 0; ni < ns.length; ni += QTOT) {
       if (ns[ni + QFLAG] & DEAD) {
         continue
@@ -2486,7 +2486,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   pruneDeadPoints() {
     const ps = this.points
     const ns = this.nodes
-    const newps = []
+    const newps = [] as QTGridVert[]
     const pmap = new Array(ps.length)
 
     this.recalcFlag &= ~QRecalcFlags.POINT_PRUNE
@@ -3910,9 +3910,9 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       const qtot_old = this.nodeFieldSize
       const cpylen = Math.min(qtot_old, QTOT)
       const extra = Math.max(QTOT - cpylen, 0)
-      const ns2 = []
-      let map = [],
-        mapi = 0
+      const ns2 = [] as number[]
+      let map = [] as number[]
+      let mapi = 0
 
       for (let ni = 0; ni < ns1.length; ni += qtot_old) {
         for (let j = 0; j < cpylen; j++) {
@@ -3931,8 +3931,6 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         if (ns2[ni + QFLAG] & DEAD) {
           continue
         }
-
-        const idx = ni / QTOT
 
         ns2[ni + QCHILD1] = map[ns2[ni + QCHILD1]]
         ns2[ni + QCHILD2] = map[ns2[ni + QCHILD2]]

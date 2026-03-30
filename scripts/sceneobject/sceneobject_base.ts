@@ -2,7 +2,7 @@ import {BlockLoader, BlockLoaderAddUser, DataBlock, IDataBlockConstructor} from 
 import {Vector3, Matrix4, nstructjs} from '../path.ux/scripts/pathux.js'
 
 import {StandardTools} from './stdtools.js'
-import {INodeDef, Node, NodeFlags} from '../core/graph'
+import {INodeDef, INodeSocketSet, Node, NodeFlags} from '../core/graph'
 import {DependSocket} from '../core/graphsockets'
 import {Material} from '../core/material'
 import type {ToolContext} from '../core/context'
@@ -23,10 +23,10 @@ export interface IObjectDataConstructor {
 export const ObjectDataTypes = [] as IObjectDataConstructor[]
 
 /** TODO: make SceneObjectData a composition pattern instead of a superclass. */
-export class SceneObjectData<InputSet = {}, OutputSet = {}> extends DataBlock<
-  InputSet & {depend: DependSocket},
-  OutputSet & {depend: DependSocket}
-> {
+export class SceneObjectData<
+  InputSet extends INodeSocketSet = {},
+  OutputSet extends INodeSocketSet = {},
+> extends DataBlock<InputSet & {depend: DependSocket}, OutputSet & {depend: DependSocket}> {
   material?: Material = undefined
   materials: (Material | undefined)[] = []
   usesMaterial = false

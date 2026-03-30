@@ -710,11 +710,7 @@ propIslandOnly : bool;
     this.objects = new ObjectList(undefined, this)
     this.objects.onselect = this._onselect.bind(this)
 
-    for (const tool of this.toolmodes) {
-      //tool.
-    }
-
-    this.widgets.destroy(this.widgets.gl)
+    this.widgets.destroy(this.widgets.gl!)
   }
 
   static blockDefine() {
@@ -822,7 +818,7 @@ propIslandOnly : bool;
   dataLink(getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
     super.dataLink(getblock, getblock_addUser)
 
-    this.collection = getblock_addUser(this.collection as unknown as number, this)
+    this.collection = getblock_addUser(this.collection as unknown as number, this) as Collection
 
     if (this.#linked) {
       console.log('DOUBLE CALL TO dataLink')

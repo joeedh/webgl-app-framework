@@ -14,23 +14,12 @@ import {
   Vec4Property,
   Vector2,
   Vector3,
-  Vector4,
-  closest_point_on_line,
 } from '../../../path.ux/scripts/pathux.js'
-import {Grid, GridBase, QRecalcFlags} from '../../../mesh/mesh_grids.js'
-import {CDFlags} from '../../../mesh/customdata.js'
-import {BrushFlags, DynTopoFlags, SculptTools} from '../../../brush/brush.ts'
-import {LogContext, Loop, Mesh, MeshFlags, MeshTypes} from '../../../mesh/mesh.js'
+import {LogContext, MeshFlags, MeshTypes} from '../../../mesh/mesh.js'
 import {BVHFlags, BVHTriFlags} from '../../../util/bvh.js'
-import {QuadTreeFields, QuadTreeFlags, QuadTreeGrid} from '../../../mesh/mesh_grids_quadtree.js'
-import {KdTreeFields, KdTreeFlags, KdTreeGrid} from '../../../mesh/mesh_grids_kdtree.js'
-import {splitEdgesSmart, splitEdgesSimple, splitEdgesSmart2} from '../../../mesh/mesh_subdivide.js'
-import {BrushProperty, calcConcave, PaintOpBase, PaintSample, PaintSampleProperty, SymAxisMap} from './pbvh_base.ts'
-import {trianglesToQuads, triangulateFan} from '../../../mesh/mesh_utils.js'
-import {applyTriangulation, triangulateFace} from '../../../mesh/mesh_tess.js'
+import {BrushProperty, PaintOpBase, PaintSample, PaintSampleProperty, SymAxisMap} from './pbvh_base'
+import {applyTriangulation} from '../../../mesh/mesh_tess.js'
 import {MeshLog} from '../../../mesh/mesh_log.js'
-
-import {MultiGridSmoother} from '../../../mesh/multigrid_smooth.js'
 
 export function fillHoleFromVert(mesh: any, bvh: any, startv: any, visit: WeakSet<any>, lctx: any): void {
   let count: number = 0

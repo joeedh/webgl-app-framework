@@ -699,8 +699,7 @@ export class TexPaintOp extends ToolOp<
 
       uv1[2] = uv2[2] = uv3[2] = 0.0
 
-      const tri2: TriEditor = sm.tri(uv1, uv2, uv3)
-
+      const tri2 = sm.tri(uv1, uv2, uv3)
       const fade: number = Math.abs(tri.no.dot(ps.viewvec))
 
       tri2.custom(sm_loc, p1, p2, p3)
@@ -814,7 +813,7 @@ export class TexPaintOp extends ToolOp<
       sm.primflag = PrimitiveTypes.TRIS
       sm.island.primflag = PrimitiveTypes.TRIS
 
-      const quad: QuadEditor = sm.quad([-1, -1, 0], [-1, 1, 0], [1, 1, 0], [1, -1, 0])
+      const quad = sm.quad([-1, -1, 0], [-1, 1, 0], [1, 1, 0], [1, -1, 0])
 
       Texture.unbindAllTextures(gl)
 

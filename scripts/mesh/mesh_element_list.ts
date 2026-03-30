@@ -1,4 +1,4 @@
-import {Edge, Element, Element, MeshIterStack} from './mesh_types'
+import {Edge, Element, MeshIterStack} from './mesh_types'
 import {nstructjs, util} from '../path.ux/scripts/pathux.js'
 import {
   DEBUG_BAD_LOOPS,
@@ -7,7 +7,6 @@ import {
   MeshFlags,
   MeshTypes,
   STORE_DELAY_CACHE_INDEX,
-  WITH_EIDMAP_MAP,
   EmptyCDArray,
   CDElemArray,
 } from './mesh_base'
@@ -15,8 +14,6 @@ import {
 import {CDFlags, CustomData, CustomDataElem, CustomDataLayer, ICustomDataElemConstructor} from './customdata'
 import {Vertex, Loop, Face, Handle} from './mesh_types.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
-
-const sel_iter_stack = new Array(64)
 
 const typemap = {
   [MeshTypes.VERTEX]: Vertex,
@@ -522,7 +519,7 @@ mesh.ElementList {
     this.idxmap = new Map()
 
     for (const item of list) {
-      this._push(item)
+      this._push(item as type)
     }
 
     this.selected.clear()

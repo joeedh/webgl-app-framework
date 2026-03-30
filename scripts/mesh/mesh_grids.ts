@@ -5,6 +5,8 @@ import {
   CustomDataElem,
   CustomDataLayer,
   ICustomDataElemConstructor,
+  ICustomDataElemDef,
+  ILayerSettingsConstructor,
   LayerSettingsBase,
 } from './customdata'
 import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../core/simplemesh.js'
@@ -39,6 +41,7 @@ for (let i = 0; i < 4; i++) {
 }
 import '../util/polyfill.d.ts'
 import {WebGLUniforms} from '../../types/scripts/core/webgl'
+import {PatchBase} from '../subsurf/subsurf_patch.js'
 
 const stmp1 = new Vector3(),
   stmp2 = new Vector3()
@@ -582,20 +585,14 @@ export function genGridDimens(depth = 32) {
 export const gridSides = genGridDimens()
 
 export interface IGridDef {
-  elemTypeMask: MeshTypes
-  typeName: string
-  uiTypeName?: string
-  defaultName?: string
-  settingsClass: new () => GridSettings
-  needsSubSurf?: boolean
-  valueSize?: number
-  flag: number
+  needsSubSurf: boolean
 }
 
 export interface IGridConstructor<GridClass = any> {
   new (): GridClass
 
-  define(): IGridDef
+  define(): ICustomDataElemConstructor<GridClass>
+  gridDefine(): IGridDef
   updateSubSurf(mesh: Mesh, cd_grid: AttrRef<GridBase>, checkCoords?: boolean): void
   apiDefine(api: DataAPI, st: DataStruct): void
 }
@@ -613,7 +610,10 @@ export abstract class GenericGridVert extends GridVertBase<Iterable<GenericGridV
   //
 }
 
-export class GridBase<GridVertType extends GridVertBase<any> = GridVert> extends CustomDataElem<any> {
+export class GridBase<
+  GridVertType extends GridVertBase<any> = GridVert,
+  GridSettingsCls extends GridSettings = GridSettings,
+> extends CustomDataElem<any, GridBase<GridVertType, GridSettingsCls>, GridSettingsCls> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -637,12 +637,14 @@ mesh.GridBase {
   customDatas: CDElemArray[]
   eidMap: Map<number, GridVertType>
   needsSubSurf: boolean
-  subsurf?: any;
-
-  /* @ts-ignore */
-  ['constructor']: IGridConstructor<this>
-
+  subsurf?: PatchBase
   _max_cd_i: number = 0
+
+  static gridDefine(): IGridDef {
+    return {
+      needsSubSurf: false,
+    }
+  }
 
   constructor() {
     super()
@@ -669,8 +671,8 @@ mesh.GridBase {
     this.subsurf = undefined //subsurf patch
   }
 
-  static updateSubSurf(mesh: Mesh, cd_grid: AttrRef<GridBase>, check_coords = false) {
-    if (!(this as IGridConstructor).define().needsSubSurf) {
+  static updateSubSurf<G extends GridBase>(mesh: Mesh, cd_grid: AttrRef<G>, check_coords = false) {
+    if (!this.gridDefine().needsSubSurf) {
       return
     }
 
@@ -701,7 +703,7 @@ mesh.GridBase {
   }
 
   static recalcSubSurf(mesh: Mesh, cd_grid: AttrRef<GridBase>): void {
-    const builder = new PatchBuilder(mesh, cd_grid as AttrRef<Grid>)
+    const builder = new PatchBuilder(mesh, cd_grid as unknown as AttrRef<Grid>)
     builder.build()
 
     for (const l of mesh.loops) {
@@ -900,11 +902,11 @@ mesh.GridBase {
   }
 
   subdivideAll(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>): void {
-    console.warn(this.constructor.name + '.prototype.subdivideAll(): implement me!')
+    console.warn(this.constructor['name'] + '.prototype.subdivideAll(): implement me!')
   }
 
   tangentToGlobal(depthLimit: number, inverse = false): void {
-    console.warn(this.constructor.name + '.prototype.tangentToGlobal(): implement me!')
+    console.warn(this.constructor['name'] + '.prototype.tangentToGlobal(): implement me!')
   }
 
   globalToTangent(depthLimit: number) {
@@ -939,7 +941,7 @@ mesh.GridBase {
   debugDraw(gl: WebGL2RenderingContext, uniforms: {[k: string]: any}, ob: SceneObject): void {}
 
   updateMirrorFlags(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>): void {
-    console.warn(this.constructor.name + '.updateMirrorFlags: Implement me!')
+    console.warn(this.constructor['name'] + '.updateMirrorFlags: Implement me!')
   }
 
   initCDLayoutFromLoop(loop: Loop): void {
@@ -980,7 +982,7 @@ mesh.GridBase {
   }
 
   update(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>): void {
-    this.constructor.updateSubSurf(mesh, cd_grid)
+    ;(this.constructor as unknown as typeof GridBase).updateSubSurf(mesh, cd_grid)
 
     if (this.recalcFlag & QRecalcFlags.REGEN_IDS) {
       this.regenIds(mesh, loop, cd_grid)
@@ -1127,7 +1129,8 @@ mesh.GridBase {
         const cl2 = new CDElemArray()
 
         if (!cls) {
-          cls = this.customDataLayout[i] = cl[0].constructor
+          cls = cl[0].constructor
+          this.customDataLayout[i] = cls
         }
 
         b.customDatas.push(cl2)
@@ -1395,7 +1398,7 @@ mesh.GridBase {
 
 const recttemps = new util.cachering(() => [new Vector3(), new Vector3(), new Vector3(), new Vector3()], 64)
 
-export class Grid extends GridBase {
+export class Grid extends GridBase<GridVert, GridSettings> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -1403,16 +1406,21 @@ mesh.Grid {
 }`
   )
 
-  static define(): IGridDef {
+  static define() {
     return {
       elemTypeMask : MeshTypes.LOOP, //see MeshTypes in mesh.js
       typeName     : 'grid',
       uiTypeName   : 'Grid',
       defaultName  : 'grid',
       settingsClass: GridSettings,
-      needsSubSurf : true,
       valueSize    : undefined,
       flag         : 0,
+    }
+  }
+
+  static gridDefine() {
+    return {
+      needsSubSurf: true,
     }
   }
 
@@ -1438,6 +1446,11 @@ mesh.Grid {
     const color1 = [0, 0, 1, 1]
     const color2 = [0, 1, 0, 1]
     const color3 = [1, 0, 0, 1]
+
+    if (this.subsurf === undefined) {
+      console.log('no subsurf')
+      return
+    }
 
     for (const p of this.points) {
       let co = p.co
@@ -1578,7 +1591,7 @@ mesh.Grid {
 
             p.co.load(a).interp(b, u)
           } else {
-            p.co.load(this.subsurf.evaluate(u, v))
+            p.co.load(this.subsurf!.evaluate(u, v))
           }
         }
       }

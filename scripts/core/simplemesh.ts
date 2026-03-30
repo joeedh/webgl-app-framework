@@ -502,7 +502,7 @@ const glRanges = {
 
 const dmap = new WeakSet()
 
-function debugproxy(data, min = -1e17, max = 1e17, isint) {
+function debugproxy(data: any, min = -1e17, max = 1e17, isint?: boolean) {
   if (dmap.has(data)) {
     data.debug.min = min
     data.isint = isint
@@ -512,21 +512,22 @@ function debugproxy(data, min = -1e17, max = 1e17, isint) {
 
   dmap.add(data)
 
-  function validate(target, prop) {
+  function validate(target: any, prop: string | symbol) {
+    let num = NaN
     if (typeof prop === 'string') {
-      prop = parseFloat(prop)
+      num = parseFloat(prop)
     }
 
-    let bad = prop !== ~~prop
-    bad = bad || isNaN(prop) || !isFinite(prop)
-    bad = bad || prop < 0 || prop >= data.length
+    let bad = num !== ~~num
+    bad = bad || isNaN(num) || !isFinite(num)
+    bad = bad || num < 0 || num >= data.length
 
     if (bad) {
-      console.log(target, prop)
-      throw new Error('bad prop ' + prop)
+      console.log(target, num)
+      throw new Error('bad prop ' + num)
     }
 
-    return prop
+    return num
   }
 
   const debug = {
@@ -537,25 +538,24 @@ function debugproxy(data, min = -1e17, max = 1e17, isint) {
 
   const proxy = new Proxy(data, {
     get(target, prop, rc) {
-      prop = validate(target, prop)
-
-      return target[prop]
+      const num = validate(target, prop)
+      return target[num]
     },
 
     set(target, prop, val) {
-      prop = validate(target, prop)
+      const num = validate(target, prop)
 
       let bad = typeof val !== 'number'
       bad = bad || val < debug.min || val > debug.max
       bad = bad || isNaN(val) || !isFinite(val)
-      bad = bad || (1 && val !== ~~val)
+      bad = bad || val !== ~~val
 
       if (bad) {
-        console.log(val, target, prop, debug.min, debug.max)
+        console.log(val, target, num, debug.min, debug.max)
         throw new Error('bad value ' + val)
       }
 
-      target[prop] = val
+      target[num] = val
 
       return true
     },
@@ -644,7 +644,7 @@ export class GeoLayer extends Array {
 
   setGLSize(size: number): this {
     this.glSize = size
-    this.glSizeMul = glTypeArrayMuls[size]
+    this.glSizeMul = (glTypeArrayMuls as unknown as any)[size] as number
 
     return this
   }
@@ -884,10 +884,10 @@ export class GeoLayerMeta {
   add(layer: GeoLayer) {
     this.layers.push(layer)
 
-    if (this.attrsizes[LayerTypeNames[layer.type]] === undefined) {
-      this.attrsizes[LayerTypeNames[layer.type]] = 0
+    if (this.attrsizes[LayerTypeNames[layer.type as keyof typeof LayerTypeNames]] === undefined) {
+      this.attrsizes[LayerTypeNames[layer.type as keyof typeof LayerTypeNames]] = 0
     } else {
-      this.attrsizes[LayerTypeNames[layer.type]]++
+      this.attrsizes[LayerTypeNames[layer.type as keyof typeof LayerTypeNames]]++
     }
   }
 }
@@ -1021,7 +1021,7 @@ export class GeoLayerManager {
 
   get(name: string, primflag: number, type: number, size?: number, idx?: number): GeoLayer {
     if (size === undefined) {
-      size = TypeSizes[type]
+      size = TypeSizes[type as keyof typeof TypeSizes]
     }
 
     if (size === undefined) {
@@ -1058,7 +1058,7 @@ const _default_normal = [0, 0, 1]
 const _default_id = [-1]
 
 export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
-  gl: OptionalIf<WebGL2RenderingContext, OPT['dead']>
+  gl: OptionalIf<WebGL2RenderingContext, OPT['dead']> = undefined as unknown as WebGL2RenderingContext
   layers: GeoLayerManager
   _glAttrs: {[k: string]: number}
   /** If undefined, will get from owning simplemesh's primflag. */
@@ -1084,7 +1084,7 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
   _layerflag?: LayerTypes
 
   buffer: RenderBuffer
-  program: OptionalIf<ShaderProgram, OPT['dead']>
+  program: OptionalIf<ShaderProgram, OPT['dead']> = undefined as unknown as ShaderProgram
   textures: any[]
   uniforms: IUniformsBlock
   _uniforms_temp: any
@@ -1174,33 +1174,33 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  tri_cos: OptionalIf<GeoLayer, OPT['dead']>
-  tri_normals: OptionalIf<GeoLayer, OPT['dead']>
-  tri_uvs: OptionalIf<GeoLayer, OPT['dead']>
-  tri_colors: OptionalIf<GeoLayer, OPT['dead']>
-  tri_ids: OptionalIf<GeoLayer, OPT['dead']>
+  tri_cos: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  tri_normals: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  tri_uvs: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  tri_colors: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  tri_ids: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
 
-  line_cos: OptionalIf<GeoLayer, OPT['dead']>
-  line_normals: OptionalIf<GeoLayer, OPT['dead']>
-  line_uvs: OptionalIf<GeoLayer, OPT['dead']>
-  line_colors: OptionalIf<GeoLayer, OPT['dead']>
-  line_ids: OptionalIf<GeoLayer, OPT['dead']>
+  line_cos: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  line_normals: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  line_uvs: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  line_colors: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  line_ids: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
 
-  line_cos2: OptionalIf<GeoLayer, OPT['dead']>
-  line_normals2: OptionalIf<GeoLayer, OPT['dead']>
-  line_uvs2: OptionalIf<GeoLayer, OPT['dead']>
-  line_colors2: OptionalIf<GeoLayer, OPT['dead']>
-  line_ids2: OptionalIf<GeoLayer, OPT['dead']>
+  line_cos2: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  line_normals2: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  line_uvs2: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  line_colors2: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  line_ids2: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
 
-  point_cos: OptionalIf<GeoLayer, OPT['dead']>
-  point_normals: OptionalIf<GeoLayer, OPT['dead']>
-  point_uvs: OptionalIf<GeoLayer, OPT['dead']>
-  point_colors: OptionalIf<GeoLayer, OPT['dead']>
-  point_ids: OptionalIf<GeoLayer, OPT['dead']>
+  point_cos: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  point_normals: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  point_uvs: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  point_colors: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  point_ids: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
 
-  line_stripuvs: OptionalIf<GeoLayer, OPT['dead']>
-  line_stripdirs: OptionalIf<GeoLayer, OPT['dead']>
-  line_dirs2: OptionalIf<GeoLayer, OPT['dead']>
+  line_stripuvs: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  line_stripdirs: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
+  line_dirs2: OptionalIf<GeoLayer, OPT['dead']> = undefined as unknown as GeoLayer
 
   makeBufferAliases(): void {
     const lay = this.layers
@@ -1477,14 +1477,14 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
       if (!layer.f32Ready) {
         layer.f32Ready = true
 
-        const typedarray = glTypeArrays[layer.glSize]
+        const typedarray = glTypeArrays[layer.glSize as keyof typeof glTypeArrayMuls]
 
         if (layer.data_f32?.length !== layer.dataUsed) {
           if (window.DEBUG.simplemesh) {
             console.warn('new layer data', layer.data_f32, layer)
           }
 
-          layer.data_f32 = new typedarray(layer.dataUsed)
+          layer.data_f32 = new typedarray(layer.dataUsed) as Float32Array
         }
 
         const a = layer.data
@@ -1516,7 +1516,7 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
 
       //custom layers have their own attribute names
       if (layer.type !== LayerTypes.CUSTOM) {
-        this._glAttrs[LayerTypeNames[layer.type]] = 1
+        this._glAttrs[LayerTypeNames[layer.type as keyof typeof LayerTypeNames]] = 1
       }
 
       //console.log(layer.bufferKey, layer.dataUsed, layer.data_f32.length, layer.bufferType, layer.data_f32);
@@ -1543,9 +1543,10 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
     }
 
     key += '_indices'
+    const anyThis = this as unknown as any
 
-    if (!this[key]) {
-      const layer = (this[key] = this.layers.get(key, ptype, LayerTypes.INDEX))
+    if (!anyThis[key]) {
+      const layer = (anyThis[key] = this.layers.get(key, ptype, LayerTypes.INDEX))
 
       layer.size = 1
       layer.glSizeMul = 1
@@ -1698,7 +1699,7 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
     gl.vertexAttribPointer(0, layer.size, layer.glSize, false, 0, 0)
     gl.enableVertexAttribArray(0)
 
-    const bindArray = (name, type) => {
+    const bindArray = (name: string, type: LayerTypes) => {
       if (!(layerflag & type) || type & LayerTypes.INDEX) {
         return
       }
@@ -1760,19 +1761,29 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
     bindArray('custom', LayerTypes.CUSTOM)
   }
 
-  addDataLayer(primflag: PrimitiveTypes, type: number, size = TypeSizes[type], name = LayerTypeNames[type]) {
+  addDataLayer(
+    primflag: PrimitiveTypes,
+    type: number,
+    size = TypeSizes[type as keyof typeof TypeSizes],
+    name = LayerTypeNames[type as keyof typeof LayerTypeNames]
+  ) {
     this._glAttrs[name] = 1
 
     return this.layers.pushLayer(name, primflag, type, size)
   }
 
-  getDataLayer(primflag: PrimitiveTypes, type: number, size = TypeSizes[type], name = LayerTypeNames[type]) {
+  getDataLayer(
+    primflag: PrimitiveTypes,
+    type: number,
+    size = TypeSizes[type as keyof typeof TypeSizes],
+    name = LayerTypeNames[type as keyof typeof LayerTypeNames]
+  ) {
     this._glAttrs[name] = 1
 
     return this.layers.get(name, primflag, type, size)
   }
 
-  _draw_points(gl: WebGL2RenderingContext, uniforms: any, params: any, program?: ShaderProgram): void {
+  _draw_points(gl: WebGL2RenderingContext, uniforms: IUniformsBlock, params: any, program?: ShaderProgram): void {
     if (this.totpoint > 0) {
       //console.log(this.totpoint, this.point_cos);
       this.bindArrays(gl, uniforms, program, 'point', PrimitiveTypes.POINTS)
@@ -1935,8 +1946,8 @@ export class SimpleMesh {
   getDataLayer(
     primflag: PrimitiveTypes,
     type: number,
-    size = TypeSizes[type],
-    name = LayerTypeNames[type]
+    size = TypeSizes[type as keyof typeof TypeSizes],
+    name = LayerTypeNames[type as keyof typeof LayerTypeNames]
   ): GeoLayer | undefined {
     let ret
 
@@ -1951,7 +1962,12 @@ export class SimpleMesh {
     return ret
   }
 
-  addDataLayer(primflag: PrimitiveTypes, type: number, size = TypeSizes[type], name = LayerTypeNames[type]): GeoLayer {
+  addDataLayer(
+    primflag: PrimitiveTypes,
+    type: number,
+    size = TypeSizes[type as keyof typeof TypeSizes],
+    name = LayerTypeNames[type as keyof typeof LayerTypeNames]
+  ): GeoLayer {
     let ret
 
     for (const island of this.islands) {
@@ -1962,7 +1978,7 @@ export class SimpleMesh {
       }
     }
 
-    return ret
+    return ret!
   }
 
   copy(): SimpleMesh {
@@ -2042,7 +2058,7 @@ export class SimpleMesh {
 }
 
 interface IIDMap {
-  set(key: number, val: number)
+  set(key: number, val: number): void
 
   get(key: number): number | undefined
 
@@ -2064,7 +2080,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   freeset: Set<number>
   chunkmap: IIDMap
   idgen: number
-  regen: boolean
+  regen: boolean = true
 
   quad_editors: util.cachering<QuadEditor>
 
@@ -2133,7 +2149,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     island.flagRecalc()
   }
 
-  get_chunk(id) {
+  get_chunk(id: number): SimpleIsland<{dead: false}> {
     if (id > 1 << 18 && this.idmap instanceof util.IDMap) {
       const idmap = new Map()
 
@@ -2191,7 +2207,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     return this.get_chunk(id)
   }
 
-  destroy(gl) {
+  destroy(gl?: WebGL2RenderingContext) {
     for (const island of this.islands) {
       island.destroy(gl)
     }
@@ -2206,9 +2222,9 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   }
 
   // @ts-ignore
-  tri(id: number, v1: IOpenNumVector, v2: IOpenNumVector, v3: IOpenNumVector): TriEditor {
+  tri(id: number, v1: IOpenNumVector, v2: IOpenNumVector, v3: IOpenNumVector): TriEditor<{dead: false}> {
     if (0) {
-      function isvec(v) {
+      function isvec(v: any) {
         if (!v) {
           return false
         }
@@ -2244,32 +2260,32 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     let i = itri * 9
 
     if (tri_cos.dataUsed < i + 9) {
-      chunk.regen = 1
+      chunk.regen = true
 
       return chunk.tri(v1, v2, v3)
     } else {
       tri_cos.glReady = false
-      tri_cos = tri_cos._getWriteData()
+      const cos = tri_cos._getWriteData()
 
-      tri_cos[i++] = v1[0]
-      tri_cos[i++] = v1[1]
-      tri_cos[i++] = v1[2]
+      cos[i++] = v1[0]
+      cos[i++] = v1[1]
+      cos[i++] = v1[2]
 
-      tri_cos[i++] = v2[0]
-      tri_cos[i++] = v2[1]
-      tri_cos[i++] = v2[2]
+      cos[i++] = v2[0]
+      cos[i++] = v2[1]
+      cos[i++] = v2[2]
 
-      tri_cos[i++] = v3[0]
-      tri_cos[i++] = v3[1]
-      tri_cos[i++] = v3[2]
+      cos[i++] = v3[0]
+      cos[i++] = v3[1]
+      cos[i++] = v3[2]
 
-      if (i > tri_cos.length) {
-        console.log(i, tri_cos.length, tri_cos)
+      if (i > cos.length) {
+        console.log(i, cos.length, cos)
         throw new Error('range error')
       }
     }
 
-    chunk.regen = 1
+    chunk.regen = true
     return chunk.tri_editors.next().bind(chunk, itri)
   }
 
@@ -2278,7 +2294,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
   }
 
   // @ts-ignore
-  smoothline(id: number, v1: IOpenNumVector, v2: IOpenNumVector): LineEditor2 {
+  smoothline(id: number, v1: IOpenNumVector, v2: IOpenNumVector): LineEditor2<{dead: false}> {
     const chunk = this.get_chunk(id)
     let iline = this.idmap.get(id)!
 
@@ -2286,6 +2302,10 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     chunk.glFlagUploadAll(PrimitiveTypes.ADVANCED_LINES)
 
     if (!chunk.line_cos2) {
+      // XXX add an extraPrimFlag field like for layer flags
+      if (chunk.primflag === undefined) {
+        chunk.primflag = this.primflag
+      }
       chunk.primflag |= PrimitiveTypes.ADVANCED_LINES
       this.layerflag |= LayerTypes.CUSTOM
       chunk.makeBufferAliases()
@@ -2302,44 +2322,44 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
       return ret
     } else {
-      line_cos = line_cos._getWriteData()
+      const cos = line_cos._getWriteData()
 
-      line_cos[i++] = v1[0]
-      line_cos[i++] = v1[1]
-      line_cos[i++] = v1[2]
+      cos[i++] = v1[0]
+      cos[i++] = v1[1]
+      cos[i++] = v1[2]
 
-      line_cos[i++] = v1[0]
-      line_cos[i++] = v1[1]
-      line_cos[i++] = v1[2]
+      cos[i++] = v1[0]
+      cos[i++] = v1[1]
+      cos[i++] = v1[2]
 
-      line_cos[i++] = v2[0]
-      line_cos[i++] = v2[1]
-      line_cos[i++] = v2[2]
+      cos[i++] = v2[0]
+      cos[i++] = v2[1]
+      cos[i++] = v2[2]
 
-      line_cos[i++] = v1[0]
-      line_cos[i++] = v1[1]
-      line_cos[i++] = v1[2]
+      cos[i++] = v1[0]
+      cos[i++] = v1[1]
+      cos[i++] = v1[2]
 
-      line_cos[i++] = v2[0]
-      line_cos[i++] = v2[1]
-      line_cos[i++] = v2[2]
+      cos[i++] = v2[0]
+      cos[i++] = v2[1]
+      cos[i++] = v2[2]
 
-      line_cos[i++] = v2[0]
-      line_cos[i++] = v2[1]
-      line_cos[i++] = v2[2]
+      cos[i++] = v2[0]
+      cos[i++] = v2[1]
+      cos[i++] = v2[2]
 
-      if (i > line_cos.length) {
-        console.log(i, line_cos.length, line_cos)
+      if (i > cos.length) {
+        console.log(i, cos.length, cos)
         throw new Error('range error')
       }
     }
 
-    chunk.regen = 1
+    chunk.regen = true
     return chunk.tristrip_line_editors.next().bind(chunk, iline)
   }
 
   // @ts-ignore
-  line(id: number, v1: IOpenNumVector, v2: IOpenNumVector): LineEditor {
+  line(id: number, v1: IOpenNumVector, v2: IOpenNumVector): LineEditor<{dead: false}> {
     //return this.smoothline(id, v1, v2);
 
     const chunk = this.get_chunk(id)
@@ -2354,21 +2374,21 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     if (line_cos.dataUsed < i + 6) {
       chunk.line(v1, v2)
     } else {
-      line_cos = line_cos._getWriteData()
-      line_cos[i++] = v1[0]
-      line_cos[i++] = v1[1]
-      line_cos[i++] = v1[2]
-      line_cos[i++] = v2[0]
-      line_cos[i++] = v2[1]
-      line_cos[i++] = v2[2]
+      const cos = line_cos._getWriteData()
+      cos[i++] = v1[0]
+      cos[i++] = v1[1]
+      cos[i++] = v1[2]
+      cos[i++] = v2[0]
+      cos[i++] = v2[1]
+      cos[i++] = v2[2]
 
-      if (i > line_cos.length) {
-        console.log(i, line_cos.length, line_cos)
+      if (i > cos.length) {
+        console.log(i, cos.length, cos)
         throw new Error('range error')
       }
     }
 
-    chunk.regen = 1
+    chunk.regen = true
     return chunk.line_editors.next().bind(chunk, iline)
   }
 
@@ -2386,22 +2406,22 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     if (point_cos.dataUsed < i + 3) {
       chunk.point(v1)
     } else {
-      point_cos = point_cos._getWriteData()
-      point_cos[i++] = v1[0]
-      point_cos[i++] = v1[1]
-      point_cos[i++] = v1[2]
+      const cos = point_cos._getWriteData()
+      cos[i++] = v1[0]
+      cos[i++] = v1[1]
+      cos[i++] = v1[2]
 
-      if (i > point_cos.length) {
-        console.log(i, point_cos.length, point_cos)
+      if (i > cos.length) {
+        console.log(i, cos.length, cos)
         throw new Error('range error')
       }
     }
 
-    chunk.regen = 1
+    chunk.regen = true
     return chunk.point_editors.next().bind(chunk, ipoint)
   }
 
-  draw(gl: WebGL2RenderingContext, uniforms: any, program_override?: ShaderProgram): void {
+  draw(gl: WebGL2RenderingContext, uniforms: IUniformsBlock, program_override?: ShaderProgram): void {
     this.gl = gl
 
     for (const island of this.islands) {

@@ -6,19 +6,21 @@ Widget Refactor Todo:
 
 * */
 
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js'
+import {Vector2, Vector3, Vector4, Matrix4} from '../../../util/vectormath.js'
 import {SimpleMesh, LayerTypes} from '../../../core/simplemesh'
 import {Shapes} from '../../../core/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {isect_ray_plane} from '../../../path.ux/scripts/util/math.js'
 import {isMobile} from '../../../path.ux/scripts/util/util.js'
-import {CallbackNode, INodeConstructor, INodeSocketSet, Node, NodeFlags} from '../../../core/graph.js'
+import {CallbackNode, INodeConstructor, INodeSocketDef, INodeSocketSet, Node, NodeFlags} from '../../../core/graph.js'
 import {DependSocket} from '../../../core/graphsockets.js'
 import {css2color} from '../../../path.ux/scripts/core/ui_base.js'
 import {View3D} from '../view3d.js'
 import {OptionalIf} from '../../../util/optionalIf.js'
-import {ViewContext} from '../../../core/context.js'
-import {util, math} from '../../../path.ux/pathux.js'
+import {ToolContext, ViewContext} from '../../../core/context.js'
+import {util, math, ToolOp, PropertySlots, IVector4} from '../../../path.ux/pathux.js'
+
+export type IDistToMouse = [number, number, number?]
 
 export interface IFindNearestResult {
   data: any
@@ -30,7 +32,8 @@ export interface IFindNearestResult {
 const dist_temp_mats = util.cachering.fromConstructor(Matrix4, 512)
 const dist_temps = util.cachering.fromConstructor(Vector3, 512)
 const dist_temps4 = util.cachering.fromConstructor(Vector4, 512)
-const dist_rets = util.cachering.fromConstructor(Vector2, 512)
+const dist_rets2 = new util.cachering(() => [0, 0] as [number, number], 512)
+const dist_rets3 = new util.cachering(() => [0, 0, 0] as [number, number, number], 512)
 
 export const WidgetFlags = {
   SELECT       : 1,
@@ -135,7 +138,7 @@ export class WidgetShape<OPT extends {dead?: true | false | undefined} = {}> {
   }
 
   //returns [distance (in 2d screen space), z (for simple z ordering)]
-  distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale?: number) {
+  distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale?: number): IDistToMouse {
     throw new Error('implement me')
   }
 
@@ -237,7 +240,7 @@ export class WidgetShape<OPT extends {dead?: true | false | undefined} = {}> {
     }
 
     if (this.wireframe) {
-      this.mesh.drawLines(gl, undefined, Shaders.WidgetMeshShader)
+      this.mesh.drawLines(gl, {}, Shaders.WidgetMeshShader)
     } else {
       this.mesh.draw(gl)
     }
@@ -283,7 +286,7 @@ export class WidgetTorus extends WidgetShape {
     return super.draw(gl, manager, matrix)
   }
 
-  distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0) {
+  distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0): [number, number] {
     const mat = dist_temp_mats.next()
     mat.load(matrix)
 
@@ -307,7 +310,7 @@ export class WidgetTorus extends WidgetShape {
     const isect = isect_ray_plane(origin, plane, vieworigin, view)
 
     if (!isect) {
-      return 10000.0
+      return [10000.0, 10000.0]
     }
 
     let z = isect.vectorDistance(vieworigin)
@@ -342,7 +345,7 @@ export class WidgetArrow extends WidgetShape {
     super.draw(gl, manager, matrix)
   }
 
-  distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0) {
+  distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0): IDistToMouse {
     const mat = dist_temp_mats.next()
     mat.load(matrix)
 
@@ -359,7 +362,8 @@ export class WidgetArrow extends WidgetShape {
     view3d.project(v1)
     view3d.project(v2)
 
-    const tout = dist_rets.next().zero()
+    const tout = dist_rets2.next()
+    tout[0] = tout[1] = 0.0
 
     let t = tout[0]
 
@@ -389,7 +393,7 @@ export class WidgetBlockArrow extends WidgetArrow {
     this.shapeid = 'BLOCKARROW'
   }
 
-  distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0) {
+  distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0): IDistToMouse {
     const ret = super.distToMouse(view3d, x, y, matrix, wscale)
 
     return ret
@@ -407,7 +411,7 @@ export class WidgetSphere extends WidgetShape {
     super.draw(gl, manager, matrix)
   }
 
-  distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0) {
+  distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0): IDistToMouse {
     const v = new Vector3()
     //measure scale
 
@@ -426,7 +430,7 @@ export class WidgetSphere extends WidgetShape {
     const z = v1[2]
 
     const dd = Math.sqrt((x - v1[0]) ** 2 + (y - v1[1]) ** 2)
-    const rett = dist_rets.next()
+    const rett = dist_rets2.next()
 
     rett[0] = dd
     rett[1] = v1[2]
@@ -457,7 +461,7 @@ export class WidgetSphere extends WidgetShape {
 
     const dis = v2.vectorDistance(rco)
 
-    const ret = dist_rets.next()
+    const ret = dist_rets2.next()
 
     ret[0] = sign > 0.0 ? dis : -1 //XXX fixme: why is -1 necassary?
     ret[1] = rco[2]
@@ -477,7 +481,7 @@ export class WidgetPlane extends WidgetShape {
     super.draw(gl, manager, matrix)
   }
 
-  distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0) {
+  distToMouse(view3d: View3D, x: number, y: number, matrix: Matrix4, wscale = 1.0): IDistToMouse {
     const origin = dist_temps.next().zero()
 
     origin.multVecMatrix(matrix)
@@ -506,7 +510,7 @@ export class WidgetPlane extends WidgetShape {
     const scaley = axisy.vectorDistance(sorigin)
 
     const isect = math.isect_ray_plane(origin, n, view3d.activeCamera.pos, view)
-    const ret2 = dist_rets.next()
+    const ret2 = dist_rets2.next()
 
     if (isect) {
       const zco = dist_temps.next().load(isect)
@@ -594,10 +598,13 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
   children: WidgetBase[]
   destroyed: boolean
   shape: WidgetShape | undefined
-  manager: WidgetManager | undefined
+  /** is set by WidgetManager */
+  manager: WidgetManager = undefined as unknown as WidgetManager
   matrix: Matrix4
   _tempmatrix: Matrix4
-  parent?: WidgetBase;
+  parent?: WidgetBase
+
+  onclick?: (e: PointerEvent) => boolean | undefined;
 
   ['constructor']: IWidgetConstructor<Inputs, Outputs, this> = this['constructor']
 
@@ -615,7 +622,6 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
     this.destroyed = false
 
     this.shape = undefined
-    this.manager = undefined //is set by WidgetManager
 
     this.matrix = new Matrix4()
     this._tempmatrix = new Matrix4()
@@ -691,7 +697,11 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
    * @param y view3d-local coordinate y
    */
   findNearest(view3d: View3D, x: number, y: number, limit = 8, matrix?: Matrix4): IFindNearestResult | undefined {
-    let mindis, minz, minret, minf, minmargin
+    let mindis: number | undefined,
+      minz: number | undefined,
+      minret: this | undefined,
+      minf: number | undefined,
+      minmargin: number | undefined
 
     if (!matrix) {
       matrix = dist_temp_mats.next()
@@ -733,19 +743,19 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
       }
     }
 
-    if (mindis !== undefined && mindis > limit + minmargin) {
+    if (mindis !== undefined && mindis > limit + minmargin!) {
       return undefined
     }
 
     return {
       data  : minret,
-      dis   : mindis,
-      z     : minz,
-      margin: minmargin,
+      dis   : mindis!,
+      z     : minz!,
+      margin: minmargin!,
     }
   }
 
-  add(child) {
+  add(child: WidgetBase) {
     this.children.push(child)
 
     child.parent = this
@@ -781,9 +791,9 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
     }
   }
 
-  on_mousedown(e, localX, localY, was_touch) {
+  on_mousedown(e: PointerEvent, localX: number, localY: number, was_touch?: boolean) {
     const child = this.findNearestWidget(this.manager.ctx.view3d, localX, localY)
-    let ret = false
+    let ret: boolean | undefined = false
 
     if (this.onclick) {
       ret = this.onclick(e)
@@ -801,7 +811,7 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
     return ret
   }
 
-  on_mousemove(e, localX, localY) {
+  on_mousemove(e: PointerEvent, localX: number, localY: number) {
     const child = this.findNearestWidget(this.manager.ctx.view3d, localX, localY)
 
     if (child !== undefined && child !== this) {
@@ -814,14 +824,14 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
     return false
   }
 
-  findNearestWidget(view3d, localX, localY) {
+  findNearestWidget(view3d: View3D, localX: number, localY: number) {
     const ret = this.findNearest(view3d, localX, localY)
     if (ret) {
       return ret.data
     }
   }
 
-  on_mouseup(e, localX, localY, was_touch) {
+  on_mouseup(e: PointerEvent, localX: number, localY: number, was_touch?: boolean) {
     const child = this.findNearestWidget(this.manager.ctx.view3d, localX, localY)
 
     if (child !== undefined && child !== this) {
@@ -834,11 +844,11 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
     return false
   }
 
-  on_keydown(e, localX, localY) {
+  on_keydown(e: KeyboardEvent, localX: number, localY: number) {
     return true
   }
 
-  draw(gl, manager, matrix = undefined) {
+  draw(gl: WebGL2RenderingContext, manager: WidgetManager, matrix?: Matrix4) {
     const mat = this._tempmatrix
 
     mat.makeIdentity()
@@ -851,7 +861,7 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
     /* Apply zoom scaling. */
     if (!this.parent) {
       const co = new Vector3()
-      const w = this.ctx.view3d.project(co)
+      const w = this.ctx!.view3d.project(co)
       const s = w * 0.075 // / this.ctx.view3d.size[1];
 
       this.wscale = s
@@ -877,7 +887,7 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
     this.shape.draw(gl, manager, mat)
   }
 
-  _newbase(matrix, color, shape) {
+  _newbase(matrix: Matrix4, color: Vector4, shape: WidgetShape) {
     const ret = new WidgetBase()
 
     ret.shape = shape
@@ -886,9 +896,8 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
       color = css2color(color)
     }
 
-    if (color !== undefined) {
+    if (color !== undefined && ret.shape) {
       ret.shape.color.load(color)
-
       if (color.length < 4) ret.shape.color[3] = 1.0
     }
 
@@ -899,35 +908,35 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
     return ret
   }
 
-  getTorus(matrix, color) {
-    return this.add(this._newbase(matrix, color, new WidgetTorus(this)))
+  getTorus(matrix: Matrix4, color: Vector4) {
+    return this.add(this._newbase(matrix, color, new WidgetTorus()))
   }
 
-  getArrow(matrix, color) {
-    return this.add(this._newbase(matrix, color, new WidgetArrow(this)))
+  getArrow(matrix: Matrix4, color: Vector4) {
+    return this.add(this._newbase(matrix, color, new WidgetArrow()))
   }
 
-  getSphere(matrix, color) {
-    return this.add(this._newbase(matrix, color, new WidgetSphere(this)))
+  getSphere(matrix: Matrix4, color: Vector4) {
+    return this.add(this._newbase(matrix, color, new WidgetSphere()))
   }
 
-  getChevron(matrix, color) {
-    return this.add(this._newbase(matrix, color, new WidgetChevron(this)))
+  getChevron(matrix: Matrix4, color: Vector4) {
+    return this.add(this._newbase(matrix, color, new WidgetChevron()))
   }
 
-  getDoubleChevron(matrix, color) {
-    return this.add(this._newbase(matrix, color, new WidgetDoubleChevron(this)))
+  getDoubleChevron(matrix: Matrix4, color: Vector4) {
+    return this.add(this._newbase(matrix, color, new WidgetDoubleChevron()))
   }
 
-  getPlane(matrix, color) {
-    return this.add(this._newbase(matrix, color, new WidgetPlane(this)))
+  getPlane(matrix: Matrix4, color: Vector4) {
+    return this.add(this._newbase(matrix, color, new WidgetPlane()))
   }
 
-  getBlockArrow(matrix, color) {
-    return this.add(this._newbase(matrix, color, new WidgetBlockArrow(this)))
+  getBlockArrow(matrix: Matrix4, color: Vector4) {
+    return this.add(this._newbase(matrix, color, new WidgetBlockArrow()))
   }
 
-  setManager(manager) {
+  setManager(manager: WidgetManager) {
     this.manager = manager
     this.ctx = manager.ctx
   }
@@ -943,25 +952,24 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
    * executes a (usually modal) tool, adding (and removing)
    * draw callbacks to execute this.update() as appropriate
    * */
-  execTool(ctx, tool) {
-    const view3d = this.ctx.view3d
+  execTool(ctx: ViewContext, tool: ToolOp) {
+    ctx = ctx ?? this.ctx
+    if (ctx === undefined) {
+      throw new Error('no context')
+    }
+
+    const view3d = ctx.view3d
+
+    if (view3d._graphnode == undefined) {
+      throw new Error('missing view3d._graphnode')
+    }
 
     if (!this.inputs.depend.has(view3d._graphnode.outputs.onDrawPre)) {
       this.inputs.depend.connect(view3d._graphnode.outputs.onDrawPre)
     }
 
-    const toolstack = this.ctx.toolstack
+    const toolstack = ctx.toolstack
     toolstack.execTool(ctx, tool)
-
-    if (tool._promise !== undefined) {
-      tool._promise.then((ctx, was_cancelled) => {
-        console.log('tool was finished', this, this._widget_tempnode, '.')
-
-        if (this._widget_tempnode !== undefined) {
-          this.inputs.depend.disconnect(view3d._graphnode.outputs.onDrawPre)
-        }
-      })
-    }
   }
 
   static nodedef() {
@@ -1002,6 +1010,9 @@ export class WidgetManager {
   public gl: WebGL2RenderingContext | undefined
   public ready: boolean
 
+  public highlight?: WidgetBase
+  public active?: WidgetBase
+
   // Widget collections and management
   public widgets: WidgetList // Array with additional dynamic properties
   protected widget_idmap: {[key: number]: WidgetBase}
@@ -1012,7 +1023,7 @@ export class WidgetManager {
   public shapes: {[key: string]: SimpleMesh}
 
   // Execution graph nodes
-  protected nodes: {[key: number]: CallbackNode}
+  protected nodes: {[key: number | string]: CallbackNode}
 
   constructor(ctx: ViewContext) {
     this._init = false
@@ -1063,7 +1074,7 @@ export class WidgetManager {
     for (const k in this.nodes) {
       const n = this.nodes[k]
 
-      if (n.graph !== graph) {
+      if (n.graph_graph !== graph) {
         console.log('prune zombie node')
         delete this.nodes[k]
         continue
@@ -1071,15 +1082,8 @@ export class WidgetManager {
 
       delete this.nodes[k]
 
-      try {
-        n.onRemove()
-      } catch (error) {
-        util.print_stack(error)
-        console.warn('Error removing a node', n)
-      }
-
       if (n.graph_graph) {
-        n.graph_graph.remove(this)
+        n.graph_graph.remove(n)
         n.graph_graph = undefined
       }
     }
@@ -1095,46 +1099,62 @@ export class WidgetManager {
     }
   }
 
-  createCallbackNode(id, name, callback, inputs, outputs) {
+  createCallbackNode<IN extends INodeSocketSet, OUT extends INodeSocketSet>(
+    id: number | string,
+    name: string,
+    callback: () => {},
+    inputs: IN,
+    outputs: OUT
+  ) {
     const key = id + ':' + name
 
     if (this.nodes[key]) {
       this.ctx.graph.remove(this.nodes[key])
     }
 
-    this.nodes[key] = CallbackNode.create(key, callback, inputs, outputs)
-    this.nodes[key]._key = key
+    const node = CallbackNode.create(key, callback, inputs, outputs)
+    node._key = key
+    this.nodes[key] = node
 
     return this.nodes[key]
   }
 
   loadShapes() {
     for (const k in Shapes) {
-      const smesh = Shapes[k].copy()
-
+      const smesh = Shapes[k as keyof typeof Shapes].copy()
       this.shapes[k] = smesh
     }
 
     this.ready = true
   }
 
-  _picklimit(was_touch) {
+  _picklimit(was_touch?: boolean) {
     return was_touch ? 35 : 8
   }
 
-  _fireAllEventWidgets(e, key, localX, localY, was_touch) {
-    let ret = 0
+  _fireAllEventWidgets(
+    e: PointerEvent | KeyboardEvent,
+    key: 'on_keydown' | 'on_mousedown' | 'on_mousemove' | 'on_mouseup',
+    localX: number,
+    localY: number,
+    was_touch?: boolean
+  ) {
+    let ret = false
 
     for (const w of this.widgets) {
       if (w.flag & WidgetFlags.ALL_EVENTS) {
-        ret |= w[key](e, localX, localY, was_touch)
+        if (key === 'on_keydown') {
+          ret ||= w[key](e as KeyboardEvent, localX, localY)
+        } else {
+          ret ||= w[key](e as PointerEvent, localX, localY, was_touch) ?? false
+        }
       }
     }
 
     return ret
   }
 
-  on_keydown(e, localX, localY) {
+  on_keydown(e: KeyboardEvent, localX: number, localY: number) {
     if (this._fireAllEventWidgets(e, 'on_keydown', localX, localY, false)) {
       return true
     }
@@ -1145,7 +1165,7 @@ export class WidgetManager {
   }
 
   /**see view3d.getSubEditorMpos for how localX/localY are derived*/
-  on_mousedown(e, localX, localY, was_touch) {
+  on_mousedown(e: PointerEvent, localX: number, localY: number, was_touch?: boolean) {
     console.log('widget mouse down')
 
     if (this._fireAllEventWidgets(e, 'on_mousedown', localX, localY, was_touch)) {
@@ -1162,17 +1182,15 @@ export class WidgetManager {
     }
   }
 
-  findNearest(x, y, limit = 16) {
+  findNearest(x: number, y: number, limit = 16): WidgetBase | undefined {
     let mindis = 1e17
-    const minz = 1e17
-    let minw = undefined
-    const minmargin = 0
-    let minf
+    let minw: WidgetBase | undefined
+    let minf: number | undefined
 
     const view3d = this.ctx.view3d
 
     for (const w of this.widgets) {
-      let skip = w.flag & WidgetFlags.IGNORE_EVENTS
+      let skip = !!(w.flag & WidgetFlags.IGNORE_EVENTS)
       skip = skip || w.parent !== undefined
 
       if (skip) {
@@ -1190,7 +1208,7 @@ export class WidgetManager {
       const z = ret.z
       const f = WidgetBase._weightDisZ(view3d, dis, z)
 
-      if (minw === undefined || f < minf) {
+      if (minw === undefined || f < minf!) {
         mindis = dis
         minf = f
         minw = ret.data
@@ -1200,7 +1218,7 @@ export class WidgetManager {
     return minw
   }
 
-  updateHighlight(e, localX, localY, was_touch) {
+  updateHighlight(e: PointerEvent, localX: number, localY: number, was_touch?: boolean) {
     const w = this.findNearest(localX, localY, this._picklimit(was_touch))
 
     if (this.widgets.highlight !== w) {
@@ -1219,7 +1237,7 @@ export class WidgetManager {
     return w !== undefined
   }
 
-  on_mousemove(e, localX, localY, was_touch) {
+  on_mousemove(e: PointerEvent, localX: number, localY: number, was_touch?: boolean) {
     const ret = this.updateHighlight(e, localX, localY, was_touch)
 
     //console.log(w);
@@ -1230,7 +1248,7 @@ export class WidgetManager {
     return ret
   }
 
-  on_mouseup(e, localX, localY, was_touch) {
+  on_mouseup(e: PointerEvent, localX: number, localY: number, was_touch?: boolean) {
     this.updateHighlight(e, localX, localY, was_touch)
 
     if (this._fireAllEventWidgets(e, 'on_mouseup', localX, localY, was_touch)) {
@@ -1242,7 +1260,7 @@ export class WidgetManager {
     }
   }
 
-  add(widget) {
+  add(widget: WidgetBase) {
     if (widget === undefined || !(widget instanceof WidgetBase)) {
       console.warn('invalid widget type for ', widget)
       throw new Error('invalid widget type for ' + widget)
@@ -1272,15 +1290,15 @@ export class WidgetManager {
     return widget
   }
 
-  hasWidgetWithKey(key) {
+  hasWidgetWithKey(key: string) {
     return key in this.widget_keymap
   }
 
-  getWidgetWithKey(key) {
+  getWidgetWithKey(key: string) {
     return this.widget_keymap[key]
   }
 
-  remove(widget) {
+  remove(widget: WidgetBase) {
     if (!(widget.id in this.widget_idmap)) {
       console.warn('widget not in manager', widget.id, widget)
       return
@@ -1290,8 +1308,8 @@ export class WidgetManager {
       this.ctx.graph.remove(widget)
     }
 
-    if (widget.onremove) {
-      widget.onremove()
+    if (widget.onRemove) {
+      widget.onRemove()
     }
 
     if (widget === this.highlight) {
@@ -1321,7 +1339,7 @@ export class WidgetManager {
     }
   }
 
-  destroy(gl) {
+  destroy(gl: WebGL2RenderingContext) {
     if (this.ctx.view3d !== undefined) {
       this.clearNodes()
     } else {
@@ -1340,7 +1358,7 @@ export class WidgetManager {
       this.gl = gl
     }
 
-    gl = this.gl
+    gl = this.gl!
     const widgets = this.widgets
 
     this.widgets = []
@@ -1359,13 +1377,13 @@ export class WidgetManager {
       try {
         w.destroy(gl)
       } catch (error) {
-        util.print_stack(error)
+        util.print_stack(error as Error)
         console.warn('Failed to destroy a widget', w)
       }
     }
   }
 
-  draw(view3d, gl) {
+  draw(view3d: View3D, gl: WebGL2RenderingContext) {
     if (!this._init) {
       this._init = true
       this.glInit(gl)
@@ -1388,9 +1406,8 @@ export class WidgetManager {
     }
   }
 
-  _newbase(matrix, color, shape) {
+  _newbase(matrix: Matrix4, color: Vector4, shape: WidgetShape) {
     const ret = new WidgetBase()
-
     ret.shape = shape
 
     if (typeof color == 'string') {
@@ -1398,9 +1415,8 @@ export class WidgetManager {
     }
 
     if (color !== undefined) {
-      ret.shape.color.load(color)
-
-      if (color.length < 4) ret.shape.color[3] = 1.0
+      ret.shape!.color.load(color)
+      if (color.length < 4) ret.shape!.color[3] = 1.0
     }
 
     if (matrix !== undefined) {
@@ -1410,24 +1426,24 @@ export class WidgetManager {
     return ret
   }
 
-  arrow(matrix, color) {
-    return this.add(this._newbase(matrix, color, new WidgetArrow(this)))
+  arrow(matrix: Matrix4, color: Vector4) {
+    return this.add(this._newbase(matrix, color, new WidgetArrow()))
   }
 
-  chevron(matrix, color) {
-    return this.add(this._newbase(matrix, color, new WidgetChevron(this)))
+  chevron(matrix: Matrix4, color: IVector4) {
+    return this.add(this._newbase(matrix, color, new WidgetChevron()))
   }
 
-  plane(matrix, color) {
-    return this.add(this._newbase(matrix, color, new WidgetPlane(this)))
+  plane(matrix: Matrix4, color: IVector4) {
+    return this.add(this._newbase(matrix, color, new WidgetPlane()))
   }
 
-  sphere(matrix, color) {
-    return this.add(this._newbase(matrix, color, new WidgetSphere(this)))
+  sphere(matrix: Matrix4, color: IVector4) {
+    return this.add(this._newbase(matrix, color, new WidgetSphere()))
   }
 
-  blockarrow(matrix, color) {
-    return this.add(this._newbase(matrix, color, new WidgetBlockArrow(this)))
+  blockarrow(matrix: Matrix4, color: IVector4) {
+    return this.add(this._newbase(matrix, color, new WidgetBlockArrow()))
   }
 
   updateGraph() {
@@ -1485,7 +1501,7 @@ export class WidgetManager {
       widget.manager = this
       widget.update()
 
-      update |= testMat(oldmat, widget.matrix)
+      update ||= testMat(oldmat, widget.matrix)
 
       if (!widget.destroyed && widget.isDead) {
         widget.remove()

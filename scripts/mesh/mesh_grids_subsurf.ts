@@ -415,7 +415,7 @@ export class PatchBuilder {
 
       if (l.v.valence !== 4) {
         function findClosest(u: number, v: number, dt: number, steps: number) {
-          const list = []
+          const list = [] as {dist: number; u2: number; v2: number}[]
           const m1 = new Vector2([u, v])
           const co1 = new Vector3(p.evaluate(m1[0], m1[1]))
 
@@ -494,7 +494,7 @@ export class PatchBuilder {
       }
 
       const pb = p._patch
-      const old = []
+      const old = [] as number[]
       for (let i = 0; i < pb.length; i++) {
         old.push(pb[i])
       }

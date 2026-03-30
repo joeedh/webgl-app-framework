@@ -1839,7 +1839,7 @@ export class SmoothGridsOp extends MeshOp<{
         }
         console.log('MRES DEPTH', depth)
 
-        const mres = mesh.loops.customData.getLayerSettings(QuadTreeGrid)
+        const mres = mesh.loops.customData.getLayerSettings(QuadTreeGrid)!
         const oldmres = mres.copy()
 
         const start = depth === 0 ? 0 : 1
@@ -1882,7 +1882,7 @@ const staroffs_origin = [
   [0, 0],
 ]
 
-const boxoffs = []
+const boxoffs = [] as number[][]
 
 for (let ix = -1; ix <= 1; ix++) {
   for (let iy = -1; iy <= 1; iy++) {
@@ -2339,7 +2339,7 @@ export class GridsTestOp extends MeshOp<{
               }
 
               p.load(patch.evaluate(u, v))
-              p.load(grid.subsurf.evaluate(uv[0], uv[1]))
+              p.load(grid.subsurf!.evaluate(uv[0], uv[1]))
             }
           }
 
@@ -2830,7 +2830,7 @@ export class ConnectVertsOp extends MeshOp {
 
   exec(ctx: ToolContext) {
     for (const mesh of this.getMeshes(ctx)) {
-      const vs = util.list(mesh.verts.selected.editable)
+      const vs = Array.from(mesh.verts.selected.editable)
 
       if (vs.length === 2) {
         const v1 = vs[0],
@@ -2940,7 +2940,7 @@ export class CleanupQuads extends MeshOp {
       newfs = newfs.filter((f: Face) => f.eid >= 0)
       cleanupQuads(mesh, new Set(newfs), lctx)
 
-      const vs = new Set()
+      const vs = new Set<Vertex>()
       for (const f of newfs) {
         if (f.eid < 0) {
           continue
@@ -3330,7 +3330,7 @@ export class QuadSmoothOp extends MeshOp {
         }
       }
 
-      const vs = new Set()
+      const vs = new Set<Vertex>()
       for (const f of mesh.faces.selected.editable) {
         for (const v of f.verts) {
           vs.add(v)
@@ -3453,13 +3453,13 @@ export class OptRemeshParams extends ToolOp<{
 
 ToolOp.register(OptRemeshParams)
 
-import {SolverElem, SolverSettings, Solver, DiffConstraint, VelConstraint} from './mesh_solver.js'
+import {SolverElem, Solver, VelConstraint} from './mesh_solver.js'
 import {BVHToolMode} from '../editors/view3d/tools/pbvh'
 import {CurvVert, getCurveVerts, smoothCurvatures} from './mesh_curvature.js'
 import {getFaceSets} from './mesh_facesets.js'
 import {getDynVerts} from '../util/bvh.js'
-import {ToolContext, ViewContext} from '../core/context'
-import {View3D} from '../../types/scripts/editors/view3d/view3d'
+import type {ToolContext, ViewContext} from '../core/context'
+import type {View3D} from '../editors/all.js'
 
 export class SolverOpBase<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends MeshOp<
   InputSet & {
@@ -3843,16 +3843,16 @@ export class DuplicateMeshOp extends MeshOp<{
     for (const mesh of this.getMeshes(ctx)) {
       const selmask = this.inputs.selectMask.getValue()
 
-      const geoms = []
+      const geoms = [] as Element[][]
 
       if (selmask & MeshTypes.VERTEX) {
-        geoms.push(util.list(mesh.verts.selected.editable))
+        geoms.push(Array.from(mesh.verts.selected.editable))
       }
       if (selmask & MeshTypes.EDGE) {
-        geoms.push(util.list(mesh.edges.selected.editable))
+        geoms.push(Array.from(mesh.edges.selected.editable))
       }
       if (selmask & MeshTypes.FACE) {
-        geoms.push(util.list(mesh.faces.selected.editable))
+        geoms.push(Array.from(mesh.faces.selected.editable))
       }
 
       let geom: Element[] = []

@@ -241,11 +241,12 @@ MDynVert {
 
   static define() {
     return {
-      elemTypeMask: MeshTypes.VERTEX,
-      typeName    : 'dynvert',
-      uiTypeName  : 'dynvert',
-      defaultName : 'dynvert',
-      flag        : 0,
+      elemTypeMask : MeshTypes.VERTEX,
+      typeName     : 'dynvert',
+      uiTypeName   : 'dynvert',
+      defaultName  : 'dynvert',
+      flag         : 0,
+      settingsClass: undefined,
     }
   }
 
@@ -374,11 +375,12 @@ CDNodeInfo {
 
   static define() {
     return {
-      elemTypeMask: MeshTypes.VERTEX, //see MeshTypes in mesh.js
-      typeName    : 'bvh',
-      uiTypeName  : 'bvh',
-      defaultName : 'bvh',
-      flag        : CDFlags.TEMPORARY | CDFlags.IGNORE_FOR_INDEXBUF,
+      elemTypeMask : MeshTypes.VERTEX, //see MeshTypes in mesh.js
+      typeName     : 'bvh',
+      uiTypeName   : 'bvh',
+      defaultName  : 'bvh',
+      flag         : CDFlags.TEMPORARY | CDFlags.IGNORE_FOR_INDEXBUF,
+      settingsClass: undefined,
     }
   }
 
@@ -559,7 +561,7 @@ export class BVHNode<
   leafTexUV: Vector2
   boxverts: OptionalIfNot<BVHNodeVertex[], OPT['boxedges']>
   boxedges: OptionalIfNot<BVHNodeEdge[], OPT['boxedges']>
-  boxvdata: OptionalIfNot<any[], OPT['boxedges']>
+  boxvdata: OptionalIfNot<Map<any, any>, OPT['boxedges']>
   boxbridgetris?: any
 
   origGen: number

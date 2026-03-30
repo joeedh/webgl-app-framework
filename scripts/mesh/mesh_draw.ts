@@ -1,15 +1,17 @@
-import {Number4, Vector3, Vector4} from '../util/vectormath.js'
+import {Number3, Number4, Vector3, Vector4} from '../util/vectormath.js'
 import * as util from '../util/util.js'
 
-import {MeshDrawFlags, MeshFeatures, MeshFlags, MeshTypes, RecalcFlags} from './mesh_base.js'
-import {Colors} from '../sceneobject/sceneobject.js'
-import {ChunkedSimpleMesh, LayerTypes, PrimitiveTypes} from '../core/simplemesh'
-import {NormalLayerElem, UVLayerElem} from './mesh_customdata.js'
-import {SelMask} from '../editors/view3d/selectmode.js'
-import {GridBase} from './mesh_grids.js'
-import {getFaceSetColor, getFaceSets} from './mesh_facesets.js'
-import type {IUniformsBlock} from '../core/webgl.js'
-import type {Mesh} from './mesh'
+import {MeshDrawFlags, MeshFeatures, MeshFlags, MeshTypes, RecalcFlags} from './mesh_base'
+import {Colors, SceneObject} from '../sceneobject/sceneobject'
+import {ChunkedSimpleMesh, LayerTypes, PrimitiveTypes, SimpleMesh} from '../core/simplemesh'
+import {NormalLayerElem, UVLayerElem} from './mesh_customdata'
+import {SelMask} from '../editors/view3d/selectmode'
+import {GridBase} from './mesh_grids'
+import {getFaceSetColor, getFaceSets, getFaceSetsAttr} from './mesh_facesets'
+import type {IUniformsBlock, ShaderProgram} from '../core/webgl'
+import type {AttrRef, ColorLayerElem, ElementList, FaceSetElem, Mesh} from './mesh'
+import {ViewContext} from '../core/context.js'
+import type {View3D} from '../editors/all.js'
 
 export function genRenderMesh(
   gl: WebGL2RenderingContext | undefined,
@@ -20,11 +22,11 @@ export function genRenderMesh(
 ) {
   let recalc = 0
 
-  let times = [] as string[]
+  const times = [] as string[]
   let start = util.time_ms()
 
   function pushtime(tag: string) {
-    let t = util.time_ms() - start
+    const t = util.time_ms() - start
     let s = (t / 1000.0).toFixed(3) + 's'
     s = tag + ':' + s
 
@@ -40,14 +42,14 @@ export function genRenderMesh(
     recalc = MeshTypes.FACE
   }
 
-  let lineuv1 = [0, 0]
-  let lineuv2 = [1, 1]
+  const lineuv1 = [0, 0]
+  const lineuv2 = [1, 1]
 
   mesh.recalc &= ~RecalcFlags.ELEMENTS
 
   //let selcolor = uniforms.select_color || Colors[1];
-  let selcolor = Colors[1]
-  let unselcolor = new Vector4(Colors[0]).mulScalar(0.5)
+  const selcolor = Colors[1]
+  const unselcolor = new Vector4(Colors[0]).mulScalar(0.5)
 
   function facecolor(c: Vector4 | number[]) {
     c = new Vector4(c)
@@ -60,10 +62,10 @@ export function genRenderMesh(
     return c
   }
 
-  let face_selcolor = facecolor(selcolor)
-  let face_unselcolor = facecolor(unselcolor)
+  const face_selcolor = facecolor(selcolor)
+  const face_unselcolor = facecolor(unselcolor)
 
-  let getmesh = (key: string) => {
+  const getmesh = (key: string) => {
     let layerflag = LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.ID
 
     //LayerTypes.NORMAL | LayerTypes.UV | LayerTypes.ID | LayerTypes.COLOR;
@@ -81,64 +83,64 @@ export function genRenderMesh(
     return mesh._fancyMeshes[key]
   }
 
-  let trilen = mesh._ltris === undefined ? mesh.faces.length : mesh._ltris.length
-  let updatekey = '' + trilen + ':' + mesh.verts.length + ':' + mesh.edges.length
+  const trilen = mesh._ltris === undefined ? mesh.faces.length : mesh._ltris.length
+  const updatekey = '' + trilen + ':' + mesh.verts.length + ':' + mesh.edges.length
 
   if (updatekey !== mesh._last_elem_update_key) {
     //console.log("full element draw regen", updatekey);
 
     recalc = MeshTypes.VERTEX | MeshTypes.EDGE | MeshTypes.FACE
 
-    for (let v of mesh.verts) {
+    for (const v of mesh.verts) {
       v.flag |= MeshFlags.UPDATE
     }
-    for (let e of mesh.edges) {
+    for (const e of mesh.edges) {
       e.flag |= MeshFlags.UPDATE
     }
-    for (let f of mesh.faces) {
+    for (const f of mesh.faces) {
       f.flag |= MeshFlags.UPDATE
     }
 
     mesh._last_elem_update_key = updatekey
-    for (let k in mesh._fancyMeshes) {
+    for (const k in mesh._fancyMeshes) {
       mesh._fancyMeshes[k].destroy(gl)
     }
 
     mesh._fancyMeshes = {}
   }
 
-  let cd_fset = getFaceSets(mesh, false)
+  const cd_fset = getFaceSetsAttr(mesh, false) as AttrRef<FaceSetElem>
+  const ecolors = {} as {[k: number]: Vector4}
 
-  let ecolors = {}
-  ecolors[0] = [0, 0, 0, 1]
+  ecolors[0] = new Vector4([0, 0, 0, 1])
   ecolors[MeshFlags.SELECT] = selcolor
-  ecolors[MeshFlags.SEAM] = [0, 1.0, 1.0, 1.0]
+  ecolors[MeshFlags.SEAM] = new Vector4([0, 1.0, 1.0, 1.0])
 
-  let clr = new Vector4(selcolor).interp(ecolors[MeshFlags.SEAM], 0.5)
+  const clr = new Vector4(selcolor).interp(ecolors[MeshFlags.SEAM], 0.5)
   ecolors[MeshFlags.SELECT | MeshFlags.SEAM] = clr
 
-  for (let k of Object.keys(ecolors)) {
-    let clr = ecolors[k]
-    k = parseInt(k)
+  for (let k in ecolors) {
+    let clr = ecolors[k as unknown as keyof typeof ecolors]
+    const n = parseInt('' + k)
 
     clr = new Vector4(clr)
-    if (!k) {
+    if (!n) {
       clr[2] = 0.5
     } else {
       clr.mulScalar(0.75)
       clr[3] = 1.0
     }
 
-    ecolors[k | MeshFlags.DRAW_DEBUG] = clr
-    ecolors[k | MeshFlags.SINGULARITY] = clr
+    ecolors[n | MeshFlags.DRAW_DEBUG] = clr
+    ecolors[n | MeshFlags.SINGULARITY] = clr
   }
 
   for (let k of Object.keys(ecolors)) {
-    let clr = ecolors[k]
-    k = parseInt(k)
+    let clr = ecolors[k as unknown as keyof typeof ecolors]
+    const n = parseInt(k)
 
     clr = new Vector4(clr)
-    if (!k) {
+    if (!n) {
       clr[0] = 0.75
     } else {
       clr[1] *= 0.5
@@ -146,48 +148,50 @@ export function genRenderMesh(
       clr[0] += (1.0 - clr[0]) * 0.5
     }
 
-    ecolors[k | MeshFlags.DRAW_DEBUG2] = clr
-    ecolors[k | MeshFlags.SINGULARITY] = clr
+    ecolors[n | MeshFlags.DRAW_DEBUG2] = clr
+    ecolors[n | MeshFlags.SINGULARITY] = clr
   }
 
   pushtime('start2')
 
-  let tempcolor = new Vector4()
-  let tempcolor2 = new Vector4()
-  let tempcolor3 = new Vector4()
+  const tempcolor = new Vector4()
+  const tempcolor2 = new Vector4()
+  const tempcolor3 = new Vector4()
 
-  let axes = [-1]
+  const axes = [-1]
   for (let i = 0; i < 3; i++) {
     if (mesh.symFlag & (1 << i)) {
       axes.push(i)
     }
   }
 
-  let sm
-  let meshes = mesh._fancyMeshes
-  let white = [1, 1, 1, 1]
-  let black = [0, 0, 0, 1]
+  let sm: ChunkedSimpleMesh | SimpleMesh
+  const meshes = mesh._fancyMeshes
+  const white = [1, 1, 1, 1]
+  const black = [0, 0, 0, 1]
 
   if (recalc & MeshTypes.VERTEX) {
     mesh.updateMirrorTags()
 
     let tot = 0
 
-    sm = getmesh('verts')
-    sm.primflag = PrimitiveTypes.POINTS
+    let sm2 = getmesh('verts') as ChunkedSimpleMesh
+    sm = sm2
+    sm2.primflag = PrimitiveTypes.POINTS
 
-    for (let v of mesh.verts) {
+    for (const v of mesh.verts) {
       if (v.flag & MeshFlags.HIDE || !(v.flag & MeshFlags.UPDATE)) {
         continue
       }
 
-      let p = sm.point(v.eid, v.co)
+      const p = sm2.point(v.eid, v.co)
 
-      let colormask = v.flag & (MeshFlags.SELECT | MeshFlags.SINGULARITY | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2)
-      let color = ecolors[colormask]
+      const colormask =
+        v.flag & (MeshFlags.SELECT | MeshFlags.SINGULARITY | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2)
+      const color = ecolors[colormask]
 
       for (let i = 0; i < v.edges.length; i++) {
-        let e = v.edges[i]
+        const e = v.edges[i]
         e.flag |= MeshFlags.UPDATE
       }
 
@@ -198,18 +202,19 @@ export function genRenderMesh(
 
     pushtime('vertex')
 
-    sm = getmesh('handles')
-    sm.primflag = PrimitiveTypes.POINTS
+    sm2 = getmesh('handles') as ChunkedSimpleMesh
+    sm2.primflag = PrimitiveTypes.POINTS
 
-    for (let h of mesh.handles) {
+    for (const h of mesh.handles) {
       if (!h.visible || !(h.flag & MeshFlags.UPDATE)) {
         continue
       }
-      let p = sm.point(h.eid, h.co)
+      const p = sm2.point(h.eid, h.co)
 
       //let color = h.flag & MeshFlags.SELECT ? selcolor : black;
-      let colormask = h.flag & (MeshFlags.SELECT | MeshFlags.SINGULARITY | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2)
-      let color = ecolors[colormask]
+      const colormask =
+        h.flag & (MeshFlags.SELECT | MeshFlags.SINGULARITY | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2)
+      const color = ecolors[colormask]
 
       p.ids(h.eid)
       p.colors(color)
@@ -225,9 +230,9 @@ export function genRenderMesh(
       }
 
       //XXX
-      let view3d = _appstate.ctx.view3d
+      const view3d = (_appstate.ctx as unknown as ViewContext).view3d
 
-      for (let e of mesh.edges) {
+      for (const e of mesh.edges) {
         if (e.flag & MeshFlags.UPDATE) {
           e.updateLength()
         }
@@ -246,16 +251,16 @@ export function genRenderMesh(
       sm = getmesh('edges')
       sm.primflag = PrimitiveTypes.LINES
 
-      let smoothline = mesh.edges.length < 100000
+      const smoothline = mesh.edges.length < 100000
 
       if (smoothline) {
         sm.primflag |= PrimitiveTypes.ADVANCED_LINES
       }
 
-      for (let e of mesh.edges) {
-        let update = e.v1.flag & MeshFlags.UPDATE
-        update = update || e.v2.flag & MeshFlags.UPDATE
-        update = update || e.flag & MeshFlags.UPDATE
+      for (const e of mesh.edges) {
+        let update = !!(e.v1.flag & MeshFlags.UPDATE)
+        update = update || !!(e.v2.flag & MeshFlags.UPDATE)
+        update = update || !!(e.flag & MeshFlags.UPDATE)
         update = update && !(e.flag & MeshFlags.HIDE)
 
         if (!update) {
@@ -274,11 +279,13 @@ export function genRenderMesh(
           } while (l !== e.l && _i++ < 10)
         }
 
-        let line = smoothline ? sm.smoothline(e.eid, e.v1.co, e.v2.co) : sm.line(e.eid, e.v1.co, e.v2.co)
+        const line = smoothline
+          ? (sm as ChunkedSimpleMesh).smoothline(e.eid, e.v1.co, e.v2.co)
+          : (sm as ChunkedSimpleMesh).line(e.eid, e.v1.co, e.v2.co)
 
-        let mask = e.flag & (MeshFlags.SELECT | MeshFlags.SEAM | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2)
+        const mask = e.flag & (MeshFlags.SELECT | MeshFlags.SEAM | MeshFlags.DRAW_DEBUG | MeshFlags.DRAW_DEBUG2)
 
-        let color = ecolors[mask]
+        const color = ecolors[mask]
 
         line.colors(color, color)
 
@@ -290,67 +297,69 @@ export function genRenderMesh(
     pushtime('edges')
   }
 
-  let cd_grid = GridBase.meshGridOffset(mesh)
-  let have_grids = cd_grid >= 0
+  const cd_grid = GridBase.meshGridRef(mesh)
+  const have_grids = cd_grid.i >= 0
 
   if (have_grids && recalc & MeshTypes.FACE) {
     sm = getmesh('faces')
     sm.primflag = PrimitiveTypes.TRIS
 
-    for (let l of mesh.loops) {
-      let grid = l.customData[cd_grid]
+    for (const l of mesh.loops) {
+      const grid = l.customData.get(cd_grid)
 
-      grid.makeDrawTris(mesh, sm, l, cd_grid)
+      grid.makeDrawTris(mesh, sm as SimpleMesh, l, cd_grid)
     }
 
     pushtime('grids')
   } else if (!have_grids && recalc & MeshTypes.FACE) {
-    let useLoopNormals = mesh.drawflag & MeshDrawFlags.USE_LOOP_NORMALS
+    let useLoopNormals = !!(mesh.drawflag & MeshDrawFlags.USE_LOOP_NORMALS)
     useLoopNormals = useLoopNormals && mesh.loops.customData.hasLayer(NormalLayerElem)
 
-    let cd_nor = useLoopNormals ? mesh.loops.customData.getLayerIndex(NormalLayerElem) : -1
+    //const cd_nor = useLoopNormals ? mesh.loops.customData.getLayerIndex(NormalLayerElem) : -1
+    const cd_nor = useLoopNormals ? mesh.loops.customData.getLayerRef(NormalLayerElem) : undefined
 
-    let haveUVs = mesh.loops.customData.hasLayer(UVLayerElem)
-    let cd_uvs = haveUVs ? mesh.loops.customData.getLayerIndex(UVLayerElem) : -1
+    const haveUVs = mesh.loops.customData.hasLayer(UVLayerElem)
+    const cd_uvs = haveUVs ? mesh.loops.customData.getLayerRef(UVLayerElem) : undefined
 
-    let cd_color = mesh.verts.customData.getLayerIndex('color')
-    let haveColors = cd_color >= 0
+    const cd_color = mesh.verts.customData.getLayerRef('color') as AttrRef<ColorLayerElem>
+    const haveColors = cd_color.i >= 0
 
-    sm = getmesh('faces')
-    sm.primflag = PrimitiveTypes.TRIS
+    const sm2 = getmesh('faces') as ChunkedSimpleMesh
+    sm = sm2
+    sm2.primflag = PrimitiveTypes.TRIS
 
     let ltris = mesh._ltris
     ltris = ltris === undefined ? [] : ltris
 
-    let p1 = new Vector3()
-    let p2 = new Vector3()
-    let p3 = new Vector3()
+    const p1 = new Vector3()
+    const p2 = new Vector3()
+    const p3 = new Vector3()
 
     for (let i = 0; i < ltris.length; i += 3) {
-      let v1 = ltris[i].v
-      let v2 = ltris[i + 1].v
-      let v3 = ltris[i + 2].v
-      let f = ltris[i].f
+      const v1 = ltris[i].v
+      const v2 = ltris[i + 1].v
+      const v3 = ltris[i + 2].v
+      const f = ltris[i].f
 
       if (f.flag & MeshFlags.HIDE || !(f.flag & MeshFlags.UPDATE)) {
         continue
       }
 
-      for (let axis of axes) {
+      for (const axis of axes) {
         let tri
 
         if (axis === -1) {
-          tri = sm.tri(i, v1.co, v2.co, v3.co)
+          tri = sm2.tri(i, v1.co, v2.co, v3.co)
         } else {
           p1.load(v1)
           p2.load(v2)
           p3.load(v3)
 
-          p1[axis] = -p1[axis]
-          p2[axis] = -p2[axis]
-          p3[axis] = -p3[axis]
+          p1[axis as Number3] = -p1[axis]
+          p2[axis as Number3] = -p2[axis]
+          p3[axis as Number3] = -p3[axis]
 
-          tri = sm.tri(ltris.length + i * 3 + axis, p1, p2, p3)
+          tri = sm2.tri(ltris.length + i * 3 + axis, p1, p2, p3)
         }
         tri.ids(f.eid, f.eid, f.eid)
 
@@ -360,17 +369,17 @@ export function genRenderMesh(
           tempcolor.load(face_unselcolor)
         }
 
-        if (cd_fset >= 0) {
-          let fset = Math.abs(ltris[i].f.customData[cd_fset].value)
+        if (cd_fset.i >= 0) {
+          const fset = Math.abs(ltris[i].f.customData.get(cd_fset).value)
 
-          let color = getFaceSetColor(fset)
+          const color = getFaceSetColor(fset)
           tempcolor.interp(color, 0.5)
         }
 
-        if (cd_color >= 0) {
-          let c1 = v1.customData[cd_color].color
-          let c2 = v2.customData[cd_color].color
-          let c3 = v3.customData[cd_color].color
+        if (cd_color.i >= 0) {
+          const c1 = v1.customData.get(cd_color).color
+          const c2 = v2.customData.get(cd_color).color
+          const c3 = v3.customData.get(cd_color).color
 
           tempcolor2.load(c2).mul(tempcolor)
           tempcolor3.load(c3).mul(tempcolor)
@@ -381,11 +390,11 @@ export function genRenderMesh(
           tri.colors(tempcolor, tempcolor, tempcolor)
         }
 
-        if (useLoopNormals) {
+        if (cd_nor !== undefined) {
           tri.normals(
-            ltris[i].customData[cd_nor].no,
-            ltris[i + 1].customData[cd_nor].no,
-            ltris[i + 2].customData[cd_nor].no
+            ltris[i].customData.get(cd_nor).no,
+            ltris[i + 1].customData.get(cd_nor).no,
+            ltris[i + 2].customData.get(cd_nor).no
           )
         } else if (f.flag & MeshFlags.SMOOTH_DRAW) {
           tri.normals(ltris[i].v.no, ltris[i + 1].v.no, ltris[i + 2].v.no)
@@ -393,11 +402,11 @@ export function genRenderMesh(
           tri.normals(f.no, f.no, f.no)
         }
 
-        if (haveUVs) {
+        if (cd_uvs !== undefined) {
           tri.uvs(
-            ltris[i].customData[cd_uvs].uv,
-            ltris[i + 1].customData[cd_uvs].uv,
-            ltris[i + 2].customData[cd_uvs].uv
+            ltris[i].customData.get(cd_uvs).uv,
+            ltris[i + 1].customData.get(cd_uvs).uv,
+            ltris[i + 2].customData.get(cd_uvs).uv
           )
         }
       }
@@ -405,12 +414,12 @@ export function genRenderMesh(
 
     if (combinedWireframe) {
       //simplemesh_shapes.js uses this code path
-      for (let e of mesh.edges) {
+      for (const e of mesh.edges) {
         if (e.flag & MeshFlags.HIDE) {
           continue
         }
 
-        let line = sm.line(e.eid, e.v1.co, e.v2.co)
+        const line = sm2.line(e.eid, e.v1.co, e.v2.co)
 
         //line.ids(e.eid+1, e.eid+1);
         line.colors(white, white)
@@ -425,8 +434,8 @@ export function genRenderMesh(
     pushtime('faces')
   }
 
-  for (let k in mesh._fancyMeshes) {
-    let sm = mesh._fancyMeshes[k]
+  for (const k in mesh._fancyMeshes) {
+    const sm = mesh._fancyMeshes[k]
   }
 
   mesh.clearUpdateFlags(recalc)
@@ -442,7 +451,16 @@ export function genRenderMesh(
    */
 }
 
-export function drawMeshElements(mesh, view3d, gl, selmask, uniforms, program, object, drawTransFaces = false) {
+export function drawMeshElements(
+  mesh: Mesh,
+  view3d: View3D,
+  gl: WebGL2RenderingContext,
+  selmask: number,
+  uniforms: IUniformsBlock,
+  program: ShaderProgram,
+  object: SceneObject,
+  drawTransFaces = false
+) {
   uniforms = uniforms !== undefined ? Object.assign({}, uniforms) : {}
 
   if (!uniforms.active_color) {
@@ -466,12 +484,12 @@ export function drawMeshElements(mesh, view3d, gl, selmask, uniforms, program, o
 
   uniforms.alpha = uniforms.alpha === undefined ? 1.0 : uniforms.alpha
 
-  let meshes = mesh._fancyMeshes
+  const meshes = mesh._fancyMeshes
 
   uniforms.pointSize = uniforms.pointSize === undefined ? 10 : uniforms.pointSize
   uniforms.polygonOffset = uniforms.polygonOffset === undefined ? 0.5 : uniforms.polygonOffset
 
-  let draw_list = (list, key) => {
+  const draw_list = (list: ElementList<any>, key: string) => {
     uniforms.active_id = list.active !== undefined ? list.active.eid : -1
     uniforms.highlight_id = list.highlight !== undefined ? list.highlight.eid : -1
 
@@ -485,7 +503,7 @@ export function drawMeshElements(mesh, view3d, gl, selmask, uniforms, program, o
   }
 
   if (selmask & SelMask.FACE) {
-    let alpha = uniforms.alpha
+    const alpha = uniforms.alpha
 
     if (drawTransFaces) {
       gl.enable(gl.BLEND)
@@ -499,7 +517,7 @@ export function drawMeshElements(mesh, view3d, gl, selmask, uniforms, program, o
 
     if (selmask & SelMask.EDGE) {
       uniforms.polygonOffset *= 0.5
-      let alpha = uniforms.alpha
+      const alpha = uniforms.alpha
       uniforms.alpha = 1.0
 
       draw_list(mesh.edges, 'edges')

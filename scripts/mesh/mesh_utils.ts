@@ -991,7 +991,7 @@ export function symmetrizeMesh(
     v[axis] = -v[axis]
 
     if (Math.abs(v[axis]) < mergeThreshold) {
-      mergeMap.set(v, ret.newToOld.get(v))
+      mergeMap.set(v, ret.newToOld.get(v)! as Vertex)
     }
   }
 

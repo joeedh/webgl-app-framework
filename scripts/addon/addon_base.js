@@ -28,7 +28,7 @@ import {KDrawModes} from '../mesh/mesh_curvature_test.js'
 import {DataBlock, DataRef, DataRefProperty, DataRefListProperty} from '../core/lib_api.js'
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js'
 import {ToolMode} from '../editors/view3d/view3d_toolmode.js'
-import {SceneObject, ObjectFlags, composeObjectMatrix} from '../sceneobject/sceneobject.js'
+import {SceneObject, composeObjectMatrix} from '../sceneobject/sceneobject.js'
 import {CustomDataElem} from '../mesh/customdata.js'
 import {
   Editor,

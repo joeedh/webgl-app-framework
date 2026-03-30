@@ -41,18 +41,24 @@ export interface ICustomDataElemDef {
   flag?: number //see CDFlags
 
   //if not undefined, a LayerSettingsBase child class defining overall settings that's not per-element
-  settingsClass?: any
+  settingsClass?: ILayerSettingsConstructor
 }
 
-export class CustomDataElem<ValueType = unknown, ChildCls extends {} = never> {
+export class CustomDataElem<
+  ValueType = unknown,
+  ChildCls extends CustomDataElem<ValueType> | undefined = undefined,
+  SettingsType extends LayerSettingsBase | unknown = unknown,
+> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
 mesh.CustomDataElem {
 }`
-  );
+  )
 
-  ['constructor']: ICustomDataElemConstructor<this> = this['constructor']
+  settingsType: SettingsType;
+
+  ['constructor']: ICustomDataElemConstructor<ValueType> = this['constructor']
 
   static define(): ICustomDataElemDef {
     return {
@@ -268,7 +274,7 @@ export function buildCDAPI(api: DataAPI) {
     const ldef = cls.define()
 
     //settings classes can be shared among customdata types
-    if (ldef.settingsClass && !api.hasStruct(ldef.settingsClass)) {
+    if (ldef.settingsClass !== undefined && !api.hasStruct(ldef.settingsClass)) {
       ldef.settingsClass.apiDefine(api)
     }
 
@@ -328,7 +334,7 @@ export function buildElementAPI(api: DataAPI, dstruct: DataStruct) {
     },
   })
 
-  dstruct.list<CustomDataElem<any>[], string, CustomDataElem<any> | undefined>('customData', 'namedLayers', {
+  dstruct.list<CustomDataElem[], string, CustomDataElem | undefined>('customData', 'namedLayers', {
     getIter(api, list) {
       return list
     },
@@ -392,6 +398,15 @@ LayerSettingsBase {
   }
 }
 
+export interface ILayerSettingsConstructor<T extends LayerSettingsBase = LayerSettingsBase> {
+  readonly STRUCT: string
+  new (): T
+  apiDefine(api: DataAPI): DataStruct
+}
+
+// empty child class to signal a customdata elem type has no settings
+export class NoSettingsClass extends LayerSettingsBase {}
+
 class _Nothing extends LayerSettingsBase {
   static STRUCT = nstructjs.inlineRegister(
     this,
@@ -402,7 +417,7 @@ _Nothing {
   )
 }
 
-export class CustomDataLayer<CDType extends CustomDataElem<any>> {
+export class CustomDataLayer<CDType extends CustomDataElem = CustomDataElem> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -446,7 +461,7 @@ mesh.CustomDataLayer {
     this.layerSet = undefined as unknown as typeof this.layerSet
   }
 
-  getTypeSettings<T extends LayerSettingsBase | unknown = unknown>(): T {
+  getTypeSettings<T extends LayerSettingsBase | unknown = CDType['settingsType']>(): T {
     if (this.typeSettings === undefined) {
       const cls = CustomDataElem.getTypeClass(this.typeName)!
       const def = cls.define()
@@ -629,7 +644,7 @@ mesh.CustomData {
   }
 
   stripTempLayers() {
-    const newlist = []
+    const newlist = [] as CustomDataLayer[]
 
     for (const layer of new Set(this.flatlist)) {
       const lset = this.getLayerSet(layer.typeName)
@@ -697,8 +712,10 @@ mesh.CustomData {
     return cdmap
   }
 
-  getLayerSettings(typecls_or_name: string | ICustomDataElemConstructor) {
-    return this.getActiveLayer(typecls_or_name)?.getTypeSettings()
+  getLayerSettings<Type extends CustomDataElem<unknown, undefined, Type['settingsType']>>(
+    typecls_or_name: string | ICustomDataElemConstructor<Type>
+  ) {
+    return (this.getActiveLayer(typecls_or_name) as CustomDataLayer<Type> | undefined)?.getTypeSettings()
   }
 
   addLayer(cls: ICustomDataElemConstructor, name: string | undefined = undefined) {
@@ -938,17 +955,17 @@ mesh.CustomData {
   }
 
   _getLayers() {
-    const ret = []
+    const ret = [] as LayerSet<CustomDataElem>[]
 
     for (const k of this.layers.keys()) {
-      ret.push(this.layers.get(k))
+      ret.push(this.layers.get(k)!)
     }
 
     return ret
   }
 }
 
-export class AttrRef<type extends CustomDataElem<any, type>> {
+export class AttrRef<Type extends CustomDataElem<any, Type>> {
   public i: number = -1
 
   constructor(index: number = -1) {
@@ -963,12 +980,12 @@ export class AttrRef<type extends CustomDataElem<any, type>> {
     return this.i >= 0
   }
 
-  get(elem: ICustomDataCapable): type {
-    return elem.customData.get<type>(this.i)
+  get(elem: ICustomDataCapable): Type {
+    return elem.customData.get<Type>(this.i)
   }
 
-  layerInfo(cdata: CustomData): CustomDataLayer<type> {
-    return cdata.getLayerFromIndex<type>(this.i)
+  layerInfo(cdata: CustomData): CustomDataLayer<Type> {
+    return cdata.getLayerFromIndex<Type>(this.i)
   }
 }
 
