@@ -1,27 +1,58 @@
 import {KeyMap} from '../editor_base'
-import {SimpleMesh, ChunkedSimpleMesh} from '../../core/simplemesh'
-import {WidgetBase, WidgetFlags, WidgetManager} from './widgets/widgets.js'
-import {Container, DataAPI, EnumProperty, Vector3, Vector4} from '../../path.ux/scripts/pathux.js'
+import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../core/simplemesh'
+import {IWidgetConstructor, WidgetBase, WidgetFlags, WidgetManager} from './widgets/widgets.js'
+import {
+  Container,
+  ContextOverlay,
+  DataAPI,
+  EnumProperty,
+  IVectorOrHigher,
+  Vector3,
+  Vector4,
+} from '../../path.ux/scripts/pathux.js'
 import {Icons} from '../icon_enum.js'
 import '../../path.ux/scripts/util/struct.js'
-import {INodeConstructor, Node} from '../../core/graph.js'
+import {INodeConstructor, INodeSocketSet, Node} from '../../core/graph.js'
 import {nstructjs} from '../../path.ux/scripts/pathux.js'
 
 import '../../core/textsprite.js'
 
 import messageBus, {BusTriggers} from '../../core/bus'
-import {ToolContext, ViewContext} from '../../core/context'
+import type {ViewContext} from '../../core/context'
 import {SceneObject} from '../../sceneobject/sceneobject'
 import {Scene} from '../../scene/scene'
-import {BlockLoader, BlockLoaderAddUser} from '../../core/lib_api'
+import type {BlockLoader, BlockLoaderAddUser} from '../../core/lib_api'
+import {StandardTools} from '../../sceneobject/stdtools'
+import type {AppState} from '../../core/appstate'
+import {View3D} from '../all'
+import {IUniformsBlock, ShaderProgram} from '../../core/webgl'
+import {Mesh} from '../../mesh/mesh'
+import {StructReader} from '../../path.ux/scripts/path-controller/types/util/nstructjs'
+import {MeshDrawInterface} from './view3d_draw'
+import { BoundingBox } from './view3d_utils'
 
-export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> extends Node<
+export interface IToolModeDefine {
+  name: string
+  uiname: string
+  icon: number
+  flag: number
+  description: string
+  selectMode?: number
+  stdtools?: StandardTools
+  transWidgets?: (typeof WidgetBase)[]
+}
+
+export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extends INodeSocketSet = {}> extends Node<
   NodeInputs,
   NodeOutputs,
   ViewContext
 > {
   static dataPath = 'scene.tool'
 
+  // owning view3d
+  view3d?: View3D
+  
+  transformWidget: number = -1
   ctx: ViewContext
   flag: number = 0
   widgets: WidgetBase[] = []
@@ -37,8 +68,7 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
   keymap: KeyMap
   manager?: WidgetManager;
 
-  //@ts-ignore
-  ['constructor']: INodeConstructor<this, {}, {}> & typeof ToolMode
+  ['constructor']: INodeConstructor<this, NodeInputs, NodeOutputs> & typeof ToolMode = this['constructor']
 
   constructor(ctx: ViewContext) {
     super()
@@ -74,29 +104,29 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
 
   /** easy line drawing (in 3d)*/
   makeTempLine(v1: Vector3, v2: Vector3, color: Vector4) {
-    const dl = this.ctx.view3d.makeTempLine(v1, v2, color)
+    const dl = this.ctx.view3d.makeDrawLine(v1, v2, color)
     this.drawlines.push(dl)
     return dl
   }
 
   makeTempText(co: Vector3, string: string, color: Vector4) {
-    const dt = this.ctx.view3d.makeTempText(co, string, color)
+    const dt = this.ctx.view3d.makeDrawText(co, string, color)
     this.drawtexts.push(dt)
     return dt
   }
 
   resetTempGeom(ctx = this.ctx) {
     for (const dl of this.drawlines) {
-      ctx.view3d.removeTempLine(dl)
+      ctx.view3d.removeDrawLine(dl)
     }
     for (const dt of this.drawtexts) {
-      ctx.view3d.removeTempText(dt)
+      ctx.view3d.removeDrawText(dt)
     }
 
     this.drawlines.length = 0
   }
 
-  static toolModeDefine() {
+  static toolModeDefine(): IToolModeDefine {
     return {
       name        : 'name',
       uiname      : 'uiname',
@@ -133,7 +163,7 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
   //returns a bounding box [min, max]
   //if toolmode has a preferred aabb to
   //zoom out on, otherwise returns undefined;
-  getViewCenter() {
+  getViewCenter(): BoundingBox | undefined {
     return undefined
   }
 
@@ -149,7 +179,9 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
 
   static buildHeader(header: Container, addHeaderRow: () => Container) {}
 
-  static getContextOverlayClass() {
+  static getContextOverlayClass():
+    | (new (state: AppState, toolmode: ToolMode) => ContextOverlay<unknown, ViewContext>)
+    | undefined {
     return undefined
   }
 
@@ -254,13 +286,13 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
    * @param widgetclass : widget class
    */
   ensureUniqueWidget(widgetclass: typeof WidgetBase) {
-    if (this.ctx === undefined) return
+    if (this.ctx === undefined) {
+      return
+    }
 
-    const ctx = this.ctx
-    const view3d = this.ctx.view3d
     const manager = this.ctx.scene.widgets
 
-    const valid = widgetclass.validate(this.ctx)
+    const valid = widgetclass.ctxValid(this.ctx)
     const def = widgetclass.widgetDefine()
 
     if (def.name in this._uniqueWidgets && this._uniqueWidgets[def.name].isDead) {
@@ -275,14 +307,14 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
     } else if (valid && !(def.name in this._uniqueWidgets)) {
       console.log('adding new widget', def.name)
 
-      const widget = new widgetclass(manager)
+      const widget = new widgetclass()
       manager.add(widget)
 
       this.widgets.push(widget)
       this._uniqueWidgets[def.name] = widget
 
-      if (def.selectMode !== undefined && this.scene.selectMask !== def.selectMode) {
-        this.scene.selectMask = def.selectMode
+      if (def.selectMode !== undefined && this.ctx.scene.selectMask !== def.selectMode) {
+        this.ctx.scene.selectMask = def.selectMode
       }
 
       window.redraw_viewport()
@@ -292,15 +324,15 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
     }
   }
 
-  addWidget(widget) {
+  addWidget(widget: WidgetBase) {
     this.widgets.push(widget)
     this.ctx.scene.widgets.add(widget)
   }
 
-  removeWidget(widget) {
+  removeWidget(widget: WidgetBase) {
     for (const k in this._uniqueWidgets) {
       if (this._uniqueWidgets[k] === widget) {
-        delete thie._uniqueWidgets[k]
+        delete this._uniqueWidgets[k]
       }
     }
 
@@ -308,19 +340,19 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
     this.ctx.scene.widgets.remove(widget)
   }
 
-  hasUniqueWidget(cls) {
+  hasUniqueWidget<T extends WidgetBase>(cls: IWidgetConstructor) {
     return this.getUniqueWidget(cls) !== undefined
   }
 
-  getUniqueWidget(cls) {
+  getUniqueWidget<T extends WidgetBase>(cls: IWidgetConstructor) {
     const def = cls.widgetDefine()
     return this._uniqueWidgets[def.name]
   }
 
-  removeUniqueWidget(widget) {
+  removeUniqueWidget(widget: WidgetBase) {
     const def = widget.constructor.widgetDefine()
 
-    if (this.widgets.indexOf(widget) >= 0) {
+    if (this.widgets.includes(widget)) {
       this.widgets.remove(widget)
     }
 
@@ -342,9 +374,12 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
     }
 
     const cls = this.constructor.getContextOverlayClass()
-    if (cls !== undefined && !this.ctx.hasOverlay(cls)) {
-      this.ctx.pushOverlay(new cls(this.ctx.state, this))
+    if (cls !== undefined) {
+      console.warn('reimplement toolmode ctx overlays!')
     }
+    //if (cls !== undefined && !this.ctx.hasOverlay(cls)) {
+    //  this.ctx.pushOverlay(new cls(this.ctx.state, this))
+    //}
 
     const del = []
 
@@ -359,8 +394,8 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
     }
 
     const tws = this.constructor.toolModeDefine().transWidgets || []
-    let tcls,
-      ti = this.transformWidget - 1
+    let tcls: typeof WidgetBase | undefined
+    const ti = this.transformWidget - 1
 
     if (ti >= 0 && ti < tws.length) {
       tcls = tws[ti]
@@ -387,7 +422,7 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
 
   onActive() {}
 
-  clearWidgets(gl) {
+  clearWidgets() {
     if (!this.ctx || !this.ctx.scene) {
       return
     }
@@ -407,9 +442,9 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
   onInactive() {
     const cls = this.constructor.getContextOverlayClass()
 
-    if (this.ctx && cls && this.ctx.hasOverlay(cls)) {
-      this.ctx.removeOverlay(this.ctx.getOverlay(cls))
-    }
+    //if (this.ctx && cls && this.ctx.hasOverlay(cls)) {
+    //  this.ctx.removeOverlay(this.ctx.getOverlay(cls))
+    //}
 
     this.clearWidgets()
 
@@ -424,26 +459,26 @@ export class ToolMode<NodeInputs extends {} = {}, NodeOutputs extends {} = {}> e
     }
   }
 
-  destroy(gl) {
-    this.clearWidgets(gl)
+  destroy() {
+    this.clearWidgets()
     this.graphDisconnect()
   }
 
-  onContextLost(e) {
-    return super.onContextLost(e)
+  onContextLost(e: WebGLContextEvent) {
+    //
   }
 
-  on_mousedown(e, x, y, was_touch) {}
+  on_mousedown(e: PointerEvent, x: number, y: number, was_touch?: boolean) {}
 
-  on_mousemove(e, x, y, was_touch) {}
+  on_mousemove(e: PointerEvent, x: number, y: number, was_touch?: boolean) {}
 
-  on_mouseup(e, x, y, was_touch) {}
+  on_mouseup(e: PointerEvent, x: number, y: number, was_touch?: boolean) {}
 
-  on_drawstart(view3d, gl) {}
+  on_drawstart(view3d: View3D, gl: WebGL2RenderingContext) {}
 
-  draw(view3d, gl) {}
+  draw(view3d: View3D, gl: WebGL2RenderingContext) {}
 
-  on_drawend(view3d, gl) {}
+  on_drawend(view3d: View3D, gl: WebGL2RenderingContext) {}
 
   /*
 get view3d() {
@@ -456,25 +491,31 @@ set view3d(val) {
 }
 //*/
 
-  drawsObjectIds(obj) {
+  drawsObjectIds(obj: SceneObject) {
     return false
   }
 
   /**
    * draw any extra ids the toolmode needs
    * */
-  drawIDs(view3d, gl, uniforms) {}
+  drawIDs(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any) {}
 
   /*
    * called for all objects;  returns true
    * if an object if the toolmode drew the object
    * itself
    */
-  drawObject(gl, uniforms, program, object, mesh) {
+  drawObject(
+    gl: WebGL2RenderingContext,
+    uniforms: IUniformsBlock,
+    program: ShaderProgram,
+    object: SceneObject,
+    mesh: Mesh
+  ) {
     return false
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this)
     super.loadSTRUCT(reader)
   }
@@ -488,24 +529,30 @@ ToolMode {
 `
 nstructjs.register(ToolMode)
 
+type MeshId = string | number
 export class MeshCache {
-  constructor(meshid) {
+  meshid: MeshId
+  meshes: {[k: MeshId]: ChunkedSimpleMesh | SimpleMesh}
+  /**
+   * current generation, we know mesh has changed when
+   *  mesh.updateGen is not this
+   */
+  gen?: number
+  drawer?: MeshDrawInterface
+
+  constructor(meshid: MeshId) {
     this.meshid = meshid
     this.meshes = {}
     this.drawer = undefined
 
-    this.gen = undefined //current generation, we know mesh has changed when mesh.updateGen is not this
+    this.gen = undefined
   }
 
-  getMesh(name) {
+  getMesh(name: MeshId) {
     return this.meshes[name]
   }
 
-  makeMesh(name, layers) {
-    if (layers === undefined) {
-      throw new Error('layers cannot be undefined')
-    }
-
+  makeMesh(name: MeshId, layers: LayerTypes) {
     if (!(name in this.meshes)) {
       this.meshes[name] = new SimpleMesh(layers)
     }
@@ -513,7 +560,7 @@ export class MeshCache {
     return this.meshes[name]
   }
 
-  makeChunkedMesh(name, layers) {
+  makeChunkedMesh(name: MeshId, layers: LayerTypes) {
     if (layers === undefined) {
       throw new Error('layers cannot be undefined')
     }
@@ -525,8 +572,8 @@ export class MeshCache {
     return this.meshes[name]
   }
 
-  destroy(gl) {
-    this.drawer.destroy(gl)
+  destroy(gl: WebGL2RenderingContext) {
+    this.drawer?.destroy(gl)
 
     for (const k in this.meshes) {
       this.meshes[k].destroy(gl)
@@ -565,6 +612,15 @@ export function makeToolModeEnum() {
   prop.addUINames(uinames)
 
   return prop
+}
+
+declare global {
+  const _ToolModes: typeof ToolModes
+  const _makeToolModeEnum: typeof makeToolModeEnum
+  interface Window {
+    _ToolModes: typeof _ToolModes
+    _makeToolModeEnum: typeof _makeToolModeEnum
+  }
 }
 
 window._ToolModes = ToolModes

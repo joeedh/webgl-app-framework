@@ -1,13 +1,11 @@
 'use strict'
 
-import {util, nstructjs, Vector2, Vector3, Vector4, Quat, Matrix4} from '../path.ux/scripts/pathux.js'
-
+import {util, nstructjs, Vector3, Matrix4} from '../path.ux/scripts/pathux.js'
 import './const.js'
-import {ShaderDef} from '../../types/scripts/shaders/shaders'
-import {INumberList} from '../util/polyfill'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
+import {ViewContext} from './context.js'
 
-export const constmap = {}
+export const constmap = {} as any //{[k: number]: number}
 
 const TEXTURE_2D = 3553
 
@@ -15,6 +13,7 @@ declare global {
   interface WebGL2RenderingContext {
     haveWebGL2: boolean
     shadercache: {[k: string]: ShaderProgram}
+    color_buffer_float?: any
   }
 }
 
@@ -27,7 +26,7 @@ export class IntUniform {
 }
 
 export function initDebugGL(gl: WebGL2RenderingContext): WebGL2RenderingContext {
-  const addfuncs = {}
+  const addfuncs = {} as {[k: string]: any}
 
   const makeDebugFunc = (k: string, k2: string) => {
     return function () {
@@ -37,35 +36,36 @@ export function initDebugGL(gl: WebGL2RenderingContext): WebGL2RenderingContext 
 
       const err = obj.getError()
       if (err !== 0) {
-        console.warn('gl.' + k + ':', constmap[err])
+        console.warn('gl.' + k + ':', constmap[err as number])
       }
 
       return ret
     }
   }
 
-  for (const k in gl) {
-    const v = gl[k]
+  const anygl = gl as any
+  for (const k in anygl) {
+    const v = anygl[k]
 
     if (k !== 'getError' && typeof v === 'function') {
       const k2 = '_' + k
 
       addfuncs[k2] = v
-      gl[k] = makeDebugFunc(k, k2)
+      anygl[k] = makeDebugFunc(k, k2)
     }
   }
 
   for (const k in addfuncs) {
-    gl[k] = addfuncs[k]
+    anygl[k] = addfuncs[k]
   }
 
   return gl
 }
 
-let _gl: WebGL2RenderingContext = undefined
+let _gl: WebGL2RenderingContext | undefined = undefined
 
 export function addFastParameterGet(gl: {[k: string]: any}): void {
-  const map = {}
+  const map = {} as {[k: number]: any}
 
   gl._getParameter = gl.getParameter
   gl._enable = gl.enable
@@ -76,7 +76,7 @@ export function addFastParameterGet(gl: {[k: string]: any}): void {
 
   const validkeys = new Set([gl.DEPTH_TEST, gl.MAX_VERTEX_ATTRIBS, gl.DEPTH_WRITEMASK, gl.SCISSOR_BOX, gl.VIEWPORT])
 
-  gl.depthMask = function (mask) {
+  gl.depthMask = function (mask: boolean) {
     mask = !!mask
 
     if (mask !== map[gl.DEPTH_WRITEMASK]) {
@@ -85,7 +85,7 @@ export function addFastParameterGet(gl: {[k: string]: any}): void {
     }
   }
 
-  gl.viewport = function (x, y, w, h) {
+  gl.viewport = function (x: number, y: number, w: number, h: number) {
     if (map[gl.VIEWPORT] === undefined) {
       map[gl.VIEWPORT] = [x, y, w, h]
     } else {
@@ -99,7 +99,7 @@ export function addFastParameterGet(gl: {[k: string]: any}): void {
     return gl._viewport(x, y, w, h)
   }
 
-  gl.scissor = function (x, y, w, h) {
+  gl.scissor = function (x: number, y: number, w: number, h: number) {
     if (map[gl.SCISSOR_BOX] === undefined) {
       map[gl.SCISSOR_BOX] = [x, y, w, h]
     } else {
@@ -113,7 +113,7 @@ export function addFastParameterGet(gl: {[k: string]: any}): void {
     return gl._scissor(x, y, w, h)
   }
 
-  gl.enable = function (p) {
+  gl.enable = function (p: number) {
     if (p in map && map[p]) {
       return
     }
@@ -122,7 +122,7 @@ export function addFastParameterGet(gl: {[k: string]: any}): void {
     return gl._enable(p)
   }
 
-  gl.disable = function (p) {
+  gl.disable = function (p: number) {
     if (p in map && !map[p]) {
       return
     }
@@ -132,7 +132,7 @@ export function addFastParameterGet(gl: {[k: string]: any}): void {
   }
 
   //*
-  gl.getParameter = function (p) {
+  gl.getParameter = function (p: number) {
     if (p !== undefined && !validkeys.has(p)) {
       return gl._getParameter(p)
     }
@@ -158,7 +158,7 @@ export function addFastParameterGet(gl: {[k: string]: any}): void {
 
 //*/
 
-export function onContextLost(e) {}
+export function onContextLost(e: WebGLContextEvent) {}
 
 //params are passed to canvas.getContext as-is
 export function init_webgl(
@@ -177,13 +177,13 @@ export function init_webgl(
   }
 
   const webgl2 = params.webgl2 !== undefined ? params.webgl2 : true
-  let gl
+  let gl: any
 
   if (webgl2) {
-    gl = canvas.getContext('webgl2', params)
+    gl = canvas.getContext('webgl2', params)! as WebGL2RenderingContext
     gl.color_buffer_float = gl.getExtension('EXT_color_buffer_float')
   } else {
-    gl = canvas.getContext('webgl', params)
+    gl = canvas.getContext('webgl', params)! as WebGL2RenderingContext
 
     if (!gl.RGBA32F) {
       gl.RGBA32F = gl.RGBA
@@ -203,6 +203,9 @@ export function init_webgl(
     false
   )
 
+  // strange TS error
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
   canvas.addEventListener('webglcontextrestored', onContextLost, false)
 
   addFastParameterGet(gl)
@@ -239,7 +242,7 @@ export function init_webgl(
 }
 
 function format_lines(script: string, errortext?: string): string {
-  const linenr = getShaderErrorLine(errortext)
+  const linenr = errortext ? getShaderErrorLine(errortext) : -1
 
   let i = 1
 
@@ -278,13 +281,13 @@ function getShaderErrorLine(error: string): number {
   const linestr = error.match(/.*([0-9]+):([0-9]+): .*/)
 
   if (!linestr) {
-    return undefined
+    return -1
   }
 
   let linenr = parseInt(linestr[2])
 
   if (isNaN(linenr)) {
-    linenr = undefined
+    linenr = -1
   }
 
   return linenr
@@ -355,7 +358,7 @@ export function getShader(gl: WebGL2RenderingContext, shaderdef: IShaderDef): Sh
 // 'shaderId' is the id of a <script> element containing the shader source string.
 // Load this shader and return the WebGLShader object corresponding to it.
 //
-function loadShader(ctx, shaderId) {
+function loadShader(ctx: any, shaderId: string) {
   /* Is this function used anywhere? */
   console.error('webgl.loadShader called')
 
@@ -389,7 +392,7 @@ function loadShader(ctx, shaderId) {
   }
 
   // Create the shader object
-  if (ctx === undefined || ctx === null || ctx.createShader === undefined) console.trace()
+  if (ctx?.createShader === undefined) console.trace()
 
   const shader = ctx.createShader(shaderType)
 
@@ -415,7 +418,13 @@ function loadShader(ctx, shaderId) {
   return shader
 }
 
-const _safe_arrays = [0, 0, new Float32Array(2), new Float32Array(3), new Float32Array(4)]
+const _safe_arrays = [
+  new Float32Array(0),
+  new Float32Array(1),
+  new Float32Array(2),
+  new Float32Array(3),
+  new Float32Array(4),
+] as const
 
 export const use_ml_array = false
 
@@ -449,13 +458,13 @@ export class ShaderProgram {
   gl: WebGL2RenderingContext
   ready: boolean = false
 
-  program: WebGLProgram
-  vertexShader: WebGLShader
-  fragmentShader: WebGLShader;
+  program?: WebGLProgram
+  vertexShader?: WebGLShader
+  fragmentShader?: WebGLShader;
 
-  ['constructor']: IShaderProgramConstructor<this>
+  ['constructor']: IShaderProgramConstructor<this> = this['constructor']
 
-  constructor(gl: WebGL2RenderingContext, vertex: string, fragment: string, attributes: string[]) {
+  constructor(gl: WebGL2RenderingContext | undefined, vertex: string, fragment: string, attributes: string[]) {
     this.vertexSource = vertex
     this.fragmentSource = fragment
 
@@ -482,7 +491,7 @@ export class ShaderProgram {
     this.uniform_defaults = {}
 
     this.uniforms = {}
-    this.gl = gl
+    this.gl = gl!
   }
 
   static fromDef(gl: WebGL2RenderingContext, def: IShaderDef): ShaderProgram {
@@ -647,7 +656,7 @@ v${attr} = ${attr};
     const script = document.getElementById(scriptid) as HTMLScriptElement
     const text = script.text
 
-    const ret = new ShaderProgram(undefined, undefined, undefined, ['position', 'normal', 'uv', 'color', 'id'])
+    const ret = new ShaderProgram(undefined, '', '', ['position', 'normal', 'uv', 'color', 'id'])
 
     const lowertext = text.toLowerCase()
     const vshader = text.slice(0, lowertext.search('//fragment'))
@@ -669,7 +678,7 @@ v${attr} = ${attr};
     return ret
   }
 
-  setAttributeLayerCount(attr, n) {
+  setAttributeLayerCount(attr: string, n: number) {
     if (n <= 1 && attr in this.multilayer_attrs) {
       delete this.multilayer_attrs[attr]
     } else {
@@ -709,7 +718,7 @@ v${attr} = ${attr};
     }
 
     function loadShader(shaderType: number, code: string) {
-      const shader = gl.createShader(shaderType)
+      const shader = gl.createShader(shaderType)!
 
       // Load the shader source
       gl.shaderSource(shader, code)
@@ -723,7 +732,7 @@ v${attr} = ${attr};
         // Something went wrong during compilation; get the error
         const error = gl.getShaderInfoLog(shader)
 
-        console.log(format_lines(code, error))
+        console.log(format_lines(code, error ?? 'unknown error'))
         console.log('\nError compiling shader: ', error)
 
         gl.deleteShader(shader)
@@ -734,11 +743,11 @@ v${attr} = ${attr};
     }
 
     // create our shaders
-    const vertexShader = loadShader(gl.VERTEX_SHADER, vshader)
-    const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fshader)
+    const vertexShader = loadShader(gl.VERTEX_SHADER, vshader)!
+    const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fshader)!
 
     // Create the program object
-    const program = gl.createProgram()
+    const program = gl.createProgram()!
 
     // Attach our two shaders to the program
     gl.attachShader(program, vertexShader)
@@ -835,17 +844,17 @@ v${attr} = ${attr};
     }
 
     if (this.uniformlocs[name] === undefined) {
-      this.uniformlocs[name] = this.gl.getUniformLocation(this.program, name)
+      this.uniformlocs[name] = this.gl.getUniformLocation(this.program!, name)!
     }
 
     return this.uniformlocs[name]
   }
 
-  attrloc(name) {
+  attrloc(name: string) {
     return this.attrLoc(name)
   }
 
-  attrLoc(name) {
+  attrLoc(name: string): number  {
     if (this._use_def_shaders) {
       const shader = this._getLastDefShader()
 
@@ -859,13 +868,13 @@ v${attr} = ${attr};
     }
 
     if (!(name in this.attrlocs)) {
-      this.attrlocs[name] = this.gl.getAttribLocation(this.program, name)
+      this.attrlocs[name] = this.gl.getAttribLocation(this.program!, name)
     }
 
     return this.attrlocs[name]
   }
 
-  calcDefKey(extraDefines) {
+  calcDefKey(extraDefines?: IDefinesBlock) {
     let key = ''
 
     for (let i = 0; i < 2; i++) {
@@ -889,7 +898,12 @@ v${attr} = ${attr};
     return key
   }
 
-  bindMultiLayer(gl, uniforms, attrsizes, attributes) {
+  bindMultiLayer(
+    gl: WebGL2RenderingContext,
+    uniforms: IUniformsBlock | undefined,
+    attrsizes: any,
+    attributes: {[k: string]: any}
+  ) {
     let key = ''
     for (const k in attrsizes) {
       key += k + ':' + attrsizes[k] + ':'
@@ -934,7 +948,7 @@ v${attr} = ${attr};
     return ret
   }
 
-  checkCompile(gl) {
+  checkCompile(gl: WebGL2RenderingContext) {
     if (this.rebuild) {
       this.init(gl)
     }
@@ -942,7 +956,7 @@ v${attr} = ${attr};
     return this.program
   }
 
-  _getLastDefShader(): ShaderProgram {
+  _getLastDefShader(): ShaderProgram | undefined {
     let shader = this._lastDefShader
 
     if (!shader) {
@@ -951,7 +965,11 @@ v${attr} = ${attr};
     return shader
   }
 
-  _getDefShader(gl: WebGL2RenderingContext, defines = {}, enabledAttributes?: {[k: string]: any}): ShaderProgram {
+  _getDefShader(
+    gl: WebGL2RenderingContext,
+    defines: IDefinesBlock = {},
+    enabledAttributes?: {[k: string]: any}
+  ): ShaderProgram | undefined {
     if (enabledAttributes) {
       for (const k in enabledAttributes) {
         const key = 'HAVE_' + k.toUpperCase()
@@ -991,10 +1009,14 @@ v${attr} = ${attr};
     }
   }
 
-  bind(gl: WebGL2RenderingContext, uniforms?: IUniformsBlock, enabledAttributes?: {[k: string]: any}) {
+  bind(
+    gl: WebGL2RenderingContext,
+    uniforms?: IUniformsBlock,
+    enabledAttributes?: {[k: string]: any}
+  ): boolean | undefined | any {
     this.gl = gl
 
-    let defines = undefined
+    let defines: IDefinesBlock | undefined = undefined
 
     if (enabledAttributes && this._use_def_shaders) {
       for (const k in enabledAttributes) {
@@ -1042,14 +1064,16 @@ v${attr} = ${attr};
     if (this.rebuild) {
       this.init(gl)
 
-      if (this.rebuild) return false //failed to initialize
+      if (this.rebuild) {
+        return false //failed to initialize
+      }
     }
 
     if (!this.program) {
       return false
     }
 
-    function setv(dst, src, n) {
+    function setv(dst: any, src: any, n: number) {
       for (let i = 0; i < n; i++) {
         dst[i] = src[i]
       }
@@ -1214,10 +1238,10 @@ export class VBO {
 
     gl.deleteBuffer(this.vbo)
 
-    this.vbo = undefined
-    this.lastData = undefined
-    this.gl = undefined
-    this.dead = true
+    this.vbo = undefined as unknown as typeof this.vbo
+    this.lastData = undefined as unknown as typeof this.lastData
+    this.gl = undefined as unknown as typeof this.gl
+    this.dead = true as unknown as typeof this.dead
   }
 
   uploadData(
@@ -1298,8 +1322,7 @@ export class RenderBuffer {
     if (name === undefined) {
       for (const k in this._layers) {
         this._layers[k].destroy(gl)
-
-        delete this._layers[name]
+        delete this._layers[k]
       }
     } else {
       if (!(name in this._layers)) {
@@ -1346,7 +1369,7 @@ export class Texture {
     this._params = {}
   }
 
-  static unbindAllTextures(gl) {
+  static unbindAllTextures(gl: WebGL2RenderingContext) {
     for (let i = gl.TEXTURE0; i < gl.TEXTURE0 + 31; i++) {
       gl.activeTexture(i)
       gl.bindTexture(gl.TEXTURE_2D, null)
@@ -1365,7 +1388,7 @@ export class Texture {
       tex = new Texture(undefined, tex as unknown as WebGLTexture)
     }
 
-    gl.bindTexture(target, tex.texture)
+    gl.bindTexture(target, tex.texture!)
 
     tex.texParameteri(gl, target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
     tex.texParameteri(gl, target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
@@ -1393,7 +1416,7 @@ export class Texture {
     type: number,
     source: any
   ): this {
-    gl.bindTexture(target, this.texture)
+    gl.bindTexture(target, this.texture!)
     gl.texImage2D(target, level, internalformat, format, type, source)
 
     gl.getError()
@@ -1428,7 +1451,7 @@ export class Texture {
     type: number,
     source: any
   ): this {
-    gl.bindTexture(target, this.texture)
+    gl.bindTexture(target, this.texture!)
 
     gl.getError()
 
@@ -1457,10 +1480,17 @@ export class Texture {
   }
 
   texImage2D(...args: any[]) {
+    // XXX
     if (arguments.length === 7) {
-      return this._texImage2D1.apply(this, args)
+      //weird TS bug
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      //@ts-expect-error
+      return this._texImage2D1(...args)
     } else {
-      return this._texImage2D2.apply(this, args)
+      //weird TS bug
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      //@ts-expect-error
+      return this._texImage2D2(...args)
     }
   }
 
@@ -1471,7 +1501,7 @@ export class Texture {
     tex.createParams = Object.assign({}, this.createParams)
     tex.createParamsList = this.createParamsList.concat([])
 
-    gl.bindTexture(this.createParams.target, tex.texture)
+    gl.bindTexture(this.createParams.target!, tex.texture!)
 
     if (!copy_data) {
       const p = this.createParams
@@ -1486,7 +1516,7 @@ export class Texture {
       const key = parseInt(k)
       const val = this._params[key]
 
-      gl.texParameteri(this.createParams.target, key, val)
+      gl.texParameteri(this.createParams.target!, key, val)
       gl.getError()
     }
 
@@ -1495,20 +1525,20 @@ export class Texture {
 
   copyTexTo(gl: WebGL2RenderingContext, b: Texture): this {
     if (this.texture === undefined) {
-      return
+      return this
     }
 
     const p = this.createParams
 
-    gl.bindTexture(p.target, b.texture)
-    b.texImage2D(gl, p.target, p.level, p.internalformat, p.width, p.height, p.border, p.format, p.type, this.texture)
+    gl.bindTexture(p.target!, b.texture!)
+    b.texImage2D(gl, p.target!, p.level, p.internalformat, p.width, p.height, p.border, p.format, p.type, this.texture)
     gl.getError()
 
     return this
   }
 
   destroy(gl: WebGL2RenderingContext): void {
-    gl.deleteTexture(this.texture)
+    gl.deleteTexture(this.texture!)
   }
 
   load(gl: WebGL2RenderingContext, width: number, height: number, data: any, target = gl.TEXTURE_2D): this {
@@ -1557,7 +1587,7 @@ export class Texture {
 
   bind(gl: WebGL2RenderingContext, uniformloc: WebGLUniformLocation, slot: number = 0): void {
     gl.activeTexture(gl.TEXTURE0 + slot)
-    gl.bindTexture(this.target, this.texture)
+    gl.bindTexture(this.target, this.texture!)
     gl.uniform1i(uniformloc, slot)
   }
 }
@@ -1569,9 +1599,9 @@ export class CubeTexture extends Texture {
     this.texture = texture
   }
 
-  bind(gl, uniformloc, slot = 0) {
+  bind(gl: WebGL2RenderingContext, uniformloc: WebGLUniformLocation, slot = 0) {
     gl.activeTexture(gl.TEXTURE0 + slot)
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.texture)
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.texture!)
     gl.uniform1i(uniformloc, slot)
   }
 }
@@ -1665,7 +1695,7 @@ DrawMats {
     return this
   }
 
-  loadSTRUCT(reader): void {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
   }
 }
@@ -1715,12 +1745,12 @@ Camera {
     this.far = 10000.0
   }
 
-  generateUpdateHash(objectMatrix = undefined) {
+  generateUpdateHash(objectMatrix?: Matrix4) {
     const mul = 1 << 18
 
     let ret = 0
 
-    function add(val) {
+    function add(val: number) {
       val = (val * mul) & ((1 << 31) - 1)
       ret = (ret ^ val) & ((1 << 31) - 1)
     }
@@ -1729,7 +1759,7 @@ Camera {
     add(this.far)
     add(this.fovy)
     add(this.aspect)
-    add(this.isPerspective)
+    add(this.isPerspective ? 1 : 0)
     add(this.pos[0])
     add(this.pos[1])
     add(this.pos[2])

@@ -1,4 +1,4 @@
-import {DataAPI, IVector, IVector4, nstructjs, util} from '../../path.ux/scripts/pathux.js'
+import {DataAPI, IVector, IVector4, IVectorOrHigher, nstructjs, util} from '../../path.ux/scripts/pathux.js'
 
 import {spawnToolSearchMenu} from '../editor_base'
 
@@ -30,7 +30,7 @@ import {CallbackNode, Node} from '../../core/graph.js'
 import {DependSocket} from '../../core/graphsockets.js'
 import {ConstraintSpaces} from './transform/transform_base.js'
 import {eventWasTouch, haveModal} from '../../path.ux/scripts/util/simple_events.js'
-import {CursorModes, OrbitTargetModes} from './view3d_utils.js'
+import {BoundingBox, CursorModes, OrbitTargetModes} from './view3d_utils.js'
 import {Icons} from '../icon_enum.js'
 import {NoneWidget} from './widgets/widget_tools.js'
 import {View3DFlags, CameraModes} from './view3d_base.js'
@@ -42,6 +42,15 @@ import {WidgetBase} from './widgets/widgets.js'
 import {OptionalIf, OptionalIfNot} from '../../util/optionalIf.js'
 import {ViewContext} from '../../core/context.js'
 import {StructReader} from '../../path.ux/scripts/path-controller/types/util/nstructjs.js'
+import {Mesh} from '../../mesh/mesh.js'
+import {BusMessage} from '../../core/bus.js'
+
+export interface ITempText {
+  co: Vector3
+  text: string
+  color: Vector4
+  size: number
+}
 
 const proj_temps = util.cachering.fromConstructor(Vector4, 32)
 const unproj_temps = util.cachering.fromConstructor(Vector4, 32)
@@ -239,6 +248,7 @@ export class View3D<OPT extends {started?: true | false} = {}> extends Editor {
   subViewPortPos: Vector2
   renderSettings: RenderSettings
   overdraw?: Overdraw
+  tempTexts = [] as ITempText[]
 
   drawHash: number
 
@@ -551,17 +561,19 @@ View3D {
   viewSelected(ob?: SceneObject) {
     //let cent = this.getTransCenter();
     let cent = new Vector3()
-    let aabb
+    let aabb: [IVectorOrHigher<3, Vector3>, IVectorOrHigher<3, Vector3>] | undefined
 
     if (ob === undefined) {
       if (this.ctx.scene !== undefined) {
         const toolmode = this.ctx.scene.toolmode
 
         if (toolmode !== undefined) {
-          aabb = toolmode.getViewCenter()
+          const center = toolmode.getViewCenter()
 
-          if (aabb) {
-            aabb = [aabb, aabb.copy()]
+          if (center instanceof Vector3) {
+            aabb = [center, center.copy()]
+          } else if (center !== undefined) {
+            aabb = center
           }
         }
       }
@@ -571,6 +583,11 @@ View3D {
       }
     } else {
       aabb = ob.getBoundingBox()
+    }
+
+    if (aabb === undefined) {
+      console.warn('could not get bounding box')
+      return
     }
 
     console.log('v3d aabb ret', aabb[0], aabb[1])
@@ -656,8 +673,7 @@ View3D {
 
       new HotKey('Space', [], () => {
         console.log('Space Bar!')
-
-        spawnToolSearchMenu(_appstate.ctx)
+        spawnToolSearchMenu(this.ctx)
       }),
 
       new HotKey('1', [], () => {
@@ -952,7 +968,7 @@ View3D {
     this.ctx.messagebus.subscribe(
       busgetter,
       ToolMode,
-      (msg: string) => {
+      (msg: BusMessage) => {
         this.doOnce(this.rebuildHeader)
       },
       ['REGISTER', 'UNREGISTER']
@@ -969,6 +985,7 @@ View3D {
     this.overdraw.style['left'] = '0px'
     this.overdraw.style['top'] = '0px'
 
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const eventdom = this //this.overdraw;
 
     this.makeGraphNodes()
@@ -1021,18 +1038,13 @@ View3D {
         return
       }
 
-      const was_touch = eventWasTouch(e)
-
       if (this.canvas === undefined) return
-
       this.doEvent('mousemove', e)
     }
 
     eventdom.addEventListener('pointermove', on_mousemove)
 
     eventdom.addEventListener('pointerup', (e) => {
-      const was_touch = eventWasTouch(e)
-
       this.last_mpos.load(this.getLocalMouse(e.x, e.y))
 
       this.doEvent('mouseup', e)
@@ -1128,8 +1140,8 @@ View3D {
     return this as View3D<{started: true}>
   }
 
-  getTransBounds() {
-    return calcTransAABB(this.ctx, this.ctx.selectMask)
+  getTransBounds(): BoundingBox | undefined {
+    return calcTransAABB(this.ctx, this.ctx.selectMask) as unknown as BoundingBox
   }
 
   getTransCenter(transformSpace = this.transformSpace) {
@@ -1144,7 +1156,6 @@ View3D {
 
   getLocalMouse(x: number, y: number): Vector2 {
     const r = this.getClientRects()[0]
-    const dpi = UIBase.getDPI()
 
     //x -= this.pos[0];
     //y -= this.pos[1];
@@ -1649,6 +1660,24 @@ View3D {
     throw new Error('implement me!')
   }
 
+  removeDrawQuad(quad: any) {
+    //
+  }
+
+  makeDrawText(co: Vector3, text: string, color: Vector4 | number[] = [0, 0, 0, 1], size = 1.0) {
+    // XXX implement me!
+
+    this.tempTexts.push({
+      co: new Vector3(co),
+      text,
+      color: new Vector4(color),
+      size,
+    })
+    window.redraw_viewport()
+
+    return this.tempTexts[this.tempTexts.length - 1]
+  }
+
   makeDrawLine(v1: Vector3, v2: Vector3, color: Vector4 | number[] = [0, 0, 0, 1], useZ = true) {
     if (typeof color == 'string') {
       color = css2color(color)
@@ -1668,8 +1697,15 @@ View3D {
     }
   }
 
+  removeDrawText(dt: ITempText) {
+    if (this.tempTexts.includes(dt)) {
+      this.tempTexts.remove(dt)
+    }
+  }
+
   resetDrawLines() {
     this.drawlines.length = 0
+    this.tempTexts.length = 0
 
     if (this.overdraw) {
       this.overdraw.clear()
@@ -1707,7 +1743,7 @@ View3D {
           scene.toolmode.ctx = this.ctx
         }
 
-        if (scene.toolmode.drawObject(gl, uniforms, program, ob, ob.data)) {
+        if (scene.toolmode.drawObject(gl!, uniforms, program, ob, ob.data as Mesh)) {
           continue
         }
       }
@@ -1720,7 +1756,7 @@ View3D {
       uniforms.object_id = ob.lib_id
 
       //did toolmode not draw the object?
-      ob.draw(this, gl, uniforms, program)
+      ob.draw(this, gl!, uniforms, program)
     }
   }
 

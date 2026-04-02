@@ -53,12 +53,12 @@ export class DerivedNode extends TestNode<
     return {
       name   : 'derived',
       uiname : 'derived',
-      inputs: Node.inherit({
+      inputs: {
         i: new IntSocket(),
-      }),
-      outputs: Node.inherit({
+      },
+      outputs: {
         b: new IntSocket(),
-      }),
+      },
     }
   }
 }

@@ -55,6 +55,7 @@ ImageBlock {
   updateGen: number
   genColor: Vector4
   url: string
+  glReady: boolean = false
   ready: boolean
   gpuHasData: boolean
   gl: OptionalIf<WebGL2RenderingContext, OPT['dead']> = undefined as unknown as WebGL2RenderingContext

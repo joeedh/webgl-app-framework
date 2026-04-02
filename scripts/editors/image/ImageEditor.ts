@@ -1,4 +1,4 @@
-import {Editor, HotKey, VelPan} from '../editor_base'
+import {DataBlockBrowser, Editor, EditorSideBar, HotKey, VelPan} from '../editor_base'
 import {Icons} from '../icon_enum.js'
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../util/vectormath.js'
 import * as util from '../../util/util.js'
@@ -18,6 +18,9 @@ import {
   Menu,
   DataAPI,
   PropertySlots,
+  IVector2,
+  IVectorOrHigher,
+  Container,
 } from '../../path.ux/scripts/pathux.js'
 import {VelPanPanOp} from '../velpan.js'
 import {Colors, ObjectFlags} from '../../sceneobject/sceneobject.js'
@@ -29,7 +32,7 @@ import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../.
 import {PrimitiveTypes, LayerTypes, SimpleMesh} from '../../core/simplemesh'
 import {UVWrangler} from '../../mesh/unwrapping.js'
 import {Shaders} from '../../shaders/shaders.js'
-import {DataRef, DataRefProperty} from '../../core/lib_api'
+import {BlockLoader, BlockLoaderAddUser, DataBlock, DataRef, DataRefProperty} from '../../core/lib_api'
 
 import './uv_selectops.js'
 import './uv_transformops.js'
@@ -40,6 +43,7 @@ import bus, {BusTriggers} from '../../core/bus'
 import {Loop, Mesh} from '../../mesh/mesh'
 import {ToolContext, ViewContext} from '../../core/context'
 import {IUniformsBlock, ShaderProgram} from '../../core/webgl'
+import {StructReader} from '../../path.ux/scripts/path-controller/types/util/nstructjs'
 
 const _projtmp = new Vector2()
 
@@ -182,6 +186,7 @@ export class UVEditor extends UIBase<ViewContext> {
   }`
   )
 
+  gl?: WebGL2RenderingContext
   parentEditor?: ImageEditor
   mdown?: boolean
   meshpath?: string
@@ -193,8 +198,8 @@ export class UVEditor extends UIBase<ViewContext> {
   matrix: Matrix4
   imatrix: Matrix4
 
-  smesh: Mesh | undefined
-  smesh2: Mesh | undefined
+  smesh: SimpleMesh | undefined
+  smesh2: SimpleMesh | undefined
 
   glPos: Vector2
   glSize: Vector2
@@ -582,7 +587,7 @@ export class UVEditor extends UIBase<ViewContext> {
       const line = sm.line(dl.v1, dl.v2)
 
       line.colors(dl.color, dl.color)
-      line.ids(2, 2, 2)
+      line.ids(2, 2)
       line.uvs([0, 0], [1, 1])
     }
 
@@ -590,7 +595,7 @@ export class UVEditor extends UIBase<ViewContext> {
     sm.destroy(gl)
   }
 
-  viewportDraw(gl) {
+  viewportDraw(gl: WebGL2RenderingContext) {
     this.gl = gl
 
     this.updateMatrix()
@@ -654,13 +659,13 @@ export class UVEditor extends UIBase<ViewContext> {
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
     //gl.disable(gl.BLEND);
 
-    this.smesh2.islands[0].draw(gl, uniforms)
+    this.smesh2!.islands[0].draw(gl, uniforms)
 
     if (gltex) {
-      this.smesh2.islands[1].draw(gl, uniforms)
+      this.smesh2!.islands[1].draw(gl, uniforms)
     }
 
-    this.smesh.draw(gl, uniforms, Shaders.MeshEditShader)
+    this.smesh!.draw(gl, uniforms, Shaders.MeshEditShader)
     this.drawDrawLines(gl, uniforms, Shaders.MeshEditShader)
   }
 
@@ -671,7 +676,7 @@ export class UVEditor extends UIBase<ViewContext> {
       return
     }
 
-    const colors = {}
+    const colors = {} as typeof Colors
     for (const k in Colors) {
       const c = new Vector4(Colors[k])
       c[3] = 0.7
@@ -679,7 +684,7 @@ export class UVEditor extends UIBase<ViewContext> {
       colors[k] = c
     }
 
-    function getColor(isSel, isHigh, isAct, isPin) {
+    function getColor(isSel?: boolean, isHigh?: boolean, isAct?: boolean, isPin?: boolean) {
       let mask = 0
 
       if (isSel) {
@@ -706,17 +711,17 @@ export class UVEditor extends UIBase<ViewContext> {
 
     if (this.smesh) {
       this.smesh.reset(this.gl)
-      this.smesh2.reset(this.gl)
+      this.smesh2!.reset(this.gl)
 
-      island1 = this.smesh2.islands[0]
-      island2 = this.smesh2.islands[1]
+      island1 = this.smesh2!.islands[0]
+      island2 = this.smesh2!.islands[1]
     } else {
       this.smesh = new SimpleMesh(LayerTypes.UV | LayerTypes.COLOR | LayerTypes.ID | LayerTypes.LOC)
       this.smesh2 = new SimpleMesh(LayerTypes.UV | LayerTypes.COLOR | LayerTypes.ID | LayerTypes.LOC)
       this.smesh2.add_island()
 
       this.smesh.primflag |= PrimitiveTypes.POINTS | PrimitiveTypes.LINES
-      this.smesh2.island.primflag |= PrimitiveTypes.TRIS
+      this.smesh2.island.primflag = (this.smesh2.island.primflag ?? this.smesh2.primflag) | PrimitiveTypes.TRIS
 
       island1 = this.smesh2.islands[0]
       island2 = this.smesh2.islands[1]
@@ -726,10 +731,10 @@ export class UVEditor extends UIBase<ViewContext> {
     island2.program = Shaders.FlatMeshTexture
 
     //let quad = this.smesh2.quad([0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]);
-    let bg = 0.7,
-      bg2 = 0.8
-    bg = [bg, bg, bg, 1.0]
-    bg2 = [bg2, bg2, bg2, 1.0]
+    const bgf = 0.7
+    const bg2f = 0.8
+    const bg = [bgf, bgf, bgf, 1.0]
+    const bg2 = [bg2f, bg2f, bg2f, 1.0]
 
     const steps = 32
     for (let i = 0; i < steps * steps; i++) {
@@ -756,13 +761,13 @@ export class UVEditor extends UIBase<ViewContext> {
 
     const sm = this.smesh
     const mesh = this.ctx.mesh
-    const cd_uv = mesh.loops.customData.getLayerIndex('uv')
+    const cd_uv = mesh.loops.customData.getLayerRef<UVLayerElem>('uv')
 
-    if (cd_uv < 0) {
+    if (cd_uv.i < 0) {
       return
     }
 
-    const wr = new UVWrangler(mesh, mesh.faces.selected.editable, new AttrRef(cd_uv))
+    const wr = new UVWrangler(mesh, mesh.faces.selected.editable, cd_uv)
     wr.buildIslands()
     //let wr = mesh.getUVWrangler(true, true);
 
@@ -783,7 +788,7 @@ export class UVEditor extends UIBase<ViewContext> {
           active = false
         let pin = false
 
-        for (const l of wr.vertMap.get(v)) {
+        for (const l of wr.vertMap.get(v)!) {
           if (l.flag & MeshFlags.SELECT) {
             sel = true
           }
@@ -796,7 +801,7 @@ export class UVEditor extends UIBase<ViewContext> {
             active = true
           }
 
-          if (l.customData[cd_uv].flag & UVFlags.PIN) {
+          if (l.customData.get(cd_uv).flag & UVFlags.PIN) {
             pin = true
           }
 
@@ -804,8 +809,8 @@ export class UVEditor extends UIBase<ViewContext> {
             // continue;
           }
 
-          const v2 = wr.loopMap.get(l.next)
-          v2.co[3] = 0.0
+          const v2 = wr.loopMap.get(l.next)!
+          v2.co[2] = 0.0
 
           const line = sm.line(v.co, v2.co)
           line.ids(l.eid, l.eid)
@@ -841,8 +846,8 @@ export class UVEditor extends UIBase<ViewContext> {
     const bg = this.getDefault('background')
     const lineclr = this.getDefault('gridLines')
 
-    g.strokeStyle = lineclr
-    g.fillStyle = bg
+    g.strokeStyle = '' + lineclr
+    g.fillStyle = '' + bg
 
     //g.save();
     g.beginPath()
@@ -858,7 +863,7 @@ export class UVEditor extends UIBase<ViewContext> {
       [1, 0],
     ]
     for (let i = 0; i < 4; i++) {
-      this.project(quad[i])
+      this.project(quad[i] as unknown as IVector2)
       const p = quad[i]
 
       p[1] = this.glSize[1] - p[1]
@@ -942,7 +947,7 @@ export class UVEditor extends UIBase<ViewContext> {
           g.translate(p[0], p[1])
 
           const wid = this.size[1]
-          g.scale(wid / image._image.width, wid / image._image.height)
+          g.scale(wid / image._image!.width, wid / image._image!.height)
 
           //g.drawImage(image._image, 0, 0)
           g.restore()
@@ -952,7 +957,7 @@ export class UVEditor extends UIBase<ViewContext> {
       //let scale = this.velpan.
 
       const drawtmps = util.cachering.fromConstructor(Vector2, 64)
-      const mesh = this.getMesh()
+      const mesh = this.getMesh()!
 
       if (!mesh) {
         console.log('No mesh')
@@ -960,9 +965,8 @@ export class UVEditor extends UIBase<ViewContext> {
         return
       }
 
-      const cd_uv = mesh.loops.customData.getLayerIndex('uv')
-
-      if (cd_uv < 0) {
+      const cd_uv = mesh.loops.customData.getLayerRef<UVLayerElem>('uv')
+      if (cd_uv.i < 0) {
         console.log('No uvs')
         //g.restore();
         return
@@ -972,14 +976,14 @@ export class UVEditor extends UIBase<ViewContext> {
 
       g.beginPath()
 
-      const colors = {}
+      const colors = {} as {[k: keyof typeof Colors]: string}
       for (const k in Colors) {
         const c = new Vector4(Colors[k])
         c[3] = 0.7
         colors[k] = color2css(c)
       }
 
-      function getColor(l) {
+      function getColor(l: Loop) {
         let mask = 0
 
         if (l.flag & MeshFlags.SELECT) {
@@ -1003,7 +1007,7 @@ export class UVEditor extends UIBase<ViewContext> {
 
       const vsize = 4
 
-      function inrect(p) {
+      function inrect(p: IVectorOrHigher<2>) {
         return p[0] >= 0 && p[0] < width && p[1] > 1 && p[1] <= height
       }
 
@@ -1027,7 +1031,7 @@ export class UVEditor extends UIBase<ViewContext> {
               continue
             }
 
-            const uv = l.customData[cd_uv].uv
+            const uv = l.customData.get(cd_uv).uv
 
             const color = getColor(l)
 
@@ -1078,7 +1082,7 @@ export class UVEditor extends UIBase<ViewContext> {
         g.beginPath()
         g.moveTo(v1[0], v1[1])
         g.lineTo(v2[0], v2[1])
-        g.strokeStyle = dl.color
+        g.strokeStyle = color2css(dl.color)
         g.stroke()
       }
     }
@@ -1147,7 +1151,7 @@ export class UVEditor extends UIBase<ViewContext> {
     //deal with any possible (rare) cases of dataLink failing to be called correctly
     if (this.imageUser.image && this.imageUser.image instanceof DataRef) {
       this.imageUser.image = this.ctx.datalib.get(this.imageUser.image)
-      this.imageUser.image.lib_addUser()
+      this.imageUser.image!.lib_addUser()
     }
 
     if (this.imageUser.image) {
@@ -1175,13 +1179,13 @@ export class UVEditor extends UIBase<ViewContext> {
     return UIBase.createElement('uv-editor-x')
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     reader(this)
 
     this.velpan.onchange = this.onVelPanChange.bind(this)
   }
 
-  dataLink(owner, getblock, getblock_addUser) {
+  dataLink(owner: DataBlock, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
     this.imageUser.dataLink(owner, getblock, getblock_addUser)
   }
 
@@ -1246,8 +1250,8 @@ export class ImageBlockOp<Inputs extends PropertySlots, Outputs extends Property
   }
 
   undoPre(ctx: ToolContext) {
-    let imageRef = this.inputs.image.getValue()
-    let image = ctx.datalib.get(imageRef)
+    const imageRef = this.inputs.image.getValue()
+    const image = ctx.datalib.get(imageRef)
 
     const ud = {} as IImageUndoBlock
     this._ud = ud
@@ -1320,8 +1324,9 @@ export class ImageEditor extends Editor {
   }
 
   uvEditor: UVEditor
-  subframe: UIBase
-  sidebar: UIBase
+  subframe: Container<ViewContext>
+  sidebar: EditorSideBar
+  updateSideBar = false
   glPos: Vector2
   glSize: Vector2
 
@@ -1398,7 +1403,7 @@ export class ImageEditor extends Editor {
     this.updateSideBar = true
   }
 
-  onFileLoad(isActive) {
+  onFileLoad(isActive: boolean) {
     /*
     let data = saveUIData(this.sidebar, "imageeditor");
     this.regenSidebar();
@@ -1406,8 +1411,8 @@ export class ImageEditor extends Editor {
     */
   }
 
-  makeImageTypeMenu(con, path) {
-    const on_select = (id) => {
+  makeImageTypeMenu(con: Container<ViewContext>, path: string) {
+    const on_select = (id: string | number) => {
       console.log('callback', id)
       const rdef = this.ctx.api.resolvePath(this.ctx, path)
       const image = rdef ? rdef.obj : undefined
@@ -1419,7 +1424,7 @@ export class ImageEditor extends Editor {
 
       const tool = new SetImageTypeOp()
       tool.inputs.image.setValue(image)
-      tool.inputs.type.setValue(id)
+      tool.inputs.type.setValue(id as number)
 
       this.ctx.api.execTool(this.ctx, tool)
     }
@@ -1431,6 +1436,10 @@ export class ImageEditor extends Editor {
 
     dropbox.onselect = on_select
 
+    // pathux's after aspect annotation of methods
+    // isn't very TS friendly
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
     dropbox.update.after(() => {
       let val
 
@@ -1442,7 +1451,6 @@ export class ImageEditor extends Editor {
       }
 
       dropbox.internalDisabled = false
-
       dropbox.setValue(val)
     })
   }
@@ -1461,11 +1469,11 @@ export class ImageEditor extends Editor {
 
     sidebar.clear()
 
-    const tabs = sidebar.tabpanel
-    let tab, panel, strip, path
-    let row, col
+    const tabs = sidebar.tabpanel!
+    let tab: Container<ViewContext>, panel: Container<ViewContext>, strip: Container<ViewContext>, path: string
+    let row: Container<ViewContext>, col: Container<ViewContext>
 
-    tab = tabs.tab('Workspace')
+    tab = tabs!.tab('Workspace')
     tab.useIcons(false)
 
     col = tab.col()
@@ -1476,7 +1484,12 @@ export class ImageEditor extends Editor {
     row.useIcons(false)
 
     row.prop('scene.propMode')
+
+    // XXX figure out a better way to do this
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
     col.prop('scene.propRadius').range = [0.1, 500.0]
+
     col.prop('scene.propIslandOnly')
 
     tab = tabs.tab('Image Settings')
@@ -1493,7 +1506,12 @@ export class ImageEditor extends Editor {
 
     panel.prop('genType')
     const color = panel.prop('genColor')
-    color.update.after(function () {
+
+    // pathux's after aspect annotation of methods
+    // isn't very TS friendly
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    color.update.after(function (this: color) {
       if (!this.ctx) {
         return
       }
@@ -1508,7 +1526,7 @@ export class ImageEditor extends Editor {
       }
     })
 
-    const sizeUpdate = function () {
+    const sizeUpdate = function (this: UIBase<ViewContext>) {
       const image = this.ctx.api.getValue(this.ctx, 'imageEditor.uvEditor.imageUser.image')
       const enabled = image?.type === ImageTypes.GENERATED
 
@@ -1517,7 +1535,13 @@ export class ImageEditor extends Editor {
       }
     }
 
+    // XXX
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
     panel.prop('width').update.after(sizeUpdate)
+    //XXX
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
     panel.prop('height').update.after(sizeUpdate)
 
     tab = tabs.tab('Tools')
@@ -1570,7 +1594,7 @@ export class ImageEditor extends Editor {
       this.uvEditor.velpan.reset()
     })
 
-    const browser = document.createElement('data-block-browser-x')
+    const browser = document.createElement('data-block-browser-x') as DataBlockBrowser<ImageBlock>
     browser.setAttribute('datapath', 'imageEditor.uvEditor.imageUser.image')
     browser.blockClass = ImageBlock
 
@@ -1579,6 +1603,9 @@ export class ImageEditor extends Editor {
     row = col.row()
     row.prop('scene.propEnabled')
     row.prop('scene.propMode')
+    // XXX figure out how to do this better
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    //@ts-expect-error
     row.prop('scene.propRadius').range = [0.1, 500.0]
   }
 
@@ -1606,6 +1633,7 @@ export class ImageEditor extends Editor {
       new HotKey('P', [], "uveditor.set_flag(flag='PIN')"),
       new HotKey('P', ['ALT'], "uveditor.clear_flag(flag='PIN')"),
     ])
+    return this.keymap
   }
 
   setCSS() {
@@ -1640,7 +1668,7 @@ export class ImageEditor extends Editor {
     this.push_ctx_active(false)
   }
 
-  static defineAPI(api) {
+  static defineAPI(api: DataAPI) {
     const st = super.defineAPI(api)
 
     const uvst = UVEditor.defineAPI(api)
@@ -1650,7 +1678,7 @@ export class ImageEditor extends Editor {
     return st
   }
 
-  viewportDraw(gl) {
+  viewportDraw(gl: WebGL2RenderingContext) {
     if (!gl || !this.ctx?.screen) {
       return
     }
@@ -1675,18 +1703,13 @@ export class ImageEditor extends Editor {
       this.glSize.load(this.size).mulScalar(dpi).ceil()
     }
 
-    const rect = this.uvEditor.getBoundingClientRect()
-    const rect2 = this.header.getBoundingClientRect()
-    window.rect = rect
-    window.rect2 = rect2
-
     gl.enable(gl.SCISSOR_TEST)
     gl.scissor(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1])
     gl.viewport(this.glPos[0], this.glPos[1], this.glSize[0], this.glSize[1])
 
-    this.style['background-color'] = 'rgba(0,0,0,0)'
-    this.container.style['background-color'] = 'rgba(0,0,0,0)'
-    this.uvEditor.style['background-color'] = 'rgba(0,0,0,0)'
+    this.style['backgroundColor'] = 'rgba(0,0,0,0)'
+    this.container.style['backgroundColor'] = 'rgba(0,0,0,0)'
+    this.uvEditor.style['backgroundColor'] = 'rgba(0,0,0,0)'
 
     this.uvEditor.glPos = this.glPos
     this.uvEditor.glSize = this.glSize
@@ -1694,11 +1717,11 @@ export class ImageEditor extends Editor {
     this.uvEditor.viewportDraw(gl)
   }
 
-  loadSTRUCT(reader) {
+  loadSTRUCT(reader: StructReader<this>) {
     const uve = this.uvEditor
 
     this.uvEditor.remove()
-    this.uvEditor = undefined
+    this.uvEditor = undefined as unknown as UVEditor
 
     reader(this)
     super.loadSTRUCT(reader)
@@ -1706,15 +1729,15 @@ export class ImageEditor extends Editor {
     if (!this.uvEditor) {
       this.uvEditor = uve
     } else {
-      this.uvEditor.setAttribute('datapath', uve.getAttribute('datapath'))
-      this.uvEditor.setAttribute('selfpath', uve.getAttribute('selfpath'))
+      this.uvEditor.setAttribute('datapath', uve.getAttribute('datapath')!)
+      this.uvEditor.setAttribute('selfpath', uve.getAttribute('selfpath')!)
     }
 
     this.uvEditor.parentEditor = this
     this.rebuildLayout()
   }
 
-  dataLink(owner, getblock, getblock_addUser) {
+  dataLink(owner: DataBlock, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {
     super.dataLink(owner, getblock, getblock_addUser)
 
     this.uvEditor.dataLink(owner, getblock, getblock_addUser)
@@ -1743,6 +1766,12 @@ ImageEditor.STRUCT =
 nstructjs.register(ImageEditor)
 Editor.register(ImageEditor)
 
+declare global {
+  interface Window {
+    redraw_uveditors(): void
+  }
+}
+
 window.redraw_uveditors = function () {
   if (!_appstate?.screen) {
     return
@@ -1752,7 +1781,7 @@ window.redraw_uveditors = function () {
     const editor = sarea.editor
 
     if (editor instanceof ImageEditor) {
-      editor.flagRedraw()
+      editor.uvEditor.flagRedraw()
     }
   }
 }

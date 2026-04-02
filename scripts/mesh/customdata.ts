@@ -56,6 +56,9 @@ mesh.CustomDataElem {
 }`
   )
 
+  // type only, not a real property
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
   settingsType: SettingsType;
 
   ['constructor']: ICustomDataElemConstructor<ValueType> = this['constructor']
@@ -223,12 +226,14 @@ mesh.CustomDataElem {
     reader(this)
   }
 
-  static getTypeClass(typeName: string): ICustomDataElemConstructor | undefined {
+  static getTypeClass<CDType extends CustomDataElem<unknown> = CustomDataElem<unknown>>(
+    typeName: string
+  ): ICustomDataElemConstructor<CDType> | undefined {
     if (!(typeName in CDElemMap)) {
       debugger
       throw new Error('Unknown customdata type ' + typeName)
     }
-    return CDElemMap[typeName]
+    return CDElemMap[typeName] as ICustomDataElemConstructor<CDType>
   }
 }
 
@@ -401,7 +406,7 @@ LayerSettingsBase {
 export interface ILayerSettingsConstructor<T extends LayerSettingsBase = LayerSettingsBase> {
   readonly STRUCT: string
   new (): T
-  apiDefine(api: DataAPI): DataStruct
+  apiDefine(api: DataAPI, st?: DataStruct): DataStruct
 }
 
 // empty child class to signal a customdata elem type has no settings
@@ -439,7 +444,7 @@ mesh.CustomDataLayer {
   name: string
   flag: number
   id: number
-  typeSettings: any
+  typeSettings?: CDType['settingsType']
   islandSnapLimit: number
   index: number
   layerSet: LayerSet<CDType>
@@ -486,7 +491,7 @@ mesh.CustomDataLayer {
   copy(): CustomDataLayer<CDType> {
     const ret = new CustomDataLayer<CDType>(this.typeName, this.name, this.flag, this.id)
 
-    if (this.typeSettings) {
+    if (this.typeSettings instanceof LayerSettingsBase) {
       ret.typeSettings = this.typeSettings.copy()
     }
 
@@ -718,7 +723,10 @@ mesh.CustomData {
     return (this.getActiveLayer(typecls_or_name) as CustomDataLayer<Type> | undefined)?.getTypeSettings()
   }
 
-  addLayer(cls: ICustomDataElemConstructor, name: string | undefined = undefined) {
+  addLayer<CDType extends CustomDataElem<unknown> = CustomDataElem<unknown>>(
+    cls: ICustomDataElemConstructor<CDType>,
+    name?: string
+  ): CustomDataLayer<CDType> {
     if (!cls.define || !cls.define() || !cls.define().typeName) {
       throw new Error('Invalid customdata class ' + cls.name)
     }
@@ -732,7 +740,7 @@ mesh.CustomData {
     name = this._getUniqueName(name)
 
     const type = cls.define().typeName
-    const layer = new CustomDataLayer(type, name, undefined, this.idgen.next())
+    const layer = new CustomDataLayer<CDType>(type, name, undefined, this.idgen.next())
     const lset = this.getLayerSet(type)
 
     layer.index = this.flatlist.length
@@ -768,7 +776,9 @@ mesh.CustomData {
   }
 
   //TODO: just pass in classes?
-  hasLayer(typename_or_cls: any): boolean {
+  hasLayer<CDType extends CustomDataElem<unknown> = CustomDataElem<unknown>>(
+    typename_or_cls: ICustomDataElemConstructor<CDType> | string
+  ): boolean {
     let typename: string
 
     if (typeof typename_or_cls === 'string') {
@@ -781,11 +791,15 @@ mesh.CustomData {
     return this.layers.has(typename) && this.layers.get(typename)!.length > 0
   }
 
-  getLayerRef<type extends CustomDataElem<any>>(cls_or_str: (new () => type) | string): AttrRef<type> {
-    return AttrRef.create<type>(this.getLayerIndex(cls_or_str))
+  getLayerRef<CDType extends CustomDataElem<unknown> = CustomDataElem<unknown>>(
+    cls_or_str: ICustomDataElemConstructor<CDType> | string
+  ): AttrRef<CDType> {
+    return AttrRef.create<CDType>(this.getLayerIndex(cls_or_str))
   }
 
-  getLayerIndex(typename_or_cls: any): number {
+  getLayerIndex<CDType extends CustomDataElem<unknown> = CustomDataElem<unknown>>(
+    typename_or_cls: ICustomDataElemConstructor<CDType> | string
+  ): number {
     let typename: string
 
     if (typeof typename_or_cls === 'string') {
@@ -807,7 +821,7 @@ mesh.CustomData {
     return lset.active ? lset.active.index : -1
   }
 
-  getActiveLayer<Type extends CustomDataElem<any>>(
+  getActiveLayer<Type extends CustomDataElem>(
     typecls_or_name: string | ICustomDataElemConstructor<Type>
   ): CustomDataLayer<Type> | undefined {
     let typeName: string
@@ -837,7 +851,7 @@ mesh.CustomData {
     set.active = layer
   }
 
-  remLayer(layer: CustomDataLayer<any>) {
+  remLayer(layer: CustomDataLayer) {
     const set = this.layers.get(layer.typeName)!
     if (set.active === layer) {
       set.active = set.length > 1 ? set[(set.indexOf(layer) + 1) % set.length] : undefined
@@ -859,9 +873,9 @@ mesh.CustomData {
   }
 
   _getUniqueName(name: string) {
-    const taken = (name: string) => {
+    const taken = (name2: string) => {
       for (const layer of this.flatlist) {
-        if (layer.name === name) {
+        if (layer.name === name2) {
           return true
         }
       }
@@ -880,7 +894,7 @@ mesh.CustomData {
     return name2
   }
 
-  getLayerSet<CDType extends CustomDataElem<any>>(typename: string, autoCreate = true): LayerSet<CDType> {
+  getLayerSet<CDType extends CustomDataElem>(typename: string, autoCreate = true): LayerSet<CDType> {
     if (autoCreate && !this.layers.has(typename)) {
       this.layers.set(typename, new LayerSet(typename))
       this.layers.get(typename)!.active = undefined

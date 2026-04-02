@@ -70,13 +70,6 @@ const setSmoothLineProgram = (p: ShaderProgram, sp: ShaderProgram) => {
 const _ids_arrs = [[0], [0], [0], [0]]
 const zero = new Vector3()
 
-function copyvec(a: number[], b: number[], starti: number, n: number, defaultval = 0) {
-  for (let i = starti; i < starti + n; i++) {
-    const val = b[i]
-    a[i] = val === undefined ? defaultval : val
-  }
-}
-
 export class TriEditor<OPT extends {dead?: true | false} = {dead: true}> {
   mesh: OptionalIf<SimpleIsland<{dead: false}>, OPT['dead']> = undefined as unknown as SimpleIsland<{dead: false}>
   i: number
@@ -1087,7 +1080,7 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
   program: OptionalIf<ShaderProgram, OPT['dead']> = undefined as unknown as ShaderProgram
   textures: any[]
   uniforms: IUniformsBlock
-  _uniforms_temp: any
+  _uniforms_temp: IUniformsBlock
   private extraLayerFlag: number = 0
 
   constructor(mesh: SimpleMesh) {
@@ -1823,7 +1816,7 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
     this.regen = true
   }
 
-  draw(gl: WebGL2RenderingContext, uniforms: any, params: any, program_override?: ShaderProgram): void {
+  draw(gl: WebGL2RenderingContext, uniforms?: IUniformsBlock, params?: any, program_override?: ShaderProgram): void {
     this.gl = gl
 
     let program = this.program === undefined ? this.mesh.program : this.program

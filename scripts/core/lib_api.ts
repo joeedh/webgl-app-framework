@@ -36,9 +36,9 @@ export interface IBlockDef {
 }
 
 export interface IDataBlockConstructor<
-  type extends DataBlock<InputSet, OutputSet>,
-  InputSet extends INodeSocketSet,
-  OutputSet extends INodeSocketSet,
+  type extends DataBlock<InputSet, OutputSet> = DataBlock<any, any>,
+  InputSet extends INodeSocketSet = INodeSocketSet,
+  OutputSet extends INodeSocketSet = INodeSocketSet,
 > extends INodeConstructor<type, InputSet, OutputSet> {
   new (): type
 

@@ -168,9 +168,9 @@ export function registerToolMode(api) {
     static nodedef() {
       return {
         name   : "patchtester",
-        inputs : Node.inherit({}),
-        outputs: Node.inherit({}),
-        flag   : Node.inherit(0)
+        inputs : {},
+        outputs: {},
+        flag   : Node.inheritFlag(0)
       }
     }
 

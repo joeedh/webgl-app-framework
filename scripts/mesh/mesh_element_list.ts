@@ -955,25 +955,25 @@ mesh.ElementList {
     return this
   }
 
-  addCustomDataLayer<CDType extends CustomDataElem<any> = CustomDataElem<any>>(
-    cls_or_typestring: any,
+  addCustomDataLayer<CDType extends CustomDataElem<unknown> = CustomDataElem<unknown>>(
+    cls_or_typestring: ICustomDataElemConstructor<CDType> | string,
     name?: string
   ): CustomDataLayer<CDType> {
     this.clearFreeElems()
 
-    let typecls: ICustomDataElemConstructor | undefined
+    let typecls: ICustomDataElemConstructor<CDType> | undefined
 
     if (typeof cls_or_typestring === 'string') {
-      typecls = CustomDataElem.getTypeClass(cls_or_typestring)
+      typecls = CustomDataElem.getTypeClass<CDType>(cls_or_typestring)
     } else {
-      typecls = cls_or_typestring as unknown as ICustomDataElemConstructor
+      typecls = cls_or_typestring as unknown as ICustomDataElemConstructor<CDType>
     }
 
     if (typecls === undefined) {
       throw new Error('Unknown customdata type')
     }
 
-    const ret = this.customData.addLayer(typecls, name)
+    const ret = this.customData.addLayer<CDType>(typecls, name)
 
     let haveOnNewLayer = false
 

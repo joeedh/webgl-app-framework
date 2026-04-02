@@ -1,11 +1,11 @@
-import {BlockLoader, BlockLoaderAddUser, DataBlock, DataRef} from './lib_api'
+import {BlockLoader, BlockLoaderAddUser, DataBlock} from './lib_api'
 import {nstructjs, ToolOp, IntProperty, StringProperty} from '../path.ux/scripts/pathux.js'
 
 import {Icons} from '../editors/icon_enum.js'
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js'
 import {DiffuseNode, GeometryNode, OutputNode} from '../shadernodes/shader_nodes.js'
-import {ToolContext} from '../../types/scripts/core/context'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
+import {ToolContext} from './context'
 
 export function makeDefaultMaterial() {
   const mat = new Material()

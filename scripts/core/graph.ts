@@ -14,6 +14,13 @@ export enum SocketTypes {
   NONE = -1,
 }
 
+export class NodeInheritFlag {
+  flag: number
+  constructor(flag: number) {
+    this.flag = flag
+  }
+}
+
 /**
  Socket flags
 
@@ -66,8 +73,11 @@ export enum NodeFlags {
    that can be replaced with real object on load.  for dealing with
    nodes that are saved outside of the Graph data structure.*/
   SAVE_PROXY = 64,
+  /* @unused */
   FORCE_SOCKET_INHERIT = 128,
+  /* @unused */
   FORCE_FLAG_INHERIT = 256,
+  /* @unused */
   FORCE_INHERIT = 128 | 256,
 }
 
@@ -89,19 +99,6 @@ export enum GraphFlags {
   CYCLIC = 8, //graph has cycles, is set in graph.sort()
 }
 
-//used by Node.inherit
-class InheritFlag<SocketSet extends {} = {}> {
-  data: SocketSet
-
-  constructor(data?: SocketSet) {
-    if (data !== undefined) {
-      this.data = data
-    } else {
-      this.data = {} as unknown as SocketSet
-    }
-  }
-}
-
 export const NodeSocketClasses = [] as (typeof NodeSocketType)[]
 
 export interface INodeSocketDef {
@@ -115,8 +112,8 @@ export interface INodeDef<InputSet extends {} = {}, OutputSet extends {} = {}> {
   name: string
   uiname?: string
   flag?: any
-  inputs: InputSet | InheritFlag<InputSet>
-  outputs: OutputSet | InheritFlag<OutputSet>
+  inputs: InputSet
+  outputs: OutputSet
 }
 
 export interface INodeConstructor<
@@ -531,6 +528,37 @@ graph.Node {
   /* @ts-ignore */
   ['constructor']: INodeConstructor<this, InputSet, OutputSet> | undefined
 
+  static inheritFlag(flag: number) {
+    return new NodeInheritFlag(flag)
+  }
+
+  /**
+   * The point of this method is to perform
+   * socket inheritance (which is now required) in
+   * a way friendly to TS's type inference.
+   *
+   * Note: the TS types are set up to force us to do
+   * something like this
+   */
+  static merge<
+    I1 extends INodeSocketSet,
+    O1 extends INodeSocketSet,
+    I2 extends INodeSocketSet, //
+    O2 extends INodeSocketSet, //
+    D extends INodeDef<I1, O1>,
+    P extends INodeDef<I2, O2>,
+  >(def: D, parentDef: P) {
+    const inputs1 = def.inputs ?? parentDef.inputs
+    const outputs1 = def.outputs ?? parentDef.outputs
+    const inputs2 = parentDef.inputs ?? {}
+    const outputs2 = parentDef.outputs ?? {}
+
+    return {
+      ...def,
+      inputs : {...inputs1, ...inputs2} as I1 & I2,
+      outputs: {...outputs1, ...outputs2} as O1 & O2,
+    } as const
+  }
   constructor(flag = 0) {
     const def = this.constructor!.nodedef()
 
@@ -549,21 +577,12 @@ graph.Node {
     this.graph_graph = undefined
 
     const getflag = () => {
-      let inherit = typeof def.flag === 'object' && def.flag !== null && (def.flag as any) instanceof InheritFlag
+      let inherit = true // TS should enforce inheritance
 
       //walk up class hiearchy andd see if NodeFlags.FORCE_SOCKET_INHERIT
       //is nodedef().flag of any ancestor
       let p = this.constructor as any
       let def2 = def
-
-      while (p !== null && p !== undefined && p !== Object && p !== Node) {
-        if (p.nodedef) {
-          def2 = p.nodedef()
-
-          inherit = inherit || (def2.flag! & NodeFlags.FORCE_FLAG_INHERIT) !== 0
-        }
-        p = p.prototype.__proto__.constructor
-      }
 
       if (inherit) {
         let flag = def.flag !== undefined ? def.flag : 0
@@ -592,7 +611,7 @@ graph.Node {
       const obj = def[key] as {[k: string]: NodeSocketType}
       const ret = {} as {[k: string]: NodeSocketType}
 
-      let inherit = obj instanceof InheritFlag
+      let inherit = true
       inherit = inherit || (flag & NodeFlags.FORCE_SOCKET_INHERIT) !== 0
 
       //walk up class hiearchy andd see if NodeFlags.FORCE_SOCKET_INHERIT
@@ -614,17 +633,9 @@ graph.Node {
           if (p.nodedef === undefined) continue
           let obj2 = p.nodedef()[key]
 
-          if (obj2 instanceof InheritFlag) {
-            obj2 = obj2.data
-          }
-
           if (obj2 !== undefined) {
             for (const k in obj2) {
               let sock2 = obj2[k]
-
-              if (sock2 instanceof InheritFlag) {
-                sock2 = sock2.data
-              }
 
               if (!(k in ret)) {
                 ret[k] = sock2.copy()
@@ -719,36 +730,21 @@ graph.Node {
       const obj = def[key]
       const ret = {} as INodeSocketSet
 
-      if (obj instanceof InheritFlag) {
-        let p = this as unknown as NodeProto
+      let p = this as unknown as NodeProto
 
-        while (p !== null && p !== undefined && (p as any) !== Object && p !== Node) {
-          if (p.nodedef === undefined) continue
-          let obj2 = p.nodedef()[key]
+      while (p !== null && p !== undefined && (p as any) !== Object && p !== Node) {
+        if (p.nodedef === undefined) continue
+        let obj2 = p.nodedef()[key]
 
-          const inherit = obj2 && obj2 instanceof InheritFlag
-          if (inherit) {
-            obj2 = obj2.data as INodeSocketSet
-          }
-
-          if (obj2) {
-            for (const k in obj2) {
-              if (!(k in ret)) {
-                ret[k] = (obj2 as INodeSocketSet)[k]
-              }
+        if (obj2) {
+          for (const k in obj2) {
+            if (!(k in ret)) {
+              ret[k] = (obj2 as INodeSocketSet)[k]
             }
           }
-
-          if (!inherit) {
-            break
-          }
-
-          p = p.prototype.__proto__.constructor
         }
-      } else if (obj !== undefined) {
-        for (const k in obj) {
-          ret[k] = (obj as INodeSocketSet)[k]
-        }
+
+        p = p.prototype.__proto__.constructor
       }
 
       return ret
@@ -771,12 +767,12 @@ graph.Node {
    name   : "name",
    uiname : "uiname",
    flag   : 0,  //see NodeFlags
-   inputs : Node.inherit({
-   input1 : new FloatSocket()
-   }), //can inherit from parent class by wrapping in Node.inherit({})
+   inputs : {
+    input1 : new FloatSocket()
+   }
 
    outputs : {
-   output1 : new FloatSocket()
+    output1 : new FloatSocket()
    }
    }}
    */
@@ -788,11 +784,6 @@ graph.Node {
       inputs : {}, //can inherit from parent class by wrapping in Node.inherit({})
       outputs: {},
     }
-  }
-
-  /** see nodedef static method */
-  static inherit<SocketSetType extends INodeSocketSet | number = {}>(obj?: SocketSetType): InheritFlag<SocketSetType> {
-    return new InheritFlag<SocketSetType>(obj)
   }
 
   graphDataLink(ownerBlock: DataBlock, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {}

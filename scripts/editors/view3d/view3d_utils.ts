@@ -14,6 +14,8 @@ import * as util from '../../util/util.js'
 import {IVectorOrHigher, Matrix4, Vector2, Vector3, Vector4} from '../../util/vectormath.js'
 import type {View3D} from './view3d'
 
+export type BoundingBox = [IVectorOrHigher<3, Vector3>, IVectorOrHigher<3, Vector3>]
+
 const thehash = new util.HashDigest()
 
 const proj_temps = util.cachering.fromConstructor(Vector4, 128)

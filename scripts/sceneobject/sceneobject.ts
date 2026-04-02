@@ -105,6 +105,9 @@ export class SceneObject<InputSet extends {} = {}, OutputSet extends {} = {}> ex
   data: SceneObjectData<any, any>
   flag: ObjectFlags
 
+  // update generation
+  updateGen?: number
+  
   constructor(data?: SceneObjectData<any, any>) {
     super()
 

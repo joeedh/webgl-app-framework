@@ -1,22 +1,10 @@
-import {AttrRef, CustomDataElem, ICustomDataElemDef} from './customdata'
+import {CustomDataElem, ICustomDataElemDef} from './customdata'
 import {MeshTypes} from './mesh_base'
 import '../util/floathalf.js'
-import {
-  nstructjs,
-  util,
-  Vector2,
-  Vector3,
-  Vector4,
-  Quat,
-  Matrix4,
-  DataAPI,
-  DataStruct,
-  Number4,
-} from '../path.ux/scripts/pathux.js'
+import {nstructjs, Vector2, Vector3, Vector4, DataAPI, DataStruct, Number4} from '../path.ux/scripts/pathux.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 
-import {half2float, float2half} from '../util/floathalf'
-import type {Element} from './mesh_types'
+import {half2float} from '../util/floathalf'
 
 export enum UVFlags {
   PIN = 2,
@@ -33,7 +21,7 @@ mesh.UVLayerElem {
 `
   )
 
-  static apiDefine(api, dstruct) {
+  static apiDefine(api: DataAPI, dstruct: DataStruct) {
     dstruct.vec2('uv', 'uv', 'uv')
   }
 
@@ -574,7 +562,9 @@ mesh.ColorLayerElem {
     reader(this)
     super.loadSTRUCT(reader)
 
-    if ((this.color.constructor as any) === Array) {
+    //note: color is an array in struct readers (after reading from files).
+    const color = this.color as any
+    if (color instanceof Array) {
       for (let i = 0 as Number4; i < 4; i++) {
         this.color[i] = half2float(this.color[i])
       }

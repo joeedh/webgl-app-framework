@@ -22,7 +22,7 @@ import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../core/simplemesh'
 
 import {DataBlock} from '../core/lib_api'
 import {IDataDefine, SceneObjectData} from '../sceneobject/sceneobject_base'
-import {INumVector, math, Matrix4, nstructjs, util, Vector3, Vector4} from '../path.ux/pathux.js'
+import {INumVector, IOpenNumVector, math, Matrix4, nstructjs, util, Vector3, Vector4} from '../path.ux/pathux.js'
 
 import {
   CDFlags,
@@ -70,7 +70,7 @@ import {
   updateDispLayers,
 } from './mesh_displacement'
 import {IGridConstructor} from './mesh_grids.js'
-import {View3D} from '../editors/view3d/view3d'
+import type {View3D} from '../editors/view3d/view3d'
 //import type {View3D} from '../editors/view3d/view3d'
 import type {SceneObject} from '../sceneobject/sceneobject'
 import {Utf8DecodeWorker} from '../extern/jszip/jszip'
@@ -442,13 +442,13 @@ mesh.Mesh {
     return this.eidMap.values()
   }
 
-  static nodedef(): INodeDef {
+  static nodedef() {
     return {
       name   : 'mesh',
       uiname : 'Mesh',
       flag   : NodeFlags.SAVE_PROXY,
-      inputs : Node.inherit({}),
-      outputs: Node.inherit({}),
+      inputs : {...super.nodedef().inputs},
+      outputs: {...super.nodedef().outputs},
     }
   }
 
@@ -4725,7 +4725,7 @@ mesh.Mesh {
           const line = sm.line(lastco!, co)
 
           if (layers & LayerTypes.COLOR) {
-            line.colors(color1 as unknown as INumVector, color2 as unknown as INumVector)
+            line.colors(color1 as IOpenNumVector, color2 as IOpenNumVector)
           }
 
           if (layers & LayerTypes.UV) {
@@ -5364,15 +5364,21 @@ mesh.Mesh {
     view3d: View3D,
     gl: WebGL2RenderingContext,
     selmask: number,
-    uniforms: any,
+    uniforms: IUniformsBlock,
     program: ShaderProgram,
     object: SceneObject,
     drawTransFaces = false
   ) {
-    return drawMeshElements(this, ...arguments)
+    return drawMeshElements(this, view3d, gl, selmask, uniforms, program, object, drawTransFaces)
   }
 
-  draw(view3d: View3D, gl: WebGL2RenderingContext, uniforms: any, program: ShaderProgram, object: SceneObject): void {
+  draw(
+    view3d: View3D,
+    gl: WebGL2RenderingContext,
+    uniforms: IUniformsBlock,
+    program: ShaderProgram,
+    object: SceneObject
+  ): void {
     if (this.recalc & RecalcFlags.TESSELATE) {
       this.tessellate()
     }

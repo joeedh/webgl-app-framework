@@ -20,23 +20,23 @@ export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends
 
   modalEnd(wasCancelled?: boolean) {
     this.resetDrawLines()
-    return super.modalEnd(wasCancelled)
+    return super.modalEnd(wasCancelled ?? false)
   }
 
   addDrawQuad(v1: Vector3, v2: Vector3, v3: Vector3, v4: Vector3, color: Vector4, useZ = true) {
-    const dq = this.modal_ctx.view3d.makeDrawQuad(v1, v2, v3, v4, color, useZ)
+    const dq = this.modal_ctx!.view3d.makeDrawQuad(v1, v2, v3, v4, color, useZ)
     this.drawquads.push(dq)
     return dq
   }
 
   addDrawLine(v1: Vector3, v2: Vector3, color: Vector4, useZ = true) {
-    const dl = this.modal_ctx.view3d.makeDrawLine(v1, v2, color as unknown as number[], useZ)
+    const dl = this.modal_ctx!.view3d.makeDrawLine(v1, v2, color as unknown as number[], useZ)
     this.drawlines.push(dl)
     return dl
   }
 
   addDrawLine2D(v1: Vector2, v2: Vector2, color: Vector4) {
-    const overdraw: any = this.modal_ctx.view3d.overdraw as unknown as any
+    const overdraw: any = this.modal_ctx!.view3d.overdraw as unknown as any
 
     const dl = overdraw.line(v1, v2, color)
     this.drawlines2d.push(dl)
@@ -71,7 +71,7 @@ export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends
 
   resetDrawLines() {
     for (const dl of this.drawlines) {
-      this.modal_ctx.view3d.removeDrawLine(dl)
+      this.modal_ctx!.view3d.removeDrawLine(dl)
     }
 
     for (const dl of this.drawlines2d) {
@@ -79,7 +79,7 @@ export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends
     }
 
     for (const dq of this.drawquads) {
-      this.modal_ctx.view3d.removeDrawQuad(dq)
+      this.modal_ctx!.view3d.removeDrawQuad(dq)
     }
 
     this.drawlines.length = 0
@@ -88,10 +88,10 @@ export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends
   }
 
   removeDrawLine(dl: any) {
-    if (this.drawlines.indexOf(dl) >= 0) {
-      this.modal_ctx.view3d.removeDrawLine(dl)
+    if (this.drawlines.includes(dl)) {
+      this.modal_ctx!.view3d.removeDrawLine(dl)
       this.drawlines.remove(dl)
-    } else if (this.drawlines2d.indexOf(dl) >= 0) {
+    } else if (this.drawlines2d.includes(dl)) {
       this.drawlines2d.remove(dl)
       dl.remove()
     }

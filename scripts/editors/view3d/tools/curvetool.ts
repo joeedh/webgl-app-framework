@@ -1,29 +1,24 @@
 import {Shapes} from '../../../core/simplemesh_shapes.js'
-import {FindNearest, castViewRay, CastModes} from '../findnearest.js'
-import {WidgetFlags} from '../widgets/widgets.js'
-import {ToolModes, ToolMode} from '../view3d_toolmode.js'
-import {HotKey, KeyMap} from '../../editor_base.ts'
+import {FindNearest} from '../findnearest.js'
+import {ToolMode} from '../view3d_toolmode.js'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
 import '../../../path.ux/scripts/util/struct.js'
-import {MeshToolBase} from './meshtool.ts'
+import {MeshToolBase} from './meshtool'
 
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js'
 import {Shaders} from '../../../shaders/shaders.js'
-import {MovableWidget} from '../widgets/widget_utils.js'
-import {SnapModes} from '../transform/transform_ops.js'
 
-import {Mesh, MeshDrawFlags} from '../../../mesh/mesh.js'
-import {MeshTypes, MeshFeatures, MeshFlags, MeshError, MeshFeatureError} from '../../../mesh/mesh_base.js'
+import {MeshDrawFlags} from '../../../mesh/mesh.js'
 import {CurveSpline} from '../../../curve/curve.js'
-import {ObjectFlags} from '../../../sceneobject/sceneobject.js'
 import {ContextOverlay, nstructjs} from '../../../path.ux/scripts/pathux.js'
 import {DataRef} from '../../../core/lib_api'
+import type {ViewContext} from '../../../core/context.js'
 
-export class CurveToolOverlay extends ContextOverlay {
+export class CurveToolOverlay extends ContextOverlay<unknown, ViewContext> {
   _toolclass: any
-  _selectMask: number
-  _ob: DataRef
+  _selectMask: number = -1
+  _ob: DataRef = new DataRef(-1)
 
   constructor(state: any, toolmode?: any) {
     super(state)
@@ -48,7 +43,7 @@ export class CurveToolOverlay extends ContextOverlay {
   }
 
   get selectMask(): number {
-    return this.ctx.toolmode.selectMask
+    return this.ctx.toolmode!.selectMask
     //return this._selectMask;
   }
 
@@ -111,7 +106,7 @@ export class CurveToolBase extends MeshToolBase {
     }
   }
 
-  static getContextOverlayClass(): typeof CurveToolOverlay {
+  static getContextOverlayClass() {
     return CurveToolOverlay
   }
 
@@ -194,9 +189,9 @@ export class CurveToolBase extends MeshToolBase {
       const data: CurveSpline | typeof CurveSpline = this.curve !== undefined ? this.curve : CurveSpline
 
       this.sceneObject = this.ctx.scene.getInternalObject(this.ctx, key, data)
-      this.ctx.scene.setSelect(this.sceneObject, true)
+      this.ctx.scene!.objects.setSelect(this.sceneObject, true)
 
-      this.curve = this.sceneObject.data
+      this.curve = this.sceneObject.data! as CurveSpline
       this.curve.owningToolMode = this.constructor.toolModeDefine().name
     }
   }

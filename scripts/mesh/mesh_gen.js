@@ -462,9 +462,9 @@ export class ProceduralMesh extends SceneObjectData {
     return {
       uiname : 'Procedural Mesh',
       name   : 'ProceduralMesh',
-      inputs : Node.inherit({}),
-      outputs: Node.inherit({}),
-      flag   : Node.inherit(NodeFlags.SAVE_PROXY),
+      inputs : {},
+      outputs: {},
+      flag   : Node.inheritFlag(NodeFlags.SAVE_PROXY),
     }
   }
 

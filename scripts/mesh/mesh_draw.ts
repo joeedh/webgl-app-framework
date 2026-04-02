@@ -7,7 +7,7 @@ import {ChunkedSimpleMesh, LayerTypes, PrimitiveTypes, SimpleMesh} from '../core
 import {NormalLayerElem, UVLayerElem} from './mesh_customdata'
 import {SelMask} from '../editors/view3d/selectmode'
 import {GridBase} from './mesh_grids'
-import {getFaceSetColor, getFaceSets, getFaceSetsAttr} from './mesh_facesets'
+import {getFaceSetColor, getFaceSetsAttr} from './mesh_facesets'
 import type {IUniformsBlock, ShaderProgram} from '../core/webgl'
 import type {AttrRef, ColorLayerElem, ElementList, FaceSetElem, Mesh} from './mesh'
 import {ViewContext} from '../core/context.js'

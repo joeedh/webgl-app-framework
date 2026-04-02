@@ -348,7 +348,7 @@ export function getArrayTemp<type>(n: number, clear = false): type[] {
   return pool.get<type>(n, clear)
 }
 
-export function reallocArrayTemp<type>(arr: Array<type>, newSize: number): type[] {
+export function reallocArrayTemp<type>(arr: type[], newSize: number): type[] {
   const result: type[] = getArrayTemp(newSize)
 
   for (let i = 0; i < newSize; i++) {
@@ -360,7 +360,7 @@ export function reallocArrayTemp<type>(arr: Array<type>, newSize: number): type[
 
 import type {CustomDataElem} from './customdata.ts'
 import type {CDRef, ICustomDataElemConstructor} from './customdata'
-import type {Edge, Element, Element, Face, Handle, Loop, Vertex} from './mesh_types'
+import type {Edge, Element, Face, Handle, Loop, Vertex} from './mesh_types'
 
 export class CDElemArray extends Array<CustomDataElem<any>> {
   static STRUCT = nstructjs.inlineRegister(

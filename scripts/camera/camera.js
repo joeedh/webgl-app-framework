@@ -254,8 +254,8 @@ export class CameraData extends SceneObjectData {
       flag   : NodeFlags.SAVE_PROXY,
       name   : 'camera',
       uiname : 'Camera',
-      inputs : Node.inherit(),
-      outputs: Node.inherit(),
+      inputs : {...super.nodedef().inputs},
+      outputs: {...super.nodedef().outputs},
     }
   }
 

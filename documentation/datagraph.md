@@ -31,16 +31,20 @@ class MyNode extends Node {
     this.mysetting = 0;
   }
   
-  static nodedef() {return {
-    uiname : "My Node",
-    name   : "MyNode",     //if you want to inherit sockets from parent
-    inputs : Node.inherit({ //class, wrap inputs/outputs in Node.inherit
-      myinput : new FloatSocket()
-    }),
-    outputs : {
-      myoutput : new FloatSocket()
+  static nodedef() {
+    return {
+      uiname : "My Node",
+      name   : "MyNode",     //if you want to inherit sockets from parent
+      inputs : Node.merge({ //class, wrap inputs/outputs in Node.inherit
+        ...super.nodedef().inputs,
+        myinput : new FloatSocket()
+      }),
+      outputs : {
+        ...super.nodedef().outputs,
+        myoutput : new FloatSocket()
+      }
+      }
     }
-  }}
   
   //ctx is the argument passed to Graph.prototype.exec
   exec(ctx) {

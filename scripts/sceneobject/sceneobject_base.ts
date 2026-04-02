@@ -2,7 +2,7 @@ import {BlockLoader, BlockLoaderAddUser, DataBlock, IDataBlockConstructor} from 
 import {Vector3, Matrix4, nstructjs} from '../path.ux/scripts/pathux.js'
 
 import {StandardTools} from './stdtools.js'
-import {INodeDef, INodeSocketSet, Node, NodeFlags} from '../core/graph'
+import {INodeDef, INodeSocketSet, Node, NodeFlags, NodeInheritFlag} from '../core/graph'
 import {DependSocket} from '../core/graphsockets'
 import {Material} from '../core/material'
 import type {ToolContext} from '../core/context'
@@ -31,6 +31,9 @@ export class SceneObjectData<
   materials: (Material | undefined)[] = []
   usesMaterial = false
 
+  // update generation
+  updateGen?: number
+
   constructor() {
     super()
   }
@@ -48,16 +51,16 @@ export class SceneObjectData<
     }
   }
 
-  static nodedef(): INodeDef {
+  static nodedef() {
     return {
       name   : '',
-      inputs: Node.inherit({
+      inputs: {
         depend: new DependSocket(),
-      }),
-      outputs: Node.inherit({
+      },
+      outputs: {
         depend: new DependSocket(),
-      }),
-      flag   : Node.inherit(NodeFlags.SAVE_PROXY),
+      },
+      flag   : Node.inheritFlag(NodeFlags.SAVE_PROXY) as NodeInheritFlag | number,
     }
   }
 
@@ -85,6 +88,7 @@ SceneObjectData {
     for (const sock of this.inputs.depend.edges) {
       // XXX fixme: cannot use instanceof here because of circular dependency
       // but this is still a hack
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((sock.node as any).constructor.name === 'SceneObject' && (sock.node as unknown as any).data === this) {
         return sock.node as SceneObject
       }

@@ -615,7 +615,7 @@ export class DispContext {
 const disp_contexts = util.cachering.fromConstructor(DispContext, 32)
 const tmptmp = new Vector3()
 
-export class DispLayerVert extends CustomDataElem<Vector3> {
+export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLayerSettings> {
   baseco: Vector3
   _worldco: Vector3
   worldco: Vector3

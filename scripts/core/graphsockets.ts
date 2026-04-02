@@ -70,18 +70,25 @@ graph.Matrix4Socket{
     const m1 = this.value.$matrix
     const m2 = b.$matrix
 
-    let diff = 0.0,
-      tot = 0.0
+    let diff = 0.0
+    diff += Math.abs(m1.m11 - m2.m11)
+    diff += Math.abs(m1.m12 - m2.m12)
+    diff += Math.abs(m1.m13 - m2.m13)
+    diff += Math.abs(m1.m14 - m2.m14)
+    diff += Math.abs(m1.m21 - m2.m21)
+    diff += Math.abs(m1.m22 - m2.m22)
+    diff += Math.abs(m1.m23 - m2.m23)
+    diff += Math.abs(m1.m24 - m2.m24)
+    diff += Math.abs(m1.m31 - m2.m31)
+    diff += Math.abs(m1.m32 - m2.m32)
+    diff += Math.abs(m1.m33 - m2.m33)
+    diff += Math.abs(m1.m34 - m2.m34)
+    diff += Math.abs(m1.m41 - m2.m41)
+    diff += Math.abs(m1.m42 - m2.m42)
+    diff += Math.abs(m1.m43 - m2.m43)
+    diff += Math.abs(m1.m44 - m2.m44)
 
-    for (const k in m1) {
-      const a = m1[k],
-        b = m2[k]
-
-      diff += Math.abs(a - b)
-      tot += 1.0
-    }
-
-    return tot != 0.0 ? diff / tot : 0.0
+    return diff
   }
 
   getValue(): Matrix4 {
@@ -136,7 +143,7 @@ export class DependSocket extends NodeSocketType<boolean> {
     return this.value
   }
 
-  setValue(b) {
+  setValue(b: boolean) {
     this.value = !!b
   }
 
@@ -293,7 +300,7 @@ graph.Vec2Socket {
   }
 
   //eh. . .dot product?
-  cmpValue(b) {
+  cmpValue(b: Vector2) {
     return this.value.dot(b)
   }
 }
@@ -583,12 +590,12 @@ graph.FloatSocket {
     }
   }
 
-  buildUI(container: Container, onchange: (this: GlobalEventHandlers, ev: Event) => any): void {
+  //buildUI(container: Container, onchange: (this: GlobalEventHandlers, ev: Event) => any): void {
+  buildUI(container: Container, onchange?: () => void): void {
     if (this.edges.length === 0) {
       const ret = container.prop('value')
       ret.setAttribute('name', this.uiname)
-
-      ret.onchange = onchange
+      ret.onchange = onchange ?? null
     } else {
       container.label(this.uiname)
     }
@@ -629,8 +636,8 @@ graph.FloatSocket {
 NodeSocketType.register(FloatSocket)
 
 export class EnumSocket extends IntSocket {
-  items: {}
-  uimap: {}
+  items: {[k: string]: number}
+  uimap: {[k: string]: string}
 
   constructor(uiname?: string, items: {} = {}, flag = 0, default_value?: any) {
     super(uiname, flag)
@@ -642,7 +649,7 @@ export class EnumSocket extends IntSocket {
 
     if (items !== undefined) {
       for (const k in items) {
-        this.items[k] = items[k]
+        this.items[k] = items[k as keyof typeof items]
       }
     }
 
@@ -650,7 +657,7 @@ export class EnumSocket extends IntSocket {
       this.value = default_value
     }
 
-    this.uimap = {}
+    this.uimap = {} as {[k: string]: string}
     for (const k in this.items) {
       const k2 = k.split('-_ ')
       let uiname = ''
@@ -677,7 +684,7 @@ export class EnumSocket extends IntSocket {
 
   addUiItems(items: {}): this {
     for (const k in items) {
-      this.uimap[k] = items[k]
+      this.uimap[k] = items[k as keyof typeof items]
     }
 
     return this
@@ -712,24 +719,29 @@ export class EnumSocket extends IntSocket {
     return ~~this.value
   }
 
-  setValue(b: number): void {
+  setValue(b: number | string): void {
     if (typeof b !== 'number' && !b) {
       return
     }
 
+    let value: number
+
     if (typeof b === 'string') {
       const s = b as unknown as string
       if (s in this.items) {
-        b = this.items[s]
+        value = this.items[s]
       } else {
         throw new Error('bad enum item' + b)
       }
+    } else {
+      value = b
     }
 
-    this.value = ~~b
+    this.value = ~~value
   }
 
-  _saveMap(obj: {}): any[] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  _saveMap(obj: {[k: string | number]: any}): any[] {
     obj = obj === undefined ? {} : obj
     const ret = []
 
@@ -746,12 +758,13 @@ export class EnumSocket extends IntSocket {
     //console.log("Enumeration type load!", this.graph_id, this.items);
   }
 
-  _loadMap(obj: any[]): {} {
+  _loadMap(obj: EnumKeyPair[]): {} {
     if (!obj || !Array.isArray(obj)) {
       return {}
     }
 
-    const ret = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ret = {} as {[k: string]: any}
     for (const k of obj) {
       ret[k.key] = k.val
     }
@@ -774,8 +787,8 @@ export class EnumSocket extends IntSocket {
 
     //note that onFileLoad overwrites this in
     //most cases
-    this.items = this._loadMap(this.items as unknown as any[])
-    this.uimap = this._loadMap(this.uimap as unknown as any[])
+    this.items = this._loadMap(this.items as unknown as EnumKeyPair[])
+    this.uimap = this._loadMap(this.uimap as unknown as EnumKeyPair[])
 
     //force this flag
     this.graph_flag |= SocketFlags.INSTANCE_API_DEFINE

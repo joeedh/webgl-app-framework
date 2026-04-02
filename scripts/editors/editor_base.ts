@@ -31,6 +31,11 @@ import {
   PropertySlots,
   ToolDef,
   IVector2,
+  ColumnFrame,
+  ToolProperty,
+  ModalLightState,
+  IAreaDef,
+  TabContainer,
 } from '../path.ux/scripts/pathux.js'
 
 import * as units from '../path.ux/scripts/core/units.js'
@@ -48,19 +53,26 @@ import {Icons} from './icon_enum.js'
 import {PackFlags} from '../path.ux/scripts/core/ui_base.js'
 
 export {keymap, KeyMap, HotKey} from '../path.ux/scripts/pathux.js'
-import {DataBlock, BlockFlags, DataRefProperty, IDataBlockConstructor} from '../core/lib_api.js'
+import {
+  DataBlock,
+  BlockFlags,
+  DataRefProperty,
+  IDataBlockConstructor,
+  BlockLoader,
+  BlockLoaderAddUser,
+} from '../core/lib_api.js'
 
 export {VelPanFlags, VelPan} from './velpan.js'
 
 /*default toolops for new/duplicate/unlinking datablocks*/
-export class NewDataBlockOp<InputSet = {}, OutputSet = {}> extends ToolOp<
+export class NewDataBlockOp<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends ToolOp<
   InputSet & {
     name: StringProperty
     blockType: StringProperty
     dataPathToSet: StringProperty
   },
   OutputSet & {
-    block: DataRefProperty
+    block: DataRefProperty<DataBlock>
   }
 > {
   static tooldef() {
@@ -80,7 +92,7 @@ export class NewDataBlockOp<InputSet = {}, OutputSet = {}> extends ToolOp<
 
   exec(ctx: ToolContext): void {
     const type = this.inputs.blockType.getValue()
-    const cls = DataBlock.getClass(type)
+    const cls = DataBlock.getClass(type)!
 
     const ret = new cls()
     const name = this.inputs.name.getValue()
@@ -120,13 +132,13 @@ export class NewDataBlockOp<InputSet = {}, OutputSet = {}> extends ToolOp<
 
 ToolOp.register(NewDataBlockOp)
 
-export class CopyDataBlockOp<InputSet = {}, OutputSet = {}> extends ToolOp<
+export class CopyDataBlockOp<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends ToolOp<
   InputSet & {
-    block: DataRefProperty
+    block: DataRefProperty<DataBlock>
     dataPathToSet: StringProperty
   },
   OutputSet & {
-    block: DataRefProperty
+    block: DataRefProperty<DataBlock>
   }
 > {
   static tooldef() {
@@ -143,7 +155,7 @@ export class CopyDataBlockOp<InputSet = {}, OutputSet = {}> extends ToolOp<
     }
   }
 
-  exec(ctx) {
+  exec(ctx: ToolContext) {
     const block = ctx.datalib.get(this.inputs.block.getValue())
 
     if (!block) {
@@ -172,7 +184,7 @@ ToolOp.register(CopyDataBlockOp)
 
 export class AssignDataBlock<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends ToolOp<
   InputSet & {
-    block: DataRefProperty
+    block: DataRefProperty<DataBlock>
     dataPathToSet: StringProperty
   },
   OutputSet
@@ -192,7 +204,7 @@ export class AssignDataBlock<InputSet extends PropertySlots = {}, OutputSet exte
     const block = ctx.datalib.get(this.inputs.block.getValue())
 
     const path = this.inputs.dataPathToSet.getValue()
-    const rdef = ctx.api.resolvePath(path)
+    const rdef = ctx.api.resolvePath(ctx, path)
 
     if (rdef?.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
       const obj = rdef.obj
@@ -220,7 +232,7 @@ export class UnlinkDataBlockOp<
   OutputSet extends PropertySlots = {},
 > extends ToolOp<
   InputSet & {
-    block: DataRefProperty
+    block: DataRefProperty<DataBlock>
     dataPathToUnset: StringProperty
   },
   OutputSet & {}
@@ -266,7 +278,7 @@ ToolOp.register(UnlinkDataBlockOp)
  */
 
 export class DataBlockBrowser<BlockType extends DataBlock> extends Container<ViewContext> {
-  blockClass?: IDataBlockConstructor<BlockType, {}, {}>
+  blockClass?: IDataBlockConstructor<BlockType, INodeSocketSet, INodeSocketSet>
 
   //if not undefined, path to "owner" of datapath
   //if undefined, will be derived via datapath api
@@ -281,7 +293,7 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
   /* if not undefined, is a function that filters blocks for visibility
    *  in menu*/
   filterFunc?: (block: DataBlock) => boolean
-  onValidData = undefined
+  onValidData?: (col: ColumnFrame<ViewContext>) => void
 
   newOp = 'datalib.default_new'
   duplicateOp = 'datalib.default_copy'
@@ -318,7 +330,7 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
     const padding = this.getDefault('padding') ?? 2
 
     this.style['border'] = `${wid}px solid ${color}`
-    this.style['border-radius'] = radius + 'px'
+    this.style['borderRadius'] = radius + 'px'
     this.style['padding'] = padding + 'px'
   }
 
@@ -340,7 +352,7 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
 
     this.clear()
 
-    if (!this.doesOwnerExist()) {
+    if (!this.doesOwnerExist() || path === null) {
       //this.label("Nothing selected");
       return
     }
@@ -354,7 +366,7 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
 
     this._last_mat_name = val === undefined ? undefined : val.name
 
-    const prop = ctx.datalib.getBlockListEnum(this.blockClass, this.filterFunc)
+    const prop = ctx.datalib.getBlockListEnum(this.blockClass!, this.filterFunc!)
     const dropbox = document.createElement('dropbox-x') as unknown as DropBox<ViewContext>
 
     dropbox.prop = prop
@@ -373,7 +385,7 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
         val.lib_remUser(meta.obj)
       }
 
-      const block = ctx.datalib.get(id)
+      const block = ctx.datalib.get(id)!
       block.lib_addUser(meta.obj)
 
       console.log('Assigning block')
@@ -383,10 +395,10 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
       this.flagRebuild()
     }
 
-    const update = dropbox.update
-    dropbox.update = () => {
-      dropbox.prop = ctx.datalib.getBlockListEnum(this.blockClass, this.filterFunc)
-      update.apply(dropbox, arguments)
+    const update = dropbox.update as (...args: any[]) => void
+    dropbox.update = (...args: any[]) => {
+      dropbox.prop = ctx.datalib.getBlockListEnum(this.blockClass!, this.filterFunc!)
+      update.apply(dropbox, args)
     }
 
     let row
@@ -398,13 +410,13 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
 
     row.add(dropbox)
 
-    const type = this.blockClass.blockDefine().typeName
+    const type = this.blockClass!.blockDefine().typeName
 
     if (val) {
-      row.tool(`${this.duplicateOp}(block=${val.lib_id} dataPathToSet="${path}")`, PackFlags.USE_ICONS)
-      row.tool(`${this.unlinkOp}(block=${val.lib_id} dataPathToUnset="${path}")`, PackFlags.USE_ICONS)
+      row.tool(`${this.duplicateOp}(block=${val.lib_id} dataPathToSet="${path}")`, {packflag: PackFlags.USE_ICONS})
+      row.tool(`${this.unlinkOp}(block=${val.lib_id} dataPathToUnset="${path}")`, {packflag: PackFlags.USE_ICONS})
     } else {
-      row.tool(`${this.newOp}(blockType="${type}" dataPathToSet="${path}")`, PackFlags.USE_ICONS)
+      row.tool(`${this.newOp}(blockType="${type}" dataPathToSet="${path}")`, {packflag: PackFlags.USE_ICONS})
     }
 
     if (val !== undefined) {
@@ -414,16 +426,15 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
         col.inherit_packflag = this.inherit_packflag
         this.onValidData(col)
       }
-    } else {
     }
   }
 
   doesOwnerExist() {
     if (this.ownerPath !== undefined) {
-      return this.ctx.api.getValue(this.ownerPath)
+      return this.ctx.api.getValue(this.ctx, this.ownerPath)
     }
 
-    const path = this._getDataPath()
+    const path = this._getDataPath()!
     const meta = this.ctx.api.resolvePath(this.ctx, path)
 
     if (meta === undefined) {
@@ -434,7 +445,7 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
   }
 
   update() {
-    const path = this._getDataPath()
+    const path = this._getDataPath()!
 
     const exists = this.doesOwnerExist()
     const val = this.getPathValue(this.ctx, path)
@@ -458,10 +469,9 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
 
 UIBase.register(DataBlockBrowser)
 
-export class ImageUserWidget extends DataBlockBrowser {
+export class ImageUserWidget extends DataBlockBrowser<ImageBlock> {
   constructor() {
     super()
-
     this.blockClass = ImageBlock
   }
 
@@ -486,7 +496,12 @@ UIBase.register(ImageUserWidget)
  * @param onValidData : callback, gets a container as argument so you can build elements when valid data exists.
  * @returns {*}
  */
-export function makeDataBlockBrowser(container, cls, path, onValidData) {
+export function makeDataBlockBrowser(
+  container: Container<ViewContext>,
+  cls: IDataBlockConstructor,
+  path: string,
+  onValidData: (col: ColumnFrame<ViewContext>) => void
+) {
   const row = container.row()
   const ret = document.createElement('data-block-browser-x') as any
 
@@ -552,7 +567,7 @@ export function rebuildEditorAccessor() {
   editorAccessor.update()
 }
 
-export function buildEditorsAPI(api, ctxStruct) {
+export function buildEditorsAPI(api: DataAPI, ctxStruct: DataStruct) {
   Editor.defineAPI(api)
 
   editorAccessor.update()
@@ -569,9 +584,10 @@ export function buildEditorsAPI(api, ctxStruct) {
 
     let name = cls.define().apiname ?? cls.define().areaname
     name = name.replace(/[\- \t]/g, '_')
+    const uiname = cls.define().uiname ?? ToolProperty.makeUIName(cls.define().areaname)
 
-    ctxStruct.struct('editors.' + name, name, cls.define().uiname, api.mapStruct(cls))
-    st.struct(name, name, cls.define().uiname, api.mapStruct(cls))
+    ctxStruct.struct('editors.' + name, name, uiname, api.mapStruct(cls))
+    st.struct(name, name, uiname, api.mapStruct(cls))
   }
 }
 
@@ -579,8 +595,8 @@ export class EditorSideBar extends Container<ViewContext> {
   //expects this.editor to be set by Editor
   editor?: Editor = undefined
 
-  tabpanel?: any = undefined
-  _icon?: any = undefined
+  tabpanel?: TabContainer<ViewContext>
+  _icon?: UIBase<ViewContext> & {icon?: number}
   _closed = false
 
   closedWidth = 25
@@ -648,10 +664,9 @@ export class EditorSideBar extends Container<ViewContext> {
       PackFlags.SMALL_ICON
     )
 
-    const tabs = (this.tabpanel = this.tabs('left'))
-
+    this.tabpanel = this.tabs('left')
     //make tabs smaller
-    tabs.tabFontScale = 0.75
+    this.tabpanel.tabFontScale = 0.75
   }
 
   collapse() {
@@ -665,7 +680,7 @@ export class EditorSideBar extends Container<ViewContext> {
     this.animate()
       .goto('width', this.closedWidth, 500)
       .then(() => {
-        this._icon.icon = Icons.SHIFT_LEFT
+        this._icon!.icon = Icons.SHIFT_LEFT
       })
   }
 
@@ -679,14 +694,14 @@ export class EditorSideBar extends Container<ViewContext> {
     this.animate()
       .goto('width', this.openWidth, 500)
       .then(() => {
-        this._icon.icon = Icons.SHIFT_RIGHT
+        this._icon!.icon = Icons.SHIFT_RIGHT
       })
   }
 
   update() {
     super.update()
 
-    if (!this.editor.size) {
+    if (!this.editor?.size) {
       return
     }
 
@@ -714,7 +729,8 @@ export class EditorSideBar extends Container<ViewContext> {
     return ret
   }
 
-  loadData(obj): this {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  loadData(obj: any): this {
     if (!obj) {
       return this
     }
@@ -727,12 +743,20 @@ export class EditorSideBar extends Container<ViewContext> {
 UIBase.register(EditorSideBar)
 
 export interface IEditorConstructor<T = Editor> extends IAreaConstructor<T> {
+  new (): T
   defineAPI(api: DataAPI): DataStruct
 }
 
-export class Editor extends Area<ViewContext> {
+export abstract class Editor extends Area<ViewContext> {
   swapParent?: HTMLElement = undefined
-  container: Container<ViewContext>
+  container: Container<ViewContext>;
+
+  ['constructor']: IEditorConstructor<this> = this['constructor']
+
+  static define() {
+    // abstract static method
+    return undefined as unknown as IAreaDef
+  }
 
   static STRUCT = nstructjs.inlineRegister(
     this,
@@ -790,7 +814,7 @@ Editor {
     return sidebar
   }
 
-  dataLink(owner, getblock, getblock_addUser) {}
+  dataLink(owner: DataBlock, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {}
 
   init() {
     super.init()
@@ -825,14 +849,14 @@ Editor {
     const sarea = this.owning_sarea
 
     if (this.swapParent) {
-      this.swap(this.swapParent.constructor)
+      this.swap((this.swapParent as Editor).constructor)
       this.swapParent = undefined
     }
 
     return sarea.area
   }
 
-  swap(editor_cls, storeSwapParent = true) {
+  swap<T extends Editor>(editor_cls: IEditorConstructor<T>, storeSwapParent = true) {
     const sarea = this.owning_sarea
 
     sarea.switchEditor(editor_cls)
@@ -846,7 +870,7 @@ Editor {
   onFileLoad(isActive: boolean) {}
 
   getKeyMaps() {
-    return [this.keymap]
+    return [this.keymap!]
   }
 
   /*copy of code in Area clas in ScreenArea.js in path.ux.
@@ -872,7 +896,7 @@ Editor {
     return this.ctx.screen.sareas.indexOf(this.owning_sarea)
   }
 
-  on_keydown(e) {
+  on_keydown(e: KeyboardEvent) {
     this.push_ctx_active()
     this.pop_ctx_active()
   }
@@ -885,14 +909,15 @@ Editor {
 import * as ui_base from '../path.ux/scripts/core/ui_base.js'
 import {time_ms} from '../util/util.js'
 import {MakeMaterialOp, Material} from '../core/material.js'
-import {SocketFlags} from '../core/graph.js'
+import {INodeSocketSet, SocketFlags} from '../core/graph.js'
 import {DependSocket} from '../core/graphsockets.js'
 import {ImageBlock} from '../image/image.js'
 import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
-import {Mesh} from '../mesh/mesh.js'
+import type {Mesh} from '../mesh/mesh.js'
 import {ListItem} from '../path.ux/scripts/types/widgets/ui_listbox.js'
 import type {ImageEditor} from './all.js'
 import type {ViewContext, ToolContext} from '../core/context.js'
+import messageBus from '../core/bus.js'
 
 export function spawnToolSearchMenu(ctx: ViewContext) {
   const tools: (typeof ToolOp)[] = []
@@ -1151,7 +1176,7 @@ window.setInterval(() => {
 
 window.setInterval(() => {
   if (window._appstate && window._appstate.ctx) {
-    window._appstate.ctx.messagebus.validateSubscribers()
+    messageBus.validateSubscribers()
   }
 }, 5000)
 
@@ -1187,7 +1212,7 @@ ScreenBlock {
   copy(): this {
     const ret = new ScreenBlock()
 
-    ret.screen = this.screen.copy()
+    ret.screen = this.screen?.copy()
     ret.name = this.name
     ret.lib_flag = this.lib_flag
 
@@ -1239,8 +1264,8 @@ if (0) {
 }*/
 
 export class MeshMaterialChooser extends Container<ViewContext> {
-  addButton: UIBase<ViewContext> = undefined
-  _last_mesh_key: string = undefined
+  addButton?: UIBase<ViewContext> = undefined
+  _last_mesh_key?: string = undefined
   _activeMatCache: number[] = []
   _activeMatCacheSize = 5
 
@@ -1283,17 +1308,18 @@ export class MeshMaterialChooser extends Container<ViewContext> {
     })
   }
 
-  loadData(data) {
-    super.loadData(data)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  loadData(json: any) {
+    super.loadData(json)
 
-    if (data._activeMatCache) {
-      this._activeMatCache = data._activeMatCache
+    if (json._activeMatCache) {
+      this._activeMatCache = json._activeMatCache
     }
 
     return this
   }
 
-  setActive(mesh, mati) {
+  setActive(mesh: Mesh, mati: number) {
     let idx = -1
 
     for (let i = 0; i < this._activeMatCache.length; i += 2) {
@@ -1317,7 +1343,7 @@ export class MeshMaterialChooser extends Container<ViewContext> {
     const uidata = saveUIData(this, 'material chooser')
 
     this.clear()
-    let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
+    let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath')!)
 
     if (!mesh) {
       return
@@ -1331,12 +1357,11 @@ export class MeshMaterialChooser extends Container<ViewContext> {
 
     if (mesh.materials.length === 0) {
       this.button('Add Material', () => {
-        const mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
+        const mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath')!)
         const op = new MakeMaterialOp()
 
         this.ctx.toolstack.execTool(this.ctx, op)
-        let mat = op.outputs.materialID.getValue()
-        mat = this.ctx.datalib.get(mat)
+        const mat = this.ctx.datalib.get<Material>(op.outputs.materialID.getValue())!
 
         mesh.materials.push(mat)
         mat.lib_addUser(mesh)
@@ -1356,11 +1381,12 @@ export class MeshMaterialChooser extends Container<ViewContext> {
       i++
     }
     box.setActive(box.items[this.getActive(mesh)])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(box.onchange as unknown as (id: any, item: ListItem<ViewContext>) => void) = (id, item) => {
       if (this.onchange) {
         this.onchange(id)
 
-        mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
+        mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath')!)
         this.setActive(mesh, id)
       }
     }
@@ -1376,7 +1402,7 @@ export class MeshMaterialChooser extends Container<ViewContext> {
       return
     }
 
-    const mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
+    const mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath')!)
     let key = ''
 
     if (mesh) {
@@ -1398,8 +1424,8 @@ UIBase.register(MeshMaterialChooser)
 
 export class MeshMaterialPanel extends Container<ViewContext> {
   _lastnode_name?: string = undefined
-  chooser: MeshMaterialChooser
-  subpanel: Container<ViewContext>
+  chooser?: MeshMaterialChooser
+  subpanel?: Container<ViewContext>
 
   constructor() {
     super()
@@ -1414,7 +1440,7 @@ export class MeshMaterialPanel extends Container<ViewContext> {
   init() {
     this.chooser = document.createElement('mesh-material-chooser-x') as unknown as MeshMaterialChooser
     if (this.hasAttribute('datapath')) {
-      this.chooser.setAttribute('datapath', this.getAttribute('datapath'))
+      this.chooser.setAttribute('datapath', this.getAttribute('datapath')!)
     }
     this.add(this.chooser)
 
@@ -1426,24 +1452,24 @@ export class MeshMaterialPanel extends Container<ViewContext> {
   }
 
   rebuild() {
-    if (!this.ctx || !this.hasAttribute('datapath')) {
+    if (!this.ctx || !this.hasAttribute('datapath') || this.chooser === undefined || this.subpanel === undefined) {
       console.error('eek!')
       return
     }
 
-    const mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath'))
+    const mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath')!)
 
     console.log('Material panel rebuild')
 
     const uidata = saveUIData(this.subpanel, 'mesh material panel')
-    this.subpanel.clear()
+    this.subpanel?.clear()
 
     if (!mesh) {
       loadUIData(this.subpanel, uidata)
       return
     }
 
-    const mati = this.chooser.getActive(mesh)
+    const mati = this.chooser!.getActive(mesh)
     const datapath = this.getAttribute('datapath')
     const mat = mesh.materials[mati]
 
@@ -1489,12 +1515,12 @@ export class MeshMaterialPanel extends Container<ViewContext> {
       return
     }
 
-    const mesh = this.getPathValue(this.ctx, this.getAttribute('datapath'))
+    const mesh = this.getPathValue(this.ctx, this.getAttribute('datapath')!)
     if (!mesh) {
       return
     }
 
-    const mat = this.chooser.getActive(mesh)
+    const mat = this.chooser!.getActive(mesh)
     return this.getPathValue(this.ctx, this.getAttribute('datapath') + `.materials[${mat}].shader`)
   }
 
@@ -1509,7 +1535,7 @@ export class MeshMaterialPanel extends Container<ViewContext> {
 
     if (this.hasAttribute('datapath')) {
       if (this.getAttribute('datapath') !== this.chooser.getAttribute('datapath')) {
-        this.chooser.setAttribute('datapath', this.getAttribute('datapath'))
+        this.chooser.setAttribute('datapath', this.getAttribute('datapath')!)
         rebuild = true
       }
     }
@@ -1531,10 +1557,10 @@ export class MeshMaterialPanel extends Container<ViewContext> {
 UIBase.register(MeshMaterialPanel)
 
 export class DirectionChooser extends UIBase {
-  _last_dpi = undefined
+  _last_dpi?: number
   size = 128
   mdown = false
-  modaldata = undefined
+  modaldata?: ModalLightState
   _highlight = false
   last_th = 0
   start_th = 0
@@ -1557,7 +1583,7 @@ export class DirectionChooser extends UIBase {
     this.canvas = document.createElement('canvas')
     this.shadow.appendChild(this.canvas)
 
-    this.g = this.canvas.getContext('2d')
+    this.g = this.canvas.getContext('2d')!
   }
 
   get highlight() {
@@ -1574,6 +1600,7 @@ export class DirectionChooser extends UIBase {
   }
 
   get disabled() {
+    super.disabled
     return this._disabled
   }
 
@@ -1630,7 +1657,7 @@ export class DirectionChooser extends UIBase {
       this.mdown = false
     })
 
-    const mousedown = (e, x, y) => {
+    const mousedown = (event: PointerEvent, x: number, y: number) => {
       this.mdown = true
       this.last_th = 0
       this.first = true
@@ -1718,7 +1745,7 @@ export class DirectionChooser extends UIBase {
 
           //*
           if (this.hasAttribute('datapath')) {
-            this.setPathValue(this.ctx, this.getAttribute('datapath'), this.value)
+            this.setPathValue(this.ctx, this.getAttribute('datapath')!, this.value)
           }
           if (this.onchange) {
             this.onchange(this.value as unknown as Event)
@@ -1728,13 +1755,13 @@ export class DirectionChooser extends UIBase {
           this.last_mpos[1] = e.y
           this.render()
         },
-        on_mouseup: (e) => {
+        on_mouseup: (e: PointerEvent) => {
           this.endModal()
         },
-        on_touchend: (e) => {
+        on_touchend: (e: PointerEvent) => {
           this.endModal()
         },
-        on_touchcancel: (e) => {
+        on_touchcancel: (e: PointerEvent) => {
           this.endModal()
           this.setValue(this.start_value)
         },
@@ -1745,6 +1772,7 @@ export class DirectionChooser extends UIBase {
           switch (e.keyCode) {
             case keymap['Escape']:
               this.setValue(this.start_value)
+            // eslint-disable-next-line no-fallthrough
             case keymap['Enter']:
               this.endModal()
               break
@@ -1753,21 +1781,13 @@ export class DirectionChooser extends UIBase {
       })
     }
 
-    this.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 0) {
-        return
-      }
-
-      mousedown(e, e.touches[0].pageX, e.touches[0].pageY)
+    this.addEventListener('pointerdown', (e) => {
+      mousedown(e, e.x, e.y)
     })
-    this.addEventListener('touchend', (e) => {
+    this.addEventListener('pointerend', (e) => {
       if (this.modaldata) {
         this.endModal()
       }
-    })
-
-    this.addEventListener('mousedown', (e) => {
-      mousedown(e, e.x, e.y)
     })
 
     this.tabIndex = 0
@@ -1811,8 +1831,8 @@ export class DirectionChooser extends UIBase {
     this.canvas.style.width = w / dpi + 'px'
     this.canvas.style.height = w / dpi + 'px'
 
-    this.canvas.style['border-radius'] = '5px'
-    this.canvas.style['background-color'] = 'white'
+    this.canvas.style['borderRadius'] = '5px'
+    this.canvas.style['backgroundColor'] = 'white'
 
     this.render()
   }
@@ -1848,21 +1868,21 @@ export class DirectionChooser extends UIBase {
 
     mat.perspective(25, 1.0, 0.01, 10.0)
 
-    function proj(p) {
-      p[3] = 1.0
+    function proj(p2: Vector4) {
+      p2[3] = 1.0
       //p[2] = -p[2];
-      p[2] -= 4.0
+      p2[2] -= 4.0
 
-      p.multVecMatrix(mat)
-      const w = p[3]
+      p2.multVecMatrix(mat)
+      const w = p2[3]
 
       if (Math.abs(w) > 0.00001) {
-        p.mulScalar(1.0 / w)
-        p[3] = w
+        p2.mulScalar(1.0 / w)
+        p2[3] = w
       }
 
-      p[0] = p[0] * 0.5 + 0.5
-      p[1] = p[1] * 0.5 + 0.5
+      p2[0] = p2[0] * 0.5 + 0.5
+      p2[1] = p2[1] * 0.5 + 0.5
 
       return w
     }
@@ -1931,11 +1951,11 @@ export class DirectionChooser extends UIBase {
     g.restore()
   }
 
-  setValue(v) {
+  setValue(v: Vector3) {
     this.value.load(v)
 
     if (this.hasAttribute('datapath')) {
-      this.setPathValue(this.ctx, this.getAttribute('datapath'), this.value)
+      this.setPathValue(this.ctx, this.getAttribute('datapath')!, this.value)
       this.render()
     }
 
@@ -1949,7 +1969,7 @@ export class DirectionChooser extends UIBase {
       return
     }
 
-    const val = this.getPathValue(this.ctx, this.getAttribute('datapath'))
+    const val = this.getPathValue(this.ctx, this.getAttribute('datapath')!)
 
     if (val === undefined) {
       this.disabled = true

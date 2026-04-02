@@ -32,10 +32,10 @@ export interface IResConstructor<final> {
 export class ResourceType extends EventBase {
   url: string
   flag: number
-  name: string
+  name?: string
   users: number;
 
-  ['constructor']: IResConstructor<this>
+  ['constructor']: IResConstructor<this> = this['constructor']
 
   constructor(url: string) {
     super()
@@ -107,9 +107,9 @@ export class ResourceManager {
   }
 
   makeEnum() {
-    const e = {}
-    const ui_value_names = {}
-    const icons = {}
+    const e = {} as any
+    const ui_value_names = {} as any
+    const icons = {} as any
 
     let name = ''
 
@@ -138,7 +138,7 @@ export class ResourceManager {
     }
   }
 
-  getList(cls) {
+  getList(cls: any) {
     return this.lists[cls._restype_id]
   }
 
@@ -147,7 +147,7 @@ export class ResourceManager {
       const resource = resource_or_url as unknown as ResourceType
       const list = this.getList(resource.constructor)
 
-      return list.indexOf(resource) >= 0
+      return list.includes(resource)
     } else if (typeof resource_or_url === 'string') {
       return resource_or_url in this.url_res_map
     } else {
@@ -162,7 +162,7 @@ export class ResourceManager {
     this.url_res_map[resource.url] = resource
   }
 
-  get(url, resclass, autoload = false) {
+  get(url: string, resclass: any, autoload = false) {
     if (url in this.url_res_map) {
       return this.url_res_map[url]
     }
@@ -187,7 +187,7 @@ export class ResourceManager {
     return res
   }
 
-  register(cls) {
+  register(cls: any) {
     cls._restype_id = this._cls_idgen++
     this.lists[cls._restype_id] = []
 

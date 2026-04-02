@@ -133,8 +133,8 @@ export class StrandSet extends SceneObjectData {
     return {
       uiname : "Strands",
       name   : "strands",
-      inputs : Node.inherit({}),
-      outputs: Node.inherit({}),
+      inputs : {...super.nodedef().inputs},
+      outputs: {...super.nodedef().outputs},
       flag   : NodeFlags.SAVE_PROXY
     }
   }

@@ -497,8 +497,9 @@ export class RotateWidget extends TransformWidget {
 
   static nodedef() {
     return {
-      name  : 'rotate_widget',
-      inputs: Node.inherit({}),
+      name   : 'rotate_widget',
+      inputs : {...super.nodedef().inputs},
+      outputs: {...super.nodedef().outputs},
     }
   }
 
@@ -600,8 +601,8 @@ export class InflateWidget extends TransformWidget {
   static nodedef() {
     return {
       name   : 'inflate_widget',
-      inputs : Node.inherit({}),
-      outputs: Node.inherit({}),
+      inputs : {...super.nodedef().inputs},
+      outputs: {...super.nodedef().outputs},
     }
   }
 

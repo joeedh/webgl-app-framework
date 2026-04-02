@@ -1,9 +1,7 @@
-import {WidgetFlags} from '../widgets/widgets.js'
-import {ToolModes, ToolMode} from '../view3d_toolmode.js'
-import {KeyMap} from '../../editor_base.ts'
+import {WidgetFlags} from '../widgets/widgets'
+import {ToolModes, ToolMode} from '../view3d_toolmode'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
-import {TranslateWidget} from '../widgets/widget_tools.js'
 import {nstructjs} from '../../../path.ux/scripts/pathux.js'
 
 export class PanToolMode extends ToolMode {
@@ -20,7 +18,7 @@ export class PanToolMode extends ToolMode {
     //WidgetTool.register(cls);
   }
 
-  static toolModeDefine(): object {
+  static toolModeDefine() {
     return {
       name        : 'pan',
       uiname      : 'Pan',

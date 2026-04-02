@@ -1,5 +1,5 @@
-import {ToolOp, ToolProperty, util, nstructjs, PropertySlots} from '../path.ux/scripts/pathux.js'
-import {ToolContext, ViewContext} from '../../types/scripts/core/context'
+import {ToolOp, PropertySlots} from '../path.ux/scripts/pathux.js'
+import {ToolContext, ViewContext} from './context.js'
 
 export class ToolOpBase<InputSet extends PropertySlots, OutputSet extends PropertySlots> extends ToolOp<
   InputSet,

@@ -1,6 +1,5 @@
 //import {ContextOverlay, Context} from "./context2.js";
 import '../path.ux/scripts/util/struct.js'
-import {View3D} from '../editors/view3d/view3d'
 import {NodeEditor} from '../editors/node/NodeEditor.js'
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js'
 import {Editor, editorAccessor, getContextArea} from '../editors/editor_base'
@@ -8,18 +7,14 @@ import {ResourceBrowser} from '../editors/resbrowser/resbrowser.js'
 import * as util from '../util/util.js'
 import {Mesh} from '../mesh/mesh.js'
 import {Light} from '../light/light.js'
-import {SceneObject} from '../sceneobject/sceneobject.js'
 import {Scene} from '../scene/scene'
 import {BlockSet, DataBlock, DataRef, Library} from './lib_api'
 import {DebugEditor} from '../editors/debug/DebugEditor.js'
-import * as ui_noteframe from '../path.ux/scripts/widgets/ui_noteframe.js'
-import {Matrix4} from '../util/vectormath.js'
 import {MenuBarEditor} from '../editors/menu/MainMenu.js'
 import {Context, ContextFlags, ContextOverlay, IAreaConstructor, MakeContextType} from '../path.ux/scripts/pathux.js'
 import {SavedToolDefaults, Screen, UIBase} from '../path.ux/scripts/pathux.js'
 import {PropsEditor} from '../editors/properties/PropsEditor.js'
 import {MaterialEditor} from '../editors/node/MaterialEditor.js'
-import {AppSettings} from './settings'
 import {TetMesh} from '../tet/tetgen.js'
 import {StrandSet} from '../hair/strand.js'
 import {SMesh} from '../smesh/smesh.js'
@@ -318,6 +313,10 @@ export class ViewOverlay extends ContextOverlay<AppState> {
     }
   }
 
+  get camera() {
+    return this.view3d.camera
+  }
+
   get activeTexture() {
     const editor = this.editors.imageEditor
 
@@ -572,3 +571,4 @@ class _ViewContext extends _ToolContext<ViewOverlay> {
 
 export const ViewContext = _ViewContext
 export type ViewContext = MakeContextType<_ViewContext, ViewOverlay & BaseOverlay>
+import {View3D} from '../editors/view3d/view3d'
