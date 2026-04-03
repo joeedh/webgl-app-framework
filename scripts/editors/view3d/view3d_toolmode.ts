@@ -29,7 +29,7 @@ import {IUniformsBlock, ShaderProgram} from '../../core/webgl'
 import {Mesh} from '../../mesh/mesh'
 import {StructReader} from '../../path.ux/scripts/path-controller/types/util/nstructjs'
 import {MeshDrawInterface} from './view3d_draw'
-import { BoundingBox } from './view3d_utils'
+import {BoundingBox} from './view3d_utils'
 
 export interface IToolModeDefine {
   name: string
@@ -51,7 +51,7 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
 
   // owning view3d
   view3d?: View3D
-  
+
   transformWidget: number = -1
   ctx: ViewContext
   flag: number = 0
@@ -468,17 +468,18 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
     //
   }
 
-  on_mousedown(e: PointerEvent, x: number, y: number, was_touch?: boolean) {}
+  /** returns true if consumed the event */
+  on_mousedown(e: PointerEvent, x: number, y: number, was_touch?: boolean): boolean | void {}
 
-  on_mousemove(e: PointerEvent, x: number, y: number, was_touch?: boolean) {}
+  on_mousemove(e: PointerEvent, x: number, y: number, was_touch?: boolean): boolean | void {}
 
-  on_mouseup(e: PointerEvent, x: number, y: number, was_touch?: boolean) {}
+  on_mouseup(e: PointerEvent, x: number, y: number, was_touch?: boolean): boolean | void {}
 
-  on_drawstart(view3d: View3D, gl: WebGL2RenderingContext) {}
+  on_drawstart(view3d: View3D, gl: WebGL2RenderingContext): boolean | void {}
 
-  draw(view3d: View3D, gl: WebGL2RenderingContext) {}
+  draw(view3d: View3D, gl: WebGL2RenderingContext): boolean | void {}
 
-  on_drawend(view3d: View3D, gl: WebGL2RenderingContext) {}
+  on_drawend(view3d: View3D, gl: WebGL2RenderingContext): boolean | void {}
 
   /*
 get view3d() {

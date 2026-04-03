@@ -1,36 +1,34 @@
-import {Shapes} from '../../../core/simplemesh_shapes.js'
-import {FindNearest, castViewRay, CastModes} from '../findnearest.js'
-import {ToolModes, ToolMode} from '../view3d_toolmode.js'
-import {HotKey, KeyMap} from '../../editor_base.ts'
+import {FindNearest, FindNearestRet} from '../findnearest.js'
+import {ToolMode} from '../view3d_toolmode.js'
+import {HotKey, KeyMap} from '../../editor_base'
 import {Icons} from '../../icon_enum.js'
-import {Unit} from '../../../path.ux/scripts/core/units.js'
 import {SelMask} from '../selectmode.js'
 import '../../../path.ux/scripts/util/struct.js'
-import {MeshToolBase} from './meshtool.ts'
-import {DispVertFlags} from '../../../mesh/mesh_displacement.js'
-
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js'
+import {MeshToolBase} from './meshtool'
+import {Vector2, Vector3, Matrix4} from '../../../util/vectormath.js'
 import {Shaders} from '../../../shaders/shaders.js'
-import {MovableWidget} from '../widgets/widget_utils.js'
-import {SnapModes} from '../transform/transform_ops.js'
 import * as util from '../../../util/util.js'
 
-import {Mesh, MeshDrawFlags} from '../../../mesh/mesh.js'
-import {MeshTypes, MeshFeatures, MeshFlags, MeshError, MeshFeatureError} from '../../../mesh/mesh_base.js'
-import {ObjectFlags} from '../../../sceneobject/sceneobject.js'
-import {ContextOverlay, ToolMacro, startMenu, createMenu, nstructjs} from '../../../path.ux/scripts/pathux.js'
+import {AttrRef, ColorLayerElem, Mesh, Vertex} from '../../../mesh/mesh.js'
+import {ToolMacro, startMenu, createMenu, nstructjs} from '../../../path.ux/scripts/pathux.js'
 import {PackFlags} from '../../../path.ux/scripts/core/ui_base.js'
 import {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js'
-import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh.ts'
-import {buildCotanMap} from '../../../mesh/mesh_utils.js'
-import {CurvVert, CVFlags, getCurveVerts} from '../../../mesh/mesh_curvature.js'
+import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh'
+import {CurvVert, getCurveVerts} from '../../../mesh/mesh_curvature.js'
 import {getFaceSets} from '../../../mesh/mesh_facesets.js'
+import type {SceneObject} from '../../../sceneobject/sceneobject.js'
 import {UniformTriRemesher} from '../../../mesh/mesh_remesh.js'
+import type {BlockLoader, BlockLoaderAddUser, DataRef} from '../../../core/lib_api.js'
+import type {Scene} from '../../../scene/scene.js'
+import {StructReader} from '../../../path.ux/scripts/path-controller/types/util/nstructjs.js'
+import type {ViewContext} from '../../../core/context.js'
+import {View3D} from '../view3d.js'
 
 export class MeshEditor extends MeshToolBase {
-  loopMesh: any | undefined
-  normalMesh: any | undefined
-  curvatureMesh: any | undefined
+  drawflag = 0
+  loopMesh: SimpleMesh | undefined
+  normalMesh: SimpleMesh | undefined
+  curvatureMesh: SimpleMesh | undefined
   selectMask: number
   drawNormals: boolean
   drawSelectMask: number
@@ -39,10 +37,12 @@ export class MeshEditor extends MeshToolBase {
   _last_update_loop_key: string
   _last_normals_key: string
   _last_update_curvature: string
-  mesh: any | undefined
 
-  constructor(manager: any) {
-    super(manager)
+  mesh: Mesh | undefined
+  sceneObject?: SceneObject
+
+  constructor(ctx: ViewContext) {
+    super(ctx)
 
     this.loopMesh = undefined
     this.normalMesh = undefined
@@ -59,12 +59,13 @@ export class MeshEditor extends MeshToolBase {
     this._last_update_curvature = ''
   }
 
-  static toolModeDefine(): any {
+  static toolModeDefine() {
     return {
       name        : 'mesh',
       uianme      : 'Edit Geometry',
       icon        : Icons.MESHTOOL,
       flag        : 0,
+      selectMode  : 1 | 2 | 4 | 8 | 16 | 32,
       description : 'Edit vertices/edges/faces',
       transWidgets: [TranslateWidget, ScaleWidget, RotateWidget, InflateWidget],
     }
@@ -327,8 +328,7 @@ export class MeshEditor extends MeshToolBase {
   }
 
   static haveHandles(): boolean | undefined {
-    const ctx = this.ctx
-    if (!ctx) return
+    return false
   }
 
   static defineAPI(api: any): any {
@@ -435,7 +435,7 @@ export class MeshEditor extends MeshToolBase {
   _getObject(): void {
     const ctx = this.ctx
 
-    if (!ctx || !ctx.object || !(ctx.object.data instanceof Mesh)) {
+    if (!ctx?.object || !(ctx.object.data instanceof Mesh)) {
       this.sceneObject = undefined
       this.mesh = undefined
 
@@ -443,17 +443,17 @@ export class MeshEditor extends MeshToolBase {
     }
 
     this.sceneObject = ctx.object
-    this.mesh = this.sceneObject.data
+    this.mesh = this.sceneObject.data as Mesh
     this.mesh.owningToolMode = this.constructor.toolModeDefine().name
   }
 
-  update(): void {
+  update(): this {
     this._getObject()
-
     super.update()
+    return this
   }
 
-  findnearest3d(view3d: any, x: number, y: number, selmask: number): any {
+  findnearest3d(view3d: View3D, x: number, y: number, selmask: number): FindNearestRet<unknown>[] {
     /*
     make sure findnearest api gets the right mesh
     */
@@ -462,15 +462,15 @@ export class MeshEditor extends MeshToolBase {
     return FindNearest(ctx, selmask, new Vector2([x, y]), view3d)
   }
 
-  on_mousemove(e: any, x: number, y: number, was_touch: boolean): any {
+  on_mousemove(e: PointerEvent, x: number, y: number, was_touch?: boolean): boolean | void {
     return super.on_mousemove(e, x, y, was_touch)
   }
 
   updateCurvatureMesh(gl: WebGL2RenderingContext): void {
-    const mesh = this.mesh
-    const key = '' + mesh.lib_id + ':' + mesh.updateGen + ':' + mesh.verts.length + ':' + mesh.eidgen._cur
+    const mesh = this.mesh!
+    const key = '' + mesh.lib_id + ':' + mesh.updateGen + ':' + mesh.verts.length + ':' + mesh.eidgen.cur
 
-    const cd_curv = getCurveVerts(mesh)
+    const cd_curv = new AttrRef<CurvVert>(getCurveVerts(mesh))
 
     //CurvVert.propegateUpdateFlags(mesh, cd_curv);
     const cd_cotan = mesh.verts.customData.getLayerIndex('cotan')
@@ -508,17 +508,17 @@ export class MeshEditor extends MeshToolBase {
 
     const VIS_UV_COLORS = false
 
-    let cd_vis = -1
+    let cd_vis = new AttrRef<ColorLayerElem>(-1)
 
     if (VIS_UV_COLORS) {
-      cd_vis = mesh.verts.customData.getNamedLayerIndex('_rakevis', 'color')
+      cd_vis.i = mesh.verts.customData.getNamedLayerIndex('_rakevis', 'color')
 
-      if (cd_vis < 0) {
-        cd_vis = mesh.verts.addCustomDataLayer('color', '_rakevis').index
+      if (cd_vis.i < 0) {
+        cd_vis.i = mesh.verts.addCustomDataLayer('color', '_rakevis').index
       }
 
       for (const v of mesh.verts.selected.editable) {
-        const cv = v.customData[cd_curv]
+        const cv = v.customData.get(cd_curv)
         cv.check(v, cd_cotan, true, cd_fset)
       }
 
@@ -530,12 +530,12 @@ export class MeshEditor extends MeshToolBase {
       amat[i] = 0.0
     }
 
-    const calcNorLen = (v: any): number => {
+    const calcNorLen = (v: Vertex): number => {
       let tot = 0
       let sum = 0
 
       for (const v2 of v.neighbors) {
-        sum += v2.vectorDistance(v)
+        sum += v2.co.vectorDistance(v.co)
         tot++
       }
 
@@ -545,19 +545,14 @@ export class MeshEditor extends MeshToolBase {
     console.warn('updating curvature lines')
 
     no = new Vector3()
-    const tmp1 = new Vector3()
 
     let dd3 = 1.0
-    if (window.dd3 !== undefined) {
-      dd3 = window.dd3
-    }
-
     for (const v of mesh.verts.selected.editable) {
-      const cv = v.customData[cd_curv]
+      const cv = v.customData.get(cd_curv)
       cv.check(v, cd_cotan, true, cd_fset)
 
       if (VIS_UV_COLORS) {
-        const visc = v.customData[cd_vis].color
+        const visc = v.customData.get(cd_vis).color
         visc[0] = Math.fract(cv.diruv[0])
         visc[1] = Math.fract(cv.diruv[1])
         visc[2] = Math.fract(cv.diruv[2])
@@ -597,8 +592,8 @@ export class MeshEditor extends MeshToolBase {
   }
 
   updateLoopMesh(gl: WebGL2RenderingContext): void {
-    const mesh = this.mesh
-    const key = '' + mesh.lib_id + ':' + mesh.updateGen + ':' + mesh.verts.length + ':' + mesh.eidgen._cur
+    const mesh = this.mesh!
+    const key = '' + mesh.lib_id + ':' + mesh.updateGen + ':' + mesh.verts.length + ':' + mesh.eidgen.cur
 
     if (key === this._last_update_loop_key) {
       return
@@ -721,13 +716,13 @@ export class MeshEditor extends MeshToolBase {
       '' +
       mesh.lib_id +
       ':' +
-      mesh.verts.selected.length +
+      mesh.verts.selected.size +
       ':' +
       mesh.updateGen +
       ':' +
       mesh.verts.length +
       ':' +
-      mesh.eidgen._cur
+      mesh.eidgen.cur
 
     if (key === this._last_normals_key) {
       return
@@ -753,7 +748,7 @@ export class MeshEditor extends MeshToolBase {
       let tot = 0
 
       for (const v2 of v.neighbors) {
-        edist += v2.vectorDistance(v)
+        edist += v2.co.vectorDistance(v.co)
         tot++
       }
 
@@ -844,19 +839,17 @@ export class MeshEditor extends MeshToolBase {
     super.on_drawstart(view3d, gl)
   }
 
-  dataLink(scene: any, getblock: any, getblock_addUser: any): void {
-    super.dataLink(...arguments)
-
-    this.mesh = getblock_addUser(this.mesh)
+  dataLink(scene: Scene, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser): void {
+    super.dataLink(scene, getblock, getblock_addUser)
+    this.mesh = getblock_addUser<Mesh>(this.mesh as unknown as DataRef, scene)
   }
 
-  loadSTRUCT(reader: any): void {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
-    if (super.loadSTRUCT) {
-      super.loadSTRUCT(reader)
+    super.loadSTRUCT(reader)
+    if (this.mesh !== undefined) {
+      this.mesh.owningToolMode = this.constructor.toolModeDefine().name
     }
-
-    this.mesh.owningToolMode = this.constructor.toolModeDefine().name
   }
 }
 

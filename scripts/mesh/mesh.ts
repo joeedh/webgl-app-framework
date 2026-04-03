@@ -323,6 +323,7 @@ mesh.Mesh {
 `
   )
 
+  owningToolMode?: string
   ownerMatrix?: Matrix4
   ownerId?: number | string
   meshDataPath?: string

@@ -43,7 +43,7 @@ export class Remesher {
     type: number
   }
   static register(cls: any): void
-  constructor(mesh: any, lctx: any, goalType: any, goalValue: any)
+  constructor(mesh: any, lctx?: any, goalType?: any, goalValue?: any)
   params: Float64Array
   reproject: boolean
   projMesh: any

@@ -13,10 +13,10 @@
 
     let start;
 
-    import('../scripts/entry_point.js').then((app) => {
+    import('../build/entry_point.js').then((app) => {
       start = () => {
-        console.log("init!");
-        init();
+        console.log("init!", app);
+        app.init();
       }
     });
 
@@ -32,13 +32,6 @@
   </script>
 </head>
 <body onload='oninit()'>
-<img id="iconsheet16" style="display:none" src="../assets/iconsheet16.png"></img>
-<img id="iconsheet24" style="display:none" src="../assets/iconsheet24.png"></img>
-<img id="iconsheet32" style="display:none" src="../assets/iconsheet32.png"></img>
-<img id="iconsheet40" style="display:none" src="../assets/iconsheet40.png"></img>
-<img id="iconsheet50" style="display:none" src="../assets/iconsheet50.png"></img>
-<img id="iconsheet64" style="display:none" src="../assets/iconsheet64.png"></img>
-<img id="iconsheet80" style="display:none" src="../assets/iconsheet80.png"></img>
-<img id="iconsheet128" style="display:none" src="../assets/iconsheet128.png"></img>
+<img id="iconsheet" style="display:none" src="../assets/iconsheet.svg"></img>
 </body>
 </html>

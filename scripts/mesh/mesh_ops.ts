@@ -695,7 +695,7 @@ export class InteractiveRemeshOp extends RemeshOp<{
     this.remesher = undefined
     this.lctx = undefined
 
-    const mesh = this.modal_ctx.mesh
+    const mesh = this.modal_ctx!.mesh!
     if (mesh) {
       for (const v of mesh.verts) {
         v.flag |= MeshFlags.UPDATE
@@ -733,14 +733,14 @@ export class InteractiveRemeshOp extends RemeshOp<{
       return
     }
 
-    const mesh = this.modal_ctx.mesh
+    const mesh = this.modal_ctx!.mesh!
 
     const time = util.time_ms()
     while (this.remesher && util.time_ms() - time < 50 && !this.remesher.done) {
       const i = this.inputs.steps.getValue()
       this.inputs.steps.setValue(i + 1)
 
-      this._step(this.modal_ctx, this.remesher, mesh, this.lctx!)
+      this._step(this.modal_ctx!, this.remesher, mesh, this.lctx!)
     }
 
     if (!this.remesher) {
@@ -805,8 +805,6 @@ export class LoopSubdOp extends MeshOp {
 
   exec(ctx: ToolContext) {
     console.warn('mesh.subdivide_smooth_loop')
-
-    const tri = [0, 0, 0]
 
     for (const mesh of this.getMeshes(ctx)) {
       const del = []

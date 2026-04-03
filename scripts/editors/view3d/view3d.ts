@@ -947,8 +947,15 @@ View3D {
 
     /* Prevent pinch zooming. */
     this.addEventListener('pointerdown', (e) => {
+      /*
       if (e.pointerType !== 'mouse') {
         console.log('view3d pointerdown preventDefault for', e.pointerType, 'events')
+        e.preventDefault()
+      }*/
+    })
+    this.addEventListener('touchstart', (e) => {
+      // prevent pinch zoom)
+      if (!uiHasFocus(e)) {
         e.preventDefault()
       }
     })
@@ -1012,12 +1019,17 @@ View3D {
 
     this.addEventListener('wheel', on_mousewheel)
 
-    const uiHasFocus = (e: PointerEvent) => {
+    const uiHasFocus = (e: PointerEvent | TouchEvent) => {
       if (haveModal()) {
         return true
       }
+      if (e instanceof TouchEvent && e.touches.length === 0) {
+        return false
+      }
 
-      const node = this.pickElement(e.x, e.y)
+      const x = e instanceof PointerEvent ? e.x : e.touches[0].pageX
+      const y = e instanceof PointerEvent ? e.y : e.touches[0].pageY
+      const node = this.pickElement(x, y)
 
       //console.log(node ? node.tagName : undefined);
       return node !== this && node !== this.overdraw
@@ -1064,6 +1076,7 @@ View3D {
 
       /* prevent duplicate mousedown events from touch forwarding */
       e.preventDefault()
+      e.stopPropagation()
 
       const r = this.getLocalMouse(e.clientX, e.clientY)
       this.start_mpos.load(r)
@@ -1082,12 +1095,7 @@ View3D {
 
       if (!docontrols && e.button === 0) {
         docontrols = true
-
         this.mdown = true
-      }
-
-      if (docontrols) {
-        this.mdown = false
       }
 
       if (docontrols && eventWasTouch(e) && !e.shiftKey && !e.ctrlKey && !e.altKey) {

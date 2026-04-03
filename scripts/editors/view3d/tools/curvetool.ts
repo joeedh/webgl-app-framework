@@ -1,5 +1,5 @@
 import {Shapes} from '../../../core/simplemesh_shapes.js'
-import {FindNearest} from '../findnearest.js'
+import {FindNearest} from '../findnearest'
 import {ToolMode} from '../view3d_toolmode.js'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
@@ -12,8 +12,11 @@ import {Shaders} from '../../../shaders/shaders.js'
 import {MeshDrawFlags} from '../../../mesh/mesh.js'
 import {CurveSpline} from '../../../curve/curve.js'
 import {ContextOverlay, nstructjs} from '../../../path.ux/scripts/pathux.js'
-import {DataRef} from '../../../core/lib_api'
+import {BlockLoader, BlockLoaderAddUser, DataRef} from '../../../core/lib_api'
 import type {ViewContext} from '../../../core/context.js'
+import {View3D} from '../view3d.js'
+import {Scene} from '../../../scene/scene.js'
+import {StructReader} from '../../../path.ux/scripts/path-controller/types/util/nstructjs.js'
 
 export class CurveToolOverlay extends ContextOverlay<unknown, ViewContext> {
   _toolclass: any
@@ -80,8 +83,8 @@ export class CurveToolBase extends MeshToolBase {
   drawflag: number
   curve: CurveSpline | undefined
 
-  constructor(manager: any) {
-    super(manager)
+  constructor() {
+    super()
 
     this._isCurveTool = true
 
@@ -202,13 +205,12 @@ export class CurveToolBase extends MeshToolBase {
     super.update()
   }
 
-  findnearest3d(view3d: any, x: number, y: number, selmask: number): any {
+  findnearest3d(view3d: View3D, x: number, y: number, selmask: number) {
     /*
     make sure findnearest api gets the right mesh
     */
     //let ctx = this.buildFakeContext(this.ctx);
-    const ctx: any = this.ctx
-    return FindNearest(ctx, selmask, new Vector2([x, y]), view3d)
+    return FindNearest(this.ctx!, selmask, new Vector2([x, y]), view3d)
   }
 
   on_mousemove(e: any, x: number, y: number, was_touch: boolean): boolean {
@@ -216,10 +218,10 @@ export class CurveToolBase extends MeshToolBase {
   }
 
   drawSphere(gl: WebGL2RenderingContext, view3d: any, p: Vector3, scale: number = 0.01): void {
-    const cam: any = this.ctx.view3d.activeCamera
-    const mat: Matrix4 = new Matrix4()
+    const cam = this.ctx.view3d.activeCamera
+    const mat = new Matrix4()
 
-    const co: Vector4 = new Vector4(p)
+    const co: Vector4 = new Vector4().load3(p)
     mat.translate(co[0], co[1], co[2])
 
     co[3] = 1.0
@@ -239,7 +241,7 @@ export class CurveToolBase extends MeshToolBase {
     )
   }
 
-  draw(gl: WebGL2RenderingContext, view3d: any): void {
+  draw(view3d: View3D, gl: WebGL2RenderingContext): void {
     this._getObject()
 
     if (this.curve !== undefined) {
@@ -248,23 +250,21 @@ export class CurveToolBase extends MeshToolBase {
         this.curve.regenRender()
       }
 
-      super.draw(gl, view3d)
+      super.draw(view3d, gl)
     }
   }
 
-  dataLink(scene: any, getblock: any, getblock_addUser: any): void {
-    super.dataLink(...arguments)
-
-    this.curve = getblock_addUser(this.curve, this)
+  dataLink(scene: Scene, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser): void {
+    super.dataLink(scene, getblock, getblock_addUser)
+    this.curve = getblock<CurveSpline>(this.curve as unknown as DataRef)
   }
 
-  loadSTRUCT(reader: any): void {
+  loadSTRUCT(reader: StructReader<this>): void {
     reader(this)
-    if (super.loadSTRUCT) {
-      super.loadSTRUCT(reader)
+    super.loadSTRUCT(reader)
+    if (this.curve !== undefined) {
+      this.curve.owningToolMode = this.constructor.toolModeDefine().name
     }
-
-    this.curve.owningToolMode = this.constructor.toolModeDefine().name
   }
 }
 

@@ -10,19 +10,22 @@ import {
   FlagProperty,
   KeyMap,
   HotKey,
+  Container,
 } from '../../../path.ux/scripts/pathux.js'
 import {ToolMode} from '../view3d_toolmode.js'
-import {Shaders} from '../../../shaders/shaders.js'
-import {TetMesh} from '../../../tet/tetgen.js'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
 
 import '../../../tet/tet_ops.js'
 import '../../../tet/tet_selectops.js'
+import {ViewContext} from '../../../core/context.js'
+import {BlockLoader, BlockLoaderAddUser} from '../../../core/lib_api.js'
+import {Scene} from '../../../scene/scene.js'
+import {StructReader} from '../../../path.ux/scripts/path-controller/types/util/nstructjs.js'
 
 export class TetMeshTool extends ToolMode {
-  constructor() {
-    super()
+  constructor(ctx: ViewContext) {
+    super(ctx)
   }
 
   drawsObjectIdsExclusively(ob: any): boolean {
@@ -57,11 +60,15 @@ export class TetMeshTool extends ToolMode {
     panel.toolPanel('tet.solidify_wireframe')
   }
 
-  dataLink(scene: any, getblock: any, getblock_addUser: any): void {}
+  dataLink(scene: Scene, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser): void {
+    //
+  }
 
-  static buildHeader(header: any, addHeaderRow: any): void {}
+  static buildHeader(header: Container, addHeaderRow: () => Container): void {
+    //
+  }
 
-  static toolModeDefine(): object {
+  static toolModeDefine() {
     return {
       name        : 'tetmesh',
       uiname      : 'Tetrahedron',
@@ -73,16 +80,16 @@ export class TetMeshTool extends ToolMode {
     }
   }
 
-  static nodedef(): object {
+  static nodedef() {
     return {
       name   : 'tetmesh',
       uiname : 'tetmesh',
-      inputs : {},
-      outputs: {},
+      inputs : {...super.nodedef().inputs},
+      outputs: {...super.nodedef().outputs},
     }
   }
 
-  loadSTRUCT(reader: any): void {
+  loadSTRUCT(reader: StructReader<this>): void {
     super.loadSTRUCT(reader)
   }
 }

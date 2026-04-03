@@ -19,6 +19,16 @@
 We use a fork of prettier for code formatting (it formats
 object literals a bit nicer).
 
+## Do not use type annotations in variable declarations if types can be inferred
+```ts
+// bad:
+const mat: Matrix4 = new Matrix4()
+// good:
+const mat = new Matrix4()
+```
+Note: this doesn't apply to function or method arguments.
+
+
 ## Type assumption tags
 
 Optimization often leads us to break the type system by assigning undefined to non-optional properties (e.g. a pooled object in the 'dead' state):

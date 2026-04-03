@@ -20,6 +20,7 @@ When generating type annotations:
 
 ## Code style
 
+- Read contents of `documentation/codeStyle.md`
 - We have a polyfilter for `Set.filter` and `Set.map`.  These are okay to use.
 - Do not transform the `Set.filter` to a spread-to-array-then-filter pattern,
   e.g. do not turn `set.filter(n => n.test(0))` into `[...set].filter(n => n.test(0))`
@@ -27,8 +28,7 @@ When generating type annotations:
 - Typescript strict mode
 - Single quotes, no semicolons
 - Use `git mv` when renaming files, such as
-  JS files to TS ones.
-- Read contents of `documentation/codeStyle.md`
+  changing JS files to TS ones.
 
 ## Testing instructions
 

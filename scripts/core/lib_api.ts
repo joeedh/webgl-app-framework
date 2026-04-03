@@ -12,7 +12,7 @@ import type {SceneObject} from '../sceneobject/sceneobject.js'
 import type {ToolContext} from './context.js'
 import type {Scene} from '../scene/scene.js'
 
-export const BlockTypes = [] as IDataBlockConstructor<any, {}, {}>[]
+export const BlockTypes = [] as IDataBlockConstructor[]
 
 export interface IBlockRef {
   lib_id: number
@@ -325,15 +325,15 @@ but owner will not be added to this.lib_userlist`.trim()
     BlockTypes.push(cls)
   }
 
-  static unregister(cls: IDataBlockConstructor<any, {}, {}>) {
+  static unregister(cls: IDataBlockConstructor) {
     BlockTypes.remove(cls)
   }
 
-  static getClass<type extends DataBlock = DataBlock>(
-    typeName: string
-  ): IDataBlockConstructor<type, {}, {}> | undefined {
+  static getClass<Type extends DataBlock = DataBlock>(typeName: string): IDataBlockConstructor<Type> | undefined {
     for (const type of BlockTypes) {
-      if (type.blockDefine().typeName === typeName) return type
+      if (type.blockDefine().typeName === typeName) {
+        return type as IDataBlockConstructor<Type>
+      }
     }
   }
 }

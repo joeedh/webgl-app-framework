@@ -1338,7 +1338,6 @@ uniform float texPower;
 
   //XXX why do we return a bool here?
   update() {
-    console.warn('proceduralTex.update')
     const digest = this._digest.reset()
 
     this.generator.calcUpdateHash(digest)

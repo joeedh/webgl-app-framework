@@ -1,27 +1,29 @@
 import {Shapes} from '../../../core/simplemesh_shapes.js'
-import {FindNearest, castViewRay, CastModes} from '../findnearest.js'
-import {WidgetFlags} from '../widgets/widgets.js'
-import {ToolModes, ToolMode} from '../view3d_toolmode.js'
-import {HotKey, KeyMap} from '../../editor_base.ts'
+import {FindNearest} from '../findnearest.js'
+import {ToolMode} from '../view3d_toolmode.js'
+import {HotKey, KeyMap} from '../../editor_base'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
 import {resolveMeshes} from '../../../mesh/mesh_ops_base.js'
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js'
+import {Vector2, Vector3, Vector4, Matrix4} from '../../../util/vectormath.js'
 import {Shaders} from '../../../shaders/shaders.js'
-import {MovableWidget} from '../widgets/widget_utils.js'
-import {SnapModes, TranslateOp} from '../transform/transform_ops.js'
+import {TranslateOp} from '../transform/transform_ops.js'
 import {SelOneToolModes} from '../selectmode.js'
 
 import {ObjectFlags, SceneObject} from '../../../sceneobject/sceneobject.js'
 import {Mesh} from '../../../mesh/mesh.js'
-import {nstructjs} from '../../../path.ux/scripts/pathux.js'
+import {DataAPI, DataStruct, nstructjs} from '../../../path.ux/scripts/pathux.js'
 import '../../../mesh/mesh_flagops.js'
 
 //import '../../../mesh/select_ops.js';
 //import '../../../mesh/mesh_ops.js';
 
-import {MeshTypes, MeshFeatures, MeshFlags, MeshError, MeshFeatureError} from '../../../mesh/mesh_base.js'
-import {SelectEdgeLoopOp} from '../../../mesh/select_ops.js'
+import {MeshFlags} from '../../../mesh/mesh_base.js'
+import {SelectEdgeLoopOp, type SelectOneOp} from '../../../mesh/select_ops.js'
+import type {ViewContext} from '../../../core/context.js'
+import type {BoundingBox} from '../view3d_utils.js'
+import type {View3D} from '../view3d.js'
+import {IUniformsBlock} from '../../../core/webgl.js'
 
 export class MeshToolBase extends ToolMode {
   transformConstraint: string | undefined
@@ -33,11 +35,11 @@ export class MeshToolBase extends ToolMode {
   start_mpos: Vector2
   last_mpos: Vector2
   vertexPointSize: number
-  drawCursor: boolean
+  drawCursor: boolean = true
   cursor: Vector3 | undefined
 
-  constructor() {
-    super(...arguments)
+  constructor(ctx: ViewContext) {
+    super(ctx)
 
     this.transformConstraint = undefined //string, e.g. xy
 
@@ -65,8 +67,8 @@ export class MeshToolBase extends ToolMode {
     return this.keymap
   }
 
-  buildFakeContext(ctx: any): any {
-    return
+  buildFakeContext(ctx: ViewContext) {
+    /*
     const objs: any[] = []
     let paths = this.getMeshPaths()
 
@@ -106,9 +108,10 @@ export class MeshToolBase extends ToolMode {
         return this.api.getValue(this, paths[0])
       },
     })
+    */
   }
 
-  clearHighlight(ctx: any): void {
+  clearHighlight(ctx: ViewContext): void {
     window.redraw_viewport()
 
     for (const mesh of resolveMeshes(ctx, this.getMeshPaths())) {
@@ -127,10 +130,10 @@ export class MeshToolBase extends ToolMode {
     return ['_all_objects_']
   }
 
-  static toolModeDefine(): any {
+  static toolModeDefine() {
     return {
       name       : 'basemesh',
-      uianme     : 'Edit Geometry',
+      uiname     : 'Edit Geometry',
       icon       : Icons.MESHTOOL,
       flag       : 0,
       selectMode : SelMask.OBJECT,
@@ -138,14 +141,13 @@ export class MeshToolBase extends ToolMode {
     }
   }
 
-  static defineAPI(api: any): any {
+  static defineAPI(api: DataAPI<ViewContext>): DataStruct<ViewContext> {
     const tstruct = super.defineAPI(api)
-
     return tstruct
   }
 
-  on_mousedown(e: any, x: number, y: number, was_touch: boolean): boolean {
-    const ctx = this.ctx
+  on_mousedown(e: PointerEvent, x: number, y: number, was_touch?: boolean): boolean | void {
+    const ctx = this.ctx!
 
     this.start_mpos[0] = x
     this.start_mpos[1] = y
@@ -178,7 +180,8 @@ export class MeshToolBase extends ToolMode {
       }
     }
 
-    if (e.button === 1 || e.ctrlKey || e.altKey || e.commandKey) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (e.button === 1 || e.ctrlKey || e.altKey || (e as any).commandKey) {
       return false
     }
 
@@ -200,7 +203,7 @@ export class MeshToolBase extends ToolMode {
           mode = SelOneToolModes.UNIQUE
         }
 
-        const tool = ctx.api.createTool(this.ctx, 'mesh.selectone(setActiveObject=0)')
+        const tool = ctx.api.createTool<SelectOneOp>(this.ctx, 'mesh.selectone(setActiveObject=0)')
         tool.inputs.eid.setValue(elem.eid)
         tool.inputs.meshPaths.setValue(this.getMeshPaths())
         tool.inputs.mode.setValue(mode)
@@ -252,7 +255,7 @@ export class MeshToolBase extends ToolMode {
       const matrix = new Matrix4()
 
       if (mesh.ownerId !== undefined) {
-        const ob = this.ctx.datalib.get(mesh.ownerId)
+        const ob = this.ctx.datalib.get<SceneObject>(mesh.ownerId)
 
         if (ob) {
           matrix.load(ob.outputs.matrix.getValue())
@@ -277,18 +280,19 @@ export class MeshToolBase extends ToolMode {
     return ret
   }
 
-  getViewCenter(): any {
-    let ret: any = this.getAABB(this.ctx)
-
+  getViewCenter(): BoundingBox | undefined {
+    let ret = this.getAABB()
     if (ret !== undefined) {
-      ret = new Vector3(ret[0]).interp(ret[1], 0.5)
+      const cent = new Vector3(ret[0]).interp(ret[1], 0.5)
+      ret = [cent, cent]
     }
 
     return ret
   }
 
-  update(): void {
+  update(): this {
     super.update()
+    return this
   }
 
   //ensure we don't have sculpt bvhs, which lack wire verts
@@ -366,14 +370,11 @@ export class MeshToolBase extends ToolMode {
     }
   }
 
-  on_mousemove(e: any, x: number, y: number, was_touch: boolean): boolean | any {
+  on_mousemove(e: PointerEvent, x: number, y: number, was_touch?: boolean): boolean | void {
     this.last_mpos[0] = x
     this.last_mpos[1] = y
 
-    const ctx = this.ctx
-    const view3d = this.ctx.view3d
-
-    if (e.ctrlKey || e.altKey || e.commandKey) {
+    if (e.ctrlKey || e.altKey || (e as any).commandKey) {
       return false
     }
 
@@ -381,10 +382,18 @@ export class MeshToolBase extends ToolMode {
       return false
     }
 
-    let mdown: number
-
-    mdown = e.buttons || !!(e.touches !== undefined && e.touches.length > 0)
-    mdown = mdown & 1
+    let mdown = false
+    switch (e.pointerType) {
+      case 'touch':
+        mdown = e.pointerId === 0 && e.buttons === 1
+        break
+      case 'pen':
+        mdown = e.buttons > 0
+        break
+      case 'mouse':
+        mdown = e.buttons === 1
+        break
+    }
 
     if (!mdown && super.on_mousemove(e, x, y, was_touch)) {
       return true
@@ -424,16 +433,15 @@ export class MeshToolBase extends ToolMode {
       }
     } else {
       const found = this.findHighlight(e, x, y)
-
-      return found
+      return Boolean(found)
     }
   }
 
-  findnearest3d(view3d: any, x: number, y: number, selmask: number): any {
+  findnearest3d(view3d: View3D, x: number, y: number, selmask: number) {
     return FindNearest(this.ctx, selmask, new Vector2([x, y]), view3d)
   }
 
-  drawsObjectIdsExclusively(obj: any, check_mesh: boolean = false): boolean {
+  drawsObjectIdsExclusively(obj: SceneObject, check_mesh: boolean = false): boolean {
     let ret: any = !check_mesh || obj.data instanceof Mesh
 
     ret = ret && (obj.flag & ObjectFlags.SELECT || obj === this.ctx.scene.objects.active)
@@ -442,7 +450,7 @@ export class MeshToolBase extends ToolMode {
     return ret
   }
 
-  drawIDs(view3d: any, gl: WebGL2RenderingContext, uniforms: any, selmask: any = undefined): void {
+  drawIDs(view3d: View3D, gl: WebGL2RenderingContext, uniforms: IUniformsBlock, selmask?: number): void {
     if (selmask === undefined) {
       selmask = this.ctx.selectMask
     }
@@ -497,7 +505,7 @@ export class MeshToolBase extends ToolMode {
 
   drawSphere(
     gl: WebGL2RenderingContext,
-    view3d: any,
+    view3d: View3D,
     p: Vector3,
     scale: number = 0.01,
     color: number[] = [1, 0.4, 0.2, 1.0]
@@ -505,7 +513,7 @@ export class MeshToolBase extends ToolMode {
     const cam = this.ctx.view3d.activeCamera
     const mat = new Matrix4()
 
-    const co = new Vector4(p)
+    const co = new Vector4().load3(p)
     mat.translate(co[0], co[1], co[2])
 
     co[3] = 1.0
@@ -551,9 +559,9 @@ export class MeshToolBase extends ToolMode {
         continue
       }
 
-      let object: any
+      let object: SceneObject | undefined
       if (mesh.ownerId) {
-        object = datalib.get(mesh.ownerId)
+        object = datalib.get<SceneObject>(mesh.ownerId)
       }
 
       if (mesh.ownerMatrix !== undefined) {
@@ -602,7 +610,7 @@ export class MeshToolBase extends ToolMode {
     if (program === Shaders.BasicLitMesh) {
       const image = this.ctx.activeTexture
 
-      if (image && image.ready) {
+      if (image?.ready) {
         uniforms.texture = image.getGlTex(gl)
         program = Shaders.BasicLitMeshTexture
       } else {
@@ -616,6 +624,7 @@ export class MeshToolBase extends ToolMode {
     return true
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   loadSTRUCT(reader: any): void {
     reader(this)
     super.loadSTRUCT(reader)
