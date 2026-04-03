@@ -1,7 +1,7 @@
 {
   "main": "main.js",
   "devDependencies": {
-    "electron": "^41.1.1"
+    "electron": "^39.8.4"
   },
   "dependencies": {
     "pngjs": "^7.0.0",
