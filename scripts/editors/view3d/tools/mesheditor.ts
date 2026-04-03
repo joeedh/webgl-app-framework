@@ -62,7 +62,7 @@ export class MeshEditor extends MeshToolBase {
   static toolModeDefine() {
     return {
       name        : 'mesh',
-      uianme      : 'Edit Geometry',
+      uiname      : 'Edit Geometry',
       icon        : Icons.MESHTOOL,
       flag        : 0,
       selectMode  : 1 | 2 | 4 | 8 | 16 | 32,
@@ -508,7 +508,7 @@ export class MeshEditor extends MeshToolBase {
 
     const VIS_UV_COLORS = false
 
-    let cd_vis = new AttrRef<ColorLayerElem>(-1)
+    const cd_vis = new AttrRef<ColorLayerElem>(-1)
 
     if (VIS_UV_COLORS) {
       cd_vis.i = mesh.verts.customData.getNamedLayerIndex('_rakevis', 'color')
@@ -546,7 +546,7 @@ export class MeshEditor extends MeshToolBase {
 
     no = new Vector3()
 
-    let dd3 = 1.0
+    const dd3 = 1.0
     for (const v of mesh.verts.selected.editable) {
       const cv = v.customData.get(cd_curv)
       cv.check(v, cd_cotan, true, cd_fset)

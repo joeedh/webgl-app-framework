@@ -15,6 +15,8 @@ import {
   Vector4,
   nstructjs,
   IndexRange,
+  PropertySlots,
+  IVectorOrHigher,
 } from '../../../path.ux/scripts/pathux.js'
 
 import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes, DynTopoSettings} from '../../../brush/brush'
@@ -22,7 +24,7 @@ import {ProceduralTex, TexUserFlags, TexUserModes} from '../../../texture/proced
 import {DataRefProperty, DataRef} from '../../../core/lib_api.js'
 import {AttrRef, CDFlags} from '../../../mesh/customdata.js'
 import {TetMesh} from '../../../tet/tetgen.js'
-import {Mesh, Vertex} from '../../../mesh/mesh.js'
+import {Mesh, Vector3LayerElem, Vertex} from '../../../mesh/mesh.js'
 import {GridBase} from '../../../mesh/mesh_grids.js'
 import {BVH, BVHFlags, IsectRet} from '../../../util/bvh.js'
 import {MeshFlags} from '../../../mesh/mesh.js'
@@ -456,7 +458,7 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
   }
 
   static canRun(ctx: any): boolean {
-    return ctx.toolmode && ctx.toolmode.constructor.name === 'BVHToolMode'
+    return ctx.toolmode?.constructor.name === 'BVHToolMode'
   }
 
   static tooldef(): any {
@@ -475,7 +477,7 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
     const tool = super.invoke(ctx, args)
 
     const toolmode = ctx.toolmode as unknown as BVHToolMode
-    if (!toolmode || toolmode.constructor.name !== 'BVHToolMode') {
+    if (toolmode?.constructor.name !== 'BVHToolMode') {
       return tool
     }
 
@@ -536,7 +538,7 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
     this.makeTempLine(this.cent_mpos, this.mpos, 'rgba(25,25,25,0.25)')
 
     const toolmode = ctx.toolmode
-    if (toolmode && toolmode.constructor.name === 'BVHToolMode') {
+    if (toolmode?.constructor.name === 'BVHToolMode') {
       toolmode.mpos.load(this.cent_mpos)
     }
 
@@ -701,7 +703,7 @@ import type {ToolContext, ViewContext} from '../../../core/context.js'
 import {BVHToolMode} from './pbvh'
 import {StructReader} from '../../../path.ux/scripts/path-controller/types/util/nstructjs.js'
 
-export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends ToolOp<
+export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs extends PropertySlots = {}> extends ToolOp<
   {
     brush: BrushProperty //
     samples: PaintSampleProperty //
@@ -1057,7 +1059,7 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
   }
 
   on_pointermove_intern(
-    e: any,
+    e: PointerEvent,
     x: number = e.x,
     y: number = e.y,
     in_timer: boolean = false,
@@ -1088,14 +1090,8 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
 
     let pressure = 1.0
 
-    if (e.targetTouches && e.targetTouches.length > 0) {
-      const t = e.targetTouches[0]
-
-      if (t.pressure !== undefined) {
-        pressure = t.pressure
-      } else {
-        pressure = t.force
-      }
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      pressure = e.pressure
     }
 
     //console.log(e.ctrlKey, view3d.size, x, y, e.targetTouches, pressure);
@@ -1120,18 +1116,23 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     return this.sampleViewRay(rendermat, mpos, view, origin, pressure, invert, isInterp)
   }
 
-  getBVH(mesh: any): BVH {
-    return mesh.getBVH({autoUpdate: false})
+  getBVH(mesh: Mesh | TetMesh): BVH {
+    return mesh.getBVH({autoUpdate: false})!
   }
 
-  abstract initOrigData(mesh: any): number
-  abstract getOrigCo(mesh: Mesh, vertex: Vertex, cd_grid: number, cd_orig: number): Vector3
+  abstract initOrigData(mesh: Mesh): AttrRef<Vector3LayerElem>
+  abstract getOrigCo(
+    mesh: Mesh,
+    vertex: Vertex,
+    cd_grid: AttrRef<GridBase>,
+    cd_orig: AttrRef<Vector3LayerElem>
+  ): Vector3
 
   sampleViewRay(
-    rendermat: any,
+    rendermat: Matrix4,
     mpos: Vector2,
-    view: any,
-    origin: any,
+    view: IVectorOrHigher<3>,
+    origin: IVectorOrHigher<3>,
     pressure: number,
     invert: boolean,
     isInterp: boolean
@@ -1188,12 +1189,8 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     }
 
     const haveOrigData = PaintOpBase.needOrig(brush)
-    let cd_orig = -1
-    const cd_grid = GridBase.meshGridOffset(mesh)
-
-    if (haveOrigData) {
-      cd_orig = this.initOrigData(mesh)
-    }
+    const cd_orig = haveOrigData ? this.initOrigData(mesh) : undefined
+    const cd_grid = GridBase.meshGridRef(mesh)
 
     let isect: any
     const obmat = ob.outputs.matrix.getValue()
@@ -1203,10 +1200,10 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     origin = new Vector3(origin)
     origin.multVecMatrix(matinv)
 
-    view = new Vector4(view)
-    view[3] = 0.0
-    view.multVecMatrix(matinv)
-    view = new Vector3(view).normalize()
+    const view4 = new Vector4().load3(view as Vector3)
+    view4[3] = 0.0
+    view4.multVecMatrix(matinv)
+    view = new Vector3(view4).normalize()
 
     for (const axis of axes) {
       let view2 = new Vector3(view)
@@ -1258,9 +1255,9 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
       const tri = isect.tri
 
       if (haveOrigData) {
-        const o1 = this.getOrigCo(mesh, tri.v1, cd_grid, cd_orig)
-        const o2 = this.getOrigCo(mesh, tri.v2, cd_grid, cd_orig)
-        const o3 = this.getOrigCo(mesh, tri.v3, cd_grid, cd_orig)
+        const o1 = this.getOrigCo(mesh, tri.v1, cd_grid, cd_orig!)
+        const o2 = this.getOrigCo(mesh, tri.v2, cd_grid, cd_orig!)
+        const o3 = this.getOrigCo(mesh, tri.v3, cd_grid, cd_orig!)
 
         for (const i of IndexRange(3)) {
           origco[i as Vector3['LEN']] =
@@ -1331,14 +1328,16 @@ export abstract class PaintOpBase<Inputs extends {}, Outputs extends {}> extends
     })
 
     return {
-      origco,
-      p    : isect.p as Vector3,
-      isect: isect.copy() as IsectRet,
+      // XXX possible performance issue!
+      // allocating a vector3 here
+      origco: new Vector3(origco),
+      p     : isect.p as Vector3,
+      isect : isect.copy() as IsectRet,
       radius,
       ob,
       vec,
       mpos,
-      view,
+      view: view as Vector3,
       getchannel,
       w,
     }

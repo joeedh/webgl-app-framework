@@ -1191,7 +1191,7 @@ export class BVHNode<
     }
   }
 
-  closestVerts(co: Vector3, radius: number, out: Set<IBVHVertex>) {
+  closestVerts(co: IVectorOrHigher<3>, radius: number, out: Set<IBVHVertex>) {
     const radius2 = radius * radius
 
     if (!this.leaf) {
@@ -1214,8 +1214,8 @@ export class BVHNode<
   }
 
   closestVertsSquare(
-    co: Vector3,
-    origco: Vector3,
+    co: IVectorOrHigher<3>,
+    origco: IVectorOrHigher<3>,
     radius: number,
     matrix: Matrix4,
     min: Vector3,
@@ -4197,7 +4197,7 @@ export class BVH<
     return ret
   }
 
-  closestVerts = function (this: BVH<OPT & {dead: false}>, co: Vector3, radius: number) {
+  closestVerts = function (this: BVH<OPT & {dead: false}>, co: IVectorOrHigher<3>, radius: number) {
     const ret = new Set<IBVHVertex>()
 
     this.root.closestVerts(co, radius, ret)
@@ -4205,7 +4205,12 @@ export class BVH<
     return ret
   }
 
-  closestVertsSquare = function (this: BVH<OPT & {dead: false}>, co: Vector3, radius: number, matrix: Matrix4) {
+  closestVertsSquare = function (
+    this: BVH<OPT & {dead: false}>,
+    co: IVectorOrHigher<3>,
+    radius: number,
+    matrix: Matrix4
+  ) {
     const ret = new Set<IBVHVertex>()
 
     const origco = co
@@ -5194,7 +5199,7 @@ export class SpatialHash extends BVH {
     }
   }
 
-  closestVerts = function (this: BVH<{dead: false}>, co: Vector3, radius: number) {
+  closestVerts = function (this: BVH<{dead: false}>, co: IVectorOrHigher<3>, radius: number) {
     const eps = radius * 0.01
 
     const minx = co[0] - radius - eps

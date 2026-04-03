@@ -1131,7 +1131,7 @@ export class RotateOp extends TransformOp {
   }
 
   on_keydown(e) {
-    if (e.keyCode === keymap['R'] && !e.altKey && !e.shiftKey && !e.ctrlKey && !e.commandKey) {
+    if (e.keyCode === keymap['R'] && !e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
       this.trackball ^= 1
     } else {
       return super.on_keydown(e)

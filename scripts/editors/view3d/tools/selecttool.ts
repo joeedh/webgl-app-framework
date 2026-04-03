@@ -1,43 +1,33 @@
-import {FindNearest, castViewRay, CastModes} from '../findnearest.js'
-import {ObjectFlags} from '../../../sceneobject/sceneobject.js'
+import {FindNearest} from '../findnearest.js'
+import {ObjectFlags, SceneObject} from '../../../sceneobject/sceneobject.js'
 import {ToolMode} from '../view3d_toolmode.js'
-import {SelMask, SelOneToolModes, SelToolModes} from '../selectmode.js'
-import {Mesh, MeshTypes, MeshFlags, MeshModifierFlags} from '../../../mesh/mesh.js'
-import * as util from '../../../util/util.js'
-import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../../core/simplemesh.ts'
-import {BasicLineShader, Shaders} from '../../../shaders/shaders.js'
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../../../util/vectormath.js'
-import * as math from '../../../util/math.js'
-import {SelectOneOp} from '../../../mesh/select_ops.js'
+import {SelMask, SelOneToolModes} from '../selectmode.js'
+import {Mesh} from '../../../mesh/mesh.js'
+import {Shaders} from '../../../shaders/shaders.js'
+import {Vector2} from '../../../util/vectormath.js'
 import {View3DFlags} from '../view3d_base.js'
-import {KeyMap, HotKey} from '../../editor_base.ts'
-import {ToolOp, ToolFlags, UndoFlags, ToolMacro, keymap} from '../../../path.ux/scripts/pathux.js'
-import {BasicMeshDrawer} from '../view3d_draw.js'
-import {MeshCache} from '../view3d_toolmode.js'
-import {SubsurfDrawer} from '../../../subsurf/subsurf_draw.js'
-import {Light} from '../../../light/light.js'
-import {TranslateOp} from '../transform/transform_ops.js'
-import {nstructjs} from '../../../path.ux/scripts/pathux.js'
+import {KeyMap, HotKey} from '../../editor_base'
+import {eventWasMouseDown, nstructjs} from '../../../path.ux/scripts/pathux.js'
 import {Icons} from '../../icon_enum.js'
 import {RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js'
-import {FlagProperty} from '../../../path.ux/scripts/pathux.js'
+import type {IUniformsBlock, ShaderProgram} from '../../../core/webgl.js'
+import type {View3D} from '../view3d.js'
+import type {ViewContext} from '../../../core/context.js'
 
 const _shift_temp: number[] = [0, 0]
 
 export class ObjectEditor extends ToolMode {
   start_mpos: Vector2
-  ctx: any
   transformWidget: number
   _transformProp: any
   test: string
-  declare view3d: any
+  declare view3d: View3D
   declare keymap: KeyMap
 
-  constructor(manager: any) {
-    super(manager)
+  constructor(ctx: ViewContext) {
+    super(ctx)
 
     this.start_mpos = new Vector2()
-    this.ctx = undefined //is set by owning View3D
 
     this.transformWidget = 0
     this._transformProp = this.constructor.getTransformProp()
@@ -53,7 +43,7 @@ export class ObjectEditor extends ToolMode {
     return tstruct
   }
 
-  static toolModeDefine(): object {
+  static toolModeDefine() {
     return {
       name        : 'object',
       uiname      : 'Object',
@@ -109,13 +99,11 @@ export class ObjectEditor extends ToolMode {
     //strip.tool("mesh.toggle_select_all()");
   }
 
-  on_mousedown(e: any, x: number, y: number, was_touch: boolean): boolean | undefined {
+  on_mousedown(e: PointerEvent, x: number, y: number, was_touch?: boolean): boolean | void {
     const ctx = this.ctx
 
-    if (e.button === 0 || (e.touches && e.touches.length > 0)) {
-      this.start_mpos[0] = x
-      this.start_mpos[1] = y
-    }
+    this.start_mpos[0] = x
+    this.start_mpos[1] = y
 
     console.log(this.hasWidgetHighlight())
 
@@ -127,9 +115,9 @@ export class ObjectEditor extends ToolMode {
       return false
     }
 
-    this._updateHighlight(...arguments)
+    this._updateHighlight(e, x, y, was_touch)
 
-    if (e.ctrlKey || e.altKey || e.commandKey) {
+    if (e.ctrlKey || e.altKey || e.metaKey) {
       return
     }
 
@@ -161,22 +149,12 @@ export class ObjectEditor extends ToolMode {
     return super.on_mouseup(e, x, y, was_touch)
   }
 
-  on_mousemove(e: any, x: number, y: number, was_touch: boolean): boolean | undefined {
-    const ctx = this.ctx
-
+  on_mousemove(e: PointerEvent, x: number, y: number, was_touch?: boolean): boolean | void {
     if (this.hasWidgetHighlight()) {
       return false
     }
 
-    let mdown
-
-    if (was_touch) {
-      mdown = !!(e.touches !== undefined && e.touches.length > 0)
-    } else {
-      mdown = e.buttons
-    }
-
-    mdown = mdown & 1
+    const mdown = eventWasMouseDown(e)
 
     if (!mdown && super.on_mousemove(e, x, y, was_touch)) {
       return true
@@ -204,10 +182,10 @@ export class ObjectEditor extends ToolMode {
       }
     }//*/
 
-    this._updateHighlight(...arguments)
+    this._updateHighlight(e, x, y, was_touch)
   }
 
-  _updateHighlight(e: any, x: number, y: number, was_touch: boolean): void {
+  _updateHighlight(e: PointerEvent | KeyboardEvent, x: number, y: number, was_touch?: boolean): void {
     const ctx = this.ctx
 
     const ret = this.findnearest(ctx, x, y)
@@ -226,16 +204,22 @@ export class ObjectEditor extends ToolMode {
     }
   }
 
-  on_drawstart(view3d: any, gl: WebGL2RenderingContext): void {
+  on_drawstart(view3d: View3D, gl: WebGL2RenderingContext): void {
     super.on_drawstart(view3d, gl)
   }
 
   /*
    * called for all objects;  returns true
    * if an object is valid for this editor (and was drawn)*/
-  drawObject(gl: WebGL2RenderingContext, uniforms: any, program: any, object: any): boolean | undefined {
+  drawObject(
+    gl: WebGL2RenderingContext,
+    uniforms: IUniformsBlock,
+    program: ShaderProgram,
+    object: SceneObject,
+    mesh: Mesh
+  ): boolean {
     if (this.view3d.flag & (View3DFlags.SHOW_RENDER | View3DFlags.ONLY_RENDER)) {
-      return
+      return false
     }
 
     uniforms.objectMatrix = object.outputs.matrix.getValue()

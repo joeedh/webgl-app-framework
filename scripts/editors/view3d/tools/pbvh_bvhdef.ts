@@ -12,11 +12,12 @@ import {
   Vector4,
 } from '../../../path.ux/scripts/pathux.js'
 import {AttrRef} from '../../../mesh/customdata.js'
-import {Mesh, MeshFlags, Vertex} from '../../../mesh/mesh.js'
+import {Mesh, MeshFlags, Vector3LayerElem, Vertex} from '../../../mesh/mesh.js'
 import {BVHFlags, CDNodeInfo, IsectRet} from '../../../util/bvh.js'
 import {BrushProperty, PaintOpBase, PaintSample, PaintSampleProperty} from './pbvh_base'
 import {SceneObject} from '../../../sceneobject/sceneobject.js'
 import {ViewContext} from '../../../core/context.js'
+import {GridBase} from '../../../mesh/mesh_grids.js'
 ;(window as any).testTrilinear = function (seed: number = 0, d: number = 0.5): void {
   let boxverts: any[] = [
     [-d, -d, -d],
@@ -86,12 +87,11 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
     }
   }
 
-  initOrigData(mesh: any): number {
-    // XXX
-    return -1
+  initOrigData(mesh: Mesh): AttrRef<Vector3LayerElem> {
+    return new AttrRef(-1)
   }
-  getOrigCo(mesh: Mesh, vertex: Vertex, cd_grid: number, cd_orig: number): Vector3 {
-    // XXX
+
+  getOrigCo(mesh: Mesh, vertex: Vertex, cd_grid: AttrRef<GridBase>, cd_orig: AttrRef<Vector3LayerElem>): Vector3 {
     return vertex.co
   }
 
@@ -112,14 +112,14 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
     isInterp?: boolean
   ):
     | {
-        origco: IVector4
+        origco: IVector3
         p: Vector3
         isect: IsectRet
         radius: number
         ob: SceneObject<{}, {}>
         vec: IVector3
         mpos: IVector2
-        view: any
+        view: Vector3
         getchannel: (key: string, val: number) => number
         w: number
       }

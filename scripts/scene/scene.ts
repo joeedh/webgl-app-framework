@@ -231,7 +231,7 @@ export class ObjectList extends Array {
     }
   }
 
-  setHighlight(ob: SceneObject): void {
+  setHighlight(ob: SceneObject | undefined): void {
     if (this.highlight !== undefined) {
       this.highlight.flag &= ~ObjectFlags.HIGHLIGHT
     }
@@ -243,7 +243,7 @@ export class ObjectList extends Array {
     }
   }
 
-  setActive(ob: SceneObject): void {
+  setActive(ob: SceneObject | undefined): void {
     if (this.active !== undefined) {
       this.active.flag &= ~ObjectFlags.ACTIVE
     }

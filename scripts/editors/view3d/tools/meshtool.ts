@@ -12,7 +12,7 @@ import {SelOneToolModes} from '../selectmode.js'
 
 import {ObjectFlags, SceneObject} from '../../../sceneobject/sceneobject.js'
 import {Mesh} from '../../../mesh/mesh.js'
-import {DataAPI, DataStruct, nstructjs} from '../../../path.ux/scripts/pathux.js'
+import {DataAPI, DataStruct, eventWasMouseDown, nstructjs} from '../../../path.ux/scripts/pathux.js'
 import '../../../mesh/mesh_flagops.js'
 
 //import '../../../mesh/select_ops.js';
@@ -181,7 +181,7 @@ export class MeshToolBase extends ToolMode {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (e.button === 1 || e.ctrlKey || e.altKey || (e as any).commandKey) {
+    if (e.button === 1 || e.ctrlKey || e.altKey || e.metaKey) {
       return false
     }
 
@@ -374,7 +374,7 @@ export class MeshToolBase extends ToolMode {
     this.last_mpos[0] = x
     this.last_mpos[1] = y
 
-    if (e.ctrlKey || e.altKey || (e as any).commandKey) {
+    if (e.ctrlKey || e.altKey || e.metaKey) {
       return false
     }
 
@@ -382,19 +382,7 @@ export class MeshToolBase extends ToolMode {
       return false
     }
 
-    let mdown = false
-    switch (e.pointerType) {
-      case 'touch':
-        mdown = e.pointerId === 0 && e.buttons === 1
-        break
-      case 'pen':
-        mdown = e.buttons > 0
-        break
-      case 'mouse':
-        mdown = e.buttons === 1
-        break
-    }
-
+    const mdown = eventWasMouseDown(e)
     if (!mdown && super.on_mousemove(e, x, y, was_touch)) {
       return true
     }

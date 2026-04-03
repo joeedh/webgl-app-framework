@@ -86,7 +86,7 @@ export class ConsoleEditor extends Editor {
         shiftKey: any;
         ctrlKey: any;
         altKey: any;
-        commandKey: any;
+        metaKey: any;
         x: any;
         y: any;
         pageX: any;

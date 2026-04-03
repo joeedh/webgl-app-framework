@@ -284,13 +284,13 @@ export class PaintOp extends PaintOpBase<
     }
   }
 
-  ensureSmoother(mesh: any): void {
+  ensureSmoother(mesh: Mesh): void {
     if (!this.smoother) {
       this.smoother = MultiGridSmoother.ensureSmoother(mesh, true, undefined, true)
     }
   }
 
-  initOrigData(mesh: any): number {
+  initOrigData(mesh: Mesh): AttrRef<Vector3LayerElem> {
     const cd_grid = GridBase.meshGridOffset(mesh)
 
     let cd_orig
@@ -319,14 +319,14 @@ export class PaintOp extends PaintOpBase<
 
     if (initverts) {
       for (const v of mesh.verts) {
-        v.customData[cd_orig].value.load(v.co)
+        v.customData.get<Vector3LayerElem>(cd_orig).value.load(v.co)
       }
     }
 
-    return cd_orig
+    return new AttrRef<Vector3LayerElem>(cd_orig)
   }
 
-  calcUndoMem(ctx: any): number {
+  calcUndoMem(ctx: ViewContext): number {
     const ud = this._undo
     let tot = 0
 
@@ -420,7 +420,7 @@ export class PaintOp extends PaintOpBase<
       for (const [eid, fset] of undo.fsetmap) {
         const f = mesh.eidMap.get<Face>(eid)
 
-        if (!f || f.type !== MeshTypes.FACE) {
+        if (f?.type !== MeshTypes.FACE) {
           console.log('invalid face in undo!', eid, f)
           continue
         }
@@ -784,15 +784,12 @@ export class PaintOp extends PaintOpBase<
     const mesh = ctx.mesh
     const tetmesh = ctx.tetmesh
 
-    const delayMode = this.hasSampleDelay()
-
     if ((!mesh && !tetmesh) || !view3d) {
       return
     }
 
     const the_mesh = mesh || tetmesh
 
-    const bvh = this.getBVH(the_mesh)
     const brush = this.inputs.brush.getValue()
     const mode = brush.tool
 
@@ -827,12 +824,12 @@ export class PaintOp extends PaintOpBase<
     sharp = getchannel('sharp', sharp)
 
     const haveOrigData = PaintOpBase.needOrig(brush)
-    let cd_orig = -1
+    let cd_orig: AttrRef<Vector3LayerElem> | undefined
 
     const cd_grid = mesh ? GridBase.meshGridOffset(mesh) : -1
 
     if (haveOrigData) {
-      cd_orig = this.initOrigData(the_mesh)
+      cd_orig = this.initOrigData(the_mesh as Mesh)
     }
 
     const p3 = new Vector4(isect.p as unknown as Vector4)
@@ -1490,26 +1487,27 @@ export class PaintOp extends PaintOpBase<
     window.redraw_viewport(true)
   }
 
-  getOrigCo(mesh: any, v: any, cd_grid: number, cd_orig: number): any {
+  getOrigCo(mesh: Mesh, v: Vertex | GridVert, cd_grid: AttrRef<GridBase>, cd_orig: AttrRef<Vector3LayerElem>): Vector3 {
     const gset = this._undo.gset
     const gmap = this._undo.gmap
     const vmap = this._undo.vmap
 
-    if (cd_grid >= 0 && mesh.eidMap.has(v.loopEid)) {
-      const l = mesh.eidMap.get(v.loopEid)
-      const grid = l.customData[cd_grid]
+    if (cd_grid.i >= 0 && mesh.eidMap.has((v as GridVert).loopEid)) {
+      const gridv = v as GridVert
+      const l = mesh.eidMap.get(gridv.loopEid)
+      const grid = l.customData.get(cd_grid)
 
       if (grid instanceof Grid) {
         const gdimen = grid.dimen
-        const id = v.loopEid * gdimen * gdimen + v.index
+        const id = gridv.loopEid * gdimen * gdimen + gridv.index
 
         //let execDot set orig data
         if (!gset.has(id)) {
-          return v.co
+          return gridv.co
         }
       } else {
         if (!gmap.has(l)) {
-          return v.co
+          return gridv.co
         }
       }
     } else {
@@ -1522,7 +1520,7 @@ export class PaintOp extends PaintOpBase<
     }
 
     //ok, we have valid orig data? return it
-    return v.customData[cd_orig].value
+    return v.customData.get(cd_orig).value
   }
 
   calcNormalVariance(mesh: any, bvh: any, co: Vector3, radius: number): {n: Vector3; t: Vector3} | undefined {
@@ -1926,12 +1924,7 @@ export class PaintOp extends PaintOpBase<
       updateflag |= BVHFlags.UPDATE_COLORS
     }
 
-    let cd_orig = -1
-
-    if (haveOrigData) {
-      cd_orig = this.initOrigData(mesh)
-    }
-
+    const cd_orig = haveOrigData ? this.initOrigData(mesh) : undefined
     const sym = mesh.symFlag
 
     if (mode !== SNAKE && mode !== SLIDE_RELAX) {
@@ -2005,7 +1998,7 @@ export class PaintOp extends PaintOpBase<
       bvhRadius *= smoothRadiusMul
     }
 
-    if (mode === GRAB && doTopo) {
+    if (mode === GRAB && doTopo && cd_orig !== undefined) {
       this.grabDists = []
       const gdists = this.grabDists
 
@@ -2022,7 +2015,7 @@ export class PaintOp extends PaintOpBase<
       const add = new Vector3()
 
       for (const v of vs) {
-        let dis = (v.customData[cd_orig] as Vector3LayerElem).value.vectorDistance(co)
+        let dis = v.customData.get(cd_orig).value.vectorDistance(co)
         const offs = axismap[sym]
 
         add.zero()
@@ -2495,7 +2488,7 @@ export class PaintOp extends PaintOpBase<
 
       if (doTopo && !haveGrids) {
         if (haveOrigData && !vmap.has(v.eid)) {
-          const data = v.customData[cd_orig].value
+          const data = v.customData.get(cd_orig).value
 
           data.load(v.co)
 
@@ -2511,7 +2504,7 @@ export class PaintOp extends PaintOpBase<
 
       if (!haveGrids && !vmap.has(v.eid)) {
         if (haveOrigData) {
-          v.customData[cd_orig].value.load(v.co)
+          v.customData.get(cd_orig).value.load(v.co)
         }
 
         if (isPaintMode && have_color) {
@@ -2519,7 +2512,7 @@ export class PaintOp extends PaintOpBase<
         } else if (!isPaintMode) {
           vmap.set(v.eid, new Vector3(v.co))
         }
-      } else if (haveQuadTreeGrids) {
+      } else if (haveQuadTreeGrids && cd_orig !== undefined) {
         const node = cd_node.get(v)
         v.flag |= MeshFlags.UPDATE
 
@@ -2536,7 +2529,7 @@ export class PaintOp extends PaintOpBase<
             if (!gmap.has(l)) {
               if (haveOrigData) {
                 for (const p of grid.points) {
-                  ;(p.customData[cd_orig] as Vector3LayerElem).value.load(p.co)
+                  ;(p.customData.get(cd_orig) as Vector3LayerElem).value.load(p.co)
                 }
               }
 
@@ -2557,12 +2550,12 @@ export class PaintOp extends PaintOpBase<
             }
           }
         }
-      } else if (haveGrids) {
+      } else if (haveGrids && cd_orig !== undefined) {
         const id = v.loopEid * gdimen * gdimen + v.index
 
         if (!gset.has(id)) {
           if (haveOrigData) {
-            v.customData[cd_orig].value.load(v.co)
+            v.customData.get(cd_orig).value.load(v.co)
           }
 
           gset.add(id)
@@ -2605,7 +2598,7 @@ export class PaintOp extends PaintOpBase<
         return
       }
 
-      if (!v.bLink || !v.bLink.v1) {
+      if (!v.bLink?.v1) {
         return
       }
 
@@ -2692,7 +2685,7 @@ export class PaintOp extends PaintOpBase<
           continue
         }
 
-        if (vr.bLink && vr.bLink.v1 && vr.bLink.v2) {
+        if (vr.bLink?.v1 && vr.bLink.v2) {
           co = vr
         }
       }
@@ -3374,7 +3367,7 @@ export class PaintOp extends PaintOpBase<
           return this
         },
 
-        interp(srcs: any[], ws: number[], tmp: any = undefined) {
+        interp(srcs: any[], ws: number[], tmp?: any) {
           if (!tmp) {
             tmp = getArrayTemp(srcs.length)
           }
@@ -3892,7 +3885,7 @@ export class PaintOp extends PaintOpBase<
 
       const height = radius * 2.0
 
-      const oco = (v.customData[cd_orig] as OrigCoType).value
+      const oco = (v.customData.get(cd_orig!) as OrigCoType).value
 
       conetmp.load(ps.p).addFac(nvec, planeoff * radius * 0.25 + 0.5)
       planetmp.load(conetmp).addFac(nvec, height)
@@ -4182,9 +4175,9 @@ export class PaintOp extends PaintOpBase<
 
       let texf = 1.0
 
-      if (haveTex) {
+      if (haveTex && cd_orig !== undefined) {
         if (texUser.flag & TexUserFlags.ORIGINAL_CO) {
-          texco.load((v.customData[cd_orig] as Vector3LayerElem).value)
+          texco.load((v.customData.get(cd_orig) as Vector3LayerElem).value)
         } else {
           texco.load(v.co)
         }
@@ -4575,7 +4568,7 @@ export class PaintOp extends PaintOpBase<
       } else if (mode === SLIDE_RELAX) {
         const co = _tmp4.load(v.co)
 
-        co.interp((v.customData[cd_orig] as Vector3LayerElem).value, 0.1 * f)
+        co.interp(v.customData.get(cd_orig!).value, 0.1 * f)
         co.addFac(vec, f * strength)
 
         _tmp.load(co).multVecMatrix(rmat)
@@ -4587,7 +4580,7 @@ export class PaintOp extends PaintOpBase<
 
         v.co.addFac(co, 0.25)
       } else if (mode === SNAKE) {
-        v.co.interp((v.customData[cd_orig] as Vector3LayerElem).value, 0.1 * f)
+        v.co.interp(v.customData.get(cd_orig!).value, 0.1 * f)
         v.co.addFac(vec, f * strength)
 
         _tmp.load(v.co).multVecMatrix(rmat)
@@ -4623,7 +4616,7 @@ export class PaintOp extends PaintOpBase<
           v.co[2] += vec[2] * fz * Math.sign(signs[i + 2])
         } else {
           //accumulated delta mode
-          v.co.load((v.customData[cd_orig] as Vector3LayerElem).value)
+          v.co.load(v.customData.get(cd_orig!).value)
 
           //_tmp.zero();
           _tmp.load(vec).multVecMatrix(rmat)
@@ -5452,7 +5445,7 @@ export class PaintOp extends PaintOpBase<
     es = es.filter((e: Edge) => e.eid >= 0)
 
     for (const e of es) {
-      if (!e || !e.v1 || !e.v2 || e.eid < 0) {
+      if (!e?.v1 || !e.v2 || e.eid < 0) {
         console.warn('Bad edge in doTopology:', e)
         es.delete(e)
         continue
@@ -7045,7 +7038,7 @@ export class PaintOp extends PaintOpBase<
       for (const p of grid.points) {
         const node = cd_node.get(p) as CDNodeInfo<{dead: true}>
 
-        if (node.node && node.node.uniqueVerts) {
+        if (node.node?.uniqueVerts) {
           node.node.uniqueVerts.delete(p)
         }
         node.node = undefined
@@ -7369,7 +7362,7 @@ export class PaintOp extends PaintOpBase<
       const dis = v1.co.vectorDistance(v2.co)
       let w = edist0(e, v1, v2, eset, cd_curv!)
 
-      if (e.l && e.l.next.e && e.l.prev.e) {
+      if (e.l?.next.e && e.l.prev.e) {
         const e2 = e.l.next.e
         const e3 = e.l.prev.e
 
@@ -7949,8 +7942,10 @@ export class PaintOp extends PaintOpBase<
     if (PaintOpBase.needOrig(brush)) {
       const cd_orig = this.initOrigData(mesh)
 
-      const bvh = this.getBVH(mesh)
-      bvh.origCoStart(cd_orig)
+      if (cd_orig !== undefined) {
+        const bvh = this.getBVH(mesh)
+        bvh.origCoStart(cd_orig.i)
+      }
     }
   }
 

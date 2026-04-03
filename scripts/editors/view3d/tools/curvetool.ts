@@ -83,8 +83,8 @@ export class CurveToolBase extends MeshToolBase {
   drawflag: number
   curve: CurveSpline | undefined
 
-  constructor() {
-    super()
+  constructor(ctx: ViewContext) {
+    super(ctx)
 
     this._isCurveTool = true
 
@@ -99,10 +99,11 @@ export class CurveToolBase extends MeshToolBase {
     this.curve = undefined //is created later
   }
 
-  static toolModeDefine(): {name: string; uianme: string; icon: number; flag: number; description: string} {
+  static toolModeDefine() {
     return {
+      ...super.toolModeDefine(),
       name       : 'curve_test',
-      uianme     : 'Curve Test',
+      uiname     : 'Curve Test',
       icon       : Icons.APPEND_VERTEX,
       flag       : 0,
       description: 'curve tester',
@@ -173,7 +174,7 @@ export class CurveToolBase extends MeshToolBase {
     return tstruct
   }
 
-  on_mousedown(e: any, x: number, y: number, was_touch: boolean): boolean {
+  on_mousedown(e: any, x: number, y: number, was_touch: boolean) {
     return super.on_mousedown(e, x, y, was_touch)
   }
 
@@ -199,10 +200,10 @@ export class CurveToolBase extends MeshToolBase {
     }
   }
 
-  update(): void {
+  update(): this {
     this._getObject()
-
     super.update()
+    return this
   }
 
   findnearest3d(view3d: View3D, x: number, y: number, selmask: number) {
@@ -213,11 +214,11 @@ export class CurveToolBase extends MeshToolBase {
     return FindNearest(this.ctx!, selmask, new Vector2([x, y]), view3d)
   }
 
-  on_mousemove(e: any, x: number, y: number, was_touch: boolean): boolean {
+  on_mousemove(e: PointerEvent, x: number, y: number, was_touch: boolean) {
     return super.on_mousemove(e, x, y, was_touch)
   }
 
-  drawSphere(gl: WebGL2RenderingContext, view3d: any, p: Vector3, scale: number = 0.01): void {
+  drawSphere(gl: WebGL2RenderingContext, view3d: View3D, p: Vector3, scale: number = 0.01): void {
     const cam = this.ctx.view3d.activeCamera
     const mat = new Matrix4()
 

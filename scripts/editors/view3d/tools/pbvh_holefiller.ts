@@ -1,33 +1,21 @@
 import * as util from '../../../util/util.js'
-import {
-  BoolProperty,
-  Curve1DProperty,
-  EnumProperty,
-  FlagProperty,
-  FloatArrayProperty,
-  FloatProperty,
-  IntProperty,
-  Matrix4,
-  Quat,
-  ToolOp,
-  Vec3Property,
-  Vec4Property,
-  Vector2,
-  Vector3,
-} from '../../../path.ux/scripts/pathux.js'
-import {LogContext, MeshFlags, MeshTypes} from '../../../mesh/mesh.js'
-import {BVHFlags, BVHTriFlags} from '../../../util/bvh.js'
-import {BrushProperty, PaintOpBase, PaintSample, PaintSampleProperty, SymAxisMap} from './pbvh_base'
+import {FlagProperty, IVector2, IVector3, ToolOp, Vector3, Vector4} from '../../../path.ux/scripts/pathux.js'
+import {AttrRef, Edge, LogContext, Mesh, MeshFlags, MeshTypes, Vector3LayerElem, Vertex} from '../../../mesh/mesh.js'
+import {BVH, BVHFlags, BVHTriFlags, IsectRet} from '../../../util/bvh.js'
+import {BrushProperty, PaintOpBase, PaintSample, PaintSampleProperty} from './pbvh_base'
 import {applyTriangulation} from '../../../mesh/mesh_tess.js'
 import {MeshLog} from '../../../mesh/mesh_log.js'
+import {GridBase} from '../../../mesh/mesh_grids.js'
+import {SceneObject} from '../../../sceneobject/sceneobject.js'
+import { ViewContext } from '../../../core/context.js'
 
-export function fillHoleFromVert(mesh: any, bvh: any, startv: any, visit: WeakSet<any>, lctx: any): void {
-  let count: number = 0
+export function fillHoleFromVert(mesh: Mesh, bvh: BVH, startv: Vertex, visit: WeakSet<any>, lctx?: LogContext): void {
+  let count = 0
 
-  let _i: number = 0
-  const vs: any[] = []
-  let v: any = startv
-  let laste: any
+  let _i = 0
+  const vs = [] as Vertex[]
+  let v = startv
+  let laste: Edge | undefined
 
   while (1) {
     if (_i++ > 100000) {
@@ -38,7 +26,7 @@ export function fillHoleFromVert(mesh: any, bvh: any, startv: any, visit: WeakSe
     vs.push(v)
     visit.add(v)
 
-    let e: any
+    let e: Edge | undefined
     for (const e2 of v.edges) {
       if (!e2.l || e2.l.radial_next === e2.l) {
         count++
@@ -55,12 +43,11 @@ export function fillHoleFromVert(mesh: any, bvh: any, startv: any, visit: WeakSe
     }
 
     v = e.otherVertex(v)
-
     laste = e
   }
 
-  const flag1: number = MeshFlags.TEMP3
-  const flag2: number = MeshFlags.TEMP4
+  const flag1 = MeshFlags.TEMP3
+  const flag2 = MeshFlags.TEMP4
 
   let vi: number = 0
   for (const v of vs) {
@@ -163,7 +150,7 @@ export class HoleFillPaintOp extends PaintOpBase {
     this.start_mpos = new Vector3()
   }
 
-  static tooldef(): object {
+  static tooldef() {
     return {
       uiname  : 'paintop',
       toolpath: 'bvh.hole_filler',
@@ -176,6 +163,12 @@ export class HoleFillPaintOp extends PaintOpBase {
     }
   }
 
+  initOrigData(mesh: Mesh): AttrRef<Vector3LayerElem> {
+    return new AttrRef(-1)
+  }
+  getOrigCo(mesh: Mesh, vertex: Vertex, cd_grid: AttrRef<GridBase>, cd_orig: AttrRef<Vector3LayerElem>): Vector3 {
+    return vertex.co
+  }
   calcUndoMem(ctx: any): number {
     if (!this._undo) {
       return 0
@@ -217,19 +210,23 @@ export class HoleFillPaintOp extends PaintOpBase {
     window.redraw_viewport(true)
   }
 
-  on_mousemove_intern(e: any, x: number, y: number, in_timer: boolean = false, isInterp: boolean = false): void {
-    const ctx: any = this.modal_ctx
-    if (!ctx.mesh) {
+  on_pointermove_intern(
+    e: PointerEvent,
+    x: number = e.x,
+    y: number = e.y,
+    in_timer: boolean = false,
+    isInterp: boolean = false
+  ) {
+    const ctx = this.modal_ctx
+    if (!ctx?.mesh) {
       return
     }
 
-    const ret: any = super.on_mousemove_intern(e, x, y, in_timer)
+    const ret = super.on_pointermove_intern(e, x, y, in_timer)
 
     if (!ret) {
-      return
+      return undefined
     }
-
-    const mesh: any = this.mesh
 
     const {origco, p, view, vec, w, mpos, radius, getchannel} = ret
 
@@ -239,15 +236,17 @@ export class HoleFillPaintOp extends PaintOpBase {
 
     const ps: PaintSample = new PaintSample()
 
+    const lastp = new Vector4().load3(this.last_p)
+
     ps.p.load(p)
-    ps.dp.load(p).sub(this.last_p)
+    ps.dp.load(p).sub(lastp)
     ps.radius = radius
     ps.strength = strength
     ps.autosmooth = autosmooth
     ps.w = w
-    ps.isInterp = isInterp
+    ps.isInterp = isInterp ?? false
 
-    const list: any = this.inputs.samples.getValue()
+    const list = this.inputs.samples.getValue()
     let lastps: PaintSample | undefined
 
     if (list.length > 0) {
@@ -258,6 +257,7 @@ export class HoleFillPaintOp extends PaintOpBase {
 
     this.execDot(ctx, ps, lastps)
     window.redraw_viewport(true)
+    return ret
   }
 
   exec(ctx: any): void {
@@ -276,14 +276,14 @@ export class HoleFillPaintOp extends PaintOpBase {
     window.redraw_viewport(true)
   }
 
-  execDot(ctx: any, ps: PaintSample, lastps: PaintSample | undefined): void {
-    const mesh: any = ctx.mesh
+  execDot(ctx: ViewContext, ps: PaintSample, lastps: PaintSample | undefined): void {
+    const mesh = ctx.mesh
 
     if (!mesh) {
       return
     }
 
-    const bvh: any = mesh.getBVH({autoUpdate: false})
+    const bvh = mesh.getBVH({autoUpdate: false})
     const log: any = this._undo.log
 
     log.checkStart(mesh)
@@ -301,7 +301,7 @@ export class HoleFillPaintOp extends PaintOpBase {
       }
     }
 
-    let vs: any = bvh.closestVerts(ps.p, ps.radius)
+    let vs = bvh.closestVerts(ps.p, ps.radius) as Set<Vertex>
 
     for (const v of new Set(vs)) {
       for (const v2 of v.neighbors) {
@@ -333,7 +333,7 @@ export class HoleFillPaintOp extends PaintOpBase {
       }
     }
 
-    vs = vs.filter((v: any) => v.eid >= 0 && v.isBoundary(false))
+    vs = vs.filter((v: Vertex) => v.eid >= 0 && v.isBoundary(false))
     console.log(vs)
 
     if (vs.size === 0) {

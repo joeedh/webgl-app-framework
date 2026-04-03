@@ -469,7 +469,7 @@ ConsoleEditor {
       shiftKey       : e.shiftKey,
       ctrlKey        : e.ctrlKey,
       altKey         : e.altKey,
-      commandKey     : e.commandKey,
+      metaKey     : e.metaKey,
       x              : x,
       y              : y,
       pageX          : x,
@@ -769,7 +769,7 @@ ConsoleEditor {
 
     switch (e.keyCode) {
       case keymap['R']:
-        if (e.ctrlKey | e.commandKey && !e.shiftKey && !e.altKey) {
+        if (e.ctrlKey | e.metaKey && !e.shiftKey && !e.altKey) {
           location.reload()
         }
         break

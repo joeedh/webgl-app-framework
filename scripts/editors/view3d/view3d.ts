@@ -721,7 +721,7 @@ View3D {
     return co
   }
 
-  project(co: Vector2 | Vector3 | Vector4, mat = undefined) {
+  project(co: Vector2 | Vector3 | Vector4, mat?: Matrix4) {
     const tmp = proj_temps.next().zero()
 
     tmp[0] = co[0]
@@ -752,7 +752,7 @@ View3D {
     return w
   }
 
-  unproject(co: Vector2 | Vector3 | Vector4, mat = undefined) {
+  unproject(co: Vector2 | Vector3 | Vector4, imat?: Matrix4) {
     const tmp = unproj_temps.next().zero()
 
     tmp[0] = (co[0] / this.size[0]) * 2.0 - 1.0
@@ -768,7 +768,7 @@ View3D {
       tmp[3] = 1.0
     }
 
-    tmp.multVecMatrix(mat ? mat : this.activeCamera.irendermat)
+    tmp.multVecMatrix(imat ? imat : this.activeCamera.irendermat)
 
     const w = tmp[3]
 

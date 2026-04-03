@@ -19,6 +19,7 @@ import type {View3D} from '../view3d.js'
 import {OptionalIf} from '../../../util/optionalIf.js'
 import {ToolContext, ViewContext} from '../../../core/context.js'
 import {util, math, ToolOp, PropertySlots, IVector4} from '../../../path.ux/pathux.js'
+import {SelMask} from '../selectmode.js'
 
 export type IDistToMouse = [number, number, number?]
 
@@ -569,20 +570,22 @@ export class WidgetDoubleChevron extends WidgetPlane {
   }
 }
 
+export interface IWidgetDef {
+  name: string
+  uiname: string
+  icon: number
+  description: string
+  selectMode?: number
+  flag?: number
+}
+
 export interface IWidgetConstructor<
   Inputs extends INodeSocketSet = {},
   Outputs extends INodeSocketSet = {},
   T extends WidgetBase<Inputs, Outputs> = WidgetBase<Inputs, Outputs>,
 > {
   new (...args: unknown[]): T
-  widgetDefine(): {
-    name: string
-    uiname: string
-    icon: number
-    description: string
-    selectMode?: number
-    flag?: number
-  }
+  widgetDefine(): IWidgetDef
   nodedef: INodeConstructor<T, Inputs, Outputs>['nodedef']
 }
 
@@ -604,7 +607,7 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
   _tempmatrix: Matrix4
   parent?: WidgetBase
 
-  onclick?: (e: PointerEvent) => boolean | undefined;
+  onclick?: (e: PointerEvent) => boolean | void;
 
   ['constructor']: IWidgetConstructor<Inputs, Outputs, this> = this['constructor']
 
@@ -796,7 +799,7 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
     let ret: boolean | undefined = false
 
     if (this.onclick) {
-      ret = this.onclick(e)
+      ret = this.onclick(e) ?? false
     }
 
     if (child !== undefined && child !== this) {
@@ -993,8 +996,8 @@ export class WidgetBase<Inputs extends INodeSocketSet = {}, Outputs extends INod
       icon       : -1,
       flag       : 0,
       description: '',
-      selectMode : undefined, //force selectmode to this on widget create
-    }
+      //selectMode : SelMask.CAMERA, //force selectmode to this on widget create
+    } as IWidgetDef
   }
 }
 

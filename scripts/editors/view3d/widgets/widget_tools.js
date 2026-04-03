@@ -47,11 +47,12 @@ export class WidgetSceneCursor extends WidgetBase {
 
   static widgetDefine() {
     return {
-      uiName  : 'cursor',
-      typeName: 'cursor',
-      selMask : undefined,
-      flag    : WidgetFlags.IGNORE_EVENTS,
-      icon    : -1,
+      description: 'Cursor Widget',
+      uiName     : 'cursor',
+      typeName   : 'cursor',
+      selMask    : undefined,
+      flag       : WidgetFlags.IGNORE_EVENTS,
+      icon       : -1,
     }
   }
 
@@ -67,16 +68,18 @@ export class WidgetSceneCursor extends WidgetBase {
 
     this.matrix.load(view3d.cursor3D)
     this.matrix.scale(0.15, 0.15, 0.15)
+    return this
   }
 }
 
 export class NoneWidget extends WidgetBase {
   static widgetDefine() {
     return {
-      uiname: 'Disable widgets',
-      name  : 'none',
-      icon  : -1,
-      flag  : 0,
+      description: 'Disable Widget',
+      uiname     : 'Disable widgets',
+      name       : 'none',
+      icon       : -1,
+      flag       : 0,
     }
   }
 
@@ -109,8 +112,8 @@ export class TransformWidget extends WidgetBase {
   create(ctx, manager) {}
 
   /** space: see ConstraintSpaces */
-  getTransMatrix(space = undefined) {
-    if (!this.ctx || !this.ctx.view3d) {
+  getTransMatrix(space) {
+    if (!this.ctx?.view3d) {
       return new Matrix4()
     }
 
@@ -119,7 +122,7 @@ export class TransformWidget extends WidgetBase {
   }
 
   getTransAABB() {
-    if (!this.ctx || !this.ctx.view3d) {
+    if (!this.ctx?.view3d) {
       window.redraw_viewport()
 
       let d = 0.00001
@@ -136,7 +139,7 @@ export class TransformWidget extends WidgetBase {
   }
 
   getTransCenter() {
-    if (!this.ctx || !this.ctx.view3d) {
+    if (!this.ctx?.view3d) {
       window.redraw_viewport()
       return new Vector3()
     }
@@ -161,7 +164,9 @@ export class TransformWidget extends WidgetBase {
     return ret
   }
 
-  update(ctx) {}
+  update(ctx) {
+    return super.update(ctx)
+  }
 }
 
 export class ThreeAxisWidget extends TransformWidget {
@@ -213,7 +218,7 @@ export class ThreeAxisWidget extends TransformWidget {
     z.setMatrix(zmat)
 
     if (!this.plane_axes) {
-      return
+      return this
     }
 
     let px = this.plane_axes[0]
@@ -242,6 +247,8 @@ export class ThreeAxisWidget extends TransformWidget {
     px.setMatrix(xmat)
     py.setMatrix(ymat)
     pz.setMatrix(zmat)
+
+    return this
   }
 }
 
@@ -253,10 +260,11 @@ export class TranslateWidget extends ThreeAxisWidget {
 
   static widgetDefine() {
     return {
-      uiname: 'Move',
-      name  : 'translate',
-      icon  : Icons.TRANSLATE,
-      flag  : 0,
+      description: 'Move Widget',
+      uiname     : 'Move',
+      name       : 'translate',
+      icon       : Icons.TRANSLATE,
+      flag       : 0,
     }
   }
 
@@ -330,7 +338,7 @@ export class TranslateWidget extends ThreeAxisWidget {
       this.create(ctx, this.manager)
     }
 
-    super.update(ctx)
+    return super.update(ctx)
   }
 }
 
@@ -343,10 +351,11 @@ export class ScaleWidget extends ThreeAxisWidget {
 
   static widgetDefine() {
     return {
-      uiname: 'Scale',
-      name  : 'scale',
-      icon  : Icons.SCALE_WIDGET,
-      flag  : 0,
+      description: 'Scale Widget',
+      uiname     : 'Scale',
+      name       : 'scale',
+      icon       : Icons.SCALE_WIDGET,
+      flag       : 0,
     }
   }
 
@@ -383,7 +392,7 @@ export class ScaleWidget extends ThreeAxisWidget {
       this.startTool(2, localX, localY)
     }
 
-    this.update(ctx)
+    return this.update(ctx)
   }
 
   startTool(axis, localX, localY) {
@@ -408,7 +417,7 @@ export class ScaleWidget extends ThreeAxisWidget {
     }
 
     super.update(ctx)
-    return
+    return this
     let x = this.axes[0],
       y = this.axes[1],
       z = this.axes[2]
@@ -488,18 +497,18 @@ export class RotateWidget extends TransformWidget {
 
   static widgetDefine() {
     return {
-      uiname: 'Rotate',
-      name  : 'rotate',
-      icon  : Icons.ROTATE,
-      flag  : 0,
+      description: 'Rotate Widget',
+      uiname     : 'Rotate',
+      name       : 'rotate',
+      icon       : Icons.ROTATE,
+      flag       : 0,
     }
   }
 
   static nodedef() {
     return {
-      name   : 'rotate_widget',
-      inputs : {...super.nodedef().inputs},
-      outputs: {...super.nodedef().outputs},
+      ...super.nodedef(),
+      name: 'rotate_widget',
     }
   }
 
@@ -538,7 +547,7 @@ export class RotateWidget extends TransformWidget {
     this.ctx.api.execTool(this.ctx, op)
   }
 
-  draw(gl, manager, matrix = undefined) {
+  draw(gl, manager, matrix) {
     gl.depthMask(true)
     gl.enable(gl.DEPTH_TEST)
 
@@ -549,13 +558,14 @@ export class RotateWidget extends TransformWidget {
 
   update() {
     if (!this.ctx.view3d) {
-      return
+      return this
     }
 
     if (this._first) {
       this.create(this.ctx)
     }
     super.update()
+    return this
 
     let cent = this.getTransCenter().center
     let aabb = this.getTransAABB()
@@ -591,18 +601,18 @@ export class InflateWidget extends TransformWidget {
 
   static widgetDefine() {
     return {
-      uiname: 'Inflate',
-      name  : 'inflate',
-      icon  : Icons.INFLATE,
-      flag  : 0,
+      description: 'Inflate Widget',
+      uiname     : 'Inflate',
+      name       : 'inflate',
+      icon       : Icons.INFLATE,
+      flag       : 0,
     }
   }
 
   static nodedef() {
     return {
-      name   : 'inflate_widget',
-      inputs : {...super.nodedef().inputs},
-      outputs: {...super.nodedef().outputs},
+      ...super.nodedef(),
+      name: 'inflate_widget',
     }
   }
 
@@ -625,7 +635,7 @@ export class InflateWidget extends TransformWidget {
     this.execTool(this.ctx, macro)
   }
 
-  draw(gl, manager, matrix = undefined) {
+  draw(gl, manager, matrix) {
     gl.depthMask(true)
     gl.enable(gl.DEPTH_TEST)
 
@@ -636,13 +646,14 @@ export class InflateWidget extends TransformWidget {
 
   update() {
     if (!this.ctx.view3d) {
-      return
+      return this
     }
 
     if (this._first) {
       this.create(this.ctx)
     }
     super.update()
+    return this
 
     let cent = this.getTransCenter().center
     let tmat = this.getTransMatrix(ConstraintSpaces.NORMAL)
