@@ -1,9 +1,9 @@
 import {util, nstructjs} from '../path.ux/scripts/pathux.js'
 import {BrushSets, setBrushSet} from '../brush/brush'
-import type {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 import addonManager from '../addon/addon.js'
 
 import '../util/polyfill.d.ts'
+import { StructReader } from '../path.ux/scripts/util/nstructjs.js'
 
 declare let _appstate: any
 

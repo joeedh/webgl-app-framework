@@ -1,12 +1,12 @@
 import {BlockLoader, BlockLoaderAddUser, DataBlock, DataRef} from '../core/lib_api.js'
-import {nstructjs, util, color2css, Vector4, O} from '../path.ux/scripts/pathux.js'
+import {nstructjs, util, color2css, Vector4} from '../path.ux/scripts/pathux.js'
 import {Icons} from '../editors/icon_enum.js'
 import {DependSocket} from '../core/graphsockets.js'
 import {NodeFlags} from '../core/graph.js'
 import {Texture} from '../core/webgl.js'
 import {FBO} from '../core/fbo.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 import {OptionalIf} from '../util/optionalIf.js'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 export enum ImageFlags {
   SELECT = 1,

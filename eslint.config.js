@@ -25,7 +25,8 @@ export default defineConfig([
   {
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        projectService : true,
+        tsconfigRootDir: import.meta.dirname,
       },
     },
   },
@@ -64,6 +65,7 @@ export default defineConfig([
       '@typescript-eslint/prefer-optional-chain'          : 'error',
       '@typescript-eslint/related-getter-setter-pairs'    : 'error',
       '@typescript-eslint/no-empty-object-type'           : 'off',
+      'one-var'                                           : ['error', 'never'],
     },
   },
   eslintConfigPrettier,

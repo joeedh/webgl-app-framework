@@ -43,7 +43,7 @@ import bus, {BusTriggers} from '../../core/bus'
 import {Loop, Mesh} from '../../mesh/mesh'
 import {ToolContext, ViewContext} from '../../core/context'
 import {IUniformsBlock, ShaderProgram} from '../../core/webgl'
-import {StructReader} from '../../path.ux/scripts/path-controller/types/util/nstructjs'
+import {StructReader} from '../../path.ux/scripts/util/nstructjs'
 
 const _projtmp = new Vector2()
 
@@ -102,7 +102,8 @@ export function findnearestUV(
   }
   const uvAttr = new AttrRef<UVLayerElem>(cd_uv)
 
-  let mindis, minret
+  let mindis
+  let minret
   const p = uvp
 
   p[0] = localX
@@ -123,7 +124,7 @@ export function findnearestUV(
         const ret = findnearestRets.next()
         ret.l = l
         ret.uv.load(uv)
-        ret.dis = dis
+        ret.dist = dis
         ret.type = NearestUVTypes.VERTEX
         ret.z = li
 
@@ -314,7 +315,7 @@ export class UVEditor extends UIBase<ViewContext> {
   }
 
   on_mousedown(e: PointerEvent) {
-    if (haveModal(e)) {
+    if (haveModal()) {
       this.mdown = false
       return
     }
@@ -588,7 +589,7 @@ export class UVEditor extends UIBase<ViewContext> {
 
       line.colors(dl.color, dl.color)
       line.ids(2, 2)
-      line.uvs([0, 0], [1, 1])
+      line.uvs(new Vector2([0, 0]), new Vector2([1, 1]))
     }
 
     sm.draw(gl, uniforms, program)
@@ -684,6 +685,7 @@ export class UVEditor extends UIBase<ViewContext> {
       colors[k] = c
     }
 
+    const GREY = new Vector4([0.1, 0.1, 0.1, 0.7])
     function getColor(isSel?: boolean, isHigh?: boolean, isAct?: boolean, isPin?: boolean) {
       let mask = 0
 
@@ -700,14 +702,15 @@ export class UVEditor extends UIBase<ViewContext> {
       }
 
       if (mask === 0) {
-        return [0.1, 0.1, 0.1, 0.7]
+        return GREY
       }
 
       return colors[mask]
     }
 
     this._redraw_req = undefined
-    let island1, island2
+    let island1
+    let island2
 
     if (this.smesh) {
       this.smesh.reset(this.gl)
@@ -733,30 +736,40 @@ export class UVEditor extends UIBase<ViewContext> {
     //let quad = this.smesh2.quad([0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]);
     const bgf = 0.7
     const bg2f = 0.8
-    const bg = [bgf, bgf, bgf, 1.0]
-    const bg2 = [bg2f, bg2f, bg2f, 1.0]
+    const bg = new Vector4([bgf, bgf, bgf, 1.0])
+    const bg2 = new Vector4([bg2f, bg2f, bg2f, 1.0])
 
     const steps = 32
     for (let i = 0; i < steps * steps; i++) {
-      const ix = i % steps,
-        iy = ~~(i / steps)
+      const ix = i % steps
+      const iy = ~~(i / steps)
       const ds = 1.0 / steps
 
-      const x = ix / steps,
-        y = iy / steps
+      const x = ix / steps
+      const y = iy / steps
 
-      const quad = island1.quad([x, y, 0], [x, y + ds, 0], [x + ds, y + ds, 0], [x + ds, y, 0])
+      const quad = island1.quad(
+        new Vector3([x, y, 0]),
+        new Vector3([x, y + ds, 0]),
+        new Vector3([x + ds, y + ds, 0]),
+        new Vector3([x + ds, y, 0])
+      )
 
       const c = (ix + iy) & 1 ? bg : bg2
       quad.colors(c, c, c, c)
       quad.ids(1, 1, 1, 1)
     }
 
-    const white = [1, 1, 1, 1]
-    const quad = island2.quad([0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0])
+    const white = new Vector4([1, 1, 1, 1])
+    const quad = island2.quad(
+      new Vector3([0, 0, 0]),
+      new Vector3([0, 1, 0]),
+      new Vector3([1, 1, 0]),
+      new Vector3([1, 0, 0])
+    )
 
     quad.ids(1, 1, 1, 1)
-    quad.uvs([0, 0], [0, 1], [1, 1], [1, 0])
+    quad.uvs(new Vector2([0, 0]), new Vector2([0, 1]), new Vector2([1, 1]), new Vector2([1, 0]))
     quad.colors(white, white, white, white)
 
     const sm = this.smesh
@@ -774,7 +787,7 @@ export class UVEditor extends UIBase<ViewContext> {
     const lhighlight = mesh.loops.highlight
     const lactive = mesh.loops.active
 
-    const red = [1, 0, 0, 0.6]
+    const red = new Vector4([1, 0, 0, 0.6])
 
     for (const island of wr.islands) {
       for (const v of island) {
@@ -783,9 +796,9 @@ export class UVEditor extends UIBase<ViewContext> {
         let p = sm.point(v.co)
         p.ids(v.eid)
 
-        let sel = false,
-          high = false,
-          active = false
+        let sel = false
+        let high = false
+        let active = false
         let pin = false
 
         for (const l of wr.vertMap.get(v)!) {
@@ -861,9 +874,9 @@ export class UVEditor extends UIBase<ViewContext> {
       [0, 1],
       [1, 1],
       [1, 0],
-    ]
+    ].map((q) => new Vector2(q))
     for (let i = 0; i < 4; i++) {
-      this.project(quad[i] as unknown as IVector2)
+      this.project(quad[i])
       const p = quad[i]
 
       p[1] = this.glSize[1] - p[1]
@@ -883,9 +896,6 @@ export class UVEditor extends UIBase<ViewContext> {
     const dpi = UIBase.getDPI()
 
     const cell = 32
-    const offx = this.velpan.pos[0]
-    const offy = this.velpan.pos[1]
-    const scale = this.velpan.scale[0]
 
     g.resetTransform()
 
@@ -1020,8 +1030,10 @@ export class UVEditor extends UIBase<ViewContext> {
         }
 
         for (const list of f.lists) {
-          let lastp, lastinside
-          let firstp, firstinside
+          let lastp
+          let lastinside
+          let firstp
+          let firstinside
 
           for (const l of list) {
             let bad = l.flag & MeshFlags.HIDE
@@ -1064,7 +1076,7 @@ export class UVEditor extends UIBase<ViewContext> {
           }
 
           if (firstp) {
-            g.moveTo(lastp[0], lastp[1])
+            g.moveTo(lastp![0], lastp![1])
             g.lineTo(firstp[0], firstp[1])
             g.strokeStyle = 'rgba(0,0,0,0.5)'
             g.stroke()
@@ -1307,7 +1319,7 @@ export class SetImageTypeOp extends ImageBlockOp<{}, {}> {
       return
     }
 
-    image.convertTypeTo(this.inputs.type.getValue())
+    image.convertTypeTo(this.inputs.type.getValue() as number)
     image.flag |= ImageFlags.UPDATE
     image.update()
   }
@@ -1434,18 +1446,22 @@ export class ImageEditor extends Editor {
       enumDef: ImageTypes,
     })
 
-    dropbox.onselect = on_select
+    dropbox.on_select = on_select
 
     // pathux's after aspect annotation of methods
     // isn't very TS friendly
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error
     dropbox.update.after(() => {
-      let val
+      let val: number | undefined
 
       try {
-        val = dropbox.ctx.api.getValue(this.ctx, path)
+        val = dropbox.ctx.api.getValue<number>(this.ctx, path)
       } catch (error) {
+        dropbox.internalDisabled = true
+        return
+      }
+      if (val === undefined) {
         dropbox.internalDisabled = true
         return
       }
@@ -1470,8 +1486,12 @@ export class ImageEditor extends Editor {
     sidebar.clear()
 
     const tabs = sidebar.tabpanel!
-    let tab: Container<ViewContext>, panel: Container<ViewContext>, strip: Container<ViewContext>, path: string
-    let row: Container<ViewContext>, col: Container<ViewContext>
+    let tab: Container<ViewContext>
+    let panel: Container<ViewContext>
+    let strip: Container<ViewContext>
+    let path: string
+    let row: Container<ViewContext>
+    let col: Container<ViewContext>
 
     tab = tabs!.tab('Workspace')
     tab.useIcons(false)
@@ -1484,12 +1504,7 @@ export class ImageEditor extends Editor {
     row.useIcons(false)
 
     row.prop('scene.propMode')
-
-    // XXX figure out a better way to do this
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error
     col.prop('scene.propRadius').range = [0.1, 500.0]
-
     col.prop('scene.propIslandOnly')
 
     tab = tabs.tab('Image Settings')
@@ -1527,7 +1542,7 @@ export class ImageEditor extends Editor {
     })
 
     const sizeUpdate = function (this: UIBase<ViewContext>) {
-      const image = this.ctx.api.getValue(this.ctx, 'imageEditor.uvEditor.imageUser.image')
+      const image = this.ctx.api.getValue<ImageBlock>(this.ctx, 'imageEditor.uvEditor.imageUser.image')
       const enabled = image?.type === ImageTypes.GENERATED
 
       if (!!this.disabled !== !enabled) {
@@ -1578,7 +1593,7 @@ export class ImageEditor extends Editor {
 
     this.doOnce(this.regenSidebar)
 
-    const header = this.header
+    const header = this.header!
     let row = header.row().strip()
 
     const image_menu = ['image.open()|Open', Menu.SEP]
@@ -1603,9 +1618,6 @@ export class ImageEditor extends Editor {
     row = col.row()
     row.prop('scene.propEnabled')
     row.prop('scene.propMode')
-    // XXX figure out how to do this better
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    //@ts-expect-error
     row.prop('scene.propRadius').range = [0.1, 500.0]
   }
 
@@ -1654,8 +1666,8 @@ export class ImageEditor extends Editor {
     super.update()
 
     const uve = this.uvEditor
-    const w = this.owning_sarea.size[0]
-    const h = this.owning_sarea.size[1] - 100
+    const w = this.owning_sarea!.size[0]
+    const h = this.owning_sarea!.size[1] - 100
 
     uve.update()
 
@@ -1692,15 +1704,15 @@ export class ImageEditor extends Editor {
       this.glPos[1] = (screen.size[1] - r.bottom) * dpi
       this.glPos.floor()
 
-      this.glSize.load(this.size).mulScalar(dpi).ceil()
+      this.glSize.load(this.size!).mulScalar(dpi).ceil()
       //this.glSize[0] = ~~(r.width*dpi);
       //this.glSize[1] = ~~(r.height*dpi);
     } else {
-      this.glPos.load(this.pos)
-      this.glPos[1] = this.ctx.screen.size[1] - (this.pos[1] + this.size[1])
+      this.glPos.load(this.pos!)
+      this.glPos[1] = this.ctx.screen.size[1] - (this.pos![1] + this.size![1])
       this.glPos.mulScalar(dpi).floor()
 
-      this.glSize.load(this.size).mulScalar(dpi).ceil()
+      this.glSize.load(this.size!).mulScalar(dpi).ceil()
     }
 
     gl.enable(gl.SCISSOR_TEST)

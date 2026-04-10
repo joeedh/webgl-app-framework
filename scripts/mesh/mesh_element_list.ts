@@ -13,7 +13,7 @@ import {
 
 import {CDFlags, CustomData, CustomDataElem, CustomDataLayer, ICustomDataElemConstructor} from './customdata'
 import {Vertex, Loop, Face, Handle} from './mesh_types.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
+import { StructReader } from '../path.ux/scripts/util/nstructjs'
 
 const typemap = {
   [MeshTypes.VERTEX]: Vertex,
@@ -190,7 +190,7 @@ export class ElementListIter<type extends Element> {
   }
 }
 
-export class ElementList<type extends Element> {
+export class ElementList<Type extends Element> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -203,27 +203,27 @@ mesh.ElementList {
 }`
   )
 
-  selected: SelectionSet<type>
-  list: (type | undefined)[] = []
+  selected: SelectionSet<Type>
+  list: (Type | undefined)[] = []
   length = 0
   size = 0
   storeFreedElems = false
   customData = new CustomData()
-  local_eidMap = new Map<number, type>()
-  type: MeshTypes
+  local_eidMap = new Map<number, Type>()
+  Type: MeshTypes
   on_selected: (() => void) | undefined
-  highlight: type | undefined
-  active: type | undefined
-  iterstack = new MeshIterStack<ElementListIter<type>>(64)
+  highlight: Type | undefined
+  active: Type | undefined
+  iterstack = new MeshIterStack<ElementListIter<Type>>(64)
   idxmap = new Map<number, number>()
 
   private _update_req: boolean | undefined = undefined
   private _totAdded = 0
   private _totRemoved = 0
   private freelist: number[] = []
-  private free_elems = new util.Queue<type>(256)
-  private delayed_free_queue: type[] = []
-  private dqueue_idxmap: Map<type, number> = new Map()
+  private free_elems = new util.Queue<Type>(256)
+  private delayed_free_queue: Type[] = []
+  private dqueue_idxmap: Map<Type, number> = new Map()
 
   constructor(type: MeshTypes, storeFreedElems = false) {
     if (!STORE_DELAY_CACHE_INDEX) {
@@ -235,8 +235,8 @@ mesh.ElementList {
     }
     this.iterstack.cur = 0
 
-    this.type = type
-    this.selected = new SelectionSet<type>()
+    this.Type = type
+    this.selected = new SelectionSet<Type>()
     this.on_selected = undefined
     this.highlight = this.active = undefined
   }
@@ -257,19 +257,19 @@ mesh.ElementList {
     this.customData = v
   }
 
-  [Symbol.iterator](): ElementListIter<type> {
+  [Symbol.iterator](): ElementListIter<Type> {
     //console.log(this.type, "iterator read");
 
     if (this.iterstack.cur >= this.iterstack.length) {
       console.warn('deep nesting of ElementListIter detected; growing cache stack by one', this.iterstack.cur)
-      this.iterstack.push(new ElementListIter<type>(this))
+      this.iterstack.push(new ElementListIter<Type>(this))
     }
 
     return this.iterstack[this.iterstack.cur++].init(this)
   }
 
-  filter(f: (item: type) => boolean): type[] {
-    const list: type[] = []
+  filter(f: (item: Type) => boolean): Type[] {
+    const list: Type[] = []
 
     for (const item of this) {
       if (f(item)) list.push(item)
@@ -278,8 +278,8 @@ mesh.ElementList {
     return list
   }
 
-  map<MapType>(f: (item: type) => MapType): MapType[] {
-    const list = new Array(this.length)
+  map<MapType>(f: (item: Type) => MapType): MapType[] {
+    const list = new Array<MapType>(this.length)
     let i = 0
 
     for (const item of this) {
@@ -289,7 +289,7 @@ mesh.ElementList {
     return list
   }
 
-  reduce<Initial>(f: (val: Initial, item: type, i: number, list: this) => Initial, initial: Initial): Initial {
+  reduce<Initial>(f: (val: Initial, item: Type, i: number, list: this) => Initial, initial: Initial): Initial {
     let i = 0
 
     if (initial === undefined) {
@@ -306,7 +306,7 @@ mesh.ElementList {
     return initial
   }
 
-  swap(a: type, b: type): this {
+  swap(a: Type, b: Type): this {
     const i1 = this.indexOf(a)
     const i2 = this.indexOf(b)
 
@@ -352,7 +352,7 @@ mesh.ElementList {
     }
   }
 
-  setEID(e: type, neweid: number) {
+  setEID(e: Type, neweid: number) {
     const sel = this.selected.has(e) //e.flag & MeshFlags.SELECT;
 
     if (sel) {
@@ -375,7 +375,7 @@ mesh.ElementList {
     return this
   }
 
-  _push(e: type): void {
+  _push(e: Type): void {
     let i
 
     /*
@@ -404,7 +404,7 @@ mesh.ElementList {
     this.length++
   }
 
-  push(e: type): this {
+  push(e: Type): this {
     const e2 = this.local_eidMap.get(e.eid)
 
     if (e2) {
@@ -426,7 +426,7 @@ mesh.ElementList {
     return this
   }
 
-  indexOf(e: type): number {
+  indexOf(e: Type): number {
     const idx = this.idxmap.get(e.eid)
     return idx !== undefined ? idx : -1
   }
@@ -445,7 +445,7 @@ mesh.ElementList {
     })
   }
 
-  _remove(e: type, no_error = false): void {
+  _remove(e: Type, no_error = false): void {
     const i = this.indexOf(e)
 
     this.local_eidMap.delete(e.eid)
@@ -495,7 +495,7 @@ mesh.ElementList {
     }
   }
 
-  forEach(cb: (item: type) => void, thisvar: any): void {
+  forEach(cb: (item: Type) => void, thisvar: any): void {
     for (const item of this) {
       if (thisvar) {
         cb.call(thisvar, item)
@@ -519,7 +519,7 @@ mesh.ElementList {
     this.idxmap = new Map()
 
     for (const item of list) {
-      this._push(item as type)
+      this._push(item as Type)
     }
 
     this.selected.clear()
@@ -533,7 +533,7 @@ mesh.ElementList {
     return this
   }
 
-  remove(elem: type, no_error = false): this {
+  remove(elem: Type, no_error = false): this {
     if (elem.eid < 0) {
       if (no_error) {
         console.error('elem was already deleted')
@@ -578,7 +578,7 @@ mesh.ElementList {
     return this
   }
 
-  _fixcd(dest: type): void {
+  _fixcd(dest: Type): void {
     if (dest.customData.length !== this.customData.flatlist.length) {
       console.error('customdata error! trying to fix. . .', dest.eid)
 
@@ -600,7 +600,7 @@ mesh.ElementList {
     }
   }
 
-  customDataInterp(dest: type, sources: type[], ws: number[]): void {
+  customDataInterp(dest: Type, sources: Type[], ws: number[]): void {
     const sources2 = getArrayTemp<CustomDataElem<any>>(sources.length)
 
     this._fixcd(dest)
@@ -664,9 +664,9 @@ mesh.ElementList {
     }
   }
 
-  setSelect(e: type, state: boolean): this {
-    if (e.type !== this.type) {
-      throw new Error('wrong type ' + e.type + ' expected ' + this.type)
+  setSelect(e: Type, state: boolean): this {
+    if (e.type !== this.Type) {
+      throw new Error('wrong type ' + e.type + ' expected ' + this.Type)
     }
 
     if (!!state !== !!(e.flag & MeshFlags.SELECT)) {
@@ -690,18 +690,18 @@ mesh.ElementList {
     return this
   }
 
-  setHighlight(e: type | undefined): this {
+  setHighlight(e: Type | undefined): this {
     this.highlight = e
     return this
   }
 
-  setActive(e: type | undefined): this {
+  setActive(e: Type | undefined): this {
     this.active = e
     return this
   }
 
-  _get_compact(): type[] {
-    const ret: type[] = []
+  _get_compact(): Type[] {
+    const ret: Type[] = []
 
     for (const item of this) {
       ret.push(item)
@@ -815,7 +815,7 @@ mesh.ElementList {
   prealloc(count: number): this {
     // this is also a bit stupid for TS
     // @ts-ignore
-    const cls = typemap[this.type] as unknown as new () => type
+    const cls = typemap[this.Type] as unknown as new () => Type
 
     for (let i = 0; i < count; i++) {
       const elem = new cls()
@@ -883,7 +883,7 @@ mesh.ElementList {
     }
   }
 
-  alloc(cls: new () => type): type {
+  alloc(cls: new () => Type): Type {
     //add some pad so mesh log code works properly,
     //which keeps freed elements around briefly (but not instananeously)
     if (this.free_elems.length > 512) {
@@ -916,7 +916,7 @@ mesh.ElementList {
           throw new MeshError('Mesh corruption error')
         }
 
-        this.delayed_free_queue[index] = undefined as unknown as type
+        this.delayed_free_queue[index] = undefined as unknown as Type
 
         ret._free()
       }
@@ -1054,7 +1054,7 @@ mesh.ElementList {
 
     const cdata = this.customData
     const layers = cdata.flatlist
-    const map = new Array(layers.length)
+    const map = new Array<number | undefined>(layers.length)
     let j = 0
 
     for (let i = 0; i < layers.length; i++) {

@@ -1,4 +1,4 @@
-//import {ContextOverlay, Context} from "./context2.js";
+import * as ui_noteframe from '../path.ux/scripts/widgets/ui_noteframe'
 import '../path.ux/scripts/util/struct.js'
 import {NodeEditor} from '../editors/node/NodeEditor.js'
 import {NodeViewer} from '../editors/node/NodeEditor_debug.js'
@@ -11,7 +11,7 @@ import {Scene} from '../scene/scene'
 import {BlockSet, DataBlock, DataRef, Library} from './lib_api'
 import {DebugEditor} from '../editors/debug/DebugEditor.js'
 import {MenuBarEditor} from '../editors/menu/MainMenu.js'
-import {Context, ContextFlags, ContextOverlay, IAreaConstructor, MakeContextType} from '../path.ux/scripts/pathux.js'
+import {Context, ILockableCtx, toLockedImpl} from '../path.ux/scripts/pathux.js'
 import {SavedToolDefaults, Screen, UIBase} from '../path.ux/scripts/pathux.js'
 import {PropsEditor} from '../editors/properties/PropsEditor.js'
 import {MaterialEditor} from '../editors/node/MaterialEditor.js'
@@ -24,12 +24,116 @@ const passthrus = new Set<string | number | symbol>(['datalib', 'gl', 'graph', '
 import bus from './bus'
 import type {AppState} from './appstate.js'
 import {Material} from './material'
+import {View3D} from '../editors/all.js'
+import { SceneObject } from '../sceneobject/sceneobject';
 
 type AppLibrary = Library & {material: BlockSet<Material>; scene: BlockSet<Scene>}
 
-export class BaseOverlay extends ContextOverlay<AppState> {
+function saveProperty(ctx: any, key: string | symbol | number) {
+  const val = ctx[key]
+
+  if (passthrus.has(key) || val instanceof UIBase || val instanceof Screen) {
+    return new KeyPassThruProp(key)
+  }
+
+  //console.log("saveProperty called", key);
+  return saveProperty_intern(ctx, ctx[key], key)
+}
+
+function saveProperty_intern(ctx: any, val: any, owning_key: string | symbol | number): any {
+  if (typeof val !== 'object') return val
+
+  if (typeof val === 'function' && !val[Symbol.iterator]) {
+    return val
+  }
+  if (val instanceof DataBlock) {
+    return DataRef.fromBlock(val)
+  }
+
+  // handle iterator methods
+  let isiter = typeof val === 'function' || typeof val === 'object'
+  isiter = isiter && val[Symbol.iterator]
+
+  if (isiter) {
+    const ret = []
+    for (const item of val) {
+      ret.push(saveProperty_intern(ctx, item, owning_key))
+    }
+    return ret
+  }
+
+  console.warn('Warning, unknown data in ToolContext.prototype.savePropertyIntern()', owning_key)
+  return val
+}
+
+function loadProperty(ctx: any, key: symbol | string | number, data: any) {
+  if (typeof data !== 'object') {
+    return data
+  }
+
+  if (data instanceof KeyPassThruProp) {
+    return ctx[data.key]
+  } else if (data instanceof DataRef) {
+    return ctx.state.datalib.get(data)
+  } else if (data.constructor === Array) {
+    // stupid TS won't let us manipulate any[] arrays
+    const ret = [] as unknown as Record<number, any>
+    ;(ret as any).length = data.length
+
+    for (let i = 0; i < data.length; i++) {
+      ret[i] = loadProperty(ctx, i, (data as unknown as Record<number, any>)[i])
+    }
+
+    return ret
+  } else {
+    return data
+  }
+}
+
+class ContextExtraAPI implements ILockableCtx {
+  state: AppState
+
+  constructor(state: AppState) {
+    this.state = state
+  }
+
+  toLocked = toLockedImpl
+  saveProperty = saveProperty
+  loadProperty = loadProperty
+
+  play() {
+    this.state.playing = true
+  }
+
+  stop() {
+    this.state.playing = false
+  }
+
+  message(msg: string, timeout = 2500) {
+    return ui_noteframe.message(this.state.screen, msg, timeout)
+  }
+
+  error(msg: string, timeout = 2500) {
+    return ui_noteframe.error(this.state.screen, msg, timeout)
+  }
+
+  warning(msg: string, timeout = 2500) {
+    return ui_noteframe.warning(this.state.screen, msg, timeout)
+  }
+
+  progressBar(msg: string, percent: number, color: string, timeout = 1000) {
+    return ui_noteframe.progbarNote(this.state.screen, msg, percent, color, timeout)
+  }
+}
+
+export class ToolContext extends ContextExtraAPI {
   constructor(appstate: AppState) {
     super(appstate)
+  }
+
+  reset() {
+    // do nothing
+    console.warn('ctx.reset called')
   }
 
   get messagebus() {
@@ -112,7 +216,7 @@ export class BaseOverlay extends ContextOverlay<AppState> {
   }
 
   copy() {
-    return new BaseOverlay(this.state)
+    return new ToolContext(this.state)
   }
 
   get material() {
@@ -140,6 +244,9 @@ export class BaseOverlay extends ContextOverlay<AppState> {
     return scene !== undefined ? scene.toolmode : undefined
   }
 
+  get screen() {
+    return this.state.screen
+  }
   get toolstack() {
     return this.state.toolstack
   }
@@ -250,20 +357,14 @@ export class BaseOverlay extends ContextOverlay<AppState> {
     })()
   }
 
-  static contextDefine() {
-    return {
-      name: 'base',
-    }
-  }
-
   /**returns selected mesh objects,
    ignoring objects that use the same mesh
    instance (only one will get yielded in that case)
    */
-  get selectedMeshObjects() {
+  get selectedMeshObjects(): Iterable<SceneObject> {
     const this2 = this
     return (function* () {
-      const visit = new util.set()
+      const visit = new Set<unknown>()
 
       for (const ob of this2.selectedObjects) {
         let bad = ob.data === undefined
@@ -295,22 +396,14 @@ export class BaseOverlay extends ContextOverlay<AppState> {
     scene.selectMask = val
   }
 }
-Context.register(BaseOverlay)
 
-export class ViewOverlay extends ContextOverlay<AppState> {
+export class ViewContext extends ToolContext {
   constructor(state: AppState) {
     super(state)
   }
 
   validate() {
     return true
-  }
-
-  static contextDefine() {
-    return {
-      name: 'base',
-      flag: ContextFlags.IS_VIEW,
-    }
   }
 
   get camera() {
@@ -359,32 +452,32 @@ export class ViewOverlay extends ContextOverlay<AppState> {
   }
 
   copy() {
-    return new ViewOverlay(this.state)
+    return new ViewContext(this.state)
   }
 
   get view3d(): View3D {
     // TODO: remove casting after TS-ification
-    return getContextArea(View3D as unknown as IAreaConstructor)
+    return getContextArea<View3D>(View3D)
   }
 
   get propsbar() {
     // TODO: remove casting after TS-ification
-    return getContextArea(PropsEditor as unknown as IAreaConstructor)
+    return getContextArea<PropsEditor>(PropsEditor)
   }
 
   get menubar() {
     // TODO: remove casting after TS-ification
-    return getContextArea(MenuBarEditor as unknown as IAreaConstructor)
+    return getContextArea<MenuBarEditor>(MenuBarEditor)
   }
 
   get resbrowser() {
     // TODO: remove casting after TS-ification
-    return getContextArea(ResourceBrowser as unknown as IAreaConstructor)
+    return getContextArea<ResourceBrowser>(ResourceBrowser)
   }
 
   get debugEditor() {
     // TODO: remove casting after TS-ification
-    return getContextArea(DebugEditor as unknown as IAreaConstructor)
+    return getContextArea<DebugEditor>(DebugEditor)
   }
 
   get gl() {
@@ -393,17 +486,17 @@ export class ViewOverlay extends ContextOverlay<AppState> {
 
   get nodeEditor() {
     // TODO: remove casting after TS-ification
-    return getContextArea(NodeEditor as unknown as IAreaConstructor)
+    return getContextArea<NodeEditor>(NodeEditor)
   }
 
   get shaderEditor() {
     // TODO: remove casting after TS-ification
-    return getContextArea(MaterialEditor as unknown as IAreaConstructor)
+    return getContextArea<MaterialEditor>(MaterialEditor)
   }
 
   get nodeViewer() {
     // TODO: remove casting after TS-ification
-    return getContextArea(NodeViewer as unknown as IAreaConstructor)
+    return getContextArea<NodeViewer>(NodeViewer)
   }
 
   get editors() {
@@ -420,8 +513,6 @@ export class ViewOverlay extends ContextOverlay<AppState> {
 
     return ret
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   editors_load(ctx: this, data: any) {
     return data
   }
@@ -433,13 +524,9 @@ export class ViewOverlay extends ContextOverlay<AppState> {
   get editor() {
     return Editor.getActiveArea()
   }
-
-  get screen() {
-    return this.state.screen
-  }
 }
 
-Context.register(ViewOverlay)
+Context.register(ViewContext)
 
 class KeyPassThruProp<K extends string | number | symbol> {
   key: K
@@ -448,127 +535,3 @@ class KeyPassThruProp<K extends string | number | symbol> {
     this.key = key
   }
 }
-
-class _ToolContext<
-  ExtraOverlay extends ContextOverlay<AppState> = ContextOverlay<AppState>, //
-> extends Context<AppState> {
-  private _state: AppState
-
-  constructor(state: AppState) {
-    super(state)
-    this._state = state
-    this.reset()
-  }
-
-  play() {
-    this.state.playing = true
-  }
-
-  stop() {
-    this.state.playing = false
-  }
-
-  set state(val: AppState) {
-    console.warn('context.state was set')
-    this._state = val
-  }
-
-  get state() {
-    return this._state
-  }
-
-  saveProperty(key: keyof this) {
-    const val = this[key]
-
-    if (passthrus.has(key) || val instanceof UIBase || val instanceof Screen) {
-      return new KeyPassThruProp<keyof this>(key)
-    }
-
-    //console.log("saveProperty called", key);
-    return this.saveProperty_intern(this[key], key)
-  }
-
-  saveProperty_intern(val: any, owning_key: string | symbol | number): any {
-    if (owning_key === 'editors') {
-      //let editors = val;
-      //return val;
-    }
-
-    if (typeof val !== 'object') return val
-
-    if (typeof val === 'function' && !val[Symbol.iterator]) {
-      return val
-    }
-
-    if (val instanceof DataBlock) {
-      return DataRef.fromBlock(val)
-    }
-
-    let isiter = typeof val === 'function' || typeof val === 'object'
-    isiter = isiter && val[Symbol.iterator]
-
-    if (isiter) {
-      const ret = []
-
-      for (const item of val) {
-        ret.push(this.saveProperty_intern(item, owning_key))
-      }
-
-      return ret
-    }
-
-    console.warn('Warning, unknown data in ToolContext.prototype.savePropertyIntern()', owning_key)
-    return val
-  }
-
-  loadProperty(ctx: this, key: symbol | string | number, data: any) {
-    return this.loadProperty_intern(ctx, data)
-  }
-
-  loadProperty_intern(ctx: this, data: KeyPassThruProp<keyof this> | DataRef | Array<any>) {
-    if (typeof data !== 'object') {
-      return data
-    }
-
-    if (data instanceof KeyPassThruProp) {
-      return ctx[data.key]
-    } else if (data instanceof DataRef) {
-      return ctx.state.datalib.get(data)
-    } else if (data.constructor === Array) {
-      const ret = new Array(data.length)
-
-      for (let i = 0; i < data.length; i++) {
-        ret[i] = this.loadProperty_intern(ctx, data[i])
-      }
-
-      return ret
-    } else {
-      return data
-    }
-  }
-
-  reset(have_new_file = false) {
-    super.reset(have_new_file)
-
-    this.pushOverlay(new BaseOverlay(this.state))
-  }
-}
-
-export const ToolContext = _ToolContext
-export type ToolContext = MakeContextType<_ToolContext, BaseOverlay>
-
-class _ViewContext extends _ToolContext<ViewOverlay> {
-  constructor(state: AppState) {
-    super(state) //ToolContext constructor will call .reset() for us
-  }
-
-  reset(have_new_file = false) {
-    super.reset(have_new_file)
-
-    this.pushOverlay(new ViewOverlay(this.state))
-  }
-}
-
-export const ViewContext = _ViewContext
-export type ViewContext = MakeContextType<_ViewContext, ViewOverlay & BaseOverlay>
-import {View3D} from '../editors/view3d/view3d'

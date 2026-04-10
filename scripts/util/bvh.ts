@@ -10,6 +10,8 @@ import {
   IVectorOrHigher,
 } from '../path.ux/scripts/pathux.js'
 
+import '../path.ux/scripts/global.d.ts'
+
 const DYNAMIC_SHUFFLE_NODES = false //attempt fast debalancing of tree dynamically
 
 import * as math from './math.js'
@@ -28,7 +30,7 @@ import {getFaceSets} from '../mesh/mesh_facesets.js'
 import {FaceSetElem, IntElem, Vector3LayerElem} from '../mesh/mesh_customdata'
 import {Mesh} from '../mesh/mesh'
 
-const safetimes = new Array(32).map((f) => 0)
+const safetimes = new Array<number>(32).map((f) => 0)
 
 export interface IBVHCreateArgs {
   storeVerts?: boolean
@@ -41,14 +43,12 @@ export interface IBVHCreateArgs {
   onCreate?: (bvh: BVH) => void
 }
 
-function safeprint(...args: any[]) {
-  const id = arguments[0]
-
+function safeprint(id: number, ...args: any[]) {
   if (util.time_ms() - safetimes[id] < 200) {
     return
   }
 
-  console.warn(...arguments)
+  console.warn(id, ...args)
   safetimes[id] = util.time_ms()
 }
 
@@ -204,7 +204,7 @@ const addtri_tempco2 = new Vector3()
 const addtri_tempco3 = new Vector3()
 const addtri_tempco4 = new Vector3()
 const addtri_tempco5 = new Vector3()
-const addtri_stack = new Array(2048)
+const addtri_stack = new Array<BVHNode>(2048)
 
 const lastt = util.time_ms()
 
@@ -1536,7 +1536,7 @@ export class BVHNode<
     let ok = false
 
     for (const tri of this.allTris) {
-      const cp = closest_point_on_tri(p, tri.v1, tri.v2, tri.v3, tri.no)
+      const cp = closest_point_on_tri(p, tri.v1.co, tri.v2.co, tri.v3.co, tri.no)
 
       const dis = cp.dist
 
@@ -1673,7 +1673,7 @@ export class BVHNode<
 
           //push node back onto stack if split was successful
           if (!node.leaf) {
-            stack[si++] = test > 1 ? this.bvh.root : node
+            stack[si++] = test > 1 ? this.bvh.root! : node!
             continue
           }
         }
@@ -1693,7 +1693,7 @@ export class BVHNode<
   addWireVert(v: IBVHVertex) {
     if (!this.leaf) {
       for (const c of this.children!) {
-        if (math.point_in_aabb(v, c.min, c.max)) {
+        if (math.point_in_aabb(v.co, c.min, c.max)) {
           c.addWireVert(v)
         }
       }
@@ -1818,7 +1818,7 @@ export class BVHNode<
     const n = cd_node.get(v)
 
     if (isDeforming) {
-      if (!n.node && math.point_in_hex(v.co, this.boxverts)) {
+      if (!n.node && math.point_in_hex(v.co, this.boxverts!)) {
         this.uniqueVerts!.add(v)
         n.node = this
       } else {
@@ -3313,7 +3313,7 @@ export class BVH<
     } else {
       const ltris = mesh.loopTris!
 
-      const order = new Array(ltris.length / 3)
+      const order = new Array<number>(ltris.length / 3)
 
       for (let i = 0; i < ltris.length; i += 3) {
         order[~~(i / 3)] = i
@@ -3681,11 +3681,11 @@ export class BVH<
     const loops = Array.from(mesh.loops)
     const handles = Array.from(mesh.handles)
 
-    const newvs = new Array(verts.length)
-    const newhs = new Array(handles.length)
-    const newes = new Array(edges.length)
-    const newls = new Array(loops.length)
-    const newfs = new Array(faces.length)
+    const newvs = new Array<Vertex>(verts.length)
+    const newhs = new Array<Handle>(handles.length)
+    const newes = new Array<Edge>(edges.length)
+    const newls = new Array<Loop>(loops.length)
+    const newfs = new Array<Face>(faces.length)
 
     const elists = new Map(mesh.elists)
 
@@ -3872,7 +3872,7 @@ export class BVH<
     }
 
     for (const elist of mesh.getElemLists()) {
-      const oelist = elists.get(elist.type)!
+      const oelist = elists.get(elist.Type)!
 
       let i = 0
       const act = oelist.active
@@ -4610,7 +4610,7 @@ export class BVH<
   _getTri1(id: number, tri_idx: number, v1: IBVHVertex, v2: IBVHVertex, v3: IBVHVertex) {
     const tri = new BVHTri(id, tri_idx)
 
-    tri.area = math.tri_area(v1, v2, v3) + 0.00001
+    tri.area = math.tri_area(v1.co, v2.co, v3.co) + 0.00001
 
     tri.v1 = v1
     tri.v2 = v2

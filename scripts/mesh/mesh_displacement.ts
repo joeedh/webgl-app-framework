@@ -15,7 +15,7 @@ lengths using the same smoothed coordinates.
 */
 
 import {CDFlags, CustomDataLayer, LayerSet, LayerSettingsBase} from './customdata.js'
-import {nstructjs, util, DataAPI, DataStruct} from '../path.ux/scripts/pathux.js'
+import {nstructjs, util, DataAPI, DataStruct, Number3} from '../path.ux/scripts/pathux.js'
 import {CustomDataElem} from './customdata'
 import {Vector3, Matrix4} from '../util/vectormath.js'
 
@@ -24,7 +24,7 @@ import {paramizeMesh, ParamizeModes, ParamVert} from './mesh_paramizer'
 import {BVHVertFlags, MDynVert} from '../util/bvh.js'
 import {getCornerFlag, getFaceSetsAttr, getSmoothBoundFlag} from './mesh_facesets.js'
 import {AttrRef, IntElem, Mesh, Vector2LayerElem, Vector3LayerElem, Vertex} from './mesh'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
+import { StructReader } from '../path.ux/scripts/util/nstructjs.js'
 
 function smoothno(v: Vertex, dv: DispLayerVert) {
   dv.no.load(v.no)
@@ -952,7 +952,8 @@ export class DispLayerVert extends CustomDataElem<Vector3, DispLayerVert, DispLa
   hash(snapLimit = 0.0001) {
     let x = 0
 
-    for (let i = 0; i < 3; i++) {
+    for (let _i = 0; _i < 3; _i++) {
+      let i = _i as Number3
       x ^= this.worldco[i] * 1024 * 32
       x ^= this.tan[i] * 3024 * 32
       x ^= this.no[i] * 2024 * 32
@@ -1127,7 +1128,7 @@ export function initDispLayers(mesh: Mesh) {
 
         for (const v of mesh.verts) {
           const dv = v.customData[cd_disp] as DispLayerVert
-          dv._worldco.load(v)
+          dv._worldco.load(v.co)
         }
 
         for (const v of mesh.verts) {
@@ -1231,7 +1232,7 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
   if (activeLayerIndex === undefined) {
     actlayer = layers.active!
   } else {
-    actlayer = mesh.verts.customData.flatlist[activeLayerIndex]
+    actlayer = mesh.verts.customData.flatlist[activeLayerIndex] as CustomDataLayer<DispLayerVert>
   }
 
   let update = false
@@ -1300,7 +1301,7 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
         //}
         //}
       } else {
-        dv2.worldco.load(v)
+        dv2.worldco.load(v.co)
       }
 
       dv2._worldco.load(dv2.worldco)
@@ -1327,7 +1328,7 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
         const t = dv1._worldco.dot(dv1._worldco)
         if (isNaN(t) || !isFinite(t)) {
           console.warn('NaN!', v, dv1)
-          dv1._worldco.load(v)
+          dv1._worldco.load(v.co)
         }
 
         v.load(dv1._worldco)
@@ -1420,7 +1421,6 @@ export function updateDispLayers(mesh: Mesh, activeLayerIndex?: number) {
   }
 
   for (const layer of layers) {
-    const cd_disp = layer.index
     const settings = layer.getTypeSettings<DispLayerSettings>()
 
     settings.lastUpdateGen = settings.updateGen

@@ -1,4 +1,4 @@
-import {DataAPI, IVector, IVector4, IVectorOrHigher, nstructjs, util} from '../../path.ux/scripts/pathux.js'
+import {DataAPI, IVector4, IVectorOrHigher, nstructjs, util} from '../../path.ux/scripts/pathux.js'
 
 import {spawnToolSearchMenu} from '../editor_base'
 
@@ -20,7 +20,7 @@ import {UIBase, css2color} from '../../path.ux/scripts/core/ui_base.js'
 import * as view3d_shaders from '../../shaders/shaders.js'
 import {loadShader} from '../../shaders/shaders.js'
 import {SimpleMesh, LayerTypes} from '../../core/simplemesh'
-import {Vector3, Vector2, Vector4, Matrix4} from '../../util/vectormath.js'
+import {Vector3, Vector2, Vector4, Matrix4, Vector3Like} from '../../util/vectormath.js'
 import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js'
 import './tools/mesheditor'
 import {GPUSelectBuffer} from './view3d_select.js'
@@ -41,9 +41,10 @@ import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw.js'
 import {WidgetBase} from './widgets/widgets.js'
 import {OptionalIf, OptionalIfNot} from '../../util/optionalIf.js'
 import {ViewContext} from '../../core/context.js'
-import {StructReader} from '../../path.ux/scripts/path-controller/types/util/nstructjs.js'
 import {Mesh} from '../../mesh/mesh.js'
 import {BusMessage} from '../../core/bus.js'
+import {Number3} from '../../path.ux/scripts/path-controller/old_types/controller.js'
+import {StructReader} from '../../path.ux/scripts/util/nstructjs.js'
 
 export interface ITempText {
   co: Vector3
@@ -57,13 +58,12 @@ const unproj_temps = util.cachering.fromConstructor(Vector4, 32)
 const curtemps = util.cachering.fromConstructor(Vector3, 32)
 
 declare global {
+  // @ts-ignore
   interface Window {
-    _gl: WebGL2RenderingContext | undefined
     _getShaderSource: (shader: string) => string
   }
   let _gl: WebGL2RenderingContext | undefined
 }
-window._gl = undefined
 
 export function getWebGL() {
   if (!window._gl) {
@@ -73,9 +73,9 @@ export function getWebGL() {
   return window._gl
 }
 
-window._getShaderSource = function (shader: string) {
-  return window._gl!.getExtension('WEBGL_debug_shaders')!.getTranslatedShaderSource(shader)
-}
+//window._getShaderSource = function (shader: string) {
+//  return window._gl!.getExtension('WEBGL_debug_shaders')!.getTranslatedShaderSource(shader)
+//}
 
 export function initWebGL() {
   console.warn('initWebGL called')
@@ -151,7 +151,7 @@ export function initWebGL() {
         ob.onContextLost(e)
       }
 
-      for (const sarea of _appstate.screen.sareas) {
+      for (const sarea of _appstate.screen!.sareas) {
         for (const area of sarea.editors) {
           if (area instanceof View3D) {
             area.onContextLost(e as WebGLContextEvent)
@@ -561,7 +561,7 @@ View3D {
   viewSelected(ob?: SceneObject) {
     //let cent = this.getTransCenter();
     let cent = new Vector3()
-    let aabb: [IVectorOrHigher<3, Vector3>, IVectorOrHigher<3, Vector3>] | undefined
+    let aabb: [Vector3Like, Vector3Like] | undefined
 
     if (ob === undefined) {
       if (this.ctx.scene !== undefined) {
@@ -604,7 +604,7 @@ View3D {
     let dis = 0.001
 
     for (let i = 0; i < 3; i++) {
-      const d = aabb[1][i] - aabb[0][i]
+      const d = aabb[1][i as Number3] - aabb[0][i as Number3]
       dis = Math.max(dis, d)
     }
 
@@ -728,7 +728,7 @@ View3D {
     tmp[1] = co[1]
 
     if (co.length > 2) {
-      tmp[2] = co[2]
+      tmp[2] = co[2]!
     }
 
     tmp[3] = 1.0
@@ -742,8 +742,8 @@ View3D {
 
     const w = tmp[3]
 
-    tmp[0] = (tmp[0] * 0.5 + 0.5) * this.size[0]
-    tmp[1] = (1.0 - (tmp[1] * 0.5 + 0.5)) * this.size[1]
+    tmp[0] = (tmp[0] * 0.5 + 0.5) * this.size![0]
+    tmp[1] = (1.0 - (tmp[1] * 0.5 + 0.5)) * this.size![1]
 
     for (let i = 0; i < co.length; i++) {
       co[i] = tmp[i]
@@ -755,15 +755,15 @@ View3D {
   unproject(co: Vector2 | Vector3 | Vector4, imat?: Matrix4) {
     const tmp = unproj_temps.next().zero()
 
-    tmp[0] = (co[0] / this.size[0]) * 2.0 - 1.0
-    tmp[1] = (1.0 - co[1] / this.size[1]) * 2.0 - 1.0
+    tmp[0] = (co[0] / this.size![0]) * 2.0 - 1.0
+    tmp[1] = (1.0 - co[1] / this.size![1]) * 2.0 - 1.0
 
     if (co.length > 2) {
-      tmp[2] = co[2]
+      tmp[2] = co[2]!
     }
 
     if (co.length > 3) {
-      tmp[3] = co[3]
+      tmp[3] = co[3]!
     } else {
       tmp[3] = 1.0
     }
@@ -814,11 +814,10 @@ View3D {
     }
 
     this.makeHeader(this.container)
+    let header = this.header!
 
     //this.header.inherit_packflag |= PackFlags.SMALL_ICON;
-    this.header.useIcons()
-
-    let header = this.header
+    header.useIcons()
 
     const rows = header.col()
 
@@ -834,6 +833,11 @@ View3D {
     const toolmode = this.ctx.toolmode
 
     if (toolmode !== undefined) {
+      toolmode.update()
+      // propagate ctx into the widget tree if toolmode provided a modified one
+      if (toolmode.ctx !== header.ctx) {
+        header.ctx = toolmode.ctx
+      }
       toolmode.constructor.buildHeader(header, makeRow)
     } else {
       this.doOnce(this.rebuildHeader)
@@ -1172,8 +1176,8 @@ View3D {
       x = x - r.x // dpi;
       y = y - r.y // dpi;
     } else {
-      x -= this.pos[0]
-      y -= this.pos[1]
+      x -= this.pos![0]
+      y -= this.pos![1]
     }
 
     return new Vector2().loadXY(x, y)
@@ -1190,12 +1194,12 @@ View3D {
     if (this.cursorMode == CursorModes.TRANSFORM_CENTER) {
       this.cursor3D.makeIdentity()
 
-      let tcent = this.getTransCenter()
-      if (tcent === undefined) {
+      let res = this.getTransCenter()
+      if (res === undefined) {
         return
       }
 
-      tcent = tcent.center
+      const tcent = res.center
       this.cursor3D.translate(tcent[0], tcent[1], tcent[2])
 
       this.setCursor(this.cursor3D)
@@ -1221,8 +1225,8 @@ View3D {
     }
 
     const screen = this.ctx.screen
-    if (this.pos[1] + this.size[1] > screen.size[1] + 4) {
-      console.log('view3d is too big', this.pos[1] + this.size[1], screen.size[1])
+    if (this.pos![1] + this.size![1] > screen.size[1] + 4) {
+      console.log('view3d is too big', this.pos![1] + this.size![1], screen.size[1])
       this.ctx.screen.snapScreenVerts()
       this.ctx.screen.regenBorders()
     }
@@ -1268,17 +1272,17 @@ View3D {
       else if (i % 4 == 0.0) d = 0.6
       else if (i % 2 == 0.0) d = 0.7
 
-      const clr = [1.0 - d, 1.0 - d, 1.0 - d, 1.0]
+      const clr = new Vector4([1.0 - d, 1.0 - d, 1.0 - d, 1.0])
 
-      let line = mesh.line([-sz, t, 0.0], [sz, t, 0.0])
-
-      line.colors(clr, clr)
-      line.uvs([-1, -1], [1, 1])
-
-      line = mesh.line([t, -sz, 0.0], [t, sz, 0.0])
+      let line = mesh.line(new Vector3([-sz, t, 0.0]), new Vector3([sz, t, 0.0]))
 
       line.colors(clr, clr)
-      line.uvs([-1, -1], [1, 1])
+      line.uvs(new Vector2([-1, -1]), new Vector2([1, 1]))
+
+      line = mesh.line(new Vector3([t, -sz, 0.0]), new Vector3([t, sz, 0.0]))
+
+      line.colors(clr, clr)
+      line.uvs(new Vector2([-1, -1]), new Vector2([1, 1]))
     }
 
     return mesh
@@ -1288,7 +1292,7 @@ View3D {
     super.setCSS()
   }
 
-  on_resize(newsize: IVector) {
+  on_resize(newsize: number[] | Vector2) {
     super.on_resize(newsize)
 
     if (this.gl === undefined) {
@@ -1420,7 +1424,7 @@ View3D {
   }
 
   viewportDraw() {
-    if (window.DEBUG.debugUIUpdatePerf) {
+    if (window.DEBUG?.debugUIUpdatePerf) {
       return
     }
 
@@ -1628,7 +1632,7 @@ View3D {
         line = sm.line(dl.v1, dl.v2)
       }
 
-      line.uvs([0, 0], [1.0, 1.0])
+      line.uvs(new Vector2([0, 0]), new Vector2([1.0, 1.0]))
       line.colors(dl.color, dl.color)
     }
 

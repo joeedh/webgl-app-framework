@@ -13,6 +13,7 @@ import {
   Mat4Property,
   Vec2Property,
   IVectorOrHigher,
+  Number3,
 } from '../../../path.ux/scripts/pathux.js'
 import {BVH, BVHFlags, BVHTri, IsectRet} from '../../../util/bvh.js'
 import {GridBase} from '../../../mesh/mesh_grids'
@@ -152,10 +153,11 @@ export class TexPaintOp extends ToolOp<
     }
 
     const mpos: Vector2 = view3d.getLocalMouse(e.x, e.y)
-    const x: number = mpos[0],
-      y: number = mpos[1]
+    const x: number = mpos[0]
+    const y: number = mpos[1]
 
-    this.mpos.load(mpos)
+    this.mpos.load2(mpos)
+    this.mpos[2] = 0.0
 
     const toolmode = ctx.toolmode as BVHToolMode
 
@@ -191,7 +193,7 @@ export class TexPaintOp extends ToolOp<
     let isect: IsectRet | undefined
     //isect = bvh.castRay(origin, view);
 
-    for (const axis of axes) {
+    for (const axis of axes as (-1 | Number3)[]) {
       let origin2 = new Vector4(origin as unknown as Vector4)
       let view2 = new Vector4(view as unknown as Vector4)
 
@@ -207,10 +209,10 @@ export class TexPaintOp extends ToolOp<
         view2[3] = 0.0
 
         origin2.multVecMatrix(mat)
-        origin2[axis as 0 | 1 | 2] = -origin2[axis]
+        origin2[axis] = -origin2[axis]
 
         view2.multVecMatrix(mat)
-        view2[axis as 0 | 1 | 2] = -view2[axis]
+        view2[axis] = -view2[axis]
 
         origin2[3] = 1.0
         view2[3] = 0.0
@@ -240,16 +242,16 @@ export class TexPaintOp extends ToolOp<
 
     if (this.first) {
       this.first = false
-      this.mpos.load(mpos)
-      this.start_mpos.load(mpos)
-      this.last_mpos.load(mpos)
-      this.last_p.load(isect.p)
+      this.mpos.load2(mpos)
+      this.start_mpos.load2(mpos)
+      this.last_mpos.load2(mpos)
+      this.last_p.load2(isect.p)
       return
     }
 
     const brush: SculptBrush = this.inputs.brush.getValue()
-    let sradius: number = brush.radius,
-      radius: number = sradius
+    const sradius: number = brush.radius
+    let radius: number = sradius
 
     toolmode._radius = radius
 
@@ -293,7 +295,7 @@ export class TexPaintOp extends ToolOp<
     }
     steps = Math.max(Math.ceil(steps), 1)
 
-    p4.load(isect.p)
+    p4.load2(isect.p)
     p4[3] = w
 
     const dx: number = this.mpos[0] - this.last_mpos[0]
@@ -336,8 +338,8 @@ export class TexPaintOp extends ToolOp<
       this.execDot(ctx, ps)
     }
 
-    this.last_mpos.load(mpos)
-    this.last_p.load(isect.p)
+    this.last_mpos.load2(mpos)
+    this.last_p.load2(isect.p)
     this.last_p[3] = w
 
     window.redraw_viewport()
@@ -465,13 +467,10 @@ export class TexPaintOp extends ToolOp<
     const brush: SculptBrush = this.inputs.brush.getValue()
     const brushco: Vector3 = new Vector3(ps.p)
 
-    const w0: number = project(brushco, rendermat, viewSize)
-    brushco.load(ps.mpos)
+    brushco.load2(ps.mpos)
     brushco[2] = 0.0
 
     const uvring = util.cachering.fromConstructor(Vector3, 64)
-    const v3ring = util.cachering.fromConstructor(Vector3, 64)
-    const v4ring = util.cachering.fromConstructor(Vector4, 64)
 
     let radius2: number = brush.radius
     radius2 *= 0.5
@@ -564,13 +563,17 @@ export class TexPaintOp extends ToolOp<
     const pradius = new Vector2().loadXY(radiusx, radiusy)
 
     for (const tri of ts) {
-      let cr1: boolean | undefined, cr2: boolean | undefined, cr3: boolean | undefined
-      let l1: Loop | undefined, l2: Loop | undefined, l3: Loop | undefined
+      let cr1: boolean | undefined
+      let cr2: boolean | undefined
+      let cr3: boolean | undefined
+      let l1: Loop | undefined
+      let l2: Loop | undefined
+      let l3: Loop | undefined
 
       if (haveGrids) {
-        uv1.load(tri.v1.customData.get(cd_uv).uv)
-        uv2.load(tri.v2.customData.get(cd_uv).uv)
-        uv3.load(tri.v3.customData.get(cd_uv).uv)
+        uv1.load2(tri.v1.customData.get(cd_uv).uv)
+        uv2.load2(tri.v2.customData.get(cd_uv).uv)
+        uv3.load2(tri.v3.customData.get(cd_uv).uv)
         cr1 = cr2 = cr3 = false
       } else {
         const li: number = tri.tri_idx
@@ -586,9 +589,9 @@ export class TexPaintOp extends ToolOp<
         cr2 = getcorner(l2)
         cr3 = getcorner(l3)
 
-        uv1.load(l1.customData.get(cd_uv).uv)
-        uv2.load(l2.customData.get(cd_uv).uv)
-        uv3.load(l3.customData.get(cd_uv).uv)
+        uv1.load2(l1.customData.get(cd_uv).uv)
+        uv2.load2(l2.customData.get(cd_uv).uv)
+        uv3.load2(l3.customData.get(cd_uv).uv)
       }
 
       centuv
@@ -641,14 +644,14 @@ export class TexPaintOp extends ToolOp<
       project(p2, rendermat, viewSize)
       project(p3, rendermat, viewSize)
 
-      let triuv: Vector2 | undefined
+      let triuv: Vector2
 
-      if (0) {
-        const [axis1, axis2] = math.calc_projection_axes(tri.no)
-        triuv = math.barycentric_v2(ps.p, tri.v1.co, tri.v2.co, tri.v3.co, axis1, axis2)
-      } else {
-        triuv = math.barycentric_v2(brushco, p1, p2, p3, 0, 1)
-      }
+      //if (0) {
+      //  const [axis1, axis2] = math.calc_projection_axes(tri.no)
+      //  triuv = math.barycentric_v2(ps.p, tri.v1.co, tri.v2.co, tri.v3.co, axis1, axis2)
+      //} else {
+      triuv = math.barycentric_v2(brushco, p1, p2, p3, 0, 1) as Vector2
+      //}
 
       triuv.minScalar(1.0)
       triuv.maxScalar(0.0)
@@ -656,7 +659,8 @@ export class TexPaintOp extends ToolOp<
       const w2: number = triuv[0] * p1[3] + triuv[1] * p2[3] + (1.0 - triuv[0] - triuv[1]) * p3[3]
       //w2 = w0;
 
-      let rx: number, ry: number
+      let rx: number
+      let ry: number
 
       //rx = w2 / (texture.width - 1) //*(glSize[1]/texture.width);
       //ry = w2 / (texture.height - 1) //*(glSize[1]/texture.height);
@@ -813,11 +817,21 @@ export class TexPaintOp extends ToolOp<
       sm.primflag = PrimitiveTypes.TRIS
       sm.island.primflag = PrimitiveTypes.TRIS
 
-      const quad = sm.quad([-1, -1, 0], [-1, 1, 0], [1, 1, 0], [1, -1, 0])
+      const quad = sm.quad(
+        new Vector3([-1, -1, 0]),
+        new Vector3([-1, 1, 0]),
+        new Vector3([1, 1, 0]),
+        new Vector3([1, -1, 0])
+      )
 
       Texture.unbindAllTextures(gl)
 
-      quad.uvs([smin[0], smin[1]], [smin[0], smax[1]], [smax[0], smax[1]], [smax[0], smin[1]])
+      quad.uvs(
+        new Vector2([smin[0], smin[1]]),
+        new Vector2([smin[0], smax[1]]),
+        new Vector2([smax[0], smax[1]]),
+        new Vector2([smax[0], smin[1]])
+      )
 
       sm.program = fbo.getBlitShader(gl)
       sm.uniforms.rgba = texture.glTex
@@ -890,8 +904,8 @@ export class TexPaintOp extends ToolOp<
     }
 
     if (1) {
-      const smin: Vector2 = new Vector2(umin),
-        smax: Vector2 = new Vector2(umax)
+      const smin: Vector2 = new Vector2(umin)
+      const smax: Vector2 = new Vector2(umax)
       if (!(fbo as FBO & {__first?: boolean}).__first) {
         smin.zero()
         smax[0] = texture.width
@@ -1159,8 +1173,8 @@ export class TexPaintOp extends ToolOp<
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, tilefbo.fbo)
       gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo.fbo)
 
-      let w: number = tile.width,
-        h: number = tile.height
+      let w: number = tile.width
+      let h: number = tile.height
 
       w = Math.max(w + tile.x, texture.width - 1) - tile.x
       h = Math.max(h + tile.y, texture.height - 1) - tile.y

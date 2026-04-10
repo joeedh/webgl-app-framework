@@ -2,9 +2,9 @@ import {CustomDataElem, ICustomDataElemDef} from './customdata'
 import {MeshTypes} from './mesh_base'
 import '../util/floathalf.js'
 import {nstructjs, Vector2, Vector3, Vector4, DataAPI, DataStruct, Number4} from '../path.ux/scripts/pathux.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 
 import {half2float} from '../util/floathalf'
+import { StructReader } from '../path.ux/scripts/util/nstructjs'
 
 export enum UVFlags {
   PIN = 2,

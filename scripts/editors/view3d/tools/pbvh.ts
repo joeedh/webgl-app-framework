@@ -55,11 +55,11 @@ import {IUniformsBlock, ShaderProgram, Texture} from '../../../core/webgl.js'
 import {getFaceSetColor, getFaceSets, getFaceSetsAttr, getNextFaceSet} from '../../../mesh/mesh_facesets.js'
 import {eventWasTouch} from '../../../path.ux/scripts/util/simple_events.js'
 import {enumKeys, enumValues} from '../../../util/enum-utils'
-import {StructReader} from '../../../path.ux/scripts/path-controller/types/util/nstructjs'
 import {ParamVert} from '../../../mesh/mesh_paramizer'
 import {SceneObject} from '../../../sceneobject/sceneobject'
 import {BlockLoader, BlockLoaderAddUser} from '../../../core/lib_api'
 import {Scene} from '../../../scene/scene'
+import { StructReader } from '../../../path.ux/scripts/util/nstructjs'
 
 export class BVHToolMode extends ToolMode {
   mdown = false
@@ -1102,7 +1102,7 @@ export class BVHToolMode extends ToolMode {
 
       //console.log(uniforms);
 
-      const white = [1, 1, 1, 1]
+      const white = new Vector4([1, 1, 1, 1])
 
       if (bvh.isDeforming) {
         const lf = LayerTypes

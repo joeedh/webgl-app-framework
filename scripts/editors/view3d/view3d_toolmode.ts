@@ -1,15 +1,7 @@
 import {KeyMap} from '../editor_base'
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../core/simplemesh'
 import {IWidgetConstructor, WidgetBase, WidgetFlags, WidgetManager} from './widgets/widgets.js'
-import {
-  Container,
-  ContextOverlay,
-  DataAPI,
-  EnumProperty,
-  IVectorOrHigher,
-  Vector3,
-  Vector4,
-} from '../../path.ux/scripts/pathux.js'
+import {Container, ContextOverlay, DataAPI, EnumProperty, IVectorOrHigher, Vector3, Vector4} from '../../path.ux/scripts/pathux.js'
 import {Icons} from '../icon_enum.js'
 import '../../path.ux/scripts/util/struct.js'
 import {INodeConstructor, INodeSocketSet, Node} from '../../core/graph.js'
@@ -27,9 +19,9 @@ import type {AppState} from '../../core/appstate'
 import {View3D} from '../all'
 import {IUniformsBlock, ShaderProgram} from '../../core/webgl'
 import {Mesh} from '../../mesh/mesh'
-import {StructReader} from '../../path.ux/scripts/path-controller/types/util/nstructjs'
 import {MeshDrawInterface} from './view3d_draw'
 import {BoundingBox} from './view3d_utils'
+import { StructReader } from '../../path.ux/scripts/util/nstructjs';
 
 export interface IToolModeDefine {
   name: string
@@ -41,6 +33,8 @@ export interface IToolModeDefine {
   stdtools?: StandardTools
   transWidgets?: (typeof WidgetBase)[]
 }
+
+type ViewContainer = Container<ViewContext>
 
 export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extends INodeSocketSet = {}> extends Node<
   NodeInputs,
@@ -171,17 +165,15 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
     return []
   }
 
-  static buildElementSettings(container: Container) {}
+  static buildElementSettings(container: ViewContainer) {}
 
-  static buildSettings(container: Container) {}
+  static buildSettings(container: ViewContainer) {}
 
   dataLink(scene: Scene, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser) {}
 
-  static buildHeader(header: Container, addHeaderRow: () => Container) {}
+  static buildHeader(header: ViewContainer, addHeaderRow: () => ViewContainer) {}
 
-  static getContextOverlayClass():
-    | (new (state: AppState, toolmode: ToolMode) => ContextOverlay<unknown, ViewContext>)
-    | undefined {
+  static getContextOverlayClass(): (new (state: AppState, toolmode: ToolMode) => ViewContext) | undefined {
     return undefined
   }
 
@@ -374,12 +366,10 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
     }
 
     const cls = this.constructor.getContextOverlayClass()
-    if (cls !== undefined) {
+    if (cls !== undefined && !(this.ctx instanceof cls)) {
       console.warn('reimplement toolmode ctx overlays!')
+      this.ctx = new cls((this.ctx as any).state, this)
     }
-    //if (cls !== undefined && !this.ctx.hasOverlay(cls)) {
-    //  this.ctx.pushOverlay(new cls(this.ctx.state, this))
-    //}
 
     const del = []
 
@@ -614,15 +604,3 @@ export function makeToolModeEnum() {
 
   return prop
 }
-
-declare global {
-  const _ToolModes: typeof ToolModes
-  const _makeToolModeEnum: typeof makeToolModeEnum
-  interface Window {
-    _ToolModes: typeof _ToolModes
-    _makeToolModeEnum: typeof _makeToolModeEnum
-  }
-}
-
-window._ToolModes = ToolModes
-window._makeToolModeEnum = makeToolModeEnum

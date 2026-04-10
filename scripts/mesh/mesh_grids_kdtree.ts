@@ -1,4 +1,15 @@
-import {Matrix4, nstructjs, Vector2, Vector3, Vector4, util, math, Number2, DataAPI} from '../path.ux/scripts/pathux.js'
+import {
+  Matrix4,
+  nstructjs,
+  Vector2,
+  Vector3,
+  Vector4,
+  util,
+  math,
+  Number2,
+  DataAPI,
+  Number3,
+} from '../path.ux/scripts/pathux.js'
 import {CDElemArray, MeshFlags, MeshTypes} from './mesh_base'
 import {AttrRef, CustomDataElem} from './customdata'
 import {ChunkedSimpleMesh, SimpleMesh} from '../core/simplemesh'
@@ -16,7 +27,7 @@ import '../util/numeric.js'
 import {Loop} from './mesh_types'
 import {ColorLayerElem, Mesh} from './mesh'
 import {BVH} from '../util/bvh.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 export const VMAXE = 16,
   VMAXN = 16
@@ -229,7 +240,7 @@ for (let ix = -1; ix <= 1; ix++) {
   }
 }
 
-const polystack = new Array(2048)
+const polystack = new Array<number>(2048)
 
 export class UVMap extends Array<number> {
   _len: number
@@ -287,6 +298,7 @@ export class UVMap extends Array<number> {
     return this[i] !== undefined
   }
 
+  //@ts-expect-error
   set(i: number, val: number) {
     if (i < 0 || i >= this._len) {
       return false
@@ -386,7 +398,7 @@ const tanvecs3 = util.cachering.fromConstructor(Vector3, 64)
 const blink_rets = util.cachering.fromConstructor(Vector3, 64)
 const blink_rets4 = util.cachering.fromConstructor(Vector4, 64)
 const tmptanmat = new Matrix4()
-const uvstmp = new Array(4)
+const uvstmp = new Array<Vector2>(4)
 for (let i = 0; i < 4; i++) {
   uvstmp[i] = new Vector2()
 }
@@ -452,7 +464,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     this.nodeFieldSize = QTOT
     this.subdtemps = util.cachering.fromConstructor(Vector3, 32)
   }
-  
+
   createPoint(): KDGridVert {
     return new KDGridVert()
   }
@@ -907,7 +919,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   _ensureNodePoint(
     ni: number,
     pidx: number,
-    loopEid: number | undefined = undefined,
+    loopEid: number | undefined,
     mesh: Mesh,
     isNewOut?: [boolean]
   ): KDGridVert {
@@ -1115,7 +1127,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       emap2 = []
     }
 
-    if (this.topo && this.topo.vmap2.length === ps.length * VTOT) {
+    if (this.topo?.vmap2.length === ps.length * VTOT) {
       vmap2 = this.topo.vmap2
     } else {
       vmap2 = new Float64Array(ps.length * VTOT)
@@ -1342,7 +1354,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
         continue
       }
 
-      if (Math.abs(p.co[i]) < threshold) {
+      if (Math.abs(p.co[i as Number3]) < threshold) {
         p.flag |= MeshFlags.MIRROREDX << i
 
         if (isboundary) {
@@ -1360,7 +1372,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     this.topo = undefined
 
     const ns = this.nodes
-    const nmap = new Array(ns.length)
+    const nmap = new Array<number>(ns.length)
     const ns2 = [] as number[]
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
@@ -1394,7 +1406,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   updateMirrorFlags(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>) {
     this.recalcFlag &= ~QRecalcFlags.MIRROR
 
-    const doneset = new Array(this.points.length)
+    const doneset = new Array<number>(this.points.length)
 
     const ns = this.nodes,
       ps = this.points
@@ -1411,7 +1423,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
       for (let i = 0; i < 4; i++) {
         const ip = ns[ni + QPOINT1 + i]
         if (!doneset[ip]) {
-          doneset[ip] = true
+          doneset[ip] = 1
 
           const p = ps[ip]
           const uv = this._getUV(ni, i)
@@ -2054,7 +2066,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
 
     const ns = this.nodes,
       ps = this.points
-    const doneset = new Array(ps.length)
+    const doneset = new Array<number>(ps.length)
     const subsurf = this.subsurf
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
@@ -2205,7 +2217,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     const cur = 0
 
     const STACKSIZE = 256
-    const stack = new Array(STACKSIZE)
+    const stack = new Array<number>(STACKSIZE)
     stack[0] = 0
 
     //console.log("Level", level, "Inverse", inverse);
@@ -2641,7 +2653,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     stack[cur++] = 0
 
     while (cur > 0) {
-      const ni = stack[--cur]
+      const ni = stack[--cur] as number
       const isleaf = ns[ni + QFLAG] & LEAF || ns[ni + QDEPTH] === depthLimit
 
       if (!isleaf) {
@@ -2838,7 +2850,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
               if (p2.loopEid !== p.loopEid && p2.loopEid !== undefined) {
                 const l = mesh.eidMap.get(p2.loopEid)
 
-                if (l && l.eid === MeshTypes.LOOP) {
+                if (l?.eid === MeshTypes.LOOP) {
                   const grid = cd_grid.get(l)
                   grid.recalcFlag |= QRecalcFlags.NEIGHBORS | QRecalcFlags.TOPO
                 }
@@ -2850,9 +2862,9 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
                 ;(p2.neighbors as unknown as KDGridVert[]).remove(p)
               }
 
-              if (p2.bLink && p2.bLink.v1 === p) {
+              if (p2.bLink?.v1 === p) {
                 p2.bLink = undefined
-              } else if (p2.bLink && p2.bLink.v2 === p) {
+              } else if (p2.bLink?.v2 === p) {
                 p2.bLink.v2 = undefined
               }
             }
@@ -3043,11 +3055,11 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
     const np3 = ps[nodes[ni + QPOINT3]]
     const np4 = ps[nodes[ni + QPOINT4]]
 
-    const cdps = new Array<any>(4)
+    const cdps = new Array<CustomDataElem>(4)
     const cdws = [0, 0, 0, 0]
 
     const news = [[false], [false], [false], [false], [false]] as [boolean][]
-    const bs = new Array(5)
+    const bs = new Array<KDGridVert>(5)
 
     const p1 = this.subdtemps.next().load(np1.co)
     const p2 = this.subdtemps.next().load(np2.co)
@@ -4352,7 +4364,7 @@ export class KdTreeGrid extends GridBase<KDGridVert> {
   }
 
   _loadCompressedNodes(_ns1?: any): void {
-    const ns1 = (_ns1 ?? this.nodes[0]) as unknown as Array<{[k: string]: number}>
+    const ns1 = (_ns1 ?? this.nodes[0]) as unknown as {[k: string]: number}[]
     const ns2 = [] as number[]
 
     if (ns1.length === 0) {

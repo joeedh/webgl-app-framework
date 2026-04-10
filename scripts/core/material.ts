@@ -4,8 +4,8 @@ import {nstructjs, ToolOp, IntProperty, StringProperty} from '../path.ux/scripts
 import {Icons} from '../editors/icon_enum.js'
 import {ShaderNetwork} from '../shadernodes/shadernetwork.js'
 import {DiffuseNode, GeometryNode, OutputNode} from '../shadernodes/shader_nodes.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 import {ToolContext} from './context'
+import { StructReader } from '../path.ux/scripts/util/nstructjs'
 
 export function makeDefaultMaterial() {
   const mat = new Material()
@@ -61,17 +61,17 @@ export class MakeMaterialOp extends ToolOp<
 
     const path = this.inputs.dataPathToSet.getValue()
     if (path) {
-      const val = ctx.api.getValue(ctx, path)
+      const val = ctx.api.getValue<Material>(ctx, path)
 
       if (val !== undefined) {
-        const meta = ctx.api.resolvePath(ctx, path)
-        val.lib_remUser(meta.obj)
+        const meta = ctx.api.resolvePath(ctx, path)!
+        val.lib_remUser(meta.obj as DataBlock)
       }
 
       ctx.api.setValue(ctx, path, mat)
 
-      const meta = ctx.api.resolvePath(ctx, path)
-      mat.lib_addUser(meta.obj)
+      const meta = ctx.api.resolvePath(ctx, path)!
+      mat.lib_addUser(meta.obj as DataBlock)
     }
 
     this.outputs.materialID.setValue(mat.lib_id)
@@ -99,10 +99,10 @@ export class UnlinkMaterialOp extends ToolOp<{dataPathToUnset: StringProperty}, 
 
   exec(ctx: ToolContext) {
     const meta = ctx.api.resolvePath(ctx, this.inputs.dataPathToUnset.getValue())
-    const val = ctx.api.getValue(ctx, this.inputs.dataPathToUnset.getValue())
+    const val = ctx.api.getValue<Material>(ctx, this.inputs.dataPathToUnset.getValue())
 
     if (val !== undefined) {
-      val.lib_remUser(meta.obj)
+      val.lib_remUser(meta!.obj as DataBlock)
     }
 
     ctx.api.setValue(ctx, this.inputs.dataPathToUnset.getValue(), undefined)

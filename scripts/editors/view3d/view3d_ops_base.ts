@@ -2,10 +2,9 @@ import {PropertySlots, ToolOp, Vector2, Vector3, Vector4} from '../../path.ux/sc
 import {ToolOpBase} from '../../core/toolopbase'
 import {DrawLine} from './view3d'
 
-export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends PropertySlots> extends ToolOpBase<
-  InputSet,
-  OutputSet
-> {
+export abstract class View3DOp<InputSet extends PropertySlots, OutputSet extends PropertySlots> //
+  extends ToolOpBase<InputSet, OutputSet>
+{
   drawlines: any[]
   drawquads: any[]
   drawlines2d: any[]

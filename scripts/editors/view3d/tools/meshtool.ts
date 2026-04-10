@@ -115,8 +115,8 @@ export class MeshToolBase extends ToolMode {
     window.redraw_viewport()
 
     for (const mesh of resolveMeshes(ctx, this.getMeshPaths())) {
-      for (const k in mesh.elists) {
-        const list = mesh.elists[k]
+      for (const k of mesh.elists.keys()) {
+        const list = mesh.elists.get(k)!
 
         if (list.highlight !== undefined) {
           list.highlight = undefined
@@ -189,7 +189,7 @@ export class MeshToolBase extends ToolMode {
 
     for (const mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
       for (const list of mesh.getElemLists()) {
-        if (!(list.type & this.selectMask) || !list.highlight) {
+        if (!(list.Type & this.selectMask) || !list.highlight) {
           continue
         }
 
@@ -265,13 +265,13 @@ export class MeshToolBase extends ToolMode {
       const co = new Vector3()
 
       for (const v of mesh.verts.selected.editable) {
-        co.load(v).multVecMatrix(matrix)
+        co.load(v.co).multVecMatrix(matrix)
         minmax(co)
       }
 
       if (mesh.handles) {
         for (const h of mesh.handles.selected.editable) {
-          co.load(h).multVecMatrix(matrix)
+          co.load(h.co).multVecMatrix(matrix)
           minmax(co)
         }
       }
@@ -408,7 +408,7 @@ export class MeshToolBase extends ToolMode {
 
       ok = ok && dist > 4
       if (ok) {
-        const tool = TranslateOp.invoke(this.ctx, {})
+        const tool = TranslateOp.invoke(this.ctx, {}) as TranslateOp
 
         if (this.transformConstraint) {
           tool.setConstraintFromString(this.transformConstraint)

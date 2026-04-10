@@ -863,7 +863,7 @@ export class UnWrapSolver {
         if (!doneset.has(uv)) {
           idxmap.set(uv, ki)
           doneset.add(uv)
-          vec.push(uv as Vector2)
+          vec.push(uv as unknown as Vector2)
           ki += 2
         }
       }
@@ -878,10 +878,10 @@ export class UnWrapSolver {
       return
     }
 
-    const matrix = new Array(slv.constraints.length)
+    const matrix = new Array<number[]>(slv.constraints.length)
 
     for (let i = 0; i < slv.constraints.length; i++) {
-      const row = new Array(rowsize)
+      const row = new Array<number>(rowsize)
       matrix[i] = row
 
       for (let j = 0; j < row.length; j++) {
@@ -923,6 +923,7 @@ export class UnWrapSolver {
           throw new Error('NaN2!')
         }
 
+        // this is a genuinely baffling errro
         row[idx] = gs[0]
         row[idx + 1] = gs[1]
       }
@@ -939,10 +940,10 @@ export class UnWrapSolver {
 
     const svd = numeric.svd(matrix1)
     function makeMatrix(rows: number, cols: number, setIdentity = true) {
-      const ret = new Array(rows)
+      const ret = new Array<number[]>(rows)
 
       for (let i = 0; i < rows; i++) {
-        ret[i] = new Array(cols)
+        ret[i] = new Array<number>(cols)
 
         for (let j = 0; j < cols; j++) {
           ret[i][j] = 0.0

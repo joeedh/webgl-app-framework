@@ -42,20 +42,18 @@ export function* resolveMeshes(ctx: ToolContext, pathset: Iterable<string>) {
 
       if (value instanceof SceneObject) {
         const ob = value
-        value = value.data
+        const data = value.data as Mesh
 
-        value.ownerMatrix = ob.outputs.matrix.getValue()
-        value.ownerId = ob.lib_id
-        value.meshDataPath = key
+        data.ownerMatrix = ob.outputs.matrix.getValue()
+        data.ownerId = ob.lib_id
+        data.meshDataPath = key
+        yield data
       } else if (value instanceof Mesh) {
         value.ownerMatrix = undefined
         value.ownerId = undefined
         value.meshDataPath = key
-      } else {
-        continue
+        yield value
       }
-
-      yield value
     }
   }
 }
@@ -113,7 +111,7 @@ export abstract class MeshOp<
   static tooldef(): ToolDef {
     return {
       inputs: ToolOp.inherit({
-        meshPaths: new ListProperty(StringProperty, ['mesh', '_all_objects_']).private(),
+        meshPaths: new ListProperty<StringProperty>(StringProperty, ['mesh', '_all_objects_']).private(),
       }),
       outputs : ToolOp.inherit({}),
       toolpath: '',

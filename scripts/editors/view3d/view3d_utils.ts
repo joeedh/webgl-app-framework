@@ -11,7 +11,7 @@ export enum OrbitTargetModes {
 
 import {Mesh} from '../../mesh/mesh'
 import * as util from '../../util/util.js'
-import {IVectorOrHigher, Matrix4, Vector2, Vector3, Vector4} from '../../util/vectormath.js'
+import {IVectorOrHigher, Matrix4, Number3, Vector2, Vector3, Vector4} from '../../util/vectormath.js'
 import type {View3D} from './view3d'
 
 export type BoundingBox = [IVectorOrHigher<3, Vector3>, IVectorOrHigher<3, Vector3>]
@@ -28,7 +28,7 @@ export function project(co: IVectorOrHigher<2, Vector2>, rendermat: Matrix4, vie
   tmp[1] = co[1]
 
   if (co.length > 2) {
-    tmp[2] = co[2]
+    tmp[2] = co[2]!
   }
 
   tmp[3] = 1.0
@@ -46,7 +46,7 @@ export function project(co: IVectorOrHigher<2, Vector2>, rendermat: Matrix4, vie
   tmp[1] = (1.0 - (tmp[1] * 0.5 + 0.5)) * viewSize[1]
 
   for (let i = 0; i < co.length; i++) {
-    co[i as 0 | 1 | 2] = tmp[i]
+    co[i as Number3] = tmp[i]!
   }
 
   return w
@@ -83,7 +83,8 @@ export function calcUpdateHash(view3d: View3D, do_objects = true) {
     }
   }
 
-  for (let i = 0; i < 3; i++) {
+  for (let _i = 0; _i < 3; _i++) {
+    let i = _i as Number3
     thehash.add(view3d.camera.pos[i])
     thehash.add(view3d.camera.target[i])
     thehash.add(view3d.camera.up[i])

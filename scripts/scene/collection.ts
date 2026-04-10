@@ -3,8 +3,8 @@ import {nstructjs, util} from '../path.ux/scripts/pathux.js'
 import {BlockFlags, BlockLoader, BlockLoaderAddUser, DataBlock, DataRef} from '../core/lib_api'
 import {SceneObject} from '../sceneobject/sceneobject'
 import {IntSocket} from '../core/graphsockets'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
 import {INodeSocketSet} from '../core/graph.js'
+import { StructReader } from '../path.ux/scripts/util/nstructjs.js';
 
 //sceneobjet collection
 export enum CollectFlags {

@@ -1,17 +1,4 @@
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js'
-import * as util from '../../../util/util.js'
-import {
-  nstructjs,
-  FloatProperty,
-  Vec2Property,
-  Vec3Property,
-  BoolProperty,
-  EnumProperty,
-  FlagProperty,
-  KeyMap,
-  HotKey,
-  Container,
-} from '../../../path.ux/scripts/pathux.js'
+import {nstructjs, KeyMap, HotKey} from '../../../path.ux/scripts/pathux.js'
 import {ToolMode} from '../view3d_toolmode.js'
 import {Icons} from '../../icon_enum.js'
 import {SelMask} from '../selectmode.js'
@@ -19,9 +6,7 @@ import {SelMask} from '../selectmode.js'
 import '../../../tet/tet_ops.js'
 import '../../../tet/tet_selectops.js'
 import {ViewContext} from '../../../core/context.js'
-import {BlockLoader, BlockLoaderAddUser} from '../../../core/lib_api.js'
-import {Scene} from '../../../scene/scene.js'
-import {StructReader} from '../../../path.ux/scripts/path-controller/types/util/nstructjs.js'
+import {StructReader} from '../../../path.ux/scripts/util/nstructjs.js'
 
 export class TetMeshTool extends ToolMode {
   constructor(ctx: ViewContext) {
@@ -58,14 +43,6 @@ export class TetMeshTool extends ToolMode {
     panel.tool('tet.fix_normals()')
 
     panel.toolPanel('tet.solidify_wireframe')
-  }
-
-  dataLink(scene: Scene, getblock: BlockLoader, getblock_addUser: BlockLoaderAddUser): void {
-    //
-  }
-
-  static buildHeader(header: Container, addHeaderRow: () => Container): void {
-    //
   }
 
   static toolModeDefine() {

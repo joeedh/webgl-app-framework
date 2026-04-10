@@ -15,6 +15,7 @@ import {
   DataAPI,
   DataStruct,
   IVector3,
+  Container,
 } from '../path.ux/scripts/pathux.js'
 import {DataBlock} from '../core/lib_api'
 import {NodeFlags} from '../core/graph'
@@ -31,11 +32,10 @@ import {
 import {compileTexShaderJS} from './textureGen'
 import './textures.js'
 import {TexPaintShaderLib} from '../shaders/shaders.js'
-import {Container} from '../path.ux/scripts/types/core/ui.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
 import {IUniformsBlock} from '../core/webgl'
-import {HashDigest} from '../path.ux/scripts/path-controller/types/util/util.js'
 import {ICompiledCode} from '../mathl/core/mathl.js'
+import { HashDigest } from '../util/util.js';
+import { StructReader } from '../path.ux/scripts/util/nstructjs.js';
 
 export enum PatternRecalcFlags {
   PREVIEW = 1,
@@ -1667,7 +1667,7 @@ export function buildProcTextureAPI(api: DataAPI, api_define_datablock: (api: Da
         if (typeof val === 'string') {
           cls = PatternGen.getGeneratorClass(val)
         } else {
-          cls = Patterns[val]
+          cls = Patterns[val as number]
         }
 
         tex.setGenerator(cls)

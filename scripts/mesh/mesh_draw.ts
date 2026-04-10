@@ -1,4 +1,4 @@
-import {Number3, Number4, Vector3, Vector4} from '../util/vectormath.js'
+import {IVector4, Number3, Number4, Vector2, Vector3, Vector4} from '../util/vectormath.js'
 import * as util from '../util/util.js'
 
 import {MeshDrawFlags, MeshFeatures, MeshFlags, MeshTypes, RecalcFlags} from './mesh_base'
@@ -42,8 +42,8 @@ export function genRenderMesh(
     recalc = MeshTypes.FACE
   }
 
-  const lineuv1 = [0, 0]
-  const lineuv2 = [1, 1]
+  const lineuv1 = new Vector2([0, 0])
+  const lineuv2 = new Vector2([1, 1])
 
   mesh.recalc &= ~RecalcFlags.ELEMENTS
 
@@ -51,12 +51,12 @@ export function genRenderMesh(
   const selcolor = Colors[1]
   const unselcolor = new Vector4(Colors[0]).mulScalar(0.5)
 
-  function facecolor(c: Vector4 | number[]) {
+  function facecolor(c: IVector4 | number[]) {
     c = new Vector4(c)
 
     //desaturate a bit
     for (let i = 0; i < c.length; i++) {
-      c[i as Number4] = Math.pow(c[i], 0.5)
+      c[i as Number4] = Math.pow(c[i as Number4], 0.5)
     }
 
     return c
@@ -119,7 +119,7 @@ export function genRenderMesh(
   const clr = new Vector4(selcolor).interp(ecolors[MeshFlags.SEAM], 0.5)
   ecolors[MeshFlags.SELECT | MeshFlags.SEAM] = clr
 
-  for (let k in ecolors) {
+  for (const k in ecolors) {
     let clr = ecolors[k as unknown as keyof typeof ecolors]
     const n = parseInt('' + k)
 
@@ -135,7 +135,7 @@ export function genRenderMesh(
     ecolors[n | MeshFlags.SINGULARITY] = clr
   }
 
-  for (let k of Object.keys(ecolors)) {
+  for (const k of Object.keys(ecolors)) {
     let clr = ecolors[k as unknown as keyof typeof ecolors]
     const n = parseInt(k)
 
@@ -167,8 +167,7 @@ export function genRenderMesh(
 
   let sm: ChunkedSimpleMesh | SimpleMesh
   const meshes = mesh._fancyMeshes
-  const white = [1, 1, 1, 1]
-  const black = [0, 0, 0, 1]
+  const white = new Vector4([1, 1, 1, 1])
 
   if (recalc & MeshTypes.VERTEX) {
     mesh.updateMirrorTags()
@@ -351,13 +350,13 @@ export function genRenderMesh(
         if (axis === -1) {
           tri = sm2.tri(i, v1.co, v2.co, v3.co)
         } else {
-          p1.load(v1)
-          p2.load(v2)
-          p3.load(v3)
+          p1.load(v1.co)
+          p2.load(v2.co)
+          p3.load(v3.co)
 
-          p1[axis as Number3] = -p1[axis]
-          p2[axis as Number3] = -p2[axis]
-          p3[axis as Number3] = -p3[axis]
+          p1[axis as Number3] = -p1[axis as Number3]
+          p2[axis as Number3] = -p2[axis as Number3]
+          p3[axis as Number3] = -p3[axis as Number3]
 
           tri = sm2.tri(ltris.length + i * 3 + axis, p1, p2, p3)
         }
@@ -458,7 +457,7 @@ export function drawMeshElements(
   selmask: number,
   uniforms: IUniformsBlock,
   program: ShaderProgram,
-  object: SceneObject,
+  object?: SceneObject,
   drawTransFaces = false
 ) {
   uniforms = uniforms !== undefined ? Object.assign({}, uniforms) : {}

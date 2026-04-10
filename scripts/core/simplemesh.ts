@@ -2,12 +2,17 @@
  * Warning: this API is particularly old.
  **/
 
-import {Vector3, Vector4, util, IOpenNumVector} from '../path.ux/scripts/pathux.js'
+import {Number3, Vector2Like, Vector3, Vector3Like, Vector4, Vector4Like, util} from '../path.ux/scripts/pathux.js'
 import {IUniformsBlock, ShaderProgram} from './webgl.js'
 import './const.js'
 import {loadShader, Shaders} from '../shaders/shaders.js'
 import {RenderBuffer} from './webgl.js'
 import {OptionalIf} from '../util/optionalIf'
+
+type OpenVector = number[] | Float32Array | Float64Array | Vector2Like | Vector3Like | Vector4Like
+
+//class IIDMap extends Map<number, number> {}
+class IIDMap extends util.IDMap<number> {}
 
 export enum PrimitiveTypes {
   NONE = 0,
@@ -84,7 +89,7 @@ export class TriEditor<OPT extends {dead?: true | false} = {dead: true}> {
     return this as TriEditor<OPT & {dead: false}>
   }
 
-  colors(this: TriEditor<{dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector, c3: IOpenNumVector) {
+  colors(this: TriEditor<{dead: false}>, c1: Vector4Like, c2: Vector4Like, c3: Vector4Like) {
     const data = this.mesh.tri_colors
     const i = this.i * 3 //*3 is because triangles have three vertices
 
@@ -95,7 +100,7 @@ export class TriEditor<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  normals(this: TriEditor<{dead: false}>, n1: IOpenNumVector, n2: IOpenNumVector, n3: IOpenNumVector) {
+  normals(this: TriEditor<{dead: false}>, n1: Vector3Like, n2: Vector3Like, n3: Vector3Like) {
     const data = this.mesh.tri_normals
 
     const i = this.i * 3 //*3 is because triangles have three vertices
@@ -107,7 +112,7 @@ export class TriEditor<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  custom(this: TriEditor<{dead: false}>, layeri: number, v1: IOpenNumVector, v2: IOpenNumVector, v3: IOpenNumVector) {
+  custom(this: TriEditor<{dead: false}>, layeri: number, v1: OpenVector, v2: OpenVector, v3: OpenVector) {
     const layer = this.mesh.layers.layers[layeri]
 
     const i = this.i * 3
@@ -118,7 +123,7 @@ export class TriEditor<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  uvs(this: TriEditor<{dead: false}>, u1: IOpenNumVector, u2: IOpenNumVector, u3: IOpenNumVector) {
+  uvs(this: TriEditor<{dead: false}>, u1: Vector2Like, u2: Vector2Like, u3: Vector2Like) {
     const data = this.mesh.tri_uvs
     const i = this.i * 3 //*3 is because triangles have three vertices
 
@@ -167,45 +172,26 @@ export class QuadEditor<OPT extends {dead?: true | false} = {dead: true}> {
     return this as QuadEditor<{dead: false}>
   }
 
-  uvs(this: QuadEditor<{dead: false}>, u1: IOpenNumVector, u2: IOpenNumVector, u3: IOpenNumVector, u4: IOpenNumVector) {
+  uvs(this: QuadEditor<{dead: false}>, u1: Vector2Like, u2: Vector2Like, u3: Vector2Like, u4: Vector2Like) {
     this.t1.uvs(u1, u2, u3)
     this.t2.uvs(u1, u3, u4)
 
     return this
   }
 
-  custom(
-    this: QuadEditor<{dead: false}>,
-    li: number,
-    v1: IOpenNumVector,
-    v2: IOpenNumVector,
-    v3: IOpenNumVector,
-    v4: IOpenNumVector
-  ) {
+  custom(this: QuadEditor<{dead: false}>, li: number, v1: OpenVector, v2: OpenVector, v3: OpenVector, v4: OpenVector) {
     this.t1.custom(li, v1, v2, v3)
     this.t2.custom(li, v1, v3, v4)
   }
 
-  colors(
-    this: QuadEditor<{dead: false}>,
-    u1: IOpenNumVector,
-    u2: IOpenNumVector,
-    u3: IOpenNumVector,
-    u4: IOpenNumVector
-  ) {
+  colors(this: QuadEditor<{dead: false}>, u1: Vector4Like, u2: Vector4Like, u3: Vector4Like, u4: Vector4Like) {
     this.t1.colors(u1, u2, u3)
     this.t2.colors(u1, u3, u4)
 
     return this
   }
 
-  normals(
-    this: QuadEditor<{dead: false}>,
-    u1: IOpenNumVector,
-    u2: IOpenNumVector,
-    u3: IOpenNumVector,
-    u4: IOpenNumVector
-  ) {
+  normals(this: QuadEditor<{dead: false}>, u1: Vector3Like, u2: Vector3Like, u3: Vector3Like, u4: Vector3Like) {
     this.t1.normals(u1, u2, u3)
     this.t2.normals(u1, u3, u4)
 
@@ -234,7 +220,7 @@ export class LineEditor<OPT extends {dead?: true | false} = {dead: true}> {
     return this as LineEditor<OPT & {dead: false}>
   }
 
-  colors(this: LineEditor<{dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector) {
+  colors(this: LineEditor<{dead: false}>, c1: Vector4Like, c2: Vector4Like) {
     const data = this.mesh.line_colors
     const i = this.i * 2
 
@@ -244,7 +230,7 @@ export class LineEditor<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  custom(this: LineEditor<{dead: false}>, layeri: number, v1: IOpenNumVector, v2: IOpenNumVector) {
+  custom(this: LineEditor<{dead: false}>, layeri: number, v1: OpenVector, v2: OpenVector) {
     const layer = this.mesh.layers.layers[layeri]
 
     const i = this.i * 2
@@ -254,7 +240,7 @@ export class LineEditor<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  normals(this: LineEditor<{dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector) {
+  normals(this: LineEditor<{dead: false}>, c1: Vector3Like, c2: Vector3Like) {
     const data = this.mesh.line_normals
     const i = this.i * 2
 
@@ -264,7 +250,7 @@ export class LineEditor<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  uvs(this: LineEditor<{dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector) {
+  uvs(this: LineEditor<{dead: false}>, c1: Vector2Like, c2: Vector2Like) {
     const data = this.mesh.line_uvs
     const i = this.i * 2
 
@@ -306,7 +292,7 @@ export class LineEditor2<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  custom(this: LineEditor2<OPT & {dead: false}>, layeri: number, c1: IOpenNumVector, c2: IOpenNumVector) {
+  custom(this: LineEditor2<OPT & {dead: false}>, layeri: number, c1: OpenVector, c2: OpenVector) {
     const data = this.mesh.layers.layers[layeri]
 
     const i = this.i * 6
@@ -321,7 +307,7 @@ export class LineEditor2<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  colors(this: LineEditor2<OPT & {dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector) {
+  colors(this: LineEditor2<OPT & {dead: false}>, c1: Vector4Like, c2: Vector4Like) {
     const data = this.mesh.line_colors2
     const i = this.i * 6
 
@@ -335,7 +321,7 @@ export class LineEditor2<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  normals(this: LineEditor2<OPT & {dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector) {
+  normals(this: LineEditor2<OPT & {dead: false}>, c1: Vector3Like, c2: Vector3Like) {
     const data = this.mesh.line_normals2
     const i = this.i * 6
 
@@ -349,7 +335,7 @@ export class LineEditor2<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  uvs(this: LineEditor2<OPT & {dead: false}>, c1: IOpenNumVector, c2: IOpenNumVector) {
+  uvs(this: LineEditor2<OPT & {dead: false}>, c1: Vector2Like, c2: Vector2Like) {
     const data = this.mesh.line_uvs2
     const i = this.i * 6
 
@@ -403,7 +389,7 @@ export class PointEditor<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  colors(this: PointEditor<OPT & {dead: false}>, c1: IOpenNumVector) {
+  colors(this: PointEditor<OPT & {dead: false}>, c1: Vector4Like) {
     const data = this.mesh.point_colors
     const i = this.i
 
@@ -412,7 +398,7 @@ export class PointEditor<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  normals(this: PointEditor<OPT & {dead: false}>, c1: IOpenNumVector) {
+  normals(this: PointEditor<OPT & {dead: false}>, c1: Vector3Like) {
     const data = this.mesh.point_normals
     const i = this.i
 
@@ -421,7 +407,7 @@ export class PointEditor<OPT extends {dead?: true | false} = {dead: true}> {
     return this
   }
 
-  uvs(this: PointEditor<OPT & {dead: false}>, c1: IOpenNumVector) {
+  uvs(this: PointEditor<OPT & {dead: false}>, c1: Vector2Like) {
     const data = this.mesh.point_uvs
     const i = this.i
 
@@ -655,15 +641,15 @@ export class GeoLayer extends Array {
     return this
   }
 
-  extend(data: IOpenNumVector, count = 1) {
+  extend(data: OpenVector, count = 1) {
     for (let i = 0; i < count; i++) {
       this.extendIntern(data, i * this.size)
     }
   }
 
-  private extendIntern(data: IOpenNumVector, dataStart: number) {
+  private extendIntern(data: OpenVector, dataStart: number) {
     if (this._useTypedData && this.dataUsed >= this.data_f32.length) {
-      if (window.DEBUG.simplemesh) {
+      if (window.DEBUG?.simplemesh) {
         console.warn('Resizing simplemesh attribute after conversion to a typed array')
       }
 
@@ -759,19 +745,19 @@ export class GeoLayer extends Array {
     }
   }
 
-  _copy2Typed(data1: IOpenNumVector, data2: IOpenNumVector, n: number, mul: number, start: number, dataStart: number) {
+  _copy2Typed(data1: OpenVector, data2: OpenVector, n: number, mul: number, start: number, dataStart: number) {
     for (let i = 0; i < n; i++) {
-      data1[start++] = ~~(data2[dataStart + i] * mul)
+      data1[start++] = ~~((data2 as any)[dataStart + i] * mul)
     }
   }
 
-  _copy2(data1: IOpenNumVector, data2: IOpenNumVector, n: number, mul: number, start: number, dataStart: number) {
+  _copy2(data1: OpenVector, data2: OpenVector, n: number, mul: number, start: number, dataStart: number) {
     for (let i = 0; i < n; i++) {
-      data1[start++] = ~~(data2[dataStart + i] * mul)
+      data1[start++] = ~~((data2 as any)[dataStart + i] * mul)
     }
   }
 
-  _copy_int(i: number, data: IOpenNumVector, n = 1, dataStart = 0) {
+  _copy_int(i: number, data: OpenVector, n = 1, dataStart = 0) {
     const tot = n * this.size
     this.f32Ready = false
 
@@ -788,7 +774,7 @@ export class GeoLayer extends Array {
       thisdata = this.data
     }
 
-    if (window.DEBUG.simplemesh) {
+    if (window.DEBUG?.simplemesh) {
       const range = glRanges[this.glSize]
       thisdata = debugproxy(thisdata, range[0], range[1], this.glSize !== glSizes.FLOAT)
     }
@@ -810,7 +796,7 @@ export class GeoLayer extends Array {
   }
 
   /** i and n will be multiplied by .size, dataStart will not */
-  copy(i: number, data: IOpenNumVector, n = 1, dataStart = 0) {
+  copy(i: number, data: any, n = 1, dataStart = 0) {
     //V8's optimizer doesn't like it if we pass floats
     //to integer typed arrays, even if we multiply them by
     //the proper range scale first.  They must be truncated.
@@ -979,7 +965,7 @@ export class GeoLayerManager {
     return this.layers[Symbol.iterator]()
   }
 
-  extend(primflag: PrimitiveTypes, type: number, data: IOpenNumVector, count = 1): this {
+  extend(primflag: PrimitiveTypes, type: number, data: OpenVector, count = 1): this {
     const meta = this.get_meta(primflag, type)!
 
     for (let i = 0; i < meta.layers.length; i++) {
@@ -1282,7 +1268,7 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
     this._regen_all |= primflag
   }
 
-  point(this: SimpleIsland<OPT & {dead: false}>, v1: IOpenNumVector): PointEditor<{dead: false}> {
+  point(this: SimpleIsland<OPT & {dead: false}>, v1: Vector3Like): PointEditor<{dead: false}> {
     this.point_cos.extend(v1)
 
     this._newElem(PrimitiveTypes.POINTS, 1)
@@ -1293,13 +1279,14 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
 
   smoothline(
     this: SimpleIsland<OPT & {dead: false}>,
-    v1: IOpenNumVector,
-    v2: IOpenNumVector,
+    v1: Vector3Like,
+    v2: Vector3Like,
     w1 = 2,
     w2 = 2
   ): LineEditor2<{dead: false}> {
     let dv = 0.0
-    for (let i = 0; i < 3; i++) {
+    for (let _i = 0; _i < 3; _i++) {
+      const i = _i as Number3
       dv += (v1[i] - v2[i]) * (v1[i] - v2[i])
     }
 
@@ -1344,7 +1331,7 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
 
     const d = line2_temp4s
       .next()
-      .load(v2)
+      .load3(v2)
       .sub(v1 as unknown as Vector4)
     d[3] = 0.0
     d.normalize()
@@ -1366,7 +1353,7 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
     return this.tristrip_line_editors.next().bind(this, this.totline_tristrip - 1)
   }
 
-  line(this: SimpleIsland<OPT & {dead: false}>, v1: IOpenNumVector, v2: IOpenNumVector): LineEditor<{dead: false}> {
+  line(this: SimpleIsland<OPT & {dead: false}>, v1: Vector3Like, v2: Vector3Like): LineEditor<{dead: false}> {
     //return this.smoothline(v1, v2);
 
     this.line_cos.extend(v1)
@@ -1411,9 +1398,9 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
 
   tri(
     this: SimpleIsland<OPT & {dead: false}>,
-    v1: IOpenNumVector,
-    v2: IOpenNumVector,
-    v3: IOpenNumVector
+    v1: Vector3Like,
+    v2: Vector3Like,
+    v3: Vector3Like
   ): TriEditor<{dead: false}> {
     this.tri_cos.extend(v1)
     this.tri_cos.extend(v2)
@@ -1428,10 +1415,10 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
 
   quad(
     this: SimpleIsland<OPT & {dead: false}>,
-    v1: IOpenNumVector,
-    v2: IOpenNumVector,
-    v3: IOpenNumVector,
-    v4: IOpenNumVector
+    v1: Vector3Like,
+    v2: Vector3Like,
+    v3: Vector3Like,
+    v4: Vector3Like
   ): QuadEditor<{dead: false}> {
     const i = this.tottri
 
@@ -1473,7 +1460,7 @@ export class SimpleIsland<OPT extends {dead?: true | false} = {dead: true}> {
         const typedarray = glTypeArrays[layer.glSize as keyof typeof glTypeArrayMuls]
 
         if (layer.data_f32?.length !== layer.dataUsed) {
-          if (window.DEBUG.simplemesh) {
+          if (window.DEBUG?.simplemesh) {
             console.warn('new layer data', layer.data_f32, layer)
           }
 
@@ -2011,23 +1998,23 @@ export class SimpleMesh {
     }
   }
 
-  tri(v1: IOpenNumVector, v2: IOpenNumVector, v3: IOpenNumVector): TriEditor<{dead: false}> {
+  tri(v1: Vector3Like, v2: Vector3Like, v3: Vector3Like): TriEditor<{dead: false}> {
     return this.island.tri(v1, v2, v3)
   }
 
-  quad(v1: IOpenNumVector, v2: IOpenNumVector, v3: IOpenNumVector, v4: IOpenNumVector): QuadEditor<{dead: false}> {
+  quad(v1: Vector3Like, v2: Vector3Like, v3: Vector3Like, v4: Vector3Like): QuadEditor<{dead: false}> {
     return this.island.quad(v1, v2, v3, v4)
   }
 
-  line(v1: IOpenNumVector, v2: IOpenNumVector): LineEditor<{dead: false}> {
+  line(v1: Vector3Like, v2: Vector3Like): LineEditor<{dead: false}> {
     return this.island.line(v1, v2)
   }
 
-  point(v1: IOpenNumVector): PointEditor<{dead: false}> {
+  point(v1: Vector3Like): PointEditor<{dead: false}> {
     return this.island.point(v1)
   }
 
-  smoothline(v1: IOpenNumVector, v2: IOpenNumVector): LineEditor2<{dead: false}> {
+  smoothline(v1: Vector3Like, v2: Vector3Like): LineEditor2<{dead: false}> {
     return this.island.smoothline(v1, v2)
   }
 
@@ -2048,22 +2035,6 @@ export class SimpleMesh {
       island.draw(gl, uniforms, undefined, program_override)
     }
   }
-}
-
-interface IIDMap {
-  set(key: number, val: number): void
-
-  get(key: number): number | undefined
-
-  has(key: number): boolean
-
-  delete(key: number): boolean
-
-  keys(): Iterable<number>
-
-  values(): Iterable<number>
-
-  [Symbol.iterator](): Iterator<[number, number]>
 }
 
 export class ChunkedSimpleMesh extends SimpleMesh {
@@ -2094,14 +2065,14 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     this.freelist = []
     this.freeset = new Set()
 
-    this.chunkmap = new util.IDMap()
-    this.idmap = new util.IDMap()
+    this.chunkmap = new IIDMap()
+    this.idmap = new IIDMap()
     this.idgen = 0
   }
 
   reset(gl: WebGL2RenderingContext): void {
-    this.chunkmap = new util.IDMap()
-    this.idmap = new util.IDMap()
+    this.chunkmap = new IIDMap()
+    this.idmap = new IIDMap()
     this.freelist.length = 0
     this.freeset = new Set()
 
@@ -2144,7 +2115,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
   get_chunk(id: number): SimpleIsland<{dead: false}> {
     if (id > 1 << 18 && this.idmap instanceof util.IDMap) {
-      const idmap = new Map()
+      const idmap = new IIDMap()
 
       for (const [k, v] of this.idmap) {
         idmap.set(k, v)
@@ -2152,7 +2123,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
 
       this.idmap = idmap
 
-      const chunkmap = new Map()
+      const chunkmap = new IIDMap()
       for (const [k, v] of this.chunkmap) {
         chunkmap.set(k, v)
       }
@@ -2206,8 +2177,8 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     }
 
     this.regen = true
-    this.chunkmap = new util.IDMap()
-    this.idmap = new util.IDMap()
+    this.chunkmap = new IIDMap()
+    this.idmap = new IIDMap()
     this.freelist.length = 0
 
     this.islands.length = 0
@@ -2248,7 +2219,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     chunk.flagRecalc()
     chunk.glFlagUploadAll(PrimitiveTypes.TRIS)
 
-    let tri_cos = chunk.tri_cos
+    const tri_cos = chunk.tri_cos
 
     let i = itri * 9
 
@@ -2282,12 +2253,12 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     return chunk.tri_editors.next().bind(chunk, itri)
   }
 
-  quad(v1: IOpenNumVector, v2: IOpenNumVector, v3: IOpenNumVector, v4: IOpenNumVector): QuadEditor<{dead: false}> {
+  quad(v1: Vector3Like, v2: Vector3Like, v3: Vector3Like, v4: Vector3Like): QuadEditor<{dead: false}> {
     throw new Error('unsupported for chunked meshes')
   }
 
   // @ts-ignore
-  smoothline(id: number, v1: IOpenNumVector, v2: IOpenNumVector): LineEditor2<{dead: false}> {
+  smoothline(id: number, v1: Vector3Like, v2: Vector3Like): LineEditor2<{dead: false}> {
     const chunk = this.get_chunk(id)
     let iline = this.idmap.get(id)!
 
@@ -2304,7 +2275,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
       chunk.makeBufferAliases()
     }
 
-    let line_cos = chunk.line_cos2
+    const line_cos = chunk.line_cos2
     let i = iline * 18
 
     if (line_cos.dataUsed < i + 18) {
@@ -2361,7 +2332,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     chunk.flagRecalc()
     chunk.glFlagUploadAll(PrimitiveTypes.LINES)
 
-    let line_cos = chunk.line_cos
+    const line_cos = chunk.line_cos
     let i = iline * 6
 
     if (line_cos.dataUsed < i + 6) {
@@ -2393,7 +2364,7 @@ export class ChunkedSimpleMesh extends SimpleMesh {
     chunk.flagRecalc()
     chunk.glFlagUploadAll(PrimitiveTypes.POINTS)
 
-    let point_cos = chunk.point_cos
+    const point_cos = chunk.point_cos
     let i = ipoint * 3
 
     if (point_cos.dataUsed < i + 3) {

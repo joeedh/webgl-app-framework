@@ -92,12 +92,12 @@ export class SelectOpBase extends MeshOp {
 
       for (let elist of mesh.getElemLists()) {
         if (elist.active !== undefined) {
-          ud.actives[elist.type] = elist.active.eid
+          ud.actives[elist.Type] = elist.active.eid
         } else {
-          ud.actives[elist.type] = -1
+          ud.actives[elist.Type] = -1
         }
 
-        if (elist.type === MeshTypes.LOOP) {
+        if (elist.Type === MeshTypes.LOOP) {
           continue
         }
 
@@ -583,7 +583,7 @@ export class ToggleSelectAll extends SelectOpBase {
         mode2 = SelToolModes.ADD
 
         for (let elist of mesh.getElemLists()) {
-          if (!(elist.type & selmask)) {
+          if (!(elist.Type & selmask)) {
             continue
           }
 
@@ -596,7 +596,7 @@ export class ToggleSelectAll extends SelectOpBase {
       console.log('mode2', mode2, SelToolModes)
 
       for (let elist of mesh.getElemLists()) {
-        if (!(elist.type & selmask)) {
+        if (!(elist.Type & selmask)) {
           continue
         }
 

@@ -238,8 +238,9 @@ export class HoleFillPaintOp extends PaintOpBase {
 
     const lastp = new Vector4().load3(this.last_p)
 
-    ps.p.load(p)
-    ps.dp.load(p).sub(lastp)
+    ps.p.load3(p)
+    ps.p[3] = 1.0
+    ps.dp.load3(p).sub(lastp)
     ps.radius = radius
     ps.strength = strength
     ps.autosmooth = autosmooth

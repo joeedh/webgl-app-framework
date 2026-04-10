@@ -3,7 +3,6 @@ import {nstructjs, ToolProperty, PropTypes, EnumProperty, util} from '../path.ux
 import {IDGen} from '../util/util.js'
 import {Node, Graph, NodeFlags, NodeSocketType, INodeConstructor, INodeSocketSet} from './graph'
 import {Icons} from '../editors/icon_enum.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 
 import type {SculptBrush} from '../brush/brush'
 import type {Mesh} from '../mesh/mesh'
@@ -11,8 +10,12 @@ import type {Collection} from '../scene/collection'
 import type {SceneObject} from '../sceneobject/sceneobject.js'
 import type {ToolContext} from './context.js'
 import type {Scene} from '../scene/scene.js'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 export const BlockTypes = [] as IDataBlockConstructor[]
+
+let DATAREFType: number | undefined
+let DATAREFLISTType: number | undefined
 
 export interface IBlockRef {
   lib_id: number
@@ -664,7 +667,7 @@ BlockSet {
   dataLink(getblock: BlockLoader, getblock_addUser: BlockLoader) {
     const type = this.type.blockDefine().typeName
 
-    if (window.DEBUG['DataLink']) {
+    if (window.DEBUG?.DataLink) {
       console.warn('Linking ' + type + '. . .', this.active, this.idmap)
     }
 
@@ -946,7 +949,7 @@ DataRefProperty {
     flag = 0,
     icon = -1
   ) {
-    super(PropTypes.DATAREF)
+    super(DATAREFType)
 
     this.apiname = apiname
     this.uiname = uiname
@@ -1037,14 +1040,14 @@ DataRefProperty {
   }
 }
 
-PropTypes.DATAREF = ToolProperty.register(DataRefProperty)
+DATAREFType = ToolProperty.register(DataRefProperty)
 
-export class DataRefListProperty extends ToolProperty<DataRef[]> {
+export class DataRefListProperty extends ToolProperty<DataRef[] | DataBlock[] | number[]> {
   blockType: string
   data: DataRef[]
 
   constructor(typeName: string, apiname: string, uiname = '', description = '', flag = 0, icon = -1) {
-    super(PropTypes.DATAREFLIST)
+    super(DATAREFLISTType)
 
     this.blockType = typeName
     this.data = []
@@ -1100,7 +1103,7 @@ export class DataRefListProperty extends ToolProperty<DataRef[]> {
   }
 }
 
-PropTypes.DATAREFLIST = ToolProperty.register(DataRefListProperty)
+DATAREFLISTType = ToolProperty.register(DataRefListProperty)
 
 export type DataRefType = number | DataRef | DataBlock
 

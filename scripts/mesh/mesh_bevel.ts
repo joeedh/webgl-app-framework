@@ -252,14 +252,14 @@ export function splitEdgeLoops(
       const ei = 0
 
       if (l.v === v) {
-        t2.load(l.v).sub(l.prev.v.co).normalize()
+        t2.load(l.v.co).sub(l.prev.v.co).normalize()
         t1.add(t2)
-        t2.load(l.next.v).sub(l.v.co).normalize()
+        t2.load(l.next.v.co).sub(l.v.co).normalize()
         t1.add(t2)
       } else {
-        t2.load(l.next.v).sub(l.v.co).normalize()
+        t2.load(l.next.v.co).sub(l.v.co).normalize()
         t1.add(t2)
-        t2.load(l.next.next.v).sub(l.next.v.co).normalize()
+        t2.load(l.next.next.v.co).sub(l.next.v.co).normalize()
         t1.add(t2)
       }
 
@@ -297,7 +297,7 @@ export function splitEdgeLoops(
         mesh.copyElemData(v2, v)
         vmap.set(key, v2)
 
-        t2.load(l.prev.v).sub(l.v.co).normalize()
+        t2.load(l.prev.v.co).sub(l.v.co).normalize()
         dirmap.set(v2, new Vector3(t2))
       }
     } else if (e !== l.e && !edges.has(l.e)) {
@@ -311,17 +311,17 @@ export function splitEdgeLoops(
         mesh.copyElemData(v2, v)
         vmap.set(key, v2)
 
-        t2.load(l.next.v).sub(l.v.co).normalize()
+        t2.load(l.next.v.co).sub(l.v.co).normalize()
         dirmap.set(v2, new Vector3(t2))
       }
     } else {
       if (l.v === v) {
-        t1.load(l.next.v).sub(l.v.co).normalize()
-        t2.load(l.prev.v).sub(l.v.co).normalize()
+        t1.load(l.next.v.co).sub(l.v.co).normalize()
+        t2.load(l.prev.v.co).sub(l.v.co).normalize()
         t1.add(t2).normalize()
       } else {
-        t1.load(l.next.next.v).sub(l.next.v.co).normalize()
-        t2.load(l.v).sub(l.next.v.co).normalize()
+        t1.load(l.next.next.v.co).sub(l.next.v.co).normalize()
+        t2.load(l.v.co).sub(l.next.v.co).normalize()
         t1.add(t2).normalize()
       }
 
@@ -742,9 +742,8 @@ export function bevelEdges(mesh: Mesh, edges: Iterable<Edge>, width = 0.5, lctx?
         try {
           mesh.makeQuad(l1.v, l2.next.v, l2.v, l1.next.v)
         } catch (error) {
-          util.print_stack(error)
+          util.print_stack(error as Error)
         }
-      } else {
       }
     }
   }

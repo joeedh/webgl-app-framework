@@ -5,6 +5,7 @@ import {
   FloatProperty,
   IntProperty,
   Matrix4,
+  Number3,
   Quat,
   ToolOp,
   Vec3Property,
@@ -74,19 +75,19 @@ import {BVHToolMode} from './pbvh.js'
 import {ViewContext} from '../../../core/context.js'
 
 //grab data field definition
-const GEID = 0,
-  GEID2 = 1,
-  GDIS = 2,
-  GSX = 3,
-  GSY = 4,
-  GSZ = 5
-const GAX = 6,
-  GAY = 7,
-  GAZ = 8,
-  GOFFX = 9,
-  GOFFY = 10,
-  GOFFZ = 11,
-  GTOT = 12
+const GEID = 0
+const GEID2 = 1
+const GDIS = 2
+const GSX = 3
+const GSY = 4
+const GSZ = 5
+const GAX = 6
+const GAY = 7
+const GAZ = 8
+const GOFFX = 9
+const GOFFY = 10
+const GOFFZ = 11
+const GTOT = 12
 
 const UGTOT = 9
 
@@ -351,8 +352,8 @@ export class PaintOp extends PaintOpBase<
       mesh = ctx.object.data
     }
 
-    let cd_grid = -1,
-      cd_mask = -1
+    let cd_grid = -1
+    let cd_mask = -1
 
     if (mesh) {
       cd_grid = GridBase.meshGridOffset(mesh)
@@ -459,12 +460,12 @@ export class PaintOp extends PaintOpBase<
       let cd_color = mesh.loops.customData.getLayerIndex('color')
 
       for (let i = 0; i < gd.length; i += UGTOT) {
-        let l = gd[i],
-          index = gd[i + 1],
-          r = gd[i + 2],
-          g = gd[i + 3],
-          b = gd[i + 4],
-          a = gd[i + 5]
+        let l = gd[i]
+        const index = gd[i + 1]
+        const r = gd[i + 2]
+        const g = gd[i + 3]
+        const b = gd[i + 4]
+        const a = gd[i + 5]
 
         l = mesh.eidMap.get(l)
         if (!l || !(l instanceof Loop)) {
@@ -524,9 +525,9 @@ export class PaintOp extends PaintOpBase<
       const mmap = undo.mmap
 
       for (let i = 0; i < gd.length; i += UGTOT) {
-        let l = gd[i],
-          index = gd[i + 1],
-          mask = gd[i + 2]
+        let l = gd[i]
+        const index = gd[i + 1]
+        const mask = gd[i + 2]
 
         l = mesh.eidMap.get(l)
         if (!l || !(l instanceof Loop)) {
@@ -537,7 +538,7 @@ export class PaintOp extends PaintOpBase<
         const grid = l.customData[cd_grid] as GridBase
         const p = grid.points[index]
 
-        const maskElem = p.customData[cd_mask] as MaskElem
+        const maskElem = p.customData[cd_mask] as unknown as MaskElem
         maskElem.value = mask
 
         const node = cd_node!.get(p).node
@@ -554,7 +555,7 @@ export class PaintOp extends PaintOpBase<
           continue
         }
 
-        ;(v.customData[cd_mask] as FloatElem).value = mask
+        ;(v.customData[cd_mask] as unknown as FloatElem).value = mask
         const node = cd_node!.get(v).node
 
         if (node) {
@@ -570,14 +571,14 @@ export class PaintOp extends PaintOpBase<
       }
 
       for (let i = 0; i < gd.length; i += UGTOT) {
-        let l = gd[i],
-          index = gd[i + 1],
-          x = gd[i + 2],
-          y = gd[i + 3],
-          z = gd[i + 4]
-        const nx = gd[i + 5],
-          ny = gd[i + 6],
-          nz = gd[i + 7]
+        let l = gd[i]
+        const index = gd[i + 1]
+        const x = gd[i + 2]
+        const y = gd[i + 3]
+        const z = gd[i + 4]
+        const nx = gd[i + 5]
+        const ny = gd[i + 6]
+        const nz = gd[i + 7]
 
         l = mesh.eidMap.get(l)
         if (!l || !(l instanceof Loop)) {
@@ -880,11 +881,11 @@ export class PaintOp extends PaintOpBase<
       this.last_p3.load(isect.p)
       this.last_p2.load(isect.p)
       this.last_p.load(isect.p)
-      this.last_origco.load(origco)
-      this.last_origco2.load(origco)
-      this.last_origco3.load(origco)
-      this.last_origco4.load(origco)
-      this.last_origco5.load(origco)
+      this.last_origco.load3(origco)
+      this.last_origco2.load3(origco)
+      this.last_origco3.load3(origco)
+      this.last_origco4.load3(origco)
+      this.last_origco5.load3(origco)
       this.last_vec.load(vec)
       this.last_radius = radius
       this._first2--
@@ -900,7 +901,7 @@ export class PaintOp extends PaintOpBase<
       this.last_origco4.load(this.last_origco3)
       this.last_origco3.load(this.last_origco2)
       this.last_origco2.load(this.last_origco)
-      this.last_origco.load(origco)
+      this.last_origco.load3(origco)
 
       this.last_p5.load(this.last_p4)
       this.last_p4.load(this.last_p3)
@@ -932,17 +933,17 @@ export class PaintOp extends PaintOpBase<
 
     //console.log("STEPS", steps, radius, spacing, this._first);
 
-    const DRAW = SculptTools.DRAW,
-      SHARP = SculptTools.SHARP,
-      FILL = SculptTools.FILL,
-      SMOOTH = SculptTools.SMOOTH,
-      CLAY = SculptTools.CLAY,
-      SCRAPE = SculptTools.SCRAPE,
-      PAINT = SculptTools.PAINT,
-      INFLATE = SculptTools.INFLATE,
-      SNAKE = SculptTools.SNAKE,
-      PAINT_SMOOTH = SculptTools.PAINT_SMOOTH,
-      GRAB = SculptTools.GRAB
+    const DRAW = SculptTools.DRAW
+    const SHARP = SculptTools.SHARP
+    const FILL = SculptTools.FILL
+    const SMOOTH = SculptTools.SMOOTH
+    const CLAY = SculptTools.CLAY
+    const SCRAPE = SculptTools.SCRAPE
+    const PAINT = SculptTools.PAINT
+    const INFLATE = SculptTools.INFLATE
+    const SNAKE = SculptTools.SNAKE
+    const PAINT_SMOOTH = SculptTools.PAINT_SMOOTH
+    const GRAB = SculptTools.GRAB
 
     if (mode === SHARP) {
       invert = !invert
@@ -1002,14 +1003,14 @@ export class PaintOp extends PaintOpBase<
             break
         }
 
-        const sco = new Vector4(bez.evaluate(s))
+        const sco = new Vector4().load3(bez.evaluate(s))
         sco[3] = 1.0
         view3d.project(sco)
 
         const p2 = bez.evaluate(s)
         const op2 = new Vector4(this2.last_origco3).interp(this2.last_origco2, s)
 
-        p3.load(p2)
+        p3.load3(p2)
         p3[3] = 1.0
         p3.multVecMatrix(rendermat)
 
@@ -1045,11 +1046,14 @@ export class PaintOp extends PaintOpBase<
 
         const ps = new PaintSample()
 
-        let ca2, cb2, cc2, cd2
+        let ca2
+        let cb2
+        let cc2
+        let cd2
         const ds2 = ds * 0.5
 
-        const sp = s - ds2,
-          sn = s + ds2
+        const sp = s - ds2
+        const sn = s + ds2
 
         if (sp <= 0) {
           ca2 = this2.lastbez.evaluate(sp + 1.0)
@@ -1095,7 +1099,7 @@ export class PaintOp extends PaintOpBase<
         ps.rake = rake
         ps.invert = invert
         ps.origp.load(op2)
-        ps.p.load(p2)
+        ps.p.load3(p2)
         ps.p[3] = w
         ps.viewPlane.load(view).normalize()
         ps.viewvec.load(view).normalize()
@@ -1165,7 +1169,7 @@ export class PaintOp extends PaintOpBase<
     this.last_origco4.load(this.last_origco3)
     this.last_origco3.load(this.last_origco2)
     this.last_origco2.load(this.last_origco)
-    this.last_origco.load(origco)
+    this.last_origco.load3(origco)
 
     this.last_vec.load(vec)
     this.last_r = radius
@@ -1229,7 +1233,7 @@ export class PaintOp extends PaintOpBase<
             const dis2 = v.co.vectorDistance(co2)
             if (dis2 < dis) {
               for (let i = 0; i < 3; i++) {
-                if (off[i] < 0) {
+                if (off[i as Number3] < 0) {
                   //dis2 = Math.min(dis2, Math.abs(v[i]-co2[i]));
                 }
               }
@@ -1271,16 +1275,16 @@ export class PaintOp extends PaintOpBase<
         if (sym && offs) {
           for (const off of offs) {
             for (let i = 0; i < 3; i++) {
-              if (off[i] > 0) {
+              if (off[i as Number3] > 0) {
                 continue
               }
 
               //dis2 = Math.min(dis2, Math.abs(v[i]-co2[i]));
-              const f = Math.abs(co[i]) + 0.00001
+              const f = Math.abs(co[i as Number3]) + 0.00001
               const ratio = radius / f
 
               //add[i] = -Math.abs(co[i]);
-              sign[i as 0 | 1 | 2] *= ratio
+              sign[i as Number3] *= ratio
             }
           }
         }
@@ -1295,12 +1299,12 @@ export class PaintOp extends PaintOpBase<
               add.zero()
 
               for (let i = 0; i < 3; i++) {
-                if (off[i] > 0) {
+                if (off[i as Number3] > 0) {
                   continue
                 }
 
                 //dis2 = Math.min(dis2, Math.abs(v[i]-co2[i]));
-                const f = Math.abs(co2[i]) + 0.00001
+                const f = Math.abs(co2[i as Number3]) + 0.00001
                 const ratio = radius / f
 
                 //add[i] = -Math.abs(co[i]);
@@ -1380,8 +1384,8 @@ export class PaintOp extends PaintOpBase<
         }
       } else {
         for (let i = 0; i < gd.length; i += GTOT) {
-          const eid = gd[i],
-            dis = gd[i + 2]
+          const eid = gd[i]
+          const dis = gd[i + 2]
 
           const v = mesh.eidMap.get(eid)
           if (!v) {
@@ -1605,25 +1609,25 @@ export class PaintOp extends PaintOpBase<
     const obmat = ob.outputs.matrix.getValue()
     const mesh = ob.data as Mesh
 
-    const DRAW = SculptTools.DRAW,
-      SHARP = SculptTools.SHARP,
-      FILL = SculptTools.FILL,
-      SMOOTH = SculptTools.SMOOTH,
-      CLAY = SculptTools.CLAY,
-      SCRAPE = SculptTools.SCRAPE,
-      PAINT = SculptTools.PAINT,
-      INFLATE = SculptTools.INFLATE,
-      SNAKE = SculptTools.SNAKE,
-      PAINT_SMOOTH = SculptTools.PAINT_SMOOTH,
-      GRAB = SculptTools.GRAB,
-      COLOR_BOUNDARY = SculptTools.COLOR_BOUNDARY,
-      MASK_PAINT = SculptTools.MASK_PAINT,
-      WING_SCRAPE = SculptTools.WING_SCRAPE,
-      PINCH = SculptTools.PINCH,
-      TOPOLOGY = SculptTools.TOPOLOGY,
-      DIRECTIONAL_FAIR = SculptTools.DIRECTIONAL_FAIR,
-      SLIDE_RELAX = SculptTools.SLIDE_RELAX,
-      FACE_SET_DRAW = SculptTools.FACE_SET_DRAW
+    const DRAW = SculptTools.DRAW
+    const SHARP = SculptTools.SHARP
+    const FILL = SculptTools.FILL
+    const SMOOTH = SculptTools.SMOOTH
+    const CLAY = SculptTools.CLAY
+    const SCRAPE = SculptTools.SCRAPE
+    const PAINT = SculptTools.PAINT
+    const INFLATE = SculptTools.INFLATE
+    const SNAKE = SculptTools.SNAKE
+    const PAINT_SMOOTH = SculptTools.PAINT_SMOOTH
+    const GRAB = SculptTools.GRAB
+    const COLOR_BOUNDARY = SculptTools.COLOR_BOUNDARY
+    const MASK_PAINT = SculptTools.MASK_PAINT
+    const WING_SCRAPE = SculptTools.WING_SCRAPE
+    const PINCH = SculptTools.PINCH
+    const TOPOLOGY = SculptTools.TOPOLOGY
+    const DIRECTIONAL_FAIR = SculptTools.DIRECTIONAL_FAIR
+    const SLIDE_RELAX = SculptTools.SLIDE_RELAX
+    const FACE_SET_DRAW = SculptTools.FACE_SET_DRAW
 
     if (!ctx.object || !(ctx.object.data instanceof Mesh || ctx.object.data instanceof TetMesh)) {
       console.log('ERROR!')
@@ -1642,7 +1646,8 @@ export class PaintOp extends PaintOpBase<
     const gmap = undo.gmap
     const gdata = undo.gdata
 
-    let mres: GridBase | undefined, oldmres: GridBase | undefined
+    let mres: GridBase | undefined
+    let oldmres: GridBase | undefined
 
     const bvh = this.getBVH(mesh)
     let vsw
@@ -2024,12 +2029,12 @@ export class PaintOp extends PaintOpBase<
         if (sym && offs) {
           for (const off of offs) {
             for (let i = 0; i < 3; i++) {
-              if (off[i] > 0) {
+              if (off[i as Number3] > 0) {
                 continue
               }
 
               //dis2 = Math.min(dis2, Math.abs(v[i]-co2[i]));
-              const f = Math.abs(co[i]) + 0.00001
+              const f = Math.abs(co[i as Number3]) + 0.00001
               const ratio = radius / f
 
               //add[i] = -Math.abs(co[i]);
@@ -2049,12 +2054,12 @@ export class PaintOp extends PaintOpBase<
               add.zero()
 
               for (let i = 0; i < 3; i++) {
-                if (off[i] > 0) {
+                if (off[i as Number3] > 0) {
                   continue
                 }
 
                 //dis2 = Math.min(dis2, Math.abs(v[i]-co2[i]));
-                const f = Math.abs(co2[i]) + 0.00001
+                const f = Math.abs(co2[i as Number3]) + 0.00001
                 const ratio = radius / f
 
                 //add[i] = -Math.abs(co[i]);
@@ -2109,9 +2114,9 @@ export class PaintOp extends PaintOpBase<
 
       if (haveGrids) {
         for (let i = 0; i < gd.length; i += GTOT) {
-          const leid = gd[i],
-            peid = gd[i + 1],
-            dis = gd[i + 2]
+          const leid = gd[i]
+          const peid = gd[i + 1]
+          const dis = gd[i + 2]
 
           const v = gmap!.get(peid)
           if (!v) {
@@ -2120,16 +2125,16 @@ export class PaintOp extends PaintOpBase<
             continue
           }
 
-          const sx = gd[i + 3],
-            sy = gd[i + 4],
-            sz = gd[i + 5]
+          const sx = gd[i + 3]
+          const sy = gd[i + 4]
+          const sz = gd[i + 5]
           signs.push(sx)
           signs.push(sy)
           signs.push(sz)
 
-          const ox = gd[i + 6],
-            oy = gd[i + 7],
-            oz = gd[i + 8]
+          const ox = gd[i + 6]
+          const oy = gd[i + 7]
+          const oz = gd[i + 8]
 
           goffs.push(ox)
           goffs.push(oy)
@@ -2151,16 +2156,16 @@ export class PaintOp extends PaintOpBase<
             continue
           }
 
-          const sx = gd[i + 3],
-            sy = gd[i + 4],
-            sz = gd[i + 5]
+          const sx = gd[i + 3]
+          const sy = gd[i + 4]
+          const sz = gd[i + 5]
           signs.push(sx)
           signs.push(sy)
           signs.push(sz)
 
-          const ox = gd[i + 6],
-            oy = gd[i + 7],
-            oz = gd[i + 8]
+          const ox = gd[i + 6]
+          const oy = gd[i + 7]
+          const oz = gd[i + 8]
 
           goffs.push(ox)
           goffs.push(oy)
@@ -2448,7 +2453,10 @@ export class PaintOp extends PaintOpBase<
 
     const _tmp = new Vector3()
 
-    let vsmooth: any, gdimen: number, cd_color: number, have_color: boolean
+    let vsmooth: any
+    let gdimen: number
+    let cd_color: number
+    let have_color: boolean
     let haveQuadTreeGrids = false
 
     if (haveGrids) {
@@ -2744,7 +2752,7 @@ export class PaintOp extends PaintOpBase<
       }
     }
 
-    let vsharp: any
+    let vsharp: (v: IBVHVertex, fac: number) => void | undefined
 
     if (haveGrids) {
       colorfilter = colorfilterfuncs[1]
@@ -3112,8 +3120,8 @@ export class PaintOp extends PaintOpBase<
         const cv = v.customData[cd_curv] as CurvVert
         cv.check(v, cd_cotan, undefined, cd_fset)
 
-        let maxedge = 0,
-          minedge = 1e17
+        let maxedge = 0
+        let minedge = 1e17
 
         for (const v2 of v.neighbors) {
           const dist = v2.co.vectorDistance(v.co)
@@ -3140,8 +3148,8 @@ export class PaintOp extends PaintOpBase<
 
         maxedge = Math.sqrt(maxedge)
 
-        let totw = 0,
-          co = _tmp2.zero()
+        let totw = 0
+        const co = _tmp2.zero()
         const proj = smoothProj
 
         function add(v2: IBVHVertex): void {
@@ -3268,7 +3276,7 @@ export class PaintOp extends PaintOpBase<
         v[i] = orig
 
         g[i as 0 | 1 | 2] = (r2 - r1) / df
-        totg += g[i] * g[i]
+        totg += g[i as Number3] * g[i as Number3]
       }
 
       if (totg === 0.0) {
@@ -3330,7 +3338,7 @@ export class PaintOp extends PaintOpBase<
 
     function makeDummyCData(): any {
       const cdata = {
-        customData: [] as any[],
+        customData: [] as CustomDataElem[],
         reset() {
           for (const cd of this.customData) {
             cd.mulScalar(0.0)
@@ -3367,7 +3375,7 @@ export class PaintOp extends PaintOpBase<
           return this
         },
 
-        interp(srcs: any[], ws: number[], tmp?: any) {
+        interp(srcs: {customData: CustomDataElem[]}[], ws: number[], tmp?: CustomDataElem[]) {
           if (!tmp) {
             tmp = getArrayTemp(srcs.length)
           }
@@ -3561,7 +3569,8 @@ export class PaintOp extends PaintOpBase<
       //return rake2(v, fac);
 
       const val = v.valence
-      let cdvs: Vertex[] | undefined, cdws: number[] | undefined
+      let cdvs: Vertex[] | undefined
+      let cdws: number[] | undefined
 
       if (fac === 0.0 || val === 0.0) {
         return
@@ -3692,9 +3701,9 @@ export class PaintOp extends PaintOpBase<
                 let dy1 = 2.0 * (2.0 * (z1 * z2 - 1.0 + y1 ** 2 + x1 ** 2) * y1 + (y1 * y2 + z1 * z2 + x1 * x2) * y2)
                 let dz1 = 2.0 * (x1 ** 2 + x1 * x2 + y1 ** 2 + y1 * y2 + 2.0 * z1 * z2 - 1.0) * z2
 
-                const pi = Math.PI,
-                  sin = Math.sin,
-                  cos = Math.cos //, tent = Math.tent;
+                const pi = Math.PI
+                const sin = Math.sin
+                const cos = Math.cos //, tent = Math.tent;
 
                 function tent(f: number): number {
                   const f2 = Math.fract(f)
@@ -3895,7 +3904,11 @@ export class PaintOp extends PaintOpBase<
       const origdis = v.co.vectorDistance(oco)
       const fac = 1.0 - Math.min((2.0 * origdis) / radius, 1.0)
 
-      planetmp.load(v.co).sub(r[0]).mulScalar(0.5).add(r[0])
+      planetmp
+        .load(v.co)
+        .sub(r ? r[0] : v.co)
+        .mulScalar(0.5)
+        .add(r ? r[0] : v.co)
       v.co.interp(planetmp, pinchmul * f3 * pinch * fac)
 
       if (haveGrids) {
@@ -3937,7 +3950,7 @@ export class PaintOp extends PaintOpBase<
     }
 
     const cd_node = bvh.cd_node
-    const ws = new Array(vs.size)
+    const ws = new Array<number>(vs.size)
 
     if (isPaintMode && !have_color) {
       cd_color = mesh.verts.addCustomDataLayer('color').index
@@ -3950,8 +3963,8 @@ export class PaintOp extends PaintOpBase<
       have_color = true
     }
 
-    let color,
-      concaveFilter = ps.concaveFilter
+    let color
+    const concaveFilter = ps.concaveFilter
     const invertConcave = brush.flag & BrushFlags.INVERT_CONCAVE_FILTER
 
     if (have_color) {
@@ -3976,13 +3989,13 @@ export class PaintOp extends PaintOpBase<
     const astrength = Math.abs(strength)
     const bLinks = new Set()
 
-    let gdists = this.grabDists,
-      idis = 0
+    const gdists = this.grabDists
+    let idis = 0
 
-    const WF = 0,
-      WDIS = 1,
-      WF2 = 2,
-      WTOT = 3
+    const WF = 0
+    const WDIS = 1
+    const WF2 = 2
+    const WTOT = 3
 
     wi = 0
     let vi = 0
@@ -4088,7 +4101,8 @@ export class PaintOp extends PaintOpBase<
         pco = ps.origp || ps.p
       }
 
-      let dis, f
+      let dis
+      let f
 
       if (mode === GRAB) {
         dis = gdists![idis++]
@@ -4799,7 +4813,7 @@ export class PaintOp extends PaintOpBase<
 
       if (!isPaintMode && sharp !== 0.0) {
         reproject = true
-        vsharp(v, ws[wi] * sharp)
+        vsharp!(v, ws[wi] * sharp)
       }
 
       if (!isPaintMode && pinch !== 0.0) {
@@ -4849,8 +4863,8 @@ export class PaintOp extends PaintOpBase<
 
       const ls = new Set()
 
-      let i = 0,
-        li = 0
+      let i = 0
+      let li = 0
 
       for (const v of vertexVs) {
         const node = cd_node.get(v).node!
@@ -5482,8 +5496,8 @@ export class PaintOp extends PaintOpBase<
       //}
       this._last_time = util.time_ms()
 
-      let elen = 0,
-        tot = 0
+      let elen = 0
+      let tot = 0
       for (const e of es) {
         elen += e.v2.co.vectorDistance(e.v1.co)
         tot++
@@ -5503,8 +5517,8 @@ export class PaintOp extends PaintOpBase<
         ratio = 1.0
       }
 
-      const max1 = Math.ceil(maxedges / ratio),
-        max2 = Math.ceil(maxedges * ratio)
+      const max1 = Math.ceil(maxedges / ratio)
+      const max2 = Math.ceil(maxedges * ratio)
 
       const nosmooth = 1
 
@@ -6183,9 +6197,9 @@ export class PaintOp extends PaintOpBase<
     }
 
     for (let i = 0; i < looptris.length; i += 3) {
-      const l1 = looptris[i],
-        l2 = looptris[i + 1],
-        l3 = looptris[i + 2]
+      const l1 = looptris[i]
+      const l2 = looptris[i + 1]
+      const l3 = looptris[i + 2]
       const f = l1.f
 
       const tri = bvh.addTri(f.eid, bvh._nextTriIdx(), l1.v, l2.v, l3.v, true, l1, l2, l3)
@@ -6734,22 +6748,22 @@ export class PaintOp extends PaintOpBase<
 
     const MAXCHILD = haveKdTree ? 2 : 4
     const data = [] as any[]
-    const DGRID = 0,
-      DNODE = 1,
-      DLOOP = 2,
-      DMODE = 3,
-      DTOT = 4
+    const DGRID = 0
+    const DNODE = 1
+    const DLOOP = 2
+    const DMODE = 3
+    const DTOT = 4
 
-    const SUBDIVIDE = 0,
-      COLLAPSE = 1
+    const SUBDIVIDE = 0
+    const COLLAPSE = 1
 
-    let QFLAG = QuadTreeFields.QFLAG,
-      QDEPTH = QuadTreeFields.QDEPTH,
-      QPARENT = QuadTreeFields.QPARENT,
-      QPOINT1 = QuadTreeFields.QPOINT1
+    let QFLAG = QuadTreeFields.QFLAG
+    let QDEPTH = QuadTreeFields.QDEPTH
+    let QPARENT = QuadTreeFields.QPARENT
+    let QPOINT1 = QuadTreeFields.QPOINT1
 
-    let LEAF = QuadTreeFlags.LEAF,
-      DEAD = QuadTreeFlags.DEAD
+    let LEAF = QuadTreeFlags.LEAF
+    let DEAD = QuadTreeFlags.DEAD
 
     if (haveKdTree) {
       QFLAG = KdTreeFields.QFLAG
@@ -6817,8 +6831,8 @@ export class PaintOp extends PaintOpBase<
       }
 
       let ok = false
-      let dtot = 0,
-        ntot = 0
+      let dtot = 0
+      let ntot = 0
       let etot = 0
       let maxlen = 0
       let minlen = 1e17
@@ -7298,9 +7312,9 @@ export class PaintOp extends PaintOpBase<
           } else {
             const ltris = triangulateFace(f)
             for (let i = 0; i < ltris.length; i += 3) {
-              const l1 = ltris[i],
-                l2 = ltris[i + 1],
-                l3 = ltris[i + 2]
+              const l1 = ltris[i]
+              const l2 = ltris[i + 1]
+              const l3 = ltris[i + 2]
 
               const tri2 = bvh.addTri(f.eid, bvh._nextTriIdx(), l1.v, l2.v, l3.v, undefined, l1, l2, l3)
               tri2.flag |= BVHTriFlags.LOOPTRI_INVALID
@@ -7547,10 +7561,10 @@ export class PaintOp extends PaintOpBase<
     const cd_node = bvh.cd_node
 
     const es3 = new Set(workEs)
-    let newvs = new Set<Vertex>(),
-      newfs = new Set<Face>(),
-      killfs = new Set<Face>(),
-      newes = new Set<Edge>()
+    const newvs = new Set<Vertex>()
+    let newfs = new Set<Face>()
+    const killfs = new Set<Face>()
+    const newes = new Set<Edge>()
 
     let updateflag = BVHFlags.UPDATE_UNIQUE_VERTS | BVHFlags.UPDATE_OTHER_VERTS
     updateflag = updateflag | BVHFlags.UPDATE_DRAW | BVHFlags.UPDATE_TOTTRI
@@ -7861,9 +7875,9 @@ export class PaintOp extends PaintOpBase<
 
             tri.calcNormal()
             const l = tri.lists[0].l
-            const v1 = l.v,
-              v2 = l.next.v,
-              v3 = l.prev.v
+            const v1 = l.v
+            const v2 = l.next.v
+            const v3 = l.prev.v
 
             const tri2 = bvh.addTri(tri.eid, bvh._nextTriIdx(), v1, v2, v3, undefined, l, l.next, l.prev)
             tri2.flag |= BVHTriFlags.LOOPTRI_INVALID

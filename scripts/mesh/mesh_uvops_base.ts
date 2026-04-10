@@ -1,4 +1,4 @@
-import {ToolOp, BoolProperty, ToolDef, PropertySlots} from '../path.ux/scripts/pathux.js'
+import {ToolOp, BoolProperty, ToolDef, PropertySlots, ContextLike} from '../path.ux/scripts/pathux.js'
 import {MeshFlags} from './mesh_base'
 import {View3DOp} from '../editors/view3d/view3d_ops.js'
 import {MeshOp} from './mesh_ops_base'
@@ -6,12 +6,14 @@ import {Loop} from './mesh_types'
 import type {ViewContext} from '../core/context.js'
 import type {ImageEditor} from '../editors/all.js'
 
-export class MeshOpBaseUV<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends MeshOp<
-  InputSet & {
-    selectedFacesOnly: BoolProperty
-  },
-  OutputSet & {}
-> {
+export class MeshOpBaseUV<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> //
+  extends MeshOp<
+    InputSet & {
+      selectedFacesOnly: BoolProperty
+    },
+    OutputSet & {}
+  >
+{
   constructor() {
     super()
   }
@@ -26,8 +28,11 @@ export class MeshOpBaseUV<InputSet extends PropertySlots = {}, OutputSet extends
     }
   }
 
-  static invoke(ctx: ViewContext, args: unknown[]) {
-    const tool = super.invoke(ctx, args)
+  static invoke<CTX extends ContextLike>(_ctx: CTX, args: Record<string, unknown>): ToolOp {
+    // the lack of static-level generics in TS can be frustrating at times
+    // stupid hack
+    const ctx = _ctx as unknown as ViewContext
+    const tool = super.invoke(ctx, args) as MeshOpBaseUV
 
     if (!('selectedFacesOnly' in args)) {
       const editor = ctx.editors.imageEditor as ImageEditor
@@ -38,7 +43,7 @@ export class MeshOpBaseUV<InputSet extends PropertySlots = {}, OutputSet extends
       }
     }
 
-    return tool
+    return tool as ReturnType<typeof ToolOp.invoke>
   }
 
   getFaces(ctx: ViewContext) {
@@ -100,12 +105,14 @@ export class UnwrapOpBase<
   }
 }
 
-export class UVOpBase<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends View3DOp<
-  InputSet & {
-    selectedFacesOnly: BoolProperty
-  },
-  OutputSet & {}
-> {
+export class UVOpBase<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> //
+  extends View3DOp<
+    InputSet & {
+      selectedFacesOnly: BoolProperty
+    },
+    OutputSet & {}
+  >
+{
   constructor() {
     super()
   }
@@ -120,8 +127,11 @@ export class UVOpBase<InputSet extends PropertySlots = {}, OutputSet extends Pro
     }
   }
 
-  static invoke(ctx: ViewContext, args: unknown[]) {
-    const tool = super.invoke(ctx, args)
+  static invoke<CTX extends ContextLike>(_ctx: CTX, args: Record<string, unknown>): ToolOp {
+    // the lack of static-level generics in TS can be frustrating at times
+    // stupid hack
+    const ctx = _ctx as unknown as ViewContext
+    const tool = super.invoke(ctx, args) as unknown as UVOpBase
 
     if (!('selectedFacesOnly' in args)) {
       const imageEditor = ctx.editors.imageEditor
@@ -131,7 +141,7 @@ export class UVOpBase<InputSet extends PropertySlots = {}, OutputSet extends Pro
       }
     }
 
-    return tool
+    return tool as ReturnType<typeof ToolOp.invoke>
   }
 
   getLoops(ctx: ViewContext, selOnly = false): Iterable<Loop> {

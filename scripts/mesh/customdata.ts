@@ -1,12 +1,13 @@
-import {DataAPI, DataPathCallBack, nstructjs, ToolProperty, Vector3, DataStruct} from '../path.ux/scripts/pathux.js'
 import * as util from '../util/util.js'
-
+import {DataAPI, nstructjs, ToolProperty, DataStruct} from '../path.ux/scripts/pathux.js'
 import {EmptyCDArray, ICustomDataCapable} from './mesh_base.js'
 import {Icons} from '../editors/icon_enum.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
+import {CDElemArray} from './mesh_base.js'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 import {Element} from './mesh_types'
 
-export type CDRef<type> = number
+/* @deprecated */
+export type CDRef<Type> = number
 
 export interface ICustomDataElemConstructor<type = CustomDataElem<any>> {
   new (): type
@@ -268,9 +269,9 @@ export function buildCDAPI(api: DataAPI) {
 
   const st = api.mapStruct(CustomData, true)
 
-  function makeGetter(typeName: string): DataPathCallBack {
-    return function () {
-      const customData = this.dataref
+  function makeGetter(typeName: string) {
+    return function (this: ToolProperty) {
+      const customData = this.dataref as CustomData
       return customData.getActiveLayer(typeName)
     }
   }
@@ -286,21 +287,21 @@ export function buildCDAPI(api: DataAPI) {
     st.struct(ldef.typeName, ldef.typeName, 'Active ' + ldef.typeName + ' layer', layerst)
     const def = st.pathmap[ldef.typeName]
 
-    def.customGetSet(makeGetter(ldef.typeName))
+    def.customGet(makeGetter(ldef.typeName))
   }
 
-  st.list<CustomDataLayer<any>[], number, CustomDataLayer<any>>('flatlist', 'layers', {
-    getIter(api, list: CustomDataLayer<any>[]) {
+  st.list<CustomDataLayer[], number, CustomDataLayer>('flatlist', 'layers', {
+    getIter(api, list: CustomDataLayer[]) {
       return list
     },
-    getLength(api: DataAPI, list: CustomDataLayer<any>[]) {
+    getLength(api: DataAPI, list: CustomDataLayer[]) {
       return list.length
     },
 
-    get(api: DataAPI, list: CustomDataLayer<any>[], key: number) {
+    get(api: DataAPI, list: CustomDataLayer[], key: number) {
       return list[key]
     },
-    getKey(api: DataAPI, list: CustomDataLayer<any>[], obj: CustomDataLayer<any>) {
+    getKey(api: DataAPI, list: CustomDataLayer[], obj: CustomDataLayer) {
       return obj !== undefined ? obj.index : -1
     },
     getStruct(api, list, key) {
@@ -315,7 +316,7 @@ export function buildElementAPI(api: DataAPI, dstruct: DataStruct) {
     cls.apiDefine(api, cstruct)
   }
 
-  dstruct.list<CustomDataElem<any>[], number, CustomDataElem<any>>('customData', 'dataLayers', {
+  dstruct.list<CustomDataElem[], number, CustomDataElem>('customData', 'dataLayers', {
     getIter(api, list) {
       return list
     },
@@ -510,7 +511,7 @@ mesh.CustomDataLayer {
   }
 }
 
-export class LayerSet<CDType extends CustomDataElem<any>> extends Array<CustomDataLayer<CDType>> {
+export class LayerSet<CDType extends CustomDataElem = CustomDataElem> extends Array<CustomDataLayer<CDType>> {
   typeName: string
   active: CustomDataLayer<CDType> | undefined
   active_i?: number /* Used by STRUCT script. */
@@ -614,12 +615,12 @@ mesh.LayerSet {
 }
 
 export class CustomData {
-  flatlist: CustomDataLayer<any>[]
+  flatlist: CustomDataLayer[]
   idgen: util.IDGen
-  layers: Map<string, LayerSet<any>>
+  layers: Map<string, LayerSet>
 
-  on_layeradd?: (layer: CustomDataLayer<any>, lset: LayerSet<any>) => void
-  on_layerremove?: (layer: CustomDataLayer<any>, lset: LayerSet<any>) => void
+  on_layeradd?: (layer: CustomDataLayer, lset: LayerSet) => void
+  on_layerremove?: (layer: CustomDataLayer, lset: LayerSet) => void
 
   /* Used by struct script. */
   _layers?: LayerSet<any>[]
@@ -833,7 +834,7 @@ mesh.CustomData {
       typeName = cls.define().typeName
     }
 
-    const set = this.layers.get(typeName)
+    const set = this.layers.get(typeName) as LayerSet<Type>
     if (!set) {
       return undefined
     }
@@ -900,7 +901,7 @@ mesh.CustomData {
       this.layers.get(typename)!.active = undefined
     }
 
-    return this.layers.get(typename)!
+    return (this.layers.get(typename) as LayerSet<CDType>)!
   }
 
   hasNamedLayer(name: string, opt_cls_or_typeName?: string | any) {
@@ -941,7 +942,7 @@ mesh.CustomData {
       }
 
       if (layer.name === name) {
-        return layer
+        return layer as CustomDataLayer<CDType>
       }
     }
   }
@@ -1002,5 +1003,3 @@ export class AttrRef<Type extends CustomDataElem<any, Type>> {
     return cdata.getLayerFromIndex<Type>(this.i)
   }
 }
-
-import {CDElemArray} from './mesh_base.js'

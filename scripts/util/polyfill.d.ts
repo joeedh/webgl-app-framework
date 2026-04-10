@@ -34,7 +34,6 @@ export declare global {
     D5: number | undefined
     D6: number | undefined
     DTST2: number | undefined
-    DEBUG: any
     _appstate: AppState
     _unwrap_solvers: Map<any, any>
   }

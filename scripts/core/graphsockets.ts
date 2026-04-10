@@ -9,10 +9,11 @@ import {
   DataAPI,
   DataStruct,
   ToolProperty,
+  Container,
 } from '../path.ux/scripts/pathux.js'
-import {NodeSocketType, NodeFlags, SocketFlags, nodeSocket_api_uiname} from './graph.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
-import {Container} from '../path.ux/scripts/types/core/ui'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
+import {ViewContext} from './context.js'
+import {NodeSocketType, SocketFlags, nodeSocket_api_uiname} from './graph.js'
 
 export class Matrix4Socket extends NodeSocketType<Matrix4> {
   static STRUCT = nstructjs.inlineRegister(
@@ -36,7 +37,7 @@ graph.Matrix4Socket{
   }
 
   addToUpdateHash(digest: util.HashDigest) {
-    digest.add(this.value)
+    digest.add(this.value.getAsArray())
   }
 
   static apiDefine(api: DataAPI, sockstruct: DataStruct) {
@@ -181,8 +182,8 @@ graph.IntSocket {
   static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.int('value', 'value', 'value').noUnits()
 
-    def.on('change', function () {
-      this.dataref.graphUpdate(true)
+    def.on('change', function (this: ToolProperty) {
+      ;(this.dataref as IntSocket).graphUpdate(true)
     })
   }
 
@@ -230,7 +231,7 @@ graph.IntSocket {
 NodeSocketType.register(IntSocket)
 
 export abstract class VecSocket<ValueType> extends NodeSocketType<ValueType> {
-  buildUI(container: Container) {
+  buildUI(container: Container<ViewContext>) {
     if (this.edges.length === 0) {
       container.vecpopup('value')
     } else {
@@ -259,8 +260,8 @@ graph.Vec2Socket {
   static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.vec2('value', 'value', 'value').noUnits()
 
-    def.on('change', function () {
-      this.dataref.graphUpdate(true)
+    def.on('change', function (this: ToolProperty) {
+      ;(this.dataref as Vec2Socket).graphUpdate(true)
     })
   }
 
@@ -327,8 +328,8 @@ graph.Vec3Socket {
   static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.vec3('value', 'value', 'value').uiNameGetter(nodeSocket_api_uiname)
 
-    def.on('change', function () {
-      this.dataref.graphUpdate(true)
+    def.on('change', function (this: ToolProperty) {
+      ;(this.dataref as Vec3Socket).graphUpdate(true)
     })
   }
 
@@ -406,8 +407,8 @@ graph.Vec4Socket {
   static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.vec4('value', 'value', 'value').noUnits()
 
-    def.on('change', function () {
-      this.dataref.graphUpdate(true)
+    def.on('change', function (this: ToolProperty) {
+      ;(this.dataref as Vec4Socket).graphUpdate(true)
     })
   }
 
@@ -477,12 +478,12 @@ graph.RGBSocket {
   static apiDefine(api: DataAPI, sockstruct: DataStruct) {
     const def = sockstruct.color3('value', 'value', 'value').uiNameGetter(nodeSocket_api_uiname)
 
-    def.on('change', function () {
-      this.dataref.graphUpdate(true)
+    def.on('change', function (this: ToolProperty) {
+      (this.dataref as RGBSocket).graphUpdate(true)
     })
   }
 
-  buildUI(container: Container, onchange?: any) {
+  buildUI(container: Container<ViewContext>, onchange?: any) {
     if (this.edges.length === 0) {
       container.colorbutton('value')
       /*
@@ -527,12 +528,12 @@ graph.RGBASocket {
   static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.color4('value', 'value', 'value').uiNameGetter(nodeSocket_api_uiname).noUnits()
 
-    def.on('change', function () {
-      this.dataref.graphUpdate(true)
+    def.on('change', function (this: ToolProperty) {
+      (this.dataref as RGBASocket).graphUpdate(true)
     })
   }
 
-  buildUI(container: Container, onchange?: any): void {
+  buildUI(container: Container<ViewContext>, onchange?: any): void {
     if (this.edges.length === 0) {
       container.colorbutton('value')
       /*
@@ -576,8 +577,8 @@ graph.FloatSocket {
   static apiDefine(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.float('value', 'value', 'value').noUnits()
 
-    def.on('change', function () {
-      this.dataref.graphUpdate(true)
+    def.on('change', function (this: ToolProperty) {
+      (this.dataref as FloatSocket).graphUpdate(true)
     })
   }
 
@@ -591,7 +592,7 @@ graph.FloatSocket {
   }
 
   //buildUI(container: Container, onchange: (this: GlobalEventHandlers, ev: Event) => any): void {
-  buildUI(container: Container, onchange?: () => void): void {
+  buildUI(container: Container<ViewContext>, onchange?: () => void): void {
     if (this.edges.length === 0) {
       const ret = container.prop('value')
       ret.setAttribute('name', this.uiname)
@@ -677,8 +678,8 @@ export class EnumSocket extends IntSocket {
 
   apiDefine(api: DataAPI, sockstruct: DataStruct): void {
     const def = sockstruct.enum('value', 'value', this.items, this.uiname).uiNames(this.uimap)
-    def.on('change', function () {
-      this.dataref.graphUpdate(true)
+    def.on('change', function (this: ToolProperty) {
+      (this.dataref as EnumSocket).graphUpdate(true)
     })
   }
 

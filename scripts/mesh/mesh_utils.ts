@@ -308,24 +308,6 @@ export function calcMVC(co: Vector3, neighbors: Iterable<Vertex>, normal?: Vecto
   return ws
 }
 
-function mul_mat_vec(mat: INumberList, vec: INumberList, m: number) {
-  const vec2 = mvc_tmps.next()
-
-  for (let i = 0; i < m; i++) {
-    for (let j = 0; j < m; j++) {
-      for (let k = 0; k < m; k++) {
-        mat[i * m + j] += mat[i * m + k] * vec[k * m + j]
-      }
-    }
-  }
-
-  for (let i = 0; i < vec.length; i++) {
-    vec[i] = vec2[i]
-  }
-
-  return vec
-}
-
 export function _testMVC(mesh: Mesh): void {
   let cd_color: AttrRef<ColorLayerElem>
 
@@ -1798,7 +1780,7 @@ export function fixManifold(mesh: Mesh, lctx?: LogContext) {
 
   for (const v of mesh.verts) {
     for (let i = 0; i < 3; i++) {
-      if (isnan(v.co[i])) {
+      if (isnan(v.co[i as Number3])) {
         v.co[i as 0 | 1 | 2] = (Math.random() - 0.5) * 0.001
         v.flag |= MeshFlags.UPDATE
         mesh.verts.setSelect(v, true)

@@ -12,7 +12,6 @@ import {LayerTypes, SimpleMesh} from '../core/simplemesh.js'
 
 import * as util from '../util/util.js'
 import type {View3D} from '../editors/view3d/view3d'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 
 export function basis(ks: number[], t: number, i: number, deg: number) {
   let len = ks.length
@@ -45,9 +44,9 @@ export class WalkRet {
   v: Vertex
   e: Edge
 
-  constructor(v: Vertex, e: Edge) {
-    this.v = v
-    this.e = e
+  constructor(v?: Vertex, e?: Edge) {
+    this.v = v as unknown as Vertex
+    this.e = e as unknown as Edge
   }
 
   load(v: Vertex, e: Edge) {
@@ -63,6 +62,7 @@ import {KnotDataLayer, KnotFlags, getKnot} from './curve_knot'
 import {IUniformsBlock, ShaderProgram} from '../core/webgl.js'
 import {ViewContext} from '../core/context.js'
 import {SceneObject} from '../sceneobject/sceneobject.js'
+import { StructReader } from '../path.ux/scripts/util/nstructjs.js'
 
 let WalkRets = util.cachering.fromConstructor(WalkRet, 1024)
 
@@ -88,7 +88,7 @@ CurveSpline {
   _length: number
   speedLength: number
 
-  private _evaluate_vs: util.cachering
+  private _evaluate_vs: util.cachering<Vector3>
   private _last_check_key: number = 0
 
   constructor() {
@@ -211,8 +211,8 @@ CurveSpline {
     for (let i = 0; i < this.knotpad; i++) {
       let k = 0.0
 
-      k = getKnot(v).knot
-      t += e.length * k
+      k = getKnot(v!).knot
+      t += e!.length * k
 
       this.knots.push(k)
     }
@@ -232,7 +232,7 @@ CurveSpline {
     }
 
     if (laste && !this.isClosed) {
-      let v2 = laste.otherVertex(lastv)
+      let v2 = laste.otherVertex(lastv!)
       getKnot(v2).computedKnot = t
     }
 
@@ -468,26 +468,26 @@ CurveSpline {
     let p = this._evaluate_vs.next()
 
     if (!ok) {
-      s = s < this.length / 2.0 ? 0 : laste.length
+      s = s < this.length / 2.0 ? 0 : laste!.length
       if (s_out) {
         s_out[0] = s
-        s_out[1] = lastds !== undefined ? lastds : laste.length
+        s_out[1] = lastds !== undefined ? lastds : laste!.length
       }
 
-      if (e_out) e_out[0] = laste
-      if (dv_out) dv_out.load(laste.arcDerivative(s))
-      if (no_out) no_out.load(laste.arcNormal(s))
-      return p.load(laste.arcEvaluate(s))
+      if (e_out) e_out[0] = laste!
+      if (dv_out) dv_out.load(laste!.arcDerivative(s))
+      if (no_out) no_out.load(laste!.arcNormal(s))
+      return p.load(laste!.arcEvaluate(s))
     } else {
       if (s_out) {
         s_out[0] = s
         s_out[1] = ds!
       }
-      if (e_out) e_out[0] = laste
-      if (dv_out) dv_out.load(laste.arcDerivative(s))
-      if (no_out) no_out.load(laste.arcNormal(s))
+      if (e_out) e_out[0] = laste!
+      if (dv_out) dv_out.load(laste!.arcDerivative(s))
+      if (no_out) no_out.load(laste!.arcNormal(s))
 
-      return laste.arcEvaluate(s)
+      return laste!.arcEvaluate(s)
     }
   }
 
@@ -542,7 +542,7 @@ CurveSpline {
       }
 
       if (i > 0) {
-        let line = sm.line(lastco, co)
+        let line = sm.line(lastco!, co)
 
         if (layers & LayerTypes.COLOR) {
           line.colors(color1, color2)
@@ -651,13 +651,13 @@ CurveSpline {
       break
     }
 
-    let closed = v.valence > 1
+    let closed = v!.valence > 1
     if (!!closed !== !!this.isClosed) {
       this.sortVerts()
 
       if (closed) {
-        for (let e of v.edges) {
-          if (e.otherVertex(v) !== this.verts.list[1]) {
+        for (let e of v!.edges) {
+          if (e.otherVertex(v!) !== this.verts.list[1]) {
             this.killEdge(e)
             break
           }

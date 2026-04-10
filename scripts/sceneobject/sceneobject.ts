@@ -5,10 +5,10 @@ import {SocketFlags} from '../core/graph.js'
 import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket, EnumSocket} from '../core/graphsockets.js'
 import {Shaders} from '../shaders/shaders'
 import {SceneObjectData} from './sceneobject_base'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 import {Material} from '../core/material'
 import {ShaderProgram} from '../core/webgl.js'
 import type {View3D} from '../editors/all.js'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 let loc_rets = util.cachering.fromConstructor(Vector3, 256)
 
@@ -40,12 +40,13 @@ function mix(a: IVector4 | number[], b: IVector4 | number[], t: number) {
   return new Vector4(a).interp(b as unknown as IVector4, t)
 }
 
-export let Colors: {[k: number]: IVector4} = {
+export let Colors: {[k: number]: Vector4} = {
   0                    : new Vector4([0.7, 0.7, 0.7, 1.0]), //0
   [ObjectFlags.SELECT]   : new Vector4([1.0, 0.378, 0.15, 1.0]), //1
   [ObjectFlags.HIGHLIGHT]: new Vector4([0.9, 0.5, 0.3, 1.0]), //8
   [ObjectFlags.ACTIVE]   : new Vector4([0.0, 0.5, 1.0, 1.0]),
 }
+
 Colors[ObjectFlags.SELECT | ObjectFlags.HIGHLIGHT] = mix(Colors[ObjectFlags.SELECT], Colors[ObjectFlags.HIGHLIGHT], 0.5)
 Colors[ObjectFlags.SELECT | ObjectFlags.ACTIVE] = mix(Colors[ObjectFlags.SELECT], Colors[ObjectFlags.ACTIVE], 0.5)
 Colors[ObjectFlags.SELECT | ObjectFlags.ACTIVE | ObjectFlags.HIGHLIGHT] = mix(
@@ -107,7 +108,7 @@ export class SceneObject<InputSet extends {} = {}, OutputSet extends {} = {}> ex
 
   // update generation
   updateGen?: number
-  
+
   constructor(data?: SceneObjectData<any, any>) {
     super()
 

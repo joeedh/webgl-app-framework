@@ -179,7 +179,7 @@ export class DebugEditor extends Editor {
       enumDef   : enumdef,
       name      : 'Active History',
       defaultval: this.activeFBOHistory,
-    }).onselect = (val) => {
+    }).on_select = (val) => {
       this.activeFBOHistory = idmap[val]
     }
   }

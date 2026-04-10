@@ -60,12 +60,11 @@ export class PatchBuilder {
     }
 
     function edgev(l: Loop) {
-      return l.v
-      const co = new Vector3()
-
-      co.load(l.v.co)
-      return ccSmooth(l.v, cd_fset, cd_dyn_vert)
-      return l.v
+      return l.v.co
+      //const co = new Vector3()
+      //co.load(l.v.co)
+      //return ccSmooth(l.v, cd_fset, cd_dyn_vert)
+      //return l.v
     }
 
     const p1 = new Vector3(l.f.cent)
@@ -279,7 +278,7 @@ export class PatchBuilder {
         continue
       }
 
-      const lco = vsmooth(l.v)
+      const lco = vsmooth(l.v)!
 
       const l2 = l.radial_next.next
       const p2 = this.patches.get(l2)!

@@ -323,7 +323,7 @@ export class WidgetTorus extends WidgetShape {
 
     dis = Math.abs(dis / wscale - scale * 0.5) * 0.25
 
-    const viewsize = view3d.size[1]
+    const viewsize = view3d.size![1]
 
     dis *= viewsize
     z *= viewsize / wscale
@@ -1409,7 +1409,7 @@ export class WidgetManager {
     }
   }
 
-  _newbase(matrix: Matrix4, color: Vector4, shape: WidgetShape) {
+  _newbase(matrix: Matrix4, color: IVector4, shape: WidgetShape) {
     const ret = new WidgetBase()
     ret.shape = shape
 

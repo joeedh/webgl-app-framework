@@ -979,7 +979,7 @@ export class UVWrangler<OPT extends {dead?: true | false; hasUVMesh?: true | fal
         }
 
         uvsum.mulScalar(1.0 / tot)
-        v.co.load(uvsum)
+        v.co.load2(uvsum)
         v.co[2] = 0.0
       }
     }
@@ -1494,7 +1494,7 @@ export function voxelUnwrap(
   }
 
   for (const pn of graph) {
-    const off = new Vector2(pn.pos).sub(pn.startpos).mulScalar(1.0 / 1000)
+    const off = new Vector2(pn.pos).sub(pn.startpos!).mulScalar(1.0 / 1000)
 
     for (const l of pn.ls) {
       const uv = cd_uv.get(l).uv

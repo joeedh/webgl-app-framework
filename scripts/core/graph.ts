@@ -1,8 +1,7 @@
-import {DataAPI, DataStruct, ToolProperty, Vector2, nstructjs, util} from '../path.ux/scripts/pathux.js'
+import {Container, DataAPI, DataStruct, ToolProperty, Vector2, nstructjs, util} from '../path.ux/scripts/pathux.js'
 
 import '../util/polyfill.d.ts'
-import type {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
-import type {Container} from '../path.ux/scripts/types/core/ui'
+import type {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 import {ViewContext} from './context'
 import {BlockLoader, BlockLoaderAddUser, DataBlock} from './lib_api.js'
 
@@ -290,7 +289,7 @@ graph.NodeSocketType {
    will have its path evaluated *relative to the node itself*,
    NOT Context as usual.
    */
-  buildUI(container: Container, onchange?: () => void) {
+  buildUI(container: Container<ViewContext>, onchange?: () => void) {
     if (this.edges.length === 0 && !(this.graph_flag & SocketFlags.NO_UI_EDITING)) {
       const ret = container.prop('value')
 

@@ -14,7 +14,7 @@ import {
   SAVE_DEAD_VERTS,
 } from './mesh_base'
 
-import {INodeDef, Node, NodeFlags} from '../core/graph'
+import {NodeFlags} from '../core/graph'
 
 import {Shaders} from '../shaders/shaders.js'
 
@@ -22,7 +22,7 @@ import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../core/simplemesh'
 
 import {DataBlock} from '../core/lib_api'
 import {IDataDefine, SceneObjectData} from '../sceneobject/sceneobject_base'
-import {INumVector, IOpenNumVector, math, Matrix4, nstructjs, util, Vector3, Vector4} from '../path.ux/pathux.js'
+import {math, Matrix4, nstructjs, Number3, util, Vector2, Vector3, Vector4} from '../path.ux/pathux.js'
 
 import {
   CDFlags,
@@ -53,14 +53,13 @@ import {EDGE_LINKED_LISTS} from '../core/const.js'
 
 import {NormalLayerElem, OrigIndexElem, UVLayerElem} from './mesh_customdata.js'
 import {Edge, Element, Face, Handle, Loop, LoopList, PrivateVertexConstructor, Vertex} from './mesh_types.js'
-import {ElementList, ElementListIter} from './mesh_element_list.js'
+import {ElementList} from './mesh_element_list.js'
 import {SelMask} from '../editors/view3d/selectmode.js'
 import {BVH, BVHSettings} from '../util/bvh.js'
 import {drawMeshElements, genRenderMesh} from './mesh_draw.js'
 import {GridBase} from './mesh_grids.js'
 import {UVWrangler} from './unwrapping.js'
 import {setMeshClass, triangulateFace} from './mesh_tess.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 import {
   checkDispLayers,
   DispLayerFlags,
@@ -73,11 +72,12 @@ import {IGridConstructor} from './mesh_grids.js'
 import type {View3D} from '../editors/view3d/view3d'
 //import type {View3D} from '../editors/view3d/view3d'
 import type {SceneObject} from '../sceneobject/sceneobject'
-import {Utf8DecodeWorker} from '../extern/jszip/jszip'
+//import {Utf8DecodeWorker} from '../extern/jszip/jszip'
 import {ToolContext} from '../core/context'
 import {Material} from '../core/material'
 import {IUniformsBlock, ShaderProgram} from '../core/webgl'
 import type {Scene} from '../scene/scene'
+import {StructReader} from '../path.ux/scripts/util/nstructjs'
 
 export interface IBVHArgs {
   leafLimit?: number
@@ -90,18 +90,9 @@ export interface IBVHArgs {
 }
 
 declare global {
-  interface IDEBUG {
-    simplemesh: boolean
-  }
-
-  interface WindowOrWorkerGlobalScope {
-    redraw_all(): void
-
+  interface Window {
     redraw_viewport(reset?: boolean): void
-
     _gl: WebGL2RenderingContext
-
-    DEBUG: IDEBUG
   }
 }
 
@@ -110,10 +101,10 @@ export * from './mesh_types'
 export * from './mesh_customdata'
 export * from './mesh_element_list.js'
 
-const split_temp = new Array(512)
+const split_temp = new Array<Loop>(512)
 
-const _quad = new Array(4)
-const _tri = new Array(3)
+const _quad = new Array<Vertex>(4)
+const _tri = new Array<Vertex>(3)
 const _cdtemp1 = new Array<Vertex>(1)
 const _cdtemp2 = new Array<Vertex>(2)
 const _cdwtemp1 = new Array<number>(1)
@@ -121,8 +112,8 @@ const _cdwtemp2 = new Array<number>(2)
 
 const _collapsetemp = new Array<Face>(4192)
 const _collapsetemp2 = new Array<Edge>(4192)
-const _collapsetemp3 = new Array(4192)
-const _collapsecd_ls = new Array(2)
+const _collapsecd_vs = new Array<Vertex>(2)
+const _collapsecd_ls = new Array<Loop>(2)
 const _collapsecd_ws = [0.5, 0.5]
 
 const splitcd_ls: Loop[] = [undefined, undefined] as unknown as Loop[]
@@ -132,40 +123,40 @@ let _idgen = 0
 
 const debuglog = false
 
-const VEID = 0,
-  VFLAG = 1,
-  VX = 1,
-  VY = 2,
-  VZ = 3,
-  VNX = 4,
-  VNY = 5,
-  VNZ = 6,
-  VTOT = 7
-const EEID = 0,
-  EFLAG = 1,
-  EV1 = 2,
-  EV2 = 3,
-  ETOT = 4
-const LEID = 0,
-  LFLAG = 1,
-  LV = 2,
-  LE = 3,
-  LTOT = 4
-const LISTFACE = 0,
-  LISTSTART = 1,
-  LISTLEN = 2,
-  LISTTOT = 3
-const FEID = 0,
-  FFLAG = 1,
-  FLISTSTART = 3,
-  FTOTLIST = 4,
-  FTOT = 5
-const HEID = 0,
-  HFLAG = 1,
-  HX = 2,
-  HY = 3,
-  HZ = 4,
-  HTOT = 5
+const VEID = 0
+const VFLAG = 1
+const VX = 1
+const VY = 2
+const VZ = 3
+const VNX = 4
+const VNY = 5
+const VNZ = 6
+const VTOT = 7
+const EEID = 0
+const EFLAG = 1
+const EV1 = 2
+const EV2 = 3
+const ETOT = 4
+const LEID = 0
+const LFLAG = 1
+const LV = 2
+const LE = 3
+const LTOT = 4
+const LISTFACE = 0
+const LISTSTART = 1
+const LISTLEN = 2
+const LISTTOT = 3
+const FEID = 0
+const FFLAG = 1
+const FLISTSTART = 3
+const FTOTLIST = 4
+const FTOT = 5
+const HEID = 0
+const HFLAG = 1
+const HX = 2
+const HY = 3
+const HZ = 4
+const HTOT = 5
 
 export class EIDGen {
   static STRUCT = nstructjs.inlineRegister(
@@ -560,6 +551,8 @@ mesh.Mesh {
   }
 
   debugLogCompare(mesh2: this) {
+    throw new Error('reimplement me!')
+    /*
     const log1 = this.debuglog!
     const log2 = mesh2.debuglog!
 
@@ -578,8 +571,8 @@ mesh.Mesh {
     const lines = [] as string[]
 
     for (let i = 0; i < len; i++) {
-      const l1 = log1[i],
-        l2 = log2[i]
+      const l1 = log1[i as Number3]
+      const l2 = log2[i as Number3]
 
       const line = `${pad(l1.e.constructor.name)} ${l1.eid} ${pad(l2.e.constructor.name)} ${l2.eid}\n`
       lines.push(line)
@@ -590,8 +583,8 @@ mesh.Mesh {
     buf += '\n\n'
 
     for (let i = 0; i < len; i++) {
-      const l1 = log1[i],
-        l2 = log2[i]
+      const l1 = log1[i]
+      const l2 = log2[i]
 
       if (l1.e.constructor !== l2.e.constructor || l1.eid !== l2.eid) {
         buf += `Entry ${i} differ\n`
@@ -612,6 +605,7 @@ mesh.Mesh {
       buf = l + '\n' + buf2
     }
     //return buf;
+    */
   }
 
   _element_init(e: Element, customEid?: number) {
@@ -1085,7 +1079,8 @@ mesh.Mesh {
       let l1 = list.l
       let l2: Loop
       let _i = 0
-      let startl2: Loop | undefined, prevl2: Loop | undefined
+      let startl2: Loop | undefined
+      let prevl2: Loop | undefined
 
       do {
         l2 = this._makeLoop()
@@ -1217,7 +1212,8 @@ mesh.Mesh {
 
     f.flag |= MeshFlags.UPDATE
 
-    let firstl, prevl
+    let firstl
+    let prevl
 
     const list = new LoopList()
     f.lists.push(list)
@@ -1307,13 +1303,15 @@ mesh.Mesh {
     const ltris = this.loopTris!
 
     for (let i = 0; i < ltris.length; i += 3) {
-      const l1 = ltris[i],
-        l2 = ltris[i + 1],
-        l3 = ltris[i + 2]
-      const v1 = l1.v,
-        v2 = l2.v,
-        v3 = l3.v
-      let p1: Vector3, p2: Vector3, p3: Vector3
+      const l1 = ltris[i]
+      const l2 = ltris[i + 1]
+      const l3 = ltris[i + 2]
+      const v1 = l1.v
+      const v2 = l2.v
+      const v3 = l3.v
+      let p1: Vector3
+      let p2: Vector3
+      let p3: Vector3
 
       if (cd_disp >= 0) {
         p1 = v1.customData.get<DispLayerVert>(cd_disp).worldco
@@ -1753,7 +1751,7 @@ mesh.Mesh {
     this.ensureOrigIndexLayer()
 
     for (const elist of this.elists.values()) {
-      if (elist.type === MeshTypes.LOOP) {
+      if (elist.Type === MeshTypes.LOOP) {
         continue
       }
 
@@ -1773,7 +1771,7 @@ mesh.Mesh {
   /**make sure we have an original index layer*/
   ensureOrigIndexLayer(): void {
     for (const elist of this.elists.values()) {
-      if (elist.type === MeshTypes.LOOP) {
+      if (elist.Type === MeshTypes.LOOP) {
         continue
       }
 
@@ -1786,8 +1784,8 @@ mesh.Mesh {
   }
 
   _splitEdgeNoFace(e: Edge, t = 0.5, lctx?: LogContext): [Edge, Vertex] {
-    const v1 = e.v1,
-      v2 = e.v2
+    const v1 = e.v1
+    const v2 = e.v2
 
     t = t === undefined ? 0.5 : t
 
@@ -1878,10 +1876,10 @@ mesh.Mesh {
   }
 
   collapseEdge(e: Edge, v_keep: Vertex = e.v1, lctx?: LogContext, snap = true, depth = 0) {
-    let fi = 0,
-      flen = 0
-    let ei = 0,
-      elen = 0
+    const fi = 0
+    let flen = 0
+    const ei = 0
+    let elen = 0
 
     if (v_keep === e.v2) {
       //swap v1/v2
@@ -1896,6 +1894,7 @@ mesh.Mesh {
     const flag = MeshFlags.COLLAPSE_TEMP
 
     const cdls = _collapsecd_ls
+    const cdvs = _collapsecd_vs
     const cdws = _collapsecd_ws
 
     if (snap) {
@@ -1910,12 +1909,10 @@ mesh.Mesh {
       }
 
       //snap vertex customdata
-      cdls[0] = v1
-      cdls[1] = v2
-
+      cdvs[0] = v1
+      cdvs[1] = v2
       cdws[0] = cdws[1] = 0.5
-
-      this.verts.customDataInterp(v1, cdls, cdws)
+      this.verts.customDataInterp(v1, cdvs, cdws)
     }
 
     //clear flags
@@ -2319,7 +2316,8 @@ mesh.Mesh {
     list.length = vs.length
 
     f.lists.push(list)
-    let lastl: Loop | undefined, firstl: Loop | undefined
+    let lastl: Loop | undefined
+    let firstl: Loop | undefined
 
     for (let i = 0; i < vs.length; i++) {
       const l = this._makeLoop()
@@ -2379,7 +2377,8 @@ mesh.Mesh {
 
   splitFaceAtVerts(f: Face, v1: Vertex, v2: Vertex, lctx?: LogContext) {
     for (const list of f.lists) {
-      let l1, l2
+      let l1
+      let l2
 
       for (const l of list) {
         if (l.v === v1 || l.v === v2) {
@@ -2505,10 +2504,10 @@ mesh.Mesh {
     el1.f = f
     el1.e = e
 
-    const l1next = l1.next,
-      l1prev = l1.prev
-    const l2next = l2.next,
-      l2prev = l2.prev
+    const l1next = l1.next
+    const l1prev = l1.prev
+    const l2next = l2.next
+    const l2prev = l2.prev
 
     l1.prev.next = el1
     el1.next = l2
@@ -2637,10 +2636,10 @@ mesh.Mesh {
       return ret
     }
 
-    const ne = ret[0],
-      nv = ret[1]
-    const v1 = e.v1,
-      v2 = ne.v2
+    const ne = ret[0]
+    const nv = ret[1]
+    const v1 = e.v1
+    const v2 = ne.v2
 
     let l = e.l
     let count = 0
@@ -2739,7 +2738,7 @@ mesh.Mesh {
 
     //prevent reference leaks
     for (let i = 0; i < count; i++) {
-      split_temp[i] = undefined
+      split_temp[i] = undefined as unknown as Loop
     }
 
     if (DEBUG_DUPLICATE_FACES) {
@@ -2796,9 +2795,9 @@ mesh.Mesh {
         v = ret[0].v2
       }
 
-      let x = 0.0,
-        y = 0.0,
-        z = 0.0
+      let x = 0.0
+      let y = 0.0
+      let z = 0.0
       let tot = 0.0
 
       for (const e2 of v.edges) {
@@ -2826,10 +2825,10 @@ mesh.Mesh {
       return ret
     }
 
-    const ne = ret[0],
-      nv = ret[1]
-    const v1 = e.v1,
-      v2 = ne.v2
+    const ne = ret[0]
+    const nv = ret[1]
+    const v1 = e.v1
+    const v2 = ne.v2
 
     let l = e.l
     let count = 0
@@ -2928,7 +2927,7 @@ mesh.Mesh {
 
     //prevent reference leaks
     for (let i = 0; i < count; i++) {
-      split_temp[i] = undefined
+      split_temp[i] = undefined as unknown as Loop
     }
 
     if (DEBUG_DUPLICATE_FACES) {
@@ -3021,7 +3020,8 @@ mesh.Mesh {
       throw new MeshError('vertex valence must be 2')
     }
 
-    let e1: Edge | undefined, e2: Edge | undefined
+    let e1: Edge | undefined
+    let e2: Edge | undefined
 
     for (const e of v.edges) {
       if (!e1) e1 = e
@@ -3302,7 +3302,8 @@ mesh.Mesh {
     if (!(this.features & MeshFeatures.JOIN_EDGE)) throw new MeshFeatureError('dissolveVertex not supported')
 
     //handle case of two-valence vert with no surrounding faces
-    let e1, e2
+    let e1
+    let e2
     for (const e of v.edges) {
       if (!e1) {
         e1 = e
@@ -3592,8 +3593,8 @@ mesh.Mesh {
 
     //set up flags to detect non-manifold error
     for (let i = 0; ok && i < vs.length; i++) {
-      const v1 = vs[i],
-        v2 = vs[(i + 1) % vs.length]
+      const v1 = vs[i]
+      const v2 = vs[(i + 1) % vs.length]
       const e = this.getEdge(v1, v2)
 
       if (!e) {
@@ -3611,8 +3612,8 @@ mesh.Mesh {
     }
 
     for (let i = 0; ok && i < vs.length; i++) {
-      const v1 = vs[i],
-        v2 = vs[(i + 1) % vs.length]
+      const v1 = vs[i]
+      const v2 = vs[(i + 1) % vs.length]
       const e = this.getEdge(v1, v2)
 
       if (!e) {
@@ -3677,9 +3678,9 @@ mesh.Mesh {
       let checkexist = false
       const deletef = false
 
-      let totm1 = 0,
-        totm2 = 0,
-        totm3 = 0
+      let totm1 = 0
+      let totm2 = 0
+      let totm3 = 0
 
       for (const l of f.loops) {
         if (l.radial_next === l) {
@@ -3752,10 +3753,10 @@ mesh.Mesh {
     let flag = e.flag
     const act = e === this.edges.active
 
-    const l1 = e.l,
-      l2 = e.l.radial_next
-    const l1b = l1.prev,
-      l2b = l2.prev
+    const l1 = e.l
+    const l2 = e.l.radial_next
+    const l1b = l1.prev
+    const l2b = l2.prev
 
     const customData = e.customData
 
@@ -3906,7 +3907,8 @@ mesh.Mesh {
     }
 
     let bad: boolean | undefined
-    let vs: Vertex[] | undefined, f: Face | undefined
+    let vs: Vertex[] | undefined
+    let f: Face | undefined
 
     if (f_or_vs instanceof Face) {
       f = f_or_vs
@@ -4564,7 +4566,7 @@ mesh.Mesh {
   }
 
   tessellate() {
-    if (window.DEBUG.simplemesh) {
+    if (window.DEBUG?.simplemesh) {
       console.warn('Mesh tesselation')
     }
 
@@ -4688,10 +4690,10 @@ mesh.Mesh {
       }
 
       const steps = Math.max(Math.floor(len / 5), 8)
-      let t = 0,
-        dt = 1.0 / (steps - 1)
-      let s = 0,
-        ds = e.length / (steps - 1)
+      let t = 0
+      const dt = 1.0 / (steps - 1)
+      let s = 0
+      const ds = e.length / (steps - 1)
       let lastco = undefined
       const black = [0, 0, 0, 1]
       const color1 = new Vector4()
@@ -4726,11 +4728,11 @@ mesh.Mesh {
           const line = sm.line(lastco!, co)
 
           if (layers & LayerTypes.COLOR) {
-            line.colors(color1 as IOpenNumVector, color2 as IOpenNumVector)
+            line.colors(color1, color2)
           }
 
           if (layers & LayerTypes.UV) {
-            line.uvs([t, t], [t, t])
+            line.uvs(new Vector2([t, t]), new Vector2([t, t]))
           }
 
           if (layers & LayerTypes.ID) {
@@ -4940,9 +4942,9 @@ mesh.Mesh {
     const cd_uv = this.loops.customData.getLayerRef(UVLayerElem)
 
     for (let i = 0; i < ltris.length; i += 3) {
-      const l1 = ltris[i],
-        l2 = ltris[i + 1],
-        l3 = ltris[i + 2]
+      const l1 = ltris[i]
+      const l2 = ltris[i + 1]
+      const l3 = ltris[i + 2]
       const f = l1.f
 
       const tri = sm.tri(l1.v.co, l2.v.co, l3.v.co)
@@ -4960,14 +4962,14 @@ mesh.Mesh {
       }
     }
 
-    const white = [1, 1, 1, 1]
+    const white = new Vector4([1, 1, 1, 1])
 
     if (combinedWireframe) {
       for (const e of this.edges) {
         const line = sm.line(e.v1.co, e.v2.co)
 
         line.ids(e.eid, e.eid)
-        line.uvs([0, 0], [1, 0])
+        line.uvs(new Vector2([0, 0]), new Vector2([1, 0]))
         line.colors(white, white)
         line.normals(e.v1.no, e.v2.no)
       }
@@ -5005,8 +5007,9 @@ mesh.Mesh {
     const max = this.max
 
     for (const v of this.verts) {
-      for (let i = 0; i < 3; i++) {
-        v.co[i as 0 | 1 | 2] = ((v.co[i] - min[i]) / (max[i] - min[i]) - 0.5) * 2.0
+      for (let _i = 0; _i < 3; _i++) {
+        let i = _i as Number3
+        v.co[i] = ((v.co[i] - min[i]) / (max[i] - min[i]) - 0.5) * 2.0
       }
     }
   }
@@ -5146,7 +5149,8 @@ mesh.Mesh {
       return
     }
 
-    for (let i = 0; i < 3; i++) {
+    for (let _i = 0; _i < 3; _i++) {
+      let i = _i as Number3
       if (!(sym & (1 << i))) {
         continue
       }
@@ -5191,7 +5195,7 @@ mesh.Mesh {
 
   clearUpdateFlags(typemask: number) {
     for (const list of this.elists.values()) {
-      if (typemask !== undefined && !(list.type & typemask)) {
+      if (typemask !== undefined && !(list.Type & typemask)) {
         continue
       }
 
@@ -5367,7 +5371,7 @@ mesh.Mesh {
     selmask: number,
     uniforms: IUniformsBlock,
     program: ShaderProgram,
-    object: SceneObject,
+    object?: SceneObject,
     drawTransFaces = false
   ) {
     return drawMeshElements(this, view3d, gl, selmask, uniforms, program, object, drawTransFaces)
@@ -5598,12 +5602,12 @@ mesh.Mesh {
     }
 
     for (const elist of ret.getElemLists()) {
-      if (this.elists.get(elist.type)?.customData === undefined) {
+      if (this.elists.get(elist.Type)?.customData === undefined) {
         continue
       }
 
       if (!clearCustomData) {
-        elist.customData = this.elists.get(elist.type)!.customData.copy()
+        elist.customData = this.elists.get(elist.Type)!.customData.copy()
         elist.customData.on_layeradd = ret._on_cdlayer_add.bind(ret)
         elist.customData.on_layerremove = ret._on_cdlayer_rem.bind(ret)
       }
@@ -6092,8 +6096,8 @@ mesh.Mesh {
       }
 
       const l1 = f.lists[0].l
-      const l2 = l1.next,
-        l3 = l1.prev
+      const l2 = l1.next
+      const l3 = l1.prev
 
       let ok = math.colinear(l1.v.co, l2.v.co, l3.v.co)
       ok = ok || l1.v.co.vectorDistance(l2.v.co) < eps
@@ -6354,8 +6358,8 @@ mesh.Mesh {
         for (const l of list) {
           l.list = list
 
-          const v1 = l.v,
-            v2 = l.next.v
+          const v1 = l.v
+          const v2 = l.next.v
           let bad = !(v1 === l.e.v1 && v2 === l.e.v2)
           bad = bad && !(v2 === l.e.v1 && v1 === l.e.v2)
 
@@ -6397,7 +6401,7 @@ mesh.Mesh {
     this.elists = new Map()
 
     for (const elist of this._elists!) {
-      this.elists.set(elist.type, elist)
+      this.elists.set(elist.Type, elist)
     }
 
     this._elists = undefined

@@ -4,7 +4,6 @@ import {
   IndexRange,
   IVector2,
   IVector3,
-  IVector4,
   ToolOp,
   trilinear_co,
   trilinear_v3,
@@ -104,26 +103,7 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
     return 32
   }
 
-  on_pointermove_intern(
-    e: any,
-    x?: number,
-    y?: number,
-    in_timer?: boolean,
-    isInterp?: boolean
-  ):
-    | {
-        origco: IVector3
-        p: Vector3
-        isect: IsectRet
-        radius: number
-        ob: SceneObject<{}, {}>
-        vec: IVector3
-        mpos: IVector2
-        view: Vector3
-        getchannel: (key: string, val: number) => number
-        w: number
-      }
-    | undefined {
+  on_pointermove_intern(e: any, x?: number, y?: number, in_timer?: boolean, isInterp?: boolean) {
     const ctx = this.modal_ctx!
     if (!ctx.mesh) {
       return
@@ -132,7 +112,7 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
     const ret = super.on_pointermove_intern(e, x, y, in_timer)
 
     if (!ret) {
-      return
+      return ret
     }
 
     const mesh = ctx.mesh
@@ -145,8 +125,8 @@ export class BVHDeformPaintOp extends PaintOpBase<{}, {}> {
 
     const ps = new PaintSample()
 
-    ps.p.load(p)
-    ps.dp.load(p).sub(this.last_p as unknown as Vector4)
+    ps.p.load3(p)
+    ps.dp.load3(p).sub(this.last_p as unknown as Vector4)
     this.last_p.load(p)
 
     ps.radius = radius

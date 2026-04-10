@@ -1,9 +1,8 @@
 'use strict'
 
-import {util, nstructjs, Vector3, Matrix4} from '../path.ux/scripts/pathux.js'
+import {util, nstructjs, Vector3, Matrix4, JSONAny} from '../path.ux/scripts/pathux.js'
+import { StructReader } from '../path.ux/scripts/util/nstructjs.js'
 import './const.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
-import {ViewContext} from './context.js'
 
 export const constmap = {} as any //{[k: number]: number}
 
@@ -234,7 +233,7 @@ export function init_webgl(
 
   gl.shadercache = {}
 
-  if (window.DEBUG.gl) {
+  if (window.DEBUG?.gl) {
     initDebugGL(gl)
   }
 
@@ -1271,7 +1270,7 @@ export class VBO {
     if (useSub) {
       gl.bufferSubData(target, 0, dataF32)
     } else {
-      if (window.DEBUG.simplemesh) {
+      if (window.DEBUG?.simplemesh) {
         console.warn('bufferData')
       }
       gl.bufferData(target, dataF32, drawhint)
@@ -1830,7 +1829,7 @@ Camera {
     this.up.normalize()
 
     this.regen_mats(this.aspect)
-    window.redraw_all()
+    window.redraw_all?.()
 
     return this
   }
@@ -1850,7 +1849,7 @@ Camera {
     return ret
   }
 
-  loadJSON(obj: any) {
+  loadJSON(obj: JSONAny) {
     super.loadJSON(obj)
 
     this.fovy = obj.fovy

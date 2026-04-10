@@ -128,44 +128,6 @@ export class AppToolStack extends ToolStack {
     }
   }
 
-  replay(fromBasicFile = false) {
-    this._syncSettings(this.ctx) //sync undo settings
-
-    let cur = this.cur
-
-    if (fromBasicFile) {
-      let toolstack = _appstate.toolstack
-      _appstate.toolstack = new AppToolStack(this.ctx)
-      _genDefaultFile(_appstate, true)
-      _appstate.toolstack = toolstack
-      toolstack.cur = -1
-    } else {
-      this.rewind()
-    }
-
-    let last = this.cur
-
-    let start = util.time_ms()
-
-    return new Promise((accept, reject) => {
-      let next = () => {
-        last = this.cur
-
-        this.redo()
-
-        if (last === this.cur) {
-          console.warn('time:', (util.time_ms() - start) / 1000.0)
-          accept(this)
-        } else {
-          window.redraw_viewport_p(true).then(() => {
-            next()
-          })
-        }
-      }
-
-      next()
-    })
-  }
 
   redo() {
     this._syncSettings(this.ctx) //sync undo settings

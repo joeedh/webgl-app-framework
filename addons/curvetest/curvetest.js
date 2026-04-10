@@ -72,7 +72,6 @@ export function register(api) {
       let tool = super.invoke(ctx, args);
 
       let toolmode = ctx.toolmode;
-
       if (toolmode.constructor.toolModeDefine().name === "curvetest") {
         tool.inputs.drawFlag.setValue(toolmode.drawFlag);
         tool.inputs.drawScale.setValue(toolmode.drawScale);

@@ -1,7 +1,7 @@
 import {DataBlock, DataRef, BlockFlags, BlockLoader, BlockLoaderAddUser} from '../core/lib_api'
 import {ToolModes, makeToolModeEnum, ToolMode} from '../editors/view3d/view3d_toolmode.js'
 import {WidgetManager} from '../editors/view3d/widgets/widgets.js'
-import {EnumProperty, nstructjs, util, Vector3, Matrix4} from '../path.ux/scripts/pathux.js'
+import {EnumProperty, nstructjs, util, Vector3, Matrix4, Number3} from '../path.ux/scripts/pathux.js'
 
 import {ObjectFlags, SceneObject} from '../sceneobject/sceneobject'
 import {DependSocket, FloatSocket} from '../core/graphsockets.js'
@@ -56,7 +56,7 @@ export class EnvLight {
     ret.reset()
 
     for (let i = 0; i < 3; i++) {
-      ret.add(this.color[i] * 1024)
+      ret.add(this.color[i as Number3] * 1024)
     }
 
     ret.add(this.ao_dist * 1024)
@@ -65,8 +65,8 @@ export class EnvLight {
     ret.add(this.power * 1024)
 
     for (let i = 0; i < 3; i++) {
-      ret.add(this.sunDir[i])
-      ret.add(this.sunColor[i])
+      ret.add(this.sunDir[i as Number3])
+      ret.add(this.sunColor[i as Number3])
     }
 
     ret.add(this.sunPower)
@@ -300,9 +300,9 @@ export const SceneRecalcFlags = {
 }
 
 import messageBus from '../core/bus.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
 import {INodeSocketSet} from '../core/graph'
-import { ToolContext, ViewContext } from '../core/context'
+import {ToolContext, ViewContext} from '../core/context'
+import { StructReader } from '../path.ux/scripts/util/nstructjs';
 
 export class Scene<InputSet extends INodeSocketSet = {}, OutputSet extends INodeSocketSet = {}> extends DataBlock<
   InputSet & {},
@@ -432,9 +432,14 @@ propIslandOnly : bool;
 
         //update enum property in data api
         if (window._appstate && window._appstate.api) {
-          const st = window._appstate.api.mapStruct(Scene, false)
+          const st = this.ctx?.api?.mapStruct(Scene, false)
+          if (st === undefined) {
+            console.warn('failed to get scene api struct')
+            return
+          }
 
-          st.pathmap.toolmode.data.updateDefinition(this.toolModeProp)
+          const prop = st.pathmap.toolmode.data as unknown as EnumProperty
+          prop.updateDefinition(this.toolModeProp)
         }
       },
       ['REGISTER', 'UNREGISTER'],

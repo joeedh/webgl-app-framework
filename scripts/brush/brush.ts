@@ -10,10 +10,10 @@ import {
   TexUserFlags,
   TexUserModes,
 } from '../texture/proceduralTex'
-import {nstructjs} from '../path.ux/pathux.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
+import {nstructjs, Number4} from '../path.ux/pathux.js'
 import {Scene} from '../scene/scene.js'
 import {ToolContext} from '../core/context'
+import { StructReader } from '../path.ux/scripts/util/nstructjs.js';
 
 function feq(a: number, b: number) {
   return Math.abs(a - b) < 0.00001
@@ -789,8 +789,8 @@ SculptBrush {
     const d = digest
 
     for (let i = 0; i < 4; i++) {
-      d.add(this.color[i])
-      d.add(this.bgcolor[i])
+      d.add(this.color[i as Number4])
+      d.add(this.bgcolor[i as Number4])
     }
 
     if (!ignoreRadiusStrength) {
@@ -816,7 +816,7 @@ SculptBrush {
     d.add(this.rake)
     d.add(this.pinch)
     d.add(this.normalfac)
-    d.add(this.falloff)
+    this.falloff.calcHashKey(d)
     d.add(this.color)
     d.add(this.bgcolor)
 

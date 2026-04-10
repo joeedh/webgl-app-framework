@@ -10,7 +10,7 @@ import {Shaders} from '../../../shaders/shaders.js'
 import * as util from '../../../util/util.js'
 
 import {AttrRef, ColorLayerElem, Mesh, Vertex} from '../../../mesh/mesh.js'
-import {ToolMacro, startMenu, createMenu, nstructjs} from '../../../path.ux/scripts/pathux.js'
+import {ToolMacro, startMenu, createMenu, nstructjs, Vector4, Number3} from '../../../path.ux/scripts/pathux.js'
 import {PackFlags} from '../../../path.ux/scripts/core/ui_base.js'
 import {InflateWidget, RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js'
 import {LayerTypes, PrimitiveTypes, SimpleMesh} from '../../../core/simplemesh'
@@ -20,9 +20,9 @@ import type {SceneObject} from '../../../sceneobject/sceneobject.js'
 import {UniformTriRemesher} from '../../../mesh/mesh_remesh.js'
 import type {BlockLoader, BlockLoaderAddUser, DataRef} from '../../../core/lib_api.js'
 import type {Scene} from '../../../scene/scene.js'
-import {StructReader} from '../../../path.ux/scripts/path-controller/types/util/nstructjs.js'
 import type {ViewContext} from '../../../core/context.js'
 import {View3D} from '../view3d.js'
+import { StructReader } from '../../../path.ux/scripts/util/nstructjs.js'
 
 export class MeshEditor extends MeshToolBase {
   drawflag = 0
@@ -357,9 +357,9 @@ export class MeshEditor extends MeshToolBase {
       new HotKey('S', ['ALT'], 'view3d.inflate()'),
       new HotKey('S', ['CTRL', 'ALT'], 'view3d.to_sphere()'),
       new HotKey('G', ['SHIFT'], () => {
-        let menu = ["mesh.select_similar(mode='NUMBER_OF_EDGES')|Number of Edges"]
+        const template = ["mesh.select_similar(mode='NUMBER_OF_EDGES')|Number of Edges"]
 
-        menu = createMenu(this.ctx, 'Select Similar', menu)
+        const menu = createMenu(this.ctx, 'Select Similar', template)
         const screen = this.ctx.screen
 
         startMenu(menu, screen.mpos[0], screen.mpos[1])
@@ -498,8 +498,7 @@ export class MeshEditor extends MeshToolBase {
     const co1 = new Vector3()
     const co2 = new Vector3()
 
-    const white = [1, 1, 1, 1]
-    const black = [0, 0, 0, 1]
+    const white = new Vector4([1, 1, 1, 1])
 
     let no = new Vector3()
 
@@ -573,15 +572,15 @@ export class MeshEditor extends MeshToolBase {
       //no.load(cv.no);
       no.normalize()
 
-      co1.load(v)
+      co1.load(v.co)
 
       for (let i = 0; i < 2; i++) {
-        co2.load(v).addFac(no, i === 0 ? size * 0.5 : size * 0.1) //size*k1);
+        co2.load(v.co).addFac(no, i === 0 ? size * 0.5 : size * 0.1) //size*k1);
 
         let line = sm.line(co1, co2)
         line.colors(white, white)
 
-        co2.load(v).addFac(no, -size * 0.1) //size*k1);
+        co2.load(v.co).addFac(no, -size * 0.1) //size*k1);
 
         line = sm.line(co1, co2)
         line.colors(white, white)
@@ -608,14 +607,14 @@ export class MeshEditor extends MeshToolBase {
     const sm = (this.loopMesh = new SimpleMesh(LayerTypes.LOC | LayerTypes.COLOR | LayerTypes.UV))
     sm.primflag = PrimitiveTypes.LINES
 
-    const a = new Vector3(),
-      b = new Vector3(),
-      c = new Vector3()
-    const d = new Vector3(),
-      e = new Vector3(),
-      g = new Vector3()
+    const a = new Vector3()
+    const b = new Vector3()
+    const c = new Vector3()
+    const d = new Vector3()
+    const e = new Vector3()
+    const g = new Vector3()
     const h = new Vector3()
-    const color = [0, 0, 0, 1]
+    const color = new Vector4([0, 0, 0, 1])
 
     const ctmps = util.cachering.fromConstructor(Vector3, 64)
     const rtmps = new util.cachering(() => [new Vector3(), new Vector3(), new Vector3()], 32)
@@ -625,9 +624,9 @@ export class MeshEditor extends MeshToolBase {
       const f = l.f
 
       const ret = rtmps.next()
-      const a = ret[0],
-        b = ret[1],
-        c = ret[2]
+      const a = ret[0]
+      const b = ret[1]
+      const c = ret[2]
 
       if (l.f.area) {
         let count = 0.0
@@ -664,7 +663,8 @@ export class MeshEditor extends MeshToolBase {
 
       const scale = l.v.vectorDistance(f.cent) * 0.03
 
-      for (let i = 0; i < 3; i++) {
+      for (let _i = 0; _i < 3; _i++) {
+        const i = _i as Number3
         a[i] += (Math.random() - 0.5) * scale
         b[i] += (Math.random() - 0.5) * scale
         c[i] += (Math.random() - 0.5) * scale
@@ -739,10 +739,10 @@ export class MeshEditor extends MeshToolBase {
     const co1 = new Vector3()
     const co2 = new Vector3()
 
-    const white = [1, 1, 1, 1]
+    const white = new Vector4([1, 1, 1, 1])
 
     for (const v of mesh.verts.selected.editable) {
-      co1.load(v)
+      co1.load(v.co)
 
       let edist = 0.0
       let tot = 0

@@ -17,6 +17,8 @@ import {
   Number2,
   PropertySlots,
   Vector4,
+  Number3,
+  ContextLike,
 } from '../path.ux/scripts/pathux.js'
 import {TranslateOp} from '../editors/view3d/transform/transform_ops.js'
 import * as util from '../util/util.js'
@@ -266,8 +268,8 @@ export class TriToQuadsOp extends MeshOp<{
 ToolOp.register(TriToQuadsOp)
 
 export class SymmetrizeOp extends MeshOp<{
-  axis: EnumProperty
-  side: EnumProperty
+  axis: EnumProperty<number>
+  side: EnumProperty<number>
   selectedOnly: BoolProperty
   threshold: FloatProperty
 }> {
@@ -332,8 +334,8 @@ export class SymmetrizeOp extends MeshOp<{
 ToolOp.register(SymmetrizeOp)
 
 export class BisectOp extends MeshOp<{
-  axis: EnumProperty
-  side: EnumProperty
+  axis: EnumProperty<number>
+  side: EnumProperty<number>
   selectedOnly: BoolProperty
 }> {
   static tooldef() {
@@ -709,12 +711,14 @@ export class InteractiveRemeshOp extends RemeshOp<{
     super.modalEnd(false)
   }
 
-  modalStart(ctx: ToolContext): void {
+  modalStart(ctx: ViewContext) {
     const mesh = ctx.mesh
 
     if (mesh === undefined) {
       console.warn('Mesh was undefined in tool', this)
-      return
+      return new Promise<void>((accept, reject) => {
+        accept()
+      })
     }
 
     mesh.compact()
@@ -958,9 +962,9 @@ export class MeshSnapToMirror extends MeshOp<{
             continue
           }
 
-          if (minaxis === undefined || Math.abs(v.co[i]) < mindis) {
+          if (minaxis === undefined || Math.abs(v.co[i as Number3]) < mindis) {
             minaxis = i as 0 | 1 | 2
-            mindis = Math.abs(v.co[i])
+            mindis = Math.abs(v.co[i as Number3])
           }
         }
 
@@ -1040,7 +1044,7 @@ export class SubdivideSimple extends MeshOp {
 
       mesh.updateMirrorTags()
 
-      subdivide(mesh, list(mesh.faces.selected.editable), true)
+      subdivide(mesh, Array.from(mesh.faces.selected.editable), true)
 
       mesh.regenRender()
 
@@ -1247,7 +1251,7 @@ export function ccVertexSmooth(
     }
 
     const ret = subdivide(mesh, faces, true)
-    for (const v of ret.newVerts) {
+    for (const v of ret.newVerts as Set<Vertex>) {
       verts.add(v)
     }
 
@@ -2518,7 +2522,7 @@ ToolOp.register(ApplyGridBaseOp)
 
 export class AddCDLayerOp extends MeshOp<
   {
-    elemType: EnumProperty
+    elemType: EnumProperty<number>
     layerType: StringProperty
     name: StringProperty
   },
@@ -2577,7 +2581,7 @@ export class AddCDLayerOp extends MeshOp<
 ToolOp.register(AddCDLayerOp)
 
 export class RemCDLayerOp extends MeshOp<{
-  elemType: EnumProperty
+  elemType: EnumProperty<number>
   layerType: StringProperty
   name: StringProperty
 }> {
@@ -3435,7 +3439,7 @@ export class OptRemeshParams extends ToolOp<{
   }
 
   modalStart(ctx: ToolContext) {
-    super.modalStart(ctx)
+    const result = super.modalStart(ctx)
 
     const mesh = ctx.mesh
     if (!mesh) {
@@ -3445,7 +3449,9 @@ export class OptRemeshParams extends ToolOp<{
     const goal = this.inputs.edgeGoal.getValue()
 
     this.remesher = new UniformTriRemesher(mesh, undefined, RemeshGoals.EDGE_AVERAGE, goal)
+    // XXX
     ;(this.remesher as unknown as any).optimizeParams(ctx)
+    return result
   }
 }
 
@@ -3550,11 +3556,11 @@ export class SolverOpBase<InputSet extends PropertySlots = {}, OutputSet extends
     }
   }
 
-  modalStart(ctx: ToolContext) {
-    super.modalStart(ctx)
-
+  modalStart(ctx: ViewContext) {
+    const result = super.modalStart(ctx)
     this.inputs.steps.setValue(0)
     this.solver = this.getSolver(ctx.mesh!)
+    return result
   }
 
   exec(ctx: ToolContext) {
@@ -3710,7 +3716,8 @@ export class TestSolverOp extends SolverOpBase<{
 
       const err = v1.co.vectorDistance(v2.co) - rlen
 
-      for (let j = 0; j < 3; j++) {
+      for (let _j = 0; _j < 3; _j++) {
+        let j = _j as Number3
         g1[j] = (v2.co[j] - v1.co[j]) * err * sk
         g2[j] = (v1.co[j] - v2.co[j]) * err * sk
       }
@@ -3821,20 +3828,21 @@ export class DuplicateMeshOp extends MeshOp<{
     }
   }
 
-  static invoke(ctx: ViewContext, args: any) {
+  static invoke<CTX extends ContextLike>(_ctx: CTX, args: Record<string, unknown>): ToolOp {
+    const ctx = _ctx as unknown as ViewContext
     const tool = super.invoke(ctx, args) as unknown as DuplicateMeshOp
 
     if (!('selMask' in args)) {
       tool.inputs.selectMask.setValue(ctx.selectMask)
     }
 
-    const macro = new ToolMacro()
+    const macro = new ToolMacro<ViewContext>()
     macro.add(tool)
 
     const grab = new TranslateOp()
     macro.add(grab)
 
-    return macro
+    return macro as unknown as ToolOp
   }
 
   exec(ctx: ToolContext) {

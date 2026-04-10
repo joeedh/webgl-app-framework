@@ -1,7 +1,7 @@
-import {DataAPI, DataStruct, INumVector, nstructjs, ToolProperty} from '../path.ux/pathux.js'
+import {DataAPI, DataStruct, nstructjs, ToolProperty} from '../path.ux/pathux.js'
 import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../path.ux/scripts/pathux.js'
 import {Container} from '../path.ux/scripts/core/ui.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 export const Textures: ITextureShaderConstructor[] = []
 export const TextureShaders: {[k: string]: ITextureShaderConstructor} = {}
@@ -184,27 +184,29 @@ float fsample(vec3 co, vec3 colorOut) {
       const list = (i ? this.uniforms : this.params) as unknown as any
 
       for (const k in list) {
-        let v = list[k] as INumVector | Matrix4
+        let arr = list[k] as number[] | Matrix4
 
-        if (!(v instanceof Array)) {
+        if (!(arr instanceof Array)) {
           continue
         }
 
-        switch (v.length) {
+        let v: Vector2 | Vector3 | Vector4 | Matrix4 | undefined
+
+        switch (arr.length) {
           case 2:
-            v = new Vector2(v)
+            v = new Vector2(arr)
             break
           case 3:
-            v = new Vector3(v)
+            v = new Vector3(arr)
             break
           case 4:
-            v = new Vector4(v)
+            v = new Vector4(arr)
             break
           case 16:
-            v = new Matrix4(v as unknown as number[])
+            v = new Matrix4(arr as unknown as number[])
         }
 
-        list[k] = v
+        list[k] = v!
       }
     }
   }
@@ -219,7 +221,7 @@ float fsample(vec3 co, vec3 colorOut) {
     if (cls.STRUCT === TextureShader.STRUCT || !cls.STRUCT) {
       console.warn('Auto-registering texture shader with nstructjs. . .')
 
-      cls.STRUCT = nstructjs.inherit(cls.STRUCT, TextureShader) + `\n}`
+      cls.STRUCT = nstructjs.inherit(cls, TextureShader) + `\n}`
       nstructjs.register(cls)
     } else if (!(cls as unknown as any).structName) {
       throw new Error('You wrote a STRUCT script but forgot to register it with nstructjs')

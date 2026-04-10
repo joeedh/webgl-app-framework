@@ -9,16 +9,17 @@ import {MeshToolBase} from './meshtool'
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js'
 import {Shaders} from '../../../shaders/shaders.js'
 
-import {MeshDrawFlags} from '../../../mesh/mesh.js'
+import {Mesh, MeshDrawFlags} from '../../../mesh/mesh.js'
 import {CurveSpline} from '../../../curve/curve.js'
 import {ContextOverlay, nstructjs} from '../../../path.ux/scripts/pathux.js'
 import {BlockLoader, BlockLoaderAddUser, DataRef} from '../../../core/lib_api'
-import type {ViewContext} from '../../../core/context.js'
+import {ViewContext} from '../../../core/context.js'
 import {View3D} from '../view3d.js'
 import {Scene} from '../../../scene/scene.js'
-import {StructReader} from '../../../path.ux/scripts/path-controller/types/util/nstructjs.js'
+import {StructReader} from '../../../path.ux/scripts/util/nstructjs.js'
+import { SceneObject } from '../../../sceneobject/sceneobject.js';
 
-export class CurveToolOverlay extends ContextOverlay<unknown, ViewContext> {
+export class CurveToolOverlay extends ViewContext {
   _toolclass: any
   _selectMask: number = -1
   _ob: DataRef = new DataRef(-1)
@@ -35,43 +36,33 @@ export class CurveToolOverlay extends ContextOverlay<unknown, ViewContext> {
     }
   }
 
-  copy(): CurveToolOverlay {
-    const ret: CurveToolOverlay = new CurveToolOverlay(this.state)
-
-    ret._toolclass = this._toolclass
-    ret._ob = this._ob
-    ret._selectMask = this._selectMask
-
-    return ret
-  }
-
   get selectMask(): number {
-    return this.ctx.toolmode!.selectMask
+    return super.toolmode!.selectMask
     //return this._selectMask;
   }
 
   validate(): boolean {
-    return this.ctx.scene.toolmode instanceof this._toolclass
+    return super.scene.toolmode instanceof this._toolclass
   }
 
   get selectedObjects(): any[] {
     return [this.object]
   }
 
-  get selectedMeshObjects(): any[] {
-    return [this.object]
+  get selectedMeshObjects() {
+    return [this.object!]
   }
 
-  get mesh(): any | undefined {
-    const ob: any = this.ctx.datalib.get(this._ob)
+  get mesh(): Mesh | undefined {
+    const ob: any = this.datalib.get<SceneObject>(this._ob)
 
     if (ob !== undefined) {
-      return ob.data
+      return ob.data as Mesh
     }
   }
 
-  get object(): any {
-    return this.ctx.datalib.get(this._ob)
+  get object(): SceneObject | undefined {
+    return this.datalib.get<SceneObject>(this._ob)
   }
 }
 

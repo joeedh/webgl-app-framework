@@ -7,20 +7,14 @@ import {
   StringProperty,
   Quat,
   Matrix4,
-  haveModal,
   keymap,
   KeyMap,
   HotKey,
   ToolClasses,
   ToolFlags,
-  ToolMacro,
   DropBox,
   DataAPI,
   Area,
-  ScreenArea,
-  contextWrangler,
-  areaclasses,
-  IAreaConstructor,
   DataStruct,
   UIBase,
   Container,
@@ -33,26 +27,28 @@ import {
   IVector2,
   ColumnFrame,
   ToolProperty,
-  ModalLightState,
-  IAreaDef,
   TabContainer,
-} from '../path.ux/scripts/pathux.js'
+  IAreaDef,
+  IToolOpConstructor,
+  ListItem,
+  ModalState,
+} from '../path.ux/scripts/pathux'
 
-import * as units from '../path.ux/scripts/core/units.js'
+import * as units from '../path.ux/scripts/core/units'
 
 //set base unit for world space data
 units.Unit.baseUnit = 'foot'
 
-import './theme.js'
+import './theme'
 
-import {Screen} from '../path.ux/scripts/screen/FrameManager.js'
-import {saveUIData, loadUIData} from '../path.ux/scripts/core/ui_base.js'
-import * as util from '../util/util.js'
-import {warning} from '../path.ux/scripts/widgets/ui_noteframe.js'
-import {Icons} from './icon_enum.js'
-import {PackFlags} from '../path.ux/scripts/core/ui_base.js'
+import {Screen} from '../path.ux/scripts/screen/FrameManager'
+import {saveUIData, loadUIData} from '../path.ux/scripts/core/ui_base'
+import * as util from '../util/util'
+import {warning} from '../path.ux/scripts/widgets/ui_noteframe'
+import {Icons} from './icon_enum'
+import {PackFlags} from '../path.ux/scripts/core/ui_base'
 
-export {keymap, KeyMap, HotKey} from '../path.ux/scripts/pathux.js'
+export {keymap, KeyMap, HotKey} from '../path.ux/scripts/pathux'
 import {
   DataBlock,
   BlockFlags,
@@ -60,9 +56,9 @@ import {
   IDataBlockConstructor,
   BlockLoader,
   BlockLoaderAddUser,
-} from '../core/lib_api.js'
+} from '../core/lib_api'
 
-export {VelPanFlags, VelPan} from './velpan.js'
+export {VelPanFlags, VelPan} from './velpan'
 
 /*default toolops for new/duplicate/unlinking datablocks*/
 export class NewDataBlockOp<InputSet extends PropertySlots = {}, OutputSet extends PropertySlots = {}> extends ToolOp<
@@ -73,7 +69,9 @@ export class NewDataBlockOp<InputSet extends PropertySlots = {}, OutputSet exten
   },
   OutputSet & {
     block: DataRefProperty<DataBlock>
-  }
+  },
+  ToolContext,
+  ViewContext
 > {
   static tooldef() {
     return {
@@ -208,7 +206,7 @@ export class AssignDataBlock<InputSet extends PropertySlots = {}, OutputSet exte
 
     if (rdef?.obj && rdef.obj instanceof DataBlock && rdef.obj.lib_id >= 0) {
       const obj = rdef.obj
-      const old = ctx.api.getValue(ctx, path)
+      const old = ctx.api.getValue<DataBlock>(ctx, path)
 
       if (old) {
         old.lib_remUser(obj)
@@ -361,26 +359,27 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
 
     const col = this.col()
 
-    const val = this.getPathValue(ctx, path)
-    const meta = this.ctx.api.resolvePath(this.ctx, path)
+    const val = this.getPathValue(ctx, path) as DataBlock | undefined
 
     this._last_mat_name = val === undefined ? undefined : val.name
 
     const prop = ctx.datalib.getBlockListEnum(this.blockClass!, this.filterFunc!)
-    const dropbox = document.createElement('dropbox-x') as unknown as DropBox<ViewContext>
+    const dropbox = document.createElement('dropbox-x') as DropBox<ViewContext>
 
     dropbox.prop = prop
     dropbox.setAttribute('name', val !== undefined ? val.name : '')
 
     //listenum(inpath, name, enummap, defaultval, callback, iconmap, packflag=0) {
-    ;(dropbox as unknown as any).onselect = (id: string): void => {
-      const val = this.getPathValue(ctx, path)
+    dropbox.on_select = (id: string | number): void => {
+      const val = this.getPathValue(ctx, path) as DataBlock | undefined
       const meta = this.ctx.api.resolvePath(this.ctx, path)
 
-      if (val !== undefined && val.lib_id === id) {
+      if (meta === undefined) {
         return
       }
-
+      if (val !== undefined && val.lib_id === parseInt(id as string)) {
+        return
+      }
       if (val !== undefined) {
         val.lib_remUser(meta.obj)
       }
@@ -431,7 +430,7 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
 
   doesOwnerExist() {
     if (this.ownerPath !== undefined) {
-      return this.ctx.api.getValue(this.ctx, this.ownerPath)
+      return Boolean(this.ctx.api.getValue(this.ctx, this.ownerPath))
     }
 
     const path = this._getDataPath()!
@@ -448,8 +447,8 @@ export class DataBlockBrowser<BlockType extends DataBlock> extends Container<Vie
     const path = this._getDataPath()!
 
     const exists = this.doesOwnerExist()
-    const val = this.getPathValue(this.ctx, path)
-    const name = val === undefined ? undefined : val.name
+    const val = this.getPathValue<DataBlock>(this.ctx, path)
+    const name = val?.name
 
     let rebuild = exists !== this._owner_exists || !!val !== this._path_exists
     rebuild = rebuild || this._needs_rebuild
@@ -516,8 +515,8 @@ export function makeDataBlockBrowser(
   return row
 }
 
-export const getContextArea = <T extends Area = Area>(cls: IAreaConstructor<T>) => {
-  return Area.getActiveArea(cls)
+export const getContextArea = <T>(cls: any) => {
+  return Area.getActiveArea(cls) as T
 }
 
 //used by datapath system
@@ -551,11 +550,10 @@ export class EditorAccessor {
       const cls = areaclasses[k]
       const def = cls.define()
 
-      let name = def.apiname ?? def.areaname
+      let name = def.areaname
       name = name.replace(/[\- \t]/g, '_')
 
       this._namemap[name] = k
-
       define(name, areaclasses[k])
     }
   }
@@ -582,7 +580,7 @@ export function buildEditorsAPI(api: DataAPI, ctxStruct: DataStruct) {
 
     cls.defineAPI(api)
 
-    let name = cls.define().apiname ?? cls.define().areaname
+    let name = cls.define().areaname
     name = name.replace(/[\- \t]/g, '_')
     const uiname = cls.define().uiname ?? ToolProperty.makeUIName(cls.define().areaname)
 
@@ -677,11 +675,15 @@ export class EditorSideBar extends Container<ViewContext> {
     console.log('collapse')
     this._closed = true
 
-    this.animate()
-      .goto('width', this.closedWidth, 500)
-      .then(() => {
-        this._icon!.icon = Icons.SHIFT_LEFT
-      })
+    const anim = this.animate(
+      {width: [this.saneStyle['width'], `${this.closedWidth}px`]},
+      {duration: 500, fill: 'forwards'}
+    )
+    anim.finished.then(() => {
+      anim.cancel()
+      this.saneStyle['width'] = `${this.closedWidth}px`
+      this._icon!.icon = Icons.SHIFT_LEFT
+    })
   }
 
   expand() {
@@ -691,11 +693,16 @@ export class EditorSideBar extends Container<ViewContext> {
 
     console.log('expand')
     this._closed = false
-    this.animate()
-      .goto('width', this.openWidth, 500)
-      .then(() => {
-        this._icon!.icon = Icons.SHIFT_RIGHT
-      })
+
+    const anim = this.animate(
+      {width: [this.saneStyle['width'], `${this.openWidth}px`]},
+      {duration: 500, fill: 'forwards'}
+    )
+    anim.finished.then(() => {
+      anim.cancel()
+      this.saneStyle['width'] = `${this.openWidth}px`
+      this._icon!.icon = Icons.SHIFT_RIGHT
+    })
   }
 
   update() {
@@ -722,11 +729,10 @@ export class EditorSideBar extends Container<ViewContext> {
   }
 
   saveData() {
-    const ret = super.saveData()
-
-    ret.closed = this._closed
-
-    return ret
+    return {
+      ...super.saveData(),
+      closed: this._closed,
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -742,15 +748,22 @@ export class EditorSideBar extends Container<ViewContext> {
 
 UIBase.register(EditorSideBar)
 
-export interface IEditorConstructor<T = Editor> extends IAreaConstructor<T> {
+export interface IEditorConstructor<T extends Editor = Editor> extends IAreaConstructor<ViewContext, T> {
   new (): T
   defineAPI(api: DataAPI): DataStruct
 }
 
 export abstract class Editor extends Area<ViewContext> {
+  // we can't pass ViewContext to Area above since TS complains
+  //about circular type references.  Instead we do this hack to try and forcibly
+  //change the type for (hopefully) base classes
+  //ts-expect-error
+  //declare ctx: ViewContext
+
   swapParent?: HTMLElement = undefined
   container: Container<ViewContext>;
 
+  //@ts-ignore
   ['constructor']: IEditorConstructor<this> = this['constructor']
 
   static define() {
@@ -784,9 +797,9 @@ Editor {
     st.vec2('pos', 'pos', 'Position', 'Position of editor in window')
     st.vec2('size', 'size', 'Size', 'Size of editor')
     st.string('type', 'type', 'Type', 'Editor type')
-      .customGetSet(function (this: {dataref: Editor}) {
-        const obj = this.dataref
-        return obj.constructor.define().areaname
+      .customGet(function (this: ToolProperty) {
+        const editor = this.dataref as Editor
+        return editor.constructor.define().areaname
       })
       .readOnly()
 
@@ -853,15 +866,15 @@ Editor {
       this.swapParent = undefined
     }
 
-    return sarea.area
+    return sarea!.area
   }
 
   swap<T extends Editor>(editor_cls: IEditorConstructor<T>, storeSwapParent = true) {
-    const sarea = this.owning_sarea
+    const sarea = this.owning_sarea!
 
     sarea.switchEditor(editor_cls)
     if (storeSwapParent) {
-      sarea.area.swapParent = this as unknown as HTMLElement
+      ;(sarea.area! as Editor).swapParent = this as unknown as HTMLElement
     }
 
     return sarea.area
@@ -902,28 +915,30 @@ Editor {
   }
 
   getScreen() {
-    return this.owning_sarea?.screen !== undefined ? this.owning_sarea.screen : window._appstate.screen
+    return (this.owning_sarea?.screen !== undefined
+      ? this.owning_sarea.screen
+      : window._appstate.screen) as unknown as Screen<ViewContext>
   }
 }
 
-import * as ui_base from '../path.ux/scripts/core/ui_base.js'
-import {time_ms} from '../util/util.js'
-import {MakeMaterialOp, Material} from '../core/material.js'
-import {INodeSocketSet, SocketFlags} from '../core/graph.js'
-import {DependSocket} from '../core/graphsockets.js'
-import {ImageBlock} from '../image/image.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
-import type {Mesh} from '../mesh/mesh.js'
-import {ListItem} from '../path.ux/scripts/types/widgets/ui_listbox.js'
-import type {ImageEditor} from './all.js'
-import type {ViewContext, ToolContext} from '../core/context.js'
-import messageBus from '../core/bus.js'
+import {time_ms} from '../util/util'
+import {MakeMaterialOp, Material} from '../core/material'
+import {INodeSocketSet, SocketFlags} from '../core/graph'
+import {DependSocket} from '../core/graphsockets'
+import {ImageBlock} from '../image/image'
+import type {Mesh} from '../mesh/mesh'
+import type {ImageEditor} from './all'
+import type {ViewContext, ToolContext} from '../core/context'
+import messageBus from '../core/bus'
+import {areaclasses, IAreaConstructor} from '../path.ux/scripts/screen/area_base'
+import {StructReader} from '../path.ux/scripts/path-controller/old_types/util/nstructjs'
+import { ShaderNode } from '../shadernodes/shader_nodes';
 
 export function spawnToolSearchMenu(ctx: ViewContext) {
-  const tools: (typeof ToolOp)[] = []
+  const tools: IToolOpConstructor[] = []
   const screen = ctx.screen
 
-  const menu = document.createElement('menu-x') as unknown as Menu
+  const menu = document.createElement('menu-x') as Menu<ViewContext>
 
   for (const cls of ToolClasses) {
     let ok = !(cls.tooldef().flag! & ToolFlags.PRIVATE)
@@ -931,7 +946,7 @@ export function spawnToolSearchMenu(ctx: ViewContext) {
     try {
       ok = cls.canRun(ctx)
     } catch (error) {
-      util.print_stack(error)
+      util.print_stack(error as Error)
       ok = false
     }
 
@@ -952,7 +967,7 @@ export function spawnToolSearchMenu(ctx: ViewContext) {
       }
     }
 
-    menu.addItemExtra(tdef.uiname ?? tdef.toolpath, tools.length, hotkey)
+    menu.addItemExtra(tdef.uiname ?? tdef.toolpath ?? 'unknown', tools.length, hotkey)
     tools.push(cls)
   }
 
@@ -963,14 +978,14 @@ export function spawnToolSearchMenu(ctx: ViewContext) {
 
   menu.float(screen.mpos[0], screen.mpos[1], 8)
   menu.style['width'] = '500px'
-  menu.onselect = (item: number | string) => {
+  menu.on_select = (item: number | string) => {
     console.log(item, 'got item')
 
     const cls = tools[item as number]
     const tool = cls.invoke(ctx, {})
 
     if (tool === undefined) {
-      warning('Tool failed')
+      warning(ctx.screen, 'Tool failed')
       return
     }
 
@@ -979,7 +994,7 @@ export function spawnToolSearchMenu(ctx: ViewContext) {
   //ui.menu("Tools", [["Test", () => {}]]);
 }
 
-export class App extends Screen {
+export class App extends Screen<ViewContext> {
   static STRUCT = nstructjs.inlineRegister(
     App,
     `
@@ -990,7 +1005,7 @@ App {
 
   _last_wutime = 0
   //last dpi update time
-  _last_dpi = undefined
+  _last_dpi: number | undefined
 
   constructor() {
     super()
@@ -1097,8 +1112,8 @@ App {
     canvas.dpi = dpi
   }
 
-  on_resize(oldsize: IVector2, newsize: IVector2) {
-    super.on_resize(oldsize, newsize)
+  on_resize(oldsize: Vector2 | number[], newsize: Vector2 | number[] = this.size, _set_key?: boolean) {
+    super.on_resize(oldsize, newsize, _set_key)
     this.setCSS()
   }
 
@@ -1122,9 +1137,8 @@ App {
     }
   }
 
+  /** @deprecated */
   positionMenu() {
-    return
-
     if (this.ctx === undefined) return
 
     const menu = this.ctx.menubar
@@ -1132,22 +1146,22 @@ App {
 
     if (menu === undefined || view3d === undefined) return
 
-    const x = Math.floor(menu.pos[0])
-    const y = Math.floor(menu.pos[0] + menu.size[1])
+    const x = Math.floor(menu.pos![0])
+    const y = Math.floor(menu.pos![0] + menu.size![1])
 
     const w = Math.ceil(this.size[0])
-    const h = Math.ceil(this.size[1] - menu.size[1])
+    const h = Math.ceil(this.size[1] - menu.size![1])
 
-    let update = view3d.pos[0] !== x || view3d.pos[1] !== y
-    update = update || view3d.size[0] !== w || view3d.size[1] !== h
+    let update = view3d.pos![0] !== x || view3d.pos![1] !== y
+    update = update || view3d.size![0] !== w || view3d.size![1] !== h
 
     if (update) {
       console.log('menu update', x, y, w, h)
 
-      view3d.pos[0] = x
-      view3d.pos[1] = y
-      view3d.size[0] = w
-      view3d.size[1] = h
+      view3d.pos![0] = x
+      view3d.pos![1] = y
+      view3d.size![0] = w
+      view3d.size![1] = h
 
       view3d.setCSS()
       window.redraw_viewport()
@@ -1157,7 +1171,7 @@ App {
   update() {
     super.update()
 
-    this.positionMenu()
+    //this.positionMenu()
 
     this.updateCanvasSize()
 
@@ -1179,8 +1193,8 @@ window.setInterval(() => {
     messageBus.validateSubscribers()
   }
 }, 5000)
-
-UIBase.register(App)
+// XXX fix me, any cast
+UIBase.register(App as any)
 
 export class ScreenBlock extends DataBlock {
   screen?: App
@@ -1343,7 +1357,7 @@ export class MeshMaterialChooser extends Container<ViewContext> {
     const uidata = saveUIData(this, 'material chooser')
 
     this.clear()
-    let mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath')!)
+    let mesh = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
 
     if (!mesh) {
       return
@@ -1357,7 +1371,11 @@ export class MeshMaterialChooser extends Container<ViewContext> {
 
     if (mesh.materials.length === 0) {
       this.button('Add Material', () => {
-        const mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath')!)
+        const mesh = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
+        if (mesh === undefined) {
+          this.ctx.error('Invalid mesh at ' + this.getAttribute('datapath'))
+          return
+        }
         const op = new MakeMaterialOp()
 
         this.ctx.toolstack.execTool(this.ctx, op)
@@ -1374,7 +1392,7 @@ export class MeshMaterialChooser extends Container<ViewContext> {
       return
     }
 
-    const box = this.listbox()
+    const box = this.listbox<number>()
     let i = 0
     for (const mat of mesh.materials) {
       box.addItem(mat.name, i)
@@ -1382,12 +1400,14 @@ export class MeshMaterialChooser extends Container<ViewContext> {
     }
     box.setActive(box.items[this.getActive(mesh)])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(box.onchange as unknown as (id: any, item: ListItem<ViewContext>) => void) = (id, item) => {
+    box.on_change = (id?: number) => {
       if (this.onchange) {
         this.onchange(id)
 
-        mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath')!)
-        this.setActive(mesh, id)
+        mesh = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
+        if (mesh !== undefined && id !== undefined) {
+          this.setActive(mesh, id)
+        }
       }
     }
 
@@ -1402,7 +1422,7 @@ export class MeshMaterialChooser extends Container<ViewContext> {
       return
     }
 
-    const mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath')!)
+    const mesh = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
     let key = ''
 
     if (mesh) {
@@ -1457,7 +1477,7 @@ export class MeshMaterialPanel extends Container<ViewContext> {
       return
     }
 
-    const mesh = this.ctx.api.getValue(this.ctx, this.getAttribute('datapath')!)
+    const mesh = this.ctx.api.getValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
 
     console.log('Material panel rebuild')
 
@@ -1485,7 +1505,12 @@ export class MeshMaterialPanel extends Container<ViewContext> {
     this.subpanel.prop('has_shader')
 
     if (this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix + 'has_shader')) {
-      const node = this.ctx.api.getValue(this.ctx, this.subpanel.dataPrefix + 'shader')
+      const node = this.ctx.api.getValue<ShaderNode>(this.ctx, this.subpanel.dataPrefix + 'shader')
+      if (node === undefined) {
+        this.ctx.error("Could not find shader node " + this.subpanel.dataPrefix + 'shader')
+        loadUIData(this.subpanel, uidata)
+        return
+      }
 
       for (const k in node.inputs) {
         const sock = node.inputs[k]
@@ -1515,7 +1540,7 @@ export class MeshMaterialPanel extends Container<ViewContext> {
       return
     }
 
-    const mesh = this.getPathValue(this.ctx, this.getAttribute('datapath')!)
+    const mesh = this.getPathValue<Mesh>(this.ctx, this.getAttribute('datapath')!)
     if (!mesh) {
       return
     }
@@ -1556,11 +1581,11 @@ export class MeshMaterialPanel extends Container<ViewContext> {
 
 UIBase.register(MeshMaterialPanel)
 
-export class DirectionChooser extends UIBase {
+export class DirectionChooser extends UIBase<ViewContext, Vector3> {
   _last_dpi?: number
   size = 128
   mdown = false
-  modaldata?: ModalLightState
+  modaldata?: ModalState
   _highlight = false
   last_th = 0
   start_th = 0
@@ -1571,7 +1596,7 @@ export class DirectionChooser extends UIBase {
   start_value: Vector3 = new Vector3()
   last_mpos = new Vector2()
   start_mpos = new Vector2()
-  value = new Vector3([0, 0.1, 1])
+  accessor value = new Vector3([0, 0.1, 1])
 
   canvas: HTMLCanvasElement
   g: CanvasRenderingContext2D
@@ -1969,7 +1994,7 @@ export class DirectionChooser extends UIBase {
       return
     }
 
-    const val = this.getPathValue(this.ctx, this.getAttribute('datapath')!)
+    const val = this.getPathValue<Vector3>(this.ctx, this.getAttribute('datapath')!)
 
     if (val === undefined) {
       this.disabled = true

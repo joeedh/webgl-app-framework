@@ -8,6 +8,7 @@ import {
   math,
   Number2,
   IVector2,
+  Number3,
 } from '../path.ux/scripts/pathux.js'
 
 import {CDElemArray, MeshFlags, MeshTypes} from './mesh_base.js'
@@ -27,7 +28,7 @@ import '../util/numeric.js'
 import {Loop} from './mesh_types'
 import {ColorLayerElem, Mesh, UVLayerElem} from './mesh'
 import {BVH} from '../util/bvh.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs.js'
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 
 interface ITopoVert {
   edges: any[]
@@ -291,7 +292,7 @@ nstructjs.register(CompressedQuadNode)
 const blink_rets = util.cachering.fromConstructor(Vector3, 64)
 const blink_rets4 = util.cachering.fromConstructor(Vector4, 64)
 const tmptanmat = new Matrix4()
-const uvstmp = new Array(4)
+const uvstmp = new Array<Vector2>(4)
 for (let i = 0; i < 4; i++) {
   uvstmp[i] = new Vector2()
 }
@@ -1167,7 +1168,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
         continue
       }
 
-      if (Math.abs(p.co[i]) < threshold) {
+      if (Math.abs(p.co[i as Number3]) < threshold) {
         p.flag |= MeshFlags.MIRROREDX << i
 
         if (isboundary) {
@@ -1183,7 +1184,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     this.topo = undefined
 
     const ns = this.nodes
-    const nmap = new Array(ns.length)
+    const nmap = new Array<number>(ns.length)
     const ns2 = [] as number[]
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
@@ -1217,7 +1218,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
   updateMirrorFlags(mesh: Mesh, loop: Loop, cd_grid: AttrRef<this>) {
     this.recalcFlag &= ~QRecalcFlags.MIRROR
 
-    const doneset = new Array(this.points.length)
+    const doneset = new Array<number>(this.points.length)
 
     const ns = this.nodes,
       ps = this.points
@@ -1234,7 +1235,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       for (let i = 0; i < 4; i++) {
         const ip = ns[ni + QPOINT1 + i]
         if (!doneset[ip]) {
-          doneset[ip] = true
+          doneset[ip] = 1
 
           const p = ps[ip]
           const uv = this._getUV(ni, i)
@@ -1897,7 +1898,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     const ns = this.nodes,
       ps = this.points
-    const doneset = new Array(ps.length)
+    const doneset = new Array<number>(ps.length)
     const subsurf = this.subsurf
 
     for (let ni = 0; ni < ns.length; ni += QTOT) {
@@ -2046,7 +2047,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     const cur = 0
 
     const STACKSIZE = 256
-    const stack = new Array(STACKSIZE)
+    const stack = new Array<number>(STACKSIZE)
     stack[0] = 0
 
     //console.log("Level", level, "Inverse", inverse);
@@ -2487,7 +2488,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     const ps = this.points
     const ns = this.nodes
     const newps = [] as QTGridVert[]
-    const pmap = new Array(ps.length)
+    const pmap = new Array<number>(ps.length)
 
     this.recalcFlag &= ~QRecalcFlags.POINT_PRUNE
 
@@ -2518,7 +2519,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
       for (let j = 0; j < cd1.length; j++) {
         if (pmap[j] !== undefined) {
-          cd2[pmap[j]] = cd1[j]
+          cd2[pmap[j] as Number3] = cd1[j]
         }
       }
 
@@ -2592,11 +2593,11 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     const np3 = ps[nodes[ni + QPOINT3]]
     const np4 = ps[nodes[ni + QPOINT4]]
 
-    const cdps = new Array<any>(4)
-    const cdws = new Array<any>(4)
+    const cdps = new Array<CustomDataElem>(4)
+    const cdws = new Array<number>(4)
 
     const news = [[false], [false], [false], [false], [false]]
-    const bs = new Array(5)
+    const bs = new Array<QTGridVert>(5)
 
     const p1 = this.subdtemps.next().load(np1.co)
     const p2 = this.subdtemps.next().load(np2.co)
@@ -2809,7 +2810,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
 
     let lidgen = loop.eid * idmul * 8
 
-    function line(v1: Vector3, v2: Vector3, color?: Vector4 | number[]) {
+    function line(v1: Vector3, v2: Vector3, color?: Vector4) {
       const id = lidgen++
       let line2
 
@@ -2833,18 +2834,16 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
     const greyFac = 0.25
     const grey = [greyFac, greyFac, greyFac, 1.0]
     const mat = new Matrix4()
-    const n1 = new Vector3()
+    const n1 = new Vector4()
 
     const ff = 1.0
     const colors = [
       [ff, 0.0, 0.0, 1],
       [0.0, ff, 0.0, 1],
       [0.0, 0.0, ff, 1],
-    ]
+    ].map(c => new Vector4(c))
 
     for (const ni of this.getLeafNodes()) {
-      const depth = nodes[ni + QDEPTH]
-
       for (let i = 0; i < 4; i++) {
         const p1 = ps[nodes[ni + QPOINT1 + i]]
         const p2 = ps[nodes[ni + QPOINT1 + ((i + 1) & 3)]]
@@ -3911,7 +3910,7 @@ export class QuadTreeGrid extends GridBase<QTGridVert> {
       const cpylen = Math.min(qtot_old, QTOT)
       const extra = Math.max(QTOT - cpylen, 0)
       const ns2 = [] as number[]
-      let map = [] as number[]
+      const map = [] as number[]
       let mapi = 0
 
       for (let ni = 0; ni < ns1.length; ni += qtot_old) {

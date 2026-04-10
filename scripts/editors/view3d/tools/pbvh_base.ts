@@ -1,5 +1,4 @@
 import {
-  BaseVector,
   Curve1DProperty,
   EnumProperty,
   Vec2Property,
@@ -14,9 +13,10 @@ import {
   Vector3,
   Vector4,
   nstructjs,
-  IndexRange,
   PropertySlots,
   IVectorOrHigher,
+  Number3,
+  IndexRange,
 } from '../../../path.ux/scripts/pathux.js'
 
 import {BrushFlags, SculptBrush, SculptTools, BrushSpacingModes, DynTopoSettings} from '../../../brush/brush'
@@ -91,7 +91,11 @@ export const SymAxisMap: Vector3[][] = [
 
 export let BRUSH_PROP_TYPE: any
 
-export class BrushProperty extends ToolProperty<SculptBrush> {
+export const BrushPropTypes = {
+  BRUSH: 100,
+}
+
+export class BrushProperty extends ToolProperty<SculptBrush, (typeof BrushPropTypes)['BRUSH']> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -370,7 +374,7 @@ PaintSample {
 
 export let PAINT_SAMPLE_TYPE: any
 
-export class PaintSampleProperty extends ToolProperty<PaintSample[]> {
+export class PaintSampleProperty extends ToolProperty<PaintSample[] | Iterable<PaintSample>> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `
@@ -436,7 +440,12 @@ PaintSampleProperty {
 
 PAINT_SAMPLE_TYPE = ToolProperty.register(PaintSampleProperty)
 
-export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRefProperty<SculptBrush>}> {
+export class SetBrushRadius extends ToolOp<
+  {radius: FloatProperty; brush: DataRefProperty<SculptBrush>},
+  {},
+  ToolContext,
+  ViewContext
+> {
   last_mpos: Vector2
   mpos: Vector2
   start_mpos: Vector2
@@ -474,7 +483,7 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
   }
 
   static invoke(ctx: ViewContext, args: any) {
-    const tool = super.invoke(ctx, args)
+    const tool = super.invoke(ctx, args) as SetBrushRadius
 
     const toolmode = ctx.toolmode as unknown as BVHToolMode
     if (toolmode?.constructor.name !== 'BVHToolMode') {
@@ -505,13 +514,13 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
     return super.modalStart(ctx)
   }
 
-  on_pointermove(e: any): void {
+  on_pointermove(e: PointerEvent): void {
     const mpos = this.mpos
 
     mpos[0] = e.x
     mpos[1] = e.y
 
-    const ctx = this.modal_ctx
+    const ctx = this.modal_ctx!
 
     const brush = ctx.datalib.get(this.inputs.brush.getValue())
     if (!brush) {
@@ -539,14 +548,15 @@ export class SetBrushRadius extends ToolOp<{radius: FloatProperty; brush: DataRe
 
     const toolmode = ctx.toolmode
     if (toolmode?.constructor.name === 'BVHToolMode') {
-      toolmode.mpos.load(this.cent_mpos)
+      const bvhToolMode = toolmode as BVHToolMode
+      bvhToolMode.mpos.load(this.cent_mpos)
     }
 
     const ratio = l1 / l2
     let radius: number
 
     if (brush.flag & BrushFlags.SHARED_SIZE) {
-      const bvhtool = ctx.scene.toolmode_namemap.bvh
+      const bvhtool = ctx.scene.toolmode_namemap.bvh as BVHToolMode
       if (bvhtool) {
         radius = bvhtool.sharedBrushRadius
       } else {
@@ -701,7 +711,7 @@ import {copyMouseEvent} from '../../../path.ux/scripts/path-controller/util/even
 import {CameraModes} from '../view3d_base.js'
 import type {ToolContext, ViewContext} from '../../../core/context.js'
 import {BVHToolMode} from './pbvh'
-import {StructReader} from '../../../path.ux/scripts/path-controller/types/util/nstructjs.js'
+import { StructReader } from '../../../path.ux/scripts/util/nstructjs.js'
 
 export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs extends PropertySlots = {}> extends ToolOp<
   {
@@ -1179,7 +1189,7 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
 
     const bvh = this.getBVH(mesh)
 
-    const axes: number[] = [-1]
+    const axes: number[] = [-1] as (Number3 | -1)[]
     const sym = mesh.symFlag
 
     for (let i = 0; i < 3; i++) {
@@ -1210,8 +1220,8 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
       let origin2 = new Vector3(origin)
 
       if (axis !== -1) {
-        origin2[axis as Vector2['LEN']] = -origin2[axis]
-        view2[axis as Vector2['LEN']] = -view2[axis]
+        origin2[axis] = -origin2[axis]!
+        view2[axis] = -view2[axis]!
       }
 
       origin2 = new Vector3(origin2)
@@ -1238,7 +1248,7 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
         p[0] = mpos[0]
         p[1] = mpos[1]
 
-        view3d.unproject(p, rendermat.clone().invert())
+        view3d.unproject(p, rendermat.clone().invert()!)
         p.multVecMatrix(matinv)
 
         const dis = p.vectorDistance(origin)
@@ -1310,7 +1320,7 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
     vec.interp(view, 1.0 - brush.normalfac).normalize()
 
     if (this._first) {
-      this.last_mpos.load(mpos)
+      this.last_mpos.load2(mpos)
       this.last_p.load(isect.p)
       this.last_origco.load(origco)
       this.last_vec.load(vec)
@@ -1364,7 +1374,7 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
 
     function myToJSON(obj: any): string {
       if (typeof obj === 'object') {
-        if (Array.isArray(obj) || obj instanceof BaseVector) {
+        if (Array.isArray(obj) || typeof obj['length'] === 'number') {
           let s = '['
           for (let i = 0; i < obj.length; i++) {
             if (i > 0) {
@@ -1430,7 +1440,7 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
       try {
         ret = this.task.next()
       } catch (error) {
-        util.print_stack(error)
+        util.print_stack(error as Error)
         this.task = undefined
         break
       }
@@ -1469,20 +1479,20 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
     }
   }
 
-  on_pointerup(e: any): void {
+  on_pointerup(e: PointerEvent): void {
     this.mfinished = true
     this.modalEnd(false)
   }
 
-  undoPre(ctx: any): void {
+  undoPre(ctx: ToolContext): void {
     throw new Error('implement me!')
   }
 
-  calcUndoMem(ctx: any): number {
+  calcUndoMem(ctx: ToolContext): number {
     throw new Error('implement me!')
   }
 
-  modalStart(ctx: any): void {
+  modalStart(ctx: ViewContext) {
     this.mfinished = false
 
     this.lastps1 = undefined
@@ -1495,10 +1505,10 @@ export abstract class PaintOpBase<Inputs extends PropertySlots = {}, Outputs ext
     this.timer = window.setInterval(() => this.timer_on_tick(), 5)
 
     this._first = true
-    super.modalStart(ctx)
+    return super.modalStart(ctx)
   }
 
-  undo(ctx: any): void {
+  undo(ctx: ToolContext): void {
     throw new Error('implement me!')
   }
 }

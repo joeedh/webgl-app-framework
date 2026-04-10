@@ -20,7 +20,7 @@ export function compileTexShaderJS(shader: TextureShader): mathl.ICompiledCode {
 
   for (let k in sdef.uniforms) {
     let prop = sdef.uniforms[k]
-    let type = proptypemap[prop.type]
+    let type = proptypemap[prop.type as keyof typeof proptypemap]
 
     if (!type) {
       console.log(shader, k, prop)

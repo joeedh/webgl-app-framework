@@ -2,7 +2,6 @@ import {clearAspectCallbacks, initAspectClass, _setUIBase} from '../path.ux/scri
 import {UIBase, nstructjs, util} from '../path.ux/scripts/pathux.js'
 
 import * as customdata from './customdata'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 
 export const REUSE_EIDS = true
 
@@ -361,8 +360,9 @@ export function reallocArrayTemp<type>(arr: type[], newSize: number): type[] {
 import type {CustomDataElem} from './customdata.ts'
 import type {CDRef, ICustomDataElemConstructor} from './customdata'
 import type {Edge, Element, Face, Handle, Loop, Vertex} from './mesh_types'
+import { StructReader } from '../path.ux/scripts/util/nstructjs.js'
 
-export class CDElemArray extends Array<CustomDataElem<any>> {
+export class CDElemArray extends Array<CustomDataElem> {
   static STRUCT = nstructjs.inlineRegister(
     this,
     `

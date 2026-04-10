@@ -27,7 +27,6 @@ import {
   DataAPI,
   DataStruct,
 } from '../path.ux/scripts/pathux.js'
-import {StructReader} from '../path.ux/scripts/path-controller/types/util/nstructjs'
 import {Mesh} from './mesh'
 import type {SceneObject} from '../sceneobject/sceneobject'
 import {BVH, IBVHVertex} from '../util/bvh'
@@ -35,13 +34,14 @@ import {BVH, IBVHVertex} from '../util/bvh'
 const blink_rets = util.cachering.fromConstructor(Vector3, 64)
 const blink_rets4 = util.cachering.fromConstructor(Vector4, 64)
 const tmptanmat = new Matrix4()
-const uvstmp = new Array(4)
+const uvstmp = new Array<Vector2>(4)
 for (let i = 0; i < 4; i++) {
   uvstmp[i] = new Vector2()
 }
 import '../util/polyfill.d.ts'
 import {WebGLUniforms} from '../../types/scripts/core/webgl'
 import {PatchBase} from '../subsurf/subsurf_patch.js'
+import { StructReader } from '../path.ux/scripts/util/nstructjs.js'
 
 const stmp1 = new Vector3(),
   stmp2 = new Vector3()
@@ -1129,7 +1129,7 @@ mesh.GridBase {
         const cl2 = new CDElemArray()
 
         if (!cls) {
-          cls = cl[0].constructor
+          cls = cl[0].constructor as unknown as typeof cls
           this.customDataLayout[i] = cls
         }
 
@@ -1286,7 +1286,7 @@ mesh.GridBase {
       layeri++
     }
 
-    const newcds2 = new Array(layout.length)
+    const newcds2 = new Array<CustomDataElem[]>(layout.length)
 
     i = 0
     layeri = 0
@@ -1294,7 +1294,7 @@ mesh.GridBase {
       const bucket = buckets.get(cls)
 
       if (!bucket || !bucket.length) {
-        const cds = [] as CustomDataElem<any>[]
+        const cds = [] as CustomDataElem[]
         bad = true
 
         for (let j = 0; j < this.points.length; j++) {
@@ -1312,7 +1312,7 @@ mesh.GridBase {
       i++
     }
 
-    this.customDatas = newcds2
+    this.customDatas = newcds2 as CDElemArray[]
 
     if (bad) {
       this.relinkCustomData()
@@ -1377,7 +1377,7 @@ mesh.GridBase {
       let cls = name ? CustomDataElem.getTypeClass(name) : undefined
 
       if (!cls) {
-        cls = this.customDatas[i][0].constructor
+        cls = this.customDatas[i][0].constructor as unknown as typeof cls
       }
 
       if (!cls) {
@@ -1443,9 +1443,9 @@ mesh.Grid {
     const no = new Vector3()
     const du = new Vector3()
     const dv = new Vector3()
-    const color1 = [0, 0, 1, 1]
-    const color2 = [0, 1, 0, 1]
-    const color3 = [1, 0, 0, 1]
+    const color1 = new Vector4([0, 0, 1, 1])
+    const color2 = new Vector4([0, 1, 0, 1])
+    const color3 = new Vector4([1, 0, 0, 1])
 
     if (this.subsurf === undefined) {
       console.log('no subsurf')
