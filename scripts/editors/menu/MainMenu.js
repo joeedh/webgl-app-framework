@@ -175,7 +175,7 @@ MenuBarEditor {
     if (this.ctx && this.ctx.scene && this.ctx.toolmode) {
       let toolmode = this.ctx.toolmode
       toolmode.update()
-      if (toolmode.ctx !== this.ctx) {
+      if (toolmode.ctx && toolmode.ctx !== this.ctx) {
         this.ctx = toolmode.ctx
       }
       let def2 = toolmode.constructor.buildEditMenu()

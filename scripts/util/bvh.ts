@@ -3872,7 +3872,7 @@ export class BVH<
     }
 
     for (const elist of mesh.getElemLists()) {
-      const oelist = elists.get(elist.Type)!
+      const oelist = elists.get(elist.type)!
 
       let i = 0
       const act = oelist.active

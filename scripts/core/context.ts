@@ -25,7 +25,7 @@ import bus from './bus'
 import type {AppState} from './appstate.js'
 import {Material} from './material'
 import {View3D} from '../editors/all.js'
-import { SceneObject } from '../sceneobject/sceneobject';
+import {SceneObject} from '../sceneobject/sceneobject'
 
 type AppLibrary = Library & {material: BlockSet<Material>; scene: BlockSet<Scene>}
 
@@ -264,7 +264,7 @@ export class ToolContext extends ContextExtraAPI {
     return this.scene.toolmode_i
   }
   toolmode_load(ctx: this, data: any) {
-    return ctx.scene.toolmode_map[data]
+    return ctx.scene?.toolmode_map[data]
   }
 
   get scene(): Scene {
@@ -278,10 +278,14 @@ export class ToolContext extends ContextExtraAPI {
     return this.datalib.scene.active!
   }
 
-  //get strandset object, for UX purposes
-  //we don't just check active object
+  // get strandset object, for UX purposes
+  // we don't just check active object
   get strandset_object() {
     const ob = this.object
+
+    if (this.scene === undefined) {
+      return undefined
+    }
 
     if (ob && ob.data instanceof StrandSet) {
       return ob
@@ -349,7 +353,7 @@ export class ToolContext extends ContextExtraAPI {
     }
 
     return (function* () {
-      for (const ob of this2.scene.objects) {
+      for (const ob of this2.scene?.objects ?? []) {
         if (ob.data.type instanceof Light) {
           yield ob.data
         }

@@ -4,7 +4,8 @@
  * Copy to scripts/editors/theme.js
  */
 
-import {CSSFont, setTheme} from '../path.ux/scripts/core/ui_base.js'
+import {setTheme} from '../path.ux/scripts/core/ui_base'
+import {CSSFont} from '../path.ux/scripts/core/cssfont'
 
 export const theme = {
   NodeEditor: {

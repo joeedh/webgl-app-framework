@@ -169,9 +169,9 @@ export class SceneObject<InputSet extends {} = {}, OutputSet extends {} = {}> ex
         matrix  : new Matrix4Socket('matrix'),
         color   : new Vec4Socket('color', undefined, new Vector4([0.5, 0.5, 0.5, 1.0])),
         loc     : new Vec3Socket('loc'),
-        rot     : new Vec3Socket('rot').noUnits(),
+        rot     : new Vec3Socket('rot'),
         rotOrder: new EnumSocket('Euler Order', EulerOrders, undefined, EulerOrders.XYZ),
-        scale   : new Vec3Socket('scale', undefined, new Vector3([1, 1, 1])).noUnits(),
+        scale   : new Vec3Socket('scale', undefined, new Vector3([1, 1, 1])),
       },
 
       outputs: {

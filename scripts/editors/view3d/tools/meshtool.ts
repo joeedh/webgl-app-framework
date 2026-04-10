@@ -189,7 +189,7 @@ export class MeshToolBase extends ToolMode {
 
     for (const mesh of resolveMeshes(this.ctx, this.getMeshPaths())) {
       for (const list of mesh.getElemLists()) {
-        if (!(list.Type & this.selectMask) || !list.highlight) {
+        if (!(list.type & this.selectMask) || !list.highlight) {
           continue
         }
 

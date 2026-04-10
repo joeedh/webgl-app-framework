@@ -1751,7 +1751,7 @@ mesh.Mesh {
     this.ensureOrigIndexLayer()
 
     for (const elist of this.elists.values()) {
-      if (elist.Type === MeshTypes.LOOP) {
+      if (elist.type === MeshTypes.LOOP) {
         continue
       }
 
@@ -1771,7 +1771,7 @@ mesh.Mesh {
   /**make sure we have an original index layer*/
   ensureOrigIndexLayer(): void {
     for (const elist of this.elists.values()) {
-      if (elist.Type === MeshTypes.LOOP) {
+      if (elist.type === MeshTypes.LOOP) {
         continue
       }
 
@@ -5195,7 +5195,7 @@ mesh.Mesh {
 
   clearUpdateFlags(typemask: number) {
     for (const list of this.elists.values()) {
-      if (typemask !== undefined && !(list.Type & typemask)) {
+      if (typemask !== undefined && !(list.type & typemask)) {
         continue
       }
 
@@ -5602,12 +5602,12 @@ mesh.Mesh {
     }
 
     for (const elist of ret.getElemLists()) {
-      if (this.elists.get(elist.Type)?.customData === undefined) {
+      if (this.elists.get(elist.type)?.customData === undefined) {
         continue
       }
 
       if (!clearCustomData) {
-        elist.customData = this.elists.get(elist.Type)!.customData.copy()
+        elist.customData = this.elists.get(elist.type)!.customData.copy()
         elist.customData.on_layeradd = ret._on_cdlayer_add.bind(ret)
         elist.customData.on_layerremove = ret._on_cdlayer_rem.bind(ret)
       }
@@ -6401,7 +6401,7 @@ mesh.Mesh {
     this.elists = new Map()
 
     for (const elist of this._elists!) {
-      this.elists.set(elist.Type, elist)
+      this.elists.set(elist.type, elist)
     }
 
     this._elists = undefined

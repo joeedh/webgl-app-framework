@@ -580,7 +580,7 @@ export function buildEditorsAPI(api: DataAPI, ctxStruct: DataStruct) {
 
     cls.defineAPI(api)
 
-    let name = cls.define().areaname
+    let name = cls.define().apiname ?? cls.define().areaname
     name = name.replace(/[\- \t]/g, '_')
     const uiname = cls.define().uiname ?? ToolProperty.makeUIName(cls.define().areaname)
 

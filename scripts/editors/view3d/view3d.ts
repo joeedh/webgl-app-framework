@@ -82,7 +82,8 @@ export function initWebGL() {
 
   const canvas = document.createElement('canvas')
   const dpi = UIBase.getDPI()
-  let w: number, h: number
+  let w: number
+  let h: number
 
   canvas.style['opacity'] = '1.0'
   canvas.setAttribute('id', 'webgl')
@@ -117,7 +118,7 @@ export function initWebGL() {
     preserveDrawingBuffer: true,
     stencil              : true,
   }) as WebGL2RenderingContext
-  _gl = gl
+  window._gl = gl
 
   if (!('createVertexArray' in (gl as any))) {
     //*
@@ -135,7 +136,7 @@ export function initWebGL() {
   //renderer.setSize( window.innerWidth, window.innerHeight );
 
   //_gl.canvas = canvas;
-  loadShaders(_gl)
+  loadShaders(window._gl)
   textsprite.defaultFont.update(_gl)
 
   getBlueMask(_gl)
@@ -372,7 +373,7 @@ View3D {
       return this.localCursor3D
     }
 
-    if (this.ctx !== undefined && this.ctx.scene !== undefined) {
+    if (this.ctx?.scene !== undefined) {
       return this.ctx.scene.cursor3D
     }
 
@@ -389,7 +390,7 @@ View3D {
   }
 
   updateClipping() {
-    if (this.ctx === undefined || this.ctx.scene === undefined) {
+    if (this.ctx?.scene === undefined) {
       return
     }
 
@@ -437,7 +438,7 @@ View3D {
 
   onFileLoad(is_active: boolean) {
     //ensure toolmode has correct ctx
-    if (this.ctx && this.ctx.toolmode) {
+    if (this.ctx?.toolmode) {
       this.ctx.toolmode.ctx = this.ctx
     }
 
@@ -498,7 +499,7 @@ View3D {
   }
 
   remGraphNode(node: Node) {
-    if (this._nodes.indexOf(node) >= 0) {
+    if (this._nodes.includes(node)) {
       this._nodes.remove(node)
       this.ctx.graph.remove(node)
     }
@@ -835,7 +836,7 @@ View3D {
     if (toolmode !== undefined) {
       toolmode.update()
       // propagate ctx into the widget tree if toolmode provided a modified one
-      if (toolmode.ctx !== header.ctx) {
+      if (toolmode.ctx && toolmode.ctx !== header.ctx) {
         header.ctx = toolmode.ctx
       }
       toolmode.constructor.buildHeader(header, makeRow)
@@ -902,7 +903,7 @@ View3D {
   }
 
   doEvent(type: string, e: any, docontrols?: boolean) {
-    if (this.ctx && this.ctx.toolmode && !this.ctx.toolmode.ctx) {
+    if (this.ctx?.toolmode && !this.ctx.toolmode.ctx) {
       this.ctx.toolmode.ctx = this.ctx
     }
 
@@ -911,7 +912,7 @@ View3D {
       return
     }
 
-    if (!this.ctx || !this.ctx.scene || !this.ctx.toolmode) {
+    if (!this.ctx?.scene || !this.ctx.toolmode) {
       return
     }
 
@@ -1194,7 +1195,7 @@ View3D {
     if (this.cursorMode == CursorModes.TRANSFORM_CENTER) {
       this.cursor3D.makeIdentity()
 
-      let res = this.getTransCenter()
+      const res = this.getTransCenter()
       if (res === undefined) {
         return
       }
@@ -1520,10 +1521,10 @@ View3D {
     const gl = this.gl
     const dpi = this.canvas.dpi //UIBase.getDPI();
 
-    let x = this.owning_sarea.pos[0] * dpi,
-      y = this.owning_sarea.pos[1] * dpi
-    const w = this.owning_sarea.size[0] * dpi,
-      h = this.owning_sarea.size[1] * dpi
+    const x = this.owning_sarea.pos[0] * dpi
+    let y = this.owning_sarea.pos[1] * dpi
+    const w = this.owning_sarea.size[0] * dpi
+    const h = this.owning_sarea.size[1] * dpi
     //console.log("DPI", dpi);
 
     const screen = this.ctx.screen
@@ -1726,8 +1727,8 @@ View3D {
   }
 
   drawObjects(camera = this.activeCamera) {
-    const scene = this.ctx.scene,
-      gl = this.gl
+    const scene = this.ctx.scene
+    const gl = this.gl
     const program = view3d_shaders.Shaders.BasicLitMesh
 
     const uniforms = {
@@ -1834,6 +1835,9 @@ let drawCount = 1
 const f2 = () => {
   const screen = _appstate.screen
   const resetrender = resetRender
+  if (window._gl === undefined) {
+    return
+  }
   const gl = _gl
 
   resetRender = 0

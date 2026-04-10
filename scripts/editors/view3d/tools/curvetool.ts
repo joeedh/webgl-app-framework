@@ -1,71 +1,30 @@
-import {Shapes} from '../../../core/simplemesh_shapes.js'
+import {Shapes} from '../../../core/simplemesh_shapes'
 import {FindNearest} from '../findnearest'
-import {ToolMode} from '../view3d_toolmode.js'
-import {Icons} from '../../icon_enum.js'
-import {SelMask} from '../selectmode.js'
-import '../../../path.ux/scripts/util/struct.js'
+import {ToolMode} from '../view3d_toolmode'
+import {Icons} from '../../icon_enum'
+import {SelMask} from '../selectmode'
 import {MeshToolBase} from './meshtool'
 
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js'
-import {Shaders} from '../../../shaders/shaders.js'
+import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath'
+import {Shaders} from '../../../shaders/shaders'
 
-import {Mesh, MeshDrawFlags} from '../../../mesh/mesh.js'
-import {CurveSpline} from '../../../curve/curve.js'
-import {ContextOverlay, nstructjs} from '../../../path.ux/scripts/pathux.js'
+import {Mesh, MeshDrawFlags} from '../../../mesh/mesh'
+import {CurveSpline} from '../../../curve/curve'
+import {ContextOverlay, nstructjs} from '../../../path.ux/scripts/pathux'
 import {BlockLoader, BlockLoaderAddUser, DataRef} from '../../../core/lib_api'
-import {ViewContext} from '../../../core/context.js'
-import {View3D} from '../view3d.js'
-import {Scene} from '../../../scene/scene.js'
-import {StructReader} from '../../../path.ux/scripts/util/nstructjs.js'
-import { SceneObject } from '../../../sceneobject/sceneobject.js';
+import {ViewContext} from '../../../core/context'
+import type {View3D} from '../view3d'
+import type {Scene} from '../../../scene/scene'
+import type {StructReader} from '../../../path.ux/scripts/util/nstructjs'
+import type {SceneObject} from '../../../sceneobject/sceneobject'
+import type {CurveToolOverlay} from './curvetool_overlay'
 
-export class CurveToolOverlay extends ViewContext {
-  _toolclass: any
-  _selectMask: number = -1
-  _ob: DataRef = new DataRef(-1)
-
-  constructor(state: any, toolmode?: any) {
-    super(state)
-
-    if (toolmode !== undefined) {
-      this._toolclass = toolmode.constructor
-      this._selectMask = toolmode.selectMask
-
-      toolmode._getObject()
-      this._ob = DataRef.fromBlock(toolmode.sceneObject)
-    }
-  }
-
-  get selectMask(): number {
-    return super.toolmode!.selectMask
-    //return this._selectMask;
-  }
-
-  validate(): boolean {
-    return super.scene.toolmode instanceof this._toolclass
-  }
-
-  get selectedObjects(): any[] {
-    return [this.object]
-  }
-
-  get selectedMeshObjects() {
-    return [this.object!]
-  }
-
-  get mesh(): Mesh | undefined {
-    const ob: any = this.datalib.get<SceneObject>(this._ob)
-
-    if (ob !== undefined) {
-      return ob.data as Mesh
-    }
-  }
-
-  get object(): SceneObject | undefined {
-    return this.datalib.get<SceneObject>(this._ob)
+declare global {
+  interface Window {
+    // hack to avoid circular module ref
+    _CurveToolOverlay: typeof CurveToolOverlay
   }
 }
-
 export class CurveToolBase extends MeshToolBase {
   _isCurveTool: boolean
   sceneObject: any | undefined
@@ -102,7 +61,7 @@ export class CurveToolBase extends MeshToolBase {
   }
 
   static getContextOverlayClass() {
-    return CurveToolOverlay
+    return window._CurveToolOverlay
   }
 
   static isCurveTool(instance: any): boolean {

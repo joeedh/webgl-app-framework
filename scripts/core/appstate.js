@@ -1,6 +1,6 @@
 'use strict'
 
-import {makeViewContext, ViewContext} from './context.js'
+import { ViewContext} from './context.js'
 import {AppToolStack} from './toolstack.js'
 import '../editors/node/MaterialEditor.js'
 
@@ -121,7 +121,7 @@ export class AppState {
     this.arguments = [] //electron only, command line arguments
     this.saveHandle = undefined
     this.settings = new AppSettings()
-    this.ctx = makeViewContext(this)
+    this.ctx = new ViewContext(this)
     this.toolstack = new AppToolStack(this.ctx)
     this.api = getDataAPI()
     this.screen = undefined
@@ -183,7 +183,7 @@ export class AppState {
   start(loadDefaultFile = true) {
     this.loadSettings()
 
-    this.ctx = makeViewContext(this)
+    this.ctx = new ViewContext(this)
 
     /*
     window.addEventListener("mousedown", (e) => {
