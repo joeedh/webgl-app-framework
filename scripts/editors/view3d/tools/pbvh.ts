@@ -22,12 +22,12 @@ import {
   UVLayerElem,
   Vertex,
 } from '../../../mesh/mesh.js'
-import {Shapes} from '../../../core/simplemesh_shapes.js'
+import {Shapes} from '../../../webgl/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {Vector2, Vector3, Vector4, Matrix4} from '../../../util/vectormath.js'
 import {IndexRange, math, Number3, PackFlags, UIBase} from '../../../path.ux/scripts/pathux.js'
 import {MeshFlags} from '../../../mesh/mesh.js'
-import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../../../core/simplemesh'
+import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../../../webgl/simplemesh'
 import {GridBase, GridSettingFlags} from '../../../mesh/mesh_grids.js'
 import {nstructjs} from '../../../path.ux/scripts/pathux.js'
 
@@ -51,7 +51,7 @@ import {calcConcave, getBVH} from './pbvh_base'
 import {trianglesToQuads, TriQuadFlags} from '../../../mesh/mesh_utils.js'
 import {TetMesh} from '../../../tet/tetgen.js'
 import {DispContext, DispLayerVert} from '../../../mesh/mesh_displacement.js'
-import {IUniformsBlock, ShaderProgram, Texture} from '../../../core/webgl.js'
+import {IUniformsBlock, ShaderProgram, Texture} from '../../../webgl/webgl.js'
 import {getFaceSetColor, getFaceSets, getFaceSetsAttr, getNextFaceSet} from '../../../mesh/mesh_facesets.js'
 import {eventWasTouch} from '../../../path.ux/scripts/util/simple_events.js'
 import {enumKeys, enumValues} from '../../../util/enum-utils'

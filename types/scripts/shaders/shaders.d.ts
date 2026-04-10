@@ -295,5 +295,5 @@ export namespace ShaderDef {
     export { SculptShaderHexDeform };
 }
 export let Shaders: {};
-import { ShaderProgram } from "../core/webgl.js";
+import { ShaderProgram } from "../webgl/webgl.js";
 import { Matrix4 } from '../util/vectormath.js';

@@ -6,7 +6,7 @@ import {Vec3Socket, DependSocket, Matrix4Socket, Vec4Socket, EnumSocket} from '.
 import {Shaders} from '../shaders/shaders'
 import {SceneObjectData} from './sceneobject_base'
 import {Material} from '../core/material'
-import {ShaderProgram} from '../core/webgl.js'
+import {ShaderProgram} from '../webgl/webgl.js'
 import type {View3D} from '../editors/all.js'
 import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
 

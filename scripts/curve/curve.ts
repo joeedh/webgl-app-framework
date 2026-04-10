@@ -8,7 +8,7 @@ import {NodeFlags} from '../core/graph.js'
 import {DataBlock} from '../core/lib_api.js'
 import {MeshTools} from '../mesh/mesh_stdtools.js'
 import {SelMask} from '../editors/view3d/selectmode.js'
-import {LayerTypes, SimpleMesh} from '../core/simplemesh.js'
+import {LayerTypes, SimpleMesh} from '../webgl/simplemesh.js'
 
 import * as util from '../util/util.js'
 import type {View3D} from '../editors/view3d/view3d'
@@ -59,7 +59,7 @@ export class WalkRet {
 
 export * from './curve_knot'
 import {KnotDataLayer, KnotFlags, getKnot} from './curve_knot'
-import {IUniformsBlock, ShaderProgram} from '../core/webgl.js'
+import {IUniformsBlock, ShaderProgram} from '../webgl/webgl.js'
 import {ViewContext} from '../core/context.js'
 import {SceneObject} from '../sceneobject/sceneobject.js'
 import { StructReader } from '../path.ux/scripts/util/nstructjs.js'

@@ -33,7 +33,7 @@ export namespace MeshEditor {
     let STRUCT: string;
 }
 import { MeshToolBase } from "./meshtool.js";
-import { SimpleMesh } from '../../../core/simplemesh.js';
+import { SimpleMesh } from '../../../webgl/simplemesh.js';
 import { MeshTypes } from '../../../mesh/mesh_base.js';
 import { ScaleWidget } from '../widgets/widget_tools.js';
 import { RotateWidget } from '../widgets/widget_tools.js';

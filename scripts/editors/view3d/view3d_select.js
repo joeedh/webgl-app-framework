@@ -1,6 +1,5 @@
-import {Vector3, Vector2, Matrix4} from '../../util/vectormath.js'
-import {FBO, FrameStage, FramePipeline} from '../../core/fbo.js'
-import {Shaders} from '../../shaders/shaders.js'
+import {Vector2, Matrix4} from '../../util/vectormath.js'
+import {FBO} from '../../webgl'
 import {FindNearestTypes} from './findnearest.js'
 import * as util from '../../util/util.js'
 import * as cconst from '../../core/const.js'
@@ -9,10 +8,6 @@ import {calcUpdateHash} from './view3d_utils.js'
 import {getFBODebug} from '../debug/gldebug.js'
 
 let _cache = {}
-
-let IOB = 0,
-  IDATA = 1,
-  ITOT = 2
 
 export class GPUSelectBuffer {
   constructor() {
@@ -50,7 +45,7 @@ export class GPUSelectBuffer {
     }
     console.warn('regenerating selection buffer')
 
-    if (!this.idbuf || this.idbuf.length !== w * h * 4) {
+    if (this.idbuf?.length !== w * h * 4) {
       this.idbuf = new Float32Array(w * h * 4)
       this.depthbuf = new Float32Array(w * h * 4)
     }
@@ -120,7 +115,7 @@ export class GPUSelectBuffer {
     for (let ob of view3d.sortedObjects) {
       Object.assign(uniforms2, uniforms)
 
-      if (toolmode && toolmode.drawsObjectIdsExclusively(ob)) {
+      if (toolmode?.drawsObjectIdsExclusively(ob)) {
         continue
       }
 
@@ -228,10 +223,10 @@ export class GPUSelectBuffer {
     }
 
     ret.sort((a, b) => {
-      let x1 = a % n,
-        y1 = ~~(a / n)
-      let x2 = b % n,
-        y2 = ~~(b / n)
+      let x1 = a % n
+      let y1 = ~~(a / n)
+      let x2 = b % n
+      let y2 = ~~(b / n)
 
       x1 -= n * 0.5
       y1 -= n * 0.5
@@ -306,13 +301,13 @@ export class GPUSelectBuffer {
 
     y1 = ~~this.size[1] - (y1 + h)
 
-    let x2 = x1 + w,
-      y2 = y1 + h
+    let x2 = x1 + w
+    let y2 = y1 + h
     let data = new Float32Array(w * h * 4)
     let depthData = new Float32Array(w * h * 4)
 
-    let width = this.size[0],
-      height = this.size[1]
+    let width = this.size[0]
+    let height = this.size[1]
 
     let idbuf = this.idbuf
     let dbuf = this.depthbuf

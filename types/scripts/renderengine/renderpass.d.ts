@@ -44,14 +44,14 @@ export class RenderPass extends Node {
     size: number[];
     getDebugName(): any;
     getOutput(): any;
-    getShader(rctx: any): import("../core/webgl.js").ShaderProgram;
+    getShader(rctx: any): import("../webgl/webgl.js").ShaderProgram;
     compileShader(rctx: any): {
         vertex: string;
         fragment: any;
         attributes: string[];
         uniforms: {};
     };
-    _shader: import("../core/webgl.js").ShaderProgram;
+    _shader: import("../webgl/webgl.js").ShaderProgram;
     bindInputs(rctx: any, program: any): void;
     renderIntern(rctx: any): void;
 }
@@ -68,6 +68,6 @@ export class RenderGraph {
 }
 import { NodeSocketType } from '../core/graph.js';
 import { FBO } from '../core/fbo.js';
-import { SimpleMesh } from '../core/simplemesh.js';
+import { SimpleMesh } from '../webgl/simplemesh.js';
 import { Node } from '../core/graph.js';
 import { Graph } from '../core/graph.js';

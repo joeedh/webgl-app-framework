@@ -18,18 +18,16 @@ import {
   Menu,
   DataAPI,
   PropertySlots,
-  IVector2,
   IVectorOrHigher,
   Container,
 } from '../../path.ux/scripts/pathux.js'
 import {VelPanPanOp} from '../velpan.js'
 import {Colors, ObjectFlags} from '../../sceneobject/sceneobject.js'
-import {MeshFlags, MeshTypes, MeshSymFlags} from '../../mesh/mesh_base.js'
-import {snap} from '../../path.ux/scripts/screen/FrameManager_mesh.js'
+import {MeshFlags} from '../../mesh/mesh_base.js'
 import {SelectOneUVOp} from './uv_selectops.js'
 import {SelOneToolModes} from '../view3d/selectmode.js'
 import {ImageBlock, ImageFlags, ImageGenTypes, ImageTypes, ImageUser} from '../../image/image.js'
-import {PrimitiveTypes, LayerTypes, SimpleMesh} from '../../core/simplemesh'
+import {PrimitiveTypes, LayerTypes, SimpleMesh} from '../../webgl/simplemesh'
 import {UVWrangler} from '../../mesh/unwrapping.js'
 import {Shaders} from '../../shaders/shaders.js'
 import {BlockLoader, BlockLoaderAddUser, DataBlock, DataRef, DataRefProperty} from '../../core/lib_api'
@@ -42,7 +40,7 @@ import {resetUnwrapSolvers} from '../../mesh/mesh_uvops.js'
 import bus, {BusTriggers} from '../../core/bus'
 import {Loop, Mesh} from '../../mesh/mesh'
 import {ToolContext, ViewContext} from '../../core/context'
-import {IUniformsBlock, ShaderProgram} from '../../core/webgl'
+import {IUniformsBlock, ShaderProgram} from '../../webgl'
 import {StructReader} from '../../path.ux/scripts/util/nstructjs'
 
 const _projtmp = new Vector2()

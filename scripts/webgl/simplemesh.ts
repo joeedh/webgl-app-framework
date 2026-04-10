@@ -2,11 +2,11 @@
  * Warning: this API is particularly old.
  **/
 
-import {Number3, Vector2Like, Vector3, Vector3Like, Vector4, Vector4Like, util} from '../path.ux/scripts/pathux.js'
-import {IUniformsBlock, ShaderProgram} from './webgl.js'
-import './const.js'
-import {loadShader, Shaders} from '../shaders/shaders.js'
-import {RenderBuffer} from './webgl.js'
+import {Number3, Vector2Like, Vector3, Vector3Like, Vector4, Vector4Like, util} from '../path.ux/scripts/pathux'
+import {IUniformsBlock, ShaderProgram} from './webgl'
+import '../core/const'
+import {loadShader, Shaders} from '../shaders/shaders'
+import {RenderBuffer} from './webgl'
 import {OptionalIf} from '../util/optionalIf'
 
 type OpenVector = number[] | Float32Array | Float64Array | Vector2Like | Vector3Like | Vector4Like

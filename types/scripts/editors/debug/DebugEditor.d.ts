@@ -43,4 +43,4 @@ export namespace DebugEditor {
 }
 import { Editor } from '../editor_base.js';
 import { Vector2 } from '../../util/vectormath.js';
-import { SimpleMesh } from "../../core/simplemesh.js";
+import { SimpleMesh } from "../../webgl/simplemesh.js";

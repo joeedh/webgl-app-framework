@@ -1,10 +1,6 @@
-import {Area} from '../../path.ux/scripts/screen/ScreenArea.js'
-
-import {nstructjs} from '../../path.ux/scripts/pathux.js'
-
-import {FBO} from '../../core/fbo.js'
-import {getShader, ShaderProgram, Texture} from '../../core/webgl.js'
-import {getWebGL} from '../view3d/view3d.js'
+import {FBO} from '../../webgl/fbo'
+import {getShader} from '../../webgl'
+import {getWebGL} from '../view3d/view3d'
 
 export let DisplayShader = {
   vertex: `#version 300 es

@@ -36,5 +36,5 @@ export class CameraData extends SceneObjectData {
     curvespline: any;
 }
 import { SceneObjectData } from "../sceneobject/sceneobject_base.js";
-import { Camera } from "../core/webgl.js";
-import { SimpleMesh } from "../core/simplemesh.js";
+import { Camera } from "../webgl/webgl.js";
+import { SimpleMesh } from "../webgl/simplemesh.js";

@@ -1,8 +1,8 @@
 'use strict'
 
-import {util, nstructjs, Vector3, Matrix4, JSONAny} from '../path.ux/scripts/pathux.js'
-import { StructReader } from '../path.ux/scripts/util/nstructjs.js'
-import './const.js'
+import {util, nstructjs, Vector3, Matrix4, JSONAny} from '../path.ux/scripts/pathux'
+import { StructReader } from '../path.ux/scripts/util/nstructjs'
+import '../core/const'
 
 export const constmap = {} as any //{[k: number]: number}
 

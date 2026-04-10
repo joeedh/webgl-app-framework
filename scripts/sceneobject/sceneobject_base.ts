@@ -7,7 +7,7 @@ import {DependSocket} from '../core/graphsockets'
 import {Material} from '../core/material'
 import type {ToolContext} from '../core/context'
 import type {SceneObject} from './sceneobject'
-import {ShaderProgram} from '../core/webgl'
+import {ShaderProgram} from '../webgl/webgl'
 import type {View3D} from '../editors/all'
 
 export interface IDataDefine {

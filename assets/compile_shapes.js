@@ -53,4 +53,4 @@ export function loadShapes() {
 `
 
 
-fs.writeFileSync("../scripts/core/simplemesh_shapes.js", out);
+fs.writeFileSync("../scripts/webgl/simplemesh_shapes.js", out);

@@ -13,7 +13,7 @@ import {
 
 import {CDElemArray, MeshFlags, MeshTypes} from './mesh_base.js'
 import {AttrRef, CustomDataElem} from './customdata'
-import {ChunkedSimpleMesh, SimpleMesh} from '../core/simplemesh.js'
+import {ChunkedSimpleMesh, SimpleMesh} from '../webgl/simplemesh.js'
 import {
   BLink,
   GridBase,

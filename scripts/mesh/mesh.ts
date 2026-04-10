@@ -18,7 +18,7 @@ import {NodeFlags} from '../core/graph'
 
 import {Shaders} from '../shaders/shaders.js'
 
-import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../core/simplemesh'
+import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../webgl/simplemesh'
 
 import {DataBlock} from '../core/lib_api'
 import {IDataDefine, SceneObjectData} from '../sceneobject/sceneobject_base'
@@ -75,7 +75,7 @@ import type {SceneObject} from '../sceneobject/sceneobject'
 //import {Utf8DecodeWorker} from '../extern/jszip/jszip'
 import {ToolContext} from '../core/context'
 import {Material} from '../core/material'
-import {IUniformsBlock, ShaderProgram} from '../core/webgl'
+import {IUniformsBlock, ShaderProgram} from '../webgl/webgl'
 import type {Scene} from '../scene/scene'
 import {StructReader} from '../path.ux/scripts/util/nstructjs'
 

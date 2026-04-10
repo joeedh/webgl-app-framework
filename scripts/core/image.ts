@@ -1,4 +1,4 @@
-import {ResourceType, resourceManager} from './resource.js'
+import {ResourceType, resourceManager} from './resource'
 
 export const ImageExtensions = {
   png : 'image/png',
@@ -9,14 +9,17 @@ export const ImageExtensions = {
 }
 
 class ImageResource extends ResourceType {
-  constructor(url) {
+  image: HTMLImageElement | undefined
+  ready: boolean
+
+  constructor(url: string) {
     super(url)
 
     this.image = undefined
     this.ready = false
   }
 
-  static handlesURL(url) {
+  static handlesURL(url: string) {
     if (url.search(/data\:image/) >= 0) return true
 
     url = url.toLowerCase()
@@ -31,7 +34,7 @@ class ImageResource extends ResourceType {
     return false
   }
 
-  static createFromURL(url) {
+  static createFromURL(url: string) {
     return new ImageResource(url)
   }
 
@@ -43,8 +46,7 @@ class ImageResource extends ResourceType {
   }
 
   clone() {
-    let ret = new ImageResource()
-    ret.url = this.url
+    const ret = new ImageResource(this.url)
     ret.image = this.image
     return ret
   }
@@ -64,7 +66,7 @@ class ImageResource extends ResourceType {
 
   unload() {
     if (this.ready) {
-      let image = this.image
+      const image = this.image
 
       this.ready = false
       this.image = undefined

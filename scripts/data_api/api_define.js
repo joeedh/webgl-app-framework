@@ -21,7 +21,7 @@ import {resourceManager} from '../core/resource.js';
 import '../core/image.js';
 import {buildCDAPI, buildElementAPI, CustomData} from '../mesh/customdata.js';
 import {CameraData} from '../camera/camera.js';
-import {Camera} from '../core/webgl.js';
+import {Camera} from '../webgl/webgl.js';
 
 import {buildProcMeshAPI} from '../mesh/mesh_gen.js';
 

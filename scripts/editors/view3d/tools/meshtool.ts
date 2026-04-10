@@ -1,4 +1,4 @@
-import {Shapes} from '../../../core/simplemesh_shapes.js'
+import {Shapes} from '../../../webgl/simplemesh_shapes.js'
 import {FindNearest} from '../findnearest.js'
 import {ToolMode} from '../view3d_toolmode.js'
 import {HotKey, KeyMap} from '../../editor_base'
@@ -23,7 +23,7 @@ import {SelectEdgeLoopOp, type SelectOneOp} from '../../../mesh/select_ops.js'
 import type {ViewContext} from '../../../core/context.js'
 import type {BoundingBox} from '../view3d_utils.js'
 import type {View3D} from '../view3d.js'
-import {IUniformsBlock} from '../../../core/webgl.js'
+import {IUniformsBlock} from '../../../webgl/webgl.js'
 
 export class MeshToolBase extends ToolMode {
   transformConstraint: string | undefined

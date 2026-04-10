@@ -1,11 +1,11 @@
-import {Matrix4} from '../util/vectormath.js'
-import {IDefinesBlock, IUniformsBlock, ShaderProgram} from '../core/webgl'
+import {Matrix4} from '../util/vectormath'
+import {IDefinesBlock, IUniformsBlock, ShaderProgram} from '../webgl/webgl'
 
-export let PolygonOffset = {
+export const PolygonOffset = {
   //pre : '',
   //vertex : (posname) => {return '';},
   pre     : `uniform float polygonOffset;`,
-  vertex: (posname: string, nearname: string, farname: string, sizename: string) => {
+  vertex: (posname: string, nearname?: string, farname?: string, sizename?: string) => {
     if (nearname && farname) {
       return `
   {
@@ -34,7 +34,7 @@ export let PolygonOffset = {
   `,
 }
 
-export let SmoothLine = {
+export const SmoothLine = {
   pre: `
 #ifdef SMOOTH_LINE
     attribute vec2 _strip_uv;
@@ -48,7 +48,7 @@ export let SmoothLine = {
 #endif
   `,
   vertex: (pname: string) => {
-    let p = pname
+    const p = pname
 
     return `
 #ifdef SMOOTH_LINE
@@ -96,7 +96,7 @@ export let SmoothLine = {
   },
 }
 
-export let BasicLineShader = {
+export const BasicLineShader = {
   vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
@@ -153,7 +153,7 @@ void main() {
   attributes: ['position', 'uv', 'color'],
 }
 
-export let ObjectLineShader = {
+export const ObjectLineShader = {
   vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
@@ -216,7 +216,7 @@ void main() {
   attributes: ['position', 'uv', 'color'],
 }
 
-export let BasicLitMesh = {
+export const BasicLitMesh = {
   vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
@@ -283,7 +283,7 @@ void main() {
   attributes: ['position', 'normal', 'uv', 'color'],
 }
 
-export let BasicLitMeshTexture = {
+export const BasicLitMeshTexture = {
   vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
@@ -347,7 +347,7 @@ void main() {
   attributes: ['position', 'normal', 'uv', 'color'],
 }
 
-export let FlatMeshTexture = {
+export const FlatMeshTexture = {
   vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
@@ -393,7 +393,7 @@ void main() {
   attributes: ['position', 'normal', 'uv', 'color'],
 }
 
-export let SculptShader = {
+export const SculptShader = {
   vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
@@ -677,7 +677,7 @@ void main() {
   ],
 }
 
-export let SculptShaderSimple = {
+export const SculptShaderSimple = {
   vertex: `#version 300 es
   precision mediump float;
   
@@ -799,7 +799,7 @@ void main() {
   attributes: ['position', 'normal', 'uv', 'color'],
 }
 
-export let SculptShaderHexDeform = {
+export const SculptShaderHexDeform = {
   vertex: `#version 300 es
   precision highp float;
   
@@ -985,7 +985,7 @@ void main() {
   attributes: ['position', 'normal', 'uv', 'color', 'BVHDefVs'],
 }
 
-export let MeshEditShader = {
+export const MeshEditShader = {
   vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
@@ -1066,7 +1066,7 @@ void main() {
   attributes: ['position', 'color', 'id'],
 }
 
-export let MeshIDShader = {
+export const MeshIDShader = {
   vertex: `precision highp float;
   
 uniform mat4 projectionMatrix;
@@ -1135,7 +1135,7 @@ void main() {
   attributes: ['position', 'uv', 'color', 'id'],
 }
 
-export let MeshLinearZShader = {
+export const MeshLinearZShader = {
   vertex: `#version 300 es
   
 precision mediump float;
@@ -1222,7 +1222,7 @@ void main() {
   attributes: ['position', 'color', 'id'],
 }
 
-export let NormalPassShader = {
+export const NormalPassShader = {
   vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
@@ -1286,7 +1286,7 @@ void main() {
   attributes: ['position', 'normal', 'uv', 'color'],
 }
 
-export let BasicLineShader2D = {
+export const BasicLineShader2D = {
   vertex: `precision mediump float;
   
 attribute vec3 position;
@@ -1324,7 +1324,7 @@ void main() {
   attributes: ['position', 'uv', 'color'],
 }
 
-export let WidgetMeshShader = {
+export const WidgetMeshShader = {
   vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
@@ -1380,7 +1380,7 @@ void main() {
   attributes: ['position', 'color', 'id'],
 }
 
-export let CellularNoiseFragment = {
+export const CellularNoiseFragment = {
   fragment: `
 // Cellular noise ("Worley noise") in 3D in GLSL.
 // Copyright (c) Stefan Gustavson 2011-04-19. All rights reserved.
@@ -1570,7 +1570,7 @@ vec2 cellular(vec3 P) {
 `,
 }
 
-export let SimplexGradientNoise = {
+export const SimplexGradientNoise = {
   fragment: `
 //
 // Description : Array and textureless GLSL 2D/3D/4D simplex 
@@ -1916,7 +1916,7 @@ void main() {
 
   attributes: ['position', 'color', 'uv', 'normal', 'sm_loc', 'sm_params', 'sm_worldloc'],
 }
-export let LineTriStripShader = {
+export const LineTriStripShader = {
   vertex: `precision mediump float;
   
 uniform mat4 projectionMatrix;
@@ -2001,7 +2001,7 @@ void main() {
   attributes: ['position', 'color', 'id', '_strip_uv', '_strip_dir'],
 }
 
-export let SubSurfPatchShader = {
+export const SubSurfPatchShader = {
   vertex: `precision mediump float;
   `,
 }
@@ -2033,11 +2033,11 @@ export type IShaderDef = {
 }
 
 export function loadShader(gl: WebGL2RenderingContext, sdef: IShaderDef) {
-  let shader = new ShaderProgram(gl, sdef.vertex, sdef.fragment, sdef.attributes)
+  const shader = new ShaderProgram(gl, sdef.vertex, sdef.fragment, sdef.attributes)
 
   shader.init(gl)
 
-  for (let k in sdef.uniforms) {
+  for (const k in sdef.uniforms) {
     shader.uniforms[k] = sdef.uniforms[k]
   }
 
@@ -2046,7 +2046,7 @@ export function loadShader(gl: WebGL2RenderingContext, sdef: IShaderDef) {
 
 export type Shaders = {[k in keyof typeof ShaderDef]: ShaderProgram}
 // shaders are delay loaded
-export let Shaders: Shaders = {} as unknown as Shaders
+export const Shaders: Shaders = {} as unknown as Shaders
 
 //global for debugging purposes only
 const g = globalThis as unknown as any

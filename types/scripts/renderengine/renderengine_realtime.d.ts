@@ -125,7 +125,7 @@ export class RealtimeEngine extends RenderEngine {
 }
 import { FBO } from '../core/fbo.js';
 import { Matrix4 } from '../util/vectormath.js';
-import { CubeTexture } from '../core/webgl.js';
+import { CubeTexture } from '../webgl/webgl.js';
 import * as util from '../util/util.js';
 import { Vector3 } from '../util/vectormath.js';
 import { RenderEngine } from "./renderengine_base.js";

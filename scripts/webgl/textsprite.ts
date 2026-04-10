@@ -1,18 +1,21 @@
-import {Texture} from './webgl.js'
-import {css2color, color2css} from '../path.ux/scripts/core/ui_base.js'
-import {CSSFont} from '../path.ux/scripts/core/cssfont.js'
-import {SimpleMesh, LayerTypes} from './simplemesh.ts'
-import {loadShader, PolygonOffset} from '../shaders/shaders.js'
-import {Vector2, Vector3, Vector4, Matrix4, Quat} from '../util/vectormath.js'
+import {Texture, IUniformsBlock, ShaderProgram} from './webgl'
+import {css2color} from '../path.ux/scripts/core/ui_theme'
+import {CSSFont} from '../path.ux/scripts/core/cssfont'
+import {SimpleMesh, LayerTypes} from './simplemesh'
+import {loadShader, PolygonOffset} from '../shaders/shaders'
+import {Vector2, Vector2Like, Vector3, Vector4, Matrix4} from '../util/vectormath'
 
 export class FontEncoding {
+  map: {[k: number]: number}
+  characters: string
+
   constructor() {
     this.map = {}
     this.characters = ''
   }
 
-  add(chr) {
-    let i
+  add(chr: number | string): void {
+    let i: number
     if (typeof chr === 'number') {
       i = chr
       chr = String.fromCharCode(chr)
@@ -25,7 +28,7 @@ export class FontEncoding {
   }
 }
 
-let latin_1 = new FontEncoding()
+const latin_1: FontEncoding = new FontEncoding()
 
 for (let i = 97; i <= 122; i++) {
   latin_1.add(i)
@@ -36,7 +39,7 @@ for (let i = 65; i <= 90; i++) {
 for (let i = 48; i <= 57; i++) {
   latin_1.add(i)
 }
-let extra = `<>?,./;':"[]{}\|\``
+let extra: string = `<>?,./;':"[]{}|\``
 extra += `!@#$%^&*()_+-=~`
 
 for (let i = 0; i < extra.length; i++) {
@@ -55,7 +58,17 @@ for (let i = 161; i < 255; i++) {
   latin_1.add(i)
 }
 
-export const TextShader = {
+export const TextShader: {
+  vertex: string
+  fragment: string
+  uniforms: {
+    polygonOffset: number
+    size: number[]
+    outlineWidth: number
+    outlineColor: number[]
+  }
+  attributes: string[]
+} = {
   vertex: `precision mediump float;  
 attribute vec3 position;
 attribute vec2 uv;
@@ -139,39 +152,54 @@ void main() {
   attributes: ['position', 'uv', 'color'],
 }
 
-let glShader = undefined
+let glShader: ShaderProgram | undefined = undefined
 
-export const encoding = latin_1
-export const defaultFontName = 'sans-serif'
+export const encoding: FontEncoding = latin_1
+export const defaultFontName: string = 'sans-serif'
 
-export const FONTSCALE = 1.0 / 64
+export const FONTSCALE: number = 1.0 / 64
+
+interface ExtendedSimpleMesh extends SimpleMesh {
+  lastColor?: string | number[]
+  lastPos?: number[]
+}
 
 export class SpriteFontSheet {
-  constructor(encoding, size, font) {
-    this.encoding = encoding
+  encoding: FontEncoding
+  size: number
+  kerning: {[k: number]: number}
+  font: CSSFont
+  cells?: number
+  cellsize?: number
+  canvas?: HTMLCanvasElement
+  g?: CanvasRenderingContext2D
+  glTex?: Texture
+
+  constructor(encoding_: FontEncoding, size: number, font: CSSFont) {
+    this.encoding = encoding_
     this.size = size
     this.kerning = {}
     this.font = font
   }
 
-  render() {
-    let chars = this.encoding.characters
-    let cells = Math.ceil(Math.sqrt(chars.length))
-    let cellsize = this.size
-    let font = this.font
+  render(): void {
+    const chars = this.encoding.characters
+    const cells = Math.ceil(Math.sqrt(chars.length))
+    const cellsize = this.size
+    const font = this.font
 
-    let blur = Math.max(~~(this.size * 0.3), 2)
+    const blur = Math.max(~~(this.size * 0.3), 2)
 
     this.cells = cells
     this.cellsize = cellsize
 
     font.size = this.size - 2
 
-    let width = cellsize * cells
-    let height = cellsize * cells
+    const width = cellsize * cells
+    const height = cellsize * cells
 
-    let canvas = (this.canvas = document.createElement('canvas'))
-    let g = (this.g = canvas.getContext('2d'))
+    const canvas = (this.canvas = document.createElement('canvas'))
+    const g = (this.g = canvas.getContext('2d')!)
 
     canvas.width = width
     canvas.height = height
@@ -191,7 +219,6 @@ export class SpriteFontSheet {
 
     g.font = font.genCSS(this.size * 2 - 2)
     g.font = ~~this.size + 'px sans-serif'
-    canvas.font = g.font
     canvas.style['font'] = g.font
 
     //canvas.font = font.genCSS(this.size*2-2);
@@ -211,15 +238,15 @@ export class SpriteFontSheet {
     //*/
 
     for (let i = 0; i < chars.length; i++) {
-      let c = chars[i]
-      let ci = chars.charCodeAt(i)
-      let s = 0.7
+      const c = chars[i]
+      const ci = chars.charCodeAt(i)
+      const s = 0.7
 
-      let w = g.measureText(c).width * s
+      const w = g.measureText(c).width * s
       this.kerning[ci] = w
 
-      let x = i % cells,
-        y = ~~(i / cells)
+      let x = i % cells
+      let y = ~~(i / cells)
 
       y += 0.8
 
@@ -234,8 +261,8 @@ export class SpriteFontSheet {
     }
   }
 
-  startMesh() {
-    let sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.COLOR)
+  startMesh(): ExtendedSimpleMesh {
+    const sm = new SimpleMesh(LayerTypes.LOC | LayerTypes.UV | LayerTypes.COLOR) as ExtendedSimpleMesh
 
     sm.lastColor = 'white'
     sm.lastPos = [0, 0, 0]
@@ -243,76 +270,80 @@ export class SpriteFontSheet {
     return sm
   }
 
-  appendMesh(smesh, text, color = smesh.lastColor) {
+  appendMesh(smesh: ExtendedSimpleMesh, text: string, color: string | number[] = smesh.lastColor!): void {
     for (let i = 0; i < text.length; i++) {
       this.appendChar(smesh, text[i], color)
     }
   }
 
-  appendChar(smesh, char, color = smesh.lastColor) {
-    char = char.charCodeAt(0)
+  appendChar(smesh: ExtendedSimpleMesh, char: string, color: string | number[] = smesh.lastColor!): void {
+    const charCode = char.charCodeAt(0)
 
-    let i = this.encoding.map[char]
+    const i = this.encoding.map[charCode]
 
-    color = typeof color === 'string' ? css2color(color) : color
-    let scale = FONTSCALE
-    let margin = 0.0
-
-    if (color.length < 4) {
-      color = [color[0], color[1], color[2], 1.0]
+    let colorVec: Vector4
+    if (typeof color === 'string') {
+      colorVec = css2color(color)
+    } else {
+      colorVec = color.length < 4 ? new Vector4([color[0], color[1], color[2], 1.0]) : new Vector4(color)
     }
+    const scale = FONTSCALE
+    const margin = 0.0
 
-    let x = smesh.lastPos[0]
-    let d = this.size,
-      w = this.kerning[char] * 2.0
+    const x = smesh.lastPos![0]
+    const d = this.size
+    const w = this.kerning[charCode] * 2.0
 
-    smesh.lastPos[0] += w * scale
+    smesh.lastPos![0] += w * scale
 
-    let vs = [new Vector3([-w, d, 0]), new Vector3([-w, -d, 0]), new Vector3([w, -d, 0]), new Vector3([w, d, 0])]
+    const vs = [new Vector3([-w, d, 0]), new Vector3([-w, -d, 0]), new Vector3([w, -d, 0]), new Vector3([w, d, 0])]
 
-    for (let v of vs) {
+    for (const v of vs) {
       v.mulScalar(scale)
       v[0] += x
     }
 
-    //let
-    let ux = (i % this.cells) / this.cells
-    let uy = ~~(i / this.cells) / this.cells
-    let uxscale = w / this.size
+    const ux = (i % this.cells!) / this.cells!
+    const uy = ~~(i / this.cells!) / this.cells!
+    const uxscale = w / this.size
 
-    let m = margin
+    const m = margin
 
-    let uvs = [new Vector2([-m, -m]), new Vector2([-m, 1 + m]), new Vector2([1 + m, 1 + m]), new Vector2([1 + m, -m])]
+    const uvs = [new Vector2([-m, -m]), new Vector2([-m, 1 + m]), new Vector2([1 + m, 1 + m]), new Vector2([1 + m, -m])]
 
-    for (let i = 0; i < 4; i++) {
-      uvs[i].mulScalar(1.0 / this.cells)
-      uvs[i][0] *= uxscale
+    for (let j = 0; j < 4; j++) {
+      uvs[j].mulScalar(1.0 / this.cells!)
+      uvs[j][0] *= uxscale
 
-      uvs[i][0] += ux
-      uvs[i][1] += uy
+      uvs[j][0] += ux
+      uvs[j][1] += uy
     }
 
-    let quad = smesh.quad(vs[0], vs[1], vs[2], vs[3])
+    const quad = smesh.quad(vs[0], vs[1], vs[2], vs[3])
     quad.uvs(uvs[0], uvs[1], uvs[2], uvs[3])
-    quad.colors(color, color, color, color)
+    quad.colors(colorVec, colorVec, colorVec, colorVec)
   }
 
-  makeTex(gl) {
-    let canvas = this.canvas
+  makeTex(gl: WebGL2RenderingContext): void {
+    const canvas = this.canvas!
 
-    let data = this.g.getImageData(0, 0, canvas.width, canvas.height)
+    const data = this.g!.getImageData(0, 0, canvas.width, canvas.height)
 
-    let tex = Texture.load(gl, canvas.width, canvas.height, data.data)
+    const tex = Texture.load(gl, canvas.width, canvas.height, data.data)
 
-    gl.bindTexture(gl.TEXTURE_2D, tex.texture)
+    gl.bindTexture(gl.TEXTURE_2D, tex.texture!)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
     this.glTex = tex
   }
 
-  drawMeshScreenSpace(gl, smesh, co, uniforms = {}) {
-    //copy uniforms
+  drawMeshScreenSpace(
+    gl: WebGL2RenderingContext,
+    smesh: SimpleMesh,
+    co: Vector2Like,
+    uniforms: IUniformsBlock = {}
+  ): void {
     uniforms = Object.assign({}, uniforms)
 
     uniforms.objectMatrix = new Matrix4()
@@ -335,12 +366,12 @@ export class SpriteFontSheet {
     this.drawMesh(gl, smesh, uniforms)
   }
 
-  drawMesh(gl, smesh, uniforms) {
+  drawMesh(gl: WebGL2RenderingContext, smesh: SimpleMesh, uniforms: IUniformsBlock): void {
     if (!this.glTex) {
       this.makeTex(gl)
     }
 
-    if (1 || glShader === undefined) {
+    if (glShader === undefined) {
       glShader = loadShader(gl, TextShader)
     }
 
@@ -349,17 +380,21 @@ export class SpriteFontSheet {
     smesh.draw(gl, uniforms, glShader)
   }
 
-  onContextLost(e) {
+  onContextLost(e: WebGLContextEvent): void {
     this.glTex = undefined
   }
 }
 
-export function onContextLost(e) {
+export function onContextLostTexSprite(e: WebGLContextEvent): void {
   glShader = undefined
 }
 
 export class SpriteFont {
-  constructor(font) {
+  sheets: {[k: number]: SpriteFontSheet}
+  font: CSSFont
+  gl?: WebGL2RenderingContext
+
+  constructor(font: string | CSSFont) {
     if (typeof font === 'string') {
       font = new CSSFont({
         font: font,
@@ -370,7 +405,7 @@ export class SpriteFont {
     this.font = font
   }
 
-  update(gl) {
+  update(gl: WebGL2RenderingContext): void {
     if (this.gl === undefined) {
       this.gl = gl
     }
@@ -380,14 +415,14 @@ export class SpriteFont {
     }
   }
 
-  onContextLost(e) {
-    for (let k in this.sheets) {
+  onContextLost(e: WebGLContextEvent): void {
+    for (const k in this.sheets) {
       this.sheets[k].onContextLost(e)
     }
   }
 
-  getSheet(size = 64) {
-    let dpi = devicePixelRatio
+  getSheet(size: number = 64): SpriteFontSheet {
+    const dpi = devicePixelRatio
 
     size = ~~(size * dpi)
     size = Math.max(size, 10)
@@ -401,38 +436,44 @@ export class SpriteFont {
   }
 }
 
-export let defaultFont = new SpriteFont(defaultFontName)
+export const defaultFont = new SpriteFont(defaultFontName)
 
-let testCanvas = undefined
+let testCanvas: HTMLCanvasElement | undefined = undefined
 
-window.test_sprite_fonts = function (size = 12, font = 'sans-serif') {
+declare global {
+  interface Window {
+    test_sprite_fonts: (size?: number, fontName?: string) => void
+  }
+}
+
+window.test_sprite_fonts = function (size: number = 12, fontName: string = 'sans-serif'): void {
   if (testCanvas !== undefined) {
     testCanvas.remove()
   }
 
-  font = new CSSFont({
-    font : font,
+  const font = new CSSFont({
+    font : fontName,
     color: 'black',
   })
 
-  let sheet = new SpriteFontSheet(encoding, size, font)
+  const sheet = new SpriteFontSheet(encoding, size, font)
   sheet.render()
 
-  let canvas = sheet.canvas
+  const canvas = sheet.canvas!
 
-  canvas.style['position'] = 'absolute'
-  canvas.style['z-index'] = 2
-  canvas.style['left'] = '10px'
-  canvas.style['top'] = '10px'
+  canvas.style.position = 'absolute'
+  canvas.style.zIndex = '2'
+  canvas.style.left = '10px'
+  canvas.style.top = '10px'
   testCanvas = canvas
 
   document.body.appendChild(canvas)
 }
 
-let _testmesh = undefined
-export function testDraw(gl, uniforms) {
+let _testmesh: ExtendedSimpleMesh | undefined = undefined
+export function testDraw(gl: WebGL2RenderingContext, uniforms: IUniformsBlock): void {
   let mesh = _testmesh
-  let font = defaultFont.getSheet(24)
+  const font = defaultFont.getSheet(24)
 
   if (mesh === undefined) {
     mesh = _testmesh = font.startMesh()
@@ -442,8 +483,10 @@ export function testDraw(gl, uniforms) {
 
   font.drawMesh(gl, mesh, uniforms)
 
-  let co = new Vector2(_appstate.screen.mpos)
-  let view3d = _appstate.ctx.view3d
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const appstate = (window as any)._appstate
+  const co = new Vector2(appstate.screen.mpos)
+  const view3d = appstate.ctx.view3d
 
   co[0] = (co[0] - view3d.glPos[0]) / view3d.glSize[0]
   co[1] = (co[1] - view3d.glPos[1]) / view3d.glSize[1]

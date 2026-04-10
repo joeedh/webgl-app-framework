@@ -1,3 +1,6 @@
+import { Vector2 } from "../../../util/vectormath";
+import { FBO } from "../../webgl";
+
 export class GPUSelectBuffer {
     regen: boolean;
     pos: Vector2;
@@ -42,5 +45,3 @@ export class GPUSelectBuffer {
         depthData?: undefined;
     };
 }
-import { Vector2 } from '../../util/vectormath.js';
-import { FBO } from "../../core/fbo.js";

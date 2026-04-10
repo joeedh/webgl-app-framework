@@ -3,7 +3,7 @@ import * as util from '../util/util.js';
 import {MeshDrawInterface, OrigRef} from "../editors/view3d/view3d_draw.js";
 import {Mesh, MeshTypes, MeshFlags} from '../mesh/mesh.js';
 import {createPatches} from './subsurf_mesh.js';
-import {Texture} from '../core/webgl.js';
+import {Texture} from '../webgl/webgl.js';
 
 let orig_rets = util.cachering.fromConstructor(OrigRef, 128);
 

@@ -32,7 +32,7 @@ import {
 import {compileTexShaderJS} from './textureGen'
 import './textures.js'
 import {TexPaintShaderLib} from '../shaders/shaders.js'
-import {IUniformsBlock} from '../core/webgl'
+import {IUniformsBlock} from '../webgl/webgl'
 import {ICompiledCode} from '../mathl/core/mathl.js'
 import { HashDigest } from '../util/util.js';
 import { StructReader } from '../path.ux/scripts/util/nstructjs.js';

@@ -12,7 +12,7 @@ import {
 } from '../path.ux/scripts/pathux.js'
 import {CDElemArray, MeshFlags, MeshTypes} from './mesh_base'
 import {AttrRef, CustomDataElem} from './customdata'
-import {ChunkedSimpleMesh, SimpleMesh} from '../core/simplemesh'
+import {ChunkedSimpleMesh, SimpleMesh} from '../webgl/simplemesh'
 import {
   BLink,
   GridBase,

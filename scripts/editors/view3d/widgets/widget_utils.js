@@ -1,5 +1,5 @@
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../../../util/vectormath.js'
-import {SimpleMesh, LayerTypes} from '../../../core/simplemesh.ts'
+import {SimpleMesh, LayerTypes} from '../../../webgl/simplemesh.ts'
 import {
   IntProperty,
   BoolProperty,

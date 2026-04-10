@@ -2,7 +2,7 @@ import { Vector3 } from '../path.ux/scripts/pathux';
 import { Vertex, Edge } from '../mesh/mesh_types';
 import { Mesh } from "../mesh/mesh.js";
 import { MeshTools } from "../mesh/mesh_stdtools.js";
-import { SimpleMesh } from "../core/simplemesh.js";
+import { SimpleMesh } from "../webgl/simplemesh.js";
 import { View3D } from "../editors/view3d/view3d";
 import { StructReader } from "../path.ux/scripts/path-controller/types/util/nstructjs";
 export declare function basis(ks: number[], t: number, i: number, deg: number): number;

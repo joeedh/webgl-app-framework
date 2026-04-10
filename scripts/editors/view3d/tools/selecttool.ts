@@ -10,7 +10,7 @@ import {KeyMap, HotKey} from '../../editor_base'
 import {eventWasMouseDown, nstructjs} from '../../../path.ux/scripts/pathux.js'
 import {Icons} from '../../icon_enum.js'
 import {RotateWidget, ScaleWidget, TranslateWidget} from '../widgets/widget_tools.js'
-import type {IUniformsBlock, ShaderProgram} from '../../../core/webgl.js'
+import type {IUniformsBlock, ShaderProgram} from '../../../webgl/webgl.js'
 import type {View3D} from '../view3d.js'
 import type {ViewContext} from '../../../core/context.js'
 

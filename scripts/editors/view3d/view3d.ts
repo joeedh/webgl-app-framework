@@ -1,50 +1,50 @@
-import {Area, DataAPI, IAreaDef, IVector4, IVectorOrHigher, nstructjs, util} from '../../path.ux/scripts/pathux.js'
+import {Area, DataAPI, IAreaDef, IVector4, IVectorOrHigher, nstructjs, util} from '../../path.ux/scripts/pathux'
 
 import {spawnToolSearchMenu} from '../editor_base'
 
-import {getBlueMask} from '../../shadernodes/shader_lib.js'
+import {getBlueMask} from '../../shadernodes/shader_lib'
 
-import {ToolMode} from './view3d_toolmode.js'
+import {ToolMode} from './view3d_toolmode'
 
-import './transform/all.js'
-import './findnearest/all.js'
+import './transform/all'
+import './findnearest/all'
 import './tools/tools'
-import * as textsprite from '../../core/textsprite.js'
-import {RealtimeEngine} from '../../renderengine/renderengine_realtime.js'
-import {PackFlags} from '../../path.ux/scripts/core/ui_base.js'
+import * as textsprite from '../../webgl/textsprite'
+import {RealtimeEngine} from '../../renderengine/renderengine_realtime'
+import {PackFlags} from '../../path.ux/scripts/core/ui_base'
 import {Editor} from '../editor_base'
-import {Camera, init_webgl} from '../../core/webgl.js'
-import {DrawModes} from './drawmode.js'
+import {Camera, init_webgl} from '../../webgl/webgl'
+import {DrawModes} from './drawmode'
 import {EnvLightFlags} from '../../scene/scene'
-import {UIBase, css2color} from '../../path.ux/scripts/core/ui_base.js'
-import * as view3d_shaders from '../../shaders/shaders.js'
-import {loadShader} from '../../shaders/shaders.js'
-import {SimpleMesh, LayerTypes} from '../../core/simplemesh'
-import {Vector3, Vector2, Vector4, Matrix4, Vector3Like} from '../../util/vectormath.js'
-import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops.js'
+import {UIBase, css2color} from '../../path.ux/scripts/core/ui_base'
+import * as view3d_shaders from '../../shaders/shaders'
+import {loadShader} from '../../shaders/shaders'
+import {SimpleMesh, LayerTypes} from '../../webgl/simplemesh'
+import {Vector3, Vector2, Vector4, Matrix4, Vector3Like} from '../../util/vectormath'
+import {OrbitTool, TouchViewTool, PanTool, ZoomTool} from './view3d_ops'
 import './tools/mesheditor'
-import {GPUSelectBuffer} from './view3d_select.js'
+import {GPUSelectBuffer} from './view3d_select'
 import {KeyMap, HotKey} from '../editor_base'
-import {calcTransCenter, calcTransMatrix, calcTransAABB} from './transform/transform_query.js'
-import {CallbackNode, Node} from '../../core/graph.js'
-import {DependSocket} from '../../core/graphsockets.js'
-import {ConstraintSpaces} from './transform/transform_base.js'
-import {eventWasTouch, haveModal} from '../../path.ux/scripts/util/simple_events.js'
-import {BoundingBox, CursorModes, OrbitTargetModes} from './view3d_utils.js'
-import {Icons} from '../icon_enum.js'
-import {NoneWidget} from './widgets/widget_tools.js'
-import {View3DFlags, CameraModes} from './view3d_base.js'
-import {Library} from '../../core/lib_api.js'
+import {calcTransCenter, calcTransMatrix, calcTransAABB} from './transform/transform_query'
+import {CallbackNode, Node} from '../../core/graph'
+import {DependSocket} from '../../core/graphsockets'
+import {ConstraintSpaces} from './transform/transform_base'
+import {eventWasTouch, haveModal} from '../../path.ux/scripts/util/simple_events'
+import {BoundingBox, CursorModes, OrbitTargetModes} from './view3d_utils'
+import {Icons} from '../icon_enum'
+import {NoneWidget} from './widgets/widget_tools'
+import {View3DFlags, CameraModes} from './view3d_base'
+import {Library} from '../../core/lib_api'
 import {RenderEngine, RenderSettings} from '../../renderengine/renderengine_base'
-import {SceneObject} from '../../sceneobject/sceneobject.js'
-import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw.js'
-import {WidgetBase} from './widgets/widgets.js'
-import {OptionalIf, OptionalIfNot} from '../../util/optionalIf.js'
-import {ViewContext} from '../../core/context.js'
-import {Mesh} from '../../mesh/mesh.js'
-import {BusMessage} from '../../core/bus.js'
-import {Number3} from '../../path.ux/scripts/path-controller/old_types/controller.js'
-import {StructReader} from '../../path.ux/scripts/util/nstructjs.js'
+import {SceneObject} from '../../sceneobject/sceneobject'
+import {Overdraw} from '../../path.ux/scripts/util/ScreenOverdraw'
+import {WidgetBase} from './widgets/widgets'
+import {OptionalIfNot} from '../../util/optionalIf'
+import {ViewContext} from '../../core/context'
+import {Mesh} from '../../mesh/mesh'
+import {BusMessage} from '../../core/bus'
+import {Number3} from '../../path.ux/scripts/path-controller/old_types/controller'
+import {StructReader} from '../../path.ux/scripts/util/nstructjs'
 
 export interface ITempText {
   co: Vector3
@@ -137,7 +137,7 @@ export function initWebGL() {
 
   //_gl.canvas = canvas;
   loadShaders(window._gl)
-  textsprite.defaultFont.update(_gl)
+  textsprite.defaultFont.update(_gl!)
 
   getBlueMask(_gl)
 
@@ -160,8 +160,8 @@ export function initWebGL() {
         }
       }
 
-      textsprite.onContextLost(e)
-      textsprite.defaultFont.update(_gl)
+      textsprite.onContextLostTexSprite(e as WebGLContextEvent)
+      textsprite.defaultFont.update(_gl!)
     },
     false
   )

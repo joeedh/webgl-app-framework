@@ -14,7 +14,7 @@ import {
   RGBASocket,
   RGBSocket,
 } from '../core/graphsockets.js'
-import {Shapes} from '../core/simplemesh_shapes.js'
+import {Shapes} from '../webgl/simplemesh_shapes.js'
 import {Shaders} from '../shaders/shaders.js'
 import {SceneObjectData} from '../sceneobject/sceneobject_base.js'
 import {SelMask} from '../editors/view3d/selectmode.js'

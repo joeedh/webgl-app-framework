@@ -1,21 +1,13 @@
 import {KeyMap} from '../editor_base'
-import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../core/simplemesh'
+import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../webgl/simplemesh'
 import {IWidgetConstructor, WidgetBase, WidgetFlags, WidgetManager} from './widgets/widgets.js'
-import {
-  Container,
-  ContextOverlay,
-  DataAPI,
-  EnumProperty,
-  IVectorOrHigher,
-  Vector3,
-  Vector4,
-} from '../../path.ux/scripts/pathux.js'
+import {Container, DataAPI, EnumProperty, Vector3, Vector4} from '../../path.ux/scripts/pathux.js'
 import {Icons} from '../icon_enum.js'
 import '../../path.ux/scripts/util/struct.js'
 import {INodeConstructor, INodeSocketSet, Node} from '../../core/graph.js'
 import {nstructjs} from '../../path.ux/scripts/pathux.js'
 
-import '../../core/textsprite.js'
+import '../../webgl/textsprite.js'
 
 import messageBus, {BusTriggers} from '../../core/bus'
 import type {ViewContext} from '../../core/context'
@@ -25,7 +17,7 @@ import type {BlockLoader, BlockLoaderAddUser} from '../../core/lib_api'
 import {StandardTools} from '../../sceneobject/stdtools'
 import type {AppState} from '../../core/appstate'
 import {View3D} from '../all'
-import {IUniformsBlock, ShaderProgram} from '../../core/webgl'
+import {IUniformsBlock, ShaderProgram} from '../../webgl/webgl'
 import {Mesh} from '../../mesh/mesh'
 import {MeshDrawInterface} from './view3d_draw'
 import {BoundingBox} from './view3d_utils'

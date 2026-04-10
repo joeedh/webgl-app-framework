@@ -191,7 +191,7 @@ export namespace GeometryNode {
 import { AbstractGraphClass } from '../core/graph_class.js';
 import { Vector3 } from '../util/vectormath.js';
 import { NodeSocketType } from '../core/graph.js';
-import { ShaderProgram } from "../core/webgl.js";
+import { ShaderProgram } from "../webgl/webgl.js";
 import { Node } from '../core/graph.js';
 import { FloatSocket } from "../core/graphsockets.js";
 import { RGBASocket } from "../core/graphsockets.js";

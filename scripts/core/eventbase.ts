@@ -1,9 +1,13 @@
+export type EventCallback = (data: any) => void
+
 export class EventBase {
+  private _eventcbs: {[k: string]: EventCallback[]}
+
   constructor() {
-    this._eventcbs = []
+    this._eventcbs = {}
   }
 
-  _getEventList(event) {
+  _getEventList(event: string) {
     if (!(event in this._eventcbs)) {
       this._eventcbs[event] = []
     }
@@ -11,11 +15,11 @@ export class EventBase {
     return this._eventcbs[event]
   }
 
-  on(event, cb) {
+  on(event: string, cb: EventCallback) {
     this._getEventList(event).push(cb)
   }
 
-  fire(event, data) {
+  fire(event: string, data: any) {
     for (let cb of this._getEventList(event)) {
       cb(data)
     }

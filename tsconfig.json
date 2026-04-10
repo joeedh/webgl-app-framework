@@ -3,7 +3,7 @@
     "allowJs": true,
     "target": "es6",
     "module": "es2022",
-    "lib": ["dom", "scripthost", "es2017", "ESNext.Disposable"],
+    "lib": ["dom", "scripthost", "esnext", "ESNext.Disposable"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "pretty": true,

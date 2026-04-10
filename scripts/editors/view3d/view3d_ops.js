@@ -5,9 +5,9 @@ import {SelMask} from './selectmode.js'
 import {CallbackNode} from '../../core/graph.js'
 import {DependSocket} from '../../core/graphsockets.js'
 import {CastModes, castViewRay} from './findnearest.js'
-import {Shapes} from '../../core/simplemesh_shapes.js'
+import {Shapes} from '../../webgl/simplemesh_shapes.js'
 import {Shaders} from '../../shaders/shaders.js'
-import {Camera} from '../../core/webgl.js'
+import {Camera} from '../../webgl/webgl.js'
 
 export class ViewSelected extends ToolOp {
   constructor() {

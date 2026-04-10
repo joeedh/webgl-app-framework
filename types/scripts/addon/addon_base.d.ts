@@ -212,7 +212,7 @@ export class AddonAPI {
 import { nstructjs } from '../path.ux/scripts/pathux.js';
 import { util } from '../path.ux/scripts/pathux.js';
 import { math } from '../path.ux/scripts/pathux.js';
-import * as simplemesh from '../core/simplemesh.js';
+import * as simplemesh from '../webgl/simplemesh.js';
 import * as pathux from '../path.ux/scripts/pathux.js';
 import * as mesh_utils from '../mesh/mesh_utils.js';
 import * as unwrapping from '../mesh/unwrapping.js';

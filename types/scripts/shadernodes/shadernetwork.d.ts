@@ -42,7 +42,7 @@ export class ShaderNetwork extends DataBlock {
         uniforms: {};
         attributes: string[];
         setUniforms(gl: any, graph: any, uniforms: any): void;
-        compile(gl: any): import("../core/webgl.js").ShaderProgram;
+        compile(gl: any): import("../webgl/webgl.js").ShaderProgram;
     };
 }
 import { DataBlock } from '../core/lib_api.js';

@@ -193,7 +193,7 @@ export class WidgetManager {
 import { Vector3 } from '../../../util/vectormath.js';
 import { Vector4 } from '../../../util/vectormath.js';
 import { Matrix4 } from '../../../util/vectormath.js';
-import { SimpleMesh } from '../../../core/simplemesh.js';
+import { SimpleMesh } from '../../../webgl/simplemesh.js';
 import { Node } from "../../../core/graph.js";
 import { DependSocket } from '../../../core/graphsockets.js';
 import * as util from '../../../util/util.js';

@@ -9,7 +9,7 @@ import {
   ILayerSettingsConstructor,
   LayerSettingsBase,
 } from './customdata'
-import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../core/simplemesh.js'
+import {ChunkedSimpleMesh, LayerTypes, SimpleMesh} from '../webgl/simplemesh.js'
 import {AttrRef, ColorLayerElem, FloatElem, UVLayerElem} from './mesh_customdata.js'
 import {PatchBuilder} from './mesh_grids_subsurf.js'
 import {BasicLineShader, Shaders} from '../shaders/shaders.js'
@@ -33,18 +33,14 @@ import {BVH, IBVHVertex} from '../util/bvh'
 
 const blink_rets = util.cachering.fromConstructor(Vector3, 64)
 const blink_rets4 = util.cachering.fromConstructor(Vector4, 64)
-const tmptanmat = new Matrix4()
 const uvstmp = new Array<Vector2>(4)
 for (let i = 0; i < 4; i++) {
   uvstmp[i] = new Vector2()
 }
 import '../util/polyfill.d.ts'
-import {WebGLUniforms} from '../../types/scripts/core/webgl'
 import {PatchBase} from '../subsurf/subsurf_patch.js'
-import { StructReader } from '../path.ux/scripts/util/nstructjs.js'
-
-const stmp1 = new Vector3(),
-  stmp2 = new Vector3()
+import {StructReader} from '../path.ux/scripts/util/nstructjs.js'
+import { IUniformsBlock } from '../webgl/webgl.js'
 
 export enum QRecalcFlags {
   NONE = 0,
@@ -164,8 +160,8 @@ non-quads for joining corners on extroidinary vertices
 */
 const interptemp1 = []
 
-const IDX = -1,
-  IDXINV = -2
+const IDX = -1
+const IDXINV = -2
 
 export const NeighborKeys = {
   L  : 1, //loop
@@ -280,7 +276,10 @@ export class NeighborMap {
     const dimen = this.dimen
 
     const map = this.maps[mask]
-    let x1, y1, x2, y2
+    let x1
+    let y1
+    let x2
+    let y2
 
     x1 = this.getmap(map[0][0]!, i1)
     y1 = this.getmap(map[0][1]!, i1)
@@ -393,7 +392,7 @@ mesh.GridVert {
     return this.bRingSet
   }
 
-  static getMemSize(p: GridVertBase<Array<any>>): number {
+  static getMemSize(p: GridVertBase<any[]>): number {
     let tot = 21 * 8
 
     tot += 4 * 3 * 8 + 2 * 8
@@ -1148,8 +1147,8 @@ mesh.GridBase {
       b.relinkCustomData()
     }
 
-    const ps1 = this.points,
-      ps2 = b.points
+    const ps1 = this.points
+    const ps2 = b.points
 
     for (let i = 0; i < totpoint; i++) {
       const p1 = ps1[i]
@@ -1163,8 +1162,8 @@ mesh.GridBase {
       }
     }
 
-    const cd1 = this.customDatas,
-      cd2 = b.customDatas
+    const cd1 = this.customDatas
+    const cd2 = b.customDatas
     for (let i = 0; i < cd1.length; i++) {
       const c1 = cd1[i]
       const c2 = cd2[i]
@@ -1229,8 +1228,8 @@ mesh.GridBase {
   checkCustomDataLayout(mesh: Mesh): void {
     const namemap = {}
 
-    let layeri = 0,
-      i = 0
+    let layeri = 0
+    let i = 0
     let bad = false
 
     const buckets = new Map()
@@ -1293,7 +1292,7 @@ mesh.GridBase {
     for (const cls of this.customDataLayout) {
       const bucket = buckets.get(cls)
 
-      if (!bucket || !bucket.length) {
+      if (!bucket?.length) {
         const cds = [] as CustomDataElem[]
         bad = true
 
@@ -1434,7 +1433,7 @@ mesh.Grid {
     return 0
   }
 
-  debugDraw(gl: WebGL2RenderingContext, uniforms: WebGLUniforms, ob: SceneObject): void {
+  debugDraw(gl: WebGL2RenderingContext, uniforms: IUniformsBlock, ob: SceneObject): void {
     const lt = LayerTypes
     const smesh = new SimpleMesh(lt.LOC | lt.UV | lt.COLOR)
 
@@ -1460,7 +1459,8 @@ mesh.Grid {
 
       if (window.DTST2) {
         const df = 0.4
-        let du2: Vector3, dv2: Vector3
+        let du2: Vector3
+        let dv2: Vector3
         const [u, v] = p.uv
         const ss = this.subsurf
 
@@ -1523,8 +1523,8 @@ mesh.Grid {
 
   applyBase(mesh: Mesh, l: Loop, cd_grid: AttrRef<this>): void {
     const dimen = this.dimen
-    const x = dimen - 1,
-      y = dimen - 1
+    const x = dimen - 1
+    const y = dimen - 1
 
     const idx = y * dimen + x
     l.v.load(this.points[idx].co)
@@ -1784,17 +1784,17 @@ mesh.Grid {
       p.bRingRemove()
     }
 
-    const ps = this.points,
-      dimen = this.dimen
+    const ps = this.points
+    const dimen = this.dimen
 
     const l = loop
-    const lp = l.prev,
-      ln = l.next
+    const lp = l.prev
+    const ln = l.next
     const lr = l.radial_next
-    const lrp = lr.prev,
-      lrn = lr.next
-    const lpr = l.prev.radial_next,
-      lnr = l.next.radial_next
+    const lrp = lr.prev
+    const lrn = lr.next
+    const lpr = l.prev.radial_next
+    const lnr = l.next.radial_next
 
     const lmap = {
       [NeighborKeys.L]  : l,
@@ -1810,23 +1810,23 @@ mesh.Grid {
     const map = getNeighborMap(this.dimen)
     for (let i = 0; i < this.dimen; i++) {
       for (const c of map.cases) {
-        const l1mask = c.l1,
-          l2mask = c.l2
+        const l1mask = c.l1
+        const l2mask = c.l2
         const l1 = lmap[l1mask]
         const l2 = lmap[l2mask]
 
         const ret = map.resolve(i, l1, l2, l1mask, l2mask)
-        const x1 = ret.x1,
-          y1 = ret.y1,
-          x2 = ret.x2,
-          y2 = ret.y2
+        const x1 = ret.x1
+        const y1 = ret.y1
+        const x2 = ret.x2
+        const y2 = ret.y2
 
         const ps2 = cd_grid.get(l2).points
 
         const i1 = y1 * dimen + x1
         const i2 = y2 * dimen + x2
 
-        if (!ps2 || !ps2[i2]) {
+        if (!ps2?.[i2]) {
           continue
         }
 
@@ -1890,13 +1890,13 @@ mesh.Grid {
     const map = getNeighborMap(this.dimen)
 
     const l = loop
-    const lp = l.prev,
-      ln = l.next
+    const lp = l.prev
+    const ln = l.next
     const lr = l.radial_next
-    const lrp = lr.prev,
-      lrn = lr.next
-    const lpr = l.prev.radial_next,
-      lnr = l.next.radial_next
+    const lrp = lr.prev
+    const lrn = lr.next
+    const lpr = l.prev.radial_next
+    const lnr = l.next.radial_next
 
     const lmap = {
       [NeighborKeys.L]  : l,

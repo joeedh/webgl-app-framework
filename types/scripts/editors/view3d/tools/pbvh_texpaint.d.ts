@@ -58,5 +58,5 @@ import { Vec2Property } from '../../../path.ux/scripts/pathux.js';
 import { FlagProperty } from '../../../path.ux/scripts/pathux.js';
 import { BoolProperty } from '../../../path.ux/scripts/pathux.js';
 import { FBO } from '../../../core/fbo.js';
-import { ShaderProgram } from '../../../core/webgl.js';
+import { ShaderProgram } from '../../../webgl/webgl.js';
 import { Vector2 } from '../../../path.ux/scripts/pathux.js';

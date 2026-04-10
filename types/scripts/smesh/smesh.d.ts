@@ -61,4 +61,4 @@ export class SMesh extends SceneObjectData {
 }
 import { SceneObjectData } from '../sceneobject/sceneobject_base.js';
 import { BoundMesh } from './smesh_bound.js';
-import { SimpleMesh } from '../core/simplemesh.js';
+import { SimpleMesh } from '../webgl/simplemesh.js';

@@ -1,12 +1,12 @@
 'use strict'
 
 import {ViewContext} from './context'
-import {AppToolStack} from './toolstack.js'
-import '../editors/node/MaterialEditor.js'
-import '../addon/addon.js'
-import {tileManager} from '../image/gpuimage.js'
+import {AppToolStack} from './toolstack'
+import '../editors/node/MaterialEditor'
+import '../addon/addon'
+import {tileManager} from '../image/gpuimage'
 
-import './platform.js'
+import './platform'
 
 import {
   initSimpleController,
@@ -15,43 +15,43 @@ import {
   nstructjs,
   _onEventsStart,
   _onEventsStop,
-} from '../path.ux/scripts/pathux.js'
+} from '../path.ux/scripts/pathux'
 
-import './polyfill.js'
+import './polyfill'
 
-import '../util/fbxloader.js'
+import '../util/fbxloader'
 
-import {loadShapes} from './simplemesh_shapes.js'
+import {loadShapes} from '../webgl/simplemesh_shapes'
 
-import '../editors/resbrowser/resbrowser.js'
-import '../editors/resbrowser/resbrowser_ops.js'
-import '../editors/resbrowser/resbrowser_types.js'
+import '../editors/resbrowser/resbrowser'
+import '../editors/resbrowser/resbrowser_ops'
+import '../editors/resbrowser/resbrowser_types'
 
 import '../editors/view3d/tools/tools'
 import {App} from '../editors/editor_base'
 import {Library, DataBlock, DataRef, BlockFlags, BlockLoader} from './lib_api'
-import * as util from '../util/util.js'
-import {getDataAPI} from '../data_api/api_define.js'
-import {BinaryReader, BinaryWriter} from '../util/binarylib.js'
-import * as cconst from './const.js'
+import * as util from '../util/util'
+import {getDataAPI} from '../data_api/api_define'
+import {BinaryReader, BinaryWriter} from '../util/binarylib'
+import * as cconst from './const'
 import {AppSettings} from './settings'
 
 export class FileLoadError extends Error {}
 
-import {BasicFileOp, RootFileOp} from './app_ops.js'
+import {BasicFileOp, RootFileOp} from './app_ops'
 
-export {BasicFileOp, RootFileOp} from './app_ops.js'
+export {BasicFileOp, RootFileOp} from './app_ops'
 
-export {genDefaultScreen} from '../editors/screengen.js'
-import {genDefaultScreen} from '../editors/screengen.js'
+export {genDefaultScreen} from '../editors/screengen'
+import {genDefaultScreen} from '../editors/screengen'
 import {Collection} from '../scene/collection'
-import {PropsEditor} from '../editors/properties/PropsEditor.js'
-import '../light/light.js'
-import {GridBase} from '../mesh/mesh_grids.js'
+import {PropsEditor} from '../editors/properties/PropsEditor'
+import '../light/light'
+import {GridBase} from '../mesh/mesh_grids'
 import {DefaultBrushes, DynTopoFlags, DynTopoOverrides, SculptBrush, SculptTools} from '../brush/brush'
-import {APP_VERSION, CompressionFlags} from './const.js'
-import type {Screen} from '../path.ux/scripts/pathux.js'
-import type {DataAPI} from '../path.ux/scripts/pathux.js'
+import {APP_VERSION, CompressionFlags} from './const'
+import type {Screen} from '../path.ux/scripts/pathux'
+import type {DataAPI} from '../path.ux/scripts/pathux'
 
 declare let _appstate: AppState
 declare let JSZip: {

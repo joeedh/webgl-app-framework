@@ -74,5 +74,5 @@ export namespace ProceduralMesh {
     export { STRUCT_2 as STRUCT };
 }
 import { Vector3 } from '../util/vectormath.js';
-import { SimpleMesh } from '../core/simplemesh.js';
+import { SimpleMesh } from '../webgl/simplemesh.js';
 import { SceneObjectData } from '../sceneobject/sceneobject_base.js';

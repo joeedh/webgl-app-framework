@@ -1,13 +1,6 @@
-import {nstructjs, color2css} from '../path.ux/scripts/pathux.js';
-import {Icons} from '../editors/icon_enum.js';
-import {DependSocket} from '../core/graphsockets.js';
-import {GraphFlags, NodeFlags} from '../core/graph.js';
-import {Texture} from '../core/webgl.js';
-import {FBO} from '../core/fbo.js';
-import {Vector3, Vector4, Matrix4, Vector2} from '../util/vectormath.js';
-import * as math from '../util/math.js';
-import * as util from '../util/util.js';
-import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../core/simplemesh.ts';
+import {Texture} from '../webgl/webgl.js';
+import {FBO} from '../webgl/fbo.js';
+import {SimpleMesh, LayerTypes, PrimitiveTypes} from '../webgl/simplemesh.ts';
 
 export const GPUTileFlags = {
   UPDATE      : 1,

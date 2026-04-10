@@ -7,8 +7,8 @@ Widget Refactor Todo:
 * */
 
 import {Vector2, Vector3, Vector4, Matrix4} from '../../../util/vectormath.js'
-import {SimpleMesh, LayerTypes} from '../../../core/simplemesh'
-import {Shapes} from '../../../core/simplemesh_shapes.js'
+import {SimpleMesh, LayerTypes} from '../../../webgl/simplemesh'
+import {Shapes} from '../../../webgl/simplemesh_shapes.js'
 import {Shaders} from '../../../shaders/shaders.js'
 import {isect_ray_plane} from '../../../path.ux/scripts/util/math.js'
 import {isMobile} from '../../../path.ux/scripts/util/util.js'

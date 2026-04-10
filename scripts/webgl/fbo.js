@@ -1,8 +1,6 @@
-import * as util from '../util/util.js'
-import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js'
+import {Vector2} from '../util/vectormath.js'
 import * as simplemesh from './simplemesh.ts'
 import * as webgl from './webgl.js'
-import {Texture} from './webgl.js'
 import {PrimitiveTypes} from './simplemesh.ts'
 
 let DEPTH24_STENCIL8 = 35056

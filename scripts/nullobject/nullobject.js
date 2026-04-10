@@ -4,7 +4,7 @@ import {DataBlock} from '../core/lib_api.js'
 import {NodeFlags} from '../core/graph.js'
 import {SelMask} from '../editors/view3d/selectmode.js'
 import {Shaders} from '../shaders/shaders.js'
-import {Shapes} from '../core/simplemesh_shapes.js'
+import {Shapes} from '../webgl/simplemesh_shapes.js'
 import {Node} from '../core/graph.js'
 import {nstructjs} from '../path.ux/scripts/pathux.js'
 

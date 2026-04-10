@@ -1,4 +1,4 @@
-import {Shapes} from '../../../core/simplemesh_shapes'
+import {Shapes} from '../../../webgl/simplemesh_shapes'
 import {FindNearest} from '../findnearest'
 import {ToolMode} from '../view3d_toolmode'
 import {Icons} from '../../icon_enum'
