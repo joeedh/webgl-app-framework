@@ -834,7 +834,7 @@ View3D {
     const toolmode = this.ctx.toolmode
 
     if (toolmode !== undefined) {
-      toolmode.update()
+      toolmode.checkCtx(this.ctx)
       // propagate ctx into the widget tree if toolmode provided a modified one
       if (toolmode.ctx && toolmode.ctx !== header.ctx) {
         header.ctx = toolmode.ctx

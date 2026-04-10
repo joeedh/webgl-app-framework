@@ -55,9 +55,6 @@ export function makeCurvToolMode(api) {
       return st;
     }
 
-    update() {
-    }
-
     static buildHeader(header, addRow) {
       let row = addRow();
 

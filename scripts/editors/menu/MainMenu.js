@@ -174,7 +174,7 @@ MenuBarEditor {
 
     if (this.ctx && this.ctx.scene && this.ctx.toolmode) {
       let toolmode = this.ctx.toolmode
-      toolmode.update()
+      toolmode.checkCtx(this.ctx)
       if (toolmode.ctx && toolmode.ctx !== this.ctx) {
         this.ctx = toolmode.ctx
       }

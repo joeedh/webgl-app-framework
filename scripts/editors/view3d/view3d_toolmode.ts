@@ -1,7 +1,15 @@
 import {KeyMap} from '../editor_base'
 import {SimpleMesh, ChunkedSimpleMesh, LayerTypes} from '../../core/simplemesh'
 import {IWidgetConstructor, WidgetBase, WidgetFlags, WidgetManager} from './widgets/widgets.js'
-import {Container, ContextOverlay, DataAPI, EnumProperty, IVectorOrHigher, Vector3, Vector4} from '../../path.ux/scripts/pathux.js'
+import {
+  Container,
+  ContextOverlay,
+  DataAPI,
+  EnumProperty,
+  IVectorOrHigher,
+  Vector3,
+  Vector4,
+} from '../../path.ux/scripts/pathux.js'
 import {Icons} from '../icon_enum.js'
 import '../../path.ux/scripts/util/struct.js'
 import {INodeConstructor, INodeSocketSet, Node} from '../../core/graph.js'
@@ -21,7 +29,7 @@ import {IUniformsBlock, ShaderProgram} from '../../core/webgl'
 import {Mesh} from '../../mesh/mesh'
 import {MeshDrawInterface} from './view3d_draw'
 import {BoundingBox} from './view3d_utils'
-import { StructReader } from '../../path.ux/scripts/util/nstructjs';
+import {StructReader} from '../../path.ux/scripts/util/nstructjs'
 
 export interface IToolModeDefine {
   name: string
@@ -358,6 +366,14 @@ export class ToolMode<NodeInputs extends INodeSocketSet = {}, NodeOutputs extend
 
   hasWidgetHighlight() {
     return this.getWidgetHighlight() !== undefined
+  }
+
+  checkCtx(ctx?: ViewContext) {
+    if (ctx !== undefined && this.ctx === undefined) {
+      //note: toolmode may have it's own ctx
+      this.ctx = ctx
+    }
+    return this
   }
 
   update() {

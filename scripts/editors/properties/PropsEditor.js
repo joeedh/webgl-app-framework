@@ -1101,7 +1101,7 @@ PropsEditor {
     this.workspaceTab.clear()
 
     // propagate toolmode's ctx if it changed it
-    toolmode.update()
+    toolmode.checkCtx(this.ctx)
     if (toolmode.ctx && toolmode.ctx !== this.workspaceTab.ctx) {
       this.workspaceTab.ctx = toolmode.ctx
     }

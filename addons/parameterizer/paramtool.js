@@ -55,7 +55,8 @@ export function makeParamToolMode(api) {
       return st;
     }
 
-    update() {
+    update(ctx) {
+      super.update(ctx)
       window.kdrawmode = this.kDrawMode;
     }
 

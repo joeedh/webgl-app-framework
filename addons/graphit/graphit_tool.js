@@ -34,9 +34,6 @@ export function makeGraphItToolMode(api) {
       return st;
     }
 
-    update() {
-    }
-
     static buildHeader(header, addRow) {
       let row = addRow();
 
