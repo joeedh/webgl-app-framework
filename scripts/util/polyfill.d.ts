@@ -36,6 +36,11 @@ export declare global {
     DTST2: number | undefined
     _appstate: AppState
     _unwrap_solvers: Map<any, any>
+    FILE_LOADING: boolean
+    redraw_viewport(all?: boolean): void
+    redraw_all(): void
+    updateDataGraph(force?: boolean): void
+    _genDefaultFile: typeof import('../core/appstate').genDefaultFile
   }
 
   declare const DEBUG: any

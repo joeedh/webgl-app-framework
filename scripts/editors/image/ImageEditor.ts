@@ -1790,7 +1790,7 @@ window.redraw_uveditors = function () {
   }
 
   for (const sarea of _appstate.screen.sareas) {
-    const editor = sarea.editor
+    const editor = sarea.area
 
     if (editor instanceof ImageEditor) {
       editor.uvEditor.flagRedraw()

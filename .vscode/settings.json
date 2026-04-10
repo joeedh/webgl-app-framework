@@ -71,5 +71,12 @@
     "**/*.code-search"       : true,
     "**/.dart_tool"          : true
   },
-  "typescript.tsdk": "node_modules\\typescript\\lib"
+  "typescript.tsdk": "node_modules\\typescript\\lib",
+  "terminal.integrated.defaultProfile.windows": "bash (MSYS2)",
+  "terminal.integrated.profiles.windows": {
+    "Git Bash": {
+      "path": "C:\\Program Files\\Git\\bin\\bash.exe",
+      "args": []
+    }
+  }
 }

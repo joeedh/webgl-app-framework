@@ -1,4 +1,4 @@
-import {DataAPI, IVector4, IVectorOrHigher, nstructjs, util} from '../../path.ux/scripts/pathux.js'
+import {Area, DataAPI, IAreaDef, IVector4, IVectorOrHigher, nstructjs, util} from '../../path.ux/scripts/pathux.js'
 
 import {spawnToolSearchMenu} from '../editor_base'
 
@@ -1847,18 +1847,19 @@ const f2 = () => {
   let time = util.time_ms()
 
   for (const sarea of screen.sareas) {
-    const sdef = sarea.area.constructor.define()
+    const sdef = sarea.area!.constructor.define() as IAreaDef & {has3D?: boolean}
 
-    if (sdef.has3D) {
+    if (sarea.area && sdef.has3D) {
+      const area3d = sarea.area! as Area<ViewContext> & {viewportDraw: (gl: WebGL2RenderingContext) => void}
       sarea.area._init()
 
       if (resetrender && sarea.area instanceof View3D) {
         sarea.area.resetRender()
       }
 
-      sarea.area.push_ctx_active(true)
-      sarea.area.viewportDraw(gl)
-      sarea.area.pop_ctx_active(true)
+      area3d.push_ctx_active(true)
+      area3d.viewportDraw(gl!)
+      area3d.pop_ctx_active(true)
     }
   }
 

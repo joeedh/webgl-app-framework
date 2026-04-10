@@ -30,26 +30,13 @@ import '../editors/resbrowser/resbrowser_ops.js'
 import '../editors/resbrowser/resbrowser_types.js'
 
 import '../editors/view3d/tools/tools.ts'
-import cconst2 from '../path.ux/scripts/config/const.js'
-import {Material, makeDefaultMaterial} from './material.js'
-import {App, ScreenBlock} from '../editors/editor_base.ts'
+import {App} from '../editors/editor_base.ts'
 import {Library, DataBlock, DataRef, BlockFlags} from '../core/lib_api.js'
-import {IDGen} from '../util/util.js'
 import * as util from '../util/util.js'
 import {getDataAPI} from '../data_api/api_define.js'
-import {View3D} from '../editors/view3d/view3d.js'
-import {MenuBarEditor} from '../editors/menu/MainMenu.js'
-import {Scene} from '../scene/scene.ts'
 import {BinaryReader, BinaryWriter} from '../util/binarylib.js'
 import * as cconst from './const.js'
 import {AppSettings} from './settings.ts'
-import {SceneObject} from '../sceneobject/sceneobject.js'
-import {Mesh} from '../mesh/mesh.js'
-import {makeCube} from './mesh_shapes.js'
-import {NodeFlags} from './graph.js'
-import {ShaderNetwork, makeDefaultShaderNetwork} from '../shadernodes/shadernetwork.js'
-
-let STRUCT = nstructjs.STRUCT
 
 export class FileLoadError extends Error {}
 

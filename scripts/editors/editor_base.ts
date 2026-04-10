@@ -906,7 +906,7 @@ Editor {
   }
 
   getID() {
-    return this.ctx.screen.sareas.indexOf(this.owning_sarea)
+    return this.ctx.screen.sareas.indexOf(this.owning_sarea!)
   }
 
   on_keydown(e: KeyboardEvent) {
